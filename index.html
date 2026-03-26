@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SEO werkzaamheden · Pingwin – One Day Clinic</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --orange: #E7773F;
+    --orange-dark: #C95E28;
+    --orange-light: #FFF4EE;
+    --dark: #222222;
+    --body-text: #181818;
+    --gray: #616161;
+    --gray-light: #F5F5F5;
+    --white: #FFFFFF;
+    --border: #E0E0E0;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Montserrat', sans-serif;
+    background: var(--gray-light);
+    color: var(--body-text);
+    line-height: 1.6;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: var(--white);
+    border-bottom: 3px solid var(--orange);
+    padding: 20px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .header img { height: 38px; }
+  .header-divider {
+    width: 1px;
+    height: 32px;
+    background: var(--border);
+  }
+  .header-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--dark);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+  }
+  .header-client {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--gray);
+  }
+  .header-updated {
+    font-size: 12px;
+    color: var(--gray);
+    font-weight: 400;
+  }
+
+  /* ── Main layout ── */
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 32px 24px 60px;
+  }
+
+  /* ── Month selector ── */
+  .month-nav {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 28px;
+  }
+  .month-btn {
+    padding: 10px 20px;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    background: var(--white);
+    font-family: 'Montserrat', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--gray);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .month-btn:hover {
+    border-color: var(--orange);
+    color: var(--orange);
+  }
+  .month-btn.active {
+    background: var(--orange);
+    border-color: var(--orange);
+    color: var(--white);
+  }
+
+  /* ── Stat cards ── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+  .stat-card {
+    background: var(--white);
+    border-radius: 12px;
+    padding: 24px;
+    border-top: 4px solid var(--orange);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+  .stat-value {
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--orange);
+    line-height: 1.1;
+  }
+  .stat-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-top: 6px;
+  }
+  .stat-sub {
+    font-size: 12px;
+    color: var(--gray);
+    margin-top: 4px;
+    font-weight: 400;
+  }
+
+  /* ── Progress bar ── */
+  .progress-wrap {
+    background: var(--white);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 32px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+  .progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .progress-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--dark);
+  }
+  .progress-pct {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--orange);
+  }
+  .progress-bar {
+    height: 10px;
+    background: var(--gray-light);
+    border-radius: 5px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--orange), var(--orange-dark));
+    border-radius: 5px;
+    transition: width 0.6s ease;
+  }
+
+  /* ── Task table ── */
+  .section-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--dark);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title::before {
+    content: '';
+    width: 4px;
+    height: 24px;
+    background: var(--orange);
+    border-radius: 2px;
+    display: inline-block;
+  }
+
+  .task-table-wrap {
+    background: var(--white);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    margin-bottom: 32px;
+  }
+
+  .category-header {
+    background: var(--orange-light);
+    padding: 12px 24px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--orange-dark);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-left: 4px solid var(--orange);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  thead th {
+    background: var(--dark);
+    color: var(--white);
+    padding: 14px 20px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  thead th:last-child { text-align: center; }
+  thead th:nth-child(3) { text-align: right; }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+  tbody tr:nth-child(even) { background: var(--gray-light); }
+  tbody tr:hover { background: var(--orange-light); }
+
+  tbody td {
+    padding: 14px 20px;
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--body-text);
+    vertical-align: middle;
+  }
+  tbody td:nth-child(3) {
+    text-align: right;
+    font-weight: 700;
+    color: var(--dark);
+    white-space: nowrap;
+  }
+  tbody td:last-child { text-align: center; }
+
+  .task-desc {
+    font-size: 12px;
+    color: var(--gray);
+    margin-top: 3px;
+  }
+
+  .badge-done {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .badge-done.yes {
+    background: #E8F5E9;
+    color: #2E7D32;
+  }
+  .badge-done.no {
+    background: var(--gray-light);
+    color: #9E9E9E;
+  }
+  .badge-done.inprogress {
+    background: #FFF3E0;
+    color: #E65100;
+  }
+
+  .doc-link {
+    color: var(--orange);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 13px;
+    transition: color 0.2s;
+  }
+  .doc-link:hover {
+    color: var(--orange-dark);
+    text-decoration: underline;
+  }
+
+  /* ── Footer ── */
+  .footer {
+    text-align: center;
+    padding: 32px;
+    color: var(--gray);
+    font-size: 12px;
+    font-weight: 400;
+  }
+  .footer a {
+    color: var(--orange);
+    text-decoration: none;
+  }
+
+  /* ── Loading ── */
+  .loading {
+    text-align: center;
+    padding: 60px;
+    color: var(--gray);
+  }
+  .spinner {
+    display: inline-block;
+    width: 40px;
+    height: 40px;
+    border: 4px solid var(--border);
+    border-top-color: var(--orange);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-bottom: 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .error-msg {
+    background: #FFF3E0;
+    border-left: 4px solid var(--orange);
+    padding: 20px 24px;
+    border-radius: 8px;
+    margin: 20px 0;
+    font-size: 14px;
+    color: var(--dark);
+  }
+
+  /* ── Totaal overzicht ── */
+  .totals-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+  .total-card {
+    background: var(--white);
+    border-radius: 12px;
+    padding: 20px 24px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .total-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+  }
+  .total-icon.hours { background: var(--orange-light); }
+  .total-icon.budget { background: #E8F5E9; }
+  .total-content { flex: 1; }
+  .total-val {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--dark);
+  }
+  .total-lbl {
+    font-size: 12px;
+    color: var(--gray);
+    font-weight: 500;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    .header { padding: 16px 20px; flex-direction: column; gap: 8px; }
+    .container { padding: 20px 16px 40px; }
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+    thead th, tbody td { padding: 10px 12px; font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <img src="https://pingwin.nl/wp-content/uploads/2016/11/pingwin_logo.png" alt="Pingwin">
+    <div class="header-divider"></div>
+    <div>
+      <div class="header-title">SEO Werkzaamheden</div>
+      <div class="header-client" id="clientName">One Day Clinic</div>
+    </div>
+  </div>
+  <div class="header-updated" id="lastUpdated">Laden...</div>
+</div>
+
+<div class="container">
+  <!-- Loading state -->
+  <div id="loadingState" class="loading">
+    <div class="spinner"></div>
+    <p>Dashboard wordt geladen...</p>
+  </div>
+
+  <!-- Dashboard content (hidden until data loads) -->
+  <div id="dashboardContent" style="display:none;">
+
+    <!-- Month navigation -->
+    <div class="month-nav" id="monthNav"></div>
+
+    <!-- Stat cards -->
+    <div class="stats-grid" id="statsGrid"></div>
+
+    <!-- Progress bar -->
+    <div class="progress-wrap">
+      <div class="progress-header">
+        <span class="progress-title">Voortgang taken deze maand</span>
+        <span class="progress-pct" id="progressPct">0%</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+      </div>
+    </div>
+
+    <!-- Totaal overzicht (all months) -->
+    <div class="section-title">Cumulatief overzicht</div>
+    <div class="totals-grid" id="totalsGrid"></div>
+
+    <!-- Task table -->
+    <div class="section-title">Werkzaamheden deze maand</div>
+    <div class="task-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Taak</th>
+            <th>Toelichting</th>
+            <th>Bestede tijd</th>
+            <th>Status</th>
+            <th>Document</th>
+          </tr>
+        </thead>
+        <tbody id="taskBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  Pingwin Online Marketing &middot; <a href="https://pingwin.nl" target="_blank">pingwin.nl</a> &middot; info@pingwin.nl
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// CONFIGURATIE — Pas dit aan per klant
+// ═══════════════════════════════════════════
+const CONFIG = {
+  clientName: 'One Day Clinic',
+  sheetId: '1O1HeqzxCBH-WeyIhb4QhTniBj_Z7RxGpXl5L5FfJW5I',
+  gid: '1531693305',
+  // Kolom-indices (0-based) in de CSV
+  COL_CATEGORIE: 0,
+  COL_TAAK: 1,
+  COL_TOELICHTING: 2,
+  COL_STANDAARDTIJD: 3,
+  COL_STATUS: 4,
+  COL_LINK: 5,
+  COL_OPMERKINGEN: 6,
+  COL_FIRST_MONTH: 7, // Kolom H = index 7, eerste maandkolom
+  // Budget info
+  maandbudget: 1800,
+  linkbuildingBudget: 600,
+  urenPerMaand: 12,
+  uurtarief: 150 // maandbudget / uren = effectief uurtarief
+};
+
+// ═══════════════════════════════════════════
+// CSV LADEN EN PARSEN
+// ═══════════════════════════════════════════
+async function fetchSheetData() {
+  const url = `https://docs.google.com/spreadsheets/d/${CONFIG.sheetId}/gviz/tq?tqx=out:csv&gid=${CONFIG.gid}`;
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const csvText = await response.text();
+    return parseCSV(csvText);
+  } catch (err) {
+    console.error('Fout bij laden sheet:', err);
+    throw err;
+  }
+}
+
+function parseCSV(text) {
+  const rows = [];
+  let current = '';
+  let inQuotes = false;
+  let row = [];
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    const next = text[i + 1];
+
+    if (inQuotes) {
+      if (char === '"' && next === '"') {
+        current += '"';
+        i++;
+      } else if (char === '"') {
+        inQuotes = false;
+      } else {
+        current += char;
+      }
+    } else {
+      if (char === '"') {
+        inQuotes = true;
+      } else if (char === ',') {
+        row.push(current.trim());
+        current = '';
+      } else if (char === '\n' || (char === '\r' && next === '\n')) {
+        row.push(current.trim());
+        rows.push(row);
+        row = [];
+        current = '';
+        if (char === '\r') i++;
+      } else {
+        current += char;
+      }
+    }
+  }
+  if (current || row.length) {
+    row.push(current.trim());
+    rows.push(row);
+  }
+  return rows;
+}
+
+// ═══════════════════════════════════════════
+// DATA STRUCTUREREN
+// ═══════════════════════════════════════════
+function structureData(rows) {
+  if (!rows || rows.length < 2) return null;
+
+  const header = rows[0];
+
+  // Detecteer maandkolommen (alles vanaf COL_FIRST_MONTH dat een datum/maand bevat)
+  const months = [];
+  for (let i = CONFIG.COL_FIRST_MONTH; i < header.length; i++) {
+    const h = header[i];
+    if (h && h.trim() && !h.toLowerCase().includes('opmerking')) {
+      months.push({ index: i, label: formatMonthLabel(h) });
+    }
+  }
+
+  // Parse taken (skip header, stop bij lege rij of "Budget" rij)
+  const tasks = [];
+  for (let r = 1; r < rows.length; r++) {
+    const row = rows[r];
+    const cat = (row[CONFIG.COL_CATEGORIE] || '').trim();
+    const taak = (row[CONFIG.COL_TAAK] || '').trim();
+
+    // Stop bij budget-sectie of lege rijen
+    if (cat.toLowerCase().includes('budget') || cat.toLowerCase().includes('linkbuilding')) break;
+    if (!taak && !cat) continue;
+
+    const task = {
+      categorie: cat,
+      taak: taak,
+      toelichting: (row[CONFIG.COL_TOELICHTING] || '').trim(),
+      standaardTijd: parseNumber(row[CONFIG.COL_STANDAARDTIJD]),
+      status: (row[CONFIG.COL_STATUS] || '').trim(),
+      link: (row[CONFIG.COL_LINK] || '').trim(),
+      maanden: {}
+    };
+
+    months.forEach(m => {
+      const val = parseNumber(row[m.index]);
+      if (val > 0) task.maanden[m.label] = val;
+    });
+
+    if (task.taak) tasks.push(task);
+  }
+
+  return { months, tasks };
+}
+
+function parseNumber(val) {
+  if (!val) return 0;
+  // Handle comma as decimal separator
+  const cleaned = val.toString().replace(/[^\d,.-]/g, '').replace(',', '.');
+  const num = parseFloat(cleaned);
+  return isNaN(num) ? 0 : num;
+}
+
+function formatMonthLabel(raw) {
+  // Try to parse as date or return as-is
+  const str = raw.trim();
+
+  // Handle date formats like "1-3-2026" or "2026-03-01"
+  const nlMonths = ['Jan', 'Feb', 'Mrt', 'Apr', 'Mei', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dec'];
+
+  // Try DD-MM-YYYY
+  const dmyMatch = str.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  if (dmyMatch) {
+    const month = parseInt(dmyMatch[2]) - 1;
+    return `${nlMonths[month]} ${dmyMatch[3]}`;
+  }
+
+  // Try YYYY-MM-DD
+  const ymdMatch = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (ymdMatch) {
+    const month = parseInt(ymdMatch[2]) - 1;
+    return `${nlMonths[month]} ${ymdMatch[1]}`;
+  }
+
+  // Try "Mrt 2026" format already
+  if (str.match(/^[A-Za-z]{3}\s?\d{4}$/)) return str;
+
+  // Try MM/DD/YYYY
+  const mdyMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (mdyMatch) {
+    const month = parseInt(mdyMatch[1]) - 1;
+    return `${nlMonths[month]} ${mdyMatch[3]}`;
+  }
+
+  return str;
+}
+
+// ═══════════════════════════════════════════
+// DASHBOARD RENDEREN
+// ═══════════════════════════════════════════
+let appData = null;
+let currentMonth = null;
+
+function renderDashboard(data) {
+  appData = data;
+
+  document.getElementById('clientName').textContent = CONFIG.clientName;
+  document.getElementById('lastUpdated').textContent = `Laatste update: ${new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`;
+
+  // Render month buttons
+  const monthNav = document.getElementById('monthNav');
+  monthNav.innerHTML = '';
+
+  if (data.months.length === 0) {
+    monthNav.innerHTML = '<div class="error-msg">Geen maandkolommen gevonden in de Sheet. Voeg kolommen toe vanaf kolom G met maandnamen (bijv. "Mrt 2026").</div>';
+    return;
+  }
+
+  data.months.forEach((m, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'month-btn' + (i === data.months.length - 1 ? ' active' : '');
+    btn.textContent = m.label;
+    btn.onclick = () => selectMonth(m.label, btn);
+    monthNav.appendChild(btn);
+  });
+
+  // Select latest month by default
+  currentMonth = data.months[data.months.length - 1].label;
+  renderMonth(currentMonth);
+  renderTotals();
+}
+
+function selectMonth(monthLabel, btn) {
+  document.querySelectorAll('.month-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentMonth = monthLabel;
+  renderMonth(monthLabel);
+}
+
+function renderMonth(monthLabel) {
+  const tasks = appData.tasks;
+
+  // Bereken stats — gebruik Status kolom + kolom D voor tijd
+  const doneTasks = tasks.filter(t => t.status.toLowerCase() === 'ja').length;
+  const inProgressTasks = tasks.filter(t => t.status.toLowerCase() === 'in progress').length;
+  const totalTasks = tasks.length;
+  // Bestede tijd = kolom D (standaardTijd) van afgeronde taken
+  const doneTasksList = tasks.filter(t => t.status.toLowerCase() === 'ja');
+  const totalMinutes = doneTasksList.reduce((sum, t) => sum + (t.standaardTijd || 0), 0);
+  const totalHours = totalMinutes / 60;
+  const budgetUsed = totalHours * CONFIG.uurtarief;
+
+  // Render stat cards
+  const statsGrid = document.getElementById('statsGrid');
+  statsGrid.innerHTML = `
+    <div class="stat-card">
+      <div class="stat-value">${doneTasks}/${totalTasks}</div>
+      <div class="stat-label">Taken afgerond</div>
+      <div class="stat-sub">${inProgressTasks > 0 ? inProgressTasks + ' in progress, ' : ''}${totalTasks - doneTasks - inProgressTasks} nog te doen</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">${totalHours.toFixed(1)}u</div>
+      <div class="stat-label">Uren besteed</div>
+      <div class="stat-sub">${totalMinutes} minuten totaal</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">&euro;${budgetUsed.toFixed(0)}</div>
+      <div class="stat-label">Budget besteed</div>
+      <div class="stat-sub">van &euro;${CONFIG.maandbudget} maandbudget</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">${Math.round((doneTasks / totalTasks) * 100)}%</div>
+      <div class="stat-label">Voortgang</div>
+      <div class="stat-sub">${monthLabel}</div>
+    </div>
+  `;
+
+  // Progress bar — gebaseerd op status kolom
+  const pct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
+  document.getElementById('progressPct').textContent = `${pct}%`;
+  document.getElementById('progressFill').style.width = `${pct}%`;
+
+  // Render task table grouped by category
+  const taskBody = document.getElementById('taskBody');
+  taskBody.innerHTML = '';
+
+  let lastCat = '';
+  tasks.forEach(task => {
+    if (task.categorie && task.categorie !== lastCat) {
+      lastCat = task.categorie;
+      const catRow = document.createElement('tr');
+      catRow.innerHTML = `<td colspan="5" style="background:var(--orange-light);padding:10px 20px;font-size:13px;font-weight:700;color:var(--orange-dark);text-transform:uppercase;letter-spacing:1px;border-left:4px solid var(--orange);">${escapeHTML(task.categorie)}</td>`;
+      taskBody.appendChild(catRow);
+    }
+
+    const minutes = task.standaardTijd || 0;
+    const statusLower = task.status.toLowerCase();
+    const isDone = statusLower === 'ja';
+    const isInProgress = statusLower === 'in progress';
+
+    // Status badge
+    let statusBadge;
+    if (isDone) {
+      statusBadge = '<span class="badge-done yes">Afgerond</span>';
+    } else if (isInProgress) {
+      statusBadge = '<span class="badge-done inprogress">In progress</span>';
+    } else {
+      statusBadge = '<span class="badge-done no">Nog te doen</span>';
+    }
+
+    // Link — alleen echte URL's tonen
+    const isUrl = task.link && /^https?:\/\//i.test(task.link.trim());
+    const linkCell = isUrl
+      ? `<a href="${escapeHTML(task.link.trim())}" target="_blank" class="doc-link">Bekijk &rarr;</a>`
+      : `<span style="color:#ccc;font-size:12px;">&mdash;</span>`;
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>
+        <strong>${escapeHTML(task.taak)}</strong>
+      </td>
+      <td><span class="task-desc">${escapeHTML(task.toelichting)}</span></td>
+      <td>${minutes > 0 ? formatTime(minutes) : '<span style="color:#ccc;">&mdash;</span>'}</td>
+      <td>${statusBadge}</td>
+      <td>${linkCell}</td>
+    `;
+    taskBody.appendChild(tr);
+  });
+}
+
+function renderTotals() {
+  const tasks = appData.tasks;
+
+  // Cumulatief: tel standaardTijd (kolom D) van alle afgeronde taken
+  const doneTasks = tasks.filter(t => t.status.toLowerCase() === 'ja');
+  const totalMinutesAll = doneTasks.reduce((sum, t) => sum + (t.standaardTijd || 0), 0);
+  const totalHoursAll = totalMinutesAll / 60;
+  const totalBudgetAll = totalHoursAll * CONFIG.uurtarief;
+
+  const grid = document.getElementById('totalsGrid');
+  grid.innerHTML = `
+    <div class="total-card">
+      <div class="total-icon hours">&#9201;</div>
+      <div class="total-content">
+        <div class="total-val">${totalHoursAll.toFixed(1)} uur</div>
+        <div class="total-lbl">Totaal besteed (${doneTasks.length} taken afgerond)</div>
+      </div>
+    </div>
+    <div class="total-card">
+      <div class="total-icon budget">&#128176;</div>
+      <div class="total-content">
+        <div class="total-val">&euro;${totalBudgetAll.toFixed(0)}</div>
+        <div class="total-lbl">Totale investering</div>
+      </div>
+    </div>
+  `;
+}
+
+function formatTime(minutes) {
+  if (minutes >= 60) {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return m > 0 ? `${h}u ${m}m` : `${h}u`;
+  }
+  return `${minutes}m`;
+}
+
+function escapeHTML(str) {
+  if (!str) return '';
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+async function init() {
+  try {
+    const rows = await fetchSheetData();
+    const data = structureData(rows);
+
+    if (!data || data.tasks.length === 0) {
+      document.getElementById('loadingState').innerHTML = `
+        <div class="error-msg">
+          <strong>Geen data gevonden.</strong><br>
+          Controleer of het tabblad "Planning" gepubliceerd is naar het web.<br>
+          Ga naar: Bestand &rarr; Delen &rarr; Publiceren naar web &rarr; Kies het tabblad &rarr; Publiceer.
+        </div>`;
+      return;
+    }
+
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('dashboardContent').style.display = 'block';
+    renderDashboard(data);
+
+  } catch (err) {
+    document.getElementById('loadingState').innerHTML = `
+      <div class="error-msg">
+        <strong>Kon de Google Sheet niet laden.</strong><br>
+        ${err.message}<br><br>
+        Mogelijke oorzaken:<br>
+        &bull; Het tabblad is nog niet gepubliceerd naar het web<br>
+        &bull; Ga naar: <strong>Bestand &rarr; Delen &rarr; Publiceren naar web</strong><br>
+        &bull; Selecteer het tabblad "Planning" en klik "Publiceren"
+      </div>`;
+  }
+}
+
+init();
+
+// Auto-refresh elke 5 minuten
+setInterval(init, 5 * 60 * 1000);
+</script>
+
+</body>
+</html>
