@@ -464,24 +464,28 @@ const CONFIG = {
   COL_CATEGORIE: 0,
   COL_TAAK: 1,
   COL_TOELICHTING: 2,
-  COL_STANDAARDTIJD: 3,
-  COL_STATUS: 4,
-  COL_LINK: 5,
-  COL_OPMERKINGEN: 6,
-  COL_FIRST_MONTH: 7, // Kolom H = index 7, eerste maandkolom
+  COL_STANDAARDTIJD: 3,  // Kolom D = tijd in minuten
+  COL_STATUS: 4,          // Kolom E = Ja / In progress / leeg
+  COL_MAAND: 5,           // Kolom F = maand (bijv. "april", "maart")
+  COL_LINK: 6,            // Kolom G = link naar document
   // Budget info
   maandbudget: 1800,
   linkbuildingBudget: 600,
   urenPerMaand: 12,
-  uurtarief: 150 // maandbudget / uren = effectief uurtarief
+  uurtarief: 150
 };
+
+// Vaste maandvolgorde voor sortering
+const MAAND_VOLGORDE = [
+  'januari','februari','maart','april','mei','juni',
+  'juli','augustus','september','oktober','november','december'
+];
 
 // ═══════════════════════════════════════════
 // CSV LADEN EN PARSEN
 // ═══════════════════════════════════════════
 async function fetchSheetData() {
   const url = `https://docs.google.com/spreadsheets/d/${CONFIG.sheetId}/gviz/tq?tqx=out:csv&gid=${CONFIG.gid}`;
-
   try {
     const response = await fetch(url);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -542,18 +546,7 @@ function parseCSV(text) {
 function structureData(rows) {
   if (!rows || rows.length < 2) return null;
 
-  const header = rows[0];
-
-  // Detecteer maandkolommen (alles vanaf COL_FIRST_MONTH dat een datum/maand bevat)
-  const months = [];
-  for (let i = CONFIG.COL_FIRST_MONTH; i < header.length; i++) {
-    const h = header[i];
-    if (h && h.trim() && !h.toLowerCase().includes('opmerking')) {
-      months.push({ index: i, label: formatMonthLabel(h) });
-    }
-  }
-
-  // Parse taken (skip header, stop bij lege rij of "Budget" rij)
+  // Parse alle taken (skip header, stop bij lege rij of "Budget" rij)
   const tasks = [];
   for (let r = 1; r < rows.length; r++) {
     const row = rows[r];
@@ -570,61 +563,34 @@ function structureData(rows) {
       toelichting: (row[CONFIG.COL_TOELICHTING] || '').trim(),
       standaardTijd: parseNumber(row[CONFIG.COL_STANDAARDTIJD]),
       status: (row[CONFIG.COL_STATUS] || '').trim(),
-      link: (row[CONFIG.COL_LINK] || '').trim(),
-      maanden: {}
+      maand: (row[CONFIG.COL_MAAND] || '').trim().toLowerCase(),
+      link: (row[CONFIG.COL_LINK] || '').trim()
     };
-
-    months.forEach(m => {
-      const val = parseNumber(row[m.index]);
-      if (val > 0) task.maanden[m.label] = val;
-    });
 
     if (task.taak) tasks.push(task);
   }
 
-  return { months, tasks };
+  // Bepaal unieke maanden uit kolom F, gesorteerd op natuurlijke volgorde
+  const uniqueMonths = [...new Set(tasks.map(t => t.maand).filter(m => m))];
+  uniqueMonths.sort((a, b) => {
+    const ia = MAAND_VOLGORDE.indexOf(a);
+    const ib = MAAND_VOLGORDE.indexOf(b);
+    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+  });
+
+  return { months: uniqueMonths, tasks };
 }
 
 function parseNumber(val) {
   if (!val) return 0;
-  // Handle comma as decimal separator
   const cleaned = val.toString().replace(/[^\d,.-]/g, '').replace(',', '.');
   const num = parseFloat(cleaned);
   return isNaN(num) ? 0 : num;
 }
 
-function formatMonthLabel(raw) {
-  // Try to parse as date or return as-is
-  const str = raw.trim();
-
-  // Handle date formats like "1-3-2026" or "2026-03-01"
-  const nlMonths = ['Jan', 'Feb', 'Mrt', 'Apr', 'Mei', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dec'];
-
-  // Try DD-MM-YYYY
-  const dmyMatch = str.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
-  if (dmyMatch) {
-    const month = parseInt(dmyMatch[2]) - 1;
-    return `${nlMonths[month]} ${dmyMatch[3]}`;
-  }
-
-  // Try YYYY-MM-DD
-  const ymdMatch = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-  if (ymdMatch) {
-    const month = parseInt(ymdMatch[2]) - 1;
-    return `${nlMonths[month]} ${ymdMatch[1]}`;
-  }
-
-  // Try "Mrt 2026" format already
-  if (str.match(/^[A-Za-z]{3}\s?\d{4}$/)) return str;
-
-  // Try MM/DD/YYYY
-  const mdyMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (mdyMatch) {
-    const month = parseInt(mdyMatch[1]) - 1;
-    return `${nlMonths[month]} ${mdyMatch[3]}`;
-  }
-
-  return str;
+function capitalize(str) {
+  if (!str) return '';
+  return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
 // ═══════════════════════════════════════════
@@ -639,61 +605,72 @@ function renderDashboard(data) {
   document.getElementById('clientName').textContent = CONFIG.clientName;
   document.getElementById('lastUpdated').textContent = `Laatste update: ${new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`;
 
-  // Render month buttons
+  // Render maandknoppen op basis van kolom F
   const monthNav = document.getElementById('monthNav');
   monthNav.innerHTML = '';
 
   if (data.months.length === 0) {
-    monthNav.innerHTML = '<div class="error-msg">Geen maandkolommen gevonden in de Sheet. Voeg kolommen toe vanaf kolom G met maandnamen (bijv. "Mrt 2026").</div>';
+    monthNav.innerHTML = '<div class="error-msg">Geen maanden gevonden in kolom F van de Sheet.</div>';
     return;
   }
 
   data.months.forEach((m, i) => {
     const btn = document.createElement('button');
     btn.className = 'month-btn' + (i === data.months.length - 1 ? ' active' : '');
-    btn.textContent = m.label;
-    btn.onclick = () => selectMonth(m.label, btn);
+    btn.textContent = capitalize(m);
+    btn.onclick = () => selectMonth(m, btn);
     monthNav.appendChild(btn);
   });
 
-  // Select latest month by default
-  currentMonth = data.months[data.months.length - 1].label;
+  // Selecteer de laatste maand standaard
+  currentMonth = data.months[data.months.length - 1];
   renderMonth(currentMonth);
   renderTotals();
 }
 
-function selectMonth(monthLabel, btn) {
+function selectMonth(monthKey, btn) {
   document.querySelectorAll('.month-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  currentMonth = monthLabel;
-  renderMonth(monthLabel);
+  currentMonth = monthKey;
+  renderMonth(monthKey);
 }
 
-function renderMonth(monthLabel) {
-  const tasks = appData.tasks;
+function renderMonth(monthKey) {
+  // Filter taken voor deze maand
+  const monthTasks = appData.tasks.filter(t => t.maand === monthKey);
 
-  // Bereken stats — gebruik Status kolom + kolom D voor tijd
-  const doneTasks = tasks.filter(t => t.status.toLowerCase() === 'ja').length;
-  const inProgressTasks = tasks.filter(t => t.status.toLowerCase() === 'in progress').length;
-  const totalTasks = tasks.length;
-  // Bestede tijd = kolom D (standaardTijd) van afgeronde taken
-  const doneTasksList = tasks.filter(t => t.status.toLowerCase() === 'ja');
-  const totalMinutes = doneTasksList.reduce((sum, t) => sum + (t.standaardTijd || 0), 0);
+  const doneTasks = monthTasks.filter(t => t.status.toLowerCase() === 'ja');
+  const inProgressTasks = monthTasks.filter(t => t.status.toLowerCase() === 'in progress');
+  const todoTasks = monthTasks.filter(t => {
+    const s = t.status.toLowerCase();
+    return s !== 'ja' && s !== 'in progress';
+  });
+
+  const totalTasks = monthTasks.length;
+  const doneCount = doneTasks.length;
+  const ipCount = inProgressTasks.length;
+  const todoCount = todoTasks.length;
+
+  // Bestede tijd = kolom D van afgeronde taken van deze maand
+  const totalMinutes = doneTasks.reduce((sum, t) => sum + (t.standaardTijd || 0), 0);
+  // Geplande tijd = kolom D van alle taken van deze maand
+  const plannedMinutes = monthTasks.reduce((sum, t) => sum + (t.standaardTijd || 0), 0);
   const totalHours = totalMinutes / 60;
+  const plannedHours = plannedMinutes / 60;
   const budgetUsed = totalHours * CONFIG.uurtarief;
 
   // Render stat cards
   const statsGrid = document.getElementById('statsGrid');
   statsGrid.innerHTML = `
     <div class="stat-card">
-      <div class="stat-value">${doneTasks}/${totalTasks}</div>
+      <div class="stat-value">${doneCount}/${totalTasks}</div>
       <div class="stat-label">Taken afgerond</div>
-      <div class="stat-sub">${inProgressTasks > 0 ? inProgressTasks + ' in progress, ' : ''}${totalTasks - doneTasks - inProgressTasks} nog te doen</div>
+      <div class="stat-sub">${ipCount > 0 ? ipCount + ' in progress, ' : ''}${todoCount} nog te doen</div>
     </div>
     <div class="stat-card">
       <div class="stat-value">${totalHours.toFixed(1)}u</div>
       <div class="stat-label">Uren besteed</div>
-      <div class="stat-sub">${totalMinutes} minuten totaal</div>
+      <div class="stat-sub">van ${plannedHours.toFixed(1)}u gepland</div>
     </div>
     <div class="stat-card">
       <div class="stat-value">&euro;${budgetUsed.toFixed(0)}</div>
@@ -701,23 +678,30 @@ function renderMonth(monthLabel) {
       <div class="stat-sub">van &euro;${CONFIG.maandbudget} maandbudget</div>
     </div>
     <div class="stat-card">
-      <div class="stat-value">${Math.round((doneTasks / totalTasks) * 100)}%</div>
+      <div class="stat-value">${totalTasks > 0 ? Math.round((doneCount / totalTasks) * 100) : 0}%</div>
       <div class="stat-label">Voortgang</div>
-      <div class="stat-sub">${monthLabel}</div>
+      <div class="stat-sub">${capitalize(monthKey)}</div>
     </div>
   `;
 
-  // Progress bar — gebaseerd op status kolom
-  const pct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
+  // Progress bar
+  const pct = totalTasks > 0 ? Math.round((doneCount / totalTasks) * 100) : 0;
   document.getElementById('progressPct').textContent = `${pct}%`;
   document.getElementById('progressFill').style.width = `${pct}%`;
 
-  // Render task table grouped by category
+  // Render taaktabel gegroepeerd op categorie
   const taskBody = document.getElementById('taskBody');
   taskBody.innerHTML = '';
 
+  if (monthTasks.length === 0) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td colspan="5" style="text-align:center;padding:40px;color:var(--gray);">Geen werkzaamheden gevonden voor deze maand.</td>';
+    taskBody.appendChild(tr);
+    return;
+  }
+
   let lastCat = '';
-  tasks.forEach(task => {
+  monthTasks.forEach(task => {
     if (task.categorie && task.categorie !== lastCat) {
       lastCat = task.categorie;
       const catRow = document.createElement('tr');
@@ -730,7 +714,6 @@ function renderMonth(monthLabel) {
     const isDone = statusLower === 'ja';
     const isInProgress = statusLower === 'in progress';
 
-    // Status badge
     let statusBadge;
     if (isDone) {
       statusBadge = '<span class="badge-done yes">Afgerond</span>';
@@ -740,7 +723,6 @@ function renderMonth(monthLabel) {
       statusBadge = '<span class="badge-done no">Nog te doen</span>';
     }
 
-    // Link — alleen echte URL's tonen
     const isUrl = task.link && /^https?:\/\//i.test(task.link.trim());
     const linkCell = isUrl
       ? `<a href="${escapeHTML(task.link.trim())}" target="_blank" class="doc-link">Bekijk &rarr;</a>`
@@ -748,9 +730,7 @@ function renderMonth(monthLabel) {
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td>
-        <strong>${escapeHTML(task.taak)}</strong>
-      </td>
+      <td><strong>${escapeHTML(task.taak)}</strong></td>
       <td><span class="task-desc">${escapeHTML(task.toelichting)}</span></td>
       <td>${minutes > 0 ? formatTime(minutes) : '<span style="color:#ccc;">&mdash;</span>'}</td>
       <td>${statusBadge}</td>
@@ -763,9 +743,9 @@ function renderMonth(monthLabel) {
 function renderTotals() {
   const tasks = appData.tasks;
 
-  // Cumulatief: tel standaardTijd (kolom D) van alle afgeronde taken
-  const doneTasks = tasks.filter(t => t.status.toLowerCase() === 'ja');
-  const totalMinutesAll = doneTasks.reduce((sum, t) => sum + (t.standaardTijd || 0), 0);
+  // Cumulatief: tel kolom D van alle afgeronde taken (over alle maanden)
+  const allDone = tasks.filter(t => t.status.toLowerCase() === 'ja');
+  const totalMinutesAll = allDone.reduce((sum, t) => sum + (t.standaardTijd || 0), 0);
   const totalHoursAll = totalMinutesAll / 60;
   const totalBudgetAll = totalHoursAll * CONFIG.uurtarief;
 
@@ -775,7 +755,7 @@ function renderTotals() {
       <div class="total-icon hours">&#9201;</div>
       <div class="total-content">
         <div class="total-val">${totalHoursAll.toFixed(1)} uur</div>
-        <div class="total-lbl">Totaal besteed (${doneTasks.length} taken afgerond)</div>
+        <div class="total-lbl">Totaal besteed (${allDone.length} taken afgerond)</div>
       </div>
     </div>
     <div class="total-card">
@@ -814,7 +794,7 @@ async function init() {
       document.getElementById('loadingState').innerHTML = `
         <div class="error-msg">
           <strong>Geen data gevonden.</strong><br>
-          Controleer of het tabblad "Planning" gepubliceerd is naar het web.<br>
+          Controleer of het tabblad gepubliceerd is naar het web.<br>
           Ga naar: Bestand &rarr; Delen &rarr; Publiceren naar web &rarr; Kies het tabblad &rarr; Publiceer.
         </div>`;
       return;
