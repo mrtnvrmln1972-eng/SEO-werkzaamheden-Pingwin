@@ -16,6 +16,8 @@
     --gray-light: #F5F5F5;
     --white: #FFFFFF;
     --border: #E0E0E0;
+    --red: #D32F2F;
+    --red-light: #FFEBEE;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -108,7 +110,7 @@
   /* ── Stat cards ── */
   .stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 16px;
     margin-bottom: 32px;
   }
@@ -119,8 +121,15 @@
     border-top: 4px solid var(--orange);
     box-shadow: 0 1px 4px rgba(0,0,0,0.06);
   }
+  .stat-card.over-budget {
+    border-top-color: var(--red);
+    background: var(--red-light);
+  }
+  .stat-card.over-budget .stat-value {
+    color: var(--red);
+  }
   .stat-value {
-    font-size: 32px;
+    font-size: 28px;
     font-weight: 800;
     color: var(--orange);
     line-height: 1.1;
@@ -204,17 +213,6 @@
     margin-bottom: 32px;
   }
 
-  .category-header {
-    background: var(--orange-light);
-    padding: 12px 24px;
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--orange-dark);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    border-left: 4px solid var(--orange);
-  }
-
   table {
     width: 100%;
     border-collapse: collapse;
@@ -269,15 +267,15 @@
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }
-  .badge-done.yes {
+  .badge-done.klaar {
     background: #E8F5E9;
     color: #2E7D32;
   }
-  .badge-done.no {
+  .badge-done.gepland {
     background: var(--gray-light);
     color: #9E9E9E;
   }
-  .badge-done.inprogress {
+  .badge-done.bezig {
     background: #FFF3E0;
     color: #E65100;
   }
@@ -335,46 +333,6 @@
     color: var(--dark);
   }
 
-  /* ── Totaal overzicht ── */
-  .totals-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 16px;
-    margin-bottom: 32px;
-  }
-  .total-card {
-    background: var(--white);
-    border-radius: 12px;
-    padding: 20px 24px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-    display: flex;
-    align-items: center;
-    gap: 16px;
-  }
-  .total-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 22px;
-    flex-shrink: 0;
-  }
-  .total-icon.hours { background: var(--orange-light); }
-  .total-icon.budget { background: #E8F5E9; }
-  .total-content { flex: 1; }
-  .total-val {
-    font-size: 22px;
-    font-weight: 800;
-    color: var(--dark);
-  }
-  .total-lbl {
-    font-size: 12px;
-    color: var(--gray);
-    font-weight: 500;
-  }
-
   /* ── Responsive ── */
   @media (max-width: 768px) {
     .header { padding: 16px 20px; flex-direction: column; gap: 8px; }
@@ -425,10 +383,6 @@
       </div>
     </div>
 
-    <!-- Totaal overzicht (all months) -->
-    <div class="section-title">Cumulatief overzicht</div>
-    <div class="totals-grid" id="totalsGrid"></div>
-
     <!-- Task table -->
     <div class="section-title">Werkzaamheden deze maand</div>
     <div class="task-table-wrap">
@@ -454,28 +408,21 @@
 
 <script>
 // ═══════════════════════════════════════════
-// CONFIGURATIE — Pas dit aan per klant
+// CONFIGURATIE
 // ═══════════════════════════════════════════
 const CONFIG = {
   clientName: 'One Day Clinic',
   sheetId: '1O1HeqzxCBH-WeyIhb4QhTniBj_Z7RxGpXl5L5FfJW5I',
   gid: '1531693305',
-  // Kolom-indices (0-based) in de CSV
   COL_CATEGORIE: 0,
   COL_TAAK: 1,
   COL_TOELICHTING: 2,
-  COL_STANDAARDTIJD: 3,  // Kolom D = tijd in minuten
-  COL_STATUS: 4,          // Kolom E = Ja / In progress / leeg
-  COL_MAAND: 5,           // Kolom F = maand (bijv. "april", "maart")
-  COL_LINK: 6,            // Kolom G = link naar document
-  // Budget info
-  maandbudget: 1800,
-  linkbuildingBudget: 600,
-  urenPerMaand: 12,
-  uurtarief: 150
+  COL_STANDAARDTIJD: 3,
+  COL_STATUS: 4,
+  COL_MAAND: 5,
+  COL_LINK: 6
 };
 
-// Vaste maandvolgorde voor sortering
 const MAAND_VOLGORDE = [
   'januari','februari','maart','april','mei','juni',
   'juli','augustus','september','oktober','november','december'
@@ -546,22 +493,73 @@ function parseCSV(text) {
 function structureData(rows) {
   if (!rows || rows.length < 2) return null;
 
-  // Parse alle taken (skip header, stop bij lege rij of "Budget" rij)
   const tasks = [];
+  const budget = {
+    maandbudget: 0,
+    linkbuilding: 0,
+    urenBudget: 0,
+    beschikbareUren: 0
+  };
+
+  let inBudgetSection = false;
+
   for (let r = 1; r < rows.length; r++) {
     const row = rows[r];
-    const cat = (row[CONFIG.COL_CATEGORIE] || '').trim();
-    const taak = (row[CONFIG.COL_TAAK] || '').trim();
+    const colA = (row[CONFIG.COL_CATEGORIE] || '').trim();
+    const colB = (row[CONFIG.COL_TAAK] || '').trim();
+    const colC = (row[CONFIG.COL_TOELICHTING] || '').trim();
+    const colD = (row[CONFIG.COL_STANDAARDTIJD] || '').trim();
 
-    // Stop bij budget-sectie of lege rijen
-    if (cat.toLowerCase().includes('budget') || cat.toLowerCase().includes('linkbuilding')) break;
-    if (!taak && !cat) continue;
+    // Detecteer de budgetsectie
+    if (colA.toLowerCase().includes('budget') && colA.toLowerCase().includes('linkbuilding')) {
+      inBudgetSection = true;
+      continue;
+    }
+
+    // Lees budgetwaarden uit de budgetsectie
+    if (inBudgetSection) {
+      const label = colC.toLowerCase();
+      if (label.includes('maandbudget')) {
+        budget.maandbudget = parseNumber(colD);
+      } else if (label.includes('budget linkbuilding')) {
+        budget.linkbuilding = parseNumber(colD);
+      } else if (label.includes('resterende uren, na linkbuilding') || label.includes('uren in geld')) {
+        budget.urenBudget = parseNumber(colD);
+      } else if (label.includes('beschikbare uren per maand')) {
+        budget.beschikbareUren = parseNumber(colD);
+      }
+
+      // Einde budgetsectie: als er weer een taak/categorie komt
+      const nextColA = (row[CONFIG.COL_CATEGORIE] || '').trim();
+      const nextColB = (row[CONFIG.COL_TAAK] || '').trim();
+      const nextStatus = (row[CONFIG.COL_STATUS] || '').trim();
+      const nextMaand = (row[CONFIG.COL_MAAND] || '').trim();
+      if (nextMaand || nextStatus) {
+        // Dit is weer een taakregel, einde budgetsectie
+        inBudgetSection = false;
+        // Parse deze rij als taak
+        const task = {
+          categorie: nextColA,
+          taak: nextColB,
+          toelichting: colC,
+          standaardTijd: parseNumber(colD),
+          status: nextStatus,
+          maand: nextMaand.toLowerCase(),
+          link: (row[CONFIG.COL_LINK] || '').trim()
+        };
+        if (task.taak) tasks.push(task);
+      }
+      continue;
+    }
+
+    // Normale taakregel
+    if (!colB && !colA) continue;
 
     const task = {
-      categorie: cat,
-      taak: taak,
-      toelichting: (row[CONFIG.COL_TOELICHTING] || '').trim(),
-      standaardTijd: parseNumber(row[CONFIG.COL_STANDAARDTIJD]),
+      categorie: colA,
+      taak: colB,
+      toelichting: colC,
+      standaardTijd: parseNumber(colD),
       status: (row[CONFIG.COL_STATUS] || '').trim(),
       maand: (row[CONFIG.COL_MAAND] || '').trim().toLowerCase(),
       link: (row[CONFIG.COL_LINK] || '').trim()
@@ -570,7 +568,17 @@ function structureData(rows) {
     if (task.taak) tasks.push(task);
   }
 
-  // Bepaal unieke maanden uit kolom F, gesorteerd op natuurlijke volgorde
+  // Bereken uurtarief uit sheet data
+  if (budget.urenBudget === 0 && budget.maandbudget > 0) {
+    budget.urenBudget = budget.maandbudget - budget.linkbuilding;
+  }
+  if (budget.beschikbareUren > 0 && budget.urenBudget > 0) {
+    budget.uurtarief = budget.urenBudget / budget.beschikbareUren;
+  } else {
+    budget.uurtarief = 150; // fallback
+  }
+
+  // Unieke maanden
   const uniqueMonths = [...new Set(tasks.map(t => t.maand).filter(m => m))];
   uniqueMonths.sort((a, b) => {
     const ia = MAAND_VOLGORDE.indexOf(a);
@@ -578,7 +586,7 @@ function structureData(rows) {
     return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
   });
 
-  return { months: uniqueMonths, tasks };
+  return { months: uniqueMonths, tasks, budget };
 }
 
 function parseNumber(val) {
@@ -605,7 +613,6 @@ function renderDashboard(data) {
   document.getElementById('clientName').textContent = CONFIG.clientName;
   document.getElementById('lastUpdated').textContent = `Laatste update: ${new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`;
 
-  // Render maandknoppen op basis van kolom F
   const monthNav = document.getElementById('monthNav');
   monthNav.innerHTML = '';
 
@@ -622,10 +629,8 @@ function renderDashboard(data) {
     monthNav.appendChild(btn);
   });
 
-  // Selecteer de laatste maand standaard
   currentMonth = data.months[data.months.length - 1];
   renderMonth(currentMonth);
-  renderTotals();
 }
 
 function selectMonth(monthKey, btn) {
@@ -636,51 +641,57 @@ function selectMonth(monthKey, btn) {
 }
 
 function renderMonth(monthKey) {
-  // Filter taken voor deze maand
   const monthTasks = appData.tasks.filter(t => t.maand === monthKey);
+  const b = appData.budget;
 
-  const doneTasks = monthTasks.filter(t => t.status.toLowerCase() === 'ja');
-  const inProgressTasks = monthTasks.filter(t => t.status.toLowerCase() === 'in progress');
-  const todoTasks = monthTasks.filter(t => {
-    const s = t.status.toLowerCase();
-    return s !== 'ja' && s !== 'in progress';
-  });
+  // Status matching: klaar, bezig, gepland
+  const doneTasks = monthTasks.filter(t => t.status.toLowerCase() === 'klaar');
+  const bezigTasks = monthTasks.filter(t => t.status.toLowerCase() === 'bezig');
+  const geplandTasks = monthTasks.filter(t => t.status.toLowerCase() === 'gepland');
 
   const totalTasks = monthTasks.length;
   const doneCount = doneTasks.length;
-  const ipCount = inProgressTasks.length;
-  const todoCount = todoTasks.length;
+  const bezigCount = bezigTasks.length;
+  const geplandCount = geplandTasks.length;
 
-  // Bestede tijd = kolom D van afgeronde taken van deze maand
-  const totalMinutes = doneTasks.reduce((sum, t) => sum + (t.standaardTijd || 0), 0);
-  // Geplande tijd = kolom D van alle taken van deze maand
-  const plannedMinutes = monthTasks.reduce((sum, t) => sum + (t.standaardTijd || 0), 0);
-  const totalHours = totalMinutes / 60;
-  const plannedHours = plannedMinutes / 60;
-  const budgetUsed = totalHours * CONFIG.uurtarief;
+  // Uren besteed = kolom D van afgeronde taken (klaar) + bezig taken
+  const doneMinutes = doneTasks.reduce((sum, t) => sum + (t.standaardTijd || 0), 0);
+  const bezigMinutes = bezigTasks.reduce((sum, t) => sum + (t.standaardTijd || 0), 0);
+  const totalMinutesDone = doneMinutes + bezigMinutes;
+  const totalHours = totalMinutesDone / 60;
+  const urenInGeld = totalHours * b.uurtarief;
 
-  // Render stat cards
+  // Totaal besteed = uren in geld + linkbuilding
+  const totaalBesteed = urenInGeld + b.linkbuilding;
+  const isOverBudget = totaalBesteed > b.maandbudget;
+
+  // Render 5 stat cards
   const statsGrid = document.getElementById('statsGrid');
   statsGrid.innerHTML = `
     <div class="stat-card">
       <div class="stat-value">${doneCount}/${totalTasks}</div>
       <div class="stat-label">Taken afgerond</div>
-      <div class="stat-sub">${ipCount > 0 ? ipCount + ' in progress, ' : ''}${todoCount} nog te doen</div>
+      <div class="stat-sub">${bezigCount > 0 ? bezigCount + ' bezig, ' : ''}${geplandCount} gepland</div>
     </div>
     <div class="stat-card">
       <div class="stat-value">${totalHours.toFixed(1)}u</div>
       <div class="stat-label">Uren besteed</div>
-      <div class="stat-sub">van ${plannedHours.toFixed(1)}u gepland</div>
+      <div class="stat-sub">&euro;${urenInGeld.toFixed(0)} (${b.beschikbareUren > 0 ? b.beschikbareUren : 12}u beschikbaar)</div>
     </div>
     <div class="stat-card">
-      <div class="stat-value">&euro;${budgetUsed.toFixed(0)}</div>
-      <div class="stat-label">Budget besteed</div>
-      <div class="stat-sub">van &euro;${CONFIG.maandbudget} maandbudget</div>
+      <div class="stat-value">&euro;${b.linkbuilding.toFixed(0)}</div>
+      <div class="stat-label">Linkbuilding</div>
+      <div class="stat-sub">Maandelijks budget</div>
+    </div>
+    <div class="stat-card ${isOverBudget ? 'over-budget' : ''}">
+      <div class="stat-value">&euro;${totaalBesteed.toFixed(0)}</div>
+      <div class="stat-label">Totaal besteed</div>
+      <div class="stat-sub">${isOverBudget ? 'Over budget!' : 'Binnen budget'} (max &euro;${b.maandbudget.toFixed(0)})</div>
     </div>
     <div class="stat-card">
-      <div class="stat-value">${totalTasks > 0 ? Math.round((doneCount / totalTasks) * 100) : 0}%</div>
-      <div class="stat-label">Voortgang</div>
-      <div class="stat-sub">${capitalize(monthKey)}</div>
+      <div class="stat-value">&euro;${b.maandbudget.toFixed(0)}</div>
+      <div class="stat-label">Maandfee</div>
+      <div class="stat-sub">Incl. linkbuilding &euro;${b.linkbuilding.toFixed(0)}</div>
     </div>
   `;
 
@@ -689,7 +700,7 @@ function renderMonth(monthKey) {
   document.getElementById('progressPct').textContent = `${pct}%`;
   document.getElementById('progressFill').style.width = `${pct}%`;
 
-  // Render taaktabel gegroepeerd op categorie
+  // Render taaktabel
   const taskBody = document.getElementById('taskBody');
   taskBody.innerHTML = '';
 
@@ -711,16 +722,14 @@ function renderMonth(monthKey) {
 
     const minutes = task.standaardTijd || 0;
     const statusLower = task.status.toLowerCase();
-    const isDone = statusLower === 'ja';
-    const isInProgress = statusLower === 'in progress';
 
     let statusBadge;
-    if (isDone) {
-      statusBadge = '<span class="badge-done yes">Afgerond</span>';
-    } else if (isInProgress) {
-      statusBadge = '<span class="badge-done inprogress">In progress</span>';
+    if (statusLower === 'klaar') {
+      statusBadge = '<span class="badge-done klaar">Klaar</span>';
+    } else if (statusLower === 'bezig') {
+      statusBadge = '<span class="badge-done bezig">Bezig</span>';
     } else {
-      statusBadge = '<span class="badge-done no">Nog te doen</span>';
+      statusBadge = '<span class="badge-done gepland">Gepland</span>';
     }
 
     const isUrl = task.link && /^https?:\/\//i.test(task.link.trim());
@@ -738,34 +747,6 @@ function renderMonth(monthKey) {
     `;
     taskBody.appendChild(tr);
   });
-}
-
-function renderTotals() {
-  const tasks = appData.tasks;
-
-  // Cumulatief: tel kolom D van alle afgeronde taken (over alle maanden)
-  const allDone = tasks.filter(t => t.status.toLowerCase() === 'ja');
-  const totalMinutesAll = allDone.reduce((sum, t) => sum + (t.standaardTijd || 0), 0);
-  const totalHoursAll = totalMinutesAll / 60;
-  const totalBudgetAll = totalHoursAll * CONFIG.uurtarief;
-
-  const grid = document.getElementById('totalsGrid');
-  grid.innerHTML = `
-    <div class="total-card">
-      <div class="total-icon hours">&#9201;</div>
-      <div class="total-content">
-        <div class="total-val">${totalHoursAll.toFixed(1)} uur</div>
-        <div class="total-lbl">Totaal besteed (${allDone.length} taken afgerond)</div>
-      </div>
-    </div>
-    <div class="total-card">
-      <div class="total-icon budget">&#128176;</div>
-      <div class="total-content">
-        <div class="total-val">&euro;${totalBudgetAll.toFixed(0)}</div>
-        <div class="total-lbl">Totale investering</div>
-      </div>
-    </div>
-  `;
 }
 
 function formatTime(minutes) {
