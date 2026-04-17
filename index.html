@@ -511,7 +511,7 @@ function structureData(rows) {
     const colD = (row[CONFIG.COL_STANDAARDTIJD] || '').trim();
 
     // Detecteer de budgetsectie
-    if (colA.toLowerCase().includes('budget') && colA.toLowerCase().includes('linkbuilding')) {
+    if (colC.toLowerCase().includes('besteding per maand')) {
       inBudgetSection = true;
       continue;
     }
