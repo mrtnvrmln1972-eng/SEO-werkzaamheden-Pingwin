@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getClientByLoginId, getClientPassword } from "../../../lib/clients";
+import { getClientForLogin } from "../../../lib/clients";
+import { verifyPassword } from "../../../lib/password";
 import { SESSION_COOKIE, makeSessionValue } from "../../../lib/auth";
 
 export const runtime = "nodejs";
@@ -22,11 +23,10 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const client = getClientByLoginId(loginId);
-  const expected = client ? getClientPassword(client.slug) : undefined;
+  const found = await getClientForLogin(loginId);
 
   // Vage foutmelding: verraadt niet of het de naam of het wachtwoord was.
-  if (!client || !expected || password !== expected) {
+  if (!found || !verifyPassword(password, found.passwordHash)) {
     return NextResponse.json(
       { ok: false, error: "Inlognaam of wachtwoord klopt niet." },
       { status: 401 },
@@ -34,12 +34,12 @@ export async function POST(req: NextRequest) {
   }
 
   const res = NextResponse.json({ ok: true });
-  res.cookies.set(SESSION_COOKIE, makeSessionValue(client.slug), {
+  res.cookies.set(SESSION_COOKIE, makeSessionValue(found.config.slug), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: 60 * 60 * 24 * 30, // 30 dagen
+    maxAge: 60 * 60 * 24 * 30,
   });
   return res;
 }

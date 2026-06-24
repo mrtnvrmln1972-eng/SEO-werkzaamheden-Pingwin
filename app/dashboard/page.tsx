@@ -6,12 +6,12 @@ import Dashboard from "./Dashboard";
 
 export const dynamic = "force-dynamic";
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
   const value = cookies().get(SESSION_COOKIE)?.value;
   const slug = verifySessionValue(value);
   if (!slug) redirect("/login");
 
-  const client = getClientBySlug(slug);
+  const client = await getClientBySlug(slug);
   if (!client) redirect("/login");
 
   return (

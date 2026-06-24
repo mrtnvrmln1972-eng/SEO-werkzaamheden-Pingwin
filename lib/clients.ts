@@ -1,68 +1,154 @@
+import { sql, ensureSchema } from "./db";
+import { hashPassword, generatePassword } from "./password";
+
 // ═══════════════════════════════════════════════════════════
-// KLANTENLIJST (multi-client)
+// KLANTEN (multi-client, uit de database)
 // ═══════════════════════════════════════════════════════════
-// Eén gedeeld dashboard, per klant alleen eigen data + login.
-//
-// Niet-geheim (mag in deze publieke repo staan): naam, inlognaam,
-// Google Sheet-id, gid en de budgetbedragen. De Sheet is toch al
-// "gepubliceerd naar het web".
-//
-// WEL geheim: het wachtwoord. Dat staat NOOIT hier, maar als
-// environment-variabele in Vercel (en lokaal in .env.local).
-// Naamconventie: <SLUG in hoofdletters, streepjes => underscores>_PASSWORD
-//   slug "one-day-clinic"  ->  ONE_DAY_CLINIC_PASSWORD
-//
-// Nieuwe klant toevoegen = één blok hieronder + één env-var in Vercel.
+// Eén gedeeld dashboard. Elke klant staat als rij in de tabel "clients".
+// Niet-geheim: naam, inlognaam, Google Sheet, budgetbedragen, e-mail.
+// Geheim: alleen de wachtwoord-hash (nooit het platte wachtwoord).
+// Toevoegen gebeurt via het adminscherm, niet meer in de code.
 // ═══════════════════════════════════════════════════════════
 
 export type ClientBudget = {
-  maandbudget: number;      // totale maandfee incl. linkbuilding
-  linkbuilding: number;     // vast linkbuilding-budget per maand
-  urenBudget: number;       // deel van de fee voor uren (maandbudget - linkbuilding)
-  uurtarief: number;        // afgesproken uurtarief
-  beschikbareUren: number;  // beschikbare uren per maand
+  maandbudget: number;
+  linkbuilding: number;
+  urenBudget: number;
+  uurtarief: number;
+  beschikbareUren: number;
 };
 
 export type ClientConfig = {
-  slug: string;       // uniek, url-veilig
-  loginId: string;    // wat de klant intypt als inlognaam (niet geheim)
-  name: string;       // weergavenaam in het dashboard
-  sheetId: string;    // Google Sheet-id
-  gid: string;        // tabblad-id (gid) binnen de Sheet
+  id: number;
+  slug: string;
+  loginId: string;
+  name: string;
+  email: string | null;
+  sheetId: string;
+  gid: string;
   budget: ClientBudget;
 };
 
-export const CLIENTS: ClientConfig[] = [
-  {
-    slug: "one-day-clinic",
-    loginId: "onedayclinic",
-    name: "One Day Clinic",
-    sheetId: "1O1HeqzxCBH-WeyIhb4QhTniBj_Z7RxGpXl5L5FfJW5I",
-    gid: "1531693305",
+type ClientRow = {
+  id: number;
+  slug: string;
+  login_id: string;
+  name: string;
+  email: string | null;
+  sheet_id: string;
+  gid: string;
+  maandbudget: string | number;
+  linkbuilding: string | number;
+  urenbudget: string | number;
+  uurtarief: string | number;
+  beschikbare_uren: string | number;
+  password_hash: string;
+};
+
+function rowToConfig(r: ClientRow): ClientConfig {
+  return {
+    id: r.id,
+    slug: r.slug,
+    loginId: r.login_id,
+    name: r.name,
+    email: r.email,
+    sheetId: r.sheet_id,
+    gid: r.gid,
     budget: {
-      maandbudget: 1800,
-      linkbuilding: 600,
-      urenBudget: 1200,
-      uurtarief: 100,
-      beschikbareUren: 12,
+      maandbudget: Number(r.maandbudget),
+      linkbuilding: Number(r.linkbuilding),
+      urenBudget: Number(r.urenbudget),
+      uurtarief: Number(r.uurtarief),
+      beschikbareUren: Number(r.beschikbare_uren),
     },
-  },
-];
-
-export function getClientBySlug(slug: string): ClientConfig | undefined {
-  return CLIENTS.find((c) => c.slug === slug);
+  };
 }
 
-export function getClientByLoginId(loginId: string): ClientConfig | undefined {
+export async function getClientBySlug(slug: string): Promise<ClientConfig | null> {
+  await ensureSchema();
+  const { rows } = await sql<ClientRow>`SELECT * FROM clients WHERE slug = ${slug} LIMIT 1`;
+  return rows[0] ? rowToConfig(rows[0]) : null;
+}
+
+// Voor de login: geeft de config plus de wachtwoord-hash om te controleren.
+export async function getClientForLogin(
+  loginId: string,
+): Promise<{ config: ClientConfig; passwordHash: string } | null> {
+  await ensureSchema();
   const id = loginId.trim().toLowerCase();
-  return CLIENTS.find((c) => c.loginId.toLowerCase() === id);
+  const { rows } = await sql<ClientRow>`SELECT * FROM clients WHERE lower(login_id) = ${id} LIMIT 1`;
+  if (!rows[0]) return null;
+  return { config: rowToConfig(rows[0]), passwordHash: rows[0].password_hash };
 }
 
-// Wachtwoord van een klant uit de environment halen.
-export function passwordEnvKey(slug: string): string {
-  return slug.toUpperCase().replace(/-/g, "_") + "_PASSWORD";
+export async function listClients(): Promise<ClientConfig[]> {
+  await ensureSchema();
+  const { rows } = await sql<ClientRow>`SELECT * FROM clients ORDER BY name ASC`;
+  return rows.map(rowToConfig);
 }
 
-export function getClientPassword(slug: string): string | undefined {
-  return process.env[passwordEnvKey(slug)];
+export type NewClientInput = {
+  name: string;
+  loginId: string;
+  email: string;
+  sheetId: string;
+  gid: string;
+  maandbudget: number;
+  linkbuilding: number;
+  uurtarief: number;
+  beschikbareUren: number;
+};
+
+// Maakt een klant aan, genereert een wachtwoord en geeft dat ÉÉN keer terug.
+export async function createClient(
+  input: NewClientInput,
+): Promise<{ client: ClientConfig; password: string }> {
+  await ensureSchema();
+  const slug = slugify(input.loginId || input.name);
+  const urenBudget = input.maandbudget - input.linkbuilding;
+  const password = generatePassword();
+  const passwordHash = hashPassword(password);
+
+  const { rows } = await sql<ClientRow>`
+    INSERT INTO clients
+      (slug, login_id, name, email, sheet_id, gid,
+       maandbudget, linkbuilding, urenbudget, uurtarief, beschikbare_uren, password_hash)
+    VALUES
+      (${slug}, ${input.loginId.trim()}, ${input.name.trim()}, ${input.email.trim() || null},
+       ${input.sheetId}, ${input.gid},
+       ${input.maandbudget}, ${input.linkbuilding}, ${urenBudget}, ${input.uurtarief},
+       ${input.beschikbareUren}, ${passwordHash})
+    RETURNING *`;
+
+  return { client: rowToConfig(rows[0]), password };
+}
+
+// Genereert een nieuw wachtwoord voor een bestaande klant.
+export async function resetClientPassword(slug: string): Promise<string | null> {
+  await ensureSchema();
+  const password = generatePassword();
+  const passwordHash = hashPassword(password);
+  const { rowCount } = await sql`UPDATE clients SET password_hash = ${passwordHash} WHERE slug = ${slug}`;
+  return rowCount && rowCount > 0 ? password : null;
+}
+
+export function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+}
+
+// Haalt het Sheet-id en gid uit een geplakte Google Sheet-link.
+export function parseSheetUrl(url: string): { sheetId: string; gid: string } {
+  const trimmed = url.trim();
+  const idMatch = trimmed.match(/\/d\/([a-zA-Z0-9-_]+)/);
+  const gidMatch = trimmed.match(/[#&?]gid=([0-9]+)/);
+  return {
+    sheetId: idMatch ? idMatch[1] : "",
+    gid: gidMatch ? gidMatch[1] : "0",
+  };
 }
