@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
-import { listClients, createClient, parseSheetUrl } from "../../../../lib/clients";
+import { listClients, createClient, deleteClient, parseSheetUrl } from "../../../../lib/clients";
 
 export const runtime = "nodejs";
 
@@ -75,4 +75,16 @@ export async function POST(req: NextRequest) {
     }
     return NextResponse.json({ ok: false, error: "Aanmaken mislukt: " + msg }, { status: 500 });
   }
+}
+
+export async function DELETE(req: NextRequest) {
+  if (!requireAdmin(req)) {
+    return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
+  }
+  const slug = new URL(req.url).searchParams.get("slug") || "";
+  if (!slug) {
+    return NextResponse.json({ ok: false, error: "Geen klant opgegeven." }, { status: 400 });
+  }
+  const removed = await deleteClient(slug);
+  return NextResponse.json({ ok: removed });
 }

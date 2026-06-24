@@ -132,6 +132,12 @@ export async function resetClientPassword(slug: string): Promise<string | null> 
   return rowCount && rowCount > 0 ? password : null;
 }
 
+export async function deleteClient(slug: string): Promise<boolean> {
+  await ensureSchema();
+  const { rowCount } = await sql`DELETE FROM clients WHERE slug = ${slug}`;
+  return !!rowCount && rowCount > 0;
+}
+
 export function slugify(value: string): string {
   return value
     .toLowerCase()

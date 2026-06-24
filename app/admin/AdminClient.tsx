@@ -82,6 +82,12 @@ export default function AdminClient({ initialClients }: { initialClients: Client
     window.location.href = "/admin/login";
   }
 
+  async function remove(c: ClientConfig) {
+    if (!window.confirm(`Klant "${c.name}" verwijderen? Hun login werkt daarna niet meer.`)) return;
+    await fetch(`/api/admin/clients?slug=${encodeURIComponent(c.slug)}`, { method: "DELETE" });
+    await refresh();
+  }
+
   function copy(text: string) {
     navigator.clipboard?.writeText(text);
   }
@@ -180,11 +186,12 @@ export default function AdminClient({ initialClients }: { initialClients: Client
                 <th>E-mail</th>
                 <th>Maandfee</th>
                 <th>Uurtarief</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
               {clients.length === 0 && (
-                <tr><td colSpan={5} style={{ textAlign: "center", padding: 40, color: "var(--gray)" }}>Nog geen klanten.</td></tr>
+                <tr><td colSpan={6} style={{ textAlign: "center", padding: 40, color: "var(--gray)" }}>Nog geen klanten.</td></tr>
               )}
               {clients.map((c) => (
                 <tr key={c.slug}>
@@ -193,6 +200,7 @@ export default function AdminClient({ initialClients }: { initialClients: Client
                   <td>{c.email || <span className="muted">&mdash;</span>}</td>
                   <td>&euro;{c.budget.maandbudget.toFixed(0)}</td>
                   <td>&euro;{c.budget.uurtarief.toFixed(0)}</td>
+                  <td><button className="mini-btn" onClick={() => remove(c)}>Verwijder</button></td>
                 </tr>
               ))}
             </tbody>
