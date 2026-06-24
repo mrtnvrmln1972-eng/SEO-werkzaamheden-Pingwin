@@ -130,7 +130,7 @@ export default function Dashboard({ name, sheetId, gid, budget }: Props) {
           <img src="https://pingwin.nl/wp-content/uploads/2016/11/pingwin_logo.png" alt="Pingwin" />
           <div className="header-divider" />
           <div>
-            <div className="header-title">SEO Werkzaamheden</div>
+            <div className="header-title">Pingwin SEO Dashboard</div>
             <div className="header-client">{name}</div>
           </div>
         </div>

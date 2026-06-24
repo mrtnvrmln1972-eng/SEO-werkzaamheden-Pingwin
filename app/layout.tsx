@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "SEO werkzaamheden · Pingwin",
+  title: "Pingwin SEO Dashboard",
   description: "Maandelijks overzicht van SEO-werkzaamheden.",
 };
 

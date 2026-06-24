@@ -39,7 +39,7 @@ export default function LoginPage() {
       <form className="login-card" onSubmit={onSubmit}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="https://pingwin.nl/wp-content/uploads/2016/11/pingwin_logo.png" alt="Pingwin" />
-        <h1>SEO Werkzaamheden</h1>
+        <h1>Pingwin SEO Dashboard</h1>
         <p className="sub">Log in om je maandoverzicht te bekijken.</p>
 
         <label htmlFor="loginId">Inlognaam</label>
