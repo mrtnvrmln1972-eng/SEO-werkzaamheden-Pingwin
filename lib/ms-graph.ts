@@ -13,7 +13,7 @@ import { sql, ensureSchema } from "./db";
 // Delegated permissions: Mail.Read, Mail.Send, offline_access, User.Read
 // ═══════════════════════════════════════════════════════════
 
-const SCOPES = "offline_access Mail.Read Mail.Send User.Read";
+const SCOPES = "offline_access Mail.ReadWrite Mail.Send User.Read";
 
 export function msConfigured(): boolean {
   return !!(process.env.MS_CLIENT_ID && process.env.MS_CLIENT_SECRET && process.env.MS_TENANT_ID);

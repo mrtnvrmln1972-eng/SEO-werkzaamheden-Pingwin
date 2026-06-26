@@ -368,7 +368,12 @@ export default function ClientCockpit({
                 </div>
               </div>
               {lastIngest && <div className="ck-updated" style={{ marginBottom: 12 }}>bijgewerkt {fmtDate(lastIngest)}</div>}
-              {mailLive && <div className="mail-live-badge">● Live uit Microsoft 365</div>}
+              {mailLive && (
+                <div className="mail-live-badge">
+                  ● Live uit Microsoft 365
+                  <a className="mail-reconnect" href="/api/ms/auth/start">opnieuw koppelen</a>
+                </div>
+              )}
               {msConfigured && !msConnected && (
                 <div className="mail-connect">
                   Koppel Microsoft 365 om de volledige mails te zien en vanuit het dashboard te beantwoorden.{" "}
