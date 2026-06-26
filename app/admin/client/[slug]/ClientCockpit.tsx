@@ -315,7 +315,10 @@ export default function ClientCockpit({
                       <span><span className="sov-dot us" /> Wij</span>
                       <span className="sov-legend-status"><span className="sov-pill open">open</span><span className="sov-pill done">afgehandeld</span></span>
                     </div>
-                    {status.exchanges.map((ex, i) => {
+                    {status.exchanges
+                      .map((ex, i) => ({ ex, i }))
+                      .sort((a, b) => (a.ex.date || "").localeCompare(b.ex.date || ""))
+                      .map(({ ex, i }) => {
                       const isClient = ex.side === "client";
                       const done = ex.status === "done";
                       const cls = "sov-row " + (isClient ? "left" : "right") + " " + (done ? "done" : "open");
