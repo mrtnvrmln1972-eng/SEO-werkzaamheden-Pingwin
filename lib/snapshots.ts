@@ -17,6 +17,7 @@ export type EmailSnapshot = {
   preview: string | null;
   webLink: string | null;
   superhumanLink: string | null;
+  bodyHtml: string | null;
   direction: string | null;
 };
 
@@ -68,7 +69,7 @@ export type PageSnapshot = {
 export async function getEmails(slug: string, limit = 50): Promise<EmailSnapshot[]> {
   await ensureSchema();
   const { rows } = await sql`
-    SELECT id, subject, from_name, from_address, received_at, preview, web_link, superhuman_link, direction
+    SELECT id, subject, from_name, from_address, received_at, preview, web_link, superhuman_link, body_html, direction
     FROM client_emails WHERE client_slug = ${slug}
     ORDER BY received_at DESC NULLS LAST LIMIT ${limit}`;
   return rows.map((r) => ({
@@ -80,8 +81,14 @@ export async function getEmails(slug: string, limit = 50): Promise<EmailSnapshot
     preview: r.preview,
     webLink: r.web_link,
     superhumanLink: r.superhuman_link ?? null,
+    bodyHtml: r.body_html ?? null,
     direction: r.direction,
   }));
+}
+
+export async function deleteEmails(slug: string): Promise<void> {
+  await ensureSchema();
+  await sql`DELETE FROM client_emails WHERE client_slug = ${slug}`;
 }
 
 const EMPTY_STATUS: ClientStatus = { exchanges: [], tasks: [] };
@@ -172,13 +179,13 @@ export async function ingestEmails(slug: string, emails: EmailSnapshot[]): Promi
   for (const e of emails) {
     if (!e.id) continue;
     await sql`
-      INSERT INTO client_emails (id, client_slug, subject, from_name, from_address, received_at, preview, web_link, superhuman_link, direction, ingested_at)
+      INSERT INTO client_emails (id, client_slug, subject, from_name, from_address, received_at, preview, web_link, superhuman_link, body_html, direction, ingested_at)
       VALUES (${e.id}, ${slug}, ${e.subject ?? null}, ${e.fromName ?? null}, ${e.fromAddress ?? null},
-              ${e.receivedAt ?? null}, ${e.preview ?? null}, ${e.webLink ?? null}, ${e.superhumanLink ?? null}, ${e.direction ?? null}, now())
+              ${e.receivedAt ?? null}, ${e.preview ?? null}, ${e.webLink ?? null}, ${e.superhumanLink ?? null}, ${e.bodyHtml ?? null}, ${e.direction ?? null}, now())
       ON CONFLICT (id) DO UPDATE SET
         subject = EXCLUDED.subject, from_name = EXCLUDED.from_name, from_address = EXCLUDED.from_address,
         received_at = EXCLUDED.received_at, preview = EXCLUDED.preview, web_link = EXCLUDED.web_link,
-        superhuman_link = EXCLUDED.superhuman_link, direction = EXCLUDED.direction, ingested_at = now()`;
+        superhuman_link = EXCLUDED.superhuman_link, body_html = EXCLUDED.body_html, direction = EXCLUDED.direction, ingested_at = now()`;
     n++;
   }
   return n;

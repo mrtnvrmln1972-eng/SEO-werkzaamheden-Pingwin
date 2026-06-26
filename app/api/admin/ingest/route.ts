@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  ingestEmails, ingestMetrics, ingestKeywords, ingestPages, ingestStatus, setClientMapping,
+  ingestEmails, ingestMetrics, ingestKeywords, ingestPages, ingestStatus, setClientMapping, deleteEmails,
   type EmailSnapshot, type MetricSnapshot, type KeywordSnapshot, type PageSnapshot, type ClientStatus,
 } from "../../../../lib/snapshots";
 
@@ -38,7 +38,10 @@ export async function POST(req: NextRequest) {
     if (body.domain || body.ahrefsProjectId) {
       await setClientMapping(slug, String(body.domain || "").trim() || null, String(body.ahrefsProjectId || "").trim() || null);
     }
-    if (Array.isArray(body.emails)) result.emails = await ingestEmails(slug, body.emails as EmailSnapshot[]);
+    if (Array.isArray(body.emails)) {
+      if (body.replaceEmails === true) await deleteEmails(slug);
+      result.emails = await ingestEmails(slug, body.emails as EmailSnapshot[]);
+    }
     if (Array.isArray(body.metrics)) result.metrics = await ingestMetrics(slug, body.metrics as MetricSnapshot[]);
     if (Array.isArray(body.keywords)) result.keywords = await ingestKeywords(slug, body.keywords as KeywordSnapshot[]);
     if (Array.isArray(body.pages)) result.pages = await ingestPages(slug, body.pages as PageSnapshot[]);

@@ -30,7 +30,9 @@ export default function ClientCockpit({
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [shQuery, setShQuery] = useState("");
+  const [openEmail, setOpenEmail] = useState<string | null>(null);
 
   const [f, setF] = useState({
     status: client.cockpit.status || "",
@@ -55,6 +57,7 @@ export default function ClientCockpit({
     : "";
   const dashboardUrl = `/admin/preview/${client.slug}`;
   const clientMailQuery = (client.email || client.domain || "").trim();
+  const lastMailDate = emails.find((e) => e.receivedAt)?.receivedAt || null;
 
   function openSuperhuman() {
     if (!clientMailQuery) return;
@@ -69,6 +72,7 @@ export default function ClientCockpit({
 
   async function save() {
     setBusy(true);
+    setSaveError("");
     try {
       const res = await fetch("/api/admin/clients", {
         method: "PATCH",
@@ -80,7 +84,11 @@ export default function ClientCockpit({
         setSaved(true);
         setEditing(false);
         router.refresh();
+      } else {
+        setSaveError(data.error || "Opslaan mislukt. Log opnieuw in en probeer het nog eens.");
       }
+    } catch {
+      setSaveError("Opslaan mislukt (geen verbinding). Probeer het nog eens.");
     } finally {
       setBusy(false);
     }
@@ -120,14 +128,10 @@ export default function ClientCockpit({
         </div>
 
         {saved && <div className="saved-msg">Opgeslagen.</div>}
+        {saveError && <div className="login-error">{saveError}</div>}
 
         {tab === "overzicht" && (
           <div className="cockpit-card">
-            <Row label="Status">
-              {editing
-                ? <input value={f.status} onChange={(e) => set("status", e.target.value)} placeholder="Actief" />
-                : <span>{f.status || <span className="muted">&mdash;</span>}</span>}
-            </Row>
             <Row label="E-mailadres klant">
               {editing
                 ? <input type="email" value={f.email} onChange={(e) => set("email", e.target.value)} placeholder="contact@klant.nl" />
@@ -154,11 +158,13 @@ export default function ClientCockpit({
               </Row>
             )}
             <Row label="Laatste contact">
-              {editing
-                ? <input type="date" value={f.lastContact} onChange={(e) => set("lastContact", e.target.value)} />
-                : <span>{f.lastContact || <span className="muted">&mdash;</span>}</span>}
+              {lastMailDate ? (
+                <span>
+                  {fmtDate(lastMailDate)}{" "}
+                  <span className={"contact-badge " + contactColor(lastMailDate)}>{daysAgoLabel(lastMailDate)}</span>
+                </span>
+              ) : <span className="muted">Nog geen mail ingeladen</span>}
             </Row>
-            <Row label="Inlognaam klant"><span>{client.loginId}</span></Row>
             <Row label="Snelkoppelingen">
               <div className="quicklinks">
                 <a className="ql" href={dashboardUrl}>Klant-dashboard</a>
@@ -211,19 +217,46 @@ export default function ClientCockpit({
               ) : (
                 <div className="email-list">
                   {emails.map((e) => {
-                    const href = e.superhumanLink || e.webLink || "#";
+                    const open = openEmail === e.id;
+                    const shLink = e.superhumanLink || e.webLink || "";
                     return (
-                      <a key={e.id} className="email-row" href={href} target="_blank" rel="noreferrer">
-                        <div className="email-top">
-                          <span className={"email-dir " + (e.direction === "out" ? "out" : "in")}>
-                            {e.direction === "out" ? "verzonden" : "ontvangen"}
-                          </span>
-                          <span className="email-from">{e.fromName || e.fromAddress || "—"}</span>
-                          <span className="email-date">{e.receivedAt ? fmtDate(e.receivedAt) : ""}</span>
+                      <div className={"email-row" + (open ? " open" : "")} key={e.id}>
+                        <div className="email-head" onClick={() => setOpenEmail(open ? null : e.id)}>
+                          <div className="email-head-main">
+                            <div className="email-top">
+                              <span className={"email-dir " + (e.direction === "out" ? "out" : "in")}>
+                                {e.direction === "out" ? "verzonden" : "ontvangen"}
+                              </span>
+                              <span className="email-from">{e.fromName || e.fromAddress || "—"}</span>
+                              <span className="email-date">{e.receivedAt ? fmtDate(e.receivedAt) : ""}</span>
+                            </div>
+                            <div className="email-subject">{e.subject || "(geen onderwerp)"}</div>
+                            {!open && e.preview && <div className="email-preview">{e.preview}</div>}
+                          </div>
+                          <div className="email-head-actions">
+                            {shLink && (
+                              <a className="ql ql-mini" href={shLink} target="_blank" rel="noreferrer" onClick={(ev) => ev.stopPropagation()}>Superhuman</a>
+                            )}
+                            <span className="email-caret">{open ? "▲" : "▼"}</span>
+                          </div>
                         </div>
-                        <div className="email-subject">{e.subject || "(geen onderwerp)"}</div>
-                        {e.preview && <div className="email-preview">{e.preview}</div>}
-                      </a>
+                        {open && (
+                          <div className="email-body">
+                            <div className="email-actions">
+                              {shLink && <a className="ql" href={shLink} target="_blank" rel="noreferrer">Open in Superhuman</a>}
+                              {shLink && <a className="ql" href={shLink} target="_blank" rel="noreferrer">Beantwoorden in Superhuman</a>}
+                            </div>
+                            {e.bodyHtml ? (
+                              <div className="email-html" dangerouslySetInnerHTML={{ __html: sanitizeEmail(e.bodyHtml) }} />
+                            ) : (
+                              <div className="email-preview-full">
+                                {e.preview}
+                                <div className="muted" style={{ marginTop: 8 }}>Volledige tekst nog niet ingeladen, open de mail in Superhuman.</div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
@@ -418,6 +451,40 @@ function periodLabel(period: string): string {
   if (period === "last90") return "laatste 90 dagen";
   if (period === "now") return "nu";
   return period;
+}
+
+// Lichte opschoning van mail-HTML voor weergave in het dashboard:
+// scripts/styles/event-handlers en javascript-links eruit.
+function sanitizeEmail(html: string): string {
+  return html
+    .replace(/<\s*script[\s\S]*?<\s*\/\s*script\s*>/gi, "")
+    .replace(/<\s*style[\s\S]*?<\s*\/\s*style\s*>/gi, "")
+    .replace(/\son\w+\s*=\s*"[^"]*"/gi, "")
+    .replace(/\son\w+\s*=\s*'[^']*'/gi, "")
+    .replace(/javascript:/gi, "");
+}
+
+function daysSince(iso: string): number | null {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  const ms = Date.now() - d.getTime();
+  return Math.floor(ms / (1000 * 60 * 60 * 24));
+}
+
+function daysAgoLabel(iso: string): string {
+  const n = daysSince(iso);
+  if (n == null) return "";
+  if (n <= 0) return "vandaag";
+  if (n === 1) return "1 dag geleden";
+  return `${n} dagen geleden`;
+}
+
+function contactColor(iso: string): string {
+  const n = daysSince(iso);
+  if (n == null) return "gray";
+  if (n < 7) return "green";
+  if (n < 14) return "orange";
+  return "red";
 }
 
 function fmtDate(iso: string): string {

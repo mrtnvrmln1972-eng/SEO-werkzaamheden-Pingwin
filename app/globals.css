@@ -314,6 +314,12 @@ tbody td:last-child { text-align: center; }
 }
 .ck-updated { font-size: 11px; font-weight: 500; color: var(--gray); text-transform: none; letter-spacing: 0; }
 
+.contact-badge { font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 10px; margin-left: 6px; }
+.contact-badge.green { background: #E7F4E8; color: #2E7D32; }
+.contact-badge.orange { background: var(--orange-light); color: var(--orange-dark); }
+.contact-badge.red { background: var(--red-light); color: var(--red); }
+.contact-badge.gray { background: var(--gray-light); color: var(--gray); }
+
 /* Superhuman-zoekvak in de sectiekop */
 .sh-search { display: flex; align-items: center; gap: 8px; text-transform: none; letter-spacing: 0; }
 .sh-search input {
@@ -325,13 +331,18 @@ tbody td:last-child { text-align: center; }
 @media (max-width: 640px) { .sh-search input { width: 150px; } }
 
 /* E-mails */
-.email-list { display: flex; flex-direction: column; max-height: 480px; overflow-y: auto; gap: 8px; }
+.email-list { display: flex; flex-direction: column; max-height: 620px; overflow-y: auto; gap: 8px; }
 .email-row {
-  display: block; text-decoration: none; color: inherit;
   border: 1px solid var(--border); border-left: 3px solid var(--orange);
-  border-radius: 6px; padding: 10px 14px; background: var(--white); transition: background 0.12s;
+  border-radius: 6px; background: var(--white); overflow: hidden;
 }
-.email-row:hover { background: var(--orange-light); }
+.email-row.open { border-left-color: var(--orange-dark); box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
+.email-head { display: flex; align-items: flex-start; gap: 12px; padding: 10px 14px; cursor: pointer; transition: background 0.12s; }
+.email-head:hover { background: var(--orange-light); }
+.email-head-main { min-width: 0; flex: 1 1 auto; }
+.email-head-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.email-caret { font-size: 10px; color: var(--gray); }
+.ql-mini { font-size: 11px !important; padding: 4px 10px !important; }
 .email-top { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--gray); margin-bottom: 3px; }
 .email-dir { font-size: 10px; font-weight: 700; text-transform: uppercase; padding: 1px 6px; border-radius: 10px; }
 .email-dir.in { background: #E8F0FE; color: #1A56B0; }
@@ -340,6 +351,13 @@ tbody td:last-child { text-align: center; }
 .email-date { margin-left: auto; }
 .email-subject { font-weight: 600; color: var(--dark); font-size: 14px; }
 .email-preview { font-size: 12px; color: var(--gray); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.email-body { padding: 0 16px 16px; border-top: 1px solid var(--border); }
+.email-actions { display: flex; gap: 8px; padding: 12px 0; flex-wrap: wrap; }
+.email-html { font-size: 13px; line-height: 1.5; color: var(--body-text); overflow-x: auto; }
+.email-html img { max-width: 100%; height: auto; }
+.email-html a { color: var(--orange-dark); }
+.email-html blockquote { margin: 8px 0; padding-left: 12px; border-left: 2px solid var(--border); color: var(--gray); }
+.email-preview-full { font-size: 13px; line-height: 1.5; color: var(--body-text); padding-top: 12px; }
 
 /* KPI-kaarten */
 .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
