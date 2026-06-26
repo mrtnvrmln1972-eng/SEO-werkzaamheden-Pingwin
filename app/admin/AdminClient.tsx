@@ -25,6 +25,7 @@ export default function AdminClient({ initialClients }: { initialClients: Client
   const [busy, setBusy] = useState(false);
   const [created, setCreated] = useState<Created | null>(null);
   const [origin, setOrigin] = useState("");
+  const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -104,8 +105,10 @@ export default function AdminClient({ initialClients }: { initialClients: Client
     <>
       <div className="header">
         <div className="header-left">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="https://pingwin.nl/wp-content/uploads/2016/11/pingwin_logo.png" alt="Pingwin" />
+          <a href="/admin" className="logo-link" title="Naar het klantenoverzicht">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="https://pingwin.nl/wp-content/uploads/2016/11/pingwin_logo.png" alt="Pingwin" />
+          </a>
           <div className="header-divider" />
           <div>
             <div className="header-title">Pingwin SEO Dashboard</div>
@@ -118,13 +121,6 @@ export default function AdminClient({ initialClients }: { initialClients: Client
       </div>
 
       <div className="container">
-        <div className="admin-note">
-          Eén vaste link voor alle klanten:{" "}
-          <strong>{origin ? `${origin}/login` : "..."}</strong>. Elke klant logt daar in met
-          de eigen inlognaam en het wachtwoord dat je hier aanmaakt. Klik hieronder op een klant
-          om de klant-cockpit te openen (documenten, communicatie, resultaten en dashboard).
-        </div>
-
         {created && (
           <div className="created-box">
             <div className="created-title">Klant aangemaakt: {created.name}</div>
@@ -172,8 +168,14 @@ export default function AdminClient({ initialClients }: { initialClients: Client
           </table>
         </div>
 
-        <div className="section-title" style={{ marginTop: 40 }}>Nieuwe klant aanmaken</div>
-        <form className="admin-form" onSubmit={onSubmit}>
+        <div style={{ marginTop: 40 }}>
+          <button type="button" className="logout-btn" onClick={() => setShowForm((v) => !v)}>
+            {showForm ? "− Formulier sluiten" : "+ Nieuwe klant aanmaken"}
+          </button>
+        </div>
+
+        {showForm && (
+        <form className="admin-form" style={{ marginTop: 20 }} onSubmit={onSubmit}>
           <div className="form-grid">
             <div className="field">
               <label>Bedrijfsnaam</label>
@@ -215,6 +217,7 @@ export default function AdminClient({ initialClients }: { initialClients: Client
             {busy ? "Bezig..." : "Klant aanmaken + wachtwoord genereren"}
           </button>
         </form>
+        )}
       </div>
 
       <div className="footer">

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { ClientConfig } from "../../../../lib/clients";
 
-type Tab = "overzicht" | "documenten" | "communicatie" | "resultaten";
+type Tab = "overzicht" | "communicatie" | "resultaten";
 
 export default function ClientCockpit({ client }: { client: ClientConfig }) {
   const [tab, setTab] = useState<Tab>("overzicht");
@@ -53,8 +53,10 @@ export default function ClientCockpit({ client }: { client: ClientConfig }) {
     <>
       <div className="header">
         <div className="header-left">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="https://pingwin.nl/wp-content/uploads/2016/11/pingwin_logo.png" alt="Pingwin" />
+          <a href="/admin" className="logo-link" title="Naar het klantenoverzicht">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="https://pingwin.nl/wp-content/uploads/2016/11/pingwin_logo.png" alt="Pingwin" />
+          </a>
           <div className="header-divider" />
           <div>
             <div className="header-title">{client.name}</div>
@@ -76,7 +78,6 @@ export default function ClientCockpit({ client }: { client: ClientConfig }) {
       <div className="container">
         <div className="tabs">
           <button className={"tab" + (tab === "overzicht" ? " active" : "")} onClick={() => setTab("overzicht")}>Overzicht</button>
-          <button className={"tab" + (tab === "documenten" ? " active" : "")} onClick={() => setTab("documenten")}>Documenten</button>
           <button className={"tab" + (tab === "communicatie" ? " active" : "")} onClick={() => setTab("communicatie")}>Communicatie</button>
           <button className={"tab" + (tab === "resultaten" ? " active" : "")} onClick={() => setTab("resultaten")}>Ontwikkeling &amp; resultaten</button>
         </div>
@@ -107,28 +108,15 @@ export default function ClientCockpit({ client }: { client: ClientConfig }) {
                 {f.resultsUrl && <a className="ql" href={f.resultsUrl} target="_blank" rel="noreferrer">Resultaten</a>}
               </div>
             </Row>
+            {editing && (
+              <Row label="Werkdocument-link">
+                <input value={f.workDocUrl} onChange={(e) => set("workDocUrl", e.target.value)} placeholder="https://docs.google.com/... (waar alles per klant verzameld is)" />
+              </Row>
+            )}
             <Row label="Notities">
               {editing
                 ? <textarea value={f.notes} onChange={(e) => set("notes", e.target.value)} rows={4} placeholder="Vrije notities over deze klant..." />
                 : <span className="prewrap">{f.notes || <span className="muted">&mdash;</span>}</span>}
-            </Row>
-          </div>
-        )}
-
-        {tab === "documenten" && (
-          <div className="cockpit-card">
-            <Row label="Werkdocument">
-              {editing
-                ? <input value={f.workDocUrl} onChange={(e) => set("workDocUrl", e.target.value)} placeholder="https://docs.google.com/... (waar alles per klant verzameld is)" />
-                : (f.workDocUrl ? <a href={f.workDocUrl} target="_blank" rel="noreferrer" className="doc-link">{f.workDocUrl}</a> : <span className="muted">Nog geen link</span>)}
-            </Row>
-            <Row label="Resultaten-document">
-              {editing
-                ? <input value={f.resultsUrl} onChange={(e) => set("resultsUrl", e.target.value)} placeholder="https://... (rapportage / resultaten)" />
-                : (f.resultsUrl ? <a href={f.resultsUrl} target="_blank" rel="noreferrer" className="doc-link">{f.resultsUrl}</a> : <span className="muted">Nog geen link</span>)}
-            </Row>
-            <Row label="Google Sheet (taken)">
-              <a href={sheetUrl} target="_blank" rel="noreferrer" className="doc-link">Open de werkzaamheden-sheet</a>
             </Row>
           </div>
         )}
