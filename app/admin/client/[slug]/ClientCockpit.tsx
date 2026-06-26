@@ -104,14 +104,24 @@ export default function ClientCockpit({
   const clientMailQuery = (client.email || client.domain || "").trim();
   const lastMailDate = emails.find((e) => e.receivedAt)?.receivedAt || null;
 
-  // Map onderwerp → exacte mail-link (Superhuman-thread), om de stand-van-zaken-punten
-  // direct naar de juiste mail te laten linken.
-  const emailBySubject = new Map<string, string>();
-  for (const e of emails) {
-    if (e.subject && e.superhumanLink) {
+  // Map onderwerp → de exacte mail in de lijst (voor zowel de Superhuman-link
+  // als "hier openen" binnen het dashboard).
+  const emailMatch = new Map<string, { id: string; idx: number; superhumanLink: string | null }>();
+  emails.forEach((e, idx) => {
+    if (e.subject) {
       const k = normSubject(e.subject);
-      if (!emailBySubject.has(k)) emailBySubject.set(k, e.superhumanLink);
+      if (!emailMatch.has(k)) emailMatch.set(k, { id: e.id, idx, superhumanLink: e.superhumanLink });
     }
+  });
+
+  function openInDashboard(id: string, idx: number) {
+    setTab("communicatie");
+    setOpenEmail(id);
+    setReplyText("");
+    setReplyMsg("");
+    setTimeout(() => {
+      document.getElementById(`mail-${idx}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 60);
   }
 
   function openSuperhuman() {
@@ -270,7 +280,8 @@ export default function ClientCockpit({
                       const isClient = ex.side === "client";
                       const done = ex.status === "done";
                       const cls = "sov-row " + (isClient ? "left" : "right") + " " + (done ? "done" : "open");
-                      const exLink = (ex.subject && emailBySubject.get(normSubject(ex.subject))) || ex.mailLink || null;
+                      const m = ex.subject ? emailMatch.get(normSubject(ex.subject)) : undefined;
+                      const exLink = m?.superhumanLink || ex.mailLink || null;
                       return (
                         <div className={cls} key={i}>
                           <div className="sov-bubble">
@@ -283,7 +294,10 @@ export default function ClientCockpit({
                               </label>
                             </div>
                             <div className="sov-text">{ex.text}</div>
-                            {exLink && <a className="sov-maillink" href={exLink} target="_blank" rel="noreferrer">mail openen &rarr;</a>}
+                            <div className="sov-links">
+                              {exLink && <a className="sov-maillink" href={exLink} target="_blank" rel="noreferrer">mail openen &rarr;</a>}
+                              {m && <button type="button" className="sov-maillink as-btn" onClick={() => openInDashboard(m.id, m.idx)}>hier openen &darr;</button>}
+                            </div>
                           </div>
                         </div>
                       );
@@ -312,7 +326,8 @@ export default function ClientCockpit({
                       ) : (
                         <ul className="sov-tasks-list">
                           {status.mailActions.map((a, i) => {
-                            const aLink = (a.subject && emailBySubject.get(normSubject(a.subject))) || a.mailLink || null;
+                            const am = a.subject ? emailMatch.get(normSubject(a.subject)) : undefined;
+                            const aLink = am?.superhumanLink || a.mailLink || null;
                             return (
                               <li key={i}>
                                 {aLink ? <a href={aLink} target="_blank" rel="noreferrer">{a.text}</a> : a.text}
@@ -357,11 +372,11 @@ export default function ClientCockpit({
                 </div>
               ) : (
                 <div className="email-list">
-                  {emails.map((e) => {
+                  {emails.map((e, idx) => {
                     const open = openEmail === e.id;
                     const shLink = e.superhumanLink || e.webLink || "";
                     return (
-                      <div className={"email-row" + (open ? " open" : "")} key={e.id}>
+                      <div className={"email-row" + (open ? " open" : "")} key={e.id} id={`mail-${idx}`}>
                         <div className="email-head" onClick={() => { setOpenEmail(open ? null : e.id); setReplyText(""); setReplyMsg(""); }}>
                           <div className="email-head-main">
                             <div className="email-top">

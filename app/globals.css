@@ -421,8 +421,10 @@ a.sov-bubble:hover { box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
 .sov-check { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: var(--gray); cursor: pointer; user-select: none; white-space: nowrap; }
 .sov-check input { cursor: pointer; }
 .sov-text { font-size: 13px; color: var(--body-text); line-height: 1.45; }
-.sov-maillink { display: inline-block; margin-top: 8px; font-size: 11px; font-weight: 600; color: var(--orange-dark); text-decoration: none; }
+.sov-links { display: flex; gap: 14px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+.sov-maillink { display: inline-block; font-size: 11px; font-weight: 600; color: var(--orange-dark); text-decoration: none; }
 .sov-maillink:hover { text-decoration: underline; }
+.sov-maillink.as-btn { background: none; border: none; padding: 0; cursor: pointer; font-family: 'Montserrat', sans-serif; }
 
 .sov-side { flex: 0 0 260px; display: flex; flex-direction: column; gap: 14px; }
 .sov-tasks { border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; background: var(--gray-light); }
