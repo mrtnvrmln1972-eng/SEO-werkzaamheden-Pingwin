@@ -196,17 +196,38 @@ export async function msSearchClientEmails(query: string, account: string, limit
   return mails;
 }
 
-// Beantwoordt een mail (stuurt direct, reply naar afzender).
-export async function msReply(messageId: string, comment: string): Promise<{ ok: boolean; error?: string }> {
+function sanitizeOutgoing(html: string): string {
+  return html
+    .replace(/<\s*script[\s\S]*?<\s*\/\s*script\s*>/gi, "")
+    .replace(/\son\w+\s*=\s*"[^"]*"/gi, "")
+    .replace(/\son\w+\s*=\s*'[^']*'/gi, "")
+    .replace(/javascript:/gi, "");
+}
+
+// Beantwoordt een mail met OPGEMAAKTE HTML (vet, bullets, links). Behoudt het
+// geciteerde origineel: concept-antwoord maken, body vervangen, dan versturen.
+export async function msReplyHtml(messageId: string, html: string): Promise<{ ok: boolean; error?: string }> {
   const token = await msAccessToken();
   if (!token) return { ok: false, error: "Niet gekoppeld met Microsoft." };
-  const res = await fetch(`https://graph.microsoft.com/v1.0/me/messages/${encodeURIComponent(messageId)}/reply`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ comment }),
+  const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+
+  // 1. Concept-antwoord aanmaken (bevat al het geciteerde origineel).
+  const cr = await fetch(`https://graph.microsoft.com/v1.0/me/messages/${encodeURIComponent(messageId)}/createReply`, { method: "POST", headers });
+  if (!cr.ok) return { ok: false, error: `Concept aanmaken mislukt (${cr.status}).` };
+  const draft = (await cr.json()) as { id: string; body?: { content?: string } };
+  const quote = draft.body?.content || "";
+
+  // 2. Body vervangen door de opgemaakte HTML met het citaat eronder.
+  const newBody = `<div>${sanitizeOutgoing(html)}</div><br>${quote}`;
+  const patch = await fetch(`https://graph.microsoft.com/v1.0/me/messages/${encodeURIComponent(draft.id)}`, {
+    method: "PATCH", headers, body: JSON.stringify({ body: { contentType: "HTML", content: newBody } }),
   });
-  if (res.status === 202 || res.ok) return { ok: true };
-  let msg = `Versturen mislukt (${res.status}).`;
-  try { const j = await res.json(); msg = j.error?.message || msg; } catch { /* ignore */ }
+  if (!patch.ok) return { ok: false, error: `Opmaken mislukt (${patch.status}).` };
+
+  // 3. Versturen.
+  const send = await fetch(`https://graph.microsoft.com/v1.0/me/messages/${encodeURIComponent(draft.id)}/send`, { method: "POST", headers });
+  if (send.status === 202 || send.ok) return { ok: true };
+  let msg = `Versturen mislukt (${send.status}).`;
+  try { const j = await send.json(); msg = j.error?.message || msg; } catch { /* ignore */ }
   return { ok: false, error: msg };
 }

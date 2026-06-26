@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { getClientBySlug } from "../../../../lib/clients";
-import { msStatus, msSearchClientEmails, msReply } from "../../../../lib/ms-graph";
+import { msStatus, msSearchClientEmails, msReplyHtml } from "../../../../lib/ms-graph";
 
 export const runtime = "nodejs";
 
@@ -33,9 +33,9 @@ export async function POST(req: NextRequest) {
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: "Ongeldige aanvraag." }, { status: 400 }); }
   const id = String(body.id || "").trim();
-  const comment = String(body.comment || "").trim();
-  if (!id || !comment) return NextResponse.json({ ok: false, error: "Mail-id en bericht zijn verplicht." }, { status: 400 });
-  const result = await msReply(id, comment);
+  const html = String(body.html || "").trim();
+  if (!id || !html) return NextResponse.json({ ok: false, error: "Mail-id en bericht zijn verplicht." }, { status: 400 });
+  const result = await msReplyHtml(id, html);
   if (!result.ok) return NextResponse.json({ ok: false, error: result.error }, { status: 502 });
   return NextResponse.json({ ok: true });
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { ClientConfig } from "../../../../lib/clients";
 import type {
@@ -39,9 +39,18 @@ export default function ClientCockpit({
   const [saveError, setSaveError] = useState("");
   const [shQuery, setShQuery] = useState("");
   const [openEmail, setOpenEmail] = useState<string | null>(null);
-  const [replyText, setReplyText] = useState("");
+  const replyRef = useRef<HTMLDivElement>(null);
   const [replyBusy, setReplyBusy] = useState(false);
   const [replyMsg, setReplyMsg] = useState("");
+
+  function fmt(cmd: string) {
+    document.execCommand(cmd, false);
+    replyRef.current?.focus();
+  }
+  function addLink() {
+    const url = window.prompt("Link-adres (URL):", "https://");
+    if (url) document.execCommand("createLink", false, url);
+  }
 
   const [statusBusy, setStatusBusy] = useState(false);
 
@@ -60,17 +69,19 @@ export default function ClientCockpit({
   }
 
   async function sendReply(id: string) {
-    if (!replyText.trim()) return;
+    const html = replyRef.current?.innerHTML || "";
+    const text = (replyRef.current?.innerText || "").trim();
+    if (!text) return;
     setReplyBusy(true);
     setReplyMsg("");
     try {
       const res = await fetch("/api/admin/mail", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, comment: replyText }),
+        body: JSON.stringify({ id, html }),
       });
       const data = await res.json();
-      if (data.ok) { setReplyMsg("Verstuurd."); setReplyText(""); }
+      if (data.ok) { setReplyMsg("Verstuurd."); if (replyRef.current) replyRef.current.innerHTML = ""; }
       else setReplyMsg(data.error || "Versturen mislukt.");
     } catch {
       setReplyMsg("Versturen mislukt.");
@@ -117,7 +128,6 @@ export default function ClientCockpit({
   function openInDashboard(id: string, idx: number) {
     setTab("communicatie");
     setOpenEmail(id);
-    setReplyText("");
     setReplyMsg("");
     setTimeout(() => {
       document.getElementById(`mail-${idx}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -377,7 +387,7 @@ export default function ClientCockpit({
                     const shLink = e.superhumanLink || e.webLink || "";
                     return (
                       <div className={"email-row" + (open ? " open" : "")} key={e.id} id={`mail-${idx}`}>
-                        <div className="email-head" onClick={() => { setOpenEmail(open ? null : e.id); setReplyText(""); setReplyMsg(""); }}>
+                        <div className="email-head" onClick={() => { setOpenEmail(open ? null : e.id); setReplyMsg(""); }}>
                           <div className="email-head-main">
                             <div className="email-top">
                               <span className={"email-dir " + (e.direction === "out" ? "out" : "in")}>
@@ -412,14 +422,21 @@ export default function ClientCockpit({
                             )}
                             {mailLive && (
                               <div className="email-reply">
-                                <textarea
-                                  value={replyText}
-                                  onChange={(ev) => setReplyText(ev.target.value)}
-                                  rows={3}
-                                  placeholder="Typ je antwoord en verstuur direct vanuit het dashboard..."
+                                <div className="rt-toolbar">
+                                  <button type="button" title="Vet" onMouseDown={(ev) => { ev.preventDefault(); fmt("bold"); }}><b>B</b></button>
+                                  <button type="button" title="Cursief" onMouseDown={(ev) => { ev.preventDefault(); fmt("italic"); }}><i>I</i></button>
+                                  <button type="button" title="Opsomming (bullets)" onMouseDown={(ev) => { ev.preventDefault(); fmt("insertUnorderedList"); }}>&bull; Lijst</button>
+                                  <button type="button" title="Selecteer eerst tekst, dan link toevoegen" onMouseDown={(ev) => { ev.preventDefault(); addLink(); }}>Link</button>
+                                </div>
+                                <div
+                                  className="rt-editor"
+                                  contentEditable
+                                  suppressContentEditableWarning
+                                  ref={replyRef}
+                                  data-placeholder="Typ je antwoord, met opmaak..."
                                 />
                                 <div className="email-reply-bar">
-                                  <button type="button" className="primary-btn small" onClick={() => sendReply(e.id)} disabled={replyBusy || !replyText.trim()}>
+                                  <button type="button" className="primary-btn small" onClick={() => sendReply(e.id)} disabled={replyBusy}>
                                     {replyBusy ? "Versturen..." : "Verstuur antwoord"}
                                   </button>
                                   {replyMsg && <span className={"reply-msg" + (replyMsg === "Verstuurd." ? " ok" : " err")}>{replyMsg}</span>}
