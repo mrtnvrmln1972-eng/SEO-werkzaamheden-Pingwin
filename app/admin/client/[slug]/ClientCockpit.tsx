@@ -7,6 +7,7 @@ import type {
   EmailSnapshot, MetricSnapshot, KeywordSnapshot, PageSnapshot, ClientStatus,
 } from "../../../../lib/snapshots";
 import type { GscData } from "../../../../lib/google";
+import ChatPanel from "./ChatPanel";
 
 type Tab = "overzicht" | "resultaten";
 
@@ -30,12 +31,13 @@ type CockpitData = {
   gsc: GscData | null;
   googleConfigured: boolean;
   googleConnected: boolean;
+  chatConfigured: boolean;
 };
 
 export default function ClientCockpit({
   client, emails, metrics, keywords, pages, lastIngest, status, statusUpdatedAt,
   mailLive, msConfigured, msConnected, myEmail, sheetTasks, allClients,
-  gsc, googleConfigured, googleConnected,
+  gsc, googleConfigured, googleConnected, chatConfigured,
 }: { client: ClientConfig } & CockpitData) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("overzicht");
@@ -291,6 +293,8 @@ export default function ClientCockpit({
                   : <span className="prewrap">{f.notes || <span className="muted">&mdash;</span>}</span>}
               </Row>
             </div>
+
+            <ChatPanel slug={client.slug} configured={chatConfigured} />
 
             {(status.exchanges.length > 0 || sheetTasks.length > 0 || status.mailActions.length > 0) && (
               <div className="cockpit-card">

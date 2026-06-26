@@ -6,6 +6,7 @@ import { getEmails, getMetrics, getKeywords, getPages, getLastIngest, getStatus 
 import { msStatus, msSearchClientEmails } from "../../../../lib/ms-graph";
 import { googleStatus, getGscForClient } from "../../../../lib/google";
 import { sheetCsvUrl, parseCSV, structureData, MAAND_VOLGORDE } from "../../../../lib/sheet";
+import { chatConfigured } from "../../../../lib/chat";
 import ClientCockpit from "./ClientCockpit";
 
 export const dynamic = "force-dynamic";
@@ -86,6 +87,7 @@ export default async function ClientCockpitPage({ params }: { params: { slug: st
       gsc={gsc}
       googleConfigured={google.configured}
       googleConnected={google.connected}
+      chatConfigured={chatConfigured()}
     />
   );
 }
