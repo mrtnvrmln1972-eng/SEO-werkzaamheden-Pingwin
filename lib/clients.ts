@@ -35,6 +35,8 @@ export type ClientConfig = {
   email: string | null;
   sheetId: string;
   gid: string;
+  domain: string | null;
+  ahrefsProjectId: string | null;
   budget: ClientBudget;
   cockpit: ClientCockpit;
 };
@@ -53,6 +55,8 @@ type ClientRow = {
   uurtarief: string | number;
   beschikbare_uren: string | number;
   password_hash: string;
+  domain: string | null;
+  ahrefs_project_id: string | null;
   email_domain: string | null;
   work_doc_url: string | null;
   results_url: string | null;
@@ -70,6 +74,8 @@ function rowToConfig(r: ClientRow): ClientConfig {
     email: r.email,
     sheetId: r.sheet_id,
     gid: r.gid,
+    domain: r.domain ?? null,
+    ahrefsProjectId: r.ahrefs_project_id ?? null,
     budget: {
       maandbudget: Number(r.maandbudget),
       linkbuilding: Number(r.linkbuilding),

@@ -40,6 +40,62 @@ async function init(): Promise<void> {
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS last_contact TEXT`;
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS notes TEXT`;
 
+  // Koppelvelden voor de data-brug: de website van de klant en het Ahrefs-project.
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS domain TEXT`;
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS ahrefs_project_id TEXT`;
+
+  // ── Data-brug: ingeladen snapshots per klant (uit Outlook / GSC / GA4 / Ahrefs) ──
+  // Gevuld via POST /api/admin/ingest. Het dashboard leest hieruit, ook als er
+  // geen Claude-sessie draait. Idempotent: opnieuw inladen overschrijft per sleutel.
+  await sql`
+    CREATE TABLE IF NOT EXISTS client_emails (
+      id           TEXT PRIMARY KEY,
+      client_slug  TEXT NOT NULL,
+      subject      TEXT,
+      from_name    TEXT,
+      from_address TEXT,
+      received_at  TIMESTAMPTZ,
+      preview      TEXT,
+      web_link     TEXT,
+      direction    TEXT,
+      ingested_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    )`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_emails_slug_date ON client_emails (client_slug, received_at DESC)`;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS client_metrics (
+      client_slug TEXT NOT NULL,
+      source      TEXT NOT NULL,
+      metric      TEXT NOT NULL,
+      period      TEXT NOT NULL,
+      value       NUMERIC,
+      captured_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (client_slug, source, metric, period)
+    )`;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS client_keywords (
+      client_slug   TEXT NOT NULL,
+      keyword       TEXT NOT NULL,
+      position      NUMERIC,
+      prev_position NUMERIC,
+      volume        NUMERIC,
+      url           TEXT,
+      captured_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (client_slug, keyword)
+    )`;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS client_pages (
+      client_slug TEXT NOT NULL,
+      url         TEXT NOT NULL,
+      clicks      NUMERIC,
+      impressions NUMERIC,
+      traffic     NUMERIC,
+      captured_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (client_slug, url)
+    )`;
+
   // Eerste klant (One Day Clinic) zodat zijn login meteen werkt.
   const hash = hashPassword("OneDayClinic2026");
   await sql`
