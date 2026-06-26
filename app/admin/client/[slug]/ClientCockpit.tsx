@@ -757,12 +757,20 @@ function normSubject(s: string): string {
   return s.replace(/^((re|fw|fwd):\s*)+/i, "").trim().toLowerCase();
 }
 
-// Schoont de HTML uit de editor op: blokken naar regels, geen dubbele witregels.
+// Schoont de HTML uit de editor op: paragrafen/divs naar gewone regels (zonder
+// de grote standaard-marges van <p>), hoogstens één witregel, en getypte
+// **vet** wordt echt vet. Lijsten (ul/li) blijven intact.
 function cleanReplyHtml(html: string): string {
   return html
-    .replace(/<div>\s*<br\s*\/?>\s*<\/div>/gi, "<br>")
-    .replace(/<div>/gi, "<br>")
-    .replace(/<\/div>/gi, "")
+    // lege blokken (alleen een regeleinde) volledig weg
+    .replace(/<(p|div)[^>]*>\s*(<br\s*\/?>)?\s*<\/(p|div)>/gi, "")
+    // grens tussen twee paragrafen → één witregel
+    .replace(/<\/(p|div)>\s*<(p|div)[^>]*>/gi, "<br><br>")
+    // overige blok-tags weghalen (marges veroorzaken de grote witgaten)
+    .replace(/<\/?(p|div)[^>]*>/gi, "")
+    // getypte markdown-vet omzetten
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    // nooit meer dan één witregel
     .replace(/(<br\s*\/?>\s*){3,}/gi, "<br><br>")
     .replace(/^(\s*<br\s*\/?>)+/i, "")
     .replace(/(<br\s*\/?>\s*)+$/i, "")
