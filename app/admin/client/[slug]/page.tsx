@@ -15,7 +15,7 @@ export type SheetTask = { text: string; link: string };
 // alleen wat nog niet op 'klaar' staat. Faalt stil naar lege lijst.
 async function loadCurrentMonthTasks(client: ClientConfig): Promise<SheetTask[]> {
   if (!client.sheetId) return [];
-  const sheetUrl = `https://docs.google.com/spreadsheets/d/${client.sheetId}/edit#gid=${client.gid}`;
+  const baseEdit = `https://docs.google.com/spreadsheets/d/${client.sheetId}/edit`;
   try {
     const res = await fetch(sheetCsvUrl(client.sheetId, client.gid), { cache: "no-store" });
     if (!res.ok) return [];
@@ -25,7 +25,8 @@ async function loadCurrentMonthTasks(client: ClientConfig): Promise<SheetTask[]>
     const done = /klaar|afgerond|gereed|done|afgehandeld|voltooid/i;
     return data.tasks
       .filter((t) => t.maand === month && !done.test(t.status))
-      .map((t) => ({ text: t.taak, link: t.link || sheetUrl }));
+      // Link gaat naar de exacte regel in de Sheet en selecteert (highlight) die rij.
+      .map((t) => ({ text: t.taak, link: `${baseEdit}#gid=${client.gid}&range=${t.row}:${t.row}` }));
   } catch {
     return [];
   }

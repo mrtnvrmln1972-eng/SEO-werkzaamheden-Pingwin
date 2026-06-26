@@ -218,7 +218,7 @@ export async function msReplyHtml(messageId: string, html: string): Promise<{ ok
   const quote = draft.body?.content || "";
 
   // 2. Body vervangen door de opgemaakte HTML met het citaat eronder.
-  const newBody = `<div>${sanitizeOutgoing(html)}</div><br>${quote}`;
+  const newBody = `${sanitizeOutgoing(html)}<br>${quote}`;
   const patch = await fetch(`https://graph.microsoft.com/v1.0/me/messages/${encodeURIComponent(draft.id)}`, {
     method: "PATCH", headers, body: JSON.stringify({ body: { contentType: "HTML", content: newBody } }),
   });

@@ -377,9 +377,11 @@ tbody td:last-child { text-align: center; }
 }
 .rt-toolbar button:hover { border-color: var(--orange); color: var(--orange-dark); }
 .rt-editor {
-  min-height: 90px; max-height: 240px; overflow-y: auto; font-size: 13px; line-height: 1.5;
+  min-height: 150px; font-size: 13px; line-height: 1.5;
   padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--white);
 }
+.reply-target { font-size: 12px; color: var(--gray); background: var(--gray-light); border-radius: 6px; padding: 7px 10px; margin-bottom: 8px; }
+.reply-target strong { color: var(--dark); }
 .rt-editor:focus { outline: none; border-color: var(--orange); }
 .rt-editor:empty:before { content: attr(data-placeholder); color: #aaa; }
 .rt-editor ul { margin: 4px 0 4px 20px; }

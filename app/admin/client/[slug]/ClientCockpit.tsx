@@ -69,7 +69,7 @@ export default function ClientCockpit({
   }
 
   async function sendReply(id: string) {
-    const html = replyRef.current?.innerHTML || "";
+    const html = cleanReplyHtml(replyRef.current?.innerHTML || "");
     const text = (replyRef.current?.innerText || "").trim();
     if (!text) return;
     setReplyBusy(true);
@@ -399,7 +399,7 @@ export default function ClientCockpit({
                                 {e.direction === "out" ? "verzonden" : "ontvangen"}
                               </span>
                               <span className="email-from">{e.fromName || e.fromAddress || "—"}</span>
-                              <span className="email-date">{e.receivedAt ? fmtDate(e.receivedAt) : ""}</span>
+                              <span className="email-date">{e.receivedAt ? fmtDateTime(e.receivedAt) : ""}</span>
                             </div>
                             <div className="email-subject">{e.subject || "(geen onderwerp)"}</div>
                             {!open && e.preview && <div className="email-preview">{e.preview}</div>}
@@ -427,6 +427,11 @@ export default function ClientCockpit({
                             )}
                             {mailLive && (
                               <div className="email-reply">
+                                <div className="reply-target">
+                                  Je beantwoordt: <strong>{e.fromName || e.fromAddress || "—"}</strong>
+                                  {e.receivedAt && <> &middot; {fmtDateTime(e.receivedAt)}</>}
+                                  {e.subject && <> &middot; &ldquo;{e.subject}&rdquo;</>}
+                                </div>
                                 <div className="rt-toolbar">
                                   <button type="button" title="Vet" onMouseDown={(ev) => { ev.preventDefault(); fmt("bold"); }}><b>B</b></button>
                                   <button type="button" title="Cursief" onMouseDown={(ev) => { ev.preventDefault(); fmt("italic"); }}><i>I</i></button>
@@ -606,6 +611,18 @@ function normSubject(s: string): string {
   return s.replace(/^((re|fw|fwd):\s*)+/i, "").trim().toLowerCase();
 }
 
+// Schoont de HTML uit de editor op: blokken naar regels, geen dubbele witregels.
+function cleanReplyHtml(html: string): string {
+  return html
+    .replace(/<div>\s*<br\s*\/?>\s*<\/div>/gi, "<br>")
+    .replace(/<div>/gi, "<br>")
+    .replace(/<\/div>/gi, "")
+    .replace(/(<br\s*\/?>\s*){3,}/gi, "<br><br>")
+    .replace(/^(\s*<br\s*\/?>)+/i, "")
+    .replace(/(<br\s*\/?>\s*)+$/i, "")
+    .trim();
+}
+
 function daysSince(iso: string): number | null {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return null;
@@ -633,6 +650,13 @@ function fmtDate(iso: string): string {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return "";
   return d.toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function fmtDateTime(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" }) +
+    ", " + d.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
 }
 
 function shortUrl(url: string): string {

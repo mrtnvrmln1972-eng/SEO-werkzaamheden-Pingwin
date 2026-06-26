@@ -15,6 +15,7 @@ export type Task = {
   status: string;
   maand: string;
   link: string;
+  row: number; // regelnummer in de Google Sheet (1-gebaseerd)
 };
 
 export type DashboardData = {
@@ -134,6 +135,7 @@ export function structureData(rows: string[][], budget: ClientBudget): Dashboard
           status: nextStatus,
           maand: nextMaand.toLowerCase(),
           link: (row[COL.LINK] || "").trim(),
+          row: r + 1,
         };
         if (task.taak) tasks.push(task);
       }
@@ -150,6 +152,7 @@ export function structureData(rows: string[][], budget: ClientBudget): Dashboard
       status: (row[COL.STATUS] || "").trim(),
       maand: (row[COL.MAAND] || "").trim().toLowerCase(),
       link: (row[COL.LINK] || "").trim(),
+      row: r + 1,
     };
 
     if (task.taak) tasks.push(task);
