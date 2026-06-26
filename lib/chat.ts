@@ -1,7 +1,7 @@
 import { getClientBySlug } from "./clients";
 import { getEmails, getMetrics, getKeywords, getStatus } from "./snapshots";
 import { msStatus, msSearchClientEmails } from "./ms-graph";
-import { googleStatus, getGscForClient } from "./google";
+import { googleStatus, getGscForClient, getGscKeywordTrend } from "./google";
 import { sheetCsvUrl, parseCSV, structureData, MAAND_VOLGORDE } from "./sheet";
 import type { ClientConfig } from "./clients";
 
@@ -100,8 +100,14 @@ async function buildContext(client: ClientConfig): Promise<string> {
       parts.push("\nSEARCH CONSOLE (laatste 28 dagen):");
       parts.push(gsc.metrics.map((m) => `${m.metric}=${m.value}`).join(", "));
       if (gsc.keywords.length > 0) {
-        parts.push("Top zoekwoorden (GSC): " + gsc.keywords.slice(0, 10).map((k) => `${k.keyword} (pos ${k.position}, ${k.clicks} klikken)`).join("; "));
+        parts.push("Top zoekwoorden (GSC, 28d): " + gsc.keywords.slice(0, 10).map((k) => `${k.keyword} (pos ${k.position}, ${k.clicks} klikken)`).join("; "));
       }
+    }
+    // Zoekwoord-ontwikkeling over de laatste 4 maanden (gemiddelde positie per maand).
+    const trend = await getGscKeywordTrend(client.domain);
+    if (trend && trend.rows.length > 0) {
+      parts.push(`\nSEARCH CONSOLE ZOEKWOORD-TREND (gem. positie per maand: ${trend.months.join(" / ")}):`);
+      for (const r of trend.rows) parts.push(`${r.keyword}: ${r.positions.map((p) => (p == null ? "-" : p)).join(" / ")}`);
     }
   }
 

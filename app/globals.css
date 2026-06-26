@@ -482,4 +482,9 @@ tbody td:last-child { text-align: center; }
 .sov-tasks-list li { font-size: 13px; margin-bottom: 8px; line-height: 1.4; }
 .sov-tasks-list li a { color: var(--orange-dark); text-decoration: none; }
 .sov-tasks-list li a:hover { text-decoration: underline; }
+.task-month { font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; color: var(--dark); margin: 12px 0 5px; }
+.task-month:first-of-type { margin-top: 0; }
+.task-done a { color: var(--gray); text-decoration: line-through; }
+.task-link-btn { background: none; border: none; padding: 0; cursor: pointer; font-family: 'Montserrat', sans-serif; font-size: 13px; color: var(--orange-dark); text-align: left; line-height: 1.4; }
+.task-link-btn:hover { text-decoration: underline; }
 @media (max-width: 760px) { .sov-layout { flex-direction: column; } .sov-side { flex: 1 1 auto; width: 100%; } .sov-bubble { max-width: 90%; } }

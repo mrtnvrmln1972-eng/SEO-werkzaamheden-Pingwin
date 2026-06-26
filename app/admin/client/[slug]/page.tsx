@@ -11,26 +11,42 @@ import ClientCockpit from "./ClientCockpit";
 
 export const dynamic = "force-dynamic";
 
-export type SheetTask = { text: string; link: string };
+export type SheetTask = { text: string; link: string; done: boolean };
+export type MonthTasks = { thisMonth: SheetTask[]; nextMonth: SheetTask[]; thisLabel: string; nextLabel: string };
 
-// Lopende werkzaamheden van de HUIDIGE maand uit de klant-Google-Sheet,
-// alleen wat nog niet op 'klaar' staat. Faalt stil naar lege lijst.
-async function loadCurrentMonthTasks(client: ClientConfig): Promise<SheetTask[]> {
-  if (!client.sheetId) return [];
+function monthLabel(offset: number): string {
+  const i = (new Date().getMonth() + offset + 12) % 12;
+  return MAAND_VOLGORDE[i];
+}
+
+// Werkzaamheden uit de klant-Google-Sheet, opgesplitst in deze maand en
+// volgende maand. Eigen, simpele parser (de budget/totaal-regels hebben een
+// lege Taak-kolom en worden overgeslagen). Link gaat naar de exacte rij.
+async function loadTasksByMonth(client: ClientConfig): Promise<MonthTasks> {
+  const empty: MonthTasks = { thisMonth: [], nextMonth: [], thisLabel: monthLabel(0), nextLabel: monthLabel(1) };
+  if (!client.sheetId) return empty;
   const baseEdit = `https://docs.google.com/spreadsheets/d/${client.sheetId}/edit`;
+  const rowLink = (rowNum: number) => `${baseEdit}#gid=${client.gid}&range=${rowNum}:${rowNum}`;
   try {
     const res = await fetch(sheetCsvUrl(client.sheetId, client.gid), { cache: "no-store" });
-    if (!res.ok) return [];
-    const data = structureData(parseCSV(await res.text()), client.budget);
-    if (!data) return [];
-    const month = MAAND_VOLGORDE[new Date().getMonth()];
+    if (!res.ok) return empty;
+    const rows = parseCSV(await res.text());
     const done = /klaar|afgerond|gereed|done|afgehandeld|voltooid/i;
-    return data.tasks
-      .filter((t) => t.maand === month && !done.test(t.status))
-      // Link gaat naar de exacte regel in de Sheet en selecteert (highlight) die rij.
-      .map((t) => ({ text: t.taak, link: `${baseEdit}#gid=${client.gid}&range=${t.row}:${t.row}` }));
+    const thisM = monthLabel(0);
+    const nextM = monthLabel(1);
+    const thisMonth: SheetTask[] = [];
+    const nextMonth: SheetTask[] = [];
+    for (let i = 1; i < rows.length; i++) {
+      const taak = (rows[i][1] || "").trim();
+      if (!taak) continue; // header/budget/totaal-regels
+      const maand = (rows[i][5] || "").trim().toLowerCase();
+      const t: SheetTask = { text: taak, link: rowLink(i + 1), done: done.test((rows[i][4] || "").trim()) };
+      if (maand === thisM) thisMonth.push(t);
+      else if (maand === nextM) nextMonth.push(t);
+    }
+    return { thisMonth, nextMonth, thisLabel: thisM, nextLabel: nextM };
   } catch {
-    return [];
+    return empty;
   }
 }
 
@@ -41,7 +57,7 @@ export default async function ClientCockpitPage({ params }: { params: { slug: st
   const client = await getClientBySlug(params.slug);
   if (!client) redirect("/admin");
 
-  const [storedEmails, metrics, keywords, pages, lastIngest, status, ms, sheetTasks, allClients] = await Promise.all([
+  const [storedEmails, metrics, keywords, pages, lastIngest, status, ms, monthTasks, allClients] = await Promise.all([
     getEmails(params.slug),
     getMetrics(params.slug),
     getKeywords(params.slug),
@@ -49,7 +65,7 @@ export default async function ClientCockpitPage({ params }: { params: { slug: st
     getLastIngest(params.slug),
     getStatus(params.slug),
     msStatus(),
-    loadCurrentMonthTasks(client),
+    loadTasksByMonth(client),
     listClients(),
   ]);
 
@@ -84,7 +100,7 @@ export default async function ClientCockpitPage({ params }: { params: { slug: st
       msConfigured={ms.configured}
       msConnected={ms.connected}
       myEmail={ms.account}
-      sheetTasks={sheetTasks}
+      monthTasks={monthTasks}
       allClients={allClients.map((c) => ({ slug: c.slug, name: c.name }))}
       gsc={gsc}
       ga4={ga4}

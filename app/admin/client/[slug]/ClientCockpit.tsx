@@ -26,7 +26,12 @@ type CockpitData = {
   msConfigured: boolean;
   msConnected: boolean;
   myEmail: string | null;
-  sheetTasks: { text: string; link: string }[];
+  monthTasks: {
+    thisMonth: { text: string; link: string; done: boolean }[];
+    nextMonth: { text: string; link: string; done: boolean }[];
+    thisLabel: string;
+    nextLabel: string;
+  };
   allClients: { slug: string; name: string }[];
   gsc: GscData | null;
   ga4: Ga4Data | null;
@@ -37,7 +42,7 @@ type CockpitData = {
 
 export default function ClientCockpit({
   client, emails, metrics, keywords, pages, lastIngest, status, statusUpdatedAt,
-  mailLive, msConfigured, msConnected, myEmail, sheetTasks, allClients,
+  mailLive, msConfigured, msConnected, myEmail, monthTasks, allClients,
   gsc, ga4, googleConfigured, googleConnected, chatConfigured,
 }: { client: ClientConfig } & CockpitData) {
   const router = useRouter();
@@ -297,7 +302,7 @@ export default function ClientCockpit({
 
             <ChatPanel slug={client.slug} configured={chatConfigured} />
 
-            {(status.exchanges.length > 0 || sheetTasks.length > 0 || status.mailActions.length > 0) && (
+            {(status.exchanges.length > 0 || monthTasks.thisMonth.length > 0 || monthTasks.nextMonth.length > 0 || status.mailActions.length > 0) && (
               <div className="cockpit-card">
                 <div className="ck-section-head">
                   <span>Actuele stand van zaken</span>
@@ -341,30 +346,46 @@ export default function ClientCockpit({
 
                   <div className="sov-side">
                     <div className="sov-tasks">
-                      <div className="sov-tasks-head">Lopende werkzaamheden <span className="sov-sub">deze maand</span></div>
-                      {sheetTasks.length === 0 ? (
-                        <div className="muted" style={{ fontSize: 13 }}>Geen open taken deze maand in de Sheet.</div>
+                      <div className="sov-tasks-head">Lopende werkzaamheden</div>
+                      <div className="task-month">Deze maand <span className="sov-sub">{monthTasks.thisLabel}</span></div>
+                      {monthTasks.thisMonth.length === 0 ? (
+                        <div className="muted" style={{ fontSize: 13 }}>Geen taken deze maand.</div>
                       ) : (
                         <ul className="sov-tasks-list">
-                          {sheetTasks.map((t, i) => (
-                            <li key={i}><a href={t.link} target="_blank" rel="noreferrer">{t.text}</a></li>
+                          {monthTasks.thisMonth.map((t, i) => (
+                            <li key={i} className={t.done ? "task-done" : ""}>
+                              <a href={t.link} target="_blank" rel="noreferrer">{t.text}</a>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      <div className="task-month">Volgende maand <span className="sov-sub">{monthTasks.nextLabel}</span></div>
+                      {monthTasks.nextMonth.length === 0 ? (
+                        <div className="muted" style={{ fontSize: 13 }}>Geen taken volgende maand.</div>
+                      ) : (
+                        <ul className="sov-tasks-list">
+                          {monthTasks.nextMonth.map((t, i) => (
+                            <li key={i} className={t.done ? "task-done" : ""}>
+                              <a href={t.link} target="_blank" rel="noreferrer">{t.text}</a>
+                            </li>
                           ))}
                         </ul>
                       )}
                     </div>
 
                     <div className="sov-tasks">
-                      <div className="sov-tasks-head">Uit e-mails</div>
+                      <div className="sov-tasks-head">Open punten uit mail</div>
                       {status.mailActions.length === 0 ? (
-                        <div className="muted" style={{ fontSize: 13 }}>Nog geen acties uit mails.</div>
+                        <div className="muted" style={{ fontSize: 13 }}>Nog geen punten uit mails.</div>
                       ) : (
                         <ul className="sov-tasks-list">
                           {status.mailActions.map((a, i) => {
                             const am = a.subject ? emailMatch.get(normSubject(a.subject)) : undefined;
-                            const aLink = am?.superhumanLink || a.mailLink || null;
                             return (
                               <li key={i}>
-                                {aLink ? <a href={aLink} target="_blank" rel="noreferrer">{a.text}</a> : a.text}
+                                {am
+                                  ? <button type="button" className="task-link-btn" onClick={() => openInDashboard(am.id, am.idx)}>{a.text}</button>
+                                  : a.text}
                               </li>
                             );
                           })}

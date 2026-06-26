@@ -176,6 +176,47 @@ export async function getGscForClient(domain: string): Promise<GscData | null> {
   };
 }
 
+// Gemiddelde positie van de top-zoekwoorden per maand over de laatste 4 maanden.
+export type GscTrend = { months: string[]; rows: { keyword: string; positions: (number | null)[] }[] };
+
+export async function getGscKeywordTrend(domain: string): Promise<GscTrend | null> {
+  const token = await googleAccessToken();
+  if (!token || !domain) return null;
+  const site = await gscPickSite(token, domain);
+  if (!site) return null;
+
+  const SHORT = ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 3);
+  const ranges: { startDate: string; endDate: string; label: string }[] = [];
+  for (let off = 3; off >= 0; off--) {
+    const now = new Date();
+    const m = now.getMonth() - off;
+    const start = new Date(now.getFullYear(), m, 1);
+    let end = new Date(now.getFullYear(), m + 1, 0);
+    if (end > cutoff) end = cutoff;
+    ranges.push({ startDate: iso(start), endDate: iso(end), label: SHORT[((m % 12) + 12) % 12] });
+  }
+
+  const perMonth = await Promise.all(ranges.map((r) =>
+    gscQuery(token, site, { startDate: r.startDate, endDate: r.endDate, dimensions: ["query"], rowLimit: 25 }),
+  ));
+  const map = new Map<string, (number | null)[]>();
+  ranges.forEach((_, idx) => {
+    for (const row of perMonth[idx]) {
+      const kw = row.keys?.[0];
+      if (!kw) continue;
+      if (!map.has(kw)) map.set(kw, [null, null, null, null]);
+      map.get(kw)![idx] = Math.round(row.position * 10) / 10;
+    }
+  });
+  const recent = new Set((perMonth[3] || []).slice(0, 12).map((r) => r.keys?.[0]).filter(Boolean) as string[]);
+  const rows = Array.from(map.entries())
+    .filter(([kw]) => recent.has(kw))
+    .map(([keyword, positions]) => ({ keyword, positions }));
+  return { months: ranges.map((r) => r.label), rows };
+}
+
 // ── Google Analytics (GA4) ──────────────────────────────────
 
 // Zoekt de GA4-property waarvan een datastream-URL bij het domein past.
