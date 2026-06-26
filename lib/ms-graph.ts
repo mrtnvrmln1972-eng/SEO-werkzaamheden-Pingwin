@@ -204,27 +204,60 @@ function sanitizeOutgoing(html: string): string {
     .replace(/javascript:/gi, "");
 }
 
+type Recipient = { emailAddress?: { address?: string } };
+
+// Bepaalt naar wie het antwoord moet: alle deelnemers (afzender + to + cc) van
+// de originele mail, behalve jezelf. Zo gaat een antwoord op je eigen verzonden
+// mail toch naar de klant in plaats van naar jezelf ("note to self").
+async function replyRecipients(token: string, messageId: string): Promise<Recipient[]> {
+  await ensureSchema();
+  const { rows } = await sql`SELECT account FROM oauth_tokens WHERE provider = 'microsoft' LIMIT 1`;
+  const me = ((rows[0]?.account as string) || "").toLowerCase();
+  const res = await fetch(
+    `https://graph.microsoft.com/v1.0/me/messages/${encodeURIComponent(messageId)}?$select=from,toRecipients,ccRecipients`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok) return [];
+  const o = (await res.json()) as { from?: Recipient; toRecipients?: Recipient[]; ccRecipients?: Recipient[] };
+  const all: Recipient[] = [o.from || {}, ...(o.toRecipients || []), ...(o.ccRecipients || [])];
+  const seen = new Set<string>();
+  const out: Recipient[] = [];
+  for (const r of all) {
+    const a = r.emailAddress?.address;
+    if (!a) continue;
+    const low = a.toLowerCase();
+    if (low === me || seen.has(low)) continue;
+    seen.add(low);
+    out.push({ emailAddress: { address: a } });
+  }
+  return out;
+}
+
 // Beantwoordt een mail met OPGEMAAKTE HTML (vet, bullets, links). Behoudt het
-// geciteerde origineel: concept-antwoord maken, body vervangen, dan versturen.
+// geciteerde origineel en stuurt naar de juiste partij (de klant, niet jezelf).
 export async function msReplyHtml(messageId: string, html: string): Promise<{ ok: boolean; error?: string }> {
   const token = await msAccessToken();
   if (!token) return { ok: false, error: "Niet gekoppeld met Microsoft." };
   const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
-  // 1. Concept-antwoord aanmaken (bevat al het geciteerde origineel).
+  // 1. Juiste ontvangers bepalen (deelnemers minus jezelf).
+  const recipients = await replyRecipients(token, messageId);
+
+  // 2. Concept-antwoord aanmaken (bevat al het geciteerde origineel).
   const cr = await fetch(`https://graph.microsoft.com/v1.0/me/messages/${encodeURIComponent(messageId)}/createReply`, { method: "POST", headers });
   if (!cr.ok) return { ok: false, error: `Concept aanmaken mislukt (${cr.status}).` };
   const draft = (await cr.json()) as { id: string; body?: { content?: string } };
   const quote = draft.body?.content || "";
 
-  // 2. Body vervangen door de opgemaakte HTML met het citaat eronder.
-  const newBody = `${sanitizeOutgoing(html)}<br>${quote}`;
+  // 3. Body vervangen (opgemaakte HTML + citaat) en de juiste ontvangers zetten.
+  const patchPayload: Record<string, unknown> = { body: { contentType: "HTML", content: `${sanitizeOutgoing(html)}<br>${quote}` } };
+  if (recipients.length > 0) patchPayload.toRecipients = recipients;
   const patch = await fetch(`https://graph.microsoft.com/v1.0/me/messages/${encodeURIComponent(draft.id)}`, {
-    method: "PATCH", headers, body: JSON.stringify({ body: { contentType: "HTML", content: newBody } }),
+    method: "PATCH", headers, body: JSON.stringify(patchPayload),
   });
   if (!patch.ok) return { ok: false, error: `Opmaken mislukt (${patch.status}).` };
 
-  // 3. Versturen.
+  // 4. Versturen.
   const send = await fetch(`https://graph.microsoft.com/v1.0/me/messages/${encodeURIComponent(draft.id)}/send`, { method: "POST", headers });
   if (send.status === 202 || send.ok) return { ok: true };
   let msg = `Versturen mislukt (${send.status}).`;
