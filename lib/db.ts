@@ -61,6 +61,16 @@ async function init(): Promise<void> {
       ingested_at  TIMESTAMPTZ NOT NULL DEFAULT now()
     )`;
   await sql`CREATE INDEX IF NOT EXISTS idx_emails_slug_date ON client_emails (client_slug, received_at DESC)`;
+  await sql`ALTER TABLE client_emails ADD COLUMN IF NOT EXISTS superhuman_link TEXT`;
+
+  // Actuele stand van zaken per klant: een set kaartjes (titel/kleur/bullets),
+  // opgeslagen als JSON-tekst. Wordt via de brug bijgewerkt op basis van de mails.
+  await sql`
+    CREATE TABLE IF NOT EXISTS client_status (
+      client_slug TEXT PRIMARY KEY,
+      content     TEXT,
+      updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    )`;
 
   await sql`
     CREATE TABLE IF NOT EXISTS client_metrics (

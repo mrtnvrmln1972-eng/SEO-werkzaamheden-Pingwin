@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { getClientBySlug } from "../../../../lib/clients";
-import { getEmails, getMetrics, getKeywords, getPages, getLastIngest } from "../../../../lib/snapshots";
+import { getEmails, getMetrics, getKeywords, getPages, getLastIngest, getStatus } from "../../../../lib/snapshots";
 import ClientCockpit from "./ClientCockpit";
 
 export const dynamic = "force-dynamic";
@@ -14,12 +14,13 @@ export default async function ClientCockpitPage({ params }: { params: { slug: st
   const client = await getClientBySlug(params.slug);
   if (!client) redirect("/admin");
 
-  const [emails, metrics, keywords, pages, lastIngest] = await Promise.all([
+  const [emails, metrics, keywords, pages, lastIngest, status] = await Promise.all([
     getEmails(params.slug),
     getMetrics(params.slug),
     getKeywords(params.slug),
     getPages(params.slug),
     getLastIngest(params.slug),
+    getStatus(params.slug),
   ]);
 
   return (
@@ -30,6 +31,8 @@ export default async function ClientCockpitPage({ params }: { params: { slug: st
       keywords={keywords}
       pages={pages}
       lastIngest={lastIngest}
+      statusCards={status.cards}
+      statusUpdatedAt={status.updatedAt}
     />
   );
 }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  ingestEmails, ingestMetrics, ingestKeywords, ingestPages, setClientMapping,
-  type EmailSnapshot, type MetricSnapshot, type KeywordSnapshot, type PageSnapshot,
+  ingestEmails, ingestMetrics, ingestKeywords, ingestPages, ingestStatus, setClientMapping,
+  type EmailSnapshot, type MetricSnapshot, type KeywordSnapshot, type PageSnapshot, type StatusCard,
 } from "../../../../lib/snapshots";
 
 export const runtime = "nodejs";
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "Geen klant (slug) opgegeven." }, { status: 400 });
   }
 
-  const result = { emails: 0, metrics: 0, keywords: 0, pages: 0 };
+  const result = { emails: 0, metrics: 0, keywords: 0, pages: 0, status: 0 };
   try {
     if (body.domain || body.ahrefsProjectId) {
       await setClientMapping(slug, String(body.domain || "").trim() || null, String(body.ahrefsProjectId || "").trim() || null);
@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
     if (Array.isArray(body.metrics)) result.metrics = await ingestMetrics(slug, body.metrics as MetricSnapshot[]);
     if (Array.isArray(body.keywords)) result.keywords = await ingestKeywords(slug, body.keywords as KeywordSnapshot[]);
     if (Array.isArray(body.pages)) result.pages = await ingestPages(slug, body.pages as PageSnapshot[]);
+    if (Array.isArray(body.status)) result.status = await ingestStatus(slug, body.status as StatusCard[]);
   } catch (err) {
     return NextResponse.json({ ok: false, error: "Inladen mislukt: " + (err as Error).message }, { status: 500 });
   }

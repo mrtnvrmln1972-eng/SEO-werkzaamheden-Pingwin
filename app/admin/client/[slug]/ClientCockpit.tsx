@@ -4,10 +4,13 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ClientConfig } from "../../../../lib/clients";
 import type {
-  EmailSnapshot, MetricSnapshot, KeywordSnapshot, PageSnapshot,
+  EmailSnapshot, MetricSnapshot, KeywordSnapshot, PageSnapshot, StatusCard,
 } from "../../../../lib/snapshots";
 
 type Tab = "overzicht" | "communicatie" | "resultaten";
+
+// Jouw Superhuman-account (Microsoft 365 hangt hieronder).
+const SUPERHUMAN_ACCOUNT = "Maarten@pingwin.nl";
 
 type CockpitData = {
   emails: EmailSnapshot[];
@@ -15,10 +18,12 @@ type CockpitData = {
   keywords: KeywordSnapshot[];
   pages: PageSnapshot[];
   lastIngest: string | null;
+  statusCards: StatusCard[];
+  statusUpdatedAt: string | null;
 };
 
 export default function ClientCockpit({
-  client, emails, metrics, keywords, pages, lastIngest,
+  client, emails, metrics, keywords, pages, lastIngest, statusCards, statusUpdatedAt,
 }: { client: ClientConfig } & CockpitData) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("overzicht");
@@ -48,8 +53,9 @@ export default function ClientCockpit({
     ? `https://docs.google.com/spreadsheets/d/${client.sheetId}/edit#gid=${client.gid}`
     : "";
   const dashboardUrl = `/admin/preview/${client.slug}`;
-  const outlookSearch = f.emailDomain
-    ? `https://outlook.office.com/mail/search/${encodeURIComponent(f.emailDomain)}`
+  const clientMailQuery = (client.email || client.domain || "").trim();
+  const superhumanSearch = clientMailQuery
+    ? `https://mail.superhuman.com/${SUPERHUMAN_ACCOUNT}/search/${encodeURIComponent(clientMailQuery)}`
     : "";
 
   function set(k: keyof typeof f, v: string) {
@@ -176,47 +182,64 @@ export default function ClientCockpit({
         )}
 
         {tab === "communicatie" && (
-          <div className="cockpit-card">
-            <Row label="E-maildomein klant">
-              {editing
-                ? <input value={f.emailDomain} onChange={(e) => set("emailDomain", e.target.value)} placeholder="klant.nl" />
-                : <span>{f.emailDomain || <span className="muted">&mdash;</span>}</span>}
-            </Row>
-            <Row label="Snel zoeken">
-              {f.emailDomain ? (
-                <div className="quicklinks">
-                  <a className="ql" href={outlookSearch} target="_blank" rel="noreferrer">Zoek in Outlook</a>
-                  <button className="ql ql-btn" onClick={() => navigator.clipboard?.writeText(f.emailDomain)}>Kopieer zoekterm (voor Superhuman)</button>
-                </div>
-              ) : <span className="muted">Vul eerst een e-maildomein in.</span>}
-            </Row>
-            <div className="ck-section-head">
-              <span>Laatste e-mails</span>
-              {lastIngest && <span className="ck-updated">bijgewerkt {fmtDate(lastIngest)}</span>}
-            </div>
-            {emails.length === 0 ? (
-              <div className="phase2-note">
-                Nog geen mails ingeladen. Deze lijst vult zich met de laatste e-mails met deze klant
-                uit je Outlook (maarten@pingwin.nl). Gebruik zolang de knop &ldquo;Zoek in Outlook&rdquo; hierboven.
+          <>
+            <div className="cockpit-card">
+              <div className="ck-section-head">
+                <span>Laatste e-mails</span>
+                {lastIngest && <span className="ck-updated">bijgewerkt {fmtDate(lastIngest)}</span>}
               </div>
-            ) : (
-              <div className="email-list">
-                {emails.map((e) => (
-                  <a key={e.id} className="email-row" href={e.webLink || "#"} target="_blank" rel="noreferrer">
-                    <div className="email-top">
-                      <span className={"email-dir " + (e.direction === "out" ? "out" : "in")}>
-                        {e.direction === "out" ? "verzonden" : "ontvangen"}
-                      </span>
-                      <span className="email-from">{e.fromName || e.fromAddress || "—"}</span>
-                      <span className="email-date">{e.receivedAt ? fmtDate(e.receivedAt) : ""}</span>
+              {superhumanSearch && (
+                <div className="quicklinks" style={{ marginBottom: 14 }}>
+                  <a className="ql" href={superhumanSearch} target="_blank" rel="noreferrer">Open alle mails in Superhuman</a>
+                  <span className="muted" style={{ fontSize: 12 }}>zoekt op {clientMailQuery}</span>
+                </div>
+              )}
+              {emails.length === 0 ? (
+                <div className="phase2-note">
+                  Nog geen mails ingeladen. Deze lijst vult zich met de laatste e-mails met deze klant
+                  en opent ze rechtstreeks in Superhuman.
+                </div>
+              ) : (
+                <div className="email-list">
+                  {emails.map((e) => {
+                    const href = e.superhumanLink || e.webLink || "#";
+                    return (
+                      <a key={e.id} className="email-row" href={href} target="_blank" rel="noreferrer">
+                        <div className="email-top">
+                          <span className={"email-dir " + (e.direction === "out" ? "out" : "in")}>
+                            {e.direction === "out" ? "verzonden" : "ontvangen"}
+                          </span>
+                          <span className="email-from">{e.fromName || e.fromAddress || "—"}</span>
+                          <span className="email-date">{e.receivedAt ? fmtDate(e.receivedAt) : ""}</span>
+                        </div>
+                        <div className="email-subject">{e.subject || "(geen onderwerp)"}</div>
+                        {e.preview && <div className="email-preview">{e.preview}</div>}
+                      </a>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {statusCards.length > 0 && (
+              <div className="cockpit-card">
+                <div className="ck-section-head">
+                  <span>Actuele stand van zaken</span>
+                  {statusUpdatedAt && <span className="ck-updated">bijgewerkt {fmtDate(statusUpdatedAt)}</span>}
+                </div>
+                <div className="status-scroll">
+                  {statusCards.map((c, i) => (
+                    <div className={"status-card sc-" + (c.color || "gray")} key={i}>
+                      <div className="status-card-title">{c.title}</div>
+                      <ul className="status-card-list">
+                        {c.items.map((it, j) => <li key={j}>{it}</li>)}
+                      </ul>
                     </div>
-                    <div className="email-subject">{e.subject || "(geen onderwerp)"}</div>
-                    {e.preview && <div className="email-preview">{e.preview}</div>}
-                  </a>
-                ))}
+                  ))}
+                </div>
               </div>
             )}
-          </div>
+          </>
         )}
 
         {tab === "resultaten" && (

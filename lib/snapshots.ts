@@ -16,7 +16,15 @@ export type EmailSnapshot = {
   receivedAt: string | null;
   preview: string | null;
   webLink: string | null;
+  superhumanLink: string | null;
   direction: string | null;
+};
+
+// Eén kaartje in de "Actuele stand van zaken" (titel + kleur + bullets).
+export type StatusCard = {
+  title: string;
+  color: string; // orange | blue | green | red | gray
+  items: string[];
 };
 
 export type MetricSnapshot = {
@@ -46,7 +54,7 @@ export type PageSnapshot = {
 export async function getEmails(slug: string, limit = 50): Promise<EmailSnapshot[]> {
   await ensureSchema();
   const { rows } = await sql`
-    SELECT id, subject, from_name, from_address, received_at, preview, web_link, direction
+    SELECT id, subject, from_name, from_address, received_at, preview, web_link, superhuman_link, direction
     FROM client_emails WHERE client_slug = ${slug}
     ORDER BY received_at DESC NULLS LAST LIMIT ${limit}`;
   return rows.map((r) => ({
@@ -57,8 +65,24 @@ export async function getEmails(slug: string, limit = 50): Promise<EmailSnapshot
     receivedAt: r.received_at ? new Date(r.received_at as string).toISOString() : null,
     preview: r.preview,
     webLink: r.web_link,
+    superhumanLink: r.superhuman_link ?? null,
     direction: r.direction,
   }));
+}
+
+export async function getStatus(slug: string): Promise<{ cards: StatusCard[]; updatedAt: string | null }> {
+  await ensureSchema();
+  const { rows } = await sql`SELECT content, updated_at FROM client_status WHERE client_slug = ${slug} LIMIT 1`;
+  if (!rows[0] || !rows[0].content) return { cards: [], updatedAt: null };
+  let cards: StatusCard[] = [];
+  try {
+    const parsed = JSON.parse(rows[0].content as string);
+    if (Array.isArray(parsed)) cards = parsed;
+  } catch {
+    cards = [];
+  }
+  const t = rows[0].updated_at as string | null;
+  return { cards, updatedAt: t ? new Date(t).toISOString() : null };
 }
 
 export async function getMetrics(slug: string): Promise<MetricSnapshot[]> {
@@ -129,13 +153,13 @@ export async function ingestEmails(slug: string, emails: EmailSnapshot[]): Promi
   for (const e of emails) {
     if (!e.id) continue;
     await sql`
-      INSERT INTO client_emails (id, client_slug, subject, from_name, from_address, received_at, preview, web_link, direction, ingested_at)
+      INSERT INTO client_emails (id, client_slug, subject, from_name, from_address, received_at, preview, web_link, superhuman_link, direction, ingested_at)
       VALUES (${e.id}, ${slug}, ${e.subject ?? null}, ${e.fromName ?? null}, ${e.fromAddress ?? null},
-              ${e.receivedAt ?? null}, ${e.preview ?? null}, ${e.webLink ?? null}, ${e.direction ?? null}, now())
+              ${e.receivedAt ?? null}, ${e.preview ?? null}, ${e.webLink ?? null}, ${e.superhumanLink ?? null}, ${e.direction ?? null}, now())
       ON CONFLICT (id) DO UPDATE SET
         subject = EXCLUDED.subject, from_name = EXCLUDED.from_name, from_address = EXCLUDED.from_address,
         received_at = EXCLUDED.received_at, preview = EXCLUDED.preview, web_link = EXCLUDED.web_link,
-        direction = EXCLUDED.direction, ingested_at = now()`;
+        superhuman_link = EXCLUDED.superhuman_link, direction = EXCLUDED.direction, ingested_at = now()`;
     n++;
   }
   return n;
@@ -170,6 +194,16 @@ export async function ingestKeywords(slug: string, keywords: KeywordSnapshot[]):
     n++;
   }
   return n;
+}
+
+export async function ingestStatus(slug: string, cards: StatusCard[]): Promise<number> {
+  await ensureSchema();
+  const content = JSON.stringify(cards);
+  await sql`
+    INSERT INTO client_status (client_slug, content, updated_at)
+    VALUES (${slug}, ${content}, now())
+    ON CONFLICT (client_slug) DO UPDATE SET content = EXCLUDED.content, updated_at = now()`;
+  return cards.length;
 }
 
 export async function ingestPages(slug: string, pages: PageSnapshot[]): Promise<number> {
