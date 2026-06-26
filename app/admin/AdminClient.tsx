@@ -26,9 +26,18 @@ export default function AdminClient({ initialClients }: { initialClients: Client
   const [created, setCreated] = useState<Created | null>(null);
   const [origin, setOrigin] = useState("");
   const [showForm, setShowForm] = useState(false);
+  const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
 
   useEffect(() => {
     setOrigin(window.location.origin);
+    const p = new URLSearchParams(window.location.search);
+    const g = p.get("google");
+    const m = p.get("ms");
+    if (g === "ok") setNotice({ ok: true, text: "Google is gekoppeld." });
+    else if (g === "error") setNotice({ ok: false, text: "Google koppelen mislukt: " + (p.get("msg") || "onbekende fout") });
+    else if (g === "notconfigured") setNotice({ ok: false, text: "Google-sleutels (GOOGLE_CLIENT_ID/SECRET) ontbreken in Vercel of de deploy is nog niet actief." });
+    else if (m === "ok") setNotice({ ok: true, text: "Microsoft is gekoppeld." });
+    else if (m === "error") setNotice({ ok: false, text: "Microsoft koppelen mislukt: " + (p.get("msg") || "onbekende fout") });
   }, []);
 
   function set(field: keyof typeof EMPTY, value: string) {
@@ -121,6 +130,12 @@ export default function AdminClient({ initialClients }: { initialClients: Client
       </div>
 
       <div className="container">
+        {notice && (
+          <div className={notice.ok ? "saved-msg" : "login-error"} style={{ marginBottom: 16 }}>
+            {notice.text}
+          </div>
+        )}
+
         {created && (
           <div className="created-box">
             <div className="created-title">Klant aangemaakt: {created.name}</div>
