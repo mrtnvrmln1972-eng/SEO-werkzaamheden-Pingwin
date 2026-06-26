@@ -238,13 +238,17 @@ async function replyRecipients(token: string, messageId: string): Promise<Recipi
 
 // Beantwoordt een mail met OPGEMAAKTE HTML (vet, bullets, links). Behoudt het
 // geciteerde origineel en stuurt naar de juiste partij (de klant, niet jezelf).
-export async function msReplyHtml(messageId: string, html: string): Promise<{ ok: boolean; error?: string }> {
+export async function msReplyHtml(messageId: string, html: string, toOverride?: string[]): Promise<{ ok: boolean; error?: string }> {
   const token = await msAccessToken();
   if (!token) return { ok: false, error: "Niet gekoppeld met Microsoft." };
   const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
-  // 1. Juiste ontvangers bepalen (deelnemers minus jezelf).
-  const recipients = await replyRecipients(token, messageId);
+  // 1. Ontvangers: expliciet meegegeven adres(sen) hebben voorrang; anders
+  // de deelnemers van de mail minus jezelf.
+  const clean = (toOverride || []).map((a) => a.trim()).filter(Boolean);
+  const recipients: Recipient[] = clean.length > 0
+    ? clean.map((a) => ({ emailAddress: { address: a } }))
+    : await replyRecipients(token, messageId);
 
   // 2. Concept-antwoord aanmaken (bevat al het geciteerde origineel).
   const cr = await fetch(`https://graph.microsoft.com/v1.0/me/messages/${encodeURIComponent(messageId)}/createReply`, { method: "POST", headers });

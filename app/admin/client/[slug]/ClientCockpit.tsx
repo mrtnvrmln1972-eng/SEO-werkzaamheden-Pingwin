@@ -48,6 +48,7 @@ export default function ClientCockpit({
   const replyRef = useRef<HTMLDivElement>(null);
   const [replyBusy, setReplyBusy] = useState(false);
   const [replyMsg, setReplyMsg] = useState("");
+  const [replyToAddr, setReplyToAddr] = useState("");
 
   function fmt(cmd: string) {
     document.execCommand(cmd, false);
@@ -75,18 +76,43 @@ export default function ClientCockpit({
   }
 
   // Naar wie het antwoord gaat: deelnemers van de mail (afzender + to) minus jezelf.
+  const myLow = (myEmail || "").toLowerCase();
   function recipientsFor(e: EmailSnapshot): string[] {
-    const me = (myEmail || "").toLowerCase();
     const all = [e.fromAddress || "", ...(e.toAddresses || [])];
     const seen = new Set<string>();
     const out: string[] = [];
     for (const a of all) {
       const low = a.toLowerCase();
-      if (!a || low === me || seen.has(low)) continue;
+      if (!a || low === myLow || seen.has(low)) continue;
       seen.add(low);
       out.push(a);
     }
     return out;
+  }
+
+  // Meest voorkomende klant-adres in de mails (niet jezelf, niet @pingwin.nl):
+  // dient als terugval als de geopende mail zelf geen klant-ontvanger heeft.
+  const addrCount = new Map<string, number>();
+  for (const e of emails) {
+    for (const a of [e.fromAddress || "", ...(e.toAddresses || [])]) {
+      const low = a.toLowerCase();
+      if (!a || low === myLow || low.endsWith("@pingwin.nl")) continue;
+      addrCount.set(a, (addrCount.get(a) || 0) + 1);
+    }
+  }
+  let primaryClientAddress = client.email || "";
+  let bestCount = 0;
+  for (const [a, c] of addrCount) if (c > bestCount) { bestCount = c; primaryClientAddress = a; }
+
+  function defaultRecipient(e: EmailSnapshot): string {
+    const r = recipientsFor(e).filter((a) => !a.toLowerCase().endsWith("@pingwin.nl"));
+    return (r.length > 0 ? r.join(", ") : primaryClientAddress) || "";
+  }
+
+  function openMail(e: EmailSnapshot, isOpen: boolean) {
+    setOpenEmail(isOpen ? null : e.id);
+    setReplyMsg("");
+    setReplyToAddr(isOpen ? "" : defaultRecipient(e));
   }
 
   async function sendReply(id: string) {
@@ -99,7 +125,7 @@ export default function ClientCockpit({
       const res = await fetch("/api/admin/mail", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, html }),
+        body: JSON.stringify({ id, html, to: replyToAddr }),
       });
       const data = await res.json();
       if (data.ok) { setReplyMsg("Verstuurd."); if (replyRef.current) replyRef.current.innerHTML = ""; }
@@ -150,6 +176,8 @@ export default function ClientCockpit({
     setTab("communicatie");
     setOpenEmail(id);
     setReplyMsg("");
+    const target = emails.find((x) => x.id === id);
+    setReplyToAddr(target ? defaultRecipient(target) : "");
     setTimeout(() => {
       document.getElementById(`mail-${idx}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 60);
@@ -413,7 +441,7 @@ export default function ClientCockpit({
                     const shLink = e.superhumanLink || e.webLink || "";
                     return (
                       <div className={"email-row" + (open ? " open" : "")} key={e.id} id={`mail-${idx}`}>
-                        <div className="email-head" onClick={() => { setOpenEmail(open ? null : e.id); setReplyMsg(""); }}>
+                        <div className="email-head" onClick={() => openMail(e, open)}>
                           <div className="email-head-main">
                             <div className="email-top">
                               <span className={"email-dir " + (e.direction === "out" ? "out" : "in")}>
@@ -450,7 +478,15 @@ export default function ClientCockpit({
                               <div className="email-reply">
                                 <div className="reply-target">
                                   <div>Je beantwoordt: <strong>{e.subject || "(geen onderwerp)"}</strong>{e.receivedAt && <> &middot; {fmtDateTime(e.receivedAt)}</>}</div>
-                                  <div>Antwoord gaat naar: <strong>{recipientsFor(e).join(", ") || "—"}</strong></div>
+                                  <div className="reply-to-row">
+                                    <label>Aan:</label>
+                                    <input
+                                      className="reply-to-input"
+                                      value={replyToAddr}
+                                      onChange={(ev) => setReplyToAddr(ev.target.value)}
+                                      placeholder="e-mailadres van de klant"
+                                    />
+                                  </div>
                                 </div>
                                 <div className="rt-toolbar">
                                   <button type="button" title="Vet" onMouseDown={(ev) => { ev.preventDefault(); fmt("bold"); }}><b>B</b></button>
@@ -466,7 +502,7 @@ export default function ClientCockpit({
                                   data-placeholder="Typ je antwoord, met opmaak..."
                                 />
                                 <div className="email-reply-bar">
-                                  <button type="button" className="primary-btn small" onClick={() => sendReply(e.id)} disabled={replyBusy}>
+                                  <button type="button" className="primary-btn small" onClick={() => sendReply(e.id)} disabled={replyBusy || !replyToAddr.trim()}>
                                     {replyBusy ? "Versturen..." : "Verstuur antwoord"}
                                   </button>
                                   {replyMsg && <span className={"reply-msg" + (replyMsg === "Verstuurd." ? " ok" : " err")}>{replyMsg}</span>}
