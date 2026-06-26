@@ -38,5 +38,5 @@ export async function POST(req: NextRequest) {
   if (!id || !html) return NextResponse.json({ ok: false, error: "Mail-id en bericht zijn verplicht." }, { status: 400 });
   const result = await msReplyHtml(id, html, to);
   if (!result.ok) return NextResponse.json({ ok: false, error: result.error }, { status: 502 });
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, sentTo: result.sentTo || [] });
 }

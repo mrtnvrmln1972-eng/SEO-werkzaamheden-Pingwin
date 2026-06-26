@@ -138,8 +138,11 @@ export default function ClientCockpit({
         body: JSON.stringify({ id, html, to: replyToAddr }),
       });
       const data = await res.json();
-      if (data.ok) { setReplyMsg("Verstuurd."); if (replyRef.current) replyRef.current.innerHTML = ""; }
-      else setReplyMsg(data.error || "Versturen mislukt.");
+      if (data.ok) {
+        const naar = Array.isArray(data.sentTo) && data.sentTo.length > 0 ? data.sentTo.join(", ") : "de klant";
+        setReplyMsg(`Verstuurd naar ${naar}.`);
+        if (replyRef.current) replyRef.current.innerHTML = "";
+      } else setReplyMsg(data.error || "Versturen mislukt.");
     } catch {
       setReplyMsg("Versturen mislukt.");
     } finally {
@@ -498,7 +501,7 @@ export default function ClientCockpit({
                                   <button type="button" className="primary-btn small" onClick={() => sendReply(e.id)} disabled={replyBusy || !replyToAddr.trim()}>
                                     {replyBusy ? "Versturen..." : "Verstuur antwoord"}
                                   </button>
-                                  {replyMsg && <span className={"reply-msg" + (replyMsg === "Verstuurd." ? " ok" : " err")}>{replyMsg}</span>}
+                                  {replyMsg && <span className={"reply-msg" + (replyMsg.startsWith("Verstuurd") ? " ok" : " err")}>{replyMsg}</span>}
                                 </div>
                               </div>
                             )}

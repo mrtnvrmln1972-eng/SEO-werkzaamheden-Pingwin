@@ -236,37 +236,44 @@ async function replyRecipients(token: string, messageId: string): Promise<Recipi
   return out;
 }
 
-// Beantwoordt een mail met OPGEMAAKTE HTML (vet, bullets, links). Behoudt het
-// geciteerde origineel en stuurt naar de juiste partij (de klant, niet jezelf).
-export async function msReplyHtml(messageId: string, html: string, toOverride?: string[]): Promise<{ ok: boolean; error?: string }> {
+// Verstuurt een opgemaakt antwoord DETERMINISTISCH naar een expliciet adres.
+// Bewust GEEN createReply (dat blijft op de afzender = jezelf plakken bij een
+// eigen verzonden mail). We bouwen een nieuwe mail "RE: <onderwerp>" met het
+// geciteerde origineel eronder en zetten de ontvanger hard op het opgegeven adres.
+export async function msReplyHtml(messageId: string, html: string, toOverride?: string[]): Promise<{ ok: boolean; error?: string; sentTo?: string[] }> {
   const token = await msAccessToken();
   if (!token) return { ok: false, error: "Niet gekoppeld met Microsoft." };
   const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
-  // 1. Ontvangers: expliciet meegegeven adres(sen) hebben voorrang; anders
-  // de deelnemers van de mail minus jezelf.
-  const clean = (toOverride || []).map((a) => a.trim()).filter(Boolean);
-  const recipients: Recipient[] = clean.length > 0
-    ? clean.map((a) => ({ emailAddress: { address: a } }))
-    : await replyRecipients(token, messageId);
+  // 1. Ontvangers bepalen: expliciet opgegeven adres heeft voorrang.
+  let recipients = (toOverride || []).map((a) => a.trim()).filter(Boolean);
+  if (recipients.length === 0) {
+    recipients = (await replyRecipients(token, messageId)).map((r) => r.emailAddress?.address || "").filter(Boolean);
+  }
+  if (recipients.length === 0) return { ok: false, error: "Geen ontvanger gevonden. Vul het Aan-veld in." };
 
-  // 2. Concept-antwoord aanmaken (bevat al het geciteerde origineel).
-  const cr = await fetch(`https://graph.microsoft.com/v1.0/me/messages/${encodeURIComponent(messageId)}/createReply`, { method: "POST", headers });
-  if (!cr.ok) return { ok: false, error: `Concept aanmaken mislukt (${cr.status}).` };
-  const draft = (await cr.json()) as { id: string; body?: { content?: string } };
-  const quote = draft.body?.content || "";
+  // 2. Onderwerp + geciteerd origineel ophalen.
+  let subject = "";
+  let quote = "";
+  const oRes = await fetch(`https://graph.microsoft.com/v1.0/me/messages/${encodeURIComponent(messageId)}?$select=subject,body`, { headers: { Authorization: `Bearer ${token}` } });
+  if (oRes.ok) {
+    const o = (await oRes.json()) as { subject?: string; body?: { content?: string } };
+    subject = o.subject || "";
+    quote = o.body?.content || "";
+  }
+  if (!/^\s*re:/i.test(subject)) subject = `RE: ${subject}`.trim();
 
-  // 3. Body vervangen (opgemaakte HTML + citaat) en de juiste ontvangers zetten.
-  const patchPayload: Record<string, unknown> = { body: { contentType: "HTML", content: `${sanitizeOutgoing(html)}<br>${quote}` } };
-  if (recipients.length > 0) patchPayload.toRecipients = recipients;
-  const patch = await fetch(`https://graph.microsoft.com/v1.0/me/messages/${encodeURIComponent(draft.id)}`, {
-    method: "PATCH", headers, body: JSON.stringify(patchPayload),
-  });
-  if (!patch.ok) return { ok: false, error: `Opmaken mislukt (${patch.status}).` };
-
-  // 4. Versturen.
-  const send = await fetch(`https://graph.microsoft.com/v1.0/me/messages/${encodeURIComponent(draft.id)}/send`, { method: "POST", headers });
-  if (send.status === 202 || send.ok) return { ok: true };
+  // 3. Nieuwe mail versturen naar het expliciete adres, met citaat eronder.
+  const payload = {
+    message: {
+      subject,
+      body: { contentType: "HTML", content: `${sanitizeOutgoing(html)}<br><br>${quote}` },
+      toRecipients: recipients.map((a) => ({ emailAddress: { address: a } })),
+    },
+    saveToSentItems: true,
+  };
+  const send = await fetch("https://graph.microsoft.com/v1.0/me/sendMail", { method: "POST", headers, body: JSON.stringify(payload) });
+  if (send.status === 202 || send.ok) return { ok: true, sentTo: recipients };
   let msg = `Versturen mislukt (${send.status}).`;
   try { const j = await send.json(); msg = j.error?.message || msg; } catch { /* ignore */ }
   return { ok: false, error: msg };
