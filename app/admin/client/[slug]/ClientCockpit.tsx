@@ -8,7 +8,7 @@ import type {
 } from "../../../../lib/snapshots";
 import type { GscData } from "../../../../lib/google";
 
-type Tab = "overzicht" | "communicatie" | "resultaten";
+type Tab = "overzicht" | "resultaten";
 
 // Jouw Superhuman-account (Microsoft 365 hangt hieronder).
 const SUPERHUMAN_ACCOUNT = "Maarten@pingwin.nl";
@@ -173,7 +173,7 @@ export default function ClientCockpit({
   });
 
   function openInDashboard(id: string, idx: number) {
-    setTab("communicatie");
+    setTab("overzicht");
     setOpenEmail(id);
     setReplyMsg("");
     const target = emails.find((x) => x.id === id);
@@ -239,7 +239,6 @@ export default function ClientCockpit({
           </select>
           <nav className="header-tabs">
             <button className={"tab" + (tab === "overzicht" ? " active" : "")} onClick={() => setTab("overzicht")}>Overzicht</button>
-            <button className={"tab" + (tab === "communicatie" ? " active" : "")} onClick={() => setTab("communicatie")}>Communicatie</button>
             <button className={"tab" + (tab === "resultaten" ? " active" : "")} onClick={() => setTab("resultaten")}>Ontwikkeling &amp; resultaten</button>
           </nav>
         </div>
@@ -260,68 +259,39 @@ export default function ClientCockpit({
         {saveError && <div className="login-error">{saveError}</div>}
 
         {tab === "overzicht" && (
-          <div className="cockpit-card">
-            <Row label="E-mailadres klant">
-              {editing
-                ? <input type="email" value={f.email} onChange={(e) => set("email", e.target.value)} placeholder="contact@klant.nl" />
-                : <span>{f.email || <span className="muted">&mdash;</span>}</span>}
-            </Row>
-            <Row label="Maandfee">
-              {editing ? (
-                <div className="quicklinks">
-                  <input type="number" value={f.maandbudget} onChange={(e) => set("maandbudget", e.target.value)} placeholder="Maandfee (€)" style={{ width: 140 }} />
-                  <input type="number" value={f.linkbuilding} onChange={(e) => set("linkbuilding", e.target.value)} placeholder="w.v. linkbuilding (€)" style={{ width: 180 }} />
-                </div>
-              ) : (
-                client.budget.maandbudget
-                  ? <span>&euro;{client.budget.maandbudget.toFixed(0)} (incl. linkbuilding &euro;{client.budget.linkbuilding.toFixed(0)})</span>
-                  : <span className="muted">&mdash;</span>
-              )}
-            </Row>
-            {editing && (
-              <Row label="Uurtarief / uren p.m.">
-                <div className="quicklinks">
-                  <input type="number" value={f.uurtarief} onChange={(e) => set("uurtarief", e.target.value)} placeholder="Uurtarief (€)" style={{ width: 140 }} />
-                  <input type="number" value={f.beschikbareUren} onChange={(e) => set("beschikbareUren", e.target.value)} placeholder="Uren per maand" style={{ width: 140 }} />
-                </div>
-              </Row>
-            )}
-            <Row label="Laatste contact">
-              {lastMailDate ? (
-                <span>
-                  {fmtDate(lastMailDate)}{" "}
-                  <span className={"contact-badge " + contactColor(lastMailDate)}>{daysAgoLabel(lastMailDate)}</span>
-                </span>
-              ) : <span className="muted">Nog geen mail ingeladen</span>}
-            </Row>
-            <Row label="Snelkoppelingen">
-              <div className="quicklinks">
-                <a className="ql" href={dashboardUrl}>Klant-dashboard</a>
-                {hasSheet && <a className="ql" href={sheetUrl} target="_blank" rel="noreferrer">Google Sheet</a>}
-                {f.workDocUrl && <a className="ql" href={f.workDocUrl} target="_blank" rel="noreferrer">Werkdocument</a>}
-                {f.resultsUrl && <a className="ql" href={f.resultsUrl} target="_blank" rel="noreferrer">Resultaten</a>}
-              </div>
-            </Row>
-            {editing && (
-              <Row label="Google Sheet-link">
-                <input value={f.sheetUrl} onChange={(e) => set("sheetUrl", e.target.value)} placeholder="https://docs.google.com/spreadsheets/d/.../edit#gid=..." />
-              </Row>
-            )}
-            {editing && (
-              <Row label="Werkdocument-link">
-                <input value={f.workDocUrl} onChange={(e) => set("workDocUrl", e.target.value)} placeholder="https://docs.google.com/... (waar alles per klant verzameld is)" />
-              </Row>
-            )}
-            <Row label="Notities">
-              {editing
-                ? <textarea value={f.notes} onChange={(e) => set("notes", e.target.value)} rows={4} placeholder="Vrije notities over deze klant..." />
-                : <span className="prewrap">{f.notes || <span className="muted">&mdash;</span>}</span>}
-            </Row>
-          </div>
-        )}
-
-        {tab === "communicatie" && (
           <>
+            <div className="cockpit-card">
+              <div className="ov-top">
+                <div className="ov-contact">
+                  <span className="ov-label">Laatste contact</span>
+                  {lastMailDate ? (
+                    <span>{fmtDate(lastMailDate)} <span className={"contact-badge " + contactColor(lastMailDate)}>{daysAgoLabel(lastMailDate)}</span></span>
+                  ) : <span className="muted">Nog geen mail</span>}
+                </div>
+                <div className="quicklinks">
+                  <a className="ql" href={dashboardUrl}>Klant-dashboard</a>
+                  {hasSheet && <a className="ql" href={sheetUrl} target="_blank" rel="noreferrer">Google Sheet</a>}
+                  {f.workDocUrl && <a className="ql" href={f.workDocUrl} target="_blank" rel="noreferrer">Werkdocument</a>}
+                  {f.resultsUrl && <a className="ql" href={f.resultsUrl} target="_blank" rel="noreferrer">Resultaten</a>}
+                </div>
+              </div>
+              {editing && (
+                <>
+                  <Row label="Google Sheet-link">
+                    <input value={f.sheetUrl} onChange={(e) => set("sheetUrl", e.target.value)} placeholder="https://docs.google.com/spreadsheets/d/.../edit#gid=..." />
+                  </Row>
+                  <Row label="Werkdocument-link">
+                    <input value={f.workDocUrl} onChange={(e) => set("workDocUrl", e.target.value)} placeholder="https://docs.google.com/..." />
+                  </Row>
+                </>
+              )}
+              <Row label="Notities">
+                {editing
+                  ? <textarea value={f.notes} onChange={(e) => set("notes", e.target.value)} rows={3} placeholder="Vrije notities over deze klant..." />
+                  : <span className="prewrap">{f.notes || <span className="muted">&mdash;</span>}</span>}
+              </Row>
+            </div>
+
             {(status.exchanges.length > 0 || sheetTasks.length > 0 || status.mailActions.length > 0) && (
               <div className="cockpit-card">
                 <div className="ck-section-head">

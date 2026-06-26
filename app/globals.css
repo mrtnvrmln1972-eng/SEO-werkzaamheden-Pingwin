@@ -322,6 +322,9 @@ tbody td:last-child { text-align: center; }
 }
 .ck-updated { font-size: 11px; font-weight: 500; color: var(--gray); text-transform: none; letter-spacing: 0; }
 
+.ov-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.ov-contact { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.ov-label { font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray); }
 .contact-badge { font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 10px; margin-left: 6px; }
 .contact-badge.green { background: #E7F4E8; color: #2E7D32; }
 .contact-badge.orange { background: var(--orange-light); color: var(--orange-dark); }
