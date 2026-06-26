@@ -304,3 +304,46 @@ tbody td:last-child { text-align: center; }
   thead th, tbody td { padding: 10px 12px; font-size: 12px; }
   .form-grid { grid-template-columns: 1fr; }
 }
+
+/* ── Cockpit: data-brug weergaven (Communicatie + Resultaten) ── */
+.ck-section-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  font-weight: 700; color: var(--dark); font-size: 14px;
+  text-transform: uppercase; letter-spacing: 0.5px;
+  margin: 4px 0 14px; padding-bottom: 8px; border-bottom: 2px solid var(--orange);
+}
+.ck-updated { font-size: 11px; font-weight: 500; color: var(--gray); text-transform: none; letter-spacing: 0; }
+
+/* E-mails */
+.email-list { display: flex; flex-direction: column; max-height: 480px; overflow-y: auto; gap: 8px; }
+.email-row {
+  display: block; text-decoration: none; color: inherit;
+  border: 1px solid var(--border); border-left: 3px solid var(--orange);
+  border-radius: 6px; padding: 10px 14px; background: var(--white); transition: background 0.12s;
+}
+.email-row:hover { background: var(--orange-light); }
+.email-top { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--gray); margin-bottom: 3px; }
+.email-dir { font-size: 10px; font-weight: 700; text-transform: uppercase; padding: 1px 6px; border-radius: 10px; }
+.email-dir.in { background: #E8F0FE; color: #1A56B0; }
+.email-dir.out { background: var(--orange-light); color: var(--orange-dark); }
+.email-from { font-weight: 600; color: var(--dark); }
+.email-date { margin-left: auto; }
+.email-subject { font-weight: 600; color: var(--dark); font-size: 14px; }
+.email-preview { font-size: 12px; color: var(--gray); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* KPI-kaarten */
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.kpi-card { border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; background: var(--white); }
+.kpi-value { font-size: 24px; font-weight: 700; color: var(--orange-dark); line-height: 1.2; }
+.kpi-label { font-size: 12px; font-weight: 600; color: var(--dark); margin-top: 4px; }
+.kpi-period { font-size: 11px; color: var(--gray); margin-top: 2px; }
+
+/* Resultaten-tabellen */
+.res-table-wrap { overflow-x: auto; }
+.res-table { width: 100%; border-collapse: collapse; }
+.res-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray); padding: 8px 12px; border-bottom: 2px solid var(--border); }
+.res-table td { padding: 9px 12px; font-size: 13px; border-bottom: 1px solid var(--border); }
+.res-table td a { color: var(--orange-dark); text-decoration: none; }
+.res-table td a:hover { text-decoration: underline; }
+.pos-up { color: #2E7D32; font-weight: 600; }
+.pos-down { color: var(--red); font-weight: 600; }

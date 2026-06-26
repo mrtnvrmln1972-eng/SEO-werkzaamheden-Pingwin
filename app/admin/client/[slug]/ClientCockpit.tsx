@@ -3,10 +3,23 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ClientConfig } from "../../../../lib/clients";
+import type {
+  EmailSnapshot, MetricSnapshot, KeywordSnapshot, PageSnapshot,
+} from "../../../../lib/snapshots";
 
 type Tab = "overzicht" | "communicatie" | "resultaten";
 
-export default function ClientCockpit({ client }: { client: ClientConfig }) {
+type CockpitData = {
+  emails: EmailSnapshot[];
+  metrics: MetricSnapshot[];
+  keywords: KeywordSnapshot[];
+  pages: PageSnapshot[];
+  lastIngest: string | null;
+};
+
+export default function ClientCockpit({
+  client, emails, metrics, keywords, pages, lastIngest,
+}: { client: ClientConfig } & CockpitData) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("overzicht");
   const [editing, setEditing] = useState(false);
@@ -177,37 +190,191 @@ export default function ClientCockpit({ client }: { client: ClientConfig }) {
                 </div>
               ) : <span className="muted">Vul eerst een e-maildomein in.</span>}
             </Row>
-            <div className="phase2-note">
-              Binnenkort: de laatste e-mails met deze klant automatisch hier, rechtstreeks uit je
-              Outlook (maarten@pingwin.nl), met een doorzoekbare chat. Dat is een aparte koppeling
-              die we samen aanzetten.
+            <div className="ck-section-head">
+              <span>Laatste e-mails</span>
+              {lastIngest && <span className="ck-updated">bijgewerkt {fmtDate(lastIngest)}</span>}
             </div>
+            {emails.length === 0 ? (
+              <div className="phase2-note">
+                Nog geen mails ingeladen. Deze lijst vult zich met de laatste e-mails met deze klant
+                uit je Outlook (maarten@pingwin.nl). Gebruik zolang de knop &ldquo;Zoek in Outlook&rdquo; hierboven.
+              </div>
+            ) : (
+              <div className="email-list">
+                {emails.map((e) => (
+                  <a key={e.id} className="email-row" href={e.webLink || "#"} target="_blank" rel="noreferrer">
+                    <div className="email-top">
+                      <span className={"email-dir " + (e.direction === "out" ? "out" : "in")}>
+                        {e.direction === "out" ? "verzonden" : "ontvangen"}
+                      </span>
+                      <span className="email-from">{e.fromName || e.fromAddress || "—"}</span>
+                      <span className="email-date">{e.receivedAt ? fmtDate(e.receivedAt) : ""}</span>
+                    </div>
+                    <div className="email-subject">{e.subject || "(geen onderwerp)"}</div>
+                    {e.preview && <div className="email-preview">{e.preview}</div>}
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
         {tab === "resultaten" && (
-          <div className="cockpit-card">
-            <Row label="Resultaten-document">
-              {editing
-                ? <input value={f.resultsUrl} onChange={(e) => set("resultsUrl", e.target.value)} placeholder="https://... (rapportage)" />
-                : (f.resultsUrl ? <a href={f.resultsUrl} target="_blank" rel="noreferrer" className="doc-link">{f.resultsUrl}</a> : <span className="muted">Nog geen link</span>)}
-            </Row>
-            <Row label="Voortgang / mijlpalen">
-              {editing
-                ? <textarea value={f.notes} onChange={(e) => set("notes", e.target.value)} rows={5} placeholder="Korte log van resultaten en mijlpalen..." />
-                : <span className="prewrap">{f.notes || <span className="muted">&mdash;</span>}</span>}
-            </Row>
-            <div className="phase2-note">
-              Binnenkort: de echte ontwikkeling (zoekverkeer, posities, conversies) automatisch uit
-              Search Console, GA en Ahrefs per klant.
+          <>
+            {metrics.length === 0 && keywords.length === 0 && pages.length === 0 ? (
+              <div className="cockpit-card">
+                <div className="phase2-note">
+                  Nog geen cijfers ingeladen. Hier komen de echte KPI&rsquo;s uit Search Console, Analytics
+                  en Ahrefs voor {client.domain || "deze klant"}: vertoningen, klikken, posities, bezoekers,
+                  CTR en de belangrijkste zoekwoorden en pagina&rsquo;s.
+                </div>
+              </div>
+            ) : (
+              <>
+                {SOURCES.map((src) => {
+                  const ms = metrics.filter((m) => m.source === src.key);
+                  if (ms.length === 0) return null;
+                  return (
+                    <div className="cockpit-card" key={src.key}>
+                      <div className="ck-section-head">
+                        <span>{src.label}</span>
+                        {lastIngest && <span className="ck-updated">bijgewerkt {fmtDate(lastIngest)}</span>}
+                      </div>
+                      <div className="kpi-grid">
+                        {ms.map((m) => (
+                          <div className="kpi-card" key={m.metric + m.period}>
+                            <div className="kpi-value">{fmtMetric(m.metric, m.value)}</div>
+                            <div className="kpi-label">{metricLabel(m.metric)}</div>
+                            <div className="kpi-period">{periodLabel(m.period)}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {keywords.length > 0 && (
+                  <div className="cockpit-card">
+                    <div className="ck-section-head"><span>Zoekwoorden ({keywords.length})</span></div>
+                    <div className="res-table-wrap">
+                      <table className="res-table">
+                        <thead><tr><th>Zoekwoord</th><th>Positie</th><th>Verschil</th><th>Volume</th></tr></thead>
+                        <tbody>
+                          {keywords.map((k) => {
+                            const delta = k.prevPosition != null && k.position != null ? k.prevPosition - k.position : null;
+                            return (
+                              <tr key={k.keyword}>
+                                <td>{k.url ? <a href={k.url} target="_blank" rel="noreferrer">{k.keyword}</a> : k.keyword}</td>
+                                <td>{k.position != null ? k.position.toFixed(0) : "—"}</td>
+                                <td className={delta == null ? "" : delta > 0 ? "pos-up" : delta < 0 ? "pos-down" : ""}>
+                                  {delta == null || delta === 0 ? "—" : (delta > 0 ? `▲ ${delta}` : `▼ ${Math.abs(delta)}`)}
+                                </td>
+                                <td>{k.volume != null ? k.volume.toLocaleString("nl-NL") : "—"}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {pages.length > 0 && (
+                  <div className="cockpit-card">
+                    <div className="ck-section-head"><span>Belangrijkste pagina&rsquo;s</span></div>
+                    <div className="res-table-wrap">
+                      <table className="res-table">
+                        <thead><tr><th>Pagina</th><th>Klikken</th><th>Vertoningen</th><th>Verkeer</th></tr></thead>
+                        <tbody>
+                          {pages.map((p) => (
+                            <tr key={p.url}>
+                              <td><a href={p.url} target="_blank" rel="noreferrer">{shortUrl(p.url)}</a></td>
+                              <td>{p.clicks != null ? p.clicks.toLocaleString("nl-NL") : "—"}</td>
+                              <td>{p.impressions != null ? p.impressions.toLocaleString("nl-NL") : "—"}</td>
+                              <td>{p.traffic != null ? p.traffic.toLocaleString("nl-NL") : "—"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            <div className="cockpit-card">
+              <Row label="Resultaten-document">
+                {editing
+                  ? <input value={f.resultsUrl} onChange={(e) => set("resultsUrl", e.target.value)} placeholder="https://... (rapportage)" />
+                  : (f.resultsUrl ? <a href={f.resultsUrl} target="_blank" rel="noreferrer" className="doc-link">{f.resultsUrl}</a> : <span className="muted">Nog geen link</span>)}
+              </Row>
+              <Row label="Voortgang / mijlpalen">
+                {editing
+                  ? <textarea value={f.notes} onChange={(e) => set("notes", e.target.value)} rows={5} placeholder="Korte log van resultaten en mijlpalen..." />
+                  : <span className="prewrap">{f.notes || <span className="muted">&mdash;</span>}</span>}
+              </Row>
             </div>
-          </div>
+          </>
         )}
       </div>
 
       <div className="footer">Pingwin Online Marketing &middot; Beheer</div>
     </>
   );
+}
+
+const SOURCES = [
+  { key: "gsc", label: "Search Console" },
+  { key: "ga4", label: "Google Analytics" },
+  { key: "ahrefs", label: "Ahrefs" },
+];
+
+const METRIC_LABELS: Record<string, string> = {
+  clicks: "Klikken",
+  impressions: "Vertoningen",
+  ctr: "CTR",
+  position: "Gem. positie",
+  users: "Bezoekers",
+  sessions: "Sessies",
+  conversions: "Conversies",
+  org_traffic: "Organisch verkeer",
+  org_keywords: "Organische zoekwoorden",
+  domain_rating: "Domain Rating",
+};
+
+function metricLabel(metric: string): string {
+  return METRIC_LABELS[metric] || metric;
+}
+
+function fmtMetric(metric: string, value: number | null): string {
+  if (value == null) return "—";
+  if (metric === "ctr") return `${value.toFixed(1)}%`;
+  if (metric === "position") return value.toFixed(1);
+  if (metric === "domain_rating") return value.toFixed(0);
+  return value.toLocaleString("nl-NL");
+}
+
+function periodLabel(period: string): string {
+  if (period === "last28") return "laatste 28 dagen";
+  if (period === "last7") return "laatste 7 dagen";
+  if (period === "last90") return "laatste 90 dagen";
+  if (period === "now") return "nu";
+  return period;
+}
+
+function fmtDate(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function shortUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    return (u.pathname === "/" ? u.hostname : u.pathname).replace(/\/$/, "") || url;
+  } catch {
+    return url;
+  }
 }
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
