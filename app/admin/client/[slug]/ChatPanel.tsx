@@ -4,6 +4,33 @@ import { useState, useRef, useEffect } from "react";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
+// Lichte Markdown → HTML voor nette antwoorden (kopjes, bullets, vet, links).
+function mdToHtml(md: string): string {
+  const escape = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const inline = (s: string) =>
+    escape(s)
+      .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>')
+      .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+      .replace(/`([^`]+)`/g, "<code>$1</code>")
+      .replace(/(^|[\s(])\*([^*\s][^*]*?)\*(?=[\s).,!?]|$)/g, "$1<em>$2</em>");
+  const out: string[] = [];
+  let list: "ul" | "ol" | null = null;
+  const closeList = () => { if (list) { out.push(`</${list}>`); list = null; } };
+  for (const raw of md.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) { closeList(); continue; }
+    const h = line.match(/^(#{1,6})\s+(.*)$/);
+    if (h) { closeList(); const lvl = Math.min(6, h[1].length + 2); out.push(`<h${lvl}>${inline(h[2])}</h${lvl}>`); continue; }
+    const ul = line.match(/^[-*]\s+(.*)$/);
+    if (ul) { if (list !== "ul") { closeList(); out.push("<ul>"); list = "ul"; } out.push(`<li>${inline(ul[1])}</li>`); continue; }
+    const ol = line.match(/^\d+\.\s+(.*)$/);
+    if (ol) { if (list !== "ol") { closeList(); out.push("<ol>"); list = "ol"; } out.push(`<li>${inline(ol[1])}</li>`); continue; }
+    closeList(); out.push(`<p>${inline(line)}</p>`);
+  }
+  closeList();
+  return out.join("");
+}
+
 const SUGGESTIONS = [
   "Wat is de laatste stand van zaken?",
   "Wat staat er nog open bij de klant?",
@@ -66,7 +93,9 @@ export default function ChatPanel({ slug, configured }: { slug: string; configur
           <div className="chat-log">
             {messages.map((m, i) => (
               <div key={i} className={"chat-msg " + m.role}>
-                <div className="chat-bubble">{m.content}</div>
+                {m.role === "assistant"
+                  ? <div className="chat-bubble chat-md" dangerouslySetInnerHTML={{ __html: mdToHtml(m.content) }} />
+                  : <div className="chat-bubble">{m.content}</div>}
               </div>
             ))}
             {busy && <div className="chat-msg assistant"><div className="chat-bubble muted">Aan het denken…</div></div>}

@@ -19,6 +19,14 @@ export function chatConfigured(): boolean {
   return !!process.env.ANTHROPIC_API_KEY;
 }
 
+function stripHtml(html: string): string {
+  return html
+    .replace(/<\s*(script|style)[\s\S]*?<\s*\/\s*\1\s*>/gi, "")
+    .replace(/<\/(p|div|br|li|tr|h[1-6])\s*>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&").replace(/&lt;/gi, "<").replace(/&gt;/gi, ">").replace(/&#39;|&apos;/gi, "'").replace(/&quot;/gi, '"');
+}
+
 async function sheetTaskLines(client: ClientConfig): Promise<string[]> {
   if (!client.sheetId) return [];
   try {
@@ -50,12 +58,17 @@ async function buildContext(client: ClientConfig): Promise<string> {
     }
   }
   if (emails.length > 0) {
-    parts.push("\nRECENTE E-MAILS (nieuwste eerst):");
-    for (const e of emails.slice(0, 15)) {
+    parts.push("\nRECENTE E-MAILS (nieuwste eerst, met afzender/ontvangers en inhoud):");
+    for (const e of emails.slice(0, 10)) {
       const dir = e.direction === "out" ? "WIJ→klant" : "klant→WIJ";
-      const date = e.receivedAt ? new Date(e.receivedAt).toLocaleDateString("nl-NL") : "";
-      const prev = (e.preview || "").replace(/\s+/g, " ").slice(0, 220);
-      parts.push(`[${dir}, ${date}] ${e.subject || "(geen onderwerp)"} — ${prev}`);
+      const date = e.receivedAt ? new Date(e.receivedAt).toLocaleString("nl-NL") : "";
+      const to = (e.toAddresses || []).join(", ");
+      const bodyText = (stripHtml(e.bodyHtml || "") || e.preview || "").replace(/\s+/g, " ").trim().slice(0, 700);
+      parts.push(
+        `--- [${dir}, ${date}] Onderwerp: ${e.subject || "(geen onderwerp)"}\n` +
+        `Van: ${e.fromAddress || "?"}${to ? ` | Aan: ${to}` : ""}\n` +
+        `Inhoud: ${bodyText}`,
+      );
     }
   }
 
@@ -116,8 +129,10 @@ export async function answerChat(slug: string, messages: ChatMessage[]): Promise
   const context = await buildContext(client);
   const system =
     `Je bent de SEO-projectassistent van Pingwin voor de klant ${client.name}. ` +
-    `Beantwoord vragen kort, concreet en in het Nederlands, uitsluitend op basis van de onderstaande projectcontext ` +
-    `(e-mails, stand van zaken, taken, Search Console, Ahrefs). Noem waar relevant data of een mail-onderwerp. ` +
+    `Beantwoord in het Nederlands, uitsluitend op basis van de onderstaande projectcontext ` +
+    `(e-mails inclusief afzender/ontvangers en inhoud, stand van zaken, taken, Search Console, Ahrefs). ` +
+    `Maak je antwoord netjes en goed leesbaar op in Markdown: gebruik korte kopjes (##), bullets (-) en **vet** waar dat helpt, ` +
+    `en geef een duidelijke, concrete uitleg. Noem waar relevant het mail-onderwerp, de datum of de ontvanger (bv. of een mail naar de klant of naar jezelf ging). ` +
     `Staat het antwoord niet in de context, zeg dat eerlijk in plaats van te gokken.\n\n--- PROJECTCONTEXT ---\n${context}`;
 
   try {
@@ -126,7 +141,7 @@ export async function answerChat(slug: string, messages: ChatMessage[]): Promise
       headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
-        max_tokens: 1024,
+        max_tokens: 1500,
         system,
         messages: messages.slice(-10),
       }),

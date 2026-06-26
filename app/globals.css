@@ -331,6 +331,15 @@ tbody td:last-child { text-align: center; }
 .chat-bubble { max-width: 80%; padding: 10px 14px; border-radius: 12px; font-size: 13px; line-height: 1.5; white-space: pre-wrap; }
 .chat-msg.user .chat-bubble { background: var(--orange); color: var(--white); }
 .chat-msg.assistant .chat-bubble { background: var(--gray-light); color: var(--body-text); border: 1px solid var(--border); }
+.chat-md { white-space: normal; }
+.chat-md h3, .chat-md h4, .chat-md h5, .chat-md h6 { font-size: 14px; font-weight: 700; margin: 12px 0 4px; color: var(--dark); }
+.chat-md p { margin: 6px 0; }
+.chat-md ul, .chat-md ol { margin: 6px 0 6px 20px; }
+.chat-md li { margin: 3px 0; }
+.chat-md code { background: rgba(0,0,0,0.06); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+.chat-md a { color: var(--orange-dark); }
+.chat-md > :first-child { margin-top: 0; }
+.chat-md > :last-child { margin-bottom: 0; }
 .chat-input { display: flex; gap: 8px; margin-top: 12px; }
 .chat-input input {
   flex: 1; font-family: 'Montserrat', sans-serif; font-size: 13px; padding: 10px 12px;
