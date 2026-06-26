@@ -4,6 +4,7 @@ import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { getClientBySlug, listClients, type ClientConfig } from "../../../../lib/clients";
 import { getEmails, getMetrics, getKeywords, getPages, getLastIngest, getStatus } from "../../../../lib/snapshots";
 import { msStatus, msSearchClientEmails } from "../../../../lib/ms-graph";
+import { googleStatus, getGscForClient } from "../../../../lib/google";
 import { sheetCsvUrl, parseCSV, structureData, MAAND_VOLGORDE } from "../../../../lib/sheet";
 import ClientCockpit from "./ClientCockpit";
 
@@ -51,6 +52,10 @@ export default async function ClientCockpitPage({ params }: { params: { slug: st
     listClients(),
   ]);
 
+  // Search Console live ophalen als de Google-koppeling actief is.
+  const google = await googleStatus();
+  const gsc = google.connected ? await getGscForClient(client.domain || "") : null;
+
   // Live mails uit Microsoft 365 als de koppeling actief is; anders de opgeslagen mails.
   let emails = storedEmails;
   let mailLive = false;
@@ -77,6 +82,9 @@ export default async function ClientCockpitPage({ params }: { params: { slug: st
       msConnected={ms.connected}
       sheetTasks={sheetTasks}
       allClients={allClients.map((c) => ({ slug: c.slug, name: c.name }))}
+      gsc={gsc}
+      googleConfigured={google.configured}
+      googleConnected={google.connected}
     />
   );
 }

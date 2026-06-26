@@ -6,6 +6,7 @@ import type { ClientConfig } from "../../../../lib/clients";
 import type {
   EmailSnapshot, MetricSnapshot, KeywordSnapshot, PageSnapshot, ClientStatus,
 } from "../../../../lib/snapshots";
+import type { GscData } from "../../../../lib/google";
 
 type Tab = "overzicht" | "communicatie" | "resultaten";
 
@@ -25,11 +26,15 @@ type CockpitData = {
   msConnected: boolean;
   sheetTasks: { text: string; link: string }[];
   allClients: { slug: string; name: string }[];
+  gsc: GscData | null;
+  googleConfigured: boolean;
+  googleConnected: boolean;
 };
 
 export default function ClientCockpit({
   client, emails, metrics, keywords, pages, lastIngest, status, statusUpdatedAt,
   mailLive, msConfigured, msConnected, sheetTasks, allClients,
+  gsc, googleConfigured, googleConnected,
 }: { client: ClientConfig } & CockpitData) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("overzicht");
@@ -467,12 +472,65 @@ export default function ClientCockpit({
 
         {tab === "resultaten" && (
           <>
-            {metrics.length === 0 && keywords.length === 0 && pages.length === 0 ? (
+            {googleConfigured && !googleConnected && (
+              <div className="cockpit-card">
+                <div className="mail-connect">
+                  Koppel Google om Search Console en Analytics te tonen (vertoningen, klikken, CTR, posities, bezoekers).{" "}
+                  <a className="primary-btn small" href="/api/google/auth/start">Koppel Google</a>
+                </div>
+              </div>
+            )}
+
+            {gsc && (gsc.metrics.length > 0 || gsc.keywords.length > 0) && (
+              <>
+                <div className="cockpit-card">
+                  <div className="ck-section-head">
+                    <span>Search Console</span>
+                    <span className="ck-updated">laatste 28 dagen</span>
+                  </div>
+                  {gsc.metrics.length > 0 && (
+                    <div className="kpi-grid">
+                      {gsc.metrics.map((m) => (
+                        <div className="kpi-card" key={m.metric}>
+                          <div className="kpi-value">{fmtMetric(m.metric, m.value)}</div>
+                          <div className="kpi-label">{metricLabel(m.metric)}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {gsc.keywords.length > 0 && (
+                  <div className="cockpit-card">
+                    <div className="ck-section-head"><span>Zoekwoorden uit Search Console ({gsc.keywords.length})</span></div>
+                    <div className="res-table-wrap">
+                      <table className="res-table">
+                        <thead><tr><th>Zoekwoord</th><th>Positie</th><th>Klikken</th><th>Vertoningen</th><th>CTR</th></tr></thead>
+                        <tbody>
+                          {gsc.keywords.map((k) => (
+                            <tr key={k.keyword}>
+                              <td>{k.keyword}</td>
+                              <td>{k.position.toFixed(1)}</td>
+                              <td>{k.clicks.toLocaleString("nl-NL")}</td>
+                              <td>{k.impressions.toLocaleString("nl-NL")}</td>
+                              <td>{k.ctr.toFixed(1)}%</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+            {gsc && gsc.connected && gsc.site === null && (
+              <div className="cockpit-card"><div className="phase2-note">Google is gekoppeld, maar er is nog geen Search Console-property gevonden voor {client.domain || "deze klant"}.</div></div>
+            )}
+
+            {metrics.length === 0 && keywords.length === 0 && pages.length === 0 && !(gsc && gsc.keywords.length > 0) ? (
               <div className="cockpit-card">
                 <div className="phase2-note">
-                  Nog geen cijfers ingeladen. Hier komen de echte KPI&rsquo;s uit Search Console, Analytics
-                  en Ahrefs voor {client.domain || "deze klant"}: vertoningen, klikken, posities, bezoekers,
-                  CTR en de belangrijkste zoekwoorden en pagina&rsquo;s.
+                  Nog geen Ahrefs-cijfers ingeladen voor {client.domain || "deze klant"}.
                 </div>
               </div>
             ) : (
@@ -548,6 +606,25 @@ export default function ClientCockpit({
               </>
             )}
 
+            {gsc && gsc.pages.length > 0 && (
+              <div className="cockpit-card">
+                <div className="ck-section-head"><span>Pagina&rsquo;s uit Search Console</span></div>
+                <div className="res-table-wrap">
+                  <table className="res-table">
+                    <thead><tr><th>Pagina</th><th>Klikken</th><th>Vertoningen</th></tr></thead>
+                    <tbody>
+                      {gsc.pages.map((p) => (
+                        <tr key={p.url}>
+                          <td><a href={p.url} target="_blank" rel="noreferrer">{shortUrl(p.url)}</a></td>
+                          <td>{p.clicks.toLocaleString("nl-NL")}</td>
+                          <td>{p.impressions.toLocaleString("nl-NL")}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>
