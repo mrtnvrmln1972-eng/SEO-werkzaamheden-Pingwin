@@ -16,6 +16,8 @@ export type Task = {
   maand: string;
   link: string;
   row: number; // regelnummer in de Google Sheet (1-gebaseerd)
+  wie: string;            // SEO / Dev (kolom H) — leeg bij bestaande sheets
+  klantZichtbaar: boolean; // kolom I (ja/nee) — false bij bestaande sheets
 };
 
 export type DashboardData = {
@@ -32,7 +34,13 @@ const COL = {
   STATUS: 4,
   MAAND: 5,
   LINK: 6,
+  WIE: 7,             // nieuw: SEO / Dev
+  KLANT_ZICHTBAAR: 8, // nieuw: ja/nee
 };
+
+function truthy(val: string): boolean {
+  return /^(ja|j|x|✓|true|1|zichtbaar)$/i.test((val || "").trim());
+}
 
 export const MAAND_VOLGORDE = [
   "januari", "februari", "maart", "april", "mei", "juni",
@@ -136,6 +144,8 @@ export function structureData(rows: string[][], budget: ClientBudget): Dashboard
           maand: nextMaand.toLowerCase(),
           link: (row[COL.LINK] || "").trim(),
           row: r + 1,
+          wie: (row[COL.WIE] || "").trim(),
+          klantZichtbaar: truthy(row[COL.KLANT_ZICHTBAAR] || ""),
         };
         if (task.taak) tasks.push(task);
       }
@@ -153,6 +163,8 @@ export function structureData(rows: string[][], budget: ClientBudget): Dashboard
       maand: (row[COL.MAAND] || "").trim().toLowerCase(),
       link: (row[COL.LINK] || "").trim(),
       row: r + 1,
+      wie: (row[COL.WIE] || "").trim(),
+      klantZichtbaar: truthy(row[COL.KLANT_ZICHTBAAR] || ""),
     };
 
     if (task.taak) tasks.push(task);

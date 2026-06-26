@@ -513,6 +513,9 @@ tbody td:last-child { text-align: center; }
 .task-month { font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; color: var(--dark); margin: 12px 0 5px; }
 .task-month:first-of-type { margin-top: 0; }
 .task-done a { color: var(--gray); text-decoration: line-through; }
+.wie-badge { font-size: 9px; font-weight: 700; text-transform: uppercase; padding: 1px 6px; border-radius: 8px; margin-right: 6px; }
+.wie-badge.seo { background: var(--orange-light); color: var(--orange-dark); }
+.wie-badge.dev { background: #E8F0FE; color: #1A56B0; }
 .task-link-btn { background: none; border: none; padding: 0; cursor: pointer; font-family: 'Montserrat', sans-serif; font-size: 13px; color: var(--orange-dark); text-align: left; line-height: 1.4; }
 .task-link-btn:hover { text-decoration: underline; }
 @media (max-width: 760px) { .sov-layout { flex-direction: column; } .sov-side { flex: 1 1 auto; width: 100%; flex-direction: column; } .sov-bubble { max-width: 90%; } }

@@ -11,7 +11,7 @@ import ClientCockpit from "./ClientCockpit";
 
 export const dynamic = "force-dynamic";
 
-export type SheetTask = { text: string; link: string; done: boolean };
+export type SheetTask = { text: string; link: string; done: boolean; wie: string };
 export type MonthTasks = { thisMonth: SheetTask[]; nextMonth: SheetTask[]; thisLabel: string; nextLabel: string };
 
 function monthLabel(offset: number): string {
@@ -41,7 +41,7 @@ async function loadTasksByMonth(client: ClientConfig): Promise<MonthTasks> {
       if (!taak) continue; // header/budget/totaal-regels
       if (done.test((rows[i][4] || "").trim())) continue; // alleen niet-afgeronde taken
       const maand = (rows[i][5] || "").trim().toLowerCase();
-      const t: SheetTask = { text: taak, link: rowLink(i + 1), done: false };
+      const t: SheetTask = { text: taak, link: rowLink(i + 1), done: false, wie: (rows[i][7] || "").trim() };
       if (maand === thisM) thisMonth.push(t);
       else if (maand === nextM) nextMonth.push(t);
     }

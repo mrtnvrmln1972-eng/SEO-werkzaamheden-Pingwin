@@ -151,6 +151,7 @@ async function init(): Promise<void> {
     { slug: "gardenswimm", name: "GardenSwimm" },
     { slug: "wim-prins", name: "Wim Prins" },
     { slug: "paul-hoevenaars", name: "Paul Hoevenaars" },
+    { slug: "odc-test", name: "ODC TEST" },
   ];
   for (const c of initialClients) {
     const ph = hashPassword(`${c.slug}-tijdelijk-2026`);

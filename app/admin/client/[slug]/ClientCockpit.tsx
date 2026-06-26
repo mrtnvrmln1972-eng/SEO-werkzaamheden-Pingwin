@@ -27,8 +27,8 @@ type CockpitData = {
   msConnected: boolean;
   myEmail: string | null;
   monthTasks: {
-    thisMonth: { text: string; link: string; done: boolean }[];
-    nextMonth: { text: string; link: string; done: boolean }[];
+    thisMonth: { text: string; link: string; done: boolean; wie: string }[];
+    nextMonth: { text: string; link: string; done: boolean; wie: string }[];
     thisLabel: string;
     nextLabel: string;
   };
@@ -356,6 +356,7 @@ export default function ClientCockpit({
                         <ul className="sov-tasks-list">
                           {monthTasks.thisMonth.map((t, i) => (
                             <li key={i} className={t.done ? "task-done" : ""}>
+                              {t.wie && <span className={"wie-badge " + (/dev/i.test(t.wie) ? "dev" : "seo")}>{t.wie}</span>}
                               <a href={t.link} target="_blank" rel="noreferrer">{t.text}</a>
                             </li>
                           ))}
@@ -369,7 +370,10 @@ export default function ClientCockpit({
                       ) : (
                         <ul className="sov-tasks-list">
                           {monthTasks.nextMonth.map((t, i) => (
-                            <li key={i}><a href={t.link} target="_blank" rel="noreferrer">{t.text}</a></li>
+                            <li key={i}>
+                              {t.wie && <span className={"wie-badge " + (/dev/i.test(t.wie) ? "dev" : "seo")}>{t.wie}</span>}
+                              <a href={t.link} target="_blank" rel="noreferrer">{t.text}</a>
+                            </li>
                           ))}
                         </ul>
                       ))}
