@@ -133,6 +133,7 @@ type GraphMessage = {
   id: string;
   subject?: string | null;
   from?: { emailAddress?: { name?: string | null; address?: string | null } };
+  toRecipients?: { emailAddress?: { address?: string | null } }[];
   receivedDateTime?: string | null;
   bodyPreview?: string | null;
   body?: { contentType?: string; content?: string | null };
@@ -151,6 +152,7 @@ export type LiveEmail = {
   superhumanLink: string | null;
   bodyHtml: string | null;
   direction: string | null;
+  toAddresses: string[];
 };
 
 const SUPERHUMAN_ACCOUNT_FALLBACK = "Maarten@pingwin.nl";
@@ -167,7 +169,7 @@ export async function msSearchClientEmails(query: string, account: string, limit
   const url =
     `https://graph.microsoft.com/v1.0/me/messages?$search="${encodeURIComponent(query)}"` +
     `&$top=${limit}` +
-    `&$select=id,subject,from,toRecipients,receivedDateTime,bodyPreview,body,conversationId,webLink`;
+    `&$select=id,subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,body,conversationId,webLink`;
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}`, ConsistencyLevel: "eventual" } });
   if (!res.ok) return null;
   const j = (await res.json()) as { value?: GraphMessage[] };
@@ -190,6 +192,7 @@ export async function msSearchClientEmails(query: string, account: string, limit
       superhumanLink: m.conversationId ? superhumanThreadLink(account, query, m.conversationId) : null,
       bodyHtml,
       direction: out ? "out" : "in",
+      toAddresses: (m.toRecipients || []).map((r) => r.emailAddress?.address || "").filter(Boolean),
     };
   });
   mails.sort((a, b) => (b.receivedAt || "").localeCompare(a.receivedAt || ""));

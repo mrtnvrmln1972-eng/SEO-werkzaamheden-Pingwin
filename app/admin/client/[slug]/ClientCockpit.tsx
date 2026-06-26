@@ -24,6 +24,7 @@ type CockpitData = {
   mailLive: boolean;
   msConfigured: boolean;
   msConnected: boolean;
+  myEmail: string | null;
   sheetTasks: { text: string; link: string }[];
   allClients: { slug: string; name: string }[];
   gsc: GscData | null;
@@ -33,7 +34,7 @@ type CockpitData = {
 
 export default function ClientCockpit({
   client, emails, metrics, keywords, pages, lastIngest, status, statusUpdatedAt,
-  mailLive, msConfigured, msConnected, sheetTasks, allClients,
+  mailLive, msConfigured, msConnected, myEmail, sheetTasks, allClients,
   gsc, googleConfigured, googleConnected,
 }: { client: ClientConfig } & CockpitData) {
   const router = useRouter();
@@ -71,6 +72,21 @@ export default function ClientCockpit({
     } finally {
       setStatusBusy(false);
     }
+  }
+
+  // Naar wie het antwoord gaat: deelnemers van de mail (afzender + to) minus jezelf.
+  function recipientsFor(e: EmailSnapshot): string[] {
+    const me = (myEmail || "").toLowerCase();
+    const all = [e.fromAddress || "", ...(e.toAddresses || [])];
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const a of all) {
+      const low = a.toLowerCase();
+      if (!a || low === me || seen.has(low)) continue;
+      seen.add(low);
+      out.push(a);
+    }
+    return out;
   }
 
   async function sendReply(id: string) {
@@ -433,9 +449,8 @@ export default function ClientCockpit({
                             {mailLive && (
                               <div className="email-reply">
                                 <div className="reply-target">
-                                  Je beantwoordt: <strong>{e.fromName || e.fromAddress || "—"}</strong>
-                                  {e.receivedAt && <> &middot; {fmtDateTime(e.receivedAt)}</>}
-                                  {e.subject && <> &middot; &ldquo;{e.subject}&rdquo;</>}
+                                  <div>Je beantwoordt: <strong>{e.subject || "(geen onderwerp)"}</strong>{e.receivedAt && <> &middot; {fmtDateTime(e.receivedAt)}</>}</div>
+                                  <div>Antwoord gaat naar: <strong>{recipientsFor(e).join(", ") || "—"}</strong></div>
                                 </div>
                                 <div className="rt-toolbar">
                                   <button type="button" title="Vet" onMouseDown={(ev) => { ev.preventDefault(); fmt("bold"); }}><b>B</b></button>

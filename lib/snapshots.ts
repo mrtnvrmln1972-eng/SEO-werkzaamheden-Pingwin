@@ -19,6 +19,7 @@ export type EmailSnapshot = {
   superhumanLink: string | null;
   bodyHtml: string | null;
   direction: string | null;
+  toAddresses?: string[];
 };
 
 // Actuele stand van zaken = een gesprek klant ↔ wij, plus losse taken.

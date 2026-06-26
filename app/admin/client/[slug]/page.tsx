@@ -80,6 +80,7 @@ export default async function ClientCockpitPage({ params }: { params: { slug: st
       mailLive={mailLive}
       msConfigured={ms.configured}
       msConnected={ms.connected}
+      myEmail={ms.account}
       sheetTasks={sheetTasks}
       allClients={allClients.map((c) => ({ slug: c.slug, name: c.name }))}
       gsc={gsc}
