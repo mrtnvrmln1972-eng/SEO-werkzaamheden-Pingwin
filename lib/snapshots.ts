@@ -20,11 +20,25 @@ export type EmailSnapshot = {
   direction: string | null;
 };
 
-// Eén kaartje in de "Actuele stand van zaken" (titel + kleur + bullets).
-export type StatusCard = {
-  title: string;
-  color: string; // orange | blue | green | red | gray
-  items: string[];
+// Actuele stand van zaken = een gesprek klant ↔ wij, plus losse taken.
+// Eén punt uit de correspondentie (vraag/antwoord), links de klant of rechts wij.
+export type StatusExchange = {
+  side: "client" | "us";          // links = client, rechts = us
+  text: string;                    // korte samenvatting in één regel
+  date?: string | null;            // ISO-datum van de mail
+  status?: "open" | "done";        // open = rood, done = groen
+  mailLink?: string | null;        // directe link naar de mail (Superhuman)
+};
+
+// Eén lopende werkzaamheid (aparte kolom), linkt naar de Google Sheet/werkdoc.
+export type StatusTask = {
+  text: string;
+  sheetLink?: string | null;
+};
+
+export type ClientStatus = {
+  exchanges: StatusExchange[];
+  tasks: StatusTask[];
 };
 
 export type MetricSnapshot = {
@@ -70,19 +84,24 @@ export async function getEmails(slug: string, limit = 50): Promise<EmailSnapshot
   }));
 }
 
-export async function getStatus(slug: string): Promise<{ cards: StatusCard[]; updatedAt: string | null }> {
+const EMPTY_STATUS: ClientStatus = { exchanges: [], tasks: [] };
+
+export async function getStatus(slug: string): Promise<{ status: ClientStatus; updatedAt: string | null }> {
   await ensureSchema();
   const { rows } = await sql`SELECT content, updated_at FROM client_status WHERE client_slug = ${slug} LIMIT 1`;
-  if (!rows[0] || !rows[0].content) return { cards: [], updatedAt: null };
-  let cards: StatusCard[] = [];
+  if (!rows[0] || !rows[0].content) return { status: EMPTY_STATUS, updatedAt: null };
+  let status: ClientStatus = EMPTY_STATUS;
   try {
     const parsed = JSON.parse(rows[0].content as string);
-    if (Array.isArray(parsed)) cards = parsed;
+    status = {
+      exchanges: Array.isArray(parsed?.exchanges) ? parsed.exchanges : [],
+      tasks: Array.isArray(parsed?.tasks) ? parsed.tasks : [],
+    };
   } catch {
-    cards = [];
+    status = EMPTY_STATUS;
   }
   const t = rows[0].updated_at as string | null;
-  return { cards, updatedAt: t ? new Date(t).toISOString() : null };
+  return { status, updatedAt: t ? new Date(t).toISOString() : null };
 }
 
 export async function getMetrics(slug: string): Promise<MetricSnapshot[]> {
@@ -196,14 +215,18 @@ export async function ingestKeywords(slug: string, keywords: KeywordSnapshot[]):
   return n;
 }
 
-export async function ingestStatus(slug: string, cards: StatusCard[]): Promise<number> {
+export async function ingestStatus(slug: string, status: ClientStatus): Promise<number> {
   await ensureSchema();
-  const content = JSON.stringify(cards);
+  const clean: ClientStatus = {
+    exchanges: Array.isArray(status?.exchanges) ? status.exchanges : [],
+    tasks: Array.isArray(status?.tasks) ? status.tasks : [],
+  };
+  const content = JSON.stringify(clean);
   await sql`
     INSERT INTO client_status (client_slug, content, updated_at)
     VALUES (${slug}, ${content}, now())
     ON CONFLICT (client_slug) DO UPDATE SET content = EXCLUDED.content, updated_at = now()`;
-  return cards.length;
+  return clean.exchanges.length + clean.tasks.length;
 }
 
 export async function ingestPages(slug: string, pages: PageSnapshot[]): Promise<number> {

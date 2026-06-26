@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ClientConfig } from "../../../../lib/clients";
 import type {
-  EmailSnapshot, MetricSnapshot, KeywordSnapshot, PageSnapshot, StatusCard,
+  EmailSnapshot, MetricSnapshot, KeywordSnapshot, PageSnapshot, ClientStatus,
 } from "../../../../lib/snapshots";
 
 type Tab = "overzicht" | "communicatie" | "resultaten";
@@ -18,18 +18,19 @@ type CockpitData = {
   keywords: KeywordSnapshot[];
   pages: PageSnapshot[];
   lastIngest: string | null;
-  statusCards: StatusCard[];
+  status: ClientStatus;
   statusUpdatedAt: string | null;
 };
 
 export default function ClientCockpit({
-  client, emails, metrics, keywords, pages, lastIngest, statusCards, statusUpdatedAt,
+  client, emails, metrics, keywords, pages, lastIngest, status, statusUpdatedAt,
 }: { client: ClientConfig } & CockpitData) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("overzicht");
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [shQuery, setShQuery] = useState("");
 
   const [f, setF] = useState({
     status: client.cockpit.status || "",
@@ -54,9 +55,12 @@ export default function ClientCockpit({
     : "";
   const dashboardUrl = `/admin/preview/${client.slug}`;
   const clientMailQuery = (client.email || client.domain || "").trim();
-  const superhumanSearch = clientMailQuery
-    ? `https://mail.superhuman.com/${SUPERHUMAN_ACCOUNT}/search/${encodeURIComponent(clientMailQuery)}`
-    : "";
+
+  function openSuperhuman() {
+    if (!clientMailQuery) return;
+    const q = [clientMailQuery, shQuery.trim()].filter(Boolean).join(" ");
+    window.open(`https://mail.superhuman.com/${SUPERHUMAN_ACCOUNT}/search/${encodeURIComponent(q)}`, "_blank");
+  }
 
   function set(k: keyof typeof f, v: string) {
     setF((p) => ({ ...p, [k]: v }));
@@ -186,14 +190,19 @@ export default function ClientCockpit({
             <div className="cockpit-card">
               <div className="ck-section-head">
                 <span>Laatste e-mails</span>
-                {lastIngest && <span className="ck-updated">bijgewerkt {fmtDate(lastIngest)}</span>}
-              </div>
-              {superhumanSearch && (
-                <div className="quicklinks" style={{ marginBottom: 14 }}>
-                  <a className="ql" href={superhumanSearch} target="_blank" rel="noreferrer">Open alle mails in Superhuman</a>
-                  <span className="muted" style={{ fontSize: 12 }}>zoekt op {clientMailQuery}</span>
+                <div className="sh-search">
+                  <input
+                    value={shQuery}
+                    onChange={(e) => setShQuery(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") openSuperhuman(); }}
+                    placeholder="Zoek bij deze klant, bijv. reviewsterren..."
+                  />
+                  <button type="button" className="primary-btn small" onClick={openSuperhuman} disabled={!clientMailQuery}>
+                    Zoek in Superhuman
+                  </button>
                 </div>
-              )}
+              </div>
+              {lastIngest && <div className="ck-updated" style={{ marginBottom: 12 }}>bijgewerkt {fmtDate(lastIngest)}</div>}
               {emails.length === 0 ? (
                 <div className="phase2-note">
                   Nog geen mails ingeladen. Deze lijst vult zich met de laatste e-mails met deze klant
@@ -221,21 +230,59 @@ export default function ClientCockpit({
               )}
             </div>
 
-            {statusCards.length > 0 && (
+            {(status.exchanges.length > 0 || status.tasks.length > 0) && (
               <div className="cockpit-card">
                 <div className="ck-section-head">
                   <span>Actuele stand van zaken</span>
                   {statusUpdatedAt && <span className="ck-updated">bijgewerkt {fmtDate(statusUpdatedAt)}</span>}
                 </div>
-                <div className="status-scroll">
-                  {statusCards.map((c, i) => (
-                    <div className={"status-card sc-" + (c.color || "gray")} key={i}>
-                      <div className="status-card-title">{c.title}</div>
-                      <ul className="status-card-list">
-                        {c.items.map((it, j) => <li key={j}>{it}</li>)}
-                      </ul>
+                <div className="sov-layout">
+                  <div className="sov-thread">
+                    <div className="sov-legend">
+                      <span><span className="sov-dot client" /> Klant</span>
+                      <span><span className="sov-dot us" /> Wij</span>
+                      <span className="sov-legend-status"><span className="sov-pill open">open</span><span className="sov-pill done">afgehandeld</span></span>
                     </div>
-                  ))}
+                    {status.exchanges.map((ex, i) => {
+                      const isClient = ex.side === "client";
+                      const cls = "sov-row " + (isClient ? "left" : "right") + " " + (ex.status === "done" ? "done" : "open");
+                      const Inner = (
+                        <>
+                          <div className="sov-bubble-top">
+                            <span className="sov-who">{isClient ? (client.name || "Klant") : "Pingwin"}</span>
+                            {ex.date && <span className="sov-date">{fmtDate(ex.date)}</span>}
+                          </div>
+                          <div className="sov-text">{ex.text}</div>
+                          {ex.mailLink && <span className="sov-maillink">mail openen →</span>}
+                        </>
+                      );
+                      return (
+                        <div className={cls} key={i}>
+                          {ex.mailLink
+                            ? <a className="sov-bubble" href={ex.mailLink} target="_blank" rel="noreferrer">{Inner}</a>
+                            : <div className="sov-bubble">{Inner}</div>}
+                        </div>
+                      );
+                    })}
+                    {status.exchanges.length === 0 && <div className="muted">Nog geen correspondentie samengevat.</div>}
+                  </div>
+
+                  <div className="sov-tasks">
+                    <div className="sov-tasks-head">Lopende werkzaamheden</div>
+                    {status.tasks.length === 0 ? (
+                      <div className="muted" style={{ fontSize: 13 }}>Geen open werkzaamheden.</div>
+                    ) : (
+                      <ul className="sov-tasks-list">
+                        {status.tasks.map((t, i) => (
+                          <li key={i}>
+                            {t.sheetLink
+                              ? <a href={t.sheetLink} target="_blank" rel="noreferrer">{t.text}</a>
+                              : t.text}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -325,18 +372,6 @@ export default function ClientCockpit({
               </>
             )}
 
-            <div className="cockpit-card">
-              <Row label="Resultaten-document">
-                {editing
-                  ? <input value={f.resultsUrl} onChange={(e) => set("resultsUrl", e.target.value)} placeholder="https://... (rapportage)" />
-                  : (f.resultsUrl ? <a href={f.resultsUrl} target="_blank" rel="noreferrer" className="doc-link">{f.resultsUrl}</a> : <span className="muted">Nog geen link</span>)}
-              </Row>
-              <Row label="Voortgang / mijlpalen">
-                {editing
-                  ? <textarea value={f.notes} onChange={(e) => set("notes", e.target.value)} rows={5} placeholder="Korte log van resultaten en mijlpalen..." />
-                  : <span className="prewrap">{f.notes || <span className="muted">&mdash;</span>}</span>}
-              </Row>
-            </div>
           </>
         )}
       </div>

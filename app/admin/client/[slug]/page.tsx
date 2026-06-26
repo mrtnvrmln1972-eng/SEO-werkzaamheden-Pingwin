@@ -31,7 +31,7 @@ export default async function ClientCockpitPage({ params }: { params: { slug: st
       keywords={keywords}
       pages={pages}
       lastIngest={lastIngest}
-      statusCards={status.cards}
+      status={status.status}
       statusUpdatedAt={status.updatedAt}
     />
   );

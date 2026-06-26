@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   ingestEmails, ingestMetrics, ingestKeywords, ingestPages, ingestStatus, setClientMapping,
-  type EmailSnapshot, type MetricSnapshot, type KeywordSnapshot, type PageSnapshot, type StatusCard,
+  type EmailSnapshot, type MetricSnapshot, type KeywordSnapshot, type PageSnapshot, type ClientStatus,
 } from "../../../../lib/snapshots";
 
 export const runtime = "nodejs";
@@ -42,7 +42,9 @@ export async function POST(req: NextRequest) {
     if (Array.isArray(body.metrics)) result.metrics = await ingestMetrics(slug, body.metrics as MetricSnapshot[]);
     if (Array.isArray(body.keywords)) result.keywords = await ingestKeywords(slug, body.keywords as KeywordSnapshot[]);
     if (Array.isArray(body.pages)) result.pages = await ingestPages(slug, body.pages as PageSnapshot[]);
-    if (Array.isArray(body.status)) result.status = await ingestStatus(slug, body.status as StatusCard[]);
+    if (body.status && typeof body.status === "object" && !Array.isArray(body.status)) {
+      result.status = await ingestStatus(slug, body.status as ClientStatus);
+    }
   } catch (err) {
     return NextResponse.json({ ok: false, error: "Inladen mislukt: " + (err as Error).message }, { status: 500 });
   }
