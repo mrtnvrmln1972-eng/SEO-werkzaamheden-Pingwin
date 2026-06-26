@@ -407,14 +407,15 @@ tbody td:last-child { text-align: center; }
 .sov-row.left { justify-content: flex-start; }
 .sov-row.right { justify-content: flex-end; }
 .sov-bubble {
-  display: block; max-width: 78%; text-decoration: none; color: inherit;
+  display: block; max-width: 78%; color: inherit;
   border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; background: var(--white);
-  border-left: 4px solid var(--gray); transition: box-shadow 0.12s;
 }
-a.sov-bubble:hover { box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
-.sov-row.right .sov-bubble { background: var(--orange-light); }
-.sov-row.open .sov-bubble { border-left-color: var(--red); }
-.sov-row.done .sov-bubble { border-left-color: #2E7D32; }
+/* Achtergrond = status: groen = afgerond, rood = open */
+.sov-row.done .sov-bubble { background: #E7F4E8; border-color: #BFE0C2; }
+.sov-row.open .sov-bubble { background: var(--red-light); border-color: #F5C6C6; }
+/* Zijstreepje = wie + kant: klant blauw links, wij oranje rechts */
+.sov-row.left .sov-bubble { border-left: 5px solid #1A56B0; }
+.sov-row.right .sov-bubble { border-right: 5px solid var(--orange); }
 .sov-bubble-top { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
 .sov-who { font-weight: 700; font-size: 12px; color: var(--dark); }
 .sov-date { font-size: 11px; color: var(--gray); }
