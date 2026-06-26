@@ -4,7 +4,7 @@ import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { getClientBySlug, listClients, type ClientConfig } from "../../../../lib/clients";
 import { getEmails, getMetrics, getKeywords, getPages, getLastIngest, getStatus } from "../../../../lib/snapshots";
 import { msStatus, msSearchClientEmails } from "../../../../lib/ms-graph";
-import { googleStatus, getGscForClient } from "../../../../lib/google";
+import { googleStatus, getGscForClient, getGa4ForClient } from "../../../../lib/google";
 import { sheetCsvUrl, parseCSV, structureData, MAAND_VOLGORDE } from "../../../../lib/sheet";
 import { chatConfigured } from "../../../../lib/chat";
 import ClientCockpit from "./ClientCockpit";
@@ -55,7 +55,9 @@ export default async function ClientCockpitPage({ params }: { params: { slug: st
 
   // Search Console live ophalen als de Google-koppeling actief is.
   const google = await googleStatus();
-  const gsc = google.connected ? await getGscForClient(client.domain || "") : null;
+  const [gsc, ga4] = google.connected
+    ? await Promise.all([getGscForClient(client.domain || ""), getGa4ForClient(params.slug, client.domain || "")])
+    : [null, null];
 
   // Live mails uit Microsoft 365 als de koppeling actief is; anders de opgeslagen mails.
   let emails = storedEmails;
@@ -85,6 +87,7 @@ export default async function ClientCockpitPage({ params }: { params: { slug: st
       sheetTasks={sheetTasks}
       allClients={allClients.map((c) => ({ slug: c.slug, name: c.name }))}
       gsc={gsc}
+      ga4={ga4}
       googleConfigured={google.configured}
       googleConnected={google.connected}
       chatConfigured={chatConfigured()}

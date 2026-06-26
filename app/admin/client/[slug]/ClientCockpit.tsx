@@ -6,7 +6,7 @@ import type { ClientConfig } from "../../../../lib/clients";
 import type {
   EmailSnapshot, MetricSnapshot, KeywordSnapshot, PageSnapshot, ClientStatus,
 } from "../../../../lib/snapshots";
-import type { GscData } from "../../../../lib/google";
+import type { GscData, Ga4Data } from "../../../../lib/google";
 import ChatPanel from "./ChatPanel";
 
 type Tab = "overzicht" | "resultaten";
@@ -29,6 +29,7 @@ type CockpitData = {
   sheetTasks: { text: string; link: string }[];
   allClients: { slug: string; name: string }[];
   gsc: GscData | null;
+  ga4: Ga4Data | null;
   googleConfigured: boolean;
   googleConnected: boolean;
   chatConfigured: boolean;
@@ -37,7 +38,7 @@ type CockpitData = {
 export default function ClientCockpit({
   client, emails, metrics, keywords, pages, lastIngest, status, statusUpdatedAt,
   mailLive, msConfigured, msConnected, myEmail, sheetTasks, allClients,
-  gsc, googleConfigured, googleConnected, chatConfigured,
+  gsc, ga4, googleConfigured, googleConnected, chatConfigured,
 }: { client: ClientConfig } & CockpitData) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("overzicht");
@@ -552,6 +553,26 @@ export default function ClientCockpit({
               <div className="cockpit-card"><div className="phase2-note">Google is gekoppeld, maar er is nog geen Search Console-property gevonden voor {client.domain || "deze klant"}.</div></div>
             )}
 
+            {ga4 && ga4.metrics.length > 0 && (
+              <div className="cockpit-card">
+                <div className="ck-section-head">
+                  <span>Google Analytics</span>
+                  <span className="ck-updated">laatste 28 dagen</span>
+                </div>
+                <div className="kpi-grid">
+                  {ga4.metrics.map((m) => (
+                    <div className="kpi-card" key={m.metric}>
+                      <div className="kpi-value">{m.value.toLocaleString("nl-NL")}</div>
+                      <div className="kpi-label">{metricLabel(m.metric)}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {ga4 && ga4.connected && ga4.propertyId === null && (
+              <div className="cockpit-card"><div className="phase2-note">Google is gekoppeld, maar er is nog geen GA4-property gevonden voor {client.domain || "deze klant"} (controleer of dit account toegang heeft tot de Analytics-property).</div></div>
+            )}
+
             {metrics.length === 0 && keywords.length === 0 && pages.length === 0 && !(gsc && gsc.keywords.length > 0) ? (
               <div className="cockpit-card">
                 <div className="phase2-note">
@@ -671,6 +692,7 @@ const METRIC_LABELS: Record<string, string> = {
   ctr: "CTR",
   position: "Gem. positie",
   users: "Bezoekers",
+  totalUsers: "Bezoekers",
   sessions: "Sessies",
   conversions: "Conversies",
   org_traffic: "Organisch verkeer",

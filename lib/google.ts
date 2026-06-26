@@ -175,3 +175,65 @@ export async function getGscForClient(domain: string): Promise<GscData | null> {
     pages: pg.map((r) => ({ url: r.keys?.[0] || "", clicks: Math.round(r.clicks), impressions: Math.round(r.impressions) })),
   };
 }
+
+// ── Google Analytics (GA4) ──────────────────────────────────
+
+// Zoekt de GA4-property waarvan een datastream-URL bij het domein past.
+async function ga4DiscoverProperty(token: string, domain: string): Promise<string | null> {
+  const d = domain.replace(/^www\./, "").toLowerCase();
+  const res = await fetch("https://analyticsadmin.googleapis.com/v1beta/accountSummaries?pageSize=200", { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) return null;
+  const j = await res.json();
+  const summaries: { propertySummaries?: { property?: string }[] }[] = j.accountSummaries || [];
+  const propertyNames: string[] = [];
+  for (const acc of summaries) for (const p of acc.propertySummaries || []) if (p.property) propertyNames.push(p.property);
+
+  for (const prop of propertyNames.slice(0, 40)) {
+    const sres = await fetch(`https://analyticsadmin.googleapis.com/v1beta/${prop}/dataStreams`, { headers: { Authorization: `Bearer ${token}` } });
+    if (!sres.ok) continue;
+    const sj = await sres.json();
+    const streams: { webStreamData?: { defaultUri?: string } }[] = sj.dataStreams || [];
+    for (const s of streams) {
+      const uri = (s.webStreamData?.defaultUri || "").toLowerCase();
+      if (uri && uri.includes(d)) return prop.replace("properties/", "");
+    }
+  }
+  return null;
+}
+
+async function ga4RunReport(token: string, propertyId: string): Promise<{ metric: string; value: number }[] | null> {
+  async function run(metricNames: string[]) {
+    return fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ dateRanges: [{ startDate: "28daysAgo", endDate: "yesterday" }], metrics: metricNames.map((name) => ({ name })) }),
+    });
+  }
+  let names = ["totalUsers", "sessions", "conversions"];
+  let res = await run(names);
+  if (!res.ok) { names = ["totalUsers", "sessions"]; res = await run(names); }
+  if (!res.ok) return null;
+  const j = await res.json();
+  const values: string[] = j.rows?.[0]?.metricValues?.map((m: { value?: string }) => m.value || "0") || names.map(() => "0");
+  return names.map((name, i) => ({ metric: name, value: Math.round(Number(values[i] || 0)) }));
+}
+
+export type Ga4Data = { connected: boolean; propertyId: string | null; metrics: { metric: string; value: number }[] };
+
+export async function getGa4ForClient(slug: string, domain: string): Promise<Ga4Data | null> {
+  const token = await googleAccessToken();
+  if (!token) return null;
+  await ensureSchema();
+
+  // Property-id uit cache, anders opzoeken en bewaren.
+  const { rows } = await sql`SELECT ga4_property_id FROM clients WHERE slug = ${slug} LIMIT 1`;
+  let propertyId = (rows[0]?.ga4_property_id as string) || "";
+  if (!propertyId && domain) {
+    const found = await ga4DiscoverProperty(token, domain);
+    if (found) { propertyId = found; await sql`UPDATE clients SET ga4_property_id = ${found} WHERE slug = ${slug}`; }
+  }
+  if (!propertyId) return { connected: true, propertyId: null, metrics: [] };
+
+  const metrics = await ga4RunReport(token, propertyId);
+  return { connected: true, propertyId, metrics: metrics || [] };
+}

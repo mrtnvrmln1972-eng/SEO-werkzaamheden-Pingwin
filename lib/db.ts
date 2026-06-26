@@ -43,6 +43,7 @@ async function init(): Promise<void> {
   // Koppelvelden voor de data-brug: de website van de klant en het Ahrefs-project.
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS domain TEXT`;
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS ahrefs_project_id TEXT`;
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS ga4_property_id TEXT`;
 
   // ── Data-brug: ingeladen snapshots per klant (uit Outlook / GSC / GA4 / Ahrefs) ──
   // Gevuld via POST /api/admin/ingest. Het dashboard leest hieruit, ook als er
