@@ -23,11 +23,13 @@ type CockpitData = {
   mailLive: boolean;
   msConfigured: boolean;
   msConnected: boolean;
+  sheetTasks: { text: string; link: string }[];
+  allClients: { slug: string; name: string }[];
 };
 
 export default function ClientCockpit({
   client, emails, metrics, keywords, pages, lastIngest, status, statusUpdatedAt,
-  mailLive, msConfigured, msConnected,
+  mailLive, msConfigured, msConnected, sheetTasks, allClients,
 }: { client: ClientConfig } & CockpitData) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("overzicht");
@@ -156,10 +158,21 @@ export default function ClientCockpit({
             <img src="https://pingwin.nl/wp-content/uploads/2016/11/pingwin_logo.png" alt="Pingwin" />
           </a>
           <div className="header-divider" />
-          <div>
-            <div className="header-title">{client.name}</div>
-            <div className="header-client">Klant-cockpit</div>
-          </div>
+          <select
+            className="client-switch"
+            value={client.slug}
+            onChange={(e) => router.push(`/admin/client/${e.target.value}`)}
+            title="Wissel van klant"
+          >
+            {allClients.map((c) => (
+              <option key={c.slug} value={c.slug}>{c.name}</option>
+            ))}
+          </select>
+          <nav className="header-tabs">
+            <button className={"tab" + (tab === "overzicht" ? " active" : "")} onClick={() => setTab("overzicht")}>Overzicht</button>
+            <button className={"tab" + (tab === "communicatie" ? " active" : "")} onClick={() => setTab("communicatie")}>Communicatie</button>
+            <button className={"tab" + (tab === "resultaten" ? " active" : "")} onClick={() => setTab("resultaten")}>Ontwikkeling &amp; resultaten</button>
+          </nav>
         </div>
         <div className="header-right">
           <a className="logout-btn" href="/admin">&larr; Alle klanten</a>
@@ -174,12 +187,6 @@ export default function ClientCockpit({
       </div>
 
       <div className="container">
-        <div className="tabs">
-          <button className={"tab" + (tab === "overzicht" ? " active" : "")} onClick={() => setTab("overzicht")}>Overzicht</button>
-          <button className={"tab" + (tab === "communicatie" ? " active" : "")} onClick={() => setTab("communicatie")}>Communicatie</button>
-          <button className={"tab" + (tab === "resultaten" ? " active" : "")} onClick={() => setTab("resultaten")}>Ontwikkeling &amp; resultaten</button>
-        </div>
-
         {saved && <div className="saved-msg">Opgeslagen.</div>}
         {saveError && <div className="login-error">{saveError}</div>}
 
@@ -246,7 +253,7 @@ export default function ClientCockpit({
 
         {tab === "communicatie" && (
           <>
-            {(status.exchanges.length > 0 || status.tasks.length > 0) && (
+            {(status.exchanges.length > 0 || sheetTasks.length > 0 || status.mailActions.length > 0) && (
               <div className="cockpit-card">
                 <div className="ck-section-head">
                   <span>Actuele stand van zaken</span>
@@ -284,21 +291,37 @@ export default function ClientCockpit({
                     {status.exchanges.length === 0 && <div className="muted">Nog geen correspondentie samengevat.</div>}
                   </div>
 
-                  <div className="sov-tasks">
-                    <div className="sov-tasks-head">Lopende werkzaamheden</div>
-                    {status.tasks.length === 0 ? (
-                      <div className="muted" style={{ fontSize: 13 }}>Geen open werkzaamheden.</div>
-                    ) : (
-                      <ul className="sov-tasks-list">
-                        {status.tasks.map((t, i) => (
-                          <li key={i}>
-                            {t.sheetLink
-                              ? <a href={t.sheetLink} target="_blank" rel="noreferrer">{t.text}</a>
-                              : t.text}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
+                  <div className="sov-side">
+                    <div className="sov-tasks">
+                      <div className="sov-tasks-head">Lopende werkzaamheden <span className="sov-sub">deze maand</span></div>
+                      {sheetTasks.length === 0 ? (
+                        <div className="muted" style={{ fontSize: 13 }}>Geen open taken deze maand in de Sheet.</div>
+                      ) : (
+                        <ul className="sov-tasks-list">
+                          {sheetTasks.map((t, i) => (
+                            <li key={i}><a href={t.link} target="_blank" rel="noreferrer">{t.text}</a></li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+
+                    <div className="sov-tasks">
+                      <div className="sov-tasks-head">Uit e-mails</div>
+                      {status.mailActions.length === 0 ? (
+                        <div className="muted" style={{ fontSize: 13 }}>Nog geen acties uit mails.</div>
+                      ) : (
+                        <ul className="sov-tasks-list">
+                          {status.mailActions.map((a, i) => {
+                            const aLink = (a.subject && emailBySubject.get(normSubject(a.subject))) || a.mailLink || null;
+                            return (
+                              <li key={i}>
+                                {aLink ? <a href={aLink} target="_blank" rel="noreferrer">{a.text}</a> : a.text}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

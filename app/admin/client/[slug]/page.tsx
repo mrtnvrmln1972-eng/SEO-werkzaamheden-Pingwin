@@ -1,12 +1,35 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
-import { getClientBySlug } from "../../../../lib/clients";
+import { getClientBySlug, listClients, type ClientConfig } from "../../../../lib/clients";
 import { getEmails, getMetrics, getKeywords, getPages, getLastIngest, getStatus } from "../../../../lib/snapshots";
 import { msStatus, msSearchClientEmails } from "../../../../lib/ms-graph";
+import { sheetCsvUrl, parseCSV, structureData, MAAND_VOLGORDE } from "../../../../lib/sheet";
 import ClientCockpit from "./ClientCockpit";
 
 export const dynamic = "force-dynamic";
+
+export type SheetTask = { text: string; link: string };
+
+// Lopende werkzaamheden van de HUIDIGE maand uit de klant-Google-Sheet,
+// alleen wat nog niet op 'klaar' staat. Faalt stil naar lege lijst.
+async function loadCurrentMonthTasks(client: ClientConfig): Promise<SheetTask[]> {
+  if (!client.sheetId) return [];
+  const sheetUrl = `https://docs.google.com/spreadsheets/d/${client.sheetId}/edit#gid=${client.gid}`;
+  try {
+    const res = await fetch(sheetCsvUrl(client.sheetId, client.gid), { cache: "no-store" });
+    if (!res.ok) return [];
+    const data = structureData(parseCSV(await res.text()), client.budget);
+    if (!data) return [];
+    const month = MAAND_VOLGORDE[new Date().getMonth()];
+    const done = /klaar|afgerond|gereed|done|afgehandeld|voltooid/i;
+    return data.tasks
+      .filter((t) => t.maand === month && !done.test(t.status))
+      .map((t) => ({ text: t.taak, link: t.link || sheetUrl }));
+  } catch {
+    return [];
+  }
+}
 
 export default async function ClientCockpitPage({ params }: { params: { slug: string } }) {
   const ok = verifyAdminSession(cookies().get(ADMIN_COOKIE)?.value);
@@ -15,7 +38,7 @@ export default async function ClientCockpitPage({ params }: { params: { slug: st
   const client = await getClientBySlug(params.slug);
   if (!client) redirect("/admin");
 
-  const [storedEmails, metrics, keywords, pages, lastIngest, status, ms] = await Promise.all([
+  const [storedEmails, metrics, keywords, pages, lastIngest, status, ms, sheetTasks, allClients] = await Promise.all([
     getEmails(params.slug),
     getMetrics(params.slug),
     getKeywords(params.slug),
@@ -23,6 +46,8 @@ export default async function ClientCockpitPage({ params }: { params: { slug: st
     getLastIngest(params.slug),
     getStatus(params.slug),
     msStatus(),
+    loadCurrentMonthTasks(client),
+    listClients(),
   ]);
 
   // Live mails uit Microsoft 365 als de koppeling actief is; anders de opgeslagen mails.
@@ -49,6 +74,8 @@ export default async function ClientCockpitPage({ params }: { params: { slug: st
       mailLive={mailLive}
       msConfigured={ms.configured}
       msConnected={ms.connected}
+      sheetTasks={sheetTasks}
+      allClients={allClients.map((c) => ({ slug: c.slug, name: c.name }))}
     />
   );
 }

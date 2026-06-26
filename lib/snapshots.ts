@@ -38,9 +38,17 @@ export type StatusTask = {
   sheetLink?: string | null;
 };
 
+// Mogelijke actie/taak die uit de mailwisseling op te maken is ("Uit e-mails").
+export type StatusAction = {
+  text: string;
+  subject?: string | null;   // onderwerp van de bron-mail (voor exacte link)
+  mailLink?: string | null;  // fallback-link
+};
+
 export type ClientStatus = {
   exchanges: StatusExchange[];
   tasks: StatusTask[];
+  mailActions: StatusAction[];
 };
 
 export type MetricSnapshot = {
@@ -92,7 +100,7 @@ export async function deleteEmails(slug: string): Promise<void> {
   await sql`DELETE FROM client_emails WHERE client_slug = ${slug}`;
 }
 
-const EMPTY_STATUS: ClientStatus = { exchanges: [], tasks: [] };
+const EMPTY_STATUS: ClientStatus = { exchanges: [], tasks: [], mailActions: [] };
 
 export async function getStatus(slug: string): Promise<{ status: ClientStatus; updatedAt: string | null }> {
   await ensureSchema();
@@ -104,6 +112,7 @@ export async function getStatus(slug: string): Promise<{ status: ClientStatus; u
     status = {
       exchanges: Array.isArray(parsed?.exchanges) ? parsed.exchanges : [],
       tasks: Array.isArray(parsed?.tasks) ? parsed.tasks : [],
+      mailActions: Array.isArray(parsed?.mailActions) ? parsed.mailActions : [],
     };
   } catch {
     status = EMPTY_STATUS;
@@ -228,6 +237,7 @@ export async function ingestStatus(slug: string, status: ClientStatus): Promise<
   const clean: ClientStatus = {
     exchanges: Array.isArray(status?.exchanges) ? status.exchanges : [],
     tasks: Array.isArray(status?.tasks) ? status.tasks : [],
+    mailActions: Array.isArray(status?.mailActions) ? status.mailActions : [],
   };
   const content = JSON.stringify(clean);
   await sql`
