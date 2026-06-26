@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { ClientConfig } from "../../lib/clients";
 
 type Created = { name: string; loginId: string; password: string; loginUrl: string };
@@ -17,6 +18,7 @@ const EMPTY = {
 };
 
 export default function AdminClient({ initialClients }: { initialClients: ClientConfig[] }) {
+  const router = useRouter();
   const [clients, setClients] = useState<ClientConfig[]>(initialClients);
   const [form, setForm] = useState({ ...EMPTY });
   const [error, setError] = useState("");
@@ -68,6 +70,7 @@ export default function AdminClient({ initialClients }: { initialClients: Client
         });
         setForm({ ...EMPTY });
         await refresh();
+        window.scrollTo({ top: 0, behavior: "smooth" });
       } else {
         setError(data.error || "Aanmaken mislukt.");
       }
@@ -82,10 +85,15 @@ export default function AdminClient({ initialClients }: { initialClients: Client
     window.location.href = "/admin/login";
   }
 
-  async function remove(c: ClientConfig) {
+  async function remove(e: React.MouseEvent, c: ClientConfig) {
+    e.stopPropagation();
     if (!window.confirm(`Klant "${c.name}" verwijderen? Hun login werkt daarna niet meer.`)) return;
     await fetch(`/api/admin/clients?slug=${encodeURIComponent(c.slug)}`, { method: "DELETE" });
     await refresh();
+  }
+
+  function openDashboard(c: ClientConfig) {
+    router.push(`/admin/preview/${c.slug}`);
   }
 
   function copy(text: string) {
@@ -113,7 +121,8 @@ export default function AdminClient({ initialClients }: { initialClients: Client
         <div className="admin-note">
           Eén vaste link voor alle klanten:{" "}
           <strong>{origin ? `${origin}/login` : "..."}</strong>. Elke klant logt daar in met
-          de eigen inlognaam en het wachtwoord dat je hier aanmaakt.
+          de eigen inlognaam en het wachtwoord dat je hier aanmaakt. Klik hieronder op een klant
+          om diens dashboard te bekijken.
         </div>
 
         {created && (
@@ -132,7 +141,38 @@ export default function AdminClient({ initialClients }: { initialClients: Client
           </div>
         )}
 
-        <div className="section-title">Nieuwe klant aanmaken</div>
+        <div className="section-title">Klanten ({clients.length})</div>
+        <div className="task-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Bedrijf</th>
+                <th>Inlognaam</th>
+                <th>E-mail</th>
+                <th>Maandfee</th>
+                <th>Uurtarief</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {clients.length === 0 && (
+                <tr><td colSpan={6} style={{ textAlign: "center", padding: 40, color: "var(--gray)" }}>Nog geen klanten.</td></tr>
+              )}
+              {clients.map((c) => (
+                <tr key={c.slug} className="clickable-row" onClick={() => openDashboard(c)} title="Open dashboard van deze klant">
+                  <td><strong>{c.name}</strong> <span className="row-arrow">&rarr;</span></td>
+                  <td>{c.loginId}</td>
+                  <td>{c.email || <span className="muted">&mdash;</span>}</td>
+                  <td>&euro;{c.budget.maandbudget.toFixed(0)}</td>
+                  <td>&euro;{c.budget.uurtarief.toFixed(0)}</td>
+                  <td><button className="mini-btn" onClick={(e) => remove(e, c)}>Verwijder</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="section-title" style={{ marginTop: 40 }}>Nieuwe klant aanmaken</div>
         <form className="admin-form" onSubmit={onSubmit}>
           <div className="form-grid">
             <div className="field">
@@ -175,37 +215,6 @@ export default function AdminClient({ initialClients }: { initialClients: Client
             {busy ? "Bezig..." : "Klant aanmaken + wachtwoord genereren"}
           </button>
         </form>
-
-        <div className="section-title">Klanten ({clients.length})</div>
-        <div className="task-table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Bedrijf</th>
-                <th>Inlognaam</th>
-                <th>E-mail</th>
-                <th>Maandfee</th>
-                <th>Uurtarief</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {clients.length === 0 && (
-                <tr><td colSpan={6} style={{ textAlign: "center", padding: 40, color: "var(--gray)" }}>Nog geen klanten.</td></tr>
-              )}
-              {clients.map((c) => (
-                <tr key={c.slug}>
-                  <td><strong>{c.name}</strong></td>
-                  <td>{c.loginId}</td>
-                  <td>{c.email || <span className="muted">&mdash;</span>}</td>
-                  <td>&euro;{c.budget.maandbudget.toFixed(0)}</td>
-                  <td>&euro;{c.budget.uurtarief.toFixed(0)}</td>
-                  <td><button className="mini-btn" onClick={() => remove(c)}>Verwijder</button></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
       </div>
 
       <div className="footer">

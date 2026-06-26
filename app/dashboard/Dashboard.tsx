@@ -15,6 +15,7 @@ type Props = {
   sheetId: string;
   gid: string;
   budget: ClientBudget;
+  adminPreview?: boolean;
 };
 
 function formatTime(minutes: number): string {
@@ -26,7 +27,7 @@ function formatTime(minutes: number): string {
   return `${minutes}m`;
 }
 
-export default function Dashboard({ name, sheetId, gid, budget }: Props) {
+export default function Dashboard({ name, sheetId, gid, budget, adminPreview }: Props) {
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -138,7 +139,11 @@ export default function Dashboard({ name, sheetId, gid, budget }: Props) {
           <span className="header-updated">
             {updatedAt ? `Laatste update: ${updatedAt}` : "Laden..."}
           </span>
-          <button className="logout-btn" onClick={logout}>Uitloggen</button>
+          {adminPreview ? (
+            <a className="logout-btn" href="/admin">&larr; Terug naar beheer</a>
+          ) : (
+            <button className="logout-btn" onClick={logout}>Uitloggen</button>
+          )}
         </div>
       </div>
 

@@ -244,6 +244,9 @@ tbody td:last-child { text-align: center; }
 }
 .mini-btn:hover { border-color: var(--orange); color: var(--orange); }
 .created-hint { font-size: 13px !important; color: var(--gray) !important; margin-top: 8px !important; margin-bottom: 0 !important; }
+.clickable-row { cursor: pointer; }
+.row-arrow { color: var(--orange); font-weight: 700; opacity: 0; transition: opacity 0.15s; }
+.clickable-row:hover .row-arrow { opacity: 1; }
 
 /* Responsive */
 @media (max-width: 768px) {
