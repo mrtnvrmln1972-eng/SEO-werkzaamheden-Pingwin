@@ -300,8 +300,6 @@ export default function ClientCockpit({
               )}
             </div>
 
-            <ChatPanel slug={client.slug} configured={chatConfigured} initialMessages={chatHistory} />
-
             {(status.exchanges.length > 0 || monthTasks.thisMonth.length > 0 || monthTasks.nextMonth.length > 0 || status.mailActions.length > 0) && (
               <div className="cockpit-card">
                 <div className="ck-section-head">
@@ -701,6 +699,8 @@ export default function ClientCockpit({
       </div>
 
       <div className="footer">Pingwin Online Marketing &middot; Beheer</div>
+
+      <ChatPanel slug={client.slug} configured={chatConfigured} initialMessages={chatHistory} />
     </>
   );
 }

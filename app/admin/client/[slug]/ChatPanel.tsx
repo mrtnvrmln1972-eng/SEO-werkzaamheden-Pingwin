@@ -90,54 +90,63 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
   }
 
   return (
-    <div className="cockpit-card">
-      <div className="ck-section-head chat-head" onClick={() => setCollapsed((v) => !v)}>
-        <span>Vraag het de assistent{messages.length > 0 ? ` (${messages.length})` : ""}</span>
-        <span className="email-caret">{collapsed ? "▸ openen" : "▾ sluiten"}</span>
-      </div>
-
-      {collapsed ? null : !configured ? (
-        <div className="phase2-note">
-          De projectchat staat klaar, maar mist nog de AI-sleutel (<code>ANTHROPIC_API_KEY</code> in Vercel).
-          Zodra die er staat, kun je hier vragen stellen over deze klant (mail, stand van zaken, taken, Search Console, Ahrefs).
-        </div>
+    <div className="chat-fab-wrap">
+      {collapsed ? (
+        <button type="button" className="chat-fab" onClick={() => setCollapsed(false)}>
+          <span className="chat-fab-dot" /> SEO-assistent{messages.length > 0 ? ` (${messages.length})` : ""}
+        </button>
       ) : (
-        <>
-          {messages.length === 0 && (
-            <div className="chat-suggest">
-              {SUGGESTIONS.map((s) => (
-                <button key={s} type="button" className="ql ql-btn" onClick={() => send(s)}>{s}</button>
-              ))}
-            </div>
-          )}
-
-          <div className="chat-log">
-            {messages.map((m, i) => (
-              <div key={i} className={"chat-msg " + m.role}>
-                {m.role === "assistant"
-                  ? <div className="chat-bubble chat-md" dangerouslySetInnerHTML={{ __html: mdToHtml(m.content) }} />
-                  : <div className="chat-bubble">{m.content}</div>}
+        <div className="chat-float">
+          <div className="chat-float-head">
+            <span>SEO-assistent</span>
+            <button type="button" className="chat-float-close" onClick={() => setCollapsed(true)} aria-label="Sluiten">&times;</button>
+          </div>
+          <div className="chat-float-body">
+            {!configured ? (
+              <div className="phase2-note">
+                De assistent staat klaar, maar mist nog de AI-sleutel (<code>ANTHROPIC_API_KEY</code> in Vercel).
+                Zodra die er staat, kun je hier vragen stellen over deze klant (mail, stand van zaken, taken, Search Console, Ahrefs).
               </div>
-            ))}
-            {busy && <div className="chat-msg assistant"><div className="chat-bubble muted">Aan het denken…</div></div>}
-            <div ref={endRef} />
-          </div>
+            ) : (
+              <>
+                {messages.length === 0 && (
+                  <div className="chat-suggest">
+                    {SUGGESTIONS.map((s) => (
+                      <button key={s} type="button" className="ql ql-btn" onClick={() => send(s)}>{s}</button>
+                    ))}
+                  </div>
+                )}
 
-          {error && <div className="login-error" style={{ marginTop: 8 }}>{error}</div>}
+                <div className="chat-log">
+                  {messages.map((m, i) => (
+                    <div key={i} className={"chat-msg " + m.role}>
+                      {m.role === "assistant"
+                        ? <div className="chat-bubble chat-md" dangerouslySetInnerHTML={{ __html: mdToHtml(m.content) }} />
+                        : <div className="chat-bubble">{m.content}</div>}
+                    </div>
+                  ))}
+                  {busy && <div className="chat-msg assistant"><div className="chat-bubble muted">Aan het denken…</div></div>}
+                  <div ref={endRef} />
+                </div>
 
-          <div className="chat-input">
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") send(input); }}
-              placeholder="Stel een vraag over dit project…"
-              disabled={busy}
-            />
-            <button type="button" className="primary-btn small" onClick={() => send(input)} disabled={busy || !input.trim()}>
-              Vraag
-            </button>
+                {error && <div className="login-error" style={{ marginTop: 8 }}>{error}</div>}
+
+                <div className="chat-input">
+                  <input
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") send(input); }}
+                    placeholder="Stel een vraag over dit project…"
+                    disabled={busy}
+                  />
+                  <button type="button" className="primary-btn small" onClick={() => send(input)} disabled={busy || !input.trim()}>
+                    Vraag
+                  </button>
+                </div>
+              </>
+            )}
           </div>
-        </>
+        </div>
       )}
     </div>
   );

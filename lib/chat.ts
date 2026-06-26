@@ -58,6 +58,7 @@ async function buildContext(client: ClientConfig): Promise<string> {
       if (live) emails = live;
     }
   }
+  emails = emails.filter((e) => !/@ahrefs\.com$/i.test((e.fromAddress || "").trim()));
   if (emails.length > 0) {
     parts.push("\nRECENTE E-MAILS (nieuwste eerst, met afzender/ontvangers en inhoud):");
     for (const e of emails.slice(0, 10)) {

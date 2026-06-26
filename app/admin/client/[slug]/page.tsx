@@ -88,6 +88,8 @@ export default async function ClientCockpitPage({ params }: { params: { slug: st
       if (live) { emails = live; mailLive = true; }
     }
   }
+  // Ahrefs-rapportmails (automatisch) uit de mailstroom houden.
+  emails = emails.filter((e) => !/@ahrefs\.com$/i.test((e.fromAddress || "").trim()));
 
   return (
     <ClientCockpit
