@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
-import { listClients, createClient, deleteClient, parseSheetUrl } from "../../../../lib/clients";
+import { listClients, createClient, deleteClient, updateClientCockpit, parseSheetUrl } from "../../../../lib/clients";
 
 export const runtime = "nodejs";
 
@@ -75,6 +75,31 @@ export async function POST(req: NextRequest) {
     }
     return NextResponse.json({ ok: false, error: "Aanmaken mislukt: " + msg }, { status: 500 });
   }
+}
+
+export async function PATCH(req: NextRequest) {
+  if (!requireAdmin(req)) {
+    return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
+  }
+  let body: Record<string, unknown>;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ ok: false, error: "Ongeldige aanvraag." }, { status: 400 });
+  }
+  const slug = String(body.slug || "").trim();
+  if (!slug) {
+    return NextResponse.json({ ok: false, error: "Geen klant opgegeven." }, { status: 400 });
+  }
+  const ok = await updateClientCockpit(slug, {
+    emailDomain: String(body.emailDomain || "").trim() || null,
+    workDocUrl: String(body.workDocUrl || "").trim() || null,
+    resultsUrl: String(body.resultsUrl || "").trim() || null,
+    status: String(body.status || "").trim() || null,
+    lastContact: String(body.lastContact || "").trim() || null,
+    notes: String(body.notes || "").trim() || null,
+  });
+  return NextResponse.json({ ok });
 }
 
 export async function DELETE(req: NextRequest) {

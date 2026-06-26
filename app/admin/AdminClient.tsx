@@ -93,7 +93,7 @@ export default function AdminClient({ initialClients }: { initialClients: Client
   }
 
   function openDashboard(c: ClientConfig) {
-    router.push(`/admin/preview/${c.slug}`);
+    router.push(`/admin/client/${c.slug}`);
   }
 
   function copy(text: string) {
@@ -122,7 +122,7 @@ export default function AdminClient({ initialClients }: { initialClients: Client
           Eén vaste link voor alle klanten:{" "}
           <strong>{origin ? `${origin}/login` : "..."}</strong>. Elke klant logt daar in met
           de eigen inlognaam en het wachtwoord dat je hier aanmaakt. Klik hieronder op een klant
-          om diens dashboard te bekijken.
+          om de klant-cockpit te openen (documenten, communicatie, resultaten en dashboard).
         </div>
 
         {created && (
@@ -159,7 +159,7 @@ export default function AdminClient({ initialClients }: { initialClients: Client
                 <tr><td colSpan={6} style={{ textAlign: "center", padding: 40, color: "var(--gray)" }}>Nog geen klanten.</td></tr>
               )}
               {clients.map((c) => (
-                <tr key={c.slug} className="clickable-row" onClick={() => openDashboard(c)} title="Open dashboard van deze klant">
+                <tr key={c.slug} className="clickable-row" onClick={() => openDashboard(c)} title="Open de cockpit van deze klant">
                   <td><strong>{c.name}</strong> <span className="row-arrow">&rarr;</span></td>
                   <td>{c.loginId}</td>
                   <td>{c.email || <span className="muted">&mdash;</span>}</td>

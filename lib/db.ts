@@ -32,6 +32,14 @@ async function init(): Promise<void> {
       created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
     )`;
 
+  // Cockpit-velden (Maartens beheerkant). Optioneel, los van de klant-login.
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS email_domain TEXT`;
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS work_doc_url TEXT`;
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS results_url TEXT`;
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS status TEXT`;
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS last_contact TEXT`;
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS notes TEXT`;
+
   // Eerste klant (One Day Clinic) zodat zijn login meteen werkt.
   const hash = hashPassword("OneDayClinic2026");
   await sql`

@@ -18,6 +18,15 @@ export type ClientBudget = {
   beschikbareUren: number;
 };
 
+export type ClientCockpit = {
+  emailDomain: string | null;
+  workDocUrl: string | null;
+  resultsUrl: string | null;
+  status: string | null;
+  lastContact: string | null;
+  notes: string | null;
+};
+
 export type ClientConfig = {
   id: number;
   slug: string;
@@ -27,6 +36,7 @@ export type ClientConfig = {
   sheetId: string;
   gid: string;
   budget: ClientBudget;
+  cockpit: ClientCockpit;
 };
 
 type ClientRow = {
@@ -43,6 +53,12 @@ type ClientRow = {
   uurtarief: string | number;
   beschikbare_uren: string | number;
   password_hash: string;
+  email_domain: string | null;
+  work_doc_url: string | null;
+  results_url: string | null;
+  status: string | null;
+  last_contact: string | null;
+  notes: string | null;
 };
 
 function rowToConfig(r: ClientRow): ClientConfig {
@@ -60,6 +76,14 @@ function rowToConfig(r: ClientRow): ClientConfig {
       urenBudget: Number(r.urenbudget),
       uurtarief: Number(r.uurtarief),
       beschikbareUren: Number(r.beschikbare_uren),
+    },
+    cockpit: {
+      emailDomain: r.email_domain ?? null,
+      workDocUrl: r.work_doc_url ?? null,
+      resultsUrl: r.results_url ?? null,
+      status: r.status ?? null,
+      lastContact: r.last_contact ?? null,
+      notes: r.notes ?? null,
     },
   };
 }
@@ -130,6 +154,20 @@ export async function resetClientPassword(slug: string): Promise<string | null> 
   const passwordHash = hashPassword(password);
   const { rowCount } = await sql`UPDATE clients SET password_hash = ${passwordHash} WHERE slug = ${slug}`;
   return rowCount && rowCount > 0 ? password : null;
+}
+
+export async function updateClientCockpit(slug: string, c: ClientCockpit): Promise<boolean> {
+  await ensureSchema();
+  const { rowCount } = await sql`
+    UPDATE clients SET
+      email_domain = ${c.emailDomain || null},
+      work_doc_url = ${c.workDocUrl || null},
+      results_url  = ${c.resultsUrl || null},
+      status       = ${c.status || null},
+      last_contact = ${c.lastContact || null},
+      notes        = ${c.notes || null}
+    WHERE slug = ${slug}`;
+  return !!rowCount && rowCount > 0;
 }
 
 export async function deleteClient(slug: string): Promise<boolean> {
