@@ -28,7 +28,8 @@ export type StatusExchange = {
   text: string;                    // korte samenvatting in één regel
   date?: string | null;            // ISO-datum van de mail
   status?: "open" | "done";        // open = rood, done = groen
-  mailLink?: string | null;        // directe link naar de mail (Superhuman)
+  mailLink?: string | null;        // fallback-link naar de mail (Superhuman)
+  subject?: string | null;         // onderwerp van de bron-mail (om de exacte thread te matchen)
 };
 
 // Eén lopende werkzaamheid (aparte kolom), linkt naar de Google Sheet/werkdoc.
@@ -234,6 +235,19 @@ export async function ingestStatus(slug: string, status: ClientStatus): Promise<
     VALUES (${slug}, ${content}, now())
     ON CONFLICT (client_slug) DO UPDATE SET content = EXCLUDED.content, updated_at = now()`;
   return clean.exchanges.length + clean.tasks.length;
+}
+
+// Zet één punt in de stand van zaken op afgehandeld (done) of open.
+export async function updateStatusItem(slug: string, index: number, status: "open" | "done"): Promise<boolean> {
+  await ensureSchema();
+  const { rows } = await sql`SELECT content FROM client_status WHERE client_slug = ${slug} LIMIT 1`;
+  if (!rows[0]?.content) return false;
+  let parsed: ClientStatus;
+  try { parsed = JSON.parse(rows[0].content as string); } catch { return false; }
+  if (!Array.isArray(parsed.exchanges) || index < 0 || index >= parsed.exchanges.length) return false;
+  parsed.exchanges[index].status = status;
+  await sql`UPDATE client_status SET content = ${JSON.stringify(parsed)}, updated_at = now() WHERE client_slug = ${slug}`;
+  return true;
 }
 
 export async function ingestPages(slug: string, pages: PageSnapshot[]): Promise<number> {

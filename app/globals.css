@@ -331,7 +331,7 @@ tbody td:last-child { text-align: center; }
 @media (max-width: 640px) { .sh-search input { width: 150px; } }
 
 /* E-mails */
-.email-list { display: flex; flex-direction: column; max-height: 620px; overflow-y: auto; gap: 8px; }
+.email-list { display: flex; flex-direction: column; gap: 8px; }
 .email-row {
   border: 1px solid var(--border); border-left: 3px solid var(--orange);
   border-radius: 6px; background: var(--white); overflow: hidden;
@@ -353,11 +353,11 @@ tbody td:last-child { text-align: center; }
 .email-preview { font-size: 12px; color: var(--gray); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .email-body { padding: 0 16px 16px; border-top: 1px solid var(--border); }
 .email-actions { display: flex; gap: 8px; padding: 12px 0; flex-wrap: wrap; }
-.email-html { font-size: 13px; line-height: 1.5; color: var(--body-text); overflow-x: auto; }
+.email-html { font-size: 13px; line-height: 1.5; color: var(--body-text); overflow-x: auto; overflow-y: auto; max-height: 420px; padding-right: 8px; }
 .email-html img { max-width: 100%; height: auto; }
 .email-html a { color: var(--orange-dark); }
 .email-html blockquote { margin: 8px 0; padding-left: 12px; border-left: 2px solid var(--border); color: var(--gray); }
-.email-preview-full { font-size: 13px; line-height: 1.5; color: var(--body-text); padding-top: 12px; }
+.email-preview-full { font-size: 13px; line-height: 1.5; color: var(--body-text); padding-top: 12px; max-height: 420px; overflow-y: auto; }
 .mail-live-badge { display: inline-block; font-size: 11px; font-weight: 700; color: #2E7D32; background: #E7F4E8; padding: 3px 10px; border-radius: 10px; margin-bottom: 12px; }
 .mail-connect { font-size: 13px; color: var(--gray); background: var(--orange-light); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .email-reply { margin-top: 14px; border-top: 1px dashed var(--border); padding-top: 12px; }
@@ -407,11 +407,14 @@ a.sov-bubble:hover { box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
 .sov-row.right .sov-bubble { background: var(--orange-light); }
 .sov-row.open .sov-bubble { border-left-color: var(--red); }
 .sov-row.done .sov-bubble { border-left-color: #2E7D32; }
-.sov-bubble-top { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+.sov-bubble-top { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
 .sov-who { font-weight: 700; font-size: 12px; color: var(--dark); }
 .sov-date { font-size: 11px; color: var(--gray); }
+.sov-check { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: var(--gray); cursor: pointer; user-select: none; white-space: nowrap; }
+.sov-check input { cursor: pointer; }
 .sov-text { font-size: 13px; color: var(--body-text); line-height: 1.45; }
-.sov-maillink { display: inline-block; margin-top: 6px; font-size: 11px; font-weight: 600; color: var(--orange-dark); }
+.sov-maillink { display: inline-block; margin-top: 8px; font-size: 11px; font-weight: 600; color: var(--orange-dark); text-decoration: none; }
+.sov-maillink:hover { text-decoration: underline; }
 
 .sov-tasks { flex: 0 0 250px; border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; background: var(--gray-light); }
 .sov-tasks-head { font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.3px; color: var(--dark); margin-bottom: 10px; }

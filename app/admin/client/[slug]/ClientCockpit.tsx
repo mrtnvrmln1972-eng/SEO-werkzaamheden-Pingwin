@@ -41,6 +41,22 @@ export default function ClientCockpit({
   const [replyBusy, setReplyBusy] = useState(false);
   const [replyMsg, setReplyMsg] = useState("");
 
+  const [statusBusy, setStatusBusy] = useState(false);
+
+  async function toggleStatus(index: number, done: boolean) {
+    setStatusBusy(true);
+    try {
+      await fetch("/api/admin/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: client.slug, index, status: done ? "done" : "open" }),
+      });
+      router.refresh();
+    } finally {
+      setStatusBusy(false);
+    }
+  }
+
   async function sendReply(id: string) {
     if (!replyText.trim()) return;
     setReplyBusy(true);
@@ -85,6 +101,16 @@ export default function ClientCockpit({
   const dashboardUrl = `/admin/preview/${client.slug}`;
   const clientMailQuery = (client.email || client.domain || "").trim();
   const lastMailDate = emails.find((e) => e.receivedAt)?.receivedAt || null;
+
+  // Map onderwerp → exacte mail-link (Superhuman-thread), om de stand-van-zaken-punten
+  // direct naar de juiste mail te laten linken.
+  const emailBySubject = new Map<string, string>();
+  for (const e of emails) {
+    if (e.subject && e.superhumanLink) {
+      const k = normSubject(e.subject);
+      if (!emailBySubject.has(k)) emailBySubject.set(k, e.superhumanLink);
+    }
+  }
 
   function openSuperhuman() {
     if (!clientMailQuery) return;
@@ -220,6 +246,64 @@ export default function ClientCockpit({
 
         {tab === "communicatie" && (
           <>
+            {(status.exchanges.length > 0 || status.tasks.length > 0) && (
+              <div className="cockpit-card">
+                <div className="ck-section-head">
+                  <span>Actuele stand van zaken</span>
+                  {statusUpdatedAt && <span className="ck-updated">bijgewerkt {fmtDate(statusUpdatedAt)}</span>}
+                </div>
+                <div className="sov-layout">
+                  <div className="sov-thread">
+                    <div className="sov-legend">
+                      <span><span className="sov-dot client" /> Klant</span>
+                      <span><span className="sov-dot us" /> Wij</span>
+                      <span className="sov-legend-status"><span className="sov-pill open">open</span><span className="sov-pill done">afgehandeld</span></span>
+                    </div>
+                    {status.exchanges.map((ex, i) => {
+                      const isClient = ex.side === "client";
+                      const done = ex.status === "done";
+                      const cls = "sov-row " + (isClient ? "left" : "right") + " " + (done ? "done" : "open");
+                      const exLink = (ex.subject && emailBySubject.get(normSubject(ex.subject))) || ex.mailLink || null;
+                      return (
+                        <div className={cls} key={i}>
+                          <div className="sov-bubble">
+                            <div className="sov-bubble-top">
+                              <span className="sov-who">{isClient ? (client.name || "Klant") : "Pingwin"}</span>
+                              {ex.date && <span className="sov-date">{fmtDate(ex.date)}</span>}
+                              <label className="sov-check" title="Markeer als afgehandeld">
+                                <input type="checkbox" checked={done} disabled={statusBusy} onChange={(e) => toggleStatus(i, e.target.checked)} />
+                                afgerond
+                              </label>
+                            </div>
+                            <div className="sov-text">{ex.text}</div>
+                            {exLink && <a className="sov-maillink" href={exLink} target="_blank" rel="noreferrer">mail openen &rarr;</a>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {status.exchanges.length === 0 && <div className="muted">Nog geen correspondentie samengevat.</div>}
+                  </div>
+
+                  <div className="sov-tasks">
+                    <div className="sov-tasks-head">Lopende werkzaamheden</div>
+                    {status.tasks.length === 0 ? (
+                      <div className="muted" style={{ fontSize: 13 }}>Geen open werkzaamheden.</div>
+                    ) : (
+                      <ul className="sov-tasks-list">
+                        {status.tasks.map((t, i) => (
+                          <li key={i}>
+                            {t.sheetLink
+                              ? <a href={t.sheetLink} target="_blank" rel="noreferrer">{t.text}</a>
+                              : t.text}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="cockpit-card">
               <div className="ck-section-head">
                 <span>Laatste e-mails</span>
@@ -313,62 +397,6 @@ export default function ClientCockpit({
               )}
             </div>
 
-            {(status.exchanges.length > 0 || status.tasks.length > 0) && (
-              <div className="cockpit-card">
-                <div className="ck-section-head">
-                  <span>Actuele stand van zaken</span>
-                  {statusUpdatedAt && <span className="ck-updated">bijgewerkt {fmtDate(statusUpdatedAt)}</span>}
-                </div>
-                <div className="sov-layout">
-                  <div className="sov-thread">
-                    <div className="sov-legend">
-                      <span><span className="sov-dot client" /> Klant</span>
-                      <span><span className="sov-dot us" /> Wij</span>
-                      <span className="sov-legend-status"><span className="sov-pill open">open</span><span className="sov-pill done">afgehandeld</span></span>
-                    </div>
-                    {status.exchanges.map((ex, i) => {
-                      const isClient = ex.side === "client";
-                      const cls = "sov-row " + (isClient ? "left" : "right") + " " + (ex.status === "done" ? "done" : "open");
-                      const Inner = (
-                        <>
-                          <div className="sov-bubble-top">
-                            <span className="sov-who">{isClient ? (client.name || "Klant") : "Pingwin"}</span>
-                            {ex.date && <span className="sov-date">{fmtDate(ex.date)}</span>}
-                          </div>
-                          <div className="sov-text">{ex.text}</div>
-                          {ex.mailLink && <span className="sov-maillink">mail openen →</span>}
-                        </>
-                      );
-                      return (
-                        <div className={cls} key={i}>
-                          {ex.mailLink
-                            ? <a className="sov-bubble" href={ex.mailLink} target="_blank" rel="noreferrer">{Inner}</a>
-                            : <div className="sov-bubble">{Inner}</div>}
-                        </div>
-                      );
-                    })}
-                    {status.exchanges.length === 0 && <div className="muted">Nog geen correspondentie samengevat.</div>}
-                  </div>
-
-                  <div className="sov-tasks">
-                    <div className="sov-tasks-head">Lopende werkzaamheden</div>
-                    {status.tasks.length === 0 ? (
-                      <div className="muted" style={{ fontSize: 13 }}>Geen open werkzaamheden.</div>
-                    ) : (
-                      <ul className="sov-tasks-list">
-                        {status.tasks.map((t, i) => (
-                          <li key={i}>
-                            {t.sheetLink
-                              ? <a href={t.sheetLink} target="_blank" rel="noreferrer">{t.text}</a>
-                              : t.text}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
           </>
         )}
 
@@ -512,6 +540,10 @@ function sanitizeEmail(html: string): string {
     .replace(/\son\w+\s*=\s*"[^"]*"/gi, "")
     .replace(/\son\w+\s*=\s*'[^']*'/gi, "")
     .replace(/javascript:/gi, "");
+}
+
+function normSubject(s: string): string {
+  return s.replace(/^((re|fw|fwd):\s*)+/i, "").trim().toLowerCase();
 }
 
 function daysSince(iso: string): number | null {
