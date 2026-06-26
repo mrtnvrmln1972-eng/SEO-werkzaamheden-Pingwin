@@ -57,6 +57,7 @@ const SUGGESTIONS = [
 
 export default function ChatPanel({ slug, configured, initialMessages }: { slug: string; configured: boolean; initialMessages: Msg[] }) {
   const [messages, setMessages] = useState<Msg[]>(initialMessages || []);
+  const [collapsed, setCollapsed] = useState(true);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -90,9 +91,12 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
 
   return (
     <div className="cockpit-card">
-      <div className="ck-section-head"><span>Vraag het de assistent</span></div>
+      <div className="ck-section-head chat-head" onClick={() => setCollapsed((v) => !v)}>
+        <span>Vraag het de assistent{messages.length > 0 ? ` (${messages.length})` : ""}</span>
+        <span className="email-caret">{collapsed ? "▸ openen" : "▾ sluiten"}</span>
+      </div>
 
-      {!configured ? (
+      {collapsed ? null : !configured ? (
         <div className="phase2-note">
           De projectchat staat klaar, maar mist nog de AI-sleutel (<code>ANTHROPIC_API_KEY</code> in Vercel).
           Zodra die er staat, kun je hier vragen stellen over deze klant (mail, stand van zaken, taken, Search Console, Ahrefs).

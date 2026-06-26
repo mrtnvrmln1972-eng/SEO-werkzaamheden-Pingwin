@@ -84,7 +84,7 @@ export default async function ClientCockpitPage({ params }: { params: { slug: st
   if (ms.connected) {
     const query = (client.email || client.domain || "").trim();
     if (query) {
-      const live = await msSearchClientEmails(query, ms.account || "", 15);
+      const live = await msSearchClientEmails(query, ms.account || "", 25);
       if (live) { emails = live; mailLive = true; }
     }
   }

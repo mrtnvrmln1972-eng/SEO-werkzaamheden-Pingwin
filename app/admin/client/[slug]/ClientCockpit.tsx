@@ -252,7 +252,7 @@ export default function ClientCockpit({
           </select>
           <nav className="header-tabs">
             <button className={"tab" + (tab === "overzicht" ? " active" : "")} onClick={() => setTab("overzicht")}>Overzicht</button>
-            <button className={"tab" + (tab === "resultaten" ? " active" : "")} onClick={() => setTab("resultaten")}>Ontwikkeling &amp; resultaten</button>
+            <button className={"tab" + (tab === "resultaten" ? " active" : "")} onClick={() => setTab("resultaten")}>KPI&rsquo;s</button>
           </nav>
         </div>
         <div className="header-right">
@@ -334,8 +334,9 @@ export default function ClientCockpit({
                             </div>
                             <div className="sov-text">{ex.text}</div>
                             <div className="sov-links">
-                              {exLink && <a className="sov-maillink" href={exLink} target="_blank" rel="noreferrer">mail openen &rarr;</a>}
-                              {m && <button type="button" className="sov-maillink as-btn" onClick={() => openInDashboard(m.id, m.idx)}>hier openen &darr;</button>}
+                              {m
+                                ? <button type="button" className="sov-maillink as-btn" onClick={() => openInDashboard(m.id, m.idx)}>mail openen &darr;</button>
+                                : exLink && <a className="sov-maillink" href={exLink} target="_blank" rel="noreferrer">mail openen (Superhuman) &rarr;</a>}
                             </div>
                           </div>
                         </div>
