@@ -501,8 +501,9 @@ tbody td:last-child { text-align: center; }
 .sov-maillink:hover { text-decoration: underline; }
 .sov-maillink.as-btn { background: none; border: none; padding: 0; cursor: pointer; font-family: 'Montserrat', sans-serif; }
 
-.sov-side { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
-.sov-tasks { border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; background: var(--gray-light); }
+.sov-side { flex: 1 1 0; min-width: 0; display: flex; flex-direction: row; gap: 14px; align-items: flex-start; }
+.sov-side .sov-tasks { flex: 1 1 0; min-width: 0; }
+.sov-tasks { border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; background: var(--white); box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
 .sov-tasks-head { font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.3px; color: var(--dark); margin-bottom: 10px; }
 .sov-sub { font-weight: 500; font-size: 11px; text-transform: none; letter-spacing: 0; color: var(--gray); }
 .sov-tasks-list { margin: 0; padding-left: 18px; }
@@ -514,4 +515,4 @@ tbody td:last-child { text-align: center; }
 .task-done a { color: var(--gray); text-decoration: line-through; }
 .task-link-btn { background: none; border: none; padding: 0; cursor: pointer; font-family: 'Montserrat', sans-serif; font-size: 13px; color: var(--orange-dark); text-align: left; line-height: 1.4; }
 .task-link-btn:hover { text-decoration: underline; }
-@media (max-width: 760px) { .sov-layout { flex-direction: column; } .sov-side { flex: 1 1 auto; width: 100%; } .sov-bubble { max-width: 90%; } }
+@media (max-width: 760px) { .sov-layout { flex-direction: column; } .sov-side { flex: 1 1 auto; width: 100%; flex-direction: column; } .sov-bubble { max-width: 90%; } }
