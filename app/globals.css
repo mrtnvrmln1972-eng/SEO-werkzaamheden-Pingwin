@@ -451,7 +451,7 @@ tbody td:last-child { text-align: center; }
 
 /* Actuele stand van zaken: links de klant, rechts wij; aparte takenkolom */
 .sov-layout { display: flex; gap: 20px; align-items: flex-start; }
-.sov-thread { flex: 1 1 auto; min-width: 0; max-height: 560px; overflow-y: auto; padding-right: 6px; }
+.sov-thread { flex: 2 1 0; min-width: 0; max-height: 560px; overflow-y: auto; padding-right: 6px; }
 .sov-legend { display: flex; gap: 16px; align-items: center; font-size: 12px; color: var(--gray); margin-bottom: 14px; flex-wrap: wrap; }
 .sov-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
 .sov-dot.client { background: #1A56B0; } .sov-dot.us { background: var(--orange); }
@@ -484,7 +484,7 @@ tbody td:last-child { text-align: center; }
 .sov-maillink:hover { text-decoration: underline; }
 .sov-maillink.as-btn { background: none; border: none; padding: 0; cursor: pointer; font-family: 'Montserrat', sans-serif; }
 
-.sov-side { flex: 0 0 260px; display: flex; flex-direction: column; gap: 14px; }
+.sov-side { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
 .sov-tasks { border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; background: var(--gray-light); }
 .sov-tasks-head { font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.3px; color: var(--dark); margin-bottom: 10px; }
 .sov-sub { font-weight: 500; font-size: 11px; text-transform: none; letter-spacing: 0; color: var(--gray); }
