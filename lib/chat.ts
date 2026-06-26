@@ -1,3 +1,4 @@
+import { sql, ensureSchema } from "./db";
 import { getClientBySlug } from "./clients";
 import { getEmails, getMetrics, getKeywords, getStatus } from "./snapshots";
 import { msStatus, msSearchClientEmails } from "./ms-graph";
@@ -124,7 +125,28 @@ async function buildContext(client: ClientConfig): Promise<string> {
   return parts.join("\n");
 }
 
-type ChatMessage = { role: "user" | "assistant"; content: string };
+export type ChatMessage = { role: "user" | "assistant"; content: string };
+
+export async function getChatHistory(slug: string): Promise<ChatMessage[]> {
+  await ensureSchema();
+  const { rows } = await sql`SELECT messages FROM client_chat WHERE client_slug = ${slug} LIMIT 1`;
+  if (!rows[0]?.messages) return [];
+  try {
+    const parsed = JSON.parse(rows[0].messages as string);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+async function saveChatHistory(slug: string, messages: ChatMessage[]): Promise<void> {
+  await ensureSchema();
+  const content = JSON.stringify(messages.slice(-40));
+  await sql`
+    INSERT INTO client_chat (client_slug, messages, updated_at)
+    VALUES (${slug}, ${content}, now())
+    ON CONFLICT (client_slug) DO UPDATE SET messages = EXCLUDED.messages, updated_at = now()`;
+}
 
 export async function answerChat(slug: string, messages: ChatMessage[]): Promise<{ ok: boolean; answer?: string; error?: string }> {
   const key = process.env.ANTHROPIC_API_KEY;
@@ -136,9 +158,14 @@ export async function answerChat(slug: string, messages: ChatMessage[]): Promise
   const system =
     `Je bent de SEO-projectassistent van Pingwin voor de klant ${client.name}. ` +
     `Beantwoord in het Nederlands, uitsluitend op basis van de onderstaande projectcontext ` +
-    `(e-mails inclusief afzender/ontvangers en inhoud, stand van zaken, taken, Search Console, Ahrefs). ` +
-    `Maak je antwoord netjes en goed leesbaar op in Markdown: gebruik korte kopjes (##), bullets (-) en **vet** waar dat helpt, ` +
-    `en geef een duidelijke, concrete uitleg. Noem waar relevant het mail-onderwerp, de datum of de ontvanger (bv. of een mail naar de klant of naar jezelf ging). ` +
+    `(e-mails inclusief afzender/ontvangers en inhoud, stand van zaken, taken, Search Console incl. 4-maanden zoekwoord-trend, Ahrefs).\n\n` +
+    `OPMAAK (belangrijk): maak elk antwoord super netjes en overzichtelijk op in Markdown:\n` +
+    `- Begin met een korte kop (## Kop) per onderwerp.\n` +
+    `- Gebruik bullets (-) voor opsommingen en **vet** voor labels/kernpunten.\n` +
+    `- Zet ALLE cijfermatige of vergelijkende data (zoals zoekwoord-posities per maand, klikken, CTR) in een nette Markdown-tabel met uitgelijnde kolommen, bijvoorbeeld:\n` +
+    `  | Zoekwoord | apr | mei | jun |\n  | --- | --- | --- | --- |\n  | soa test amsterdam | 9 | 7 | 6 |\n` +
+    `- Houd zinnen kort en groepeer logisch. Sluit af met een kort actiepunt als dat past.\n\n` +
+    `Noem waar relevant het mail-onderwerp, de datum of de ontvanger (bv. of een mail naar de klant of naar jezelf ging). ` +
     `Staat het antwoord niet in de context, zeg dat eerlijk in plaats van te gokken.\n\n--- PROJECTCONTEXT ---\n${context}`;
 
   try {
@@ -159,7 +186,9 @@ export async function answerChat(slug: string, messages: ChatMessage[]): Promise
     }
     const j = await res.json();
     const answer = Array.isArray(j.content) ? j.content.map((c: { text?: string }) => c.text || "").join("") : "";
-    return { ok: true, answer: answer || "(geen antwoord)" };
+    const finalAnswer = answer || "(geen antwoord)";
+    await saveChatHistory(slug, [...messages, { role: "assistant", content: finalAnswer }]);
+    return { ok: true, answer: finalAnswer };
   } catch (err) {
     return { ok: false, error: "AI niet bereikbaar: " + (err as Error).message };
   }

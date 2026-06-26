@@ -74,6 +74,14 @@ async function init(): Promise<void> {
       updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
     )`;
 
+  // Bewaarde projectchat per klant (JSON-array van berichten).
+  await sql`
+    CREATE TABLE IF NOT EXISTS client_chat (
+      client_slug TEXT PRIMARY KEY,
+      messages    TEXT,
+      updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    )`;
+
   // OAuth-tokens voor externe koppelingen (Microsoft Graph, Google).
   // Eén rij per provider; bewaart de refresh-token waarmee de app zelf
   // access-tokens vernieuwt. Alleen via het admin-beveiligde koppel-pad gevuld.

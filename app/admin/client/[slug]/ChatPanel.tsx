@@ -13,19 +13,36 @@ function mdToHtml(md: string): string {
       .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
       .replace(/`([^`]+)`/g, "<code>$1</code>")
       .replace(/(^|[\s(])\*([^*\s][^*]*?)\*(?=[\s).,!?]|$)/g, "$1<em>$2</em>");
+  const lines = md.split(/\r?\n/);
   const out: string[] = [];
   let list: "ul" | "ol" | null = null;
   const closeList = () => { if (list) { out.push(`</${list}>`); list = null; } };
-  for (const raw of md.split(/\r?\n/)) {
-    const line = raw.trim();
-    if (!line) { closeList(); continue; }
+  const isSep = (s: string) => /^\s*\|?(\s*:?-{2,}:?\s*\|)+\s*:?-{2,}:?\s*\|?\s*$/.test(s.trim());
+  const cells = (s: string) => s.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((c) => c.trim());
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i].trim();
+    if (!line) { closeList(); i++; continue; }
+    // Markdown-tabel
+    if (line.startsWith("|") && i + 1 < lines.length && isSep(lines[i + 1])) {
+      closeList();
+      const header = cells(line);
+      i += 2;
+      const body: string[][] = [];
+      while (i < lines.length && lines[i].trim().startsWith("|")) { body.push(cells(lines[i])); i++; }
+      out.push("<table class='chat-table'><thead><tr>" + header.map((h) => `<th>${inline(h)}</th>`).join("") + "</tr></thead><tbody>");
+      for (const row of body) out.push("<tr>" + row.map((c) => `<td>${inline(c)}</td>`).join("") + "</tr>");
+      out.push("</tbody></table>");
+      continue;
+    }
     const h = line.match(/^(#{1,6})\s+(.*)$/);
-    if (h) { closeList(); const lvl = Math.min(6, h[1].length + 2); out.push(`<h${lvl}>${inline(h[2])}</h${lvl}>`); continue; }
+    if (h) { closeList(); const lvl = Math.min(6, h[1].length + 2); out.push(`<h${lvl}>${inline(h[2])}</h${lvl}>`); i++; continue; }
+    if (/^(-{3,}|\*{3,}|_{3,})$/.test(line)) { closeList(); out.push("<hr/>"); i++; continue; }
     const ul = line.match(/^[-*]\s+(.*)$/);
-    if (ul) { if (list !== "ul") { closeList(); out.push("<ul>"); list = "ul"; } out.push(`<li>${inline(ul[1])}</li>`); continue; }
+    if (ul) { if (list !== "ul") { closeList(); out.push("<ul>"); list = "ul"; } out.push(`<li>${inline(ul[1])}</li>`); i++; continue; }
     const ol = line.match(/^\d+\.\s+(.*)$/);
-    if (ol) { if (list !== "ol") { closeList(); out.push("<ol>"); list = "ol"; } out.push(`<li>${inline(ol[1])}</li>`); continue; }
-    closeList(); out.push(`<p>${inline(line)}</p>`);
+    if (ol) { if (list !== "ol") { closeList(); out.push("<ol>"); list = "ol"; } out.push(`<li>${inline(ol[1])}</li>`); i++; continue; }
+    closeList(); out.push(`<p>${inline(line)}</p>`); i++;
   }
   closeList();
   return out.join("");
@@ -38,8 +55,8 @@ const SUGGESTIONS = [
   "Hoe staan we ervoor in Search Console?",
 ];
 
-export default function ChatPanel({ slug, configured }: { slug: string; configured: boolean }) {
-  const [messages, setMessages] = useState<Msg[]>([]);
+export default function ChatPanel({ slug, configured, initialMessages }: { slug: string; configured: boolean; initialMessages: Msg[] }) {
+  const [messages, setMessages] = useState<Msg[]>(initialMessages || []);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");

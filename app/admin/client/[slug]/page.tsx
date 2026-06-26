@@ -6,7 +6,7 @@ import { getEmails, getMetrics, getKeywords, getPages, getLastIngest, getStatus 
 import { msStatus, msSearchClientEmails } from "../../../../lib/ms-graph";
 import { googleStatus, getGscForClient, getGa4ForClient } from "../../../../lib/google";
 import { sheetCsvUrl, parseCSV, structureData, MAAND_VOLGORDE } from "../../../../lib/sheet";
-import { chatConfigured } from "../../../../lib/chat";
+import { chatConfigured, getChatHistory } from "../../../../lib/chat";
 import ClientCockpit from "./ClientCockpit";
 
 export const dynamic = "force-dynamic";
@@ -39,8 +39,9 @@ async function loadTasksByMonth(client: ClientConfig): Promise<MonthTasks> {
     for (let i = 1; i < rows.length; i++) {
       const taak = (rows[i][1] || "").trim();
       if (!taak) continue; // header/budget/totaal-regels
+      if (done.test((rows[i][4] || "").trim())) continue; // alleen niet-afgeronde taken
       const maand = (rows[i][5] || "").trim().toLowerCase();
-      const t: SheetTask = { text: taak, link: rowLink(i + 1), done: done.test((rows[i][4] || "").trim()) };
+      const t: SheetTask = { text: taak, link: rowLink(i + 1), done: false };
       if (maand === thisM) thisMonth.push(t);
       else if (maand === nextM) nextMonth.push(t);
     }
@@ -68,6 +69,8 @@ export default async function ClientCockpitPage({ params }: { params: { slug: st
     loadTasksByMonth(client),
     listClients(),
   ]);
+
+  const chatHistory = await getChatHistory(params.slug);
 
   // Search Console live ophalen als de Google-koppeling actief is.
   const google = await googleStatus();
@@ -107,6 +110,7 @@ export default async function ClientCockpitPage({ params }: { params: { slug: st
       googleConfigured={google.configured}
       googleConnected={google.connected}
       chatConfigured={chatConfigured()}
+      chatHistory={chatHistory}
     />
   );
 }

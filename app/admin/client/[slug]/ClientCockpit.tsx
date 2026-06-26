@@ -38,12 +38,13 @@ type CockpitData = {
   googleConfigured: boolean;
   googleConnected: boolean;
   chatConfigured: boolean;
+  chatHistory: { role: "user" | "assistant"; content: string }[];
 };
 
 export default function ClientCockpit({
   client, emails, metrics, keywords, pages, lastIngest, status, statusUpdatedAt,
   mailLive, msConfigured, msConnected, myEmail, monthTasks, allClients,
-  gsc, ga4, googleConfigured, googleConnected, chatConfigured,
+  gsc, ga4, googleConfigured, googleConnected, chatConfigured, chatHistory,
 }: { client: ClientConfig } & CockpitData) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("overzicht");
@@ -68,6 +69,7 @@ export default function ClientCockpit({
   }
 
   const [statusBusy, setStatusBusy] = useState(false);
+  const [showNext, setShowNext] = useState(false);
 
   async function toggleStatus(index: number, done: boolean) {
     setStatusBusy(true);
@@ -293,14 +295,9 @@ export default function ClientCockpit({
                   </Row>
                 </>
               )}
-              <Row label="Notities">
-                {editing
-                  ? <textarea value={f.notes} onChange={(e) => set("notes", e.target.value)} rows={3} placeholder="Vrije notities over deze klant..." />
-                  : <span className="prewrap">{f.notes || <span className="muted">&mdash;</span>}</span>}
-              </Row>
             </div>
 
-            <ChatPanel slug={client.slug} configured={chatConfigured} />
+            <ChatPanel slug={client.slug} configured={chatConfigured} initialMessages={chatHistory} />
 
             {(status.exchanges.length > 0 || monthTasks.thisMonth.length > 0 || monthTasks.nextMonth.length > 0 || status.mailActions.length > 0) && (
               <div className="cockpit-card">
@@ -359,18 +356,18 @@ export default function ClientCockpit({
                           ))}
                         </ul>
                       )}
-                      <div className="task-month">Volgende maand <span className="sov-sub">{monthTasks.nextLabel}</span></div>
-                      {monthTasks.nextMonth.length === 0 ? (
+                      <button type="button" className="task-toggle" onClick={() => setShowNext((v) => !v)}>
+                        {showNext ? "▾" : "▸"} Volgende maand <span className="sov-sub">{monthTasks.nextLabel} ({monthTasks.nextMonth.length})</span>
+                      </button>
+                      {showNext && (monthTasks.nextMonth.length === 0 ? (
                         <div className="muted" style={{ fontSize: 13 }}>Geen taken volgende maand.</div>
                       ) : (
                         <ul className="sov-tasks-list">
                           {monthTasks.nextMonth.map((t, i) => (
-                            <li key={i} className={t.done ? "task-done" : ""}>
-                              <a href={t.link} target="_blank" rel="noreferrer">{t.text}</a>
-                            </li>
+                            <li key={i}><a href={t.link} target="_blank" rel="noreferrer">{t.text}</a></li>
                           ))}
                         </ul>
-                      )}
+                      ))}
                     </div>
 
                     <div className="sov-tasks">
