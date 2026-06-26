@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
-import { listClients, createClient, deleteClient, updateClientCockpit, parseSheetUrl } from "../../../../lib/clients";
+import { listClients, createClient, deleteClient, updateClientCockpit, updateClientCore, parseSheetUrl } from "../../../../lib/clients";
 
 export const runtime = "nodejs";
 
@@ -99,6 +99,24 @@ export async function PATCH(req: NextRequest) {
     lastContact: String(body.lastContact || "").trim() || null,
     notes: String(body.notes || "").trim() || null,
   });
+
+  // Kernvelden (e-mail, Sheet, budget) alleen bijwerken als ze meegestuurd zijn.
+  const hasCore =
+    "email" in body || "sheetUrl" in body || "maandbudget" in body ||
+    "linkbuilding" in body || "uurtarief" in body || "beschikbareUren" in body;
+  if (hasCore) {
+    const { sheetId, gid } = parseSheetUrl(String(body.sheetUrl || ""));
+    await updateClientCore(slug, {
+      email: String(body.email || "").trim() || null,
+      sheetId,
+      gid,
+      maandbudget: Number(body.maandbudget) || 0,
+      linkbuilding: Number(body.linkbuilding) || 0,
+      uurtarief: Number(body.uurtarief) || 0,
+      beschikbareUren: Number(body.beschikbareUren) || 0,
+    });
+  }
+
   return NextResponse.json({ ok });
 }
 

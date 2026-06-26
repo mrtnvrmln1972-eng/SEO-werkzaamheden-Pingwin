@@ -51,6 +51,27 @@ async function init(): Promise<void> {
        '1O1HeqzxCBH-WeyIhb4QhTniBj_Z7RxGpXl5L5FfJW5I', '1531693305',
        1800, 600, 1200, 100, 12, ${hash})
     ON CONFLICT (slug) DO NOTHING`;
+
+  // Overige klanten, alleen op naam aangemaakt. Sheet-link, e-mail en budget
+  // vul je later per klant aan via de Bewerken-knop in de cockpit. Een
+  // tijdelijk wachtwoord staat klaar; reset het in de cockpit als de klant
+  // straks zelf moet kunnen inloggen.
+  const initialClients = [
+    { slug: "bogard", name: "Bogard" },
+    { slug: "strandtuin", name: "Strandtuin" },
+    { slug: "kamsteeg", name: "Kamsteeg" },
+    { slug: "pronk", name: "Pronk" },
+    { slug: "gardenswimm", name: "GardenSwimm" },
+    { slug: "wim-prins", name: "Wim Prins" },
+    { slug: "paul-hoevenaars", name: "Paul Hoevenaars" },
+  ];
+  for (const c of initialClients) {
+    const ph = hashPassword(`${c.slug}-tijdelijk-2026`);
+    await sql`
+      INSERT INTO clients (slug, login_id, name, sheet_id, password_hash)
+      VALUES (${c.slug}, ${c.slug}, ${c.name}, '', ${ph})
+      ON CONFLICT (slug) DO NOTHING`;
+  }
 }
 
 export function ensureSchema(): Promise<void> {

@@ -170,6 +170,35 @@ export async function updateClientCockpit(slug: string, c: ClientCockpit): Promi
   return !!rowCount && rowCount > 0;
 }
 
+// Werkt de kernvelden van een bestaande klant bij (e-mail, Sheet, budget).
+// Inlognaam en slug blijven vast, want die zitten in de inlog en de URL.
+export type ClientCore = {
+  email: string | null;
+  sheetId: string;
+  gid: string;
+  maandbudget: number;
+  linkbuilding: number;
+  uurtarief: number;
+  beschikbareUren: number;
+};
+
+export async function updateClientCore(slug: string, c: ClientCore): Promise<boolean> {
+  await ensureSchema();
+  const urenBudget = c.maandbudget - c.linkbuilding;
+  const { rowCount } = await sql`
+    UPDATE clients SET
+      email            = ${c.email},
+      sheet_id         = ${c.sheetId},
+      gid              = ${c.gid},
+      maandbudget      = ${c.maandbudget},
+      linkbuilding     = ${c.linkbuilding},
+      urenbudget       = ${urenBudget},
+      uurtarief        = ${c.uurtarief},
+      beschikbare_uren = ${c.beschikbareUren}
+    WHERE slug = ${slug}`;
+  return !!rowCount && rowCount > 0;
+}
+
 export async function deleteClient(slug: string): Promise<boolean> {
   await ensureSchema();
   const { rowCount } = await sql`DELETE FROM clients WHERE slug = ${slug}`;

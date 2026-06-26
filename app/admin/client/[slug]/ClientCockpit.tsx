@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import type { ClientConfig } from "../../../../lib/clients";
 
 type Tab = "overzicht" | "communicatie" | "resultaten";
 
 export default function ClientCockpit({ client }: { client: ClientConfig }) {
+  const router = useRouter();
   const [tab, setTab] = useState<Tab>("overzicht");
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -18,12 +20,23 @@ export default function ClientCockpit({ client }: { client: ClientConfig }) {
     workDocUrl: client.cockpit.workDocUrl || "",
     resultsUrl: client.cockpit.resultsUrl || "",
     notes: client.cockpit.notes || "",
+    email: client.email || "",
+    sheetUrl: client.sheetId
+      ? `https://docs.google.com/spreadsheets/d/${client.sheetId}/edit#gid=${client.gid}`
+      : "",
+    maandbudget: client.budget.maandbudget ? String(client.budget.maandbudget) : "",
+    linkbuilding: client.budget.linkbuilding ? String(client.budget.linkbuilding) : "",
+    uurtarief: client.budget.uurtarief ? String(client.budget.uurtarief) : "",
+    beschikbareUren: client.budget.beschikbareUren ? String(client.budget.beschikbareUren) : "",
   });
 
-  const sheetUrl = `https://docs.google.com/spreadsheets/d/${client.sheetId}/edit#gid=${client.gid}`;
+  const hasSheet = !!client.sheetId;
+  const sheetUrl = hasSheet
+    ? `https://docs.google.com/spreadsheets/d/${client.sheetId}/edit#gid=${client.gid}`
+    : "";
   const dashboardUrl = `/admin/preview/${client.slug}`;
-  const gmailSearch = f.emailDomain
-    ? `https://mail.google.com/mail/u/0/#search/${encodeURIComponent(f.emailDomain)}`
+  const outlookSearch = f.emailDomain
+    ? `https://outlook.office.com/mail/search/${encodeURIComponent(f.emailDomain)}`
     : "";
 
   function set(k: keyof typeof f, v: string) {
@@ -43,6 +56,7 @@ export default function ClientCockpit({ client }: { client: ClientConfig }) {
       if (data.ok) {
         setSaved(true);
         setEditing(false);
+        router.refresh();
       }
     } finally {
       setBusy(false);
@@ -91,9 +105,31 @@ export default function ClientCockpit({ client }: { client: ClientConfig }) {
                 ? <input value={f.status} onChange={(e) => set("status", e.target.value)} placeholder="Actief" />
                 : <span>{f.status || <span className="muted">&mdash;</span>}</span>}
             </Row>
-            <Row label="Maandfee">
-              <span>&euro;{client.budget.maandbudget.toFixed(0)} (incl. linkbuilding &euro;{client.budget.linkbuilding.toFixed(0)})</span>
+            <Row label="E-mailadres klant">
+              {editing
+                ? <input type="email" value={f.email} onChange={(e) => set("email", e.target.value)} placeholder="contact@klant.nl" />
+                : <span>{f.email || <span className="muted">&mdash;</span>}</span>}
             </Row>
+            <Row label="Maandfee">
+              {editing ? (
+                <div className="quicklinks">
+                  <input type="number" value={f.maandbudget} onChange={(e) => set("maandbudget", e.target.value)} placeholder="Maandfee (€)" style={{ width: 140 }} />
+                  <input type="number" value={f.linkbuilding} onChange={(e) => set("linkbuilding", e.target.value)} placeholder="w.v. linkbuilding (€)" style={{ width: 180 }} />
+                </div>
+              ) : (
+                client.budget.maandbudget
+                  ? <span>&euro;{client.budget.maandbudget.toFixed(0)} (incl. linkbuilding &euro;{client.budget.linkbuilding.toFixed(0)})</span>
+                  : <span className="muted">&mdash;</span>
+              )}
+            </Row>
+            {editing && (
+              <Row label="Uurtarief / uren p.m.">
+                <div className="quicklinks">
+                  <input type="number" value={f.uurtarief} onChange={(e) => set("uurtarief", e.target.value)} placeholder="Uurtarief (€)" style={{ width: 140 }} />
+                  <input type="number" value={f.beschikbareUren} onChange={(e) => set("beschikbareUren", e.target.value)} placeholder="Uren per maand" style={{ width: 140 }} />
+                </div>
+              </Row>
+            )}
             <Row label="Laatste contact">
               {editing
                 ? <input type="date" value={f.lastContact} onChange={(e) => set("lastContact", e.target.value)} />
@@ -103,11 +139,16 @@ export default function ClientCockpit({ client }: { client: ClientConfig }) {
             <Row label="Snelkoppelingen">
               <div className="quicklinks">
                 <a className="ql" href={dashboardUrl}>Klant-dashboard</a>
-                <a className="ql" href={sheetUrl} target="_blank" rel="noreferrer">Google Sheet</a>
+                {hasSheet && <a className="ql" href={sheetUrl} target="_blank" rel="noreferrer">Google Sheet</a>}
                 {f.workDocUrl && <a className="ql" href={f.workDocUrl} target="_blank" rel="noreferrer">Werkdocument</a>}
                 {f.resultsUrl && <a className="ql" href={f.resultsUrl} target="_blank" rel="noreferrer">Resultaten</a>}
               </div>
             </Row>
+            {editing && (
+              <Row label="Google Sheet-link">
+                <input value={f.sheetUrl} onChange={(e) => set("sheetUrl", e.target.value)} placeholder="https://docs.google.com/spreadsheets/d/.../edit#gid=..." />
+              </Row>
+            )}
             {editing && (
               <Row label="Werkdocument-link">
                 <input value={f.workDocUrl} onChange={(e) => set("workDocUrl", e.target.value)} placeholder="https://docs.google.com/... (waar alles per klant verzameld is)" />
@@ -131,14 +172,14 @@ export default function ClientCockpit({ client }: { client: ClientConfig }) {
             <Row label="Snel zoeken">
               {f.emailDomain ? (
                 <div className="quicklinks">
-                  <a className="ql" href={gmailSearch} target="_blank" rel="noreferrer">Zoek in Gmail</a>
+                  <a className="ql" href={outlookSearch} target="_blank" rel="noreferrer">Zoek in Outlook</a>
                   <button className="ql ql-btn" onClick={() => navigator.clipboard?.writeText(f.emailDomain)}>Kopieer zoekterm (voor Superhuman)</button>
                 </div>
               ) : <span className="muted">Vul eerst een e-maildomein in.</span>}
             </Row>
             <div className="phase2-note">
               Binnenkort: de laatste e-mails met deze klant automatisch hier, rechtstreeks uit je
-              Gmail of Outlook (dezelfde mails die je in Superhuman ziet). Dat is een aparte koppeling
+              Outlook (maarten@pingwin.nl), met een doorzoekbare chat. Dat is een aparte koppeling
               die we samen aanzetten.
             </div>
           </div>
