@@ -358,6 +358,14 @@ tbody td:last-child { text-align: center; }
 .email-html a { color: var(--orange-dark); }
 .email-html blockquote { margin: 8px 0; padding-left: 12px; border-left: 2px solid var(--border); color: var(--gray); }
 .email-preview-full { font-size: 13px; line-height: 1.5; color: var(--body-text); padding-top: 12px; }
+.mail-live-badge { display: inline-block; font-size: 11px; font-weight: 700; color: #2E7D32; background: #E7F4E8; padding: 3px 10px; border-radius: 10px; margin-bottom: 12px; }
+.mail-connect { font-size: 13px; color: var(--gray); background: var(--orange-light); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.email-reply { margin-top: 14px; border-top: 1px dashed var(--border); padding-top: 12px; }
+.email-reply textarea { width: 100%; font-family: 'Montserrat', sans-serif; font-size: 13px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; resize: vertical; }
+.email-reply textarea:focus { outline: none; border-color: var(--orange); }
+.email-reply-bar { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+.reply-msg { font-size: 12px; font-weight: 600; }
+.reply-msg.ok { color: #2E7D32; } .reply-msg.err { color: var(--red); }
 
 /* KPI-kaarten */
 .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }

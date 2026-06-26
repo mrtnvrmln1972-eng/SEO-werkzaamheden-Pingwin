@@ -20,10 +20,14 @@ type CockpitData = {
   lastIngest: string | null;
   status: ClientStatus;
   statusUpdatedAt: string | null;
+  mailLive: boolean;
+  msConfigured: boolean;
+  msConnected: boolean;
 };
 
 export default function ClientCockpit({
   client, emails, metrics, keywords, pages, lastIngest, status, statusUpdatedAt,
+  mailLive, msConfigured, msConnected,
 }: { client: ClientConfig } & CockpitData) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("overzicht");
@@ -33,6 +37,29 @@ export default function ClientCockpit({
   const [saveError, setSaveError] = useState("");
   const [shQuery, setShQuery] = useState("");
   const [openEmail, setOpenEmail] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState("");
+  const [replyBusy, setReplyBusy] = useState(false);
+  const [replyMsg, setReplyMsg] = useState("");
+
+  async function sendReply(id: string) {
+    if (!replyText.trim()) return;
+    setReplyBusy(true);
+    setReplyMsg("");
+    try {
+      const res = await fetch("/api/admin/mail", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, comment: replyText }),
+      });
+      const data = await res.json();
+      if (data.ok) { setReplyMsg("Verstuurd."); setReplyText(""); }
+      else setReplyMsg(data.error || "Versturen mislukt.");
+    } catch {
+      setReplyMsg("Versturen mislukt.");
+    } finally {
+      setReplyBusy(false);
+    }
+  }
 
   const [f, setF] = useState({
     status: client.cockpit.status || "",
@@ -209,6 +236,13 @@ export default function ClientCockpit({
                 </div>
               </div>
               {lastIngest && <div className="ck-updated" style={{ marginBottom: 12 }}>bijgewerkt {fmtDate(lastIngest)}</div>}
+              {mailLive && <div className="mail-live-badge">● Live uit Microsoft 365</div>}
+              {msConfigured && !msConnected && (
+                <div className="mail-connect">
+                  Koppel Microsoft 365 om de volledige mails te zien en vanuit het dashboard te beantwoorden.{" "}
+                  <a className="primary-btn small" href="/api/ms/auth/start">Koppel Microsoft</a>
+                </div>
+              )}
               {emails.length === 0 ? (
                 <div className="phase2-note">
                   Nog geen mails ingeladen. Deze lijst vult zich met de laatste e-mails met deze klant
@@ -221,7 +255,7 @@ export default function ClientCockpit({
                     const shLink = e.superhumanLink || e.webLink || "";
                     return (
                       <div className={"email-row" + (open ? " open" : "")} key={e.id}>
-                        <div className="email-head" onClick={() => setOpenEmail(open ? null : e.id)}>
+                        <div className="email-head" onClick={() => { setOpenEmail(open ? null : e.id); setReplyText(""); setReplyMsg(""); }}>
                           <div className="email-head-main">
                             <div className="email-top">
                               <span className={"email-dir " + (e.direction === "out" ? "out" : "in")}>
@@ -252,6 +286,22 @@ export default function ClientCockpit({
                               <div className="email-preview-full">
                                 {e.preview}
                                 <div className="muted" style={{ marginTop: 8 }}>Volledige tekst nog niet ingeladen, open de mail in Superhuman.</div>
+                              </div>
+                            )}
+                            {mailLive && (
+                              <div className="email-reply">
+                                <textarea
+                                  value={replyText}
+                                  onChange={(ev) => setReplyText(ev.target.value)}
+                                  rows={3}
+                                  placeholder="Typ je antwoord en verstuur direct vanuit het dashboard..."
+                                />
+                                <div className="email-reply-bar">
+                                  <button type="button" className="primary-btn small" onClick={() => sendReply(e.id)} disabled={replyBusy || !replyText.trim()}>
+                                    {replyBusy ? "Versturen..." : "Verstuur antwoord"}
+                                  </button>
+                                  {replyMsg && <span className={"reply-msg" + (replyMsg === "Verstuurd." ? " ok" : " err")}>{replyMsg}</span>}
+                                </div>
                               </div>
                             )}
                           </div>

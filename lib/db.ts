@@ -73,6 +73,17 @@ async function init(): Promise<void> {
       updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
     )`;
 
+  // OAuth-tokens voor externe koppelingen (Microsoft Graph, Google).
+  // Eén rij per provider; bewaart de refresh-token waarmee de app zelf
+  // access-tokens vernieuwt. Alleen via het admin-beveiligde koppel-pad gevuld.
+  await sql`
+    CREATE TABLE IF NOT EXISTS oauth_tokens (
+      provider      TEXT PRIMARY KEY,
+      refresh_token TEXT,
+      account       TEXT,
+      updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+    )`;
+
   await sql`
     CREATE TABLE IF NOT EXISTS client_metrics (
       client_slug TEXT NOT NULL,
