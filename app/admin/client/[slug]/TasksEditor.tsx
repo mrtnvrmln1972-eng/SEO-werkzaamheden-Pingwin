@@ -51,15 +51,19 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName }: 
   async function save() {
     setBusy(true); setMsg("");
     try {
-      const res = await fetch("/api/admin/tasks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, tasks: rows }) });
+      // Developer-taken zijn altijd intern (nooit zichtbaar in het klant-dashboard).
+      const toSave = rows.map((r) => ((r.wie || "").toLowerCase() === "dev" ? { ...r, klantZichtbaar: false } : r));
+      const res = await fetch("/api/admin/tasks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, tasks: toSave }) });
       const data = await res.json();
       setMsg(data.ok ? `Opgeslagen (${data.saved} taken).` : (data.error || "Opslaan mislukt."));
     } catch { setMsg("Opslaan mislukt."); } finally { setBusy(false); }
   }
 
-  function openCompose() {
-    const devIdx = rows.map((r, i) => ({ r, i })).filter((x) => (x.r.wie || "").toLowerCase() === "dev" && !DONE.test(x.r.status || "")).map((x) => x.i);
-    setDevSel(new Set(devIdx));
+  // Open het mail-venster. Zonder argument: alle open developer-taken voorgevinkt.
+  // Met indices (de ✉-knop op een rij): precies die taak/taken voorgevinkt.
+  function openComposeFor(idxs?: number[]) {
+    const sel = idxs ?? rows.map((r, i) => ({ r, i })).filter((x) => (x.r.wie || "").toLowerCase() === "dev" && !DONE.test(x.r.status || "")).map((x) => x.i);
+    setDevSel(new Set(sel));
     try { setDevTo(localStorage.getItem("pingwin-dev-email") || ""); } catch { setDevTo(""); }
     setDevNote(""); setDevMsg(""); setShowCompose(true);
   }
@@ -73,7 +77,9 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName }: 
       `<li><strong>${esc(t.taak)}</strong>${t.maand ? ` <em>(${esc(t.maand)})</em>` : ""}${t.toelichting ? ` — ${esc(t.toelichting)}` : ""}${t.link ? ` — <a href="${esc(t.link)}">document</a>` : ""}</li>`,
     ).join("");
     const note = devNote.trim() ? `<p>${esc(devNote).replace(/\n/g, "<br>")}</p>` : "";
-    const html = `${note}<p><strong>Werkzaamheden:</strong></p><ul>${list}</ul>`;
+    const dashUrl = typeof window !== "undefined" ? `${window.location.origin}/admin/client/${slug}` : "";
+    const dashLink = dashUrl ? `<p style="margin-top:14px;color:#555;font-size:13px">Bekijk deze taken in het dashboard: <a href="${esc(dashUrl)}">${esc(dashUrl)}</a></p>` : "";
+    const html = `${note}<p><strong>Werkzaamheden:</strong></p><ul>${list}</ul>${dashLink}`;
     setDevBusy(true); setDevMsg("");
     try {
       const res = await fetch("/api/admin/mail", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: "compose", to: devTo, subject: `Werkzaamheden — ${clientName}`, html }) });
@@ -94,7 +100,8 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName }: 
   const beschikbareUren = budget.beschikbareUren || (budget.uurtarief ? Math.round((urenInGeld / budget.uurtarief) * 10) / 10 : 0);
 
   // Render-functies (geen sub-componenten → geen remount, focus blijft behouden).
-  function section(label: string, secRows: { r: TaskRow; i: number }[], maand: string, wie: string) {
+  function section(label: string, secRows: { r: TaskRow; i: number }[], maand: string, wie: string, showKlant: boolean) {
+    const cols = showKlant ? 9 : 8;
     return (
       <div className="task-section">
         <div className="task-section-head">{label}</div>
@@ -103,9 +110,9 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName }: 
             <colgroup>
               <col style={{ width: "22px" }} /><col /><col />
               <col style={{ width: "66px" }} /><col style={{ width: "104px" }} /><col style={{ width: "160px" }} />
-              <col style={{ width: "62px" }} /><col style={{ width: "92px" }} /><col style={{ width: "30px" }} />
+              {showKlant && <col style={{ width: "62px" }} />}<col style={{ width: "92px" }} /><col style={{ width: "56px" }} />
             </colgroup>
-            <thead><tr><th></th><th>Taak</th><th>Toelichting</th><th>Uren</th><th>Status</th><th>Link</th><th title="Zichtbaar in klant-dashboard">Klant</th><th>Maand</th><th></th></tr></thead>
+            <thead><tr><th></th><th>Taak</th><th>Toelichting</th><th>Uren</th><th>Status</th><th>Link</th>{showKlant && <th title="Zichtbaar in klant-dashboard">Klant</th>}<th>Maand</th><th></th></tr></thead>
             <tbody>
               {secRows.map(({ r, i }) => (
                 <tr key={i} draggable onDragStart={() => setDragIdx(i)} onDragOver={(e) => e.preventDefault()} onDrop={() => onDrop(i)} className={dragIdx === i ? "dragging" : ""}>
@@ -115,12 +122,15 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName }: 
                   <td><input className="cell-num" type="number" value={r.uren ?? ""} onChange={(e) => update(i, { uren: e.target.value === "" ? null : Number(e.target.value) })} /></td>
                   <td><select value={r.status} onChange={(e) => update(i, { status: e.target.value })}><option value="">—</option>{STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}</select></td>
                   <td><div className="cell-link"><input value={r.link} onChange={(e) => update(i, { link: e.target.value })} placeholder="https://..." />{r.link && <a href={r.link} target="_blank" rel="noreferrer">↗</a>}</div></td>
-                  <td className="cell-check"><input type="checkbox" checked={r.klantZichtbaar} onChange={(e) => update(i, { klantZichtbaar: e.target.checked })} /></td>
+                  {showKlant && <td className="cell-check"><input type="checkbox" checked={r.klantZichtbaar} onChange={(e) => update(i, { klantZichtbaar: e.target.checked })} /></td>}
                   <td><select value={r.maand} onChange={(e) => update(i, { maand: e.target.value })}><option value="">—</option>{MONTHS.map((m) => <option key={m} value={m}>{m}</option>)}</select></td>
-                  <td><button type="button" className="row-del" onClick={() => removeRow(i)} title="Verwijderen">×</button></td>
+                  <td className="row-actions">
+                    <button type="button" className="row-send" onClick={() => openComposeFor([i])} title="Naar developer mailen">✉</button>
+                    <button type="button" className="row-del" onClick={() => removeRow(i)} title="Verwijderen">×</button>
+                  </td>
                 </tr>
               ))}
-              {secRows.length === 0 && <tr><td colSpan={9} className="muted" style={{ padding: 8 }}>Geen {label}-taken.</td></tr>}
+              {secRows.length === 0 && <tr><td colSpan={cols} className="muted" style={{ padding: 8 }}>Geen {label}-taken.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -129,11 +139,14 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName }: 
     );
   }
 
-  function budgetBlock(urenBesteed: number, urenGepland: number) {
-    if (budget.maandbudget <= 0) return null;
+  // Compact budget-overzicht, horizontaal, bedoeld rechts van de maandnaam.
+  function budgetInline(urenBesteed: number, urenGepland: number) {
+    if (budget.maandbudget <= 0) {
+      return <span className="month-card-uren">{urenBesteed} u besteed · {urenGepland} u gepland</span>;
+    }
     const resterend = Math.round((beschikbareUren - urenBesteed) * 10) / 10;
     return (
-      <div className="budget-block">
+      <div className="budget-inline">
         <div><span>Maandbudget</span><strong>&euro;{budget.maandbudget.toFixed(0)}</strong></div>
         <div><span>Budget linkbuilding</span><strong>&euro;{budget.linkbuilding.toFixed(0)}</strong></div>
         <div><span>Uren in geld</span><strong>&euro;{urenInGeld.toFixed(0)}</strong></div>
@@ -155,18 +168,15 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName }: 
     const seo = items.filter((x) => (x.r.wie || "").toLowerCase() !== "dev");
     const dev = items.filter((x) => (x.r.wie || "").toLowerCase() === "dev");
     return (
-      <div className="month-group" key={maand || "none"}>
-        <div className="cockpit-card month-bar">
-          <div className="month-card-head clickable" onClick={() => toggleMonth(maand)}>
-            <span className="month-card-title">{label} <span className="month-caret">{open ? "▾" : "▸"}</span></span>
-            <span className="month-card-uren">{urenBesteed} u besteed · {urenGepland} u gepland · {items.length} taken</span>
-          </div>
-          {budgetBlock(urenBesteed, urenGepland)}
+      <div className="cockpit-card month-card" key={maand || "none"}>
+        <div className="month-card-head clickable" onClick={() => toggleMonth(maand)}>
+          <span className="month-card-title">{label} <span className="month-caret">{open ? "▾" : "▸"}</span> <span className="month-card-count">({items.length})</span></span>
+          {budgetInline(urenBesteed, urenGepland)}
         </div>
         {open && (
           <div className="month-cards">
-            <div className="cockpit-card task-card">{section("SEO", seo, maand, "SEO")}</div>
-            <div className="cockpit-card task-card">{section("Developer", dev, maand, "Dev")}</div>
+            <div className="task-card seo-card">{section("SEO", seo, maand, "SEO", true)}</div>
+            <div className="task-card dev-card">{section("Developer", dev, maand, "Dev", false)}</div>
           </div>
         )}
       </div>
@@ -179,7 +189,7 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName }: 
         <div className="ck-section-head">
           <span>Werkzaamheden</span>
           <span style={{ display: "flex", gap: 8 }}>
-            <button type="button" className="logout-btn" onClick={openCompose}>✉ Naar developer</button>
+            <button type="button" className="logout-btn" onClick={() => openComposeFor()}>✉ Naar developer</button>
             <button type="button" className="primary-btn small" onClick={save} disabled={busy}>{busy ? "Opslaan..." : "Alles opslaan"}</button>
           </span>
         </div>
