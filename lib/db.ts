@@ -102,6 +102,8 @@ async function init(): Promise<void> {
       updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
     )`;
   await sql`CREATE INDEX IF NOT EXISTS idx_client_tasks_slug ON client_tasks (client_slug, sort_order)`;
+  // Markeert of een taak naar de developer is gemaild (blijft oranje tot 'Klaar').
+  await sql`ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS gemaild BOOLEAN NOT NULL DEFAULT false`;
 
   // OAuth-tokens voor externe koppelingen (Microsoft Graph, Google).
   // Eén rij per provider; bewaart de refresh-token waarmee de app zelf

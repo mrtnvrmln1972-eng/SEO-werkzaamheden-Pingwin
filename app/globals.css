@@ -489,6 +489,8 @@ tbody td:last-child { text-align: center; }
 .task-card.dev-card { border-left-color: #6b7280; }
 .task-table tr.dev-row { background: #eef2f7; }
 .task-table tr.dev-row:hover { background: #e4ebf3; }
+.task-table tr.mailed-row { background: var(--orange-light); }
+.task-table tr.mailed-row:hover { background: #fbe0c7; }
 @keyframes rowPulse { 0%, 100% { background: var(--orange-light); } 50% { background: #f9c89b; } }
 .task-table tr.highlight-row { animation: rowPulse 0.9s ease 0s 5; }
 .werk-bar { padding: 12px 16px; }

@@ -18,12 +18,13 @@ export type TaskRow = {
   link: string;
   wie: string;            // "SEO" | "Dev"
   klantZichtbaar: boolean;
+  gemaild?: boolean;      // naar developer gemaild → blijft oranje tot 'Klaar'
 };
 
 export async function getTasks(slug: string): Promise<TaskRow[]> {
   await ensureSchema();
   const { rows } = await sql`
-    SELECT id, categorie, taak, toelichting, uren, status, maand, link, wie, klant_zichtbaar
+    SELECT id, categorie, taak, toelichting, uren, status, maand, link, wie, klant_zichtbaar, gemaild
     FROM client_tasks WHERE client_slug = ${slug} ORDER BY sort_order ASC, id ASC`;
   return rows.map((r) => ({
     id: r.id as number,
@@ -36,6 +37,7 @@ export async function getTasks(slug: string): Promise<TaskRow[]> {
     link: r.link ?? "",
     wie: r.wie ?? "",
     klantZichtbaar: !!r.klant_zichtbaar,
+    gemaild: !!r.gemaild,
   }));
 }
 
@@ -56,9 +58,9 @@ export async function replaceTasks(slug: string, tasks: TaskRow[]): Promise<numb
     if (!t.taak || !t.taak.trim()) continue;
     const uren = t.uren === null || t.uren === undefined || Number.isNaN(Number(t.uren)) ? null : Number(t.uren);
     await sql`
-      INSERT INTO client_tasks (client_slug, sort_order, categorie, taak, toelichting, uren, status, maand, link, wie, klant_zichtbaar, updated_at)
+      INSERT INTO client_tasks (client_slug, sort_order, categorie, taak, toelichting, uren, status, maand, link, wie, klant_zichtbaar, gemaild, updated_at)
       VALUES (${slug}, ${i}, ${t.categorie || null}, ${t.taak.trim()}, ${t.toelichting || null}, ${uren},
-              ${t.status || null}, ${(t.maand || "").toLowerCase() || null}, ${t.link || null}, ${t.wie || null}, ${!!t.klantZichtbaar}, now())`;
+              ${t.status || null}, ${(t.maand || "").toLowerCase() || null}, ${t.link || null}, ${t.wie || null}, ${!!t.klantZichtbaar}, ${!!t.gemaild}, now())`;
     n++;
   }
   return n;

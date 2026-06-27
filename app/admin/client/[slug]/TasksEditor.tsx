@@ -128,6 +128,10 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, hi
       const data = await res.json();
       if (data.ok) {
         try { localStorage.setItem("pingwin-dev-email", devTo.trim()); } catch { /* ignore */ }
+        // Gemailde taken markeren (blijven oranje tot status 'Klaar') en direct opslaan.
+        const newRows = rows.map((r, i) => devSel.has(i) ? { ...r, gemaild: true } : r);
+        setRows(newRows);
+        fetch("/api/admin/tasks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, tasks: newRows.map((r) => ({ ...r, klantZichtbaar: true })) }) }).catch(() => {});
         setDevMsg(`Verstuurd naar ${(data.sentTo || []).join(", ") || devTo}.`);
         setTimeout(() => setShowCompose(false), 1400);
       } else setDevMsg(data.error || "Versturen mislukt.");
@@ -157,8 +161,9 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, hi
               {secRows.map(({ r, i }) => {
                 const isDev = (r.wie || "").toLowerCase() === "dev";
                 const hl = typeof r.id === "number" && highlightIds.has(r.id);
+                const mailed = !!r.gemaild && !DONE.test(r.status || "");
                 return (
-                  <tr key={i} id={typeof r.id === "number" ? `task-row-${r.id}` : undefined} draggable onDragStart={() => setDragIdx(i)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.stopPropagation(); moveRow(maand, i); }} className={`${dragIdx === i ? "dragging " : ""}${isDev ? "dev-row " : ""}${hl ? "highlight-row" : ""}`}>
+                  <tr key={i} id={typeof r.id === "number" ? `task-row-${r.id}` : undefined} draggable onDragStart={() => setDragIdx(i)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.stopPropagation(); moveRow(maand, i); }} className={`${dragIdx === i ? "dragging " : ""}${isDev ? "dev-row " : ""}${mailed ? "mailed-row " : ""}${hl ? "highlight-row" : ""}`}>
                     <td className="drag-handle" title="Sleep (ook naar een andere maand)">⠿</td>
                     <td><input value={r.taak} onChange={(e) => update(i, { taak: e.target.value })} placeholder="Taak" /></td>
                     <td><input value={r.toelichting} onChange={(e) => update(i, { toelichting: e.target.value })} placeholder="Toelichting" /></td>
