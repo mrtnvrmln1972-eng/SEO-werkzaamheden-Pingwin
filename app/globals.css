@@ -483,6 +483,9 @@ tbody td:last-child { text-align: center; }
 .drag-handle { cursor: grab; color: var(--gray); user-select: none; text-align: center; }
 .row-del { background: none; border: none; color: var(--red); font-size: 18px; line-height: 1; cursor: pointer; padding: 0 4px; }
 .month-card-head { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid var(--orange); padding-bottom: 8px; margin-bottom: 12px; }
+.month-card-head.clickable { cursor: pointer; }
+.month-card-head.clickable:hover .month-card-title { color: var(--orange-dark); }
+.month-caret { font-size: 12px; color: var(--orange-dark); }
 .month-card-title { font-weight: 700; font-size: 16px; text-transform: capitalize; color: var(--dark); }
 .month-card-uren { font-size: 13px; color: var(--gray); font-weight: 600; }
 .task-section { margin-bottom: 16px; }

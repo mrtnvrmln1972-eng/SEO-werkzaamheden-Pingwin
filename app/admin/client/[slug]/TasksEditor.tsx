@@ -14,6 +14,14 @@ export default function TasksEditor({ slug, initialTasks, budget }: { slug: stri
   const [msg, setMsg] = useState("");
   const [dragIdx, setDragIdx] = useState<number | null>(null);
 
+  const now = new Date();
+  const curMonth = MONTHS[now.getMonth()];
+  const nextMonth = MONTHS[(now.getMonth() + 1) % 12];
+  // Standaard open: huidige + volgende maand (+ zonder-maand). Rest dicht.
+  const [openMonths, setOpenMonths] = useState<Record<string, boolean>>({ [curMonth]: true, [nextMonth]: true, "": true });
+  const isOpen = (m: string) => openMonths[m] ?? false;
+  const toggleMonth = (m: string) => setOpenMonths((o) => ({ ...o, [m]: !(o[m] ?? false) }));
+
   function update(i: number, patch: Partial<TaskRow>) {
     setRows((r) => r.map((row, idx) => (idx === i ? { ...row, ...patch } : row)));
     setMsg("");
@@ -22,7 +30,6 @@ export default function TasksEditor({ slug, initialTasks, budget }: { slug: stri
     setRows((r) => [...r, { categorie: "", taak: "", toelichting: "", uren: null, status: "Te doen", maand, link: "", wie, klantZichtbaar: wie !== "Dev" }]);
   }
   function removeRow(i: number) { setRows((r) => r.filter((_, idx) => idx !== i)); }
-
   function onDrop(target: number) {
     if (dragIdx === null || dragIdx === target) return;
     setRows((r) => { const c = [...r]; const [m] = c.splice(dragIdx, 1); c.splice(target, 0, m); return c; });
@@ -38,7 +45,6 @@ export default function TasksEditor({ slug, initialTasks, budget }: { slug: stri
     } catch { setMsg("Opslaan mislukt."); } finally { setBusy(false); }
   }
 
-  // Groeperen per maand (in huidige volgorde), met behoud van originele index.
   const indexed = rows.map((r, i) => ({ r, i }));
   const monthsPresent = MONTHS.filter((m) => indexed.some((x) => (x.r.maand || "").toLowerCase() === m));
   const noMonth = indexed.filter((x) => !MONTHS.includes((x.r.maand || "").toLowerCase()));
@@ -46,51 +52,17 @@ export default function TasksEditor({ slug, initialTasks, budget }: { slug: stri
   const urenInGeld = budget.maandbudget - budget.linkbuilding;
   const beschikbareUren = budget.beschikbareUren || (budget.uurtarief ? Math.round((urenInGeld / budget.uurtarief) * 10) / 10 : 0);
 
-  function MonthCard({ maand }: { maand: string }) {
-    const items = indexed.filter((x) => (x.r.maand || "").toLowerCase() === maand);
-    const minutes = items.reduce((s, x) => s + (Number(x.r.uren) || 0), 0);
-    const urenBesteed = Math.round((minutes / 60) * 10) / 10;
-    const resterend = Math.round((beschikbareUren - urenBesteed) * 10) / 10;
-    const seo = items.filter((x) => (x.r.wie || "").toLowerCase() !== "dev");
-    const dev = items.filter((x) => (x.r.wie || "").toLowerCase() === "dev");
-
-    return (
-      <div className="cockpit-card month-card">
-        <div className="month-card-head"><span className="month-card-title">{maand}</span><span className="month-card-uren">{urenBesteed} uur</span></div>
-
-        <Section label="SEO" rows={seo} maand={maand} wie="SEO" />
-        <Section label="Developer" rows={dev} maand={maand} wie="Dev" />
-
-        {budget.maandbudget > 0 && (
-          <div className="budget-block">
-            <div><span>Maandbudget</span><strong>&euro;{budget.maandbudget.toFixed(0)}</strong></div>
-            <div><span>Budget linkbuilding</span><strong>&euro;{budget.linkbuilding.toFixed(0)}</strong></div>
-            <div><span>Uren in geld</span><strong>&euro;{urenInGeld.toFixed(0)}</strong></div>
-            <div><span>Beschikbare uren</span><strong>{beschikbareUren} u</strong></div>
-            <div><span>Uren besteed</span><strong>{urenBesteed} u</strong></div>
-            <div className={resterend < 0 ? "neg" : ""}><span>Resterende uren</span><strong>{resterend} u</strong></div>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  function Section({ label, rows: secRows, maand, wie }: { label: string; rows: { r: TaskRow; i: number }[]; maand: string; wie: string }) {
+  // Render-functies (geen sub-componenten → geen remount, focus blijft behouden).
+  function section(label: string, secRows: { r: TaskRow; i: number }[], maand: string, wie: string) {
     return (
       <div className="task-section">
         <div className="task-section-head">{label}</div>
         <div className="res-table-wrap">
           <table className="task-table">
             <colgroup>
-              <col style={{ width: "22px" }} />
-              <col />
-              <col />
-              <col style={{ width: "52px" }} />
-              <col style={{ width: "104px" }} />
-              <col style={{ width: "170px" }} />
-              <col style={{ width: "44px" }} />
-              <col style={{ width: "92px" }} />
-              <col style={{ width: "30px" }} />
+              <col style={{ width: "22px" }} /><col /><col />
+              <col style={{ width: "52px" }} /><col style={{ width: "104px" }} /><col style={{ width: "170px" }} />
+              <col style={{ width: "44px" }} /><col style={{ width: "92px" }} /><col style={{ width: "30px" }} />
             </colgroup>
             <thead><tr><th></th><th>Taak</th><th>Toelichting</th><th>Uren</th><th>Status</th><th>Link</th><th title="Zichtbaar in klant-dashboard">Klant</th><th>Maand</th><th></th></tr></thead>
             <tbody>
@@ -116,6 +88,39 @@ export default function TasksEditor({ slug, initialTasks, budget }: { slug: stri
     );
   }
 
+  function budgetBlock(urenBesteed: number) {
+    if (budget.maandbudget <= 0) return null;
+    const resterend = Math.round((beschikbareUren - urenBesteed) * 10) / 10;
+    return (
+      <div className="budget-block">
+        <div><span>Maandbudget</span><strong>&euro;{budget.maandbudget.toFixed(0)}</strong></div>
+        <div><span>Budget linkbuilding</span><strong>&euro;{budget.linkbuilding.toFixed(0)}</strong></div>
+        <div><span>Uren in geld</span><strong>&euro;{urenInGeld.toFixed(0)}</strong></div>
+        <div><span>Beschikbare uren</span><strong>{beschikbareUren} u</strong></div>
+        <div><span>Uren besteed</span><strong>{urenBesteed} u</strong></div>
+        <div className={resterend < 0 ? "neg" : ""}><span>Resterende uren</span><strong>{resterend} u</strong></div>
+      </div>
+    );
+  }
+
+  function monthCard(maand: string, label: string, items: { r: TaskRow; i: number }[]) {
+    const minutes = items.reduce((s, x) => s + (Number(x.r.uren) || 0), 0);
+    const urenBesteed = Math.round((minutes / 60) * 10) / 10;
+    const open = isOpen(maand);
+    const seo = items.filter((x) => (x.r.wie || "").toLowerCase() !== "dev");
+    const dev = items.filter((x) => (x.r.wie || "").toLowerCase() === "dev");
+    return (
+      <div className="cockpit-card month-card" key={maand || "none"}>
+        <div className="month-card-head clickable" onClick={() => toggleMonth(maand)}>
+          <span className="month-card-title">{label} <span className="month-caret">{open ? "▾" : "▸"}</span></span>
+          <span className="month-card-uren">{urenBesteed} u · {items.length} taken</span>
+        </div>
+        {open && <>{section("SEO", seo, maand, "SEO")}{section("Developer", dev, maand, "Dev")}</>}
+        {budgetBlock(urenBesteed)}
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="cockpit-card">
@@ -128,20 +133,13 @@ export default function TasksEditor({ slug, initialTasks, budget }: { slug: stri
         <div className="add-month-row">
           Nieuwe maand toevoegen:&nbsp;
           {MONTHS.filter((m) => !monthsPresent.includes(m)).map((m) => (
-            <button key={m} type="button" className="add-month-btn" onClick={() => addRow(m, "SEO")}>{m}</button>
+            <button key={m} type="button" className="add-month-btn" onClick={() => { addRow(m, "SEO"); setOpenMonths((o) => ({ ...o, [m]: true })); }}>{m}</button>
           ))}
         </div>
       </div>
 
-      {monthsPresent.map((m) => <MonthCard key={m} maand={m} />)}
-
-      {noMonth.length > 0 && (
-        <div className="cockpit-card month-card">
-          <div className="month-card-head"><span className="month-card-title">Zonder maand</span></div>
-          <Section label="SEO" rows={noMonth.filter((x) => (x.r.wie || "").toLowerCase() !== "dev")} maand="" wie="SEO" />
-          <Section label="Developer" rows={noMonth.filter((x) => (x.r.wie || "").toLowerCase() === "dev")} maand="" wie="Dev" />
-        </div>
-      )}
+      {monthsPresent.map((m) => monthCard(m, m, indexed.filter((x) => (x.r.maand || "").toLowerCase() === m)))}
+      {noMonth.length > 0 && monthCard("", "Zonder maand", noMonth)}
     </>
   );
 }
