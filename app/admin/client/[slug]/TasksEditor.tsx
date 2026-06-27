@@ -64,7 +64,7 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName }: 
   function openComposeFor(idxs?: number[]) {
     const sel = idxs ?? rows.map((r, i) => ({ r, i })).filter((x) => (x.r.wie || "").toLowerCase() === "dev").map((x) => x.i);
     setDevSel(new Set(sel));
-    try { setDevTo(localStorage.getItem("pingwin-dev-email") || ""); } catch { setDevTo(""); }
+    try { setDevTo(localStorage.getItem("pingwin-dev-email") || "tony@pingwin.nl"); } catch { setDevTo("tony@pingwin.nl"); }
     setDevNote(""); setDevMsg(""); setShowCompose(true);
   }
   function toggleDevSel(i: number) {
@@ -179,22 +179,22 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName }: 
 
   return (
     <>
-      <div className="cockpit-card">
-        <div className="ck-section-head">
-          <span>Werkzaamheden</span>
-          <span style={{ display: "flex", gap: 8 }}>
-            <button type="button" className="logout-btn" onClick={() => openComposeFor()}>✉ Naar developer</button>
+      <div className="cockpit-card werk-bar">
+        <div className="werk-head">
+          <div className="werk-head-left">
+            <span className="werk-title">Werkzaamheden</span>
+            <select className="add-month-select" value="" onChange={(e) => { const m = e.target.value; if (m) { addRow(m, "SEO"); setOpenMonths((o) => ({ ...o, [m]: true })); } }}>
+              <option value="">+ Nieuwe maand…</option>
+              {MONTHS.filter((m) => !monthsPresent.includes(m)).map((m) => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </div>
+          <span className="werk-head-actions">
+            <button type="button" className="ghost-btn" onClick={() => openComposeFor()}>✉ Naar developer</button>
             <button type="button" className="primary-btn small" onClick={save} disabled={busy}>{busy ? "Opslaan..." : "Alles opslaan"}</button>
           </span>
         </div>
         {msg && <div className={msg.startsWith("Opgeslagen") ? "saved-msg" : "login-error"}>{msg}</div>}
-        {rows.length === 0 && <div className="muted">Nog geen werkzaamheden.</div>}
-        <div className="add-month-row">
-          Nieuwe maand toevoegen:&nbsp;
-          {MONTHS.filter((m) => !monthsPresent.includes(m)).map((m) => (
-            <button key={m} type="button" className="add-month-btn" onClick={() => { addRow(m, "SEO"); setOpenMonths((o) => ({ ...o, [m]: true })); }}>{m}</button>
-          ))}
-        </div>
+        {rows.length === 0 && <div className="muted">Nog geen werkzaamheden. Voeg een maand toe om te beginnen.</div>}
       </div>
 
       {(() => {
@@ -216,7 +216,7 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName }: 
             <div className="compose-head"><span>Werkzaamheden naar developer</span><button type="button" className="chat-float-close" onClick={() => setShowCompose(false)}>&times;</button></div>
             <div className="compose-body">
               <label className="compose-label">Aan (e-mail developer)</label>
-              <input className="compose-input" value={devTo} onChange={(e) => setDevTo(e.target.value)} placeholder="tonny@..." />
+              <input className="compose-input" value={devTo} onChange={(e) => setDevTo(e.target.value)} placeholder="tony@pingwin.nl" />
               <label className="compose-label">Bericht (optioneel)</label>
               <textarea className="compose-input" rows={3} value={devNote} onChange={(e) => setDevNote(e.target.value)} placeholder="Korte begeleidende tekst..." />
               <label className="compose-label">Taken (vink aan wat mee moet)</label>
