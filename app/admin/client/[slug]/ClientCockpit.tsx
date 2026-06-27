@@ -528,7 +528,7 @@ export default function ClientCockpit({
         )}
 
         {tab === "werkzaamheden" && (
-          <TasksEditor slug={client.slug} initialTasks={tasks} budget={client.budget} />
+          <TasksEditor slug={client.slug} initialTasks={tasks} budget={client.budget} clientName={client.name} />
         )}
 
         {tab === "resultaten" && (

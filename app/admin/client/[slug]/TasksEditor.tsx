@@ -8,11 +8,23 @@ const STATUSES = ["Te doen", "Bezig", "Gepland", "Klaar"];
 
 type Budget = { maandbudget: number; linkbuilding: number; uurtarief: number; beschikbareUren: number };
 
-export default function TasksEditor({ slug, initialTasks, budget }: { slug: string; initialTasks: TaskRow[]; budget: Budget }) {
+function esc(s: string): string {
+  return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+export default function TasksEditor({ slug, initialTasks, budget, clientName }: { slug: string; initialTasks: TaskRow[]; budget: Budget; clientName: string }) {
   const [rows, setRows] = useState<TaskRow[]>(initialTasks);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [dragIdx, setDragIdx] = useState<number | null>(null);
+
+  // "Verstuur naar developer"
+  const [showCompose, setShowCompose] = useState(false);
+  const [devTo, setDevTo] = useState("");
+  const [devNote, setDevNote] = useState("");
+  const [devSel, setDevSel] = useState<Set<number>>(new Set());
+  const [devBusy, setDevBusy] = useState(false);
+  const [devMsg, setDevMsg] = useState("");
 
   const now = new Date();
   const curMonth = MONTHS[now.getMonth()];
@@ -45,6 +57,35 @@ export default function TasksEditor({ slug, initialTasks, budget }: { slug: stri
     } catch { setMsg("Opslaan mislukt."); } finally { setBusy(false); }
   }
 
+  function openCompose() {
+    const devIdx = rows.map((r, i) => ({ r, i })).filter((x) => (x.r.wie || "").toLowerCase() === "dev" && !DONE.test(x.r.status || "")).map((x) => x.i);
+    setDevSel(new Set(devIdx));
+    try { setDevTo(localStorage.getItem("pingwin-dev-email") || ""); } catch { setDevTo(""); }
+    setDevNote(""); setDevMsg(""); setShowCompose(true);
+  }
+  function toggleDevSel(i: number) {
+    setDevSel((s) => { const c = new Set(s); if (c.has(i)) c.delete(i); else c.add(i); return c; });
+  }
+  async function sendDev() {
+    const selected = rows.map((r, i) => ({ r, i })).filter((x) => devSel.has(x.i)).map((x) => x.r);
+    if (!devTo.trim() || selected.length === 0) { setDevMsg("Vul een ontvanger in en kies minstens één taak."); return; }
+    const list = selected.map((t) =>
+      `<li><strong>${esc(t.taak)}</strong>${t.maand ? ` <em>(${esc(t.maand)})</em>` : ""}${t.toelichting ? ` — ${esc(t.toelichting)}` : ""}${t.link ? ` — <a href="${esc(t.link)}">document</a>` : ""}</li>`,
+    ).join("");
+    const note = devNote.trim() ? `<p>${esc(devNote).replace(/\n/g, "<br>")}</p>` : "";
+    const html = `${note}<p><strong>Werkzaamheden:</strong></p><ul>${list}</ul>`;
+    setDevBusy(true); setDevMsg("");
+    try {
+      const res = await fetch("/api/admin/mail", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: "compose", to: devTo, subject: `Werkzaamheden — ${clientName}`, html }) });
+      const data = await res.json();
+      if (data.ok) {
+        try { localStorage.setItem("pingwin-dev-email", devTo.trim()); } catch { /* ignore */ }
+        setDevMsg(`Verstuurd naar ${(data.sentTo || []).join(", ") || devTo}.`);
+        setTimeout(() => setShowCompose(false), 1400);
+      } else setDevMsg(data.error || "Versturen mislukt.");
+    } catch { setDevMsg("Versturen mislukt."); } finally { setDevBusy(false); }
+  }
+
   const indexed = rows.map((r, i) => ({ r, i }));
   const monthsPresent = MONTHS.filter((m) => indexed.some((x) => (x.r.maand || "").toLowerCase() === m));
   const noMonth = indexed.filter((x) => !MONTHS.includes((x.r.maand || "").toLowerCase()));
@@ -61,8 +102,8 @@ export default function TasksEditor({ slug, initialTasks, budget }: { slug: stri
           <table className="task-table">
             <colgroup>
               <col style={{ width: "22px" }} /><col /><col />
-              <col style={{ width: "52px" }} /><col style={{ width: "104px" }} /><col style={{ width: "170px" }} />
-              <col style={{ width: "44px" }} /><col style={{ width: "92px" }} /><col style={{ width: "30px" }} />
+              <col style={{ width: "66px" }} /><col style={{ width: "104px" }} /><col style={{ width: "160px" }} />
+              <col style={{ width: "62px" }} /><col style={{ width: "92px" }} /><col style={{ width: "30px" }} />
             </colgroup>
             <thead><tr><th></th><th>Taak</th><th>Toelichting</th><th>Uren</th><th>Status</th><th>Link</th><th title="Zichtbaar in klant-dashboard">Klant</th><th>Maand</th><th></th></tr></thead>
             <tbody>
@@ -88,7 +129,7 @@ export default function TasksEditor({ slug, initialTasks, budget }: { slug: stri
     );
   }
 
-  function budgetBlock(urenBesteed: number) {
+  function budgetBlock(urenBesteed: number, urenGepland: number) {
     if (budget.maandbudget <= 0) return null;
     const resterend = Math.round((beschikbareUren - urenBesteed) * 10) / 10;
     return (
@@ -97,15 +138,19 @@ export default function TasksEditor({ slug, initialTasks, budget }: { slug: stri
         <div><span>Budget linkbuilding</span><strong>&euro;{budget.linkbuilding.toFixed(0)}</strong></div>
         <div><span>Uren in geld</span><strong>&euro;{urenInGeld.toFixed(0)}</strong></div>
         <div><span>Beschikbare uren</span><strong>{beschikbareUren} u</strong></div>
+        <div><span>Uren gepland</span><strong>{urenGepland} u</strong></div>
         <div><span>Uren besteed</span><strong>{urenBesteed} u</strong></div>
         <div className={resterend < 0 ? "neg" : ""}><span>Resterende uren</span><strong>{resterend} u</strong></div>
       </div>
     );
   }
 
+  const DONE = /klaar|afgerond|gereed|done|voltooid/i;
   function monthCard(maand: string, label: string, items: { r: TaskRow; i: number }[]) {
-    const minutes = items.reduce((s, x) => s + (Number(x.r.uren) || 0), 0);
-    const urenBesteed = Math.round((minutes / 60) * 10) / 10;
+    const doneMin = items.filter((x) => DONE.test(x.r.status || "")).reduce((s, x) => s + (Number(x.r.uren) || 0), 0);
+    const planMin = items.filter((x) => !DONE.test(x.r.status || "")).reduce((s, x) => s + (Number(x.r.uren) || 0), 0);
+    const urenBesteed = Math.round((doneMin / 60) * 10) / 10;
+    const urenGepland = Math.round((planMin / 60) * 10) / 10;
     const open = isOpen(maand);
     const seo = items.filter((x) => (x.r.wie || "").toLowerCase() !== "dev");
     const dev = items.filter((x) => (x.r.wie || "").toLowerCase() === "dev");
@@ -113,10 +158,10 @@ export default function TasksEditor({ slug, initialTasks, budget }: { slug: stri
       <div className="cockpit-card month-card" key={maand || "none"}>
         <div className="month-card-head clickable" onClick={() => toggleMonth(maand)}>
           <span className="month-card-title">{label} <span className="month-caret">{open ? "▾" : "▸"}</span></span>
-          <span className="month-card-uren">{urenBesteed} u · {items.length} taken</span>
+          <span className="month-card-uren">{urenBesteed} u besteed · {urenGepland} u gepland · {items.length} taken</span>
         </div>
         {open && <>{section("SEO", seo, maand, "SEO")}{section("Developer", dev, maand, "Dev")}</>}
-        {budgetBlock(urenBesteed)}
+        {budgetBlock(urenBesteed, urenGepland)}
       </div>
     );
   }
@@ -126,7 +171,10 @@ export default function TasksEditor({ slug, initialTasks, budget }: { slug: stri
       <div className="cockpit-card">
         <div className="ck-section-head">
           <span>Werkzaamheden</span>
-          <button type="button" className="primary-btn small" onClick={save} disabled={busy}>{busy ? "Opslaan..." : "Alles opslaan"}</button>
+          <span style={{ display: "flex", gap: 8 }}>
+            <button type="button" className="logout-btn" onClick={openCompose}>✉ Naar developer</button>
+            <button type="button" className="primary-btn small" onClick={save} disabled={busy}>{busy ? "Opslaan..." : "Alles opslaan"}</button>
+          </span>
         </div>
         {msg && <div className={msg.startsWith("Opgeslagen") ? "saved-msg" : "login-error"}>{msg}</div>}
         {rows.length === 0 && <div className="muted">Nog geen werkzaamheden.</div>}
@@ -140,6 +188,35 @@ export default function TasksEditor({ slug, initialTasks, budget }: { slug: stri
 
       {monthsPresent.map((m) => monthCard(m, m, indexed.filter((x) => (x.r.maand || "").toLowerCase() === m)))}
       {noMonth.length > 0 && monthCard("", "Zonder maand", noMonth)}
+
+      {showCompose && (
+        <div className="compose-overlay" onClick={() => setShowCompose(false)}>
+          <div className="compose-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="compose-head"><span>Werkzaamheden naar developer</span><button type="button" className="chat-float-close" onClick={() => setShowCompose(false)}>&times;</button></div>
+            <div className="compose-body">
+              <label className="compose-label">Aan (e-mail developer)</label>
+              <input className="compose-input" value={devTo} onChange={(e) => setDevTo(e.target.value)} placeholder="tonny@..." />
+              <label className="compose-label">Bericht (optioneel)</label>
+              <textarea className="compose-input" rows={3} value={devNote} onChange={(e) => setDevNote(e.target.value)} placeholder="Korte begeleidende tekst..." />
+              <label className="compose-label">Taken (vink aan wat mee moet)</label>
+              <div className="compose-list">
+                {rows.map((r, i) => (r.wie || "").toLowerCase() === "dev" ? (
+                  <label key={i} className="compose-item">
+                    <input type="checkbox" checked={devSel.has(i)} onChange={() => toggleDevSel(i)} />
+                    <span>{r.maand ? <em>[{r.maand}] </em> : ""}{r.taak || "(leeg)"}{r.status ? ` — ${r.status}` : ""}</span>
+                  </label>
+                ) : null)}
+                {!rows.some((r) => (r.wie || "").toLowerCase() === "dev") && <div className="muted">Geen developer-taken.</div>}
+              </div>
+              {devMsg && <div className={devMsg.startsWith("Verstuurd") ? "saved-msg" : "login-error"} style={{ marginTop: 8 }}>{devMsg}</div>}
+            </div>
+            <div className="compose-foot">
+              <button type="button" className="logout-btn" onClick={() => setShowCompose(false)}>Annuleren</button>
+              <button type="button" className="primary-btn small" onClick={sendDev} disabled={devBusy}>{devBusy ? "Versturen..." : "Verstuur per mail"}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

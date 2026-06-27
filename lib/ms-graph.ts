@@ -207,6 +207,26 @@ function sanitizeOutgoing(html: string): string {
     .replace(/javascript:/gi, "");
 }
 
+// Verstuurt een nieuwe mail (bijv. werkzaamheden naar de developer).
+export async function msSendMail(to: string[], subject: string, html: string): Promise<{ ok: boolean; error?: string; sentTo?: string[] }> {
+  const token = await msAccessToken();
+  if (!token) return { ok: false, error: "Niet gekoppeld met Microsoft." };
+  const recipients = (to || []).map((a) => a.trim()).filter(Boolean);
+  if (recipients.length === 0) return { ok: false, error: "Geen ontvanger opgegeven." };
+  const res = await fetch("https://graph.microsoft.com/v1.0/me/sendMail", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      message: { subject: subject || "(geen onderwerp)", body: { contentType: "HTML", content: sanitizeOutgoing(html) }, toRecipients: recipients.map((a) => ({ emailAddress: { address: a } })) },
+      saveToSentItems: true,
+    }),
+  });
+  if (res.status === 202 || res.ok) return { ok: true, sentTo: recipients };
+  let msg = `Versturen mislukt (${res.status}).`;
+  try { const j = await res.json(); msg = j.error?.message || msg; } catch { /* ignore */ }
+  return { ok: false, error: msg };
+}
+
 type Recipient = { emailAddress?: { address?: string } };
 
 // Bepaalt naar wie het antwoord moet: alle deelnemers (afzender + to + cc) van

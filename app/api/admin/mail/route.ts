@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { getClientBySlug } from "../../../../lib/clients";
-import { msStatus, msSearchClientEmails, msReplyHtml } from "../../../../lib/ms-graph";
+import { msStatus, msSearchClientEmails, msReplyHtml, msSendMail } from "../../../../lib/ms-graph";
 
 export const runtime = "nodejs";
 
@@ -32,9 +32,18 @@ export async function POST(req: NextRequest) {
   if (!admin(req)) return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: "Ongeldige aanvraag." }, { status: 400 }); }
-  const id = String(body.id || "").trim();
   const html = String(body.html || "").trim();
   const to = String(body.to || "").split(/[,;]/).map((s) => s.trim()).filter(Boolean);
+
+  // Compose-modus: een nieuwe mail versturen (bijv. naar de developer).
+  if (body.mode === "compose") {
+    if (to.length === 0 || !html) return NextResponse.json({ ok: false, error: "Ontvanger en bericht zijn verplicht." }, { status: 400 });
+    const result = await msSendMail(to, String(body.subject || "").trim(), html);
+    if (!result.ok) return NextResponse.json({ ok: false, error: result.error }, { status: 502 });
+    return NextResponse.json({ ok: true, sentTo: result.sentTo || [] });
+  }
+
+  const id = String(body.id || "").trim();
   if (!id || !html) return NextResponse.json({ ok: false, error: "Mail-id en bericht zijn verplicht." }, { status: 400 });
   const result = await msReplyHtml(id, html, to);
   if (!result.ok) return NextResponse.json({ ok: false, error: result.error }, { status: 502 });
