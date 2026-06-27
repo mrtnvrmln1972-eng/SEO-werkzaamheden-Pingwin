@@ -8,12 +8,16 @@ const STATUSES = ["Te doen", "Bezig", "Gepland", "Klaar"];
 
 type Budget = { maandbudget: number; linkbuilding: number; uurtarief: number; beschikbareUren: number };
 
+// Rij = taak plus een client-only vinkje "_mail" (welke taken meegaan in de
+// mail-batch). Reist mee met de rij bij verslepen; wordt niet opgeslagen.
+type Row = TaskRow & { _mail?: boolean };
+
 function esc(s: string): string {
   return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 export default function TasksEditor({ slug, initialTasks, budget, clientName, highlight }: { slug: string; initialTasks: TaskRow[]; budget: Budget; clientName: string; highlight?: string }) {
-  const [rows, setRows] = useState<TaskRow[]>(initialTasks);
+  const [rows, setRows] = useState<Row[]>(initialTasks);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [dragIdx, setDragIdx] = useState<number | null>(null);
@@ -55,7 +59,7 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, hi
   const isOpen = (m: string) => openMonths[m] ?? false;
   const toggleMonth = (m: string) => setOpenMonths((o) => ({ ...o, [m]: !(o[m] ?? false) }));
 
-  function update(i: number, patch: Partial<TaskRow>) {
+  function update(i: number, patch: Partial<Row>) {
     setRows((r) => r.map((row, idx) => (idx === i ? { ...row, ...patch } : row)));
     setMsg("");
   }
@@ -63,10 +67,22 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, hi
     setRows((r) => [...r, { categorie: "", taak: "", toelichting: "", uren: null, status: "Te doen", maand, link: "", wie, klantZichtbaar: true }]);
   }
   function removeRow(i: number) { setRows((r) => r.filter((_, idx) => idx !== i)); }
-  function onDrop(target: number) {
-    if (dragIdx === null || dragIdx === target) return;
-    setRows((r) => { const c = [...r]; const [m] = c.splice(dragIdx, 1); c.splice(target, 0, m); return c; });
+
+  // Versleep een taak. beforeIdx = de rij waarop gedropt wordt (binnen of tussen
+  // maanden); null = ergens op de maandkaart (achteraan die maand). De maand van
+  // de gesleepte taak wordt op de doelmaand gezet, zo verhuist hij van kaart.
+  function moveRow(toMaand: string, beforeIdx: number | null) {
+    if (dragIdx === null) return;
+    setRows((prev) => {
+      const c = [...prev];
+      const [moved] = c.splice(dragIdx, 1);
+      const nm = { ...moved, maand: toMaand };
+      if (beforeIdx == null || beforeIdx < 0) { c.push(nm); }
+      else { const ins = beforeIdx > dragIdx ? beforeIdx - 1 : beforeIdx; c.splice(ins, 0, nm); }
+      return c;
+    });
     setDragIdx(null);
+    setMsg("");
   }
 
   async function save() {
@@ -83,7 +99,9 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, hi
   // Open het mail-venster. Zonder argument: alle open developer-taken voorgevinkt.
   // Met indices (de ✉-knop op een rij): precies die taak/taken voorgevinkt.
   function openComposeFor(idxs?: number[]) {
-    const sel = idxs ?? rows.map((r, i) => ({ r, i })).filter((x) => (x.r.wie || "").toLowerCase() === "dev").map((x) => x.i);
+    let sel = idxs ?? rows.map((r, i) => ({ r, i })).filter((x) => x.r._mail).map((x) => x.i);
+    // Niets aangevinkt? Val terug op alle developer-taken.
+    if (sel.length === 0) sel = rows.map((r, i) => ({ r, i })).filter((x) => (x.r.wie || "").toLowerCase() === "dev").map((x) => x.i);
     setDevSel(new Set(sel));
     try { setDevTo(localStorage.getItem("pingwin-dev-email") || "tony@pingwin.nl"); } catch { setDevTo("tony@pingwin.nl"); }
     setDevNote(""); setDevMsg(""); setShowCompose(true);
@@ -124,39 +142,40 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, hi
   const beschikbareUren = budget.beschikbareUren || (budget.uurtarief ? Math.round((urenInGeld / budget.uurtarief) * 10) / 10 : 0);
 
   // Render-functies (geen sub-componenten → geen remount, focus blijft behouden).
-  function section(secRows: { r: TaskRow; i: number }[], maand: string) {
+  function section(secRows: { r: Row; i: number }[], maand: string) {
     return (
       <div className="task-section">
         <div className="res-table-wrap">
           <table className="task-table">
             <colgroup>
               <col style={{ width: "22px" }} /><col /><col />
-              <col style={{ width: "66px" }} /><col style={{ width: "104px" }} /><col style={{ width: "160px" }} />
-              <col style={{ width: "84px" }} /><col style={{ width: "92px" }} /><col style={{ width: "56px" }} />
+              <col style={{ width: "66px" }} /><col style={{ width: "104px" }} /><col style={{ width: "150px" }} />
+              <col style={{ width: "118px" }} /><col style={{ width: "92px" }} /><col style={{ width: "44px" }} /><col style={{ width: "78px" }} />
             </colgroup>
-            <thead><tr><th></th><th>Taak</th><th>Toelichting</th><th>Uren</th><th>Status</th><th>Link</th><th title="Aanvinken = deze taak meenemen in de mail naar de developer. Alle taken blijven zichtbaar in het klant-overzicht.">Developer</th><th>Maand</th><th></th></tr></thead>
+            <thead><tr><th></th><th>Taak</th><th>Toelichting</th><th>Uren</th><th>Status</th><th>Link</th><th>Wie</th><th>Maand</th><th title="Aanvinken om mee te nemen in een mail-batch naar de developer" className="col-center">Mail</th><th></th></tr></thead>
             <tbody>
               {secRows.map(({ r, i }) => {
                 const isDev = (r.wie || "").toLowerCase() === "dev";
                 const hl = typeof r.id === "number" && highlightIds.has(r.id);
                 return (
-                  <tr key={i} id={typeof r.id === "number" ? `task-row-${r.id}` : undefined} draggable onDragStart={() => setDragIdx(i)} onDragOver={(e) => e.preventDefault()} onDrop={() => onDrop(i)} className={`${dragIdx === i ? "dragging " : ""}${isDev ? "dev-row " : ""}${hl ? "highlight-row" : ""}`}>
-                    <td className="drag-handle" title="Sleep">⠿</td>
+                  <tr key={i} id={typeof r.id === "number" ? `task-row-${r.id}` : undefined} draggable onDragStart={() => setDragIdx(i)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.stopPropagation(); moveRow(maand, i); }} className={`${dragIdx === i ? "dragging " : ""}${isDev ? "dev-row " : ""}${hl ? "highlight-row" : ""}`}>
+                    <td className="drag-handle" title="Sleep (ook naar een andere maand)">⠿</td>
                     <td><input value={r.taak} onChange={(e) => update(i, { taak: e.target.value })} placeholder="Taak" /></td>
                     <td><input value={r.toelichting} onChange={(e) => update(i, { toelichting: e.target.value })} placeholder="Toelichting" /></td>
                     <td><input className="cell-num" type="number" value={r.uren ?? ""} onChange={(e) => update(i, { uren: e.target.value === "" ? null : Number(e.target.value) })} /></td>
                     <td><select value={r.status} onChange={(e) => update(i, { status: e.target.value })}><option value="">—</option>{STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}</select></td>
                     <td><div className="cell-link"><input value={r.link} onChange={(e) => update(i, { link: e.target.value })} placeholder="https://..." />{r.link && <a href={r.link} target="_blank" rel="noreferrer">↗</a>}</div></td>
-                    <td className="cell-check"><input type="checkbox" checked={isDev} onChange={(e) => update(i, { wie: e.target.checked ? "Dev" : "SEO" })} title="Meenemen in de mail naar de developer" /></td>
+                    <td><select value={isDev ? "Dev" : "SEO"} onChange={(e) => update(i, { wie: e.target.value })}><option value="SEO">SEO</option><option value="Dev">Developer</option></select></td>
                     <td><select value={r.maand} onChange={(e) => update(i, { maand: e.target.value })}><option value="">—</option>{MONTHS.map((m) => <option key={m} value={m}>{m}</option>)}</select></td>
+                    <td className="cell-check col-center"><input type="checkbox" checked={!!r._mail} onChange={(e) => update(i, { _mail: e.target.checked })} title="Meenemen in de mail-batch naar de developer" /></td>
                     <td className="row-actions">
-                      <button type="button" className="row-send" onClick={() => openComposeFor([i])} title="Naar developer mailen">✉</button>
+                      <button type="button" className="row-send" onClick={() => openComposeFor([i])} title="Deze taak mailen naar de developer">✉</button>
                       <button type="button" className="row-del" onClick={() => removeRow(i)} title="Verwijderen">×</button>
                     </td>
                   </tr>
                 );
               })}
-              {secRows.length === 0 && <tr><td colSpan={9} className="muted" style={{ padding: 8 }}>Nog geen taken deze maand.</td></tr>}
+              {secRows.length === 0 && <tr><td colSpan={10} className="muted" style={{ padding: 8 }}>Nog geen taken deze maand. Sleep er een hierheen of voeg toe.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -185,15 +204,16 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, hi
   }
 
   const DONE = /klaar|afgerond|gereed|done|voltooid/i;
-  function monthCard(maand: string, label: string, items: { r: TaskRow; i: number }[]) {
+  function monthCard(maand: string, label: string, items: { r: Row; i: number }[]) {
     const doneMin = items.filter((x) => DONE.test(x.r.status || "")).reduce((s, x) => s + (Number(x.r.uren) || 0), 0);
     const planMin = items.filter((x) => !DONE.test(x.r.status || "")).reduce((s, x) => s + (Number(x.r.uren) || 0), 0);
     const urenBesteed = Math.round((doneMin / 60) * 10) / 10;
     const urenGepland = Math.round((planMin / 60) * 10) / 10;
     const open = isOpen(maand);
+    // Op de kaart of de kop droppen verplaatst de taak naar (het einde van) deze maand.
     return (
-      <div className="cockpit-card month-card" key={maand || "none"}>
-        <div className="month-card-head clickable" onClick={() => toggleMonth(maand)}>
+      <div className="cockpit-card month-card" key={maand || "none"} onDragOver={(e) => e.preventDefault()} onDrop={() => moveRow(maand, null)}>
+        <div className="month-card-head clickable" onClick={() => toggleMonth(maand)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.stopPropagation(); moveRow(maand, null); setOpenMonths((o) => ({ ...o, [maand]: true })); }}>
           <span className="month-card-title">{label} <span className="month-caret">{open ? "▾" : "▸"}</span> <span className="month-card-count">({items.length})</span></span>
           {budgetInline(urenBesteed, urenGepland)}
         </div>
@@ -246,13 +266,13 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, hi
               <textarea className="compose-input" rows={3} value={devNote} onChange={(e) => setDevNote(e.target.value)} placeholder="Korte begeleidende tekst..." />
               <label className="compose-label">Taken (vink aan wat mee moet)</label>
               <div className="compose-list">
-                {rows.map((r, i) => (r.wie || "").toLowerCase() === "dev" ? (
+                {rows.map((r, i) => devSel.has(i) ? (
                   <label key={i} className="compose-item">
                     <input type="checkbox" checked={devSel.has(i)} onChange={() => toggleDevSel(i)} />
                     <span>{r.maand ? <em>[{r.maand}] </em> : ""}{r.taak || "(leeg)"}{r.status ? ` — ${r.status}` : ""}</span>
                   </label>
                 ) : null)}
-                {!rows.some((r) => (r.wie || "").toLowerCase() === "dev") && <div className="muted">Geen developer-taken.</div>}
+                {devSel.size === 0 && <div className="muted">Geen taken geselecteerd. Vink in de tabel taken aan in de kolom &ldquo;Mail&rdquo;.</div>}
               </div>
               {devMsg && <div className={devMsg.startsWith("Verstuurd") ? "saved-msg" : "login-error"} style={{ marginTop: 8 }}>{devMsg}</div>}
             </div>
