@@ -1,4 +1,5 @@
 import type { ClientBudget } from "./clients";
+import type { TaskRow } from "./tasks";
 
 // ═══════════════════════════════════════════════════════════
 // GOOGLE SHEET LADEN, PARSEN EN STRUCTUREREN
@@ -46,6 +47,35 @@ export const MAAND_VOLGORDE = [
   "januari", "februari", "maart", "april", "mei", "juni",
   "juli", "augustus", "september", "oktober", "november", "december",
 ];
+
+// Bouwt het dashboard-formaat rechtstreeks uit de database-taken (de nieuwe
+// bron van waarheid). Vervangt de Google Sheet voor klanten die we al in het
+// dashboard bijhouden. Alle taken zijn klant-zichtbaar; uren staan in minuten.
+export function tasksToDashboardData(tasks: TaskRow[], budget: ClientBudget): DashboardData {
+  const mapped: Task[] = tasks
+    .filter((t) => (t.taak || "").trim())
+    .map((t, i) => ({
+      categorie: t.categorie || "",
+      taak: t.taak,
+      toelichting: t.toelichting || "",
+      standaardTijd: Number(t.uren) || 0,
+      status: t.status || "",
+      maand: (t.maand || "").toLowerCase(),
+      link: t.link || "",
+      row: i + 1,
+      wie: t.wie || "",
+      klantZichtbaar: true,
+    }));
+
+  const uniqueMonths = Array.from(new Set(mapped.map((t) => t.maand).filter((m) => m)));
+  uniqueMonths.sort((a, b) => {
+    const ia = MAAND_VOLGORDE.indexOf(a);
+    const ib = MAAND_VOLGORDE.indexOf(b);
+    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+  });
+
+  return { months: uniqueMonths, tasks: mapped, budget };
+}
 
 export function sheetCsvUrl(sheetId: string, gid: string): string {
   return `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&gid=${gid}`;

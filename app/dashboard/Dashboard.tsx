@@ -16,6 +16,7 @@ type Props = {
   gid: string;
   budget: ClientBudget;
   adminPreview?: boolean;
+  initialData?: DashboardData | null;
 };
 
 function formatTime(minutes: number): string {
@@ -27,8 +28,8 @@ function formatTime(minutes: number): string {
   return `${minutes}m`;
 }
 
-export default function Dashboard({ name, sheetId, gid, budget, adminPreview }: Props) {
-  const [data, setData] = useState<DashboardData | null>(null);
+export default function Dashboard({ name, sheetId, gid, budget, adminPreview, initialData }: Props) {
+  const [data, setData] = useState<DashboardData | null>(initialData ?? null);
   const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [currentMonth, setCurrentMonth] = useState<string>("");
@@ -36,6 +37,21 @@ export default function Dashboard({ name, sheetId, gid, budget, adminPreview }: 
 
   useEffect(() => {
     let cancelled = false;
+
+    // Nieuwe bron: taken komen rechtstreeks uit het dashboard (database).
+    // Dan geen Google Sheet ophalen.
+    if (initialData) {
+      setData(initialData);
+      setCurrentMonth((prev) =>
+        prev && initialData.months.includes(prev)
+          ? prev
+          : initialData.months[initialData.months.length - 1] || "",
+      );
+      setUpdatedAt(new Date().toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" }));
+      setError(initialData.tasks.length === 0 ? "geen-data" : "");
+      setLoading(false);
+      return () => { cancelled = true; };
+    }
 
     async function load() {
       try {
