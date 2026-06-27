@@ -82,6 +82,27 @@ async function init(): Promise<void> {
       updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
     )`;
 
+  // Werkzaamheden per klant, ín het dashboard (alternatief voor de Google Sheet).
+  // SEO- en Dev-taken samen; per maand, met uren, status, link en zichtbaarheid
+  // voor het klant-dashboard. Volgorde via sort_order (slepen).
+  await sql`
+    CREATE TABLE IF NOT EXISTS client_tasks (
+      id              SERIAL PRIMARY KEY,
+      client_slug     TEXT NOT NULL,
+      sort_order      INTEGER NOT NULL DEFAULT 0,
+      categorie       TEXT,
+      taak            TEXT,
+      toelichting     TEXT,
+      uren            NUMERIC,
+      status          TEXT,
+      maand           TEXT,
+      link            TEXT,
+      wie             TEXT,
+      klant_zichtbaar BOOLEAN NOT NULL DEFAULT false,
+      updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+    )`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_client_tasks_slug ON client_tasks (client_slug, sort_order)`;
+
   // OAuth-tokens voor externe koppelingen (Microsoft Graph, Google).
   // Eén rij per provider; bewaart de refresh-token waarmee de app zelf
   // access-tokens vernieuwt. Alleen via het admin-beveiligde koppel-pad gevuld.

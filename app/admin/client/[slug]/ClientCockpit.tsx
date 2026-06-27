@@ -7,9 +7,11 @@ import type {
   EmailSnapshot, MetricSnapshot, KeywordSnapshot, PageSnapshot, ClientStatus,
 } from "../../../../lib/snapshots";
 import type { GscData, Ga4Data } from "../../../../lib/google";
+import type { TaskRow } from "../../../../lib/tasks";
 import ChatPanel from "./ChatPanel";
+import TasksEditor from "./TasksEditor";
 
-type Tab = "overzicht" | "resultaten";
+type Tab = "overzicht" | "werkzaamheden" | "resultaten";
 
 // Jouw Superhuman-account (Microsoft 365 hangt hieronder).
 const SUPERHUMAN_ACCOUNT = "Maarten@pingwin.nl";
@@ -39,12 +41,13 @@ type CockpitData = {
   googleConnected: boolean;
   chatConfigured: boolean;
   chatHistory: { role: "user" | "assistant"; content: string }[];
+  tasks: TaskRow[];
 };
 
 export default function ClientCockpit({
   client, emails, metrics, keywords, pages, lastIngest, status, statusUpdatedAt,
   mailLive, msConfigured, msConnected, myEmail, monthTasks, allClients,
-  gsc, ga4, googleConfigured, googleConnected, chatConfigured, chatHistory,
+  gsc, ga4, googleConfigured, googleConnected, chatConfigured, chatHistory, tasks,
 }: { client: ClientConfig } & CockpitData) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("overzicht");
@@ -252,6 +255,7 @@ export default function ClientCockpit({
           </select>
           <nav className="header-tabs">
             <button className={"tab" + (tab === "overzicht" ? " active" : "")} onClick={() => setTab("overzicht")}>Overzicht</button>
+            <button className={"tab" + (tab === "werkzaamheden" ? " active" : "")} onClick={() => setTab("werkzaamheden")}>Werkzaamheden</button>
             <button className={"tab" + (tab === "resultaten" ? " active" : "")} onClick={() => setTab("resultaten")}>KPI&rsquo;s</button>
           </nav>
         </div>
@@ -521,6 +525,10 @@ export default function ClientCockpit({
             </div>
 
           </>
+        )}
+
+        {tab === "werkzaamheden" && (
+          <TasksEditor slug={client.slug} initialTasks={tasks} />
         )}
 
         {tab === "resultaten" && (

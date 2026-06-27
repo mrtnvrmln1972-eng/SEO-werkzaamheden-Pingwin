@@ -3,6 +3,7 @@ import {
   ingestEmails, ingestMetrics, ingestKeywords, ingestPages, ingestStatus, setClientMapping, deleteEmails,
   type EmailSnapshot, type MetricSnapshot, type KeywordSnapshot, type PageSnapshot, type ClientStatus,
 } from "../../../../lib/snapshots";
+import { replaceTasks, type TaskRow } from "../../../../lib/tasks";
 
 export const runtime = "nodejs";
 
@@ -33,8 +34,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "Geen klant (slug) opgegeven." }, { status: 400 });
   }
 
-  const result = { emails: 0, metrics: 0, keywords: 0, pages: 0, status: 0 };
+  const result = { emails: 0, metrics: 0, keywords: 0, pages: 0, status: 0, tasks: 0 };
   try {
+    if (Array.isArray(body.tasks)) result.tasks = await replaceTasks(slug, body.tasks as TaskRow[]);
     if (body.domain || body.ahrefsProjectId) {
       await setClientMapping(slug, String(body.domain || "").trim() || null, String(body.ahrefsProjectId || "").trim() || null);
     }

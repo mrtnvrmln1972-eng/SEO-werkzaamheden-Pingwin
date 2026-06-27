@@ -7,6 +7,7 @@ import { msStatus, msSearchClientEmails } from "../../../../lib/ms-graph";
 import { googleStatus, getGscForClient, getGa4ForClient } from "../../../../lib/google";
 import { sheetCsvUrl, parseCSV, structureData, MAAND_VOLGORDE } from "../../../../lib/sheet";
 import { chatConfigured, getChatHistory } from "../../../../lib/chat";
+import { getTasks } from "../../../../lib/tasks";
 import ClientCockpit from "./ClientCockpit";
 
 export const dynamic = "force-dynamic";
@@ -71,6 +72,7 @@ export default async function ClientCockpitPage({ params }: { params: { slug: st
   ]);
 
   const chatHistory = await getChatHistory(params.slug);
+  const tasks = await getTasks(params.slug);
 
   // Search Console live ophalen als de Google-koppeling actief is.
   const google = await googleStatus();
@@ -113,6 +115,7 @@ export default async function ClientCockpitPage({ params }: { params: { slug: st
       googleConnected={google.connected}
       chatConfigured={chatConfigured()}
       chatHistory={chatHistory}
+      tasks={tasks}
     />
   );
 }
