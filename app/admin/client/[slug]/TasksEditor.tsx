@@ -63,11 +63,11 @@ export default function TasksEditor({ slug, initialTasks, budget }: { slug: stri
 
         {budget.maandbudget > 0 && (
           <div className="budget-block">
-            <div><span>Uren besteed</span><strong>{urenBesteed} u</strong></div>
             <div><span>Maandbudget</span><strong>&euro;{budget.maandbudget.toFixed(0)}</strong></div>
             <div><span>Budget linkbuilding</span><strong>&euro;{budget.linkbuilding.toFixed(0)}</strong></div>
             <div><span>Uren in geld</span><strong>&euro;{urenInGeld.toFixed(0)}</strong></div>
             <div><span>Beschikbare uren</span><strong>{beschikbareUren} u</strong></div>
+            <div><span>Uren besteed</span><strong>{urenBesteed} u</strong></div>
             <div className={resterend < 0 ? "neg" : ""}><span>Resterende uren</span><strong>{resterend} u</strong></div>
           </div>
         )}
@@ -81,6 +81,17 @@ export default function TasksEditor({ slug, initialTasks, budget }: { slug: stri
         <div className="task-section-head">{label}</div>
         <div className="res-table-wrap">
           <table className="task-table">
+            <colgroup>
+              <col style={{ width: "22px" }} />
+              <col />
+              <col />
+              <col style={{ width: "52px" }} />
+              <col style={{ width: "104px" }} />
+              <col style={{ width: "170px" }} />
+              <col style={{ width: "44px" }} />
+              <col style={{ width: "92px" }} />
+              <col style={{ width: "30px" }} />
+            </colgroup>
             <thead><tr><th></th><th>Taak</th><th>Toelichting</th><th>Uren</th><th>Status</th><th>Link</th><th title="Zichtbaar in klant-dashboard">Klant</th><th>Maand</th><th></th></tr></thead>
             <tbody>
               {secRows.map(({ r, i }) => (

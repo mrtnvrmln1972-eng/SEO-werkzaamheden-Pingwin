@@ -467,15 +467,17 @@ tbody td:last-child { text-align: center; }
 .pos-down { color: var(--red); font-weight: 600; }
 
 /* Werkzaamheden-editor */
-.task-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.task-table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
+.task-table th, .task-table td { overflow: hidden; }
 .task-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--white); background: var(--dark); padding: 8px 8px; white-space: nowrap; }
 .task-table td { border-bottom: 1px solid var(--border); padding: 4px 6px; vertical-align: middle; }
 .task-table tr.dragging { opacity: 0.4; }
 .task-table input, .task-table select { width: 100%; font-family: 'Montserrat', sans-serif; font-size: 13px; padding: 5px 7px; border: 1px solid transparent; border-radius: 5px; background: transparent; }
 .task-table input:hover, .task-table select:hover { border-color: var(--border); }
 .task-table input:focus, .task-table select:focus { outline: none; border-color: var(--orange); background: var(--white); }
-.task-table .cell-num input { width: 60px; }
+.task-table .cell-num input { width: 100%; text-align: right; }
 .task-table .cell-link { display: flex; align-items: center; gap: 4px; }
+.task-table .cell-link input { flex: 1 1 auto; min-width: 0; }
 .task-table .cell-link a { color: var(--orange-dark); text-decoration: none; flex: 0 0 auto; }
 .task-table .cell-check { text-align: center; }
 .drag-handle { cursor: grab; color: var(--gray); user-select: none; text-align: center; }
