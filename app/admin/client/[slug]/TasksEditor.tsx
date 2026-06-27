@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { TaskRow } from "../../../../lib/tasks";
 
 const MONTHS = ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"];
@@ -26,9 +26,31 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName }: 
   const [devBusy, setDevBusy] = useState(false);
   const [devMsg, setDevMsg] = useState("");
 
+  const [highlightIds, setHighlightIds] = useState<Set<number>>(new Set());
+
   const now = new Date();
   const curMonth = MONTHS[now.getMonth()];
   const nextMonth = MONTHS[(now.getMonth() + 1) % 12];
+
+  // Komt de gebruiker via een mail-link binnen (?highlight=id,id), open dan de
+  // betreffende maanden, scroll naar de taak en laat 'm even oplichten.
+  useEffect(() => {
+    const h = new URLSearchParams(window.location.search).get("highlight");
+    if (!h) return;
+    const ids = new Set(h.split(",").map((s) => Number(s)).filter((n) => !Number.isNaN(n)));
+    if (ids.size === 0) return;
+    setHighlightIds(ids);
+    setOpenMonths((o) => {
+      const c = { ...o };
+      initialTasks.forEach((r) => { if (typeof r.id === "number" && ids.has(r.id)) c[(r.maand || "").toLowerCase()] = true; });
+      return c;
+    });
+    const first = [...ids][0];
+    setTimeout(() => {
+      const el = document.getElementById(`task-row-${first}`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 400);
+  }, [initialTasks]);
   // Standaard open: huidige + volgende maand (+ zonder-maand). Rest dicht.
   const [openMonths, setOpenMonths] = useState<Record<string, boolean>>({ [curMonth]: true, [nextMonth]: true, "": true });
   const isOpen = (m: string) => openMonths[m] ?? false;
@@ -77,8 +99,11 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName }: 
       `<li><strong>${esc(t.taak)}</strong>${t.maand ? ` <em>(${esc(t.maand)})</em>` : ""}${t.toelichting ? ` — ${esc(t.toelichting)}` : ""}${t.link ? ` — <a href="${esc(t.link)}">document</a>` : ""}</li>`,
     ).join("");
     const note = devNote.trim() ? `<p>${esc(devNote).replace(/\n/g, "<br>")}</p>` : "";
-    const dashUrl = typeof window !== "undefined" ? `${window.location.origin}/admin/client/${slug}` : "";
-    const dashLink = dashUrl ? `<p style="margin-top:14px;color:#555;font-size:13px">Bekijk deze taken in het dashboard: <a href="${esc(dashUrl)}">${esc(dashUrl)}</a></p>` : "";
+    const ids = selected.map((t) => t.id).filter((x): x is number => typeof x === "number");
+    const dashUrl = typeof window !== "undefined"
+      ? `${window.location.origin}/admin/client/${slug}?tab=werkzaamheden${ids.length ? `&highlight=${ids.join(",")}` : ""}`
+      : "";
+    const dashLink = dashUrl ? `<p style="margin-top:14px;color:#555;font-size:13px">Bekijk deze taken in het dashboard: <a href="${esc(dashUrl)}">open in het dashboard &rarr;</a></p>` : "";
     const html = `${note}<p><strong>Werkzaamheden:</strong></p><ul>${list}</ul>${dashLink}`;
     setDevBusy(true); setDevMsg("");
     try {
@@ -114,8 +139,9 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName }: 
             <tbody>
               {secRows.map(({ r, i }) => {
                 const isDev = (r.wie || "").toLowerCase() === "dev";
+                const hl = typeof r.id === "number" && highlightIds.has(r.id);
                 return (
-                  <tr key={i} draggable onDragStart={() => setDragIdx(i)} onDragOver={(e) => e.preventDefault()} onDrop={() => onDrop(i)} className={`${dragIdx === i ? "dragging " : ""}${isDev ? "dev-row" : ""}`}>
+                  <tr key={i} id={typeof r.id === "number" ? `task-row-${r.id}` : undefined} draggable onDragStart={() => setDragIdx(i)} onDragOver={(e) => e.preventDefault()} onDrop={() => onDrop(i)} className={`${dragIdx === i ? "dragging " : ""}${isDev ? "dev-row " : ""}${hl ? "highlight-row" : ""}`}>
                     <td className="drag-handle" title="Sleep">⠿</td>
                     <td><input value={r.taak} onChange={(e) => update(i, { taak: e.target.value })} placeholder="Taak" /></td>
                     <td><input value={r.toelichting} onChange={(e) => update(i, { toelichting: e.target.value })} placeholder="Toelichting" /></td>

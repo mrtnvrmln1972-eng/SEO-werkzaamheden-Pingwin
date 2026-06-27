@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import type { ClientConfig } from "../../../../lib/clients";
 import type {
@@ -51,6 +51,12 @@ export default function ClientCockpit({
 }: { client: ClientConfig } & CockpitData) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("overzicht");
+
+  // Open de juiste tab als de URL die meegeeft (bijv. vanuit een mail-link).
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get("tab");
+    if (t === "werkzaamheden" || t === "overzicht" || t === "resultaten" || t === "klant") setTab(t);
+  }, []);
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
