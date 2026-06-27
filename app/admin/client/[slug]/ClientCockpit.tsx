@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { ClientConfig } from "../../../../lib/clients";
 import type {
@@ -47,16 +47,11 @@ type CockpitData = {
 export default function ClientCockpit({
   client, emails, metrics, keywords, pages, lastIngest, status, statusUpdatedAt,
   mailLive, msConfigured, msConnected, myEmail, monthTasks, allClients,
-  gsc, ga4, googleConfigured, googleConnected, chatConfigured, chatHistory, tasks,
-}: { client: ClientConfig } & CockpitData) {
+  gsc, ga4, googleConfigured, googleConnected, chatConfigured, chatHistory, tasks, initialTab, highlight,
+}: { client: ClientConfig; initialTab?: string; highlight?: string } & CockpitData) {
   const router = useRouter();
-  const [tab, setTab] = useState<Tab>("overzicht");
-
-  // Open de juiste tab als de URL die meegeeft (bijv. vanuit een mail-link).
-  useEffect(() => {
-    const t = new URLSearchParams(window.location.search).get("tab");
-    if (t === "werkzaamheden" || t === "overzicht" || t === "resultaten" || t === "klant") setTab(t);
-  }, []);
+  const validTab = (t?: string): Tab => (t === "werkzaamheden" || t === "resultaten" || t === "klant" || t === "overzicht") ? t : "overzicht";
+  const [tab, setTab] = useState<Tab>(validTab(initialTab));
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -535,7 +530,7 @@ export default function ClientCockpit({
         )}
 
         {tab === "werkzaamheden" && (
-          <TasksEditor slug={client.slug} initialTasks={tasks} budget={client.budget} clientName={client.name} />
+          <TasksEditor slug={client.slug} initialTasks={tasks} budget={client.budget} clientName={client.name} highlight={highlight} />
         )}
 
         {tab === "resultaten" && (

@@ -12,7 +12,7 @@ function esc(s: string): string {
   return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-export default function TasksEditor({ slug, initialTasks, budget, clientName }: { slug: string; initialTasks: TaskRow[]; budget: Budget; clientName: string }) {
+export default function TasksEditor({ slug, initialTasks, budget, clientName, highlight }: { slug: string; initialTasks: TaskRow[]; budget: Budget; clientName: string; highlight?: string }) {
   const [rows, setRows] = useState<TaskRow[]>(initialTasks);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
@@ -35,9 +35,8 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName }: 
   // Komt de gebruiker via een mail-link binnen (?highlight=id,id), open dan de
   // betreffende maanden, scroll naar de taak en laat 'm even oplichten.
   useEffect(() => {
-    const h = new URLSearchParams(window.location.search).get("highlight");
-    if (!h) return;
-    const ids = new Set(h.split(",").map((s) => Number(s)).filter((n) => !Number.isNaN(n)));
+    if (!highlight) return;
+    const ids = new Set(highlight.split(",").map((s) => Number(s)).filter((n) => !Number.isNaN(n)));
     if (ids.size === 0) return;
     setHighlightIds(ids);
     setOpenMonths((o) => {
@@ -49,8 +48,8 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName }: 
     setTimeout(() => {
       const el = document.getElementById(`task-row-${first}`);
       if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 400);
-  }, [initialTasks]);
+    }, 500);
+  }, [highlight, initialTasks]);
   // Standaard open: huidige + volgende maand (+ zonder-maand). Rest dicht.
   const [openMonths, setOpenMonths] = useState<Record<string, boolean>>({ [curMonth]: true, [nextMonth]: true, "": true });
   const isOpen = (m: string) => openMonths[m] ?? false;

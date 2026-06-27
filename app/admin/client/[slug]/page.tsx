@@ -52,7 +52,7 @@ async function loadTasksByMonth(client: ClientConfig): Promise<MonthTasks> {
   }
 }
 
-export default async function ClientCockpitPage({ params }: { params: { slug: string } }) {
+export default async function ClientCockpitPage({ params, searchParams }: { params: { slug: string }; searchParams: { tab?: string; highlight?: string } }) {
   const ok = verifyAdminSession(cookies().get(ADMIN_COOKIE)?.value);
   if (!ok) redirect("/admin/login");
 
@@ -116,6 +116,8 @@ export default async function ClientCockpitPage({ params }: { params: { slug: st
       chatConfigured={chatConfigured()}
       chatHistory={chatHistory}
       tasks={tasks}
+      initialTab={searchParams.tab}
+      highlight={searchParams.highlight}
     />
   );
 }
