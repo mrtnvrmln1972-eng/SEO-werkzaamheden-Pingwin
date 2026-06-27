@@ -39,7 +39,7 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName }: 
     setMsg("");
   }
   function addRow(maand: string, wie: string) {
-    setRows((r) => [...r, { categorie: "", taak: "", toelichting: "", uren: null, status: "Te doen", maand, link: "", wie, klantZichtbaar: wie !== "Dev" }]);
+    setRows((r) => [...r, { categorie: "", taak: "", toelichting: "", uren: null, status: "Te doen", maand, link: "", wie, klantZichtbaar: true }]);
   }
   function removeRow(i: number) { setRows((r) => r.filter((_, idx) => idx !== i)); }
   function onDrop(target: number) {
@@ -51,8 +51,8 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName }: 
   async function save() {
     setBusy(true); setMsg("");
     try {
-      // Developer-taken zijn altijd intern (nooit zichtbaar in het klant-dashboard).
-      const toSave = rows.map((r) => ((r.wie || "").toLowerCase() === "dev" ? { ...r, klantZichtbaar: false } : r));
+      // Alle taken (ook developer-taken) zijn zichtbaar in het klant-overzicht.
+      const toSave = rows.map((r) => ({ ...r, klantZichtbaar: true }));
       const res = await fetch("/api/admin/tasks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, tasks: toSave }) });
       const data = await res.json();
       setMsg(data.ok ? `Opgeslagen (${data.saved} taken).` : (data.error || "Opslaan mislukt."));
@@ -110,7 +110,7 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName }: 
               <col style={{ width: "66px" }} /><col style={{ width: "104px" }} /><col style={{ width: "160px" }} />
               <col style={{ width: "84px" }} /><col style={{ width: "92px" }} /><col style={{ width: "56px" }} />
             </colgroup>
-            <thead><tr><th></th><th>Taak</th><th>Toelichting</th><th>Uren</th><th>Status</th><th>Link</th><th title="Aanvinken = taak voor de developer (intern, niet in klant-dashboard, mailbaar)">Developer</th><th>Maand</th><th></th></tr></thead>
+            <thead><tr><th></th><th>Taak</th><th>Toelichting</th><th>Uren</th><th>Status</th><th>Link</th><th title="Aanvinken = deze taak meenemen in de mail naar de developer. Alle taken blijven zichtbaar in het klant-overzicht.">Developer</th><th>Maand</th><th></th></tr></thead>
             <tbody>
               {secRows.map(({ r, i }) => {
                 const isDev = (r.wie || "").toLowerCase() === "dev";
@@ -122,7 +122,7 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName }: 
                     <td><input className="cell-num" type="number" value={r.uren ?? ""} onChange={(e) => update(i, { uren: e.target.value === "" ? null : Number(e.target.value) })} /></td>
                     <td><select value={r.status} onChange={(e) => update(i, { status: e.target.value })}><option value="">—</option>{STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}</select></td>
                     <td><div className="cell-link"><input value={r.link} onChange={(e) => update(i, { link: e.target.value })} placeholder="https://..." />{r.link && <a href={r.link} target="_blank" rel="noreferrer">↗</a>}</div></td>
-                    <td className="cell-check"><input type="checkbox" checked={isDev} onChange={(e) => update(i, { wie: e.target.checked ? "Dev" : "SEO", klantZichtbaar: !e.target.checked })} title="Taak voor de developer" /></td>
+                    <td className="cell-check"><input type="checkbox" checked={isDev} onChange={(e) => update(i, { wie: e.target.checked ? "Dev" : "SEO" })} title="Meenemen in de mail naar de developer" /></td>
                     <td><select value={r.maand} onChange={(e) => update(i, { maand: e.target.value })}><option value="">—</option>{MONTHS.map((m) => <option key={m} value={m}>{m}</option>)}</select></td>
                     <td className="row-actions">
                       <button type="button" className="row-send" onClick={() => openComposeFor([i])} title="Naar developer mailen">✉</button>
