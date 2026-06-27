@@ -205,6 +205,20 @@ export async function updateClientCore(slug: string, c: ClientCore): Promise<boo
   return !!rowCount && rowCount > 0;
 }
 
+export async function setClientBudget(
+  slug: string,
+  b: { maandbudget: number; linkbuilding: number; uurtarief: number; beschikbareUren: number },
+): Promise<boolean> {
+  await ensureSchema();
+  const urenBudget = b.maandbudget - b.linkbuilding;
+  const { rowCount } = await sql`
+    UPDATE clients SET
+      maandbudget = ${b.maandbudget}, linkbuilding = ${b.linkbuilding}, urenbudget = ${urenBudget},
+      uurtarief = ${b.uurtarief}, beschikbare_uren = ${b.beschikbareUren}
+    WHERE slug = ${slug}`;
+  return !!rowCount && rowCount > 0;
+}
+
 export async function deleteClient(slug: string): Promise<boolean> {
   await ensureSchema();
   const { rowCount } = await sql`DELETE FROM clients WHERE slug = ${slug}`;

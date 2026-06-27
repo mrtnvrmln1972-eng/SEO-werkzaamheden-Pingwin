@@ -4,6 +4,7 @@ import {
   type EmailSnapshot, type MetricSnapshot, type KeywordSnapshot, type PageSnapshot, type ClientStatus,
 } from "../../../../lib/snapshots";
 import { replaceTasks, type TaskRow } from "../../../../lib/tasks";
+import { setClientBudget } from "../../../../lib/clients";
 
 export const runtime = "nodejs";
 
@@ -36,6 +37,13 @@ export async function POST(req: NextRequest) {
 
   const result = { emails: 0, metrics: 0, keywords: 0, pages: 0, status: 0, tasks: 0 };
   try {
+    if (body.budget && typeof body.budget === "object") {
+      const b = body.budget as Record<string, unknown>;
+      await setClientBudget(slug, {
+        maandbudget: Number(b.maandbudget) || 0, linkbuilding: Number(b.linkbuilding) || 0,
+        uurtarief: Number(b.uurtarief) || 0, beschikbareUren: Number(b.beschikbareUren) || 0,
+      });
+    }
     if (Array.isArray(body.tasks)) result.tasks = await replaceTasks(slug, body.tasks as TaskRow[]);
     if (body.domain || body.ahrefsProjectId) {
       await setClientMapping(slug, String(body.domain || "").trim() || null, String(body.ahrefsProjectId || "").trim() || null);
