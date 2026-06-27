@@ -155,13 +155,20 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName }: 
     const seo = items.filter((x) => (x.r.wie || "").toLowerCase() !== "dev");
     const dev = items.filter((x) => (x.r.wie || "").toLowerCase() === "dev");
     return (
-      <div className="cockpit-card month-card" key={maand || "none"}>
-        <div className="month-card-head clickable" onClick={() => toggleMonth(maand)}>
-          <span className="month-card-title">{label} <span className="month-caret">{open ? "▾" : "▸"}</span></span>
-          <span className="month-card-uren">{urenBesteed} u besteed · {urenGepland} u gepland · {items.length} taken</span>
+      <div className="month-group" key={maand || "none"}>
+        <div className="cockpit-card month-bar">
+          <div className="month-card-head clickable" onClick={() => toggleMonth(maand)}>
+            <span className="month-card-title">{label} <span className="month-caret">{open ? "▾" : "▸"}</span></span>
+            <span className="month-card-uren">{urenBesteed} u besteed · {urenGepland} u gepland · {items.length} taken</span>
+          </div>
+          {budgetBlock(urenBesteed, urenGepland)}
         </div>
-        {open && <>{section("SEO", seo, maand, "SEO")}{section("Developer", dev, maand, "Dev")}</>}
-        {budgetBlock(urenBesteed, urenGepland)}
+        {open && (
+          <div className="month-cards">
+            <div className="cockpit-card task-card">{section("SEO", seo, maand, "SEO")}</div>
+            <div className="cockpit-card task-card">{section("Developer", dev, maand, "Dev")}</div>
+          </div>
+        )}
       </div>
     );
   }
@@ -186,8 +193,18 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName }: 
         </div>
       </div>
 
-      {monthsPresent.map((m) => monthCard(m, m, indexed.filter((x) => (x.r.maand || "").toLowerCase() === m)))}
-      {noMonth.length > 0 && monthCard("", "Zonder maand", noMonth)}
+      {(() => {
+        const top = [curMonth, nextMonth].filter((m) => monthsPresent.includes(m));
+        const past = monthsPresent.filter((m) => !top.includes(m)).sort((a, b) => MONTHS.indexOf(b) - MONTHS.indexOf(a));
+        const card = (m: string, label: string) => monthCard(m, label, indexed.filter((x) => (x.r.maand || "").toLowerCase() === m));
+        return (
+          <>
+            {top.map((m) => card(m, m))}
+            {noMonth.length > 0 && monthCard("", "Zonder maand", noMonth)}
+            {past.map((m) => card(m, m))}
+          </>
+        );
+      })()}
 
       {showCompose && (
         <div className="compose-overlay" onClick={() => setShowCompose(false)}>

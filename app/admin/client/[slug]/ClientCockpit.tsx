@@ -11,7 +11,7 @@ import type { TaskRow } from "../../../../lib/tasks";
 import ChatPanel from "./ChatPanel";
 import TasksEditor from "./TasksEditor";
 
-type Tab = "overzicht" | "werkzaamheden" | "resultaten";
+type Tab = "overzicht" | "werkzaamheden" | "resultaten" | "klant";
 
 // Jouw Superhuman-account (Microsoft 365 hangt hieronder).
 const SUPERHUMAN_ACCOUNT = "Maarten@pingwin.nl";
@@ -257,6 +257,7 @@ export default function ClientCockpit({
             <button className={"tab" + (tab === "overzicht" ? " active" : "")} onClick={() => setTab("overzicht")}>Overzicht</button>
             <button className={"tab" + (tab === "werkzaamheden" ? " active" : "")} onClick={() => setTab("werkzaamheden")}>Werkzaamheden</button>
             <button className={"tab" + (tab === "resultaten" ? " active" : "")} onClick={() => setTab("resultaten")}>KPI&rsquo;s</button>
+            <button className={"tab" + (tab === "klant" ? " active" : "")} onClick={() => setTab("klant")}>Klant-dashboard</button>
           </nav>
         </div>
         <div className="header-right">
@@ -707,6 +708,15 @@ export default function ClientCockpit({
               </div>
             )}
           </>
+        )}
+
+        {tab === "klant" && (
+          <div className="cockpit-card client-frame-card">
+            <div className="ck-section-head"><span>Klant-dashboard (zo ziet de klant het)</span>
+              <a className="logout-btn" href={`/admin/preview/${client.slug}`} target="_blank" rel="noreferrer">Openen in nieuw tabblad ↗</a>
+            </div>
+            <iframe src={`/admin/preview/${client.slug}`} className="client-frame" title="Klant-dashboard" />
+          </div>
         )}
       </div>
 

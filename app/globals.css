@@ -482,6 +482,15 @@ tbody td:last-child { text-align: center; }
 .task-table .cell-check { text-align: center; }
 .drag-handle { cursor: grab; color: var(--gray); user-select: none; text-align: center; }
 .row-del { background: none; border: none; color: var(--red); font-size: 18px; line-height: 1; cursor: pointer; padding: 0 4px; }
+.month-group { margin-bottom: 28px; }
+.month-bar { margin-bottom: 12px; }
+.month-cards { display: flex; flex-direction: column; gap: 12px; margin-left: 18px; }
+.month-cards .cockpit-card { margin-bottom: 0; }
+.task-card { border-left: 4px solid var(--orange); }
+.client-frame-card { padding: 0; overflow: hidden; }
+.client-frame-card .ck-section-head { padding: 14px 18px 12px; margin-bottom: 0; }
+.client-frame { width: 100%; height: 1400px; border: 0; border-top: 1px solid var(--border); display: block; }
+.task-card .task-section { margin-bottom: 0; }
 .month-card-head { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid var(--orange); padding-bottom: 8px; margin-bottom: 12px; }
 .month-card-head.clickable { cursor: pointer; }
 .month-card-head.clickable:hover .month-card-title { color: var(--orange-dark); }
