@@ -62,7 +62,7 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName }: 
   // Open het mail-venster. Zonder argument: alle open developer-taken voorgevinkt.
   // Met indices (de ✉-knop op een rij): precies die taak/taken voorgevinkt.
   function openComposeFor(idxs?: number[]) {
-    const sel = idxs ?? rows.map((r, i) => ({ r, i })).filter((x) => (x.r.wie || "").toLowerCase() === "dev" && !DONE.test(x.r.status || "")).map((x) => x.i);
+    const sel = idxs ?? rows.map((r, i) => ({ r, i })).filter((x) => (x.r.wie || "").toLowerCase() === "dev").map((x) => x.i);
     setDevSel(new Set(sel));
     try { setDevTo(localStorage.getItem("pingwin-dev-email") || ""); } catch { setDevTo(""); }
     setDevNote(""); setDevMsg(""); setShowCompose(true);
@@ -100,41 +100,42 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName }: 
   const beschikbareUren = budget.beschikbareUren || (budget.uurtarief ? Math.round((urenInGeld / budget.uurtarief) * 10) / 10 : 0);
 
   // Render-functies (geen sub-componenten → geen remount, focus blijft behouden).
-  function section(label: string, secRows: { r: TaskRow; i: number }[], maand: string, wie: string, showKlant: boolean) {
-    const cols = showKlant ? 9 : 8;
+  function section(secRows: { r: TaskRow; i: number }[], maand: string) {
     return (
       <div className="task-section">
-        <div className="task-section-head">{label}</div>
         <div className="res-table-wrap">
           <table className="task-table">
             <colgroup>
               <col style={{ width: "22px" }} /><col /><col />
               <col style={{ width: "66px" }} /><col style={{ width: "104px" }} /><col style={{ width: "160px" }} />
-              {showKlant && <col style={{ width: "62px" }} />}<col style={{ width: "92px" }} /><col style={{ width: "56px" }} />
+              <col style={{ width: "84px" }} /><col style={{ width: "92px" }} /><col style={{ width: "56px" }} />
             </colgroup>
-            <thead><tr><th></th><th>Taak</th><th>Toelichting</th><th>Uren</th><th>Status</th><th>Link</th>{showKlant && <th title="Zichtbaar in klant-dashboard">Klant</th>}<th>Maand</th><th></th></tr></thead>
+            <thead><tr><th></th><th>Taak</th><th>Toelichting</th><th>Uren</th><th>Status</th><th>Link</th><th title="Aanvinken = taak voor de developer (intern, niet in klant-dashboard, mailbaar)">Developer</th><th>Maand</th><th></th></tr></thead>
             <tbody>
-              {secRows.map(({ r, i }) => (
-                <tr key={i} draggable onDragStart={() => setDragIdx(i)} onDragOver={(e) => e.preventDefault()} onDrop={() => onDrop(i)} className={dragIdx === i ? "dragging" : ""}>
-                  <td className="drag-handle" title="Sleep">⠿</td>
-                  <td><input value={r.taak} onChange={(e) => update(i, { taak: e.target.value })} placeholder="Taak" /></td>
-                  <td><input value={r.toelichting} onChange={(e) => update(i, { toelichting: e.target.value })} placeholder="Toelichting" /></td>
-                  <td><input className="cell-num" type="number" value={r.uren ?? ""} onChange={(e) => update(i, { uren: e.target.value === "" ? null : Number(e.target.value) })} /></td>
-                  <td><select value={r.status} onChange={(e) => update(i, { status: e.target.value })}><option value="">—</option>{STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}</select></td>
-                  <td><div className="cell-link"><input value={r.link} onChange={(e) => update(i, { link: e.target.value })} placeholder="https://..." />{r.link && <a href={r.link} target="_blank" rel="noreferrer">↗</a>}</div></td>
-                  {showKlant && <td className="cell-check"><input type="checkbox" checked={r.klantZichtbaar} onChange={(e) => update(i, { klantZichtbaar: e.target.checked })} /></td>}
-                  <td><select value={r.maand} onChange={(e) => update(i, { maand: e.target.value })}><option value="">—</option>{MONTHS.map((m) => <option key={m} value={m}>{m}</option>)}</select></td>
-                  <td className="row-actions">
-                    <button type="button" className="row-send" onClick={() => openComposeFor([i])} title="Naar developer mailen">✉</button>
-                    <button type="button" className="row-del" onClick={() => removeRow(i)} title="Verwijderen">×</button>
-                  </td>
-                </tr>
-              ))}
-              {secRows.length === 0 && <tr><td colSpan={cols} className="muted" style={{ padding: 8 }}>Geen {label}-taken.</td></tr>}
+              {secRows.map(({ r, i }) => {
+                const isDev = (r.wie || "").toLowerCase() === "dev";
+                return (
+                  <tr key={i} draggable onDragStart={() => setDragIdx(i)} onDragOver={(e) => e.preventDefault()} onDrop={() => onDrop(i)} className={`${dragIdx === i ? "dragging " : ""}${isDev ? "dev-row" : ""}`}>
+                    <td className="drag-handle" title="Sleep">⠿</td>
+                    <td><input value={r.taak} onChange={(e) => update(i, { taak: e.target.value })} placeholder="Taak" /></td>
+                    <td><input value={r.toelichting} onChange={(e) => update(i, { toelichting: e.target.value })} placeholder="Toelichting" /></td>
+                    <td><input className="cell-num" type="number" value={r.uren ?? ""} onChange={(e) => update(i, { uren: e.target.value === "" ? null : Number(e.target.value) })} /></td>
+                    <td><select value={r.status} onChange={(e) => update(i, { status: e.target.value })}><option value="">—</option>{STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}</select></td>
+                    <td><div className="cell-link"><input value={r.link} onChange={(e) => update(i, { link: e.target.value })} placeholder="https://..." />{r.link && <a href={r.link} target="_blank" rel="noreferrer">↗</a>}</div></td>
+                    <td className="cell-check"><input type="checkbox" checked={isDev} onChange={(e) => update(i, { wie: e.target.checked ? "Dev" : "SEO", klantZichtbaar: !e.target.checked })} title="Taak voor de developer" /></td>
+                    <td><select value={r.maand} onChange={(e) => update(i, { maand: e.target.value })}><option value="">—</option>{MONTHS.map((m) => <option key={m} value={m}>{m}</option>)}</select></td>
+                    <td className="row-actions">
+                      <button type="button" className="row-send" onClick={() => openComposeFor([i])} title="Naar developer mailen">✉</button>
+                      <button type="button" className="row-del" onClick={() => removeRow(i)} title="Verwijderen">×</button>
+                    </td>
+                  </tr>
+                );
+              })}
+              {secRows.length === 0 && <tr><td colSpan={9} className="muted" style={{ padding: 8 }}>Nog geen taken deze maand.</td></tr>}
             </tbody>
           </table>
         </div>
-        <button type="button" className="add-task-btn" onClick={() => addRow(maand, wie)}>+ {label}-taak</button>
+        <button type="button" className="add-task-btn" onClick={() => addRow(maand, "SEO")}>+ taak</button>
       </div>
     );
   }
@@ -165,20 +166,13 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName }: 
     const urenBesteed = Math.round((doneMin / 60) * 10) / 10;
     const urenGepland = Math.round((planMin / 60) * 10) / 10;
     const open = isOpen(maand);
-    const seo = items.filter((x) => (x.r.wie || "").toLowerCase() !== "dev");
-    const dev = items.filter((x) => (x.r.wie || "").toLowerCase() === "dev");
     return (
       <div className="cockpit-card month-card" key={maand || "none"}>
         <div className="month-card-head clickable" onClick={() => toggleMonth(maand)}>
           <span className="month-card-title">{label} <span className="month-caret">{open ? "▾" : "▸"}</span> <span className="month-card-count">({items.length})</span></span>
           {budgetInline(urenBesteed, urenGepland)}
         </div>
-        {open && (
-          <div className="month-cards">
-            <div className="task-card seo-card">{section("SEO", seo, maand, "SEO", true)}</div>
-            <div className="task-card dev-card">{section("Developer", dev, maand, "Dev", false)}</div>
-          </div>
-        )}
+        {open && <div className="month-cards">{section(items, maand)}</div>}
       </div>
     );
   }

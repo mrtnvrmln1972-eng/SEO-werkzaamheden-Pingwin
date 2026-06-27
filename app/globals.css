@@ -487,6 +487,8 @@ tbody td:last-child { text-align: center; }
 .month-cards { display: flex; flex-direction: column; gap: 14px; margin-top: 14px; }
 .task-card { border: 1px solid var(--border); border-left: 4px solid var(--orange); border-radius: 8px; padding: 14px 16px; background: #fafafa; }
 .task-card.dev-card { border-left-color: #6b7280; }
+.task-table tr.dev-row { background: #eef2f7; }
+.task-table tr.dev-row:hover { background: #e4ebf3; }
 .task-card .task-section { margin-bottom: 0; }
 .budget-inline { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: baseline; justify-content: flex-end; }
 .budget-inline > div { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.25; }
