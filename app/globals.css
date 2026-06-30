@@ -524,6 +524,16 @@ tbody td:last-child { text-align: center; }
 .task-table tr.mailed-row:hover { background: #fbe0c7; }
 @keyframes rowPulse { 0%, 100% { background: var(--orange-light); } 50% { background: #f9c89b; } }
 .task-table tr.highlight-row { animation: rowPulse 0.9s ease 0s 5; }
+/* Status-achtergrond: open taken lichtrood, klaar-taken lichtgroen */
+.task-table tbody tr.task-open { background: #FCF2F2; }
+.task-table tbody tr.task-open:hover { background: #F8E7E7; }
+.task-table tbody tr.task-done { background: #EEF8EE; }
+.task-table tbody tr.task-done:hover { background: #E2F1E2; }
+/* Klantdashboard: zelfde statuskleuren (overschrijven de zebra-rijen) */
+tbody tr.row-open, tbody tr.row-open:nth-child(even) { background: #FCF2F2; }
+tbody tr.row-open:hover { background: #F8E7E7; }
+tbody tr.row-done, tbody tr.row-done:nth-child(even) { background: #EEF8EE; }
+tbody tr.row-done:hover { background: #E2F1E2; }
 .werk-bar { padding: 12px 16px; }
 .werk-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
 .werk-head-left { display: flex; align-items: center; gap: 12px; }

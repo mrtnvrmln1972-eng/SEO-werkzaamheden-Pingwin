@@ -310,7 +310,13 @@ export default function Dashboard({ name, sheetId, gid, budget, adminPreview, in
 function renderRows(monthTasks: DashboardData["tasks"]) {
   const rows: React.ReactNode[] = [];
   let lastCat = "";
-  monthTasks.forEach((task, i) => {
+  // Klaar-taken naar onderen, open taken bovenaan (stabiel binnen elke groep).
+  const isDone = (s: string) => /klaar|afgerond|gereed|done|voltooid/i.test(s || "");
+  const ordered = monthTasks
+    .map((t, idx) => ({ t, idx }))
+    .sort((a, b) => (isDone(a.t.status) ? 1 : 0) - (isDone(b.t.status) ? 1 : 0) || a.idx - b.idx)
+    .map((o) => o.t);
+  ordered.forEach((task, i) => {
     if (task.categorie && task.categorie !== lastCat) {
       lastCat = task.categorie;
       rows.push(
@@ -322,6 +328,7 @@ function renderRows(monthTasks: DashboardData["tasks"]) {
 
     const minutes = task.standaardTijd || 0;
     const statusLower = task.status.toLowerCase();
+    const done = isDone(statusLower);
     const badgeClass =
       statusLower === "klaar" ? "klaar" : statusLower === "bezig" ? "bezig" : "gepland";
     const badgeLabel =
@@ -330,7 +337,7 @@ function renderRows(monthTasks: DashboardData["tasks"]) {
     const isUrl = task.link && /^https?:\/\//i.test(task.link.trim());
 
     rows.push(
-      <tr key={`task-${i}`}>
+      <tr key={`task-${i}`} className={done ? "row-done" : "row-open"}>
         <td><strong dangerouslySetInnerHTML={{ __html: safeHtml(task.taak) }} /></td>
         <td><span className="task-desc" dangerouslySetInnerHTML={{ __html: safeHtml(task.toelichting) }} /></td>
         <td>{minutes > 0 ? formatTime(minutes) : <span className="muted">&mdash;</span>}</td>

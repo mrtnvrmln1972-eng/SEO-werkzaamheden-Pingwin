@@ -267,6 +267,16 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, hi
 
   // Render-functies (geen sub-componenten → geen remount, focus blijft behouden).
   function section(secRows: { r: Row; i: number }[], maand: string) {
+    // Klaar-taken naar onderen, open taken (gepland/bezig) bovenaan. Stabiel:
+    // binnen elke groep blijft de handmatige (sleep-)volgorde behouden.
+    const ordered = secRows
+      .map((x, idx) => ({ x, idx }))
+      .sort((a, b) => {
+        const da = DONE.test(a.x.r.status || "") ? 1 : 0;
+        const db = DONE.test(b.x.r.status || "") ? 1 : 0;
+        return da - db || a.idx - b.idx;
+      })
+      .map((o) => o.x);
     return (
       <div className="task-section">
         <table className="task-table">
@@ -277,12 +287,14 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, hi
             </colgroup>
             <thead><tr><th></th><th>Taak</th><th>Toelichting</th><th>Uren</th><th>Status</th><th>Link</th><th>Wie</th><th>Maand</th><th title="Aanvinken om mee te nemen in een mail-batch naar de developer" className="col-center">Mail</th><th></th></tr></thead>
             <tbody>
-              {secRows.map(({ r, i }) => {
+              {ordered.map(({ r, i }) => {
                 const isDev = (r.wie || "").toLowerCase() === "dev";
                 const hl = typeof r.id === "number" && highlightIds.has(r.id);
-                const mailed = !!r.gemaild && !DONE.test(r.status || "");
+                const done = DONE.test(r.status || "");
+                const mailed = !!r.gemaild && !done;
+                const statusCls = done ? "task-done " : "task-open ";
                 return (
-                  <tr key={r._uid} id={typeof r.id === "number" ? `task-row-${r.id}` : undefined} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.stopPropagation(); moveRow(maand, i); }} className={`${dragIdx === i ? "dragging " : ""}${isDev ? "dev-row " : ""}${mailed ? "mailed-row " : ""}${hl ? "highlight-row" : ""}`}>
+                  <tr key={r._uid} id={typeof r.id === "number" ? `task-row-${r.id}` : undefined} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.stopPropagation(); moveRow(maand, i); }} className={`${statusCls}${dragIdx === i ? "dragging " : ""}${isDev ? "dev-row " : ""}${mailed ? "mailed-row " : ""}${hl ? "highlight-row" : ""}`}>
                     <td className="drag-handle" draggable onDragStart={() => setDragIdx(i)} onDragEnd={() => setDragIdx(null)} title="Sleep (ook naar een andere maand)">⠿</td>
                     <td><RichCell html={r.taak} onChange={(v) => update(i, { taak: v })} placeholder="Taak" /></td>
                     <td><RichCell html={r.toelichting} onChange={(v) => update(i, { toelichting: v })} placeholder="Toelichting" /></td>
