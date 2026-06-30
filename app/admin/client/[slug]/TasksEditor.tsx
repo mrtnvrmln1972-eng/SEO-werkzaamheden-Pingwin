@@ -344,20 +344,20 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
     const subject = `Werkzaamheden — ${clientName}`;
 
     if (composeMode === "klant") {
-      // Klant-mail: taaknaam + de klant-toelichting + documentlink. Geen interne
-      // developer-opmerkingen. Met een link terug naar het klant-dashboard.
+      // Klant-mail: taaknaam (met inline links uit de taak) + de klant-toelichting.
+      // Geen interne developer-opmerkingen. Met een link terug naar het dashboard.
       const list = selected.map((t) => {
-        const uitleg = stripHtml(t.klantToelichting || "");
-        const doc = t.link ? ` &mdash; <a href="${esc(t.link)}">bekijk document</a>` : "";
-        return `<li><strong>${esc(stripHtml(t.taak))}</strong>${uitleg ? `<br><span style="color:#555">${esc(uitleg)}</span>` : ""}${doc}</li>`;
+        const uitleg = sanitizeRichHtml(t.klantToelichting || "");
+        const hasUitleg = stripHtml(t.klantToelichting || "").trim().length > 0;
+        return `<li><strong>${sanitizeRichHtml(t.taak)}</strong>${hasUitleg ? `<br><span style="color:#555">${uitleg}</span>` : ""}</li>`;
       }).join("");
       const dashUrl = typeof window !== "undefined" ? `${window.location.origin}/login` : "";
       const dashLink = dashUrl ? `<p style="margin-top:14px"><a href="${esc(dashUrl)}">Bekijk dit zelf in je dashboard</a></p>` : "";
       html = `${note}<p><strong>Werkzaamheden:</strong></p><ul>${list}</ul>${dashLink}`;
     } else {
-      // Developer-mail: taaknaam + interne opmerking + documentlink + link naar de cockpit.
+      // Developer-mail: taaknaam (met inline links) + interne opmerking + link naar de overview.
       const list = selected.map((t) =>
-        `<li><strong>${esc(stripHtml(t.taak))}</strong>${t.maand ? ` <em>(${esc(t.maand)})</em>` : ""}${t.toelichting ? ` &mdash; ${esc(stripHtml(t.toelichting))}` : ""}${t.link ? ` &mdash; <a href="${esc(t.link)}">document</a>` : ""}</li>`,
+        `<li><strong>${sanitizeRichHtml(t.taak)}</strong>${t.maand ? ` <em>(${esc(t.maand)})</em>` : ""}${stripHtml(t.toelichting || "").trim() ? ` &mdash; ${sanitizeRichHtml(t.toelichting)}` : ""}</li>`,
       ).join("");
       const devUrl = typeof window !== "undefined" ? `${window.location.origin}/admin/developer` : "";
       const devLink = devUrl ? `<p style="margin-top:14px;color:#555;font-size:13px"><a href="${esc(devUrl)}">Bekijk deze taken in je Developer Overview &rarr;</a></p>` : "";
@@ -398,10 +398,10 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
         <table className="task-table">
             <colgroup>
               <col style={{ width: "22px" }} /><col /><col />
-              <col style={{ width: "66px" }} /><col style={{ width: "104px" }} /><col style={{ width: "150px" }} />
+              <col style={{ width: "66px" }} /><col style={{ width: "104px" }} />
               <col style={{ width: "118px" }} /><col style={{ width: "92px" }} /><col style={{ width: "44px" }} /><col style={{ width: "78px" }} />
             </colgroup>
-            <thead><tr><th></th><th>Taak</th><th>Opm. developer</th><th>Uren</th><th>Status</th><th>Link</th><th>Wie</th><th>Maand</th><th title="Aanvinken om mee te nemen in een mail naar developer of klant" className="col-center">Kies</th><th></th></tr></thead>
+            <thead><tr><th></th><th>Taak</th><th>Opm. developer</th><th>Uren</th><th>Status</th><th>Wie</th><th>Maand</th><th title="Aanvinken om mee te nemen in een mail naar developer of klant" className="col-center">Kies</th><th></th></tr></thead>
             <tbody>
               {ordered.map(({ r, i }) => {
                 const isDev = (r.wie || "").toLowerCase() === "dev";
@@ -422,7 +422,6 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
                     <td><RichCell html={r.toelichting} onChange={(v) => update(i, { toelichting: v })} placeholder="Toelichting" /></td>
                     <td><input className="cell-num" type="number" value={r.uren ?? ""} onChange={(e) => update(i, { uren: e.target.value === "" ? null : Number(e.target.value) })} /></td>
                     <td><select value={r.status} onChange={(e) => update(i, { status: e.target.value })}><option value="">—</option>{STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}</select></td>
-                    <td><div className="cell-link"><input value={r.link} onChange={(e) => update(i, { link: e.target.value })} placeholder="https://..." />{r.link && <a href={r.link} target="_blank" rel="noreferrer">↗</a>}</div></td>
                     <td><button type="button" className={"wie-badge " + (isDev ? "wie-dev" : "wie-seo")} onClick={() => update(i, { wie: isDev ? "SEO" : "Dev" })} title="Klik om te wisselen tussen SEO en Developer">{isDev ? "Developer" : "SEO"}</button></td>
                     <td><select value={r.maand} onChange={(e) => update(i, { maand: e.target.value })}><option value="">—</option>{MONTHS.map((m) => <option key={m} value={m}>{m}</option>)}</select></td>
                     <td className="cell-check col-center"><input type="checkbox" checked={!!r._mail} onChange={(e) => update(i, { _mail: e.target.checked })} title="Aanvinken om mee te nemen in een mail naar developer of klant" /></td>
@@ -433,7 +432,7 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
                   </tr>
                 );
               })}
-              {secRows.length === 0 && <tr><td colSpan={10} className="muted" style={{ padding: 8 }}>Nog geen taken deze maand. Sleep er een hierheen of voeg toe.</td></tr>}
+              {secRows.length === 0 && <tr><td colSpan={9} className="muted" style={{ padding: 8 }}>Nog geen taken deze maand. Sleep er een hierheen of voeg toe.</td></tr>}
             </tbody>
           </table>
         <button type="button" className="add-task-btn" onClick={() => addRow(maand, "SEO")}>+ taak</button>

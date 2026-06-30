@@ -277,15 +277,14 @@ export default function Dashboard({ name, sheetId, gid, budget, adminPreview, in
                 <thead>
                   <tr>
                     <th>Taak</th>
-                    <th>Bestede tijd</th>
+                    <th className="cell-time">Bestede tijd</th>
                     <th>Status</th>
-                    <th>Document</th>
                   </tr>
                 </thead>
                 <tbody>
                   {view.monthTasks.length === 0 && (
                     <tr>
-                      <td colSpan={4} style={{ textAlign: "center", padding: 40, color: "var(--gray)" }}>
+                      <td colSpan={3} style={{ textAlign: "center", padding: 40, color: "var(--gray)" }}>
                         Geen werkzaamheden gevonden voor deze maand.
                       </td>
                     </tr>
@@ -319,7 +318,7 @@ function renderRows(monthTasks: DashboardData["tasks"]) {
       lastCat = task.categorie;
       rows.push(
         <tr className="cat-row" key={`cat-${i}`}>
-          <td colSpan={4}>{task.categorie}</td>
+          <td colSpan={3}>{task.categorie}</td>
         </tr>,
       );
     }
@@ -331,8 +330,6 @@ function renderRows(monthTasks: DashboardData["tasks"]) {
       statusLower === "klaar" ? "klaar" : statusLower === "bezig" ? "bezig" : "gepland";
     const badgeLabel =
       statusLower === "klaar" ? "Klaar" : statusLower === "bezig" ? "Bezig" : "Gepland";
-
-    const isUrl = task.link && /^https?:\/\//i.test(task.link.trim());
 
     const uitleg = (task.klantToelichting || "").trim();
     const hasUitleg = uitleg.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim().length > 0;
@@ -349,17 +346,8 @@ function renderRows(monthTasks: DashboardData["tasks"]) {
             )}
           </span>
         </td>
-        <td>{minutes > 0 ? formatTime(minutes) : <span className="muted">&mdash;</span>}</td>
+        <td className="cell-time">{minutes > 0 ? formatTime(minutes) : <span className="muted">&mdash;</span>}</td>
         <td><span className={`badge-done ${badgeClass}`}>{badgeLabel}</span></td>
-        <td>
-          {isUrl ? (
-            <a href={task.link.trim()} target="_blank" rel="noreferrer" className="doc-link">
-              Bekijk document
-            </a>
-          ) : (
-            <span className="muted">&mdash;</span>
-          )}
-        </td>
       </tr>,
     );
   });

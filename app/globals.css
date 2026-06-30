@@ -135,14 +135,14 @@ thead th {
   text-transform: uppercase; letter-spacing: 1px;
 }
 thead th:last-child { text-align: center; }
-thead th:nth-child(3) { text-align: right; }
 tbody tr { border-bottom: 1px solid var(--border); transition: background 0.15s; }
 tbody tr:nth-child(even) { background: var(--gray-light); }
 tbody tr:hover { background: var(--orange-light); }
 tbody td { padding: 14px 20px; font-size: 14px; font-weight: 400; color: var(--body-text); vertical-align: middle; font-family: 'Montserrat', sans-serif; }
 tbody td strong, tbody td span { font-family: inherit; color: inherit; font-size: inherit; }
-tbody td:nth-child(3) { text-align: right; font-weight: 700; color: var(--dark); white-space: nowrap; }
 tbody td:last-child { text-align: center; }
+/* "Bestede tijd"-kolom in het klantdashboard rechts uitgelijnd */
+.cell-time { text-align: right !important; font-weight: 700; color: var(--dark); white-space: nowrap; }
 .cat-row td {
   background: var(--orange-light); padding: 10px 20px; font-size: 13px;
   font-weight: 700; color: var(--orange-dark); text-transform: uppercase;
