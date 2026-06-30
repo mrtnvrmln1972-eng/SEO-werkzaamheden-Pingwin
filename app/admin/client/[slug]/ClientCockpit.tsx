@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import type { ClientConfig } from "../../../../lib/clients";
 import type {
   EmailSnapshot, MetricSnapshot, KeywordSnapshot, PageSnapshot, ClientStatus,
@@ -57,8 +57,15 @@ export default function ClientCockpit({
   gsc, ga4, googleConfigured, googleConnected, chatConfigured, chatHistory, tasks, initialTab, highlight,
 }: { client: ClientConfig; initialTab?: string; highlight?: string } & CockpitData) {
   const router = useRouter();
+  const pathname = usePathname();
   const validTab = (t?: string): Tab => (t === "werkzaamheden" || t === "resultaten" || t === "klant" || t === "overzicht") ? t : "overzicht";
   const [tab, setTab] = useState<Tab>(validTab(initialTab));
+
+  // Wissel van tab én update de URL zodat reload op dezelfde tab uitkomt.
+  function changeTab(newTab: Tab) {
+    setTab(newTab);
+    router.replace(`${pathname}?tab=${newTab}`, { scroll: false });
+  }
   const [shQuery, setShQuery] = useState("");
   const [openEmail, setOpenEmail] = useState<string | null>(null);
   const replyRef = useRef<HTMLDivElement>(null);
@@ -210,10 +217,10 @@ export default function ClientCockpit({
             ))}
           </select>
           <nav className="header-tabs">
-            <button className={"tab" + (tab === "overzicht" ? " active" : "")} onClick={() => setTab("overzicht")}>Overzicht</button>
-            <button className={"tab" + (tab === "werkzaamheden" ? " active" : "")} onClick={() => setTab("werkzaamheden")}>Werkzaamheden</button>
-            <button className={"tab" + (tab === "resultaten" ? " active" : "")} onClick={() => setTab("resultaten")}>KPI&rsquo;s</button>
-            <button className={"tab" + (tab === "klant" ? " active" : "")} onClick={() => setTab("klant")}>Klant-dashboard</button>
+            <button className={"tab" + (tab === "overzicht" ? " active" : "")} onClick={() => changeTab("overzicht")}>Overzicht</button>
+            <button className={"tab" + (tab === "werkzaamheden" ? " active" : "")} onClick={() => changeTab("werkzaamheden")}>Werkzaamheden</button>
+            <button className={"tab" + (tab === "resultaten" ? " active" : "")} onClick={() => changeTab("resultaten")}>KPI&rsquo;s</button>
+            <button className={"tab" + (tab === "klant" ? " active" : "")} onClick={() => changeTab("klant")}>Klant-dashboard</button>
           </nav>
         </div>
         <div className="header-right">

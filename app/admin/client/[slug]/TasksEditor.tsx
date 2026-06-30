@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import type { TaskRow } from "../../../../lib/tasks";
 
 const MONTHS = ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"];
-const STATUSES = ["Te doen", "Bezig", "Gepland", "Klaar"];
+const STATUSES = ["Gepland", "Bezig", "Klaar"];
 
 type Budget = { maandbudget: number; linkbuilding: number; uurtarief: number; beschikbareUren: number };
 
@@ -20,6 +20,13 @@ function esc(s: string): string {
 // Haalt opmaak weg → platte tekst (voor de developer-mail en losse weergaven).
 function stripHtml(html: string): string {
   return (html || "").replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").trim();
+}
+
+// Strip inline kleur/font-stijlen zodat tekst overal consistent donker is.
+function sanitizeRichHtml(html: string): string {
+  return html
+    .replace(/\s*(?:color|font-size|font-family|background(?:-color)?)\s*:[^;"]+;?/gi, "")
+    .replace(/\s*style=""\s*/gi, " ");
 }
 
 // Zet URL's in platte tekst om naar klikbare links bij het plakken.
@@ -42,7 +49,7 @@ function RichCell({ html, onChange, placeholder }: { html: string; onChange: (ht
     if (ref.current && ref.current.innerHTML !== (html || "")) ref.current.innerHTML = html || "";
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  function emit() { onChange(ref.current?.innerHTML || ""); }
+  function emit() { onChange(sanitizeRichHtml(ref.current?.innerHTML || "")); }
   // Zet target="_blank" op alle links in de cel (ook nieuw aangemaakte).
   function fixLinks() {
     ref.current?.querySelectorAll("a[href]").forEach((a) => {
@@ -79,7 +86,11 @@ function RichCell({ html, onChange, placeholder }: { html: string; onChange: (ht
 
 export default function TasksEditor({ slug, initialTasks, budget, clientName, highlight }: { slug: string; initialTasks: TaskRow[]; budget: Budget; clientName: string; highlight?: string }) {
   const uidRef = useRef(1);
-  const [rows, setRows] = useState<Row[]>(() => initialTasks.map((t, i) => ({ ...t, _uid: t.id != null ? `id-${t.id}` : `init-${i}` })));
+  // "Te doen" is verwijderd; migreer bestaande taken naar "Gepland" bij laden.
+  const normalizeStatus = (s: string) => s === "Te doen" ? "Gepland" : s;
+  const [rows, setRows] = useState<Row[]>(() => initialTasks.map((t, i) => ({ ...t, status: normalizeStatus(t.status || ""), _uid: t.id != null ? `id-${t.id}` : `init-${i}` })));
+  const rowsRef = useRef<Row[]>(rows);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [dragIdx, setDragIdx] = useState<number | null>(null);
@@ -121,9 +132,20 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, hi
   const isOpen = (m: string) => openMonths[m] ?? false;
   const toggleMonth = (m: string) => setOpenMonths((o) => ({ ...o, [m]: !(o[m] ?? false) }));
 
+  // Auto-save: 800ms na de laatste wijziging wordt de huidige staat opgeslagen.
+  function triggerAutoSave() {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => saveRows(rowsRef.current), 800);
+  }
+
   function update(i: number, patch: Partial<Row>) {
-    setRows((r) => r.map((row, idx) => (idx === i ? { ...row, ...patch } : row)));
+    setRows((prev) => {
+      const next = prev.map((row, idx) => (idx === i ? { ...row, ...patch } : row));
+      rowsRef.current = next;
+      return next;
+    });
     setMsg("");
+    triggerAutoSave();
   }
 
   // Sla een specifieke rijen-array direct op (zonder van state afhankelijk te zijn).

@@ -19,13 +19,16 @@ type Props = {
   initialData?: DashboardData | null;
 };
 
-// Laat opmaak/links staan, verwijdert scripts en handlers (vangnet).
+// Laat opmaak/links staan, verwijdert scripts, handlers en inline font/kleur-stijlen
+// zodat het klant-dashboard altijd dezelfde typografie toont als de rest van de pagina.
 function safeHtml(html: string): string {
   return (html || "")
     .replace(/<\s*script[\s\S]*?<\s*\/\s*script\s*>/gi, "")
     .replace(/\son\w+\s*=\s*"[^"]*"/gi, "")
     .replace(/\son\w+\s*=\s*'[^']*'/gi, "")
-    .replace(/javascript:/gi, "");
+    .replace(/javascript:/gi, "")
+    .replace(/\s*(?:color|font-size|font-family|background(?:-color)?)\s*:[^;"]+;?/gi, "")
+    .replace(/\s*style=""\s*/gi, " ");
 }
 
 function formatTime(minutes: number): string {
