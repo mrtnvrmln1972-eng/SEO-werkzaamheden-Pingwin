@@ -6,7 +6,7 @@ import type { TaskRow } from "../../../../lib/tasks";
 import { cleanPastedHtml, linkifyPlainText } from "../../../../lib/rich-paste";
 
 const MONTHS = ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"];
-const STATUSES = ["Gepland", "Bezig", "Klaar"];
+const STATUSES = ["Gepland", "Bezig", "Naar Dev", "Klaar"];
 
 type Budget = { maandbudget: number; linkbuilding: number; uurtarief: number; beschikbareUren: number };
 
@@ -359,12 +359,9 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
       const list = selected.map((t) =>
         `<li><strong>${esc(stripHtml(t.taak))}</strong>${t.maand ? ` <em>(${esc(t.maand)})</em>` : ""}${t.toelichting ? ` &mdash; ${esc(stripHtml(t.toelichting))}` : ""}${t.link ? ` &mdash; <a href="${esc(t.link)}">document</a>` : ""}</li>`,
       ).join("");
-      const ids = selected.map((t) => t.id).filter((x): x is number => typeof x === "number");
-      const dashUrl = typeof window !== "undefined"
-        ? `${window.location.origin}/admin/client/${slug}?tab=werkzaamheden${ids.length ? `&highlight=${ids.join(",")}` : ""}`
-        : "";
-      const dashLink = dashUrl ? `<p style="margin-top:14px;color:#555;font-size:13px">Bekijk deze taken in het dashboard: <a href="${esc(dashUrl)}">open in het dashboard &rarr;</a></p>` : "";
-      html = `${note}<p><strong>Werkzaamheden:</strong></p><ul>${list}</ul>${dashLink}`;
+      const devUrl = typeof window !== "undefined" ? `${window.location.origin}/admin/developer` : "";
+      const devLink = devUrl ? `<p style="margin-top:14px;color:#555;font-size:13px"><a href="${esc(devUrl)}">Bekijk deze taken in je Developer Overview &rarr;</a></p>` : "";
+      html = `${note}<p><strong>Werkzaamheden:</strong></p><ul>${list}</ul>${devLink}`;
     }
 
     setDevBusy(true); setDevMsg("");

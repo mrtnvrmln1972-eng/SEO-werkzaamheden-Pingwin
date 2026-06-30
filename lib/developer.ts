@@ -59,7 +59,7 @@ export async function getDeveloperTasks(): Promise<DevTask[]> {
            c.name AS client_name
     FROM client_tasks t
     LEFT JOIN clients c ON c.slug = t.client_slug
-    WHERE lower(coalesce(t.wie, '')) = 'dev'
+    WHERE lower(coalesce(t.status, '')) = 'naar dev'
     ORDER BY t.sort_order ASC, t.id ASC`;
 
   const meta = await sql`SELECT client_slug, task_key, position, exec_date FROM developer_overview`;
@@ -100,12 +100,14 @@ export async function getDeveloperTasks(): Promise<DevTask[]> {
     return true;
   });
 
-  // Sorteren: handmatig geordende taken eerst (op positie), de rest per klant.
+  // Sorteren: per klant gegroepeerd; binnen een klant op handmatige positie.
   deduped.sort((a, b) => {
+    const byClient = a.clientName.localeCompare(b.clientName);
+    if (byClient !== 0) return byClient;
     if (a.position != null && b.position != null) return a.position - b.position;
     if (a.position != null) return -1;
     if (b.position != null) return 1;
-    return a.clientName.localeCompare(b.clientName);
+    return 0;
   });
 
   return deduped;

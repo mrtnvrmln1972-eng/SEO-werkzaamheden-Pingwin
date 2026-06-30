@@ -74,6 +74,8 @@ export default function DeveloperOverview({ initialTasks, embedded }: { initialT
 
   function moveTo(beforeIdx: number) {
     if (dragIdx === null || dragIdx === beforeIdx) return;
+    // Alleen binnen dezelfde klant herordenen (taken horen bij hun klant).
+    if (rows[dragIdx]?.clientSlug !== rows[beforeIdx]?.clientSlug) { setDragIdx(null); return; }
     const c = [...rows];
     const [moved] = c.splice(dragIdx, 1);
     const ins = beforeIdx > dragIdx ? beforeIdx - 1 : beforeIdx;
@@ -89,6 +91,14 @@ export default function DeveloperOverview({ initialTasks, embedded }: { initialT
 
   const saveLabel = saving === "saving" ? "Opslaan..." : saving === "saved" ? "✓ Opgeslagen" : "";
 
+  // Groepeer de taken per klant (de array is al per klant gesorteerd).
+  const groups: { clientSlug: string; clientName: string; items: { r: Row; idx: number }[] }[] = [];
+  rows.forEach((r, idx) => {
+    let g = groups.find((g) => g.clientSlug === r.clientSlug);
+    if (!g) { g = { clientSlug: r.clientSlug, clientName: r.clientName, items: [] }; groups.push(g); }
+    g.items.push({ r, idx });
+  });
+
   const content = (
     <>
         <div className="section-title">
@@ -96,61 +106,61 @@ export default function DeveloperOverview({ initialTasks, embedded }: { initialT
           {saveLabel && <span className="focus-save-status" style={{ marginLeft: 12 }}>{saveLabel}</span>}
         </div>
         <p className="dev-intro">
-          Alle taken die over alle klanten heen aan de developer zijn toegewezen. Sleep een taak omhoog of omlaag
-          om de prioriteit te bepalen en zet per taak een uitvoerdatum. Volgorde en datum blijven staan.
+          Per klant de taken die op status &ldquo;Naar Dev&rdquo; staan. Sleep een taak binnen een klant omhoog of
+          omlaag om de prioriteit te bepalen en zet per taak een uitvoerdatum. Volgorde en datum blijven staan.
         </p>
         {loading && <p className="muted">Taken laden…</p>}
+        {!loading && rows.length === 0 && (
+          <p className="muted">Nog geen taken op &ldquo;Naar Dev&rdquo;. Zet in een klant-cockpit een taak op status &ldquo;Naar Dev&rdquo;.</p>
+        )}
 
-        <div className="task-table-wrap">
-          <table className="task-table dev-table">
-            <colgroup>
-              <col style={{ width: "22px" }} />
-              <col style={{ width: "150px" }} />
-              <col />
-              <col />
-              <col style={{ width: "104px" }} />
-              <col style={{ width: "150px" }} />
-              <col style={{ width: "60px" }} />
-            </colgroup>
-            <thead>
-              <tr>
-                <th></th>
-                <th>Klant</th>
-                <th>Taak</th>
-                <th>Opm. developer</th>
-                <th>Status</th>
-                <th>Uitvoerdatum</th>
-                <th>Link</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.length === 0 && (
-                <tr><td colSpan={7} style={{ textAlign: "center", padding: 40, color: "var(--gray)" }}>
-                  Nog geen taken voor de developer. Zet in een klant-cockpit een taak op &ldquo;Developer&rdquo;.
-                </td></tr>
-              )}
-              {rows.map((r, i) => {
-                const isUrl = r.link && /^https?:\/\//i.test(r.link.trim());
-                return (
-                  <tr
-                    key={r.clientSlug + "|" + r.taskKey}
-                    className={dragIdx === i ? "dragging" : ""}
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={(e) => { e.stopPropagation(); moveTo(i); }}
-                  >
-                    <td className="drag-handle" draggable onDragStart={() => setDragIdx(i)} onDragEnd={() => setDragIdx(null)} title="Sleep om de prioriteit te wijzigen">⠿</td>
-                    <td><span className="dev-client">{r.clientName}</span></td>
-                    <td><span className="dev-cell" dangerouslySetInnerHTML={{ __html: safeHtml(r.taak) }} /></td>
-                    <td><span className="dev-cell dev-muted" dangerouslySetInnerHTML={{ __html: safeHtml(r.toelichting) }} /></td>
-                    <td>{statusBadge(r.status)}</td>
-                    <td><input type="date" className="dev-date" value={r.execDate || ""} onChange={(e) => setDate(i, e.target.value)} /></td>
-                    <td>{isUrl ? <a href={r.link.trim()} target="_blank" rel="noreferrer" className="doc-link">Open</a> : <span className="muted">&mdash;</span>}</td>
+        {groups.map((g) => (
+          <div className="cockpit-card dev-client-card" key={g.clientSlug}>
+            <div className="dev-client-card-head">{g.clientName} <span className="dev-client-count">({g.items.length})</span></div>
+            <div className="task-table-wrap">
+              <table className="task-table dev-table">
+                <colgroup>
+                  <col style={{ width: "22px" }} />
+                  <col />
+                  <col />
+                  <col style={{ width: "104px" }} />
+                  <col style={{ width: "150px" }} />
+                  <col style={{ width: "60px" }} />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th></th>
+                    <th>Taak</th>
+                    <th>Opm. developer</th>
+                    <th>Status</th>
+                    <th>Uitvoerdatum</th>
+                    <th>Link</th>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                </thead>
+                <tbody>
+                  {g.items.map(({ r, idx }) => {
+                    const isUrl = r.link && /^https?:\/\//i.test(r.link.trim());
+                    return (
+                      <tr
+                        key={r.clientSlug + "|" + r.taskKey}
+                        className={dragIdx === idx ? "dragging" : ""}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => { e.stopPropagation(); moveTo(idx); }}
+                      >
+                        <td className="drag-handle" draggable onDragStart={() => setDragIdx(idx)} onDragEnd={() => setDragIdx(null)} title="Sleep om de prioriteit te wijzigen">⠿</td>
+                        <td><span className="dev-cell" dangerouslySetInnerHTML={{ __html: safeHtml(r.taak) }} /></td>
+                        <td><span className="dev-cell dev-muted" dangerouslySetInnerHTML={{ __html: safeHtml(r.toelichting) }} /></td>
+                        <td>{statusBadge(r.status)}</td>
+                        <td><input type="date" className="dev-date" value={r.execDate || ""} onChange={(e) => setDate(idx, e.target.value)} /></td>
+                        <td>{isUrl ? <a href={r.link.trim()} target="_blank" rel="noreferrer" className="doc-link">Open</a> : <span className="muted">&mdash;</span>}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))}
     </>
   );
 

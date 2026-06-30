@@ -299,6 +299,10 @@ tbody td:last-child { text-align: center; }
 
 /* Developer Overview */
 .dev-intro { font-size: 13px; color: var(--gray); margin: 0 0 16px; max-width: 720px; line-height: 1.5; }
+.dev-client-card { padding: 16px 18px; }
+.dev-client-card-head { font-weight: 700; font-size: 16px; color: var(--dark); border-bottom: 2px solid var(--orange); padding-bottom: 8px; margin-bottom: 10px; }
+.dev-client-count { font-weight: 500; font-size: 13px; color: var(--gray); }
+.dev-client-card .task-table-wrap { box-shadow: none; margin-bottom: 0; }
 .dev-table td { vertical-align: middle; }
 .dev-client { font-weight: 700; color: var(--dark); font-size: 13px; }
 .dev-cell { font-size: 13px; color: var(--dark); line-height: 1.4; word-break: break-word; }
