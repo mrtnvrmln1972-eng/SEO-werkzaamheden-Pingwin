@@ -585,6 +585,8 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .row-info:hover { border-color: var(--orange); color: var(--orange); }
 .row-info.has { background: var(--orange); border-color: var(--orange); color: #fff; }
 .klant-pop-overlay { position: fixed; inset: 0; z-index: 40; }
+/* Til de rij met open popover boven de andere rijen én de overlay uit */
+.task-table tbody tr.klant-pop-open { position: relative; z-index: 50; }
 .klant-pop { position: absolute; left: 0; top: 30px; z-index: 41; width: 340px; max-width: 80vw; background: var(--white); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.16); padding: 12px; text-align: left; }
 .klant-pop-head { font-size: 12px; font-weight: 700; color: var(--dark); margin-bottom: 8px; }
 .klant-pop-toolbar { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
