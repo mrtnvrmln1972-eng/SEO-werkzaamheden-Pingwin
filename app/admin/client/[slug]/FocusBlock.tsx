@@ -1,38 +1,49 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
-type Kw = { kw: string; url: string };
-type Lnk = { label: string; url: string };
+import { useEffect, useRef, useState } from "react";
 
 export default function FocusBlock({ slug }: { slug: string }) {
-  const [keywords, setKeywords] = useState<Kw[]>([]);
-  const [links, setLinks] = useState<Lnk[]>([]);
+  const [html, setHtml] = useState("");
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const editorRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let off = false;
     fetch(`/api/admin/focus?slug=${encodeURIComponent(slug)}`)
       .then((r) => r.json())
-      .then((d) => { if (off) return; if (d.ok) { setKeywords(d.focus.keywords || []); setLinks(d.focus.links || []); } setLoaded(true); })
+      .then((d) => { if (off) return; if (d.ok) setHtml(d.focus.html || ""); setLoaded(true); })
       .catch(() => setLoaded(true));
     return () => { off = true; };
   }, [slug]);
 
+  // Bij openen van de bewerk-modus de huidige inhoud in het veld zetten (één keer).
+  useEffect(() => {
+    if (editing && editorRef.current) editorRef.current.innerHTML = html || "";
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing]);
+
+  function cmd(command: string, value?: string) {
+    editorRef.current?.focus();
+    document.execCommand(command, false, value);
+  }
+  function addLink() {
+    const url = window.prompt("Link naar (URL of document):", "https://");
+    if (url) cmd("createLink", url);
+  }
+
   async function save() {
+    const content = editorRef.current?.innerHTML || "";
     setBusy(true);
     try {
-      const res = await fetch("/api/admin/focus", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, keywords, links }) });
+      const res = await fetch("/api/admin/focus", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, html: content }) });
       const d = await res.json();
-      if (d.ok) { setKeywords(d.focus.keywords || []); setLinks(d.focus.links || []); setEditing(false); }
+      if (d.ok) { setHtml(d.focus.html || ""); setEditing(false); }
     } finally { setBusy(false); }
   }
 
   if (!loaded) return null;
-
-  const empty = keywords.length === 0 && links.length === 0;
 
   return (
     <div className="sov-tasks">
@@ -42,59 +53,27 @@ export default function FocusBlock({ slug }: { slug: string }) {
       </div>
 
       {!editing && (
-        <>
-          {empty && <div className="muted" style={{ fontSize: 13 }}>Nog niets ingevuld. Klik op &ldquo;Bewerken&rdquo;.</div>}
-          {keywords.length > 0 && (
-            <ul className="focus-kw-list">
-              {keywords.map((k, i) => (
-                <li key={i}>
-                  <span className="focus-kw">{k.kw}</span>
-                  {k.url ? <a className="focus-url" href={k.url} target="_blank" rel="noreferrer">{prettyUrl(k.url)} &rarr;</a> : null}
-                </li>
-              ))}
-            </ul>
-          )}
-          {links.length > 0 && (
-            <div className="focus-links">
-              {links.map((l, i) => (
-                <a key={i} className="focus-link-chip" href={l.url} target="_blank" rel="noreferrer">{l.label || prettyUrl(l.url)} &rarr;</a>
-              ))}
-            </div>
-          )}
-        </>
+        html.trim()
+          ? <div className="focus-rich" dangerouslySetInnerHTML={{ __html: html }} />
+          : <div className="muted" style={{ fontSize: 13 }}>Nog niets ingevuld. Klik op &ldquo;Bewerken&rdquo; en plak of typ je zoekwoorden en links.</div>
       )}
 
       {editing && (
         <div className="focus-editor">
-          <div className="focus-sub">Afgesproken zoekwoorden &rarr; pagina</div>
-          {keywords.map((k, i) => (
-            <div className="focus-row" key={i}>
-              <input value={k.kw} placeholder="zoekwoord" onChange={(e) => setKeywords((a) => a.map((x, j) => j === i ? { ...x, kw: e.target.value } : x))} />
-              <input value={k.url} placeholder="https://..." onChange={(e) => setKeywords((a) => a.map((x, j) => j === i ? { ...x, url: e.target.value } : x))} />
-              <button type="button" className="row-del" onClick={() => setKeywords((a) => a.filter((_, j) => j !== i))}>&times;</button>
-            </div>
-          ))}
-          <button type="button" className="add-task-btn" onClick={() => setKeywords((a) => [...a, { kw: "", url: "" }])}>+ zoekwoord</button>
-
-          <div className="focus-sub" style={{ marginTop: 12 }}>Snelle links (linkbuilding, Search Console, Analytics)</div>
-          {links.map((l, i) => (
-            <div className="focus-row" key={i}>
-              <input value={l.label} placeholder="label" onChange={(e) => setLinks((a) => a.map((x, j) => j === i ? { ...x, label: e.target.value } : x))} />
-              <input value={l.url} placeholder="https://..." onChange={(e) => setLinks((a) => a.map((x, j) => j === i ? { ...x, url: e.target.value } : x))} />
-              <button type="button" className="row-del" onClick={() => setLinks((a) => a.filter((_, j) => j !== i))}>&times;</button>
-            </div>
-          ))}
-          <button type="button" className="add-task-btn" onClick={() => setLinks((a) => [...a, { label: "", url: "" }])}>+ link</button>
-
-          <div style={{ marginTop: 12 }}>
+          <div className="focus-toolbar">
+            <button type="button" onClick={() => cmd("bold")} title="Vet"><strong>B</strong></button>
+            <button type="button" onClick={() => cmd("italic")} title="Cursief"><em>I</em></button>
+            <button type="button" onClick={() => cmd("insertUnorderedList")} title="Bullets">&bull; lijst</button>
+            <button type="button" onClick={() => cmd("insertOrderedList")} title="Genummerd">1. lijst</button>
+            <button type="button" onClick={addLink} title="Link toevoegen">🔗 link</button>
+            <button type="button" onClick={() => cmd("unlink")} title="Link verwijderen">link weg</button>
+          </div>
+          <div ref={editorRef} className="focus-rich focus-editable" contentEditable suppressContentEditableWarning />
+          <div style={{ marginTop: 10 }}>
             <button type="button" className="primary-btn small" onClick={save} disabled={busy}>{busy ? "Opslaan..." : "Opslaan"}</button>
           </div>
         </div>
       )}
     </div>
   );
-}
-
-function prettyUrl(url: string): string {
-  return url.replace(/^https?:\/\//, "").replace(/\/$/, "");
 }

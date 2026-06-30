@@ -589,17 +589,17 @@ tbody td:last-child { text-align: center; }
 .focus-head { display: flex; justify-content: space-between; align-items: center; }
 .focus-edit { background: none; border: 1px solid var(--border); color: var(--gray); font-size: 11px; padding: 3px 8px; border-radius: 6px; cursor: pointer; }
 .focus-edit:hover { border-color: var(--orange); color: var(--orange); }
-.focus-kw-list { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.focus-kw-list li { display: flex; flex-direction: column; gap: 1px; font-size: 13px; }
-.focus-kw { font-weight: 600; color: var(--dark); }
-.focus-url { font-size: 12px; color: var(--orange); text-decoration: none; word-break: break-all; }
-.focus-url:hover { text-decoration: underline; }
-.focus-links { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-.focus-link-chip { font-size: 12px; background: var(--orange-light); color: var(--orange-dark, var(--orange)); padding: 4px 10px; border-radius: 14px; text-decoration: none; }
-.focus-link-chip:hover { background: #fbe0c7; }
-.focus-sub { font-size: 12px; font-weight: 600; color: var(--gray); margin-bottom: 6px; }
-.focus-row { display: flex; gap: 6px; margin-bottom: 6px; }
-.focus-row input { flex: 1 1 0; min-width: 0; font-size: 12px; padding: 5px 7px; border: 1px solid var(--border); border-radius: 6px; }
+.focus-rich { font-size: 13px; color: var(--dark); line-height: 1.5; margin-top: 6px; }
+.focus-rich p { margin: 0 0 6px; }
+.focus-rich ul, .focus-rich ol { margin: 4px 0 8px; padding-left: 20px; }
+.focus-rich li { margin-bottom: 3px; }
+.focus-rich a { color: var(--orange); text-decoration: none; word-break: break-word; }
+.focus-rich a:hover { text-decoration: underline; }
+.focus-editable { min-height: 120px; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; outline: none; background: var(--white); }
+.focus-editable:focus { border-color: var(--orange); }
+.focus-toolbar { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+.focus-toolbar button { font-size: 12px; padding: 4px 9px; border: 1px solid var(--border); background: var(--white); border-radius: 6px; cursor: pointer; color: var(--dark); }
+.focus-toolbar button:hover { border-color: var(--orange); color: var(--orange); }
 .sov-tasks { border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; background: var(--white); box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
 .sov-tasks-head { font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.3px; color: var(--dark); margin-bottom: 10px; }
 .sov-sub { font-weight: 500; font-size: 11px; text-transform: none; letter-spacing: 0; color: var(--gray); }
