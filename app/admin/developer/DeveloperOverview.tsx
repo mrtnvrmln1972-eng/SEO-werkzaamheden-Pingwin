@@ -121,7 +121,7 @@ export default function DeveloperOverview({ initialTasks }: { initialTasks: DevT
                 <th></th>
                 <th>Klant</th>
                 <th>Taak</th>
-                <th>Toelichting</th>
+                <th>Opm. developer</th>
                 <th>Status</th>
                 <th>Uitvoerdatum</th>
                 <th>Link</th>

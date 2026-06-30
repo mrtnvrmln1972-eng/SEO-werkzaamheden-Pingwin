@@ -562,6 +562,12 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .row-send:hover { opacity: 1; }
 .task-table .row-del { font-size: 20px; }
 /* Klant-toelichting knop + popover */
+/* SEO / Developer als gekleurde knop (categorie in één oogopslag) */
+.wie-badge { border: none; border-radius: 14px; padding: 4px 12px; font-family: 'Montserrat', sans-serif; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; transition: filter 0.15s; }
+.wie-badge:hover { filter: brightness(0.94); }
+.wie-seo { background: #E0F2FE; color: #0369A1; }
+.wie-dev { background: #EDE9FE; color: #6D28D9; }
+
 .row-info { width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--border); background: var(--white); color: var(--gray); font-size: 12px; font-weight: 700; line-height: 1; cursor: pointer; padding: 0; flex: 0 0 auto; }
 .row-info:hover { border-color: var(--orange); color: var(--orange); }
 .row-info.has { background: var(--orange); border-color: var(--orange); color: #fff; }
