@@ -1,29 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-
-// Zet URL's in platte tekst om naar klikbare links.
-function linkifyText(text: string): string {
-  const escaped = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  return escaped
-    .replace(/https?:\/\/[^\s<>"']+/gi, (url) => {
-      const clean = url.replace(/[.,;:!?)"']+$/, "");
-      return `<a href="${clean}" target="_blank" rel="noreferrer">${clean}</a>`;
-    })
-    .replace(/\n/g, "<br>");
-}
-
-// Strip font/kleur-stijlen en rondslingerende meta/class-attributen; behoudt links en structuur.
-function cleanPasteHtml(html: string): string {
-  return html
-    .replace(/<colgroup[\s\S]*?<\/colgroup>/gi, "")
-    .replace(/<meta[^>]*>/gi, "")
-    .replace(/\s*(?:color|font-size|font-family|background(?:-color)?)\s*:[^;"]+;?/gi, "")
-    .replace(/\s*style=""\s*/gi, " ")
-    .replace(/\s*class="[^"]*"/gi, "")
-    .replace(/\s*id="[^"]*"/gi, "")
-    .replace(/&nbsp;/gi, " ");
-}
+import { cleanPastedHtml, linkifyPlainText } from "../../../../lib/rich-paste";
 
 export default function FocusBlock({ slug, standalone }: { slug: string; standalone?: boolean }) {
   const [initialHtml, setInitialHtml] = useState<string | null>(null);
@@ -124,52 +102,29 @@ export default function FocusBlock({ slug, standalone }: { slug: string; standal
   function onPaste(e: React.ClipboardEvent) {
     const pasteHtml = e.clipboardData.getData("text/html");
     const pasteText = e.clipboardData.getData("text/plain");
-    const hasTable = /<table[\s>]/i.test(pasteHtml);
-    const hasLinks = /<a\s/i.test(pasteHtml);
 
-    // Sheets/Excel: tabel
-    if (hasTable) {
-      e.preventDefault();
-      document.execCommand("insertHTML", false, cleanPasteHtml(pasteHtml));
-      fixLinks();
-      triggerSave();
-      return;
+    // HTML (cellen, links, opmaak uit Sheets/Docs/web): opschonen tot kale
+    // tekst + klikbare links, tabellen platgeslagen naar regels.
+    if (pasteHtml && /<\w/.test(pasteHtml)) {
+      const cleaned = cleanPastedHtml(pasteHtml);
+      if (cleaned) {
+        e.preventDefault();
+        document.execCommand("insertHTML", false, cleaned);
+        fixLinks();
+        triggerSave();
+        return;
+      }
     }
 
-    // TSV (tab-gescheiden): maak tabel
-    if (!hasTable && pasteText && pasteText.includes("\t")) {
-      e.preventDefault();
-      const rows = pasteText.trim().split(/\r?\n/).filter((r) => r.trim());
-      const tableHtml = `<table style="border-collapse:collapse;font-size:13px"><tbody>${
-        rows.map((row) =>
-          `<tr>${row.split("\t").map((cell) =>
-            `<td style="border:1px solid #ccc;padding:3px 8px">${cell.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</td>`
-          ).join("")}</tr>`
-        ).join("")
-      }</tbody></table>`;
-      document.execCommand("insertHTML", false, tableHtml);
-      triggerSave();
-      return;
-    }
-
-    // HTML met links (bijv. hyperlinked woord uit browser of Google Docs)
-    if (hasLinks) {
-      e.preventDefault();
-      document.execCommand("insertHTML", false, cleanPasteHtml(pasteHtml));
-      fixLinks();
-      triggerSave();
-      return;
-    }
-
-    // URL in platte tekst: auto-linken (ook als browser HTML meestuurt zonder links)
+    // URL in platte tekst: auto-linken.
     if (pasteText && /https?:\/\//i.test(pasteText)) {
       e.preventDefault();
-      document.execCommand("insertHTML", false, linkifyText(pasteText));
+      document.execCommand("insertHTML", false, linkifyPlainText(pasteText));
       triggerSave();
       return;
     }
 
-    // Standaard paste; links daarna alsnog fixen
+    // Standaard paste; links daarna alsnog fixen.
     setTimeout(() => { fixLinks(); triggerSave(); }, 0);
   }
 

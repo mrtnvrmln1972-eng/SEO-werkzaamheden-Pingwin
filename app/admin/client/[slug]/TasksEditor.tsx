@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import type { TaskRow } from "../../../../lib/tasks";
+import { cleanPastedHtml, linkifyPlainText } from "../../../../lib/rich-paste";
 
 const MONTHS = ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"];
 const STATUSES = ["Gepland", "Bezig", "Klaar"];
@@ -27,17 +28,6 @@ function sanitizeRichHtml(html: string): string {
   return html
     .replace(/\s*(?:color|font-size|font-family|background(?:-color)?)\s*:[^;"]+;?/gi, "")
     .replace(/\s*style=""\s*/gi, " ");
-}
-
-// Zet URL's in platte tekst om naar klikbare links bij het plakken.
-function linkifyText(text: string): string {
-  const escaped = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  return escaped
-    .replace(/https?:\/\/[^\s<>"']+/gi, (url) => {
-      const clean = url.replace(/[.,;:!?)"']+$/, "");
-      return `<a href="${clean}" target="_blank" rel="noreferrer">${clean}</a>`;
-    })
-    .replace(/\n/g, "<br>");
 }
 
 // Bewerkbare rich-text-cel: typ tekst, selecteer een woord en druk Cmd/Ctrl+K
@@ -68,20 +58,44 @@ function RichCell({ html, onChange, placeholder }: { html: string; onChange: (ht
       fixLinks();
       emit();
     }
+    // Cmd/Ctrl+Shift+V: plak zonder opmaak
+    if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "v") {
+      e.preventDefault();
+      navigator.clipboard.readText().then((t) => { if (t) { document.execCommand("insertText", false, t); emit(); } }).catch(() => {});
+    }
+  }
+  // Klik op een link opent hem in een nieuw tabblad (ook tijdens bewerken).
+  function onClick(e: React.MouseEvent) {
+    const t = e.target as HTMLElement;
+    const a = (t.tagName === "A" ? t : t.closest("a")) as HTMLAnchorElement | null;
+    if (a && a.href && !a.href.startsWith("javascript:")) { e.preventDefault(); window.open(a.href, "_blank", "noreferrer"); }
   }
   function onPaste(e: React.ClipboardEvent) {
     const pasteHtml = e.clipboardData.getData("text/html");
     const pasteText = e.clipboardData.getData("text/plain");
-    // Plakte tekst met URL's en geen rijke HTML: auto-linken
-    if (!pasteHtml && pasteText && /https?:\/\//i.test(pasteText)) {
+    // HTML (cellen, links, opmaak): opschonen tot kale tekst + klikbare links.
+    if (pasteHtml && /<\w/.test(pasteHtml)) {
+      const cleaned = cleanPastedHtml(pasteHtml);
+      if (cleaned) {
+        e.preventDefault();
+        document.execCommand("insertHTML", false, cleaned);
+        fixLinks();
+        emit();
+        return;
+      }
+    }
+    // Platte tekst met URL's: auto-linken.
+    if (pasteText && /https?:\/\//i.test(pasteText)) {
       e.preventDefault();
-      document.execCommand("insertHTML", false, linkifyText(pasteText));
+      document.execCommand("insertHTML", false, linkifyPlainText(pasteText));
       fixLinks();
       emit();
+      return;
     }
-    // Anders: standaard browser-paste
+    // Overige platte tekst: standaard browser-paste, daarna opschonen.
+    setTimeout(() => { fixLinks(); emit(); }, 0);
   }
-  return <div ref={ref} className="rich-cell" contentEditable suppressContentEditableWarning data-ph={placeholder} onInput={emit} onBlur={emit} onKeyDown={onKey} onPaste={onPaste} />;
+  return <div ref={ref} className="rich-cell" contentEditable suppressContentEditableWarning data-ph={placeholder} onInput={emit} onBlur={emit} onClick={onClick} onKeyDown={onKey} onPaste={onPaste} />;
 }
 
 export default function TasksEditor({ slug, initialTasks, budget, clientName, highlight }: { slug: string; initialTasks: TaskRow[]; budget: Budget; clientName: string; highlight?: string }) {
