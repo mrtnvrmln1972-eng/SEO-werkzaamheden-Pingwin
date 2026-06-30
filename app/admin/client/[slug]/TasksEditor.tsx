@@ -58,11 +58,8 @@ function RichCell({ html, onChange, placeholder }: { html: string; onChange: (ht
       fixLinks();
       emit();
     }
-    // Cmd/Ctrl+Shift+V: plak zonder opmaak
-    if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "v") {
-      e.preventDefault();
-      navigator.clipboard.readText().then((t) => { if (t) { document.execCommand("insertText", false, t); emit(); } }).catch(() => {});
-    }
+    // Cmd+Shift+V (zonder opmaak) handelt de browser zelf af: dan komt er geen
+    // text/html mee, dus onPaste plakt vanzelf platte tekst.
   }
   // Klik op een link opent hem in een nieuw tabblad (ook tijdens bewerken).
   function onClick(e: React.MouseEvent) {

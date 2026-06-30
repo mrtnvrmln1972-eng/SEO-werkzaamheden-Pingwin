@@ -90,13 +90,8 @@ export default function FocusBlock({ slug, standalone }: { slug: string; standal
       e.preventDefault();
       addLink();
     }
-    // Cmd+Shift+V: plak zonder opmaak
-    if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "v") {
-      e.preventDefault();
-      navigator.clipboard.readText()
-        .then((text) => { if (text) { document.execCommand("insertText", false, text); triggerSave(); } })
-        .catch(() => {});
-    }
+    // Cmd+Shift+V (plakken zonder opmaak) handelt de browser zelf af: er komt
+    // dan geen text/html mee, dus onPaste plakt vanzelf platte tekst.
   }
 
   function onPaste(e: React.ClipboardEvent) {
@@ -104,9 +99,9 @@ export default function FocusBlock({ slug, standalone }: { slug: string; standal
     const pasteText = e.clipboardData.getData("text/plain");
 
     // HTML (cellen, links, opmaak uit Sheets/Docs/web): opschonen tot kale
-    // tekst + klikbare links, tabellen platgeslagen naar regels.
+    // tekst + klikbare links. Tabellen blijven als nette tabel behouden.
     if (pasteHtml && /<\w/.test(pasteHtml)) {
-      const cleaned = cleanPastedHtml(pasteHtml);
+      const cleaned = cleanPastedHtml(pasteHtml, { keepTables: true });
       if (cleaned) {
         e.preventDefault();
         document.execCommand("insertHTML", false, cleaned);

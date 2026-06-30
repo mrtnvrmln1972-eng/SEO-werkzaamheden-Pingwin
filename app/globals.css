@@ -626,6 +626,11 @@ tbody td:last-child { text-align: center; }
 .focus-edit { background: none; border: 1px solid var(--border); color: var(--gray); font-size: 11px; padding: 3px 8px; border-radius: 6px; cursor: pointer; }
 .focus-edit:hover { border-color: var(--orange); color: var(--orange); }
 .focus-rich { font-size: 13px; color: var(--dark); line-height: 1.5; margin-top: 6px; }
+/* Nette geplakte tabel (cellen uit Google Sheets) */
+.paste-table { border-collapse: collapse; margin: 6px 0; font-size: 13px; width: auto; }
+.paste-table td, .paste-table th { border: 1px solid var(--border); padding: 5px 10px; vertical-align: top; }
+.paste-table th { background: var(--light) !important; font-weight: 700; text-align: left; }
+.paste-table td a, .paste-table th a { word-break: break-all; }
 .focus-rich p { margin: 0 0 6px; }
 .focus-rich ul, .focus-rich ol { margin: 4px 0 8px; padding-left: 20px; }
 .focus-rich li { margin-bottom: 3px; }
