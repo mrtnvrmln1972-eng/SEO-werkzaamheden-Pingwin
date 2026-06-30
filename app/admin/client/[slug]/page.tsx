@@ -5,9 +5,9 @@ import { getClientBySlug, listClients, type ClientConfig } from "../../../../lib
 import { getEmails, getMetrics, getKeywords, getPages, getLastIngest, getStatus } from "../../../../lib/snapshots";
 import { msStatus, msSearchClientEmails } from "../../../../lib/ms-graph";
 import { googleStatus, getGscForClient, getGa4ForClient } from "../../../../lib/google";
-import { sheetCsvUrl, parseCSV, structureData, MAAND_VOLGORDE } from "../../../../lib/sheet";
+import { MAAND_VOLGORDE } from "../../../../lib/sheet";
 import { chatConfigured, getChatHistory } from "../../../../lib/chat";
-import { getTasks } from "../../../../lib/tasks";
+import { getTasks, type TaskRow } from "../../../../lib/tasks";
 import ClientCockpit from "./ClientCockpit";
 
 export const dynamic = "force-dynamic";
@@ -26,36 +26,23 @@ function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
   return Promise.race([p, new Promise<T>((res) => setTimeout(() => res(fallback), ms))]);
 }
 
-// Werkzaamheden uit de klant-Google-Sheet, opgesplitst in deze maand en
-// volgende maand. Eigen, simpele parser (de budget/totaal-regels hebben een
-// lege Taak-kolom en worden overgeslagen). Link gaat naar de exacte rij.
-async function loadTasksByMonth(client: ClientConfig): Promise<MonthTasks> {
-  const empty: MonthTasks = { thisMonth: [], nextMonth: [], thisLabel: monthLabel(0), nextLabel: monthLabel(1) };
-  if (!client.sheetId) return empty;
-  const baseEdit = `https://docs.google.com/spreadsheets/d/${client.sheetId}/edit`;
-  const rowLink = (rowNum: number) => `${baseEdit}#gid=${client.gid}&range=${rowNum}:${rowNum}`;
-  try {
-    const res = await fetch(sheetCsvUrl(client.sheetId, client.gid), { cache: "no-store" });
-    if (!res.ok) return empty;
-    const rows = parseCSV(await res.text());
-    const done = /klaar|afgerond|gereed|done|afgehandeld|voltooid/i;
-    const thisM = monthLabel(0);
-    const nextM = monthLabel(1);
-    const thisMonth: SheetTask[] = [];
-    const nextMonth: SheetTask[] = [];
-    for (let i = 1; i < rows.length; i++) {
-      const taak = (rows[i][1] || "").trim();
-      if (!taak) continue; // header/budget/totaal-regels
-      if (done.test((rows[i][4] || "").trim())) continue; // alleen niet-afgeronde taken
-      const maand = (rows[i][5] || "").trim().toLowerCase();
-      const t: SheetTask = { text: taak, link: rowLink(i + 1), done: false, wie: (rows[i][7] || "").trim() };
-      if (maand === thisM) thisMonth.push(t);
-      else if (maand === nextM) nextMonth.push(t);
-    }
-    return { thisMonth, nextMonth, thisLabel: thisM, nextLabel: nextM };
-  } catch {
-    return empty;
+// "Lopende werkzaamheden" (deze maand + volgende maand) rechtstreeks uit de
+// database-taken, niet meer uit een Google Sheet. Alleen niet-afgeronde taken.
+function buildMonthTasks(tasks: TaskRow[]): MonthTasks {
+  const done = /klaar|afgerond|gereed|done|afgehandeld|voltooid/i;
+  const thisM = monthLabel(0);
+  const nextM = monthLabel(1);
+  const thisMonth: SheetTask[] = [];
+  const nextMonth: SheetTask[] = [];
+  for (const t of tasks) {
+    if (!t.taak || !t.taak.trim()) continue;
+    if (done.test((t.status || "").trim())) continue;
+    const maand = (t.maand || "").trim().toLowerCase();
+    const item: SheetTask = { text: t.taak, link: (t.link || "").trim(), done: false, wie: (t.wie || "").trim() };
+    if (maand === thisM) thisMonth.push(item);
+    else if (maand === nextM) nextMonth.push(item);
   }
+  return { thisMonth, nextMonth, thisLabel: thisM, nextLabel: nextM };
 }
 
 export default async function ClientCockpitPage({ params, searchParams }: { params: { slug: string }; searchParams: { tab?: string; highlight?: string } }) {
@@ -65,10 +52,8 @@ export default async function ClientCockpitPage({ params, searchParams }: { para
   const client = await getClientBySlug(params.slug);
   if (!client) redirect("/admin");
 
-  // Alle snelle bronnen (database + status-checks) tegelijk. De trage Sheet-fetch
-  // krijgt een tijdslimiet zodat hij het wisselen niet ophoudt.
-  const emptyMonthTasks: MonthTasks = { thisMonth: [], nextMonth: [], thisLabel: monthLabel(0), nextLabel: monthLabel(1) };
-  const [storedEmails, metrics, keywords, pages, lastIngest, status, ms, google, monthTasks, allClients, chatHistory, tasks] = await Promise.all([
+  // Alle bronnen komen nu uit de database (geen Sheet meer voor de werkzaamheden).
+  const [storedEmails, metrics, keywords, pages, lastIngest, status, ms, google, allClients, chatHistory, tasks] = await Promise.all([
     getEmails(params.slug),
     getMetrics(params.slug),
     getKeywords(params.slug),
@@ -77,11 +62,13 @@ export default async function ClientCockpitPage({ params, searchParams }: { para
     getStatus(params.slug),
     msStatus(),
     googleStatus(),
-    withTimeout(loadTasksByMonth(client), 3500, emptyMonthTasks),
     listClients(),
     getChatHistory(params.slug),
     getTasks(params.slug),
   ]);
+
+  // "Lopende werkzaamheden" rechtstreeks uit de database-taken.
+  const monthTasks = buildMonthTasks(tasks);
 
   // De twee trage externe groepen (live mail én Google GSC/GA4) parallel, elk
   // met tijdslimiet. Eén trage call valt zo terug op opgeslagen/lege data i.p.v.
