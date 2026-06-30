@@ -11,6 +11,7 @@ import type { TaskRow } from "../../../../lib/tasks";
 import ChatPanel from "./ChatPanel";
 import TasksEditor from "./TasksEditor";
 import FocusBlock from "./FocusBlock";
+import LinkPreview from "./LinkPreview";
 
 type Tab = "overzicht" | "werkzaamheden" | "resultaten" | "klant";
 
@@ -732,6 +733,7 @@ export default function ClientCockpit({
       <div className="footer">Pingwin Online Marketing &middot; Beheer</div>
 
       <ChatPanel slug={client.slug} configured={chatConfigured} initialMessages={chatHistory} />
+      <LinkPreview />
     </>
   );
 }
