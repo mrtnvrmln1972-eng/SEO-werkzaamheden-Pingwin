@@ -149,8 +149,9 @@ tbody td:last-child { text-align: center; }
   letter-spacing: 1px; border-left: 4px solid var(--orange);
 }
 .task-desc { font-size: 12px; color: var(--gray); margin-top: 3px; }
-.task-table-wrap td a { color: var(--orange); text-decoration: none; }
-.task-table-wrap td a:hover { text-decoration: underline; }
+/* Klantdashboard: links klassiek blauw + onderstreept */
+.task-table-wrap td a { color: #1a6dd6; text-decoration: underline; text-underline-offset: 2px; }
+.task-table-wrap td a:hover { color: #0b4ea8; }
 .badge-done {
   display: inline-block; padding: 4px 12px; border-radius: 20px;
   font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
@@ -158,8 +159,11 @@ tbody td:last-child { text-align: center; }
 .badge-done.klaar { background: #E8F5E9; color: #2E7D32; }
 .badge-done.gepland { background: var(--gray-light); color: #9E9E9E; }
 .badge-done.bezig { background: #FFF3E0; color: #E65100; }
-.doc-link { color: var(--orange); text-decoration: none; font-weight: 600; font-size: 13px; transition: color 0.2s; }
-.doc-link:hover { color: var(--orange-dark); text-decoration: underline; }
+/* Documentlink: klassiek blauw + onderstreept, met pijl die op hover wegschuift */
+.doc-link { color: #1a6dd6; text-decoration: underline; text-underline-offset: 2px; font-weight: 600; font-size: 13px; transition: color 0.15s; white-space: nowrap; }
+.doc-link::after { content: " \2192"; display: inline-block; transition: transform 0.15s; }
+.doc-link:hover { color: #0b4ea8; }
+.doc-link:hover::after { transform: translateX(4px); }
 /* Klant-toelichting als "?"-tooltip (met opgemaakte HTML) bij de taaknaam */
 .task-name { display: inline-flex; align-items: center; gap: 8px; }
 .task-help-wrap { position: relative; display: inline-flex; }

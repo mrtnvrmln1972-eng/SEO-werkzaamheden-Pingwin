@@ -9,6 +9,7 @@ import {
   capitalize,
   type DashboardData,
 } from "../../lib/sheet";
+import LinkPreview from "../admin/client/[slug]/LinkPreview";
 
 type Props = {
   name: string;
@@ -302,6 +303,8 @@ export default function Dashboard({ name, sheetId, gid, budget, adminPreview, in
         <a href="https://pingwin.nl" target="_blank" rel="noreferrer">pingwin.nl</a>{" "}
         &middot; info@pingwin.nl
       </div>
+
+      <LinkPreview />
     </>
   );
 }
@@ -355,7 +358,7 @@ function renderRows(monthTasks: DashboardData["tasks"]) {
         <td>
           {isUrl ? (
             <a href={task.link.trim()} target="_blank" rel="noreferrer" className="doc-link">
-              Bekijk &rarr;
+              Bekijk document
             </a>
           ) : (
             <span className="muted">&mdash;</span>

@@ -144,7 +144,7 @@ export default function DeveloperOverview({ initialTasks, embedded }: { initialT
                     <td><span className="dev-cell dev-muted" dangerouslySetInnerHTML={{ __html: safeHtml(r.toelichting) }} /></td>
                     <td>{statusBadge(r.status)}</td>
                     <td><input type="date" className="dev-date" value={r.execDate || ""} onChange={(e) => setDate(i, e.target.value)} /></td>
-                    <td>{isUrl ? <a href={r.link.trim()} target="_blank" rel="noreferrer" className="doc-link">Open ↗</a> : <span className="muted">&mdash;</span>}</td>
+                    <td>{isUrl ? <a href={r.link.trim()} target="_blank" rel="noreferrer" className="doc-link">Open</a> : <span className="muted">&mdash;</span>}</td>
                   </tr>
                 );
               })}

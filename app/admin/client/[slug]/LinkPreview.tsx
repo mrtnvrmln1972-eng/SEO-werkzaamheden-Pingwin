@@ -27,7 +27,7 @@ export default function LinkPreview() {
       const el = e.target as HTMLElement | null;
       const a = el?.closest?.("a[href]") as HTMLAnchorElement | null;
       if (!a) return;
-      if (!a.closest(".task-table") && !a.closest(".focus-rich")) return;
+      if (!a.closest(".task-table") && !a.closest(".focus-rich") && !a.closest(".task-table-wrap")) return;
       const href = a.getAttribute("href") || "";
       if (!/^https?:/i.test(href)) return;
       if (hideTimer.current) clearTimeout(hideTimer.current);
