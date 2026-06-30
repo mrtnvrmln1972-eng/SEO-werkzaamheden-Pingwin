@@ -102,8 +102,23 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, hi
     setRows((r) => r.map((row, idx) => (idx === i ? { ...row, ...patch } : row)));
     setMsg("");
   }
+
+  // Sla een specifieke rijen-array direct op (zonder van state afhankelijk te zijn).
+  function saveRows(rowsToSave: Row[]) {
+    fetch("/api/admin/tasks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slug, tasks: rowsToSave.map((r) => ({ ...r, klantZichtbaar: true })) }),
+    }).catch(() => {});
+  }
+
   function addRow(maand: string, wie: string) {
-    setRows((r) => [...r, { categorie: "", taak: "", toelichting: "", uren: null, status: "Te doen", maand, link: "", wie, klantZichtbaar: true, _uid: `new-${uidRef.current++}` }]);
+    const newRow: Row = { categorie: "", taak: "", toelichting: "", uren: null, status: "Te doen", maand, link: "", wie, klantZichtbaar: true, _uid: `new-${uidRef.current++}` };
+    setRows((prev) => {
+      const newRows = [...prev, newRow];
+      saveRows(newRows); // auto-save direct na toevoegen
+      return newRows;
+    });
   }
   function removeRow(i: number) { setRows((r) => r.filter((_, idx) => idx !== i)); }
 
@@ -188,8 +203,7 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, hi
   function section(secRows: { r: Row; i: number }[], maand: string) {
     return (
       <div className="task-section">
-        <div className="res-table-wrap">
-          <table className="task-table">
+        <table className="task-table">
             <colgroup>
               <col style={{ width: "22px" }} /><col /><col />
               <col style={{ width: "66px" }} /><col style={{ width: "104px" }} /><col style={{ width: "150px" }} />
@@ -222,7 +236,6 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, hi
               {secRows.length === 0 && <tr><td colSpan={10} className="muted" style={{ padding: 8 }}>Nog geen taken deze maand. Sleep er een hierheen of voeg toe.</td></tr>}
             </tbody>
           </table>
-        </div>
         <button type="button" className="add-task-btn" onClick={() => addRow(maand, "SEO")}>+ taak</button>
       </div>
     );

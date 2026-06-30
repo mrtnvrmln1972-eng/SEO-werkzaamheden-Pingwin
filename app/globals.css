@@ -472,7 +472,7 @@ tbody td:last-child { text-align: center; }
 /* Werkzaamheden-editor */
 .task-table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
 .task-table th, .task-table td { overflow: hidden; }
-.task-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--white); background: var(--dark); padding: 8px 8px; white-space: nowrap; }
+.task-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--white); background: var(--dark); padding: 8px 8px; white-space: nowrap; position: sticky; top: 130px; z-index: 49; }
 .task-table td { border-bottom: 1px solid var(--border); padding: 4px 6px; vertical-align: middle; }
 .task-table tr.dragging { opacity: 0.4; }
 .task-table input, .task-table select { width: 100%; font-family: 'Montserrat', sans-serif; font-size: 13px; padding: 5px 7px; border: 1px solid transparent; border-radius: 5px; background: transparent; }
@@ -532,7 +532,12 @@ tbody td:last-child { text-align: center; }
 .client-frame-card { padding: 0; overflow: hidden; }
 .client-frame-card .ck-section-head { padding: 14px 18px 12px; margin-bottom: 0; }
 .client-frame { width: 100%; height: 1400px; border: 0; border-top: 1px solid var(--border); display: block; }
-.month-card-head { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid var(--orange); padding-bottom: 8px; margin-bottom: 12px; }
+.month-card-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  border-bottom: 2px solid var(--orange); padding-bottom: 8px; margin-bottom: 12px;
+  position: sticky; top: 80px; z-index: 50;
+  background: var(--white); padding-top: 4px; margin-top: -4px;
+}
 .month-card-head.clickable { cursor: pointer; }
 .month-card-head.clickable:hover .month-card-title { color: var(--orange-dark); }
 .month-caret { font-size: 12px; color: var(--orange-dark); }
