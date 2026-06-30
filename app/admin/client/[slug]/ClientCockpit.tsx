@@ -226,6 +226,7 @@ export default function ClientCockpit({
           </nav>
         </div>
         <div className="header-right">
+          <span id="werk-month-slot" className="header-month-slot" />
           {lastMailDate && (
             <div className="header-contact">
               <span className="header-contact-label">Laatste contact</span>
@@ -233,7 +234,6 @@ export default function ClientCockpit({
               <span className={"contact-badge " + contactColor(lastMailDate)}>{daysAgoLabel(lastMailDate)}</span>
             </div>
           )}
-          <a className="logout-btn" href="/admin">&larr; Alle klanten</a>
         </div>
       </div>
 

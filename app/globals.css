@@ -563,6 +563,14 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .werk-head-actions .ghost-btn { background: none; border: 1px solid var(--border); color: var(--gray); padding: 5px 10px; font-size: 12px; border-radius: 6px; cursor: pointer; }
 .werk-head-actions .ghost-btn:hover { border-color: var(--orange); color: var(--orange); }
 .werk-head-actions .primary-btn.small { padding: 5px 12px; font-size: 12px; }
+/* Nieuwe-maand-keuze in de topbar (links van Laatste contact) */
+.header-month-slot { display: inline-flex; align-items: center; }
+.header-month-select { font-size: 12px; padding: 5px 9px; border: 1px solid var(--border); border-radius: 6px; background: #fff; color: var(--gray); cursor: pointer; }
+.header-month-select:hover { border-color: var(--orange); color: var(--orange); }
+/* Mailknoppen in elke maandkop */
+.month-head-actions { display: inline-flex; gap: 6px; margin-left: 14px; margin-right: auto; }
+.ghost-btn.small { background: none; border: 1px solid var(--border); color: var(--gray); padding: 3px 9px; font-size: 12px; border-radius: 6px; cursor: pointer; }
+.ghost-btn.small:hover { border-color: var(--orange); color: var(--orange); }
 .task-card .task-section { margin-bottom: 0; }
 .budget-inline { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: baseline; justify-content: flex-end; }
 .budget-inline > div { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.25; }
@@ -599,8 +607,19 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .klant-pop-editor { min-height: 96px; max-height: 260px; overflow: auto; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; outline: none; font-size: 13px; color: var(--dark); line-height: 1.5; background: var(--white); }
 .klant-pop-editor:focus { border-color: var(--orange); }
 .klant-pop-editor:empty:before { content: "Schrijf hier de uitleg die de klant ziet…"; color: var(--gray); opacity: 0.7; }
+/* Veld groeit mee met de inhoud zodat je na plakken alles meteen ziet */
+.klant-pop-editor.grow { max-height: 55vh; }
+/* Koppen en lijsten in de rijke editors netjes tonen */
+.focus-rich h1, .focus-rich h2, .focus-rich h3, .focus-rich h4 { font-weight: 700; margin: 8px 0 4px; line-height: 1.3; }
+.focus-rich h1 { font-size: 18px; }
+.focus-rich h2 { font-size: 16px; }
+.focus-rich h3, .focus-rich h4 { font-size: 14px; }
+.focus-rich u { text-decoration: underline; }
 .klant-pop-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; gap: 8px; }
 .klant-pop-hint { font-size: 11px; color: var(--gray); }
+/* Rijk mailveld in het compose-venster */
+.compose-rich .klant-pop-editor { min-height: 130px; }
+.compose-rich .klant-pop-editor:empty:before { content: "Typ of plak hier je bericht (vet, lijsten, koppen, links blijven behouden)…"; }
 .client-frame-card { padding: 0; overflow: hidden; }
 .client-frame-card .ck-section-head { padding: 14px 18px 12px; margin-bottom: 0; }
 .client-frame { width: 100%; height: 1400px; border: 0; border-top: 1px solid var(--border); display: block; }

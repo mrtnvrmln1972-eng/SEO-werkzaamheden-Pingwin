@@ -312,13 +312,9 @@ export default function Dashboard({ name, sheetId, gid, budget, adminPreview, in
 function renderRows(monthTasks: DashboardData["tasks"]) {
   const rows: React.ReactNode[] = [];
   let lastCat = "";
-  // Klaar-taken naar onderen, open taken bovenaan (stabiel binnen elke groep).
+  // Taken blijven in de vastgestelde volgorde staan, ongeacht of ze klaar zijn.
   const isDone = (s: string) => /klaar|afgerond|gereed|done|voltooid/i.test(s || "");
-  const ordered = monthTasks
-    .map((t, idx) => ({ t, idx }))
-    .sort((a, b) => (isDone(a.t.status) ? 1 : 0) - (isDone(b.t.status) ? 1 : 0) || a.idx - b.idx)
-    .map((o) => o.t);
-  ordered.forEach((task, i) => {
+  monthTasks.forEach((task, i) => {
     if (task.categorie && task.categorie !== lastCat) {
       lastCat = task.categorie;
       rows.push(

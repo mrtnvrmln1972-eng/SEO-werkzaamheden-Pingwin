@@ -96,12 +96,24 @@ function RichCell({ html, onChange, placeholder }: { html: string; onChange: (ht
   return <div ref={ref} className="rich-cell" contentEditable suppressContentEditableWarning data-ph={placeholder} onInput={emit} onBlur={emit} onClick={onClick} onKeyDown={onKey} onPaste={onPaste} />;
 }
 
-// Volwaardige rijke editor voor de klant-toelichting-popover: toolbar (vet,
-// cursief, lijsten, link) + dezelfde plak-opschoning als "Zoekwoorden & links".
-function PopEditor({ html, onChange }: { html: string; onChange: (html: string) => void }) {
+// Volwaardige rijke editor: toolbar (kop, vet, cursief, onderstreept, lijsten,
+// link) + rijke plak (headings/bullets/onderstreping blijven behouden).
+// autoFocus: cursor meteen in het veld. onEnterClose: Enter slaat op en sluit.
+function RichField({ html, onChange, autoFocus, onEnterClose, grow }: { html: string; onChange: (html: string) => void; autoFocus?: boolean; onEnterClose?: () => void; grow?: boolean }) {
   const ref = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (ref.current) ref.current.innerHTML = html || "";
+    if (autoFocus && ref.current) {
+      const el = ref.current;
+      el.focus();
+      // Cursor aan het einde van de tekst zetten.
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   function emit() { onChange(sanitizeRichHtml(ref.current?.innerHTML || "")); }
@@ -111,7 +123,7 @@ function PopEditor({ html, onChange }: { html: string; onChange: (html: string) 
       (a as HTMLAnchorElement).rel = "noreferrer";
     });
   }
-  function cmd(c: string) { ref.current?.focus(); document.execCommand(c, false); }
+  function cmd(c: string, val?: string) { ref.current?.focus(); document.execCommand(c, false, val); emit(); }
   function addLink() {
     ref.current?.focus();
     const url = window.prompt("Link naar (URL):", "https://");
@@ -127,13 +139,19 @@ function PopEditor({ html, onChange }: { html: string; onChange: (html: string) 
     if (a && a.href && !a.href.startsWith("javascript:")) { e.preventDefault(); window.open(a.href, "_blank", "noreferrer"); }
   }
   function onKey(e: React.KeyboardEvent) {
-    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); addLink(); }
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); addLink(); return; }
+    // Enter (zonder Shift) slaat op en sluit; Shift+Enter = nieuwe regel.
+    if (onEnterClose && e.key === "Enter" && !e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      e.preventDefault();
+      emit();
+      onEnterClose();
+    }
   }
   function onPaste(e: React.ClipboardEvent) {
     const h = e.clipboardData.getData("text/html");
     const txt = e.clipboardData.getData("text/plain");
     if (h && /<\w/.test(h)) {
-      const c = cleanPastedHtml(h, { keepTables: true });
+      const c = cleanPastedHtml(h, { keepTables: true, rich: true });
       if (c) { e.preventDefault(); document.execCommand("insertHTML", false, c); fixLinks(); emit(); return; }
     }
     if (txt && /https?:\/\//i.test(txt)) {
@@ -145,14 +163,16 @@ function PopEditor({ html, onChange }: { html: string; onChange: (html: string) 
   return (
     <>
       <div className="klant-pop-toolbar">
+        <button type="button" onMouseDown={tb} onClick={() => cmd("formatBlock", "h3")} title="Kop">H</button>
         <button type="button" onMouseDown={tb} onClick={() => cmd("bold")} title="Vet"><strong>B</strong></button>
         <button type="button" onMouseDown={tb} onClick={() => cmd("italic")} title="Cursief"><em>I</em></button>
+        <button type="button" onMouseDown={tb} onClick={() => cmd("underline")} title="Onderstrepen"><u>U</u></button>
         <button type="button" onMouseDown={tb} onClick={() => cmd("insertUnorderedList")} title="Opsomming">&bull; lijst</button>
         <button type="button" onMouseDown={tb} onClick={() => cmd("insertOrderedList")} title="Genummerd">1. lijst</button>
         <button type="button" onMouseDown={tb} onClick={addLink} title="Link toevoegen (Cmd+K)">&#128279; link</button>
         <button type="button" onMouseDown={tb} onClick={() => cmd("unlink")} title="Link verwijderen">link weg</button>
       </div>
-      <div ref={ref} className="klant-pop-editor focus-rich" contentEditable suppressContentEditableWarning onInput={emit} onBlur={emit} onClick={onClick} onKeyDown={onKey} onPaste={onPaste} />
+      <div ref={ref} className={"klant-pop-editor focus-rich" + (grow ? " grow" : "")} contentEditable suppressContentEditableWarning onInput={emit} onBlur={emit} onClick={onClick} onKeyDown={onKey} onPaste={onPaste} />
     </>
   );
 }
@@ -179,6 +199,11 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
     const top = Math.min(r.bottom + 6, window.innerHeight - 260);
     setKlantPop({ i, left, top: Math.max(8, top) });
   }
+
+  // Slot in de topbar (links van "Laatste contact") waar de nieuwe-maand-keuze
+  // in komt te staan, via een portal.
+  const [monthSlot, setMonthSlot] = useState<HTMLElement | null>(null);
+  useEffect(() => { setMonthSlot(document.getElementById("werk-month-slot")); }, []);
 
   // Mail-venster (naar developer of naar klant)
   const [showCompose, setShowCompose] = useState(false);
@@ -312,7 +337,8 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
   async function sendCompose() {
     const selected = rows.map((r, i) => ({ r, i })).filter((x) => devSel.has(x.i)).map((x) => x.r);
     if (!devTo.trim() || selected.length === 0) { setDevMsg("Vul een ontvanger in en kies minstens één taak."); return; }
-    const note = devNote.trim() ? `<p>${esc(devNote).replace(/\n/g, "<br>")}</p>` : "";
+    // devNote is opgemaakte HTML (rijk veld); leeg = geen tekst.
+    const note = stripHtml(devNote).trim() ? `<div>${devNote}</div>` : "";
 
     let html: string;
     const subject = `Werkzaamheden — ${clientName}`;
@@ -368,16 +394,8 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
 
   // Render-functies (geen sub-componenten → geen remount, focus blijft behouden).
   function section(secRows: { r: Row; i: number }[], maand: string) {
-    // Klaar-taken naar onderen, open taken (gepland/bezig) bovenaan. Stabiel:
-    // binnen elke groep blijft de handmatige (sleep-)volgorde behouden.
-    const ordered = secRows
-      .map((x, idx) => ({ x, idx }))
-      .sort((a, b) => {
-        const da = DONE.test(a.x.r.status || "") ? 1 : 0;
-        const db = DONE.test(b.x.r.status || "") ? 1 : 0;
-        return da - db || a.idx - b.idx;
-      })
-      .map((o) => o.x);
+    // Taken blijven staan waar ze gesleept/aangemaakt zijn, ongeacht klaar of niet.
+    const ordered = secRows;
     return (
       <div className="task-section">
         <table className="task-table">
@@ -457,6 +475,10 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
       <div className="cockpit-card month-card" key={maand || "none"} onDragOver={(e) => e.preventDefault()} onDrop={() => moveRow(maand, null)}>
         <div className="month-card-head clickable" onClick={() => toggleMonth(maand)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.stopPropagation(); moveRow(maand, null); setOpenMonths((o) => ({ ...o, [maand]: true })); }}>
           <span className="month-card-title">{label} <span className="month-caret">{open ? "▾" : "▸"}</span> <span className="month-card-count">({items.length})</span></span>
+          <span className="month-head-actions">
+            <button type="button" className="ghost-btn small" onClick={(e) => { e.stopPropagation(); openComposeFor(undefined, "dev"); }}>✉ Developer</button>
+            <button type="button" className="ghost-btn small" onClick={(e) => { e.stopPropagation(); openComposeFor(undefined, "klant"); }}>✉ Klant</button>
+          </span>
           {budgetInline(urenBesteed, urenGepland)}
         </div>
         {open && <div className="month-cards">{section(items, maand)}</div>}
@@ -466,18 +488,20 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
 
   return (
     <>
+      {monthSlot && createPortal(
+        <select className="add-month-select header-month-select" value="" onChange={(e) => { const m = e.target.value; if (m) { addRow(m, "SEO"); setOpenMonths((o) => ({ ...o, [m]: true })); } }}>
+          <option value="">+ Nieuwe maand…</option>
+          {MONTHS.filter((m) => !monthsPresent.includes(m)).map((m) => <option key={m} value={m}>{m}</option>)}
+        </select>,
+        monthSlot,
+      )}
+
       <div className="cockpit-card werk-bar">
         <div className="werk-head">
           <div className="werk-head-left">
             <span className="werk-title">Werkzaamheden</span>
-            <select className="add-month-select" value="" onChange={(e) => { const m = e.target.value; if (m) { addRow(m, "SEO"); setOpenMonths((o) => ({ ...o, [m]: true })); } }}>
-              <option value="">+ Nieuwe maand…</option>
-              {MONTHS.filter((m) => !monthsPresent.includes(m)).map((m) => <option key={m} value={m}>{m}</option>)}
-            </select>
           </div>
           <span className="werk-head-actions">
-            <button type="button" className="ghost-btn" onClick={() => openComposeFor(undefined, "dev")}>✉ Naar developer</button>
-            <button type="button" className="ghost-btn" onClick={() => openComposeFor(undefined, "klant")}>✉ Naar klant</button>
             <button type="button" className="primary-btn small" onClick={save} disabled={busy}>{busy ? "Opslaan..." : "Alles opslaan"}</button>
           </span>
         </div>
@@ -490,9 +514,9 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
           <div className="klant-pop-overlay" onClick={() => setKlantPop(null)} />
           <div className="klant-pop klant-pop-fixed" style={{ left: klantPop.left, top: klantPop.top }} onClick={(e) => e.stopPropagation()}>
             <div className="klant-pop-head">Toelichting voor de klant</div>
-            <PopEditor key={klantPop.i} html={rows[klantPop.i]?.klantToelichting || ""} onChange={(v) => update(klantPop.i, { klantToelichting: v })} />
+            <RichField key={klantPop.i} html={rows[klantPop.i]?.klantToelichting || ""} onChange={(v) => update(klantPop.i, { klantToelichting: v })} autoFocus onEnterClose={() => setKlantPop(null)} grow />
             <div className="klant-pop-foot">
-              <span className="klant-pop-hint">Wordt automatisch opgeslagen.</span>
+              <span className="klant-pop-hint">Enter = opslaan &amp; sluiten. Shift+Enter = nieuwe regel.</span>
               <button type="button" className="primary-btn small" onClick={() => setKlantPop(null)}>Klaar</button>
             </div>
           </div>
@@ -521,7 +545,7 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
               <label className="compose-label">{composeMode === "klant" ? "Aan (e-mail klant)" : "Aan (e-mail developer)"}</label>
               <input className="compose-input" value={devTo} onChange={(e) => setDevTo(e.target.value)} placeholder={composeMode === "klant" ? "klant@bedrijf.nl" : "tony@pingwin.nl"} />
               <label className="compose-label">Bericht / toelichting (optioneel)</label>
-              <textarea className="compose-input" rows={3} value={devNote} onChange={(e) => setDevNote(e.target.value)} placeholder="Korte begeleidende tekst..." />
+              <div className="compose-rich"><RichField key={composeMode} html={devNote} onChange={setDevNote} grow /></div>
               <label className="compose-label">Taken (vink aan wat mee moet)</label>
               <div className="compose-list">
                 {rows.map((r, i) => devSel.has(i) ? (

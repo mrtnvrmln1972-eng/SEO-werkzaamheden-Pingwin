@@ -17,16 +17,16 @@ function escapeHtml(s: string): string {
 // Tags waarvan we de inhoud volledig negeren (anders lekt CSS/script als tekst).
 const SKIP_TAGS = new Set(["style", "script", "head", "meta", "title", "link", "colgroup", "col"]);
 
-type Opts = { keepTables?: boolean };
+type Opts = { keepTables?: boolean; rich?: boolean };
 
 // Bouwt een nette tabel op uit een <table>-element (zonder inline opmaak).
-function buildTable(table: HTMLElement): string {
+function buildTable(table: HTMLElement, opts: Opts): string {
   const rows: string[] = [];
   table.querySelectorAll("tr").forEach((tr) => {
     const cells: string[] = [];
     tr.querySelectorAll("th, td").forEach((cell) => {
       const isHead = cell.tagName.toLowerCase() === "th";
-      const inner = walk(cell, { keepTables: false }).trim();
+      const inner = walk(cell, { ...opts, keepTables: false }).trim();
       const text = inner.replace(/<[^>]*>/g, "").trim();
       // Getalcellen rechts uitlijnen voor een net raster.
       const numeric = text !== "" && /^[\d.,%€$\s-]+$/.test(text);
@@ -54,7 +54,7 @@ function walk(node: Node, opts: Opts): string {
     if (SKIP_TAGS.has(tag)) return;
 
     if (tag === "table") {
-      if (opts.keepTables) { out += buildTable(el); return; }
+      if (opts.keepTables) { out += buildTable(el, opts); return; }
       // Platslaan: elke rij een regel, cellen met spaties ertussen.
       el.querySelectorAll("tr").forEach((tr) => {
         const cells: string[] = [];
@@ -78,6 +78,14 @@ function walk(node: Node, opts: Opts): string {
     if (tag === "b" || tag === "strong") { out += `<strong>${walk(el, opts)}</strong>`; return; }
     if (tag === "i" || tag === "em") { out += `<em>${walk(el, opts)}</em>`; return; }
 
+    // Rijke modus: behoud koppen, lijsten en onderstreping als echte elementen.
+    if (opts.rich) {
+      if (/^h[1-6]$/.test(tag)) { out += `<${tag}>${walk(el, opts)}</${tag}>`; return; }
+      if (tag === "u" || tag === "ins") { out += `<u>${walk(el, opts)}</u>`; return; }
+      if (tag === "ul" || tag === "ol") { const inner = walk(el, opts); if (inner.trim()) out += `<${tag}>${inner}</${tag}>`; return; }
+      if (tag === "li") { out += `<li>${walk(el, opts).trim()}</li>`; return; }
+    }
+
     // Blok-elementen: op een nieuwe regel.
     if (tag === "tr" || tag === "li" || tag === "p" || tag === "div") {
       const inner = walk(el, opts).trim();
@@ -96,8 +104,8 @@ function walk(node: Node, opts: Opts): string {
   return out;
 }
 
-// Schoont geplakte HTML. keepTables=true behoudt een nette tabel (voor het
-// Zoekwoorden & links-veld); anders worden tabellen platgeslagen naar regels.
+// Schoont geplakte HTML. keepTables=true behoudt een nette tabel; rich=true
+// behoudt koppen, lijsten en onderstreping (voor de rijke invulvelden).
 export function cleanPastedHtml(html: string, opts: Opts = {}): string {
   try {
     const doc = new DOMParser().parseFromString(html, "text/html");
