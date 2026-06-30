@@ -221,6 +221,7 @@ export default function ClientCockpit({
             <button className={"tab" + (tab === "werkzaamheden" ? " active" : "")} onClick={() => changeTab("werkzaamheden")}>Werkzaamheden</button>
             <button className={"tab" + (tab === "resultaten" ? " active" : "")} onClick={() => changeTab("resultaten")}>KPI&rsquo;s</button>
             <button className={"tab" + (tab === "klant" ? " active" : "")} onClick={() => changeTab("klant")}>Klant-dashboard</button>
+            <a className="tab tab-link" href="/admin/developer" title="Alle developer-taken over alle klanten">Developer Overview</a>
           </nav>
         </div>
         <div className="header-right">
