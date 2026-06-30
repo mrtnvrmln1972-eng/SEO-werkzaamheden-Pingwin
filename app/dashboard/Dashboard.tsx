@@ -336,12 +336,18 @@ function renderRows(monthTasks: DashboardData["tasks"]) {
     const isUrl = task.link && /^https?:\/\//i.test(task.link.trim());
 
     const uitleg = (task.klantToelichting || "").trim();
+    const hasUitleg = uitleg.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim().length > 0;
     rows.push(
       <tr key={`task-${i}`} className={done ? "row-done" : "row-open"}>
         <td>
           <span className="task-name">
             <strong dangerouslySetInnerHTML={{ __html: safeHtml(task.taak) }} />
-            {uitleg && <span className="task-help" tabIndex={0} data-tip={uitleg} aria-label={uitleg}>?</span>}
+            {hasUitleg && (
+              <span className="task-help-wrap">
+                <span className="task-help" tabIndex={0} aria-label="Toelichting">?</span>
+                <span className="task-tip" dangerouslySetInnerHTML={{ __html: safeHtml(uitleg) }} />
+              </span>
+            )}
           </span>
         </td>
         <td>{minutes > 0 ? formatTime(minutes) : <span className="muted">&mdash;</span>}</td>

@@ -95,6 +95,67 @@ function RichCell({ html, onChange, placeholder }: { html: string; onChange: (ht
   return <div ref={ref} className="rich-cell" contentEditable suppressContentEditableWarning data-ph={placeholder} onInput={emit} onBlur={emit} onClick={onClick} onKeyDown={onKey} onPaste={onPaste} />;
 }
 
+// Volwaardige rijke editor voor de klant-toelichting-popover: toolbar (vet,
+// cursief, lijsten, link) + dezelfde plak-opschoning als "Zoekwoorden & links".
+function PopEditor({ html, onChange }: { html: string; onChange: (html: string) => void }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.innerHTML = html || "";
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  function emit() { onChange(sanitizeRichHtml(ref.current?.innerHTML || "")); }
+  function fixLinks() {
+    ref.current?.querySelectorAll("a[href]").forEach((a) => {
+      (a as HTMLAnchorElement).target = "_blank";
+      (a as HTMLAnchorElement).rel = "noreferrer";
+    });
+  }
+  function cmd(c: string) { ref.current?.focus(); document.execCommand(c, false); }
+  function addLink() {
+    ref.current?.focus();
+    const url = window.prompt("Link naar (URL):", "https://");
+    if (!url) return;
+    const sel = window.getSelection();
+    if (sel && !sel.isCollapsed) document.execCommand("createLink", false, url);
+    else document.execCommand("insertHTML", false, `<a href="${url.replace(/"/g, "&quot;")}" target="_blank" rel="noreferrer">${esc(url)}</a>`);
+    fixLinks(); emit();
+  }
+  function onClick(e: React.MouseEvent) {
+    const t = e.target as HTMLElement;
+    const a = (t.tagName === "A" ? t : t.closest("a")) as HTMLAnchorElement | null;
+    if (a && a.href && !a.href.startsWith("javascript:")) { e.preventDefault(); window.open(a.href, "_blank", "noreferrer"); }
+  }
+  function onKey(e: React.KeyboardEvent) {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); addLink(); }
+  }
+  function onPaste(e: React.ClipboardEvent) {
+    const h = e.clipboardData.getData("text/html");
+    const txt = e.clipboardData.getData("text/plain");
+    if (h && /<\w/.test(h)) {
+      const c = cleanPastedHtml(h, { keepTables: true });
+      if (c) { e.preventDefault(); document.execCommand("insertHTML", false, c); fixLinks(); emit(); return; }
+    }
+    if (txt && /https?:\/\//i.test(txt)) {
+      e.preventDefault(); document.execCommand("insertHTML", false, linkifyPlainText(txt)); fixLinks(); emit(); return;
+    }
+    setTimeout(() => { fixLinks(); emit(); }, 0);
+  }
+  const tb = (e: React.MouseEvent) => e.preventDefault(); // selectie niet verliezen
+  return (
+    <>
+      <div className="klant-pop-toolbar">
+        <button type="button" onMouseDown={tb} onClick={() => cmd("bold")} title="Vet"><strong>B</strong></button>
+        <button type="button" onMouseDown={tb} onClick={() => cmd("italic")} title="Cursief"><em>I</em></button>
+        <button type="button" onMouseDown={tb} onClick={() => cmd("insertUnorderedList")} title="Opsomming">&bull; lijst</button>
+        <button type="button" onMouseDown={tb} onClick={() => cmd("insertOrderedList")} title="Genummerd">1. lijst</button>
+        <button type="button" onMouseDown={tb} onClick={addLink} title="Link toevoegen (Cmd+K)">&#128279; link</button>
+        <button type="button" onMouseDown={tb} onClick={() => cmd("unlink")} title="Link verwijderen">link weg</button>
+      </div>
+      <div ref={ref} className="klant-pop-editor focus-rich" contentEditable suppressContentEditableWarning onInput={emit} onBlur={emit} onClick={onClick} onKeyDown={onKey} onPaste={onPaste} />
+    </>
+  );
+}
+
 export default function TasksEditor({ slug, initialTasks, budget, clientName, highlight }: { slug: string; initialTasks: TaskRow[]; budget: Budget; clientName: string; highlight?: string }) {
   const uidRef = useRef(1);
   // "Te doen" is verwijderd; migreer bestaande taken naar "Gepland" bij laden.
@@ -297,7 +358,22 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, hi
                 return (
                   <tr key={r._uid} id={typeof r.id === "number" ? `task-row-${r.id}` : undefined} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.stopPropagation(); moveRow(maand, i); }} className={`${statusCls}${dragIdx === i ? "dragging " : ""}${isDev ? "dev-row " : ""}${mailed ? "mailed-row " : ""}${hl ? "highlight-row" : ""}`}>
                     <td className="drag-handle" draggable onDragStart={() => setDragIdx(i)} onDragEnd={() => setDragIdx(null)} title="Sleep (ook naar een andere maand)">⠿</td>
-                    <td><RichCell html={r.taak} onChange={(v) => update(i, { taak: v })} placeholder="Taak" /></td>
+                    <td>
+                      <div className="taak-cell">
+                        <RichCell html={r.taak} onChange={(v) => update(i, { taak: v })} placeholder="Taak" />
+                        <button type="button" className={"row-info" + (r.klantToelichting ? " has" : "")} onClick={() => setKlantPopRow(klantPopRow === i ? null : i)} title="Toelichting voor de klant (verschijnt als ?-tooltip in het klantdashboard)">?</button>
+                        {klantPopRow === i && (
+                          <div className="klant-pop" onClick={(e) => e.stopPropagation()}>
+                            <div className="klant-pop-head">Toelichting voor de klant</div>
+                            <PopEditor html={r.klantToelichting || ""} onChange={(v) => update(i, { klantToelichting: v })} />
+                            <div className="klant-pop-foot">
+                              <span className="klant-pop-hint">Wordt automatisch opgeslagen.</span>
+                              <button type="button" className="primary-btn small" onClick={() => setKlantPopRow(null)}>Klaar</button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </td>
                     <td><RichCell html={r.toelichting} onChange={(v) => update(i, { toelichting: v })} placeholder="Toelichting" /></td>
                     <td><input className="cell-num" type="number" value={r.uren ?? ""} onChange={(e) => update(i, { uren: e.target.value === "" ? null : Number(e.target.value) })} /></td>
                     <td><select value={r.status} onChange={(e) => update(i, { status: e.target.value })}><option value="">—</option>{STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}</select></td>
@@ -305,26 +381,9 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, hi
                     <td><button type="button" className={"wie-badge " + (isDev ? "wie-dev" : "wie-seo")} onClick={() => update(i, { wie: isDev ? "SEO" : "Dev" })} title="Klik om te wisselen tussen SEO en Developer">{isDev ? "Developer" : "SEO"}</button></td>
                     <td><select value={r.maand} onChange={(e) => update(i, { maand: e.target.value })}><option value="">—</option>{MONTHS.map((m) => <option key={m} value={m}>{m}</option>)}</select></td>
                     <td className="cell-check col-center"><input type="checkbox" checked={!!r._mail} onChange={(e) => update(i, { _mail: e.target.checked })} title="Meenemen in de mail-batch naar de developer" /></td>
-                    <td className="row-actions" style={{ position: "relative" }}>
-                      <button type="button" className={"row-info" + (r.klantToelichting ? " has" : "")} onClick={() => setKlantPopRow(klantPopRow === i ? null : i)} title="Klant-toelichting (verschijnt als ?-tooltip in het klantdashboard)">?</button>
+                    <td className="row-actions">
                       <button type="button" className="row-send" onClick={() => openComposeFor([i])} title="Deze taak mailen naar de developer">✉</button>
                       <button type="button" className="row-del" onClick={() => removeRow(i)} title="Verwijderen">×</button>
-                      {klantPopRow === i && (
-                        <div className="klant-pop" onClick={(e) => e.stopPropagation()}>
-                          <div className="klant-pop-head">Toelichting voor de klant</div>
-                          <textarea
-                            className="klant-pop-area"
-                            value={r.klantToelichting || ""}
-                            onChange={(e) => update(i, { klantToelichting: e.target.value })}
-                            placeholder="Korte uitleg die de klant ziet bij deze taak (verschijnt als ?-tooltip)."
-                            autoFocus
-                          />
-                          <div className="klant-pop-foot">
-                            <span className="klant-pop-hint">Wordt automatisch opgeslagen.</span>
-                            <button type="button" className="primary-btn small" onClick={() => setKlantPopRow(null)}>Klaar</button>
-                          </div>
-                        </div>
-                      )}
                     </td>
                   </tr>
                 );

@@ -120,9 +120,14 @@ body {
   border-radius: 2px; display: inline-block;
 }
 .task-table-wrap {
-  background: var(--white); border-radius: 12px; overflow: hidden;
+  background: var(--white); border-radius: 12px; overflow: visible;
   box-shadow: 0 1px 4px rgba(0,0,0,0.06); margin-bottom: 32px;
 }
+/* Hoeken afronden zonder overflow:hidden (zodat tooltips niet clippen) */
+.task-table-wrap thead tr th:first-child { border-top-left-radius: 12px; }
+.task-table-wrap thead tr th:last-child { border-top-right-radius: 12px; }
+.task-table-wrap tbody tr:last-child td:first-child { border-bottom-left-radius: 12px; }
+.task-table-wrap tbody tr:last-child td:last-child { border-bottom-right-radius: 12px; }
 table { width: 100%; border-collapse: collapse; }
 thead th {
   background: var(--dark); color: var(--white); padding: 14px 20px;
@@ -155,12 +160,17 @@ tbody td:last-child { text-align: center; }
 .badge-done.bezig { background: #FFF3E0; color: #E65100; }
 .doc-link { color: var(--orange); text-decoration: none; font-weight: 600; font-size: 13px; transition: color 0.2s; }
 .doc-link:hover { color: var(--orange-dark); text-decoration: underline; }
-/* Klant-toelichting als "?"-tooltip bij de taaknaam */
+/* Klant-toelichting als "?"-tooltip (met opgemaakte HTML) bij de taaknaam */
 .task-name { display: inline-flex; align-items: center; gap: 8px; }
-.task-help { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: var(--gray-light); color: var(--gray); font-size: 11px; font-weight: 700; cursor: help; position: relative; flex: 0 0 auto; }
+.task-help-wrap { position: relative; display: inline-flex; }
+.task-help { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: var(--gray-light); color: var(--gray); font-size: 11px; font-weight: 700; cursor: help; flex: 0 0 auto; }
 .task-help:hover, .task-help:focus { background: var(--orange); color: #fff; outline: none; }
-.task-help::after { content: attr(data-tip); position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%); background: #1f2430; color: #fff; padding: 8px 11px; border-radius: 6px; font-size: 12px; font-weight: 400; line-height: 1.45; white-space: normal; width: max-content; max-width: 260px; box-shadow: 0 6px 18px rgba(0,0,0,0.18); opacity: 0; visibility: hidden; transition: opacity 0.12s; z-index: 50; pointer-events: none; }
-.task-help:hover::after, .task-help:focus::after { opacity: 1; visibility: visible; }
+.task-tip { position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%); background: #fff; color: var(--dark); padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 12.5px; font-weight: 400; line-height: 1.5; text-align: left; white-space: normal; width: max-content; max-width: 300px; box-shadow: 0 8px 22px rgba(0,0,0,0.16); opacity: 0; visibility: hidden; transition: opacity 0.12s; z-index: 50; pointer-events: none; }
+.task-help-wrap:hover .task-tip, .task-help:focus + .task-tip { opacity: 1; visibility: visible; }
+.task-tip a { color: var(--orange); text-decoration: underline; }
+.task-tip p { margin: 0 0 6px; }
+.task-tip ul, .task-tip ol { margin: 4px 0 4px; padding-left: 18px; }
+.task-tip :last-child { margin-bottom: 0; }
 .muted { color: #ccc; font-size: 12px; }
 
 /* Footer */
@@ -568,15 +578,22 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .wie-seo { background: #E0F2FE; color: #0369A1; }
 .wie-dev { background: #EDE9FE; color: #6D28D9; }
 
-.row-info { width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--border); background: var(--white); color: var(--gray); font-size: 12px; font-weight: 700; line-height: 1; cursor: pointer; padding: 0; flex: 0 0 auto; }
+/* Taak-cel met "?"-knop direct rechts van de taaktekst */
+.taak-cell { display: flex; align-items: flex-start; gap: 6px; position: relative; }
+.taak-cell .rich-cell { flex: 1 1 auto; min-width: 0; }
+.row-info { width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--border); background: var(--white); color: var(--gray); font-size: 12px; font-weight: 700; line-height: 1; cursor: pointer; padding: 0; flex: 0 0 auto; margin-top: 4px; }
 .row-info:hover { border-color: var(--orange); color: var(--orange); }
 .row-info.has { background: var(--orange); border-color: var(--orange); color: #fff; }
 .klant-pop-overlay { position: fixed; inset: 0; z-index: 40; }
-.klant-pop { position: absolute; right: 0; top: 28px; z-index: 41; width: 280px; background: var(--white); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.14); padding: 10px; text-align: left; }
-.klant-pop-head { font-size: 12px; font-weight: 700; color: var(--dark); margin-bottom: 6px; }
-.klant-pop-area { width: 100%; min-height: 80px; font-family: 'Montserrat', sans-serif; font-size: 13px; color: var(--dark); border: 1px solid var(--border); border-radius: 6px; padding: 7px 9px; outline: none; resize: vertical; }
-.klant-pop-area:focus { border-color: var(--orange); }
-.klant-pop-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; gap: 8px; }
+.klant-pop { position: absolute; left: 0; top: 30px; z-index: 41; width: 340px; max-width: 80vw; background: var(--white); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.16); padding: 12px; text-align: left; }
+.klant-pop-head { font-size: 12px; font-weight: 700; color: var(--dark); margin-bottom: 8px; }
+.klant-pop-toolbar { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+.klant-pop-toolbar button { font-size: 12px; padding: 3px 8px; border: 1px solid var(--border); background: var(--white); border-radius: 6px; cursor: pointer; color: var(--dark); }
+.klant-pop-toolbar button:hover { border-color: var(--orange); color: var(--orange); }
+.klant-pop-editor { min-height: 96px; max-height: 260px; overflow: auto; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; outline: none; font-size: 13px; color: var(--dark); line-height: 1.5; background: var(--white); }
+.klant-pop-editor:focus { border-color: var(--orange); }
+.klant-pop-editor:empty:before { content: "Schrijf hier de uitleg die de klant ziet…"; color: var(--gray); opacity: 0.7; }
+.klant-pop-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; gap: 8px; }
 .klant-pop-hint { font-size: 11px; color: var(--gray); }
 .client-frame-card { padding: 0; overflow: hidden; }
 .client-frame-card .ck-section-head { padding: 14px 18px 12px; margin-bottom: 0; }
