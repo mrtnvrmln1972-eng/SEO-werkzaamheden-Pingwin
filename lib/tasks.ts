@@ -34,7 +34,7 @@ function taskKey(t: TaskRow): string {
     (t.maand || "").trim().toLowerCase(),
     (t.link || "").trim(),
     (t.wie || "").trim().toLowerCase(),
-  ].join("");
+  ].join(String.fromCharCode(1)); // velden gescheiden door een controlteken dat niet in tekst voorkomt
 }
 
 // Houdt de eerste van elke set inhoudelijk identieke rijen; gooit de rest weg.
