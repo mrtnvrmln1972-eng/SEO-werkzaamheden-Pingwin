@@ -158,14 +158,22 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, hi
   }
 
   function addRow(maand: string, wie: string) {
-    const newRow: Row = { categorie: "", taak: "", toelichting: "", uren: null, status: "Te doen", maand, link: "", wie, klantZichtbaar: true, _uid: `new-${uidRef.current++}` };
+    const newRow: Row = { categorie: "", taak: "", toelichting: "", uren: null, status: "Gepland", maand, link: "", wie, klantZichtbaar: true, _uid: `new-${uidRef.current++}` };
     setRows((prev) => {
       const newRows = [...prev, newRow];
-      saveRows(newRows); // auto-save direct na toevoegen
+      rowsRef.current = newRows;
+      saveRows(newRows);
       return newRows;
     });
   }
-  function removeRow(i: number) { setRows((r) => r.filter((_, idx) => idx !== i)); }
+  function removeRow(i: number) {
+    setRows((prev) => {
+      const next = prev.filter((_, idx) => idx !== i);
+      rowsRef.current = next;
+      return next;
+    });
+    triggerAutoSave();
+  }
 
   // Versleep een taak. beforeIdx = de rij waarop gedropt wordt (binnen of tussen
   // maanden); null = ergens op de maandkaart (achteraan die maand). De maand van
@@ -178,10 +186,12 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, hi
       const nm = { ...moved, maand: toMaand };
       if (beforeIdx == null || beforeIdx < 0) { c.push(nm); }
       else { const ins = beforeIdx > dragIdx ? beforeIdx - 1 : beforeIdx; c.splice(ins, 0, nm); }
+      rowsRef.current = c;
       return c;
     });
     setDragIdx(null);
     setMsg("");
+    triggerAutoSave();
   }
 
   async function save() {

@@ -99,8 +99,12 @@ export default function FocusBlock({ slug, standalone }: { slug: string; standal
 
   // Klik op een link opent hem in een nieuw tabblad (ook in de bewerkbare editor).
   function onClick(e: React.MouseEvent) {
-    const a = (e.target as HTMLElement).closest("a[href]") as HTMLAnchorElement | null;
-    if (a) { e.preventDefault(); window.open(a.href, "_blank", "noreferrer"); }
+    const t = e.target as HTMLElement;
+    const a = (t.tagName === "A" ? t : t.closest("a")) as HTMLAnchorElement | null;
+    if (a && a.href && !a.href.startsWith("javascript:")) {
+      e.preventDefault();
+      window.open(a.href, "_blank", "noreferrer");
+    }
   }
 
   function onKeyDown(e: React.KeyboardEvent) {
@@ -120,9 +124,11 @@ export default function FocusBlock({ slug, standalone }: { slug: string; standal
   function onPaste(e: React.ClipboardEvent) {
     const pasteHtml = e.clipboardData.getData("text/html");
     const pasteText = e.clipboardData.getData("text/plain");
+    const hasTable = /<table[\s>]/i.test(pasteHtml);
+    const hasLinks = /<a\s/i.test(pasteHtml);
 
     // Sheets/Excel: tabel
-    if (pasteHtml && /<table[\s>]/i.test(pasteHtml)) {
+    if (hasTable) {
       e.preventDefault();
       document.execCommand("insertHTML", false, cleanPasteHtml(pasteHtml));
       fixLinks();
@@ -130,8 +136,8 @@ export default function FocusBlock({ slug, standalone }: { slug: string; standal
       return;
     }
 
-    // TSV (tab-gescheiden) zonder HTML
-    if (!pasteHtml && pasteText && pasteText.includes("\t")) {
+    // TSV (tab-gescheiden): maak tabel
+    if (!hasTable && pasteText && pasteText.includes("\t")) {
       e.preventDefault();
       const rows = pasteText.trim().split(/\r?\n/).filter((r) => r.trim());
       const tableHtml = `<table style="border-collapse:collapse;font-size:13px"><tbody>${
@@ -147,7 +153,7 @@ export default function FocusBlock({ slug, standalone }: { slug: string; standal
     }
 
     // HTML met links (bijv. hyperlinked woord uit browser of Google Docs)
-    if (pasteHtml && /<a\s/i.test(pasteHtml)) {
+    if (hasLinks) {
       e.preventDefault();
       document.execCommand("insertHTML", false, cleanPasteHtml(pasteHtml));
       fixLinks();
@@ -155,8 +161,8 @@ export default function FocusBlock({ slug, standalone }: { slug: string; standal
       return;
     }
 
-    // Platte tekst met URL's: auto-linken
-    if (!pasteHtml && pasteText && /https?:\/\//i.test(pasteText)) {
+    // URL in platte tekst: auto-linken (ook als browser HTML meestuurt zonder links)
+    if (pasteText && /https?:\/\//i.test(pasteText)) {
       e.preventDefault();
       document.execCommand("insertHTML", false, linkifyText(pasteText));
       triggerSave();
@@ -166,8 +172,6 @@ export default function FocusBlock({ slug, standalone }: { slug: string; standal
     // Standaard paste; links daarna alsnog fixen
     setTimeout(() => { fixLinks(); triggerSave(); }, 0);
   }
-
-  if (initialHtml === null) return null;
 
   const saveLabel = saving === "saving" ? "Opslaan..." : saving === "saved" ? "✓ Opgeslagen" : "";
 
@@ -186,8 +190,8 @@ export default function FocusBlock({ slug, standalone }: { slug: string; standal
   const editor = (
     <div
       ref={editorRef}
-      className="focus-rich focus-editable"
-      contentEditable
+      className={"focus-rich focus-editable" + (initialHtml === null ? " focus-loading" : "")}
+      contentEditable={initialHtml !== null}
       suppressContentEditableWarning
       onInput={onInput}
       onClick={onClick}

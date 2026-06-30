@@ -144,6 +144,8 @@ tbody td:last-child { text-align: center; }
   letter-spacing: 1px; border-left: 4px solid var(--orange);
 }
 .task-desc { font-size: 12px; color: var(--gray); margin-top: 3px; }
+.task-table-wrap td a { color: var(--orange); text-decoration: none; }
+.task-table-wrap td a:hover { text-decoration: underline; }
 .badge-done {
   display: inline-block; padding: 4px 12px; border-radius: 20px;
   font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
@@ -623,6 +625,8 @@ tbody td:last-child { text-align: center; }
 .focus-toolbar button { font-size: 12px; padding: 4px 9px; border: 1px solid var(--border); background: var(--white); border-radius: 6px; cursor: pointer; color: var(--dark); }
 .focus-toolbar button:hover { border-color: var(--orange); color: var(--orange); }
 .focus-save-status { font-size: 11px; color: var(--gray); align-self: center; margin-left: auto; }
+.focus-loading { background: var(--light) !important; border-color: var(--border) !important; animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { opacity:0.5 } 50% { opacity:1 } }
 .sov-tasks { border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; background: var(--white); box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
 .sov-tasks-head { font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.3px; color: var(--dark); margin-bottom: 10px; }
 .sov-sub { font-weight: 500; font-size: 11px; text-transform: none; letter-spacing: 0; color: var(--gray); }
