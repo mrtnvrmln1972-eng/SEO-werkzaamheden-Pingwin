@@ -19,6 +19,15 @@ type Props = {
   initialData?: DashboardData | null;
 };
 
+// Laat opmaak/links staan, verwijdert scripts en handlers (vangnet).
+function safeHtml(html: string): string {
+  return (html || "")
+    .replace(/<\s*script[\s\S]*?<\s*\/\s*script\s*>/gi, "")
+    .replace(/\son\w+\s*=\s*"[^"]*"/gi, "")
+    .replace(/\son\w+\s*=\s*'[^']*'/gi, "")
+    .replace(/javascript:/gi, "");
+}
+
 function formatTime(minutes: number): string {
   if (minutes >= 60) {
     const h = Math.floor(minutes / 60);
@@ -319,8 +328,8 @@ function renderRows(monthTasks: DashboardData["tasks"]) {
 
     rows.push(
       <tr key={`task-${i}`}>
-        <td><strong>{task.taak}</strong></td>
-        <td><span className="task-desc">{task.toelichting}</span></td>
+        <td><strong dangerouslySetInnerHTML={{ __html: safeHtml(task.taak) }} /></td>
+        <td><span className="task-desc" dangerouslySetInnerHTML={{ __html: safeHtml(task.toelichting) }} /></td>
         <td>{minutes > 0 ? formatTime(minutes) : <span className="muted">&mdash;</span>}</td>
         <td><span className={`badge-done ${badgeClass}`}>{badgeLabel}</span></td>
         <td>

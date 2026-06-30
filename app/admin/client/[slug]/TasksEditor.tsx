@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import type { TaskRow } from "../../../../lib/tasks";
 
 const MONTHS = ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"];
@@ -8,16 +8,47 @@ const STATUSES = ["Te doen", "Bezig", "Gepland", "Klaar"];
 
 type Budget = { maandbudget: number; linkbuilding: number; uurtarief: number; beschikbareUren: number };
 
-// Rij = taak plus een client-only vinkje "_mail" (welke taken meegaan in de
-// mail-batch). Reist mee met de rij bij verslepen; wordt niet opgeslagen.
-type Row = TaskRow & { _mail?: boolean };
+// Rij = taak plus client-only velden: "_mail" (meegaan in de mail-batch) en
+// "_uid" (stabiele sleutel zodat de rich-text-cellen netjes blijven bij slepen).
+// Worden niet opgeslagen.
+type Row = TaskRow & { _mail?: boolean; _uid: string };
 
 function esc(s: string): string {
   return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+// Haalt opmaak weg → platte tekst (voor de developer-mail en losse weergaven).
+function stripHtml(html: string): string {
+  return (html || "").replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").trim();
+}
+
+// Bewerkbare rich-text-cel: typ tekst, selecteer een woord en druk Cmd/Ctrl+K
+// om er een link aan te hangen. Niet door React gestuurd (innerHTML alleen bij
+// het opbouwen gezet), zodat de cursor niet verspringt tijdens typen.
+function RichCell({ html, onChange, placeholder }: { html: string; onChange: (html: string) => void; placeholder: string }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (ref.current && ref.current.innerHTML !== (html || "")) ref.current.innerHTML = html || "";
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  function emit() { onChange(ref.current?.innerHTML || ""); }
+  function onKey(e: React.KeyboardEvent) {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+      e.preventDefault();
+      const sel = window.getSelection();
+      const url = window.prompt("Link naar (URL of document):", "https://");
+      if (!url) return;
+      if (sel && !sel.isCollapsed) document.execCommand("createLink", false, url);
+      else document.execCommand("insertHTML", false, `<a href="${url.replace(/"/g, "&quot;")}">${esc(url)}</a>`);
+      emit();
+    }
+  }
+  return <div ref={ref} className="rich-cell" contentEditable suppressContentEditableWarning data-ph={placeholder} onInput={emit} onBlur={emit} onKeyDown={onKey} />;
+}
+
 export default function TasksEditor({ slug, initialTasks, budget, clientName, highlight }: { slug: string; initialTasks: TaskRow[]; budget: Budget; clientName: string; highlight?: string }) {
-  const [rows, setRows] = useState<Row[]>(initialTasks);
+  const uidRef = useRef(1);
+  const [rows, setRows] = useState<Row[]>(() => initialTasks.map((t, i) => ({ ...t, _uid: t.id != null ? `id-${t.id}` : `init-${i}` })));
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [dragIdx, setDragIdx] = useState<number | null>(null);
@@ -64,7 +95,7 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, hi
     setMsg("");
   }
   function addRow(maand: string, wie: string) {
-    setRows((r) => [...r, { categorie: "", taak: "", toelichting: "", uren: null, status: "Te doen", maand, link: "", wie, klantZichtbaar: true }]);
+    setRows((r) => [...r, { categorie: "", taak: "", toelichting: "", uren: null, status: "Te doen", maand, link: "", wie, klantZichtbaar: true, _uid: `new-${uidRef.current++}` }]);
   }
   function removeRow(i: number) { setRows((r) => r.filter((_, idx) => idx !== i)); }
 
@@ -113,7 +144,7 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, hi
     const selected = rows.map((r, i) => ({ r, i })).filter((x) => devSel.has(x.i)).map((x) => x.r);
     if (!devTo.trim() || selected.length === 0) { setDevMsg("Vul een ontvanger in en kies minstens één taak."); return; }
     const list = selected.map((t) =>
-      `<li><strong>${esc(t.taak)}</strong>${t.maand ? ` <em>(${esc(t.maand)})</em>` : ""}${t.toelichting ? ` — ${esc(t.toelichting)}` : ""}${t.link ? ` — <a href="${esc(t.link)}">document</a>` : ""}</li>`,
+      `<li><strong>${esc(stripHtml(t.taak))}</strong>${t.maand ? ` <em>(${esc(t.maand)})</em>` : ""}${t.toelichting ? ` — ${esc(stripHtml(t.toelichting))}` : ""}${t.link ? ` — <a href="${esc(t.link)}">document</a>` : ""}</li>`,
     ).join("");
     const note = devNote.trim() ? `<p>${esc(devNote).replace(/\n/g, "<br>")}</p>` : "";
     const ids = selected.map((t) => t.id).filter((x): x is number => typeof x === "number");
@@ -163,10 +194,10 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, hi
                 const hl = typeof r.id === "number" && highlightIds.has(r.id);
                 const mailed = !!r.gemaild && !DONE.test(r.status || "");
                 return (
-                  <tr key={i} id={typeof r.id === "number" ? `task-row-${r.id}` : undefined} draggable onDragStart={() => setDragIdx(i)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.stopPropagation(); moveRow(maand, i); }} className={`${dragIdx === i ? "dragging " : ""}${isDev ? "dev-row " : ""}${mailed ? "mailed-row " : ""}${hl ? "highlight-row" : ""}`}>
-                    <td className="drag-handle" title="Sleep (ook naar een andere maand)">⠿</td>
-                    <td><input value={r.taak} onChange={(e) => update(i, { taak: e.target.value })} placeholder="Taak" /></td>
-                    <td><input value={r.toelichting} onChange={(e) => update(i, { toelichting: e.target.value })} placeholder="Toelichting" /></td>
+                  <tr key={r._uid} id={typeof r.id === "number" ? `task-row-${r.id}` : undefined} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.stopPropagation(); moveRow(maand, i); }} className={`${dragIdx === i ? "dragging " : ""}${isDev ? "dev-row " : ""}${mailed ? "mailed-row " : ""}${hl ? "highlight-row" : ""}`}>
+                    <td className="drag-handle" draggable onDragStart={() => setDragIdx(i)} onDragEnd={() => setDragIdx(null)} title="Sleep (ook naar een andere maand)">⠿</td>
+                    <td><RichCell html={r.taak} onChange={(v) => update(i, { taak: v })} placeholder="Taak" /></td>
+                    <td><RichCell html={r.toelichting} onChange={(v) => update(i, { toelichting: v })} placeholder="Toelichting" /></td>
                     <td><input className="cell-num" type="number" value={r.uren ?? ""} onChange={(e) => update(i, { uren: e.target.value === "" ? null : Number(e.target.value) })} /></td>
                     <td><select value={r.status} onChange={(e) => update(i, { status: e.target.value })}><option value="">—</option>{STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}</select></td>
                     <td><div className="cell-link"><input value={r.link} onChange={(e) => update(i, { link: e.target.value })} placeholder="https://..." />{r.link && <a href={r.link} target="_blank" rel="noreferrer">↗</a>}</div></td>
@@ -274,7 +305,7 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, hi
                 {rows.map((r, i) => devSel.has(i) ? (
                   <label key={i} className="compose-item">
                     <input type="checkbox" checked={devSel.has(i)} onChange={() => toggleDevSel(i)} />
-                    <span>{r.maand ? <em>[{r.maand}] </em> : ""}{r.taak || "(leeg)"}{r.status ? ` — ${r.status}` : ""}</span>
+                    <span>{r.maand ? <em>[{r.maand}] </em> : ""}{stripHtml(r.taak) || "(leeg)"}{r.status ? ` — ${r.status}` : ""}</span>
                   </label>
                 ) : null)}
                 {devSel.size === 0 && <div className="muted">Geen taken geselecteerd. Vink in de tabel taken aan in de kolom &ldquo;Mail&rdquo;.</div>}

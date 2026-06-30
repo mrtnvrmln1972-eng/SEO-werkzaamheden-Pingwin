@@ -45,6 +45,11 @@ type CockpitData = {
   tasks: TaskRow[];
 };
 
+// Taaknaam kan opmaak/links bevatten; in compacte lijstjes tonen we platte tekst.
+function stripTags(html: string): string {
+  return (html || "").replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").trim();
+}
+
 export default function ClientCockpit({
   client, emails, metrics, keywords, pages, lastIngest, status, statusUpdatedAt,
   mailLive, msConfigured, msConnected, myEmail, monthTasks, allClients,
@@ -364,7 +369,7 @@ export default function ClientCockpit({
                           {monthTasks.thisMonth.map((t, i) => (
                             <li key={i} className={t.done ? "task-done" : ""}>
                               {t.wie && <span className={"wie-badge " + (/dev/i.test(t.wie) ? "dev" : "seo")}>{t.wie}</span>}
-                              <a href={t.link} target="_blank" rel="noreferrer">{t.text}</a>
+                              {t.link ? <a href={t.link} target="_blank" rel="noreferrer">{stripTags(t.text)}</a> : <span>{stripTags(t.text)}</span>}
                             </li>
                           ))}
                         </ul>
@@ -379,7 +384,7 @@ export default function ClientCockpit({
                           {monthTasks.nextMonth.map((t, i) => (
                             <li key={i}>
                               {t.wie && <span className={"wie-badge " + (/dev/i.test(t.wie) ? "dev" : "seo")}>{t.wie}</span>}
-                              <a href={t.link} target="_blank" rel="noreferrer">{t.text}</a>
+                              {t.link ? <a href={t.link} target="_blank" rel="noreferrer">{stripTags(t.text)}</a> : <span>{stripTags(t.text)}</span>}
                             </li>
                           ))}
                         </ul>

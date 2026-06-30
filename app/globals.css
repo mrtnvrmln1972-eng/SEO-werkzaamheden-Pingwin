@@ -481,6 +481,12 @@ tbody td:last-child { text-align: center; }
 .task-table .cell-link a { color: var(--orange-dark); text-decoration: none; flex: 0 0 auto; }
 .task-table .cell-check { text-align: center; }
 .drag-handle { cursor: grab; color: var(--gray); user-select: none; text-align: center; }
+.drag-handle:active { cursor: grabbing; }
+.rich-cell { width: 100%; font-family: 'Montserrat', sans-serif; font-size: 13px; padding: 5px 7px; border: 1px solid transparent; border-radius: 5px; background: transparent; min-height: 28px; outline: none; line-height: 1.35; word-break: break-word; }
+.rich-cell:hover { border-color: var(--border); }
+.rich-cell:focus { border-color: var(--orange); background: var(--white); }
+.rich-cell:empty:before { content: attr(data-ph); color: var(--gray); opacity: 0.7; }
+.rich-cell a { color: var(--orange); text-decoration: underline; }
 .row-del { background: none; border: none; color: var(--red); font-size: 18px; line-height: 1; cursor: pointer; padding: 0 4px; }
 .month-card { margin-bottom: 24px; }
 .month-card-count { color: var(--gray); font-weight: 500; font-size: 14px; }
