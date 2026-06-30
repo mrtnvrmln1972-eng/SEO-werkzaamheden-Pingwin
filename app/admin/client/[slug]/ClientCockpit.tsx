@@ -321,7 +321,7 @@ export default function ClientCockpit({
                     </div>
                     {status.exchanges
                       .map((ex, i) => ({ ex, i }))
-                      .sort((a, b) => (a.ex.date || "").localeCompare(b.ex.date || ""))
+                      .sort((a, b) => (b.ex.date || "").localeCompare(a.ex.date || ""))
                       .map(({ ex, i }) => {
                       const isClient = ex.side === "client";
                       const done = ex.status === "done";
