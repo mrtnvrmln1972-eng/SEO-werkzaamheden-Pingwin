@@ -12,8 +12,9 @@ import ChatPanel from "./ChatPanel";
 import TasksEditor from "./TasksEditor";
 import FocusBlock from "./FocusBlock";
 import LinkPreview from "./LinkPreview";
+import DeveloperOverview from "../../developer/DeveloperOverview";
 
-type Tab = "overzicht" | "werkzaamheden" | "resultaten" | "klant";
+type Tab = "overzicht" | "werkzaamheden" | "resultaten" | "klant" | "developer";
 
 // Jouw Superhuman-account (Microsoft 365 hangt hieronder).
 const SUPERHUMAN_ACCOUNT = "Maarten@pingwin.nl";
@@ -58,7 +59,7 @@ export default function ClientCockpit({
 }: { client: ClientConfig; initialTab?: string; highlight?: string } & CockpitData) {
   const router = useRouter();
   const pathname = usePathname();
-  const validTab = (t?: string): Tab => (t === "werkzaamheden" || t === "resultaten" || t === "klant" || t === "overzicht") ? t : "overzicht";
+  const validTab = (t?: string): Tab => (t === "werkzaamheden" || t === "resultaten" || t === "klant" || t === "developer" || t === "overzicht") ? t : "overzicht";
   const [tab, setTab] = useState<Tab>(validTab(initialTab));
 
   // Wissel van tab én update de URL zodat reload op dezelfde tab uitkomt.
@@ -221,7 +222,7 @@ export default function ClientCockpit({
             <button className={"tab" + (tab === "werkzaamheden" ? " active" : "")} onClick={() => changeTab("werkzaamheden")}>Werkzaamheden</button>
             <button className={"tab" + (tab === "resultaten" ? " active" : "")} onClick={() => changeTab("resultaten")}>KPI&rsquo;s</button>
             <button className={"tab" + (tab === "klant" ? " active" : "")} onClick={() => changeTab("klant")}>Klant-dashboard</button>
-            <a className="tab tab-link" href="/admin/developer" title="Alle developer-taken over alle klanten">Developer Overview</a>
+            <button className={"tab" + (tab === "developer" ? " active" : "")} onClick={() => changeTab("developer")} title="Alle developer-taken over alle klanten">Developer Overview</button>
           </nav>
         </div>
         <div className="header-right">
@@ -667,6 +668,8 @@ export default function ClientCockpit({
             <iframe src={`/admin/preview/${client.slug}`} className="client-frame" title="Klant-dashboard" />
           </div>
         )}
+
+        {tab === "developer" && <DeveloperOverview embedded />}
       </div>
 
       <div className="footer">Pingwin Online Marketing &middot; Beheer</div>

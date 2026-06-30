@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { DevTask } from "../../../lib/developer";
 
@@ -26,13 +26,25 @@ function statusBadge(status: string) {
 
 type Row = DevTask;
 
-export default function DeveloperOverview({ initialTasks }: { initialTasks: DevTask[] }) {
+export default function DeveloperOverview({ initialTasks, embedded }: { initialTasks?: DevTask[]; embedded?: boolean }) {
   const router = useRouter();
-  const [rows, setRows] = useState<Row[]>(initialTasks);
-  const rowsRef = useRef<Row[]>(initialTasks);
+  const [rows, setRows] = useState<Row[]>(initialTasks ?? []);
+  const rowsRef = useRef<Row[]>(initialTasks ?? []);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [saving, setSaving] = useState<"idle" | "saving" | "saved">("idle");
+  const [loading, setLoading] = useState(!initialTasks);
+
+  // Ingebed in de cockpit: laad de dev-taken zelf (geen server-props).
+  useEffect(() => {
+    if (initialTasks) return;
+    let off = false;
+    fetch("/api/admin/developer")
+      .then((r) => r.json())
+      .then((d) => { if (!off && d.ok) { setRows(d.tasks); rowsRef.current = d.tasks; } })
+      .finally(() => { if (!off) setLoading(false); });
+    return () => { off = true; };
+  }, [initialTasks]);
 
   function commit(next: Row[]) {
     rowsRef.current = next;
@@ -77,33 +89,17 @@ export default function DeveloperOverview({ initialTasks }: { initialTasks: DevT
 
   const saveLabel = saving === "saving" ? "Opslaan..." : saving === "saved" ? "✓ Opgeslagen" : "";
 
-  return (
+  const content = (
     <>
-      <div className="header">
-        <div className="header-left">
-          <a href="/admin" className="logo-link" title="Naar het klantenoverzicht">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="https://pingwin.nl/wp-content/uploads/2016/11/pingwin_logo.png" alt="Pingwin" />
-          </a>
-          <div className="header-divider" />
-          <div>
-            <div className="header-title">Pingwin SEO Dashboard</div>
-            <div className="header-client">Developer Overview</div>
-          </div>
+        <div className="section-title">
+          Taken voor de developer ({rows.length})
+          {saveLabel && <span className="focus-save-status" style={{ marginLeft: 12 }}>{saveLabel}</span>}
         </div>
-        <div className="header-right">
-          {saveLabel && <span className="focus-save-status" style={{ marginRight: 12 }}>{saveLabel}</span>}
-          <a className="logout-btn" href="/admin">&larr; Alle klanten</a>
-          <button className="logout-btn" onClick={logout} style={{ marginLeft: 8 }}>Uitloggen</button>
-        </div>
-      </div>
-
-      <div className="container">
-        <div className="section-title">Taken voor de developer ({rows.length})</div>
         <p className="dev-intro">
           Alle taken die over alle klanten heen aan de developer zijn toegewezen. Sleep een taak omhoog of omlaag
           om de prioriteit te bepalen en zet per taak een uitvoerdatum. Volgorde en datum blijven staan.
         </p>
+        {loading && <p className="muted">Taken laden…</p>}
 
         <div className="task-table-wrap">
           <table className="task-table dev-table">
@@ -155,7 +151,33 @@ export default function DeveloperOverview({ initialTasks }: { initialTasks: DevT
             </tbody>
           </table>
         </div>
+    </>
+  );
+
+  // Ingebed in de cockpit: alleen de inhoud (de topbar komt van de cockpit zelf).
+  if (embedded) return content;
+
+  return (
+    <>
+      <div className="header">
+        <div className="header-left">
+          <a href="/admin" className="logo-link" title="Naar het klantenoverzicht">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="https://pingwin.nl/wp-content/uploads/2016/11/pingwin_logo.png" alt="Pingwin" />
+          </a>
+          <div className="header-divider" />
+          <div>
+            <div className="header-title">Pingwin SEO Dashboard</div>
+            <div className="header-client">Developer Overview</div>
+          </div>
+        </div>
+        <div className="header-right">
+          <a className="logout-btn" href="/admin">&larr; Alle klanten</a>
+          <button className="logout-btn" onClick={logout} style={{ marginLeft: 8 }}>Uitloggen</button>
+        </div>
       </div>
+
+      <div className="container">{content}</div>
 
       <div className="footer">Pingwin Online Marketing &middot; Developer Overview</div>
     </>
