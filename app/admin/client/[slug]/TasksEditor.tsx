@@ -105,6 +105,7 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, hi
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [klantPopRow, setKlantPopRow] = useState<number | null>(null);
 
   // "Verstuur naar developer"
   const [showCompose, setShowCompose] = useState(false);
@@ -285,7 +286,7 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, hi
               <col style={{ width: "66px" }} /><col style={{ width: "104px" }} /><col style={{ width: "150px" }} />
               <col style={{ width: "118px" }} /><col style={{ width: "92px" }} /><col style={{ width: "44px" }} /><col style={{ width: "78px" }} />
             </colgroup>
-            <thead><tr><th></th><th>Taak</th><th>Toelichting</th><th>Uren</th><th>Status</th><th>Link</th><th>Wie</th><th>Maand</th><th title="Aanvinken om mee te nemen in een mail-batch naar de developer" className="col-center">Mail</th><th></th></tr></thead>
+            <thead><tr><th></th><th>Taak</th><th>Toelichting Developer</th><th>Uren</th><th>Status</th><th>Link</th><th>Wie</th><th>Maand</th><th title="Aanvinken om mee te nemen in een mail-batch naar de developer" className="col-center">Mail</th><th></th></tr></thead>
             <tbody>
               {ordered.map(({ r, i }) => {
                 const isDev = (r.wie || "").toLowerCase() === "dev";
@@ -304,9 +305,26 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, hi
                     <td><select value={isDev ? "Dev" : "SEO"} onChange={(e) => update(i, { wie: e.target.value })}><option value="SEO">SEO</option><option value="Dev">Developer</option></select></td>
                     <td><select value={r.maand} onChange={(e) => update(i, { maand: e.target.value })}><option value="">—</option>{MONTHS.map((m) => <option key={m} value={m}>{m}</option>)}</select></td>
                     <td className="cell-check col-center"><input type="checkbox" checked={!!r._mail} onChange={(e) => update(i, { _mail: e.target.checked })} title="Meenemen in de mail-batch naar de developer" /></td>
-                    <td className="row-actions">
+                    <td className="row-actions" style={{ position: "relative" }}>
+                      <button type="button" className={"row-info" + (r.klantToelichting ? " has" : "")} onClick={() => setKlantPopRow(klantPopRow === i ? null : i)} title="Klant-toelichting (verschijnt als ?-tooltip in het klantdashboard)">?</button>
                       <button type="button" className="row-send" onClick={() => openComposeFor([i])} title="Deze taak mailen naar de developer">✉</button>
                       <button type="button" className="row-del" onClick={() => removeRow(i)} title="Verwijderen">×</button>
+                      {klantPopRow === i && (
+                        <div className="klant-pop" onClick={(e) => e.stopPropagation()}>
+                          <div className="klant-pop-head">Toelichting voor de klant</div>
+                          <textarea
+                            className="klant-pop-area"
+                            value={r.klantToelichting || ""}
+                            onChange={(e) => update(i, { klantToelichting: e.target.value })}
+                            placeholder="Korte uitleg die de klant ziet bij deze taak (verschijnt als ?-tooltip)."
+                            autoFocus
+                          />
+                          <div className="klant-pop-foot">
+                            <span className="klant-pop-hint">Wordt automatisch opgeslagen.</span>
+                            <button type="button" className="primary-btn small" onClick={() => setKlantPopRow(null)}>Klaar</button>
+                          </div>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 );
@@ -376,6 +394,8 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, hi
         {msg && <div className={msg.startsWith("Opgeslagen") ? "saved-msg" : "login-error"}>{msg}</div>}
         {rows.length === 0 && <div className="muted">Nog geen werkzaamheden. Voeg een maand toe om te beginnen.</div>}
       </div>
+
+      {klantPopRow !== null && <div className="klant-pop-overlay" onClick={() => setKlantPopRow(null)} />}
 
       {(() => {
         const top = [curMonth, nextMonth].filter((m) => monthsPresent.includes(m));

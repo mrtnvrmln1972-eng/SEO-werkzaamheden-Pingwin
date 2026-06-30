@@ -11,7 +11,8 @@ export type TaskRow = {
   id?: number;
   categorie: string;
   taak: string;
-  toelichting: string;
+  toelichting: string;        // Toelichting Developer (intern)
+  klantToelichting?: string;  // korte uitleg voor de klant ("?"-tooltip)
   uren: number | null;
   status: string;
   maand: string;
@@ -52,13 +53,14 @@ function dedupeTasks(tasks: TaskRow[]): TaskRow[] {
 export async function getTasks(slug: string): Promise<TaskRow[]> {
   await ensureSchema();
   const { rows } = await sql`
-    SELECT id, categorie, taak, toelichting, uren, status, maand, link, wie, klant_zichtbaar, gemaild
+    SELECT id, categorie, taak, toelichting, klant_toelichting, uren, status, maand, link, wie, klant_zichtbaar, gemaild
     FROM client_tasks WHERE client_slug = ${slug} ORDER BY sort_order ASC, id ASC`;
   const mapped = rows.map((r) => ({
     id: r.id as number,
     categorie: r.categorie ?? "",
     taak: r.taak ?? "",
     toelichting: r.toelichting ?? "",
+    klantToelichting: r.klant_toelichting ?? "",
     uren: r.uren === null ? null : Number(r.uren),
     status: r.status ?? "",
     maand: r.maand ?? "",
@@ -88,8 +90,8 @@ export async function replaceTasks(slug: string, tasks: TaskRow[]): Promise<numb
     if (!t.taak || !t.taak.trim()) continue;
     const uren = t.uren === null || t.uren === undefined || Number.isNaN(Number(t.uren)) ? null : Number(t.uren);
     await sql`
-      INSERT INTO client_tasks (client_slug, sort_order, categorie, taak, toelichting, uren, status, maand, link, wie, klant_zichtbaar, gemaild, updated_at)
-      VALUES (${slug}, ${i}, ${t.categorie || null}, ${t.taak.trim()}, ${t.toelichting || null}, ${uren},
+      INSERT INTO client_tasks (client_slug, sort_order, categorie, taak, toelichting, klant_toelichting, uren, status, maand, link, wie, klant_zichtbaar, gemaild, updated_at)
+      VALUES (${slug}, ${i}, ${t.categorie || null}, ${t.taak.trim()}, ${t.toelichting || null}, ${t.klantToelichting || null}, ${uren},
               ${t.status || null}, ${(t.maand || "").toLowerCase() || null}, ${t.link || null}, ${t.wie || null}, ${!!t.klantZichtbaar}, ${!!t.gemaild}, now())`;
     n++;
   }

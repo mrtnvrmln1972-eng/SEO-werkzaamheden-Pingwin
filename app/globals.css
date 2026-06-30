@@ -155,6 +155,12 @@ tbody td:last-child { text-align: center; }
 .badge-done.bezig { background: #FFF3E0; color: #E65100; }
 .doc-link { color: var(--orange); text-decoration: none; font-weight: 600; font-size: 13px; transition: color 0.2s; }
 .doc-link:hover { color: var(--orange-dark); text-decoration: underline; }
+/* Klant-toelichting als "?"-tooltip bij de taaknaam */
+.task-name { display: inline-flex; align-items: center; gap: 8px; }
+.task-help { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: var(--gray-light); color: var(--gray); font-size: 11px; font-weight: 700; cursor: help; position: relative; flex: 0 0 auto; }
+.task-help:hover, .task-help:focus { background: var(--orange); color: #fff; outline: none; }
+.task-help::after { content: attr(data-tip); position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%); background: #1f2430; color: #fff; padding: 8px 11px; border-radius: 6px; font-size: 12px; font-weight: 400; line-height: 1.45; white-space: normal; width: max-content; max-width: 260px; box-shadow: 0 6px 18px rgba(0,0,0,0.18); opacity: 0; visibility: hidden; transition: opacity 0.12s; z-index: 50; pointer-events: none; }
+.task-help:hover::after, .task-help:focus::after { opacity: 1; visibility: visible; }
 .muted { color: #ccc; font-size: 12px; }
 
 /* Footer */
@@ -555,6 +561,17 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .row-send { background: none; border: none; cursor: pointer; font-size: 18px; line-height: 1; opacity: 0.65; padding: 2px 4px; }
 .row-send:hover { opacity: 1; }
 .task-table .row-del { font-size: 20px; }
+/* Klant-toelichting knop + popover */
+.row-info { width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--border); background: var(--white); color: var(--gray); font-size: 12px; font-weight: 700; line-height: 1; cursor: pointer; padding: 0; flex: 0 0 auto; }
+.row-info:hover { border-color: var(--orange); color: var(--orange); }
+.row-info.has { background: var(--orange); border-color: var(--orange); color: #fff; }
+.klant-pop-overlay { position: fixed; inset: 0; z-index: 40; }
+.klant-pop { position: absolute; right: 0; top: 28px; z-index: 41; width: 280px; background: var(--white); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.14); padding: 10px; text-align: left; }
+.klant-pop-head { font-size: 12px; font-weight: 700; color: var(--dark); margin-bottom: 6px; }
+.klant-pop-area { width: 100%; min-height: 80px; font-family: 'Montserrat', sans-serif; font-size: 13px; color: var(--dark); border: 1px solid var(--border); border-radius: 6px; padding: 7px 9px; outline: none; resize: vertical; }
+.klant-pop-area:focus { border-color: var(--orange); }
+.klant-pop-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; gap: 8px; }
+.klant-pop-hint { font-size: 11px; color: var(--gray); }
 .client-frame-card { padding: 0; overflow: hidden; }
 .client-frame-card .ck-section-head { padding: 14px 18px 12px; margin-bottom: 0; }
 .client-frame { width: 100%; height: 1400px; border: 0; border-top: 1px solid var(--border); display: block; }

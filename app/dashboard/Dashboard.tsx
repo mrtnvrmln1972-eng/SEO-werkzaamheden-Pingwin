@@ -276,7 +276,6 @@ export default function Dashboard({ name, sheetId, gid, budget, adminPreview, in
                 <thead>
                   <tr>
                     <th>Taak</th>
-                    <th>Toelichting</th>
                     <th>Bestede tijd</th>
                     <th>Status</th>
                     <th>Document</th>
@@ -285,7 +284,7 @@ export default function Dashboard({ name, sheetId, gid, budget, adminPreview, in
                 <tbody>
                   {view.monthTasks.length === 0 && (
                     <tr>
-                      <td colSpan={5} style={{ textAlign: "center", padding: 40, color: "var(--gray)" }}>
+                      <td colSpan={4} style={{ textAlign: "center", padding: 40, color: "var(--gray)" }}>
                         Geen werkzaamheden gevonden voor deze maand.
                       </td>
                     </tr>
@@ -321,7 +320,7 @@ function renderRows(monthTasks: DashboardData["tasks"]) {
       lastCat = task.categorie;
       rows.push(
         <tr className="cat-row" key={`cat-${i}`}>
-          <td colSpan={5}>{task.categorie}</td>
+          <td colSpan={4}>{task.categorie}</td>
         </tr>,
       );
     }
@@ -336,10 +335,15 @@ function renderRows(monthTasks: DashboardData["tasks"]) {
 
     const isUrl = task.link && /^https?:\/\//i.test(task.link.trim());
 
+    const uitleg = (task.klantToelichting || "").trim();
     rows.push(
       <tr key={`task-${i}`} className={done ? "row-done" : "row-open"}>
-        <td><strong dangerouslySetInnerHTML={{ __html: safeHtml(task.taak) }} /></td>
-        <td><span className="task-desc" dangerouslySetInnerHTML={{ __html: safeHtml(task.toelichting) }} /></td>
+        <td>
+          <span className="task-name">
+            <strong dangerouslySetInnerHTML={{ __html: safeHtml(task.taak) }} />
+            {uitleg && <span className="task-help" tabIndex={0} data-tip={uitleg} aria-label={uitleg}>?</span>}
+          </span>
+        </td>
         <td>{minutes > 0 ? formatTime(minutes) : <span className="muted">&mdash;</span>}</td>
         <td><span className={`badge-done ${badgeClass}`}>{badgeLabel}</span></td>
         <td>

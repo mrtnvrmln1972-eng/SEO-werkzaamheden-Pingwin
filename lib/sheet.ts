@@ -12,6 +12,7 @@ export type Task = {
   categorie: string;
   taak: string;
   toelichting: string;
+  klantToelichting?: string; // korte uitleg voor de klant ("?"-tooltip)
   standaardTijd: number; // minuten
   status: string;
   maand: string;
@@ -58,6 +59,7 @@ export function tasksToDashboardData(tasks: TaskRow[], budget: ClientBudget): Da
       categorie: t.categorie || "",
       taak: t.taak,
       toelichting: t.toelichting || "",
+      klantToelichting: t.klantToelichting || "",
       standaardTijd: Number(t.uren) || 0,
       status: t.status || "",
       maand: (t.maand || "").toLowerCase(),

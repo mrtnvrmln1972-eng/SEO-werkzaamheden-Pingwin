@@ -104,6 +104,9 @@ async function init(): Promise<void> {
   await sql`CREATE INDEX IF NOT EXISTS idx_client_tasks_slug ON client_tasks (client_slug, sort_order)`;
   // Markeert of een taak naar de developer is gemaild (blijft oranje tot 'Klaar').
   await sql`ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS gemaild BOOLEAN NOT NULL DEFAULT false`;
+  // Klant-toelichting: korte uitleg voor de klant (verschijnt als "?"-tooltip in
+  // het klantdashboard). De bestaande 'toelichting' is voor de developer (intern).
+  await sql`ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS klant_toelichting TEXT`;
 
   // Focus-blok per klant: afgesproken zoekwoorden + pagina's en snelle links
   // (linkbuilding-sheets, Search Console, Analytics). Eén JSON-rij per klant.
