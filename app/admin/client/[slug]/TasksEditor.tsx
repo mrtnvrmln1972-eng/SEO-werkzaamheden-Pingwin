@@ -156,7 +156,7 @@ function PopEditor({ html, onChange }: { html: string; onChange: (html: string) 
   );
 }
 
-export default function TasksEditor({ slug, initialTasks, budget, clientName, highlight }: { slug: string; initialTasks: TaskRow[]; budget: Budget; clientName: string; highlight?: string }) {
+export default function TasksEditor({ slug, initialTasks, budget, clientName, clientEmail, highlight }: { slug: string; initialTasks: TaskRow[]; budget: Budget; clientName: string; clientEmail?: string; highlight?: string }) {
   const uidRef = useRef(1);
   // "Te doen" is verwijderd; migreer bestaande taken naar "Gepland" bij laden.
   const normalizeStatus = (s: string) => s === "Te doen" ? "Gepland" : s;
@@ -168,8 +168,9 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, hi
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [klantPopRow, setKlantPopRow] = useState<number | null>(null);
 
-  // "Verstuur naar developer"
+  // Mail-venster (naar developer of naar klant)
   const [showCompose, setShowCompose] = useState(false);
+  const [composeMode, setComposeMode] = useState<"dev" | "klant">("dev");
   const [devTo, setDevTo] = useState("");
   const [devNote, setDevNote] = useState("");
   const [devSel, setDevSel] = useState<Set<number>>(new Set());
@@ -278,42 +279,68 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, hi
     } catch { setMsg("Opslaan mislukt."); } finally { setBusy(false); }
   }
 
-  // Open het mail-venster. Zonder argument: alle open developer-taken voorgevinkt.
-  // Met indices (de ✉-knop op een rij): precies die taak/taken voorgevinkt.
-  function openComposeFor(idxs?: number[]) {
+  // Open het mail-venster in de gekozen modus. Zonder argument: de aangevinkte
+  // taken; met indices (de ✉-knop op een rij): precies die taak/taken.
+  function openComposeFor(idxs?: number[], mode: "dev" | "klant" = "dev") {
+    setComposeMode(mode);
     let sel = idxs ?? rows.map((r, i) => ({ r, i })).filter((x) => x.r._mail).map((x) => x.i);
-    // Niets aangevinkt? Val terug op alle developer-taken.
-    if (sel.length === 0) sel = rows.map((r, i) => ({ r, i })).filter((x) => (x.r.wie || "").toLowerCase() === "dev").map((x) => x.i);
+    // Niets aangevinkt bij 'developer'? Val terug op alle developer-taken.
+    if (sel.length === 0 && mode === "dev") sel = rows.map((r, i) => ({ r, i })).filter((x) => (x.r.wie || "").toLowerCase() === "dev").map((x) => x.i);
     setDevSel(new Set(sel));
-    try { setDevTo(localStorage.getItem("pingwin-dev-email") || "tony@pingwin.nl"); } catch { setDevTo("tony@pingwin.nl"); }
+    if (mode === "klant") {
+      setDevTo(clientEmail || "");
+    } else {
+      try { setDevTo(localStorage.getItem("pingwin-dev-email") || "tony@pingwin.nl"); } catch { setDevTo("tony@pingwin.nl"); }
+    }
     setDevNote(""); setDevMsg(""); setShowCompose(true);
   }
   function toggleDevSel(i: number) {
     setDevSel((s) => { const c = new Set(s); if (c.has(i)) c.delete(i); else c.add(i); return c; });
   }
-  async function sendDev() {
+  async function sendCompose() {
     const selected = rows.map((r, i) => ({ r, i })).filter((x) => devSel.has(x.i)).map((x) => x.r);
     if (!devTo.trim() || selected.length === 0) { setDevMsg("Vul een ontvanger in en kies minstens één taak."); return; }
-    const list = selected.map((t) =>
-      `<li><strong>${esc(stripHtml(t.taak))}</strong>${t.maand ? ` <em>(${esc(t.maand)})</em>` : ""}${t.toelichting ? ` — ${esc(stripHtml(t.toelichting))}` : ""}${t.link ? ` — <a href="${esc(t.link)}">document</a>` : ""}</li>`,
-    ).join("");
     const note = devNote.trim() ? `<p>${esc(devNote).replace(/\n/g, "<br>")}</p>` : "";
-    const ids = selected.map((t) => t.id).filter((x): x is number => typeof x === "number");
-    const dashUrl = typeof window !== "undefined"
-      ? `${window.location.origin}/admin/client/${slug}?tab=werkzaamheden${ids.length ? `&highlight=${ids.join(",")}` : ""}`
-      : "";
-    const dashLink = dashUrl ? `<p style="margin-top:14px;color:#555;font-size:13px">Bekijk deze taken in het dashboard: <a href="${esc(dashUrl)}">open in het dashboard &rarr;</a></p>` : "";
-    const html = `${note}<p><strong>Werkzaamheden:</strong></p><ul>${list}</ul>${dashLink}`;
+
+    let html: string;
+    const subject = `Werkzaamheden — ${clientName}`;
+
+    if (composeMode === "klant") {
+      // Klant-mail: taaknaam + de klant-toelichting + documentlink. Geen interne
+      // developer-opmerkingen. Met een link terug naar het klant-dashboard.
+      const list = selected.map((t) => {
+        const uitleg = stripHtml(t.klantToelichting || "");
+        const doc = t.link ? ` &mdash; <a href="${esc(t.link)}">bekijk document</a>` : "";
+        return `<li><strong>${esc(stripHtml(t.taak))}</strong>${uitleg ? `<br><span style="color:#555">${esc(uitleg)}</span>` : ""}${doc}</li>`;
+      }).join("");
+      const dashUrl = typeof window !== "undefined" ? `${window.location.origin}/login` : "";
+      const dashLink = dashUrl ? `<p style="margin-top:14px"><a href="${esc(dashUrl)}">Bekijk dit zelf in je dashboard</a></p>` : "";
+      html = `${note}<p><strong>Werkzaamheden:</strong></p><ul>${list}</ul>${dashLink}`;
+    } else {
+      // Developer-mail: taaknaam + interne opmerking + documentlink + link naar de cockpit.
+      const list = selected.map((t) =>
+        `<li><strong>${esc(stripHtml(t.taak))}</strong>${t.maand ? ` <em>(${esc(t.maand)})</em>` : ""}${t.toelichting ? ` &mdash; ${esc(stripHtml(t.toelichting))}` : ""}${t.link ? ` &mdash; <a href="${esc(t.link)}">document</a>` : ""}</li>`,
+      ).join("");
+      const ids = selected.map((t) => t.id).filter((x): x is number => typeof x === "number");
+      const dashUrl = typeof window !== "undefined"
+        ? `${window.location.origin}/admin/client/${slug}?tab=werkzaamheden${ids.length ? `&highlight=${ids.join(",")}` : ""}`
+        : "";
+      const dashLink = dashUrl ? `<p style="margin-top:14px;color:#555;font-size:13px">Bekijk deze taken in het dashboard: <a href="${esc(dashUrl)}">open in het dashboard &rarr;</a></p>` : "";
+      html = `${note}<p><strong>Werkzaamheden:</strong></p><ul>${list}</ul>${dashLink}`;
+    }
+
     setDevBusy(true); setDevMsg("");
     try {
-      const res = await fetch("/api/admin/mail", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: "compose", to: devTo, subject: `Werkzaamheden — ${clientName}`, html }) });
+      const res = await fetch("/api/admin/mail", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: "compose", to: devTo, subject, html }) });
       const data = await res.json();
       if (data.ok) {
-        try { localStorage.setItem("pingwin-dev-email", devTo.trim()); } catch { /* ignore */ }
-        // Gemailde taken markeren (blijven oranje tot status 'Klaar') en direct opslaan.
-        const newRows = rows.map((r, i) => devSel.has(i) ? { ...r, gemaild: true } : r);
-        setRows(newRows);
-        fetch("/api/admin/tasks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, tasks: newRows.map((r) => ({ ...r, klantZichtbaar: true })) }) }).catch(() => {});
+        if (composeMode === "dev") {
+          try { localStorage.setItem("pingwin-dev-email", devTo.trim()); } catch { /* ignore */ }
+          // Gemailde developer-taken markeren (blijven oranje tot status 'Klaar') en opslaan.
+          const newRows = rows.map((r, i) => devSel.has(i) ? { ...r, gemaild: true } : r);
+          setRows(newRows);
+          fetch("/api/admin/tasks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, tasks: newRows.map((r) => ({ ...r, klantZichtbaar: true })) }) }).catch(() => {});
+        }
         setDevMsg(`Verstuurd naar ${(data.sentTo || []).join(", ") || devTo}.`);
         setTimeout(() => setShowCompose(false), 1400);
       } else setDevMsg(data.error || "Versturen mislukt.");
@@ -347,7 +374,7 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, hi
               <col style={{ width: "66px" }} /><col style={{ width: "104px" }} /><col style={{ width: "150px" }} />
               <col style={{ width: "118px" }} /><col style={{ width: "92px" }} /><col style={{ width: "44px" }} /><col style={{ width: "78px" }} />
             </colgroup>
-            <thead><tr><th></th><th>Taak</th><th>Opm. developer</th><th>Uren</th><th>Status</th><th>Link</th><th>Wie</th><th>Maand</th><th title="Aanvinken om mee te nemen in een mail-batch naar de developer" className="col-center">Mail</th><th></th></tr></thead>
+            <thead><tr><th></th><th>Taak</th><th>Opm. developer</th><th>Uren</th><th>Status</th><th>Link</th><th>Wie</th><th>Maand</th><th title="Aanvinken om mee te nemen in een mail naar developer of klant" className="col-center">Kies</th><th></th></tr></thead>
             <tbody>
               {ordered.map(({ r, i }) => {
                 const isDev = (r.wie || "").toLowerCase() === "dev";
@@ -380,7 +407,7 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, hi
                     <td><div className="cell-link"><input value={r.link} onChange={(e) => update(i, { link: e.target.value })} placeholder="https://..." />{r.link && <a href={r.link} target="_blank" rel="noreferrer">↗</a>}</div></td>
                     <td><button type="button" className={"wie-badge " + (isDev ? "wie-dev" : "wie-seo")} onClick={() => update(i, { wie: isDev ? "SEO" : "Dev" })} title="Klik om te wisselen tussen SEO en Developer">{isDev ? "Developer" : "SEO"}</button></td>
                     <td><select value={r.maand} onChange={(e) => update(i, { maand: e.target.value })}><option value="">—</option>{MONTHS.map((m) => <option key={m} value={m}>{m}</option>)}</select></td>
-                    <td className="cell-check col-center"><input type="checkbox" checked={!!r._mail} onChange={(e) => update(i, { _mail: e.target.checked })} title="Meenemen in de mail-batch naar de developer" /></td>
+                    <td className="cell-check col-center"><input type="checkbox" checked={!!r._mail} onChange={(e) => update(i, { _mail: e.target.checked })} title="Aanvinken om mee te nemen in een mail naar developer of klant" /></td>
                     <td className="row-actions">
                       <button type="button" className="row-send" onClick={() => openComposeFor([i])} title="Deze taak mailen naar de developer">✉</button>
                       <button type="button" className="row-del" onClick={() => removeRow(i)} title="Verwijderen">×</button>
@@ -446,7 +473,8 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, hi
             </select>
           </div>
           <span className="werk-head-actions">
-            <button type="button" className="ghost-btn" onClick={() => openComposeFor()}>✉ Naar developer</button>
+            <button type="button" className="ghost-btn" onClick={() => openComposeFor(undefined, "dev")}>✉ Naar developer</button>
+            <button type="button" className="ghost-btn" onClick={() => openComposeFor(undefined, "klant")}>✉ Naar klant</button>
             <button type="button" className="primary-btn small" onClick={save} disabled={busy}>{busy ? "Opslaan..." : "Alles opslaan"}</button>
           </span>
         </div>
@@ -472,11 +500,11 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, hi
       {showCompose && (
         <div className="compose-overlay" onClick={() => setShowCompose(false)}>
           <div className="compose-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="compose-head"><span>Werkzaamheden naar developer</span><button type="button" className="chat-float-close" onClick={() => setShowCompose(false)}>&times;</button></div>
+            <div className="compose-head"><span>{composeMode === "klant" ? "Werkzaamheden naar de klant" : "Werkzaamheden naar de developer"}</span><button type="button" className="chat-float-close" onClick={() => setShowCompose(false)}>&times;</button></div>
             <div className="compose-body">
-              <label className="compose-label">Aan (e-mail developer)</label>
-              <input className="compose-input" value={devTo} onChange={(e) => setDevTo(e.target.value)} placeholder="tony@pingwin.nl" />
-              <label className="compose-label">Bericht (optioneel)</label>
+              <label className="compose-label">{composeMode === "klant" ? "Aan (e-mail klant)" : "Aan (e-mail developer)"}</label>
+              <input className="compose-input" value={devTo} onChange={(e) => setDevTo(e.target.value)} placeholder={composeMode === "klant" ? "klant@bedrijf.nl" : "tony@pingwin.nl"} />
+              <label className="compose-label">Bericht / toelichting (optioneel)</label>
               <textarea className="compose-input" rows={3} value={devNote} onChange={(e) => setDevNote(e.target.value)} placeholder="Korte begeleidende tekst..." />
               <label className="compose-label">Taken (vink aan wat mee moet)</label>
               <div className="compose-list">
@@ -486,13 +514,14 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, hi
                     <span>{r.maand ? <em>[{r.maand}] </em> : ""}{stripHtml(r.taak) || "(leeg)"}{r.status ? ` — ${r.status}` : ""}</span>
                   </label>
                 ) : null)}
-                {devSel.size === 0 && <div className="muted">Geen taken geselecteerd. Vink in de tabel taken aan in de kolom &ldquo;Mail&rdquo;.</div>}
+                {devSel.size === 0 && <div className="muted">Geen taken geselecteerd. Vink in de tabel taken aan in de kolom &ldquo;Kies&rdquo;.</div>}
               </div>
+              {composeMode === "klant" && <div className="muted" style={{ marginTop: 6 }}>Onderaan komt automatisch een link &ldquo;Bekijk dit zelf in je dashboard&rdquo;.</div>}
               {devMsg && <div className={devMsg.startsWith("Verstuurd") ? "saved-msg" : "login-error"} style={{ marginTop: 8 }}>{devMsg}</div>}
             </div>
             <div className="compose-foot">
               <button type="button" className="logout-btn" onClick={() => setShowCompose(false)}>Annuleren</button>
-              <button type="button" className="primary-btn small" onClick={sendDev} disabled={devBusy}>{devBusy ? "Versturen..." : "Verstuur per mail"}</button>
+              <button type="button" className="primary-btn small" onClick={sendCompose} disabled={devBusy}>{devBusy ? "Versturen..." : "Verstuur per mail"}</button>
             </div>
           </div>
         </div>
