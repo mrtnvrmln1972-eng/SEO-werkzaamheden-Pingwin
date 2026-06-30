@@ -1,11 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-
-// Voeg target="_blank" toe aan alle links vóór weergave.
-function withNewTab(html: string): string {
-  return html.replace(/<a\s/gi, '<a target="_blank" rel="noreferrer" ');
-}
+import React, { useEffect, useRef, useState } from "react";
 
 // Zet URL's in platte tekst om naar klikbare links.
 function linkifyText(text: string): string {
@@ -18,49 +13,94 @@ function linkifyText(text: string): string {
     .replace(/\n/g, "<br>");
 }
 
-export default function FocusBlock({ slug, standalone }: { slug: string; standalone?: boolean }) {
-  const [html, setHtml] = useState("");
-  const [editing, setEditing] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [loaded, setLoaded] = useState(false);
-  const editorRef = useRef<HTMLDivElement | null>(null);
+// Strip font/kleur-stijlen en rondslingerende meta/class-attributen; behoudt links en structuur.
+function cleanPasteHtml(html: string): string {
+  return html
+    .replace(/<colgroup[\s\S]*?<\/colgroup>/gi, "")
+    .replace(/<meta[^>]*>/gi, "")
+    .replace(/\s*(?:color|font-size|font-family|background(?:-color)?)\s*:[^;"]+;?/gi, "")
+    .replace(/\s*style=""\s*/gi, " ")
+    .replace(/\s*class="[^"]*"/gi, "")
+    .replace(/\s*id="[^"]*"/gi, "")
+    .replace(/&nbsp;/gi, " ");
+}
 
+export default function FocusBlock({ slug, standalone }: { slug: string; standalone?: boolean }) {
+  const [initialHtml, setInitialHtml] = useState<string | null>(null);
+  const [saving, setSaving] = useState<"idle" | "saving" | "saved">("idle");
+  const editorRef = useRef<HTMLDivElement | null>(null);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const initializedRef = useRef(false);
+
+  // Laad de opgeslagen inhoud.
   useEffect(() => {
     let off = false;
     fetch(`/api/admin/focus?slug=${encodeURIComponent(slug)}`)
       .then((r) => r.json())
-      .then((d) => { if (off) return; if (d.ok) setHtml(d.focus.html || ""); setLoaded(true); })
-      .catch(() => setLoaded(true));
+      .then((d) => { if (!off) setInitialHtml(d.ok ? (d.focus.html || "") : ""); })
+      .catch(() => { if (!off) setInitialHtml(""); });
     return () => { off = true; };
   }, [slug]);
 
+  // Zet de inhoud eenmalig in de editor zodra die gerenderd is.
   useEffect(() => {
-    if (editing && editorRef.current) editorRef.current.innerHTML = html || "";
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editing]);
+    if (initialHtml !== null && editorRef.current && !initializedRef.current) {
+      editorRef.current.innerHTML = initialHtml;
+      initializedRef.current = true;
+    }
+  }, [initialHtml]);
+
+  function fixLinks() {
+    editorRef.current?.querySelectorAll("a[href]").forEach((a) => {
+      (a as HTMLAnchorElement).target = "_blank";
+      (a as HTMLAnchorElement).rel = "noreferrer";
+    });
+  }
+
+  function triggerSave() {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    setSaving("idle");
+    saveTimerRef.current = setTimeout(async () => {
+      const content = editorRef.current?.innerHTML || "";
+      setSaving("saving");
+      try {
+        const res = await fetch("/api/admin/focus", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ slug, html: content }),
+        });
+        const d = await res.json();
+        if (d.ok) { setSaving("saved"); setTimeout(() => setSaving("idle"), 2500); }
+        else setSaving("idle");
+      } catch { setSaving("idle"); }
+    }, 1000);
+  }
 
   function cmd(command: string, value?: string) {
     editorRef.current?.focus();
     document.execCommand(command, false, value);
   }
 
-  async function saveNow() {
-    const content = editorRef.current?.innerHTML || "";
-    setBusy(true);
-    try {
-      const res = await fetch("/api/admin/focus", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, html: content }) });
-      const d = await res.json();
-      if (d.ok) { setHtml(d.focus.html || ""); setEditing(false); }
-    } finally { setBusy(false); }
-  }
-
   function addLink() {
     editorRef.current?.focus();
     const url = window.prompt("Link naar (URL of document):", "https://");
     if (!url) return;
-    document.execCommand("createLink", false, url);
-    // auto-save direct na link aanmaken
-    saveNow();
+    const sel = window.getSelection();
+    if (sel && !sel.isCollapsed) document.execCommand("createLink", false, url);
+    else document.execCommand("insertHTML", false, `<a href="${url}" target="_blank" rel="noreferrer">${url}</a>`);
+    fixLinks();
+    triggerSave();
+  }
+
+  function onInput() {
+    fixLinks();
+    triggerSave();
+  }
+
+  // Klik op een link opent hem in een nieuw tabblad (ook in de bewerkbare editor).
+  function onClick(e: React.MouseEvent) {
+    const a = (e.target as HTMLElement).closest("a[href]") as HTMLAnchorElement | null;
+    if (a) { e.preventDefault(); window.open(a.href, "_blank", "noreferrer"); }
   }
 
   function onKeyDown(e: React.KeyboardEvent) {
@@ -68,22 +108,25 @@ export default function FocusBlock({ slug, standalone }: { slug: string; standal
       e.preventDefault();
       addLink();
     }
+    // Cmd+Shift+V: plak zonder opmaak
+    if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "v") {
+      e.preventDefault();
+      navigator.clipboard.readText()
+        .then((text) => { if (text) { document.execCommand("insertText", false, text); triggerSave(); } })
+        .catch(() => {});
+    }
   }
 
   function onPaste(e: React.ClipboardEvent) {
     const pasteHtml = e.clipboardData.getData("text/html");
     const pasteText = e.clipboardData.getData("text/plain");
 
-    // Sheets of Excel: bevat een <table>
+    // Sheets/Excel: tabel
     if (pasteHtml && /<table[\s>]/i.test(pasteHtml)) {
       e.preventDefault();
-      const clean = pasteHtml
-        .replace(/<colgroup[\s\S]*?<\/colgroup>/gi, "")
-        .replace(/\s*style="[^"]*"/gi, "")
-        .replace(/\s*class="[^"]*"/gi, "")
-        .replace(/<span\b[^>]*>/gi, "").replace(/<\/span>/gi, "")
-        .replace(/&nbsp;/gi, " ");
-      document.execCommand("insertHTML", false, clean);
+      document.execCommand("insertHTML", false, cleanPasteHtml(pasteHtml));
+      fixLinks();
+      triggerSave();
       return;
     }
 
@@ -99,55 +142,58 @@ export default function FocusBlock({ slug, standalone }: { slug: string; standal
         ).join("")
       }</tbody></table>`;
       document.execCommand("insertHTML", false, tableHtml);
+      triggerSave();
       return;
     }
-    // Plakte tekst met URL's: auto-linken
+
+    // HTML met links (bijv. hyperlinked woord uit browser of Google Docs)
+    if (pasteHtml && /<a\s/i.test(pasteHtml)) {
+      e.preventDefault();
+      document.execCommand("insertHTML", false, cleanPasteHtml(pasteHtml));
+      fixLinks();
+      triggerSave();
+      return;
+    }
+
+    // Platte tekst met URL's: auto-linken
     if (!pasteHtml && pasteText && /https?:\/\//i.test(pasteText)) {
       e.preventDefault();
       document.execCommand("insertHTML", false, linkifyText(pasteText));
+      triggerSave();
       return;
     }
-    // Normaal plakken: browser-standaard
+
+    // Standaard paste; links daarna alsnog fixen
+    setTimeout(() => { fixLinks(); triggerSave(); }, 0);
   }
 
-  if (!loaded) return null;
+  if (initialHtml === null) return null;
 
-  const editBtn = (
-    <button type="button" className="focus-edit" onClick={() => setEditing((e) => !e)}>{editing ? "Sluiten" : "Bewerken"}</button>
+  const saveLabel = saving === "saving" ? "Opslaan..." : saving === "saved" ? "✓ Opgeslagen" : "";
+
+  const toolbar = (
+    <div className="focus-toolbar">
+      <button type="button" onClick={() => cmd("bold")} title="Vet (Cmd+B)"><strong>B</strong></button>
+      <button type="button" onClick={() => cmd("italic")} title="Cursief (Cmd+I)"><em>I</em></button>
+      <button type="button" onClick={() => cmd("insertUnorderedList")} title="Bullets">&bull; lijst</button>
+      <button type="button" onClick={() => cmd("insertOrderedList")} title="Genummerd">1. lijst</button>
+      <button type="button" onClick={addLink} title="Link toevoegen (Cmd+K)">&#128279; link</button>
+      <button type="button" onClick={() => cmd("unlink")} title="Link verwijderen">link weg</button>
+      {saveLabel && <span className="focus-save-status">{saveLabel}</span>}
+    </div>
   );
 
-  const content = (
-    <>
-      {!editing && (
-        html.trim()
-          ? <div className="focus-rich" dangerouslySetInnerHTML={{ __html: withNewTab(html) }} />
-          : <div className="muted" style={{ fontSize: 13 }}>Nog niets ingevuld. Klik op &ldquo;Bewerken&rdquo; en plak of typ je zoekwoorden en links.</div>
-      )}
-
-      {editing && (
-        <div className="focus-editor">
-          <div className="focus-toolbar">
-            <button type="button" onClick={() => cmd("bold")} title="Vet"><strong>B</strong></button>
-            <button type="button" onClick={() => cmd("italic")} title="Cursief"><em>I</em></button>
-            <button type="button" onClick={() => cmd("insertUnorderedList")} title="Bullets">&bull; lijst</button>
-            <button type="button" onClick={() => cmd("insertOrderedList")} title="Genummerd">1. lijst</button>
-            <button type="button" onClick={addLink} title="Link toevoegen (of Cmd+K)">&#128279; link</button>
-            <button type="button" onClick={() => cmd("unlink")} title="Link verwijderen">link weg</button>
-          </div>
-          <div
-            ref={editorRef}
-            className="focus-rich focus-editable"
-            contentEditable
-            suppressContentEditableWarning
-            onKeyDown={onKeyDown}
-            onPaste={onPaste}
-          />
-          <div style={{ marginTop: 10 }}>
-            <button type="button" className="primary-btn small" onClick={saveNow} disabled={busy}>{busy ? "Opslaan..." : "Opslaan"}</button>
-          </div>
-        </div>
-      )}
-    </>
+  const editor = (
+    <div
+      ref={editorRef}
+      className="focus-rich focus-editable"
+      contentEditable
+      suppressContentEditableWarning
+      onInput={onInput}
+      onClick={onClick}
+      onKeyDown={onKeyDown}
+      onPaste={onPaste}
+    />
   );
 
   if (standalone) {
@@ -155,9 +201,9 @@ export default function FocusBlock({ slug, standalone }: { slug: string; standal
       <>
         <div className="ck-section-head">
           <span>Zoekwoorden &amp; links</span>
-          {editBtn}
         </div>
-        {content}
+        {toolbar}
+        {editor}
       </>
     );
   }
@@ -166,9 +212,9 @@ export default function FocusBlock({ slug, standalone }: { slug: string; standal
     <div className="sov-tasks">
       <div className="sov-tasks-head focus-head">
         <span>Zoekwoorden &amp; links</span>
-        {editBtn}
       </div>
-      {content}
+      {toolbar}
+      {editor}
     </div>
   );
 }
