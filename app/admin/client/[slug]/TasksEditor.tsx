@@ -32,6 +32,13 @@ function RichCell({ html, onChange, placeholder }: { html: string; onChange: (ht
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   function emit() { onChange(ref.current?.innerHTML || ""); }
+  // Zet target="_blank" op alle links in de cel (ook nieuw aangemaakte).
+  function fixLinks() {
+    ref.current?.querySelectorAll("a[href]").forEach((a) => {
+      (a as HTMLAnchorElement).target = "_blank";
+      (a as HTMLAnchorElement).rel = "noreferrer";
+    });
+  }
   function onKey(e: React.KeyboardEvent) {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
       e.preventDefault();
@@ -39,7 +46,8 @@ function RichCell({ html, onChange, placeholder }: { html: string; onChange: (ht
       const url = window.prompt("Link naar (URL of document):", "https://");
       if (!url) return;
       if (sel && !sel.isCollapsed) document.execCommand("createLink", false, url);
-      else document.execCommand("insertHTML", false, `<a href="${url.replace(/"/g, "&quot;")}">${esc(url)}</a>`);
+      else document.execCommand("insertHTML", false, `<a href="${url.replace(/"/g, "&quot;")}" target="_blank" rel="noreferrer">${esc(url)}</a>`);
+      fixLinks();
       emit();
     }
   }

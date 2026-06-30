@@ -59,10 +59,6 @@ export default function ClientCockpit({
   const router = useRouter();
   const validTab = (t?: string): Tab => (t === "werkzaamheden" || t === "resultaten" || t === "klant" || t === "overzicht") ? t : "overzicht";
   const [tab, setTab] = useState<Tab>(validTab(initialTab));
-  const [editing, setEditing] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [saveError, setSaveError] = useState("");
   const [shQuery, setShQuery] = useState("");
   const [openEmail, setOpenEmail] = useState<string | null>(null);
   const replyRef = useRef<HTMLDivElement>(null);
@@ -161,28 +157,8 @@ export default function ClientCockpit({
     }
   }
 
-  const [f, setF] = useState({
-    status: client.cockpit.status || "",
-    lastContact: client.cockpit.lastContact || "",
-    emailDomain: client.cockpit.emailDomain || "",
-    workDocUrl: client.cockpit.workDocUrl || "",
-    resultsUrl: client.cockpit.resultsUrl || "",
-    notes: client.cockpit.notes || "",
-    email: client.email || "",
-    sheetUrl: client.sheetId
-      ? `https://docs.google.com/spreadsheets/d/${client.sheetId}/edit#gid=${client.gid}`
-      : "",
-    maandbudget: client.budget.maandbudget ? String(client.budget.maandbudget) : "",
-    linkbuilding: client.budget.linkbuilding ? String(client.budget.linkbuilding) : "",
-    uurtarief: client.budget.uurtarief ? String(client.budget.uurtarief) : "",
-    beschikbareUren: client.budget.beschikbareUren ? String(client.budget.beschikbareUren) : "",
-  });
-
-  const hasSheet = !!client.sheetId;
-  const sheetUrl = hasSheet
-    ? `https://docs.google.com/spreadsheets/d/${client.sheetId}/edit#gid=${client.gid}`
-    : "";
-  const dashboardUrl = `/admin/preview/${client.slug}`;
+  const workDocUrl = client.cockpit.workDocUrl || "";
+  const resultsUrl = client.cockpit.resultsUrl || "";
   const clientMailQuery = (client.email || client.domain || "").trim();
   const lastMailDate = emails.find((e) => e.receivedAt)?.receivedAt || null;
 
@@ -213,34 +189,6 @@ export default function ClientCockpit({
     window.open(`https://mail.superhuman.com/${SUPERHUMAN_ACCOUNT}/search/${encodeURIComponent(q)}`, "_blank");
   }
 
-  function set(k: keyof typeof f, v: string) {
-    setF((p) => ({ ...p, [k]: v }));
-    setSaved(false);
-  }
-
-  async function save() {
-    setBusy(true);
-    setSaveError("");
-    try {
-      const res = await fetch("/api/admin/clients", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug: client.slug, ...f }),
-      });
-      const data = await res.json();
-      if (data.ok) {
-        setSaved(true);
-        setEditing(false);
-        router.refresh();
-      } else {
-        setSaveError(data.error || "Opslaan mislukt. Log opnieuw in en probeer het nog eens.");
-      }
-    } catch {
-      setSaveError("Opslaan mislukt (geen verbinding). Probeer het nog eens.");
-    } finally {
-      setBusy(false);
-    }
-  }
 
   return (
     <>
@@ -269,49 +217,29 @@ export default function ClientCockpit({
           </nav>
         </div>
         <div className="header-right">
-          <a className="logout-btn" href="/admin">&larr; Alle klanten</a>
-          {editing ? (
-            <button className="primary-btn small" onClick={save} disabled={busy}>
-              {busy ? "Opslaan..." : "Opslaan"}
-            </button>
-          ) : (
-            <button className="logout-btn" onClick={() => setEditing(true)}>Bewerken</button>
+          {lastMailDate && (
+            <div className="header-contact">
+              <span className="header-contact-label">Laatste contact</span>
+              <span className="header-contact-date">{fmtDate(lastMailDate)}</span>
+              <span className={"contact-badge " + contactColor(lastMailDate)}>{daysAgoLabel(lastMailDate)}</span>
+            </div>
           )}
+          <a className="logout-btn" href="/admin">&larr; Alle klanten</a>
         </div>
       </div>
 
       <div className="container">
-        {saved && <div className="saved-msg">Opgeslagen.</div>}
-        {saveError && <div className="login-error">{saveError}</div>}
 
         {tab === "overzicht" && (
           <>
-            <div className="cockpit-card">
-              <div className="ov-top">
-                <div className="ov-contact">
-                  <span className="ov-label">Laatste contact</span>
-                  {lastMailDate ? (
-                    <span>{fmtDate(lastMailDate)} <span className={"contact-badge " + contactColor(lastMailDate)}>{daysAgoLabel(lastMailDate)}</span></span>
-                  ) : <span className="muted">Nog geen mail</span>}
-                </div>
+            {(workDocUrl || resultsUrl) && (
+              <div className="cockpit-card">
                 <div className="quicklinks">
-                  <a className="ql" href={dashboardUrl}>Klant-dashboard</a>
-                  {hasSheet && <a className="ql" href={sheetUrl} target="_blank" rel="noreferrer">Google Sheet</a>}
-                  {f.workDocUrl && <a className="ql" href={f.workDocUrl} target="_blank" rel="noreferrer">Werkdocument</a>}
-                  {f.resultsUrl && <a className="ql" href={f.resultsUrl} target="_blank" rel="noreferrer">Resultaten</a>}
+                  {workDocUrl && <a className="ql" href={workDocUrl} target="_blank" rel="noreferrer">Werkdocument</a>}
+                  {resultsUrl && <a className="ql" href={resultsUrl} target="_blank" rel="noreferrer">Resultaten</a>}
                 </div>
               </div>
-              {editing && (
-                <>
-                  <Row label="Google Sheet-link">
-                    <input value={f.sheetUrl} onChange={(e) => set("sheetUrl", e.target.value)} placeholder="https://docs.google.com/spreadsheets/d/.../edit#gid=..." />
-                  </Row>
-                  <Row label="Werkdocument-link">
-                    <input value={f.workDocUrl} onChange={(e) => set("workDocUrl", e.target.value)} placeholder="https://docs.google.com/..." />
-                  </Row>
-                </>
-              )}
-            </div>
+            )}
 
             {(status.exchanges.length > 0 || monthTasks.thisMonth.length > 0 || monthTasks.nextMonth.length > 0 || status.mailActions.length > 0) && (
               <div className="cockpit-card">
@@ -786,7 +714,8 @@ function sanitizeEmail(html: string): string {
     .replace(/<\s*style[\s\S]*?<\s*\/\s*style\s*>/gi, "")
     .replace(/\son\w+\s*=\s*"[^"]*"/gi, "")
     .replace(/\son\w+\s*=\s*'[^']*'/gi, "")
-    .replace(/javascript:/gi, "");
+    .replace(/javascript:/gi, "")
+    .replace(/<a\s/gi, '<a target="_blank" rel="noreferrer" ');
 }
 
 function normSubject(s: string): string {
@@ -858,11 +787,3 @@ function shortUrl(url: string): string {
   }
 }
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="ck-row">
-      <div className="ck-label">{label}</div>
-      <div className="ck-value">{children}</div>
-    </div>
-  );
-}
