@@ -10,6 +10,7 @@ import type { GscData, Ga4Data } from "../../../../lib/google";
 import type { TaskRow } from "../../../../lib/tasks";
 import ChatPanel from "./ChatPanel";
 import TasksEditor from "./TasksEditor";
+import FocusBlock from "./FocusBlock";
 
 type Tab = "overzicht" | "werkzaamheden" | "resultaten" | "klant";
 
@@ -404,6 +405,8 @@ export default function ClientCockpit({
                         </ul>
                       )}
                     </div>
+
+                    <FocusBlock slug={client.slug} />
                   </div>
                 </div>
               </div>

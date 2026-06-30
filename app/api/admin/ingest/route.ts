@@ -4,6 +4,7 @@ import {
   type EmailSnapshot, type MetricSnapshot, type KeywordSnapshot, type PageSnapshot, type ClientStatus,
 } from "../../../../lib/snapshots";
 import { replaceTasks, type TaskRow } from "../../../../lib/tasks";
+import { saveFocus, type ClientFocus } from "../../../../lib/focus";
 import { setClientBudget } from "../../../../lib/clients";
 
 export const runtime = "nodejs";
@@ -45,6 +46,7 @@ export async function POST(req: NextRequest) {
       });
     }
     if (Array.isArray(body.tasks)) result.tasks = await replaceTasks(slug, body.tasks as TaskRow[]);
+    if (body.focus && typeof body.focus === "object") await saveFocus(slug, body.focus as Partial<ClientFocus>);
     if (body.domain || body.ahrefsProjectId) {
       await setClientMapping(slug, String(body.domain || "").trim() || null, String(body.ahrefsProjectId || "").trim() || null);
     }

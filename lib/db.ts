@@ -105,6 +105,15 @@ async function init(): Promise<void> {
   // Markeert of een taak naar de developer is gemaild (blijft oranje tot 'Klaar').
   await sql`ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS gemaild BOOLEAN NOT NULL DEFAULT false`;
 
+  // Focus-blok per klant: afgesproken zoekwoorden + pagina's en snelle links
+  // (linkbuilding-sheets, Search Console, Analytics). Eén JSON-rij per klant.
+  await sql`
+    CREATE TABLE IF NOT EXISTS client_focus (
+      client_slug TEXT PRIMARY KEY,
+      data        JSONB NOT NULL DEFAULT '{}'::jsonb,
+      updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    )`;
+
   // OAuth-tokens voor externe koppelingen (Microsoft Graph, Google).
   // Eén rij per provider; bewaart de refresh-token waarmee de app zelf
   // access-tokens vernieuwt. Alleen via het admin-beveiligde koppel-pad gevuld.
