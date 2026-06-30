@@ -7,7 +7,18 @@ function withNewTab(html: string): string {
   return html.replace(/<a\s/gi, '<a target="_blank" rel="noreferrer" ');
 }
 
-export default function FocusBlock({ slug }: { slug: string }) {
+// Zet URL's in platte tekst om naar klikbare links.
+function linkifyText(text: string): string {
+  const escaped = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return escaped
+    .replace(/https?:\/\/[^\s<>"']+/gi, (url) => {
+      const clean = url.replace(/[.,;:!?)"']+$/, "");
+      return `<a href="${clean}" target="_blank" rel="noreferrer">${clean}</a>`;
+    })
+    .replace(/\n/g, "<br>");
+}
+
+export default function FocusBlock({ slug, standalone }: { slug: string; standalone?: boolean }) {
   const [html, setHtml] = useState("");
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -90,18 +101,23 @@ export default function FocusBlock({ slug }: { slug: string }) {
       document.execCommand("insertHTML", false, tableHtml);
       return;
     }
+    // Plakte tekst met URL's: auto-linken
+    if (!pasteHtml && pasteText && /https?:\/\//i.test(pasteText)) {
+      e.preventDefault();
+      document.execCommand("insertHTML", false, linkifyText(pasteText));
+      return;
+    }
     // Normaal plakken: browser-standaard
   }
 
   if (!loaded) return null;
 
-  return (
-    <div className="sov-tasks">
-      <div className="sov-tasks-head focus-head">
-        <span>Zoekwoorden &amp; links</span>
-        <button type="button" className="focus-edit" onClick={() => setEditing((e) => !e)}>{editing ? "Sluiten" : "Bewerken"}</button>
-      </div>
+  const editBtn = (
+    <button type="button" className="focus-edit" onClick={() => setEditing((e) => !e)}>{editing ? "Sluiten" : "Bewerken"}</button>
+  );
 
+  const content = (
+    <>
       {!editing && (
         html.trim()
           ? <div className="focus-rich" dangerouslySetInnerHTML={{ __html: withNewTab(html) }} />
@@ -115,7 +131,7 @@ export default function FocusBlock({ slug }: { slug: string }) {
             <button type="button" onClick={() => cmd("italic")} title="Cursief"><em>I</em></button>
             <button type="button" onClick={() => cmd("insertUnorderedList")} title="Bullets">&bull; lijst</button>
             <button type="button" onClick={() => cmd("insertOrderedList")} title="Genummerd">1. lijst</button>
-            <button type="button" onClick={addLink} title="Link toevoegen (of Cmd+K)">🔗 link</button>
+            <button type="button" onClick={addLink} title="Link toevoegen (of Cmd+K)">&#128279; link</button>
             <button type="button" onClick={() => cmd("unlink")} title="Link verwijderen">link weg</button>
           </div>
           <div
@@ -131,6 +147,28 @@ export default function FocusBlock({ slug }: { slug: string }) {
           </div>
         </div>
       )}
+    </>
+  );
+
+  if (standalone) {
+    return (
+      <>
+        <div className="ck-section-head">
+          <span>Zoekwoorden &amp; links</span>
+          {editBtn}
+        </div>
+        {content}
+      </>
+    );
+  }
+
+  return (
+    <div className="sov-tasks">
+      <div className="sov-tasks-head focus-head">
+        <span>Zoekwoorden &amp; links</span>
+        {editBtn}
+      </div>
+      {content}
     </div>
   );
 }

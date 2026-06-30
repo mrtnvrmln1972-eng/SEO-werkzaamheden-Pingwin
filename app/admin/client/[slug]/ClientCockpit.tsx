@@ -340,11 +340,14 @@ export default function ClientCockpit({
                       )}
                     </div>
 
-                    <FocusBlock slug={client.slug} />
                   </div>
                 </div>
               </div>
             )}
+
+            <div className="cockpit-card">
+              <FocusBlock slug={client.slug} standalone />
+            </div>
 
             <div className="cockpit-card">
               <div className="ck-section-head">

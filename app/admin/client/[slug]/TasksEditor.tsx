@@ -22,6 +22,17 @@ function stripHtml(html: string): string {
   return (html || "").replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").trim();
 }
 
+// Zet URL's in platte tekst om naar klikbare links bij het plakken.
+function linkifyText(text: string): string {
+  const escaped = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return escaped
+    .replace(/https?:\/\/[^\s<>"']+/gi, (url) => {
+      const clean = url.replace(/[.,;:!?)"']+$/, "");
+      return `<a href="${clean}" target="_blank" rel="noreferrer">${clean}</a>`;
+    })
+    .replace(/\n/g, "<br>");
+}
+
 // Bewerkbare rich-text-cel: typ tekst, selecteer een woord en druk Cmd/Ctrl+K
 // om er een link aan te hangen. Niet door React gestuurd (innerHTML alleen bij
 // het opbouwen gezet), zodat de cursor niet verspringt tijdens typen.
@@ -51,7 +62,19 @@ function RichCell({ html, onChange, placeholder }: { html: string; onChange: (ht
       emit();
     }
   }
-  return <div ref={ref} className="rich-cell" contentEditable suppressContentEditableWarning data-ph={placeholder} onInput={emit} onBlur={emit} onKeyDown={onKey} />;
+  function onPaste(e: React.ClipboardEvent) {
+    const pasteHtml = e.clipboardData.getData("text/html");
+    const pasteText = e.clipboardData.getData("text/plain");
+    // Plakte tekst met URL's en geen rijke HTML: auto-linken
+    if (!pasteHtml && pasteText && /https?:\/\//i.test(pasteText)) {
+      e.preventDefault();
+      document.execCommand("insertHTML", false, linkifyText(pasteText));
+      fixLinks();
+      emit();
+    }
+    // Anders: standaard browser-paste
+  }
+  return <div ref={ref} className="rich-cell" contentEditable suppressContentEditableWarning data-ph={placeholder} onInput={emit} onBlur={emit} onKeyDown={onKey} onPaste={onPaste} />;
 }
 
 export default function TasksEditor({ slug, initialTasks, budget, clientName, highlight }: { slug: string; initialTasks: TaskRow[]; budget: Budget; clientName: string; highlight?: string }) {

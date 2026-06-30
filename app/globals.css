@@ -615,7 +615,7 @@ tbody td:last-child { text-align: center; }
 .focus-rich li { margin-bottom: 3px; }
 .focus-rich a { color: var(--orange); text-decoration: none; word-break: break-word; }
 .focus-rich a:hover { text-decoration: underline; }
-.focus-editable { min-height: 120px; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; outline: none; background: var(--white); }
+.focus-editable { min-height: 220px; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; outline: none; background: var(--white); }
 .focus-editable:focus { border-color: var(--orange); }
 .focus-toolbar { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
 .focus-toolbar button { font-size: 12px; padding: 4px 9px; border: 1px solid var(--border); background: var(--white); border-radius: 6px; cursor: pointer; color: var(--dark); }
