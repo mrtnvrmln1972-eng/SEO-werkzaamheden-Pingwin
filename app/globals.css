@@ -585,13 +585,13 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 /* Taak-cel met "?"-knop direct rechts van de taaktekst */
 .taak-cell { display: flex; align-items: flex-start; gap: 6px; position: relative; }
 .taak-cell .rich-cell { flex: 1 1 auto; min-width: 0; }
+.taak-check { flex: 0 0 auto; color: #2E7D32; font-weight: 800; font-size: 14px; line-height: 1; margin-top: 6px; }
 .row-info { width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--border); background: var(--white); color: var(--gray); font-size: 12px; font-weight: 700; line-height: 1; cursor: pointer; padding: 0; flex: 0 0 auto; margin-top: 4px; }
 .row-info:hover { border-color: var(--orange); color: var(--orange); }
 .row-info.has { background: var(--orange); border-color: var(--orange); color: #fff; }
-.klant-pop-overlay { position: fixed; inset: 0; z-index: 40; }
-/* Til de rij met open popover boven de andere rijen én de overlay uit */
-.task-table tbody tr.klant-pop-open { position: relative; z-index: 50; }
-.klant-pop { position: absolute; left: 0; top: 30px; z-index: 41; width: 340px; max-width: 80vw; background: var(--white); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.16); padding: 12px; text-align: left; }
+.klant-pop-overlay { position: fixed; inset: 0; z-index: 1200; }
+.klant-pop { position: absolute; left: 0; top: 30px; z-index: 1201; width: 340px; max-width: 80vw; background: var(--white); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.16); padding: 12px; text-align: left; }
+.klant-pop.klant-pop-fixed { position: fixed; }
 .klant-pop-head { font-size: 12px; font-weight: 700; color: var(--dark); margin-bottom: 8px; }
 .klant-pop-toolbar { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
 .klant-pop-toolbar button { font-size: 12px; padding: 3px 8px; border: 1px solid var(--border); background: var(--white); border-radius: 6px; cursor: pointer; color: var(--dark); }
@@ -709,7 +709,7 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .sov-tasks-list li a:hover { text-decoration: underline; }
 .task-month { font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; color: var(--dark); margin: 12px 0 5px; }
 .task-month:first-of-type { margin-top: 0; }
-.task-done a { color: var(--gray); text-decoration: line-through; }
+.sov-tasks-list .task-done a { color: var(--gray); text-decoration: line-through; }
 .wie-badge { font-size: 9px; font-weight: 700; text-transform: uppercase; padding: 1px 6px; border-radius: 8px; margin-right: 6px; }
 .wie-badge.seo { background: var(--orange-light); color: var(--orange-dark); }
 .wie-badge.dev { background: #E8F0FE; color: #1A56B0; }

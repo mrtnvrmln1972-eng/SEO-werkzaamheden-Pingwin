@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import type { TaskRow } from "../../../../lib/tasks";
 import { cleanPastedHtml, linkifyPlainText } from "../../../../lib/rich-paste";
 
@@ -166,7 +167,18 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [dragIdx, setDragIdx] = useState<number | null>(null);
-  const [klantPopRow, setKlantPopRow] = useState<number | null>(null);
+  // Popover voor klant-toelichting: index + scherm-positie (fixed, via portal,
+  // zodat hij nooit onder een volgende tabelrij verdwijnt).
+  const [klantPop, setKlantPop] = useState<{ i: number; left: number; top: number } | null>(null);
+
+  // Open de popover net onder de aangeklikte "?"-knop, binnen het scherm.
+  function openKlantPop(i: number, btn: HTMLElement) {
+    const r = btn.getBoundingClientRect();
+    const w = 340;
+    const left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8));
+    const top = Math.min(r.bottom + 6, window.innerHeight - 260);
+    setKlantPop({ i, left, top: Math.max(8, top) });
+  }
 
   // Mail-venster (naar developer of naar klant)
   const [showCompose, setShowCompose] = useState(false);
@@ -383,22 +395,13 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
                 const mailed = !!r.gemaild && !done;
                 const statusCls = done ? "task-done " : "task-open ";
                 return (
-                  <tr key={r._uid} id={typeof r.id === "number" ? `task-row-${r.id}` : undefined} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.stopPropagation(); moveRow(maand, i); }} className={`${statusCls}${dragIdx === i ? "dragging " : ""}${isDev ? "dev-row " : ""}${mailed ? "mailed-row " : ""}${klantPopRow === i ? "klant-pop-open " : ""}${hl ? "highlight-row" : ""}`}>
+                  <tr key={r._uid} id={typeof r.id === "number" ? `task-row-${r.id}` : undefined} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.stopPropagation(); moveRow(maand, i); }} className={`${statusCls}${dragIdx === i ? "dragging " : ""}${isDev ? "dev-row " : ""}${mailed ? "mailed-row " : ""}${hl ? "highlight-row" : ""}`}>
                     <td className="drag-handle" draggable onDragStart={() => setDragIdx(i)} onDragEnd={() => setDragIdx(null)} title="Sleep (ook naar een andere maand)">⠿</td>
                     <td>
                       <div className="taak-cell">
                         <RichCell html={r.taak} onChange={(v) => update(i, { taak: v })} placeholder="Taak" />
-                        <button type="button" className={"row-info" + (r.klantToelichting ? " has" : "")} onClick={() => setKlantPopRow(klantPopRow === i ? null : i)} title="Toelichting voor de klant (verschijnt als ?-tooltip in het klantdashboard)">?</button>
-                        {klantPopRow === i && (
-                          <div className="klant-pop" onClick={(e) => e.stopPropagation()}>
-                            <div className="klant-pop-head">Toelichting voor de klant</div>
-                            <PopEditor html={r.klantToelichting || ""} onChange={(v) => update(i, { klantToelichting: v })} />
-                            <div className="klant-pop-foot">
-                              <span className="klant-pop-hint">Wordt automatisch opgeslagen.</span>
-                              <button type="button" className="primary-btn small" onClick={() => setKlantPopRow(null)}>Klaar</button>
-                            </div>
-                          </div>
-                        )}
+                        {done && <span className="taak-check" title="Klaar">✓</span>}
+                        <button type="button" className={"row-info" + (r.klantToelichting ? " has" : "")} onClick={(e) => klantPop?.i === i ? setKlantPop(null) : openKlantPop(i, e.currentTarget)} title="Toelichting voor de klant (verschijnt als ?-tooltip in het klantdashboard)">?</button>
                       </div>
                     </td>
                     <td><RichCell html={r.toelichting} onChange={(v) => update(i, { toelichting: v })} placeholder="Toelichting" /></td>
@@ -482,7 +485,20 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
         {rows.length === 0 && <div className="muted">Nog geen werkzaamheden. Voeg een maand toe om te beginnen.</div>}
       </div>
 
-      {klantPopRow !== null && <div className="klant-pop-overlay" onClick={() => setKlantPopRow(null)} />}
+      {klantPop && typeof document !== "undefined" && createPortal(
+        <>
+          <div className="klant-pop-overlay" onClick={() => setKlantPop(null)} />
+          <div className="klant-pop klant-pop-fixed" style={{ left: klantPop.left, top: klantPop.top }} onClick={(e) => e.stopPropagation()}>
+            <div className="klant-pop-head">Toelichting voor de klant</div>
+            <PopEditor key={klantPop.i} html={rows[klantPop.i]?.klantToelichting || ""} onChange={(v) => update(klantPop.i, { klantToelichting: v })} />
+            <div className="klant-pop-foot">
+              <span className="klant-pop-hint">Wordt automatisch opgeslagen.</span>
+              <button type="button" className="primary-btn small" onClick={() => setKlantPop(null)}>Klaar</button>
+            </div>
+          </div>
+        </>,
+        document.body,
+      )}
 
       {(() => {
         const top = [curMonth, nextMonth].filter((m) => monthsPresent.includes(m));
