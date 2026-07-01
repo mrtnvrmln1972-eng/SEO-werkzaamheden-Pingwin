@@ -460,6 +460,12 @@ tbody td:last-child { text-align: center; }
 .pch-badge.task { background: var(--gray-light); color: var(--dark); }
 .page-chat-proposal-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 .page-chat-tools { margin: 4px 0 8px; display: flex; gap: 8px; flex-wrap: wrap; }
+/* Documenten-blok: één sturingsveld + de drie geketende stappen */
+.page-chat-docs { margin: 4px 0 8px; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: #fafafa; }
+.pcd-docs-head { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--gray); margin-bottom: 7px; }
+.pcd-nuance { width: 100%; font-size: 13px; border: 1px solid var(--border); border-radius: 8px; padding: 8px 11px; outline: none; margin-bottom: 8px; }
+.pcd-nuance:focus { border-color: var(--orange); }
+.pcd-docs-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
 /* Bestemmingsmap-regel + Drive-mappenkiezer */
 .page-chat-drive { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 8px 0 2px; font-size: 13px; }
 .pcd-label { color: var(--muted); }

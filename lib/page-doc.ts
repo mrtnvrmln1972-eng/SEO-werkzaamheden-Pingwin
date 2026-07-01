@@ -1,5 +1,5 @@
 import { getClientBySlug } from "./clients";
-import { getPagePlan } from "./site-urls";
+import { getPagePlan, getPageDocOutputs, savePageDocOutput } from "./site-urls";
 import { getTasks } from "./tasks";
 import { getGscForPage } from "./google";
 import { fetchPageContent } from "./page-content";
@@ -165,6 +165,28 @@ ${SEO_CRITERIA_MD}
 
 ${DOCSPEC_FORMAT}`;
 
+// Plat de gestructureerde DocSpec naar leesbare tekst, zodat een volgende stap
+// (blauwdruk leest de analyse, copy leest de blauwdruk) erop kan voortbouwen.
+function specToText(spec: DocSpec): string {
+  const out: string[] = [`# ${spec.titel}`];
+  for (const sec of spec.sections || []) {
+    if (sec.heading) out.push(`\n## ${sec.heading}`);
+    for (const b of sec.blocks || []) {
+      if (b.type === "paragraph") out.push(b.text);
+      else if (b.type === "subheading") out.push(`### ${b.text}`);
+      else if (b.type === "bullets") out.push(b.items.map((i) => `- ${i}`).join("\n"));
+      else if (b.type === "highlight") out.push(`> ${b.text}`);
+      else if (b.type === "step") out.push(`${b.nr}. ${b.title}: ${b.text}`);
+      else if (b.type === "table") out.push([b.headers.join(" | "), ...b.rows.map((r) => r.join(" | "))].join("\n"));
+    }
+  }
+  return out.join("\n").slice(0, 12000);
+}
+
+// Wat een stap van de vorige stappen mag meelezen (de keten).
+const CHAIN_SOURCES: Record<DocKind, DocKind[]> = { analyse: [], blauwdruk: ["analyse"], copy: ["blauwdruk", "analyse"] };
+const KIND_LABEL: Record<DocKind, string> = { analyse: "SEO-ANALYSE", blauwdruk: "BLAUWDRUK", copy: "COPY" };
+
 const SYSTEMS: Record<DocKind, string> = { analyse: ANALYSE_SYSTEM, blauwdruk: BLUEPRINT_SYSTEM, copy: COPY_SYSTEM };
 const RAPPORTTYPE: Record<DocKind, string> = { analyse: "SEO-analyse", blauwdruk: "SEO-blauwdruk", copy: "SEO-copy" };
 const FALLBACK_TITLE: Record<DocKind, string> = { analyse: "SEO-analyse", blauwdruk: "Blauwdruk", copy: "Copy" };
@@ -172,9 +194,19 @@ const FALLBACK_TITLE: Record<DocKind, string> = { analyse: "SEO-analyse", blauwd
 export async function generateDocSpec(slug: string, url: string, kind: DocKind, extra?: string): Promise<{ spec: DocSpec; title: string }> {
   const context = await buildContext(slug, url, extra);
   const client = await getClientBySlug(slug);
+
+  // De keten: laat deze stap voortbouwen op de eerder gegenereerde stappen.
+  let chain = "";
+  const sources = CHAIN_SOURCES[kind];
+  if (sources.length) {
+    const prior = await getPageDocOutputs(slug, url).catch((): Record<string, string> => ({}));
+    const parts = sources.filter((s) => prior[s]).map((s) => `EERDER GEGENEREERDE ${KIND_LABEL[s]} (LEIDEND, bouw hierop voort):\n${prior[s]}`);
+    if (parts.length) chain = "\n\n" + parts.join("\n\n");
+  }
+
   // Analyse levert een grote scorecard: ruimer tokenbudget zodat de tabel niet afkapt.
   const maxTokens = kind === "analyse" ? 8000 : 4096;
-  const raw = await callClaude(SYSTEMS[kind], [{ role: "user", content: `Maak de ${kind} op basis van deze gegevens:\n\n${context}` }], maxTokens);
+  const raw = await callClaude(SYSTEMS[kind], [{ role: "user", content: `Maak de ${kind} op basis van deze gegevens:\n\n${context}${chain}` }], maxTokens);
   const parsed = JSON.parse(raw.replace(/```json/gi, "").replace(/```/g, "").trim());
   const title = typeof parsed.titel === "string" && parsed.titel.trim() ? parsed.titel.trim() : `${FALLBACK_TITLE[kind]} ${url}`;
   const spec: DocSpec = {
@@ -185,5 +217,7 @@ export async function generateDocSpec(slug: string, url: string, kind: DocKind, 
     meta: { Klant: client?.name || slug, Pagina: url },
     sections: Array.isArray(parsed.sections) ? parsed.sections : [],
   };
+  // Bewaar de tekst-uitkomst zodat de volgende stap in de keten erop voortbouwt.
+  await savePageDocOutput(slug, url, kind, specToText(spec)).catch(() => { /* keten is aanvulling, niet kritisch */ });
   return { spec, title };
 }

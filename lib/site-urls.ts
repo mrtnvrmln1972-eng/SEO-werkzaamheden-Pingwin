@@ -64,6 +64,17 @@ async function doEnsureTables(): Promise<void> {
       updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
       PRIMARY KEY (client_slug, url)
     )`;
+  // Tekst-uitkomst van elk gegenereerd document (analyse/blauwdruk/copy) per
+  // pagina, zodat de volgende stap erop kan voortbouwen (de keten).
+  await sql`
+    CREATE TABLE IF NOT EXISTS page_doc_outputs (
+      client_slug TEXT NOT NULL,
+      url         TEXT NOT NULL,
+      kind        TEXT NOT NULL,
+      content     TEXT,
+      updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (client_slug, url, kind)
+    )`;
 }
 
 function normUrl(u: string): string {
@@ -204,6 +215,25 @@ export async function savePagePlan(slug: string, url: string, plan: string): Pro
     INSERT INTO page_plans (client_slug, url, plan, updated_at)
     VALUES (${slug}, ${url}, ${plan || null}, now())
     ON CONFLICT (client_slug, url) DO UPDATE SET plan = ${plan || null}, updated_at = now()`;
+}
+
+// Uitkomst van een gegenereerd document opslaan/ophalen (voor de keten).
+export async function savePageDocOutput(slug: string, url: string, kind: string, content: string): Promise<void> {
+  await ensureSchema();
+  await ensureTables();
+  await sql`
+    INSERT INTO page_doc_outputs (client_slug, url, kind, content, updated_at)
+    VALUES (${slug}, ${url}, ${kind}, ${content || null}, now())
+    ON CONFLICT (client_slug, url, kind) DO UPDATE SET content = ${content || null}, updated_at = now()`;
+}
+
+export async function getPageDocOutputs(slug: string, url: string): Promise<Record<string, string>> {
+  await ensureSchema();
+  await ensureTables();
+  const { rows } = await sql`SELECT kind, content FROM page_doc_outputs WHERE client_slug = ${slug} AND url = ${url}`;
+  const out: Record<string, string> = {};
+  for (const r of rows) if (r.content) out[r.kind as string] = r.content as string;
+  return out;
 }
 
 export type PageDriveFolder = { folderId: string; folderName: string; folderPath: string };

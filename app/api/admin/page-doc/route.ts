@@ -30,11 +30,12 @@ export async function POST(req: NextRequest) {
   const url = String(body.url || "").trim();
   const kindRaw = String(body.kind || "").trim();
   const kind: DocKind = kindRaw === "copy" ? "copy" : kindRaw === "analyse" ? "analyse" : "blauwdruk";
+  const extra = String(body.extra || "").trim().slice(0, 1500);
   if (!slug || !url) return NextResponse.json({ ok: false, error: "Klant en URL zijn verplicht." }, { status: 400 });
 
   let spec, title;
   try {
-    ({ spec, title } = await generateDocSpec(slug, url, kind));
+    ({ spec, title } = await generateDocSpec(slug, url, kind, extra || undefined));
   } catch (e) {
     return NextResponse.json({ ok: false, error: `Kon de ${kind} niet genereren: ${e instanceof Error ? e.message : "onbekende fout"}` }, { status: 500 });
   }

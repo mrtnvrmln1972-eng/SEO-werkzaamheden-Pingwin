@@ -53,13 +53,14 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
 
   const [docBusy, setDocBusy] = useState("");
   const [driveFolder, setDriveFolder] = useState<{ id: string; name: string; path: string } | null>(null);
+  const [nuance, setNuance] = useState("");
   const soort: Record<string, string> = { analyse: "Analyse", blauwdruk: "Blauwdruk", copy: "Copy" };
   async function genDoc(kind: "analyse" | "blauwdruk" | "copy") {
     if (docBusy) return;
     setDocBusy(kind); setErr(""); setApplied("");
     try {
       // deliver=download alleen als er geen bestemmingsmap is gekozen.
-      const payload = { slug, url, kind, ...(driveFolder ? { folderId: driveFolder.id } : { deliver: "download" }) };
+      const payload = { slug, url, kind, extra: nuance.trim() || undefined, ...(driveFolder ? { folderId: driveFolder.id } : { deliver: "download" }) };
       const r = await fetch("/api/admin/page-doc", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const ct = r.headers.get("Content-Type") || "";
       if (ct.includes("application/json")) {
@@ -298,9 +299,15 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
           <div className="page-chat-tools">
             <button type="button" className="ghost-btn small" onClick={makeWorkItem} disabled={taskGen}>{taskGen ? "Aanmaken…" : "Maak werkzaamheid van deze analyse"}</button>
             <button type="button" className="ghost-btn small" onClick={makeClientMail}>Mail naar de klant</button>
-            <button type="button" className="ghost-btn small" onClick={() => genDoc("analyse")} disabled={!!docBusy}>{docBusy === "analyse" ? "Analyse maken…" : "Analyse-document"}</button>
-            <button type="button" className="ghost-btn small" onClick={() => genDoc("blauwdruk")} disabled={!!docBusy}>{docBusy === "blauwdruk" ? "Blauwdruk maken…" : "Blauwdruk-document"}</button>
-            <button type="button" className="ghost-btn small" onClick={() => genDoc("copy")} disabled={!!docBusy}>{docBusy === "copy" ? "Copy maken…" : "Copy-document (+ dev-taak)"}</button>
+          </div>
+          <div className="page-chat-docs">
+            <div className="pcd-docs-head">Documenten (bouwen voort op het plan, de taken en de vorige stap)</div>
+            <input className="pcd-nuance" value={nuance} onChange={(e) => setNuance(e.target.value)} placeholder="Extra sturing (optioneel), bijv. leg de nadruk op de regio, of behoud de tarieventabel." />
+            <div className="pcd-docs-buttons">
+              <button type="button" className="ghost-btn small" onClick={() => genDoc("analyse")} disabled={!!docBusy}>{docBusy === "analyse" ? "Analyse maken…" : "1. Analyse-document"}</button>
+              <button type="button" className="ghost-btn small" onClick={() => genDoc("blauwdruk")} disabled={!!docBusy}>{docBusy === "blauwdruk" ? "Blauwdruk maken…" : "2. Blauwdruk-document"}</button>
+              <button type="button" className="ghost-btn small" onClick={() => genDoc("copy")} disabled={!!docBusy}>{docBusy === "copy" ? "Copy maken…" : "3. Copy-document (+ dev-taak)"}</button>
+            </div>
           </div>
         </>
       )}
