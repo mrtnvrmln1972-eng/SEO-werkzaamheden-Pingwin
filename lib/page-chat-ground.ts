@@ -89,6 +89,7 @@ HARDE REGELS:
 </voorstel>
 
 Laat "plan" weg als het plan niet verandert, en "tasks" weg als er geen nieuwe taken zijn. Geef GEEN voorstel als je eerst nog een verhelderende vraag stelt.
+BELANGRIJK over het blok: zet je uitgebreide onderbouwing in het gewone antwoord ervóór, NIET in het JSON. Houd het blok compact: korte taakomschrijvingen van één regel, maximaal 8 taken, geldige JSON, en SLUIT het blok ALTIJD af met </voorstel>. Het blok is het laatste in je antwoord.
 
 WERKWIJZE, WEEG ALTIJD DEZE INVALSHOEKEN AF (haal er actief data bij via de tools):
 1. Zoekintentie: past de pagina bij de intentie van het zoekwoord? Toets met ahrefs_keyword_volume (intents) en de top-10.
@@ -113,13 +114,16 @@ LIVE FEITEN:
 ${facts}`;
 }
 
-// Haalt het <voorstel>-blok uit het antwoord en geeft de schone tekst + het voorstel terug.
+// Haalt het <voorstel>-blok uit het antwoord en geeft de schone tekst + het
+// voorstel terug. Robuust: verbergt het blok ALTIJD uit de weergegeven tekst,
+// ook als het sluit-tag ontbreekt of het JSON afgekapt/onvolledig is.
 export function parseProposal(text: string): { reply: string; proposal: Proposal | null } {
-  const m = text.match(/<voorstel>\s*([\s\S]*?)\s*<\/voorstel>/i);
-  if (!m) return { reply: text.trim(), proposal: null };
-  const reply = text.replace(m[0], "").trim();
+  const idx = text.search(/<voorstel>/i);
+  if (idx === -1) return { reply: text.trim(), proposal: null };
+  const reply = text.slice(0, idx).trim();
+  const jsonPart = text.slice(idx).replace(/^<voorstel>/i, "").replace(/<\/voorstel>[\s\S]*$/i, "").trim();
   try {
-    const parsed = JSON.parse(m[1]);
+    const parsed = JSON.parse(jsonPart);
     const proposal: Proposal = {};
     if (typeof parsed.plan === "string" && parsed.plan.trim()) proposal.plan = parsed.plan.trim();
     if (Array.isArray(parsed.tasks)) proposal.tasks = parsed.tasks.filter((t: { taak?: string }) => t && typeof t.taak === "string" && t.taak.trim());

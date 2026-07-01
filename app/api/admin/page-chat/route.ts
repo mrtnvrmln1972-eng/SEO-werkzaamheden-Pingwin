@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const system = await buildSystemPrompt(slug, url);
-    const raw = await callClaudeAgentic(system, messages.slice(-12), CHAT_TOOLS, runChatTool, 9, 2600);
+    const raw = await callClaudeAgentic(system, messages.slice(-12), CHAT_TOOLS, runChatTool, 9, 4096);
     const { reply, proposal } = parseProposal(raw);
     return NextResponse.json({ ok: true, reply, proposal });
   } catch (e) {
