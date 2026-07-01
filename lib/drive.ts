@@ -31,7 +31,7 @@ async function driveErr(res: Response, actie: string): Promise<string> {
     return "De Google-koppeling mist de Drive-toestemming. Koppel Google opnieuw en vink Google Drive aan.";
   }
   if (res.status === 401) return "De Google-koppeling is verlopen. Koppel Google opnieuw.";
-  return `Drive gaf status ${res.status} bij ${actie}${message ? ` (${message})` : ""}.`;
+  return `Drive gaf status ${res.status} bij ${actie}${message ? `: ${message}` : ""}${reason ? ` [${reason}]` : ""}.`;
 }
 
 // Submappen van een parent ("root" = mijn Drive-hoofdmap). Alfabetisch.
@@ -98,10 +98,7 @@ async function shareAnyone(t: string, fileId: string): Promise<boolean> {
 export async function uploadDocx(folderId: string, filename: string, buffer: Buffer): Promise<{ id: string; link: string; shared: boolean; owner: string; folder: string }> {
   const t = await token();
   const parent = folderId && folderId !== "root" ? folderId : "root";
-  // Zet het geuploade .docx meteen om naar een echte Google Doc (mimeType van het
-  // doel = Google Doc), zodat de link altijd netjes in de browser opent en
-  // betrouwbaar deelbaar is. De .docx blijft de bron (media-type hieronder).
-  const meta = { name: filename.replace(/\.docx$/i, ""), parents: [parent], mimeType: GDOC_MIME };
+  const meta = { name: filename, parents: [parent] };
   const boundary = "pingwin-" + Buffer.from(filename).toString("hex").slice(0, 16);
   const pre = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${boundary}\r\nContent-Type: ${DOCX_MIME}\r\n\r\n`;
   const post = `\r\n--${boundary}--`;
@@ -115,20 +112,39 @@ export async function uploadDocx(folderId: string, filename: string, buffer: Buf
   if (!up.ok) throw new Error(await driveErr(up, "het uploaden naar Drive"));
   const file = await up.json();
 
-  const shared = await shareAnyone(t, file.id);
-  const link = (file.webViewLink as string) || `https://drive.google.com/file/d/${file.id}/view`;
+  // Probeer het geuploade .docx om te zetten naar een echte Google Doc (opent
+  // betrouwbaar in de browser). Lukt dat niet (bv. een Gedeelde Drive die het
+  // blokkeert), dan houden we gewoon het Word-bestand aan.
+  let finalId = file.id as string;
+  let link = (file.webViewLink as string) || `https://drive.google.com/file/d/${file.id}/view`;
+  try {
+    const copyRes = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}/copy?supportsAllDrives=true&fields=id,webViewLink`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${t}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ name: filename.replace(/\.docx$/i, ""), mimeType: GDOC_MIME, parents: [parent] }),
+    });
+    if (copyRes.ok) {
+      const doc = await copyRes.json();
+      finalId = doc.id;
+      link = (doc.webViewLink as string) || link;
+      // Ruim het losse Word-bestand op zodat er niet twee versies in de map staan.
+      await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?supportsAllDrives=true`, { method: "DELETE", headers: { Authorization: `Bearer ${t}` } }).catch(() => { /* niet kritisch */ });
+    }
+  } catch { /* omzetten is optioneel; val terug op het .docx */ }
+
+  const shared = await shareAnyone(t, finalId);
 
   // Verifieer waar het bestand echt staat: eigenaar (welk Google-account) + map.
   let owner = "", folder = "";
   try {
-    const metaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?fields=owners(emailAddress),parents&supportsAllDrives=true`, { headers: { Authorization: `Bearer ${t}` } });
+    const metaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${finalId}?fields=owners(emailAddress),parents&supportsAllDrives=true`, { headers: { Authorization: `Bearer ${t}` } });
     if (metaRes.ok) {
       const m = await metaRes.json();
       owner = m?.owners?.[0]?.emailAddress || "";
-      const realParent = Array.isArray(m?.parents) ? m.parents[0] : (Array.isArray(file.parents) ? file.parents[0] : "");
+      const realParent = Array.isArray(m?.parents) ? m.parents[0] : "";
       if (realParent) folder = await folderName(realParent).catch(() => "");
     }
   } catch { /* verificatie is extra, niet kritisch */ }
 
-  return { id: file.id, link, shared, owner, folder };
+  return { id: finalId, link, shared, owner, folder };
 }
