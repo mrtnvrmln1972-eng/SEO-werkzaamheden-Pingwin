@@ -1,7 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { GscComparison, Ga4Comparison } from "../../../../lib/google";
+
+type GscPage = GscComparison["pages"][number];
+
+// Sorteert pagina's op de opgeslagen (gesleepte) volgorde; de rest blijft
+// onderaan in de volgorde die de API teruggeeft (op klikken).
+function sortByOrder(pages: GscPage[], order: string[]): GscPage[] {
+  const idx = new Map(order.map((u, i) => [u, i] as const));
+  return [...pages].sort((a, b) => {
+    const ia = idx.has(a.url) ? (idx.get(a.url) as number) : Infinity;
+    const ib = idx.has(b.url) ? (idx.get(b.url) as number) : Infinity;
+    return ia - ib;
+  });
+}
 
 const PERIODS = [
   { days: 7, label: "7 dagen" },
@@ -59,6 +72,9 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
   const [ga4, setGa4] = useState<Ga4Comparison | null>(null);
   const [loading, setLoading] = useState(true);
   const [connected, setConnected] = useState<boolean>(true);
+  const [pagesView, setPagesView] = useState<GscPage[]>([]);
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     let off = false;
@@ -70,10 +86,34 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
         setGsc(d.gsc ?? null);
         setGa4(d.ga4 ?? null);
         setConnected(!!(d.gsc || d.ga4));
+        const pages: GscPage[] = d.gsc?.pages || [];
+        setPagesView(sortByOrder(pages, Array.isArray(d.pageOrder) ? d.pageOrder : []));
       })
       .finally(() => { if (!off) setLoading(false); });
     return () => { off = true; };
   }, [slug, days]);
+
+  // Sla de gesleepte volgorde op (kort debounce).
+  function persistOrder(urls: string[]) {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      fetch("/api/admin/kpi/page-order", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, urls }),
+      }).catch(() => {});
+    }, 500);
+  }
+
+  function movePage(toIdx: number) {
+    if (dragIdx === null || dragIdx === toIdx) { setDragIdx(null); return; }
+    const c = [...pagesView];
+    const [moved] = c.splice(dragIdx, 1);
+    const ins = toIdx > dragIdx ? toIdx - 1 : toIdx;
+    c.splice(ins, 0, moved);
+    setDragIdx(null);
+    setPagesView(c);
+    persistOrder(c.map((p) => p.url));
+  }
 
   const periodLabel = PERIODS.find((p) => p.days === days)?.label || `${days} dagen`;
 
@@ -138,15 +178,16 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
         </div>
       )}
 
-      {!loading && gsc && gsc.pages.length > 0 && (
+      {!loading && gsc && pagesView.length > 0 && (
         <div className="cockpit-card">
-          <div className="ck-section-head"><span>Pagina&rsquo;s uit Search Console ({gsc.pages.length})</span></div>
+          <div className="ck-section-head"><span>Pagina&rsquo;s uit Search Console ({pagesView.length})</span><span className="ck-updated">sleep om vast te zetten bovenaan</span></div>
           <div className="res-table-wrap">
             <table className="res-table kpi-table">
-              <thead><tr><th>Pagina</th><th>Klikken</th><th>Vertoningen</th></tr></thead>
+              <thead><tr><th></th><th>Pagina</th><th>Klikken</th><th>Vertoningen</th></tr></thead>
               <tbody>
-                {gsc.pages.map((p) => (
-                  <tr key={p.url}>
+                {pagesView.map((p, i) => (
+                  <tr key={p.url} className={dragIdx === i ? "dragging" : ""} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.stopPropagation(); movePage(i); }}>
+                    <td className="drag-handle" draggable onDragStart={() => setDragIdx(i)} onDragEnd={() => setDragIdx(null)} title="Sleep om deze pagina bovenaan vast te zetten">⠿</td>
                     <td><a href={p.url} target="_blank" rel="noreferrer">{shortUrl(p.url)}</a></td>
                     <td>{nl(p.clicks)} <Delta cur={p.clicks} prev={p.prevClicks} /></td>
                     <td>{nl(p.impressions)} <Delta cur={p.impressions} prev={p.prevImpressions} /></td>
