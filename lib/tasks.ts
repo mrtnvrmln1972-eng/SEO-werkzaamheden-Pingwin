@@ -83,6 +83,24 @@ export async function getTasks(slug: string): Promise<TaskRow[]> {
   return dedupeTasks(mapped);
 }
 
+// Voegt taken achteraan toe zonder de bestaande te wissen (voor de import).
+export async function appendTasks(slug: string, tasks: Partial<TaskRow>[]): Promise<number> {
+  await ensureSchema();
+  const { rows } = await sql`SELECT COALESCE(MAX(sort_order), -1) AS m FROM client_tasks WHERE client_slug = ${slug}`;
+  let order = Number(rows[0]?.m ?? -1) + 1;
+  let n = 0;
+  for (const t of tasks) {
+    if (!t.taak || !t.taak.trim()) continue;
+    await sql`
+      INSERT INTO client_tasks (client_slug, sort_order, taak, toelichting, status, wie, klant_zichtbaar,
+                                fase, cluster, geblokkeerd, blokkade_reden, page_url, updated_at)
+      VALUES (${slug}, ${order}, ${t.taak.trim()}, ${t.toelichting || null}, ${t.status || "Gepland"}, ${t.wie || null}, ${t.klantZichtbaar !== false},
+              ${t.fase || null}, ${t.cluster || null}, ${!!t.geblokkeerd}, ${t.blokkadeReden || null}, ${t.pageUrl || null}, now())`;
+    order++; n++;
+  }
+  return n;
+}
+
 export async function hasTasks(slug: string): Promise<boolean> {
   await ensureSchema();
   const { rows } = await sql`SELECT 1 FROM client_tasks WHERE client_slug = ${slug} LIMIT 1`;

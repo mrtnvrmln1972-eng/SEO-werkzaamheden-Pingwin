@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { ClientUrl } from "../../../../lib/site-urls";
+import ImportAnalysis from "./ImportAnalysis";
 
 function shortUrl(url: string): string {
   try { const u = new URL(url); return (u.pathname + u.search) || "/"; } catch { return url; }
@@ -20,6 +21,7 @@ export default function PagesPanel({ slug }: { slug: string }) {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
+  const [importing, setImporting] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -50,7 +52,10 @@ export default function PagesPanel({ slug }: { slug: string }) {
       <div className="cockpit-card">
         <div className="ck-section-head">
           <span>Pagina&rsquo;s ({urls.length})</span>
-          <button type="button" className="primary-btn small" onClick={scan} disabled={scanning}>{scanning ? "Inlezen..." : "Website inlezen"}</button>
+          <span style={{ display: "inline-flex", gap: 8 }}>
+            <button type="button" className="ghost-btn small" onClick={() => setImporting(true)}>Analyse importeren</button>
+            <button type="button" className="primary-btn small" onClick={scan} disabled={scanning}>{scanning ? "Inlezen..." : "Website inlezen"}</button>
+          </span>
         </div>
         <p className="dev-intro" style={{ marginBottom: 10 }}>
           De live pagina&rsquo;s van de klant (spiegel van de werkelijkheid). Klik een pagina om het plan te bekijken of aan te passen.
@@ -77,6 +82,14 @@ export default function PagesPanel({ slug }: { slug: string }) {
           </div>
         )}
       </div>
+
+      {importing && (
+        <ImportAnalysis
+          slug={slug}
+          onClose={() => setImporting(false)}
+          onDone={() => { setMsg("Analyse overgenomen: plan-alinea's en taken aangemaakt."); load(); }}
+        />
+      )}
     </div>
   );
 }
