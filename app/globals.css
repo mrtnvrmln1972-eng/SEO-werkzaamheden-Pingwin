@@ -361,7 +361,7 @@ tbody td:last-child { text-align: center; }
 .url-unknown { background: var(--gray-light); color: var(--gray); }
 .plan-chip { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; padding: 2px 8px; border-radius: 10px; background: var(--gray-light); color: var(--gray); }
 .plan-chip.has { background: var(--orange); color: #fff; }
-.pages-detail-row td { background: #fafafa; }
+.pages-detail-row td { background: #fafafa; text-align: left; }
 .pages-detail { padding: 4px 2px 8px; }
 .pages-detail-label { font-size: 12px; font-weight: 700; color: var(--dark); display: block; margin-bottom: 6px; }
 .pages-plan { width: 100%; min-height: 90px; font-family: 'Montserrat', sans-serif; font-size: 13px; color: var(--dark); line-height: 1.5; border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; outline: none; resize: vertical; }

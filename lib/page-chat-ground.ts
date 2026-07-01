@@ -116,7 +116,8 @@ export async function extractProposal(analysis: string): Promise<Proposal | null
   const system = `Je krijgt een SEO-analyse voor een pagina. Haal er het voorgestelde PLAN voor de pagina en ALLE concrete TAKEN uit.
 Antwoord met UITSLUITEND geldige JSON, niets eromheen, exact dit formaat:
 {"plan": "Rol: ... Primair: ... Secundair: ... Actie: ... Doel-URL: ...", "tasks": [{"taak": "korte omschrijving in één regel", "fase": "Bouwen|Herbedraden|Opschonen", "wie": "SEO|Dev"}]}
-Regels: neem elke concrete taak uit de analyse mee (kort geformuleerd, één regel per taak). Laat "plan" weg als er geen duidelijk nieuw pagina-plan is; laat "tasks" weg als er geen taken zijn. Bevat de analyse geen concreet voorstel (bijvoorbeeld alleen een verhelderende vraag), antwoord dan met {}.`;
+Regels: neem elke concrete taak uit de analyse mee (kort geformuleerd, één regel per taak). Laat "plan" weg als er geen duidelijk nieuw pagina-plan is; laat "tasks" weg als er geen taken zijn. Bevat de analyse geen concreet voorstel (bijvoorbeeld alleen een verhelderende vraag), antwoord dan met {}.
+FASE per taak: neem de fase over zoals de analyse die aangeeft (bijvoorbeeld een sectie "Fase: Bouwen"). Bepaal je hem zelf, gebruik dan: "Bouwen" voor inhoud/on-page werk (H1, title, meta, tekst schrijven, nieuwe pagina, schema); "Herbedraden" ALLEEN voor interne links/ankers ompunten of content verplaatsen tussen pagina's; "Opschonen" voor redirects, canonical, dubbele content of oude termen weghalen. De meeste on-page-optimalisatietaken zijn dus "Bouwen", niet "Herbedraden".`;
   try {
     const raw = await callClaude(system, [{ role: "user", content: analysis.slice(0, 12000) }], 2500);
     const jsonText = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
