@@ -191,6 +191,30 @@ const SYSTEMS: Record<DocKind, string> = { analyse: ANALYSE_SYSTEM, blauwdruk: B
 const RAPPORTTYPE: Record<DocKind, string> = { analyse: "SEO-analyse", blauwdruk: "SEO-blauwdruk", copy: "SEO-copy" };
 const FALLBACK_TITLE: Record<DocKind, string> = { analyse: "SEO-analyse", blauwdruk: "Blauwdruk", copy: "Copy" };
 
+// Vat de chat-analyse (de strategische conclusie: wat doen we met deze pagina +
+// zoekwoordkeuze + actielijst) samen tot één document. Dit is de eerste stap in
+// de pijplijn, apart van de latere SEO-analyse/blauwdruk/copy.
+const CHAT_SAMENVATTING_SYSTEM = `Je bent een senior SEO-strateeg bij bureau Pingwin. Vat het onderstaande chat-gesprek/analyse over één pagina samen tot een kort, helder document.
+Lever als secties: (1) Conclusie: wat doen we met deze pagina en waarom (1-2 alinea's); (2) Zoekwoordkeuze: het gekozen primaire + secundaire zoekwoord (tabel of bullets); (3) Actielijst: de concrete acties die hieruit volgen (bullets). Houd het beknopt; dit is de samenvatting, niet de volledige audit.
+Geen emoji. ${DOCSPEC_FORMAT}`;
+
+export async function summariseChatToSpec(slug: string, url: string, analysis: string, extra?: string): Promise<{ spec: DocSpec; title: string }> {
+  const client = await getClientBySlug(slug);
+  const user = `Vat deze analyse voor pagina ${url} samen:\n\n${analysis}${extra ? `\n\nEXTRA STURING: ${extra}` : ""}`;
+  const raw = await callClaude(CHAT_SAMENVATTING_SYSTEM, [{ role: "user", content: user }], 3000);
+  const parsed = JSON.parse(raw.replace(/```json/gi, "").replace(/```/g, "").trim());
+  const title = typeof parsed.titel === "string" && parsed.titel.trim() ? parsed.titel.trim() : `Analyse & zoekwoordkeuze ${url}`;
+  const spec: DocSpec = {
+    klant: client?.name || slug,
+    rapporttype: "Analyse & zoekwoordkeuze",
+    titel: title,
+    ondertitel: typeof parsed.ondertitel === "string" ? parsed.ondertitel : url,
+    meta: { Klant: client?.name || slug, Pagina: url },
+    sections: Array.isArray(parsed.sections) ? parsed.sections : [],
+  };
+  return { spec, title };
+}
+
 export async function generateDocSpec(slug: string, url: string, kind: DocKind, extra?: string): Promise<{ spec: DocSpec; title: string }> {
   const context = await buildContext(slug, url, extra);
   const client = await getClientBySlug(slug);

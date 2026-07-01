@@ -15,8 +15,6 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [proposal, setProposal] = useState<Proposal | null>(null);
-  const [planSel, setPlanSel] = useState(true);
-  const [taskSel, setTaskSel] = useState<boolean[]>([]);
   const [err, setErr] = useState("");
   const [applied, setApplied] = useState("");
   // Klant-mail
@@ -35,20 +33,36 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   const lastAssistant = [...msgs].reverse().find((m) => m.role === "assistant")?.content || "";
 
   const [taskGen, setTaskGen] = useState(false);
+  // Vat de chat-analyse samen tot één document (Drive of download) en legt de
+  // analyse vast als ÉÉN werkzaamheid met dat document eraan gekoppeld.
   async function makeWorkItem() {
     if (!lastAssistant || taskGen) return;
     setTaskGen(true); setErr(""); setApplied("");
     try {
-      const r = await fetch("/api/admin/page-chat/to-task", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url, analysis: lastAssistant }) });
-      const d = await r.json();
-      if (d.ok) {
-        setApplied(`Werkzaamheid aangemaakt: "${d.title}".`);
-        // Spring naar de Werkzaamheden-tab en licht de nieuwe taak op (zonder de
-        // Pagina's-tab te herladen); de staat hier blijft behouden.
+      const payload = { slug, url, analysis: lastAssistant, extra: nuance.trim() || undefined, ...(driveFolder ? { folderId: driveFolder.id } : { deliver: "download" }) };
+      const r = await fetch("/api/admin/page-analysis-doc", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      const ct = r.headers.get("Content-Type") || "";
+      if (ct.includes("application/json")) {
+        const d = await r.json();
+        if (!d.ok) { setErr(d.error || "Vastleggen mislukt."); return; }
+        setApplied(`Analyse samengevat en opgeslagen in Google Drive. <a href="${d.link}" target="_blank" rel="noopener">Open document</a>. Vastgelegd als één werkzaamheid; je springt nu naar Werkzaamheden om hem in te plannen.`);
+        onApplied();
         if (typeof d.taskId === "number" && onGoToTask) onGoToTask(d.taskId);
+        return;
       }
-      else setErr(d.error || "Werkzaamheid maken mislukt.");
-    } catch { setErr("Werkzaamheid maken mislukt."); } finally { setTaskGen(false); }
+      if (!r.ok) { const d = await r.json().catch(() => ({})); setErr(d.error || "Vastleggen mislukt."); return; }
+      const blob = await r.blob();
+      const a = document.createElement("a");
+      const m = (r.headers.get("Content-Disposition") || "").match(/filename="([^"]+)"/);
+      a.href = URL.createObjectURL(blob);
+      a.download = m ? m[1] : "analyse.docx";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      const tid = Number(r.headers.get("X-Task-Id") || "");
+      setApplied("Analyse samengevat en gedownload. Vastgelegd als één werkzaamheid; kies een Drive-map om het document ook te koppelen.");
+      onApplied();
+      if (!Number.isNaN(tid) && tid && onGoToTask) onGoToTask(tid);
+    } catch { setErr("Vastleggen mislukt."); } finally { setTaskGen(false); }
   }
 
   const [docBusy, setDocBusy] = useState("");
@@ -223,29 +237,25 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       setMsgs(withReply);
       const p: Proposal | null = d.proposal || null;
       setProposal(p);
-      setPlanSel(true);
-      setTaskSel(p?.tasks?.map(() => true) || []);
       persist(withReply); // altijd bewaren, ook zonder overnemen
     } catch { setErr("Chat mislukt."); } finally { setBusy(false); }
   }
 
+  // Neemt alleen het PLAN over (met de acties erin). De losse acties worden GEEN
+  // aparte werkzaamheden; die lopen via de analyse/blauwdruk/copy-stappen.
   async function applySelected() {
-    if (!proposal) return;
-    const plan = planSel && proposal.plan ? proposal.plan : undefined;
-    const tasks = (proposal.tasks || []).filter((_, i) => taskSel[i]);
-    if (!plan && tasks.length === 0) { setErr("Vink minstens één ding aan."); return; }
+    const plan = proposal?.plan;
+    if (!plan) { setErr("Er is geen plan om over te nemen."); return; }
     try {
-      const r = await fetch("/api/admin/page-chat/accept", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url, plan, tasks }) });
+      const r = await fetch("/api/admin/page-chat/accept", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url, plan }) });
       const d = await r.json();
       if (d.ok) {
-        setApplied(`Overgenomen${d.planSaved ? " (plan bijgewerkt)" : ""}${d.tasksAdded ? ` (${d.tasksAdded} taken toegevoegd)` : ""}.`);
+        setApplied("Plan overgenomen. De acties staan in het plan; leg de analyse vast als werkzaamheid met de knop hieronder.");
         setProposal(null);
         onApplied(plan);
       } else setErr(d.error || "Overnemen mislukt.");
     } catch { setErr("Overnemen mislukt."); }
   }
-
-  const selCount = (planSel && proposal?.plan ? 1 : 0) + taskSel.filter(Boolean).length;
 
   return (
     <div className="page-chat">
@@ -277,23 +287,13 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
         </div>
       )}
 
-      {proposal && (
+      {proposal?.plan && (
         <div className="page-chat-proposal">
-          <div className="page-chat-proposal-head">Voorstel (vink aan wat je overneemt)</div>
-          {proposal.plan && (
-            <label className="pch-prop-item">
-              <input type="checkbox" checked={planSel} onChange={() => setPlanSel((v) => !v)} />
-              <span><span className="pch-badge plan">Plan</span> {proposal.plan}</span>
-            </label>
-          )}
-          {(proposal.tasks || []).map((t, i) => (
-            <label key={i} className="pch-prop-item">
-              <input type="checkbox" checked={taskSel[i] ?? false} onChange={() => setTaskSel((s) => s.map((v, idx) => idx === i ? !v : v))} />
-              <span><span className={"pch-badge " + (t.fase ? "fase" : "task")}>{t.fase || "Taak"}</span> {t.taak} <span className="muted">({t.wie || "SEO"})</span></span>
-            </label>
-          ))}
+          <div className="page-chat-proposal-head">Voorstel: plan voor deze pagina</div>
+          <div className="pch-prop-plan md" dangerouslySetInnerHTML={{ __html: mdToHtml(proposal.plan) }} />
+          <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>De losse acties staan in dit plan. Ze worden uitgevoerd via de SEO-analyse, blauwdruk en copy, niet als aparte werkzaamheden.</div>
           <div className="page-chat-proposal-actions">
-            <button type="button" className="primary-btn small" onClick={applySelected} disabled={selCount === 0}>Neem {selCount} over</button>
+            <button type="button" className="primary-btn small" onClick={applySelected}>Neem plan over</button>
           </div>
         </div>
       )}
@@ -309,7 +309,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
             {driveFolder && <button type="button" className="ghost-btn small" onClick={() => setDriveFolder(null)}>Naar download</button>}
           </div>
           <div className="page-chat-tools">
-            <button type="button" className="ghost-btn small" onClick={makeWorkItem} disabled={taskGen}>{taskGen ? "Aanmaken…" : "Maak werkzaamheid van deze analyse"}</button>
+            <button type="button" className="ghost-btn small" onClick={makeWorkItem} disabled={taskGen}>{taskGen ? "Vastleggen…" : "Analyse vastleggen (document + werkzaamheid)"}</button>
             <button type="button" className="ghost-btn small" onClick={makeClientMail}>Mail naar de klant</button>
           </div>
           <div className="page-chat-docs">
