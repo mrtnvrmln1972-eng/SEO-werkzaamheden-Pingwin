@@ -947,3 +947,25 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .task-link-btn { background: none; border: none; padding: 0; cursor: pointer; font-family: 'Montserrat', sans-serif; font-size: 13px; color: var(--orange-dark); text-align: left; line-height: 1.4; }
 .task-link-btn:hover { text-decoration: underline; }
 @media (max-width: 760px) { .sov-layout { flex-direction: column; } .sov-side { flex: 1 1 auto; width: 100%; flex-direction: column; } .sov-bubble { max-width: 90%; } }
+
+/* ── Wijzigingen-tab (change-detectie + diff) ── */
+.wz-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.wz-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; text-align: left; background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer; font: inherit; }
+.wz-item:hover { border-color: var(--orange); }
+.wz-item-title { font-weight: 600; color: var(--dark); }
+.wz-item-sub { font-size: 12.5px; color: var(--gray); margin-top: 2px; }
+.wz-item-date { font-size: 12px; color: var(--gray); white-space: nowrap; flex: 0 0 auto; }
+.wz-title { font-size: 20px; font-weight: 700; color: var(--dark); margin: 12px 0 2px; }
+.wz-diff { display: flex; flex-direction: column; gap: 14px; margin-top: 8px; }
+.wz-block { }
+.wz-block-head { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--gray); margin-bottom: 6px; }
+.wz-line { font-size: 13px; line-height: 1.5; padding: 6px 10px; border-radius: 7px; margin-bottom: 4px; color: var(--dark); }
+.wz-line.removed { background: #fdecec; }
+.wz-line.added { background: #ecf7ee; }
+.wz-line.changed { background: #fff6e5; }
+.wz-sign { font-weight: 700; }
+.wz-line.removed .wz-sign { color: #c0392b; }
+.wz-line.added .wz-sign { color: #1e824c; }
+.wz-file { font-size: 11px; color: var(--gray); font-family: monospace; }
+.wz-pos { color: #1e824c; font-weight: 700; }
+.wz-neg { color: #c0392b; font-weight: 700; }

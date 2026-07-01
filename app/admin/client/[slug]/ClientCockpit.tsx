@@ -15,8 +15,9 @@ import LinkPreview from "./LinkPreview";
 import DeveloperOverview from "../../developer/DeveloperOverview";
 import KpiPanel from "./KpiPanel";
 import PagesPanel from "./PagesPanel";
+import WijzigingenPanel from "./WijzigingenPanel";
 
-type Tab = "overzicht" | "werkzaamheden" | "paginas" | "resultaten" | "klant" | "developer";
+type Tab = "overzicht" | "werkzaamheden" | "paginas" | "resultaten" | "klant" | "developer" | "wijzigingen";
 
 // Jouw Superhuman-account (Microsoft 365 hangt hieronder).
 const SUPERHUMAN_ACCOUNT = "Maarten@pingwin.nl";
@@ -61,7 +62,7 @@ export default function ClientCockpit({
 }: { client: ClientConfig; initialTab?: string; highlight?: string } & CockpitData) {
   const router = useRouter();
   const pathname = usePathname();
-  const validTab = (t?: string): Tab => (t === "werkzaamheden" || t === "paginas" || t === "resultaten" || t === "klant" || t === "developer" || t === "overzicht") ? t : "overzicht";
+  const validTab = (t?: string): Tab => (t === "werkzaamheden" || t === "paginas" || t === "resultaten" || t === "klant" || t === "developer" || t === "wijzigingen" || t === "overzicht") ? t : "overzicht";
   const [tab, setTab] = useState<Tab>(validTab(initialTab));
 
   // Pagina's blijven na het eerste bezoek in het geheugen (verborgen i.p.v.
@@ -237,6 +238,7 @@ export default function ClientCockpit({
             <button className={"tab" + (tab === "werkzaamheden" ? " active" : "")} onClick={() => changeTab("werkzaamheden")}>Werkzaamheden</button>
             <button className={"tab" + (tab === "paginas" ? " active" : "")} onClick={() => changeTab("paginas")}>Pagina&rsquo;s</button>
             <button className={"tab" + (tab === "resultaten" ? " active" : "")} onClick={() => changeTab("resultaten")}>KPI&rsquo;s</button>
+            <button className={"tab" + (tab === "wijzigingen" ? " active" : "")} onClick={() => changeTab("wijzigingen")}>Wijzigingen</button>
             <button className={"tab" + (tab === "klant" ? " active" : "")} onClick={() => changeTab("klant")}>Klant-dashboard</button>
             <button className={"tab" + (tab === "developer" ? " active" : "")} onClick={() => changeTab("developer")} title="Alle developer-taken over alle klanten">Developer Overview</button>
           </nav>
@@ -591,6 +593,8 @@ export default function ClientCockpit({
             <PagesPanel slug={client.slug} initialProfile={client.seoProfile || ""} clientEmail={client.email || ""} clientName={client.name} onGoToTask={goToNewTask} />
           </div>
         )}
+
+        {tab === "wijzigingen" && <WijzigingenPanel slug={client.slug} />}
 
         {tab === "developer" && <DeveloperOverview embedded />}
       </div>
