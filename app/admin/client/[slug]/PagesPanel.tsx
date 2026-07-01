@@ -15,7 +15,7 @@ function statusBadge(status: number | null, redirectTarget: string) {
   return <span className="url-badge url-bad">{status}</span>;
 }
 
-export default function PagesPanel({ slug }: { slug: string }) {
+export default function PagesPanel({ slug, initialProfile }: { slug: string; initialProfile?: string }) {
   const [urls, setUrls] = useState<ClientUrl[]>([]);
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
@@ -23,6 +23,19 @@ export default function PagesPanel({ slug }: { slug: string }) {
   const [open, setOpen] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
   const [importing, setImporting] = useState(false);
+  const [profile, setProfile] = useState(initialProfile || "");
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profileSaved, setProfileSaved] = useState(false);
+  const profileTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function changeProfile(v: string) {
+    setProfile(v); setProfileSaved(false);
+    if (profileTimer.current) clearTimeout(profileTimer.current);
+    profileTimer.current = setTimeout(async () => {
+      await fetch("/api/admin/client-profile", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, profile: v }) }).catch(() => {});
+      setProfileSaved(true);
+    }, 700);
+  }
 
   async function load() {
     setLoading(true);
@@ -63,6 +76,22 @@ export default function PagesPanel({ slug }: { slug: string }) {
           Het toekomstige adres (redirect, nieuwe pagina) leeft in het plan en in taken, niet in deze lijst.
         </p>
         {msg && <div className="saved-msg" style={{ marginBottom: 10 }}>{msg}</div>}
+
+        <div className="client-profile">
+          <button type="button" className="client-profile-toggle" onClick={() => setProfileOpen((v) => !v)}>
+            {profileOpen ? "▾" : "▸"} Klantprofiel {(profile || "").trim() ? <span className="plan-chip has">ingevuld</span> : <span className="plan-chip">leeg</span>}
+            {profileSaved && <span className="focus-save-status" style={{ marginLeft: 8 }}>✓ opgeslagen</span>}
+          </button>
+          {profileOpen && (
+            <textarea
+              className="client-profile-area"
+              value={profile}
+              onChange={(e) => changeProfile(e.target.value)}
+              placeholder="Wie is deze klant? Bv. werkgebied (regionaal Uden/Oss/Den Bosch, of landelijk), positionering (prijs / exclusieve designtuinen / duurzaam), doelgroep, belangrijkste diensten. De chat gebruikt dit als context en vraagt ernaar als het ontbreekt."
+            />
+          )}
+        </div>
+
         <input className="pages-search" placeholder="Zoek een pagina (URL of titel)…" value={q} onChange={(e) => setQ(e.target.value)} />
 
         {loading && <div className="muted" style={{ marginTop: 10 }}>Pagina&rsquo;s laden…</div>}

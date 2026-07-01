@@ -1,6 +1,6 @@
 import { getClientBySlug } from "./clients";
 import { getClientUrls, getPagePlan } from "./site-urls";
-import { getGscForPage } from "./google";
+import { getGscForPage, getGscQueryPageMatrix } from "./google";
 import { getTasks } from "./tasks";
 
 // ═══════════════════════════════════════════════════════════
@@ -24,52 +24,65 @@ export async function buildSystemPrompt(slug: string, url: string): Promise<stri
     getPagePlan(slug, url),
     getTasks(slug),
   ]);
-  const kw = await getGscForPage(domain, url).catch(() => []);
+  const [kw, matrix] = await Promise.all([
+    getGscForPage(domain, url).catch(() => []),
+    getGscQueryPageMatrix(domain).catch(() => []),
+  ]);
 
   const self = urls.find((u) => normUrl(u.url) === normUrl(url));
   const pageTasks = tasks.filter((t) => normUrl(t.pageUrl || "") === normUrl(url) || (t.taak || "").includes(url));
 
-  // Cluster-context: andere eigen pagina's die op dezelfde zaad-woorden ranken.
-  const seedWords = new Set(kw.slice(0, 8).flatMap((k) => k.keyword.toLowerCase().split(/\s+/).filter((w) => w.length > 3)));
-  const clusterPeers = urls
-    .filter((u) => normUrl(u.url) !== normUrl(url) && (u.title || "").length > 0)
-    .filter((u) => [...seedWords].some((w) => (u.title || "").toLowerCase().includes(w) || u.url.toLowerCase().includes(w)))
-    .slice(0, 12);
+  // Sitebrede zoekwoord→pagina-matrix (voor cannibalisatie + sitebrede vragen).
+  const matrixTop = [...matrix].sort((a, b) => b.impressions - a.impressions).slice(0, 60);
+  const matrixLines = matrixTop.map((m) => `- "${m.keyword}" → ${normUrl(m.page)} (pos ${m.position}, ${m.clicks} klikken, ${m.impressions} vertoningen)`);
+
+  // Alle eigen pagina's met verkeer (sitebreed overzicht).
+  const topPages = [...urls].sort((a, b) => b.gscClicks - a.gscClicks).slice(0, 30);
 
   const facts = [
     `KLANT: ${client?.name || slug} (domein: ${domain || "onbekend"})`,
-    `PAGINA: ${url}`,
+    "",
+    "KLANTPROFIEL (positionering, werkgebied, karakter):",
+    (client?.seoProfile || "").trim() || "(NOG NIET INGEVULD, vraag hiernaar als het relevant is)",
+    "",
+    `GEOPENDE PAGINA: ${url}`,
     `LIVE STATUS: ${self ? (self.status ?? "onbekend") : "niet in de gescande lijst (mogelijk nog niet live)"}${self?.redirectTarget ? ` → ${self.redirectTarget}` : ""}`,
     `LIVE TITEL: ${self?.title || "onbekend"}`,
     `GSC-KLIKKEN (deze pagina): ${self ? self.gscClicks : "onbekend"}`,
     "",
-    "ZOEKWOORDEN WAAROP DEZE PAGINA RANKT (Search Console, laatste 90 dagen):",
-    kw.length ? kw.map((k) => `- "${k.keyword}": positie ${k.position}, ${k.clicks} klikken, ${k.impressions} vertoningen`).join("\n") : "- (geen GSC-data gevonden voor deze pagina)",
+    "ZOEKWOORDEN WAAROP DE GEOPENDE PAGINA RANKT (Search Console, 90 dagen):",
+    kw.length ? kw.map((k) => `- "${k.keyword}": positie ${k.position}, ${k.clicks} klikken, ${k.impressions} vertoningen`).join("\n") : "- (geen GSC-data voor deze pagina)",
     "",
-    "ANDERE EIGEN PAGINA'S IN HETZELFDE CLUSTER (mogelijke concurrentie):",
-    clusterPeers.length ? clusterPeers.map((u) => `- ${normUrl(u.url)} (${u.gscClicks} klikken) — ${u.title}`).join("\n") : "- (geen duidelijke cluster-genoten gevonden)",
+    "SITEBREED, ZOEKWOORD → PAGINA (top 60 op vertoningen, Search Console 90 dagen):",
+    "Zo zie je welke pagina op welk zoekwoord rankt, en dus waar pagina's elkaar kannibaliseren.",
+    matrixLines.length ? matrixLines.join("\n") : "- (geen sitebrede GSC-data)",
     "",
-    `HUIDIG PLAN VOOR DEZE PAGINA: ${plan || "(nog geen plan)"}`,
+    "ALLE PAGINA'S MET VERKEER (spiegel van de live site):",
+    topPages.length ? topPages.map((u) => `- ${normUrl(u.url)} (${u.gscClicks} klikken, status ${u.status ?? "?"}) — ${u.title || ""}`).join("\n") : "- (nog geen site ingelezen)",
+    "",
+    `HUIDIG PLAN VOOR DE GEOPENDE PAGINA: ${plan || "(nog geen plan)"}`,
     "",
     "BESTAANDE TAKEN VOOR DEZE PAGINA:",
     pageTasks.length ? pageTasks.map((t) => `- [${t.fase || "geen fase"}] ${t.taak} (${t.status})`).join("\n") : "- (geen)",
   ].join("\n");
 
-  return `Je bent een nuchtere, ervaren SEO-strateeg die per pagina adviseert voor een klant van bureau Pingwin.
+  return `Je bent een nuchtere, ervaren SEO-strateeg die adviseert voor een klant van bureau Pingwin. Je werkt gegrond, zoals in een goede sparringsessie: je durft door te vragen.
 
 HARDE REGELS:
 - Verzin NIETS over het bestaan of de ranking van een pagina. Gebruik alleen de live feiten hieronder.
-- Redirect nooit naar een URL die niet bestaat. Toets een redirect-doel aan de live status.
-- Toets het plan-label altijd aan de echte ranking en titel; het label kan fout zijn.
-- Wees concreet en kort. Geef één onderbouwd advies, geen scenario A/B als je de live status al kent.
-- Antwoord in NETTE markdown zodat het als rapport oogt: korte kopjes (## en ###), bullets voor de onderbouwing, en waar het helpt een kleine tabel, bijvoorbeeld | Zoekwoord | Volume | Positie | URL |. Houd het scanbaar, geen muur van tekst.
-- Als je een concrete wijziging voorstelt (een nieuw plan voor de pagina en/of taken), sluit je antwoord dan af met een machineleesbaar blok, exact in dit formaat:
+- Je hebt Search Console (rankings, klikken, vertoningen), maar GEEN absoluut zoekvolume (Ahrefs/Semrush zit niet in deze tool). Gebruik GSC-vertoningen als proxy voor vraag/volume, en zeg er eerlijk bij dat het een proxy is. Verzin geen exacte zoekvolumes.
+- Je kunt sitebreed redeneren: gebruik de zoekwoord→pagina-matrix om cannibalisatie te zien (bijv. de homepage die rankt op "hovenier [plaats]" terwijl er een aparte plaatspagina bestaat) en om de beste zoekterm voor een pagina te kiezen.
+- VRAAG DOOR wanneer dat het advies beter maakt. Als het klantprofiel leeg is of je mist context die je nodig hebt (positionering: prijs vs exclusief/design vs duurzaam; werkgebied: regionaal vs landelijk; welke steden; doelgroep; gewenste term-focus), stel dan EERST één tot drie korte, gerichte vragen aan de gebruiker en wacht op antwoord voordat je een definitief advies geeft. Beter één vraag te veel dan een advies op aannames.
+- Als de gebruiker profiel-informatie geeft, verwerk die en stel voor om het als klantprofiel te bewaren (dat kan de gebruiker doen in het veld "Klantprofiel" bovenaan de Pagina's-tab).
+- Redirect nooit naar een URL die niet bestaat. Toets een redirect-doel aan de live status. Toets het plan-label altijd aan de echte ranking en titel.
+- Antwoord in NETTE markdown zodat het als rapport oogt: korte kopjes (## en ###), bullets, en waar het helpt een kleine tabel, bijvoorbeeld | Zoekwoord | Positie | Vertoningen | URL |. Houd het scanbaar, geen muur van tekst.
+- Als je een concrete wijziging voorstelt (een nieuw plan voor de geopende pagina en/of taken), sluit je antwoord dan af met een machineleesbaar blok, exact in dit formaat:
 
 <voorstel>
 {"plan": "Rol: ... Primair: ... Actie: ... Doel-URL: ...", "tasks": [{"taak": "korte taakomschrijving", "fase": "Bouwen|Herbedraden|Opschonen", "wie": "SEO|Dev"}]}
 </voorstel>
 
-Laat "plan" weg als het plan niet verandert, en "tasks" weg als er geen nieuwe taken zijn. Verzin geen taken zonder grond.
+Laat "plan" weg als het plan niet verandert, en "tasks" weg als er geen nieuwe taken zijn. Geef GEEN voorstel als je eerst nog een verhelderende vraag stelt.
 
 LIVE FEITEN:
 ${facts}`;

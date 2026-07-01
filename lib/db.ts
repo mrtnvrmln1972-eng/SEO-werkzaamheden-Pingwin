@@ -34,6 +34,8 @@ async function init(): Promise<void> {
 
   // Cockpit-velden (Maartens beheerkant). Optioneel, los van de klant-login.
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS email_domain TEXT`;
+  // SEO-klantprofiel: positionering, werkgebied, karakter (context voor de chat).
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS seo_profile TEXT`;
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS work_doc_url TEXT`;
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS results_url TEXT`;
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS status TEXT`;

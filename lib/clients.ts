@@ -37,6 +37,7 @@ export type ClientConfig = {
   gid: string;
   domain: string | null;
   ahrefsProjectId: string | null;
+  seoProfile: string | null;
   budget: ClientBudget;
   cockpit: ClientCockpit;
 };
@@ -57,6 +58,7 @@ type ClientRow = {
   password_hash: string;
   domain: string | null;
   ahrefs_project_id: string | null;
+  seo_profile: string | null;
   email_domain: string | null;
   work_doc_url: string | null;
   results_url: string | null;
@@ -76,6 +78,7 @@ function rowToConfig(r: ClientRow): ClientConfig {
     gid: r.gid,
     domain: r.domain ?? null,
     ahrefsProjectId: r.ahrefs_project_id ?? null,
+    seoProfile: r.seo_profile ?? null,
     budget: {
       maandbudget: Number(r.maandbudget),
       linkbuilding: Number(r.linkbuilding),
@@ -92,6 +95,13 @@ function rowToConfig(r: ClientRow): ClientConfig {
       notes: r.notes ?? null,
     },
   };
+}
+
+// Bewaart het SEO-klantprofiel (positionering, werkgebied, karakter) dat de
+// chat als context gebruikt en waar hij naar vraagt als het ontbreekt.
+export async function saveClientProfile(slug: string, profile: string): Promise<void> {
+  await ensureSchema();
+  await sql`UPDATE clients SET seo_profile = ${profile || null} WHERE slug = ${slug}`;
 }
 
 export async function getClientBySlug(slug: string): Promise<ClientConfig | null> {
