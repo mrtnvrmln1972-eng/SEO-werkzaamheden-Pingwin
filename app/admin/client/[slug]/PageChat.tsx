@@ -47,7 +47,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   }
 
   const [docBusy, setDocBusy] = useState("");
-  async function genDoc(kind: "blauwdruk" | "copy") {
+  async function genDoc(kind: "analyse" | "blauwdruk" | "copy") {
     if (docBusy) return;
     setDocBusy(kind); setErr(""); setApplied("");
     try {
@@ -63,6 +63,8 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       setTimeout(() => URL.revokeObjectURL(a.href), 4000);
       setApplied(kind === "copy"
         ? "Copy-document gedownload in Pingwin-huisstijl. Er is meteen een bouwtaak voor de developer aangemaakt om de copy te plaatsen."
+        : kind === "analyse"
+        ? "Analyse-document gedownload in Pingwin-huisstijl (scorecard + gate-verdict tegen de Pingwin-criteria)."
         : "Blauwdruk-document gedownload in Pingwin-huisstijl.");
       if (kind === "copy") onApplied();
     } catch { setErr("Document maken mislukt."); } finally { setDocBusy(""); }
@@ -224,6 +226,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
         <div className="page-chat-tools">
           <button type="button" className="ghost-btn small" onClick={makeWorkItem} disabled={taskGen}>{taskGen ? "Aanmaken…" : "＋ Maak werkzaamheid van deze analyse"}</button>
           <button type="button" className="ghost-btn small" onClick={makeClientMail} disabled={mailGen}>{mailGen ? "Mail maken…" : "✉ Klant-mail van deze analyse"}</button>
+          <button type="button" className="ghost-btn small" onClick={() => genDoc("analyse")} disabled={!!docBusy}>{docBusy === "analyse" ? "Analyse maken…" : "🔍 Analyse-document"}</button>
           <button type="button" className="ghost-btn small" onClick={() => genDoc("blauwdruk")} disabled={!!docBusy}>{docBusy === "blauwdruk" ? "Blauwdruk maken…" : "📄 Blauwdruk-document"}</button>
           <button type="button" className="ghost-btn small" onClick={() => genDoc("copy")} disabled={!!docBusy}>{docBusy === "copy" ? "Copy maken…" : "✍ Copy-document (+ dev-taak)"}</button>
         </div>

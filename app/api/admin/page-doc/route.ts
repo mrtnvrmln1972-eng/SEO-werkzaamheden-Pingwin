@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { anthropicConfigured } from "../../../../lib/anthropic";
-import { generateDocSpec } from "../../../../lib/page-doc";
+import { generateDocSpec, type DocKind } from "../../../../lib/page-doc";
 import { buildPingwinDoc } from "../../../../lib/pingwin-docx";
 import { appendTasks } from "../../../../lib/tasks";
 
@@ -26,12 +26,13 @@ export async function POST(req: NextRequest) {
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: "Ongeldige aanvraag." }, { status: 400 }); }
   const slug = String(body.slug || "").trim();
   const url = String(body.url || "").trim();
-  const kind = String(body.kind || "").trim() === "copy" ? "copy" : "blauwdruk";
+  const kindRaw = String(body.kind || "").trim();
+  const kind: DocKind = kindRaw === "copy" ? "copy" : kindRaw === "analyse" ? "analyse" : "blauwdruk";
   if (!slug || !url) return NextResponse.json({ ok: false, error: "Klant en URL zijn verplicht." }, { status: 400 });
 
   let spec, title;
   try {
-    ({ spec, title } = await generateDocSpec(slug, url, kind as "blauwdruk" | "copy"));
+    ({ spec, title } = await generateDocSpec(slug, url, kind));
   } catch (e) {
     return NextResponse.json({ ok: false, error: `Kon de ${kind} niet genereren: ${e instanceof Error ? e.message : "onbekende fout"}` }, { status: 500 });
   }
