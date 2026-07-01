@@ -38,15 +38,27 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
     }, 700);
   }
 
-  async function load() {
-    setLoading(true);
+  async function load(background = false) {
+    if (!background) setLoading(true);
     try {
       const r = await fetch(`/api/admin/urls?slug=${encodeURIComponent(slug)}`);
       const d = await r.json();
-      if (d.ok) setUrls(d.urls);
+      if (d.ok) {
+        setUrls(d.urls);
+        try { localStorage.setItem(`pw_urls_${slug}`, JSON.stringify(d.urls)); } catch { /* cache is extra */ }
+      }
     } finally { setLoading(false); }
   }
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [slug]);
+  // Cache-first: toon direct de vorige lijst uit de browsercache (instant), en
+  // ververs daarna in de achtergrond. In verreweg de meeste gevallen klopt de cache.
+  useEffect(() => {
+    let hadCache = false;
+    try {
+      const c = localStorage.getItem(`pw_urls_${slug}`);
+      if (c) { const parsed = JSON.parse(c); if (Array.isArray(parsed) && parsed.length) { setUrls(parsed); setLoading(false); hadCache = true; } }
+    } catch { /* geen cache */ }
+    load(hadCache); /* eslint-disable-next-line */
+  }, [slug]);
 
   async function scan() {
     setScanning(true); setMsg("");
@@ -190,7 +202,7 @@ function PageRow({ slug, u, open, onToggle, clientEmail, clientName, onGoToTask 
                   ? <div className="pages-plan-view md" dangerouslySetInnerHTML={{ __html: mdToHtml(plan) }} />
                   : <div className="pages-plan-view muted">Nog geen plan. Klik op Bewerken, of laat de chat hieronder een voorstel maken.</div>
               )}
-              {u.redirectTarget && <div className="muted" style={{ marginTop: 6 }}>Live redirect: → {u.redirectTarget}</div>}
+              {u.redirectTarget && <div className="muted" style={{ marginTop: 6 }}>Live redirect: → <a href={u.redirectTarget} target="_blank" rel="noreferrer">{u.redirectTarget}</a></div>}
 
               {(() => {
                 const pipeline = tasks.filter((t) => (t.stepKind || "").trim());
@@ -205,8 +217,7 @@ function PageRow({ slug, u, open, onToggle, clientEmail, clientName, onGoToTask 
                             <li key={t.id ?? i} className={"page-task" + (t.status === "Klaar" ? " done" : "")}>
                               {t.fase && <span className="pt-fase">{t.fase}</span>}
                               {t.wie && <span className={"pt-wie" + (t.wie === "Dev" ? " dev" : "")}>{t.wie}</span>}
-                              <span className="pt-taak">{t.taak}</span>
-                              {t.docLink && <a className="pt-doc" href={t.docLink} target="_blank" rel="noreferrer">document</a>}
+                              <span className="pt-taak" dangerouslySetInnerHTML={{ __html: t.taak }} />
                               {t.status && <span className="pt-status">{t.status}</span>}
                             </li>
                           ))}

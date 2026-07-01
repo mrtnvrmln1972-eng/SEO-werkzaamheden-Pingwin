@@ -384,6 +384,7 @@ tbody td:last-child { text-align: center; }
 .pt-wie { font-size: 11px; font-weight: 700; color: #2b6cb0; background: #e6f0fa; border-radius: 5px; padding: 1px 7px; flex: 0 0 auto; }
 .pt-wie.dev { color: #6b46c1; background: #ede7fb; }
 .pt-taak { flex: 1 1 auto; color: var(--dark); }
+.pt-taak a { color: #1a6dd6; text-decoration: underline; text-underline-offset: 2px; }
 .pt-status { font-size: 11px; color: var(--gray); flex: 0 0 auto; }
 .pt-doc { font-size: 12px; color: #1a6dd6; text-decoration: underline; text-underline-offset: 2px; flex: 0 0 auto; }
 .page-tasks-cleanup { margin-top: 10px; font-size: 12.5px; color: #8a5a00; background: #fff6e5; border: 1px solid #f2d69a; border-radius: 8px; padding: 9px 12px; }

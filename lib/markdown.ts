@@ -8,7 +8,14 @@ function esc(s: string): string {
 
 function inline(s: string): string {
   let t = esc(s);
+  // Markdown-links [tekst](url) → klikbaar, nieuw tabblad.
   t = t.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>');
+  // Kale URL's (https://...) die nog niet in een link/attribuut zitten → ook klikbaar.
+  t = t.replace(/(^|[^"'>=/])(https?:\/\/[^\s<]+)/g, (_m, pre: string, url: string) => {
+    const trail = (url.match(/[.,;:)\]]+$/) || [""])[0];
+    const clean = url.slice(0, url.length - trail.length);
+    return `${pre}<a href="${clean}" target="_blank" rel="noreferrer">${clean}</a>${trail}`;
+  });
   t = t.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
   t = t.replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>");
   t = t.replace(/`([^`]+)`/g, "<code>$1</code>");
