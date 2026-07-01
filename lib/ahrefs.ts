@@ -53,9 +53,9 @@ async function cacheSet(kind: string, key: string, country: string, data: unknow
     ON CONFLICT (kind, k, country) DO UPDATE SET data = ${JSON.stringify(data)}, fetched_at = now()`;
 }
 
-export type KeywordOverview = { keyword: string; volume: number | null; difficulty: number | null; cpc: number | null };
+export type KeywordOverview = { keyword: string; volume: number | null; difficulty: number | null; cpc: number | null; intents: unknown };
 
-// Echt maandelijks zoekvolume + difficulty + cpc per zoekwoord (met cache).
+// Echt maandelijks zoekvolume + difficulty + cpc + zoekintentie per zoekwoord (met cache).
 export async function getKeywordsOverview(keywords: string[], country = "nl"): Promise<KeywordOverview[]> {
   const cleaned = Array.from(new Set(keywords.map((k) => k.trim().toLowerCase()).filter(Boolean)));
   if (cleaned.length === 0) return [];
@@ -70,17 +70,56 @@ export async function getKeywordsOverview(keywords: string[], country = "nl"): P
   for (let i = 0; i < misses.length; i += 100) {
     const slice = misses.slice(i, i + 100);
     const data = (await ahrefsFetch("/keywords-explorer/overview", {
-      keywords: slice.join(","), country, select: "keyword,volume,difficulty,cpc",
-    })) as { keywords?: { keyword: string; volume?: number; difficulty?: number; cpc?: number }[] };
+      keywords: slice.join(","), country, select: "keyword,volume,difficulty,cpc,intents",
+    })) as { keywords?: { keyword: string; volume?: number; difficulty?: number; cpc?: number; intents?: unknown }[] };
     const map = new Map((data.keywords || []).map((r) => [r.keyword.toLowerCase(), r]));
     for (const kw of slice) {
       const r = map.get(kw);
-      const row: KeywordOverview = { keyword: kw, volume: r?.volume ?? null, difficulty: r?.difficulty ?? null, cpc: r?.cpc ?? null };
+      const row: KeywordOverview = { keyword: kw, volume: r?.volume ?? null, difficulty: r?.difficulty ?? null, cpc: r?.cpc ?? null, intents: r?.intents ?? null };
       await cacheSet("kw", kw, country, row);
       out.push(row);
     }
   }
   return out;
+}
+
+export type KeywordIdea = { keyword: string; volume: number | null; difficulty: number | null };
+
+// Zoekwoord-ideeën (passende termen) rond een zaad-zoekwoord: vind termen waar
+// je nog niet op rankt en de beste primaire term uit een bredere set.
+export async function getKeywordIdeas(seed: string, country = "nl", limit = 40): Promise<KeywordIdea[]> {
+  const s = seed.trim().toLowerCase();
+  if (!s) return [];
+  const cached = await cacheGet<KeywordIdea[]>("ideas", s, country, 30);
+  if (cached) return cached;
+  const data = (await ahrefsFetch("/keywords-explorer/matching-terms", {
+    keywords: s, country, match_mode: "terms", limit: String(limit), select: "keyword,volume,difficulty",
+  })) as { keywords?: { keyword: string; volume?: number; difficulty?: number }[]; terms?: { keyword: string; volume?: number; difficulty?: number }[] };
+  const rows = (data.keywords || data.terms || []).map((r) => ({ keyword: r.keyword, volume: r.volume ?? null, difficulty: r.difficulty ?? null }));
+  rows.sort((a, b) => (b.volume || 0) - (a.volume || 0));
+  const top = rows.slice(0, limit);
+  await cacheSet("ideas", s, country, top);
+  return top;
+}
+
+export type UrlKeyword = { keyword: string; position: number | null; volume: number | null; traffic: number | null };
+
+// Zoekwoorden waarop een specifieke URL organisch rankt (eigen pagina of een
+// concurrent uit de top-10) — voor content-gap-analyse.
+export async function getUrlOrganicKeywords(targetUrl: string, country = "nl", limit = 50): Promise<UrlKeyword[]> {
+  const u = targetUrl.trim();
+  if (!u) return [];
+  const cached = await cacheGet<UrlKeyword[]>("urlkw", u, country, 30);
+  if (cached) return cached;
+  const today = new Date().toISOString().slice(0, 10);
+  const data = (await ahrefsFetch("/site-explorer/organic-keywords", {
+    target: u, mode: "exact", country, date: today, limit: String(limit), select: "keyword,best_position,volume,sum_traffic",
+  })) as { keywords?: { keyword: string; best_position?: number; volume?: number; sum_traffic?: number }[] };
+  const rows = (data.keywords || []).map((r) => ({ keyword: r.keyword, position: r.best_position ?? null, volume: r.volume ?? null, traffic: r.sum_traffic ?? null }));
+  rows.sort((a, b) => (b.traffic || 0) - (a.traffic || 0));
+  const top = rows.slice(0, limit);
+  await cacheSet("urlkw", u, country, top);
+  return top;
 }
 
 export type SerpRow = { position: number; url: string; title: string; domainRating: number | null; type: string };
