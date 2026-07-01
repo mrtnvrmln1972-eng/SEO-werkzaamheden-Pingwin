@@ -34,18 +34,25 @@ export async function buildPingwinDoc(spec: DocSpec): Promise<Buffer> {
   children.push(...P.createCoverPage(spec.titel, spec.ondertitel || "", spec.meta || {}));
 
   for (const sec of spec.sections || []) {
-    if (sec.heading) children.push(P.createSectionDivider(sec.heading));
+    // createSectionDivider en createHighlightBox geven een ARRAY terug: spreiden,
+    // anders belandt er een geneste array in de kinderen en lekt de docx-bibliotheek
+    // een ongeldig <0/>-tag in de XML (bestand corrupt, niet te openen).
+    if (sec.heading) children.push(...P.createSectionDivider(sec.heading));
     for (const b of sec.blocks || []) {
       try {
         if (b.type === "paragraph" && b.text) children.push(P.createBodyText(b.text));
         else if (b.type === "subheading" && b.text) children.push(P.createSubHeading(b.text));
         else if (b.type === "bullets" && b.items?.length) children.push(...P.createBulletList(b.items));
-        else if (b.type === "highlight" && b.text) children.push(P.createHighlightBox(b.text));
+        else if (b.type === "highlight" && b.text) children.push(...P.createHighlightBox(b.text));
         else if (b.type === "step") children.push(P.createStepBlock(b.nr, b.title, b.text));
         else if (b.type === "table" && b.headers?.length && b.rows?.length) children.push(P.createDataTable(b.headers, b.rows));
       } catch { /* sla een fout blok over, breek het document niet */ }
     }
   }
+
+  // Vangnet: sla eventuele geneste arrays plat en gooi losse primitieven (getallen,
+  // null) eruit, zodat er nooit meer een ongeldig element in de XML kan lekken.
+  const cleanChildren = (children as unknown[]).flat(Infinity).filter((c) => c && typeof c === "object");
 
   const doc = new Document({
     styles: P.styles,
@@ -53,7 +60,7 @@ export async function buildPingwinDoc(spec: DocSpec): Promise<Buffer> {
       properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 1080, right: 1080, bottom: 1080, left: 1080 } } },
       headers: { default: P.createPageHeader(spec.klant || "", spec.rapporttype || "", logo) },
       footers: { default: P.createPageFooter() },
-      children,
+      children: cleanChildren,
     }],
   });
 
