@@ -195,18 +195,21 @@ const FALLBACK_TITLE: Record<DocKind, string> = { analyse: "SEO-analyse", blauwd
 // REDENERING/afweging (huidige situatie, zoekwoordonderzoek met volumes,
 // concurrentie, zoekintentie, onderbouwde aanbeveling, wat mist), NIET de losse
 // uitvoeringstaken (die worden in de latere stappen uitgewerkt).
-const CHAT_SAMENVATTING_SYSTEM = `Je bent een senior SEO-strateeg bij bureau Pingwin. Vat het onderstaande chat-gesprek/analyse over één pagina samen tot een KORT, begrijpelijk document dat een KLANT (geen SEO-expert) leest. Gewone, warme taal; geen jargon (of leg het in één zin uit); geen technische tabellen met KD/CPC. Verzin niets; baseer je op de analyse.
-Houd het flink kort en lever precies deze drie secties:
-1. Wat we hebben onderzocht: in 2-4 zinnen wat we met deze pagina wilden uitzoeken en duiden (hoe de pagina er nu voor staat, op welke zoekwoorden hij wel/niet gevonden wordt, wat de concurrentie doet, welke zoekwoorden de meeste kans en waarde bieden).
-2. Wat we zien: de belangrijkste bevindingen in gewone taal (een paar korte zinnen of bullets). Bijvoorbeeld: wordt de pagina nu goed gevonden, wat ontbreekt er, welke zoekwoorden zijn kansrijk, is de concurrentie te verslaan.
-3. Wat we voorstellen: op welk(e) zoekwoord(en) we de pagina gaan richten en, in grote lijnen en begrijpelijk, hoe we hem sterker maken.
-BELANGRIJK: neem GEEN technische takenlijst op (geen "H1 toevoegen", "title herschrijven", "JS-rendering fixen"), en geen zoekwoordtabel met KD/CPC. Dit is een korte, leesbare duiding voor de klant, geen technisch rapport. De uitwerking gebeurt in de latere stappen.
+const CHAT_SAMENVATTING_SYSTEM = `Je bent een senior SEO-strateeg bij bureau Pingwin. Vat het onderstaande chat-gesprek/analyse over één pagina samen in gewone, begrijpelijke taal voor een KLANT (geen SEO-expert). Behandel elk onderdeel KORT (1 tot 3 zinnen of een paar bullets per sectie) maar wel begrijpelijk. Geen jargon (of leg het in één zin uit); geen zware technische tabellen met KD/CPC. Verzin niets; baseer je op de analyse.
+Lever precies deze secties (elk kort):
+1. Huidige situatie: hoe staat de pagina er nu voor en waarom presteert hij zo (nauwelijks gevonden, mist een duidelijke kop/tekst, e.d.).
+2. Zoekwoorden: welke zoekwoorden we hebben onderzocht en welke kansrijk zijn (je mag het maandelijkse zoekvolume in gewone taal noemen; laat KD/CPC weg).
+3. Concurrentie: kunnen we hier winnen, en wat doet de best gevonden concurrent wél.
+4. Zoekintentie: waar deze pagina voor bedoeld is en waarom deze zoekwoorden er passen.
+5. Wat de pagina nu mist ten opzichte van die concurrent.
+6. Conclusie & advies: op welk(e) zoekwoord(en) we de pagina gaan richten en, in grote lijnen, wat we voorstellen om te doen zodat hij beter gevonden wordt.
+BELANGRIJK: neem GEEN technische takenlijst op (geen "H1 toevoegen", "title herschrijven", "JS-rendering fixen"). De concrete uitwerking gebeurt in de latere stappen. Dit is een korte, leesbare duiding met een helder advies.
 Geen emoji. ${DOCSPEC_FORMAT}`;
 
 export async function summariseChatToSpec(slug: string, url: string, analysis: string, extra?: string): Promise<{ spec: DocSpec; title: string }> {
   const client = await getClientBySlug(slug);
   const user = `Vat deze analyse voor pagina ${url} samen:\n\n${analysis}${extra ? `\n\nEXTRA STURING: ${extra}` : ""}`;
-  const raw = await callClaude(CHAT_SAMENVATTING_SYSTEM, [{ role: "user", content: user }], 2500);
+  const raw = await callClaude(CHAT_SAMENVATTING_SYSTEM, [{ role: "user", content: user }], 3500);
   const parsed = JSON.parse(raw.replace(/```json/gi, "").replace(/```/g, "").trim());
   const title = typeof parsed.titel === "string" && parsed.titel.trim() ? parsed.titel.trim() : `Analyse & zoekwoordkeuze ${url}`;
   const spec: DocSpec = {
