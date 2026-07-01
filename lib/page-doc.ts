@@ -225,6 +225,39 @@ export async function summariseChatToSpec(slug: string, url: string, analysis: s
   return { spec, title };
 }
 
+// Klantversie van een technisch document (analyse/blauwdruk/copy): korte,
+// begrijpelijke duiding voor de klant, aangepast aan het type. Het technische
+// bronstuk blijft de bron voor de volgende stap.
+const CLIENT_STRUCTURE: Record<DocKind, string> = {
+  analyse: `Lever deze secties (elk kort): 1. Huidige situatie; 2. Zoekwoorden (welke kansrijk zijn, zoekvolume in gewone taal); 3. Concurrentie (kunnen we winnen, wat doet de best gevonden concurrent wel); 4. Zoekintentie; 5. Wat de pagina nu mist t.o.v. de best scorende top-10-pagina's (concreet vergelijken); 6. Conclusie & advies (op welke zoekwoorden we richten en wat we voorstellen).`,
+  blauwdruk: `Lever deze secties (elk kort): 1. Wat we op jullie pagina gaan zetten (de belangrijkste onderdelen/onderwerpen en de opbouw, in gewone taal); 2. Op welke zoekwoorden we richten; 3. Wat we behouden van de huidige pagina en wat nieuw wordt; 4. Waarom dit werkt (kort). Geen technische koppen/meta-details.`,
+  copy: `Lever deze secties (elk kort): 1. Waar de nieuwe teksten over gaan (de kernboodschap en toon); 2. Welke zoekwoorden erin verwerkt zijn; 3. Wat dit voor jullie vindbaarheid betekent. Herhaal NIET de volledige copy; geef een begrijpelijke samenvatting.`,
+};
+
+export async function clientVersionSpec(slug: string, url: string, kind: DocKind, source: string, extra?: string): Promise<{ spec: DocSpec; title: string }> {
+  const client = await getClientBySlug(slug);
+  const label = { analyse: "SEO-analyse", blauwdruk: "blauwdruk", copy: "copy" }[kind];
+  const system = `Je bent een senior SEO-strateeg bij bureau Pingwin. Zet de onderstaande ${label} om in een KORTE, begrijpelijke versie voor de KLANT (die het zelf leest). Verzin niets; baseer je op de brontekst.
+AANSPREEKVORM: gericht AAN de eigenaar zelf; spreek direct aan met "jullie/je" ("jullie pagina"), niet in de derde persoon over het bedrijf of de persoon.
+TAAL: gewone taal, geen jargon (of leg het in één zin uit), geen scorecard en geen technische tabellen met KD/CPC. Elk onderdeel kort (1 tot 3 zinnen of een paar bullets).
+ZOEKWOORDEN VET: zet elk concreet zoekwoord vet met dubbele sterretjes, bijvoorbeeld **exclusieve tuinen**.
+${CLIENT_STRUCTURE[kind]}
+Geen emoji. ${DOCSPEC_FORMAT}`;
+  const user = `Zet deze ${label} voor pagina ${url} om in een klantversie:\n\n${source}${extra ? `\n\nEXTRA STURING: ${extra}` : ""}`;
+  const raw = await callClaude(system, [{ role: "user", content: user }], 3500);
+  const parsed = JSON.parse(raw.replace(/```json/gi, "").replace(/```/g, "").trim());
+  const title = typeof parsed.titel === "string" && parsed.titel.trim() ? parsed.titel.trim() : `Klantversie ${label} ${url}`;
+  const spec: DocSpec = {
+    klant: client?.name || slug,
+    rapporttype: `Klantversie ${label}`,
+    titel: title,
+    ondertitel: typeof parsed.ondertitel === "string" ? parsed.ondertitel : url,
+    meta: { Klant: client?.name || slug, Pagina: url },
+    sections: Array.isArray(parsed.sections) ? parsed.sections : [],
+  };
+  return { spec, title };
+}
+
 export async function generateDocSpec(slug: string, url: string, kind: DocKind, extra?: string): Promise<{ spec: DocSpec; title: string }> {
   const context = await buildContext(slug, url, extra);
   const client = await getClientBySlug(slug);

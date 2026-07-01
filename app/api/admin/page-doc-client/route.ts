@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { anthropicConfigured } from "../../../../lib/anthropic";
-import { summariseChatToSpec } from "../../../../lib/page-doc";
+import { clientVersionSpec, type DocKind } from "../../../../lib/page-doc";
 import { buildPingwinDoc } from "../../../../lib/pingwin-docx";
 import { getPageDriveFolder, getPageDocOutputs } from "../../../../lib/site-urls";
 import { uploadDocx } from "../../../../lib/drive";
@@ -38,9 +38,7 @@ export async function POST(req: NextRequest) {
 
   let spec, title;
   try {
-    // summariseChatToSpec levert precies de korte, klantvriendelijke duiding.
-    ({ spec, title } = await summariseChatToSpec(slug, url, source, extra || undefined));
-    spec.rapporttype = `Klantversie ${LABEL[kind]}`;
+    ({ spec, title } = await clientVersionSpec(slug, url, kind as DocKind, source, extra || undefined));
   } catch (e) {
     return NextResponse.json({ ok: false, error: `Kon de klantversie niet maken: ${e instanceof Error ? e.message : "onbekende fout"}` }, { status: 500 });
   }

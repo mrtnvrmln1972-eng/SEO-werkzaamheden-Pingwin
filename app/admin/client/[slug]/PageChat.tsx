@@ -352,8 +352,11 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
               <button type="button" className="ghost-btn small" onClick={() => genDoc("blauwdruk")} disabled={!!docBusy}>{docBusy === "blauwdruk" ? "Blauwdruk maken…" : "2. Blauwdruk-document"}</button>
               <button type="button" className="ghost-btn small" onClick={() => genDoc("copy")} disabled={!!docBusy}>{docBusy === "copy" ? "Copy maken…" : "3. Copy-document (+ dev-taak)"}</button>
             </div>
-            <div className="pcd-docs-buttons" style={{ marginTop: 6 }}>
-              <button type="button" className="ghost-btn small" onClick={() => genClientDoc("analyse")} disabled={!!docBusy}>{docBusy === "klant-analyse" ? "Klantversie maken…" : "Klantversie van de analyse"}</button>
+            <div className="pcd-docs-head" style={{ marginTop: 10 }}>Klantversies (begrijpelijke versie om naar de klant te sturen)</div>
+            <div className="pcd-docs-buttons">
+              <button type="button" className="ghost-btn small" onClick={() => genClientDoc("analyse")} disabled={!!docBusy}>{docBusy === "klant-analyse" ? "Klantversie maken…" : "Klantversie analyse"}</button>
+              <button type="button" className="ghost-btn small" onClick={() => genClientDoc("blauwdruk")} disabled={!!docBusy}>{docBusy === "klant-blauwdruk" ? "Klantversie maken…" : "Klantversie blauwdruk"}</button>
+              <button type="button" className="ghost-btn small" onClick={() => genClientDoc("copy")} disabled={!!docBusy}>{docBusy === "klant-copy" ? "Klantversie maken…" : "Klantversie copy"}</button>
             </div>
           </div>
         </>
