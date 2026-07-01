@@ -50,6 +50,10 @@ async function doEnsure(): Promise<void> {
       change_summary       TEXT
     )`;
   await sql`CREATE INDEX IF NOT EXISTS idx_pce_slug_detected ON page_change_events(client_slug, detected_at DESC)`;
+  // Handmatig toegevoegde wijziging (bekende aanpassing in het verleden zonder
+  // "voor"-snapshot): current_snapshot_id mag dan leeg zijn, is_manual = true.
+  await sql`ALTER TABLE page_change_events ALTER COLUMN current_snapshot_id DROP NOT NULL`.catch(() => null);
+  await sql`ALTER TABLE page_change_events ADD COLUMN IF NOT EXISTS is_manual BOOLEAN NOT NULL DEFAULT false`;
 }
 
 // ── Content-extractie (regex-gebaseerd, geen browser) ────────
@@ -193,24 +197,48 @@ export async function captureAndDetect(slug: string, url: string): Promise<{ cha
   return { changed: true, summary };
 }
 
-export type ChangeEvent = { id: number; url: string; detectedAt: string; summary: string; diff: ContentDiff };
+// Voegt een BEKENDE wijziging uit het verleden handmatig toe (datum + notitie),
+// zodat je de KPI-ontwikkeling eromheen kunt volgen ook zonder "voor"-snapshot.
+// Legt meteen een snapshot van nu vast als basislijn voor toekomstige detectie.
+export async function addManualChange(slug: string, url: string, date: string, note: string): Promise<{ ok: boolean; error?: string }> {
+  await ensureSchema();
+  await ensureTables();
+  let snapId: number | null = null;
+  const snap = await extractSnapshot(url);
+  if (snap) {
+    const { rows } = await sql`
+      INSERT INTO page_content_snapshots
+        (client_slug, url, meta_title, meta_description, h1, h2s, h3s, alt_tags, internal_links, word_count, schema_types, content_hash)
+      VALUES (${slug}, ${url}, ${snap.meta_title}, ${snap.meta_description}, ${snap.h1},
+              ${JSON.stringify(snap.h2s)}, ${JSON.stringify(snap.h3s)}, ${JSON.stringify(snap.alt_tags)},
+              ${JSON.stringify(snap.internal_links)}, ${snap.word_count}, ${JSON.stringify(snap.schema_types)}, ${snap.contentHash})
+      RETURNING id`;
+    snapId = Number(rows[0].id);
+  }
+  await sql`
+    INSERT INTO page_change_events (client_slug, url, detected_at, current_snapshot_id, diff, change_summary, is_manual)
+    VALUES (${slug}, ${url}, ${date + "T12:00:00Z"}, ${snapId}, ${"{}"}, ${note || "Handmatig toegevoegde wijziging"}, true)`;
+  return { ok: true };
+}
+
+export type ChangeEvent = { id: number; url: string; detectedAt: string; summary: string; diff: ContentDiff; isManual: boolean };
 
 export async function getChangeEvents(slug: string, limit = 100): Promise<ChangeEvent[]> {
   await ensureSchema();
   await ensureTables();
   const { rows } = await sql`
-    SELECT id, url, detected_at, change_summary, diff FROM page_change_events
+    SELECT id, url, detected_at, change_summary, diff, is_manual FROM page_change_events
     WHERE client_slug = ${slug} ORDER BY detected_at DESC LIMIT ${limit}`;
-  return rows.map((r) => ({ id: Number(r.id), url: r.url as string, detectedAt: new Date(r.detected_at as string).toISOString(), summary: (r.change_summary as string) || "", diff: r.diff as ContentDiff }));
+  return rows.map((r) => ({ id: Number(r.id), url: r.url as string, detectedAt: new Date(r.detected_at as string).toISOString(), summary: (r.change_summary as string) || "", diff: r.diff as ContentDiff, isManual: !!r.is_manual }));
 }
 
 export async function getChangeEvent(slug: string, id: number): Promise<ChangeEvent | null> {
   await ensureSchema();
   await ensureTables();
   const { rows } = await sql`
-    SELECT id, url, detected_at, change_summary, diff FROM page_change_events
+    SELECT id, url, detected_at, change_summary, diff, is_manual FROM page_change_events
     WHERE client_slug = ${slug} AND id = ${id} LIMIT 1`;
   if (!rows[0]) return null;
   const r = rows[0];
-  return { id: Number(r.id), url: r.url as string, detectedAt: new Date(r.detected_at as string).toISOString(), summary: (r.change_summary as string) || "", diff: r.diff as ContentDiff };
+  return { id: Number(r.id), url: r.url as string, detectedAt: new Date(r.detected_at as string).toISOString(), summary: (r.change_summary as string) || "", diff: r.diff as ContentDiff, isManual: !!r.is_manual };
 }

@@ -99,6 +99,20 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     } catch { setErr("Document maken mislukt."); } finally { setDocBusy(""); }
   }
 
+  // Draait de drie stappen ACHTER ELKAAR (analyse -> blauwdruk -> copy). Moet
+  // sequentieel: elke stap bouwt voort op de vorige.
+  const [allBusy, setAllBusy] = useState(false);
+  async function genAll() {
+    if (allBusy || docBusy) return;
+    setAllBusy(true); setErr("");
+    try {
+      setApplied("Stap 1 van 3: analyse-document…"); await genDoc("analyse");
+      setApplied("Stap 2 van 3: blauwdruk-document…"); await genDoc("blauwdruk");
+      setApplied("Stap 3 van 3: copy-document…"); await genDoc("copy");
+      setApplied("Alle drie de stappen zijn gedraaid: analyse → blauwdruk → copy. De documenten (en klantversies) staan hierboven en als werkzaamheid vastgelegd.");
+    } finally { setAllBusy(false); }
+  }
+
   // ── Google Drive bestemmingsmap ─────────────────────────────
   type Folder = { id: string; name: string };
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -333,9 +347,10 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
             <div className="pcd-docs-head">Documenten (bouwen voort op het plan, de taken en de vorige stap)</div>
             <input className="pcd-nuance" value={nuance} onChange={(e) => setNuance(e.target.value)} placeholder="Extra sturing (optioneel), bijv. leg de nadruk op de regio, of behoud de tarieventabel." />
             <div className="pcd-docs-buttons">
-              <button type="button" className="ghost-btn small" onClick={() => genDoc("analyse")} disabled={!!docBusy}>{docBusy === "analyse" ? "Analyse maken…" : "1. Analyse-document"}</button>
-              <button type="button" className="ghost-btn small" onClick={() => genDoc("blauwdruk")} disabled={!!docBusy}>{docBusy === "blauwdruk" ? "Blauwdruk maken…" : "2. Blauwdruk-document"}</button>
-              <button type="button" className="ghost-btn small" onClick={() => genDoc("copy")} disabled={!!docBusy}>{docBusy === "copy" ? "Copy maken…" : "3. Copy-document (+ dev-taak)"}</button>
+              <button type="button" className="ghost-btn small" onClick={() => genDoc("analyse")} disabled={!!docBusy || allBusy}>{docBusy === "analyse" ? "Analyse maken…" : "1. Analyse-document"}</button>
+              <button type="button" className="ghost-btn small" onClick={() => genDoc("blauwdruk")} disabled={!!docBusy || allBusy}>{docBusy === "blauwdruk" ? "Blauwdruk maken…" : "2. Blauwdruk-document"}</button>
+              <button type="button" className="ghost-btn small" onClick={() => genDoc("copy")} disabled={!!docBusy || allBusy}>{docBusy === "copy" ? "Copy maken…" : "3. Copy-document (+ dev-taak)"}</button>
+              <button type="button" className="primary-btn small" onClick={genAll} disabled={!!docBusy || allBusy}>{allBusy ? "Alle stappen draaien…" : "Alles achter elkaar (1 → 2 → 3)"}</button>
             </div>
             <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>Van elk document wordt automatisch ook een klantversie gemaakt en in de Drive-map opgeslagen. De taaktitel linkt naar de technische versie, met "(klantversie)" ernaast; het klantdashboard toont alleen de klantversie.</div>
           </div>

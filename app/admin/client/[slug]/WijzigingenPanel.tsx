@@ -15,7 +15,7 @@ type ContentDiff = {
   word_count?: { before: number; after: number; delta: number };
   schema_types?: ArrayDiff;
 };
-type ChangeEvent = { id: number; url: string; detectedAt: string; summary: string; diff: ContentDiff };
+type ChangeEvent = { id: number; url: string; detectedAt: string; summary: string; diff: ContentDiff; isManual?: boolean };
 
 function shortUrl(url: string): string {
   try { const u = new URL(url); return (u.pathname + u.search) || "/"; } catch { return url; }
@@ -137,6 +137,28 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
   const [open, setOpen] = useState<ChangeEvent | null>(null);
   const [kpi, setKpi] = useState<Kpi | null>(null);
   const [kpiLoading, setKpiLoading] = useState(false);
+  // Handmatig een bekende wijziging toevoegen
+  const [showAdd, setShowAdd] = useState(false);
+  const [urls, setUrls] = useState<string[]>([]);
+  const [addUrl, setAddUrl] = useState("");
+  const [addDate, setAddDate] = useState("");
+  const [addNote, setAddNote] = useState("");
+  const [addBusy, setAddBusy] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/admin/urls?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).then((d) => { if (d.ok) setUrls((d.urls || []).map((u: { url: string }) => u.url)); }).catch(() => {});
+  }, [slug]);
+
+  async function addManual() {
+    if (!addUrl || !addDate || addBusy) return;
+    setAddBusy(true); setMsg("");
+    try {
+      const r = await fetch("/api/admin/changes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: addUrl, date: addDate, note: addNote }) });
+      const d = await r.json();
+      if (d.ok) { setShowAdd(false); setAddUrl(""); setAddDate(""); setAddNote(""); setMsg("Wijziging toegevoegd. Open hem voor de KPI-ontwikkeling."); await load(); }
+      else setMsg(d.error || "Toevoegen mislukt.");
+    } catch { setMsg("Toevoegen mislukt."); } finally { setAddBusy(false); }
+  }
 
   useEffect(() => {
     if (!open) { setKpi(null); return; }
@@ -177,7 +199,9 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
         <div className="wz-detail-grid">
           <div>
             <div className="wz-block-head" style={{ fontSize: 13 }}>Wat veranderde</div>
-            <DiffView diff={open.diff} />
+            {open.isManual
+              ? <div className="wz-line" style={{ background: "#fff6e5" }}>Handmatig toegevoegd: {open.summary || "wijziging"}</div>
+              : <DiffView diff={open.diff} />}
           </div>
           <div>
             <div className="wz-block-head" style={{ fontSize: 13 }}>KPI-impact</div>
@@ -243,8 +267,27 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
     <div className="cockpit-card">
       <div className="ck-section-head">
         <span>Wijzigingen ({events.length})</span>
-        <button type="button" className="ghost-btn small" onClick={scan} disabled={scanning}>{scanning ? "Scannen…" : "Scan op wijzigingen"}</button>
+        <span style={{ display: "inline-flex", gap: 8 }}>
+          <button type="button" className="ghost-btn small" onClick={() => setShowAdd((v) => !v)}>{showAdd ? "Sluiten" : "Wijziging toevoegen"}</button>
+          <button type="button" className="ghost-btn small" onClick={scan} disabled={scanning}>{scanning ? "Scannen…" : "Scan op wijzigingen"}</button>
+        </span>
       </div>
+      {showAdd && (
+        <div className="wz-add">
+          <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>Een bekende aanpassing uit het verleden vastleggen (bijv. Hovenier Den Bosch, 2 weken terug), zodat je de KPI-ontwikkeling eromheen kunt volgen.</div>
+          <div className="wz-add-row">
+            <select className="compose-input" value={addUrl} onChange={(e) => setAddUrl(e.target.value)}>
+              <option value="">Kies een pagina…</option>
+              {urls.map((u) => <option key={u} value={u}>{shortUrl(u)}</option>)}
+            </select>
+            <input className="compose-input" type="date" value={addDate} onChange={(e) => setAddDate(e.target.value)} />
+          </div>
+          <input className="compose-input" style={{ marginTop: 8 }} value={addNote} onChange={(e) => setAddNote(e.target.value)} placeholder="Wat is er aangepast? (bijv. nieuwe H1 + intro herschreven)" />
+          <div style={{ marginTop: 8 }}>
+            <button type="button" className="primary-btn small" onClick={addManual} disabled={!addUrl || !addDate || addBusy}>{addBusy ? "Toevoegen…" : "Toevoegen"}</button>
+          </div>
+        </div>
+      )}
       <p className="muted" style={{ marginTop: 4 }}>Detecteert automatisch wat er op de live pagina's verandert (titel, koppen, alt-teksten, interne links, woordenaantal, schema). De eerste scan legt de basislijn vast; daarna zie je hier elke wijziging.</p>
       {msg && <div className="saved-msg" style={{ marginTop: 8 }}>{msg}</div>}
       {loading && <div className="muted" style={{ padding: 12 }}>Laden…</div>}
@@ -254,7 +297,7 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
           <button key={e.id} type="button" className="wz-item" onClick={() => setOpen(e)}>
             <div className="wz-item-main">
               <div className="wz-item-title">{e.diff.meta_title?.after || e.diff.h1?.after || shortUrl(e.url)}</div>
-              <div className="wz-item-sub">{shortUrl(e.url)} · {e.summary}</div>
+              <div className="wz-item-sub">{shortUrl(e.url)} · {e.summary}{e.isManual ? " · handmatig" : ""}</div>
             </div>
             <div className="wz-item-date">{dt(e.detectedAt)}</div>
           </button>

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
-import { getChangeEvents, getChangeEvent } from "../../../../lib/content-tracking";
+import { getChangeEvents, getChangeEvent, addManualChange } from "../../../../lib/content-tracking";
 
 export const runtime = "nodejs";
 
@@ -21,4 +21,18 @@ export async function GET(req: NextRequest) {
   }
   const events = await getChangeEvents(slug);
   return NextResponse.json({ ok: true, events });
+}
+
+// Handmatig een bekende (verleden) wijziging vastleggen om de KPI-ontwikkeling te volgen.
+export async function POST(req: NextRequest) {
+  if (!admin(req)) return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
+  let body: Record<string, unknown>;
+  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: "Ongeldige aanvraag." }, { status: 400 }); }
+  const slug = String(body.slug || "").trim();
+  const url = String(body.url || "").trim();
+  const date = String(body.date || "").trim();
+  const note = String(body.note || "").trim();
+  if (!slug || !url || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return NextResponse.json({ ok: false, error: "Klant, URL en een geldige datum (JJJJ-MM-DD) zijn verplicht." }, { status: 400 });
+  const res = await addManualChange(slug, url, date, note);
+  return NextResponse.json(res.ok ? { ok: true } : { ok: false, error: res.error || "Toevoegen mislukt." });
 }

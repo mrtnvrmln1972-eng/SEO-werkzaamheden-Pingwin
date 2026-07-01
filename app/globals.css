@@ -984,3 +984,8 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .wz-kw-table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 4px; }
 .wz-kw-table th { text-align: left; color: var(--gray); font-weight: 600; padding: 4px 8px; border-bottom: 1px solid var(--border); }
 .wz-kw-table td { padding: 4px 8px; border-bottom: 1px solid var(--border); color: var(--dark); }
+
+/* Wijzigingen: handmatig toevoegen */
+.wz-add { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-top: 10px; background: #fafafa; }
+.wz-add-row { display: flex; gap: 8px; }
+.wz-add-row .compose-input { flex: 1; }
