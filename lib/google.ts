@@ -176,6 +176,129 @@ export async function getGscForClient(domain: string): Promise<GscData | null> {
   };
 }
 
+// ── Periode-vergelijking (huidige vs vorige periode) ────────
+// De GSC-data loopt ~2 dagen achter; daarom eindigt de huidige periode 2 dagen
+// geleden. De vorige periode is exact even lang en ligt er direct voor.
+function periodRanges(days: number) {
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const lag = 2;
+  const curEnd = new Date(); curEnd.setDate(curEnd.getDate() - lag);
+  const curStart = new Date(curEnd); curStart.setDate(curStart.getDate() - (days - 1));
+  const prevEnd = new Date(curStart); prevEnd.setDate(prevEnd.getDate() - 1);
+  const prevStart = new Date(prevEnd); prevStart.setDate(prevStart.getDate() - (days - 1));
+  return { curStart: iso(curStart), curEnd: iso(curEnd), prevStart: iso(prevStart), prevEnd: iso(prevEnd) };
+}
+
+export type MetricPair = { cur: number; prev: number };
+export type GscComparison = {
+  connected: boolean;
+  site: string | null;
+  totals: { clicks: MetricPair; impressions: MetricPair; ctr: MetricPair; position: MetricPair } | null;
+  keywords: { keyword: string; clicks: number; impressions: number; ctr: number; position: number; prevClicks: number; prevImpressions: number; prevCtr: number; prevPosition: number | null }[];
+  pages: { url: string; clicks: number; impressions: number; prevClicks: number; prevImpressions: number }[];
+  range: { curStart: string; curEnd: string; prevStart: string; prevEnd: string };
+};
+
+export async function getGscComparison(domain: string, days: number): Promise<GscComparison | null> {
+  const token = await googleAccessToken();
+  if (!token) return null;
+  const range = periodRanges(days);
+  const empty: GscComparison = { connected: true, site: null, totals: null, keywords: [], pages: [], range };
+  if (!domain) return empty;
+  const site = await gscPickSite(token, domain);
+  if (!site) return empty;
+
+  const [curTot, prevTot, curKw, prevKw, curPg, prevPg] = await Promise.all([
+    gscQuery(token, site, { startDate: range.curStart, endDate: range.curEnd }),
+    gscQuery(token, site, { startDate: range.prevStart, endDate: range.prevEnd }),
+    gscQuery(token, site, { startDate: range.curStart, endDate: range.curEnd, dimensions: ["query"], rowLimit: 100 }),
+    gscQuery(token, site, { startDate: range.prevStart, endDate: range.prevEnd, dimensions: ["query"], rowLimit: 100 }),
+    gscQuery(token, site, { startDate: range.curStart, endDate: range.curEnd, dimensions: ["page"], rowLimit: 50 }),
+    gscQuery(token, site, { startDate: range.prevStart, endDate: range.prevEnd, dimensions: ["page"], rowLimit: 50 }),
+  ]);
+
+  const c = curTot[0]; const p = prevTot[0];
+  const totals = c ? {
+    clicks: { cur: Math.round(c.clicks), prev: Math.round(p?.clicks || 0) },
+    impressions: { cur: Math.round(c.impressions), prev: Math.round(p?.impressions || 0) },
+    ctr: { cur: Math.round(c.ctr * 1000) / 10, prev: Math.round((p?.ctr || 0) * 1000) / 10 },
+    position: { cur: Math.round(c.position * 10) / 10, prev: p ? Math.round(p.position * 10) / 10 : 0 },
+  } : null;
+
+  const prevKwMap = new Map<string, GscRow>();
+  for (const r of prevKw) { const k = r.keys?.[0]; if (k) prevKwMap.set(k, r); }
+  const keywords = curKw.map((r) => {
+    const kw = r.keys?.[0] || "";
+    const pr = prevKwMap.get(kw);
+    return {
+      keyword: kw,
+      clicks: Math.round(r.clicks), impressions: Math.round(r.impressions),
+      ctr: Math.round(r.ctr * 1000) / 10, position: Math.round(r.position * 10) / 10,
+      prevClicks: pr ? Math.round(pr.clicks) : 0,
+      prevImpressions: pr ? Math.round(pr.impressions) : 0,
+      prevCtr: pr ? Math.round(pr.ctr * 1000) / 10 : 0,
+      prevPosition: pr ? Math.round(pr.position * 10) / 10 : null,
+    };
+  });
+
+  const prevPgMap = new Map<string, GscRow>();
+  for (const r of prevPg) { const u = r.keys?.[0]; if (u) prevPgMap.set(u, r); }
+  const pages = curPg.map((r) => {
+    const url = r.keys?.[0] || "";
+    const pr = prevPgMap.get(url);
+    return {
+      url, clicks: Math.round(r.clicks), impressions: Math.round(r.impressions),
+      prevClicks: pr ? Math.round(pr.clicks) : 0,
+      prevImpressions: pr ? Math.round(pr.impressions) : 0,
+    };
+  });
+
+  return { connected: true, site, totals, keywords, pages, range };
+}
+
+export type Ga4Comparison = { connected: boolean; propertyId: string | null; totals: { metric: string; cur: number; prev: number }[] };
+
+export async function getGa4Comparison(slug: string, domain: string, days: number): Promise<Ga4Comparison | null> {
+  const token = await googleAccessToken();
+  if (!token) return null;
+  await ensureSchema();
+  const { rows } = await sql`SELECT ga4_property_id FROM clients WHERE slug = ${slug} LIMIT 1`;
+  let propertyId = (rows[0]?.ga4_property_id as string) || "";
+  if (!propertyId && domain) {
+    const found = await ga4DiscoverProperty(token, domain);
+    if (found) { propertyId = found; await sql`UPDATE clients SET ga4_property_id = ${found} WHERE slug = ${slug}`; }
+  }
+  if (!propertyId) return { connected: true, propertyId: null, totals: [] };
+
+  const range = periodRanges(days);
+  async function run(metricNames: string[]) {
+    return fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`, {
+      method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        dateRanges: [
+          { startDate: range.curStart, endDate: range.curEnd },
+          { startDate: range.prevStart, endDate: range.prevEnd },
+        ],
+        metrics: metricNames.map((name) => ({ name })),
+      }),
+    });
+  }
+  let names = ["totalUsers", "sessions", "conversions"];
+  let res = await run(names);
+  if (!res.ok) { names = ["totalUsers", "sessions"]; res = await run(names); }
+  if (!res.ok) return { connected: true, propertyId, totals: [] };
+  const j = await res.json();
+  const rowsArr: { dimensionValues?: { value: string }[]; metricValues?: { value: string }[] }[] = j.rows || [];
+  const cur = rowsArr.find((r) => r.dimensionValues?.[0]?.value === "date_range_0") || rowsArr[0];
+  const prev = rowsArr.find((r) => r.dimensionValues?.[0]?.value === "date_range_1") || rowsArr[1];
+  const totals = names.map((name, i) => ({
+    metric: name,
+    cur: Math.round(Number(cur?.metricValues?.[i]?.value || 0)),
+    prev: Math.round(Number(prev?.metricValues?.[i]?.value || 0)),
+  }));
+  return { connected: true, propertyId, totals };
+}
+
 // Gemiddelde positie van de top-zoekwoorden per maand over de laatste 4 maanden.
 export type GscTrend = { months: string[]; rows: { keyword: string; positions: (number | null)[] }[] };
 

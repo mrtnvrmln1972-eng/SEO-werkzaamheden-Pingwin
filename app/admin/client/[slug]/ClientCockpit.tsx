@@ -13,6 +13,7 @@ import TasksEditor from "./TasksEditor";
 import FocusBlock from "./FocusBlock";
 import LinkPreview from "./LinkPreview";
 import DeveloperOverview from "../../developer/DeveloperOverview";
+import KpiPanel from "./KpiPanel";
 
 type Tab = "overzicht" | "werkzaamheden" | "resultaten" | "klant" | "developer";
 
@@ -484,88 +485,9 @@ export default function ClientCockpit({
 
         {tab === "resultaten" && (
           <>
-            {googleConfigured && !googleConnected && (
-              <div className="cockpit-card">
-                <div className="mail-connect">
-                  Koppel Google om Search Console en Analytics te tonen (vertoningen, klikken, CTR, posities, bezoekers).{" "}
-                  <a className="primary-btn small" href="/api/google/auth/start">Koppel Google</a>
-                </div>
-              </div>
-            )}
+            <KpiPanel slug={client.slug} domain={client.domain || ""} />
 
-            {gsc && (gsc.metrics.length > 0 || gsc.keywords.length > 0) && (
-              <>
-                <div className="cockpit-card">
-                  <div className="ck-section-head">
-                    <span>Search Console</span>
-                    <span className="ck-updated">laatste 28 dagen</span>
-                  </div>
-                  {gsc.metrics.length > 0 && (
-                    <div className="kpi-grid">
-                      {gsc.metrics.map((m) => (
-                        <div className="kpi-card" key={m.metric}>
-                          <div className="kpi-value">{fmtMetric(m.metric, m.value)}</div>
-                          <div className="kpi-label">{metricLabel(m.metric)}</div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {gsc.keywords.length > 0 && (
-                  <div className="cockpit-card">
-                    <div className="ck-section-head"><span>Zoekwoorden uit Search Console ({gsc.keywords.length})</span></div>
-                    <div className="res-table-wrap">
-                      <table className="res-table">
-                        <thead><tr><th>Zoekwoord</th><th>Positie</th><th>Klikken</th><th>Vertoningen</th><th>CTR</th></tr></thead>
-                        <tbody>
-                          {gsc.keywords.map((k) => (
-                            <tr key={k.keyword}>
-                              <td>{k.keyword}</td>
-                              <td>{k.position.toFixed(1)}</td>
-                              <td>{k.clicks.toLocaleString("nl-NL")}</td>
-                              <td>{k.impressions.toLocaleString("nl-NL")}</td>
-                              <td>{k.ctr.toFixed(1)}%</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-            {gsc && gsc.connected && gsc.site === null && (
-              <div className="cockpit-card"><div className="phase2-note">Google is gekoppeld, maar er is nog geen Search Console-property gevonden voor {client.domain || "deze klant"}.</div></div>
-            )}
-
-            {ga4 && ga4.metrics.length > 0 && (
-              <div className="cockpit-card">
-                <div className="ck-section-head">
-                  <span>Google Analytics</span>
-                  <span className="ck-updated">laatste 28 dagen</span>
-                </div>
-                <div className="kpi-grid">
-                  {ga4.metrics.map((m) => (
-                    <div className="kpi-card" key={m.metric}>
-                      <div className="kpi-value">{m.value.toLocaleString("nl-NL")}</div>
-                      <div className="kpi-label">{metricLabel(m.metric)}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {ga4 && ga4.connected && ga4.propertyId === null && (
-              <div className="cockpit-card"><div className="phase2-note">Google is gekoppeld, maar er is nog geen GA4-property gevonden voor {client.domain || "deze klant"} (controleer of dit account toegang heeft tot de Analytics-property).</div></div>
-            )}
-
-            {metrics.length === 0 && keywords.length === 0 && pages.length === 0 && !(gsc && gsc.keywords.length > 0) ? (
-              <div className="cockpit-card">
-                <div className="phase2-note">
-                  Nog geen Ahrefs-cijfers ingeladen voor {client.domain || "deze klant"}.
-                </div>
-              </div>
-            ) : (
+            {(metrics.length > 0 || keywords.length > 0 || pages.length > 0) && (
               <>
                 {SOURCES.map((src) => {
                   const ms = metrics.filter((m) => m.source === src.key);
@@ -636,26 +558,6 @@ export default function ClientCockpit({
                   </div>
                 )}
               </>
-            )}
-
-            {gsc && gsc.pages.length > 0 && (
-              <div className="cockpit-card">
-                <div className="ck-section-head"><span>Pagina&rsquo;s uit Search Console</span></div>
-                <div className="res-table-wrap">
-                  <table className="res-table">
-                    <thead><tr><th>Pagina</th><th>Klikken</th><th>Vertoningen</th></tr></thead>
-                    <tbody>
-                      {gsc.pages.map((p) => (
-                        <tr key={p.url}>
-                          <td><a href={p.url} target="_blank" rel="noreferrer">{shortUrl(p.url)}</a></td>
-                          <td>{p.clicks.toLocaleString("nl-NL")}</td>
-                          <td>{p.impressions.toLocaleString("nl-NL")}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
             )}
           </>
         )}
