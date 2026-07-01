@@ -19,6 +19,6 @@ export async function GET(req: NextRequest) {
   const all = await getTasks(slug);
   const tasks = all
     .filter((t) => norm(t.pageUrl) === norm(url))
-    .map((t) => ({ id: t.id ?? null, taak: t.taak, fase: t.fase || "", wie: t.wie || "", status: t.status || "" }));
+    .map((t) => ({ id: t.id ?? null, taak: t.taak, fase: t.fase || "", wie: t.wie || "", status: t.status || "", docLink: t.docLink || "" }));
   return NextResponse.json({ ok: true, tasks });
 }

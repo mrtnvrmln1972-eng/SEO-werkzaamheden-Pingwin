@@ -19,20 +19,24 @@ export async function POST(req: NextRequest) {
   const clientName = String(body.clientName || "").trim();
   if (!analysis) return NextResponse.json({ ok: false, error: "Geen analyse meegegeven." }, { status: 400 });
 
-  const system = `Je bent een SEO-specialist bij bureau Pingwin die een technische analyse omzet in een nette, begrijpelijke e-mail voor de klant${clientName ? ` (${clientName})` : ""}.
+  const system = `Je bent een SEO-specialist bij bureau Pingwin. Vat de analyse hieronder samen tot een CONCLUSIE-BLOK dat de klant${clientName ? ` (${clientName})` : ""} als kern in een e-mail kan zetten. De aanhef, inleidende en afsluitende tekst schrijft de gebruiker zelf; jij levert ALLEEN de kern.
 
 TAAL EN TOON:
 - Gewone, warme, professionele taal. GEEN SEO-jargon (of leg het in één zin uit). De klant is geen SEO-expert.
 
-OPMAAK (streng, dit moet een fijne leesbare e-mail zijn):
-- Structuur: een persoonlijke aanhef ("Beste ${clientName || "..."},"), één korte alinea inleiding (wat we hebben bekeken), de belangrijkste bevindingen als een korte bullet-lijst, kort wat we concreet gaan doen (mag ook een bullet-lijst), en een vriendelijke afsluiting.
-- GEEN tabellen. GEEN horizontale lijnen of streepjes-regels (---). GEEN markdown-koppen met #. GEEN vetgedrukte-sterretjes-spam. GEEN overbodige witruimte of losse tekens.
-- Alleen gewone alinea's en simpele bullets (met "- "). Houd het kort en scanbaar, als een echte e-mail.
+INHOUD (alleen de kern, geen aanhef/afsluiting):
+- Eén korte alinea: wat we voor deze pagina hebben bekeken en de belangrijkste conclusie.
+- "Wat we zien" als een korte bullet-lijst (de belangrijkste bevindingen).
+- "Wat we voorstellen" als een korte bullet-lijst (de concrete acties).
+
+OPMAAK (streng):
+- GEEN aanhef ("Beste ..."), GEEN afsluiting/ondertekening. GEEN tabellen, GEEN horizontale lijnen (---), GEEN markdown-koppen met #, GEEN vet-sterretjes-spam, GEEN emoji.
+- Alleen gewone alinea's en simpele bullets (met "- "). Kort en scanbaar.
 - Geen verzonnen cijfers; alleen wat in de analyse staat.
-- Geef ALLEEN de e-mailtekst terug, niets eromheen.`;
+- Geef ALLEEN het conclusie-blok terug, niets eromheen.`;
 
   try {
-    const email = await callClaude(system, [{ role: "user", content: `Zet deze analyse om in een klant-mail:\n\n${analysis}` }], 1500);
+    const email = await callClaude(system, [{ role: "user", content: `Vat deze analyse samen tot een conclusie-blok:\n\n${analysis}` }], 1200);
     return NextResponse.json({ ok: true, email: email.trim() });
   } catch (e) {
     return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 502 });

@@ -3,9 +3,13 @@ import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { anthropicConfigured } from "../../../../lib/anthropic";
 import { generateDocSpec, type DocKind } from "../../../../lib/page-doc";
 import { buildPingwinDoc } from "../../../../lib/pingwin-docx";
-import { appendTasks } from "../../../../lib/tasks";
+import { upsertStepTask } from "../../../../lib/tasks";
 import { getPageDriveFolder } from "../../../../lib/site-urls";
 import { uploadDocx } from "../../../../lib/drive";
+
+const STEP_KIND: Record<DocKind, string> = { analyse: "analyse_doc", blauwdruk: "blauwdruk_doc", copy: "copy_doc" };
+const STEP_TITLE: Record<DocKind, string> = { analyse: "SEO-analyse", blauwdruk: "Blauwdruk", copy: "Copywriting" };
+function pagePath(u: string): string { try { return new URL(u).pathname || u; } catch { return u; } }
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -58,6 +62,18 @@ export async function POST(req: NextRequest) {
     if (saved) folderId = saved.folderId;
   }
 
+  // Elke stap is een werkzaamheid (SEO), met het document eraan gekoppeld. Één per
+  // pagina+stap: opnieuw genereren werkt het document bij, niet een nieuwe taak.
+  async function logStepTask(link: string) {
+    const toelichting = link
+      ? `${STEP_TITLE[kind]}-document in Google Drive: <a href="${link}">open document</a>.`
+      : `${STEP_TITLE[kind]}-document gegenereerd (gedownload; nog niet in Drive geplaatst).`;
+    return upsertStepTask(slug, {
+      pageUrl: url, stepKind: STEP_KIND[kind], taak: `${STEP_TITLE[kind]}: ${pagePath(url)}`,
+      toelichting, docLink: link || undefined, wie: "SEO", fase: "Bouwen", klantZichtbaar: true,
+    }).catch(() => null);
+  }
+
   if (folderId && !wantDownload) {
     let link: string;
     try {
@@ -65,24 +81,12 @@ export async function POST(req: NextRequest) {
     } catch (e) {
       return NextResponse.json({ ok: false, error: `Document gemaakt, maar upload naar Drive mislukte: ${e instanceof Error ? e.message : "onbekende fout"}` }, { status: 502 });
     }
-    if (kind === "copy") {
-      await appendTasks(slug, [{
-        taak: `Nieuwe copy plaatsen: ${title}`.slice(0, 90),
-        toelichting: `De copy staat in het Pingwin-document in Google Drive: <a href="${link}">open document</a>. Plaats de teksten (H1, H2's, alinea's, FAQ, meta-title en meta-description) op de pagina.`,
-        status: "Gepland", wie: "Dev", fase: "Bouwen", pageUrl: url, klantZichtbaar: false,
-      }]).catch(() => { /* taak is bijzaak */ });
-    }
-    return NextResponse.json({ ok: true, delivered: "drive", link, filename, kind });
+    const taskId = await logStepTask(link);
+    return NextResponse.json({ ok: true, delivered: "drive", link, filename, kind, taskId });
   }
 
-  // Geen bestemmingsmap: download, en (bij copy) een taak zonder link.
-  if (kind === "copy") {
-    await appendTasks(slug, [{
-      taak: `Nieuwe copy plaatsen: ${title}`.slice(0, 90),
-      toelichting: "De copy staat in het bijgevoegde Pingwin-document. Plaats de teksten (H1, H2's, alinea's, FAQ, meta-title en meta-description) op de pagina.",
-      status: "Gepland", wie: "Dev", fase: "Bouwen", pageUrl: url, klantZichtbaar: false,
-    }]).catch(() => { /* taak is bijzaak */ });
-  }
+  // Geen bestemmingsmap: download; de stap wordt wel als werkzaamheid vastgelegd.
+  await logStepTask("");
   return new NextResponse(buffer as unknown as BodyInit, {
     status: 200,
     headers: {

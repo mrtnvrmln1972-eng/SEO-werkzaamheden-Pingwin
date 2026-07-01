@@ -129,7 +129,7 @@ function PageRow({ slug, u, open, onToggle, clientEmail, clientName, onGoToTask 
   const [plan, setPlan] = useState(u.plan);
   const [saved, setSaved] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [tasks, setTasks] = useState<{ id: number | null; taak: string; fase: string; wie: string; status: string }[]>([]);
+  const [tasks, setTasks] = useState<{ id: number | null; taak: string; fase: string; wie: string; status: string; docLink?: string }[]>([]);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   async function loadTasks() {
@@ -191,6 +191,7 @@ function PageRow({ slug, u, open, onToggle, clientEmail, clientName, onGoToTask 
                         {t.fase && <span className="pt-fase">{t.fase}</span>}
                         {t.wie && <span className={"pt-wie" + (t.wie === "Dev" ? " dev" : "")}>{t.wie}</span>}
                         <span className="pt-taak">{t.taak}</span>
+                        {t.docLink && <a className="pt-doc" href={t.docLink} target="_blank" rel="noreferrer">document</a>}
                         {t.status && <span className="pt-status">{t.status}</span>}
                       </li>
                     ))}

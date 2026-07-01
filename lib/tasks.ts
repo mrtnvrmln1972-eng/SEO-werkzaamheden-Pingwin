@@ -25,6 +25,8 @@ export type TaskRow = {
   geblokkeerd?: boolean;  // wacht op een andere taak (bv. redirect wacht op bouw)
   blokkadeReden?: string; // waarop wordt gewacht
   pageUrl?: string;       // pagina waar de taak bij hoort
+  stepKind?: string;      // pijplijn-stap: "analyse_doc" | "blauwdruk_doc" | "copy_doc"
+  docLink?: string;       // gekoppeld document (Drive-link) bij deze stap
 };
 
 // Inhoudssleutel van een taak: twee rijen met exact dezelfde inhoud (taak,
@@ -59,7 +61,7 @@ export async function getTasks(slug: string): Promise<TaskRow[]> {
   await ensureSchema();
   const { rows } = await sql`
     SELECT id, categorie, taak, toelichting, klant_toelichting, uren, status, maand, link, wie, klant_zichtbaar, gemaild,
-           fase, cluster, geblokkeerd, blokkade_reden, page_url
+           fase, cluster, geblokkeerd, blokkade_reden, page_url, step_kind, doc_link
     FROM client_tasks WHERE client_slug = ${slug} ORDER BY sort_order ASC, id ASC`;
   const mapped = rows.map((r) => ({
     id: r.id as number,
@@ -79,6 +81,8 @@ export async function getTasks(slug: string): Promise<TaskRow[]> {
     geblokkeerd: !!r.geblokkeerd,
     blokkadeReden: r.blokkade_reden ?? "",
     pageUrl: r.page_url ?? "",
+    stepKind: r.step_kind ?? "",
+    docLink: r.doc_link ?? "",
   }));
   return dedupeTasks(mapped);
 }
@@ -102,6 +106,33 @@ export async function appendTasks(slug: string, tasks: Partial<TaskRow>[]): Prom
     order++;
   }
   return ids;
+}
+
+// Eén werkzaamheid per pijplijn-stap per pagina (analyse/blauwdruk/copy). Bestaat
+// hij al, dan werken we alleen het gekoppelde document + de toelichting bij en
+// laten we jouw planning (uren, status, maand, wie) met rust. Geeft het id terug.
+export async function upsertStepTask(
+  slug: string,
+  step: { pageUrl: string; stepKind: string; taak: string; toelichting: string; docLink?: string; fase?: string; wie?: string; klantZichtbaar?: boolean },
+): Promise<number> {
+  await ensureSchema();
+  const { rows: found } = await sql`
+    SELECT id FROM client_tasks WHERE client_slug = ${slug} AND page_url = ${step.pageUrl} AND step_kind = ${step.stepKind} LIMIT 1`;
+  if (found[0]?.id != null) {
+    const id = Number(found[0].id);
+    await sql`
+      UPDATE client_tasks
+      SET taak = ${step.taak}, toelichting = ${step.toelichting || null}, doc_link = ${step.docLink || null}, updated_at = now()
+      WHERE id = ${id}`;
+    return id;
+  }
+  const { rows: ord } = await sql`SELECT COALESCE(MAX(sort_order), -1) AS m FROM client_tasks WHERE client_slug = ${slug}`;
+  const order = Number(ord[0]?.m ?? -1) + 1;
+  const res = await sql`
+    INSERT INTO client_tasks (client_slug, sort_order, taak, toelichting, status, wie, klant_zichtbaar, fase, page_url, step_kind, doc_link, updated_at)
+    VALUES (${slug}, ${order}, ${step.taak}, ${step.toelichting || null}, 'Gepland', ${step.wie || "SEO"}, ${step.klantZichtbaar !== false}, ${step.fase || "Bouwen"}, ${step.pageUrl}, ${step.stepKind}, ${step.docLink || null}, now())
+    RETURNING id`;
+  return Number(res.rows[0].id);
 }
 
 export async function hasTasks(slug: string): Promise<boolean> {

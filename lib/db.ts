@@ -117,6 +117,10 @@ async function init(): Promise<void> {
   await sql`ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS geblokkeerd BOOLEAN NOT NULL DEFAULT false`;
   await sql`ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS blokkade_reden TEXT`;
   await sql`ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS page_url TEXT`;
+  // Pijplijn-stap (analyse_doc/blauwdruk_doc/copy_doc) + gekoppeld document, zodat
+  // elke stap één werkzaamheid is met het document eraan gelinkt (en ontdubbeld).
+  await sql`ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS step_kind TEXT`;
+  await sql`ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS doc_link TEXT`;
 
   // Focus-blok per klant: afgesproken zoekwoorden + pagina's en snelle links
   // (linkbuilding-sheets, Search Console, Analytics). Eén JSON-rij per klant.

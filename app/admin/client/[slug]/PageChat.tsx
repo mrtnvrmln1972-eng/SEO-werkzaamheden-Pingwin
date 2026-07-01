@@ -66,8 +66,8 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       if (ct.includes("application/json")) {
         const d = await r.json();
         if (!d.ok) { setErr(d.error || "Document maken mislukt."); return; }
-        setApplied(`${soort[kind]}-document in Pingwin-huisstijl opgeslagen in Google Drive${driveFolder ? ` (map: ${driveFolder.name})` : ""}. <a href="${d.link}" target="_blank" rel="noopener">Open document</a>.${kind === "copy" ? " De developer heeft een bouwtaak met deze link gekregen." : ""}`);
-        if (kind === "copy") onApplied();
+        setApplied(`${soort[kind]}-document in Pingwin-huisstijl opgeslagen in Google Drive${driveFolder ? ` (map: ${driveFolder.name})` : ""}. <a href="${d.link}" target="_blank" rel="noopener">Open document</a>. Vastgelegd als werkzaamheid met het document eraan gekoppeld; plan of wijs hem toe in de Werkzaamheden-tab.`);
+        onApplied(); // ververst de takenlijst van deze pagina
         return;
       }
       if (!r.ok) { const d = await r.json().catch(() => ({})); setErr(d.error || "Document maken mislukt."); return; }
@@ -80,8 +80,8 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       a.download = m ? m[1] : `${kind}.docx`;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-      setApplied(`${soort[kind]}-document gedownload in Pingwin-huisstijl.${kind === "copy" ? " Er is een bouwtaak voor de developer aangemaakt." : ""}`);
-      if (kind === "copy") onApplied();
+      setApplied(`${soort[kind]}-document gedownload in Pingwin-huisstijl. Vastgelegd als werkzaamheid; plan of wijs hem toe in de Werkzaamheden-tab. Kies een Drive-map om het document ook automatisch te koppelen.`);
+      onApplied(); // ververst de takenlijst van deze pagina
     } catch { setErr("Document maken mislukt."); } finally { setDocBusy(""); }
   }
 
@@ -139,14 +139,26 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     } catch { setPickErr("Opslaan mislukt."); } finally { setPickBusy(false); }
   }
 
-  // Opent een lege mail; de tekst schrijft Maarten zelf (geen AI-voorbeeldtekst).
-  function makeClientMail() {
+  // Opent de mail met de CONCLUSIE van de analyse als kern; de tekst eromheen
+  // (aanhef, inleiding, afsluiting) schrijft Maarten zelf.
+  async function makeClientMail() {
     setErr("");
-    setMailHtml("");
     setMailTo(clientEmail || "");
     setMailSubject("");
     setMailMsg("");
+    setMailHtml("");
     setMailOpen(true);
+    if (!lastAssistant) return;
+    setMailGen(true);
+    try {
+      const r = await fetch("/api/admin/page-chat/client-mail", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url, clientName, analysis: lastAssistant }) });
+      const d = await r.json();
+      if (d.ok && d.email) {
+        const html = `<p><em>Schrijf hier je aanhef en inleiding.</em></p>${mdToHtml(d.email)}<p><em>Schrijf hier je afsluiting.</em></p>`;
+        setMailHtml(html);
+        if (mailRef.current) mailRef.current.innerHTML = html;
+      }
+    } catch { /* leeg laten als het niet lukt */ } finally { setMailGen(false); }
   }
 
   async function sendClientMail() {
@@ -329,7 +341,8 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
               <input className="compose-input" value={mailTo} onChange={(e) => setMailTo(e.target.value)} placeholder="klant@bedrijf.nl" />
               <label className="compose-label">Onderwerp</label>
               <input className="compose-input" value={mailSubject} onChange={(e) => setMailSubject(e.target.value)} />
-              <label className="compose-label">Bericht (opgemaakt, je kunt hier direct in typen)</label>
+              <label className="compose-label">Bericht (de conclusie staat er als kern in; schrijf zelf de aanhef en afsluiting eromheen)</label>
+              {mailGen && <div className="muted" style={{ marginBottom: 6 }}>Conclusie van de analyse wordt opgehaald…</div>}
               <div ref={mailRef} className="mail-edit md" contentEditable suppressContentEditableWarning />
               {mailMsg && <div className={mailMsg.startsWith("Verstuurd") ? "saved-msg" : "login-error"} style={{ marginTop: 8 }}>{mailMsg}</div>}
             </div>
