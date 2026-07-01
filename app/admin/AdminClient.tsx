@@ -95,6 +95,20 @@ export default function AdminClient({ initialClients }: { initialClients: Client
     window.location.href = "/admin/login";
   }
 
+  // Genereert een nieuw wachtwoord voor een klant (om te mailen); toont het één keer.
+  async function resetPw(e: React.MouseEvent, c: ClientConfig) {
+    e.stopPropagation();
+    if (!window.confirm(`Nieuw wachtwoord voor ${c.name}? Het oude werkt daarna niet meer.`)) return;
+    try {
+      const res = await fetch("/api/admin/clients", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug: c.slug, action: "resetPassword" }) });
+      const data = await res.json();
+      if (data.ok) {
+        setCreated({ name: c.name, loginId: c.loginId, password: data.password, loginUrl: `${window.location.origin}/login` });
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } else setError(data.error || "Wachtwoord genereren mislukt.");
+    } catch { setError("Wachtwoord genereren mislukt."); }
+  }
+
   async function remove(e: React.MouseEvent, c: ClientConfig) {
     e.stopPropagation();
     if (!window.confirm(`Klant "${c.name}" verwijderen? Hun login werkt daarna niet meer.`)) return;
@@ -139,8 +153,8 @@ export default function AdminClient({ initialClients }: { initialClients: Client
 
         {created && (
           <div className="created-box">
-            <div className="created-title">Klant aangemaakt: {created.name}</div>
-            <p>Geef deze gegevens aan de klant (het wachtwoord zie je maar één keer):</p>
+            <div className="created-title">Inloggegevens voor {created.name}</div>
+            <p>Geef deze gegevens aan de klant (het wachtwoord zie je maar één keer). Deze login is alleen voor het klantdashboard.</p>
             <div className="cred-row"><span>Link</span><code>{created.loginUrl}</code>
               <button className="mini-btn" onClick={() => copy(created.loginUrl)}>Kopieer</button></div>
             <div className="cred-row"><span>Inlognaam</span><code>{created.loginId}</code>
@@ -177,7 +191,10 @@ export default function AdminClient({ initialClients }: { initialClients: Client
                   <td>{c.email || <span className="muted">&mdash;</span>}</td>
                   <td>&euro;{c.budget.maandbudget.toFixed(0)}</td>
                   <td>&euro;{c.budget.uurtarief.toFixed(0)}</td>
-                  <td><button className="mini-btn" onClick={(e) => remove(e, c)}>Verwijder</button></td>
+                  <td style={{ whiteSpace: "nowrap" }}>
+                    <button className="mini-btn" onClick={(e) => resetPw(e, c)}>Nieuw wachtwoord</button>{" "}
+                    <button className="mini-btn" onClick={(e) => remove(e, c)}>Verwijder</button>
+                  </td>
                 </tr>
               ))}
             </tbody>

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
-import { listClients, createClient, deleteClient, updateClientCockpit, updateClientCore, parseSheetUrl } from "../../../../lib/clients";
+import { listClients, createClient, deleteClient, updateClientCockpit, updateClientCore, parseSheetUrl, resetClientPassword } from "../../../../lib/clients";
 
 export const runtime = "nodejs";
 
@@ -91,6 +91,14 @@ export async function PATCH(req: NextRequest) {
   if (!slug) {
     return NextResponse.json({ ok: false, error: "Geen klant opgegeven." }, { status: 400 });
   }
+
+  // Nieuw wachtwoord genereren (het oude is versleuteld en niet terug te lezen).
+  if (body.action === "resetPassword") {
+    const password = await resetClientPassword(slug);
+    if (!password) return NextResponse.json({ ok: false, error: "Klant niet gevonden." }, { status: 404 });
+    return NextResponse.json({ ok: true, password });
+  }
+
   const ok = await updateClientCockpit(slug, {
     emailDomain: String(body.emailDomain || "").trim() || null,
     workDocUrl: String(body.workDocUrl || "").trim() || null,
