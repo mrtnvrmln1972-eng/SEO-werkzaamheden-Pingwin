@@ -93,8 +93,8 @@ async function shareAnyone(t: string, fileId: string): Promise<boolean> {
 }
 
 // Uploadt een .docx in een map en maakt hem deelbaar (iedereen met de link = lezer).
-// Geeft de deelbare webViewLink terug + of het delen gelukt is.
-export async function uploadDocx(folderId: string, filename: string, buffer: Buffer): Promise<{ id: string; link: string; shared: boolean }> {
+// Geeft de deelbare webViewLink terug + waar het echt is beland (account + map).
+export async function uploadDocx(folderId: string, filename: string, buffer: Buffer): Promise<{ id: string; link: string; shared: boolean; owner: string; folder: string }> {
   const t = await token();
   const parent = folderId && folderId !== "root" ? folderId : "root";
   const meta = { name: filename, parents: [parent] };
@@ -103,7 +103,7 @@ export async function uploadDocx(folderId: string, filename: string, buffer: Buf
   const post = `\r\n--${boundary}--`;
   const body = Buffer.concat([Buffer.from(pre, "utf8"), buffer, Buffer.from(post, "utf8")]);
 
-  const up = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,webViewLink", {
+  const up = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,webViewLink,parents", {
     method: "POST",
     headers: { Authorization: `Bearer ${t}`, "Content-Type": `multipart/related; boundary=${boundary}` },
     body: new Uint8Array(body),
@@ -113,5 +113,18 @@ export async function uploadDocx(folderId: string, filename: string, buffer: Buf
 
   const shared = await shareAnyone(t, file.id);
   const link = (file.webViewLink as string) || `https://drive.google.com/file/d/${file.id}/view`;
-  return { id: file.id, link, shared };
+
+  // Verifieer waar het bestand echt staat: eigenaar (welk Google-account) + map.
+  let owner = "", folder = "";
+  try {
+    const metaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?fields=owners(emailAddress),parents&supportsAllDrives=true`, { headers: { Authorization: `Bearer ${t}` } });
+    if (metaRes.ok) {
+      const m = await metaRes.json();
+      owner = m?.owners?.[0]?.emailAddress || "";
+      const realParent = Array.isArray(m?.parents) ? m.parents[0] : (Array.isArray(file.parents) ? file.parents[0] : "");
+      if (realParent) folder = await folderName(realParent).catch(() => "");
+    }
+  } catch { /* verificatie is extra, niet kritisch */ }
+
+  return { id: file.id, link, shared, owner, folder };
 }
