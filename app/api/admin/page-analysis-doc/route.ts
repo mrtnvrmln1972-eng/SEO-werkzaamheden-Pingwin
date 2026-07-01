@@ -70,7 +70,8 @@ export async function POST(req: NextRequest) {
   }
 
   const taskId = await logTask("");
-  return new NextResponse(buffer as unknown as BodyInit, {
+  // Schone kopie (zie page-doc): voorkomt een kapot Word-bestand bij download.
+  return new NextResponse(new Uint8Array(buffer), {
     status: 200,
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",

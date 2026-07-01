@@ -87,7 +87,9 @@ export async function POST(req: NextRequest) {
 
   // Geen bestemmingsmap: download; de stap wordt wel als werkzaamheid vastgelegd.
   await logStepTask("");
-  return new NextResponse(buffer as unknown as BodyInit, {
+  // Schone kopie: een Node-Buffer kan een venster in een gedeeld geheugenblok zijn;
+  // direct als HTTP-body meegeven levert soms een kapot bestand. Uint8Array-kopie fixt dat.
+  return new NextResponse(new Uint8Array(buffer), {
     status: 200,
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
