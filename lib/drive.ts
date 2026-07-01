@@ -116,9 +116,9 @@ export async function uploadDocx(folderId: string, filename: string, buffer: Buf
   // betrouwbaar in de browser). Lukt dat niet (bv. een Gedeelde Drive die het
   // blokkeert), dan houden we gewoon het Word-bestand aan.
   let finalId = file.id as string;
-  let link = (file.webViewLink as string) || `https://drive.google.com/file/d/${file.id}/view`;
+  let isDoc = false;
   try {
-    const copyRes = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}/copy?supportsAllDrives=true&fields=id,webViewLink`, {
+    const copyRes = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}/copy?supportsAllDrives=true&fields=id`, {
       method: "POST",
       headers: { Authorization: `Bearer ${t}`, "Content-Type": "application/json" },
       body: JSON.stringify({ name: filename.replace(/\.docx$/i, ""), mimeType: GDOC_MIME, parents: [parent] }),
@@ -126,13 +126,19 @@ export async function uploadDocx(folderId: string, filename: string, buffer: Buf
     if (copyRes.ok) {
       const doc = await copyRes.json();
       finalId = doc.id;
-      link = (doc.webViewLink as string) || link;
+      isDoc = true;
       // Ruim het losse Word-bestand op zodat er niet twee versies in de map staan.
       await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?supportsAllDrives=true`, { method: "DELETE", headers: { Authorization: `Bearer ${t}` } }).catch(() => { /* niet kritisch */ });
     }
   } catch { /* omzetten is optioneel; val terug op het .docx */ }
 
   const shared = await shareAnyone(t, finalId);
+
+  // Schone deel-link ZONDER ouid/rtpof: die parameters forceren het eigenaar-account
+  // en breken "Kan bestand niet openen" als je met een ander account bent ingelogd.
+  const link = isDoc
+    ? `https://docs.google.com/document/d/${finalId}/edit?usp=sharing`
+    : `https://drive.google.com/file/d/${finalId}/view?usp=sharing`;
 
   // Verifieer waar het bestand echt staat: eigenaar (welk Google-account) + map.
   let owner = "", folder = "";
