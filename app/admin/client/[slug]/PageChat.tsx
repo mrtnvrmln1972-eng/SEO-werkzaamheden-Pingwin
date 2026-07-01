@@ -34,6 +34,18 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
 
   const lastAssistant = [...msgs].reverse().find((m) => m.role === "assistant")?.content || "";
 
+  const [taskGen, setTaskGen] = useState(false);
+  async function makeWorkItem() {
+    if (!lastAssistant || taskGen) return;
+    setTaskGen(true); setErr(""); setApplied("");
+    try {
+      const r = await fetch("/api/admin/page-chat/to-task", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url, analysis: lastAssistant }) });
+      const d = await r.json();
+      if (d.ok) { setApplied(`Werkzaamheid aangemaakt: "${d.title}". Staat in de Werkzaamheden-tab (zichtbaar voor de klant); voeg daar uren toe.`); onApplied(); }
+      else setErr(d.error || "Werkzaamheid maken mislukt.");
+    } catch { setErr("Werkzaamheid maken mislukt."); } finally { setTaskGen(false); }
+  }
+
   async function makeClientMail() {
     if (!lastAssistant || mailGen) return;
     setMailGen(true); setErr("");
@@ -188,6 +200,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
 
       {lastAssistant && (
         <div className="page-chat-tools">
+          <button type="button" className="ghost-btn small" onClick={makeWorkItem} disabled={taskGen}>{taskGen ? "Aanmaken…" : "＋ Maak werkzaamheid van deze analyse"}</button>
           <button type="button" className="ghost-btn small" onClick={makeClientMail} disabled={mailGen}>{mailGen ? "Mail maken…" : "✉ Klant-mail van deze analyse"}</button>
         </div>
       )}

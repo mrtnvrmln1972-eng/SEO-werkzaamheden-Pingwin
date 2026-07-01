@@ -440,7 +440,7 @@ tbody td:last-child { text-align: center; }
 .pch-badge.fase { background: #EDE9FE; color: #6D28D9; }
 .pch-badge.task { background: var(--gray-light); color: var(--dark); }
 .page-chat-proposal-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
-.page-chat-tools { margin: 4px 0 8px; }
+.page-chat-tools { margin: 4px 0 8px; display: flex; gap: 8px; flex-wrap: wrap; }
 /* Klant-mail: ruim venster + nette, opgemaakte, meegroeiende bewerkbare preview */
 .mail-modal { width: 760px; max-width: 96vw; max-height: 92vh; }
 .mail-edit { min-height: 260px; max-height: 62vh; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; outline: none; background: var(--white); }
