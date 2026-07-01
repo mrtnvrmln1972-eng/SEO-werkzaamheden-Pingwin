@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { anthropicConfigured } from "../../../../lib/anthropic";
-import { generateDocSpec, type DocKind } from "../../../../lib/page-doc";
+import { generateDocSpec, clientVersionSpec, type DocKind } from "../../../../lib/page-doc";
 import { buildPingwinDoc } from "../../../../lib/pingwin-docx";
 import { upsertStepTask } from "../../../../lib/tasks";
-import { getPageDriveFolder } from "../../../../lib/site-urls";
+import { getPageDriveFolder, getPageDocOutputs } from "../../../../lib/site-urls";
 import { uploadDocx } from "../../../../lib/drive";
 
 const STEP_KIND: Record<DocKind, string> = { analyse: "analyse_doc", blauwdruk: "blauwdruk_doc", copy: "copy_doc" };
@@ -68,28 +68,43 @@ export async function POST(req: NextRequest) {
     if (saved) folderId = saved.folderId;
   }
 
-  // Elke stap is een werkzaamheid (SEO), met het document eraan gekoppeld. Één per
-  // pagina+stap: opnieuw genereren werkt het document bij, niet een nieuwe taak.
-  async function logStepTask(link: string) {
-    return upsertStepTask(slug, {
-      pageUrl: url, stepKind: STEP_KIND[kind], title: `${STEP_TITLE[kind]}: ${pagePath(url)}`,
-      link: link || undefined, klantToelichting: STEP_KLANT[kind], wie: "SEO", fase: "Bouwen", klantZichtbaar: true,
-    }).catch(() => null);
-  }
+  const stepTitle = `${STEP_TITLE[kind]}: ${pagePath(url)}`;
 
   if (folderId && !wantDownload) {
+    // 1. Technische versie naar Drive.
     let link: string, shared: boolean, owner: string, folder: string, isDoc: boolean, note: string;
     try {
       ({ link, shared, owner, folder, isDoc, note } = await uploadDocx(folderId, filename, buffer));
     } catch (e) {
       return NextResponse.json({ ok: false, error: `Document gemaakt, maar upload naar Drive mislukte: ${e instanceof Error ? e.message : "onbekende fout"}` }, { status: 502 });
     }
-    const taskId = await logStepTask(link);
-    return NextResponse.json({ ok: true, delivered: "drive", link, filename, kind, taskId, shared, owner, folder, isDoc, note });
+
+    // 2. Klantversie: standaard erbij, gemaakt uit de zojuist gegenereerde technische tekst.
+    let clientLink = "";
+    try {
+      const outputs = await getPageDocOutputs(slug, url);
+      const source = outputs[kind];
+      if (source) {
+        const { spec: cSpec, title: cTitle } = await clientVersionSpec(slug, url, kind, source, extra || undefined);
+        const cBuffer = await buildPingwinDoc(cSpec);
+        const cFilename = `${safeName(spec.klant)}-klantversie-${kind}-${safeName(cTitle)}.docx`;
+        ({ link: clientLink } = await uploadDocx(folderId, cFilename, cBuffer));
+      }
+    } catch { /* klantversie is aanvulling; de technische versie staat er in elk geval */ }
+
+    // 3. Werkzaamheid: titel -> technische versie, "(klantversie)" -> klantversie.
+    const taskId = await upsertStepTask(slug, {
+      pageUrl: url, stepKind: STEP_KIND[kind], title: stepTitle,
+      link, clientLink: clientLink || undefined, klantToelichting: STEP_KLANT[kind], wie: "SEO", fase: "Bouwen", klantZichtbaar: true,
+    }).catch(() => null);
+    return NextResponse.json({ ok: true, delivered: "drive", link, clientLink, filename, kind, taskId, shared, owner, folder, isDoc, note });
   }
 
-  // Geen bestemmingsmap: download; de stap wordt wel als werkzaamheid vastgelegd.
-  await logStepTask("");
+  // Geen bestemmingsmap: download; de stap wordt wel als werkzaamheid vastgelegd (zonder link).
+  await upsertStepTask(slug, {
+    pageUrl: url, stepKind: STEP_KIND[kind], title: stepTitle,
+    klantToelichting: STEP_KLANT[kind], wie: "SEO", fase: "Bouwen", klantZichtbaar: true,
+  }).catch(() => null);
   // Schone kopie: een Node-Buffer kan een venster in een gedeeld geheugenblok zijn;
   // direct als HTTP-body meegeven levert soms een kapot bestand. Uint8Array-kopie fixt dat.
   return new NextResponse(new Uint8Array(buffer), {

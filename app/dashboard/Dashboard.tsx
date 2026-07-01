@@ -36,9 +36,12 @@ function safeHtml(html: string): string {
 // niet naar de technische versie. De technische doc-link uit de taaktitel wordt
 // eruit gehaald; is er een klantversie, dan wordt de titel daarnaar gelinkt.
 function clientTaskTitle(task: { taak: string; clientDocLink?: string }): string {
-  const plain = safeHtml(task.taak).replace(/<a\b[^>]*>|<\/a>/gi, "").trim();
-  if (task.clientDocLink) return `<a href="${task.clientDocLink}" target="_blank" rel="noreferrer">${plain}</a>`;
-  return plain;
+  // Pak de hoofdtitel (tekst van de eerste link), zonder het "(klantversie)"-deel,
+  // en link die naar de klantversie. De technische link tonen we de klant niet.
+  const m = task.taak.match(/<a\b[^>]*>([\s\S]*?)<\/a>/i);
+  const title = (m ? m[1] : safeHtml(task.taak).replace(/<[^>]+>/g, "")).trim();
+  if (task.clientDocLink) return `<a href="${task.clientDocLink}" target="_blank" rel="noreferrer">${title}</a>`;
+  return title;
 }
 
 function formatTime(minutes: number): string {

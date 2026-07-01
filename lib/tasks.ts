@@ -122,12 +122,16 @@ function escHtml(s: string): string {
 // eigen developer-notitie blijven met rust. Geeft het id terug.
 export async function upsertStepTask(
   slug: string,
-  step: { pageUrl: string; stepKind: string; title: string; link?: string; klantToelichting?: string; fase?: string; wie?: string; klantZichtbaar?: boolean },
+  step: { pageUrl: string; stepKind: string; title: string; link?: string; clientLink?: string; klantToelichting?: string; fase?: string; wie?: string; klantZichtbaar?: boolean },
 ): Promise<number> {
   await ensureSchema();
-  const taak = step.link
+  // Titel linkt naar de technische versie; "(klantversie)" is een aparte link naar
+  // de klantversie (alleen in onze backend zichtbaar; het klantdashboard toont enkel de klantversie).
+  const titleHtml = step.link
     ? `<a href="${escHtml(step.link)}" target="_blank" rel="noreferrer">${escHtml(step.title)}</a>`
     : escHtml(step.title);
+  const klantSuffix = step.clientLink ? ` (<a href="${escHtml(step.clientLink)}" target="_blank" rel="noreferrer">klantversie</a>)` : "";
+  const taak = titleHtml + klantSuffix;
   const { rows: found } = await sql`
     SELECT id FROM client_tasks WHERE client_slug = ${slug} AND page_url = ${step.pageUrl} AND step_kind = ${step.stepKind} LIMIT 1`;
   if (found[0]?.id != null) {
@@ -135,7 +139,7 @@ export async function upsertStepTask(
     // Toelichting (Opm. developer) NIET aanraken bij update: dat is de eigen notitie.
     await sql`
       UPDATE client_tasks
-      SET taak = ${taak}, doc_link = ${step.link || null}, klant_toelichting = ${step.klantToelichting || null}, updated_at = now()
+      SET taak = ${taak}, doc_link = ${step.link || null}, client_doc_link = ${step.clientLink || null}, klant_toelichting = ${step.klantToelichting || null}, updated_at = now()
       WHERE id = ${id}`;
     return id;
   }
@@ -143,8 +147,8 @@ export async function upsertStepTask(
   const order = Number(ord[0]?.m ?? -1) + 1;
   // toelichting bewust NULL: het "Opm. developer"-veld vult het dashboard nooit.
   const res = await sql`
-    INSERT INTO client_tasks (client_slug, sort_order, taak, toelichting, klant_toelichting, status, wie, klant_zichtbaar, fase, page_url, step_kind, doc_link, updated_at)
-    VALUES (${slug}, ${order}, ${taak}, ${null}, ${step.klantToelichting || null}, 'Gepland', ${step.wie || "SEO"}, ${step.klantZichtbaar !== false}, ${step.fase || "Bouwen"}, ${step.pageUrl}, ${step.stepKind}, ${step.link || null}, now())
+    INSERT INTO client_tasks (client_slug, sort_order, taak, toelichting, klant_toelichting, status, wie, klant_zichtbaar, fase, page_url, step_kind, doc_link, client_doc_link, updated_at)
+    VALUES (${slug}, ${order}, ${taak}, ${null}, ${step.klantToelichting || null}, 'Gepland', ${step.wie || "SEO"}, ${step.klantZichtbaar !== false}, ${step.fase || "Bouwen"}, ${step.pageUrl}, ${step.stepKind}, ${step.link || null}, ${step.clientLink || null}, now())
     RETURNING id`;
   return Number(res.rows[0].id);
 }

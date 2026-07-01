@@ -80,7 +80,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       if (ct.includes("application/json")) {
         const d = await r.json();
         if (!d.ok) { setErr(d.error || "Document maken mislukt."); return; }
-        setApplied(`${soort[kind]}-document opgeslagen in Google Drive${d.folder ? `, map "${d.folder}"` : ""}${d.owner ? `, account ${d.owner}` : ""} als ${d.isDoc ? "Google Doc" : "Word-bestand"}${!d.isDoc && d.note ? ` (omzetten naar Google Doc lukte niet: ${d.note})` : ""}. <a href="${d.link}" target="_blank" rel="noopener">Open document</a>.${d.shared ? " Iedereen met de link kan het bekijken." : " (Delen lukte niet automatisch.)"} Vastgelegd als werkzaamheid; plan of wijs hem toe in de Werkzaamheden-tab.`);
+        setApplied(`${soort[kind]}-document opgeslagen in Google Drive${d.folder ? `, map "${d.folder}"` : ""}${d.owner ? `, account ${d.owner}` : ""} als ${d.isDoc ? "Google Doc" : "Word-bestand"}. <a href="${d.link}" target="_blank" rel="noopener">Open technische versie</a>.${d.clientLink ? ` <a href="${d.clientLink}" target="_blank" rel="noopener">Open klantversie</a>.` : ""}${d.shared ? " Iedereen met de link kan het bekijken." : ""} Vastgelegd als werkzaamheid: de titel linkt naar de technische versie, "(klantversie)" ernaast naar de klantversie. Het klantdashboard toont alleen de klantversie.`);
         onApplied(); // ververst de takenlijst van deze pagina
         return;
       }
@@ -97,32 +97,6 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       setApplied(`${soort[kind]}-document gedownload in Pingwin-huisstijl. Vastgelegd als werkzaamheid; plan of wijs hem toe in de Werkzaamheden-tab. Kies een Drive-map om het document ook automatisch te koppelen.`);
       onApplied(); // ververst de takenlijst van deze pagina
     } catch { setErr("Document maken mislukt."); } finally { setDocBusy(""); }
-  }
-
-  // Klantversie van een eerder gegenereerd technisch document (nu: de analyse).
-  async function genClientDoc(kind: "analyse" | "blauwdruk" | "copy") {
-    if (docBusy) return;
-    setDocBusy("klant-" + kind); setErr(""); setApplied("");
-    try {
-      const payload = { slug, url, kind, extra: nuance.trim() || undefined, ...(driveFolder ? { folderId: driveFolder.id } : { deliver: "download" }) };
-      const r = await fetch("/api/admin/page-doc-client", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-      const ct = r.headers.get("Content-Type") || "";
-      if (ct.includes("application/json")) {
-        const d = await r.json();
-        if (!d.ok) { setErr(d.error || "Klantversie maken mislukt."); return; }
-        setApplied(`Klantversie van de ${soort[kind].toLowerCase()} opgeslagen in Google Drive${d.folder ? `, map "${d.folder}"` : ""} als ${d.isDoc ? "Google Doc" : "Word-bestand"}. <a href="${d.link}" target="_blank" rel="noopener">Open document</a>.${d.shared ? " Iedereen met de link kan het bekijken." : ""} Dit is de begrijpelijke versie om naar de klant te sturen; het technische document blijft de bron voor de blauwdruk.`);
-        return;
-      }
-      if (!r.ok) { const d = await r.json().catch(() => ({})); setErr(d.error || "Klantversie maken mislukt."); return; }
-      const blob = await r.blob();
-      const a = document.createElement("a");
-      const m = (r.headers.get("Content-Disposition") || "").match(/filename="([^"]+)"/);
-      a.href = URL.createObjectURL(blob);
-      a.download = m ? m[1] : `klantversie-${kind}.docx`;
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-      setApplied(`Klantversie van de ${soort[kind].toLowerCase()} gedownload. Dit is de begrijpelijke versie voor de klant; het technische document blijft de bron voor de blauwdruk.`);
-    } catch { setErr("Klantversie maken mislukt."); } finally { setDocBusy(""); }
   }
 
   // ── Google Drive bestemmingsmap ─────────────────────────────
@@ -152,7 +126,17 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       setFolders(d.folders || []);
     } catch { setPickErr("Kon Drive-mappen niet laden."); } finally { setPickBusy(false); }
   }
-  function openPicker() { setPickerOpen(true); const s = [{ id: "root", name: "Mijn Drive" }]; setStack(s); loadFolders("root"); }
+  function openPicker() {
+    setPickerOpen(true);
+    // Start waar je vorige keer was (per klant onthouden), zodat je niet elke keer
+    // vanaf Mijn Drive naar de klantmap hoeft te klikken.
+    let s: Folder[] = [{ id: "root", name: "Mijn Drive" }];
+    try {
+      const c = localStorage.getItem(`pw_drivestack_${slug}`);
+      if (c) { const p = JSON.parse(c); if (Array.isArray(p) && p.length && p[0]?.id === "root") s = p; }
+    } catch { /* geen geheugen */ }
+    setStack(s); loadFolders(s[s.length - 1].id);
+  }
   function enterFolder(f: Folder) { const s = [...stack, f]; setStack(s); loadFolders(f.id); }
   function jumpTo(i: number) { const s = stack.slice(0, i + 1); setStack(s); loadFolders(s[s.length - 1].id); }
   async function makeSubfolder() {
@@ -175,6 +159,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       const r = await fetch("/api/admin/drive/folders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "save", slug, url, folderId: cur.id, folderName: cur.name, folderPath: path }) });
       const d = await r.json();
       if (!d.ok) { setPickErr(d.error || "Opslaan mislukt."); return; }
+      try { localStorage.setItem(`pw_drivestack_${slug}`, JSON.stringify(stack)); } catch { /* geheugen is extra */ }
       setDriveFolder({ id: cur.id, name: cur.name, path }); setPickerOpen(false);
     } catch { setPickErr("Opslaan mislukt."); } finally { setPickBusy(false); }
   }
@@ -352,12 +337,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
               <button type="button" className="ghost-btn small" onClick={() => genDoc("blauwdruk")} disabled={!!docBusy}>{docBusy === "blauwdruk" ? "Blauwdruk maken…" : "2. Blauwdruk-document"}</button>
               <button type="button" className="ghost-btn small" onClick={() => genDoc("copy")} disabled={!!docBusy}>{docBusy === "copy" ? "Copy maken…" : "3. Copy-document (+ dev-taak)"}</button>
             </div>
-            <div className="pcd-docs-head" style={{ marginTop: 10 }}>Klantversies (begrijpelijke versie om naar de klant te sturen)</div>
-            <div className="pcd-docs-buttons">
-              <button type="button" className="ghost-btn small" onClick={() => genClientDoc("analyse")} disabled={!!docBusy}>{docBusy === "klant-analyse" ? "Klantversie maken…" : "Klantversie analyse"}</button>
-              <button type="button" className="ghost-btn small" onClick={() => genClientDoc("blauwdruk")} disabled={!!docBusy}>{docBusy === "klant-blauwdruk" ? "Klantversie maken…" : "Klantversie blauwdruk"}</button>
-              <button type="button" className="ghost-btn small" onClick={() => genClientDoc("copy")} disabled={!!docBusy}>{docBusy === "klant-copy" ? "Klantversie maken…" : "Klantversie copy"}</button>
-            </div>
+            <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>Van elk document wordt automatisch ook een klantversie gemaakt en in de Drive-map opgeslagen. De taaktitel linkt naar de technische versie, met "(klantversie)" ernaast; het klantdashboard toont alleen de klantversie.</div>
           </div>
         </>
       )}
