@@ -366,6 +366,13 @@ tbody td:last-child { text-align: center; }
 .pages-detail-label { font-size: 12px; font-weight: 700; color: var(--dark); display: block; margin-bottom: 6px; }
 .pages-plan { width: 100%; min-height: 90px; font-family: 'Montserrat', sans-serif; font-size: 13px; color: var(--dark); line-height: 1.5; border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; outline: none; resize: vertical; }
 .pages-plan:focus { border-color: var(--orange); }
+.pages-plan-view { border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; font-size: 13px; line-height: 1.55; color: var(--dark); background: var(--white); }
+.pages-plan-view.muted { color: var(--muted); }
+.pages-plan-view p { margin: 0 0 8px; }
+.pages-plan-view ul { margin: 4px 0 8px; padding-left: 20px; }
+.pages-plan-view li { margin: 2px 0; }
+.pages-plan-view h1, .pages-plan-view h2, .pages-plan-view h3 { font-size: 14px; margin: 8px 0 4px; }
+.pages-plan-view strong { color: var(--dark); }
 /* Klantprofiel (context voor de chat) */
 .client-profile { margin: 4px 0 12px; }
 .client-profile-toggle { background: none; border: none; padding: 0; cursor: pointer; font-size: 13px; font-weight: 700; color: var(--dark); display: inline-flex; align-items: center; gap: 6px; }

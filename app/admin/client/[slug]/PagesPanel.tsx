@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { ClientUrl } from "../../../../lib/site-urls";
+import { mdToHtml } from "../../../../lib/markdown";
 import ImportAnalysis from "./ImportAnalysis";
 import PageChat from "./PageChat";
 
@@ -127,6 +128,7 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
 function PageRow({ slug, u, open, onToggle, onReload, clientEmail, clientName }: { slug: string; u: ClientUrl; open: boolean; onToggle: () => void; onReload: () => void; clientEmail: string; clientName: string }) {
   const [plan, setPlan] = useState(u.plan);
   const [saved, setSaved] = useState(false);
+  const [editing, setEditing] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function change(v: string) {
@@ -151,13 +153,22 @@ function PageRow({ slug, u, open, onToggle, onReload, clientEmail, clientName }:
         <tr className="pages-detail-row">
           <td colSpan={5}>
             <div className="pages-detail">
-              <label className="pages-detail-label">Plan voor deze pagina {saved && <span className="focus-save-status">✓ opgeslagen</span>}</label>
-              <textarea
-                className="pages-plan"
-                value={plan}
-                onChange={(e) => change(e.target.value)}
-                placeholder="Bijv. Rol: hub. Primair: soa test amsterdam. Actie: behouden + optimaliseren. Doel-URL: /soa-test-amsterdam/."
-              />
+              <label className="pages-detail-label">
+                Plan voor deze pagina {saved && <span className="focus-save-status">opgeslagen</span>}
+                <button type="button" className="ghost-btn small" style={{ marginLeft: 8 }} onClick={() => setEditing((v) => !v)}>{editing ? "Klaar" : "Bewerken"}</button>
+              </label>
+              {editing ? (
+                <textarea
+                  className="pages-plan"
+                  value={plan}
+                  onChange={(e) => change(e.target.value)}
+                  placeholder="Netjes opgemaakt met **Rol:**, een kopje Zoekwoorden met bullets (Primair/Secundair), een kopje Acties met bullets, en **Doel-URL:**."
+                />
+              ) : (
+                (plan || "").trim()
+                  ? <div className="pages-plan-view md" dangerouslySetInnerHTML={{ __html: mdToHtml(plan) }} />
+                  : <div className="pages-plan-view muted">Nog geen plan. Klik op Bewerken, of laat de chat hieronder een voorstel maken.</div>
+              )}
               {u.redirectTarget && <div className="muted" style={{ marginTop: 6 }}>Live redirect: → {u.redirectTarget}</div>}
               <PageChat slug={slug} url={u.url} clientEmail={clientEmail} clientName={clientName} onApplied={(newPlan) => { if (newPlan) setPlan(newPlan); onReload(); }} />
             </div>

@@ -90,7 +90,7 @@ Toegestane bloktypes in "blocks":
 - {"type":"table","headers":["Kol1","Kol2"],"rows":[["a","b"],["c","d"]]}
 - {"type":"highlight","text":"belangrijke callout"}
 - {"type":"step","nr":1,"title":"...","text":"..."}
-Houd het compleet maar compact. Geen markdown-tekens in de tekstvelden.`;
+Houd het compleet maar compact. Geen markdown-tekens in de tekstvelden. Gebruik NERGENS emoji of symbolen als iconen (ook niet in classificaties: schrijf CRITICAL/MAJOR/MINOR en PASS/FAIL als gewone tekst, geen gekleurde bolletjes of vinkjes).`;
 
 const ANALYSE_SYSTEM = `Je bent een senior SEO-specialist bij bureau Pingwin en voert een criteria-gestuurde SEO-ANALYSE uit van een BESTAANDE landingspagina.
 Je scoort objectief tegen het criteria-document hieronder (de single source of truth). Geen subjectieve oordelen: alleen een gemeten waarde getoetst aan de norm uit een criterium-ID.

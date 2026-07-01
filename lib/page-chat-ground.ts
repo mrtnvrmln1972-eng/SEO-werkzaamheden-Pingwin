@@ -82,7 +82,7 @@ HARDE REGELS:
 - VRAAG DOOR wanneer dat het advies beter maakt. Als het klantprofiel leeg is of je mist context die je nodig hebt (positionering: prijs vs exclusief/design vs duurzaam; werkgebied: regionaal vs landelijk; welke steden; doelgroep; gewenste term-focus), stel dan EERST één tot drie korte, gerichte vragen aan de gebruiker en wacht op antwoord voordat je een definitief advies geeft. Beter één vraag te veel dan een advies op aannames.
 - Als de gebruiker profiel-informatie geeft, verwerk die en stel voor om het als klantprofiel te bewaren (dat kan de gebruiker doen in het veld "Klantprofiel" bovenaan de Pagina's-tab).
 - Redirect nooit naar een URL die niet bestaat. Toets een redirect-doel aan de live status. Toets het plan-label altijd aan de echte ranking en titel.
-- Antwoord in NETTE markdown zodat het als rapport oogt: korte kopjes (## en ###), bullets, en waar het helpt een kleine tabel, bijvoorbeeld | Zoekwoord | Positie | Vertoningen | URL |. Houd het scanbaar, geen muur van tekst.
+- Antwoord in NETTE markdown zodat het als rapport oogt: korte kopjes (## en ###), bullets, en waar het helpt een kleine tabel, bijvoorbeeld | Zoekwoord | Positie | Vertoningen | URL |. Houd het scanbaar, geen muur van tekst. Gebruik nergens emoji.
 - Doe je concrete aanbevelingen, benoem de taken dan duidelijk in je antwoord: geef een sectie "Taken" met per taak wat er moet gebeuren, de fase (Bouwen/Herbedraden/Opschonen) en of het SEO- of Dev-werk is. Benoem ook kort het nieuwe plan voor de pagina (rol, primair + secundair zoekwoord, actie, doel-URL). Je hoeft GEEN machineleesbaar blok toe te voegen; het systeem haalt de taken en het plan er zelf uit voor de accepteer-lijst. Stel je alleen een verhelderende vraag, benoem dan geen taken.
 
 WERKWIJZE, WEEG ALTIJD DEZE INVALSHOEKEN AF (haal er actief data bij via de tools):
@@ -115,8 +115,21 @@ export async function extractProposal(analysis: string): Promise<Proposal | null
   if (!analysis.trim()) return null;
   const system = `Je krijgt een SEO-analyse voor een pagina. Haal er het voorgestelde PLAN voor de pagina en ALLE concrete TAKEN uit.
 Antwoord met UITSLUITEND geldige JSON, niets eromheen, exact dit formaat:
-{"plan": "Rol: ... Primair: ... Secundair: ... Actie: ... Doel-URL: ...", "tasks": [{"taak": "korte omschrijving in één regel", "fase": "Bouwen|Herbedraden|Opschonen", "wie": "SEO|Dev"}]}
-Regels: neem elke concrete taak uit de analyse mee (kort geformuleerd, één regel per taak). Laat "plan" weg als er geen duidelijk nieuw pagina-plan is; laat "tasks" weg als er geen taken zijn. Bevat de analyse geen concreet voorstel (bijvoorbeeld alleen een verhelderende vraag), antwoord dan met {}.
+{"plan": "<netjes opgemaakte markdown, zie hieronder>", "tasks": [{"taak": "korte omschrijving in één regel", "fase": "Bouwen|Herbedraden|Opschonen", "wie": "SEO|Dev"}]}
+Het "plan"-veld is markdown met deze structuur (gebruik ECHT deze opmaak, geen run-on zin, geen emoji):
+**Rol:** <rol van de pagina in één zin>
+
+**Zoekwoorden**
+- Primair: <primair zoekwoord>
+- Secundair: <secundair zoekwoord/varianten>
+
+**Acties**
+- <actie 1>
+- <actie 2>
+
+**Doel-URL:** <doel-URL>
+
+Regels: neem elke concrete taak uit de analyse mee (kort geformuleerd, één regel per taak). Laat "plan" weg als er geen duidelijk nieuw pagina-plan is; laat "tasks" weg als er geen taken zijn. Bevat de analyse geen concreet voorstel (bijvoorbeeld alleen een verhelderende vraag), antwoord dan met {}. Gebruik nergens emoji.
 FASE per taak: neem de fase over zoals de analyse die aangeeft (bijvoorbeeld een sectie "Fase: Bouwen"). Bepaal je hem zelf, gebruik dan: "Bouwen" voor inhoud/on-page werk (H1, title, meta, tekst schrijven, nieuwe pagina, schema); "Herbedraden" ALLEEN voor interne links/ankers ompunten of content verplaatsen tussen pagina's; "Opschonen" voor redirects, canonical, dubbele content of oude termen weghalen. De meeste on-page-optimalisatietaken zijn dus "Bouwen", niet "Herbedraden".`;
   try {
     const raw = await callClaude(system, [{ role: "user", content: analysis.slice(0, 12000) }], 2500);

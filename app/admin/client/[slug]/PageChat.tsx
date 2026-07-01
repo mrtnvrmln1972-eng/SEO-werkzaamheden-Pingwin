@@ -133,19 +133,14 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     } catch { setPickErr("Opslaan mislukt."); } finally { setPickBusy(false); }
   }
 
-  async function makeClientMail() {
-    if (!lastAssistant || mailGen) return;
-    setMailGen(true); setErr("");
-    try {
-      const r = await fetch("/api/admin/page-chat/client-mail", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url, clientName, analysis: lastAssistant }) });
-      const d = await r.json();
-      if (!d.ok) { setErr(d.error || "Mail maken mislukt."); return; }
-      setMailHtml(mdToHtml(d.email || ""));
-      setMailTo(clientEmail || "");
-      setMailSubject(`SEO-analyse ${clientName || ""}`.trim());
-      setMailMsg("");
-      setMailOpen(true);
-    } catch { setErr("Mail maken mislukt."); } finally { setMailGen(false); }
+  // Opent een lege mail; de tekst schrijft Maarten zelf (geen AI-voorbeeldtekst).
+  function makeClientMail() {
+    setErr("");
+    setMailHtml("");
+    setMailTo(clientEmail || "");
+    setMailSubject("");
+    setMailMsg("");
+    setMailOpen(true);
   }
 
   async function sendClientMail() {
@@ -290,17 +285,17 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
           <div className="page-chat-drive">
             <span className="pcd-label">Opslaan in:</span>
             {driveFolder
-              ? <span className="pcd-folder">📁 {driveFolder.path || driveFolder.name}</span>
+              ? <span className="pcd-folder">{driveFolder.path || driveFolder.name}</span>
               : <span className="pcd-folder muted">nog geen Drive-map (documenten worden gedownload)</span>}
             <button type="button" className="ghost-btn small" onClick={openPicker}>{driveFolder ? "Map wijzigen" : "Kies Drive-map"}</button>
             {driveFolder && <button type="button" className="ghost-btn small" onClick={() => setDriveFolder(null)}>Naar download</button>}
           </div>
           <div className="page-chat-tools">
-            <button type="button" className="ghost-btn small" onClick={makeWorkItem} disabled={taskGen}>{taskGen ? "Aanmaken…" : "＋ Maak werkzaamheid van deze analyse"}</button>
-            <button type="button" className="ghost-btn small" onClick={makeClientMail} disabled={mailGen}>{mailGen ? "Mail maken…" : "✉ Klant-mail van deze analyse"}</button>
-            <button type="button" className="ghost-btn small" onClick={() => genDoc("analyse")} disabled={!!docBusy}>{docBusy === "analyse" ? "Analyse maken…" : "🔍 Analyse-document"}</button>
-            <button type="button" className="ghost-btn small" onClick={() => genDoc("blauwdruk")} disabled={!!docBusy}>{docBusy === "blauwdruk" ? "Blauwdruk maken…" : "📄 Blauwdruk-document"}</button>
-            <button type="button" className="ghost-btn small" onClick={() => genDoc("copy")} disabled={!!docBusy}>{docBusy === "copy" ? "Copy maken…" : "✍ Copy-document (+ dev-taak)"}</button>
+            <button type="button" className="ghost-btn small" onClick={makeWorkItem} disabled={taskGen}>{taskGen ? "Aanmaken…" : "Maak werkzaamheid van deze analyse"}</button>
+            <button type="button" className="ghost-btn small" onClick={makeClientMail}>Mail naar de klant</button>
+            <button type="button" className="ghost-btn small" onClick={() => genDoc("analyse")} disabled={!!docBusy}>{docBusy === "analyse" ? "Analyse maken…" : "Analyse-document"}</button>
+            <button type="button" className="ghost-btn small" onClick={() => genDoc("blauwdruk")} disabled={!!docBusy}>{docBusy === "blauwdruk" ? "Blauwdruk maken…" : "Blauwdruk-document"}</button>
+            <button type="button" className="ghost-btn small" onClick={() => genDoc("copy")} disabled={!!docBusy}>{docBusy === "copy" ? "Copy maken…" : "Copy-document (+ dev-taak)"}</button>
           </div>
         </>
       )}
@@ -352,7 +347,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
                 {pickBusy && <div className="muted" style={{ padding: 8 }}>Laden…</div>}
                 {!pickBusy && folders.length === 0 && <div className="muted" style={{ padding: 8 }}>Geen submappen hier. Kies deze map, of maak een nieuwe submap.</div>}
                 {!pickBusy && folders.map((f) => (
-                  <button key={f.id} type="button" className="drive-row" onClick={() => enterFolder(f)}>📁 {f.name} <span className="muted">openen ›</span></button>
+                  <button key={f.id} type="button" className="drive-row" onClick={() => enterFolder(f)}>{f.name} <span className="muted">openen ›</span></button>
                 ))}
               </div>
               <div className="drive-newfolder">
