@@ -46,6 +46,28 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     } catch { setErr("Werkzaamheid maken mislukt."); } finally { setTaskGen(false); }
   }
 
+  const [docBusy, setDocBusy] = useState("");
+  async function genDoc(kind: "blauwdruk" | "copy") {
+    if (docBusy) return;
+    setDocBusy(kind); setErr(""); setApplied("");
+    try {
+      const r = await fetch("/api/admin/page-doc", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url, kind }) });
+      if (!r.ok) { const d = await r.json().catch(() => ({})); setErr(d.error || "Document maken mislukt."); return; }
+      const blob = await r.blob();
+      const a = document.createElement("a");
+      const dispo = r.headers.get("Content-Disposition") || "";
+      const m = dispo.match(/filename="([^"]+)"/);
+      a.href = URL.createObjectURL(blob);
+      a.download = m ? m[1] : `${kind}.docx`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      setApplied(kind === "copy"
+        ? "Copy-document gedownload in Pingwin-huisstijl. Er is meteen een bouwtaak voor de developer aangemaakt om de copy te plaatsen."
+        : "Blauwdruk-document gedownload in Pingwin-huisstijl.");
+      if (kind === "copy") onApplied();
+    } catch { setErr("Document maken mislukt."); } finally { setDocBusy(""); }
+  }
+
   async function makeClientMail() {
     if (!lastAssistant || mailGen) return;
     setMailGen(true); setErr("");
@@ -202,6 +224,8 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
         <div className="page-chat-tools">
           <button type="button" className="ghost-btn small" onClick={makeWorkItem} disabled={taskGen}>{taskGen ? "Aanmaken…" : "＋ Maak werkzaamheid van deze analyse"}</button>
           <button type="button" className="ghost-btn small" onClick={makeClientMail} disabled={mailGen}>{mailGen ? "Mail maken…" : "✉ Klant-mail van deze analyse"}</button>
+          <button type="button" className="ghost-btn small" onClick={() => genDoc("blauwdruk")} disabled={!!docBusy}>{docBusy === "blauwdruk" ? "Blauwdruk maken…" : "📄 Blauwdruk-document"}</button>
+          <button type="button" className="ghost-btn small" onClick={() => genDoc("copy")} disabled={!!docBusy}>{docBusy === "copy" ? "Copy maken…" : "✍ Copy-document (+ dev-taak)"}</button>
         </div>
       )}
 
