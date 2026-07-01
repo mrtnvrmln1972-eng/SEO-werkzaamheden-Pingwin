@@ -99,18 +99,32 @@ export async function uploadDocx(folderId: string, filename: string, buffer: Buf
   const t = await token();
   const parent = folderId && folderId !== "root" ? folderId : "root";
   const meta = { name: filename, parents: [parent] };
-  const boundary = "pingwin-" + Buffer.from(filename).toString("hex").slice(0, 16);
-  const pre = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${boundary}\r\nContent-Type: ${DOCX_MIME}\r\n\r\n`;
-  const post = `\r\n--${boundary}--`;
-  const body = Buffer.concat([Buffer.from(pre, "utf8"), buffer, Buffer.from(post, "utf8")]);
+  const bytes = new Uint8Array(buffer); // exact-passende, schone kopie
 
-  const up = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,webViewLink,parents", {
+  // Resumable upload: eerst metadata (start de sessie), dan de ruwe bytes in één
+  // PUT. Zo gaat het binaire bestand NIET door een multipart-blok (dat leverde
+  // een corrupt .docx op) maar één-op-één naar Drive.
+  const initRes = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true&fields=id", {
     method: "POST",
-    headers: { Authorization: `Bearer ${t}`, "Content-Type": `multipart/related; boundary=${boundary}` },
-    body: new Uint8Array(body),
+    headers: {
+      Authorization: `Bearer ${t}`,
+      "Content-Type": "application/json; charset=UTF-8",
+      "X-Upload-Content-Type": DOCX_MIME,
+      "X-Upload-Content-Length": String(bytes.length),
+    },
+    body: JSON.stringify(meta),
   });
-  if (!up.ok) throw new Error(await driveErr(up, "het uploaden naar Drive"));
-  const file = await up.json();
+  if (!initRes.ok) throw new Error(await driveErr(initRes, "het starten van de upload"));
+  const uploadUrl = initRes.headers.get("location") || initRes.headers.get("Location");
+  if (!uploadUrl) throw new Error("Geen upload-URL van Drive ontvangen.");
+
+  const putRes = await fetch(uploadUrl, {
+    method: "PUT",
+    headers: { "Content-Type": DOCX_MIME },
+    body: bytes,
+  });
+  if (!putRes.ok) throw new Error(await driveErr(putRes, "het uploaden van de inhoud"));
+  const file = await putRes.json();
 
   // Probeer het geuploade .docx om te zetten naar een echte Google Doc (opent
   // betrouwbaar in de browser). Lukt dat niet (bv. een Gedeelde Drive die het
