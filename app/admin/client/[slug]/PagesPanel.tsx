@@ -17,6 +17,9 @@ function statusBadge(status: number | null, redirectTarget: string) {
 }
 
 export default function PagesPanel({ slug, initialProfile, clientEmail, clientName, onGoToTask }: { slug: string; initialProfile?: string; clientEmail?: string; clientName?: string; onGoToTask?: (taskId: number) => void }) {
+  type Opp = { impressions: number; clicks: number; ctr: number; position: number; bestKeyword: string; bestPosition: number | null; score: number; label: string; level: string };
+  const [opps, setOpps] = useState<Record<string, Opp>>({});
+  const [sortKey, setSortKey] = useState<"kans" | "vertoningen" | "positie" | "klikken">("kans");
   const [urls, setUrls] = useState<ClientUrl[]>([]);
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
@@ -70,9 +73,25 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
     } catch { setMsg("Inlezen mislukt."); } finally { setScanning(false); }
   }
 
+  // Kans-data (vertoningen/positie/beste zoekwoord) op de achtergrond ophalen.
+  useEffect(() => {
+    fetch(`/api/admin/page-opportunities?slug=${encodeURIComponent(slug)}`)
+      .then((r) => r.json()).then((d) => { if (d.ok) setOpps(d.pages || {}); }).catch(() => {});
+  }, [slug]);
+
+  const normUrl = (u: string) => (u || "").trim().replace(/\/+$/, "");
+  const oppOf = (u: ClientUrl): Opp | undefined => opps[normUrl(u.url)];
+
   const filtered = q.trim()
     ? urls.filter((u) => (u.url + " " + u.title).toLowerCase().includes(q.trim().toLowerCase()))
     : urls;
+  const sorted = [...filtered].sort((a, b) => {
+    const oa = oppOf(a), ob = oppOf(b);
+    if (sortKey === "kans") return (ob?.score || 0) - (oa?.score || 0);
+    if (sortKey === "vertoningen") return (ob?.impressions ?? a.gscImpressions ?? 0) - (oa?.impressions ?? b.gscImpressions ?? 0);
+    if (sortKey === "positie") { const pa = oa?.position ?? 999, pb = ob?.position ?? 999; return pa - pb; }
+    return (b.gscClicks || 0) - (a.gscClicks || 0);
+  });
 
   return (
     <div className="pages-panel">
@@ -115,10 +134,17 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
         {!loading && filtered.length > 0 && (
           <div className="res-table-wrap" style={{ marginTop: 12 }}>
             <table className="res-table pages-table">
-              <thead><tr><th>Status</th><th>Pagina</th><th>Titel</th><th>Klikken</th><th>Plan</th></tr></thead>
+              <thead><tr>
+                <th>Status</th><th>Pagina</th>
+                <th className="pg-sort" onClick={() => setSortKey("klikken")}>Klikken{sortKey === "klikken" ? " ▾" : ""}</th>
+                <th className="pg-sort" onClick={() => setSortKey("vertoningen")}>Vertoningen{sortKey === "vertoningen" ? " ▾" : ""}</th>
+                <th className="pg-sort" onClick={() => setSortKey("positie")}>Positie{sortKey === "positie" ? " ▾" : ""}</th>
+                <th className="pg-sort" onClick={() => setSortKey("kans")} title="Veel vertoningen + positie net buiten de top 10 = grote kans">Kans{sortKey === "kans" ? " ▾" : ""}</th>
+                <th>Plan</th>
+              </tr></thead>
               <tbody>
-                {filtered.map((u) => (
-                  <PageRow key={u.url} slug={slug} u={u} open={open === u.url} onToggle={() => setOpen(open === u.url ? null : u.url)} clientEmail={clientEmail || ""} clientName={clientName || ""} onGoToTask={onGoToTask} />
+                {sorted.map((u) => (
+                  <PageRow key={u.url} slug={slug} u={u} opp={oppOf(u)} open={open === u.url} onToggle={() => setOpen(open === u.url ? null : u.url)} clientEmail={clientEmail || ""} clientName={clientName || ""} onGoToTask={onGoToTask} />
                 ))}
               </tbody>
             </table>
@@ -137,7 +163,8 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
   );
 }
 
-function PageRow({ slug, u, open, onToggle, clientEmail, clientName, onGoToTask }: { slug: string; u: ClientUrl; open: boolean; onToggle: () => void; clientEmail: string; clientName: string; onGoToTask?: (taskId: number) => void }) {
+type PageOpp = { impressions: number; clicks: number; ctr: number; position: number; bestKeyword: string; bestPosition: number | null; score: number; label: string; level: string };
+function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoToTask }: { slug: string; u: ClientUrl; opp?: PageOpp; open: boolean; onToggle: () => void; clientEmail: string; clientName: string; onGoToTask?: (taskId: number) => void }) {
   const [plan, setPlan] = useState(u.plan);
   const [saved, setSaved] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -181,14 +208,19 @@ function PageRow({ slug, u, open, onToggle, clientEmail, clientName, onGoToTask 
     <>
       <tr className={"pages-row" + (open ? " open" : "")} onClick={onToggle}>
         <td>{statusBadge(u.status, u.redirectTarget)}</td>
-        <td><a href={u.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>{shortUrl(u.url)}</a></td>
-        <td className="pages-title">{u.title || <span className="muted">&mdash;</span>}</td>
+        <td>
+          <a href={u.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>{shortUrl(u.url)}</a>
+          {opp?.bestKeyword && <div className="pg-kw" title="Beste zoekwoord (meeste vertoningen)">{opp.bestKeyword}{opp.bestPosition != null ? ` · pos ${opp.bestPosition}` : ""}</div>}
+        </td>
         <td>{u.gscClicks > 0 ? u.gscClicks.toLocaleString("nl-NL") : <span className="muted">&mdash;</span>}</td>
+        <td>{opp && opp.impressions > 0 ? opp.impressions.toLocaleString("nl-NL") : (u.gscImpressions > 0 ? u.gscImpressions.toLocaleString("nl-NL") : <span className="muted">&mdash;</span>)}</td>
+        <td>{opp && opp.position ? opp.position : <span className="muted">&mdash;</span>}</td>
+        <td>{opp?.label ? <span className={"pg-kans " + opp.level}>{opp.label}</span> : <span className="muted">&mdash;</span>}</td>
         <td>{(plan || "").trim() ? <span className="plan-chip has">plan</span> : <span className="plan-chip">leeg</span>}</td>
       </tr>
       {open && (
         <tr className="pages-detail-row">
-          <td colSpan={5}>
+          <td colSpan={7}>
             <div className="pages-detail">
               <label className="pages-detail-label">
                 Plan voor deze pagina {saved && <span className="focus-save-status">opgeslagen</span>}

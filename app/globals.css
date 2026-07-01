@@ -989,3 +989,12 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .wz-add { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-top: 10px; background: #fafafa; }
 .wz-add-row { display: flex; gap: 8px; }
 .wz-add-row .compose-input { flex: 1; }
+
+/* Pagina-overzicht: kans-kolommen */
+.pg-sort { cursor: pointer; user-select: none; white-space: nowrap; }
+.pg-sort:hover { color: var(--orange); }
+.pg-kw { font-size: 11.5px; color: var(--gray); margin-top: 2px; }
+.pg-kans { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 6px; padding: 2px 8px; white-space: nowrap; }
+.pg-kans.high { color: #1e824c; background: #e6f6ec; }
+.pg-kans.mid { color: #8a5a00; background: #fff3d9; }
+.pg-kans.low { color: var(--gray); background: #eef0f2; }

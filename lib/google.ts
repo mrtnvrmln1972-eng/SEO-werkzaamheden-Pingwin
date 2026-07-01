@@ -291,6 +291,40 @@ export async function getGscKeywordsBeforeAfter(domain: string, pageUrl: string,
     .slice(0, 20);
 }
 
+// Kans-data per pagina: vertoningen, kliks, CTR, gemiddelde positie en het beste
+// zoekwoord (meeste vertoningen) met zijn positie. Voor het spotten van laaghangend
+// fruit in het pagina-overzicht (veel vraag + net buiten de top 10).
+export type PageOpportunity = { url: string; clicks: number; impressions: number; ctr: number; position: number; bestKeyword: string; bestPosition: number | null };
+export async function getGscPageOpportunities(domain: string, days = 90): Promise<PageOpportunity[]> {
+  const token = await googleAccessToken();
+  if (!token || !domain) return [];
+  const site = await gscPickSite(token, domain);
+  if (!site) return [];
+  const r = periodRanges(days);
+  const [pageRows, qpRows] = await Promise.all([
+    gscQuery(token, site, { startDate: r.curStart, endDate: r.curEnd, dimensions: ["page"], rowLimit: 500 }),
+    gscQuery(token, site, { startDate: r.curStart, endDate: r.curEnd, dimensions: ["page", "query"], rowLimit: 5000 }),
+  ]);
+  // Beste zoekwoord per pagina (meeste vertoningen).
+  const best = new Map<string, { keyword: string; impressions: number; position: number }>();
+  for (const x of qpRows) {
+    const page = x.keys?.[0] || "", kw = x.keys?.[1] || "";
+    if (!page) continue;
+    const cur = best.get(page);
+    if (!cur || x.impressions > cur.impressions) best.set(page, { keyword: kw, impressions: x.impressions, position: x.position });
+  }
+  return pageRows.map((x) => {
+    const url = x.keys?.[0] || "";
+    const b = best.get(url);
+    return {
+      url,
+      clicks: Math.round(x.clicks), impressions: Math.round(x.impressions),
+      ctr: Math.round(x.ctr * 1000) / 10, position: Math.round(x.position * 10) / 10,
+      bestKeyword: b?.keyword || "", bestPosition: b ? Math.round(b.position * 10) / 10 : null,
+    };
+  });
+}
+
 // GA4-gedragssignalen voor één pagina, voor en na een wijzigingsmoment.
 export type Ga4PageStat = { views: number; timeOnPage: number; bounceRate: number; engagementRate: number; pagesPerSession: number; sessionDuration: number };
 export type Ga4PageSignals = { available: boolean; before: Ga4PageStat; after: Ga4PageStat };
