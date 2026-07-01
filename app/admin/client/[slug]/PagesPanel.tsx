@@ -219,7 +219,6 @@ function PageRow({ slug, u, open, onToggle, clientEmail, clientName, onGoToTask 
                         <ul className="page-tasks-list">
                           {pipeline.map((t, i) => (
                             <li key={t.id ?? i} className={"page-task" + (t.status === "Klaar" ? " done" : "")}>
-                              {t.fase && <span className="pt-fase">{t.fase}</span>}
                               {t.wie && <span className={"pt-wie" + (t.wie === "Dev" ? " dev" : "")}>{t.wie}</span>}
                               <span className="pt-taak" dangerouslySetInnerHTML={{ __html: t.taak }} />
                               {t.status && <span className="pt-status">{t.status}</span>}
