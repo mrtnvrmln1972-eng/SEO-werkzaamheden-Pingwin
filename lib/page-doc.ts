@@ -211,8 +211,17 @@ Geen emoji. ${DOCSPEC_FORMAT}`;
 export async function summariseChatToSpec(slug: string, url: string, analysis: string, extra?: string): Promise<{ spec: DocSpec; title: string }> {
   const client = await getClientBySlug(slug);
   const user = `Vat deze analyse voor pagina ${url} samen:\n\n${analysis}${extra ? `\n\nEXTRA STURING: ${extra}` : ""}`;
-  const raw = await callClaude(CHAT_SAMENVATTING_SYSTEM, [{ role: "user", content: user }], 3500);
-  const parsed = JSON.parse(raw.replace(/```json/gi, "").replace(/```/g, "").trim());
+  const raw = await callClaude(CHAT_SAMENVATTING_SYSTEM, [{ role: "user", content: user }], 8192);
+  const cleaned = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
+  let parsed: { titel?: unknown; ondertitel?: unknown; sections?: unknown };
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch {
+    // Claude gaf geen (volledig) JSON terug, meestal doordat het antwoord tegen
+    // het token-plafond aan liep en middenin afgekapt is. Nette melding i.p.v.
+    // een kale "Unexpected end of JSON input".
+    throw new Error("De analyse kon niet worden opgemaakt (het AI-antwoord kwam onvolledig terug). Probeer het opnieuw, of vat de chat-analyse iets korter samen.");
+  }
   const title = typeof parsed.titel === "string" && parsed.titel.trim() ? parsed.titel.trim() : `Analyse & zoekwoordkeuze ${url}`;
   const spec: DocSpec = {
     klant: client?.name || slug,
