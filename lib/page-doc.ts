@@ -191,17 +191,25 @@ const SYSTEMS: Record<DocKind, string> = { analyse: ANALYSE_SYSTEM, blauwdruk: B
 const RAPPORTTYPE: Record<DocKind, string> = { analyse: "SEO-analyse", blauwdruk: "SEO-blauwdruk", copy: "SEO-copy" };
 const FALLBACK_TITLE: Record<DocKind, string> = { analyse: "SEO-analyse", blauwdruk: "Blauwdruk", copy: "Copy" };
 
-// Vat de chat-analyse (de strategische conclusie: wat doen we met deze pagina +
-// zoekwoordkeuze + actielijst) samen tot één document. Dit is de eerste stap in
-// de pijplijn, apart van de latere SEO-analyse/blauwdruk/copy.
-const CHAT_SAMENVATTING_SYSTEM = `Je bent een senior SEO-strateeg bij bureau Pingwin. Vat het onderstaande chat-gesprek/analyse over één pagina samen tot een kort, helder document.
-Lever als secties: (1) Conclusie: wat doen we met deze pagina en waarom (1-2 alinea's); (2) Zoekwoordkeuze: het gekozen primaire + secundaire zoekwoord (tabel of bullets); (3) Actielijst: de concrete acties die hieruit volgen (bullets). Houd het beknopt; dit is de samenvatting, niet de volledige audit.
+// Vat de chat-analyse samen tot één STRATEGISCH analyse-document. Behoud de
+// REDENERING/afweging (huidige situatie, zoekwoordonderzoek met volumes,
+// concurrentie, zoekintentie, onderbouwde aanbeveling, wat mist), NIET de losse
+// uitvoeringstaken (die worden in de latere stappen uitgewerkt).
+const CHAT_SAMENVATTING_SYSTEM = `Je bent een senior SEO-strateeg bij bureau Pingwin. Vat het onderstaande chat-gesprek/analyse over één pagina GETROUW samen tot een strategisch analyse-document. Behoud de REDENERING en onderbouwing, niet alleen de uitkomst. Neem alleen op wat echt in de analyse staat; verzin niets.
+Lever als secties (sla een sectie over als de analyse er niets over zegt):
+1. Huidige situatie: wat staat er nu op de pagina en wat verklaart de huidige prestaties (rankings, verkeer).
+2. Zoekwoordonderzoek: de kandidaat-zoekwoorden met volume, KD, CPC en intentie in een TABEL, plus wat opvalt.
+3. Concurrentie: kan de klant hier winnen (domain rating van concurrenten, wat doet de best scorende concurrent wel wat deze pagina niet doet).
+4. Zoekintentie: welke intentie past bij deze pagina en waarom deze zoekwoorden hier thuishoren (en welke juist op een andere pagina).
+5. Aanbeveling: het gekozen primaire + secundaire zoekwoord MET onderbouwing (waarom juist deze; volume/KD/intentie/positionering).
+6. Wat de pagina nu mist ten opzichte van de best scorende concurrent.
+BELANGRIJK: neem de concrete uitvoeringstaken (H1 toevoegen, title herschrijven, meta aanscherpen, JS-rendering fixen, interne links) NIET als aparte takenlijst op. Dat zijn details die in de analyse-, blauwdruk- en copy-stap worden uitgewerkt. Dit document is de strategische afweging, niet de takenlijst.
 Geen emoji. ${DOCSPEC_FORMAT}`;
 
 export async function summariseChatToSpec(slug: string, url: string, analysis: string, extra?: string): Promise<{ spec: DocSpec; title: string }> {
   const client = await getClientBySlug(slug);
   const user = `Vat deze analyse voor pagina ${url} samen:\n\n${analysis}${extra ? `\n\nEXTRA STURING: ${extra}` : ""}`;
-  const raw = await callClaude(CHAT_SAMENVATTING_SYSTEM, [{ role: "user", content: user }], 3000);
+  const raw = await callClaude(CHAT_SAMENVATTING_SYSTEM, [{ role: "user", content: user }], 5000);
   const parsed = JSON.parse(raw.replace(/```json/gi, "").replace(/```/g, "").trim());
   const title = typeof parsed.titel === "string" && parsed.titel.trim() ? parsed.titel.trim() : `Analyse & zoekwoordkeuze ${url}`;
   const spec: DocSpec = {
