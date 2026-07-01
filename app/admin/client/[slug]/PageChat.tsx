@@ -99,6 +99,32 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     } catch { setErr("Document maken mislukt."); } finally { setDocBusy(""); }
   }
 
+  // Klantversie van een eerder gegenereerd technisch document (nu: de analyse).
+  async function genClientDoc(kind: "analyse" | "blauwdruk" | "copy") {
+    if (docBusy) return;
+    setDocBusy("klant-" + kind); setErr(""); setApplied("");
+    try {
+      const payload = { slug, url, kind, extra: nuance.trim() || undefined, ...(driveFolder ? { folderId: driveFolder.id } : { deliver: "download" }) };
+      const r = await fetch("/api/admin/page-doc-client", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      const ct = r.headers.get("Content-Type") || "";
+      if (ct.includes("application/json")) {
+        const d = await r.json();
+        if (!d.ok) { setErr(d.error || "Klantversie maken mislukt."); return; }
+        setApplied(`Klantversie van de ${soort[kind].toLowerCase()} opgeslagen in Google Drive${d.folder ? `, map "${d.folder}"` : ""} als ${d.isDoc ? "Google Doc" : "Word-bestand"}. <a href="${d.link}" target="_blank" rel="noopener">Open document</a>.${d.shared ? " Iedereen met de link kan het bekijken." : ""} Dit is de begrijpelijke versie om naar de klant te sturen; het technische document blijft de bron voor de blauwdruk.`);
+        return;
+      }
+      if (!r.ok) { const d = await r.json().catch(() => ({})); setErr(d.error || "Klantversie maken mislukt."); return; }
+      const blob = await r.blob();
+      const a = document.createElement("a");
+      const m = (r.headers.get("Content-Disposition") || "").match(/filename="([^"]+)"/);
+      a.href = URL.createObjectURL(blob);
+      a.download = m ? m[1] : `klantversie-${kind}.docx`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      setApplied(`Klantversie van de ${soort[kind].toLowerCase()} gedownload. Dit is de begrijpelijke versie voor de klant; het technische document blijft de bron voor de blauwdruk.`);
+    } catch { setErr("Klantversie maken mislukt."); } finally { setDocBusy(""); }
+  }
+
   // ── Google Drive bestemmingsmap ─────────────────────────────
   type Folder = { id: string; name: string };
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -325,6 +351,9 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
               <button type="button" className="ghost-btn small" onClick={() => genDoc("analyse")} disabled={!!docBusy}>{docBusy === "analyse" ? "Analyse maken…" : "1. Analyse-document"}</button>
               <button type="button" className="ghost-btn small" onClick={() => genDoc("blauwdruk")} disabled={!!docBusy}>{docBusy === "blauwdruk" ? "Blauwdruk maken…" : "2. Blauwdruk-document"}</button>
               <button type="button" className="ghost-btn small" onClick={() => genDoc("copy")} disabled={!!docBusy}>{docBusy === "copy" ? "Copy maken…" : "3. Copy-document (+ dev-taak)"}</button>
+            </div>
+            <div className="pcd-docs-buttons" style={{ marginTop: 6 }}>
+              <button type="button" className="ghost-btn small" onClick={() => genClientDoc("analyse")} disabled={!!docBusy}>{docBusy === "klant-analyse" ? "Klantversie maken…" : "Klantversie van de analyse"}</button>
             </div>
           </div>
         </>
