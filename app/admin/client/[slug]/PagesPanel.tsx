@@ -129,7 +129,8 @@ function PageRow({ slug, u, open, onToggle, clientEmail, clientName, onGoToTask 
   const [plan, setPlan] = useState(u.plan);
   const [saved, setSaved] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [tasks, setTasks] = useState<{ id: number | null; taak: string; fase: string; wie: string; status: string; docLink?: string }[]>([]);
+  const [tasks, setTasks] = useState<{ id: number | null; taak: string; fase: string; wie: string; status: string; docLink?: string; stepKind?: string }[]>([]);
+  const [cleaning, setCleaning] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   async function loadTasks() {
@@ -141,6 +142,15 @@ function PageRow({ slug, u, open, onToggle, clientEmail, clientName, onGoToTask 
   }
   // Haal de taken van deze pagina op zodra hij opengeklapt wordt.
   useEffect(() => { if (open) loadTasks(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [open]);
+
+  async function cleanupLoose() {
+    if (cleaning) return;
+    setCleaning(true);
+    try {
+      await fetch(`/api/admin/page-tasks?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(u.url)}`, { method: "DELETE" });
+      await loadTasks();
+    } catch { /* stil */ } finally { setCleaning(false); }
+  }
 
   function change(v: string) {
     setPlan(v); setSaved(false);
@@ -182,23 +192,37 @@ function PageRow({ slug, u, open, onToggle, clientEmail, clientName, onGoToTask 
               )}
               {u.redirectTarget && <div className="muted" style={{ marginTop: 6 }}>Live redirect: → {u.redirectTarget}</div>}
 
-              {tasks.length > 0 && (
-                <div className="page-tasks">
-                  <div className="page-tasks-head">Taken voor deze pagina ({tasks.length})</div>
-                  <ul className="page-tasks-list">
-                    {tasks.map((t, i) => (
-                      <li key={t.id ?? i} className={"page-task" + (t.status === "Klaar" ? " done" : "")}>
-                        {t.fase && <span className="pt-fase">{t.fase}</span>}
-                        {t.wie && <span className={"pt-wie" + (t.wie === "Dev" ? " dev" : "")}>{t.wie}</span>}
-                        <span className="pt-taak">{t.taak}</span>
-                        {t.docLink && <a className="pt-doc" href={t.docLink} target="_blank" rel="noreferrer">document</a>}
-                        {t.status && <span className="pt-status">{t.status}</span>}
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Inplannen, uren of toewijzen doe je in de Werkzaamheden-tab.</div>
-                </div>
-              )}
+              {(() => {
+                const pipeline = tasks.filter((t) => (t.stepKind || "").trim());
+                const loose = tasks.filter((t) => !(t.stepKind || "").trim());
+                return (
+                  <>
+                    {pipeline.length > 0 && (
+                      <div className="page-tasks">
+                        <div className="page-tasks-head">Werkzaamheden voor deze pagina ({pipeline.length})</div>
+                        <ul className="page-tasks-list">
+                          {pipeline.map((t, i) => (
+                            <li key={t.id ?? i} className={"page-task" + (t.status === "Klaar" ? " done" : "")}>
+                              {t.fase && <span className="pt-fase">{t.fase}</span>}
+                              {t.wie && <span className={"pt-wie" + (t.wie === "Dev" ? " dev" : "")}>{t.wie}</span>}
+                              <span className="pt-taak">{t.taak}</span>
+                              {t.docLink && <a className="pt-doc" href={t.docLink} target="_blank" rel="noreferrer">document</a>}
+                              {t.status && <span className="pt-status">{t.status}</span>}
+                            </li>
+                          ))}
+                        </ul>
+                        <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Inplannen, uren of toewijzen doe je in de Werkzaamheden-tab.</div>
+                      </div>
+                    )}
+                    {loose.length > 0 && (
+                      <div className="page-tasks-cleanup">
+                        Er staan nog {loose.length} losse taken van de oude werkwijze bij deze pagina. Die horen nu in het plan, niet als aparte werkzaamheden.
+                        <button type="button" className="ghost-btn small" style={{ marginLeft: 8 }} onClick={cleanupLoose} disabled={cleaning}>{cleaning ? "Opruimen…" : `Opruimen (${loose.length})`}</button>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
 
               <PageChat slug={slug} url={u.url} clientEmail={clientEmail} clientName={clientName} onApplied={(newPlan) => { if (newPlan) setPlan(newPlan); loadTasks(); }} onGoToTask={onGoToTask} />
             </div>

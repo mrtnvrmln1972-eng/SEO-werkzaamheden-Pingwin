@@ -135,6 +135,19 @@ export async function upsertStepTask(
   return Number(res.rows[0].id);
 }
 
+// Verwijdert specifieke taken (op id) van een klant. Gebruikt voor het opruimen
+// van de oude losse subtaken die geen pijplijn-stap zijn.
+export async function deleteTasksByIds(slug: string, ids: number[]): Promise<number> {
+  await ensureSchema();
+  const clean = ids.filter((n) => Number.isInteger(n));
+  let removed = 0;
+  for (const id of clean) {
+    const res = await sql`DELETE FROM client_tasks WHERE client_slug = ${slug} AND id = ${id}`;
+    removed += res.rowCount ?? 0;
+  }
+  return removed;
+}
+
 export async function hasTasks(slug: string): Promise<boolean> {
   await ensureSchema();
   const { rows } = await sql`SELECT 1 FROM client_tasks WHERE client_slug = ${slug} LIMIT 1`;
