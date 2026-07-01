@@ -337,6 +337,27 @@ tbody td:last-child { text-align: center; }
 .dev-pool-body { display: flex; flex-wrap: wrap; gap: 8px; }
 .dev-pool-body .dev-task-card { width: 200px; }
 @media (max-width: 900px) { .dev-week-grid { grid-template-columns: repeat(2, 1fr); } }
+
+/* Pagina's-tab: URL-lijst (spiegel) + plan-alinea */
+.pages-search { width: 100%; max-width: 420px; font-size: 13px; padding: 8px 11px; border: 1px solid var(--border); border-radius: 8px; outline: none; }
+.pages-search:focus { border-color: var(--orange); }
+.pages-table td { vertical-align: middle; }
+.pages-row { cursor: pointer; }
+.pages-row:hover { background: var(--orange-light); }
+.pages-row.open { background: var(--orange-light); }
+.pages-title { color: var(--gray); font-size: 12px; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.url-badge { display: inline-block; min-width: 34px; text-align: center; font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 6px; }
+.url-ok { background: #EEF8EE; color: #2E7D32; }
+.url-redir { background: #FFF7E6; color: #B26A00; }
+.url-bad { background: #FDECEC; color: #C62828; }
+.url-unknown { background: var(--gray-light); color: var(--gray); }
+.plan-chip { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; padding: 2px 8px; border-radius: 10px; background: var(--gray-light); color: var(--gray); }
+.plan-chip.has { background: var(--orange); color: #fff; }
+.pages-detail-row td { background: #fafafa; }
+.pages-detail { padding: 4px 2px 8px; }
+.pages-detail-label { font-size: 12px; font-weight: 700; color: var(--dark); display: block; margin-bottom: 6px; }
+.pages-plan { width: 100%; min-height: 90px; font-family: 'Montserrat', sans-serif; font-size: 13px; color: var(--dark); line-height: 1.5; border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; outline: none; resize: vertical; }
+.pages-plan:focus { border-color: var(--orange); }
 .dev-table td { vertical-align: middle; }
 .dev-client { font-weight: 700; color: var(--dark); font-size: 13px; }
 .dev-cell { font-size: 13px; color: var(--dark); line-height: 1.4; word-break: break-word; }
