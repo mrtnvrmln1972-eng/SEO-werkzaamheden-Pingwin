@@ -166,15 +166,23 @@ tbody td:last-child { text-align: center; }
 .doc-link:hover::after { transform: translateX(4px); }
 /* Klant-toelichting als "?"-tooltip (met opgemaakte HTML) bij de taaknaam */
 .task-name { display: inline-flex; align-items: center; gap: 8px; }
+/* Zelfde lettertype/grootte als de taakcel in de werkzaamheden-tab */
+.task-name-text { font-size: 13px; font-weight: 400; color: var(--dark); }
+.task-name-text a { color: #1a6dd6; text-decoration: underline; text-underline-offset: 2px; }
+.task-check-dash { color: #2E7D32; font-weight: 800; font-size: 14px; line-height: 1; flex: 0 0 auto; }
 .task-help-wrap { position: relative; display: inline-flex; }
 .task-help { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: var(--gray-light); color: var(--gray); font-size: 11px; font-weight: 700; cursor: help; flex: 0 0 auto; }
-.task-help:hover, .task-help:focus { background: var(--orange); color: #fff; outline: none; }
+/* Oranje gevuld als er een toelichting in staat (zoals in de werkzaamheden-tab) */
+.task-help.has { background: var(--orange); color: #fff; }
+.task-help:hover, .task-help:focus { background: var(--orange-dark); color: #fff; outline: none; }
 .task-tip { position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%); background: #fff; color: var(--dark); padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 12.5px; font-weight: 400; line-height: 1.5; text-align: left; white-space: normal; width: max-content; max-width: 300px; box-shadow: 0 8px 22px rgba(0,0,0,0.16); opacity: 0; visibility: hidden; transition: opacity 0.12s; z-index: 50; pointer-events: none; }
 .task-help-wrap:hover .task-tip, .task-help:focus + .task-tip { opacity: 1; visibility: visible; }
 .task-tip a { color: var(--orange); text-decoration: underline; }
 .task-tip p { margin: 0 0 6px; }
 .task-tip ul, .task-tip ol { margin: 4px 0 4px; padding-left: 18px; }
 .task-tip :last-child { margin-bottom: 0; }
+/* Totaalregel onder de werkzaamheden in het klantdashboard */
+.task-total-row td { font-weight: 700; color: var(--dark); border-top: 2px solid var(--border); background: var(--gray-light); }
 .muted { color: #ccc; font-size: 12px; }
 
 /* Footer */

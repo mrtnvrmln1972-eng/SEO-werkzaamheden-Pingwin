@@ -277,7 +277,7 @@ export default function Dashboard({ name, sheetId, gid, budget, adminPreview, in
                 <thead>
                   <tr>
                     <th>Taak</th>
-                    <th className="cell-time">Bestede tijd</th>
+                    <th className="cell-time">Uren</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -291,6 +291,15 @@ export default function Dashboard({ name, sheetId, gid, budget, adminPreview, in
                   )}
                   {renderRows(view.monthTasks)}
                 </tbody>
+                {view.monthTasks.length > 0 && (
+                  <tfoot>
+                    <tr className="task-total-row">
+                      <td>Totaal</td>
+                      <td className="cell-time">{formatTime(view.monthTasks.reduce((s, t) => s + (t.standaardTijd || 0), 0))}</td>
+                      <td></td>
+                    </tr>
+                  </tfoot>
+                )}
               </table>
             </div>
           </>
@@ -337,10 +346,11 @@ function renderRows(monthTasks: DashboardData["tasks"]) {
       <tr key={`task-${i}`} className={done ? "row-done" : "row-open"}>
         <td>
           <span className="task-name">
-            <strong dangerouslySetInnerHTML={{ __html: safeHtml(task.taak) }} />
+            <span className="task-name-text" dangerouslySetInnerHTML={{ __html: safeHtml(task.taak) }} />
+            {done && <span className="task-check-dash" title="Klaar">✓</span>}
             {hasUitleg && (
               <span className="task-help-wrap">
-                <span className="task-help" tabIndex={0} aria-label="Toelichting">?</span>
+                <span className="task-help has" tabIndex={0} aria-label="Toelichting">?</span>
                 <span className="task-tip" dangerouslySetInnerHTML={{ __html: safeHtml(uitleg) }} />
               </span>
             )}
