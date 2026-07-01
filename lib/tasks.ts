@@ -20,6 +20,11 @@ export type TaskRow = {
   wie: string;            // "SEO" | "Dev"
   klantZichtbaar: boolean;
   gemaild?: boolean;      // naar developer gemaild → blijft oranje tot 'Klaar'
+  fase?: string;          // "" | "Bouwen" | "Herbedraden" | "Opschonen"
+  cluster?: string;       // label voor gegroepeerde import (bv. "SOA-test cluster")
+  geblokkeerd?: boolean;  // wacht op een andere taak (bv. redirect wacht op bouw)
+  blokkadeReden?: string; // waarop wordt gewacht
+  pageUrl?: string;       // pagina waar de taak bij hoort
 };
 
 // Inhoudssleutel van een taak: twee rijen met exact dezelfde inhoud (taak,
@@ -53,7 +58,8 @@ function dedupeTasks(tasks: TaskRow[]): TaskRow[] {
 export async function getTasks(slug: string): Promise<TaskRow[]> {
   await ensureSchema();
   const { rows } = await sql`
-    SELECT id, categorie, taak, toelichting, klant_toelichting, uren, status, maand, link, wie, klant_zichtbaar, gemaild
+    SELECT id, categorie, taak, toelichting, klant_toelichting, uren, status, maand, link, wie, klant_zichtbaar, gemaild,
+           fase, cluster, geblokkeerd, blokkade_reden, page_url
     FROM client_tasks WHERE client_slug = ${slug} ORDER BY sort_order ASC, id ASC`;
   const mapped = rows.map((r) => ({
     id: r.id as number,
@@ -68,6 +74,11 @@ export async function getTasks(slug: string): Promise<TaskRow[]> {
     wie: r.wie ?? "",
     klantZichtbaar: !!r.klant_zichtbaar,
     gemaild: !!r.gemaild,
+    fase: r.fase ?? "",
+    cluster: r.cluster ?? "",
+    geblokkeerd: !!r.geblokkeerd,
+    blokkadeReden: r.blokkade_reden ?? "",
+    pageUrl: r.page_url ?? "",
   }));
   return dedupeTasks(mapped);
 }
@@ -90,9 +101,11 @@ export async function replaceTasks(slug: string, tasks: TaskRow[]): Promise<numb
     if (!t.taak || !t.taak.trim()) continue;
     const uren = t.uren === null || t.uren === undefined || Number.isNaN(Number(t.uren)) ? null : Number(t.uren);
     await sql`
-      INSERT INTO client_tasks (client_slug, sort_order, categorie, taak, toelichting, klant_toelichting, uren, status, maand, link, wie, klant_zichtbaar, gemaild, updated_at)
+      INSERT INTO client_tasks (client_slug, sort_order, categorie, taak, toelichting, klant_toelichting, uren, status, maand, link, wie, klant_zichtbaar, gemaild,
+                                fase, cluster, geblokkeerd, blokkade_reden, page_url, updated_at)
       VALUES (${slug}, ${i}, ${t.categorie || null}, ${t.taak.trim()}, ${t.toelichting || null}, ${t.klantToelichting || null}, ${uren},
-              ${t.status || null}, ${(t.maand || "").toLowerCase() || null}, ${t.link || null}, ${t.wie || null}, ${!!t.klantZichtbaar}, ${!!t.gemaild}, now())`;
+              ${t.status || null}, ${(t.maand || "").toLowerCase() || null}, ${t.link || null}, ${t.wie || null}, ${!!t.klantZichtbaar}, ${!!t.gemaild},
+              ${t.fase || null}, ${t.cluster || null}, ${!!t.geblokkeerd}, ${t.blokkadeReden || null}, ${t.pageUrl || null}, now())`;
     n++;
   }
   return n;

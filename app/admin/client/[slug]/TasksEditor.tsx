@@ -7,6 +7,7 @@ import { cleanPastedHtml, linkifyPlainText } from "../../../../lib/rich-paste";
 
 const MONTHS = ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"];
 const STATUSES = ["Gepland", "Bezig", "Naar Dev", "Klaar"];
+const FASES = ["", "Bouwen", "Herbedraden", "Opschonen"];
 
 type Budget = { maandbudget: number; linkbuilding: number; uurtarief: number; beschikbareUren: number };
 
@@ -398,10 +399,10 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
         <table className="task-table">
             <colgroup>
               <col style={{ width: "22px" }} /><col /><col />
-              <col style={{ width: "66px" }} /><col style={{ width: "104px" }} />
+              <col style={{ width: "66px" }} /><col style={{ width: "104px" }} /><col style={{ width: "108px" }} />
               <col style={{ width: "118px" }} /><col style={{ width: "92px" }} /><col style={{ width: "44px" }} /><col style={{ width: "78px" }} />
             </colgroup>
-            <thead><tr><th></th><th>Taak</th><th>Opm. developer</th><th>Uren</th><th>Status</th><th>Wie</th><th>Maand</th><th title="Aanvinken om mee te nemen in een mail naar developer of klant" className="col-center">Kies</th><th></th></tr></thead>
+            <thead><tr><th></th><th>Taak</th><th>Opm. developer</th><th>Uren</th><th>Status</th><th title="Bouwen → Herbedraden → Opschonen: de veilige volgorde bij een herstructurering">Fase</th><th>Wie</th><th>Maand</th><th title="Aanvinken om mee te nemen in een mail naar developer of klant" className="col-center">Kies</th><th></th></tr></thead>
             <tbody>
               {ordered.map(({ r, i }) => {
                 const isDev = (r.wie || "").toLowerCase() === "dev";
@@ -410,11 +411,13 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
                 const mailed = !!r.gemaild && !done;
                 const statusCls = done ? "task-done " : "task-open ";
                 return (
-                  <tr key={r._uid} id={typeof r.id === "number" ? `task-row-${r.id}` : undefined} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.stopPropagation(); moveRow(maand, i); }} className={`${statusCls}${dragIdx === i ? "dragging " : ""}${isDev ? "dev-row " : ""}${mailed ? "mailed-row " : ""}${hl ? "highlight-row" : ""}`}>
+                  <tr key={r._uid} id={typeof r.id === "number" ? `task-row-${r.id}` : undefined} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.stopPropagation(); moveRow(maand, i); }} className={`${statusCls}${dragIdx === i ? "dragging " : ""}${isDev ? "dev-row " : ""}${mailed ? "mailed-row " : ""}${r.geblokkeerd ? "blocked-row " : ""}${hl ? "highlight-row" : ""}`}>
                     <td className="drag-handle" draggable onDragStart={() => setDragIdx(i)} onDragEnd={() => setDragIdx(null)} title="Sleep (ook naar een andere maand)">⠿</td>
                     <td>
                       <div className="taak-cell">
+                        {r.geblokkeerd && <button type="button" className="taak-lock" title={r.blokkadeReden ? `Geblokkeerd: ${r.blokkadeReden} (klik om vrij te geven)` : "Geblokkeerd (klik om vrij te geven)"} onClick={() => update(i, { geblokkeerd: false })}>🔒</button>}
                         <RichCell html={r.taak} onChange={(v) => update(i, { taak: v })} placeholder="Taak" />
+                        {r.cluster && <span className="taak-cluster" title={"Cluster: " + r.cluster}>{r.cluster}</span>}
                         {done && <span className="taak-check" title="Klaar">✓</span>}
                         <button type="button" className={"row-info" + (r.klantToelichting ? " has" : "")} onClick={(e) => klantPop?.i === i ? setKlantPop(null) : openKlantPop(i, e.currentTarget)} title="Toelichting voor de klant (verschijnt als ?-tooltip in het klantdashboard)">?</button>
                       </div>
@@ -422,6 +425,7 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
                     <td><RichCell html={r.toelichting} onChange={(v) => update(i, { toelichting: v })} placeholder="Toelichting" /></td>
                     <td><input className="cell-num" type="number" value={r.uren ?? ""} onChange={(e) => update(i, { uren: e.target.value === "" ? null : Number(e.target.value) })} /></td>
                     <td><select value={r.status} onChange={(e) => update(i, { status: e.target.value })}><option value="">—</option>{STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}</select></td>
+                    <td><select value={r.fase || ""} onChange={(e) => update(i, { fase: e.target.value })} title="Fase in de herstructurering">{FASES.map((s) => <option key={s} value={s}>{s || "—"}</option>)}</select></td>
                     <td><button type="button" className={"wie-badge " + (isDev ? "wie-dev" : "wie-seo")} onClick={() => update(i, { wie: isDev ? "SEO" : "Dev" })} title="Klik om te wisselen tussen SEO en Developer">{isDev ? "Developer" : "SEO"}</button></td>
                     <td><select value={r.maand} onChange={(e) => update(i, { maand: e.target.value })}><option value="">—</option>{MONTHS.map((m) => <option key={m} value={m}>{m}</option>)}</select></td>
                     <td className="cell-check col-center"><input type="checkbox" checked={!!r._mail} onChange={(e) => update(i, { _mail: e.target.checked })} title="Aanvinken om mee te nemen in een mail naar developer of klant" /></td>
@@ -432,7 +436,7 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
                   </tr>
                 );
               })}
-              {secRows.length === 0 && <tr><td colSpan={9} className="muted" style={{ padding: 8 }}>Nog geen taken deze maand. Sleep er een hierheen of voeg toe.</td></tr>}
+              {secRows.length === 0 && <tr><td colSpan={10} className="muted" style={{ padding: 8 }}>Nog geen taken deze maand. Sleep er een hierheen of voeg toe.</td></tr>}
             </tbody>
           </table>
         <button type="button" className="add-task-btn" onClick={() => addRow(maand, "SEO")}>+ taak</button>

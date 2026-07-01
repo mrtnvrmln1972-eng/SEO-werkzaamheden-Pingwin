@@ -107,6 +107,14 @@ async function init(): Promise<void> {
   // Klant-toelichting: korte uitleg voor de klant (verschijnt als "?"-tooltip in
   // het klantdashboard). De bestaande 'toelichting' is voor de developer (intern).
   await sql`ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS klant_toelichting TEXT`;
+  // Herstructurering-velden: fase (Bouwen/Herbedraden/Opschonen), cluster-label
+  // (voor gegroepeerde import), blokkade (redirect wacht tot bouw klaar is) en de
+  // pagina waar de taak bij hoort.
+  await sql`ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS fase TEXT`;
+  await sql`ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS cluster TEXT`;
+  await sql`ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS geblokkeerd BOOLEAN NOT NULL DEFAULT false`;
+  await sql`ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS blokkade_reden TEXT`;
+  await sql`ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS page_url TEXT`;
 
   // Focus-blok per klant: afgesproken zoekwoorden + pagina's en snelle links
   // (linkbuilding-sheets, Search Console, Analytics). Eén JSON-rij per klant.

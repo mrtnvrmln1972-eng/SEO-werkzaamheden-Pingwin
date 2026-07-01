@@ -668,6 +668,10 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .taak-cell { display: flex; align-items: flex-start; gap: 6px; position: relative; }
 .taak-cell .rich-cell { flex: 1 1 auto; min-width: 0; }
 .taak-check { flex: 0 0 auto; color: #2E7D32; font-weight: 800; font-size: 14px; line-height: 1; margin-top: 6px; }
+.taak-cluster { flex: 0 0 auto; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; background: #EDE9FE; color: #6D28D9; padding: 1px 7px; border-radius: 9px; margin-top: 5px; white-space: nowrap; }
+.taak-lock { flex: 0 0 auto; background: none; border: none; cursor: pointer; font-size: 13px; padding: 0; margin-top: 5px; }
+.task-table tbody tr.blocked-row { opacity: 0.55; }
+.task-table tbody tr.blocked-row:hover { opacity: 0.8; }
 .row-info { width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--border); background: var(--white); color: var(--gray); font-size: 12px; font-weight: 700; line-height: 1; cursor: pointer; padding: 0; flex: 0 0 auto; margin-top: 4px; }
 .row-info:hover { border-color: var(--orange); color: var(--orange); }
 .row-info.has { background: var(--orange); border-color: var(--orange); color: #fff; }
