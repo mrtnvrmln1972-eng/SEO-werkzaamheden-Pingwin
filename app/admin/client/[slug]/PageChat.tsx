@@ -1,15 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { mdToHtml } from "../../../../lib/markdown";
 
 type Msg = { role: "user" | "assistant"; content: string };
 type Proposal = { plan?: string; tasks?: { taak: string; fase?: string; wie?: string }[] };
-
-const QUICK = [
-  "Concurreert deze pagina met andere? Analyseer de top 10 en of dit de juiste invulling is.",
-  "Klopt de voorgestelde actie in het plan, gezien de live ranking?",
-  "Welke zoekwoorden zou deze pagina moeten targeten, en hoe verhoudt dat zich tot de andere clusterpagina's?",
-];
 
 export default function PageChat({ slug, url, onApplied }: { slug: string; url: string; onApplied: (plan?: string) => void }) {
   const [msgs, setMsgs] = useState<Msg[]>([]);
@@ -54,16 +49,12 @@ export default function PageChat({ slug, url, onApplied }: { slug: string; url: 
     <div className="page-chat">
       <div className="page-chat-head">Chat over deze pagina (gegrond in live status, GSC-ranking en het cluster)</div>
 
-      {msgs.length === 0 && (
-        <div className="page-chat-quick">
-          {QUICK.map((q) => <button key={q} type="button" onClick={() => send(q)}>{q}</button>)}
-        </div>
-      )}
-
       {msgs.length > 0 && (
         <div className="page-chat-log">
           {msgs.map((m, i) => (
-            <div key={i} className={"page-chat-msg " + m.role}>{m.content}</div>
+            m.role === "user"
+              ? <div key={i} className="page-chat-msg user">{m.content}</div>
+              : <div key={i} className="page-chat-msg assistant md" dangerouslySetInnerHTML={{ __html: mdToHtml(m.content) }} />
           ))}
           {busy && <div className="page-chat-msg assistant muted">Aan het denken…</div>}
         </div>
