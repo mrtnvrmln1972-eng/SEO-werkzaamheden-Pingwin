@@ -15,6 +15,24 @@ async function token(): Promise<string> {
   return t;
 }
 
+// Vertaalt een Drive-foutantwoord naar een begrijpelijke, actiegerichte melding.
+async function driveErr(res: Response, actie: string): Promise<string> {
+  let reason = "", message = "";
+  try {
+    const j = await res.json();
+    reason = j?.error?.errors?.[0]?.reason || j?.error?.status || "";
+    message = j?.error?.message || "";
+  } catch { /* geen json */ }
+  if (res.status === 403 && /accessNotConfigured|SERVICE_DISABLED|has not been used/i.test(reason + message)) {
+    return "De Google Drive API staat nog niet aan in je Google Cloud-project. Zet hem aan (console.cloud.google.com, Drive API, Enable) en probeer opnieuw.";
+  }
+  if (res.status === 403 && /insufficient|scope/i.test(reason + message)) {
+    return "De Google-koppeling mist de Drive-toestemming. Koppel Google opnieuw en vink Google Drive aan.";
+  }
+  if (res.status === 401) return "De Google-koppeling is verlopen. Koppel Google opnieuw.";
+  return `Drive gaf status ${res.status} bij ${actie}${message ? ` (${message})` : ""}.`;
+}
+
 // Submappen van een parent ("root" = mijn Drive-hoofdmap). Alfabetisch.
 export async function listFolders(parentId: string): Promise<DriveFolder[]> {
   const t = await token();
@@ -30,7 +48,7 @@ export async function listFolders(parentId: string): Promise<DriveFolder[]> {
     includeItemsFromAllDrives: "true",
   });
   const res = await fetch(`https://www.googleapis.com/drive/v3/files?${p.toString()}`, { headers: { Authorization: `Bearer ${t}` } });
-  if (!res.ok) throw new Error(`Drive gaf status ${res.status} bij het ophalen van mappen.`);
+  if (!res.ok) throw new Error(await driveErr(res, "het ophalen van mappen"));
   const j = await res.json();
   return Array.isArray(j.files) ? j.files.map((f: { id: string; name: string }) => ({ id: f.id, name: f.name })) : [];
 }
