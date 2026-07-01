@@ -51,12 +51,12 @@ export async function callClaudeAgentic(system: string, messages: ChatMsg[], too
       return content.filter((c) => c.type === "text").map((c) => c.text || "").join("");
     }
     apiMessages.push({ role: "assistant", content });
-    const results = [];
-    for (const tu of toolUses) {
+    // Tools binnen deze ronde parallel uitvoeren (scheelt veel wachttijd).
+    const results = await Promise.all(toolUses.map(async (tu) => {
       let out: string;
       try { out = await run(tu.name || "", tu.input || {}); } catch (e) { out = "Fout: " + (e as Error).message; }
-      results.push({ type: "tool_result", tool_use_id: tu.id, content: out.slice(0, 6000) });
-    }
+      return { type: "tool_result", tool_use_id: tu.id, content: out.slice(0, 6000) };
+    }));
     apiMessages.push({ role: "user", content: results });
   }
   // Rondes op: forceer een tekstantwoord zonder tools.

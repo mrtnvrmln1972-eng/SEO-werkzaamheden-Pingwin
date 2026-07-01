@@ -19,12 +19,18 @@ async function ahrefsFetch(path: string, params: Record<string, string>): Promis
   if (!token) throw new Error("AHREFS_API_TOKEN ontbreekt.");
   const url = new URL(BASE + path);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
-  const res = await fetch(url.toString(), { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } });
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`Ahrefs ${path}: ${res.status} ${body.slice(0, 300)}`);
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 25000);
+  try {
+    const res = await fetch(url.toString(), { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" }, signal: ctl.signal });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      throw new Error(`Ahrefs ${path}: ${res.status} ${body.slice(0, 300)}`);
+    }
+    return await res.json();
+  } finally {
+    clearTimeout(timer);
   }
-  return res.json();
 }
 
 async function ensureCache(): Promise<void> {

@@ -22,8 +22,10 @@ function firstMatch(html: string, re: RegExp): string {
 
 export async function fetchPageContent(url: string): Promise<PageContent> {
   const empty: PageContent = { url, status: null, title: "", metaDescription: "", h1: "", headings: [], text: "" };
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 12000);
   try {
-    const res = await fetch(url, { redirect: "follow" });
+    const res = await fetch(url, { redirect: "follow", signal: ctl.signal });
     if (!res.ok) return { ...empty, status: res.status };
     const html = await res.text();
 
@@ -40,5 +42,7 @@ export async function fetchPageContent(url: string): Promise<PageContent> {
     return { url, status: res.status, title, metaDescription, h1, headings, text };
   } catch {
     return empty;
+  } finally {
+    clearTimeout(timer);
   }
 }

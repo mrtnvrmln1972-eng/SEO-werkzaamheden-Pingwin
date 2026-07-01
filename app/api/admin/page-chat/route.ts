@@ -5,7 +5,7 @@ import { buildSystemPrompt, parseProposal, extractProposal } from "../../../../l
 import { CHAT_TOOLS, runChatTool } from "../../../../lib/chat-tools";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 function admin(req: NextRequest): boolean {
   return verifyAdminSession(req.cookies.get(ADMIN_COOKIE)?.value);
