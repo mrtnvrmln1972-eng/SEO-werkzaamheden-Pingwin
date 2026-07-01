@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
-import { callClaude, anthropicConfigured, type ChatMsg } from "../../../../lib/anthropic";
+import { callClaudeAgentic, anthropicConfigured, type ChatMsg } from "../../../../lib/anthropic";
 import { buildSystemPrompt, parseProposal } from "../../../../lib/page-chat-ground";
+import { CHAT_TOOLS, runChatTool } from "../../../../lib/chat-tools";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const system = await buildSystemPrompt(slug, url);
-    const raw = await callClaude(system, messages.slice(-12));
+    const raw = await callClaudeAgentic(system, messages.slice(-12), CHAT_TOOLS, runChatTool);
     const { reply, proposal } = parseProposal(raw);
     return NextResponse.json({ ok: true, reply, proposal });
   } catch (e) {
