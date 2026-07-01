@@ -52,6 +52,18 @@ async function doEnsureTables(): Promise<void> {
       updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
       PRIMARY KEY (client_slug, url)
     )`;
+  // Bestemmingsmap in Google Drive per pagina: waar de analyse/blauwdruk/copy
+  // -documenten van deze landingspagina naartoe gaan.
+  await sql`
+    CREATE TABLE IF NOT EXISTS page_drive_folders (
+      client_slug TEXT NOT NULL,
+      url         TEXT NOT NULL,
+      folder_id   TEXT NOT NULL,
+      folder_name TEXT,
+      folder_path TEXT,
+      updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (client_slug, url)
+    )`;
 }
 
 function normUrl(u: string): string {
@@ -192,6 +204,25 @@ export async function savePagePlan(slug: string, url: string, plan: string): Pro
     INSERT INTO page_plans (client_slug, url, plan, updated_at)
     VALUES (${slug}, ${url}, ${plan || null}, now())
     ON CONFLICT (client_slug, url) DO UPDATE SET plan = ${plan || null}, updated_at = now()`;
+}
+
+export type PageDriveFolder = { folderId: string; folderName: string; folderPath: string };
+
+export async function getPageDriveFolder(slug: string, url: string): Promise<PageDriveFolder | null> {
+  await ensureSchema();
+  await ensureTables();
+  const { rows } = await sql`SELECT folder_id, folder_name, folder_path FROM page_drive_folders WHERE client_slug = ${slug} AND url = ${url} LIMIT 1`;
+  if (!rows[0]) return null;
+  return { folderId: rows[0].folder_id as string, folderName: (rows[0].folder_name as string) || "", folderPath: (rows[0].folder_path as string) || "" };
+}
+
+export async function savePageDriveFolder(slug: string, url: string, folderId: string, folderName: string, folderPath: string): Promise<void> {
+  await ensureSchema();
+  await ensureTables();
+  await sql`
+    INSERT INTO page_drive_folders (client_slug, url, folder_id, folder_name, folder_path, updated_at)
+    VALUES (${slug}, ${url}, ${folderId}, ${folderName || null}, ${folderPath || null}, now())
+    ON CONFLICT (client_slug, url) DO UPDATE SET folder_id = ${folderId}, folder_name = ${folderName || null}, folder_path = ${folderPath || null}, updated_at = now()`;
 }
 
 // Voegt een pagina handmatig toe aan de spiegel (bijv. een nieuw-te-bouwen

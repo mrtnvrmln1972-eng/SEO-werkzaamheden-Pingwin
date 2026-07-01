@@ -441,6 +441,22 @@ tbody td:last-child { text-align: center; }
 .pch-badge.task { background: var(--gray-light); color: var(--dark); }
 .page-chat-proposal-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 .page-chat-tools { margin: 4px 0 8px; display: flex; gap: 8px; flex-wrap: wrap; }
+/* Bestemmingsmap-regel + Drive-mappenkiezer */
+.page-chat-drive { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 8px 0 2px; font-size: 13px; }
+.pcd-label { color: var(--muted); }
+.pcd-folder { font-weight: 600; }
+.pcd-folder.muted { font-weight: 400; color: var(--muted); }
+.drive-modal { width: 620px; max-width: 96vw; max-height: 88vh; }
+.drive-crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; margin-bottom: 8px; }
+.drive-crumb { background: none; border: none; color: var(--orange, #F6712C); cursor: pointer; padding: 2px 4px; font: inherit; }
+.drive-crumb:hover { text-decoration: underline; }
+.drive-sep { color: var(--muted); }
+.drive-list { border: 1px solid var(--border); border-radius: 8px; max-height: 44vh; overflow-y: auto; }
+.drive-row { display: flex; justify-content: space-between; align-items: center; width: 100%; text-align: left; background: none; border: none; border-bottom: 1px solid var(--border); padding: 10px 14px; cursor: pointer; font: inherit; }
+.drive-row:last-child { border-bottom: none; }
+.drive-row:hover { background: var(--bg, #faf9f7); }
+.drive-newfolder { display: flex; gap: 8px; margin-top: 10px; }
+.drive-newfolder .compose-input { flex: 1; }
 /* Klant-mail: ruim venster + nette, opgemaakte, meegroeiende bewerkbare preview */
 .mail-modal { width: 760px; max-width: 96vw; max-height: 92vh; }
 .mail-edit { min-height: 260px; max-height: 62vh; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; outline: none; background: var(--white); }

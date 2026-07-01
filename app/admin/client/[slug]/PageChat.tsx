@@ -47,12 +47,25 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   }
 
   const [docBusy, setDocBusy] = useState("");
+  const [driveFolder, setDriveFolder] = useState<{ id: string; name: string; path: string } | null>(null);
+  const soort: Record<string, string> = { analyse: "Analyse", blauwdruk: "Blauwdruk", copy: "Copy" };
   async function genDoc(kind: "analyse" | "blauwdruk" | "copy") {
     if (docBusy) return;
     setDocBusy(kind); setErr(""); setApplied("");
     try {
-      const r = await fetch("/api/admin/page-doc", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url, kind }) });
+      // deliver=download alleen als er geen bestemmingsmap is gekozen.
+      const payload = { slug, url, kind, ...(driveFolder ? { folderId: driveFolder.id } : { deliver: "download" }) };
+      const r = await fetch("/api/admin/page-doc", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      const ct = r.headers.get("Content-Type") || "";
+      if (ct.includes("application/json")) {
+        const d = await r.json();
+        if (!d.ok) { setErr(d.error || "Document maken mislukt."); return; }
+        setApplied(`${soort[kind]}-document in Pingwin-huisstijl opgeslagen in Google Drive${driveFolder ? ` (map: ${driveFolder.name})` : ""}. <a href="${d.link}" target="_blank" rel="noopener">Open document</a>.${kind === "copy" ? " De developer heeft een bouwtaak met deze link gekregen." : ""}`);
+        if (kind === "copy") onApplied();
+        return;
+      }
       if (!r.ok) { const d = await r.json().catch(() => ({})); setErr(d.error || "Document maken mislukt."); return; }
+      // Download-blob.
       const blob = await r.blob();
       const a = document.createElement("a");
       const dispo = r.headers.get("Content-Disposition") || "";
@@ -61,13 +74,63 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       a.download = m ? m[1] : `${kind}.docx`;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-      setApplied(kind === "copy"
-        ? "Copy-document gedownload in Pingwin-huisstijl. Er is meteen een bouwtaak voor de developer aangemaakt om de copy te plaatsen."
-        : kind === "analyse"
-        ? "Analyse-document gedownload in Pingwin-huisstijl (scorecard + gate-verdict tegen de Pingwin-criteria)."
-        : "Blauwdruk-document gedownload in Pingwin-huisstijl.");
+      setApplied(`${soort[kind]}-document gedownload in Pingwin-huisstijl.${kind === "copy" ? " Er is een bouwtaak voor de developer aangemaakt." : ""}`);
       if (kind === "copy") onApplied();
     } catch { setErr("Document maken mislukt."); } finally { setDocBusy(""); }
+  }
+
+  // ── Google Drive bestemmingsmap ─────────────────────────────
+  type Folder = { id: string; name: string };
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [stack, setStack] = useState<Folder[]>([{ id: "root", name: "Mijn Drive" }]);
+  const [folders, setFolders] = useState<Folder[]>([]);
+  const [pickBusy, setPickBusy] = useState(false);
+  const [pickErr, setPickErr] = useState("");
+  const [newFolder, setNewFolder] = useState("");
+
+  // Bij laden: toon de eventueel al gekozen map (lichte call, geen Drive-lijst).
+  useEffect(() => {
+    let alive = true;
+    fetch(`/api/admin/drive/folders?chosenOnly=1&slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}`)
+      .then((r) => r.json()).then((d) => { if (alive && d.ok && d.chosen) setDriveFolder({ id: d.chosen.folderId, name: d.chosen.folderName, path: d.chosen.folderPath }); })
+      .catch(() => { /* niet kritisch */ });
+    return () => { alive = false; };
+  }, [slug, url]);
+
+  async function loadFolders(parentId: string) {
+    setPickBusy(true); setPickErr("");
+    try {
+      const r = await fetch(`/api/admin/drive/folders?parent=${encodeURIComponent(parentId)}`);
+      const d = await r.json();
+      if (!d.ok) { setPickErr(d.error || "Kon Drive-mappen niet laden."); setFolders([]); return; }
+      setFolders(d.folders || []);
+    } catch { setPickErr("Kon Drive-mappen niet laden."); } finally { setPickBusy(false); }
+  }
+  function openPicker() { setPickerOpen(true); const s = [{ id: "root", name: "Mijn Drive" }]; setStack(s); loadFolders("root"); }
+  function enterFolder(f: Folder) { const s = [...stack, f]; setStack(s); loadFolders(f.id); }
+  function jumpTo(i: number) { const s = stack.slice(0, i + 1); setStack(s); loadFolders(s[s.length - 1].id); }
+  async function makeSubfolder() {
+    const name = newFolder.trim(); if (!name) return;
+    setPickBusy(true); setPickErr("");
+    try {
+      const parent = stack[stack.length - 1].id;
+      const r = await fetch("/api/admin/drive/folders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "create", parent, name }) });
+      const d = await r.json();
+      if (!d.ok) { setPickErr(d.error || "Map maken mislukt."); return; }
+      setNewFolder(""); await loadFolders(parent);
+    } catch { setPickErr("Map maken mislukt."); } finally { setPickBusy(false); }
+  }
+  async function chooseCurrent() {
+    const cur = stack[stack.length - 1];
+    if (cur.id === "root") { setPickErr("Kies eerst een map (niet de hoofdmap zelf)."); return; }
+    const path = stack.slice(1).map((f) => f.name).join(" / ");
+    setPickBusy(true); setPickErr("");
+    try {
+      const r = await fetch("/api/admin/drive/folders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "save", slug, url, folderId: cur.id, folderName: cur.name, folderPath: path }) });
+      const d = await r.json();
+      if (!d.ok) { setPickErr(d.error || "Opslaan mislukt."); return; }
+      setDriveFolder({ id: cur.id, name: cur.name, path }); setPickerOpen(false);
+    } catch { setPickErr("Opslaan mislukt."); } finally { setPickBusy(false); }
   }
 
   async function makeClientMail() {
@@ -223,16 +286,26 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       )}
 
       {lastAssistant && (
-        <div className="page-chat-tools">
-          <button type="button" className="ghost-btn small" onClick={makeWorkItem} disabled={taskGen}>{taskGen ? "Aanmaken…" : "＋ Maak werkzaamheid van deze analyse"}</button>
-          <button type="button" className="ghost-btn small" onClick={makeClientMail} disabled={mailGen}>{mailGen ? "Mail maken…" : "✉ Klant-mail van deze analyse"}</button>
-          <button type="button" className="ghost-btn small" onClick={() => genDoc("analyse")} disabled={!!docBusy}>{docBusy === "analyse" ? "Analyse maken…" : "🔍 Analyse-document"}</button>
-          <button type="button" className="ghost-btn small" onClick={() => genDoc("blauwdruk")} disabled={!!docBusy}>{docBusy === "blauwdruk" ? "Blauwdruk maken…" : "📄 Blauwdruk-document"}</button>
-          <button type="button" className="ghost-btn small" onClick={() => genDoc("copy")} disabled={!!docBusy}>{docBusy === "copy" ? "Copy maken…" : "✍ Copy-document (+ dev-taak)"}</button>
-        </div>
+        <>
+          <div className="page-chat-drive">
+            <span className="pcd-label">Opslaan in:</span>
+            {driveFolder
+              ? <span className="pcd-folder">📁 {driveFolder.path || driveFolder.name}</span>
+              : <span className="pcd-folder muted">nog geen Drive-map (documenten worden gedownload)</span>}
+            <button type="button" className="ghost-btn small" onClick={openPicker}>{driveFolder ? "Map wijzigen" : "Kies Drive-map"}</button>
+            {driveFolder && <button type="button" className="ghost-btn small" onClick={() => setDriveFolder(null)}>Naar download</button>}
+          </div>
+          <div className="page-chat-tools">
+            <button type="button" className="ghost-btn small" onClick={makeWorkItem} disabled={taskGen}>{taskGen ? "Aanmaken…" : "＋ Maak werkzaamheid van deze analyse"}</button>
+            <button type="button" className="ghost-btn small" onClick={makeClientMail} disabled={mailGen}>{mailGen ? "Mail maken…" : "✉ Klant-mail van deze analyse"}</button>
+            <button type="button" className="ghost-btn small" onClick={() => genDoc("analyse")} disabled={!!docBusy}>{docBusy === "analyse" ? "Analyse maken…" : "🔍 Analyse-document"}</button>
+            <button type="button" className="ghost-btn small" onClick={() => genDoc("blauwdruk")} disabled={!!docBusy}>{docBusy === "blauwdruk" ? "Blauwdruk maken…" : "📄 Blauwdruk-document"}</button>
+            <button type="button" className="ghost-btn small" onClick={() => genDoc("copy")} disabled={!!docBusy}>{docBusy === "copy" ? "Copy maken…" : "✍ Copy-document (+ dev-taak)"}</button>
+          </div>
+        </>
       )}
 
-      {applied && <div className="saved-msg" style={{ marginTop: 8 }}>{applied}</div>}
+      {applied && <div className="saved-msg" style={{ marginTop: 8 }} dangerouslySetInnerHTML={{ __html: applied }} />}
       {err && <div className="login-error" style={{ marginTop: 8 }}>{err}</div>}
 
       <div className="page-chat-input">
@@ -256,6 +329,40 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
             <div className="compose-foot">
               <button type="button" className="logout-btn" onClick={() => setMailOpen(false)}>Annuleren</button>
               <button type="button" className="primary-btn small" onClick={sendClientMail} disabled={mailBusy}>{mailBusy ? "Versturen..." : "Verstuur per mail"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pickerOpen && (
+        <div className="compose-overlay">
+          <div className="compose-modal drive-modal">
+            <div className="compose-head"><span>Kies de Google Drive-map voor deze pagina</span><button type="button" className="chat-float-close" onClick={() => setPickerOpen(false)}>&times;</button></div>
+            <div className="compose-body">
+              <div className="drive-crumbs">
+                {stack.map((f, i) => (
+                  <span key={f.id}>
+                    <button type="button" className="drive-crumb" onClick={() => jumpTo(i)}>{f.name}</button>
+                    {i < stack.length - 1 && <span className="drive-sep"> / </span>}
+                  </span>
+                ))}
+              </div>
+              {pickErr && <div className="login-error" style={{ marginTop: 6 }}>{pickErr}</div>}
+              <div className="drive-list">
+                {pickBusy && <div className="muted" style={{ padding: 8 }}>Laden…</div>}
+                {!pickBusy && folders.length === 0 && <div className="muted" style={{ padding: 8 }}>Geen submappen hier. Kies deze map, of maak een nieuwe submap.</div>}
+                {!pickBusy && folders.map((f) => (
+                  <button key={f.id} type="button" className="drive-row" onClick={() => enterFolder(f)}>📁 {f.name} <span className="muted">openen ›</span></button>
+                ))}
+              </div>
+              <div className="drive-newfolder">
+                <input className="compose-input" value={newFolder} onChange={(e) => setNewFolder(e.target.value)} placeholder="Nieuwe submap maken (naam)…" />
+                <button type="button" className="ghost-btn small" onClick={makeSubfolder} disabled={pickBusy || !newFolder.trim()}>Map maken</button>
+              </div>
+            </div>
+            <div className="compose-foot">
+              <button type="button" className="logout-btn" onClick={() => setPickerOpen(false)}>Annuleren</button>
+              <button type="button" className="primary-btn small" onClick={chooseCurrent} disabled={pickBusy}>Kies “{stack[stack.length - 1].name}”</button>
             </div>
           </div>
         </div>

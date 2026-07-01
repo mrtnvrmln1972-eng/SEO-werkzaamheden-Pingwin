@@ -4,6 +4,8 @@ import { anthropicConfigured } from "../../../../lib/anthropic";
 import { generateDocSpec, type DocKind } from "../../../../lib/page-doc";
 import { buildPingwinDoc } from "../../../../lib/pingwin-docx";
 import { appendTasks } from "../../../../lib/tasks";
+import { getPageDriveFolder } from "../../../../lib/site-urls";
+import { uploadDocx } from "../../../../lib/drive";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -44,22 +46,42 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: `Kon het document niet opmaken: ${e instanceof Error ? e.message : "onbekende fout"}` }, { status: 500 });
   }
 
-  // Copy is een bouwtaak voor de developer: als taak wegschrijven zodat hij op de pagina komt.
-  if (kind === "copy") {
-    try {
-      await appendTasks(slug, [{
-        taak: `Nieuwe copy plaatsen: ${title}`.slice(0, 90),
-        toelichting: "De copy staat in het bijgevoegde Pingwin-document. Plaats de teksten (H1, H2's, alinea's, FAQ, meta-title en meta-description) op de pagina.",
-        status: "Gepland",
-        wie: "Dev",
-        fase: "Bouwen",
-        pageUrl: url,
-        klantZichtbaar: false,
-      }]);
-    } catch { /* document toch teruggeven, taak is bijzaak */ }
+  const filename = `${safeName(spec.klant)}-${kind}-${safeName(title)}.docx`;
+
+  // Aflevering: naar Google Drive als er een bestemmingsmap is (expliciet meegegeven
+  // of eerder per pagina vastgelegd) en de aanvraag niet om download vraagt.
+  const wantDownload = String(body.deliver || "") === "download";
+  let folderId = String(body.folderId || "").trim();
+  if (!folderId && !wantDownload) {
+    const saved = await getPageDriveFolder(slug, url).catch(() => null);
+    if (saved) folderId = saved.folderId;
   }
 
-  const filename = `${safeName(spec.klant)}-${kind}-${safeName(title)}.docx`;
+  if (folderId && !wantDownload) {
+    let link: string;
+    try {
+      ({ link } = await uploadDocx(folderId, filename, buffer));
+    } catch (e) {
+      return NextResponse.json({ ok: false, error: `Document gemaakt, maar upload naar Drive mislukte: ${e instanceof Error ? e.message : "onbekende fout"}` }, { status: 502 });
+    }
+    if (kind === "copy") {
+      await appendTasks(slug, [{
+        taak: `Nieuwe copy plaatsen: ${title}`.slice(0, 90),
+        toelichting: `De copy staat in het Pingwin-document in Google Drive: <a href="${link}">open document</a>. Plaats de teksten (H1, H2's, alinea's, FAQ, meta-title en meta-description) op de pagina.`,
+        status: "Gepland", wie: "Dev", fase: "Bouwen", pageUrl: url, klantZichtbaar: false,
+      }]).catch(() => { /* taak is bijzaak */ });
+    }
+    return NextResponse.json({ ok: true, delivered: "drive", link, filename, kind });
+  }
+
+  // Geen bestemmingsmap: download, en (bij copy) een taak zonder link.
+  if (kind === "copy") {
+    await appendTasks(slug, [{
+      taak: `Nieuwe copy plaatsen: ${title}`.slice(0, 90),
+      toelichting: "De copy staat in het bijgevoegde Pingwin-document. Plaats de teksten (H1, H2's, alinea's, FAQ, meta-title en meta-description) op de pagina.",
+      status: "Gepland", wie: "Dev", fase: "Bouwen", pageUrl: url, klantZichtbaar: false,
+    }]).catch(() => { /* taak is bijzaak */ });
+  }
   return new NextResponse(buffer as unknown as BodyInit, {
     status: 200,
     headers: {

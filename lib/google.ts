@@ -14,6 +14,10 @@ import { sql, ensureSchema } from "./db";
 const SCOPES = [
   "https://www.googleapis.com/auth/webmasters.readonly",
   "https://www.googleapis.com/auth/analytics.readonly",
+  // Drive: mappen kunnen browsen + documenten wegschrijven en delen. Full drive
+  // want we tonen een eigen mappenkiezer die de bestaande mappenboom moet uitlezen
+  // (drive.file kan alleen bij eigen/gepickte bestanden, niet de mappen listen).
+  "https://www.googleapis.com/auth/drive",
   "openid", "email",
 ].join(" ");
 
@@ -79,6 +83,12 @@ export async function googleStatus(): Promise<{ configured: boolean; connected: 
   await ensureSchema();
   const { rows } = await sql`SELECT account, refresh_token FROM oauth_tokens WHERE provider = 'google' LIMIT 1`;
   return { configured, connected: !!rows[0]?.refresh_token, account: (rows[0]?.account as string) || null };
+}
+
+// Beschikbaar voor de Drive-laag (lib/drive.ts). Levert een verse access-token
+// uit de opgeslagen refresh-token; null als Google niet gekoppeld is.
+export async function getGoogleAccessToken(): Promise<string | null> {
+  return googleAccessToken();
 }
 
 async function googleAccessToken(): Promise<string | null> {
