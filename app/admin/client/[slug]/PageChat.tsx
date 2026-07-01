@@ -191,19 +191,25 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     try {
       const r = await fetch(`/api/admin/page-chats?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}`);
       const d = await r.json();
-      if (d.ok) setChats(d.chats);
+      if (d.ok) { setChats(d.chats); try { localStorage.setItem(`pw_chats_${slug}_${url}`, JSON.stringify(d.chats)); } catch { /* cache is extra */ } }
     } catch { /* stil */ }
   }
-  useEffect(() => { loadChats(); /* eslint-disable-next-line */ }, [slug, url]);
+  // Cache-first: toon de vorige chatlijst direct, ververs daarna.
+  useEffect(() => {
+    try { const c = localStorage.getItem(`pw_chats_${slug}_${url}`); if (c) { const p = JSON.parse(c); if (Array.isArray(p)) setChats(p); } } catch { /* geen cache */ }
+    loadChats(); /* eslint-disable-next-line */
+  }, [slug, url]);
 
   function newChat() { setMsgs([]); setChatId(null); setProposal(null); setApplied(""); setErr(""); }
 
   async function openChat(id: number) {
     setProposal(null); setApplied(""); setErr("");
+    // Cache-first: toon de berichten direct uit de cache, ververs daarna.
+    try { const c = localStorage.getItem(`pw_chat_${id}`); if (c) { const p = JSON.parse(c); if (p?.messages) { setMsgs(p.messages); setChatId(id); } } } catch { /* geen cache */ }
     try {
       const r = await fetch(`/api/admin/page-chats?id=${id}`);
       const d = await r.json();
-      if (d.ok && d.chat) { setMsgs(d.chat.messages); setChatId(d.chat.id); }
+      if (d.ok && d.chat) { setMsgs(d.chat.messages); setChatId(d.chat.id); try { localStorage.setItem(`pw_chat_${id}`, JSON.stringify(d.chat)); } catch { /* cache is extra */ } }
     } catch { /* stil */ }
   }
 

@@ -149,11 +149,15 @@ function PageRow({ slug, u, open, onToggle, clientEmail, clientName, onGoToTask 
     try {
       const r = await fetch(`/api/admin/page-tasks?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(u.url)}`);
       const d = await r.json();
-      if (d.ok) setTasks(d.tasks || []);
+      if (d.ok) { setTasks(d.tasks || []); try { localStorage.setItem(`pw_ptasks_${slug}_${u.url}`, JSON.stringify(d.tasks || [])); } catch { /* cache is extra */ } }
     } catch { /* stil */ }
   }
-  // Haal de taken van deze pagina op zodra hij opengeklapt wordt.
-  useEffect(() => { if (open) loadTasks(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [open]);
+  // Cache-first bij openklappen: toon de vorige taken direct, ververs daarna.
+  useEffect(() => {
+    if (!open) return;
+    try { const c = localStorage.getItem(`pw_ptasks_${slug}_${u.url}`); if (c) { const p = JSON.parse(c); if (Array.isArray(p)) setTasks(p); } } catch { /* geen cache */ }
+    loadTasks(); /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [open]);
 
   async function cleanupLoose() {
     if (cleaning) return;
