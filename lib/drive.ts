@@ -6,6 +6,7 @@ import { getGoogleAccessToken } from "./google";
 
 const FOLDER_MIME = "application/vnd.google-apps.folder";
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+const GDOC_MIME = "application/vnd.google-apps.document";
 
 export type DriveFolder = { id: string; name: string };
 
@@ -97,7 +98,10 @@ async function shareAnyone(t: string, fileId: string): Promise<boolean> {
 export async function uploadDocx(folderId: string, filename: string, buffer: Buffer): Promise<{ id: string; link: string; shared: boolean; owner: string; folder: string }> {
   const t = await token();
   const parent = folderId && folderId !== "root" ? folderId : "root";
-  const meta = { name: filename, parents: [parent] };
+  // Zet het geuploade .docx meteen om naar een echte Google Doc (mimeType van het
+  // doel = Google Doc), zodat de link altijd netjes in de browser opent en
+  // betrouwbaar deelbaar is. De .docx blijft de bron (media-type hieronder).
+  const meta = { name: filename.replace(/\.docx$/i, ""), parents: [parent], mimeType: GDOC_MIME };
   const boundary = "pingwin-" + Buffer.from(filename).toString("hex").slice(0, 16);
   const pre = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${boundary}\r\nContent-Type: ${DOCX_MIME}\r\n\r\n`;
   const post = `\r\n--${boundary}--`;
