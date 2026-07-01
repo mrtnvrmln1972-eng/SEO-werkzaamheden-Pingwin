@@ -5,6 +5,8 @@ import { fetchPageContent } from "./page-content";
 import { callClaude } from "./anthropic";
 import type { DocSpec } from "./pingwin-docx";
 import { SEO_CRITERIA_MD } from "./seo-criteria";
+import { getPageSpeed, pageSpeedToText } from "./pagespeed";
+import { ahrefsConfigured, getUrlOrganicKeywords, getSerpOverview, getKeywordsOverview, getKeywordIdeas } from "./ahrefs";
 
 export type DocKind = "analyse" | "blauwdruk" | "copy";
 
@@ -12,14 +14,55 @@ export type DocKind = "analyse" | "blauwdruk" | "copy";
 // de live paginadata + het plan + GSC. De huisstijl-opmaak gebeurt daarna in
 // lib/pingwin-docx.ts. De methodiek komt uit de Pingwin SEO-skills.
 
+// Bepaalt het primaire zoekwoord uit de GSC-data (meeste klikken, anders meeste
+// vertoningen). Dit is het zaadje voor de Ahrefs SERP- en variantenanalyse.
+function derivePrimaryKeyword(kw: { keyword: string; clicks: number; impressions: number }[]): string {
+  if (!kw.length) return "";
+  const sorted = [...kw].sort((a, b) => (b.clicks - a.clicks) || (b.impressions - a.impressions));
+  return sorted[0]?.keyword || "";
+}
+
 async function buildContext(slug: string, url: string): Promise<string> {
   const client = await getClientBySlug(slug);
   const domain = client?.domain || "";
-  const [plan, content, kw] = await Promise.all([
+  // Ronde 1: goedkope/snelle bronnen parallel.
+  const [plan, content, kw, psi] = await Promise.all([
     getPagePlan(slug, url),
     fetchPageContent(url).catch(() => null),
     getGscForPage(domain, url).catch(() => []),
+    getPageSpeed(url).catch(() => null),
   ]);
+
+  const primary = derivePrimaryKeyword(kw);
+
+  // Ronde 2: Ahrefs-diepte (alleen als geconfigureerd). Top-10 SERP + varianten op
+  // het primaire zoekwoord, plus de zoekwoorden waarop de URL zelf organisch scoort.
+  let ahrefsText = "";
+  if (ahrefsConfigured()) {
+    const [urlKw, serp, overview, ideas] = await Promise.all([
+      getUrlOrganicKeywords(url, "nl", 40).catch(() => []),
+      primary ? getSerpOverview(primary, "nl").catch(() => []) : Promise.resolve([]),
+      primary ? getKeywordsOverview([primary], "nl").catch(() => []) : Promise.resolve([]),
+      primary ? getKeywordIdeas(primary, "nl", 25).catch(() => []) : Promise.resolve([]),
+    ]);
+    const ov = overview[0];
+    ahrefsText = [
+      "AHREFS-DATA:",
+      primary ? `Primair zoekwoord (afgeleid uit GSC): "${primary}"${ov ? ` — volume ${ov.volume ?? "n/b"}/mnd, KD ${ov.difficulty ?? "n/b"}, CPC ${ov.cpc ?? "n/b"}` : ""}` : "Primair zoekwoord: (niet af te leiden uit GSC)",
+      "",
+      "Top-10 SERP voor het primaire zoekwoord (voor intentie- en cannibalisatie-check):",
+      serp.length ? serp.slice(0, 10).map((s) => `- #${s.position} ${s.url} (DR ${s.domainRating ?? "n/b"}${s.type ? `, ${s.type}` : ""})`).join("\n") : "- (geen SERP-data)",
+      "",
+      "Zoekwoorden waarop DEZE URL nu organisch scoort (Ahrefs):",
+      urlKw.length ? urlKw.slice(0, 25).map((k) => `- "${k.keyword}": positie ${k.position ?? "n/b"}, volume ${k.volume ?? "n/b"}, verkeer ${k.traffic ?? "n/b"}`).join("\n") : "- (geen)",
+      "",
+      "Semantische varianten / keyword-ideeën (voor de variantenlijst KW-04, §17):",
+      ideas.length ? ideas.slice(0, 20).map((k) => `- "${k.keyword}" (volume ${k.volume ?? "n/b"}, KD ${k.difficulty ?? "n/b"})`).join("\n") : "- (geen)",
+    ].join("\n");
+  } else {
+    ahrefsText = "AHREFS-DATA: niet beschikbaar (geen Ahrefs-koppeling ingesteld).";
+  }
+
   return [
     `KLANT: ${client?.name || slug}`,
     client?.seoProfile ? `KLANTPROFIEL: ${client.seoProfile}` : "",
@@ -31,6 +74,10 @@ async function buildContext(slug: string, url: string): Promise<string> {
     "",
     "GSC-ZOEKWOORDEN VAN DEZE PAGINA:",
     kw.length ? kw.map((k) => `- "${k.keyword}": positie ${k.position}, ${k.clicks} klikken, ${k.impressions} vertoningen`).join("\n") : "- (geen)",
+    "",
+    psi ? pageSpeedToText(psi) : "Core Web Vitals: niet gemeten.",
+    "",
+    ahrefsText,
   ].filter(Boolean).join("\n");
 }
 
@@ -57,7 +104,7 @@ Lever, elk als eigen sectie:
 5. Zoekintentie & SERP-alignment.
 6. FAQ & AEO-readiness.
 7. E-E-A-T, conversie & trust.
-8. SCORECARD (de kern): een grote tabel met per criterium-ID uit het criteria-document: ID, criterium, classificatie (CRITICAL/MAJOR/MINOR), gemeten waarde, norm, status (PASS/FAIL/PARTIAL/N/A), opmerking. Loop ALLE relevante criteria langs; markeer wat niet server-side meetbaar is expliciet als "niet gemeten" (bijv. Core Web Vitals) in plaats van gokken.
+8. SCORECARD (de kern): een grote tabel met per criterium-ID uit het criteria-document: ID, criterium, classificatie (CRITICAL/MAJOR/MINOR), gemeten waarde, norm, status (PASS/FAIL/PARTIAL/N/A), opmerking. Loop ALLE relevante criteria langs. Gebruik de Core Web Vitals uit de PageSpeed-data hieronder om CWV-01 t/m CWV-08 echt te scoren; gebruik de Ahrefs top-10 SERP om INT-01 (pagina-type vs. dominant SERP-type) te toetsen en de Ahrefs-varianten voor KW-04. Alleen wat écht niet in de data zit markeer je als "niet gemeten".
 9. Prioriteiten & aanbevelingen: minimaal 5, gesorteerd op impact x inspanning, elk met een criterium-ID.
 
 Wees eerlijk: dit is een audit, geen verkooppraatje. Verzin geen rankings of Core Web Vitals; wat je niet gemeten hebt, benoem je als niet gemeten.
