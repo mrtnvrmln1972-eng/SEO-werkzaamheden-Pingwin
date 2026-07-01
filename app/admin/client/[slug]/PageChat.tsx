@@ -45,7 +45,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       if (ct.includes("application/json")) {
         const d = await r.json();
         if (!d.ok) { setErr(d.error || "Vastleggen mislukt."); return; }
-        setApplied(`Analyse samengevat en opgeslagen in Google Drive${d.folder ? `, map "${d.folder}"` : ""}${d.owner ? `, account ${d.owner}` : ""}. <a href="${d.link}" target="_blank" rel="noopener">Open document</a>.${d.shared ? " Iedereen met de link kan het bekijken." : " (Let op: automatisch delen lukte niet, zet delen in Drive nog even zelf aan.)"} Vastgelegd als één werkzaamheid; je springt nu naar Werkzaamheden om hem in te plannen.`);
+        setApplied(`Analyse samengevat en opgeslagen in Google Drive${d.folder ? `, map "${d.folder}"` : ""}${d.owner ? `, account ${d.owner}` : ""} als ${d.isDoc ? "Google Doc" : "Word-bestand"}${!d.isDoc && d.note ? ` (omzetten naar Google Doc lukte niet: ${d.note})` : ""}. <a href="${d.link}" target="_blank" rel="noopener">Open document</a>.${d.shared ? " Iedereen met de link kan het bekijken." : " (Delen lukte niet automatisch.)"} Vastgelegd als één werkzaamheid; je springt nu naar Werkzaamheden om hem in te plannen.`);
         onApplied();
         if (typeof d.taskId === "number" && onGoToTask) onGoToTask(d.taskId);
         return;
@@ -80,7 +80,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       if (ct.includes("application/json")) {
         const d = await r.json();
         if (!d.ok) { setErr(d.error || "Document maken mislukt."); return; }
-        setApplied(`${soort[kind]}-document in Pingwin-huisstijl opgeslagen in Google Drive${d.folder ? `, map "${d.folder}"` : ""}${d.owner ? `, account ${d.owner}` : ""}. <a href="${d.link}" target="_blank" rel="noopener">Open document</a>.${d.shared ? " Iedereen met de link kan het bekijken." : " (Let op: automatisch delen lukte niet, zet delen in Drive nog even zelf aan.)"} Vastgelegd als werkzaamheid met het document eraan gekoppeld; plan of wijs hem toe in de Werkzaamheden-tab.`);
+        setApplied(`${soort[kind]}-document opgeslagen in Google Drive${d.folder ? `, map "${d.folder}"` : ""}${d.owner ? `, account ${d.owner}` : ""} als ${d.isDoc ? "Google Doc" : "Word-bestand"}${!d.isDoc && d.note ? ` (omzetten naar Google Doc lukte niet: ${d.note})` : ""}. <a href="${d.link}" target="_blank" rel="noopener">Open document</a>.${d.shared ? " Iedereen met de link kan het bekijken." : " (Delen lukte niet automatisch.)"} Vastgelegd als werkzaamheid; plan of wijs hem toe in de Werkzaamheden-tab.`);
         onApplied(); // ververst de takenlijst van deze pagina
         return;
       }

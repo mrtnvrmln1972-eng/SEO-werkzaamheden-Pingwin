@@ -95,7 +95,7 @@ async function shareAnyone(t: string, fileId: string): Promise<boolean> {
 
 // Uploadt een .docx in een map en maakt hem deelbaar (iedereen met de link = lezer).
 // Geeft de deelbare webViewLink terug + waar het echt is beland (account + map).
-export async function uploadDocx(folderId: string, filename: string, buffer: Buffer): Promise<{ id: string; link: string; shared: boolean; owner: string; folder: string }> {
+export async function uploadDocx(folderId: string, filename: string, buffer: Buffer): Promise<{ id: string; link: string; shared: boolean; owner: string; folder: string; isDoc: boolean; note: string }> {
   const t = await token();
   const parent = folderId && folderId !== "root" ? folderId : "root";
   const meta = { name: filename, parents: [parent] };
@@ -117,6 +117,7 @@ export async function uploadDocx(folderId: string, filename: string, buffer: Buf
   // blokkeert), dan houden we gewoon het Word-bestand aan.
   let finalId = file.id as string;
   let isDoc = false;
+  let note = "";
   try {
     const copyRes = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}/copy?supportsAllDrives=true&fields=id`, {
       method: "POST",
@@ -129,8 +130,10 @@ export async function uploadDocx(folderId: string, filename: string, buffer: Buf
       isDoc = true;
       // Ruim het losse Word-bestand op zodat er niet twee versies in de map staan.
       await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?supportsAllDrives=true`, { method: "DELETE", headers: { Authorization: `Bearer ${t}` } }).catch(() => { /* niet kritisch */ });
+    } else {
+      note = await driveErr(copyRes, "het omzetten naar Google Doc");
     }
-  } catch { /* omzetten is optioneel; val terug op het .docx */ }
+  } catch (e) { note = e instanceof Error ? e.message : "omzetten mislukt"; }
 
   const shared = await shareAnyone(t, finalId);
 
@@ -152,5 +155,5 @@ export async function uploadDocx(folderId: string, filename: string, buffer: Buf
     }
   } catch { /* verificatie is extra, niet kritisch */ }
 
-  return { id: finalId, link, shared, owner, folder };
+  return { id: finalId, link, shared, owner, folder, isDoc, note };
 }

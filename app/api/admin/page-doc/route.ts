@@ -78,14 +78,14 @@ export async function POST(req: NextRequest) {
   }
 
   if (folderId && !wantDownload) {
-    let link: string, shared: boolean, owner: string, folder: string;
+    let link: string, shared: boolean, owner: string, folder: string, isDoc: boolean, note: string;
     try {
-      ({ link, shared, owner, folder } = await uploadDocx(folderId, filename, buffer));
+      ({ link, shared, owner, folder, isDoc, note } = await uploadDocx(folderId, filename, buffer));
     } catch (e) {
       return NextResponse.json({ ok: false, error: `Document gemaakt, maar upload naar Drive mislukte: ${e instanceof Error ? e.message : "onbekende fout"}` }, { status: 502 });
     }
     const taskId = await logStepTask(link);
-    return NextResponse.json({ ok: true, delivered: "drive", link, filename, kind, taskId, shared, owner, folder });
+    return NextResponse.json({ ok: true, delivered: "drive", link, filename, kind, taskId, shared, owner, folder, isDoc, note });
   }
 
   // Geen bestemmingsmap: download; de stap wordt wel als werkzaamheid vastgelegd.
