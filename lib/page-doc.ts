@@ -281,7 +281,9 @@ export async function generateDocSpec(slug: string, url: string, kind: DocKind, 
   }
 
   // Analyse levert een grote scorecard: ruimer tokenbudget zodat de tabel niet afkapt.
-  const maxTokens = kind === "analyse" ? 8000 : 4096;
+  // Ruim tokenbudget: de copy (volledige pagina-tekst) is het langst; 4096 kapte
+  // de JSON af ("Unterminated string"). 8192 geeft genoeg ruimte voor alle drie.
+  const maxTokens = 8192;
   const raw = await callClaude(SYSTEMS[kind], [{ role: "user", content: `Maak de ${kind} op basis van deze gegevens:\n\n${context}${chain}` }], maxTokens);
   const parsed = JSON.parse(raw.replace(/```json/gi, "").replace(/```/g, "").trim());
   const title = typeof parsed.titel === "string" && parsed.titel.trim() ? parsed.titel.trim() : `${FALLBACK_TITLE[kind]} ${url}`;
