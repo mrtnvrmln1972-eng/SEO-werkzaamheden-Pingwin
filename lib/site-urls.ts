@@ -24,7 +24,14 @@ export type ClientUrl = {
   lastScanned: string | null;
 };
 
+// Draait de tabel-voorbereiding maar één keer per serverinstantie (gecachet),
+// zodat elk verzoek niet opnieuw CREATE TABLE-rondjes naar de database doet.
+let tablesReady: Promise<void> | null = null;
 async function ensureTables(): Promise<void> {
+  if (!tablesReady) tablesReady = doEnsureTables().catch((e) => { tablesReady = null; throw e; });
+  return tablesReady;
+}
+async function doEnsureTables(): Promise<void> {
   await sql`
     CREATE TABLE IF NOT EXISTS client_urls (
       client_slug     TEXT NOT NULL,

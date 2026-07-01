@@ -6,7 +6,13 @@ import { sql, ensureSchema } from "./db";
 export type ChatMsg = { role: "user" | "assistant"; content: string };
 export type ChatSummary = { id: number; title: string; updatedAt: string; count: number };
 
+// Eén keer per serverinstantie (gecachet), scheelt CREATE TABLE per verzoek.
+let tableReady: Promise<void> | null = null;
 async function ensureTable(): Promise<void> {
+  if (!tableReady) tableReady = doEnsureTable().catch((e) => { tableReady = null; throw e; });
+  return tableReady;
+}
+async function doEnsureTable(): Promise<void> {
   await sql`
     CREATE TABLE IF NOT EXISTS page_chats (
       id          SERIAL PRIMARY KEY,
