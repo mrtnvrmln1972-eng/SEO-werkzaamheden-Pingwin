@@ -190,10 +190,12 @@ function periodRanges(days: number) {
 }
 
 export type MetricPair = { cur: number; prev: number };
+export type GscSeries = { clicks: number[]; impressions: number[]; ctr: number[]; position: number[] };
 export type GscComparison = {
   connected: boolean;
   site: string | null;
   totals: { clicks: MetricPair; impressions: MetricPair; ctr: MetricPair; position: MetricPair } | null;
+  series: GscSeries;
   keywords: { keyword: string; clicks: number; impressions: number; ctr: number; position: number; prevClicks: number; prevImpressions: number; prevCtr: number; prevPosition: number | null }[];
   pages: { url: string; clicks: number; impressions: number; prevClicks: number; prevImpressions: number }[];
   range: { curStart: string; curEnd: string; prevStart: string; prevEnd: string };
@@ -203,19 +205,30 @@ export async function getGscComparison(domain: string, days: number): Promise<Gs
   const token = await googleAccessToken();
   if (!token) return null;
   const range = periodRanges(days);
-  const empty: GscComparison = { connected: true, site: null, totals: null, keywords: [], pages: [], range };
+  const emptySeries: GscSeries = { clicks: [], impressions: [], ctr: [], position: [] };
+  const empty: GscComparison = { connected: true, site: null, totals: null, series: emptySeries, keywords: [], pages: [], range };
   if (!domain) return empty;
   const site = await gscPickSite(token, domain);
   if (!site) return empty;
 
-  const [curTot, prevTot, curKw, prevKw, curPg, prevPg] = await Promise.all([
+  const [curTot, prevTot, curKw, prevKw, curPg, prevPg, byDate] = await Promise.all([
     gscQuery(token, site, { startDate: range.curStart, endDate: range.curEnd }),
     gscQuery(token, site, { startDate: range.prevStart, endDate: range.prevEnd }),
     gscQuery(token, site, { startDate: range.curStart, endDate: range.curEnd, dimensions: ["query"], rowLimit: 100 }),
     gscQuery(token, site, { startDate: range.prevStart, endDate: range.prevEnd, dimensions: ["query"], rowLimit: 100 }),
     gscQuery(token, site, { startDate: range.curStart, endDate: range.curEnd, dimensions: ["page"], rowLimit: 50 }),
     gscQuery(token, site, { startDate: range.prevStart, endDate: range.prevEnd, dimensions: ["page"], rowLimit: 50 }),
+    gscQuery(token, site, { startDate: range.curStart, endDate: range.curEnd, dimensions: ["date"], rowLimit: 500 }),
   ]);
+
+  // Dagreeksen (op datum gesorteerd) voor de grafiekjes.
+  const dated = [...byDate].sort((a, b) => (a.keys?.[0] || "").localeCompare(b.keys?.[0] || ""));
+  const series: GscSeries = {
+    clicks: dated.map((r) => Math.round(r.clicks)),
+    impressions: dated.map((r) => Math.round(r.impressions)),
+    ctr: dated.map((r) => Math.round(r.ctr * 1000) / 10),
+    position: dated.map((r) => Math.round(r.position * 10) / 10),
+  };
 
   const c = curTot[0]; const p = prevTot[0];
   const totals = c ? {
@@ -253,10 +266,10 @@ export async function getGscComparison(domain: string, days: number): Promise<Gs
     };
   });
 
-  return { connected: true, site, totals, keywords, pages, range };
+  return { connected: true, site, totals, series, keywords, pages, range };
 }
 
-export type Ga4Comparison = { connected: boolean; propertyId: string | null; totals: { metric: string; cur: number; prev: number }[] };
+export type Ga4Comparison = { connected: boolean; propertyId: string | null; totals: { metric: string; cur: number; prev: number; series: number[] }[] };
 
 export async function getGa4Comparison(slug: string, domain: string, days: number): Promise<Ga4Comparison | null> {
   const token = await googleAccessToken();
@@ -291,10 +304,31 @@ export async function getGa4Comparison(slug: string, domain: string, days: numbe
   const rowsArr: { dimensionValues?: { value: string }[]; metricValues?: { value: string }[] }[] = j.rows || [];
   const cur = rowsArr.find((r) => r.dimensionValues?.[0]?.value === "date_range_0") || rowsArr[0];
   const prev = rowsArr.find((r) => r.dimensionValues?.[0]?.value === "date_range_1") || rowsArr[1];
+
+  // Dagreeksen (huidige periode) voor de grafiekjes.
+  const seriesByMetric: Record<string, number[]> = {};
+  try {
+    const dres = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`, {
+      method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        dateRanges: [{ startDate: range.curStart, endDate: range.curEnd }],
+        dimensions: [{ name: "date" }],
+        metrics: names.map((name) => ({ name })),
+        orderBys: [{ dimension: { dimensionName: "date" } }],
+      }),
+    });
+    if (dres.ok) {
+      const dj = await dres.json();
+      const drows: { metricValues?: { value: string }[] }[] = dj.rows || [];
+      names.forEach((name, i) => { seriesByMetric[name] = drows.map((r) => Math.round(Number(r.metricValues?.[i]?.value || 0))); });
+    }
+  } catch { /* grafiekje is optioneel */ }
+
   const totals = names.map((name, i) => ({
     metric: name,
     cur: Math.round(Number(cur?.metricValues?.[i]?.value || 0)),
     prev: Math.round(Number(prev?.metricValues?.[i]?.value || 0)),
+    series: seriesByMetric[name] || [],
   }));
   return { connected: true, propertyId, totals };
 }

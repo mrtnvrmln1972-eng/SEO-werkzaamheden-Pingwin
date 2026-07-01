@@ -519,6 +519,7 @@ tbody td:last-child { text-align: center; }
 .kpi-delta.down { color: #C62828; }
 .kpi-delta.flat { color: var(--gray); }
 .kpi-table td .kpi-delta { margin-top: 0; margin-left: 4px; font-size: 10px; }
+.kpi-spark { display: block; width: 100%; height: 30px; margin-top: 8px; }
 
 /* Resultaten-tabellen */
 .res-table-wrap { overflow-x: auto; }

@@ -18,6 +18,27 @@ function shortUrl(url: string): string {
 }
 function nl(n: number): string { return n.toLocaleString("nl-NL"); }
 
+// Klein lijngrafiekje van het dagverloop. invert=true (positie): dalend = beter.
+function Sparkline({ data, invert }: { data: number[]; invert?: boolean }) {
+  if (!data || data.length < 2) return null;
+  const w = 120, h = 30, pad = 2;
+  const min = Math.min(...data), max = Math.max(...data);
+  const range = max - min || 1;
+  const pts = data.map((v, i) => {
+    const x = pad + (i / (data.length - 1)) * (w - pad * 2);
+    const y = pad + (1 - (v - min) / range) * (h - pad * 2);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(" ");
+  const first = data[0], last = data[data.length - 1];
+  const improved = invert ? last < first : last > first;
+  const color = last === first ? "#9e9e9e" : improved ? "#2E7D32" : "#C62828";
+  return (
+    <svg className="kpi-spark" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" aria-hidden="true">
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 // Toont de verandering t.o.v. de vorige periode. invert=true voor 'positie'
 // (lager is beter). pct=true toont het procentuele verschil erbij.
 function Delta({ cur, prev, invert, pct, isPos }: { cur: number; prev: number; invert?: boolean; pct?: boolean; isPos?: boolean }) {
@@ -87,10 +108,10 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
         <div className="cockpit-card">
           <div className="ck-section-head"><span>Search Console</span><span className="ck-updated">{gsc.range.curStart} t/m {gsc.range.curEnd}</span></div>
           <div className="kpi-grid">
-            <div className="kpi-card"><div className="kpi-value">{nl(gsc.totals.clicks.cur)}</div><div className="kpi-label">Klikken</div><Delta cur={gsc.totals.clicks.cur} prev={gsc.totals.clicks.prev} pct /></div>
-            <div className="kpi-card"><div className="kpi-value">{nl(gsc.totals.impressions.cur)}</div><div className="kpi-label">Vertoningen</div><Delta cur={gsc.totals.impressions.cur} prev={gsc.totals.impressions.prev} pct /></div>
-            <div className="kpi-card"><div className="kpi-value">{gsc.totals.ctr.cur.toFixed(1)}%</div><div className="kpi-label">CTR</div><Delta cur={gsc.totals.ctr.cur} prev={gsc.totals.ctr.prev} isPos /></div>
-            <div className="kpi-card"><div className="kpi-value">{gsc.totals.position.cur.toFixed(1)}</div><div className="kpi-label">Gem. positie</div><Delta cur={gsc.totals.position.cur} prev={gsc.totals.position.prev} invert isPos /></div>
+            <div className="kpi-card"><div className="kpi-value">{nl(gsc.totals.clicks.cur)}</div><div className="kpi-label">Klikken</div><Delta cur={gsc.totals.clicks.cur} prev={gsc.totals.clicks.prev} pct /><Sparkline data={gsc.series.clicks} /></div>
+            <div className="kpi-card"><div className="kpi-value">{nl(gsc.totals.impressions.cur)}</div><div className="kpi-label">Vertoningen</div><Delta cur={gsc.totals.impressions.cur} prev={gsc.totals.impressions.prev} pct /><Sparkline data={gsc.series.impressions} /></div>
+            <div className="kpi-card"><div className="kpi-value">{gsc.totals.ctr.cur.toFixed(1)}%</div><div className="kpi-label">CTR</div><Delta cur={gsc.totals.ctr.cur} prev={gsc.totals.ctr.prev} isPos /><Sparkline data={gsc.series.ctr} /></div>
+            <div className="kpi-card"><div className="kpi-value">{gsc.totals.position.cur.toFixed(1)}</div><div className="kpi-label">Gem. positie</div><Delta cur={gsc.totals.position.cur} prev={gsc.totals.position.prev} invert isPos /><Sparkline data={gsc.series.position} invert /></div>
           </div>
         </div>
       )}
@@ -150,6 +171,7 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
                 <div className="kpi-value">{nl(m.cur)}</div>
                 <div className="kpi-label">{GA4_LABELS[m.metric] || m.metric}</div>
                 <Delta cur={m.cur} prev={m.prev} pct />
+                <Sparkline data={m.series} />
               </div>
             ))}
           </div>
