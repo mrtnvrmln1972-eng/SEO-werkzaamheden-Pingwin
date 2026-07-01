@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { mdToHtml } from "../../../../lib/markdown";
 
 type Msg = { role: "user" | "assistant"; content: string };
@@ -24,9 +24,13 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   const [mailGen, setMailGen] = useState(false);
   const [mailTo, setMailTo] = useState("");
   const [mailSubject, setMailSubject] = useState("");
-  const [mailBody, setMailBody] = useState("");
+  const [mailHtml, setMailHtml] = useState("");
   const [mailBusy, setMailBusy] = useState(false);
   const [mailMsg, setMailMsg] = useState("");
+  const mailRef = useRef<HTMLDivElement | null>(null);
+
+  // Zet de opgemaakte mail in de bewerkbare preview zodra het venster opent.
+  useEffect(() => { if (mailOpen && mailRef.current) mailRef.current.innerHTML = mailHtml; }, [mailOpen, mailHtml]);
 
   const lastAssistant = [...msgs].reverse().find((m) => m.role === "assistant")?.content || "";
 
@@ -37,7 +41,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       const r = await fetch("/api/admin/page-chat/client-mail", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url, clientName, analysis: lastAssistant }) });
       const d = await r.json();
       if (!d.ok) { setErr(d.error || "Mail maken mislukt."); return; }
-      setMailBody(d.email || "");
+      setMailHtml(mdToHtml(d.email || ""));
       setMailTo(clientEmail || "");
       setMailSubject(`SEO-analyse ${clientName || ""}`.trim());
       setMailMsg("");
@@ -46,10 +50,10 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   }
 
   async function sendClientMail() {
-    if (!mailTo.trim() || !mailBody.trim()) { setMailMsg("Vul een ontvanger en tekst in."); return; }
+    const html = (mailRef.current?.innerHTML || mailHtml).trim();
+    if (!mailTo.trim() || !html) { setMailMsg("Vul een ontvanger en tekst in."); return; }
     setMailBusy(true); setMailMsg("");
     try {
-      const html = mdToHtml(mailBody);
       const r = await fetch("/api/admin/mail", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: "compose", to: mailTo, subject: mailSubject || "SEO-analyse", html }) });
       const d = await r.json();
       if (d.ok) { setMailMsg(`Verstuurd naar ${(d.sentTo || []).join(", ") || mailTo}.`); setTimeout(() => setMailOpen(false), 1400); }
@@ -197,16 +201,16 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       </div>
 
       {mailOpen && (
-        <div className="compose-overlay" onClick={() => setMailOpen(false)}>
-          <div className="compose-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="compose-overlay">
+          <div className="compose-modal mail-modal">
             <div className="compose-head"><span>Analyse mailen naar de klant</span><button type="button" className="chat-float-close" onClick={() => setMailOpen(false)}>&times;</button></div>
             <div className="compose-body">
               <label className="compose-label">Aan (e-mail klant)</label>
               <input className="compose-input" value={mailTo} onChange={(e) => setMailTo(e.target.value)} placeholder="klant@bedrijf.nl" />
               <label className="compose-label">Onderwerp</label>
               <input className="compose-input" value={mailSubject} onChange={(e) => setMailSubject(e.target.value)} />
-              <label className="compose-label">Bericht (in gewone taal, aanpasbaar)</label>
-              <textarea className="compose-input" rows={16} value={mailBody} onChange={(e) => setMailBody(e.target.value)} />
+              <label className="compose-label">Bericht (opgemaakt, je kunt hier direct in typen)</label>
+              <div ref={mailRef} className="mail-edit md" contentEditable suppressContentEditableWarning />
               {mailMsg && <div className={mailMsg.startsWith("Verstuurd") ? "saved-msg" : "login-error"} style={{ marginTop: 8 }}>{mailMsg}</div>}
             </div>
             <div className="compose-foot">

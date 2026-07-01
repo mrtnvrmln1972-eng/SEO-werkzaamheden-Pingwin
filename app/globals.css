@@ -422,6 +422,7 @@ tbody td:last-child { text-align: center; }
 .md a { color: #1a6dd6; text-decoration: underline; text-underline-offset: 2px; }
 .md code { background: var(--gray-light); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
 .md strong { font-weight: 700; }
+.md hr { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
 /* Tabellen: strak, links uitgelijnd (overschrijft globale centrering) */
 .md-table { border-collapse: collapse; width: auto; min-width: 60%; margin: 10px 0 16px; font-size: 12.5px; }
 .md-table th, .md-table td, .md-table th:last-child, .md-table td:last-child { text-align: left !important; }
@@ -440,6 +441,10 @@ tbody td:last-child { text-align: center; }
 .pch-badge.task { background: var(--gray-light); color: var(--dark); }
 .page-chat-proposal-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 .page-chat-tools { margin: 4px 0 8px; }
+/* Klant-mail: ruim venster + nette, opgemaakte, meegroeiende bewerkbare preview */
+.mail-modal { width: 760px; max-width: 96vw; max-height: 92vh; }
+.mail-edit { min-height: 260px; max-height: 62vh; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; outline: none; background: var(--white); }
+.mail-edit:focus { border-color: var(--orange); }
 .page-chat-input { display: flex; gap: 8px; }
 .page-chat-input input { flex: 1 1 auto; font-size: 13px; padding: 8px 11px; border: 1px solid var(--border); border-radius: 8px; outline: none; }
 .page-chat-input input:focus { border-color: var(--orange); }

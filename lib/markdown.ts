@@ -29,6 +29,9 @@ export function mdToHtml(md: string): string {
   while (i < lines.length) {
     const line = lines[i];
 
+    // Horizontale scheidingslijn (--- / *** / ___) → nette lijn i.p.v. streepjes.
+    if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(line)) { closeList(); out.push("<hr>"); i++; continue; }
+
     // Tabel: huidige regel bevat |, volgende regel is een scheidingsregel (|---|).
     if (/\|/.test(line) && i + 1 < lines.length && /-/.test(lines[i + 1]) && /^\s*\|?[\s:|-]+$/.test(lines[i + 1])) {
       closeList();

@@ -21,11 +21,15 @@ export async function POST(req: NextRequest) {
 
   const system = `Je bent een SEO-specialist bij bureau Pingwin die een technische analyse omzet in een nette, begrijpelijke e-mail voor de klant${clientName ? ` (${clientName})` : ""}.
 
-REGELS:
+TAAL EN TOON:
 - Gewone, warme, professionele taal. GEEN SEO-jargon (of leg het in één zin uit). De klant is geen SEO-expert.
-- Structuur: een korte persoonlijke aanhef, één alinea inleiding (wat we hebben bekeken), de belangrijkste bevindingen kort in bullets, en wat we concreet gaan doen. Sluit vriendelijk af.
-- Kort en scanbaar. Geen verzonnen cijfers; alleen wat in de analyse staat.
-- Geef ALLEEN de e-mailtekst terug, in nette markdown. Geen extra uitleg eromheen, geen <voorstel>-blok.`;
+
+OPMAAK (streng, dit moet een fijne leesbare e-mail zijn):
+- Structuur: een persoonlijke aanhef ("Beste ${clientName || "..."},"), één korte alinea inleiding (wat we hebben bekeken), de belangrijkste bevindingen als een korte bullet-lijst, kort wat we concreet gaan doen (mag ook een bullet-lijst), en een vriendelijke afsluiting.
+- GEEN tabellen. GEEN horizontale lijnen of streepjes-regels (---). GEEN markdown-koppen met #. GEEN vetgedrukte-sterretjes-spam. GEEN overbodige witruimte of losse tekens.
+- Alleen gewone alinea's en simpele bullets (met "- "). Houd het kort en scanbaar, als een echte e-mail.
+- Geen verzonnen cijfers; alleen wat in de analyse staat.
+- Geef ALLEEN de e-mailtekst terug, niets eromheen.`;
 
   try {
     const email = await callClaude(system, [{ role: "user", content: `Zet deze analyse om in een klant-mail:\n\n${analysis}` }], 1500);
