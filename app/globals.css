@@ -311,6 +311,32 @@ tbody td:last-child { text-align: center; }
 .dev-client-card-head { font-weight: 700; font-size: 16px; color: var(--dark); border-bottom: 2px solid var(--orange); padding-bottom: 8px; margin-bottom: 10px; }
 .dev-client-count { font-weight: 500; font-size: 13px; color: var(--gray); }
 .dev-client-card .task-table-wrap { box-shadow: none; margin-bottom: 0; }
+
+/* Developer Overview: weergave-schakelaar + weekplanning */
+.dev-view-toggle { margin-left: 16px; display: inline-flex; gap: 4px; vertical-align: middle; }
+.dev-view-toggle button { font-size: 12px; font-weight: 600; padding: 4px 12px; border: 1px solid var(--border); background: #fff; color: var(--gray); border-radius: 14px; cursor: pointer; }
+.dev-view-toggle button:hover { border-color: var(--orange); color: var(--orange); }
+.dev-view-toggle button.active { background: var(--orange); border-color: var(--orange); color: #fff; }
+.dev-week { padding: 16px 18px; }
+.dev-week-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.dev-week-nav button { font-size: 12px; padding: 5px 10px; border: 1px solid var(--border); background: #fff; color: var(--dark); border-radius: 6px; cursor: pointer; }
+.dev-week-nav button:hover { border-color: var(--orange); color: var(--orange); }
+.dev-week-label { font-weight: 700; font-size: 14px; color: var(--dark); margin-right: auto; }
+.dev-week-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+.dev-day { border: 1px solid var(--border); border-radius: 8px; background: var(--light); min-height: 220px; display: flex; flex-direction: column; }
+.dev-day.today { border-color: var(--orange); box-shadow: inset 0 0 0 1px var(--orange); }
+.dev-day-head { font-size: 11px; font-weight: 700; color: var(--dark); padding: 7px 8px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; line-height: 1.2; }
+.dev-day-head span { font-weight: 500; color: var(--gray); font-size: 10px; }
+.dev-day-body { flex: 1 1 auto; padding: 6px; display: flex; flex-direction: column; gap: 6px; }
+.dev-task-card { background: #fff; border: 1px solid var(--border); border-left: 3px solid var(--orange); border-radius: 6px; padding: 6px 8px; cursor: grab; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+.dev-task-card:active { cursor: grabbing; }
+.dev-task-client { font-size: 10px; font-weight: 700; color: var(--orange-dark); text-transform: uppercase; letter-spacing: 0.3px; }
+.dev-task-desc { font-size: 12px; color: var(--dark); line-height: 1.3; margin-top: 2px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.dev-pool { margin-top: 14px; border: 1px dashed var(--border); border-radius: 8px; padding: 10px; background: var(--white); }
+.dev-pool-head { font-size: 12px; font-weight: 700; color: var(--gray); margin-bottom: 8px; }
+.dev-pool-body { display: flex; flex-wrap: wrap; gap: 8px; }
+.dev-pool-body .dev-task-card { width: 200px; }
+@media (max-width: 900px) { .dev-week-grid { grid-template-columns: repeat(2, 1fr); } }
 .dev-table td { vertical-align: middle; }
 .dev-client { font-weight: 700; color: var(--dark); font-size: 13px; }
 .dev-cell { font-size: 13px; color: var(--dark); line-height: 1.4; word-break: break-word; }

@@ -26,6 +26,23 @@ function statusBadge(status: string) {
 
 type Row = DevTask;
 
+const WEEKDAYS = ["Maandag", "Dinsdag", "Woensdag", "Donderdag", "Vrijdag", "Zaterdag", "Zondag"];
+const MONTHS_SHORT = ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
+
+// Maandag van de week met de gegeven week-offset (0 = deze week).
+function mondayOf(offsetWeeks: number): Date {
+  const d = new Date(); d.setHours(0, 0, 0, 0);
+  const day = (d.getDay() + 6) % 7; // 0 = maandag
+  d.setDate(d.getDate() - day + offsetWeeks * 7);
+  return d;
+}
+function isoOf(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function stripText(html: string): string {
+  return (html || "").replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/\s+/g, " ").trim();
+}
+
 export default function DeveloperOverview({ initialTasks, embedded }: { initialTasks?: DevTask[]; embedded?: boolean }) {
   const router = useRouter();
   const [rows, setRows] = useState<Row[]>(initialTasks ?? []);
@@ -34,6 +51,9 @@ export default function DeveloperOverview({ initialTasks, embedded }: { initialT
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [saving, setSaving] = useState<"idle" | "saving" | "saved">("idle");
   const [loading, setLoading] = useState(!initialTasks);
+  const [view, setView] = useState<"list" | "week">("list");
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [dragTaskIdx, setDragTaskIdx] = useState<number | null>(null);
 
   // Ingebed in de cockpit: laad de dev-taken zelf (geen server-props).
   useEffect(() => {
@@ -99,22 +119,76 @@ export default function DeveloperOverview({ initialTasks, embedded }: { initialT
     g.items.push({ r, idx });
   });
 
+  // Weekplanning: taken per uitvoerdatum + de nog niet ingeplande taken.
+  const weekStart = mondayOf(weekOffset);
+  const weekDays = Array.from({ length: 7 }, (_, i) => { const d = new Date(weekStart); d.setDate(d.getDate() + i); return d; });
+  const todayIso = isoOf(new Date());
+  const tasksByDay = new Map<string, { r: Row; idx: number }[]>();
+  rows.forEach((r, idx) => { if (r.execDate) { if (!tasksByDay.has(r.execDate)) tasksByDay.set(r.execDate, []); tasksByDay.get(r.execDate)!.push({ r, idx }); } });
+  const undated = rows.map((r, idx) => ({ r, idx })).filter((x) => !x.r.execDate);
+
+  const taskCard = (r: Row, idx: number) => (
+    <div key={r.clientSlug + "|" + r.taskKey} className="dev-task-card" draggable
+      onDragStart={() => setDragTaskIdx(idx)} onDragEnd={() => setDragTaskIdx(null)} title={stripText(r.taak)}>
+      <div className="dev-task-client">{r.clientName}</div>
+      <div className="dev-task-desc">{stripText(r.taak)}</div>
+    </div>
+  );
+
   const content = (
     <>
         <div className="section-title">
           Taken voor de developer ({rows.length})
           {saveLabel && <span className="focus-save-status" style={{ marginLeft: 12 }}>{saveLabel}</span>}
+          <span className="dev-view-toggle">
+            <button type="button" className={view === "list" ? "active" : ""} onClick={() => setView("list")}>Lijst per klant</button>
+            <button type="button" className={view === "week" ? "active" : ""} onClick={() => setView("week")}>Weekplanning</button>
+          </span>
         </div>
         <p className="dev-intro">
-          Per klant de taken die op status &ldquo;Naar Dev&rdquo; staan. Sleep een taak binnen een klant omhoog of
-          omlaag om de prioriteit te bepalen en zet per taak een uitvoerdatum. Volgorde en datum blijven staan.
+          {view === "list"
+            ? "Per klant de taken die op status “Naar Dev” staan. Sleep een taak binnen een klant om de prioriteit te bepalen en zet per taak een uitvoerdatum."
+            : "Sleep taken naar een dag om ze in te plannen. De datum blijft bewaard (dezelfde als de uitvoerdatum in de lijst)."}
         </p>
         {loading && <p className="muted">Taken laden…</p>}
         {!loading && rows.length === 0 && (
           <p className="muted">Nog geen taken op &ldquo;Naar Dev&rdquo;. Zet in een klant-cockpit een taak op status &ldquo;Naar Dev&rdquo;.</p>
         )}
 
-        {groups.map((g) => (
+        {view === "week" && rows.length > 0 && (
+          <div className="cockpit-card dev-week">
+            <div className="dev-week-nav">
+              <button type="button" onClick={() => setWeekOffset((w) => w - 1)}>&larr; Vorige</button>
+              <span className="dev-week-label">Week van {weekStart.getDate()} {MONTHS_SHORT[weekStart.getMonth()]} {weekStart.getFullYear()}</span>
+              <button type="button" onClick={() => setWeekOffset(0)}>Deze week</button>
+              <button type="button" onClick={() => setWeekOffset((w) => w + 1)}>Volgende &rarr;</button>
+            </div>
+            <div className="dev-week-grid">
+              {weekDays.map((d, i) => {
+                const iso = isoOf(d);
+                const items = tasksByDay.get(iso) || [];
+                return (
+                  <div key={iso} className={"dev-day" + (iso === todayIso ? " today" : "")}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => { e.preventDefault(); if (dragTaskIdx !== null) { setDate(dragTaskIdx, iso); setDragTaskIdx(null); } }}>
+                    <div className="dev-day-head">{WEEKDAYS[i]}<span>{d.getDate()} {MONTHS_SHORT[d.getMonth()]}</span></div>
+                    <div className="dev-day-body">{items.map(({ r, idx }) => taskCard(r, idx))}</div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="dev-pool" onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => { e.preventDefault(); if (dragTaskIdx !== null) { setDate(dragTaskIdx, ""); setDragTaskIdx(null); } }}>
+              <div className="dev-pool-head">Nog niet ingepland ({undated.length}) — sleep naar een dag</div>
+              <div className="dev-pool-body">
+                {undated.map(({ r, idx }) => taskCard(r, idx))}
+                {undated.length === 0 && <div className="muted">Alles is ingepland.</div>}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {view === "list" && groups.map((g) => (
           <div className="cockpit-card dev-client-card" key={g.clientSlug}>
             <div className="dev-client-card-head">{g.clientName} <span className="dev-client-count">({g.items.length})</span></div>
             <div className="task-table-wrap">
