@@ -106,7 +106,7 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
               <thead><tr><th>Status</th><th>Pagina</th><th>Titel</th><th>Klikken</th><th>Plan</th></tr></thead>
               <tbody>
                 {filtered.map((u) => (
-                  <PageRow key={u.url} slug={slug} u={u} open={open === u.url} onToggle={() => setOpen(open === u.url ? null : u.url)} onReload={load} clientEmail={clientEmail || ""} clientName={clientName || ""} onGoToTask={onGoToTask} />
+                  <PageRow key={u.url} slug={slug} u={u} open={open === u.url} onToggle={() => setOpen(open === u.url ? null : u.url)} clientEmail={clientEmail || ""} clientName={clientName || ""} onGoToTask={onGoToTask} />
                 ))}
               </tbody>
             </table>
@@ -125,11 +125,22 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
   );
 }
 
-function PageRow({ slug, u, open, onToggle, onReload, clientEmail, clientName, onGoToTask }: { slug: string; u: ClientUrl; open: boolean; onToggle: () => void; onReload: () => void; clientEmail: string; clientName: string; onGoToTask?: (taskId: number) => void }) {
+function PageRow({ slug, u, open, onToggle, clientEmail, clientName, onGoToTask }: { slug: string; u: ClientUrl; open: boolean; onToggle: () => void; clientEmail: string; clientName: string; onGoToTask?: (taskId: number) => void }) {
   const [plan, setPlan] = useState(u.plan);
   const [saved, setSaved] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [tasks, setTasks] = useState<{ id: number | null; taak: string; fase: string; wie: string; status: string }[]>([]);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  async function loadTasks() {
+    try {
+      const r = await fetch(`/api/admin/page-tasks?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(u.url)}`);
+      const d = await r.json();
+      if (d.ok) setTasks(d.tasks || []);
+    } catch { /* stil */ }
+  }
+  // Haal de taken van deze pagina op zodra hij opengeklapt wordt.
+  useEffect(() => { if (open) loadTasks(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [open]);
 
   function change(v: string) {
     setPlan(v); setSaved(false);
@@ -170,7 +181,25 @@ function PageRow({ slug, u, open, onToggle, onReload, clientEmail, clientName, o
                   : <div className="pages-plan-view muted">Nog geen plan. Klik op Bewerken, of laat de chat hieronder een voorstel maken.</div>
               )}
               {u.redirectTarget && <div className="muted" style={{ marginTop: 6 }}>Live redirect: → {u.redirectTarget}</div>}
-              <PageChat slug={slug} url={u.url} clientEmail={clientEmail} clientName={clientName} onApplied={(newPlan) => { if (newPlan) setPlan(newPlan); onReload(); }} onGoToTask={onGoToTask} />
+
+              {tasks.length > 0 && (
+                <div className="page-tasks">
+                  <div className="page-tasks-head">Taken voor deze pagina ({tasks.length})</div>
+                  <ul className="page-tasks-list">
+                    {tasks.map((t, i) => (
+                      <li key={t.id ?? i} className={"page-task" + (t.status === "Klaar" ? " done" : "")}>
+                        {t.fase && <span className="pt-fase">{t.fase}</span>}
+                        {t.wie && <span className={"pt-wie" + (t.wie === "Dev" ? " dev" : "")}>{t.wie}</span>}
+                        <span className="pt-taak">{t.taak}</span>
+                        {t.status && <span className="pt-status">{t.status}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Inplannen, uren of toewijzen doe je in de Werkzaamheden-tab.</div>
+                </div>
+              )}
+
+              <PageChat slug={slug} url={u.url} clientEmail={clientEmail} clientName={clientName} onApplied={(newPlan) => { if (newPlan) setPlan(newPlan); loadTasks(); }} onGoToTask={onGoToTask} />
             </div>
           </td>
         </tr>

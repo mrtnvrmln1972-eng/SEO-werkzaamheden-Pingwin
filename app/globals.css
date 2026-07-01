@@ -373,6 +373,18 @@ tbody td:last-child { text-align: center; }
 .pages-plan-view li { margin: 2px 0; }
 .pages-plan-view h1, .pages-plan-view h2, .pages-plan-view h3 { font-size: 14px; margin: 8px 0 4px; }
 .pages-plan-view strong { color: var(--dark); }
+/* Taken voor deze pagina (spiegel uit de Werkzaamheden-tab) */
+.page-tasks { margin-top: 12px; }
+.page-tasks-head { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--gray); margin-bottom: 6px; }
+.page-tasks-list { list-style: none; margin: 0; padding: 0; }
+.page-task { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 7px 10px; border: 1px solid var(--border); border-radius: 7px; margin-bottom: 5px; background: #fff; }
+.page-task.done { opacity: 0.55; }
+.page-task.done .pt-taak { text-decoration: line-through; }
+.pt-fase { font-size: 11px; font-weight: 700; color: var(--orange-dark); background: var(--orange-light); border-radius: 5px; padding: 1px 7px; flex: 0 0 auto; }
+.pt-wie { font-size: 11px; font-weight: 700; color: #2b6cb0; background: #e6f0fa; border-radius: 5px; padding: 1px 7px; flex: 0 0 auto; }
+.pt-wie.dev { color: #6b46c1; background: #ede7fb; }
+.pt-taak { flex: 1 1 auto; color: var(--dark); }
+.pt-status { font-size: 11px; color: var(--gray); flex: 0 0 auto; }
 /* Klantprofiel (context voor de chat) */
 .client-profile { margin: 4px 0 12px; }
 .client-profile-toggle { background: none; border: none; padding: 0; cursor: pointer; font-size: 13px; font-weight: 700; color: var(--dark); display: inline-flex; align-items: center; gap: 6px; }
@@ -411,7 +423,7 @@ tbody td:last-child { text-align: center; }
 .pch-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dark); }
 .pch-del { background: none; border: none; color: var(--gray); font-size: 18px; line-height: 1; cursor: pointer; padding: 0 2px; flex: 0 0 auto; }
 .pch-del:hover { color: var(--red); }
-.page-chat-log { display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px; max-height: 520px; overflow-y: auto; }
+.page-chat-log { display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px; }
 .page-chat-msg { font-size: 13px; line-height: 1.5; }
 .page-chat-msg.user { align-self: flex-end; background: var(--orange); color: #fff; padding: 8px 11px; border-radius: 10px; white-space: pre-wrap; max-width: 80%; }
 /* Assistent-antwoord als net opgemaakt rapport, links uitgelijnd */

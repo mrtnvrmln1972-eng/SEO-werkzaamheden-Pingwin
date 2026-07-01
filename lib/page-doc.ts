@@ -1,5 +1,6 @@
 import { getClientBySlug } from "./clients";
 import { getPagePlan } from "./site-urls";
+import { getTasks } from "./tasks";
 import { getGscForPage } from "./google";
 import { fetchPageContent } from "./page-content";
 import { callClaude } from "./anthropic";
@@ -22,18 +23,32 @@ function derivePrimaryKeyword(kw: { keyword: string; clicks: number; impressions
   return sorted[0]?.keyword || "";
 }
 
-async function buildContext(slug: string, url: string): Promise<string> {
+// Haalt het GEKOZEN primaire zoekwoord uit het plan (regel "Primair: ..."). Dat
+// is leidend boven de GSC-ranking, want we optimaliseren juist naar nieuw gekozen
+// zoekwoorden die van de huidige ranking kunnen afwijken.
+function planPrimaryKeyword(plan: string): string {
+  const m = (plan || "").match(/primair\s*[:：]\s*([^\n]+)/i);
+  if (!m) return "";
+  return m[1].replace(/\*+/g, "").trim();
+}
+
+async function buildContext(slug: string, url: string, extra?: string): Promise<string> {
   const client = await getClientBySlug(slug);
   const domain = client?.domain || "";
   // Ronde 1: goedkope/snelle bronnen parallel.
-  const [plan, content, kw, psi] = await Promise.all([
+  const [plan, content, kw, psi, allTasks] = await Promise.all([
     getPagePlan(slug, url),
     fetchPageContent(url).catch(() => null),
     getGscForPage(domain, url).catch(() => []),
     getPageSpeed(url).catch(() => null),
+    getTasks(slug).catch(() => []),
   ]);
 
-  const primary = derivePrimaryKeyword(kw);
+  const normUrl = (u?: string) => (u || "").trim().replace(/\/+$/, "");
+  const pageTasks = allTasks.filter((t) => normUrl(t.pageUrl) === normUrl(url));
+
+  // Gekozen zoekwoord uit het plan is leidend; anders de GSC-topper.
+  const primary = planPrimaryKeyword(plan) || derivePrimaryKeyword(kw);
 
   // Ronde 2: Ahrefs-diepte (alleen als geconfigureerd). Top-10 SERP + varianten op
   // het primaire zoekwoord, plus de zoekwoorden waarop de URL zelf organisch scoort.
@@ -67,7 +82,12 @@ async function buildContext(slug: string, url: string): Promise<string> {
     `KLANT: ${client?.name || slug}`,
     client?.seoProfile ? `KLANTPROFIEL: ${client.seoProfile}` : "",
     `PAGINA: ${url}`,
-    `PLAN VOOR DEZE PAGINA: ${plan || "(nog geen plan, leid af uit de data)"}`,
+    primary ? `GEKOZEN PRIMAIR ZOEKWOORD (leidend, uit het plan/GSC): "${primary}"` : "",
+    `OVERGENOMEN PLAN VOOR DEZE PAGINA (de strategische conclusie, leidend): ${plan || "(nog geen plan, leid af uit de data)"}`,
+    "",
+    "OVERGENOMEN TAKEN VOOR DEZE PAGINA (uit de analyse-chat):",
+    pageTasks.length ? pageTasks.map((t) => `- [${t.fase || "?"}${t.wie ? "/" + t.wie : ""}] ${t.taak}${t.status ? ` (${t.status})` : ""}`).join("\n") : "- (nog geen taken overgenomen)",
+    extra ? `\nEXTRA STURING VAN DE GEBRUIKER (weeg zwaar mee): ${extra}` : "",
     "",
     "LIVE ON-PAGE INHOUD:",
     content ? `Titel: ${content.title}\nH1: ${content.h1 || "(leeg!)"}\nMeta: ${content.metaDescription}\nKoppen: ${content.headings.join(" | ")}\nTekst (fragment): ${content.text.slice(0, 1200)}` : "(kon de pagina niet inlezen)",
@@ -107,6 +127,8 @@ Lever, elk als eigen sectie:
 8. SCORECARD (de kern): een grote tabel met per criterium-ID uit het criteria-document: ID, criterium, classificatie (CRITICAL/MAJOR/MINOR), gemeten waarde, norm, status (PASS/FAIL/PARTIAL/N/A), opmerking. Loop ALLE relevante criteria langs. Gebruik de Core Web Vitals uit de PageSpeed-data hieronder om CWV-01 t/m CWV-08 echt te scoren; gebruik de Ahrefs top-10 SERP om INT-01 (pagina-type vs. dominant SERP-type) te toetsen en de Ahrefs-varianten voor KW-04. Alleen wat écht niet in de data zit markeer je als "niet gemeten".
 9. Prioriteiten & aanbevelingen: minimaal 5, gesorteerd op impact x inspanning, elk met een criterium-ID.
 
+BEOORDEEL DE HUIDIGE PAGINA IN HET LICHT VAN HET GEKOZEN PRIMAIRE ZOEKWOORD (niet alleen de huidige ranking): in welke mate is de bestaande content al geoptimaliseerd voor dat zoekwoord en de zoekintentie? Benoem expliciet welke bestaande elementen (koppen, alinea's, FAQ, tabellen, beeld) BEHOUDEN kunnen blijven omdat ze voldoen, en welke moeten worden aangepast of toegevoegd. Behoud is het uitgangspunt; verander alleen wat de criteria of de top-10-analyse vereisen.
+
 Wees eerlijk: dit is een audit, geen verkooppraatje. Verzin geen rankings of Core Web Vitals; wat je niet gemeten hebt, benoem je als niet gemeten.
 
 CRITERIA-DOCUMENT (leidend voor de scorecard):
@@ -122,6 +144,7 @@ De blauwdruk bevat, elk als eigen sectie:
 4. FAQ: 4 tot 6 vragen die de zoekintentie dekken.
 5. Interne links: welke andere pagina's naar deze pagina linken en met welke ankertekst.
 6. Beeld-briefs: kort wat voor beeld/alt-tekst per sectie.
+UITGANGSPUNT BEHOUD: vertrek van de bestaande pagina-inhoud + het overgenomen plan en de taken. Geef de PERFECTE invulling voor deze landingspagina: behoud wat er al staat en voldoet aan de criteria + de top-10-eisen, en voeg alleen toe of herschrijf wat daaruit ontbreekt. Maak per sectie duidelijk of het BEHOUDEN, AANPASSEN of NIEUW is. Baseer de structuur op de top-10-analyse van het gekozen zoekwoord.
 Werk conform de Pingwin-criteria: H2-dekking 60-80% (target 70%, criterium H2-01), primair zoekwoord front-loaded in de meta-title (META-03), title 50-60 tekens (META-02), meta-description 140-160 tekens (META-07), FAQ 4-8 vragen die een zoekwoord/long-tail bevatten (FAQ-02/03), en een variantenlijst van 10-15 semantische varianten (KW-04, §17).
 Gegrond in de data hieronder; verzin geen rankings.
 
@@ -134,6 +157,7 @@ const COPY_SYSTEM = `Je bent een senior SEO-copywriter bij bureau Pingwin en sch
 Werk tegen deze harde criteria: primair zoekwoord in de eerste 100 woorden; H2-koppen dekken 60-80% van de zoekwoorden; natuurlijke keyword-density 0,5-2%; semantische varianten ≥60% gedekt; open met een direct antwoord op de zoekintentie; FAQ-antwoorden 40-80 woorden.
 Toon: warm, deskundig, passend bij het klantprofiel; geen holle marketingtaal, concreet en to-the-point.
 Lever de VOLLEDIGE copy uit als document: de H1, per H2 de kop + de alineatekst (als paragraph-blokken), eventuele bullets, en een FAQ-sectie met vraag (subheading) + antwoord (paragraph). Ook een meta-title en meta-description bovenaan als eigen sectie.
+UITGANGSPUNT BEHOUD: hergebruik bestaande zinnen/alinea's van de huidige pagina waar die goed zijn en voldoen aan de criteria; herschrijf alleen waar nodig en vul aan met wat de blauwdruk/top-10-analyse vereist. In de copy zit alles uit het plan, de taken en de analyse verwerkt.
 Toets je eigen copy aan de Pingwin-criteria hieronder (met name §1 headings, §2 keyword/semantiek, §3 meta, §4 content, §6 FAQ, §12 AEO). Gegrond in de data hieronder.
 
 RELEVANTE CRITERIA:
@@ -145,8 +169,8 @@ const SYSTEMS: Record<DocKind, string> = { analyse: ANALYSE_SYSTEM, blauwdruk: B
 const RAPPORTTYPE: Record<DocKind, string> = { analyse: "SEO-analyse", blauwdruk: "SEO-blauwdruk", copy: "SEO-copy" };
 const FALLBACK_TITLE: Record<DocKind, string> = { analyse: "SEO-analyse", blauwdruk: "Blauwdruk", copy: "Copy" };
 
-export async function generateDocSpec(slug: string, url: string, kind: DocKind): Promise<{ spec: DocSpec; title: string }> {
-  const context = await buildContext(slug, url);
+export async function generateDocSpec(slug: string, url: string, kind: DocKind, extra?: string): Promise<{ spec: DocSpec; title: string }> {
+  const context = await buildContext(slug, url, extra);
   const client = await getClientBySlug(slug);
   // Analyse levert een grote scorecard: ruimer tokenbudget zodat de tabel niet afkapt.
   const maxTokens = kind === "analyse" ? 8000 : 4096;
