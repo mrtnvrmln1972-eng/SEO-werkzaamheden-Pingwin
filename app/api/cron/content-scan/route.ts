@@ -5,6 +5,9 @@ import { captureAndDetect } from "../../../../lib/content-tracking";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
+// Nooit bij de build uitvoeren/prerenderen: dit draait de scan (externe fetches +
+// DB) en zou anders tijdens 'next build' time-outen. Alleen op aanvraag draaien.
+export const dynamic = "force-dynamic";
 
 // Wekelijkse automatische scan (Vercel Cron, maandag 4u): per klant de sitemap
 // verversen en alle live pagina's op wijzigingen controleren. Zo verschijnen
