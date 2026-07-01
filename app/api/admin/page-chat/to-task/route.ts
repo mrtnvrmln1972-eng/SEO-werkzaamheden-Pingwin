@@ -36,7 +36,7 @@ Geen tekst eromheen.`;
   } catch { /* val terug op standaardtitel */ }
 
   const internalNote = `${mdToHtml(analysis).slice(0, 9000)}`;
-  const n = await appendTasks(slug, [{
+  const ids = await appendTasks(slug, [{
     taak: title,
     toelichting: internalNote,           // volledige analyse als interne notitie (opgemaakt)
     klantToelichting: clientSummary,     // begrijpelijke samenvatting voor de klant
@@ -47,5 +47,5 @@ Geen tekst eromheen.`;
     klantZichtbaar: true,
   }]);
 
-  return NextResponse.json({ ok: true, created: n, title });
+  return NextResponse.json({ ok: true, created: ids.length, taskId: ids[0] ?? null, title });
 }

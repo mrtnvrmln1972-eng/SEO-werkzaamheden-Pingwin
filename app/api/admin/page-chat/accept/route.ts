@@ -23,12 +23,12 @@ export async function POST(req: NextRequest) {
   let planSaved = false;
   if (plan !== null) { await savePagePlan(slug, url, plan); planSaved = true; }
 
-  let tasksAdded = 0;
+  let taskIds: number[] = [];
   if (tasks.length) {
-    tasksAdded = await appendTasks(slug, tasks.map((t) => ({
+    taskIds = await appendTasks(slug, tasks.map((t) => ({
       taak: t.taak, fase: t.fase || "", wie: t.wie || "SEO", status: "Gepland", pageUrl: url, klantZichtbaar: true,
     })));
   }
 
-  return NextResponse.json({ ok: true, planSaved, tasksAdded });
+  return NextResponse.json({ ok: true, planSaved, tasksAdded: taskIds.length, taskIds });
 }

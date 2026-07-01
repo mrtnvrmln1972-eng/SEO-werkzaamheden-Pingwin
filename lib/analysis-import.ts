@@ -184,7 +184,7 @@ export async function acceptItems(slug: string, cluster: string, items: ImportIt
     pageUrl: it.url,
     klantZichtbaar: true,
   }));
-  const tasks = await appendTasks(slug, tasksToAdd);
+  const tasks = (await appendTasks(slug, tasksToAdd)).length;
 
   return { plans, tasks, analysisId };
 }

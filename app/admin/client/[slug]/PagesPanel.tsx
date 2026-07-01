@@ -16,7 +16,7 @@ function statusBadge(status: number | null, redirectTarget: string) {
   return <span className="url-badge url-bad">{status}</span>;
 }
 
-export default function PagesPanel({ slug, initialProfile, clientEmail, clientName }: { slug: string; initialProfile?: string; clientEmail?: string; clientName?: string }) {
+export default function PagesPanel({ slug, initialProfile, clientEmail, clientName, onGoToTask }: { slug: string; initialProfile?: string; clientEmail?: string; clientName?: string; onGoToTask?: (taskId: number) => void }) {
   const [urls, setUrls] = useState<ClientUrl[]>([]);
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
@@ -106,7 +106,7 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
               <thead><tr><th>Status</th><th>Pagina</th><th>Titel</th><th>Klikken</th><th>Plan</th></tr></thead>
               <tbody>
                 {filtered.map((u) => (
-                  <PageRow key={u.url} slug={slug} u={u} open={open === u.url} onToggle={() => setOpen(open === u.url ? null : u.url)} onReload={load} clientEmail={clientEmail || ""} clientName={clientName || ""} />
+                  <PageRow key={u.url} slug={slug} u={u} open={open === u.url} onToggle={() => setOpen(open === u.url ? null : u.url)} onReload={load} clientEmail={clientEmail || ""} clientName={clientName || ""} onGoToTask={onGoToTask} />
                 ))}
               </tbody>
             </table>
@@ -125,7 +125,7 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
   );
 }
 
-function PageRow({ slug, u, open, onToggle, onReload, clientEmail, clientName }: { slug: string; u: ClientUrl; open: boolean; onToggle: () => void; onReload: () => void; clientEmail: string; clientName: string }) {
+function PageRow({ slug, u, open, onToggle, onReload, clientEmail, clientName, onGoToTask }: { slug: string; u: ClientUrl; open: boolean; onToggle: () => void; onReload: () => void; clientEmail: string; clientName: string; onGoToTask?: (taskId: number) => void }) {
   const [plan, setPlan] = useState(u.plan);
   const [saved, setSaved] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -170,7 +170,7 @@ function PageRow({ slug, u, open, onToggle, onReload, clientEmail, clientName }:
                   : <div className="pages-plan-view muted">Nog geen plan. Klik op Bewerken, of laat de chat hieronder een voorstel maken.</div>
               )}
               {u.redirectTarget && <div className="muted" style={{ marginTop: 6 }}>Live redirect: → {u.redirectTarget}</div>}
-              <PageChat slug={slug} url={u.url} clientEmail={clientEmail} clientName={clientName} onApplied={(newPlan) => { if (newPlan) setPlan(newPlan); onReload(); }} />
+              <PageChat slug={slug} url={u.url} clientEmail={clientEmail} clientName={clientName} onApplied={(newPlan) => { if (newPlan) setPlan(newPlan); onReload(); }} onGoToTask={onGoToTask} />
             </div>
           </td>
         </tr>

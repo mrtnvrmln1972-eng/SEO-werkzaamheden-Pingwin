@@ -8,7 +8,7 @@ type Task = { taak: string; fase?: string; wie?: string };
 type Proposal = { plan?: string; tasks?: Task[] };
 type ChatSummary = { id: number; title: string; updatedAt: string; count: number };
 
-export default function PageChat({ slug, url, clientEmail, clientName, onApplied }: { slug: string; url: string; clientEmail?: string; clientName?: string; onApplied: (plan?: string) => void }) {
+export default function PageChat({ slug, url, clientEmail, clientName, onApplied, onGoToTask }: { slug: string; url: string; clientEmail?: string; clientName?: string; onApplied: (plan?: string) => void; onGoToTask?: (taskId: number) => void }) {
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [chatId, setChatId] = useState<number | null>(null);
   const [chats, setChats] = useState<ChatSummary[]>([]);
@@ -41,7 +41,12 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     try {
       const r = await fetch("/api/admin/page-chat/to-task", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url, analysis: lastAssistant }) });
       const d = await r.json();
-      if (d.ok) { setApplied(`Werkzaamheid aangemaakt: "${d.title}". Staat in de Werkzaamheden-tab (zichtbaar voor de klant); voeg daar uren toe.`); onApplied(); }
+      if (d.ok) {
+        setApplied(`Werkzaamheid aangemaakt: "${d.title}".`);
+        // Spring naar de Werkzaamheden-tab en licht de nieuwe taak op (zonder de
+        // Pagina's-tab te herladen); de staat hier blijft behouden.
+        if (typeof d.taskId === "number" && onGoToTask) onGoToTask(d.taskId);
+      }
       else setErr(d.error || "Werkzaamheid maken mislukt.");
     } catch { setErr("Werkzaamheid maken mislukt."); } finally { setTaskGen(false); }
   }

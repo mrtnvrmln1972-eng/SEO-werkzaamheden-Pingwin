@@ -64,10 +64,23 @@ export default function ClientCockpit({
   const validTab = (t?: string): Tab => (t === "werkzaamheden" || t === "paginas" || t === "resultaten" || t === "klant" || t === "developer" || t === "overzicht") ? t : "overzicht";
   const [tab, setTab] = useState<Tab>(validTab(initialTab));
 
+  // Pagina's blijven na het eerste bezoek in het geheugen (verborgen i.p.v.
+  // uitgekleed), zodat je chat/plan-staat bewaard blijft als je van tab wisselt.
+  const [paginasVisited, setPaginasVisited] = useState(validTab(initialTab) === "paginas");
+
   // Wissel van tab én update de URL zodat reload op dezelfde tab uitkomt.
   function changeTab(newTab: Tab) {
+    if (newTab === "paginas") setPaginasVisited(true);
     setTab(newTab);
     router.replace(`${pathname}?tab=${newTab}`, { scroll: false });
+  }
+
+  // Vanuit de pagina-chat een werkzaamheid gemaakt: spring naar Werkzaamheden en
+  // licht de nieuwe taak op. Verse laadbeurt zodat de taak er echt in staat.
+  function goToNewTask(taskId: number) {
+    setTab("werkzaamheden");
+    router.replace(`${pathname}?tab=werkzaamheden&highlight=${taskId}`, { scroll: false });
+    router.refresh();
   }
   const [shQuery, setShQuery] = useState("");
   const [openEmail, setOpenEmail] = useState<string | null>(null);
@@ -482,7 +495,7 @@ export default function ClientCockpit({
         )}
 
         {tab === "werkzaamheden" && (
-          <TasksEditor slug={client.slug} initialTasks={tasks} budget={client.budget} clientName={client.name} clientEmail={client.email || ""} highlight={highlight} />
+          <TasksEditor key={`tasks-${highlight || "x"}`} slug={client.slug} initialTasks={tasks} budget={client.budget} clientName={client.name} clientEmail={client.email || ""} highlight={highlight} />
         )}
 
         {tab === "resultaten" && (
@@ -573,7 +586,11 @@ export default function ClientCockpit({
           </div>
         )}
 
-        {tab === "paginas" && <PagesPanel slug={client.slug} initialProfile={client.seoProfile || ""} clientEmail={client.email || ""} clientName={client.name} />}
+        {paginasVisited && (
+          <div style={{ display: tab === "paginas" ? "block" : "none" }}>
+            <PagesPanel slug={client.slug} initialProfile={client.seoProfile || ""} clientEmail={client.email || ""} clientName={client.name} onGoToTask={goToNewTask} />
+          </div>
+        )}
 
         {tab === "developer" && <DeveloperOverview embedded />}
       </div>
