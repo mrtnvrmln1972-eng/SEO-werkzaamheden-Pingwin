@@ -573,7 +573,7 @@ export default function ClientCockpit({
           </div>
         )}
 
-        {tab === "paginas" && <PagesPanel slug={client.slug} initialProfile={client.seoProfile || ""} />}
+        {tab === "paginas" && <PagesPanel slug={client.slug} initialProfile={client.seoProfile || ""} clientEmail={client.email || ""} clientName={client.name} />}
 
         {tab === "developer" && <DeveloperOverview embedded />}
       </div>

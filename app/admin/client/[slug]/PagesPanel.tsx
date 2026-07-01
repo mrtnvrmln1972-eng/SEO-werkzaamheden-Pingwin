@@ -15,7 +15,7 @@ function statusBadge(status: number | null, redirectTarget: string) {
   return <span className="url-badge url-bad">{status}</span>;
 }
 
-export default function PagesPanel({ slug, initialProfile }: { slug: string; initialProfile?: string }) {
+export default function PagesPanel({ slug, initialProfile, clientEmail, clientName }: { slug: string; initialProfile?: string; clientEmail?: string; clientName?: string }) {
   const [urls, setUrls] = useState<ClientUrl[]>([]);
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
@@ -105,7 +105,7 @@ export default function PagesPanel({ slug, initialProfile }: { slug: string; ini
               <thead><tr><th>Status</th><th>Pagina</th><th>Titel</th><th>Klikken</th><th>Plan</th></tr></thead>
               <tbody>
                 {filtered.map((u) => (
-                  <PageRow key={u.url} slug={slug} u={u} open={open === u.url} onToggle={() => setOpen(open === u.url ? null : u.url)} onReload={load} />
+                  <PageRow key={u.url} slug={slug} u={u} open={open === u.url} onToggle={() => setOpen(open === u.url ? null : u.url)} onReload={load} clientEmail={clientEmail || ""} clientName={clientName || ""} />
                 ))}
               </tbody>
             </table>
@@ -124,7 +124,7 @@ export default function PagesPanel({ slug, initialProfile }: { slug: string; ini
   );
 }
 
-function PageRow({ slug, u, open, onToggle, onReload }: { slug: string; u: ClientUrl; open: boolean; onToggle: () => void; onReload: () => void }) {
+function PageRow({ slug, u, open, onToggle, onReload, clientEmail, clientName }: { slug: string; u: ClientUrl; open: boolean; onToggle: () => void; onReload: () => void; clientEmail: string; clientName: string }) {
   const [plan, setPlan] = useState(u.plan);
   const [saved, setSaved] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -159,7 +159,7 @@ function PageRow({ slug, u, open, onToggle, onReload }: { slug: string; u: Clien
                 placeholder="Bijv. Rol: hub. Primair: soa test amsterdam. Actie: behouden + optimaliseren. Doel-URL: /soa-test-amsterdam/."
               />
               {u.redirectTarget && <div className="muted" style={{ marginTop: 6 }}>Live redirect: → {u.redirectTarget}</div>}
-              <PageChat slug={slug} url={u.url} onApplied={(newPlan) => { if (newPlan) setPlan(newPlan); onReload(); }} />
+              <PageChat slug={slug} url={u.url} clientEmail={clientEmail} clientName={clientName} onApplied={(newPlan) => { if (newPlan) setPlan(newPlan); onReload(); }} />
             </div>
           </td>
         </tr>

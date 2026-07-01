@@ -8,7 +8,7 @@ type Task = { taak: string; fase?: string; wie?: string };
 type Proposal = { plan?: string; tasks?: Task[] };
 type ChatSummary = { id: number; title: string; updatedAt: string; count: number };
 
-export default function PageChat({ slug, url, onApplied }: { slug: string; url: string; onApplied: (plan?: string) => void }) {
+export default function PageChat({ slug, url, clientEmail, clientName, onApplied }: { slug: string; url: string; clientEmail?: string; clientName?: string; onApplied: (plan?: string) => void }) {
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [chatId, setChatId] = useState<number | null>(null);
   const [chats, setChats] = useState<ChatSummary[]>([]);
@@ -19,6 +19,43 @@ export default function PageChat({ slug, url, onApplied }: { slug: string; url: 
   const [taskSel, setTaskSel] = useState<boolean[]>([]);
   const [err, setErr] = useState("");
   const [applied, setApplied] = useState("");
+  // Klant-mail
+  const [mailOpen, setMailOpen] = useState(false);
+  const [mailGen, setMailGen] = useState(false);
+  const [mailTo, setMailTo] = useState("");
+  const [mailSubject, setMailSubject] = useState("");
+  const [mailBody, setMailBody] = useState("");
+  const [mailBusy, setMailBusy] = useState(false);
+  const [mailMsg, setMailMsg] = useState("");
+
+  const lastAssistant = [...msgs].reverse().find((m) => m.role === "assistant")?.content || "";
+
+  async function makeClientMail() {
+    if (!lastAssistant || mailGen) return;
+    setMailGen(true); setErr("");
+    try {
+      const r = await fetch("/api/admin/page-chat/client-mail", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url, clientName, analysis: lastAssistant }) });
+      const d = await r.json();
+      if (!d.ok) { setErr(d.error || "Mail maken mislukt."); return; }
+      setMailBody(d.email || "");
+      setMailTo(clientEmail || "");
+      setMailSubject(`SEO-analyse ${clientName || ""}`.trim());
+      setMailMsg("");
+      setMailOpen(true);
+    } catch { setErr("Mail maken mislukt."); } finally { setMailGen(false); }
+  }
+
+  async function sendClientMail() {
+    if (!mailTo.trim() || !mailBody.trim()) { setMailMsg("Vul een ontvanger en tekst in."); return; }
+    setMailBusy(true); setMailMsg("");
+    try {
+      const html = mdToHtml(mailBody);
+      const r = await fetch("/api/admin/mail", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: "compose", to: mailTo, subject: mailSubject || "SEO-analyse", html }) });
+      const d = await r.json();
+      if (d.ok) { setMailMsg(`Verstuurd naar ${(d.sentTo || []).join(", ") || mailTo}.`); setTimeout(() => setMailOpen(false), 1400); }
+      else setMailMsg(d.error || "Versturen mislukt.");
+    } catch { setMailMsg("Versturen mislukt."); } finally { setMailBusy(false); }
+  }
 
   async function loadChats() {
     try {
@@ -145,6 +182,12 @@ export default function PageChat({ slug, url, onApplied }: { slug: string; url: 
         </div>
       )}
 
+      {lastAssistant && (
+        <div className="page-chat-tools">
+          <button type="button" className="ghost-btn small" onClick={makeClientMail} disabled={mailGen}>{mailGen ? "Mail maken…" : "✉ Klant-mail van deze analyse"}</button>
+        </div>
+      )}
+
       {applied && <div className="saved-msg" style={{ marginTop: 8 }}>{applied}</div>}
       {err && <div className="login-error" style={{ marginTop: 8 }}>{err}</div>}
 
@@ -152,6 +195,27 @@ export default function PageChat({ slug, url, onApplied }: { slug: string; url: 
         <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(input); }} placeholder="Stel een vraag over deze pagina…" disabled={busy} />
         <button type="button" className="primary-btn small" onClick={() => send(input)} disabled={busy || !input.trim()}>Vraag</button>
       </div>
+
+      {mailOpen && (
+        <div className="compose-overlay" onClick={() => setMailOpen(false)}>
+          <div className="compose-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="compose-head"><span>Analyse mailen naar de klant</span><button type="button" className="chat-float-close" onClick={() => setMailOpen(false)}>&times;</button></div>
+            <div className="compose-body">
+              <label className="compose-label">Aan (e-mail klant)</label>
+              <input className="compose-input" value={mailTo} onChange={(e) => setMailTo(e.target.value)} placeholder="klant@bedrijf.nl" />
+              <label className="compose-label">Onderwerp</label>
+              <input className="compose-input" value={mailSubject} onChange={(e) => setMailSubject(e.target.value)} />
+              <label className="compose-label">Bericht (in gewone taal, aanpasbaar)</label>
+              <textarea className="compose-input" rows={16} value={mailBody} onChange={(e) => setMailBody(e.target.value)} />
+              {mailMsg && <div className={mailMsg.startsWith("Verstuurd") ? "saved-msg" : "login-error"} style={{ marginTop: 8 }}>{mailMsg}</div>}
+            </div>
+            <div className="compose-foot">
+              <button type="button" className="logout-btn" onClick={() => setMailOpen(false)}>Annuleren</button>
+              <button type="button" className="primary-btn small" onClick={sendClientMail} disabled={mailBusy}>{mailBusy ? "Versturen..." : "Verstuur per mail"}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
