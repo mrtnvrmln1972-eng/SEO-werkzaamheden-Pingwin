@@ -291,6 +291,62 @@ export async function getGscKeywordsBeforeAfter(domain: string, pageUrl: string,
     .slice(0, 20);
 }
 
+// GA4-gedragssignalen voor één pagina, voor en na een wijzigingsmoment.
+export type Ga4PageStat = { views: number; timeOnPage: number; bounceRate: number; engagementRate: number; pagesPerSession: number; sessionDuration: number };
+export type Ga4PageSignals = { available: boolean; before: Ga4PageStat; after: Ga4PageStat };
+export async function getGa4PageSignalsBeforeAfter(slug: string, pageUrl: string, changeDate: string, days = 60): Promise<Ga4PageSignals | null> {
+  const token = await googleAccessToken();
+  if (!token) return null;
+  await ensureSchema();
+  const { rows } = await sql`SELECT ga4_property_id, domain FROM clients WHERE slug = ${slug} LIMIT 1`;
+  let propertyId = (rows[0]?.ga4_property_id as string) || "";
+  const domain = (rows[0]?.domain as string) || "";
+  if (!propertyId && domain) {
+    const found = await ga4DiscoverProperty(token, domain);
+    if (found) { propertyId = found; await sql`UPDATE clients SET ga4_property_id = ${found} WHERE slug = ${slug}`; }
+  }
+  if (!propertyId) return null;
+
+  let path = ""; try { path = new URL(pageUrl).pathname; } catch { path = pageUrl; }
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const c = new Date(changeDate + "T00:00:00Z").getTime();
+  const day = 86400000;
+  const dateRanges = [
+    { startDate: iso(new Date(c - days * day)), endDate: iso(new Date(c - day)) },
+    { startDate: iso(new Date(c)), endDate: iso(new Date(Math.min(c + days * day, Date.now() - day))) },
+  ];
+  async function report(field: string, metrics: string[]): Promise<Record<string, number[]> | null> {
+    const res = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`, {
+      method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ dateRanges, dimensionFilter: { filter: { fieldName: field, stringFilter: { matchType: "EXACT", value: path } } }, metrics: metrics.map((name) => ({ name })) }),
+    });
+    if (!res.ok) return null;
+    const j = await res.json();
+    const out: Record<string, number[]> = {};
+    for (const r of (j.rows || []) as { dimensionValues?: { value: string }[]; metricValues?: { value: string }[] }[]) {
+      const idx = r.dimensionValues?.[0]?.value || "";
+      out[idx] = (r.metricValues || []).map((m) => Number(m.value) || 0);
+    }
+    return out;
+  }
+  const pageR = await report("pagePath", ["screenPageViews", "userEngagementDuration", "bounceRate", "engagementRate"]).catch(() => null);
+  const landR = await report("landingPage", ["screenPageViewsPerSession", "averageSessionDuration"]).catch(() => null);
+  const build = (i: number): Ga4PageStat => {
+    const p = (pageR && pageR[`date_range_${i}`]) || [];
+    const l = (landR && landR[`date_range_${i}`]) || [];
+    const views = p[0] || 0, engDur = p[1] || 0;
+    return {
+      views,
+      timeOnPage: views ? Math.round(engDur / views) : 0,
+      bounceRate: Math.round((p[2] || 0) * 1000) / 10,
+      engagementRate: Math.round((p[3] || 0) * 1000) / 10,
+      pagesPerSession: Math.round((l[0] || 0) * 100) / 100,
+      sessionDuration: Math.round(l[1] || 0),
+    };
+  };
+  return { available: !!pageR, before: build(0), after: build(1) };
+}
+
 export type GscComparison = {
   connected: boolean;
   site: string | null;

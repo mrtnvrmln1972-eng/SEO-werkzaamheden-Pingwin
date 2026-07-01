@@ -46,7 +46,24 @@ function Arr({ label, diff }: { label: string; diff: ArrayDiff }) {
 
 type Day = { date: string; clicks: number; impressions: number; ctr: number; position: number };
 type KwBA = { keyword: string; positionBefore: number | null; positionAfter: number | null; clicksBefore: number; clicksAfter: number };
-type Kpi = { changeDate: string; daily: Day[]; keywords: KwBA[] };
+type Ga4Stat = { views: number; timeOnPage: number; bounceRate: number; engagementRate: number; pagesPerSession: number; sessionDuration: number };
+type Ga4 = { available: boolean; before: Ga4Stat; after: Ga4Stat };
+type Kpi = { changeDate: string; daily: Day[]; keywords: KwBA[]; ga4: Ga4 | null };
+
+function secs(s: number): string { if (!s) return "0s"; const m = Math.floor(s / 60), r = s % 60; return m ? `${m}m ${r}s` : `${r}s`; }
+// Voor sommige signalen is hoger beter (engagement, tijd, views, pagina's/sessie),
+// voor bounce rate is lager beter.
+function ga4Rows(g: Ga4): { label: string; b: string; a: string; better: boolean | null }[] {
+  const dir = (a: number, b: number, higherBetter: boolean): boolean | null => a === b ? null : (higherBetter ? a > b : a < b);
+  return [
+    { label: "Gem. tijd op pagina", b: secs(g.before.timeOnPage), a: secs(g.after.timeOnPage), better: dir(g.after.timeOnPage, g.before.timeOnPage, true) },
+    { label: "Engagement rate", b: `${g.before.engagementRate}%`, a: `${g.after.engagementRate}%`, better: dir(g.after.engagementRate, g.before.engagementRate, true) },
+    { label: "Bounce rate", b: `${g.before.bounceRate}%`, a: `${g.after.bounceRate}%`, better: dir(g.after.bounceRate, g.before.bounceRate, false) },
+    { label: "Pagina's per sessie", b: String(g.before.pagesPerSession), a: String(g.after.pagesPerSession), better: dir(g.after.pagesPerSession, g.before.pagesPerSession, true) },
+    { label: "Sessieduur", b: secs(g.before.sessionDuration), a: secs(g.after.sessionDuration), better: dir(g.after.sessionDuration, g.before.sessionDuration, true) },
+    { label: "Weergaven", b: String(g.before.views), a: String(g.after.views), better: dir(g.after.views, g.before.views, true) },
+  ];
+}
 
 // Mini-lijngrafiek met een stippellijn op het wijzigingsmoment. Bij positie is
 // lager beter, dus die keren we om (verbetering = omhoog).
@@ -126,7 +143,7 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
     let alive = true;
     setKpiLoading(true); setKpi(null);
     fetch(`/api/admin/changes/kpi?slug=${encodeURIComponent(slug)}&id=${open.id}`)
-      .then((r) => r.json()).then((d) => { if (alive && d.ok) setKpi({ changeDate: d.changeDate, daily: d.daily || [], keywords: d.keywords || [] }); })
+      .then((r) => r.json()).then((d) => { if (alive && d.ok) setKpi({ changeDate: d.changeDate, daily: d.daily || [], keywords: d.keywords || [], ga4: d.ga4 || null }); })
       .catch(() => { /* stil */ }).finally(() => { if (alive) setKpiLoading(false); });
     return () => { alive = false; };
   }, [open, slug]);
@@ -194,7 +211,24 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
                     </table>
                   </div>
                 )}
-                {kpi.daily.length < 2 && kpi.keywords.length === 0 && (
+                {kpi.ga4 && kpi.ga4.available && (
+                  <div className="wz-kw">
+                    <div className="wz-kpi-label">Gedragssignalen (GA4, voor → na)</div>
+                    <table className="wz-kw-table">
+                      <thead><tr><th>Signaal</th><th>Voor</th><th>Na</th></tr></thead>
+                      <tbody>
+                        {ga4Rows(kpi.ga4).map((r) => (
+                          <tr key={r.label}>
+                            <td>{r.label}</td>
+                            <td>{r.b}</td>
+                            <td className={r.better === true ? "wz-pos" : r.better === false ? "wz-neg" : ""}>{r.a}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                {kpi.daily.length < 2 && kpi.keywords.length === 0 && !(kpi.ga4 && kpi.ga4.available) && (
                   <div className="muted" style={{ fontSize: 12 }}>Nog geen GSC-data voor deze periode (Search Console loopt 1-3 dagen achter, en na een verse wijziging is er nog weinig data ná het moment).</div>
                 )}
               </div>

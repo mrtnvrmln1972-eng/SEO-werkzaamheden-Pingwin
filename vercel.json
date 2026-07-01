@@ -1,0 +1,5 @@
+{
+  "crons": [
+    { "path": "/api/cron/content-scan", "schedule": "0 4 * * 1" }
+  ]
+}

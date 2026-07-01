@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../../lib/admin-auth";
 import { getChangeEvent } from "../../../../../lib/content-tracking";
 import { getClientBySlug } from "../../../../../lib/clients";
-import { getGscDailyForPage, getGscKeywordsBeforeAfter } from "../../../../../lib/google";
+import { getGscDailyForPage, getGscKeywordsBeforeAfter, getGa4PageSignalsBeforeAfter } from "../../../../../lib/google";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -31,10 +31,11 @@ export async function GET(req: NextRequest) {
   const startDate = new Date(c - 60 * day).toISOString().slice(0, 10);
   const endDate = new Date(Math.min(c + 60 * day, Date.now() - 3 * day)).toISOString().slice(0, 10);
 
-  const [daily, keywords] = await Promise.all([
+  const [daily, keywords, ga4] = await Promise.all([
     getGscDailyForPage(domain, event.url, startDate, endDate).catch(() => []),
     getGscKeywordsBeforeAfter(domain, event.url, changeDate, 60).catch(() => []),
+    getGa4PageSignalsBeforeAfter(slug, event.url, changeDate, 60).catch(() => null),
   ]);
 
-  return NextResponse.json({ ok: true, changeDate, daily, keywords });
+  return NextResponse.json({ ok: true, changeDate, daily, keywords, ga4 });
 }
