@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { callClaudeAgentic, anthropicConfigured, type ChatMsg } from "../../../../lib/anthropic";
-import { buildSystemPrompt, parseProposal } from "../../../../lib/page-chat-ground";
+import { buildSystemPrompt, parseProposal, extractProposal } from "../../../../lib/page-chat-ground";
 import { CHAT_TOOLS, runChatTool } from "../../../../lib/chat-tools";
 
 export const runtime = "nodejs";
@@ -25,7 +25,9 @@ export async function POST(req: NextRequest) {
   try {
     const system = await buildSystemPrompt(slug, url);
     const raw = await callClaudeAgentic(system, messages.slice(-12), CHAT_TOOLS, runChatTool, 9, 4096);
-    const { reply, proposal } = parseProposal(raw);
+    const { reply } = parseProposal(raw);
+    // Aparte extractie voor een altijd-complete accepteer-lijst (nooit afgekapt).
+    const proposal = await extractProposal(reply).catch(() => null);
     return NextResponse.json({ ok: true, reply, proposal });
   } catch (e) {
     return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 502 });

@@ -2,6 +2,7 @@ import { getClientBySlug } from "./clients";
 import { getClientUrls, getPagePlan } from "./site-urls";
 import { getGscForPage, getGscQueryPageMatrix } from "./google";
 import { getTasks } from "./tasks";
+import { callClaude } from "./anthropic";
 
 // ═══════════════════════════════════════════════════════════
 // GROUNDING VOOR DE PAGINA-CHAT
@@ -82,14 +83,7 @@ HARDE REGELS:
 - Als de gebruiker profiel-informatie geeft, verwerk die en stel voor om het als klantprofiel te bewaren (dat kan de gebruiker doen in het veld "Klantprofiel" bovenaan de Pagina's-tab).
 - Redirect nooit naar een URL die niet bestaat. Toets een redirect-doel aan de live status. Toets het plan-label altijd aan de echte ranking en titel.
 - Antwoord in NETTE markdown zodat het als rapport oogt: korte kopjes (## en ###), bullets, en waar het helpt een kleine tabel, bijvoorbeeld | Zoekwoord | Positie | Vertoningen | URL |. Houd het scanbaar, geen muur van tekst.
-- Als je een concrete wijziging voorstelt (een nieuw plan voor de geopende pagina en/of taken), sluit je antwoord dan af met een machineleesbaar blok, exact in dit formaat:
-
-<voorstel>
-{"plan": "Rol: ... Primair: ... Actie: ... Doel-URL: ...", "tasks": [{"taak": "korte taakomschrijving", "fase": "Bouwen|Herbedraden|Opschonen", "wie": "SEO|Dev"}]}
-</voorstel>
-
-Laat "plan" weg als het plan niet verandert, en "tasks" weg als er geen nieuwe taken zijn. Geef GEEN voorstel als je eerst nog een verhelderende vraag stelt.
-BELANGRIJK over het blok: zet je uitgebreide onderbouwing in het gewone antwoord ervóór, NIET in het JSON. Houd het blok compact: korte taakomschrijvingen van één regel, maximaal 8 taken, geldige JSON, en SLUIT het blok ALTIJD af met </voorstel>. Het blok is het laatste in je antwoord.
+- Doe je concrete aanbevelingen, benoem de taken dan duidelijk in je antwoord: geef een sectie "Taken" met per taak wat er moet gebeuren, de fase (Bouwen/Herbedraden/Opschonen) en of het SEO- of Dev-werk is. Benoem ook kort het nieuwe plan voor de pagina (rol, primair + secundair zoekwoord, actie, doel-URL). Je hoeft GEEN machineleesbaar blok toe te voegen; het systeem haalt de taken en het plan er zelf uit voor de accepteer-lijst. Stel je alleen een verhelderende vraag, benoem dan geen taken.
 
 WERKWIJZE, WEEG ALTIJD DEZE INVALSHOEKEN AF (haal er actief data bij via de tools):
 1. Zoekintentie: past de pagina bij de intentie van het zoekwoord? Toets met ahrefs_keyword_volume (intents) en de top-10.
@@ -114,9 +108,33 @@ LIVE FEITEN:
 ${facts}`;
 }
 
-// Haalt het <voorstel>-blok uit het antwoord en geeft de schone tekst + het
-// voorstel terug. Robuust: verbergt het blok ALTIJD uit de weergegeven tekst,
-// ook als het sluit-tag ontbreekt of het JSON afgekapt/onvolledig is.
+// Aparte, betrouwbare extractie: leest de (mogelijk lange) analyse en haalt er
+// het plan + de taken uit als JSON. Zo kan het rapport zo lang zijn als nodig,
+// terwijl de accepteer-lijst altijd compleet is (nooit afgekapt).
+export async function extractProposal(analysis: string): Promise<Proposal | null> {
+  if (!analysis.trim()) return null;
+  const system = `Je krijgt een SEO-analyse voor een pagina. Haal er het voorgestelde PLAN voor de pagina en ALLE concrete TAKEN uit.
+Antwoord met UITSLUITEND geldige JSON, niets eromheen, exact dit formaat:
+{"plan": "Rol: ... Primair: ... Secundair: ... Actie: ... Doel-URL: ...", "tasks": [{"taak": "korte omschrijving in één regel", "fase": "Bouwen|Herbedraden|Opschonen", "wie": "SEO|Dev"}]}
+Regels: neem elke concrete taak uit de analyse mee (kort geformuleerd, één regel per taak). Laat "plan" weg als er geen duidelijk nieuw pagina-plan is; laat "tasks" weg als er geen taken zijn. Bevat de analyse geen concreet voorstel (bijvoorbeeld alleen een verhelderende vraag), antwoord dan met {}.`;
+  try {
+    const raw = await callClaude(system, [{ role: "user", content: analysis.slice(0, 12000) }], 2500);
+    const jsonText = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
+    const parsed = JSON.parse(jsonText);
+    const proposal: Proposal = {};
+    if (typeof parsed.plan === "string" && parsed.plan.trim()) proposal.plan = parsed.plan.trim();
+    if (Array.isArray(parsed.tasks)) {
+      proposal.tasks = parsed.tasks
+        .filter((t: { taak?: string }) => t && typeof t.taak === "string" && t.taak.trim())
+        .map((t: { taak: string; fase?: string; wie?: string }) => ({ taak: t.taak.trim(), fase: t.fase || "", wie: t.wie || "SEO" }));
+    }
+    return (proposal.plan || proposal.tasks?.length) ? proposal : null;
+  } catch {
+    return null;
+  }
+}
+
+// Verbergt een eventueel per ongeluk toegevoegd <voorstel>-blok uit de tekst.
 export function parseProposal(text: string): { reply: string; proposal: Proposal | null } {
   const idx = text.search(/<voorstel>/i);
   if (idx === -1) return { reply: text.trim(), proposal: null };
