@@ -76,9 +76,25 @@ export async function createFolder(parentId: string, name: string): Promise<Driv
   return { id: j.id, name: j.name };
 }
 
+// Maakt een bestand deelbaar: iedereen met de link mag lezen. Betrouwbaar (met
+// één herkansing). Geeft terug of het gelukt is.
+async function shareAnyone(t: string, fileId: string): Promise<boolean> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions?supportsAllDrives=true&sendNotificationEmail=false`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${t}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ role: "reader", type: "anyone" }),
+      });
+      if (res.ok) return true;
+    } catch { /* opnieuw proberen */ }
+  }
+  return false;
+}
+
 // Uploadt een .docx in een map en maakt hem deelbaar (iedereen met de link = lezer).
-// Geeft de deelbare webViewLink terug.
-export async function uploadDocx(folderId: string, filename: string, buffer: Buffer): Promise<{ id: string; link: string }> {
+// Geeft de deelbare webViewLink terug + of het delen gelukt is.
+export async function uploadDocx(folderId: string, filename: string, buffer: Buffer): Promise<{ id: string; link: string; shared: boolean }> {
   const t = await token();
   const parent = folderId && folderId !== "root" ? folderId : "root";
   const meta = { name: filename, parents: [parent] };
@@ -90,18 +106,12 @@ export async function uploadDocx(folderId: string, filename: string, buffer: Buf
   const up = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,webViewLink", {
     method: "POST",
     headers: { Authorization: `Bearer ${t}`, "Content-Type": `multipart/related; boundary=${boundary}` },
-    body: body as unknown as BodyInit,
+    body: new Uint8Array(body),
   });
-  if (!up.ok) throw new Error(`Upload naar Drive mislukte (status ${up.status}).`);
+  if (!up.ok) throw new Error(await driveErr(up, "het uploaden naar Drive"));
   const file = await up.json();
 
-  // Deelbaar maken: iedereen met de link mag lezen.
-  await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}/permissions?supportsAllDrives=true`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${t}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ role: "reader", type: "anyone" }),
-  }).catch(() => { /* link werkt ook zonder als map al gedeeld is */ });
-
+  const shared = await shareAnyone(t, file.id);
   const link = (file.webViewLink as string) || `https://drive.google.com/file/d/${file.id}/view`;
-  return { id: file.id, link };
+  return { id: file.id, link, shared };
 }

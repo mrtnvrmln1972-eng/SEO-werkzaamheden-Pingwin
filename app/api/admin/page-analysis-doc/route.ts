@@ -51,9 +51,9 @@ export async function POST(req: NextRequest) {
     if (saved) folderId = saved.folderId;
   }
 
-  async function logTask(link: string): Promise<number | null> {
+  async function logTask(link: string, shared: boolean): Promise<number | null> {
     const toelichting = link
-      ? `Analyse & zoekwoordkeuze samengevat in Google Drive: <a href="${link}">open document</a>. De conclusie staat in het plan van deze pagina.`
+      ? `Analyse & zoekwoordkeuze samengevat in Google Drive: <a href="${link}">open document</a>.${shared ? " Iedereen met de link kan het bekijken." : " Let op: automatisch delen lukte niet; zet delen in Drive nog even zelf aan."} De conclusie staat in het plan van deze pagina.`
       : "Analyse & zoekwoordkeuze samengevat (document gedownload; nog niet in Drive geplaatst). De conclusie staat in het plan van deze pagina.";
     return upsertStepTask(slug, {
       pageUrl: url, stepKind: "chat_analyse", taak: `Analyse & zoekwoordkeuze: ${pagePath(url)}`,
@@ -62,14 +62,14 @@ export async function POST(req: NextRequest) {
   }
 
   if (folderId && !wantDownload) {
-    let link: string;
-    try { ({ link } = await uploadDocx(folderId, filename, buffer)); }
+    let link: string, shared: boolean;
+    try { ({ link, shared } = await uploadDocx(folderId, filename, buffer)); }
     catch (e) { return NextResponse.json({ ok: false, error: `Document gemaakt, maar upload naar Drive mislukte: ${e instanceof Error ? e.message : "onbekende fout"}` }, { status: 502 }); }
-    const taskId = await logTask(link);
-    return NextResponse.json({ ok: true, delivered: "drive", link, filename, taskId, title });
+    const taskId = await logTask(link, shared);
+    return NextResponse.json({ ok: true, delivered: "drive", link, filename, taskId, title, shared });
   }
 
-  const taskId = await logTask("");
+  const taskId = await logTask("", false);
   // Schone kopie (zie page-doc): voorkomt een kapot Word-bestand bij download.
   return new NextResponse(new Uint8Array(buffer), {
     status: 200,
