@@ -108,29 +108,41 @@ export async function appendTasks(slug: string, tasks: Partial<TaskRow>[]): Prom
   return ids;
 }
 
-// Eén werkzaamheid per pijplijn-stap per pagina (analyse/blauwdruk/copy). Bestaat
-// hij al, dan werken we alleen het gekoppelde document + de toelichting bij en
-// laten we jouw planning (uren, status, maand, wie) met rust. Geeft het id terug.
+function escHtml(s: string): string {
+  return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+// Eén werkzaamheid per pijplijn-stap per pagina (analyse/blauwdruk/copy). De TITEL
+// linkt naar het Drive-document; het "Opm. developer"-veld (toelichting) laat het
+// dashboard LEEG (dat vullen jullie zelf); de klant-toelichting (het ?-veld) krijgt
+// een korte, begrijpelijke uitleg. Bestaat de taak al, dan updaten we alleen de
+// titel/link + klant-toelichting; jouw planning (uren, status, maand, wie) en de
+// eigen developer-notitie blijven met rust. Geeft het id terug.
 export async function upsertStepTask(
   slug: string,
-  step: { pageUrl: string; stepKind: string; taak: string; toelichting: string; docLink?: string; fase?: string; wie?: string; klantZichtbaar?: boolean },
+  step: { pageUrl: string; stepKind: string; title: string; link?: string; klantToelichting?: string; fase?: string; wie?: string; klantZichtbaar?: boolean },
 ): Promise<number> {
   await ensureSchema();
+  const taak = step.link
+    ? `<a href="${escHtml(step.link)}" target="_blank" rel="noreferrer">${escHtml(step.title)}</a>`
+    : escHtml(step.title);
   const { rows: found } = await sql`
     SELECT id FROM client_tasks WHERE client_slug = ${slug} AND page_url = ${step.pageUrl} AND step_kind = ${step.stepKind} LIMIT 1`;
   if (found[0]?.id != null) {
     const id = Number(found[0].id);
+    // Toelichting (Opm. developer) NIET aanraken bij update: dat is de eigen notitie.
     await sql`
       UPDATE client_tasks
-      SET taak = ${step.taak}, toelichting = ${step.toelichting || null}, doc_link = ${step.docLink || null}, updated_at = now()
+      SET taak = ${taak}, doc_link = ${step.link || null}, klant_toelichting = ${step.klantToelichting || null}, updated_at = now()
       WHERE id = ${id}`;
     return id;
   }
   const { rows: ord } = await sql`SELECT COALESCE(MAX(sort_order), -1) AS m FROM client_tasks WHERE client_slug = ${slug}`;
   const order = Number(ord[0]?.m ?? -1) + 1;
+  // toelichting bewust NULL: het "Opm. developer"-veld vult het dashboard nooit.
   const res = await sql`
-    INSERT INTO client_tasks (client_slug, sort_order, taak, toelichting, status, wie, klant_zichtbaar, fase, page_url, step_kind, doc_link, updated_at)
-    VALUES (${slug}, ${order}, ${step.taak}, ${step.toelichting || null}, 'Gepland', ${step.wie || "SEO"}, ${step.klantZichtbaar !== false}, ${step.fase || "Bouwen"}, ${step.pageUrl}, ${step.stepKind}, ${step.docLink || null}, now())
+    INSERT INTO client_tasks (client_slug, sort_order, taak, toelichting, klant_toelichting, status, wie, klant_zichtbaar, fase, page_url, step_kind, doc_link, updated_at)
+    VALUES (${slug}, ${order}, ${taak}, ${null}, ${step.klantToelichting || null}, 'Gepland', ${step.wie || "SEO"}, ${step.klantZichtbaar !== false}, ${step.fase || "Bouwen"}, ${step.pageUrl}, ${step.stepKind}, ${step.link || null}, now())
     RETURNING id`;
   return Number(res.rows[0].id);
 }

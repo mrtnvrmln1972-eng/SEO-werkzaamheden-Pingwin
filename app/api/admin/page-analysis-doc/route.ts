@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
-import { anthropicConfigured } from "../../../../lib/anthropic";
+import { anthropicConfigured, callClaude } from "../../../../lib/anthropic";
 import { summariseChatToSpec } from "../../../../lib/page-doc";
 import { buildPingwinDoc } from "../../../../lib/pingwin-docx";
 import { upsertStepTask } from "../../../../lib/tasks";
@@ -43,6 +43,16 @@ export async function POST(req: NextRequest) {
   try { buffer = await buildPingwinDoc(spec); }
   catch (e) { return NextResponse.json({ ok: false, error: `Kon het document niet opmaken: ${e instanceof Error ? e.message : "onbekende fout"}` }, { status: 500 }); }
 
+  // Korte, klantvriendelijke uitleg (het ?-veld): wat we analyseerden en waarom.
+  let klantUitleg = "We hebben in kaart gebracht op welke zoekwoorden deze pagina zich moet richten en wat er nodig is om beter gevonden te worden.";
+  try {
+    const s = await callClaude(
+      "Geef in 1 tot 2 korte zinnen, in gewone taal voor een klant (geen jargon, geen emoji), wat we voor deze pagina hebben geanalyseerd en waarom dat belangrijk is. Geef ALLEEN die zinnen terug.",
+      [{ role: "user", content: analysis.slice(0, 8000) }], 200,
+    );
+    if (s.trim()) klantUitleg = s.trim();
+  } catch { /* val terug op de standaardzin */ }
+
   const filename = `${safeName(spec.klant)}-analyse-${safeName(title)}.docx`;
   const wantDownload = String(body.deliver || "") === "download";
   let folderId = String(body.folderId || "").trim();
@@ -51,13 +61,10 @@ export async function POST(req: NextRequest) {
     if (saved) folderId = saved.folderId;
   }
 
-  async function logTask(link: string, shared: boolean): Promise<number | null> {
-    const toelichting = link
-      ? `Analyse & zoekwoordkeuze samengevat in Google Drive: <a href="${link}">open document</a>.${shared ? " Iedereen met de link kan het bekijken." : " Let op: automatisch delen lukte niet; zet delen in Drive nog even zelf aan."} De conclusie staat in het plan van deze pagina.`
-      : "Analyse & zoekwoordkeuze samengevat (document gedownload; nog niet in Drive geplaatst). De conclusie staat in het plan van deze pagina.";
+  async function logTask(link: string): Promise<number | null> {
     return upsertStepTask(slug, {
-      pageUrl: url, stepKind: "chat_analyse", taak: `Analyse & zoekwoordkeuze: ${pagePath(url)}`,
-      toelichting, docLink: link || undefined, wie: "SEO", fase: "Bouwen", klantZichtbaar: true,
+      pageUrl: url, stepKind: "chat_analyse", title: `Analyse & zoekwoordkeuze: ${pagePath(url)}`,
+      link: link || undefined, klantToelichting: klantUitleg, wie: "SEO", fase: "Bouwen", klantZichtbaar: true,
     }).catch(() => null);
   }
 
@@ -65,11 +72,11 @@ export async function POST(req: NextRequest) {
     let link: string, shared: boolean;
     try { ({ link, shared } = await uploadDocx(folderId, filename, buffer)); }
     catch (e) { return NextResponse.json({ ok: false, error: `Document gemaakt, maar upload naar Drive mislukte: ${e instanceof Error ? e.message : "onbekende fout"}` }, { status: 502 }); }
-    const taskId = await logTask(link, shared);
+    const taskId = await logTask(link);
     return NextResponse.json({ ok: true, delivered: "drive", link, filename, taskId, title, shared });
   }
 
-  const taskId = await logTask("", false);
+  const taskId = await logTask("");
   // Schone kopie (zie page-doc): voorkomt een kapot Word-bestand bij download.
   return new NextResponse(new Uint8Array(buffer), {
     status: 200,

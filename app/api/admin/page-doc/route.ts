@@ -9,6 +9,12 @@ import { uploadDocx } from "../../../../lib/drive";
 
 const STEP_KIND: Record<DocKind, string> = { analyse: "analyse_doc", blauwdruk: "blauwdruk_doc", copy: "copy_doc" };
 const STEP_TITLE: Record<DocKind, string> = { analyse: "SEO-analyse", blauwdruk: "Blauwdruk", copy: "Copywriting" };
+// Korte, begrijpelijke uitleg voor de klant (het ?-veld in het klantdashboard).
+const STEP_KLANT: Record<DocKind, string> = {
+  analyse: "We hebben de huidige pagina beoordeeld op de belangrijkste SEO-punten en vastgelegd wat er beter kan voor de gekozen zoekwoorden.",
+  blauwdruk: "We hebben de ideale opzet voor deze pagina uitgewerkt: welke onderwerpen, structuur en zoekwoorden nodig zijn om goed te scoren.",
+  copy: "We hebben de nieuwe, geoptimaliseerde teksten voor deze pagina geschreven, klaar om te plaatsen.",
+};
 function pagePath(u: string): string { try { return new URL(u).pathname || u; } catch { return u; } }
 
 export const runtime = "nodejs";
@@ -64,13 +70,10 @@ export async function POST(req: NextRequest) {
 
   // Elke stap is een werkzaamheid (SEO), met het document eraan gekoppeld. Één per
   // pagina+stap: opnieuw genereren werkt het document bij, niet een nieuwe taak.
-  async function logStepTask(link: string, shared: boolean) {
-    const toelichting = link
-      ? `${STEP_TITLE[kind]}-document in Google Drive: <a href="${link}">open document</a>.${shared ? " Iedereen met de link kan het bekijken." : " Let op: automatisch delen lukte niet; zet delen in Drive nog even zelf aan."}`
-      : `${STEP_TITLE[kind]}-document gegenereerd (gedownload; nog niet in Drive geplaatst).`;
+  async function logStepTask(link: string) {
     return upsertStepTask(slug, {
-      pageUrl: url, stepKind: STEP_KIND[kind], taak: `${STEP_TITLE[kind]}: ${pagePath(url)}`,
-      toelichting, docLink: link || undefined, wie: "SEO", fase: "Bouwen", klantZichtbaar: true,
+      pageUrl: url, stepKind: STEP_KIND[kind], title: `${STEP_TITLE[kind]}: ${pagePath(url)}`,
+      link: link || undefined, klantToelichting: STEP_KLANT[kind], wie: "SEO", fase: "Bouwen", klantZichtbaar: true,
     }).catch(() => null);
   }
 
@@ -81,12 +84,12 @@ export async function POST(req: NextRequest) {
     } catch (e) {
       return NextResponse.json({ ok: false, error: `Document gemaakt, maar upload naar Drive mislukte: ${e instanceof Error ? e.message : "onbekende fout"}` }, { status: 502 });
     }
-    const taskId = await logStepTask(link, shared);
+    const taskId = await logStepTask(link);
     return NextResponse.json({ ok: true, delivered: "drive", link, filename, kind, taskId, shared });
   }
 
   // Geen bestemmingsmap: download; de stap wordt wel als werkzaamheid vastgelegd.
-  await logStepTask("", false);
+  await logStepTask("");
   // Schone kopie: een Node-Buffer kan een venster in een gedeeld geheugenblok zijn;
   // direct als HTTP-body meegeven levert soms een kapot bestand. Uint8Array-kopie fixt dat.
   return new NextResponse(new Uint8Array(buffer), {

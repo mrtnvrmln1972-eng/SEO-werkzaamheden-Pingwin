@@ -8,6 +8,10 @@ function admin(req: NextRequest): boolean {
   return verifyAdminSession(req.cookies.get(ADMIN_COOKIE)?.value);
 }
 const norm = (u?: string) => (u || "").trim().replace(/\/+$/, "");
+// Toont de taaktitel als platte tekst (de titel kan HTML met een link bevatten).
+function plainTitle(html: string): string {
+  return (html || "").replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').trim();
+}
 
 // De taken die bij één pagina horen (page_url), voor de "Taken voor deze pagina"
 // -lijst in de pagina-detail. Zo hoef je de chat niet te openen om ze te zien.
@@ -19,7 +23,7 @@ export async function GET(req: NextRequest) {
   const all = await getTasks(slug);
   const tasks = all
     .filter((t) => norm(t.pageUrl) === norm(url))
-    .map((t) => ({ id: t.id ?? null, taak: t.taak, fase: t.fase || "", wie: t.wie || "", status: t.status || "", docLink: t.docLink || "", stepKind: t.stepKind || "" }));
+    .map((t) => ({ id: t.id ?? null, taak: plainTitle(t.taak), fase: t.fase || "", wie: t.wie || "", status: t.status || "", docLink: t.docLink || "", stepKind: t.stepKind || "" }));
   return NextResponse.json({ ok: true, tasks });
 }
 
