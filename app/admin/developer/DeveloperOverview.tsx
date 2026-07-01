@@ -129,9 +129,18 @@ export default function DeveloperOverview({ initialTasks, embedded }: { initialT
 
   const taskCard = (r: Row, idx: number) => (
     <div key={r.clientSlug + "|" + r.taskKey} className="dev-task-card" draggable
-      onDragStart={() => setDragTaskIdx(idx)} onDragEnd={() => setDragTaskIdx(null)} title={stripText(r.taak)}>
-      <div className="dev-task-client">{r.clientName}</div>
-      <div className="dev-task-desc">{stripText(r.taak)}</div>
+      onDragStart={() => setDragTaskIdx(idx)} onDragEnd={() => setDragTaskIdx(null)}>
+      <div className="dev-task-top">
+        <span className="dev-task-client">{r.clientName}</span>
+        {r.fase && <span className="dev-task-fase">{r.fase}</span>}
+      </div>
+      <div className="dev-task-desc" dangerouslySetInnerHTML={{ __html: safeHtml(r.taak) }} />
+      {stripText(r.toelichting) && <div className="dev-task-note" dangerouslySetInnerHTML={{ __html: safeHtml(r.toelichting) }} />}
+      <div className="dev-task-meta">
+        {statusBadge(r.status)}
+        {r.uren ? <span className="dev-task-uren">{r.uren} min</span> : null}
+        {r.link && /^https?:/i.test(r.link) ? <a href={r.link} target="_blank" rel="noreferrer" className="dev-task-doc" onClick={(e) => e.stopPropagation()}>doc ↗</a> : null}
+      </div>
     </div>
   );
 

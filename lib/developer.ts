@@ -19,11 +19,12 @@ export type DevTask = {
   clientName: string;
   taskKey: string;
   taak: string;        // rauwe HTML (kan inline links bevatten)
-  toelichting: string;
+  toelichting: string; // Opm. developer (rauwe HTML, kan inline links bevatten)
   uren: number | null;
   status: string;
   maand: string;
   link: string;
+  fase: string;
   execDate: string;    // "" of "YYYY-MM-DD"
   position: number | null;
 };
@@ -55,7 +56,7 @@ export async function getDeveloperTasks(): Promise<DevTask[]> {
   await ensureDevTable();
 
   const { rows } = await sql`
-    SELECT t.client_slug, t.taak, t.toelichting, t.uren, t.status, t.maand, t.link,
+    SELECT t.client_slug, t.taak, t.toelichting, t.uren, t.status, t.maand, t.link, t.fase,
            c.name AS client_name
     FROM client_tasks t
     LEFT JOIN clients c ON c.slug = t.client_slug
@@ -86,6 +87,7 @@ export async function getDeveloperTasks(): Promise<DevTask[]> {
       status: (r.status as string) ?? "",
       maand: (r.maand as string) ?? "",
       link: (r.link as string) ?? "",
+      fase: (r.fase as string) ?? "",
       execDate: mm?.execDate ?? "",
       position: mm?.position ?? null,
     };
