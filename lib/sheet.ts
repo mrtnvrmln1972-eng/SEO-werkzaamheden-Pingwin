@@ -20,6 +20,7 @@ export type Task = {
   row: number; // regelnummer in de Google Sheet (1-gebaseerd)
   wie: string;            // SEO / Dev (kolom H) — leeg bij bestaande sheets
   klantZichtbaar: boolean; // kolom I (ja/nee) — false bij bestaande sheets
+  clientDocLink?: string; // klantversie-document (opent in het klantdashboard)
 };
 
 export type DashboardData = {
@@ -60,6 +61,7 @@ export function tasksToDashboardData(tasks: TaskRow[], budget: ClientBudget): Da
       taak: t.taak,
       toelichting: t.toelichting || "",
       klantToelichting: t.klantToelichting || "",
+      clientDocLink: t.clientDocLink || "",
       standaardTijd: Number(t.uren) || 0,
       status: t.status || "",
       maand: (t.maand || "").toLowerCase(),

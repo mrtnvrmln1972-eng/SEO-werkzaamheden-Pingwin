@@ -4,7 +4,10 @@ import { anthropicConfigured } from "../../../../lib/anthropic";
 import { clientVersionSpec, type DocKind } from "../../../../lib/page-doc";
 import { buildPingwinDoc } from "../../../../lib/pingwin-docx";
 import { getPageDriveFolder, getPageDocOutputs } from "../../../../lib/site-urls";
+import { setClientDocLink } from "../../../../lib/tasks";
 import { uploadDocx } from "../../../../lib/drive";
+
+const STEP_KIND: Record<string, string> = { analyse: "analyse_doc", blauwdruk: "blauwdruk_doc", copy: "copy_doc" };
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -59,6 +62,8 @@ export async function POST(req: NextRequest) {
     let link: string, shared: boolean, owner: string, folder: string, isDoc: boolean, note: string;
     try { ({ link, shared, owner, folder, isDoc, note } = await uploadDocx(folderId, filename, buffer)); }
     catch (e) { return NextResponse.json({ ok: false, error: `Document gemaakt, maar upload naar Drive mislukte: ${e instanceof Error ? e.message : "onbekende fout"}` }, { status: 502 }); }
+    // Koppel de klantversie aan de stap-werkzaamheid zodat hij in het klantdashboard verschijnt.
+    await setClientDocLink(slug, url, STEP_KIND[kind], link).catch(() => null);
     return NextResponse.json({ ok: true, delivered: "drive", link, filename, title, shared, owner, folder, isDoc, note });
   }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
@@ -9,6 +9,14 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+
+  // Kom je hier via een mail-link (?fresh=1), wis dan een eventuele oude
+  // klant-sessie, zodat je een schone login krijgt en niet die van een andere klant.
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.search.includes("fresh")) {
+      fetch("/api/logout", { method: "POST" }).catch(() => {});
+    }
+  }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();

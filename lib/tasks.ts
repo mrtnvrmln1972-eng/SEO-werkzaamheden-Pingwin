@@ -26,7 +26,8 @@ export type TaskRow = {
   blokkadeReden?: string; // waarop wordt gewacht
   pageUrl?: string;       // pagina waar de taak bij hoort
   stepKind?: string;      // pijplijn-stap: "analyse_doc" | "blauwdruk_doc" | "copy_doc"
-  docLink?: string;       // gekoppeld document (Drive-link) bij deze stap
+  docLink?: string;       // technisch document (Drive-link) bij deze stap (intern/dev)
+  clientDocLink?: string; // klantversie-document (Drive-link) voor het klantdashboard
 };
 
 // Inhoudssleutel van een taak: twee rijen met exact dezelfde inhoud (taak,
@@ -61,7 +62,7 @@ export async function getTasks(slug: string): Promise<TaskRow[]> {
   await ensureSchema();
   const { rows } = await sql`
     SELECT id, categorie, taak, toelichting, klant_toelichting, uren, status, maand, link, wie, klant_zichtbaar, gemaild,
-           fase, cluster, geblokkeerd, blokkade_reden, page_url, step_kind, doc_link
+           fase, cluster, geblokkeerd, blokkade_reden, page_url, step_kind, doc_link, client_doc_link
     FROM client_tasks WHERE client_slug = ${slug} ORDER BY sort_order ASC, id ASC`;
   const mapped = rows.map((r) => ({
     id: r.id as number,
@@ -83,6 +84,7 @@ export async function getTasks(slug: string): Promise<TaskRow[]> {
     pageUrl: r.page_url ?? "",
     stepKind: r.step_kind ?? "",
     docLink: r.doc_link ?? "",
+    clientDocLink: r.client_doc_link ?? "",
   }));
   return dedupeTasks(mapped);
 }
@@ -158,6 +160,16 @@ export async function deleteTasksByIds(slug: string, ids: number[]): Promise<num
     removed += res.rowCount ?? 0;
   }
   return removed;
+}
+
+// Koppelt de klantversie-link aan de stap-werkzaamheid (per pagina + stap), zodat
+// die in het klantdashboard verschijnt. Geeft terug of er een rij is bijgewerkt.
+export async function setClientDocLink(slug: string, pageUrl: string, stepKind: string, link: string): Promise<boolean> {
+  await ensureSchema();
+  const res = await sql`
+    UPDATE client_tasks SET client_doc_link = ${link || null}, updated_at = now()
+    WHERE client_slug = ${slug} AND page_url = ${pageUrl} AND step_kind = ${stepKind}`;
+  return (res.rowCount ?? 0) > 0;
 }
 
 export async function hasTasks(slug: string): Promise<boolean> {

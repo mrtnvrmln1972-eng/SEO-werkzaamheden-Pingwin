@@ -32,6 +32,15 @@ function safeHtml(html: string): string {
     .replace(/\s*style=""\s*/gi, " ");
 }
 
+// Titel voor het klantdashboard: link naar de KLANTVERSIE (begrijpelijk document),
+// niet naar de technische versie. De technische doc-link uit de taaktitel wordt
+// eruit gehaald; is er een klantversie, dan wordt de titel daarnaar gelinkt.
+function clientTaskTitle(task: { taak: string; clientDocLink?: string }): string {
+  const plain = safeHtml(task.taak).replace(/<a\b[^>]*>|<\/a>/gi, "").trim();
+  if (task.clientDocLink) return `<a href="${task.clientDocLink}" target="_blank" rel="noreferrer">${plain}</a>`;
+  return plain;
+}
+
 function formatTime(minutes: number): string {
   if (minutes >= 60) {
     const h = Math.floor(minutes / 60);
@@ -346,7 +355,7 @@ function renderRows(monthTasks: DashboardData["tasks"]) {
       <tr key={`task-${i}`} className={done ? "row-done" : "row-open"}>
         <td>
           <span className="task-name">
-            <span className="task-name-text" dangerouslySetInnerHTML={{ __html: safeHtml(task.taak) }} />
+            <span className="task-name-text" dangerouslySetInnerHTML={{ __html: clientTaskTitle(task) }} />
             {done && <span className="task-check-dash" title="Klaar">✓</span>}
             {hasUitleg && (
               <span className="task-help-wrap">

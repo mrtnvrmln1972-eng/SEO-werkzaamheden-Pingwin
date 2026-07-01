@@ -352,7 +352,7 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
         const hasUitleg = stripHtml(t.klantToelichting || "").trim().length > 0;
         return `<li><strong>${sanitizeRichHtml(t.taak)}</strong>${hasUitleg ? `<br><span style="color:#555">${uitleg}</span>` : ""}</li>`;
       }).join("");
-      const dashUrl = typeof window !== "undefined" ? `${window.location.origin}/login` : "";
+      const dashUrl = typeof window !== "undefined" ? `${window.location.origin}/login?fresh=1` : "";
       const dashLink = dashUrl ? `<p style="margin-top:14px"><a href="${esc(dashUrl)}">Bekijk dit zelf in je dashboard</a></p>` : "";
       html = `${note}<p><strong>Werkzaamheden:</strong></p><ul>${list}</ul>${dashLink}`;
     } else {

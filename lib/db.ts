@@ -121,6 +121,9 @@ async function init(): Promise<void> {
   // elke stap één werkzaamheid is met het document eraan gelinkt (en ontdubbeld).
   await sql`ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS step_kind TEXT`;
   await sql`ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS doc_link TEXT`;
+  // Klantversie-link: het begrijpelijke document voor de klant (verschijnt in het
+  // klantdashboard), naast de technische doc_link (intern/developer).
+  await sql`ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS client_doc_link TEXT`;
 
   // Focus-blok per klant: afgesproken zoekwoorden + pagina's en snelle links
   // (linkbuilding-sheets, Search Console, Analytics). Eén JSON-rij per klant.
