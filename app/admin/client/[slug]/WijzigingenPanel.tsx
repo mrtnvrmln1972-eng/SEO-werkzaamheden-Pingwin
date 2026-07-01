@@ -44,6 +44,40 @@ function Arr({ label, diff }: { label: string; diff: ArrayDiff }) {
   );
 }
 
+type Day = { date: string; clicks: number; impressions: number; ctr: number; position: number };
+type KwBA = { keyword: string; positionBefore: number | null; positionAfter: number | null; clicksBefore: number; clicksAfter: number };
+type Kpi = { changeDate: string; daily: Day[]; keywords: KwBA[] };
+
+// Mini-lijngrafiek met een stippellijn op het wijzigingsmoment. Bij positie is
+// lager beter, dus die keren we om (verbetering = omhoog).
+function Spark({ data, changeDate, metric, invert }: { data: Day[]; changeDate: string; metric: keyof Day; invert?: boolean }) {
+  const w = 360, h = 84, pad = 8;
+  const pts = data.filter((d) => d.date);
+  if (pts.length < 2) return <div className="muted" style={{ fontSize: 12, padding: "18px 0" }}>Nog te weinig GSC-data voor deze periode.</div>;
+  const vals = pts.map((d) => Number(d[metric]) || 0);
+  const min = Math.min(...vals), max = Math.max(...vals), range = max - min || 1;
+  const x = (i: number) => pad + (i / (pts.length - 1)) * (w - 2 * pad);
+  const y = (v: number) => { const t = (v - min) / range; return invert ? pad + t * (h - 2 * pad) : (h - pad) - t * (h - 2 * pad); };
+  const line = pts.map((d, i) => `${x(i).toFixed(1)},${y(Number(d[metric]) || 0).toFixed(1)}`).join(" ");
+  const ci = pts.findIndex((d) => d.date >= changeDate);
+  const cx = ci > 0 ? x(ci) : null;
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="wz-spark" preserveAspectRatio="none">
+      {cx !== null && <line x1={cx} y1={0} x2={cx} y2={h} className="wz-marker" />}
+      <polyline points={line} className={"wz-poly " + (metric === "position" ? "pos" : "")} />
+    </svg>
+  );
+}
+
+function KpiBlock({ label, sub, children }: { label: string; sub?: string; children: React.ReactNode }) {
+  return (
+    <div className="wz-kpi-block">
+      <div className="wz-kpi-label">{label}{sub && <span className="wz-kpi-sub"> {sub}</span>}</div>
+      {children}
+    </div>
+  );
+}
+
 function DiffView({ diff }: { diff: ContentDiff }) {
   return (
     <div className="wz-diff">
@@ -84,6 +118,18 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
   const [scanning, setScanning] = useState(false);
   const [msg, setMsg] = useState("");
   const [open, setOpen] = useState<ChangeEvent | null>(null);
+  const [kpi, setKpi] = useState<Kpi | null>(null);
+  const [kpiLoading, setKpiLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open) { setKpi(null); return; }
+    let alive = true;
+    setKpiLoading(true); setKpi(null);
+    fetch(`/api/admin/changes/kpi?slug=${encodeURIComponent(slug)}&id=${open.id}`)
+      .then((r) => r.json()).then((d) => { if (alive && d.ok) setKpi({ changeDate: d.changeDate, daily: d.daily || [], keywords: d.keywords || [] }); })
+      .catch(() => { /* stil */ }).finally(() => { if (alive) setKpiLoading(false); });
+    return () => { alive = false; };
+  }, [open, slug]);
 
   async function load() {
     setLoading(true);
@@ -111,9 +157,50 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
         <button type="button" className="ghost-btn small" onClick={() => setOpen(null)}>← Alle wijzigingen</button>
         <h2 className="wz-title">{open.diff.meta_title?.after || open.diff.h1?.after || shortUrl(open.url)}</h2>
         <div className="muted" style={{ marginBottom: 14 }}>{shortUrl(open.url)} · Gedetecteerd: {dt(open.detectedAt)}</div>
-        <div className="wz-block-head" style={{ fontSize: 13 }}>Wat veranderde</div>
-        <DiffView diff={open.diff} />
-        <div className="muted" style={{ fontSize: 12, marginTop: 14 }}>KPI-impact (kliks, positie, vertoningen, CTR en keyword-rankings 60 dagen voor/na) volgt in de volgende stap.</div>
+        <div className="wz-detail-grid">
+          <div>
+            <div className="wz-block-head" style={{ fontSize: 13 }}>Wat veranderde</div>
+            <DiffView diff={open.diff} />
+          </div>
+          <div>
+            <div className="wz-block-head" style={{ fontSize: 13 }}>KPI-impact</div>
+            <p className="muted" style={{ fontSize: 12, margin: "2px 0 10px" }}>60 dagen voor en na de wijziging (uit Search Console). De stippellijn markeert het wijzigingsmoment.</p>
+            {kpiLoading && <div className="muted" style={{ padding: 12 }}>KPI's laden…</div>}
+            {!kpiLoading && kpi && (
+              <div className="wz-kpi">
+                <KpiBlock label="Kliks per dag"><Spark data={kpi.daily} changeDate={kpi.changeDate} metric="clicks" /></KpiBlock>
+                <KpiBlock label="Vertoningen per dag"><Spark data={kpi.daily} changeDate={kpi.changeDate} metric="impressions" /></KpiBlock>
+                <KpiBlock label="Gem. positie" sub="(lager = beter)"><Spark data={kpi.daily} changeDate={kpi.changeDate} metric="position" invert /></KpiBlock>
+                <KpiBlock label="CTR"><Spark data={kpi.daily} changeDate={kpi.changeDate} metric="ctr" /></KpiBlock>
+                {kpi.keywords.length > 0 && (
+                  <div className="wz-kw">
+                    <div className="wz-kpi-label">Keyword-rankings (voor → na)</div>
+                    <table className="wz-kw-table">
+                      <thead><tr><th>Zoekwoord</th><th>Positie voor</th><th>Positie na</th><th>Kliks</th></tr></thead>
+                      <tbody>
+                        {kpi.keywords.map((k) => {
+                          const improved = k.positionBefore != null && k.positionAfter != null && k.positionAfter < k.positionBefore;
+                          const worse = k.positionBefore != null && k.positionAfter != null && k.positionAfter > k.positionBefore;
+                          return (
+                            <tr key={k.keyword}>
+                              <td>{k.keyword}</td>
+                              <td>{k.positionBefore ?? "—"}</td>
+                              <td className={improved ? "wz-pos" : worse ? "wz-neg" : ""}>{k.positionAfter ?? "—"}</td>
+                              <td>{k.clicksBefore} → {k.clicksAfter}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                {kpi.daily.length < 2 && kpi.keywords.length === 0 && (
+                  <div className="muted" style={{ fontSize: 12 }}>Nog geen GSC-data voor deze periode (Search Console loopt 1-3 dagen achter, en na een verse wijziging is er nog weinig data ná het moment).</div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     );
   }

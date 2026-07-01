@@ -239,6 +239,58 @@ export async function getGscForPage(domain: string, pageUrl: string, days = 90):
   }));
 }
 
+// Daglijnen (clicks/impressies/CTR/positie) voor één pagina over een datumbereik.
+// Voor de KPI-impact-grafiek rond een wijziging (60 dagen voor/na).
+export type GscDay = { date: string; clicks: number; impressions: number; ctr: number; position: number };
+export async function getGscDailyForPage(domain: string, pageUrl: string, startDate: string, endDate: string): Promise<GscDay[]> {
+  const token = await googleAccessToken();
+  if (!token || !domain || !pageUrl) return [];
+  const site = await gscPickSite(token, domain);
+  if (!site) return [];
+  const rows = await gscQuery(token, site, {
+    startDate, endDate, dimensions: ["date"], rowLimit: 500,
+    dimensionFilterGroups: [{ filters: [{ dimension: "page", operator: "equals", expression: pageUrl }] }],
+  });
+  return rows
+    .map((x) => ({ date: x.keys?.[0] || "", clicks: Math.round(x.clicks), impressions: Math.round(x.impressions), ctr: x.ctr, position: Math.round(x.position * 10) / 10 }))
+    .sort((a, b) => (a.date < b.date ? -1 : 1));
+}
+
+// Keyword-rankings voor en na een wijzigingsmoment (positie + kliks per zoekwoord).
+export type GscKeywordBA = { keyword: string; positionBefore: number | null; positionAfter: number | null; clicksBefore: number; clicksAfter: number };
+export async function getGscKeywordsBeforeAfter(domain: string, pageUrl: string, changeDate: string, days = 60): Promise<GscKeywordBA[]> {
+  const token = await googleAccessToken();
+  if (!token || !domain || !pageUrl) return [];
+  const site = await gscPickSite(token, domain);
+  if (!site) return [];
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const c = new Date(changeDate + "T00:00:00Z").getTime();
+  const day = 86400000;
+  const beforeStart = iso(new Date(c - days * day)), beforeEnd = iso(new Date(c - day));
+  const afterStart = iso(new Date(c)), afterEnd = iso(new Date(Math.min(c + days * day, Date.now() - 3 * day)));
+  const q = (s: string, e: string) => gscQuery(token, site, {
+    startDate: s, endDate: e, dimensions: ["query"], rowLimit: 50,
+    dimensionFilterGroups: [{ filters: [{ dimension: "page", operator: "equals", expression: pageUrl }] }],
+  });
+  const [before, after] = await Promise.all([q(beforeStart, beforeEnd), q(afterStart, afterEnd)]);
+  const bm = new Map(before.map((r) => [r.keys?.[0] || "", r]));
+  const am = new Map(after.map((r) => [r.keys?.[0] || "", r]));
+  const keys = new Set([...bm.keys(), ...am.keys()].filter(Boolean));
+  return [...keys]
+    .map((k) => {
+      const b = bm.get(k), a = am.get(k);
+      return {
+        keyword: k,
+        positionBefore: b ? Math.round(b.position * 10) / 10 : null,
+        positionAfter: a ? Math.round(a.position * 10) / 10 : null,
+        clicksBefore: b ? Math.round(b.clicks) : 0,
+        clicksAfter: a ? Math.round(a.clicks) : 0,
+      };
+    })
+    .sort((x, y) => (y.clicksAfter + y.clicksBefore) - (x.clicksAfter + x.clicksBefore))
+    .slice(0, 20);
+}
+
 export type GscComparison = {
   connected: boolean;
   site: string | null;
