@@ -378,6 +378,26 @@ tbody td:last-child { text-align: center; }
 .import-taak { color: var(--gray); }
 .import-fase { font-size: 10px; font-weight: 700; text-transform: uppercase; background: var(--gray-light); color: var(--dark); padding: 1px 7px; border-radius: 9px; }
 .import-lock { cursor: help; }
+
+/* Pagina-chat (gegrond) */
+.page-chat { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 12px; }
+.page-chat-head { font-size: 12px; font-weight: 700; color: var(--dark); margin-bottom: 8px; }
+.page-chat-quick { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.page-chat-quick button { text-align: left; font-size: 12px; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: #fff; color: var(--orange-dark); cursor: pointer; }
+.page-chat-quick button:hover { border-color: var(--orange); }
+.page-chat-log { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; max-height: 320px; overflow-y: auto; }
+.page-chat-msg { font-size: 13px; line-height: 1.5; padding: 8px 11px; border-radius: 10px; white-space: pre-wrap; max-width: 92%; }
+.page-chat-msg.user { align-self: flex-end; background: var(--orange); color: #fff; }
+.page-chat-msg.assistant { align-self: flex-start; background: var(--gray-light); color: var(--dark); }
+.page-chat-proposal { border: 1px solid var(--orange); border-radius: 10px; padding: 10px 12px; background: #FFF8F2; margin-bottom: 8px; }
+.page-chat-proposal-head { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--orange-dark); margin-bottom: 6px; }
+.page-chat-plan { font-size: 13px; color: var(--dark); margin-bottom: 6px; }
+.page-chat-tasks { margin: 0 0 8px; padding-left: 18px; font-size: 13px; color: var(--dark); }
+.page-chat-tasks li { margin-bottom: 3px; }
+.page-chat-proposal-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.page-chat-input { display: flex; gap: 8px; }
+.page-chat-input input { flex: 1 1 auto; font-size: 13px; padding: 8px 11px; border: 1px solid var(--border); border-radius: 8px; outline: none; }
+.page-chat-input input:focus { border-color: var(--orange); }
 .dev-table td { vertical-align: middle; }
 .dev-client { font-weight: 700; color: var(--dark); font-size: 13px; }
 .dev-cell { font-size: 13px; color: var(--dark); line-height: 1.4; word-break: break-word; }

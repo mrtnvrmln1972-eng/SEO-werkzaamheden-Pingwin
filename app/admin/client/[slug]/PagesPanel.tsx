@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ClientUrl } from "../../../../lib/site-urls";
 import ImportAnalysis from "./ImportAnalysis";
+import PageChat from "./PageChat";
 
 function shortUrl(url: string): string {
   try { const u = new URL(url); return (u.pathname + u.search) || "/"; } catch { return url; }
@@ -75,7 +76,7 @@ export default function PagesPanel({ slug }: { slug: string }) {
               <thead><tr><th>Status</th><th>Pagina</th><th>Titel</th><th>Klikken</th><th>Plan</th></tr></thead>
               <tbody>
                 {filtered.map((u) => (
-                  <PageRow key={u.url} slug={slug} u={u} open={open === u.url} onToggle={() => setOpen(open === u.url ? null : u.url)} />
+                  <PageRow key={u.url} slug={slug} u={u} open={open === u.url} onToggle={() => setOpen(open === u.url ? null : u.url)} onReload={load} />
                 ))}
               </tbody>
             </table>
@@ -94,7 +95,7 @@ export default function PagesPanel({ slug }: { slug: string }) {
   );
 }
 
-function PageRow({ slug, u, open, onToggle }: { slug: string; u: ClientUrl; open: boolean; onToggle: () => void }) {
+function PageRow({ slug, u, open, onToggle, onReload }: { slug: string; u: ClientUrl; open: boolean; onToggle: () => void; onReload: () => void }) {
   const [plan, setPlan] = useState(u.plan);
   const [saved, setSaved] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -129,6 +130,7 @@ function PageRow({ slug, u, open, onToggle }: { slug: string; u: ClientUrl; open
                 placeholder="Bijv. Rol: hub. Primair: soa test amsterdam. Actie: behouden + optimaliseren. Doel-URL: /soa-test-amsterdam/."
               />
               {u.redirectTarget && <div className="muted" style={{ marginTop: 6 }}>Live redirect: → {u.redirectTarget}</div>}
+              <PageChat slug={slug} url={u.url} onApplied={(newPlan) => { if (newPlan) setPlan(newPlan); onReload(); }} />
             </div>
           </td>
         </tr>

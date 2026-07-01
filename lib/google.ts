@@ -191,6 +191,24 @@ function periodRanges(days: number) {
 
 export type MetricPair = { cur: number; prev: number };
 export type GscSeries = { clicks: number[]; impressions: number[]; ctr: number[]; position: number[] };
+// Zoekwoorden waarop één specifieke pagina rankt (voor grounding in de chat).
+export async function getGscForPage(domain: string, pageUrl: string, days = 90): Promise<{ keyword: string; clicks: number; impressions: number; position: number }[]> {
+  const token = await googleAccessToken();
+  if (!token || !domain || !pageUrl) return [];
+  const site = await gscPickSite(token, domain);
+  if (!site) return [];
+  const r = periodRanges(days);
+  const rows = await gscQuery(token, site, {
+    startDate: r.curStart, endDate: r.curEnd,
+    dimensions: ["query"], rowLimit: 25,
+    dimensionFilterGroups: [{ filters: [{ dimension: "page", operator: "equals", expression: pageUrl }] }],
+  });
+  return rows.map((x) => ({
+    keyword: x.keys?.[0] || "",
+    clicks: Math.round(x.clicks), impressions: Math.round(x.impressions), position: Math.round(x.position * 10) / 10,
+  }));
+}
+
 export type GscComparison = {
   connected: boolean;
   site: string | null;
