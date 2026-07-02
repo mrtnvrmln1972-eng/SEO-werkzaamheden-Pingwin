@@ -1071,7 +1071,7 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .wz-neg { color: #c0392b; font-weight: 700; }
 
 /* Wijzigingen: detail-grid + KPI-grafieken */
-.wz-detail-grid { display: grid; grid-template-columns: 1fr 420px; gap: 24px; align-items: start; margin-top: 8px; }
+.wz-detail-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; align-items: start; margin-top: 8px; }
 @media (max-width: 1100px) { .wz-detail-grid { grid-template-columns: 1fr; } }
 .wz-kpi { display: flex; flex-direction: column; gap: 14px; }
 .wz-kpi-block { }
@@ -1082,7 +1082,12 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .wz-poly.pos { stroke: #1e824c; }
 .wz-marker { stroke: var(--orange); stroke-width: 1.5; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
 .wz-kw-table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 4px; }
-.wz-kw-table th { text-align: left; color: var(--gray); font-weight: 600; padding: 4px 8px; border-bottom: 1px solid var(--border); }
+.wz-kw-table th { text-align: left; background: var(--dark); color: #fff; font-weight: 700; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+.wz-kw-table th:first-child { border-top-left-radius: 7px; }
+.wz-kw-table th:last-child { border-top-right-radius: 7px; }
+.wz-dot { cursor: help; }
+.wz-verschil.up { color: #1e824c; font-weight: 700; }
+.wz-verschil.down { color: var(--red); font-weight: 700; }
 .wz-kw-table td { padding: 4px 8px; border-bottom: 1px solid var(--border); color: var(--dark); }
 
 /* Wijzigingen: handmatig toevoegen */

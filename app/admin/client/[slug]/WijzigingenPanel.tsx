@@ -78,10 +78,24 @@ function Spark({ data, changeDate, metric, invert }: { data: Day[]; changeDate: 
   const line = pts.map((d, i) => `${x(i).toFixed(1)},${y(Number(d[metric]) || 0).toFixed(1)}`).join(" ");
   const ci = pts.findIndex((d) => d.date >= changeDate);
   const cx = ci > 0 ? x(ci) : null;
+  const dotColor = metric === "position" ? "#1e824c" : "#1a6dd6";
+  const fmtV = (v: number) => metric === "position" ? v.toFixed(1) : metric === "ctr" ? v.toFixed(1) + "%" : String(Math.round(v));
+  const dShort = (d: string) => { try { return new Date(d).toLocaleDateString("nl-NL", { day: "numeric", month: "short" }); } catch { return d; } };
   return (
     <svg viewBox={`0 0 ${w} ${h}`} className="wz-spark" preserveAspectRatio="none">
       {cx !== null && <line x1={cx} y1={0} x2={cx} y2={h} className="wz-marker" />}
       <polyline points={line} className={"wz-poly " + (metric === "position" ? "pos" : "")} />
+      {pts.map((d, i) => (
+        <g key={i}>
+          {/* onzichtbare kolom als hover-doel + zichtbaar puntje; tooltip toont de waarde */}
+          <rect x={x(i) - (w / pts.length) / 2} y={0} width={w / pts.length} height={h} fill="transparent" className="wz-dot">
+            <title>{dShort(d.date)}: {fmtV(Number(d[metric]) || 0)}</title>
+          </rect>
+          <circle cx={x(i)} cy={y(Number(d[metric]) || 0)} r={2.2} fill={dotColor} className="wz-dot">
+            <title>{dShort(d.date)}: {fmtV(Number(d[metric]) || 0)}</title>
+          </circle>
+        </g>
+      ))}
     </svg>
   );
 }
@@ -260,16 +274,21 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
                   <div className="wz-kw">
                     <div className="wz-kpi-label">Keyword-rankings (voor → na)</div>
                     <table className="wz-kw-table">
-                      <thead><tr><th>Zoekwoord</th><th>Positie voor</th><th>Positie na</th><th>Kliks</th></tr></thead>
+                      <thead><tr><th>Zoekwoord</th><th>Positie voor</th><th>Positie na</th><th>Stijging/daling</th><th>Kliks</th></tr></thead>
                       <tbody>
                         {kpi.keywords.map((k) => {
                           const improved = k.positionBefore != null && k.positionAfter != null && k.positionAfter < k.positionBefore;
                           const worse = k.positionBefore != null && k.positionAfter != null && k.positionAfter > k.positionBefore;
+                          // Positie: lager = beter. Delta = voor - na (positief = gestegen).
+                          const delta = k.positionBefore != null && k.positionAfter != null ? k.positionBefore - k.positionAfter : null;
                           return (
                             <tr key={k.keyword}>
                               <td>{k.keyword}</td>
                               <td>{k.positionBefore ?? "—"}</td>
                               <td className={improved ? "wz-pos" : worse ? "wz-neg" : ""}>{k.positionAfter ?? "—"}</td>
+                              <td className={"wz-verschil " + (delta != null && delta > 0 ? "up" : delta != null && delta < 0 ? "down" : "")}>
+                                {delta == null || delta === 0 ? "—" : `${delta > 0 ? "▲ +" : "▼ "}${Math.abs(Math.round(delta * 10) / 10)}`}
+                              </td>
                               <td>{k.clicksBefore} → {k.clicksAfter}</td>
                             </tr>
                           );
