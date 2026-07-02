@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { GscComparison, Ga4Comparison } from "../../../../lib/google";
+import type { AhrefsKeyword } from "../../../../lib/ahrefs-keywords";
+import HelpHint from "./HelpHint";
 
 type GscPage = GscComparison["pages"][number];
 
@@ -149,6 +151,37 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
     fetch("/api/admin/kpi/keyword-focus", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, keyword, tier }) }).catch(() => {});
   }
 
+  // Ahrefs-zoekwoorden (domein-brede pool + laaghangend fruit).
+  const [ahrefsKw, setAhrefsKw] = useState<AhrefsKeyword[]>([]);
+  const [ahrefsBusy, setAhrefsBusy] = useState(false);
+  const [ahrefsMsg, setAhrefsMsg] = useState("");
+  const [onlyFruit, setOnlyFruit] = useState(false);
+  const [ahSort, setAhSort] = useState<Sort<"keyword" | "volume" | "position" | "intent">>(null);
+
+  useEffect(() => {
+    fetch(`/api/admin/ahrefs-keywords?slug=${encodeURIComponent(slug)}`)
+      .then((r) => r.json()).then((d) => { if (d.ok) setAhrefsKw(d.keywords || []); }).catch(() => {});
+  }, [slug]);
+
+  async function syncAhrefs() {
+    if (ahrefsBusy) return;
+    setAhrefsBusy(true); setAhrefsMsg("");
+    try {
+      const r = await fetch("/api/admin/ahrefs-keywords", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }) });
+      const d = await r.json();
+      if (d.ok) {
+        setAhrefsMsg(`${d.total} zoekwoorden opgehaald uit Ahrefs.`);
+        const g = await fetch(`/api/admin/ahrefs-keywords?slug=${encodeURIComponent(slug)}`).then((x) => x.json()).catch(() => null);
+        if (g?.ok) setAhrefsKw(g.keywords || []);
+      } else setAhrefsMsg(d.error || "Ophalen mislukt.");
+    } catch { setAhrefsMsg("Ophalen mislukt."); } finally { setAhrefsBusy(false); }
+  }
+
+  // Laaghangend fruit: commerciële/transactionele intent + volume, net buiten de top (positie 4-20).
+  const isFruit = (k: AhrefsKeyword) =>
+    (k.intent === "commercieel" || k.intent === "transactioneel") &&
+    (k.volume || 0) >= 50 && k.position != null && k.position >= 4 && k.position <= 20;
+
   // Sla de gesleepte volgorde op (kort debounce).
   function persistOrder(urls: string[]) {
     if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -184,6 +217,13 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
     url: (p) => shortUrl(p.url), clicks: (p) => p.clicks, impressions: (p) => p.impressions,
   };
   const sortedPages = applySort(pagesView, pageSort, pageGetters);
+
+  const ahGetters: Record<"keyword" | "volume" | "position" | "intent", (k: AhrefsKeyword) => number | string> = {
+    keyword: (k) => k.keyword, volume: (k) => k.volume || 0, position: (k) => k.position ?? 999, intent: (k) => k.intent,
+  };
+  const ahFiltered = ahrefsKw.filter((k) => !k.branded && (onlyFruit ? isFruit(k) : true));
+  const ahSorted = applySort(ahFiltered, ahSort, ahGetters);
+  const fruitCount = ahrefsKw.filter((k) => !k.branded && isFruit(k)).length;
 
   return (
     <div className="kpi-panel">
@@ -307,6 +347,47 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {!loading && (
+        <div className="cockpit-card">
+          <div className="ck-section-head">
+            <span>Ahrefs-zoekwoorden{ahrefsKw.length ? ` (${ahFiltered.length})` : ""} <HelpHint wide text="Alle organische zoekwoorden van het domein uit Ahrefs (volume, positie, intent), in één keer opgehaald. Laaghangend fruit = commerciële of transactionele zoekwoorden met volume die net buiten de top staan (positie 4-20): daar kun je met beperkte moeite snel meer waardevolle bezoekers scoren. Markeer belangrijke zoekwoorden als prio of secundair; die markering is gedeeld met de Search Console-lijst." /></span>
+            <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
+              {fruitCount > 0 && <button type="button" className={"ghost-btn small" + (onlyFruit ? " active" : "")} onClick={() => setOnlyFruit((v) => !v)}>{onlyFruit ? "Toon alles" : `Laaghangend fruit (${fruitCount})`}</button>}
+              <button type="button" className="primary-btn small" onClick={syncAhrefs} disabled={ahrefsBusy}>{ahrefsBusy ? "Ophalen…" : (ahrefsKw.length ? "Verversen" : "Ahrefs-zoekwoorden ophalen")}</button>
+            </span>
+          </div>
+          {ahrefsMsg && <div className="saved-msg" style={{ marginBottom: 8 }}>{ahrefsMsg}</div>}
+          {ahrefsKw.length === 0 ? (
+            <div className="muted">Nog geen Ahrefs-zoekwoorden opgehaald. Klik &ldquo;Ahrefs-zoekwoorden ophalen&rdquo;: dat haalt in één keer het hele domein op (kost Ahrefs-credits) en slaat het op, zodat de scan er daarna zonder credits op draait.</div>
+          ) : (
+            <div className="res-table-wrap kpi-scroll">
+              <table className="res-table kpi-table">
+                <thead><tr>
+                  <th>Focus</th>
+                  <SortTh label="Zoekwoord" k="keyword" sort={ahSort} setSort={setAhSort} />
+                  <SortTh label="Volume" k="volume" sort={ahSort} setSort={setAhSort} />
+                  <SortTh label="Positie" k="position" sort={ahSort} setSort={setAhSort} />
+                  <SortTh label="Intent" k="intent" sort={ahSort} setSort={setAhSort} />
+                  <th>Kans</th>
+                </tr></thead>
+                <tbody>
+                  {ahSorted.map((k) => (
+                    <tr key={k.keyword} className={isFruit(k) ? "kpi-fruit-row" : ""}>
+                      <td><FocusSelect tier={focus[k.keyword]} onChange={(t) => markFocus(k.keyword, t)} /></td>
+                      <td>{k.keyword}</td>
+                      <td>{k.volume != null ? nl(k.volume) : <span className="muted">&mdash;</span>}</td>
+                      <td>{k.position != null ? k.position : <span className="muted">&mdash;</span>}</td>
+                      <td>{k.intent ? <span className={"kw-intent " + k.intent}>{k.intent}</span> : <span className="muted">&mdash;</span>}</td>
+                      <td>{isFruit(k) ? <span className="pg-kans quickwin">Quick win</span> : <span className="muted">&mdash;</span>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 

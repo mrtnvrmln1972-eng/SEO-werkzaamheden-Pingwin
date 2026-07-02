@@ -128,6 +128,43 @@ export async function getUrlOrganicKeywords(targetUrl: string, country = "nl", l
   return top;
 }
 
+export type SiteKeyword = {
+  keyword: string; position: number | null; volume: number | null; cpc: number | null;
+  traffic: number | null; intent: string; branded: boolean;
+};
+
+function intentFromFlags(r: { is_transactional?: boolean; is_commercial?: boolean; is_informational?: boolean; is_navigational?: boolean }): string {
+  if (r.is_transactional) return "transactioneel";
+  if (r.is_commercial) return "commercieel";
+  if (r.is_informational) return "informatief";
+  if (r.is_navigational) return "navigatie";
+  return "";
+}
+
+// Alle organische zoekwoorden van een heel DOMEIN (incl. subdomeinen) met volume,
+// positie, CPC, verkeer, zoekintentie en of het een merk-zoekwoord is. De basis
+// voor de laaghangend-fruit-scan. Eén call voor het hele domein (credit-bewust).
+export async function getSiteOrganicKeywords(domain: string, country = "nl", limit = 800): Promise<SiteKeyword[]> {
+  const d = (domain || "").trim().replace(/^https?:\/\//, "").replace(/\/$/, "");
+  if (!d) return [];
+  const today = new Date().toISOString().slice(0, 10);
+  const data = (await ahrefsFetch("/site-explorer/organic-keywords", {
+    target: d, mode: "subdomains", country, date: today, limit: String(limit),
+    select: "keyword,best_position,volume,cpc,sum_traffic,is_branded,is_commercial,is_informational,is_navigational,is_transactional",
+  })) as { keywords?: Record<string, unknown>[] };
+  const rows = (data.keywords || []).map((r) => ({
+    keyword: String(r.keyword || ""),
+    position: r.best_position == null ? null : Number(r.best_position),
+    volume: r.volume == null ? null : Number(r.volume),
+    cpc: r.cpc == null ? null : Number(r.cpc),
+    traffic: r.sum_traffic == null ? null : Number(r.sum_traffic),
+    intent: intentFromFlags(r as { is_transactional?: boolean }),
+    branded: !!r.is_branded,
+  })).filter((r) => r.keyword);
+  rows.sort((a, b) => (b.traffic || 0) - (a.traffic || 0) || (b.volume || 0) - (a.volume || 0));
+  return rows;
+}
+
 export type SerpRow = { position: number; url: string; title: string; domainRating: number | null; type: string };
 
 // Top-10 organische zoekresultaten voor één zoekwoord (met cache).

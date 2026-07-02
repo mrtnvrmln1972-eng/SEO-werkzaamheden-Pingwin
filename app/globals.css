@@ -793,6 +793,15 @@ button.ck-collapse-head {
 /* KPI-tabellen: toon ~15 rijen, scroll de rest binnen dit venster; kop blijft staan. */
 .kpi-scroll { max-height: 460px; overflow-y: auto; }
 .kpi-scroll thead th { position: sticky; top: 0; z-index: 2; }
+/* Ahrefs-zoekwoorden: intent-badges + laaghangend-fruit-highlight. */
+.kpi-fruit-row td { background: #FFF4E5; }
+.kw-intent { display: inline-block; font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 9px; text-transform: capitalize; }
+.kw-intent.transactioneel { background: #E6F4EA; color: #1E7E34; }
+.kw-intent.commercieel { background: var(--orange-light); color: var(--orange-dark); }
+.kw-intent.informatief { background: #E7EEF7; color: #2c5b8f; }
+.kw-intent.navigatie { background: var(--gray-light); color: var(--gray); }
+.pg-kans.quickwin { display: inline-block; font-size: 10px; font-weight: 700; padding: 1px 8px; border-radius: 9px; background: #E6F4EA; color: #1E7E34; }
+.ghost-btn.active { background: var(--orange-light); border-color: var(--orange); color: var(--orange-dark); }
 .res-table { width: 100%; border-collapse: collapse; }
 .res-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--white); background: var(--dark); padding: 8px 12px; border-bottom: 2px solid var(--border); }
 .res-table td { padding: 9px 12px; font-size: 13px; border-bottom: 1px solid var(--border); }
