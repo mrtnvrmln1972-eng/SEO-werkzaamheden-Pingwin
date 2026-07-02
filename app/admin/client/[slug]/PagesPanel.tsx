@@ -5,6 +5,7 @@ import type { ClientUrl } from "../../../../lib/site-urls";
 import { mdToHtml } from "../../../../lib/markdown";
 import ImportAnalysis from "./ImportAnalysis";
 import PageChat from "./PageChat";
+import HelpHint from "./HelpHint";
 
 function shortUrl(url: string): string {
   try { const u = new URL(url); return (u.pathname + u.search) || "/"; } catch { return url; }
@@ -130,43 +131,38 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
     <div className="pages-panel">
       <div className="cockpit-card">
         <div className="ck-section-head">
-          <span>Pagina&rsquo;s ({urls.length})</span>
+          <span>Pagina&rsquo;s ({urls.length}) <HelpHint text="De live pagina's van de klant, een spiegel van de werkelijkheid. Klik een pagina om het plan te bekijken of aan te passen. Het toekomstige adres (redirect of nieuwe pagina) leeft in het plan en in de taken, niet in deze lijst." /></span>
           <span style={{ display: "inline-flex", gap: 8 }}>
             <button type="button" className="ghost-btn small" onClick={() => setImporting(true)}>Analyse importeren</button>
             <button type="button" className="primary-btn small" onClick={scan} disabled={scanning}>{scanning ? "Inlezen..." : "Website inlezen"}</button>
           </span>
         </div>
-        <p className="dev-intro" style={{ marginBottom: 10 }}>
-          De live pagina&rsquo;s van de klant (spiegel van de werkelijkheid). Klik een pagina om het plan te bekijken of aan te passen.
-          Het toekomstige adres (redirect, nieuwe pagina) leeft in het plan en in taken, niet in deze lijst.
-        </p>
         {msg && <div className="saved-msg" style={{ marginBottom: 10 }}>{msg}</div>}
 
-        <div className="client-profile">
+        <div className="profile-search-row">
           <button type="button" className="client-profile-toggle" onClick={() => setProfileOpen((v) => !v)}>
             {profileOpen ? "▾" : "▸"} Klantprofiel {(profile || "").trim() ? <span className="plan-chip has">ingevuld</span> : <span className="plan-chip">leeg</span>}
             {profileSaved && <span className="focus-save-status" style={{ marginLeft: 8 }}>✓ opgeslagen</span>}
           </button>
-          {profileOpen && (
-            <>
-              <div className="profile-note">Vul hier ook je eigen know-how over de klant in.</div>
-              <div className="profile-gen-buttons">
-                <button type="button" className="ghost-btn small" onClick={() => generateProfile("profile")} disabled={!!genBusy}>{genBusy === "profile" ? "Klantprofiel opstellen…" : "Klantprofiel opstellen"}</button>
-                <button type="button" className="ghost-btn small" onClick={() => generateProfile("tov")} disabled={!!genBusy}>{genBusy === "tov" ? "Tone-of-voice analyseren…" : "Tone-of-voice analyse"}</button>
-                <span className="muted" style={{ fontSize: 11 }}>Leest de live site en zet een concept in het veld. Jij vult aan en corrigeert.</span>
-              </div>
-              {genErr && <div className="login-error" style={{ marginBottom: 8 }}>{genErr}</div>}
-              <textarea
-                className="client-profile-area"
-                value={profile}
-                onChange={(e) => changeProfile(e.target.value)}
-                placeholder="Wie is deze klant? Bv. werkgebied (regionaal Uden/Oss/Den Bosch, of landelijk), positionering (prijs / exclusieve designtuinen / duurzaam), doelgroep, belangrijkste diensten. De chat gebruikt dit als context en vraagt ernaar als het ontbreekt. Of laat de knoppen hierboven een concept opstellen."
-              />
-            </>
-          )}
+          <input className="pages-search" placeholder="Zoek een pagina (URL of titel)…" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
-
-        <input className="pages-search" placeholder="Zoek een pagina (URL of titel)…" value={q} onChange={(e) => setQ(e.target.value)} />
+        {profileOpen && (
+          <div className="client-profile-body">
+            <div className="profile-note">Vul hier ook je eigen know-how over de klant in.</div>
+            <div className="profile-gen-buttons">
+              <button type="button" className="ghost-btn small" onClick={() => generateProfile("profile")} disabled={!!genBusy}>{genBusy === "profile" ? "Klantprofiel opstellen…" : "Klantprofiel opstellen"}</button>
+              <button type="button" className="ghost-btn small" onClick={() => generateProfile("tov")} disabled={!!genBusy}>{genBusy === "tov" ? "Tone-of-voice analyseren…" : "Tone-of-voice analyse"}</button>
+              <span className="muted" style={{ fontSize: 11 }}>Leest de live site en zet een concept in het veld. Jij vult aan en corrigeert.</span>
+            </div>
+            {genErr && <div className="login-error" style={{ marginBottom: 8 }}>{genErr}</div>}
+            <textarea
+              className="client-profile-area"
+              value={profile}
+              onChange={(e) => changeProfile(e.target.value)}
+              placeholder="Wie is deze klant? Bv. werkgebied (regionaal Uden/Oss/Den Bosch, of landelijk), positionering (prijs / exclusieve designtuinen / duurzaam), doelgroep, belangrijkste diensten. De chat gebruikt dit als context en vraagt ernaar als het ontbreekt. Of laat de knoppen hierboven een concept opstellen."
+            />
+          </div>
+        )}
 
         {loading && <div className="muted" style={{ marginTop: 10 }}>Pagina&rsquo;s laden…</div>}
         {!loading && urls.length === 0 && (
@@ -289,25 +285,9 @@ function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoTo
                 // (platte tekst zonder document) is "oude werkwijze" en mag opgeruimd.
                 const isDoc = (t: { stepKind?: string; docLink?: string; taak: string }) =>
                   !!(t.stepKind || "").trim() || !!(t.docLink || "").trim() || /<a\s/i.test(t.taak || "");
-                const pipeline = tasks.filter(isDoc);
                 const loose = tasks.filter((t) => !isDoc(t));
                 return (
                   <>
-                    {pipeline.length > 0 && (
-                      <div className="page-tasks">
-                        <div className="page-tasks-head">Werkzaamheden voor deze pagina ({pipeline.length})</div>
-                        <ul className="page-tasks-list">
-                          {pipeline.map((t, i) => (
-                            <li key={t.id ?? i} className={"page-task" + (t.status === "Klaar" ? " done" : "")}>
-                              {t.wie && <span className={"pt-wie" + (t.wie === "Dev" ? " dev" : "")}>{t.wie}</span>}
-                              <span className="pt-taak" dangerouslySetInnerHTML={{ __html: t.taak }} />
-                              {t.status && <span className="pt-status">{t.status}</span>}
-                            </li>
-                          ))}
-                        </ul>
-                        <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Inplannen, uren of toewijzen doe je in de Werkzaamheden-tab.</div>
-                      </div>
-                    )}
                     {loose.length > 0 && (
                       <div className="page-tasks-cleanup">
                         Er staan nog {loose.length} losse taken van de oude werkwijze bij deze pagina. Die horen nu in het plan, niet als aparte werkzaamheden. Kijk hieronder wat erin staat, zet over wat je wilt bewaren in het plan, en ruim dan op.

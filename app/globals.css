@@ -363,6 +363,10 @@ tbody td:last-child { text-align: center; }
 /* Pagina's-tab: URL-lijst (spiegel) + plan-alinea */
 .pages-search { width: 100%; max-width: 420px; font-size: 13px; padding: 8px 11px; border: 1px solid var(--border); border-radius: 8px; outline: none; }
 .pages-search:focus { border-color: var(--orange); }
+/* Klantprofiel-toggle links, zoekbalk rechts op één rij. */
+.profile-search-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 8px 0 4px; flex-wrap: wrap; }
+.profile-search-row .pages-search { margin: 0; flex: 1 1 220px; }
+.client-profile-body { margin: 0 0 14px; }
 .pages-table td { vertical-align: middle; }
 .pages-row { cursor: pointer; }
 .pages-row:hover { background: var(--orange-light); }
@@ -590,6 +594,23 @@ tbody td:last-child { text-align: center; }
   text-transform: uppercase; letter-spacing: 0.5px;
   margin: 4px 0 14px; padding-bottom: 8px; border-bottom: 2px solid var(--orange);
 }
+/* Oranje kopjes in het hele dashboard. */
+.ck-section-head, button.ck-collapse-head, .section-title, .month-card-title,
+.sov-tasks-head, .focus-head, .page-tasks-head, .page-chat-head > span:first-child,
+.dev-client-card-head, .pcd-docs-head, .page-chat-proposal-head, .wz-title {
+  color: var(--orange-dark);
+}
+/* Bijschriften/datums in een kop blijven gedempt, niet oranje. */
+.ck-section-head .ck-updated, .ck-collapse-head .ck-updated,
+.month-card-count, .dev-client-count, .month-card-caret { color: var(--gray); }
+
+/* "?"-uitlegbolletje met tooltip bij hover/focus. */
+.help-hint { position: relative; display: inline-flex; align-items: center; margin-left: 6px; cursor: help; vertical-align: middle; }
+.help-hint-q { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; background: var(--orange-light); color: var(--orange-dark); border: 1px solid var(--orange); font-size: 11px; font-weight: 700; line-height: 1; }
+.help-hint-bubble { position: absolute; left: 0; top: calc(100% + 6px); z-index: 60; width: 260px; background: var(--dark); color: #fff; font-size: 12px; font-weight: 400; line-height: 1.45; text-transform: none; letter-spacing: normal; padding: 8px 11px; border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,0.18); opacity: 0; visibility: hidden; transition: opacity .12s; pointer-events: none; white-space: normal; }
+.help-hint-bubble.wide { width: 340px; }
+.help-hint:hover .help-hint-bubble, .help-hint:focus .help-hint-bubble, .help-hint:focus-within .help-hint-bubble { opacity: 1; visibility: visible; }
+
 /* Inklapbare sectiekop (toggle). Werkt als losse <button> én als ck-section-head. */
 button.ck-collapse-head {
   display: flex; align-items: baseline; justify-content: space-between; width: 100%;
