@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ClientConfig } from "../../lib/clients";
 
@@ -27,6 +27,43 @@ export default function AdminClient({ initialClients }: { initialClients: Client
   const [origin, setOrigin] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
+  // Budget bewerken per klant (maandfee, linkbuilding, uurtarief, uren)
+  const [editSlug, setEditSlug] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ maandbudget: "", linkbuilding: "", uurtarief: "", beschikbareUren: "" });
+  const [editBusy, setEditBusy] = useState(false);
+
+  function openEdit(e: React.MouseEvent, c: ClientConfig) {
+    e.stopPropagation();
+    setEditSlug(c.slug);
+    setEditForm({
+      maandbudget: String(c.budget.maandbudget),
+      linkbuilding: String(c.budget.linkbuilding),
+      uurtarief: String(c.budget.uurtarief),
+      beschikbareUren: String(c.budget.beschikbareUren),
+    });
+  }
+  async function saveBudget(e: React.MouseEvent, c: ClientConfig) {
+    e.stopPropagation();
+    setEditBusy(true); setError("");
+    try {
+      const res = await fetch("/api/admin/clients", {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slug: c.slug, action: "setBudget",
+          maandbudget: Number(editForm.maandbudget) || 0,
+          linkbuilding: Number(editForm.linkbuilding) || 0,
+          uurtarief: Number(editForm.uurtarief) || 0,
+          beschikbareUren: Number(editForm.beschikbareUren) || 0,
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) { setEditSlug(null); await refresh(); setNotice({ ok: true, text: `Budget bijgewerkt voor ${c.name}.` }); }
+      else setError(data.error || "Budget bijwerken mislukt.");
+    } catch { setError("Budget bijwerken mislukt."); } finally { setEditBusy(false); }
+  }
+  function editSet(field: keyof typeof editForm, value: string) {
+    setEditForm((f) => ({ ...f, [field]: value }));
+  }
 
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -185,17 +222,47 @@ export default function AdminClient({ initialClients }: { initialClients: Client
                 <tr><td colSpan={6} style={{ textAlign: "center", padding: 40, color: "var(--gray)" }}>Nog geen klanten.</td></tr>
               )}
               {clients.map((c) => (
-                <tr key={c.slug} className="clickable-row" onClick={() => openDashboard(c)} title="Open de cockpit van deze klant">
-                  <td><strong>{c.name}</strong> <span className="row-arrow">&rarr;</span></td>
-                  <td>{c.loginId}</td>
-                  <td>{c.email || <span className="muted">&mdash;</span>}</td>
-                  <td>&euro;{c.budget.maandbudget.toFixed(0)}</td>
-                  <td>&euro;{c.budget.uurtarief.toFixed(0)}</td>
-                  <td style={{ whiteSpace: "nowrap" }}>
-                    <button className="mini-btn" onClick={(e) => resetPw(e, c)}>Nieuw wachtwoord</button>{" "}
-                    <button className="mini-btn" onClick={(e) => remove(e, c)}>Verwijder</button>
-                  </td>
-                </tr>
+                <Fragment key={c.slug}>
+                  <tr className="clickable-row" onClick={() => openDashboard(c)} title="Open de cockpit van deze klant">
+                    <td><strong>{c.name}</strong> <span className="row-arrow">&rarr;</span></td>
+                    <td>{c.loginId}</td>
+                    <td>{c.email || <span className="muted">&mdash;</span>}</td>
+                    <td>&euro;{c.budget.maandbudget.toFixed(0)}{c.budget.linkbuilding ? <span className="muted"> (w.v. &euro;{c.budget.linkbuilding.toFixed(0)} LB)</span> : null}</td>
+                    <td>&euro;{c.budget.uurtarief.toFixed(0)}</td>
+                    <td style={{ whiteSpace: "nowrap" }}>
+                      <button className="mini-btn" onClick={(e) => openEdit(e, c)}>Budget</button>{" "}
+                      <button className="mini-btn" onClick={(e) => resetPw(e, c)}>Nieuw wachtwoord</button>{" "}
+                      <button className="mini-btn" onClick={(e) => remove(e, c)}>Verwijder</button>
+                    </td>
+                  </tr>
+                  {editSlug === c.slug && (
+                    <tr onClick={(e) => e.stopPropagation()}>
+                      <td colSpan={6} style={{ background: "var(--gray-light)" }}>
+                        <div className="budget-edit">
+                          <div className="budget-edit-title">Budget aanpassen voor {c.name}</div>
+                          <div className="budget-edit-grid">
+                            <label>Maandfee (&euro;, incl. linkbuilding)
+                              <input type="number" value={editForm.maandbudget} onChange={(e) => editSet("maandbudget", e.target.value)} />
+                            </label>
+                            <label>Linkbuilding-budget (&euro;)
+                              <input type="number" value={editForm.linkbuilding} onChange={(e) => editSet("linkbuilding", e.target.value)} />
+                            </label>
+                            <label>Uurtarief (&euro;)
+                              <input type="number" value={editForm.uurtarief} onChange={(e) => editSet("uurtarief", e.target.value)} />
+                            </label>
+                            <label>Beschikbare uren per maand
+                              <input type="number" value={editForm.beschikbareUren} onChange={(e) => editSet("beschikbareUren", e.target.value)} />
+                            </label>
+                          </div>
+                          <div className="budget-edit-actions">
+                            <button className="primary-btn small" onClick={(e) => saveBudget(e, c)} disabled={editBusy}>{editBusy ? "Opslaan…" : "Opslaan"}</button>
+                            <button className="ghost-btn small" onClick={(e) => { e.stopPropagation(); setEditSlug(null); }}>Annuleren</button>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               ))}
             </tbody>
           </table>

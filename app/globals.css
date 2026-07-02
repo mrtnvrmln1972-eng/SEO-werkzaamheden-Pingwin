@@ -249,6 +249,15 @@ tbody td:last-child { text-align: center; }
 }
 .admin-form { margin-bottom: 36px; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+/* Inline budget-bewerken in de klantenlijst */
+.budget-edit { padding: 6px 2px 10px; }
+.budget-edit-title { font-weight: 700; color: var(--dark); margin-bottom: 10px; }
+.budget-edit-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.budget-edit-grid label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--gray); }
+.budget-edit-grid input { font-family: 'Montserrat', sans-serif; font-size: 14px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; outline: none; }
+.budget-edit-grid input:focus { border-color: var(--orange); }
+.budget-edit-actions { display: flex; gap: 8px; margin-top: 12px; }
+@media (max-width: 720px) { .budget-edit-grid { grid-template-columns: 1fr 1fr; } }
 .field { display: flex; flex-direction: column; }
 .field-wide { grid-column: 1 / -1; }
 .field label {

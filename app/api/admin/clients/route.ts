@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
-import { listClients, createClient, deleteClient, updateClientCockpit, updateClientCore, parseSheetUrl, resetClientPassword } from "../../../../lib/clients";
+import { listClients, createClient, deleteClient, updateClientCockpit, updateClientCore, parseSheetUrl, resetClientPassword, setClientBudget } from "../../../../lib/clients";
 
 export const runtime = "nodejs";
 
@@ -97,6 +97,19 @@ export async function PATCH(req: NextRequest) {
     const password = await resetClientPassword(slug);
     if (!password) return NextResponse.json({ ok: false, error: "Klant niet gevonden." }, { status: 404 });
     return NextResponse.json({ ok: true, password });
+  }
+
+  // Alleen de budgetvelden bijwerken (maandfee, linkbuilding, uurtarief, uren).
+  // Raakt e-mail/Sheet niet aan, dus veilig als losse actie.
+  if (body.action === "setBudget") {
+    const ok = await setClientBudget(slug, {
+      maandbudget: Number(body.maandbudget) || 0,
+      linkbuilding: Number(body.linkbuilding) || 0,
+      uurtarief: Number(body.uurtarief) || 0,
+      beschikbareUren: Number(body.beschikbareUren) || 0,
+    });
+    if (!ok) return NextResponse.json({ ok: false, error: "Klant niet gevonden." }, { status: 404 });
+    return NextResponse.json({ ok: true });
   }
 
   const ok = await updateClientCockpit(slug, {
