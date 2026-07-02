@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
-import { answerChat } from "../../../../lib/chat";
+import { answerChat, clearChatHistory } from "../../../../lib/chat";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -19,4 +19,15 @@ export async function POST(req: NextRequest) {
   const result = await answerChat(slug, messages as { role: "user" | "assistant"; content: string }[]);
   if (!result.ok) return NextResponse.json({ ok: false, error: result.error }, { status: 502 });
   return NextResponse.json({ ok: true, answer: result.answer });
+}
+
+// Wist het opgeslagen gesprek van deze klant.
+export async function DELETE(req: NextRequest) {
+  if (!verifyAdminSession(req.cookies.get(ADMIN_COOKIE)?.value)) {
+    return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
+  }
+  const slug = req.nextUrl.searchParams.get("slug") || "";
+  if (!slug) return NextResponse.json({ ok: false, error: "Geen klant opgegeven." }, { status: 400 });
+  await clearChatHistory(slug);
+  return NextResponse.json({ ok: true });
 }

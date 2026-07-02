@@ -149,6 +149,12 @@ async function saveChatHistory(slug: string, messages: ChatMessage[]): Promise<v
     ON CONFLICT (client_slug) DO UPDATE SET messages = EXCLUDED.messages, updated_at = now()`;
 }
 
+// Wist het opgeslagen gesprek van een klant (de assistent begint dan weer schoon).
+export async function clearChatHistory(slug: string): Promise<void> {
+  await ensureSchema();
+  await sql`DELETE FROM client_chat WHERE client_slug = ${slug}`;
+}
+
 export async function answerChat(slug: string, messages: ChatMessage[]): Promise<{ ok: boolean; answer?: string; error?: string }> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return { ok: false, error: "Geen ANTHROPIC_API_KEY ingesteld." };

@@ -65,6 +65,13 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, busy]);
 
+  // Wist het gesprek (lokaal + op de server) zodat de assistent schoon begint.
+  async function clearChat() {
+    if (!window.confirm("Dit gesprek wissen?")) return;
+    setMessages([]); setError("");
+    await fetch(`/api/admin/chat?slug=${encodeURIComponent(slug)}`, { method: "DELETE" }).catch(() => {});
+  }
+
   async function send(text: string) {
     const q = text.trim();
     if (!q || busy) return;
@@ -99,7 +106,10 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
         <div className="chat-float">
           <div className="chat-float-head">
             <span>SEO-assistent</span>
-            <button type="button" className="chat-float-close" onClick={() => setCollapsed(true)} aria-label="Sluiten">&times;</button>
+            <span style={{ display: "inline-flex", gap: 10, alignItems: "center" }}>
+              {messages.length > 0 && <button type="button" className="chat-float-clear" onClick={clearChat}>Wissen</button>}
+              <button type="button" className="chat-float-close" onClick={() => setCollapsed(true)} aria-label="Sluiten">&times;</button>
+            </span>
           </div>
           <div className="chat-float-body">
             {!configured ? (
