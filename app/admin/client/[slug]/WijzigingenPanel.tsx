@@ -320,8 +320,18 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
             Voor de volledige bewerkingshistorie (wat is wanneer veranderd) heeft het dashboard een WordPress-applicatiewachtwoord nodig. Maak dat in WordPress-beheer aan: <strong>Gebruikers → Profiel → Wachtwoorden voor applicaties</strong>, geef het een naam (bijv. &ldquo;Pingwin dashboard&rdquo;), en plak de getoonde code hieronder. Zonder koppeling haalt de knop alleen de laatste wijzigingsdatum per pagina op.
           </div>
           <div className="wz-add-row">
-            <input className="compose-input" value={wpUser} onChange={(e) => setWpUser(e.target.value)} placeholder="WordPress-gebruikersnaam" />
-            <input className="compose-input" type="password" value={wpPass} onChange={(e) => setWpPass(e.target.value)} placeholder="Applicatiewachtwoord (xxxx xxxx xxxx …)" />
+            <div style={{ flex: 1 }}>
+              <label className="compose-label">WordPress-gebruikersnaam</label>
+              <input className="compose-input" style={{ width: "100%" }} value={wpUser} onChange={(e) => setWpUser(e.target.value)} placeholder="bv. je inlognaam of e-mail van de WordPress-beheeromgeving"
+                name="pw_site_login" autoComplete="off" data-lpignore="true" data-1p-ignore="true" data-form-type="other" />
+              <div className="hint">De naam waarmee je inlogt in de WordPress-beheeromgeving van deze klant (iemand met bewerkrechten).</div>
+            </div>
+            <div style={{ flex: 1 }}>
+              <label className="compose-label">Applicatiewachtwoord</label>
+              <input className="compose-input" style={{ width: "100%" }} type="password" value={wpPass} onChange={(e) => setWpPass(e.target.value)} placeholder="xxxx xxxx xxxx xxxx xxxx xxxx"
+                name="pw_site_apptoken" autoComplete="new-password" data-lpignore="true" data-1p-ignore="true" data-form-type="other" />
+              <div className="hint">De code uit WordPress-beheer → Gebruikers → Profiel → Wachtwoorden voor applicaties. Niet je gewone wachtwoord.</div>
+            </div>
           </div>
           <div style={{ marginTop: 8, display: "inline-flex", gap: 8, alignItems: "center" }}>
             <button type="button" className="primary-btn small" onClick={saveWpCreds} disabled={wpSaveBusy || !wpUser.trim() || !wpPass.trim()}>{wpSaveBusy ? "Testen…" : "Opslaan en testen"}</button>
