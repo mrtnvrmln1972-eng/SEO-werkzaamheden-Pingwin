@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
-import { getMonthLinkbuilding, setMonthLinkbuilding } from "../../../../lib/month-linkbuilding";
+import { getMonthBudget, setMonthBudget, type MonthOverride } from "../../../../lib/month-linkbuilding";
 
 export const runtime = "nodejs";
 
@@ -8,15 +8,15 @@ function admin(req: NextRequest): boolean {
   return verifyAdminSession(req.cookies.get(ADMIN_COOKIE)?.value);
 }
 
-// Linkbuilding-overrides per maand van een klant.
+// Budget-overrides (maandbudget + linkbuilding) per maand van een klant.
 export async function GET(req: NextRequest) {
   if (!admin(req)) return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
   const slug = req.nextUrl.searchParams.get("slug") || "";
   if (!slug) return NextResponse.json({ ok: false, error: "Geen klant opgegeven." }, { status: 400 });
-  return NextResponse.json({ ok: true, months: await getMonthLinkbuilding(slug) });
+  return NextResponse.json({ ok: true, months: await getMonthBudget(slug) });
 }
 
-// Linkbuilding voor één maand zetten (euro's).
+// Eén maand bijwerken: alleen de meegestuurde velden (maandbudget en/of linkbuilding).
 export async function POST(req: NextRequest) {
   if (!admin(req)) return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
   let body: Record<string, unknown>;
@@ -24,6 +24,9 @@ export async function POST(req: NextRequest) {
   const slug = String(body.slug || "").trim();
   const month = String(body.month || "").trim();
   if (!slug || !month) return NextResponse.json({ ok: false, error: "Klant en maand verplicht." }, { status: 400 });
-  await setMonthLinkbuilding(slug, month, Number(body.linkbuilding) || 0);
+  const fields: Partial<MonthOverride> = {};
+  if ("maandbudget" in body) fields.maandbudget = Number(body.maandbudget) || 0;
+  if ("linkbuilding" in body) fields.linkbuilding = Number(body.linkbuilding) || 0;
+  await setMonthBudget(slug, month, fields);
   return NextResponse.json({ ok: true });
 }

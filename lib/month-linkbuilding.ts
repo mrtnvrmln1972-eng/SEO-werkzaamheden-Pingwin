@@ -1,16 +1,18 @@
 import { sql, ensureSchema } from "./db";
 
 // ═══════════════════════════════════════════════════════════
-// LINKBUILDING-BUDGET PER MAAND (override op de klantstandaard)
+// BUDGET-OVERRIDE PER MAAND (maandbudget + linkbuilding)
 // ═══════════════════════════════════════════════════════════
-// Het maandbudget (totaal) en het uurtarief zijn vaste klantwaarden. Het
-// linkbuilding-deel is normaal elke maand hetzelfde (de klantstandaard), maar
-// kan per maand afwijken. Die afwijking bewaren we hier per maand. De
-// beschikbare uren van een maand volgen daaruit: (maandbudget − linkbuilding) /
-// uurtarief. Zo verandert het aanpassen van één maand nooit de andere maanden.
-// De maand is een kleine-letter maandnaam ("januari" ... "december"), gelijk aan
-// het maand-veld van de taken.
+// Het maandbudget (totaal) en het linkbuilding-deel zijn normaal elke maand
+// gelijk aan de klantstandaard, maar kunnen per maand afwijken. Die afwijkingen
+// bewaren we hier per maand. De beschikbare uren van een maand volgen daaruit:
+// (maandbudget − linkbuilding) / uurtarief. Zo raakt het aanpassen van één maand
+// nooit de andere maanden. De maand is een kleine-letter maandnaam
+// ("januari" ... "december"), gelijk aan het maand-veld van de taken.
+// (Tabelnaam is historisch client_month_linkbuilding.)
 // ═══════════════════════════════════════════════════════════
+
+export type MonthOverride = { maandbudget: number | null; linkbuilding: number | null };
 
 let tableReady: Promise<void> | null = null;
 async function ensureTable(): Promise<void> {
@@ -22,28 +24,46 @@ async function doEnsure(): Promise<void> {
     CREATE TABLE IF NOT EXISTS client_month_linkbuilding (
       client_slug  TEXT NOT NULL,
       month        TEXT NOT NULL,
-      linkbuilding INTEGER NOT NULL,
+      linkbuilding INTEGER,
+      maandbudget  INTEGER,
       updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
       PRIMARY KEY (client_slug, month)
     )`;
+  // Bestaande tabellen: linkbuilding mag nu leeg zijn (alleen maandbudget zetten kan)
+  // en de maandbudget-kolom erbij.
+  await sql`ALTER TABLE client_month_linkbuilding ALTER COLUMN linkbuilding DROP NOT NULL`.catch(() => null);
+  await sql`ALTER TABLE client_month_linkbuilding ADD COLUMN IF NOT EXISTS maandbudget INTEGER`;
 }
 
-export async function getMonthLinkbuilding(slug: string): Promise<Record<string, number>> {
+const clamp = (v: number | null | undefined): number | null =>
+  v === null || v === undefined ? null : Math.max(0, Math.round(Number(v) || 0));
+
+export async function getMonthBudget(slug: string): Promise<Record<string, MonthOverride>> {
   await ensureSchema();
   await ensureTable();
-  const { rows } = await sql`SELECT month, linkbuilding FROM client_month_linkbuilding WHERE client_slug = ${slug}`;
-  const out: Record<string, number> = {};
-  for (const r of rows) out[(r.month as string).toLowerCase()] = Number(r.linkbuilding) || 0;
+  const { rows } = await sql`SELECT month, maandbudget, linkbuilding FROM client_month_linkbuilding WHERE client_slug = ${slug}`;
+  const out: Record<string, MonthOverride> = {};
+  for (const r of rows) {
+    out[(r.month as string).toLowerCase()] = {
+      maandbudget: r.maandbudget == null ? null : Number(r.maandbudget),
+      linkbuilding: r.linkbuilding == null ? null : Number(r.linkbuilding),
+    };
+  }
   return out;
 }
 
-export async function setMonthLinkbuilding(slug: string, month: string, linkbuilding: number): Promise<void> {
+// Werkt alleen de meegegeven velden bij (de rest van die maand blijft staan).
+export async function setMonthBudget(slug: string, month: string, fields: Partial<MonthOverride>): Promise<void> {
   await ensureSchema();
   await ensureTable();
   const m = (month || "").trim().toLowerCase();
   if (!m) return;
+  const { rows } = await sql`SELECT maandbudget, linkbuilding FROM client_month_linkbuilding WHERE client_slug = ${slug} AND month = ${m} LIMIT 1`;
+  const cur = rows[0] || {};
+  const mb = "maandbudget" in fields ? clamp(fields.maandbudget) : (cur.maandbudget == null ? null : Number(cur.maandbudget));
+  const lb = "linkbuilding" in fields ? clamp(fields.linkbuilding) : (cur.linkbuilding == null ? null : Number(cur.linkbuilding));
   await sql`
-    INSERT INTO client_month_linkbuilding (client_slug, month, linkbuilding, updated_at)
-    VALUES (${slug}, ${m}, ${Math.max(0, Math.round(linkbuilding) || 0)}, now())
-    ON CONFLICT (client_slug, month) DO UPDATE SET linkbuilding = ${Math.max(0, Math.round(linkbuilding) || 0)}, updated_at = now()`;
+    INSERT INTO client_month_linkbuilding (client_slug, month, maandbudget, linkbuilding, updated_at)
+    VALUES (${slug}, ${m}, ${mb}, ${lb}, now())
+    ON CONFLICT (client_slug, month) DO UPDATE SET maandbudget = ${mb}, linkbuilding = ${lb}, updated_at = now()`;
 }

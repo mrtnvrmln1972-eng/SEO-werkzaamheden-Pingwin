@@ -205,21 +205,24 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
   const [monthSlot, setMonthSlot] = useState<HTMLElement | null>(null);
   useEffect(() => { setMonthSlot(document.getElementById("werk-month-slot")); }, []);
 
-  // Linkbuilding-budget per maand (override op de klantstandaard). De beschikbare
-  // uren van een maand volgen hieruit, zodat het aanpassen van één maand nooit de
-  // andere maanden raakt. Zonder override geldt de klantstandaard (budget.linkbuilding).
-  const [monthLb, setMonthLb] = useState<Record<string, number>>({});
-  const lbTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Budget per maand (maandbudget + linkbuilding), override op de klantstandaard.
+  // De beschikbare uren van een maand volgen hieruit ((maandbudget − linkbuilding) /
+  // uurtarief), zodat het aanpassen van één maand nooit de andere maanden raakt.
+  // Zonder override geldt de klantstandaard (budget.maandbudget / budget.linkbuilding).
+  type MonthOv = { maandbudget: number | null; linkbuilding: number | null };
+  const [monthOv, setMonthOv] = useState<Record<string, MonthOv>>({});
+  const ovTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   useEffect(() => {
     fetch(`/api/admin/month-linkbuilding?slug=${encodeURIComponent(slug)}`)
-      .then((r) => r.json()).then((d) => { if (d.ok) setMonthLb(d.months || {}); }).catch(() => {});
+      .then((r) => r.json()).then((d) => { if (d.ok) setMonthOv(d.months || {}); }).catch(() => {});
   }, [slug]);
-  function changeMonthLb(maand: string, value: string) {
+  function changeMonthField(maand: string, field: "maandbudget" | "linkbuilding", value: string) {
     const n = value === "" ? 0 : Math.max(0, Number(value) || 0);
-    setMonthLb((m) => ({ ...m, [maand]: n }));
-    if (lbTimer.current) clearTimeout(lbTimer.current);
-    lbTimer.current = setTimeout(() => {
-      fetch("/api/admin/month-linkbuilding", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, month: maand, linkbuilding: n }) }).catch(() => {});
+    setMonthOv((m) => ({ ...m, [maand]: { maandbudget: m[maand]?.maandbudget ?? null, linkbuilding: m[maand]?.linkbuilding ?? null, [field]: n } }));
+    const key = `${maand}:${field}`;
+    if (ovTimers.current[key]) clearTimeout(ovTimers.current[key]);
+    ovTimers.current[key] = setTimeout(() => {
+      fetch("/api/admin/month-linkbuilding", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, month: maand, [field]: n }) }).catch(() => {});
     }, 600);
   }
 
@@ -461,20 +464,26 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
   // linkbuilding is per maand aanpasbaar; de beschikbare uren volgen automatisch
   // uit (maandbudget − linkbuilding) / uurtarief voor DIE maand.
   function budgetInline(maand: string, urenBesteed: number, urenGepland: number) {
-    if (budget.maandbudget <= 0) {
+    const ov = monthOv[maand] || {};
+    const mb = ov.maandbudget != null ? ov.maandbudget : budget.maandbudget;
+    const lb = ov.linkbuilding != null ? ov.linkbuilding : budget.linkbuilding;
+    if (mb <= 0) {
       return <span className="month-card-uren">{urenBesteed} u besteed · {urenGepland} u gepland</span>;
     }
-    const lb = maand in monthLb ? monthLb[maand] : budget.linkbuilding;
-    const urenInGeld = budget.maandbudget - lb;
+    const urenInGeld = mb - lb;
     const beschikbareUren = budget.uurtarief ? Math.round((urenInGeld / budget.uurtarief) * 10) / 10 : (budget.beschikbareUren || 0);
     const resterend = Math.round((beschikbareUren - urenBesteed) * 10) / 10;
     const editable = MONTHS.includes(maand);
     return (
       <div className="budget-inline">
-        <div><span>Maandbudget</span><strong>&euro;{budget.maandbudget.toFixed(0)}</strong></div>
+        <div><span>Maandbudget</span>
+          {editable
+            ? <strong className="lb-edit-wrap">&euro;<input className="lb-edit" type="number" min={0} value={mb} onClick={(e) => e.stopPropagation()} onChange={(e) => changeMonthField(maand, "maandbudget", e.target.value)} title="Maandbudget voor deze maand; de beschikbare uren passen zich automatisch aan" /></strong>
+            : <strong>&euro;{mb.toFixed(0)}</strong>}
+        </div>
         <div><span>Budget linkbuilding</span>
           {editable
-            ? <strong className="lb-edit-wrap">&euro;<input className="lb-edit" type="number" min={0} value={lb} onClick={(e) => e.stopPropagation()} onChange={(e) => changeMonthLb(maand, e.target.value)} title="Linkbuilding voor deze maand; de beschikbare uren passen zich automatisch aan" /></strong>
+            ? <strong className="lb-edit-wrap">&euro;<input className="lb-edit" type="number" min={0} value={lb} onClick={(e) => e.stopPropagation()} onChange={(e) => changeMonthField(maand, "linkbuilding", e.target.value)} title="Linkbuilding voor deze maand; de beschikbare uren passen zich automatisch aan" /></strong>
             : <strong>&euro;{lb.toFixed(0)}</strong>}
         </div>
         <div><span>Uren in geld</span><strong>&euro;{urenInGeld.toFixed(0)}</strong></div>
