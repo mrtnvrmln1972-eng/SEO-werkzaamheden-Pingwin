@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../../lib/admin-auth";
 import { getClientBySlug } from "../../../../../lib/clients";
-import { addWordpressChanges } from "../../../../../lib/content-tracking";
+import { addWordpressChanges, addWordpressRevisions } from "../../../../../lib/content-tracking";
+import { getWpCreds } from "../../../../../lib/wp-creds";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -20,7 +21,15 @@ export async function POST(req: NextRequest) {
   const client = await getClientBySlug(slug);
   if (!client) return NextResponse.json({ ok: false, error: "Klant niet gevonden." }, { status: 404 });
   if (!client.domain) return NextResponse.json({ ok: false, error: "Deze klant heeft nog geen domein ingevuld." }, { status: 400 });
+
+  // Met inloggegevens: volledige revisie-historie. Anders: laatste wijzigingsdatum.
+  const creds = await getWpCreds(slug);
+  if (creds) {
+    const res = await addWordpressRevisions(slug, client.domain, creds);
+    if (!res.hasApi) return NextResponse.json({ ok: false, error: "Kon de revisies niet ophalen. Controleer of de inloggegevens kloppen en of de site WordPress is met een open REST API." }, { status: 400 });
+    return NextResponse.json({ ok: true, mode: "revisions", ...res });
+  }
   const res = await addWordpressChanges(slug, client.domain);
-  if (!res.hasApi) return NextResponse.json({ ok: false, error: "Geen open WordPress REST API gevonden op dit domein. Mogelijk staat de API uit of is het geen WordPress; dan is een applicatie-wachtwoord nodig." }, { status: 400 });
-  return NextResponse.json({ ok: true, ...res });
+  if (!res.hasApi) return NextResponse.json({ ok: false, error: "Geen open WordPress REST API gevonden op dit domein. Mogelijk staat de API uit of is het geen WordPress; stel dan een applicatie-wachtwoord in." }, { status: 400 });
+  return NextResponse.json({ ok: true, mode: "modified", ...res });
 }

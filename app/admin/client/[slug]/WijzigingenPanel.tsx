@@ -144,6 +144,35 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
   const [addDate, setAddDate] = useState("");
   const [addNote, setAddNote] = useState("");
   const [addBusy, setAddBusy] = useState(false);
+  // WordPress-koppeling (applicatiewachtwoord voor de volledige historie)
+  const [wpSet, setWpSet] = useState(false);
+  const [wpSetupOpen, setWpSetupOpen] = useState(false);
+  const [wpUser, setWpUser] = useState("");
+  const [wpPass, setWpPass] = useState("");
+  const [wpSaveBusy, setWpSaveBusy] = useState(false);
+  const [wpSaveMsg, setWpSaveMsg] = useState("");
+
+  useEffect(() => {
+    fetch(`/api/admin/wp-creds?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).then((d) => { if (d.ok) { setWpSet(!!d.set); setWpUser(d.user || ""); } }).catch(() => {});
+  }, [slug]);
+
+  async function saveWpCreds() {
+    if (!wpUser.trim() || !wpPass.trim() || wpSaveBusy) return;
+    setWpSaveBusy(true); setWpSaveMsg("");
+    try {
+      const r = await fetch("/api/admin/wp-creds", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, user: wpUser.trim(), appPassword: wpPass.trim() }) });
+      const d = await r.json();
+      if (d.ok) { setWpSet(true); setWpPass(""); setWpSaveMsg("Inloggegevens opgeslagen en getest."); }
+      else setWpSaveMsg(d.error || "Opslaan mislukt.");
+    } catch { setWpSaveMsg("Opslaan mislukt."); } finally { setWpSaveBusy(false); }
+  }
+  async function removeWpCreds() {
+    setWpSaveBusy(true); setWpSaveMsg("");
+    try {
+      await fetch("/api/admin/wp-creds", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, action: "delete" }) });
+      setWpSet(false); setWpPass(""); setWpSaveMsg("Koppeling verwijderd.");
+    } catch { /* stil */ } finally { setWpSaveBusy(false); }
+  }
 
   useEffect(() => {
     fetch(`/api/admin/urls?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).then((d) => { if (d.ok) setUrls((d.urls || []).map((u: { url: string }) => u.url)); }).catch(() => {});
@@ -280,10 +309,28 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
         <span>Wijzigingen ({events.length})</span>
         <span style={{ display: "inline-flex", gap: 8 }}>
           <button type="button" className="ghost-btn small" onClick={() => setShowAdd((v) => !v)}>{showAdd ? "Sluiten" : "Wijziging toevoegen"}</button>
-          <button type="button" className="ghost-btn small" onClick={syncWordpress} disabled={wpBusy} title="Haalt uit WordPress per pagina de laatste wijzigingsdatum op">{wpBusy ? "Uit WordPress…" : "Uit WordPress ophalen"}</button>
+          <button type="button" className="ghost-btn small" onClick={() => setWpSetupOpen((v) => !v)} title="WordPress-applicatiewachtwoord instellen voor de volledige bewerkingshistorie">WordPress-koppeling {wpSet ? "✓" : ""}</button>
+          <button type="button" className="ghost-btn small" onClick={syncWordpress} disabled={wpBusy} title={wpSet ? "Haalt de volledige bewerkingshistorie (revisies) uit WordPress" : "Haalt per pagina de laatste wijzigingsdatum op (stel een koppeling in voor de volledige historie)"}>{wpBusy ? "Uit WordPress…" : (wpSet ? "Uit WordPress ophalen (historie)" : "Uit WordPress ophalen")}</button>
           <button type="button" className="ghost-btn small" onClick={scan} disabled={scanning}>{scanning ? "Scannen…" : "Scan op wijzigingen"}</button>
         </span>
       </div>
+      {wpSetupOpen && (
+        <div className="wz-add">
+          <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>
+            Voor de volledige bewerkingshistorie (wat is wanneer veranderd) heeft het dashboard een WordPress-applicatiewachtwoord nodig. Maak dat in WordPress-beheer aan: <strong>Gebruikers → Profiel → Wachtwoorden voor applicaties</strong>, geef het een naam (bijv. &ldquo;Pingwin dashboard&rdquo;), en plak de getoonde code hieronder. Zonder koppeling haalt de knop alleen de laatste wijzigingsdatum per pagina op.
+          </div>
+          <div className="wz-add-row">
+            <input className="compose-input" value={wpUser} onChange={(e) => setWpUser(e.target.value)} placeholder="WordPress-gebruikersnaam" />
+            <input className="compose-input" type="password" value={wpPass} onChange={(e) => setWpPass(e.target.value)} placeholder="Applicatiewachtwoord (xxxx xxxx xxxx …)" />
+          </div>
+          <div style={{ marginTop: 8, display: "inline-flex", gap: 8, alignItems: "center" }}>
+            <button type="button" className="primary-btn small" onClick={saveWpCreds} disabled={wpSaveBusy || !wpUser.trim() || !wpPass.trim()}>{wpSaveBusy ? "Testen…" : "Opslaan en testen"}</button>
+            {wpSet && <button type="button" className="ghost-btn small" onClick={removeWpCreds} disabled={wpSaveBusy}>Koppeling verwijderen</button>}
+            {wpSet && <span className="muted" style={{ fontSize: 12 }}>Ingesteld{wpUser ? ` (${wpUser})` : ""}.</span>}
+          </div>
+          {wpSaveMsg && <div className={wpSaveMsg.includes("mislukt") || wpSaveMsg.includes("werk") ? "login-error" : "saved-msg"} style={{ marginTop: 8 }}>{wpSaveMsg}</div>}
+        </div>
+      )}
       {showAdd && (
         <div className="wz-add">
           <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>Een bekende aanpassing uit het verleden vastleggen (bijv. Hovenier Den Bosch, 2 weken terug), zodat je de KPI-ontwikkeling eromheen kunt volgen.</div>

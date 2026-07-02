@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import { sql, ensureSchema } from "./db";
 import { diffSnapshots, diffSummary, isDiffEmpty, type SnapshotForDiff, type ContentDiff } from "./content-diff";
-import { fetchWordpressModified } from "./wordpress";
+import { fetchWordpressModified, fetchWordpressPages, fetchWordpressRevisions, revisionDiffSummary, type WpAuth } from "./wordpress";
 
 // ═══════════════════════════════════════════════════════════
 // PAGINA-WIJZIGINGEN: snapshots + change-detectie
@@ -253,6 +253,45 @@ export async function addWordpressChanges(slug: string, domain: string): Promise
       INSERT INTO page_change_events (client_slug, url, detected_at, current_snapshot_id, diff, change_summary, is_manual, source)
       VALUES (${slug}, ${it.url}, ${it.modified}, ${null}, ${"{}"}, ${summary}, true, 'wordpress')`;
     added++; seen.add(`${key}|${day}`);
+  }
+  return { scanned, added, hasApi: true };
+}
+
+// Volledige bewerkingshistorie uit WordPress (revisions, geauthenticeerd). Per
+// pagina alle revisies met datum en een licht "wat veranderde"-oordeel (titel/
+// woorden). Idempotent: dedupe op (url, revisie-tijdstip tot op de minuut).
+// Filtert op de beheerde pagina's (client_urls) als die lijst er is.
+export async function addWordpressRevisions(slug: string, domain: string, auth: WpAuth): Promise<{ scanned: number; added: number; hasApi: boolean }> {
+  await ensureSchema();
+  await ensureTables();
+  if (!auth) return { scanned: 0, added: 0, hasApi: false };
+  const pages = await fetchWordpressPages(domain, auth);
+  if (pages.length === 0) return { scanned: 0, added: 0, hasApi: false };
+
+  const { rows: urlRows } = await sql`SELECT url FROM client_urls WHERE client_slug = ${slug}`;
+  const known = new Set(urlRows.map((r) => (r.url as string).replace(/\/$/, "")));
+  const useFilter = known.size > 0;
+
+  const { rows: existing } = await sql`SELECT url, detected_at FROM page_change_events WHERE client_slug = ${slug} AND source = 'wordpress'`;
+  const minute = (iso: string) => new Date(iso).toISOString().slice(0, 16);
+  const seen = new Set(existing.map((r) => `${(r.url as string).replace(/\/$/, "")}|${minute(r.detected_at as string)}`));
+
+  const managed = pages.filter((p) => !useFilter || known.has(p.url.replace(/\/$/, ""))).slice(0, 60);
+  let scanned = 0, added = 0;
+  for (const p of managed) {
+    scanned++;
+    const revs = await fetchWordpressRevisions(domain, p.type, p.id, auth);
+    for (let i = 0; i < revs.length; i++) {
+      const cur = revs[i];
+      const key = `${p.url.replace(/\/$/, "")}|${minute(cur.modified)}`;
+      if (seen.has(key)) continue;
+      const what = revisionDiffSummary(i > 0 ? revs[i - 1] : null, cur);
+      const summary = `WordPress-revisie (${new Date(cur.modified).toLocaleDateString("nl-NL")}): ${what}`;
+      await sql`
+        INSERT INTO page_change_events (client_slug, url, detected_at, current_snapshot_id, diff, change_summary, is_manual, source)
+        VALUES (${slug}, ${p.url}, ${cur.modified}, ${null}, ${"{}"}, ${summary}, true, 'wordpress')`;
+      added++; seen.add(key);
+    }
   }
   return { scanned, added, hasApi: true };
 }
