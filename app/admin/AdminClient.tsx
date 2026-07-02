@@ -29,7 +29,7 @@ export default function AdminClient({ initialClients }: { initialClients: Client
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
   // Budget bewerken per klant (maandfee, linkbuilding, uurtarief, uren)
   const [editSlug, setEditSlug] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ maandbudget: "", linkbuilding: "", uurtarief: "", beschikbareUren: "" });
+  const [editForm, setEditForm] = useState({ maandbudget: "", linkbuilding: "", uurtarief: "" });
   const [editBusy, setEditBusy] = useState(false);
 
   function openEdit(e: React.MouseEvent, c: ClientConfig) {
@@ -39,7 +39,6 @@ export default function AdminClient({ initialClients }: { initialClients: Client
       maandbudget: String(c.budget.maandbudget),
       linkbuilding: String(c.budget.linkbuilding),
       uurtarief: String(c.budget.uurtarief),
-      beschikbareUren: String(c.budget.beschikbareUren),
     });
   }
   async function saveBudget(e: React.MouseEvent, c: ClientConfig) {
@@ -53,7 +52,10 @@ export default function AdminClient({ initialClients }: { initialClients: Client
           maandbudget: Number(editForm.maandbudget) || 0,
           linkbuilding: Number(editForm.linkbuilding) || 0,
           uurtarief: Number(editForm.uurtarief) || 0,
-          beschikbareUren: Number(editForm.beschikbareUren) || 0,
+          // Beschikbare uren zijn afgeleid (maandbudget − linkbuilding) / uurtarief.
+          beschikbareUren: Number(editForm.uurtarief) > 0
+            ? Math.round(((Number(editForm.maandbudget) || 0) - (Number(editForm.linkbuilding) || 0)) / Number(editForm.uurtarief))
+            : 0,
         }),
       });
       const data = await res.json();
@@ -244,16 +246,14 @@ export default function AdminClient({ initialClients }: { initialClients: Client
                             <label>Maandfee (&euro;, incl. linkbuilding)
                               <input type="number" value={editForm.maandbudget} onChange={(e) => editSet("maandbudget", e.target.value)} />
                             </label>
-                            <label>Linkbuilding-budget (&euro;)
+                            <label>Standaard linkbuilding per maand (&euro;)
                               <input type="number" value={editForm.linkbuilding} onChange={(e) => editSet("linkbuilding", e.target.value)} />
                             </label>
                             <label>Uurtarief (&euro;)
                               <input type="number" value={editForm.uurtarief} onChange={(e) => editSet("uurtarief", e.target.value)} />
                             </label>
-                            <label>Beschikbare uren per maand
-                              <input type="number" value={editForm.beschikbareUren} onChange={(e) => editSet("beschikbareUren", e.target.value)} />
-                            </label>
                           </div>
+                          <div className="hint" style={{ marginTop: 8 }}>De beschikbare uren worden per maand berekend uit (maandfee &minus; linkbuilding) / uurtarief. Wil je de linkbuilding voor één specifieke maand afwijkend zetten, doe dat in de Werkzaamheden-tab bij die maand; dan passen alleen de uren van die maand zich aan.</div>
                           <div className="budget-edit-actions">
                             <button className="primary-btn small" onClick={(e) => saveBudget(e, c)} disabled={editBusy}>{editBusy ? "Opslaan…" : "Opslaan"}</button>
                             <button className="ghost-btn small" onClick={(e) => { e.stopPropagation(); setEditSlug(null); }}>Annuleren</button>

@@ -257,6 +257,10 @@ tbody td:last-child { text-align: center; }
 .budget-edit-grid input { font-family: 'Montserrat', sans-serif; font-size: 14px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; outline: none; }
 .budget-edit-grid input:focus { border-color: var(--orange); }
 .budget-edit-actions { display: flex; gap: 8px; margin-top: 12px; }
+/* Linkbuilding per maand, inline bewerkbaar in de maandkaart */
+.lb-edit-wrap { display: inline-flex; align-items: center; gap: 1px; }
+.lb-edit { width: 58px; font-family: 'Montserrat', sans-serif; font-size: 13px; font-weight: 700; color: var(--dark); padding: 1px 4px; border: 1px solid var(--border); border-radius: 6px; outline: none; }
+.lb-edit:focus { border-color: var(--orange); }
 @media (max-width: 720px) { .budget-edit-grid { grid-template-columns: 1fr 1fr; } }
 .field { display: flex; flex-direction: column; }
 .field-wide { grid-column: 1 / -1; }

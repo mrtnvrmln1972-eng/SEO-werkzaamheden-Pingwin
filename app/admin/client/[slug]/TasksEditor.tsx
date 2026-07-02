@@ -205,6 +205,24 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
   const [monthSlot, setMonthSlot] = useState<HTMLElement | null>(null);
   useEffect(() => { setMonthSlot(document.getElementById("werk-month-slot")); }, []);
 
+  // Linkbuilding-budget per maand (override op de klantstandaard). De beschikbare
+  // uren van een maand volgen hieruit, zodat het aanpassen van één maand nooit de
+  // andere maanden raakt. Zonder override geldt de klantstandaard (budget.linkbuilding).
+  const [monthLb, setMonthLb] = useState<Record<string, number>>({});
+  const lbTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    fetch(`/api/admin/month-linkbuilding?slug=${encodeURIComponent(slug)}`)
+      .then((r) => r.json()).then((d) => { if (d.ok) setMonthLb(d.months || {}); }).catch(() => {});
+  }, [slug]);
+  function changeMonthLb(maand: string, value: string) {
+    const n = value === "" ? 0 : Math.max(0, Number(value) || 0);
+    setMonthLb((m) => ({ ...m, [maand]: n }));
+    if (lbTimer.current) clearTimeout(lbTimer.current);
+    lbTimer.current = setTimeout(() => {
+      fetch("/api/admin/month-linkbuilding", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, month: maand, linkbuilding: n }) }).catch(() => {});
+    }, 600);
+  }
+
   // Mail-venster (naar developer of naar klant)
   const [showCompose, setShowCompose] = useState(false);
   const [composeMode, setComposeMode] = useState<"dev" | "klant">("dev");
@@ -386,9 +404,6 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
   const monthsPresent = MONTHS.filter((m) => indexed.some((x) => (x.r.maand || "").toLowerCase() === m));
   const noMonth = indexed.filter((x) => !MONTHS.includes((x.r.maand || "").toLowerCase()));
 
-  const urenInGeld = budget.maandbudget - budget.linkbuilding;
-  const beschikbareUren = budget.beschikbareUren || (budget.uurtarief ? Math.round((urenInGeld / budget.uurtarief) * 10) / 10 : 0);
-
   // Render-functies (geen sub-componenten → geen remount, focus blijft behouden).
   function section(secRows: { r: Row; i: number }[], maand: string) {
     // Taken blijven staan waar ze gesleept/aangemaakt zijn, ongeacht klaar of niet.
@@ -442,16 +457,26 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
     );
   }
 
-  // Compact budget-overzicht, horizontaal, bedoeld rechts van de maandnaam.
-  function budgetInline(urenBesteed: number, urenGepland: number) {
+  // Compact budget-overzicht, horizontaal, bedoeld rechts van de maandnaam. De
+  // linkbuilding is per maand aanpasbaar; de beschikbare uren volgen automatisch
+  // uit (maandbudget − linkbuilding) / uurtarief voor DIE maand.
+  function budgetInline(maand: string, urenBesteed: number, urenGepland: number) {
     if (budget.maandbudget <= 0) {
       return <span className="month-card-uren">{urenBesteed} u besteed · {urenGepland} u gepland</span>;
     }
+    const lb = maand in monthLb ? monthLb[maand] : budget.linkbuilding;
+    const urenInGeld = budget.maandbudget - lb;
+    const beschikbareUren = budget.uurtarief ? Math.round((urenInGeld / budget.uurtarief) * 10) / 10 : (budget.beschikbareUren || 0);
     const resterend = Math.round((beschikbareUren - urenBesteed) * 10) / 10;
+    const editable = MONTHS.includes(maand);
     return (
       <div className="budget-inline">
         <div><span>Maandbudget</span><strong>&euro;{budget.maandbudget.toFixed(0)}</strong></div>
-        <div><span>Budget linkbuilding</span><strong>&euro;{budget.linkbuilding.toFixed(0)}</strong></div>
+        <div><span>Budget linkbuilding</span>
+          {editable
+            ? <strong className="lb-edit-wrap">&euro;<input className="lb-edit" type="number" min={0} value={lb} onClick={(e) => e.stopPropagation()} onChange={(e) => changeMonthLb(maand, e.target.value)} title="Linkbuilding voor deze maand; de beschikbare uren passen zich automatisch aan" /></strong>
+            : <strong>&euro;{lb.toFixed(0)}</strong>}
+        </div>
         <div><span>Uren in geld</span><strong>&euro;{urenInGeld.toFixed(0)}</strong></div>
         <div><span>Beschikbare uren</span><strong>{beschikbareUren} u</strong></div>
         <div><span>Uren gepland</span><strong>{urenGepland} u</strong></div>
@@ -477,7 +502,7 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
             <button type="button" className="ghost-btn small" onClick={(e) => { e.stopPropagation(); openComposeFor(undefined, "dev"); }}>✉ Developer</button>
             <button type="button" className="ghost-btn small" onClick={(e) => { e.stopPropagation(); openComposeFor(undefined, "klant"); }}>✉ Klant</button>
           </span>
-          {budgetInline(urenBesteed, urenGepland)}
+          {budgetInline(maand, urenBesteed, urenGepland)}
         </div>
         {open && <div className="month-cards">{section(items, maand)}</div>}
       </div>
