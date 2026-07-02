@@ -4,7 +4,7 @@ import { getTasks } from "./tasks";
 import { getGscForPage } from "./google";
 import { fetchPageContent } from "./page-content";
 import { measurePage, measureToText, measureCompetitors, competitorsToText } from "./page-measure";
-import { callClaude } from "./anthropic";
+import { callClaude, callClaudeAgentic, type ToolDef, type ToolRunner } from "./anthropic";
 import type { DocSpec } from "./pingwin-docx";
 import { SEO_CRITERIA_MD } from "./seo-criteria";
 import { getPageSpeed, pageSpeedToText } from "./pagespeed";
@@ -33,7 +33,7 @@ function planPrimaryKeyword(plan: string): string {
   return m[1].replace(/\*+/g, "").trim();
 }
 
-async function buildContext(slug: string, url: string, extra?: string): Promise<string> {
+async function buildContext(slug: string, url: string, extra?: string): Promise<{ text: string; primary: string }> {
   const client = await getClientBySlug(slug);
   const domain = client?.domain || "";
   // Ronde 1: goedkope/snelle bronnen parallel. measurePage meet de pagina exact
@@ -90,7 +90,7 @@ async function buildContext(slug: string, url: string, extra?: string): Promise<
     ahrefsText = "AHREFS-DATA: niet beschikbaar (geen Ahrefs-koppeling ingesteld).";
   }
 
-  return [
+  const text = [
     `KLANT: ${client?.name || slug}`,
     client?.seoProfile ? `KLANTPROFIEL: ${client.seoProfile}` : "",
     `PAGINA: ${url}`,
@@ -114,6 +114,7 @@ async function buildContext(slug: string, url: string, extra?: string): Promise<
     ahrefsText,
     competitorText ? "\n" + competitorText : "",
   ].filter(Boolean).join("\n");
+  return { text, primary };
 }
 
 const DOCSPEC_FORMAT = `Geef UITSLUITEND geldige JSON, niets eromheen, exact dit formaat:
@@ -294,6 +295,50 @@ Geen emoji. ${DOCSPEC_FORMAT}`;
   return { spec, title };
 }
 
+// ── Agentische redeneer-stap (NOC-splitspatroon: DENKEN los van FORMATTEREN) ──
+// De AI redeneert eerst agentisch met read-only meet-tools (dieper graven waar hij
+// twijfelt, een winnende concurrent volledig uitmeten om te modelleren) en dwingt
+// een VOLLEDIGE slotconclusie af. Die rijke tekst voedt daarna de formatteer-stap.
+// Zo krijgen we Cowork-diepgang zonder het "agentisch + direct JSON = fragiel"-risico.
+const REASON_FOCUS: Record<DocKind, string> = {
+  analyse: "Doel: een complete SEO-AUDIT van de bestaande pagina. Loop in je conclusie ALLE relevante criteria langs met gemeten waarde + status (PASS/FAIL/PARTIAL/N/A), bepaal het gate-verdict (score/100, CRITICAL- en MAJOR-failures met ID), en geef minstens 5 geprioriteerde aanbevelingen. Toets tegen de gemeten waarden en de consensus van de winnaars. Benoem expliciet wat BEHOUDEN kan blijven.",
+  blauwdruk: "Doel: de IDEALE paginastructuur. Bepaal in je conclusie de H1, de volledige H2/H3-structuur (gebaseerd op de must-have-secties die bij meerdere winnaars terugkomen), 2 meta-titles + 2 meta-descriptions, 4-8 FAQ-vragen, interne-link-suggesties en beeld-briefs. Zet de omvang-/dekkingslat op de consensus van de winnaars. Markeer per onderdeel BEHOUDEN/AANPASSEN/NIEUW.",
+  copy: "Doel: publicatieklare copy. Bepaal in je conclusie de volledige tekst: H1, per H2 de kop + alinea's, bullets, en een FAQ met vraag+antwoord (40-80 woorden), plus meta-title en meta-description. Hergebruik goede bestaande zinnen (BEHOUDEN) en vul aan wat de blauwdruk/winnaars vereisen. Houd density 0,5-2% en zoekwoord in de eerste 100 woorden.",
+};
+
+async function reasonAboutDoc(kind: DocKind, contextText: string, chain: string, primary: string): Promise<string> {
+  const system = `Je bent een senior SEO-specialist bij bureau Pingwin. Werk AGENTISCH: redeneer stap voor stap en gebruik de tools om te verifiëren en dieper te graven waar je twijfelt. Bijvoorbeeld: meet een winnende concurrent-pagina volledig uit om zijn opbouw te modelleren, of meet een gerelateerde pagina. Bouw je analyse op over meerdere stappen; ga niet gokken maar meet.
+Grond ALLES in gemeten data; verzin geen rankings, Core Web Vitals of paginabestaan.
+SLUIT VERPLICHT AF met een VOLLEDIGE, definitieve conclusie (begin die met "CONCLUSIE:") die alles bevat wat nodig is, want jouw conclusie wordt daarna letterlijk omgezet in het uiteindelijke document. Laat niets als "nog te bepalen" staan.
+${REASON_FOCUS[kind]}
+CRITERIA (leidend):
+${SEO_CRITERIA_MD}`;
+  const user = `Analyseer deze pagina en vorm je volledige conclusie voor de ${KIND_LABEL[kind]}.\n\nGEGEVENS:\n${contextText}${chain}`;
+  const tools: ToolDef[] = [
+    { name: "meet_pagina", description: "Meet één URL volledig uit (koppen, alt-teksten, links, schema, woordenaantal, meta, FAQ). Gebruik dit om een winnende concurrent-pagina of een gerelateerde pagina in detail te modelleren.", input_schema: { type: "object", properties: { url: { type: "string", description: "De volledige URL om uit te meten" } }, required: ["url"] } },
+    { name: "meet_concurrenten", description: "Meet meerdere concurrent-URL's tegelijk en geef de consensus (terugkerende H2-onderwerpen, mediane omvang, FAQ/schema-dekking).", input_schema: { type: "object", properties: { urls: { type: "array", items: { type: "string" }, description: "Lijst met concurrent-URL's" } }, required: ["urls"] } },
+  ];
+  const run: ToolRunner = async (name, input) => {
+    if (name === "meet_pagina") {
+      const u = String(input.url || "").trim();
+      if (!u) return "Geen URL opgegeven.";
+      const m = await measurePage(u, { staticOnly: true }).catch(() => null);
+      return m && m.ok ? measureToText(m, primary) : "Kon deze pagina niet uitmeten.";
+    }
+    if (name === "meet_concurrenten") {
+      const urls = Array.isArray(input.urls) ? (input.urls as unknown[]).map((x) => String(x)).filter(Boolean) : [];
+      if (!urls.length) return "Geen URL's opgegeven.";
+      const rows = await measureCompetitors(urls).catch(() => []);
+      return competitorsToText(rows);
+    }
+    return "Onbekende tool.";
+  };
+  // Max 4 denk-rondes met tools (de agent stopt eerder als hij klaar is), daarna een
+  // gedwongen slotronde voor de conclusie. Ruim tokenbudget zodat de volledige
+  // conclusie (bij copy de hele tekst) past, binnen de 300s-limiet van de route.
+  return callClaudeAgentic(system, [{ role: "user", content: user }], tools, run, 4, 6000);
+}
+
 export async function generateDocSpec(slug: string, url: string, kind: DocKind, extra?: string): Promise<{ spec: DocSpec; title: string }> {
   const context = await buildContext(slug, url, extra);
   const client = await getClientBySlug(slug);
@@ -307,11 +352,15 @@ export async function generateDocSpec(slug: string, url: string, kind: DocKind, 
     if (parts.length) chain = "\n\n" + parts.join("\n\n");
   }
 
-  // Analyse levert een grote scorecard: ruimer tokenbudget zodat de tabel niet afkapt.
+  // STAP 1 (DENKEN): agentische redenering met tools + gedwongen slotconclusie.
+  const reasoning = await reasonAboutDoc(kind, context.text, chain, context.primary).catch(() => "");
+  const reasoningBlock = reasoning ? `\n\nAGENTISCHE ANALYSE (LEIDEND, verwerk dit volledig en getrouw in het document):\n${reasoning}` : "";
+
+  // STAP 2 (FORMATTEREN): zet de conclusie om in het nette DocSpec-JSON.
   // Ruim tokenbudget: de copy (volledige pagina-tekst) is het langst; 4096 kapte
   // de JSON af ("Unterminated string"). 8192 geeft genoeg ruimte voor alle drie.
   const maxTokens = 8192;
-  const raw = await callClaude(SYSTEMS[kind], [{ role: "user", content: `Maak de ${kind} op basis van deze gegevens:\n\n${context}${chain}` }], maxTokens);
+  const raw = await callClaude(SYSTEMS[kind], [{ role: "user", content: `Maak de ${kind} op basis van deze gegevens:\n\n${context.text}${chain}${reasoningBlock}` }], maxTokens);
   const parsed = JSON.parse(raw.replace(/```json/gi, "").replace(/```/g, "").trim());
   const title = typeof parsed.titel === "string" && parsed.titel.trim() ? parsed.titel.trim() : `${FALLBACK_TITLE[kind]} ${url}`;
   const spec: DocSpec = {
