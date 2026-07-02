@@ -257,7 +257,7 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
       {!loading && gsc && gsc.keywords.length > 0 && (
         <div className="cockpit-card">
           <div className="ck-section-head"><span>Zoekwoorden uit Search Console ({gsc.keywords.length})</span><span className="ck-updated">markeer een zoekwoord als prio of secundair</span></div>
-          <div className="res-table-wrap">
+          <div className="res-table-wrap kpi-scroll">
             <table className="res-table kpi-table">
               <thead><tr>
                 <th>Focus</th>
@@ -287,7 +287,7 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
       {!loading && gsc && pagesView.length > 0 && (
         <div className="cockpit-card">
           <div className="ck-section-head"><span>Pagina&rsquo;s uit Search Console ({pagesView.length})</span><span className="ck-updated">{pageSort ? "sortering actief, zet uit om te slepen" : "sleep om vast te zetten bovenaan"}</span></div>
-          <div className="res-table-wrap">
+          <div className="res-table-wrap kpi-scroll">
             <table className="res-table kpi-table">
               <thead><tr>
                 <th></th>

@@ -170,7 +170,7 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
         )}
 
         {!loading && filtered.length > 0 && (
-          <div className="res-table-wrap" style={{ marginTop: 12 }}>
+          <div className="res-table-wrap pages-table-wrap" style={{ marginTop: 12 }}>
             <table className="res-table pages-table">
               <thead><tr>
                 <th>Status</th><th>Pagina</th>
