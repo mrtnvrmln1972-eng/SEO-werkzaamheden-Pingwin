@@ -45,7 +45,7 @@ function metaContent(html: string, key: string, kind: "name" | "property"): stri
   return decode((html.match(re1) || html.match(re2) || ["", ""])[1]);
 }
 
-export async function measurePage(url: string): Promise<PageMeasurement> {
+export async function measurePage(url: string, opts?: { staticOnly?: boolean }): Promise<PageMeasurement> {
   const empty: PageMeasurement = {
     ok: false, status: null, rendered: false, metaTitle: "", titleLength: 0, metaDescription: "", descriptionLength: 0,
     canonical: "", robots: "", viewport: "", ogTitle: "", ogDescription: "", ogImage: "",
@@ -54,7 +54,8 @@ export async function measurePage(url: string): Promise<PageMeasurement> {
   };
 
   // 1. Gerenderde HTML (headless browser) indien beschikbaar; anders statisch.
-  const r = await renderHtml(url);
+  // staticOnly slaat de browser over (voor concurrent-pagina's: snel, geen latency).
+  const r = opts?.staticOnly ? { html: "", status: null as number | null, rendered: false } : await renderHtml(url);
   let html = r.html, status = r.status, rendered = r.rendered;
   if (!html) {
     const ctrl = new AbortController();
@@ -131,6 +132,22 @@ export async function measurePage(url: string): Promise<PageMeasurement> {
     schemaTypes: [...schemaSet].sort(),
     faqDetected: faqHeading, faqCount: faqHeading ? Math.max(faqCount, 1) : faqCount,
   };
+}
+
+// Meet de top-concurrenten uit de SERP statisch uit (snel, geen browser) zodat de
+// analyse concreet kan vergelijken met wat de winnende pagina's WEL doen: hun
+// omvang, koppen, FAQ en schema. Dit is de "wat mist"-grounding zoals Cowork die
+// uit de SERP-top haalt. Max een handjevol, parallel.
+export async function measureCompetitors(urls: string[], limit = 3): Promise<{ url: string; m: PageMeasurement }[]> {
+  const pick = urls.filter(Boolean).slice(0, limit);
+  const out = await Promise.all(pick.map(async (u) => ({ url: u, m: await measurePage(u, { staticOnly: true }).catch(() => null) })));
+  return out.filter((x): x is { url: string; m: PageMeasurement } => !!x.m && x.m.ok);
+}
+
+export function competitorsToText(rows: { url: string; m: PageMeasurement }[]): string {
+  if (!rows.length) return "TOP-CONCURRENTEN (inhoud): niet gemeten.";
+  return ["TOP-CONCURRENTEN — wat de best scorende pagina's WEL op de pagina hebben (vergelijk hiermee bij 'wat mist' en zet hier de H2-doelen op):",
+    ...rows.map((r, i) => `${i + 1}. ${r.url}\n   - ${r.m.wordCount} woorden; H1: "${r.m.h1[0] || "?"}"; ${r.m.h2.length} H2's: ${r.m.h2.slice(0, 12).map((h) => `"${h}"`).join(" | ") || "geen"}\n   - FAQ: ${r.m.faqDetected ? `ja (~${r.m.faqCount})` : "nee"}; schema: ${r.m.schemaTypes.join(", ") || "geen"}; interne links: ${r.m.internalLinkCount}`)].join("\n");
 }
 
 // Formatteert de meting + berekende waarden tot een blok voor de AI, zodat die

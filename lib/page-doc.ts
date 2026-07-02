@@ -3,7 +3,7 @@ import { getPagePlan, getPageDocOutputs, savePageDocOutput } from "./site-urls";
 import { getTasks } from "./tasks";
 import { getGscForPage } from "./google";
 import { fetchPageContent } from "./page-content";
-import { measurePage, measureToText } from "./page-measure";
+import { measurePage, measureToText, measureCompetitors, competitorsToText } from "./page-measure";
 import { callClaude } from "./anthropic";
 import type { DocSpec } from "./pingwin-docx";
 import { SEO_CRITERIA_MD } from "./seo-criteria";
@@ -57,6 +57,7 @@ async function buildContext(slug: string, url: string, extra?: string): Promise<
   // Ronde 2: Ahrefs-diepte (alleen als geconfigureerd). Top-10 SERP + varianten op
   // het primaire zoekwoord, plus de zoekwoorden waarop de URL zelf organisch scoort.
   let ahrefsText = "";
+  let competitorText = "";
   if (ahrefsConfigured()) {
     const [urlKw, serp, overview, ideas] = await Promise.all([
       getUrlOrganicKeywords(url, "nl", 40).catch(() => []),
@@ -65,6 +66,13 @@ async function buildContext(slug: string, url: string, extra?: string): Promise<
       primary ? getKeywordIdeas(primary, "nl", 25).catch(() => []) : Promise.resolve([]),
     ]);
     const ov = overview[0];
+
+    // Meet de top-3 concurrenten uit de SERP uit (statisch, snel, geen extra
+    // Ahrefs-credits) zodat de analyse concreet vergelijkt met de winnaars.
+    const ownHost = (() => { try { return new URL(url).host.replace(/^www\./, ""); } catch { return domain.replace(/^www\./, ""); } })();
+    const compUrls = serp.map((s) => s.url).filter((u) => { try { return new URL(u).host.replace(/^www\./, "") !== ownHost; } catch { return false; } });
+    const comps = compUrls.length ? await measureCompetitors(compUrls, 3).catch(() => []) : [];
+    competitorText = competitorsToText(comps);
     ahrefsText = [
       "AHREFS-DATA:",
       primary ? `Primair zoekwoord (afgeleid uit GSC): "${primary}"${ov ? ` — volume ${ov.volume ?? "n/b"}/mnd, KD ${ov.difficulty ?? "n/b"}, CPC ${ov.cpc ?? "n/b"}` : ""}` : "Primair zoekwoord: (niet af te leiden uit GSC)",
@@ -104,6 +112,7 @@ async function buildContext(slug: string, url: string, extra?: string): Promise<
     psi ? pageSpeedToText(psi) : "Core Web Vitals: niet gemeten.",
     "",
     ahrefsText,
+    competitorText ? "\n" + competitorText : "",
   ].filter(Boolean).join("\n");
 }
 
