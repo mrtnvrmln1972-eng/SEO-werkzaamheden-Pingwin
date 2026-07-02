@@ -43,7 +43,8 @@ export async function getChat(id: number): Promise<{ id: number; messages: ChatM
 export async function saveChat(slug: string, url: string, id: number | null, messages: ChatMsg[]): Promise<number> {
   await ensureSchema(); await ensureTable();
   const firstUser = messages.find((m) => m.role === "user")?.content || "";
-  const title = firstUser.replace(/\s+/g, " ").trim().slice(0, 90);
+  // De hele vraag geldt als titel (ruim begrensd tegen extreem lange invoer).
+  const title = firstUser.replace(/\s+/g, " ").trim().slice(0, 400);
   if (id) {
     await sql`UPDATE page_chats SET messages = ${JSON.stringify(messages)}, title = ${title || null}, updated_at = now() WHERE id = ${id}`;
     return id;

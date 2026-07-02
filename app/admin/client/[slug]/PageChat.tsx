@@ -322,11 +322,13 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
 
       {msgs.length > 0 && (
         <div className="page-chat-log">
-          {msgs.map((m, i) => (
-            m.role === "user"
+          {msgs.map((m, i) => {
+            // De eerste vraag is de titel van de chat; niet nog eens als bericht tonen.
+            if (i === 0 && m.role === "user") return null;
+            return m.role === "user"
               ? <div key={i} className="page-chat-msg user">{m.content}</div>
-              : <div key={i} className="page-chat-msg assistant md" dangerouslySetInnerHTML={{ __html: mdToHtml(m.content) }} />
-          ))}
+              : <div key={i} className="page-chat-msg assistant md" dangerouslySetInnerHTML={{ __html: mdToHtml(m.content) }} />;
+          })}
           {busy && <div className="page-chat-msg assistant muted">Aan het denken…</div>}
         </div>
       )}
@@ -376,10 +378,11 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       {applied && <div className="saved-msg" style={{ marginTop: 8 }} dangerouslySetInnerHTML={{ __html: applied }} />}
       {err && <div className="login-error" style={{ marginTop: 8 }}>{err}</div>}
 
-      <div className="page-chat-quick">
-        <span className="pcq-label">Snelle actie:</span>
-        <button type="button" className="ghost-btn small" disabled={busy} onClick={() => send(CANNIBAL_PROMPT)} title="Brengt de cannibalisatie in kaart, wijst de eigenaar aan volgens het plan (niet de ranking) en zet de acties in het plan">Cannibalisatie oplossen</button>
-      </div>
+      {msgs.length > 0 && (
+        <div className="page-chat-quick">
+          <button type="button" className="pcd-btn" disabled={busy} onClick={() => send(CANNIBAL_PROMPT)} title="Brengt de cannibalisatie in kaart, wijst de eigenaar aan volgens het plan (niet de ranking) en zet de acties in het plan">Cannibalisatie oplossen</button>
+        </div>
+      )}
 
       <div className="page-chat-input">
         <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(input); }} placeholder="Stel een vraag over deze pagina…" disabled={busy} />

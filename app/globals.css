@@ -388,7 +388,7 @@ tbody td:last-child { text-align: center; }
 /* Geopende pagina = één samenhangend, gekleurd blok. De rij (de "roze balk")
    blijft sticky onder de kolomkop terwijl je door het plan en de chat scrolt. */
 .pages-row.open td {
-  position: sticky; top: 113px; z-index: 5;
+  position: sticky; top: 80px; z-index: 25;
   background: var(--brand-orange-soft);
   box-shadow: inset 0 -2px 0 var(--orange);
 }
@@ -409,7 +409,7 @@ tbody td:last-child { text-align: center; }
   background: var(--brand-orange-faint); text-align: left;
   border-left: 3px solid var(--orange); border-bottom: 2px solid var(--orange);
 }
-.pages-detail { padding: 10px 12px 12px; text-align: left; }
+.pages-detail { padding: 18px 20px 20px; text-align: left; }
 .pages-detail-label { font-size: 12px; font-weight: 700; color: var(--dark); display: block; margin-bottom: 6px; }
 .pages-plan { width: 100%; min-height: 90px; font-family: 'Montserrat', sans-serif; font-size: 13px; color: var(--dark); line-height: 1.5; border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; outline: none; resize: vertical; }
 .pages-plan:focus { border-color: var(--orange); }
@@ -465,7 +465,7 @@ tbody td:last-child { text-align: center; }
 .import-lock { cursor: help; }
 
 /* Pagina-chat (gegrond) */
-.page-chat { margin-top: 18px; border: 1px solid var(--border); border-left: 3px solid var(--brand-blue); border-radius: 12px; padding: 14px 16px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.page-chat { margin-top: 24px; border: 1px solid var(--border); border-left: 3px solid var(--brand-blue); border-radius: 12px; padding: 18px 20px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
 .page-chat-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; font-weight: 700; color: var(--dark); margin-bottom: 10px; }
 .page-chat-history { margin-bottom: 12px; }
 .page-chat-history-head { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--gray); margin-bottom: 5px; }
@@ -511,9 +511,9 @@ tbody td:last-child { text-align: center; }
 .pch-badge.fase { background: #EDE9FE; color: #6D28D9; }
 .pch-badge.task { background: var(--gray-light); color: var(--dark); }
 .page-chat-proposal-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
-.page-chat-tools { margin: 4px 0 8px; display: flex; gap: 8px; flex-wrap: wrap; }
+.page-chat-tools { margin: 16px 0 14px; display: flex; gap: 12px; flex-wrap: wrap; }
 /* Documenten-blok: één sturingsveld + de drie geketende stappen */
-.page-chat-docs { margin: 4px 0 8px; border: 1px solid var(--border); border-left: 3px solid var(--brand-taupe); border-radius: 10px; padding: 10px 12px; background: var(--brand-taupe-light); }
+.page-chat-docs { margin: 14px 0 12px; border: 1px solid var(--border); border-left: 3px solid var(--brand-taupe); border-radius: 10px; padding: 16px 18px; background: var(--brand-taupe-light); }
 .pcd-docs-head { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--gray); margin-bottom: 7px; }
 .pcd-nuance { width: 100%; font-size: 13px; border: 1px solid var(--border); border-radius: 8px; padding: 8px 11px; outline: none; margin-bottom: 8px; }
 .pcd-nuance:focus { border-color: var(--orange); }
@@ -1146,7 +1146,9 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .pcd-btn:disabled { opacity: 0.55; cursor: default; }
 .pcd-btn-primary { background: var(--orange); color: #fff; }
 .pcd-btn-primary:hover:not(:disabled) { background: var(--orange); filter: brightness(0.93); }
-.page-chat-tools, .pcd-docs-buttons { gap: 10px; }
+.page-chat-tools, .pcd-docs-buttons { gap: 12px; }
+.pcd-docs-head { margin-bottom: 10px; }
+.pcd-nuance { margin-bottom: 12px; }
 /* Voortgangsbalk voor 'alles achter elkaar' */
 .pcd-progress { margin-top: 8px; height: 6px; background: var(--orange-light); border-radius: 4px; overflow: hidden; }
 .pcd-progress-bar { height: 100%; background: var(--orange); transition: width .4s ease; }
