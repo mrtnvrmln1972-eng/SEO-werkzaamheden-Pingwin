@@ -102,15 +102,16 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   // Draait de drie stappen ACHTER ELKAAR (analyse -> blauwdruk -> copy). Moet
   // sequentieel: elke stap bouwt voort op de vorige.
   const [allBusy, setAllBusy] = useState(false);
+  const [allStep, setAllStep] = useState(0); // 0 = idle, 1..3 = huidige stap
   async function genAll() {
     if (allBusy || docBusy) return;
-    setAllBusy(true); setErr("");
+    setAllBusy(true); setErr(""); setAllStep(1);
     try {
       setApplied("Stap 1 van 3: analyse-document…"); await genDoc("analyse");
-      setApplied("Stap 2 van 3: blauwdruk-document…"); await genDoc("blauwdruk");
-      setApplied("Stap 3 van 3: copy-document…"); await genDoc("copy");
+      setAllStep(2); setApplied("Stap 2 van 3: blauwdruk-document…"); await genDoc("blauwdruk");
+      setAllStep(3); setApplied("Stap 3 van 3: copy-document…"); await genDoc("copy");
       setApplied("Alle drie de stappen zijn gedraaid: analyse → blauwdruk → copy. De documenten (en klantversies) staan hierboven en als werkzaamheid vastgelegd.");
-    } finally { setAllBusy(false); }
+    } finally { setAllBusy(false); setAllStep(0); }
   }
 
   // ── Google Drive bestemmingsmap ─────────────────────────────
@@ -340,19 +341,24 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
             {driveFolder && <button type="button" className="ghost-btn small" onClick={() => setDriveFolder(null)}>Naar download</button>}
           </div>
           <div className="page-chat-tools">
-            <button type="button" className="ghost-btn small" onClick={makeWorkItem} disabled={taskGen}>{taskGen ? "Vastleggen…" : "Analyse vastleggen (document + werkzaamheid)"}</button>
-            <button type="button" className="ghost-btn small" onClick={makeClientMail}>Mail naar de klant</button>
+            <button type="button" className="pcd-btn" onClick={makeWorkItem} disabled={taskGen}>{taskGen ? "Vastleggen…" : "Analyse vastleggen"}</button>
+            <button type="button" className="pcd-btn" onClick={makeClientMail}>Mail naar de klant</button>
           </div>
           <div className="page-chat-docs">
             <div className="pcd-docs-head">Documenten (bouwen voort op het plan, de taken en de vorige stap)</div>
             <input className="pcd-nuance" value={nuance} onChange={(e) => setNuance(e.target.value)} placeholder="Extra sturing (optioneel), bijv. leg de nadruk op de regio, of behoud de tarieventabel." />
             <div className="pcd-docs-buttons">
-              <button type="button" className="ghost-btn small" onClick={() => genDoc("analyse")} disabled={!!docBusy || allBusy}>{docBusy === "analyse" ? "Analyse maken…" : "1. Analyse-document"}</button>
-              <button type="button" className="ghost-btn small" onClick={() => genDoc("blauwdruk")} disabled={!!docBusy || allBusy}>{docBusy === "blauwdruk" ? "Blauwdruk maken…" : "2. Blauwdruk-document"}</button>
-              <button type="button" className="ghost-btn small" onClick={() => genDoc("copy")} disabled={!!docBusy || allBusy}>{docBusy === "copy" ? "Copy maken…" : "3. Copy-document (+ dev-taak)"}</button>
-              <button type="button" className="primary-btn small" onClick={genAll} disabled={!!docBusy || allBusy}>{allBusy ? "Alle stappen draaien…" : "Alles achter elkaar (1 → 2 → 3)"}</button>
+              <button type="button" className="pcd-btn" onClick={() => genDoc("analyse")} disabled={!!docBusy || allBusy}>{docBusy === "analyse" ? "Analyse maken…" : "1. Analyse-document"}</button>
+              <button type="button" className="pcd-btn" onClick={() => genDoc("blauwdruk")} disabled={!!docBusy || allBusy}>{docBusy === "blauwdruk" ? "Blauwdruk maken…" : "2. Blauwdruk-document"}</button>
+              <button type="button" className="pcd-btn" onClick={() => genDoc("copy")} disabled={!!docBusy || allBusy}>{docBusy === "copy" ? "Copy maken…" : "3. Copy-document (+ dev-taak)"}</button>
+              <button type="button" className="pcd-btn pcd-btn-primary" onClick={genAll} disabled={!!docBusy || allBusy}>{allBusy ? `Stap ${allStep} van 3 draait…` : "Alles achter elkaar (1 → 2 → 3)"}</button>
             </div>
-            <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>Van elk document wordt automatisch ook een klantversie gemaakt en in de Drive-map opgeslagen. De taaktitel linkt naar de technische versie, met "(klantversie)" ernaast; het klantdashboard toont alleen de klantversie.</div>
+            {allBusy && (
+              <div className="pcd-progress" title={`Stap ${allStep} van 3`}>
+                <div className="pcd-progress-bar" style={{ width: `${(allStep / 3) * 100}%` }} />
+              </div>
+            )}
+            <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>Dit is een grote analyse en uitwerking; alle stappen achter elkaar draaien kan een paar minuten duren. Je kunt intussen naar een ander tabblad, het loopt door. Van elk document wordt automatisch ook een klantversie gemaakt en in de Drive-map opgeslagen (taaktitel → technische versie, "(klantversie)" ernaast; het klantdashboard toont alleen de klantversie).</div>
           </div>
         </>
       )}

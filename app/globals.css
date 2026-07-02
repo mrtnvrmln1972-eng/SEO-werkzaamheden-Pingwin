@@ -1006,3 +1006,16 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .pg-kans.high { color: #1e824c; background: #e6f6ec; }
 .pg-kans.mid { color: #8a5a00; background: #fff3d9; }
 .pg-kans.low { color: var(--gray); background: #eef0f2; }
+
+/* Pagina-chat: mooiere, iets grotere knoppen met dun oranje randje */
+.pcd-btn { font-size: 13px; font-weight: 600; padding: 9px 16px; border: 1px solid var(--orange); border-radius: 9px; background: #fff; color: var(--dark); cursor: pointer; transition: background .15s; }
+.pcd-btn:hover:not(:disabled) { background: var(--orange-light); }
+.pcd-btn:disabled { opacity: 0.55; cursor: default; }
+.pcd-btn-primary { background: var(--orange); color: #fff; }
+.pcd-btn-primary:hover:not(:disabled) { background: var(--orange); filter: brightness(0.93); }
+.page-chat-tools, .pcd-docs-buttons { gap: 10px; }
+/* Voortgangsbalk voor 'alles achter elkaar' */
+.pcd-progress { margin-top: 8px; height: 6px; background: var(--orange-light); border-radius: 4px; overflow: hidden; }
+.pcd-progress-bar { height: 100%; background: var(--orange); transition: width .4s ease; }
+/* Pagina's-tab boxed + gecentreerd (ziet er netter uit dan volle breedte) */
+.pages-panel { max-width: 1120px; margin: 0 auto; }
