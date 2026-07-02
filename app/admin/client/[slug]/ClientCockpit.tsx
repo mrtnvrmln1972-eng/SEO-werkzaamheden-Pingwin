@@ -11,6 +11,7 @@ import type { TaskRow } from "../../../../lib/tasks";
 import ChatPanel from "./ChatPanel";
 import TasksEditor from "./TasksEditor";
 import FocusBlock from "./FocusBlock";
+import HelpHint from "./HelpHint";
 import LinkPreview from "./LinkPreview";
 import DeveloperOverview from "../../developer/DeveloperOverview";
 import KpiPanel from "./KpiPanel";
@@ -284,7 +285,7 @@ export default function ClientCockpit({
 
             <div className="cockpit-card">
               <button type="button" className="ck-collapse-head" onClick={() => setShowStatusBox((v) => !v)}>
-                <span>{showStatusBox ? "▾" : "▸"} Actuele stand van zaken</span>
+                <span>{showStatusBox ? "▾" : "▸"} Actuele stand van zaken <HelpHint wide text="De lopende correspondentie met de klant (wat er speelt), plus je handmatige 'Zoekwoorden & links'-blok. Klap open om het te zien." /></span>
                 {statusUpdatedAt && <span className="ck-updated">bijgewerkt {fmtDate(statusUpdatedAt)}</span>}
               </button>
               <div className="sov-layout" style={{ display: showStatusBox ? undefined : "none" }}>
@@ -335,7 +336,7 @@ export default function ClientCockpit({
 
             <div className="cockpit-card">
               <div className="ck-section-head ck-collapse-head" onClick={() => setShowMailsBox((v) => !v)}>
-                <span>{showMailsBox ? "▾" : "▸"} Laatste mails</span>
+                <span>{showMailsBox ? "▾" : "▸"} Laatste mails <HelpHint text="De laatste e-mails met deze klant. Klap open om ze te lezen of te doorzoeken." /></span>
                 <div className="sh-search" onClick={(e) => e.stopPropagation()}>
                   <input
                     value={shQuery}

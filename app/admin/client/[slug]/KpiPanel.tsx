@@ -319,7 +319,7 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
 
       {!loading && gsc && gsc.keywords.length > 0 && (
         <div className="cockpit-card">
-          <div className="ck-section-head"><span>Zoekwoorden uit Search Console ({gsc.keywords.length})</span><span className="ck-updated">markeer een zoekwoord als prio of secundair</span></div>
+          <div className="ck-section-head"><span>Zoekwoorden uit Search Console ({gsc.keywords.length}) <HelpHint wide text="De zoekwoorden waarop deze site in Google gevonden wordt (echte klikken en vertoningen uit Search Console). Markeer belangrijke woorden als prio of secundair; die verschijnen vastgezet bovenaan en zijn gedeeld met de Ahrefs-lijst." /></span><span className="ck-updated">markeer een zoekwoord als prio of secundair</span></div>
           <div className="res-table-wrap kpi-scroll">
             <table className="res-table kpi-table">
               <thead><tr>
@@ -349,7 +349,7 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
 
       {!loading && gsc && pagesView.length > 0 && (
         <div className="cockpit-card">
-          <div className="ck-section-head"><span>Pagina&rsquo;s uit Search Console ({pagesView.length})</span><span className="ck-updated">{pageSort ? "sortering actief, zet uit om te slepen" : "sleep om vast te zetten bovenaan"}</span></div>
+          <div className="ck-section-head"><span>Pagina&rsquo;s uit Search Console ({pagesView.length}) <HelpHint wide text="De pagina's van de site met hun klikken en vertoningen uit Search Console. Sleep een pagina om hem bovenaan vast te zetten (de pagina's die je in de gaten houdt)." /></span><span className="ck-updated">{pageSort ? "sortering actief, zet uit om te slepen" : "sleep om vast te zetten bovenaan"}</span></div>
           <div className="res-table-wrap kpi-scroll">
             <table className="res-table kpi-table">
               <thead><tr>
