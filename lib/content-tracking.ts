@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import { sql, ensureSchema } from "./db";
 import { diffSnapshots, diffSummary, isDiffEmpty, type SnapshotForDiff, type ContentDiff } from "./content-diff";
-import { fetchWordpressModified, fetchWordpressPages, fetchWordpressRevisions, revisionDiffSummary, type WpAuth } from "./wordpress";
+import { fetchWordpressModified, fetchWordpressPages, fetchWordpressRevisions, fetchWordpressUsers, revisionDiffSummary, type WpAuth, type WpRevision } from "./wordpress";
 
 // ═══════════════════════════════════════════════════════════
 // PAGINA-WIJZIGINGEN: snapshots + change-detectie
@@ -256,40 +256,70 @@ export async function addWordpressChanges(slug: string, domain: string): Promise
   return { scanned, added, hasApi: true, newest };
 }
 
-// Volledige bewerkingshistorie uit WordPress (revisions, geauthenticeerd). Per
-// pagina alle revisies met datum en een licht "wat veranderde"-oordeel (titel/
-// woorden). Idempotent: dedupe op (url, revisie-tijdstip tot op de minuut).
-// Filtert op de beheerde pagina's (client_urls) als die lijst er is.
+// Alleen wijzigingen die WIJ hebben gedaan (op auteur-e-mail/naam). Aanpassingen
+// door de klant of anderen blijven uit het overzicht.
+const OUR_TEAM_EMAILS = new Set(["pingwinonline@gmail.com", "toni@pingwin.nl", "maarten@pingwin.nl"]);
+const OUR_TEAM_RE = /pingwin|toni|maarten/i;
+
+// Volledige bewerkingshistorie uit WordPress (revisions, geauthenticeerd), maar
+// GEGROEPEERD en GEFILTERD: revisies van ons team binnen ~2 dagen worden tot één
+// wijziging gebundeld (dat is het moment dat een pagina opnieuw geïndexeerd wordt,
+// vanaf daar volgen we de KPI's). Wijzigingen door anderen blijven weg. Herbouwt
+// de WordPress-events schoon bij elke sync.
 export async function addWordpressRevisions(slug: string, domain: string, auth: WpAuth): Promise<{ scanned: number; added: number; hasApi: boolean; newest: string | null }> {
   await ensureSchema();
   await ensureTables();
   if (!auth) return { scanned: 0, added: 0, hasApi: false, newest: null };
-  const pages = await fetchWordpressPages(domain, auth);
+  const [pages, users] = await Promise.all([fetchWordpressPages(domain, auth), fetchWordpressUsers(domain, auth)]);
   if (pages.length === 0) return { scanned: 0, added: 0, hasApi: false, newest: null };
 
-  const { rows: existing } = await sql`SELECT url, detected_at FROM page_change_events WHERE client_slug = ${slug} AND source = 'wordpress'`;
-  const minute = (iso: string) => new Date(iso).toISOString().slice(0, 16);
-  const seen = new Set(existing.map((r) => `${(r.url as string).replace(/\/$/, "")}|${minute(r.detected_at as string)}`));
+  const canIdentify = users.size > 0;
+  const isOurs = (authorId: number): boolean => {
+    if (!canIdentify) return true; // auteurs niet te bepalen -> niet filteren
+    const u = users.get(authorId);
+    if (!u) return false;
+    if (u.email && OUR_TEAM_EMAILS.has(u.email.toLowerCase())) return true;
+    return OUR_TEAM_RE.test(u.name) || OUR_TEAM_RE.test(u.slug) || OUR_TEAM_RE.test(u.email);
+  };
 
-  // GEEN filter op client_urls (dat verborg recent aangepaste pagina's). We pakken
-  // de 60 meest recent gewijzigde pagina's, zodat revisies ophalen begrensd blijft
-  // maar juist de laatst bewerkte pagina's meepakt.
+  // Schone herbouw: verwijder de vorige WordPress-events (handmatige/andere blijven).
+  await sql`DELETE FROM page_change_events WHERE client_slug = ${slug} AND source = 'wordpress'`;
+
   const managed = [...pages].sort((a, b) => (b.modified || "").localeCompare(a.modified || "")).slice(0, 60);
+  const TWO_DAYS = 2 * 86400000;
+  const seen = new Set<string>();
   let scanned = 0, added = 0, newest: string | null = null;
+
   for (const p of managed) {
     scanned++;
-    const revs = await fetchWordpressRevisions(domain, p.type, p.id, auth);
-    for (let i = 0; i < revs.length; i++) {
-      const cur = revs[i];
-      if (!newest || cur.modified > newest) newest = cur.modified;
-      const key = `${p.url.replace(/\/$/, "")}|${minute(cur.modified)}`;
-      if (seen.has(key)) continue;
-      const what = revisionDiffSummary(i > 0 ? revs[i - 1] : null, cur);
-      const summary = `WordPress-revisie (${new Date(cur.modified).toLocaleDateString("nl-NL")}): ${what}`;
+    const allRevs = await fetchWordpressRevisions(domain, p.type, p.id, auth); // oplopend op datum
+    const team = allRevs.map((r, i) => ({ r, i })).filter((x) => isOurs(x.r.author));
+    if (team.length === 0) continue;
+
+    // Groepeer opeenvolgende team-revisies met <=2 dagen ertussen tot één wijziging.
+    const clusters: { r: WpRevision; i: number }[][] = [];
+    let cur: { r: WpRevision; i: number }[] = [];
+    for (const x of team) {
+      if (cur.length === 0) { cur.push(x); continue; }
+      const gap = new Date(x.r.modified).getTime() - new Date(cur[cur.length - 1].r.modified).getTime();
+      if (gap <= TWO_DAYS) cur.push(x); else { clusters.push(cur); cur = [x]; }
+    }
+    if (cur.length) clusters.push(cur);
+
+    for (const cl of clusters) {
+      const first = cl[0], last = cl[cl.length - 1];
+      if (!newest || last.r.modified > newest) newest = last.r.modified;
+      const day = new Date(last.r.modified).toISOString().slice(0, 10);
+      const dedupKey = `${p.url.replace(/\/$/, "")}|${day}`;
+      if (seen.has(dedupKey)) continue;
+      const before = first.i > 0 ? allRevs[first.i - 1] : null;
+      const what = revisionDiffSummary(before, last.r);
+      const who = users.get(last.r.author)?.name || "";
+      const summary = `WordPress${who ? ` (${who})` : ""}: ${what}${cl.length > 1 ? ` — ${cl.length} bewerkingen gebundeld` : ""}`;
       await sql`
         INSERT INTO page_change_events (client_slug, url, detected_at, current_snapshot_id, diff, change_summary, is_manual, source)
-        VALUES (${slug}, ${p.url}, ${cur.modified}, ${null}, ${"{}"}, ${summary}, true, 'wordpress')`;
-      added++; seen.add(key);
+        VALUES (${slug}, ${p.url}, ${last.r.modified}, ${null}, ${"{}"}, ${summary}, true, 'wordpress')`;
+      added++; seen.add(dedupKey);
     }
   }
   return { scanned, added, hasApi: true, newest };

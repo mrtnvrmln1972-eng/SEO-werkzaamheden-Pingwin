@@ -132,6 +132,31 @@ export async function fetchWordpressRevisions(domain: string, type: string, id: 
   } catch { return []; } finally { clearTimeout(t); }
 }
 
+export type WpUser = { id: number; name: string; email: string; slug: string };
+
+// Haalt de WordPress-gebruikers op (id → naam/e-mail), om te bepalen wie een
+// revisie heeft gemaakt. E-mail is alleen zichtbaar met bewerkrechten (context=edit).
+export async function fetchWordpressUsers(domain: string, auth: WpAuth): Promise<Map<number, WpUser>> {
+  const base = baseFromDomain(domain);
+  const out = new Map<number, WpUser>();
+  if (!base || !auth) return out;
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 12000);
+  try {
+    const res = await fetch(`${base}/wp-json/wp/v2/users?context=edit&per_page=100&_fields=id,name,email,slug`, { signal: ctrl.signal, headers: authHeaders(auth) });
+    if (!res.ok) return out;
+    const data = (await res.json()) as Record<string, unknown>[];
+    if (Array.isArray(data)) {
+      for (const u of data) {
+        const id = Number(u.id);
+        if (!id) continue;
+        out.set(id, { id, name: String(u.name || ""), email: String(u.email || ""), slug: String(u.slug || "") });
+      }
+    }
+  } catch { /* gebruikers optioneel */ } finally { clearTimeout(t); }
+  return out;
+}
+
 // Test of de opgegeven inloggegevens werken (haalt 1 pagina op met auth).
 export async function testWordpressAuth(domain: string, auth: WpAuth): Promise<{ ok: boolean; error?: string }> {
   const base = baseFromDomain(domain);
