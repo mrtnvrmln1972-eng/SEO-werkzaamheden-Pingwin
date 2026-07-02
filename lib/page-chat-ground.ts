@@ -40,6 +40,13 @@ export async function buildSystemPrompt(slug: string, url: string): Promise<stri
   // Alle eigen pagina's met verkeer (sitebreed overzicht).
   const topPages = [...urls].sort((a, b) => b.gscClicks - a.gscClicks).slice(0, 30);
 
+  // Plannen van ANDERE pagina's: wie claimt welke zoekintentie? Dit is leidend
+  // voor het aanwijzen van de bedoelde eigenaar (plan boven huidige ranking).
+  const plannedLines = urls
+    .filter((u) => (u.plan || "").trim() && normUrl(u.url) !== normUrl(url))
+    .slice(0, 40)
+    .map((u) => `- ${normUrl(u.url)}: ${(u.plan || "").replace(/\s+/g, " ").trim().slice(0, 200)}`);
+
   const facts = [
     `KLANT: ${client?.name || slug} (domein: ${domain || "onbekend"})`,
     "",
@@ -60,6 +67,9 @@ export async function buildSystemPrompt(slug: string, url: string): Promise<stri
     "",
     "ALLE PAGINA'S MET VERKEER (spiegel van de live site):",
     topPages.length ? topPages.map((u) => `- ${normUrl(u.url)} (${u.gscClicks} klikken, status ${u.status ?? "?"}) — ${u.title || ""}`).join("\n") : "- (nog geen site ingelezen)",
+    "",
+    "PLANNEN VAN ANDERE PAGINA'S (wie claimt welke zoekintentie; leidend voor het aanwijzen van de eigenaar):",
+    plannedLines.length ? plannedLines.join("\n") : "- (andere pagina's hebben nog geen plan; wijst niemand deze intentie in het plan aan, laat de eigenaar dan uit de strategie/afspraak volgen en vraag het na, kies hem niet puur op de huidige ranking)",
     "",
     `HUIDIG PLAN VOOR DE GEOPENDE PAGINA: ${plan || "(nog geen plan)"}`,
     "",
@@ -100,7 +110,13 @@ DREMPELS EN REGELS (Pingwin-methodologie):
 - Een zoekwoord als variant/secundair meenemen vanaf ~50 zoekvolume.
 - Twee termen SAMENVOEGEN als hun top-10 voor >50% dezelfde URL's toont (zelfde intentie); anders splitsen.
 - Een locatiepagina alleen bij genoeg lokaal volume; anders de plaats als sectie op een bredere pagina.
-- Kies bij consolidatie de pagina met de sterkste autoriteit/ranking als winnaar en redirect de rest daarheen.
+- BEPAAL DE EIGENAAR VAN EEN ZOEKINTENTIE VOLGENS DE STRATEGIE, NIET VOLGENS DE HUIDIGE RANKING. De bedoelde eigenaar is de pagina waarvan het PLAN dit zoekwoord als primair claimt (de gewenste bestemming), ook als die pagina nu nog niet het beste rankt of zelfs nog niet bestaat/rankt. De huidige rankings vertellen je alleen WAAR de waarde nu zit, zodat je weet wat je naar de eigenaar toe moet consolideren; ze zijn nooit reden om de strategie om te draaien. Adviseer dus NOOIT "gebruik de sterkere generieke pagina (zoals de homepage) maar" als er een specifieke pagina voor die intentie bedoeld is; versterk juist de bedoelde pagina en haal de waarde van de anderen daarheen (redirect, interne links, de ander herrichten op een eigen term). Alleen als GEEN enkele pagina die intentie in haar plan claimt, mag je de sterkste presteerder als voorlopige eigenaar voorstellen, maar zeg dat expliciet en vraag de gebruiker de strategische bedoeling te bevestigen.
+
+CANNIBALISATIE OPLOSSEN (volg dit wanneer de gebruiker erom vraagt, of wanneer je meerdere eigen pagina's op dezelfde zoekintentie ziet):
+1. Breng in kaart: gebruik de sitebrede zoekwoord→pagina-matrix (en waar nodig ahrefs_serp_top10 voor SERP-overlap) en maak een nette tabel per gedeeld zoekwoord met ALLE eigen URL's die erop ranken of erop mikken, met hun positie en vertoningen. Zo zie je precies waar de intentie versnipperd is.
+2. Wijs de bedoelde eigenaar aan volgens de regel hierboven (plan boven ranking). Rankt een andere pagina nu beter, benoem dat als "waarde die naar de eigenaar moet", niet als reden om te wisselen. Wijst het plan nog geen eigenaar aan, zeg dat expliciet en vraag het na.
+3. Geef per concurrerende pagina één concrete actie richting de eigenaar: 301-redirect naar de eigenaar, of interne link + de pagina herrichten op een eigen andere intentie, of samenvoegen. Benoem per actie de fase (meestal Opschonen voor redirects, Herbedraden voor interne links/ankers) en of het SEO- of Dev-werk is.
+4. Zet het overzicht en de acties netjes in het plan (onder Acties), zodat het meteen uitvoerbaar is en je het aan de developer kunt geven.
 
 Geef aan het eind een scherp, onderbouwd advies vanuit deze invalshoeken. Als de data ontbreekt of je twijfelt, haal hem op via de tools of stel een gerichte vraag.
 

@@ -8,6 +8,12 @@ type Task = { taak: string; fase?: string; wie?: string };
 type Proposal = { plan?: string; tasks?: Task[] };
 type ChatSummary = { id: number; title: string; updatedAt: string; count: number };
 
+// Kant-en-klare opdracht voor de "Cannibalisatie oplossen"-knop. Draait de
+// grounded chat: eerst in kaart brengen wie op dezelfde intentie mikt, dan de
+// eigenaar volgens het plan (niet de ranking), dan concrete acties in het plan.
+const CANNIBAL_PROMPT =
+  "Los de cannibalisatie voor deze pagina op. Breng eerst in een tabel in kaart welke andere pagina's van deze site op dezelfde zoekwoorden ranken of erop mikken (gebruik de sitebrede zoekwoord→pagina-matrix en de plannen van de andere pagina's; haal waar nodig de SERP-overlap erbij). Bepaal wie de bedoelde eigenaar is volgens het plan, niet puur op de huidige ranking, ook als deze pagina nu nog niet het beste rankt. Geef daarna per concurrerende pagina één concrete actie richting de eigenaar (301-redirect, interne link + herrichten op een eigen term, of samenvoegen), met de fase en of het SEO- of Dev-werk is, en zet het overzicht en de acties netjes in het plan.";
+
 export default function PageChat({ slug, url, clientEmail, clientName, onApplied, onGoToTask }: { slug: string; url: string; clientEmail?: string; clientName?: string; onApplied: (plan?: string) => void; onGoToTask?: (taskId: number) => void }) {
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [chatId, setChatId] = useState<number | null>(null);
@@ -365,6 +371,11 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
 
       {applied && <div className="saved-msg" style={{ marginTop: 8 }} dangerouslySetInnerHTML={{ __html: applied }} />}
       {err && <div className="login-error" style={{ marginTop: 8 }}>{err}</div>}
+
+      <div className="page-chat-quick">
+        <span className="pcq-label">Snelle actie:</span>
+        <button type="button" className="ghost-btn small" disabled={busy} onClick={() => send(CANNIBAL_PROMPT)} title="Brengt de cannibalisatie in kaart, wijst de eigenaar aan volgens het plan (niet de ranking) en zet de acties in het plan">Cannibalisatie oplossen</button>
+      </div>
 
       <div className="page-chat-input">
         <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(input); }} placeholder="Stel een vraag over deze pagina…" disabled={busy} />

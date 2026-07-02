@@ -498,6 +498,8 @@ tbody td:last-child { text-align: center; }
 /* Sticky kolomkoppen in het pagina-overzicht (blijven staan bij scrollen).
    top: 80px = onder de vaste oranje bovenbalk, anders plakken ze erachter. */
 .pages-table thead th { position: sticky; top: 80px; z-index: 20; }
+.page-chat-quick { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 10px 0 6px; }
+.page-chat-quick .pcq-label { font-size: 12px; color: var(--gray); }
 .page-chat-input { display: flex; gap: 8px; }
 .page-chat-input input { flex: 1 1 auto; font-size: 13px; padding: 8px 11px; border: 1px solid var(--border); border-radius: 8px; outline: none; }
 .page-chat-input input:focus { border-color: var(--orange); }
