@@ -31,10 +31,10 @@ export async function GET(req: NextRequest) {
   if (!domain) return NextResponse.json({ ok: true, pages: {} });
 
   const rows = await getGscPageOpportunities(domain, 90).catch(() => []);
-  const pages: Record<string, { impressions: number; clicks: number; ctr: number; position: number; bestKeyword: string; bestPosition: number | null; score: number; label: string; level: string }> = {};
+  const pages: Record<string, { impressions: number; clicks: number; ctr: number; position: number; bestKeyword: string; bestPosition: number | null; bestVolume: number | null; score: number; label: string; level: string }> = {};
   for (const p of rows) {
     const o = opportunity(p.impressions, p.position);
-    pages[norm(p.url)] = { impressions: p.impressions, clicks: p.clicks, ctr: p.ctr, position: p.position, bestKeyword: p.bestKeyword, bestPosition: p.bestPosition, score: Math.round(o.score), label: o.label, level: o.level };
+    pages[norm(p.url)] = { impressions: p.impressions, clicks: p.clicks, ctr: p.ctr, position: p.position, bestKeyword: p.bestKeyword, bestPosition: p.bestPosition, bestVolume: p.bestVolume, score: Math.round(o.score), label: o.label, level: o.level };
   }
   return NextResponse.json({ ok: true, pages });
 }

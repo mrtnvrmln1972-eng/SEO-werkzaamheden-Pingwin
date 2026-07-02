@@ -18,6 +18,8 @@ function inline(s: string): string {
   });
   t = t.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
   t = t.replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>");
+  // _tekst_ → onderstreept (niet binnen bestandsnamen/__ ).
+  t = t.replace(/(^|[^_\w])_([^_\n]+)_(?![_\w])/g, "$1<u>$2</u>");
   t = t.replace(/`([^`]+)`/g, "<code>$1</code>");
   return t;
 }

@@ -17,7 +17,7 @@ function statusBadge(status: number | null, redirectTarget: string) {
 }
 
 export default function PagesPanel({ slug, initialProfile, clientEmail, clientName, onGoToTask }: { slug: string; initialProfile?: string; clientEmail?: string; clientName?: string; onGoToTask?: (taskId: number) => void }) {
-  type Opp = { impressions: number; clicks: number; ctr: number; position: number; bestKeyword: string; bestPosition: number | null; score: number; label: string; level: string };
+  type Opp = { impressions: number; clicks: number; ctr: number; position: number; bestKeyword: string; bestPosition: number | null; bestVolume: number | null; score: number; label: string; level: string };
   const [opps, setOpps] = useState<Record<string, Opp>>({});
   const [sortKey, setSortKey] = useState<"kans" | "vertoningen" | "positie" | "klikken">("kans");
   const [urls, setUrls] = useState<ClientUrl[]>([]);
@@ -163,7 +163,7 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
   );
 }
 
-type PageOpp = { impressions: number; clicks: number; ctr: number; position: number; bestKeyword: string; bestPosition: number | null; score: number; label: string; level: string };
+type PageOpp = { impressions: number; clicks: number; ctr: number; position: number; bestKeyword: string; bestPosition: number | null; bestVolume: number | null; score: number; label: string; level: string };
 function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoToTask }: { slug: string; u: ClientUrl; opp?: PageOpp; open: boolean; onToggle: () => void; clientEmail: string; clientName: string; onGoToTask?: (taskId: number) => void }) {
   const [plan, setPlan] = useState(u.plan);
   const [saved, setSaved] = useState(false);
@@ -210,7 +210,7 @@ function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoTo
         <td>{statusBadge(u.status, u.redirectTarget)}</td>
         <td>
           <a href={u.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>{shortUrl(u.url)}</a>
-          {opp?.bestKeyword && <div className="pg-kw" title="Beste zoekwoord (meeste vertoningen)">{opp.bestKeyword}{opp.bestPosition != null ? ` · pos ${opp.bestPosition}` : ""}</div>}
+          {opp?.bestKeyword && <div className="pg-kw" title="Beste zoekwoord (meeste vertoningen), met zoekvolume en huidige positie">{opp.bestKeyword}{opp.bestVolume != null ? ` · vol ${opp.bestVolume.toLocaleString("nl-NL")}` : ""}{opp.bestPosition != null ? ` / pos ${opp.bestPosition}` : ""}</div>}
         </td>
         <td>{u.gscClicks > 0 ? u.gscClicks.toLocaleString("nl-NL") : <span className="muted">&mdash;</span>}</td>
         <td>{opp && opp.impressions > 0 ? opp.impressions.toLocaleString("nl-NL") : (u.gscImpressions > 0 ? u.gscImpressions.toLocaleString("nl-NL") : <span className="muted">&mdash;</span>)}</td>

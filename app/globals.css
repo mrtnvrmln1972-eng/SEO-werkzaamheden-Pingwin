@@ -487,8 +487,16 @@ tbody td:last-child { text-align: center; }
 .drive-newfolder .compose-input { flex: 1; }
 /* Klant-mail: ruim venster + nette, opgemaakte, meegroeiende bewerkbare preview */
 .mail-modal { width: 760px; max-width: 96vw; max-height: 92vh; }
-.mail-edit { min-height: 260px; max-height: 62vh; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; outline: none; background: var(--white); }
+.mail-edit { min-height: 260px; max-height: 62vh; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; outline: none; background: var(--white); font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.5; color: #222; }
 .mail-edit:focus { border-color: var(--orange); }
+/* Nette e-mail-opmaak in het kopieerbare blok: bold, onderstreept, bullets, blauwe links. */
+.mail-edit strong { font-weight: 700; }
+.mail-edit u { text-decoration: underline; }
+.mail-edit ul { margin: 6px 0 10px; padding-left: 22px; }
+.mail-edit li { margin: 2px 0; }
+.mail-edit a { color: #1a6dd6; text-decoration: underline; }
+/* Sticky kolomkoppen in het pagina-overzicht (blijven staan bij scrollen). */
+.pages-table thead th { position: sticky; top: 0; z-index: 3; }
 .page-chat-input { display: flex; gap: 8px; }
 .page-chat-input input { flex: 1 1 auto; font-size: 13px; padding: 8px 11px; border: 1px solid var(--border); border-radius: 8px; outline: none; }
 .page-chat-input input:focus { border-color: var(--orange); }

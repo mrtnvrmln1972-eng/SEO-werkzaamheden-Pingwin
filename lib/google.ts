@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { ahrefsConfigured, getKeywordsOverview } from "./ahrefs";
 
 // ═══════════════════════════════════════════════════════════
 // GOOGLE-KOPPELING (Search Console + Analytics, read-only)
@@ -294,7 +295,7 @@ export async function getGscKeywordsBeforeAfter(domain: string, pageUrl: string,
 // Kans-data per pagina: vertoningen, kliks, CTR, gemiddelde positie en het beste
 // zoekwoord (meeste vertoningen) met zijn positie. Voor het spotten van laaghangend
 // fruit in het pagina-overzicht (veel vraag + net buiten de top 10).
-export type PageOpportunity = { url: string; clicks: number; impressions: number; ctr: number; position: number; bestKeyword: string; bestPosition: number | null };
+export type PageOpportunity = { url: string; clicks: number; impressions: number; ctr: number; position: number; bestKeyword: string; bestPosition: number | null; bestVolume: number | null };
 export async function getGscPageOpportunities(domain: string, days = 90): Promise<PageOpportunity[]> {
   const token = await googleAccessToken();
   if (!token || !domain) return [];
@@ -313,7 +314,7 @@ export async function getGscPageOpportunities(domain: string, days = 90): Promis
     const cur = best.get(page);
     if (!cur || x.impressions > cur.impressions) best.set(page, { keyword: kw, impressions: x.impressions, position: x.position });
   }
-  return pageRows.map((x) => {
+  const out = pageRows.map((x) => {
     const url = x.keys?.[0] || "";
     const b = best.get(url);
     return {
@@ -321,8 +322,25 @@ export async function getGscPageOpportunities(domain: string, days = 90): Promis
       clicks: Math.round(x.clicks), impressions: Math.round(x.impressions),
       ctr: Math.round(x.ctr * 1000) / 10, position: Math.round(x.position * 10) / 10,
       bestKeyword: b?.keyword || "", bestPosition: b ? Math.round(b.position * 10) / 10 : null,
+      bestVolume: null as number | null,
     };
   });
+
+  // Zoekvolume van het beste zoekwoord (Ahrefs), gebundeld in ÉÉN call en begrensd
+  // (top 80 op vertoningen) om credits te sparen; alleen als Ahrefs gekoppeld is.
+  if (ahrefsConfigured()) {
+    const withKw = out.filter((p) => p.bestKeyword && p.impressions > 0).sort((a, b) => b.impressions - a.impressions).slice(0, 80);
+    const keywords = [...new Set(withKw.map((p) => p.bestKeyword))];
+    if (keywords.length) {
+      const ov = await getKeywordsOverview(keywords, "nl").catch(() => []);
+      const volMap = new Map(ov.map((o) => [o.keyword.toLowerCase(), o.volume]));
+      for (const p of out) {
+        const v = volMap.get(p.bestKeyword.toLowerCase());
+        if (v != null) p.bestVolume = v;
+      }
+    }
+  }
+  return out;
 }
 
 // GA4-gedragssignalen voor één pagina, voor en na een wijzigingsmoment.

@@ -234,13 +234,25 @@ export default function ClientCockpit({
             ))}
           </select>
           <nav className="header-tabs">
-            <button className={"tab" + (tab === "overzicht" ? " active" : "")} onClick={() => changeTab("overzicht")}>Overzicht</button>
-            <button className={"tab" + (tab === "werkzaamheden" ? " active" : "")} onClick={() => changeTab("werkzaamheden")}>Werkzaamheden</button>
-            <button className={"tab" + (tab === "paginas" ? " active" : "")} onClick={() => changeTab("paginas")}>Pagina&rsquo;s</button>
-            <button className={"tab" + (tab === "resultaten" ? " active" : "")} onClick={() => changeTab("resultaten")}>KPI&rsquo;s</button>
-            <button className={"tab" + (tab === "wijzigingen" ? " active" : "")} onClick={() => changeTab("wijzigingen")}>Wijzigingen</button>
-            <button className={"tab" + (tab === "klant" ? " active" : "")} onClick={() => changeTab("klant")}>Klant-dashboard</button>
-            <button className={"tab" + (tab === "developer" ? " active" : "")} onClick={() => changeTab("developer")} title="Alle developer-taken over alle klanten">Developer Overview</button>
+            {([
+              ["overzicht", "Overzicht", ""],
+              ["werkzaamheden", "Werkzaamheden", ""],
+              ["paginas", "Pagina’s", ""],
+              ["resultaten", "KPI’s", ""],
+              ["wijzigingen", "Wijzigingen", ""],
+              ["klant", "Klant-dashboard", ""],
+              ["developer", "Developer Overview", "Alle developer-taken over alle klanten"],
+            ] as [Tab, string, string][]).map(([id, label, title]) => (
+              // Echte link (href) zodat cmd/middel-klik in een nieuw tabblad opent;
+              // gewone klik wisselt client-side van tab.
+              <a
+                key={id}
+                href={`${pathname}?tab=${id}`}
+                title={title || undefined}
+                className={"tab" + (tab === id ? " active" : "")}
+                onClick={(e) => { if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return; e.preventDefault(); changeTab(id); }}
+              >{label}</a>
+            ))}
           </nav>
         </div>
         <div className="header-right">
