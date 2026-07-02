@@ -75,8 +75,8 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   const [driveFolder, setDriveFolder] = useState<{ id: string; name: string; path: string } | null>(null);
   const [nuance, setNuance] = useState("");
   const soort: Record<string, string> = { analyse: "Analyse", blauwdruk: "Blauwdruk", copy: "Copy" };
-  async function genDoc(kind: "analyse" | "blauwdruk" | "copy") {
-    if (docBusy) return;
+  async function genDoc(kind: "analyse" | "blauwdruk" | "copy"): Promise<boolean> {
+    if (docBusy) return false;
     setDocBusy(kind); setErr(""); setApplied("");
     try {
       // deliver=download alleen als er geen bestemmingsmap is gekozen.
@@ -85,12 +85,12 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       const ct = r.headers.get("Content-Type") || "";
       if (ct.includes("application/json")) {
         const d = await r.json();
-        if (!d.ok) { setErr(d.error || "Document maken mislukt."); return; }
+        if (!d.ok) { setErr(`${soort[kind]}: ${d.error || "document maken mislukt."}`); return false; }
         setApplied(`${soort[kind]}-document opgeslagen in Google Drive${d.folder ? `, map "${d.folder}"` : ""}${d.owner ? `, account ${d.owner}` : ""} als ${d.isDoc ? "Google Doc" : "Word-bestand"}. <a href="${d.link}" target="_blank" rel="noopener">Open technische versie</a>.${d.clientLink ? ` <a href="${d.clientLink}" target="_blank" rel="noopener">Open klantversie</a>.` : ""}${d.shared ? " Iedereen met de link kan het bekijken." : ""} Vastgelegd als werkzaamheid: de titel linkt naar de technische versie, "(klantversie)" ernaast naar de klantversie. Het klantdashboard toont alleen de klantversie.`);
         onApplied(); // ververst de takenlijst van deze pagina
-        return;
+        return true;
       }
-      if (!r.ok) { const d = await r.json().catch(() => ({})); setErr(d.error || "Document maken mislukt."); return; }
+      if (!r.ok) { const d = await r.json().catch(() => ({})); setErr(`${soort[kind]}: ${d.error || "document maken mislukt."}`); return false; }
       // Download-blob.
       const blob = await r.blob();
       const a = document.createElement("a");
@@ -102,7 +102,8 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       setTimeout(() => URL.revokeObjectURL(a.href), 4000);
       setApplied(`${soort[kind]}-document gedownload in Pingwin-huisstijl. Vastgelegd als werkzaamheid; plan of wijs hem toe in de Werkzaamheden-tab. Kies een Drive-map om het document ook automatisch te koppelen.`);
       onApplied(); // ververst de takenlijst van deze pagina
-    } catch { setErr("Document maken mislukt."); } finally { setDocBusy(""); }
+      return true;
+    } catch { setErr(`${soort[kind]}: document maken mislukt.`); return false; } finally { setDocBusy(""); }
   }
 
   // Draait de drie stappen ACHTER ELKAAR (analyse -> blauwdruk -> copy). Moet
@@ -113,9 +114,14 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     if (allBusy || docBusy) return;
     setAllBusy(true); setErr(""); setAllStep(1);
     try {
-      setApplied("Stap 1 van 3: analyse-document…"); await genDoc("analyse");
-      setAllStep(2); setApplied("Stap 2 van 3: blauwdruk-document…"); await genDoc("blauwdruk");
-      setAllStep(3); setApplied("Stap 3 van 3: copy-document…"); await genDoc("copy");
+      // Sequentieel én stoppen bij een fout: blauwdruk bouwt op de analyse, copy op
+      // de blauwdruk. Faalt een stap, dan heeft doorgaan geen zin en meld ik het eerlijk.
+      setApplied("Stap 1 van 3: analyse-document…");
+      if (!(await genDoc("analyse"))) { setErr((e) => e || "Stap 1 (analyse) is mislukt; blauwdruk en copy zijn overgeslagen. Probeer het opnieuw."); setApplied(""); return; }
+      setAllStep(2); setApplied("Stap 2 van 3: blauwdruk-document…");
+      if (!(await genDoc("blauwdruk"))) { setErr((e) => e || "Stap 2 (blauwdruk) is mislukt; copy is overgeslagen. Probeer het opnieuw."); setApplied(""); return; }
+      setAllStep(3); setApplied("Stap 3 van 3: copy-document…");
+      if (!(await genDoc("copy"))) { setErr((e) => e || "Stap 3 (copy) is mislukt. Probeer het opnieuw."); setApplied(""); return; }
       setApplied("Alle drie de stappen zijn gedraaid: analyse → blauwdruk → copy. De documenten (en klantversies) staan hierboven en als werkzaamheid vastgelegd.");
     } finally { setAllBusy(false); setAllStep(0); }
   }

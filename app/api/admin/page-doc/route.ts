@@ -47,6 +47,7 @@ export async function POST(req: NextRequest) {
   try {
     ({ spec, title } = await generateDocSpec(slug, url, kind, extra || undefined));
   } catch (e) {
+    console.error(`[page-doc] generateDocSpec faalde (kind=${kind}, url=${url}):`, e);
     return NextResponse.json({ ok: false, error: `Kon de ${kind} niet genereren: ${e instanceof Error ? e.message : "onbekende fout"}` }, { status: 500 });
   }
 
@@ -54,6 +55,7 @@ export async function POST(req: NextRequest) {
   try {
     buffer = await buildPingwinDoc(spec);
   } catch (e) {
+    console.error(`[page-doc] buildPingwinDoc faalde (kind=${kind}, url=${url}):`, e);
     return NextResponse.json({ ok: false, error: `Kon het document niet opmaken: ${e instanceof Error ? e.message : "onbekende fout"}` }, { status: 500 });
   }
 

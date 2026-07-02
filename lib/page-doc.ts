@@ -199,6 +199,22 @@ function specToText(spec: DocSpec): string {
   return out.join("\n").slice(0, 12000);
 }
 
+// Robuuste JSON-extractie uit een AI-antwoord: strip code-fences, en val terug
+// op de substring van de eerste "{" tot de laatste "}" als er tekst omheen staat.
+// Geeft null als er echt geen geldige JSON in zit (bijv. afgekapt antwoord).
+function extractJsonObject(raw: string): { titel?: unknown; ondertitel?: unknown; sections?: unknown } | null {
+  const cleaned = (raw || "").replace(/```json/gi, "").replace(/```/g, "").trim();
+  const tryParse = (s: string): { titel?: unknown; ondertitel?: unknown; sections?: unknown } | null => {
+    try { const p = JSON.parse(s); return p && typeof p === "object" ? p : null; } catch { return null; }
+  };
+  const direct = tryParse(cleaned);
+  if (direct) return direct;
+  const first = cleaned.indexOf("{");
+  const last = cleaned.lastIndexOf("}");
+  if (first >= 0 && last > first) return tryParse(cleaned.slice(first, last + 1));
+  return null;
+}
+
 // Wat een stap van de vorige stappen mag meelezen (de keten).
 const CHAIN_SOURCES: Record<DocKind, DocKind[]> = { analyse: [], blauwdruk: ["analyse"], copy: ["blauwdruk", "analyse"] };
 const KIND_LABEL: Record<DocKind, string> = { analyse: "SEO-ANALYSE", blauwdruk: "BLAUWDRUK", copy: "COPY" };
@@ -395,11 +411,19 @@ export async function generateDocSpec(slug: string, url: string, kind: DocKind, 
   const reasoningBlock = reasoning ? `\n\nAGENTISCHE ANALYSE (LEIDEND, verwerk dit volledig en getrouw in het document):\n${reasoning}` : "";
 
   // STAP 2 (FORMATTEREN): zet de conclusie om in het nette DocSpec-JSON.
-  // Ruim tokenbudget: de copy (volledige pagina-tekst) is het langst; 4096 kapte
-  // de JSON af ("Unterminated string"). 8192 geeft genoeg ruimte voor alle drie.
-  const maxTokens = 8192;
-  const raw = await callClaude(SYSTEMS[kind], [{ role: "user", content: `Maak de ${kind} op basis van deze gegevens:\n\n${context.text}${chain}${reasoningBlock}` }], maxTokens);
-  const parsed = JSON.parse(raw.replace(/```json/gi, "").replace(/```/g, "").trim());
+  // Ruim tokenbudget: de copy (volledige pagina-tekst) is het langst en kapte bij
+  // 8192 de JSON af ("Unterminated string" -> 500). Sonnet 4.6 kan veel meer output.
+  const maxTokens = kind === "copy" ? 14000 : kind === "analyse" ? 12000 : 10000;
+  const baseUser = `Maak de ${kind} op basis van deze gegevens:\n\n${context.text}${chain}${reasoningBlock}`;
+  let parsed = extractJsonObject(await callClaude(SYSTEMS[kind], [{ role: "user", content: baseUser }], maxTokens));
+  if (!parsed) {
+    // Eenmalige herkansing met nadruk op volledige, geldige JSON (vaak afgekapt).
+    const retryUser = `${baseUser}\n\nBELANGRIJK: geef UITSLUITEND geldige, VOLLEDIGE JSON terug volgens het formaat. Geen tekst eromheen en niet afkappen; houd het compact genoeg om helemaal af te maken.`;
+    parsed = extractJsonObject(await callClaude(SYSTEMS[kind], [{ role: "user", content: retryUser }], maxTokens));
+  }
+  if (!parsed) {
+    throw new Error(`De ${kind} kwam niet als geldige JSON terug (waarschijnlijk te lang of afgekapt). Probeer het opnieuw; blijft het misgaan, laat het weten dan splitsen we het document.`);
+  }
   const title = typeof parsed.titel === "string" && parsed.titel.trim() ? parsed.titel.trim() : `${FALLBACK_TITLE[kind]} ${url}`;
   const spec: DocSpec = {
     klant: client?.name || slug,
