@@ -3,6 +3,7 @@ import { getPagePlan, getPageDocOutputs, savePageDocOutput } from "./site-urls";
 import { getTasks } from "./tasks";
 import { getGscForPage } from "./google";
 import { fetchPageContent } from "./page-content";
+import { measurePage, measureToText } from "./page-measure";
 import { callClaude } from "./anthropic";
 import type { DocSpec } from "./pingwin-docx";
 import { SEO_CRITERIA_MD } from "./seo-criteria";
@@ -35,10 +36,13 @@ function planPrimaryKeyword(plan: string): string {
 async function buildContext(slug: string, url: string, extra?: string): Promise<string> {
   const client = await getClientBySlug(slug);
   const domain = client?.domain || "";
-  // Ronde 1: goedkope/snelle bronnen parallel.
-  const [plan, content, kw, psi, allTasks] = await Promise.all([
+  // Ronde 1: goedkope/snelle bronnen parallel. measurePage meet de pagina exact
+  // uit (gerenderd via headless browser indien beschikbaar, anders statisch),
+  // zodat de criteria tegen harde waarden gescoord worden i.p.v. geschat.
+  const [plan, content, measure, kw, psi, allTasks] = await Promise.all([
     getPagePlan(slug, url),
     fetchPageContent(url).catch(() => null),
+    measurePage(url).catch(() => null),
     getGscForPage(domain, url).catch(() => []),
     getPageSpeed(url).catch(() => null),
     getTasks(slug).catch(() => []),
@@ -89,8 +93,10 @@ async function buildContext(slug: string, url: string, extra?: string): Promise<
     pageTasks.length ? pageTasks.map((t) => `- [${t.fase || "?"}${t.wie ? "/" + t.wie : ""}] ${t.taak}${t.status ? ` (${t.status})` : ""}`).join("\n") : "- (nog geen taken overgenomen)",
     extra ? `\nEXTRA STURING VAN DE GEBRUIKER (weeg zwaar mee): ${extra}` : "",
     "",
-    "LIVE ON-PAGE INHOUD:",
-    content ? `Titel: ${content.title}\nH1: ${content.h1 || "(leeg!)"}\nMeta: ${content.metaDescription}\nKoppen: ${content.headings.join(" | ")}\nTekst (fragment): ${content.text.slice(0, 1200)}` : "(kon de pagina niet inlezen)",
+    measure ? measureToText(measure, primary) : "GEMETEN PAGINA-PROFIEL: (kon de pagina niet uitlezen)",
+    "",
+    "BESTAANDE PAGINA-TEKST (fragment, voor behoud van goede bestaande zinnen):",
+    content ? content.text.slice(0, 1800) : "(niet ingelezen)",
     "",
     "GSC-ZOEKWOORDEN VAN DEZE PAGINA:",
     kw.length ? kw.map((k) => `- "${k.keyword}": positie ${k.position}, ${k.clicks} klikken, ${k.impressions} vertoningen`).join("\n") : "- (geen)",

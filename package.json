@@ -9,9 +9,11 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@sparticuz/chromium": "^131.0.1",
     "@vercel/postgres": "^0.10.0",
     "docx": "^9.7.1",
     "next": "14.2.5",
+    "puppeteer-core": "^23.11.1",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "xlsx": "^0.18.5"

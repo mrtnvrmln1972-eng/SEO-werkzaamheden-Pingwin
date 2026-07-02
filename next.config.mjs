@@ -1,10 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // docx heeft een dynamische require die webpack niet kan bundelen; laat het als
-  // runtime-require in de serverless-functie staan i.p.v. mee te bundelen.
+  // docx + de headless-browser packages hebben dynamische/native requires die
+  // webpack niet moet bundelen; laat ze als runtime-require in de functie staan.
   experimental: {
-    serverComponentsExternalPackages: ["docx"],
+    serverComponentsExternalPackages: ["docx", "@sparticuz/chromium", "puppeteer-core"],
   },
 };
 
