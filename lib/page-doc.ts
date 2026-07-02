@@ -33,18 +33,27 @@ function planPrimaryKeyword(plan: string): string {
   return m[1].replace(/\*+/g, "").trim();
 }
 
+// Begrenst een trage belofte: geeft de fallback terug als hij te lang duurt, zodat
+// één traag onderdeel (bv. PageSpeed) de hele generatie niet over de tijdslimiet trekt.
+function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([p, new Promise<T>((res) => setTimeout(() => res(fallback), ms))]);
+}
+
 async function buildContext(slug: string, url: string, extra?: string): Promise<{ text: string; primary: string }> {
   const client = await getClientBySlug(slug);
   const domain = client?.domain || "";
   // Ronde 1: goedkope/snelle bronnen parallel. measurePage meet de pagina exact
   // uit (gerenderd via headless browser indien beschikbaar, anders statisch),
   // zodat de criteria tegen harde waarden gescoord worden i.p.v. geschat.
+  // VANGNET (geen versimpeling): begrens alleen tegen een vastlopende externe stap,
+  // zodat één hangende call (headless render/PageSpeed) niet de hele generatie
+  // over de tijdslimiet trekt. Ruim gezet zodat een normaal-trage call gewoon af mag.
   const [plan, content, measure, kw, psi, allTasks] = await Promise.all([
     getPagePlan(slug, url),
     fetchPageContent(url).catch(() => null),
-    measurePage(url).catch(() => null),
+    withTimeout(measurePage(url).catch(() => null), 60000, null),
     getGscForPage(domain, url).catch(() => []),
-    getPageSpeed(url).catch(() => null),
+    withTimeout(getPageSpeed(url).catch(() => null), 45000, null),
     getTasks(slug).catch(() => []),
   ]);
 
