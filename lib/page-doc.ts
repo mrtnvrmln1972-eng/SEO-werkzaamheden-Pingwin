@@ -213,14 +213,20 @@ function specToText(spec: DocSpec): string {
 // Geeft null als er echt geen geldige JSON in zit (bijv. afgekapt antwoord).
 function extractJsonObject(raw: string): { titel?: unknown; ondertitel?: unknown; sections?: unknown } | null {
   const cleaned = (raw || "").replace(/```json/gi, "").replace(/```/g, "").trim();
+  const noTrailingCommas = (s: string) => s.replace(/,\s*([}\]])/g, "$1");
   const tryParse = (s: string): { titel?: unknown; ondertitel?: unknown; sections?: unknown } | null => {
     try { const p = JSON.parse(s); return p && typeof p === "object" ? p : null; } catch { return null; }
   };
-  const direct = tryParse(cleaned);
-  if (direct) return direct;
+  // Kandidaten: hele tekst, en de substring van eerste { tot laatste } (voor als er
+  // tekst omheen staat). Elk ook met trailing komma's opgeruimd (veelvoorkomende AI-fout).
   const first = cleaned.indexOf("{");
   const last = cleaned.lastIndexOf("}");
-  if (first >= 0 && last > first) return tryParse(cleaned.slice(first, last + 1));
+  const substr = first >= 0 && last > first ? cleaned.slice(first, last + 1) : "";
+  for (const cand of [cleaned, noTrailingCommas(cleaned), substr, noTrailingCommas(substr)]) {
+    if (!cand) continue;
+    const p = tryParse(cand);
+    if (p) return p;
+  }
   return null;
 }
 
@@ -422,15 +428,22 @@ export async function generateDocSpec(slug: string, url: string, kind: DocKind, 
   // STAP 2 (FORMATTEREN): zet de conclusie om in het nette DocSpec-JSON.
   // Ruim tokenbudget: de copy (volledige pagina-tekst) is het langst en kapte bij
   // 8192 de JSON af ("Unterminated string" -> 500). Sonnet 4.6 kan veel meer output.
-  const maxTokens = kind === "copy" ? 14000 : kind === "analyse" ? 12000 : 10000;
+  // Ruim tokenbudget nu de tijdslimiet 800s is: de analyse (volledige scorecard) en
+  // de copy (volledige pagina-tekst) zijn het langst. Sonnet 4.6 kan dit aan.
+  const maxTokens = kind === "blauwdruk" ? 12000 : 16000;
   const baseUser = `Maak de ${kind} op basis van deze gegevens:\n\n${context.text}${chain}${reasoningBlock}`;
-  let parsed = extractJsonObject(await callClaude(SYSTEMS[kind], [{ role: "user", content: baseUser }], maxTokens));
+  const raw1 = await callClaude(SYSTEMS[kind], [{ role: "user", content: baseUser }], maxTokens);
+  let parsed = extractJsonObject(raw1);
+  let raw2 = "";
   if (!parsed) {
     // Eenmalige herkansing met nadruk op volledige, geldige JSON (vaak afgekapt).
-    const retryUser = `${baseUser}\n\nBELANGRIJK: geef UITSLUITEND geldige, VOLLEDIGE JSON terug volgens het formaat. Geen tekst eromheen en niet afkappen; houd het compact genoeg om helemaal af te maken.`;
-    parsed = extractJsonObject(await callClaude(SYSTEMS[kind], [{ role: "user", content: retryUser }], maxTokens));
+    const retryUser = `${baseUser}\n\nBELANGRIJK: geef UITSLUITEND geldige, VOLLEDIGE JSON terug volgens het formaat. Geen tekst eromheen en niet afkappen; houd het compact genoeg om de JSON helemaal af te maken.`;
+    raw2 = await callClaude(SYSTEMS[kind], [{ role: "user", content: retryUser }], maxTokens);
+    parsed = extractJsonObject(raw2);
   }
   if (!parsed) {
+    const used = raw2 || raw1;
+    console.error(`[page-doc] ${kind}: JSON onparsebaar. len1=${raw1.length} len2=${raw2.length} tail=${JSON.stringify(used.slice(-300))}`);
     throw new Error(`De ${kind} kwam niet als geldige JSON terug (waarschijnlijk te lang of afgekapt). Probeer het opnieuw; blijft het misgaan, laat het weten dan splitsen we het document.`);
   }
   const title = typeof parsed.titel === "string" && parsed.titel.trim() ? parsed.titel.trim() : `${FALLBACK_TITLE[kind]} ${url}`;
