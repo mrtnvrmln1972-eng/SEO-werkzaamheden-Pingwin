@@ -226,7 +226,20 @@ Geen emoji. ${DOCSPEC_FORMAT}`;
 
 export async function summariseChatToSpec(slug: string, url: string, analysis: string, extra?: string): Promise<{ spec: DocSpec; title: string }> {
   const client = await getClientBySlug(slug);
-  const user = `Vat deze analyse voor pagina ${url} samen:\n\n${analysis}${extra ? `\n\nEXTRA STURING: ${extra}` : ""}`;
+
+  // STAP 1 (DENKEN): agentisch redeneren + toetsen aan de live-feiten/concurrenten,
+  // met de chat-analyse als vertrekpunt. Levert een gegronde, gecorrigeerde conclusie.
+  let grounded = "";
+  try {
+    const context = await buildContext(slug, url, extra);
+    grounded = await reasonAboutStrategy(context.text, analysis, context.primary);
+  } catch { /* lukt de grounding niet, dan formatteren we de chat-analyse zelf */ }
+
+  // STAP 2 (FORMATTEREN): zet de (gegronde) analyse om in de leesbare klanttoon.
+  const basis = grounded
+    ? `GEGRONDE STRATEGISCHE CONCLUSIE (LEIDEND, getoetst aan de live-data):\n${grounded}\n\nOORSPRONKELIJKE CHAT-ANALYSE (aanvullende context):\n${analysis}`
+    : analysis;
+  const user = `Vat deze analyse voor pagina ${url} samen:\n\n${basis}${extra ? `\n\nEXTRA STURING: ${extra}` : ""}`;
   const raw = await callClaude(CHAT_SAMENVATTING_SYSTEM, [{ role: "user", content: user }], 8192);
   const cleaned = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
   let parsed: { titel?: unknown; ondertitel?: unknown; sections?: unknown };
@@ -306,14 +319,10 @@ const REASON_FOCUS: Record<DocKind, string> = {
   copy: "Doel: publicatieklare copy. Bepaal in je conclusie de volledige tekst: H1, per H2 de kop + alinea's, bullets, en een FAQ met vraag+antwoord (40-80 woorden), plus meta-title en meta-description. Hergebruik goede bestaande zinnen (BEHOUDEN) en vul aan wat de blauwdruk/winnaars vereisen. Houd density 0,5-2% en zoekwoord in de eerste 100 woorden.",
 };
 
-async function reasonAboutDoc(kind: DocKind, contextText: string, chain: string, primary: string): Promise<string> {
-  const system = `Je bent een senior SEO-specialist bij bureau Pingwin. Werk AGENTISCH: redeneer stap voor stap en gebruik de tools om te verifiëren en dieper te graven waar je twijfelt. Bijvoorbeeld: meet een winnende concurrent-pagina volledig uit om zijn opbouw te modelleren, of meet een gerelateerde pagina. Bouw je analyse op over meerdere stappen; ga niet gokken maar meet.
-Grond ALLES in gemeten data; verzin geen rankings, Core Web Vitals of paginabestaan.
-SLUIT VERPLICHT AF met een VOLLEDIGE, definitieve conclusie (begin die met "CONCLUSIE:") die alles bevat wat nodig is, want jouw conclusie wordt daarna letterlijk omgezet in het uiteindelijke document. Laat niets als "nog te bepalen" staan.
-${REASON_FOCUS[kind]}
-CRITERIA (leidend):
-${SEO_CRITERIA_MD}`;
-  const user = `Analyseer deze pagina en vorm je volledige conclusie voor de ${KIND_LABEL[kind]}.\n\nGEGEVENS:\n${contextText}${chain}`;
+// Read-only meet-tools voor de doc-agent: één URL volledig uitmeten (om een winnaar
+// te modelleren) of meerdere concurrenten tegelijk (consensus). Gratis/statisch, geen
+// Ahrefs-credits. Gedeeld door de doc- en de strategie-agent.
+function buildDocAgentTools(primary: string): { tools: ToolDef[]; run: ToolRunner } {
   const tools: ToolDef[] = [
     { name: "meet_pagina", description: "Meet één URL volledig uit (koppen, alt-teksten, links, schema, woordenaantal, meta, FAQ). Gebruik dit om een winnende concurrent-pagina of een gerelateerde pagina in detail te modelleren.", input_schema: { type: "object", properties: { url: { type: "string", description: "De volledige URL om uit te meten" } }, required: ["url"] } },
     { name: "meet_concurrenten", description: "Meet meerdere concurrent-URL's tegelijk en geef de consensus (terugkerende H2-onderwerpen, mediane omvang, FAQ/schema-dekking).", input_schema: { type: "object", properties: { urls: { type: "array", items: { type: "string" }, description: "Lijst met concurrent-URL's" } }, required: ["urls"] } },
@@ -333,10 +342,39 @@ ${SEO_CRITERIA_MD}`;
     }
     return "Onbekende tool.";
   };
+  return { tools, run };
+}
+
+async function reasonAboutDoc(kind: DocKind, contextText: string, chain: string, primary: string): Promise<string> {
+  const system = `Je bent een senior SEO-specialist bij bureau Pingwin. Werk AGENTISCH: redeneer stap voor stap en gebruik de tools om te verifiëren en dieper te graven waar je twijfelt. Bijvoorbeeld: meet een winnende concurrent-pagina volledig uit om zijn opbouw te modelleren, of meet een gerelateerde pagina. Bouw je analyse op over meerdere stappen; ga niet gokken maar meet.
+Grond ALLES in gemeten data; verzin geen rankings, Core Web Vitals of paginabestaan.
+SLUIT VERPLICHT AF met een VOLLEDIGE, definitieve conclusie (begin die met "CONCLUSIE:") die alles bevat wat nodig is, want jouw conclusie wordt daarna letterlijk omgezet in het uiteindelijke document. Laat niets als "nog te bepalen" staan.
+${REASON_FOCUS[kind]}
+CRITERIA (leidend):
+${SEO_CRITERIA_MD}`;
+  const user = `Analyseer deze pagina en vorm je volledige conclusie voor de ${KIND_LABEL[kind]}.\n\nGEGEVENS:\n${contextText}${chain}`;
+  const { tools, run } = buildDocAgentTools(primary);
   // Max 4 denk-rondes met tools (de agent stopt eerder als hij klaar is), daarna een
   // gedwongen slotronde voor de conclusie. Ruim tokenbudget zodat de volledige
   // conclusie (bij copy de hele tekst) past, binnen de 300s-limiet van de route.
   return callClaudeAgentic(system, [{ role: "user", content: user }], tools, run, 4, 6000);
+}
+
+// Agentische strategie-redenering: vertrekt van de chat-analyse van de strateeg,
+// maar TOETST die aan de live-feiten en gemeten concurrenten, graaft zelf dieper waar
+// nodig, en vormt de definitieve strategische conclusie (huidige situatie, kansrijke
+// zoekwoorden met volumes, concurrentie, zoekintentie, wat mist t.o.v. de top-10,
+// helder advies). De klanttoon komt pas in de formatteer-stap.
+async function reasonAboutStrategy(contextText: string, analysis: string, primary: string): Promise<string> {
+  const system = `Je bent een senior SEO-strateeg bij bureau Pingwin. Werk AGENTISCH: redeneer stap voor stap en gebruik de tools om te verifiëren en dieper te graven (meet een winnende concurrent volledig uit, of een gerelateerde pagina). Ga niet gokken maar meet.
+Je VERTREKT van de chat-analyse van de strateeg hieronder, maar TOETST die aan de gemeten live-feiten en de concurrenten. Wijkt de chat-analyse af van de echte data (ranking, live status, wat winnaars doen), volg dan de DATA en corrigeer.
+Grond ALLES in gemeten data; verzin geen rankings, volumes, Core Web Vitals of paginabestaan.
+SLUIT VERPLICHT AF met een VOLLEDIGE, definitieve strategische conclusie (begin met "CONCLUSIE:") die deze punten dekt: (1) huidige situatie/prestatie, (2) kansrijke zoekwoorden met zoekvolume, (3) concurrentiepositie (kunnen we winnen, wat doet de best gevonden concurrent wel), (4) zoekintentie, (5) wat de pagina mist t.o.v. de best scorende top-10-pagina's (concreet), (6) helder advies: op welke zoekwoorden richten en wat te doen. Laat niets open.
+CRITERIA (naslag):
+${SEO_CRITERIA_MD}`;
+  const user = `Vorm de definitieve strategie voor deze pagina.\n\nCHAT-ANALYSE VAN DE STRATEEG (vertrekpunt, toets aan de data):\n${analysis}\n\nGEMETEN LIVE-GEGEVENS:\n${contextText}`;
+  const { tools, run } = buildDocAgentTools(primary);
+  return callClaudeAgentic(system, [{ role: "user", content: user }], tools, run, 4, 5000);
 }
 
 export async function generateDocSpec(slug: string, url: string, kind: DocKind, extra?: string): Promise<{ spec: DocSpec; title: string }> {
