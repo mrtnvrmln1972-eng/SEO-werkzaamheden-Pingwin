@@ -71,7 +71,7 @@ async function buildContext(slug: string, url: string, extra?: string): Promise<
     // Ahrefs-credits) zodat de analyse concreet vergelijkt met de winnaars.
     const ownHost = (() => { try { return new URL(url).host.replace(/^www\./, ""); } catch { return domain.replace(/^www\./, ""); } })();
     const compUrls = serp.map((s) => s.url).filter((u) => { try { return new URL(u).host.replace(/^www\./, "") !== ownHost; } catch { return false; } });
-    const comps = compUrls.length ? await measureCompetitors(compUrls, 3).catch(() => []) : [];
+    const comps = compUrls.length ? await measureCompetitors(compUrls).catch(() => []) : [];
     competitorText = competitorsToText(comps);
     ahrefsText = [
       "AHREFS-DATA:",

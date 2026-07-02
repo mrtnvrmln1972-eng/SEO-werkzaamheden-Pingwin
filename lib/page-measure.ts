@@ -134,20 +134,71 @@ export async function measurePage(url: string, opts?: { staticOnly?: boolean }):
   };
 }
 
+// Domeinen die we NIET als blauwdruk-model willen: video, social, marktplaatsen,
+// dunne directories/aggregators. Die ranken vaak wél maar zijn geen te modelleren
+// content-pagina. We filteren ze weg zodat we echte content-pagina's meten.
+const NON_CONTENT_HOSTS = /(youtube\.|youtu\.be|vimeo\.|facebook\.|instagram\.|linkedin\.|tiktok\.|pinterest\.|twitter\.|x\.com|reddit\.|marktplaats\.|bol\.com|amazon\.|tripadvisor\.|yelp\.|wikipedia\.|google\.|maps\.|goudengids|detelefoongids|trustpilot\.|indeed\.)/i;
+
 // Meet de top-concurrenten uit de SERP statisch uit (snel, geen browser) zodat de
-// analyse concreet kan vergelijken met wat de winnende pagina's WEL doen: hun
-// omvang, koppen, FAQ en schema. Dit is de "wat mist"-grounding zoals Cowork die
-// uit de SERP-top haalt. Max een handjevol, parallel.
-export async function measureCompetitors(urls: string[], limit = 3): Promise<{ url: string; m: PageMeasurement }[]> {
-  const pick = urls.filter(Boolean).slice(0, limit);
+// analyse concreet vergelijkt met wat de winnende pagina's WEL doen. We nemen ruimer
+// (top 6-8), filteren niet-modelleerbare domeinen weg en ontdubbelen per domein, want
+// #1 is niet altijd de beste pagina-opbouw (die zit vaak op positie 4-8). Parallel.
+export async function measureCompetitors(urls: string[], limit = 7): Promise<{ url: string; m: PageMeasurement }[]> {
+  const seenHost = new Set<string>();
+  const pick: string[] = [];
+  for (const u of urls) {
+    if (!u || NON_CONTENT_HOSTS.test(u)) continue;
+    let host = ""; try { host = new URL(u).host.replace(/^www\./, ""); } catch { continue; }
+    if (seenHost.has(host)) continue; // per domein maar één pagina modelleren
+    seenHost.add(host); pick.push(u);
+    if (pick.length >= limit) break;
+  }
   const out = await Promise.all(pick.map(async (u) => ({ url: u, m: await measurePage(u, { staticOnly: true }).catch(() => null) })));
-  return out.filter((x): x is { url: string; m: PageMeasurement } => !!x.m && x.m.ok);
+  return out.filter((x): x is { url: string; m: PageMeasurement } => !!x.m && x.m.ok && (x.m.h2.length > 0 || x.m.wordCount > 150));
 }
 
+const median = (nums: number[]): number => {
+  if (!nums.length) return 0;
+  const s = [...nums].sort((a, b) => a - b); const mid = Math.floor(s.length / 2);
+  return s.length % 2 ? s[mid] : Math.round((s[mid - 1] + s[mid]) / 2);
+};
+
+// Vat de gemeten winnaars samen tot een LAT voor de ideale blauwdruk: welke
+// H2-onderwerpen komen bij meerdere winnaars terug (dat zijn de must-have-secties),
+// de mediane omvang en hoeveel er een FAQ/schema hebben. Zo bepaalt de "consensus
+// van de winnaars" de blauwdruk, niet toevallig wat #1 doet.
 export function competitorsToText(rows: { url: string; m: PageMeasurement }[]): string {
   if (!rows.length) return "TOP-CONCURRENTEN (inhoud): niet gemeten.";
-  return ["TOP-CONCURRENTEN — wat de best scorende pagina's WEL op de pagina hebben (vergelijk hiermee bij 'wat mist' en zet hier de H2-doelen op):",
-    ...rows.map((r, i) => `${i + 1}. ${r.url}\n   - ${r.m.wordCount} woorden; H1: "${r.m.h1[0] || "?"}"; ${r.m.h2.length} H2's: ${r.m.h2.slice(0, 12).map((h) => `"${h}"`).join(" | ") || "geen"}\n   - FAQ: ${r.m.faqDetected ? `ja (~${r.m.faqCount})` : "nee"}; schema: ${r.m.schemaTypes.join(", ") || "geen"}; interne links: ${r.m.internalLinkCount}`)].join("\n");
+
+  // Terugkerende H2-onderwerpen tellen (genormaliseerd op kernwoorden).
+  const topicCount = new Map<string, { count: number; label: string }>();
+  for (const r of rows) {
+    const seen = new Set<string>();
+    for (const h of r.m.h2) {
+      const key = h.toLowerCase().replace(/[^a-z0-9À-ſ ]/g, "").split(/\s+/).filter((w) => w.length > 3).slice(0, 3).sort().join(" ");
+      if (!key || seen.has(key)) continue; seen.add(key);
+      const cur = topicCount.get(key) || { count: 0, label: h };
+      cur.count++; topicCount.set(key, cur);
+    }
+  }
+  const recurring = [...topicCount.values()].filter((t) => t.count >= 2).sort((a, b) => b.count - a.count).slice(0, 15);
+  const medWords = median(rows.map((r) => r.m.wordCount).filter(Boolean));
+  const medH2 = median(rows.map((r) => r.m.h2.length).filter(Boolean));
+  const withFaq = rows.filter((r) => r.m.faqDetected).length;
+  const withSchema = rows.filter((r) => r.m.schemaTypes.length).length;
+  const allSchema = [...new Set(rows.flatMap((r) => r.m.schemaTypes))];
+
+  return [
+    `TOP-CONCURRENTEN — analyse van ${rows.length} best scorende content-pagina's (na filtering van video/social/directories, max 1 per domein). Gebruik de CONSENSUS als lat voor de ideale blauwdruk en voor 'wat mist deze pagina':`,
+    "",
+    "DE LAT (consensus van de winnaars):",
+    `- Mediane omvang: ~${medWords} woorden. Mediaan aantal H2's: ${medH2}. FAQ aanwezig bij ${withFaq}/${rows.length}. Schema bij ${withSchema}/${rows.length}${allSchema.length ? ` (types: ${allSchema.join(", ")})` : ""}.`,
+    "- Onderwerpen die bij MEERDERE winnaars terugkomen (must-have H2-secties, aantal winnaars dat het behandelt):",
+    recurring.length ? recurring.map((t) => `   - "${t.label}" (${t.count}x)`).join("\n") : "   - (geen duidelijke overlap gevonden)",
+    "",
+    "Per pagina:",
+    ...rows.map((r, i) => `${i + 1}. ${r.url}\n   - ${r.m.wordCount} woorden; H1: "${r.m.h1[0] || "?"}"; ${r.m.h2.length} H2's: ${r.m.h2.slice(0, 14).map((h) => `"${h}"`).join(" | ") || "geen"}\n   - FAQ: ${r.m.faqDetected ? `ja (~${r.m.faqCount})` : "nee"}; schema: ${r.m.schemaTypes.join(", ") || "geen"}; interne links: ${r.m.internalLinkCount}`),
+  ].join("\n");
 }
 
 // Formatteert de meting + berekende waarden tot een blok voor de AI, zodat die
