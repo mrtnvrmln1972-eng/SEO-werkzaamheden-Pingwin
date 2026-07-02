@@ -42,7 +42,14 @@ function clientTaskTitle(task: { taak: string; clientDocLink?: string }): string
   // "Titel (intern) (klantversie)" en de enkel-gelinkte "Strategie: /pad/").
   const stripped = task.taak.replace(/\s*\(\s*<a\b[^>]*>[\s\S]*?<\/a>\s*\)/gi, "");
   const title = safeHtml(stripped).replace(/<[^>]+>/g, "").trim();
-  if (task.clientDocLink) return `<a href="${task.clientDocLink}" target="_blank" rel="noreferrer">${title}</a>`;
+  // Klantversie-link: uit het veld, of (voor oudere taken waar dat veld leegliep)
+  // terugvallen op de "(klantversie)"-link die nog in de taaktitel zit.
+  let link = task.clientDocLink || "";
+  if (!link) {
+    const m = task.taak.match(/<a\b[^>]*href=["']([^"']+)["'][^>]*>\s*klantversie\s*<\/a>/i);
+    if (m) link = m[1];
+  }
+  if (link) return `<a href="${link}" target="_blank" rel="noreferrer">${title}</a>`;
   return title;
 }
 
@@ -286,6 +293,7 @@ export default function Dashboard({ name, sheetId, gid, budget, adminPreview, in
             </div>
 
             <div className="section-title">Werkzaamheden deze maand</div>
+            <div className="dashboard-tasks">
             <div className="task-table-wrap">
               <table>
                 <thead>
@@ -315,6 +323,7 @@ export default function Dashboard({ name, sheetId, gid, budget, adminPreview, in
                   </tfoot>
                 )}
               </table>
+            </div>
             </div>
           </>
         )}
