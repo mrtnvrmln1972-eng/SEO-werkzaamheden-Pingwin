@@ -129,7 +129,7 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
 
   return (
     <div className="pages-panel">
-      <div className="cockpit-card">
+      <div className="cockpit-card acc-orange">
         <div className="ck-section-head">
           <span>Pagina&rsquo;s ({urls.length}) <HelpHint text="De live pagina's van de klant, een spiegel van de werkelijkheid. Klik een pagina om het plan te bekijken of aan te passen. Het toekomstige adres (redirect of nieuwe pagina) leeft in het plan en in de taken, niet in deze lijst." /></span>
           <span style={{ display: "inline-flex", gap: 8 }}>

@@ -307,7 +307,7 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
       )}
 
       {!loading && gsc && focusedKws.length > 0 && (
-        <div className="cockpit-card kpi-focus-card">
+        <div className="cockpit-card kpi-focus-card acc-orange">
           <div className="ck-section-head"><span>Belangrijke zoekwoorden ({focusedKws.length})</span><span className="ck-updated">prio &amp; secundair, vastgezet bovenaan</span></div>
           <div className="res-table-wrap">
             <table className="res-table kpi-table">
@@ -337,7 +337,7 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
       )}
 
       {!loading && gsc && gsc.keywords.length > 0 && (
-        <div className="cockpit-card">
+        <div className="cockpit-card acc-teal">
           <div className="ck-section-head"><span>Zoekwoorden uit Search Console ({gsc.keywords.length}) <HelpHint wide text="De zoekwoorden waarop deze site in Google gevonden wordt (echte klikken en vertoningen uit Search Console). Markeer belangrijke woorden als prio of secundair; die verschijnen vastgezet bovenaan en zijn gedeeld met de Ahrefs-lijst." /></span><span className="ck-updated">markeer een zoekwoord als prio of secundair</span></div>
           <div className="res-table-wrap kpi-scroll">
             <table className="res-table kpi-table">
@@ -367,7 +367,7 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
       )}
 
       {!loading && gsc && pagesView.length > 0 && (
-        <div className="cockpit-card">
+        <div className="cockpit-card acc-taupe">
           <div className="ck-section-head"><span>Pagina&rsquo;s uit Search Console ({pagesView.length}) <HelpHint wide text="De pagina's van de site met hun klikken en vertoningen uit Search Console. Sleep een pagina om hem bovenaan vast te zetten (de pagina's die je in de gaten houdt)." /></span><span className="ck-updated">{pageSort ? "sortering actief, zet uit om te slepen" : "sleep om vast te zetten bovenaan"}</span></div>
           <div className="res-table-wrap kpi-scroll">
             <table className="res-table kpi-table">
@@ -393,7 +393,7 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
       )}
 
       {!loading && (
-        <div className="cockpit-card">
+        <div className="cockpit-card acc-blue">
           <div className="ck-section-head">
             <span>Ahrefs-zoekwoorden{ahrefsKw.length ? ` (${ahFiltered.length})` : ""} <HelpHint wide text="Alle organische zoekwoorden van het domein uit Ahrefs (volume, positie, intent), in één keer opgehaald. Laaghangend fruit = commerciële of transactionele zoekwoorden met volume die net buiten de top staan (positie 4-20): daar kun je met beperkte moeite snel meer waardevolle bezoekers scoren. Markeer belangrijke zoekwoorden als prio of secundair; die markering is gedeeld met de Search Console-lijst." /></span>
             <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
@@ -434,7 +434,7 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
       )}
 
       {!loading && (
-        <div className="cockpit-card">
+        <div className="cockpit-card acc-teal">
           <div className="ck-section-head">
             <span>Kansen{opps.length ? ` (${opps.length})` : ""} <HelpHint wide text="Relevante zoekwoorden waar de site nog NIET op rankt, gevonden via keyword-ideas rond je kernthema's én concurrenten (waar zij wel scoren, jij niet), en door Claude gefilterd op echte relevantie. Kansen om met nieuwe of uitgebreide content te pakken." /></span>
             <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>

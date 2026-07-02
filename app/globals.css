@@ -13,10 +13,12 @@
   --brand-taupe-light: #F1EEEB;
   --brand-teal: #12A9C6;
   --brand-teal-light: #E4F5F9;
-  --brand-blue: #2E44A0;
-  --brand-blue-light: #EAEDF8;
+  --brand-blue: #2286C7;
+  --brand-blue-light: #E7F1FA;
+  --brand-salmon: #EF9385;
   --brand-orange-soft: #FBE7DA;
   --brand-orange-faint: #FFF6F0;
+  --app-bg: #EBE9E5;
   --white: #FFFFFF;
   --border: #E0E0E0;
   --red: #D32F2F;
@@ -27,7 +29,7 @@
 
 body {
   font-family: 'Montserrat', sans-serif;
-  background: var(--gray-light);
+  background: var(--app-bg);
   color: var(--body-text);
   line-height: 1.6;
 }
@@ -571,9 +573,17 @@ tbody td:last-child { text-align: center; }
 .dev-date { font-family: 'Montserrat', sans-serif; font-size: 13px; padding: 5px 7px; border: 1px solid var(--border); border-radius: 5px; color: var(--dark); background: var(--white); width: 100%; }
 .dev-date:focus { border-color: var(--orange); outline: none; }
 .cockpit-card {
-  background: var(--white); border-radius: 12px; padding: 18px 24px; margin-bottom: 18px;
-  border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  background: var(--white); border-radius: 14px; padding: 18px 24px; margin-bottom: 20px;
+  border: 1px solid #E7E4E0; box-shadow: 0 4px 16px rgba(51,48,46,0.07), 0 1px 3px rgba(51,48,46,0.05);
+  transition: box-shadow .18s ease, transform .18s ease;
 }
+.cockpit-card:hover { box-shadow: 0 8px 24px rgba(51,48,46,0.10), 0 2px 6px rgba(51,48,46,0.06); }
+/* Kleuraccenten per soort card: een gekleurde linkerrand + subtiele bovenlijn. */
+.cockpit-card.acc-orange { border-left: 4px solid var(--orange); }
+.cockpit-card.acc-teal { border-left: 4px solid var(--brand-teal); }
+.cockpit-card.acc-taupe { border-left: 4px solid var(--brand-taupe); }
+.cockpit-card.acc-blue { border-left: 4px solid var(--brand-blue); }
+.cockpit-card.acc-salmon { border-left: 4px solid var(--brand-salmon); }
 .cockpit-card:last-child { margin-bottom: 0; }
 .ck-row { display: flex; gap: 20px; padding: 18px 0; border-bottom: 1px solid var(--border); }
 .ck-row:last-child { border-bottom: none; }

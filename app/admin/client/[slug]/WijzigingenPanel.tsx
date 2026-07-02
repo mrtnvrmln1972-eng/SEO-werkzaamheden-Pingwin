@@ -327,7 +327,7 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
   }
 
   return (
-    <div className="cockpit-card">
+    <div className="cockpit-card acc-teal">
       <div className="ck-section-head">
         <span>Wijzigingen ({events.length}) <HelpHint wide text="Wat er op de pagina's is aangepast, met datum. Uit WordPress halen we onze eigen aanpassingen op (revisies binnen 2 dagen gebundeld tot één moment); daaromheen zie je het effect op de KPI's. Wijzigingen door anderen dan ons team blijven weg." /></span>
         <span style={{ display: "inline-flex", gap: 8 }}>
