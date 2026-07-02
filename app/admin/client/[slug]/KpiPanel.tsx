@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { GscComparison, Ga4Comparison } from "../../../../lib/google";
 import type { AhrefsKeyword } from "../../../../lib/ahrefs-keywords";
+import type { Opportunity } from "../../../../lib/keyword-opportunities";
 import HelpHint from "./HelpHint";
 
 type GscPage = GscComparison["pages"][number];
@@ -181,6 +182,28 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
   const isFruit = (k: AhrefsKeyword) =>
     (k.intent === "commercieel" || k.intent === "transactioneel") &&
     (k.volume || 0) >= 50 && k.position != null && k.position >= 4 && k.position <= 20;
+
+  // Zoekwoord-kansen (relevant, waar de site nog niet op rankt).
+  const [opps, setOpps] = useState<Opportunity[]>([]);
+  const [oppBusy, setOppBusy] = useState(false);
+  const [oppMsg, setOppMsg] = useState("");
+  useEffect(() => {
+    fetch(`/api/admin/keyword-opportunities?slug=${encodeURIComponent(slug)}`)
+      .then((r) => r.json()).then((d) => { if (d.ok) setOpps(d.opportunities || []); }).catch(() => {});
+  }, [slug]);
+  async function collectOpps() {
+    if (oppBusy) return;
+    setOppBusy(true); setOppMsg("");
+    try {
+      const r = await fetch("/api/admin/keyword-opportunities", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }) });
+      const d = await r.json();
+      if (d.ok) {
+        setOppMsg(`${d.total} relevante kansen gevonden.`);
+        const g = await fetch(`/api/admin/keyword-opportunities?slug=${encodeURIComponent(slug)}`).then((x) => x.json()).catch(() => null);
+        if (g?.ok) setOpps(g.opportunities || []);
+      } else setOppMsg(d.error || "Zoeken mislukt.");
+    } catch { setOppMsg("Zoeken mislukt."); } finally { setOppBusy(false); }
+  }
 
   // Sla de gesleepte volgorde op (kort debounce).
   function persistOrder(urls: string[]) {
@@ -382,6 +405,36 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
                       <td>{k.position != null ? k.position : <span className="muted">&mdash;</span>}</td>
                       <td>{k.intent ? <span className={"kw-intent " + k.intent}>{k.intent}</span> : <span className="muted">&mdash;</span>}</td>
                       <td>{isFruit(k) ? <span className="pg-kans quickwin">Quick win</span> : <span className="muted">&mdash;</span>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {!loading && (
+        <div className="cockpit-card">
+          <div className="ck-section-head">
+            <span>Kansen{opps.length ? ` (${opps.length})` : ""} <HelpHint wide text="Relevante zoekwoorden waar de site nog NIET op rankt, gevonden via keyword-ideas rond je kernthema's en door Claude gefilterd op echte relevantie (past bij de dienst, commercieel interessant). Kansen om met nieuwe of uitgebreide content te pakken." /></span>
+            <button type="button" className="primary-btn small" onClick={collectOpps} disabled={oppBusy}>{oppBusy ? "Zoeken…" : (opps.length ? "Opnieuw zoeken" : "Kansen zoeken")}</button>
+          </div>
+          {oppMsg && <div className="saved-msg" style={{ marginBottom: 8 }}>{oppMsg}</div>}
+          {opps.length === 0 ? (
+            <div className="muted">Nog geen kansen gezocht. Klik &ldquo;Kansen zoeken&rdquo;: rond je sterkste zoekwoorden zoekt Ahrefs verwante termen (kost credits), en Claude houdt alleen de echt relevante over.</div>
+          ) : (
+            <div className="res-table-wrap kpi-scroll">
+              <table className="res-table kpi-table">
+                <thead><tr><th>Focus</th><th>Zoekwoord</th><th>Volume</th><th>KD</th><th>Waarom relevant</th></tr></thead>
+                <tbody>
+                  {opps.map((o) => (
+                    <tr key={o.keyword}>
+                      <td><FocusSelect tier={focus[o.keyword]} onChange={(t) => markFocus(o.keyword, t)} /></td>
+                      <td>{o.keyword}</td>
+                      <td>{o.volume != null ? nl(o.volume) : <span className="muted">&mdash;</span>}</td>
+                      <td>{o.difficulty != null ? o.difficulty : <span className="muted">&mdash;</span>}</td>
+                      <td className="muted" style={{ fontSize: 12 }}>{o.reason || "—"}</td>
                     </tr>
                   ))}
                 </tbody>
