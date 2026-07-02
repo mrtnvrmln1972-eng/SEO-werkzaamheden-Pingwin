@@ -36,10 +36,12 @@ function safeHtml(html: string): string {
 // niet naar de technische versie. De technische doc-link uit de taaktitel wordt
 // eruit gehaald; is er een klantversie, dan wordt de titel daarnaar gelinkt.
 function clientTaskTitle(task: { taak: string; clientDocLink?: string }): string {
-  // Pak de hoofdtitel (tekst van de eerste link), zonder het "(klantversie)"-deel,
-  // en link die naar de klantversie. De technische link tonen we de klant niet.
-  const m = task.taak.match(/<a\b[^>]*>([\s\S]*?)<\/a>/i);
-  const title = (m ? m[1] : safeHtml(task.taak).replace(/<[^>]+>/g, "")).trim();
+  // Toon de klant alleen de titel, gelinkt aan de klantversie. Verwijder eerst de
+  // "(intern)"/"(klantversie)"-linkjes (die zijn voor onze eigen backend), en strip
+  // dan alle tags zodat de kale titel overblijft (werkt voor beide opmaakvormen:
+  // "Titel (intern) (klantversie)" en de enkel-gelinkte "Strategie: /pad/").
+  const stripped = task.taak.replace(/\s*\(\s*<a\b[^>]*>[\s\S]*?<\/a>\s*\)/gi, "");
+  const title = safeHtml(stripped).replace(/<[^>]+>/g, "").trim();
   if (task.clientDocLink) return `<a href="${task.clientDocLink}" target="_blank" rel="noreferrer">${title}</a>`;
   return title;
 }

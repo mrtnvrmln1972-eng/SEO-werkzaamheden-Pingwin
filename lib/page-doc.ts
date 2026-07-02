@@ -237,10 +237,10 @@ export async function summariseChatToSpec(slug: string, url: string, analysis: s
     // een kale "Unexpected end of JSON input".
     throw new Error("De analyse kon niet worden opgemaakt (het AI-antwoord kwam onvolledig terug). Probeer het opnieuw, of vat de chat-analyse iets korter samen.");
   }
-  const title = typeof parsed.titel === "string" && parsed.titel.trim() ? parsed.titel.trim() : `Analyse & zoekwoordkeuze ${url}`;
+  const title = typeof parsed.titel === "string" && parsed.titel.trim() ? parsed.titel.trim() : `Strategie ${url}`;
   const spec: DocSpec = {
     klant: client?.name || slug,
-    rapporttype: "Analyse & zoekwoordkeuze",
+    rapporttype: "Strategie",
     titel: title,
     ondertitel: typeof parsed.ondertitel === "string" ? parsed.ondertitel : url,
     meta: { Klant: client?.name || slug, Pagina: url },
@@ -258,6 +258,9 @@ const CLIENT_STRUCTURE: Record<DocKind, string> = {
   copy: `Lever deze secties (elk kort): 1. Waar de nieuwe teksten over gaan (de kernboodschap en toon); 2. Welke zoekwoorden erin verwerkt zijn; 3. Wat dit voor jullie vindbaarheid betekent. Herhaal NIET de volledige copy; geef een begrijpelijke samenvatting.`,
 };
 
+// Vaste openingsalinea voor de copy-klantversie (letterlijk, niet door AI gegenereerd).
+const COPY_CLIENT_INTRO = "Op basis van de SEO-analyse, de blauwdruk en de top 10-analyse hebben we deze copy ontwikkeld die voldoet aan de perfecte invulling voor deze pagina. Uiteraard heb jij veel meer verstand van jouw vak en je bedrijf dan wij, dus vragen we je wel om deze teksten goed door te nemen en aan te passen waar nodig. Als je deze teksten (al dan niet aangepast) terugstuurt, dan zullen wij ze op de juiste, SEO-geoptimaliseerde manier in de website verwerken.";
+
 export async function clientVersionSpec(slug: string, url: string, kind: DocKind, source: string, extra?: string): Promise<{ spec: DocSpec; title: string }> {
   const client = await getClientBySlug(slug);
   const label = { analyse: "SEO-analyse", blauwdruk: "blauwdruk", copy: "copy" }[kind];
@@ -271,13 +274,22 @@ Geen emoji. ${DOCSPEC_FORMAT}`;
   const raw = await callClaude(system, [{ role: "user", content: user }], 3500);
   const parsed = JSON.parse(raw.replace(/```json/gi, "").replace(/```/g, "").trim());
   const title = typeof parsed.titel === "string" && parsed.titel.trim() ? parsed.titel.trim() : `Klantversie ${label} ${url}`;
+  const sections = Array.isArray(parsed.sections) ? parsed.sections : [];
+  // De copy-klantversie opent altijd met een vaste, letterlijke introductie waarin
+  // we de klant vragen de teksten na te lezen en (aangepast) terug te sturen.
+  if (kind === "copy") {
+    sections.unshift({
+      heading: "",
+      blocks: [{ type: "paragraph", text: COPY_CLIENT_INTRO }],
+    });
+  }
   const spec: DocSpec = {
     klant: client?.name || slug,
     rapporttype: `Klantversie ${label}`,
     titel: title,
     ondertitel: typeof parsed.ondertitel === "string" ? parsed.ondertitel : url,
     meta: { Klant: client?.name || slug, Pagina: url },
-    sections: Array.isArray(parsed.sections) ? parsed.sections : [],
+    sections,
   };
   return { spec, title };
 }

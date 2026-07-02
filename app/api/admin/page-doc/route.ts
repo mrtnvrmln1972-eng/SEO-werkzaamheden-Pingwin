@@ -92,9 +92,9 @@ export async function POST(req: NextRequest) {
       }
     } catch { /* klantversie is aanvulling; de technische versie staat er in elk geval */ }
 
-    // 3. Werkzaamheid: titel -> technische versie, "(klantversie)" -> klantversie.
+    // 3. Werkzaamheid: "Titel (intern) (klantversie)" -> technische + klantversie.
     const taskId = await upsertStepTask(slug, {
-      pageUrl: url, stepKind: STEP_KIND[kind], title: stepTitle,
+      pageUrl: url, stepKind: STEP_KIND[kind], title: stepTitle, dualVersion: true,
       link, clientLink: clientLink || undefined, klantToelichting: STEP_KLANT[kind], wie: "SEO", fase: "Bouwen", klantZichtbaar: true,
     }).catch(() => null);
     return NextResponse.json({ ok: true, delivered: "drive", link, clientLink, filename, kind, taskId, shared, owner, folder, isDoc, note });

@@ -122,16 +122,25 @@ function escHtml(s: string): string {
 // eigen developer-notitie blijven met rust. Geeft het id terug.
 export async function upsertStepTask(
   slug: string,
-  step: { pageUrl: string; stepKind: string; title: string; link?: string; clientLink?: string; klantToelichting?: string; fase?: string; wie?: string; klantZichtbaar?: boolean },
+  step: { pageUrl: string; stepKind: string; title: string; link?: string; clientLink?: string; klantToelichting?: string; fase?: string; wie?: string; klantZichtbaar?: boolean; dualVersion?: boolean },
 ): Promise<number> {
   await ensureSchema();
-  // Titel linkt naar de technische versie; "(klantversie)" is een aparte link naar
-  // de klantversie (alleen in onze backend zichtbaar; het klantdashboard toont enkel de klantversie).
-  const titleHtml = step.link
-    ? `<a href="${escHtml(step.link)}" target="_blank" rel="noreferrer">${escHtml(step.title)}</a>`
-    : escHtml(step.title);
-  const klantSuffix = step.clientLink ? ` (<a href="${escHtml(step.clientLink)}" target="_blank" rel="noreferrer">klantversie</a>)` : "";
-  const taak = titleHtml + klantSuffix;
+  const a = (href: string, label: string) => `<a href="${escHtml(href)}" target="_blank" rel="noreferrer">${escHtml(label)}</a>`;
+  // Twee opmaakvormen:
+  // - dualVersion (SEO-analyse/blauwdruk/copy): "Titel (intern) (klantversie)", waarbij
+  //   "(intern)" naar de technische versie linkt en "(klantversie)" naar de klantversie.
+  // - enkel document (Strategie uit de chat-analyse): de titel linkt direct naar het ene document.
+  // Het klantdashboard toont sowieso alleen de klantversie (client_doc_link).
+  let taak: string;
+  if (step.dualVersion) {
+    const parts = [escHtml(step.title)];
+    if (step.link) parts.push(`(${a(step.link, "intern")})`);
+    if (step.clientLink) parts.push(`(${a(step.clientLink, "klantversie")})`);
+    taak = parts.join(" ");
+  } else {
+    const href = step.link || step.clientLink || "";
+    taak = href ? a(href, step.title) : escHtml(step.title);
+  }
   const { rows: found } = await sql`
     SELECT id FROM client_tasks WHERE client_slug = ${slug} AND page_url = ${step.pageUrl} AND step_kind = ${step.stepKind} LIMIT 1`;
   if (found[0]?.id != null) {

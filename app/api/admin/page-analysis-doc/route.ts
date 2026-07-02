@@ -61,10 +61,13 @@ export async function POST(req: NextRequest) {
     if (saved) folderId = saved.folderId;
   }
 
+  // De Strategie is één leesbaar document dat zowel intern als voor de klant dient:
+  // titel linkt direct naar het document (geen intern/klantversie-splitsing), en
+  // het staat als clientLink zodat het klantdashboard het toont.
   async function logTask(link: string): Promise<number | null> {
     return upsertStepTask(slug, {
-      pageUrl: url, stepKind: "chat_analyse", title: `Analyse & zoekwoordkeuze: ${pagePath(url)}`,
-      link: link || undefined, klantToelichting: klantUitleg, wie: "SEO", fase: "Bouwen", klantZichtbaar: true,
+      pageUrl: url, stepKind: "chat_analyse", title: `Strategie: ${pagePath(url)}`,
+      link: link || undefined, clientLink: link || undefined, klantToelichting: klantUitleg, wie: "SEO", fase: "Bouwen", klantZichtbaar: true,
     }).catch(() => null);
   }
 
