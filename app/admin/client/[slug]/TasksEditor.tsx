@@ -350,8 +350,16 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
     } else {
       try { setDevTo(localStorage.getItem("pingwin-dev-email") || "tony@pingwin.nl"); } catch { setDevTo("tony@pingwin.nl"); }
     }
-    setDevNote(""); setDevMsg(""); setShowCompose(true);
+    // Herstel een eventueel bewaard concept van deze klant + modus (nooit kwijt).
+    let draft = "";
+    try { draft = localStorage.getItem(`pw_maildraft_${slug}_${mode}`) || ""; } catch { /* geen opslag */ }
+    setDevNote(draft); setDevMsg(""); setShowCompose(true);
   }
+  // Bewaar het concept live zolang het venster open is.
+  useEffect(() => {
+    if (!showCompose) return;
+    try { localStorage.setItem(`pw_maildraft_${slug}_${composeMode}`, devNote); } catch { /* geen opslag */ }
+  }, [devNote, showCompose, composeMode, slug]);
   function toggleDevSel(i: number) {
     setDevSel((s) => { const c = new Set(s); if (c.has(i)) c.delete(i); else c.add(i); return c; });
   }
@@ -398,6 +406,7 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
           fetch("/api/admin/tasks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, tasks: newRows.map((r) => ({ ...r, klantZichtbaar: true })) }) }).catch(() => {});
         }
         setDevMsg(`Verstuurd naar ${(data.sentTo || []).join(", ") || devTo}.`);
+        try { localStorage.removeItem(`pw_maildraft_${slug}_${composeMode}`); } catch { /* geen opslag */ }
         setTimeout(() => setShowCompose(false), 1400);
       } else setDevMsg(data.error || "Versturen mislukt.");
     } catch { setDevMsg("Versturen mislukt."); } finally { setDevBusy(false); }
@@ -570,7 +579,7 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
       })()}
 
       {showCompose && (
-        <div className="compose-overlay" onClick={() => setShowCompose(false)}>
+        <div className="compose-overlay">
           <div className="compose-modal" onClick={(e) => e.stopPropagation()}>
             <div className="compose-head"><span>{composeMode === "klant" ? "Werkzaamheden naar de klant" : "Werkzaamheden naar de developer"}</span><button type="button" className="chat-float-close" onClick={() => setShowCompose(false)}>&times;</button></div>
             <div className="compose-body">

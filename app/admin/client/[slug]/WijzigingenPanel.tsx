@@ -25,6 +25,30 @@ function dt(iso: string): string {
   try { return new Date(iso).toLocaleString("nl-NL", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }); } catch { return iso; }
 }
 
+// Groepeert wijzigingen van dezelfde pagina die binnen 2 dagen achter elkaar zijn
+// gedaan tot één regel (het her-indexeer-moment vanaf waar de KPI's tellen).
+function clusterChanges(list: ChangeEvent[]): { rep: ChangeEvent; count: number }[] {
+  const byUrl = new Map<string, ChangeEvent[]>();
+  for (const e of list) {
+    const k = (e.url || "").replace(/\/+$/, "");
+    const arr = byUrl.get(k); if (arr) arr.push(e); else byUrl.set(k, [e]);
+  }
+  const TWO = 2 * 86400000;
+  const out: { rep: ChangeEvent; count: number }[] = [];
+  for (const arr of byUrl.values()) {
+    const sorted = [...arr].sort((a, b) => new Date(a.detectedAt).getTime() - new Date(b.detectedAt).getTime());
+    let cur: ChangeEvent[] = [];
+    const flush = () => { if (cur.length) { out.push({ rep: cur[cur.length - 1], count: cur.length }); cur = []; } };
+    for (const e of sorted) {
+      if (cur.length && new Date(e.detectedAt).getTime() - new Date(cur[cur.length - 1].detectedAt).getTime() > TWO) flush();
+      cur.push(e);
+    }
+    flush();
+  }
+  out.sort((a, b) => new Date(b.rep.detectedAt).getTime() - new Date(a.rep.detectedAt).getTime());
+  return out;
+}
+
 function Field({ label, change }: { label: string; change: FieldChange }) {
   return (
     <div className="wz-block">
@@ -326,10 +350,11 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
     );
   }
 
+  const clusters = clusterChanges(events);
   return (
     <div className="cockpit-card acc-teal">
       <div className="ck-section-head">
-        <span>Wijzigingen ({events.length}) <HelpHint wide text="Wat er op de pagina's is aangepast, met datum. Uit WordPress halen we onze eigen aanpassingen op (revisies binnen 2 dagen gebundeld tot één moment); daaromheen zie je het effect op de KPI's. Wijzigingen door anderen dan ons team blijven weg." /></span>
+        <span>Wijzigingen ({clusters.length}) <HelpHint wide text="Wat er op de pagina's is aangepast, met datum. Aanpassingen aan dezelfde pagina binnen 2 dagen worden tot één moment gebundeld (dan wordt de pagina opnieuw geïndexeerd); daaromheen zie je het effect op de KPI's. Uit WordPress halen we alleen onze eigen aanpassingen op." /></span>
         <span style={{ display: "inline-flex", gap: 8 }}>
           <button type="button" className="ghost-btn small" onClick={() => setShowAdd((v) => !v)}>{showAdd ? "Sluiten" : "Wijziging toevoegen"}</button>
           {!wpSet && <button type="button" className="ghost-btn small" onClick={() => setWpSetupOpen((v) => !v)} title="WordPress-applicatiewachtwoord instellen voor de volledige bewerkingshistorie">WordPress-koppeling</button>}
@@ -387,10 +412,10 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
       {loading && <div className="muted" style={{ padding: 12 }}>Laden…</div>}
       {!loading && events.length === 0 && <div className="muted" style={{ padding: 12 }}>Nog geen wijzigingen. Draai een scan (basislijn), en na een volgende scan verschijnen hier de veranderingen.</div>}
       <div className="wz-list">
-        {events.map((e) => (
+        {clusters.map(({ rep: e, count }) => (
           <button key={e.id} type="button" className="wz-item" onClick={() => setOpen(e)}>
             <div className="wz-item-main">
-              <div className="wz-item-title">{e.diff.meta_title?.after || e.diff.h1?.after || shortUrl(e.url)}</div>
+              <div className="wz-item-title">{e.diff.meta_title?.after || e.diff.h1?.after || shortUrl(e.url)}{count > 1 ? <span style={{ color: "var(--orange-dark)", fontWeight: 600 }}> · {count} wijzigingen gebundeld</span> : ""}</div>
               <div className="wz-item-sub">{shortUrl(e.url)} · {e.summary}{e.isManual ? " · handmatig" : ""}</div>
             </div>
             <div className="wz-item-date">{dt(e.detectedAt)}</div>

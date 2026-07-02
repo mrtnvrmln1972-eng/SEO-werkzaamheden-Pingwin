@@ -46,8 +46,15 @@ function clientTaskTitle(task: { taak: string; clientDocLink?: string }): string
   // terugvallen op de "(klantversie)"-link die nog in de taaktitel zit.
   let link = task.clientDocLink || "";
   if (!link) {
-    const m = task.taak.match(/<a\b[^>]*href=["']([^"']+)["'][^>]*>\s*klantversie\s*<\/a>/i);
-    if (m) link = m[1];
+    const kv = task.taak.match(/<a\b[^>]*href=["']([^"']+)["'][^>]*>\s*klantversie\s*<\/a>/i);
+    if (kv) {
+      link = kv[1];
+    } else if (!/\(\s*<a\b[^>]*>\s*intern\s*<\/a>\s*\)/i.test(task.taak)) {
+      // Geen dual-versie (geen "(intern)"-link), dus de titel is één klant-geschikt
+      // document (bijv. "Strategie: /pad/"): gebruik die enkele link.
+      const single = task.taak.match(/<a\b[^>]*href=["']([^"']+)["']/i);
+      if (single) link = single[1];
+    }
   }
   if (link) return `<a href="${link}" target="_blank" rel="noreferrer">${title}</a>`;
   return title;
