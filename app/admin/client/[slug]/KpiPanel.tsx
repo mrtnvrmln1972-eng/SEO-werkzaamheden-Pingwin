@@ -66,6 +66,51 @@ function Delta({ cur, prev, invert, pct, isPos }: { cur: number; prev: number; i
   return <span className={"kpi-delta " + cls}>{arrow} {abs}{pctTxt}</span>;
 }
 
+// ── Sorteerbare kolomkoppen ──────────────────────────────────
+type SortDir = "asc" | "desc";
+type Sort<K extends string> = { key: K; dir: SortDir } | null;
+
+// Klik-cyclus per kop: aflopend → oplopend → uit (originele volgorde).
+function SortTh<K extends string>({ label, k, sort, setSort, className }: { label: string; k: K; sort: Sort<K>; setSort: (s: Sort<K>) => void; className?: string }) {
+  const active = sort?.key === k;
+  const arrow = active ? (sort!.dir === "asc" ? " ▲" : " ▼") : "";
+  function onClick() {
+    if (!active) return setSort({ key: k, dir: "desc" });
+    if (sort!.dir === "desc") return setSort({ key: k, dir: "asc" });
+    return setSort(null);
+  }
+  return <th className={"pg-sort" + (className ? " " + className : "")} onClick={onClick} title="Klik om te sorteren (aflopend → oplopend → uit)">{label}{arrow}</th>;
+}
+
+function applySort<T, K extends string>(rows: T[], sort: Sort<K>, getters: Record<K, (r: T) => number | string>): T[] {
+  if (!sort) return rows;
+  const g = getters[sort.key];
+  const dir = sort.dir === "asc" ? 1 : -1;
+  return [...rows].sort((a, b) => {
+    const av = g(a), bv = g(b);
+    if (typeof av === "string" || typeof bv === "string") return String(av).localeCompare(String(bv)) * dir;
+    return (av - bv) * dir;
+  });
+}
+
+type FocusTier = "prio" | "secundair";
+type Kw = GscComparison["keywords"][number];
+type KwKey = "keyword" | "position" | "clicks" | "impressions" | "ctr";
+const kwGetters: Record<KwKey, (k: Kw) => number | string> = {
+  keyword: (k) => k.keyword, position: (k) => k.position, clicks: (k) => k.clicks, impressions: (k) => k.impressions, ctr: (k) => k.ctr,
+};
+
+// Compacte prio/secundair-keuze per zoekwoord.
+function FocusSelect({ tier, onChange }: { tier: FocusTier | undefined; onChange: (t: FocusTier | null) => void }) {
+  return (
+    <select className={"kpi-focus-select" + (tier ? " set-" + tier : "")} value={tier || ""} onClick={(e) => e.stopPropagation()} onChange={(e) => onChange((e.target.value || null) as FocusTier | null)} title="Markeer als prio- of secundair-zoekwoord">
+      <option value="">—</option>
+      <option value="prio">Prio</option>
+      <option value="secundair">Sec.</option>
+    </select>
+  );
+}
+
 export default function KpiPanel({ slug, domain }: { slug: string; domain: string }) {
   const [days, setDays] = useState(28);
   const [gsc, setGsc] = useState<GscComparison | null>(null);
@@ -75,6 +120,10 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
   const [pagesView, setPagesView] = useState<GscPage[]>([]);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [focus, setFocus] = useState<Record<string, FocusTier>>({});
+  const [kwSort, setKwSort] = useState<Sort<KwKey>>(null);
+  const [focusSort, setFocusSort] = useState<Sort<KwKey>>(null);
+  const [pageSort, setPageSort] = useState<Sort<"url" | "clicks" | "impressions">>(null);
 
   useEffect(() => {
     let off = false;
@@ -86,12 +135,19 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
         setGsc(d.gsc ?? null);
         setGa4(d.ga4 ?? null);
         setConnected(!!(d.gsc || d.ga4));
+        setFocus(d.keywordFocus || {});
         const pages: GscPage[] = d.gsc?.pages || [];
         setPagesView(sortByOrder(pages, Array.isArray(d.pageOrder) ? d.pageOrder : []));
       })
       .finally(() => { if (!off) setLoading(false); });
     return () => { off = true; };
   }, [slug, days]);
+
+  // Markeert of wist prio/secundair voor één zoekwoord (optimistisch, dan opslaan).
+  function markFocus(keyword: string, tier: FocusTier | null) {
+    setFocus((f) => { const n = { ...f }; if (tier) n[keyword] = tier; else delete n[keyword]; return n; });
+    fetch("/api/admin/kpi/keyword-focus", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, keyword, tier }) }).catch(() => {});
+  }
 
   // Sla de gesleepte volgorde op (kort debounce).
   function persistOrder(urls: string[]) {
@@ -116,6 +172,18 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
   }
 
   const periodLabel = PERIODS.find((p) => p.days === days)?.label || `${days} dagen`;
+
+  // Afgeleide lijsten: focus-zoekwoorden (prio eerst), gesorteerde zoekwoorden en pagina's.
+  const allKws: Kw[] = gsc?.keywords || [];
+  const focusedKws = applySort(
+    [...allKws.filter((k) => focus[k.keyword])].sort((a, b) => (focus[a.keyword] === "prio" ? 0 : 1) - (focus[b.keyword] === "prio" ? 0 : 1)),
+    focusSort, kwGetters,
+  );
+  const sortedKws = applySort(allKws, kwSort, kwGetters);
+  const pageGetters: Record<"url" | "clicks" | "impressions", (p: GscPage) => number | string> = {
+    url: (p) => shortUrl(p.url), clicks: (p) => p.clicks, impressions: (p) => p.impressions,
+  };
+  const sortedPages = applySort(pagesView, pageSort, pageGetters);
 
   return (
     <div className="kpi-panel">
@@ -156,15 +224,53 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
         </div>
       )}
 
-      {!loading && gsc && gsc.keywords.length > 0 && (
-        <div className="cockpit-card">
-          <div className="ck-section-head"><span>Zoekwoorden uit Search Console ({gsc.keywords.length})</span></div>
+      {!loading && gsc && focusedKws.length > 0 && (
+        <div className="cockpit-card kpi-focus-card">
+          <div className="ck-section-head"><span>Belangrijke zoekwoorden ({focusedKws.length})</span><span className="ck-updated">prio &amp; secundair, vastgezet bovenaan</span></div>
           <div className="res-table-wrap">
             <table className="res-table kpi-table">
-              <thead><tr><th>Zoekwoord</th><th>Positie</th><th>Klikken</th><th>Vertoningen</th><th>CTR</th></tr></thead>
+              <thead><tr>
+                <th>Focus</th>
+                <SortTh label="Zoekwoord" k="keyword" sort={focusSort} setSort={setFocusSort} />
+                <SortTh label="Positie" k="position" sort={focusSort} setSort={setFocusSort} />
+                <SortTh label="Klikken" k="clicks" sort={focusSort} setSort={setFocusSort} />
+                <SortTh label="Vertoningen" k="impressions" sort={focusSort} setSort={setFocusSort} />
+                <SortTh label="CTR" k="ctr" sort={focusSort} setSort={setFocusSort} />
+              </tr></thead>
               <tbody>
-                {gsc.keywords.map((k) => (
+                {focusedKws.map((k) => (
+                  <tr key={k.keyword} className={"kpi-focus-row " + focus[k.keyword]}>
+                    <td><FocusSelect tier={focus[k.keyword]} onChange={(t) => markFocus(k.keyword, t)} /></td>
+                    <td>{k.keyword}</td>
+                    <td>{k.position.toFixed(1)} <Delta cur={k.position} prev={k.prevPosition ?? k.position} invert isPos /></td>
+                    <td>{nl(k.clicks)} <Delta cur={k.clicks} prev={k.prevClicks} /></td>
+                    <td>{nl(k.impressions)} <Delta cur={k.impressions} prev={k.prevImpressions} /></td>
+                    <td>{k.ctr.toFixed(1)}% <Delta cur={k.ctr} prev={k.prevCtr} isPos /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {!loading && gsc && gsc.keywords.length > 0 && (
+        <div className="cockpit-card">
+          <div className="ck-section-head"><span>Zoekwoorden uit Search Console ({gsc.keywords.length})</span><span className="ck-updated">markeer een zoekwoord als prio of secundair</span></div>
+          <div className="res-table-wrap">
+            <table className="res-table kpi-table">
+              <thead><tr>
+                <th>Focus</th>
+                <SortTh label="Zoekwoord" k="keyword" sort={kwSort} setSort={setKwSort} />
+                <SortTh label="Positie" k="position" sort={kwSort} setSort={setKwSort} />
+                <SortTh label="Klikken" k="clicks" sort={kwSort} setSort={setKwSort} />
+                <SortTh label="Vertoningen" k="impressions" sort={kwSort} setSort={setKwSort} />
+                <SortTh label="CTR" k="ctr" sort={kwSort} setSort={setKwSort} />
+              </tr></thead>
+              <tbody>
+                {sortedKws.map((k) => (
                   <tr key={k.keyword}>
+                    <td><FocusSelect tier={focus[k.keyword]} onChange={(t) => markFocus(k.keyword, t)} /></td>
                     <td>{k.keyword}</td>
                     <td>{k.position.toFixed(1)} <Delta cur={k.position} prev={k.prevPosition ?? k.position} invert isPos /></td>
                     <td>{nl(k.clicks)} <Delta cur={k.clicks} prev={k.prevClicks} /></td>
@@ -180,14 +286,19 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
 
       {!loading && gsc && pagesView.length > 0 && (
         <div className="cockpit-card">
-          <div className="ck-section-head"><span>Pagina&rsquo;s uit Search Console ({pagesView.length})</span><span className="ck-updated">sleep om vast te zetten bovenaan</span></div>
+          <div className="ck-section-head"><span>Pagina&rsquo;s uit Search Console ({pagesView.length})</span><span className="ck-updated">{pageSort ? "sortering actief, zet uit om te slepen" : "sleep om vast te zetten bovenaan"}</span></div>
           <div className="res-table-wrap">
             <table className="res-table kpi-table">
-              <thead><tr><th></th><th>Pagina</th><th>Klikken</th><th>Vertoningen</th></tr></thead>
+              <thead><tr>
+                <th></th>
+                <SortTh label="Pagina" k="url" sort={pageSort} setSort={setPageSort} />
+                <SortTh label="Klikken" k="clicks" sort={pageSort} setSort={setPageSort} />
+                <SortTh label="Vertoningen" k="impressions" sort={pageSort} setSort={setPageSort} />
+              </tr></thead>
               <tbody>
-                {pagesView.map((p, i) => (
-                  <tr key={p.url} className={dragIdx === i ? "dragging" : ""} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.stopPropagation(); movePage(i); }}>
-                    <td className="drag-handle" draggable onDragStart={() => setDragIdx(i)} onDragEnd={() => setDragIdx(null)} title="Sleep om deze pagina bovenaan vast te zetten">⠿</td>
+                {sortedPages.map((p, i) => (
+                  <tr key={p.url} className={dragIdx === i ? "dragging" : ""} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { if (pageSort) return; e.stopPropagation(); movePage(i); }}>
+                    <td className="drag-handle" draggable={!pageSort} onDragStart={() => { if (!pageSort) setDragIdx(i); }} onDragEnd={() => setDragIdx(null)} title={pageSort ? "Zet de sortering uit om te slepen" : "Sleep om deze pagina bovenaan vast te zetten"}>⠿</td>
                     <td><a href={p.url} target="_blank" rel="noreferrer">{shortUrl(p.url)}</a></td>
                     <td>{nl(p.clicks)} <Delta cur={p.clicks} prev={p.prevClicks} /></td>
                     <td>{nl(p.impressions)} <Delta cur={p.impressions} prev={p.prevImpressions} /></td>

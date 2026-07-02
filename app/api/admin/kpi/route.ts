@@ -3,6 +3,7 @@ import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { getClientBySlug } from "../../../../lib/clients";
 import { getGscComparison, getGa4Comparison } from "../../../../lib/google";
 import { getPageOrder } from "../../../../lib/kpi-prefs";
+import { getKeywordFocus } from "../../../../lib/keyword-focus";
 
 export const runtime = "nodejs";
 
@@ -24,11 +25,12 @@ export async function GET(req: NextRequest) {
   if (!client) return NextResponse.json({ ok: false, error: "Klant niet gevonden." }, { status: 404 });
 
   const domain = client.domain || "";
-  const [gsc, ga4, pageOrder] = await Promise.all([
+  const [gsc, ga4, pageOrder, keywordFocus] = await Promise.all([
     withTimeout(getGscComparison(domain, days), 9000, null),
     withTimeout(getGa4Comparison(slug, domain, days), 9000, null),
     getPageOrder(slug).catch(() => [] as string[]),
+    getKeywordFocus(slug).catch(() => ({})),
   ]);
 
-  return NextResponse.json({ ok: true, days, domain, gsc, ga4, pageOrder });
+  return NextResponse.json({ ok: true, days, domain, gsc, ga4, pageOrder, keywordFocus });
 }
