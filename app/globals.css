@@ -394,6 +394,8 @@ tbody td:last-child { text-align: center; }
 .client-profile-toggle:hover { color: var(--orange); }
 .client-profile-area { width: 100%; min-height: 110px; margin-top: 8px; font-family: 'Montserrat', sans-serif; font-size: 13px; color: var(--dark); line-height: 1.5; border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; outline: none; resize: vertical; }
 .client-profile-area:focus { border-color: var(--orange); }
+.profile-note { margin-top: 8px; padding: 7px 11px; border-radius: 8px; background: var(--red-light); border: 1px solid var(--red); color: var(--red); font-weight: 700; font-size: 12px; }
+.profile-gen-buttons { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
 
 /* Analyse importeren (modal) */
 .import-modal { width: 900px; max-width: 96vw; max-height: 90vh; display: flex; flex-direction: column; background: var(--white); border-radius: 14px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.25); }

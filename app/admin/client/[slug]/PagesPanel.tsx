@@ -16,6 +16,24 @@ function statusBadge(status: number | null, redirectTarget: string) {
   return <span className="url-badge url-bad">{status}</span>;
 }
 
+// Voegt een gegenereerde sectie (met een "## Kop"-regel bovenaan) samen met de
+// bestaande profieltekst: vervangt een sectie met dezelfde kop, of plakt hem
+// eronder als hij nog niet bestaat. Zo kun je profiel en tone-of-voice los
+// (her)genereren zonder elkaar te overschrijven.
+function mergeSection(current: string, section: string): string {
+  const cur = current || "";
+  const header = (section.split("\n")[0] || "").trim();
+  if (!header.startsWith("##")) return cur.trim() ? cur.trim() + "\n\n" + section.trim() : section.trim();
+  const lines = cur.split("\n");
+  const startIdx = lines.findIndex((l) => l.trim() === header);
+  if (startIdx === -1) return (cur.trim() ? cur.trim() + "\n\n" : "") + section.trim();
+  let endIdx = lines.length;
+  for (let i = startIdx + 1; i < lines.length; i++) { if (/^##\s/.test(lines[i])) { endIdx = i; break; } }
+  const before = lines.slice(0, startIdx).join("\n").trim();
+  const after = lines.slice(endIdx).join("\n").trim();
+  return [before, section.trim(), after].filter(Boolean).join("\n\n");
+}
+
 export default function PagesPanel({ slug, initialProfile, clientEmail, clientName, onGoToTask }: { slug: string; initialProfile?: string; clientEmail?: string; clientName?: string; onGoToTask?: (taskId: number) => void }) {
   type Opp = { impressions: number; clicks: number; ctr: number; position: number; bestKeyword: string; bestPosition: number | null; bestVolume: number | null; score: number; label: string; level: string };
   const [opps, setOpps] = useState<Record<string, Opp>>({});
@@ -31,6 +49,21 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
   const profileTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [genBusy, setGenBusy] = useState<"" | "profile" | "tov">("");
+  const [genErr, setGenErr] = useState("");
+
+  // Genereert het klantprofiel of de tone-of-voice uit de live site en voegt de
+  // samenvatting samen met wat er al staat.
+  async function generateProfile(kind: "profile" | "tov") {
+    if (genBusy) return;
+    setGenBusy(kind); setGenErr(""); setProfileOpen(true);
+    try {
+      const r = await fetch("/api/admin/client-profile/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, kind }) });
+      const d = await r.json();
+      if (!d.ok) { setGenErr(d.error || "Genereren mislukt."); return; }
+      changeProfile(mergeSection(profile, String(d.section || "")));
+    } catch { setGenErr("Genereren mislukt."); } finally { setGenBusy(""); }
+  }
 
   function changeProfile(v: string) {
     setProfile(v); setProfileSaved(false);
@@ -115,12 +148,21 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
             {profileSaved && <span className="focus-save-status" style={{ marginLeft: 8 }}>✓ opgeslagen</span>}
           </button>
           {profileOpen && (
-            <textarea
-              className="client-profile-area"
-              value={profile}
-              onChange={(e) => changeProfile(e.target.value)}
-              placeholder="Wie is deze klant? Bv. werkgebied (regionaal Uden/Oss/Den Bosch, of landelijk), positionering (prijs / exclusieve designtuinen / duurzaam), doelgroep, belangrijkste diensten. De chat gebruikt dit als context en vraagt ernaar als het ontbreekt."
-            />
+            <>
+              <div className="profile-note">Vul hier ook je eigen know-how over de klant in.</div>
+              <div className="profile-gen-buttons">
+                <button type="button" className="ghost-btn small" onClick={() => generateProfile("profile")} disabled={!!genBusy}>{genBusy === "profile" ? "Klantprofiel opstellen…" : "Klantprofiel opstellen"}</button>
+                <button type="button" className="ghost-btn small" onClick={() => generateProfile("tov")} disabled={!!genBusy}>{genBusy === "tov" ? "Tone-of-voice analyseren…" : "Tone-of-voice analyse"}</button>
+                <span className="muted" style={{ fontSize: 11 }}>Leest de live site en zet een concept in het veld. Jij vult aan en corrigeert.</span>
+              </div>
+              {genErr && <div className="login-error" style={{ marginBottom: 8 }}>{genErr}</div>}
+              <textarea
+                className="client-profile-area"
+                value={profile}
+                onChange={(e) => changeProfile(e.target.value)}
+                placeholder="Wie is deze klant? Bv. werkgebied (regionaal Uden/Oss/Den Bosch, of landelijk), positionering (prijs / exclusieve designtuinen / duurzaam), doelgroep, belangrijkste diensten. De chat gebruikt dit als context en vraagt ernaar als het ontbreekt. Of laat de knoppen hierboven een concept opstellen."
+              />
+            </>
           )}
         </div>
 
