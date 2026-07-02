@@ -57,13 +57,16 @@ function stripTags(html: string): string {
 
 export default function ClientCockpit({
   client, emails, metrics, keywords, pages, lastIngest, status, statusUpdatedAt,
-  mailLive, msConfigured, msConnected, myEmail, monthTasks, allClients,
+  mailLive, msConfigured, msConnected, myEmail, allClients,
   gsc, ga4, googleConfigured, googleConnected, chatConfigured, chatHistory, tasks, initialTab, highlight,
 }: { client: ClientConfig; initialTab?: string; highlight?: string } & CockpitData) {
   const router = useRouter();
   const pathname = usePathname();
-  const validTab = (t?: string): Tab => (t === "werkzaamheden" || t === "paginas" || t === "resultaten" || t === "klant" || t === "developer" || t === "wijzigingen" || t === "overzicht") ? t : "overzicht";
+  const validTab = (t?: string): Tab => (t === "werkzaamheden" || t === "paginas" || t === "resultaten" || t === "klant" || t === "developer" || t === "wijzigingen") ? t : "werkzaamheden";
   const [tab, setTab] = useState<Tab>(validTab(initialTab));
+  // Toggles bovenaan de (samengevoegde) Werkzaamheden-pagina, standaard gesloten.
+  const [showStatusBox, setShowStatusBox] = useState(false);
+  const [showMailsBox, setShowMailsBox] = useState(false);
 
   // Pagina's blijven na het eerste bezoek in het geheugen (verborgen i.p.v.
   // uitgekleed), zodat je chat/plan-staat bewaard blijft als je van tab wisselt.
@@ -100,7 +103,6 @@ export default function ClientCockpit({
   }
 
   const [statusBusy, setStatusBusy] = useState(false);
-  const [showNext, setShowNext] = useState(false);
 
   async function toggleStatus(index: number, done: boolean) {
     setStatusBusy(true);
@@ -197,7 +199,8 @@ export default function ClientCockpit({
   });
 
   function openInDashboard(id: string, idx: number) {
-    setTab("overzicht");
+    setTab("werkzaamheden");
+    setShowMailsBox(true);
     setOpenEmail(id);
     setReplyMsg("");
     const target = emails.find((x) => x.id === id);
@@ -235,7 +238,6 @@ export default function ClientCockpit({
           </select>
           <nav className="header-tabs">
             {([
-              ["overzicht", "Overzicht", ""],
               ["werkzaamheden", "Werkzaamheden", ""],
               ["paginas", "Pagina’s", ""],
               ["resultaten", "KPI’s", ""],
@@ -269,7 +271,7 @@ export default function ClientCockpit({
 
       <div className="container">
 
-        {tab === "overzicht" && (
+        {tab === "werkzaamheden" && (
           <>
             {(workDocUrl || resultsUrl) && (
               <div className="cockpit-card">
@@ -280,13 +282,12 @@ export default function ClientCockpit({
               </div>
             )}
 
-            {(status.exchanges.length > 0 || monthTasks.thisMonth.length > 0 || monthTasks.nextMonth.length > 0 || status.mailActions.length > 0) && (
-              <div className="cockpit-card">
-                <div className="ck-section-head">
-                  <span>Actuele stand van zaken</span>
-                  {statusUpdatedAt && <span className="ck-updated">bijgewerkt {fmtDate(statusUpdatedAt)}</span>}
-                </div>
-                <div className="sov-layout">
+            <div className="cockpit-card">
+              <button type="button" className="ck-collapse-head" onClick={() => setShowStatusBox((v) => !v)}>
+                <span>{showStatusBox ? "▾" : "▸"} Actuele stand van zaken</span>
+                {statusUpdatedAt && <span className="ck-updated">bijgewerkt {fmtDate(statusUpdatedAt)}</span>}
+              </button>
+              <div className="sov-layout" style={{ display: showStatusBox ? undefined : "none" }}>
                   <div className="sov-thread">
                     <div className="sov-legend">
                       <span><span className="sov-dot client" /> Klant</span>
@@ -327,71 +328,15 @@ export default function ClientCockpit({
                   </div>
 
                   <div className="sov-side">
-                    <div className="sov-tasks">
-                      <div className="sov-tasks-head">Lopende werkzaamheden</div>
-                      <div className="task-month">Deze maand <span className="sov-sub">{monthTasks.thisLabel}</span></div>
-                      {monthTasks.thisMonth.length === 0 ? (
-                        <div className="muted" style={{ fontSize: 13 }}>Geen taken deze maand.</div>
-                      ) : (
-                        <ul className="sov-tasks-list">
-                          {monthTasks.thisMonth.map((t, i) => (
-                            <li key={i} className={t.done ? "task-done" : ""}>
-                              {t.wie && <span className={"wie-badge " + (/dev/i.test(t.wie) ? "dev" : "seo")}>{t.wie}</span>}
-                              {t.link ? <a href={t.link} target="_blank" rel="noreferrer">{stripTags(t.text)}</a> : <span>{stripTags(t.text)}</span>}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                      <button type="button" className="task-toggle" onClick={() => setShowNext((v) => !v)}>
-                        {showNext ? "▾" : "▸"} Volgende maand <span className="sov-sub">{monthTasks.nextLabel} ({monthTasks.nextMonth.length})</span>
-                      </button>
-                      {showNext && (monthTasks.nextMonth.length === 0 ? (
-                        <div className="muted" style={{ fontSize: 13 }}>Geen taken volgende maand.</div>
-                      ) : (
-                        <ul className="sov-tasks-list">
-                          {monthTasks.nextMonth.map((t, i) => (
-                            <li key={i}>
-                              {t.wie && <span className={"wie-badge " + (/dev/i.test(t.wie) ? "dev" : "seo")}>{t.wie}</span>}
-                              {t.link ? <a href={t.link} target="_blank" rel="noreferrer">{stripTags(t.text)}</a> : <span>{stripTags(t.text)}</span>}
-                            </li>
-                          ))}
-                        </ul>
-                      ))}
-                    </div>
-
-                    <div className="sov-tasks">
-                      <div className="sov-tasks-head">Open punten uit mail</div>
-                      {status.mailActions.length === 0 ? (
-                        <div className="muted" style={{ fontSize: 13 }}>Nog geen punten uit mails.</div>
-                      ) : (
-                        <ul className="sov-tasks-list">
-                          {status.mailActions.map((a, i) => {
-                            const am = a.subject ? emailMatch.get(normSubject(a.subject)) : undefined;
-                            return (
-                              <li key={i}>
-                                {am
-                                  ? <button type="button" className="task-link-btn" onClick={() => openInDashboard(am.id, am.idx)}>{a.text}</button>
-                                  : a.text}
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      )}
-                    </div>
-
+                    <FocusBlock slug={client.slug} />
                   </div>
                 </div>
               </div>
-            )}
 
             <div className="cockpit-card">
-              <FocusBlock slug={client.slug} standalone />
-            </div>
-
-            <div className="cockpit-card">
-              <div className="ck-section-head">
-                <span>Laatste e-mails</span>
-                <div className="sh-search">
+              <div className="ck-section-head ck-collapse-head" onClick={() => setShowMailsBox((v) => !v)}>
+                <span>{showMailsBox ? "▾" : "▸"} Laatste mails</span>
+                <div className="sh-search" onClick={(e) => e.stopPropagation()}>
                   <input
                     value={shQuery}
                     onChange={(e) => setShQuery(e.target.value)}
@@ -403,6 +348,7 @@ export default function ClientCockpit({
                   </button>
                 </div>
               </div>
+              <div style={{ display: showMailsBox ? undefined : "none" }}>
               {lastIngest && <div className="ck-updated" style={{ marginBottom: 12 }}>bijgewerkt {fmtDate(lastIngest)}</div>}
               {mailLive && (
                 <div className="mail-live-badge">
@@ -503,6 +449,7 @@ export default function ClientCockpit({
                   })}
                 </div>
               )}
+              </div>
             </div>
 
           </>

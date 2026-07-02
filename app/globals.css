@@ -590,6 +590,16 @@ tbody td:last-child { text-align: center; }
   text-transform: uppercase; letter-spacing: 0.5px;
   margin: 4px 0 14px; padding-bottom: 8px; border-bottom: 2px solid var(--orange);
 }
+/* Inklapbare sectiekop (toggle). Werkt als losse <button> én als ck-section-head. */
+button.ck-collapse-head {
+  display: flex; align-items: baseline; justify-content: space-between; width: 100%;
+  background: none; border: none; border-bottom: 2px solid var(--orange);
+  font-family: inherit; font-weight: 700; color: var(--dark); font-size: 14px;
+  text-transform: uppercase; letter-spacing: 0.5px; text-align: left;
+  margin: 4px 0 0; padding: 0 0 8px; cursor: pointer;
+}
+.ck-collapse-head { cursor: pointer; }
+.ck-collapse-head:hover > span:first-child { color: var(--orange-dark); }
 .ck-updated { font-size: 11px; font-weight: 500; color: var(--gray); text-transform: none; letter-spacing: 0; }
 
 /* Project-chat (floating rechtsonder) */
