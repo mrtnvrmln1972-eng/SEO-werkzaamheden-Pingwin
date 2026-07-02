@@ -190,6 +190,17 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
     } catch { setMsg("Scan mislukt."); } finally { setScanning(false); }
   }
 
+  const [wpBusy, setWpBusy] = useState(false);
+  async function syncWordpress() {
+    setWpBusy(true); setMsg("");
+    try {
+      const r = await fetch("/api/admin/changes/wordpress", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }) });
+      const d = await r.json();
+      if (d.ok) { setMsg(`WordPress: ${d.scanned} pagina's bekeken, ${d.added} nieuwe wijziging${d.added === 1 ? "" : "en"} toegevoegd (met datum).`); await load(); }
+      else setMsg(d.error || "Ophalen uit WordPress mislukt.");
+    } catch { setMsg("Ophalen uit WordPress mislukt."); } finally { setWpBusy(false); }
+  }
+
   if (open) {
     return (
       <div className="cockpit-card">
@@ -269,6 +280,7 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
         <span>Wijzigingen ({events.length})</span>
         <span style={{ display: "inline-flex", gap: 8 }}>
           <button type="button" className="ghost-btn small" onClick={() => setShowAdd((v) => !v)}>{showAdd ? "Sluiten" : "Wijziging toevoegen"}</button>
+          <button type="button" className="ghost-btn small" onClick={syncWordpress} disabled={wpBusy} title="Haalt uit WordPress per pagina de laatste wijzigingsdatum op">{wpBusy ? "Uit WordPress…" : "Uit WordPress ophalen"}</button>
           <button type="button" className="ghost-btn small" onClick={scan} disabled={scanning}>{scanning ? "Scannen…" : "Scan op wijzigingen"}</button>
         </span>
       </div>

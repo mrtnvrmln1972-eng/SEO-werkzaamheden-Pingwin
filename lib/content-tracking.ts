@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { sql, ensureSchema } from "./db";
 import { diffSnapshots, diffSummary, isDiffEmpty, type SnapshotForDiff, type ContentDiff } from "./content-diff";
+import { fetchWordpressModified } from "./wordpress";
 
 // ═══════════════════════════════════════════════════════════
 // PAGINA-WIJZIGINGEN: snapshots + change-detectie
@@ -54,6 +55,8 @@ async function doEnsure(): Promise<void> {
   // "voor"-snapshot): current_snapshot_id mag dan leeg zijn, is_manual = true.
   await sql`ALTER TABLE page_change_events ALTER COLUMN current_snapshot_id DROP NOT NULL`.catch(() => null);
   await sql`ALTER TABLE page_change_events ADD COLUMN IF NOT EXISTS is_manual BOOLEAN NOT NULL DEFAULT false`;
+  // Herkomst van de wijziging: 'wordpress' voor uit WordPress opgehaalde datums.
+  await sql`ALTER TABLE page_change_events ADD COLUMN IF NOT EXISTS source TEXT`;
 }
 
 // ── Content-extractie (regex-gebaseerd, geen browser) ────────
@@ -219,6 +222,39 @@ export async function addManualChange(slug: string, url: string, date: string, n
     INSERT INTO page_change_events (client_slug, url, detected_at, current_snapshot_id, diff, change_summary, is_manual)
     VALUES (${slug}, ${url}, ${date + "T12:00:00Z"}, ${snapId}, ${"{}"}, ${note || "Handmatig toegevoegde wijziging"}, true)`;
   return { ok: true };
+}
+
+// Haalt uit WordPress (publieke REST API) per pagina de laatste wijzigingsdatum
+// en zet die als date-stamped wijziging in de Wijzigingen-tab. Idempotent:
+// dedupe op (url, dag). Filtert op de pagina's die we beheren (client_urls) als
+// die lijst er is. hasApi=false als de site geen open WordPress REST API heeft.
+export async function addWordpressChanges(slug: string, domain: string): Promise<{ scanned: number; added: number; hasApi: boolean }> {
+  await ensureSchema();
+  await ensureTables();
+  const items = await fetchWordpressModified(domain);
+  if (items.length === 0) return { scanned: 0, added: 0, hasApi: false };
+
+  const { rows: urlRows } = await sql`SELECT url FROM client_urls WHERE client_slug = ${slug}`;
+  const known = new Set(urlRows.map((r) => (r.url as string).replace(/\/$/, "")));
+  const useFilter = known.size > 0;
+
+  const { rows: existing } = await sql`SELECT url, detected_at FROM page_change_events WHERE client_slug = ${slug} AND source = 'wordpress'`;
+  const seen = new Set(existing.map((r) => `${(r.url as string).replace(/\/$/, "")}|${new Date(r.detected_at as string).toISOString().slice(0, 10)}`));
+
+  let scanned = 0, added = 0;
+  for (const it of items) {
+    const key = it.url.replace(/\/$/, "");
+    if (useFilter && !known.has(key)) continue;
+    scanned++;
+    const day = new Date(it.modified).toISOString().slice(0, 10);
+    if (seen.has(`${key}|${day}`)) continue;
+    const summary = `WordPress: pagina aangepast op ${new Date(it.modified).toLocaleDateString("nl-NL")}`;
+    await sql`
+      INSERT INTO page_change_events (client_slug, url, detected_at, current_snapshot_id, diff, change_summary, is_manual, source)
+      VALUES (${slug}, ${it.url}, ${it.modified}, ${null}, ${"{}"}, ${summary}, true, 'wordpress')`;
+    added++; seen.add(`${key}|${day}`);
+  }
+  return { scanned, added, hasApi: true };
 }
 
 export type ChangeEvent = { id: number; url: string; detectedAt: string; summary: string; diff: ContentDiff; isManual: boolean };
