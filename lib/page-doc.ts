@@ -344,12 +344,6 @@ Geen emoji. ${DOCSPEC_FORMAT}`;
 // twijfelt, een winnende concurrent volledig uitmeten om te modelleren) en dwingt
 // een VOLLEDIGE slotconclusie af. Die rijke tekst voedt daarna de formatteer-stap.
 // Zo krijgen we Cowork-diepgang zonder het "agentisch + direct JSON = fragiel"-risico.
-const REASON_FOCUS: Record<DocKind, string> = {
-  analyse: "Doel: een complete SEO-AUDIT van de bestaande pagina. Loop in je conclusie ALLE relevante criteria langs met gemeten waarde + status (PASS/FAIL/PARTIAL/N/A), bepaal het gate-verdict (score/100, CRITICAL- en MAJOR-failures met ID), en geef minstens 5 geprioriteerde aanbevelingen. Toets tegen de gemeten waarden en de consensus van de winnaars. Benoem expliciet wat BEHOUDEN kan blijven.",
-  blauwdruk: "Doel: de IDEALE paginastructuur. Bepaal in je conclusie de H1, de volledige H2/H3-structuur (gebaseerd op de must-have-secties die bij meerdere winnaars terugkomen), 2 meta-titles + 2 meta-descriptions, 4-8 FAQ-vragen, interne-link-suggesties en beeld-briefs. Zet de omvang-/dekkingslat op de consensus van de winnaars. Markeer per onderdeel BEHOUDEN/AANPASSEN/NIEUW.",
-  copy: "Doel: publicatieklare copy. Bepaal in je conclusie de volledige tekst: H1, per H2 de kop + alinea's, bullets, en een FAQ met vraag+antwoord (40-80 woorden), plus meta-title en meta-description. Hergebruik goede bestaande zinnen (BEHOUDEN) en vul aan wat de blauwdruk/winnaars vereisen. Houd density 0,5-2% en zoekwoord in de eerste 100 woorden.",
-};
-
 // Read-only meet-tools voor de doc-agent: één URL volledig uitmeten (om een winnaar
 // te modelleren) of meerdere concurrenten tegelijk (consensus). Gratis/statisch, geen
 // Ahrefs-credits. Gedeeld door de doc- en de strategie-agent.
@@ -374,21 +368,6 @@ function buildDocAgentTools(primary: string): { tools: ToolDef[]; run: ToolRunne
     return "Onbekende tool.";
   };
   return { tools, run };
-}
-
-async function reasonAboutDoc(kind: DocKind, contextText: string, chain: string, primary: string): Promise<string> {
-  const system = `Je bent een senior SEO-specialist bij bureau Pingwin. Werk AGENTISCH: redeneer stap voor stap en gebruik de tools om te verifiëren en dieper te graven waar je twijfelt. Bijvoorbeeld: meet een winnende concurrent-pagina volledig uit om zijn opbouw te modelleren, of meet een gerelateerde pagina. Bouw je analyse op over meerdere stappen; ga niet gokken maar meet.
-Grond ALLES in gemeten data; verzin geen rankings, Core Web Vitals of paginabestaan.
-SLUIT VERPLICHT AF met een VOLLEDIGE, definitieve conclusie (begin die met "CONCLUSIE:") die alles bevat wat nodig is, want jouw conclusie wordt daarna letterlijk omgezet in het uiteindelijke document. Laat niets als "nog te bepalen" staan.
-${REASON_FOCUS[kind]}
-CRITERIA (leidend):
-${SEO_CRITERIA_MD}`;
-  const user = `Analyseer deze pagina en vorm je volledige conclusie voor de ${KIND_LABEL[kind]}.\n\nGEGEVENS:\n${contextText}${chain}`;
-  const { tools, run } = buildDocAgentTools(primary);
-  // Max 4 denk-rondes met tools (de agent stopt eerder als hij klaar is), daarna een
-  // gedwongen slotronde voor de conclusie. Ruim tokenbudget zodat de volledige
-  // conclusie (bij copy de hele tekst) past, binnen de 300s-limiet van de route.
-  return callClaudeAgentic(system, [{ role: "user", content: user }], tools, run, 4, 6000);
 }
 
 // Agentische strategie-redenering: vertrekt van de chat-analyse van de strateeg,
@@ -421,17 +400,13 @@ export async function generateDocSpec(slug: string, url: string, kind: DocKind, 
     if (parts.length) chain = "\n\n" + parts.join("\n\n");
   }
 
-  // STAP 1 (DENKEN): agentische redenering met tools + gedwongen slotconclusie.
-  const reasoning = await reasonAboutDoc(kind, context.text, chain, context.primary).catch(() => "");
-  const reasoningBlock = reasoning ? `\n\nAGENTISCHE ANALYSE (LEIDEND, verwerk dit volledig en getrouw in het document):\n${reasoning}` : "";
-
-  // STAP 2 (FORMATTEREN): zet de conclusie om in het nette DocSpec-JSON.
-  // Ruim tokenbudget: de copy (volledige pagina-tekst) is het langst en kapte bij
-  // 8192 de JSON af ("Unterminated string" -> 500). Sonnet 4.6 kan veel meer output.
-  // Ruim tokenbudget nu de tijdslimiet 800s is: de analyse (volledige scorecard) en
-  // de copy (volledige pagina-tekst) zijn het langst. Sonnet 4.6 kan dit aan.
-  const maxTokens = kind === "blauwdruk" ? 12000 : 16000;
-  const baseUser = `Maak de ${kind} op basis van deze gegevens:\n\n${context.text}${chain}${reasoningBlock}`;
+  // Eén gegronde generatie op de gemeten data (pagina exact uitgemeten, GSC, Ahrefs
+  // top-10, concurrenten, Core Web Vitals) + de keten. GEEN aparte agentische
+  // denk-ronde meer: die schreef de analyse feitelijk twee keer (en mat concurrenten
+  // opnieuw), waardoor een gewone pagina-analyse onnodig >10 min duurde. De diepte
+  // (alle grounding) zit al in de context hieronder.
+  const maxTokens = kind === "blauwdruk" ? 10000 : 14000;
+  const baseUser = `Maak de ${kind} op basis van deze gegevens:\n\n${context.text}${chain}`;
   const raw1 = await callClaude(SYSTEMS[kind], [{ role: "user", content: baseUser }], maxTokens);
   let parsed = extractJsonObject(raw1);
   let raw2 = "";
