@@ -204,10 +204,11 @@ export async function replaceTasks(slug: string, tasks: TaskRow[]): Promise<numb
     const uren = t.uren === null || t.uren === undefined || Number.isNaN(Number(t.uren)) ? null : Number(t.uren);
     await sql`
       INSERT INTO client_tasks (client_slug, sort_order, categorie, taak, toelichting, klant_toelichting, uren, status, maand, link, wie, klant_zichtbaar, gemaild,
-                                fase, cluster, geblokkeerd, blokkade_reden, page_url, updated_at)
+                                fase, cluster, geblokkeerd, blokkade_reden, page_url, step_kind, doc_link, client_doc_link, updated_at)
       VALUES (${slug}, ${i}, ${t.categorie || null}, ${t.taak.trim()}, ${t.toelichting || null}, ${t.klantToelichting || null}, ${uren},
               ${t.status || null}, ${(t.maand || "").toLowerCase() || null}, ${t.link || null}, ${t.wie || null}, ${!!t.klantZichtbaar}, ${!!t.gemaild},
-              ${t.fase || null}, ${t.cluster || null}, ${!!t.geblokkeerd}, ${t.blokkadeReden || null}, ${t.pageUrl || null}, now())`;
+              ${t.fase || null}, ${t.cluster || null}, ${!!t.geblokkeerd}, ${t.blokkadeReden || null}, ${t.pageUrl || null},
+              ${t.stepKind || null}, ${t.docLink || null}, ${t.clientDocLink || null}, now())`;
     n++;
   }
   return n;

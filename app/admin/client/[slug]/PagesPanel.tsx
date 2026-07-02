@@ -283,8 +283,14 @@ function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoTo
               {u.redirectTarget && <div className="muted" style={{ marginTop: 6 }}>Live redirect: → <a href={u.redirectTarget} target="_blank" rel="noreferrer">{u.redirectTarget}</a></div>}
 
               {(() => {
-                const pipeline = tasks.filter((t) => (t.stepKind || "").trim());
-                const loose = tasks.filter((t) => !(t.stepKind || "").trim());
+                // Een taak hoort bij de pijplijn (blijft staan) als hij een stap-kenmerk
+                // heeft, een gekoppeld document, of een link in de titel (de analyse/
+                // blauwdruk/copy/strategie-documenten). Alleen een echt los subtaakje
+                // (platte tekst zonder document) is "oude werkwijze" en mag opgeruimd.
+                const isDoc = (t: { stepKind?: string; docLink?: string; taak: string }) =>
+                  !!(t.stepKind || "").trim() || !!(t.docLink || "").trim() || /<a\s/i.test(t.taak || "");
+                const pipeline = tasks.filter(isDoc);
+                const loose = tasks.filter((t) => !isDoc(t));
                 return (
                   <>
                     {pipeline.length > 0 && (
