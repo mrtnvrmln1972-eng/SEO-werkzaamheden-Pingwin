@@ -7,6 +7,16 @@
   --gray: #616161;
   --muted: #444444;
   --gray-light: #F5F5F5;
+  /* Pingwin-huisstijlkleuren (voor hiërarchie: kaart-in-kaart accenten) */
+  --brand-charcoal: #33302E;
+  --brand-taupe: #7C7268;
+  --brand-taupe-light: #F1EEEB;
+  --brand-teal: #12A9C6;
+  --brand-teal-light: #E4F5F9;
+  --brand-blue: #2E44A0;
+  --brand-blue-light: #EAEDF8;
+  --brand-orange-soft: #FBE7DA;
+  --brand-orange-faint: #FFF6F0;
   --white: #FFFFFF;
   --border: #E0E0E0;
   --red: #D32F2F;
@@ -375,6 +385,14 @@ tbody td:last-child { text-align: center; }
 .pages-row { cursor: pointer; }
 .pages-row:hover { background: var(--orange-light); }
 .pages-row.open { background: var(--orange-light); }
+/* Geopende pagina = één samenhangend, gekleurd blok. De rij (de "roze balk")
+   blijft sticky onder de kolomkop terwijl je door het plan en de chat scrolt. */
+.pages-row.open td {
+  position: sticky; top: 113px; z-index: 5;
+  background: var(--brand-orange-soft);
+  box-shadow: inset 0 -2px 0 var(--orange);
+}
+.pages-row.open td:first-child { border-left: 3px solid var(--orange); }
 .pages-title { color: var(--gray); font-size: 12px; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .url-badge { display: inline-block; min-width: 34px; text-align: center; font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 6px; }
 .url-ok { background: #EEF8EE; color: #2E7D32; }
@@ -385,12 +403,17 @@ tbody td:last-child { text-align: center; }
 .plan-chip.has { background: var(--orange); color: #fff; }
 /* De detail-cel is de laatste (en enige) td, dus de globale regel
    'tbody td:last-child { text-align:center }' sloeg toe. Sterker links forceren. */
-.pages-detail-row td, .pages-detail-row td:last-child { background: #fafafa; text-align: left; }
-.pages-detail { padding: 4px 2px 8px; text-align: left; }
+/* De hele detail-kaart deelt de groepskleur, met een oranje linker-bracket en een
+   duidelijke onderrand die de groep afsluit tot de volgende pagina in de lijst. */
+.pages-detail-row td, .pages-detail-row td:last-child {
+  background: var(--brand-orange-faint); text-align: left;
+  border-left: 3px solid var(--orange); border-bottom: 2px solid var(--orange);
+}
+.pages-detail { padding: 10px 12px 12px; text-align: left; }
 .pages-detail-label { font-size: 12px; font-weight: 700; color: var(--dark); display: block; margin-bottom: 6px; }
 .pages-plan { width: 100%; min-height: 90px; font-family: 'Montserrat', sans-serif; font-size: 13px; color: var(--dark); line-height: 1.5; border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; outline: none; resize: vertical; }
 .pages-plan:focus { border-color: var(--orange); }
-.pages-plan-view { border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; font-size: 13px; line-height: 1.55; color: var(--dark); background: var(--white); }
+.pages-plan-view { border: 1px solid var(--border); border-left: 3px solid var(--brand-teal); border-radius: 8px; padding: 10px 14px; font-size: 13px; line-height: 1.55; color: var(--dark); background: var(--white); }
 .pages-plan-view.muted { color: var(--muted); }
 .pages-plan-view p { margin: 0 0 8px; }
 .pages-plan-view ul { margin: 4px 0 8px; padding-left: 20px; }
@@ -442,7 +465,7 @@ tbody td:last-child { text-align: center; }
 .import-lock { cursor: help; }
 
 /* Pagina-chat (gegrond) */
-.page-chat { margin-top: 18px; border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.page-chat { margin-top: 18px; border: 1px solid var(--border); border-left: 3px solid var(--brand-blue); border-radius: 12px; padding: 14px 16px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
 .page-chat-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; font-weight: 700; color: var(--dark); margin-bottom: 10px; }
 .page-chat-history { margin-bottom: 12px; }
 .page-chat-history-head { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--gray); margin-bottom: 5px; }
@@ -490,7 +513,7 @@ tbody td:last-child { text-align: center; }
 .page-chat-proposal-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 .page-chat-tools { margin: 4px 0 8px; display: flex; gap: 8px; flex-wrap: wrap; }
 /* Documenten-blok: één sturingsveld + de drie geketende stappen */
-.page-chat-docs { margin: 4px 0 8px; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: #fafafa; }
+.page-chat-docs { margin: 4px 0 8px; border: 1px solid var(--border); border-left: 3px solid var(--brand-taupe); border-radius: 10px; padding: 10px 12px; background: var(--brand-taupe-light); }
 .pcd-docs-head { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--gray); margin-bottom: 7px; }
 .pcd-nuance { width: 100%; font-size: 13px; border: 1px solid var(--border); border-radius: 8px; padding: 8px 11px; outline: none; margin-bottom: 8px; }
 .pcd-nuance:focus { border-color: var(--orange); }
