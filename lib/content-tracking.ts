@@ -228,24 +228,23 @@ export async function addManualChange(slug: string, url: string, date: string, n
 // en zet die als date-stamped wijziging in de Wijzigingen-tab. Idempotent:
 // dedupe op (url, dag). Filtert op de pagina's die we beheren (client_urls) als
 // die lijst er is. hasApi=false als de site geen open WordPress REST API heeft.
-export async function addWordpressChanges(slug: string, domain: string): Promise<{ scanned: number; added: number; hasApi: boolean }> {
+export async function addWordpressChanges(slug: string, domain: string): Promise<{ scanned: number; added: number; hasApi: boolean; newest: string | null }> {
   await ensureSchema();
   await ensureTables();
   const items = await fetchWordpressModified(domain);
-  if (items.length === 0) return { scanned: 0, added: 0, hasApi: false };
+  if (items.length === 0) return { scanned: 0, added: 0, hasApi: false, newest: null };
 
-  const { rows: urlRows } = await sql`SELECT url FROM client_urls WHERE client_slug = ${slug}`;
-  const known = new Set(urlRows.map((r) => (r.url as string).replace(/\/$/, "")));
-  const useFilter = known.size > 0;
-
+  // GEEN filter op client_urls: WordPress is hier de bron van waarheid. Filteren
+  // verborg juist recent aangepaste pagina's die (nog) niet in de ingelezen lijst
+  // stonden. We tonen dus elke WordPress-pagina met zijn laatste wijzigingsdatum.
   const { rows: existing } = await sql`SELECT url, detected_at FROM page_change_events WHERE client_slug = ${slug} AND source = 'wordpress'`;
   const seen = new Set(existing.map((r) => `${(r.url as string).replace(/\/$/, "")}|${new Date(r.detected_at as string).toISOString().slice(0, 10)}`));
 
-  let scanned = 0, added = 0;
+  let scanned = 0, added = 0, newest: string | null = null;
   for (const it of items) {
     const key = it.url.replace(/\/$/, "");
-    if (useFilter && !known.has(key)) continue;
     scanned++;
+    if (!newest || it.modified > newest) newest = it.modified;
     const day = new Date(it.modified).toISOString().slice(0, 10);
     if (seen.has(`${key}|${day}`)) continue;
     const summary = `WordPress: pagina aangepast op ${new Date(it.modified).toLocaleDateString("nl-NL")}`;
@@ -254,35 +253,35 @@ export async function addWordpressChanges(slug: string, domain: string): Promise
       VALUES (${slug}, ${it.url}, ${it.modified}, ${null}, ${"{}"}, ${summary}, true, 'wordpress')`;
     added++; seen.add(`${key}|${day}`);
   }
-  return { scanned, added, hasApi: true };
+  return { scanned, added, hasApi: true, newest };
 }
 
 // Volledige bewerkingshistorie uit WordPress (revisions, geauthenticeerd). Per
 // pagina alle revisies met datum en een licht "wat veranderde"-oordeel (titel/
 // woorden). Idempotent: dedupe op (url, revisie-tijdstip tot op de minuut).
 // Filtert op de beheerde pagina's (client_urls) als die lijst er is.
-export async function addWordpressRevisions(slug: string, domain: string, auth: WpAuth): Promise<{ scanned: number; added: number; hasApi: boolean }> {
+export async function addWordpressRevisions(slug: string, domain: string, auth: WpAuth): Promise<{ scanned: number; added: number; hasApi: boolean; newest: string | null }> {
   await ensureSchema();
   await ensureTables();
-  if (!auth) return { scanned: 0, added: 0, hasApi: false };
+  if (!auth) return { scanned: 0, added: 0, hasApi: false, newest: null };
   const pages = await fetchWordpressPages(domain, auth);
-  if (pages.length === 0) return { scanned: 0, added: 0, hasApi: false };
-
-  const { rows: urlRows } = await sql`SELECT url FROM client_urls WHERE client_slug = ${slug}`;
-  const known = new Set(urlRows.map((r) => (r.url as string).replace(/\/$/, "")));
-  const useFilter = known.size > 0;
+  if (pages.length === 0) return { scanned: 0, added: 0, hasApi: false, newest: null };
 
   const { rows: existing } = await sql`SELECT url, detected_at FROM page_change_events WHERE client_slug = ${slug} AND source = 'wordpress'`;
   const minute = (iso: string) => new Date(iso).toISOString().slice(0, 16);
   const seen = new Set(existing.map((r) => `${(r.url as string).replace(/\/$/, "")}|${minute(r.detected_at as string)}`));
 
-  const managed = pages.filter((p) => !useFilter || known.has(p.url.replace(/\/$/, ""))).slice(0, 60);
-  let scanned = 0, added = 0;
+  // GEEN filter op client_urls (dat verborg recent aangepaste pagina's). We pakken
+  // de 60 meest recent gewijzigde pagina's, zodat revisies ophalen begrensd blijft
+  // maar juist de laatst bewerkte pagina's meepakt.
+  const managed = [...pages].sort((a, b) => (b.modified || "").localeCompare(a.modified || "")).slice(0, 60);
+  let scanned = 0, added = 0, newest: string | null = null;
   for (const p of managed) {
     scanned++;
     const revs = await fetchWordpressRevisions(domain, p.type, p.id, auth);
     for (let i = 0; i < revs.length; i++) {
       const cur = revs[i];
+      if (!newest || cur.modified > newest) newest = cur.modified;
       const key = `${p.url.replace(/\/$/, "")}|${minute(cur.modified)}`;
       if (seen.has(key)) continue;
       const what = revisionDiffSummary(i > 0 ? revs[i - 1] : null, cur);
@@ -293,7 +292,7 @@ export async function addWordpressRevisions(slug: string, domain: string, auth: 
       added++; seen.add(key);
     }
   }
-  return { scanned, added, hasApi: true };
+  return { scanned, added, hasApi: true, newest };
 }
 
 export type ChangeEvent = { id: number; url: string; detectedAt: string; summary: string; diff: ContentDiff; isManual: boolean };

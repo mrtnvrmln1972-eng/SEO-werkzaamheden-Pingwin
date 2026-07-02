@@ -28,6 +28,7 @@ type Row = DevTask;
 
 const WEEKDAYS = ["Maandag", "Dinsdag", "Woensdag", "Donderdag", "Vrijdag", "Zaterdag", "Zondag"];
 const MONTHS_SHORT = ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
+const MAARTEN_EMAIL = "mrtnvrmln1972@gmail.com";
 
 // Maandag van de week met de gegeven week-offset (0 = deze week).
 function mondayOf(offsetWeeks: number): Date {
@@ -54,6 +55,39 @@ export default function DeveloperOverview({ initialTasks, embedded }: { initialT
   const [view, setView] = useState<"list" | "week">("list");
   const [weekOffset, setWeekOffset] = useState(0);
   const [dragTaskIdx, setDragTaskIdx] = useState<number | null>(null);
+  // Terugkoppeling-popup bij het afvinken van een taak als klaar.
+  const [feedbackFor, setFeedbackFor] = useState<number | null>(null);
+  const [feedbackNote, setFeedbackNote] = useState("");
+
+  // Opent de mailclient met een kant-en-klare terugkoppeling aan Maarten.
+  function mailMaarten(r: Row, note: string) {
+    const subject = `Terugkoppeling dev-taak: ${stripText(r.taak).slice(0, 80)} (${r.clientName})`;
+    const lines = [`Klant: ${r.clientName}`, `Taak: ${stripText(r.taak)}`];
+    if (r.link && /^https?:/i.test(r.link)) lines.push(`Document: ${r.link}`);
+    lines.push("", `Terugkoppeling: ${note || ""}`);
+    window.location.href = `mailto:${MAARTEN_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(lines.join("\n"))}`;
+  }
+
+  // Slaat de developer-status (klaar + terugkoppeling) van één taak op. Raakt de
+  // volgorde/uitvoerdatum niet aan.
+  function applyStatus(idx: number, done: boolean, note: string) {
+    const r = rowsRef.current[idx];
+    if (!r) return;
+    const next = rowsRef.current.map((x, i) => (i === idx ? { ...x, devDone: done, devNote: note } : x));
+    rowsRef.current = next; setRows(next);
+    fetch("/api/admin/developer", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "status", clientSlug: r.clientSlug, taskKey: r.taskKey, done, note }) }).catch(() => {});
+  }
+  function toggleDone(idx: number, checked: boolean) {
+    if (checked) { setFeedbackFor(idx); setFeedbackNote(rows[idx]?.devNote || ""); }
+    else applyStatus(idx, false, rows[idx]?.devNote || "");
+  }
+  function confirmDone(alsoMail: boolean) {
+    if (feedbackFor === null) return;
+    const idx = feedbackFor; const r = rows[idx];
+    applyStatus(idx, true, feedbackNote);
+    if (alsoMail && r) mailMaarten(r, feedbackNote);
+    setFeedbackFor(null); setFeedbackNote("");
+  }
 
   // Ingebed in de cockpit: laad de dev-taken zelf (geen server-props).
   useEffect(() => {
@@ -128,7 +162,7 @@ export default function DeveloperOverview({ initialTasks, embedded }: { initialT
   const undated = rows.map((r, idx) => ({ r, idx })).filter((x) => !x.r.execDate);
 
   const taskCard = (r: Row, idx: number) => (
-    <div key={r.clientSlug + "|" + r.taskKey} className="dev-task-card" draggable
+    <div key={r.clientSlug + "|" + r.taskKey} className={"dev-task-card " + (r.devDone ? "dev-done" : "dev-todo")} draggable
       onDragStart={() => setDragTaskIdx(idx)} onDragEnd={() => setDragTaskIdx(null)}>
       <div className="dev-task-top">
         <span className="dev-task-client">{r.clientName}</span>
@@ -140,6 +174,10 @@ export default function DeveloperOverview({ initialTasks, embedded }: { initialT
         {statusBadge(r.status)}
         {r.uren ? <span className="dev-task-uren">{r.uren} min</span> : null}
         {r.link && /^https?:/i.test(r.link) ? <a href={r.link} target="_blank" rel="noreferrer" className="dev-task-doc" onClick={(e) => e.stopPropagation()}>doc ↗</a> : null}
+      </div>
+      <div className="dev-task-actions" onClick={(e) => e.stopPropagation()}>
+        <label className="dev-check-label"><input type="checkbox" checked={r.devDone} onChange={(e) => toggleDone(idx, e.target.checked)} /> Klaar</label>
+        <button type="button" className="ghost-btn small dev-mail-btn" onClick={() => mailMaarten(r, r.devNote)}>✉ Mail Maarten</button>
       </div>
     </div>
   );
@@ -204,20 +242,24 @@ export default function DeveloperOverview({ initialTasks, embedded }: { initialT
               <table className="task-table dev-table">
                 <colgroup>
                   <col style={{ width: "22px" }} />
+                  <col style={{ width: "48px" }} />
                   <col />
                   <col />
                   <col style={{ width: "104px" }} />
                   <col style={{ width: "150px" }} />
                   <col style={{ width: "60px" }} />
+                  <col style={{ width: "120px" }} />
                 </colgroup>
                 <thead>
                   <tr>
                     <th></th>
+                    <th>Klaar</th>
                     <th>Taak</th>
                     <th>Opm. developer</th>
                     <th>Status</th>
                     <th>Uitvoerdatum</th>
                     <th>Link</th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -226,16 +268,18 @@ export default function DeveloperOverview({ initialTasks, embedded }: { initialT
                     return (
                       <tr
                         key={r.clientSlug + "|" + r.taskKey}
-                        className={dragIdx === idx ? "dragging" : ""}
+                        className={(dragIdx === idx ? "dragging " : "") + (r.devDone ? "dev-done" : "dev-todo")}
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={(e) => { e.stopPropagation(); moveTo(idx); }}
                       >
                         <td className="drag-handle" draggable onDragStart={() => setDragIdx(idx)} onDragEnd={() => setDragIdx(null)} title="Sleep om de prioriteit te wijzigen">⠿</td>
+                        <td><input type="checkbox" className="dev-done-check" checked={r.devDone} onClick={(e) => e.stopPropagation()} onChange={(e) => toggleDone(idx, e.target.checked)} title="Afvinken als klaar" /></td>
                         <td><span className="dev-cell" dangerouslySetInnerHTML={{ __html: safeHtml(r.taak) }} /></td>
                         <td><span className="dev-cell dev-muted" dangerouslySetInnerHTML={{ __html: safeHtml(r.toelichting) }} /></td>
                         <td>{statusBadge(r.status)}</td>
                         <td><input type="date" className="dev-date" value={r.execDate || ""} onChange={(e) => setDate(idx, e.target.value)} /></td>
                         <td>{isUrl ? <a href={r.link.trim()} target="_blank" rel="noreferrer" className="doc-link">Open</a> : <span className="muted">&mdash;</span>}</td>
+                        <td><button type="button" className="ghost-btn small dev-mail-btn" onClick={(e) => { e.stopPropagation(); mailMaarten(r, r.devNote); }}>✉ Maarten</button></td>
                       </tr>
                     );
                   })}
@@ -244,6 +288,24 @@ export default function DeveloperOverview({ initialTasks, embedded }: { initialT
             </div>
           </div>
         ))}
+
+        {feedbackFor !== null && rows[feedbackFor] && (
+          <div className="compose-overlay">
+            <div className="compose-modal">
+              <div className="compose-head"><span>Taak afronden</span><button type="button" className="chat-float-close" onClick={() => setFeedbackFor(null)}>&times;</button></div>
+              <div className="compose-body">
+                <div className="muted" style={{ marginBottom: 8 }}>{rows[feedbackFor].clientName}: {stripText(rows[feedbackFor].taak)}</div>
+                <label className="compose-label">Opmerkingen of terugkoppeling (optioneel)</label>
+                <textarea className="compose-input" style={{ minHeight: 120, resize: "vertical" }} value={feedbackNote} onChange={(e) => setFeedbackNote(e.target.value)} placeholder="Wat is er gedaan, aandachtspunten, vragen voor Maarten…" />
+              </div>
+              <div className="compose-foot">
+                <button type="button" className="logout-btn" onClick={() => setFeedbackFor(null)}>Annuleren</button>
+                <button type="button" className="ghost-btn small" onClick={() => confirmDone(true)}>Opslaan + Mail Maarten</button>
+                <button type="button" className="primary-btn small" onClick={() => confirmDone(false)}>Opslaan als klaar</button>
+              </div>
+            </div>
+          </div>
+        )}
     </>
   );
 

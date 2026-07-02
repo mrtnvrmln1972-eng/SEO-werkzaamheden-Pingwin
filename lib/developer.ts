@@ -27,6 +27,8 @@ export type DevTask = {
   fase: string;
   execDate: string;    // "" of "YYYY-MM-DD"
   position: number | null;
+  devDone: boolean;    // door de developer afgevinkt als klaar
+  devNote: string;     // terugkoppeling van de developer
 };
 
 function stripTags(html: string): string {
@@ -49,6 +51,10 @@ async function ensureDevTable(): Promise<void> {
       updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
       PRIMARY KEY (client_slug, task_key)
     )`;
+  // Developer kan een taak afvinken als klaar en terugkoppeling achterlaten.
+  await sql`ALTER TABLE developer_overview ADD COLUMN IF NOT EXISTS dev_done BOOLEAN NOT NULL DEFAULT false`;
+  await sql`ALTER TABLE developer_overview ADD COLUMN IF NOT EXISTS dev_note TEXT`;
+  await sql`ALTER TABLE developer_overview ADD COLUMN IF NOT EXISTS done_at TIMESTAMPTZ`;
 }
 
 export async function getDeveloperTasks(): Promise<DevTask[]> {
@@ -63,12 +69,14 @@ export async function getDeveloperTasks(): Promise<DevTask[]> {
     WHERE lower(coalesce(t.status, '')) = 'naar dev'
     ORDER BY t.sort_order ASC, t.id ASC`;
 
-  const meta = await sql`SELECT client_slug, task_key, position, exec_date FROM developer_overview`;
-  const metaMap = new Map<string, { position: number | null; execDate: string }>();
+  const meta = await sql`SELECT client_slug, task_key, position, exec_date, dev_done, dev_note FROM developer_overview`;
+  const metaMap = new Map<string, { position: number | null; execDate: string; devDone: boolean; devNote: string }>();
   for (const m of meta.rows) {
     metaMap.set((m.client_slug as string) + "|" + (m.task_key as string), {
       position: m.position === null ? null : Number(m.position),
       execDate: (m.exec_date as string) || "",
+      devDone: !!m.dev_done,
+      devNote: (m.dev_note as string) || "",
     });
   }
 
@@ -90,6 +98,8 @@ export async function getDeveloperTasks(): Promise<DevTask[]> {
       fase: (r.fase as string) ?? "",
       execDate: mm?.execDate ?? "",
       position: mm?.position ?? null,
+      devDone: mm?.devDone ?? false,
+      devNote: mm?.devNote ?? "",
     };
   });
 
@@ -134,4 +144,19 @@ export async function saveDeveloperOrder(
     n++;
   }
   return n;
+}
+
+// Zet de developer-status (klaar/niet klaar) + terugkoppeling van één taak.
+// Raakt de volgorde/uitvoerdatum niet aan (aparte kolommen).
+export async function setDeveloperStatus(
+  clientSlug: string, taskKey: string, done: boolean, note: string,
+): Promise<void> {
+  await ensureSchema();
+  await ensureDevTable();
+  if (!clientSlug || !taskKey) return;
+  await sql`
+    INSERT INTO developer_overview (client_slug, task_key, dev_done, dev_note, done_at, updated_at)
+    VALUES (${clientSlug}, ${taskKey}, ${done}, ${note || null}, ${done ? new Date().toISOString() : null}, now())
+    ON CONFLICT (client_slug, task_key)
+    DO UPDATE SET dev_done = ${done}, dev_note = ${note || null}, done_at = ${done ? new Date().toISOString() : null}, updated_at = now()`;
 }

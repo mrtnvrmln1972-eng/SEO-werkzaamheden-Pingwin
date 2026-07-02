@@ -13,7 +13,7 @@
 // ═══════════════════════════════════════════════════════════
 
 export type WpAuth = { user: string; appPassword: string } | null;
-export type WpPage = { id: number; type: "pages" | "posts"; url: string; modified: string; title: string };
+export type WpPage = { id: number; type: string; url: string; modified: string; title: string };
 export type WpModified = { url: string; modified: string; title: string };
 export type WpRevision = { modified: string; title: string; text: string; author: number };
 
@@ -38,7 +38,7 @@ function toIso(mod: string): string { return mod.endsWith("Z") || /[+-]\d\d:\d\d
 
 // Lijst pagina's of posts (met id), gepagineerd. Auth optioneel (niet nodig voor
 // gepubliceerde content, maar schaadt niet).
-async function fetchType(base: string, type: "pages" | "posts", maxPages: number, auth: WpAuth): Promise<WpPage[]> {
+async function fetchType(base: string, type: string, maxPages: number, auth: WpAuth): Promise<WpPage[]> {
   const out: WpPage[] = [];
   for (let page = 1; page <= maxPages; page++) {
     const url = `${base}/wp-json/wp/v2/${type}?per_page=100&page=${page}&_fields=id,link,modified,modified_gmt,title`;
@@ -66,12 +66,35 @@ async function fetchType(base: string, type: "pages" | "posts", maxPages: number
   return out;
 }
 
-// Alle pagina's + posts met id (voor de revisions-stap).
+// Ontdekt de publieke inhoudstypes van de site (pages, posts én custom post types
+// van bijv. een pagebuilder), zodat we geen recent aangepaste landingspagina's
+// missen die als eigen type bestaan. Niet-inhoud (media, blokken, menu's,
+// templates) sluiten we uit. Faalt de ontdekking, dan pages + posts.
+const EXCLUDE_TYPES = new Set(["media", "attachment", "blocks", "wp_block", "templates", "wp_template", "wp_template_part", "nav_menu_item", "menu-items", "navigation", "wp_navigation", "patterns", "wp_font_family", "wp_font_face"]);
+async function fetchContentTypeBases(base: string, auth: WpAuth): Promise<string[]> {
+  try {
+    const res = await fetch(`${base}/wp-json/wp/v2/types`, { headers: authHeaders(auth) });
+    if (!res.ok) return ["pages", "posts"];
+    const data = (await res.json()) as Record<string, { rest_base?: string; viewable?: boolean }>;
+    const bases: string[] = [];
+    for (const key of Object.keys(data || {})) {
+      const t = data[key];
+      const rb = t?.rest_base;
+      if (!rb || EXCLUDE_TYPES.has(rb) || EXCLUDE_TYPES.has(key) || t.viewable === false) continue;
+      if (!bases.includes(rb)) bases.push(rb);
+    }
+    for (const must of ["pages", "posts"]) if (!bases.includes(must)) bases.push(must);
+    return bases.slice(0, 8);
+  } catch { return ["pages", "posts"]; }
+}
+
+// Alle inhoudspagina's (alle publieke types) met id, voor de revisions-stap.
 export async function fetchWordpressPages(domain: string, auth: WpAuth): Promise<WpPage[]> {
   const base = baseFromDomain(domain);
   if (!base) return [];
-  const [pages, posts] = await Promise.all([fetchType(base, "pages", 6, auth), fetchType(base, "posts", 4, auth)]);
-  return [...pages, ...posts];
+  const bases = await fetchContentTypeBases(base, auth);
+  const lists = await Promise.all(bases.map((t) => fetchType(base, t, t === "pages" || t === "posts" ? 5 : 3, auth)));
+  return lists.flat();
 }
 
 // Alleen de laatste wijzigingsdatum per URL (publiek pad, ontdubbeld).
@@ -87,7 +110,7 @@ export async function fetchWordpressModified(domain: string): Promise<WpModified
 }
 
 // De revisions (bewerkingshistorie) van één pagina, oplopend op datum.
-export async function fetchWordpressRevisions(domain: string, type: "pages" | "posts", id: number, auth: WpAuth): Promise<WpRevision[]> {
+export async function fetchWordpressRevisions(domain: string, type: string, id: number, auth: WpAuth): Promise<WpRevision[]> {
   const base = baseFromDomain(domain);
   if (!base || !auth) return [];
   const url = `${base}/wp-json/wp/v2/${type}/${id}/revisions?per_page=50&_fields=modified_gmt,modified,title,content,author`;

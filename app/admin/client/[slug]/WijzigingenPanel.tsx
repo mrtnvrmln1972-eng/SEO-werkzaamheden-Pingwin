@@ -225,8 +225,11 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
     try {
       const r = await fetch("/api/admin/changes/wordpress", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }) });
       const d = await r.json();
-      if (d.ok) { setMsg(`WordPress: ${d.scanned} pagina's bekeken, ${d.added} nieuwe wijziging${d.added === 1 ? "" : "en"} toegevoegd (met datum).`); await load(); }
-      else setMsg(d.error || "Ophalen uit WordPress mislukt.");
+      if (d.ok) {
+        const newest = d.newest ? new Date(d.newest).toLocaleDateString("nl-NL") : null;
+        setMsg(`WordPress: ${d.scanned} pagina's bekeken, ${d.added} nieuwe wijziging${d.added === 1 ? "" : "en"} toegevoegd.${newest ? ` Nieuwste wijziging volgens WordPress: ${newest}.` : ""}`);
+        await load();
+      } else setMsg(d.error || "Ophalen uit WordPress mislukt.");
     } catch { setMsg("Ophalen uit WordPress mislukt."); } finally { setWpBusy(false); }
   }
 
@@ -309,7 +312,7 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
         <span>Wijzigingen ({events.length})</span>
         <span style={{ display: "inline-flex", gap: 8 }}>
           <button type="button" className="ghost-btn small" onClick={() => setShowAdd((v) => !v)}>{showAdd ? "Sluiten" : "Wijziging toevoegen"}</button>
-          <button type="button" className="ghost-btn small" onClick={() => setWpSetupOpen((v) => !v)} title="WordPress-applicatiewachtwoord instellen voor de volledige bewerkingshistorie">WordPress-koppeling {wpSet ? "✓" : ""}</button>
+          {!wpSet && <button type="button" className="ghost-btn small" onClick={() => setWpSetupOpen((v) => !v)} title="WordPress-applicatiewachtwoord instellen voor de volledige bewerkingshistorie">WordPress-koppeling</button>}
           <button type="button" className="ghost-btn small" onClick={syncWordpress} disabled={wpBusy} title={wpSet ? "Haalt de volledige bewerkingshistorie (revisies) uit WordPress" : "Haalt per pagina de laatste wijzigingsdatum op (stel een koppeling in voor de volledige historie)"}>{wpBusy ? "Uit WordPress…" : (wpSet ? "Uit WordPress ophalen (historie)" : "Uit WordPress ophalen")}</button>
           <button type="button" className="ghost-btn small" onClick={scan} disabled={scanning}>{scanning ? "Scannen…" : "Scan op wijzigingen"}</button>
         </span>
@@ -357,7 +360,9 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
           </div>
         </div>
       )}
-      <p className="muted" style={{ marginTop: 4 }}>Detecteert automatisch wat er op de live pagina's verandert (titel, koppen, alt-teksten, interne links, woordenaantal, schema). De eerste scan legt de basislijn vast; daarna zie je hier elke wijziging.</p>
+      <p className="muted" style={{ marginTop: 4 }}>Detecteert automatisch wat er op de live pagina's verandert (titel, koppen, alt-teksten, interne links, woordenaantal, schema). De eerste scan legt de basislijn vast; daarna zie je hier elke wijziging.
+        {wpSet && <> WordPress is gekoppeld. <button type="button" className="link-inline" onClick={() => setWpSetupOpen((v) => !v)}>koppeling beheren</button>.</>}
+      </p>
       {msg && <div className="saved-msg" style={{ marginTop: 8 }}>{msg}</div>}
       {loading && <div className="muted" style={{ padding: 12 }}>Laden…</div>}
       {!loading && events.length === 0 && <div className="muted" style={{ padding: 12 }}>Nog geen wijzigingen. Draai een scan (basislijn), en na een volgende scan verschijnen hier de veranderingen.</div>}

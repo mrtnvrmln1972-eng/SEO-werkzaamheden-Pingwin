@@ -507,6 +507,17 @@ tbody td:last-child { text-align: center; }
 .page-chat-input input { flex: 1 1 auto; font-size: 13px; padding: 8px 11px; border: 1px solid var(--border); border-radius: 8px; outline: none; }
 .page-chat-input input:focus { border-color: var(--orange); }
 .dev-table td { vertical-align: middle; }
+/* Developer: klaar (groen) vs nog te doen (lichtrood), afvinken + mailknop */
+.dev-table tr.dev-todo td { background: #FDECEA; }
+.dev-table tr.dev-done td { background: #E7F6E7; }
+.dev-table tr.dev-done .dev-cell { color: #2E7D32; }
+.dev-done-check { width: 16px; height: 16px; cursor: pointer; accent-color: #2E7D32; }
+.dev-mail-btn { white-space: nowrap; }
+.dev-task-card.dev-todo { border-left-color: var(--red); background: #FDECEA; }
+.dev-task-card.dev-done { border-left-color: #2E7D32; background: #E7F6E7; }
+.dev-task-actions { display: flex; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; cursor: default; }
+.dev-check-label { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; color: var(--dark); cursor: pointer; }
+.dev-check-label input { width: 15px; height: 15px; accent-color: #2E7D32; cursor: pointer; }
 .dev-client { font-weight: 700; color: var(--dark); font-size: 13px; }
 .dev-cell { font-size: 13px; color: var(--dark); line-height: 1.4; word-break: break-word; }
 .dev-cell.dev-muted { color: var(--gray); }
@@ -890,6 +901,7 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .compose-body { padding: 16px 18px; overflow-y: auto; }
 .compose-label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--gray); margin: 12px 0 4px; }
 .hint { font-size: 11px; color: var(--muted); margin-top: 3px; line-height: 1.4; }
+.link-inline { background: none; border: none; padding: 0; color: var(--orange-dark); text-decoration: underline; cursor: pointer; font-size: inherit; font-family: inherit; }
 .compose-input { width: 100%; font-family: 'Montserrat', sans-serif; font-size: 13px; padding: 9px 11px; border: 1px solid var(--border); border-radius: 6px; }
 .compose-input:focus { outline: none; border-color: var(--orange); }
 .compose-list { border: 1px solid var(--border); border-radius: 6px; max-height: 240px; overflow-y: auto; padding: 6px; }
