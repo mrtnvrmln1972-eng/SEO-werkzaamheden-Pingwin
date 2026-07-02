@@ -262,8 +262,17 @@ function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoTo
                     )}
                     {loose.length > 0 && (
                       <div className="page-tasks-cleanup">
-                        Er staan nog {loose.length} losse taken van de oude werkwijze bij deze pagina. Die horen nu in het plan, niet als aparte werkzaamheden.
-                        <button type="button" className="ghost-btn small" style={{ marginLeft: 8 }} onClick={cleanupLoose} disabled={cleaning}>{cleaning ? "Opruimen…" : `Opruimen (${loose.length})`}</button>
+                        Er staan nog {loose.length} losse taken van de oude werkwijze bij deze pagina. Die horen nu in het plan, niet als aparte werkzaamheden. Kijk hieronder wat erin staat, zet over wat je wilt bewaren in het plan, en ruim dan op.
+                        <ul className="page-tasks-list" style={{ marginTop: 8 }}>
+                          {loose.map((t, i) => (
+                            <li key={t.id ?? i} className="page-task">
+                              {t.wie && <span className={"pt-wie" + (t.wie === "Dev" ? " dev" : "")}>{t.wie}</span>}
+                              <span className="pt-taak" dangerouslySetInnerHTML={{ __html: t.taak }} />
+                              {t.status && <span className="pt-status">{t.status}</span>}
+                            </li>
+                          ))}
+                        </ul>
+                        <button type="button" className="ghost-btn small" style={{ marginTop: 8 }} onClick={cleanupLoose} disabled={cleaning}>{cleaning ? "Opruimen…" : `Opruimen (${loose.length})`}</button>
                       </div>
                     )}
                   </>

@@ -495,8 +495,9 @@ tbody td:last-child { text-align: center; }
 .mail-edit ul { margin: 6px 0 10px; padding-left: 22px; }
 .mail-edit li { margin: 2px 0; }
 .mail-edit a { color: #1a6dd6; text-decoration: underline; }
-/* Sticky kolomkoppen in het pagina-overzicht (blijven staan bij scrollen). */
-.pages-table thead th { position: sticky; top: 0; z-index: 3; }
+/* Sticky kolomkoppen in het pagina-overzicht (blijven staan bij scrollen).
+   top: 80px = onder de vaste oranje bovenbalk, anders plakken ze erachter. */
+.pages-table thead th { position: sticky; top: 80px; z-index: 20; }
 .page-chat-input { display: flex; gap: 8px; }
 .page-chat-input input { flex: 1 1 auto; font-size: 13px; padding: 8px 11px; border: 1px solid var(--border); border-radius: 8px; outline: none; }
 .page-chat-input input:focus { border-color: var(--orange); }
