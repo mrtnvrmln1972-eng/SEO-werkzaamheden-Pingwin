@@ -18,7 +18,10 @@ const STEP_KLANT: Record<DocKind, string> = {
 function pagePath(u: string): string { try { return new URL(u).pathname || u; } catch { return u; } }
 
 export const runtime = "nodejs";
-export const maxDuration = 300;
+// De volledige, agentische generatie (Cowork-niveau) heeft meer dan 300s nodig.
+// 800s = het maximum met Vercel Pro/Fluid Compute. Op het gratis plan wordt dit
+// geklemd op 300s (dan is een plan-upgrade of een achtergrond-run nodig).
+export const maxDuration = 800;
 
 function admin(req: NextRequest): boolean {
   return verifyAdminSession(req.cookies.get(ADMIN_COOKIE)?.value);
