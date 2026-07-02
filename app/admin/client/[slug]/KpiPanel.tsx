@@ -205,6 +205,25 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
     } catch { setOppMsg("Zoeken mislukt."); } finally { setOppBusy(false); }
   }
 
+  // Concurrenten (voor de gap-bron van de kansen).
+  const [competitors, setCompetitors] = useState<string[]>([]);
+  const [compInputs, setCompInputs] = useState<string[]>(["", "", "", ""]);
+  const [compOpen, setCompOpen] = useState(false);
+  const [compBusy, setCompBusy] = useState(false);
+  useEffect(() => {
+    fetch(`/api/admin/competitors?slug=${encodeURIComponent(slug)}`)
+      .then((r) => r.json()).then((d) => { if (d.ok) { setCompetitors(d.competitors || []); setCompInputs([...(d.competitors || []), "", "", "", ""].slice(0, 4)); } }).catch(() => {});
+  }, [slug]);
+  async function saveCompetitors() {
+    if (compBusy) return;
+    setCompBusy(true);
+    try {
+      const r = await fetch("/api/admin/competitors", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, domains: compInputs }) });
+      const d = await r.json();
+      if (d.ok) { setCompetitors(d.competitors || []); setCompInputs([...(d.competitors || []), "", "", "", ""].slice(0, 4)); }
+    } catch { /* stil */ } finally { setCompBusy(false); }
+  }
+
   // Sla de gesleepte volgorde op (kort debounce).
   function persistOrder(urls: string[]) {
     if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -417,16 +436,30 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
       {!loading && (
         <div className="cockpit-card">
           <div className="ck-section-head">
-            <span>Kansen{opps.length ? ` (${opps.length})` : ""} <HelpHint wide text="Relevante zoekwoorden waar de site nog NIET op rankt, gevonden via keyword-ideas rond je kernthema's en door Claude gefilterd op echte relevantie (past bij de dienst, commercieel interessant). Kansen om met nieuwe of uitgebreide content te pakken." /></span>
-            <button type="button" className="primary-btn small" onClick={collectOpps} disabled={oppBusy}>{oppBusy ? "Zoeken…" : (opps.length ? "Opnieuw zoeken" : "Kansen zoeken")}</button>
+            <span>Kansen{opps.length ? ` (${opps.length})` : ""} <HelpHint wide text="Relevante zoekwoorden waar de site nog NIET op rankt, gevonden via keyword-ideas rond je kernthema's én concurrenten (waar zij wel scoren, jij niet), en door Claude gefilterd op echte relevantie. Kansen om met nieuwe of uitgebreide content te pakken." /></span>
+            <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
+              <button type="button" className={"ghost-btn small" + (compOpen ? " active" : "")} onClick={() => setCompOpen((v) => !v)}>Concurrenten{competitors.length ? ` (${competitors.length})` : ""}</button>
+              <button type="button" className="primary-btn small" onClick={collectOpps} disabled={oppBusy}>{oppBusy ? "Zoeken…" : (opps.length ? "Opnieuw zoeken" : "Kansen zoeken")}</button>
+            </span>
           </div>
+          {compOpen && (
+            <div className="comp-edit">
+              <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>2 tot 4 concurrent-domeinen. Hun zoekwoorden geven de gap (waar zij wel, jij nog niet rankt). Alleen het domein, bijvoorbeeld voorbeeld.nl.</div>
+              <div className="comp-inputs">
+                {compInputs.map((v, i) => (
+                  <input key={i} className="compose-input" value={v} placeholder={`concurrent ${i + 1} (domein)`} onChange={(e) => setCompInputs((arr) => arr.map((x, j) => (j === i ? e.target.value : x)))} />
+                ))}
+              </div>
+              <button type="button" className="ghost-btn small" style={{ marginTop: 8 }} onClick={saveCompetitors} disabled={compBusy}>{compBusy ? "Opslaan…" : "Concurrenten opslaan"}</button>
+            </div>
+          )}
           {oppMsg && <div className="saved-msg" style={{ marginBottom: 8 }}>{oppMsg}</div>}
           {opps.length === 0 ? (
             <div className="muted">Nog geen kansen gezocht. Klik &ldquo;Kansen zoeken&rdquo;: rond je sterkste zoekwoorden zoekt Ahrefs verwante termen (kost credits), en Claude houdt alleen de echt relevante over.</div>
           ) : (
             <div className="res-table-wrap kpi-scroll">
               <table className="res-table kpi-table">
-                <thead><tr><th>Focus</th><th>Zoekwoord</th><th>Volume</th><th>KD</th><th>Waarom relevant</th></tr></thead>
+                <thead><tr><th>Focus</th><th>Zoekwoord</th><th>Volume</th><th>KD</th><th>Bron</th><th>Waarom relevant</th></tr></thead>
                 <tbody>
                   {opps.map((o) => (
                     <tr key={o.keyword}>
@@ -434,6 +467,7 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
                       <td>{o.keyword}</td>
                       <td>{o.volume != null ? nl(o.volume) : <span className="muted">&mdash;</span>}</td>
                       <td>{o.difficulty != null ? o.difficulty : <span className="muted">&mdash;</span>}</td>
+                      <td>{o.source === "concurrent" ? <span className="kw-intent commercieel">concurrent</span> : <span className="kw-intent informatief">idee</span>}</td>
                       <td className="muted" style={{ fontSize: 12 }}>{o.reason || "—"}</td>
                     </tr>
                   ))}

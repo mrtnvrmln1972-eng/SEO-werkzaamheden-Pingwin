@@ -1,7 +1,8 @@
 import { sql, ensureSchema } from "./db";
 import { getClientBySlug } from "./clients";
 import { getAhrefsKeywords } from "./ahrefs-keywords";
-import { getKeywordIdeas, ahrefsConfigured } from "./ahrefs";
+import { getKeywordIdeas, getSiteOrganicKeywords, ahrefsConfigured } from "./ahrefs";
+import { getCompetitors } from "./competitors";
 import { callClaude, anthropicConfigured } from "./anthropic";
 
 // ═══════════════════════════════════════════════════════════
@@ -98,8 +99,9 @@ export async function collectOpportunities(slug: string): Promise<{ ok: boolean;
   const seeds = own.filter((k) => !k.branded).slice(0, 8).map((k) => k.keyword);
   const ownSet = new Set(own.map((k) => norm(k.keyword)));
 
-  // Kandidaten uit keyword-ideas rond de zaden, ontdubbeld en zonder wat we al ranken.
-  const cand = new Map<string, { keyword: string; volume: number | null; difficulty: number | null }>();
+  // Kandidaten: (1) keyword-ideas rond de zaden, (2) concurrenten-gap. Ontdubbeld
+  // en zonder wat de site al rankt. Bron per kandidaat onthouden.
+  const cand = new Map<string, { keyword: string; volume: number | null; difficulty: number | null; source: string }>();
   for (const seed of seeds) {
     let ideas: { keyword: string; volume: number | null; difficulty: number | null }[] = [];
     try { ideas = await getKeywordIdeas(seed, "nl", 40); } catch { ideas = []; }
@@ -107,9 +109,23 @@ export async function collectOpportunities(slug: string): Promise<{ ok: boolean;
       const k = norm(it.keyword);
       if (!k || ownSet.has(k) || cand.has(k)) continue;
       if ((it.volume || 0) < 50) continue; // minimale vraag
-      cand.set(k, { keyword: it.keyword, volume: it.volume, difficulty: it.difficulty });
+      cand.set(k, { keyword: it.keyword, volume: it.volume, difficulty: it.difficulty, source: "ideas" });
     }
   }
+
+  // Concurrenten-gap: waar zij wel scoren en de klant nog niet.
+  const competitors = await getCompetitors(slug).catch(() => []);
+  for (const comp of competitors) {
+    let rows: { keyword: string; volume: number | null; position: number | null; branded: boolean }[] = [];
+    try { rows = await getSiteOrganicKeywords(comp, "nl", 300); } catch { rows = []; }
+    for (const r of rows) {
+      const k = norm(r.keyword);
+      if (!k || r.branded || ownSet.has(k) || cand.has(k)) continue;
+      if ((r.volume || 0) < 50) continue;
+      cand.set(k, { keyword: r.keyword, volume: r.volume, difficulty: null, source: "concurrent" });
+    }
+  }
+
   const candidates = [...cand.values()];
   if (candidates.length === 0) return { ok: true, total: 0 };
 
@@ -117,15 +133,15 @@ export async function collectOpportunities(slug: string): Promise<{ ok: boolean;
 
   await ensureSchema();
   await ensureTable();
-  await sql`DELETE FROM client_keyword_opportunities WHERE client_slug = ${slug} AND source = 'ideas'`;
+  await sql`DELETE FROM client_keyword_opportunities WHERE client_slug = ${slug}`;
   let stored = 0;
   for (const c of candidates) {
     const reason = keep.get(norm(c.keyword));
     if (reason === undefined) continue; // niet relevant volgens Claude
     await sql`
       INSERT INTO client_keyword_opportunities (client_slug, keyword, volume, difficulty, source, reason, updated_at)
-      VALUES (${slug}, ${c.keyword}, ${c.volume}, ${c.difficulty}, ${"ideas"}, ${reason || null}, now())
-      ON CONFLICT (client_slug, keyword) DO UPDATE SET volume = ${c.volume}, difficulty = ${c.difficulty}, source = ${"ideas"}, reason = ${reason || null}, updated_at = now()`;
+      VALUES (${slug}, ${c.keyword}, ${c.volume}, ${c.difficulty}, ${c.source}, ${reason || null}, now())
+      ON CONFLICT (client_slug, keyword) DO UPDATE SET volume = ${c.volume}, difficulty = ${c.difficulty}, source = ${c.source}, reason = ${reason || null}, updated_at = now()`;
     stored++;
   }
   return { ok: true, total: stored };
