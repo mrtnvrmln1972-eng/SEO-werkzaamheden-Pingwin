@@ -184,6 +184,25 @@ async function init(): Promise<void> {
       PRIMARY KEY (client_slug, url)
     )`;
 
+  // ── Verbruik-meting: elke betaalde externe aanroep (Claude, later Ahrefs) ──
+  // Eén regel per aanroep, met de klant erbij zodat we per klant, per dienst en
+  // per periode kunnen optellen wat er verbruikt is. Puur toevoegen; raakt geen
+  // bestaande tabel. cost_usd is een schatting op basis van de tokenprijs.
+  await sql`
+    CREATE TABLE IF NOT EXISTS service_usage (
+      id          SERIAL PRIMARY KEY,
+      client_slug TEXT,
+      service     TEXT NOT NULL,
+      action      TEXT,
+      model       TEXT,
+      tokens_in   INTEGER NOT NULL DEFAULT 0,
+      tokens_out  INTEGER NOT NULL DEFAULT 0,
+      cost_usd    NUMERIC NOT NULL DEFAULT 0,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    )`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_service_usage_date ON service_usage (created_at DESC)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_service_usage_slug ON service_usage (client_slug, created_at DESC)`;
+
   // Eerste klant (One Day Clinic) zodat zijn login meteen werkt.
   const hash = hashPassword("OneDayClinic2026");
   await sql`

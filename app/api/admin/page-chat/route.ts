@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const system = await buildSystemPrompt(slug, url);
-    const raw = await callClaudeAgentic(system, messages.slice(-12), CHAT_TOOLS, runChatTool, 9, 4096);
+    const raw = await callClaudeAgentic(system, messages.slice(-12), CHAT_TOOLS, runChatTool, 9, 4096, { slug, action: "page_chat" });
     const { reply } = parseProposal(raw);
     // Aparte extractie voor een altijd-complete accepteer-lijst (nooit afgekapt).
     const proposal = await extractProposal(reply).catch(() => null);
