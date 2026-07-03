@@ -42,49 +42,28 @@ function trendOf(cur: number, prev: number, invert?: boolean): "good" | "bad" | 
   return (invert ? cur < prev : cur > prev) ? "good" : "bad";
 }
 
-// Toont de begin- en eindwaarde van de getoonde periode (de uiteinden van de grafiek),
-// zodat duidelijk is van welke waarde naar welke waarde het is gegaan.
-function FromTo({ series, fmt }: { series: number[]; fmt: (v: number) => string }) {
-  if (!series || series.length < 2) return null;
+// Duidelijke vergelijking van de VORIGE periode (links) met de HUIDIGE periode
+// (rechts): twee punten, lijn ertussen, groen bij verbetering en rood bij daling.
+// Voor 'positie' (invert) is een hogere waarde slechter, dus die tekenen we lager
+// zodat de lijn daalt als het slechter wordt. Zo sluit de grafiek aan op het %-getal.
+function PeriodCompare({ prev, cur, fmt, invert }: { prev: number; cur: number; fmt: (v: number) => string; invert?: boolean }) {
+  const t = trendOf(cur, prev, invert);
+  const color = t === "flat" ? "#9e9e9e" : t === "good" ? "#2E7D32" : "#C62828";
+  const w = 120, h = 40, pad = 7;
+  const min = Math.min(prev, cur), max = Math.max(prev, cur), range = max - min || 1;
+  const y = (v: number) => { const norm = (v - min) / range; return pad + (invert ? norm : 1 - norm) * (h - 2 * pad); };
+  const x1 = pad, x2 = w - pad;
   return (
-    <div className="kpi-fromto"><span>begin <strong>{fmt(series[0])}</strong></span> <span className="kpi-fromto-arr">→</span> <span>eind <strong>{fmt(series[series.length - 1])}</strong></span></div>
-  );
-}
-
-function Sparkline({ data, invert, fmt, trend }: { data: number[]; invert?: boolean; fmt?: (v: number) => string; trend?: "good" | "bad" | "flat" }) {
-  const [hi, setHi] = useState<number | null>(null);
-  if (!data || data.length < 2) return null;
-  const w = 120, h = 34, pad = 2;
-  const min = Math.min(...data), max = Math.max(...data);
-  const range = max - min || 1;
-  // invert (positie): een hogere waarde is slechter, dus die tekenen we LAGER,
-  // zodat de lijn daalt als de positie verslechtert (26 → 29 = van hoog naar laag).
-  const xy = (v: number, i: number) => {
-    const norm = (v - min) / range;
-    return {
-      x: pad + (i / (data.length - 1)) * (w - pad * 2),
-      y: pad + (invert ? norm : 1 - norm) * (h - pad * 2),
-    };
-  };
-  const pts = data.map((v, i) => { const p = xy(v, i); return `${p.x.toFixed(1)},${p.y.toFixed(1)}`; }).join(" ");
-  const first = data[0], last = data[data.length - 1];
-  // Kleur volgt het periode-verschil (zelfde richting als het %-getal), zodat de
-  // grafiek niet groen kleurt terwijl het cijfer daalt. Zonder trend: eerste vs laatste dag.
-  const improved = invert ? last < first : last > first;
-  const color = trend
-    ? (trend === "flat" ? "#9e9e9e" : trend === "good" ? "#2E7D32" : "#C62828")
-    : (last === first ? "#9e9e9e" : improved ? "#2E7D32" : "#C62828");
-  const format = fmt || ((v: number) => nl(Math.round(v)));
-  const hp = hi !== null ? xy(data[hi], hi) : null;
-  return (
-    <div className="kpi-spark-wrap" onMouseLeave={() => setHi(null)}>
-      <svg className="kpi-spark" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none">
-        <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
-        {hp && <line x1={hp.x} y1={0} x2={hp.x} y2={h} className="kpi-spark-hline" />}
-        {hp && <circle cx={hp.x} cy={hp.y} r={2.8} fill={color} stroke="#fff" strokeWidth={1} />}
-        {data.map((v, i) => { const p = xy(v, i); return <rect key={i} x={p.x - (w / data.length) / 2} y={0} width={w / data.length} height={h} fill="transparent" onMouseEnter={() => setHi(i)} />; })}
+    <div className="kpi-compare">
+      <svg viewBox={`0 0 ${w} ${h}`} className="kpi-compare-svg" preserveAspectRatio="none">
+        <line x1={x1} y1={y(prev)} x2={x2} y2={y(cur)} stroke={color} strokeWidth={2} vectorEffect="non-scaling-stroke" />
+        <circle cx={x1} cy={y(prev)} r={3.2} fill="#bbb" />
+        <circle cx={x2} cy={y(cur)} r={3.6} fill={color} />
       </svg>
-      {hi !== null && <div className="kpi-spark-tip" style={{ left: `${(hi / (data.length - 1)) * 100}%` }}>{format(data[hi])}</div>}
+      <div className="kpi-compare-labels">
+        <span>vorige <strong>{fmt(prev)}</strong></span>
+        <span>nu <strong style={{ color }}>{fmt(cur)}</strong></span>
+      </div>
     </div>
   );
 }
@@ -365,10 +344,10 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
       {!loading && gsc && gsc.totals && (
         <Collapse title="Search Console" meta={`${gsc.range.curStart} t/m ${gsc.range.curEnd}`} open={isOpen("sc", true)} onToggle={() => toggle("sc", true)}>
           <div className="kpi-grid kpi-grid-4">
-            <div className="kpi-card"><div className="kpi-value">{nl(gsc.totals.clicks.cur)}</div><div className="kpi-label">Klikken</div><Delta cur={gsc.totals.clicks.cur} prev={gsc.totals.clicks.prev} pct /><FromTo series={gsc.series.clicks} fmt={(v) => nl(Math.round(v))} /><Sparkline data={gsc.series.clicks} trend={trendOf(gsc.totals.clicks.cur, gsc.totals.clicks.prev)} /></div>
-            <div className="kpi-card"><div className="kpi-value">{nl(gsc.totals.impressions.cur)}</div><div className="kpi-label">Vertoningen</div><Delta cur={gsc.totals.impressions.cur} prev={gsc.totals.impressions.prev} pct /><FromTo series={gsc.series.impressions} fmt={(v) => nl(Math.round(v))} /><Sparkline data={gsc.series.impressions} trend={trendOf(gsc.totals.impressions.cur, gsc.totals.impressions.prev)} /></div>
-            <div className="kpi-card"><div className="kpi-value">{gsc.totals.ctr.cur.toFixed(1)}%</div><div className="kpi-label">CTR</div><Delta cur={gsc.totals.ctr.cur} prev={gsc.totals.ctr.prev} isPos /><FromTo series={gsc.series.ctr} fmt={(v) => `${v.toFixed(1)}%`} /><Sparkline data={gsc.series.ctr} fmt={(v) => `${v.toFixed(1)}%`} trend={trendOf(gsc.totals.ctr.cur, gsc.totals.ctr.prev)} /></div>
-            <div className="kpi-card"><div className="kpi-value">{gsc.totals.position.cur.toFixed(1)}</div><div className="kpi-label">Gem. positie <span className="kpi-sub-note">(gemiddeld; lager = beter)</span></div><Delta cur={gsc.totals.position.cur} prev={gsc.totals.position.prev} invert isPos /><FromTo series={gsc.series.position} fmt={(v) => v.toFixed(1)} /><Sparkline data={gsc.series.position} invert fmt={(v) => v.toFixed(1)} trend={trendOf(gsc.totals.position.cur, gsc.totals.position.prev, true)} /></div>
+            <div className="kpi-card"><div className="kpi-value">{nl(gsc.totals.clicks.cur)}</div><div className="kpi-label">Klikken</div><Delta cur={gsc.totals.clicks.cur} prev={gsc.totals.clicks.prev} pct /><PeriodCompare prev={gsc.totals.clicks.prev} cur={gsc.totals.clicks.cur} fmt={(v) => nl(Math.round(v))} /></div>
+            <div className="kpi-card"><div className="kpi-value">{nl(gsc.totals.impressions.cur)}</div><div className="kpi-label">Vertoningen</div><Delta cur={gsc.totals.impressions.cur} prev={gsc.totals.impressions.prev} pct /><PeriodCompare prev={gsc.totals.impressions.prev} cur={gsc.totals.impressions.cur} fmt={(v) => nl(Math.round(v))} /></div>
+            <div className="kpi-card"><div className="kpi-value">{gsc.totals.ctr.cur.toFixed(1)}%</div><div className="kpi-label">CTR</div><Delta cur={gsc.totals.ctr.cur} prev={gsc.totals.ctr.prev} isPos /><PeriodCompare prev={gsc.totals.ctr.prev} cur={gsc.totals.ctr.cur} fmt={(v) => `${v.toFixed(1)}%`} /></div>
+            <div className="kpi-card"><div className="kpi-value">{gsc.totals.position.cur.toFixed(1)}</div><div className="kpi-label">Gem. positie <span className="kpi-sub-note">(lager = beter)</span></div><Delta cur={gsc.totals.position.cur} prev={gsc.totals.position.prev} invert isPos /><PeriodCompare prev={gsc.totals.position.prev} cur={gsc.totals.position.cur} fmt={(v) => v.toFixed(1)} invert /></div>
           </div>
 
           {focusedKws.length > 0 && (
@@ -561,8 +540,7 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
                 <div className="kpi-value">{nl(m.cur)}</div>
                 <div className="kpi-label">{GA4_LABELS[m.metric] || m.metric}</div>
                 <Delta cur={m.cur} prev={m.prev} pct />
-                <FromTo series={m.series} fmt={(v) => nl(Math.round(v))} />
-                <Sparkline data={m.series} trend={trendOf(m.cur, m.prev)} />
+                <PeriodCompare prev={m.prev} cur={m.cur} fmt={(v) => nl(Math.round(v))} />
               </div>
             ))}
           </div>
