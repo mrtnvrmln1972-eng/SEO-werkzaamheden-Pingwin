@@ -109,10 +109,10 @@ function applySort<T, K extends string>(rows: T[], sort: Sort<K>, getters: Recor
 
 type FocusTier = "prio" | "secundair";
 type Kw = GscComparison["keywords"][number];
-type KwKey = "keyword" | "position" | "clicks" | "impressions" | "ctr";
-const kwGetters: Record<KwKey, (k: Kw) => number | string> = {
-  keyword: (k) => k.keyword, position: (k) => k.position, clicks: (k) => k.clicks, impressions: (k) => k.impressions, ctr: (k) => k.ctr,
-};
+type KwKey = "focus" | "keyword" | "position" | "clicks" | "impressions" | "ctr";
+type AhKey = "focus" | "keyword" | "volume" | "position" | "intent" | "kans";
+type OppKey = "focus" | "keyword" | "volume" | "difficulty" | "source" | "reason";
+type PageKey = "url" | "clicks" | "impressions";
 
 // Compacte prio/secundair-keuze per zoekwoord.
 function FocusSelect({ tier, onChange }: { tier: FocusTier | undefined; onChange: (t: FocusTier | null) => void }) {
@@ -160,7 +160,13 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
   const [focus, setFocus] = useState<Record<string, FocusTier>>({});
   const [kwSort, setKwSort] = useState<Sort<KwKey>>(null);
   const [focusSort, setFocusSort] = useState<Sort<KwKey>>(null);
-  const [pageSort, setPageSort] = useState<Sort<"url" | "clicks" | "impressions">>(null);
+  const [pageSort, setPageSort] = useState<Sort<PageKey>>(null);
+  const [oppSort, setOppSort] = useState<Sort<OppKey>>(null);
+  // Rangschikt de focus-markering voor sortering: prio eerst, dan secundair, dan de rest.
+  const focusRank = (kw: string) => (focus[kw] === "prio" ? 0 : focus[kw] === "secundair" ? 1 : 2);
+  const kwGetters: Record<KwKey, (k: Kw) => number | string> = {
+    focus: (k) => focusRank(k.keyword), keyword: (k) => k.keyword, position: (k) => k.position, clicks: (k) => k.clicks, impressions: (k) => k.impressions, ctr: (k) => k.ctr,
+  };
 
   useEffect(() => {
     let off = false;
@@ -191,7 +197,7 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
   const [ahrefsBusy, setAhrefsBusy] = useState(false);
   const [ahrefsMsg, setAhrefsMsg] = useState("");
   const [onlyFruit, setOnlyFruit] = useState(false);
-  const [ahSort, setAhSort] = useState<Sort<"keyword" | "volume" | "position" | "intent">>(null);
+  const [ahSort, setAhSort] = useState<Sort<AhKey>>(null);
 
   useEffect(() => {
     fetch(`/api/admin/ahrefs-keywords?slug=${encodeURIComponent(slug)}`)
@@ -294,12 +300,17 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
   };
   const sortedPages = applySort(pagesView, pageSort, pageGetters);
 
-  const ahGetters: Record<"keyword" | "volume" | "position" | "intent", (k: AhrefsKeyword) => number | string> = {
-    keyword: (k) => k.keyword, volume: (k) => k.volume || 0, position: (k) => k.position ?? 999, intent: (k) => k.intent,
+  const ahGetters: Record<AhKey, (k: AhrefsKeyword) => number | string> = {
+    focus: (k) => focusRank(k.keyword), keyword: (k) => k.keyword, volume: (k) => k.volume || 0, position: (k) => k.position ?? 999, intent: (k) => k.intent, kans: (k) => (isFruit(k) ? 0 : 1),
   };
   const ahFiltered = ahrefsKw.filter((k) => !k.branded && (onlyFruit ? isFruit(k) : true));
   const ahSorted = applySort(ahFiltered, ahSort, ahGetters);
   const fruitCount = ahrefsKw.filter((k) => !k.branded && isFruit(k)).length;
+
+  const oppGetters: Record<OppKey, (o: Opportunity) => number | string> = {
+    focus: (o) => focusRank(o.keyword), keyword: (o) => o.keyword, volume: (o) => o.volume ?? 0, difficulty: (o) => o.difficulty ?? 0, source: (o) => o.source, reason: (o) => o.reason || "",
+  };
+  const oppSorted = applySort(opps, oppSort, oppGetters);
 
   return (
     <div className="kpi-panel">
@@ -342,7 +353,7 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
               <div className="res-table-wrap">
                 <table className="res-table kpi-table">
                   <thead><tr>
-                    <th>Focus</th>
+                    <SortTh label="Focus" k="focus" sort={focusSort} setSort={setFocusSort} />
                     <SortTh label="Zoekwoord" k="keyword" sort={focusSort} setSort={setFocusSort} />
                     <SortTh label="Positie" k="position" sort={focusSort} setSort={setFocusSort} />
                     <SortTh label="Klikken" k="clicks" sort={focusSort} setSort={setFocusSort} />
@@ -371,7 +382,7 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
               <div className="res-table-wrap">
                 <table className="res-table kpi-table">
                   <thead><tr>
-                    <th>Focus</th>
+                    <SortTh label="Focus" k="focus" sort={kwSort} setSort={setKwSort} />
                     <SortTh label="Zoekwoord" k="keyword" sort={kwSort} setSort={setKwSort} />
                     <SortTh label="Positie" k="position" sort={kwSort} setSort={setKwSort} />
                     <SortTh label="Klikken" k="clicks" sort={kwSort} setSort={setKwSort} />
@@ -439,12 +450,12 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
               <div className="res-table-wrap">
                 <table className="res-table kpi-table">
                   <thead><tr>
-                    <th>Focus</th>
+                    <SortTh label="Focus" k="focus" sort={ahSort} setSort={setAhSort} />
                     <SortTh label="Zoekwoord" k="keyword" sort={ahSort} setSort={setAhSort} />
                     <SortTh label="Volume" k="volume" sort={ahSort} setSort={setAhSort} />
                     <SortTh label="Positie" k="position" sort={ahSort} setSort={setAhSort} />
                     <SortTh label="Intent" k="intent" sort={ahSort} setSort={setAhSort} />
-                    <th>Kans</th>
+                    <SortTh label="Kans" k="kans" sort={ahSort} setSort={setAhSort} />
                   </tr></thead>
                   <tbody>
                     {ahSorted.map((k) => (
@@ -488,9 +499,16 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
             ) : (
               <div className="res-table-wrap">
                 <table className="res-table kpi-table">
-                  <thead><tr><th>Focus</th><th>Zoekwoord</th><th>Volume</th><th>KD</th><th>Bron</th><th>Waarom relevant</th></tr></thead>
+                  <thead><tr>
+                    <SortTh label="Focus" k="focus" sort={oppSort} setSort={setOppSort} />
+                    <SortTh label="Zoekwoord" k="keyword" sort={oppSort} setSort={setOppSort} />
+                    <SortTh label="Volume" k="volume" sort={oppSort} setSort={setOppSort} />
+                    <SortTh label="KD" k="difficulty" sort={oppSort} setSort={setOppSort} />
+                    <SortTh label="Bron" k="source" sort={oppSort} setSort={setOppSort} />
+                    <SortTh label="Waarom relevant" k="reason" sort={oppSort} setSort={setOppSort} />
+                  </tr></thead>
                   <tbody>
-                    {opps.map((o) => (
+                    {oppSorted.map((o) => (
                       <tr key={o.keyword}>
                         <td><FocusSelect tier={focus[o.keyword]} onChange={(t) => markFocus(o.keyword, t)} /></td>
                         <td>{o.keyword}</td>
