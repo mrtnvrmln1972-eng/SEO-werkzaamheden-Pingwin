@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { GscComparison, Ga4Comparison } from "../../../../lib/google";
 import type { AhrefsKeyword } from "../../../../lib/ahrefs-keywords";
 import type { Opportunity } from "../../../../lib/keyword-opportunities";
@@ -125,7 +125,30 @@ function FocusSelect({ tier, onChange }: { tier: FocusTier | undefined; onChange
   );
 }
 
+// In- en uitklapbare (sub)sectie. sub=true = een subgroep binnen een hoofdsectie.
+// De titel klapt in/uit; eventuele actieknoppen staan ernaast (klappen niet mee).
+function Collapse({ sub, title, meta, open, onToggle, actions, children }: { sub?: boolean; title: ReactNode; meta?: string; open: boolean; onToggle: () => void; actions?: ReactNode; children: ReactNode }) {
+  return (
+    <div className={sub ? "kpi-sub" : "cockpit-card kpi-section"}>
+      <div className={sub ? "kpi-sub-head" : "kpi-section-head"}>
+        <button type="button" className={sub ? "kpi-sub-toggle" : "kpi-section-toggle"} onClick={onToggle}>
+          <span className="kpi-caret">{open ? "▾" : "▸"}</span>
+          <span className={sub ? "kpi-sub-title" : "kpi-section-title"}>{title}</span>
+          {meta && <span className="ck-updated">{meta}</span>}
+        </button>
+        {actions && <span className="kpi-head-actions">{actions}</span>}
+      </div>
+      {open && <div className={sub ? "kpi-sub-body" : "kpi-section-body"}>{children}</div>}
+    </div>
+  );
+}
+
 export default function KpiPanel({ slug, domain }: { slug: string; domain: string }) {
+  // Open/dicht per (sub)sectie. Hoofdsecties staan standaard open, subsecties dicht.
+  const [openMap, setOpenMap] = useState<Record<string, boolean>>({ sc: true, ahrefs: true, ga: true });
+  const isOpen = (id: string, def = false) => openMap[id] ?? def;
+  const toggle = (id: string, def = false) => setOpenMap((m) => ({ ...m, [id]: !(m[id] ?? def) }));
+
   const [days, setDays] = useState(28);
   const [gsc, setGsc] = useState<GscComparison | null>(null);
   const [ga4, setGa4] = useState<Ga4Comparison | null>(null);
@@ -306,187 +329,183 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
       )}
 
       {!loading && gsc && gsc.totals && (
-        <div className="cockpit-card">
-          <div className="ck-section-head"><span>Search Console</span><span className="ck-updated">{gsc.range.curStart} t/m {gsc.range.curEnd}</span></div>
+        <Collapse title="Search Console" meta={`${gsc.range.curStart} t/m ${gsc.range.curEnd}`} open={isOpen("sc", true)} onToggle={() => toggle("sc", true)}>
           <div className="kpi-grid">
             <div className="kpi-card"><div className="kpi-value">{nl(gsc.totals.clicks.cur)}</div><div className="kpi-label">Klikken</div><Delta cur={gsc.totals.clicks.cur} prev={gsc.totals.clicks.prev} pct /><Sparkline data={gsc.series.clicks} /></div>
             <div className="kpi-card"><div className="kpi-value">{nl(gsc.totals.impressions.cur)}</div><div className="kpi-label">Vertoningen</div><Delta cur={gsc.totals.impressions.cur} prev={gsc.totals.impressions.prev} pct /><Sparkline data={gsc.series.impressions} /></div>
-            <div className="kpi-card"><div className="kpi-value">{gsc.totals.ctr.cur.toFixed(1)}%</div><div className="kpi-label">CTR</div><Delta cur={gsc.totals.ctr.cur} prev={gsc.totals.ctr.prev} isPos /><Sparkline data={gsc.series.ctr} /></div>
-            <div className="kpi-card"><div className="kpi-value">{gsc.totals.position.cur.toFixed(1)}</div><div className="kpi-label">Gem. positie</div><Delta cur={gsc.totals.position.cur} prev={gsc.totals.position.prev} invert isPos /><Sparkline data={gsc.series.position} invert /></div>
+            <div className="kpi-card"><div className="kpi-value">{gsc.totals.ctr.cur.toFixed(1)}%</div><div className="kpi-label">CTR</div><Delta cur={gsc.totals.ctr.cur} prev={gsc.totals.ctr.prev} isPos /><Sparkline data={gsc.series.ctr} fmt={(v) => `${v.toFixed(1)}%`} /></div>
+            <div className="kpi-card"><div className="kpi-value">{gsc.totals.position.cur.toFixed(1)}</div><div className="kpi-label">Gem. positie</div><Delta cur={gsc.totals.position.cur} prev={gsc.totals.position.prev} invert isPos /><Sparkline data={gsc.series.position} invert fmt={(v) => v.toFixed(1)} /></div>
           </div>
-        </div>
-      )}
 
-      {!loading && gsc && focusedKws.length > 0 && (
-        <div className="cockpit-card kpi-focus-card acc-orange">
-          <div className="ck-section-head"><span>Belangrijke zoekwoorden ({focusedKws.length})</span><span className="ck-updated">prio &amp; secundair, vastgezet bovenaan</span></div>
-          <div className="res-table-wrap">
-            <table className="res-table kpi-table">
-              <thead><tr>
-                <th>Focus</th>
-                <SortTh label="Zoekwoord" k="keyword" sort={focusSort} setSort={setFocusSort} />
-                <SortTh label="Positie" k="position" sort={focusSort} setSort={setFocusSort} />
-                <SortTh label="Klikken" k="clicks" sort={focusSort} setSort={setFocusSort} />
-                <SortTh label="Vertoningen" k="impressions" sort={focusSort} setSort={setFocusSort} />
-                <SortTh label="CTR" k="ctr" sort={focusSort} setSort={setFocusSort} />
-              </tr></thead>
-              <tbody>
-                {focusedKws.map((k) => (
-                  <tr key={k.keyword} className={"kpi-focus-row " + focus[k.keyword]}>
-                    <td><FocusSelect tier={focus[k.keyword]} onChange={(t) => markFocus(k.keyword, t)} /></td>
-                    <td>{k.keyword}</td>
-                    <td>{k.position.toFixed(1)} <Delta cur={k.position} prev={k.prevPosition ?? k.position} invert isPos /></td>
-                    <td>{nl(k.clicks)} <Delta cur={k.clicks} prev={k.prevClicks} /></td>
-                    <td>{nl(k.impressions)} <Delta cur={k.impressions} prev={k.prevImpressions} /></td>
-                    <td>{k.ctr.toFixed(1)}% <Delta cur={k.ctr} prev={k.prevCtr} isPos /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+          {focusedKws.length > 0 && (
+            <Collapse sub title={`Belangrijke zoekwoorden (${focusedKws.length})`} meta="prio & secundair, vastgezet bovenaan" open={isOpen("sc_focus")} onToggle={() => toggle("sc_focus")}>
+              <div className="res-table-wrap">
+                <table className="res-table kpi-table">
+                  <thead><tr>
+                    <th>Focus</th>
+                    <SortTh label="Zoekwoord" k="keyword" sort={focusSort} setSort={setFocusSort} />
+                    <SortTh label="Positie" k="position" sort={focusSort} setSort={setFocusSort} />
+                    <SortTh label="Klikken" k="clicks" sort={focusSort} setSort={setFocusSort} />
+                    <SortTh label="Vertoningen" k="impressions" sort={focusSort} setSort={setFocusSort} />
+                    <SortTh label="CTR" k="ctr" sort={focusSort} setSort={setFocusSort} />
+                  </tr></thead>
+                  <tbody>
+                    {focusedKws.map((k) => (
+                      <tr key={k.keyword} className={"kpi-focus-row " + focus[k.keyword]}>
+                        <td><FocusSelect tier={focus[k.keyword]} onChange={(t) => markFocus(k.keyword, t)} /></td>
+                        <td>{k.keyword}</td>
+                        <td>{k.position.toFixed(1)} <Delta cur={k.position} prev={k.prevPosition ?? k.position} invert isPos /></td>
+                        <td>{nl(k.clicks)} <Delta cur={k.clicks} prev={k.prevClicks} /></td>
+                        <td>{nl(k.impressions)} <Delta cur={k.impressions} prev={k.prevImpressions} /></td>
+                        <td>{k.ctr.toFixed(1)}% <Delta cur={k.ctr} prev={k.prevCtr} isPos /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Collapse>
+          )}
 
-      {!loading && gsc && gsc.keywords.length > 0 && (
-        <div className="cockpit-card acc-teal">
-          <div className="ck-section-head"><span>Zoekwoorden uit Search Console ({gsc.keywords.length}) <HelpHint wide text="De zoekwoorden waarop deze site in Google gevonden wordt (echte klikken en vertoningen uit Search Console). Markeer belangrijke woorden als prio of secundair; die verschijnen vastgezet bovenaan en zijn gedeeld met de Ahrefs-lijst." /></span><span className="ck-updated">markeer een zoekwoord als prio of secundair</span></div>
-          <div className="res-table-wrap kpi-scroll">
-            <table className="res-table kpi-table">
-              <thead><tr>
-                <th>Focus</th>
-                <SortTh label="Zoekwoord" k="keyword" sort={kwSort} setSort={setKwSort} />
-                <SortTh label="Positie" k="position" sort={kwSort} setSort={setKwSort} />
-                <SortTh label="Klikken" k="clicks" sort={kwSort} setSort={setKwSort} />
-                <SortTh label="Vertoningen" k="impressions" sort={kwSort} setSort={setKwSort} />
-                <SortTh label="CTR" k="ctr" sort={kwSort} setSort={setKwSort} />
-              </tr></thead>
-              <tbody>
-                {sortedKws.map((k) => (
-                  <tr key={k.keyword}>
-                    <td><FocusSelect tier={focus[k.keyword]} onChange={(t) => markFocus(k.keyword, t)} /></td>
-                    <td>{k.keyword}</td>
-                    <td>{k.position.toFixed(1)} <Delta cur={k.position} prev={k.prevPosition ?? k.position} invert isPos /></td>
-                    <td>{nl(k.clicks)} <Delta cur={k.clicks} prev={k.prevClicks} /></td>
-                    <td>{nl(k.impressions)} <Delta cur={k.impressions} prev={k.prevImpressions} /></td>
-                    <td>{k.ctr.toFixed(1)}% <Delta cur={k.ctr} prev={k.prevCtr} isPos /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+          {gsc.keywords.length > 0 && (
+            <Collapse sub title={<>Zoekwoorden uit Search Console ({gsc.keywords.length}) <HelpHint wide text="De zoekwoorden waarop deze site in Google gevonden wordt (echte klikken en vertoningen uit Search Console). Markeer belangrijke woorden als prio of secundair; die verschijnen vastgezet bovenaan en zijn gedeeld met de Ahrefs-lijst." /></>} meta="markeer een zoekwoord als prio of secundair" open={isOpen("sc_kw")} onToggle={() => toggle("sc_kw")}>
+              <div className="res-table-wrap">
+                <table className="res-table kpi-table">
+                  <thead><tr>
+                    <th>Focus</th>
+                    <SortTh label="Zoekwoord" k="keyword" sort={kwSort} setSort={setKwSort} />
+                    <SortTh label="Positie" k="position" sort={kwSort} setSort={setKwSort} />
+                    <SortTh label="Klikken" k="clicks" sort={kwSort} setSort={setKwSort} />
+                    <SortTh label="Vertoningen" k="impressions" sort={kwSort} setSort={setKwSort} />
+                    <SortTh label="CTR" k="ctr" sort={kwSort} setSort={setKwSort} />
+                  </tr></thead>
+                  <tbody>
+                    {sortedKws.map((k) => (
+                      <tr key={k.keyword}>
+                        <td><FocusSelect tier={focus[k.keyword]} onChange={(t) => markFocus(k.keyword, t)} /></td>
+                        <td>{k.keyword}</td>
+                        <td>{k.position.toFixed(1)} <Delta cur={k.position} prev={k.prevPosition ?? k.position} invert isPos /></td>
+                        <td>{nl(k.clicks)} <Delta cur={k.clicks} prev={k.prevClicks} /></td>
+                        <td>{nl(k.impressions)} <Delta cur={k.impressions} prev={k.prevImpressions} /></td>
+                        <td>{k.ctr.toFixed(1)}% <Delta cur={k.ctr} prev={k.prevCtr} isPos /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Collapse>
+          )}
 
-      {!loading && gsc && pagesView.length > 0 && (
-        <div className="cockpit-card acc-taupe">
-          <div className="ck-section-head"><span>Pagina&rsquo;s uit Search Console ({pagesView.length}) <HelpHint wide text="De pagina's van de site met hun klikken en vertoningen uit Search Console. Sleep een pagina om hem bovenaan vast te zetten (de pagina's die je in de gaten houdt)." /></span><span className="ck-updated">{pageSort ? "sortering actief, zet uit om te slepen" : "sleep om vast te zetten bovenaan"}</span></div>
-          <div className="res-table-wrap kpi-scroll">
-            <table className="res-table kpi-table">
-              <thead><tr>
-                <th></th>
-                <SortTh label="Pagina" k="url" sort={pageSort} setSort={setPageSort} />
-                <SortTh label="Klikken" k="clicks" sort={pageSort} setSort={setPageSort} />
-                <SortTh label="Vertoningen" k="impressions" sort={pageSort} setSort={setPageSort} />
-              </tr></thead>
-              <tbody>
-                {sortedPages.map((p, i) => (
-                  <tr key={p.url} className={dragIdx === i ? "dragging" : ""} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { if (pageSort) return; e.stopPropagation(); movePage(i); }}>
-                    <td className="drag-handle" draggable={!pageSort} onDragStart={() => { if (!pageSort) setDragIdx(i); }} onDragEnd={() => setDragIdx(null)} title={pageSort ? "Zet de sortering uit om te slepen" : "Sleep om deze pagina bovenaan vast te zetten"}>⠿</td>
-                    <td><a href={p.url} target="_blank" rel="noreferrer">{shortUrl(p.url)}</a></td>
-                    <td>{nl(p.clicks)} <Delta cur={p.clicks} prev={p.prevClicks} /></td>
-                    <td>{nl(p.impressions)} <Delta cur={p.impressions} prev={p.prevImpressions} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+          {pagesView.length > 0 && (
+            <Collapse sub title={<>Pagina&rsquo;s uit Search Console ({pagesView.length}) <HelpHint wide text="De pagina's van de site met hun klikken en vertoningen uit Search Console. Sleep een pagina om hem bovenaan vast te zetten (de pagina's die je in de gaten houdt)." /></>} meta={pageSort ? "sortering actief, zet uit om te slepen" : "sleep om vast te zetten bovenaan"} open={isOpen("sc_pages")} onToggle={() => toggle("sc_pages")}>
+              <div className="res-table-wrap">
+                <table className="res-table kpi-table">
+                  <thead><tr>
+                    <th></th>
+                    <SortTh label="Pagina" k="url" sort={pageSort} setSort={setPageSort} />
+                    <SortTh label="Klikken" k="clicks" sort={pageSort} setSort={setPageSort} />
+                    <SortTh label="Vertoningen" k="impressions" sort={pageSort} setSort={setPageSort} />
+                  </tr></thead>
+                  <tbody>
+                    {sortedPages.map((p, i) => (
+                      <tr key={p.url} className={dragIdx === i ? "dragging" : ""} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { if (pageSort) return; e.stopPropagation(); movePage(i); }}>
+                        <td className="drag-handle" draggable={!pageSort} onDragStart={() => { if (!pageSort) setDragIdx(i); }} onDragEnd={() => setDragIdx(null)} title={pageSort ? "Zet de sortering uit om te slepen" : "Sleep om deze pagina bovenaan vast te zetten"}>⠿</td>
+                        <td><a href={p.url} target="_blank" rel="noreferrer">{shortUrl(p.url)}</a></td>
+                        <td>{nl(p.clicks)} <Delta cur={p.clicks} prev={p.prevClicks} /></td>
+                        <td>{nl(p.impressions)} <Delta cur={p.impressions} prev={p.prevImpressions} /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Collapse>
+          )}
+        </Collapse>
       )}
 
       {!loading && (
-        <div className="cockpit-card acc-blue">
-          <div className="ck-section-head">
-            <span>Ahrefs-zoekwoorden{ahrefsKw.length ? ` (${ahFiltered.length})` : ""} <HelpHint wide text="Alle organische zoekwoorden van het domein uit Ahrefs (volume, positie, intent), in één keer opgehaald. Laaghangend fruit = commerciële of transactionele zoekwoorden met volume die net buiten de top staan (positie 4-20): daar kun je met beperkte moeite snel meer waardevolle bezoekers scoren. Markeer belangrijke zoekwoorden als prio of secundair; die markering is gedeeld met de Search Console-lijst." /></span>
-            <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
+        <Collapse title="Ahrefs" open={isOpen("ahrefs", true)} onToggle={() => toggle("ahrefs", true)}>
+          <Collapse sub
+            title={<>Ahrefs-zoekwoorden{ahrefsKw.length ? ` (${ahFiltered.length})` : ""} <HelpHint wide text="Alle organische zoekwoorden van het domein uit Ahrefs (volume, positie, intent), in één keer opgehaald. Laaghangend fruit = commerciële of transactionele zoekwoorden met volume die net buiten de top staan (positie 4-20): daar kun je met beperkte moeite snel meer waardevolle bezoekers scoren. Markeer belangrijke zoekwoorden als prio of secundair; die markering is gedeeld met de Search Console-lijst." /></>}
+            open={isOpen("ah_kw")} onToggle={() => toggle("ah_kw")}
+            actions={<>
               {fruitCount > 0 && <button type="button" className={"ghost-btn small" + (onlyFruit ? " active" : "")} onClick={() => setOnlyFruit((v) => !v)}>{onlyFruit ? "Toon alles" : `Laaghangend fruit (${fruitCount})`}</button>}
               <button type="button" className="primary-btn small" onClick={syncAhrefs} disabled={ahrefsBusy}>{ahrefsBusy ? "Ophalen…" : (ahrefsKw.length ? "Verversen" : "Ahrefs-zoekwoorden ophalen")}</button>
-            </span>
-          </div>
-          {ahrefsMsg && <div className="saved-msg" style={{ marginBottom: 8 }}>{ahrefsMsg}</div>}
-          {ahrefsKw.length === 0 ? (
-            <div className="muted">Nog geen Ahrefs-zoekwoorden opgehaald. Klik &ldquo;Ahrefs-zoekwoorden ophalen&rdquo;: dat haalt in één keer het hele domein op (kost Ahrefs-credits) en slaat het op, zodat de scan er daarna zonder credits op draait.</div>
-          ) : (
-            <div className="res-table-wrap kpi-scroll">
-              <table className="res-table kpi-table">
-                <thead><tr>
-                  <th>Focus</th>
-                  <SortTh label="Zoekwoord" k="keyword" sort={ahSort} setSort={setAhSort} />
-                  <SortTh label="Volume" k="volume" sort={ahSort} setSort={setAhSort} />
-                  <SortTh label="Positie" k="position" sort={ahSort} setSort={setAhSort} />
-                  <SortTh label="Intent" k="intent" sort={ahSort} setSort={setAhSort} />
-                  <th>Kans</th>
-                </tr></thead>
-                <tbody>
-                  {ahSorted.map((k) => (
-                    <tr key={k.keyword} className={isFruit(k) ? "kpi-fruit-row" : ""}>
-                      <td><FocusSelect tier={focus[k.keyword]} onChange={(t) => markFocus(k.keyword, t)} /></td>
-                      <td>{k.keyword}</td>
-                      <td>{k.volume != null ? nl(k.volume) : <span className="muted">&mdash;</span>}</td>
-                      <td>{k.position != null ? k.position : <span className="muted">&mdash;</span>}</td>
-                      <td>{k.intent ? <span className={"kw-intent " + k.intent}>{k.intent}</span> : <span className="muted">&mdash;</span>}</td>
-                      <td>{isFruit(k) ? <span className="pg-kans quickwin">Quick win</span> : <span className="muted">&mdash;</span>}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
+            </>}
+          >
+            {ahrefsMsg && <div className="saved-msg" style={{ marginBottom: 8 }}>{ahrefsMsg}</div>}
+            {ahrefsKw.length === 0 ? (
+              <div className="muted">Nog geen Ahrefs-zoekwoorden opgehaald. Klik &ldquo;Ahrefs-zoekwoorden ophalen&rdquo;: dat haalt in één keer het hele domein op (kost Ahrefs-credits) en slaat het op, zodat de scan er daarna zonder credits op draait.</div>
+            ) : (
+              <div className="res-table-wrap">
+                <table className="res-table kpi-table">
+                  <thead><tr>
+                    <th>Focus</th>
+                    <SortTh label="Zoekwoord" k="keyword" sort={ahSort} setSort={setAhSort} />
+                    <SortTh label="Volume" k="volume" sort={ahSort} setSort={setAhSort} />
+                    <SortTh label="Positie" k="position" sort={ahSort} setSort={setAhSort} />
+                    <SortTh label="Intent" k="intent" sort={ahSort} setSort={setAhSort} />
+                    <th>Kans</th>
+                  </tr></thead>
+                  <tbody>
+                    {ahSorted.map((k) => (
+                      <tr key={k.keyword} className={isFruit(k) ? "kpi-fruit-row" : ""}>
+                        <td><FocusSelect tier={focus[k.keyword]} onChange={(t) => markFocus(k.keyword, t)} /></td>
+                        <td>{k.keyword}</td>
+                        <td>{k.volume != null ? nl(k.volume) : <span className="muted">&mdash;</span>}</td>
+                        <td>{k.position != null ? k.position : <span className="muted">&mdash;</span>}</td>
+                        <td>{k.intent ? <span className={"kw-intent " + k.intent}>{k.intent}</span> : <span className="muted">&mdash;</span>}</td>
+                        <td>{isFruit(k) ? <span className="pg-kans quickwin">Quick win</span> : <span className="muted">&mdash;</span>}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Collapse>
 
-      {!loading && (
-        <div className="cockpit-card acc-teal">
-          <div className="ck-section-head">
-            <span>Kansen{opps.length ? ` (${opps.length})` : ""} <HelpHint wide text="Relevante zoekwoorden waar de site nog NIET op rankt, gevonden via keyword-ideas rond je kernthema's én concurrenten (waar zij wel scoren, jij niet), en door Claude gefilterd op echte relevantie. Kansen om met nieuwe of uitgebreide content te pakken." /></span>
-            <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
+          <Collapse sub
+            title={<>Kansen{opps.length ? ` (${opps.length})` : ""} <HelpHint wide text="Relevante zoekwoorden waar de site nog NIET op rankt, gevonden via keyword-ideas rond je kernthema's én concurrenten (waar zij wel scoren, jij niet), en door Claude gefilterd op echte relevantie. Kansen om met nieuwe of uitgebreide content te pakken." /></>}
+            open={isOpen("ah_opps")} onToggle={() => toggle("ah_opps")}
+            actions={<>
               <button type="button" className={"ghost-btn small" + (compOpen ? " active" : "")} onClick={() => setCompOpen((v) => !v)}>Concurrenten{competitors.length ? ` (${competitors.length})` : ""}</button>
               <button type="button" className="primary-btn small" onClick={collectOpps} disabled={oppBusy}>{oppBusy ? "Zoeken…" : (opps.length ? "Opnieuw zoeken" : "Kansen zoeken")}</button>
-            </span>
-          </div>
-          {compOpen && (
-            <div className="comp-edit">
-              <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>2 tot 4 concurrent-domeinen. Hun zoekwoorden geven de gap (waar zij wel, jij nog niet rankt). Alleen het domein, bijvoorbeeld voorbeeld.nl.</div>
-              <div className="comp-inputs">
-                {compInputs.map((v, i) => (
-                  <input key={i} className="compose-input" value={v} placeholder={`concurrent ${i + 1} (domein)`} onChange={(e) => setCompInputs((arr) => arr.map((x, j) => (j === i ? e.target.value : x)))} />
-                ))}
-              </div>
-              <button type="button" className="ghost-btn small" style={{ marginTop: 8 }} onClick={saveCompetitors} disabled={compBusy}>{compBusy ? "Opslaan…" : "Concurrenten opslaan"}</button>
-            </div>
-          )}
-          {oppMsg && <div className="saved-msg" style={{ marginBottom: 8 }}>{oppMsg}</div>}
-          {opps.length === 0 ? (
-            <div className="muted">Nog geen kansen gezocht. Klik &ldquo;Kansen zoeken&rdquo;: rond je sterkste zoekwoorden zoekt Ahrefs verwante termen (kost credits), en Claude houdt alleen de echt relevante over.</div>
-          ) : (
-            <div className="res-table-wrap kpi-scroll">
-              <table className="res-table kpi-table">
-                <thead><tr><th>Focus</th><th>Zoekwoord</th><th>Volume</th><th>KD</th><th>Bron</th><th>Waarom relevant</th></tr></thead>
-                <tbody>
-                  {opps.map((o) => (
-                    <tr key={o.keyword}>
-                      <td><FocusSelect tier={focus[o.keyword]} onChange={(t) => markFocus(o.keyword, t)} /></td>
-                      <td>{o.keyword}</td>
-                      <td>{o.volume != null ? nl(o.volume) : <span className="muted">&mdash;</span>}</td>
-                      <td>{o.difficulty != null ? o.difficulty : <span className="muted">&mdash;</span>}</td>
-                      <td>{o.source === "concurrent" ? <span className="kw-intent commercieel">concurrent</span> : <span className="kw-intent informatief">idee</span>}</td>
-                      <td className="muted" style={{ fontSize: 12 }}>{o.reason || "—"}</td>
-                    </tr>
+            </>}
+          >
+            {compOpen && (
+              <div className="comp-edit">
+                <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>2 tot 4 concurrent-domeinen. Hun zoekwoorden geven de gap (waar zij wel, jij nog niet rankt). Alleen het domein, bijvoorbeeld voorbeeld.nl.</div>
+                <div className="comp-inputs">
+                  {compInputs.map((v, i) => (
+                    <input key={i} className="compose-input" value={v} placeholder={`concurrent ${i + 1} (domein)`} onChange={(e) => setCompInputs((arr) => arr.map((x, j) => (j === i ? e.target.value : x)))} />
                   ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+                </div>
+                <button type="button" className="ghost-btn small" style={{ marginTop: 8 }} onClick={saveCompetitors} disabled={compBusy}>{compBusy ? "Opslaan…" : "Concurrenten opslaan"}</button>
+              </div>
+            )}
+            {oppMsg && <div className="saved-msg" style={{ marginBottom: 8 }}>{oppMsg}</div>}
+            {opps.length === 0 ? (
+              <div className="muted">Nog geen kansen gezocht. Klik &ldquo;Kansen zoeken&rdquo;: rond je sterkste zoekwoorden zoekt Ahrefs verwante termen (kost credits), en Claude houdt alleen de echt relevante over.</div>
+            ) : (
+              <div className="res-table-wrap">
+                <table className="res-table kpi-table">
+                  <thead><tr><th>Focus</th><th>Zoekwoord</th><th>Volume</th><th>KD</th><th>Bron</th><th>Waarom relevant</th></tr></thead>
+                  <tbody>
+                    {opps.map((o) => (
+                      <tr key={o.keyword}>
+                        <td><FocusSelect tier={focus[o.keyword]} onChange={(t) => markFocus(o.keyword, t)} /></td>
+                        <td>{o.keyword}</td>
+                        <td>{o.volume != null ? nl(o.volume) : <span className="muted">&mdash;</span>}</td>
+                        <td>{o.difficulty != null ? o.difficulty : <span className="muted">&mdash;</span>}</td>
+                        <td>{o.source === "concurrent" ? <span className="kw-intent commercieel">concurrent</span> : <span className="kw-intent informatief">idee</span>}</td>
+                        <td className="muted" style={{ fontSize: 12 }}>{o.reason || "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Collapse>
+        </Collapse>
       )}
 
       {!loading && ga4 && ga4.propertyId === null && (
@@ -494,8 +513,7 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
       )}
 
       {!loading && ga4 && ga4.totals.length > 0 && (
-        <div className="cockpit-card">
-          <div className="ck-section-head"><span>Google Analytics</span><span className="ck-updated">laatste {periodLabel}</span></div>
+        <Collapse title="Google Analytics" meta={`laatste ${periodLabel}`} open={isOpen("ga", true)} onToggle={() => toggle("ga", true)}>
           <div className="kpi-grid">
             {ga4.totals.map((m) => (
               <div className="kpi-card" key={m.metric}>
@@ -506,7 +524,7 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
               </div>
             ))}
           </div>
-        </div>
+        </Collapse>
       )}
     </div>
   );

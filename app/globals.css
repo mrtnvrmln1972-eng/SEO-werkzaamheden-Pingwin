@@ -846,6 +846,24 @@ button.ck-collapse-head {
 /* KPI-tabellen: toon ~15 rijen, scroll de rest binnen dit venster; kop blijft staan. */
 .kpi-scroll { max-height: 460px; overflow-y: auto; }
 .kpi-scroll thead th { position: sticky; top: 0; z-index: 2; }
+
+/* KPI: hoofdsecties (Search Console / Ahrefs / Google Analytics) en hun
+   in- en uitklapbare subsecties. Geen scrollvensters: alles staat er in één keer. */
+.kpi-section-head { display: flex; align-items: flex-end; gap: 10px; margin: 4px 0 0; }
+.kpi-section-toggle { flex: 1 1 auto; display: flex; align-items: baseline; gap: 8px; background: none; border: none; border-bottom: 2px solid var(--orange); font-family: inherit; font-weight: 700; font-size: 15px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; padding: 0 0 8px; cursor: pointer; color: var(--orange-dark); }
+.kpi-section-toggle:hover .kpi-section-title { text-decoration: underline; }
+.kpi-section-title { color: var(--orange-dark); }
+.kpi-caret { font-size: 12px; color: var(--orange-dark); flex: 0 0 auto; }
+.kpi-head-actions { display: inline-flex; gap: 8px; align-items: center; flex: 0 0 auto; padding-bottom: 6px; }
+.kpi-section-body { margin-top: 14px; display: flex; flex-direction: column; gap: 12px; }
+
+.kpi-sub { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--white); }
+.kpi-sub-head { display: flex; align-items: center; gap: 10px; background: var(--gray-light); padding: 8px 12px; }
+.kpi-sub-toggle { flex: 1 1 auto; display: flex; align-items: baseline; gap: 8px; background: none; border: none; font-family: inherit; font-weight: 700; font-size: 13px; color: var(--dark); text-align: left; cursor: pointer; }
+.kpi-sub-toggle:hover .kpi-sub-title { color: var(--orange-dark); }
+.kpi-sub-title { color: var(--dark); }
+.kpi-sub-head .kpi-head-actions { padding-bottom: 0; }
+.kpi-sub-body { padding: 12px; }
 /* Ahrefs-zoekwoorden: intent-badges + laaghangend-fruit-highlight. */
 .kpi-fruit-row td { background: #FFF4E5; }
 .kw-intent { display: inline-block; font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 9px; text-transform: capitalize; }
