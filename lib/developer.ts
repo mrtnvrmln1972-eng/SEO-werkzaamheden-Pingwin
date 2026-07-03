@@ -159,4 +159,14 @@ export async function setDeveloperStatus(
     VALUES (${clientSlug}, ${taskKey}, ${done}, ${note || null}, ${done ? new Date().toISOString() : null}, now())
     ON CONFLICT (client_slug, task_key)
     DO UPDATE SET dev_done = ${done}, dev_note = ${note || null}, done_at = ${done ? new Date().toISOString() : null}, updated_at = now()`;
+
+  // Afvinken verandert ook de ECHTE taakstatus: 'Klaar' (uit de Naar-Dev-lijst en
+  // zichtbaar in Werkzaamheden), of terug naar 'Naar Dev' bij ontvinken. We matchen
+  // op de inhoudssleutel (rij-id's zijn instabiel), de status zelf overleeft.
+  const { rows } = await sql`SELECT id, taak FROM client_tasks WHERE client_slug = ${clientSlug}`;
+  const ids = rows.filter((r) => makeKey(clientSlug, (r.taak as string) || "") === taskKey).map((r) => Number(r.id));
+  const target = done ? "Klaar" : "Naar Dev";
+  for (const id of ids) {
+    await sql`UPDATE client_tasks SET status = ${target}, updated_at = now() WHERE id = ${id}`;
+  }
 }
