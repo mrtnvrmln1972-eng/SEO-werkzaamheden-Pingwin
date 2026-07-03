@@ -178,7 +178,7 @@ export default function AdminClient({ initialClients }: { initialClients: Client
           </div>
         </div>
         <div className="header-right">
-          <a className="logout-btn" href="/admin/developer" title="Alle developer-taken over alle klanten">Developer Overview</a>
+          <a className="logout-btn" href="/admin/developer" title="Alle developer-taken over alle klanten">Developer</a>
           <button className="logout-btn" onClick={logout} style={{ marginLeft: 8 }}>Uitloggen</button>
         </div>
       </div>

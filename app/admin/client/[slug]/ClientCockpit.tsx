@@ -239,12 +239,12 @@ export default function ClientCockpit({
           </select>
           <nav className="header-tabs">
             {([
-              ["werkzaamheden", "Werkzaamheden", ""],
+              ["werkzaamheden", "Taken", ""],
               ["paginas", "Pagina’s", ""],
               ["resultaten", "KPI’s", ""],
               ["wijzigingen", "Wijzigingen", ""],
-              ["klant", "Klant-dashboard", ""],
-              ["developer", "Developer Overview", "Alle developer-taken over alle klanten"],
+              ["klant", "Klant", ""],
+              ["developer", "Developer", "Alle developer-taken over alle klanten"],
             ] as [Tab, string, string][]).map(([id, label, title]) => (
               // Echte link (href) zodat cmd/middel-klik in een nieuw tabblad opent;
               // gewone klik wisselt client-side van tab.
@@ -540,7 +540,7 @@ export default function ClientCockpit({
 
         {tab === "klant" && (
           <div className="cockpit-card client-frame-card">
-            <div className="ck-section-head"><span>Klant-dashboard (zo ziet de klant het)</span>
+            <div className="ck-section-head"><span>Klant (zo ziet de klant het)</span>
               <a className="logout-btn" href={`/admin/preview/${client.slug}`} target="_blank" rel="noreferrer">Openen in nieuw tabblad ↗</a>
             </div>
             <iframe src={`/admin/preview/${client.slug}`} className="client-frame" title="Klant-dashboard" />

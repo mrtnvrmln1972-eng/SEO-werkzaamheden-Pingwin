@@ -1235,11 +1235,10 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 /* Gedateerd label boven elke stippellijn (altijd in beeld); hover-doel voor de koppeling. */
 .wz-marker-label { position: absolute; top: 0; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; line-height: 1.2; font-size: 9.5px; font-weight: 700; color: var(--orange-dark); background: var(--brand-orange-faint); border: 1px solid var(--brand-orange-soft); border-radius: 6px; padding: 2px 6px; white-space: nowrap; cursor: pointer; z-index: 4; }
 .wz-marker-label.active { background: var(--orange); color: #fff; border-color: var(--orange); z-index: 6; }
-.wz-ml-val { font-size: 10.5px; color: var(--dark); }
-.wz-ml-delta { font-size: 9px; }
-.wz-ml-delta.up { color: #1e824c; }
-.wz-ml-delta.down { color: var(--red); }
-.wz-marker-label.active .wz-ml-val, .wz-marker-label.active .wz-ml-delta { color: #fff; }
+.wz-ml-val { font-size: 10px; color: var(--dark); }
+.wz-ml-val.good { color: #1e824c; }
+.wz-ml-val.bad { color: var(--red); }
+.wz-marker-label.active .wz-ml-val { color: #fff; }
 /* "Wat veranderde op [datum]"-secties links; lichten op bij hover van de stippellijn. */
 .wz-moment { border-left: 3px solid transparent; padding: 8px 10px; border-radius: 8px; margin-bottom: 10px; transition: background .12s, border-color .12s; }
 .wz-moment:last-child { margin-bottom: 0; }

@@ -534,7 +534,7 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
       <div className="cockpit-card werk-bar">
         <div className="werk-head">
           <div className="werk-head-left">
-            <span className="werk-title">Werkzaamheden</span>
+            <span className="werk-title">Taken</span>
           </div>
           <span className="werk-head-actions">
             <button type="button" className="primary-btn small" onClick={addWork}>+ Werkzaamheid toevoegen</button>

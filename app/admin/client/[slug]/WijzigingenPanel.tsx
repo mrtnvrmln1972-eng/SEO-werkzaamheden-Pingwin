@@ -116,17 +116,17 @@ function Spark({ data, metric, invert, markers, hoverKey, onHover }: { data: Day
   const idxOf = (date: string) => { let i = pts.findIndex((d) => d.date >= date); return i < 0 ? pts.length - 1 : i; };
   const avgOf = (a: number, b: number) => { let s = 0, n = 0; for (let k = Math.max(0, a); k < Math.min(b, pts.length); k++) { s += Number(pts[k][metric]) || 0; n++; } return n ? s / n : null; };
   const sortedM = markers.map((m) => ({ key: m.key, i: idxOf(m.date) })).sort((a, b) => a.i - b.i);
-  const stat = new Map<string, { value: string; delta: string | null; up: boolean; good: boolean }>();
+  const stat = new Map<string, { before: string; after: string; good: boolean; changed: boolean }>();
   sortedM.forEach((m, idx) => {
     const prevI = idx === 0 ? 0 : sortedM[idx - 1].i;
     const nextI = idx < sortedM.length - 1 ? sortedM[idx + 1].i : pts.length;
     const after = avgOf(m.i, nextI), before = avgOf(prevI, m.i);
     const d = after != null && before != null ? after - before : null;
-    const up = (d ?? 0) > 0;
     stat.set(m.key, {
-      value: after != null ? fmtV(after) : "—",
-      delta: d == null || Math.abs(d) < 0.05 ? null : `${up ? "+" : "−"}${fmtV(Math.abs(d))}`,
-      up, good: d == null ? false : (invert ? d < 0 : d > 0),
+      before: before != null ? fmtV(before) : "—",
+      after: after != null ? fmtV(after) : "—",
+      changed: d != null && Math.abs(d) >= 0.05,
+      good: d == null ? false : (invert ? d < 0 : d > 0),
     });
   });
   const hv = hover !== null ? pts[hover] : null;
@@ -150,8 +150,7 @@ function Spark({ data, metric, invert, markers, hoverKey, onHover }: { data: Day
         <div key={m.key} className={"wz-marker-label" + (hoverKey === m.key ? " active" : "")} style={{ left: `${frac(m.date) * 100}%` }}
           onMouseEnter={() => onHover(m.key)} onMouseLeave={() => onHover(null)}>
           <span className="wz-ml-date">{dShort(m.date)}</span>
-          {s && <span className="wz-ml-val">{s.value}</span>}
-          {s && s.delta && <span className={"wz-ml-delta " + (s.good ? "up" : "down")}>{s.up ? "▲" : "▼"} {s.delta}</span>}
+          {s && <span className={"wz-ml-val" + (s.changed ? (s.good ? " good" : " bad") : "")}>{s.before} → {s.after}</span>}
         </div>
       ); })}
       {hv && (
@@ -357,7 +356,7 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
           </div>
           <div className="wz-detail-card acc-teal">
             <div className="wz-detail-card-title">KPI-impact</div>
-            <p className="muted" style={{ fontSize: 12, margin: "2px 0 10px" }}>Elke gedateerde stippellijn is een verandermoment. Beweeg over een stippellijn (of een sectie links) om dat moment op te lichten.</p>
+            <p className="muted" style={{ fontSize: 12, margin: "2px 0 10px" }}>Elke gedateerde stippellijn is een verandermoment. Eronder staat het gemiddelde vóór → ná dat moment (groen = beter, rood = slechter). Beweeg over een stippellijn (of een sectie links) om dat moment op te lichten.</p>
             {kpiLoading && <div className="muted" style={{ padding: 12 }}>KPI's laden…</div>}
             {!kpiLoading && kpi && (
               <div className="wz-kpi">

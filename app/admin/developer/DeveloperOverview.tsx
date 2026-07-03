@@ -326,7 +326,7 @@ export default function DeveloperOverview({ initialTasks, embedded }: { initialT
           <div className="header-divider" />
           <div>
             <div className="header-title">Pingwin SEO Dashboard</div>
-            <div className="header-client">Developer Overview</div>
+            <div className="header-client">Developer</div>
           </div>
         </div>
         <div className="header-right">
@@ -337,7 +337,7 @@ export default function DeveloperOverview({ initialTasks, embedded }: { initialT
 
       <div className="container">{content}</div>
 
-      <div className="footer">Pingwin Online Marketing &middot; Developer Overview</div>
+      <div className="footer">Pingwin Online Marketing &middot; Developer</div>
     </>
   );
 }
