@@ -759,6 +759,14 @@ button.ck-collapse-head {
 .contact-badge.orange { background: var(--orange-light); color: var(--orange-dark); }
 .contact-badge.red { background: var(--red-light); color: var(--red); }
 .contact-badge.gray { background: var(--gray-light); color: var(--gray); }
+/* Compact "laatste contact"-pilletje: envelop-icoon + relatieve tijd, kleur naar
+   recentheid, volledige datum in de tooltip. */
+.contact-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap; cursor: default; }
+.contact-chip svg { width: 12px; height: 12px; flex: 0 0 auto; }
+.contact-chip.green { background: #E7F4E8; color: #2E7D32; }
+.contact-chip.orange { background: var(--orange-light); color: var(--orange-dark); }
+.contact-chip.red { background: var(--red-light); color: var(--red); }
+.contact-chip.gray { background: var(--gray-light); color: var(--gray); }
 
 /* Superhuman-zoekvak in de sectiekop */
 .sh-search { display: flex; align-items: center; gap: 8px; text-transform: none; letter-spacing: 0; }

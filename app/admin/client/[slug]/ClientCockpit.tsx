@@ -261,11 +261,10 @@ export default function ClientCockpit({
         <div className="header-right">
           <span id="werk-month-slot" className="header-month-slot" />
           {lastMailDate && (
-            <div className="header-contact">
-              <span className="header-contact-label">Laatste contact</span>
-              <span className="header-contact-date">{fmtDate(lastMailDate)}</span>
-              <span className={"contact-badge " + contactColor(lastMailDate)}>{daysAgoLabel(lastMailDate)}</span>
-            </div>
+            <span className={"contact-chip " + contactColor(lastMailDate)} title={`Laatste contact: ${fmtDate(lastMailDate)}`}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 7 9 6 9-6" /></svg>
+              {daysAgoLabel(lastMailDate)}
+            </span>
           )}
         </div>
       </div>
