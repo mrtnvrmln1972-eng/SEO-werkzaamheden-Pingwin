@@ -85,6 +85,69 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
   const [genErr, setGenErr] = useState("");
   const [made, setMade] = useState<Record<string, { link: string; driveError: string; taskId: number | null }>>({});
 
+  // ── Google Drive klantmap (voor het klantprofiel- en tone-of-voice-document) ──
+  // Sleutel gelijk aan CLIENT_FOLDER_KEY in lib/client-profile-gen.ts (klant-breed,
+  // niet per pagina), zodat beide documenten in dezelfde gekozen klantmap landen.
+  const CLIENT_FOLDER_KEY = "__client_profile__";
+  type Folder = { id: string; name: string };
+  const [driveFolder, setDriveFolder] = useState<{ id: string; name: string; path: string } | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [stack, setStack] = useState<Folder[]>([{ id: "root", name: "Mijn Drive" }]);
+  const [folders, setFolders] = useState<Folder[]>([]);
+  const [pickBusy, setPickBusy] = useState(false);
+  const [pickErr, setPickErr] = useState("");
+  const [newFolder, setNewFolder] = useState("");
+
+  useEffect(() => {
+    let alive = true;
+    fetch(`/api/admin/drive/folders?chosenOnly=1&slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(CLIENT_FOLDER_KEY)}`)
+      .then((r) => r.json()).then((d) => { if (alive && d.ok && d.chosen) setDriveFolder({ id: d.chosen.folderId, name: d.chosen.folderName, path: d.chosen.folderPath }); })
+      .catch(() => { /* niet kritisch */ });
+    return () => { alive = false; }; /* eslint-disable-next-line */
+  }, [slug]);
+
+  async function loadFolders(parentId: string) {
+    setPickBusy(true); setPickErr("");
+    try {
+      const r = await fetch(`/api/admin/drive/folders?parent=${encodeURIComponent(parentId)}`);
+      const d = await r.json();
+      if (!d.ok) { setPickErr(d.error || "Kon Drive-mappen niet laden."); setFolders([]); return; }
+      setFolders(d.folders || []);
+    } catch { setPickErr("Kon Drive-mappen niet laden."); } finally { setPickBusy(false); }
+  }
+  function openPicker() {
+    setPickerOpen(true);
+    let s: Folder[] = [{ id: "root", name: "Mijn Drive" }];
+    try { const c = localStorage.getItem(`pw_drivestack_${slug}`); if (c) { const p = JSON.parse(c); if (Array.isArray(p) && p.length && p[0]?.id === "root") s = p; } } catch { /* geen geheugen */ }
+    setStack(s); loadFolders(s[s.length - 1].id);
+  }
+  function enterFolder(f: Folder) { const s = [...stack, f]; setStack(s); loadFolders(f.id); }
+  function jumpTo(i: number) { const s = stack.slice(0, i + 1); setStack(s); loadFolders(s[s.length - 1].id); }
+  async function makeSubfolder() {
+    const name = newFolder.trim(); if (!name) return;
+    setPickBusy(true); setPickErr("");
+    try {
+      const parent = stack[stack.length - 1].id;
+      const r = await fetch("/api/admin/drive/folders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "create", parent, name }) });
+      const d = await r.json();
+      if (!d.ok) { setPickErr(d.error || "Map maken mislukt."); return; }
+      setNewFolder(""); await loadFolders(parent);
+    } catch { setPickErr("Map maken mislukt."); } finally { setPickBusy(false); }
+  }
+  async function chooseCurrent() {
+    const cur = stack[stack.length - 1];
+    if (cur.id === "root") { setPickErr("Kies eerst een map (niet de hoofdmap zelf)."); return; }
+    const path = stack.slice(1).map((f) => f.name).join(" / ");
+    setPickBusy(true); setPickErr("");
+    try {
+      const r = await fetch("/api/admin/drive/folders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "save", slug, url: CLIENT_FOLDER_KEY, folderId: cur.id, folderName: cur.name, folderPath: path }) });
+      const d = await r.json();
+      if (!d.ok) { setPickErr(d.error || "Opslaan mislukt."); return; }
+      try { localStorage.setItem(`pw_drivestack_${slug}`, JSON.stringify(stack)); } catch { /* geheugen is extra */ }
+      setDriveFolder({ id: cur.id, name: cur.name, path }); setPickerOpen(false);
+    } catch { setPickErr("Opslaan mislukt."); } finally { setPickBusy(false); }
+  }
+
   // Genereert het klantprofiel of de tone-of-voice uit de live site, zet de
   // samenvatting in het veld, en maakt er een Pingwin-huisstijl document +
   // mailbare werkzaamheid van (zichtbaar in werkzaamheden en klantdash).
@@ -92,7 +155,7 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
     if (genBusy) return;
     setGenBusy(kind); setGenErr(""); setProfileOpen(true);
     try {
-      const r = await fetch("/api/admin/client-profile/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, kind }) });
+      const r = await fetch("/api/admin/client-profile/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, kind, folderId: driveFolder?.id || undefined }) });
       const d = await r.json();
       if (!d.ok) { setGenErr(d.error || "Genereren mislukt."); return; }
       changeProfile(mergeSection(profile, String(d.section || "")));
@@ -191,6 +254,13 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
               <button type="button" className={"pcd-btn" + (genBusy === "tov" ? " busy" : "")} onClick={() => generateProfile("tov")} disabled={!!genBusy}>{genBusy === "tov" ? "Tone-of-voice analyseren…" : made.tov ? "Tone-of-voice gemaakt ✓" : "Tone-of-voice analyse"}</button>
               <span className="muted" style={{ fontSize: 11 }}>Leest de live site, zet een concept in het veld en maakt er een Pingwin-document + taak van.</span>
             </div>
+            <div className="page-chat-drive" style={{ marginBottom: 8 }}>
+              <span className="pcd-label">Documenten opslaan in:</span>
+              {driveFolder
+                ? <span className="pcd-folder">{driveFolder.path || driveFolder.name}</span>
+                : <span className="pcd-folder muted">nog geen Drive-map (zonder map worden ze in je hoofdmap gezet)</span>}
+              <button type="button" className="ghost-btn small" onClick={openPicker}>{driveFolder ? "Klantmap wijzigen" : "Kies klantmap"}</button>
+            </div>
             {genErr && <div className="login-error" style={{ marginBottom: 8 }}>{genErr}</div>}
             {(["profile", "tov"] as const).map((k) => made[k] && (
               <div key={k} className="profile-made-note">
@@ -257,6 +327,40 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
           onClose={() => setImporting(false)}
           onDone={() => { setMsg("Analyse overgenomen: plan-alinea's en taken aangemaakt."); load(); }}
         />
+      )}
+
+      {pickerOpen && (
+        <div className="compose-overlay">
+          <div className="compose-modal drive-modal">
+            <div className="compose-head"><span>Kies de Google Drive-klantmap</span><button type="button" className="chat-float-close" onClick={() => setPickerOpen(false)}>&times;</button></div>
+            <div className="compose-body">
+              <div className="drive-crumbs">
+                {stack.map((f, i) => (
+                  <span key={f.id}>
+                    <button type="button" className="drive-crumb" onClick={() => jumpTo(i)}>{f.name}</button>
+                    {i < stack.length - 1 && <span className="drive-sep"> / </span>}
+                  </span>
+                ))}
+              </div>
+              {pickErr && <div className="login-error" style={{ marginTop: 6 }}>{pickErr}</div>}
+              <div className="drive-list">
+                {pickBusy && <div className="muted" style={{ padding: 8 }}>Laden…</div>}
+                {!pickBusy && folders.length === 0 && <div className="muted" style={{ padding: 8 }}>Geen submappen hier. Kies deze map, of maak een nieuwe submap.</div>}
+                {!pickBusy && folders.map((f) => (
+                  <button key={f.id} type="button" className="drive-row" onClick={() => enterFolder(f)}>{f.name} <span className="muted">openen ›</span></button>
+                ))}
+              </div>
+              <div className="drive-newfolder">
+                <input className="compose-input" value={newFolder} onChange={(e) => setNewFolder(e.target.value)} placeholder="Nieuwe submap maken (naam)…" />
+                <button type="button" className="ghost-btn small" onClick={makeSubfolder} disabled={pickBusy || !newFolder.trim()}>Map maken</button>
+              </div>
+            </div>
+            <div className="compose-foot">
+              <button type="button" className="logout-btn" onClick={() => setPickerOpen(false)}>Annuleren</button>
+              <button type="button" className="primary-btn small" onClick={chooseCurrent} disabled={pickBusy}>Kies &ldquo;{stack[stack.length - 1].name}&rdquo;</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

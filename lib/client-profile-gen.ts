@@ -20,6 +20,11 @@ import { upsertStepTask } from "./tasks";
 
 export type ProfileKind = "profile" | "tov";
 
+// Sleutel waaronder de gekozen klant-brede Drive-map wordt vastgelegd (los van
+// een specifieke pagina), zodat het klantprofiel- én tone-of-voice-document in
+// dezelfde klantmap landen.
+export const CLIENT_FOLDER_KEY = "__client_profile__";
+
 // Kernpagina's van de klant ophalen en uitlezen (homepage + drukste pagina's).
 async function gatherSiteContext(slug: string): Promise<{ name: string; domain: string; existing: string; pagesText: string } | { error: string }> {
   const client = await getClientBySlug(slug);
@@ -263,9 +268,9 @@ export async function makeProfileDeliverable(slug: string, kind: ProfileKind, fo
 
   const base = domainRoot(client.domain || "");
   const filename = `${safeName(client.name)}-${isTov ? "tone-of-voice" : "positioneringsadvies"}.docx`;
-  // Gekozen Drive-map (meegegeven) > eerder ingestelde klantmap > hoofdmap.
+  // Gekozen Drive-map (meegegeven) > eerder vastgelegde klantmap > hoofdmap.
   let dest = (folderId || "").trim();
-  if (!dest) { try { const f = await getPageDriveFolder(slug, base); if (f) dest = f.folderId; } catch { /* geen map */ } }
+  if (!dest) { try { const f = await getPageDriveFolder(slug, CLIENT_FOLDER_KEY); if (f) dest = f.folderId; } catch { /* geen map */ } }
   let link = "", driveError = "";
   try { ({ link } = await uploadDocx(dest || "root", filename, buffer)); }
   catch (e) { driveError = (e as Error).message; }
