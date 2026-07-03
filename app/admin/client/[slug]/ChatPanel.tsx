@@ -62,6 +62,33 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  // Sleepbare positie van het venster (per klant onthouden), zodat het niet vast in
+  // de rechteronderhoek zit en je eronder kunt kijken.
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  useEffect(() => {
+    try { const c = localStorage.getItem(`pw_chatpos_${slug}`); if (c) { const p = JSON.parse(c); if (typeof p?.x === "number") setPos(p); } } catch { /* geen opslag */ }
+  }, [slug]);
+
+  function onDragStart(e: React.MouseEvent) {
+    if ((e.target as HTMLElement).closest("button")) return; // knoppen niet als sleep
+    e.preventDefault();
+    const startX = e.clientX, startY = e.clientY;
+    const rect = wrapRef.current?.getBoundingClientRect();
+    const origX = rect ? rect.left : window.innerWidth - 660, origY = rect ? rect.top : window.innerHeight - 560;
+    const move = (ev: MouseEvent) => {
+      const nx = Math.max(4, Math.min(window.innerWidth - 80, origX + (ev.clientX - startX)));
+      const ny = Math.max(4, Math.min(window.innerHeight - 60, origY + (ev.clientY - startY)));
+      setPos({ x: nx, y: ny });
+    };
+    const up = () => {
+      window.removeEventListener("mousemove", move);
+      window.removeEventListener("mouseup", up);
+      setPos((p) => { if (p) { try { localStorage.setItem(`pw_chatpos_${slug}`, JSON.stringify(p)); } catch { /* geheugen is extra */ } } return p; });
+    };
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up);
+  }
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, busy]);
 
@@ -97,14 +124,14 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
   }
 
   return (
-    <div className="chat-fab-wrap">
+    <div className="chat-fab-wrap" ref={wrapRef} style={pos ? { left: pos.x, top: pos.y, right: "auto", bottom: "auto" } : undefined}>
       {collapsed ? (
         <button type="button" className="chat-fab" onClick={() => setCollapsed(false)}>
           <span className="chat-fab-dot" /> SEO-assistent{messages.length > 0 ? ` (${messages.length})` : ""}
         </button>
       ) : (
         <div className="chat-float">
-          <div className="chat-float-head">
+          <div className="chat-float-head" onMouseDown={onDragStart} style={{ cursor: "move" }} title="Sleep om te verplaatsen">
             <span>SEO-assistent</span>
             <span style={{ display: "inline-flex", gap: 10, alignItems: "center" }}>
               {messages.length > 0 && <button type="button" className="chat-float-clear" onClick={clearChat}>Wissen</button>}
