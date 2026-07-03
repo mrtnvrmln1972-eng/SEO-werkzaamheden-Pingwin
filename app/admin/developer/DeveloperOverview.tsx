@@ -28,7 +28,7 @@ type Row = DevTask;
 
 const WEEKDAYS = ["Maandag", "Dinsdag", "Woensdag", "Donderdag", "Vrijdag", "Zaterdag", "Zondag"];
 const MONTHS_SHORT = ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
-const MAARTEN_EMAIL = "mrtnvrmln1972@gmail.com";
+const MAARTEN_EMAIL = "maarten@pingwin.nl";
 
 // Maandag van de week met de gegeven week-offset (0 = deze week).
 function mondayOf(offsetWeeks: number): Date {
