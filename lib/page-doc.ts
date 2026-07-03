@@ -178,12 +178,17 @@ ${SEO_CRITERIA_MD}
 
 ${DOCSPEC_FORMAT}`;
 
-const COPY_SYSTEM = `Je bent een senior SEO-copywriter bij bureau Pingwin en schrijft publicatieklare landingspagina-copy.
+const COPY_SYSTEM = `Je bent een senior SEO-copywriter bij bureau Pingwin en schrijft publicatieklare landingspagina-copy. Dit is het INTERNE, technische copy-document (voor het team, niet voor de klant): het bevat de scorecard, de metadata met tekencounts, het behoud-overzicht én de volledige copy.
 Werk tegen deze harde criteria: primair zoekwoord in de eerste 100 woorden; H2-koppen dekken 60-80% van de zoekwoorden; natuurlijke keyword-density 0,5-2%; semantische varianten ≥60% gedekt; open met een direct antwoord op de zoekintentie; FAQ-antwoorden 40-80 woorden.
-Toon: warm, deskundig, passend bij het klantprofiel; geen holle marketingtaal, concreet en to-the-point.
-Lever de VOLLEDIGE copy uit als document: de H1, per H2 de kop + de alineatekst (als paragraph-blokken), eventuele bullets, en een FAQ-sectie met vraag (subheading) + antwoord (paragraph). Ook een meta-title en meta-description bovenaan als eigen sectie.
+Toon van de copy zelf: warm, deskundig, passend bij het klantprofiel; geen holle marketingtaal, concreet en to-the-point.
 UITGANGSPUNT BEHOUD: hergebruik bestaande zinnen/alinea's van de huidige pagina waar die goed zijn en voldoen aan de criteria; herschrijf alleen waar nodig en vul aan met wat de blauwdruk/top-10-analyse vereist. In de copy zit alles uit het plan, de taken en de analyse verwerkt.
-Toets je eigen copy aan de Pingwin-criteria hieronder (met name §1 headings, §2 keyword/semantiek, §3 meta, §4 content, §6 FAQ, §12 AEO). Gegrond in de data hieronder.
+
+Lever het document met EXACT deze secties, in deze volgorde:
+1. Sectie "Scorecard & gate-verdict": één table-blok met kolommen Criterium | Status | Waarde, met per relevant criterium-ID (H1-01/02, H2-01, KW-01 t/m KW-04, META-02, META-07, CON-02, FAQ-02, FAQ-05, AEO-02/03, CON-07, CVR-01/02) de status (PASS/FAIL/PARTIAL) en de gemeten waarde (bijv. H2-dekking 67%, density 1,22%, variantdekking 87%, FAQ 6 vragen, title 59 tekens). Begin de sectie met een paragraph "GATE: PASS/FAIL" met het aantal CRITICAL/MAJOR-failures en een korte conclusie of de copy publicatieklaar is.
+2. Sectie "SEO-metadata": één table-blok met kolommen Element | Waarde | Tekens, met de URL-slug, de meta-title (met tekenaantal) en de meta-description (met tekenaantal).
+3. Sectie "Behoud-overzicht": één paragraph met het behoud-principe, daarna één table-blok met kolommen Sectie | Actie | Toelichting (actie = BEHOUDEN/AANGEPAST/VERVANGEN/NIEUW).
+4. Sectie "Volledige copy": de H1 (subheading), per H2 de kop (subheading) + de alineatekst (paragraph-blokken), eventuele bullets, en een FAQ met vraag (subheading) + antwoord (paragraph).
+Gegrond in de data hieronder; verzin geen gemeten waarden die niet uit de data volgen.
 
 RELEVANTE CRITERIA:
 ${SEO_CRITERIA_MD}
@@ -205,7 +210,9 @@ function specToText(spec: DocSpec): string {
       else if (b.type === "table") out.push([b.headers.join(" | "), ...b.rows.map((r) => r.join(" | "))].join("\n"));
     }
   }
-  return out.join("\n").slice(0, 12000);
+  // Ruim genoeg zodat de volledige copy (onderaan het interne copy-document) niet
+  // wordt afgekapt; de klantversie neemt die tekst hieruit over.
+  return out.join("\n").slice(0, 20000);
 }
 
 // Robuuste JSON-extractie uit een AI-antwoord: strip code-fences, en val terug
@@ -300,7 +307,7 @@ export async function summariseChatToSpec(slug: string, url: string, analysis: s
 const CLIENT_STRUCTURE: Record<DocKind, string> = {
   analyse: `Lever deze secties (elk kort): 1. Huidige situatie; 2. Zoekwoorden (welke kansrijk zijn, zoekvolume in gewone taal); 3. Concurrentie (kunnen we winnen, wat doet de best gevonden concurrent wel); 4. Zoekintentie; 5. Wat de pagina nu mist t.o.v. de best scorende top-10-pagina's (concreet vergelijken); 6. Conclusie & advies (op welke zoekwoorden we richten en wat we voorstellen).`,
   blauwdruk: `Lever deze secties (elk kort): 1. Wat we op jullie pagina gaan zetten (de belangrijkste onderdelen/onderwerpen en de opbouw, in gewone taal); 2. Op welke zoekwoorden we richten; 3. Wat we behouden van de huidige pagina en wat nieuw wordt; 4. Waarom dit werkt (kort). Geen technische koppen/meta-details.`,
-  copy: `Lever deze secties (elk kort): 1. Waar de nieuwe teksten over gaan (de kernboodschap en toon); 2. Welke zoekwoorden erin verwerkt zijn; 3. Wat dit voor jullie vindbaarheid betekent. Herhaal NIET de volledige copy; geef een begrijpelijke samenvatting.`,
+  copy: `Lever eerst deze korte secties: 1. Waar de nieuwe teksten over gaan (kernboodschap en toon, kort); 2. Welke zoekwoorden erin verwerkt zijn (bullets, elk zoekwoord vet); 3. Wat dit voor jullie vindbaarheid betekent (kort). Lever DAARNA een sectie met kop "De volledige webteksten (lees na en corrigeer)" waarin je de VOLLEDIGE paginacopy uit het bronstuk overneemt: de H1 (subheading), elke H2 met de kop (subheading) + de alineatekst (paragraphs), eventuele bullets, en de FAQ (vraag als subheading, antwoord als paragraph). Neem die teksten letterlijk over uit het bronstuk. Laat de scorecard, criteria-ID's, tekencounts en het behoud-overzicht WEG (dat is intern). Zo krijgt de klant de uitleg én de complete tekst om te corrigeren in één document.`,
 };
 
 // Vaste openingsalinea voor de copy-klantversie (letterlijk, niet door AI gegenereerd).
@@ -316,7 +323,8 @@ ZOEKWOORDEN VET: zet elk concreet zoekwoord vet met dubbele sterretjes, bijvoorb
 ${CLIENT_STRUCTURE[kind]}
 Geen emoji. ${DOCSPEC_FORMAT}`;
   const user = `Zet deze ${label} voor pagina ${url} om in een klantversie:\n\n${source}${extra ? `\n\nEXTRA STURING: ${extra}` : ""}`;
-  const raw = await callClaude(system, [{ role: "user", content: user }], 3500);
+  // Copy-klantversie bevat óók de volledige tekst, dus ruimer tokenbudget.
+  const raw = await callClaude(system, [{ role: "user", content: user }], kind === "copy" ? 9000 : 3500);
   const parsed = JSON.parse(raw.replace(/```json/gi, "").replace(/```/g, "").trim());
   const title = typeof parsed.titel === "string" && parsed.titel.trim() ? parsed.titel.trim() : `Klantversie ${label} ${url}`;
   const sections = Array.isArray(parsed.sections) ? parsed.sections : [];

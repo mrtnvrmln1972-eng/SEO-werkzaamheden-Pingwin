@@ -13,7 +13,7 @@ const STEP_TITLE: Record<DocKind, string> = { analyse: "SEO-analyse", blauwdruk:
 const STEP_KLANT: Record<DocKind, string> = {
   analyse: "We hebben de huidige pagina beoordeeld op de belangrijkste SEO-punten en vastgelegd wat er beter kan voor de gekozen zoekwoorden.",
   blauwdruk: "We hebben de ideale opzet voor deze pagina uitgewerkt: welke onderwerpen, structuur en zoekwoorden nodig zijn om goed te scoren.",
-  copy: "We hebben de nieuwe, geoptimaliseerde teksten voor deze pagina geschreven, klaar om te plaatsen.",
+  copy: "We hebben de nieuwe, geoptimaliseerde teksten voor deze pagina geschreven. In de klantversie staat de uitleg, de zoekwoorden én de volledige tekst: lees die na en corrigeer waar nodig, dan verwerken wij hem SEO-geoptimaliseerd op de site.",
 };
 function pagePath(u: string): string { try { return new URL(u).pathname || u; } catch { return u; } }
 
