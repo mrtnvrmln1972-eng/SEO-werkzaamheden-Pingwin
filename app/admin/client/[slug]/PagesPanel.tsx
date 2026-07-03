@@ -69,7 +69,7 @@ function recombineProfile(profileMd: string, tovMd: string, knowhow: string): st
 export default function PagesPanel({ slug, initialProfile, clientEmail, clientName, onGoToTask }: { slug: string; initialProfile?: string; clientEmail?: string; clientName?: string; onGoToTask?: (taskId: number) => void }) {
   type Opp = { impressions: number; clicks: number; ctr: number; position: number; bestKeyword: string; bestPosition: number | null; bestVolume: number | null; score: number; label: string; level: string };
   const [opps, setOpps] = useState<Record<string, Opp>>({});
-  const [sortKey, setSortKey] = useState<"kans" | "vertoningen" | "positie" | "klikken">("kans");
+  const [sortKey, setSortKey] = useState<"kans" | "vertoningen" | "positie" | "klikken" | "volume">("kans");
   const [urls, setUrls] = useState<ClientUrl[]>([]);
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
@@ -225,6 +225,7 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
     if (sortKey === "kans") return (ob?.score || 0) - (oa?.score || 0);
     if (sortKey === "vertoningen") return (ob?.impressions ?? a.gscImpressions ?? 0) - (oa?.impressions ?? b.gscImpressions ?? 0);
     if (sortKey === "positie") { const pa = oa?.position ?? 999, pb = ob?.position ?? 999; return pa - pb; }
+    if (sortKey === "volume") return (ob?.bestVolume ?? -1) - (oa?.bestVolume ?? -1);
     return (b.gscClicks || 0) - (a.gscClicks || 0);
   });
 
@@ -308,6 +309,7 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
                 <th className="pg-sort" onClick={() => setSortKey("klikken")}>Klikken{sortKey === "klikken" ? " ▾" : ""}</th>
                 <th className="pg-sort" onClick={() => setSortKey("vertoningen")}>Vertoningen{sortKey === "vertoningen" ? " ▾" : ""}</th>
                 <th className="pg-sort" onClick={() => setSortKey("positie")}>Positie{sortKey === "positie" ? " ▾" : ""}</th>
+                <th className="pg-sort" onClick={() => setSortKey("volume")} title="Zoekvolume van het hoofdzoekwoord (meeste vertoningen)">Volume{sortKey === "volume" ? " ▾" : ""}</th>
                 <th className="pg-sort" onClick={() => setSortKey("kans")} title="Veel vertoningen + positie net buiten de top 10 = grote kans">Kans{sortKey === "kans" ? " ▾" : ""}</th>
                 <th>Plan</th>
               </tr></thead>
@@ -418,12 +420,13 @@ function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoTo
         <td>{u.gscClicks > 0 ? u.gscClicks.toLocaleString("nl-NL") : <span className="muted">&mdash;</span>}</td>
         <td>{opp && opp.impressions > 0 ? opp.impressions.toLocaleString("nl-NL") : (u.gscImpressions > 0 ? u.gscImpressions.toLocaleString("nl-NL") : <span className="muted">&mdash;</span>)}</td>
         <td>{opp && opp.position ? opp.position : <span className="muted">&mdash;</span>}</td>
+        <td>{opp?.bestVolume != null ? opp.bestVolume.toLocaleString("nl-NL") : <span className="muted">&mdash;</span>}</td>
         <td>{opp?.label ? <span className={"pg-kans " + opp.level}>{opp.label}</span> : <span className="muted">&mdash;</span>}</td>
         <td>{(plan || "").trim() ? <span className="plan-chip has">plan</span> : <span className="plan-chip">leeg</span>}</td>
       </tr>
       {open && (
         <tr className="pages-detail-row">
-          <td colSpan={7}>
+          <td colSpan={8}>
             <div className="pages-detail">
               <label className="pages-detail-label">
                 Plan voor deze pagina {saved && <span className="focus-save-status">opgeslagen</span>}

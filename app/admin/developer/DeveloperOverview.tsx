@@ -282,7 +282,7 @@ export default function DeveloperOverview({ initialTasks, embedded }: { initialT
                         <td>{statusBadge(r.status)}</td>
                         <td><input type="date" className="dev-date" value={r.execDate || ""} onChange={(e) => setDate(idx, e.target.value)} /></td>
                         <td>{isUrl ? <a href={r.link.trim()} target="_blank" rel="noreferrer" className="doc-link">Open</a> : <span className="muted">&mdash;</span>}</td>
-                        <td><button type="button" className="ghost-btn small dev-mail-btn" onClick={(e) => { e.stopPropagation(); mailMaarten(r, r.devNote); }}>✉ Maarten</button></td>
+                        <td><button type="button" className="ghost-btn small dev-mail-btn" onClick={(e) => { e.stopPropagation(); mailMaarten(r, r.devNote); }}>✉ Mail Maarten</button></td>
                       </tr>
                     );
                   })}
