@@ -496,7 +496,10 @@ tbody td:last-child { text-align: center; }
 .pch-item-head:hover { background: var(--brand-orange-faint); }
 .pch-item.open .pch-item-head { background: var(--orange-light); }
 .pch-caret { flex: 0 0 auto; color: var(--orange-dark); font-size: 11px; margin-top: 3px; }
-.pch-item-body { padding: 10px 12px 12px; border-top: 1px solid var(--border); }
+.pch-item-body { padding: 10px 4px 6px; border-top: 1px solid var(--border); }
+/* Binnen een uitgeklapte chat vloeit het antwoord plat mee (geen aparte kaart erin). */
+.pch-item-body .page-chat-msg.assistant { background: none; border: none; box-shadow: none; padding: 0; }
+.pch-item-body .page-chat-log { gap: 8px; margin-bottom: 8px; }
 .pch-title { flex: 1 1 auto; min-width: 0; color: var(--dark); line-height: 1.45; white-space: normal; overflow-wrap: anywhere; font-size: 13px; }
 .pch-del { background: none; border: none; color: var(--gray); font-size: 18px; line-height: 1; cursor: pointer; padding: 0 2px; flex: 0 0 auto; }
 .pch-del:hover { color: var(--red); }
@@ -580,7 +583,7 @@ tbody td:last-child { text-align: center; }
 .pages-table thead th { position: sticky; top: 80px; z-index: 20; }
 .page-chat-quick { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 10px 0 6px; }
 .page-chat-quick .pcq-label { font-size: 12px; color: var(--gray); }
-.page-chat-input { display: flex; gap: 8px; }
+.page-chat-input { display: flex; gap: 8px; margin-top: 16px; }
 .page-chat-input input { flex: 1 1 auto; font-size: 13px; padding: 8px 11px; border: 1px solid var(--border); border-radius: 8px; outline: none; }
 .page-chat-input input:focus { border-color: var(--orange); }
 .dev-table td { vertical-align: middle; }

@@ -28,9 +28,16 @@ async function doEnsureTable(): Promise<void> {
 export async function listChats(slug: string, url: string): Promise<ChatSummary[]> {
   await ensureSchema(); await ensureTable();
   const { rows } = await sql`
-    SELECT id, title, updated_at, jsonb_array_length(messages) AS n
+    SELECT id, title, messages, updated_at, jsonb_array_length(messages) AS n
     FROM page_chats WHERE client_slug = ${slug} AND url = ${url} ORDER BY updated_at DESC`;
-  return rows.map((r) => ({ id: Number(r.id), title: (r.title as string) || "(chat)", updatedAt: new Date(r.updated_at as string).toISOString(), count: Number(r.n || 0) }));
+  return rows.map((r) => {
+    // Titel altijd uit de eerste vraag afleiden (volledig), zodat oude chats die
+    // met een kortere titel zijn opgeslagen ook de hele vraag tonen.
+    const msgs = (r.messages as ChatMsg[]) || [];
+    const firstUser = msgs.find((m) => m.role === "user")?.content || "";
+    const derived = firstUser.replace(/\s+/g, " ").trim().slice(0, 400);
+    return { id: Number(r.id), title: derived || (r.title as string) || "(chat)", updatedAt: new Date(r.updated_at as string).toISOString(), count: Number(r.n || 0) };
+  });
 }
 
 export async function getChat(id: number): Promise<{ id: number; messages: ChatMsg[] } | null> {
