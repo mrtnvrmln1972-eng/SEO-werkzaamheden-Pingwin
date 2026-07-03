@@ -76,13 +76,18 @@ async function init(): Promise<void> {
       updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
     )`;
 
-  // Bewaarde projectchat per klant (JSON-array van berichten).
+  // Bewaarde projectchat per klant (JSON-array van berichten). Nu per gesprek
+  // (thread), zodat je losse gesprekken kunt voeren over een pagina, de klant,
+  // een situatie of de hele site.
   await sql`
     CREATE TABLE IF NOT EXISTS client_chat (
       client_slug TEXT PRIMARY KEY,
       messages    TEXT,
       updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
     )`;
+  await sql`ALTER TABLE client_chat ADD COLUMN IF NOT EXISTS thread TEXT NOT NULL DEFAULT 'algemeen'`;
+  await sql`ALTER TABLE client_chat DROP CONSTRAINT IF EXISTS client_chat_pkey`;
+  await sql`CREATE UNIQUE INDEX IF NOT EXISTS ux_client_chat_thread ON client_chat(client_slug, thread)`;
 
   // Werkzaamheden per klant, ín het dashboard (alternatief voor de Google Sheet).
   // SEO- en Dev-taken samen; per maand, met uren, status, link en zichtbaarheid

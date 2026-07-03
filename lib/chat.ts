@@ -128,9 +128,11 @@ async function buildContext(client: ClientConfig): Promise<string> {
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
 
-export async function getChatHistory(slug: string): Promise<ChatMessage[]> {
+const cleanThread = (t?: string) => (t || "algemeen").trim().slice(0, 80) || "algemeen";
+
+export async function getChatHistory(slug: string, thread = "algemeen"): Promise<ChatMessage[]> {
   await ensureSchema();
-  const { rows } = await sql`SELECT messages FROM client_chat WHERE client_slug = ${slug} LIMIT 1`;
+  const { rows } = await sql`SELECT messages FROM client_chat WHERE client_slug = ${slug} AND thread = ${cleanThread(thread)} LIMIT 1`;
   if (!rows[0]?.messages) return [];
   try {
     const parsed = JSON.parse(rows[0].messages as string);
@@ -140,22 +142,33 @@ export async function getChatHistory(slug: string): Promise<ChatMessage[]> {
   }
 }
 
-async function saveChatHistory(slug: string, messages: ChatMessage[]): Promise<void> {
+// Alle gesprekken (threads) van een klant, nieuwste eerst.
+export async function listChatThreads(slug: string): Promise<{ thread: string; count: number; updatedAt: string }[]> {
+  await ensureSchema();
+  const { rows } = await sql`SELECT thread, messages, updated_at FROM client_chat WHERE client_slug = ${slug} ORDER BY updated_at DESC`;
+  return rows.map((r) => {
+    let count = 0;
+    try { const p = JSON.parse((r.messages as string) || "[]"); count = Array.isArray(p) ? p.length : 0; } catch { /* leeg */ }
+    return { thread: (r.thread as string) || "algemeen", count, updatedAt: new Date(r.updated_at as string).toISOString() };
+  });
+}
+
+async function saveChatHistory(slug: string, thread: string, messages: ChatMessage[]): Promise<void> {
   await ensureSchema();
   const content = JSON.stringify(messages.slice(-40));
   await sql`
-    INSERT INTO client_chat (client_slug, messages, updated_at)
-    VALUES (${slug}, ${content}, now())
-    ON CONFLICT (client_slug) DO UPDATE SET messages = EXCLUDED.messages, updated_at = now()`;
+    INSERT INTO client_chat (client_slug, thread, messages, updated_at)
+    VALUES (${slug}, ${cleanThread(thread)}, ${content}, now())
+    ON CONFLICT (client_slug, thread) DO UPDATE SET messages = EXCLUDED.messages, updated_at = now()`;
 }
 
-// Wist het opgeslagen gesprek van een klant (de assistent begint dan weer schoon).
-export async function clearChatHistory(slug: string): Promise<void> {
+// Wist één gesprek (thread) van een klant; de assistent begint daar weer schoon.
+export async function clearChatHistory(slug: string, thread = "algemeen"): Promise<void> {
   await ensureSchema();
-  await sql`DELETE FROM client_chat WHERE client_slug = ${slug}`;
+  await sql`DELETE FROM client_chat WHERE client_slug = ${slug} AND thread = ${cleanThread(thread)}`;
 }
 
-export async function answerChat(slug: string, messages: ChatMessage[]): Promise<{ ok: boolean; answer?: string; error?: string }> {
+export async function answerChat(slug: string, messages: ChatMessage[], thread = "algemeen"): Promise<{ ok: boolean; answer?: string; error?: string }> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return { ok: false, error: "Geen ANTHROPIC_API_KEY ingesteld." };
   const client = await getClientBySlug(slug);
@@ -194,7 +207,7 @@ export async function answerChat(slug: string, messages: ChatMessage[]): Promise
     const j = await res.json();
     const answer = Array.isArray(j.content) ? j.content.map((c: { text?: string }) => c.text || "").join("") : "";
     const finalAnswer = answer || "(geen antwoord)";
-    await saveChatHistory(slug, [...messages, { role: "assistant", content: finalAnswer }]);
+    await saveChatHistory(slug, thread, [...messages, { role: "assistant", content: finalAnswer }]);
     return { ok: true, answer: finalAnswer };
   } catch (err) {
     return { ok: false, error: "AI niet bereikbaar: " + (err as Error).message };

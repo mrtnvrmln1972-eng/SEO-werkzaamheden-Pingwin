@@ -57,6 +57,8 @@ const SUGGESTIONS = [
 
 export default function ChatPanel({ slug, configured, initialMessages }: { slug: string; configured: boolean; initialMessages: Msg[] }) {
   const [messages, setMessages] = useState<Msg[]>(initialMessages || []);
+  const [thread, setThread] = useState("algemeen");
+  const [threads, setThreads] = useState<{ thread: string; count: number; updatedAt: string }[]>([]);
   const [collapsed, setCollapsed] = useState(true);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -92,11 +94,35 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, busy]);
 
-  // Wist het gesprek (lokaal + op de server) zodat de assistent schoon begint.
+  // Alle gesprekken (threads) van deze klant laden voor de keuzelijst.
+  useEffect(() => {
+    fetch(`/api/admin/chat?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).then((d) => { if (d.ok) setThreads(d.threads || []); }).catch(() => {});
+  }, [slug]);
+
+  // Wisselen naar een ander gesprek: de historie van dat gesprek laden.
+  async function switchThread(t: string) {
+    if (t === thread) return;
+    setThread(t); setMessages([]); setError("");
+    const d = await fetch(`/api/admin/chat?slug=${encodeURIComponent(slug)}&thread=${encodeURIComponent(t)}`).then((r) => r.json()).catch(() => null);
+    if (d?.ok) { setMessages(d.messages || []); setThreads(d.threads || []); }
+  }
+
+  // Nieuw gesprek starten (bijv. over een pagina, situatie of onderwerp).
+  function newThread() {
+    const name = window.prompt("Naam van het nieuwe gesprek (bijv. een pagina, situatie of onderwerp):", "");
+    const t = (name || "").trim().slice(0, 80);
+    if (!t) return;
+    setThread(t); setMessages([]); setError("");
+    setThreads((ts) => (ts.some((x) => x.thread === t) ? ts : [{ thread: t, count: 0, updatedAt: "" }, ...ts]));
+  }
+
+  // Wist het huidige gesprek (lokaal + op de server) zodat de assistent schoon begint.
   async function clearChat() {
     if (!window.confirm("Dit gesprek wissen?")) return;
     setMessages([]); setError("");
-    await fetch(`/api/admin/chat?slug=${encodeURIComponent(slug)}`, { method: "DELETE" }).catch(() => {});
+    await fetch(`/api/admin/chat?slug=${encodeURIComponent(slug)}&thread=${encodeURIComponent(thread)}`, { method: "DELETE" }).catch(() => {});
+    setThreads((ts) => ts.filter((x) => x.thread !== thread));
+    if (thread !== "algemeen") setThread("algemeen");
   }
 
   async function send(text: string) {
@@ -111,10 +137,10 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
       const res = await fetch("/api/admin/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, messages: next }),
+        body: JSON.stringify({ slug, thread, messages: next }),
       });
       const data = await res.json();
-      if (data.ok) setMessages((m) => [...m, { role: "assistant", content: data.answer }]);
+      if (data.ok) { setMessages((m) => [...m, { role: "assistant", content: data.answer }]); setThreads((ts) => (ts.some((x) => x.thread === thread) ? ts : [{ thread, count: next.length + 1, updatedAt: "" }, ...ts])); }
       else setError(data.error || "Er ging iets mis.");
     } catch {
       setError("De assistent is niet bereikbaar.");
@@ -146,6 +172,15 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
               </div>
             ) : (
               <>
+                <div className="chat-threads">
+                  <span className="chat-threads-label">Gesprek:</span>
+                  <select className="chat-thread-select" value={thread} onChange={(e) => switchThread(e.target.value)}>
+                    {(threads.some((t) => t.thread === thread) ? threads : [{ thread, count: messages.length, updatedAt: "" }, ...threads]).map((t) => (
+                      <option key={t.thread} value={t.thread}>{t.thread === "algemeen" ? "Algemeen" : t.thread}{t.count ? ` (${t.count})` : ""}</option>
+                    ))}
+                  </select>
+                  <button type="button" className="ghost-btn small" onClick={newThread}>+ Nieuw</button>
+                </div>
                 {messages.length === 0 && (
                   <div className="chat-suggest">
                     {SUGGESTIONS.map((s) => (

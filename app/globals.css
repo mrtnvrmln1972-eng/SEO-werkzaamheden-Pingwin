@@ -696,6 +696,10 @@ button.ck-collapse-head {
 .chat-float-close { background: none; border: none; color: var(--white); font-size: 24px; line-height: 1; cursor: pointer; padding: 0 4px; }
 .chat-float-close:hover { color: var(--orange); }
 .chat-float-body { flex: 1; display: flex; flex-direction: column; padding: 16px 18px; min-height: 0; }
+.chat-threads { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+.chat-threads-label { font-size: 12px; font-weight: 700; color: var(--gray); }
+.chat-thread-select { flex: 1 1 auto; min-width: 0; font-family: inherit; font-size: 13px; padding: 5px 8px; border: 1px solid var(--border); border-radius: 7px; background: var(--white); color: var(--dark); }
+.chat-thread-select:focus { outline: none; border-color: var(--orange); }
 .chat-suggest { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
 .chat-log { flex: 1; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; padding: 4px 2px; min-height: 0; }
 @media (max-width: 520px) { .chat-fab-wrap { right: 14px; bottom: 14px; } .chat-float { height: 80vh; } }
