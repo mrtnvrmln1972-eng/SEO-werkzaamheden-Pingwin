@@ -74,7 +74,8 @@ type KwBA = { keyword: string; positionBefore: number | null; positionAfter: num
 type Ga4Stat = { views: number; timeOnPage: number; bounceRate: number; engagementRate: number; pagesPerSession: number; sessionDuration: number };
 type Ga4 = { available: boolean; before: Ga4Stat; after: Ga4Stat };
 type Moment = { id: number; date: string };
-type Kpi = { changeDate: string; daily: Day[]; keywords: KwBA[]; ga4: Ga4 | null; moments: Moment[] };
+type Compare = { beforeStart: string; beforeEnd: string; afterStart: string; afterEnd: string; days: number; weekAligned: boolean };
+type Kpi = { changeDate: string; daily: Day[]; keywords: KwBA[]; ga4: Ga4 | null; moments: Moment[]; compare: Compare | null };
 
 function secs(s: number): string { if (!s) return "0s"; const m = Math.floor(s / 60), r = s % 60; return m ? `${m}m ${r}s` : `${r}s`; }
 // Voor sommige signalen is hoger beter (engagement, tijd, views, pagina's/sessie),
@@ -266,7 +267,7 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
     let alive = true;
     setKpiLoading(true); setKpi(null);
     fetch(`/api/admin/changes/kpi?slug=${encodeURIComponent(slug)}&id=${open.id}`)
-      .then((r) => r.json()).then((d) => { if (alive && d.ok) setKpi({ changeDate: d.changeDate, daily: d.daily || [], keywords: d.keywords || [], ga4: d.ga4 || null, moments: d.moments || [] }); })
+      .then((r) => r.json()).then((d) => { if (alive && d.ok) setKpi({ changeDate: d.changeDate, daily: d.daily || [], keywords: d.keywords || [], ga4: d.ga4 || null, moments: d.moments || [], compare: d.compare || null }); })
       .catch(() => { /* stil */ }).finally(() => { if (alive) setKpiLoading(false); });
     return () => { alive = false; };
   }, [open, slug]);
@@ -342,6 +343,11 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
                 <KpiBlock label="Vertoningen per dag"><Spark data={kpi.daily} markers={markers} hoverKey={hoverMoment} onHover={setHoverMoment} metric="impressions" /></KpiBlock>
                 <KpiBlock label="Gem. positie" sub="(lager = beter)"><Spark data={kpi.daily} markers={markers} hoverKey={hoverMoment} onHover={setHoverMoment} metric="position" invert /></KpiBlock>
                 <KpiBlock label="CTR"><Spark data={kpi.daily} markers={markers} hoverKey={hoverMoment} onHover={setHoverMoment} metric="ctr" /></KpiBlock>
+                {kpi.compare && (
+                  <div className="wz-compare-note">
+                    Eerlijk vergeleken op gelijke periodes{kpi.compare.weekAligned ? " (hele weken, ma t/m zo)" : ""}: <strong>{kpi.compare.days} dagen vóór</strong> ({dShort(kpi.compare.beforeStart)} t/m {dShort(kpi.compare.beforeEnd)}) vs <strong>{kpi.compare.days} dagen ná</strong> ({dShort(kpi.compare.afterStart)} t/m {dShort(kpi.compare.afterEnd)}). De laatste ~3 dagen zijn afgeknipt wegens de vertraging van Search Console.
+                  </div>
+                )}
                 {kpi.keywords.length > 0 && (
                   <div className="wz-kw">
                     <div className="wz-kpi-label">Keyword-rankings (voor → na) <span className="sov-sub">vink de belangrijkste aan, die komen bovenaan (gedeeld met de KPI-tab)</span></div>

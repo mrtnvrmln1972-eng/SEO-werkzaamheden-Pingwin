@@ -1236,6 +1236,8 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .wz-tip-val { font-weight: 700; }
 /* Datum-as onder elk grafiekje (begin, midden, eind van de periode). */
 .wz-spark-axis { display: flex; justify-content: space-between; font-size: 9px; color: var(--gray); margin-top: 3px; }
+/* Melding: op welke gelijke periodes voor/na is vergeleken. */
+.wz-compare-note { font-size: 12px; color: var(--dark); background: var(--brand-teal-light); border: 1px solid var(--brand-teal); border-radius: 8px; padding: 8px 11px; margin: 6px 0 12px; line-height: 1.5; }
 /* Aangevinkte (belangrijke) zoekwoorden bovenaan de tabel. */
 .wz-kw-check { text-align: center; width: 28px; }
 .wz-kw-table tr.wz-kw-prio { background: var(--brand-orange-faint); }

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../../lib/admin-auth";
 import { getChangeEvent, getChangeEventsForUrl } from "../../../../../lib/content-tracking";
 import { getClientBySlug } from "../../../../../lib/clients";
-import { getGscDailyForPage, getGscKeywordsBeforeAfter, getGa4PageSignalsBeforeAfter } from "../../../../../lib/google";
+import { getGscDailyForPage, getGscKeywordsBeforeAfter, getGa4PageSignalsBeforeAfter, equalBeforeAfter } from "../../../../../lib/google";
 import { getAhrefsKeywords } from "../../../../../lib/ahrefs-keywords";
 
 export const runtime = "nodejs";
@@ -63,5 +63,8 @@ export async function GET(req: NextRequest) {
   for (const a of ahrefs) volMap.set(a.keyword.toLowerCase(), a.volume);
   const keywords = keywordsRaw.map((k) => ({ ...k, volume: volMap.has(k.keyword.toLowerCase()) ? volMap.get(k.keyword.toLowerCase()) ?? null : null }));
 
-  return NextResponse.json({ ok: true, changeDate, daily, keywords, ga4, moments });
+  // De exact vergeleken voor/na-periodes (voor transparantie in de UI).
+  const compare = equalBeforeAfter(changeDate, 60);
+
+  return NextResponse.json({ ok: true, changeDate, daily, keywords, ga4, moments, compare });
 }
