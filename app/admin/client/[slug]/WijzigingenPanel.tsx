@@ -374,9 +374,9 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
                               <td className={"wz-verschil " + (delta != null && delta > 0 ? "up" : delta != null && delta < 0 ? "down" : "")}>
                                 {delta == null || delta === 0 ? "—" : `${delta > 0 ? "▲ +" : "▼ "}${Math.abs(Math.round(delta * 10) / 10)}`}
                               </td>
-                              <td>{k.clicksBefore} → {k.clicksAfter}</td>
-                              <td>{(k.impressionsBefore ?? 0)} → {(k.impressionsAfter ?? 0)}</td>
-                              <td className={ctrDropped ? "wz-neg" : ""}>{k.ctrBefore != null ? `${k.ctrBefore}%` : "—"} → {k.ctrAfter != null ? `${k.ctrAfter}%` : "—"}</td>
+                              <td className="wz-kw-ba">{k.clicksBefore} <span className="wz-arrow">→</span> <span className={k.clicksAfter > k.clicksBefore ? "wz-pos" : k.clicksAfter < k.clicksBefore ? "wz-neg" : ""}>{k.clicksAfter}</span></td>
+                              <td className="wz-kw-ba">{(k.impressionsBefore ?? 0)} <span className="wz-arrow">→</span> {(k.impressionsAfter ?? 0)}</td>
+                              <td className="wz-kw-ba">{k.ctrBefore != null ? `${k.ctrBefore}%` : "—"} <span className="wz-arrow">→</span> <span className={k.ctrBefore != null && k.ctrAfter != null && k.ctrAfter > k.ctrBefore ? "wz-pos" : k.ctrBefore != null && k.ctrAfter != null && k.ctrAfter < k.ctrBefore ? "wz-neg" : ""}>{k.ctrAfter != null ? `${k.ctrAfter}%` : "—"}</span></td>
                             </tr>
                           );
                         })}
