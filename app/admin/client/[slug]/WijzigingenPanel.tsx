@@ -291,9 +291,10 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
         <div className="wz-detail-grid">
           <div className="wz-detail-card acc-taupe">
             <div className="wz-detail-card-title">Wat veranderde</div>
-            {open.isManual
-              ? <div className="wz-line" style={{ background: "#fff6e5" }}>{open.summary || "wijziging"}</div>
-              : <DiffView diff={open.diff} />}
+            {open.isManual && open.summary && <div className="wz-line" style={{ background: "#fff6e5", marginBottom: 8 }}>{open.summary}</div>}
+            {open.diff && Object.keys(open.diff).length > 0
+              ? <DiffView diff={open.diff} />
+              : (!open.isManual && <div className="muted" style={{ fontSize: 12 }}>Geen inhoudelijke verschillen gedetecteerd.</div>)}
           </div>
           <div className="wz-detail-card acc-teal">
             <div className="wz-detail-card-title">KPI-impact</div>

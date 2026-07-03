@@ -266,6 +266,20 @@ const OUR_TEAM_RE = /pingwin|toni|maarten/i;
 // wijziging gebundeld (dat is het moment dat een pagina opnieuw geïndexeerd wordt,
 // vanaf daar volgen we de KPI's). Wijzigingen door anderen blijven weg. Herbouwt
 // de WordPress-events schoon bij elke sync.
+// Bouwt een gestructureerde "wat veranderde"-diff uit twee WordPress-revisies.
+// WP geeft ons alleen titel + tekst per revisie; dat mappen we op de titel (H1)
+// en het woordenaantal. Bij een gloednieuwe pagina is `before` leeg, dan wordt
+// alleen de +regel getoond (precies wat je wilt zien: "hier staat nu dit").
+function wpRevisionDiff(before: WpRevision | null, cur: WpRevision): ContentDiff {
+  const diff: ContentDiff = {};
+  const bt = before?.title || "";
+  if (bt !== (cur.title || "")) diff.h1 = { before: bt, after: cur.title || "" };
+  const pw = before?.text ? before.text.split(/\s+/).filter(Boolean).length : 0;
+  const cw = cur.text ? cur.text.split(/\s+/).filter(Boolean).length : 0;
+  if (pw !== cw) diff.word_count = { before: pw, after: cw, delta: cw - pw };
+  return diff;
+}
+
 export async function addWordpressRevisions(slug: string, domain: string, auth: WpAuth): Promise<{ scanned: number; added: number; hasApi: boolean; newest: string | null }> {
   await ensureSchema();
   await ensureTables();
@@ -316,9 +330,10 @@ export async function addWordpressRevisions(slug: string, domain: string, auth: 
       const what = revisionDiffSummary(before, last.r);
       const who = users.get(last.r.author)?.name || "";
       const summary = `WordPress${who ? ` (${who})` : ""}: ${what}${cl.length > 1 ? ` — ${cl.length} bewerkingen gebundeld` : ""}`;
+      const diff = wpRevisionDiff(before, last.r);
       await sql`
         INSERT INTO page_change_events (client_slug, url, detected_at, current_snapshot_id, diff, change_summary, is_manual, source)
-        VALUES (${slug}, ${p.url}, ${last.r.modified}, ${null}, ${"{}"}, ${summary}, true, 'wordpress')`;
+        VALUES (${slug}, ${p.url}, ${last.r.modified}, ${null}, ${JSON.stringify(diff)}, ${summary}, true, 'wordpress')`;
       added++; seen.add(dedupKey);
     }
   }
