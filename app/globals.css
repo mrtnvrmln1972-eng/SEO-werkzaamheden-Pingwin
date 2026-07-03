@@ -936,6 +936,12 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .budget-inline > div strong { font-size: 14px; color: var(--dark); }
 .budget-inline > div.neg strong { color: var(--red); }
 .task-table .col-center { text-align: center; }
+/* "Mail"-knop in de kolomheader: vink taken aan en klik hier om ze te mailen. */
+.mail-col-btn { background: var(--orange); color: #fff; border: none; border-radius: 6px; font-family: inherit; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; padding: 4px 12px; cursor: pointer; }
+.mail-col-btn:hover { background: var(--orange-dark); }
+/* Klant/developer-schakelaar bovenin het mailvenster. */
+.compose-modeswitch { display: flex; gap: 8px; margin-bottom: 12px; }
+.mini-btn.active { background: var(--orange); border-color: var(--orange); color: #fff; }
 .row-actions { white-space: nowrap; }
 .row-actions { display: flex; align-items: center; justify-content: center; gap: 8px; }
 .row-send { background: none; border: none; cursor: pointer; font-size: 18px; line-height: 1; opacity: 0.65; padding: 2px 4px; }

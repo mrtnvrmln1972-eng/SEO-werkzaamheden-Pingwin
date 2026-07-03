@@ -359,7 +359,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
             <button type="button" className="pcd-btn" onClick={makeClientMail}>Mail naar de klant</button>
           </div>
           <div className="page-chat-docs">
-            <div className="pcd-docs-head">Documenten (bouwen voort op het plan, de taken en de vorige stap)</div>
+            <div className="pcd-docs-head">Vervolgstappen op strategische analyse voor deze pagina</div>
             <input className="pcd-nuance" value={nuance} onChange={(e) => setNuance(e.target.value)} placeholder="Extra sturing (optioneel), bijv. leg de nadruk op de regio, of behoud de tarieventabel." />
             <div className="pcd-docs-buttons">
               <button type="button" className={"pcd-btn" + (docBusy === "analyse" ? " busy" : "")} onClick={() => genDoc("analyse")} disabled={!!docBusy || allBusy}>{docBusy === "analyse" ? "Analyse maken…" : "1. Analyse-document"}</button>

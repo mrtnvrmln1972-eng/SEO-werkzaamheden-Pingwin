@@ -426,9 +426,9 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
             <colgroup>
               <col style={{ width: "22px" }} /><col /><col />
               <col style={{ width: "66px" }} /><col style={{ width: "104px" }} /><col style={{ width: "108px" }} />
-              <col style={{ width: "118px" }} /><col style={{ width: "92px" }} /><col style={{ width: "44px" }} /><col style={{ width: "78px" }} />
+              <col style={{ width: "118px" }} /><col style={{ width: "84px" }} /><col style={{ width: "52px" }} />
             </colgroup>
-            <thead><tr><th></th><th>Taak</th><th>Opm. developer</th><th>Uren</th><th>Status</th><th>Wie</th><th>Maand</th><th title="Aanvinken om mee te nemen in een mail naar developer of klant" className="col-center">Kies</th><th></th></tr></thead>
+            <thead><tr><th></th><th>Taak</th><th>Opm. developer</th><th>Uren</th><th>Status</th><th>Wie</th><th>Maand</th><th className="col-center"><button type="button" className="mail-col-btn" onClick={() => openComposeFor(undefined, "klant")} title="Vink taken aan en klik hier om ze te mailen">Mail</button></th><th></th></tr></thead>
             <tbody>
               {ordered.map(({ r, i }) => {
                 const isDev = (r.wie || "").toLowerCase() === "dev";
@@ -453,9 +453,8 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
                     <td><select value={r.status} onChange={(e) => update(i, { status: e.target.value })}><option value="">—</option>{STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}</select></td>
                     <td><button type="button" className={"wie-badge " + (isDev ? "wie-dev" : "wie-seo")} onClick={() => update(i, { wie: isDev ? "SEO" : "Dev" })} title="Klik om te wisselen tussen SEO en Developer">{isDev ? "Developer" : "SEO"}</button></td>
                     <td><select value={r.maand} onChange={(e) => update(i, { maand: e.target.value })}><option value="">—</option>{MONTHS.map((m) => <option key={m} value={m}>{m}</option>)}</select></td>
-                    <td className="cell-check col-center"><input type="checkbox" checked={!!r._mail} onChange={(e) => update(i, { _mail: e.target.checked })} title="Aanvinken om mee te nemen in een mail naar developer of klant" /></td>
+                    <td className="cell-check col-center"><input type="checkbox" checked={!!r._mail} onChange={(e) => update(i, { _mail: e.target.checked })} title="Aanvinken om mee te nemen in een mail (klik daarna op de knop Mail bovenaan)" /></td>
                     <td className="row-actions">
-                      <button type="button" className="row-send" onClick={() => openComposeFor([i])} title="Deze taak mailen naar de developer">✉</button>
                       <button type="button" className="row-del" onClick={() => removeRow(i)} title="Verwijderen">×</button>
                     </td>
                   </tr>
@@ -516,10 +515,6 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
       <div className="cockpit-card month-card" key={maand || "none"} onDragOver={(e) => e.preventDefault()} onDrop={() => moveRow(maand, null)}>
         <div className="month-card-head clickable" onClick={() => toggleMonth(maand)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.stopPropagation(); moveRow(maand, null); setOpenMonths((o) => ({ ...o, [maand]: true })); }}>
           <span className="month-card-title">{label} <span className="month-caret">{open ? "▾" : "▸"}</span> <span className="month-card-count">({items.length})</span></span>
-          <span className="month-head-actions">
-            <button type="button" className="ghost-btn small" onClick={(e) => { e.stopPropagation(); openComposeFor(undefined, "dev"); }}>✉ Developer</button>
-            <button type="button" className="ghost-btn small" onClick={(e) => { e.stopPropagation(); openComposeFor(undefined, "klant"); }}>✉ Klant</button>
-          </span>
           {budgetInline(maand, urenBesteed, urenGepland)}
         </div>
         {open && <div className="month-cards">{section(items, maand)}</div>}
@@ -583,6 +578,10 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
           <div className="compose-modal" onClick={(e) => e.stopPropagation()}>
             <div className="compose-head"><span>{composeMode === "klant" ? "Werkzaamheden naar de klant" : "Werkzaamheden naar de developer"}</span><button type="button" className="chat-float-close" onClick={() => setShowCompose(false)}>&times;</button></div>
             <div className="compose-body">
+              <div className="compose-modeswitch">
+                <button type="button" className={"mini-btn" + (composeMode === "klant" ? " active" : "")} onClick={() => { setComposeMode("klant"); setDevTo(clientEmail || ""); }}>Naar de klant</button>
+                <button type="button" className={"mini-btn" + (composeMode === "dev" ? " active" : "")} onClick={() => { setComposeMode("dev"); try { setDevTo(localStorage.getItem("pingwin-dev-email") || "tony@pingwin.nl"); } catch { setDevTo("tony@pingwin.nl"); } }}>Naar de developer</button>
+              </div>
               <label className="compose-label">{composeMode === "klant" ? "Aan (e-mail klant)" : "Aan (e-mail developer)"}</label>
               <input className="compose-input" value={devTo} onChange={(e) => setDevTo(e.target.value)} placeholder={composeMode === "klant" ? "klant@bedrijf.nl" : "tony@pingwin.nl"} />
               <label className="compose-label">Bericht / toelichting (optioneel)</label>
@@ -595,7 +594,7 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
                     <span>{r.maand ? <em>[{r.maand}] </em> : ""}{stripHtml(r.taak) || "(leeg)"}{r.status ? ` — ${r.status}` : ""}</span>
                   </label>
                 ) : null)}
-                {devSel.size === 0 && <div className="muted">Geen taken geselecteerd. Vink in de tabel taken aan in de kolom &ldquo;Kies&rdquo;.</div>}
+                {devSel.size === 0 && <div className="muted">Geen taken geselecteerd. Vink in de tabel taken aan in de kolom &ldquo;Mail&rdquo;.</div>}
               </div>
               {composeMode === "klant" && <div className="muted" style={{ marginTop: 6 }}>Onderaan komt automatisch een link &ldquo;Bekijk dit zelf in je dashboard&rdquo;.</div>}
               {devMsg && <div className={devMsg.startsWith("Verstuurd") ? "saved-msg" : "login-error"} style={{ marginTop: 8 }}>{devMsg}</div>}
