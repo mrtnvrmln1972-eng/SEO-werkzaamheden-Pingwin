@@ -455,6 +455,8 @@ tbody td:last-child { text-align: center; }
 .profile-part-head { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--orange-dark); margin-bottom: 8px; }
 .profile-part-body { font-size: 13px; color: var(--dark); max-width: 760px; }
 .profile-part .client-profile-area { margin-top: 0; }
+.profile-made-note { margin: 4px 0 8px; padding: 8px 12px; border-radius: 8px; background: var(--brand-teal-light); border: 1px solid var(--brand-teal); color: var(--brand-charcoal); font-size: 12.5px; }
+.profile-made-note a { color: var(--brand-blue); font-weight: 700; }
 
 /* Analyse importeren (modal) */
 .import-modal { width: 900px; max-width: 96vw; max-height: 90vh; display: flex; flex-direction: column; background: var(--white); border-radius: 14px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.25); }

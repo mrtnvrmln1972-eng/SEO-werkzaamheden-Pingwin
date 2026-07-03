@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../../lib/admin-auth";
 import { anthropicConfigured } from "../../../../../lib/anthropic";
-import { generateProfileSection, type ProfileKind } from "../../../../../lib/client-profile-gen";
+import { makeProfileDeliverable, type ProfileKind } from "../../../../../lib/client-profile-gen";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 function admin(req: NextRequest): boolean {
   return verifyAdminSession(req.cookies.get(ADMIN_COOKIE)?.value);
@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
   const slug = String(body.slug || "").trim();
   const kind: ProfileKind = body.kind === "tov" ? "tov" : "profile";
   if (!slug) return NextResponse.json({ ok: false, error: "Geen klant opgegeven." }, { status: 400 });
-  const res = await generateProfileSection(slug, kind);
+  const res = await makeProfileDeliverable(slug, kind);
   if (!res.ok) return NextResponse.json({ ok: false, error: res.error }, { status: 502 });
-  return NextResponse.json({ ok: true, section: res.section });
+  return NextResponse.json({ ok: true, section: res.section, taskId: res.taskId, link: res.link, driveError: res.driveError });
 }

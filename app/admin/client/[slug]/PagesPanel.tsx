@@ -83,9 +83,11 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
   const profileTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [genBusy, setGenBusy] = useState<"" | "profile" | "tov">("");
   const [genErr, setGenErr] = useState("");
+  const [made, setMade] = useState<Record<string, { link: string; driveError: string; taskId: number | null }>>({});
 
-  // Genereert het klantprofiel of de tone-of-voice uit de live site en voegt de
-  // samenvatting samen met wat er al staat.
+  // Genereert het klantprofiel of de tone-of-voice uit de live site, zet de
+  // samenvatting in het veld, en maakt er een Pingwin-huisstijl document +
+  // mailbare werkzaamheid van (zichtbaar in werkzaamheden en klantdash).
   async function generateProfile(kind: "profile" | "tov") {
     if (genBusy) return;
     setGenBusy(kind); setGenErr(""); setProfileOpen(true);
@@ -94,6 +96,7 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
       const d = await r.json();
       if (!d.ok) { setGenErr(d.error || "Genereren mislukt."); return; }
       changeProfile(mergeSection(profile, String(d.section || "")));
+      setMade((m) => ({ ...m, [kind]: { link: String(d.link || ""), driveError: String(d.driveError || ""), taskId: d.taskId ?? null } }));
     } catch { setGenErr("Genereren mislukt."); } finally { setGenBusy(""); }
   }
 
@@ -184,11 +187,17 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
         {profileOpen && (
           <div className="client-profile-body">
             <div className="profile-gen-buttons">
-              <button type="button" className={"pcd-btn" + (genBusy === "profile" ? " busy" : "")} onClick={() => generateProfile("profile")} disabled={!!genBusy}>{genBusy === "profile" ? "Klantprofiel opstellen…" : "Klantprofiel opstellen"}</button>
-              <button type="button" className={"pcd-btn" + (genBusy === "tov" ? " busy" : "")} onClick={() => generateProfile("tov")} disabled={!!genBusy}>{genBusy === "tov" ? "Tone-of-voice analyseren…" : "Tone-of-voice analyse"}</button>
-              <span className="muted" style={{ fontSize: 11 }}>Leest de live site en zet een concept in het veld. Jij vult aan en corrigeert.</span>
+              <button type="button" className={"pcd-btn" + (genBusy === "profile" ? " busy" : "")} onClick={() => generateProfile("profile")} disabled={!!genBusy}>{genBusy === "profile" ? "Klantprofiel opstellen…" : made.profile ? "Klantprofiel gemaakt ✓" : "Klantprofiel opstellen"}</button>
+              <button type="button" className={"pcd-btn" + (genBusy === "tov" ? " busy" : "")} onClick={() => generateProfile("tov")} disabled={!!genBusy}>{genBusy === "tov" ? "Tone-of-voice analyseren…" : made.tov ? "Tone-of-voice gemaakt ✓" : "Tone-of-voice analyse"}</button>
+              <span className="muted" style={{ fontSize: 11 }}>Leest de live site, zet een concept in het veld en maakt er een Pingwin-document + taak van.</span>
             </div>
             {genErr && <div className="login-error" style={{ marginBottom: 8 }}>{genErr}</div>}
+            {(["profile", "tov"] as const).map((k) => made[k] && (
+              <div key={k} className="profile-made-note">
+                {k === "profile" ? "Klantprofiel-document" : "Tone-of-voice-document"} gemaakt en als taak toegevoegd (zichtbaar in Werkzaamheden en de klantdash).
+                {made[k].link ? <> <a href={made[k].link} target="_blank" rel="noreferrer">Open document</a>.</> : made[k].driveError ? <> <span className="muted">Nog geen deelbare link: {made[k].driveError}</span></> : null}
+              </div>
+            ))}
 
             <div className="profile-part acc-teal">
               <div className="profile-part-head">Uit klantprofiel</div>
