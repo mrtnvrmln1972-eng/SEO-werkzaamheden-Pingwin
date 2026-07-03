@@ -73,7 +73,8 @@ type Day = { date: string; clicks: number; impressions: number; ctr: number; pos
 type KwBA = { keyword: string; positionBefore: number | null; positionAfter: number | null; clicksBefore: number; clicksAfter: number };
 type Ga4Stat = { views: number; timeOnPage: number; bounceRate: number; engagementRate: number; pagesPerSession: number; sessionDuration: number };
 type Ga4 = { available: boolean; before: Ga4Stat; after: Ga4Stat };
-type Kpi = { changeDate: string; daily: Day[]; keywords: KwBA[]; ga4: Ga4 | null };
+type Moment = { id: number; date: string };
+type Kpi = { changeDate: string; daily: Day[]; keywords: KwBA[]; ga4: Ga4 | null; moments: Moment[] };
 
 function secs(s: number): string { if (!s) return "0s"; const m = Math.floor(s / 60), r = s % 60; return m ? `${m}m ${r}s` : `${r}s`; }
 // Voor sommige signalen is hoger beter (engagement, tijd, views, pagina's/sessie),
@@ -90,9 +91,13 @@ function ga4Rows(g: Ga4): { label: string; b: string; a: string; better: boolean
   ];
 }
 
-// Mini-lijngrafiek met een stippellijn op het wijzigingsmoment. Bij positie is
-// lager beter, dus die keren we om (verbetering = omhoog).
-function Spark({ data, changeDate, metric, invert }: { data: Day[]; changeDate: string; metric: keyof Day; invert?: boolean }) {
+function dShort(d: string): string { try { return new Date(d).toLocaleDateString("nl-NL", { day: "numeric", month: "short" }); } catch { return d; } }
+function dLong(d: string): string { try { return new Date(d).toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" }); } catch { return d; } }
+
+// Mini-lijngrafiek met een gedateerde stippellijn per verandermoment. Hover je een
+// stippellijn (of de bijbehorende sectie links), dan lichten beide op. Bij positie
+// is lager beter, dus die keren we om (verbetering = omhoog).
+function Spark({ data, metric, invert, markers, hoverKey, onHover }: { data: Day[]; metric: keyof Day; invert?: boolean; markers: { key: string; date: string }[]; hoverKey: string | null; onHover: (k: string | null) => void }) {
   const [hover, setHover] = useState<number | null>(null);
   const w = 360, h = 84, pad = 8;
   const pts = data.filter((d) => d.date);
@@ -102,21 +107,18 @@ function Spark({ data, changeDate, metric, invert }: { data: Day[]; changeDate: 
   const x = (i: number) => pad + (i / (pts.length - 1)) * (w - 2 * pad);
   const y = (v: number) => { const t = (v - min) / range; return invert ? pad + t * (h - 2 * pad) : (h - pad) - t * (h - 2 * pad); };
   const line = pts.map((d, i) => `${x(i).toFixed(1)},${y(Number(d[metric]) || 0).toFixed(1)}`).join(" ");
-  const ci = pts.findIndex((d) => d.date >= changeDate);
-  const cx = ci > 0 ? x(ci) : null;
   const dotColor = metric === "position" ? "#1e824c" : "#1a6dd6";
   const fmtV = (v: number) => metric === "position" ? v.toFixed(1) : metric === "ctr" ? v.toFixed(1) + "%" : String(Math.round(v));
-  const dShort = (d: string) => { try { return new Date(d).toLocaleDateString("nl-NL", { day: "numeric", month: "short" }); } catch { return d; } };
+  const frac = (date: string) => { let mi = pts.findIndex((d) => d.date >= date); if (mi < 0) mi = pts.length - 1; return mi / (pts.length - 1); };
   const hv = hover !== null ? pts[hover] : null;
   const hx = hover !== null ? x(hover) : 0;
   const hy = hv ? y(Number(hv[metric]) || 0) : 0;
-  // Tooltip links/rechts van de stip houden zodat hij niet buiten beeld valt.
   const tipLeft = `${(hx / w) * 100}%`;
   const tipShiftRight = hx > w * 0.6;
   return (
     <div className="wz-spark-wrap" onMouseLeave={() => setHover(null)}>
       <svg viewBox={`0 0 ${w} ${h}`} className="wz-spark" preserveAspectRatio="none">
-        {cx !== null && <line x1={cx} y1={0} x2={cx} y2={h} className="wz-marker" />}
+        {markers.map((m) => { const mx = pad + frac(m.date) * (w - 2 * pad); return <line key={m.key} x1={mx} y1={0} x2={mx} y2={h} className={"wz-marker" + (hoverKey === m.key ? " active" : "")} />; })}
         <polyline points={line} className={"wz-poly " + (metric === "position" ? "pos" : "")} />
         {hover !== null && <line x1={hx} y1={0} x2={hx} y2={h} className="wz-hover-line" />}
         {hv && <circle cx={hx} cy={hy} r={4} fill={dotColor} stroke="#fff" strokeWidth={1.5} />}
@@ -125,6 +127,10 @@ function Spark({ data, changeDate, metric, invert }: { data: Day[]; changeDate: 
             fill="transparent" className="wz-dot" onMouseEnter={() => setHover(i)} />
         ))}
       </svg>
+      {markers.map((m) => (
+        <div key={m.key} className={"wz-marker-label" + (hoverKey === m.key ? " active" : "")} style={{ left: `${frac(m.date) * 100}%` }}
+          onMouseEnter={() => onHover(m.key)} onMouseLeave={() => onHover(null)}>{dShort(m.date)}</div>
+      ))}
       {hv && (
         <div className="wz-tip" style={{ left: tipLeft, marginLeft: tipShiftRight ? -84 : 6 }}>
           <span className="wz-tip-date">{dShort(hv.date)}</span>
@@ -186,6 +192,8 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
   const [open, setOpen] = useState<ChangeEvent | null>(null);
   const [kpi, setKpi] = useState<Kpi | null>(null);
   const [kpiLoading, setKpiLoading] = useState(false);
+  // Gedeelde hover tussen de stippellijnen (rechts) en de "wat veranderde"-secties (links).
+  const [hoverMoment, setHoverMoment] = useState<string | null>(null);
   // Handmatig een bekende wijziging toevoegen
   const [showAdd, setShowAdd] = useState(false);
   const [urls, setUrls] = useState<string[]>([]);
@@ -243,7 +251,7 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
     let alive = true;
     setKpiLoading(true); setKpi(null);
     fetch(`/api/admin/changes/kpi?slug=${encodeURIComponent(slug)}&id=${open.id}`)
-      .then((r) => r.json()).then((d) => { if (alive && d.ok) setKpi({ changeDate: d.changeDate, daily: d.daily || [], keywords: d.keywords || [], ga4: d.ga4 || null }); })
+      .then((r) => r.json()).then((d) => { if (alive && d.ok) setKpi({ changeDate: d.changeDate, daily: d.daily || [], keywords: d.keywords || [], ga4: d.ga4 || null, moments: d.moments || [] }); })
       .catch(() => { /* stil */ }).finally(() => { if (alive) setKpiLoading(false); });
     return () => { alive = false; };
   }, [open, slug]);
@@ -283,29 +291,42 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
   }
 
   if (open) {
+    // Verandermomenten (nieuwste eerst) uit de KPI-respons; markers voor de grafieken.
+    const momentsAsc: Moment[] = kpi?.moments && kpi.moments.length > 0 ? kpi.moments : [{ id: open.id, date: open.detectedAt.slice(0, 10) }];
+    const momentsDesc = [...momentsAsc].reverse();
+    const markers = momentsAsc.map((m) => ({ key: String(m.id), date: m.date }));
     return (
       <div className="cockpit-card">
         <button type="button" className="ghost-btn small" onClick={() => setOpen(null)}>← Alle wijzigingen</button>
         <h2 className="wz-title">{open.diff.meta_title?.after || open.diff.h1?.after || shortUrl(open.url)}</h2>
-        <div className="muted" style={{ marginBottom: 14 }}>{shortUrl(open.url)} · Gedetecteerd: {dt(open.detectedAt)}</div>
+        <div className="muted" style={{ marginBottom: 14 }}>{shortUrl(open.url)} · {momentsAsc.length} verandermoment{momentsAsc.length === 1 ? "" : "en"}</div>
         <div className="wz-detail-grid">
           <div className="wz-detail-card acc-taupe">
             <div className="wz-detail-card-title">Wat veranderde</div>
-            {open.isManual && open.summary && <div className="wz-line" style={{ background: "#fff6e5", marginBottom: 8 }}>{open.summary}</div>}
-            {open.diff && Object.keys(open.diff).length > 0
-              ? <DiffView diff={open.diff} />
-              : (!open.isManual && <div className="muted" style={{ fontSize: 12 }}>Geen inhoudelijke verschillen gedetecteerd.</div>)}
+            {momentsDesc.map((m) => {
+              const ev = events.find((e) => e.id === m.id) || open;
+              const key = String(m.id);
+              const hasDiff = ev.diff && Object.keys(ev.diff).length > 0;
+              return (
+                <div key={key} className={"wz-moment" + (hoverMoment === key ? " active" : "")}
+                  onMouseEnter={() => setHoverMoment(key)} onMouseLeave={() => setHoverMoment(null)}>
+                  <div className="wz-moment-head">Wat veranderde op {dLong(m.date)}</div>
+                  {ev.isManual && ev.summary && <div className="wz-line" style={{ background: "#fff6e5", marginBottom: 6 }}>{ev.summary}</div>}
+                  {hasDiff ? <DiffView diff={ev.diff} /> : <div className="muted" style={{ fontSize: 12 }}>Geen inhoudelijke verschillen gedetecteerd.</div>}
+                </div>
+              );
+            })}
           </div>
           <div className="wz-detail-card acc-teal">
             <div className="wz-detail-card-title">KPI-impact</div>
-            <p className="muted" style={{ fontSize: 12, margin: "2px 0 10px" }}>60 dagen voor en na de wijziging (uit Search Console). De stippellijn markeert het wijzigingsmoment.</p>
+            <p className="muted" style={{ fontSize: 12, margin: "2px 0 10px" }}>Elke gedateerde stippellijn is een verandermoment. Beweeg over een stippellijn (of een sectie links) om dat moment op te lichten.</p>
             {kpiLoading && <div className="muted" style={{ padding: 12 }}>KPI's laden…</div>}
             {!kpiLoading && kpi && (
               <div className="wz-kpi">
-                <KpiBlock label="Kliks per dag"><Spark data={kpi.daily} changeDate={kpi.changeDate} metric="clicks" /></KpiBlock>
-                <KpiBlock label="Vertoningen per dag"><Spark data={kpi.daily} changeDate={kpi.changeDate} metric="impressions" /></KpiBlock>
-                <KpiBlock label="Gem. positie" sub="(lager = beter)"><Spark data={kpi.daily} changeDate={kpi.changeDate} metric="position" invert /></KpiBlock>
-                <KpiBlock label="CTR"><Spark data={kpi.daily} changeDate={kpi.changeDate} metric="ctr" /></KpiBlock>
+                <KpiBlock label="Kliks per dag"><Spark data={kpi.daily} markers={markers} hoverKey={hoverMoment} onHover={setHoverMoment} metric="clicks" /></KpiBlock>
+                <KpiBlock label="Vertoningen per dag"><Spark data={kpi.daily} markers={markers} hoverKey={hoverMoment} onHover={setHoverMoment} metric="impressions" /></KpiBlock>
+                <KpiBlock label="Gem. positie" sub="(lager = beter)"><Spark data={kpi.daily} markers={markers} hoverKey={hoverMoment} onHover={setHoverMoment} metric="position" invert /></KpiBlock>
+                <KpiBlock label="CTR"><Spark data={kpi.daily} markers={markers} hoverKey={hoverMoment} onHover={setHoverMoment} metric="ctr" /></KpiBlock>
                 {kpi.keywords.length > 0 && (
                   <div className="wz-kw">
                     <div className="wz-kpi-label">Keyword-rankings (voor → na)</div>

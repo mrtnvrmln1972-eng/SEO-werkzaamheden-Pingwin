@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../../lib/admin-auth";
-import { getChangeEvent } from "../../../../../lib/content-tracking";
+import { getChangeEvent, getChangeEventsForUrl } from "../../../../../lib/content-tracking";
 import { getClientBySlug } from "../../../../../lib/clients";
 import { getGscDailyForPage, getGscKeywordsBeforeAfter, getGa4PageSignalsBeforeAfter } from "../../../../../lib/google";
 
@@ -27,9 +27,28 @@ export async function GET(req: NextRequest) {
 
   const changeDate = event.detectedAt.slice(0, 10);
   const day = 86400000;
-  const c = new Date(changeDate + "T00:00:00Z").getTime();
-  const startDate = new Date(c - 60 * day).toISOString().slice(0, 10);
-  const endDate = new Date(Math.min(c + 60 * day, Date.now() - 3 * day)).toISOString().slice(0, 10);
+
+  // Alle verandermomenten van deze pagina, geclusterd per <=2 dagen (nieuwste eerst
+  // uit de DB; hier oplopend gesorteerd voor het clusteren).
+  const siblings = await getChangeEventsForUrl(slug, event.url).catch(() => [event]);
+  const asc = [...siblings].sort((a, b) => a.detectedAt.localeCompare(b.detectedAt));
+  const TWO = 2 * day;
+  const moments: { id: number; date: string }[] = [];
+  let group: typeof asc = [];
+  const flush = () => { if (group.length) { const rep = group[group.length - 1]; moments.push({ id: rep.id, date: rep.detectedAt.slice(0, 10) }); group = []; } };
+  for (const e of asc) {
+    if (group.length && new Date(e.detectedAt).getTime() - new Date(group[group.length - 1].detectedAt).getTime() > TWO) flush();
+    group.push(e);
+  }
+  flush();
+
+  // Venster: van 60 dagen vóór het vroegste moment t/m 60 dagen ná het laatste
+  // (gemaximeerd op nu-3d en op ~16 maanden terug, de GSC-limiet).
+  const times = moments.length ? moments.map((m) => new Date(m.date + "T00:00:00Z").getTime()) : [new Date(changeDate + "T00:00:00Z").getTime()];
+  const minC = Math.min(...times), maxC = Math.max(...times);
+  const floor = Date.now() - 480 * day;
+  const startDate = new Date(Math.max(minC - 60 * day, floor)).toISOString().slice(0, 10);
+  const endDate = new Date(Math.min(maxC + 60 * day, Date.now() - 3 * day)).toISOString().slice(0, 10);
 
   const [daily, keywords, ga4] = await Promise.all([
     getGscDailyForPage(domain, event.url, startDate, endDate).catch(() => []),
@@ -37,5 +56,5 @@ export async function GET(req: NextRequest) {
     getGa4PageSignalsBeforeAfter(slug, event.url, changeDate, 60).catch(() => null),
   ]);
 
-  return NextResponse.json({ ok: true, changeDate, daily, keywords, ga4 });
+  return NextResponse.json({ ok: true, changeDate, daily, keywords, ga4, moments });
 }

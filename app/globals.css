@@ -1186,11 +1186,20 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .wz-kpi-block { background: var(--gray-light); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
 .wz-kpi-label { font-size: 12px; font-weight: 700; color: var(--dark); margin-bottom: 4px; }
 .wz-kpi-sub { font-weight: 400; color: var(--gray); }
-.wz-spark-wrap { position: relative; width: 100%; }
+.wz-spark-wrap { position: relative; width: 100%; padding-top: 16px; }
 .wz-spark { width: 100%; height: 84px; display: block; }
 .wz-poly { fill: none; stroke: #1a6dd6; stroke-width: 2; vector-effect: non-scaling-stroke; }
 .wz-poly.pos { stroke: #1e824c; }
-.wz-marker { stroke: var(--orange); stroke-width: 1.5; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
+.wz-marker { stroke: var(--orange); stroke-width: 1.5; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; opacity: 0.55; }
+.wz-marker.active { opacity: 1; stroke-width: 2.5; }
+/* Gedateerd label boven elke stippellijn (altijd in beeld); hover-doel voor de koppeling. */
+.wz-marker-label { position: absolute; top: 0; transform: translateX(-50%); font-size: 9.5px; font-weight: 700; color: var(--orange-dark); background: var(--brand-orange-faint); border: 1px solid var(--brand-orange-soft); border-radius: 5px; padding: 1px 5px; white-space: nowrap; cursor: pointer; z-index: 4; }
+.wz-marker-label.active { background: var(--orange); color: #fff; border-color: var(--orange); z-index: 6; }
+/* "Wat veranderde op [datum]"-secties links; lichten op bij hover van de stippellijn. */
+.wz-moment { border-left: 3px solid transparent; padding: 8px 10px; border-radius: 8px; margin-bottom: 10px; transition: background .12s, border-color .12s; }
+.wz-moment:last-child { margin-bottom: 0; }
+.wz-moment.active { background: var(--brand-orange-faint); border-left-color: var(--orange); }
+.wz-moment-head { font-size: 12px; font-weight: 700; color: var(--orange-dark); margin-bottom: 8px; }
 .wz-hover-line { stroke: var(--brand-taupe); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .wz-tip { position: absolute; top: -6px; display: inline-flex; gap: 6px; align-items: baseline; background: var(--brand-charcoal); color: #fff; padding: 3px 8px; border-radius: 6px; font-size: 11px; white-space: nowrap; pointer-events: none; box-shadow: 0 2px 8px rgba(51,48,46,0.25); z-index: 5; }
 .wz-tip-date { opacity: 0.7; }

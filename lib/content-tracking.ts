@@ -404,6 +404,17 @@ export async function getChangeEvents(slug: string, limit = 100): Promise<Change
   return rows.map((r) => ({ id: Number(r.id), url: r.url as string, detectedAt: new Date(r.detected_at as string).toISOString(), summary: (r.change_summary as string) || "", diff: r.diff as ContentDiff, isManual: !!r.is_manual }));
 }
 
+// Alle wijzigingen van één pagina (nieuwste eerst): voor de tijdlijn met meerdere
+// verandermomenten op de KPI-grafieken.
+export async function getChangeEventsForUrl(slug: string, url: string): Promise<ChangeEvent[]> {
+  await ensureSchema();
+  await ensureTables();
+  const { rows } = await sql`
+    SELECT id, url, detected_at, change_summary, diff, is_manual FROM page_change_events
+    WHERE client_slug = ${slug} AND url = ${url} ORDER BY detected_at DESC LIMIT 100`;
+  return rows.map((r) => ({ id: Number(r.id), url: r.url as string, detectedAt: new Date(r.detected_at as string).toISOString(), summary: (r.change_summary as string) || "", diff: r.diff as ContentDiff, isManual: !!r.is_manual }));
+}
+
 export async function getChangeEvent(slug: string, id: number): Promise<ChangeEvent | null> {
   await ensureSchema();
   await ensureTables();
