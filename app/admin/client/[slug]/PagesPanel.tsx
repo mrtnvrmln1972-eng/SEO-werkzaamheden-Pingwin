@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ClientUrl } from "../../../../lib/site-urls";
 import { mdToHtml } from "../../../../lib/markdown";
 import ImportAnalysis from "./ImportAnalysis";
@@ -33,6 +33,37 @@ function mergeSection(current: string, section: string): string {
   const before = lines.slice(0, startIdx).join("\n").trim();
   const after = lines.slice(endIdx).join("\n").trim();
   return [before, section.trim(), after].filter(Boolean).join("\n\n");
+}
+
+// De twee automatisch gegenereerde secties dragen een vaste kop; alles daarbuiten
+// is de eigen know-how van de strateeg over de klant.
+const PROFILE_HEADER = "## Klantprofiel (automatisch gegenereerd)";
+const TOV_HEADER = "## Tone of voice (automatisch gegenereerd)";
+
+// Splitst de opgeslagen profieltekst in drie delen: uit klantprofiel, uit
+// tone-of-voice-analyse, en de eigen know-how (de rest). Zo kunnen de eerste twee
+// netjes gerenderd worden en blijft het derde deel een bewerkbaar veld.
+function splitProfile(md: string): { profileMd: string; tovMd: string; knowhow: string } {
+  const lines = (md || "").split("\n");
+  const sections: { header: string; body: string[] }[] = [{ header: "", body: [] }];
+  for (const l of lines) {
+    if (/^##\s/.test(l)) sections.push({ header: l.trim(), body: [l] });
+    else sections[sections.length - 1].body.push(l);
+  }
+  let profileMd = "", tovMd = "";
+  const know: string[] = [];
+  for (const s of sections) {
+    const text = s.body.join("\n").trim();
+    if (!text) continue;
+    if (s.header === PROFILE_HEADER) profileMd = text;
+    else if (s.header === TOV_HEADER) tovMd = text;
+    else know.push(text);
+  }
+  return { profileMd, tovMd, knowhow: know.join("\n\n").trim() };
+}
+// Zet de drie delen weer om naar één opgeslagen tekst (vaste volgorde).
+function recombineProfile(profileMd: string, tovMd: string, knowhow: string): string {
+  return [profileMd.trim(), tovMd.trim(), knowhow.trim()].filter(Boolean).join("\n\n");
 }
 
 export default function PagesPanel({ slug, initialProfile, clientEmail, clientName, onGoToTask }: { slug: string; initialProfile?: string; clientEmail?: string; clientName?: string; onGoToTask?: (taskId: number) => void }) {
@@ -74,6 +105,10 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
       setProfileSaved(true);
     }, 700);
   }
+
+  // De drie delen afgeleid uit de opgeslagen tekst; alleen de know-how is bewerkbaar.
+  const parts = useMemo(() => splitProfile(profile), [profile]);
+  function changeKnowhow(v: string) { changeProfile(recombineProfile(parts.profileMd, parts.tovMd, v)); }
 
   async function load(background = false) {
     if (!background) setLoading(true);
@@ -148,19 +183,36 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
         </div>
         {profileOpen && (
           <div className="client-profile-body">
-            <div className="profile-note">Vul hier ook je eigen know-how over de klant in.</div>
             <div className="profile-gen-buttons">
               <button type="button" className={"pcd-btn" + (genBusy === "profile" ? " busy" : "")} onClick={() => generateProfile("profile")} disabled={!!genBusy}>{genBusy === "profile" ? "Klantprofiel opstellen…" : "Klantprofiel opstellen"}</button>
               <button type="button" className={"pcd-btn" + (genBusy === "tov" ? " busy" : "")} onClick={() => generateProfile("tov")} disabled={!!genBusy}>{genBusy === "tov" ? "Tone-of-voice analyseren…" : "Tone-of-voice analyse"}</button>
               <span className="muted" style={{ fontSize: 11 }}>Leest de live site en zet een concept in het veld. Jij vult aan en corrigeert.</span>
             </div>
             {genErr && <div className="login-error" style={{ marginBottom: 8 }}>{genErr}</div>}
-            <textarea
-              className="client-profile-area"
-              value={profile}
-              onChange={(e) => changeProfile(e.target.value)}
-              placeholder="Wie is deze klant? Bv. werkgebied (regionaal Uden/Oss/Den Bosch, of landelijk), positionering (prijs / exclusieve designtuinen / duurzaam), doelgroep, belangrijkste diensten. De chat gebruikt dit als context en vraagt ernaar als het ontbreekt. Of laat de knoppen hierboven een concept opstellen."
-            />
+
+            <div className="profile-part acc-teal">
+              <div className="profile-part-head">Uit klantprofiel</div>
+              {parts.profileMd
+                ? <div className="md profile-part-body" dangerouslySetInnerHTML={{ __html: mdToHtml(parts.profileMd) }} />
+                : <div className="muted" style={{ fontSize: 12 }}>Nog niet opgesteld. Klik &ldquo;Klantprofiel opstellen&rdquo; hierboven.</div>}
+            </div>
+
+            <div className="profile-part acc-blue">
+              <div className="profile-part-head">Uit tone-of-voice-analyse</div>
+              {parts.tovMd
+                ? <div className="md profile-part-body" dangerouslySetInnerHTML={{ __html: mdToHtml(parts.tovMd) }} />
+                : <div className="muted" style={{ fontSize: 12 }}>Nog niet opgesteld. Klik &ldquo;Tone-of-voice analyse&rdquo; hierboven.</div>}
+            </div>
+
+            <div className="profile-part acc-taupe">
+              <div className="profile-part-head">Jouw know-how over de klant</div>
+              <textarea
+                className="client-profile-area"
+                value={parts.knowhow}
+                onChange={(e) => changeKnowhow(e.target.value)}
+                placeholder="Wat weet jij zelf over deze klant? Bv. werkgebied (regionaal Uden/Oss/Den Bosch, of landelijk), positionering (prijs / exclusieve designtuinen / duurzaam), doelgroep, belangrijkste diensten, afspraken. De chat gebruikt dit samen met de twee analyses hierboven als context."
+              />
+            </div>
           </div>
         )}
 
