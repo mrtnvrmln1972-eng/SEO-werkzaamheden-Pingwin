@@ -34,24 +34,35 @@ function shortUrl(url: string): string {
 }
 function nl(n: number): string { return n.toLocaleString("nl-NL"); }
 
-// Klein lijngrafiekje van het dagverloop. invert=true (positie): dalend = beter.
-function Sparkline({ data, invert }: { data: number[]; invert?: boolean }) {
+// Interactief lijngrafiekje van het dagverloop: beweeg eroverheen en je ziet de
+// waarde van dat punt. invert=true (positie): dalend = beter. fmt formatteert de
+// hover-waarde (bijv. "12,3%" of "4,2").
+function Sparkline({ data, invert, fmt }: { data: number[]; invert?: boolean; fmt?: (v: number) => string }) {
+  const [hi, setHi] = useState<number | null>(null);
   if (!data || data.length < 2) return null;
-  const w = 120, h = 30, pad = 2;
+  const w = 120, h = 34, pad = 2;
   const min = Math.min(...data), max = Math.max(...data);
   const range = max - min || 1;
-  const pts = data.map((v, i) => {
-    const x = pad + (i / (data.length - 1)) * (w - pad * 2);
-    const y = pad + (1 - (v - min) / range) * (h - pad * 2);
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  }).join(" ");
+  const xy = (v: number, i: number) => ({
+    x: pad + (i / (data.length - 1)) * (w - pad * 2),
+    y: pad + (1 - (v - min) / range) * (h - pad * 2),
+  });
+  const pts = data.map((v, i) => { const p = xy(v, i); return `${p.x.toFixed(1)},${p.y.toFixed(1)}`; }).join(" ");
   const first = data[0], last = data[data.length - 1];
   const improved = invert ? last < first : last > first;
   const color = last === first ? "#9e9e9e" : improved ? "#2E7D32" : "#C62828";
+  const format = fmt || ((v: number) => nl(Math.round(v)));
+  const hp = hi !== null ? xy(data[hi], hi) : null;
   return (
-    <svg className="kpi-spark" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" aria-hidden="true">
-      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
-    </svg>
+    <div className="kpi-spark-wrap" onMouseLeave={() => setHi(null)}>
+      <svg className="kpi-spark" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none">
+        <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+        {hp && <line x1={hp.x} y1={0} x2={hp.x} y2={h} className="kpi-spark-hline" />}
+        {hp && <circle cx={hp.x} cy={hp.y} r={2.8} fill={color} stroke="#fff" strokeWidth={1} />}
+        {data.map((v, i) => { const p = xy(v, i); return <rect key={i} x={p.x - (w / data.length) / 2} y={0} width={w / data.length} height={h} fill="transparent" onMouseEnter={() => setHi(i)} />; })}
+      </svg>
+      {hi !== null && <div className="kpi-spark-tip" style={{ left: `${(hi / (data.length - 1)) * 100}%` }}>{format(data[hi])}</div>}
+    </div>
   );
 }
 
