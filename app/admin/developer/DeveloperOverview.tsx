@@ -155,6 +155,8 @@ export default function DeveloperOverview({ initialTasks, embedded }: { initialT
     if (!g) { g = { clientSlug: r.clientSlug, clientName: r.clientName, items: [] }; groups.push(g); }
     g.items.push({ r, idx });
   });
+  // Afgevinkte (klaar) taken onderaan per klant; de rest houdt zijn volgorde.
+  groups.forEach((g) => g.items.sort((a, b) => (a.r.devDone ? 1 : 0) - (b.r.devDone ? 1 : 0)));
 
   // Weekplanning: taken per uitvoerdatum + de nog niet ingeplande taken.
   const weekStart = mondayOf(weekOffset);
