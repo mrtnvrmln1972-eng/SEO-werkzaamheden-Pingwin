@@ -1235,10 +1235,19 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 /* Gedateerd label boven elke stippellijn (altijd in beeld); hover-doel voor de koppeling. */
 .wz-marker-label { position: absolute; top: 0; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; line-height: 1.2; font-size: 9.5px; font-weight: 700; color: var(--orange-dark); background: var(--brand-orange-faint); border: 1px solid var(--brand-orange-soft); border-radius: 6px; padding: 2px 6px; white-space: nowrap; cursor: pointer; z-index: 4; }
 .wz-marker-label.active { background: var(--orange); color: #fff; border-color: var(--orange); z-index: 6; }
-.wz-ml-val { font-size: 10px; color: var(--dark); }
-.wz-ml-val.good { color: #1e824c; }
-.wz-ml-val.bad { color: var(--red); }
-.wz-marker-label.active .wz-ml-val { color: #fff; }
+/* Voor → na met een speelse "trap": bij vooruitgang loopt 'na' omhoog en 'voor'
+   omlaag, bij achteruitgang andersom. Cijfers iets groter. */
+.wz-ml-val { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--dark); padding: 3px 0 1px; }
+.wz-ml-before, .wz-ml-after { transition: transform .18s ease; }
+.wz-ml-before { color: var(--gray); }
+.wz-ml-arrow { color: var(--gray); font-size: 9px; }
+.wz-ml-after { font-weight: 800; }
+.wz-ml-val.prog-up .wz-ml-after { color: #1e824c; transform: translateY(-3px); }
+.wz-ml-val.prog-up .wz-ml-before { transform: translateY(3px); }
+.wz-ml-val.prog-down .wz-ml-after { color: var(--red); transform: translateY(3px); }
+.wz-ml-val.prog-down .wz-ml-before { transform: translateY(-3px); }
+.wz-marker-label.active .wz-ml-before, .wz-marker-label.active .wz-ml-arrow, .wz-marker-label.active .wz-ml-after { color: #fff; }
+.wz-ml-date { font-size: 10px; }
 /* "Wat veranderde op [datum]"-secties links; lichten op bij hover van de stippellijn. */
 .wz-moment { border-left: 3px solid transparent; padding: 8px 10px; border-radius: 8px; margin-bottom: 10px; transition: background .12s, border-color .12s; }
 .wz-moment:last-child { margin-bottom: 0; }

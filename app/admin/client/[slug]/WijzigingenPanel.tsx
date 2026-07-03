@@ -150,7 +150,13 @@ function Spark({ data, metric, invert, markers, hoverKey, onHover }: { data: Day
         <div key={m.key} className={"wz-marker-label" + (hoverKey === m.key ? " active" : "")} style={{ left: `${frac(m.date) * 100}%` }}
           onMouseEnter={() => onHover(m.key)} onMouseLeave={() => onHover(null)}>
           <span className="wz-ml-date">{dShort(m.date)}</span>
-          {s && <span className={"wz-ml-val" + (s.changed ? (s.good ? " good" : " bad") : "")}>{s.before} → {s.after}</span>}
+          {s && (
+            <span className={"wz-ml-val" + (s.changed ? (s.good ? " prog-up" : " prog-down") : "")}>
+              <span className="wz-ml-before">{s.before}</span>
+              <span className="wz-ml-arrow">→</span>
+              <span className="wz-ml-after">{s.after}</span>
+            </span>
+          )}
         </div>
       ); })}
       {hv && (
