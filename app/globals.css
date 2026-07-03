@@ -885,7 +885,10 @@ button.ck-collapse-head {
 /* Pagina's-tabel: geen eigen scroll-context, zodat de kolomkoppen echt sticky
    blijven t.o.v. het venster (overflow:auto brak dat). */
 .pages-table-wrap { overflow: visible; }
-/* KPI-tabellen: toon ~15 rijen, scroll de rest binnen dit venster; kop blijft staan. */
+/* KPI-tabellen: geen eigen scroll-context, zodat de kolomkoppen sticky blijven
+   t.o.v. het venster tot de volgende lijst (net onder de vaste paginakop). */
+.res-table-wrap:has(.kpi-table) { overflow: visible; }
+.kpi-table thead th { position: sticky; top: 80px; z-index: 20; }
 .kpi-scroll { max-height: 460px; overflow-y: auto; }
 .kpi-scroll thead th { position: sticky; top: 0; z-index: 2; }
 
