@@ -133,8 +133,8 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
         <div className="ck-section-head">
           <span>Pagina&rsquo;s ({urls.length}) <HelpHint text="De live pagina's van de klant, een spiegel van de werkelijkheid. Klik een pagina om het plan te bekijken of aan te passen. Het toekomstige adres (redirect of nieuwe pagina) leeft in het plan en in de taken, niet in deze lijst." /></span>
           <span style={{ display: "inline-flex", gap: 8 }}>
-            <button type="button" className="ghost-btn small" onClick={() => setImporting(true)}>Analyse importeren</button>
-            <button type="button" className="primary-btn small" onClick={scan} disabled={scanning}>{scanning ? "Inlezen..." : "Website inlezen"}</button>
+            <button type="button" className="pcd-btn" onClick={() => setImporting(true)}>Analyse importeren</button>
+            <button type="button" className={"pcd-btn" + (scanning ? " busy" : "")} onClick={scan} disabled={scanning}>{scanning ? "Inlezen…" : "Website inlezen"}</button>
           </span>
         </div>
         {msg && <div className="saved-msg" style={{ marginBottom: 10 }}>{msg}</div>}
@@ -150,8 +150,8 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
           <div className="client-profile-body">
             <div className="profile-note">Vul hier ook je eigen know-how over de klant in.</div>
             <div className="profile-gen-buttons">
-              <button type="button" className="ghost-btn small" onClick={() => generateProfile("profile")} disabled={!!genBusy}>{genBusy === "profile" ? "Klantprofiel opstellen…" : "Klantprofiel opstellen"}</button>
-              <button type="button" className="ghost-btn small" onClick={() => generateProfile("tov")} disabled={!!genBusy}>{genBusy === "tov" ? "Tone-of-voice analyseren…" : "Tone-of-voice analyse"}</button>
+              <button type="button" className={"pcd-btn" + (genBusy === "profile" ? " busy" : "")} onClick={() => generateProfile("profile")} disabled={!!genBusy}>{genBusy === "profile" ? "Klantprofiel opstellen…" : "Klantprofiel opstellen"}</button>
+              <button type="button" className={"pcd-btn" + (genBusy === "tov" ? " busy" : "")} onClick={() => generateProfile("tov")} disabled={!!genBusy}>{genBusy === "tov" ? "Tone-of-voice analyseren…" : "Tone-of-voice analyse"}</button>
               <span className="muted" style={{ fontSize: 11 }}>Leest de live site en zet een concept in het veld. Jij vult aan en corrigeert.</span>
             </div>
             {genErr && <div className="login-error" style={{ marginBottom: 8 }}>{genErr}</div>}
