@@ -3,6 +3,7 @@ import { ADMIN_COOKIE, verifyAdminSession } from "../../../../../lib/admin-auth"
 import { getChangeEvent, getChangeEventsForUrl } from "../../../../../lib/content-tracking";
 import { getClientBySlug } from "../../../../../lib/clients";
 import { getGscDailyForPage, getGscKeywordsBeforeAfter, getGa4PageSignalsBeforeAfter } from "../../../../../lib/google";
+import { getAhrefsKeywords } from "../../../../../lib/ahrefs-keywords";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -50,11 +51,17 @@ export async function GET(req: NextRequest) {
   const startDate = new Date(Math.max(minC - 60 * day, floor)).toISOString().slice(0, 10);
   const endDate = new Date(Math.min(maxC + 60 * day, Date.now() - 3 * day)).toISOString().slice(0, 10);
 
-  const [daily, keywords, ga4] = await Promise.all([
+  const [daily, keywordsRaw, ga4, ahrefs] = await Promise.all([
     getGscDailyForPage(domain, event.url, startDate, endDate).catch(() => []),
     getGscKeywordsBeforeAfter(domain, event.url, changeDate, 60).catch(() => []),
     getGa4PageSignalsBeforeAfter(slug, event.url, changeDate, 60).catch(() => null),
+    getAhrefsKeywords(slug).catch(() => []),
   ]);
+
+  // Zoekvolume uit de opgeslagen Ahrefs-pool bij de zoekwoorden zetten (geen credits).
+  const volMap = new Map<string, number | null>();
+  for (const a of ahrefs) volMap.set(a.keyword.toLowerCase(), a.volume);
+  const keywords = keywordsRaw.map((k) => ({ ...k, volume: volMap.has(k.keyword.toLowerCase()) ? volMap.get(k.keyword.toLowerCase()) ?? null : null }));
 
   return NextResponse.json({ ok: true, changeDate, daily, keywords, ga4, moments });
 }

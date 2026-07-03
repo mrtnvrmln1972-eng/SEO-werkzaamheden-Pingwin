@@ -1204,6 +1204,12 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .wz-tip { position: absolute; top: -6px; display: inline-flex; gap: 6px; align-items: baseline; background: var(--brand-charcoal); color: #fff; padding: 3px 8px; border-radius: 6px; font-size: 11px; white-space: nowrap; pointer-events: none; box-shadow: 0 2px 8px rgba(51,48,46,0.25); z-index: 5; }
 .wz-tip-date { opacity: 0.7; }
 .wz-tip-val { font-weight: 700; }
+/* Datum-as onder elk grafiekje (begin, midden, eind van de periode). */
+.wz-spark-axis { display: flex; justify-content: space-between; font-size: 9px; color: var(--gray); margin-top: 3px; }
+/* Aangevinkte (belangrijke) zoekwoorden bovenaan de tabel. */
+.wz-kw-check { text-align: center; width: 28px; }
+.wz-kw-table tr.wz-kw-prio { background: var(--brand-orange-faint); }
+.wz-kw-table tr.wz-kw-prio td:nth-child(2) { font-weight: 700; }
 .wz-kw-table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 4px; }
 .wz-kw-table th { text-align: left; background: var(--dark); color: #fff; font-weight: 700; padding: 6px 8px; border-bottom: 1px solid var(--border); }
 .wz-kw-table th:first-child { border-top-left-radius: 7px; }

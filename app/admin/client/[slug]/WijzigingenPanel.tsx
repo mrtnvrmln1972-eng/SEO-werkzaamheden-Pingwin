@@ -70,7 +70,7 @@ function Arr({ label, diff }: { label: string; diff: ArrayDiff }) {
 }
 
 type Day = { date: string; clicks: number; impressions: number; ctr: number; position: number };
-type KwBA = { keyword: string; positionBefore: number | null; positionAfter: number | null; clicksBefore: number; clicksAfter: number };
+type KwBA = { keyword: string; positionBefore: number | null; positionAfter: number | null; clicksBefore: number; clicksAfter: number; volume?: number | null };
 type Ga4Stat = { views: number; timeOnPage: number; bounceRate: number; engagementRate: number; pagesPerSession: number; sessionDuration: number };
 type Ga4 = { available: boolean; before: Ga4Stat; after: Ga4Stat };
 type Moment = { id: number; date: string };
@@ -137,6 +137,11 @@ function Spark({ data, metric, invert, markers, hoverKey, onHover }: { data: Day
           <span className="wz-tip-val">{fmtV(Number(hv[metric]) || 0)}</span>
         </div>
       )}
+      <div className="wz-spark-axis">
+        <span>{dShort(pts[0].date)}</span>
+        <span>{dShort(pts[Math.floor((pts.length - 1) / 2)].date)}</span>
+        <span>{dShort(pts[pts.length - 1].date)}</span>
+      </div>
     </div>
   );
 }
@@ -194,6 +199,16 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
   const [kpiLoading, setKpiLoading] = useState(false);
   // Gedeelde hover tussen de stippellijnen (rechts) en de "wat veranderde"-secties (links).
   const [hoverMoment, setHoverMoment] = useState<string | null>(null);
+  // Belangrijke zoekwoorden (gedeeld met de KPI-tab): aangevinkt = prio, komt bovenaan.
+  const [kwFocus, setKwFocus] = useState<Record<string, "prio" | "secundair">>({});
+  useEffect(() => {
+    fetch(`/api/admin/kpi/keyword-focus?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).then((d) => { if (d.ok) setKwFocus(d.focus || {}); }).catch(() => {});
+  }, [slug]);
+  function toggleKwFocus(keyword: string) {
+    const tier = kwFocus[keyword] === "prio" ? null : "prio";
+    setKwFocus((f) => { const n = { ...f }; if (tier) n[keyword] = "prio"; else delete n[keyword]; return n; });
+    fetch("/api/admin/kpi/keyword-focus", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, keyword, tier }) }).catch(() => {});
+  }
   // Handmatig een bekende wijziging toevoegen
   const [showAdd, setShowAdd] = useState(false);
   const [urls, setUrls] = useState<string[]>([]);
@@ -329,18 +344,21 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
                 <KpiBlock label="CTR"><Spark data={kpi.daily} markers={markers} hoverKey={hoverMoment} onHover={setHoverMoment} metric="ctr" /></KpiBlock>
                 {kpi.keywords.length > 0 && (
                   <div className="wz-kw">
-                    <div className="wz-kpi-label">Keyword-rankings (voor → na)</div>
+                    <div className="wz-kpi-label">Keyword-rankings (voor → na) <span className="sov-sub">vink de belangrijkste aan, die komen bovenaan (gedeeld met de KPI-tab)</span></div>
                     <table className="wz-kw-table">
-                      <thead><tr><th>Zoekwoord</th><th>Positie voor</th><th>Positie na</th><th>Stijging/daling</th><th>Kliks</th></tr></thead>
+                      <thead><tr><th></th><th>Zoekwoord</th><th>Volume</th><th>Positie voor</th><th>Positie na</th><th>Stijging/daling</th><th>Kliks</th></tr></thead>
                       <tbody>
-                        {kpi.keywords.map((k) => {
+                        {[...kpi.keywords].sort((a, b) => (kwFocus[b.keyword] === "prio" ? 1 : 0) - (kwFocus[a.keyword] === "prio" ? 1 : 0)).map((k) => {
                           const improved = k.positionBefore != null && k.positionAfter != null && k.positionAfter < k.positionBefore;
                           const worse = k.positionBefore != null && k.positionAfter != null && k.positionAfter > k.positionBefore;
                           // Positie: lager = beter. Delta = voor - na (positief = gestegen).
                           const delta = k.positionBefore != null && k.positionAfter != null ? k.positionBefore - k.positionAfter : null;
+                          const isPrio = kwFocus[k.keyword] === "prio";
                           return (
-                            <tr key={k.keyword}>
+                            <tr key={k.keyword} className={isPrio ? "wz-kw-prio" : ""}>
+                              <td className="wz-kw-check"><input type="checkbox" checked={isPrio} onChange={() => toggleKwFocus(k.keyword)} title="Aanvinken als belangrijk zoekwoord (komt bovenaan)" /></td>
                               <td>{k.keyword}</td>
+                              <td>{k.volume != null ? k.volume.toLocaleString("nl-NL") : "—"}</td>
                               <td>{k.positionBefore ?? "—"}</td>
                               <td className={improved ? "wz-pos" : worse ? "wz-neg" : ""}>{k.positionAfter ?? "—"}</td>
                               <td className={"wz-verschil " + (delta != null && delta > 0 ? "up" : delta != null && delta < 0 ? "down" : "")}>
