@@ -61,12 +61,17 @@ export async function getDeveloperTasks(): Promise<DevTask[]> {
   await ensureSchema();
   await ensureDevTable();
 
+  // Open dev-taken (status 'naar dev') PLUS de door de developer afgeronde taken
+  // (status intussen 'klaar' met een dev_done-markering), zodat afgevinkte taken
+  // groen in beeld blijven i.p.v. te verdwijnen.
   const { rows } = await sql`
     SELECT t.client_slug, t.taak, t.toelichting, t.uren, t.status, t.maand, t.link, t.fase,
            c.name AS client_name
     FROM client_tasks t
     LEFT JOIN clients c ON c.slug = t.client_slug
     WHERE lower(coalesce(t.status, '')) = 'naar dev'
+       OR (lower(coalesce(t.status, '')) = 'klaar'
+           AND t.client_slug IN (SELECT client_slug FROM developer_overview WHERE dev_done = true))
     ORDER BY t.sort_order ASC, t.id ASC`;
 
   const meta = await sql`SELECT client_slug, task_key, position, exec_date, dev_done, dev_note FROM developer_overview`;
@@ -103,9 +108,13 @@ export async function getDeveloperTasks(): Promise<DevTask[]> {
     };
   });
 
+  // Alleen echt relevante rijen: open ('naar dev') of door de developer afgevinkt.
+  // Een 'klaar'-taak die niet dev-afgevinkt is (andere klaar-taak) valt hiermee weg.
+  const relevant = list.filter((t) => t.status.toLowerCase() === "naar dev" || t.devDone);
+
   // Ontdubbel op (klant, taaknaam): identieke dev-taken één keer tonen.
   const seen = new Set<string>();
-  const deduped = list.filter((t) => {
+  const deduped = relevant.filter((t) => {
     const k = t.clientSlug + "|" + t.taskKey;
     if (seen.has(k)) return false;
     seen.add(k);

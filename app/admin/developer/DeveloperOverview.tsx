@@ -79,12 +79,6 @@ export default function DeveloperOverview({ initialTasks, embedded }: { initialT
     rowsRef.current = next; setRows(next);
     fetch("/api/admin/developer", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "status", clientSlug: r.clientSlug, taskKey: r.taskKey, done, note }) }).catch(() => {});
   }
-  // Verwijdert een afgevinkte taak uit het overzicht (staat nu op 'Klaar', dus niet
-  // meer 'Naar Dev'). Op de taaksleutel, want de index kan intussen verschoven zijn.
-  function removeByKey(clientSlug: string, taskKey: string) {
-    const next = rowsRef.current.filter((x) => !(x.clientSlug === clientSlug && x.taskKey === taskKey));
-    rowsRef.current = next; setRows(next);
-  }
   function toggleDone(idx: number, checked: boolean) {
     if (checked) { setFeedbackFor(idx); setFeedbackNote(rows[idx]?.devNote || ""); }
     else applyStatus(idx, false, rows[idx]?.devNote || "");
@@ -92,9 +86,9 @@ export default function DeveloperOverview({ initialTasks, embedded }: { initialT
   function confirmDone(alsoMail: boolean) {
     if (feedbackFor === null) return;
     const idx = feedbackFor; const r = rows[idx];
+    // Status op 'Klaar' + afgevinkt; de taak blijft groen zichtbaar in het overzicht.
     applyStatus(idx, true, feedbackNote);
     if (alsoMail && r) mailMaarten(r, feedbackNote);
-    if (r) removeByKey(r.clientSlug, r.taskKey); // Klaar = uit de Naar-Dev-lijst
     setFeedbackFor(null); setFeedbackNote("");
   }
 
