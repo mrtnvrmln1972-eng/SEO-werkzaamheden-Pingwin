@@ -111,7 +111,7 @@ function applySort<T, K extends string>(rows: T[], sort: Sort<K>, getters: Recor
 
 type FocusTier = "prio" | "secundair";
 type Kw = GscComparison["keywords"][number];
-type KwKey = "focus" | "keyword" | "position" | "clicks" | "impressions" | "ctr";
+type KwKey = "focus" | "keyword" | "volume" | "position" | "clicks" | "impressions" | "ctr";
 type AhKey = "focus" | "keyword" | "volume" | "position" | "intent" | "kans";
 type OppKey = "focus" | "keyword" | "volume" | "difficulty" | "source" | "reason";
 type PageKey = "url" | "clicks" | "impressions";
@@ -167,7 +167,7 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
   // Rangschikt de focus-markering voor sortering: prio eerst, dan secundair, dan de rest.
   const focusRank = (kw: string) => (focus[kw] === "prio" ? 0 : focus[kw] === "secundair" ? 1 : 2);
   const kwGetters: Record<KwKey, (k: Kw) => number | string> = {
-    focus: (k) => focusRank(k.keyword), keyword: (k) => k.keyword, position: (k) => k.position, clicks: (k) => k.clicks, impressions: (k) => k.impressions, ctr: (k) => k.ctr,
+    focus: (k) => focusRank(k.keyword), keyword: (k) => k.keyword, volume: (k) => volMap.get(k.keyword.toLowerCase()) ?? -1, position: (k) => k.position, clicks: (k) => k.clicks, impressions: (k) => k.impressions, ctr: (k) => k.ctr,
   };
 
   useEffect(() => {
@@ -290,6 +290,9 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
 
   const periodLabel = PERIODS.find((p) => p.days === days)?.label || `${days} dagen`;
 
+  // Zoekvolume per zoekwoord uit de opgeslagen Ahrefs-pool (geen credits).
+  const volMap = new Map<string, number | null>(ahrefsKw.map((k) => [k.keyword.toLowerCase(), k.volume]));
+
   // Afgeleide lijsten: focus-zoekwoorden (prio eerst), gesorteerde zoekwoorden en pagina's.
   const allKws: Kw[] = gsc?.keywords || [];
   const focusedKws = applySort(
@@ -357,6 +360,7 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
                   <thead><tr>
                     <SortTh label="Focus" k="focus" sort={focusSort} setSort={setFocusSort} />
                     <SortTh label="Zoekwoord" k="keyword" sort={focusSort} setSort={setFocusSort} />
+                    <SortTh label="Volume" k="volume" sort={focusSort} setSort={setFocusSort} />
                     <SortTh label="Positie" k="position" sort={focusSort} setSort={setFocusSort} />
                     <SortTh label="Klikken" k="clicks" sort={focusSort} setSort={setFocusSort} />
                     <SortTh label="Vertoningen" k="impressions" sort={focusSort} setSort={setFocusSort} />
@@ -367,6 +371,7 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
                       <tr key={k.keyword} className={"kpi-focus-row " + focus[k.keyword]}>
                         <td><FocusSelect tier={focus[k.keyword]} onChange={(t) => markFocus(k.keyword, t)} /></td>
                         <td>{k.keyword}</td>
+                        <td>{(() => { const v = volMap.get(k.keyword.toLowerCase()); return v != null ? v.toLocaleString("nl-NL") : <span className="muted">&mdash;</span>; })()}</td>
                         <td>{k.position.toFixed(1)} <Delta cur={k.position} prev={k.prevPosition ?? k.position} invert isPos /></td>
                         <td>{nl(k.clicks)} <Delta cur={k.clicks} prev={k.prevClicks} /></td>
                         <td>{nl(k.impressions)} <Delta cur={k.impressions} prev={k.prevImpressions} /></td>
@@ -386,6 +391,7 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
                   <thead><tr>
                     <SortTh label="Focus" k="focus" sort={kwSort} setSort={setKwSort} />
                     <SortTh label="Zoekwoord" k="keyword" sort={kwSort} setSort={setKwSort} />
+                    <SortTh label="Volume" k="volume" sort={kwSort} setSort={setKwSort} />
                     <SortTh label="Positie" k="position" sort={kwSort} setSort={setKwSort} />
                     <SortTh label="Klikken" k="clicks" sort={kwSort} setSort={setKwSort} />
                     <SortTh label="Vertoningen" k="impressions" sort={kwSort} setSort={setKwSort} />
@@ -396,6 +402,7 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
                       <tr key={k.keyword}>
                         <td><FocusSelect tier={focus[k.keyword]} onChange={(t) => markFocus(k.keyword, t)} /></td>
                         <td>{k.keyword}</td>
+                        <td>{(() => { const v = volMap.get(k.keyword.toLowerCase()); return v != null ? v.toLocaleString("nl-NL") : <span className="muted">&mdash;</span>; })()}</td>
                         <td>{k.position.toFixed(1)} <Delta cur={k.position} prev={k.prevPosition ?? k.position} invert isPos /></td>
                         <td>{nl(k.clicks)} <Delta cur={k.clicks} prev={k.prevClicks} /></td>
                         <td>{nl(k.impressions)} <Delta cur={k.impressions} prev={k.prevImpressions} /></td>
