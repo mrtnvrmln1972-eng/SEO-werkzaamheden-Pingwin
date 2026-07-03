@@ -15,7 +15,19 @@
 export type WpAuth = { user: string; appPassword: string } | null;
 export type WpPage = { id: number; type: string; url: string; modified: string; title: string };
 export type WpModified = { url: string; modified: string; title: string };
-export type WpRevision = { modified: string; title: string; text: string; author: number };
+export type WpRevision = { modified: string; title: string; text: string; html: string; author: number };
+
+// Haalt de H2/H3-koppen uit revisie-/content-HTML (voor "welke secties zijn
+// toegevoegd of verdwenen"). Ontdubbeld, in volgorde van voorkomen.
+export function headingsFromHtml(html: string): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const m of (html || "").matchAll(/<h[23][^>]*>([\s\S]*?)<\/h[23]>/gi)) {
+    const t = stripTags(m[1]);
+    if (t && !seen.has(t.toLowerCase())) { seen.add(t.toLowerCase()); out.push(t); }
+  }
+  return out.slice(0, 40);
+}
 
 export function baseFromDomain(domain: string): string {
   const d = (domain || "").trim();
@@ -125,7 +137,7 @@ export async function fetchWordpressRevisions(domain: string, type: string, id: 
       const modGmt = typeof r.modified_gmt === "string" ? r.modified_gmt : (typeof r.modified === "string" ? r.modified : "");
       const titleObj = r.title as { rendered?: string } | undefined;
       const contentObj = r.content as { rendered?: string } | undefined;
-      return { modified: modGmt ? toIso(modGmt) : "", title: titleObj?.rendered ? stripTags(titleObj.rendered) : "", text: contentObj?.rendered ? stripTags(contentObj.rendered) : "", author: Number(r.author) || 0 };
+      return { modified: modGmt ? toIso(modGmt) : "", title: titleObj?.rendered ? stripTags(titleObj.rendered) : "", text: contentObj?.rendered ? stripTags(contentObj.rendered) : "", html: contentObj?.rendered || "", author: Number(r.author) || 0 };
     }).filter((r) => r.modified);
     revs.sort((a, b) => a.modified.localeCompare(b.modified));
     return revs;

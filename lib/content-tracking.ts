@@ -1,7 +1,8 @@
 import crypto from "crypto";
 import { sql, ensureSchema } from "./db";
 import { diffSnapshots, diffSummary, isDiffEmpty, type SnapshotForDiff, type ContentDiff } from "./content-diff";
-import { fetchWordpressModified, fetchWordpressPages, fetchWordpressRevisions, fetchWordpressUsers, revisionDiffSummary, type WpAuth, type WpRevision } from "./wordpress";
+import { fetchWordpressModified, fetchWordpressPages, fetchWordpressRevisions, fetchWordpressUsers, revisionDiffSummary, headingsFromHtml, type WpAuth, type WpRevision } from "./wordpress";
+import { fetchPageContent, type PageContent } from "./page-content";
 
 // ═══════════════════════════════════════════════════════════
 // PAGINA-WIJZIGINGEN: snapshots + change-detectie
@@ -266,18 +267,41 @@ const OUR_TEAM_RE = /pingwin|toni|maarten/i;
 // wijziging gebundeld (dat is het moment dat een pagina opnieuw geïndexeerd wordt,
 // vanaf daar volgen we de KPI's). Wijzigingen door anderen blijven weg. Herbouwt
 // de WordPress-events schoon bij elke sync.
-// Bouwt een gestructureerde "wat veranderde"-diff uit twee WordPress-revisies.
-// WP geeft ons alleen titel + tekst per revisie; dat mappen we op de titel (H1)
-// en het woordenaantal. Bij een gloednieuwe pagina is `before` leeg, dan wordt
-// alleen de +regel getoond (precies wat je wilt zien: "hier staat nu dit").
-function wpRevisionDiff(before: WpRevision | null, cur: WpRevision): ContentDiff {
+function wordCount(s?: string): number { return s ? s.split(/\s+/).filter(Boolean).length : 0; }
+
+// Bouwt een rijke "wat veranderde"-diff voor een WordPress-wijziging.
+// - Nieuwe pagina (geen/lege vorige versie): toont de HELE huidige opzet als
+//   toegevoegd, gegrond in de LIVE pagina (meta-titel, meta-description, H1, alle
+//   koppen, woordenaantal), want revisies bevatten geen meta-velden.
+// - Bewerking: leidt uit de revisies zelf af wat er veranderde (titel/H1,
+//   koppen erbij of eraf uit de content-HTML, en het woordenaantal).
+function wpRevisionDiff(before: WpRevision | null, cur: WpRevision, live: PageContent | null): { diff: ContentDiff; isNew: boolean } {
+  const isNew = !before || wordCount(before.text) === 0;
   const diff: ContentDiff = {};
+  const liveOk = !!live && (live.status ?? 0) >= 200 && (live.status ?? 0) < 400;
+
+  if (isNew && liveOk && live) {
+    if (live.title) diff.meta_title = { before: "", after: live.title };
+    if (live.metaDescription) diff.meta_description = { before: "", after: live.metaDescription };
+    const h1 = live.h1 || cur.title || "";
+    if (h1) diff.h1 = { before: "", after: h1 };
+    const heads = live.headings.length ? live.headings : headingsFromHtml(cur.html);
+    if (heads.length) diff.h2s = { added: heads, removed: [] };
+    const cw = wordCount(cur.text) || wordCount(live.text);
+    if (cw) diff.word_count = { before: 0, after: cw, delta: cw };
+    return { diff, isNew: true };
+  }
+
   const bt = before?.title || "";
   if (bt !== (cur.title || "")) diff.h1 = { before: bt, after: cur.title || "" };
-  const pw = before?.text ? before.text.split(/\s+/).filter(Boolean).length : 0;
-  const cw = cur.text ? cur.text.split(/\s+/).filter(Boolean).length : 0;
+  const bh = headingsFromHtml(before?.html || "");
+  const ch = headingsFromHtml(cur.html || "");
+  const added = ch.filter((h) => !bh.some((x) => x.toLowerCase() === h.toLowerCase()));
+  const removed = bh.filter((h) => !ch.some((x) => x.toLowerCase() === h.toLowerCase()));
+  if (added.length || removed.length) diff.h2s = { added, removed };
+  const pw = wordCount(before?.text), cw = wordCount(cur.text);
   if (pw !== cw) diff.word_count = { before: pw, after: cw, delta: cw - pw };
-  return diff;
+  return { diff, isNew };
 }
 
 export async function addWordpressRevisions(slug: string, domain: string, auth: WpAuth): Promise<{ scanned: number; added: number; hasApi: boolean; newest: string | null }> {
@@ -320,17 +344,25 @@ export async function addWordpressRevisions(slug: string, domain: string, auth: 
     }
     if (cur.length) clusters.push(cur);
 
-    for (const cl of clusters) {
+    // Live pagina-inhoud ophalen (voor meta-titel/description + alle koppen van een
+    // nieuwe pagina; revisies bevatten geen meta-velden). Alleen de nieuwste
+    // wijziging krijgt deze verrijking, want live = de huidige stand.
+    let live: PageContent | null = null;
+    try { live = await fetchPageContent(p.url); } catch { /* live optioneel */ }
+
+    for (let ci = 0; ci < clusters.length; ci++) {
+      const cl = clusters[ci];
+      const isLatest = ci === clusters.length - 1;
       const first = cl[0], last = cl[cl.length - 1];
       if (!newest || last.r.modified > newest) newest = last.r.modified;
       const day = new Date(last.r.modified).toISOString().slice(0, 10);
       const dedupKey = `${p.url.replace(/\/$/, "")}|${day}`;
       if (seen.has(dedupKey)) continue;
       const before = first.i > 0 ? allRevs[first.i - 1] : null;
-      const what = revisionDiffSummary(before, last.r);
+      const { diff, isNew } = wpRevisionDiff(before, last.r, isLatest ? live : null);
+      const what = isNew ? "nieuwe pagina gepubliceerd" : revisionDiffSummary(before, last.r);
       const who = users.get(last.r.author)?.name || "";
-      const summary = `WordPress${who ? ` (${who})` : ""}: ${what}${cl.length > 1 ? ` — ${cl.length} bewerkingen gebundeld` : ""}`;
-      const diff = wpRevisionDiff(before, last.r);
+      const summary = `WordPress${who ? ` (${who})` : ""}: ${what}${cl.length > 1 ? ` (${cl.length} bewerkingen gebundeld)` : ""}`;
       await sql`
         INSERT INTO page_change_events (client_slug, url, detected_at, current_snapshot_id, diff, change_summary, is_manual, source)
         VALUES (${slug}, ${p.url}, ${last.r.modified}, ${null}, ${JSON.stringify(diff)}, ${summary}, true, 'wordpress')`;
