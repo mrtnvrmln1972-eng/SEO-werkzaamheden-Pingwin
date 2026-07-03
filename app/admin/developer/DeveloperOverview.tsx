@@ -247,20 +247,18 @@ export default function DeveloperOverview({ initialTasks, embedded }: { initialT
               <table className="task-table dev-table">
                 <colgroup>
                   <col style={{ width: "22px" }} />
-                  <col style={{ width: "48px" }} />
                   <col />
                   <col />
-                  <col style={{ width: "104px" }} />
+                  <col style={{ width: "72px" }} />
                   <col style={{ width: "150px" }} />
                   <col style={{ width: "128px" }} />
                 </colgroup>
                 <thead>
                   <tr>
                     <th></th>
-                    <th>Klaar</th>
                     <th>Taak</th>
                     <th>Opm. developer</th>
-                    <th>Status</th>
+                    <th className="col-center">Klaar</th>
                     <th>Uitvoerdatum</th>
                     <th></th>
                   </tr>
@@ -275,10 +273,9 @@ export default function DeveloperOverview({ initialTasks, embedded }: { initialT
                         onDrop={(e) => { e.stopPropagation(); moveTo(idx); }}
                       >
                         <td className="drag-handle" draggable onDragStart={() => setDragIdx(idx)} onDragEnd={() => setDragIdx(null)} title="Sleep om de prioriteit te wijzigen">⠿</td>
-                        <td className="col-center"><button type="button" className={"dev-done-toggle" + (r.devDone ? " on" : "")} onClick={(e) => { e.stopPropagation(); toggleDone(idx, !r.devDone); }} title={r.devDone ? "Gereed (klik om terug te zetten)" : "Afvinken als klaar"}>{r.devDone ? "☑" : "☐"}</button></td>
                         <td><span className="dev-cell" dangerouslySetInnerHTML={{ __html: safeHtml(r.taak) }} /></td>
                         <td><span className="dev-cell dev-muted" dangerouslySetInnerHTML={{ __html: safeHtml(r.toelichting) }} /></td>
-                        <td>{statusBadge(r.status)}</td>
+                        <td className="col-center"><button type="button" className={"dev-done-toggle" + (r.devDone ? " on" : "")} onClick={(e) => { e.stopPropagation(); toggleDone(idx, !r.devDone); }} title={r.devDone ? "Gereed (klik om terug te zetten)" : "Afvinken als klaar"}>{r.devDone ? "☑" : "☐"}</button></td>
                         <td><input type="date" className="dev-date" value={r.execDate || ""} onChange={(e) => setDate(idx, e.target.value)} /></td>
                         <td><button type="button" className="ghost-btn small dev-mail-btn" onClick={(e) => { e.stopPropagation(); mailMaarten(r, r.devNote); }}>✉ Mail Maarten</button></td>
                       </tr>
