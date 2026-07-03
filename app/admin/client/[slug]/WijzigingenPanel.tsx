@@ -339,10 +339,10 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
             {kpiLoading && <div className="muted" style={{ padding: 12 }}>KPI's laden…</div>}
             {!kpiLoading && kpi && (
               <div className="wz-kpi">
-                <KpiBlock label="Kliks per dag"><Spark data={kpi.daily} markers={markers} hoverKey={hoverMoment} onHover={setHoverMoment} metric="clicks" /></KpiBlock>
-                <KpiBlock label="Vertoningen per dag"><Spark data={kpi.daily} markers={markers} hoverKey={hoverMoment} onHover={setHoverMoment} metric="impressions" /></KpiBlock>
-                <KpiBlock label="Gem. positie" sub="(lager = beter)"><Spark data={kpi.daily} markers={markers} hoverKey={hoverMoment} onHover={setHoverMoment} metric="position" invert /></KpiBlock>
-                <KpiBlock label="CTR"><Spark data={kpi.daily} markers={markers} hoverKey={hoverMoment} onHover={setHoverMoment} metric="ctr" /></KpiBlock>
+                <KpiBlock label="Kliks per dag" sub={shortUrl(open.url)}><Spark data={kpi.daily} markers={markers} hoverKey={hoverMoment} onHover={setHoverMoment} metric="clicks" /></KpiBlock>
+                <KpiBlock label="Vertoningen per dag" sub={shortUrl(open.url)}><Spark data={kpi.daily} markers={markers} hoverKey={hoverMoment} onHover={setHoverMoment} metric="impressions" /></KpiBlock>
+                <KpiBlock label="Gem. positie" sub={`${shortUrl(open.url)} · lager = beter`}><Spark data={kpi.daily} markers={markers} hoverKey={hoverMoment} onHover={setHoverMoment} metric="position" invert /></KpiBlock>
+                <KpiBlock label="CTR" sub={shortUrl(open.url)}><Spark data={kpi.daily} markers={markers} hoverKey={hoverMoment} onHover={setHoverMoment} metric="ctr" /></KpiBlock>
                 {kpi.compare && (
                   <div className="wz-compare-note">
                     Eerlijk vergeleken op gelijke periodes{kpi.compare.weekAligned ? " (hele weken, ma t/m zo)" : ""}: <strong>{kpi.compare.days} dagen vóór</strong> ({dShort(kpi.compare.beforeStart)} t/m {dShort(kpi.compare.beforeEnd)}) vs <strong>{kpi.compare.days} dagen ná</strong> ({dShort(kpi.compare.afterStart)} t/m {dShort(kpi.compare.afterEnd)}). De laatste ~3 dagen zijn afgeknipt wegens de vertraging van Search Console.
