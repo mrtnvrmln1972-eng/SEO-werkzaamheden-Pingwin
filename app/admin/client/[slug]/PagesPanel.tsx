@@ -221,6 +221,9 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
     ? urls.filter((u) => (u.url + " " + u.title).toLowerCase().includes(q.trim().toLowerCase()))
     : urls;
   const sorted = [...filtered].sort((a, b) => {
+    // Pagina's met een plan altijd bovenaan.
+    const pa = (a.plan || "").trim() ? 1 : 0, pb = (b.plan || "").trim() ? 1 : 0;
+    if (pa !== pb) return pb - pa;
     const oa = oppOf(a), ob = oppOf(b);
     if (sortKey === "kans") return (ob?.score || 0) - (oa?.score || 0);
     if (sortKey === "vertoningen") return (ob?.impressions ?? a.gscImpressions ?? 0) - (oa?.impressions ?? b.gscImpressions ?? 0);

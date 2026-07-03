@@ -275,7 +275,7 @@ export default function DeveloperOverview({ initialTasks, embedded }: { initialT
                         onDrop={(e) => { e.stopPropagation(); moveTo(idx); }}
                       >
                         <td className="drag-handle" draggable onDragStart={() => setDragIdx(idx)} onDragEnd={() => setDragIdx(null)} title="Sleep om de prioriteit te wijzigen">⠿</td>
-                        <td><input type="checkbox" className="dev-done-check" checked={r.devDone} onClick={(e) => e.stopPropagation()} onChange={(e) => toggleDone(idx, e.target.checked)} title="Afvinken als klaar" /></td>
+                        <td className="col-center"><button type="button" className={"dev-done-toggle" + (r.devDone ? " on" : "")} onClick={(e) => { e.stopPropagation(); toggleDone(idx, !r.devDone); }} title={r.devDone ? "Gereed (klik om terug te zetten)" : "Afvinken als klaar"}>{r.devDone ? "☑" : "☐"}</button></td>
                         <td><span className="dev-cell" dangerouslySetInnerHTML={{ __html: safeHtml(r.taak) }} /></td>
                         <td><span className="dev-cell dev-muted" dangerouslySetInnerHTML={{ __html: safeHtml(r.toelichting) }} /></td>
                         <td>{statusBadge(r.status)}</td>

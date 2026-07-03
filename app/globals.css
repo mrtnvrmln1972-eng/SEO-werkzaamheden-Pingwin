@@ -592,6 +592,10 @@ tbody td:last-child { text-align: center; }
 .dev-table tr.dev-done td { background: #E7F6E7; }
 .dev-table tr.dev-done .dev-cell { color: #2E7D32; }
 .dev-done-check { width: 16px; height: 16px; cursor: pointer; accent-color: #2E7D32; }
+/* Duidelijke aanvink-knop in de lijst (niet gevoelig voor task-table invoerstyling). */
+.dev-done-toggle { background: none; border: none; padding: 0; cursor: pointer; font-size: 20px; line-height: 1; color: var(--gray); }
+.dev-done-toggle:hover { color: var(--orange-dark); }
+.dev-done-toggle.on { color: #2E7D32; }
 .dev-mail-btn { white-space: nowrap; }
 .dev-task-card.dev-todo { border-left-color: var(--red); background: #FDECEA; }
 .dev-task-card.dev-done { border-left-color: #2E7D32; background: #E7F6E7; }
