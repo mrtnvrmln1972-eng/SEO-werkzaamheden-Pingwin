@@ -516,7 +516,7 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
     return (
       <div className="cockpit-card month-card" key={maand || "none"} onDragOver={(e) => e.preventDefault()} onDrop={() => moveRow(maand, null)}>
         <div className="month-card-head clickable" onClick={() => toggleMonth(maand)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.stopPropagation(); moveRow(maand, null); setOpenMonths((o) => ({ ...o, [maand]: true })); }}>
-          <span className="month-card-title">{label} <span className="month-caret">{open ? "▾" : "▸"}</span> <span className="month-card-count">({items.length})</span></span>
+          <span className="month-card-title">{MONTHS.includes(maand) ? `Taken ${label}` : label} <span className="month-caret">{open ? "▾" : "▸"}</span> <span className="month-card-count">({items.length})</span></span>
           {budgetInline(maand, urenBesteed, urenGepland)}
         </div>
         {open && <div className="month-cards">{section(items, maand)}</div>}
@@ -524,26 +524,8 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
     );
   }
 
-  // Een werkzaamheid toevoegen: valt standaard in de huidige maand (die je op de
-  // regel zelf kunt wijzigen; dat voegt die maand automatisch toe). Werkt ook als
-  // er nog geen enkele taak is.
-  function addWork() { addRow(curMonth, "SEO"); setOpenMonths((o) => ({ ...o, [curMonth]: true })); }
-
   return (
     <>
-      <div className="cockpit-card werk-bar">
-        <div className="werk-head">
-          <div className="werk-head-left">
-            <span className="werk-title">Taken</span>
-          </div>
-          <span className="werk-head-actions">
-            <button type="button" className="primary-btn small" onClick={addWork}>+ Werkzaamheid toevoegen</button>
-          </span>
-        </div>
-        {msg && <div className={msg.startsWith("Opgeslagen") ? "saved-msg" : "login-error"}>{msg}</div>}
-        {rows.length === 0 && <div className="muted">Nog geen werkzaamheden. Klik &ldquo;+ Werkzaamheid toevoegen&rdquo; om te beginnen; kies daarna op de regel de maand.</div>}
-      </div>
-
       {klantPop && typeof document !== "undefined" && createPortal(
         <>
           <div className="klant-pop-overlay" onClick={() => setKlantPop(null)} />
@@ -560,7 +542,9 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
       )}
 
       {(() => {
-        const top = [curMonth, nextMonth].filter((m) => monthsPresent.includes(m));
+        // Huidige en volgende maand staan er altijd (ook leeg), zodat je altijd een
+        // taak kunt toevoegen met de "+ taak"-knop in die maand.
+        const top = [curMonth, nextMonth];
         const past = monthsPresent.filter((m) => !top.includes(m)).sort((a, b) => MONTHS.indexOf(b) - MONTHS.indexOf(a));
         const card = (m: string, label: string) => monthCard(m, label, indexed.filter((x) => (x.r.maand || "").toLowerCase() === m));
         return (
