@@ -2,7 +2,6 @@ import crypto from "crypto";
 import { sql, ensureSchema } from "./db";
 import { diffSnapshots, diffSummary, isDiffEmpty, type SnapshotForDiff, type ContentDiff } from "./content-diff";
 import { fetchWordpressModified, fetchWordpressPages, fetchWordpressRevisions, fetchWordpressUsers, revisionDiffSummary, headingsFromHtml, type WpAuth, type WpRevision } from "./wordpress";
-import { fetchPageContent, type PageContent } from "./page-content";
 
 // ═══════════════════════════════════════════════════════════
 // PAGINA-WIJZIGINGEN: snapshots + change-detectie
@@ -269,29 +268,45 @@ const OUR_TEAM_RE = /pingwin|toni|maarten/i;
 // de WordPress-events schoon bij elke sync.
 function wordCount(s?: string): number { return s ? s.split(/\s+/).filter(Boolean).length : 0; }
 
-// Bouwt een rijke "wat veranderde"-diff voor een WordPress-wijziging.
-// - Nieuwe pagina (geen/lege vorige versie): toont de HELE huidige opzet als
-//   toegevoegd, gegrond in de LIVE pagina (meta-titel, meta-description, H1, alle
-//   koppen, woordenaantal), want revisies bevatten geen meta-velden.
-// - Bewerking: leidt uit de revisies zelf af wat er veranderde (titel/H1,
-//   koppen erbij of eraf uit de content-HTML, en het woordenaantal).
-function wpRevisionDiff(before: WpRevision | null, cur: WpRevision, live: PageContent | null): { diff: ContentDiff; isNew: boolean } {
+// Vergelijkt de LIVE pagina met de laatst vastgelegde snapshot en geeft de volledige
+// (meta + content) diff terug: meta-titel, meta-description, H1, koppen, woordenaantal,
+// alt-teksten, interne links, schema. Legt meteen een verse snapshot vast als basislijn
+// voor de volgende sync. hadPrevious=false bij een gloednieuwe pagina (nog geen basislijn).
+async function snapshotDiffAndStore(slug: string, url: string): Promise<{ diff: ContentDiff; hadPrevious: boolean; snap: Snapshot | null }> {
+  const snap = await extractSnapshot(url);
+  if (!snap) return { diff: {}, hadPrevious: false, snap: null };
+  const { rows: prev } = await sql`
+    SELECT * FROM page_content_snapshots WHERE client_slug = ${slug} AND url = ${url} ORDER BY captured_at DESC LIMIT 1`;
+  const previous = prev[0];
+  if (!previous || previous.content_hash !== snap.contentHash) {
+    await sql`
+      INSERT INTO page_content_snapshots
+        (client_slug, url, meta_title, meta_description, h1, h2s, h3s, alt_tags, internal_links, word_count, schema_types, content_hash)
+      VALUES (${slug}, ${url}, ${snap.meta_title}, ${snap.meta_description}, ${snap.h1},
+              ${JSON.stringify(snap.h2s)}, ${JSON.stringify(snap.h3s)}, ${JSON.stringify(snap.alt_tags)},
+              ${JSON.stringify(snap.internal_links)}, ${snap.word_count}, ${JSON.stringify(snap.schema_types)}, ${snap.contentHash})`;
+  }
+  if (!previous) return { diff: {}, hadPrevious: false, snap };
+  return { diff: diffSnapshots(toForDiff(previous), toForDiff(snap)), hadPrevious: true, snap };
+}
+
+// Volledige "nieuwe pagina"-diff uit een snapshot: alles als toegevoegd (+).
+function newPageDiff(snap: Snapshot): ContentDiff {
+  const diff: ContentDiff = {};
+  if (snap.meta_title) diff.meta_title = { before: "", after: snap.meta_title };
+  if (snap.meta_description) diff.meta_description = { before: "", after: snap.meta_description };
+  if (snap.h1) diff.h1 = { before: "", after: snap.h1 };
+  if (snap.h2s.length) diff.h2s = { added: snap.h2s, removed: [] };
+  if (snap.h3s.length) diff.h3s = { added: snap.h3s, removed: [] };
+  if (snap.word_count) diff.word_count = { before: 0, after: snap.word_count, delta: snap.word_count };
+  return diff;
+}
+
+// Terugval als er (nog) geen snapshot is: leidt uit de revisies zelf af wat er
+// veranderde (titel/H1, koppen erbij of eraf uit de content-HTML, woordenaantal).
+function wpRevisionDiff(before: WpRevision | null, cur: WpRevision): { diff: ContentDiff; isNew: boolean } {
   const isNew = !before || wordCount(before.text) === 0;
   const diff: ContentDiff = {};
-  const liveOk = !!live && (live.status ?? 0) >= 200 && (live.status ?? 0) < 400;
-
-  if (isNew && liveOk && live) {
-    if (live.title) diff.meta_title = { before: "", after: live.title };
-    if (live.metaDescription) diff.meta_description = { before: "", after: live.metaDescription };
-    const h1 = live.h1 || cur.title || "";
-    if (h1) diff.h1 = { before: "", after: h1 };
-    const heads = live.headings.length ? live.headings : headingsFromHtml(cur.html);
-    if (heads.length) diff.h2s = { added: heads, removed: [] };
-    const cw = wordCount(cur.text) || wordCount(live.text);
-    if (cw) diff.word_count = { before: 0, after: cw, delta: cw };
-    return { diff, isNew: true };
-  }
-
   const bt = before?.title || "";
   if (bt !== (cur.title || "")) diff.h1 = { before: bt, after: cur.title || "" };
   const bh = headingsFromHtml(before?.html || "");
@@ -344,11 +359,9 @@ export async function addWordpressRevisions(slug: string, domain: string, auth: 
     }
     if (cur.length) clusters.push(cur);
 
-    // Live pagina-inhoud ophalen (voor meta-titel/description + alle koppen van een
-    // nieuwe pagina; revisies bevatten geen meta-velden). Alleen de nieuwste
-    // wijziging krijgt deze verrijking, want live = de huidige stand.
-    let live: PageContent | null = null;
-    try { live = await fetchPageContent(p.url); } catch { /* live optioneel */ }
+    // De nieuwste wijziging vergelijken we met de laatste snapshot (voor meta-titel/
+    // description en alle content), en we leggen meteen een verse basislijn vast.
+    const snapshot = await snapshotDiffAndStore(slug, p.url).catch(() => ({ diff: {} as ContentDiff, hadPrevious: false, snap: null as Snapshot | null }));
 
     for (let ci = 0; ci < clusters.length; ci++) {
       const cl = clusters[ci];
@@ -359,8 +372,16 @@ export async function addWordpressRevisions(slug: string, domain: string, auth: 
       const dedupKey = `${p.url.replace(/\/$/, "")}|${day}`;
       if (seen.has(dedupKey)) continue;
       const before = first.i > 0 ? allRevs[first.i - 1] : null;
-      const { diff, isNew } = wpRevisionDiff(before, last.r, isLatest ? live : null);
-      const what = isNew ? "nieuwe pagina gepubliceerd" : revisionDiffSummary(before, last.r);
+      const rev = wpRevisionDiff(before, last.r);
+      // Nieuwste cluster: gebruik het rijke snapshot-beeld. Nieuwe pagina zonder
+      // basislijn -> toon de hele opzet; met basislijn -> het echte verschil sinds
+      // vorige keer (incl. meta's). Oudere clusters: uit de revisies zelf.
+      let diff: ContentDiff = rev.diff;
+      let what = rev.isNew ? "nieuwe pagina gepubliceerd" : revisionDiffSummary(before, last.r);
+      if (isLatest) {
+        if (rev.isNew && snapshot.snap) { diff = newPageDiff(snapshot.snap); what = "nieuwe pagina gepubliceerd"; }
+        else if (snapshot.hadPrevious && !isDiffEmpty(snapshot.diff)) { diff = snapshot.diff; what = diffSummary(snapshot.diff); }
+      }
       const who = users.get(last.r.author)?.name || "";
       const summary = `WordPress${who ? ` (${who})` : ""}: ${what}${cl.length > 1 ? ` (${cl.length} bewerkingen gebundeld)` : ""}`;
       await sql`
