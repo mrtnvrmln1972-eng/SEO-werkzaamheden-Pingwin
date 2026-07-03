@@ -480,15 +480,24 @@ tbody td:last-child { text-align: center; }
 .import-fase { font-size: 10px; font-weight: 700; text-transform: uppercase; background: var(--gray-light); color: var(--dark); padding: 1px 7px; border-radius: 9px; }
 .import-lock { cursor: help; }
 
-/* Pagina-chat (gegrond) */
-.page-chat { margin-top: 24px; border: 1px solid var(--border); border-left: 3px solid var(--brand-blue); border-radius: 12px; padding: 18px 20px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+/* Pagina-chat (gegrond). De wrapper is transparant: alleen de bovenste blok is de
+   blauwe kaart; de vervolgstappen en het vraagveld staan eronder, in de oranje
+   paginakaart. */
+.page-chat-wrap { margin-top: 24px; }
+.page-chat { border: 1px solid var(--border); border-left: 3px solid var(--brand-blue); border-radius: 12px; padding: 18px 20px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
 .page-chat-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; font-weight: 700; color: var(--dark); margin-bottom: 10px; }
-.page-chat-history { margin-bottom: 12px; }
-.page-chat-history-head { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--gray); margin-bottom: 5px; }
-.page-chat-history-item { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; font-size: 12px; padding: 7px 11px; border: 1px solid var(--border); border-radius: 7px; margin-bottom: 5px; cursor: pointer; background: #fff; }
-.page-chat-history-item:hover { border-color: var(--orange); }
-.page-chat-history-item.active { border-color: var(--orange); background: var(--orange-light); }
-.pch-title { color: var(--dark); line-height: 1.4; white-space: normal; overflow-wrap: anywhere; }
+.page-chat-history { margin-bottom: 0; }
+.page-chat-history-head { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--gray); margin-bottom: 6px; }
+/* Elke eerdere chat is een uitklapbaar item: de volledige vraag als titel, klik om
+   het gesprek open/dicht te klappen. */
+.pch-item { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 6px; background: #fff; overflow: hidden; }
+.pch-item.active { border-color: var(--orange); }
+.pch-item-head { display: flex; align-items: flex-start; gap: 8px; padding: 8px 11px; cursor: pointer; }
+.pch-item-head:hover { background: var(--brand-orange-faint); }
+.pch-item.open .pch-item-head { background: var(--orange-light); }
+.pch-caret { flex: 0 0 auto; color: var(--orange-dark); font-size: 11px; margin-top: 3px; }
+.pch-item-body { padding: 10px 12px 12px; border-top: 1px solid var(--border); }
+.pch-title { flex: 1 1 auto; min-width: 0; color: var(--dark); line-height: 1.45; white-space: normal; overflow-wrap: anywhere; font-size: 13px; }
 .pch-del { background: none; border: none; color: var(--gray); font-size: 18px; line-height: 1; cursor: pointer; padding: 0 2px; flex: 0 0 auto; }
 .pch-del:hover { color: var(--red); }
 .page-chat-log { display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px; }

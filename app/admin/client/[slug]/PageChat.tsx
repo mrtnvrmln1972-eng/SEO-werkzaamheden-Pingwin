@@ -18,6 +18,8 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [chatId, setChatId] = useState<number | null>(null);
   const [chats, setChats] = useState<ChatSummary[]>([]);
+  // Of het gesprek van de actieve chat uitgeklapt is (toggle in de lijst).
+  const [convoOpen, setConvoOpen] = useState(true);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [proposal, setProposal] = useState<Proposal | null>(null);
@@ -238,7 +240,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     loadChats(); /* eslint-disable-next-line */
   }, [slug, url]);
 
-  function newChat() { setMsgs([]); setChatId(null); setProposal(null); setApplied(""); setErr(""); }
+  function newChat() { setMsgs([]); setChatId(null); setProposal(null); setApplied(""); setErr(""); setConvoOpen(true); }
 
   async function openChat(id: number) {
     setProposal(null); setApplied(""); setErr("");
@@ -301,65 +303,89 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     } catch { setErr("Overnemen mislukt."); }
   }
 
-  return (
-    <div className="page-chat">
-      <div className="page-chat-head">
-        <span>Chat over deze pagina (gegrond in live status, GSC-ranking en het cluster)</span>
-        {msgs.length > 0 && <button type="button" className="ghost-btn small" onClick={newChat}>+ Nieuwe chat</button>}
+  // Het gesprek van de actieve chat (de eerste vraag staat al als titel, dus die
+  // slaan we over) plus het voorstel en de vastleg/mail-knoppen.
+  const renderConvo = () => (
+    <>
+      <div className="page-chat-log">
+        {msgs.map((m, i) => {
+          if (i === 0 && m.role === "user") return null;
+          return m.role === "user"
+            ? <div key={i} className="page-chat-msg user">{m.content}</div>
+            : <div key={i} className="page-chat-msg assistant md" dangerouslySetInnerHTML={{ __html: mdToHtml(m.content) }} />;
+        })}
+        {busy && <div className="page-chat-msg assistant muted">Aan het denken…</div>}
       </div>
+      {proposal?.plan && (
+        <div className="page-chat-proposal">
+          <div className="page-chat-proposal-head">Voorstel: plan voor deze pagina</div>
+          <div className="pch-prop-plan md" dangerouslySetInnerHTML={{ __html: mdToHtml(proposal.plan) }} />
+          <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>De losse acties staan in dit plan. Ze worden uitgevoerd via de SEO-analyse, blauwdruk en copy, niet als aparte werkzaamheden.</div>
+          <div className="page-chat-proposal-actions">
+            <button type="button" className="primary-btn small" onClick={applySelected}>Neem plan over</button>
+          </div>
+        </div>
+      )}
+      {lastAssistant && (
+        <>
+          <div className="page-chat-drive">
+            <span className="pcd-label">Opslaan in:</span>
+            {driveFolder
+              ? <span className="pcd-folder">{driveFolder.path || driveFolder.name}</span>
+              : <span className="pcd-folder muted">nog geen Drive-map (documenten worden gedownload)</span>}
+            <button type="button" className="ghost-btn small" onClick={openPicker}>{driveFolder ? "Map wijzigen" : "Kies Drive-map"}</button>
+            {driveFolder && <button type="button" className="ghost-btn small" onClick={() => setDriveFolder(null)}>Naar download</button>}
+          </div>
+          <div className="page-chat-tools">
+            <button type="button" className={"pcd-btn" + (taskGen ? " busy" : "")} onClick={makeWorkItem} disabled={taskGen}>{taskGen ? "Vastleggen…" : "Analyse vastleggen"}</button>
+            <button type="button" className="pcd-btn" onClick={makeClientMail}>Mail naar de klant</button>
+          </div>
+        </>
+      )}
+    </>
+  );
 
-      {chats.length > 0 && (
+  return (
+    <div className="page-chat-wrap">
+      <div className="page-chat">
+        <div className="page-chat-head">
+          <span>Chat over deze pagina (gegrond in live status, GSC-ranking en het cluster)</span>
+          {(chats.length > 0 || msgs.length > 0) && <button type="button" className="ghost-btn small" onClick={newChat}>+ Nieuwe chat</button>}
+        </div>
+
         <div className="page-chat-history">
           <div className="page-chat-history-head">Eerdere chats</div>
-          {chats.map((c) => (
-            <div key={c.id} className={"page-chat-history-item" + (chatId === c.id ? " active" : "")} onClick={() => openChat(c.id)}>
-              <span className="pch-title">{c.title}</span>
-              <button type="button" className="pch-del" title="Chat verwijderen" onClick={(e) => removeChat(c.id, e)}>&times;</button>
-            </div>
-          ))}
-        </div>
-      )}
 
-      {msgs.length > 0 && (
-        <div className="pch-card pch-card-chat">
-          <div className="page-chat-log">
-            {msgs.map((m, i) => (
-              m.role === "user"
-                ? <div key={i} className="page-chat-msg user">{m.content}</div>
-                : <div key={i} className="page-chat-msg assistant md" dangerouslySetInnerHTML={{ __html: mdToHtml(m.content) }} />
-            ))}
-            {busy && <div className="page-chat-msg assistant muted">Aan het denken…</div>}
-          </div>
-
-          {proposal?.plan && (
-            <div className="page-chat-proposal">
-              <div className="page-chat-proposal-head">Voorstel: plan voor deze pagina</div>
-              <div className="pch-prop-plan md" dangerouslySetInnerHTML={{ __html: mdToHtml(proposal.plan) }} />
-              <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>De losse acties staan in dit plan. Ze worden uitgevoerd via de SEO-analyse, blauwdruk en copy, niet als aparte werkzaamheden.</div>
-              <div className="page-chat-proposal-actions">
-                <button type="button" className="primary-btn small" onClick={applySelected}>Neem plan over</button>
+          {chatId === null && msgs.length > 0 && (
+            <div className="pch-item open active">
+              <div className="pch-item-head">
+                <span className="pch-caret">▾</span>
+                <span className="pch-title">{msgs.find((m) => m.role === "user")?.content || "Nieuwe chat"}</span>
               </div>
+              <div className="pch-item-body">{renderConvo()}</div>
             </div>
           )}
 
-          {lastAssistant && (
-            <>
-              <div className="page-chat-drive">
-                <span className="pcd-label">Opslaan in:</span>
-                {driveFolder
-                  ? <span className="pcd-folder">{driveFolder.path || driveFolder.name}</span>
-                  : <span className="pcd-folder muted">nog geen Drive-map (documenten worden gedownload)</span>}
-                <button type="button" className="ghost-btn small" onClick={openPicker}>{driveFolder ? "Map wijzigen" : "Kies Drive-map"}</button>
-                {driveFolder && <button type="button" className="ghost-btn small" onClick={() => setDriveFolder(null)}>Naar download</button>}
+          {chats.map((c) => {
+            const active = chatId === c.id;
+            const open = active && convoOpen;
+            return (
+              <div key={c.id} className={"pch-item" + (open ? " open" : "") + (active ? " active" : "")}>
+                <div className="pch-item-head" onClick={() => { if (active) setConvoOpen((o) => !o); else { openChat(c.id); setConvoOpen(true); } }}>
+                  <span className="pch-caret">{open ? "▾" : "▸"}</span>
+                  <span className="pch-title">{c.title}</span>
+                  <button type="button" className="pch-del" title="Chat verwijderen" onClick={(e) => removeChat(c.id, e)}>&times;</button>
+                </div>
+                {open && <div className="pch-item-body">{renderConvo()}</div>}
               </div>
-              <div className="page-chat-tools">
-                <button type="button" className={"pcd-btn" + (taskGen ? " busy" : "")} onClick={makeWorkItem} disabled={taskGen}>{taskGen ? "Vastleggen…" : "Analyse vastleggen"}</button>
-                <button type="button" className="pcd-btn" onClick={makeClientMail}>Mail naar de klant</button>
-              </div>
-            </>
+            );
+          })}
+
+          {chats.length === 0 && msgs.length === 0 && (
+            <div className="muted" style={{ fontSize: 12 }}>Nog geen chats. Stel hieronder een vraag over deze pagina.</div>
           )}
         </div>
-      )}
+      </div>
 
       {applied && <div className="saved-msg" style={{ marginTop: 8 }} dangerouslySetInnerHTML={{ __html: applied }} />}
       {err && <div className="login-error" style={{ marginTop: 8 }}>{err}</div>}
