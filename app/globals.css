@@ -409,7 +409,9 @@ tbody td:last-child { text-align: center; }
    'tbody td:last-child { text-align:center }' sloeg toe. Sterker links forceren. */
 /* De hele detail-kaart deelt de groepskleur, met een oranje linker-bracket en een
    duidelijke onderrand die de groep afsluit tot de volgende pagina in de lijst. */
-.pages-detail-row td, .pages-detail-row td:last-child {
+/* Alleen de DIRECTE detail-cel, niet geneste tabelcellen (anders krijgen de
+   cellen van een chat-tabel binnenin ook oranje randen). */
+.pages-detail-row > td {
   background: var(--brand-orange-faint); text-align: left;
   border-left: 3px solid var(--orange); border-bottom: 2px solid var(--orange);
 }
@@ -527,7 +529,13 @@ tbody td:last-child { text-align: center; }
 .page-chat-proposal-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 .page-chat-tools { margin: 16px 0 14px; display: flex; gap: 12px; flex-wrap: wrap; }
 /* Documenten-blok: één sturingsveld + de drie geketende stappen */
-.page-chat-docs { margin: 14px 0 12px; border: 1px solid var(--border); border-left: 3px solid var(--brand-taupe); border-radius: 10px; padding: 16px 18px; background: var(--brand-taupe-light); }
+/* De chat-output + vastleggen/mail als één kaart, zodat duidelijk is wat bij elkaar hoort. */
+.pch-card { border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; margin: 0 0 18px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.pch-card-chat { border-left: 3px solid var(--brand-blue); }
+.page-chat-docs { margin: 18px 0; border: 1px solid var(--border); border-left: 3px solid var(--brand-taupe); border-radius: 12px; padding: 18px 20px; background: var(--brand-taupe-light); }
+/* Cannibalisatie: zin links, knop rechts, in een eigen kaart. */
+.page-chat-canni { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; border: 1px solid var(--border); border-left: 3px solid var(--brand-teal); border-radius: 12px; padding: 14px 18px; margin: 18px 0 6px; background: var(--brand-teal-light); }
+.pch-canni-lead { font-size: 13px; color: var(--dark); flex: 1 1 240px; }
 .pcd-docs-head { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--gray); margin-bottom: 7px; }
 .pcd-nuance { width: 100%; font-size: 13px; border: 1px solid var(--border); border-radius: 8px; padding: 8px 11px; outline: none; margin-bottom: 8px; }
 .pcd-nuance:focus { border-color: var(--orange); }

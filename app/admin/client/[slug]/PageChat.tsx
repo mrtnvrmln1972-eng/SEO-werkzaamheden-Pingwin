@@ -321,65 +321,69 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       )}
 
       {msgs.length > 0 && (
-        <div className="page-chat-log">
-          {msgs.map((m, i) => {
-            // De eerste vraag is de titel van de chat; niet nog eens als bericht tonen.
-            if (i === 0 && m.role === "user") return null;
-            return m.role === "user"
-              ? <div key={i} className="page-chat-msg user">{m.content}</div>
-              : <div key={i} className="page-chat-msg assistant md" dangerouslySetInnerHTML={{ __html: mdToHtml(m.content) }} />;
-          })}
-          {busy && <div className="page-chat-msg assistant muted">Aan het denken…</div>}
-        </div>
-      )}
+        <div className="pch-card pch-card-chat">
+          <div className="page-chat-log">
+            {msgs.map((m, i) => (
+              m.role === "user"
+                ? <div key={i} className="page-chat-msg user">{m.content}</div>
+                : <div key={i} className="page-chat-msg assistant md" dangerouslySetInnerHTML={{ __html: mdToHtml(m.content) }} />
+            ))}
+            {busy && <div className="page-chat-msg assistant muted">Aan het denken…</div>}
+          </div>
 
-      {proposal?.plan && (
-        <div className="page-chat-proposal">
-          <div className="page-chat-proposal-head">Voorstel: plan voor deze pagina</div>
-          <div className="pch-prop-plan md" dangerouslySetInnerHTML={{ __html: mdToHtml(proposal.plan) }} />
-          <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>De losse acties staan in dit plan. Ze worden uitgevoerd via de SEO-analyse, blauwdruk en copy, niet als aparte werkzaamheden.</div>
-          <div className="page-chat-proposal-actions">
-            <button type="button" className="primary-btn small" onClick={applySelected}>Neem plan over</button>
-          </div>
-        </div>
-      )}
-
-      {lastAssistant && (
-        <>
-          <div className="page-chat-drive">
-            <span className="pcd-label">Opslaan in:</span>
-            {driveFolder
-              ? <span className="pcd-folder">{driveFolder.path || driveFolder.name}</span>
-              : <span className="pcd-folder muted">nog geen Drive-map (documenten worden gedownload)</span>}
-            <button type="button" className="ghost-btn small" onClick={openPicker}>{driveFolder ? "Map wijzigen" : "Kies Drive-map"}</button>
-            {driveFolder && <button type="button" className="ghost-btn small" onClick={() => setDriveFolder(null)}>Naar download</button>}
-          </div>
-          <div className="page-chat-tools">
-            <button type="button" className={"pcd-btn" + (taskGen ? " busy" : "")} onClick={makeWorkItem} disabled={taskGen}>{taskGen ? "Vastleggen…" : "Analyse vastleggen"}</button>
-            <button type="button" className="pcd-btn" onClick={makeClientMail}>Mail naar de klant</button>
-          </div>
-          <div className="page-chat-docs">
-            <div className="pcd-docs-head">Vervolgstappen op strategische analyse voor deze pagina</div>
-            <input className="pcd-nuance" value={nuance} onChange={(e) => setNuance(e.target.value)} placeholder="Extra sturing (optioneel), bijv. leg de nadruk op de regio, of behoud de tarieventabel." />
-            <div className="pcd-docs-buttons">
-              <button type="button" className={"pcd-btn" + (docBusy === "analyse" ? " busy" : "")} onClick={() => genDoc("analyse")} disabled={!!docBusy || allBusy}>{docBusy === "analyse" ? "Analyse maken…" : "1. Analyse-document"}</button>
-              <button type="button" className={"pcd-btn" + (docBusy === "blauwdruk" ? " busy" : "")} onClick={() => genDoc("blauwdruk")} disabled={!!docBusy || allBusy}>{docBusy === "blauwdruk" ? "Blauwdruk maken…" : "2. Blauwdruk-document"}</button>
-              <button type="button" className={"pcd-btn" + (docBusy === "copy" ? " busy" : "")} onClick={() => genDoc("copy")} disabled={!!docBusy || allBusy}>{docBusy === "copy" ? "Copy maken…" : "3. Copy-document (+ dev-taak)"}</button>
-              <button type="button" className="pcd-btn pcd-btn-primary" onClick={genAll} disabled={!!docBusy || allBusy}>
-                {allBusy ? `Stap ${allStep} van 3 draait…` : "Alles achter elkaar (1 → 2 → 3)"}
-                {allBusy && <span className="pcd-fill" style={{ width: `${(allStep / 3) * 100}%` }} />}
-              </button>
+          {proposal?.plan && (
+            <div className="page-chat-proposal">
+              <div className="page-chat-proposal-head">Voorstel: plan voor deze pagina</div>
+              <div className="pch-prop-plan md" dangerouslySetInnerHTML={{ __html: mdToHtml(proposal.plan) }} />
+              <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>De losse acties staan in dit plan. Ze worden uitgevoerd via de SEO-analyse, blauwdruk en copy, niet als aparte werkzaamheden.</div>
+              <div className="page-chat-proposal-actions">
+                <button type="button" className="primary-btn small" onClick={applySelected}>Neem plan over</button>
+              </div>
             </div>
-            <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>Dit is een grote analyse en uitwerking; alle stappen achter elkaar draaien kan een paar minuten duren. Je kunt intussen naar een ander tabblad, het loopt door. Van elk document wordt automatisch ook een klantversie gemaakt en in de Drive-map opgeslagen (taaktitel → technische versie, "(klantversie)" ernaast; het klantdashboard toont alleen de klantversie).</div>
-          </div>
-        </>
+          )}
+
+          {lastAssistant && (
+            <>
+              <div className="page-chat-drive">
+                <span className="pcd-label">Opslaan in:</span>
+                {driveFolder
+                  ? <span className="pcd-folder">{driveFolder.path || driveFolder.name}</span>
+                  : <span className="pcd-folder muted">nog geen Drive-map (documenten worden gedownload)</span>}
+                <button type="button" className="ghost-btn small" onClick={openPicker}>{driveFolder ? "Map wijzigen" : "Kies Drive-map"}</button>
+                {driveFolder && <button type="button" className="ghost-btn small" onClick={() => setDriveFolder(null)}>Naar download</button>}
+              </div>
+              <div className="page-chat-tools">
+                <button type="button" className={"pcd-btn" + (taskGen ? " busy" : "")} onClick={makeWorkItem} disabled={taskGen}>{taskGen ? "Vastleggen…" : "Analyse vastleggen"}</button>
+                <button type="button" className="pcd-btn" onClick={makeClientMail}>Mail naar de klant</button>
+              </div>
+            </>
+          )}
+        </div>
       )}
 
       {applied && <div className="saved-msg" style={{ marginTop: 8 }} dangerouslySetInnerHTML={{ __html: applied }} />}
       {err && <div className="login-error" style={{ marginTop: 8 }}>{err}</div>}
 
+      {lastAssistant && (
+        <div className="page-chat-docs">
+          <div className="pcd-docs-head">Vervolgstappen op strategische analyse voor deze pagina</div>
+          <input className="pcd-nuance" value={nuance} onChange={(e) => setNuance(e.target.value)} placeholder="Extra sturing (optioneel), bijv. leg de nadruk op de regio, of behoud de tarieventabel." />
+          <div className="pcd-docs-buttons">
+            <button type="button" className={"pcd-btn" + (docBusy === "analyse" ? " busy" : "")} onClick={() => genDoc("analyse")} disabled={!!docBusy || allBusy}>{docBusy === "analyse" ? "Analyse maken…" : "1. Analyse-document"}</button>
+            <button type="button" className={"pcd-btn" + (docBusy === "blauwdruk" ? " busy" : "")} onClick={() => genDoc("blauwdruk")} disabled={!!docBusy || allBusy}>{docBusy === "blauwdruk" ? "Blauwdruk maken…" : "2. Blauwdruk-document"}</button>
+            <button type="button" className={"pcd-btn" + (docBusy === "copy" ? " busy" : "")} onClick={() => genDoc("copy")} disabled={!!docBusy || allBusy}>{docBusy === "copy" ? "Copy maken…" : "3. Copy-document (+ dev-taak)"}</button>
+            <button type="button" className="pcd-btn pcd-btn-primary" onClick={genAll} disabled={!!docBusy || allBusy}>
+              {allBusy ? `Stap ${allStep} van 3 draait…` : "Alles achter elkaar (1 → 2 → 3)"}
+              {allBusy && <span className="pcd-fill" style={{ width: `${(allStep / 3) * 100}%` }} />}
+            </button>
+          </div>
+          <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>Dit is een grote analyse en uitwerking; alle stappen achter elkaar draaien kan een paar minuten duren. Je kunt intussen naar een ander tabblad, het loopt door. Van elk document wordt automatisch ook een klantversie gemaakt en in de Drive-map opgeslagen (taaktitel → technische versie, "(klantversie)" ernaast; het klantdashboard toont alleen de klantversie).</div>
+        </div>
+      )}
+
       {msgs.length > 0 && (
-        <div className="page-chat-quick">
+        <div className="page-chat-canni">
+          <span className="pch-canni-lead">Als de geoptimaliseerde pagina live staat, kun je de cannibalisatie tussen pagina&rsquo;s oplossen:</span>
           <button type="button" className="pcd-btn" disabled={busy} onClick={() => send(CANNIBAL_PROMPT)} title="Brengt de cannibalisatie in kaart, wijst de eigenaar aan volgens het plan (niet de ranking) en zet de acties in het plan">Cannibalisatie oplossen</button>
         </div>
       )}
