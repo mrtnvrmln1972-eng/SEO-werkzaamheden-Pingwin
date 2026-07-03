@@ -378,7 +378,8 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
       const list = selected.map((t) => {
         const uitleg = sanitizeRichHtml(t.klantToelichting || "");
         const hasUitleg = stripHtml(t.klantToelichting || "").trim().length > 0;
-        return `<li><strong>${sanitizeRichHtml(t.taak)}</strong>${hasUitleg ? `<br><span style="color:#555">${uitleg}</span>` : ""}</li>`;
+        const duur = t.uren ? ` <span style="color:#555">(${t.uren} uur)</span>` : "";
+        return `<li><strong>${sanitizeRichHtml(t.taak)}</strong>${duur}${hasUitleg ? `<br><span style="color:#555">${uitleg}</span>` : ""}</li>`;
       }).join("");
       const dashUrl = typeof window !== "undefined" ? `${window.location.origin}/login?fresh=1` : "";
       const dashLink = dashUrl ? `<p style="margin-top:14px"><a href="${esc(dashUrl)}">Bekijk dit zelf in je dashboard</a></p>` : "";
@@ -386,7 +387,7 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
     } else {
       // Developer-mail: taaknaam (met inline links) + interne opmerking + link naar de overview.
       const list = selected.map((t) =>
-        `<li><strong>${sanitizeRichHtml(t.taak)}</strong>${t.maand ? ` <em>(${esc(t.maand)})</em>` : ""}${stripHtml(t.toelichting || "").trim() ? ` &mdash; ${sanitizeRichHtml(t.toelichting)}` : ""}</li>`,
+        `<li><strong>${sanitizeRichHtml(t.taak)}</strong>${t.uren ? ` (${t.uren} u)` : ""}${t.maand ? ` <em>(${esc(t.maand)})</em>` : ""}${stripHtml(t.toelichting || "").trim() ? ` &mdash; ${sanitizeRichHtml(t.toelichting)}` : ""}</li>`,
       ).join("");
       const devUrl = typeof window !== "undefined" ? `${window.location.origin}/admin/developer` : "";
       const devLink = devUrl ? `<p style="margin-top:14px;color:#555;font-size:13px"><a href="${esc(devUrl)}">Bekijk deze taken in je Developer Overview &rarr;</a></p>` : "";
