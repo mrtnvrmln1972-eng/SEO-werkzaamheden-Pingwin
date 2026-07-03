@@ -70,7 +70,7 @@ function Arr({ label, diff }: { label: string; diff: ArrayDiff }) {
 }
 
 type Day = { date: string; clicks: number; impressions: number; ctr: number; position: number };
-type KwBA = { keyword: string; positionBefore: number | null; positionAfter: number | null; clicksBefore: number; clicksAfter: number; volume?: number | null };
+type KwBA = { keyword: string; positionBefore: number | null; positionAfter: number | null; clicksBefore: number; clicksAfter: number; impressionsBefore?: number; impressionsAfter?: number; ctrBefore?: number | null; ctrAfter?: number | null; volume?: number | null };
 type Ga4Stat = { views: number; timeOnPage: number; bounceRate: number; engagementRate: number; pagesPerSession: number; sessionDuration: number };
 type Ga4 = { available: boolean; before: Ga4Stat; after: Ga4Stat };
 type Moment = { id: number; date: string };
@@ -352,7 +352,7 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
                   <div className="wz-kw">
                     <div className="wz-kpi-label">Keyword-rankings (voor → na) <span className="sov-sub">vink de belangrijkste aan, die komen bovenaan (gedeeld met de KPI-tab)</span></div>
                     <table className="wz-kw-table">
-                      <thead><tr><th></th><th>Zoekwoord</th><th>Volume</th><th>Positie voor</th><th>Positie na</th><th>Stijging/daling</th><th>Kliks</th></tr></thead>
+                      <thead><tr><th></th><th>Zoekwoord</th><th>Volume</th><th>Positie voor</th><th>Positie na</th><th>Stijging/daling</th><th>Kliks (v→n)</th><th>Impressies (v→n)</th><th>CTR (v→n)</th></tr></thead>
                       <tbody>
                         {[...kpi.keywords].sort((a, b) => (kwFocus[b.keyword] === "prio" ? 1 : 0) - (kwFocus[a.keyword] === "prio" ? 1 : 0)).map((k) => {
                           const improved = k.positionBefore != null && k.positionAfter != null && k.positionAfter < k.positionBefore;
@@ -360,10 +360,14 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
                           // Positie: lager = beter. Delta = voor - na (positief = gestegen).
                           const delta = k.positionBefore != null && k.positionAfter != null ? k.positionBefore - k.positionAfter : null;
                           const isPrio = kwFocus[k.keyword] === "prio";
+                          // AI-Overviews-signaal: impressies stabiel/omhoog maar CTR duidelijk omlaag = de klik lekt naar een AI-antwoord bovenaan.
+                          const imprStable = (k.impressionsBefore || 0) > 0 && (k.impressionsAfter || 0) >= (k.impressionsBefore || 0) * 0.85;
+                          const ctrDropped = k.ctrBefore != null && k.ctrAfter != null && k.ctrAfter < k.ctrBefore * 0.7;
+                          const aiSignal = imprStable && ctrDropped;
                           return (
                             <tr key={k.keyword} className={isPrio ? "wz-kw-prio" : ""}>
                               <td className="wz-kw-check"><input type="checkbox" checked={isPrio} onChange={() => toggleKwFocus(k.keyword)} title="Aanvinken als belangrijk zoekwoord (komt bovenaan)" /></td>
-                              <td>{k.keyword}</td>
+                              <td>{k.keyword}{aiSignal && <span className="wz-aio" title="Impressies stabiel maar CTR fors omlaag: waarschijnlijk een AI Overview / zero-click die de klik pakt">AIO?</span>}</td>
                               <td>{k.volume != null ? k.volume.toLocaleString("nl-NL") : "—"}</td>
                               <td>{k.positionBefore ?? "—"}</td>
                               <td className={improved ? "wz-pos" : worse ? "wz-neg" : ""}>{k.positionAfter ?? "—"}</td>
@@ -371,6 +375,8 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
                                 {delta == null || delta === 0 ? "—" : `${delta > 0 ? "▲ +" : "▼ "}${Math.abs(Math.round(delta * 10) / 10)}`}
                               </td>
                               <td>{k.clicksBefore} → {k.clicksAfter}</td>
+                              <td>{(k.impressionsBefore ?? 0)} → {(k.impressionsAfter ?? 0)}</td>
+                              <td className={ctrDropped ? "wz-neg" : ""}>{k.ctrBefore != null ? `${k.ctrBefore}%` : "—"} → {k.ctrAfter != null ? `${k.ctrAfter}%` : "—"}</td>
                             </tr>
                           );
                         })}

@@ -1238,6 +1238,8 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .wz-spark-axis { display: flex; justify-content: space-between; font-size: 9px; color: var(--gray); margin-top: 3px; }
 /* Melding: op welke gelijke periodes voor/na is vergeleken. */
 .wz-compare-note { font-size: 12px; color: var(--dark); background: var(--brand-teal-light); border: 1px solid var(--brand-teal); border-radius: 8px; padding: 8px 11px; margin: 6px 0 12px; line-height: 1.5; }
+/* Markering: impressies stabiel maar CTR omlaag (AI Overview / zero-click). */
+.wz-aio { display: inline-block; margin-left: 6px; font-size: 9px; font-weight: 700; color: #fff; background: var(--brand-blue); border-radius: 5px; padding: 1px 5px; vertical-align: middle; cursor: help; }
 /* Aangevinkte (belangrijke) zoekwoorden bovenaan de tabel. */
 .wz-kw-check { text-align: center; width: 28px; }
 .wz-kw-table tr.wz-kw-prio { background: var(--brand-orange-faint); }

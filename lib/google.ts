@@ -296,7 +296,7 @@ export async function getGscDailyForPage(domain: string, pageUrl: string, startD
 }
 
 // Keyword-rankings voor en na een wijzigingsmoment (positie + kliks per zoekwoord).
-export type GscKeywordBA = { keyword: string; positionBefore: number | null; positionAfter: number | null; clicksBefore: number; clicksAfter: number };
+export type GscKeywordBA = { keyword: string; positionBefore: number | null; positionAfter: number | null; clicksBefore: number; clicksAfter: number; impressionsBefore: number; impressionsAfter: number; ctrBefore: number | null; ctrAfter: number | null };
 export async function getGscKeywordsBeforeAfter(domain: string, pageUrl: string, changeDate: string, days = 60): Promise<GscKeywordBA[]> {
   const token = await googleAccessToken();
   if (!token || !domain || !pageUrl) return [];
@@ -321,6 +321,11 @@ export async function getGscKeywordsBeforeAfter(domain: string, pageUrl: string,
         positionAfter: a ? Math.round(a.position * 10) / 10 : null,
         clicksBefore: b ? Math.round(b.clicks) : 0,
         clicksAfter: a ? Math.round(a.clicks) : 0,
+        impressionsBefore: b ? Math.round(b.impressions) : 0,
+        impressionsAfter: a ? Math.round(a.impressions) : 0,
+        // CTR als % (kliks/impressies), voor het AI-Overviews-signaal.
+        ctrBefore: b ? Math.round((b.ctr || 0) * 1000) / 10 : null,
+        ctrAfter: a ? Math.round((a.ctr || 0) * 1000) / 10 : null,
       };
     })
     .sort((x, y) => (y.clicksAfter + y.clicksBefore) - (x.clicksAfter + x.clicksBefore))
