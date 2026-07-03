@@ -111,6 +111,24 @@ function Spark({ data, metric, invert, markers, hoverKey, onHover }: { data: Day
   const dotColor = metric === "position" ? "#1e824c" : "#1a6dd6";
   const fmtV = (v: number) => metric === "position" ? v.toFixed(1) : metric === "ctr" ? v.toFixed(1) + "%" : String(Math.round(v));
   const frac = (date: string) => { let mi = pts.findIndex((d) => d.date >= date); if (mi < 0) mi = pts.length - 1; return mi / (pts.length - 1); };
+  // Per meetmoment: het gemiddelde niveau NÁ het moment (tot het volgende moment of
+  // het einde) als de waarde, en de stijging/daling t.o.v. het niveau ervóór.
+  const idxOf = (date: string) => { let i = pts.findIndex((d) => d.date >= date); return i < 0 ? pts.length - 1 : i; };
+  const avgOf = (a: number, b: number) => { let s = 0, n = 0; for (let k = Math.max(0, a); k < Math.min(b, pts.length); k++) { s += Number(pts[k][metric]) || 0; n++; } return n ? s / n : null; };
+  const sortedM = markers.map((m) => ({ key: m.key, i: idxOf(m.date) })).sort((a, b) => a.i - b.i);
+  const stat = new Map<string, { value: string; delta: string | null; up: boolean; good: boolean }>();
+  sortedM.forEach((m, idx) => {
+    const prevI = idx === 0 ? 0 : sortedM[idx - 1].i;
+    const nextI = idx < sortedM.length - 1 ? sortedM[idx + 1].i : pts.length;
+    const after = avgOf(m.i, nextI), before = avgOf(prevI, m.i);
+    const d = after != null && before != null ? after - before : null;
+    const up = (d ?? 0) > 0;
+    stat.set(m.key, {
+      value: after != null ? fmtV(after) : "—",
+      delta: d == null || Math.abs(d) < 0.05 ? null : `${up ? "+" : "−"}${fmtV(Math.abs(d))}`,
+      up, good: d == null ? false : (invert ? d < 0 : d > 0),
+    });
+  });
   const hv = hover !== null ? pts[hover] : null;
   const hx = hover !== null ? x(hover) : 0;
   const hy = hv ? y(Number(hv[metric]) || 0) : 0;
@@ -128,10 +146,14 @@ function Spark({ data, metric, invert, markers, hoverKey, onHover }: { data: Day
             fill="transparent" className="wz-dot" onMouseEnter={() => setHover(i)} />
         ))}
       </svg>
-      {markers.map((m) => (
+      {markers.map((m) => { const s = stat.get(m.key); return (
         <div key={m.key} className={"wz-marker-label" + (hoverKey === m.key ? " active" : "")} style={{ left: `${frac(m.date) * 100}%` }}
-          onMouseEnter={() => onHover(m.key)} onMouseLeave={() => onHover(null)}>{dShort(m.date)}</div>
-      ))}
+          onMouseEnter={() => onHover(m.key)} onMouseLeave={() => onHover(null)}>
+          <span className="wz-ml-date">{dShort(m.date)}</span>
+          {s && <span className="wz-ml-val">{s.value}</span>}
+          {s && s.delta && <span className={"wz-ml-delta " + (s.good ? "up" : "down")}>{s.up ? "▲" : "▼"} {s.delta}</span>}
+        </div>
+      ); })}
       {hv && (
         <div className="wz-tip" style={{ left: tipLeft, marginLeft: tipShiftRight ? -84 : 6 }}>
           <span className="wz-tip-date">{dShort(hv.date)}</span>
