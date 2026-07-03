@@ -250,8 +250,7 @@ export default function DeveloperOverview({ initialTasks, embedded }: { initialT
                   <col />
                   <col style={{ width: "104px" }} />
                   <col style={{ width: "150px" }} />
-                  <col style={{ width: "60px" }} />
-                  <col style={{ width: "120px" }} />
+                  <col style={{ width: "128px" }} />
                 </colgroup>
                 <thead>
                   <tr>
@@ -261,13 +260,11 @@ export default function DeveloperOverview({ initialTasks, embedded }: { initialT
                     <th>Opm. developer</th>
                     <th>Status</th>
                     <th>Uitvoerdatum</th>
-                    <th>Link</th>
                     <th></th>
                   </tr>
                 </thead>
                 <tbody>
                   {g.items.map(({ r, idx }) => {
-                    const isUrl = r.link && /^https?:\/\//i.test(r.link.trim());
                     return (
                       <tr
                         key={r.clientSlug + "|" + r.taskKey}
@@ -281,7 +278,6 @@ export default function DeveloperOverview({ initialTasks, embedded }: { initialT
                         <td><span className="dev-cell dev-muted" dangerouslySetInnerHTML={{ __html: safeHtml(r.toelichting) }} /></td>
                         <td>{statusBadge(r.status)}</td>
                         <td><input type="date" className="dev-date" value={r.execDate || ""} onChange={(e) => setDate(idx, e.target.value)} /></td>
-                        <td>{isUrl ? <a href={r.link.trim()} target="_blank" rel="noreferrer" className="doc-link">Open</a> : <span className="muted">&mdash;</span>}</td>
                         <td><button type="button" className="ghost-btn small dev-mail-btn" onClick={(e) => { e.stopPropagation(); mailMaarten(r, r.devNote); }}>✉ Mail Maarten</button></td>
                       </tr>
                     );

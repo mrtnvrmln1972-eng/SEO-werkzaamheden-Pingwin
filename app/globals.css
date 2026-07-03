@@ -955,6 +955,10 @@ button.ck-collapse-head {
 .task-table input, .task-table select { width: 100%; font-family: 'Montserrat', sans-serif; font-size: 13px; padding: 5px 7px; border: 1px solid transparent; border-radius: 5px; background: transparent; }
 .task-table input:hover, .task-table select:hover { border-color: var(--border); }
 .task-table input:focus, .task-table select:focus { outline: none; border-color: var(--orange); background: var(--white); }
+/* Checkboxes in een task-table mogen NIET de tekstveld-stijl (width:100%, transparant)
+   krijgen, anders verdwijnt/verrekt het vinkvakje (o.a. de developer-lijst). */
+.task-table input[type="checkbox"] { width: auto; height: auto; padding: 0; border: none; background: none; cursor: pointer; }
+.task-table input[type="checkbox"]:hover, .task-table input[type="checkbox"]:focus { border: none; background: none; }
 .task-table .cell-num input { width: 100%; text-align: right; }
 .task-table .cell-link { display: flex; align-items: center; gap: 4px; }
 .task-table .cell-link input { flex: 1 1 auto; min-width: 0; }
