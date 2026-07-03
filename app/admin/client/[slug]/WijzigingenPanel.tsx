@@ -93,6 +93,7 @@ function ga4Rows(g: Ga4): { label: string; b: string; a: string; better: boolean
 // Mini-lijngrafiek met een stippellijn op het wijzigingsmoment. Bij positie is
 // lager beter, dus die keren we om (verbetering = omhoog).
 function Spark({ data, changeDate, metric, invert }: { data: Day[]; changeDate: string; metric: keyof Day; invert?: boolean }) {
+  const [hover, setHover] = useState<number | null>(null);
   const w = 360, h = 84, pad = 8;
   const pts = data.filter((d) => d.date);
   if (pts.length < 2) return <div className="muted" style={{ fontSize: 12, padding: "18px 0" }}>Nog te weinig GSC-data voor deze periode.</div>;
@@ -106,22 +107,31 @@ function Spark({ data, changeDate, metric, invert }: { data: Day[]; changeDate: 
   const dotColor = metric === "position" ? "#1e824c" : "#1a6dd6";
   const fmtV = (v: number) => metric === "position" ? v.toFixed(1) : metric === "ctr" ? v.toFixed(1) + "%" : String(Math.round(v));
   const dShort = (d: string) => { try { return new Date(d).toLocaleDateString("nl-NL", { day: "numeric", month: "short" }); } catch { return d; } };
+  const hv = hover !== null ? pts[hover] : null;
+  const hx = hover !== null ? x(hover) : 0;
+  const hy = hv ? y(Number(hv[metric]) || 0) : 0;
+  // Tooltip links/rechts van de stip houden zodat hij niet buiten beeld valt.
+  const tipLeft = `${(hx / w) * 100}%`;
+  const tipShiftRight = hx > w * 0.6;
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="wz-spark" preserveAspectRatio="none">
-      {cx !== null && <line x1={cx} y1={0} x2={cx} y2={h} className="wz-marker" />}
-      <polyline points={line} className={"wz-poly " + (metric === "position" ? "pos" : "")} />
-      {pts.map((d, i) => (
-        <g key={i}>
-          {/* onzichtbare kolom als hover-doel + zichtbaar puntje; tooltip toont de waarde */}
-          <rect x={x(i) - (w / pts.length) / 2} y={0} width={w / pts.length} height={h} fill="transparent" className="wz-dot">
-            <title>{dShort(d.date)}: {fmtV(Number(d[metric]) || 0)}</title>
-          </rect>
-          <circle cx={x(i)} cy={y(Number(d[metric]) || 0)} r={2.2} fill={dotColor} className="wz-dot">
-            <title>{dShort(d.date)}: {fmtV(Number(d[metric]) || 0)}</title>
-          </circle>
-        </g>
-      ))}
-    </svg>
+    <div className="wz-spark-wrap" onMouseLeave={() => setHover(null)}>
+      <svg viewBox={`0 0 ${w} ${h}`} className="wz-spark" preserveAspectRatio="none">
+        {cx !== null && <line x1={cx} y1={0} x2={cx} y2={h} className="wz-marker" />}
+        <polyline points={line} className={"wz-poly " + (metric === "position" ? "pos" : "")} />
+        {hover !== null && <line x1={hx} y1={0} x2={hx} y2={h} className="wz-hover-line" />}
+        {hv && <circle cx={hx} cy={hy} r={4} fill={dotColor} stroke="#fff" strokeWidth={1.5} />}
+        {pts.map((d, i) => (
+          <rect key={i} x={x(i) - (w / pts.length) / 2} y={0} width={w / pts.length} height={h}
+            fill="transparent" className="wz-dot" onMouseEnter={() => setHover(i)} />
+        ))}
+      </svg>
+      {hv && (
+        <div className="wz-tip" style={{ left: tipLeft, marginLeft: tipShiftRight ? -84 : 6 }}>
+          <span className="wz-tip-date">{dShort(hv.date)}</span>
+          <span className="wz-tip-val">{fmtV(Number(hv[metric]) || 0)}</span>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -279,14 +289,14 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
         <h2 className="wz-title">{open.diff.meta_title?.after || open.diff.h1?.after || shortUrl(open.url)}</h2>
         <div className="muted" style={{ marginBottom: 14 }}>{shortUrl(open.url)} · Gedetecteerd: {dt(open.detectedAt)}</div>
         <div className="wz-detail-grid">
-          <div>
-            <div className="wz-block-head" style={{ fontSize: 13 }}>Wat veranderde</div>
+          <div className="wz-detail-card acc-taupe">
+            <div className="wz-detail-card-title">Wat veranderde</div>
             {open.isManual
-              ? <div className="wz-line" style={{ background: "#fff6e5" }}>Handmatig toegevoegd: {open.summary || "wijziging"}</div>
+              ? <div className="wz-line" style={{ background: "#fff6e5" }}>{open.summary || "wijziging"}</div>
               : <DiffView diff={open.diff} />}
           </div>
-          <div>
-            <div className="wz-block-head" style={{ fontSize: 13 }}>KPI-impact</div>
+          <div className="wz-detail-card acc-teal">
+            <div className="wz-detail-card-title">KPI-impact</div>
             <p className="muted" style={{ fontSize: 12, margin: "2px 0 10px" }}>60 dagen voor en na de wijziging (uit Search Console). De stippellijn markeert het wijzigingsmoment.</p>
             {kpiLoading && <div className="muted" style={{ padding: 12 }}>KPI's laden…</div>}
             {!kpiLoading && kpi && (
