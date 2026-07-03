@@ -187,6 +187,8 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [dragIdx, setDragIdx] = useState<number | null>(null);
+  // Waar de gesleepte taak zou landen (voor de geanimeerde invoeglijn).
+  const [dropIdx, setDropIdx] = useState<{ maand: string; i: number } | null>(null);
   // Popover voor klant-toelichting: index + scherm-positie (fixed, via portal,
   // zodat hij nooit onder een volgende tabelrij verdwijnt).
   const [klantPop, setKlantPop] = useState<{ i: number; left: number; top: number } | null>(null);
@@ -437,8 +439,8 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
                 const mailed = !!r.gemaild && !done;
                 const statusCls = done ? "task-done " : "task-open ";
                 return (
-                  <tr key={r._uid} id={typeof r.id === "number" ? `task-row-${r.id}` : undefined} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.stopPropagation(); moveRow(maand, i); }} className={`${statusCls}${dragIdx === i ? "dragging " : ""}${isDev ? "dev-row " : ""}${mailed ? "mailed-row " : ""}${r.geblokkeerd ? "blocked-row " : ""}${hl ? "highlight-row" : ""}`}>
-                    <td className="drag-handle" draggable onDragStart={() => setDragIdx(i)} onDragEnd={() => setDragIdx(null)} title="Sleep (ook naar een andere maand)">⠿</td>
+                  <tr key={r._uid} id={typeof r.id === "number" ? `task-row-${r.id}` : undefined} onDragOver={(e) => { e.preventDefault(); if (dragIdx !== null && dragIdx !== i && !(dropIdx?.maand === maand && dropIdx.i === i)) setDropIdx({ maand, i }); }} onDrop={(e) => { e.stopPropagation(); moveRow(maand, i); setDropIdx(null); }} className={`${statusCls}${dragIdx === i ? "dragging " : ""}${dropIdx?.maand === maand && dropIdx.i === i && dragIdx !== i ? "drop-target " : ""}${isDev ? "dev-row " : ""}${mailed ? "mailed-row " : ""}${r.geblokkeerd ? "blocked-row " : ""}${hl ? "highlight-row" : ""}`}>
+                    <td className="drag-handle" draggable onDragStart={() => setDragIdx(i)} onDragEnd={() => { setDragIdx(null); setDropIdx(null); }} title="Sleep (ook naar een andere maand)">⠿</td>
                     <td>
                       <div className="taak-cell">
                         {r.geblokkeerd && <button type="button" className="taak-lock" title={r.blokkadeReden ? `Geblokkeerd: ${r.blokkadeReden} (klik om vrij te geven)` : "Geblokkeerd (klik om vrij te geven)"} onClick={() => update(i, { geblokkeerd: false })}>🔒</button>}
