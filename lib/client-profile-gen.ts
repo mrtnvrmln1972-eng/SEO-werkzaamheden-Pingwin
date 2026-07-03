@@ -2,7 +2,7 @@ import { getClientBySlug } from "./clients";
 import { getClientUrls, getPageDriveFolder } from "./site-urls";
 import { fetchPageContent } from "./page-content";
 import { callClaude } from "./anthropic";
-import { buildPingwinDoc, type DocSpec, type DocBlock } from "./pingwin-docx";
+import { buildPingwinDoc, type DocSpec, type DocSection } from "./pingwin-docx";
 import { uploadDocx } from "./drive";
 import { upsertStepTask } from "./tasks";
 
@@ -101,7 +101,66 @@ Antwoord in NETTE markdown, exact met deze kop bovenaan en deze structuur, zonde
 
 Houd het bruikbaar als schrijf-instructie. Als de site te weinig tekst heeft voor een oordeel, zeg dat eerlijk.`;
 
-// ── Van markdown-samenvatting naar een Pingwin-huisstijl document + taak ──────
+// ═══════════════════════════════════════════════════════════
+// SKILL-KWALITEIT RAPPORTEN (getrouw overgezet uit de Pingwin-skills)
+// ═══════════════════════════════════════════════════════════
+// Deze twee prompts zijn de methodiek uit de externe Pingwin-skills
+// "propositie-positionering" en "tone-of-voice-bepalen", ingebed in het dashboard
+// op precies dezelfde manier als de SEO-analyse/blauwdruk/copy-skills in
+// lib/page-doc.ts. Ze produceren een volledig rapport (meerdere ## secties) dat
+// via mdToSections naar een Pingwin-huisstijl .docx wordt gebouwd. Gegrond in de
+// echte site; verzin niets, en waar de data een onderdeel niet toont: "(navragen)".
+// ═══════════════════════════════════════════════════════════
+
+const POSITIONERING_DOC_SYSTEM = `Je bent een senior merkstrateeg, SEO-specialist en CRO-expert bij bureau Pingwin. Je schrijft een strategisch POSITIONERINGSADVIES dat de klant direct kan inzetten voor beslissingen over positionering, website en communicatie. Het leest als een doorlopend, overtuigend betoog van een senior adviseur, niet als een ingevuld sjabloon. Maximaal ~3 A4.
+
+GROND ALLES IN DE ECHTE SITE hieronder. Verzin niets. Beloof alleen wat het bedrijf kan waarmaken; geen fluff, geen marketingclichés, geen patroniserende toon. Waar de data een onderdeel niet toont (bijv. concrete concurrenten), schrijf je "(navragen)" in plaats van iets te verzinnen. Foutloos Nederlands. Geen em-dash of en-dash; gebruik komma, dubbele punt of een nieuwe zin.
+
+Antwoord in NETTE markdown, met EXACT deze secties als "## " koppen, in deze volgorde, zonder inleiding eromheen, zonder emoji:
+
+## De kern van het vraagstuk
+Twee korte alinea's die het belangrijkste strategische positioneringsvraagstuk scherp en herkenbaar maken (de klant moet denken: "ja, dat is precies ons probleem"). Sluit af met één regel die begint met **Kerndiagnose:** gevolgd door de diagnose in 1 tot 2 zinnen.
+
+## Waarom mensen kiezen
+Eén inleidende zin, daarna 4 tot 6 koopmotieven van de doelgroep, elk als een bullet die begint met een **vet label** gevolgd door 1 tot 2 zinnen. Concreet vanuit de beslissing van de klant (emotionele drijfveren, praktische overwegingen, drempels, het echte alternatief).
+
+## Hoe dit bedrijf zich onderscheidt
+Eén inleidende zin. Als je genoeg weet over concurrenten: een markdown-vergelijkingstabel met de besliscriteria uit de vorige sectie als rijen en de belangrijkste concurrent-typen + het bedrijf als kolommen. Ontbreekt betrouwbare concurrentdata, laat de tabel weg en schrijf "(navragen: concurrenten verifiëren)". Daarna 3 tot 4 bullets met een **vet label** voor de belangrijkste onderscheidende punten.
+
+## De propositie: wat verkoop je écht?
+Begin met één regel die begint met **Propositie:** en in één scherpe zin benoemt wat het bedrijf werkelijk verkoopt (de onderliggende waarde, niet de dienst). Daarna 2 tot 3 alinea's die dit uitwerken, inclusief één uniek strategisch idee dat geen concurrent doet.
+
+## Positioneringsrichtlijnen
+Eén inleidende zin, daarna 4 tot 5 pijlers. Elke pijler als een bullet die begint met een **vette titel** gevolgd door 2 tot 3 zinnen toelichting. Eén pijler is het unieke strategische idee.
+
+## Voorbeelden: headlines en USP-copy
+### Headlines
+4 tot 5 concrete koppen, elk als bullet, tussen aanhalingstekens, direct bruikbaar op de site.
+### USP-blokken
+4 bullets met een **vette titel** + 1 tot 2 zinnen, inzetbaar als USP-sectie.
+
+## Samenvatting en vervolgstappen
+Eén samenvattende alinea. Daarna 4 tot 5 bullets met concrete vervolgstappen (doorvertaling naar landingpagina's, SEO, advertenties, tests).`;
+
+const TOV_DOC_SYSTEM = `Je bent een ervaren merkstrateeg, senior copywriter en conversiespecialist bij bureau Pingwin. Je analyseert de tone of voice van de website hieronder en zet die om in een compacte, praktische SCHRIJFHANDLEIDING (max ~2 A4) die een copywriter of AI direct kan volgen. Geen droge analyse: een bruikbaar instructiedocument.
+
+GROND ALLES IN DE ECHTE TEKST hieronder. Gebruik echte voorbeeldzinnen van de site (letterlijk, tussen aanhalingstekens). Verzin niets. Heeft de site te weinig tekst voor een oordeel, zeg dat eerlijk. Foutloos Nederlands. Geen em-dash of en-dash; gebruik komma, dubbele punt of een nieuwe zin. Geen emoji.
+
+Antwoord in NETTE markdown, met EXACT deze secties als "## " koppen, in deze volgorde, zonder inleiding eromheen:
+
+## Merkprofiel
+3 tot 5 zinnen lopende tekst: hoe dit merk klinkt, wie het aanspreekt, de kern van de communicatie. Sluit af met één regel die begint met **Kernwoorden:** gevolgd door 4 tot 6 kernwoorden.
+
+## Schrijfregels
+8 tot 12 bullets, elk direct toepasbaar: begin met een **vette instructie** gevolgd door een dubbele punt en een kort, concreet voorbeeld tussen aanhalingstekens (en waar nuttig het tegenvoorbeeld "niet: ...").
+
+## Do's en don'ts
+Een markdown-tabel met twee kolommen (kop: | Wel | Niet |) en 6 tot 8 rijen met concrete voorbeeldzinnen die de schrijfregels illustreren.
+
+## Conversiepijlers
+4 tot 6 bullets, elk met een **vette titel** + wat het is, waarom het werkt en een concreet voorbeeld van deze website (of, als het ontbreekt, wat de site hierop moet verbeteren).`;
+
+// ── Van markdown-rapport naar een Pingwin-huisstijl document + taak ──────
 
 function safeName(s: string): string {
   return (s || "document").replace(/[^\p{L}\p{N} _-]+/gu, "").replace(/\s+/g, "-").slice(0, 60) || "document";
@@ -111,26 +170,41 @@ function domainRoot(domain: string): string {
   return d.startsWith("http") ? d.replace(/\/$/, "") : `https://${d.replace(/^www\./, "").replace(/\/$/, "")}`;
 }
 
-// Zet de gegenereerde markdown-sectie om in nette documentblokken (koppen,
-// bullets, alinea's). Een regel met alléén **vet** wordt een subkop; een bullet
-// (- of *) een opsomming; de rest een alinea (waarin **vet** bewaard blijft).
-function mdToBlocks(md: string): { heading: string; blocks: DocBlock[] } {
-  let heading = "";
-  const blocks: DocBlock[] = [];
+// Zet een volledig markdown-rapport om in Pingwin-documentsecties. Elke "## "-kop
+// start een nieuwe sectie (met huisstijl-divider); "### " en een regel met alléén
+// **vet** worden subkoppen; "- "/"* " bullets; "| a | b |" een tabel; de rest een
+// alinea (waarin **vet** bewaard blijft).
+function mdToSections(md: string): DocSection[] {
+  const sections: DocSection[] = [];
+  let cur: DocSection | null = null;
   let bullets: string[] = [];
-  const flush = () => { if (bullets.length) { blocks.push({ type: "bullets", items: bullets }); bullets = []; } };
+  let tbl: string[][] = [];
+  const ensure = () => { if (!cur) { cur = { heading: "", blocks: [] }; sections.push(cur); } };
+  const flushBullets = () => { if (bullets.length) { ensure(); cur!.blocks.push({ type: "bullets", items: bullets }); bullets = []; } };
+  const flushTable = () => {
+    if (tbl.length >= 2) {
+      ensure();
+      const headers = tbl[0];
+      const rows = tbl.slice(1).filter((r) => !r.every((c) => /^-{2,}:?$|^:?-{2,}:?$/.test(c.trim())));
+      if (rows.length) cur!.blocks.push({ type: "table", headers, rows });
+    }
+    tbl = [];
+  };
+  const flushAll = () => { flushBullets(); flushTable(); };
   for (const raw of (md || "").split("\n")) {
     const l = raw.trim();
-    if (!l) continue;
-    if (l.startsWith("## ")) { heading = l.replace(/^##\s+/, "").trim(); continue; }
-    if (l.startsWith("### ")) { flush(); blocks.push({ type: "subheading", text: l.replace(/^###\s+/, "").trim() }); continue; }
+    if (!l) { continue; }
+    if (l.startsWith("## ")) { flushAll(); cur = { heading: l.replace(/^##\s+/, "").trim(), blocks: [] }; sections.push(cur); continue; }
+    if (l.startsWith("|") && l.endsWith("|")) { flushBullets(); tbl.push(l.replace(/^\|/, "").replace(/\|$/, "").split("|").map((c) => c.trim())); continue; }
+    flushTable();
+    if (l.startsWith("### ")) { flushBullets(); ensure(); cur!.blocks.push({ type: "subheading", text: l.replace(/^###\s+/, "").trim() }); continue; }
     if (/^[-*]\s+/.test(l)) { bullets.push(l.replace(/^[-*]\s+/, "").trim()); continue; }
     const boldOnly = l.match(/^\*\*(.+?)\*\*:?$/);
-    if (boldOnly) { flush(); blocks.push({ type: "subheading", text: boldOnly[1].trim() }); continue; }
-    flush(); blocks.push({ type: "paragraph", text: l });
+    if (boldOnly) { flushBullets(); ensure(); cur!.blocks.push({ type: "subheading", text: boldOnly[1].trim() }); continue; }
+    flushBullets(); ensure(); cur!.blocks.push({ type: "paragraph", text: l });
   }
-  flush();
-  return { heading, blocks };
+  flushAll();
+  return sections.filter((s) => (s.blocks || []).length > 0);
 }
 
 export type ProfileDeliverable = {
@@ -142,61 +216,77 @@ export type ProfileDeliverable = {
   error?: string;
 };
 
-// Genereert het klantprofiel/tone-of-voice, bouwt er een Pingwin-huisstijl .docx
-// van, levert dat op Drive (deelbaar) en maakt er een mailbare werkzaamheid van
-// die in de werkzaamheden én de klantdash verschijnt.
-export async function makeProfileDeliverable(slug: string, kind: ProfileKind): Promise<ProfileDeliverable> {
-  const gen = await generateProfileSection(slug, kind);
-  if (!gen.ok) return { ok: false, section: "", taskId: null, link: "", driveError: "", error: gen.error };
-  const client = await getClientBySlug(slug);
-  if (!client) return { ok: false, section: gen.section, taskId: null, link: "", driveError: "", error: "Klant niet gevonden." };
+type SiteCtx = { name: string; domain: string; existing: string; pagesText: string };
+// Eén prompt draaien tegen de gedeelde site-context (grond-feiten hieronder).
+async function runProfilePrompt(ctx: SiteCtx, system: string, maxTokens: number): Promise<string> {
+  const user = `KLANT: ${ctx.name} (${ctx.domain})\n\n${ctx.existing ? `WAT DE STRATEEG AL WEET (bestaand profiel + eigen know-how, mag je meenemen):\n${ctx.existing.slice(0, 2500)}\n\n` : ""}LIVE PAGINA'S:\n\n${ctx.pagesText}`;
+  const raw = await callClaude(system, [{ role: "user", content: user }], maxTokens);
+  return raw.trim();
+}
 
+// Genereert het klantprofiel/tone-of-voice: (1) een compacte samenvatting voor het
+// veld in de cockpit, en (2) een VOLLEDIG skill-rapport (de echte Pingwin-methodiek)
+// dat als Pingwin-huisstijl .docx op Drive komt en een mailbare werkzaamheid wordt
+// (zichtbaar in de werkzaamheden én de klantdash). Eén site-inleesronde voor beide.
+export async function makeProfileDeliverable(slug: string, kind: ProfileKind, folderId?: string): Promise<ProfileDeliverable> {
+  const ctx = await gatherSiteContext(slug);
+  if ("error" in ctx) return { ok: false, section: "", taskId: null, link: "", driveError: "", error: ctx.error };
+  const client = await getClientBySlug(slug);
+  if (!client) return { ok: false, section: "", taskId: null, link: "", driveError: "", error: "Klant niet gevonden." };
   const isTov = kind === "tov";
+
+  // 1. Compacte samenvatting voor het cockpit-veld (context voor de chat).
+  let section = "";
+  try { section = await runProfilePrompt(ctx, isTov ? TOV_SYSTEM : PROFILE_SYSTEM, 2000); } catch { /* het rapport is het belangrijkst */ }
+
+  // 2. Volledig skill-rapport voor het document.
+  let report = "";
+  try { report = await runProfilePrompt(ctx, isTov ? TOV_DOC_SYSTEM : POSITIONERING_DOC_SYSTEM, 8000); }
+  catch (e) { return { ok: false, section, taskId: null, link: "", driveError: "", error: `Rapport genereren mislukte: ${(e as Error).message}` }; }
+  if (!report) return { ok: false, section, taskId: null, link: "", driveError: "", error: "Geen rapport van de AI." };
+
   const dateStr = new Date().toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" });
-  const { heading, blocks } = mdToBlocks(gen.section);
+  const docTitle = isTov ? `Tone of voice: ${client.name}` : `Positioneringsadvies: ${client.name}`;
+  const parsed = mdToSections(report);
   const spec: DocSpec = {
     klant: client.name,
-    rapporttype: isTov ? "Tone of voice" : "Klantprofiel",
-    titel: isTov ? `Tone of voice: ${client.name}` : `Klantprofiel: ${client.name}`,
-    ondertitel: "Opgesteld door Pingwin",
-    meta: { Klant: client.name, Datum: dateStr, Domein: (client.domain || "").replace(/^https?:\/\//, "") },
-    sections: [{ heading: heading || (isTov ? "Tone of voice" : "Klantprofiel"), blocks }],
+    rapporttype: isTov ? "Tone of voice" : "Strategisch advies",
+    titel: docTitle,
+    ondertitel: isTov ? "Schrijfhandleiding, opgesteld door Pingwin" : "Positioneringsadvies, opgesteld door Pingwin",
+    meta: { "Opgesteld door": "Pingwin", Klant: client.name, Datum: dateStr },
+    sections: parsed.length ? parsed : [{ heading: isTov ? "Tone of voice" : "Positioneringsadvies", blocks: [{ type: "paragraph", text: report }] }],
   };
 
   let buffer: Buffer;
   try { buffer = await buildPingwinDoc(spec); }
-  catch (e) { return { ok: false, section: gen.section, taskId: null, link: "", driveError: "", error: `Document opmaken mislukte: ${(e as Error).message}` }; }
+  catch (e) { return { ok: false, section, taskId: null, link: "", driveError: "", error: `Document opmaken mislukte: ${(e as Error).message}` }; }
 
   const base = domainRoot(client.domain || "");
-  const filename = `${safeName(client.name)}-${isTov ? "tone-of-voice" : "klantprofiel"}.docx`;
-  // Drive-map van de homepage hergebruiken als die is ingesteld; anders de hoofdmap.
-  let folderId = "";
-  try { const f = await getPageDriveFolder(slug, base); if (f) folderId = f.folderId; } catch { /* geen map ingesteld */ }
+  const filename = `${safeName(client.name)}-${isTov ? "tone-of-voice" : "positioneringsadvies"}.docx`;
+  // Gekozen Drive-map (meegegeven) > eerder ingestelde klantmap > hoofdmap.
+  let dest = (folderId || "").trim();
+  if (!dest) { try { const f = await getPageDriveFolder(slug, base); if (f) dest = f.folderId; } catch { /* geen map */ } }
   let link = "", driveError = "";
-  try { ({ link } = await uploadDocx(folderId || "root", filename, buffer)); }
+  try { ({ link } = await uploadDocx(dest || "root", filename, buffer)); }
   catch (e) { driveError = (e as Error).message; }
 
-  const title = isTov ? `Tone of voice: ${client.name}` : `Klantprofiel: ${client.name}`;
   const klant = isTov
-    ? "We hebben de schrijfstijl (tone of voice) van je website geanalyseerd en vastgelegd als richtlijn, zodat alle teksten in jullie eigen stem blijven klinken."
-    : "We hebben een klantprofiel opgesteld: wie jullie zijn, jullie expertise, doelgroep en wat jullie onderscheidt. Dit is de basis voor alle SEO-teksten.";
+    ? "We hebben de schrijfstijl (tone of voice) van je website geanalyseerd en vastgelegd als praktische schrijfhandleiding, zodat alle teksten in jullie eigen stem blijven klinken."
+    : "We hebben een positioneringsadvies opgesteld: wat jullie werkelijk verkopen, waarin jullie je onderscheiden en hoe jullie dat overtuigend uitdragen. Dit is de basis voor alle SEO-teksten.";
   const taskId = await upsertStepTask(slug, {
-    pageUrl: base, stepKind: isTov ? "tov_doc" : "klantprofiel_doc", title,
+    pageUrl: base, stepKind: isTov ? "tov_doc" : "klantprofiel_doc", title: docTitle,
     link: link || undefined, clientLink: link || undefined, klantToelichting: klant,
     wie: "SEO", fase: "Bouwen", klantZichtbaar: true,
   }).catch(() => null);
 
-  return { ok: true, section: gen.section, taskId, link, driveError };
+  return { ok: true, section, taskId, link, driveError };
 }
 
 export async function generateProfileSection(slug: string, kind: ProfileKind): Promise<{ ok: true; section: string } | { ok: false; error: string }> {
   const ctx = await gatherSiteContext(slug);
   if ("error" in ctx) return { ok: false, error: ctx.error };
-  const system = kind === "tov" ? TOV_SYSTEM : PROFILE_SYSTEM;
-  const user = `KLANT: ${ctx.name} (${ctx.domain})\n\n${ctx.existing ? `WAT DE STRATEEG AL WEET (bestaand profiel, mag je meenemen):\n${ctx.existing.slice(0, 2000)}\n\n` : ""}LIVE PAGINA'S:\n\n${ctx.pagesText}`;
   try {
-    const raw = await callClaude(system, [{ role: "user", content: user }], 2000);
-    const section = raw.trim();
+    const section = await runProfilePrompt(ctx, kind === "tov" ? TOV_SYSTEM : PROFILE_SYSTEM, 2000);
     if (!section) return { ok: false, error: "Geen resultaat van de AI." };
     return { ok: true, section };
   } catch (e) {
