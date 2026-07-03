@@ -200,6 +200,44 @@ function periodRanges(days: number) {
   return { curStart: iso(curStart), curEnd: iso(curEnd), prevStart: iso(prevStart), prevEnd: iso(prevEnd) };
 }
 
+// Appels-met-appels voor→na-vergelijking rond een wijzigingsmoment. Vaste regel:
+// (1) voor-periode exact even lang als de na-periode; (2) de laatste ~3 dagen
+// afgeknipt wegens GSC-datavertraging (na-periode compleet, niet half leeg);
+// (3) waar mogelijk op hele weken (ma t/m zo) om weekdag-effecten te vermijden.
+// Terugval bij < 1 volledige week ná de wijziging: even lange dag-periodes.
+export type BeforeAfterRange = { beforeStart: string; beforeEnd: string; afterStart: string; afterEnd: string; days: number; weekAligned: boolean };
+export function equalBeforeAfter(changeDate: string, maxDays = 60, trimDays = 3): BeforeAfterRange {
+  const day = 86400000;
+  const isoD = (t: number) => new Date(t).toISOString().slice(0, 10);
+  const dowMon = (t: number) => (new Date(t).getUTCDay() + 6) % 7; // ma=0 .. zo=6
+  const mondayOnOrAfter = (t: number) => { const d = dowMon(t); return d === 0 ? t : t + (7 - d) * day; };
+  const sundayOnOrBefore = (t: number) => t - dowMon(t) * day;
+
+  const c = new Date(changeDate + "T00:00:00Z").getTime();
+  const hardEnd = Date.now() - trimDays * day;                 // GSC-vertraging afknippen
+  const afterCap = Math.min(c + maxDays * day, hardEnd);
+
+  // Hele-weken-pad: na begint op de eerste maandag ná de wijziging, eindigt op een zondag.
+  const wkStart = mondayOnOrAfter(c);
+  const wkEnd = sundayOnOrBefore(afterCap);
+  let weeks = Math.floor(((wkEnd - wkStart) / day + 1) / 7);
+  weeks = Math.min(weeks, Math.floor(maxDays / 7));
+  if (weeks >= 1) {
+    const aStart = wkStart, aEnd = wkStart + (weeks * 7 - 1) * day;
+    return {
+      beforeStart: isoD(wkStart - weeks * 7 * day), beforeEnd: isoD(wkStart - day),
+      afterStart: isoD(aStart), afterEnd: isoD(aEnd), days: weeks * 7, weekAligned: true,
+    };
+  }
+  // Terugval: even lange dag-periodes (nog geen volle week aan na-data).
+  const aEnd = Math.max(afterCap, c);
+  const n = Math.max(1, Math.floor((aEnd - c) / day) + 1);
+  return {
+    beforeStart: isoD(c - n * day), beforeEnd: isoD(c - day),
+    afterStart: isoD(c), afterEnd: isoD(aEnd), days: n, weekAligned: false,
+  };
+}
+
 export type MetricPair = { cur: number; prev: number };
 export type GscSeries = { clicks: number[]; impressions: number[]; ctr: number[]; position: number[] };
 // Sitebrede zoekwoord→pagina-matrix: welk zoekwoord op welke pagina rankt.
@@ -264,16 +302,13 @@ export async function getGscKeywordsBeforeAfter(domain: string, pageUrl: string,
   if (!token || !domain || !pageUrl) return [];
   const site = await gscPickSite(token, domain);
   if (!site) return [];
-  const iso = (d: Date) => d.toISOString().slice(0, 10);
-  const c = new Date(changeDate + "T00:00:00Z").getTime();
-  const day = 86400000;
-  const beforeStart = iso(new Date(c - days * day)), beforeEnd = iso(new Date(c - day));
-  const afterStart = iso(new Date(c)), afterEnd = iso(new Date(Math.min(c + days * day, Date.now() - 3 * day)));
+  // Appels-met-appels: even lange voor/na-periodes, 3 dagen afgeknipt, hele weken.
+  const r = equalBeforeAfter(changeDate, days);
   const q = (s: string, e: string) => gscQuery(token, site, {
     startDate: s, endDate: e, dimensions: ["query"], rowLimit: 50,
     dimensionFilterGroups: [{ filters: [{ dimension: "page", operator: "equals", expression: pageUrl }] }],
   });
-  const [before, after] = await Promise.all([q(beforeStart, beforeEnd), q(afterStart, afterEnd)]);
+  const [before, after] = await Promise.all([q(r.beforeStart, r.beforeEnd), q(r.afterStart, r.afterEnd)]);
   const bm = new Map(before.map((r) => [r.keys?.[0] || "", r]));
   const am = new Map(after.map((r) => [r.keys?.[0] || "", r]));
   const keys = new Set([...bm.keys(), ...am.keys()].filter(Boolean));
@@ -360,12 +395,11 @@ export async function getGa4PageSignalsBeforeAfter(slug: string, pageUrl: string
   if (!propertyId) return null;
 
   let path = ""; try { path = new URL(pageUrl).pathname; } catch { path = pageUrl; }
-  const iso = (d: Date) => d.toISOString().slice(0, 10);
-  const c = new Date(changeDate + "T00:00:00Z").getTime();
-  const day = 86400000;
+  // Zelfde appels-met-appels-regel als GSC: even lange voor/na, 3 dagen trim, hele weken.
+  const r = equalBeforeAfter(changeDate, days);
   const dateRanges = [
-    { startDate: iso(new Date(c - days * day)), endDate: iso(new Date(c - day)) },
-    { startDate: iso(new Date(c)), endDate: iso(new Date(Math.min(c + days * day, Date.now() - day))) },
+    { startDate: r.beforeStart, endDate: r.beforeEnd },
+    { startDate: r.afterStart, endDate: r.afterEnd },
   ];
   async function report(field: string, metrics: string[]): Promise<Record<string, number[]> | null> {
     const res = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`, {
