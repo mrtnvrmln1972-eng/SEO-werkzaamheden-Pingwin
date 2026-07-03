@@ -864,6 +864,22 @@ button.ck-collapse-head {
 .kpi-sub-title { color: var(--dark); }
 .kpi-sub-head .kpi-head-actions { padding-bottom: 0; }
 .kpi-sub-body { padding: 12px; }
+
+/* Wat meer lucht tussen de hoofdsecties (en de laad-kaart). */
+.kpi-section, .kpi-panel > .cockpit-card { margin-bottom: 24px; }
+
+/* Search Console-KPI's over de volle breedte: vier gelijke, ruimere kaarten met
+   grotere, beter leesbare grafiek. */
+.kpi-grid-4 { grid-template-columns: repeat(4, 1fr); }
+.kpi-grid-4 .kpi-card { padding: 16px 20px; }
+.kpi-grid-4 .kpi-spark-wrap { margin-top: 12px; }
+.kpi-grid-4 .kpi-spark { height: 60px; }
+@media (max-width: 900px) { .kpi-grid-4 { grid-template-columns: repeat(2, 1fr); } }
+
+/* Ahrefs-elementen als gewone blokken binnen de ene Ahrefs-toggle. */
+.kpi-block + .kpi-block { border-top: 1px solid var(--border); padding-top: 14px; }
+.kpi-block-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.kpi-block-title { font-weight: 700; font-size: 13px; color: var(--dark); }
 /* Ahrefs-zoekwoorden: intent-badges + laaghangend-fruit-highlight. */
 .kpi-fruit-row td { background: #FFF4E5; }
 .kw-intent { display: inline-block; font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 9px; text-transform: capitalize; }

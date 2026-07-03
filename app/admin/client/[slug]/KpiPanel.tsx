@@ -37,7 +37,12 @@ function nl(n: number): string { return n.toLocaleString("nl-NL"); }
 // Interactief lijngrafiekje van het dagverloop: beweeg eroverheen en je ziet de
 // waarde van dat punt. invert=true (positie): dalend = beter. fmt formatteert de
 // hover-waarde (bijv. "12,3%" of "4,2").
-function Sparkline({ data, invert, fmt }: { data: number[]; invert?: boolean; fmt?: (v: number) => string }) {
+function trendOf(cur: number, prev: number, invert?: boolean): "good" | "bad" | "flat" {
+  if (cur === prev) return "flat";
+  return (invert ? cur < prev : cur > prev) ? "good" : "bad";
+}
+
+function Sparkline({ data, invert, fmt, trend }: { data: number[]; invert?: boolean; fmt?: (v: number) => string; trend?: "good" | "bad" | "flat" }) {
   const [hi, setHi] = useState<number | null>(null);
   if (!data || data.length < 2) return null;
   const w = 120, h = 34, pad = 2;
@@ -49,8 +54,12 @@ function Sparkline({ data, invert, fmt }: { data: number[]; invert?: boolean; fm
   });
   const pts = data.map((v, i) => { const p = xy(v, i); return `${p.x.toFixed(1)},${p.y.toFixed(1)}`; }).join(" ");
   const first = data[0], last = data[data.length - 1];
+  // Kleur volgt het periode-verschil (zelfde richting als het %-getal), zodat de
+  // grafiek niet groen kleurt terwijl het cijfer daalt. Zonder trend: eerste vs laatste dag.
   const improved = invert ? last < first : last > first;
-  const color = last === first ? "#9e9e9e" : improved ? "#2E7D32" : "#C62828";
+  const color = trend
+    ? (trend === "flat" ? "#9e9e9e" : trend === "good" ? "#2E7D32" : "#C62828")
+    : (last === first ? "#9e9e9e" : improved ? "#2E7D32" : "#C62828");
   const format = fmt || ((v: number) => nl(Math.round(v)));
   const hp = hi !== null ? xy(data[hi], hi) : null;
   return (
@@ -341,15 +350,15 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
 
       {!loading && gsc && gsc.totals && (
         <Collapse title="Search Console" meta={`${gsc.range.curStart} t/m ${gsc.range.curEnd}`} open={isOpen("sc", true)} onToggle={() => toggle("sc", true)}>
-          <div className="kpi-grid">
-            <div className="kpi-card"><div className="kpi-value">{nl(gsc.totals.clicks.cur)}</div><div className="kpi-label">Klikken</div><Delta cur={gsc.totals.clicks.cur} prev={gsc.totals.clicks.prev} pct /><Sparkline data={gsc.series.clicks} /></div>
-            <div className="kpi-card"><div className="kpi-value">{nl(gsc.totals.impressions.cur)}</div><div className="kpi-label">Vertoningen</div><Delta cur={gsc.totals.impressions.cur} prev={gsc.totals.impressions.prev} pct /><Sparkline data={gsc.series.impressions} /></div>
-            <div className="kpi-card"><div className="kpi-value">{gsc.totals.ctr.cur.toFixed(1)}%</div><div className="kpi-label">CTR</div><Delta cur={gsc.totals.ctr.cur} prev={gsc.totals.ctr.prev} isPos /><Sparkline data={gsc.series.ctr} fmt={(v) => `${v.toFixed(1)}%`} /></div>
-            <div className="kpi-card"><div className="kpi-value">{gsc.totals.position.cur.toFixed(1)}</div><div className="kpi-label">Gem. positie</div><Delta cur={gsc.totals.position.cur} prev={gsc.totals.position.prev} invert isPos /><Sparkline data={gsc.series.position} invert fmt={(v) => v.toFixed(1)} /></div>
+          <div className="kpi-grid kpi-grid-4">
+            <div className="kpi-card"><div className="kpi-value">{nl(gsc.totals.clicks.cur)}</div><div className="kpi-label">Klikken</div><Delta cur={gsc.totals.clicks.cur} prev={gsc.totals.clicks.prev} pct /><Sparkline data={gsc.series.clicks} trend={trendOf(gsc.totals.clicks.cur, gsc.totals.clicks.prev)} /></div>
+            <div className="kpi-card"><div className="kpi-value">{nl(gsc.totals.impressions.cur)}</div><div className="kpi-label">Vertoningen</div><Delta cur={gsc.totals.impressions.cur} prev={gsc.totals.impressions.prev} pct /><Sparkline data={gsc.series.impressions} trend={trendOf(gsc.totals.impressions.cur, gsc.totals.impressions.prev)} /></div>
+            <div className="kpi-card"><div className="kpi-value">{gsc.totals.ctr.cur.toFixed(1)}%</div><div className="kpi-label">CTR</div><Delta cur={gsc.totals.ctr.cur} prev={gsc.totals.ctr.prev} isPos /><Sparkline data={gsc.series.ctr} fmt={(v) => `${v.toFixed(1)}%`} trend={trendOf(gsc.totals.ctr.cur, gsc.totals.ctr.prev)} /></div>
+            <div className="kpi-card"><div className="kpi-value">{gsc.totals.position.cur.toFixed(1)}</div><div className="kpi-label">Gem. positie</div><Delta cur={gsc.totals.position.cur} prev={gsc.totals.position.prev} invert isPos /><Sparkline data={gsc.series.position} invert fmt={(v) => v.toFixed(1)} trend={trendOf(gsc.totals.position.cur, gsc.totals.position.prev, true)} /></div>
           </div>
 
           {focusedKws.length > 0 && (
-            <Collapse sub title={`Belangrijke zoekwoorden (${focusedKws.length})`} meta="prio & secundair, vastgezet bovenaan" open={isOpen("sc_focus")} onToggle={() => toggle("sc_focus")}>
+            <Collapse sub title={`Belangrijke zoekwoorden (${focusedKws.length})`} meta="prio & secundair, vastgezet bovenaan" open={isOpen("sc_focus", true)} onToggle={() => toggle("sc_focus", true)}>
               <div className="res-table-wrap">
                 <table className="res-table kpi-table">
                   <thead><tr>
@@ -435,14 +444,14 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
 
       {!loading && (
         <Collapse title="Ahrefs" open={isOpen("ahrefs", true)} onToggle={() => toggle("ahrefs", true)}>
-          <Collapse sub
-            title={<>Ahrefs-zoekwoorden{ahrefsKw.length ? ` (${ahFiltered.length})` : ""} <HelpHint wide text="Alle organische zoekwoorden van het domein uit Ahrefs (volume, positie, intent), in één keer opgehaald. Laaghangend fruit = commerciële of transactionele zoekwoorden met volume die net buiten de top staan (positie 4-20): daar kun je met beperkte moeite snel meer waardevolle bezoekers scoren. Markeer belangrijke zoekwoorden als prio of secundair; die markering is gedeeld met de Search Console-lijst." /></>}
-            open={isOpen("ah_kw")} onToggle={() => toggle("ah_kw")}
-            actions={<>
-              {fruitCount > 0 && <button type="button" className={"ghost-btn small" + (onlyFruit ? " active" : "")} onClick={() => setOnlyFruit((v) => !v)}>{onlyFruit ? "Toon alles" : `Laaghangend fruit (${fruitCount})`}</button>}
-              <button type="button" className="primary-btn small" onClick={syncAhrefs} disabled={ahrefsBusy}>{ahrefsBusy ? "Ophalen…" : (ahrefsKw.length ? "Verversen" : "Ahrefs-zoekwoorden ophalen")}</button>
-            </>}
-          >
+          <div className="kpi-block">
+            <div className="kpi-block-head">
+              <span className="kpi-block-title">Ahrefs-zoekwoorden{ahrefsKw.length ? ` (${ahFiltered.length})` : ""} <HelpHint wide text="Alle organische zoekwoorden van het domein uit Ahrefs (volume, positie, intent), in één keer opgehaald. Laaghangend fruit = commerciële of transactionele zoekwoorden met volume die net buiten de top staan (positie 4-20): daar kun je met beperkte moeite snel meer waardevolle bezoekers scoren. Markeer belangrijke zoekwoorden als prio of secundair; die markering is gedeeld met de Search Console-lijst." /></span>
+              <span className="kpi-head-actions">
+                {fruitCount > 0 && <button type="button" className={"ghost-btn small" + (onlyFruit ? " active" : "")} onClick={() => setOnlyFruit((v) => !v)}>{onlyFruit ? "Toon alles" : `Laaghangend fruit (${fruitCount})`}</button>}
+                <button type="button" className="primary-btn small" onClick={syncAhrefs} disabled={ahrefsBusy}>{ahrefsBusy ? "Ophalen…" : (ahrefsKw.length ? "Verversen" : "Ahrefs-zoekwoorden ophalen")}</button>
+              </span>
+            </div>
             {ahrefsMsg && <div className="saved-msg" style={{ marginBottom: 8 }}>{ahrefsMsg}</div>}
             {ahrefsKw.length === 0 ? (
               <div className="muted">Nog geen Ahrefs-zoekwoorden opgehaald. Klik &ldquo;Ahrefs-zoekwoorden ophalen&rdquo;: dat haalt in één keer het hele domein op (kost Ahrefs-credits) en slaat het op, zodat de scan er daarna zonder credits op draait.</div>
@@ -472,16 +481,16 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
                 </table>
               </div>
             )}
-          </Collapse>
+          </div>
 
-          <Collapse sub
-            title={<>Kansen{opps.length ? ` (${opps.length})` : ""} <HelpHint wide text="Relevante zoekwoorden waar de site nog NIET op rankt, gevonden via keyword-ideas rond je kernthema's én concurrenten (waar zij wel scoren, jij niet), en door Claude gefilterd op echte relevantie. Kansen om met nieuwe of uitgebreide content te pakken." /></>}
-            open={isOpen("ah_opps")} onToggle={() => toggle("ah_opps")}
-            actions={<>
-              <button type="button" className={"ghost-btn small" + (compOpen ? " active" : "")} onClick={() => setCompOpen((v) => !v)}>Concurrenten{competitors.length ? ` (${competitors.length})` : ""}</button>
-              <button type="button" className="primary-btn small" onClick={collectOpps} disabled={oppBusy}>{oppBusy ? "Zoeken…" : (opps.length ? "Opnieuw zoeken" : "Kansen zoeken")}</button>
-            </>}
-          >
+          <div className="kpi-block">
+            <div className="kpi-block-head">
+              <span className="kpi-block-title">Kansen{opps.length ? ` (${opps.length})` : ""} <HelpHint wide text="Relevante zoekwoorden waar de site nog NIET op rankt, gevonden via keyword-ideas rond je kernthema's én concurrenten (waar zij wel scoren, jij niet), en door Claude gefilterd op echte relevantie. Kansen om met nieuwe of uitgebreide content te pakken." /></span>
+              <span className="kpi-head-actions">
+                <button type="button" className={"ghost-btn small" + (compOpen ? " active" : "")} onClick={() => setCompOpen((v) => !v)}>Concurrenten{competitors.length ? ` (${competitors.length})` : ""}</button>
+                <button type="button" className="primary-btn small" onClick={collectOpps} disabled={oppBusy}>{oppBusy ? "Zoeken…" : (opps.length ? "Opnieuw zoeken" : "Kansen zoeken")}</button>
+              </span>
+            </div>
             {compOpen && (
               <div className="comp-edit">
                 <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>2 tot 4 concurrent-domeinen. Hun zoekwoorden geven de gap (waar zij wel, jij nog niet rankt). Alleen het domein, bijvoorbeeld voorbeeld.nl.</div>
@@ -522,7 +531,7 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
                 </table>
               </div>
             )}
-          </Collapse>
+          </div>
         </Collapse>
       )}
 
@@ -538,7 +547,7 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
                 <div className="kpi-value">{nl(m.cur)}</div>
                 <div className="kpi-label">{GA4_LABELS[m.metric] || m.metric}</div>
                 <Delta cur={m.cur} prev={m.prev} pct />
-                <Sparkline data={m.series} />
+                <Sparkline data={m.series} trend={trendOf(m.cur, m.prev)} />
               </div>
             ))}
           </div>
