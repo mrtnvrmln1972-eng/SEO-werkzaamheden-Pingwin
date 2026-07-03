@@ -336,19 +336,19 @@ export default function ClientCockpit({
             <div className="cockpit-card">
               <div className="ck-section-head ck-collapse-head" onClick={() => setShowMailsBox((v) => !v)}>
                 <span>{showMailsBox ? "▾" : "▸"} Laatste mails <HelpHint text="De laatste e-mails met deze klant. Klap open om ze te lezen of te doorzoeken." /></span>
-                <div className="sh-search" onClick={(e) => e.stopPropagation()}>
-                  <input
-                    value={shQuery}
-                    onChange={(e) => setShQuery(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") openSuperhuman(); }}
-                    placeholder="Zoek bij deze klant, bijv. reviewsterren..."
-                  />
-                  <button type="button" className="primary-btn small" onClick={openSuperhuman} disabled={!clientMailQuery}>
-                    Zoek in Superhuman
-                  </button>
-                </div>
               </div>
               <div style={{ display: showMailsBox ? undefined : "none" }}>
+              <div className="sh-search" style={{ marginBottom: 12 }}>
+                <input
+                  value={shQuery}
+                  onChange={(e) => setShQuery(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") openSuperhuman(); }}
+                  placeholder="Zoek bij deze klant, bijv. reviewsterren..."
+                />
+                <button type="button" className="primary-btn small" onClick={openSuperhuman} disabled={!clientMailQuery}>
+                  Zoek in Superhuman
+                </button>
+              </div>
               {lastIngest && <div className="ck-updated" style={{ marginBottom: 12 }}>bijgewerkt {fmtDate(lastIngest)}</div>}
               {mailLive && (
                 <div className="mail-live-badge">

@@ -524,27 +524,24 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
     );
   }
 
+  // Een werkzaamheid toevoegen: valt standaard in de huidige maand (die je op de
+  // regel zelf kunt wijzigen; dat voegt die maand automatisch toe). Werkt ook als
+  // er nog geen enkele taak is.
+  function addWork() { addRow(curMonth, "SEO"); setOpenMonths((o) => ({ ...o, [curMonth]: true })); }
+
   return (
     <>
-      {monthSlot && createPortal(
-        <select className="add-month-select header-month-select" value="" onChange={(e) => { const m = e.target.value; if (m) { addRow(m, "SEO"); setOpenMonths((o) => ({ ...o, [m]: true })); } }}>
-          <option value="">+ Nieuwe maand…</option>
-          {MONTHS.filter((m) => !monthsPresent.includes(m)).map((m) => <option key={m} value={m}>{m}</option>)}
-        </select>,
-        monthSlot,
-      )}
-
       <div className="cockpit-card werk-bar">
         <div className="werk-head">
           <div className="werk-head-left">
             <span className="werk-title">Werkzaamheden</span>
           </div>
           <span className="werk-head-actions">
-            <button type="button" className="primary-btn small" onClick={save} disabled={busy}>{busy ? "Opslaan..." : "Alles opslaan"}</button>
+            <button type="button" className="primary-btn small" onClick={addWork}>+ Werkzaamheid toevoegen</button>
           </span>
         </div>
         {msg && <div className={msg.startsWith("Opgeslagen") ? "saved-msg" : "login-error"}>{msg}</div>}
-        {rows.length === 0 && <div className="muted">Nog geen werkzaamheden. Voeg een maand toe om te beginnen.</div>}
+        {rows.length === 0 && <div className="muted">Nog geen werkzaamheden. Klik &ldquo;+ Werkzaamheid toevoegen&rdquo; om te beginnen; kies daarna op de regel de maand.</div>}
       </div>
 
       {klantPop && typeof document !== "undefined" && createPortal(
