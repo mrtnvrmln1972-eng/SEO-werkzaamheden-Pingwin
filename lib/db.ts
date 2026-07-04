@@ -203,6 +203,13 @@ async function init(): Promise<void> {
   await sql`CREATE INDEX IF NOT EXISTS idx_service_usage_date ON service_usage (created_at DESC)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_service_usage_slug ON service_usage (client_slug, created_at DESC)`;
 
+  // Demo-klanten (One Day Clinic e.a.) alleen seeden als dat expliciet aan staat
+  // via de env-var SEED_DEMO_CLIENTS=true. Zo start een NIEUWE wereld (bijv. een
+  // eigen omgeving voor NOC) met een lege klantenlijst. Bestaande omgevingen
+  // houden hun klanten: die staan al in de database, en deze seed was daar toch
+  // al een no-op (ON CONFLICT DO NOTHING). Zet de var alleen als je bewust de
+  // demo-klanten wilt terugzetten.
+  if (process.env.SEED_DEMO_CLIENTS === "true") {
   // Eerste klant (One Day Clinic) zodat zijn login meteen werkt.
   const hash = hashPassword("OneDayClinic2026");
   await sql`
@@ -236,6 +243,7 @@ async function init(): Promise<void> {
       VALUES (${c.slug}, ${c.slug}, ${c.name}, '', ${ph})
       ON CONFLICT (slug) DO NOTHING`;
   }
+  } // einde: demo-klanten alleen bij SEED_DEMO_CLIENTS=true
 }
 
 export function ensureSchema(): Promise<void> {
