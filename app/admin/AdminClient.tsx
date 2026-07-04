@@ -279,11 +279,11 @@ export default function AdminClient({ initialClients }: { initialClients: Client
           <div className="form-grid">
             <div className="field">
               <label>Bedrijfsnaam</label>
-              <input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="One Day Clinic" required />
+              <input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Bedrijfsnaam van de klant" required />
             </div>
             <div className="field">
               <label>Inlognaam (geen spaties)</label>
-              <input value={form.loginId} onChange={(e) => set("loginId", e.target.value)} placeholder="onedayclinic" required />
+              <input value={form.loginId} onChange={(e) => set("loginId", e.target.value)} placeholder="inlognaam-zonder-spaties" required />
             </div>
             <div className="field">
               <label>E-mailadres klant</label>

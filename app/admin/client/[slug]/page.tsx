@@ -97,6 +97,11 @@ export default async function ClientCockpitPage({ params, searchParams }: { para
 
   return (
     <ClientCockpit
+      // key op de slug: bij wisselen van klant remount de hele cockpit, zodat
+      // geen enkele interne staat (tab, geopende mail, panelen) van de vorige
+      // klant blijft hangen. Voorkomt dat gegevens van klant A even bij klant B
+      // lijken te blijven staan tijdens het laden.
+      key={client.slug}
       client={client}
       emails={emails}
       metrics={metrics}
