@@ -28,7 +28,7 @@ Eén gedeeld ontwerp, data per klant. Eén vaste URL voor alle klanten; de login
 - **Adminscherm (cockpit):** https://pingwin-seo-dashboard.vercel.app/admin
 - **GitHub:** `mrtnvrmln1972-eng/SEO-werkzaamheden-Pingwin` (publiek), branch `main`
 - **Vercel-project:** `pingwin-seo-dashboard` (account mrtnvrmln1972-9296s-projects). Push naar main = automatische productie-deploy.
-- **Lokale map:** `/Users/maartenvermeulen/Documents/Claude/Projects/Pingwin SEO Dashboard`
+- **Lokale map:** `~/dev/pingwin-seo-dashboard` (bewust uit iCloud/Documents gehaald op 2026-07-04 omdat iCloud " 2"-duplicaten in `.git` maakte en de repo corrumpeerde; nooit terugzetten in een iCloud-gesynchroniseerde map).
 
 **Eerste klant:** One Day Clinic. Klant-login `onedayclinic` / `OneDayClinic2026`. Adminwachtwoord `Pingwin-Admin-569df1`. (Wachtwoorden kunnen via env-vars gewijzigd worden.)
 
