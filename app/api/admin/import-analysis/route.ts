@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as XLSX from "xlsx";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
+import { guardSlug } from "../../../../lib/admin-scope";
 import { buildItemsFromRows, computeLiveFlags } from "../../../../lib/analysis-import";
 
 export const runtime = "nodejs";
@@ -18,6 +19,7 @@ export async function POST(req: NextRequest) {
   if (!form) return NextResponse.json({ ok: false, error: "Geen bestand ontvangen." }, { status: 400 });
 
   const slug = String(form.get("slug") || "").trim();
+  const g = await guardSlug(req, slug); if (!g.ok) return g.res;
   const cluster = String(form.get("cluster") || "").trim();
   const wantedSheet = String(form.get("sheet") || "").trim();
   const file = form.get("file");

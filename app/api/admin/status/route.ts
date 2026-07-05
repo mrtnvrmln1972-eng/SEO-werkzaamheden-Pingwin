@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
+import { guardSlug } from "../../../../lib/admin-scope";
 import { updateStatusItem } from "../../../../lib/snapshots";
 
 export const runtime = "nodejs";
@@ -12,6 +13,7 @@ export async function POST(req: NextRequest) {
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: "Ongeldige aanvraag." }, { status: 400 }); }
   const slug = String(body.slug || "").trim();
+  const g = await guardSlug(req, slug); if (!g.ok) return g.res;
   const index = Number(body.index);
   const status = body.status === "done" ? "done" : "open";
   if (!slug || !Number.isInteger(index) || index < 0) {

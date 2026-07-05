@@ -33,6 +33,15 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Klant-login uitgeschakeld door de eigenaar: wachtwoord klopt, maar de toegang
+  // staat dicht. Los van het adminscherm.
+  if (found.config.loginEnabled === false) {
+    return NextResponse.json(
+      { ok: false, error: "Inloggen is voor deze klant uitgeschakeld. Neem contact op met Pingwin." },
+      { status: 403 },
+    );
+  }
+
   const res = NextResponse.json({ ok: true });
   res.cookies.set(SESSION_COOKIE, makeSessionValue(found.config.slug), {
     httpOnly: true,

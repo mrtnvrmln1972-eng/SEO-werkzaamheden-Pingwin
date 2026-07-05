@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
+import { guardSlug } from "../../../../lib/admin-scope";
 import { getClientBySlug } from "../../../../lib/clients";
 import { getClientUrls, scanClientUrls } from "../../../../lib/site-urls";
 import { sql } from "../../../../lib/db";
@@ -16,6 +17,7 @@ export async function GET(req: NextRequest) {
   if (!admin(req)) return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
   const slug = req.nextUrl.searchParams.get("slug") || "";
   if (!slug) return NextResponse.json({ ok: false, error: "Geen klant opgegeven." }, { status: 400 });
+  const g = await guardSlug(req, slug); if (!g.ok) return g.res;
   return NextResponse.json({ ok: true, urls: await getClientUrls(slug) });
 }
 
@@ -25,6 +27,7 @@ export async function POST(req: NextRequest) {
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: "Ongeldige aanvraag." }, { status: 400 }); }
   const slug = String(body.slug || "").trim();
+  const g2 = await guardSlug(req, slug); if (!g2.ok) return g2.res;
   const client = await getClientBySlug(slug);
   if (!client) return NextResponse.json({ ok: false, error: "Klant niet gevonden." }, { status: 404 });
   // Website-domein instellen of bijwerken als het is meegegeven. Dit is de plek

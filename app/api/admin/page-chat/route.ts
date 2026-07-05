@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
+import { guardSlug } from "../../../../lib/admin-scope";
 import { callClaudeAgentic, anthropicConfigured, type ChatMsg } from "../../../../lib/anthropic";
 import { buildSystemPrompt, parseProposal, extractProposal } from "../../../../lib/page-chat-ground";
 import { CHAT_TOOLS, runChatTool } from "../../../../lib/chat-tools";
@@ -18,6 +19,7 @@ export async function POST(req: NextRequest) {
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: "Ongeldige aanvraag." }, { status: 400 }); }
   const slug = String(body.slug || "").trim();
+  const g = await guardSlug(req, slug); if (!g.ok) return g.res;
   const url = String(body.url || "").trim();
   const messages = Array.isArray(body.messages) ? (body.messages as ChatMsg[]) : [];
   if (!slug || !url || messages.length === 0) return NextResponse.json({ ok: false, error: "Klant, URL en bericht zijn verplicht." }, { status: 400 });

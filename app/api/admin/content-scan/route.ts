@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
+import { guardSlug } from "../../../../lib/admin-scope";
 import { getClientUrls } from "../../../../lib/site-urls";
 import { captureAndDetect } from "../../../../lib/content-tracking";
 
@@ -19,6 +20,7 @@ export async function POST(req: NextRequest) {
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: "Ongeldige aanvraag." }, { status: 400 }); }
   const slug = String(body.slug || "").trim();
   if (!slug) return NextResponse.json({ ok: false, error: "Klant is verplicht." }, { status: 400 });
+  const g = await guardSlug(req, slug); if (!g.ok) return g.res;
 
   const urls = (await getClientUrls(slug).catch(() => []))
     .filter((u) => u.status && u.status >= 200 && u.status < 300)

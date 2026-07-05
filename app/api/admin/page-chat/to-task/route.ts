@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../../lib/admin-auth";
+import { guardSlug } from "../../../../../lib/admin-scope";
 import { callClaude, anthropicConfigured } from "../../../../../lib/anthropic";
 import { appendTasks } from "../../../../../lib/tasks";
 import { mdToHtml } from "../../../../../lib/markdown";
@@ -19,6 +20,7 @@ export async function POST(req: NextRequest) {
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: "Ongeldige aanvraag." }, { status: 400 }); }
   const slug = String(body.slug || "").trim();
+  const g = await guardSlug(req, slug); if (!g.ok) return g.res;
   const url = String(body.url || "").trim();
   const analysis = String(body.analysis || "").trim();
   if (!slug || !url || !analysis) return NextResponse.json({ ok: false, error: "Klant, URL en analyse zijn verplicht." }, { status: 400 });

@@ -1,25 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
+import { getAdminScope, canAccessSlug, guardOwner } from "../../../../lib/admin-scope";
 import { listClients, createClient, deleteClient, updateClientCockpit, updateClientCore, parseSheetUrl, resetClientPassword, setClientBudget } from "../../../../lib/clients";
 
 export const runtime = "nodejs";
 
-function requireAdmin(req: NextRequest): boolean {
-  return verifyAdminSession(req.cookies.get(ADMIN_COOKIE)?.value);
-}
-
 export async function GET(req: NextRequest) {
-  if (!requireAdmin(req)) {
-    return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
-  }
-  const clients = await listClients();
+  const scope = await getAdminScope(req);
+  if (!scope) return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
+  const all = await listClients();
+  // Gast: alleen de klanten waar hij toegang toe heeft.
+  const clients = scope.isOwner ? all : all.filter((c) => canAccessSlug(scope, c.slug));
   return NextResponse.json({ ok: true, clients });
 }
 
 export async function POST(req: NextRequest) {
-  if (!requireAdmin(req)) {
-    return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
-  }
+  // Klant aanmaken: alleen de eigenaar.
+  const g = await guardOwner(req); if (!g.ok) return g.res;
 
   let body: Record<string, unknown>;
   try {
@@ -78,9 +74,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  if (!requireAdmin(req)) {
-    return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
-  }
+  // Klant bewerken (wachtwoord-reset, budget, kernvelden): alleen de eigenaar.
+  const g = await guardOwner(req); if (!g.ok) return g.res;
   let body: Record<string, unknown>;
   try {
     body = await req.json();
@@ -142,9 +137,8 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  if (!requireAdmin(req)) {
-    return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
-  }
+  // Klant verwijderen: alleen de eigenaar.
+  const g = await guardOwner(req); if (!g.ok) return g.res;
   const slug = new URL(req.url).searchParams.get("slug") || "";
   if (!slug) {
     return NextResponse.json({ ok: false, error: "Geen klant opgegeven." }, { status: 400 });

@@ -60,6 +60,14 @@ export async function saveChat(slug: string, url: string, id: number | null, mes
   return Number(ins.rows[0].id);
 }
 
+// De klant (slug) waar een chat bij hoort, zodat de aanroeper de toegang kan
+// toetsen voordat hij verwijdert.
+export async function getChatSlug(id: number): Promise<string | null> {
+  await ensureSchema(); await ensureTable();
+  const { rows } = await sql`SELECT client_slug FROM page_chats WHERE id = ${id} LIMIT 1`;
+  return rows[0] ? (rows[0].client_slug as string) : null;
+}
+
 export async function deleteChat(id: number): Promise<void> {
   await ensureSchema(); await ensureTable();
   await sql`DELETE FROM page_chats WHERE id = ${id}`;

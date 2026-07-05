@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
+import { ADMIN_COOKIE } from "../../../../lib/admin-auth";
+import { getScopeFromCookie, canAccessSlug } from "../../../../lib/admin-scope";
 import { getClientBySlug, listClients, type ClientConfig } from "../../../../lib/clients";
 import { getEmails, getMetrics, getKeywords, getPages, getLastIngest, getStatus } from "../../../../lib/snapshots";
 import { msStatus, msSearchClientEmails } from "../../../../lib/ms-graph";
@@ -46,21 +47,29 @@ function buildMonthTasks(tasks: TaskRow[]): MonthTasks {
 }
 
 export default async function ClientCockpitPage({ params, searchParams }: { params: { slug: string }; searchParams: { tab?: string; highlight?: string } }) {
-  const ok = verifyAdminSession(cookies().get(ADMIN_COOKIE)?.value);
-  if (!ok) redirect("/admin/login");
+  const scope = await getScopeFromCookie(cookies().get(ADMIN_COOKIE)?.value);
+  if (!scope) redirect("/admin/login");
+  // Gast zonder toegang tot deze klant: terug naar het overzicht.
+  if (!canAccessSlug(scope, params.slug)) redirect("/admin");
+
+  // Mag deze gebruiker de mail en de "Actuele stand van zaken" (status) zien?
+  // Eigenaar altijd; gast alleen als can_see_mail aanstaat.
+  const canSeeMail = scope.canSeeMail;
 
   const client = await getClientBySlug(params.slug);
   if (!client) redirect("/admin");
 
   // Alle bronnen komen nu uit de database (geen Sheet meer voor de werkzaamheden).
+  // Mail en status alleen ophalen als deze gebruiker ze mag zien; anders leeg,
+  // zodat de data niet eens de server verlaat.
   const [storedEmails, metrics, keywords, pages, lastIngest, status, ms, google, allClients, chatHistory, tasks] = await Promise.all([
-    getEmails(params.slug),
+    canSeeMail ? getEmails(params.slug) : Promise.resolve([]),
     getMetrics(params.slug),
     getKeywords(params.slug),
     getPages(params.slug),
     getLastIngest(params.slug),
-    getStatus(params.slug),
-    msStatus(),
+    canSeeMail ? getStatus(params.slug) : Promise.resolve({ status: { exchanges: [], tasks: [], mailActions: [] }, updatedAt: null }),
+    canSeeMail ? msStatus() : Promise.resolve({ configured: false, connected: false, account: null }),
     googleStatus(),
     listClients(),
     getChatHistory(params.slug),

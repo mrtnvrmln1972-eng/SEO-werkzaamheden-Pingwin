@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 export default function AdminLoginPage() {
   const router = useRouter();
+  const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -17,7 +18,7 @@ export default function AdminLoginPage() {
       const res = await fetch("/api/admin/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ loginId, password }),
       });
       const data = await res.json();
       if (data.ok) {
@@ -41,7 +42,19 @@ export default function AdminLoginPage() {
         <h1>Beheer</h1>
         <p className="sub">Adminscherm Pingwin SEO Dashboard.</p>
 
-        <label htmlFor="password">Adminwachtwoord</label>
+        <label htmlFor="loginId">Inlognaam</label>
+        <input
+          id="loginId"
+          type="text"
+          autoComplete="username"
+          autoCapitalize="none"
+          spellCheck={false}
+          placeholder="Laat leeg als eigenaar"
+          value={loginId}
+          onChange={(e) => setLoginId(e.target.value)}
+        />
+
+        <label htmlFor="password">Wachtwoord</label>
         <input
           id="password"
           type="password"

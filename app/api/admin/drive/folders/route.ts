@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../../lib/admin-auth";
+import { guardSlug } from "../../../../../lib/admin-scope";
 import { listFolders, createFolder } from "../../../../../lib/drive";
 import { savePageDriveFolder, getPageDriveFolder } from "../../../../../lib/site-urls";
 
@@ -16,6 +17,7 @@ export async function GET(req: NextRequest) {
   if (!admin(req)) return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
   const parent = req.nextUrl.searchParams.get("parent") || "root";
   const slug = req.nextUrl.searchParams.get("slug") || "";
+  const g = await guardSlug(req, slug); if (!g.ok) return g.res;
   const url = req.nextUrl.searchParams.get("url") || "";
   // Lichte modus: alleen de al gekozen bestemmingsmap ophalen (geen Drive-call),
   // voor bij het laden van een pagina.
@@ -50,6 +52,7 @@ export async function POST(req: NextRequest) {
     }
     if (action === "save") {
       const slug = String(body.slug || "").trim();
+      const g2 = await guardSlug(req, slug); if (!g2.ok) return g2.res;
       const url = String(body.url || "").trim();
       const folderId = String(body.folderId || "").trim();
       const folderName = String(body.folderName || "").trim();

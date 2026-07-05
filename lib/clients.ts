@@ -38,6 +38,7 @@ export type ClientConfig = {
   domain: string | null;
   ahrefsProjectId: string | null;
   seoProfile: string | null;
+  loginEnabled: boolean;
   budget: ClientBudget;
   cockpit: ClientCockpit;
 };
@@ -59,6 +60,7 @@ type ClientRow = {
   domain: string | null;
   ahrefs_project_id: string | null;
   seo_profile: string | null;
+  login_enabled: boolean | null;
   email_domain: string | null;
   work_doc_url: string | null;
   results_url: string | null;
@@ -79,6 +81,7 @@ function rowToConfig(r: ClientRow): ClientConfig {
     domain: r.domain ?? null,
     ahrefsProjectId: r.ahrefs_project_id ?? null,
     seoProfile: r.seo_profile ?? null,
+    loginEnabled: r.login_enabled === null || r.login_enabled === undefined ? true : !!r.login_enabled,
     budget: {
       maandbudget: Number(r.maandbudget),
       linkbuilding: Number(r.linkbuilding),
@@ -213,6 +216,30 @@ export async function updateClientCore(slug: string, c: ClientCore): Promise<boo
       beschikbare_uren = ${c.beschikbareUren}
     WHERE slug = ${slug}`;
   return !!rowCount && rowCount > 0;
+}
+
+// Beheer-velden die op de Beheer-pagina bewerkbaar zijn: naam, website-domein,
+// klant-e-mail en of de klant-login openstaat. Alleen meegegeven velden worden
+// bijgewerkt (undefined = ongemoeid laten), zodat dit veilig los te gebruiken is.
+export async function updateClientAdmin(
+  slug: string,
+  p: { name?: string; domain?: string | null; email?: string | null; loginEnabled?: boolean },
+): Promise<boolean> {
+  await ensureSchema();
+  if (p.name !== undefined && p.name.trim()) {
+    await sql`UPDATE clients SET name = ${p.name.trim()} WHERE slug = ${slug}`;
+  }
+  if (p.domain !== undefined) {
+    await sql`UPDATE clients SET domain = ${p.domain || null} WHERE slug = ${slug}`;
+  }
+  if (p.email !== undefined) {
+    await sql`UPDATE clients SET email = ${p.email || null} WHERE slug = ${slug}`;
+  }
+  if (p.loginEnabled !== undefined) {
+    await sql`UPDATE clients SET login_enabled = ${p.loginEnabled} WHERE slug = ${slug}`;
+  }
+  const { rows } = await sql`SELECT 1 FROM clients WHERE slug = ${slug} LIMIT 1`;
+  return rows.length > 0;
 }
 
 export async function setClientBudget(

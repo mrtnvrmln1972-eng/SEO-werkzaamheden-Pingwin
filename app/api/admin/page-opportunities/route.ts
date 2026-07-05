@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
+import { guardSlug } from "../../../../lib/admin-scope";
 import { getClientBySlug } from "../../../../lib/clients";
 import { getGscPageOpportunities } from "../../../../lib/google";
 
@@ -26,6 +27,7 @@ export async function GET(req: NextRequest) {
   if (!admin(req)) return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
   const slug = req.nextUrl.searchParams.get("slug") || "";
   if (!slug) return NextResponse.json({ ok: false, error: "Klant verplicht." }, { status: 400 });
+  const g = await guardSlug(req, slug); if (!g.ok) return g.res;
   const client = await getClientBySlug(slug);
   const domain = client?.domain || "";
   if (!domain) return NextResponse.json({ ok: true, pages: {} });

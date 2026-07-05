@@ -1,15 +1,18 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { ADMIN_COOKIE, verifyAdminSession } from "../../lib/admin-auth";
+import { ADMIN_COOKIE } from "../../lib/admin-auth";
+import { getScopeFromCookie } from "../../lib/admin-scope";
 import { listClients } from "../../lib/clients";
 import AdminClient from "./AdminClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminPage() {
-  const ok = verifyAdminSession(cookies().get(ADMIN_COOKIE)?.value);
-  if (!ok) redirect("/admin/login");
+  const scope = await getScopeFromCookie(cookies().get(ADMIN_COOKIE)?.value);
+  if (!scope) redirect("/admin/login");
 
-  const clients = await listClients();
-  return <AdminClient initialClients={clients} />;
+  const all = await listClients();
+  // Gast: alleen de eigen klanten. Eigenaar: alles.
+  const clients = scope.isOwner ? all : all.filter((c) => scope.allowedSlugs?.includes(c.slug));
+  return <AdminClient initialClients={clients} isOwner={scope.isOwner} />;
 }

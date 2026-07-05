@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
+import { guardSlug } from "../../../../lib/admin-scope";
 import { getChangeEvents, getChangeEvent, addManualChange } from "../../../../lib/content-tracking";
 
 export const runtime = "nodejs";
@@ -12,6 +13,7 @@ function admin(req: NextRequest): boolean {
 export async function GET(req: NextRequest) {
   if (!admin(req)) return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
   const slug = req.nextUrl.searchParams.get("slug") || "";
+  const g = await guardSlug(req, slug); if (!g.ok) return g.res;
   const id = req.nextUrl.searchParams.get("id");
   if (!slug) return NextResponse.json({ ok: false, error: "Klant verplicht." }, { status: 400 });
   if (id) {
@@ -29,6 +31,7 @@ export async function POST(req: NextRequest) {
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: "Ongeldige aanvraag." }, { status: 400 }); }
   const slug = String(body.slug || "").trim();
+  const g2 = await guardSlug(req, slug); if (!g2.ok) return g2.res;
   const url = String(body.url || "").trim();
   const date = String(body.date || "").trim();
   const note = String(body.note || "").trim();

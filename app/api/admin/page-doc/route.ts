@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
+import { guardSlug } from "../../../../lib/admin-scope";
 import { anthropicConfigured } from "../../../../lib/anthropic";
 import { generateDocSpec, clientVersionSpec, type DocKind } from "../../../../lib/page-doc";
 import { buildPingwinDoc } from "../../../../lib/pingwin-docx";
@@ -40,6 +41,7 @@ export async function POST(req: NextRequest) {
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: "Ongeldige aanvraag." }, { status: 400 }); }
   const slug = String(body.slug || "").trim();
+  const g = await guardSlug(req, slug); if (!g.ok) return g.res;
   const url = String(body.url || "").trim();
   const kindRaw = String(body.kind || "").trim();
   const kind: DocKind = kindRaw === "copy" ? "copy" : kindRaw === "analyse" ? "analyse" : "blauwdruk";

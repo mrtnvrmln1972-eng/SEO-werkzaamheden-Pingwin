@@ -46,6 +46,28 @@ async function init(): Promise<void> {
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS domain TEXT`;
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS ahrefs_project_id TEXT`;
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS ga4_property_id TEXT`;
+  // Klant-login aan/uit: staat de klant-login voor deze klant open? Standaard aan,
+  // zodat bestaande klanten zonder wijziging kunnen blijven inloggen. Zet uit om de
+  // klant-login te blokkeren (het adminscherm blijft los daarvan werken).
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS login_enabled BOOLEAN NOT NULL DEFAULT true`;
+
+  // ── Teamgebruikers (rechten-laag naast de env-eigenaar) ──
+  // De env-eigenaar (ADMIN_PASSWORD) blijft de volledige eigenaar met toegang tot
+  // alles. Daarnaast kunnen teamgebruikers (gasten) inloggen op het adminscherm met
+  // een eigen inlognaam + wachtwoord (scrypt-hash), met toegang tot alleen de
+  // klanten in allowed_slugs en optioneel de mail/status (can_see_mail). Geen seed:
+  // met nul teamgebruikers gedraagt alles zich exact als voorheen.
+  await sql`
+    CREATE TABLE IF NOT EXISTS team_users (
+      id            SERIAL PRIMARY KEY,
+      name          TEXT,
+      login_id      TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      role          TEXT NOT NULL DEFAULT 'guest',
+      allowed_slugs TEXT[] NOT NULL DEFAULT '{}',
+      can_see_mail  BOOLEAN NOT NULL DEFAULT false,
+      created_at    TIMESTAMPTZ DEFAULT now()
+    )`;
 
   // ── Data-brug: ingeladen snapshots per klant (uit Outlook / GSC / GA4 / Ahrefs) ──
   // Gevuld via POST /api/admin/ingest. Het dashboard leest hieruit, ook als er

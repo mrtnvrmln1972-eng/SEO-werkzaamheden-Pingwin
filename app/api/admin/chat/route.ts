@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
+import { guardSlug } from "../../../../lib/admin-scope";
 import { answerChat, clearChatHistory, getChatHistory, listChatThreads } from "../../../../lib/chat";
 
 export const runtime = "nodejs";
@@ -12,6 +13,7 @@ export async function GET(req: NextRequest) {
   }
   const slug = req.nextUrl.searchParams.get("slug") || "";
   if (!slug) return NextResponse.json({ ok: false, error: "Geen klant opgegeven." }, { status: 400 });
+  const g = await guardSlug(req, slug); if (!g.ok) return g.res;
   const thread = req.nextUrl.searchParams.get("thread") || "";
   const threads = await listChatThreads(slug);
   const messages = thread ? await getChatHistory(slug, thread) : [];
@@ -25,6 +27,7 @@ export async function POST(req: NextRequest) {
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: "Ongeldige aanvraag." }, { status: 400 }); }
   const slug = String(body.slug || "").trim();
+  const g2 = await guardSlug(req, slug); if (!g2.ok) return g2.res;
   const thread = String(body.thread || "algemeen").trim() || "algemeen";
   const messages = Array.isArray(body.messages) ? body.messages : [];
   if (!slug || messages.length === 0) {
@@ -42,6 +45,7 @@ export async function DELETE(req: NextRequest) {
   }
   const slug = req.nextUrl.searchParams.get("slug") || "";
   if (!slug) return NextResponse.json({ ok: false, error: "Geen klant opgegeven." }, { status: 400 });
+  const g3 = await guardSlug(req, slug); if (!g3.ok) return g3.res;
   const thread = req.nextUrl.searchParams.get("thread") || "algemeen";
   await clearChatHistory(slug, thread);
   return NextResponse.json({ ok: true });

@@ -1,20 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
+import { guardOwner } from "../../../../lib/admin-scope";
 import { getDeveloperTasks, saveDeveloperOrder, setDeveloperStatus } from "../../../../lib/developer";
 
 export const runtime = "nodejs";
 
-function admin(req: NextRequest): boolean {
-  return verifyAdminSession(req.cookies.get(ADMIN_COOKIE)?.value);
-}
-
 export async function GET(req: NextRequest) {
-  if (!admin(req)) return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
+  // Cross-client developer-overzicht: alleen de eigenaar.
+  const g = await guardOwner(req); if (!g.ok) return g.res;
   return NextResponse.json({ ok: true, tasks: await getDeveloperTasks() });
 }
 
 export async function POST(req: NextRequest) {
-  if (!admin(req)) return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
+  const g = await guardOwner(req); if (!g.ok) return g.res;
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: "Ongeldige aanvraag." }, { status: 400 }); }
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
+import { guardSlug } from "../../../../lib/admin-scope";
 import { getTasks, deleteTasksByIds } from "../../../../lib/tasks";
 
 export const runtime = "nodejs";
@@ -14,6 +15,7 @@ const norm = (u?: string) => (u || "").trim().replace(/\/+$/, "");
 export async function GET(req: NextRequest) {
   if (!admin(req)) return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
   const slug = req.nextUrl.searchParams.get("slug") || "";
+  const g = await guardSlug(req, slug); if (!g.ok) return g.res;
   const url = req.nextUrl.searchParams.get("url") || "";
   if (!slug || !url) return NextResponse.json({ ok: false, error: "Klant en URL verplicht." }, { status: 400 });
   const all = await getTasks(slug);
@@ -28,6 +30,7 @@ export async function GET(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   if (!admin(req)) return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
   const slug = req.nextUrl.searchParams.get("slug") || "";
+  const g2 = await guardSlug(req, slug); if (!g2.ok) return g2.res;
   const url = req.nextUrl.searchParams.get("url") || "";
   if (!slug || !url) return NextResponse.json({ ok: false, error: "Klant en URL verplicht." }, { status: 400 });
   const all = await getTasks(slug);

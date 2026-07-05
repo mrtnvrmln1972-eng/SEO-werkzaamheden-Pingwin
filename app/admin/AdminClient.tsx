@@ -17,7 +17,7 @@ const EMPTY = {
   beschikbareUren: "",
 };
 
-export default function AdminClient({ initialClients }: { initialClients: ClientConfig[] }) {
+export default function AdminClient({ initialClients, isOwner = true }: { initialClients: ClientConfig[]; isOwner?: boolean }) {
   const router = useRouter();
   const [clients, setClients] = useState<ClientConfig[]>(initialClients);
   const [form, setForm] = useState({ ...EMPTY });
@@ -178,7 +178,12 @@ export default function AdminClient({ initialClients }: { initialClients: Client
           </div>
         </div>
         <div className="header-right">
-          <a className="logout-btn" href="/admin/developer" title="Alle developer-taken over alle klanten">Developer</a>
+          {isOwner && (
+            <a className="logout-btn" href="/admin/beheer" title="Klanten en teamgebruikers beheren">Beheer</a>
+          )}
+          {isOwner && (
+            <a className="logout-btn" href="/admin/developer" title="Alle developer-taken over alle klanten" style={{ marginLeft: 8 }}>Developer</a>
+          )}
           <button className="logout-btn" onClick={logout} style={{ marginLeft: 8 }}>Uitloggen</button>
         </div>
       </div>
@@ -232,9 +237,15 @@ export default function AdminClient({ initialClients }: { initialClients: Client
                     <td>&euro;{c.budget.maandbudget.toFixed(0)}{c.budget.linkbuilding ? <span className="muted"> (w.v. &euro;{c.budget.linkbuilding.toFixed(0)} LB)</span> : null}</td>
                     <td>&euro;{c.budget.uurtarief.toFixed(0)}</td>
                     <td style={{ whiteSpace: "nowrap" }}>
-                      <button className="mini-btn" onClick={(e) => openEdit(e, c)}>Budget</button>{" "}
-                      <button className="mini-btn" onClick={(e) => resetPw(e, c)}>Nieuw wachtwoord</button>{" "}
-                      <button className="mini-btn" onClick={(e) => remove(e, c)}>Verwijder</button>
+                      {isOwner ? (
+                        <>
+                          <button className="mini-btn" onClick={(e) => openEdit(e, c)}>Budget</button>{" "}
+                          <button className="mini-btn" onClick={(e) => resetPw(e, c)}>Nieuw wachtwoord</button>{" "}
+                          <button className="mini-btn" onClick={(e) => remove(e, c)}>Verwijder</button>
+                        </>
+                      ) : (
+                        <span className="muted">&mdash;</span>
+                      )}
                     </td>
                   </tr>
                   {editSlug === c.slug && (
@@ -268,13 +279,15 @@ export default function AdminClient({ initialClients }: { initialClients: Client
           </table>
         </div>
 
+        {isOwner && (
         <div style={{ marginTop: 40 }}>
           <button type="button" className="logout-btn" onClick={() => setShowForm((v) => !v)}>
             {showForm ? "− Formulier sluiten" : "+ Nieuwe klant aanmaken"}
           </button>
         </div>
+        )}
 
-        {showForm && (
+        {isOwner && showForm && (
         <form className="admin-form" style={{ marginTop: 20 }} onSubmit={onSubmit}>
           <div className="form-grid">
             <div className="field">

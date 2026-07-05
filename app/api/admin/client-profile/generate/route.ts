@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../../lib/admin-auth";
+import { guardSlug } from "../../../../../lib/admin-scope";
 import { anthropicConfigured } from "../../../../../lib/anthropic";
 import { makeProfileDeliverable, type ProfileKind } from "../../../../../lib/client-profile-gen";
 
@@ -17,6 +18,7 @@ export async function POST(req: NextRequest) {
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: "Ongeldige aanvraag." }, { status: 400 }); }
   const slug = String(body.slug || "").trim();
+  const g = await guardSlug(req, slug); if (!g.ok) return g.res;
   const kind: ProfileKind = body.kind === "tov" ? "tov" : "profile";
   const folderId = String(body.folderId || "").trim();
   if (!slug) return NextResponse.json({ ok: false, error: "Geen klant opgegeven." }, { status: 400 });
