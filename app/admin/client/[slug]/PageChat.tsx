@@ -36,6 +36,10 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   const [clusterItems, setClusterItems] = useState<{ url: string; advice: string }[] | null>(null);
   const [clusterSel, setClusterSel] = useState<string[]>([]);
   const [clusterMsg, setClusterMsg] = useState("");
+  // Achtergrond-run (analyse -> blauwdruk -> copy los van de browser).
+  type DocRun = { id: number; status: string; steps: Record<string, string>; links: Record<string, string>; error: string };
+  const [run, setRun] = useState<DocRun | null>(null);
+  const [runBusy, setRunBusy] = useState(false);
   // Klant-mail
   const [mailOpen, setMailOpen] = useState(false);
   const [mailGen, setMailGen] = useState(false);
@@ -159,6 +163,28 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       .catch(() => { /* niet kritisch */ });
     return () => { alive = false; };
   }, [slug, url]);
+
+  // Laatste achtergrond-run ophalen bij openen (toont een lopende of net afgeronde run).
+  useEffect(() => {
+    let alive = true;
+    fetch(`/api/admin/page-doc/run?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}`)
+      .then((r) => r.json()).then((d) => { if (alive && d.ok) setRun(d.run); })
+      .catch(() => { /* niet kritisch */ });
+    return () => { alive = false; };
+  }, [slug, url]);
+
+  // Zolang een run loopt: elke 5s de status verversen (stopt vanzelf bij klaar/fout).
+  useEffect(() => {
+    if (!run || run.status !== "running") return;
+    const t = setInterval(async () => {
+      try {
+        const r = await fetch(`/api/admin/page-doc/run?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}`);
+        const d = await r.json();
+        if (d.ok) setRun(d.run);
+      } catch { /* stil */ }
+    }, 5000);
+    return () => clearInterval(t); /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [run?.status, run?.id, slug, url]);
 
   async function loadFolders(parentId: string) {
     setPickBusy(true); setPickErr("");
@@ -346,6 +372,19 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     } catch { setErr("Doorgeven mislukt."); } finally { setClusterBusy(false); }
   }
 
+  // Start de achtergrond-run: de drie stappen draaien server-side door; wegklikken mag.
+  async function startBackgroundRun() {
+    if (runBusy) return;
+    setRunBusy(true); setErr("");
+    try {
+      const r = await fetch("/api/admin/page-doc/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url, extra: nuance.trim() || undefined, folderId: driveFolder?.id || undefined }) });
+      const d = await r.json();
+      if (!d.ok) { setErr(d.error || "Achtergrond-run starten mislukt."); return; }
+      const s = await fetch(`/api/admin/page-doc/run?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}`).then((x) => x.json()).catch(() => null);
+      if (s?.ok) setRun(s.run);
+    } catch { setErr("Achtergrond-run starten mislukt."); } finally { setRunBusy(false); }
+  }
+
   // Het gesprek van de actieve chat (de eerste vraag staat al als titel, dus die
   // slaan we over) plus het voorstel en de vastleg/mail-knoppen.
   const renderConvo = () => (
@@ -465,6 +504,23 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       {applied && <div className="saved-msg" style={{ marginTop: 8 }} dangerouslySetInnerHTML={{ __html: applied }} />}
       {err && <div className="login-error" style={{ marginTop: 8 }}>{err}</div>}
 
+      {run && (
+        <div className="doc-run-status">
+          <div className="pcd-docs-head">Achtergrond-run {run.status === "running" ? "— bezig (wegklikken mag)" : run.status === "done" ? "— klaar" : "— gestopt door een fout"}</div>
+          <ul className="doc-run-steps">
+            {(["analyse", "blauwdruk", "copy"] as const).map((k, i) => (
+              <li key={k} className={"drs " + (run.steps[k] || "pending")}>
+                <span className="drs-name">{i + 1}. {k === "analyse" ? "Analyse" : k === "blauwdruk" ? "Blauwdruk" : "Copy"}</span>
+                <span className="drs-state">{run.steps[k] === "done" ? "klaar" : run.steps[k] === "running" ? "bezig…" : run.steps[k] === "error" ? "fout" : "wacht"}</span>
+                {run.links[k] && <a href={run.links[k]} target="_blank" rel="noreferrer">document</a>}
+              </li>
+            ))}
+          </ul>
+          {run.status === "running" && <div className="muted" style={{ fontSize: 12 }}>Dit loopt server-side door. Je kunt gerust wegklikken en later terugkomen; de resultaten verschijnen hier en als werkzaamheid in de takenlijst.</div>}
+          {run.status === "error" && run.error && <div className="login-error" style={{ marginTop: 6 }}>{run.error}</div>}
+        </div>
+      )}
+
       {lastAssistant && (
         <div className="page-chat-docs">
           <div className="pcd-docs-head">Vervolgstappen op strategische analyse voor deze pagina</div>
@@ -477,6 +533,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
               {allBusy ? `Stap ${allStep} van 3 draait…` : "Alles achter elkaar (1 → 2 → 3)"}
               {allBusy && <span className="pcd-fill" style={{ width: `${(allStep / 3) * 100}%` }} />}
             </button>
+            <button type="button" className="pcd-btn" onClick={startBackgroundRun} disabled={runBusy || allBusy || !!docBusy} title="Start de drie stappen server-side; je kunt wegklikken en later terugkomen voor de resultaten.">{runBusy ? "Starten…" : "Op de achtergrond (wegklikken mag)"}</button>
           </div>
           <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>Dit is een grote analyse en uitwerking; alle stappen achter elkaar draaien kan een paar minuten duren. Je kunt intussen naar een ander tabblad, het loopt door. Van elk document wordt automatisch ook een klantversie gemaakt en in de Drive-map opgeslagen (taaktitel → technische versie, "(klantversie)" ernaast; het klantdashboard toont alleen de klantversie).</div>
         </div>

@@ -561,6 +561,15 @@ tbody td:last-child { text-align: center; }
 .pch-cluster-head { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13px; }
 .pch-cluster-url { word-break: break-all; }
 .pch-cluster-advice { font-size: 13px; margin-top: 4px; }
+/* Achtergrond-run status (analyse -> blauwdruk -> copy los van de browser) */
+.doc-run-status { margin: 10px 0; border: 1px solid var(--border); border-left: 3px solid var(--brand-teal); border-radius: 12px; padding: 12px 16px; background: var(--brand-teal-light); }
+.doc-run-steps { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.doc-run-steps .drs { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.doc-run-steps .drs-name { min-width: 110px; font-weight: 600; }
+.doc-run-steps .drs-state { font-size: 12px; color: var(--gray); }
+.doc-run-steps .drs.done .drs-state { color: var(--orange-dark); font-weight: 700; }
+.doc-run-steps .drs.running .drs-state { color: var(--brand-blue); font-weight: 700; }
+.doc-run-steps .drs.error .drs-state { color: #c0392b; font-weight: 700; }
 .pch-canni-lead { font-size: 13px; color: var(--dark); flex: 1 1 240px; }
 .pcd-docs-head { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--gray); margin-bottom: 7px; }
 .pcd-nuance { width: 100%; font-size: 13px; border: 1px solid var(--border); border-radius: 8px; padding: 8px 11px; outline: none; margin-bottom: 8px; }
