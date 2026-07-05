@@ -14,6 +14,12 @@ type ChatSummary = { id: number; title: string; updatedAt: string; count: number
 const CANNIBAL_PROMPT =
   "Los de cannibalisatie voor deze pagina op. Breng eerst in een tabel in kaart welke andere pagina's van deze site op dezelfde zoekwoorden ranken of erop mikken (gebruik de sitebrede zoekwoord→pagina-matrix en de plannen van de andere pagina's; haal waar nodig de SERP-overlap erbij). Bepaal wie de bedoelde eigenaar is volgens het plan, niet puur op de huidige ranking, ook als deze pagina nu nog niet het beste rankt. Geef daarna per concurrerende pagina één concrete actie richting de eigenaar (301-redirect, interne link + herrichten op een eigen term, of samenvoegen), met de fase en of het SEO- of Dev-werk is, en zet het overzicht en de acties netjes in het plan.";
 
+// Kant-en-klare opdracht voor de "Vat samen tot conclusie & strategie"-knop.
+// Consolideert het hele gesprek tot één definitieve conclusie/strategie, die via
+// het bestaande voorstel-mechanisme als plan voor de pagina overgenomen wordt.
+const SUMMARIZE_PROMPT =
+  "Vat ons hele gesprek over deze pagina samen tot één definitieve conclusie en strategie, gegrond op wat we hierboven hebben besproken en de live feiten. Dit is de eindconclusie die ik als plan voor deze pagina wil overnemen, dus stel geen nieuwe vragen meer. Geef scherp en uitvoerbaar: de rol en het doel van de pagina in één zin; het primaire en secundaire zoekwoord (met de onderbouwing die we bespraken, zoals volume en zoekintentie); en de concrete acties, elk met de fase (Bouwen/Herbedraden/Opschonen) en of het SEO- of Dev-werk is. Sluit af met de doel-URL.";
+
 export default function PageChat({ slug, url, clientEmail, clientName, onApplied, onGoToTask }: { slug: string; url: string; clientEmail?: string; clientName?: string; onApplied: (plan?: string) => void; onGoToTask?: (taskId: number) => void }) {
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [chatId, setChatId] = useState<number | null>(null);
@@ -404,6 +410,13 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
             </button>
           </div>
           <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>Dit is een grote analyse en uitwerking; alle stappen achter elkaar draaien kan een paar minuten duren. Je kunt intussen naar een ander tabblad, het loopt door. Van elk document wordt automatisch ook een klantversie gemaakt en in de Drive-map opgeslagen (taaktitel → technische versie, "(klantversie)" ernaast; het klantdashboard toont alleen de klantversie).</div>
+        </div>
+      )}
+
+      {lastAssistant && (
+        <div className="page-chat-summarize">
+          <span className="pch-canni-lead">Klaar met doorpraten? Vat het gesprek samen tot één eindconclusie en strategie; die verschijnt als voorstel dat je kunt overnemen als plan voor deze pagina.</span>
+          <button type="button" className="pcd-btn pcd-btn-primary" disabled={busy} onClick={() => send(SUMMARIZE_PROMPT)} title="Vat het hele gesprek samen tot de definitieve conclusie en strategie, klaar om over te nemen als plan">Vat samen tot conclusie &amp; strategie</button>
         </div>
       )}
 
