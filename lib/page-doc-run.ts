@@ -122,6 +122,16 @@ export async function processQueuedRuns(limit = 1): Promise<{ processed: number 
   return { processed };
 }
 
+// Eén specifieke run nu draaien (aangeroepen via waitUntil bij het starten, zodat de
+// run meteen server-side doorloopt zonder op de cron te wachten; de cron is vangnet).
+export async function runNow(id: number): Promise<void> {
+  try {
+    await ensureSchema();
+    await ensureRunTable();
+    await processRun(id);
+  } catch { /* de cron pikt hem later alsnog op */ }
+}
+
 // Een stap die te lang 'running' staat (worker gestopt) terugzetten op 'pending'.
 async function recoverStale(): Promise<void> {
   await sql`UPDATE page_doc_runs SET analyse_state = 'pending', updated_at = now() WHERE status = 'running' AND analyse_state = 'running' AND updated_at < now() - interval '15 minutes'`;

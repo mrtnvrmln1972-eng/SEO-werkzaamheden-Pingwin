@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../../lib/admin-auth";
 import { guardSlug } from "../../../../../lib/admin-scope";
 import { anthropicConfigured } from "../../../../../lib/anthropic";
-import { createDocRun, getLatestDocRun } from "../../../../../lib/page-doc-run";
+import { waitUntil } from "@vercel/functions";
+import { createDocRun, getLatestDocRun, runNow } from "../../../../../lib/page-doc-run";
 
 export const runtime = "nodejs";
 
@@ -28,6 +29,8 @@ export async function POST(req: NextRequest) {
 
   try {
     const runId = await createDocRun(slug, url, extra, folderId, steps);
+    // Meteen server-side starten (los van de browser); de cron is alleen vangnet.
+    waitUntil(runNow(runId));
     return NextResponse.json({ ok: true, runId });
   } catch (e) {
     return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 500 });
