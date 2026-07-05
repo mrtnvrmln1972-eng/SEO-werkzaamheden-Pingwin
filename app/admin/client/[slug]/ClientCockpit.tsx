@@ -549,7 +549,7 @@ export default function ClientCockpit({
 
         {paginasVisited && (
           <div style={{ display: tab === "paginas" ? "block" : "none" }}>
-            <PagesPanel slug={client.slug} initialProfile={client.seoProfile || ""} clientEmail={client.email || ""} clientName={client.name} onGoToTask={goToNewTask} />
+            <PagesPanel slug={client.slug} initialProfile={client.seoProfile || ""} clientEmail={client.email || ""} clientName={client.name} domain={client.domain || ""} onGoToTask={goToNewTask} />
           </div>
         )}
 

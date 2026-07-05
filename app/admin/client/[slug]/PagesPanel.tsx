@@ -66,7 +66,7 @@ function recombineProfile(profileMd: string, tovMd: string, knowhow: string): st
   return [profileMd.trim(), tovMd.trim(), knowhow.trim()].filter(Boolean).join("\n\n");
 }
 
-export default function PagesPanel({ slug, initialProfile, clientEmail, clientName, onGoToTask }: { slug: string; initialProfile?: string; clientEmail?: string; clientName?: string; onGoToTask?: (taskId: number) => void }) {
+export default function PagesPanel({ slug, initialProfile, clientEmail, clientName, onGoToTask, domain }: { slug: string; initialProfile?: string; clientEmail?: string; clientName?: string; onGoToTask?: (taskId: number) => void; domain?: string }) {
   type Opp = { impressions: number; clicks: number; ctr: number; position: number; bestKeyword: string; bestPosition: number | null; bestVolume: number | null; score: number; label: string; level: string };
   const [opps, setOpps] = useState<Record<string, Opp>>({});
   const [sortKey, setSortKey] = useState<"kans" | "vertoningen" | "positie" | "klikken" | "volume">("kans");
@@ -77,6 +77,9 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
   const [open, setOpen] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
   const [importing, setImporting] = useState(false);
+  // Website-adres van de klant (kaal domein). Bewerkbaar hier, want er is verder
+  // geen invoerveld voor; wordt bij "Website inlezen" meegestuurd en opgeslagen.
+  const [domainInput, setDomainInput] = useState(domain || "");
   const [profile, setProfile] = useState(initialProfile || "");
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
@@ -201,7 +204,7 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
   async function scan() {
     setScanning(true); setMsg("");
     try {
-      const r = await fetch("/api/admin/urls", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }) });
+      const r = await fetch("/api/admin/urls", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, domain: domainInput.trim() || undefined }) });
       const d = await r.json();
       if (d.ok) { setMsg(`Site ingelezen: ${d.scanned} pagina's.`); await load(); }
       else setMsg(d.error || "Inlezen mislukt.");
@@ -237,7 +240,15 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
       <div className="cockpit-card acc-orange">
         <div className="ck-section-head">
           <span>Pagina&rsquo;s ({urls.length}) <HelpHint text="De live pagina's van de klant, een spiegel van de werkelijkheid. Klik een pagina om het plan te bekijken of aan te passen. Het toekomstige adres (redirect of nieuwe pagina) leeft in het plan en in de taken, niet in deze lijst." /></span>
-          <span style={{ display: "inline-flex", gap: 8 }}>
+          <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
+            <input
+              className="pages-search"
+              style={{ width: 240 }}
+              placeholder="Website-adres, bijv. laatjeogenlaseren.nl"
+              title="Het website-adres van de klant. Wordt opgeslagen zodra je op 'Website inlezen' klikt."
+              value={domainInput}
+              onChange={(e) => setDomainInput(e.target.value)}
+            />
             <button type="button" className="pcd-btn" onClick={() => setImporting(true)}>Analyse importeren</button>
             <button type="button" className={"pcd-btn" + (scanning ? " busy" : "")} onClick={scan} disabled={scanning}>{scanning ? "Inlezen…" : "Website inlezen"}</button>
           </span>
