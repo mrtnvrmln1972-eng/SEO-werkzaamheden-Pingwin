@@ -190,13 +190,20 @@ export async function getGscForClient(domain: string): Promise<GscData | null> {
 // ── Periode-vergelijking (huidige vs vorige periode) ────────
 // De GSC-data loopt ~2 dagen achter; daarom eindigt de huidige periode 2 dagen
 // geleden. De vorige periode is exact even lang en ligt er direct voor.
-function periodRanges(days: number) {
+function periodRanges(days: number, compare: "prev" | "yoy" = "prev") {
   const iso = (d: Date) => d.toISOString().slice(0, 10);
   const lag = 2;
   const curEnd = new Date(); curEnd.setDate(curEnd.getDate() - lag);
   const curStart = new Date(curEnd); curStart.setDate(curStart.getDate() - (days - 1));
-  const prevEnd = new Date(curStart); prevEnd.setDate(prevEnd.getDate() - 1);
-  const prevStart = new Date(prevEnd); prevStart.setDate(prevStart.getDate() - (days - 1));
+  let prevStart: Date, prevEnd: Date;
+  if (compare === "yoy") {
+    // Dezelfde periode precies één jaar eerder.
+    prevStart = new Date(curStart); prevStart.setFullYear(prevStart.getFullYear() - 1);
+    prevEnd = new Date(curEnd); prevEnd.setFullYear(prevEnd.getFullYear() - 1);
+  } else {
+    prevEnd = new Date(curStart); prevEnd.setDate(prevEnd.getDate() - 1);
+    prevStart = new Date(prevEnd); prevStart.setDate(prevStart.getDate() - (days - 1));
+  }
   return { curStart: iso(curStart), curEnd: iso(curEnd), prevStart: iso(prevStart), prevEnd: iso(prevEnd) };
 }
 
@@ -448,10 +455,10 @@ export type GscComparison = {
   range: { curStart: string; curEnd: string; prevStart: string; prevEnd: string };
 };
 
-export async function getGscComparison(domain: string, days: number): Promise<GscComparison | null> {
+export async function getGscComparison(domain: string, days: number, compare: "prev" | "yoy" = "prev"): Promise<GscComparison | null> {
   const token = await googleAccessToken();
   if (!token) return null;
-  const range = periodRanges(days);
+  const range = periodRanges(days, compare);
   const emptySeries: GscSeries = { clicks: [], impressions: [], ctr: [], position: [] };
   const empty: GscComparison = { connected: true, site: null, totals: null, series: emptySeries, keywords: [], pages: [], range };
   if (!domain) return empty;

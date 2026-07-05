@@ -23,12 +23,13 @@ export async function GET(req: NextRequest) {
   const slug = req.nextUrl.searchParams.get("slug") || "";
   const g = await guardSlug(req, slug); if (!g.ok) return g.res;
   const days = Math.max(1, Math.min(400, Number(req.nextUrl.searchParams.get("days")) || 28));
+  const compare = req.nextUrl.searchParams.get("compare") === "yoy" ? "yoy" : "prev";
   const client = await getClientBySlug(slug);
   if (!client) return NextResponse.json({ ok: false, error: "Klant niet gevonden." }, { status: 404 });
 
   const domain = client.domain || "";
   const [gsc, ga4, pageOrder, keywordFocus] = await Promise.all([
-    withTimeout(getGscComparison(domain, days), 9000, null),
+    withTimeout(getGscComparison(domain, days, compare), 9000, null),
     withTimeout(getGa4Comparison(slug, domain, days), 9000, null),
     getPageOrder(slug).catch(() => [] as string[]),
     getKeywordFocus(slug).catch(() => ({})),
