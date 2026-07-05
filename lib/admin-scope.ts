@@ -42,7 +42,8 @@ export async function getScopeFromCookie(value: string | undefined | null): Prom
     isOwner: false,
     userId: user.id,
     allowedSlugs: user.allowedSlugs,
-    canSeeMail: user.canSeeMail,
+    // Gasten zien NOOIT mail of de actuele stand van zaken (bewust hard uitgesloten).
+    canSeeMail: false,
   };
 }
 

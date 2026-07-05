@@ -333,20 +333,18 @@ export default function BeheerClient({ clients, team }: { clients: ClientLite[];
                 <th>Naam</th>
                 <th>Inlognaam</th>
                 <th>Klanten</th>
-                <th>Mail &amp; status</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
               {team.length === 0 && (
-                <tr><td colSpan={5} className="muted">Nog geen teamgebruikers. Alleen jij (de eigenaar) hebt toegang.</td></tr>
+                <tr><td colSpan={4} className="muted">Nog geen teamgebruikers. Alleen jij (de eigenaar) hebt toegang.</td></tr>
               )}
               {team.map((u) => (
                 <tr key={u.id}>
                   <td style={{ fontWeight: 600 }}>{u.name || <span className="muted">&mdash;</span>}</td>
                   <td>{u.loginId}</td>
                   <td>{u.role === "owner" ? "alles (eigenaar)" : slugsLabel(u.allowedSlugs)}</td>
-                  <td>{u.role === "owner" || u.canSeeMail ? "Ja" : "Nee"}</td>
                   <td style={{ whiteSpace: "nowrap" }}>
                     <button className="mini-btn" onClick={() => openUser(u)}>Bewerken</button>{" "}
                     <button className="mini-btn" onClick={() => resetUserPw(u.id)} disabled={busy}>Nieuw wachtwoord</button>{" "}
@@ -385,10 +383,6 @@ export default function BeheerClient({ clients, team }: { clients: ClientLite[];
                 selected={uForm.allowedSlugs}
                 onToggle={(slug) => setUForm({ ...uForm, allowedSlugs: toggleSlug(uForm.allowedSlugs, slug) })}
               />
-              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", margin: "16px 0" }}>
-                <input type="checkbox" checked={uForm.canSeeMail} onChange={(e) => setUForm({ ...uForm, canSeeMail: e.target.checked })} style={{ width: "auto" }} />
-                Mail &amp; actuele stand van zaken zichtbaar voor deze gast
-              </label>
               <div style={{ display: "flex", gap: 8 }}>
                 <button type="submit" className="primary-btn" disabled={busy}>{busy ? "Opslaan…" : "Opslaan"}</button>
                 <button type="button" className="logout-btn" onClick={() => setEditUserId(null)}>Sluiten</button>
@@ -427,10 +421,6 @@ export default function BeheerClient({ clients, team }: { clients: ClientLite[];
               selected={tForm.allowedSlugs}
               onToggle={(slug) => setTForm({ ...tForm, allowedSlugs: toggleSlug(tForm.allowedSlugs, slug) })}
             />
-            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", margin: "16px 0" }}>
-              <input type="checkbox" checked={tForm.canSeeMail} onChange={(e) => setTForm({ ...tForm, canSeeMail: e.target.checked })} style={{ width: "auto" }} />
-              Mail &amp; actuele stand van zaken zichtbaar voor deze gast
-            </label>
             <button type="submit" className="primary-btn" disabled={busy}>{busy ? "Bezig…" : "Gast aanmaken"}</button>
           </form>
         )}
