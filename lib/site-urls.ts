@@ -21,6 +21,7 @@ export type ClientUrl = {
   gscClicks: number;
   gscImpressions: number;
   plan: string;               // plan-alinea (leeg als nog niet aangeraakt)
+  hasClusterAdvice: boolean;  // kreeg cluster-advies mee vanuit de analyse van een andere pagina ("half plan")
   lastScanned: string | null;
 };
 
@@ -74,6 +75,17 @@ async function doEnsureTables(): Promise<void> {
       content     TEXT,
       updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
       PRIMARY KEY (client_slug, url, kind)
+    )`;
+  // Cluster-advies dat vanuit de analyse van één pagina wordt meegegeven aan een
+  // ANDERE pagina in hetzelfde cluster (het vertrekpunt/"half plan" voor die pagina).
+  await sql`
+    CREATE TABLE IF NOT EXISTS page_cluster_advice (
+      id          SERIAL PRIMARY KEY,
+      client_slug TEXT NOT NULL,
+      url         TEXT NOT NULL,
+      advice      TEXT NOT NULL,
+      source_url  TEXT,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
     )`;
 }
 
@@ -184,7 +196,8 @@ export async function getClientUrls(slug: string): Promise<ClientUrl[]> {
   await ensureTables();
   const { rows } = await sql`
     SELECT u.url, u.status, u.redirect_target, u.title, u.gsc_clicks, u.gsc_impressions, u.last_scanned,
-           p.plan
+           p.plan,
+           EXISTS (SELECT 1 FROM page_cluster_advice a WHERE a.client_slug = u.client_slug AND a.url = u.url) AS has_cluster_advice
     FROM client_urls u
     LEFT JOIN page_plans p ON p.client_slug = u.client_slug AND p.url = u.url
     WHERE u.client_slug = ${slug}
@@ -197,6 +210,7 @@ export async function getClientUrls(slug: string): Promise<ClientUrl[]> {
     gscClicks: Number(r.gsc_clicks) || 0,
     gscImpressions: Number(r.gsc_impressions) || 0,
     plan: (r.plan as string) || "",
+    hasClusterAdvice: !!r.has_cluster_advice,
     lastScanned: r.last_scanned ? new Date(r.last_scanned as string).toISOString() : null,
   }));
 }
@@ -266,4 +280,28 @@ export async function upsertUrl(slug: string, url: string, fields: Partial<{ sta
     INSERT INTO client_urls (client_slug, url, status, title, last_scanned)
     VALUES (${slug}, ${u}, ${fields.status ?? null}, ${fields.title ?? null}, now())
     ON CONFLICT (client_slug, url) DO NOTHING`;
+}
+
+export type ClusterAdvice = { advice: string; sourceUrl: string; createdAt: string | null };
+
+// Cluster-advies (vertrekpunt voor een andere pagina) opslaan. Vervangt eerder
+// advies van dezelfde bronpagina, zodat opnieuw doorgeven niet stapelt.
+export async function savePageClusterAdvice(slug: string, url: string, advice: string, sourceUrl: string): Promise<void> {
+  await ensureSchema();
+  await ensureTables();
+  const u = normUrl(url);
+  if (!u || !advice.trim()) return;
+  await sql`DELETE FROM page_cluster_advice WHERE client_slug = ${slug} AND url = ${u} AND source_url IS NOT DISTINCT FROM ${sourceUrl || null}`;
+  await sql`INSERT INTO page_cluster_advice (client_slug, url, advice, source_url) VALUES (${slug}, ${u}, ${advice.trim()}, ${sourceUrl || null})`;
+}
+
+export async function getPageClusterAdvice(slug: string, url: string): Promise<ClusterAdvice[]> {
+  await ensureSchema();
+  await ensureTables();
+  const { rows } = await sql`SELECT advice, source_url, created_at FROM page_cluster_advice WHERE client_slug = ${slug} AND url = ${url} ORDER BY created_at DESC`;
+  return rows.map((r) => ({
+    advice: (r.advice as string) || "",
+    sourceUrl: (r.source_url as string) || "",
+    createdAt: r.created_at ? new Date(r.created_at as string).toISOString() : null,
+  }));
 }

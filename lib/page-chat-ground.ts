@@ -1,5 +1,5 @@
 import { getClientBySlug } from "./clients";
-import { getClientUrls, getPagePlan } from "./site-urls";
+import { getClientUrls, getPagePlan, getPageClusterAdvice } from "./site-urls";
 import { getGscForPage, getGscQueryPageMatrix } from "./google";
 import { getTasks } from "./tasks";
 import { callClaude } from "./anthropic";
@@ -20,10 +20,11 @@ export type Proposal = { plan?: string; tasks?: { taak: string; fase?: string; w
 export async function buildSystemPrompt(slug: string, url: string): Promise<string> {
   const client = await getClientBySlug(slug);
   const domain = client?.domain || "";
-  const [urls, plan, tasks] = await Promise.all([
+  const [urls, plan, tasks, clusterAdvice] = await Promise.all([
     getClientUrls(slug),
     getPagePlan(slug, url),
     getTasks(slug),
+    getPageClusterAdvice(slug, url),
   ]);
   const [kw, matrix] = await Promise.all([
     getGscForPage(domain, url).catch(() => []),
@@ -72,6 +73,9 @@ export async function buildSystemPrompt(slug: string, url: string): Promise<stri
     plannedLines.length ? plannedLines.join("\n") : "- (andere pagina's hebben nog geen plan; wijst niemand deze intentie in het plan aan, laat de eigenaar dan uit de strategie/afspraak volgen en vraag het na, kies hem niet puur op de huidige ranking)",
     "",
     `HUIDIG PLAN VOOR DE GEOPENDE PAGINA: ${plan || "(nog geen plan)"}`,
+    "",
+    "MEEGEGEVEN CLUSTER-ADVIES (vanuit de analyse van een andere pagina; gebruik dit als vertrekpunt voor het doel en de zoekwoorden van deze pagina en toets het aan de live feiten):",
+    clusterAdvice.length ? clusterAdvice.map((a) => `- ${a.advice}${a.sourceUrl ? ` (uit de analyse van ${normUrl(a.sourceUrl)})` : ""}`).join("\n") : "- (geen meegegeven cluster-advies)",
     "",
     "BESTAANDE TAKEN VOOR DEZE PAGINA:",
     pageTasks.length ? pageTasks.map((t) => `- [${t.fase || "geen fase"}] ${t.taak} (${t.status})`).join("\n") : "- (geen)",
@@ -178,5 +182,44 @@ export function parseProposal(text: string): { reply: string; proposal: Proposal
     return { reply, proposal: (proposal.plan || proposal.tasks?.length) ? proposal : null };
   } catch {
     return { reply, proposal: null };
+  }
+}
+
+// Leest een analyse die ook ANDERE pagina's in het cluster raakt, en haalt er per
+// betrokken andere pagina (uit de bekende URL-lijst) een kort advies uit. Zo kun je
+// dat advies alvast als vertrekpunt aan die pagina's meegeven ("half plan").
+export async function extractClusterAdvice(
+  analysis: string,
+  selfUrl: string,
+  knownUrls: string[],
+): Promise<{ url: string; advice: string }[]> {
+  if (!analysis.trim()) return [];
+  const others = knownUrls.filter((u) => normUrl(u) !== normUrl(selfUrl)).slice(0, 120);
+  if (others.length === 0) return [];
+  const system = `Je krijgt een SEO-analyse die voor één pagina is gemaakt, maar die ook ANDERE pagina's van dezelfde site raakt (cluster/cannibalisatie). Hieronder staat de lijst met bestaande pagina's van deze site.
+Bepaal voor welke ANDERE pagina's uit die lijst (niet de geanalyseerde pagina zelf) de analyse een concreet strategisch advies of een bedoelde rol bevat, en vat dat per pagina kort samen.
+Antwoord met UITSLUITEND geldige JSON, exact dit formaat, niets eromheen:
+{"items":[{"url":"<exacte url uit de lijst>","advice":"<2 tot 5 zinnen: de bedoelde rol, strategie en zoekwoorden voor deze pagina volgens de analyse>"}]}
+Regels: gebruik ALLEEN url's die exact in de lijst staan. Neem alleen pagina's op waarover de analyse echt iets concreets zegt; verzin niets. Wordt geen enkele andere pagina geraakt, antwoord dan met {"items":[]}. Gebruik nergens emoji.
+
+BESTAANDE PAGINA'S:
+${others.map((u) => `- ${u}`).join("\n")}`;
+  try {
+    const raw = await callClaude(system, [{ role: "user", content: analysis.slice(0, 12000) }], 2000);
+    const jsonText = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
+    const parsed = JSON.parse(jsonText);
+    const items = Array.isArray(parsed.items) ? parsed.items : [];
+    const out: { url: string; advice: string }[] = [];
+    const seen = new Set<string>();
+    for (const it of items) {
+      if (!it || typeof it.url !== "string" || typeof it.advice !== "string" || !it.advice.trim()) continue;
+      const match = others.find((u) => normUrl(u) === normUrl(it.url));
+      if (!match || seen.has(normUrl(match))) continue;
+      seen.add(normUrl(match));
+      out.push({ url: match, advice: it.advice.trim() });
+    }
+    return out;
+  } catch {
+    return [];
   }
 }

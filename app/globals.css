@@ -405,6 +405,7 @@ tbody td:last-child { text-align: center; }
 .url-unknown { background: var(--gray-light); color: var(--gray); }
 .plan-chip { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; padding: 2px 8px; border-radius: 10px; background: var(--gray-light); color: var(--gray); }
 .plan-chip.has { background: var(--orange); color: #fff; }
+.plan-chip.half { background: var(--brand-orange-soft); color: var(--orange-dark); }
 /* De detail-cel is de laatste (en enige) td, dus de globale regel
    'tbody td:last-child { text-align:center }' sloeg toe. Sterker links forceren. */
 /* De hele detail-kaart deelt de groepskleur, met een oranje linker-bracket en een
@@ -553,6 +554,13 @@ tbody td:last-child { text-align: center; }
 .pchf-row { display: flex; gap: 8px; margin-bottom: 10px; }
 .pchf-input { flex: 1; font-size: 14px; border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; outline: none; }
 .pchf-input:focus { border-color: var(--orange); }
+/* Cluster-advies doorgeven aan betrokken pagina's: eigen kaart, blauw accent. */
+.page-chat-cluster { border: 1px solid var(--border); border-left: 3px solid var(--brand-blue); border-radius: 12px; padding: 14px 18px; margin: 0 0 10px; background: var(--brand-blue-light); }
+.pch-cluster-list { list-style: none; margin: 10px 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.pch-cluster-item { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; background: #fff; }
+.pch-cluster-head { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13px; }
+.pch-cluster-url { word-break: break-all; }
+.pch-cluster-advice { font-size: 13px; margin-top: 4px; }
 .pch-canni-lead { font-size: 13px; color: var(--dark); flex: 1 1 240px; }
 .pcd-docs-head { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--gray); margin-bottom: 7px; }
 .pcd-nuance { width: 100%; font-size: 13px; border: 1px solid var(--border); border-radius: 8px; padding: 8px 11px; outline: none; margin-bottom: 8px; }

@@ -20,7 +20,7 @@ const CANNIBAL_PROMPT =
 const SUMMARIZE_PROMPT =
   "Vat ons hele gesprek over deze pagina samen tot één definitieve conclusie en strategie, gegrond op wat we hierboven hebben besproken en de live feiten. Dit is de eindconclusie die ik als plan voor deze pagina wil overnemen, dus stel geen nieuwe vragen meer. Geef scherp en uitvoerbaar: de rol en het doel van de pagina in één zin; het primaire en secundaire zoekwoord (met de onderbouwing die we bespraken, zoals volume en zoekintentie); en de concrete acties, elk met de fase (Bouwen/Herbedraden/Opschonen) en of het SEO- of Dev-werk is. Sluit af met de doel-URL.";
 
-export default function PageChat({ slug, url, clientEmail, clientName, onApplied, onGoToTask }: { slug: string; url: string; clientEmail?: string; clientName?: string; onApplied: (plan?: string) => void; onGoToTask?: (taskId: number) => void }) {
+export default function PageChat({ slug, url, clientEmail, clientName, onApplied, onGoToTask, onClusterApplied }: { slug: string; url: string; clientEmail?: string; clientName?: string; onApplied: (plan?: string) => void; onGoToTask?: (taskId: number) => void; onClusterApplied?: () => void }) {
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [chatId, setChatId] = useState<number | null>(null);
   const [chats, setChats] = useState<ChatSummary[]>([]);
@@ -31,6 +31,11 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [err, setErr] = useState("");
   const [applied, setApplied] = useState("");
+  // Cluster-advies doorgeven aan betrokken pagina's (null = nog niet gezocht).
+  const [clusterBusy, setClusterBusy] = useState(false);
+  const [clusterItems, setClusterItems] = useState<{ url: string; advice: string }[] | null>(null);
+  const [clusterSel, setClusterSel] = useState<string[]>([]);
+  const [clusterMsg, setClusterMsg] = useState("");
   // Klant-mail
   const [mailOpen, setMailOpen] = useState(false);
   const [mailGen, setMailGen] = useState(false);
@@ -249,10 +254,10 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     loadChats(); /* eslint-disable-next-line */
   }, [slug, url]);
 
-  function newChat() { setMsgs([]); setChatId(null); setProposal(null); setApplied(""); setErr(""); setConvoOpen(true); }
+  function newChat() { setMsgs([]); setChatId(null); setProposal(null); setApplied(""); setErr(""); setConvoOpen(true); setClusterItems(null); setClusterMsg(""); }
 
   async function openChat(id: number) {
-    setProposal(null); setApplied(""); setErr("");
+    setProposal(null); setApplied(""); setErr(""); setClusterItems(null); setClusterMsg("");
     // Cache-first: toon de berichten direct uit de cache, ververs daarna.
     try { const c = localStorage.getItem(`pw_chat_${id}`); if (c) { const p = JSON.parse(c); if (p?.messages) { setMsgs(p.messages); setChatId(id); } } } catch { /* geen cache */ }
     try {
@@ -281,7 +286,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   async function send(text: string) {
     const t = text.trim();
     if (!t || busy) return;
-    setErr(""); setApplied(""); setProposal(null);
+    setErr(""); setApplied(""); setProposal(null); setClusterItems(null); setClusterMsg("");
     const next = [...msgs, { role: "user" as const, content: t }];
     setMsgs(next); setInput(""); setBusy(true);
     try {
@@ -310,6 +315,35 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
         onApplied(plan);
       } else setErr(d.error || "Overnemen mislukt.");
     } catch { setErr("Overnemen mislukt."); }
+  }
+
+  // ── Cluster-advies doorgeven aan andere betrokken pagina's ──
+  async function findClusterAdvice() {
+    if (!lastAssistant || clusterBusy) return;
+    setClusterBusy(true); setClusterMsg(""); setErr("");
+    try {
+      const r = await fetch("/api/admin/page-chat/cluster-advice", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url, analysis: lastAssistant }) });
+      const d = await r.json();
+      if (!d.ok) { setErr(d.error || "Betrokken pagina's zoeken mislukt."); return; }
+      const items: { url: string; advice: string }[] = d.items || [];
+      setClusterItems(items);
+      setClusterSel(items.map((it) => it.url));
+    } catch { setErr("Betrokken pagina's zoeken mislukt."); } finally { setClusterBusy(false); }
+  }
+  function toggleCluster(u: string) { setClusterSel((s) => (s.includes(u) ? s.filter((x) => x !== u) : [...s, u])); }
+  async function applyClusterAdvice() {
+    const items = (clusterItems || []).filter((it) => clusterSel.includes(it.url));
+    if (!items.length || clusterBusy) return;
+    setClusterBusy(true); setClusterMsg(""); setErr("");
+    try {
+      const r = await fetch("/api/admin/page-chat/cluster-advice/apply", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, sourceUrl: url, items }) });
+      const d = await r.json();
+      if (d.ok) {
+        setClusterMsg(`Advies doorgegeven aan ${d.saved} pagina('s). Hun eigen chat neemt dit voortaan als vertrekpunt mee; in het overzicht krijgen ze de markering "half plan".`);
+        setClusterItems(null);
+        onClusterApplied?.();
+      } else setErr(d.error || "Doorgeven mislukt.");
+    } catch { setErr("Doorgeven mislukt."); } finally { setClusterBusy(false); }
   }
 
   // Het gesprek van de actieve chat (de eerste vraag staat al als titel, dus die
@@ -344,6 +378,30 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
               <button type="button" className="primary-btn small" onClick={() => send(input)} disabled={busy || !input.trim()}>Vraag</button>
             </div>
             <button type="button" className="pcd-btn pcd-btn-primary" onClick={() => send(SUMMARIZE_PROMPT)} disabled={busy} title="Vat het hele gesprek samen tot de definitieve conclusie en strategie, klaar om over te nemen als plan">Vat samen tot conclusie &amp; strategie</button>
+          </div>
+          <div className="page-chat-cluster">
+            <div className="pchf-lead">Raakt deze analyse ook andere pagina&rsquo;s in het cluster? Geef het advies dat over hén gaat alvast door, dan neemt hun eigen chat het straks als vertrekpunt mee.</div>
+            {clusterItems === null ? (
+              <button type="button" className="pcd-btn" onClick={findClusterAdvice} disabled={clusterBusy}>{clusterBusy ? "Betrokken pagina's zoeken…" : "Advies doorgeven aan betrokken pagina's"}</button>
+            ) : clusterItems.length === 0 ? (
+              <div className="muted" style={{ fontSize: 12 }}>Geen andere pagina&rsquo;s gevonden waarover deze analyse concreet advies geeft.</div>
+            ) : (
+              <>
+                <ul className="pch-cluster-list">
+                  {clusterItems.map((it) => (
+                    <li key={it.url} className="pch-cluster-item">
+                      <label className="pch-cluster-head">
+                        <input type="checkbox" checked={clusterSel.includes(it.url)} onChange={() => toggleCluster(it.url)} />
+                        <span className="pch-cluster-url">{it.url}</span>
+                      </label>
+                      <div className="pch-cluster-advice md" dangerouslySetInnerHTML={{ __html: mdToHtml(it.advice) }} />
+                    </li>
+                  ))}
+                </ul>
+                <button type="button" className="pcd-btn pcd-btn-primary" onClick={applyClusterAdvice} disabled={clusterBusy || clusterSel.length === 0}>{clusterBusy ? "Doorgeven…" : `Doorgeven aan ${clusterSel.length} pagina('s)`}</button>
+              </>
+            )}
+            {clusterMsg && <div className="saved-msg" style={{ marginTop: 8 }}>{clusterMsg}</div>}
           </div>
           <div className="page-chat-drive">
             <span className="pcd-label">Opslaan in:</span>
