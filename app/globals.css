@@ -549,25 +549,25 @@ tbody td:last-child { text-align: center; }
 /* Cannibalisatie: zin links, knop rechts, in een eigen kaart. */
 .page-chat-canni { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; border: 1px solid var(--border); border-left: 3px solid var(--brand-teal); border-radius: 12px; padding: 14px 18px; margin: 18px 0 6px; background: var(--brand-teal-light); }
 /* Vervolgvraag + samenvatten tot conclusie/strategie: eigen kaart onder de analyse, oranje accent (afrondactie). */
-.page-chat-followup { border: 1px solid var(--border); border-left: 3px solid var(--orange); border-radius: 12px; padding: 14px 18px; margin: 14px 0 10px; background: var(--orange-light); }
+.page-chat-followup { border: 1px solid var(--border); border-left: 3px solid var(--orange); border-radius: 12px; padding: 18px 20px; margin: 14px 0 10px; background: var(--orange-light); }
 .pchf-lead { font-size: 13px; color: var(--dark); margin-bottom: 10px; }
 .pchf-row { display: flex; gap: 8px; margin-bottom: 10px; }
 .pchf-input { flex: 1; font-size: 14px; border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; outline: none; }
 .pchf-input:focus { border-color: var(--orange); }
 /* Cluster-advies doorgeven aan betrokken pagina's: eigen kaart, blauw accent. */
-.page-chat-cluster { border: 1px solid var(--border); border-left: 3px solid var(--brand-blue); border-radius: 12px; padding: 14px 18px; margin: 0 0 10px; background: var(--brand-blue-light); }
+.page-chat-cluster { border: 1px solid var(--border); border-left: 3px solid var(--brand-blue); border-radius: 12px; padding: 18px 20px; margin: 0 0 10px; background: var(--brand-blue-light); }
 .pch-cluster-list { list-style: none; margin: 10px 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .pch-cluster-item { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; background: #fff; }
 .pch-cluster-head { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13px; }
 .pch-cluster-url { word-break: break-all; }
 .pch-cluster-advice { font-size: 13px; margin-top: 4px; }
 /* Meegegeven cluster-advies (vertrekpunt-kaart op de ontvangende pagina) */
-.page-chat-incoming { border: 1px solid var(--border); border-left: 3px solid var(--brand-blue); border-radius: 12px; padding: 12px 16px; margin: 0 0 12px; background: var(--brand-blue-light); }
+.page-chat-incoming { border: 1px solid var(--border); border-left: 3px solid var(--brand-blue); border-radius: 12px; padding: 18px 20px; margin: 0 0 12px; background: var(--brand-blue-light); }
 .pchi-item { margin-top: 8px; }
 .pchi-advice { font-size: 13px; }
 .pchi-full { margin-top: 8px; border-top: 1px solid var(--border); padding-top: 8px; font-size: 13px; }
 /* Achtergrond-run status (analyse -> blauwdruk -> copy los van de browser) */
-.doc-run-status { margin: 10px 0; border: 1px solid var(--border); border-left: 3px solid var(--brand-teal); border-radius: 12px; padding: 12px 16px; background: var(--brand-teal-light); }
+.doc-run-status { margin: 10px 0; border: 1px solid var(--border); border-left: 3px solid var(--brand-teal); border-radius: 12px; padding: 18px 20px; background: var(--brand-teal-light); }
 .doc-run-steps { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .doc-run-steps .drs { display: flex; align-items: center; gap: 10px; font-size: 13px; }
 .doc-run-steps .drs-name { min-width: 110px; font-weight: 600; }
