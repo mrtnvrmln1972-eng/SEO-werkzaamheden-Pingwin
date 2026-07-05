@@ -117,10 +117,12 @@ function Spark({ data, metric, invert, markers, hoverKey, onHover }: { data: Day
   const avgOf = (a: number, b: number) => { let s = 0, n = 0; for (let k = Math.max(0, a); k < Math.min(b, pts.length); k++) { s += Number(pts[k][metric]) || 0; n++; } return n ? s / n : null; };
   const sortedM = markers.map((m) => ({ key: m.key, i: idxOf(m.date) })).sort((a, b) => a.i - b.i);
   const stat = new Map<string, { before: string; after: string; good: boolean; changed: boolean }>();
+  const valAt = (i: number) => (i >= 0 && i < pts.length ? Number(pts[i][metric]) || 0 : null);
   sortedM.forEach((m, idx) => {
-    const prevI = idx === 0 ? 0 : sortedM[idx - 1].i;
     const nextI = idx < sortedM.length - 1 ? sortedM[idx + 1].i : pts.length;
-    const after = avgOf(m.i, nextI), before = avgOf(prevI, m.i);
+    // Waarde ÓP het aanpasmoment → waarde aan het eind van dit segment (dag vóór het
+    // volgende moment, of de laatste dag). Intuïtiever dan een periode-gemiddelde.
+    const before = valAt(m.i), after = valAt(Math.min(nextI, pts.length) - 1);
     const d = after != null && before != null ? after - before : null;
     stat.set(m.key, {
       before: before != null ? fmtV(before) : "—",
@@ -366,7 +368,7 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
           </div>
           <div className="wz-detail-card acc-teal">
             <div className="wz-detail-card-title">KPI-impact</div>
-            <p className="muted" style={{ fontSize: 12, margin: "2px 0 10px" }}>Elke gedateerde stippellijn is een verandermoment. Eronder staat het gemiddelde vóór → ná dat moment (groen = beter, rood = slechter). Beweeg over een stippellijn (of een sectie links) om dat moment op te lichten.</p>
+            <p className="muted" style={{ fontSize: 12, margin: "2px 0 10px" }}>Elke gedateerde stippellijn is een verandermoment. Eronder staat de waarde óp dat moment → de waarde nu (of tot het volgende moment) (groen = beter, rood = slechter). Beweeg over een stippellijn (of een sectie links) om dat moment op te lichten.</p>
             {kpiLoading && <div className="muted" style={{ padding: 12 }}>KPI's laden…</div>}
             {!kpiLoading && kpi && (
               <div className="wz-kpi">
