@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../../lib/admin-auth";
 import { guardSlug } from "../../../../../lib/admin-scope";
-import { getClientUrls } from "../../../../../lib/site-urls";
+import { getClientUrls, getPageClusterAdvice } from "../../../../../lib/site-urls";
 import { extractClusterAdvice } from "../../../../../lib/page-chat-ground";
 import { anthropicConfigured } from "../../../../../lib/anthropic";
 
@@ -32,4 +32,15 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 502 });
   }
+}
+
+// GET: het cluster-advies dat AAN deze pagina is meegegeven (voor de "vertrekpunt"-kaart).
+export async function GET(req: NextRequest) {
+  if (!admin(req)) return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
+  const slug = req.nextUrl.searchParams.get("slug") || "";
+  const url = req.nextUrl.searchParams.get("url") || "";
+  if (!slug || !url) return NextResponse.json({ ok: false, error: "Klant en URL zijn verplicht." }, { status: 400 });
+  const g = await guardSlug(req, slug); if (!g.ok) return g.res;
+  const incoming = await getPageClusterAdvice(slug, url);
+  return NextResponse.json({ ok: true, incoming });
 }

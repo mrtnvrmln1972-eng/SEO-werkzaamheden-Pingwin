@@ -48,6 +48,13 @@ export async function buildSystemPrompt(slug: string, url: string): Promise<stri
     .slice(0, 40)
     .map((u) => `- ${normUrl(u.url)}: ${(u.plan || "").replace(/\s+/g, " ").trim().slice(0, 200)}`);
 
+  // De volledige bronconclusie(s) waaruit het cluster-advies komt: als context mee
+  // in de grounding, zodat de chat hier de hele strategie als vertrekpunt heeft.
+  const clusterFullContext = (() => {
+    const full = Array.from(new Set(clusterAdvice.map((a) => (a.sourceAnalysis || "").trim()).filter(Boolean)));
+    return full.length ? `VOLLEDIGE CLUSTERANALYSE ALS CONTEXT (de bronconclusie waaruit dit advies komt; gebruik als vertrekpunt en toets aan de live feiten):\n${full.map((c) => c.slice(0, 5000)).join("\n---\n")}` : "";
+  })();
+
   const facts = [
     `KLANT: ${client?.name || slug} (domein: ${domain || "onbekend"})`,
     "",
@@ -76,6 +83,7 @@ export async function buildSystemPrompt(slug: string, url: string): Promise<stri
     "",
     "MEEGEGEVEN CLUSTER-ADVIES (vanuit de analyse van een andere pagina; gebruik dit als vertrekpunt voor het doel en de zoekwoorden van deze pagina en toets het aan de live feiten):",
     clusterAdvice.length ? clusterAdvice.map((a) => `- ${a.advice}${a.sourceUrl ? ` (uit de analyse van ${normUrl(a.sourceUrl)})` : ""}`).join("\n") : "- (geen meegegeven cluster-advies)",
+    ...(clusterFullContext ? ["", clusterFullContext] : []),
     "",
     "BESTAANDE TAKEN VOOR DEZE PAGINA:",
     pageTasks.length ? pageTasks.map((t) => `- [${t.fase || "geen fase"}] ${t.taak} (${t.status})`).join("\n") : "- (geen)",
@@ -199,7 +207,7 @@ export async function extractClusterAdvice(
   const system = `Je krijgt een SEO-analyse die voor één pagina is gemaakt, maar die ook ANDERE pagina's van dezelfde site raakt (cluster/cannibalisatie). Hieronder staat de lijst met bestaande pagina's van deze site.
 Bepaal voor welke ANDERE pagina's uit die lijst (niet de geanalyseerde pagina zelf) de analyse een concreet strategisch advies of een bedoelde rol bevat, en vat dat per pagina kort samen.
 Antwoord met UITSLUITEND geldige JSON, exact dit formaat, niets eromheen:
-{"items":[{"url":"<exacte url uit de lijst>","advice":"<2 tot 5 zinnen: de bedoelde rol, strategie en zoekwoorden voor deze pagina volgens de analyse>"}]}
+{"items":[{"url":"<exacte url uit de lijst>","advice":"<2 tot 5 zinnen: de bedoelde rol, strategie en zoekwoorden voor deze pagina volgens de analyse, en hoe de conclusie over de bronpagina deze pagina raakt>"}]}
 Regels: gebruik ALLEEN url's die exact in de lijst staan. Neem alleen pagina's op waarover de analyse echt iets concreets zegt; verzin niets. Wordt geen enkele andere pagina geraakt, antwoord dan met {"items":[]}. Gebruik nergens emoji.
 
 BESTAANDE PAGINA'S:

@@ -80,13 +80,16 @@ async function doEnsureTables(): Promise<void> {
   // ANDERE pagina in hetzelfde cluster (het vertrekpunt/"half plan" voor die pagina).
   await sql`
     CREATE TABLE IF NOT EXISTS page_cluster_advice (
-      id          SERIAL PRIMARY KEY,
-      client_slug TEXT NOT NULL,
-      url         TEXT NOT NULL,
-      advice      TEXT NOT NULL,
-      source_url  TEXT,
-      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+      id              SERIAL PRIMARY KEY,
+      client_slug     TEXT NOT NULL,
+      url             TEXT NOT NULL,
+      advice          TEXT NOT NULL,
+      source_url      TEXT,
+      source_analysis TEXT,
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
     )`;
+  // Additief voor bestaande tabellen: de volledige clusteranalyse (bronconclusie) erbij.
+  await sql`ALTER TABLE page_cluster_advice ADD COLUMN IF NOT EXISTS source_analysis TEXT`;
 }
 
 function normUrl(u: string): string {
@@ -282,26 +285,28 @@ export async function upsertUrl(slug: string, url: string, fields: Partial<{ sta
     ON CONFLICT (client_slug, url) DO NOTHING`;
 }
 
-export type ClusterAdvice = { advice: string; sourceUrl: string; createdAt: string | null };
+export type ClusterAdvice = { advice: string; sourceUrl: string; sourceAnalysis: string; createdAt: string | null };
 
-// Cluster-advies (vertrekpunt voor een andere pagina) opslaan. Vervangt eerder
-// advies van dezelfde bronpagina, zodat opnieuw doorgeven niet stapelt.
-export async function savePageClusterAdvice(slug: string, url: string, advice: string, sourceUrl: string): Promise<void> {
+// Cluster-advies (vertrekpunt voor een andere pagina) opslaan, mét de volledige
+// bronconclusie. Vervangt eerder advies van dezelfde bronpagina, zodat opnieuw
+// doorgeven niet stapelt.
+export async function savePageClusterAdvice(slug: string, url: string, advice: string, sourceUrl: string, sourceAnalysis: string): Promise<void> {
   await ensureSchema();
   await ensureTables();
   const u = normUrl(url);
   if (!u || !advice.trim()) return;
   await sql`DELETE FROM page_cluster_advice WHERE client_slug = ${slug} AND url = ${u} AND source_url IS NOT DISTINCT FROM ${sourceUrl || null}`;
-  await sql`INSERT INTO page_cluster_advice (client_slug, url, advice, source_url) VALUES (${slug}, ${u}, ${advice.trim()}, ${sourceUrl || null})`;
+  await sql`INSERT INTO page_cluster_advice (client_slug, url, advice, source_url, source_analysis) VALUES (${slug}, ${u}, ${advice.trim()}, ${sourceUrl || null}, ${sourceAnalysis || null})`;
 }
 
 export async function getPageClusterAdvice(slug: string, url: string): Promise<ClusterAdvice[]> {
   await ensureSchema();
   await ensureTables();
-  const { rows } = await sql`SELECT advice, source_url, created_at FROM page_cluster_advice WHERE client_slug = ${slug} AND url = ${url} ORDER BY created_at DESC`;
+  const { rows } = await sql`SELECT advice, source_url, source_analysis, created_at FROM page_cluster_advice WHERE client_slug = ${slug} AND url = ${url} ORDER BY created_at DESC`;
   return rows.map((r) => ({
     advice: (r.advice as string) || "",
     sourceUrl: (r.source_url as string) || "",
+    sourceAnalysis: (r.source_analysis as string) || "",
     createdAt: r.created_at ? new Date(r.created_at as string).toISOString() : null,
   }));
 }

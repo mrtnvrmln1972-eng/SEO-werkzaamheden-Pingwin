@@ -40,6 +40,9 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   type DocRun = { id: number; status: string; steps: Record<string, string>; links: Record<string, string>; error: string };
   const [run, setRun] = useState<DocRun | null>(null);
   const [runBusy, setRunBusy] = useState(false);
+  // Cluster-advies dat AAN deze pagina is meegegeven (vertrekpunt van een andere analyse).
+  const [incoming, setIncoming] = useState<{ advice: string; sourceUrl: string; sourceAnalysis: string }[]>([]);
+  const [incomingOpen, setIncomingOpen] = useState(false);
   // Klant-mail
   const [mailOpen, setMailOpen] = useState(false);
   const [mailGen, setMailGen] = useState(false);
@@ -185,6 +188,15 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     }, 5000);
     return () => clearInterval(t); /* eslint-disable-next-line react-hooks/exhaustive-deps */
   }, [run?.status, run?.id, slug, url]);
+
+  // Meegegeven cluster-advies voor deze pagina ophalen (toont de vertrekpunt-kaart).
+  useEffect(() => {
+    let alive = true;
+    fetch(`/api/admin/page-chat/cluster-advice?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}`)
+      .then((r) => r.json()).then((d) => { if (alive && d.ok) setIncoming(d.incoming || []); })
+      .catch(() => { /* niet kritisch */ });
+    return () => { alive = false; };
+  }, [slug, url]);
 
   async function loadFolders(parentId: string) {
     setPickBusy(true); setPickErr("");
@@ -362,7 +374,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     if (!items.length || clusterBusy) return;
     setClusterBusy(true); setClusterMsg(""); setErr("");
     try {
-      const r = await fetch("/api/admin/page-chat/cluster-advice/apply", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, sourceUrl: url, items }) });
+      const r = await fetch("/api/admin/page-chat/cluster-advice/apply", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, sourceUrl: url, sourceAnalysis: lastAssistant, items }) });
       const d = await r.json();
       if (d.ok) {
         setClusterMsg(`Advies doorgegeven aan ${d.saved} pagina('s). Hun eigen chat neemt dit voortaan als vertrekpunt mee; in het overzicht krijgen ze de markering "half plan".`);
@@ -419,7 +431,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
             <button type="button" className="pcd-btn pcd-btn-primary" onClick={() => send(SUMMARIZE_PROMPT)} disabled={busy} title="Vat het hele gesprek samen tot de definitieve conclusie en strategie, klaar om over te nemen als plan">Vat samen tot conclusie &amp; strategie</button>
           </div>
           <div className="page-chat-cluster">
-            <div className="pchf-lead">Raakt deze analyse ook andere pagina&rsquo;s in het cluster? Geef het advies dat over hén gaat alvast door, dan neemt hun eigen chat het straks als vertrekpunt mee.</div>
+            <div className="pchf-lead">Raakt deze analyse ook andere pagina&rsquo;s in het cluster? Geef het advies dat over hén gaat alvast door. Naast het advies per pagina gaat ook de volledige conclusie van deze chat mee, zodat die pagina&rsquo;s de hele strategie als vertrekpunt hebben.</div>
             {clusterItems === null ? (
               <button type="button" className="pcd-btn" onClick={findClusterAdvice} disabled={clusterBusy}>{clusterBusy ? "Betrokken pagina's zoeken…" : "Advies doorgeven aan betrokken pagina's"}</button>
             ) : clusterItems.length === 0 ? (
@@ -461,6 +473,25 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
 
   return (
     <div className="page-chat-wrap">
+      {incoming.length > 0 && (
+        <div className="page-chat-incoming">
+          <div className="pchf-lead"><strong>Meegegeven vanuit een clusteranalyse.</strong> Dit is als vertrekpunt voor deze pagina bewaard; de chat hieronder neemt het advies én de volledige conclusie automatisch mee.</div>
+          {incoming.map((it, i) => (
+            <div key={i} className="pchi-item">
+              <div className="pchi-advice md" dangerouslySetInnerHTML={{ __html: mdToHtml(it.advice) }} />
+              {it.sourceUrl && <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Uit de analyse van <a href={it.sourceUrl} target="_blank" rel="noreferrer">{it.sourceUrl}</a></div>}
+            </div>
+          ))}
+          {incoming.some((it) => it.sourceAnalysis) && (
+            <div style={{ marginTop: 8 }}>
+              <button type="button" className="ghost-btn small" onClick={() => setIncomingOpen((o) => !o)}>{incomingOpen ? "Verberg de volledige clusteranalyse" : "Toon de volledige clusteranalyse"}</button>
+              {incomingOpen && incoming.filter((it) => it.sourceAnalysis).map((it, i) => (
+                <div key={i} className="pchi-full md" dangerouslySetInnerHTML={{ __html: mdToHtml(it.sourceAnalysis) }} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       <div className="page-chat">
         <div className="page-chat-head">
           <span>Chat over deze pagina (gegrond in live status, GSC-ranking en het cluster)</span>

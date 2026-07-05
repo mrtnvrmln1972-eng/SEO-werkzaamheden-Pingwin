@@ -18,6 +18,7 @@ export async function POST(req: NextRequest) {
   const slug = String(body.slug || "").trim();
   const g = await guardSlug(req, slug); if (!g.ok) return g.res;
   const sourceUrl = String(body.sourceUrl || "").trim();
+  const sourceAnalysis = String(body.sourceAnalysis || "").trim().slice(0, 16000);
   const items = Array.isArray(body.items) ? (body.items as { url?: string; advice?: string }[]) : [];
   if (!slug) return NextResponse.json({ ok: false, error: "Klant is verplicht." }, { status: 400 });
 
@@ -25,7 +26,7 @@ export async function POST(req: NextRequest) {
   for (const it of items) {
     const u = String(it?.url || "").trim();
     const advice = String(it?.advice || "").trim();
-    if (u && advice) { await savePageClusterAdvice(slug, u, advice, sourceUrl); saved++; }
+    if (u && advice) { await savePageClusterAdvice(slug, u, advice, sourceUrl, sourceAnalysis); saved++; }
   }
   return NextResponse.json({ ok: true, saved });
 }
