@@ -12,6 +12,7 @@ import ChatPanel from "./ChatPanel";
 import TasksEditor from "./TasksEditor";
 import FocusBlock from "./FocusBlock";
 import HelpHint from "./HelpHint";
+import MailAllowlist from "./MailAllowlist";
 import LinkPreview from "./LinkPreview";
 import DeveloperOverview from "../../developer/DeveloperOverview";
 import KpiPanel from "./KpiPanel";
@@ -338,6 +339,7 @@ export default function ClientCockpit({
                 <span>{showMailsBox ? "▾" : "▸"} Laatste mails <HelpHint text="De laatste e-mails met deze klant. Klap open om ze te lezen of te doorzoeken." /></span>
               </div>
               <div style={{ display: showMailsBox ? undefined : "none" }}>
+              <MailAllowlist slug={client.slug} />
               <div className="sh-search" style={{ marginBottom: 12 }}>
                 <input
                   value={shQuery}

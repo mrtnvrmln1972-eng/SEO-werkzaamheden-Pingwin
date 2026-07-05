@@ -107,6 +107,19 @@ export async function saveClientProfile(slug: string, profile: string): Promise<
   await sql`UPDATE clients SET seo_profile = ${profile || null} WHERE slug = ${slug}`;
 }
 
+// Witte lijst per klant: mailadressen/domeinen waarvan mail (van/naar) bij deze
+// klant mag verschijnen bij "Laatste mails". Leeg = alles tonen (geen filter).
+export async function getMailAllowlist(slug: string): Promise<string> {
+  await ensureSchema();
+  const { rows } = await sql`SELECT mail_allowlist FROM clients WHERE slug = ${slug} LIMIT 1`;
+  return (rows[0]?.mail_allowlist as string) || "";
+}
+export async function setMailAllowlist(slug: string, text: string): Promise<boolean> {
+  await ensureSchema();
+  const { rowCount } = await sql`UPDATE clients SET mail_allowlist = ${text.trim() || null} WHERE slug = ${slug}`;
+  return !!rowCount && rowCount > 0;
+}
+
 export async function getClientBySlug(slug: string): Promise<ClientConfig | null> {
   await ensureSchema();
   const { rows } = await sql<ClientRow>`SELECT * FROM clients WHERE slug = ${slug} LIMIT 1`;

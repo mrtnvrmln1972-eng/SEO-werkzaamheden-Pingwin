@@ -76,13 +76,32 @@ export type PageSnapshot = {
 
 // ── Lezen (voor het dashboard) ──────────────────────────────
 
+// Witte lijst: regels met een mailadres (jan@bogard.nl) of een heel domein (bogard.nl).
+function parseAllowlist(text: string): string[] {
+  return (text || "").split(/[\s,;]+/).map((s) => s.trim().toLowerCase().replace(/^@/, "")).filter(Boolean);
+}
+function fromMatchesAllowlist(fromAddress: string | null, entries: string[]): boolean {
+  const from = (fromAddress || "").trim().toLowerCase();
+  if (!from) return false;
+  const at = from.indexOf("@");
+  const dom = at >= 0 ? from.slice(at + 1) : from;
+  return entries.some((e) => (e.includes("@") ? from === e : dom === e || dom.endsWith("." + e)));
+}
+
 export async function getEmails(slug: string, limit = 50): Promise<EmailSnapshot[]> {
   await ensureSchema();
   const { rows } = await sql`
     SELECT id, subject, from_name, from_address, received_at, preview, web_link, superhuman_link, body_html, direction
     FROM client_emails WHERE client_slug = ${slug}
     ORDER BY received_at DESC NULLS LAST LIMIT ${limit}`;
-  return rows.map((r) => ({
+  // Witte lijst: is die ingevuld, toon dan alleen mail van toegestane afzenders
+  // (uitgaande mail van onszelf blijft altijd staan). Leeg = alles tonen.
+  const { rows: cRows } = await sql`SELECT mail_allowlist FROM clients WHERE slug = ${slug} LIMIT 1`;
+  const entries = parseAllowlist((cRows[0]?.mail_allowlist as string) || "");
+  const filtered = entries.length
+    ? rows.filter((r) => r.direction === "out" || fromMatchesAllowlist(r.from_address as string, entries))
+    : rows;
+  return filtered.map((r) => ({
     id: r.id,
     subject: r.subject,
     fromName: r.from_name,
