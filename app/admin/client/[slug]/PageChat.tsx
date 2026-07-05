@@ -94,60 +94,8 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     } catch { setErr("Vastleggen mislukt."); } finally { setTaskGen(false); }
   }
 
-  const [docBusy, setDocBusy] = useState("");
   const [driveFolder, setDriveFolder] = useState<{ id: string; name: string; path: string } | null>(null);
   const [nuance, setNuance] = useState("");
-  const soort: Record<string, string> = { analyse: "Analyse", blauwdruk: "Blauwdruk", copy: "Copy" };
-  async function genDoc(kind: "analyse" | "blauwdruk" | "copy"): Promise<boolean> {
-    if (docBusy) return false;
-    setDocBusy(kind); setErr(""); setApplied("");
-    try {
-      // deliver=download alleen als er geen bestemmingsmap is gekozen.
-      const payload = { slug, url, kind, extra: nuance.trim() || undefined, ...(driveFolder ? { folderId: driveFolder.id } : { deliver: "download" }) };
-      const r = await fetch("/api/admin/page-doc", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-      const ct = r.headers.get("Content-Type") || "";
-      if (ct.includes("application/json")) {
-        const d = await r.json();
-        if (!d.ok) { setErr(`${soort[kind]}: ${d.error || "document maken mislukt."}`); return false; }
-        setApplied(`${soort[kind]}-document opgeslagen in Google Drive${d.folder ? `, map "${d.folder}"` : ""}${d.owner ? `, account ${d.owner}` : ""} als ${d.isDoc ? "Google Doc" : "Word-bestand"}. <a href="${d.link}" target="_blank" rel="noopener">Open technische versie</a>.${d.clientLink ? ` <a href="${d.clientLink}" target="_blank" rel="noopener">Open klantversie</a>.` : ""}${d.shared ? " Iedereen met de link kan het bekijken." : ""} Vastgelegd als werkzaamheid: de titel linkt naar de technische versie, "(klantversie)" ernaast naar de klantversie. Het klantdashboard toont alleen de klantversie.`);
-        onApplied(); // ververst de takenlijst van deze pagina
-        return true;
-      }
-      if (!r.ok) { const d = await r.json().catch(() => ({})); setErr(`${soort[kind]}: ${d.error || "document maken mislukt."}`); return false; }
-      // Download-blob.
-      const blob = await r.blob();
-      const a = document.createElement("a");
-      const dispo = r.headers.get("Content-Disposition") || "";
-      const m = dispo.match(/filename="([^"]+)"/);
-      a.href = URL.createObjectURL(blob);
-      a.download = m ? m[1] : `${kind}.docx`;
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-      setApplied(`${soort[kind]}-document gedownload in Pingwin-huisstijl. Vastgelegd als werkzaamheid; plan of wijs hem toe in de Werkzaamheden-tab. Kies een Drive-map om het document ook automatisch te koppelen.`);
-      onApplied(); // ververst de takenlijst van deze pagina
-      return true;
-    } catch { setErr(`${soort[kind]}: document maken mislukt.`); return false; } finally { setDocBusy(""); }
-  }
-
-  // Draait de drie stappen ACHTER ELKAAR (analyse -> blauwdruk -> copy). Moet
-  // sequentieel: elke stap bouwt voort op de vorige.
-  const [allBusy, setAllBusy] = useState(false);
-  const [allStep, setAllStep] = useState(0); // 0 = idle, 1..3 = huidige stap
-  async function genAll() {
-    if (allBusy || docBusy) return;
-    setAllBusy(true); setErr(""); setAllStep(1);
-    try {
-      // Sequentieel én stoppen bij een fout: blauwdruk bouwt op de analyse, copy op
-      // de blauwdruk. Faalt een stap, dan heeft doorgaan geen zin en meld ik het eerlijk.
-      setApplied("Stap 1 van 3: analyse-document…");
-      if (!(await genDoc("analyse"))) { setErr((e) => e || "Stap 1 (analyse) is mislukt; blauwdruk en copy zijn overgeslagen. Probeer het opnieuw."); setApplied(""); return; }
-      setAllStep(2); setApplied("Stap 2 van 3: blauwdruk-document…");
-      if (!(await genDoc("blauwdruk"))) { setErr((e) => e || "Stap 2 (blauwdruk) is mislukt; copy is overgeslagen. Probeer het opnieuw."); setApplied(""); return; }
-      setAllStep(3); setApplied("Stap 3 van 3: copy-document…");
-      if (!(await genDoc("copy"))) { setErr((e) => e || "Stap 3 (copy) is mislukt. Probeer het opnieuw."); setApplied(""); return; }
-      setApplied("Alle drie de stappen zijn gedraaid: analyse → blauwdruk → copy. De documenten (en klantversies) staan hierboven en als werkzaamheid vastgelegd.");
-    } finally { setAllBusy(false); setAllStep(0); }
-  }
 
   // ── Google Drive bestemmingsmap ─────────────────────────────
   type Folder = { id: string; name: string };
@@ -385,11 +333,11 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   }
 
   // Start de achtergrond-run: de drie stappen draaien server-side door; wegklikken mag.
-  async function startBackgroundRun() {
+  async function startBackgroundRun(steps: string[]) {
     if (runBusy) return;
     setRunBusy(true); setErr("");
     try {
-      const r = await fetch("/api/admin/page-doc/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url, extra: nuance.trim() || undefined, folderId: driveFolder?.id || undefined }) });
+      const r = await fetch("/api/admin/page-doc/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url, steps, extra: nuance.trim() || undefined, folderId: driveFolder?.id || undefined }) });
       const d = await r.json();
       if (!d.ok) { setErr(d.error || "Achtergrond-run starten mislukt."); return; }
       const s = await fetch(`/api/admin/page-doc/run?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}`).then((x) => x.json()).catch(() => null);
@@ -539,9 +487,9 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
         <div className="doc-run-status">
           <div className="pcd-docs-head">Achtergrond-run {run.status === "running" ? "— bezig (wegklikken mag)" : run.status === "done" ? "— klaar" : "— gestopt door een fout"}</div>
           <ul className="doc-run-steps">
-            {(["analyse", "blauwdruk", "copy"] as const).map((k, i) => (
+            {(["analyse", "blauwdruk", "copy"] as const).filter((k) => run.steps[k] !== "skipped").map((k) => (
               <li key={k} className={"drs " + (run.steps[k] || "pending")}>
-                <span className="drs-name">{i + 1}. {k === "analyse" ? "Analyse" : k === "blauwdruk" ? "Blauwdruk" : "Copy"}</span>
+                <span className="drs-name">{k === "analyse" ? "1. Analyse" : k === "blauwdruk" ? "2. Blauwdruk" : "3. Copy"}</span>
                 <span className="drs-state">{run.steps[k] === "done" ? "klaar" : run.steps[k] === "running" ? "bezig…" : run.steps[k] === "error" ? "fout" : "wacht"}</span>
                 {run.links[k] && <a href={run.links[k]} target="_blank" rel="noreferrer">document</a>}
               </li>
@@ -557,16 +505,12 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
           <div className="pcd-docs-head">Vervolgstappen op strategische analyse voor deze pagina</div>
           <input className="pcd-nuance" value={nuance} onChange={(e) => setNuance(e.target.value)} placeholder="Extra sturing (optioneel), bijv. leg de nadruk op de regio, of behoud de tarieventabel." />
           <div className="pcd-docs-buttons">
-            <button type="button" className={"pcd-btn" + (docBusy === "analyse" ? " busy" : "")} onClick={() => genDoc("analyse")} disabled={!!docBusy || allBusy}>{docBusy === "analyse" ? "Analyse maken…" : "1. Analyse-document"}</button>
-            <button type="button" className={"pcd-btn" + (docBusy === "blauwdruk" ? " busy" : "")} onClick={() => genDoc("blauwdruk")} disabled={!!docBusy || allBusy}>{docBusy === "blauwdruk" ? "Blauwdruk maken…" : "2. Blauwdruk-document"}</button>
-            <button type="button" className={"pcd-btn" + (docBusy === "copy" ? " busy" : "")} onClick={() => genDoc("copy")} disabled={!!docBusy || allBusy}>{docBusy === "copy" ? "Copy maken…" : "3. Copy-document (+ dev-taak)"}</button>
-            <button type="button" className="pcd-btn pcd-btn-primary" onClick={genAll} disabled={!!docBusy || allBusy}>
-              {allBusy ? `Stap ${allStep} van 3 draait…` : "Alles achter elkaar (1 → 2 → 3)"}
-              {allBusy && <span className="pcd-fill" style={{ width: `${(allStep / 3) * 100}%` }} />}
-            </button>
-            <button type="button" className="pcd-btn" onClick={startBackgroundRun} disabled={runBusy || allBusy || !!docBusy} title="Start de drie stappen server-side; je kunt wegklikken en later terugkomen voor de resultaten.">{runBusy ? "Starten…" : "Op de achtergrond (wegklikken mag)"}</button>
+            <button type="button" className="pcd-btn" onClick={() => startBackgroundRun(["analyse"])} disabled={runBusy} title="Draait op de achtergrond door; wegklikken mag.">1. Analyse-document</button>
+            <button type="button" className="pcd-btn" onClick={() => startBackgroundRun(["blauwdruk"])} disabled={runBusy} title="Draait op de achtergrond door; wegklikken mag.">2. Blauwdruk-document</button>
+            <button type="button" className="pcd-btn" onClick={() => startBackgroundRun(["copy"])} disabled={runBusy} title="Draait op de achtergrond door; wegklikken mag.">3. Copy-document (+ dev-taak)</button>
+            <button type="button" className="pcd-btn pcd-btn-primary" onClick={() => startBackgroundRun(["analyse", "blauwdruk", "copy"])} disabled={runBusy} title="Draait de drie stappen op de achtergrond door; wegklikken mag.">{runBusy ? "Starten…" : "Alles achter elkaar (1 → 2 → 3)"}</button>
           </div>
-          <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>Dit is een grote analyse en uitwerking; alle stappen achter elkaar draaien kan een paar minuten duren. Je kunt intussen naar een ander tabblad, het loopt door. Van elk document wordt automatisch ook een klantversie gemaakt en in de Drive-map opgeslagen (taaktitel → technische versie, "(klantversie)" ernaast; het klantdashboard toont alleen de klantversie).</div>
+          <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>Je klikt en het draait op de achtergrond door: je kunt meteen wegklikken naar iets anders. De voortgang zie je in het kaartje hierboven en later in Werkzaamheden. Van elk document wordt automatisch ook een klantversie gemaakt en in de Drive-map opgeslagen (taaktitel → technische versie, "(klantversie)" ernaast; het klantdashboard toont alleen de klantversie). Tip: kies eerst een Drive-map, dan komen de bestanden daar te staan.</div>
         </div>
       )}
 

@@ -21,10 +21,13 @@ export async function POST(req: NextRequest) {
   const url = String(body.url || "").trim();
   const extra = String(body.extra || "").trim().slice(0, 1500);
   const folderId = String(body.folderId || "").trim();
+  const allowed = ["analyse", "blauwdruk", "copy"] as const;
+  const reqSteps = (Array.isArray(body.steps) ? body.steps.map((s) => String(s)) : []).filter((s): s is (typeof allowed)[number] => (allowed as readonly string[]).includes(s));
+  const steps = reqSteps.length ? reqSteps : [...allowed];
   if (!slug || !url) return NextResponse.json({ ok: false, error: "Klant en URL zijn verplicht." }, { status: 400 });
 
   try {
-    const runId = await createDocRun(slug, url, extra, folderId);
+    const runId = await createDocRun(slug, url, extra, folderId, steps);
     return NextResponse.json({ ok: true, runId });
   } catch (e) {
     return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 500 });

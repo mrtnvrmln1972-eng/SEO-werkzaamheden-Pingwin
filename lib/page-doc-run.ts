@@ -83,14 +83,16 @@ function rowToRun(r: any): DocRun {
 
 // Start een nieuwe achtergrond-run voor een pagina. Zonder expliciete Drive-map
 // valt hij terug op de per-pagina opgeslagen map (indien aanwezig).
-export async function createDocRun(slug: string, url: string, extra: string, folderId: string): Promise<number> {
+export async function createDocRun(slug: string, url: string, extra: string, folderId: string, steps: DocKind[]): Promise<number> {
   await ensureSchema();
   await ensureRunTable();
   let fid = (folderId || "").trim();
   if (!fid) { const saved = await getPageDriveFolder(slug, url).catch(() => null); if (saved) fid = saved.folderId; }
+  // Gevraagde stappen krijgen 'pending', de rest 'skipped' (worden overgeslagen).
+  const st = (k: DocKind) => (steps.includes(k) ? "pending" : "skipped");
   const { rows } = await sql`
-    INSERT INTO page_doc_runs (client_slug, url, extra, folder_id)
-    VALUES (${slug}, ${url}, ${extra || null}, ${fid || null})
+    INSERT INTO page_doc_runs (client_slug, url, extra, folder_id, analyse_state, blauwdruk_state, copy_state)
+    VALUES (${slug}, ${url}, ${extra || null}, ${fid || null}, ${st("analyse")}, ${st("blauwdruk")}, ${st("copy")})
     RETURNING id`;
   return Number(rows[0].id);
 }
@@ -136,7 +138,7 @@ async function processRun(id: number): Promise<void> {
   const folderId = (r.folder_id as string) || "";
   const states: Record<DocKind, string> = { analyse: r.analyse_state, blauwdruk: r.blauwdruk_state, copy: r.copy_state };
   for (const kind of STEPS) {
-    if (states[kind] === "done") continue;
+    if (states[kind] === "done" || states[kind] === "skipped") continue;
     if (states[kind] === "error") return;
     const claimed = await claimStep(id, kind);
     if (!claimed) return; // andere worker pakte hem, of de status veranderde
@@ -148,7 +150,8 @@ async function processRun(id: number): Promise<void> {
       return;
     }
   }
-  await sql`UPDATE page_doc_runs SET status = 'done', updated_at = now() WHERE id = ${id} AND copy_state = 'done'`;
+  // Alle gevraagde stappen klaar (we komen hier alleen zonder fout): run afronden.
+  await sql`UPDATE page_doc_runs SET status = 'done', updated_at = now() WHERE id = ${id} AND status = 'running'`;
 }
 
 // Vaste kolomnamen (geen dynamische identifiers in getagde SQL), daarom per stap.
