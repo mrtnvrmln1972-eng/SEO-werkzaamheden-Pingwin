@@ -383,7 +383,7 @@ export default function BeheerClient({ clients, team }: { clients: ClientLite[];
                 selected={uForm.allowedSlugs}
                 onToggle={(slug) => setUForm({ ...uForm, allowedSlugs: toggleSlug(uForm.allowedSlugs, slug) })}
               />
-              <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
                 <button type="submit" className="primary-btn" disabled={busy}>{busy ? "Opslaan…" : "Opslaan"}</button>
                 <button type="button" className="logout-btn" onClick={() => setEditUserId(null)}>Sluiten</button>
               </div>
@@ -421,7 +421,7 @@ export default function BeheerClient({ clients, team }: { clients: ClientLite[];
               selected={tForm.allowedSlugs}
               onToggle={(slug) => setTForm({ ...tForm, allowedSlugs: toggleSlug(tForm.allowedSlugs, slug) })}
             />
-            <button type="submit" className="primary-btn" disabled={busy}>{busy ? "Bezig…" : "Gast aanmaken"}</button>
+            <button type="submit" className="primary-btn" style={{ marginTop: 16 }} disabled={busy}>{busy ? "Bezig…" : "Gast aanmaken"}</button>
           </form>
         )}
 
