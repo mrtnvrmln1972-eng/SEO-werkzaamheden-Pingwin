@@ -224,9 +224,10 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
     ? urls.filter((u) => (u.url + " " + u.title).toLowerCase().includes(q.trim().toLowerCase()))
     : urls;
   const sorted = [...filtered].sort((a, b) => {
-    // Pagina's met een plan altijd bovenaan.
-    const pa = (a.plan || "").trim() ? 1 : 0, pb = (b.plan || "").trim() ? 1 : 0;
-    if (pa !== pb) return pb - pa;
+    // Pagina's met een (half) plan bovenaan: vol plan eerst, dan half plan, dan leeg.
+    const rank = (u: ClientUrl) => ((u.plan || "").trim() ? 2 : u.hasClusterAdvice ? 1 : 0);
+    const ra = rank(a), rb = rank(b);
+    if (ra !== rb) return rb - ra;
     const oa = oppOf(a), ob = oppOf(b);
     if (sortKey === "kans") return (ob?.score || 0) - (oa?.score || 0);
     if (sortKey === "vertoningen") return (ob?.impressions ?? a.gscImpressions ?? 0) - (oa?.impressions ?? b.gscImpressions ?? 0);
@@ -329,7 +330,7 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
               </tr></thead>
               <tbody>
                 {sorted.map((u) => (
-                  <PageRow key={u.url} slug={slug} u={u} opp={oppOf(u)} open={open === u.url} onToggle={() => setOpen(open === u.url ? null : u.url)} clientEmail={clientEmail || ""} clientName={clientName || ""} onGoToTask={onGoToTask} />
+                  <PageRow key={u.url} slug={slug} u={u} opp={oppOf(u)} open={open === u.url} onToggle={() => setOpen(open === u.url ? null : u.url)} clientEmail={clientEmail || ""} clientName={clientName || ""} onGoToTask={onGoToTask} onDataChanged={() => load(true)} />
                 ))}
               </tbody>
             </table>
@@ -383,7 +384,7 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
 }
 
 type PageOpp = { impressions: number; clicks: number; ctr: number; position: number; bestKeyword: string; bestPosition: number | null; bestVolume: number | null; score: number; label: string; level: string };
-function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoToTask }: { slug: string; u: ClientUrl; opp?: PageOpp; open: boolean; onToggle: () => void; clientEmail: string; clientName: string; onGoToTask?: (taskId: number) => void }) {
+function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoToTask, onDataChanged }: { slug: string; u: ClientUrl; opp?: PageOpp; open: boolean; onToggle: () => void; clientEmail: string; clientName: string; onGoToTask?: (taskId: number) => void; onDataChanged?: () => void }) {
   const [plan, setPlan] = useState(u.plan);
   const [saved, setSaved] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -436,7 +437,11 @@ function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoTo
         <td>{opp && opp.position ? opp.position : <span className="muted">&mdash;</span>}</td>
         <td>{opp?.bestVolume != null ? opp.bestVolume.toLocaleString("nl-NL") : <span className="muted">&mdash;</span>}</td>
         <td>{opp?.label ? <span className={"pg-kans " + opp.level}>{opp.label}</span> : <span className="muted">&mdash;</span>}</td>
-        <td>{(plan || "").trim() ? <span className="plan-chip has">plan</span> : <span className="plan-chip">leeg</span>}</td>
+        <td>{(plan || "").trim()
+          ? <span className="plan-chip has">plan</span>
+          : u.hasClusterAdvice
+            ? <span className="plan-chip half" title="Half plan: al meegewogen in de strategie van een andere pagina, nog niet zelf afgerond.">half plan</span>
+            : <span className="plan-chip">leeg</span>}</td>
       </tr>
       {open && (
         <tr className="pages-detail-row">
@@ -489,7 +494,7 @@ function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoTo
                 );
               })()}
 
-              <PageChat slug={slug} url={u.url} clientEmail={clientEmail} clientName={clientName} onApplied={(newPlan) => { if (newPlan) setPlan(newPlan); loadTasks(); }} onGoToTask={onGoToTask} />
+              <PageChat slug={slug} url={u.url} clientEmail={clientEmail} clientName={clientName} onApplied={(newPlan) => { if (newPlan) setPlan(newPlan); loadTasks(); }} onGoToTask={onGoToTask} onClusterApplied={onDataChanged} />
             </div>
           </td>
         </tr>
