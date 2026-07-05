@@ -45,6 +45,9 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   useEffect(() => { if (mailOpen && mailRef.current) mailRef.current.innerHTML = mailHtml; }, [mailOpen, mailHtml]);
 
   const lastAssistant = [...msgs].reverse().find((m) => m.role === "assistant")?.content || "";
+  // Wordt het gesprek nu uitgeklapt getoond? Zo ja, staat de vervolgvraag al in het
+  // gesprek zelf (boven de knoppen) en verbergen we het losse invoerveld onderaan.
+  const convoShown = msgs.length > 0 && (chatId === null || convoOpen);
 
   const [taskGen, setTaskGen] = useState(false);
   // Vat de chat-analyse samen tot één document (Drive of download) en legt de
@@ -334,6 +337,14 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       )}
       {lastAssistant && (
         <>
+          <div className="page-chat-followup">
+            <div className="pchf-lead">Nog een vervolgvraag over de invulling of de zoekwoorden? Stel hem hier. Ben je klaar met doorpraten, vat het gesprek dan samen tot de conclusie en strategie; die neem je daarna over als plan met &ldquo;Neem plan over&rdquo;.</div>
+            <div className="pchf-row">
+              <input className="pchf-input" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(input); }} placeholder="Vervolgvraag over deze pagina…" disabled={busy} />
+              <button type="button" className="primary-btn small" onClick={() => send(input)} disabled={busy || !input.trim()}>Vraag</button>
+            </div>
+            <button type="button" className="pcd-btn pcd-btn-primary" onClick={() => send(SUMMARIZE_PROMPT)} disabled={busy} title="Vat het hele gesprek samen tot de definitieve conclusie en strategie, klaar om over te nemen als plan">Vat samen tot conclusie &amp; strategie</button>
+          </div>
           <div className="page-chat-drive">
             <span className="pcd-label">Opslaan in:</span>
             {driveFolder
@@ -413,13 +424,6 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
         </div>
       )}
 
-      {lastAssistant && (
-        <div className="page-chat-summarize">
-          <span className="pch-canni-lead">Klaar met doorpraten? Vat het gesprek samen tot één eindconclusie en strategie; die verschijnt als voorstel dat je kunt overnemen als plan voor deze pagina.</span>
-          <button type="button" className="pcd-btn pcd-btn-primary" disabled={busy} onClick={() => send(SUMMARIZE_PROMPT)} title="Vat het hele gesprek samen tot de definitieve conclusie en strategie, klaar om over te nemen als plan">Vat samen tot conclusie &amp; strategie</button>
-        </div>
-      )}
-
       {msgs.length > 0 && (
         <div className="page-chat-canni">
           <span className="pch-canni-lead">Als de geoptimaliseerde pagina live staat, kun je de cannibalisatie tussen pagina&rsquo;s oplossen:</span>
@@ -427,10 +431,12 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
         </div>
       )}
 
-      <div className="page-chat-input">
-        <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(input); }} placeholder="Stel een vraag over deze pagina…" disabled={busy} />
-        <button type="button" className="primary-btn small" onClick={() => send(input)} disabled={busy || !input.trim()}>Vraag</button>
-      </div>
+      {!convoShown && (
+        <div className="page-chat-input">
+          <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(input); }} placeholder="Stel een vraag over deze pagina…" disabled={busy} />
+          <button type="button" className="primary-btn small" onClick={() => send(input)} disabled={busy || !input.trim()}>Vraag</button>
+        </div>
+      )}
 
       {mailOpen && (
         <div className="compose-overlay">
