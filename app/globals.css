@@ -581,6 +581,11 @@ tbody td:last-child { text-align: center; }
 .mail-allow-body { margin-top: 10px; }
 .mail-allow-area { width: 100%; min-height: 90px; font-size: 13px; border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; outline: none; resize: vertical; font-family: inherit; }
 .mail-allow-area:focus { border-color: var(--orange); }
+/* Begin- en eindwaarde onder de wijzigingen-grafiek */
+.wz-endpoints { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--gray); margin-top: 3px; }
+.wz-endpoints strong { color: var(--dark); }
+.wz-endpoints .prog-up strong { color: #2E7D32; }
+.wz-endpoints .prog-down strong { color: #C62828; }
 .pch-canni-lead { font-size: 13px; color: var(--dark); flex: 1 1 240px; }
 .pcd-docs-head { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--gray); margin-bottom: 7px; }
 .pcd-nuance { width: 100%; font-size: 13px; border: 1px solid var(--border); border-radius: 8px; padding: 8px 11px; outline: none; margin-bottom: 8px; }

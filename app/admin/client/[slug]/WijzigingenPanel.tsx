@@ -146,6 +146,10 @@ function Spark({ data, metric, invert, markers, hoverKey, onHover }: { data: Day
             fill="transparent" className="wz-dot" onMouseEnter={() => setHover(i)} />
         ))}
       </svg>
+      <div className="wz-endpoints">
+        <span>begin {dShort(pts[0].date)}: <strong>{fmtV(vals[0])}</strong></span>
+        <span className={vals[vals.length - 1] === vals[0] ? "" : (invert ? vals[vals.length - 1] < vals[0] : vals[vals.length - 1] > vals[0]) ? "prog-up" : "prog-down"}>eind {dShort(pts[pts.length - 1].date)}: <strong>{fmtV(vals[vals.length - 1])}</strong></span>
+      </div>
       {markers.map((m) => { const s = stat.get(m.key); return (
         <div key={m.key} className={"wz-marker-label" + (hoverKey === m.key ? " active" : "")} style={{ left: `${frac(m.date) * 100}%` }}
           onMouseEnter={() => onHover(m.key)} onMouseLeave={() => onHover(null)}>
