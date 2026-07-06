@@ -28,7 +28,8 @@ export async function POST(req: NextRequest) {
   if (!slug) return NextResponse.json({ ok: false, error: "Geen klant opgegeven." }, { status: 400 });
   const g2 = await guardSlug(req, slug); if (!g2.ok) return g2.res;
   const gscKeywords = Array.isArray(body.gscKeywords) ? (body.gscKeywords as unknown[]).map((k) => String(k)).filter(Boolean).slice(0, 400) : [];
-  const res = await syncAhrefsKeywords(slug, gscKeywords);
+  const compareDate = typeof body.compareDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.compareDate) ? body.compareDate : undefined;
+  const res = await syncAhrefsKeywords(slug, gscKeywords, compareDate);
   if (!res.ok) return NextResponse.json({ ok: false, error: res.error }, { status: 400 });
   return NextResponse.json({ ok: true, total: res.total ?? 0 });
 }

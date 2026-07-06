@@ -81,6 +81,14 @@ function Delta({ cur, prev, invert, pct, isPos }: { cur: number; prev: number; i
   return <span className={"kpi-delta " + cls}>{arrow} {abs}{pctTxt}</span>;
 }
 
+// Datum (YYYY-MM-DD) van n maanden geleden, voor de Ahrefs-periodevergelijking.
+function monthsAgoISO(n: number): string {
+  const d = new Date();
+  d.setMonth(d.getMonth() - n);
+  return d.toISOString().slice(0, 10);
+}
+const AH_COMPARE_MONTHS: Record<string, number> = { "1m": 1, "3m": 3, "6m": 6, "12m": 12 };
+
 // ── Sorteerbare kolomkoppen ──────────────────────────────────
 type SortDir = "asc" | "desc";
 type Sort<K extends string> = { key: K; dir: SortDir } | null;
@@ -214,6 +222,10 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
   const [ahrefsMsg, setAhrefsMsg] = useState("");
   const [onlyFruit, setOnlyFruit] = useState(false);
   const [ahSort, setAhSort] = useState<Sort<AhKey>>(null);
+  // Periode waarmee de Ahrefs-posities vergeleken worden (pijltjes). Wordt pas
+  // toegepast bij de eerstvolgende keer Verversen (dat kost credits).
+  const [ahCompare, setAhCompare] = useState<"1m" | "3m" | "6m" | "12m" | "custom">("3m");
+  const [ahCustomDate, setAhCustomDate] = useState("");
 
   useEffect(() => {
     fetch(`/api/admin/ahrefs-keywords?slug=${encodeURIComponent(slug)}`)
@@ -223,8 +235,9 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
   async function syncAhrefs() {
     if (ahrefsBusy) return;
     setAhrefsBusy(true); setAhrefsMsg("");
+    const compareDate = ahCompare === "custom" ? ahCustomDate : monthsAgoISO(AH_COMPARE_MONTHS[ahCompare]);
     try {
-      const r = await fetch("/api/admin/ahrefs-keywords", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, gscKeywords: (gsc?.keywords || []).map((k) => k.keyword) }) });
+      const r = await fetch("/api/admin/ahrefs-keywords", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, gscKeywords: (gsc?.keywords || []).map((k) => k.keyword), compareDate: compareDate || undefined }) });
       const d = await r.json();
       if (d.ok) {
         setAhrefsMsg(`${d.total} Ahrefs-zoekwoorden opgehaald; zoekvolume voor je Search Console-zoekwoorden is bijgewerkt.`);
@@ -337,6 +350,10 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
     .filter((k) => k.organic !== false && !k.branded && focus[k.keyword])
     .sort((a, b) => (focus[a.keyword] === "prio" ? 0 : 1) - (focus[b.keyword] === "prio" ? 0 : 1));
   const ahSecCount = ahFocusAll.filter((k) => focus[k.keyword] === "secundair").length;
+  // De datum waarmee de opgeslagen posities daadwerkelijk vergeleken zijn (voor het
+  // label). Leeg als de laatste ophaal zonder periode was (oude data, geen pijltjes).
+  const ahDataCompareDate = ahrefsKw.find((k) => k.compareDate)?.compareDate || null;
+  const nlDate = (iso: string) => { const [y, m, d] = iso.split("-"); return `${d}-${m}-${y}`; };
 
   const oppGetters: Record<OppKey, (o: Opportunity) => number | string> = {
     focus: (o) => focusRank(o.keyword), keyword: (o) => o.keyword, volume: (o) => o.volume ?? 0, difficulty: (o) => o.difficulty ?? 0, source: (o) => o.source, reason: (o) => o.reason || "",
@@ -525,7 +542,7 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
                         <td><FocusSelect tier={focus[k.keyword]} onChange={(t) => markFocus(k.keyword, t)} /></td>
                         <td>{k.keyword}</td>
                         <td>{k.volume != null ? nl(k.volume) : <span className="muted">&mdash;</span>}</td>
-                        <td>{k.position != null ? k.position : <span className="muted">&mdash;</span>}</td>
+                        <td>{k.position != null ? <>{k.position} {k.positionPrev != null && <Delta cur={k.position} prev={k.positionPrev} invert />}</> : <span className="muted">&mdash;</span>}</td>
                         <td>{k.intent ? <span className={"kw-intent " + k.intent}>{k.intent}</span> : <span className="muted">&mdash;</span>}</td>
                         <td>{isFruit(k) ? <span className="pg-kans quickwin">Quick win</span> : <span className="muted">&mdash;</span>}</td>
                       </tr>
@@ -540,10 +557,19 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
             <div className="kpi-block-head">
               <span className="kpi-block-title">Ahrefs-zoekwoorden{ahrefsKw.length ? ` (${ahFiltered.length})` : ""} <HelpHint wide text="Alle organische zoekwoorden van het domein uit Ahrefs (volume, positie, intent), in één keer opgehaald. Laaghangend fruit = commerciële of transactionele zoekwoorden met volume die net buiten de top staan (positie 4-20): daar kun je met beperkte moeite snel meer waardevolle bezoekers scoren. Markeer belangrijke zoekwoorden als prio of secundair; die markering is gedeeld met de Search Console-lijst." /></span>
               <span className="kpi-head-actions">
+                <select className="kpi-period-select" value={ahCompare} onChange={(e) => setAhCompare(e.target.value as typeof ahCompare)} title="Vergelijk de posities met deze periode (pijltjes). Wordt toegepast bij de eerstvolgende keer Verversen (kost credits).">
+                  <option value="1m">vs 1 maand</option>
+                  <option value="3m">vs 3 maanden</option>
+                  <option value="6m">vs 6 maanden</option>
+                  <option value="12m">vs 12 maanden</option>
+                  <option value="custom">vs eigen datum…</option>
+                </select>
+                {ahCompare === "custom" && <input type="date" className="kpi-period-select" value={ahCustomDate} max={monthsAgoISO(0)} onChange={(e) => setAhCustomDate(e.target.value)} title="Vergelijk met deze datum" />}
                 {fruitCount > 0 && <button type="button" className={"ghost-btn small" + (onlyFruit ? " active" : "")} onClick={() => setOnlyFruit((v) => !v)}>{onlyFruit ? "Toon alles" : `Laaghangend fruit (${fruitCount})`}</button>}
                 <button type="button" className="primary-btn small" onClick={syncAhrefs} disabled={ahrefsBusy}>{ahrefsBusy ? "Ophalen…" : (ahrefsKw.length ? "Verversen" : "Ahrefs-zoekwoorden ophalen")}</button>
               </span>
             </div>
+            {ahDataCompareDate && <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>Posities vergeleken met {nlDate(ahDataCompareDate)}, de pijltjes tonen de verandering sindsdien.</div>}
             {ahrefsMsg && <div className="saved-msg" style={{ marginBottom: 8 }}>{ahrefsMsg}</div>}
             {ahrefsKw.length === 0 ? (
               <div className="muted">Nog geen Ahrefs-zoekwoorden opgehaald. Klik &ldquo;Ahrefs-zoekwoorden ophalen&rdquo;: dat haalt in één keer het hele domein op (kost Ahrefs-credits) en slaat het op, zodat de scan er daarna zonder credits op draait.</div>
@@ -564,7 +590,7 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
                         <td><FocusSelect tier={focus[k.keyword]} onChange={(t) => markFocus(k.keyword, t)} /></td>
                         <td>{k.keyword}</td>
                         <td>{k.volume != null ? nl(k.volume) : <span className="muted">&mdash;</span>}</td>
-                        <td>{k.position != null ? k.position : <span className="muted">&mdash;</span>}</td>
+                        <td>{k.position != null ? <>{k.position} {k.positionPrev != null && <Delta cur={k.position} prev={k.positionPrev} invert />}</> : <span className="muted">&mdash;</span>}</td>
                         <td>{k.intent ? <span className={"kw-intent " + k.intent}>{k.intent}</span> : <span className="muted">&mdash;</span>}</td>
                         <td>{isFruit(k) ? <span className="pg-kans quickwin">Quick win</span> : <span className="muted">&mdash;</span>}</td>
                       </tr>

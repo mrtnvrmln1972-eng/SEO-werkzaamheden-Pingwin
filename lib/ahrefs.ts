@@ -129,7 +129,7 @@ export async function getUrlOrganicKeywords(targetUrl: string, country = "nl", l
 }
 
 export type SiteKeyword = {
-  keyword: string; position: number | null; volume: number | null; cpc: number | null;
+  keyword: string; position: number | null; positionPrev: number | null; volume: number | null; cpc: number | null;
   traffic: number | null; intent: string; branded: boolean;
 };
 
@@ -144,23 +144,30 @@ function intentFromFlags(r: { is_transactional?: boolean; is_commercial?: boolea
 // Alle organische zoekwoorden van een heel DOMEIN (incl. subdomeinen) met volume,
 // positie, CPC, verkeer, zoekintentie en of het een merk-zoekwoord is. De basis
 // voor de laaghangend-fruit-scan. Eén call voor het hele domein (credit-bewust).
-export async function getSiteOrganicKeywords(domain: string, country = "nl", limit = 800): Promise<SiteKeyword[]> {
+// dateCompared (YYYY-MM-DD, optioneel): vergelijk de huidige stand met die datum.
+// Dan komt best_position_prev mee zodat we per zoekwoord de positieverandering
+// (pijltjes) kunnen tonen. Bij vergelijken houden we alleen de zoekwoorden waar het
+// domein NU op rankt (verdwenen zoekwoorden laten we weg, net als de gewone lijst).
+export async function getSiteOrganicKeywords(domain: string, country = "nl", limit = 800, dateCompared?: string): Promise<SiteKeyword[]> {
   const d = (domain || "").trim().replace(/^https?:\/\//, "").replace(/\/$/, "");
   if (!d) return [];
   const today = new Date().toISOString().slice(0, 10);
-  const data = (await ahrefsFetch("/site-explorer/organic-keywords", {
+  const params: Record<string, string> = {
     target: d, mode: "subdomains", country, date: today, limit: String(limit),
-    select: "keyword,best_position,volume,cpc,sum_traffic,is_branded,is_commercial,is_informational,is_navigational,is_transactional",
-  })) as { keywords?: Record<string, unknown>[] };
+    select: "keyword,best_position,volume,cpc,sum_traffic,is_branded,is_commercial,is_informational,is_navigational,is_transactional" + (dateCompared ? ",best_position_prev" : ""),
+  };
+  if (dateCompared) params.date_compared = dateCompared;
+  const data = (await ahrefsFetch("/site-explorer/organic-keywords", params)) as { keywords?: Record<string, unknown>[] };
   const rows = (data.keywords || []).map((r) => ({
     keyword: String(r.keyword || ""),
     position: r.best_position == null ? null : Number(r.best_position),
+    positionPrev: r.best_position_prev == null ? null : Number(r.best_position_prev),
     volume: r.volume == null ? null : Number(r.volume),
     cpc: r.cpc == null ? null : Number(r.cpc),
     traffic: r.sum_traffic == null ? null : Number(r.sum_traffic),
     intent: intentFromFlags(r as { is_transactional?: boolean }),
     branded: !!r.is_branded,
-  })).filter((r) => r.keyword);
+  })).filter((r) => r.keyword && (!dateCompared || r.position != null));
   rows.sort((a, b) => (b.traffic || 0) - (a.traffic || 0) || (b.volume || 0) - (a.volume || 0));
   return rows;
 }
