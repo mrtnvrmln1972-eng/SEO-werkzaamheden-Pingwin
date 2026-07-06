@@ -150,7 +150,7 @@ Regels:
 - Neem in "clusters" ALLEEN echte cannibalisatie op (hard signaal + overlappende intentie). Informatieve blog naast een transactionele pagina = geen cannibalisatie.
 - Winnaar-weging: verwijzende domeinen (zwaarst) > organische tractie > businesswaarde. De pagina met de meeste verwijzende domeinen is niet altijd de bestemming; redirect desnoods de link-rijke pagina naar de businesswaardige pagina. Gesloten/verplaatste locaties: 301 naar de dichtstbijzijnde open pagina, niet 410 (behoud de verwijzende domeinen). Herken meerdere URL-varianten per plaats (kliniek-/poli-/test-) als duplicaten.
 - Vul per cluster "signalen" (urlFlip/flipsIn90d, positiePlafond 5-20, klikVerdeling) en per URL "verwijzendeDomeinen" in. Vul "datakwaliteit" eerlijk in op basis van wat de tools teruggaven: gsc, gscTijdreeks, ahrefsZoekwoorden (kwam ahrefs_pages met data?), ahrefsBacklinks (kwamen er verwijzende domeinen mee?), crawl=false. Bleven de Ahrefs-tools leeg, meld dat expliciet in de samenvatting en verzin geen clusters.
-- Lever HELEMAAL AAN HET EIND je antwoord als UITSLUITEND geldige JSON volgens het output-schema hierboven. Geen tekst eromheen, geen emoji, geen markdown-codeblok.`;
+- Procesregel: elke beurt is ÓF een tool-aanroep ÓF, als je klaar bent, de definitieve JSON. Geef nooit gewone tekst/toelichting terug zonder tegelijk een tool aan te roepen; dat beëindigt de analyse voortijdig. Je allerlaatste bericht is UITSLUITEND geldige JSON volgens het output-schema hierboven. Geen tekst eromheen, geen emoji, geen markdown-codeblok.`;
 }
 
 // De tools die de agent zelf mag aanroepen om data te vergaren (net als de chat).
