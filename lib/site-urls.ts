@@ -218,6 +218,23 @@ export async function getClientUrls(slug: string): Promise<ClientUrl[]> {
   }));
 }
 
+// Voegt een pagina handmatig toe aan de lijst: een NIEUWE pagina die nog niet bestaat
+// en dus geen Search Console-data heeft. Zo kun je er tóch de vervolgstappen (plan,
+// blauwdruk, copywriting) op doen. status NULL = nog niet live gecontroleerd. Bestaat
+// de URL al, dan blijft de bestaande data staan en wordt alleen de titel bijgewerkt.
+export async function addManualPage(slug: string, url: string, title: string): Promise<{ ok: boolean; url?: string; error?: string }> {
+  await ensureSchema();
+  await ensureTables();
+  const u = (url || "").trim();
+  if (!u) return { ok: false, error: "Geef een URL of pad op voor de nieuwe pagina." };
+  const t = (title || "").trim();
+  await sql`
+    INSERT INTO client_urls (client_slug, url, status, redirect_target, title, gsc_clicks, gsc_impressions, last_scanned)
+    VALUES (${slug}, ${u}, NULL, '', ${t}, 0, 0, NULL)
+    ON CONFLICT (client_slug, url) DO UPDATE SET title = COALESCE(NULLIF(${t}, ''), client_urls.title)`;
+  return { ok: true, url: u };
+}
+
 export async function getPagePlan(slug: string, url: string): Promise<string> {
   await ensureSchema();
   await ensureTables();

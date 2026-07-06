@@ -81,6 +81,11 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
   // pagina's springen naar boven in dit overzicht.
   const [priority, setPriority] = useState<Set<string>>(new Set());
   const prioKey = (u: string) => (u || "").replace(/\/+$/, "");
+  // Nieuwe (nog niet bestaande) pagina handmatig toevoegen.
+  const [newPageOpen, setNewPageOpen] = useState(false);
+  const [newPath, setNewPath] = useState("");
+  const [newTitle, setNewTitle] = useState("");
+  const [addingPage, setAddingPage] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
   const [importing, setImporting] = useState(false);
@@ -252,6 +257,33 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
     } catch { setMsg("Inlezen mislukt."); } finally { setScanning(false); }
   }
 
+  // Nieuwe pagina toevoegen: bouw een volledige URL uit het website-adres + het pad
+  // (of gebruik een geplakte volledige URL), sla op, ververs en open de pagina meteen.
+  async function addPage() {
+    if (addingPage) return;
+    const raw = newPath.trim();
+    if (!raw) { setMsg("Geef een pad of volledige URL voor de nieuwe pagina."); return; }
+    const base = (domainInput || domain || "").trim().replace(/^https?:\/\//, "").replace(/\/+$/, "");
+    let full: string;
+    if (/^https?:\/\//i.test(raw)) full = raw;
+    else if (!base) { setMsg("Vul eerst het website-adres in (of plak de volledige URL)."); return; }
+    else full = `https://${base}/${raw.replace(/^\/+/, "")}`;
+    if (!/\/$/.test(full) && !/\.[a-z0-9]{2,5}$/i.test(full)) full += "/";
+    setAddingPage(true); setMsg("");
+    try {
+      const r = await fetch("/api/admin/urls/add", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: full, title: newTitle.trim() }) });
+      const d = await r.json();
+      if (d.ok) {
+        const added = d.url || full;
+        setMsg(`Nieuwe pagina toegevoegd: ${shortUrl(added)}. Je kunt er nu een plan, blauwdruk en copywriting voor maken.`);
+        setNewPageOpen(false); setNewPath(""); setNewTitle("");
+        await load();
+        setQ(""); setOpen(added);
+        setTimeout(() => { document.getElementById(rowDomId(added))?.scrollIntoView({ behavior: "smooth", block: "center" }); }, 120);
+      } else setMsg(d.error || "Toevoegen mislukt.");
+    } catch { setMsg("Toevoegen mislukt."); } finally { setAddingPage(false); }
+  }
+
   // Kans-data (vertoningen/positie/beste zoekwoord) op de achtergrond ophalen.
   useEffect(() => {
     fetch(`/api/admin/page-opportunities?slug=${encodeURIComponent(slug)}`)
@@ -308,8 +340,21 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
             />
             <button type="button" className="pcd-btn" onClick={() => setImporting(true)}>Analyse importeren</button>
             <button type="button" className={"pcd-btn" + (scanning ? " busy" : "")} onClick={scan} disabled={scanning}>{scanning ? "Inlezen…" : "Website inlezen"}</button>
+            <button type="button" className={"pcd-btn" + (newPageOpen ? " active" : "")} onClick={() => setNewPageOpen((v) => !v)}>+ Nieuwe pagina</button>
           </span>
         </div>
+
+        {newPageOpen && (
+          <div className="new-page-form">
+            <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>Voeg een pagina toe die nog niet bestaat (bijvoorbeeld een nieuwe dienst of locatie). Er is nog geen Search Console-data, maar je kunt er wel meteen een plan, blauwdruk en copywriting voor maken.</div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              <input className="pages-search" style={{ flex: "1 1 280px", minWidth: 220 }} placeholder="Pad of volledige URL, bijv. /nieuwe-dienst/" value={newPath} onChange={(e) => setNewPath(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addPage(); }} />
+              <input className="pages-search" style={{ flex: "1 1 220px", minWidth: 180 }} placeholder="Titel (optioneel)" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addPage(); }} />
+              <button type="button" className={"pcd-btn" + (addingPage ? " busy" : "")} onClick={addPage} disabled={addingPage}>{addingPage ? "Toevoegen…" : "Toevoegen"}</button>
+              <button type="button" className="ghost-btn small" onClick={() => { setNewPageOpen(false); setNewPath(""); setNewTitle(""); }}>Annuleren</button>
+            </div>
+          </div>
+        )}
         {msg && <div className="saved-msg" style={{ marginBottom: 10 }}>{msg}</div>}
 
         <div className="profile-search-row">
