@@ -1028,7 +1028,9 @@ button.ck-collapse-head {
 .kpi-head-actions { display: inline-flex; gap: 8px; align-items: center; flex: 0 0 auto; padding-bottom: 6px; }
 .kpi-section-body { margin-top: 14px; display: flex; flex-direction: column; gap: 12px; }
 
-.kpi-sub { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--white); }
+.kpi-sub { border: 1px solid var(--border); border-radius: 10px; overflow: visible; background: var(--white); }
+.kpi-pageprio-cell { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.kpi-drag { cursor: grab; color: var(--gray); }
 .kpi-sub-head { display: flex; align-items: center; gap: 10px; background: var(--gray-light); padding: 8px 12px; }
 .kpi-sub-toggle { flex: 1 1 auto; display: flex; align-items: baseline; gap: 8px; background: none; border: none; font-family: inherit; font-weight: 700; font-size: 13px; color: var(--dark); text-align: left; cursor: pointer; }
 .kpi-sub-toggle:hover .kpi-sub-title { color: var(--orange-dark); }

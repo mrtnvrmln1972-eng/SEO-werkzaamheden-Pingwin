@@ -195,6 +195,19 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
     fetch("/api/admin/kpi/keyword-focus", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, keyword, tier }) }).catch(() => {});
   }
 
+  // Prioriteit-pagina's (ster): aangevinkt = bovenaan. Gedeelde opslag met de Wijzigingen-tab.
+  const [pagePrio, setPagePrio] = useState<Set<string>>(new Set());
+  const pagePrioKey = (u: string) => (u || "").replace(/\/+$/, "");
+  useEffect(() => {
+    fetch(`/api/admin/changes/priority?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).then((d) => { if (d.ok) setPagePrio(new Set(d.urls || [])); }).catch(() => {});
+  }, [slug]);
+  function togglePagePrio(url: string) {
+    const key = pagePrioKey(url);
+    const on = !pagePrio.has(key);
+    setPagePrio((s) => { const n = new Set(s); if (on) n.add(key); else n.delete(key); return n; });
+    fetch("/api/admin/changes/priority", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url, priority: on }) }).catch(() => {});
+  }
+
   // Ahrefs-zoekwoorden (domein-brede pool + laaghangend fruit).
   const [ahrefsKw, setAhrefsKw] = useState<AhrefsKeyword[]>([]);
   const [ahrefsBusy, setAhrefsBusy] = useState(false);
@@ -306,6 +319,8 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
     url: (p) => shortUrl(p.url), clicks: (p) => p.clicks, impressions: (p) => p.impressions,
   };
   const sortedPages = applySort(pagesView, pageSort, pageGetters);
+  // Prioriteit-pagina's bovenaan (stabiele sort behoudt de volgorde daarbinnen).
+  const displayPages = [...sortedPages].sort((a, b) => (pagePrio.has(pagePrioKey(b.url)) ? 1 : 0) - (pagePrio.has(pagePrioKey(a.url)) ? 1 : 0));
 
   const ahGetters: Record<AhKey, (k: AhrefsKeyword) => number | string> = {
     focus: (k) => focusRank(k.keyword), keyword: (k) => k.keyword, volume: (k) => k.volume || 0, position: (k) => k.position ?? 999, intent: (k) => k.intent, kans: (k) => (isFruit(k) ? 0 : 1),
@@ -422,7 +437,7 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
           )}
 
           {pagesView.length > 0 && (
-            <Collapse sub title={<>Pagina&rsquo;s uit Search Console ({pagesView.length}) <HelpHint wide text="De pagina's van de site met hun klikken en vertoningen uit Search Console. Sleep een pagina om hem bovenaan vast te zetten (de pagina's die je in de gaten houdt)." /></>} meta={pageSort ? "sortering actief, zet uit om te slepen" : "sleep om vast te zetten bovenaan"} open={isOpen("sc_pages")} onToggle={() => toggle("sc_pages")}>
+            <Collapse sub title={<>Pagina&rsquo;s uit Search Console ({pagesView.length}) <HelpHint wide text="De pagina's van de site met hun klikken en vertoningen uit Search Console. Vink de ster aan om een pagina op prioriteit te zetten; die komen bovenaan (gedeeld met de Wijzigingen-tab)." /></>} meta={pageSort ? "sortering actief" : "vink de ster aan om bovenaan te zetten"} open={isOpen("sc_pages")} onToggle={() => toggle("sc_pages")}>
               <div className="res-table-wrap">
                 <table className="res-table kpi-table">
                   <thead><tr>
@@ -432,14 +447,21 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
                     <SortTh label="Vertoningen" k="impressions" sort={pageSort} setSort={setPageSort} />
                   </tr></thead>
                   <tbody>
-                    {sortedPages.map((p, i) => (
-                      <tr key={p.url} className={dragIdx === i ? "dragging" : ""} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { if (pageSort) return; e.stopPropagation(); movePage(i); }}>
-                        <td className="drag-handle" draggable={!pageSort} onDragStart={() => { if (!pageSort) setDragIdx(i); }} onDragEnd={() => setDragIdx(null)} title={pageSort ? "Zet de sortering uit om te slepen" : "Sleep om deze pagina bovenaan vast te zetten"}>⠿</td>
-                        <td><a href={p.url} target="_blank" rel="noreferrer">{shortUrl(p.url)}</a></td>
-                        <td>{nl(p.clicks)} <Delta cur={p.clicks} prev={p.prevClicks} /></td>
-                        <td>{nl(p.impressions)} <Delta cur={p.impressions} prev={p.prevImpressions} /></td>
-                      </tr>
-                    ))}
+                    {displayPages.map((p, i) => {
+                      const isPrio = pagePrio.has(pagePrioKey(p.url));
+                      const canDrag = !pageSort && pagePrio.size === 0;
+                      return (
+                        <tr key={p.url} className={dragIdx === i ? "dragging" : ""} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { if (!canDrag) return; e.stopPropagation(); movePage(i); }}>
+                          <td className="kpi-pageprio-cell">
+                            <span className={"wz-star" + (isPrio ? " on" : "")} title={isPrio ? "Prioriteit aan, klik om uit te zetten" : "Markeer als prioriteit (komt bovenaan)"} onClick={() => togglePagePrio(p.url)}>{isPrio ? "★" : "☆"}</span>
+                            <span className="kpi-drag" draggable={canDrag} onDragStart={() => { if (canDrag) setDragIdx(i); }} onDragEnd={() => setDragIdx(null)} title={canDrag ? "Sleep om bovenaan te zetten" : "Zet de sortering/prioriteit uit om te slepen"}>⠿</span>
+                          </td>
+                          <td><a href={p.url} target="_blank" rel="noreferrer">{shortUrl(p.url)}</a></td>
+                          <td>{nl(p.clicks)} <Delta cur={p.clicks} prev={p.prevClicks} /></td>
+                          <td>{nl(p.impressions)} <Delta cur={p.impressions} prev={p.prevImpressions} /></td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

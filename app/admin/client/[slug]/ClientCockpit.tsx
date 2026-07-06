@@ -13,8 +13,6 @@ import TasksEditor from "./TasksEditor";
 import FocusBlock from "./FocusBlock";
 import HelpHint from "./HelpHint";
 import MailAllowlist from "./MailAllowlist";
-import CannibalPanel from "./CannibalPanel";
-import InternalLinksPanel from "./InternalLinksPanel";
 import LinkPreview from "./LinkPreview";
 import DeveloperOverview from "../../developer/DeveloperOverview";
 import KpiPanel from "./KpiPanel";
@@ -246,8 +244,6 @@ export default function ClientCockpit({
               ["paginas", "Pagina’s", ""],
               ["resultaten", "KPI’s", ""],
               ["wijzigingen", "Wijzigingen", ""],
-              ["cannibalisatie", "Cannibalisatie", "Site-brede cannibalisatie- en redirect-analyse"],
-              ["interne-links", "Interne links", "Interne-links-optimalisatie per doelpagina"],
               ["klant", "Klant", ""],
               ["developer", "Developer", "Alle developer-taken over alle klanten"],
             ] as [Tab, string, string][]).map(([id, label, title]) => (
@@ -487,8 +483,6 @@ export default function ClientCockpit({
         )}
 
         {tab === "wijzigingen" && <WijzigingenPanel slug={client.slug} />}
-        {tab === "cannibalisatie" && <CannibalPanel slug={client.slug} />}
-        {tab === "interne-links" && <InternalLinksPanel slug={client.slug} />}
 
         {tab === "developer" && <DeveloperOverview embedded />}
       </div>

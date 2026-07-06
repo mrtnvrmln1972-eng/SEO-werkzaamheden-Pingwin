@@ -58,6 +58,19 @@ function dedupeTasks(tasks: TaskRow[]): TaskRow[] {
   return out;
 }
 
+// Ontdubbelt pagina-/pijplijn-taken: dezelfde ZICHTBARE titel op dezelfde pagina is
+// een duplicaat (bv. de analyse/blauwdruk/copy-taak die per doc-run opnieuw is
+// aangemaakt met een nieuwe Drive-link, dus net andere HTML). Houd de nieuwste (laatste)
+// over; taken zonder pagina blijven ongemoeid.
+function dedupePageTasks(tasks: TaskRow[]): TaskRow[] {
+  const stripTags = (s: string) => (s || "").replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+  const normUrl = (u: string) => (u || "").replace(/\/+$/, "").toLowerCase();
+  const lastIdx = new Map<string, number>();
+  tasks.forEach((t, i) => { const k = t.pageUrl ? `${normUrl(t.pageUrl)}|${stripTags(t.taak)}` : `__row${i}`; lastIdx.set(k, i); });
+  const keep = new Set(lastIdx.values());
+  return tasks.filter((_, i) => keep.has(i));
+}
+
 export async function getTasks(slug: string): Promise<TaskRow[]> {
   await ensureSchema();
   const { rows } = await sql`
@@ -86,7 +99,7 @@ export async function getTasks(slug: string): Promise<TaskRow[]> {
     docLink: r.doc_link ?? "",
     clientDocLink: r.client_doc_link ?? "",
   }));
-  return dedupeTasks(mapped);
+  return dedupePageTasks(dedupeTasks(mapped));
 }
 
 // Voegt taken achteraan toe zonder de bestaande te wissen (voor de import).
