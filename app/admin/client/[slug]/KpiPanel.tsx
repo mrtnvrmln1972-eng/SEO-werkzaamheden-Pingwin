@@ -319,8 +319,10 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
     url: (p) => shortUrl(p.url), clicks: (p) => p.clicks, impressions: (p) => p.impressions,
   };
   const sortedPages = applySort(pagesView, pageSort, pageGetters);
-  // Prioriteit-pagina's bovenaan (stabiele sort behoudt de volgorde daarbinnen).
-  const displayPages = [...sortedPages].sort((a, b) => (pagePrio.has(pagePrioKey(b.url)) ? 1 : 0) - (pagePrio.has(pagePrioKey(a.url)) ? 1 : 0));
+  // De aangevinkte (prioriteit-)pagina's apart, net als de focus-zoekwoorden: die
+  // krijgen een eigen veldje bovenaan. De volledige lijst blijft in natuurlijke
+  // volgorde staan (niet dubbel vastgepind).
+  const prioPages = sortedPages.filter((p) => pagePrio.has(pagePrioKey(p.url)));
 
   const ahGetters: Record<AhKey, (k: AhrefsKeyword) => number | string> = {
     focus: (k) => focusRank(k.keyword), keyword: (k) => k.keyword, volume: (k) => k.volume || 0, position: (k) => k.position ?? 999, intent: (k) => k.intent, kans: (k) => (isFruit(k) ? 0 : 1),
@@ -436,8 +438,35 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
             </Collapse>
           )}
 
+          {prioPages.length > 0 && (
+            <Collapse sub title={<>Belangrijke pagina&rsquo;s uit Search Console ({prioPages.length}) <HelpHint wide text="De pagina's die je met de ster op prioriteit hebt gezet, vastgezet in een eigen veld bovenaan (gedeeld met de Wijzigingen-tab). Klik de ster om een pagina er weer uit te halen." /></>} meta="prio-pagina's, vastgezet bovenaan" open={isOpen("sc_pages_focus", true)} onToggle={() => toggle("sc_pages_focus", true)}>
+              <div className="res-table-wrap">
+                <table className="res-table kpi-table">
+                  <thead><tr>
+                    <th></th>
+                    <th>Pagina</th>
+                    <th>Klikken</th>
+                    <th>Vertoningen</th>
+                  </tr></thead>
+                  <tbody>
+                    {prioPages.map((p) => (
+                      <tr key={p.url} className="kpi-focus-row prio">
+                        <td className="kpi-pageprio-cell">
+                          <span className="wz-star on" title="Prioriteit aan, klik om uit te zetten" onClick={() => togglePagePrio(p.url)}>&#9733;</span>
+                        </td>
+                        <td><a href={p.url} target="_blank" rel="noreferrer">{shortUrl(p.url)}</a></td>
+                        <td>{nl(p.clicks)} <Delta cur={p.clicks} prev={p.prevClicks} /></td>
+                        <td>{nl(p.impressions)} <Delta cur={p.impressions} prev={p.prevImpressions} /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Collapse>
+          )}
+
           {pagesView.length > 0 && (
-            <Collapse sub title={<>Pagina&rsquo;s uit Search Console ({pagesView.length}) <HelpHint wide text="De pagina's van de site met hun klikken en vertoningen uit Search Console. Vink de ster aan om een pagina op prioriteit te zetten; die komen bovenaan (gedeeld met de Wijzigingen-tab)." /></>} meta={pageSort ? "sortering actief" : "vink de ster aan om bovenaan te zetten"} open={isOpen("sc_pages")} onToggle={() => toggle("sc_pages")}>
+            <Collapse sub title={<>Pagina&rsquo;s uit Search Console ({pagesView.length}) <HelpHint wide text="De pagina's van de site met hun klikken en vertoningen uit Search Console. Vink de ster aan om een pagina op prioriteit te zetten; die verschijnt dan in het veld 'Belangrijke pagina's' bovenaan (gedeeld met de Wijzigingen-tab)." /></>} meta={pageSort ? "sortering actief" : "vink de ster aan om bovenaan te zetten"} open={isOpen("sc_pages")} onToggle={() => toggle("sc_pages")}>
               <div className="res-table-wrap">
                 <table className="res-table kpi-table">
                   <thead><tr>
@@ -447,9 +476,9 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
                     <SortTh label="Vertoningen" k="impressions" sort={pageSort} setSort={setPageSort} />
                   </tr></thead>
                   <tbody>
-                    {displayPages.map((p, i) => {
+                    {sortedPages.map((p, i) => {
                       const isPrio = pagePrio.has(pagePrioKey(p.url));
-                      const canDrag = !pageSort && pagePrio.size === 0;
+                      const canDrag = !pageSort;
                       return (
                         <tr key={p.url} className={dragIdx === i ? "dragging" : ""} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { if (!canDrag) return; e.stopPropagation(); movePage(i); }}>
                           <td className="kpi-pageprio-cell">
