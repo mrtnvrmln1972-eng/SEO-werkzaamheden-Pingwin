@@ -3,9 +3,10 @@ import path from "path";
 import { sql, ensureSchema } from "./db";
 import { getClientBySlug } from "./clients";
 import { getClientUrls } from "./site-urls";
-import { getGscKeywordUrlFlips } from "./google";
-import { getAhrefsTopPages, ahrefsConfigured } from "./ahrefs";
-import { callClaude } from "./anthropic";
+import { getGscForPage, getGscKeywordUrlFlips } from "./google";
+import { getAhrefsTopPages, getUrlOrganicKeywords, ahrefsConfigured } from "./ahrefs";
+import { fetchPageContent } from "./page-content";
+import { callClaude, callClaudeAgentic, type ToolDef, type ToolRunner } from "./anthropic";
 
 // ═══════════════════════════════════════════════════════════
 // KEYWORD-CANNIBALISATIE-ANALYSE (dashboard-integratie van de skill)
@@ -147,8 +148,53 @@ De data hieronder is al voor je verzameld. Redeneer per plaats/thema; verzin nie
 - Antwoord met UITSLUITEND geldige JSON volgens het output-schema hierboven. Geen tekst eromheen, geen emoji, geen markdown-codeblok.`;
 }
 
-// Draait de analyse en slaat het resultaat op. Idempotent qua opslag. Eén betrouwbare
-// call over de vooraf verzamelde, geverifieerde data (Ahrefs top-pagina's = de motor).
+// FASE 1 (agentic): het model haalt zelf de diepte-data op via deze tools.
+const CANNIBAL_TOOLS: ToolDef[] = [
+  { name: "ahrefs_url_keywords", description: "Alle zoekwoorden waarop één specifieke URL organisch rankt (positie, volume, verkeer), uit Ahrefs. Gebruik dit om in te zoomen op een verdachte pagina en te zien op welke merk+geo-termen hij MEDE rankt, ook waar hij niet de winnaar is (bijv. een buitenwijkpagina die op 'one day clinic <grote stad>' pos 11 staat). Geef het pad, bijv. /soa-poli-gouda/.", input_schema: { type: "object", properties: { url: { type: "string" } }, required: ["url"] } },
+  { name: "fetch_page_content", description: "De on-page inhoud van een pagina (titel, meta, H1, koppen, kern van de tekst) om de zoekintentie te bepalen. Cruciaal om echte cannibalisatie (zelfde intentie) te scheiden van false positives (andere intentie). Geef het pad of de volledige URL.", input_schema: { type: "object", properties: { url: { type: "string" } }, required: ["url"] } },
+  { name: "gsc_page_queries", description: "De echte Search Console-zoekwoorden voor één pagina (klikken, vertoningen, gemiddelde positie, 90 dagen), om echte Google-tractie te bevestigen. Geef het pad.", input_schema: { type: "object", properties: { url: { type: "string" } }, required: ["url"] } },
+];
+
+function makeCannibalRunner(domain: string): ToolRunner {
+  const bare = domain.replace(/^www\./i, "").toLowerCase();
+  const toFull = (u: string) => (u || "").startsWith("http") ? u : `https://${bare}${(u || "").startsWith("/") ? "" : "/"}${u || ""}`;
+  return async (name, input) => {
+    if (name === "ahrefs_url_keywords") {
+      const kws = await getUrlOrganicKeywords(toFull(String(input.url || "")), "nl", 40).catch(() => []);
+      return kws.length ? kws.map((k) => `"${k.keyword}" pos ${k.position ?? "?"} vol ${k.volume ?? "?"} verkeer ${k.traffic ?? "?"}`).join("\n") : "(geen Ahrefs-zoekwoorden voor deze URL)";
+    }
+    if (name === "fetch_page_content") {
+      const c = await fetchPageContent(toFull(String(input.url || ""))).catch(() => null);
+      if (!c) return "(kon pagina niet ophalen)";
+      return `titel: ${c.title}\nH1: ${c.h1}\nkoppen: ${c.headings.slice(0, 10).join(" | ")}\ntekst: ${c.text.slice(0, 1000)}`;
+    }
+    if (name === "gsc_page_queries") {
+      const rows = await getGscForPage(domain, toFull(String(input.url || "")), 90).catch(() => []);
+      return rows.length ? rows.map((r) => `"${r.keyword}" pos ${r.position} ${r.clicks} clicks ${r.impressions} impr`).join("\n") : "(geen GSC-data voor deze URL)";
+    }
+    return "(onbekende tool)";
+  };
+}
+
+// Onderzoeks-prompt: verken agentisch, rond snel af met een leesbare bevindingen-tekst
+// (GEEN JSON). Tekst kan niet afgekapt/leeg de parse breken; fase 2 maakt er JSON van.
+function buildGatherSystem(): string {
+  const methodology = loadSkillMethodology();
+  const head = methodology ? `Je bent een SEO-specialist die keyword-cannibalisatie onderzoekt. Methodiek:\n\n${methodology}` : `Je bent een senior SEO-specialist die keyword-cannibalisatie onderzoekt.`;
+  return `${head}
+
+---
+
+ONDERZOEKSFASE (agentisch):
+De KERN-DATA (Ahrefs per pagina + pagina's zonder verkeer + flips) staat in het bericht. Je taak: zoom met de tools in op de VERDACHTE pagina's en schrijf daarna je bevindingen.
+- Kies de kandidaat-clusters uit de kern-data: pagina's waarvan het top-zoekwoord dezelfde plaats/merk+geo-term betreft, en variant-/duplicaat-URL's per plaats (kliniek-/poli-/test-).
+- Gebruik ahrefs_url_keywords op verdachte pagina's om secundaire merk+geo-rankings te zien (een buitenwijkpagina die mede op 'merk grote-stad' rankt). Gebruik fetch_page_content om de intentie te checken (echte cannibalisatie vs. andere intentie). Gebruik gsc_page_queries voor echte tractie.
+- Wees EFFICIËNT: enkele gerichte tool-aanroepen op de meest verdachte pagina's, dan afronden. Niet elke pagina uitputtend nalopen.
+- Rond af met een LEESBARE bevindingen-tekst (geen JSON, geen tools meer): per plaats/thema-cluster de concurrerende pagina's met top-zoekwoord/positie/verwijzende domeinen, de winnaar met onderbouwing, de voorgestelde actie (301 / de-optimaliseren / interne links / behouden), en of de intentie echt overlapt. Noem ook lege duplicaat-varianten die naar de plaatswinnaar moeten redirecten.`;
+}
+
+// Draait de analyse in twee fasen: agentic onderzoek (tools) -> vaste JSON-synthese.
+// Faalt nooit op een lege loop: fase 2 werkt ook uit de ruwe data. Idempotent qua opslag.
 export async function runCannibalRedirect(slug: string): Promise<void> {
   try {
     await ensureSchema();
@@ -173,12 +219,12 @@ export async function runCannibalRedirect(slug: string): Promise<void> {
     const flipLines = flips.slice(0, 60).map((f) => `- "${f.keyword}": ${f.topUrls.join(" -> ")} (${f.flips}x)`).join("\n");
     const hasFlips = flips.length > 0;
 
-    const context = [
+    const seedData = [
       `KLANT: ${client?.name || slug} (domein: ${domain})`,
       "",
       `DATAKWALITEIT (neem over in datakwaliteit): gsc=true, gscTijdreeks=${hasFlips}, ahrefsZoekwoorden=true, ahrefsBacklinks=true (verwijzende domeinen per pagina), crawl=false.`,
       "",
-      "AHREFS PER PAGINA — JE PRIMAIRE BRON (pagina | top-zoekwoord + positie | organisch verkeer | verwijzende domeinen | aantal zoekwoorden):",
+      "AHREFS PER PAGINA (pagina | top-zoekwoord + positie | organisch verkeer | verwijzende domeinen | aantal zoekwoorden):",
       ahrefsTable || "- (geen)",
       "",
       "PAGINA'S ZONDER Ahrefs-VERKEER (status 200; vaak lege duplicaat-varianten die je per plaats naar de winnaar redirect):",
@@ -188,7 +234,23 @@ export async function runCannibalRedirect(slug: string): Promise<void> {
       flipLines || "- (geen flips gedetecteerd)",
     ].join("\n");
 
-    const raw = await callClaude(buildSystemPrompt(), [{ role: "user", content: context.slice(0, 40000) }], 16000, { slug, action: "cannibal_redirect" });
+    // FASE 1 — agentic onderzoek: het model zoomt in op verdachte pagina's en schrijft
+    // leesbare bevindingen. Faalt dit (leeg/te kort), dan gaat fase 2 door op de ruwe data.
+    let findings = "";
+    try {
+      findings = await callClaudeAgentic(
+        buildGatherSystem(),
+        [{ role: "user", content: `${seedData}\n\nOnderzoek de meest verdachte pagina's met de tools en schrijf daarna je bevindingen (leesbare tekst, geen JSON).`.slice(0, 40000) }],
+        CANNIBAL_TOOLS, makeCannibalRunner(domain), 8, 6000, { slug, action: "cannibal_gather" },
+      );
+    } catch { findings = ""; }
+    const clean = findings.replace(/\(geen antwoord\)/gi, "").trim();
+
+    // FASE 2 — vaste synthese naar JSON: altijd een antwoord, werkt ook zonder bevindingen.
+    const phase2 = clean.length > 40
+      ? `${seedData}\n\nBEVINDINGEN UIT HET AGENTISCH ONDERZOEK (gebruik deze; ze bevatten diepte-data zoals secundaire merk+geo-rankings en intentie-checks):\n${clean}\n\nLever nu de volledige analyse als JSON volgens het output-schema.`
+      : `${seedData}\n\nLever nu de volledige analyse als JSON volgens het output-schema.`;
+    const raw = await callClaude(buildSystemPrompt(), [{ role: "user", content: phase2.slice(0, 48000) }], 16000, { slug, action: "cannibal_redirect" });
 
     const cleaned = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
     const jsonText = extractJsonObject(cleaned);
