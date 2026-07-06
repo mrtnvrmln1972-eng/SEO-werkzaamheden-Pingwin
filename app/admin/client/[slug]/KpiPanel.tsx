@@ -67,6 +67,31 @@ function PeriodCompare({ prev, cur, fmt, invert }: { prev: number; cur: number; 
   );
 }
 
+// Levende dag-grafiek voor een scorekaart: tekent de échte dagreeks als lijn (i.p.v.
+// een rechte 2-punts-lijn), met links de vorige-periode-waarde en rechts de huidige.
+// Kleur volgt de periodevergelijking (cur vs prev). invert=true bij 'positie', zodat
+// de beste (laagste) positie bovenaan ligt: hoger in de grafiek = beter ranken.
+function MiniTrend({ values, prev, cur, fmt, invert }: { values: number[]; prev: number; cur: number; fmt: (v: number) => string; invert?: boolean }) {
+  const t = trendOf(cur, prev, invert);
+  const color = t === "flat" ? "#9e9e9e" : t === "good" ? "#2E7D32" : "#C62828";
+  const w = 96, h = 30, pad = 4;
+  const vals = values && values.length >= 2 ? values : [prev, cur];
+  const min = Math.min(...vals), max = Math.max(...vals), range = max - min || 1;
+  const x = (i: number) => pad + (i / (vals.length - 1)) * (w - 2 * pad);
+  const y = (v: number) => { const norm = (v - min) / range; return pad + (invert ? norm : 1 - norm) * (h - 2 * pad); };
+  const pts = vals.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+  return (
+    <div className="kpi-compare">
+      <span className="kc-prev" title="vorige periode">{fmt(prev)}</span>
+      <svg viewBox={`0 0 ${w} ${h}`} className="kpi-compare-svg" preserveAspectRatio="none">
+        <polyline points={pts} fill="none" stroke={color} strokeWidth={1.6} vectorEffect="non-scaling-stroke" />
+        <circle cx={x(vals.length - 1)} cy={y(vals[vals.length - 1])} r={3.2} fill={color} />
+      </svg>
+      <span className="kc-cur"><strong style={{ color }}>{fmt(cur)}</strong></span>
+    </div>
+  );
+}
+
 // Toont de verandering t.o.v. de vorige periode. invert=true voor 'positie'
 // (lager is beter). pct=true toont het procentuele verschil erbij.
 function Delta({ cur, prev, invert, pct, isPos }: { cur: number; prev: number; invert?: boolean; pct?: boolean; isPos?: boolean }) {
@@ -394,10 +419,10 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
       {!loading && gsc && gsc.totals && (
         <Collapse title="Search Console" meta={`${gsc.range.curStart} t/m ${gsc.range.curEnd}`} open={isOpen("sc", true)} onToggle={() => toggle("sc", true)}>
           <div className="kpi-grid kpi-grid-4">
-            <div className="kpi-card"><div className="kpi-value-row"><div className="kpi-value">{nl(gsc.totals.clicks.cur)}</div><Delta cur={gsc.totals.clicks.cur} prev={gsc.totals.clicks.prev} pct /></div><div className="kpi-label">Klikken</div><PeriodCompare prev={gsc.totals.clicks.prev} cur={gsc.totals.clicks.cur} fmt={(v) => nl(Math.round(v))} /></div>
-            <div className="kpi-card"><div className="kpi-value-row"><div className="kpi-value">{nl(gsc.totals.impressions.cur)}</div><Delta cur={gsc.totals.impressions.cur} prev={gsc.totals.impressions.prev} pct /></div><div className="kpi-label">Vertoningen</div><PeriodCompare prev={gsc.totals.impressions.prev} cur={gsc.totals.impressions.cur} fmt={(v) => nl(Math.round(v))} /></div>
-            <div className="kpi-card"><div className="kpi-value-row"><div className="kpi-value">{gsc.totals.ctr.cur.toFixed(1)}%</div><Delta cur={gsc.totals.ctr.cur} prev={gsc.totals.ctr.prev} isPos /></div><div className="kpi-label">CTR</div><PeriodCompare prev={gsc.totals.ctr.prev} cur={gsc.totals.ctr.cur} fmt={(v) => `${v.toFixed(1)}%`} /></div>
-            <div className="kpi-card"><div className="kpi-value-row"><div className="kpi-value">{gsc.totals.position.cur.toFixed(1)}</div><Delta cur={gsc.totals.position.cur} prev={gsc.totals.position.prev} invert isPos /></div><div className="kpi-label">Gem. positie <span className="kpi-sub-note">(lager = beter)</span></div><PeriodCompare prev={gsc.totals.position.prev} cur={gsc.totals.position.cur} fmt={(v) => v.toFixed(1)} invert /></div>
+            <div className="kpi-card"><div className="kpi-value-row"><div className="kpi-value">{nl(gsc.totals.clicks.cur)}</div><Delta cur={gsc.totals.clicks.cur} prev={gsc.totals.clicks.prev} pct /></div><div className="kpi-label">Klikken</div><MiniTrend values={gsc.series.clicks} prev={gsc.totals.clicks.prev} cur={gsc.totals.clicks.cur} fmt={(v) => nl(Math.round(v))} /></div>
+            <div className="kpi-card"><div className="kpi-value-row"><div className="kpi-value">{nl(gsc.totals.impressions.cur)}</div><Delta cur={gsc.totals.impressions.cur} prev={gsc.totals.impressions.prev} pct /></div><div className="kpi-label">Vertoningen</div><MiniTrend values={gsc.series.impressions} prev={gsc.totals.impressions.prev} cur={gsc.totals.impressions.cur} fmt={(v) => nl(Math.round(v))} /></div>
+            <div className="kpi-card"><div className="kpi-value-row"><div className="kpi-value">{gsc.totals.ctr.cur.toFixed(1)}%</div><Delta cur={gsc.totals.ctr.cur} prev={gsc.totals.ctr.prev} isPos /></div><div className="kpi-label">CTR</div><MiniTrend values={gsc.series.ctr} prev={gsc.totals.ctr.prev} cur={gsc.totals.ctr.cur} fmt={(v) => `${v.toFixed(1)}%`} /></div>
+            <div className="kpi-card"><div className="kpi-value-row"><div className="kpi-value">{gsc.totals.position.cur.toFixed(1)}</div><Delta cur={gsc.totals.position.cur} prev={gsc.totals.position.prev} invert isPos /></div><div className="kpi-label">Gem. positie <span className="kpi-sub-note">(hoger in grafiek = beter)</span></div><MiniTrend values={gsc.series.position} prev={gsc.totals.position.prev} cur={gsc.totals.position.cur} fmt={(v) => v.toFixed(1)} invert /></div>
           </div>
 
           {focusedKws.length > 0 && (
