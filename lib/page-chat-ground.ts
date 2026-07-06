@@ -132,6 +132,8 @@ CANNIBALISATIE OPLOSSEN (volg dit wanneer de gebruiker erom vraagt, of wanneer j
 
 Geef aan het eind een scherp, onderbouwd advies vanuit deze invalshoeken. Als de data ontbreekt of je twijfelt, haal hem op via de tools of stel een gerichte vraag.
 
+Begin je antwoord DIRECT met de inhoud. Geen inleidende zinnen zoals "Alle data is binnen", "Nu kan ik een volledig beeld geven" of "Ik heb alles bekeken"; die voegen niets toe.
+
 LIVE FEITEN:
 ${facts}`;
 }

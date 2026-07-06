@@ -510,6 +510,16 @@ tbody td:last-child { text-align: center; }
 /* Assistent-antwoord als net opgemaakt rapport, links uitgelijnd */
 .page-chat-msg.assistant { align-self: stretch; width: 100%; background: var(--white); border: 1px solid var(--border); border-radius: 10px; padding: 18px 22px; color: var(--dark); box-shadow: 0 1px 3px rgba(0,0,0,0.05); text-align: left; }
 .page-chat-msg.assistant.muted { background: none; border: none; box-shadow: none; padding: 4px 2px; }
+/* Bericht-regel met bewerk/verwijder-knoppen (verschijnen bij hover) */
+.pch-msg-wrap { position: relative; }
+.pch-msg-wrap.user { display: flex; justify-content: flex-end; }
+.pch-msg-ctrl { position: absolute; top: 4px; right: 4px; display: flex; gap: 2px; opacity: 0; transition: opacity .12s; }
+.pch-msg-wrap:hover .pch-msg-ctrl { opacity: 1; }
+.pch-msg-btn { background: rgba(255,255,255,0.92); border: 1px solid var(--border); border-radius: 6px; width: 22px; height: 22px; line-height: 1; cursor: pointer; font-size: 13px; color: var(--dark); padding: 0; }
+.pch-msg-btn:hover { background: var(--brand-orange-soft); border-color: var(--orange); }
+.pch-msg-edit { margin: 4px 0; }
+.pch-msg-editable { background: var(--white); border: 1px solid var(--orange); border-radius: 10px; padding: 16px 20px; min-height: 60px; outline: none; }
+.pch-msg-edit-actions { display: flex; gap: 8px; margin-top: 6px; }
 .md { text-align: left; }
 .md * { text-align: left; }
 .md > :first-child { margin-top: 0; }

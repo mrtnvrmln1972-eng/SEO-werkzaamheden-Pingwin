@@ -38,6 +38,9 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   const [pc, setPc] = useState<{ status: string; result: string; error: string; updatedAt: string | null } | null>(null);
   const [pcBusy, setPcBusy] = useState(false);
   const [pcOpen, setPcOpen] = useState(false);
+  // Een chat-bericht bewerken (welke index) — gerenderde contentEditable, geen ruwe textarea.
+  const [editIdx, setEditIdx] = useState<number | null>(null);
+  const editRef = useRef<HTMLDivElement | null>(null);
   // Cluster-advies dat AAN deze pagina is meegegeven (vertrekpunt van een andere analyse).
   const [incoming, setIncoming] = useState<{ advice: string; sourceUrl: string; sourceAnalysis: string }[]>([]);
   const [incomingOpen, setIncomingOpen] = useState(false);
@@ -82,7 +85,9 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   const lastAssistant = [...msgs].reverse().find((m) => m.role === "assistant")?.content || "";
   // Wordt het gesprek nu uitgeklapt getoond? Zo ja, staat de vervolgvraag al in het
   // gesprek zelf (boven de knoppen) en verbergen we het losse invoerveld onderaan.
-  const convoShown = msgs.length > 0 && (chatId === null || convoOpen);
+  const convoShown = msgs.length > 0 && convoOpen;
+  // Titel voor de analyse-toggle: "ANALYSE: /pad/" van deze pagina.
+  const analyseTitle = "ANALYSE: " + ((url || "").replace(/^https?:\/\/[^/]+/i, "").trim() || url).toUpperCase();
 
   const [taskGen, setTaskGen] = useState(false);
   // Vat de chat-analyse samen tot één document (Drive of download) en legt de
@@ -293,6 +298,27 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     } catch { /* stil */ }
   }
 
+  // Een bericht is markdown (van het model) óf al bewerkte HTML; render de juiste.
+  function renderMsgHtml(content: string): string {
+    return /<(p|table|ul|ol|h[1-6]|div|br|strong|em|a)\b/i.test(content) ? content : mdToHtml(content);
+  }
+  function deleteMsg(i: number) {
+    if (!window.confirm("Dit bericht uit de chat verwijderen?")) return;
+    const next = msgs.filter((_, j) => j !== i);
+    setMsgs(next); setEditIdx(null);
+    if (next.length) persist(next); else newChat();
+  }
+  function saveEdit(i: number) {
+    const html = (editRef.current?.innerHTML || "").trim();
+    const next = msgs.map((m, j) => (j === i ? { ...m, content: html } : m));
+    setMsgs(next); setEditIdx(null); persist(next);
+  }
+  // Vul de bewerk-preview met de gerenderde inhoud zodra je een bericht gaat bewerken.
+  useEffect(() => {
+    if (editIdx != null && editRef.current) editRef.current.innerHTML = renderMsgHtml(msgs[editIdx]?.content || "");
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [editIdx]);
+
   async function send(text: string) {
     const t = text.trim();
     if (!t || busy) return;
@@ -376,9 +402,28 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       <div className="page-chat-log">
         {msgs.map((m, i) => {
           if (i === 0 && m.role === "user") return null;
-          return m.role === "user"
-            ? <div key={i} className="page-chat-msg user">{m.content}</div>
-            : <div key={i} className="page-chat-msg assistant md" dangerouslySetInnerHTML={{ __html: mdToHtml(m.content) }} />;
+          if (editIdx === i) {
+            return (
+              <div key={i} className="pch-msg-edit">
+                <div className="pch-msg-editable md" contentEditable suppressContentEditableWarning ref={editRef} />
+                <div className="pch-msg-edit-actions">
+                  <button type="button" className="ghost-btn small" onClick={() => saveEdit(i)}>Opslaan</button>
+                  <button type="button" className="ghost-btn small" onClick={() => setEditIdx(null)}>Annuleren</button>
+                </div>
+              </div>
+            );
+          }
+          return (
+            <div key={i} className={"pch-msg-wrap " + m.role}>
+              {m.role === "user"
+                ? <div className="page-chat-msg user">{m.content}</div>
+                : <div className="page-chat-msg assistant md" dangerouslySetInnerHTML={{ __html: renderMsgHtml(m.content) }} />}
+              <div className="pch-msg-ctrl">
+                {m.role === "assistant" && <button type="button" className="pch-msg-btn" title="Bewerken" onClick={() => setEditIdx(i)}>✎</button>}
+                <button type="button" className="pch-msg-btn" title="Verwijderen" onClick={() => deleteMsg(i)}>×</button>
+              </div>
+            </div>
+          );
         })}
         {busy && <div className="page-chat-msg assistant muted">Aan het denken…</div>}
       </div>
@@ -474,12 +519,12 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
           <div className="page-chat-history-head">Eerdere chats</div>
 
           {chatId === null && msgs.length > 0 && (
-            <div className="pch-item open active">
-              <div className="pch-item-head">
-                <span className="pch-caret">▾</span>
-                <span className="pch-title">{msgs.find((m) => m.role === "user")?.content || "Nieuwe chat"}</span>
+            <div className={"pch-item active" + (convoOpen ? " open" : "")}>
+              <div className="pch-item-head" onClick={() => setConvoOpen((o) => !o)}>
+                <span className="pch-caret">{convoOpen ? "▾" : "▸"}</span>
+                <span className="pch-title">{analyseTitle}</span>
               </div>
-              <div className="pch-item-body">{renderConvo()}</div>
+              {convoOpen && <div className="pch-item-body">{renderConvo()}</div>}
             </div>
           )}
 
@@ -490,7 +535,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
               <div key={c.id} className={"pch-item" + (open ? " open" : "") + (active ? " active" : "")}>
                 <div className="pch-item-head" onClick={() => { if (active) setConvoOpen((o) => !o); else { openChat(c.id); setConvoOpen(true); } }}>
                   <span className="pch-caret">{open ? "▾" : "▸"}</span>
-                  <span className="pch-title">{c.title}</span>
+                  <span className="pch-title">{active ? analyseTitle : c.title}</span>
                   <button type="button" className="pch-del" title="Chat verwijderen" onClick={(e) => removeChat(c.id, e)}>&times;</button>
                 </div>
                 {open && <div className="pch-item-body">{renderConvo()}</div>}
