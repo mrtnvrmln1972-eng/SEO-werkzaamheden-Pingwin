@@ -561,14 +561,19 @@ tbody td:last-child { text-align: center; }
 .pch-canni-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .pch-canni-doc { border-top: 1px solid var(--border); padding-top: 8px; }
 .pch-canni-toggle { background: none; border: none; cursor: pointer; font-size: 13px; font-weight: 700; color: var(--brand-teal); padding: 4px 0; text-align: left; width: 100%; }
-.pch-canni-md { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; margin-top: 8px; max-width: 100%; overflow-x: auto; }
-.pch-canni-md table { font-size: 12px; width: 100%; }
-.pch-canni-md td, .pch-canni-md th { vertical-align: top; }
-/* Metriek- en label-kolommen zo smal mogelijk; URL- en reden-kolommen krijgen de ruimte. */
-.pch-canni-md td:nth-child(2), .pch-canni-md td:nth-child(3), .pch-canni-md td:nth-child(4), .pch-canni-md td:nth-child(5), .pch-canni-md td:nth-child(6),
-.pch-canni-md th:nth-child(2), .pch-canni-md th:nth-child(3), .pch-canni-md th:nth-child(4), .pch-canni-md th:nth-child(5), .pch-canni-md th:nth-child(6) { white-space: nowrap; width: 1%; }
-.pch-canni-md td:nth-child(1), .pch-canni-md td:nth-child(7) { min-width: 150px; }
-.pch-canni-md td:nth-child(8) { min-width: 220px; }
+.pch-canni-md { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; margin-top: 8px; max-width: 100%; }
+/* Vaste kolomindeling: smalle metriek/label-kolommen (koppen + cellen breken af), brede URL- en reden-kolommen, zodat de tabel minder hoog wordt. */
+.pch-canni-md .md-table { width: 100%; min-width: 0; table-layout: fixed; font-size: 12px; }
+.pch-canni-md .md-table th, .pch-canni-md .md-table td { white-space: normal; word-break: break-word; padding: 6px 8px; vertical-align: top; }
+.pch-canni-md .md-table th:nth-child(1) { width: 15%; }
+.pch-canni-md .md-table th:nth-child(2), .pch-canni-md .md-table th:nth-child(3) { width: 5%; }
+.pch-canni-md .md-table th:nth-child(4) { width: 6%; }
+.pch-canni-md .md-table th:nth-child(5) { width: 8%; }
+.pch-canni-md .md-table th:nth-child(6) { width: 10%; }
+.pch-canni-md .md-table th:nth-child(7) { width: 14%; }
+.pch-canni-md .md-table th:nth-child(8) { width: 37%; }
+/* Kolomkoppen blijven plakken (onder de bovenbalk + de paginalijst-kop) terwijl je door de tabel scrolt. */
+.pch-canni-md .md-table thead th { position: sticky; top: 120px; z-index: 10; }
 /* Tekstkaarten op leesbare breedte houden; de brede cannibalisatie-tabel mag daarbuiten treden. */
 .page-chat, .page-chat-docs { max-width: 1040px; }
 .page-chat-canni { max-width: 1500px; }
@@ -1445,4 +1450,4 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .pcd-progress { margin-top: 8px; height: 6px; background: var(--orange-light); border-radius: 4px; overflow: hidden; }
 .pcd-progress-bar { height: 100%; background: var(--orange); transition: width .4s ease; }
 /* Pagina's-tab boxed + gecentreerd (ziet er netter uit dan volle breedte) */
-.pages-panel { max-width: 1120px; margin: 0 auto; }
+.pages-panel { max-width: none; margin: 0; }
