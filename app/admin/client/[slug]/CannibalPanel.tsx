@@ -8,7 +8,7 @@ type Signalen = { urlFlip?: boolean; flipsIn90d?: number; positiePlafond?: boole
 type Cluster = { keyword: string; volume?: number; score?: string; signalen?: Signalen; intentie?: string; urls: ClusterUrl[]; winnaar: string; actie: string; onderbouwing?: string; verwachteImpact?: string };
 type RedirectMapItem = { van: string; naar: string; type?: string; mergeContent?: boolean; reden?: string };
 type InterneLink = { vanaf: string; naar: string; ankertekst?: string; reden?: string };
-type Datakwaliteit = { gsc?: boolean; gscTijdreeks?: boolean; ahrefsBacklinks?: boolean; crawl?: boolean; opmerking?: string };
+type Datakwaliteit = { gsc?: boolean; gscTijdreeks?: boolean; ahrefsZoekwoorden?: boolean; ahrefsBacklinks?: boolean; crawl?: boolean; opmerking?: string };
 type Result = { samenvatting: string; datakwaliteit?: Datakwaliteit; clusters: Cluster[]; redirectMap?: RedirectMapItem[]; interneLinks?: InterneLink[]; generatedAt: string | null };
 type State = { status: string; result: Result | null; error: string; updatedAt: string | null };
 
@@ -84,6 +84,7 @@ export default function CannibalPanel({ slug }: { slug: string }) {
               <div className="cannibal-dk">
                 <span className={"cannibal-dk-pill " + (dk.gsc ? "on" : "off")}>Search Console {dk.gsc ? "✓" : "✗"}</span>
                 <span className={"cannibal-dk-pill " + (dk.gscTijdreeks ? "on" : "off")}>Flip-tijdreeks {dk.gscTijdreeks ? "✓" : "✗"}</span>
+                <span className={"cannibal-dk-pill " + (dk.ahrefsZoekwoorden ? "on" : "off")}>Ahrefs per pagina {dk.ahrefsZoekwoorden ? "✓" : "✗"}</span>
                 <span className={"cannibal-dk-pill " + (dk.ahrefsBacklinks ? "on" : "off")}>Backlinks/pagina {dk.ahrefsBacklinks ? "✓" : "✗"}</span>
                 <span className={"cannibal-dk-pill " + (dk.crawl ? "on" : "off")}>Crawl {dk.crawl ? "✓" : "✗"}</span>
                 {dk.opmerking && <div className="muted" style={{ fontSize: 12, marginTop: 6, width: "100%" }}>{dk.opmerking}</div>}
