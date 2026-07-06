@@ -503,7 +503,7 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
       <p className="muted" style={{ marginTop: 4 }}>Detecteert automatisch wat er op de live pagina's verandert (titel, koppen, alt-teksten, interne links, woordenaantal, schema). De eerste scan legt de basislijn vast; daarna zie je hier elke wijziging.
         {wpSet && <> WordPress is gekoppeld. <button type="button" className="link-inline" onClick={() => setWpSetupOpen((v) => !v)}>koppeling beheren</button>.</>}
       </p>
-      {msg && <div className="saved-msg" style={{ marginTop: 8 }}>{msg}</div>}
+      {msg && <div className={/mislukt|fout|niet /i.test(msg) ? "login-error" : "saved-msg"} style={{ marginTop: 8 }}>{msg}</div>}
       {loading && <div className="muted" style={{ padding: 12 }}>Laden…</div>}
       {!loading && events.length === 0 && <div className="muted" style={{ padding: 12 }}>Nog geen wijzigingen. Draai een scan (basislijn), en na een volgende scan verschijnen hier de veranderingen.</div>}
       <div className="wz-list">
