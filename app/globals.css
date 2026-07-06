@@ -1032,6 +1032,7 @@ button.ck-collapse-head {
 .kpi-pageprio-cell { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
 .kpi-drag { cursor: grab; color: var(--gray); }
 .kpi-openpage-cell { white-space: nowrap; text-align: right; width: 1%; }
+.pages-prio-cell { width: 1%; text-align: center; white-space: nowrap; }
 .kpi-sub-head { display: flex; align-items: center; gap: 10px; background: var(--gray-light); padding: 8px 12px; }
 .kpi-sub-toggle { flex: 1 1 auto; display: flex; align-items: baseline; gap: 8px; background: none; border: none; font-family: inherit; font-weight: 700; font-size: 13px; color: var(--dark); text-align: left; cursor: pointer; }
 .kpi-sub-toggle:hover .kpi-sub-title { color: var(--orange-dark); }

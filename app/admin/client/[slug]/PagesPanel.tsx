@@ -77,6 +77,10 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
   const [q, setQ] = useState("");
+  // Prioriteit-pagina's (ster), gedeeld met de KPI- en Wijzigingen-tab. Aangevinkte
+  // pagina's springen naar boven in dit overzicht.
+  const [priority, setPriority] = useState<Set<string>>(new Set());
+  const prioKey = (u: string) => (u || "").replace(/\/+$/, "");
   const [open, setOpen] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
   const [importing, setImporting] = useState(false);
@@ -254,6 +258,18 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
       .then((r) => r.json()).then((d) => { if (d.ok) setOpps(d.pages || {}); }).catch(() => {});
   }, [slug]);
 
+  // Prio-pagina's laden (gedeelde opslag met KPI/Wijzigingen).
+  useEffect(() => {
+    fetch(`/api/admin/changes/priority?slug=${encodeURIComponent(slug)}`)
+      .then((r) => r.json()).then((d) => { if (d.ok) setPriority(new Set((d.urls || []).map((u: string) => prioKey(u)))); }).catch(() => {});
+  }, [slug]);
+  function togglePriority(url: string) {
+    const key = prioKey(url);
+    const on = !priority.has(key);
+    setPriority((s) => { const n = new Set(s); if (on) n.add(key); else n.delete(key); return n; });
+    fetch("/api/admin/changes/priority", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url, priority: on }) }).catch(() => {});
+  }
+
   const normUrl = (u: string) => (u || "").trim().replace(/\/+$/, "");
   const oppOf = (u: ClientUrl): Opp | undefined => opps[normUrl(u.url)];
 
@@ -261,6 +277,9 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
     ? urls.filter((u) => (u.url + " " + u.title).toLowerCase().includes(q.trim().toLowerCase()))
     : urls;
   const sorted = [...filtered].sort((a, b) => {
+    // Aangevinkte prio-pagina's altijd bovenaan.
+    const pa = priority.has(prioKey(a.url)) ? 1 : 0, pb = priority.has(prioKey(b.url)) ? 1 : 0;
+    if (pa !== pb) return pb - pa;
     // Pagina's met een (half) plan bovenaan: vol plan eerst, dan half plan, dan leeg.
     const rank = (u: ClientUrl) => ((u.plan || "").trim() ? 2 : u.hasClusterAdvice ? 1 : 0);
     const ra = rank(a), rb = rank(b);
@@ -358,6 +377,7 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
           <div className="res-table-wrap pages-table-wrap" style={{ marginTop: 12 }}>
             <table className="res-table pages-table">
               <thead><tr>
+                <th></th>
                 <th>Status</th><th>Pagina</th>
                 <th className="pg-sort" onClick={() => setSortKey("klikken")}>Klikken{sortKey === "klikken" ? " ▾" : ""}</th>
                 <th className="pg-sort" onClick={() => setSortKey("vertoningen")}>Vertoningen{sortKey === "vertoningen" ? " ▾" : ""}</th>
@@ -368,7 +388,7 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
               </tr></thead>
               <tbody>
                 {sorted.map((u) => (
-                  <PageRow key={u.url} slug={slug} u={u} opp={oppOf(u)} open={open === u.url} onToggle={() => setOpen(open === u.url ? null : u.url)} clientEmail={clientEmail || ""} clientName={clientName || ""} onGoToTask={onGoToTask} onDataChanged={() => load(true)} />
+                  <PageRow key={u.url} slug={slug} u={u} opp={oppOf(u)} open={open === u.url} onToggle={() => setOpen(open === u.url ? null : u.url)} clientEmail={clientEmail || ""} clientName={clientName || ""} onGoToTask={onGoToTask} onDataChanged={() => load(true)} isPrio={priority.has(prioKey(u.url))} onTogglePriority={() => togglePriority(u.url)} />
                 ))}
               </tbody>
             </table>
@@ -422,7 +442,7 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
 }
 
 type PageOpp = { impressions: number; clicks: number; ctr: number; position: number; bestKeyword: string; bestPosition: number | null; bestVolume: number | null; score: number; label: string; level: string };
-function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoToTask, onDataChanged }: { slug: string; u: ClientUrl; opp?: PageOpp; open: boolean; onToggle: () => void; clientEmail: string; clientName: string; onGoToTask?: (taskId: number) => void; onDataChanged?: () => void }) {
+function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoToTask, onDataChanged, isPrio, onTogglePriority }: { slug: string; u: ClientUrl; opp?: PageOpp; open: boolean; onToggle: () => void; clientEmail: string; clientName: string; onGoToTask?: (taskId: number) => void; onDataChanged?: () => void; isPrio?: boolean; onTogglePriority?: () => void }) {
   const [plan, setPlan] = useState(u.plan);
   const [saved, setSaved] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -465,6 +485,9 @@ function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoTo
   return (
     <>
       <tr id={rowDomId(u.url)} className={"pages-row" + (open ? " open" : "")} onClick={onToggle}>
+        <td className="pages-prio-cell" onClick={(e) => e.stopPropagation()}>
+          <span className={"wz-star" + (isPrio ? " on" : "")} title={isPrio ? "Prioriteit aan, klik om uit te zetten" : "Markeer als prioriteit (komt bovenaan)"} onClick={onTogglePriority}>{isPrio ? "★" : "☆"}</span>
+        </td>
         <td>{statusBadge(u.status, u.redirectTarget)}</td>
         <td>
           <a href={u.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>{shortUrl(u.url)}</a>
@@ -483,7 +506,7 @@ function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoTo
       </tr>
       {open && (
         <tr className="pages-detail-row">
-          <td colSpan={8}>
+          <td colSpan={9}>
             <div className="pages-detail">
               <label className="pages-detail-label">
                 Plan voor deze pagina {saved && <span className="focus-save-status">opgeslagen</span>}
