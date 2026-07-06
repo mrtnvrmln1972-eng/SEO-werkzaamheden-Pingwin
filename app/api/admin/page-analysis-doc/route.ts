@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
+import { waitUntil } from "@vercel/functions";
 import { anthropicConfigured, callClaude } from "../../../../lib/anthropic";
 import { summariseChatToSpec } from "../../../../lib/page-doc";
 import { buildPingwinDoc } from "../../../../lib/pingwin-docx";
@@ -19,6 +20,32 @@ function safeName(s: string): string {
 }
 function pagePath(u: string): string { try { return new URL(u).pathname || u; } catch { return u; } }
 
+// Achtergrond-variant: dezelfde generatie, maar levert alleen naar Drive + werkzaamheid
+// (geen download), zodat het via waitUntil kan doorlopen nadat de response al terug is.
+async function runAnalyseDocBackground(slug: string, url: string, analysis: string, extra: string, folderIdIn: string): Promise<void> {
+  try {
+    const { spec, title } = await summariseChatToSpec(slug, url, analysis, extra || undefined);
+    const buffer = await buildPingwinDoc(spec);
+    let klantUitleg = "We hebben in kaart gebracht op welke zoekwoorden deze pagina zich moet richten en wat er nodig is om beter gevonden te worden.";
+    try {
+      const s = await callClaude(
+        "Geef in 1 tot 2 korte zinnen, in gewone taal voor een klant (geen jargon, geen emoji), wat we voor deze pagina hebben geanalyseerd en waarom dat belangrijk is. Geef ALLEEN die zinnen terug.",
+        [{ role: "user", content: analysis.slice(0, 8000) }], 200,
+      );
+      if (s.trim()) klantUitleg = s.trim();
+    } catch { /* standaardzin */ }
+    let folderId = folderIdIn;
+    if (!folderId) { const saved = await getPageDriveFolder(slug, url).catch(() => null); if (saved) folderId = saved.folderId; }
+    const filename = `${safeName(spec.klant)}-analyse-${safeName(title)}.docx`;
+    let link = "";
+    if (folderId) { try { ({ link } = await uploadDocx(folderId, filename, buffer)); } catch { /* zonder link vastleggen */ } }
+    await upsertStepTask(slug, {
+      pageUrl: url, stepKind: "chat_analyse", title: `Strategie: ${pagePath(url)}`,
+      link: link || undefined, clientLink: link || undefined, klantToelichting: klantUitleg, wie: "SEO", fase: "Bouwen", klantZichtbaar: true,
+    }).catch(() => null);
+  } catch { /* stil; opnieuw proberen kan */ }
+}
+
 // Vat de chat-analyse samen tot één document (naar Drive of download) en legt de
 // analyse vast als ÉÉN werkzaamheid, met het document eraan gekoppeld. De losse
 // acties uit de analyse worden GEEN aparte werkzaamheden (die staan in het plan).
@@ -33,6 +60,12 @@ export async function POST(req: NextRequest) {
   const analysis = String(body.analysis || "").trim();
   const extra = String(body.extra || "").trim().slice(0, 1500);
   if (!slug || !url || !analysis) return NextResponse.json({ ok: false, error: "Klant, URL en analyse zijn verplicht." }, { status: 400 });
+
+  // Achtergrond: meteen server-side draaien (wegklikken mag); verschijnt in Werkzaamheden.
+  if (body.background === true) {
+    waitUntil(runAnalyseDocBackground(slug, url, analysis, extra, String(body.folderId || "").trim()));
+    return NextResponse.json({ ok: true, started: true });
+  }
 
   let spec, title;
   try {

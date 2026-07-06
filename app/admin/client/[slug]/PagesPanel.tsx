@@ -86,6 +86,7 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
   const profileTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [genBusy, setGenBusy] = useState<"" | "profile" | "tov">("");
   const [genErr, setGenErr] = useState("");
+  const [genMsg, setGenMsg] = useState("");
   const [made, setMade] = useState<Record<string, { link: string; driveError: string; taskId: number | null }>>({});
 
   // ── Google Drive klantmap (voor het klantprofiel- en tone-of-voice-document) ──
@@ -156,14 +157,28 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
   // mailbare werkzaamheid van (zichtbaar in werkzaamheden en klantdash).
   async function generateProfile(kind: "profile" | "tov") {
     if (genBusy) return;
-    setGenBusy(kind); setGenErr(""); setProfileOpen(true);
+    setGenBusy(kind); setGenErr(""); setGenMsg(""); setProfileOpen(true);
+    const before = profile;
     try {
-      const r = await fetch("/api/admin/client-profile/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, kind, folderId: driveFolder?.id || undefined }) });
+      const r = await fetch("/api/admin/client-profile/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, kind, folderId: driveFolder?.id || undefined, background: true }) });
       const d = await r.json();
-      if (!d.ok) { setGenErr(d.error || "Genereren mislukt."); return; }
-      changeProfile(mergeSection(profile, String(d.section || "")));
-      setMade((m) => ({ ...m, [kind]: { link: String(d.link || ""), driveError: String(d.driveError || ""), taskId: d.taskId ?? null } }));
-    } catch { setGenErr("Genereren mislukt."); } finally { setGenBusy(""); }
+      if (!d.ok) { setGenErr(d.error || "Genereren mislukt."); setGenBusy(""); return; }
+      // Draait op de achtergrond: poll het profiel tot het is bijgewerkt (wegklikken mag).
+      setGenMsg(kind === "tov"
+        ? "Tone-of-voice draait op de achtergrond; hij verschijnt hier zodra hij klaar is. Je kunt gerust wegklikken (staat straks ook in Werkzaamheden)."
+        : "Klantprofiel draait op de achtergrond; het verschijnt hier zodra het klaar is. Je kunt gerust wegklikken (staat straks ook in Werkzaamheden).");
+      let tries = 0;
+      const poll = setInterval(async () => {
+        tries++;
+        try {
+          const p = await fetch(`/api/admin/client-profile?slug=${encodeURIComponent(slug)}`).then((x) => x.json()).catch(() => null);
+          if (p?.ok && typeof p.profile === "string" && p.profile.trim() && p.profile !== before) {
+            setProfile(p.profile); setGenMsg(""); setGenBusy(""); clearInterval(poll);
+          }
+        } catch { /* blijf pollen */ }
+        if (tries > 60) { setGenBusy(""); setGenMsg("Het duurt langer dan verwacht; ververs de pagina om te kijken of het profiel klaar is."); clearInterval(poll); }
+      }, 5000);
+    } catch { setGenErr("Genereren mislukt."); setGenBusy(""); }
   }
 
   function changeProfile(v: string) {
@@ -278,6 +293,7 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
               <button type="button" className="ghost-btn small" onClick={openPicker}>{driveFolder ? "Klantmap wijzigen" : "Kies klantmap"}</button>
             </div>
             {genErr && <div className="login-error" style={{ marginBottom: 8 }}>{genErr}</div>}
+            {genMsg && <div className="saved-msg" style={{ marginBottom: 8 }}>{genMsg}</div>}
             {(["profile", "tov"] as const).map((k) => made[k] && (
               <div key={k} className="profile-made-note">
                 {k === "profile" ? "Klantprofiel-document" : "Tone-of-voice-document"} gemaakt en als taak toegevoegd (zichtbaar in Werkzaamheden en de klantdash).

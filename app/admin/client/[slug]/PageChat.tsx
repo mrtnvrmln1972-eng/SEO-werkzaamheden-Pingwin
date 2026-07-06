@@ -68,12 +68,13 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     if (!lastAssistant || taskGen) return;
     setTaskGen(true); setErr(""); setApplied("");
     try {
-      const payload = { slug, url, analysis: lastAssistant, extra: nuance.trim() || undefined, ...(driveFolder ? { folderId: driveFolder.id } : { deliver: "download" }) };
+      const payload = { slug, url, analysis: lastAssistant, extra: nuance.trim() || undefined, background: true, ...(driveFolder ? { folderId: driveFolder.id } : {}) };
       const r = await fetch("/api/admin/page-analysis-doc", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const ct = r.headers.get("Content-Type") || "";
       if (ct.includes("application/json")) {
         const d = await r.json();
         if (!d.ok) { setErr(d.error || "Vastleggen mislukt."); return; }
+        if (d.started) { setApplied("De analyse wordt op de achtergrond vastgelegd; je kunt wegklikken. Hij verschijnt zo als werkzaamheid in Werkzaamheden."); onApplied(); return; }
         setApplied(`Analyse samengevat en opgeslagen in Google Drive${d.folder ? `, map "${d.folder}"` : ""}${d.owner ? `, account ${d.owner}` : ""} als ${d.isDoc ? "Google Doc" : "Word-bestand"}${!d.isDoc && d.note ? ` (omzetten naar Google Doc lukte niet: ${d.note})` : ""}. <a href="${d.link}" target="_blank" rel="noopener">Open document</a>.${d.shared ? " Iedereen met de link kan het bekijken." : " (Delen lukte niet automatisch.)"} Vastgelegd als één werkzaamheid; je springt nu naar Werkzaamheden om hem in te plannen.`);
         onApplied();
         if (typeof d.taskId === "number" && onGoToTask) onGoToTask(d.taskId);

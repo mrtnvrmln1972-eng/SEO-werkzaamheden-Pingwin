@@ -287,6 +287,23 @@ export async function makeProfileDeliverable(slug: string, kind: ProfileKind, fo
   return { ok: true, section, taskId, link, driveError };
 }
 
+// Voegt een gegenereerde sectie (met "## Kop" bovenaan) samen met de bestaande
+// profieltekst: vervangt de sectie met dezelfde kop, of plakt hem eronder. Zelfde
+// logica als in de UI (PagesPanel), maar server-side voor de achtergrond-run.
+export function mergeProfileSection(current: string, section: string): string {
+  const cur = current || "";
+  const header = (section.split("\n")[0] || "").trim();
+  if (!header.startsWith("##")) return cur.trim() ? cur.trim() + "\n\n" + section.trim() : section.trim();
+  const lines = cur.split("\n");
+  const startIdx = lines.findIndex((l) => l.trim() === header);
+  if (startIdx === -1) return (cur.trim() ? cur.trim() + "\n\n" : "") + section.trim();
+  let endIdx = lines.length;
+  for (let i = startIdx + 1; i < lines.length; i++) { if (/^##\s/.test(lines[i])) { endIdx = i; break; } }
+  const before = lines.slice(0, startIdx).join("\n").trim();
+  const after = lines.slice(endIdx).join("\n").trim();
+  return [before, section.trim(), after].filter(Boolean).join("\n\n");
+}
+
 export async function generateProfileSection(slug: string, kind: ProfileKind): Promise<{ ok: true; section: string } | { ok: false; error: string }> {
   const ctx = await gatherSiteContext(slug);
   if ("error" in ctx) return { ok: false, error: ctx.error };
