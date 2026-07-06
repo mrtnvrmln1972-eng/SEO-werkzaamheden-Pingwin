@@ -330,6 +330,13 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
   const ahFiltered = ahrefsKw.filter((k) => k.organic !== false && !k.branded && (onlyFruit ? isFruit(k) : true));
   const ahSorted = applySort(ahFiltered, ahSort, ahGetters);
   const fruitCount = ahrefsKw.filter((k) => k.organic !== false && !k.branded && isFruit(k)).length;
+  // De als prio/secundair gemarkeerde Ahrefs-zoekwoorden apart, net als bij Search
+  // Console: prio eerst, secundair achter dezelfde toggle. Los van het fruit-filter,
+  // zodat een prio-woord altijd zichtbaar is.
+  const ahFocusAll = ahrefsKw
+    .filter((k) => k.organic !== false && !k.branded && focus[k.keyword])
+    .sort((a, b) => (focus[a.keyword] === "prio" ? 0 : 1) - (focus[b.keyword] === "prio" ? 0 : 1));
+  const ahSecCount = ahFocusAll.filter((k) => focus[k.keyword] === "secundair").length;
 
   const oppGetters: Record<OppKey, (o: Opportunity) => number | string> = {
     focus: (o) => focusRank(o.keyword), keyword: (o) => o.keyword, volume: (o) => o.volume ?? 0, difficulty: (o) => o.difficulty ?? 0, source: (o) => o.source, reason: (o) => o.reason || "",
@@ -501,6 +508,34 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
 
       {!loading && (
         <Collapse title="Ahrefs" open={isOpen("ahrefs", true)} onToggle={() => toggle("ahrefs", true)}>
+          {ahFocusAll.length > 0 && (
+            <div className="kpi-block">
+              <div className="kpi-block-head">
+                <span className="kpi-block-title">Belangrijke Ahrefs-zoekwoorden ({ahFocusAll.length}) <HelpHint wide text="De Ahrefs-zoekwoorden die je als prio of secundair hebt gemarkeerd, vastgezet in een eigen veld bovenaan. De markering is gedeeld met de Search Console-lijst." /></span>
+                {ahSecCount > 0 && <span className="kpi-head-actions"><button type="button" className="ghost-btn small" onClick={() => setShowFocusSec((v) => !v)}>{showFocusSec ? "Secundair verbergen" : `+ ${ahSecCount} secundair tonen`}</button></span>}
+              </div>
+              <div className="res-table-wrap">
+                <table className="res-table kpi-table">
+                  <thead><tr>
+                    <th>Focus</th><th>Zoekwoord</th><th>Volume</th><th>Positie</th><th>Intent</th><th>Kans</th>
+                  </tr></thead>
+                  <tbody>
+                    {ahFocusAll.filter((k) => showFocusSec || focus[k.keyword] === "prio").map((k) => (
+                      <tr key={k.keyword} className={"kpi-focus-row " + focus[k.keyword]}>
+                        <td><FocusSelect tier={focus[k.keyword]} onChange={(t) => markFocus(k.keyword, t)} /></td>
+                        <td>{k.keyword}</td>
+                        <td>{k.volume != null ? nl(k.volume) : <span className="muted">&mdash;</span>}</td>
+                        <td>{k.position != null ? k.position : <span className="muted">&mdash;</span>}</td>
+                        <td>{k.intent ? <span className={"kw-intent " + k.intent}>{k.intent}</span> : <span className="muted">&mdash;</span>}</td>
+                        <td>{isFruit(k) ? <span className="pg-kans quickwin">Quick win</span> : <span className="muted">&mdash;</span>}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           <div className="kpi-block">
             <div className="kpi-block-head">
               <span className="kpi-block-title">Ahrefs-zoekwoorden{ahrefsKw.length ? ` (${ahFiltered.length})` : ""} <HelpHint wide text="Alle organische zoekwoorden van het domein uit Ahrefs (volume, positie, intent), in één keer opgehaald. Laaghangend fruit = commerciële of transactionele zoekwoorden met volume die net buiten de top staan (positie 4-20): daar kun je met beperkte moeite snel meer waardevolle bezoekers scoren. Markeer belangrijke zoekwoorden als prio of secundair; die markering is gedeeld met de Search Console-lijst." /></span>
