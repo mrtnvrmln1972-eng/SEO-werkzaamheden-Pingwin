@@ -915,6 +915,8 @@ button.ck-collapse-head {
 .kc-cur { flex: 0 0 auto; display: inline-flex; align-items: baseline; gap: 5px; }
 .kc-cur strong { font-size: 13px; }
 .kc-cur .kpi-delta { margin-top: 0; }
+.kpi-value-row { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.kpi-value-row .kpi-delta { margin-top: 0; }
 .kpi-compare-labels strong { color: var(--dark); }
 .kpi-spark-wrap { position: relative; width: 100%; margin-top: 8px; }
 .kpi-spark { display: block; width: 100%; height: 34px; }

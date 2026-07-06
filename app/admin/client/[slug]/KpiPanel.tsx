@@ -46,20 +46,14 @@ function trendOf(cur: number, prev: number, invert?: boolean): "good" | "bad" | 
 // (rechts): twee punten, lijn ertussen, groen bij verbetering en rood bij daling.
 // Voor 'positie' (invert) is een hogere waarde slechter, dus die tekenen we lager
 // zodat de lijn daalt als het slechter wordt. Zo sluit de grafiek aan op het %-getal.
-function PeriodCompare({ prev, cur, fmt, invert, pct, isPos }: { prev: number; cur: number; fmt: (v: number) => string; invert?: boolean; pct?: boolean; isPos?: boolean }) {
+function PeriodCompare({ prev, cur, fmt, invert }: { prev: number; cur: number; fmt: (v: number) => string; invert?: boolean }) {
   const t = trendOf(cur, prev, invert);
   const color = t === "flat" ? "#9e9e9e" : t === "good" ? "#2E7D32" : "#C62828";
   const w = 96, h = 30, pad = 6;
   const min = Math.min(prev, cur), max = Math.max(prev, cur), range = max - min || 1;
   const y = (v: number) => { const norm = (v - min) / range; return pad + (invert ? norm : 1 - norm) * (h - 2 * pad); };
-  // Verandering t.o.v. de vergelijkperiode, staat rechts van het huidige getal.
-  const diff = cur - prev;
-  const flat = (prev === 0 && cur === 0) || Math.abs(diff) < (isPos ? 0.05 : 0.5);
-  const improved = invert ? diff < 0 : diff > 0;
-  const dCls = flat ? "flat" : improved ? "up" : "down";
-  const arrow = flat ? "→" : improved ? "▲" : "▼";
-  const absTxt = isPos ? Math.abs(diff).toFixed(1) : nl(Math.abs(Math.round(diff)));
-  const pctTxt = pct && prev !== 0 ? ` (${diff >= 0 ? "+" : "−"}${Math.abs(Math.round((diff / prev) * 100))}%)` : "";
+  // Alleen de begin- (links) en eindwaarde (rechts) bij de bolletjes; de stijging/
+  // daling staat naast het grote getal bovenaan.
   return (
     <div className="kpi-compare">
       <span className="kc-prev" title="vorige periode">{fmt(prev)}</span>
@@ -68,10 +62,7 @@ function PeriodCompare({ prev, cur, fmt, invert, pct, isPos }: { prev: number; c
         <circle cx={pad} cy={y(prev)} r={3} fill="#bbb" />
         <circle cx={w - pad} cy={y(cur)} r={3.6} fill={color} />
       </svg>
-      <span className="kc-cur">
-        <strong style={{ color }}>{fmt(cur)}</strong>
-        <span className={"kpi-delta " + dCls}>{flat ? "–" : `${arrow} ${absTxt}${pctTxt}`}</span>
-      </span>
+      <span className="kc-cur"><strong style={{ color }}>{fmt(cur)}</strong></span>
     </div>
   );
 }
@@ -298,7 +289,6 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
   }
 
   const periodLabel = PERIODS.find((p) => p.days === days)?.label || `${days} dagen`;
-  const prevLabel = compare === "yoy" ? "vorig jaar" : "vorige";
 
   // Zoekvolume per zoekwoord uit de opgeslagen Ahrefs-pool (geen credits).
   const volMap = new Map<string, number | null>(ahrefsKw.map((k) => [k.keyword.toLowerCase(), k.volume]));
@@ -361,10 +351,10 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
       {!loading && gsc && gsc.totals && (
         <Collapse title="Search Console" meta={`${gsc.range.curStart} t/m ${gsc.range.curEnd}`} open={isOpen("sc", true)} onToggle={() => toggle("sc", true)}>
           <div className="kpi-grid kpi-grid-4">
-            <div className="kpi-card"><div className="kpi-value">{nl(gsc.totals.clicks.cur)}</div><div className="kpi-label">Klikken</div><PeriodCompare prev={gsc.totals.clicks.prev} cur={gsc.totals.clicks.cur} fmt={(v) => nl(Math.round(v))} pct /></div>
-            <div className="kpi-card"><div className="kpi-value">{nl(gsc.totals.impressions.cur)}</div><div className="kpi-label">Vertoningen</div><PeriodCompare prev={gsc.totals.impressions.prev} cur={gsc.totals.impressions.cur} fmt={(v) => nl(Math.round(v))} pct /></div>
-            <div className="kpi-card"><div className="kpi-value">{gsc.totals.ctr.cur.toFixed(1)}%</div><div className="kpi-label">CTR</div><PeriodCompare prev={gsc.totals.ctr.prev} cur={gsc.totals.ctr.cur} fmt={(v) => `${v.toFixed(1)}%`} isPos /></div>
-            <div className="kpi-card"><div className="kpi-value">{gsc.totals.position.cur.toFixed(1)}</div><div className="kpi-label">Gem. positie <span className="kpi-sub-note">(lager = beter)</span></div><PeriodCompare prev={gsc.totals.position.prev} cur={gsc.totals.position.cur} fmt={(v) => v.toFixed(1)} invert isPos /></div>
+            <div className="kpi-card"><div className="kpi-value-row"><div className="kpi-value">{nl(gsc.totals.clicks.cur)}</div><Delta cur={gsc.totals.clicks.cur} prev={gsc.totals.clicks.prev} pct /></div><div className="kpi-label">Klikken</div><PeriodCompare prev={gsc.totals.clicks.prev} cur={gsc.totals.clicks.cur} fmt={(v) => nl(Math.round(v))} /></div>
+            <div className="kpi-card"><div className="kpi-value-row"><div className="kpi-value">{nl(gsc.totals.impressions.cur)}</div><Delta cur={gsc.totals.impressions.cur} prev={gsc.totals.impressions.prev} pct /></div><div className="kpi-label">Vertoningen</div><PeriodCompare prev={gsc.totals.impressions.prev} cur={gsc.totals.impressions.cur} fmt={(v) => nl(Math.round(v))} /></div>
+            <div className="kpi-card"><div className="kpi-value-row"><div className="kpi-value">{gsc.totals.ctr.cur.toFixed(1)}%</div><Delta cur={gsc.totals.ctr.cur} prev={gsc.totals.ctr.prev} isPos /></div><div className="kpi-label">CTR</div><PeriodCompare prev={gsc.totals.ctr.prev} cur={gsc.totals.ctr.cur} fmt={(v) => `${v.toFixed(1)}%`} /></div>
+            <div className="kpi-card"><div className="kpi-value-row"><div className="kpi-value">{gsc.totals.position.cur.toFixed(1)}</div><Delta cur={gsc.totals.position.cur} prev={gsc.totals.position.prev} invert isPos /></div><div className="kpi-label">Gem. positie <span className="kpi-sub-note">(lager = beter)</span></div><PeriodCompare prev={gsc.totals.position.prev} cur={gsc.totals.position.cur} fmt={(v) => v.toFixed(1)} invert /></div>
           </div>
 
           {focusedKws.length > 0 && (
@@ -558,9 +548,12 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
           <div className="kpi-grid">
             {ga4.totals.map((m) => (
               <div className="kpi-card" key={m.metric}>
-                <div className="kpi-value">{nl(m.cur)}</div>
+                <div className="kpi-value-row">
+                  <div className="kpi-value">{nl(m.cur)}</div>
+                  <Delta cur={m.cur} prev={m.prev} pct />
+                </div>
                 <div className="kpi-label">{GA4_LABELS[m.metric] || m.metric}</div>
-                <PeriodCompare prev={m.prev} cur={m.cur} fmt={(v) => nl(Math.round(v))} pct />
+                <PeriodCompare prev={m.prev} cur={m.cur} fmt={(v) => nl(Math.round(v))} />
               </div>
             ))}
           </div>
