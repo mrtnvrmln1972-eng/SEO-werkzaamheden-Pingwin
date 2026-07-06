@@ -129,11 +129,15 @@ async function gscQuery(token: string, siteUrl: string, body: Record<string, unk
 }
 
 // Zoekt de juiste GSC-property voor een domein (domein-property of url-prefix).
+// Niet-geverifieerde properties (permissionLevel "siteUnverifiedUser") staan wél in
+// de lijst maar geven geen data terug, dus die slaan we over: anders kiest hij een
+// lege domein-property terwijl er een werkende url-prefix naast staat.
 async function gscPickSite(token: string, domain: string): Promise<string | null> {
   const res = await fetch("https://www.googleapis.com/webmasters/v3/sites", { headers: { Authorization: `Bearer ${token}` } });
   if (!res.ok) return null;
   const j = await res.json();
-  const entries: { siteUrl: string }[] = Array.isArray(j.siteEntry) ? j.siteEntry : [];
+  const all: { siteUrl: string; permissionLevel?: string }[] = Array.isArray(j.siteEntry) ? j.siteEntry : [];
+  const entries = all.filter((e) => e.permissionLevel !== "siteUnverifiedUser");
   const d = domain.replace(/^www\./, "").toLowerCase();
   const byDomain = entries.find((e) => e.siteUrl.toLowerCase() === `sc-domain:${d}`);
   if (byDomain) return byDomain.siteUrl;
@@ -144,16 +148,23 @@ async function gscPickSite(token: string, domain: string): Promise<string | null
 // Diagnose: met welk account is het dashboard verbonden, ziet dat account de property
 // voor dit domein, en welke property kiest de matcher? Voor het opsporen van
 // "GSC laadt niet"-problemen per klant.
-export async function gscDebug(domain: string): Promise<{ connected: boolean; account: string | null; siteCount: number; matchedSite: string | null; candidates: string[] }> {
+export async function gscDebug(domain: string): Promise<{ connected: boolean; account: string | null; siteCount: number; matchedSite: string | null; candidates: { siteUrl: string; verified: boolean; permission: string; clicks: number | null; impressions: number | null }[] }> {
   const status = await googleStatus();
   const token = await googleAccessToken();
   if (!token) return { connected: false, account: status.account, siteCount: 0, matchedSite: null, candidates: [] };
   const res = await fetch("https://www.googleapis.com/webmasters/v3/sites", { headers: { Authorization: `Bearer ${token}` } });
   if (!res.ok) return { connected: true, account: status.account, siteCount: -1, matchedSite: null, candidates: [] };
   const j = await res.json();
-  const entries: { siteUrl: string }[] = Array.isArray(j.siteEntry) ? j.siteEntry : [];
+  const entries: { siteUrl: string; permissionLevel?: string }[] = Array.isArray(j.siteEntry) ? j.siteEntry : [];
   const root = (domain || "").replace(/^www\./, "").toLowerCase().split(".")[0]; // bv. "gardenswimm"
-  const candidates = entries.map((e) => e.siteUrl).filter((s) => s.toLowerCase().includes(root));
+  const matches = entries.filter((e) => e.siteUrl.toLowerCase().includes(root));
+  const candidates: { siteUrl: string; verified: boolean; permission: string; clicks: number | null; impressions: number | null }[] = [];
+  for (const e of matches) {
+    const perm = e.permissionLevel || "?";
+    const rows = await gscQuery(token, e.siteUrl, { dimensions: [] }); // totalen ~28d; [] bij geen toegang/geen data
+    const t = rows[0];
+    candidates.push({ siteUrl: e.siteUrl, verified: perm !== "siteUnverifiedUser", permission: perm, clicks: t ? Math.round(t.clicks) : 0, impressions: t ? Math.round(t.impressions) : 0 });
+  }
   const matchedSite = await gscPickSite(token, domain);
   return { connected: true, account: status.account, siteCount: entries.length, matchedSite, candidates };
 }
