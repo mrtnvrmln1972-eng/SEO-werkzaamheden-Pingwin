@@ -497,7 +497,7 @@ tbody td:last-child { text-align: center; }
 .pch-item-head:hover { background: var(--brand-orange-faint); }
 .pch-item.open .pch-item-head { background: var(--orange-light); }
 .pch-caret { flex: 0 0 auto; color: var(--orange-dark); font-size: 11px; margin-top: 3px; }
-.pch-item-body { padding: 10px 4px 6px; border-top: 1px solid var(--border); }
+.pch-item-body { padding: 12px 16px 10px; border-top: 1px solid var(--border); }
 /* Binnen een uitgeklapte chat vloeit het antwoord plat mee (geen aparte kaart erin). */
 .pch-item-body .page-chat-msg.assistant { background: none; border: none; box-shadow: none; padding: 0; }
 .pch-item-body .page-chat-log { gap: 8px; margin-bottom: 8px; }

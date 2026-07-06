@@ -164,6 +164,7 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
   const [focusSort, setFocusSort] = useState<Sort<KwKey>>(null);
   const [pageSort, setPageSort] = useState<Sort<PageKey>>(null);
   const [oppSort, setOppSort] = useState<Sort<OppKey>>(null);
+  const [showFocusSec, setShowFocusSec] = useState(false);
   // Rangschikt de focus-markering voor sortering: prio eerst, dan secundair, dan de rest.
   const focusRank = (kw: string) => (focus[kw] === "prio" ? 0 : focus[kw] === "secundair" ? 1 : 2);
   const kwGetters: Record<KwKey, (k: Kw) => number | string> = {
@@ -300,6 +301,7 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
     focusSort, kwGetters,
   );
   const sortedKws = applySort(allKws, kwSort, kwGetters);
+  const secFocusCount = focusedKws.filter((k) => focus[k.keyword] === "secundair").length;
   const pageGetters: Record<"url" | "clicks" | "impressions", (p: GscPage) => number | string> = {
     url: (p) => shortUrl(p.url), clicks: (p) => p.clicks, impressions: (p) => p.impressions,
   };
@@ -358,7 +360,7 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
           </div>
 
           {focusedKws.length > 0 && (
-            <Collapse sub title={`Belangrijke zoekwoorden (${focusedKws.length})`} meta="prio & secundair, vastgezet bovenaan" open={isOpen("sc_focus", true)} onToggle={() => toggle("sc_focus", true)}>
+            <Collapse sub title={`Belangrijke zoekwoorden (${focusedKws.length})`} meta="prio & secundair, vastgezet bovenaan" open={isOpen("sc_focus", true)} onToggle={() => toggle("sc_focus", true)} actions={secFocusCount > 0 ? <button type="button" className="ghost-btn small" onClick={(e) => { e.stopPropagation(); setShowFocusSec((v) => !v); }}>{showFocusSec ? "Secundair verbergen" : `+ ${secFocusCount} secundair tonen`}</button> : undefined}>
               <div className="res-table-wrap">
                 <table className="res-table kpi-table">
                   <thead><tr>
@@ -371,7 +373,7 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
                     <SortTh label="CTR" k="ctr" sort={focusSort} setSort={setFocusSort} />
                   </tr></thead>
                   <tbody>
-                    {focusedKws.map((k) => (
+                    {focusedKws.filter((k) => showFocusSec || focus[k.keyword] === "prio").map((k) => (
                       <tr key={k.keyword} className={"kpi-focus-row " + focus[k.keyword]}>
                         <td><FocusSelect tier={focus[k.keyword]} onChange={(t) => markFocus(k.keyword, t)} /></td>
                         <td>{k.keyword}</td>

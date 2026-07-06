@@ -518,7 +518,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       {msgs.length > 0 && (
         <div className="page-chat-canni">
           <span className="pch-canni-lead">Als de geoptimaliseerde pagina live staat, kun je de cannibalisatie tussen pagina&rsquo;s oplossen:</span>
-          <button type="button" className="pcd-btn" disabled={busy} onClick={() => send(CANNIBAL_PROMPT)} title="Brengt de cannibalisatie in kaart, wijst de eigenaar aan volgens het plan (niet de ranking) en zet de acties in het plan">Cannibalisatie oplossen</button>
+          <button type="button" className={"pcd-btn" + (busy ? " busy" : "")} disabled={busy} onClick={() => send(CANNIBAL_PROMPT)} title="Brengt de cannibalisatie in kaart, wijst de eigenaar aan volgens het plan (niet de ranking) en zet de acties in het plan. Het resultaat verschijnt in de chat hierboven.">{busy ? "Bezig met de cannibalisatie-analyse…" : "Cannibalisatie oplossen"}</button>
         </div>
       )}
 
