@@ -68,8 +68,11 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
   // Sleepbare positie van het venster (per klant onthouden), zodat het niet vast in
   // de rechteronderhoek zit en je eronder kunt kijken.
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  // Zelf ingestelde grootte van het venster (per klant onthouden). null = standaard uit de CSS.
+  const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   useEffect(() => {
     try { const c = localStorage.getItem(`pw_chatpos_${slug}`); if (c) { const p = JSON.parse(c); if (typeof p?.x === "number") setPos(p); } } catch { /* geen opslag */ }
+    try { const c = localStorage.getItem(`pw_chatsize_${slug}`); if (c) { const s = JSON.parse(c); if (typeof s?.w === "number" && typeof s?.h === "number") setSize(s); } } catch { /* geen opslag */ }
   }, [slug]);
 
   function onDragStart(e: React.MouseEvent) {
@@ -87,6 +90,32 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
       window.removeEventListener("mousemove", move);
       window.removeEventListener("mouseup", up);
       setPos((p) => { if (p) { try { localStorage.setItem(`pw_chatpos_${slug}`, JSON.stringify(p)); } catch { /* geheugen is extra */ } } return p; });
+    };
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up);
+  }
+
+  // Grootte aanpassen via de hoek linksboven: de rechteronderhoek blijft vast, zodat
+  // het venster de schermin (naar linksboven) groeit i.p.v. buiten beeld te lopen.
+  function onResizeStart(e: React.MouseEvent) {
+    e.preventDefault(); e.stopPropagation();
+    const rect = wrapRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const startX = e.clientX, startY = e.clientY, startW = rect.width, startH = rect.height;
+    const rightEdge = rect.left + rect.width, bottomEdge = rect.top + rect.height;
+    const minW = 360, minH = 340;
+    const maxW = Math.min(920, rightEdge - 8), maxH = Math.min(Math.round(window.innerHeight * 0.92), bottomEdge - 8);
+    const move = (ev: MouseEvent) => {
+      const w = Math.max(minW, Math.min(maxW, startW - (ev.clientX - startX)));
+      const h = Math.max(minH, Math.min(maxH, startH - (ev.clientY - startY)));
+      setSize({ w, h });
+      setPos({ x: Math.max(4, rightEdge - w), y: Math.max(4, bottomEdge - h) });
+    };
+    const up = () => {
+      window.removeEventListener("mousemove", move);
+      window.removeEventListener("mouseup", up);
+      setSize((s) => { if (s) { try { localStorage.setItem(`pw_chatsize_${slug}`, JSON.stringify(s)); } catch { /* extra */ } } return s; });
+      setPos((p) => { if (p) { try { localStorage.setItem(`pw_chatpos_${slug}`, JSON.stringify(p)); } catch { /* extra */ } } return p; });
     };
     window.addEventListener("mousemove", move);
     window.addEventListener("mouseup", up);
@@ -150,13 +179,14 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
   }
 
   return (
-    <div className="chat-fab-wrap" ref={wrapRef} style={pos ? { left: pos.x, top: pos.y, right: "auto", bottom: "auto" } : undefined}>
+    <div className="chat-fab-wrap" ref={wrapRef} style={!collapsed && pos ? { left: pos.x, top: pos.y, right: "auto", bottom: "auto" } : undefined}>
       {collapsed ? (
         <button type="button" className="chat-fab" onClick={() => setCollapsed(false)}>
           <span className="chat-fab-dot" /> SEO-assistent{messages.length > 0 ? ` (${messages.length})` : ""}
         </button>
       ) : (
-        <div className="chat-float">
+        <div className="chat-float" style={size ? { width: size.w, height: size.h, maxWidth: "none", maxHeight: "none" } : undefined}>
+          <div className="chat-resize" onMouseDown={onResizeStart} title="Sleep deze hoek om het venster groter of kleiner te maken" />
           <div className="chat-float-head" onMouseDown={onDragStart} style={{ cursor: "move" }} title="Sleep om te verplaatsen">
             <span>SEO-assistent</span>
             <span style={{ display: "inline-flex", gap: 10, alignItems: "center" }}>

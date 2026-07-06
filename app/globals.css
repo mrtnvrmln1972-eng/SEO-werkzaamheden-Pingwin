@@ -778,10 +778,21 @@ button.ck-collapse-head {
 .chat-fab:hover { background: var(--orange-dark); }
 .chat-fab-dot { width: 9px; height: 9px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 3px rgba(255,255,255,0.35); }
 .chat-float {
-  width: 620px; max-width: 94vw; height: 74vh; max-height: 760px;
+  width: 720px; max-width: 94vw; height: 80vh; max-height: 880px;
+  position: relative;
   display: flex; flex-direction: column; background: var(--white);
   border: 1px solid var(--border); border-radius: 14px; overflow: hidden;
   box-shadow: 0 14px 48px rgba(0,0,0,0.26);
+}
+/* Sleep-hoek linksboven om het venster groter/kleiner te maken (rechteronder blijft vast). */
+.chat-resize {
+  position: absolute; top: 0; left: 0; width: 22px; height: 22px; z-index: 5;
+  cursor: nwse-resize; border-top-left-radius: 14px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.92) 0 46%, transparent 46%);
+}
+.chat-resize::before {
+  content: ""; position: absolute; top: 6px; left: 6px; width: 7px; height: 7px;
+  border-top: 2px solid var(--orange); border-left: 2px solid var(--orange); border-top-left-radius: 3px;
 }
 .chat-float-clear { background: none; border: 1px solid rgba(255,255,255,0.5); color: var(--white); font-size: 12px; font-weight: 600; border-radius: 7px; padding: 3px 10px; cursor: pointer; }
 .chat-float-clear:hover { border-color: var(--orange); color: var(--orange); }
