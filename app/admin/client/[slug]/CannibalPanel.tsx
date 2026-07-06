@@ -48,11 +48,13 @@ export default function CannibalPanel({ slug }: { slug: string }) {
   async function run() {
     if (busy || state?.status === "running") return;
     setBusy(true); setErr("");
+    // Verberg een eventuele vorige foutmelding meteen (geen rode flits tijdens het starten).
+    setState((s) => (s ? { ...s, status: "running", error: "" } : s));
     try {
       const d = await fetch("/api/admin/cannibal-redirect", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }) }).then((r) => r.json());
-      if (!d.ok) { setErr(d.error || "Starten mislukt."); return; }
+      if (!d.ok) { setErr(d.error || "Starten mislukt."); await load(); return; }
       await load();
-    } catch { setErr("Starten mislukt."); } finally { setBusy(false); }
+    } catch { setErr("Starten mislukt."); await load(); } finally { setBusy(false); }
   }
 
   const running = state?.status === "running";
