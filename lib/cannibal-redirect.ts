@@ -1,26 +1,39 @@
+import fs from "fs";
+import path from "path";
 import { sql, ensureSchema } from "./db";
 import { getClientBySlug } from "./clients";
 import { getClientUrls } from "./site-urls";
-import { getGscQueryPageMatrix } from "./google";
+import { getGscQueryPageMatrix, getGscKeywordUrlFlips } from "./google";
 import { getAhrefsKeywords } from "./ahrefs-keywords";
 import { callClaude } from "./anthropic";
 
 // ═══════════════════════════════════════════════════════════
-// SITE-BREDE CANNIBALISATIE- & REDIRECT-ANALYSE
+// KEYWORD-CANNIBALISATIE-ANALYSE (dashboard-integratie van de skill)
 // ═══════════════════════════════════════════════════════════
-// Clustert alle pagina's per plaats/thema en levert per cluster een winnaar +
-// een redirect-actielijst (301 / de-optimaliseren / behouden), in de stijl van
-// de Cowork-Excel. Gegrond op de URL-spiegel + Search Console + Ahrefs-volumes.
-// (Per-pagina backlink-data komt in een latere batch, voor de harde 301-vs-410-keuze.)
+// Dit draait EXACT de methodiek uit de agentic skill
+// `skills/keyword-cannibalisatie-analyse` (SKILL.md + output-schema.md). Die
+// bestanden zijn de enige bron van waarheid: pas je de skill aan, dan verandert
+// zowel de Cowork-versie als deze dashboard-versie mee. Het dashboard levert de
+// data (GSC-matrix + flip-tijdreeks + Ahrefs-volumes) via de eigen connectoren.
 // ═══════════════════════════════════════════════════════════
 
-export type RedirectMember = {
-  url: string; role: string; action: string; target: string; reason: string;
-  clicks?: number; impressions?: number;
+// --- Output-schema-types (spiegel van references/output-schema.md) ---------
+export type ClusterUrl = {
+  url: string; rol?: string; positie?: number; klikken?: number; impressies?: number;
+  verwijzendeDomeinen?: number; intentie?: string;
 };
-export type RedirectCluster = { place: string; winner: string; problemType: string; members: RedirectMember[] };
-export type TechnicalFinding = { onderwerp: string; bevinding: string; advies: string };
-export type CannibalResult = { summary: string; clusters: RedirectCluster[]; technical: TechnicalFinding[]; generatedAt: string | null };
+export type ClusterSignalen = { urlFlip?: boolean; flipsIn90d?: number; positiePlafond?: boolean; klikVerdeling?: boolean };
+export type RedirectCluster = {
+  keyword: string; volume?: number; score?: string; signalen?: ClusterSignalen; intentie?: string;
+  urls: ClusterUrl[]; winnaar: string; actie: string; onderbouwing?: string; verwachteImpact?: string;
+};
+export type RedirectMapItem = { van: string; naar: string; type?: string; mergeContent?: boolean; reden?: string };
+export type InterneLink = { vanaf: string; naar: string; ankertekst?: string; reden?: string };
+export type Datakwaliteit = { gsc?: boolean; gscTijdreeks?: boolean; ahrefsBacklinks?: boolean; crawl?: boolean; opmerking?: string };
+export type CannibalResult = {
+  samenvatting: string; datakwaliteit?: Datakwaliteit; clusters: RedirectCluster[];
+  redirectMap?: RedirectMapItem[]; interneLinks?: InterneLink[]; generatedAt: string | null;
+};
 export type CannibalState = { status: "idle" | "running" | "done" | "error"; result: CannibalResult | null; error: string; updatedAt: string | null };
 
 let tableReady: Promise<void> | null = null;
@@ -40,6 +53,22 @@ async function doEnsure(): Promise<void> {
 }
 
 function pagePath(u: string): string { return (u || "").replace(/^https?:\/\/[^/]+/i, "").trim() || (u || ""); }
+
+// Laadt de skill (methodiek + output-schema) van schijf. Dit is de single source
+// of truth die zowel Cowork als het dashboard draaien.
+let skillCache: string | null = null;
+function loadSkillMethodology(): string {
+  if (skillCache != null) return skillCache;
+  try {
+    const base = path.join(process.cwd(), "skills", "keyword-cannibalisatie-analyse");
+    const skill = fs.readFileSync(path.join(base, "SKILL.md"), "utf8").replace(/^---[\s\S]*?---\n/, "");
+    const schema = fs.readFileSync(path.join(base, "references", "output-schema.md"), "utf8");
+    skillCache = `${skill}\n\n---\n\n${schema}`;
+  } catch {
+    skillCache = "";
+  }
+  return skillCache;
+}
 
 export async function getCannibalAnalysis(slug: string): Promise<CannibalState> {
   await ensureSchema();
@@ -73,23 +102,24 @@ export async function markCannibalRunning(slug: string): Promise<void> {
   await setState(slug, "running", cur.result, ""); // behoud het vorige resultaat tijdens het draaien
 }
 
-const SYSTEM = `Je bent een senior SEO-specialist bij bureau Pingwin. Je maakt een SITE-BREDE CANNIBALISATIE- EN REDIRECT-ANALYSE voor de (locatie-/cluster)pagina's van een klant, in de stijl van een concrete redirect-actielijst.
+// De opdracht bovenop de skill-methodiek: draai op deze concrete data en lever
+// uitsluitend de JSON uit het output-schema terug.
+function buildSystemPrompt(): string {
+  const methodology = loadSkillMethodology();
+  const head = methodology
+    ? `Je voert de volgende agentic skill uit. Dit is je volledige methodiek en je output-schema; volg het strikt.\n\n${methodology}`
+    : `Je bent een senior SEO-specialist. Voer een keyword-cannibalisatie-analyse uit volgens de standaardmethodiek (URL-flip-detectie, positie-plafond, klik-verdeling, intentie-check, winnaar-weging, beslisboom).`;
+  return `${head}
 
-METHODIEK (volg strikt):
-1. Clusteren: groepeer pagina's per PLAATS/thema op basis van het URL-patroon en de geo in de slug. Herken varianten van dezelfde plaats (bijv. soa-poli-x, soa-kliniek-x, soa-test-x = plaats x) en duplicaten.
-2. Winnaar per cluster: de bedoelde eigenaar is de pagina in het hoofdpatroon met de meeste clicks/vertoningen. Wijs die aan als winnaar (behouden + optimaliseren).
-3. Per ANDERE pagina in het cluster één actie:
-   - "301" naar de winnaar: bij een duplicaat of een pagina met clicks (behoud verkeer/link-equity; nooit weggooien als er clicks zijn).
-   - "de-optimaliseren": als de pagina op de merk+geo van een GROTE stad rankt terwijl hij een andere (omliggende) plaats is; haal de grote-stad-term weg en richt op de eigen plaats.
-   - "behouden": als de pagina een andere intentie/dienst heeft (bijv. bloedonderzoek, spoed-hiv) en niet echt kannibaliseert.
-4. Benoem waar relevant de drie probleemtypes: A) inter-city (omliggende plaats rankt op 'merk [grote stad]'), B) intra-plaats (meerdere URL-varianten per plaats), C) technisch (www/http-duplicaat, /en/-mirror, dunne dienst-varianten).
-5. Gesloten/verplaatste klinieken die nog ranken: 301 naar de dichtstbijzijnde open pagina, niet 410.
+---
 
-DATA-KANTTEKENING: je hebt Search Console (clicks, vertoningen, posities) en Ahrefs-zoekvolumes, maar (nog) GEEN verwijzende domeinen per pagina. Gebruik clicks/vertoningen als proxy voor waarde; noem bij een 301-advies kort dat backlink-verificatie de keuze zou aanscherpen als dat relevant is.
-
-Antwoord met UITSLUITEND geldige JSON, exact dit formaat, niets eromheen, geen emoji:
-{"summary":"<2 tot 4 zinnen kernconclusie>","clusters":[{"place":"<plaats/thema>","winner":"<url-pad van de winnaar>","problemType":"inter-city|intra-plaats|technisch|gemengd","members":[{"url":"<url-pad>","role":"<korte rol, bijv. WINNAAR / duplicaat / cannibaliseert merk / andere dienst>","action":"301|de-optimaliseren|behouden","target":"<winnaar-url-pad of ->","reason":"<1 zin, noem waar mogelijk de zoekterm + positie>","clicks":<getal>,"impressions":<getal>}]}],"technical":[{"onderwerp":"<www/http, /en/-mirror, dunne dienst-varianten, ...>","bevinding":"<wat je ziet>","advies":"<concreet advies>"}]}
-Neem in "clusters" alleen ECHTE cannibalisatie-clusters op (pagina's die elkaar op dezelfde plaats/term in de weg zitten), met de winnaar als eerste member. Verzin geen data; gebruik alleen de gegevens hieronder.`;
+UITVOERING IN HET PINGWIN-DASHBOARD:
+Je draait nu binnen het dashboard. De data hieronder is al voor je verzameld via de dashboard-connectoren (Search Console-matrix, GSC-flip-tijdreeks over ~90 dagen, Ahrefs-volumes). Redeneer per cluster over deze data; verzin niets bij.
+- Neem in "clusters" ALLEEN echte cannibalisatie op (minstens één hard signaal + overlappende intentie). False positives horen er niet in.
+- Vul "signalen" per cluster op basis van de flip-tijdreeks (urlFlip/flipsIn90d), de posities (positiePlafond 5-20) en de klik-verdeling.
+- Backlink-data per pagina is in deze omgeving nog niet beschikbaar: zet "ahrefsBacklinks": false in "datakwaliteit", laat "verwijzendeDomeinen" weg, en gebruik klikken/impressies als proxy voor waarde. Noem bij een 301 kort dat backlink-verificatie de winnaar-keuze nog zou aanscherpen.
+- Antwoord met UITSLUITEND geldige JSON volgens het output-schema hierboven. Geen tekst eromheen, geen emoji, geen markdown-codeblok.`;
+}
 
 // Draait de echte analyse en slaat het resultaat op. Idempotent qua opslag.
 export async function runCannibalRedirect(slug: string): Promise<void> {
@@ -100,9 +130,10 @@ export async function runCannibalRedirect(slug: string): Promise<void> {
     const domain = client?.domain || "";
     if (!domain) { await setState(slug, "error", null, "Deze klant heeft nog geen domein ingevuld."); return; }
 
-    const [urls, matrix, ahref] = await Promise.all([
+    const [urls, matrix, flips, ahref] = await Promise.all([
       getClientUrls(slug),
       getGscQueryPageMatrix(domain, 90, 400).catch(() => [] as { keyword: string; page: string; clicks: number; impressions: number; position: number }[]),
+      getGscKeywordUrlFlips(domain, 3).catch(() => [] as { keyword: string; topUrls: string[]; flips: number }[]),
       getAhrefsKeywords(slug).catch(() => []),
     ]);
     const volMap = new Map(ahref.map((k) => [k.keyword.toLowerCase(), k.volume]));
@@ -120,27 +151,46 @@ export async function runCannibalRedirect(slug: string): Promise<void> {
         return `- "${m.keyword}"${vol != null ? ` (vol ${vol})` : ""} -> ${pagePath(m.page)} | pos ${m.position} | ${m.clicks} clicks | ${m.impressions} vertoningen`;
       });
 
+    // Flip-tijdreeks: per zoekwoord welke URL de top-rankende was in 3 opeenvolgende
+    // ~30-daagse vensters (nieuw -> oud). ≥2 verschillende = URL-flipping.
+    const flipLines = [...flips]
+      .slice(0, 80)
+      .map((f) => `- "${f.keyword}": ${f.topUrls.join("  →  ")}  (${f.flips} wissel${f.flips === 1 ? "" : "s"} in 90d)`);
+
+    const hasGsc = matrix.length > 0;
+    const hasFlips = flips.length > 0 || matrix.length > 0; // de flip-query draaide als er GSC is
     const context = [
       `KLANT: ${client?.name || slug} (domein: ${domain})`,
+      "",
+      "DATAKWALITEIT (neem dit over in het veld datakwaliteit): " +
+        `gsc=${hasGsc}, gscTijdreeks=${hasFlips} (3 vensters van ~30 dagen), ahrefsBacklinks=false, crawl=false.`,
       "",
       "ALLE PAGINA'S (spiegel van de live site, met Search Console-cijfers):",
       pageLines.length ? pageLines.join("\n") : "- (geen pagina's ingelezen)",
       "",
-      "ZOEKWOORD -> PAGINA (Search Console, 90 dagen: welke pagina rankt op welk zoekwoord; hieruit haal je de cannibalisatie):",
+      "ZOEKWOORD -> PAGINA (Search Console, 90 dagen: welke pagina rankt op welk zoekwoord):",
       matrixLines.length ? matrixLines.join("\n") : "- (geen sitebrede Search Console-data)",
+      "",
+      "URL-FLIP-TIJDREEKS (het sterkste cannibalisatie-signaal: wisselt de top-rankende URL per zoekwoord over de tijd?):",
+      flipLines.length ? flipLines.join("\n") : "- (geen URL-flips gedetecteerd, of geen tijdreeks beschikbaar)",
     ].join("\n");
 
-    const raw = await callClaude(SYSTEM, [{ role: "user", content: context.slice(0, 24000) }], 14000, { slug, action: "cannibal_redirect" });
+    const raw = await callClaude(buildSystemPrompt(), [{ role: "user", content: context.slice(0, 26000) }], 16000, { slug, action: "cannibal_redirect" });
     const cleaned = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
     const first = cleaned.indexOf("{"); const last = cleaned.lastIndexOf("}");
     const jsonText = first >= 0 && last > first ? cleaned.slice(first, last + 1) : cleaned;
-    let parsed: { summary?: unknown; clusters?: unknown; technical?: unknown };
+    let parsed: {
+      samenvatting?: unknown; datakwaliteit?: unknown; clusters?: unknown;
+      redirectMap?: unknown; interneLinks?: unknown;
+    };
     try { parsed = JSON.parse(jsonText); } catch { await setState(slug, "error", null, "De analyse kwam niet als geldige JSON terug. Probeer het opnieuw."); return; }
 
     const result: CannibalResult = {
-      summary: typeof parsed.summary === "string" ? parsed.summary : "",
+      samenvatting: typeof parsed.samenvatting === "string" ? parsed.samenvatting : "",
+      datakwaliteit: parsed.datakwaliteit && typeof parsed.datakwaliteit === "object" ? (parsed.datakwaliteit as Datakwaliteit) : undefined,
       clusters: Array.isArray(parsed.clusters) ? (parsed.clusters as RedirectCluster[]) : [],
-      technical: Array.isArray(parsed.technical) ? (parsed.technical as TechnicalFinding[]) : [],
+      redirectMap: Array.isArray(parsed.redirectMap) ? (parsed.redirectMap as RedirectMapItem[]) : [],
+      interneLinks: Array.isArray(parsed.interneLinks) ? (parsed.interneLinks as InterneLink[]) : [],
       generatedAt: new Date().toISOString(),
     };
     await setState(slug, "done", result, "");

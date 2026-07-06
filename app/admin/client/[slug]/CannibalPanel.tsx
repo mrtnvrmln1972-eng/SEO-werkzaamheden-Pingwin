@@ -3,18 +3,28 @@
 import { useEffect, useState } from "react";
 import { mdToHtml } from "../../../../lib/markdown";
 
-type Member = { url: string; role: string; action: string; target: string; reason: string; clicks?: number; impressions?: number };
-type Cluster = { place: string; winner: string; problemType: string; members: Member[] };
-type Technical = { onderwerp: string; bevinding: string; advies: string };
-type Result = { summary: string; clusters: Cluster[]; technical: Technical[]; generatedAt: string | null };
+type ClusterUrl = { url: string; rol?: string; positie?: number; klikken?: number; impressies?: number; verwijzendeDomeinen?: number; intentie?: string };
+type Signalen = { urlFlip?: boolean; flipsIn90d?: number; positiePlafond?: boolean; klikVerdeling?: boolean };
+type Cluster = { keyword: string; volume?: number; score?: string; signalen?: Signalen; intentie?: string; urls: ClusterUrl[]; winnaar: string; actie: string; onderbouwing?: string; verwachteImpact?: string };
+type RedirectMapItem = { van: string; naar: string; type?: string; mergeContent?: boolean; reden?: string };
+type InterneLink = { vanaf: string; naar: string; ankertekst?: string; reden?: string };
+type Datakwaliteit = { gsc?: boolean; gscTijdreeks?: boolean; ahrefsBacklinks?: boolean; crawl?: boolean; opmerking?: string };
+type Result = { samenvatting: string; datakwaliteit?: Datakwaliteit; clusters: Cluster[]; redirectMap?: RedirectMapItem[]; interneLinks?: InterneLink[]; generatedAt: string | null };
 type State = { status: string; result: Result | null; error: string; updatedAt: string | null };
 
 function actionClass(a: string): string {
   const s = (a || "").toLowerCase();
-  if (s.includes("301")) return "redir";
-  if (s.includes("de-opt") || s.includes("optimalis")) return "deopt";
+  if (s.includes("301") || s.includes("merge")) return "redir";
+  if (s.includes("noindex") || s.includes("de-opt") || s.includes("differenti") || s.includes("canonical")) return "deopt";
   return "keep";
 }
+function scoreClass(s?: string): string {
+  const v = (s || "").toLowerCase();
+  if (v.includes("hoog")) return "hoog";
+  if (v.includes("midden")) return "midden";
+  return "laag";
+}
+function num(n?: number): string { return n != null && Number.isFinite(n) ? String(Math.round(n * 10) / 10) : "—"; }
 
 export default function CannibalPanel({ slug }: { slug: string }) {
   const [state, setState] = useState<State | null>(null);
@@ -47,18 +57,19 @@ export default function CannibalPanel({ slug }: { slug: string }) {
 
   const running = state?.status === "running";
   const result = state?.result;
+  const dk = result?.datakwaliteit;
 
   return (
     <div className="cannibal-panel">
       <div className="cockpit-card acc-orange">
         <div className="ck-section-head">
-          <span>Cannibalisatie &amp; redirect (site-breed)</span>
+          <span>Keyword-cannibalisatie-analyse</span>
           <button type="button" className={"pcd-btn pcd-btn-primary" + (running ? " busy" : "")} onClick={run} disabled={busy || running}>
             {running ? "Analyse draait…" : result ? "Opnieuw analyseren" : "Analyse draaien"}
           </button>
         </div>
         <p className="muted" style={{ fontSize: 12, margin: "2px 0 12px" }}>
-          Clustert alle pagina&rsquo;s per plaats/thema en geeft per cluster een winnaar + redirect-acties (301 / de-optimaliseren / behouden), gegrond op je URL-lijst, Search Console en Ahrefs-volumes. Je kunt wegklikken; het draait op de achtergrond.
+          Draait de agentic skill <em>keyword-cannibalisatie-analyse</em> (dezelfde methodiek als in Cowork): onderscheidt echte cannibalisatie van false positives via URL-flip-detectie over tijd, positie-plafond, klik-verdeling en intentie-check, en geeft per cluster een winnaar met de lichtste effectieve actie. Je kunt wegklikken; het draait op de achtergrond.
         </p>
         {err && <div className="login-error" style={{ marginBottom: 8 }}>{err}</div>}
         {state?.status === "error" && state.error && <div className="login-error" style={{ marginBottom: 8 }}>{state.error}</div>}
@@ -68,45 +79,101 @@ export default function CannibalPanel({ slug }: { slug: string }) {
         {result && (
           <>
             {state?.updatedAt && <div className="ck-updated" style={{ marginBottom: 10 }}>bijgewerkt {new Date(state.updatedAt).toLocaleString("nl-NL")}{running ? " · nieuwe analyse draait…" : ""}</div>}
-            {result.summary && <div className="cannibal-summary md" dangerouslySetInnerHTML={{ __html: mdToHtml(result.summary) }} />}
 
-            {result.clusters.map((c, i) => (
-              <div className="cannibal-cluster" key={i}>
-                <div className="cannibal-cluster-head">
-                  <strong>{c.place}</strong>
-                  <span className="muted">winnaar: {c.winner}</span>
-                  {c.problemType && <span className="cannibal-ptype">{c.problemType}</span>}
+            {dk && (
+              <div className="cannibal-dk">
+                <span className={"cannibal-dk-pill " + (dk.gsc ? "on" : "off")}>Search Console {dk.gsc ? "✓" : "✗"}</span>
+                <span className={"cannibal-dk-pill " + (dk.gscTijdreeks ? "on" : "off")}>Flip-tijdreeks {dk.gscTijdreeks ? "✓" : "✗"}</span>
+                <span className={"cannibal-dk-pill " + (dk.ahrefsBacklinks ? "on" : "off")}>Backlinks/pagina {dk.ahrefsBacklinks ? "✓" : "✗"}</span>
+                <span className={"cannibal-dk-pill " + (dk.crawl ? "on" : "off")}>Crawl {dk.crawl ? "✓" : "✗"}</span>
+                {dk.opmerking && <div className="muted" style={{ fontSize: 12, marginTop: 6, width: "100%" }}>{dk.opmerking}</div>}
+              </div>
+            )}
+
+            {result.samenvatting && <div className="cannibal-summary md" dangerouslySetInnerHTML={{ __html: mdToHtml(result.samenvatting) }} />}
+
+            {result.clusters.length === 0 && <div className="muted" style={{ marginTop: 8 }}>Geen echte cannibalisatie-clusters gevonden.</div>}
+
+            {result.clusters.map((c, i) => {
+              const sig = c.signalen || {};
+              return (
+                <div className="cannibal-cluster" key={i}>
+                  <div className="cannibal-cluster-head">
+                    <strong>{c.keyword}</strong>
+                    {c.volume != null && <span className="muted">vol {c.volume}</span>}
+                    {c.score && <span className={"cannibal-score " + scoreClass(c.score)}>{c.score}</span>}
+                    {c.intentie && <span className="cannibal-ptype">intentie: {c.intentie}</span>}
+                  </div>
+                  <div className="cannibal-signals">
+                    {sig.urlFlip && <span className="cannibal-sig flip">URL-flip{sig.flipsIn90d ? ` ×${sig.flipsIn90d}` : ""}</span>}
+                    {sig.positiePlafond && <span className="cannibal-sig">positie-plafond 5-20</span>}
+                    {sig.klikVerdeling && <span className="cannibal-sig">klikken verdeeld</span>}
+                    <span className="muted" style={{ fontSize: 12 }}>winnaar: <strong>{c.winnaar}</strong></span>
+                    <span className={"cannibal-act " + actionClass(c.actie)}>{c.actie}</span>
+                  </div>
+                  <div className="res-table-wrap">
+                    <table className="res-table">
+                      <thead><tr><th>Pagina</th><th>Rol</th><th>Positie</th><th>Clicks</th><th>Vert.</th><th>Intentie</th></tr></thead>
+                      <tbody>
+                        {c.urls.map((u, j) => (
+                          <tr key={j} className={"cannibal-row " + (u.url === c.winnaar ? "redir" : "")}>
+                            <td><a href={u.url} target="_blank" rel="noreferrer">{u.url}</a></td>
+                            <td>{u.rol || "—"}</td>
+                            <td>{num(u.positie)}</td>
+                            <td>{u.klikken != null ? u.klikken : "—"}</td>
+                            <td>{u.impressies != null ? u.impressies : "—"}</td>
+                            <td className="muted" style={{ fontSize: 12 }}>{u.intentie || "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {c.onderbouwing && <div className="cannibal-reason"><strong>Onderbouwing:</strong> {c.onderbouwing}</div>}
+                  {c.verwachteImpact && <div className="cannibal-reason muted"><strong>Verwachte impact:</strong> {c.verwachteImpact}</div>}
                 </div>
+              );
+            })}
+
+            {result.redirectMap && result.redirectMap.length > 0 && (
+              <div className="cannibal-tech">
+                <div className="pcd-docs-head">301-redirectmap</div>
                 <div className="res-table-wrap">
                   <table className="res-table">
-                    <thead><tr><th>Pagina</th><th>Rol</th><th>Clicks</th><th>Actie</th><th>Doel</th><th>Reden</th></tr></thead>
+                    <thead><tr><th>Van</th><th>Naar</th><th>Type</th><th>Content mergen</th><th>Reden</th></tr></thead>
                     <tbody>
-                      {c.members.map((m, j) => (
-                        <tr key={j} className={"cannibal-row " + actionClass(m.action)}>
-                          <td><a href={m.url} target="_blank" rel="noreferrer">{m.url}</a></td>
-                          <td>{m.role}</td>
-                          <td>{m.clicks != null ? m.clicks : "—"}</td>
-                          <td><span className={"cannibal-act " + actionClass(m.action)}>{m.action}</span></td>
-                          <td>{m.target && m.target !== "-" ? m.target : "—"}</td>
-                          <td className="muted" style={{ fontSize: 12 }}>{m.reason}</td>
+                      {result.redirectMap.map((r, i) => (
+                        <tr key={i}>
+                          <td>{r.van}</td>
+                          <td>{r.naar}</td>
+                          <td>{r.type || "301"}</td>
+                          <td>{r.mergeContent ? "ja" : "—"}</td>
+                          <td className="muted" style={{ fontSize: 12 }}>{r.reden || ""}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
               </div>
-            ))}
+            )}
 
-            {result.technical.length > 0 && (
+            {result.interneLinks && result.interneLinks.length > 0 && (
               <div className="cannibal-tech">
-                <div className="pcd-docs-head">Technisch</div>
-                {result.technical.map((t, i) => (
-                  <div className="cannibal-tech-item" key={i}>
-                    <strong>{t.onderwerp}</strong>
-                    <div>{t.bevinding}</div>
-                    <div className="muted">Advies: {t.advies}</div>
-                  </div>
-                ))}
+                <div className="pcd-docs-head">Interne-link-acties</div>
+                <div className="res-table-wrap">
+                  <table className="res-table">
+                    <thead><tr><th>Vanaf</th><th>Naar</th><th>Ankertekst</th><th>Reden</th></tr></thead>
+                    <tbody>
+                      {result.interneLinks.map((l, i) => (
+                        <tr key={i}>
+                          <td>{l.vanaf}</td>
+                          <td>{l.naar}</td>
+                          <td>{l.ankertekst || "—"}</td>
+                          <td className="muted" style={{ fontSize: 12 }}>{l.reden || ""}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </>

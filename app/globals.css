@@ -931,6 +931,18 @@ button.ck-collapse-head {
 .cannibal-row.keep td:first-child { border-left: 3px solid #2E7D32; }
 .cannibal-tech { margin-top: 18px; }
 .cannibal-tech-item { font-size: 13px; border-top: 1px solid var(--border); padding: 8px 0; }
+.cannibal-dk { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.cannibal-dk-pill { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+.cannibal-dk-pill.on { background: #e7f6ea; color: #2E7D32; }
+.cannibal-dk-pill.off { background: #f0f1f3; color: #8a8f99; }
+.cannibal-score { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; padding: 2px 8px; border-radius: 10px; }
+.cannibal-score.hoog { background: #fdecea; color: #C62828; }
+.cannibal-score.midden { background: var(--brand-orange-soft); color: var(--orange-dark); }
+.cannibal-score.laag { background: #f0f1f3; color: #6b7280; }
+.cannibal-signals { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.cannibal-sig { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 8px; background: var(--brand-blue-light); color: var(--brand-blue); }
+.cannibal-sig.flip { background: #fdecea; color: #C62828; }
+.cannibal-reason { font-size: 12px; line-height: 1.5; margin-top: 8px; }
 .kpi-compare-labels strong { color: var(--dark); }
 .kpi-spark-wrap { position: relative; width: 100%; margin-top: 8px; }
 .kpi-spark { display: block; width: 100%; height: 34px; }

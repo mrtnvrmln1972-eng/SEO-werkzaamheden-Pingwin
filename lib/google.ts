@@ -141,6 +141,45 @@ async function gscPickSite(token: string, domain: string): Promise<string | null
   return byPrefix ? byPrefix.siteUrl : null;
 }
 
+// Per zoekwoord: welke URL was de top-rankende in opeenvolgende tijdvensters (~30d
+// elk)? Twee of meer verschillende top-URL's = URL-flipping, het sterkste
+// cannibalisatie-signaal (Google is onzeker welke pagina moet ranken).
+export async function getGscKeywordUrlFlips(domain: string, windows = 3): Promise<{ keyword: string; topUrls: string[]; flips: number }[]> {
+  const token = await googleAccessToken();
+  if (!token || !domain) return [];
+  const site = await gscPickSite(token, domain);
+  if (!site) return [];
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const lag = 3, span = 30;
+  const ranges: { start: string; end: string }[] = [];
+  for (let i = 0; i < windows; i++) {
+    const end = new Date(); end.setDate(end.getDate() - (lag + i * span));
+    const start = new Date(end); start.setDate(start.getDate() - (span - 1));
+    ranges.push({ start: iso(start), end: iso(end) });
+  }
+  const strip = (u: string) => (u || "").replace(/^https?:\/\/[^/]+/i, "").trim() || (u || "");
+  const perWindow = await Promise.all(ranges.map((r) => gscQuery(token, site, { startDate: r.start, endDate: r.end, dimensions: ["query", "page"], rowLimit: 2000 })));
+  const map = new Map<string, string[]>();
+  for (const rows of perWindow) {
+    const best = new Map<string, { url: string; clicks: number; impr: number }>();
+    for (const row of rows) {
+      const kw = row.keys?.[0]; const url = row.keys?.[1];
+      if (!kw || !url) continue;
+      const clicks = row.clicks || 0, impr = row.impressions || 0;
+      const cur = best.get(kw);
+      if (!cur || clicks > cur.clicks || (clicks === cur.clicks && impr > cur.impr)) best.set(kw, { url, clicks, impr });
+    }
+    for (const [kw, b] of best) { const arr = map.get(kw) || []; arr.push(strip(b.url)); map.set(kw, arr); }
+  }
+  const out: { keyword: string; topUrls: string[]; flips: number }[] = [];
+  for (const [kw, urls] of map) {
+    if (urls.length < 2) continue;
+    const distinct = new Set(urls).size;
+    if (distinct >= 2) out.push({ keyword: kw, topUrls: urls, flips: distinct - 1 });
+  }
+  return out.sort((a, b) => b.flips - a.flips).slice(0, 80);
+}
+
 export type GscData = {
   connected: boolean;
   site: string | null;
