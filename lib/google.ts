@@ -141,6 +141,23 @@ async function gscPickSite(token: string, domain: string): Promise<string | null
   return byPrefix ? byPrefix.siteUrl : null;
 }
 
+// Diagnose: met welk account is het dashboard verbonden, ziet dat account de property
+// voor dit domein, en welke property kiest de matcher? Voor het opsporen van
+// "GSC laadt niet"-problemen per klant.
+export async function gscDebug(domain: string): Promise<{ connected: boolean; account: string | null; siteCount: number; matchedSite: string | null; candidates: string[] }> {
+  const status = await googleStatus();
+  const token = await googleAccessToken();
+  if (!token) return { connected: false, account: status.account, siteCount: 0, matchedSite: null, candidates: [] };
+  const res = await fetch("https://www.googleapis.com/webmasters/v3/sites", { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) return { connected: true, account: status.account, siteCount: -1, matchedSite: null, candidates: [] };
+  const j = await res.json();
+  const entries: { siteUrl: string }[] = Array.isArray(j.siteEntry) ? j.siteEntry : [];
+  const root = (domain || "").replace(/^www\./, "").toLowerCase().split(".")[0]; // bv. "gardenswimm"
+  const candidates = entries.map((e) => e.siteUrl).filter((s) => s.toLowerCase().includes(root));
+  const matchedSite = await gscPickSite(token, domain);
+  return { connected: true, account: status.account, siteCount: entries.length, matchedSite, candidates };
+}
+
 // Per zoekwoord: welke URL was de top-rankende in opeenvolgende tijdvensters (~30d
 // elk)? Twee of meer verschillende top-URL's = URL-flipping, het sterkste
 // cannibalisatie-signaal (Google is onzeker welke pagina moet ranken).
