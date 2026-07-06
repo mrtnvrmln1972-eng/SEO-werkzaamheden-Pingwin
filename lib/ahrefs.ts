@@ -165,6 +165,35 @@ export async function getSiteOrganicKeywords(domain: string, country = "nl", lim
   return rows;
 }
 
+// Top-pagina's van een heel DOMEIN in ÉÉN call: per pagina het top-zoekwoord +
+// positie, organisch verkeer, aantal zoekwoorden en verwijzende domeinen. Dit is
+// de motor achter de cannibalisatie-analyse (welke pagina rankt op welk merk+geo-
+// zoekwoord, hoe sterk is de pagina). mode=subdomains vangt www + non-www; anders
+// mist Ahrefs pagina's. 30 dagen gecachet, dus herhaalde runs kosten geen credits.
+export type AhrefsTopPage = { url: string; topKeyword: string; position: number | null; traffic: number | null; keywords: number | null; refDomains: number | null };
+export async function getAhrefsTopPages(domain: string, limit = 300): Promise<AhrefsTopPage[]> {
+  const d = (domain || "").trim().replace(/^https?:\/\//, "").replace(/\/$/, "");
+  if (!d) return [];
+  const cached = await cacheGet<AhrefsTopPage[]>("toppages", d, "nl", 30);
+  if (cached) return cached;
+  const today = new Date().toISOString().slice(0, 10);
+  const data = (await ahrefsFetch("/site-explorer/top-pages", {
+    target: d, mode: "subdomains", country: "nl", date: today, limit: String(limit),
+    order_by: "sum_traffic:desc",
+    select: "url,top_keyword,top_keyword_best_position,sum_traffic,keywords,referring_domains",
+  })) as { pages?: Record<string, unknown>[] };
+  const rows = (data.pages || []).map((r) => ({
+    url: String(r.url || ""),
+    topKeyword: String(r.top_keyword || ""),
+    position: r.top_keyword_best_position == null ? null : Number(r.top_keyword_best_position),
+    traffic: r.sum_traffic == null ? null : Number(r.sum_traffic),
+    keywords: r.keywords == null ? null : Number(r.keywords),
+    refDomains: r.referring_domains == null ? null : Number(r.referring_domains),
+  })).filter((r) => r.url);
+  await cacheSet("toppages", d, "nl", rows);
+  return rows;
+}
+
 export type SerpRow = { position: number; url: string; title: string; domainRating: number | null; type: string };
 
 // Top-10 organische zoekresultaten voor één zoekwoord (met cache).

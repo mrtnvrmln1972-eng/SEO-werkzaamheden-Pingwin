@@ -85,7 +85,7 @@ export default function CannibalPanel({ slug }: { slug: string }) {
                 <span className={"cannibal-dk-pill " + (dk.gsc ? "on" : "off")}>Search Console {dk.gsc ? "✓" : "✗"}</span>
                 <span className={"cannibal-dk-pill " + (dk.gscTijdreeks ? "on" : "off")}>Flip-tijdreeks {dk.gscTijdreeks ? "✓" : "✗"}</span>
                 <span className={"cannibal-dk-pill " + (dk.ahrefsZoekwoorden ? "on" : "off")}>Ahrefs per pagina {dk.ahrefsZoekwoorden ? "✓" : "✗"}</span>
-                <span className={"cannibal-dk-pill " + (dk.ahrefsBacklinks ? "on" : "off")}>Backlinks/pagina {dk.ahrefsBacklinks ? "✓" : "✗"}</span>
+                <span className={"cannibal-dk-pill " + (dk.ahrefsBacklinks ? "on" : "off")}>Verwijzende domeinen {dk.ahrefsBacklinks ? "✓" : "✗"}</span>
                 <span className={"cannibal-dk-pill " + (dk.crawl ? "on" : "off")}>Crawl {dk.crawl ? "✓" : "✗"}</span>
                 {dk.opmerking && <div className="muted" style={{ fontSize: 12, marginTop: 6, width: "100%" }}>{dk.opmerking}</div>}
               </div>
