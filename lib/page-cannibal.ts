@@ -1,6 +1,7 @@
 import { sql, ensureSchema } from "./db";
 import { getClientBySlug } from "./clients";
 import { getClientUrls, getPagePlan } from "./site-urls";
+import { getGscForPage, getGscQueryPageMatrix } from "./google";
 import { getAhrefsTopPages, getDomainKeywordsMatching, getUrlOrganicKeywords, getSerpOverview, getKeywordsOverview, ahrefsConfigured } from "./ahrefs";
 import { callClaude } from "./anthropic";
 
@@ -78,6 +79,11 @@ WAT ECHTE CANNIBALISATIE IS (en niet):
 - Wél: meerdere URL's van de klant die op dezelfde intentie/term concurreren, waardoor posities/klikken versplinteren, Google de verkeerde pagina kiest, of URL's flippen. Vooral: een buitenwijk-/variant-pagina die op de merk+geo-term van deze landingspagina rankt.
 - Niet: pagina's met een andere zoekintentie (informatieve blog naast transactionele pagina), of een andere dienst die toevallig dezelfde plaats in de term heeft (bloedonderzoek naast soa-test). Die NIET als cannibalisatie flaggen.
 
+BRONNEN EN HET SCHERPE ONDERSCHEID:
+- Search Console is de WAARHEID over Google's gedrag. Splitsen meerdere pagina's klikken/vertoningen op DEZELFDE query (zie de GSC-sectie) → dat is harde, echte cannibalisatie; weeg dat het zwaarst. Krijgt op een query alleen deze pagina vertoningen → geen probleem.
+- Meerdere pagina's die op VERSCHILLENDE queries ranken is normaal en gezond; flag dat niet. Alleen echt splitsen op dezelfde query/intentie telt.
+- Ahrefs is voor de ONTDEKKING, inclusief long-tail merk+geo-termen die GSC verbergt (lage volumes worden geanonimiseerd). Gebruik Ahrefs om kapers te vinden, GSC om te bevestigen of Google ze echt door elkaar haalt.
+
 DE DUBBELSLAG (content mapping): per concurrerend zoekwoord beslis je met volume + top-10:
 - Volume ~0 én de top-10 toont geen eigen pagina's voor die subterm (Google vult het met de moederplaats/algemene pagina's) → clusteren naar DEZE landingspagina; de kaper-pagina de-optimaliseren of 301'en.
 - Genoeg volume én de top-10 toont wél eigen pagina's voor die subterm → dan verdient het een eigen pagina (niet mergen).
@@ -106,11 +112,13 @@ export async function runPageCannibal(slug: string, url: string): Promise<void> 
     const subjectPath = pagePath(url);
 
     // Pass 1: basis-data.
-    const [subjectKw, urls, topPages, plan] = await Promise.all([
+    const [subjectKw, urls, topPages, plan, gscPage, gscMatrix] = await Promise.all([
       getUrlOrganicKeywords(url, "nl", 40).catch(() => []),
       getClientUrls(slug).catch(() => []),
       getAhrefsTopPages(domain, 300).catch(() => [] as Awaited<ReturnType<typeof getAhrefsTopPages>>),
       getPagePlan(slug, url).catch(() => ""),
+      getGscForPage(domain, url, 90).catch(() => [] as { keyword: string; clicks: number; impressions: number; position: number }[]),
+      getGscQueryPageMatrix(domain, 90, 600).catch(() => [] as { keyword: string; page: string; clicks: number; impressions: number; position: number }[]),
     ]);
     const refDom = new Map<string, number>();
     for (const t of topPages) if (t.refDomains != null) refDom.set(pagePath(t.url), t.refDomains);
@@ -169,6 +177,24 @@ export async function runPageCannibal(slug: string, url: string): Promise<void> 
       serpLines.push(...got);
     }
 
+    // GSC = de waarheid over Google's gedrag: voor de queries van DEZE pagina, welke
+    // andere pagina's krijgen ook vertoningen/klikken op dezelfde query (echte concurrentie).
+    const subjQ = new Set(gscPage.map((r) => r.keyword.toLowerCase()));
+    const byQuery = new Map<string, { page: string; clicks: number; impressions: number; position: number }[]>();
+    for (const r of gscMatrix) {
+      const q = r.keyword.toLowerCase();
+      if (!subjQ.has(q)) continue;
+      const arr = byQuery.get(q) || []; arr.push({ page: pagePath(r.page), clicks: r.clicks, impressions: r.impressions, position: r.position }); byQuery.set(q, arr);
+    }
+    const gscLines = [...gscPage]
+      .sort((a, b) => b.impressions - a.impressions)
+      .slice(0, 20)
+      .map((r) => {
+        const others = (byQuery.get(r.keyword.toLowerCase()) || []).filter((p) => p.page !== subjectPath);
+        const compet = others.length ? ` | GOOGLE TOONT OOK: ${others.slice(0, 4).map((p) => `${p.page} (${p.clicks} klik/${p.impressions} vert, pos ${p.position})`).join(", ")}` : " | (geen andere pagina op deze query)";
+        return `- "${r.keyword}": deze pagina ${r.clicks} klikken / ${r.impressions} vertoningen, pos ${r.position}${compet}`;
+      });
+
     // Lege duplicaten: status-200 pagina's met de plaats in de URL en geen Ahrefs-verkeer.
     const seenAhrefs = new Set(topPages.map((t) => pagePath(t.url)));
     const emptyDupes = urls.filter((u) => (u.status ?? 200) === 200 && pagePath(u.url) !== subjectPath && pagePath(u.url).toLowerCase().includes(term) && !seenAhrefs.has(pagePath(u.url))).map((u) => pagePath(u.url)).slice(0, 20);
@@ -179,6 +205,9 @@ export async function runPageCannibal(slug: string, url: string): Promise<void> 
       `Verw.domeinen van deze pagina: ${refDom.get(subjectPath) ?? "?"}`,
       "",
       `EIGEN TOP-ZOEKWOORDEN van deze pagina (Ahrefs): ${subjectKw.slice(0, 12).map((k) => `"${k.keyword}" pos ${k.position ?? "?"} vol ${k.volume ?? "?"}`).join(" | ") || "(geen)"}`,
+      "",
+      "SEARCH CONSOLE — DE WAARHEID OVER GOOGLE (per query van deze pagina: eigen klikken/vertoningen/positie, én welke ANDERE pagina's Google óók op dezelfde query toont. Waar meerdere pagina's op dezelfde query klikken/vertoningen splitsen = echte cannibalisatie. Waar alleen deze pagina staat = geen probleem):",
+      gscLines.length ? gscLines.join("\n") : "- (geen Search Console-data voor deze pagina; leun op Ahrefs)",
       "",
       `CONCURRENTEN op de term "${term}" (Ahrefs, best-rankende URL per zoekwoord):`,
       domMatch.length ? domMatch.slice(0, 40).map((d) => `- "${d.keyword}" -> ${pagePath(d.url)} pos ${d.position ?? "?"} | vol ${d.volume ?? "?"} | ${d.branded ? "merk " : ""}${d.transactional ? "transactioneel" : d.informational ? "informatief" : ""} | verw.dom ${refDom.get(pagePath(d.url)) ?? "?"}`).join("\n") : "- (geen)",
