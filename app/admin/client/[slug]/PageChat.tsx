@@ -8,12 +8,6 @@ type Task = { taak: string; fase?: string; wie?: string };
 type Proposal = { plan?: string; tasks?: Task[] };
 type ChatSummary = { id: number; title: string; updatedAt: string; count: number };
 
-// Kant-en-klare opdracht voor de "Cannibalisatie oplossen"-knop. Draait de
-// grounded chat: eerst in kaart brengen wie op dezelfde intentie mikt, dan de
-// eigenaar volgens het plan (niet de ranking), dan concrete acties in het plan.
-const CANNIBAL_PROMPT =
-  "Los de cannibalisatie voor deze pagina op. Breng eerst in een tabel in kaart welke andere pagina's van deze site op dezelfde zoekwoorden ranken of erop mikken (gebruik de sitebrede zoekwoord→pagina-matrix en de plannen van de andere pagina's; haal waar nodig de SERP-overlap erbij). Bepaal wie de bedoelde eigenaar is volgens het plan, niet puur op de huidige ranking, ook als deze pagina nu nog niet het beste rankt. Geef daarna per concurrerende pagina één concrete actie richting de eigenaar (301-redirect, interne link + herrichten op een eigen term, of samenvoegen), met de fase en of het SEO- of Dev-werk is, en zet het overzicht en de acties netjes in het plan.";
-
 // Kant-en-klare opdracht voor de "Vat samen tot conclusie & strategie"-knop.
 // Consolideert het hele gesprek tot één definitieve conclusie/strategie, die via
 // het bestaande voorstel-mechanisme als plan voor de pagina overgenomen wordt.
@@ -40,6 +34,10 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   type DocRun = { id: number; status: string; steps: Record<string, string>; links: Record<string, string>; error: string };
   const [run, setRun] = useState<DocRun | null>(null);
   const [runBusy, setRunBusy] = useState(false);
+  // Per-pagina cannibalisatie- + content-mapping-analyse (achtergrond).
+  const [pc, setPc] = useState<{ status: string; result: string; error: string; updatedAt: string | null } | null>(null);
+  const [pcBusy, setPcBusy] = useState(false);
+  const [pcOpen, setPcOpen] = useState(false);
   // Cluster-advies dat AAN deze pagina is meegegeven (vertrekpunt van een andere analyse).
   const [incoming, setIncoming] = useState<{ advice: string; sourceUrl: string; sourceAnalysis: string }[]>([]);
   const [incomingOpen, setIncomingOpen] = useState(false);
@@ -55,6 +53,31 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
 
   // Zet de opgemaakte mail in de bewerkbare preview zodra het venster opent.
   useEffect(() => { if (mailOpen && mailRef.current) mailRef.current.innerHTML = mailHtml; }, [mailOpen, mailHtml]);
+
+  // Per-pagina cannibalisatie-analyse: laden + pollen tijdens het draaien.
+  async function loadPc() {
+    try {
+      const d = await fetch(`/api/admin/page-cannibal?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}`).then((r) => r.json());
+      if (d.ok) setPc({ status: d.status, result: d.result, error: d.error, updatedAt: d.updatedAt });
+    } catch { /* stil */ }
+  }
+  useEffect(() => { loadPc(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [slug, url]);
+  useEffect(() => {
+    if (pc?.status !== "running") return;
+    const t = setInterval(loadPc, 5000);
+    return () => clearInterval(t); /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [pc?.status, slug, url]);
+  async function runPc() {
+    if (pcBusy || pc?.status === "running") return;
+    setPcBusy(true);
+    setPc((s) => (s ? { ...s, status: "running", error: "" } : { status: "running", result: "", error: "", updatedAt: null }));
+    try {
+      const d = await fetch("/api/admin/page-cannibal", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url }) }).then((r) => r.json());
+      if (!d.ok) { setErr(d.error || "Starten mislukt."); await loadPc(); return; }
+      setPcOpen(true);
+      await loadPc();
+    } catch { setErr("Starten mislukt."); await loadPc(); } finally { setPcBusy(false); }
+  }
 
   const lastAssistant = [...msgs].reverse().find((m) => m.role === "assistant")?.content || "";
   // Wordt het gesprek nu uitgeklapt getoond? Zo ja, staat de vervolgvraag al in het
@@ -515,12 +538,20 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
         </div>
       )}
 
-      {msgs.length > 0 && (
-        <div className="page-chat-canni">
-          <span className="pch-canni-lead">Als de geoptimaliseerde pagina live staat, kun je de cannibalisatie tussen pagina&rsquo;s oplossen:</span>
-          <button type="button" className={"pcd-btn" + (busy ? " busy" : "")} disabled={busy} onClick={() => send(CANNIBAL_PROMPT)} title="Brengt de cannibalisatie in kaart, wijst de eigenaar aan volgens het plan (niet de ranking) en zet de acties in het plan. Het resultaat verschijnt in de chat hierboven.">{busy ? "Bezig met de cannibalisatie-analyse…" : "Cannibalisatie oplossen"}</button>
+      <div className="page-chat-canni">
+        <div className="pch-canni-row">
+          <span className="pch-canni-lead">Vervolgstap: los de cannibalisatie voor deze pagina op. Brengt per zoekwoord in kaart (top-10 + volume) of het een eigen pagina verdient of naar deze pagina geclusterd wordt, en welke pagina&rsquo;s deze pagina kapen, met de actie per pagina.</span>
+          <button type="button" className={"pcd-btn" + (pcBusy || pc?.status === "running" ? " busy" : "")} disabled={pcBusy || pc?.status === "running"} onClick={runPc} title="Draait op de achtergrond met echte Ahrefs-data; je kunt wegklikken.">{pc?.status === "running" ? "Analyse draait…" : pc?.result ? "Opnieuw analyseren" : "Cannibalisatie oplossen"}</button>
         </div>
-      )}
+        {pc?.status === "error" && pc.error && <div className="login-error" style={{ marginTop: 8 }}>{pc.error}</div>}
+        {pc?.status === "running" && !pc.result && <div className="muted" style={{ marginTop: 8, fontSize: 13 }}>Analyse draait op de achtergrond (verzamelt per pagina de Ahrefs-zoekwoorden + top-10; dit kan een paar minuten duren).</div>}
+        {pc?.result && (
+          <div className="pch-canni-doc">
+            <button type="button" className="pch-canni-toggle" onClick={() => setPcOpen((o) => !o)}>{pcOpen ? "▾" : "▸"} Cannibalisatie- &amp; content-mapping-analyse{pc.updatedAt ? ` · ${new Date(pc.updatedAt).toLocaleString("nl-NL")}` : ""}{pc.status === "running" ? " · nieuwe analyse draait…" : ""}</button>
+            {pcOpen && <div className="md pch-canni-md" dangerouslySetInnerHTML={{ __html: mdToHtml(pc.result) }} />}
+          </div>
+        )}
+      </div>
 
       {!convoShown && (
         <div className="page-chat-input">

@@ -194,6 +194,37 @@ export async function getAhrefsTopPages(domain: string, limit = 300): Promise<Ah
   return rows;
 }
 
+// Alle zoekwoorden van een DOMEIN die een term bevatten (bv. "amsterdam"), met per
+// zoekwoord de best-rankende URL + positie + volume + intentie. Zo zie je welke
+// pagina's op een plaats/thema-term ranken: de basis voor de per-pagina-cannibalisatie
+// (winnaar + concurrenten). Let op: dit toont per zoekwoord alleen de BESTE URL; een
+// lager-rankende kaper op dezelfde term zie je pas via getUrlOrganicKeywords per pagina.
+export type DomainKeyword = { keyword: string; position: number | null; url: string; volume: number | null; traffic: number | null; transactional: boolean; informational: boolean; branded: boolean; local: boolean };
+export async function getDomainKeywordsMatching(domain: string, term: string, limit = 100): Promise<DomainKeyword[]> {
+  const d = (domain || "").trim().replace(/^https?:\/\//, "").replace(/\/$/, "");
+  const t = (term || "").trim().toLowerCase();
+  if (!d || !t) return [];
+  const cached = await cacheGet<DomainKeyword[]>("domkw", `${d}|${t}`, "nl", 30);
+  if (cached) return cached;
+  const today = new Date().toISOString().slice(0, 10);
+  const data = (await ahrefsFetch("/site-explorer/organic-keywords", {
+    target: d, mode: "subdomains", country: "nl", date: today, limit: String(limit),
+    order_by: "sum_traffic:desc",
+    where: JSON.stringify({ field: "keyword", is: ["isubstring", t] }),
+    select: "keyword,best_position,best_position_url,volume,sum_traffic,is_transactional,is_informational,is_branded,is_local",
+  })) as { keywords?: Record<string, unknown>[] };
+  const rows = (data.keywords || []).map((r) => ({
+    keyword: String(r.keyword || ""),
+    position: r.best_position == null ? null : Number(r.best_position),
+    url: String(r.best_position_url || ""),
+    volume: r.volume == null ? null : Number(r.volume),
+    traffic: r.sum_traffic == null ? null : Number(r.sum_traffic),
+    transactional: !!r.is_transactional, informational: !!r.is_informational, branded: !!r.is_branded, local: !!r.is_local,
+  })).filter((r) => r.keyword && r.url);
+  await cacheSet("domkw", `${d}|${t}`, "nl", rows);
+  return rows;
+}
+
 export type SerpRow = { position: number; url: string; title: string; domainRating: number | null; type: string };
 
 // Top-10 organische zoekresultaten voor één zoekwoord (met cache).
