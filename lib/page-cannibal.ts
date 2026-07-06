@@ -1,9 +1,15 @@
 import { sql, ensureSchema } from "./db";
 import { getClientBySlug } from "./clients";
-import { getClientUrls, getPagePlan } from "./site-urls";
+import { getClientUrls, getPagePlan, savePageClusterAdvice, getPageDriveFolder } from "./site-urls";
 import { getGscForPage, getGscQueryPageMatrix } from "./google";
 import { getAhrefsTopPages, getDomainKeywordsMatching, getUrlOrganicKeywords, getSerpOverview, getKeywordsOverview, ahrefsConfigured } from "./ahrefs";
 import { callClaude } from "./anthropic";
+import { extractClusterAdvice } from "./page-chat-ground";
+import { summariseChatToSpec } from "./page-doc";
+import { buildPingwinDoc } from "./pingwin-docx";
+import { uploadDocx } from "./drive";
+import { getTasks, appendTasks, deleteTasksByIds } from "./tasks";
+import { mdToHtml } from "./markdown";
 
 // ═══════════════════════════════════════════════════════════
 // PER-PAGINA CANNIBALISATIE + CONTENT-MAPPING (de "dubbelslag")
@@ -238,4 +244,68 @@ export async function runPageCannibal(slug: string, url: string): Promise<void> 
   } catch (e) {
     try { await setState(slug, url, "error", null, `Analyse mislukt: ${e instanceof Error ? e.message : "onbekende fout"}`); } catch { /* stil */ }
   }
+}
+
+function safeName(s: string): string {
+  return (s || "document").replace(/[^\p{L}\p{N} _-]+/gu, "").replace(/\s+/g, "-").slice(0, 60) || "document";
+}
+
+// "Aanbevelingen overnemen": zet de uitkomst door.
+// 1) De-optimalisatie-/behoud-aanwijzingen als basisinfo naar de blijvende pagina's
+//    (cluster-advies), als vertrekpunt voor de latere strategie van die pagina.
+// 2) De redirects + interne links als één Dev-taak (met de lijst erin) + een
+//    Pingwin-document in de Drive-map van de pagina, zichtbaar voor klant en developer.
+export async function applyPageCannibal(slug: string, url: string): Promise<{ taskId: number | null; docLink: string; advicePages: number }> {
+  const cur = await getPageCannibal(slug, url);
+  const analysis = (cur.result || "").trim();
+  if (!analysis) throw new Error("Er is nog geen cannibalisatie-analyse voor deze pagina. Draai eerst de analyse.");
+  const client = await getClientBySlug(slug);
+  const urls = await getClientUrls(slug).catch(() => []);
+  const path = pagePath(url);
+
+  // 1. Basisinfo (de-optimalisaties/behoud) naar de blijvende pagina's als vertrekpunt.
+  let advicePages = 0;
+  try {
+    const items = await extractClusterAdvice(analysis, url, urls.map((u) => u.url));
+    for (const it of items) { await savePageClusterAdvice(slug, it.url, it.advice, url, analysis).catch(() => { /* per pagina stil */ }); advicePages++; }
+  } catch { /* advies is aanvullend */ }
+
+  // 2. Dev-inhoud: uitleg + redirects + interne links uit de analyse halen.
+  const devMd = await callClaude(
+    `Maak uit de cannibalisatie- en content-mapping-analyse hieronder een BEKNOPT developer-overzicht in markdown, met exact deze opbouw:
+1. Twee tot drie zinnen in gewone taal: wat deze stap is en waarom (cannibalisatie oplossen zodat Google de juiste pagina laat ranken).
+2. Kop "301-redirects" met een lijst "van-pad → naar-pad" (alleen de pagina's met een 301/die vervallen).
+3. Kop "Interne links" met een lijst "vanaf-pad → naar-pad — ankertekst".
+Neem uitsluitend wat in de analyse staat; verzin niets. Geen emoji. Staat er geen enkele redirect of interne link, zeg dat kort.`,
+    [{ role: "user", content: analysis.slice(0, 16000) }], 3000, { slug, action: "page_cannibal_apply" },
+  ).catch(() => "");
+  const devContent = (devMd || "").replace(/```/g, "").trim() || analysis;
+
+  // 3. Pingwin-document van de dev-inhoud, in de Drive-map van de pagina (indien ingesteld).
+  let docLink = "";
+  try {
+    const { spec } = await summariseChatToSpec(slug, url, devContent, "Dit is een developer-overzicht: behoud de 301-redirects en de interne-link-lijst exact zoals aangeleverd.");
+    const buffer = await buildPingwinDoc(spec);
+    const folder = await getPageDriveFolder(slug, url).catch(() => null);
+    if (folder?.folderId) { try { ({ link: docLink } = await uploadDocx(folder.folderId, `${safeName(client?.name || slug)}-cannibalisatie-${safeName(path)}.docx`, buffer)); } catch { /* zonder link vastleggen */ } }
+  } catch { /* document is aanvullend; de taak met de lijst komt er sowieso */ }
+
+  // 4. Eén Dev-taak met de lijst erin (+ document eraan gekoppeld). Dedupe bij opnieuw overnemen.
+  try {
+    const existing = await getTasks(slug).catch(() => []);
+    const dupIds = existing.filter((t) => t.stepKind === "cannibal_redirects" && t.pageUrl === url && t.id != null).map((t) => t.id as number);
+    if (dupIds.length) await deleteTasksByIds(slug, dupIds).catch(() => { /* stil */ });
+  } catch { /* dedupe niet kritisch */ }
+
+  const klantUitleg = "We hebben in kaart gebracht welke pagina's elkaar in de weg zitten en welke redirects en interne links nodig zijn, zodat Google de juiste pagina laat ranken.";
+  const ids = await appendTasks(slug, [{
+    taak: `Cannibalisatie, redirects en interne links ${path}`,
+    toelichting: mdToHtml(devContent).slice(0, 12000),
+    klantToelichting: klantUitleg,
+    status: "Gepland", wie: "Dev", fase: "Opschonen",
+    pageUrl: url, stepKind: "cannibal_redirects", klantZichtbaar: true,
+    docLink: docLink || undefined, clientDocLink: docLink || undefined,
+  }]).catch(() => [] as number[]);
+
+  return { taskId: ids[0] ?? null, docLink, advicePages };
 }

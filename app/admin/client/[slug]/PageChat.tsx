@@ -38,6 +38,8 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   const [pc, setPc] = useState<{ status: string; result: string; error: string; updatedAt: string | null } | null>(null);
   const [pcBusy, setPcBusy] = useState(false);
   const [pcOpen, setPcOpen] = useState(false);
+  const [applyBusy, setApplyBusy] = useState(false);
+  const [applyMsg, setApplyMsg] = useState("");
   // Een chat-bericht bewerken (welke index) — gerenderde contentEditable, geen ruwe textarea.
   const [editIdx, setEditIdx] = useState<number | null>(null);
   const editRef = useRef<HTMLDivElement | null>(null);
@@ -80,6 +82,21 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       setPcOpen(true);
       await loadPc();
     } catch { setErr("Starten mislukt."); await loadPc(); } finally { setPcBusy(false); }
+  }
+  // "Aanbevelingen overnemen": redirects + interne links als Dev-taak met document,
+  // en de de-optimalisatie-info als basis naar de betreffende pagina's.
+  async function applyRec() {
+    if (applyBusy) return;
+    setApplyBusy(true); setApplyMsg("");
+    try {
+      const d = await fetch("/api/admin/page-cannibal/apply", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url }) }).then((r) => r.json());
+      if (!d.ok) { setApplyMsg(d.error || "Overnemen mislukt."); return; }
+      const parts = ["Dev-taak aangemaakt in Werkzaamheden"];
+      if (d.docLink) parts.push("met document");
+      if (d.advicePages) parts.push(`, basisinfo doorgezet naar ${d.advicePages} pagina('s)`);
+      setApplyMsg(parts.join(" ") + ".");
+      onApplied();
+    } catch { setApplyMsg("Overnemen mislukt."); } finally { setApplyBusy(false); }
   }
 
   const lastAssistant = [...msgs].reverse().find((m) => m.role === "assistant")?.content || "";
@@ -594,6 +611,12 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
           <div className="pch-canni-doc">
             <button type="button" className="pch-canni-toggle" onClick={() => setPcOpen((o) => !o)}>{pcOpen ? "▾" : "▸"} Cannibalisatie- &amp; content-mapping-analyse{pc.updatedAt ? ` · ${new Date(pc.updatedAt).toLocaleString("nl-NL")}` : ""}{pc.status === "running" ? " · nieuwe analyse draait…" : ""}</button>
             {pcOpen && <div className="md pch-canni-md" dangerouslySetInnerHTML={{ __html: mdToHtml(pc.result) }} />}
+            {pcOpen && (
+              <div className="pch-canni-apply">
+                <button type="button" className={"pcd-btn pcd-btn-primary" + (applyBusy ? " busy" : "")} disabled={applyBusy} onClick={applyRec} title="Zet de redirects + interne links door als Dev-taak met document, en de de-optimalisatie-info als basis naar de betreffende pagina's.">{applyBusy ? "Overnemen…" : "Aanbevelingen overnemen"}</button>
+                {applyMsg && <span className="saved-msg" style={{ marginLeft: 10 }}>{applyMsg}</span>}
+              </div>
+            )}
           </div>
         )}
       </div>
