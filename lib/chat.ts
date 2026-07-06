@@ -179,10 +179,10 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
     `Je bent de SEO-projectassistent van Pingwin voor de klant ${client.name}. ` +
     `Beantwoord in het Nederlands, uitsluitend op basis van de onderstaande projectcontext ` +
     `(e-mails inclusief afzender/ontvangers en inhoud, stand van zaken, taken, Search Console incl. 4-maanden zoekwoord-trend, Ahrefs).\n\n` +
-    `OPMAAK (belangrijk): maak elk antwoord super netjes en overzichtelijk op in Markdown:\n` +
-    `- Begin met een korte kop (## Kop) per onderwerp.\n` +
+    `OPMAAK: schrijf conversationeel en netjes, zoals in een chat, in Markdown. Geen emoji.\n` +
+    `- Schrijf in korte alinea's. Gebruik een kopje (## Kop) alleen als je antwoord echt meerdere onderwerpen behandelt; bij een kort antwoord geen kop.\n` +
     `- Gebruik bullets (-) voor opsommingen en **vet** voor labels/kernpunten.\n` +
-    `- Zet ALLE cijfermatige of vergelijkende data (zoals zoekwoord-posities per maand, klikken, CTR) in een nette Markdown-tabel met uitgelijnde kolommen, bijvoorbeeld:\n` +
+    `- Zet cijfermatige of vergelijkende data (zoals zoekwoord-posities per maand, klikken, CTR) in een nette Markdown-tabel met uitgelijnde kolommen, bijvoorbeeld:\n` +
     `  | Zoekwoord | apr | mei | jun |\n  | --- | --- | --- | --- |\n  | soa test amsterdam | 9 | 7 | 6 |\n` +
     `- Houd zinnen kort en groepeer logisch. Sluit af met een kort actiepunt als dat past.\n\n` +
     `Noem waar relevant het mail-onderwerp, de datum of de ontvanger (bv. of een mail naar de klant of naar jezelf ging). ` +

@@ -812,6 +812,8 @@ button.ck-collapse-head {
 .chat-md > :first-child { margin-top: 0; }
 .chat-md > :last-child { margin-bottom: 0; }
 .chat-md hr { border: none; border-top: 1px solid var(--border); margin: 10px 0; }
+/* Assistent-antwoord als nette chat-tekst, niet als kaartje: geen kader/achtergrond, volle breedte. */
+.chat-msg.assistant .chat-bubble.chat-md { background: transparent; border: none; padding: 2px 0; max-width: 100%; border-radius: 0; }
 .chat-table { border-collapse: collapse; margin: 8px 0; font-size: 12px; width: 100%; }
 .chat-table th, .chat-table td { border: 1px solid var(--border); padding: 5px 9px; text-align: left; }
 .chat-table th { background: var(--white); font-weight: 700; color: var(--dark); }
