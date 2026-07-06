@@ -3,10 +3,10 @@ import path from "path";
 import { sql, ensureSchema } from "./db";
 import { getClientBySlug } from "./clients";
 import { getClientUrls } from "./site-urls";
-import { getGscQueryPageMatrix, getGscKeywordUrlFlips } from "./google";
-import { getAhrefsKeywords } from "./ahrefs-keywords";
-import { getAhrefsTopPages, ahrefsConfigured } from "./ahrefs";
-import { callClaude } from "./anthropic";
+import { getGscForPage, getGscKeywordUrlFlips } from "./google";
+import { getAhrefsTopPages, getUrlOrganicKeywords, ahrefsConfigured } from "./ahrefs";
+import { fetchPageContent } from "./page-content";
+import { callClaudeAgentic, type ToolDef, type ToolRunner } from "./anthropic";
 
 // ═══════════════════════════════════════════════════════════
 // KEYWORD-CANNIBALISATIE-ANALYSE (dashboard-integratie van de skill)
@@ -118,17 +118,73 @@ function buildSystemPrompt(): string {
 
 ---
 
-UITVOERING IN HET PINGWIN-DASHBOARD:
-Je draait nu binnen het dashboard. De data hieronder is al voor je verzameld via de dashboard-connectoren. Redeneer per cluster over deze data; verzin niets bij.
-- Je BELANGRIJKSTE bron is de sectie AHREFS PER PAGINA: per pagina het top-zoekwoord met positie, verkeer en verwijzende domeinen. Bouw je clusters primair hieruit door pagina's te groeperen waarvan het top-zoekwoord dezelfde plaats/merk+geo-term betreft. Search Console is aanvullend, want het mist juist de long-tail merk+geo-termen waar de cannibalisatie zit.
-- Let bij een lokaal/multi-locatie bedrijf specifiek op het patroon waar de handmatige analyses op draaien: een omliggende-plaats- of variant-pagina waarvan het top-zoekwoord de merk+geo-term van een GROTE stad is (bijv. een buitenwijkpagina met top-zoekwoord "merk grote-stad" of "soa test grote-stad"). De hoofd-stadspagina (hoogste positie, meeste verwijzende domeinen/verkeer) is dan de winnaar; de kaper krijgt "de-optimaliseren" (merk+grote-stad-term weghalen) of een 301 als het een duplicaat zonder eigen waarde is. Herken meerdere URL-varianten per plaats (kliniek-/poli-/test-varianten) als duplicaten.
-- Neem in "clusters" ALLEEN echte cannibalisatie op (minstens één hard signaal + overlappende intentie). Twee pagina's met verschillende intentie (informatieve blog naast transactionele pagina) horen er NIET in.
-- Vul "signalen" op basis van de flip-tijdreeks (urlFlip/flipsIn90d), de posities (positiePlafond 5-20) en de klik-verdeling. Zet "ahrefsZoekwoorden": true.
-- Je HEBT nu verwijzende domeinen per pagina (kolom "verw.domeinen"). Gebruik die als zwaarste factor voor de winnaar-weging en vul "verwijzendeDomeinen" per URL in. Zet "ahrefsBacklinks": true. Let op: de pagina met de meeste verwijzende domeinen is niet altijd de beste bestemming; bij een sterke maar verkeerde pagina redirect je de link-rijke pagina naar de businesswaardige pagina. Bij gesloten/verplaatste locaties: 301 naar de dichtstbijzijnde open pagina, niet 410 (behoud de verwijzende domeinen).
-- Antwoord met UITSLUITEND geldige JSON volgens het output-schema hierboven. Geen tekst eromheen, geen emoji, geen markdown-codeblok.`;
+UITVOERING IN HET PINGWIN-DASHBOARD (AGENTISCH):
+Je hebt tools om de data ZELF op te halen, net zoals in Cowork. Verzin niets; haal op wat je nodig hebt en redeneer per cluster. Werk grondig zoals een handmatige analyse, niet oppervlakkig.
+Werkwijze:
+1. Begin breed: roep ahrefs_pages (zonder filter) aan voor de sterkste pagina's, en site_urls voor de volledige paginalijst (inclusief pagina's zonder verkeer, dat zijn vaak lege duplicaten).
+2. Herken de winnaar-pagina's (de hoofd-locatie-/dienstpagina's) en zoek daarna per plaats/thema gericht met ahrefs_pages(filter: "<plaats>") en site_urls(filter: "<plaats>") naar concurrerende of duplicaat-pagina's. Let op het patroon waar de handmatige analyse op draait: een omliggende-plaats- of variant-pagina waarvan het top-zoekwoord de merk+geo-term van een GROTE stad is (bijv. buitenwijkpagina met top-zoekwoord "merk grote-stad" of "soa test grote-stad").
+3. Zoom in met ahrefs_url_keywords op verdachte pagina's om te zien op welke merk+geo-termen ze (mede) ranken, ook waar ze niet de winnaar zijn. Bevestig echte tractie met gsc_page_queries en instabiliteit met gsc_url_flips.
+4. Bij twijfel over intentie: fetch_page_content om te bepalen of twee pagina's dezelfde intentie bedienen (echte cannibalisatie) of niet (false positive).
+5. Ga alle plaats-/thema-clusters langs voordat je afrondt.
+Regels:
+- Neem in "clusters" ALLEEN echte cannibalisatie op (hard signaal + overlappende intentie). Informatieve blog naast een transactionele pagina = geen cannibalisatie.
+- Winnaar-weging: verwijzende domeinen (zwaarst) > organische tractie > businesswaarde. De pagina met de meeste verwijzende domeinen is niet altijd de bestemming; redirect desnoods de link-rijke pagina naar de businesswaardige pagina. Gesloten/verplaatste locaties: 301 naar de dichtstbijzijnde open pagina, niet 410 (behoud de verwijzende domeinen). Herken meerdere URL-varianten per plaats (kliniek-/poli-/test-) als duplicaten.
+- Vul per cluster "signalen" (urlFlip/flipsIn90d, positiePlafond 5-20, klikVerdeling) en per URL "verwijzendeDomeinen" in. Vul "datakwaliteit" eerlijk in op basis van wat de tools teruggaven: gsc, gscTijdreeks, ahrefsZoekwoorden (kwam ahrefs_pages met data?), ahrefsBacklinks (kwamen er verwijzende domeinen mee?), crawl=false. Bleven de Ahrefs-tools leeg, meld dat expliciet in de samenvatting en verzin geen clusters.
+- Lever HELEMAAL AAN HET EIND je antwoord als UITSLUITEND geldige JSON volgens het output-schema hierboven. Geen tekst eromheen, geen emoji, geen markdown-codeblok.`;
 }
 
-// Draait de echte analyse en slaat het resultaat op. Idempotent qua opslag.
+// De tools die de agent zelf mag aanroepen om data te vergaren (net als de chat).
+const CANNIBAL_TOOLS: ToolDef[] = [
+  { name: "ahrefs_pages", description: "Ahrefs top-pagina's van het klantdomein: per pagina het top-zoekwoord met positie, organisch verkeer, verwijzende domeinen en aantal zoekwoorden. Optioneel 'filter' (substring, matcht op URL-pad OF top-zoekwoord, hoofdletterongevoelig) om per plaats/thema te zoeken, bijv. 'rotterdam' of 'soa-poli'. Dit is je primaire bron: welke pagina rankt op welk merk+geo-zoekwoord, en hoe sterk qua backlinks.", input_schema: { type: "object", properties: { filter: { type: "string" } } } },
+  { name: "site_urls", description: "De volledige lijst live-URL's van de klant (uit de crawl), met HTTP-status en Search Console-klikken/vertoningen. Bevat OOK pagina's zonder verkeer (lege duplicaten die Ahrefs/GSC missen). Optioneel 'filter' (substring op pad). Gebruik om duplicaat-varianten per plaats te vinden (kliniek-/poli-/test-).", input_schema: { type: "object", properties: { filter: { type: "string" } } } },
+  { name: "ahrefs_url_keywords", description: "Alle zoekwoorden waarop één specifieke URL organisch rankt (positie, volume, verkeer), uit Ahrefs. Gebruik om in te zoomen op een verdachte pagina en te zien op welke merk+geo-termen hij (mede) rankt, ook waar hij niet de winnaar is. Geef het pad, bijv. /soa-poli-gouda/.", input_schema: { type: "object", properties: { url: { type: "string" } }, required: ["url"] } },
+  { name: "gsc_page_queries", description: "De echte Search Console-zoekwoorden voor één pagina (klikken, vertoningen, gemiddelde positie, 90 dagen). Gebruik voor de echte Google-tractie en om positie/intentie te bevestigen. Geef het pad.", input_schema: { type: "object", properties: { url: { type: "string" } }, required: ["url"] } },
+  { name: "gsc_url_flips", description: "URL-flip-tijdreeks: per zoekwoord of de top-rankende URL wisselde over 3 vensters van ~30 dagen (het sterkste cannibalisatie-signaal). Geen input nodig.", input_schema: { type: "object", properties: {} } },
+  { name: "fetch_page_content", description: "De on-page inhoud van een pagina (titel, meta, H1, koppen, kern van de tekst) om de zoekintentie te bepalen. Cruciaal om echte cannibalisatie (zelfde intentie) te scheiden van false positives (andere intentie). Geef het pad of de volledige URL.", input_schema: { type: "object", properties: { url: { type: "string" } }, required: ["url"] } },
+];
+
+// Bouwt de tool-uitvoerder, vastgeklonken aan deze klant + domein.
+function makeCannibalRunner(slug: string, domain: string): ToolRunner {
+  const bare = domain.replace(/^www\./i, "").toLowerCase();
+  const toFull = (u: string) => (u || "").startsWith("http") ? u : `https://${bare}${(u || "").startsWith("/") ? "" : "/"}${u || ""}`;
+  return async (name, input) => {
+    if (name === "ahrefs_pages") {
+      const pages = await getAhrefsTopPages(domain, 300).catch(() => [] as Awaited<ReturnType<typeof getAhrefsTopPages>>);
+      const f = String(input.filter || "").toLowerCase();
+      let rows = f ? pages.filter((p) => p.url.toLowerCase().includes(f) || p.topKeyword.toLowerCase().includes(f)) : pages;
+      rows = rows.sort((a, b) => (b.traffic || 0) - (a.traffic || 0)).slice(0, 70);
+      return rows.length ? rows.map((p) => `${pagePath(p.url)} | top:"${p.topKeyword}" pos ${p.position ?? "?"} | ${p.traffic ?? 0} verkeer | ${p.refDomains ?? "?"} refdom | ${p.keywords ?? "?"}kw`).join("\n") : "(geen pagina's gevonden)";
+    }
+    if (name === "site_urls") {
+      const urls = await getClientUrls(slug).catch(() => []);
+      const f = String(input.filter || "").toLowerCase();
+      let rows = f ? urls.filter((u) => pagePath(u.url).toLowerCase().includes(f)) : urls;
+      rows = rows.sort((a, b) => b.gscClicks - a.gscClicks).slice(0, 100);
+      return rows.length ? rows.map((u) => `${pagePath(u.url)} | status ${u.status ?? "?"} | ${u.gscClicks} clicks | ${u.gscImpressions} impr`).join("\n") : "(geen URL's)";
+    }
+    if (name === "ahrefs_url_keywords") {
+      const kws = await getUrlOrganicKeywords(toFull(String(input.url || "")), "nl", 40).catch(() => []);
+      return kws.length ? kws.map((k) => `"${k.keyword}" pos ${k.position ?? "?"} vol ${k.volume ?? "?"} verkeer ${k.traffic ?? "?"}`).join("\n") : "(geen Ahrefs-zoekwoorden voor deze URL)";
+    }
+    if (name === "gsc_page_queries") {
+      const rows = await getGscForPage(domain, toFull(String(input.url || "")), 90).catch(() => []);
+      return rows.length ? rows.map((r) => `"${r.keyword}" pos ${r.position} ${r.clicks} clicks ${r.impressions} impr`).join("\n") : "(geen GSC-data voor deze URL)";
+    }
+    if (name === "gsc_url_flips") {
+      const flips = await getGscKeywordUrlFlips(domain, 3).catch(() => []);
+      return flips.length ? flips.slice(0, 60).map((f) => `"${f.keyword}": ${f.topUrls.join(" -> ")} (${f.flips}x)`).join("\n") : "(geen URL-flips gevonden)";
+    }
+    if (name === "fetch_page_content") {
+      const c = await fetchPageContent(toFull(String(input.url || ""))).catch(() => null);
+      if (!c) return "(kon pagina niet ophalen)";
+      return `titel: ${c.title}\nH1: ${c.h1}\nkoppen: ${c.headings.slice(0, 10).join(" | ")}\ntekst: ${c.text.slice(0, 1200)}`;
+    }
+    return "(onbekende tool)";
+  };
+}
+
+// Draait de echte analyse AGENTISCH: de agent haalt de data zelf op via de tools
+// (zoals Cowork), en levert aan het eind de JSON. Idempotent qua opslag.
 export async function runCannibalRedirect(slug: string): Promise<void> {
   try {
     await ensureSchema();
@@ -136,80 +192,17 @@ export async function runCannibalRedirect(slug: string): Promise<void> {
     const client = await getClientBySlug(slug);
     const domain = client?.domain || "";
     if (!domain) { await setState(slug, "error", null, "Deze klant heeft nog geen domein ingevuld."); return; }
+    if (!ahrefsConfigured()) { await setState(slug, "error", null, "Hiervoor is een AHREFS_API_TOKEN nodig in Vercel."); return; }
 
-    const [urls, matrix, flips, ahref] = await Promise.all([
-      getClientUrls(slug),
-      getGscQueryPageMatrix(domain, 90, 400).catch(() => [] as { keyword: string; page: string; clicks: number; impressions: number; position: number }[]),
-      getGscKeywordUrlFlips(domain, 3).catch(() => [] as { keyword: string; topUrls: string[]; flips: number }[]),
-      getAhrefsKeywords(slug).catch(() => []),
-    ]);
-    const volMap = new Map(ahref.map((k) => [k.keyword.toLowerCase(), k.volume]));
+    const firstMsg = `Analyseer keyword-cannibalisatie voor ${client?.name || slug} (domein: ${domain}). Haal de data zelf op met de tools: begin met ahrefs_pages() en site_urls(), zoek dan per plaats/thema, controleer intentie waar nodig, en lever tot slot UITSLUITEND de JSON volgens het output-schema.`;
+    // maxRounds bewust begrensd zodat de agentische loop binnen de 300s-functielimiet
+    // blijft; per ronde mag de agent meerdere tools parallel aanroepen, dus dit is ruim.
+    const raw = await callClaudeAgentic(buildSystemPrompt(), [{ role: "user", content: firstMsg }], CANNIBAL_TOOLS, makeCannibalRunner(slug, domain), 12, 8000, { slug, action: "cannibal_redirect" });
 
-    // Ahrefs top-pagina's in ÉÉN call: per pagina het top-zoekwoord + positie, verkeer
-    // en verwijzende domeinen. Dit is de motor van de analyse (de handmatige Excel
-    // draait hier ook op): welke pagina rankt op welk merk+geo-zoekwoord, en hoe sterk
-    // is de pagina qua backlinks. Search Console mist juist die long-tail geo-termen.
-    let topPages: Awaited<ReturnType<typeof getAhrefsTopPages>> = [];
-    if (ahrefsConfigured()) { try { topPages = await getAhrefsTopPages(domain, 300); } catch { topPages = []; } }
-    const refDomMap = new Map<string, number>();
-    for (const t of topPages) { const p = pagePath(t.url); if (t.refDomains != null) refDomMap.set(p, t.refDomains); }
-    const hasAhrefsKw = topPages.length > 0;
-    const hasRefDom = topPages.some((t) => t.refDomains != null);
-
-    // De Ahrefs per-pagina-tabel: gesorteerd op verkeer. Dit is de primaire bron.
-    const ahrefsLines = [...topPages]
-      .sort((a, b) => (b.traffic || 0) - (a.traffic || 0))
-      .slice(0, 260)
-      .map((t) => `- ${pagePath(t.url)} | top: "${t.topKeyword}" pos ${t.position ?? "?"} | ${t.traffic ?? 0} Ahrefs-verkeer | ${t.refDomains ?? "?"} verw.domeinen | ${t.keywords ?? "?"} kw`);
-
-    const pageLines = [...urls]
-      .sort((a, b) => b.gscClicks - a.gscClicks)
-      .slice(0, 250)
-      .map((u) => `- ${pagePath(u.url)} | status ${u.status ?? "?"} | ${u.gscClicks} clicks | ${u.gscImpressions} vertoningen${u.title ? ` | "${u.title}"` : ""}`);
-
-    const matrixLines = [...matrix]
-      .sort((a, b) => b.impressions - a.impressions)
-      .slice(0, 400)
-      .map((m) => {
-        const vol = volMap.get(m.keyword.toLowerCase());
-        return `- "${m.keyword}"${vol != null ? ` (vol ${vol})` : ""} -> ${pagePath(m.page)} | pos ${m.position} | ${m.clicks} clicks | ${m.impressions} vertoningen`;
-      });
-
-    // Flip-tijdreeks: per zoekwoord welke URL de top-rankende was in 3 opeenvolgende
-    // ~30-daagse vensters (nieuw -> oud). ≥2 verschillende = URL-flipping.
-    const flipLines = [...flips]
-      .slice(0, 80)
-      .map((f) => `- "${f.keyword}": ${f.topUrls.join("  →  ")}  (${f.flips} wissel${f.flips === 1 ? "" : "s"} in 90d)`);
-
-    const hasGsc = matrix.length > 0;
-    const hasFlips = flips.length > 0 || matrix.length > 0; // de flip-query draaide als er GSC is
-    const context = [
-      `KLANT: ${client?.name || slug} (domein: ${domain})`,
-      "",
-      "DATAKWALITEIT (neem dit over in het veld datakwaliteit): " +
-        `gsc=${hasGsc}, gscTijdreeks=${hasFlips} (3 vensters van ~30 dagen), ahrefsZoekwoorden=${hasAhrefsKw} (per pagina, met positie), ahrefsBacklinks=${hasRefDom} (verwijzende domeinen per pagina), crawl=false.`,
-      "",
-      "AHREFS PER PAGINA — JE PRIMAIRE BRON (per pagina het top-zoekwoord met positie, organisch verkeer, verwijzende domeinen en aantal zoekwoorden; gesorteerd op verkeer). Hieruit clusteren: pagina's waarvan het top-zoekwoord de merk+geo-term van dezelfde plaats is, horen bij elkaar. Let op pagina's die op 'merk grote-stad' of 'soa test grote-stad' ranken terwijl hun URL een andere/omliggende plaats of een variant (kliniek-/poli-/test-) is:",
-      ahrefsLines.length ? ahrefsLines.join("\n") : "- (GEEN Ahrefs-data beschikbaar. Meld dit expliciet in de samenvatting en datakwaliteit; de analyse is dan zwak en leunt alleen op Search Console.)",
-      "",
-      "ALLE PAGINA'S (spiegel van de live site, met Search Console-klikken, status/redirects):",
-      pageLines.length ? pageLines.join("\n") : "- (geen pagina's ingelezen)",
-      "",
-      "ZOEKWOORD -> PAGINA (Search Console, 90 dagen, ter AANVULLING op de Ahrefs-tabel hierboven):",
-      matrixLines.length ? matrixLines.join("\n") : "- (geen sitebrede Search Console-data)",
-      "",
-      "URL-FLIP-TIJDREEKS (wisselt de top-rankende URL per zoekwoord over de tijd?):",
-      flipLines.length ? flipLines.join("\n") : "- (geen URL-flips gedetecteerd, of geen tijdreeks beschikbaar)",
-    ].join("\n");
-
-    const raw = await callClaude(buildSystemPrompt(), [{ role: "user", content: context.slice(0, 36000) }], 16000, { slug, action: "cannibal_redirect" });
     const cleaned = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
     const first = cleaned.indexOf("{"); const last = cleaned.lastIndexOf("}");
     const jsonText = first >= 0 && last > first ? cleaned.slice(first, last + 1) : cleaned;
-    let parsed: {
-      samenvatting?: unknown; datakwaliteit?: unknown; clusters?: unknown;
-      redirectMap?: unknown; interneLinks?: unknown;
-    };
+    let parsed: { samenvatting?: unknown; datakwaliteit?: unknown; clusters?: unknown; redirectMap?: unknown; interneLinks?: unknown };
     try { parsed = JSON.parse(jsonText); } catch { await setState(slug, "error", null, "De analyse kwam niet als geldige JSON terug. Probeer het opnieuw."); return; }
 
     const result: CannibalResult = {
