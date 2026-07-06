@@ -97,10 +97,12 @@ OUTPUT — KORT EN SCANBAAR, absoluut geen lappen tekst. Denk aan een strak Exce
 1. Eén tot twee zinnen strategie: is deze pagina de winnaar en wat is het patroon. Niet meer.
 2. ÉÉN markdown-tabel, winnaar bovenaan, met EXACT deze kolommen:
    | Pagina | GSC klik | GSC vert | Verw.dom | Rol | Actie | Doel | Reden |
-   - Cellen zijn KORT: getallen in de metriek-kolommen, korte labels, en "Reden" is ÉÉN korte zin van maximaal ~12 woorden (zoals: Rankt 'one day clinic amsterdam centrum' pos 7). ZET NOOIT een lijst van zoekwoorden in een cel; noem hooguit de één beslissende term + positie.
+   - Schrijf elke URL in de kolommen Pagina en Doel als KLIKBARE markdown-link met het pad als tekst en de LIVE-URL-BASIS ervoor: [/pad/](https://domein/pad/). Zo kun je meteen naar de pagina klikken.
+   - Cellen zijn KORT: getallen in de metriek-kolommen, korte labels, en "Reden" is ÉÉN korte zin. ZET NOOIT een lijst van zoekwoorden in een cel; noem hooguit de ene beslissende term + positie.
    - Rol (kort): WINNAAR / kaapt merk / kaapt <subdienst> / duplicaat (geen verkeer) / andere dienst / blog.
-   - Actie (kort): behouden + optimaliseren / de-optimaliseren / 301 / interne links / behouden.
-   - Doel: de winnaar-URL waar het naartoe moet (of - bij de winnaar zelf).
+   - Actie — maak ALTIJD duidelijk of de pagina blijft of vervalt: "301 (pagina vervalt)" / "de-optimaliseren (pagina blijft)" / "interne links (pagina blijft)" / "behouden" / "behouden + optimaliseren".
+   - Doel: bij 301 de winnaar-URL waar hij heen redirect; bij de-optimaliseren/interne links de winnaar waarnaar je intern linkt (de pagina zelf BLIJFT dus bestaan); bij de winnaar zelf "-".
+   - KRITIEK tegen verwarring: als een pagina BLIJFT (de-optimaliseren/interne links/behouden), zeg in de Reden expliciet WAAROM hij blijft, namelijk zijn eigen waarde/intentie (bijv. "informatief artikel, eigen intentie" of "andere dienst"). Heeft de pagina GEEN eigen waarde (duplicaat, dun, leeg), dan is de actie 301 (vervalt), niet de-optimaliseren. Dus: een pagina met een Doel maar zonder duidelijke eigen reden om te blijven, hoort een 301 te zijn.
    - Verwerk de content-mapping-conclusie beknopt in Reden waar relevant (bijv. "vol 0, clusteren").
 3. Daaronder, ALLEEN als er iets te melden is, als KORTE bullets (geen alinea's):
    - "301-redirects:" per regel: van → naar.
@@ -208,6 +210,7 @@ export async function runPageCannibal(slug: string, url: string): Promise<void> 
 
     const context = [
       `LANDINGSPAGINA (het onderwerp): ${subjectPath}`,
+      `LIVE-URL-BASIS (zet dit vóór elk pad voor klikbare links): https://${bare}`,
       plan ? `PLAN/ROL VAN DEZE PAGINA: ${plan.slice(0, 800)}` : "PLAN: (nog geen plan vastgelegd)",
       `Verw.domeinen van deze pagina: ${refDom.get(subjectPath) ?? "?"}`,
       "",
