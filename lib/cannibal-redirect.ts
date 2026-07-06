@@ -59,6 +59,26 @@ async function doEnsure(): Promise<void> {
 
 function pagePath(u: string): string { return (u || "").replace(/^https?:\/\/[^/]+/i, "").trim() || (u || ""); }
 
+// Haalt het eerste complete, gebalanceerde JSON-object uit een tekst (strings/escapes
+// meegerekend), zodat losse accolades in proza de parse niet breken. Sluit het object
+// niet (afgekapt antwoord), dan geeft hij de rest terug zodat we het kunnen herkennen.
+function extractJsonObject(s: string): string {
+  const start = s.indexOf("{");
+  if (start < 0) return s;
+  let depth = 0, inStr = false, esc = false;
+  for (let i = start; i < s.length; i++) {
+    const ch = s[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (ch === "\\") esc = true;
+      else if (ch === '"') inStr = false;
+    } else if (ch === '"') inStr = true;
+    else if (ch === "{") depth++;
+    else if (ch === "}") { depth--; if (depth === 0) return s.slice(start, i + 1); }
+  }
+  return s.slice(start);
+}
+
 // Laadt de skill (methodiek + output-schema) van schijf. Dit is de single source
 // of truth die zowel Cowork als het dashboard draaien.
 let skillCache: string | null = null;
@@ -197,13 +217,22 @@ export async function runCannibalRedirect(slug: string): Promise<void> {
     const firstMsg = `Analyseer keyword-cannibalisatie voor ${client?.name || slug} (domein: ${domain}). Haal de data zelf op met de tools: begin met ahrefs_pages() en site_urls(), zoek dan per plaats/thema, controleer intentie waar nodig, en lever tot slot UITSLUITEND de JSON volgens het output-schema.`;
     // maxRounds bewust begrensd zodat de agentische loop binnen de 300s-functielimiet
     // blijft; per ronde mag de agent meerdere tools parallel aanroepen, dus dit is ruim.
-    const raw = await callClaudeAgentic(buildSystemPrompt(), [{ role: "user", content: firstMsg }], CANNIBAL_TOOLS, makeCannibalRunner(slug, domain), 12, 8000, { slug, action: "cannibal_redirect" });
+    // maxTokens ruim (16000) zodat de volledige JSON van een grondige analyse er niet
+    // afgekapt uitkomt; anders faalt de parse.
+    const raw = await callClaudeAgentic(buildSystemPrompt(), [{ role: "user", content: firstMsg }], CANNIBAL_TOOLS, makeCannibalRunner(slug, domain), 12, 16000, { slug, action: "cannibal_redirect" });
 
     const cleaned = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
-    const first = cleaned.indexOf("{"); const last = cleaned.lastIndexOf("}");
-    const jsonText = first >= 0 && last > first ? cleaned.slice(first, last + 1) : cleaned;
+    const jsonText = extractJsonObject(cleaned);
     let parsed: { samenvatting?: unknown; datakwaliteit?: unknown; clusters?: unknown; redirectMap?: unknown; interneLinks?: unknown };
-    try { parsed = JSON.parse(jsonText); } catch { await setState(slug, "error", null, "De analyse kwam niet als geldige JSON terug. Probeer het opnieuw."); return; }
+    try {
+      parsed = JSON.parse(jsonText);
+    } catch {
+      const looksTruncated = jsonText.trim().startsWith("{") && !jsonText.trim().endsWith("}");
+      await setState(slug, "error", null, looksTruncated
+        ? "De analyse werd afgekapt voordat de JSON af was (te lang). Probeer het opnieuw; ik heb de limiet verhoogd."
+        : `De analyse kwam niet als geldige JSON terug. Probeer het opnieuw.${cleaned ? ` (begon met: ${cleaned.slice(0, 120).replace(/\s+/g, " ")})` : ""}`);
+      return;
+    }
 
     const result: CannibalResult = {
       samenvatting: typeof parsed.samenvatting === "string" ? parsed.samenvatting : "",
