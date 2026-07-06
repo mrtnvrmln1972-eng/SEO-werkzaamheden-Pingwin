@@ -418,9 +418,9 @@ tbody td:last-child { text-align: center; }
 }
 .pages-detail { padding: 18px 20px 20px; text-align: left; }
 .pages-detail-label { font-size: 12px; font-weight: 700; color: var(--dark); display: block; margin-bottom: 6px; }
-.pages-plan { width: 100%; min-height: 90px; font-family: 'Montserrat', sans-serif; font-size: 13px; color: var(--dark); line-height: 1.5; border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; outline: none; resize: vertical; }
+.pages-plan { width: 100%; max-width: 1040px; min-height: 90px; font-family: 'Montserrat', sans-serif; font-size: 13px; color: var(--dark); line-height: 1.5; border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; outline: none; resize: vertical; }
 .pages-plan:focus { border-color: var(--orange); }
-.pages-plan-view { border: 1px solid var(--border); border-left: 3px solid var(--brand-teal); border-radius: 8px; padding: 10px 14px; font-size: 13px; line-height: 1.55; color: var(--dark); background: var(--white); }
+.pages-plan-view { border: 1px solid var(--border); border-left: 3px solid var(--brand-teal); border-radius: 8px; padding: 10px 14px; font-size: 13px; line-height: 1.55; color: var(--dark); background: var(--white); max-width: 1040px; }
 .pages-plan-view.muted { color: var(--muted); }
 .pages-plan-view p { margin: 0 0 8px; }
 .pages-plan-view ul { margin: 4px 0 8px; padding-left: 20px; }
@@ -561,9 +561,17 @@ tbody td:last-child { text-align: center; }
 .pch-canni-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .pch-canni-doc { border-top: 1px solid var(--border); padding-top: 8px; }
 .pch-canni-toggle { background: none; border: none; cursor: pointer; font-size: 13px; font-weight: 700; color: var(--brand-teal); padding: 4px 0; text-align: left; width: 100%; }
-.pch-canni-md { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; margin-top: 8px; max-width: 960px; overflow-x: auto; }
-.pch-canni-md table { font-size: 12px; }
+.pch-canni-md { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; margin-top: 8px; max-width: 100%; overflow-x: auto; }
+.pch-canni-md table { font-size: 12px; width: 100%; }
 .pch-canni-md td, .pch-canni-md th { vertical-align: top; }
+/* Metriek- en label-kolommen zo smal mogelijk; URL- en reden-kolommen krijgen de ruimte. */
+.pch-canni-md td:nth-child(2), .pch-canni-md td:nth-child(3), .pch-canni-md td:nth-child(4), .pch-canni-md td:nth-child(5), .pch-canni-md td:nth-child(6),
+.pch-canni-md th:nth-child(2), .pch-canni-md th:nth-child(3), .pch-canni-md th:nth-child(4), .pch-canni-md th:nth-child(5), .pch-canni-md th:nth-child(6) { white-space: nowrap; width: 1%; }
+.pch-canni-md td:nth-child(1), .pch-canni-md td:nth-child(7) { min-width: 150px; }
+.pch-canni-md td:nth-child(8) { min-width: 220px; }
+/* Tekstkaarten op leesbare breedte houden; de brede cannibalisatie-tabel mag daarbuiten treden. */
+.page-chat, .page-chat-docs { max-width: 1040px; }
+.page-chat-canni { max-width: 1500px; }
 /* Vervolgvraag + samenvatten tot conclusie/strategie: eigen kaart onder de analyse, oranje accent (afrondactie). */
 .page-chat-followup { border: 1px solid var(--border); border-left: 3px solid var(--orange); border-radius: 12px; padding: 18px 20px; margin: 14px 0 10px; background: var(--orange-light); }
 .pchf-lead { font-size: 13px; color: var(--dark); margin-bottom: 10px; }
