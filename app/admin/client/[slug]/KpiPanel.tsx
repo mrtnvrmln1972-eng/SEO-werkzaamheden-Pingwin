@@ -177,7 +177,7 @@ function Collapse({ sub, title, meta, open, onToggle, actions, children }: { sub
   );
 }
 
-export default function KpiPanel({ slug, domain }: { slug: string; domain: string }) {
+export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; domain: string; onOpenPage?: (url: string) => void }) {
   // Open/dicht per (sub)sectie. Hoofdsecties staan standaard open, subsecties dicht.
   const [openMap, setOpenMap] = useState<Record<string, boolean>>({ sc: true, ahrefs: true, ga: true });
   const isOpen = (id: string, def = false) => openMap[id] ?? def;
@@ -496,6 +496,7 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
                     <th>Pagina</th>
                     <th>Klikken</th>
                     <th>Vertoningen</th>
+                    <th></th>
                   </tr></thead>
                   <tbody>
                     {prioPages.map((p) => (
@@ -506,6 +507,7 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
                         <td><a href={p.url} target="_blank" rel="noreferrer">{shortUrl(p.url)}</a></td>
                         <td>{nl(p.clicks)} <Delta cur={p.clicks} prev={p.prevClicks} /></td>
                         <td>{nl(p.impressions)} <Delta cur={p.impressions} prev={p.prevImpressions} /></td>
+                        <td className="kpi-openpage-cell"><button type="button" className="ghost-btn small" onClick={(e) => { e.stopPropagation(); onOpenPage?.(p.url); }} title="Open deze pagina in het Pagina's-tabje">open in Pagina&rsquo;s</button></td>
                       </tr>
                     ))}
                   </tbody>
@@ -523,6 +525,7 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
                     <SortTh label="Pagina" k="url" sort={pageSort} setSort={setPageSort} />
                     <SortTh label="Klikken" k="clicks" sort={pageSort} setSort={setPageSort} />
                     <SortTh label="Vertoningen" k="impressions" sort={pageSort} setSort={setPageSort} />
+                    <th></th>
                   </tr></thead>
                   <tbody>
                     {sortedPages.map((p, i) => {
@@ -537,6 +540,7 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
                           <td><a href={p.url} target="_blank" rel="noreferrer">{shortUrl(p.url)}</a></td>
                           <td>{nl(p.clicks)} <Delta cur={p.clicks} prev={p.prevClicks} /></td>
                           <td>{nl(p.impressions)} <Delta cur={p.impressions} prev={p.prevImpressions} /></td>
+                          <td className="kpi-openpage-cell"><button type="button" className="ghost-btn small" onClick={(e) => { e.stopPropagation(); onOpenPage?.(p.url); }} title="Open deze pagina in het Pagina's-tabje">open in Pagina&rsquo;s</button></td>
                         </tr>
                       );
                     })}

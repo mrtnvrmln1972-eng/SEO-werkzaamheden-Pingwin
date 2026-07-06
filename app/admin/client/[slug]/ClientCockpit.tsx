@@ -88,6 +88,17 @@ export default function ClientCockpit({
     router.replace(`${pathname}?tab=werkzaamheden&highlight=${taskId}`, { scroll: false });
     router.refresh();
   }
+
+  // Vanuit de KPI's een pagina openen in het Pagina's-tabje: wissel van tab en geef
+  // de doel-URL door (met oplopende teller zodat herhaald klikken op dezelfde pagina
+  // opnieuw opent en scrollt).
+  const [pagesTarget, setPagesTarget] = useState<{ url: string; n: number } | null>(null);
+  function goToPage(url: string) {
+    setPaginasVisited(true);
+    setTab("paginas");
+    setPagesTarget((t) => ({ url, n: (t?.n || 0) + 1 }));
+    router.replace(`${pathname}?tab=paginas&page=${encodeURIComponent(url)}`, { scroll: false });
+  }
   const [shQuery, setShQuery] = useState("");
   const [openEmail, setOpenEmail] = useState<string | null>(null);
   const replyRef = useRef<HTMLDivElement>(null);
@@ -463,7 +474,7 @@ export default function ClientCockpit({
 
         {tab === "resultaten" && (
           <>
-            <KpiPanel slug={client.slug} domain={client.domain || ""} />
+            <KpiPanel slug={client.slug} domain={client.domain || ""} onOpenPage={goToPage} />
           </>
         )}
 
@@ -478,7 +489,7 @@ export default function ClientCockpit({
 
         {paginasVisited && (
           <div style={{ display: tab === "paginas" ? "block" : "none" }}>
-            <PagesPanel slug={client.slug} initialProfile={client.seoProfile || ""} clientEmail={client.email || ""} clientName={client.name} domain={client.domain || ""} onGoToTask={goToNewTask} />
+            <PagesPanel slug={client.slug} initialProfile={client.seoProfile || ""} clientEmail={client.email || ""} clientName={client.name} domain={client.domain || ""} onGoToTask={goToNewTask} openTarget={pagesTarget} />
           </div>
         )}
 

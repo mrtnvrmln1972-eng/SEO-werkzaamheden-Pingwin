@@ -66,7 +66,10 @@ function recombineProfile(profileMd: string, tovMd: string, knowhow: string): st
   return [profileMd.trim(), tovMd.trim(), knowhow.trim()].filter(Boolean).join("\n\n");
 }
 
-export default function PagesPanel({ slug, initialProfile, clientEmail, clientName, onGoToTask, domain }: { slug: string; initialProfile?: string; clientEmail?: string; clientName?: string; onGoToTask?: (taskId: number) => void; domain?: string }) {
+// Stabiele DOM-id per pagina-rij, zodat we er vanuit de KPI's naartoe kunnen scrollen.
+const rowDomId = (url: string) => "pgrow-" + (url || "").replace(/[^a-zA-Z0-9]/g, "-");
+
+export default function PagesPanel({ slug, initialProfile, clientEmail, clientName, onGoToTask, domain, openTarget }: { slug: string; initialProfile?: string; clientEmail?: string; clientName?: string; onGoToTask?: (taskId: number) => void; domain?: string; openTarget?: { url: string; n: number } | null }) {
   type Opp = { impressions: number; clicks: number; ctr: number; position: number; bestKeyword: string; bestPosition: number | null; bestVolume: number | null; score: number; label: string; level: string };
   const [opps, setOpps] = useState<Record<string, Opp>>({});
   const [sortKey, setSortKey] = useState<"kans" | "vertoningen" | "positie" | "klikken" | "volume">("kans");
@@ -109,6 +112,25 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
       .catch(() => { /* niet kritisch */ });
     return () => { alive = false; }; /* eslint-disable-next-line */
   }, [slug]);
+
+  // Vanuit de KPI's een pagina openen: klap de juiste rij open en scroll ernaartoe.
+  // openTarget.n is een teller zodat herhaald klikken op dezelfde pagina opnieuw werkt.
+  const openHandledRef = useRef(0);
+  useEffect(() => {
+    if (!openTarget || loading) return;
+    if (openHandledRef.current === openTarget.n) return;
+    openHandledRef.current = openTarget.n;
+    const norm = (u: string) => (u || "").replace(/^https?:\/\//, "").replace(/\/+$/, "").toLowerCase();
+    const match = urls.find((x) => norm(x.url) === norm(openTarget.url));
+    if (match) {
+      setQ("");
+      setOpen(match.url);
+      setTimeout(() => { document.getElementById(rowDomId(match.url))?.scrollIntoView({ behavior: "smooth", block: "center" }); }, 80);
+    } else {
+      setQ(shortUrl(openTarget.url));
+    }
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [openTarget, loading, urls]);
 
   async function loadFolders(parentId: string) {
     setPickBusy(true); setPickErr("");
@@ -442,7 +464,7 @@ function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoTo
 
   return (
     <>
-      <tr className={"pages-row" + (open ? " open" : "")} onClick={onToggle}>
+      <tr id={rowDomId(u.url)} className={"pages-row" + (open ? " open" : "")} onClick={onToggle}>
         <td>{statusBadge(u.status, u.redirectTarget)}</td>
         <td>
           <a href={u.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>{shortUrl(u.url)}</a>
