@@ -313,7 +313,7 @@ export function equalBeforeAfter(changeDate: string, maxDays = 60, trimDays = 3)
 }
 
 export type MetricPair = { cur: number; prev: number };
-export type GscSeries = { clicks: number[]; impressions: number[]; ctr: number[]; position: number[] };
+export type GscSeries = { dates: string[]; clicks: number[]; impressions: number[]; ctr: number[]; position: number[] };
 // Sitebrede zoekwoord→pagina-matrix: welk zoekwoord op welke pagina rankt.
 // Dit is de kern voor cannibalisatie-detectie (bv. homepage die op "hovenier
 // [plaats]" rankt terwijl er een aparte plaatspagina bestaat).
@@ -526,7 +526,7 @@ export async function getGscComparison(domain: string, days: number, compare: "p
   const token = await googleAccessToken();
   if (!token) return null;
   const range = periodRanges(days, compare);
-  const emptySeries: GscSeries = { clicks: [], impressions: [], ctr: [], position: [] };
+  const emptySeries: GscSeries = { dates: [], clicks: [], impressions: [], ctr: [], position: [] };
   const empty: GscComparison = { connected: true, site: null, totals: null, series: emptySeries, keywords: [], pages: [], range };
   if (!domain) return empty;
   const site = await gscPickSite(token, domain);
@@ -545,6 +545,7 @@ export async function getGscComparison(domain: string, days: number, compare: "p
   // Dagreeksen (op datum gesorteerd) voor de grafiekjes.
   const dated = [...byDate].sort((a, b) => (a.keys?.[0] || "").localeCompare(b.keys?.[0] || ""));
   const series: GscSeries = {
+    dates: dated.map((r) => r.keys?.[0] || ""),
     clicks: dated.map((r) => Math.round(r.clicks)),
     impressions: dated.map((r) => Math.round(r.impressions)),
     ctr: dated.map((r) => Math.round(r.ctr * 1000) / 10),
