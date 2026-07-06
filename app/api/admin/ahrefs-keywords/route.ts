@@ -27,7 +27,8 @@ export async function POST(req: NextRequest) {
   const slug = String(body.slug || "").trim();
   if (!slug) return NextResponse.json({ ok: false, error: "Geen klant opgegeven." }, { status: 400 });
   const g2 = await guardSlug(req, slug); if (!g2.ok) return g2.res;
-  const res = await syncAhrefsKeywords(slug);
+  const gscKeywords = Array.isArray(body.gscKeywords) ? (body.gscKeywords as unknown[]).map((k) => String(k)).filter(Boolean).slice(0, 400) : [];
+  const res = await syncAhrefsKeywords(slug, gscKeywords);
   if (!res.ok) return NextResponse.json({ ok: false, error: res.error }, { status: 400 });
   return NextResponse.json({ ok: true, total: res.total ?? 0 });
 }

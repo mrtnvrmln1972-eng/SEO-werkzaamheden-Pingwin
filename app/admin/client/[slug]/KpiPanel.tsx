@@ -210,10 +210,10 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
     if (ahrefsBusy) return;
     setAhrefsBusy(true); setAhrefsMsg("");
     try {
-      const r = await fetch("/api/admin/ahrefs-keywords", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }) });
+      const r = await fetch("/api/admin/ahrefs-keywords", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, gscKeywords: (gsc?.keywords || []).map((k) => k.keyword) }) });
       const d = await r.json();
       if (d.ok) {
-        setAhrefsMsg(`${d.total} zoekwoorden opgehaald uit Ahrefs.`);
+        setAhrefsMsg(`${d.total} Ahrefs-zoekwoorden opgehaald; zoekvolume voor je Search Console-zoekwoorden is bijgewerkt.`);
         const g = await fetch(`/api/admin/ahrefs-keywords?slug=${encodeURIComponent(slug)}`).then((x) => x.json()).catch(() => null);
         if (g?.ok) setAhrefsKw(g.keywords || []);
       } else setAhrefsMsg(d.error || "Ophalen mislukt.");
@@ -308,9 +308,9 @@ export default function KpiPanel({ slug, domain }: { slug: string; domain: strin
   const ahGetters: Record<AhKey, (k: AhrefsKeyword) => number | string> = {
     focus: (k) => focusRank(k.keyword), keyword: (k) => k.keyword, volume: (k) => k.volume || 0, position: (k) => k.position ?? 999, intent: (k) => k.intent, kans: (k) => (isFruit(k) ? 0 : 1),
   };
-  const ahFiltered = ahrefsKw.filter((k) => !k.branded && (onlyFruit ? isFruit(k) : true));
+  const ahFiltered = ahrefsKw.filter((k) => k.organic !== false && !k.branded && (onlyFruit ? isFruit(k) : true));
   const ahSorted = applySort(ahFiltered, ahSort, ahGetters);
-  const fruitCount = ahrefsKw.filter((k) => !k.branded && isFruit(k)).length;
+  const fruitCount = ahrefsKw.filter((k) => k.organic !== false && !k.branded && isFruit(k)).length;
 
   const oppGetters: Record<OppKey, (o: Opportunity) => number | string> = {
     focus: (o) => focusRank(o.keyword), keyword: (o) => o.keyword, volume: (o) => o.volume ?? 0, difficulty: (o) => o.difficulty ?? 0, source: (o) => o.source, reason: (o) => o.reason || "",
