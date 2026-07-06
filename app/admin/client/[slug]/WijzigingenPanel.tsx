@@ -243,6 +243,18 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
     setKwFocus((f) => { const n = { ...f }; if (tier) n[keyword] = "prio"; else delete n[keyword]; return n; });
     fetch("/api/admin/kpi/keyword-focus", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, keyword, tier }) }).catch(() => {});
   }
+  // Prioriteit-pagina's: aangevinkt (ster) = bovenaan het overzicht.
+  const [priority, setPriority] = useState<Set<string>>(new Set());
+  const prioKey = (u: string) => (u || "").replace(/\/+$/, "");
+  useEffect(() => {
+    fetch(`/api/admin/changes/priority?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).then((d) => { if (d.ok) setPriority(new Set(d.urls || [])); }).catch(() => {});
+  }, [slug]);
+  function togglePriority(url: string) {
+    const key = prioKey(url);
+    const on = !priority.has(key);
+    setPriority((s) => { const n = new Set(s); if (on) n.add(key); else n.delete(key); return n; });
+    fetch("/api/admin/changes/priority", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url, priority: on }) }).catch(() => {});
+  }
   // Handmatig een bekende wijziging toevoegen
   const [showAdd, setShowAdd] = useState(false);
   const [urls, setUrls] = useState<string[]>([]);
@@ -445,11 +457,12 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
     );
   }
 
-  const clusters = clusterChanges(events);
+  // Prioriteit-pagina's bovenaan; daarbinnen blijft de datumvolgorde (stabiele sort).
+  const clusters = [...clusterChanges(events)].sort((a, b) => (priority.has(prioKey(b.rep.url)) ? 1 : 0) - (priority.has(prioKey(a.rep.url)) ? 1 : 0));
   return (
     <div className="cockpit-card acc-teal">
       <div className="ck-section-head">
-        <span>Wijzigingen ({clusters.length}) <HelpHint wide text="Wat er op de pagina's is aangepast, met datum. Aanpassingen aan dezelfde pagina binnen 2 dagen worden tot één moment gebundeld (dan wordt de pagina opnieuw geïndexeerd); daaromheen zie je het effect op de KPI's. Uit WordPress halen we alleen onze eigen aanpassingen op." /></span>
+        <span>Wijzigingen ({clusters.length}) <HelpHint wide text="Wat er op de pagina's is aangepast, met datum. Aanpassingen aan dezelfde pagina binnen 2 dagen worden tot één moment gebundeld (dan wordt de pagina opnieuw geïndexeerd); daaromheen zie je het effect op de KPI's. Uit WordPress halen we ALLE wijzigingen op (ook die van de klant of hun developer, tot ~8 maanden terug); wie het deed staat erbij. Zet een pagina met de ster op prioriteit om hem bovenaan te krijgen." /></span>
         <span style={{ display: "inline-flex", gap: 8 }}>
           <button type="button" className="ghost-btn small" onClick={() => setShowAdd((v) => !v)}>{showAdd ? "Sluiten" : "Wijziging toevoegen"}</button>
           {!wpSet && <button type="button" className="ghost-btn small" onClick={() => setWpSetupOpen((v) => !v)} title="WordPress-applicatiewachtwoord instellen voor de volledige bewerkingshistorie">WordPress-koppeling</button>}
@@ -507,15 +520,21 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
       {loading && <div className="muted" style={{ padding: 12 }}>Laden…</div>}
       {!loading && events.length === 0 && <div className="muted" style={{ padding: 12 }}>Nog geen wijzigingen. Draai een scan (basislijn), en na een volgende scan verschijnen hier de veranderingen.</div>}
       <div className="wz-list">
-        {clusters.map(({ rep: e, count }) => (
-          <button key={e.id} type="button" className="wz-item" onClick={() => setOpen(e)}>
-            <div className="wz-item-main">
-              <div className="wz-item-title">{e.diff.meta_title?.after || e.diff.h1?.after || shortUrl(e.url)}{count > 1 ? <span style={{ color: "var(--orange-dark)", fontWeight: 600 }}> · {count} wijzigingen gebundeld</span> : ""}</div>
-              <div className="wz-item-sub">{shortUrl(e.url)} · {e.summary}{e.isManual ? " · handmatig" : ""}</div>
+        {clusters.map(({ rep: e, count }) => {
+          const isPrio = priority.has(prioKey(e.url));
+          return (
+            <div key={e.id} className={"wz-item-wrap" + (isPrio ? " prio" : "")}>
+              <span className={"wz-star" + (isPrio ? " on" : "")} title={isPrio ? "Prioriteit aan, klik om uit te zetten" : "Markeer als prioriteit (komt bovenaan)"} onClick={() => togglePriority(e.url)}>{isPrio ? "★" : "☆"}</span>
+              <button type="button" className="wz-item" onClick={() => setOpen(e)}>
+                <div className="wz-item-main">
+                  <div className="wz-item-title">{e.diff.meta_title?.after || e.diff.h1?.after || shortUrl(e.url)}{count > 1 ? <span style={{ color: "var(--orange-dark)", fontWeight: 600 }}> · {count} wijzigingen gebundeld</span> : ""}</div>
+                  <div className="wz-item-sub">{shortUrl(e.url)} · {e.summary}{e.isManual ? " · handmatig" : ""}</div>
+                </div>
+                <div className="wz-item-date">{dt(e.detectedAt)}</div>
+              </button>
             </div>
-            <div className="wz-item-date">{dt(e.detectedAt)}</div>
-          </button>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

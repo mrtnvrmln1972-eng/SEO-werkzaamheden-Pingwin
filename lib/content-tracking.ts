@@ -256,16 +256,14 @@ export async function addWordpressChanges(slug: string, domain: string): Promise
   return { scanned, added, hasApi: true, newest };
 }
 
-// Alleen wijzigingen die WIJ hebben gedaan (op auteur-e-mail/naam). Aanpassingen
-// door de klant of anderen blijven uit het overzicht.
-const OUR_TEAM_EMAILS = new Set(["pingwinonline@gmail.com", "toni@pingwin.nl", "maarten@pingwin.nl"]);
-const OUR_TEAM_RE = /pingwin|toni|maarten/i;
+// We tonen ALLE WordPress-wijzigingen (ook die van de klant of hun developer); wie
+// de wijziging deed staat wél in de samenvatting.
 
-// Volledige bewerkingshistorie uit WordPress (revisions, geauthenticeerd), maar
-// GEGROEPEERD en GEFILTERD: revisies van ons team binnen ~2 dagen worden tot één
-// wijziging gebundeld (dat is het moment dat een pagina opnieuw geïndexeerd wordt,
-// vanaf daar volgen we de KPI's). Wijzigingen door anderen blijven weg. Herbouwt
-// de WordPress-events schoon bij elke sync.
+// Volledige bewerkingshistorie uit WordPress (revisions, geauthenticeerd), tot ~8
+// maanden terug, van IEDEREEN (ook klant/developer). GEGROEPEERD: revisies binnen ~2
+// dagen worden tot één wijziging gebundeld (dat is het moment dat een pagina opnieuw
+// geïndexeerd wordt, vanaf daar volgen we de KPI's); wie het deed staat in de
+// samenvatting. Herbouwt de WordPress-events schoon bij elke sync.
 function wordCount(s?: string): number { return s ? s.split(/\s+/).filter(Boolean).length : 0; }
 
 // Vergelijkt de LIVE pagina met de laatst vastgelegde snapshot en geeft de volledige
@@ -326,19 +324,13 @@ export async function addWordpressRevisions(slug: string, domain: string, auth: 
   const [pages, users] = await Promise.all([fetchWordpressPages(domain, auth), fetchWordpressUsers(domain, auth)]);
   if (pages.length === 0) return { scanned: 0, added: 0, hasApi: false, newest: null };
 
-  const canIdentify = users.size > 0;
-  const isOurs = (authorId: number): boolean => {
-    if (!canIdentify) return true; // auteurs niet te bepalen -> niet filteren
-    const u = users.get(authorId);
-    if (!u) return false;
-    if (u.email && OUR_TEAM_EMAILS.has(u.email.toLowerCase())) return true;
-    return OUR_TEAM_RE.test(u.name) || OUR_TEAM_RE.test(u.slug) || OUR_TEAM_RE.test(u.email);
-  };
+  // Alle wijzigingen tot ~8 maanden terug.
+  const cutoff = Date.now() - 245 * 86400000;
 
   // Schone herbouw: verwijder de vorige WordPress-events (handmatige/andere blijven).
   await sql`DELETE FROM page_change_events WHERE client_slug = ${slug} AND source = 'wordpress'`;
 
-  const managed = [...pages].sort((a, b) => (b.modified || "").localeCompare(a.modified || "")).slice(0, 60);
+  const managed = [...pages].sort((a, b) => (b.modified || "").localeCompare(a.modified || "")).slice(0, 150);
   const TWO_DAYS = 2 * 86400000;
   const seen = new Set<string>();
   let scanned = 0, added = 0, newest: string | null = null;
@@ -346,13 +338,13 @@ export async function addWordpressRevisions(slug: string, domain: string, auth: 
   for (const p of managed) {
     scanned++;
     const allRevs = await fetchWordpressRevisions(domain, p.type, p.id, auth); // oplopend op datum
-    const team = allRevs.map((r, i) => ({ r, i })).filter((x) => isOurs(x.r.author));
-    if (team.length === 0) continue;
+    const inWindow = allRevs.map((r, i) => ({ r, i })).filter((x) => new Date(x.r.modified).getTime() >= cutoff);
+    if (inWindow.length === 0) continue;
 
-    // Groepeer opeenvolgende team-revisies met <=2 dagen ertussen tot één wijziging.
+    // Groepeer opeenvolgende revisies met <=2 dagen ertussen tot één wijziging.
     const clusters: { r: WpRevision; i: number }[][] = [];
     let cur: { r: WpRevision; i: number }[] = [];
-    for (const x of team) {
+    for (const x of inWindow) {
       if (cur.length === 0) { cur.push(x); continue; }
       const gap = new Date(x.r.modified).getTime() - new Date(cur[cur.length - 1].r.modified).getTime();
       if (gap <= TWO_DAYS) cur.push(x); else { clusters.push(cur); cur = [x]; }
@@ -424,4 +416,30 @@ export async function getChangeEvent(slug: string, id: number): Promise<ChangeEv
   if (!rows[0]) return null;
   const r = rows[0];
   return { id: Number(r.id), url: r.url as string, detectedAt: new Date(r.detected_at as string).toISOString(), summary: (r.change_summary as string) || "", diff: r.diff as ContentDiff, isManual: !!r.is_manual };
+}
+
+// Prioriteit-pagina's: aanwezigheid in de tabel = prioriteit. Die komen bovenaan in
+// het wijzigingen-overzicht (landingspagina's, pagina's met grote wijzigingen).
+let prioReady: Promise<void> | null = null;
+function ensurePriority(): Promise<void> {
+  if (!prioReady) prioReady = sql`
+    CREATE TABLE IF NOT EXISTS page_priority (
+      client_slug TEXT NOT NULL,
+      url         TEXT NOT NULL,
+      updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (client_slug, url)
+    )`.then(() => {}).catch((e) => { prioReady = null; throw e; });
+  return prioReady;
+}
+function normUrlKey(u: string): string { return (u || "").replace(/\/+$/, ""); }
+export async function getPriorityUrls(slug: string): Promise<string[]> {
+  await ensureSchema(); await ensurePriority();
+  const { rows } = await sql`SELECT url FROM page_priority WHERE client_slug = ${slug}`;
+  return rows.map((r) => normUrlKey(r.url as string));
+}
+export async function setPagePriority(slug: string, url: string, on: boolean): Promise<void> {
+  await ensureSchema(); await ensurePriority();
+  const key = normUrlKey(url);
+  if (on) await sql`INSERT INTO page_priority (client_slug, url) VALUES (${slug}, ${key}) ON CONFLICT (client_slug, url) DO NOTHING`;
+  else await sql`DELETE FROM page_priority WHERE client_slug = ${slug} AND url = ${key}`;
 }

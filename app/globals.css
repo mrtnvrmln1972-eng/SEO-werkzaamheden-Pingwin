@@ -1329,6 +1329,11 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 
 /* ── Wijzigingen-tab (change-detectie + diff) ── */
 .wz-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.wz-item-wrap { display: flex; align-items: center; gap: 8px; }
+.wz-item-wrap.prio .wz-item { border-color: var(--orange); background: var(--orange-light); }
+.wz-star { flex: 0 0 auto; cursor: pointer; font-size: 18px; line-height: 1; color: var(--border); user-select: none; padding: 2px; }
+.wz-star:hover { color: var(--orange); }
+.wz-star.on { color: var(--orange); }
 .wz-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; text-align: left; background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer; font: inherit; }
 .wz-item:hover { border-color: var(--orange); }
 .wz-item-title { font-weight: 600; color: var(--dark); }
