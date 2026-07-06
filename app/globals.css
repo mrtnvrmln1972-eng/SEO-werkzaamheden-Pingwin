@@ -917,6 +917,20 @@ button.ck-collapse-head {
 .kc-cur .kpi-delta { margin-top: 0; }
 .kpi-value-row { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .kpi-value-row .kpi-delta { margin-top: 0; }
+/* Site-brede cannibalisatie- & redirect-analyse */
+.cannibal-summary { font-size: 13px; line-height: 1.5; margin-bottom: 4px; }
+.cannibal-cluster { margin-top: 16px; border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; background: #fff; }
+.cannibal-cluster-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; font-size: 14px; }
+.cannibal-ptype { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; color: var(--brand-blue); background: var(--brand-blue-light); padding: 2px 8px; border-radius: 10px; }
+.cannibal-act { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 8px; white-space: nowrap; }
+.cannibal-act.redir { background: #fdecea; color: #C62828; }
+.cannibal-act.deopt { background: var(--brand-orange-soft); color: var(--orange-dark); }
+.cannibal-act.keep { background: #e7f6ea; color: #2E7D32; }
+.cannibal-row.redir td:first-child { border-left: 3px solid #C62828; }
+.cannibal-row.deopt td:first-child { border-left: 3px solid var(--orange); }
+.cannibal-row.keep td:first-child { border-left: 3px solid #2E7D32; }
+.cannibal-tech { margin-top: 18px; }
+.cannibal-tech-item { font-size: 13px; border-top: 1px solid var(--border); padding: 8px 0; }
 .kpi-compare-labels strong { color: var(--dark); }
 .kpi-spark-wrap { position: relative; width: 100%; margin-top: 8px; }
 .kpi-spark { display: block; width: 100%; height: 34px; }

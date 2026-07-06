@@ -13,13 +13,14 @@ import TasksEditor from "./TasksEditor";
 import FocusBlock from "./FocusBlock";
 import HelpHint from "./HelpHint";
 import MailAllowlist from "./MailAllowlist";
+import CannibalPanel from "./CannibalPanel";
 import LinkPreview from "./LinkPreview";
 import DeveloperOverview from "../../developer/DeveloperOverview";
 import KpiPanel from "./KpiPanel";
 import PagesPanel from "./PagesPanel";
 import WijzigingenPanel from "./WijzigingenPanel";
 
-type Tab = "overzicht" | "werkzaamheden" | "paginas" | "resultaten" | "klant" | "developer" | "wijzigingen";
+type Tab = "overzicht" | "werkzaamheden" | "paginas" | "resultaten" | "klant" | "developer" | "wijzigingen" | "cannibalisatie";
 
 // Jouw Superhuman-account (Microsoft 365 hangt hieronder).
 const SUPERHUMAN_ACCOUNT = "Maarten@pingwin.nl";
@@ -244,6 +245,7 @@ export default function ClientCockpit({
               ["paginas", "Pagina’s", ""],
               ["resultaten", "KPI’s", ""],
               ["wijzigingen", "Wijzigingen", ""],
+              ["cannibalisatie", "Cannibalisatie", "Site-brede cannibalisatie- en redirect-analyse"],
               ["klant", "Klant", ""],
               ["developer", "Developer", "Alle developer-taken over alle klanten"],
             ] as [Tab, string, string][]).map(([id, label, title]) => (
@@ -483,6 +485,7 @@ export default function ClientCockpit({
         )}
 
         {tab === "wijzigingen" && <WijzigingenPanel slug={client.slug} />}
+        {tab === "cannibalisatie" && <CannibalPanel slug={client.slug} />}
 
         {tab === "developer" && <DeveloperOverview embedded />}
       </div>
