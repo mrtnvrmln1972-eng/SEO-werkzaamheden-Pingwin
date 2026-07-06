@@ -551,8 +551,9 @@ tbody td:last-child { text-align: center; }
 .pch-canni-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .pch-canni-doc { border-top: 1px solid var(--border); padding-top: 8px; }
 .pch-canni-toggle { background: none; border: none; cursor: pointer; font-size: 13px; font-weight: 700; color: var(--brand-teal); padding: 4px 0; text-align: left; width: 100%; }
-.pch-canni-md { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; margin-top: 8px; max-width: 900px; }
+.pch-canni-md { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; margin-top: 8px; max-width: 960px; overflow-x: auto; }
 .pch-canni-md table { font-size: 12px; }
+.pch-canni-md td, .pch-canni-md th { vertical-align: top; }
 /* Vervolgvraag + samenvatten tot conclusie/strategie: eigen kaart onder de analyse, oranje accent (afrondactie). */
 .page-chat-followup { border: 1px solid var(--border); border-left: 3px solid var(--orange); border-radius: 12px; padding: 18px 20px; margin: 14px 0 10px; background: var(--orange-light); }
 .pchf-lead { font-size: 13px; color: var(--dark); margin-bottom: 10px; }

@@ -93,13 +93,20 @@ WINNAAR-WEGING (fase 4), in deze volgorde: verwijzende domeinen (zwaarst) > orga
 
 ACTIES (beslisboom, licht naar zwaar): niets doen | interne links herverdelen | content differentiëren | canonical | samenvoegen + 301 | de-indexeren (noindex). Lege duplicaten zonder verkeer/links → 301 naar de winnaar.
 
-OUTPUT (nette markdown, Nederlands, geen emoji, geen ruwe # in de tekst maar gebruik echte kopjes):
-1. Een korte strategie-alinea in gewone taal: is deze pagina de winnaar, en wat is het patroon?
-2. Een markdown-TABEL met alle betrokken pagina's: kolommen | Pagina | Rankt op | Positie | Verw.domeinen | Rol | Actie | Doel |. De winnaar bovenaan. Rollen: WINNAAR / kaapt merk / kaapt (andere subdienst) / duplicaat (geen verkeer) / andere intentie. Acties: behouden + optimaliseren / de-optimaliseren / 301 / interne links / behouden.
-3. Kopje "Content mapping": per beslis-zoekwoord de top-10-conclusie (eigen pagina waard, of clusteren naar deze pagina), met volume.
-4. Kopje "301-redirects" (bulletlijst van → naar) en kopje "Interne links" (vanaf → naar, ankertekst).
-5. Kopje "Nieuwe pagina's overwegen": zoekwoorden die volgens de top-10 wél een eigen pagina verdienen (leeg laten als er geen zijn).
-Verzin geen data; gebruik alleen de gegevens hieronder. Benoem eerlijk als een bron ontbrak.`;
+OUTPUT — KORT EN SCANBAAR, absoluut geen lappen tekst. Denk aan een strak Excel-overzicht, niet aan een rapport. Nette markdown, Nederlands, geen emoji.
+1. Eén tot twee zinnen strategie: is deze pagina de winnaar en wat is het patroon. Niet meer.
+2. ÉÉN markdown-tabel, winnaar bovenaan, met EXACT deze kolommen:
+   | Pagina | GSC klik | GSC vert | Verw.dom | Rol | Actie | Doel | Reden |
+   - Cellen zijn KORT: getallen in de metriek-kolommen, korte labels, en "Reden" is ÉÉN korte zin van maximaal ~12 woorden (zoals: Rankt 'one day clinic amsterdam centrum' pos 7). ZET NOOIT een lijst van zoekwoorden in een cel; noem hooguit de één beslissende term + positie.
+   - Rol (kort): WINNAAR / kaapt merk / kaapt <subdienst> / duplicaat (geen verkeer) / andere dienst / blog.
+   - Actie (kort): behouden + optimaliseren / de-optimaliseren / 301 / interne links / behouden.
+   - Doel: de winnaar-URL waar het naartoe moet (of - bij de winnaar zelf).
+   - Verwerk de content-mapping-conclusie beknopt in Reden waar relevant (bijv. "vol 0, clusteren").
+3. Daaronder, ALLEEN als er iets te melden is, als KORTE bullets (geen alinea's):
+   - "301-redirects:" per regel: van → naar.
+   - "Interne links:" per regel: vanaf → naar (ankertekst).
+   - "Nieuwe pagina overwegen:" alleen zoekwoorden die volgens de top-10 + volume écht een eigen pagina verdienen (meestal geen; laat de kop wég als er geen zijn).
+Houd het geheel kort genoeg om in één oogopslag te overzien. Verzin geen data; gebruik alleen de gegevens hieronder.`;
 
 export async function runPageCannibal(slug: string, url: string): Promise<void> {
   try {
