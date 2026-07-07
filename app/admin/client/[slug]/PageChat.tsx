@@ -128,6 +128,23 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   function markStrategieDone() { setTaskDone(true); try { localStorage.setItem(`pw_stratdone_${slug}_${url}`, "1"); } catch { /* geen opslag */ } if (clusterDone > 0) setChatOpen(false); }
 
   const [taskGen, setTaskGen] = useState(false);
+  const [stratLink, setStratLink] = useState(""); // link naar het vastgelegde strategie-document
+  // Haalt de documentlink van de strategie-taak (chat_analyse) van deze pagina op.
+  async function loadStratLink(): Promise<boolean> {
+    try {
+      const d = await fetch(`/api/admin/page-tasks?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}`).then((r) => r.json());
+      if (d.ok && Array.isArray(d.tasks)) {
+        const t = d.tasks.find((x: { stepKind?: string; docLink?: string }) => x.stepKind === "chat_analyse" && x.docLink);
+        if (t?.docLink) { setStratLink(t.docLink); return true; }
+      }
+    } catch { /* niet kritisch */ }
+    return false;
+  }
+  function pollStratLink() {
+    let tries = 0;
+    const iv = setInterval(async () => { tries++; if ((await loadStratLink()) || tries >= 12) clearInterval(iv); }, 4000);
+  }
+  useEffect(() => { setStratLink(""); loadStratLink(); /* eslint-disable-next-line */ }, [slug, url]);
   // Analyse vastgelegd (taak + document) → knop wordt groen "Analyse vastgelegd".
   const [taskDone, setTaskDone] = useState(false);
   // Vat de chat-analyse samen tot één document (Drive of download) en legt de
@@ -143,7 +160,8 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
         const d = await r.json();
         if (!d.ok) { setErr(d.error || `Vastleggen mislukt (status ${r.status}).`); return; }
         markStrategieDone();
-        if (d.started) { setApplied("De analyse wordt op de achtergrond vastgelegd; je kunt wegklikken. Hij verschijnt zo als werkzaamheid in Werkzaamheden."); onApplied(); return; }
+        if (d.started) { setApplied("De analyse wordt op de achtergrond vastgelegd; je kunt wegklikken. Hij verschijnt zo als werkzaamheid in Werkzaamheden, met de link hier zodra hij klaar is."); onApplied(); pollStratLink(); return; }
+        if (d.link) setStratLink(d.link);
         setApplied(`Analyse samengevat en opgeslagen in Google Drive${d.folder ? `, map "${d.folder}"` : ""}${d.owner ? `, account ${d.owner}` : ""} als ${d.isDoc ? "Google Doc" : "Word-bestand"}${!d.isDoc && d.note ? ` (omzetten naar Google Doc lukte niet: ${d.note})` : ""}. <a href="${d.link}" target="_blank" rel="noopener">Open document</a>.${d.shared ? " Iedereen met de link kan het bekijken." : " (Delen lukte niet automatisch.)"} Vastgelegd als één werkzaamheid; je springt nu naar Werkzaamheden om hem in te plannen.`);
         onApplied();
         if (typeof d.taskId === "number" && onGoToTask) onGoToTask(d.taskId);
@@ -502,7 +520,10 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
               <input className="pchf-input" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(input); }} placeholder="Vervolgvraag over deze pagina…" disabled={busy} />
               <button type="button" className="primary-btn small" onClick={() => send(input)} disabled={busy || !input.trim()}>Vraag</button>
             </div>
-            <button type="button" className="pcd-btn pcd-btn-primary" onClick={() => send(SUMMARIZE_PROMPT)} disabled={busy} title="Vat het hele gesprek samen tot de definitieve conclusie en strategie, klaar om over te nemen als plan">Vat samen tot conclusie &amp; strategie</button>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <button type="button" className="pcd-btn pcd-btn-primary" onClick={() => send(SUMMARIZE_PROMPT)} disabled={busy} title="Vat het hele gesprek samen tot de definitieve conclusie en strategie, klaar om over te nemen als plan">Vat samen tot conclusie &amp; strategie</button>
+              <HelpHint text="Laat de AI het gesprek samenvatten tot de definitieve conclusie + strategie. Die neem je daarna met 'Neem plan over' over als het PLAN van deze pagina (stap 1). Dit maakt geen document; het document maak je met 'Strategie vastleggen' onderaan." />
+            </span>
           </div>
           <div className="page-chat-drive">
             <span className="pcd-label">Opslaan in:</span>
@@ -514,7 +535,10 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
           </div>
           <div className="page-chat-tools">
             <button type="button" className={"pcd-btn " + (taskDone ? "pcd-btn-done" : "pcd-btn-primary") + (taskGen ? " busy" : "")} onClick={makeWorkItem} disabled={taskGen}>{taskGen ? "Vastleggen…" : taskDone ? "✓ Strategie vastgelegd." : "Strategie vastleggen"}</button>
-            <HelpHint text="Vat de strategie uit deze chat samen tot één document (Google Drive of download) en legt hem vast als één werkzaamheid met dat document eraan gekoppeld. Los van de SEO-analyse bij de vervolgstappen hieronder." />
+            {stratLink
+              ? <a href={stratLink} target="_blank" rel="noreferrer" className="pcd-doclink">Document openen ↗</a>
+              : taskDone && <span className="muted" style={{ fontSize: 12 }}>document nog niet gekoppeld (kies een Drive-map en leg opnieuw vast)</span>}
+            <HelpHint text="Maakt van de strategie uit deze chat één DOCUMENT (in je Drive-map, of een download als er geen map is gekozen) en legt hem vast als werkzaamheid, met de link ernaast. Dit is iets anders dan 'Vat samen' hierboven: die maakt geen document maar de plantekst." />
           </div>
         </>
       )}
