@@ -5,6 +5,7 @@ import type { GscComparison, Ga4Comparison } from "../../../../lib/google";
 import type { AhrefsKeyword } from "../../../../lib/ahrefs-keywords";
 import type { Opportunity } from "../../../../lib/keyword-opportunities";
 import HelpHint from "./HelpHint";
+import { mdToHtml } from "../../../../lib/markdown";
 
 type GscPage = GscComparison["pages"][number];
 
@@ -71,8 +72,21 @@ function PeriodCompare({ prev, cur, fmt, invert }: { prev: number; cur: number; 
 // eindstand (rechts); daaronder de échte dagreeks als lijn met hover-waarde en een
 // datum-as (begin/midden/eind). invert=true bij 'positie': richting positie 0 loopt de
 // lijn omhoog (beter). Verticale schaal is min-max, zodat de beweging goed zichtbaar is.
-function CardTrend({ label, values, dates, prev, cur, fmt, invert, isPos, periodLabel, prevValues }: { label: ReactNode; values: number[]; dates: string[]; prev: number; cur: number; fmt: (v: number) => string; invert?: boolean; isPos?: boolean; periodLabel: string; prevValues?: number[] }) {
+function CardTrend({ label, values, dates, prev, cur, fmt, invert, isPos, periodLabel, prevValues, metricKey, onExplain }: { label: ReactNode; values: number[]; dates: string[]; prev: number; cur: number; fmt: (v: number) => string; invert?: boolean; isPos?: boolean; periodLabel: string; prevValues?: number[]; metricKey?: string; onExplain?: (m: string) => Promise<string> }) {
   const [hover, setHover] = useState<number | null>(null);
+  const [expOpen, setExpOpen] = useState(false);
+  const [expHtml, setExpHtml] = useState("");
+  const [expLoading, setExpLoading] = useState(false);
+  const [expErr, setExpErr] = useState("");
+  async function toggleExplain() {
+    if (expOpen) { setExpOpen(false); return; }
+    setExpOpen(true);
+    if (expHtml || expLoading || !onExplain || !metricKey) return;
+    setExpLoading(true); setExpErr("");
+    try { setExpHtml(await onExplain(metricKey)); }
+    catch (e) { setExpErr(e instanceof Error ? e.message : "Kon de toelichting niet maken."); }
+    finally { setExpLoading(false); }
+  }
   const w = 220, h = 58, pad = 6;
   // Bij 'positie' (invert) zijn dagen zonder data (0) geen "beste positie": eruit filteren,
   // anders knikt de lijn kunstmatig naar boven en klopt de richting niet.
@@ -118,6 +132,14 @@ function CardTrend({ label, values, dates, prev, cur, fmt, invert, isPos, period
           </div>
         </div>
       ) : <div className="muted" style={{ fontSize: 11, padding: "10px 0" }}>Nog te weinig data voor een grafiek.</div>}
+      {onExplain && metricKey && (
+        <div className="ktr-explain">
+          <button type="button" className="ktr-explain-btn" onClick={toggleExplain} disabled={expLoading}>{expLoading ? "Analyseren…" : expOpen ? "▾ Toelichting verbergen" : "▸ Toelichting"}</button>
+          {expOpen && expErr && <div className="login-error" style={{ marginTop: 6, fontSize: 12 }}>{expErr}</div>}
+          {expOpen && expLoading && <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>Even de cijfers scannen…</div>}
+          {expOpen && expHtml && <div className="md ktr-explain-body" dangerouslySetInnerHTML={{ __html: expHtml }} />}
+        </div>
+      )}
     </div>
   );
 }
@@ -411,6 +433,19 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
   }
 
   const periodLabel = PERIODS.find((p) => p.days === days)?.label || `${days} dagen`;
+
+  // AI-toelichting per KPI: stuurt de data mee en krijgt een korte, gerenderde verklaring
+  // (waarom gestegen/gedaald, welke pagina's/zoekwoorden, laaghangend fruit).
+  async function explainMetric(metricKey: string): Promise<string> {
+    const totals = (gsc?.totals as Record<string, { cur: number; prev: number }> | null | undefined)?.[metricKey] || { cur: 0, prev: 0 };
+    const r = await fetch("/api/admin/kpi/explain", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slug, metric: metricKey, days, totals, pages: gsc?.pages || [], keywords: gsc?.keywords || [] }),
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || "Kon de toelichting niet maken.");
+    return mdToHtml(d.markdown || "");
+  }
   // Herbruikbare periodekiezer (zelfde blokje als bovenaan), ook in de sectie-headers zodat
   // je daar ziet én kunt kiezen waarmee klikken/vertoningen vergeleken worden.
   const periodPicker = (
@@ -521,10 +556,10 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
       {!loading && gsc && gsc.totals && (
         <Collapse title="Search Console" meta={`${gsc.range.curStart} t/m ${gsc.range.curEnd}`} open={isOpen("sc", true)} onToggle={() => toggle("sc", true)}>
           <div className="kpi-grid kpi-grid-4">
-            <CardTrend label="Klikken" values={gsc.series.clicks} dates={gsc.series.dates} prevValues={gsc.series.prevClicks} prev={gsc.totals.clicks.prev} cur={gsc.totals.clicks.cur} fmt={(v) => nl(Math.round(v))} periodLabel={`${days} dgn`} />
-            <CardTrend label="Vertoningen" values={gsc.series.impressions} dates={gsc.series.dates} prevValues={gsc.series.prevImpressions} prev={gsc.totals.impressions.prev} cur={gsc.totals.impressions.cur} fmt={(v) => nl(Math.round(v))} periodLabel={`${days} dgn`} />
-            <CardTrend label="CTR" values={gsc.series.ctr} dates={gsc.series.dates} prevValues={gsc.series.prevCtr} prev={gsc.totals.ctr.prev} cur={gsc.totals.ctr.cur} fmt={(v) => `${v.toFixed(1)}%`} isPos periodLabel={`${days} dgn`} />
-            <CardTrend label={<>Gem. positie <span className="kpi-sub-note">(hoger = beter)</span></>} values={gsc.series.position} dates={gsc.series.dates} prevValues={gsc.series.prevPosition} prev={gsc.totals.position.prev} cur={gsc.totals.position.cur} fmt={(v) => v.toFixed(1)} invert isPos periodLabel={`${days} dgn`} />
+            <CardTrend label="Klikken" values={gsc.series.clicks} dates={gsc.series.dates} prevValues={gsc.series.prevClicks} prev={gsc.totals.clicks.prev} cur={gsc.totals.clicks.cur} fmt={(v) => nl(Math.round(v))} periodLabel={`${days} dgn`} metricKey="clicks" onExplain={explainMetric} />
+            <CardTrend label="Vertoningen" values={gsc.series.impressions} dates={gsc.series.dates} prevValues={gsc.series.prevImpressions} prev={gsc.totals.impressions.prev} cur={gsc.totals.impressions.cur} fmt={(v) => nl(Math.round(v))} periodLabel={`${days} dgn`} metricKey="impressions" onExplain={explainMetric} />
+            <CardTrend label="CTR" values={gsc.series.ctr} dates={gsc.series.dates} prevValues={gsc.series.prevCtr} prev={gsc.totals.ctr.prev} cur={gsc.totals.ctr.cur} fmt={(v) => `${v.toFixed(1)}%`} isPos periodLabel={`${days} dgn`} metricKey="ctr" onExplain={explainMetric} />
+            <CardTrend label={<>Gem. positie <span className="kpi-sub-note">(hoger = beter)</span></>} values={gsc.series.position} dates={gsc.series.dates} prevValues={gsc.series.prevPosition} prev={gsc.totals.position.prev} cur={gsc.totals.position.cur} fmt={(v) => v.toFixed(1)} invert isPos periodLabel={`${days} dgn`} metricKey="position" onExplain={explainMetric} />
           </div>
 
           {gsc.keywords.length > 0 && (
