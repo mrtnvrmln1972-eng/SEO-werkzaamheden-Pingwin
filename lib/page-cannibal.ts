@@ -300,7 +300,7 @@ Neem uitsluitend wat in de analyse staat; verzin niets. Geen emoji. Staat er gee
   const klantUitleg = "We hebben in kaart gebracht welke pagina's elkaar in de weg zitten en welke redirects en interne links nodig zijn, zodat Google de juiste pagina laat ranken.";
   const ids = await appendTasks(slug, [{
     taak: `Cannibalisatie, redirects en interne links ${path}`,
-    toelichting: mdToHtml(devContent).slice(0, 12000),
+    toelichting: mdToHtml(devContent.slice(0, 8000)),
     klantToelichting: klantUitleg,
     status: "Gepland", wie: "Dev", fase: "Opschonen",
     pageUrl: url, stepKind: "cannibal_redirects", klantZichtbaar: true,
