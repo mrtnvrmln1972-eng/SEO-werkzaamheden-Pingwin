@@ -595,7 +595,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
             <button type="button" className="pcd-btn" onClick={() => ensureFolderThenRun(["copy"])} disabled={runBusy} title="Draait op de achtergrond door; wegklikken mag.">3. Copy-document (+ dev-taak)</button>
             <button type="button" className="pcd-btn pcd-btn-primary" onClick={() => ensureFolderThenRun(["analyse", "blauwdruk", "copy"])} disabled={runBusy} title="Draait de drie stappen op de achtergrond door; wegklikken mag.">{runBusy ? "Starten…" : "Alles achter elkaar (1 → 2 → 3)"}</button>
           </div>
-          <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>Je klikt en het draait op de achtergrond door: je kunt meteen wegklikken naar iets anders. De voortgang zie je in het kaartje hierboven en later in Werkzaamheden. Van elk document wordt automatisch ook een klantversie gemaakt en in de Drive-map opgeslagen (taaktitel → technische versie, "(klantversie)" ernaast; het klantdashboard toont alleen de klantversie). Tip: kies eerst een Drive-map, dan komen de bestanden daar te staan.</div>
+          <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>Je klikt en het draait op de achtergrond door: je kunt meteen wegklikken naar iets anders. De voortgang zie je in het kaartje hierboven en later in Werkzaamheden. Er wordt één korte, klantvriendelijke versie gemaakt (die zowel jij, de developer als de klant leest). Een uitgebreide interne versie kan later op verzoek. Tip: kies eerst een Drive-map, dan komen de bestanden daar te staan.</div>
         </div>
       )}
 

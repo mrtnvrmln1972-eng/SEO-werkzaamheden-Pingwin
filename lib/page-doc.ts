@@ -395,7 +395,9 @@ ${SEO_CRITERIA_MD}`;
   return callClaudeAgentic(system, [{ role: "user", content: user }], tools, run, 4, 5000);
 }
 
-export async function generateDocSpec(slug: string, url: string, kind: DocKind, extra?: string): Promise<{ spec: DocSpec; title: string }> {
+// audience "klant" (standaard): één korte, klantvriendelijke versie, direct uit de data.
+// audience "intern": de uitgebreide technische versie (op verzoek; drie keer zo lang).
+export async function generateDocSpec(slug: string, url: string, kind: DocKind, extra?: string, audience: "intern" | "klant" = "klant"): Promise<{ spec: DocSpec; title: string }> {
   const context = await buildContext(slug, url, extra);
   const client = await getClientBySlug(slug);
 
@@ -413,15 +415,25 @@ export async function generateDocSpec(slug: string, url: string, kind: DocKind, 
   // denk-ronde meer: die schreef de analyse feitelijk twee keer (en mat concurrenten
   // opnieuw), waardoor een gewone pagina-analyse onnodig >10 min duurde. De diepte
   // (alle grounding) zit al in de context hieronder.
-  const maxTokens = kind === "blauwdruk" ? 10000 : 14000;
+  // Klant-systeem: dezelfde grounding, maar meteen als korte klantversie geschreven
+  // (geen aparte technische tussenstap meer). Scheelt fors in tokens en is leesbaarder.
+  const klantLabel = { analyse: "SEO-analyse", blauwdruk: "blauwdruk", copy: "copy" }[kind];
+  const klantSystem = `Je bent een senior SEO-strateeg bij bureau Pingwin. Maak op basis van de onderstaande gegevens een KORTE, begrijpelijke ${klantLabel} voor de KLANT (die het zelf leest). Verzin niets; baseer je uitsluitend op de gegevens.
+AANSPREEKVORM: gericht AAN de eigenaar; spreek direct aan met "jullie/je" ("jullie pagina"), niet in de derde persoon over het bedrijf.
+TAAL: gewone taal, geen jargon (of leg het in één zin uit), geen scorecard en geen technische tabellen met KD/CPC. Elk onderdeel kort (1 tot 3 zinnen of een paar bullets).
+ZOEKWOORDEN VET: zet elk concreet zoekwoord vet met dubbele sterretjes, bijvoorbeeld **exclusieve tuinen**.
+${CLIENT_STRUCTURE[kind]}
+Geen emoji. ${DOCSPEC_FORMAT}`;
+  const system = audience === "klant" ? klantSystem : SYSTEMS[kind];
+  const maxTokens = audience === "klant" ? (kind === "copy" ? 9000 : 3500) : (kind === "blauwdruk" ? 10000 : 14000);
   const baseUser = `Maak de ${kind} op basis van deze gegevens:\n\n${context.text}${chain}`;
-  const raw1 = await callClaude(SYSTEMS[kind], [{ role: "user", content: baseUser }], maxTokens);
+  const raw1 = await callClaude(system, [{ role: "user", content: baseUser }], maxTokens);
   let parsed = extractJsonObject(raw1);
   let raw2 = "";
   if (!parsed) {
     // Eenmalige herkansing met nadruk op volledige, geldige JSON (vaak afgekapt).
     const retryUser = `${baseUser}\n\nBELANGRIJK: geef UITSLUITEND geldige, VOLLEDIGE JSON terug volgens het formaat. Geen tekst eromheen en niet afkappen; houd het compact genoeg om de JSON helemaal af te maken.`;
-    raw2 = await callClaude(SYSTEMS[kind], [{ role: "user", content: retryUser }], maxTokens);
+    raw2 = await callClaude(system, [{ role: "user", content: retryUser }], maxTokens);
     parsed = extractJsonObject(raw2);
   }
   if (!parsed) {
@@ -430,13 +442,18 @@ export async function generateDocSpec(slug: string, url: string, kind: DocKind, 
     throw new Error(`De ${kind} kwam niet als geldige JSON terug (waarschijnlijk te lang of afgekapt). Probeer het opnieuw; blijft het misgaan, laat het weten dan splitsen we het document.`);
   }
   const title = typeof parsed.titel === "string" && parsed.titel.trim() ? parsed.titel.trim() : `${FALLBACK_TITLE[kind]} ${url}`;
+  const sections = Array.isArray(parsed.sections) ? parsed.sections : [];
+  // Copy-klantversie opent met de vaste introductie (klant leest na en levert aangepast terug).
+  if (audience === "klant" && kind === "copy") {
+    sections.unshift({ heading: "", blocks: [{ type: "paragraph", text: COPY_CLIENT_INTRO }] });
+  }
   const spec: DocSpec = {
     klant: client?.name || slug,
-    rapporttype: RAPPORTTYPE[kind],
+    rapporttype: audience === "klant" ? `Klantversie ${RAPPORTTYPE[kind]}` : RAPPORTTYPE[kind],
     titel: title,
     ondertitel: typeof parsed.ondertitel === "string" ? parsed.ondertitel : url,
     meta: { Klant: client?.name || slug, Pagina: url },
-    sections: Array.isArray(parsed.sections) ? parsed.sections : [],
+    sections,
   };
   // Bewaar de tekst-uitkomst zodat de volgende stap in de keten erop voortbouwt.
   await savePageDocOutput(slug, url, kind, specToText(spec)).catch(() => { /* keten is aanvulling, niet kritisch */ });

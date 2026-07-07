@@ -1,8 +1,8 @@
 import { sql, ensureSchema } from "./db";
-import { generateDocSpec, clientVersionSpec, type DocKind } from "./page-doc";
+import { generateDocSpec, type DocKind } from "./page-doc";
 import { buildPingwinDoc } from "./pingwin-docx";
 import { upsertStepTask } from "./tasks";
-import { getPageDriveFolder, getPageDocOutputs } from "./site-urls";
+import { getPageDriveFolder } from "./site-urls";
 import { uploadDocx } from "./drive";
 
 // ═══════════════════════════════════════════════════════════
@@ -194,36 +194,27 @@ async function failStep(id: number, kind: DocKind, msg: string): Promise<void> {
 // Drive (met klantversie + werkzaamheid), net als de synchrone route. Zonder Drive-map
 // wordt het document gegenereerd en als werkzaamheid vastgelegd (zonder downloadlink,
 // want er is geen browser om het bestand naartoe te sturen). Geeft de technische link terug.
-async function generateAndStoreDoc(slug: string, url: string, kind: DocKind, extra: string, folderId: string): Promise<string> {
-  const { spec, title } = await generateDocSpec(slug, url, kind, extra || undefined);
+async function generateAndStoreDoc(slug: string, url: string, kind: DocKind, extra: string, folderId: string, audience: "intern" | "klant" = "klant"): Promise<string> {
+  // Standaard alleen de klantversie (direct uit de data): één generatie i.p.v. de dure
+  // technische versie + een aparte klant-verkleining. Intern kan op verzoek.
+  const { spec, title } = await generateDocSpec(slug, url, kind, extra || undefined, audience);
   const buffer = await buildPingwinDoc(spec);
-  const filename = `${safeName(spec.klant)}-${kind}-${safeName(title)}.docx`;
-  const stepTitle = `${STEP_TITLE[kind]}: ${pagePath(url)}`;
+  const suffix = audience === "intern" ? "-intern" : "";
+  const filename = `${safeName(spec.klant)}-${kind}${suffix}-${safeName(title)}.docx`;
+  const stepTitle = `${STEP_TITLE[kind]}${audience === "intern" ? " (interne versie)" : ""}: ${pagePath(url)}`;
 
   if (folderId) {
     const { link } = await uploadDocx(folderId, filename, buffer);
-    // Klantversie erbij uit de zojuist opgeslagen technische tekst.
-    let clientLink = "";
-    try {
-      const outputs = await getPageDocOutputs(slug, url);
-      const source = outputs[kind];
-      if (source) {
-        const { spec: cSpec, title: cTitle } = await clientVersionSpec(slug, url, kind, source, extra || undefined);
-        const cBuffer = await buildPingwinDoc(cSpec);
-        const cFilename = `${safeName(spec.klant)}-klantversie-${kind}-${safeName(cTitle)}.docx`;
-        ({ link: clientLink } = await uploadDocx(folderId, cFilename, cBuffer));
-      }
-    } catch { /* klantversie is aanvulling */ }
     await upsertStepTask(slug, {
-      pageUrl: url, stepKind: STEP_KIND[kind], title: stepTitle, dualVersion: true,
-      link, clientLink: clientLink || undefined, klantToelichting: STEP_KLANT[kind], wie: "SEO", fase: "Bouwen", klantZichtbaar: true,
+      pageUrl: url, stepKind: STEP_KIND[kind], title: stepTitle,
+      link, clientLink: audience === "klant" ? link : undefined, klantToelichting: STEP_KLANT[kind], wie: "SEO", fase: "Bouwen", klantZichtbaar: audience === "klant",
     }).catch(() => null);
     return link;
   }
 
   await upsertStepTask(slug, {
     pageUrl: url, stepKind: STEP_KIND[kind], title: stepTitle,
-    klantToelichting: STEP_KLANT[kind], wie: "SEO", fase: "Bouwen", klantZichtbaar: true,
+    klantToelichting: STEP_KLANT[kind], wie: "SEO", fase: "Bouwen", klantZichtbaar: audience === "klant",
   }).catch(() => null);
   return "";
 }

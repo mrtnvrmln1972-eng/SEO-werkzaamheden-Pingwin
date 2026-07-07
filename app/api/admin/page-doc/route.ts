@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
 
   let spec, title;
   try {
-    ({ spec, title } = await generateDocSpec(slug, url, kind, extra || undefined));
+    ({ spec, title } = await generateDocSpec(slug, url, kind, extra || undefined, "intern"));
   } catch (e) {
     console.error(`[page-doc] generateDocSpec faalde (kind=${kind}, url=${url}):`, e);
     return NextResponse.json({ ok: false, error: `Kon de ${kind} niet genereren: ${e instanceof Error ? e.message : "onbekende fout"}` }, { status: 500 });
