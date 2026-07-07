@@ -2,7 +2,17 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../lib/admin-auth";
-import { getUsageSummary, type UsageRow } from "../../../lib/usage";
+import { getUsageSummary, getUsageByAction, type UsageRow, type UsageActionRow } from "../../../lib/usage";
+
+// Leesbare namen voor de acties (welke knop/functie kost hoeveel).
+const ACTION_LABEL: Record<string, string> = {
+  doc_analyse: "Analyse-document", doc_blauwdruk: "Blauwdruk-document", doc_copy: "Copy-document",
+  klantversie: "Klantversie (los)", strategie: "Strategie vastleggen", strategie_grounding: "Strategie (grounding)",
+  strategie_uitleg: "Strategie-uitleg", projectchat: "Projectchat", page_chat: "Pagina-chat",
+  voorstel: "Plan-voorstel", cluster_advies: "Cluster-advies", kansen: "Zoekwoord-kansen",
+  klantprofiel: "Klantprofiel", page_cannibal: "Cannibalisatie", page_cannibal_apply: "Cannibalisatie overnemen",
+  cannibal_redirect: "Cannibalisatie (site)", internal_links: "Interne links",
+};
 
 export const dynamic = "force-dynamic";
 
@@ -39,9 +49,11 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
   else from.setFullYear(2000);
 
   let rows: UsageRow[] = [];
+  let actionRows: UsageActionRow[] = [];
   let loadError = "";
   try {
     rows = await getUsageSummary(from.toISOString());
+    actionRows = await getUsageByAction(from.toISOString());
   } catch (e) {
     loadError = (e as Error).message;
   }
@@ -115,6 +127,35 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
               </div>
             ))}
           </div>
+
+          {/* Uitsplitsing per actie: welke functie/knop kost hoeveel */}
+          {actionRows.length > 0 && (
+            <div style={{ ...card, marginBottom: 18 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 10, color: "#8a6a3e" }}>Per actie (Claude): waar gaat het naartoe?</div>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr>
+                    <th style={th}>Actie</th>
+                    <th style={{ ...th, textAlign: "right" }}>Aanroepen</th>
+                    <th style={{ ...th, textAlign: "right" }}>Tokens in</th>
+                    <th style={{ ...th, textAlign: "right" }}>Tokens uit</th>
+                    <th style={{ ...th, textAlign: "right" }}>Kosten</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {actionRows.map((r, i) => (
+                    <tr key={i}>
+                      <td style={td}>{r.action ? (ACTION_LABEL[r.action] || r.action) : "onbekend"}</td>
+                      <td style={numTd}>{num(r.calls)}</td>
+                      <td style={numTd}>{num(r.tokens_in)}</td>
+                      <td style={numTd}>{num(r.tokens_out)}</td>
+                      <td style={numTd}>{euros(r.cost_usd)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           {/* Detailtabel per klant en dienst */}
           <div style={card}>

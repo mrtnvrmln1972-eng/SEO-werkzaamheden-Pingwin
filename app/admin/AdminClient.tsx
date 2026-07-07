@@ -184,6 +184,9 @@ export default function AdminClient({ initialClients, isOwner = true }: { initia
           {isOwner && (
             <a className="logout-btn" href="/admin/developer" title="Alle developer-taken over alle klanten" style={{ marginLeft: 8 }}>Developer</a>
           )}
+          {isOwner && (
+            <a className="logout-btn" href="/admin/usage" title="AI-verbruik en kosten per actie en per klant" style={{ marginLeft: 8 }}>Verbruik</a>
+          )}
           <button className="logout-btn" onClick={logout} style={{ marginLeft: 8 }}>Uitloggen</button>
         </div>
       </div>
