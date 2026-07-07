@@ -3,7 +3,7 @@ import { ADMIN_COOKIE, verifyAdminSession } from "../../../../../lib/admin-auth"
 import { guardSlug } from "../../../../../lib/admin-scope";
 import { anthropicConfigured } from "../../../../../lib/anthropic";
 import { waitUntil } from "@vercel/functions";
-import { createDocRun, getLatestDocRun, runNow } from "../../../../../lib/page-doc-run";
+import { createDocRun, getLatestDocRun, getStepsEverDone, runNow } from "../../../../../lib/page-doc-run";
 
 export const runtime = "nodejs";
 
@@ -45,6 +45,6 @@ export async function GET(req: NextRequest) {
   const url = req.nextUrl.searchParams.get("url") || "";
   if (!slug || !url) return NextResponse.json({ ok: false, error: "Klant en URL zijn verplicht." }, { status: 400 });
   const g = await guardSlug(req, slug); if (!g.ok) return g.res;
-  const run = await getLatestDocRun(slug, url);
-  return NextResponse.json({ ok: true, run });
+  const [run, everDone] = await Promise.all([getLatestDocRun(slug, url), getStepsEverDone(slug, url)]);
+  return NextResponse.json({ ok: true, run, everDone });
 }

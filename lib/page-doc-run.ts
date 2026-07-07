@@ -111,6 +111,21 @@ export async function getLatestDocRun(slug: string, url: string): Promise<DocRun
   return rows[0] ? rowToRun(rows[0]) : null;
 }
 
+// Welke stappen zijn OOIT klaar (over alle runs voor deze pagina), zodat de knoppen
+// ook retroactief groen zijn als analyse/blauwdruk in een eerdere run zijn gemaakt.
+export async function getStepsEverDone(slug: string, url: string): Promise<{ analyse: boolean; blauwdruk: boolean; copy: boolean }> {
+  await ensureSchema();
+  await ensureRunTable();
+  const { rows } = await sql`
+    SELECT
+      bool_or(analyse_state = 'done' OR analyse_link IS NOT NULL) AS analyse,
+      bool_or(blauwdruk_state = 'done' OR blauwdruk_link IS NOT NULL) AS blauwdruk,
+      bool_or(copy_state = 'done' OR copy_link IS NOT NULL) AS copy
+    FROM page_doc_runs WHERE client_slug = ${slug} AND url = ${url}`;
+  const r = rows[0] || {};
+  return { analyse: !!r.analyse, blauwdruk: !!r.blauwdruk, copy: !!r.copy };
+}
+
 // ── Cron-worker: verwerk wachtende runs, stap voor stap ──
 export async function processQueuedRuns(limit = 1): Promise<{ processed: number }> {
   await ensureSchema();

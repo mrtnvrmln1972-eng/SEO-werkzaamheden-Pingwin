@@ -105,12 +105,16 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
 
   // Groene "klaar"-status onthouden (browseropslag), beide per pagina zodat ze groen
   // blijven na heropenen. Doorgeven wordt gewist bij een nieuwe chat (weer oranje).
+  // De chat blijft standaard dicht zodra de strategie is vastgelegd ÉN doorgegeven aan de
+  // betrokken pagina's. Is een van beide nog niet gedaan, dan staat de chat standaard open.
   useEffect(() => {
-    try { const done = localStorage.getItem(`pw_stratdone_${slug}_${url}`) === "1"; setTaskDone(done); setChatOpen(!done); } catch { /* geen opslag */ }
-    try { const n = Number(localStorage.getItem(`pw_clusterdone_${slug}_${url}`) || "0"); setClusterDone(Number.isFinite(n) ? n : 0); } catch { setClusterDone(0); }
+    let stratD = false, clusterN = 0;
+    try { stratD = localStorage.getItem(`pw_stratdone_${slug}_${url}`) === "1"; } catch { /* geen opslag */ }
+    try { const n = Number(localStorage.getItem(`pw_clusterdone_${slug}_${url}`) || "0"); clusterN = Number.isFinite(n) ? n : 0; } catch { clusterN = 0; }
+    setTaskDone(stratD); setClusterDone(clusterN); setChatOpen(!(stratD && clusterN > 0));
     try { const sd: Record<string, boolean> = {}; (["analyse", "blauwdruk", "copy"] as const).forEach((k) => { if (localStorage.getItem(`pw_stepdone_${slug}_${url}_${k}`) === "1") sd[k] = true; }); setStepsDone(sd); } catch { setStepsDone({}); }
   }, [slug, url]);
-  function markStrategieDone() { setTaskDone(true); setChatOpen(false); try { localStorage.setItem(`pw_stratdone_${slug}_${url}`, "1"); } catch { /* geen opslag */ } }
+  function markStrategieDone() { setTaskDone(true); try { localStorage.setItem(`pw_stratdone_${slug}_${url}`, "1"); } catch { /* geen opslag */ } if (clusterDone > 0) setChatOpen(false); }
 
   const [taskGen, setTaskGen] = useState(false);
   // Analyse vastgelegd (taak + document) → knop wordt groen "Analyse vastgelegd".
@@ -177,7 +181,16 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   useEffect(() => {
     let alive = true;
     fetch(`/api/admin/page-doc/run?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}`)
-      .then((r) => r.json()).then((d) => { if (alive && d.ok) setRun(d.run); })
+      .then((r) => r.json()).then((d) => {
+        if (!alive || !d.ok) return;
+        setRun(d.run);
+        // Retroactief groen: stappen die in ÉÉN van de runs ooit klaar zijn.
+        if (d.everDone) {
+          const upd: Record<string, boolean> = {};
+          (["analyse", "blauwdruk", "copy"] as const).forEach((k) => { if (d.everDone[k]) { upd[k] = true; try { localStorage.setItem(`pw_stepdone_${slug}_${url}_${k}`, "1"); } catch { /* geen opslag */ } } });
+          if (Object.keys(upd).length) setStepsDone((s) => ({ ...s, ...upd }));
+        }
+      })
       .catch(() => { /* niet kritisch */ });
     return () => { alive = false; };
   }, [slug, url]);
@@ -383,7 +396,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       const r = await fetch("/api/admin/page-chat/cluster-advice/apply", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, sourceUrl: url, sourceAnalysis: lastAssistant, items }) });
       const d = await r.json();
       if (d.ok) {
-        { const n = d.saved || items.length; setClusterDone(n); try { localStorage.setItem(`pw_clusterdone_${slug}_${url}`, String(n)); } catch { /* geen opslag */ } }
+        { const n = d.saved || items.length; setClusterDone(n); try { localStorage.setItem(`pw_clusterdone_${slug}_${url}`, String(n)); } catch { /* geen opslag */ } if (n > 0 && taskDone) setChatOpen(false); }
         setClusterMsg(`Advies doorgegeven aan ${d.saved} pagina('s). Hun eigen chat neemt dit voortaan als vertrekpunt mee; in het overzicht krijgen ze de markering "half plan".`);
         setClusterItems(null);
         onClusterApplied?.();
