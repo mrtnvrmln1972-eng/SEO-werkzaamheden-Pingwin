@@ -1027,7 +1027,7 @@ button.ck-collapse-head {
 /* KPI-tabellen: geen eigen scroll-context, zodat de kolomkoppen sticky blijven
    t.o.v. het venster tot de volgende lijst (net onder de vaste paginakop). */
 .res-table-wrap:has(.kpi-table) { overflow: visible; }
-.kpi-table thead th { position: sticky; top: 80px; z-index: 20; }
+.kpi-table thead th { position: sticky; top: 126px; z-index: 20; }
 .kpi-scroll { max-height: 460px; overflow-y: auto; }
 .kpi-scroll thead th { position: sticky; top: 0; z-index: 2; }
 
@@ -1047,13 +1047,14 @@ button.ck-collapse-head {
 .kpi-openpage-cell { white-space: nowrap; text-align: right; width: 1%; }
 .pages-prio-cell { width: 1%; text-align: center; white-space: nowrap; }
 .new-page-form { margin: 4px 0 12px; padding: 10px 12px; background: var(--gray-light); border: 1px solid var(--border); border-radius: 10px; }
-.kpi-sub-head { display: flex; align-items: center; gap: 10px; background: var(--gray-light); padding: 8px 12px; }
+.kpi-sub-head { display: flex; align-items: center; gap: 10px; background: var(--gray-light); padding: 8px 12px; position: sticky; top: 80px; z-index: 21; border-top-left-radius: 10px; border-top-right-radius: 10px; }
 .kpi-sub-toggle { flex: 1 1 auto; display: flex; align-items: baseline; gap: 8px; background: none; border: none; font-family: inherit; font-weight: 700; font-size: 13px; color: var(--dark); text-align: left; cursor: pointer; }
 .kpi-sub-toggle:hover .kpi-sub-title { color: var(--orange-dark); }
 .kpi-sub-title { color: var(--dark); }
 .kpi-sub-head .kpi-head-actions { padding-bottom: 0; }
 .kpi-kw-search { font-size: 12px; padding: 4px 9px; border: 1px solid var(--border); border-radius: 7px; outline: none; width: 170px; max-width: 42vw; font-family: inherit; background: var(--white); }
 .kpi-kw-search:focus { border-color: var(--orange); }
+.kpi-period-inline { display: inline-flex; gap: 6px; align-items: center; }
 /* Scorekaart met trend: beginstand links, verschil midden, eindstand rechts + dag-grafiek. */
 .kpi-card-trend { display: flex; flex-direction: column; gap: 6px; }
 .kpi-card-trend .kpi-label { margin: 0; }

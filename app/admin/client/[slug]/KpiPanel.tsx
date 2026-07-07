@@ -169,7 +169,7 @@ type Kw = GscComparison["keywords"][number];
 type KwKey = "focus" | "keyword" | "volume" | "position" | "clicks" | "impressions" | "ctr";
 type AhKey = "focus" | "keyword" | "volume" | "position" | "intent" | "kans";
 type OppKey = "focus" | "keyword" | "volume" | "difficulty" | "source" | "reason";
-type PageKey = "url" | "clicks" | "impressions";
+type PageKey = "prio" | "url" | "clicks" | "impressions";
 
 // Compacte prio/secundair-keuze per zoekwoord.
 function FocusSelect({ tier, onChange }: { tier: FocusTier | undefined; onChange: (t: FocusTier | null) => void }) {
@@ -216,10 +216,9 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [focus, setFocus] = useState<Record<string, FocusTier>>({});
-  const [kwSort, setKwSort] = useState<Sort<KwKey>>(null);
+  const [kwSort, setKwSort] = useState<Sort<KwKey>>({ key: "focus", dir: "asc" });
   const [kwSearch, setKwSearch] = useState("");
-  const [focusSort, setFocusSort] = useState<Sort<KwKey>>(null);
-  const [pageSort, setPageSort] = useState<Sort<PageKey>>(null);
+  const [pageSort, setPageSort] = useState<Sort<PageKey>>({ key: "prio", dir: "asc" });
   const [oppSort, setOppSort] = useState<Sort<OppKey>>(null);
   const [showFocusSec, setShowFocusSec] = useState(false);
   // Rangschikt de focus-markering voor sortering: prio eerst, dan secundair, dan de rest.
@@ -366,27 +365,32 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
   }
 
   const periodLabel = PERIODS.find((p) => p.days === days)?.label || `${days} dagen`;
+  // Herbruikbare periodekiezer (zelfde blokje als bovenaan), ook in de sectie-headers zodat
+  // je daar ziet én kunt kiezen waarmee klikken/vertoningen vergeleken worden.
+  const periodPicker = (
+    <span className="kpi-period-inline" onClick={(e) => e.stopPropagation()}>
+      <select className="kpi-period-select" value={days} onChange={(e) => setDays(Number(e.target.value))}>
+        {PERIODS.map((p) => <option key={p.days} value={p.days}>{p.label}</option>)}
+      </select>
+      <select className="kpi-period-select" value={compare} onChange={(e) => setCompare(e.target.value as "prev" | "yoy")} title="Waarmee vergelijken">
+        <option value="prev">vs. vorige periode</option>
+        <option value="yoy">vs. vorig jaar</option>
+      </select>
+    </span>
+  );
 
   // Zoekvolume per zoekwoord uit de opgeslagen Ahrefs-pool (geen credits).
   const volMap = new Map<string, number | null>(ahrefsKw.map((k) => [k.keyword.toLowerCase(), k.volume]));
 
-  // Afgeleide lijsten: focus-zoekwoorden (prio eerst), gesorteerde zoekwoorden en pagina's.
+  // Gesorteerde zoekwoorden (standaard prio bovenaan via de Focus-kolom) + zoekfilter.
   const allKws: Kw[] = gsc?.keywords || [];
-  const focusedKws = applySort(
-    [...allKws.filter((k) => focus[k.keyword])].sort((a, b) => (focus[a.keyword] === "prio" ? 0 : 1) - (focus[b.keyword] === "prio" ? 0 : 1)),
-    focusSort, kwGetters,
-  );
   const sortedKws = applySort(allKws, kwSort, kwGetters);
   const shownKws = kwSearch.trim() ? sortedKws.filter((k) => k.keyword.toLowerCase().includes(kwSearch.trim().toLowerCase())) : sortedKws;
-  const secFocusCount = focusedKws.filter((k) => focus[k.keyword] === "secundair").length;
-  const pageGetters: Record<"url" | "clicks" | "impressions", (p: GscPage) => number | string> = {
-    url: (p) => shortUrl(p.url), clicks: (p) => p.clicks, impressions: (p) => p.impressions,
+  const pageGetters: Record<PageKey, (p: GscPage) => number | string> = {
+    prio: (p) => (pagePrio.has(pagePrioKey(p.url)) ? 0 : 1), url: (p) => shortUrl(p.url), clicks: (p) => p.clicks, impressions: (p) => p.impressions,
   };
+  // Standaard op de ster (prio) gesorteerd: aangevinkte pagina's automatisch bovenaan.
   const sortedPages = applySort(pagesView, pageSort, pageGetters);
-  // De aangevinkte (prioriteit-)pagina's apart, net als de focus-zoekwoorden: die
-  // krijgen een eigen veldje bovenaan. De volledige lijst blijft in natuurlijke
-  // volgorde staan (niet dubbel vastgepind).
-  const prioPages = sortedPages.filter((p) => pagePrio.has(pagePrioKey(p.url)));
 
   const ahGetters: Record<AhKey, (k: AhrefsKeyword) => number | string> = {
     focus: (k) => focusRank(k.keyword), keyword: (k) => k.keyword, volume: (k) => k.volume || 0, position: (k) => k.position ?? 999, intent: (k) => k.intent, kans: (k) => (isFruit(k) ? 0 : 1),
@@ -417,13 +421,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
         <div className="kpi-toolbar-title">Search Console &amp; Analytics</div>
         <div className="kpi-toolbar-right">
           <span className="kpi-compare-note">{compare === "yoy" ? "vergeleken met dezelfde periode vorig jaar" : `vergeleken met vorige ${periodLabel}`}</span>
-          <select className="kpi-period-select" value={days} onChange={(e) => setDays(Number(e.target.value))}>
-            {PERIODS.map((p) => <option key={p.days} value={p.days}>{p.label}</option>)}
-          </select>
-          <select className="kpi-period-select" value={compare} onChange={(e) => setCompare(e.target.value as "prev" | "yoy")} title="Waarmee vergelijken">
-            <option value="prev">vs. vorige periode</option>
-            <option value="yoy">vs. vorig jaar</option>
-          </select>
+          {periodPicker}
         </div>
       </div>
 
@@ -451,39 +449,8 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
             <CardTrend label={<>Gem. positie <span className="kpi-sub-note">(hoger = beter)</span></>} values={gsc.series.position} dates={gsc.series.dates} prev={gsc.totals.position.prev} cur={gsc.totals.position.cur} fmt={(v) => v.toFixed(1)} invert isPos periodLabel={`${days} dgn`} />
           </div>
 
-          {focusedKws.length > 0 && (
-            <Collapse sub title={`Belangrijke zoekwoorden (${focusedKws.length})`} meta="prio & secundair, vastgezet bovenaan" open={isOpen("sc_focus", true)} onToggle={() => toggle("sc_focus", true)} actions={secFocusCount > 0 ? <button type="button" className="ghost-btn small" onClick={(e) => { e.stopPropagation(); setShowFocusSec((v) => !v); }}>{showFocusSec ? "Secundair verbergen" : `+ ${secFocusCount} secundair tonen`}</button> : undefined}>
-              <div className="res-table-wrap">
-                <table className="res-table kpi-table">
-                  <thead><tr>
-                    <SortTh label="Focus" k="focus" sort={focusSort} setSort={setFocusSort} />
-                    <SortTh label="Zoekwoord" k="keyword" sort={focusSort} setSort={setFocusSort} />
-                    <SortTh label="Volume" k="volume" sort={focusSort} setSort={setFocusSort} />
-                    <SortTh label="Positie" k="position" sort={focusSort} setSort={setFocusSort} />
-                    <SortTh label="Klikken" k="clicks" sort={focusSort} setSort={setFocusSort} />
-                    <SortTh label="Vertoningen" k="impressions" sort={focusSort} setSort={setFocusSort} />
-                    <SortTh label="CTR" k="ctr" sort={focusSort} setSort={setFocusSort} />
-                  </tr></thead>
-                  <tbody>
-                    {focusedKws.filter((k) => showFocusSec || focus[k.keyword] === "prio").map((k) => (
-                      <tr key={k.keyword} className={"kpi-focus-row " + focus[k.keyword]}>
-                        <td><FocusSelect tier={focus[k.keyword]} onChange={(t) => markFocus(k.keyword, t)} /></td>
-                        <td>{k.keyword}</td>
-                        <td>{(() => { const v = volMap.get(k.keyword.toLowerCase()); return v != null ? v.toLocaleString("nl-NL") : <span className="muted">&mdash;</span>; })()}</td>
-                        <td>{k.position.toFixed(1)} <Delta cur={k.position} prev={k.prevPosition ?? k.position} invert isPos /></td>
-                        <td>{nl(k.clicks)} <Delta cur={k.clicks} prev={k.prevClicks} /></td>
-                        <td>{nl(k.impressions)} <Delta cur={k.impressions} prev={k.prevImpressions} /></td>
-                        <td>{k.ctr.toFixed(1)}% <Delta cur={k.ctr} prev={k.prevCtr} isPos /></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </Collapse>
-          )}
-
           {gsc.keywords.length > 0 && (
-            <Collapse sub title={<>Zoekwoorden uit Search Console ({gsc.keywords.length}) <HelpHint wide text="De zoekwoorden waarop deze site in Google gevonden wordt (echte klikken en vertoningen uit Search Console). Markeer belangrijke woorden als prio of secundair; die verschijnen vastgezet bovenaan en zijn gedeeld met de Ahrefs-lijst." /></>} meta="markeer een zoekwoord als prio of secundair" open={isOpen("sc_kw")} onToggle={() => toggle("sc_kw")} actions={<input className="kpi-kw-search" placeholder="Zoek zoekwoord…" value={kwSearch} onClick={(e) => e.stopPropagation()} onChange={(e) => setKwSearch(e.target.value)} />}>
+            <Collapse sub title={<>Zoekwoorden uit Search Console ({gsc.keywords.length}) <HelpHint wide text="De zoekwoorden waarop deze site in Google gevonden wordt (echte klikken en vertoningen uit Search Console). Markeer belangrijke woorden als prio of secundair; die verschijnen vastgezet bovenaan en zijn gedeeld met de Ahrefs-lijst." /></>} meta="markeer een zoekwoord als prio of secundair (prio staat bovenaan)" open={isOpen("sc_kw")} onToggle={() => toggle("sc_kw")} actions={<>{periodPicker}<input className="kpi-kw-search" placeholder="Zoek zoekwoord…" value={kwSearch} onClick={(e) => e.stopPropagation()} onChange={(e) => setKwSearch(e.target.value)} /></>}>
               <div className="res-table-wrap">
                 <table className="res-table kpi-table">
                   <thead><tr>
@@ -513,41 +480,12 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
             </Collapse>
           )}
 
-          {prioPages.length > 0 && (
-            <Collapse sub title={<>Belangrijke pagina&rsquo;s uit Search Console ({prioPages.length}) <HelpHint wide text="De pagina's die je met de ster op prioriteit hebt gezet, vastgezet in een eigen veld bovenaan (gedeeld met de Wijzigingen-tab). Klik de ster om een pagina er weer uit te halen." /></>} meta="prio-pagina's, vastgezet bovenaan" open={isOpen("sc_pages_focus", true)} onToggle={() => toggle("sc_pages_focus", true)}>
-              <div className="res-table-wrap">
-                <table className="res-table kpi-table">
-                  <thead><tr>
-                    <th></th>
-                    <th>Pagina</th>
-                    <th>Klikken</th>
-                    <th>Vertoningen</th>
-                    <th></th>
-                  </tr></thead>
-                  <tbody>
-                    {prioPages.map((p) => (
-                      <tr key={p.url} className="kpi-focus-row prio">
-                        <td className="kpi-pageprio-cell">
-                          <span className="wz-star on" title="Prioriteit aan, klik om uit te zetten" onClick={() => togglePagePrio(p.url)}>&#9733;</span>
-                        </td>
-                        <td><a href={p.url} target="_blank" rel="noreferrer">{shortUrl(p.url)}</a></td>
-                        <td>{nl(p.clicks)} <Delta cur={p.clicks} prev={p.prevClicks} /></td>
-                        <td>{nl(p.impressions)} <Delta cur={p.impressions} prev={p.prevImpressions} /></td>
-                        <td className="kpi-openpage-cell"><button type="button" className="ghost-btn small" onClick={(e) => { e.stopPropagation(); onOpenPage?.(p.url); }} title="Open deze pagina in het Pagina's-tabje">open in Pagina&rsquo;s</button></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </Collapse>
-          )}
-
           {pagesView.length > 0 && (
-            <Collapse sub title={<>Pagina&rsquo;s uit Search Console ({pagesView.length}) <HelpHint wide text="De pagina's van de site met hun klikken en vertoningen uit Search Console. Vink de ster aan om een pagina op prioriteit te zetten; die verschijnt dan in het veld 'Belangrijke pagina's' bovenaan (gedeeld met de Wijzigingen-tab)." /></>} meta={pageSort ? "sortering actief" : "vink de ster aan om bovenaan te zetten"} open={isOpen("sc_pages")} onToggle={() => toggle("sc_pages")}>
+            <Collapse sub title={<>Pagina&rsquo;s uit Search Console ({pagesView.length}) <HelpHint wide text="De pagina's van de site met hun klikken en vertoningen uit Search Console. Vink de ster aan om een pagina op prioriteit te zetten; die springt dan (via de ster-kolom) automatisch bovenaan. Gedeeld met de Wijzigingen-tab." /></>} meta="ster = prioriteit, staat bovenaan" open={isOpen("sc_pages")} onToggle={() => toggle("sc_pages")} actions={periodPicker}>
               <div className="res-table-wrap">
                 <table className="res-table kpi-table">
                   <thead><tr>
-                    <th></th>
+                    <SortTh label="★" k="prio" sort={pageSort} setSort={setPageSort} />
                     <SortTh label="Pagina" k="url" sort={pageSort} setSort={setPageSort} />
                     <SortTh label="Klikken" k="clicks" sort={pageSort} setSort={setPageSort} />
                     <SortTh label="Vertoningen" k="impressions" sort={pageSort} setSort={setPageSort} />
