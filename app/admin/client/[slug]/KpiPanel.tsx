@@ -174,7 +174,7 @@ function applySort<T, K extends string>(rows: T[], sort: Sort<K>, getters: Recor
 type FocusTier = "prio" | "secundair";
 type Kw = GscComparison["keywords"][number];
 type KwKey = "focus" | "keyword" | "volume" | "position" | "dposition" | "clicks" | "dclicks" | "impressions" | "dimpressions" | "ctr" | "dctr";
-type AhKey = "focus" | "keyword" | "volume" | "position" | "intent" | "kans";
+type AhKey = "focus" | "keyword" | "volume" | "position" | "dposition" | "intent" | "kans";
 type OppKey = "focus" | "keyword" | "volume" | "difficulty" | "source" | "reason";
 type PageKey = "prio" | "url" | "clicks" | "dclicks" | "impressions" | "dimpressions";
 
@@ -182,6 +182,7 @@ type PageKey = "prio" | "url" | "clicks" | "dclicks" | "impressions" | "dimpress
 // (Focus/Zoekwoord, ster/Pagina) staan vast links; deze groepen kun je herordenen.
 const KW_COLS_DEFAULT = ["volume", "position", "clicks", "impressions", "ctr"];
 const PAGE_COLS_DEFAULT = ["clicks", "impressions"];
+const AH_COLS_DEFAULT = ["volume", "position", "intent", "kans"];
 function sanitizeCols(saved: unknown, def: string[]): string[] {
   if (!Array.isArray(saved)) return def;
   const known = saved.filter((k): k is string => typeof k === "string" && def.includes(k));
@@ -240,10 +241,12 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
   // Versleepbare kolomvolgorde (per browser onthouden).
   const [kwCols, setKwCols] = useState<string[]>(KW_COLS_DEFAULT);
   const [pageCols, setPageCols] = useState<string[]>(PAGE_COLS_DEFAULT);
+  const [ahCols, setAhCols] = useState<string[]>(AH_COLS_DEFAULT);
   const [colDrag, setColDrag] = useState<string | null>(null);
   useEffect(() => {
     try { setKwCols(sanitizeCols(JSON.parse(localStorage.getItem("pw_kpicols_kw") || "null"), KW_COLS_DEFAULT)); } catch { /* standaard */ }
     try { setPageCols(sanitizeCols(JSON.parse(localStorage.getItem("pw_kpicols_pages") || "null"), PAGE_COLS_DEFAULT)); } catch { /* standaard */ }
+    try { setAhCols(sanitizeCols(JSON.parse(localStorage.getItem("pw_kpicols_ah") || "null"), AH_COLS_DEFAULT)); } catch { /* standaard */ }
   }, []);
   function moveCol(order: string[], setOrder: (o: string[]) => void, storageKey: string, from: string, to: string) {
     if (from === to) return;
@@ -462,6 +465,20 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
 
   const ahGetters: Record<AhKey, (k: AhrefsKeyword) => number | string> = {
     focus: (k) => focusRank(k.keyword), keyword: (k) => k.keyword, volume: (k) => k.volume || 0, position: (k) => k.position ?? 999, intent: (k) => k.intent, kans: (k) => (isFruit(k) ? 0 : 1),
+    dposition: (k) => (k.position != null && k.positionPrev != null ? k.positionPrev - k.position : 0),
+  };
+  // Kop + cel per versleepbare Ahrefs-kolomgroep (Ranking + Δ als één geheel).
+  const ahHead: Record<string, (d: ThHTMLAttributes<HTMLTableCellElement>) => ReactNode> = {
+    volume: (d) => <SortTh key="volume" thProps={d} label="Volume" k="volume" sort={ahSort} setSort={setAhSort} className="kpi-metric-sep" />,
+    position: (d) => <Fragment key="position"><SortTh thProps={d} label="Ranking" k="position" sort={ahSort} setSort={setAhSort} className="kpi-metric-sep" /><SortTh thProps={d} label="Δ" title="Verandering ranking t.o.v. de vergelijkdatum (omhoog = beter)" k="dposition" sort={ahSort} setSort={setAhSort} className="kpi-delta-th" /></Fragment>,
+    intent: (d) => <SortTh key="intent" thProps={d} label="Intent" k="intent" sort={ahSort} setSort={setAhSort} className="kpi-metric-sep" />,
+    kans: (d) => <SortTh key="kans" thProps={d} label="Kans" k="kans" sort={ahSort} setSort={setAhSort} className="kpi-metric-sep" />,
+  };
+  const ahCell: Record<string, (k: AhrefsKeyword) => ReactNode> = {
+    volume: (k) => <td key="volume" className="kpi-metric-sep">{k.volume != null ? nl(k.volume) : <span className="muted">&mdash;</span>}</td>,
+    position: (k) => <Fragment key="position"><td className="kpi-metric-sep">{k.position != null ? k.position : <span className="muted">&mdash;</span>}</td><td className="kpi-delta-td">{k.position != null && k.positionPrev != null ? <Delta cur={k.position} prev={k.positionPrev} invert /> : <span className="muted">&mdash;</span>}</td></Fragment>,
+    intent: (k) => <td key="intent" className="kpi-metric-sep">{k.intent ? <span className={"kw-intent " + k.intent}>{k.intent}</span> : <span className="muted">&mdash;</span>}</td>,
+    kans: (k) => <td key="kans" className="kpi-metric-sep">{isFruit(k) ? <span className="pg-kans quickwin">Quick win</span> : <span className="muted">&mdash;</span>}</td>,
   };
   const ahFiltered = ahrefsKw.filter((k) => k.organic !== false && !k.branded && (onlyFruit ? isFruit(k) : true));
   const ahSorted = applySort(ahFiltered, ahSort, ahGetters);
@@ -595,20 +612,14 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
                   <thead><tr>
                     <SortTh label="Focus" k="focus" sort={ahSort} setSort={setAhSort} />
                     <SortTh label="Zoekwoord" k="keyword" sort={ahSort} setSort={setAhSort} />
-                    <SortTh label="Volume" k="volume" sort={ahSort} setSort={setAhSort} />
-                    <SortTh label="Positie" k="position" sort={ahSort} setSort={setAhSort} />
-                    <SortTh label="Intent" k="intent" sort={ahSort} setSort={setAhSort} />
-                    <SortTh label="Kans" k="kans" sort={ahSort} setSort={setAhSort} />
+                    {ahCols.map((gk) => ahHead[gk](colDragProps(gk, ahCols, setAhCols, "pw_kpicols_ah")))}
                   </tr></thead>
                   <tbody>
                     {ahSorted.map((k) => (
                       <tr key={k.keyword} className={isFruit(k) ? "kpi-fruit-row" : ""}>
                         <td><FocusSelect tier={focus[k.keyword]} onChange={(t) => markFocus(k.keyword, t)} /></td>
                         <td>{k.keyword}</td>
-                        <td>{k.volume != null ? nl(k.volume) : <span className="muted">&mdash;</span>}</td>
-                        <td>{k.position != null ? <>{k.position} {k.positionPrev != null && <Delta cur={k.position} prev={k.positionPrev} invert />}</> : <span className="muted">&mdash;</span>}</td>
-                        <td>{k.intent ? <span className={"kw-intent " + k.intent}>{k.intent}</span> : <span className="muted">&mdash;</span>}</td>
-                        <td>{isFruit(k) ? <span className="pg-kans quickwin">Quick win</span> : <span className="muted">&mdash;</span>}</td>
+                        {ahCols.map((gk) => ahCell[gk](k))}
                       </tr>
                     ))}
                   </tbody>
