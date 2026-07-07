@@ -93,8 +93,20 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   // Wordt het gesprek nu uitgeklapt getoond? Zo ja, staat de vervolgvraag al in het
   // gesprek zelf (boven de knoppen) en verbergen we het losse invoerveld onderaan.
   const convoShown = msgs.length > 0 && convoOpen;
-  // Titel voor de analyse-toggle: "ANALYSE: /pad/" van deze pagina.
-  const analyseTitle = "ANALYSE: " + ((url || "").replace(/^https?:\/\/[^/]+/i, "").trim() || url).toUpperCase();
+  // Titel voor de strategie-toggle: "STRATEGIE: /pad/" van deze pagina. (De chat-analyse
+  // heet "strategie" om hem te onderscheiden van de SEO-analyse bij de vervolgstappen.)
+  const analyseTitle = "STRATEGIE: " + ((url || "").replace(/^https?:\/\/[^/]+/i, "").trim() || url).toUpperCase();
+
+  // Groene "klaar"-status onthouden (browseropslag). Strategie: per pagina, blijft groen
+  // na heropenen. Doorgeven: per chat, reset bij een nieuwe chat (nieuwe vraag = weer oranje).
+  useEffect(() => {
+    try { setTaskDone(localStorage.getItem(`pw_stratdone_${slug}_${url}`) === "1"); } catch { /* geen opslag */ }
+  }, [slug, url]);
+  useEffect(() => {
+    if (chatId == null) { setClusterDone(0); return; }
+    try { const n = Number(localStorage.getItem(`pw_clusterdone_${chatId}`) || "0"); setClusterDone(Number.isFinite(n) ? n : 0); } catch { setClusterDone(0); }
+  }, [chatId]);
+  function markStrategieDone() { markStrategieDone(); try { localStorage.setItem(`pw_stratdone_${slug}_${url}`, "1"); } catch { /* geen opslag */ } }
 
   const [taskGen, setTaskGen] = useState(false);
   // Analyse vastgelegd (taak + document) → knop wordt groen "Analyse vastgelegd".
@@ -111,7 +123,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       if (ct.includes("application/json")) {
         const d = await r.json();
         if (!d.ok) { setErr(d.error || "Vastleggen mislukt."); return; }
-        setTaskDone(true);
+        markStrategieDone();
         if (d.started) { setApplied("De analyse wordt op de achtergrond vastgelegd; je kunt wegklikken. Hij verschijnt zo als werkzaamheid in Werkzaamheden."); onApplied(); return; }
         setApplied(`Analyse samengevat en opgeslagen in Google Drive${d.folder ? `, map "${d.folder}"` : ""}${d.owner ? `, account ${d.owner}` : ""} als ${d.isDoc ? "Google Doc" : "Word-bestand"}${!d.isDoc && d.note ? ` (omzetten naar Google Doc lukte niet: ${d.note})` : ""}. <a href="${d.link}" target="_blank" rel="noopener">Open document</a>.${d.shared ? " Iedereen met de link kan het bekijken." : " (Delen lukte niet automatisch.)"} Vastgelegd als één werkzaamheid; je springt nu naar Werkzaamheden om hem in te plannen.`);
         onApplied();
@@ -128,7 +140,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       setTimeout(() => URL.revokeObjectURL(a.href), 4000);
       const tid = Number(r.headers.get("X-Task-Id") || "");
       setApplied("Analyse samengevat en gedownload. Vastgelegd als één werkzaamheid; kies een Drive-map om het document ook te koppelen.");
-      setTaskDone(true);
+      markStrategieDone();
       onApplied();
       if (!Number.isNaN(tid) && tid && onGoToTask) onGoToTask(tid);
     } catch { setErr("Vastleggen mislukt."); } finally { setTaskGen(false); }
@@ -247,7 +259,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     loadChats(); /* eslint-disable-next-line */
   }, [slug, url]);
 
-  function newChat() { setMsgs([]); setChatId(null); setProposal(null); setApplied(""); setErr(""); setConvoOpen(true); setClusterItems(null); setClusterMsg(""); }
+  function newChat() { setMsgs([]); setChatId(null); setProposal(null); setApplied(""); setErr(""); setConvoOpen(true); setClusterItems(null); setClusterMsg(""); setClusterDone(0); }
 
   async function openChat(id: number) {
     setProposal(null); setApplied(""); setErr(""); setClusterItems(null); setClusterMsg("");
@@ -353,7 +365,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       const r = await fetch("/api/admin/page-chat/cluster-advice/apply", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, sourceUrl: url, sourceAnalysis: lastAssistant, items }) });
       const d = await r.json();
       if (d.ok) {
-        setClusterDone(d.saved || items.length);
+        { const n = d.saved || items.length; setClusterDone(n); try { if (chatId != null) localStorage.setItem(`pw_clusterdone_${chatId}`, String(n)); } catch { /* geen opslag */ } }
         setClusterMsg(`Advies doorgegeven aan ${d.saved} pagina('s). Hun eigen chat neemt dit voortaan als vertrekpunt mee; in het overzicht krijgen ze de markering "half plan".`);
         setClusterItems(null);
         onClusterApplied?.();
@@ -464,8 +476,8 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
             {driveFolder && <button type="button" className="ghost-btn small" onClick={() => setDriveFolder(null)}>Naar download</button>}
           </div>
           <div className="page-chat-tools">
-            <button type="button" className={"pcd-btn " + (taskDone ? "pcd-btn-done" : "pcd-btn-primary") + (taskGen ? " busy" : "")} onClick={makeWorkItem} disabled={taskGen}>{taskGen ? "Vastleggen…" : taskDone ? "✓ Analyse vastgelegd." : "Analyse vastleggen"}</button>
-            <HelpHint text="Vat deze analyse samen tot één document (Google Drive of download) en legt hem vast als één werkzaamheid met dat document eraan gekoppeld." />
+            <button type="button" className={"pcd-btn " + (taskDone ? "pcd-btn-done" : "pcd-btn-primary") + (taskGen ? " busy" : "")} onClick={makeWorkItem} disabled={taskGen}>{taskGen ? "Vastleggen…" : taskDone ? "✓ Strategie vastgelegd." : "Strategie vastleggen"}</button>
+            <HelpHint text="Vat de strategie uit deze chat samen tot één document (Google Drive of download) en legt hem vast als één werkzaamheid met dat document eraan gekoppeld. Los van de SEO-analyse bij de vervolgstappen hieronder." />
           </div>
         </>
       )}
