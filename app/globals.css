@@ -1201,7 +1201,7 @@ button.ck-collapse-head {
 .task-table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
 .task-table th, .task-table td { overflow: hidden; }
 .task-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--white); background: var(--dark); padding: 8px 8px; white-space: nowrap; position: sticky; top: 130px; z-index: 49; }
-.task-table td { border-bottom: 1px solid var(--border); padding: 4px 6px; vertical-align: middle; }
+.task-table td { border-bottom: 1px solid var(--border); padding: 4px 6px; vertical-align: top; }
 .task-table tr.dragging td { opacity: 0.35; }
 /* Slepen: een geanimeerde oranje invoeglijn + een gaatje dat opengaat op de plek
    waar de taak zal landen, zodat je precies ziet waar hij komt. */
@@ -1229,7 +1229,7 @@ button.ck-collapse-head {
 .rich-cell:hover { border-color: var(--border); }
 /* Lange toelichtingen (bijv. het cannibalisatie-developer-overzicht) niet de hele rij laten
    opblazen: begrens de hoogte en laat binnen de cel scrollen. */
-.rich-cell { max-height: 190px; overflow-y: auto; }
+.rich-cell { max-height: 88px; overflow-y: auto; }
 .rich-cell hr { border: none; border-top: 1px solid var(--border); margin: 6px 0; }
 .rich-cell ul, .rich-cell ol { margin: 4px 0; padding-left: 18px; }
 .rich-cell p { margin: 0 0 5px; }
