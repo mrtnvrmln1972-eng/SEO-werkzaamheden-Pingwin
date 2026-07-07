@@ -55,6 +55,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   const [pcOpen, setPcOpen] = useState(false);
   const [applyBusy, setApplyBusy] = useState(false);
   const [applyMsg, setApplyMsg] = useState("");
+  const [canniDone, setCanniDone] = useState(false); // stap 5 afgerond (aanbevelingen overgenomen)
   // Een chat-bericht bewerken (welke index) — gerenderde contentEditable, geen ruwe textarea.
   const [editIdx, setEditIdx] = useState<number | null>(null);
   const editRef = useRef<HTMLDivElement | null>(null);
@@ -97,6 +98,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       if (d.docLink) parts.push("met document");
       if (d.advicePages) parts.push(`, basisinfo doorgezet naar ${d.advicePages} pagina('s)`);
       setApplyMsg(parts.join(" ") + ".");
+      setCanniDone(true); try { localStorage.setItem(`pw_cannidone_${slug}_${url}`, "1"); } catch { /* geen opslag */ }
       onApplied();
     } catch { setApplyMsg("Overnemen mislukt."); } finally { setApplyBusy(false); }
   }
@@ -121,6 +123,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     try { const n = Number(localStorage.getItem(`pw_clusterdone_${slug}_${url}`) || "0"); clusterN = Number.isFinite(n) ? n : 0; } catch { clusterN = 0; }
     setTaskDone(stratD); setClusterDone(clusterN); setChatOpen(!(stratD && clusterN > 0));
     try { const sd: Record<string, boolean> = {}; (["analyse", "blauwdruk", "copy"] as const).forEach((k) => { if (localStorage.getItem(`pw_stepdone_${slug}_${url}_${k}`) === "1") sd[k] = true; }); setStepsDone(sd); } catch { setStepsDone({}); }
+    try { setCanniDone(localStorage.getItem(`pw_cannidone_${slug}_${url}`) === "1"); } catch { setCanniDone(false); }
   }, [slug, url]);
   function markStrategieDone() { setTaskDone(true); try { localStorage.setItem(`pw_stratdone_${slug}_${url}`, "1"); } catch { /* geen opslag */ } if (clusterDone > 0) setChatOpen(false); }
 
@@ -534,14 +537,17 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
           )}
         </div>
       )}
-      <div className="page-chat">
-        <div className="page-chat-head" onClick={() => setChatOpen((o) => !o)} style={{ cursor: "pointer" }} title={chatOpen ? "Chat inklappen" : "Chat uitklappen"}>
-          <span><span className="pch-caret">{chatOpen ? "▾" : "▸"}</span> 2. Chat over deze pagina <span onClick={(e) => e.stopPropagation()}><HelpHint wide text="Praat hier met de AI over deze pagina om de strategie uit te werken. De chat is gegrond in de live status van de pagina, de Search Console-ranking en de andere pagina's in het cluster, zodat het advies klopt met de werkelijkheid. Ben je klaar: vat samen tot een plan, geef het door aan betrokken pagina's en leg de strategie vast." /></span></span>
-          {(chats.length > 0 || msgs.length > 0) && <button type="button" className="ghost-btn small" onClick={(e) => { e.stopPropagation(); newChat(); }}>+ Nieuwe chat</button>}
+      <div className={"page-chat step-card step-card-2" + (taskDone ? " done" : "")}>
+        <div className="step-head" onClick={() => setChatOpen((o) => !o)} title={chatOpen ? "Chat inklappen" : "Chat uitklappen"}>
+          <span className="step-caret">{chatOpen ? "▾" : "▸"}</span>
+          <span className="step-badge">{taskDone ? "✓" : "2"}</span>
+          <span className="step-title">Chat over deze pagina</span>
+          <span onClick={(e) => e.stopPropagation()}><HelpHint wide text="Praat hier met de AI over deze pagina om de strategie uit te werken. De chat is gegrond in de live status van de pagina, de Search Console-ranking en de andere pagina's in het cluster, zodat het advies klopt met de werkelijkheid. Ben je klaar: vat samen tot een plan, geef het door aan betrokken pagina's en leg de strategie vast." /></span>
+          {chatOpen && (chats.length > 0 || msgs.length > 0) && <span className="step-head-right"><button type="button" className="ghost-btn small" onClick={(e) => { e.stopPropagation(); newChat(); }}>+ Nieuwe chat</button></span>}
         </div>
 
         {chatOpen && (
-        <div className="page-chat-history">
+        <div className="page-chat-history step-body">
           <div className="page-chat-history-head">Eerdere chats</div>
 
           {chatId === null && msgs.length > 0 && (
@@ -579,13 +585,18 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       {applied && <div className="saved-msg" style={{ marginTop: 8 }} dangerouslySetInnerHTML={{ __html: applied }} />}
       {err && <div className="login-error" style={{ marginTop: 8 }}>{err}</div>}
 
-      {lastAssistant && (
-        <div className="page-chat-cluster-card">
-          <div className="pcd-docs-head step-head" onClick={() => setDoorgevenOpen((o) => !o)}>
-            <span className="pch-caret">{doorgevenOpen ? "▾" : "▸"}</span> 3. Doorgeven aan gelieerde pagina&rsquo;s <span onClick={(e) => e.stopPropagation()}><HelpHint wide text="Raakt deze analyse ook andere pagina's in het cluster? Geef het advies dat over hén gaat alvast door. Naast het advies per pagina gaat ook de volledige conclusie van deze chat mee, zodat die pagina's de hele strategie als vertrekpunt hebben (ze krijgen de markering 'half plan')." /></span>
-          </div>
-          {doorgevenOpen && (
-          <div className="page-chat-cluster">
+      <div className={"page-chat-cluster-card step-card step-card-3" + (clusterDone > 0 ? " done" : "")}>
+        <div className="step-head" onClick={() => setDoorgevenOpen((o) => !o)}>
+          <span className="step-caret">{doorgevenOpen ? "▾" : "▸"}</span>
+          <span className="step-badge">{clusterDone > 0 ? "✓" : "3"}</span>
+          <span className="step-title">Doorgeven aan gelieerde pagina&rsquo;s</span>
+          <span onClick={(e) => e.stopPropagation()}><HelpHint wide text="Raakt deze analyse ook andere pagina's in het cluster? Geef het advies dat over hén gaat alvast door. Naast het advies per pagina gaat ook de volledige conclusie van deze chat mee, zodat die pagina's de hele strategie als vertrekpunt hebben (ze krijgen de markering 'half plan')." /></span>
+        </div>
+        {doorgevenOpen && (
+        <div className="page-chat-cluster step-body">
+          {!lastAssistant ? (
+            <div className="muted" style={{ fontSize: 13 }}>Werk eerst de strategie uit in de chat (stap 2); daarna kun je het advies doorgeven aan gelieerde pagina&rsquo;s.</div>
+          ) : (<>
             <div className="pchf-lead">Raakt deze analyse ook andere pagina&rsquo;s in het cluster? Geef hun advies alvast door.</div>
             {clusterDone > 0 ? (
               <button type="button" className="pcd-btn pcd-btn-done" disabled>&#10003; Doorgegeven aan {clusterDone} pagina&rsquo;s</button>
@@ -613,17 +624,20 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
               </>
             )}
             {clusterMsg && <div className="saved-msg" style={{ marginTop: 8 }}>{clusterMsg}</div>}
+          </>)}
           </div>
           )}
         </div>
-      )}
 
-      {lastAssistant && (
-        <div className="page-chat-docs">
-          <div className="pcd-docs-head step-head" onClick={() => setVervolgOpen((o) => !o)}>
-            <span className="pch-caret">{vervolgOpen ? "▾" : "▸"}</span> 4. Vervolgstappen op de strategie <span onClick={(e) => e.stopPropagation()}><HelpHint wide text="Hier maak je de documenten die uit de vastgelegde strategie volgen: de SEO-analyse, de blauwdruk en de copy voor deze pagina. Elke stap draait op de achtergrond en komt in je Drive-map te staan én als werkzaamheid in de takenlijst. Onder elke stap kun je een uitgebreide interne versie laten maken." /></span>
+      <div className={"page-chat-docs step-card step-card-4" + (allStepsDone ? " done" : "")}>
+          <div className="step-head" onClick={() => setVervolgOpen((o) => !o)}>
+            <span className="step-caret">{vervolgOpen ? "▾" : "▸"}</span>
+            <span className="step-badge">{allStepsDone ? "✓" : "4"}</span>
+            <span className="step-title">Vervolgstappen op de strategie</span>
+            <span onClick={(e) => e.stopPropagation()}><HelpHint wide text="Hier maak je de documenten die uit de vastgelegde strategie volgen: de SEO-analyse, de blauwdruk en de copy voor deze pagina. Elke stap draait op de achtergrond en komt in je Drive-map te staan én als werkzaamheid in de takenlijst. Onder elke stap kun je een uitgebreide interne versie laten maken." /></span>
           </div>
-          {vervolgOpen && (<>
+          {vervolgOpen && (
+          !lastAssistant ? <div className="step-body muted" style={{ fontSize: 13 }}>Werk eerst de strategie uit in de chat (stap 2) en leg hem vast; daarna maak je hier de analyse, blauwdruk en copy.</div> : (<div className="step-body">
           <div className="page-chat-drive" style={{ margin: "4px 0 14px" }}>
             <span className="pcd-label">Opslaan in:</span>
             {driveFolder
@@ -668,15 +682,17 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
               {run.status === "error" && run.error && <div className="login-error" style={{ marginTop: 6 }}>{run.error}</div>}
             </div>
           )}
-          </>)}
+          </div>))}
         </div>
-      )}
 
-      <div className="page-chat-canni">
-        <div className="pcd-docs-head step-head" onClick={() => setCanniOpen((o) => !o)}>
-          <span className="pch-caret">{canniOpen ? "▾" : "▸"}</span> 5. Cannibalisatie oplossen <span onClick={(e) => e.stopPropagation()}><HelpHint wide text="Controleert of meerdere pagina's van de site op dezelfde zoekwoorden concurreren (kannibalisatie). Per zoekwoord zie je (met top-10 + volume) of het een eigen pagina verdient of naar deze pagina geclusterd moet worden, en welke pagina's deze pagina 'kapen', met de actie per pagina. Draait op de achtergrond met echte Ahrefs-data." /></span>
+      <div className={"page-chat-canni step-card step-card-5" + (canniDone ? " done" : "")}>
+        <div className="step-head" onClick={() => setCanniOpen((o) => !o)}>
+          <span className="step-caret">{canniOpen ? "▾" : "▸"}</span>
+          <span className="step-badge">{canniDone ? "✓" : "5"}</span>
+          <span className="step-title">Cannibalisatie oplossen</span>
+          <span onClick={(e) => e.stopPropagation()}><HelpHint wide text="Controleert of meerdere pagina's van de site op dezelfde zoekwoorden concurreren (kannibalisatie). Per zoekwoord zie je (met top-10 + volume) of het een eigen pagina verdient of naar deze pagina geclusterd moet worden, en welke pagina's deze pagina 'kapen', met de actie per pagina. Draait op de achtergrond met echte Ahrefs-data." /></span>
         </div>
-        {canniOpen && (<>
+        {canniOpen && (<div className="step-body">
         <div className="pch-canni-row">
           <span className="pch-canni-lead">Brengt per zoekwoord in kaart (top-10 + volume) of het een eigen pagina verdient of naar deze pagina geclusterd wordt, en welke pagina&rsquo;s deze pagina kapen, met de actie per pagina.</span>
           <button type="button" className={"pcd-btn" + (pcBusy || pc?.status === "running" ? " busy" : "")} disabled={pcBusy || pc?.status === "running"} onClick={runPc} title="Draait op de achtergrond met echte Ahrefs-data; je kunt wegklikken.">{pc?.status === "running" ? "Analyse draait…" : pc?.result ? "Opnieuw analyseren" : "Cannibalisatie oplossen"}</button>
@@ -695,21 +711,27 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
             )}
           </div>
         )}
-        </>)}
+        </div>)}
       </div>
 
-      <div className="page-chat-links-card">
-        <div className="pcd-docs-head step-head" onClick={() => setLinksOpen((o) => !o)}>
-          <span className="pch-caret">{linksOpen ? "▾" : "▸"}</span> 6. Interne links <span onClick={(e) => e.stopPropagation()}><HelpHint wide text="Straks: de interne links naar en vanaf deze pagina (welke pagina's linken hierheen, met welke ankertekst), als taak + begrijpelijk klantdocument. Deze stap werken we later verder uit." /></span>
+      <div className="page-chat-links-card step-card step-card-6">
+        <div className="step-head" onClick={() => setLinksOpen((o) => !o)}>
+          <span className="step-caret">{linksOpen ? "▾" : "▸"}</span>
+          <span className="step-badge">6</span>
+          <span className="step-title">Interne links</span>
+          <span onClick={(e) => e.stopPropagation()}><HelpHint wide text="Straks: de interne links naar en vanaf deze pagina (welke pagina's linken hierheen, met welke ankertekst), als taak + begrijpelijk klantdocument. Deze stap werken we later verder uit." /></span>
         </div>
-        {linksOpen && <div className="muted" style={{ fontSize: 13 }}>Nog uit te werken. Hier komt het voorstel voor de interne links van deze pagina, met een klantdocument.</div>}
+        {linksOpen && <div className="step-body muted" style={{ fontSize: 13 }}>Nog uit te werken. Hier komt het voorstel voor de interne links van deze pagina, met een klantdocument.</div>}
       </div>
 
-      <div className="page-chat-schema-card">
-        <div className="pcd-docs-head step-head" onClick={() => setSchemaOpen((o) => !o)}>
-          <span className="pch-caret">{schemaOpen ? "▾" : "▸"}</span> 7. Structured data <span onClick={(e) => e.stopPropagation()}><HelpHint wide text="Straks: de voorgestelde schema-markup (structured data) voor deze pagina, passend bij het pagina-type, als taak + begrijpelijk klantdocument. Deze stap werken we later verder uit." /></span>
+      <div className="page-chat-schema-card step-card step-card-7">
+        <div className="step-head" onClick={() => setSchemaOpen((o) => !o)}>
+          <span className="step-caret">{schemaOpen ? "▾" : "▸"}</span>
+          <span className="step-badge">7</span>
+          <span className="step-title">Structured data</span>
+          <span onClick={(e) => e.stopPropagation()}><HelpHint wide text="Straks: de voorgestelde schema-markup (structured data) voor deze pagina, passend bij het pagina-type, als taak + begrijpelijk klantdocument. Deze stap werken we later verder uit." /></span>
         </div>
-        {schemaOpen && <div className="muted" style={{ fontSize: 13 }}>Nog uit te werken. Hier komt de voorgestelde structured data (schema-markup) voor deze pagina.</div>}
+        {schemaOpen && <div className="step-body muted" style={{ fontSize: 13 }}>Nog uit te werken. Hier komt de voorgestelde structured data (schema-markup) voor deze pagina.</div>}
       </div>
 
       {!convoShown && (

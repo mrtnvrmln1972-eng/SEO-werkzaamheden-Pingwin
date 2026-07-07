@@ -645,9 +645,27 @@ tbody td:last-child { text-align: center; }
 .wz-endpoints .prog-down strong { color: #C62828; }
 .pch-canni-lead { font-size: 13px; color: var(--dark); flex: 1 1 240px; }
 .pcd-docs-head { font-size: 13px; font-weight: 700; color: var(--gray); margin-bottom: 7px; }
-/* Klikbare, genummerde toggle-kop per stap-kaart. */
-.step-head { cursor: pointer; display: flex; align-items: center; gap: 6px; }
-.step-head .help-hint { margin-left: 2px; }
+/* ═══ Pijplijn-stapkaarten: witte kaart, gekleurde nummer-badge (Pingwin-palet),
+   drop shadow, hover-lift, gelijke hoogte. Elke stap een eigen accentkleur. ═══ */
+.step-card { position: relative; background: #fff !important; border: 1px solid #ECE7E2 !important; border-left: 5px solid var(--sc, var(--orange)) !important; border-radius: 14px !important; padding: 0 !important; box-shadow: 0 2px 7px rgba(51,48,46,0.06); transition: box-shadow .2s ease, transform .2s ease; margin: 14px 0; max-width: 1040px; }
+.step-card:hover { box-shadow: 0 12px 28px rgba(51,48,46,0.15); transform: translateY(-3px); }
+.step-card.done { border-left-color: #2E9E5B; }
+.step-head { display: flex; align-items: center; gap: 11px; padding: 15px 20px; cursor: pointer; }
+.step-caret { flex: 0 0 auto; color: #bcb6ae; font-size: 12px; }
+.step-badge { display: inline-flex; align-items: center; justify-content: center; width: 27px; height: 27px; border-radius: 50%; background: var(--sc, var(--orange)); color: #fff; font-weight: 800; font-size: 13px; flex: 0 0 auto; box-shadow: 0 2px 5px rgba(51,48,46,0.22); }
+.step-card.done .step-badge { background: #2E9E5B; }
+.step-title { font-weight: 700; font-size: 14.5px; color: var(--brand-charcoal); letter-spacing: .1px; }
+.step-head .help-hint { margin-left: 1px; }
+.step-head-right { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; }
+.step-body { padding: 2px 20px 20px 20px; }
+/* Accentkleuren per stap (uit het Pingwin-palet). */
+.step-card-1 { --sc: #E7773F; }
+.step-card-2 { --sc: #2286C7; }
+.step-card-3 { --sc: #EF9385; }
+.step-card-4 { --sc: #12A9C6; }
+.step-card-5 { --sc: #3B4A9E; }
+.step-card-6 { --sc: #7C7268; }
+.step-card-7 { --sc: #33302E; }
 .pcd-nuance { width: 100%; font-size: 13px; border: 1px solid var(--border); border-radius: 8px; padding: 8px 11px; outline: none; margin-bottom: 8px; }
 .pcd-nuance:focus { border-color: var(--orange); }
 .pcd-docs-buttons { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-start; }
