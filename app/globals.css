@@ -1052,6 +1052,8 @@ button.ck-collapse-head {
 .kpi-sub-toggle:hover .kpi-sub-title { color: var(--orange-dark); }
 .kpi-sub-title { color: var(--dark); }
 .kpi-sub-head .kpi-head-actions { padding-bottom: 0; }
+.kpi-kw-search { font-size: 12px; padding: 4px 9px; border: 1px solid var(--border); border-radius: 7px; outline: none; width: 170px; max-width: 42vw; font-family: inherit; background: var(--white); }
+.kpi-kw-search:focus { border-color: var(--orange); }
 .kpi-sub-body { padding: 12px; }
 
 /* Wat meer lucht tussen de hoofdsecties (en de laad-kaart). */

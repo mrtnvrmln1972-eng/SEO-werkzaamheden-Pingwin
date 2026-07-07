@@ -256,6 +256,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [focus, setFocus] = useState<Record<string, FocusTier>>({});
   const [kwSort, setKwSort] = useState<Sort<KwKey>>(null);
+  const [kwSearch, setKwSearch] = useState("");
   const [focusSort, setFocusSort] = useState<Sort<KwKey>>(null);
   const [pageSort, setPageSort] = useState<Sort<PageKey>>(null);
   const [oppSort, setOppSort] = useState<Sort<OppKey>>(null);
@@ -424,6 +425,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
     focusSort, kwGetters,
   );
   const sortedKws = applySort(allKws, kwSort, kwGetters);
+  const shownKws = kwSearch.trim() ? sortedKws.filter((k) => k.keyword.toLowerCase().includes(kwSearch.trim().toLowerCase())) : sortedKws;
   const secFocusCount = focusedKws.filter((k) => focus[k.keyword] === "secundair").length;
   const pageGetters: Record<"url" | "clicks" | "impressions", (p: GscPage) => number | string> = {
     url: (p) => shortUrl(p.url), clicks: (p) => p.clicks, impressions: (p) => p.impressions,
@@ -505,7 +507,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
           </div>
 
           {gsc.series.dates.length >= 2 && (
-            <Collapse sub title="Trend per dag" meta={domainMarkers.length > 0 ? `dagelijkse lijn · ${domainMarkers.length} verander-moment${domainMarkers.length === 1 ? "" : "en"} gemarkeerd` : "dagelijkse lijn met verander-markeringen"} open={isOpen("sc_trend", true)} onToggle={() => toggle("sc_trend", true)}>
+            <Collapse sub title="Trend per dag" meta={domainMarkers.length > 0 ? `dagelijkse lijn · ${domainMarkers.length} verander-moment${domainMarkers.length === 1 ? "" : "en"} gemarkeerd` : "dagelijkse lijn met verander-markeringen"} open={isOpen("sc_trend", false)} onToggle={() => toggle("sc_trend", false)}>
               <div className="wz-kpi">
                 <TrendBlock label="Klikken per dag"><BigTrend data={domainDays} markers={domainMarkers} metric="clicks" /></TrendBlock>
                 <TrendBlock label="Vertoningen per dag"><BigTrend data={domainDays} markers={domainMarkers} metric="impressions" /></TrendBlock>
@@ -547,7 +549,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
           )}
 
           {gsc.keywords.length > 0 && (
-            <Collapse sub title={<>Zoekwoorden uit Search Console ({gsc.keywords.length}) <HelpHint wide text="De zoekwoorden waarop deze site in Google gevonden wordt (echte klikken en vertoningen uit Search Console). Markeer belangrijke woorden als prio of secundair; die verschijnen vastgezet bovenaan en zijn gedeeld met de Ahrefs-lijst." /></>} meta="markeer een zoekwoord als prio of secundair" open={isOpen("sc_kw")} onToggle={() => toggle("sc_kw")}>
+            <Collapse sub title={<>Zoekwoorden uit Search Console ({gsc.keywords.length}) <HelpHint wide text="De zoekwoorden waarop deze site in Google gevonden wordt (echte klikken en vertoningen uit Search Console). Markeer belangrijke woorden als prio of secundair; die verschijnen vastgezet bovenaan en zijn gedeeld met de Ahrefs-lijst." /></>} meta="markeer een zoekwoord als prio of secundair" open={isOpen("sc_kw")} onToggle={() => toggle("sc_kw")} actions={<input className="kpi-kw-search" placeholder="Zoek zoekwoord…" value={kwSearch} onClick={(e) => e.stopPropagation()} onChange={(e) => setKwSearch(e.target.value)} />}>
               <div className="res-table-wrap">
                 <table className="res-table kpi-table">
                   <thead><tr>
@@ -560,7 +562,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
                     <SortTh label="CTR" k="ctr" sort={kwSort} setSort={setKwSort} />
                   </tr></thead>
                   <tbody>
-                    {sortedKws.map((k) => (
+                    {shownKws.map((k) => (
                       <tr key={k.keyword}>
                         <td><FocusSelect tier={focus[k.keyword]} onChange={(t) => markFocus(k.keyword, t)} /></td>
                         <td>{k.keyword}</td>
