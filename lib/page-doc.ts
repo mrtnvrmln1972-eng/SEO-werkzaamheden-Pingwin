@@ -424,8 +424,46 @@ ${SEO_CRITERIA_MD}`;
   return callClaudeAgentic(system, [{ role: "user", content: user }], tools, run, 4, 5000, { action: "strategie_grounding" });
 }
 
-// audience "klant" (standaard): één korte, klantvriendelijke versie, direct uit de data.
-// audience "intern": de uitgebreide technische versie (op verzoek; drie keer zo lang).
+type ParsedDoc = { titel?: unknown; ondertitel?: unknown; sections?: unknown };
+
+// Genereert één document uit een system-prompt, met één JSON-herkansing. Gooit als de
+// JSON onparsebaar blijft (te lang/afgekapt).
+async function runDocGen(system: string, baseUser: string, maxTokens: number, slug: string, kind: DocKind, action: string): Promise<ParsedDoc> {
+  const raw1 = await callClaude(system, [{ role: "user", content: baseUser }], maxTokens, { slug, action });
+  let parsed = extractJsonObject(raw1);
+  let raw2 = "";
+  if (!parsed) {
+    const retryUser = `${baseUser}\n\nBELANGRIJK: geef UITSLUITEND geldige, VOLLEDIGE JSON terug volgens het formaat. Geen tekst eromheen en niet afkappen; houd het compact genoeg om de JSON helemaal af te maken.`;
+    raw2 = await callClaude(system, [{ role: "user", content: retryUser }], maxTokens, { slug, action });
+    parsed = extractJsonObject(raw2);
+  }
+  if (!parsed) {
+    console.error(`[page-doc] ${kind}: JSON onparsebaar. len1=${raw1.length} len2=${raw2.length} tail=${JSON.stringify((raw2 || raw1).slice(-300))}`);
+    throw new Error(`De ${kind} kwam niet als geldige JSON terug (waarschijnlijk te lang of afgekapt). Probeer het opnieuw; blijft het misgaan, laat het weten dan splitsen we het document.`);
+  }
+  return parsed;
+}
+
+// Bouwt de DocSpec uit de geparste JSON.
+function buildDocSpec(parsed: ParsedDoc, audience: "intern" | "klant", kind: DocKind, clientName: string, url: string): { spec: DocSpec; title: string } {
+  const title = typeof parsed.titel === "string" && parsed.titel.trim() ? parsed.titel.trim() : `${FALLBACK_TITLE[kind]} ${url}`;
+  const sections = Array.isArray(parsed.sections) ? parsed.sections : [];
+  if (audience === "klant" && kind === "copy") sections.unshift({ heading: "", blocks: [{ type: "paragraph", text: COPY_CLIENT_INTRO }] });
+  const spec: DocSpec = {
+    klant: clientName,
+    rapporttype: audience === "klant" ? `Klantversie ${RAPPORTTYPE[kind]}` : RAPPORTTYPE[kind],
+    titel: title,
+    ondertitel: typeof parsed.ondertitel === "string" ? parsed.ondertitel : url,
+    meta: { Klant: clientName, Pagina: url },
+    sections,
+  };
+  return { spec, title };
+}
+
+// audience "klant" (standaard): korte, klantvriendelijke versie.
+// - analyse/blauwdruk: eerst de DIEPE technische fundering (geketend), daaruit het korte klantdoc.
+// - copy: de VOLLEDIGE uitgeschreven pagina (kernproduct), geen samenvatting.
+// audience "intern": de uitgebreide technische versie als afgeleverd document.
 export async function generateDocSpec(slug: string, url: string, kind: DocKind, extra?: string, audience: "intern" | "klant" = "klant"): Promise<{ spec: DocSpec; title: string }> {
   const context = await buildContext(slug, url, extra);
   const client = await getClientBySlug(slug);
@@ -456,37 +494,27 @@ Geen emoji. ${DOCSPEC_FORMAT}`;
   // Copy is het kernproduct: schrijf de VOLLEDIGE pagina (eigen copywriter-prompt), niet de
   // korte klant-samenvatting die analyse/blauwdruk gebruiken. Ruim tokenbudget zodat 5.000+
   // woorden niet worden afgekapt.
+  const clientName = client?.name || slug;
+  const baseUser = `Maak de ${kind} op basis van deze gegevens:\n\n${context.text}${chain}`;
+
+  // Twee-lagen voor analyse/blauwdruk (standaard klant): eerst de DIEPE, technische fundering
+  // (volledige criteria-scoring + concurrentie-afweging). Die bewaren we als keten-bron zodat de
+  // blauwdruk en copy op de volledige diepgang voortbouwen. Daaruit leiden we een KORT, begrijpelijk
+  // klantdocument af dat wordt afgeleverd (aparte, goedkope verkleining).
+  if (audience === "klant" && (kind === "analyse" || kind === "blauwdruk")) {
+    const deepMax = kind === "blauwdruk" ? 10000 : 14000;
+    const deepParsed = await runDocGen(SYSTEMS[kind], baseUser, deepMax, slug, kind, `doc_${kind}_diep`);
+    const { spec: deepSpec } = buildDocSpec(deepParsed, "intern", kind, clientName, url);
+    await savePageDocOutput(slug, url, kind, specToText(deepSpec)).catch(() => { /* keten is aanvulling */ });
+    return clientVersionSpec(slug, url, kind, specToText(deepSpec), extra);
+  }
+
+  // Overige gevallen: één generatie. copy (klant) = volledig uitgeschreven pagina;
+  // audience "intern" = de diepe technische versie als afgeleverd document.
   const system = audience === "klant" ? (kind === "copy" ? COPY_CLIENT_SYSTEM : klantSystem) : SYSTEMS[kind];
   const maxTokens = audience === "klant" ? (kind === "copy" ? 16000 : 3500) : (kind === "blauwdruk" ? 10000 : 14000);
-  const baseUser = `Maak de ${kind} op basis van deze gegevens:\n\n${context.text}${chain}`;
-  const raw1 = await callClaude(system, [{ role: "user", content: baseUser }], maxTokens, { slug, action: `doc_${kind}` });
-  let parsed = extractJsonObject(raw1);
-  let raw2 = "";
-  if (!parsed) {
-    // Eenmalige herkansing met nadruk op volledige, geldige JSON (vaak afgekapt).
-    const retryUser = `${baseUser}\n\nBELANGRIJK: geef UITSLUITEND geldige, VOLLEDIGE JSON terug volgens het formaat. Geen tekst eromheen en niet afkappen; houd het compact genoeg om de JSON helemaal af te maken.`;
-    raw2 = await callClaude(system, [{ role: "user", content: retryUser }], maxTokens, { slug, action: `doc_${kind}` });
-    parsed = extractJsonObject(raw2);
-  }
-  if (!parsed) {
-    const used = raw2 || raw1;
-    console.error(`[page-doc] ${kind}: JSON onparsebaar. len1=${raw1.length} len2=${raw2.length} tail=${JSON.stringify(used.slice(-300))}`);
-    throw new Error(`De ${kind} kwam niet als geldige JSON terug (waarschijnlijk te lang of afgekapt). Probeer het opnieuw; blijft het misgaan, laat het weten dan splitsen we het document.`);
-  }
-  const title = typeof parsed.titel === "string" && parsed.titel.trim() ? parsed.titel.trim() : `${FALLBACK_TITLE[kind]} ${url}`;
-  const sections = Array.isArray(parsed.sections) ? parsed.sections : [];
-  // Copy-klantversie opent met de vaste introductie (klant leest na en levert aangepast terug).
-  if (audience === "klant" && kind === "copy") {
-    sections.unshift({ heading: "", blocks: [{ type: "paragraph", text: COPY_CLIENT_INTRO }] });
-  }
-  const spec: DocSpec = {
-    klant: client?.name || slug,
-    rapporttype: audience === "klant" ? `Klantversie ${RAPPORTTYPE[kind]}` : RAPPORTTYPE[kind],
-    titel: title,
-    ondertitel: typeof parsed.ondertitel === "string" ? parsed.ondertitel : url,
-    meta: { Klant: client?.name || slug, Pagina: url },
-    sections,
-  };
+  const parsed = await runDocGen(system, baseUser, maxTokens, slug, kind, `doc_${kind}`);
+  const { spec, title } = buildDocSpec(parsed, audience, kind, clientName, url);
   // Bewaar de tekst-uitkomst zodat de volgende stap in de keten erop voortbouwt.
   await savePageDocOutput(slug, url, kind, specToText(spec)).catch(() => { /* keten is aanvulling, niet kritisch */ });
   return { spec, title };
