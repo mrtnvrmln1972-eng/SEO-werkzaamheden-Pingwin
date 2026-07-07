@@ -71,7 +71,7 @@ function PeriodCompare({ prev, cur, fmt, invert }: { prev: number; cur: number; 
 // eindstand (rechts); daaronder de échte dagreeks als lijn met hover-waarde en een
 // datum-as (begin/midden/eind). invert=true bij 'positie': richting positie 0 loopt de
 // lijn omhoog (beter). Verticale schaal is min-max, zodat de beweging goed zichtbaar is.
-function CardTrend({ label, values, dates, prev, cur, fmt, invert, isPos }: { label: ReactNode; values: number[]; dates: string[]; prev: number; cur: number; fmt: (v: number) => string; invert?: boolean; isPos?: boolean }) {
+function CardTrend({ label, values, dates, prev, cur, fmt, invert, isPos, periodLabel }: { label: ReactNode; values: number[]; dates: string[]; prev: number; cur: number; fmt: (v: number) => string; invert?: boolean; isPos?: boolean; periodLabel: string }) {
   const [hover, setHover] = useState<number | null>(null);
   const w = 220, h = 58, pad = 6;
   const pts = values.map((v, i) => ({ v, date: dates[i] || "" })).filter((p) => p.date);
@@ -91,21 +91,24 @@ function CardTrend({ label, values, dates, prev, cur, fmt, invert, isPos }: { la
   return (
     <div className="kpi-card kpi-card-trend">
       <div className="kpi-label">{label}</div>
-      <div className="ktr-head">
-        <span className="ktr-begin" title="beginstand (vorige periode)">{fmt(prev)}</span>
-        <Delta cur={cur} prev={prev} pct invert={invert} isPos={isPos} />
-        <span className="ktr-eind" title="eindstand (huidige periode)" style={{ color }}>{fmt(cur)}</span>
+      <div className="ktr-compare">
+        <div className="ktr-col"><span className="ktr-col-lbl">Vorige {periodLabel}</span><span className="ktr-col-val ktr-prev">{fmt(prev)}</span></div>
+        <div className="ktr-col ktr-col-mid"><Delta cur={cur} prev={prev} pct invert={invert} isPos={isPos} /></div>
+        <div className="ktr-col ktr-col-r"><span className="ktr-col-lbl">Deze {periodLabel}</span><span className="ktr-col-val" style={{ color }}>{fmt(cur)}</span></div>
       </div>
       {has ? (
-        <div className="ktr-chart" onMouseLeave={() => setHover(null)}>
-          <svg viewBox={`0 0 ${w} ${h}`} className="ktr-svg" preserveAspectRatio="none">
-            <polyline points={line} fill="none" stroke={color} strokeWidth={2} vectorEffect="non-scaling-stroke" />
-            {hv && <line x1={x(hover!)} y1={0} x2={x(hover!)} y2={h} className="ktr-hoverline" />}
-            {hv && <circle cx={x(hover!)} cy={y(hv.v)} r={3.4} fill={color} stroke="#fff" strokeWidth={1.4} />}
-            {pts.map((p, i) => <rect key={i} x={x(i) - (w / pts.length) / 2} y={0} width={w / pts.length} height={h} fill="transparent" onMouseEnter={() => setHover(i)} />)}
-          </svg>
-          {hv && <div className="ktr-tip" style={{ left: `${Math.max(8, Math.min(92, (x(hover!) / w) * 100))}%` }}>{dShort(hv.date)}: <strong>{fmt(hv.v)}</strong></div>}
-          <div className="ktr-axis"><span>{dShort(pts[0].date)}</span><span>{dShort(pts[mid].date)}</span><span>{dShort(pts[pts.length - 1].date)}</span></div>
+        <div className="ktr-chart-wrap">
+          <div className="ktr-chart-title">Verloop per dag ({periodLabel})</div>
+          <div className="ktr-chart" onMouseLeave={() => setHover(null)}>
+            <svg viewBox={`0 0 ${w} ${h}`} className="ktr-svg" preserveAspectRatio="none">
+              <polyline points={line} fill="none" stroke={color} strokeWidth={2} vectorEffect="non-scaling-stroke" />
+              {hv && <line x1={x(hover!)} y1={0} x2={x(hover!)} y2={h} className="ktr-hoverline" />}
+              {hv && <circle cx={x(hover!)} cy={y(hv.v)} r={3.4} fill={color} stroke="#fff" strokeWidth={1.4} />}
+              {pts.map((p, i) => <rect key={i} x={x(i) - (w / pts.length) / 2} y={0} width={w / pts.length} height={h} fill="transparent" onMouseEnter={() => setHover(i)} />)}
+            </svg>
+            {hv && <div className="ktr-tip" style={{ left: `${Math.max(8, Math.min(92, (x(hover!) / w) * 100))}%` }}>{dShort(hv.date)}: <strong>{fmt(hv.v)}</strong></div>}
+            <div className="ktr-axis"><span>{dShort(pts[0].date)}</span><span>{dShort(pts[mid].date)}</span><span>{dShort(pts[pts.length - 1].date)}</span></div>
+          </div>
         </div>
       ) : <div className="muted" style={{ fontSize: 11, padding: "10px 0" }}>Nog te weinig data voor een grafiek.</div>}
     </div>
@@ -442,10 +445,10 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
       {!loading && gsc && gsc.totals && (
         <Collapse title="Search Console" meta={`${gsc.range.curStart} t/m ${gsc.range.curEnd}`} open={isOpen("sc", true)} onToggle={() => toggle("sc", true)}>
           <div className="kpi-grid kpi-grid-4">
-            <CardTrend label="Klikken" values={gsc.series.clicks} dates={gsc.series.dates} prev={gsc.totals.clicks.prev} cur={gsc.totals.clicks.cur} fmt={(v) => nl(Math.round(v))} />
-            <CardTrend label="Vertoningen" values={gsc.series.impressions} dates={gsc.series.dates} prev={gsc.totals.impressions.prev} cur={gsc.totals.impressions.cur} fmt={(v) => nl(Math.round(v))} />
-            <CardTrend label="CTR" values={gsc.series.ctr} dates={gsc.series.dates} prev={gsc.totals.ctr.prev} cur={gsc.totals.ctr.cur} fmt={(v) => `${v.toFixed(1)}%`} isPos />
-            <CardTrend label={<>Gem. positie <span className="kpi-sub-note">(hoger = beter)</span></>} values={gsc.series.position} dates={gsc.series.dates} prev={gsc.totals.position.prev} cur={gsc.totals.position.cur} fmt={(v) => v.toFixed(1)} invert isPos />
+            <CardTrend label="Klikken" values={gsc.series.clicks} dates={gsc.series.dates} prev={gsc.totals.clicks.prev} cur={gsc.totals.clicks.cur} fmt={(v) => nl(Math.round(v))} periodLabel={`${days} dgn`} />
+            <CardTrend label="Vertoningen" values={gsc.series.impressions} dates={gsc.series.dates} prev={gsc.totals.impressions.prev} cur={gsc.totals.impressions.cur} fmt={(v) => nl(Math.round(v))} periodLabel={`${days} dgn`} />
+            <CardTrend label="CTR" values={gsc.series.ctr} dates={gsc.series.dates} prev={gsc.totals.ctr.prev} cur={gsc.totals.ctr.cur} fmt={(v) => `${v.toFixed(1)}%`} isPos periodLabel={`${days} dgn`} />
+            <CardTrend label={<>Gem. positie <span className="kpi-sub-note">(hoger = beter)</span></>} values={gsc.series.position} dates={gsc.series.dates} prev={gsc.totals.position.prev} cur={gsc.totals.position.cur} fmt={(v) => v.toFixed(1)} invert isPos periodLabel={`${days} dgn`} />
           </div>
 
           {focusedKws.length > 0 && (

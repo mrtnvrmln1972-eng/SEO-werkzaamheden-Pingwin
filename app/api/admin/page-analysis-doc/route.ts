@@ -36,7 +36,7 @@ async function runAnalyseDocBackground(slug: string, url: string, analysis: stri
     } catch { /* standaardzin */ }
     let folderId = folderIdIn;
     if (!folderId) { const saved = await getPageDriveFolder(slug, url).catch(() => null); if (saved) folderId = saved.folderId; }
-    const filename = `${safeName(spec.klant)}-analyse-${safeName(title)}.docx`;
+    const filename = `${safeName(spec.klant)}-strategie-${safeName(title)}.docx`;
     let link = "";
     if (folderId) { try { ({ link } = await uploadDocx(folderId, filename, buffer)); } catch { /* zonder link vastleggen */ } }
     await upsertStepTask(slug, {
@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
     if (s.trim()) klantUitleg = s.trim();
   } catch { /* val terug op de standaardzin */ }
 
-  const filename = `${safeName(spec.klant)}-analyse-${safeName(title)}.docx`;
+  const filename = `${safeName(spec.klant)}-strategie-${safeName(title)}.docx`;
   const wantDownload = String(body.deliver || "") === "download";
   let folderId = String(body.folderId || "").trim();
   if (!folderId && !wantDownload) {

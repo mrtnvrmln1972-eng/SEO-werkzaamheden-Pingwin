@@ -1057,9 +1057,17 @@ button.ck-collapse-head {
 /* Scorekaart met trend: beginstand links, verschil midden, eindstand rechts + dag-grafiek. */
 .kpi-card-trend { display: flex; flex-direction: column; gap: 6px; }
 .kpi-card-trend .kpi-label { margin: 0; }
-.ktr-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.ktr-begin { font-size: 15px; font-weight: 700; color: var(--gray); }
-.ktr-eind { font-size: 19px; font-weight: 800; }
+/* Boven: expliciete periodevergelijking (vorige vs deze periode). */
+.ktr-compare { display: flex; align-items: flex-end; justify-content: space-between; gap: 6px; }
+.ktr-col { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.ktr-col-mid { align-items: center; padding-bottom: 2px; }
+.ktr-col-r { text-align: right; align-items: flex-end; }
+.ktr-col-lbl { font-size: 10px; color: var(--gray); white-space: nowrap; }
+.ktr-col-val { font-size: 18px; font-weight: 800; line-height: 1.1; }
+.ktr-col-val.ktr-prev { font-size: 15px; font-weight: 700; color: var(--gray); }
+/* Onder: dag-tot-dag-verloop, met klein titeltje. */
+.ktr-chart-wrap { margin-top: 4px; border-top: 1px solid var(--border); padding-top: 4px; }
+.ktr-chart-title { font-size: 10px; color: var(--gray); margin-bottom: 2px; }
 .ktr-chart { position: relative; }
 .ktr-svg { width: 100%; height: 52px; display: block; overflow: visible; }
 .ktr-hoverline { stroke: rgba(0,0,0,0.22); stroke-width: 1; stroke-dasharray: 2 2; }
