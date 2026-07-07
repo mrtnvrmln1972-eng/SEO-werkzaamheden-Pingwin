@@ -50,6 +50,7 @@ async function runAnalyseDocBackground(slug: string, url: string, analysis: stri
 // analyse vast als ÉÉN werkzaamheid, met het document eraan gekoppeld. De losse
 // acties uit de analyse worden GEEN aparte werkzaamheden (die staan in het plan).
 export async function POST(req: NextRequest) {
+ try {
   if (!admin(req)) return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
   if (!anthropicConfigured()) return NextResponse.json({ ok: false, error: "Hiervoor is een ANTHROPIC_API_KEY nodig in Vercel." }, { status: 400 });
   let body: Record<string, unknown>;
@@ -124,4 +125,7 @@ export async function POST(req: NextRequest) {
       "X-Task-Id": taskId != null ? String(taskId) : "",
     },
   });
+ } catch (e) {
+   return NextResponse.json({ ok: false, error: `Onverwachte serverfout bij vastleggen: ${e instanceof Error ? e.message : "onbekend"}` }, { status: 500 });
+ }
 }

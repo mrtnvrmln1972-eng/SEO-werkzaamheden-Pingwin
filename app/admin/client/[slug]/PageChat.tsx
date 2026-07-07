@@ -122,7 +122,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       const ct = r.headers.get("Content-Type") || "";
       if (ct.includes("application/json")) {
         const d = await r.json();
-        if (!d.ok) { setErr(d.error || "Vastleggen mislukt."); return; }
+        if (!d.ok) { setErr(d.error || `Vastleggen mislukt (status ${r.status}).`); return; }
         markStrategieDone();
         if (d.started) { setApplied("De analyse wordt op de achtergrond vastgelegd; je kunt wegklikken. Hij verschijnt zo als werkzaamheid in Werkzaamheden."); onApplied(); return; }
         setApplied(`Analyse samengevat en opgeslagen in Google Drive${d.folder ? `, map "${d.folder}"` : ""}${d.owner ? `, account ${d.owner}` : ""} als ${d.isDoc ? "Google Doc" : "Word-bestand"}${!d.isDoc && d.note ? ` (omzetten naar Google Doc lukte niet: ${d.note})` : ""}. <a href="${d.link}" target="_blank" rel="noopener">Open document</a>.${d.shared ? " Iedereen met de link kan het bekijken." : " (Delen lukte niet automatisch.)"} Vastgelegd als één werkzaamheid; je springt nu naar Werkzaamheden om hem in te plannen.`);
@@ -130,7 +130,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
         if (typeof d.taskId === "number" && onGoToTask) onGoToTask(d.taskId);
         return;
       }
-      if (!r.ok) { const d = await r.json().catch(() => ({})); setErr(d.error || "Vastleggen mislukt."); return; }
+      if (!r.ok) { const t = await r.text().catch(() => ""); setErr(`Vastleggen mislukt (status ${r.status}). ${t.slice(0, 200)}`.trim()); return; }
       const blob = await r.blob();
       const a = document.createElement("a");
       const m = (r.headers.get("Content-Disposition") || "").match(/filename="([^"]+)"/);
@@ -143,7 +143,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       markStrategieDone();
       onApplied();
       if (!Number.isNaN(tid) && tid && onGoToTask) onGoToTask(tid);
-    } catch { setErr("Vastleggen mislukt."); } finally { setTaskGen(false); }
+    } catch (e) { setErr(`Vastleggen mislukt: ${e instanceof Error ? e.message : "netwerkfout"}`); } finally { setTaskGen(false); }
   }
 
   const [driveFolder, setDriveFolder] = useState<{ id: string; name: string; path: string } | null>(null);
