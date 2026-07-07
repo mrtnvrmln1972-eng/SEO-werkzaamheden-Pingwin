@@ -578,6 +578,12 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
           {chats.length === 0 && msgs.length === 0 && (
             <div className="muted" style={{ fontSize: 12 }}>Nog geen chats. Stel hieronder een vraag over deze pagina.</div>
           )}
+          {!convoShown && (
+            <div className="page-chat-input" style={{ marginTop: 10 }}>
+              <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(input); }} placeholder="Stel een vraag over deze pagina…" disabled={busy} />
+              <button type="button" className="primary-btn small" onClick={() => send(input)} disabled={busy || !input.trim()}>Vraag</button>
+            </div>
+          )}
         </div>
         )}
       </div>
@@ -734,12 +740,6 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
         {schemaOpen && <div className="step-body muted" style={{ fontSize: 13 }}>Nog uit te werken. Hier komt de voorgestelde structured data (schema-markup) voor deze pagina.</div>}
       </div>
 
-      {!convoShown && (
-        <div className="page-chat-input">
-          <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(input); }} placeholder="Stel een vraag over deze pagina…" disabled={busy} />
-          <button type="button" className="primary-btn small" onClick={() => send(input)} disabled={busy || !input.trim()}>Vraag</button>
-        </div>
-      )}
 
       {pickerOpen && (
         <div className="compose-overlay">
