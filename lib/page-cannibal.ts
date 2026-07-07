@@ -298,9 +298,14 @@ Neem uitsluitend wat in de analyse staat; verzin niets. Geen emoji. Staat er gee
   } catch { /* dedupe niet kritisch */ }
 
   const klantUitleg = "We hebben in kaart gebracht welke pagina's elkaar in de weg zitten en welke redirects en interne links nodig zijn, zodat Google de juiste pagina laat ranken.";
+  // De taak is een NAAM + (als er een document is) een link ernaartoe; de volledige lijst
+  // met redirects/interne links staat in dat document, NIET in de toelichting (dat veld is
+  // voor onze eigen handmatige opmerkingen). Alleen als er geen Drive-map is (geen document),
+  // zetten we het overzicht als vangnet in de toelichting zodat de lijst niet verloren gaat.
+  const linkHtml = docLink ? ` (<a href="${docLink.replace(/"/g, "&quot;")}" target="_blank" rel="noreferrer">document</a>)` : "";
   const ids = await appendTasks(slug, [{
-    taak: `Cannibalisatie, redirects en interne links ${path}`,
-    toelichting: mdToHtml(devContent.slice(0, 8000)),
+    taak: `Cannibalisatie, redirects en interne links ${path}${linkHtml}`,
+    toelichting: docLink ? "" : mdToHtml(devContent.slice(0, 8000)),
     klantToelichting: klantUitleg,
     status: "Gepland", wie: "Dev", fase: "Opschonen",
     pageUrl: url, stepKind: "cannibal_redirects", klantZichtbaar: true,

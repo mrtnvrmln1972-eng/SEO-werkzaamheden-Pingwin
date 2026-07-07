@@ -95,8 +95,8 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       const d = await fetch("/api/admin/page-cannibal/apply", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url }) }).then((r) => r.json());
       if (!d.ok) { setApplyMsg(d.error || "Overnemen mislukt."); return; }
       const parts = ["Dev-taak aangemaakt in Werkzaamheden"];
-      if (d.docLink) parts.push("met document");
-      if (d.advicePages) parts.push(`, basisinfo doorgezet naar ${d.advicePages} pagina('s)`);
+      parts.push(d.docLink ? "met een gekoppeld document (de volledige lijst staat daarin)" : "— let op: geen Drive-map gekozen, dus geen document. Kies een Drive-map bij de vervolgstappen en neem opnieuw over voor een net taak-document");
+      if (d.advicePages) parts.push(`; basisinfo doorgezet naar ${d.advicePages} pagina('s)`);
       setApplyMsg(parts.join(" ") + ".");
       setCanniDone(true); try { localStorage.setItem(`pw_cannidone_${slug}_${url}`, "1"); } catch { /* geen opslag */ }
       onApplied();
