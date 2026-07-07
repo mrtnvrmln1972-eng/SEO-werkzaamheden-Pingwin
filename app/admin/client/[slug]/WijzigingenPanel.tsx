@@ -260,6 +260,7 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
   const [kpiLoading, setKpiLoading] = useState(false);
   const [kpiDays, setKpiDays] = useState(28);
   const [kwSort, setKwSort] = useState<KwSort>(null);
+  const [kwFilter, setKwFilter] = useState("");
   // Gedeelde hover tussen de stippellijnen (rechts) en de "wat veranderde"-secties (links).
   const [hoverMoment, setHoverMoment] = useState<string | null>(null);
   // Belangrijke zoekwoorden (gedeeld met de KPI-tab): aangevinkt = prio, komt bovenaan.
@@ -432,7 +433,10 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
                 )}
                 {kpi.keywords.length > 0 && (
                   <div className="wz-kw">
-                    <div className="wz-kpi-label">Keyword-rankings (voor → na) <span className="sov-sub">vink de belangrijkste aan, die komen bovenaan (gedeeld met de KPI-tab)</span></div>
+                    <div className="wz-kpi-label" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                      <span>Keyword-rankings (voor → na) <span className="sov-sub">vink de belangrijkste aan, die komen bovenaan (gedeeld met de KPI-tab)</span></span>
+                      <input className="pages-search" style={{ marginLeft: "auto", width: 200 }} placeholder="Filter op zoekwoord…" value={kwFilter} onChange={(e) => setKwFilter(e.target.value)} />
+                    </div>
                     <table className="wz-kw-table">
                       <thead><tr>
                         <th></th>
@@ -447,14 +451,18 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
                       </tr></thead>
                       <tbody>
                         {(() => {
-                          const base = [...kpi.keywords];
-                          if (kwSort && KW_GETTERS[kwSort.key]) {
-                            const g = KW_GETTERS[kwSort.key]; const dir = kwSort.dir === "asc" ? 1 : -1;
-                            base.sort((a, b) => { const av = g(a), bv = g(b); return (typeof av === "string" || typeof bv === "string") ? String(av).localeCompare(String(bv)) * dir : (av - bv) * dir; });
-                          } else {
-                            base.sort((a, b) => (kwFocus[b.keyword] === "prio" ? 1 : 0) - (kwFocus[a.keyword] === "prio" ? 1 : 0));
-                          }
-                          return base;
+                          const f = kwFilter.trim().toLowerCase();
+                          const base = kpi.keywords.filter((k) => !f || k.keyword.toLowerCase().includes(f));
+                          const g = kwSort && KW_GETTERS[kwSort.key] ? KW_GETTERS[kwSort.key] : null;
+                          const dir = kwSort?.dir === "asc" ? 1 : -1;
+                          return [...base].sort((a, b) => {
+                            // Aangevinkte (prio) zoekwoorden altijd bovenaan.
+                            const pa = kwFocus[a.keyword] === "prio" ? 1 : 0, pb = kwFocus[b.keyword] === "prio" ? 1 : 0;
+                            if (pa !== pb) return pb - pa;
+                            // Daarbinnen de actieve kolomsortering, of standaard op naam.
+                            if (g) { const av = g(a), bv = g(b); return (typeof av === "string" || typeof bv === "string") ? String(av).localeCompare(String(bv)) * dir : (av - bv) * dir; }
+                            return a.keyword.localeCompare(b.keyword);
+                          });
                         })().map((k) => {
                           const improved = k.positionBefore != null && k.positionAfter != null && k.positionAfter < k.positionBefore;
                           const worse = k.positionBefore != null && k.positionAfter != null && k.positionAfter > k.positionBefore;
