@@ -420,9 +420,9 @@ tbody td:last-child { text-align: center; }
 .pages-detail-label { font-size: 12px; font-weight: 700; color: var(--dark); display: block; margin-bottom: 6px; }
 /* Plan-kaart: zelfde ontwerp als de chat- en vervolgstappen-kaart (rand + gekleurde
    linkerrand + oranje titelkop met toggle), zodat alle stappen voor de pagina eenduidig zijn. */
-.pages-plan-card { border: 1px solid var(--border); border-left: 3px solid var(--orange); border-radius: 12px; padding: 16px 20px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.05); max-width: 1040px; }
+.pages-plan-card { border: 1px solid var(--border); border-left: 3px solid var(--orange); border-radius: 12px; padding: 16px 20px; background: var(--brand-orange-faint); box-shadow: 0 1px 3px rgba(0,0,0,0.05); max-width: 1040px; }
 .pages-plan-card-head { display: flex; align-items: center; gap: 8px; cursor: pointer; }
-.pages-plan-card-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--orange-dark); }
+.pages-plan-card-title { font-size: 13px; font-weight: 700; color: var(--orange-dark); }
 .pages-plan-card-body { margin-top: 12px; }
 .pages-plan-edit { min-height: 130px; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; outline: none; background: var(--white); font-size: 13px; line-height: 1.55; color: var(--dark); }
 .pages-plan-edit:focus { border-color: var(--orange); }
@@ -505,10 +505,10 @@ tbody td:last-child { text-align: center; }
    blauwe kaart; de vervolgstappen en het vraagveld staan eronder, in de oranje
    paginakaart. */
 .page-chat-wrap { margin-top: 24px; }
-.page-chat { border: 1px solid var(--border); border-left: 3px solid var(--brand-blue); border-radius: 12px; padding: 18px 20px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.page-chat { border: 1px solid var(--border); border-left: 3px solid var(--brand-blue); border-radius: 12px; padding: 18px 20px; background: var(--brand-blue-light); box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
 .page-chat-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; font-weight: 700; color: var(--dark); margin-bottom: 10px; }
 .page-chat-history { margin-bottom: 0; }
-.page-chat-history-head { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--gray); margin-bottom: 6px; }
+.page-chat-history-head { font-size: 12px; font-weight: 600; color: var(--gray); margin-bottom: 6px; }
 /* Elke eerdere chat is een uitklapbaar item: de volledige vraag als titel, klik om
    het gesprek open/dicht te klappen. */
 /* overflow: visible zodat de ?-tooltip onderin niet achter de kaart wegvalt; de
@@ -609,8 +609,10 @@ tbody td:last-child { text-align: center; }
 .pchf-input:focus { border-color: var(--orange); }
 /* Cluster-advies doorgeven aan betrokken pagina's: eigen kaart, blauw accent. */
 /* Eigen kaart voor "doorgeven aan gelieerde pagina's" (stap tussen chat en vervolgstappen). */
-.page-chat-cluster-card { margin: 18px 0; border: 1px solid var(--border); border-left: 3px solid var(--brand-salmon); border-radius: 12px; padding: 18px 20px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.05); max-width: 1040px; }
+.page-chat-cluster-card { margin: 18px 0; border: 1px solid var(--border); border-left: 3px solid var(--brand-salmon); border-radius: 12px; padding: 18px 20px; background: #FCEEEB; box-shadow: 0 1px 3px rgba(0,0,0,0.05); max-width: 1040px; }
 .page-chat-cluster { margin: 0; }
+/* Nog uit te werken stappen: neutraal grijs (signaleert 'komt nog'). */
+.page-chat-links-card, .page-chat-schema-card { margin: 18px 0; border: 1px solid var(--border); border-left: 3px solid #b8b2ab; border-radius: 12px; padding: 18px 20px; background: #F5F4F2; max-width: 1040px; }
 .pch-cluster-list { list-style: none; margin: 10px 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .pch-cluster-item { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; background: #fff; }
 .pch-cluster-head { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13px; }
@@ -642,7 +644,7 @@ tbody td:last-child { text-align: center; }
 .wz-endpoints .prog-up strong { color: #2E7D32; }
 .wz-endpoints .prog-down strong { color: #C62828; }
 .pch-canni-lead { font-size: 13px; color: var(--dark); flex: 1 1 240px; }
-.pcd-docs-head { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--gray); margin-bottom: 7px; }
+.pcd-docs-head { font-size: 13px; font-weight: 700; color: var(--gray); margin-bottom: 7px; }
 .pcd-nuance { width: 100%; font-size: 13px; border: 1px solid var(--border); border-radius: 8px; padding: 8px 11px; outline: none; margin-bottom: 8px; }
 .pcd-nuance:focus { border-color: var(--orange); }
 .pcd-docs-buttons { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-start; }
@@ -650,11 +652,14 @@ tbody td:last-child { text-align: center; }
 .pcd-step { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
 .pcd-step .pcd-btn { width: 100%; }
 /* Meer lucht tussen de elementen in het vervolgstappen-blok. */
-.page-chat-docs { padding: 20px 22px; }
-.page-chat-docs .pcd-docs-head { margin-bottom: 13px; }
-.page-chat-docs .pcd-nuance { margin: 4px 0 14px; }
-.page-chat-docs .pcd-docs-buttons { margin-bottom: 2px; }
-.pcd-docs-note { font-size: 12px; line-height: 1.5; margin-top: 12px; }
+.page-chat-docs { padding: 24px 26px; }
+.page-chat-docs .pcd-docs-head { margin-bottom: 18px; }
+.page-chat-docs .page-chat-drive { margin: 8px 0 20px !important; }
+.page-chat-docs .pcd-nuance { margin: 8px 0 20px; }
+.page-chat-docs .pcd-docs-buttons { margin-bottom: 8px; }
+.pcd-docs-note { font-size: 12px; line-height: 1.55; margin-top: 18px; }
+.page-chat-docs .pcd-run-inline { margin-top: 22px; padding-top: 16px; }
+.pcd-step { gap: 8px; }
 .pcd-step-intern { font-size: 11px; color: var(--gray); background: none; border: none; padding: 0 2px; cursor: pointer; text-align: center; text-decoration: underline; text-underline-offset: 2px; }
 .pcd-step-intern:hover:not(:disabled) { color: var(--orange-dark); }
 .pcd-step-intern:disabled { opacity: 0.5; cursor: default; text-decoration: none; }
@@ -1555,11 +1560,12 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 @keyframes pcd-indeterminate { 0% { left: -40%; } 100% { left: 100%; } }
 .pcd-btn:hover:not(:disabled) { background: var(--orange-light); }
 .pcd-btn:disabled { opacity: 0.55; cursor: default; }
-.pcd-btn-primary { background: var(--orange); color: #fff; }
-.pcd-btn-primary:hover:not(:disabled) { background: var(--orange); filter: brightness(0.93); }
+/* Outline i.p.v. volle vulling: de statuskleur zit in de rand + tekst. */
+.pcd-btn-primary { background: #fff; color: var(--orange-dark); border-color: var(--orange); border-width: 1.5px; font-weight: 700; }
+.pcd-btn-primary:hover:not(:disabled) { background: var(--brand-orange-faint); filter: none; }
 /* Groene "klaar"-status (doorgegeven / vastgelegd): blijft vol groen, ook uitgeschakeld. */
-.pcd-btn-done { background: #2E7D32; border-color: #2E7D32; color: #fff; }
-.pcd-btn-done:hover:not(:disabled) { filter: brightness(0.95); }
+.pcd-btn-done { background: #fff; border-color: #2E7D32; border-width: 1.5px; color: #2E7D32; font-weight: 700; }
+.pcd-btn-done:hover:not(:disabled) { background: #F1F8F1; filter: none; }
 .pcd-btn-done:disabled { opacity: 1; cursor: default; }
 .page-chat-tools, .pcd-docs-buttons { gap: 12px; }
 .pcd-docs-head { margin-bottom: 10px; }

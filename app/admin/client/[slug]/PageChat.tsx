@@ -98,7 +98,9 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   const lastAssistant = [...msgs].reverse().find((m) => m.role === "assistant")?.content || "";
   // Wordt het gesprek nu uitgeklapt getoond? Zo ja, staat de vervolgvraag al in het
   // gesprek zelf (boven de knoppen) en verbergen we het losse invoerveld onderaan.
-  const convoShown = msgs.length > 0 && convoOpen;
+  // De vraag-input onderaan verbergen we alleen als het gesprek echt zichtbaar is (kaart
+   // open én gesprek open). Bij een automatisch ingeladen, ingeklapte chat blijft de input dus staan.
+  const convoShown = msgs.length > 0 && convoOpen && chatOpen;
   // Titel voor de strategie-toggle: "STRATEGIE: /pad/" van deze pagina. (De chat-analyse
   // heet "strategie" om hem te onderscheiden van de SEO-analyse bij de vervolgstappen.)
   const analyseTitle = "STRATEGIE: " + ((url || "").replace(/^https?:\/\/[^/]+/i, "").trim() || url).toUpperCase();
@@ -281,7 +283,16 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     try {
       const r = await fetch(`/api/admin/page-chats?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}`);
       const d = await r.json();
-      if (d.ok) { setChats(d.chats); try { localStorage.setItem(`pw_chats_${slug}_${url}`, JSON.stringify(d.chats)); } catch { /* cache is extra */ } }
+      if (d.ok) {
+        setChats(d.chats);
+        try { localStorage.setItem(`pw_chats_${slug}_${url}`, JSON.stringify(d.chats)); } catch { /* cache is extra */ }
+        // Laad meteen de laatste chat in (voor lastAssistant), zonder hem uit te klappen,
+        // zodat "doorgeven" en "vervolgstappen" standaard zichtbaar zijn i.p.v. pas na openen.
+        if (Array.isArray(d.chats) && d.chats.length > 0 && chatId === null && msgs.length === 0) {
+          const latest = d.chats.reduce((a: ChatSummary, b: ChatSummary) => (b.id > a.id ? b : a));
+          openChat(latest.id);
+        }
+      }
     } catch { /* stil */ }
   }
   // Cache-first: toon de vorige chatlijst direct, ververs daarna.
@@ -667,6 +678,16 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
             )}
           </div>
         )}
+      </div>
+
+      <div className="page-chat-links-card">
+        <div className="pcd-docs-head">Interne links <HelpHint wide text="Straks: de interne links naar en vanaf deze pagina (welke pagina's linken hierheen, met welke ankertekst), als taak + begrijpelijk klantdocument. Deze stap werken we later verder uit." /></div>
+        <div className="muted" style={{ fontSize: 13 }}>Nog uit te werken. Hier komt het voorstel voor de interne links van deze pagina, met een klantdocument.</div>
+      </div>
+
+      <div className="page-chat-schema-card">
+        <div className="pcd-docs-head">Structured data <HelpHint wide text="Straks: de voorgestelde schema-markup (structured data) voor deze pagina, passend bij het pagina-type, als taak + begrijpelijk klantdocument. Deze stap werken we later verder uit." /></div>
+        <div className="muted" style={{ fontSize: 13 }}>Nog uit te werken. Hier komt de voorgestelde structured data (schema-markup) voor deze pagina.</div>
       </div>
 
       {!convoShown && (
