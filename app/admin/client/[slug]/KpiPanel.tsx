@@ -71,18 +71,22 @@ function PeriodCompare({ prev, cur, fmt, invert }: { prev: number; cur: number; 
 // eindstand (rechts); daaronder de échte dagreeks als lijn met hover-waarde en een
 // datum-as (begin/midden/eind). invert=true bij 'positie': richting positie 0 loopt de
 // lijn omhoog (beter). Verticale schaal is min-max, zodat de beweging goed zichtbaar is.
-function CardTrend({ label, values, dates, prev, cur, fmt, invert, isPos, periodLabel }: { label: ReactNode; values: number[]; dates: string[]; prev: number; cur: number; fmt: (v: number) => string; invert?: boolean; isPos?: boolean; periodLabel: string }) {
+function CardTrend({ label, values, dates, prev, cur, fmt, invert, isPos, periodLabel, prevValues }: { label: ReactNode; values: number[]; dates: string[]; prev: number; cur: number; fmt: (v: number) => string; invert?: boolean; isPos?: boolean; periodLabel: string; prevValues?: number[] }) {
   const [hover, setHover] = useState<number | null>(null);
   const w = 220, h = 58, pad = 6;
   // Bij 'positie' (invert) zijn dagen zonder data (0) geen "beste positie": eruit filteren,
   // anders knikt de lijn kunstmatig naar boven en klopt de richting niet.
-  const pts = values.map((v, i) => ({ v, date: dates[i] || "" })).filter((p) => p.date && (!invert || p.v > 0));
+  const pts = values.map((v, i) => ({ v, date: dates[i] || "", oi: i })).filter((p) => p.date && (!invert || p.v > 0));
   const has = pts.length >= 2;
+  // Vorige periode uitgelijnd op dezelfde dag-offset (stippellijn ter vergelijking).
+  const prevPts = has && prevValues ? pts.map((p, i) => ({ i, v: prevValues[p.oi] })).filter((q) => q.v != null && Number.isFinite(q.v) && (!invert || q.v > 0)) : [];
   const vals = pts.map((p) => p.v);
-  const min = has ? Math.min(...vals) : 0, max = has ? Math.max(...vals) : 1, range = max - min || 1;
+  const scaleVals = [...vals, ...prevPts.map((q) => q.v)];
+  const min = scaleVals.length ? Math.min(...scaleVals) : 0, max = scaleVals.length ? Math.max(...scaleVals) : 1, range = max - min || 1;
   const x = (i: number) => pad + (i / (pts.length - 1)) * (w - 2 * pad);
   const y = (v: number) => { const tt = (v - min) / range; return invert ? pad + tt * (h - 2 * pad) : (h - pad) - tt * (h - 2 * pad); };
   const line = has ? pts.map((p, i) => `${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join(" ") : "";
+  const prevLine = prevPts.length >= 2 ? prevPts.map((q) => `${x(q.i).toFixed(1)},${y(q.v).toFixed(1)}`).join(" ") : "";
   // Kleur volgt de periodevergelijking (deze periode vs. vorige), zodat de kleur klopt
   // met het %-getal: klikken 100 → 106 is groen, ook al eindigt de dagreeks lager.
   const pt = trendOf(cur, prev, invert);
@@ -100,9 +104,10 @@ function CardTrend({ label, values, dates, prev, cur, fmt, invert, isPos, period
       </div>
       {has ? (
         <div className="ktr-chart-wrap">
-          <div className="ktr-chart-title">Verloop per dag ({periodLabel})</div>
+          <div className="ktr-chart-title">Verloop per dag ({periodLabel}){prevLine ? <span className="ktr-legend"> · <span className="ktr-legend-dash">- -</span> vorige periode</span> : null}</div>
           <div className="ktr-chart" onMouseLeave={() => setHover(null)}>
             <svg viewBox={`0 0 ${w} ${h}`} className="ktr-svg" preserveAspectRatio="none">
+              {prevLine && <polyline points={prevLine} fill="none" stroke="#b0b0b0" strokeWidth={1.4} strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />}
               <polyline points={line} fill="none" stroke={color} strokeWidth={2} vectorEffect="non-scaling-stroke" />
               {hv && <line x1={x(hover!)} y1={0} x2={x(hover!)} y2={h} className="ktr-hoverline" />}
               {hv && <circle cx={x(hover!)} cy={y(hv.v)} r={3.4} fill={color} stroke="#fff" strokeWidth={1.4} />}
@@ -499,10 +504,10 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
       {!loading && gsc && gsc.totals && (
         <Collapse title="Search Console" meta={`${gsc.range.curStart} t/m ${gsc.range.curEnd}`} open={isOpen("sc", true)} onToggle={() => toggle("sc", true)}>
           <div className="kpi-grid kpi-grid-4">
-            <CardTrend label="Klikken" values={gsc.series.clicks} dates={gsc.series.dates} prev={gsc.totals.clicks.prev} cur={gsc.totals.clicks.cur} fmt={(v) => nl(Math.round(v))} periodLabel={`${days} dgn`} />
-            <CardTrend label="Vertoningen" values={gsc.series.impressions} dates={gsc.series.dates} prev={gsc.totals.impressions.prev} cur={gsc.totals.impressions.cur} fmt={(v) => nl(Math.round(v))} periodLabel={`${days} dgn`} />
-            <CardTrend label="CTR" values={gsc.series.ctr} dates={gsc.series.dates} prev={gsc.totals.ctr.prev} cur={gsc.totals.ctr.cur} fmt={(v) => `${v.toFixed(1)}%`} isPos periodLabel={`${days} dgn`} />
-            <CardTrend label={<>Gem. positie <span className="kpi-sub-note">(hoger = beter)</span></>} values={gsc.series.position} dates={gsc.series.dates} prev={gsc.totals.position.prev} cur={gsc.totals.position.cur} fmt={(v) => v.toFixed(1)} invert isPos periodLabel={`${days} dgn`} />
+            <CardTrend label="Klikken" values={gsc.series.clicks} dates={gsc.series.dates} prevValues={gsc.series.prevClicks} prev={gsc.totals.clicks.prev} cur={gsc.totals.clicks.cur} fmt={(v) => nl(Math.round(v))} periodLabel={`${days} dgn`} />
+            <CardTrend label="Vertoningen" values={gsc.series.impressions} dates={gsc.series.dates} prevValues={gsc.series.prevImpressions} prev={gsc.totals.impressions.prev} cur={gsc.totals.impressions.cur} fmt={(v) => nl(Math.round(v))} periodLabel={`${days} dgn`} />
+            <CardTrend label="CTR" values={gsc.series.ctr} dates={gsc.series.dates} prevValues={gsc.series.prevCtr} prev={gsc.totals.ctr.prev} cur={gsc.totals.ctr.cur} fmt={(v) => `${v.toFixed(1)}%`} isPos periodLabel={`${days} dgn`} />
+            <CardTrend label={<>Gem. positie <span className="kpi-sub-note">(hoger = beter)</span></>} values={gsc.series.position} dates={gsc.series.dates} prevValues={gsc.series.prevPosition} prev={gsc.totals.position.prev} cur={gsc.totals.position.cur} fmt={(v) => v.toFixed(1)} invert isPos periodLabel={`${days} dgn`} />
           </div>
 
           {gsc.keywords.length > 0 && (

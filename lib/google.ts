@@ -313,7 +313,7 @@ export function equalBeforeAfter(changeDate: string, maxDays = 60, trimDays = 3)
 }
 
 export type MetricPair = { cur: number; prev: number };
-export type GscSeries = { dates: string[]; clicks: number[]; impressions: number[]; ctr: number[]; position: number[] };
+export type GscSeries = { dates: string[]; clicks: number[]; impressions: number[]; ctr: number[]; position: number[]; prevClicks?: number[]; prevImpressions?: number[]; prevCtr?: number[]; prevPosition?: number[] };
 // Sitebrede zoekwoord→pagina-matrix: welk zoekwoord op welke pagina rankt.
 // Dit is de kern voor cannibalisatie-detectie (bv. homepage die op "hovenier
 // [plaats]" rankt terwijl er een aparte plaatspagina bestaat).
@@ -532,7 +532,7 @@ export async function getGscComparison(domain: string, days: number, compare: "p
   const site = await gscPickSite(token, domain);
   if (!site) return empty;
 
-  const [curTot, prevTot, curKw, prevKw, curPg, prevPg, byDate] = await Promise.all([
+  const [curTot, prevTot, curKw, prevKw, curPg, prevPg, byDate, byDatePrev] = await Promise.all([
     gscQuery(token, site, { startDate: range.curStart, endDate: range.curEnd }),
     gscQuery(token, site, { startDate: range.prevStart, endDate: range.prevEnd }),
     gscQuery(token, site, { startDate: range.curStart, endDate: range.curEnd, dimensions: ["query"], rowLimit: 100 }),
@@ -540,16 +540,23 @@ export async function getGscComparison(domain: string, days: number, compare: "p
     gscQuery(token, site, { startDate: range.curStart, endDate: range.curEnd, dimensions: ["page"], rowLimit: 50 }),
     gscQuery(token, site, { startDate: range.prevStart, endDate: range.prevEnd, dimensions: ["page"], rowLimit: 50 }),
     gscQuery(token, site, { startDate: range.curStart, endDate: range.curEnd, dimensions: ["date"], rowLimit: 500 }),
+    gscQuery(token, site, { startDate: range.prevStart, endDate: range.prevEnd, dimensions: ["date"], rowLimit: 500 }),
   ]);
 
-  // Dagreeksen (op datum gesorteerd) voor de grafiekjes.
+  // Dagreeksen (op datum gesorteerd) voor de grafiekjes; ook de vorige periode
+  // (uitgelijnd op dezelfde dag-offset) voor de stippellijn ter vergelijking.
   const dated = [...byDate].sort((a, b) => (a.keys?.[0] || "").localeCompare(b.keys?.[0] || ""));
+  const datedPrev = [...byDatePrev].sort((a, b) => (a.keys?.[0] || "").localeCompare(b.keys?.[0] || ""));
   const series: GscSeries = {
     dates: dated.map((r) => r.keys?.[0] || ""),
     clicks: dated.map((r) => Math.round(r.clicks)),
     impressions: dated.map((r) => Math.round(r.impressions)),
     ctr: dated.map((r) => Math.round(r.ctr * 1000) / 10),
     position: dated.map((r) => Math.round(r.position * 10) / 10),
+    prevClicks: datedPrev.map((r) => Math.round(r.clicks)),
+    prevImpressions: datedPrev.map((r) => Math.round(r.impressions)),
+    prevCtr: datedPrev.map((r) => Math.round(r.ctr * 1000) / 10),
+    prevPosition: datedPrev.map((r) => Math.round(r.position * 10) / 10),
   };
 
   const c = curTot[0]; const p = prevTot[0];

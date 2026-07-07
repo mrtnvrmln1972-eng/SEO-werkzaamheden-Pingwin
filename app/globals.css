@@ -1100,6 +1100,7 @@ button.ck-collapse-head {
 /* Onder: dag-tot-dag-verloop, met klein titeltje. */
 .ktr-chart-wrap { margin-top: 4px; border-top: 1px solid var(--border); padding-top: 4px; }
 .ktr-chart-title { font-size: 10px; color: var(--gray); margin-bottom: 2px; }
+.ktr-legend-dash { color: #b0b0b0; font-weight: 700; letter-spacing: -1px; }
 .ktr-chart { position: relative; }
 .ktr-svg { width: 100%; height: 52px; display: block; overflow: visible; }
 .ktr-hoverline { stroke: rgba(0,0,0,0.22); stroke-width: 1; stroke-dasharray: 2 2; }
