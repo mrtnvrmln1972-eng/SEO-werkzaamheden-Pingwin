@@ -147,6 +147,8 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   }
 
   const [driveFolder, setDriveFolder] = useState<{ id: string; name: string; path: string } | null>(null);
+  // Stappen die na het kiezen van een Drive-map (pop-up) alsnog moeten draaien.
+  const [pendingRun, setPendingRun] = useState<string[] | null>(null);
   const [nuance, setNuance] = useState("");
 
   // ── Google Drive bestemmingsmap ─────────────────────────────
@@ -242,6 +244,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       if (!d.ok) { setPickErr(d.error || "Opslaan mislukt."); return; }
       try { localStorage.setItem(`pw_drivestack_${slug}`, JSON.stringify(stack)); } catch { /* geheugen is extra */ }
       setDriveFolder({ id: cur.id, name: cur.name, path }); setPickerOpen(false);
+      if (pendingRun) { const steps = pendingRun; setPendingRun(null); startBackgroundRun(steps, cur.id); }
     } catch { setPickErr("Opslaan mislukt."); } finally { setPickBusy(false); }
   }
 
@@ -374,16 +377,26 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   }
 
   // Start de achtergrond-run: de drie stappen draaien server-side door; wegklikken mag.
-  async function startBackgroundRun(steps: string[]) {
+  async function startBackgroundRun(steps: string[], folderIdOverride?: string) {
     if (runBusy) return;
     setRunBusy(true); setErr("");
     try {
-      const r = await fetch("/api/admin/page-doc/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url, steps, extra: nuance.trim() || undefined, folderId: driveFolder?.id || undefined }) });
+      const fid = folderIdOverride ?? driveFolder?.id;
+      const r = await fetch("/api/admin/page-doc/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url, steps, extra: nuance.trim() || undefined, folderId: fid || undefined }) });
       const d = await r.json();
       if (!d.ok) { setErr(d.error || "Achtergrond-run starten mislukt."); return; }
       const s = await fetch(`/api/admin/page-doc/run?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}`).then((x) => x.json()).catch(() => null);
       if (s?.ok) setRun(s.run);
     } catch { setErr("Achtergrond-run starten mislukt."); } finally { setRunBusy(false); }
+  }
+
+  // Vraagt eerst een Drive-map (pop-up) als er nog geen gekozen is, en start dan de run,
+  // zodat je altijd weet waar het document terechtkomt. Is er al een map, dan draait hij direct.
+  function ensureFolderThenRun(steps: string[]) {
+    if (runBusy) return;
+    if (driveFolder) { startBackgroundRun(steps); return; }
+    setPendingRun(steps);
+    openPicker();
   }
 
   // Het gesprek van de actieve chat (de eerste vraag staat al als titel, dus die
@@ -568,12 +581,19 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       {lastAssistant && (
         <div className="page-chat-docs">
           <div className="pcd-docs-head">Vervolgstappen op strategische analyse voor deze pagina</div>
+          <div className="page-chat-drive" style={{ margin: "2px 0 10px" }}>
+            <span className="pcd-label">Opslaan in:</span>
+            {driveFolder
+              ? <span className="pcd-folder">{driveFolder.path || driveFolder.name}</span>
+              : <span className="pcd-folder muted">nog geen Drive-map, je kiest hem zodra je op een knop hieronder klikt</span>}
+            <button type="button" className="ghost-btn small" onClick={openPicker}>{driveFolder ? "Map wijzigen" : "Kies Drive-map"}</button>
+          </div>
           <input className="pcd-nuance" value={nuance} onChange={(e) => setNuance(e.target.value)} placeholder="Extra sturing (optioneel), bijv. leg de nadruk op de regio, of behoud de tarieventabel." />
           <div className="pcd-docs-buttons">
-            <button type="button" className="pcd-btn" onClick={() => startBackgroundRun(["analyse"])} disabled={runBusy} title="Draait op de achtergrond door; wegklikken mag.">1. Analyse-document</button>
-            <button type="button" className="pcd-btn" onClick={() => startBackgroundRun(["blauwdruk"])} disabled={runBusy} title="Draait op de achtergrond door; wegklikken mag.">2. Blauwdruk-document</button>
-            <button type="button" className="pcd-btn" onClick={() => startBackgroundRun(["copy"])} disabled={runBusy} title="Draait op de achtergrond door; wegklikken mag.">3. Copy-document (+ dev-taak)</button>
-            <button type="button" className="pcd-btn pcd-btn-primary" onClick={() => startBackgroundRun(["analyse", "blauwdruk", "copy"])} disabled={runBusy} title="Draait de drie stappen op de achtergrond door; wegklikken mag.">{runBusy ? "Starten…" : "Alles achter elkaar (1 → 2 → 3)"}</button>
+            <button type="button" className="pcd-btn" onClick={() => ensureFolderThenRun(["analyse"])} disabled={runBusy} title="Draait op de achtergrond door; wegklikken mag.">1. Analyse-document</button>
+            <button type="button" className="pcd-btn" onClick={() => ensureFolderThenRun(["blauwdruk"])} disabled={runBusy} title="Draait op de achtergrond door; wegklikken mag.">2. Blauwdruk-document</button>
+            <button type="button" className="pcd-btn" onClick={() => ensureFolderThenRun(["copy"])} disabled={runBusy} title="Draait op de achtergrond door; wegklikken mag.">3. Copy-document (+ dev-taak)</button>
+            <button type="button" className="pcd-btn pcd-btn-primary" onClick={() => ensureFolderThenRun(["analyse", "blauwdruk", "copy"])} disabled={runBusy} title="Draait de drie stappen op de achtergrond door; wegklikken mag.">{runBusy ? "Starten…" : "Alles achter elkaar (1 → 2 → 3)"}</button>
           </div>
           <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>Je klikt en het draait op de achtergrond door: je kunt meteen wegklikken naar iets anders. De voortgang zie je in het kaartje hierboven en later in Werkzaamheden. Van elk document wordt automatisch ook een klantversie gemaakt en in de Drive-map opgeslagen (taaktitel → technische versie, "(klantversie)" ernaast; het klantdashboard toont alleen de klantversie). Tip: kies eerst een Drive-map, dan komen de bestanden daar te staan.</div>
         </div>
@@ -610,7 +630,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       {pickerOpen && (
         <div className="compose-overlay">
           <div className="compose-modal drive-modal">
-            <div className="compose-head"><span>Kies de Google Drive-map voor deze pagina</span><button type="button" className="chat-float-close" onClick={() => setPickerOpen(false)}>&times;</button></div>
+            <div className="compose-head"><span>Kies de Google Drive-map voor deze pagina</span><button type="button" className="chat-float-close" onClick={() => { setPickerOpen(false); setPendingRun(null); }}>&times;</button></div>
             <div className="compose-body">
               <div className="drive-crumbs">
                 {stack.map((f, i) => (
@@ -634,7 +654,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
               </div>
             </div>
             <div className="compose-foot">
-              <button type="button" className="logout-btn" onClick={() => setPickerOpen(false)}>Annuleren</button>
+              <button type="button" className="logout-btn" onClick={() => { setPickerOpen(false); setPendingRun(null); }}>Annuleren</button>
               <button type="button" className="primary-btn small" onClick={chooseCurrent} disabled={pickBusy}>Kies “{stack[stack.length - 1].name}”</button>
             </div>
           </div>
