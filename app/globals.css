@@ -632,7 +632,13 @@ tbody td:last-child { text-align: center; }
 .pcd-docs-head { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--gray); margin-bottom: 7px; }
 .pcd-nuance { width: 100%; font-size: 13px; border: 1px solid var(--border); border-radius: 8px; padding: 8px 11px; outline: none; margin-bottom: 8px; }
 .pcd-nuance:focus { border-color: var(--orange); }
-.pcd-docs-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+.pcd-docs-buttons { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-start; }
+/* Elke stap: hoofdknop + klein knopje eronder voor de interne/uitgebreide versie. */
+.pcd-step { display: flex; flex-direction: column; gap: 5px; align-items: stretch; }
+.pcd-step .pcd-btn { width: 100%; }
+.pcd-step-intern { font-size: 11px; color: var(--gray); background: none; border: none; padding: 0 2px; cursor: pointer; text-align: center; text-decoration: underline; text-underline-offset: 2px; }
+.pcd-step-intern:hover:not(:disabled) { color: var(--orange-dark); }
+.pcd-step-intern:disabled { opacity: 0.5; cursor: default; text-decoration: none; }
 /* Bestemmingsmap-regel + Drive-mappenkiezer */
 .page-chat-drive { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 8px 0 2px; font-size: 13px; }
 .pcd-label { color: var(--muted); }

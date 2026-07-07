@@ -40,6 +40,9 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   type DocRun = { id: number; status: string; steps: Record<string, string>; links: Record<string, string>; error: string };
   const [run, setRun] = useState<DocRun | null>(null);
   const [runBusy, setRunBusy] = useState(false);
+  // Per-stap "klaar"-status (groene knop), per pagina onthouden en gevoed door de run.
+  const [stepsDone, setStepsDone] = useState<Record<string, boolean>>({});
+  const allStepsDone = !!(stepsDone.analyse && stepsDone.blauwdruk && stepsDone.copy);
   // Per-pagina cannibalisatie- + content-mapping-analyse (achtergrond).
   const [pc, setPc] = useState<{ status: string; result: string; error: string; updatedAt: string | null } | null>(null);
   const [pcBusy, setPcBusy] = useState(false);
@@ -105,6 +108,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   useEffect(() => {
     try { const done = localStorage.getItem(`pw_stratdone_${slug}_${url}`) === "1"; setTaskDone(done); setChatOpen(!done); } catch { /* geen opslag */ }
     try { const n = Number(localStorage.getItem(`pw_clusterdone_${slug}_${url}`) || "0"); setClusterDone(Number.isFinite(n) ? n : 0); } catch { setClusterDone(0); }
+    try { const sd: Record<string, boolean> = {}; (["analyse", "blauwdruk", "copy"] as const).forEach((k) => { if (localStorage.getItem(`pw_stepdone_${slug}_${url}_${k}`) === "1") sd[k] = true; }); setStepsDone(sd); } catch { setStepsDone({}); }
   }, [slug, url]);
   function markStrategieDone() { setTaskDone(true); setChatOpen(false); try { localStorage.setItem(`pw_stratdone_${slug}_${url}`, "1"); } catch { /* geen opslag */ } }
 
@@ -177,6 +181,17 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       .catch(() => { /* niet kritisch */ });
     return () => { alive = false; };
   }, [slug, url]);
+
+  // Zodra een stap "done" is in de run: onthoud dat per pagina (knop blijft groen).
+  useEffect(() => {
+    if (!run) return;
+    const upd: Record<string, boolean> = {};
+    (["analyse", "blauwdruk", "copy"] as const).forEach((k) => {
+      if (run.steps[k] === "done") { upd[k] = true; try { localStorage.setItem(`pw_stepdone_${slug}_${url}_${k}`, "1"); } catch { /* geen opslag */ } }
+    });
+    if (Object.keys(upd).length) setStepsDone((s) => ({ ...s, ...upd }));
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [run, slug, url]);
 
   // Zolang een run loopt: elke 5s de status verversen (stopt vanzelf bij klaar/fout).
   useEffect(() => {
@@ -575,11 +590,21 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
           </div>
           <input className="pcd-nuance" value={nuance} onChange={(e) => setNuance(e.target.value)} placeholder="Extra sturing (optioneel), bijv. leg de nadruk op de regio, of behoud de tarieventabel." />
           <div className="pcd-docs-buttons">
-            <button type="button" className="pcd-btn" onClick={() => ensureFolderThenRun(["analyse"])} disabled={runBusy || pageLive === false} title={pageLive === false ? "Deze pagina bestaat nog niet live, dus er valt nog niets te analyseren. Blauwdruk en copy kunnen wel." : "Draait op de achtergrond door; wegklikken mag."}>1. Analyse-document</button>
-            <button type="button" className="pcd-btn" onClick={() => ensureFolderThenRun(["blauwdruk"])} disabled={runBusy} title="Draait op de achtergrond door; wegklikken mag.">2. Blauwdruk-document</button>
-            <button type="button" className="pcd-btn" onClick={() => ensureFolderThenRun(["copy"])} disabled={runBusy} title="Draait op de achtergrond door; wegklikken mag.">3. Copy-document (+ dev-taak)</button>
-            <button type="button" className="pcd-btn pcd-btn-primary" onClick={() => ensureFolderThenRun(["analyse", "blauwdruk", "copy"])} disabled={runBusy} title="Draait de drie stappen op de achtergrond door; wegklikken mag.">{runBusy ? "Starten…" : "Alles achter elkaar (1 → 2 → 3)"}</button>
-            <button type="button" className="pcd-btn" onClick={() => ensureFolderThenRun(["analyse"], "intern")} disabled={runBusy} title="Maakt de uitgebreide interne/technische analyse (op verzoek; ~3x zo lang). Voor eigen inzicht of om een klant te laten zien hoe grondig het gaat. Niet klant-zichtbaar.">Interne analyse (uitgebreid, op verzoek)</button>
+            <div className="pcd-step">
+              <button type="button" className={"pcd-btn" + (stepsDone.analyse ? " pcd-btn-done" : "")} onClick={() => ensureFolderThenRun(["analyse"])} disabled={runBusy || pageLive === false} title={pageLive === false ? "Deze pagina bestaat nog niet live, dus er valt nog niets te analyseren. Blauwdruk en copy kunnen wel." : "Draait op de achtergrond door; wegklikken mag."}>{stepsDone.analyse ? "✓ 1. Analyse-document" : "1. Analyse-document"}</button>
+              <button type="button" className="pcd-step-intern" onClick={() => ensureFolderThenRun(["analyse"], "intern")} disabled={runBusy || pageLive === false} title="Maakt de uitgebreide interne/technische versie van deze stap (op verzoek; ~3x zo lang). Voor eigen inzicht. Niet klant-zichtbaar.">Interne / uitgebreide versie</button>
+            </div>
+            <div className="pcd-step">
+              <button type="button" className={"pcd-btn" + (stepsDone.blauwdruk ? " pcd-btn-done" : "")} onClick={() => ensureFolderThenRun(["blauwdruk"])} disabled={runBusy} title="Draait op de achtergrond door; wegklikken mag.">{stepsDone.blauwdruk ? "✓ 2. Blauwdruk-document" : "2. Blauwdruk-document"}</button>
+              <button type="button" className="pcd-step-intern" onClick={() => ensureFolderThenRun(["blauwdruk"], "intern")} disabled={runBusy} title="Maakt de uitgebreide interne/technische versie van deze stap (op verzoek; ~3x zo lang). Voor eigen inzicht. Niet klant-zichtbaar.">Interne / uitgebreide versie</button>
+            </div>
+            <div className="pcd-step">
+              <button type="button" className={"pcd-btn" + (stepsDone.copy ? " pcd-btn-done" : "")} onClick={() => ensureFolderThenRun(["copy"])} disabled={runBusy} title="Draait op de achtergrond door; wegklikken mag.">{stepsDone.copy ? "✓ 3. Copy-document" : "3. Copy-document"}</button>
+              <button type="button" className="pcd-step-intern" onClick={() => ensureFolderThenRun(["copy"], "intern")} disabled={runBusy} title="Maakt de uitgebreide interne/technische versie van deze stap (op verzoek; ~3x zo lang). Voor eigen inzicht. Niet klant-zichtbaar.">Interne / uitgebreide versie</button>
+            </div>
+            <div className="pcd-step">
+              <button type="button" className={"pcd-btn " + (allStepsDone ? "pcd-btn-done" : "pcd-btn-primary") + (runBusy ? " busy" : "")} onClick={() => ensureFolderThenRun(["analyse", "blauwdruk", "copy"])} disabled={runBusy} title="Draait de drie stappen op de achtergrond door; wegklikken mag.">{runBusy ? "Starten…" : allStepsDone ? "✓ Alles klaar (1 → 2 → 3)" : "Alles achter elkaar (1 → 2 → 3)"}</button>
+            </div>
           </div>
           <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>Je klikt en het draait op de achtergrond door: je kunt meteen wegklikken naar iets anders. De voortgang zie je hieronder en later in Werkzaamheden. Er wordt één korte, klantvriendelijke versie gemaakt (die zowel jij, de developer als de klant leest). Een uitgebreide interne versie kan per stap op verzoek. Tip: kies eerst een Drive-map, dan komen de bestanden daar te staan.</div>
 
