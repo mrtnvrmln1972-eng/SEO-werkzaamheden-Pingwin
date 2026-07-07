@@ -28,7 +28,9 @@ function derivePrimaryKeyword(kw: { keyword: string; clicks: number; impressions
 // is leidend boven de GSC-ranking, want we optimaliseren juist naar nieuw gekozen
 // zoekwoorden die van de huidige ranking kunnen afwijken.
 function planPrimaryKeyword(plan: string): string {
-  const m = (plan || "").match(/primair\s*[:：]\s*([^\n]+)/i);
+  // Plan kan markdown of (na handmatig bewerken) HTML zijn; strip tags voor het matchen.
+  const plain = (plan || "").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ");
+  const m = plain.match(/primair\s*[:：]\s*([^\n<]+)/i);
   if (!m) return "";
   return m[1].replace(/\*+/g, "").trim();
 }

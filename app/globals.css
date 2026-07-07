@@ -418,6 +418,14 @@ tbody td:last-child { text-align: center; }
 }
 .pages-detail { padding: 18px 20px 20px; text-align: left; }
 .pages-detail-label { font-size: 12px; font-weight: 700; color: var(--dark); display: block; margin-bottom: 6px; }
+/* Nette plan-kaart: header met toggle + chip + bewerken, body met gerenderd plan. */
+.pages-plan-card { border: 1px solid var(--border); border-radius: 10px; background: var(--white); overflow: hidden; max-width: 1040px; }
+.pages-plan-card-head { display: flex; align-items: center; gap: 8px; padding: 9px 12px; background: var(--gray-light); cursor: pointer; font-size: 14px; color: var(--dark); }
+.pages-plan-card-title { font-weight: 700; }
+.pages-plan-card-body { padding: 12px 14px; }
+.pages-plan-edit { min-height: 130px; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; outline: none; background: var(--white); font-size: 13px; line-height: 1.55; color: var(--dark); }
+.pages-plan-edit:focus { border-color: var(--orange); }
+.pages-plan-card .pages-plan-view { border: none; padding: 0; max-width: none; }
 .pages-plan { width: 100%; max-width: 1040px; min-height: 90px; font-family: 'Montserrat', sans-serif; font-size: 13px; color: var(--dark); line-height: 1.5; border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; outline: none; resize: vertical; }
 .pages-plan:focus { border-color: var(--orange); }
 .pages-plan-view { border: 1px solid var(--border); border-left: 3px solid var(--brand-teal); border-radius: 8px; padding: 10px 14px; font-size: 13px; line-height: 1.55; color: var(--dark); background: var(--white); max-width: 1040px; }

@@ -494,7 +494,6 @@ function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoTo
   const [planOpen, setPlanOpen] = useState(false);
   const [tasks, setTasks] = useState<{ id: number | null; taak: string; fase: string; wie: string; status: string; docLink?: string; stepKind?: string }[]>([]);
   const [cleaning, setCleaning] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   async function loadTasks() {
     try {
@@ -519,13 +518,18 @@ function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoTo
     } catch { /* stil */ } finally { setCleaning(false); }
   }
 
-  function change(v: string) {
-    setPlan(v); setSaved(false);
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(async () => {
-      await fetch("/api/admin/page-plan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: u.url, plan: v }) }).catch(() => {});
-      setSaved(true);
-    }, 700);
+  // Gerenderde, bewerkbare plan-preview (contentEditable), geen ruwe textarea. Het plan
+  // kan markdown zijn (van de chat) of al bewerkte HTML; render de juiste.
+  const planRef = useRef<HTMLDivElement | null>(null);
+  const renderPlanHtml = (p: string) => (/<(p|table|ul|ol|h[1-6]|div|br|strong|em|a|li)\b/i.test(p) ? p : mdToHtml(p));
+  useEffect(() => {
+    if (editing && planRef.current) planRef.current.innerHTML = renderPlanHtml(plan || "");
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [editing]);
+  function savePlan() {
+    const html = (planRef.current?.innerHTML || "").trim();
+    setPlan(html); setSaved(false); setEditing(false);
+    fetch("/api/admin/page-plan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: u.url, plan: html }) }).then(() => setSaved(true)).catch(() => {});
   }
 
   return (
@@ -554,25 +558,27 @@ function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoTo
         <tr className="pages-detail-row">
           <td colSpan={9}>
             <div className="pages-detail">
-              <label className="pages-detail-label" onClick={() => setPlanOpen((v) => !v)} style={{ cursor: "pointer" }}>
-                <span className="pch-caret">{planOpen ? "▾" : "▸"}</span> Plan voor deze pagina {(plan || "").trim() ? <span className="plan-chip has">plan</span> : <span className="plan-chip">leeg</span>} {saved && <span className="focus-save-status">opgeslagen</span>}
-                {planOpen && <button type="button" className="ghost-btn small" style={{ marginLeft: 8 }} onClick={(e) => { e.stopPropagation(); setEditing((v) => !v); }}>{editing ? "Klaar" : "Bewerken"}</button>}
-              </label>
-              {planOpen && (<>
-              {editing ? (
-                <textarea
-                  className="pages-plan"
-                  value={plan}
-                  onChange={(e) => change(e.target.value)}
-                  placeholder="Netjes opgemaakt met **Rol:**, een kopje Zoekwoorden met bullets (Primair/Secundair), een kopje Acties met bullets, en **Doel-URL:**."
-                />
-              ) : (
-                (plan || "").trim()
-                  ? <div className="pages-plan-view md" dangerouslySetInnerHTML={{ __html: mdToHtml(plan) }} />
-                  : <div className="pages-plan-view muted">Nog geen plan. Klik op Bewerken, of laat de chat hieronder een voorstel maken.</div>
-              )}
-              {u.redirectTarget && <div className="muted" style={{ marginTop: 6 }}>Live redirect: → <a href={u.redirectTarget} target="_blank" rel="noreferrer">{u.redirectTarget}</a></div>}
-              </>)}
+              <div className="pages-plan-card">
+                <div className="pages-plan-card-head" onClick={() => setPlanOpen((v) => !v)}>
+                  <span className="pch-caret">{planOpen ? "▾" : "▸"}</span>
+                  <span className="pages-plan-card-title">Plan voor deze pagina</span>
+                  {(plan || "").trim() ? <span className="plan-chip has">plan</span> : <span className="plan-chip">leeg</span>}
+                  {saved && <span className="focus-save-status">opgeslagen</span>}
+                  {planOpen && <button type="button" className="ghost-btn small" style={{ marginLeft: "auto" }} onClick={(e) => { e.stopPropagation(); if (editing) savePlan(); else setEditing(true); }}>{editing ? "Klaar" : "Bewerken"}</button>}
+                </div>
+                {planOpen && (
+                  <div className="pages-plan-card-body">
+                    {editing ? (
+                      <div ref={planRef} className="pages-plan-edit md" contentEditable suppressContentEditableWarning />
+                    ) : (
+                      (plan || "").trim()
+                        ? <div className="pages-plan-view md" dangerouslySetInnerHTML={{ __html: renderPlanHtml(plan) }} />
+                        : <div className="pages-plan-view muted">Nog geen plan. Klik op Bewerken, of laat de chat hieronder een voorstel maken.</div>
+                    )}
+                    {u.redirectTarget && <div className="muted" style={{ marginTop: 6 }}>Live redirect: → <a href={u.redirectTarget} target="_blank" rel="noreferrer">{u.redirectTarget}</a></div>}
+                  </div>
+                )}
+              </div>
 
               {(() => {
                 // Een taak hoort bij de pijplijn (blijft staan) als hij een stap-kenmerk
