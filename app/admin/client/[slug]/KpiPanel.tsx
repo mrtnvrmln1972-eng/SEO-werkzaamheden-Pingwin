@@ -142,7 +142,7 @@ type SortDir = "asc" | "desc";
 type Sort<K extends string> = { key: K; dir: SortDir } | null;
 
 // Klik-cyclus per kop: aflopend → oplopend → uit (originele volgorde).
-function SortTh<K extends string>({ label, k, sort, setSort, className }: { label: string; k: K; sort: Sort<K>; setSort: (s: Sort<K>) => void; className?: string }) {
+function SortTh<K extends string>({ label, k, sort, setSort, className, title }: { label: string; k: K; sort: Sort<K>; setSort: (s: Sort<K>) => void; className?: string; title?: string }) {
   const active = sort?.key === k;
   const arrow = active ? (sort!.dir === "asc" ? " ▲" : " ▼") : "";
   function onClick() {
@@ -150,7 +150,7 @@ function SortTh<K extends string>({ label, k, sort, setSort, className }: { labe
     if (sort!.dir === "desc") return setSort({ key: k, dir: "asc" });
     return setSort(null);
   }
-  return <th className={"pg-sort" + (className ? " " + className : "")} onClick={onClick} title="Klik om te sorteren (aflopend → oplopend → uit)">{label}{arrow}</th>;
+  return <th className={"pg-sort" + (className ? " " + className : "")} onClick={onClick} title={title ? title + " — klik om te sorteren (aflopend → oplopend → uit)" : "Klik om te sorteren (aflopend → oplopend → uit)"}>{label}{arrow}</th>;
 }
 
 function applySort<T, K extends string>(rows: T[], sort: Sort<K>, getters: Record<K, (r: T) => number | string>): T[] {
@@ -166,10 +166,10 @@ function applySort<T, K extends string>(rows: T[], sort: Sort<K>, getters: Recor
 
 type FocusTier = "prio" | "secundair";
 type Kw = GscComparison["keywords"][number];
-type KwKey = "focus" | "keyword" | "volume" | "position" | "clicks" | "impressions" | "ctr";
+type KwKey = "focus" | "keyword" | "volume" | "position" | "dposition" | "clicks" | "dclicks" | "impressions" | "dimpressions" | "ctr" | "dctr";
 type AhKey = "focus" | "keyword" | "volume" | "position" | "intent" | "kans";
 type OppKey = "focus" | "keyword" | "volume" | "difficulty" | "source" | "reason";
-type PageKey = "prio" | "url" | "clicks" | "impressions";
+type PageKey = "prio" | "url" | "clicks" | "dclicks" | "impressions" | "dimpressions";
 
 // Compacte prio/secundair-keuze per zoekwoord.
 function FocusSelect({ tier, onChange }: { tier: FocusTier | undefined; onChange: (t: FocusTier | null) => void }) {
@@ -225,6 +225,8 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
   const focusRank = (kw: string) => (focus[kw] === "prio" ? 0 : focus[kw] === "secundair" ? 1 : 2);
   const kwGetters: Record<KwKey, (k: Kw) => number | string> = {
     focus: (k) => focusRank(k.keyword), keyword: (k) => k.keyword, volume: (k) => volMap.get(k.keyword.toLowerCase()) ?? -1, position: (k) => k.position, clicks: (k) => k.clicks, impressions: (k) => k.impressions, ctr: (k) => k.ctr,
+    // Δ-kolommen: hogere waarde = meer verbeterd (aflopend sorteren = hardst gestegen bovenaan).
+    dposition: (k) => (k.prevPosition ?? k.position) - k.position, dclicks: (k) => k.clicks - k.prevClicks, dimpressions: (k) => k.impressions - k.prevImpressions, dctr: (k) => k.ctr - k.prevCtr,
   };
 
   useEffect(() => {
@@ -388,6 +390,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
   const shownKws = kwSearch.trim() ? sortedKws.filter((k) => k.keyword.toLowerCase().includes(kwSearch.trim().toLowerCase())) : sortedKws;
   const pageGetters: Record<PageKey, (p: GscPage) => number | string> = {
     prio: (p) => (pagePrio.has(pagePrioKey(p.url)) ? 0 : 1), url: (p) => shortUrl(p.url), clicks: (p) => p.clicks, impressions: (p) => p.impressions,
+    dclicks: (p) => p.clicks - p.prevClicks, dimpressions: (p) => p.impressions - p.prevImpressions,
   };
   // Standaard op de ster (prio) gesorteerd: aangevinkte pagina's automatisch bovenaan.
   const sortedPages = applySort(pagesView, pageSort, pageGetters);
@@ -458,9 +461,13 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
                     <SortTh label="Zoekwoord" k="keyword" sort={kwSort} setSort={setKwSort} />
                     <SortTh label="Volume" k="volume" sort={kwSort} setSort={setKwSort} />
                     <SortTh label="Positie" k="position" sort={kwSort} setSort={setKwSort} />
+                    <SortTh label="Δ" title="Verandering positie t.o.v. vorige periode (omhoog = beter)" k="dposition" sort={kwSort} setSort={setKwSort} className="kpi-delta-th" />
                     <SortTh label="Klikken" k="clicks" sort={kwSort} setSort={setKwSort} />
+                    <SortTh label="Δ" title="Verandering klikken t.o.v. vorige periode" k="dclicks" sort={kwSort} setSort={setKwSort} className="kpi-delta-th" />
                     <SortTh label="Vertoningen" k="impressions" sort={kwSort} setSort={setKwSort} />
+                    <SortTh label="Δ" title="Verandering vertoningen t.o.v. vorige periode" k="dimpressions" sort={kwSort} setSort={setKwSort} className="kpi-delta-th" />
                     <SortTh label="CTR" k="ctr" sort={kwSort} setSort={setKwSort} />
+                    <SortTh label="Δ" title="Verandering CTR t.o.v. vorige periode" k="dctr" sort={kwSort} setSort={setKwSort} className="kpi-delta-th" />
                   </tr></thead>
                   <tbody>
                     {shownKws.map((k) => (
@@ -468,10 +475,14 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
                         <td><FocusSelect tier={focus[k.keyword]} onChange={(t) => markFocus(k.keyword, t)} /></td>
                         <td>{k.keyword}</td>
                         <td>{(() => { const v = volMap.get(k.keyword.toLowerCase()); return v != null ? v.toLocaleString("nl-NL") : <span className="muted">&mdash;</span>; })()}</td>
-                        <td>{k.position.toFixed(1)} <Delta cur={k.position} prev={k.prevPosition ?? k.position} invert isPos /></td>
-                        <td>{nl(k.clicks)} <Delta cur={k.clicks} prev={k.prevClicks} /></td>
-                        <td>{nl(k.impressions)} <Delta cur={k.impressions} prev={k.prevImpressions} /></td>
-                        <td>{k.ctr.toFixed(1)}% <Delta cur={k.ctr} prev={k.prevCtr} isPos /></td>
+                        <td>{k.position.toFixed(1)}</td>
+                        <td className="kpi-delta-td"><Delta cur={k.position} prev={k.prevPosition ?? k.position} invert isPos /></td>
+                        <td>{nl(k.clicks)}</td>
+                        <td className="kpi-delta-td"><Delta cur={k.clicks} prev={k.prevClicks} /></td>
+                        <td>{nl(k.impressions)}</td>
+                        <td className="kpi-delta-td"><Delta cur={k.impressions} prev={k.prevImpressions} /></td>
+                        <td>{k.ctr.toFixed(1)}%</td>
+                        <td className="kpi-delta-td"><Delta cur={k.ctr} prev={k.prevCtr} isPos /></td>
                       </tr>
                     ))}
                   </tbody>
@@ -488,7 +499,9 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
                     <SortTh label="★" k="prio" sort={pageSort} setSort={setPageSort} />
                     <SortTh label="Pagina" k="url" sort={pageSort} setSort={setPageSort} />
                     <SortTh label="Klikken" k="clicks" sort={pageSort} setSort={setPageSort} />
+                    <SortTh label="Δ" title="Verandering klikken t.o.v. vorige periode" k="dclicks" sort={pageSort} setSort={setPageSort} className="kpi-delta-th" />
                     <SortTh label="Vertoningen" k="impressions" sort={pageSort} setSort={setPageSort} />
+                    <SortTh label="Δ" title="Verandering vertoningen t.o.v. vorige periode" k="dimpressions" sort={pageSort} setSort={setPageSort} className="kpi-delta-th" />
                     <th></th>
                   </tr></thead>
                   <tbody>
@@ -502,8 +515,10 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
                             <span className="kpi-drag" draggable={canDrag} onDragStart={() => { if (canDrag) setDragIdx(i); }} onDragEnd={() => setDragIdx(null)} title={canDrag ? "Sleep om bovenaan te zetten" : "Zet de sortering/prioriteit uit om te slepen"}>⠿</span>
                           </td>
                           <td><a href={p.url} target="_blank" rel="noreferrer">{shortUrl(p.url)}</a></td>
-                          <td>{nl(p.clicks)} <Delta cur={p.clicks} prev={p.prevClicks} /></td>
-                          <td>{nl(p.impressions)} <Delta cur={p.impressions} prev={p.prevImpressions} /></td>
+                          <td>{nl(p.clicks)}</td>
+                          <td className="kpi-delta-td"><Delta cur={p.clicks} prev={p.prevClicks} /></td>
+                          <td>{nl(p.impressions)}</td>
+                          <td className="kpi-delta-td"><Delta cur={p.impressions} prev={p.prevImpressions} /></td>
                           <td className="kpi-openpage-cell"><button type="button" className="ghost-btn small" onClick={(e) => { e.stopPropagation(); onOpenPage?.(p.url); }} title="Open deze pagina in het Pagina's-tabje">open in Pagina&rsquo;s</button></td>
                         </tr>
                       );
