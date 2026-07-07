@@ -524,7 +524,7 @@ function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoTo
   // Gerenderde, bewerkbare plan-preview (contentEditable), geen ruwe textarea. Het plan
   // kan markdown zijn (van de chat) of al bewerkte HTML; render de juiste.
   const planRef = useRef<HTMLDivElement | null>(null);
-  const renderPlanHtml = (p: string) => (/<(p|table|ul|ol|h[1-6]|div|br|strong|em|a|li)\b/i.test(p) ? p : mdToHtml(p));
+  const renderPlanHtml = (p: string) => (/<\/[a-z][a-z0-9]*>/i.test(p) && !/(^|\n)#{1,6}\s|\*\*[^*]|(^|\n)\s*[-*]\s|(^|\n)\s*\d+\.\s|\|[^|]*\|/.test(p) ? p : mdToHtml(p));
   useEffect(() => {
     if (editing && planRef.current) planRef.current.innerHTML = renderPlanHtml(plan || "");
     /* eslint-disable-next-line react-hooks/exhaustive-deps */

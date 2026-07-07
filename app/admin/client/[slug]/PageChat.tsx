@@ -340,8 +340,13 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   }
 
   // Een bericht is markdown (van het model) óf al bewerkte HTML; render de juiste.
+  // Alleen als het ECHT al HTML is (sluittags) én GEEN markdown-syntax bevat, laten we het staan.
+  // Anders altijd via mdToHtml, dat '<' escapet — zo verschijnt een genoemde tag als `<h1>`
+  // als leestekst i.p.v. dat hij als echte kop wordt gerenderd (en de markdown blijft ruw).
   function renderMsgHtml(content: string): string {
-    return /<(p|table|ul|ol|h[1-6]|div|br|strong|em|a)\b/i.test(content) ? content : mdToHtml(content);
+    const hasClosingTag = /<\/[a-z][a-z0-9]*>/i.test(content);
+    const looksMarkdown = /(^|\n)#{1,6}\s|\*\*[^*]|(^|\n)\s*[-*]\s|(^|\n)\s*\d+\.\s|\|[^|]*\|/.test(content);
+    return hasClosingTag && !looksMarkdown ? content : mdToHtml(content);
   }
   function deleteMsg(i: number) {
     if (!window.confirm("Dit bericht uit de chat verwijderen?")) return;
