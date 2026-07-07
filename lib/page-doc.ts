@@ -132,7 +132,8 @@ const DOCSPEC_FORMAT = `Geef UITSLUITEND geldige JSON, niets eromheen, exact dit
 {"titel": "...", "ondertitel": "...", "sections": [ {"heading": "1. Sectienaam", "blocks": [ ... ]} ]}
 Toegestane bloktypes in "blocks":
 - {"type":"paragraph","text":"..."}
-- {"type":"subheading","text":"..."}
+- {"type":"subheading","text":"..."}  (kop op H2-niveau binnen een sectie)
+- {"type":"subsubheading","text":"..."}  (kop op H3-niveau, één niveau ONDER een subheading; gebruik dit VERPLICHT voor de titels van FAQ-/veelgestelde-vragen, en voor elke kop die logisch onder een H2 valt)
 - {"type":"bullets","items":["...","..."]}
 - {"type":"table","headers":["Kol1","Kol2"],"rows":[["a","b"],["c","d"]]}
 - {"type":"highlight","text":"belangrijke callout"}
@@ -166,7 +167,7 @@ ${DOCSPEC_FORMAT}`;
 const BLUEPRINT_SYSTEM = `Je bent een senior SEO-strateeg bij bureau Pingwin en maakt een BLAUWDRUK voor een landingspagina.
 De blauwdruk bevat, elk als eigen sectie:
 1. Zoekwoord-strategie: primair zoekwoord + secundaire/variant-zoekwoorden (tabel met zoekwoord + rol/volume waar bekend).
-2. Headings-structuur: de voorgestelde H1, en de H2's/H3's in volgorde (elke H2 dekt idealiter een zoekwoord/subthema).
+2. Headings-structuur: de voorgestelde H1 (subheading), en de H2's (subheading) / H3's (subsubheading) in volgorde (elke H2 dekt idealiter een zoekwoord/subthema). FAQ-vraagtitels horen op H3-niveau (subsubheading), onder een H2 "Veelgestelde vragen".
 3. Meta: 2 varianten meta-title (max ~60 tekens) en 2 varianten meta-description (max ~155 tekens).
 4. FAQ: 4 tot 6 vragen die de zoekintentie dekken.
 5. Interne links: welke andere pagina's naar deze pagina linken en met welke ankertekst.
@@ -189,7 +190,7 @@ Lever het document met EXACT deze secties, in deze volgorde:
 1. Sectie "Scorecard & gate-verdict": één table-blok met kolommen Criterium | Status | Waarde, met per relevant criterium-ID (H1-01/02, H2-01, KW-01 t/m KW-04, META-02, META-07, CON-02, FAQ-02, FAQ-05, AEO-02/03, CON-07, CVR-01/02) de status (PASS/FAIL/PARTIAL) en de gemeten waarde (bijv. H2-dekking 67%, density 1,22%, variantdekking 87%, FAQ 6 vragen, title 59 tekens). Begin de sectie met een paragraph "GATE: PASS/FAIL" met het aantal CRITICAL/MAJOR-failures en een korte conclusie of de copy publicatieklaar is.
 2. Sectie "SEO-metadata": één table-blok met kolommen Element | Waarde | Tekens, met de URL-slug, de meta-title (met tekenaantal) en de meta-description (met tekenaantal).
 3. Sectie "Behoud-overzicht": één paragraph met het behoud-principe, daarna één table-blok met kolommen Sectie | Actie | Toelichting (actie = BEHOUDEN/AANGEPAST/VERVANGEN/NIEUW).
-4. Sectie "Volledige copy": de H1 (subheading), per H2 de kop (subheading) + de alineatekst (paragraph-blokken), eventuele bullets, en een FAQ met vraag (subheading) + antwoord (paragraph).
+4. Sectie "Volledige copy": de H1 (subheading), per H2 de kop (subheading) + de alineatekst (paragraph-blokken), eventuele bullets, en een FAQ: het FAQ-blok krijgt een subheading ("Veelgestelde vragen over [onderwerp]") en elke vraag daaronder een subsubheading (H3) + antwoord (paragraph).
 Gegrond in de data hieronder; verzin geen gemeten waarden die niet uit de data volgen.
 
 RELEVANTE CRITERIA:
@@ -206,6 +207,7 @@ function specToText(spec: DocSpec): string {
     for (const b of sec.blocks || []) {
       if (b.type === "paragraph") out.push(b.text);
       else if (b.type === "subheading") out.push(`### ${b.text}`);
+      else if (b.type === "subsubheading") out.push(`#### ${b.text}`);
       else if (b.type === "bullets") out.push(b.items.map((i) => `- ${i}`).join("\n"));
       else if (b.type === "highlight") out.push(`> ${b.text}`);
       else if (b.type === "step") out.push(`${b.nr}. ${b.title}: ${b.text}`);
@@ -309,7 +311,7 @@ export async function summariseChatToSpec(slug: string, url: string, analysis: s
 const CLIENT_STRUCTURE: Record<DocKind, string> = {
   analyse: `Lever deze secties (elk kort): 1. Huidige situatie; 2. Zoekwoorden (welke kansrijk zijn, zoekvolume in gewone taal); 3. Concurrentie (kunnen we winnen, wat doet de best gevonden concurrent wel); 4. Zoekintentie; 5. Wat de pagina nu mist t.o.v. de best scorende top-10-pagina's (concreet vergelijken); 6. Conclusie & advies (op welke zoekwoorden we richten en wat we voorstellen).`,
   blauwdruk: `Lever deze secties (elk kort): 1. Wat we op jullie pagina gaan zetten (de belangrijkste onderdelen/onderwerpen en de opbouw, in gewone taal); 2. Op welke zoekwoorden we richten; 3. Wat we behouden van de huidige pagina en wat nieuw wordt; 4. Waarom dit werkt (kort). Geen technische koppen/meta-details.`,
-  copy: `Lever eerst deze korte secties: 1. Waar de nieuwe teksten over gaan (kernboodschap en toon, kort); 2. Welke zoekwoorden erin verwerkt zijn (bullets, elk zoekwoord vet); 3. Wat dit voor jullie vindbaarheid betekent (kort). Lever DAARNA een sectie met kop "De volledige webteksten (lees na en corrigeer)" waarin je de VOLLEDIGE paginacopy uit het bronstuk overneemt: de H1 (subheading), elke H2 met de kop (subheading) + de alineatekst (paragraphs), eventuele bullets, en de FAQ (vraag als subheading, antwoord als paragraph). Neem die teksten letterlijk over uit het bronstuk. Laat de scorecard, criteria-ID's, tekencounts en het behoud-overzicht WEG (dat is intern). Zo krijgt de klant de uitleg én de complete tekst om te corrigeren in één document.`,
+  copy: `Lever eerst deze korte secties: 1. Waar de nieuwe teksten over gaan (kernboodschap en toon, kort); 2. Welke zoekwoorden erin verwerkt zijn (bullets, elk zoekwoord vet); 3. Wat dit voor jullie vindbaarheid betekent (kort). Lever DAARNA een sectie met kop "De volledige webteksten (lees na en corrigeer)" waarin je de VOLLEDIGE paginacopy uit het bronstuk overneemt: de H1 (subheading), elke H2 met de kop (subheading) + de alineatekst (paragraphs), eventuele bullets, en de FAQ: het FAQ-blok als subheading ("Veelgestelde vragen over [onderwerp]") en elke vraag daaronder als subsubheading (H3) met het antwoord als paragraph. Neem die teksten letterlijk over uit het bronstuk. Laat de scorecard, criteria-ID's, tekencounts en het behoud-overzicht WEG (dat is intern). Zo krijgt de klant de uitleg én de complete tekst om te corrigeren in één document.`,
 };
 
 // Vaste openingsalinea voor de copy-klantversie (letterlijk, niet door AI gegenereerd).
