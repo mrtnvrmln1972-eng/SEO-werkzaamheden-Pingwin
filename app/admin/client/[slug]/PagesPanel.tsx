@@ -562,6 +562,7 @@ function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoTo
                 <div className="pages-plan-card-head" onClick={() => setPlanOpen((v) => !v)}>
                   <span className="pch-caret">{planOpen ? "▾" : "▸"}</span>
                   <span className="pages-plan-card-title">Plan voor deze pagina</span>
+                  <span onClick={(e) => e.stopPropagation()}><HelpHint wide text="Het plan voor deze pagina: welke rol de pagina heeft, de primaire en secundaire zoekwoorden, de acties en de doel-URL. Het vult zich vanzelf als je in de chat een strategie laat samenvatten en 'Neem plan over' klikt, of je typt het zelf. Dit plan stuurt de analyse, blauwdruk en copy aan." /></span>
                   {(plan || "").trim() ? <span className="plan-chip has">plan</span> : <span className="plan-chip">leeg</span>}
                   {saved && <span className="focus-save-status">opgeslagen</span>}
                   {planOpen && <button type="button" className="ghost-btn small" style={{ marginLeft: "auto" }} onClick={(e) => { e.stopPropagation(); if (editing) savePlan(); else setEditing(true); }}>{editing ? "Klaar" : "Bewerken"}</button>}

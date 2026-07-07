@@ -428,8 +428,16 @@ tbody td:last-child { text-align: center; }
 .pages-plan-edit:focus { border-color: var(--orange); }
 .pages-plan-card .pages-plan-view { border: none; padding: 0; max-width: none; }
 /* Achtergrond-run ingebed onderaan de vervolgstappen-kaart (geen losse kaart meer). */
-.pcd-run-inline { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border); }
-.pcd-run-head { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--orange-dark); margin-bottom: 7px; }
+.pcd-run-inline { margin-top: 16px; padding-top: 13px; border-top: 1px dashed var(--border); }
+/* Achtergrond-run compact op één regel: Analyse klaar · document | Blauwdruk klaar · … */
+.pcd-run-line { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 12.5px; }
+.pcd-run-item { color: var(--gray); }
+.pcd-run-item strong { color: var(--dark); font-weight: 700; }
+.pcd-run-item.done { color: #2E7D32; }
+.pcd-run-item.done strong { color: #2E7D32; }
+.pcd-run-item.running { color: var(--orange-dark); }
+.pcd-run-item.error { color: #C62828; }
+.pcd-run-item a { color: var(--brand-blue); }
 .pages-plan { width: 100%; max-width: 1040px; min-height: 90px; font-family: 'Montserrat', sans-serif; font-size: 13px; color: var(--dark); line-height: 1.5; border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; outline: none; resize: vertical; }
 .pages-plan:focus { border-color: var(--orange); }
 .pages-plan-view { border: 1px solid var(--border); border-left: 3px solid var(--brand-teal); border-radius: 8px; padding: 10px 14px; font-size: 13px; line-height: 1.55; color: var(--dark); background: var(--white); max-width: 1040px; }
@@ -637,8 +645,14 @@ tbody td:last-child { text-align: center; }
 .pcd-nuance:focus { border-color: var(--orange); }
 .pcd-docs-buttons { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-start; }
 /* Elke stap: hoofdknop + klein knopje eronder voor de interne/uitgebreide versie. */
-.pcd-step { display: flex; flex-direction: column; gap: 5px; align-items: stretch; }
+.pcd-step { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
 .pcd-step .pcd-btn { width: 100%; }
+/* Meer lucht tussen de elementen in het vervolgstappen-blok. */
+.page-chat-docs { padding: 20px 22px; }
+.page-chat-docs .pcd-docs-head { margin-bottom: 13px; }
+.page-chat-docs .pcd-nuance { margin: 4px 0 14px; }
+.page-chat-docs .pcd-docs-buttons { margin-bottom: 2px; }
+.pcd-docs-note { font-size: 12px; line-height: 1.5; margin-top: 12px; }
 .pcd-step-intern { font-size: 11px; color: var(--gray); background: none; border: none; padding: 0 2px; cursor: pointer; text-align: center; text-decoration: underline; text-underline-offset: 2px; }
 .pcd-step-intern:hover:not(:disabled) { color: var(--orange-dark); }
 .pcd-step-intern:disabled { opacity: 0.5; cursor: default; text-decoration: none; }

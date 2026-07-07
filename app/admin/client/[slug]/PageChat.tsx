@@ -548,7 +548,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       )}
       <div className="page-chat">
         <div className="page-chat-head" onClick={() => setChatOpen((o) => !o)} style={{ cursor: "pointer" }} title={chatOpen ? "Chat inklappen" : "Chat uitklappen"}>
-          <span><span className="pch-caret">{chatOpen ? "▾" : "▸"}</span> Chat over deze pagina (gegrond in live status, GSC-ranking en het cluster)</span>
+          <span><span className="pch-caret">{chatOpen ? "▾" : "▸"}</span> Chat over deze pagina <span onClick={(e) => e.stopPropagation()}><HelpHint wide text="Praat hier met de AI over deze pagina om de strategie uit te werken. De chat is gegrond in de live status van de pagina, de Search Console-ranking en de andere pagina's in het cluster, zodat het advies klopt met de werkelijkheid. Ben je klaar: vat samen tot een plan, geef het door aan betrokken pagina's en leg de strategie vast." /></span></span>
           {(chats.length > 0 || msgs.length > 0) && <button type="button" className="ghost-btn small" onClick={(e) => { e.stopPropagation(); newChat(); }}>+ Nieuwe chat</button>}
         </div>
 
@@ -593,8 +593,8 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
 
       {lastAssistant && (
         <div className="page-chat-docs">
-          <div className="pcd-docs-head">Vervolgstappen op strategische analyse voor deze pagina</div>
-          <div className="page-chat-drive" style={{ margin: "2px 0 10px" }}>
+          <div className="pcd-docs-head">Vervolgstappen op de strategie <HelpHint wide text="Hier maak je de documenten die uit de vastgelegde strategie volgen: de SEO-analyse, de blauwdruk en de copy voor deze pagina. Elke stap draait op de achtergrond en komt in je Drive-map te staan én als werkzaamheid in de takenlijst. Onder elke stap kun je een uitgebreide interne versie laten maken." /></div>
+          <div className="page-chat-drive" style={{ margin: "4px 0 14px" }}>
             <span className="pcd-label">Opslaan in:</span>
             {driveFolder
               ? <span className="pcd-folder">{driveFolder.path || driveFolder.name}</span>
@@ -619,21 +619,22 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
               <button type="button" className={"pcd-btn " + (allStepsDone ? "pcd-btn-done" : "pcd-btn-primary") + (runBusy ? " busy" : "")} onClick={() => ensureFolderThenRun(["analyse", "blauwdruk", "copy"])} disabled={runBusy} title="Draait de drie stappen op de achtergrond door; wegklikken mag.">{runBusy ? "Starten…" : allStepsDone ? "✓ Alles klaar (1 → 2 → 3)" : "Alles achter elkaar (1 → 2 → 3)"}</button>
             </div>
           </div>
-          <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>Je klikt en het draait op de achtergrond door: je kunt meteen wegklikken naar iets anders. De voortgang zie je hieronder en later in Werkzaamheden. Er wordt één korte, klantvriendelijke versie gemaakt (die zowel jij, de developer als de klant leest). Een uitgebreide interne versie kan per stap op verzoek. Tip: kies eerst een Drive-map, dan komen de bestanden daar te staan.</div>
+          <div className="muted pcd-docs-note">Draait op de achtergrond, wegklikken mag. Eén korte klantversie die jij, de developer én de klant lezen. Tip: kies eerst een Drive-map.</div>
 
           {run && (
             <div className="pcd-run-inline">
-              <div className="pcd-run-head">Achtergrond-run {run.status === "running" ? "— bezig (wegklikken mag)" : run.status === "done" ? "— klaar" : "— gestopt door een fout"}</div>
-              <ul className="doc-run-steps">
-                {(["analyse", "blauwdruk", "copy"] as const).filter((k) => run.steps[k] !== "skipped").map((k) => (
-                  <li key={k} className={"drs " + (run.steps[k] || "pending")}>
-                    <span className="drs-name">{k === "analyse" ? "1. Analyse" : k === "blauwdruk" ? "2. Blauwdruk" : "3. Copy"}</span>
-                    <span className="drs-state">{run.steps[k] === "done" ? "klaar" : run.steps[k] === "running" ? "bezig…" : run.steps[k] === "error" ? "fout" : "wacht"}</span>
-                    {run.links[k] && <a href={run.links[k]} target="_blank" rel="noreferrer">document</a>}
-                  </li>
-                ))}
-              </ul>
-              {run.status === "running" && <div className="muted" style={{ fontSize: 12 }}>Dit loopt server-side door. Je kunt gerust wegklikken en later terugkomen; de resultaten verschijnen hier en als werkzaamheid in de takenlijst.</div>}
+              <div className="pcd-run-line">
+                {(["analyse", "blauwdruk", "copy"] as const).filter((k) => run.steps[k] !== "skipped").map((k) => {
+                  const nm = k === "analyse" ? "Analyse" : k === "blauwdruk" ? "Blauwdruk" : "Copy";
+                  const st = run.steps[k] === "done" ? "klaar" : run.steps[k] === "running" ? "bezig…" : run.steps[k] === "error" ? "fout" : "wacht";
+                  return (
+                    <span key={k} className={"pcd-run-item " + (run.steps[k] || "pending")}>
+                      <strong>{nm}</strong> {st}{run.links[k] && <> · <a href={run.links[k]} target="_blank" rel="noreferrer">document</a></>}
+                    </span>
+                  );
+                })}
+              </div>
+              {run.status === "running" && <div className="muted" style={{ fontSize: 12, marginTop: 5 }}>Loopt server-side door; wegklikken mag. Verschijnt ook als werkzaamheid.</div>}
               {run.status === "error" && run.error && <div className="login-error" style={{ marginTop: 6 }}>{run.error}</div>}
             </div>
           )}
@@ -641,7 +642,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       )}
 
       <div className="page-chat-canni">
-        <div className="pcd-docs-head">Vervolgstap: cannibalisatie oplossen voor deze pagina</div>
+        <div className="pcd-docs-head">Cannibalisatie oplossen <HelpHint wide text="Controleert of meerdere pagina's van de site op dezelfde zoekwoorden concurreren (kannibalisatie). Per zoekwoord zie je (met top-10 + volume) of het een eigen pagina verdient of naar deze pagina geclusterd moet worden, en welke pagina's deze pagina 'kapen', met de actie per pagina. Draait op de achtergrond met echte Ahrefs-data." /></div>
         <div className="pch-canni-row">
           <span className="pch-canni-lead">Brengt per zoekwoord in kaart (top-10 + volume) of het een eigen pagina verdient of naar deze pagina geclusterd wordt, en welke pagina&rsquo;s deze pagina kapen, met de actie per pagina.</span>
           <button type="button" className={"pcd-btn" + (pcBusy || pc?.status === "running" ? " busy" : "")} disabled={pcBusy || pc?.status === "running"} onClick={runPc} title="Draait op de achtergrond met echte Ahrefs-data; je kunt wegklikken.">{pc?.status === "running" ? "Analyse draait…" : pc?.result ? "Opnieuw analyseren" : "Cannibalisatie oplossen"}</button>
