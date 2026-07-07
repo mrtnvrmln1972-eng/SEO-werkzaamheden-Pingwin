@@ -115,10 +115,11 @@ export default function ClientCockpit({
     if (url) document.execCommand("createLink", false, url);
   }
 
-  const [statusBusy, setStatusBusy] = useState(false);
+  // Optimistische override: het vinkje verschijnt meteen, de server volgt op de achtergrond.
+  const [statusOverride, setStatusOverride] = useState<Record<number, boolean>>({});
 
   async function toggleStatus(index: number, done: boolean) {
-    setStatusBusy(true);
+    setStatusOverride((o) => ({ ...o, [index]: done }));
     try {
       await fetch("/api/admin/status", {
         method: "POST",
@@ -126,9 +127,7 @@ export default function ClientCockpit({
         body: JSON.stringify({ slug: client.slug, index, status: done ? "done" : "open" }),
       });
       router.refresh();
-    } finally {
-      setStatusBusy(false);
-    }
+    } catch { /* de optimistische stand blijft staan */ }
   }
 
   // Naar wie het antwoord gaat: deelnemers van de mail (afzender + to) minus jezelf.
@@ -311,7 +310,7 @@ export default function ClientCockpit({
                       .sort((a, b) => (b.ex.date || "").localeCompare(a.ex.date || ""))
                       .map(({ ex, i }) => {
                       const isClient = ex.side === "client";
-                      const done = ex.status === "done";
+                      const done = statusOverride[i] !== undefined ? statusOverride[i] : ex.status === "done";
                       const cls = "sov-row " + (isClient ? "left" : "right") + " " + (done ? "done" : "open");
                       const m = ex.subject ? emailMatch.get(normSubject(ex.subject)) : undefined;
                       const exLink = m?.superhumanLink || ex.mailLink || null;
@@ -322,7 +321,7 @@ export default function ClientCockpit({
                               <span className="sov-who">{isClient ? (client.name || "Klant") : "Pingwin"}</span>
                               {ex.date && <span className="sov-date">{fmtDate(ex.date)}</span>}
                               <label className="sov-check" title="Markeer als afgehandeld">
-                                <input type="checkbox" checked={done} disabled={statusBusy} onChange={(e) => toggleStatus(i, e.target.checked)} />
+                                <input type="checkbox" checked={done} onChange={(e) => toggleStatus(i, e.target.checked)} />
                                 afgerond
                               </label>
                             </div>

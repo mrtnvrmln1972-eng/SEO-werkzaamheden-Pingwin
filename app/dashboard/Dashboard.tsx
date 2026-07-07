@@ -56,7 +56,9 @@ function clientTaskTitle(task: { taak: string; clientDocLink?: string }): string
       if (single) link = single[1];
     }
   }
-  if (link) return `<a href="${link}" target="_blank" rel="noreferrer">${title}</a>`;
+  // Zelfde weergave als in de cockpit: de kale titel, met daarachter "(link)" naar de
+  // klantversie, i.p.v. de titel zelf als link.
+  if (link) return `${title} (<a href="${link}" target="_blank" rel="noreferrer">link</a>)`;
   return title;
 }
 
