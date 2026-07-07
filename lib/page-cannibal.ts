@@ -255,7 +255,7 @@ function safeName(s: string): string {
 //    (cluster-advies), als vertrekpunt voor de latere strategie van die pagina.
 // 2) De redirects + interne links als één Dev-taak (met de lijst erin) + een
 //    Pingwin-document in de Drive-map van de pagina, zichtbaar voor klant en developer.
-export async function applyPageCannibal(slug: string, url: string): Promise<{ taskId: number | null; docLink: string; advicePages: number }> {
+export async function applyPageCannibal(slug: string, url: string): Promise<{ taskId: number | null; docLink: string; advicePages: number; adviceUrls: string[] }> {
   const cur = await getPageCannibal(slug, url);
   const analysis = (cur.result || "").trim();
   if (!analysis) throw new Error("Er is nog geen cannibalisatie-analyse voor deze pagina. Draai eerst de analyse.");
@@ -264,11 +264,12 @@ export async function applyPageCannibal(slug: string, url: string): Promise<{ ta
   const path = pagePath(url);
 
   // 1. Basisinfo (de-optimalisaties/behoud) naar de blijvende pagina's als vertrekpunt.
-  let advicePages = 0;
+  const adviceUrls: string[] = [];
   try {
     const items = await extractClusterAdvice(analysis, url, urls.map((u) => u.url));
-    for (const it of items) { await savePageClusterAdvice(slug, it.url, it.advice, url, analysis).catch(() => { /* per pagina stil */ }); advicePages++; }
+    for (const it of items) { await savePageClusterAdvice(slug, it.url, it.advice, url, analysis).catch(() => { /* per pagina stil */ }); adviceUrls.push(it.url); }
   } catch { /* advies is aanvullend */ }
+  const advicePages = adviceUrls.length;
 
   // 2. Dev-inhoud: uitleg + redirects + interne links uit de analyse halen.
   const devMd = await callClaude(
@@ -312,5 +313,5 @@ Neem uitsluitend wat in de analyse staat; verzin niets. Geen emoji. Staat er gee
     docLink: docLink || undefined, clientDocLink: docLink || undefined,
   }]).catch(() => [] as number[]);
 
-  return { taskId: ids[0] ?? null, docLink, advicePages };
+  return { taskId: ids[0] ?? null, docLink, advicePages, adviceUrls };
 }
