@@ -67,27 +67,47 @@ function PeriodCompare({ prev, cur, fmt, invert }: { prev: number; cur: number; 
   );
 }
 
-// Levende dag-grafiek voor een scorekaart: tekent de échte dagreeks als lijn (i.p.v.
-// een rechte 2-punts-lijn), met links de vorige-periode-waarde en rechts de huidige.
-// Kleur volgt de periodevergelijking (cur vs prev). invert=true bij 'positie', zodat
-// de beste (laagste) positie bovenaan ligt: hoger in de grafiek = beter ranken.
-function MiniTrend({ values, prev, cur, fmt, invert }: { values: number[]; prev: number; cur: number; fmt: (v: number) => string; invert?: boolean }) {
-  const t = trendOf(cur, prev, invert);
-  const color = t === "flat" ? "#9e9e9e" : t === "good" ? "#2E7D32" : "#C62828";
-  const w = 96, h = 30, pad = 4;
-  const vals = values && values.length >= 2 ? values : [prev, cur];
-  const min = Math.min(...vals), max = Math.max(...vals), range = max - min || 1;
-  const x = (i: number) => pad + (i / (vals.length - 1)) * (w - 2 * pad);
-  const y = (v: number) => { const norm = (v - min) / range; return pad + (invert ? norm : 1 - norm) * (h - 2 * pad); };
-  const pts = vals.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+// Scorekaart met trend: bovenaan de beginstand (links), het verschil (midden) en de
+// eindstand (rechts); daaronder de échte dagreeks als lijn met hover-waarde en een
+// datum-as (begin/midden/eind). invert=true bij 'positie': richting positie 0 loopt de
+// lijn omhoog (beter). Verticale schaal is min-max, zodat de beweging goed zichtbaar is.
+function CardTrend({ label, values, dates, prev, cur, fmt, invert, isPos }: { label: ReactNode; values: number[]; dates: string[]; prev: number; cur: number; fmt: (v: number) => string; invert?: boolean; isPos?: boolean }) {
+  const [hover, setHover] = useState<number | null>(null);
+  const w = 220, h = 58, pad = 6;
+  const pts = values.map((v, i) => ({ v, date: dates[i] || "" })).filter((p) => p.date);
+  const has = pts.length >= 2;
+  const vals = pts.map((p) => p.v);
+  const min = has ? Math.min(...vals) : 0, max = has ? Math.max(...vals) : 1, range = max - min || 1;
+  const x = (i: number) => pad + (i / (pts.length - 1)) * (w - 2 * pad);
+  const y = (v: number) => { const tt = (v - min) / range; return invert ? pad + tt * (h - 2 * pad) : (h - pad) - tt * (h - 2 * pad); };
+  const line = has ? pts.map((p, i) => `${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join(" ") : "";
+  const first = has ? vals[0] : 0, last = has ? vals[vals.length - 1] : 0;
+  const flat = !has || last === first;
+  const improved = invert ? last < first : last > first;
+  const color = flat ? "#9e9e9e" : improved ? "#2E7D32" : "#C62828";
+  const dShort = (d: string) => { try { return new Date(d).toLocaleDateString("nl-NL", { day: "numeric", month: "short" }); } catch { return d; } };
+  const hv = hover != null ? pts[hover] : null;
+  const mid = Math.floor((pts.length - 1) / 2);
   return (
-    <div className="kpi-compare">
-      <span className="kc-prev" title="vorige periode">{fmt(prev)}</span>
-      <svg viewBox={`0 0 ${w} ${h}`} className="kpi-compare-svg" preserveAspectRatio="none">
-        <polyline points={pts} fill="none" stroke={color} strokeWidth={1.6} vectorEffect="non-scaling-stroke" />
-        <circle cx={x(vals.length - 1)} cy={y(vals[vals.length - 1])} r={3.2} fill={color} />
-      </svg>
-      <span className="kc-cur"><strong style={{ color }}>{fmt(cur)}</strong></span>
+    <div className="kpi-card kpi-card-trend">
+      <div className="kpi-label">{label}</div>
+      <div className="ktr-head">
+        <span className="ktr-begin" title="beginstand (vorige periode)">{fmt(prev)}</span>
+        <Delta cur={cur} prev={prev} pct invert={invert} isPos={isPos} />
+        <span className="ktr-eind" title="eindstand (huidige periode)" style={{ color }}>{fmt(cur)}</span>
+      </div>
+      {has ? (
+        <div className="ktr-chart" onMouseLeave={() => setHover(null)}>
+          <svg viewBox={`0 0 ${w} ${h}`} className="ktr-svg" preserveAspectRatio="none">
+            <polyline points={line} fill="none" stroke={color} strokeWidth={2} vectorEffect="non-scaling-stroke" />
+            {hv && <line x1={x(hover!)} y1={0} x2={x(hover!)} y2={h} className="ktr-hoverline" />}
+            {hv && <circle cx={x(hover!)} cy={y(hv.v)} r={3.4} fill={color} stroke="#fff" strokeWidth={1.4} />}
+            {pts.map((p, i) => <rect key={i} x={x(i) - (w / pts.length) / 2} y={0} width={w / pts.length} height={h} fill="transparent" onMouseEnter={() => setHover(i)} />)}
+          </svg>
+          {hv && <div className="ktr-tip" style={{ left: `${Math.max(8, Math.min(92, (x(hover!) / w) * 100))}%` }}>{dShort(hv.date)}: <strong>{fmt(hv.v)}</strong></div>}
+          <div className="ktr-axis"><span>{dShort(pts[0].date)}</span><span>{dShort(pts[mid].date)}</span><span>{dShort(pts[pts.length - 1].date)}</span></div>
+        </div>
+      ) : <div className="muted" style={{ fontSize: 11, padding: "10px 0" }}>Nog te weinig data voor een grafiek.</div>}
     </div>
   );
 }
@@ -177,68 +197,6 @@ function Collapse({ sub, title, meta, open, onToggle, actions, children }: { sub
   );
 }
 
-// ── Grote dag-grafiek met verander-markeringen (domein-breed) ────────────────
-// Zelfde look als de per-pagina grafiek in de Wijzigingen-tab, maar gevoed met de
-// domein-brede dagreeks. Eigen kopie zodat de Wijzigingen-tab onaangeroerd blijft;
-// hergebruikt de bestaande wz-* CSS. Bij positie is lager beter, dus omgekeerd:
-// verbetering = omhoog, beste (laagste) positie bovenaan.
-type TrendDay = { date: string; clicks: number; impressions: number; ctr: number; position: number };
-function dShortNl(d: string): string { try { return new Date(d).toLocaleDateString("nl-NL", { day: "numeric", month: "short" }); } catch { return d; } }
-function BigTrend({ data, metric, invert, markers }: { data: TrendDay[]; metric: keyof TrendDay; invert?: boolean; markers: { key: string; date: string }[] }) {
-  const [hover, setHover] = useState<number | null>(null);
-  const w = 360, h = 84, pad = 8;
-  const pts = data.filter((d) => d.date);
-  if (pts.length < 2) return <div className="muted" style={{ fontSize: 12, padding: "18px 0" }}>Nog te weinig Search Console-data voor deze periode.</div>;
-  const vals = pts.map((d) => Number(d[metric]) || 0);
-  const min = Math.min(...vals), max = Math.max(...vals), range = max - min || 1;
-  const x = (i: number) => pad + (i / (pts.length - 1)) * (w - 2 * pad);
-  const y = (v: number) => { const t = (v - min) / range; return invert ? pad + t * (h - 2 * pad) : (h - pad) - t * (h - 2 * pad); };
-  const line = pts.map((d, i) => `${x(i).toFixed(1)},${y(Number(d[metric]) || 0).toFixed(1)}`).join(" ");
-  const dotColor = metric === "position" ? "#1e824c" : "#1a6dd6";
-  const fmtV = (v: number) => metric === "position" ? v.toFixed(1) : metric === "ctr" ? v.toFixed(1) + "%" : String(Math.round(v));
-  const frac = (date: string) => { let mi = pts.findIndex((d) => d.date >= date); if (mi < 0) mi = pts.length - 1; return mi / (pts.length - 1); };
-  const idxOf = (date: string) => { const i = pts.findIndex((d) => d.date >= date); return i < 0 ? pts.length - 1 : i; };
-  const valAt = (i: number) => (i >= 0 && i < pts.length ? Number(pts[i][metric]) || 0 : null);
-  const sortedM = markers.map((m) => ({ key: m.key, i: idxOf(m.date) })).sort((a, b) => a.i - b.i);
-  const stat = new Map<string, { before: string; after: string; good: boolean; changed: boolean }>();
-  sortedM.forEach((m, idx) => {
-    const nextI = idx < sortedM.length - 1 ? sortedM[idx + 1].i : pts.length;
-    const before = valAt(m.i), after = valAt(Math.min(nextI, pts.length) - 1);
-    const d = after != null && before != null ? after - before : null;
-    stat.set(m.key, { before: before != null ? fmtV(before) : "—", after: after != null ? fmtV(after) : "—", changed: d != null && Math.abs(d) >= 0.05, good: d == null ? false : (invert ? d < 0 : d > 0) });
-  });
-  const hv = hover !== null ? pts[hover] : null;
-  const hx = hover !== null ? x(hover) : 0;
-  const hy = hv ? y(Number(hv[metric]) || 0) : 0;
-  const tipShiftRight = hx > w * 0.6;
-  return (
-    <div className="wz-spark-wrap" onMouseLeave={() => setHover(null)}>
-      <svg viewBox={`0 0 ${w} ${h}`} className="wz-spark" preserveAspectRatio="none">
-        {markers.map((m) => { const mx = pad + frac(m.date) * (w - 2 * pad); return <line key={m.key} x1={mx} y1={0} x2={mx} y2={h} className="wz-marker" />; })}
-        <polyline points={line} className={"wz-poly " + (metric === "position" ? "pos" : "")} />
-        {hover !== null && <line x1={hx} y1={0} x2={hx} y2={h} className="wz-hover-line" />}
-        {hv && <circle cx={hx} cy={hy} r={4} fill={dotColor} stroke="#fff" strokeWidth={1.5} />}
-        {pts.map((d, i) => (<rect key={i} x={x(i) - (w / pts.length) / 2} y={0} width={w / pts.length} height={h} fill="transparent" className="wz-dot" onMouseEnter={() => setHover(i)} />))}
-      </svg>
-      <div className="wz-endpoints">
-        <span>begin {dShortNl(pts[0].date)}: <strong>{fmtV(vals[0])}</strong></span>
-        <span className={vals[vals.length - 1] === vals[0] ? "" : (invert ? vals[vals.length - 1] < vals[0] : vals[vals.length - 1] > vals[0]) ? "prog-up" : "prog-down"}>eind {dShortNl(pts[pts.length - 1].date)}: <strong>{fmtV(vals[vals.length - 1])}</strong></span>
-      </div>
-      {markers.map((m) => { const s = stat.get(m.key); return (
-        <div key={m.key} className="wz-marker-label" style={{ left: `${frac(m.date) * 100}%` }}>
-          <span className="wz-ml-date">{dShortNl(m.date)}</span>
-          {s && (<span className={"wz-ml-val" + (s.changed ? (s.good ? " prog-up" : " prog-down") : "")}><span className="wz-ml-before">{s.before}</span><span className="wz-ml-arrow">→</span><span className="wz-ml-after">{s.after}</span></span>)}
-        </div>
-      ); })}
-      {hv && (<div className="wz-tip" style={{ left: `${(hx / w) * 100}%`, marginLeft: tipShiftRight ? -84 : 6 }}><span className="wz-tip-date">{dShortNl(hv.date)}</span><span className="wz-tip-val">{fmtV(Number(hv[metric]) || 0)}</span></div>)}
-      <div className="wz-spark-axis"><span>{dShortNl(pts[0].date)}</span><span>{dShortNl(pts[Math.floor((pts.length - 1) / 2)].date)}</span><span>{dShortNl(pts[pts.length - 1].date)}</span></div>
-    </div>
-  );
-}
-function TrendBlock({ label, sub, children }: { label: string; sub?: string; children: ReactNode }) {
-  return (<div className="wz-kpi-block"><div className="wz-kpi-label">{label}{sub && <span className="wz-kpi-sub"> {sub}</span>}</div>{children}</div>);
-}
-
 export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; domain: string; onOpenPage?: (url: string) => void }) {
   // Open/dicht per (sub)sectie. Hoofdsecties staan standaard open, subsecties dicht.
   const [openMap, setOpenMap] = useState<Record<string, boolean>>({ sc: true, ahrefs: true, ga: true });
@@ -320,15 +278,6 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
       .then((r) => r.json()).then((d) => { if (d.ok) setAhrefsKw(d.keywords || []); }).catch(() => {});
   }, [slug]);
 
-  // Verander-datums (domein-breed) uit de Wijzigingen-data, als markeringen op de
-  // trend-grafieken. Alleen de datums, ontdubbeld; later gefilterd op de zichtbare periode.
-  const [changeDates, setChangeDates] = useState<string[]>([]);
-  useEffect(() => {
-    fetch(`/api/admin/changes?slug=${encodeURIComponent(slug)}`)
-      .then((r) => r.json())
-      .then((d) => { if (d.ok && Array.isArray(d.events)) setChangeDates(Array.from(new Set((d.events as { detectedAt?: string }[]).map((e) => (e.detectedAt || "").slice(0, 10)).filter(Boolean)))); })
-      .catch(() => {});
-  }, [slug]);
 
   async function syncAhrefs() {
     if (ahrefsBusy) return;
@@ -454,13 +403,6 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
   const ahDataCompareDate = ahrefsKw.find((k) => k.compareDate)?.compareDate || null;
   const nlDate = (iso: string) => { const [y, m, d] = iso.split("-"); return `${d}-${m}-${y}`; };
 
-  // Domein-brede dagreeks als Day[] voor de grote trend-grafieken, plus de verander-
-  // markeringen die binnen de zichtbare periode vallen (anders staan ze buiten beeld).
-  const seriesDates = gsc?.series.dates || [];
-  const domainDays: TrendDay[] = seriesDates.map((date, i) => ({ date, clicks: gsc!.series.clicks[i] ?? 0, impressions: gsc!.series.impressions[i] ?? 0, ctr: gsc!.series.ctr[i] ?? 0, position: gsc!.series.position[i] ?? 0 }));
-  const firstD = seriesDates[0], lastD = seriesDates[seriesDates.length - 1];
-  const domainMarkers = (firstD && lastD) ? changeDates.filter((d) => d >= firstD && d <= lastD).sort().map((d) => ({ key: d, date: d })) : [];
-
   const oppGetters: Record<OppKey, (o: Opportunity) => number | string> = {
     focus: (o) => focusRank(o.keyword), keyword: (o) => o.keyword, volume: (o) => o.volume ?? 0, difficulty: (o) => o.difficulty ?? 0, source: (o) => o.source, reason: (o) => o.reason || "",
   };
@@ -500,22 +442,11 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
       {!loading && gsc && gsc.totals && (
         <Collapse title="Search Console" meta={`${gsc.range.curStart} t/m ${gsc.range.curEnd}`} open={isOpen("sc", true)} onToggle={() => toggle("sc", true)}>
           <div className="kpi-grid kpi-grid-4">
-            <div className="kpi-card"><div className="kpi-value-row"><div className="kpi-value">{nl(gsc.totals.clicks.cur)}</div><Delta cur={gsc.totals.clicks.cur} prev={gsc.totals.clicks.prev} pct /></div><div className="kpi-label">Klikken</div><MiniTrend values={gsc.series.clicks} prev={gsc.totals.clicks.prev} cur={gsc.totals.clicks.cur} fmt={(v) => nl(Math.round(v))} /></div>
-            <div className="kpi-card"><div className="kpi-value-row"><div className="kpi-value">{nl(gsc.totals.impressions.cur)}</div><Delta cur={gsc.totals.impressions.cur} prev={gsc.totals.impressions.prev} pct /></div><div className="kpi-label">Vertoningen</div><MiniTrend values={gsc.series.impressions} prev={gsc.totals.impressions.prev} cur={gsc.totals.impressions.cur} fmt={(v) => nl(Math.round(v))} /></div>
-            <div className="kpi-card"><div className="kpi-value-row"><div className="kpi-value">{gsc.totals.ctr.cur.toFixed(1)}%</div><Delta cur={gsc.totals.ctr.cur} prev={gsc.totals.ctr.prev} isPos /></div><div className="kpi-label">CTR</div><MiniTrend values={gsc.series.ctr} prev={gsc.totals.ctr.prev} cur={gsc.totals.ctr.cur} fmt={(v) => `${v.toFixed(1)}%`} /></div>
-            <div className="kpi-card"><div className="kpi-value-row"><div className="kpi-value">{gsc.totals.position.cur.toFixed(1)}</div><Delta cur={gsc.totals.position.cur} prev={gsc.totals.position.prev} invert isPos /></div><div className="kpi-label">Gem. positie <span className="kpi-sub-note">(hoger in grafiek = beter)</span></div><MiniTrend values={gsc.series.position} prev={gsc.totals.position.prev} cur={gsc.totals.position.cur} fmt={(v) => v.toFixed(1)} invert /></div>
+            <CardTrend label="Klikken" values={gsc.series.clicks} dates={gsc.series.dates} prev={gsc.totals.clicks.prev} cur={gsc.totals.clicks.cur} fmt={(v) => nl(Math.round(v))} />
+            <CardTrend label="Vertoningen" values={gsc.series.impressions} dates={gsc.series.dates} prev={gsc.totals.impressions.prev} cur={gsc.totals.impressions.cur} fmt={(v) => nl(Math.round(v))} />
+            <CardTrend label="CTR" values={gsc.series.ctr} dates={gsc.series.dates} prev={gsc.totals.ctr.prev} cur={gsc.totals.ctr.cur} fmt={(v) => `${v.toFixed(1)}%`} isPos />
+            <CardTrend label={<>Gem. positie <span className="kpi-sub-note">(hoger = beter)</span></>} values={gsc.series.position} dates={gsc.series.dates} prev={gsc.totals.position.prev} cur={gsc.totals.position.cur} fmt={(v) => v.toFixed(1)} invert isPos />
           </div>
-
-          {gsc.series.dates.length >= 2 && (
-            <Collapse sub title="Trend per dag" meta={domainMarkers.length > 0 ? `dagelijkse lijn · ${domainMarkers.length} verander-moment${domainMarkers.length === 1 ? "" : "en"} gemarkeerd` : "dagelijkse lijn met verander-markeringen"} open={isOpen("sc_trend", false)} onToggle={() => toggle("sc_trend", false)}>
-              <div className="wz-kpi">
-                <TrendBlock label="Klikken per dag"><BigTrend data={domainDays} markers={domainMarkers} metric="clicks" /></TrendBlock>
-                <TrendBlock label="Vertoningen per dag"><BigTrend data={domainDays} markers={domainMarkers} metric="impressions" /></TrendBlock>
-                <TrendBlock label="CTR per dag"><BigTrend data={domainDays} markers={domainMarkers} metric="ctr" /></TrendBlock>
-                <TrendBlock label="Gem. positie" sub="· hoger in grafiek = beter"><BigTrend data={domainDays} markers={domainMarkers} metric="position" invert /></TrendBlock>
-              </div>
-            </Collapse>
-          )}
 
           {focusedKws.length > 0 && (
             <Collapse sub title={`Belangrijke zoekwoorden (${focusedKws.length})`} meta="prio & secundair, vastgezet bovenaan" open={isOpen("sc_focus", true)} onToggle={() => toggle("sc_focus", true)} actions={secFocusCount > 0 ? <button type="button" className="ghost-btn small" onClick={(e) => { e.stopPropagation(); setShowFocusSec((v) => !v); }}>{showFocusSec ? "Secundair verbergen" : `+ ${secFocusCount} secundair tonen`}</button> : undefined}>
