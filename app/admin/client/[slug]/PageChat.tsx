@@ -563,23 +563,6 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       {applied && <div className="saved-msg" style={{ marginTop: 8 }} dangerouslySetInnerHTML={{ __html: applied }} />}
       {err && <div className="login-error" style={{ marginTop: 8 }}>{err}</div>}
 
-      {run && (
-        <div className="doc-run-status">
-          <div className="pcd-docs-head">Achtergrond-run {run.status === "running" ? "— bezig (wegklikken mag)" : run.status === "done" ? "— klaar" : "— gestopt door een fout"}</div>
-          <ul className="doc-run-steps">
-            {(["analyse", "blauwdruk", "copy"] as const).filter((k) => run.steps[k] !== "skipped").map((k) => (
-              <li key={k} className={"drs " + (run.steps[k] || "pending")}>
-                <span className="drs-name">{k === "analyse" ? "1. Analyse" : k === "blauwdruk" ? "2. Blauwdruk" : "3. Copy"}</span>
-                <span className="drs-state">{run.steps[k] === "done" ? "klaar" : run.steps[k] === "running" ? "bezig…" : run.steps[k] === "error" ? "fout" : "wacht"}</span>
-                {run.links[k] && <a href={run.links[k]} target="_blank" rel="noreferrer">document</a>}
-              </li>
-            ))}
-          </ul>
-          {run.status === "running" && <div className="muted" style={{ fontSize: 12 }}>Dit loopt server-side door. Je kunt gerust wegklikken en later terugkomen; de resultaten verschijnen hier en als werkzaamheid in de takenlijst.</div>}
-          {run.status === "error" && run.error && <div className="login-error" style={{ marginTop: 6 }}>{run.error}</div>}
-        </div>
-      )}
-
       {lastAssistant && (
         <div className="page-chat-docs">
           <div className="pcd-docs-head">Vervolgstappen op strategische analyse voor deze pagina</div>
@@ -598,13 +581,31 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
             <button type="button" className="pcd-btn pcd-btn-primary" onClick={() => ensureFolderThenRun(["analyse", "blauwdruk", "copy"])} disabled={runBusy} title="Draait de drie stappen op de achtergrond door; wegklikken mag.">{runBusy ? "Starten…" : "Alles achter elkaar (1 → 2 → 3)"}</button>
             <button type="button" className="pcd-btn" onClick={() => ensureFolderThenRun(["analyse"], "intern")} disabled={runBusy} title="Maakt de uitgebreide interne/technische analyse (op verzoek; ~3x zo lang). Voor eigen inzicht of om een klant te laten zien hoe grondig het gaat. Niet klant-zichtbaar.">Interne analyse (uitgebreid, op verzoek)</button>
           </div>
-          <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>Je klikt en het draait op de achtergrond door: je kunt meteen wegklikken naar iets anders. De voortgang zie je in het kaartje hierboven en later in Werkzaamheden. Er wordt één korte, klantvriendelijke versie gemaakt (die zowel jij, de developer als de klant leest). Een uitgebreide interne versie kan later op verzoek. Tip: kies eerst een Drive-map, dan komen de bestanden daar te staan.</div>
+          <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>Je klikt en het draait op de achtergrond door: je kunt meteen wegklikken naar iets anders. De voortgang zie je hieronder en later in Werkzaamheden. Er wordt één korte, klantvriendelijke versie gemaakt (die zowel jij, de developer als de klant leest). Een uitgebreide interne versie kan per stap op verzoek. Tip: kies eerst een Drive-map, dan komen de bestanden daar te staan.</div>
+
+          {run && (
+            <div className="pcd-run-inline">
+              <div className="pcd-run-head">Achtergrond-run {run.status === "running" ? "— bezig (wegklikken mag)" : run.status === "done" ? "— klaar" : "— gestopt door een fout"}</div>
+              <ul className="doc-run-steps">
+                {(["analyse", "blauwdruk", "copy"] as const).filter((k) => run.steps[k] !== "skipped").map((k) => (
+                  <li key={k} className={"drs " + (run.steps[k] || "pending")}>
+                    <span className="drs-name">{k === "analyse" ? "1. Analyse" : k === "blauwdruk" ? "2. Blauwdruk" : "3. Copy"}</span>
+                    <span className="drs-state">{run.steps[k] === "done" ? "klaar" : run.steps[k] === "running" ? "bezig…" : run.steps[k] === "error" ? "fout" : "wacht"}</span>
+                    {run.links[k] && <a href={run.links[k]} target="_blank" rel="noreferrer">document</a>}
+                  </li>
+                ))}
+              </ul>
+              {run.status === "running" && <div className="muted" style={{ fontSize: 12 }}>Dit loopt server-side door. Je kunt gerust wegklikken en later terugkomen; de resultaten verschijnen hier en als werkzaamheid in de takenlijst.</div>}
+              {run.status === "error" && run.error && <div className="login-error" style={{ marginTop: 6 }}>{run.error}</div>}
+            </div>
+          )}
         </div>
       )}
 
       <div className="page-chat-canni">
+        <div className="pcd-docs-head">Vervolgstap: cannibalisatie oplossen voor deze pagina</div>
         <div className="pch-canni-row">
-          <span className="pch-canni-lead">Vervolgstap: los de cannibalisatie voor deze pagina op. Brengt per zoekwoord in kaart (top-10 + volume) of het een eigen pagina verdient of naar deze pagina geclusterd wordt, en welke pagina&rsquo;s deze pagina kapen, met de actie per pagina.</span>
+          <span className="pch-canni-lead">Brengt per zoekwoord in kaart (top-10 + volume) of het een eigen pagina verdient of naar deze pagina geclusterd wordt, en welke pagina&rsquo;s deze pagina kapen, met de actie per pagina.</span>
           <button type="button" className={"pcd-btn" + (pcBusy || pc?.status === "running" ? " busy" : "")} disabled={pcBusy || pc?.status === "running"} onClick={runPc} title="Draait op de achtergrond met echte Ahrefs-data; je kunt wegklikken.">{pc?.status === "running" ? "Analyse draait…" : pc?.result ? "Opnieuw analyseren" : "Cannibalisatie oplossen"}</button>
         </div>
         {pc?.status === "error" && pc.error && <div className="login-error" style={{ marginTop: 8 }}>{pc.error}</div>}
