@@ -74,17 +74,19 @@ function PeriodCompare({ prev, cur, fmt, invert }: { prev: number; cur: number; 
 function CardTrend({ label, values, dates, prev, cur, fmt, invert, isPos, periodLabel }: { label: ReactNode; values: number[]; dates: string[]; prev: number; cur: number; fmt: (v: number) => string; invert?: boolean; isPos?: boolean; periodLabel: string }) {
   const [hover, setHover] = useState<number | null>(null);
   const w = 220, h = 58, pad = 6;
-  const pts = values.map((v, i) => ({ v, date: dates[i] || "" })).filter((p) => p.date);
+  // Bij 'positie' (invert) zijn dagen zonder data (0) geen "beste positie": eruit filteren,
+  // anders knikt de lijn kunstmatig naar boven en klopt de richting niet.
+  const pts = values.map((v, i) => ({ v, date: dates[i] || "" })).filter((p) => p.date && (!invert || p.v > 0));
   const has = pts.length >= 2;
   const vals = pts.map((p) => p.v);
   const min = has ? Math.min(...vals) : 0, max = has ? Math.max(...vals) : 1, range = max - min || 1;
   const x = (i: number) => pad + (i / (pts.length - 1)) * (w - 2 * pad);
   const y = (v: number) => { const tt = (v - min) / range; return invert ? pad + tt * (h - 2 * pad) : (h - pad) - tt * (h - 2 * pad); };
   const line = has ? pts.map((p, i) => `${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join(" ") : "";
-  const first = has ? vals[0] : 0, last = has ? vals[vals.length - 1] : 0;
-  const flat = !has || last === first;
-  const improved = invert ? last < first : last > first;
-  const color = flat ? "#9e9e9e" : improved ? "#2E7D32" : "#C62828";
+  // Kleur volgt de periodevergelijking (deze periode vs. vorige), zodat de kleur klopt
+  // met het %-getal: klikken 100 → 106 is groen, ook al eindigt de dagreeks lager.
+  const pt = trendOf(cur, prev, invert);
+  const color = pt === "flat" ? "#9e9e9e" : pt === "good" ? "#2E7D32" : "#C62828";
   const dShort = (d: string) => { try { return new Date(d).toLocaleDateString("nl-NL", { day: "numeric", month: "short" }); } catch { return d; } };
   const hv = hover != null ? pts[hover] : null;
   const mid = Math.floor((pts.length - 1) / 2);
@@ -460,13 +462,13 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
                     <SortTh label="Focus" k="focus" sort={kwSort} setSort={setKwSort} />
                     <SortTh label="Zoekwoord" k="keyword" sort={kwSort} setSort={setKwSort} />
                     <SortTh label="Volume" k="volume" sort={kwSort} setSort={setKwSort} />
-                    <SortTh label="Positie" k="position" sort={kwSort} setSort={setKwSort} />
+                    <SortTh label="Positie" k="position" sort={kwSort} setSort={setKwSort} className="kpi-metric-sep" />
                     <SortTh label="Δ" title="Verandering positie t.o.v. vorige periode (omhoog = beter)" k="dposition" sort={kwSort} setSort={setKwSort} className="kpi-delta-th" />
-                    <SortTh label="Klikken" k="clicks" sort={kwSort} setSort={setKwSort} />
+                    <SortTh label="Klikken" k="clicks" sort={kwSort} setSort={setKwSort} className="kpi-metric-sep" />
                     <SortTh label="Δ" title="Verandering klikken t.o.v. vorige periode" k="dclicks" sort={kwSort} setSort={setKwSort} className="kpi-delta-th" />
-                    <SortTh label="Vertoningen" k="impressions" sort={kwSort} setSort={setKwSort} />
+                    <SortTh label="Vertoningen" k="impressions" sort={kwSort} setSort={setKwSort} className="kpi-metric-sep" />
                     <SortTh label="Δ" title="Verandering vertoningen t.o.v. vorige periode" k="dimpressions" sort={kwSort} setSort={setKwSort} className="kpi-delta-th" />
-                    <SortTh label="CTR" k="ctr" sort={kwSort} setSort={setKwSort} />
+                    <SortTh label="CTR" k="ctr" sort={kwSort} setSort={setKwSort} className="kpi-metric-sep" />
                     <SortTh label="Δ" title="Verandering CTR t.o.v. vorige periode" k="dctr" sort={kwSort} setSort={setKwSort} className="kpi-delta-th" />
                   </tr></thead>
                   <tbody>
@@ -475,13 +477,13 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
                         <td><FocusSelect tier={focus[k.keyword]} onChange={(t) => markFocus(k.keyword, t)} /></td>
                         <td>{k.keyword}</td>
                         <td>{(() => { const v = volMap.get(k.keyword.toLowerCase()); return v != null ? v.toLocaleString("nl-NL") : <span className="muted">&mdash;</span>; })()}</td>
-                        <td>{k.position.toFixed(1)}</td>
+                        <td className="kpi-metric-sep">{k.position.toFixed(1)}</td>
                         <td className="kpi-delta-td"><Delta cur={k.position} prev={k.prevPosition ?? k.position} invert isPos /></td>
-                        <td>{nl(k.clicks)}</td>
+                        <td className="kpi-metric-sep">{nl(k.clicks)}</td>
                         <td className="kpi-delta-td"><Delta cur={k.clicks} prev={k.prevClicks} /></td>
-                        <td>{nl(k.impressions)}</td>
+                        <td className="kpi-metric-sep">{nl(k.impressions)}</td>
                         <td className="kpi-delta-td"><Delta cur={k.impressions} prev={k.prevImpressions} /></td>
-                        <td>{k.ctr.toFixed(1)}%</td>
+                        <td className="kpi-metric-sep">{k.ctr.toFixed(1)}%</td>
                         <td className="kpi-delta-td"><Delta cur={k.ctr} prev={k.prevCtr} isPos /></td>
                       </tr>
                     ))}
@@ -498,9 +500,9 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
                   <thead><tr>
                     <SortTh label="★" k="prio" sort={pageSort} setSort={setPageSort} />
                     <SortTh label="Pagina" k="url" sort={pageSort} setSort={setPageSort} />
-                    <SortTh label="Klikken" k="clicks" sort={pageSort} setSort={setPageSort} />
+                    <SortTh label="Klikken" k="clicks" sort={pageSort} setSort={setPageSort} className="kpi-metric-sep" />
                     <SortTh label="Δ" title="Verandering klikken t.o.v. vorige periode" k="dclicks" sort={pageSort} setSort={setPageSort} className="kpi-delta-th" />
-                    <SortTh label="Vertoningen" k="impressions" sort={pageSort} setSort={setPageSort} />
+                    <SortTh label="Vertoningen" k="impressions" sort={pageSort} setSort={setPageSort} className="kpi-metric-sep" />
                     <SortTh label="Δ" title="Verandering vertoningen t.o.v. vorige periode" k="dimpressions" sort={pageSort} setSort={setPageSort} className="kpi-delta-th" />
                     <th></th>
                   </tr></thead>
@@ -515,9 +517,9 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
                             <span className="kpi-drag" draggable={canDrag} onDragStart={() => { if (canDrag) setDragIdx(i); }} onDragEnd={() => setDragIdx(null)} title={canDrag ? "Sleep om bovenaan te zetten" : "Zet de sortering/prioriteit uit om te slepen"}>⠿</span>
                           </td>
                           <td><a href={p.url} target="_blank" rel="noreferrer">{shortUrl(p.url)}</a></td>
-                          <td>{nl(p.clicks)}</td>
+                          <td className="kpi-metric-sep">{nl(p.clicks)}</td>
                           <td className="kpi-delta-td"><Delta cur={p.clicks} prev={p.prevClicks} /></td>
-                          <td>{nl(p.impressions)}</td>
+                          <td className="kpi-metric-sep">{nl(p.impressions)}</td>
                           <td className="kpi-delta-td"><Delta cur={p.impressions} prev={p.prevImpressions} /></td>
                           <td className="kpi-openpage-cell"><button type="button" className="ghost-btn small" onClick={(e) => { e.stopPropagation(); onOpenPage?.(p.url); }} title="Open deze pagina in het Pagina's-tabje">open in Pagina&rsquo;s</button></td>
                         </tr>

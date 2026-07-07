@@ -963,9 +963,11 @@ button.ck-collapse-head {
 .kpi-table td .kpi-delta { margin-top: 0; margin-left: 0; font-size: 10px; }
 /* Δ-kolommen: de verandering staat als eigen, sorteerbare kolom net naast de waarde,
    subtiel losgetrokken. Klik de Δ-kop om op hardst gestegen/gedaald te sorteren. */
-.kpi-table .kpi-delta-th, .kpi-table .kpi-delta-td { padding-left: 5px; padding-right: 14px; white-space: nowrap; border-left: 1px dashed var(--border); }
+.kpi-table .kpi-delta-th, .kpi-table .kpi-delta-td { padding-left: 5px; padding-right: 14px; white-space: nowrap; }
 .kpi-table .kpi-delta-th { font-size: 12px; }
 .kpi-table td.kpi-delta-td { color: var(--gray); }
+/* Scheidingslijn vóór de waarde-kolom, zodat waarde + Δ als paar bij elkaar horen. */
+.kpi-table .kpi-metric-sep { border-left: 1px dashed var(--border); padding-left: 12px; }
 /* Prio/secundair-markering in de KPI-tab */
 .kpi-focus-select { font-size: 11px; padding: 2px 4px; border: 1px solid var(--border); border-radius: 6px; background: var(--white); color: var(--gray); cursor: pointer; }
 .kpi-focus-select.set-prio { border-color: var(--orange); color: var(--orange-dark); font-weight: 700; background: var(--orange-light); }
