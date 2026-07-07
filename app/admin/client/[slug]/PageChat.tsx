@@ -100,15 +100,12 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   // heet "strategie" om hem te onderscheiden van de SEO-analyse bij de vervolgstappen.)
   const analyseTitle = "STRATEGIE: " + ((url || "").replace(/^https?:\/\/[^/]+/i, "").trim() || url).toUpperCase();
 
-  // Groene "klaar"-status onthouden (browseropslag). Strategie: per pagina, blijft groen
-  // na heropenen. Doorgeven: per chat, reset bij een nieuwe chat (nieuwe vraag = weer oranje).
+  // Groene "klaar"-status onthouden (browseropslag), beide per pagina zodat ze groen
+  // blijven na heropenen. Doorgeven wordt gewist bij een nieuwe chat (weer oranje).
   useEffect(() => {
     try { const done = localStorage.getItem(`pw_stratdone_${slug}_${url}`) === "1"; setTaskDone(done); setChatOpen(!done); } catch { /* geen opslag */ }
+    try { const n = Number(localStorage.getItem(`pw_clusterdone_${slug}_${url}`) || "0"); setClusterDone(Number.isFinite(n) ? n : 0); } catch { setClusterDone(0); }
   }, [slug, url]);
-  useEffect(() => {
-    if (chatId == null) { setClusterDone(0); return; }
-    try { const n = Number(localStorage.getItem(`pw_clusterdone_${chatId}`) || "0"); setClusterDone(Number.isFinite(n) ? n : 0); } catch { setClusterDone(0); }
-  }, [chatId]);
   function markStrategieDone() { setTaskDone(true); setChatOpen(false); try { localStorage.setItem(`pw_stratdone_${slug}_${url}`, "1"); } catch { /* geen opslag */ } }
 
   const [taskGen, setTaskGen] = useState(false);
@@ -265,7 +262,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     loadChats(); /* eslint-disable-next-line */
   }, [slug, url]);
 
-  function newChat() { setMsgs([]); setChatId(null); setProposal(null); setApplied(""); setErr(""); setConvoOpen(true); setClusterItems(null); setClusterMsg(""); setClusterDone(0); }
+  function newChat() { setMsgs([]); setChatId(null); setProposal(null); setApplied(""); setErr(""); setConvoOpen(true); setClusterItems(null); setClusterMsg(""); setClusterDone(0); try { localStorage.removeItem(`pw_clusterdone_${slug}_${url}`); } catch { /* geen opslag */ } }
 
   async function openChat(id: number) {
     setProposal(null); setApplied(""); setErr(""); setClusterItems(null); setClusterMsg("");
@@ -371,7 +368,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       const r = await fetch("/api/admin/page-chat/cluster-advice/apply", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, sourceUrl: url, sourceAnalysis: lastAssistant, items }) });
       const d = await r.json();
       if (d.ok) {
-        { const n = d.saved || items.length; setClusterDone(n); try { if (chatId != null) localStorage.setItem(`pw_clusterdone_${chatId}`, String(n)); } catch { /* geen opslag */ } }
+        { const n = d.saved || items.length; setClusterDone(n); try { localStorage.setItem(`pw_clusterdone_${slug}_${url}`, String(n)); } catch { /* geen opslag */ } }
         setClusterMsg(`Advies doorgegeven aan ${d.saved} pagina('s). Hun eigen chat neemt dit voortaan als vertrekpunt mee; in het overzicht krijgen ze de markering "half plan".`);
         setClusterItems(null);
         onClusterApplied?.();
