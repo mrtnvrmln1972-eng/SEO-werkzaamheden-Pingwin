@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { mdToHtml } from "../../../../lib/markdown";
+import HelpHint from "./HelpHint";
 
 type Msg = { role: "user" | "assistant"; content: string };
 type Task = { taak: string; fase?: string; wie?: string };
@@ -30,6 +31,8 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   const [clusterItems, setClusterItems] = useState<{ url: string; advice: string }[] | null>(null);
   const [clusterSel, setClusterSel] = useState<string[]>([]);
   const [clusterMsg, setClusterMsg] = useState("");
+  // Aantal pagina's waaraan het advies is doorgegeven (>0 = knop wordt groen "doorgegeven").
+  const [clusterDone, setClusterDone] = useState(0);
   // Achtergrond-run (analyse -> blauwdruk -> copy los van de browser).
   type DocRun = { id: number; status: string; steps: Record<string, string>; links: Record<string, string>; error: string };
   const [run, setRun] = useState<DocRun | null>(null);
@@ -46,19 +49,6 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   // Cluster-advies dat AAN deze pagina is meegegeven (vertrekpunt van een andere analyse).
   const [incoming, setIncoming] = useState<{ advice: string; sourceUrl: string; sourceAnalysis: string }[]>([]);
   const [incomingOpen, setIncomingOpen] = useState(false);
-  // Klant-mail
-  const [mailOpen, setMailOpen] = useState(false);
-  const [mailGen, setMailGen] = useState(false);
-  const [mailTo, setMailTo] = useState("");
-  const [mailSubject, setMailSubject] = useState("");
-  const [mailHtml, setMailHtml] = useState("");
-  const [mailBusy, setMailBusy] = useState(false);
-  const [mailMsg, setMailMsg] = useState("");
-  const mailRef = useRef<HTMLDivElement | null>(null);
-
-  // Zet de opgemaakte mail in de bewerkbare preview zodra het venster opent.
-  useEffect(() => { if (mailOpen && mailRef.current) mailRef.current.innerHTML = mailHtml; }, [mailOpen, mailHtml]);
-
   // Per-pagina cannibalisatie-analyse: laden + pollen tijdens het draaien.
   async function loadPc() {
     try {
@@ -107,6 +97,8 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   const analyseTitle = "ANALYSE: " + ((url || "").replace(/^https?:\/\/[^/]+/i, "").trim() || url).toUpperCase();
 
   const [taskGen, setTaskGen] = useState(false);
+  // Analyse vastgelegd (taak + document) → knop wordt groen "Analyse vastgelegd".
+  const [taskDone, setTaskDone] = useState(false);
   // Vat de chat-analyse samen tot één document (Drive of download) en legt de
   // analyse vast als ÉÉN werkzaamheid met dat document eraan gekoppeld.
   async function makeWorkItem() {
@@ -119,6 +111,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       if (ct.includes("application/json")) {
         const d = await r.json();
         if (!d.ok) { setErr(d.error || "Vastleggen mislukt."); return; }
+        setTaskDone(true);
         if (d.started) { setApplied("De analyse wordt op de achtergrond vastgelegd; je kunt wegklikken. Hij verschijnt zo als werkzaamheid in Werkzaamheden."); onApplied(); return; }
         setApplied(`Analyse samengevat en opgeslagen in Google Drive${d.folder ? `, map "${d.folder}"` : ""}${d.owner ? `, account ${d.owner}` : ""} als ${d.isDoc ? "Google Doc" : "Word-bestand"}${!d.isDoc && d.note ? ` (omzetten naar Google Doc lukte niet: ${d.note})` : ""}. <a href="${d.link}" target="_blank" rel="noopener">Open document</a>.${d.shared ? " Iedereen met de link kan het bekijken." : " (Delen lukte niet automatisch.)"} Vastgelegd als één werkzaamheid; je springt nu naar Werkzaamheden om hem in te plannen.`);
         onApplied();
@@ -135,6 +128,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       setTimeout(() => URL.revokeObjectURL(a.href), 4000);
       const tid = Number(r.headers.get("X-Task-Id") || "");
       setApplied("Analyse samengevat en gedownload. Vastgelegd als één werkzaamheid; kies een Drive-map om het document ook te koppelen.");
+      setTaskDone(true);
       onApplied();
       if (!Number.isNaN(tid) && tid && onGoToTask) onGoToTask(tid);
     } catch { setErr("Vastleggen mislukt."); } finally { setTaskGen(false); }
@@ -239,39 +233,6 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     } catch { setPickErr("Opslaan mislukt."); } finally { setPickBusy(false); }
   }
 
-  // Opent de mail met de CONCLUSIE van de analyse als kern; de tekst eromheen
-  // (aanhef, inleiding, afsluiting) schrijft Maarten zelf.
-  async function makeClientMail() {
-    setErr("");
-    setMailTo(clientEmail || "");
-    setMailSubject("");
-    setMailMsg("");
-    setMailHtml("");
-    setMailOpen(true);
-    if (!lastAssistant) return;
-    setMailGen(true);
-    try {
-      const r = await fetch("/api/admin/page-chat/client-mail", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url, clientName, analysis: lastAssistant }) });
-      const d = await r.json();
-      if (d.ok && d.email) {
-        const html = `<p><em>Schrijf hier je aanhef en inleiding.</em></p>${mdToHtml(d.email)}<p><em>Schrijf hier je afsluiting.</em></p>`;
-        setMailHtml(html);
-        if (mailRef.current) mailRef.current.innerHTML = html;
-      }
-    } catch { /* leeg laten als het niet lukt */ } finally { setMailGen(false); }
-  }
-
-  async function sendClientMail() {
-    const html = (mailRef.current?.innerHTML || mailHtml).trim();
-    if (!mailTo.trim() || !html) { setMailMsg("Vul een ontvanger en tekst in."); return; }
-    setMailBusy(true); setMailMsg("");
-    try {
-      const r = await fetch("/api/admin/mail", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: "compose", to: mailTo, subject: mailSubject || "SEO-analyse", html }) });
-      const d = await r.json();
-      if (d.ok) { setMailMsg(`Verstuurd naar ${(d.sentTo || []).join(", ") || mailTo}.`); setTimeout(() => setMailOpen(false), 1400); }
-      else setMailMsg(d.error || "Versturen mislukt.");
-    } catch { setMailMsg("Versturen mislukt."); } finally { setMailBusy(false); }
-  }
 
   async function loadChats() {
     try {
@@ -392,6 +353,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       const r = await fetch("/api/admin/page-chat/cluster-advice/apply", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, sourceUrl: url, sourceAnalysis: lastAssistant, items }) });
       const d = await r.json();
       if (d.ok) {
+        setClusterDone(d.saved || items.length);
         setClusterMsg(`Advies doorgegeven aan ${d.saved} pagina('s). Hun eigen chat neemt dit voortaan als vertrekpunt mee; in het overzicht krijgen ze de markering "half plan".`);
         setClusterItems(null);
         onClusterApplied?.();
@@ -466,7 +428,9 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
           </div>
           <div className="page-chat-cluster">
             <div className="pchf-lead">Raakt deze analyse ook andere pagina&rsquo;s in het cluster? Geef het advies dat over hén gaat alvast door. Naast het advies per pagina gaat ook de volledige conclusie van deze chat mee, zodat die pagina&rsquo;s de hele strategie als vertrekpunt hebben.</div>
-            {clusterItems === null ? (
+            {clusterDone > 0 ? (
+              <button type="button" className="pcd-btn pcd-btn-done" disabled>&#10003; Doorgegeven aan {clusterDone} pagina&rsquo;s</button>
+            ) : clusterItems === null ? (
               <button type="button" className="pcd-btn" onClick={findClusterAdvice} disabled={clusterBusy}>{clusterBusy ? "Betrokken pagina's zoeken…" : "Advies doorgeven aan betrokken pagina's"}</button>
             ) : clusterItems.length === 0 ? (
               <div className="muted" style={{ fontSize: 12 }}>Geen andere pagina&rsquo;s gevonden waarover deze analyse concreet advies geeft.</div>
@@ -483,7 +447,10 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
                     </li>
                   ))}
                 </ul>
-                <button type="button" className="pcd-btn pcd-btn-primary" onClick={applyClusterAdvice} disabled={clusterBusy || clusterSel.length === 0}>{clusterBusy ? "Doorgeven…" : `Doorgeven aan ${clusterSel.length} pagina('s)`}</button>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <button type="button" className="pcd-btn pcd-btn-primary" onClick={applyClusterAdvice} disabled={clusterBusy || clusterSel.length === 0}>{clusterBusy ? "Doorgeven…" : `Doorgeven aan ${clusterSel.length} pagina('s)`}</button>
+                  <HelpHint text="Geeft de basisinfo uit deze analyse door aan de aangevinkte pagina's; die krijgen het als vertrekpunt ('half plan') mee in hun eigen chat en in het overzicht." />
+                </span>
               </>
             )}
             {clusterMsg && <div className="saved-msg" style={{ marginTop: 8 }}>{clusterMsg}</div>}
@@ -497,8 +464,8 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
             {driveFolder && <button type="button" className="ghost-btn small" onClick={() => setDriveFolder(null)}>Naar download</button>}
           </div>
           <div className="page-chat-tools">
-            <button type="button" className={"pcd-btn" + (taskGen ? " busy" : "")} onClick={makeWorkItem} disabled={taskGen}>{taskGen ? "Vastleggen…" : "Analyse vastleggen"}</button>
-            <button type="button" className="pcd-btn" onClick={makeClientMail}>Mail naar de klant</button>
+            <button type="button" className={"pcd-btn " + (taskDone ? "pcd-btn-done" : "pcd-btn-primary") + (taskGen ? " busy" : "")} onClick={makeWorkItem} disabled={taskGen}>{taskGen ? "Vastleggen…" : taskDone ? "✓ Analyse vastgelegd." : "Analyse vastleggen"}</button>
+            <HelpHint text="Vat deze analyse samen tot één document (Google Drive of download) en legt hem vast als één werkzaamheid met dat document eraan gekoppeld." />
           </div>
         </>
       )}
@@ -625,28 +592,6 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
         <div className="page-chat-input">
           <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(input); }} placeholder="Stel een vraag over deze pagina…" disabled={busy} />
           <button type="button" className="primary-btn small" onClick={() => send(input)} disabled={busy || !input.trim()}>Vraag</button>
-        </div>
-      )}
-
-      {mailOpen && (
-        <div className="compose-overlay">
-          <div className="compose-modal mail-modal">
-            <div className="compose-head"><span>Analyse mailen naar de klant</span><button type="button" className="chat-float-close" onClick={() => setMailOpen(false)}>&times;</button></div>
-            <div className="compose-body">
-              <label className="compose-label">Aan (e-mail klant)</label>
-              <input className="compose-input" value={mailTo} onChange={(e) => setMailTo(e.target.value)} placeholder="klant@bedrijf.nl" />
-              <label className="compose-label">Onderwerp</label>
-              <input className="compose-input" value={mailSubject} onChange={(e) => setMailSubject(e.target.value)} />
-              <label className="compose-label">Bericht (de conclusie staat er als kern in; schrijf zelf de aanhef en afsluiting eromheen)</label>
-              {mailGen && <div className="muted" style={{ marginBottom: 6 }}>Conclusie van de analyse wordt opgehaald…</div>}
-              <div ref={mailRef} className="mail-edit md" contentEditable suppressContentEditableWarning />
-              {mailMsg && <div className={mailMsg.startsWith("Verstuurd") ? "saved-msg" : "login-error"} style={{ marginTop: 8 }}>{mailMsg}</div>}
-            </div>
-            <div className="compose-foot">
-              <button type="button" className="logout-btn" onClick={() => setMailOpen(false)}>Annuleren</button>
-              <button type="button" className="primary-btn small" onClick={sendClientMail} disabled={mailBusy}>{mailBusy ? "Versturen..." : "Verstuur per mail"}</button>
-            </div>
-          </div>
         </div>
       )}
 

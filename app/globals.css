@@ -1467,6 +1467,10 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .pcd-btn:disabled { opacity: 0.55; cursor: default; }
 .pcd-btn-primary { background: var(--orange); color: #fff; }
 .pcd-btn-primary:hover:not(:disabled) { background: var(--orange); filter: brightness(0.93); }
+/* Groene "klaar"-status (doorgegeven / vastgelegd): blijft vol groen, ook uitgeschakeld. */
+.pcd-btn-done { background: #2E7D32; border-color: #2E7D32; color: #fff; }
+.pcd-btn-done:hover:not(:disabled) { filter: brightness(0.95); }
+.pcd-btn-done:disabled { opacity: 1; cursor: default; }
 .page-chat-tools, .pcd-docs-buttons { gap: 12px; }
 .pcd-docs-head { margin-bottom: 10px; }
 .pcd-nuance { margin-bottom: 12px; }
