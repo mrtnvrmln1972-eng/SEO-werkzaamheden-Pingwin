@@ -362,7 +362,10 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
             {profileOpen ? "▾" : "▸"} Klantprofiel {(profile || "").trim() ? <span className="plan-chip has">ingevuld</span> : <span className="plan-chip">leeg</span>}
             {profileSaved && <span className="focus-save-status" style={{ marginLeft: 8 }}>✓ opgeslagen</span>}
           </button>
-          <input className="pages-search" placeholder="Zoek een pagina (URL of titel)…" value={q} onChange={(e) => setQ(e.target.value)} />
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+            {q.trim() && <span className="sov-sub" style={{ whiteSpace: "nowrap" }}>{filtered.length} van {urls.length}</span>}
+            <input className="pages-search" placeholder="Zoek in URL of titel…" value={q} onChange={(e) => setQ(e.target.value)} />
+          </span>
         </div>
         {profileOpen && (
           <div className="client-profile-body">
