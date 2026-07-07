@@ -728,6 +728,13 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
           <span onClick={(e) => e.stopPropagation()}><HelpHint wide text="Controleert of meerdere pagina's van de site op dezelfde zoekwoorden concurreren (kannibalisatie). Per zoekwoord zie je (met top-10 + volume) of het een eigen pagina verdient of naar deze pagina geclusterd moet worden, en welke pagina's deze pagina 'kapen', met de actie per pagina. Draait op de achtergrond met echte Ahrefs-data." /></span>
         </div>
         {canniOpen && (<div className="step-body">
+        <div className="page-chat-drive" style={{ margin: "0 0 12px" }}>
+          <span className="pcd-label">Opslaan in:</span>
+          {driveFolder
+            ? <span className="pcd-folder">{driveFolder.path || driveFolder.name}</span>
+            : <span className="pcd-folder muted">nog geen Drive-map, kies er een zodat het taak-document in de juiste map komt</span>}
+          <button type="button" className="ghost-btn small" onClick={openPicker}>{driveFolder ? "Map wijzigen" : "Kies Drive-map"}</button>
+        </div>
         <div className="pch-canni-row">
           <span className="pch-canni-lead">Brengt per zoekwoord in kaart (top-10 + volume) of het een eigen pagina verdient of naar deze pagina geclusterd wordt, en welke pagina&rsquo;s deze pagina kapen, met de actie per pagina.</span>
           <button type="button" className={"pcd-btn" + (pcBusy || pc?.status === "running" ? " busy" : "")} disabled={pcBusy || pc?.status === "running"} onClick={runPc} title="Draait op de achtergrond met echte Ahrefs-data; je kunt wegklikken.">{pc?.status === "running" ? "Analyse draait…" : pc?.result ? "Opnieuw analyseren" : "Cannibalisatie oplossen"}</button>

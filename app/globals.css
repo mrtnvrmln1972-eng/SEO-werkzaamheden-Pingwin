@@ -651,7 +651,7 @@ tbody td:last-child { text-align: center; }
 .pcd-docs-head { font-size: 13px; font-weight: 700; color: var(--gray); margin-bottom: 7px; }
 /* ═══ Pijplijn-stapkaarten: witte kaart, gekleurde nummer-badge (Pingwin-palet),
    drop shadow, hover-lift, gelijke hoogte. Elke stap een eigen accentkleur. ═══ */
-.step-card { position: relative; background: #fff !important; border: 1px solid #ECE7E2 !important; border-left: 5px solid var(--sc, var(--orange)) !important; border-radius: 14px !important; padding: 0 !important; box-shadow: 0 2px 7px rgba(51,48,46,0.06); transition: box-shadow .2s ease, transform .2s ease; margin: 14px 0; max-width: 1040px; }
+.step-card { position: relative; background: #fff !important; border: 1px solid #ECE7E2 !important; border-left: 5px solid var(--sc, var(--orange)) !important; border-radius: 14px !important; padding: 0 !important; box-shadow: 0 2px 7px rgba(51,48,46,0.06); transition: box-shadow .2s ease, transform .2s ease; margin: 14px 0; max-width: none !important; width: 100%; }
 .step-card:hover { box-shadow: 0 12px 28px rgba(51,48,46,0.15); transform: translateY(-3px); }
 .step-card.done { border-left-color: #2E9E5B; }
 .step-head { display: flex; align-items: center; gap: 11px; padding: 15px 20px; cursor: pointer; }
