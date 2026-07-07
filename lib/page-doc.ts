@@ -332,8 +332,11 @@ KOPPEN — VARIATIE, GEEN STUFFING (cruciaal, dit ging eerder mis):
 - MAXIMAAL circa 70% van alle koppen (H1/H2/H3 samen) mag het primaire zoekwoord of een variant bevatten; boven 80% oogt onnatuurlijk en telt als keyword stuffing (criterium H2-01). De overige koppen zijn natuurlijke sectietitels die het onderwerp dekken ZONDER het zoekwoord.
 - Herhaal NOOIT vrijwel hetzelfde woord in elke kop. Varieer met synoniemen, deelonderwerpen en werkwoorden (bijv. "Onze werkwijze", "Onderhoud op abonnement", "Veelgestelde vragen") in plaats van steeds dezelfde term.
 - LOKAAL ZOEKWOORD (met een plaatsnaam, zoals "hovenier Etten-Leur"): zet de PLAATSNAAM in HOOGUIT 2 à 3 koppen (de H1 en één of twee andere), NIET in elke kop. De overige koppen dekken de dienst/het subthema zonder de plaatsnaam. De plaats verwerk je natuurlijk in de lopende tekst, niet in elke titel.
+- NOOIT meer dan 1 à 2 koppen ACHTER ELKAAR met dezelfde plaatsnaam/hetzelfde zoekwoord. Wissel af.
+- FAQ: de meeste vragen gaan over de DIENST (kosten, planten, onderhoud, werkwijze, doorlooptijd, garantie), NIET over de plaats. HOOGUIT 1 à 2 FAQ-vragen mogen de plaatsnaam bevatten; de rest zonder.
+- Geen bullet-lijst waarin (bijna) elke bullet de plaatsnaam herhaalt (bijv. géén "wat wij doen in [plaats]"-lijst met de plaats in elke regel). Noem in zo'n lijst de DIENSTEN zelf; de plaats hooguit één keer in de inleidende zin.
 - Koppen lezen als een echte sectietitel, niet als een Google-zoekopdracht.
-- CONTROLEER JEZELF vóór je oplevert: tel hoeveel van je koppen het zoekwoord/de plaatsnaam bevatten; zit je boven ~70%, herschrijf koppen tot je eronder zit.
+- CONTROLEER JEZELF vóór je oplevert: tel hoeveel koppen de plaatsnaam/het zoekwoord bevatten en of er reeksen achter elkaar zijn; herschrijf tot het klopt (dit wordt ook automatisch gecontroleerd).
 TOON: warm, deskundig, passend bij het bedrijf; concreet en to-the-point, geen holle marketingtaal. Behoud goede bestaande zinnen van de huidige pagina waar die voldoen; herschrijf/vul aan waar de blauwdruk en top-10 dat vragen.
 
 LEVER HET DOCUMENT MET EXACT DEZE SECTIES, in deze volgorde:
@@ -467,6 +470,67 @@ function buildDocSpec(parsed: ParsedDoc, audience: "intern" | "klant", kind: Doc
   return { spec, title };
 }
 
+// ── Zelfcontrole op kop-herhaling in copy (tegen lokaal/eigennaam keyword stuffing) ──
+const HEADING_STOP = new Set("de het een en of van voor met naar bij uit op in aan te je jij jullie uw we wij ons onze wat wie hoe waar waarom welke wanneer kan kunt ook nog al alle als dat dit die deze er is zijn was wordt worden meer per over tot dan om zo goede nieuwe hun ze zij ook ons".split(/\s+/));
+function headingCore(text: string): string {
+  return text.replace(/^\s*H[1-3]\s*[—:–\-]*\s*/i, "").trim();
+}
+// Meest herhaalde EIGENNAAM (plaats/merk) over de koppen: een woord dat MIDDEN in een kop
+// met een hoofdletter voorkomt (dus geen gewoon onderwerp-woord als "strandtuin", dat alleen
+// aan het kopbegin een hoofdletter krijgt). Plus hoe geclusterd het staat (reeks achter elkaar).
+function dominantProperToken(headings: string[]): { token: string; count: number; pct: number; run: number } | null {
+  if (headings.length < 4) return null;
+  const cores = headings.map(headingCore);
+  const inHeading = new Map<string, number>();
+  const proper = new Set<string>();
+  for (const core of cores) {
+    const seen = new Set<string>();
+    for (const m of core.matchAll(/[A-Za-zÀ-ÿ][A-Za-z0-9À-ÿ-]{2,}/g)) {
+      const w = m[0]; const lw = w.toLowerCase();
+      if (HEADING_STOP.has(lw)) continue;
+      if (!seen.has(lw)) { seen.add(lw); inHeading.set(lw, (inHeading.get(lw) || 0) + 1); }
+      if (m.index !== 0 && /^[A-ZÀ-Ý]/.test(w)) proper.add(lw); // hoofdletter, niet aan het kopbegin
+    }
+  }
+  let token = "", count = 0;
+  for (const [w, c] of inHeading) if (proper.has(w) && c > count) { token = w; count = c; }
+  if (!token) return null;
+  let run = 0, mx = 0;
+  const re = new RegExp(`(^|[^a-z0-9\\u00e0-\\u00ff-])${token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z0-9\\u00e0-\\u00ff-]|$)`, "i");
+  for (const core of cores) { if (re.test(core)) { run++; if (run > mx) mx = run; } else run = 0; }
+  return { token, count, pct: count / headings.length, run: mx };
+}
+async function reviseCopyHeadings(headings: string[], token: string, slug: string): Promise<string[] | null> {
+  const system = `Je bent een senior SEO-copywriter. Hieronder de koppen van een landingspagina (met een H1/H2/H3-label vooraan). De naam/plaats "${token}" wordt te vaak in de koppen gebruikt (keyword stuffing), met reeksen achter elkaar en te veel in de FAQ. Herschrijf de koppen zo dat:
+- hooguit ~40% van de koppen "${token}" bevat;
+- NOOIT meer dan 1 à 2 koppen ACHTER ELKAAR "${token}" bevatten;
+- FAQ-vragen vooral over de DIENST gaan (kosten, planten, onderhoud, werkwijze, doorlooptijd, garantie), niet over de plaats; hooguit 1 à 2 FAQ-vragen met "${token}";
+- de koppen natuurlijk en gevarieerd blijven, als echte sectietitels.
+Behoud de betekenis, de VOLGORDE en het H1/H2/H3-label vooraan elke kop. Verander een kop ALLEEN als dat nodig is om "${token}" te verminderen; laat goede koppen ongemoeid.
+Geef UITSLUITEND een JSON-array met exact ${headings.length} strings in dezelfde volgorde terug. Geen tekst eromheen.`;
+  const user = headings.map((h, i) => `${i + 1}. ${h}`).join("\n");
+  const raw = await callClaude(system, [{ role: "user", content: user }], 1800, { slug, action: "copy_koppen_revisie" });
+  try {
+    const arr = JSON.parse(raw.replace(/```json/gi, "").replace(/```/g, "").trim());
+    if (Array.isArray(arr) && arr.length === headings.length && arr.every((x) => typeof x === "string" && x.trim())) return arr as string[];
+  } catch { /* ongeldige JSON: origineel laten staan */ }
+  return null;
+}
+// Deterministische controle op de copy-koppen; corrigeert ALLEEN bij over-optimalisatie van
+// een eigennaam/plaats (te veel koppen of reeksen achter elkaar). Gewone onderwerp-zoekwoorden
+// (bv. "strandtuin" op 70%) blijven ongemoeid.
+async function selfCheckCopyHeadings(spec: DocSpec, slug: string): Promise<void> {
+  const blocks: { type: "subheading"; text: string }[] = [];
+  for (const sec of spec.sections) for (const b of sec.blocks || []) {
+    if (b.type === "subheading" && typeof b.text === "string" && /^\s*H[1-3]\b/i.test(b.text)) blocks.push(b);
+  }
+  const headings = blocks.map((b) => b.text);
+  const rep = dominantProperToken(headings);
+  if (!rep || (rep.pct < 0.5 && rep.run < 3)) return; // binnen de norm
+  const revised = await reviseCopyHeadings(headings, rep.token, slug).catch(() => null);
+  if (revised) blocks.forEach((b, i) => { b.text = revised[i]; });
+}
+
 // audience "klant" (standaard): korte, klantvriendelijke versie.
 // - analyse/blauwdruk: eerst de DIEPE technische fundering (geketend), daaruit het korte klantdoc.
 // - copy: de VOLLEDIGE uitgeschreven pagina (kernproduct), geen samenvatting.
@@ -522,6 +586,8 @@ Geen emoji. ${DOCSPEC_FORMAT}`;
   const maxTokens = audience === "klant" ? (kind === "copy" ? 16000 : 3500) : (kind === "blauwdruk" ? 10000 : 14000);
   const parsed = await runDocGen(system, baseUser, maxTokens, slug, kind, `doc_${kind}`);
   const { spec, title } = buildDocSpec(parsed, audience, kind, clientName, url);
+  // Zelfcontrole op kop-herhaling (alleen copy): meet de over-optimalisatie en corrigeer gericht.
+  if (kind === "copy") await selfCheckCopyHeadings(spec, slug).catch(() => { /* controle is aanvulling */ });
   // Bewaar de tekst-uitkomst zodat de volgende stap in de keten erop voortbouwt.
   await savePageDocOutput(slug, url, kind, specToText(spec)).catch(() => { /* keten is aanvulling, niet kritisch */ });
   return { spec, title };
