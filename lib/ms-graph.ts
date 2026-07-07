@@ -191,6 +191,26 @@ export async function msSearchPeople(query: string, limit = 8): Promise<Person[]
   return out;
 }
 
+// Diagnose voor de autocomplete: laat zien of er een token is, wat Graph teruggeeft
+// (status + eventuele foutmelding, bv. ontbrekende People.Read-scope) en een sample.
+export async function msPeopleDebug(query: string): Promise<{ tokenOk: boolean; status: number | null; ok: boolean; error: string | null; count: number; sample: Person[] }> {
+  const q = (query || "").trim() || "a";
+  const token = await msAccessToken();
+  if (!token) return { tokenOk: false, status: null, ok: false, error: "Geen access-token (M365 niet gekoppeld of refresh-token weg).", count: 0, sample: [] };
+  const url = `https://graph.microsoft.com/v1.0/me/people?$search=${encodeURIComponent('"' + q + '"')}&$top=8&$select=displayName,scoredEmailAddresses`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  let body: unknown = null;
+  try { body = await res.json(); } catch { /* geen json */ }
+  if (!res.ok) {
+    const err = (body as { error?: unknown })?.error ?? body ?? "onbekende fout";
+    return { tokenOk: true, status: res.status, ok: false, error: JSON.stringify(err).slice(0, 500), count: 0, sample: [] };
+  }
+  const value = ((body as { value?: { displayName?: string; scoredEmailAddresses?: { address?: string }[] }[] })?.value) || [];
+  const sample: Person[] = [];
+  for (const p of value) { const e = (p.scoredEmailAddresses?.[0]?.address || "").trim(); if (e) sample.push({ name: (p.displayName || e).trim(), email: e }); }
+  return { tokenOk: true, status: res.status, ok: true, error: null, count: value.length, sample: sample.slice(0, 5) };
+}
+
 // Haalt de recente mails met een klant op (zoekt op het e-maildomein/-adres).
 export async function msSearchClientEmails(query: string, account: string, limit = 15): Promise<LiveEmail[] | null> {
   const token = await msAccessToken();
