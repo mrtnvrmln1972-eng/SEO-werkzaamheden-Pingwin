@@ -106,7 +106,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     if (chatId == null) { setClusterDone(0); return; }
     try { const n = Number(localStorage.getItem(`pw_clusterdone_${chatId}`) || "0"); setClusterDone(Number.isFinite(n) ? n : 0); } catch { setClusterDone(0); }
   }, [chatId]);
-  function markStrategieDone() { markStrategieDone(); try { localStorage.setItem(`pw_stratdone_${slug}_${url}`, "1"); } catch { /* geen opslag */ } }
+  function markStrategieDone() { setTaskDone(true); try { localStorage.setItem(`pw_stratdone_${slug}_${url}`, "1"); } catch { /* geen opslag */ } }
 
   const [taskGen, setTaskGen] = useState(false);
   // Analyse vastgelegd (taak + document) → knop wordt groen "Analyse vastgelegd".
