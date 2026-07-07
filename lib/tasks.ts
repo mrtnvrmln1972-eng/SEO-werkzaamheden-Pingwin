@@ -71,8 +71,41 @@ function dedupePageTasks(tasks: TaskRow[]): TaskRow[] {
   return tasks.filter((_, i) => keep.has(i));
 }
 
+// Haalt de kale (al ge-escapete) taaktitel uit de opgeslagen taak-HTML: link-groepen
+// zoals "(intern)", "(klantversie)", "(link)" eraf, en als de titel zelf een link was,
+// pak de linktekst. Zo houden we de titel over zonder dubbel te escapen.
+function stepTaskTitleHtml(taak: string): string {
+  let s = String(taak || "");
+  s = s.replace(/\s*\(\s*<a\b[^>]*>.*?<\/a>\s*\)/gi, "");
+  s = s.replace(/<a\b[^>]*>(.*?)<\/a>/gi, "$1");
+  return s.trim();
+}
+
+// Terugwerkende opmaak: oude auto-taken ("Titel (intern) (klantversie)" of een titel
+// die zelf een link is) omzetten naar "Titel (link)" met de klantversie-link erachter.
+// Zelfbeperkend: rijen die de nieuwe "(link)" al hebben worden overgeslagen.
+async function migrateStepTaskLinks(slug: string): Promise<void> {
+  const { rows } = await sql`
+    SELECT id, taak, doc_link, client_doc_link FROM client_tasks
+    WHERE client_slug = ${slug} AND step_kind IS NOT NULL
+      AND taak LIKE '%<a %' AND taak NOT LIKE '%>link</a>%'`;
+  if (rows.length === 0) return;
+  const a = (href: string, label: string) => `<a href="${escHtml(href)}" target="_blank" rel="noreferrer">${escHtml(label)}</a>`;
+  for (const r of rows) {
+    let href = String(r.client_doc_link || r.doc_link || "").trim();
+    if (!href) {
+      const m = String(r.taak || "").match(/href="([^"]+)"/i);
+      if (m) href = m[1].replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+    }
+    const title = stepTaskTitleHtml(r.taak as string);
+    const taak = href ? `${title} (${a(href, "link")})` : title;
+    await sql`UPDATE client_tasks SET taak = ${taak}, updated_at = now() WHERE id = ${r.id}`;
+  }
+}
+
 export async function getTasks(slug: string): Promise<TaskRow[]> {
   await ensureSchema();
+  await migrateStepTaskLinks(slug).catch(() => { /* niet kritisch */ });
   const { rows } = await sql`
     SELECT id, categorie, taak, toelichting, klant_toelichting, uren, status, maand, link, wie, klant_zichtbaar, gemaild,
            fase, cluster, geblokkeerd, blokkade_reden, page_url, step_kind, doc_link, client_doc_link
@@ -139,21 +172,11 @@ export async function upsertStepTask(
 ): Promise<number> {
   await ensureSchema();
   const a = (href: string, label: string) => `<a href="${escHtml(href)}" target="_blank" rel="noreferrer">${escHtml(label)}</a>`;
-  // Twee opmaakvormen:
-  // - dualVersion (SEO-analyse/blauwdruk/copy): "Titel (intern) (klantversie)", waarbij
-  //   "(intern)" naar de technische versie linkt en "(klantversie)" naar de klantversie.
-  // - enkel document (Strategie uit de chat-analyse): de titel linkt direct naar het ene document.
-  // Het klantdashboard toont sowieso alleen de klantversie (client_doc_link).
-  let taak: string;
-  if (step.dualVersion) {
-    const parts = [escHtml(step.title)];
-    if (step.link) parts.push(`(${a(step.link, "intern")})`);
-    if (step.clientLink) parts.push(`(${a(step.clientLink, "klantversie")})`);
-    taak = parts.join(" ");
-  } else {
-    const href = step.link || step.clientLink || "";
-    taak = href ? a(href, step.title) : escHtml(step.title);
-  }
+  // Eenduidige opmaak: de taaktitel als platte tekst, met daarachter "(link)" die naar
+  // het document wijst. Bij een klant- én interne versie tonen we de klantversie-link
+  // (de klant ziet toch alleen client_doc_link; intern blijft in doc_link bewaard).
+  const href = step.clientLink || step.link || "";
+  const taak = href ? `${escHtml(step.title)} (${a(href, "link")})` : escHtml(step.title);
   const { rows: found } = await sql`
     SELECT id FROM client_tasks WHERE client_slug = ${slug} AND page_url = ${step.pageUrl} AND step_kind = ${step.stepKind} LIMIT 1`;
   if (found[0]?.id != null) {
