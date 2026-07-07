@@ -166,7 +166,7 @@ ${DOCSPEC_FORMAT}`;
 const BLUEPRINT_SYSTEM = `Je bent een senior SEO-strateeg bij bureau Pingwin en maakt een BLAUWDRUK voor een landingspagina.
 De blauwdruk bevat, elk als eigen sectie:
 1. Zoekwoord-strategie: primair zoekwoord + secundaire/variant-zoekwoorden (tabel met zoekwoord + rol/volume waar bekend).
-2. Headings-structuur: de voorgestelde H1, en de H2's/H3's in volgorde (elke H2 dekt idealiter een zoekwoord/subthema). Zet vóór ELKE koptitel de niveau-aanduiding (H1, H2 of H3) als klein label, zodat de sitebouwer weet welk opmaakniveau hij moet gebruiken. De FAQ-vraagtitels krijgen ALTIJD de aanduiding H3 (onder een H2 "Veelgestelde vragen").
+2. Headings-structuur: de voorgestelde H1, en de H2's/H3's in volgorde. VARIATIE, GEEN STUFFING: maximaal circa 70% van de koppen bevat het primaire zoekwoord of een semantische variant (boven 80% oogt onnatuurlijk, criterium H2-01); de overige koppen dekken het onderwerp met natuurlijke titels ZONDER het zoekwoord. Bij een LOKAAL zoekwoord (met plaatsnaam): zet de plaatsnaam in HOOGUIT 2 à 3 koppen, niet in elke kop; varieer de rest met de dienst/het subthema. Koppen lezen als sectietitels, niet als zoekopdrachten. Zet vóór ELKE koptitel de niveau-aanduiding (H1, H2 of H3) als klein label, zodat de sitebouwer weet welk opmaakniveau hij moet gebruiken. De FAQ-vraagtitels krijgen ALTIJD de aanduiding H3 (onder een H2 "Veelgestelde vragen").
 3. Meta: 2 varianten meta-title (max ~60 tekens) en 2 varianten meta-description (max ~155 tekens).
 4. FAQ: 4 tot 6 vragen die de zoekintentie dekken.
 5. Interne links: welke andere pagina's naar deze pagina linken en met welke ankertekst.
@@ -327,6 +327,13 @@ SCHRIJF ECHT UIT, GEEN SHORTCUTS:
 - Voeg waar passend een sectie met concrete praktijkvoorbeelden toe (elk voorbeeld een eigen H3-kop met een korte beschrijving).
 - Voeg een UITGEBREIDE FAQ toe: 6 tot 8 veelgestelde vragen (elke vraag een H3-kop) met een echt antwoord van 40 tot 80 woorden, gericht op long-tail-zoekwoorden en de zoekintentie.
 - Sluit af met een korte, wervende call-to-action (H3).
+
+KOPPEN — VARIATIE, GEEN STUFFING (cruciaal, dit ging eerder mis):
+- MAXIMAAL circa 70% van alle koppen (H1/H2/H3 samen) mag het primaire zoekwoord of een variant bevatten; boven 80% oogt onnatuurlijk en telt als keyword stuffing (criterium H2-01). De overige koppen zijn natuurlijke sectietitels die het onderwerp dekken ZONDER het zoekwoord.
+- Herhaal NOOIT vrijwel hetzelfde woord in elke kop. Varieer met synoniemen, deelonderwerpen en werkwoorden (bijv. "Onze werkwijze", "Onderhoud op abonnement", "Veelgestelde vragen") in plaats van steeds dezelfde term.
+- LOKAAL ZOEKWOORD (met een plaatsnaam, zoals "hovenier Etten-Leur"): zet de PLAATSNAAM in HOOGUIT 2 à 3 koppen (de H1 en één of twee andere), NIET in elke kop. De overige koppen dekken de dienst/het subthema zonder de plaatsnaam. De plaats verwerk je natuurlijk in de lopende tekst, niet in elke titel.
+- Koppen lezen als een echte sectietitel, niet als een Google-zoekopdracht.
+- CONTROLEER JEZELF vóór je oplevert: tel hoeveel van je koppen het zoekwoord/de plaatsnaam bevatten; zit je boven ~70%, herschrijf koppen tot je eronder zit.
 TOON: warm, deskundig, passend bij het bedrijf; concreet en to-the-point, geen holle marketingtaal. Behoud goede bestaande zinnen van de huidige pagina waar die voldoen; herschrijf/vul aan waar de blauwdruk en top-10 dat vragen.
 
 LEVER HET DOCUMENT MET EXACT DEZE SECTIES, in deze volgorde:
