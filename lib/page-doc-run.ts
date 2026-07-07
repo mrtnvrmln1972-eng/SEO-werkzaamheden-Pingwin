@@ -70,6 +70,8 @@ async function doEnsureRunTable(): Promise<void> {
       created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
       updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
     )`;
+  // audience: "klant" (standaard, korte klantversie) of "intern" (uitgebreide versie op verzoek).
+  await sql`ALTER TABLE page_doc_runs ADD COLUMN IF NOT EXISTS audience TEXT NOT NULL DEFAULT 'klant'`;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -88,7 +90,7 @@ function rowToRun(r: any): DocRun {
 
 // Start een nieuwe achtergrond-run voor een pagina. Zonder expliciete Drive-map
 // valt hij terug op de per-pagina opgeslagen map (indien aanwezig).
-export async function createDocRun(slug: string, url: string, extra: string, folderId: string, steps: DocKind[]): Promise<number> {
+export async function createDocRun(slug: string, url: string, extra: string, folderId: string, steps: DocKind[], audience: "intern" | "klant" = "klant"): Promise<number> {
   await ensureSchema();
   await ensureRunTable();
   let fid = (folderId || "").trim();
@@ -96,8 +98,8 @@ export async function createDocRun(slug: string, url: string, extra: string, fol
   // Gevraagde stappen krijgen 'pending', de rest 'skipped' (worden overgeslagen).
   const st = (k: DocKind) => (steps.includes(k) ? "pending" : "skipped");
   const { rows } = await sql`
-    INSERT INTO page_doc_runs (client_slug, url, extra, folder_id, analyse_state, blauwdruk_state, copy_state)
-    VALUES (${slug}, ${url}, ${extra || null}, ${fid || null}, ${st("analyse")}, ${st("blauwdruk")}, ${st("copy")})
+    INSERT INTO page_doc_runs (client_slug, url, extra, folder_id, audience, analyse_state, blauwdruk_state, copy_state)
+    VALUES (${slug}, ${url}, ${extra || null}, ${fid || null}, ${audience}, ${st("analyse")}, ${st("blauwdruk")}, ${st("copy")})
     RETURNING id`;
   return Number(rows[0].id);
 }
@@ -151,6 +153,7 @@ async function processRun(id: number): Promise<void> {
   const slug = r.client_slug as string, url = r.url as string;
   const extra = (r.extra as string) || "";
   const folderId = (r.folder_id as string) || "";
+  const audience: "intern" | "klant" = (r.audience as string) === "intern" ? "intern" : "klant";
   const states: Record<DocKind, string> = { analyse: r.analyse_state, blauwdruk: r.blauwdruk_state, copy: r.copy_state };
   for (const kind of STEPS) {
     if (states[kind] === "done" || states[kind] === "skipped") continue;
@@ -158,7 +161,7 @@ async function processRun(id: number): Promise<void> {
     const claimed = await claimStep(id, kind);
     if (!claimed) return; // andere worker pakte hem, of de status veranderde
     try {
-      const link = await withHardTimeout(generateAndStoreDoc(slug, url, kind, extra, folderId), 480000, "Genereren duurde te lang (>8 min) en is afgebroken. Probeer het opnieuw.");
+      const link = await withHardTimeout(generateAndStoreDoc(slug, url, kind, extra, folderId, audience), 480000, "Genereren duurde te lang (>8 min) en is afgebroken. Probeer het opnieuw.");
       await finishStep(id, kind, link);
     } catch (e) {
       await failStep(id, kind, ((e as Error).message || "onbekende fout").slice(0, 500));

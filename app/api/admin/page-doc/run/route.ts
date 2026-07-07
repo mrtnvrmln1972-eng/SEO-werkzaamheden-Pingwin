@@ -25,10 +25,11 @@ export async function POST(req: NextRequest) {
   const allowed = ["analyse", "blauwdruk", "copy"] as const;
   const reqSteps = (Array.isArray(body.steps) ? body.steps.map((s) => String(s)) : []).filter((s): s is (typeof allowed)[number] => (allowed as readonly string[]).includes(s));
   const steps = reqSteps.length ? reqSteps : [...allowed];
+  const audience: "intern" | "klant" = body.audience === "intern" ? "intern" : "klant";
   if (!slug || !url) return NextResponse.json({ ok: false, error: "Klant en URL zijn verplicht." }, { status: 400 });
 
   try {
-    const runId = await createDocRun(slug, url, extra, folderId, steps);
+    const runId = await createDocRun(slug, url, extra, folderId, steps, audience);
     // Meteen server-side starten (los van de browser); de cron is alleen vangnet.
     waitUntil(runNow(runId));
     return NextResponse.json({ ok: true, runId });
