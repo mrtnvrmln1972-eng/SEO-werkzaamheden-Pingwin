@@ -207,9 +207,9 @@ export async function extractClusterAdvice(
   const others = knownUrls.filter((u) => normUrl(u) !== normUrl(selfUrl)).slice(0, 120);
   if (others.length === 0) return [];
   const system = `Je krijgt een SEO-analyse die voor één pagina is gemaakt, maar die ook ANDERE pagina's van dezelfde site raakt (cluster/cannibalisatie). Hieronder staat de lijst met bestaande pagina's van deze site.
-Bepaal voor welke ANDERE pagina's uit die lijst (niet de geanalyseerde pagina zelf) de analyse een concreet strategisch advies of een bedoelde rol bevat, en vat dat per pagina kort samen.
+Bepaal voor welke ANDERE pagina's uit die lijst (niet de geanalyseerde pagina zelf) de analyse een concreet strategisch advies of een bedoelde rol bevat, en vat dat per pagina KORT en SCANBAAR samen.
 Antwoord met UITSLUITEND geldige JSON, exact dit formaat, niets eromheen:
-{"items":[{"url":"<exacte url uit de lijst>","advice":"<2 tot 5 zinnen: de bedoelde rol, strategie en zoekwoorden voor deze pagina volgens de analyse, en hoe de conclusie over de bronpagina deze pagina raakt>"}]}
+{"items":[{"url":"<exacte url uit de lijst>","advice":"<markdown, kort en scanbaar: één korte zin over de bedoelde rol van deze pagina, dan een lege regel, dan 2 tot 4 bullets die met '- ' beginnen, elk met een vet label. Bijvoorbeeld:\nDeze locatiepagina wordt de eigenaar van de stadsterm.\n\n- **Primair zoekwoord:** soa test amsterdam\n- **Actie:** niet meer concurreren op de generieke term 'soa test'\n- **Interne link:** ankertekst 'soa test Amsterdam' vanuit de homepage\nHou het puntig; geen lange alinea's.>"}]}
 Regels: gebruik ALLEEN url's die exact in de lijst staan. Neem alleen pagina's op waarover de analyse echt iets concreets zegt; verzin niets. Wordt geen enkele andere pagina geraakt, antwoord dan met {"items":[]}. Gebruik nergens emoji.
 
 BESTAANDE PAGINA'S:

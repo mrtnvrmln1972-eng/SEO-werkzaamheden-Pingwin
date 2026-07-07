@@ -617,7 +617,11 @@ tbody td:last-child { text-align: center; }
 .pch-cluster-item { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; background: #fff; }
 .pch-cluster-head { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13px; }
 .pch-cluster-url { word-break: break-all; }
-.pch-cluster-advice { font-size: 13px; margin-top: 4px; }
+.pch-cluster-advice { font-size: 13px; margin-top: 6px; line-height: 1.5; color: var(--dark); }
+.pch-cluster-advice p { margin: 0 0 6px; }
+.pch-cluster-advice ul { margin: 4px 0 2px; padding-left: 18px; }
+.pch-cluster-advice li { margin: 2px 0; }
+.pch-cluster-advice strong { color: var(--brand-charcoal); }
 /* Meegegeven cluster-advies (vertrekpunt-kaart op de ontvangende pagina) */
 .page-chat-incoming { border: 1px solid var(--border); border-left: 3px solid var(--brand-blue); border-radius: 12px; padding: 18px 20px; margin: 0 0 12px; background: var(--brand-blue-light); }
 .pchi-item { margin-top: 8px; }
