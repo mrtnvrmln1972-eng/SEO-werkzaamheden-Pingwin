@@ -479,35 +479,6 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
             </div>
             <button type="button" className="pcd-btn pcd-btn-primary" onClick={() => send(SUMMARIZE_PROMPT)} disabled={busy} title="Vat het hele gesprek samen tot de definitieve conclusie en strategie, klaar om over te nemen als plan">Vat samen tot conclusie &amp; strategie</button>
           </div>
-          <div className="page-chat-cluster">
-            <div className="pchf-lead">Raakt deze analyse ook andere pagina&rsquo;s in het cluster? Geef het advies dat over hén gaat alvast door. Naast het advies per pagina gaat ook de volledige conclusie van deze chat mee, zodat die pagina&rsquo;s de hele strategie als vertrekpunt hebben.</div>
-            {clusterDone > 0 ? (
-              <button type="button" className="pcd-btn pcd-btn-done" disabled>&#10003; Doorgegeven aan {clusterDone} pagina&rsquo;s</button>
-            ) : clusterItems === null ? (
-              <button type="button" className="pcd-btn" onClick={findClusterAdvice} disabled={clusterBusy}>{clusterBusy ? "Betrokken pagina's zoeken…" : "Advies doorgeven aan betrokken pagina's"}</button>
-            ) : clusterItems.length === 0 ? (
-              <div className="muted" style={{ fontSize: 12 }}>Geen andere pagina&rsquo;s gevonden waarover deze analyse concreet advies geeft.</div>
-            ) : (
-              <>
-                <ul className="pch-cluster-list">
-                  {clusterItems.map((it) => (
-                    <li key={it.url} className="pch-cluster-item">
-                      <label className="pch-cluster-head">
-                        <input type="checkbox" checked={clusterSel.includes(it.url)} onChange={() => toggleCluster(it.url)} />
-                        <span className="pch-cluster-url">{it.url}</span>
-                      </label>
-                      <div className="pch-cluster-advice md" dangerouslySetInnerHTML={{ __html: mdToHtml(it.advice) }} />
-                    </li>
-                  ))}
-                </ul>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                  <button type="button" className="pcd-btn pcd-btn-primary" onClick={applyClusterAdvice} disabled={clusterBusy || clusterSel.length === 0}>{clusterBusy ? "Doorgeven…" : `Doorgeven aan ${clusterSel.length} pagina('s)`}</button>
-                  <HelpHint text="Geeft de basisinfo uit deze analyse door aan de aangevinkte pagina's; die krijgen het als vertrekpunt ('half plan') mee in hun eigen chat en in het overzicht." />
-                </span>
-              </>
-            )}
-            {clusterMsg && <div className="saved-msg" style={{ marginTop: 8 }}>{clusterMsg}</div>}
-          </div>
           <div className="page-chat-drive">
             <span className="pcd-label">Opslaan in:</span>
             {driveFolder
@@ -590,6 +561,41 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
 
       {applied && <div className="saved-msg" style={{ marginTop: 8 }} dangerouslySetInnerHTML={{ __html: applied }} />}
       {err && <div className="login-error" style={{ marginTop: 8 }}>{err}</div>}
+
+      {lastAssistant && (
+        <div className="page-chat-cluster-card">
+          <div className="pcd-docs-head">Doorgeven aan gelieerde pagina&rsquo;s <HelpHint wide text="Raakt deze analyse ook andere pagina's in het cluster? Geef het advies dat over hén gaat alvast door. Naast het advies per pagina gaat ook de volledige conclusie van deze chat mee, zodat die pagina's de hele strategie als vertrekpunt hebben (ze krijgen de markering 'half plan')." /></div>
+          <div className="page-chat-cluster">
+            <div className="pchf-lead">Raakt deze analyse ook andere pagina&rsquo;s in het cluster? Geef hun advies alvast door.</div>
+            {clusterDone > 0 ? (
+              <button type="button" className="pcd-btn pcd-btn-done" disabled>&#10003; Doorgegeven aan {clusterDone} pagina&rsquo;s</button>
+            ) : clusterItems === null ? (
+              <button type="button" className="pcd-btn" onClick={findClusterAdvice} disabled={clusterBusy}>{clusterBusy ? "Betrokken pagina's zoeken…" : "Advies doorgeven aan betrokken pagina's"}</button>
+            ) : clusterItems.length === 0 ? (
+              <div className="muted" style={{ fontSize: 12 }}>Geen andere pagina&rsquo;s gevonden waarover deze analyse concreet advies geeft.</div>
+            ) : (
+              <>
+                <ul className="pch-cluster-list">
+                  {clusterItems.map((it) => (
+                    <li key={it.url} className="pch-cluster-item">
+                      <label className="pch-cluster-head">
+                        <input type="checkbox" checked={clusterSel.includes(it.url)} onChange={() => toggleCluster(it.url)} />
+                        <span className="pch-cluster-url">{it.url}</span>
+                      </label>
+                      <div className="pch-cluster-advice md" dangerouslySetInnerHTML={{ __html: mdToHtml(it.advice) }} />
+                    </li>
+                  ))}
+                </ul>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <button type="button" className="pcd-btn pcd-btn-primary" onClick={applyClusterAdvice} disabled={clusterBusy || clusterSel.length === 0}>{clusterBusy ? "Doorgeven…" : `Doorgeven aan ${clusterSel.length} pagina('s)`}</button>
+                  <HelpHint text="Geeft de basisinfo uit deze analyse door aan de aangevinkte pagina's; die krijgen het als vertrekpunt ('half plan') mee in hun eigen chat en in het overzicht." />
+                </span>
+              </>
+            )}
+            {clusterMsg && <div className="saved-msg" style={{ marginTop: 8 }}>{clusterMsg}</div>}
+          </div>
+        </div>
+      )}
 
       {lastAssistant && (
         <div className="page-chat-docs">

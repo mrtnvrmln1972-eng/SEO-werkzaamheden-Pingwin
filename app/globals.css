@@ -608,7 +608,9 @@ tbody td:last-child { text-align: center; }
 .pchf-input { flex: 1; font-size: 14px; border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; outline: none; }
 .pchf-input:focus { border-color: var(--orange); }
 /* Cluster-advies doorgeven aan betrokken pagina's: eigen kaart, blauw accent. */
-.page-chat-cluster { border: 1px solid var(--border); border-left: 3px solid var(--brand-blue); border-radius: 12px; padding: 18px 20px; margin: 0 0 10px; background: var(--brand-blue-light); }
+/* Eigen kaart voor "doorgeven aan gelieerde pagina's" (stap tussen chat en vervolgstappen). */
+.page-chat-cluster-card { margin: 18px 0; border: 1px solid var(--border); border-left: 3px solid var(--brand-salmon); border-radius: 12px; padding: 18px 20px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.05); max-width: 1040px; }
+.page-chat-cluster { margin: 0; }
 .pch-cluster-list { list-style: none; margin: 10px 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .pch-cluster-item { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; background: #fff; }
 .pch-cluster-head { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13px; }
