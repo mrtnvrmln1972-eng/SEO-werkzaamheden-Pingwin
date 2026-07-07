@@ -576,8 +576,8 @@ tbody td:last-child { text-align: center; }
 /* Kolomkoppen blijven plakken (onder de bovenbalk + de paginalijst-kop) terwijl je door de tabel scrolt. */
 .pch-canni-md .md-table thead th { position: sticky; top: 120px; z-index: 10; }
 /* Tekstkaarten op leesbare breedte houden; de brede cannibalisatie-tabel mag daarbuiten treden. */
-.page-chat, .page-chat-docs { max-width: 1040px; }
-.page-chat-canni { max-width: 1500px; }
+/* Alle secties in de pagina-hub even breed en links uitgelijnd als de chat-kaart. */
+.page-chat, .page-chat-docs, .page-chat-canni, .doc-run-status, .page-chat-input { max-width: 1040px; }
 /* Vervolgvraag + samenvatten tot conclusie/strategie: eigen kaart onder de analyse, oranje accent (afrondactie). */
 .page-chat-followup { border: 1px solid var(--border); border-left: 3px solid var(--orange); border-radius: 12px; padding: 18px 20px; margin: 14px 0 10px; background: var(--orange-light); }
 .pchf-lead { font-size: 13px; color: var(--dark); margin-bottom: 10px; }
