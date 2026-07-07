@@ -225,7 +225,7 @@ type SiteCtx = { name: string; domain: string; existing: string; pagesText: stri
 // Eén prompt draaien tegen de gedeelde site-context (grond-feiten hieronder).
 async function runProfilePrompt(ctx: SiteCtx, system: string, maxTokens: number): Promise<string> {
   const user = `KLANT: ${ctx.name} (${ctx.domain})\n\n${ctx.existing ? `WAT DE STRATEEG AL WEET (bestaand profiel + eigen know-how, mag je meenemen):\n${ctx.existing.slice(0, 2500)}\n\n` : ""}LIVE PAGINA'S:\n\n${ctx.pagesText}`;
-  const raw = await callClaude(system, [{ role: "user", content: user }], maxTokens);
+  const raw = await callClaude(system, [{ role: "user", content: user }], maxTokens, { action: "klantprofiel" });
   return raw.trim();
 }
 

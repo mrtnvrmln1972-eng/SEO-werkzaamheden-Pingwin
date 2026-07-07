@@ -278,7 +278,7 @@ export async function summariseChatToSpec(slug: string, url: string, analysis: s
     ? `GEGRONDE STRATEGISCHE CONCLUSIE (LEIDEND, getoetst aan de live-data):\n${grounded}\n\nOORSPRONKELIJKE CHAT-ANALYSE (aanvullende context):\n${analysis}`
     : analysis;
   const user = `Vat deze analyse voor pagina ${url} samen:\n\n${basis}${extra ? `\n\nEXTRA STURING: ${extra}` : ""}`;
-  const raw = await callClaude(CHAT_SAMENVATTING_SYSTEM, [{ role: "user", content: user }], 8192);
+  const raw = await callClaude(CHAT_SAMENVATTING_SYSTEM, [{ role: "user", content: user }], 8192, { slug, action: "strategie" });
   const cleaned = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
   let parsed: { titel?: unknown; ondertitel?: unknown; sections?: unknown };
   try {
@@ -324,7 +324,7 @@ ${CLIENT_STRUCTURE[kind]}
 Geen emoji. ${DOCSPEC_FORMAT}`;
   const user = `Zet deze ${label} voor pagina ${url} om in een klantversie:\n\n${source}${extra ? `\n\nEXTRA STURING: ${extra}` : ""}`;
   // Copy-klantversie bevat óók de volledige tekst, dus ruimer tokenbudget.
-  const raw = await callClaude(system, [{ role: "user", content: user }], kind === "copy" ? 9000 : 3500);
+  const raw = await callClaude(system, [{ role: "user", content: user }], kind === "copy" ? 9000 : 3500, { slug, action: "klantversie" });
   const parsed = JSON.parse(raw.replace(/```json/gi, "").replace(/```/g, "").trim());
   const title = typeof parsed.titel === "string" && parsed.titel.trim() ? parsed.titel.trim() : `Klantversie ${label} ${url}`;
   const sections = Array.isArray(parsed.sections) ? parsed.sections : [];
@@ -392,7 +392,7 @@ CRITERIA (naslag):
 ${SEO_CRITERIA_MD}`;
   const user = `Vorm de definitieve strategie voor deze pagina.\n\nCHAT-ANALYSE VAN DE STRATEEG (vertrekpunt, toets aan de data):\n${analysis}\n\nGEMETEN LIVE-GEGEVENS:\n${contextText}`;
   const { tools, run } = buildDocAgentTools(primary);
-  return callClaudeAgentic(system, [{ role: "user", content: user }], tools, run, 4, 5000);
+  return callClaudeAgentic(system, [{ role: "user", content: user }], tools, run, 4, 5000, { action: "strategie_grounding" });
 }
 
 // audience "klant" (standaard): één korte, klantvriendelijke versie, direct uit de data.
@@ -427,13 +427,13 @@ Geen emoji. ${DOCSPEC_FORMAT}`;
   const system = audience === "klant" ? klantSystem : SYSTEMS[kind];
   const maxTokens = audience === "klant" ? (kind === "copy" ? 9000 : 3500) : (kind === "blauwdruk" ? 10000 : 14000);
   const baseUser = `Maak de ${kind} op basis van deze gegevens:\n\n${context.text}${chain}`;
-  const raw1 = await callClaude(system, [{ role: "user", content: baseUser }], maxTokens);
+  const raw1 = await callClaude(system, [{ role: "user", content: baseUser }], maxTokens, { slug, action: `doc_${kind}` });
   let parsed = extractJsonObject(raw1);
   let raw2 = "";
   if (!parsed) {
     // Eenmalige herkansing met nadruk op volledige, geldige JSON (vaak afgekapt).
     const retryUser = `${baseUser}\n\nBELANGRIJK: geef UITSLUITEND geldige, VOLLEDIGE JSON terug volgens het formaat. Geen tekst eromheen en niet afkappen; houd het compact genoeg om de JSON helemaal af te maken.`;
-    raw2 = await callClaude(system, [{ role: "user", content: retryUser }], maxTokens);
+    raw2 = await callClaude(system, [{ role: "user", content: retryUser }], maxTokens, { slug, action: `doc_${kind}` });
     parsed = extractJsonObject(raw2);
   }
   if (!parsed) {

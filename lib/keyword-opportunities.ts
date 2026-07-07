@@ -69,7 +69,7 @@ Antwoord met UITSLUITEND geldige JSON: een array van de RELEVANTE zoekwoorden, e
     const batch = candidates.slice(i, i + batchSize);
     const user = `KLANT: ${clientName}\nKLANTPROFIEL: ${profile || "(geen)"}\nKERNTHEMA'S (zaad-zoekwoorden): ${themeSeeds.join(", ")}\n\nKANDIDAAT-ZOEKWOORDEN:\n${batch.map((c) => `- ${c.keyword}`).join("\n")}`;
     try {
-      const raw = await callClaude(system, [{ role: "user", content: user }], 3000);
+      const raw = await callClaude(system, [{ role: "user", content: user }], 3000, { action: "kansen" });
       const cleaned = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
       const first = cleaned.indexOf("["); const last = cleaned.lastIndexOf("]");
       const jsonText = first >= 0 && last > first ? cleaned.slice(first, last + 1) : cleaned;

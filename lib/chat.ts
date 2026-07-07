@@ -205,6 +205,7 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
       return { ok: false, error: msg };
     }
     const j = await res.json();
+    try { const { logUsage } = await import("./usage"); await logUsage({ slug, service: "anthropic", action: "projectchat", model: "claude-sonnet-4-6", tokensIn: j.usage?.input_tokens || 0, tokensOut: j.usage?.output_tokens || 0 }); } catch { /* meting mag de chat niet breken */ }
     const answer = Array.isArray(j.content) ? j.content.map((c: { text?: string }) => c.text || "").join("") : "";
     const finalAnswer = answer || "(geen antwoord)";
     await saveChatHistory(slug, thread, [...messages, { role: "assistant", content: finalAnswer }]);
