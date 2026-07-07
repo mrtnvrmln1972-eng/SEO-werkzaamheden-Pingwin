@@ -968,6 +968,9 @@ button.ck-collapse-head {
 .kpi-table td.kpi-delta-td { color: var(--gray); }
 /* Scheidingslijn vóór de waarde-kolom, zodat waarde + Δ als paar bij elkaar horen. */
 .kpi-table .kpi-metric-sep { border-left: 1px dashed var(--border); padding-left: 12px; }
+/* Versleepbare kolomkoppen: waarde + Δ verplaatsen als één geheel. */
+.kpi-table th.kpi-col-drag { cursor: move; }
+.kpi-table th.kpi-col-drag:hover { background: var(--brand-orange-faint); }
 /* Prio/secundair-markering in de KPI-tab */
 .kpi-focus-select { font-size: 11px; padding: 2px 4px; border: 1px solid var(--border); border-radius: 6px; background: var(--white); color: var(--gray); cursor: pointer; }
 .kpi-focus-select.set-prio { border-color: var(--orange); color: var(--orange-dark); font-weight: 700; background: var(--orange-light); }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useRef, useState, type ReactNode, type ThHTMLAttributes } from "react";
 import type { GscComparison, Ga4Comparison } from "../../../../lib/google";
 import type { AhrefsKeyword } from "../../../../lib/ahrefs-keywords";
 import type { Opportunity } from "../../../../lib/keyword-opportunities";
@@ -144,7 +144,7 @@ type SortDir = "asc" | "desc";
 type Sort<K extends string> = { key: K; dir: SortDir } | null;
 
 // Klik-cyclus per kop: aflopend → oplopend → uit (originele volgorde).
-function SortTh<K extends string>({ label, k, sort, setSort, className, title }: { label: string; k: K; sort: Sort<K>; setSort: (s: Sort<K>) => void; className?: string; title?: string }) {
+function SortTh<K extends string>({ label, k, sort, setSort, className, title, thProps }: { label: string; k: K; sort: Sort<K>; setSort: (s: Sort<K>) => void; className?: string; title?: string; thProps?: ThHTMLAttributes<HTMLTableCellElement> }) {
   const active = sort?.key === k;
   const arrow = active ? (sort!.dir === "asc" ? " ▲" : " ▼") : "";
   function onClick() {
@@ -152,7 +152,7 @@ function SortTh<K extends string>({ label, k, sort, setSort, className, title }:
     if (sort!.dir === "desc") return setSort({ key: k, dir: "asc" });
     return setSort(null);
   }
-  return <th className={"pg-sort" + (className ? " " + className : "")} onClick={onClick} title={title ? title + " — klik om te sorteren (aflopend → oplopend → uit)" : "Klik om te sorteren (aflopend → oplopend → uit)"}>{label}{arrow}</th>;
+  return <th className={"pg-sort" + (className ? " " + className : "") + (thProps?.draggable ? " kpi-col-drag" : "")} title={title ? title + " — klik om te sorteren (aflopend → oplopend → uit)" : "Klik om te sorteren (aflopend → oplopend → uit)"} {...thProps} onClick={onClick}>{label}{arrow}</th>;
 }
 
 function applySort<T, K extends string>(rows: T[], sort: Sort<K>, getters: Record<K, (r: T) => number | string>): T[] {
@@ -172,6 +172,16 @@ type KwKey = "focus" | "keyword" | "volume" | "position" | "dposition" | "clicks
 type AhKey = "focus" | "keyword" | "volume" | "position" | "intent" | "kans";
 type OppKey = "focus" | "keyword" | "volume" | "difficulty" | "source" | "reason";
 type PageKey = "prio" | "url" | "clicks" | "dclicks" | "impressions" | "dimpressions";
+
+// Versleepbare kolom-groepen (waarde + Δ blijven één geheel). De identificatie-kolommen
+// (Focus/Zoekwoord, ster/Pagina) staan vast links; deze groepen kun je herordenen.
+const KW_COLS_DEFAULT = ["volume", "position", "clicks", "impressions", "ctr"];
+const PAGE_COLS_DEFAULT = ["clicks", "impressions"];
+function sanitizeCols(saved: unknown, def: string[]): string[] {
+  if (!Array.isArray(saved)) return def;
+  const known = saved.filter((k): k is string => typeof k === "string" && def.includes(k));
+  return [...known, ...def.filter((k) => !known.includes(k))];
+}
 
 // Compacte prio/secundair-keuze per zoekwoord.
 function FocusSelect({ tier, onChange }: { tier: FocusTier | undefined; onChange: (t: FocusTier | null) => void }) {
@@ -222,6 +232,31 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
   const [kwSearch, setKwSearch] = useState("");
   const [pageSort, setPageSort] = useState<Sort<PageKey>>({ key: "prio", dir: "asc" });
   const [oppSort, setOppSort] = useState<Sort<OppKey>>(null);
+  // Versleepbare kolomvolgorde (per browser onthouden).
+  const [kwCols, setKwCols] = useState<string[]>(KW_COLS_DEFAULT);
+  const [pageCols, setPageCols] = useState<string[]>(PAGE_COLS_DEFAULT);
+  const [colDrag, setColDrag] = useState<string | null>(null);
+  useEffect(() => {
+    try { setKwCols(sanitizeCols(JSON.parse(localStorage.getItem("pw_kpicols_kw") || "null"), KW_COLS_DEFAULT)); } catch { /* standaard */ }
+    try { setPageCols(sanitizeCols(JSON.parse(localStorage.getItem("pw_kpicols_pages") || "null"), PAGE_COLS_DEFAULT)); } catch { /* standaard */ }
+  }, []);
+  function moveCol(order: string[], setOrder: (o: string[]) => void, storageKey: string, from: string, to: string) {
+    if (from === to) return;
+    const next = order.filter((k) => k !== from);
+    const idx = next.indexOf(to);
+    next.splice(idx < 0 ? next.length : idx, 0, from);
+    setOrder(next);
+    try { localStorage.setItem(storageKey, JSON.stringify(next)); } catch { /* geen opslag */ }
+  }
+  function colDragProps(gk: string, order: string[], setOrder: (o: string[]) => void, storageKey: string): ThHTMLAttributes<HTMLTableCellElement> {
+    return {
+      draggable: true,
+      onDragStart: () => setColDrag(gk),
+      onDragOver: (e) => { e.preventDefault(); },
+      onDrop: (e) => { e.preventDefault(); e.stopPropagation(); if (colDrag && colDrag !== gk) moveCol(order, setOrder, storageKey, colDrag, gk); setColDrag(null); },
+      onDragEnd: () => setColDrag(null),
+    };
+  }
   // Rangschikt de focus-markering voor sortering: prio eerst, dan secundair, dan de rest.
   const focusRank = (kw: string) => (focus[kw] === "prio" ? 0 : focus[kw] === "secundair" ? 1 : 2);
   const kwGetters: Record<KwKey, (k: Kw) => number | string> = {
@@ -396,6 +431,30 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
   // Standaard op de ster (prio) gesorteerd: aangevinkte pagina's automatisch bovenaan.
   const sortedPages = applySort(pagesView, pageSort, pageGetters);
 
+  // Kop + cel per versleepbare kolomgroep; waarde en Δ blijven één geheel.
+  const kwHead: Record<string, (d: ThHTMLAttributes<HTMLTableCellElement>) => ReactNode> = {
+    volume: (d) => <SortTh key="volume" thProps={d} label="Volume" k="volume" sort={kwSort} setSort={setKwSort} className="kpi-metric-sep" />,
+    position: (d) => <Fragment key="position"><SortTh thProps={d} label="Positie" k="position" sort={kwSort} setSort={setKwSort} className="kpi-metric-sep" /><SortTh thProps={d} label="Δ" title="Verandering positie t.o.v. vorige periode (omhoog = beter)" k="dposition" sort={kwSort} setSort={setKwSort} className="kpi-delta-th" /></Fragment>,
+    clicks: (d) => <Fragment key="clicks"><SortTh thProps={d} label="Klikken" k="clicks" sort={kwSort} setSort={setKwSort} className="kpi-metric-sep" /><SortTh thProps={d} label="Δ" title="Verandering klikken t.o.v. vorige periode" k="dclicks" sort={kwSort} setSort={setKwSort} className="kpi-delta-th" /></Fragment>,
+    impressions: (d) => <Fragment key="impressions"><SortTh thProps={d} label="Vertoningen" k="impressions" sort={kwSort} setSort={setKwSort} className="kpi-metric-sep" /><SortTh thProps={d} label="Δ" title="Verandering vertoningen t.o.v. vorige periode" k="dimpressions" sort={kwSort} setSort={setKwSort} className="kpi-delta-th" /></Fragment>,
+    ctr: (d) => <Fragment key="ctr"><SortTh thProps={d} label="CTR" k="ctr" sort={kwSort} setSort={setKwSort} className="kpi-metric-sep" /><SortTh thProps={d} label="Δ" title="Verandering CTR t.o.v. vorige periode" k="dctr" sort={kwSort} setSort={setKwSort} className="kpi-delta-th" /></Fragment>,
+  };
+  const kwCell: Record<string, (k: Kw) => ReactNode> = {
+    volume: (k) => <td key="volume" className="kpi-metric-sep">{(() => { const v = volMap.get(k.keyword.toLowerCase()); return v != null ? v.toLocaleString("nl-NL") : <span className="muted">&mdash;</span>; })()}</td>,
+    position: (k) => <Fragment key="position"><td className="kpi-metric-sep">{k.position.toFixed(1)}</td><td className="kpi-delta-td"><Delta cur={k.position} prev={k.prevPosition ?? k.position} invert isPos /></td></Fragment>,
+    clicks: (k) => <Fragment key="clicks"><td className="kpi-metric-sep">{nl(k.clicks)}</td><td className="kpi-delta-td"><Delta cur={k.clicks} prev={k.prevClicks} /></td></Fragment>,
+    impressions: (k) => <Fragment key="impressions"><td className="kpi-metric-sep">{nl(k.impressions)}</td><td className="kpi-delta-td"><Delta cur={k.impressions} prev={k.prevImpressions} /></td></Fragment>,
+    ctr: (k) => <Fragment key="ctr"><td className="kpi-metric-sep">{k.ctr.toFixed(1)}%</td><td className="kpi-delta-td"><Delta cur={k.ctr} prev={k.prevCtr} isPos /></td></Fragment>,
+  };
+  const pageHead: Record<string, (d: ThHTMLAttributes<HTMLTableCellElement>) => ReactNode> = {
+    clicks: (d) => <Fragment key="clicks"><SortTh thProps={d} label="Klikken" k="clicks" sort={pageSort} setSort={setPageSort} className="kpi-metric-sep" /><SortTh thProps={d} label="Δ" title="Verandering klikken t.o.v. vorige periode" k="dclicks" sort={pageSort} setSort={setPageSort} className="kpi-delta-th" /></Fragment>,
+    impressions: (d) => <Fragment key="impressions"><SortTh thProps={d} label="Vertoningen" k="impressions" sort={pageSort} setSort={setPageSort} className="kpi-metric-sep" /><SortTh thProps={d} label="Δ" title="Verandering vertoningen t.o.v. vorige periode" k="dimpressions" sort={pageSort} setSort={setPageSort} className="kpi-delta-th" /></Fragment>,
+  };
+  const pageCell: Record<string, (p: GscPage) => ReactNode> = {
+    clicks: (p) => <Fragment key="clicks"><td className="kpi-metric-sep">{nl(p.clicks)}</td><td className="kpi-delta-td"><Delta cur={p.clicks} prev={p.prevClicks} /></td></Fragment>,
+    impressions: (p) => <Fragment key="impressions"><td className="kpi-metric-sep">{nl(p.impressions)}</td><td className="kpi-delta-td"><Delta cur={p.impressions} prev={p.prevImpressions} /></td></Fragment>,
+  };
+
   const ahGetters: Record<AhKey, (k: AhrefsKeyword) => number | string> = {
     focus: (k) => focusRank(k.keyword), keyword: (k) => k.keyword, volume: (k) => k.volume || 0, position: (k) => k.position ?? 999, intent: (k) => k.intent, kans: (k) => (isFruit(k) ? 0 : 1),
   };
@@ -447,36 +506,20 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
           </div>
 
           {gsc.keywords.length > 0 && (
-            <Collapse sub title={<>Zoekwoorden uit Search Console ({gsc.keywords.length}) <HelpHint wide text="De zoekwoorden waarop deze site in Google gevonden wordt (echte klikken en vertoningen uit Search Console). Markeer belangrijke woorden als prio of secundair; die verschijnen vastgezet bovenaan en zijn gedeeld met de Ahrefs-lijst." /></>} meta="markeer een zoekwoord als prio of secundair (prio staat bovenaan)" open={isOpen("sc_kw")} onToggle={() => toggle("sc_kw")} actions={<>{periodPicker}<input className="kpi-kw-search" placeholder="Zoek zoekwoord…" value={kwSearch} onClick={(e) => e.stopPropagation()} onChange={(e) => setKwSearch(e.target.value)} /></>}>
+            <Collapse sub title={<>Zoekwoorden uit Search Console ({gsc.keywords.length}) <HelpHint wide text="De zoekwoorden waarop deze site in Google gevonden wordt (echte klikken en vertoningen uit Search Console). Markeer belangrijke woorden als prio of secundair; die verschijnen vastgezet bovenaan en zijn gedeeld met de Ahrefs-lijst." /></>} meta="markeer een zoekwoord als prio of secundair (prio staat bovenaan) · sleep de kolomkoppen om ze te herschikken" open={isOpen("sc_kw")} onToggle={() => toggle("sc_kw")} actions={<>{periodPicker}<input className="kpi-kw-search" placeholder="Zoek zoekwoord…" value={kwSearch} onClick={(e) => e.stopPropagation()} onChange={(e) => setKwSearch(e.target.value)} /></>}>
               <div className="res-table-wrap">
                 <table className="res-table kpi-table">
                   <thead><tr>
                     <SortTh label="Focus" k="focus" sort={kwSort} setSort={setKwSort} />
                     <SortTh label="Zoekwoord" k="keyword" sort={kwSort} setSort={setKwSort} />
-                    <SortTh label="Volume" k="volume" sort={kwSort} setSort={setKwSort} />
-                    <SortTh label="Positie" k="position" sort={kwSort} setSort={setKwSort} className="kpi-metric-sep" />
-                    <SortTh label="Δ" title="Verandering positie t.o.v. vorige periode (omhoog = beter)" k="dposition" sort={kwSort} setSort={setKwSort} className="kpi-delta-th" />
-                    <SortTh label="Klikken" k="clicks" sort={kwSort} setSort={setKwSort} className="kpi-metric-sep" />
-                    <SortTh label="Δ" title="Verandering klikken t.o.v. vorige periode" k="dclicks" sort={kwSort} setSort={setKwSort} className="kpi-delta-th" />
-                    <SortTh label="Vertoningen" k="impressions" sort={kwSort} setSort={setKwSort} className="kpi-metric-sep" />
-                    <SortTh label="Δ" title="Verandering vertoningen t.o.v. vorige periode" k="dimpressions" sort={kwSort} setSort={setKwSort} className="kpi-delta-th" />
-                    <SortTh label="CTR" k="ctr" sort={kwSort} setSort={setKwSort} className="kpi-metric-sep" />
-                    <SortTh label="Δ" title="Verandering CTR t.o.v. vorige periode" k="dctr" sort={kwSort} setSort={setKwSort} className="kpi-delta-th" />
+                    {kwCols.map((gk) => kwHead[gk](colDragProps(gk, kwCols, setKwCols, "pw_kpicols_kw")))}
                   </tr></thead>
                   <tbody>
                     {shownKws.map((k) => (
                       <tr key={k.keyword}>
                         <td><FocusSelect tier={focus[k.keyword]} onChange={(t) => markFocus(k.keyword, t)} /></td>
                         <td>{k.keyword}</td>
-                        <td>{(() => { const v = volMap.get(k.keyword.toLowerCase()); return v != null ? v.toLocaleString("nl-NL") : <span className="muted">&mdash;</span>; })()}</td>
-                        <td className="kpi-metric-sep">{k.position.toFixed(1)}</td>
-                        <td className="kpi-delta-td"><Delta cur={k.position} prev={k.prevPosition ?? k.position} invert isPos /></td>
-                        <td className="kpi-metric-sep">{nl(k.clicks)}</td>
-                        <td className="kpi-delta-td"><Delta cur={k.clicks} prev={k.prevClicks} /></td>
-                        <td className="kpi-metric-sep">{nl(k.impressions)}</td>
-                        <td className="kpi-delta-td"><Delta cur={k.impressions} prev={k.prevImpressions} /></td>
-                        <td className="kpi-metric-sep">{k.ctr.toFixed(1)}%</td>
-                        <td className="kpi-delta-td"><Delta cur={k.ctr} prev={k.prevCtr} isPos /></td>
+                        {kwCols.map((gk) => kwCell[gk](k))}
                       </tr>
                     ))}
                   </tbody>
@@ -486,16 +529,13 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
           )}
 
           {pagesView.length > 0 && (
-            <Collapse sub title={<>Pagina&rsquo;s uit Search Console ({pagesView.length}) <HelpHint wide text="De pagina's van de site met hun klikken en vertoningen uit Search Console. Vink de ster aan om een pagina op prioriteit te zetten; die springt dan (via de ster-kolom) automatisch bovenaan. Gedeeld met de Wijzigingen-tab." /></>} meta="ster = prioriteit, staat bovenaan" open={isOpen("sc_pages")} onToggle={() => toggle("sc_pages")} actions={periodPicker}>
+            <Collapse sub title={<>Pagina&rsquo;s uit Search Console ({pagesView.length}) <HelpHint wide text="De pagina's van de site met hun klikken en vertoningen uit Search Console. Vink de ster aan om een pagina op prioriteit te zetten; die springt dan (via de ster-kolom) automatisch bovenaan. Gedeeld met de Wijzigingen-tab." /></>} meta="ster = prioriteit, staat bovenaan · sleep de kolomkoppen om ze te herschikken" open={isOpen("sc_pages")} onToggle={() => toggle("sc_pages")} actions={periodPicker}>
               <div className="res-table-wrap">
                 <table className="res-table kpi-table">
                   <thead><tr>
                     <SortTh label="★" k="prio" sort={pageSort} setSort={setPageSort} />
                     <SortTh label="Pagina" k="url" sort={pageSort} setSort={setPageSort} />
-                    <SortTh label="Klikken" k="clicks" sort={pageSort} setSort={setPageSort} className="kpi-metric-sep" />
-                    <SortTh label="Δ" title="Verandering klikken t.o.v. vorige periode" k="dclicks" sort={pageSort} setSort={setPageSort} className="kpi-delta-th" />
-                    <SortTh label="Vertoningen" k="impressions" sort={pageSort} setSort={setPageSort} className="kpi-metric-sep" />
-                    <SortTh label="Δ" title="Verandering vertoningen t.o.v. vorige periode" k="dimpressions" sort={pageSort} setSort={setPageSort} className="kpi-delta-th" />
+                    {pageCols.map((gk) => pageHead[gk](colDragProps(gk, pageCols, setPageCols, "pw_kpicols_pages")))}
                     <th></th>
                   </tr></thead>
                   <tbody>
@@ -509,10 +549,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
                             <span className="kpi-drag" draggable={canDrag} onDragStart={() => { if (canDrag) setDragIdx(i); }} onDragEnd={() => setDragIdx(null)} title={canDrag ? "Sleep om bovenaan te zetten" : "Zet de sortering/prioriteit uit om te slepen"}>⠿</span>
                           </td>
                           <td><a href={p.url} target="_blank" rel="noreferrer">{shortUrl(p.url)}</a></td>
-                          <td className="kpi-metric-sep">{nl(p.clicks)}</td>
-                          <td className="kpi-delta-td"><Delta cur={p.clicks} prev={p.prevClicks} /></td>
-                          <td className="kpi-metric-sep">{nl(p.impressions)}</td>
-                          <td className="kpi-delta-td"><Delta cur={p.impressions} prev={p.prevImpressions} /></td>
+                          {pageCols.map((gk) => pageCell[gk](p))}
                           <td className="kpi-openpage-cell"><button type="button" className="ghost-btn small" onClick={(e) => { e.stopPropagation(); onOpenPage?.(p.url); }} title="Open deze pagina in het Pagina's-tabje">open in Pagina&rsquo;s</button></td>
                         </tr>
                       );
