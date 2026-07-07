@@ -315,6 +315,33 @@ const CLIENT_STRUCTURE: Record<DocKind, string> = {
 // Vaste openingsalinea voor de copy-klantversie (letterlijk, niet door AI gegenereerd).
 const COPY_CLIENT_INTRO = "Op basis van de SEO-analyse, de blauwdruk en de top 10-analyse hebben we deze copy ontwikkeld die voldoet aan de perfecte invulling voor deze pagina. Uiteraard heb jij veel meer verstand van jouw vak en je bedrijf dan wij, dus vragen we je wel om deze teksten goed door te nemen en aan te passen waar nodig. Als je deze teksten (al dan niet aangepast) terugstuurt, dan zullen wij ze op de juiste, SEO-geoptimaliseerde manier in de website verwerken.";
 
+// KERNPRODUCT: de copy-stap schrijft de VOLLEDIGE landingspagina-copy in één klant-document
+// (geen korte samenvatting). Losstaand van de korte klant-samenvatting die analyse/blauwdruk
+// gebruiken: alleen de 3 uitleg-secties zijn kort, sectie 4 is de complete, uitgeschreven pagina.
+const COPY_CLIENT_SYSTEM = `Je bent een senior SEO-copywriter bij bureau Pingwin en schrijft de VOLLEDIGE, publicatieklare landingspagina-copy voor deze pagina, in één document dat de klant naleest en corrigeert. Dit is het KERNPRODUCT: lever de best denkbare, complete invulling. Absoluut GEEN samenvatting en GEEN opsomming van wat er zou moeten komen: schrijf de daadwerkelijke paginatekst volledig uit.
+BRON: baseer je op de gemeten data, de blauwdruk en de analyse hieronder (primair + secundaire zoekwoorden, zoekintentie, welke invalshoeken de best scorende top-10-concurrenten behandelen, en wat de huidige pagina mist). Verzin geen feiten, cijfers, locaties of diensten die niet uit de data of het bedrijf volgen; ken je een concreet detail niet, schrijf dan een natuurlijke, corrigeerbare zin (de klant vult aan).
+SCHRIJF ECHT UIT, GEEN SHORTCUTS:
+- Dek ALLE relevante invalshoeken die de top-10-winnaars dekken, PLUS wat de pagina nu mist. Reken op 6 tot 9 H2-secties.
+- Elke H2 krijgt een VOLLE alinea van circa 80 tot 150 woorden (meer mag), nooit één losse zin. Gebruik binnen een sectie bullets waar dat de leesbaarheid helpt.
+- Open met een direct antwoord op de zoekintentie; zet het primaire zoekwoord in de eerste 100 woorden en verwerk de secundaire/variant-zoekwoorden natuurlijk door de hele tekst (keyword-density 0,5-2%, geen stuffing).
+- Voeg waar passend een sectie met concrete praktijkvoorbeelden toe (elk voorbeeld een eigen H3-kop met een korte beschrijving).
+- Voeg een UITGEBREIDE FAQ toe: 6 tot 8 veelgestelde vragen (elke vraag een H3-kop) met een echt antwoord van 40 tot 80 woorden, gericht op long-tail-zoekwoorden en de zoekintentie.
+- Sluit af met een korte, wervende call-to-action (H3).
+TOON: warm, deskundig, passend bij het bedrijf; concreet en to-the-point, geen holle marketingtaal. Behoud goede bestaande zinnen van de huidige pagina waar die voldoen; herschrijf/vul aan waar de blauwdruk en top-10 dat vragen.
+
+LEVER HET DOCUMENT MET EXACT DEZE SECTIES, in deze volgorde:
+1. Sectie "Waar de nieuwe teksten over gaan" — KORT (kernboodschap en toon, een paar zinnen).
+2. Sectie "Welke zoekwoorden erin verwerkt zijn" — KORT (bullets, elk concreet zoekwoord vet met **dubbele sterretjes**).
+3. Sectie "Wat dit voor jullie vindbaarheid betekent" — KORT (een paar zinnen).
+4. Sectie "De volledige webteksten (lees na en corrigeer)" — VOLLEDIG. Begin met de paginatitel (meta-title) en de meta-description (elk als subheading met de waarde als paragraph eronder). Daarna de complete copy: de H1 (subheading) + de intro-alinea, per H2 de kop (subheading) + de volledige alineatekst (paragraph-blokken) + eventuele bullets, de praktijkvoorbeelden (elk een subheading), en de FAQ (het FAQ-blok als subheading, elke vraag daaronder als subheading met het antwoord als paragraph), en tot slot de call-to-action.
+Zet vóór ELKE koptitel in sectie 4 de niveau-aanduiding (H1, H2 of H3) als klein label vóór de tekst; FAQ-vraagtitels en praktijkvoorbeelden zijn altijd H3, zodat de sitebouwer het juiste opmaakniveau ziet. Alleen de secties 1 t/m 3 zijn kort; sectie 4 is de volledige, uitgeschreven pagina.
+Laat de scorecard, criteria-ID's, tekencounts en het behoud-overzicht WEG (dat is intern). Geen emoji.
+
+RELEVANTE CRITERIA (naslag voor jezelf, niet als tekst in het document):
+${SEO_CRITERIA_MD}
+
+${DOCSPEC_FORMAT}`;
+
 export async function clientVersionSpec(slug: string, url: string, kind: DocKind, source: string, extra?: string): Promise<{ spec: DocSpec; title: string }> {
   const client = await getClientBySlug(slug);
   const label = { analyse: "SEO-analyse", blauwdruk: "blauwdruk", copy: "copy" }[kind];
@@ -426,8 +453,11 @@ TAAL: gewone taal, geen jargon (of leg het in één zin uit), geen scorecard en 
 ZOEKWOORDEN VET: zet elk concreet zoekwoord vet met dubbele sterretjes, bijvoorbeeld **exclusieve tuinen**.
 ${CLIENT_STRUCTURE[kind]}
 Geen emoji. ${DOCSPEC_FORMAT}`;
-  const system = audience === "klant" ? klantSystem : SYSTEMS[kind];
-  const maxTokens = audience === "klant" ? (kind === "copy" ? 9000 : 3500) : (kind === "blauwdruk" ? 10000 : 14000);
+  // Copy is het kernproduct: schrijf de VOLLEDIGE pagina (eigen copywriter-prompt), niet de
+  // korte klant-samenvatting die analyse/blauwdruk gebruiken. Ruim tokenbudget zodat 5.000+
+  // woorden niet worden afgekapt.
+  const system = audience === "klant" ? (kind === "copy" ? COPY_CLIENT_SYSTEM : klantSystem) : SYSTEMS[kind];
+  const maxTokens = audience === "klant" ? (kind === "copy" ? 16000 : 3500) : (kind === "blauwdruk" ? 10000 : 14000);
   const baseUser = `Maak de ${kind} op basis van deze gegevens:\n\n${context.text}${chain}`;
   const raw1 = await callClaude(system, [{ role: "user", content: baseUser }], maxTokens, { slug, action: `doc_${kind}` });
   let parsed = extractJsonObject(raw1);
