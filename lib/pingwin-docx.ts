@@ -34,7 +34,6 @@ function bulletPara(item: string): any {
 export type DocBlock =
   | { type: "paragraph"; text: string }
   | { type: "subheading"; text: string }
-  | { type: "subsubheading"; text: string }
   | { type: "bullets"; items: string[] }
   | { type: "highlight"; text: string }
   | { type: "step"; nr: number; title: string; text: string }
@@ -64,7 +63,6 @@ export async function buildPingwinDoc(spec: DocSpec): Promise<Buffer> {
       try {
         if (b.type === "paragraph" && b.text) children.push(bodyPara(b.text));
         else if (b.type === "subheading" && b.text) children.push(P.createSubHeading(b.text));
-        else if (b.type === "subsubheading" && b.text) children.push(P.createSubSubHeading(b.text));
         else if (b.type === "bullets" && b.items?.length) children.push(...b.items.map(bulletPara));
         else if (b.type === "highlight" && b.text) children.push(...P.createHighlightBox(b.text));
         else if (b.type === "step") children.push(P.createStepBlock(b.nr, b.title, b.text));
