@@ -13,7 +13,7 @@ import { sql, ensureSchema } from "./db";
 // Delegated permissions: Mail.Read, Mail.Send, offline_access, User.Read
 // ═══════════════════════════════════════════════════════════
 
-const SCOPES = "offline_access Mail.ReadWrite Mail.Send User.Read";
+const SCOPES = "offline_access Mail.ReadWrite Mail.Send User.Read People.Read";
 
 export function msConfigured(): boolean {
   return !!(process.env.MS_CLIENT_ID && process.env.MS_CLIENT_SECRET && process.env.MS_TENANT_ID);
@@ -160,6 +160,35 @@ const SUPERHUMAN_ACCOUNT_FALLBACK = "Maarten@pingwin.nl";
 function superhumanThreadLink(account: string, query: string, conversationId: string): string {
   const acc = account || SUPERHUMAN_ACCOUNT_FALLBACK;
   return `https://mail.superhuman.com/${acc}/search/${encodeURIComponent(query)}/thread/${encodeURIComponent(conversationId)}`;
+}
+
+export type Person = { name: string; email: string };
+
+// Zoekt contactpersonen uit Maartens M365-account (mensen met wie hij mailt),
+// voor de autocomplete in het mail-adresveld. Gebruikt de People-API van Graph
+// (gerangschikt op relevantie). Vereist de People.Read-scope.
+export async function msSearchPeople(query: string, limit = 8): Promise<Person[] | null> {
+  const q = (query || "").trim();
+  if (!q) return [];
+  const token = await msAccessToken();
+  if (!token) return null;
+  const top = Math.min(20, Math.max(1, limit));
+  const url = `https://graph.microsoft.com/v1.0/me/people?$search=${encodeURIComponent('"' + q + '"')}&$top=${top}&$select=displayName,scoredEmailAddresses`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) return null;
+  const data = await res.json().catch(() => ({})) as { value?: { displayName?: string; scoredEmailAddresses?: { address?: string }[] }[] };
+  const out: Person[] = [];
+  const seen = new Set<string>();
+  for (const p of data.value || []) {
+    const email = (p.scoredEmailAddresses?.[0]?.address || "").trim();
+    if (!email) continue;
+    const low = email.toLowerCase();
+    if (seen.has(low)) continue;
+    seen.add(low);
+    out.push({ name: (p.displayName || "").trim() || email, email });
+    if (out.length >= limit) break;
+  }
+  return out;
 }
 
 // Haalt de recente mails met een klant op (zoekt op het e-maildomein/-adres).

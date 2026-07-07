@@ -616,7 +616,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
               <button type="button" className="pcd-step-intern" onClick={() => ensureFolderThenRun(["copy"], "intern")} disabled={runBusy} title="Maakt de uitgebreide interne/technische versie van deze stap (op verzoek; ~3x zo lang). Voor eigen inzicht. Niet klant-zichtbaar.">Interne / uitgebreide versie</button>
             </div>
             <div className="pcd-step">
-              <button type="button" className={"pcd-btn " + (allStepsDone ? "pcd-btn-done" : "pcd-btn-primary") + (runBusy ? " busy" : "")} onClick={() => ensureFolderThenRun(["analyse", "blauwdruk", "copy"])} disabled={runBusy} title="Draait de drie stappen op de achtergrond door; wegklikken mag.">{runBusy ? "Starten…" : allStepsDone ? "✓ Alles klaar (1 → 2 → 3)" : "Alles achter elkaar (1 → 2 → 3)"}</button>
+              <button type="button" className={"pcd-btn " + (allStepsDone ? "pcd-btn-done" : "pcd-btn-primary") + (runBusy ? " busy" : "")} onClick={() => ensureFolderThenRun(pageLive === false ? ["blauwdruk", "copy"] : ["analyse", "blauwdruk", "copy"])} disabled={runBusy} title={pageLive === false ? "Deze pagina bestaat nog niet live: de analyse wordt overgeslagen, alleen blauwdruk en copy draaien." : "Draait de drie stappen op de achtergrond door; wegklikken mag."}>{runBusy ? "Starten…" : allStepsDone ? "✓ Alles klaar" : pageLive === false ? "Blauwdruk + copy (2 → 3)" : "Alles achter elkaar (1 → 2 → 3)"}</button>
             </div>
           </div>
           <div className="muted pcd-docs-note">Draait op de achtergrond, wegklikken mag. Eén korte klantversie die jij, de developer én de klant lezen. Tip: kies eerst een Drive-map.</div>
