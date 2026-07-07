@@ -231,6 +231,7 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
   const [open, setOpen] = useState<ChangeEvent | null>(null);
   const [kpi, setKpi] = useState<Kpi | null>(null);
   const [kpiLoading, setKpiLoading] = useState(false);
+  const [kpiDays, setKpiDays] = useState(28);
   // Gedeelde hover tussen de stippellijnen (rechts) en de "wat veranderde"-secties (links).
   const [hoverMoment, setHoverMoment] = useState<string | null>(null);
   // Belangrijke zoekwoorden (gedeeld met de KPI-tab): aangevinkt = prio, komt bovenaan.
@@ -311,11 +312,11 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
     if (!open) { setKpi(null); return; }
     let alive = true;
     setKpiLoading(true); setKpi(null);
-    fetch(`/api/admin/changes/kpi?slug=${encodeURIComponent(slug)}&id=${open.id}`)
+    fetch(`/api/admin/changes/kpi?slug=${encodeURIComponent(slug)}&id=${open.id}&days=${kpiDays}`)
       .then((r) => r.json()).then((d) => { if (alive && d.ok) setKpi({ changeDate: d.changeDate, daily: d.daily || [], keywords: d.keywords || [], ga4: d.ga4 || null, moments: d.moments || [], compare: d.compare || null }); })
       .catch(() => { /* stil */ }).finally(() => { if (alive) setKpiLoading(false); });
     return () => { alive = false; };
-  }, [open, slug]);
+  }, [open, slug, kpiDays]);
 
   async function load() {
     setLoading(true);
@@ -379,8 +380,16 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
             })}
           </div>
           <div className="wz-detail-card acc-teal">
-            <div className="wz-detail-card-title">KPI-impact</div>
-            <p className="muted" style={{ fontSize: 12, margin: "2px 0 10px" }}>Elke gedateerde stippellijn is een verandermoment. Eronder staat de waarde óp dat moment → de waarde nu (of tot het volgende moment) (groen = beter, rood = slechter). Beweeg over een stippellijn (of een sectie links) om dat moment op te lichten.</p>
+            <div className="wz-detail-card-title" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+              <span>KPI-impact</span>
+              <select className="kpi-period-select" value={kpiDays} onChange={(e) => setKpiDays(Number(e.target.value))} title="Hoeveel dagen vóór én ná het moment je wilt zien en vergelijken">
+                <option value={14}>14 dagen vóór/ná</option>
+                <option value={28}>28 dagen vóór/ná</option>
+                <option value={60}>60 dagen vóór/ná</option>
+                <option value={90}>90 dagen vóór/ná</option>
+              </select>
+            </div>
+            <p className="muted" style={{ fontSize: 12, margin: "2px 0 10px" }}>Elke gedateerde stippellijn is een verandermoment. Eronder staat de waarde óp dat moment → de waarde nu (of tot het volgende moment) (groen = beter, rood = slechter). Beweeg over een stippellijn (of een sectie links) om dat moment op te lichten. Met de keuze rechtsboven stel je in hoeveel dagen vóór en ná je toont en vergelijkt.</p>
             {kpiLoading && <div className="muted" style={{ padding: 12 }}>KPI's laden…</div>}
             {!kpiLoading && kpi && (
               <div className="wz-kpi">

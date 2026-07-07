@@ -30,6 +30,8 @@ export async function GET(req: NextRequest) {
 
   const changeDate = event.detectedAt.slice(0, 10);
   const day = 86400000;
+  // Venstergrootte (dagen vóór én ná het moment), instelbaar vanuit de UI.
+  const winDays = Math.max(7, Math.min(120, Number(req.nextUrl.searchParams.get("days")) || 28));
 
   // Alle verandermomenten van deze pagina, geclusterd per <=2 dagen (nieuwste eerst
   // uit de DB; hier oplopend gesorteerd voor het clusteren).
@@ -50,13 +52,13 @@ export async function GET(req: NextRequest) {
   const times = moments.length ? moments.map((m) => new Date(m.date + "T00:00:00Z").getTime()) : [new Date(changeDate + "T00:00:00Z").getTime()];
   const minC = Math.min(...times), maxC = Math.max(...times);
   const floor = Date.now() - 480 * day;
-  const startDate = new Date(Math.max(minC - 60 * day, floor)).toISOString().slice(0, 10);
-  const endDate = new Date(Math.min(maxC + 60 * day, Date.now() - 3 * day)).toISOString().slice(0, 10);
+  const startDate = new Date(Math.max(minC - winDays * day, floor)).toISOString().slice(0, 10);
+  const endDate = new Date(Math.min(maxC + winDays * day, Date.now() - 3 * day)).toISOString().slice(0, 10);
 
   const [daily, keywordsRaw, ga4, ahrefs] = await Promise.all([
     getGscDailyForPage(domain, event.url, startDate, endDate).catch(() => []),
-    getGscKeywordsBeforeAfter(domain, event.url, changeDate, 60).catch(() => []),
-    getGa4PageSignalsBeforeAfter(slug, event.url, changeDate, 60).catch(() => null),
+    getGscKeywordsBeforeAfter(domain, event.url, changeDate, winDays).catch(() => []),
+    getGa4PageSignalsBeforeAfter(slug, event.url, changeDate, winDays).catch(() => null),
     getAhrefsKeywords(slug).catch(() => []),
   ]);
 
@@ -66,7 +68,7 @@ export async function GET(req: NextRequest) {
   const keywords = keywordsRaw.map((k) => ({ ...k, volume: volMap.has(k.keyword.toLowerCase()) ? volMap.get(k.keyword.toLowerCase()) ?? null : null }));
 
   // De exact vergeleken voor/na-periodes (voor transparantie in de UI).
-  const compare = equalBeforeAfter(changeDate, 60);
+  const compare = equalBeforeAfter(changeDate, winDays);
 
   return NextResponse.json({ ok: true, changeDate, daily, keywords, ga4, moments, compare });
 }
