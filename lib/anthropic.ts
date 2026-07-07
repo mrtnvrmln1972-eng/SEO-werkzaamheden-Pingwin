@@ -25,11 +25,22 @@ export function anthropicConfigured(): boolean {
 export async function callClaude(system: string, messages: ChatMsg[], maxTokens = 1800, ctx?: UsageCtx): Promise<string> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) throw new Error("ANTHROPIC_API_KEY ontbreekt (voeg hem toe in Vercel om de chat te gebruiken).");
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-    body: JSON.stringify({ model: MODEL, max_tokens: maxTokens, system, messages }),
-  });
+  // Harde time-out: hangt de Claude-API, dan gooit dit een fout i.p.v. eindeloos te
+  // blijven wachten (voorkomt vastlopende achtergrond-runs).
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 300000);
+  let res: Response;
+  try {
+    res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+      body: JSON.stringify({ model: MODEL, max_tokens: maxTokens, system, messages }),
+      signal: ctrl.signal,
+    });
+  } catch (e) {
+    if (e instanceof Error && e.name === "AbortError") throw new Error("Claude reageerde niet binnen de tijdslimiet (time-out).");
+    throw e;
+  } finally { clearTimeout(timer); }
   if (!res.ok) {
     const t = await res.text().catch(() => "");
     throw new Error(`Claude-fout ${res.status}: ${t.slice(0, 300)}`);

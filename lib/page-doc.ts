@@ -52,7 +52,7 @@ async function buildContext(slug: string, url: string, extra?: string): Promise<
     getPagePlan(slug, url),
     fetchPageContent(url).catch(() => null),
     withTimeout(measurePage(url).catch(() => null), 60000, null),
-    getGscForPage(domain, url).catch(() => []),
+    withTimeout(getGscForPage(domain, url).catch(() => []), 30000, []),
     withTimeout(getPageSpeed(url).catch(() => null), 45000, null),
     getTasks(slug).catch(() => []),
   ]);
@@ -69,10 +69,10 @@ async function buildContext(slug: string, url: string, extra?: string): Promise<
   let competitorText = "";
   if (ahrefsConfigured()) {
     const [urlKw, serp, overview, ideas] = await Promise.all([
-      getUrlOrganicKeywords(url, "nl", 40).catch(() => []),
-      primary ? getSerpOverview(primary, "nl").catch(() => []) : Promise.resolve([]),
-      primary ? getKeywordsOverview([primary], "nl").catch(() => []) : Promise.resolve([]),
-      primary ? getKeywordIdeas(primary, "nl", 25).catch(() => []) : Promise.resolve([]),
+      withTimeout(getUrlOrganicKeywords(url, "nl", 40).catch(() => []), 40000, []),
+      primary ? withTimeout(getSerpOverview(primary, "nl").catch(() => []), 40000, []) : Promise.resolve([]),
+      primary ? withTimeout(getKeywordsOverview([primary], "nl").catch(() => []), 30000, []) : Promise.resolve([]),
+      primary ? withTimeout(getKeywordIdeas(primary, "nl", 25).catch(() => []), 30000, []) : Promise.resolve([]),
     ]);
     const ov = overview[0];
 

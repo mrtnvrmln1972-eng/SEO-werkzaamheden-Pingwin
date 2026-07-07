@@ -39,6 +39,11 @@ const STEP_KLANT: Record<DocKind, string> = {
 };
 function pagePath(u: string): string { try { return new URL(u).pathname || u; } catch { return u; } }
 function safeName(s: string): string { return (s || "document").replace(/[^\p{L}\p{N} _-]+/gu, "").replace(/\s+/g, "-").slice(0, 60) || "document"; }
+// Harde bovengrens op één generatie-stap: hangt er iets (externe call zonder time-out),
+// dan wordt het na ms een nette fout i.p.v. dat de stap eindeloos op 'bezig' blijft staan.
+function withHardTimeout<T>(p: Promise<T>, ms: number, msg: string): Promise<T> {
+  return Promise.race([p, new Promise<T>((_, reject) => { setTimeout(() => reject(new Error(msg)), ms); })]);
+}
 
 // Eigen, geïsoleerde tabel-voorbereiding (raakt de gedeelde ensureSchema niet aan).
 let runTableReady: Promise<void> | null = null;
@@ -153,7 +158,7 @@ async function processRun(id: number): Promise<void> {
     const claimed = await claimStep(id, kind);
     if (!claimed) return; // andere worker pakte hem, of de status veranderde
     try {
-      const link = await generateAndStoreDoc(slug, url, kind, extra, folderId);
+      const link = await withHardTimeout(generateAndStoreDoc(slug, url, kind, extra, folderId), 480000, "Genereren duurde te lang (>8 min) en is afgebroken. Probeer het opnieuw.");
       await finishStep(id, kind, link);
     } catch (e) {
       await failStep(id, kind, ((e as Error).message || "onbekende fout").slice(0, 500));
