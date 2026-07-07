@@ -491,6 +491,7 @@ function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoTo
   const [plan, setPlan] = useState(u.plan);
   const [saved, setSaved] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [planOpen, setPlanOpen] = useState(false);
   const [tasks, setTasks] = useState<{ id: number | null; taak: string; fase: string; wie: string; status: string; docLink?: string; stepKind?: string }[]>([]);
   const [cleaning, setCleaning] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -553,10 +554,11 @@ function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoTo
         <tr className="pages-detail-row">
           <td colSpan={9}>
             <div className="pages-detail">
-              <label className="pages-detail-label">
-                Plan voor deze pagina {saved && <span className="focus-save-status">opgeslagen</span>}
-                <button type="button" className="ghost-btn small" style={{ marginLeft: 8 }} onClick={() => setEditing((v) => !v)}>{editing ? "Klaar" : "Bewerken"}</button>
+              <label className="pages-detail-label" onClick={() => setPlanOpen((v) => !v)} style={{ cursor: "pointer" }}>
+                <span className="pch-caret">{planOpen ? "▾" : "▸"}</span> Plan voor deze pagina {(plan || "").trim() ? <span className="plan-chip has">plan</span> : <span className="plan-chip">leeg</span>} {saved && <span className="focus-save-status">opgeslagen</span>}
+                {planOpen && <button type="button" className="ghost-btn small" style={{ marginLeft: 8 }} onClick={(e) => { e.stopPropagation(); setEditing((v) => !v); }}>{editing ? "Klaar" : "Bewerken"}</button>}
               </label>
+              {planOpen && (<>
               {editing ? (
                 <textarea
                   className="pages-plan"
@@ -570,6 +572,7 @@ function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoTo
                   : <div className="pages-plan-view muted">Nog geen plan. Klik op Bewerken, of laat de chat hieronder een voorstel maken.</div>
               )}
               {u.redirectTarget && <div className="muted" style={{ marginTop: 6 }}>Live redirect: → <a href={u.redirectTarget} target="_blank" rel="noreferrer">{u.redirectTarget}</a></div>}
+              </>)}
 
               {(() => {
                 // Een taak hoort bij de pijplijn (blijft staan) als hij een stap-kenmerk
@@ -600,7 +603,7 @@ function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoTo
                 );
               })()}
 
-              <PageChat slug={slug} url={u.url} clientEmail={clientEmail} clientName={clientName} onApplied={(newPlan) => { if (newPlan) setPlan(newPlan); loadTasks(); }} onGoToTask={onGoToTask} onClusterApplied={onDataChanged} />
+              <PageChat slug={slug} url={u.url} clientEmail={clientEmail} clientName={clientName} onApplied={(newPlan) => { if (newPlan) setPlan(newPlan); loadTasks(); }} onGoToTask={onGoToTask} onClusterApplied={onDataChanged} pageLive={u.status === 200} />
             </div>
           </td>
         </tr>

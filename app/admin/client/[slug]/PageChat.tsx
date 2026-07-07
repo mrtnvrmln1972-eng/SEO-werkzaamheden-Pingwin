@@ -15,12 +15,15 @@ type ChatSummary = { id: number; title: string; updatedAt: string; count: number
 const SUMMARIZE_PROMPT =
   "Vat ons hele gesprek over deze pagina samen tot één definitieve conclusie en strategie, gegrond op wat we hierboven hebben besproken en de live feiten. Dit is de eindconclusie die ik als plan voor deze pagina wil overnemen, dus stel geen nieuwe vragen meer. Geef scherp en uitvoerbaar: de rol en het doel van de pagina in één zin; het primaire en secundaire zoekwoord (met de onderbouwing die we bespraken, zoals volume en zoekintentie); en de concrete acties, elk met de fase (Bouwen/Herbedraden/Opschonen) en of het SEO- of Dev-werk is. Sluit af met de doel-URL.";
 
-export default function PageChat({ slug, url, clientEmail, clientName, onApplied, onGoToTask, onClusterApplied }: { slug: string; url: string; clientEmail?: string; clientName?: string; onApplied: (plan?: string) => void; onGoToTask?: (taskId: number) => void; onClusterApplied?: () => void }) {
+export default function PageChat({ slug, url, clientEmail, clientName, onApplied, onGoToTask, onClusterApplied, pageLive }: { slug: string; url: string; clientEmail?: string; clientName?: string; onApplied: (plan?: string) => void; onGoToTask?: (taskId: number) => void; onClusterApplied?: () => void; pageLive?: boolean }) {
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [chatId, setChatId] = useState<number | null>(null);
   const [chats, setChats] = useState<ChatSummary[]>([]);
   // Of het gesprek van de actieve chat uitgeklapt is (toggle in de lijst).
   const [convoOpen, setConvoOpen] = useState(true);
+  // De chat-kaart in/uitklappen: je maakt hem een keer, dus zodra de strategie is
+  // vastgelegd staat hij standaard dicht (scheelt scrollen).
+  const [chatOpen, setChatOpen] = useState(true);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [proposal, setProposal] = useState<Proposal | null>(null);
@@ -100,13 +103,13 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   // Groene "klaar"-status onthouden (browseropslag). Strategie: per pagina, blijft groen
   // na heropenen. Doorgeven: per chat, reset bij een nieuwe chat (nieuwe vraag = weer oranje).
   useEffect(() => {
-    try { setTaskDone(localStorage.getItem(`pw_stratdone_${slug}_${url}`) === "1"); } catch { /* geen opslag */ }
+    try { const done = localStorage.getItem(`pw_stratdone_${slug}_${url}`) === "1"; setTaskDone(done); setChatOpen(!done); } catch { /* geen opslag */ }
   }, [slug, url]);
   useEffect(() => {
     if (chatId == null) { setClusterDone(0); return; }
     try { const n = Number(localStorage.getItem(`pw_clusterdone_${chatId}`) || "0"); setClusterDone(Number.isFinite(n) ? n : 0); } catch { setClusterDone(0); }
   }, [chatId]);
-  function markStrategieDone() { setTaskDone(true); try { localStorage.setItem(`pw_stratdone_${slug}_${url}`, "1"); } catch { /* geen opslag */ } }
+  function markStrategieDone() { setTaskDone(true); setChatOpen(false); try { localStorage.setItem(`pw_stratdone_${slug}_${url}`, "1"); } catch { /* geen opslag */ } }
 
   const [taskGen, setTaskGen] = useState(false);
   // Analyse vastgelegd (taak + document) → knop wordt groen "Analyse vastgelegd".
@@ -519,11 +522,12 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
         </div>
       )}
       <div className="page-chat">
-        <div className="page-chat-head">
-          <span>Chat over deze pagina (gegrond in live status, GSC-ranking en het cluster)</span>
-          {(chats.length > 0 || msgs.length > 0) && <button type="button" className="ghost-btn small" onClick={newChat}>+ Nieuwe chat</button>}
+        <div className="page-chat-head" onClick={() => setChatOpen((o) => !o)} style={{ cursor: "pointer" }} title={chatOpen ? "Chat inklappen" : "Chat uitklappen"}>
+          <span><span className="pch-caret">{chatOpen ? "▾" : "▸"}</span> Chat over deze pagina (gegrond in live status, GSC-ranking en het cluster)</span>
+          {(chats.length > 0 || msgs.length > 0) && <button type="button" className="ghost-btn small" onClick={(e) => { e.stopPropagation(); newChat(); }}>+ Nieuwe chat</button>}
         </div>
 
+        {chatOpen && (
         <div className="page-chat-history">
           <div className="page-chat-history-head">Eerdere chats</div>
 
@@ -556,6 +560,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
             <div className="muted" style={{ fontSize: 12 }}>Nog geen chats. Stel hieronder een vraag over deze pagina.</div>
           )}
         </div>
+        )}
       </div>
 
       {applied && <div className="saved-msg" style={{ marginTop: 8 }} dangerouslySetInnerHTML={{ __html: applied }} />}
@@ -590,7 +595,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
           </div>
           <input className="pcd-nuance" value={nuance} onChange={(e) => setNuance(e.target.value)} placeholder="Extra sturing (optioneel), bijv. leg de nadruk op de regio, of behoud de tarieventabel." />
           <div className="pcd-docs-buttons">
-            <button type="button" className="pcd-btn" onClick={() => ensureFolderThenRun(["analyse"])} disabled={runBusy} title="Draait op de achtergrond door; wegklikken mag.">1. Analyse-document</button>
+            <button type="button" className="pcd-btn" onClick={() => ensureFolderThenRun(["analyse"])} disabled={runBusy || pageLive === false} title={pageLive === false ? "Deze pagina bestaat nog niet live, dus er valt nog niets te analyseren. Blauwdruk en copy kunnen wel." : "Draait op de achtergrond door; wegklikken mag."}>1. Analyse-document</button>
             <button type="button" className="pcd-btn" onClick={() => ensureFolderThenRun(["blauwdruk"])} disabled={runBusy} title="Draait op de achtergrond door; wegklikken mag.">2. Blauwdruk-document</button>
             <button type="button" className="pcd-btn" onClick={() => ensureFolderThenRun(["copy"])} disabled={runBusy} title="Draait op de achtergrond door; wegklikken mag.">3. Copy-document (+ dev-taak)</button>
             <button type="button" className="pcd-btn pcd-btn-primary" onClick={() => ensureFolderThenRun(["analyse", "blauwdruk", "copy"])} disabled={runBusy} title="Draait de drie stappen op de achtergrond door; wegklikken mag.">{runBusy ? "Starten…" : "Alles achter elkaar (1 → 2 → 3)"}</button>
