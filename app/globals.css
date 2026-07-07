@@ -1534,6 +1534,10 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .wz-kw-table th { text-align: left; background: var(--dark); color: #fff; font-weight: 700; padding: 6px 8px; border-bottom: 1px solid var(--border); }
 .wz-kw-table th:first-child { border-top-left-radius: 7px; }
 .wz-kw-table th:last-child { border-top-right-radius: 7px; }
+.wz-kw-table th.wz-sort { cursor: pointer; user-select: none; white-space: nowrap; }
+.wz-kw-table th.wz-sort:hover { color: var(--brand-orange-soft); }
+.wz-sort-ind { font-size: 9px; letter-spacing: -1.5px; color: #7d7871; }
+.wz-sort-ind.active { color: #fff; font-size: 10px; }
 .wz-dot { cursor: help; }
 .wz-verschil.up { color: #1e824c; font-weight: 700; }
 .wz-verschil.down { color: var(--red); font-weight: 700; }

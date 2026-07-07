@@ -77,6 +77,33 @@ type Moment = { id: number; date: string };
 type Compare = { beforeStart: string; beforeEnd: string; afterStart: string; afterEnd: string; days: number; weekAligned: boolean };
 type Kpi = { changeDate: string; daily: Day[]; keywords: KwBA[]; ga4: Ga4 | null; moments: Moment[]; compare: Compare | null };
 
+// Sorteerbare kolomkop voor de keyword-rankings-tabel, met een op/neer-indicator.
+type KwSort = { key: string; dir: "asc" | "desc" } | null;
+function WzSortTh({ label, k, sort, setSort }: { label: string; k: string; sort: KwSort; setSort: (s: KwSort) => void }) {
+  const active = sort?.key === k;
+  function onClick() {
+    if (!active) return setSort({ key: k, dir: "desc" });
+    if (sort!.dir === "desc") return setSort({ key: k, dir: "asc" });
+    return setSort(null);
+  }
+  return (
+    <th className="wz-sort" onClick={onClick} title="Klik om te sorteren (aflopend → oplopend → uit)">
+      {label} <span className={"wz-sort-ind" + (active ? " active" : "")}>{active ? (sort!.dir === "asc" ? "▲" : "▼") : "▲▼"}</span>
+    </th>
+  );
+}
+// Sorteersleutels: klikken/impressies/CTR op verandering (na − voor), positie-delta = verbetering.
+const KW_GETTERS: Record<string, (k: KwBA) => number | string> = {
+  keyword: (k) => k.keyword.toLowerCase(),
+  volume: (k) => k.volume ?? -1,
+  posBefore: (k) => k.positionBefore ?? 9999,
+  posAfter: (k) => k.positionAfter ?? 9999,
+  delta: (k) => (k.positionBefore != null && k.positionAfter != null ? k.positionBefore - k.positionAfter : -9999),
+  clicks: (k) => k.clicksAfter - k.clicksBefore,
+  impressions: (k) => (k.impressionsAfter ?? 0) - (k.impressionsBefore ?? 0),
+  ctr: (k) => (k.ctrAfter ?? 0) - (k.ctrBefore ?? 0),
+};
+
 function secs(s: number): string { if (!s) return "0s"; const m = Math.floor(s / 60), r = s % 60; return m ? `${m}m ${r}s` : `${r}s`; }
 // Voor sommige signalen is hoger beter (engagement, tijd, views, pagina's/sessie),
 // voor bounce rate is lager beter.
@@ -232,6 +259,7 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
   const [kpi, setKpi] = useState<Kpi | null>(null);
   const [kpiLoading, setKpiLoading] = useState(false);
   const [kpiDays, setKpiDays] = useState(28);
+  const [kwSort, setKwSort] = useState<KwSort>(null);
   // Gedeelde hover tussen de stippellijnen (rechts) en de "wat veranderde"-secties (links).
   const [hoverMoment, setHoverMoment] = useState<string | null>(null);
   // Belangrijke zoekwoorden (gedeeld met de KPI-tab): aangevinkt = prio, komt bovenaan.
@@ -406,9 +434,28 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
                   <div className="wz-kw">
                     <div className="wz-kpi-label">Keyword-rankings (voor → na) <span className="sov-sub">vink de belangrijkste aan, die komen bovenaan (gedeeld met de KPI-tab)</span></div>
                     <table className="wz-kw-table">
-                      <thead><tr><th></th><th>Zoekwoord</th><th>Volume</th><th>Positie voor</th><th>Positie na</th><th>Stijging/daling</th><th>Kliks (v→n)</th><th>Impressies (v→n)</th><th>CTR (v→n)</th></tr></thead>
+                      <thead><tr>
+                        <th></th>
+                        <WzSortTh label="Zoekwoord" k="keyword" sort={kwSort} setSort={setKwSort} />
+                        <WzSortTh label="Volume" k="volume" sort={kwSort} setSort={setKwSort} />
+                        <WzSortTh label="Positie voor" k="posBefore" sort={kwSort} setSort={setKwSort} />
+                        <WzSortTh label="Positie na" k="posAfter" sort={kwSort} setSort={setKwSort} />
+                        <WzSortTh label="Stijging/daling" k="delta" sort={kwSort} setSort={setKwSort} />
+                        <WzSortTh label="Kliks (v→n)" k="clicks" sort={kwSort} setSort={setKwSort} />
+                        <WzSortTh label="Impressies (v→n)" k="impressions" sort={kwSort} setSort={setKwSort} />
+                        <WzSortTh label="CTR (v→n)" k="ctr" sort={kwSort} setSort={setKwSort} />
+                      </tr></thead>
                       <tbody>
-                        {[...kpi.keywords].sort((a, b) => (kwFocus[b.keyword] === "prio" ? 1 : 0) - (kwFocus[a.keyword] === "prio" ? 1 : 0)).map((k) => {
+                        {(() => {
+                          const base = [...kpi.keywords];
+                          if (kwSort && KW_GETTERS[kwSort.key]) {
+                            const g = KW_GETTERS[kwSort.key]; const dir = kwSort.dir === "asc" ? 1 : -1;
+                            base.sort((a, b) => { const av = g(a), bv = g(b); return (typeof av === "string" || typeof bv === "string") ? String(av).localeCompare(String(bv)) * dir : (av - bv) * dir; });
+                          } else {
+                            base.sort((a, b) => (kwFocus[b.keyword] === "prio" ? 1 : 0) - (kwFocus[a.keyword] === "prio" ? 1 : 0));
+                          }
+                          return base;
+                        })().map((k) => {
                           const improved = k.positionBefore != null && k.positionAfter != null && k.positionAfter < k.positionBefore;
                           const worse = k.positionBefore != null && k.positionAfter != null && k.positionAfter > k.positionBefore;
                           // Positie: lager = beter. Delta = voor - na (positief = gestegen).
