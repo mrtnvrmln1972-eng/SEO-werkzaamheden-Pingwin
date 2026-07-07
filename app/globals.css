@@ -645,6 +645,9 @@ tbody td:last-child { text-align: center; }
 .wz-endpoints .prog-down strong { color: #C62828; }
 .pch-canni-lead { font-size: 13px; color: var(--dark); flex: 1 1 240px; }
 .pcd-docs-head { font-size: 13px; font-weight: 700; color: var(--gray); margin-bottom: 7px; }
+/* Klikbare, genummerde toggle-kop per stap-kaart. */
+.step-head { cursor: pointer; display: flex; align-items: center; gap: 6px; }
+.step-head .help-hint { margin-left: 2px; }
 .pcd-nuance { width: 100%; font-size: 13px; border: 1px solid var(--border); border-radius: 8px; padding: 8px 11px; outline: none; margin-bottom: 8px; }
 .pcd-nuance:focus { border-color: var(--orange); }
 .pcd-docs-buttons { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-start; }

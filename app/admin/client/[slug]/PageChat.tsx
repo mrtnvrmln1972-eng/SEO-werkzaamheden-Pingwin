@@ -24,6 +24,12 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   // De chat-kaart in/uitklappen: je maakt hem een keer, dus zodra de strategie is
   // vastgelegd staat hij standaard dicht (scheelt scrollen).
   const [chatOpen, setChatOpen] = useState(true);
+  // Elke stap is een inklapbare, genummerde kaart (toggle).
+  const [doorgevenOpen, setDoorgevenOpen] = useState(false);
+  const [vervolgOpen, setVervolgOpen] = useState(false);
+  const [canniOpen, setCanniOpen] = useState(false);
+  const [linksOpen, setLinksOpen] = useState(false);
+  const [schemaOpen, setSchemaOpen] = useState(false);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [proposal, setProposal] = useState<Proposal | null>(null);
@@ -530,7 +536,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       )}
       <div className="page-chat">
         <div className="page-chat-head" onClick={() => setChatOpen((o) => !o)} style={{ cursor: "pointer" }} title={chatOpen ? "Chat inklappen" : "Chat uitklappen"}>
-          <span><span className="pch-caret">{chatOpen ? "▾" : "▸"}</span> Chat over deze pagina <span onClick={(e) => e.stopPropagation()}><HelpHint wide text="Praat hier met de AI over deze pagina om de strategie uit te werken. De chat is gegrond in de live status van de pagina, de Search Console-ranking en de andere pagina's in het cluster, zodat het advies klopt met de werkelijkheid. Ben je klaar: vat samen tot een plan, geef het door aan betrokken pagina's en leg de strategie vast." /></span></span>
+          <span><span className="pch-caret">{chatOpen ? "▾" : "▸"}</span> 2. Chat over deze pagina <span onClick={(e) => e.stopPropagation()}><HelpHint wide text="Praat hier met de AI over deze pagina om de strategie uit te werken. De chat is gegrond in de live status van de pagina, de Search Console-ranking en de andere pagina's in het cluster, zodat het advies klopt met de werkelijkheid. Ben je klaar: vat samen tot een plan, geef het door aan betrokken pagina's en leg de strategie vast." /></span></span>
           {(chats.length > 0 || msgs.length > 0) && <button type="button" className="ghost-btn small" onClick={(e) => { e.stopPropagation(); newChat(); }}>+ Nieuwe chat</button>}
         </div>
 
@@ -575,7 +581,10 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
 
       {lastAssistant && (
         <div className="page-chat-cluster-card">
-          <div className="pcd-docs-head">Doorgeven aan gelieerde pagina&rsquo;s <HelpHint wide text="Raakt deze analyse ook andere pagina's in het cluster? Geef het advies dat over hén gaat alvast door. Naast het advies per pagina gaat ook de volledige conclusie van deze chat mee, zodat die pagina's de hele strategie als vertrekpunt hebben (ze krijgen de markering 'half plan')." /></div>
+          <div className="pcd-docs-head step-head" onClick={() => setDoorgevenOpen((o) => !o)}>
+            <span className="pch-caret">{doorgevenOpen ? "▾" : "▸"}</span> 3. Doorgeven aan gelieerde pagina&rsquo;s <span onClick={(e) => e.stopPropagation()}><HelpHint wide text="Raakt deze analyse ook andere pagina's in het cluster? Geef het advies dat over hén gaat alvast door. Naast het advies per pagina gaat ook de volledige conclusie van deze chat mee, zodat die pagina's de hele strategie als vertrekpunt hebben (ze krijgen de markering 'half plan')." /></span>
+          </div>
+          {doorgevenOpen && (
           <div className="page-chat-cluster">
             <div className="pchf-lead">Raakt deze analyse ook andere pagina&rsquo;s in het cluster? Geef hun advies alvast door.</div>
             {clusterDone > 0 ? (
@@ -605,12 +614,16 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
             )}
             {clusterMsg && <div className="saved-msg" style={{ marginTop: 8 }}>{clusterMsg}</div>}
           </div>
+          )}
         </div>
       )}
 
       {lastAssistant && (
         <div className="page-chat-docs">
-          <div className="pcd-docs-head">Vervolgstappen op de strategie <HelpHint wide text="Hier maak je de documenten die uit de vastgelegde strategie volgen: de SEO-analyse, de blauwdruk en de copy voor deze pagina. Elke stap draait op de achtergrond en komt in je Drive-map te staan én als werkzaamheid in de takenlijst. Onder elke stap kun je een uitgebreide interne versie laten maken." /></div>
+          <div className="pcd-docs-head step-head" onClick={() => setVervolgOpen((o) => !o)}>
+            <span className="pch-caret">{vervolgOpen ? "▾" : "▸"}</span> 4. Vervolgstappen op de strategie <span onClick={(e) => e.stopPropagation()}><HelpHint wide text="Hier maak je de documenten die uit de vastgelegde strategie volgen: de SEO-analyse, de blauwdruk en de copy voor deze pagina. Elke stap draait op de achtergrond en komt in je Drive-map te staan én als werkzaamheid in de takenlijst. Onder elke stap kun je een uitgebreide interne versie laten maken." /></span>
+          </div>
+          {vervolgOpen && (<>
           <div className="page-chat-drive" style={{ margin: "4px 0 14px" }}>
             <span className="pcd-label">Opslaan in:</span>
             {driveFolder
@@ -655,11 +668,15 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
               {run.status === "error" && run.error && <div className="login-error" style={{ marginTop: 6 }}>{run.error}</div>}
             </div>
           )}
+          </>)}
         </div>
       )}
 
       <div className="page-chat-canni">
-        <div className="pcd-docs-head">Cannibalisatie oplossen <HelpHint wide text="Controleert of meerdere pagina's van de site op dezelfde zoekwoorden concurreren (kannibalisatie). Per zoekwoord zie je (met top-10 + volume) of het een eigen pagina verdient of naar deze pagina geclusterd moet worden, en welke pagina's deze pagina 'kapen', met de actie per pagina. Draait op de achtergrond met echte Ahrefs-data." /></div>
+        <div className="pcd-docs-head step-head" onClick={() => setCanniOpen((o) => !o)}>
+          <span className="pch-caret">{canniOpen ? "▾" : "▸"}</span> 5. Cannibalisatie oplossen <span onClick={(e) => e.stopPropagation()}><HelpHint wide text="Controleert of meerdere pagina's van de site op dezelfde zoekwoorden concurreren (kannibalisatie). Per zoekwoord zie je (met top-10 + volume) of het een eigen pagina verdient of naar deze pagina geclusterd moet worden, en welke pagina's deze pagina 'kapen', met de actie per pagina. Draait op de achtergrond met echte Ahrefs-data." /></span>
+        </div>
+        {canniOpen && (<>
         <div className="pch-canni-row">
           <span className="pch-canni-lead">Brengt per zoekwoord in kaart (top-10 + volume) of het een eigen pagina verdient of naar deze pagina geclusterd wordt, en welke pagina&rsquo;s deze pagina kapen, met de actie per pagina.</span>
           <button type="button" className={"pcd-btn" + (pcBusy || pc?.status === "running" ? " busy" : "")} disabled={pcBusy || pc?.status === "running"} onClick={runPc} title="Draait op de achtergrond met echte Ahrefs-data; je kunt wegklikken.">{pc?.status === "running" ? "Analyse draait…" : pc?.result ? "Opnieuw analyseren" : "Cannibalisatie oplossen"}</button>
@@ -678,16 +695,21 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
             )}
           </div>
         )}
+        </>)}
       </div>
 
       <div className="page-chat-links-card">
-        <div className="pcd-docs-head">Interne links <HelpHint wide text="Straks: de interne links naar en vanaf deze pagina (welke pagina's linken hierheen, met welke ankertekst), als taak + begrijpelijk klantdocument. Deze stap werken we later verder uit." /></div>
-        <div className="muted" style={{ fontSize: 13 }}>Nog uit te werken. Hier komt het voorstel voor de interne links van deze pagina, met een klantdocument.</div>
+        <div className="pcd-docs-head step-head" onClick={() => setLinksOpen((o) => !o)}>
+          <span className="pch-caret">{linksOpen ? "▾" : "▸"}</span> 6. Interne links <span onClick={(e) => e.stopPropagation()}><HelpHint wide text="Straks: de interne links naar en vanaf deze pagina (welke pagina's linken hierheen, met welke ankertekst), als taak + begrijpelijk klantdocument. Deze stap werken we later verder uit." /></span>
+        </div>
+        {linksOpen && <div className="muted" style={{ fontSize: 13 }}>Nog uit te werken. Hier komt het voorstel voor de interne links van deze pagina, met een klantdocument.</div>}
       </div>
 
       <div className="page-chat-schema-card">
-        <div className="pcd-docs-head">Structured data <HelpHint wide text="Straks: de voorgestelde schema-markup (structured data) voor deze pagina, passend bij het pagina-type, als taak + begrijpelijk klantdocument. Deze stap werken we later verder uit." /></div>
-        <div className="muted" style={{ fontSize: 13 }}>Nog uit te werken. Hier komt de voorgestelde structured data (schema-markup) voor deze pagina.</div>
+        <div className="pcd-docs-head step-head" onClick={() => setSchemaOpen((o) => !o)}>
+          <span className="pch-caret">{schemaOpen ? "▾" : "▸"}</span> 7. Structured data <span onClick={(e) => e.stopPropagation()}><HelpHint wide text="Straks: de voorgestelde schema-markup (structured data) voor deze pagina, passend bij het pagina-type, als taak + begrijpelijk klantdocument. Deze stap werken we later verder uit." /></span>
+        </div>
+        {schemaOpen && <div className="muted" style={{ fontSize: 13 }}>Nog uit te werken. Hier komt de voorgestelde structured data (schema-markup) voor deze pagina.</div>}
       </div>
 
       {!convoShown && (
