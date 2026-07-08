@@ -127,20 +127,33 @@ export async function getStepsEverDone(slug: string, url: string): Promise<{ ana
 }
 
 // ── Cron-worker: verwerk wachtende runs, stap voor stap ──
-export async function processQueuedRuns(limit = 1): Promise<{ processed: number }> {
+export async function processQueuedRuns(): Promise<{ processed: number }> {
   await ensureSchema();
   await ensureRunTable();
   await recoverStale();
-  // Runs die werk nodig hebben en niet nú al een stap 'running' hebben (voorkomt dat
-  // twee cron-ticks dezelfde run tegelijk oppakken).
-  const { rows } = await sql`
-    SELECT id FROM page_doc_runs
-    WHERE status = 'running'
-      AND analyse_state <> 'running' AND blauwdruk_state <> 'running' AND copy_state <> 'running'
-      AND (analyse_state = 'pending' OR blauwdruk_state = 'pending' OR copy_state = 'pending')
-    ORDER BY id ASC LIMIT ${limit}`;
+  // Blijf binnen één tick runs oppakken zolang er tijdsbudget is: zo werkt één
+  // cron-tick een stapel direct-falende (oude) runs in één keer weg in plaats van
+  // één per minuut, terwijl een echte generatie de tick vult en de loop vanzelf
+  // stopt. De seen-set voorkomt eindeloos herhalen als een run niets verandert.
+  const t0 = Date.now();
+  const seen = new Set<number>();
   let processed = 0;
-  for (const row of rows) { await processRun(Number(row.id)); processed++; }
+  while (Date.now() - t0 < 45000) {
+    // Runs die werk nodig hebben en niet nú al een stap 'running' hebben (voorkomt
+    // dat twee cron-ticks dezelfde run tegelijk oppakken).
+    const { rows } = await sql`
+      SELECT id FROM page_doc_runs
+      WHERE status = 'running'
+        AND analyse_state <> 'running' AND blauwdruk_state <> 'running' AND copy_state <> 'running'
+        AND (analyse_state = 'pending' OR blauwdruk_state = 'pending' OR copy_state = 'pending')
+      ORDER BY id ASC LIMIT 1`;
+    if (!rows.length) break;
+    const id = Number(rows[0].id);
+    if (seen.has(id)) break;
+    seen.add(id);
+    await processRun(id);
+    processed++;
+  }
   return { processed };
 }
 

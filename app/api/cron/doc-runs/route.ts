@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
   }
   try {
-    const res = await processQueuedRuns(1);
+    const res = await processQueuedRuns();
     return NextResponse.json({ ok: true, ...res });
   } catch (e) {
     return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 500 });
