@@ -258,6 +258,8 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
   const [focus, setFocus] = useState<Record<string, FocusTier>>({});
   const [kwSort, setKwSort] = useState<Sort<KwKey>>({ key: "focus", dir: "asc" });
   const [kwSearch, setKwSearch] = useState("");
+  const [pageSearch, setPageSearch] = useState("");
+  const [ahSearch, setAhSearch] = useState("");
   const [pageSort, setPageSort] = useState<Sort<PageKey>>({ key: "prio", dir: "asc" });
   const [oppSort, setOppSort] = useState<Sort<OppKey>>(null);
   // Versleepbare kolomvolgorde (per browser onthouden).
@@ -472,7 +474,8 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
     dclicks: (p) => p.clicks - p.prevClicks, dimpressions: (p) => p.impressions - p.prevImpressions,
   };
   // Standaard op de ster (prio) gesorteerd: aangevinkte pagina's automatisch bovenaan.
-  const sortedPages = applySort(pagesView, pageSort, pageGetters);
+  const sortedPagesAll = applySort(pagesView, pageSort, pageGetters);
+  const sortedPages = pageSearch.trim() ? sortedPagesAll.filter((p) => p.url.toLowerCase().includes(pageSearch.trim().toLowerCase())) : sortedPagesAll;
 
   // Kop + cel per versleepbare kolomgroep; waarde en Δ blijven één geheel.
   const kwHead: Record<string, (d: ThHTMLAttributes<HTMLTableCellElement>) => ReactNode> = {
@@ -515,7 +518,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
     intent: (k) => <td key="intent" className="kpi-metric-sep">{k.intent ? <span className={"kw-intent " + k.intent}>{k.intent}</span> : <span className="muted">&mdash;</span>}</td>,
     kans: (k) => <td key="kans" className="kpi-metric-sep">{isFruit(k) ? <span className="pg-kans quickwin">Quick win</span> : <span className="muted">&mdash;</span>}</td>,
   };
-  const ahFiltered = ahrefsKw.filter((k) => k.organic !== false && !k.branded && (onlyFruit ? isFruit(k) : true));
+  const ahFiltered = ahrefsKw.filter((k) => k.organic !== false && !k.branded && (onlyFruit ? isFruit(k) : true) && (!ahSearch.trim() || k.keyword.toLowerCase().includes(ahSearch.trim().toLowerCase())));
   const ahSorted = applySort(ahFiltered, ahSort, ahGetters);
   const fruitCount = ahrefsKw.filter((k) => k.organic !== false && !k.branded && isFruit(k)).length;
   // De datum waarmee de opgeslagen posities daadwerkelijk vergeleken zijn (voor het
@@ -563,7 +566,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
           </div>
 
           {gsc.keywords.length > 0 && (
-            <Collapse sub title={<>Zoekwoorden uit Search Console ({gsc.keywords.length}) <HelpHint wide text="De zoekwoorden waarop deze site in Google gevonden wordt (echte klikken en vertoningen uit Search Console). Markeer belangrijke woorden als prio of secundair; die verschijnen vastgezet bovenaan en zijn gedeeld met de Ahrefs-lijst." /></>} meta="markeer een zoekwoord als prio of secundair (prio staat bovenaan) · sleep de kolomkoppen om ze te herschikken" open={isOpen("sc_kw")} onToggle={() => toggle("sc_kw")} actions={<>{periodPicker}<input className="kpi-kw-search" placeholder="Zoek zoekwoord…" value={kwSearch} onClick={(e) => e.stopPropagation()} onChange={(e) => setKwSearch(e.target.value)} /></>}>
+            <Collapse sub title={<>Zoekwoorden uit Search Console ({gsc.keywords.length}) <HelpHint wide text="De zoekwoorden waarop deze site in Google gevonden wordt (echte klikken en vertoningen uit Search Console). Markeer belangrijke woorden als prio of secundair; die verschijnen vastgezet bovenaan en zijn gedeeld met de Ahrefs-lijst." /></>} meta="markeer een zoekwoord als prio of secundair (prio staat bovenaan) · sleep de kolomkoppen om ze te herschikken" open={isOpen("sc_kw")} onToggle={() => toggle("sc_kw")} actions={<><input className="kpi-kw-search" placeholder="Zoek zoekwoord…" value={kwSearch} onClick={(e) => e.stopPropagation()} onChange={(e) => setKwSearch(e.target.value)} />{periodPicker}</>}>
               <div className="res-table-wrap">
                 <table className="res-table kpi-table">
                   <thead><tr>
@@ -586,7 +589,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
           )}
 
           {pagesView.length > 0 && (
-            <Collapse sub title={<>Pagina&rsquo;s uit Search Console ({pagesView.length}) <HelpHint wide text="De pagina's van de site met hun klikken en vertoningen uit Search Console. Vink de ster aan om een pagina op prioriteit te zetten; die springt dan (via de ster-kolom) automatisch bovenaan. Gedeeld met de Wijzigingen-tab." /></>} meta="ster = prioriteit, staat bovenaan · sleep de kolomkoppen om ze te herschikken" open={isOpen("sc_pages")} onToggle={() => toggle("sc_pages")} actions={periodPicker}>
+            <Collapse sub title={<>Pagina&rsquo;s uit Search Console ({pagesView.length}) <HelpHint wide text="De pagina's van de site met hun klikken en vertoningen uit Search Console. Vink de ster aan om een pagina op prioriteit te zetten; die springt dan (via de ster-kolom) automatisch bovenaan. Gedeeld met de Wijzigingen-tab." /></>} meta="ster = prioriteit, staat bovenaan · sleep de kolomkoppen om ze te herschikken" open={isOpen("sc_pages")} onToggle={() => toggle("sc_pages")} actions={<><input className="kpi-kw-search" placeholder="Zoek pagina…" value={pageSearch} onClick={(e) => e.stopPropagation()} onChange={(e) => setPageSearch(e.target.value)} />{periodPicker}</>}>
               <div className="res-table-wrap">
                 <table className="res-table kpi-table">
                   <thead><tr>
@@ -598,7 +601,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
                   <tbody>
                     {sortedPages.map((p, i) => {
                       const isPrio = pagePrio.has(pagePrioKey(p.url));
-                      const canDrag = !pageSort;
+                      const canDrag = !pageSort && !pageSearch.trim();
                       return (
                         <tr key={p.url} className={dragIdx === i ? "dragging" : ""} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { if (!canDrag) return; e.stopPropagation(); movePage(i); }}>
                           <td className="kpi-pageprio-cell">
@@ -625,6 +628,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
             <div className="kpi-block-head">
               <span className="kpi-block-title">Ahrefs-zoekwoorden{ahrefsKw.length ? ` (${ahFiltered.length})` : ""} <HelpHint wide text="Alle organische zoekwoorden van het domein uit Ahrefs (volume, positie, intent), in één keer opgehaald. Laaghangend fruit = commerciële of transactionele zoekwoorden met volume die net buiten de top staan (positie 4-20): daar kun je met beperkte moeite snel meer waardevolle bezoekers scoren. Markeer belangrijke zoekwoorden als prio of secundair; die markering is gedeeld met de Search Console-lijst." /></span>
               <span className="kpi-head-actions">
+                <input className="kpi-kw-search" placeholder="Zoek zoekwoord…" value={ahSearch} onClick={(e) => e.stopPropagation()} onChange={(e) => setAhSearch(e.target.value)} />
                 <select className="kpi-period-select" value={ahCompare} onChange={(e) => setAhCompare(e.target.value as typeof ahCompare)} title="Vergelijk de posities met deze periode (pijltjes). Wordt toegepast bij de eerstvolgende keer Verversen (kost credits).">
                   <option value="1m">vs 1 maand</option>
                   <option value="3m">vs 3 maanden</option>
