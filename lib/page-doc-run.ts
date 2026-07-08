@@ -173,6 +173,13 @@ async function recoverStale(): Promise<void> {
   // blokkeert de wachtrij voor eeuwig: de cron kiest altijd de oudste run, doet er
   // niets mee en komt nooit toe aan nieuwere runs. Daarom hier afronden als fout.
   await sql`UPDATE page_doc_runs SET status = 'error', updated_at = now() WHERE status = 'running' AND (analyse_state = 'error' OR blauwdruk_state = 'error' OR copy_state = 'error')`;
+  // Dubbele runs voor dezelfde pagina (door herhaald klikken): alleen de nieuwste
+  // blijft leven, oudere worden vervangen. Scheelt dubbele documenten en API-kosten.
+  await sql`
+    UPDATE page_doc_runs r SET status = 'error', error = 'Vervangen door een nieuwere run voor dezelfde pagina.', updated_at = now()
+    WHERE r.status = 'running'
+      AND r.analyse_state <> 'running' AND r.blauwdruk_state <> 'running' AND r.copy_state <> 'running'
+      AND EXISTS (SELECT 1 FROM page_doc_runs n WHERE n.client_slug = r.client_slug AND n.url = r.url AND n.id > r.id AND n.status = 'running')`;
   await sql`UPDATE page_doc_runs SET analyse_state = 'pending', updated_at = now() WHERE status = 'running' AND analyse_state = 'running' AND updated_at < now() - interval '10 minutes'`;
   await sql`UPDATE page_doc_runs SET blauwdruk_state = 'pending', updated_at = now() WHERE status = 'running' AND blauwdruk_state = 'running' AND updated_at < now() - interval '10 minutes'`;
   await sql`UPDATE page_doc_runs SET copy_state = 'pending', updated_at = now() WHERE status = 'running' AND copy_state = 'running' AND updated_at < now() - interval '10 minutes'`;
