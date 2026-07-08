@@ -533,6 +533,43 @@ ${SEO_CRITERIA_MD}`;
 
 type ParsedDoc = { titel?: unknown; ondertitel?: unknown; sections?: unknown };
 
+// ── Reparatie van afgekapte JSON (antwoord raakte het tokenbudget) ──
+// Sluit een open string en openstaande accolades/haken; lukt parsen dan nog niet,
+// knip dan terug tot het laatste complete element en probeer opnieuw. Zo redden we
+// het document (hooguit het allerlaatste blok ontbreekt) i.p.v. de hele stap te laten falen.
+function closersFor(s: string): string | null {
+  const stack: string[] = [];
+  let inStr = false, esc = false;
+  for (const ch of s) {
+    if (esc) { esc = false; continue; }
+    if (inStr) { if (ch === "\\") esc = true; else if (ch === '"') inStr = false; continue; }
+    if (ch === '"') inStr = true;
+    else if (ch === "{") stack.push("}");
+    else if (ch === "[") stack.push("]");
+    else if (ch === "}" || ch === "]") { if (stack.pop() !== ch) return null; }
+  }
+  return (inStr ? '"' : "") + stack.reverse().join("");
+}
+function repairTruncatedJson(raw: string): ParsedDoc | null {
+  let s = (raw || "").replace(/```json/gi, "").replace(/```/g, "");
+  const start = s.indexOf("{");
+  if (start < 0) return null;
+  s = s.slice(start).trimEnd();
+  for (let attempt = 0; attempt < 60 && s.length > 2; attempt++) {
+    const closers = closersFor(s);
+    if (closers != null) {
+      try {
+        const p = JSON.parse(s + closers);
+        if (p && typeof p === "object" && Array.isArray((p as ParsedDoc).sections)) return p as ParsedDoc;
+      } catch { /* terugknippen en opnieuw */ }
+    }
+    const cut = Math.max(s.lastIndexOf("},"), s.lastIndexOf('",'), s.lastIndexOf("],"));
+    if (cut <= 0) return null;
+    s = s.slice(0, cut + 1).trimEnd();
+  }
+  return null;
+}
+
 // Genereert één document uit een system-prompt, met één JSON-herkansing. Gooit als de
 // JSON onparsebaar blijft (te lang/afgekapt).
 async function runDocGen(system: string, baseUser: string, maxTokens: number, slug: string, kind: DocKind, action: string): Promise<ParsedDoc> {
@@ -543,6 +580,11 @@ async function runDocGen(system: string, baseUser: string, maxTokens: number, sl
     const retryUser = `${baseUser}\n\nBELANGRIJK: geef UITSLUITEND geldige, VOLLEDIGE JSON terug volgens het formaat. Geen tekst eromheen en niet afkappen; houd het compact genoeg om de JSON helemaal af te maken.`;
     raw2 = await callClaude(system, [{ role: "user", content: retryUser }], maxTokens, { slug, action });
     parsed = extractJsonObject(raw2);
+  }
+  // Laatste redmiddel: afgekapte JSON dichtmaken (verliest hooguit het laatste blok).
+  if (!parsed) {
+    parsed = repairTruncatedJson(raw2) || repairTruncatedJson(raw1);
+    if (parsed) console.warn(`[page-doc] ${kind}: afgekapte JSON gerepareerd (len1=${raw1.length} len2=${raw2.length}).`);
   }
   if (!parsed) {
     console.error(`[page-doc] ${kind}: JSON onparsebaar. len1=${raw1.length} len2=${raw2.length} tail=${JSON.stringify((raw2 || raw1).slice(-300))}`);
@@ -694,7 +736,7 @@ Geen emoji. ${DOCSPEC_FORMAT}`;
   // blauwdruk en copy op de volledige diepgang voortbouwen. Daaruit leiden we een KORT, begrijpelijk
   // klantdocument af dat wordt afgeleverd (aparte, goedkope verkleining).
   if (audience === "klant" && (kind === "analyse" || kind === "blauwdruk")) {
-    const deepMax = kind === "blauwdruk" ? 10000 : 14000;
+    const deepMax = kind === "blauwdruk" ? 10000 : 16000;
     const deepParsed = await runDocGen(SYSTEMS[kind], baseUser, deepMax, slug, kind, `doc_${kind}_diep`);
     const { spec: deepSpec } = buildDocSpec(deepParsed, "intern", kind, clientName, url);
     await savePageDocOutput(slug, url, kind, specToText(deepSpec)).catch(() => { /* keten is aanvulling */ });
@@ -704,7 +746,7 @@ Geen emoji. ${DOCSPEC_FORMAT}`;
   // Overige gevallen: één generatie. copy (klant) = volledig uitgeschreven pagina;
   // audience "intern" = de diepe technische versie als afgeleverd document.
   const system = audience === "klant" ? (kind === "copy" ? COPY_CLIENT_SYSTEM : klantSystem) : SYSTEMS[kind];
-  const maxTokens = audience === "klant" ? (kind === "copy" ? 16000 : 3500) : (kind === "blauwdruk" ? 10000 : 14000);
+  const maxTokens = audience === "klant" ? (kind === "copy" ? 16000 : 3500) : (kind === "blauwdruk" ? 10000 : 16000);
   const parsed = await runDocGen(system, baseUser, maxTokens, slug, kind, `doc_${kind}`);
   const { spec, title } = buildDocSpec(parsed, audience, kind, clientName, url);
   // Zelfcontrole (alleen copy): eerst H1/H2/H3-labels afdwingen (voor de sitebouwer),
