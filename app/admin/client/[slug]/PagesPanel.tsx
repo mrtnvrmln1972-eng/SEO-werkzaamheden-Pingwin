@@ -393,14 +393,14 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
             <div className="profile-part acc-teal">
               <div className="profile-part-head">Uit klantprofiel</div>
               {parts.profileMd
-                ? <div className="md profile-part-body" dangerouslySetInnerHTML={{ __html: mdToHtml(parts.profileMd) }} />
+                ? <div className="md profile-part-body" dangerouslySetInnerHTML={{ __html: mdToHtml(parts.profileMd, domain) }} />
                 : <div className="muted" style={{ fontSize: 12 }}>Nog niet opgesteld. Klik &ldquo;Klantprofiel opstellen&rdquo; hierboven.</div>}
             </div>
 
             <div className="profile-part acc-blue">
               <div className="profile-part-head">Uit tone-of-voice-analyse</div>
               {parts.tovMd
-                ? <div className="md profile-part-body" dangerouslySetInnerHTML={{ __html: mdToHtml(parts.tovMd) }} />
+                ? <div className="md profile-part-body" dangerouslySetInnerHTML={{ __html: mdToHtml(parts.tovMd, domain) }} />
                 : <div className="muted" style={{ fontSize: 12 }}>Nog niet opgesteld. Klik &ldquo;Tone-of-voice analyse&rdquo; hierboven.</div>}
             </div>
 
@@ -524,7 +524,7 @@ function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoTo
   // Gerenderde, bewerkbare plan-preview (contentEditable), geen ruwe textarea. Het plan
   // kan markdown zijn (van de chat) of al bewerkte HTML; render de juiste.
   const planRef = useRef<HTMLDivElement | null>(null);
-  const renderPlanHtml = (p: string) => (/<\/[a-z][a-z0-9]*>/i.test(p) && !/(^|\n)#{1,6}\s|\*\*[^*]|(^|\n)\s*[-*]\s|(^|\n)\s*\d+\.\s|\|[^|]*\|/.test(p) ? p : mdToHtml(p));
+  const renderPlanHtml = (p: string) => (/<\/[a-z][a-z0-9]*>/i.test(p) && !/(^|\n)#{1,6}\s|\*\*[^*]|(^|\n)\s*[-*]\s|(^|\n)\s*\d+\.\s|\|[^|]*\|/.test(p) ? p : mdToHtml(p, (u.url.match(/^https?:\/\/[^/]+/i) || [""])[0]));
   useEffect(() => {
     if (editing && planRef.current) planRef.current.innerHTML = renderPlanHtml(plan || "");
     /* eslint-disable-next-line react-hooks/exhaustive-deps */

@@ -16,6 +16,9 @@ const SUMMARIZE_PROMPT =
   "Vat ons hele gesprek over deze pagina samen tot één definitieve conclusie en strategie, gegrond op wat we hierboven hebben besproken en de live feiten. Dit is de eindconclusie die ik als plan voor deze pagina wil overnemen, dus stel geen nieuwe vragen meer. Geef scherp en uitvoerbaar: de rol en het doel van de pagina in één zin; het primaire en secundaire zoekwoord (met de onderbouwing die we bespraken, zoals volume en zoekintentie); en de concrete acties, elk met de fase (Bouwen/Herbedraden/Opschonen) en of het SEO- of Dev-werk is. Sluit af met de doel-URL.";
 
 export default function PageChat({ slug, url, clientEmail, clientName, onApplied, onGoToTask, onClusterApplied, pageLive }: { slug: string; url: string; clientEmail?: string; clientName?: string; onApplied: (plan?: string) => void; onGoToTask?: (taskId: number) => void; onClusterApplied?: () => void; pageLive?: boolean }) {
+  // Site-URL van de klant (uit de pagina-URL), zodat slugs als /lensimplantatie/
+  // in alle gerenderde teksten klikbaar naar de live pagina linken.
+  const siteBase = (url.match(/^https?:\/\/[^/]+/i) || [""])[0];
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [chatId, setChatId] = useState<number | null>(null);
   const [chats, setChats] = useState<ChatSummary[]>([]);
@@ -315,8 +318,8 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     rowRedirectRef.current = redirects;
     return out;
   }
-  const canniHtml = pc?.result ? enrichCanniTable(mdToHtml(stripRedirectList(pc.result))) : "";
-  const ilHtml = il?.result ? mdToHtml(il.result) : "";
+  const canniHtml = pc?.result ? enrichCanniTable(mdToHtml(stripRedirectList(pc.result), siteBase)) : "";
+  const ilHtml = il?.result ? mdToHtml(il.result, siteBase) : "";
 
   async function setRowStatus(rowPath: string, status: "uitgevoerd" | "afgewezen" | null, reason = "") {
     setRowStatusMap((m) => { const n = { ...m }; if (status) n[rowPath] = status; else delete n[rowPath]; return n; });
@@ -735,7 +738,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   function renderMsgHtml(content: string): string {
     const hasClosingTag = /<\/[a-z][a-z0-9]*>/i.test(content);
     const looksMarkdown = /(^|\n)#{1,6}\s|\*\*[^*]|(^|\n)\s*[-*]\s|(^|\n)\s*\d+\.\s|\|[^|]*\|/.test(content);
-    return hasClosingTag && !looksMarkdown ? content : mdToHtml(content);
+    return hasClosingTag && !looksMarkdown ? content : mdToHtml(content, siteBase);
   }
   function deleteMsg(i: number) {
     if (!window.confirm("Dit bericht uit de chat verwijderen?")) return;
@@ -876,7 +879,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       {proposal?.plan && (
         <div className="page-chat-proposal">
           <div className="page-chat-proposal-head">Voorstel: plan voor deze pagina</div>
-          <div className="pch-prop-plan md" dangerouslySetInnerHTML={{ __html: mdToHtml(proposal.plan) }} />
+          <div className="pch-prop-plan md" dangerouslySetInnerHTML={{ __html: mdToHtml(proposal.plan, siteBase) }} />
           <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>De losse acties staan in dit plan. Ze worden uitgevoerd via de SEO-analyse, blauwdruk en copy, niet als aparte werkzaamheden.</div>
           <div className="page-chat-proposal-actions">
             <button type="button" className="primary-btn small" onClick={applySelected}>Neem plan over</button>
@@ -923,7 +926,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
           <div className="pchf-lead"><strong>Meegegeven vanuit een clusteranalyse.</strong> Dit is als vertrekpunt voor deze pagina bewaard; de chat hieronder neemt het advies én de volledige conclusie automatisch mee.</div>
           {incoming.map((it, i) => (
             <div key={i} className="pchi-item">
-              <div className="pchi-advice md" dangerouslySetInnerHTML={{ __html: mdToHtml(it.advice) }} />
+              <div className="pchi-advice md" dangerouslySetInnerHTML={{ __html: mdToHtml(it.advice, siteBase) }} />
               {it.sourceUrl && <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Uit de analyse van <a href={it.sourceUrl} target="_blank" rel="noreferrer">{it.sourceUrl}</a></div>}
             </div>
           ))}
@@ -931,7 +934,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
             <div style={{ marginTop: 8 }}>
               <button type="button" className="ghost-btn small" onClick={() => setIncomingOpen((o) => !o)}>{incomingOpen ? "Verberg de volledige clusteranalyse" : "Toon de volledige clusteranalyse"}</button>
               {incomingOpen && incoming.filter((it) => it.sourceAnalysis).map((it, i) => (
-                <div key={i} className="pchi-full md" dangerouslySetInnerHTML={{ __html: mdToHtml(it.sourceAnalysis) }} />
+                <div key={i} className="pchi-full md" dangerouslySetInnerHTML={{ __html: mdToHtml(it.sourceAnalysis, siteBase) }} />
               ))}
             </div>
           )}
@@ -1019,7 +1022,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
                         <input type="checkbox" checked={clusterSel.includes(it.url)} onChange={() => toggleCluster(it.url)} />
                         <span className="pch-cluster-url">{it.url}</span>
                       </label>
-                      <div className="pch-cluster-advice md" dangerouslySetInnerHTML={{ __html: mdToHtml(it.advice) }} />
+                      <div className="pch-cluster-advice md" dangerouslySetInnerHTML={{ __html: mdToHtml(it.advice, siteBase) }} />
                     </li>
                   ))}
                 </ul>
@@ -1219,7 +1222,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
                     <tbody>{checkData.ahrefs.map((r) => <tr key={r.keyword}><td>{r.keyword}</td><td>{r.position ?? "-"}</td><td>{r.volume ?? "-"}</td><td>{r.traffic ?? "-"}</td></tr>)}</tbody></table>
                 ) : <p className="muted">Geen Ahrefs-rankings voor deze pagina.</p>}
                 {duidingMd
-                  ? (<><p className="ccp-sub">Diepere duiding (op basis van de GSC-data van beide pagina&rsquo;s):</p><div className="md ccp-duiding" dangerouslySetInnerHTML={{ __html: mdToHtml(duidingMd) }} /></>)
+                  ? (<><p className="ccp-sub">Diepere duiding (op basis van de GSC-data van beide pagina&rsquo;s):</p><div className="md ccp-duiding" dangerouslySetInnerHTML={{ __html: mdToHtml(duidingMd, siteBase) }} /></>)
                   : <button type="button" className="ghost-btn small" style={{ marginTop: 10 }} disabled={duidingBusy} onClick={loadDuiding} title="AI legt de zoektermen van deze pagina naast die van de winnaar: echte splitsing of niet, en klopt de voorgestelde actie. Duurt 15-30 seconden.">{duidingBusy ? "Duiding maken…" : "Diepere duiding"}</button>}
                 <div className="ccp-actions">
                   {(() => {
