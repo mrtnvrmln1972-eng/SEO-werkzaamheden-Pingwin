@@ -3,7 +3,7 @@ import { ADMIN_COOKIE, verifyAdminSession } from "../../../../../lib/admin-auth"
 import { guardSlug } from "../../../../../lib/admin-scope";
 import { getChangeEvent, getChangeEventsForUrl } from "../../../../../lib/content-tracking";
 import { getClientBySlug } from "../../../../../lib/clients";
-import { getGscDailyForPage, getGscKeywordsBeforeAfter, getGa4PageSignalsBeforeAfter, equalBeforeAfter } from "../../../../../lib/google";
+import { getGscDailyForPage, getGscKeywordsBeforeAfter, getGa4PageSignalsBeforeAfter, equalBeforeAfter, googleStatus } from "../../../../../lib/google";
 import { getAhrefsKeywords } from "../../../../../lib/ahrefs-keywords";
 
 export const runtime = "nodejs";
@@ -55,11 +55,12 @@ export async function GET(req: NextRequest) {
   const startDate = new Date(Math.max(minC - winDays * day, floor)).toISOString().slice(0, 10);
   const endDate = new Date(Math.min(maxC + winDays * day, Date.now() - 3 * day)).toISOString().slice(0, 10);
 
-  const [daily, keywordsRaw, ga4, ahrefs] = await Promise.all([
+  const [daily, keywordsRaw, ga4, ahrefs, gStatus] = await Promise.all([
     getGscDailyForPage(domain, event.url, startDate, endDate).catch(() => []),
     getGscKeywordsBeforeAfter(domain, event.url, changeDate, winDays).catch(() => []),
     getGa4PageSignalsBeforeAfter(slug, event.url, changeDate, winDays).catch(() => null),
     getAhrefsKeywords(slug).catch(() => []),
+    googleStatus().catch(() => null),
   ]);
 
   // Zoekvolume uit de opgeslagen Ahrefs-pool bij de zoekwoorden zetten (geen credits).
@@ -70,5 +71,8 @@ export async function GET(req: NextRequest) {
   // De exact vergeleken voor/na-periodes (voor transparantie in de UI).
   const compare = equalBeforeAfter(changeDate, winDays);
 
-  return NextResponse.json({ ok: true, changeDate, daily, keywords, ga4, moments, compare });
+  // Verlopen Google-koppeling expliciet meesturen: anders lijkt een auth-fout op
+  // "geen data" en zoekt niemand de echte oorzaak.
+  const gscConnected = gStatus ? gStatus.connected : true;
+  return NextResponse.json({ ok: true, changeDate, daily, keywords, ga4, moments, compare, gscConnected });
 }

@@ -75,7 +75,7 @@ type Ga4Stat = { views: number; timeOnPage: number; bounceRate: number; engageme
 type Ga4 = { available: boolean; before: Ga4Stat; after: Ga4Stat };
 type Moment = { id: number; date: string };
 type Compare = { beforeStart: string; beforeEnd: string; afterStart: string; afterEnd: string; days: number; weekAligned: boolean };
-type Kpi = { changeDate: string; daily: Day[]; keywords: KwBA[]; ga4: Ga4 | null; moments: Moment[]; compare: Compare | null };
+type Kpi = { changeDate: string; daily: Day[]; keywords: KwBA[]; ga4: Ga4 | null; moments: Moment[]; compare: Compare | null; gscConnected?: boolean };
 
 // Sorteerbare kolomkop voor de keyword-rankings-tabel, met een op/neer-indicator.
 type KwSort = { key: string; dir: "asc" | "desc" } | null;
@@ -342,7 +342,7 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
     let alive = true;
     setKpiLoading(true); setKpi(null);
     fetch(`/api/admin/changes/kpi?slug=${encodeURIComponent(slug)}&id=${open.id}&days=${kpiDays}`)
-      .then((r) => r.json()).then((d) => { if (alive && d.ok) setKpi({ changeDate: d.changeDate, daily: d.daily || [], keywords: d.keywords || [], ga4: d.ga4 || null, moments: d.moments || [], compare: d.compare || null }); })
+      .then((r) => r.json()).then((d) => { if (alive && d.ok) setKpi({ changeDate: d.changeDate, daily: d.daily || [], keywords: d.keywords || [], ga4: d.ga4 || null, moments: d.moments || [], compare: d.compare || null, gscConnected: d.gscConnected }); })
       .catch(() => { /* stil */ }).finally(() => { if (alive) setKpiLoading(false); });
     return () => { alive = false; };
   }, [open, slug, kpiDays]);
@@ -510,7 +510,9 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
                     </table>
                   </div>
                 )}
-                {kpi.daily.length < 2 && kpi.keywords.length === 0 && !(kpi.ga4 && kpi.ga4.available) && (
+                {kpi.gscConnected === false ? (
+                  <div className="phase2-note">De Google-koppeling is verlopen; daarom tonen de grafieken geen data. <a href="/api/google/auth/start">Koppel Google opnieuw</a>, dan laden ze direct weer.</div>
+                ) : kpi.daily.length < 2 && kpi.keywords.length === 0 && !(kpi.ga4 && kpi.ga4.available) && (
                   <div className="muted" style={{ fontSize: 12 }}>Nog geen GSC-data voor deze periode (Search Console loopt 1-3 dagen achter, en na een verse wijziging is er nog weinig data ná het moment).</div>
                 )}
               </div>
