@@ -58,6 +58,33 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   // Resultaat van "Aanbevelingen overnemen"; blijft staan (browseropslag) na herladen.
   const [applyInfo, setApplyInfo] = useState<{ doc: boolean; urls: string[] } | null>(null);
   const [canniDone, setCanniDone] = useState(false); // stap 5 afgerond (aanbevelingen overgenomen)
+  // Per-pagina interne-links-analyse (stap 6, achtergrond) — spiegelt de cannibalisatiestap.
+  const [il, setIl] = useState<{ status: string; result: string; error: string; updatedAt: string | null } | null>(null);
+  const [ilBusy, setIlBusy] = useState(false);
+  const [ilDocOpen, setIlDocOpen] = useState(true);
+  async function loadIl() {
+    try {
+      const d = await fetch(`/api/admin/page-internal-links?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}`).then((r) => r.json());
+      if (d.ok) setIl({ status: d.status, result: d.result, error: d.error, updatedAt: d.updatedAt });
+    } catch { /* stil */ }
+  }
+  useEffect(() => { loadIl(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [slug, url]);
+  useEffect(() => {
+    if (il?.status !== "running") return;
+    const t = setInterval(loadIl, 5000);
+    return () => clearInterval(t); /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [il?.status, slug, url]);
+  async function runIl() {
+    if (ilBusy || il?.status === "running") return;
+    setIlBusy(true);
+    setIl((s) => (s ? { ...s, status: "running", error: "" } : { status: "running", result: "", error: "", updatedAt: null }));
+    try {
+      const d = await fetch("/api/admin/page-internal-links", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url }) }).then((r) => r.json());
+      if (!d.ok) { setErr(d.error || "Starten mislukt."); await loadIl(); return; }
+      setLinksOpen(true);
+      await loadIl();
+    } catch { setErr("Starten mislukt."); await loadIl(); } finally { setIlBusy(false); }
+  }
   // Een chat-bericht bewerken (welke index) — gerenderde contentEditable, geen ruwe textarea.
   const [editIdx, setEditIdx] = useState<number | null>(null);
   const editRef = useRef<HTMLDivElement | null>(null);
@@ -202,6 +229,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     return out;
   }
   const canniHtml = pc?.result ? enrichCanniTable(mdToHtml(stripRedirectList(pc.result))) : "";
+  const ilHtml = il?.result ? mdToHtml(il.result) : "";
 
   async function setRowStatus(rowPath: string, status: "uitgevoerd" | "afgewezen" | null) {
     setRowStatusMap((m) => { const n = { ...m }; if (status) n[rowPath] = status; else delete n[rowPath]; return n; });
@@ -964,14 +992,27 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
         </div>)}
       </div>
 
-      <div className="page-chat-links-card step-card step-card-6">
+      <div className={"page-chat-links-card step-card step-card-6" + (il?.result ? " done" : "")}>
         <div className="step-head" onClick={() => setLinksOpen((o) => !o)}>
           <span className="step-caret">{linksOpen ? "▾" : "▸"}</span>
-          <span className="step-badge">6</span>
+          <span className="step-badge">{il?.result ? "✓" : "6"}</span>
           <span className="step-title">Interne links</span>
-          <span onClick={(e) => e.stopPropagation()}><HelpHint wide text="Straks: de interne links naar en vanaf deze pagina (welke pagina's linken hierheen, met welke ankertekst), als taak + begrijpelijk klantdocument. Deze stap werken we later verder uit." /></span>
+          <span onClick={(e) => e.stopPropagation()}><HelpHint wide text="Zoekt de beste interne links NAAR deze pagina: welke andere pagina's zouden hierheen moeten linken, gerangschikt op interessantheid (raakt de bronpagina het onderwerp, hoeveel autoriteit heeft hij via externe links, hoeveel verkeer krijgt hij uit Search Console). Per kans een voorgestelde ankertekst en een directe bewerk-link naar de WordPress-backend. Draait op de achtergrond." /></span>
         </div>
-        {linksOpen && <div className="step-body muted" style={{ fontSize: 13 }}>Nog uit te werken. Hier komt het voorstel voor de interne links van deze pagina, met een klantdocument.</div>}
+        {linksOpen && (<div className="step-body">
+          <div className="pch-canni-row">
+            <span className="pch-canni-lead">Vindt per pagina de beste interne links hiernaartoe, gerangschikt op relevantie, autoriteit (verwijzende domeinen) en verkeer, met ankertekst en een bewerk-link naar de bronpagina.</span>
+            <button type="button" className={"pcd-btn" + (ilBusy || il?.status === "running" ? " busy" : "")} disabled={ilBusy || il?.status === "running"} onClick={runIl} title="Draait op de achtergrond; je kunt wegklikken.">{il?.status === "running" ? "Analyse draait…" : il?.result ? "Opnieuw zoeken" : "Interne links zoeken"}</button>
+          </div>
+          {il?.status === "error" && il.error && <div className="login-error" style={{ marginTop: 8 }}>{il.error}</div>}
+          {il?.status === "running" && !il.result && <div className="muted" style={{ marginTop: 8, fontSize: 13 }}>Analyse draait op de achtergrond (crawlt de kandidaat-bronpagina&rsquo;s en weegt autoriteit + verkeer; dit kan een paar minuten duren).</div>}
+          {il?.result && (
+            <div className="pch-canni-doc">
+              <button type="button" className="pch-canni-toggle" onClick={() => setIlDocOpen((o) => !o)}>{ilDocOpen ? "▾" : "▸"} Interne-links-voorstel{il.updatedAt ? ` · ${new Date(il.updatedAt).toLocaleString("nl-NL")}` : ""}{il.status === "running" ? " · nieuwe analyse draait…" : ""}</button>
+              {ilDocOpen && <div className="md pch-canni-md" dangerouslySetInnerHTML={{ __html: ilHtml }} />}
+            </div>
+          )}
+        </div>)}
       </div>
 
       <div className="page-chat-schema-card step-card step-card-7">
