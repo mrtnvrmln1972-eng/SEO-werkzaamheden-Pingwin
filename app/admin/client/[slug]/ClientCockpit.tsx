@@ -11,6 +11,7 @@ import type { TaskRow } from "../../../../lib/tasks";
 import ChatPanel from "./ChatPanel";
 import TasksEditor from "./TasksEditor";
 import FocusBlock from "./FocusBlock";
+import ShareLinkBar from "./ShareLinkBar";
 import HelpHint from "./HelpHint";
 import MailAllowlist from "./MailAllowlist";
 import LinkPreview from "./LinkPreview";
@@ -492,6 +493,7 @@ export default function ClientCockpit({
             <div className="ck-section-head"><span>Klant (zo ziet de klant het)</span>
               <a className="logout-btn" href={`/admin/preview/${client.slug}`} target="_blank" rel="noreferrer">Openen in nieuw tabblad ↗</a>
             </div>
+            <ShareLinkBar slug={client.slug} />
             <iframe src={`/admin/preview/${client.slug}`} className="client-frame" title="Klant-dashboard" />
           </div>
         )}

@@ -233,6 +233,9 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
   const [composeMode, setComposeMode] = useState<"dev" | "klant">("dev");
   // Standaard UIT: niet iedere klant heeft een dashboard. Alleen aanvinken voegt de link toe.
   const [includeDashLink, setIncludeDashLink] = useState(false);
+  // Loginvrije deel-link van deze klant, voor het dashboard-zinnetje in de
+  // klant-mail. Wordt opgehaald zodra het mailvenster in klant-modus opent.
+  const [shareUrl, setShareUrl] = useState("");
   const [devTo, setDevTo] = useState("");
   // Autocomplete voor het adresveld op basis van M365-contacten (alleen Pingwin).
   const [emailSug, setEmailSug] = useState<{ name: string; email: string }[]>([]);
@@ -375,6 +378,13 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
     setDevSel(new Set(sel));
     if (mode === "klant") {
       setDevTo(clientEmail || "");
+      // Deel-link ophalen voor het dashboard-zinnetje (default uitgevinkt).
+      if (!shareUrl) {
+        fetch(`/api/admin/share-link?slug=${encodeURIComponent(slug)}`)
+          .then((r) => r.json())
+          .then((d) => { if (d.ok && d.url) setShareUrl(d.url); })
+          .catch(() => {});
+      }
     } else {
       try { setDevTo(localStorage.getItem("pingwin-dev-email") || "tony@pingwin.nl"); } catch { setDevTo("tony@pingwin.nl"); }
     }
@@ -408,8 +418,10 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
         const hasUitleg = stripHtml(t.klantToelichting || "").trim().length > 0;
         return `<li><strong>${sanitizeRichHtml(t.taak)}</strong>${hasUitleg ? `<br><span style="color:#555">${uitleg}</span>` : ""}</li>`;
       }).join("");
-      const dashUrl = typeof window !== "undefined" ? `${window.location.origin}/login?fresh=1` : "";
-      const dashLink = includeDashLink && dashUrl ? `<p style="margin-top:14px"><a href="${esc(dashUrl)}">Bekijk dit zelf in je dashboard</a></p>` : "";
+      // Loginvrije deel-link van deze klant; alleen als die (nog) niet
+      // opgehaald kon worden, val terug op de gewone loginpagina.
+      const dashUrl = shareUrl || (typeof window !== "undefined" ? `${window.location.origin}/login?fresh=1` : "");
+      const dashLink = includeDashLink && dashUrl ? `<p style="margin-top:14px"><a href="${esc(dashUrl)}">Bekijk het zelf in je eigen dashboard</a></p>` : "";
       html = `${note}<p><strong>Werkzaamheden:</strong></p><ul>${list}</ul>${dashLink}`;
     } else {
       // Developer-mail: taaknaam (met inline links) + interne opmerking + link naar de overview.
@@ -622,7 +634,7 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
               {composeMode === "klant" && (
                 <label className="compose-dashlink-opt">
                   <input type="checkbox" checked={includeDashLink} onChange={(e) => setIncludeDashLink(e.target.checked)} />
-                  Link &ldquo;Bekijk dit zelf in je dashboard&rdquo; onderaan toevoegen <span className="muted">(alleen aanvinken als deze klant een dashboard heeft)</span>
+                  Link &ldquo;Bekijk het zelf in je eigen dashboard&rdquo; onderaan toevoegen <span className="muted">(loginvrije link van deze klant; alleen aanvinken als de klant een dashboard heeft)</span>
                 </label>
               )}
               {devMsg && <div className={devMsg.startsWith("Verstuurd") ? "saved-msg" : "login-error"} style={{ marginTop: 8 }}>{devMsg}</div>}
