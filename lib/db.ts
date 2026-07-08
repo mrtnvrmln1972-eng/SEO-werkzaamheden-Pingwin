@@ -53,6 +53,29 @@ async function init(): Promise<void> {
   // klant-login te blokkeren (het adminscherm blijft los daarvan werken).
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS login_enabled BOOLEAN NOT NULL DEFAULT true`;
 
+  // WordPress-koppeling (Redirection-plugin): site-URL, gebruikersnaam en het
+  // application password (VERSLEUTELD met AES-GCM op basis van SESSION_SECRET,
+  // nooit plat; zie lib/wp.ts). Hiermee voert het dashboard 301-redirects door.
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS wp_url TEXT`;
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS wp_user TEXT`;
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS wp_app_pass_enc TEXT`;
+
+  // Doorgevoerde 301-redirects per pagina (uit de cannibalisatie-analyse): welke
+  // redirect is wanneer in de website gezet en is hij live geverifieerd (echte 301
+  // naar het juiste doel). Eén rij per (klant, pagina, van-pad).
+  await sql`
+    CREATE TABLE IF NOT EXISTS page_redirects (
+      id             SERIAL PRIMARY KEY,
+      slug           TEXT NOT NULL,
+      page_url       TEXT NOT NULL,
+      from_path      TEXT NOT NULL,
+      to_path        TEXT NOT NULL,
+      verified       BOOLEAN NOT NULL DEFAULT false,
+      redirection_id INTEGER,
+      executed_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE (slug, page_url, from_path)
+    )`;
+
   // ── Teamgebruikers (rechten-laag naast de env-eigenaar) ──
   // De env-eigenaar (ADMIN_PASSWORD) blijft de volledige eigenaar met toegang tot
   // alles. Daarnaast kunnen teamgebruikers (gasten) inloggen op het adminscherm met
