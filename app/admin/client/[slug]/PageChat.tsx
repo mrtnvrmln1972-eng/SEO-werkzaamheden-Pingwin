@@ -20,10 +20,10 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   const [chatId, setChatId] = useState<number | null>(null);
   const [chats, setChats] = useState<ChatSummary[]>([]);
   // Of het gesprek van de actieve chat uitgeklapt is (toggle in de lijst).
-  const [convoOpen, setConvoOpen] = useState(true);
+  const [convoOpen, setConvoOpen] = useState(false);
   // De chat-kaart in/uitklappen: je maakt hem een keer, dus zodra de strategie is
   // vastgelegd staat hij standaard dicht (scheelt scrollen).
-  const [chatOpen, setChatOpen] = useState(true);
+  const [chatOpen, setChatOpen] = useState(false);
   // Elke stap is een inklapbare, genummerde kaart (toggle).
   const [doorgevenOpen, setDoorgevenOpen] = useState(false);
   const [vervolgOpen, setVervolgOpen] = useState(false);
