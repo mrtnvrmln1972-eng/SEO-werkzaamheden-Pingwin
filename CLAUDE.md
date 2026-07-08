@@ -95,7 +95,7 @@ Lokaal staan deze in `.env.local` (gitignored). De DB-vars zijn afgeschermd; lok
 ```bash
 git add . && git commit -m "[beschrijving]" && git push origin main
 ```
-Of handmatig: `npx vercel --prod --yes`. Testen gebeurt op de live URL (DB alleen op de server). Rooktest met curl op de login- en admin-endpoints werkt goed.
+Pushen naar main is genoeg: de GitHub-koppeling deployt automatisch naar productie (geldt voor Pingwin én de NOC-cockpit, zelfde repo). Draai NIET ook nog `npx vercel --prod --yes` na een push: dat geeft dubbele deployments en elke extra deploy breekt lopende achtergrondtaken (doc-generaties) een keer extra af. Gebruik dat commando alleen om te deployen ZONDER code-wijziging (bijv. een nieuwe env-var activeren). Testen gebeurt op de live URL (DB alleen op de server). Rooktest met curl op de login- en admin-endpoints werkt goed.
 
 ## 8. Huidige stand (juni 2026)
 
