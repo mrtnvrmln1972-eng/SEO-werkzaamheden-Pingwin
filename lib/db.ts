@@ -53,9 +53,9 @@ async function init(): Promise<void> {
   // klant-login te blokkeren (het adminscherm blijft los daarvan werken).
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS login_enabled BOOLEAN NOT NULL DEFAULT true`;
 
-  // WordPress-koppeling (Redirection-plugin): site-URL, gebruikersnaam en het
-  // application password (VERSLEUTELD met AES-GCM op basis van SESSION_SECRET,
-  // nooit plat; zie lib/wp.ts). Hiermee voert het dashboard 301-redirects door.
+  // (wp_url/wp_user/wp_app_pass_enc op clients zijn ONGEBRUIKT; de WordPress-
+  // koppeling loopt via client_wp_creds in lib/wp-creds.ts. Kolommen blijven
+  // staan volgens de regel: nooit kolommen verwijderen.)
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS wp_url TEXT`;
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS wp_user TEXT`;
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS wp_app_pass_enc TEXT`;

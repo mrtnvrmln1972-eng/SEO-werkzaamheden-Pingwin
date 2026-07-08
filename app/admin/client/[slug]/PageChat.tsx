@@ -105,21 +105,24 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   }
 
   // ── 301-redirects per stuk uitvoeren in de WordPress-website (Redirection-plugin) ──
-  const [wpConf, setWpConf] = useState<{ configured: boolean; url: string; user: string } | null>(null);
+  // Gebruikt de bestaande WordPress-koppeling per klant (client_wp_creds, zelfde
+  // als de bewerkingshistorie in Wijzigingen) + het klant-domein als site-URL.
+  const [wpConf, setWpConf] = useState<{ configured: boolean; user: string } | null>(null);
   const [wpDone, setWpDone] = useState<Record<string, { verified: boolean }>>({});
   const [wpBusy, setWpBusy] = useState(""); // van-pad dat nu wordt doorgevoerd
   const [wpMsg, setWpMsg] = useState("");
   const [wpFormOpen, setWpFormOpen] = useState(false);
-  const [wpForm, setWpForm] = useState({ url: "", user: "", pass: "" });
+  const [wpForm, setWpForm] = useState({ user: "", pass: "" });
   const [wpSaving, setWpSaving] = useState(false);
 
-  // De redirect-regels ("/oud/ → /nieuw/") uit de cannibalisatie-analyse halen.
-  // Interne-link-regels vallen af doordat daar tekst achter staat (ankertekst).
+  // De redirect-regels ("- `/oud/` → `/nieuw/`") uit de cannibalisatie-analyse
+  // halen; de paden staan tussen backticks. Interne-link-regels vallen af
+  // doordat daar tekst achter staat (ankertekst).
   function parseRedirects(md: string): { from: string; to: string }[] {
     const out: { from: string; to: string }[] = [];
     const seen = new Set<string>();
     for (const line of (md || "").split("\n")) {
-      const m = line.match(/^\s*(?:[-*]\s*)?(\/\S*)\s*(?:→|->)\s*(\/\S*)\s*$/);
+      const m = line.match(/^\s*(?:[-*]\s*)?`?(\/[^\s`]*)`?\s*(?:→|->)\s*`?(\/[^\s`]*)`?\s*$/);
       if (m && !seen.has(m[1]) && m[1] !== m[2]) { seen.add(m[1]); out.push({ from: m[1], to: m[2] }); }
     }
     return out;
@@ -128,7 +131,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
 
   useEffect(() => {
     (async () => {
-      try { const d = await fetch(`/api/admin/wp-conn?slug=${encodeURIComponent(slug)}`).then((r) => r.json()); if (d.ok) setWpConf({ configured: !!d.configured, url: d.url || "", user: d.user || "" }); } catch { /* stil */ }
+      try { const d = await fetch(`/api/admin/wp-creds?slug=${encodeURIComponent(slug)}`).then((r) => r.json()); if (d.ok) setWpConf({ configured: !!d.set, user: d.user || "" }); } catch { /* stil */ }
       try {
         const d = await fetch(`/api/admin/wp-redirect?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}`).then((r) => r.json());
         if (d.ok && Array.isArray(d.done)) { const m: Record<string, { verified: boolean }> = {}; for (const r of d.done) m[r.fromPath] = { verified: !!r.verified }; setWpDone(m); }
@@ -140,9 +143,9 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     if (wpSaving) return;
     setWpSaving(true); setWpMsg("");
     try {
-      const d = await fetch("/api/admin/wp-conn", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: wpForm.url, user: wpForm.user, appPassword: wpForm.pass }) }).then((r) => r.json());
+      const d = await fetch("/api/admin/wp-creds", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, user: wpForm.user, appPassword: wpForm.pass }) }).then((r) => r.json());
       if (!d.ok) { setWpMsg(d.error || "Opslaan mislukt."); return; }
-      setWpConf({ configured: true, url: wpForm.url.replace(/\/+$/, ""), user: wpForm.user });
+      setWpConf({ configured: true, user: wpForm.user });
       setWpForm((f) => ({ ...f, pass: "" })); setWpFormOpen(false);
     } catch { setWpMsg("Opslaan mislukt."); } finally { setWpSaving(false); }
   }
@@ -832,12 +835,11 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
                   <span className="pch-wp-title">301-redirects in de website</span>
                   <span onClick={(e) => e.stopPropagation()}><HelpHint text="Voert de redirect via de gekoppelde WordPress-website door (Redirection-plugin) en controleert direct live of de oude URL echt met een 301 naar het juiste doel gaat. De redirects staan in de plugin in de groep 'Pingwin SEO dashboard'." /></span>
                   {wpConf?.configured
-                    ? <span className="pch-wp-conn">Gekoppeld met {wpConf.url.replace(/^https?:\/\//i, "")} <button type="button" className="ghost-btn small" onClick={() => { setWpForm({ url: wpConf.url, user: wpConf.user, pass: "" }); setWpFormOpen((o) => !o); }}>Wijzigen</button></span>
+                    ? <span className="pch-wp-conn">Gekoppeld als {wpConf.user} <button type="button" className="ghost-btn small" onClick={() => { setWpForm({ user: wpConf.user, pass: "" }); setWpFormOpen((o) => !o); }}>Wijzigen</button></span>
                     : <button type="button" className="ghost-btn small" onClick={() => setWpFormOpen((o) => !o)}>WordPress koppelen</button>}
                 </div>
                 {wpFormOpen && (
                   <div className="pch-wp-form">
-                    <input type="url" placeholder="Website-URL (https://…)" value={wpForm.url} onChange={(e) => setWpForm((f) => ({ ...f, url: e.target.value }))} />
                     <input type="text" placeholder="WordPress-gebruikersnaam" value={wpForm.user} onChange={(e) => setWpForm((f) => ({ ...f, user: e.target.value }))} autoComplete="off" />
                     <input type="password" placeholder="Application password" value={wpForm.pass} onChange={(e) => setWpForm((f) => ({ ...f, pass: e.target.value }))} autoComplete="new-password" />
                     <button type="button" className="pcd-btn" disabled={wpSaving} onClick={saveWpConn}>{wpSaving ? "Opslaan…" : "Koppeling opslaan"}</button>

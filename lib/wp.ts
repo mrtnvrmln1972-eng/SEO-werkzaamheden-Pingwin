@@ -1,62 +1,40 @@
-// WordPress-koppeling per klant: 301-redirects doorvoeren via de Redirection-plugin
-// (REST API met een application password) en live verifiëren dat de redirect echt
-// werkt. Het application password staat VERSLEUTELD in de database (AES-256-GCM met
-// een sleutel afgeleid van SESSION_SECRET), nooit plat.
-import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from "crypto";
+// 301-redirects doorvoeren in de WordPress-website van de klant via de
+// Redirection-plugin (REST API), plus live verificatie dat de redirect echt
+// werkt. Gebruikt de BESTAANDE WordPress-koppeling per klant: het application
+// password uit client_wp_creds (lib/wp-creds.ts, ook gebruikt voor de
+// bewerkingshistorie) en de site-URL uit het klant-domein.
 import { sql, ensureSchema } from "./db";
+import { getClientBySlug } from "./clients";
+import { getWpCreds } from "./wp-creds";
+import { baseFromDomain } from "./wordpress";
 
-// ── Versleuteling van het application password ──
-function encKey(): Buffer {
-  const secret = process.env.SESSION_SECRET || "";
-  if (!secret) throw new Error("SESSION_SECRET ontbreekt (nodig om het application password versleuteld op te slaan).");
-  return scryptSync(secret, "pingwin-wp-app-pass", 32);
-}
-
-export function encryptSecret(plain: string): string {
-  const iv = randomBytes(12);
-  const cipher = createCipheriv("aes-256-gcm", encKey(), iv);
-  const data = Buffer.concat([cipher.update(plain, "utf8"), cipher.final()]);
-  return `${iv.toString("base64")}.${cipher.getAuthTag().toString("base64")}.${data.toString("base64")}`;
-}
-
-export function decryptSecret(enc: string): string {
-  const [iv, tag, data] = enc.split(".");
-  if (!iv || !tag || !data) throw new Error("Opgeslagen wachtwoord heeft een onbekend formaat.");
-  const decipher = createDecipheriv("aes-256-gcm", encKey(), Buffer.from(iv, "base64"));
-  decipher.setAuthTag(Buffer.from(tag, "base64"));
-  return Buffer.concat([decipher.update(Buffer.from(data, "base64")), decipher.final()]).toString("utf8");
-}
-
-// ── Koppeling per klant lezen/schrijven ──
 export type WpConn = { url: string; user: string; appPassword: string };
 
-export async function getWpConn(slug: string): Promise<WpConn | null> {
-  await ensureSchema();
-  const { rows } = await sql`SELECT wp_url, wp_user, wp_app_pass_enc FROM clients WHERE slug = ${slug}`;
-  const r = rows[0];
-  if (!r?.wp_url || !r?.wp_user || !r?.wp_app_pass_enc) return null;
-  try { return { url: String(r.wp_url), user: String(r.wp_user), appPassword: decryptSecret(String(r.wp_app_pass_enc)) }; } catch { return null; }
-}
-
-export async function setWpConn(slug: string, url: string, user: string, appPassword: string): Promise<void> {
-  await ensureSchema();
-  const clean = url.trim().replace(/\/+$/, "");
-  await sql`UPDATE clients SET wp_url = ${clean}, wp_user = ${user.trim()}, wp_app_pass_enc = ${encryptSecret(appPassword.trim())} WHERE slug = ${slug}`;
+// De koppeling voor deze klant: domein + opgeslagen inloggegevens. Null als
+// een van beide ontbreekt (de UI legt dan uit wat er nog ingesteld moet worden).
+export async function getWpConnForClient(slug: string): Promise<WpConn | null> {
+  const client = await getClientBySlug(slug);
+  const url = baseFromDomain(client?.domain || "");
+  if (!url) return null;
+  const creds = await getWpCreds(slug);
+  if (!creds) return null;
+  return { url, user: creds.user, appPassword: creds.appPassword };
 }
 
 // ── Redirection-plugin REST API ──
 function authHeader(conn: WpConn): string {
-  return "Basic " + Buffer.from(`${conn.user}:${conn.appPassword}`).toString("base64");
+  // Application passwords mogen zonder spaties; Basic auth = base64(user:pass).
+  return "Basic " + Buffer.from(`${conn.user}:${conn.appPassword.replace(/\s+/g, "")}`).toString("base64");
 }
 
 async function redirectionFetch(conn: WpConn, path: string, init?: RequestInit): Promise<Response> {
   const res = await fetch(`${conn.url}/wp-json/redirection/v1${path}`, {
     ...init,
-    headers: { Authorization: authHeader(conn), "Content-Type": "application/json", ...(init?.headers || {}) },
+    headers: { Authorization: authHeader(conn), "Content-Type": "application/json", "User-Agent": "Mozilla/5.0 PingwinBot", ...(init?.headers || {}) },
     cache: "no-store",
   });
   if (res.status === 404) throw new Error("De Redirection-plugin is niet gevonden op de website. Installeer/activeer de gratis plugin 'Redirection' en probeer opnieuw.");
-  if (res.status === 401 || res.status === 403) throw new Error("De website weigert de koppeling (gebruikersnaam of application password klopt niet, of de gebruiker mag geen redirects beheren).");
+  if (res.status === 401 || res.status === 403) throw new Error("De website weigert de koppeling (application password klopt niet meer, of de gebruiker mag geen redirects beheren).");
   return res;
 }
 
@@ -109,7 +87,7 @@ function normPath(p: string): string {
 export async function verifyRedirect(siteUrl: string, fromPath: string, toPath: string): Promise<{ ok: boolean; detail: string }> {
   const base = siteUrl.trim().replace(/\/+$/, "");
   try {
-    const res = await fetch(`${base}${fromPath}`, { redirect: "manual", cache: "no-store" });
+    const res = await fetch(`${base}${fromPath}`, { redirect: "manual", cache: "no-store", headers: { "User-Agent": "Mozilla/5.0 PingwinBot" } });
     if (![301, 302, 307, 308].includes(res.status)) return { ok: false, detail: `Geen redirect: de oude URL gaf status ${res.status}.` };
     const loc = res.headers.get("location") || "";
     if (normPath(loc) !== normPath(toPath)) return { ok: false, detail: `Redirect wijst naar ${loc || "onbekend"} in plaats van ${toPath}.` };

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
-import { getWpConn, createWpRedirect, verifyRedirect, getPageRedirects, savePageRedirect } from "../../../../lib/wp";
+import { getWpConnForClient, createWpRedirect, verifyRedirect, getPageRedirects, savePageRedirect } from "../../../../lib/wp";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -39,8 +39,8 @@ export async function POST(req: NextRequest) {
   if (!from.startsWith("/") || !to.startsWith("/")) return NextResponse.json({ ok: false, error: "Van- en naar-pad moeten met / beginnen." }, { status: 400 });
   const g = await guardSlug(req, slug); if (!g.ok) return g.res;
   try {
-    const conn = await getWpConn(slug);
-    if (!conn) return NextResponse.json({ ok: false, error: "Er is nog geen WordPress-koppeling voor deze klant. Stel eerst de website-URL, gebruikersnaam en application password in." }, { status: 400 });
+    const conn = await getWpConnForClient(slug);
+    if (!conn) return NextResponse.json({ ok: false, error: "Er is nog geen WordPress-koppeling voor deze klant. Stel de gebruikersnaam en het application password in (knop in het redirect-blok), en zorg dat het klant-domein is ingevuld." }, { status: 400 });
     const redirectionId = await createWpRedirect(conn, from, to);
     const check = await verifyRedirect(conn.url, from, to);
     await savePageRedirect(slug, pageUrl, from, to, check.ok, redirectionId);
