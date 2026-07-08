@@ -129,6 +129,59 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   }
   const wpRedirects = parseRedirects(pc?.result || "");
 
+  // Het losse "301-redirects:"-lijstje uit de analysetekst halen: die informatie
+  // staat al in de tabel (kolom Actie/Doel) en de knop komt in de tabel zelf.
+  function stripRedirectList(md: string): string {
+    const out: string[] = [];
+    let skip = false;
+    for (const line of (md || "").split("\n")) {
+      if (!line.includes("|") && /301-redirects/i.test(line)) { skip = true; continue; }
+      if (skip) {
+        if (!line.trim() || /^\s*(?:[-*]\s*)?`?\//.test(line)) continue;
+        skip = false;
+      }
+      out.push(line);
+    }
+    return out.join("\n");
+  }
+
+  // Knop-HTML voor in de Actie-kolom van de tabel (de tabel is gerenderde HTML,
+  // dus de knop gaat als HTML mee; kliks vangt onCanniClick op via delegatie).
+  function wpBtnHtml(r: { from: string; to: string }): string {
+    const done = wpDone[r.from];
+    const busy = wpBusy === r.from;
+    const label = busy ? (done ? "Controleren…" : "Doorvoeren…") : done?.verified ? "✓ Uitgevoerd" : done ? "Opnieuw controleren" : "Uitvoeren in website";
+    const cls = "pcd-btn small wp-exec" + (done?.verified ? " pcd-done" : done ? " pcd-warn" : "");
+    const title = done?.verified ? "Staat in de website en is live gecontroleerd (301 naar het juiste doel). Klik om opnieuw te controleren." : done ? "De redirect is doorgevoerd, maar de live-controle lukte nog niet. Klik om opnieuw te controleren." : wpConf?.configured ? "Zet deze 301-redirect via de Redirection-plugin in de website en controleer hem direct live." : "Koppel eerst WordPress (onder de tabel).";
+    const dis = busy || (!wpConf?.configured && !done) ? " disabled" : "";
+    const esc = (s: string) => s.replace(/"/g, "&quot;");
+    return `<button type="button" class="${cls}" data-wpfrom="${esc(r.from)}" data-wpto="${esc(r.to)}" title="${esc(title)}"${dis}>${label}</button>`;
+  }
+
+  // Zet in elke tabelrij met een 301-actie de uitvoer-knop in de Actie-cel.
+  function injectWpButtons(html: string): string {
+    if (!wpRedirects.length) return html;
+    return html.replace(/<tr>((?:<td>[\s\S]*?<\/td>)+)<\/tr>/g, (row: string, inner: string) => {
+      const cells = inner.split("</td>");
+      const r = wpRedirects.find((x) => (cells[0] || "").includes(`>${x.from}<`));
+      if (!r) return row;
+      const idx = cells.findIndex((c, i) => i > 0 && /301/.test(c));
+      if (idx < 0) return row;
+      cells[idx] += `<br>${wpBtnHtml(r)}`;
+      return "<tr>" + cells.join("</td>") + "</tr>";
+    });
+  }
+  const canniHtml = pc?.result ? injectWpButtons(mdToHtml(stripRedirectList(pc.result))) : "";
+
+  function onCanniClick(e: React.MouseEvent) {
+    const btn = (e.target as HTMLElement).closest?.("button[data-wpfrom]");
+    if (!btn) return;
+    e.preventDefault(); e.stopPropagation();
+    const from = btn.getAttribute("data-wpfrom") || "";
+    const to = btn.getAttribute("data-wpto") || "";
+    if (from && to) runWpRedirect(from, to);
+  }
+
   useEffect(() => {
     (async () => {
       try { const d = await fetch(`/api/admin/wp-creds?slug=${encodeURIComponent(slug)}`).then((r) => r.json()); if (d.ok) setWpConf({ configured: !!d.set, user: d.user || "" }); } catch { /* stil */ }
@@ -796,7 +849,22 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
         {pc?.result && (
           <div className="pch-canni-doc">
             <button type="button" className="pch-canni-toggle" onClick={() => setPcOpen((o) => !o)}>{pcOpen ? "▾" : "▸"} Cannibalisatie- &amp; content-mapping-analyse{pc.updatedAt ? ` · ${new Date(pc.updatedAt).toLocaleString("nl-NL")}` : ""}{pc.status === "running" ? " · nieuwe analyse draait…" : ""}</button>
-            {pcOpen && <div className="md pch-canni-md" dangerouslySetInnerHTML={{ __html: mdToHtml(pc.result) }} />}
+            {pcOpen && (<>
+              <div className="md pch-canni-md" onClick={onCanniClick} dangerouslySetInnerHTML={{ __html: canniHtml }} />
+              {wpRedirects.length > 0 && (!wpConf?.configured || wpFormOpen || wpMsg) && (
+                <div className="pch-wp-foot">
+                  {!wpConf?.configured && !wpFormOpen && <span className="muted" style={{ fontSize: 12.5 }}>Redirects uitvoeren vereist de WordPress-koppeling. <button type="button" className="ghost-btn small" onClick={() => setWpFormOpen(true)}>WordPress koppelen</button></span>}
+                  {wpFormOpen && (
+                    <div className="pch-wp-form">
+                      <input type="text" placeholder="WordPress-gebruikersnaam" value={wpForm.user} onChange={(e) => setWpForm((f) => ({ ...f, user: e.target.value }))} autoComplete="off" />
+                      <input type="password" placeholder="Application password" value={wpForm.pass} onChange={(e) => setWpForm((f) => ({ ...f, pass: e.target.value }))} autoComplete="new-password" />
+                      <button type="button" className="pcd-btn" disabled={wpSaving} onClick={saveWpConn}>{wpSaving ? "Opslaan…" : "Koppeling opslaan"}</button>
+                    </div>
+                  )}
+                  {wpMsg && <div className="login-error" style={{ marginTop: 6 }}>{wpMsg}</div>}
+                </div>
+              )}
+            </>)}
             {/* Map + overnemen blijven ook zichtbaar als de analyse is ingeklapt. */}
             <div className="page-chat-drive" style={{ margin: "12px 0 8px" }}>
               <span className="pcd-label">Opslaan in:</span>
@@ -829,41 +897,6 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
               )}
             </div>
             {applyMsg && <div className="login-error" style={{ marginTop: 8 }}>{applyMsg}</div>}
-            {wpRedirects.length > 0 && (
-              <div className="pch-wp">
-                <div className="pch-wp-head">
-                  <span className="pch-wp-title">301-redirects in de website</span>
-                  <span onClick={(e) => e.stopPropagation()}><HelpHint text="Voert de redirect via de gekoppelde WordPress-website door (Redirection-plugin) en controleert direct live of de oude URL echt met een 301 naar het juiste doel gaat. De redirects staan in de plugin in de groep 'Pingwin SEO dashboard'." /></span>
-                  {wpConf?.configured
-                    ? <span className="pch-wp-conn">Gekoppeld als {wpConf.user} <button type="button" className="ghost-btn small" onClick={() => { setWpForm({ user: wpConf.user, pass: "" }); setWpFormOpen((o) => !o); }}>Wijzigen</button></span>
-                    : <button type="button" className="ghost-btn small" onClick={() => setWpFormOpen((o) => !o)}>WordPress koppelen</button>}
-                </div>
-                {wpFormOpen && (
-                  <div className="pch-wp-form">
-                    <input type="text" placeholder="WordPress-gebruikersnaam" value={wpForm.user} onChange={(e) => setWpForm((f) => ({ ...f, user: e.target.value }))} autoComplete="off" />
-                    <input type="password" placeholder="Application password" value={wpForm.pass} onChange={(e) => setWpForm((f) => ({ ...f, pass: e.target.value }))} autoComplete="new-password" />
-                    <button type="button" className="pcd-btn" disabled={wpSaving} onClick={saveWpConn}>{wpSaving ? "Opslaan…" : "Koppeling opslaan"}</button>
-                  </div>
-                )}
-                <div className="pch-wp-list">
-                  {wpRedirects.map((r) => {
-                    const done = wpDone[r.from];
-                    const busy = wpBusy === r.from;
-                    return (
-                      <div className="pch-wp-row" key={r.from}>
-                        <span className="pch-wp-paths"><code>{r.from}</code><span className="pch-wp-arrow">→</span><code>{r.to}</code></span>
-                        {done?.verified
-                          ? <button type="button" className="pcd-btn small pcd-done" disabled={busy} onClick={() => runWpRedirect(r.from, r.to)} title="Staat in de website en is live gecontroleerd (301 naar het juiste doel). Klik om opnieuw te controleren.">✓ Uitgevoerd</button>
-                          : done
-                            ? <button type="button" className="pcd-btn small pcd-warn" disabled={busy} onClick={() => runWpRedirect(r.from, r.to)} title="De redirect is doorgevoerd, maar de live-controle lukte nog niet. Klik om opnieuw te controleren.">{busy ? "Controleren…" : "Opnieuw controleren"}</button>
-                            : <button type="button" className="pcd-btn small" disabled={busy || !wpConf?.configured} onClick={() => runWpRedirect(r.from, r.to)} title={wpConf?.configured ? "Zet deze 301-redirect in de website en controleer hem direct live." : "Koppel eerst WordPress (knop rechtsboven in dit blok)."}>{busy ? "Doorvoeren…" : "Uitvoeren in website"}</button>}
-                      </div>
-                    );
-                  })}
-                </div>
-                {wpMsg && <div className="login-error" style={{ marginTop: 8 }}>{wpMsg}</div>}
-              </div>
-            )}
           </div>
         )}
         </div>)}
