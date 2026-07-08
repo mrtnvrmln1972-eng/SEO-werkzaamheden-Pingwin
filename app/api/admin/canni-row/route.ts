@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
 import { getWpConnForClient, findWpEditUrl, getCanniRowStatuses, setCanniRowStatus } from "../../../../lib/wp";
-import { getPageCannibal } from "../../../../lib/page-cannibal";
+import { getPageCannibal, makeCanniRowTask } from "../../../../lib/page-cannibal";
 import { extractClusterAdvice } from "../../../../lib/page-chat-ground";
 import { savePageClusterAdvice, deletePageClusterAdvice } from "../../../../lib/site-urls";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 function admin(req: NextRequest): boolean {
   return verifyAdminSession(req.cookies.get(ADMIN_COOKIE)?.value);
@@ -50,6 +50,13 @@ export async function POST(req: NextRequest) {
       const editUrl = await findWpEditUrl(conn, rowPath);
       if (!editUrl) return NextResponse.json({ ok: false, error: `De pagina ${rowPath} is niet gevonden in WordPress.` }, { status: 404 });
       return NextResponse.json({ ok: true, editUrl });
+    }
+
+    if (body.action === "maketask") {
+      // Groter werk: taak op de kortetermijnplanning + werkdocument met de
+      // diepere duiding als achtergrond.
+      const r = await makeCanniRowTask(slug, pageUrl, rowPath);
+      return NextResponse.json({ ok: true, ...r });
     }
 
     if (body.action === "topage") {

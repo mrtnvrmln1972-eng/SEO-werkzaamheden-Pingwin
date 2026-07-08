@@ -314,9 +314,10 @@ Lever precies deze secties (sla een sectie zonder inhoud stilzwijgend over):
 2. Wat eruit kwam: welke pagina de duidelijke winnaar is en waarom (in gewone taal, bijvoorbeeld sterkste pagina met de meeste klikken en links), en kort welke pagina's meededen en welke rol ze hebben.
 3. Wat we hebben doorgevoerd: per geaccepteerde pagina één begrijpelijke regel (wat en waarom). Staat in de beslissingen dat een 301 live gecontroleerd is, vermeld dat expliciet ("doorgevoerd en live gecontroleerd").
 4. Bewust opgeschoven: punten die we oppakken wanneer we die pagina's zelf onder handen nemen (het advies staat daar al klaar).
-5. Bewust niet doorgevoerd: de afgewezen voorstellen, elk met de reden, zodat de klant ziet dat er een bewuste afweging is gemaakt.
-6. Voor de developer: de exacte lijst geaccepteerde 301-redirects (tabel met kolommen "Van", "Naar" en "Status", waarbij Status "doorgevoerd, live gecontroleerd" of "doorgevoerd" is volgens de beslissingen) en de exacte lijst interne links (tabel met kolommen "Vanaf", "Naar" en "Ankertekst"), LETTERLIJK uit het developer-overzicht. Blijft er niets over, zeg dat dan kort.
-7. Wat jullie hiervan gaan merken: twee tot drie zinnen (één sterke pagina in plaats van versnippering; oude links blijven werken door de doorverwijzingen; effect is na enkele weken zichtbaar).
+5. Ingepland als aparte taak: de grotere punten die als eigen taak op de kortetermijnplanning staan (met eigen werkdocument), elk in één regel met wat er gaat gebeuren.
+6. Bewust niet doorgevoerd: de afgewezen voorstellen, elk met de reden, zodat de klant ziet dat er een bewuste afweging is gemaakt.
+7. Voor de developer: de exacte lijst geaccepteerde 301-redirects (tabel met kolommen "Van", "Naar" en "Status", waarbij Status "doorgevoerd, live gecontroleerd" of "doorgevoerd" is volgens de beslissingen) en de exacte lijst interne links (tabel met kolommen "Vanaf", "Naar" en "Ankertekst"), LETTERLIJK uit het developer-overzicht. Blijft er niets over, zeg dat dan kort.
+8. Wat jullie hiervan gaan merken: twee tot drie zinnen (één sterke pagina in plaats van versnippering; oude links blijven werken door de doorverwijzingen; effect is na enkele weken zichtbaar).
 ${DOCSPEC_FORMAT}`;
 
 export async function cannibalDocSpec(slug: string, url: string, analysis: string, devContent: string, decisions = ""): Promise<{ spec: DocSpec; title: string }> {
@@ -332,6 +333,36 @@ export async function cannibalDocSpec(slug: string, url: string, analysis: strin
     titel: title,
     ondertitel: typeof parsed.ondertitel === "string" ? parsed.ondertitel : url,
     meta: { Klant: client?.name || slug, Pagina: url },
+    sections: Array.isArray(parsed.sections) ? parsed.sections : [],
+  };
+  return { spec, title };
+}
+
+// Achtergrond-document bij een cannibalisatie-TAAK (knop "Taak maken" bij een
+// tabel-rij): het voorstel, de diepere duiding op basis van echte GSC-data, en
+// concrete stappen, zodat je bij het oppakken precies weet wat en waarom.
+const CANNI_TASK_DOC_SYSTEM = `Je bent een senior SEO-strateeg bij bureau Pingwin. Je maakt het WERKDOCUMENT bij één ingeplande taak die uit een cannibalisatie-analyse komt. Je baseert je UITSLUITEND op de meegegeven analyse-regel en de duiding (die op echte GSC-data is gebaseerd); je verzint niets.
+AANSPREEKVORM: gericht aan het team dat de taak oppakt; helder en direct. Zoekwoorden vet met **dubbele sterretjes**. Geen jargon zonder uitleg in één zin. Geen emoji.
+Lever precies deze secties:
+1. Waar deze taak vandaan komt: twee tot drie zinnen (uit de cannibalisatie-analyse van de landingspagina; wat het voorstel was en waarom er een aparte taak van is gemaakt in plaats van direct uitvoeren).
+2. De situatie in cijfers: de kern uit de duiding, met de belangrijkste zoektermen, posities en klikken van beide pagina's (mag als kleine tabel).
+3. Wat er moet gebeuren: concrete, genummerde stappen (gebruik het advies uit de duiding; bij taalvarianten bijvoorbeeld hreflang-koppeling + volledige vertaling).
+4. Wanneer is het klaar: twee tot vier meetbare checks (bijvoorbeeld: hele pagina in de juiste taal, hreflang in beide richtingen aanwezig, beide pagina's zelf-canonical, posities stabiel na enkele weken).
+${DOCSPEC_FORMAT}`;
+
+export async function canniTaskDocSpec(slug: string, winnerUrl: string, rowPath: string, rowLine: string, duiding: string): Promise<{ spec: DocSpec; title: string }> {
+  const client = await getClientBySlug(slug);
+  const user = `Landingspagina (winnaar) waar de analyse over ging: ${winnerUrl}\nPagina waar deze taak over gaat: ${rowPath}\n\nVOORSTEL UIT DE ANALYSE-TABEL:\n${rowLine || "(regel niet gevonden)"}\n\nDIEPERE DUIDING (op echte GSC-data):\n${duiding.slice(0, 8000)}`;
+  const raw = await callClaude(CANNI_TASK_DOC_SYSTEM, [{ role: "user", content: user }], 6000, { slug, action: "canni_taak_doc" });
+  const parsed = extractJsonObject(raw);
+  if (!parsed) throw new Error("Het taak-document kon niet worden opgemaakt (het AI-antwoord kwam onvolledig terug). Probeer het opnieuw.");
+  const title = typeof parsed.titel === "string" && parsed.titel.trim() ? parsed.titel.trim() : `Taak ${rowPath}`;
+  const spec: DocSpec = {
+    klant: client?.name || slug,
+    rapporttype: "Cannibalisatie-taak",
+    titel: title,
+    ondertitel: typeof parsed.ondertitel === "string" ? parsed.ondertitel : rowPath,
+    meta: { Klant: client?.name || slug, Pagina: rowPath },
     sections: Array.isArray(parsed.sections) ? parsed.sections : [],
   };
   return { spec, title };

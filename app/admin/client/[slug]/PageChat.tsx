@@ -56,7 +56,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   const [applyBusy, setApplyBusy] = useState(false);
   const [applyMsg, setApplyMsg] = useState(""); // alleen foutmeldingen
   // Resultaat van "Aanbevelingen overnemen"; blijft staan (browseropslag) na herladen.
-  const [applyInfo, setApplyInfo] = useState<{ doc: boolean; urls: string[]; counts?: { executed: number; deferred: number; rejected: number; unreviewed: number } } | null>(null);
+  const [applyInfo, setApplyInfo] = useState<{ doc: boolean; urls: string[]; counts?: { executed: number; deferred: number; rejected: number; tasked: number; unreviewed: number } } | null>(null);
   const [canniDone, setCanniDone] = useState(false); // stap 5 afgerond (aanbevelingen overgenomen)
   // Per-pagina interne-links-analyse (stap 6, achtergrond) — spiegelt de cannibalisatiestap.
   const [il, setIl] = useState<{ status: string; result: string; error: string; updatedAt: string | null } | null>(null);
@@ -152,7 +152,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     try {
       const d = await fetch("/api/admin/page-cannibal/apply", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url }) }).then((r) => r.json());
       if (!d.ok) { setApplyMsg(d.error || "Overnemen mislukt."); return; }
-      const info = { doc: !!d.docLink, urls: [] as string[], counts: { executed: Number(d.executed) || 0, deferred: Number(d.deferred) || 0, rejected: Number(d.rejected) || 0, unreviewed: Number(d.unreviewed) || 0 } };
+      const info = { doc: !!d.docLink, urls: [] as string[], counts: { executed: Number(d.executed) || 0, deferred: Number(d.deferred) || 0, rejected: Number(d.rejected) || 0, tasked: Number(d.tasked) || 0, unreviewed: Number(d.unreviewed) || 0 } };
       setApplyInfo(info);
       try { localStorage.setItem(`pw_canniinfo_${slug}_${url}`, JSON.stringify(info)); } catch { /* geen opslag */ }
       setCanniDone(true); try { localStorage.setItem(`pw_cannidone_${slug}_${url}`, "1"); } catch { /* geen opslag */ }
@@ -172,7 +172,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   const [wpSaving, setWpSaving] = useState(false);
   // Status per tabel-rij (pad → uitgevoerd/afgewezen/doorgezet), bewaard in de
   // database, plus de reden bij afwijzen (komt in het klantdocument).
-  const [rowStatus, setRowStatusMap] = useState<Record<string, "uitgevoerd" | "afgewezen" | "doorgezet">>({});
+  const [rowStatus, setRowStatusMap] = useState<Record<string, "uitgevoerd" | "afgewezen" | "doorgezet" | "taak">>({});
   const [rowReason, setRowReason] = useState<Record<string, string>>({});
   // Paden van rijen met een actie-voorstel (gevuld tijdens het renderen van de
   // tabel); gebruikt voor de "nog niet beoordeeld"-teller bij het bevestigen.
@@ -230,14 +230,18 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     if (status === "doorgezet") {
       return `<span class="canni-actions"><button type="button" class="pcd-btn wp-mini pcd-blue" data-act="restore" data-path="${escAttr(rowPath)}" title="Het advies staat klaar bij die pagina in het Pagina's-tabblad ('half plan'); je pakt het op wanneer je die pagina aanpakt. Klik om dit terug te draaien (haalt het advies daar ook weer weg).">→ Bij pagina's, herstel</button>${extra}</span>`;
     }
+    if (status === "taak") {
+      return `<span class="canni-actions"><button type="button" class="pcd-btn wp-mini pcd-purple" data-act="restore" data-path="${escAttr(rowPath)}" title="Voor deze rij staat een taak met werkdocument in Werkzaamheden. Klik om de rij-status terug te draaien (de taak zelf blijft bestaan).">✓ Taak gemaakt, herstel</button>${extra}</span>`;
+    }
     const reject = `<button type="button" class="pcd-btn wp-mini wp-ghost" data-act="reject" data-path="${escAttr(rowPath)}" title="Wijs deze aanbeveling af; de rij wordt grijs.">Afwijzen</button>`;
+    const maketask = `<button type="button" class="pcd-btn wp-mini wp-ghost-purple" data-act="maketask" data-path="${escAttr(rowPath)}"${busy ? " disabled" : ""} title="Voor groter werk dat op de kortetermijnplanning hoort: maakt een taak in Werkzaamheden met een werkdocument (met diepere duiding op echte GSC-data).">Taak maken</button>`;
     if (redirect) {
       const done = wpDone[redirect.from];
       const label = busy ? (done ? "Controleren…" : "Doorvoeren…") : done?.verified ? "✓ Uitgevoerd" : done ? "Opnieuw controleren" : "Uitvoeren";
       const cls = "pcd-btn wp-mini" + (done?.verified ? " pcd-done" : done ? " pcd-warn" : "");
       const title = done?.verified ? "301 staat in de website en is live gecontroleerd. Klik om opnieuw te controleren." : done ? "De redirect is doorgevoerd, maar de live-controle lukte nog niet. Klik om opnieuw te controleren." : wpConf?.configured ? "Zet deze 301-redirect via de Redirection-plugin in de website en controleer hem direct live." : "Koppel eerst WordPress (onder de tabel).";
       const dis = busy || (!wpConf?.configured && !done) ? " disabled" : "";
-      return `<span class="canni-actions"><button type="button" class="${cls}" data-act="redirect" data-wpfrom="${escAttr(redirect.from)}" data-wpto="${escAttr(redirect.to)}" title="${escAttr(title)}"${dis}>${label}</button>${done?.verified ? "" : reject}${extra}</span>`;
+      return `<span class="canni-actions"><button type="button" class="${cls}" data-act="redirect" data-wpfrom="${escAttr(redirect.from)}" data-wpto="${escAttr(redirect.to)}" title="${escAttr(title)}"${dis}>${label}</button>${done?.verified ? "" : maketask + reject}${extra}</span>`;
     }
     const doneEdit = status === "uitgevoerd";
     const label = busy ? "Bezig…" : doneEdit ? "✓ Uitgevoerd" : "Uitvoeren";
@@ -245,7 +249,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     const title = doneEdit ? "Als uitgevoerd gemarkeerd. Klik om de pagina nogmaals in de WordPress-backend te openen." : wpConf?.configured ? "Opent deze pagina in de WordPress-backend (bewerk-modus), zodat je de aanpassing/interne link kunt doorvoeren. De rij wordt dan als uitgevoerd gemarkeerd." : "Koppel eerst WordPress (onder de tabel).";
     const dis = busy || (!wpConf?.configured && !doneEdit) ? " disabled" : "";
     const topage = `<button type="button" class="pcd-btn wp-mini wp-ghost-blue" data-act="topage" data-path="${escAttr(rowPath)}"${busy ? " disabled" : ""} title="Zet het advies van deze rij klaar bij die pagina in het Pagina's-tabblad ('half plan'), zodat je het meeneemt wanneer je die pagina aanpakt.">Naar pagina's</button>`;
-    return `<span class="canni-actions"><button type="button" class="${cls}" data-act="edit" data-path="${escAttr(rowPath)}" title="${escAttr(title)}"${dis}>${label}</button>${doneEdit ? "" : topage + reject}${extra}</span>`;
+    return `<span class="canni-actions"><button type="button" class="${cls}" data-act="edit" data-path="${escAttr(rowPath)}" title="${escAttr(title)}"${dis}>${label}</button>${doneEdit ? "" : topage + maketask + reject}${extra}</span>`;
   }
 
   // Tabel verrijken: korte kolomkoppen, "intern linken" vet, knoppen + check in
@@ -286,7 +290,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       const checkBtn = `<button type="button" class="canni-check" data-act="check" data-path="${escAttr(rowPath)}" title="Bekijk hoe deze pagina er echt voor staat (GSC-zoekwoorden, Ahrefs-rankings, verwijzende domeinen) voordat je kiest.">check</button>`;
       if (redirect || isEdit) cells[redenIdx] += rowButtonsHtml(rowPath, redirect, checkBtn);
       else cells[redenIdx] += `<span class="canni-actions">${checkBtn}</span>`;
-      const rowCls = rowStatus[rowPath] === "afgewezen" ? "canni-rejected" : rowStatus[rowPath] === "doorgezet" ? "canni-deferred" : "";
+      const rowCls = rowStatus[rowPath] === "afgewezen" ? "canni-rejected" : rowStatus[rowPath] === "doorgezet" ? "canni-deferred" : rowStatus[rowPath] === "taak" ? "canni-tasked" : "";
       return `<tr${rowCls ? ` class="${rowCls}"` : ""}>` + cells.join("</td>") + "</tr>";
     });
     actionableRef.current = actionable;
@@ -315,14 +319,41 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   const [checkData, setCheckData] = useState<CheckData | null>(null);
   const [checkBusy, setCheckBusy] = useState(false);
   const [checkErr, setCheckErr] = useState("");
+  // Diepere duiding (op aanvraag; kost een AI-call en ~15-30 seconden).
+  const [duidingMd, setDuidingMd] = useState("");
+  const [duidingBusy, setDuidingBusy] = useState(false);
+
+  async function loadDuiding() {
+    if (duidingBusy || !checkPath) return;
+    setDuidingBusy(true);
+    try {
+      const d = await fetch("/api/admin/canni-check", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, pageUrl: url, rowPath: checkPath }) }).then((r) => r.json());
+      if (!d.ok) { setCheckErr(d.error || "Duiding mislukt."); return; }
+      setDuidingMd(String(d.duiding || ""));
+    } catch { setCheckErr("Duiding mislukt."); } finally { setDuidingBusy(false); }
+  }
 
   async function openCheck(rowPath: string) {
-    setCheckPath(rowPath); setCheckData(null); setCheckErr(""); setCheckBusy(true);
+    setCheckPath(rowPath); setCheckData(null); setCheckErr(""); setCheckBusy(true); setDuidingMd("");
     try {
       const d = await fetch(`/api/admin/canni-check?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}&path=${encodeURIComponent(rowPath)}`).then((r) => r.json());
       if (!d.ok) { setCheckErr(d.error || "Check mislukt."); return; }
       setCheckData(d);
     } catch { setCheckErr("Check mislukt."); } finally { setCheckBusy(false); }
+  }
+
+  // "Taak maken": groter werk op de kortetermijnplanning. Maakt server-side de
+  // diepere duiding + een werkdocument in de Drive-map + een taak in Werkzaamheden.
+  async function makeRowTask(rowPath: string) {
+    if (wpBusy) return;
+    setWpBusy(rowPath); setWpMsg("");
+    try {
+      const d = await fetch("/api/admin/canni-row", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, pageUrl: url, rowPath, action: "maketask" }) }).then((r) => r.json());
+      if (!d.ok) { setWpMsg(d.error || "Taak maken mislukt."); return; }
+      setRowStatusMap((m) => ({ ...m, [rowPath]: "taak" }));
+      if (!d.docLink) setWpMsg("Taak aangemaakt, maar zonder document (geen Drive-map gekozen voor deze pagina).");
+      onApplied();
+    } catch { setWpMsg("Taak maken mislukt."); } finally { setWpBusy(""); }
   }
 
   // "Naar pagina's": zet het advies van deze rij klaar bij die pagina (als
@@ -367,6 +398,8 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       openInBackend(path);
     } else if (act === "topage" && path) {
       sendRowToPage(path);
+    } else if (act === "maketask" && path) {
+      makeRowTask(path);
     } else if (act === "check" && path) {
       openCheck(path);
     } else if (act === "reject" && path) {
@@ -386,12 +419,12 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       try {
         const d = await fetch(`/api/admin/canni-row?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}`).then((r) => r.json());
         if (d.ok && d.statuses && typeof d.statuses === "object") {
-          const st: Record<string, "uitgevoerd" | "afgewezen" | "doorgezet"> = {};
+          const st: Record<string, "uitgevoerd" | "afgewezen" | "doorgezet" | "taak"> = {};
           const rs: Record<string, string> = {};
           for (const [p, v] of Object.entries(d.statuses as Record<string, unknown>)) {
             if (typeof v === "string") { st[p] = v as typeof st[string]; continue; } // oude vorm
             const o = v as { status?: string; reason?: string };
-            if (o?.status === "uitgevoerd" || o?.status === "afgewezen" || o?.status === "doorgezet") { st[p] = o.status; if (o.reason) rs[p] = o.reason; }
+            if (o?.status === "uitgevoerd" || o?.status === "afgewezen" || o?.status === "doorgezet" || o?.status === "taak") { st[p] = o.status; if (o.reason) rs[p] = o.reason; }
           }
           setRowStatusMap(st); setRowReason(rs);
         }
@@ -1166,17 +1199,22 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
                   <table className="md-table"><thead><tr><th>Zoekwoord</th><th>Positie</th><th>Volume</th><th>Verkeer</th></tr></thead>
                     <tbody>{checkData.ahrefs.map((r) => <tr key={r.keyword}><td>{r.keyword}</td><td>{r.position ?? "-"}</td><td>{r.volume ?? "-"}</td><td>{r.traffic ?? "-"}</td></tr>)}</tbody></table>
                 ) : <p className="muted">Geen Ahrefs-rankings voor deze pagina.</p>}
+                {duidingMd
+                  ? (<><p className="ccp-sub">Diepere duiding (op basis van de GSC-data van beide pagina&rsquo;s):</p><div className="md ccp-duiding" dangerouslySetInnerHTML={{ __html: mdToHtml(duidingMd) }} /></>)
+                  : <button type="button" className="ghost-btn small" style={{ marginTop: 10 }} disabled={duidingBusy} onClick={loadDuiding} title="AI legt de zoektermen van deze pagina naast die van de winnaar: echte splitsing of niet, en klopt de voorgestelde actie. Duurt 15-30 seconden.">{duidingBusy ? "Duiding maken…" : "Diepere duiding"}</button>}
                 <div className="ccp-actions">
                   {(() => {
                     const redirect = wpRedirects.find((x) => x.from === checkPath) || null;
                     const status = rowStatus[checkPath];
                     if (status === "afgewezen") return <button type="button" className="pcd-btn small pcd-warn" onClick={() => setRowStatus(checkPath, null)}>Afgewezen, herstel</button>;
                     if (status === "doorgezet") return <button type="button" className="pcd-btn small pcd-blue" onClick={() => setRowStatus(checkPath, null)}>→ Bij pagina&rsquo;s, herstel</button>;
+                    if (status === "taak") return <button type="button" className="pcd-btn small pcd-purple" onClick={() => setRowStatus(checkPath, null)}>✓ Taak gemaakt, herstel</button>;
                     return (<>
                       {redirect
                         ? <button type="button" className={"pcd-btn small" + (wpDone[redirect.from]?.verified ? " pcd-done" : "")} disabled={!!wpBusy} onClick={() => runWpRedirect(redirect.from, redirect.to)}>{wpDone[redirect.from]?.verified ? "✓ Uitgevoerd" : "Uitvoeren (301)"}</button>
                         : <button type="button" className={"pcd-btn small" + (status === "uitgevoerd" ? " pcd-done" : "")} disabled={!!wpBusy} onClick={() => openInBackend(checkPath)}>{status === "uitgevoerd" ? "✓ Uitgevoerd" : "Uitvoeren (open backend)"}</button>}
                       {!redirect && <button type="button" className="pcd-btn small wp-ghost-blue" disabled={!!wpBusy} onClick={() => sendRowToPage(checkPath)}>Naar pagina&rsquo;s</button>}
+                      <button type="button" className="pcd-btn small wp-ghost-purple" disabled={!!wpBusy} onClick={() => makeRowTask(checkPath)} title="Maakt een taak in Werkzaamheden met een werkdocument (met de diepere duiding als achtergrond).">{wpBusy === checkPath ? "Bezig…" : "Taak maken"}</button>
                       <button type="button" className="pcd-btn small wp-ghost" disabled={!!wpBusy} onClick={() => { setRejectPath(checkPath); setRejectReason(rowReason[checkPath] || ""); }}>Afwijzen</button>
                     </>);
                   })()}

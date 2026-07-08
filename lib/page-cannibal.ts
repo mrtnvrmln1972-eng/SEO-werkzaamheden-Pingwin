@@ -4,11 +4,11 @@ import { getClientUrls, getPagePlan, getPageDriveFolder } from "./site-urls";
 import { getGscForPage, getGscQueryPageMatrix } from "./google";
 import { getAhrefsTopPages, getDomainKeywordsMatching, getUrlOrganicKeywords, getSerpOverview, getKeywordsOverview, ahrefsConfigured } from "./ahrefs";
 import { callClaude } from "./anthropic";
-import { cannibalDocSpec } from "./page-doc";
+import { cannibalDocSpec, canniTaskDocSpec } from "./page-doc";
 import { buildPingwinDoc } from "./pingwin-docx";
 import { uploadDocx } from "./drive";
 import { getTasks, appendTasks, deleteTasksByIds } from "./tasks";
-import { getCanniRowStatuses, getPageRedirects } from "./wp";
+import { getCanniRowStatuses, setCanniRowStatus, getPageRedirects } from "./wp";
 import { mdToHtml } from "./markdown";
 
 // ═══════════════════════════════════════════════════════════
@@ -98,6 +98,7 @@ DE DUBBELSLAG (content mapping): per concurrerend zoekwoord beslis je met volume
 WINNAAR-WEGING (fase 4), in deze volgorde: verwijzende domeinen (zwaarst) > organische klikken/tractie > businesswaarde > content-diepte > URL-kwaliteit. De pagina met de meeste verwijzende domeinen is niet altijd de bestemming; redirect desnoods de link-rijke pagina naar de businesswaardige. Bij twijfel: de bedoelde eigenaar volgens het plan van de pagina, niet puur de huidige ranking.
 
 ACTIES (beslisboom, licht naar zwaar): niets doen | interne links herverdelen | content differentiëren | canonical | samenvoegen + 301 | de-indexeren (noindex). Lege duplicaten zonder verkeer/links → 301 naar de winnaar.
+TAALVARIANTEN (bijv. /en/-paden of een andere taalcode): NOOIT 301 of canonical naar de andere taal adviseren; die pagina bedient een eigen taalgroep (expats/internationals). De juiste actie is dan "hreflang + vertalen (pagina blijft)": hreflang-koppeling tussen beide versies, elk zelf-canonical, en de variant volledig in de eigen taal uitwerken. De query-splitsing telt WEL gewoon mee in de Score.
 
 OUTPUT — KORT EN SCANBAAR, absoluut geen lappen tekst. Denk aan een strak Excel-overzicht, niet aan een rapport. Nette markdown, Nederlands, geen emoji.
 1. Eén tot twee zinnen strategie: is deze pagina de winnaar en wat is het patroon. Niet meer.
@@ -268,11 +269,85 @@ export function parseActionableRows(analysis: string): { path: string; action: s
   return out;
 }
 
+// Diepere duiding van één tabel-rij: legt de GSC-data van de rij-pagina naast
+// die van de winnaar en geeft een kort, eerlijk oordeel: echte query-splitsing
+// of niet, en klopt de voorgestelde actie. Gebruikt door de check-overlay
+// (op aanvraag) en als achtergrond in het taak-document.
+export async function canniRowDuiding(slug: string, url: string, rowPath: string): Promise<string> {
+  const client = await getClientBySlug(slug);
+  const domain = client?.domain || "";
+  if (!domain) throw new Error("Deze klant heeft nog geen domein ingevuld.");
+  let origin = "";
+  try { origin = new URL(url).origin; } catch { origin = `https://${domain.replace(/^https?:\/\//, "").replace(/\/$/, "")}`; }
+  const rowUrl = origin + rowPath;
+  const cur = await getPageCannibal(slug, url);
+  const analysis = (cur.result || "").trim();
+  const rowLine = analysis.split("\n").find((l) => l.includes(`[${rowPath}]`)) || "";
+  const [gscRow, gscWinner] = await Promise.all([
+    getGscForPage(domain, rowUrl, 90).catch(() => []),
+    getGscForPage(domain, url, 90).catch(() => []),
+  ]);
+  const fmt = (rows: { keyword: string; clicks: number; impressions: number; position: number }[]) =>
+    rows.slice(0, 20).map((r) => `- "${r.keyword}" pos ${r.position.toFixed(1)} | ${r.clicks} klik | ${r.impressions} vert`).join("\n") || "- (geen data)";
+  return callClaude(
+    `Je bent een senior SEO-strateeg bij bureau Pingwin. Geef een KORTE, eerlijke reality-check van één cannibalisatie-voorstel, op basis van echte GSC-data (laatste 90 dagen). Nederlands, gewone taal, geen emoji.
+Beantwoord scanbaar in markdown, hooguit ~200 woorden:
+1. **Echte splitsing?** Krijgen beide pagina's vertoningen op dezelfde zoektermen (noem de termen met posities), of bedienen ze elk een eigen vraag?
+2. **Klopt de voorgestelde actie?** Toets het voorstel uit de analyse-regel aan de data. LET OP: bij taalvarianten (zoals /en/-paden) is 301 of canonical vrijwel nooit juist; het nette antwoord is hreflang-koppeling + de variant volledig in de eigen taal uitwerken.
+3. **Advies:** wat zou jij doen (nu uitvoeren / als taak inplannen / naar de pagina-aanpak schuiven / afwijzen), in één of twee zinnen met de kern van het waarom.
+Verzin niets; baseer je alleen op de meegegeven data.`,
+    [{ role: "user", content: `Geanalyseerde landingspagina (de beoogde winnaar): ${url}\nRij-pagina waar het voorstel over gaat: ${rowUrl}\n\nVoorstel uit de analyse-tabel:\n${rowLine || "(regel niet gevonden)"}\n\nGSC-data rij-pagina:\n${fmt(gscRow)}\n\nGSC-data winnaar:\n${fmt(gscWinner)}` }],
+    1500, { slug, action: "canni_duiding" },
+  );
+}
+
+// "Taak maken" bij een tabel-rij: voor klussen die te groot zijn om direct uit
+// te voeren maar op de korte termijn ingepland moeten worden (zoals een volledige
+// taalversie). Maakt de diepere duiding, een werkdocument in de Drive-map van de
+// pagina, en een taak in Werkzaamheden; markeert de rij als "taak".
+export async function makeCanniRowTask(slug: string, url: string, rowPath: string): Promise<{ taskId: number | null; docLink: string }> {
+  const cur = await getPageCannibal(slug, url);
+  const analysis = (cur.result || "").trim();
+  if (!analysis) throw new Error("Er is geen cannibalisatie-analyse meer voor deze pagina.");
+  const rowLine = analysis.split("\n").find((l) => l.includes(`[${rowPath}]`)) || "";
+  const client = await getClientBySlug(slug);
+  const duiding = await canniRowDuiding(slug, url, rowPath).catch(() => "");
+
+  // Werkdocument met de duiding als achtergrond, in de Drive-map van de pagina.
+  let docLink = "";
+  try {
+    const { spec } = await canniTaskDocSpec(slug, url, rowPath, rowLine, duiding || rowLine);
+    const buffer = await buildPingwinDoc(spec);
+    const folder = await getPageDriveFolder(slug, url).catch(() => null);
+    if (folder?.folderId) { try { ({ link: docLink } = await uploadDocx(folder.folderId, `${safeName(client?.name || slug)}-taak-${safeName(rowPath)}.docx`, buffer)); } catch { /* zonder link vastleggen */ } }
+  } catch { /* document is aanvullend */ }
+
+  // Dedupe: een eerdere taak voor dezelfde rij vervangen.
+  try {
+    const existing = await getTasks(slug).catch(() => []);
+    const dupIds = existing.filter((t) => t.stepKind === `cannibal_taak:${rowPath}` && t.id != null).map((t) => t.id as number);
+    if (dupIds.length) await deleteTasksByIds(slug, dupIds).catch(() => { /* stil */ });
+  } catch { /* dedupe niet kritisch */ }
+
+  const linkHtml = docLink ? ` (<a href="${docLink.replace(/"/g, "&quot;")}" target="_blank" rel="noreferrer">document</a>)` : "";
+  const ids = await appendTasks(slug, [{
+    taak: `Cannibalisatie-taak ${rowPath}${linkHtml}`,
+    toelichting: "",
+    klantToelichting: "Uit de cannibalisatie-analyse: dit punt is te groot om direct door te voeren en staat daarom als eigen taak op de planning. De achtergrond en stappen staan in het gekoppelde document.",
+    status: "Gepland", wie: "SEO", fase: "Opschonen",
+    pageUrl: url, stepKind: `cannibal_taak:${rowPath}`, klantZichtbaar: true,
+    docLink: docLink || undefined, clientDocLink: docLink || undefined,
+  }]).catch(() => [] as number[]);
+
+  await setCanniRowStatus(slug, url, rowPath, "taak").catch(() => { /* status is hulpinfo */ });
+  return { taskId: ids[0] ?? null, docLink };
+}
+
 // "Aanbevelingen overnemen" = het BEVESTIGINGSMOMENT na de menselijke beoordeling.
 // Kijkt naar de rij-statussen (uitgevoerd/doorgezet/afgewezen; geen status =
 // nog voorgesteld) en maakt op basis dáárvan het klantdocument + de Dev-taak:
 // alleen geaccepteerde acties in de lijsten, afgewezen voorstellen met reden.
-export async function applyPageCannibal(slug: string, url: string): Promise<{ taskId: number | null; docLink: string; executed: number; deferred: number; rejected: number; unreviewed: number }> {
+export async function applyPageCannibal(slug: string, url: string): Promise<{ taskId: number | null; docLink: string; executed: number; deferred: number; rejected: number; tasked: number; unreviewed: number }> {
   const cur = await getPageCannibal(slug, url);
   const analysis = (cur.result || "").trim();
   if (!analysis) throw new Error("Er is nog geen cannibalisatie-analyse voor deze pagina. Draai eerst de analyse.");
@@ -287,12 +362,14 @@ export async function applyPageCannibal(slug: string, url: string): Promise<{ ta
   const executed = rows.filter((r) => statuses[r.path]?.status === "uitgevoerd");
   const deferred = rows.filter((r) => statuses[r.path]?.status === "doorgezet");
   const rejected = rows.filter((r) => statuses[r.path]?.status === "afgewezen");
+  const tasked = rows.filter((r) => statuses[r.path]?.status === "taak");
   const unreviewed = rows.filter((r) => !statuses[r.path]);
 
   const decisions = [
     "BESLISSINGEN PER RIJ (na menselijke beoordeling; LEIDEND voor het document):",
     ...executed.map((r) => `- ${r.path} (${r.action}): GEACCEPTEERD EN DOORGEVOERD${r.action === "301" ? (verifiedMap.get(r.path) ? ", live gecontroleerd (echte 301 naar het juiste doel)" : ", live-controle nog niet geslaagd") : ""}`),
     ...deferred.map((r) => `- ${r.path} (${r.action}): OPGESCHOVEN, wordt opgepakt wanneer die pagina zelf onder handen wordt genomen (advies staat daar klaar)`),
+    ...tasked.map((r) => `- ${r.path} (${r.action}): INGEPLAND ALS APARTE TAAK op de korte termijn (groter werk, eigen werkdocument met de stappen)`),
     ...rejected.map((r) => `- ${r.path} (${r.action}): AFGEWEZEN${statuses[r.path]?.reason ? `, reden: ${statuses[r.path].reason}` : " (zonder opgegeven reden)"}`),
     ...unreviewed.map((r) => `- ${r.path} (${r.action}): NOG NIET BEOORDEELD, laat deze volledig weg uit het document`),
   ].join("\n");
@@ -343,5 +420,5 @@ NEEM UITSLUITEND de acties op voor deze GEACCEPTEERDE paden: ${executed.length ?
     docLink: docLink || undefined, clientDocLink: docLink || undefined,
   }]).catch(() => [] as number[]);
 
-  return { taskId: ids[0] ?? null, docLink, executed: executed.length, deferred: deferred.length, rejected: rejected.length, unreviewed: unreviewed.length };
+  return { taskId: ids[0] ?? null, docLink, executed: executed.length, deferred: deferred.length, rejected: rejected.length, tasked: tasked.length, unreviewed: unreviewed.length };
 }

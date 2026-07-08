@@ -122,8 +122,8 @@ export async function findWpEditUrl(conn: WpConn, path: string): Promise<string 
   return null;
 }
 
-// ── Status per tabel-rij (uitgevoerd/afgewezen/doorgezet naar pagina's) ──
-export type CanniRowStatus = "uitgevoerd" | "afgewezen" | "doorgezet";
+// ── Status per tabel-rij (uitgevoerd/afgewezen/doorgezet/als taak ingepland) ──
+export type CanniRowStatus = "uitgevoerd" | "afgewezen" | "doorgezet" | "taak";
 
 export type CanniRowInfo = { status: CanniRowStatus; reason: string };
 
@@ -131,7 +131,7 @@ export async function getCanniRowStatuses(slug: string, pageUrl: string): Promis
   await ensureSchema();
   const { rows } = await sql`SELECT row_path, status, reason FROM page_canni_rows WHERE slug = ${slug} AND page_url = ${pageUrl}`;
   const out: Record<string, CanniRowInfo> = {};
-  for (const r of rows) if (r.status === "uitgevoerd" || r.status === "afgewezen" || r.status === "doorgezet") out[String(r.row_path)] = { status: r.status, reason: String(r.reason || "") };
+  for (const r of rows) if (r.status === "uitgevoerd" || r.status === "afgewezen" || r.status === "doorgezet" || r.status === "taak") out[String(r.row_path)] = { status: r.status, reason: String(r.reason || "") };
   return out;
 }
 
