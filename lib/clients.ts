@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { sql, ensureSchema } from "./db";
 import { hashPassword, generatePassword } from "./password";
 
@@ -267,6 +268,46 @@ export async function setClientBudget(
       uurtarief = ${b.uurtarief}, beschikbare_uren = ${b.beschikbareUren}
     WHERE slug = ${slug}`;
   return !!rowCount && rowCount > 0;
+}
+
+// ── Loginvrije deel-link per klant ──
+// Elke klant krijgt automatisch een lange, onraadbare code (share_token).
+// De klant opent /k/<code> en zit meteen in het eigen dashboard. De code
+// blijft geldig tot je hem in de cockpit vernieuwt.
+
+function newShareToken(): string {
+  return crypto.randomBytes(24).toString("base64url");
+}
+
+// Geeft de deel-code van een klant; maakt hem aan als hij nog niet bestaat.
+export async function getOrCreateShareToken(slug: string): Promise<string | null> {
+  await ensureSchema();
+  const { rows } = await sql`SELECT share_token FROM clients WHERE slug = ${slug} LIMIT 1`;
+  if (!rows[0]) return null;
+  const existing = (rows[0].share_token as string) || "";
+  if (existing) return existing;
+  const token = newShareToken();
+  await sql`UPDATE clients SET share_token = ${token} WHERE slug = ${slug} AND share_token IS NULL`;
+  // Bij een gelijktijdige eerste aanvraag wint er één; lees de definitieve waarde terug.
+  const { rows: after } = await sql`SELECT share_token FROM clients WHERE slug = ${slug} LIMIT 1`;
+  return (after[0]?.share_token as string) || token;
+}
+
+// Vernieuwt de deel-code (oude link stopt meteen met werken).
+export async function regenerateShareToken(slug: string): Promise<string | null> {
+  await ensureSchema();
+  const token = newShareToken();
+  const { rowCount } = await sql`UPDATE clients SET share_token = ${token} WHERE slug = ${slug}`;
+  return rowCount && rowCount > 0 ? token : null;
+}
+
+// Zoekt de klant bij een deel-code (voor de loginvrije route).
+export async function getClientByShareToken(token: string): Promise<ClientConfig | null> {
+  await ensureSchema();
+  const t = token.trim();
+  if (!t) return null;
+  const { rows } = await sql<ClientRow>`SELECT * FROM clients WHERE share_token = ${t} LIMIT 1`;
+  return rows[0] ? rowToConfig(rows[0]) : null;
 }
 
 export async function deleteClient(slug: string): Promise<boolean> {

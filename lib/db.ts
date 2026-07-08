@@ -52,6 +52,11 @@ async function init(): Promise<void> {
   // zodat bestaande klanten zonder wijziging kunnen blijven inloggen. Zet uit om de
   // klant-login te blokkeren (het adminscherm blijft los daarvan werken).
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS login_enabled BOOLEAN NOT NULL DEFAULT true`;
+  // Loginvrije deel-link: lange onraadbare code per klant. De klant opent
+  // /k/<code> en zit meteen in het eigen dashboard, zonder wachtwoord. Wordt
+  // automatisch gevuld bij eerste gebruik; vernieuwen kan in de cockpit.
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS share_token TEXT`;
+  await sql`CREATE UNIQUE INDEX IF NOT EXISTS ux_clients_share_token ON clients (share_token)`;
 
   // (wp_url/wp_user/wp_app_pass_enc op clients zijn ONGEBRUIKT; de WordPress-
   // koppeling loopt via client_wp_creds in lib/wp-creds.ts. Kolommen blijven
