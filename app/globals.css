@@ -620,6 +620,18 @@ tbody td:last-child { text-align: center; }
 .pcd-btn.wp-ghost-blue { border-color: var(--border); color: #17679a; background: #fff; }
 .pcd-btn.wp-ghost-blue:hover:not(:disabled) { border-color: #2286C7; background: #eaf4fb; }
 .pch-canni-md tr.canni-deferred td { background: #f4f9fd; }
+/* Cross-check-linkje per rij + de pagina-check-overlay. */
+.canni-check { background: none; border: none; padding: 0; margin-top: 2px; font-size: 11px; color: var(--gray); text-decoration: underline; cursor: pointer; }
+.canni-check:hover { color: var(--orange); }
+.canni-check-pop { background: #fff; border-radius: 14px; padding: 18px 22px; width: min(760px, 94vw); max-height: 84vh; overflow-y: auto; box-shadow: 0 12px 40px rgba(0,0,0,0.25); }
+.ccp-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.ccp-path { background: var(--brand-orange-faint, #fdf1ea); border-radius: 6px; padding: 2px 8px; font-size: 12.5px; word-break: break-all; }
+.ccp-live { font-size: 12px; }
+.ccp-close { margin-left: auto; }
+.ccp-body .md-table { font-size: 12.5px; width: 100%; }
+.ccp-sub { font-size: 12.5px; font-weight: 700; margin: 12px 0 4px; }
+.ccp-meta { font-size: 13px; margin: 6px 0 0; }
+.ccp-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; border-top: 1px solid var(--border); padding-top: 12px; }
 .pch-canni-toggle { background: none; border: none; cursor: pointer; font-size: 13px; font-weight: 700; color: var(--brand-teal); padding: 4px 0; text-align: left; width: 100%; }
 .pch-canni-md { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; margin-top: 8px; max-width: 100%; }
 /* Vaste kolomindeling: smalle metriek/label-kolommen (koppen + cellen breken af), brede URL- en reden-kolommen, zodat de tabel minder hoog wordt. */

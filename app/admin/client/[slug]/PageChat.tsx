@@ -254,6 +254,8 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       const redirect = wpRedirects.find((x) => x.from === rowPath) || null;
       const isEdit = !redirect && /de-optimaliseren|intern(?:e)?\s+link/i.test(rowText);
       if (redirect || isEdit) cells[redenIdx] += rowButtonsHtml(rowPath, redirect);
+      // Cross-check-linkje bij elke rij: hoe staat deze pagina er echt voor?
+      cells[0] += `<br><button type="button" class="canni-check" data-act="check" data-path="${escAttr(rowPath)}" title="Bekijk hoe deze pagina er echt voor staat (GSC-zoekwoorden, Ahrefs-rankings, verwijzende domeinen) voordat je kiest.">check</button>`;
       const rowCls = rowStatus[rowPath] === "afgewezen" ? "canni-rejected" : rowStatus[rowPath] === "doorgezet" ? "canni-deferred" : "";
       return `<tr${rowCls ? ` class="${rowCls}"` : ""}>` + cells.join("</td>") + "</tr>";
     });
@@ -265,6 +267,22 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   async function setRowStatus(rowPath: string, status: "uitgevoerd" | "afgewezen" | null) {
     setRowStatusMap((m) => { const n = { ...m }; if (status) n[rowPath] = status; else delete n[rowPath]; return n; });
     try { await fetch("/api/admin/canni-row", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, pageUrl: url, rowPath, status }) }); } catch { /* status is hulpinfo */ }
+  }
+
+  // ── Pagina-check overlay: hoe staat een rij-pagina er echt voor? ──
+  type CheckData = { fullUrl: string; refDomains: number | null; gsc: { keyword: string; clicks: number; impressions: number; position: number }[]; ahrefs: { keyword: string; position: number | null; volume: number | null; traffic: number | null }[] };
+  const [checkPath, setCheckPath] = useState("");
+  const [checkData, setCheckData] = useState<CheckData | null>(null);
+  const [checkBusy, setCheckBusy] = useState(false);
+  const [checkErr, setCheckErr] = useState("");
+
+  async function openCheck(rowPath: string) {
+    setCheckPath(rowPath); setCheckData(null); setCheckErr(""); setCheckBusy(true);
+    try {
+      const d = await fetch(`/api/admin/canni-check?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}&path=${encodeURIComponent(rowPath)}`).then((r) => r.json());
+      if (!d.ok) { setCheckErr(d.error || "Check mislukt."); return; }
+      setCheckData(d);
+    } catch { setCheckErr("Check mislukt."); } finally { setCheckBusy(false); }
   }
 
   // "Naar pagina's": zet het advies van deze rij klaar bij die pagina (als
@@ -309,6 +327,8 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       openInBackend(path);
     } else if (act === "topage" && path) {
       sendRowToPage(path);
+    } else if (act === "check" && path) {
+      openCheck(path);
     } else if (act === "reject" && path) {
       setRowStatus(path, "afgewezen");
     } else if (act === "restore" && path) {
@@ -1039,6 +1059,52 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
         )}
         </div>)}
       </div>
+
+      {checkPath && (
+        <div className="compose-overlay">
+          <div className="canni-check-pop">
+            <div className="ccp-head">
+              <strong>Pagina-check</strong>
+              <code className="ccp-path">{checkPath}</code>
+              {checkData && <a href={checkData.fullUrl} target="_blank" rel="noreferrer" className="ccp-live">bekijk live ↗</a>}
+              <button type="button" className="ghost-btn small ccp-close" onClick={() => setCheckPath("")} title="Sluiten">✕</button>
+            </div>
+            {checkBusy && <div className="muted" style={{ padding: "14px 0" }}>Gegevens ophalen (GSC en Ahrefs)…</div>}
+            {checkErr && <div className="login-error">{checkErr}</div>}
+            {checkData && (
+              <div className="ccp-body md">
+                <p className="ccp-meta"><strong>Verwijzende domeinen:</strong> {checkData.refDomains ?? "onbekend"}</p>
+                <p className="ccp-sub">Search Console, laatste 90 dagen (waar Google deze pagina echt op toont):</p>
+                {checkData.gsc.length ? (
+                  <table className="md-table"><thead><tr><th>Zoekwoord</th><th>Positie</th><th>Klikken</th><th>Vertoningen</th></tr></thead>
+                    <tbody>{checkData.gsc.map((r) => <tr key={r.keyword}><td>{r.keyword}</td><td>{r.position ? r.position.toFixed(1) : "-"}</td><td>{r.clicks}</td><td>{r.impressions}</td></tr>)}</tbody></table>
+                ) : <p className="muted">Geen GSC-gegevens voor deze pagina.</p>}
+                <p className="ccp-sub">Ahrefs (rankings met zoekvolume):</p>
+                {checkData.ahrefs.length ? (
+                  <table className="md-table"><thead><tr><th>Zoekwoord</th><th>Positie</th><th>Volume</th><th>Verkeer</th></tr></thead>
+                    <tbody>{checkData.ahrefs.map((r) => <tr key={r.keyword}><td>{r.keyword}</td><td>{r.position ?? "-"}</td><td>{r.volume ?? "-"}</td><td>{r.traffic ?? "-"}</td></tr>)}</tbody></table>
+                ) : <p className="muted">Geen Ahrefs-rankings voor deze pagina.</p>}
+                <div className="ccp-actions">
+                  {(() => {
+                    const redirect = wpRedirects.find((x) => x.from === checkPath) || null;
+                    const status = rowStatus[checkPath];
+                    if (status === "afgewezen") return <button type="button" className="pcd-btn small pcd-warn" onClick={() => setRowStatus(checkPath, null)}>Afgewezen, herstel</button>;
+                    if (status === "doorgezet") return <button type="button" className="pcd-btn small pcd-blue" onClick={() => setRowStatus(checkPath, null)}>→ Bij pagina&rsquo;s, herstel</button>;
+                    return (<>
+                      {redirect
+                        ? <button type="button" className={"pcd-btn small" + (wpDone[redirect.from]?.verified ? " pcd-done" : "")} disabled={!!wpBusy} onClick={() => runWpRedirect(redirect.from, redirect.to)}>{wpDone[redirect.from]?.verified ? "✓ Uitgevoerd" : "Uitvoeren (301)"}</button>
+                        : <button type="button" className={"pcd-btn small" + (status === "uitgevoerd" ? " pcd-done" : "")} disabled={!!wpBusy} onClick={() => openInBackend(checkPath)}>{status === "uitgevoerd" ? "✓ Uitgevoerd" : "Uitvoeren (open backend)"}</button>}
+                      {!redirect && <button type="button" className="pcd-btn small wp-ghost-blue" disabled={!!wpBusy} onClick={() => sendRowToPage(checkPath)}>Naar pagina&rsquo;s</button>}
+                      <button type="button" className="pcd-btn small wp-ghost" disabled={!!wpBusy} onClick={() => setRowStatus(checkPath, "afgewezen")}>Afwijzen</button>
+                    </>);
+                  })()}
+                </div>
+                {wpMsg && <div className="login-error" style={{ marginTop: 8 }}>{wpMsg}</div>}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className={"page-chat-links-card step-card step-card-6" + (ilDone ? " done" : "")}>
         <div className="step-head" onClick={() => setLinksOpen((o) => !o)}>
