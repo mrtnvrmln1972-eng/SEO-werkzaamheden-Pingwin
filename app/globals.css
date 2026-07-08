@@ -1218,6 +1218,14 @@ button.ck-collapse-head {
 .kpi-sub-head .kpi-head-actions { padding-bottom: 0; }
 .kpi-kw-search { font-size: 12px; padding: 4px 9px; border: 1px solid var(--border); border-radius: 7px; outline: none; width: 170px; max-width: 42vw; font-family: inherit; background: var(--white); }
 .kpi-kw-search:focus { border-color: var(--orange); }
+/* Pagina-rij klikbaar: uitklap met de zoekwoorden waarop de pagina rankt. */
+.kpi-page-row { cursor: pointer; }
+.kpi-page-caret { color: var(--orange); font-size: 11px; display: inline-block; width: 12px; }
+.kpi-page-kw-row > td { background: #fdf7f2; padding: 6px 10px 10px 26px; }
+.kpi-page-kw-table { margin-top: 4px; }
+.kpi-page-kw-table th, .kpi-page-kw-table td { font-size: 12.5px; }
+.kpi-ah-page a { color: inherit; text-decoration: underline; text-decoration-color: var(--border); }
+.kpi-ah-page a:hover { text-decoration-color: var(--orange); }
 .kpi-period-inline { display: inline-flex; gap: 6px; align-items: center; }
 /* Scorekaart met trend: beginstand links, verschil midden, eindstand rechts + dag-grafiek. */
 .kpi-card-trend { display: flex; flex-direction: column; gap: 6px; }

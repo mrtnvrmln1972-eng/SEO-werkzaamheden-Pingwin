@@ -259,6 +259,10 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
   const [kwSort, setKwSort] = useState<Sort<KwKey>>({ key: "focus", dir: "asc" });
   const [kwSearch, setKwSearch] = useState("");
   const [pageSearch, setPageSearch] = useState("");
+  // Uitklap per pagina: de zoekwoorden waarop die pagina rankt (Search Console).
+  type PageKw = { keyword: string; clicks: number; impressions: number; position: number };
+  const [pageKwOpen, setPageKwOpen] = useState("");
+  const [pageKwData, setPageKwData] = useState<Record<string, PageKw[] | "laden" | "fout">>({});
   const [ahSearch, setAhSearch] = useState("");
   const [pageSort, setPageSort] = useState<Sort<PageKey>>({ key: "prio", dir: "asc" });
   const [oppSort, setOppSort] = useState<Sort<OppKey>>(null);
@@ -448,6 +452,17 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
     if (!d.ok) throw new Error(d.error || "Kon de toelichting niet maken.");
     return mdToHtml(d.markdown || "");
   }
+  async function togglePageKw(u: string) {
+    if (pageKwOpen === u) { setPageKwOpen(""); return; }
+    setPageKwOpen(u);
+    if (Array.isArray(pageKwData[u])) return;
+    setPageKwData((m) => ({ ...m, [u]: "laden" }));
+    try {
+      const r = await fetch(`/api/admin/kpi/page-keywords?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(u)}&days=${days}`);
+      const d = await r.json();
+      setPageKwData((m) => ({ ...m, [u]: d.ok ? (d.keywords || []) : "fout" }));
+    } catch { setPageKwData((m) => ({ ...m, [u]: "fout" })); }
+  }
   // Herbruikbare periodekiezer (zelfde blokje als bovenaan), ook in de sectie-headers zodat
   // je daar ziet én kunt kiezen waarmee klikken/vertoningen vergeleken worden.
   const periodPicker = (
@@ -604,16 +619,43 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
                     {sortedPages.map((p, i) => {
                       const isPrio = pagePrio.has(pagePrioKey(p.url));
                       const canDrag = !pageSort && !pageSearch.trim();
+                      const kwOpen = pageKwOpen === p.url;
+                      const kwData = pageKwData[p.url];
+                      const colCount = 3 + pageCols.length * 2;
                       return (
-                        <tr key={p.url} className={dragIdx === i ? "dragging" : ""} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { if (!canDrag) return; e.stopPropagation(); movePage(i); }}>
+                        <Fragment key={p.url}>
+                        <tr className={(dragIdx === i ? "dragging " : "") + "kpi-page-row"} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { if (!canDrag) return; e.stopPropagation(); movePage(i); }} onClick={(e) => { if ((e.target as HTMLElement).closest("a,button,.wz-star,.kpi-drag")) return; togglePageKw(p.url); }} title="Klik om de zoekwoorden van deze pagina te tonen">
                           <td className="kpi-pageprio-cell">
                             <span className={"wz-star" + (isPrio ? " on" : "")} title={isPrio ? "Prioriteit aan, klik om uit te zetten" : "Markeer als prioriteit (komt bovenaan)"} onClick={() => togglePagePrio(p.url)}>{isPrio ? "★" : "☆"}</span>
                             <span className="kpi-drag" draggable={canDrag} onDragStart={() => { if (canDrag) setDragIdx(i); }} onDragEnd={() => setDragIdx(null)} title={canDrag ? "Sleep om bovenaan te zetten" : "Zet de sortering/prioriteit uit om te slepen"}>⠿</span>
                           </td>
-                          <td><a href={p.url} target="_blank" rel="noreferrer">{shortUrl(p.url)}</a></td>
+                          <td><span className="kpi-page-caret">{kwOpen ? "▾" : "▸"}</span> <a href={p.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>{shortUrl(p.url)}</a></td>
                           {pageCols.map((gk) => pageCell[gk](p))}
                           <td className="kpi-openpage-cell"><button type="button" className="ghost-btn small" onClick={(e) => { e.stopPropagation(); onOpenPage?.(p.url); }} title="Open deze pagina in het Pagina's-tabje">open in Pagina&rsquo;s</button></td>
                         </tr>
+                        {kwOpen && (
+                          <tr className="kpi-page-kw-row">
+                            <td colSpan={colCount}>
+                              {kwData === "laden" || kwData === undefined ? (
+                                <div className="muted" style={{ padding: "6px 8px" }}>Zoekwoorden laden…</div>
+                              ) : kwData === "fout" ? (
+                                <div className="muted" style={{ padding: "6px 8px" }}>Kon de zoekwoorden niet ophalen.</div>
+                              ) : kwData.length === 0 ? (
+                                <div className="muted" style={{ padding: "6px 8px" }}>Geen zoekwoorden met vertoningen in deze periode.</div>
+                              ) : (
+                                <table className="res-table kpi-table kpi-page-kw-table">
+                                  <thead><tr><th>Zoekwoord</th><th>Ranking</th><th>Klikken</th><th>Vertoningen</th></tr></thead>
+                                  <tbody>
+                                    {kwData.map((k) => (
+                                      <tr key={k.keyword}><td>{k.keyword}</td><td>{k.position.toFixed(1)}</td><td>{nl(k.clicks)}</td><td>{nl(k.impressions)}</td></tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              )}
+                            </td>
+                          </tr>
+                        )}
+                        </Fragment>
                       );
                     })}
                   </tbody>
