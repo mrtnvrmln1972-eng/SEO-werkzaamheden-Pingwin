@@ -156,6 +156,10 @@ export async function runNow(id: number): Promise<void> {
 
 // Een stap die te lang 'running' staat (worker gestopt) terugzetten op 'pending'.
 async function recoverStale(): Promise<void> {
+  // Een run met een fout-stap maar status 'running' (inconsistent, bijv. oude runs)
+  // blokkeert de wachtrij voor eeuwig: de cron kiest altijd de oudste run, doet er
+  // niets mee en komt nooit toe aan nieuwere runs. Daarom hier afronden als fout.
+  await sql`UPDATE page_doc_runs SET status = 'error', updated_at = now() WHERE status = 'running' AND (analyse_state = 'error' OR blauwdruk_state = 'error' OR copy_state = 'error')`;
   await sql`UPDATE page_doc_runs SET analyse_state = 'pending', updated_at = now() WHERE status = 'running' AND analyse_state = 'running' AND updated_at < now() - interval '15 minutes'`;
   await sql`UPDATE page_doc_runs SET blauwdruk_state = 'pending', updated_at = now() WHERE status = 'running' AND blauwdruk_state = 'running' AND updated_at < now() - interval '15 minutes'`;
   await sql`UPDATE page_doc_runs SET copy_state = 'pending', updated_at = now() WHERE status = 'running' AND copy_state = 'running' AND updated_at < now() - interval '15 minutes'`;
