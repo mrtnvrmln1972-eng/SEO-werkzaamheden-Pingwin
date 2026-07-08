@@ -104,6 +104,60 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     } catch { setApplyMsg("Overnemen mislukt."); } finally { setApplyBusy(false); }
   }
 
+  // ── 301-redirects per stuk uitvoeren in de WordPress-website (Redirection-plugin) ──
+  const [wpConf, setWpConf] = useState<{ configured: boolean; url: string; user: string } | null>(null);
+  const [wpDone, setWpDone] = useState<Record<string, { verified: boolean }>>({});
+  const [wpBusy, setWpBusy] = useState(""); // van-pad dat nu wordt doorgevoerd
+  const [wpMsg, setWpMsg] = useState("");
+  const [wpFormOpen, setWpFormOpen] = useState(false);
+  const [wpForm, setWpForm] = useState({ url: "", user: "", pass: "" });
+  const [wpSaving, setWpSaving] = useState(false);
+
+  // De redirect-regels ("/oud/ → /nieuw/") uit de cannibalisatie-analyse halen.
+  // Interne-link-regels vallen af doordat daar tekst achter staat (ankertekst).
+  function parseRedirects(md: string): { from: string; to: string }[] {
+    const out: { from: string; to: string }[] = [];
+    const seen = new Set<string>();
+    for (const line of (md || "").split("\n")) {
+      const m = line.match(/^\s*(?:[-*]\s*)?(\/\S*)\s*(?:→|->)\s*(\/\S*)\s*$/);
+      if (m && !seen.has(m[1]) && m[1] !== m[2]) { seen.add(m[1]); out.push({ from: m[1], to: m[2] }); }
+    }
+    return out;
+  }
+  const wpRedirects = parseRedirects(pc?.result || "");
+
+  useEffect(() => {
+    (async () => {
+      try { const d = await fetch(`/api/admin/wp-conn?slug=${encodeURIComponent(slug)}`).then((r) => r.json()); if (d.ok) setWpConf({ configured: !!d.configured, url: d.url || "", user: d.user || "" }); } catch { /* stil */ }
+      try {
+        const d = await fetch(`/api/admin/wp-redirect?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}`).then((r) => r.json());
+        if (d.ok && Array.isArray(d.done)) { const m: Record<string, { verified: boolean }> = {}; for (const r of d.done) m[r.fromPath] = { verified: !!r.verified }; setWpDone(m); }
+      } catch { /* stil */ }
+    })();
+  }, [slug, url]);
+
+  async function saveWpConn() {
+    if (wpSaving) return;
+    setWpSaving(true); setWpMsg("");
+    try {
+      const d = await fetch("/api/admin/wp-conn", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: wpForm.url, user: wpForm.user, appPassword: wpForm.pass }) }).then((r) => r.json());
+      if (!d.ok) { setWpMsg(d.error || "Opslaan mislukt."); return; }
+      setWpConf({ configured: true, url: wpForm.url.replace(/\/+$/, ""), user: wpForm.user });
+      setWpForm((f) => ({ ...f, pass: "" })); setWpFormOpen(false);
+    } catch { setWpMsg("Opslaan mislukt."); } finally { setWpSaving(false); }
+  }
+
+  async function runWpRedirect(from: string, to: string) {
+    if (wpBusy) return;
+    setWpBusy(from); setWpMsg("");
+    try {
+      const d = await fetch("/api/admin/wp-redirect", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, pageUrl: url, from, to }) }).then((r) => r.json());
+      if (!d.ok) { setWpMsg(d.error || "Doorvoeren mislukt."); return; }
+      setWpDone((m) => ({ ...m, [from]: { verified: !!d.verified } }));
+      if (!d.verified) setWpMsg(`De redirect staat in de website, maar de live-controle zegt: ${d.detail || "nog niet actief"}. Soms moet de cache van de site eerst verlopen; probeer zo de controle opnieuw.`);
+    } catch { setWpMsg("Doorvoeren mislukt."); } finally { setWpBusy(""); }
+  }
+
   const lastAssistant = [...msgs].reverse().find((m) => m.role === "assistant")?.content || "";
   // Wordt het gesprek nu uitgeklapt getoond? Zo ja, staat de vervolgvraag al in het
   // gesprek zelf (boven de knoppen) en verbergen we het losse invoerveld onderaan.
@@ -772,6 +826,42 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
               )}
             </div>
             {applyMsg && <div className="login-error" style={{ marginTop: 8 }}>{applyMsg}</div>}
+            {wpRedirects.length > 0 && (
+              <div className="pch-wp">
+                <div className="pch-wp-head">
+                  <span className="pch-wp-title">301-redirects in de website</span>
+                  <span onClick={(e) => e.stopPropagation()}><HelpHint text="Voert de redirect via de gekoppelde WordPress-website door (Redirection-plugin) en controleert direct live of de oude URL echt met een 301 naar het juiste doel gaat. De redirects staan in de plugin in de groep 'Pingwin SEO dashboard'." /></span>
+                  {wpConf?.configured
+                    ? <span className="pch-wp-conn">Gekoppeld met {wpConf.url.replace(/^https?:\/\//i, "")} <button type="button" className="ghost-btn small" onClick={() => { setWpForm({ url: wpConf.url, user: wpConf.user, pass: "" }); setWpFormOpen((o) => !o); }}>Wijzigen</button></span>
+                    : <button type="button" className="ghost-btn small" onClick={() => setWpFormOpen((o) => !o)}>WordPress koppelen</button>}
+                </div>
+                {wpFormOpen && (
+                  <div className="pch-wp-form">
+                    <input type="url" placeholder="Website-URL (https://…)" value={wpForm.url} onChange={(e) => setWpForm((f) => ({ ...f, url: e.target.value }))} />
+                    <input type="text" placeholder="WordPress-gebruikersnaam" value={wpForm.user} onChange={(e) => setWpForm((f) => ({ ...f, user: e.target.value }))} autoComplete="off" />
+                    <input type="password" placeholder="Application password" value={wpForm.pass} onChange={(e) => setWpForm((f) => ({ ...f, pass: e.target.value }))} autoComplete="new-password" />
+                    <button type="button" className="pcd-btn" disabled={wpSaving} onClick={saveWpConn}>{wpSaving ? "Opslaan…" : "Koppeling opslaan"}</button>
+                  </div>
+                )}
+                <div className="pch-wp-list">
+                  {wpRedirects.map((r) => {
+                    const done = wpDone[r.from];
+                    const busy = wpBusy === r.from;
+                    return (
+                      <div className="pch-wp-row" key={r.from}>
+                        <span className="pch-wp-paths"><code>{r.from}</code><span className="pch-wp-arrow">→</span><code>{r.to}</code></span>
+                        {done?.verified
+                          ? <button type="button" className="pcd-btn small pcd-done" disabled={busy} onClick={() => runWpRedirect(r.from, r.to)} title="Staat in de website en is live gecontroleerd (301 naar het juiste doel). Klik om opnieuw te controleren.">✓ Uitgevoerd</button>
+                          : done
+                            ? <button type="button" className="pcd-btn small pcd-warn" disabled={busy} onClick={() => runWpRedirect(r.from, r.to)} title="De redirect is doorgevoerd, maar de live-controle lukte nog niet. Klik om opnieuw te controleren.">{busy ? "Controleren…" : "Opnieuw controleren"}</button>
+                            : <button type="button" className="pcd-btn small" disabled={busy || !wpConf?.configured} onClick={() => runWpRedirect(r.from, r.to)} title={wpConf?.configured ? "Zet deze 301-redirect in de website en controleer hem direct live." : "Koppel eerst WordPress (knop rechtsboven in dit blok)."}>{busy ? "Doorvoeren…" : "Uitvoeren in website"}</button>}
+                      </div>
+                    );
+                  })}
+                </div>
+                {wpMsg && <div className="login-error" style={{ marginTop: 8 }}>{wpMsg}</div>}
+              </div>
+            )}
           </div>
         )}
         </div>)}

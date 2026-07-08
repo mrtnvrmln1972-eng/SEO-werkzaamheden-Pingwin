@@ -597,6 +597,24 @@ tbody td:last-child { text-align: center; }
 .pch-apply-panel ul { margin: 8px 0 0; padding-left: 18px; }
 .pch-apply-panel li { margin: 2px 0; }
 @media (max-width: 760px) { .pch-canni-apply { flex-direction: column; align-items: stretch; } }
+/* 301-redirects per stuk uitvoeren in de WordPress-website. */
+.pch-wp { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 12px; }
+.pch-wp-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.pch-wp-title { font-size: 13px; font-weight: 700; color: var(--ink); }
+.pch-wp-conn { margin-left: auto; font-size: 12px; color: var(--gray); display: flex; align-items: center; gap: 8px; }
+.pch-wp-head > .ghost-btn { margin-left: auto; }
+.pch-wp-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; }
+.pch-wp-form input { flex: 1 1 200px; min-width: 160px; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; }
+.pch-wp-list { display: flex; flex-direction: column; }
+.pch-wp-row { display: flex; align-items: center; gap: 14px; padding: 8px 2px; border-bottom: 1px solid var(--border); }
+.pch-wp-row:last-child { border-bottom: none; }
+.pch-wp-paths { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12.5px; }
+.pch-wp-paths code { background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 2px 7px; font-size: 12px; word-break: break-all; }
+.pch-wp-arrow { color: var(--gray); flex: 0 0 auto; }
+.pch-wp-row .pcd-btn { flex: 0 0 auto; }
+.pcd-btn.small { padding: 5px 12px; font-size: 12.5px; }
+.pcd-btn.pcd-done { border-color: #2e9e5b; color: #1c7a44; background: #eef7ee; }
+.pcd-btn.pcd-warn { border-color: #d9930d; color: #a86f04; background: #fdf6e7; }
 .pch-canni-toggle { background: none; border: none; cursor: pointer; font-size: 13px; font-weight: 700; color: var(--brand-teal); padding: 4px 0; text-align: left; width: 100%; }
 .pch-canni-md { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; margin-top: 8px; max-width: 100%; }
 /* Vaste kolomindeling: smalle metriek/label-kolommen (koppen + cellen breken af), brede URL- en reden-kolommen, zodat de tabel minder hoog wordt. */
