@@ -177,6 +177,9 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   // Paden van rijen met een actie-voorstel (gevuld tijdens het renderen van de
   // tabel); gebruikt voor de "nog niet beoordeeld"-teller bij het bevestigen.
   const actionableRef = useRef<string[]>([]);
+  // Per rij het 301-doel (uit de Doel-kolom), zodat ook de check-overlay weet
+  // dat "Uitvoeren" daar een redirect is.
+  const rowRedirectRef = useRef<Record<string, string>>({});
   // Afwijs-venstertje: welk pad wordt afgewezen + de ingevulde reden.
   const [rejectPath, setRejectPath] = useState("");
   const [rejectReason, setRejectReason] = useState("");
@@ -266,6 +269,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     // 9-koloms tabel (met Score) krijgt eigen kolombreedtes, anders wordt Reden platgedrukt.
     if (scoreIdx >= 0) out = out.replace('<table class="md-table">', '<table class="md-table canni-9">');
     const actionable: string[] = [];
+    const redirects: Record<string, string> = {};
     out = out.replace(/<tr>((?:<td>[\s\S]*?<\/td>)+)<\/tr>/g, (row: string, inner: string) => {
       const cells = inner.split("</td>");
       const pathMatch = (cells[0] || "").match(/>(\/[^<]*)</);
@@ -282,18 +286,33 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
           return `><span class="canni-score canni-score-${cls}" title="Cannibalisatiescore 1-100: hoe hard deze pagina met deze landingspagina concurreert. 70+ = urgent, nu oplossen; 40-69 = middel; onder 40 = kan via 'Naar pagina's' later.">${n}</span>`;
         });
       }
-      const rowText = inner;
-      const redirect = wpRedirects.find((x) => x.from === rowPath) || null;
-      const isEdit = !redirect && /de-optimaliseren|intern(?:e)?\s+link/i.test(rowText);
-      if (redirect || isEdit) actionable.push(rowPath);
+      // Winnaar-rij (de geanalyseerde pagina zelf) krijgt geen actie-knoppen;
+      // ALLE andere rijen wel, ongeacht de actie (301, de-optimaliseren,
+      // canonical, behouden): Uitvoeren doet dan het passende (redirect of
+      // backend openen) en Naar pagina's/Taak maken/Afwijzen kunnen altijd.
+      const curPath = ((url || "").replace(/^https?:\/\/[^/]+/i, "") || "/").replace(/\/+$/, "");
+      const isWinner = rowPath.replace(/\/+$/, "") === curPath || />\s*WINNAAR\s*</i.test(inner);
+      // 301-doel direct uit de Actie/Doel-kolommen van de rij zelf (laatste drie
+      // cellen zijn Actie, Doel, Reden); nieuwe analyses hebben geen los
+      // redirect-lijstje meer.
+      const actieCell = cells[redenIdx - 2] || "";
+      const doelCell = cells[redenIdx - 1] || "";
+      let redirect = wpRedirects.find((x) => x.from === rowPath) || null;
+      if (!redirect && /301/.test(actieCell)) {
+        const dm = doelCell.match(/>(\/[^<]*)</);
+        if (dm && dm[1].trim() !== rowPath) redirect = { from: rowPath, to: dm[1].trim() };
+      }
+      if (redirect) redirects[rowPath] = redirect.to;
+      if (!isWinner) actionable.push(rowPath);
       // Cross-check-linkje bij elke rij, rechts van de knoppen in de Reden-cel.
       const checkBtn = `<button type="button" class="canni-check" data-act="check" data-path="${escAttr(rowPath)}" title="Bekijk hoe deze pagina er echt voor staat (GSC-zoekwoorden, Ahrefs-rankings, verwijzende domeinen) voordat je kiest.">check</button>`;
-      if (redirect || isEdit) cells[redenIdx] += rowButtonsHtml(rowPath, redirect, checkBtn);
+      if (!isWinner) cells[redenIdx] += rowButtonsHtml(rowPath, redirect, checkBtn);
       else cells[redenIdx] += `<span class="canni-actions">${checkBtn}</span>`;
       const rowCls = rowStatus[rowPath] === "afgewezen" ? "canni-rejected" : rowStatus[rowPath] === "doorgezet" ? "canni-deferred" : rowStatus[rowPath] === "taak" ? "canni-tasked" : "";
       return `<tr${rowCls ? ` class="${rowCls}"` : ""}>` + cells.join("</td>") + "</tr>";
     });
     actionableRef.current = actionable;
+    rowRedirectRef.current = redirects;
     return out;
   }
   const canniHtml = pc?.result ? enrichCanniTable(mdToHtml(stripRedirectList(pc.result))) : "";
@@ -1204,7 +1223,8 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
                   : <button type="button" className="ghost-btn small" style={{ marginTop: 10 }} disabled={duidingBusy} onClick={loadDuiding} title="AI legt de zoektermen van deze pagina naast die van de winnaar: echte splitsing of niet, en klopt de voorgestelde actie. Duurt 15-30 seconden.">{duidingBusy ? "Duiding maken…" : "Diepere duiding"}</button>}
                 <div className="ccp-actions">
                   {(() => {
-                    const redirect = wpRedirects.find((x) => x.from === checkPath) || null;
+                    const to = rowRedirectRef.current[checkPath] || wpRedirects.find((x) => x.from === checkPath)?.to || "";
+                    const redirect = to ? { from: checkPath, to } : null;
                     const status = rowStatus[checkPath];
                     if (status === "afgewezen") return <button type="button" className="pcd-btn small pcd-warn" onClick={() => setRowStatus(checkPath, null)}>Afgewezen, herstel</button>;
                     if (status === "doorgezet") return <button type="button" className="pcd-btn small pcd-blue" onClick={() => setRowStatus(checkPath, null)}>→ Bij pagina&rsquo;s, herstel</button>;
