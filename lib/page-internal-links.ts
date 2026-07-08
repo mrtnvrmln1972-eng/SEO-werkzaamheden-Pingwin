@@ -3,7 +3,6 @@ import { getClientBySlug } from "./clients";
 import { getClientUrls, getPagePlan, getPageDriveFolder } from "./site-urls";
 import { getGscForPage } from "./google";
 import { getAhrefsTopPages, getUrlOrganicKeywords, ahrefsConfigured } from "./ahrefs";
-import { measurePage } from "./page-measure";
 import { getWpConnForClient, findWpEditUrl } from "./wp";
 import { callClaude } from "./anthropic";
 import { internalLinksDocSpec } from "./page-doc";
@@ -89,6 +88,53 @@ function tokenHits(text: string, tokens: Set<string>): string[] {
   return hits;
 }
 
+// ── Eigen lichte crawl per bronpagina ──
+// Cruciaal onderscheid: een link in het site-brede MENU of de FOOTER telt niet
+// als interne link voor SEO-kansen; het gaat om CONTEXTUELE links in de lopende
+// tekst. (Bij One Day Clinic staat elke kliniek-pagina in het menu, waardoor
+// "alles linkt al" en er geen kandidaten overbleven.) Daarom parsen we hier
+// zelf: content-scope = <main>, of de body zonder nav/header/footer/aside.
+function decodeEnt(s: string): string {
+  return (s || "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#0?39;|&apos;|&#8217;/g, "'").replace(/&nbsp;|&#160;/g, " ").replace(/\s+/g, " ").trim();
+}
+function stripHtmlTags(s: string): string { return decodeEnt((s || "").replace(/<[^>]+>/g, " ")); }
+function tagTexts(html: string, tag: string, max: number): string[] {
+  const out: string[] = [];
+  const re = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, "gi");
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html)) && out.length < max) { const t = stripHtmlTags(m[1]).slice(0, 160); if (t) out.push(t); }
+  return out;
+}
+function contentScope(html: string): string {
+  const main = html.match(/<main[\s\S]*?<\/main>/i);
+  if (main) return main[0];
+  let h = (html.match(/<body[\s\S]*?<\/body>/i) || [html])[0];
+  for (const tag of ["script", "style", "nav", "header", "footer", "aside"]) {
+    h = h.replace(new RegExp(`<${tag}[\\s\\S]*?<\\/${tag}>`, "gi"), " ");
+  }
+  return h;
+}
+function extractLinks(scope: string, domain: string): { to: string; anchor: string }[] {
+  const out: { to: string; anchor: string }[] = [];
+  const re = /<a\s[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(scope)) && out.length < 300) {
+    const to = toPath(decodeEnt(m[1]), domain);
+    if (!to) continue;
+    out.push({ to, anchor: stripHtmlTags(m[2]).slice(0, 80) });
+  }
+  return out;
+}
+async function fetchHtml(url: string): Promise<string> {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 15000);
+  try {
+    const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 PingwinBot" }, cache: "no-store", signal: ctl.signal });
+    return res.ok ? await res.text() : "";
+  } catch { return ""; }
+  finally { clearTimeout(timer); }
+}
+
 export async function getPageInternalLinks(slug: string, url: string): Promise<PageInternalLinksState> {
   await ensureSchema();
   await ensureTable();
@@ -129,7 +175,7 @@ GEEF PER KANS een relevantiescore 0-100 zodat de gebruiker zelf kan afwegen "raa
 
 ANKERTEKST: stel per kans een natuurlijke, gevarieerde ankertekst voor die past in de context van de bronpagina. Varieer (exact zoekwoord, gedeeltelijk, beschrijvend); vermijd dat alle ankers exact hetzelfde zijn (over-optimalisatie). Bewaak het meegeleverde bestaande ankerprofiel van de doelpagina.
 
-Neem GEEN bronpagina's op die al naar de doelpagina linken (die staan apart vermeld). Verzin geen pagina's; kies uitsluitend uit de kandidaten hieronder.
+Neem GEEN bronpagina's op die al een CONTEXTUELE link (in de lopende tekst) naar de doelpagina hebben (die staan apart vermeld). Menu- en footerlinks tellen daarbij NIET mee: dat de doelpagina in het site-brede menu staat, maakt een bronpagina niet minder geschikt; het gaat juist om de link in de lopende tekst met een beschrijvende ankertekst. Verzin geen pagina's; kies uitsluitend uit de kandidaten hieronder.
 
 Antwoord met UITSLUITEND geldige JSON, geen tekst eromheen, geen markdown-codeblok:
 {"samenvatting": "één tot twee zinnen: hoeveel goede kansen en het algemene beeld", "kansen": [{"bronPad": "/pad/", "relevantie": 0-100, "ankertekst": "…", "reden": "één korte zin waarom deze bron logisch naar de doelpagina linkt"}]}
@@ -184,30 +230,56 @@ export async function runPageInternalLinks(slug: string, url: string): Promise<v
       return { path: p, title: u.title || "", authority, traffic, rank };
     }).sort((a, b) => b.rank - a.rank).slice(0, CRAWL_LIMIT);
 
-    // Crawl de kandidaten (staticOnly = snel): titel + koppen (relevantiesignaal) +
-    // uitgaande interne links (om te zien wie al naar de doelpagina linkt + linkbudget).
-    type Crawled = { path: string; title: string; authority: number; traffic: number; heads: string; linksToTarget: boolean; anchorToTarget: string; outCount: number };
-    const crawled: Crawled[] = [];
+    // Crawl de kandidaten: titel + koppen (relevantiesignaal) + alle links in de
+    // content-scope. Pas 1 verzamelt; pas 2 filtert het site-brede menu/footer
+    // eruit met een frequentie-heuristiek: een (URL + ankertekst)-paar dat op
+    // vrijwel ELKE gecrawlde pagina identiek voorkomt is menu/footer (chrome),
+    // ongeacht de HTML-structuur van het thema. Alleen wat overblijft telt als
+    // CONTEXTUELE link; anders blijft er bij een site-breed klinieken-menu nooit
+    // een kandidaat over (dat ging bij One Day Clinic mis).
+    type RawCrawl = { path: string; title: string; authority: number; traffic: number; heads: string; links: { to: string; anchor: string }[] };
+    const rawPages: RawCrawl[] = [];
     const batchSize = 8;
     for (let i = 0; i < scored.length; i += batchSize) {
       const batch = scored.slice(i, i + batchSize);
       const got = await Promise.all(batch.map(async (c) => {
-        const m = await measurePage(`https://${bare}${c.path === "/" ? "" : c.path}`, { staticOnly: true }).catch(() => null);
-        const heads = m ? [m.metaTitle, ...(m.h1 || []), ...(m.h2 || []).slice(0, 10), ...(m.h3 || []).slice(0, 8)].filter(Boolean).join(" | ").slice(0, 400) : "";
-        let linksToTarget = false; let anchorToTarget = ""; let outCount = 0;
-        for (const l of m?.internalLinks || []) {
-          const to = toPath(l.href, domain);
-          if (!to) continue;
-          outCount++;
-          if (to === targetPath) { linksToTarget = true; if (!anchorToTarget) anchorToTarget = (l.text || "").trim().slice(0, 80); }
-        }
-        return { path: c.path, title: (m?.h1?.[0] || m?.metaTitle || c.title || "").slice(0, 120), authority: c.authority, traffic: c.traffic, heads, linksToTarget, anchorToTarget, outCount } as Crawled;
+        const html = await fetchHtml(`https://${bare}${c.path === "/" ? "" : c.path}`);
+        const scope = html ? contentScope(html) : "";
+        const metaTitle = html ? stripHtmlTags((html.match(/<title[^>]*>([\s\S]*?)<\/title>/i) || ["", ""])[1]) : "";
+        const h1 = tagTexts(scope || html, "h1", 2);
+        const heads = [metaTitle, ...h1, ...tagTexts(scope, "h2", 10), ...tagTexts(scope, "h3", 8)].filter(Boolean).join(" | ").slice(0, 400);
+        return { path: c.path, title: (h1[0] || metaTitle || c.title || "").slice(0, 120), authority: c.authority, traffic: c.traffic, heads, links: scope ? extractLinks(scope, domain) : [] } as RawCrawl;
       }));
-      crawled.push(...got);
+      rawPages.push(...got);
     }
+    const crawledOk = rawPages.filter((r) => r.links.length > 0 || r.heads);
 
-    // Bestaande interne links naar de doelpagina (voor het ankerprofiel + uitsluiten).
+    // Pas 2: chrome-detectie. Paar-sleutel = doel-pad + genormaliseerd anker.
+    const pairKey = (l: { to: string; anchor: string }) => `${l.to}|${l.anchor.toLowerCase()}`;
+    const pairPages = new Map<string, number>();
+    for (const r of crawledOk) {
+      for (const k of new Set(r.links.map(pairKey))) pairPages.set(k, (pairPages.get(k) || 0) + 1);
+    }
+    const chromeThreshold = Math.max(3, Math.ceil(crawledOk.length * 0.6));
+    const isChrome = (l: { to: string; anchor: string }) => (pairPages.get(pairKey(l)) || 0) >= chromeThreshold;
+
+    type Crawled = { path: string; title: string; authority: number; traffic: number; heads: string; linksToTarget: boolean; anchorToTarget: string; navLinksToTarget: boolean; outCount: number };
+    const crawled: Crawled[] = rawPages.map((r) => {
+      const contextual = r.links.filter((l) => !isChrome(l));
+      const toTarget = contextual.filter((l) => l.to === targetPath);
+      const navLinksToTarget = toTarget.length === 0 && r.links.some((l) => l.to === targetPath);
+      return {
+        path: r.path, title: r.title, authority: r.authority, traffic: r.traffic, heads: r.heads,
+        linksToTarget: toTarget.length > 0,
+        anchorToTarget: toTarget[0]?.anchor || "",
+        navLinksToTarget,
+        outCount: new Set(contextual.map((l) => l.to)).size,
+      };
+    });
+
+    // Bestaande CONTEXTUELE links naar de doelpagina (ankerprofiel + uitsluiten).
     const already = crawled.filter((c) => c.linksToTarget);
+    const navCount = crawled.filter((c) => c.navLinksToTarget).length;
     const candidates = crawled.filter((c) => !c.linksToTarget);
     // Lichte relevantie-voorfilter: houd kandidaten met énige thematische aanraking
     // (titel/koppen raken het onderwerp) OF met autoriteit/verkeer (Claude beslist
@@ -228,7 +300,8 @@ export async function runPageInternalLinks(slug: string, url: string): Promise<v
       `ONDERWERP-TERMEN van de doelpagina (voor de relevantie-afweging): ${[...tokens].slice(0, 20).join(", ") || "(geen)"}`,
       `TOP-ZOEKWOORDEN van de doelpagina: ${subjectKw.slice(0, 8).map((k) => `"${k.keyword}"`).join(", ") || "(geen)"}`,
       "",
-      `BESTAANDE INTERNE LINKS naar de doelpagina (NIET opnieuw voorstellen; wel het ankerprofiel bewaken): ${already.length ? already.map((a) => `${a.path}${a.anchorToTarget ? ` ("${a.anchorToTarget}")` : ""}`).join(", ") : "(nog geen)"}`,
+      `BESTAANDE CONTEXTUELE LINKS (in de lopende tekst) naar de doelpagina (NIET opnieuw voorstellen; wel het ankerprofiel bewaken): ${already.length ? already.map((a) => `${a.path}${a.anchorToTarget ? ` ("${a.anchorToTarget}")` : ""}`).join(", ") : "(nog geen)"}`,
+      navCount ? `MENU/FOOTER: de doelpagina staat op ${navCount} van de ${crawled.length} gecrawlde pagina's in het site-brede menu of de footer. Die menu-links tellen NIET als contextuele link en zijn GEEN reden om een bron uit te sluiten; stel juist links in de lopende tekst voor.` : "",
       "",
       "KANDIDAAT-BRONPAGINA'S (kies hieruit; gerangschikt op autoriteit + verkeer):",
       candLines.length ? candLines.join("\n") : "- (geen kandidaten gevonden)",
