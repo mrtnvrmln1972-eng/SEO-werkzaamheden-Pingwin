@@ -14,6 +14,7 @@ export type AhrefsKeyword = {
   keyword: string; volume: number | null; position: number | null; positionPrev: number | null;
   cpc: number | null; traffic: number | null; intent: string; branded: boolean;
   organic: boolean; // false = alleen-volume (uit Search Console, domein rankt er niet op)
+  url: string | null; // de pagina die op dit zoekwoord rankt (uit Ahrefs best_position_url)
   compareDate: string | null; // de datum waarmee de posities vergeleken zijn (voor de pijltjes)
 };
 
@@ -43,13 +44,15 @@ async function doEnsure(): Promise<void> {
   // leveren ze de positie-verandering (pijltjes) t.o.v. een gekozen periode.
   await sql`ALTER TABLE client_ahrefs_keywords ADD COLUMN IF NOT EXISTS position_prev NUMERIC`;
   await sql`ALTER TABLE client_ahrefs_keywords ADD COLUMN IF NOT EXISTS compare_date DATE`;
+  // url = de pagina die op het zoekwoord rankt (best_position_url uit Ahrefs).
+  await sql`ALTER TABLE client_ahrefs_keywords ADD COLUMN IF NOT EXISTS url TEXT`;
 }
 
 export async function getAhrefsKeywords(slug: string): Promise<AhrefsKeyword[]> {
   await ensureSchema();
   await ensureTable();
   const { rows } = await sql`
-    SELECT keyword, volume, position, position_prev, cpc, traffic, intent, branded, organic,
+    SELECT keyword, volume, position, position_prev, cpc, traffic, intent, branded, organic, url,
            to_char(compare_date, 'YYYY-MM-DD') AS compare_date
     FROM client_ahrefs_keywords WHERE client_slug = ${slug}
     ORDER BY traffic DESC NULLS LAST, volume DESC NULLS LAST`;
@@ -64,6 +67,7 @@ export async function getAhrefsKeywords(slug: string): Promise<AhrefsKeyword[]> 
     branded: !!r.branded,
     organic: r.organic == null ? true : !!r.organic,
     compareDate: (r.compare_date as string) || null,
+    url: (r.url as string) || null,
   }));
 }
 
@@ -103,11 +107,11 @@ export async function syncAhrefsKeywords(slug: string, gscKeywords: string[] = [
   await sql`DELETE FROM client_ahrefs_keywords WHERE client_slug = ${slug}`;
   for (const r of rows) {
     await sql`
-      INSERT INTO client_ahrefs_keywords (client_slug, keyword, volume, position, position_prev, cpc, traffic, intent, branded, organic, compare_date, updated_at)
-      VALUES (${slug}, ${r.keyword}, ${r.volume}, ${r.position}, ${r.positionPrev}, ${r.cpc}, ${r.traffic}, ${r.intent || null}, ${r.branded}, true, ${cmp || null}, now())
+      INSERT INTO client_ahrefs_keywords (client_slug, keyword, volume, position, position_prev, cpc, traffic, intent, branded, organic, compare_date, url, updated_at)
+      VALUES (${slug}, ${r.keyword}, ${r.volume}, ${r.position}, ${r.positionPrev}, ${r.cpc}, ${r.traffic}, ${r.intent || null}, ${r.branded}, true, ${cmp || null}, ${r.url || null}, now())
       ON CONFLICT (client_slug, keyword) DO UPDATE SET
         volume = ${r.volume}, position = ${r.position}, position_prev = ${r.positionPrev}, cpc = ${r.cpc}, traffic = ${r.traffic},
-        intent = ${r.intent || null}, branded = ${r.branded}, organic = true, compare_date = ${cmp || null}, updated_at = now()`;
+        intent = ${r.intent || null}, branded = ${r.branded}, organic = true, compare_date = ${cmp || null}, url = ${r.url || null}, updated_at = now()`;
   }
   for (const v of volRows) {
     await sql`

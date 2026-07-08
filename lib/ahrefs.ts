@@ -131,6 +131,7 @@ export async function getUrlOrganicKeywords(targetUrl: string, country = "nl", l
 export type SiteKeyword = {
   keyword: string; position: number | null; positionPrev: number | null; volume: number | null; cpc: number | null;
   traffic: number | null; intent: string; branded: boolean;
+  url: string; // de pagina die op dit zoekwoord rankt (best_position_url)
 };
 
 function intentFromFlags(r: { is_transactional?: boolean; is_commercial?: boolean; is_informational?: boolean; is_navigational?: boolean }): string {
@@ -154,7 +155,7 @@ export async function getSiteOrganicKeywords(domain: string, country = "nl", lim
   const today = new Date().toISOString().slice(0, 10);
   const params: Record<string, string> = {
     target: d, mode: "subdomains", country, date: today, limit: String(limit),
-    select: "keyword,best_position,volume,cpc,sum_traffic,is_branded,is_commercial,is_informational,is_navigational,is_transactional" + (dateCompared ? ",best_position_prev" : ""),
+    select: "keyword,best_position,best_position_url,volume,cpc,sum_traffic,is_branded,is_commercial,is_informational,is_navigational,is_transactional" + (dateCompared ? ",best_position_prev" : ""),
   };
   if (dateCompared) params.date_compared = dateCompared;
   const data = (await ahrefsFetch("/site-explorer/organic-keywords", params)) as { keywords?: Record<string, unknown>[] };
@@ -167,6 +168,7 @@ export async function getSiteOrganicKeywords(domain: string, country = "nl", lim
     traffic: r.sum_traffic == null ? null : Number(r.sum_traffic),
     intent: intentFromFlags(r as { is_transactional?: boolean }),
     branded: !!r.is_branded,
+    url: String(r.best_position_url || ""),
   })).filter((r) => r.keyword && (!dateCompared || r.position != null));
   rows.sort((a, b) => (b.traffic || 0) - (a.traffic || 0) || (b.volume || 0) - (a.volume || 0));
   return rows;

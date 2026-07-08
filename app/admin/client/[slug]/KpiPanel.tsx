@@ -196,7 +196,7 @@ function applySort<T, K extends string>(rows: T[], sort: Sort<K>, getters: Recor
 type FocusTier = "prio" | "secundair";
 type Kw = GscComparison["keywords"][number];
 type KwKey = "focus" | "keyword" | "volume" | "position" | "dposition" | "clicks" | "dclicks" | "impressions" | "dimpressions" | "ctr" | "dctr";
-type AhKey = "focus" | "keyword" | "volume" | "position" | "dposition" | "intent" | "kans";
+type AhKey = "focus" | "keyword" | "volume" | "position" | "dposition" | "intent" | "kans" | "page";
 type OppKey = "focus" | "keyword" | "volume" | "difficulty" | "source" | "reason";
 type PageKey = "prio" | "url" | "clicks" | "dclicks" | "impressions" | "dimpressions";
 
@@ -204,7 +204,7 @@ type PageKey = "prio" | "url" | "clicks" | "dclicks" | "impressions" | "dimpress
 // (Focus/Zoekwoord, ster/Pagina) staan vast links; deze groepen kun je herordenen.
 const KW_COLS_DEFAULT = ["volume", "position", "clicks", "impressions", "ctr"];
 const PAGE_COLS_DEFAULT = ["clicks", "impressions"];
-const AH_COLS_DEFAULT = ["volume", "position", "intent", "kans"];
+const AH_COLS_DEFAULT = ["volume", "position", "page", "intent", "kans"];
 function sanitizeCols(saved: unknown, def: string[]): string[] {
   if (!Array.isArray(saved)) return def;
   const known = saved.filter((k): k is string => typeof k === "string" && def.includes(k));
@@ -502,7 +502,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
   };
 
   const ahGetters: Record<AhKey, (k: AhrefsKeyword) => number | string> = {
-    focus: (k) => focusRank(k.keyword), keyword: (k) => k.keyword, volume: (k) => k.volume || 0, position: (k) => k.position ?? 999, intent: (k) => k.intent, kans: (k) => (isFruit(k) ? 0 : 1),
+    focus: (k) => focusRank(k.keyword), keyword: (k) => k.keyword, volume: (k) => k.volume || 0, position: (k) => k.position ?? 999, intent: (k) => k.intent, kans: (k) => (isFruit(k) ? 0 : 1), page: (k) => (k.url ? shortUrl(k.url) : ""),
     dposition: (k) => (k.position != null && k.positionPrev != null ? k.positionPrev - k.position : 0),
   };
   // Kop + cel per versleepbare Ahrefs-kolomgroep (Ranking + Δ als één geheel).
@@ -511,12 +511,14 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
     position: (d) => <Fragment key="position"><SortTh thProps={d} label="Ranking" k="position" sort={ahSort} setSort={setAhSort} className="kpi-metric-sep" /><SortTh thProps={d} label="Δ" title="Verandering ranking t.o.v. de vergelijkdatum (omhoog = beter)" k="dposition" sort={ahSort} setSort={setAhSort} className="kpi-delta-th" /></Fragment>,
     intent: (d) => <SortTh key="intent" thProps={d} label="Intent" k="intent" sort={ahSort} setSort={setAhSort} className="kpi-metric-sep" />,
     kans: (d) => <SortTh key="kans" thProps={d} label="Kans" k="kans" sort={ahSort} setSort={setAhSort} className="kpi-metric-sep" />,
+    page: (d) => <SortTh key="page" thProps={d} label="Pagina" title="De pagina die op dit zoekwoord rankt (uit Ahrefs). Leeg? Klik op Verversen om de pagina's erbij op te halen." k="page" sort={ahSort} setSort={setAhSort} className="kpi-metric-sep" />,
   };
   const ahCell: Record<string, (k: AhrefsKeyword) => ReactNode> = {
     volume: (k) => <td key="volume" className="kpi-metric-sep">{k.volume != null ? nl(k.volume) : <span className="muted">&mdash;</span>}</td>,
     position: (k) => <Fragment key="position"><td className="kpi-metric-sep">{k.position != null ? k.position : <span className="muted">&mdash;</span>}</td><td className="kpi-delta-td">{k.position != null && k.positionPrev != null ? <Delta cur={k.position} prev={k.positionPrev} invert /> : <span className="muted">&mdash;</span>}</td></Fragment>,
     intent: (k) => <td key="intent" className="kpi-metric-sep">{k.intent ? <span className={"kw-intent " + k.intent}>{k.intent}</span> : <span className="muted">&mdash;</span>}</td>,
     kans: (k) => <td key="kans" className="kpi-metric-sep">{isFruit(k) ? <span className="pg-kans quickwin">Quick win</span> : <span className="muted">&mdash;</span>}</td>,
+    page: (k) => <td key="page" className="kpi-metric-sep kpi-ah-page">{k.url ? <a href={k.url} target="_blank" rel="noreferrer">{shortUrl(k.url)}</a> : <span className="muted" title="Nog geen pagina bekend; klik op Verversen om de pagina's erbij op te halen (kost credits).">&mdash;</span>}</td>,
   };
   const ahFiltered = ahrefsKw.filter((k) => k.organic !== false && !k.branded && (onlyFruit ? isFruit(k) : true) && (!ahSearch.trim() || k.keyword.toLowerCase().includes(ahSearch.trim().toLowerCase())));
   const ahSorted = applySort(ahFiltered, ahSort, ahGetters);
