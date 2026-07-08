@@ -1,11 +1,16 @@
 import { sql, ensureSchema } from "./db";
 import { getClientBySlug } from "./clients";
-import { getClientUrls, getPagePlan } from "./site-urls";
+import { getClientUrls, getPagePlan, getPageDriveFolder } from "./site-urls";
 import { getGscForPage } from "./google";
 import { getAhrefsTopPages, getUrlOrganicKeywords, ahrefsConfigured } from "./ahrefs";
 import { measurePage } from "./page-measure";
 import { getWpConnForClient, findWpEditUrl } from "./wp";
 import { callClaude } from "./anthropic";
+import { internalLinksDocSpec } from "./page-doc";
+import { buildPingwinDoc } from "./pingwin-docx";
+import { uploadDocx } from "./drive";
+import { getTasks, appendTasks, deleteTasksByIds } from "./tasks";
+import { mdToHtml } from "./markdown";
 
 // ═══════════════════════════════════════════════════════════
 // PER-PAGINA INTERNE LINKS (stap 6 in de pagina-workflow)
@@ -300,4 +305,48 @@ function assembleMarkdown(a: {
   lines.push(`Elke link wijst naar de doelpagina ${a.targetPath}. Volgorde: meest interessant bovenaan (relevantie als voorwaarde, daarna autoriteit via verwijzende domeinen en GSC-verkeer).`);
   if (!a.wpConfigured) lines.push("", "_Koppel WordPress (onder de cannibalisatie-tabel) om per bron een directe bewerk-link te krijgen._");
   return lines.join("\n");
+}
+
+function safeName(s: string): string {
+  return (s || "document").replace(/[^\p{L}\p{N} _-]+/gu, "").replace(/\s+/g, "-").slice(0, 60) || "document";
+}
+
+// "Aanbevelingen overnemen" (stap 6): zet het interne-links-voorstel door als
+// Pingwin-document in de Drive-map van de pagina + één Dev-taak in Werkzaamheden,
+// net als bij de cannibalisatiestap. Dedupe bij opnieuw overnemen.
+export async function applyPageInternalLinks(slug: string, url: string): Promise<{ taskId: number | null; docLink: string }> {
+  const cur = await getPageInternalLinks(slug, url);
+  const proposal = (cur.result || "").trim();
+  if (!proposal) throw new Error("Er is nog geen interne-links-voorstel voor deze pagina. Draai eerst de analyse.");
+  const client = await getClientBySlug(slug);
+  const path = pagePath(url);
+
+  // 1. Pingwin-document van het voorstel, in de Drive-map van de pagina (indien ingesteld).
+  let docLink = "";
+  try {
+    const { spec } = await internalLinksDocSpec(slug, url, proposal);
+    const buffer = await buildPingwinDoc(spec);
+    const folder = await getPageDriveFolder(slug, url).catch(() => null);
+    if (folder?.folderId) { try { ({ link: docLink } = await uploadDocx(folder.folderId, `${safeName(client?.name || slug)}-interne-links-${safeName(path)}.docx`, buffer)); } catch { /* zonder link vastleggen */ } }
+  } catch { /* document is aanvullend; de taak met de lijst komt er sowieso */ }
+
+  // 2. Eén Dev-taak met de lijst erin (+ document eraan gekoppeld). Dedupe bij opnieuw overnemen.
+  try {
+    const existing = await getTasks(slug).catch(() => []);
+    const dupIds = existing.filter((t) => t.stepKind === "internal_links" && t.pageUrl === url && t.id != null).map((t) => t.id as number);
+    if (dupIds.length) await deleteTasksByIds(slug, dupIds).catch(() => { /* stil */ });
+  } catch { /* dedupe niet kritisch */ }
+
+  const klantUitleg = "We hebben bepaald welke pagina's van jullie site het beste naar deze pagina kunnen linken, zodat Google (en de bezoeker) deze pagina belangrijker en makkelijker vindt.";
+  const linkHtml = docLink ? ` (<a href="${docLink.replace(/"/g, "&quot;")}" target="_blank" rel="noreferrer">document</a>)` : "";
+  const ids = await appendTasks(slug, [{
+    taak: `Interne links plaatsen naar ${path}${linkHtml}`,
+    toelichting: docLink ? "" : mdToHtml(proposal.slice(0, 8000)),
+    klantToelichting: klantUitleg,
+    status: "Gepland", wie: "Dev", fase: "Herbedraden",
+    pageUrl: url, stepKind: "internal_links", klantZichtbaar: true,
+    docLink: docLink || undefined, clientDocLink: docLink || undefined,
+  }]).catch(() => [] as number[]);
+
+  return { taskId: ids[0] ?? null, docLink };
 }

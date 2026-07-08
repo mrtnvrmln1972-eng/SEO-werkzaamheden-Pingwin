@@ -334,6 +334,36 @@ export async function cannibalDocSpec(slug: string, url: string, analysis: strin
   return { spec, title };
 }
 
+// Document voor de interne-links-stap (stap 6): vertelt het verhaal van het
+// interne-links-voorstel. GEEN nieuwe data-ronde; alleen wat er in het voorstel
+// staat, leesbaar voor de klant en exact voor de developer.
+const INTERNAL_LINKS_DOC_SYSTEM = `Je bent een senior SEO-strateeg bij bureau Pingwin. Je maakt het rapport van een INTERNE-LINKS-analyse voor één landingspagina: welke andere pagina's van de site gaan naar deze pagina linken. Je baseert je UITSLUITEND op het aangeleverde voorstel; je verzint niets en voegt geen eigen beoordeling toe.
+AANSPREEKVORM: gericht aan de eigenaar van de site; spreek de lezer direct aan met "jullie/je". Zoekwoorden en ankerteksten zet je vet met **dubbele sterretjes**. Geen jargon zonder uitleg in één zin. Geen emoji.
+Lever precies deze secties:
+1. Waarom interne links: drie tot vier zinnen in gewone taal (links vanaf jullie eigen pagina's vertellen Google welke pagina belangrijk is en geven de kracht van sterke pagina's door; bezoekers vinden de pagina er ook makkelijker door).
+2. Wat we hebben gedaan: twee tot drie zinnen (we hebben de site doorzocht naar pagina's die het onderwerp al raken, gewogen op hun autoriteit via externe links en hun bezoekersaantallen, en daar de beste kansen uit gekozen).
+3. De voorgestelde links: een tabel met kolommen "Vanaf", "Ankertekst" en "Waarom", LETTERLIJK overgenomen uit het voorstel (elke rij één link naar de doelpagina). Neem de relevantie-getallen NIET mee in dit document; de kolom "Waarom" volstaat.
+4. Wat jullie hiervan gaan merken: twee tot drie zinnen (de pagina wordt beter vindbaar doordat de eigen site er vaker en logischer naartoe verwijst; effect is na enkele weken zichtbaar).
+${DOCSPEC_FORMAT}`;
+
+export async function internalLinksDocSpec(slug: string, url: string, proposal: string): Promise<{ spec: DocSpec; title: string }> {
+  const client = await getClientBySlug(slug);
+  const user = `Doelpagina (waar de links naartoe gaan): ${url}\n\nINTERNE-LINKS-VOORSTEL:\n${proposal.slice(0, 16000)}`;
+  const raw = await callClaude(INTERNAL_LINKS_DOC_SYSTEM, [{ role: "user", content: user }], 8192, { slug, action: "page_internal_links_doc" });
+  const parsed = extractJsonObject(raw);
+  if (!parsed) throw new Error("Het interne-links-document kon niet worden opgemaakt (het AI-antwoord kwam onvolledig terug). Probeer het opnieuw.");
+  const title = typeof parsed.titel === "string" && parsed.titel.trim() ? parsed.titel.trim() : "Interne links";
+  const spec: DocSpec = {
+    klant: client?.name || slug,
+    rapporttype: "Interne links",
+    titel: title,
+    ondertitel: typeof parsed.ondertitel === "string" ? parsed.ondertitel : url,
+    meta: { Klant: client?.name || slug, Pagina: url },
+    sections: Array.isArray(parsed.sections) ? parsed.sections : [],
+  };
+  return { spec, title };
+}
+
 // Klantversie van een technisch document (analyse/blauwdruk/copy): korte,
 // begrijpelijke duiding voor de klant, aangepast aan het type. Het technische
 // bronstuk blijft de bron voor de volgende stap.
