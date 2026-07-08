@@ -478,6 +478,8 @@ Geen emoji. ${DOCSPEC_FORMAT}`;
     meta: { Klant: client?.name || slug, Pagina: url },
     sections,
   };
+  // Ook in de klantversie van de copy horen de H1/H2/H3-labels op de paginakoppen.
+  if (kind === "copy") await ensureHeadingLabels(spec, slug).catch(() => { /* vangnet is aanvulling */ });
   return { spec, title };
 }
 
@@ -611,6 +613,30 @@ Geef UITSLUITEND een JSON-array met exact ${headings.length} strings in dezelfde
   } catch { /* ongeldige JSON: origineel laten staan */ }
   return null;
 }
+// ── Vangnet: H1/H2/H3-labels op de copy-koppen afdwingen ──
+// De prompt vraagt vóór elke koptitel een niveau-label (H1/H2/H3) voor de sitebouwer,
+// maar het model laat dat soms weg. Ontbreekt het bij de meeste paginakoppen, dan
+// kennen we de labels alsnog toe via één kleine herstel-aanroep.
+async function ensureHeadingLabels(spec: DocSpec, slug: string): Promise<void> {
+  const blocks: { type: "subheading"; text: string }[] = [];
+  for (const sec of spec.sections) for (const b of sec.blocks || []) {
+    if (b.type === "subheading" && typeof b.text === "string" && b.text.trim()) blocks.push(b);
+  }
+  if (blocks.length < 3) return;
+  const unlabeled = blocks.filter((b) => !/^\s*H[1-3]\b/i.test(b.text));
+  if (unlabeled.length <= 1) return; // (vrijwel) alles heeft al een label
+  const system = `Je bent een senior SEO-copywriter. Hieronder alle tussenkoppen van een copy-document voor een landingspagina, in volgorde. Zet vóór elke kop die een PAGINAKOP is de juiste niveau-aanduiding: "H1 — " (precies één keer, de hoofdkop van de pagina), "H2 — " (sectiekoppen) of "H3 — " (subsecties, praktijkvoorbeelden, FAQ-vragen, call-to-action). Regels die GEEN paginakop zijn (zoals "Paginatitel (meta-title)", "Meta-description" of document-tussenkopjes) laat je EXACT ongewijzigd. Koppen die al een H-label hebben laat je ook ongewijzigd. Verander verder NIETS aan de tekst.
+Geef UITSLUITEND een JSON-array met exact ${blocks.length} strings in dezelfde volgorde terug. Geen tekst eromheen.`;
+  const user = blocks.map((b, i) => `${i + 1}. ${b.text}`).join("\n");
+  const raw = await callClaude(system, [{ role: "user", content: user }], 2500, { slug, action: "copy_koplabels" });
+  try {
+    const arr = JSON.parse(raw.replace(/```json/gi, "").replace(/```/g, "").trim());
+    if (Array.isArray(arr) && arr.length === blocks.length && arr.every((x) => typeof x === "string" && x.trim())) {
+      blocks.forEach((b, i) => { b.text = arr[i]; });
+    }
+  } catch { /* ongeldige JSON: origineel laten staan */ }
+}
+
 // Deterministische controle op de copy-koppen; corrigeert ALLEEN bij over-optimalisatie van
 // een eigennaam/plaats (te veel koppen of reeksen achter elkaar). Gewone onderwerp-zoekwoorden
 // (bv. "strandtuin" op 70%) blijven ongemoeid.
@@ -681,8 +707,12 @@ Geen emoji. ${DOCSPEC_FORMAT}`;
   const maxTokens = audience === "klant" ? (kind === "copy" ? 16000 : 3500) : (kind === "blauwdruk" ? 10000 : 14000);
   const parsed = await runDocGen(system, baseUser, maxTokens, slug, kind, `doc_${kind}`);
   const { spec, title } = buildDocSpec(parsed, audience, kind, clientName, url);
-  // Zelfcontrole op kop-herhaling (alleen copy): meet de over-optimalisatie en corrigeer gericht.
-  if (kind === "copy") await selfCheckCopyHeadings(spec, slug).catch(() => { /* controle is aanvulling */ });
+  // Zelfcontrole (alleen copy): eerst H1/H2/H3-labels afdwingen (voor de sitebouwer),
+  // daarna de kop-herhaling meten en gericht corrigeren.
+  if (kind === "copy") {
+    await ensureHeadingLabels(spec, slug).catch(() => { /* vangnet is aanvulling */ });
+    await selfCheckCopyHeadings(spec, slug).catch(() => { /* controle is aanvulling */ });
+  }
   // Bewaar de tekst-uitkomst zodat de volgende stap in de keten erop voortbouwt.
   await savePageDocOutput(slug, url, kind, specToText(spec)).catch(() => { /* keten is aanvulling, niet kritisch */ });
   return { spec, title };
