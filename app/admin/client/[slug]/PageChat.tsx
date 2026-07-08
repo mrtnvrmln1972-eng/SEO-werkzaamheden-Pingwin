@@ -114,6 +114,8 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   const [wpFormOpen, setWpFormOpen] = useState(false);
   const [wpForm, setWpForm] = useState({ user: "", pass: "" });
   const [wpSaving, setWpSaving] = useState(false);
+  // Status per tabel-rij (pad → uitgevoerd/afgewezen), bewaard in de database.
+  const [rowStatus, setRowStatusMap] = useState<Record<string, "uitgevoerd" | "afgewezen">>({});
 
   // De redirect-regels ("- `/oud/` → `/nieuw/`") uit de cannibalisatie-analyse
   // halen; de paden staan tussen backticks. Interne-link-regels vallen af
@@ -145,41 +147,97 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     return out.join("\n");
   }
 
-  // Knop-HTML voor in de Actie-kolom van de tabel (de tabel is gerenderde HTML,
-  // dus de knop gaat als HTML mee; kliks vangt onCanniClick op via delegatie).
-  function wpBtnHtml(r: { from: string; to: string }): string {
-    const done = wpDone[r.from];
-    const busy = wpBusy === r.from;
-    const label = busy ? (done ? "Controleren…" : "Doorvoeren…") : done?.verified ? "✓ Uitgevoerd" : done ? "Opnieuw controleren" : "Uitvoeren in website";
-    const cls = "pcd-btn small wp-exec" + (done?.verified ? " pcd-done" : done ? " pcd-warn" : "");
-    const title = done?.verified ? "Staat in de website en is live gecontroleerd (301 naar het juiste doel). Klik om opnieuw te controleren." : done ? "De redirect is doorgevoerd, maar de live-controle lukte nog niet. Klik om opnieuw te controleren." : wpConf?.configured ? "Zet deze 301-redirect via de Redirection-plugin in de website en controleer hem direct live." : "Koppel eerst WordPress (onder de tabel).";
-    const dis = busy || (!wpConf?.configured && !done) ? " disabled" : "";
-    const esc = (s: string) => s.replace(/"/g, "&quot;");
-    return `<button type="button" class="${cls}" data-wpfrom="${esc(r.from)}" data-wpto="${esc(r.to)}" title="${esc(title)}"${dis}>${label}</button>`;
+  const escAttr = (s: string) => s.replace(/"/g, "&quot;");
+
+  // Knoppen per tabel-rij, in de Reden-kolom. Per actie-type:
+  // - 301-rij: "Uitvoeren" voert de redirect door (Redirection-plugin) + live check.
+  // - de-optimaliseren/intern-linken-rij: "Uitvoeren" opent de pagina in de
+  //   WordPress-backend (bewerk-modus) en markeert de rij als uitgevoerd.
+  // - "Afwijzen" zet de rij op afgewezen (grijs); nogmaals klikken draait het terug.
+  function rowButtonsHtml(rowPath: string, redirect: { from: string; to: string } | null): string {
+    const status = rowStatus[rowPath];
+    const busy = wpBusy === rowPath || (redirect ? wpBusy === redirect.from : false);
+    if (status === "afgewezen") {
+      return `<span class="canni-actions"><button type="button" class="pcd-btn wp-mini pcd-warn" data-act="reject" data-path="${escAttr(rowPath)}" title="Deze rij is afgewezen. Klik om dat terug te draaien.">Afgewezen, herstel</button></span>`;
+    }
+    const reject = `<button type="button" class="pcd-btn wp-mini wp-ghost" data-act="reject" data-path="${escAttr(rowPath)}" title="Wijs deze aanbeveling af; de rij wordt grijs.">Afwijzen</button>`;
+    if (redirect) {
+      const done = wpDone[redirect.from];
+      const label = busy ? (done ? "Controleren…" : "Doorvoeren…") : done?.verified ? "✓ Uitgevoerd" : done ? "Opnieuw controleren" : "Uitvoeren";
+      const cls = "pcd-btn wp-mini" + (done?.verified ? " pcd-done" : done ? " pcd-warn" : "");
+      const title = done?.verified ? "301 staat in de website en is live gecontroleerd. Klik om opnieuw te controleren." : done ? "De redirect is doorgevoerd, maar de live-controle lukte nog niet. Klik om opnieuw te controleren." : wpConf?.configured ? "Zet deze 301-redirect via de Redirection-plugin in de website en controleer hem direct live." : "Koppel eerst WordPress (onder de tabel).";
+      const dis = busy || (!wpConf?.configured && !done) ? " disabled" : "";
+      return `<span class="canni-actions"><button type="button" class="${cls}" data-act="redirect" data-wpfrom="${escAttr(redirect.from)}" data-wpto="${escAttr(redirect.to)}" title="${escAttr(title)}"${dis}>${label}</button>${done?.verified ? "" : reject}</span>`;
+    }
+    const doneEdit = status === "uitgevoerd";
+    const label = busy ? "Openen…" : doneEdit ? "✓ Uitgevoerd" : "Uitvoeren";
+    const cls = "pcd-btn wp-mini" + (doneEdit ? " pcd-done" : "");
+    const title = doneEdit ? "Als uitgevoerd gemarkeerd. Klik om de pagina nogmaals in de WordPress-backend te openen." : wpConf?.configured ? "Opent deze pagina in de WordPress-backend (bewerk-modus), zodat je de aanpassing/interne link kunt doorvoeren. De rij wordt dan als uitgevoerd gemarkeerd." : "Koppel eerst WordPress (onder de tabel).";
+    const dis = busy || (!wpConf?.configured && !doneEdit) ? " disabled" : "";
+    return `<span class="canni-actions"><button type="button" class="${cls}" data-act="edit" data-path="${escAttr(rowPath)}" title="${escAttr(title)}"${dis}>${label}</button>${doneEdit ? "" : reject}</span>`;
   }
 
-  // Zet in elke tabelrij met een 301-actie de uitvoer-knop in de Actie-cel.
-  function injectWpButtons(html: string): string {
-    if (!wpRedirects.length) return html;
-    return html.replace(/<tr>((?:<td>[\s\S]*?<\/td>)+)<\/tr>/g, (row: string, inner: string) => {
+  // Tabel verrijken: korte kolomkoppen, "intern linken" vet, knoppen in de
+  // Reden-cel, en afgewezen rijen grijs.
+  function enrichCanniTable(html: string): string {
+    let out = html
+      .replace(/>\s*GSC\s*klik\s*</gi, ">klik<")
+      .replace(/>\s*GSC\s*vert\s*</gi, ">vert<")
+      .replace(/>\s*Verw\.?\s*dom(?:einen)?\s*</gi, ">RD<");
+    out = out.replace(/<tr>((?:<td>[\s\S]*?<\/td>)+)<\/tr>/g, (row: string, inner: string) => {
       const cells = inner.split("</td>");
-      const r = wpRedirects.find((x) => (cells[0] || "").includes(`>${x.from}<`));
-      if (!r) return row;
-      const idx = cells.findIndex((c, i) => i > 0 && /301/.test(c));
-      if (idx < 0) return row;
-      cells[idx] += `<br>${wpBtnHtml(r)}`;
-      return "<tr>" + cells.join("</td>") + "</tr>";
+      const pathMatch = (cells[0] || "").match(/>(\/[^<]*)</);
+      const rowPath = pathMatch ? pathMatch[1].trim() : "";
+      if (!rowPath) return row;
+      const redenIdx = cells.length - 2; // laatste echte cel (na de laatste </td> splitst een lege string af)
+      if (redenIdx < 1) return row;
+      cells[redenIdx] = cells[redenIdx].replace(/intern(?:e)?\s+link(?:en|s)?/gi, "<strong>$&</strong>");
+      const rowText = inner;
+      const redirect = wpRedirects.find((x) => x.from === rowPath) || null;
+      const isEdit = !redirect && /de-optimaliseren|intern(?:e)?\s+link/i.test(rowText);
+      if (redirect || isEdit) cells[redenIdx] += rowButtonsHtml(rowPath, redirect);
+      const rejected = rowStatus[rowPath] === "afgewezen";
+      return `<tr${rejected ? ' class="canni-rejected"' : ""}>` + cells.join("</td>") + "</tr>";
     });
+    return out;
   }
-  const canniHtml = pc?.result ? injectWpButtons(mdToHtml(stripRedirectList(pc.result))) : "";
+  const canniHtml = pc?.result ? enrichCanniTable(mdToHtml(stripRedirectList(pc.result))) : "";
+
+  async function setRowStatus(rowPath: string, status: "uitgevoerd" | "afgewezen" | null) {
+    setRowStatusMap((m) => { const n = { ...m }; if (status) n[rowPath] = status; else delete n[rowPath]; return n; });
+    try { await fetch("/api/admin/canni-row", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, pageUrl: url, rowPath, status }) }); } catch { /* status is hulpinfo */ }
+  }
+
+  // "Uitvoeren" bij een intern-linken/de-optimaliseren-rij: open de pagina in de
+  // WordPress-backend. Het venster gaat synchroon open (anders blokkeert de
+  // browser de popup) en krijgt daarna de bewerk-URL.
+  async function openInBackend(rowPath: string) {
+    if (wpBusy) return;
+    setWpBusy(rowPath); setWpMsg("");
+    const win = window.open("", "_blank");
+    try {
+      const d = await fetch("/api/admin/canni-row", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, pageUrl: url, rowPath, action: "editlink" }) }).then((r) => r.json());
+      if (!d.ok || !d.editUrl) { win?.close(); setWpMsg(d.error || "De pagina is niet gevonden in WordPress."); return; }
+      if (win) win.location.href = d.editUrl;
+      await setRowStatus(rowPath, "uitgevoerd");
+    } catch { win?.close(); setWpMsg("Openen in de backend mislukte."); } finally { setWpBusy(""); }
+  }
 
   function onCanniClick(e: React.MouseEvent) {
-    const btn = (e.target as HTMLElement).closest?.("button[data-wpfrom]");
+    const btn = (e.target as HTMLElement).closest?.("button[data-act]");
     if (!btn) return;
     e.preventDefault(); e.stopPropagation();
-    const from = btn.getAttribute("data-wpfrom") || "";
-    const to = btn.getAttribute("data-wpto") || "";
-    if (from && to) runWpRedirect(from, to);
+    const act = btn.getAttribute("data-act") || "";
+    const path = btn.getAttribute("data-path") || "";
+    if (act === "redirect") {
+      const from = btn.getAttribute("data-wpfrom") || "";
+      const to = btn.getAttribute("data-wpto") || "";
+      if (from && to) runWpRedirect(from, to);
+    } else if (act === "edit" && path) {
+      openInBackend(path);
+    } else if (act === "reject" && path) {
+      setRowStatus(path, rowStatus[path] === "afgewezen" ? null : "afgewezen");
+    }
   }
 
   useEffect(() => {
@@ -188,6 +246,10 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       try {
         const d = await fetch(`/api/admin/wp-redirect?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}`).then((r) => r.json());
         if (d.ok && Array.isArray(d.done)) { const m: Record<string, { verified: boolean }> = {}; for (const r of d.done) m[r.fromPath] = { verified: !!r.verified }; setWpDone(m); }
+      } catch { /* stil */ }
+      try {
+        const d = await fetch(`/api/admin/canni-row?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}`).then((r) => r.json());
+        if (d.ok && d.statuses && typeof d.statuses === "object") setRowStatusMap(d.statuses);
       } catch { /* stil */ }
     })();
   }, [slug, url]);

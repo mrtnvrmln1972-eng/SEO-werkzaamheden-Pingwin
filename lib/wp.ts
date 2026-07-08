@@ -98,6 +98,51 @@ export async function verifyRedirect(siteUrl: string, fromPath: string, toPath: 
   }
 }
 
+// ── Bewerk-link in de WordPress-backend voor een pagina-pad ──
+// Zoekt het post/pagina-id op via de WP REST API (op slug, het laatste
+// pad-deel) en geeft de wp-admin-bewerk-URL terug.
+export async function findWpEditUrl(conn: WpConn, path: string): Promise<string | null> {
+  const seg = (path || "").replace(/\/+$/, "").split("/").pop() || "";
+  if (!seg) {
+    // De homepage heeft geen slug; open dan het pagina-overzicht.
+    return `${conn.url}/wp-admin/edit.php?post_type=page`;
+  }
+  for (const type of ["pages", "posts"]) {
+    try {
+      const res = await fetch(`${conn.url}/wp-json/wp/v2/${type}?slug=${encodeURIComponent(seg)}&_fields=id,link&per_page=10`, {
+        headers: { Authorization: authHeader(conn), "User-Agent": "Mozilla/5.0 PingwinBot" }, cache: "no-store",
+      });
+      if (!res.ok) continue;
+      const items = await res.json().catch(() => []) as { id: number; link?: string }[];
+      // Bij meerdere treffers op dezelfde slug: die waarvan de link het hele pad bevat.
+      const hit = items.find((it) => (it.link || "").includes(path.replace(/\/+$/, ""))) || items[0];
+      if (hit?.id) return `${conn.url}/wp-admin/post.php?post=${hit.id}&action=edit`;
+    } catch { /* probeer het volgende type */ }
+  }
+  return null;
+}
+
+// ── Status per tabel-rij (uitgevoerd/afgewezen) bewaren/lezen ──
+export type CanniRowStatus = "uitgevoerd" | "afgewezen";
+
+export async function getCanniRowStatuses(slug: string, pageUrl: string): Promise<Record<string, CanniRowStatus>> {
+  await ensureSchema();
+  const { rows } = await sql`SELECT row_path, status FROM page_canni_rows WHERE slug = ${slug} AND page_url = ${pageUrl}`;
+  const out: Record<string, CanniRowStatus> = {};
+  for (const r of rows) if (r.status === "uitgevoerd" || r.status === "afgewezen") out[String(r.row_path)] = r.status;
+  return out;
+}
+
+export async function setCanniRowStatus(slug: string, pageUrl: string, rowPath: string, status: CanniRowStatus | null): Promise<void> {
+  await ensureSchema();
+  if (!status) { await sql`DELETE FROM page_canni_rows WHERE slug = ${slug} AND page_url = ${pageUrl} AND row_path = ${rowPath}`; return; }
+  await sql`
+    INSERT INTO page_canni_rows (slug, page_url, row_path, status)
+    VALUES (${slug}, ${pageUrl}, ${rowPath}, ${status})
+    ON CONFLICT (slug, page_url, row_path)
+    DO UPDATE SET status = ${status}, updated_at = now()`;
+}
+
 // ── Doorgevoerde redirects per pagina bewaren/lezen ──
 export type PageRedirect = { fromPath: string; toPath: string; verified: boolean; executedAt: string };
 

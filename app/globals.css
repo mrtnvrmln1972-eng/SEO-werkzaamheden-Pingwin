@@ -605,8 +605,16 @@ tbody td:last-child { text-align: center; }
 .pcd-btn.small { padding: 5px 12px; font-size: 12.5px; }
 .pcd-btn.pcd-done { border-color: #2e9e5b; color: #1c7a44; background: #eef7ee; }
 .pcd-btn.pcd-warn { border-color: #d9930d; color: #a86f04; background: #fdf6e7; }
-.pch-canni-md .wp-exec { margin-top: 6px; white-space: nowrap; cursor: pointer; }
-.pch-canni-md .wp-exec:disabled { opacity: 0.55; cursor: default; }
+/* Kleine actie-knopjes in de Reden-kolom van de cannibalisatie-tabel. */
+.canni-actions { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+.pcd-btn.wp-mini { padding: 2px 8px; font-size: 11px; border-radius: 6px; border-width: 1px; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.pcd-btn.wp-mini:disabled { opacity: 0.55; cursor: default; }
+.pcd-btn.wp-ghost { border-color: var(--border); color: var(--gray); background: #fff; }
+.pcd-btn.wp-ghost:hover:not(:disabled) { border-color: #c33; color: #c33; background: #fff; }
+/* Afgewezen rij: grijs, aanbeveling doorgestreept in Actie/Doel/Reden. */
+.pch-canni-md tr.canni-rejected td { opacity: 0.5; }
+.pch-canni-md tr.canni-rejected td:nth-child(n+6) { text-decoration: line-through; }
+.pch-canni-md tr.canni-rejected .canni-actions { text-decoration: none; opacity: 1; }
 .pch-canni-toggle { background: none; border: none; cursor: pointer; font-size: 13px; font-weight: 700; color: var(--brand-teal); padding: 4px 0; text-align: left; width: 100%; }
 .pch-canni-md { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; margin-top: 8px; max-width: 100%; }
 /* Vaste kolomindeling: smalle metriek/label-kolommen (koppen + cellen breken af), brede URL- en reden-kolommen, zodat de tabel minder hoog wordt. */

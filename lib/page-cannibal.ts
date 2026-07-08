@@ -102,7 +102,8 @@ ACTIES (beslisboom, licht naar zwaar): niets doen | interne links herverdelen | 
 OUTPUT — KORT EN SCANBAAR, absoluut geen lappen tekst. Denk aan een strak Excel-overzicht, niet aan een rapport. Nette markdown, Nederlands, geen emoji.
 1. Eén tot twee zinnen strategie: is deze pagina de winnaar en wat is het patroon. Niet meer.
 2. ÉÉN markdown-tabel, winnaar bovenaan, met EXACT deze kolommen:
-   | Pagina | GSC klik | GSC vert | Verw.dom | Rol | Actie | Doel | Reden |
+   | Pagina | klik | vert | RD | Rol | Actie | Doel | Reden |
+   (klik = GSC-klikken, vert = GSC-vertoningen, RD = verwijzende domeinen; houd de koppen exact zo kort)
    - Schrijf elke URL in de kolommen Pagina en Doel als KLIKBARE markdown-link met het pad als tekst en de LIVE-URL-BASIS ervoor: [/pad/](https://domein/pad/). Zo kun je meteen naar de pagina klikken.
    - Cellen zijn KORT: getallen in de metriek-kolommen, korte labels, en "Reden" is ÉÉN korte zin. ZET NOOIT een lijst van zoekwoorden in een cel; noem hooguit de ene beslissende term + positie.
    - Rol (kort): WINNAAR / kaapt merk / kaapt <subdienst> / duplicaat (geen verkeer) / andere dienst / blog.

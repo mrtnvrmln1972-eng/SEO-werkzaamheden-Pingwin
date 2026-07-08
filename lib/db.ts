@@ -76,6 +76,19 @@ async function init(): Promise<void> {
       UNIQUE (slug, page_url, from_path)
     )`;
 
+  // Status per rij van de cannibalisatie-tabel: uitgevoerd of afgewezen.
+  // row_path = het pad in de Pagina-kolom van die rij.
+  await sql`
+    CREATE TABLE IF NOT EXISTS page_canni_rows (
+      id         SERIAL PRIMARY KEY,
+      slug       TEXT NOT NULL,
+      page_url   TEXT NOT NULL,
+      row_path   TEXT NOT NULL,
+      status     TEXT NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE (slug, page_url, row_path)
+    )`;
+
   // ── Teamgebruikers (rechten-laag naast de env-eigenaar) ──
   // De env-eigenaar (ADMIN_PASSWORD) blijft de volledige eigenaar met toegang tot
   // alles. Daarnaast kunnen teamgebruikers (gasten) inloggen op het adminscherm met
