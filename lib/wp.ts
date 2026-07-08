@@ -125,22 +125,24 @@ export async function findWpEditUrl(conn: WpConn, path: string): Promise<string 
 // ── Status per tabel-rij (uitgevoerd/afgewezen/doorgezet naar pagina's) ──
 export type CanniRowStatus = "uitgevoerd" | "afgewezen" | "doorgezet";
 
-export async function getCanniRowStatuses(slug: string, pageUrl: string): Promise<Record<string, CanniRowStatus>> {
+export type CanniRowInfo = { status: CanniRowStatus; reason: string };
+
+export async function getCanniRowStatuses(slug: string, pageUrl: string): Promise<Record<string, CanniRowInfo>> {
   await ensureSchema();
-  const { rows } = await sql`SELECT row_path, status FROM page_canni_rows WHERE slug = ${slug} AND page_url = ${pageUrl}`;
-  const out: Record<string, CanniRowStatus> = {};
-  for (const r of rows) if (r.status === "uitgevoerd" || r.status === "afgewezen" || r.status === "doorgezet") out[String(r.row_path)] = r.status;
+  const { rows } = await sql`SELECT row_path, status, reason FROM page_canni_rows WHERE slug = ${slug} AND page_url = ${pageUrl}`;
+  const out: Record<string, CanniRowInfo> = {};
+  for (const r of rows) if (r.status === "uitgevoerd" || r.status === "afgewezen" || r.status === "doorgezet") out[String(r.row_path)] = { status: r.status, reason: String(r.reason || "") };
   return out;
 }
 
-export async function setCanniRowStatus(slug: string, pageUrl: string, rowPath: string, status: CanniRowStatus | null): Promise<void> {
+export async function setCanniRowStatus(slug: string, pageUrl: string, rowPath: string, status: CanniRowStatus | null, reason = ""): Promise<void> {
   await ensureSchema();
   if (!status) { await sql`DELETE FROM page_canni_rows WHERE slug = ${slug} AND page_url = ${pageUrl} AND row_path = ${rowPath}`; return; }
   await sql`
-    INSERT INTO page_canni_rows (slug, page_url, row_path, status)
-    VALUES (${slug}, ${pageUrl}, ${rowPath}, ${status})
+    INSERT INTO page_canni_rows (slug, page_url, row_path, status, reason)
+    VALUES (${slug}, ${pageUrl}, ${rowPath}, ${status}, ${reason || null})
     ON CONFLICT (slug, page_url, row_path)
-    DO UPDATE SET status = ${status}, updated_at = now()`;
+    DO UPDATE SET status = ${status}, reason = ${reason || null}, updated_at = now()`;
 }
 
 // ── Doorgevoerde redirects per pagina bewaren/lezen ──

@@ -306,19 +306,22 @@ export async function summariseChatToSpec(slug: string, url: string, analysis: s
 // Document voor de cannibalisatie-stap: vertelt het verhaal van de cannibalisatie-
 // analyse zelf. GEEN nieuwe data-ronde, GEEN herbeoordeling van de pagina; alleen
 // wat er in de analyse staat, leesbaar voor de klant en exact voor de developer.
-const CANNIBAL_DOC_SYSTEM = `Je bent een senior SEO-strateeg bij bureau Pingwin. Je maakt het rapport van een CANNIBALISATIE- EN CONTENT-MAPPING-analyse voor één landingspagina. Je baseert je UITSLUITEND op de aangeleverde analyse; je verzint niets, je doet GEEN nieuwe beoordeling van de pagina zelf (geen opmerkingen over koppen, teksten, meta of zoekwoordgebruik van de winnende pagina).
+const CANNIBAL_DOC_SYSTEM = `Je bent een senior SEO-strateeg bij bureau Pingwin. Je maakt het OPLEVER-rapport van een CANNIBALISATIE- EN CONTENT-MAPPING-analyse voor één landingspagina, NADAT de mens de voorstellen heeft beoordeeld. Je baseert je UITSLUITEND op de aangeleverde analyse en de beslissingen; je verzint niets, je doet GEEN nieuwe beoordeling van de pagina zelf (geen opmerkingen over koppen, teksten, meta of zoekwoordgebruik van de winnende pagina).
+DE BESLISSINGEN PER RIJ ZIJN LEIDEND (indien meegeleverd): AFGEWEZEN voorstellen presenteer je NIET als actie maar alleen in de afgewezen-sectie mét de opgegeven reden; OPGESCHOVEN punten alleen in de opgeschoven-sectie; NOG NIET BEOORDEELD laat je volledig weg. In de developer-lijsten staan ALLEEN geaccepteerde acties.
 AANSPREEKVORM: gericht aan de eigenaar van de site; spreek de lezer direct aan met "jullie/je". Zoekwoorden zet je vet met **dubbele sterretjes**. Geen jargon zonder uitleg in één zin. Geen emoji.
-Lever precies deze secties:
-1. Wat is cannibalisatie en waarom keken we hiernaar: drie tot vier zinnen in gewone taal (meerdere pagina's op jullie site strijden om hetzelfde zoekwoord, Google twijfelt dan welke hij moet tonen, dat kost posities; we hebben gekeken welke pagina's meedingen en wat we daarmee doen).
+Lever precies deze secties (sla een sectie zonder inhoud stilzwijgend over):
+1. Wat is cannibalisatie en waarom keken we hiernaar: drie tot vier zinnen in gewone taal (meerdere pagina's op jullie site strijden om hetzelfde zoekwoord, Google twijfelt dan welke hij moet tonen, dat kost posities; we hebben per voorstel bewust besloten wat we doen).
 2. Wat eruit kwam: welke pagina de duidelijke winnaar is en waarom (in gewone taal, bijvoorbeeld sterkste pagina met de meeste klikken en links), en kort welke pagina's meededen en welke rol ze hebben.
-3. Wat we per pagina doen: per pagina één begrijpelijke regel, gegroepeerd in drie groepen als bullets met een subheading erboven: (a) pagina's die vervallen en doorsturen naar de winnaar, elk met de reden; (b) pagina's die blijven maar niet meer op dit zoekwoord mikken, elk met wat er verandert; (c) pagina's die we met rust laten, met waarom.
-4. Voor de developer: de exacte lijst 301-redirects (tabel met kolommen "Van" en "Naar") en de exacte lijst interne links (tabel met kolommen "Vanaf", "Naar" en "Ankertekst"), LETTERLIJK overgenomen uit de analyse. Staat er geen enkele redirect of interne link in, zeg dat dan kort.
-5. Wat jullie hiervan gaan merken: twee tot drie zinnen (één sterke pagina in plaats van versnippering; oude links blijven werken door de doorverwijzingen; effect is na enkele weken zichtbaar).
+3. Wat we hebben doorgevoerd: per geaccepteerde pagina één begrijpelijke regel (wat en waarom). Staat in de beslissingen dat een 301 live gecontroleerd is, vermeld dat expliciet ("doorgevoerd en live gecontroleerd").
+4. Bewust opgeschoven: punten die we oppakken wanneer we die pagina's zelf onder handen nemen (het advies staat daar al klaar).
+5. Bewust niet doorgevoerd: de afgewezen voorstellen, elk met de reden, zodat de klant ziet dat er een bewuste afweging is gemaakt.
+6. Voor de developer: de exacte lijst geaccepteerde 301-redirects (tabel met kolommen "Van", "Naar" en "Status", waarbij Status "doorgevoerd, live gecontroleerd" of "doorgevoerd" is volgens de beslissingen) en de exacte lijst interne links (tabel met kolommen "Vanaf", "Naar" en "Ankertekst"), LETTERLIJK uit het developer-overzicht. Blijft er niets over, zeg dat dan kort.
+7. Wat jullie hiervan gaan merken: twee tot drie zinnen (één sterke pagina in plaats van versnippering; oude links blijven werken door de doorverwijzingen; effect is na enkele weken zichtbaar).
 ${DOCSPEC_FORMAT}`;
 
-export async function cannibalDocSpec(slug: string, url: string, analysis: string, devContent: string): Promise<{ spec: DocSpec; title: string }> {
+export async function cannibalDocSpec(slug: string, url: string, analysis: string, devContent: string, decisions = ""): Promise<{ spec: DocSpec; title: string }> {
   const client = await getClientBySlug(slug);
-  const user = `Pagina (de winnaar): ${url}\n\nCANNIBALISATIE- EN CONTENT-MAPPING-ANALYSE:\n${analysis.slice(0, 16000)}\n\nDEVELOPER-OVERZICHT (redirects en interne links, letterlijk overnemen in sectie 4):\n${devContent.slice(0, 6000)}`;
+  const user = `Pagina (de winnaar): ${url}\n\nCANNIBALISATIE- EN CONTENT-MAPPING-ANALYSE:\n${analysis.slice(0, 16000)}\n\n${decisions ? `${decisions}\n\n` : ""}DEVELOPER-OVERZICHT (alleen geaccepteerde acties; letterlijk overnemen in de developer-sectie):\n${devContent.slice(0, 6000)}`;
   const raw = await callClaude(CANNIBAL_DOC_SYSTEM, [{ role: "user", content: user }], 8192, { slug, action: "page_cannibal_doc" });
   const parsed = extractJsonObject(raw);
   if (!parsed) throw new Error("Het cannibalisatie-document kon niet worden opgemaakt (het AI-antwoord kwam onvolledig terug). Probeer het opnieuw.");

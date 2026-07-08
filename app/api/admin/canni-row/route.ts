@@ -69,12 +69,13 @@ export async function POST(req: NextRequest) {
 
     const raw = body.status;
     const status = raw === "uitgevoerd" || raw === "afgewezen" || raw === "doorgezet" ? raw : null;
+    const reason = String(body.reason || "").trim().slice(0, 500);
     // Herstel van een doorgezette rij haalt het klaargezette advies ook weer weg.
     if (!status) {
       const prev = (await getCanniRowStatuses(slug, pageUrl))[rowPath];
-      if (prev === "doorgezet") await deletePageClusterAdvice(slug, rowFullUrl(pageUrl, rowPath), pageUrl).catch(() => { /* advies-opruimen is best effort */ });
+      if (prev?.status === "doorgezet") await deletePageClusterAdvice(slug, rowFullUrl(pageUrl, rowPath), pageUrl).catch(() => { /* advies-opruimen is best effort */ });
     }
-    await setCanniRowStatus(slug, pageUrl, rowPath, status);
+    await setCanniRowStatus(slug, pageUrl, rowPath, status, reason);
     return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : "Opslaan mislukt." }, { status: 500 });

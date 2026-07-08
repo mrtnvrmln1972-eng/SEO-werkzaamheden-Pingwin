@@ -649,6 +649,16 @@ tbody td:last-child { text-align: center; }
 .pch-canni-md .md-table th:nth-child(6) { width: 10%; }
 .pch-canni-md .md-table th:nth-child(7) { width: 14%; }
 .pch-canni-md .md-table th:nth-child(8) { width: 37%; }
+/* Nieuwe analyses hebben 9 kolommen (met Score); eigen breedtes, Reden houdt ruimte. */
+.pch-canni-md .md-table.canni-9 th:nth-child(1) { width: 14%; }
+.pch-canni-md .md-table.canni-9 th:nth-child(2) { width: 4%; }
+.pch-canni-md .md-table.canni-9 th:nth-child(3) { width: 5%; }
+.pch-canni-md .md-table.canni-9 th:nth-child(4) { width: 4%; }
+.pch-canni-md .md-table.canni-9 th:nth-child(5) { width: 8%; }
+.pch-canni-md .md-table.canni-9 th:nth-child(6) { width: 6%; }
+.pch-canni-md .md-table.canni-9 th:nth-child(7) { width: 12%; }
+.pch-canni-md .md-table.canni-9 th:nth-child(8) { width: 13%; }
+.pch-canni-md .md-table.canni-9 th:nth-child(9) { width: 34%; }
 /* Kolomkoppen blijven plakken (onder de bovenbalk + de paginalijst-kop) terwijl je door de tabel scrolt. */
 .pch-canni-md .md-table thead th { position: sticky; top: 120px; z-index: 10; }
 /* Interne-links-tabel (stap 6): eigen kolomindeling. Supersmalle #-kolom, compacte

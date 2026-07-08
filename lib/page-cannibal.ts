@@ -8,6 +8,7 @@ import { cannibalDocSpec } from "./page-doc";
 import { buildPingwinDoc } from "./pingwin-docx";
 import { uploadDocx } from "./drive";
 import { getTasks, appendTasks, deleteTasksByIds } from "./tasks";
+import { getCanniRowStatuses, getPageRedirects } from "./wp";
 import { mdToHtml } from "./markdown";
 
 // ═══════════════════════════════════════════════════════════
@@ -251,28 +252,58 @@ function safeName(s: string): string {
   return (s || "document").replace(/[^\p{L}\p{N} _-]+/gu, "").replace(/\s+/g, "-").slice(0, 60) || "document";
 }
 
-// "Aanbevelingen overnemen": zet de uitkomst door.
-// 1) De-optimalisatie-/behoud-aanwijzingen als basisinfo naar de blijvende pagina's
-//    (cluster-advies), als vertrekpunt voor de latere strategie van die pagina.
-// 2) De redirects + interne links als één Dev-taak (met de lijst erin) + een
-//    Pingwin-document in de Drive-map van de pagina, zichtbaar voor klant en developer.
-export async function applyPageCannibal(slug: string, url: string): Promise<{ taskId: number | null; docLink: string }> {
+// Actionable rijen (301/de-optimaliseren/interne links) uit de analyse-tabel
+// halen: pad + actie. Voor het beslismoment (welke rijen zijn beoordeeld) en de
+// taak-status.
+export function parseActionableRows(analysis: string): { path: string; action: string }[] {
+  const out: { path: string; action: string }[] = [];
+  for (const line of (analysis || "").split("\n")) {
+    if (!line.trim().startsWith("|")) continue;
+    const m = line.match(/\[(\/[^\]]*)\]/);
+    if (!m) continue;
+    if (!/301|de-optimaliseren|interne links/i.test(line)) continue;
+    const action = /301/.test(line) ? "301" : /de-optimaliseren/i.test(line) ? "de-optimaliseren" : "interne links";
+    if (!out.some((r) => r.path === m[1])) out.push({ path: m[1], action });
+  }
+  return out;
+}
+
+// "Aanbevelingen overnemen" = het BEVESTIGINGSMOMENT na de menselijke beoordeling.
+// Kijkt naar de rij-statussen (uitgevoerd/doorgezet/afgewezen; geen status =
+// nog voorgesteld) en maakt op basis dáárvan het klantdocument + de Dev-taak:
+// alleen geaccepteerde acties in de lijsten, afgewezen voorstellen met reden.
+export async function applyPageCannibal(slug: string, url: string): Promise<{ taskId: number | null; docLink: string; executed: number; deferred: number; rejected: number; unreviewed: number }> {
   const cur = await getPageCannibal(slug, url);
   const analysis = (cur.result || "").trim();
   if (!analysis) throw new Error("Er is nog geen cannibalisatie-analyse voor deze pagina. Draai eerst de analyse.");
   const client = await getClientBySlug(slug);
   const path = pagePath(url);
 
-  // (Basisinfo wordt NIET meer in bulk doorgezet; dat gebeurt per tabel-rij met
-  // de knop "Naar pagina's", zodat Maarten per rij beslist.)
+  // 1. De menselijke beslissingen per rij + de live-verificatie van de 301's.
+  const statuses = await getCanniRowStatuses(slug, url).catch(() => ({} as Record<string, { status: string; reason: string }>));
+  const redirDone = await getPageRedirects(slug, url).catch(() => []);
+  const verifiedMap = new Map(redirDone.map((r) => [r.fromPath, r.verified]));
+  const rows = parseActionableRows(analysis);
+  const executed = rows.filter((r) => statuses[r.path]?.status === "uitgevoerd");
+  const deferred = rows.filter((r) => statuses[r.path]?.status === "doorgezet");
+  const rejected = rows.filter((r) => statuses[r.path]?.status === "afgewezen");
+  const unreviewed = rows.filter((r) => !statuses[r.path]);
 
-  // 2. Dev-inhoud: uitleg + redirects + interne links uit de analyse halen.
+  const decisions = [
+    "BESLISSINGEN PER RIJ (na menselijke beoordeling; LEIDEND voor het document):",
+    ...executed.map((r) => `- ${r.path} (${r.action}): GEACCEPTEERD EN DOORGEVOERD${r.action === "301" ? (verifiedMap.get(r.path) ? ", live gecontroleerd (echte 301 naar het juiste doel)" : ", live-controle nog niet geslaagd") : ""}`),
+    ...deferred.map((r) => `- ${r.path} (${r.action}): OPGESCHOVEN, wordt opgepakt wanneer die pagina zelf onder handen wordt genomen (advies staat daar klaar)`),
+    ...rejected.map((r) => `- ${r.path} (${r.action}): AFGEWEZEN${statuses[r.path]?.reason ? `, reden: ${statuses[r.path].reason}` : " (zonder opgegeven reden)"}`),
+    ...unreviewed.map((r) => `- ${r.path} (${r.action}): NOG NIET BEOORDEELD, laat deze volledig weg uit het document`),
+  ].join("\n");
+
+  // 2. Dev-inhoud: uitleg + ALLEEN de geaccepteerde redirects/interne links.
   const devMd = await callClaude(
     `Maak uit de cannibalisatie- en content-mapping-analyse hieronder een BEKNOPT developer-overzicht in markdown, met exact deze opbouw:
 1. Twee tot drie zinnen in gewone taal: wat deze stap is en waarom (cannibalisatie oplossen zodat Google de juiste pagina laat ranken).
-2. Kop "301-redirects" met een lijst "van-pad → naar-pad" (alleen de pagina's met een 301/die vervallen).
+2. Kop "301-redirects" met een lijst "van-pad → naar-pad".
 3. Kop "Interne links" met een lijst "vanaf-pad → naar-pad — ankertekst".
-Neem uitsluitend wat in de analyse staat; verzin niets. Geen emoji. Staat er geen enkele redirect of interne link, zeg dat kort.`,
+NEEM UITSLUITEND de acties op voor deze GEACCEPTEERDE paden: ${executed.length ? executed.map((r) => r.path).join(", ") : "(geen)"}. Alle andere paden (afgewezen/opgeschoven/onbeoordeeld) laat je volledig weg uit de lijsten. Neem uitsluitend wat in de analyse staat; verzin niets. Geen emoji. Blijft er geen enkele redirect of interne link over, zeg dat kort.`,
     [{ role: "user", content: analysis.slice(0, 16000) }], 3000, { slug, action: "page_cannibal_apply" },
   ).catch(() => "");
   const devContent = (devMd || "").replace(/```/g, "").trim() || analysis;
@@ -280,7 +311,7 @@ Neem uitsluitend wat in de analyse staat; verzin niets. Geen emoji. Staat er gee
   // 3. Pingwin-document van de dev-inhoud, in de Drive-map van de pagina (indien ingesteld).
   let docLink = "";
   try {
-    const { spec } = await cannibalDocSpec(slug, url, analysis, devContent);
+    const { spec } = await cannibalDocSpec(slug, url, analysis, devContent, decisions);
     const buffer = await buildPingwinDoc(spec);
     const folder = await getPageDriveFolder(slug, url).catch(() => null);
     if (folder?.folderId) { try { ({ link: docLink } = await uploadDocx(folder.folderId, `${safeName(client?.name || slug)}-cannibalisatie-${safeName(path)}.docx`, buffer)); } catch { /* zonder link vastleggen */ } }
@@ -299,14 +330,18 @@ Neem uitsluitend wat in de analyse staat; verzin niets. Geen emoji. Staat er gee
   // voor onze eigen handmatige opmerkingen). Alleen als er geen Drive-map is (geen document),
   // zetten we het overzicht als vangnet in de toelichting zodat de lijst niet verloren gaat.
   const linkHtml = docLink ? ` (<a href="${docLink.replace(/"/g, "&quot;")}" target="_blank" rel="noreferrer">document</a>)` : "";
+  // Taak-status volgt de werkelijkheid: alles beoordeeld en alle geaccepteerde
+  // 301's live geverifieerd → Klaar; anders blijft hij open.
+  const allVerified = executed.filter((r) => r.action === "301").every((r) => verifiedMap.get(r.path) === true);
+  const taskStatus = unreviewed.length === 0 && allVerified ? "Klaar" : "Gepland";
   const ids = await appendTasks(slug, [{
     taak: `Cannibalisatie, redirects en interne links ${path}${linkHtml}`,
     toelichting: docLink ? "" : mdToHtml(devContent.slice(0, 8000)),
     klantToelichting: klantUitleg,
-    status: "Gepland", wie: "Dev", fase: "Opschonen",
+    status: taskStatus, wie: "Dev", fase: "Opschonen",
     pageUrl: url, stepKind: "cannibal_redirects", klantZichtbaar: true,
     docLink: docLink || undefined, clientDocLink: docLink || undefined,
   }]).catch(() => [] as number[]);
 
-  return { taskId: ids[0] ?? null, docLink };
+  return { taskId: ids[0] ?? null, docLink, executed: executed.length, deferred: deferred.length, rejected: rejected.length, unreviewed: unreviewed.length };
 }

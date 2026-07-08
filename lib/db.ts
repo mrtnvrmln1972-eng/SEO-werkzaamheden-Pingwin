@@ -88,6 +88,8 @@ async function init(): Promise<void> {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       UNIQUE (slug, page_url, row_path)
     )`;
+  // Reden bij afwijzen (komt als onderbouwing in het klantdocument).
+  await sql`ALTER TABLE page_canni_rows ADD COLUMN IF NOT EXISTS reason TEXT`;
 
   // ── Teamgebruikers (rechten-laag naast de env-eigenaar) ──
   // De env-eigenaar (ADMIN_PASSWORD) blijft de volledige eigenaar met toegang tot
