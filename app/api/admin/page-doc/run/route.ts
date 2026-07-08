@@ -6,6 +6,10 @@ import { waitUntil } from "@vercel/functions";
 import { createDocRun, getLatestDocRun, getStepsEverDone, runNow } from "../../../../../lib/page-doc-run";
 
 export const runtime = "nodejs";
+// De waitUntil-worker die de generatie direct doorloopt draait binnen deze functie;
+// zonder verlengde limiet kapt Vercel hem na 300s af, midden in de analyse (5-8 min),
+// en blijft de stap eeuwig op 'bezig' staan. 800s = zelfde limiet als de cron-route.
+export const maxDuration = 800;
 
 function admin(req: NextRequest): boolean {
   return verifyAdminSession(req.cookies.get(ADMIN_COOKIE)?.value);
