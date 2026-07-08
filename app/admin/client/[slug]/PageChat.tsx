@@ -208,14 +208,14 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   //   "Naar pagina's" zet het advies klaar bij die pagina (Pagina's-tabblad)
   //   voor het moment dat je die pagina zelf aanpakt.
   // - "Afwijzen" zet de rij op afgewezen (grijs); herstel draait het terug.
-  function rowButtonsHtml(rowPath: string, redirect: { from: string; to: string } | null): string {
+  function rowButtonsHtml(rowPath: string, redirect: { from: string; to: string } | null, extra = ""): string {
     const status = rowStatus[rowPath];
     const busy = wpBusy === rowPath || (redirect ? wpBusy === redirect.from : false);
     if (status === "afgewezen") {
-      return `<span class="canni-actions"><button type="button" class="pcd-btn wp-mini pcd-warn" data-act="restore" data-path="${escAttr(rowPath)}" title="Deze rij is afgewezen. Klik om dat terug te draaien.">Afgewezen, herstel</button></span>`;
+      return `<span class="canni-actions"><button type="button" class="pcd-btn wp-mini pcd-warn" data-act="restore" data-path="${escAttr(rowPath)}" title="Deze rij is afgewezen. Klik om dat terug te draaien.">Afgewezen, herstel</button>${extra}</span>`;
     }
     if (status === "doorgezet") {
-      return `<span class="canni-actions"><button type="button" class="pcd-btn wp-mini pcd-blue" data-act="restore" data-path="${escAttr(rowPath)}" title="Het advies staat klaar bij die pagina in het Pagina's-tabblad ('half plan'); je pakt het op wanneer je die pagina aanpakt. Klik om dit terug te draaien (haalt het advies daar ook weer weg).">→ Bij pagina's, herstel</button></span>`;
+      return `<span class="canni-actions"><button type="button" class="pcd-btn wp-mini pcd-blue" data-act="restore" data-path="${escAttr(rowPath)}" title="Het advies staat klaar bij die pagina in het Pagina's-tabblad ('half plan'); je pakt het op wanneer je die pagina aanpakt. Klik om dit terug te draaien (haalt het advies daar ook weer weg).">→ Bij pagina's, herstel</button>${extra}</span>`;
     }
     const reject = `<button type="button" class="pcd-btn wp-mini wp-ghost" data-act="reject" data-path="${escAttr(rowPath)}" title="Wijs deze aanbeveling af; de rij wordt grijs.">Afwijzen</button>`;
     if (redirect) {
@@ -224,7 +224,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       const cls = "pcd-btn wp-mini" + (done?.verified ? " pcd-done" : done ? " pcd-warn" : "");
       const title = done?.verified ? "301 staat in de website en is live gecontroleerd. Klik om opnieuw te controleren." : done ? "De redirect is doorgevoerd, maar de live-controle lukte nog niet. Klik om opnieuw te controleren." : wpConf?.configured ? "Zet deze 301-redirect via de Redirection-plugin in de website en controleer hem direct live." : "Koppel eerst WordPress (onder de tabel).";
       const dis = busy || (!wpConf?.configured && !done) ? " disabled" : "";
-      return `<span class="canni-actions"><button type="button" class="${cls}" data-act="redirect" data-wpfrom="${escAttr(redirect.from)}" data-wpto="${escAttr(redirect.to)}" title="${escAttr(title)}"${dis}>${label}</button>${done?.verified ? "" : reject}</span>`;
+      return `<span class="canni-actions"><button type="button" class="${cls}" data-act="redirect" data-wpfrom="${escAttr(redirect.from)}" data-wpto="${escAttr(redirect.to)}" title="${escAttr(title)}"${dis}>${label}</button>${done?.verified ? "" : reject}${extra}</span>`;
     }
     const doneEdit = status === "uitgevoerd";
     const label = busy ? "Bezig…" : doneEdit ? "✓ Uitgevoerd" : "Uitvoeren";
@@ -232,16 +232,20 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     const title = doneEdit ? "Als uitgevoerd gemarkeerd. Klik om de pagina nogmaals in de WordPress-backend te openen." : wpConf?.configured ? "Opent deze pagina in de WordPress-backend (bewerk-modus), zodat je de aanpassing/interne link kunt doorvoeren. De rij wordt dan als uitgevoerd gemarkeerd." : "Koppel eerst WordPress (onder de tabel).";
     const dis = busy || (!wpConf?.configured && !doneEdit) ? " disabled" : "";
     const topage = `<button type="button" class="pcd-btn wp-mini wp-ghost-blue" data-act="topage" data-path="${escAttr(rowPath)}"${busy ? " disabled" : ""} title="Zet het advies van deze rij klaar bij die pagina in het Pagina's-tabblad ('half plan'), zodat je het meeneemt wanneer je die pagina aanpakt.">Naar pagina's</button>`;
-    return `<span class="canni-actions"><button type="button" class="${cls}" data-act="edit" data-path="${escAttr(rowPath)}" title="${escAttr(title)}"${dis}>${label}</button>${doneEdit ? "" : topage + reject}</span>`;
+    return `<span class="canni-actions"><button type="button" class="${cls}" data-act="edit" data-path="${escAttr(rowPath)}" title="${escAttr(title)}"${dis}>${label}</button>${doneEdit ? "" : topage + reject}${extra}</span>`;
   }
 
-  // Tabel verrijken: korte kolomkoppen, "intern linken" vet, knoppen in de
-  // Reden-cel, en afgewezen rijen grijs.
+  // Tabel verrijken: korte kolomkoppen, "intern linken" vet, knoppen + check in
+  // de Reden-cel, cannibalisatiescore ingekleurd, en afgewezen rijen grijs.
   function enrichCanniTable(html: string): string {
     let out = html
       .replace(/>\s*GSC\s*klik\s*</gi, ">klik<")
       .replace(/>\s*GSC\s*vert\s*</gi, ">vert<")
       .replace(/>\s*Verw\.?\s*dom(?:einen)?\s*</gi, ">RD<");
+    // Positie van de Score-kolom uit de koprij (bestaat alleen bij nieuwe analyses).
+    let scoreIdx = -1;
+    const head = out.match(/<thead><tr>([\s\S]*?)<\/tr><\/thead>/);
+    if (head) scoreIdx = head[1].split("</th>").findIndex((h) => /score\s*$/i.test(h.replace(/<[^>]*>/g, "").trim()));
     out = out.replace(/<tr>((?:<td>[\s\S]*?<\/td>)+)<\/tr>/g, (row: string, inner: string) => {
       const cells = inner.split("</td>");
       const pathMatch = (cells[0] || "").match(/>(\/[^<]*)</);
@@ -250,12 +254,21 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       const redenIdx = cells.length - 2; // laatste echte cel (na de laatste </td> splitst een lege string af)
       if (redenIdx < 1) return row;
       cells[redenIdx] = cells[redenIdx].replace(/intern(?:e)?\s+link(?:en|s)?/gi, "<strong>$&</strong>");
+      // Score inkleuren: rood = urgent (nu oplossen), oranje = middel, groen = kan later.
+      if (scoreIdx > 0 && scoreIdx < redenIdx) {
+        cells[scoreIdx] = cells[scoreIdx].replace(/>\s*(\d{1,3})\s*$/, (_m, n: string) => {
+          const v = Number(n);
+          const cls = v >= 70 ? "hi" : v >= 40 ? "mid" : "lo";
+          return `><span class="canni-score canni-score-${cls}" title="Cannibalisatiescore 1-100: hoe hard deze pagina met deze landingspagina concurreert. 70+ = urgent, nu oplossen; 40-69 = middel; onder 40 = kan via 'Naar pagina's' later.">${n}</span>`;
+        });
+      }
       const rowText = inner;
       const redirect = wpRedirects.find((x) => x.from === rowPath) || null;
       const isEdit = !redirect && /de-optimaliseren|intern(?:e)?\s+link/i.test(rowText);
-      if (redirect || isEdit) cells[redenIdx] += rowButtonsHtml(rowPath, redirect);
-      // Cross-check-linkje bij elke rij: hoe staat deze pagina er echt voor?
-      cells[0] += `<br><button type="button" class="canni-check" data-act="check" data-path="${escAttr(rowPath)}" title="Bekijk hoe deze pagina er echt voor staat (GSC-zoekwoorden, Ahrefs-rankings, verwijzende domeinen) voordat je kiest.">check</button>`;
+      // Cross-check-linkje bij elke rij, rechts van de knoppen in de Reden-cel.
+      const checkBtn = `<button type="button" class="canni-check" data-act="check" data-path="${escAttr(rowPath)}" title="Bekijk hoe deze pagina er echt voor staat (GSC-zoekwoorden, Ahrefs-rankings, verwijzende domeinen) voordat je kiest.">check</button>`;
+      if (redirect || isEdit) cells[redenIdx] += rowButtonsHtml(rowPath, redirect, checkBtn);
+      else cells[redenIdx] += `<span class="canni-actions">${checkBtn}</span>`;
       const rowCls = rowStatus[rowPath] === "afgewezen" ? "canni-rejected" : rowStatus[rowPath] === "doorgezet" ? "canni-deferred" : "";
       return `<tr${rowCls ? ` class="${rowCls}"` : ""}>` + cells.join("</td>") + "</tr>";
     });

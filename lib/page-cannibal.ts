@@ -101,8 +101,9 @@ ACTIES (beslisboom, licht naar zwaar): niets doen | interne links herverdelen | 
 OUTPUT — KORT EN SCANBAAR, absoluut geen lappen tekst. Denk aan een strak Excel-overzicht, niet aan een rapport. Nette markdown, Nederlands, geen emoji.
 1. Eén tot twee zinnen strategie: is deze pagina de winnaar en wat is het patroon. Niet meer.
 2. ÉÉN markdown-tabel, winnaar bovenaan, met EXACT deze kolommen:
-   | Pagina | klik | vert | RD | Rol | Actie | Doel | Reden |
+   | Pagina | klik | vert | RD | Rol | Score | Actie | Doel | Reden |
    (klik = GSC-klikken, vert = GSC-vertoningen, RD = verwijzende domeinen; houd de koppen exact zo kort)
+   - Score = cannibalisatiescore 1-100: hoe hard deze pagina daadwerkelijk met de geanalyseerde landingspagina concurreert, en dus hoe urgent ingrijpen is. Weeg: bewezen query-splitsing in GSC op dezelfde zoekterm (zwaarst, 70-100), ranken op de kern-/merkterm van de landingspagina zonder GSC-splitsing (40-69), alleen thematische overlap of long-tail-raakvlak (10-39), eigen intentie/andere dienst zonder echte concurrentie (1-9). Bij de winnaar-rij zelf: "-". Alleen het getal in de cel, geen tekst.
    - Schrijf elke URL in de kolommen Pagina en Doel als KLIKBARE markdown-link met het pad als tekst en de LIVE-URL-BASIS ervoor: [/pad/](https://domein/pad/). Zo kun je meteen naar de pagina klikken.
    - Cellen zijn KORT: getallen in de metriek-kolommen, korte labels, en "Reden" is ÉÉN korte zin. ZET NOOIT een lijst van zoekwoorden in een cel; noem hooguit de ene beslissende term + positie.
    - Rol (kort): WINNAAR / kaapt merk / kaapt <subdienst> / duplicaat (geen verkeer) / andere dienst / blog.

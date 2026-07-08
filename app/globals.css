@@ -621,8 +621,13 @@ tbody td:last-child { text-align: center; }
 .pcd-btn.wp-ghost-blue:hover:not(:disabled) { border-color: #2286C7; background: #eaf4fb; }
 .pch-canni-md tr.canni-deferred td { background: #f4f9fd; }
 /* Cross-check-linkje per rij + de pagina-check-overlay. */
-.canni-check { background: none; border: none; padding: 0; margin-top: 2px; font-size: 11px; color: var(--gray); text-decoration: underline; cursor: pointer; }
+.canni-check { background: none; border: none; padding: 0; align-self: center; font-size: 11px; color: var(--gray); text-decoration: underline; cursor: pointer; }
 .canni-check:hover { color: var(--orange); }
+/* Cannibalisatiescore 1-100: rood = urgent, oranje = middel, groen = kan later. */
+.canni-score { display: inline-block; min-width: 30px; text-align: center; padding: 1px 7px; border-radius: 999px; font-size: 11.5px; font-weight: 700; cursor: default; }
+.canni-score-hi { background: #fdecea; color: #b3261e; }
+.canni-score-mid { background: #fdf6e7; color: #a86f04; }
+.canni-score-lo { background: #eef7ee; color: #1c7a44; }
 .canni-check-pop { background: #fff; border-radius: 14px; padding: 18px 22px; width: min(760px, 94vw); max-height: 84vh; overflow-y: auto; box-shadow: 0 12px 40px rgba(0,0,0,0.25); }
 .ccp-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
 .ccp-path { background: var(--brand-orange-faint, #fdf1ea); border-radius: 6px; padding: 2px 8px; font-size: 12.5px; word-break: break-all; }
