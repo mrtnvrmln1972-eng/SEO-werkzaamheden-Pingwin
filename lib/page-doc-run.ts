@@ -180,9 +180,9 @@ async function recoverStale(): Promise<void> {
     WHERE r.status = 'running'
       AND r.analyse_state <> 'running' AND r.blauwdruk_state <> 'running' AND r.copy_state <> 'running'
       AND EXISTS (SELECT 1 FROM page_doc_runs n WHERE n.client_slug = r.client_slug AND n.url = r.url AND n.id > r.id AND n.status = 'running')`;
-  await sql`UPDATE page_doc_runs SET analyse_state = 'pending', updated_at = now() WHERE status = 'running' AND analyse_state = 'running' AND updated_at < now() - interval '10 minutes'`;
-  await sql`UPDATE page_doc_runs SET blauwdruk_state = 'pending', updated_at = now() WHERE status = 'running' AND blauwdruk_state = 'running' AND updated_at < now() - interval '10 minutes'`;
-  await sql`UPDATE page_doc_runs SET copy_state = 'pending', updated_at = now() WHERE status = 'running' AND copy_state = 'running' AND updated_at < now() - interval '10 minutes'`;
+  await sql`UPDATE page_doc_runs SET analyse_state = 'pending', updated_at = now() WHERE status = 'running' AND analyse_state = 'running' AND updated_at < now() - interval '13 minutes'`;
+  await sql`UPDATE page_doc_runs SET blauwdruk_state = 'pending', updated_at = now() WHERE status = 'running' AND blauwdruk_state = 'running' AND updated_at < now() - interval '13 minutes'`;
+  await sql`UPDATE page_doc_runs SET copy_state = 'pending', updated_at = now() WHERE status = 'running' AND copy_state = 'running' AND updated_at < now() - interval '13 minutes'`;
 }
 
 async function processRun(id: number): Promise<void> {
@@ -200,7 +200,7 @@ async function processRun(id: number): Promise<void> {
     const claimed = await claimStep(id, kind);
     if (!claimed) return; // andere worker pakte hem, of de status veranderde
     try {
-      const link = await withHardTimeout(generateAndStoreDoc(slug, url, kind, extra, folderId, audience), 480000, "Genereren duurde te lang (>8 min) en is afgebroken. Probeer het opnieuw.");
+      const link = await withHardTimeout(generateAndStoreDoc(slug, url, kind, extra, folderId, audience), 700000, "Genereren duurde te lang (>11,5 min) en is afgebroken. Probeer het opnieuw.");
       await finishStep(id, kind, link);
     } catch (e) {
       await failStep(id, kind, ((e as Error).message || "onbekende fout").slice(0, 500));
