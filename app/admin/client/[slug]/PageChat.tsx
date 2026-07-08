@@ -85,6 +85,31 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       await loadIl();
     } catch { setErr("Starten mislukt."); await loadIl(); } finally { setIlBusy(false); }
   }
+  // "Overnemen" bij stap 6: document in de Drive-map + Dev-taak (spiegelt stap 5).
+  const [ilApplyBusy, setIlApplyBusy] = useState(false);
+  const [ilApplyMsg, setIlApplyMsg] = useState(""); // alleen foutmeldingen
+  const [ilApplyInfo, setIlApplyInfo] = useState<{ doc: boolean } | null>(null);
+  const [ilDone, setIlDone] = useState(false); // stap 6 afgerond (aanbevelingen overgenomen)
+  useEffect(() => {
+    try {
+      setIlDone(localStorage.getItem(`pw_ildone_${slug}_${url}`) === "1");
+      const raw = localStorage.getItem(`pw_ilinfo_${slug}_${url}`);
+      setIlApplyInfo(raw ? JSON.parse(raw) : null);
+    } catch { /* geen opslag */ }
+  }, [slug, url]);
+  async function applyIl() {
+    if (ilApplyBusy) return;
+    setIlApplyBusy(true); setIlApplyMsg("");
+    try {
+      const d = await fetch("/api/admin/page-internal-links/apply", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url }) }).then((r) => r.json());
+      if (!d.ok) { setIlApplyMsg(d.error || "Overnemen mislukt."); return; }
+      const info = { doc: !!d.docLink };
+      setIlApplyInfo(info);
+      try { localStorage.setItem(`pw_ilinfo_${slug}_${url}`, JSON.stringify(info)); } catch { /* geen opslag */ }
+      setIlDone(true); try { localStorage.setItem(`pw_ildone_${slug}_${url}`, "1"); } catch { /* geen opslag */ }
+      onApplied();
+    } catch { setIlApplyMsg("Overnemen mislukt."); } finally { setIlApplyBusy(false); }
+  }
   // Een chat-bericht bewerken (welke index) — gerenderde contentEditable, geen ruwe textarea.
   const [editIdx, setEditIdx] = useState<number | null>(null);
   const editRef = useRef<HTMLDivElement | null>(null);
@@ -992,10 +1017,10 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
         </div>)}
       </div>
 
-      <div className={"page-chat-links-card step-card step-card-6" + (il?.result ? " done" : "")}>
+      <div className={"page-chat-links-card step-card step-card-6" + (ilDone ? " done" : "")}>
         <div className="step-head" onClick={() => setLinksOpen((o) => !o)}>
           <span className="step-caret">{linksOpen ? "▾" : "▸"}</span>
-          <span className="step-badge">{il?.result ? "✓" : "6"}</span>
+          <span className="step-badge">{ilDone ? "✓" : "6"}</span>
           <span className="step-title">Interne links</span>
           <span onClick={(e) => e.stopPropagation()}><HelpHint wide text="Zoekt de beste interne links NAAR deze pagina: welke andere pagina's zouden hierheen moeten linken, gerangschikt op interessantheid (raakt de bronpagina het onderwerp, hoeveel autoriteit heeft hij via externe links, hoeveel verkeer krijgt hij uit Search Console). Per kans een voorgestelde ankertekst en een directe bewerk-link naar de WordPress-backend. Draait op de achtergrond." /></span>
         </div>
@@ -1010,6 +1035,28 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
             <div className="pch-canni-doc">
               <button type="button" className="pch-canni-toggle" onClick={() => setIlDocOpen((o) => !o)}>{ilDocOpen ? "▾" : "▸"} Interne-links-voorstel{il.updatedAt ? ` · ${new Date(il.updatedAt).toLocaleString("nl-NL")}` : ""}{il.status === "running" ? " · nieuwe analyse draait…" : ""}</button>
               {ilDocOpen && <div className="md pch-canni-md" dangerouslySetInnerHTML={{ __html: ilHtml }} />}
+              {/* Map + overnemen blijven ook zichtbaar als het voorstel is ingeklapt. */}
+              <div className="page-chat-drive" style={{ margin: "12px 0 8px" }}>
+                <span className="pcd-label">Opslaan in:</span>
+                {driveFolder
+                  ? <span className="pcd-folder">{driveFolder.path || driveFolder.name}</span>
+                  : <span className="pcd-folder muted">nog geen Drive-map, kies er een zodat het taak-document in de juiste map komt</span>}
+                <button type="button" className="ghost-btn small" onClick={openPicker}>{driveFolder ? "Map wijzigen" : "Kies Drive-map"}</button>
+              </div>
+              <div className="pch-canni-apply">
+                <button type="button" className={"pcd-btn pcd-btn-primary" + (ilApplyBusy ? " busy" : "") + (ilDone && !ilApplyBusy ? " pcd-done" : "")} disabled={ilApplyBusy} onClick={applyIl} title="Zet het interne-links-voorstel door als Dev-taak met een begrijpelijk document.">{ilApplyBusy ? "Overnemen…" : ilDone ? "✓ Aanbevelingen overgenomen" : "Aanbevelingen overnemen"}</button>
+                {ilApplyInfo && (
+                  <div className="pch-apply-panel">
+                    <div className="pch-apply-row">
+                      <span className="pch-apply-ico">✓</span>
+                      <div>{ilApplyInfo.doc
+                        ? <><strong>Dev-taak aangemaakt in Werkzaamheden met een gekoppeld document</strong> (de volledige lijst met interne links en ankerteksten staat daarin).</>
+                        : <><strong>Dev-taak aangemaakt in Werkzaamheden zonder document</strong>, er was geen Drive-map gekozen. Kies hierboven een map en neem opnieuw over voor een net taak-document.</>}</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              {ilApplyMsg && <div className="login-error" style={{ marginTop: 8 }}>{ilApplyMsg}</div>}
             </div>
           )}
         </div>)}
