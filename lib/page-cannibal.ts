@@ -1,10 +1,9 @@
 import { sql, ensureSchema } from "./db";
 import { getClientBySlug } from "./clients";
-import { getClientUrls, getPagePlan, savePageClusterAdvice, getPageDriveFolder } from "./site-urls";
+import { getClientUrls, getPagePlan, getPageDriveFolder } from "./site-urls";
 import { getGscForPage, getGscQueryPageMatrix } from "./google";
 import { getAhrefsTopPages, getDomainKeywordsMatching, getUrlOrganicKeywords, getSerpOverview, getKeywordsOverview, ahrefsConfigured } from "./ahrefs";
 import { callClaude } from "./anthropic";
-import { extractClusterAdvice } from "./page-chat-ground";
 import { cannibalDocSpec } from "./page-doc";
 import { buildPingwinDoc } from "./pingwin-docx";
 import { uploadDocx } from "./drive";
@@ -256,21 +255,15 @@ function safeName(s: string): string {
 //    (cluster-advies), als vertrekpunt voor de latere strategie van die pagina.
 // 2) De redirects + interne links als één Dev-taak (met de lijst erin) + een
 //    Pingwin-document in de Drive-map van de pagina, zichtbaar voor klant en developer.
-export async function applyPageCannibal(slug: string, url: string): Promise<{ taskId: number | null; docLink: string; advicePages: number; adviceUrls: string[] }> {
+export async function applyPageCannibal(slug: string, url: string): Promise<{ taskId: number | null; docLink: string }> {
   const cur = await getPageCannibal(slug, url);
   const analysis = (cur.result || "").trim();
   if (!analysis) throw new Error("Er is nog geen cannibalisatie-analyse voor deze pagina. Draai eerst de analyse.");
   const client = await getClientBySlug(slug);
-  const urls = await getClientUrls(slug).catch(() => []);
   const path = pagePath(url);
 
-  // 1. Basisinfo (de-optimalisaties/behoud) naar de blijvende pagina's als vertrekpunt.
-  const adviceUrls: string[] = [];
-  try {
-    const items = await extractClusterAdvice(analysis, url, urls.map((u) => u.url));
-    for (const it of items) { await savePageClusterAdvice(slug, it.url, it.advice, url, analysis).catch(() => { /* per pagina stil */ }); adviceUrls.push(it.url); }
-  } catch { /* advies is aanvullend */ }
-  const advicePages = adviceUrls.length;
+  // (Basisinfo wordt NIET meer in bulk doorgezet; dat gebeurt per tabel-rij met
+  // de knop "Naar pagina's", zodat Maarten per rij beslist.)
 
   // 2. Dev-inhoud: uitleg + redirects + interne links uit de analyse halen.
   const devMd = await callClaude(
@@ -314,5 +307,5 @@ Neem uitsluitend wat in de analyse staat; verzin niets. Geen emoji. Staat er gee
     docLink: docLink || undefined, clientDocLink: docLink || undefined,
   }]).catch(() => [] as number[]);
 
-  return { taskId: ids[0] ?? null, docLink, advicePages, adviceUrls };
+  return { taskId: ids[0] ?? null, docLink };
 }

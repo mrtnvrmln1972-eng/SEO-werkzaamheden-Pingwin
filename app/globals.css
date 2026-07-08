@@ -615,6 +615,11 @@ tbody td:last-child { text-align: center; }
 .pch-canni-md tr.canni-rejected td { opacity: 0.5; }
 .pch-canni-md tr.canni-rejected td:nth-child(n+6) { text-decoration: line-through; }
 .pch-canni-md tr.canni-rejected .canni-actions { text-decoration: none; opacity: 1; }
+/* Doorgezet naar pagina's: blauw accent (bewust opgeschoven, niet vergeten). */
+.pcd-btn.pcd-blue { border-color: #2286C7; color: #17679a; background: #eaf4fb; }
+.pcd-btn.wp-ghost-blue { border-color: var(--border); color: #17679a; background: #fff; }
+.pcd-btn.wp-ghost-blue:hover:not(:disabled) { border-color: #2286C7; background: #eaf4fb; }
+.pch-canni-md tr.canni-deferred td { background: #f4f9fd; }
 .pch-canni-toggle { background: none; border: none; cursor: pointer; font-size: 13px; font-weight: 700; color: var(--brand-teal); padding: 4px 0; text-align: left; width: 100%; }
 .pch-canni-md { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; margin-top: 8px; max-width: 100%; }
 /* Vaste kolomindeling: smalle metriek/label-kolommen (koppen + cellen breken af), brede URL- en reden-kolommen, zodat de tabel minder hoog wordt. */

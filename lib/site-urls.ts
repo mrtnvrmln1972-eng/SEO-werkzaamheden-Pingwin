@@ -316,6 +316,16 @@ export async function savePageClusterAdvice(slug: string, url: string, advice: s
   await sql`INSERT INTO page_cluster_advice (client_slug, url, advice, source_url, source_analysis) VALUES (${slug}, ${u}, ${advice.trim()}, ${sourceUrl || null}, ${sourceAnalysis || null})`;
 }
 
+// Cluster-advies van één bronpagina weer weghalen (bij "herstel" van een
+// doorgezette tabel-rij).
+export async function deletePageClusterAdvice(slug: string, url: string, sourceUrl: string): Promise<void> {
+  await ensureSchema();
+  await ensureTables();
+  const u = normUrl(url);
+  if (!u) return;
+  await sql`DELETE FROM page_cluster_advice WHERE client_slug = ${slug} AND url = ${u} AND source_url IS NOT DISTINCT FROM ${sourceUrl || null}`;
+}
+
 export async function getPageClusterAdvice(slug: string, url: string): Promise<ClusterAdvice[]> {
   await ensureSchema();
   await ensureTables();

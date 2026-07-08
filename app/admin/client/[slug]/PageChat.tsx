@@ -140,15 +140,15 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       await loadPc();
     } catch { setErr("Starten mislukt."); await loadPc(); } finally { setPcBusy(false); }
   }
-  // "Aanbevelingen overnemen": redirects + interne links als Dev-taak met document,
-  // en de de-optimalisatie-info als basis naar de betreffende pagina's.
+  // "Aanbevelingen overnemen": redirects + interne links als Dev-taak met document.
+  // (Basisinfo doorzetten gebeurt per tabel-rij met de knop "Naar pagina's".)
   async function applyRec() {
     if (applyBusy) return;
     setApplyBusy(true); setApplyMsg("");
     try {
       const d = await fetch("/api/admin/page-cannibal/apply", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url }) }).then((r) => r.json());
       if (!d.ok) { setApplyMsg(d.error || "Overnemen mislukt."); return; }
-      const info = { doc: !!d.docLink, urls: Array.isArray(d.adviceUrls) ? (d.adviceUrls as string[]) : [] };
+      const info = { doc: !!d.docLink, urls: [] as string[] };
       setApplyInfo(info);
       try { localStorage.setItem(`pw_canniinfo_${slug}_${url}`, JSON.stringify(info)); } catch { /* geen opslag */ }
       setCanniDone(true); try { localStorage.setItem(`pw_cannidone_${slug}_${url}`, "1"); } catch { /* geen opslag */ }
@@ -166,8 +166,8 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   const [wpFormOpen, setWpFormOpen] = useState(false);
   const [wpForm, setWpForm] = useState({ user: "", pass: "" });
   const [wpSaving, setWpSaving] = useState(false);
-  // Status per tabel-rij (pad → uitgevoerd/afgewezen), bewaard in de database.
-  const [rowStatus, setRowStatusMap] = useState<Record<string, "uitgevoerd" | "afgewezen">>({});
+  // Status per tabel-rij (pad → uitgevoerd/afgewezen/doorgezet), bewaard in de database.
+  const [rowStatus, setRowStatusMap] = useState<Record<string, "uitgevoerd" | "afgewezen" | "doorgezet">>({});
 
   // De redirect-regels ("- `/oud/` → `/nieuw/`") uit de cannibalisatie-analyse
   // halen; de paden staan tussen backticks. Interne-link-regels vallen af
@@ -204,13 +204,18 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   // Knoppen per tabel-rij, in de Reden-kolom. Per actie-type:
   // - 301-rij: "Uitvoeren" voert de redirect door (Redirection-plugin) + live check.
   // - de-optimaliseren/intern-linken-rij: "Uitvoeren" opent de pagina in de
-  //   WordPress-backend (bewerk-modus) en markeert de rij als uitgevoerd.
-  // - "Afwijzen" zet de rij op afgewezen (grijs); nogmaals klikken draait het terug.
+  //   WordPress-backend (bewerk-modus) en markeert de rij als uitgevoerd;
+  //   "Naar pagina's" zet het advies klaar bij die pagina (Pagina's-tabblad)
+  //   voor het moment dat je die pagina zelf aanpakt.
+  // - "Afwijzen" zet de rij op afgewezen (grijs); herstel draait het terug.
   function rowButtonsHtml(rowPath: string, redirect: { from: string; to: string } | null): string {
     const status = rowStatus[rowPath];
     const busy = wpBusy === rowPath || (redirect ? wpBusy === redirect.from : false);
     if (status === "afgewezen") {
-      return `<span class="canni-actions"><button type="button" class="pcd-btn wp-mini pcd-warn" data-act="reject" data-path="${escAttr(rowPath)}" title="Deze rij is afgewezen. Klik om dat terug te draaien.">Afgewezen, herstel</button></span>`;
+      return `<span class="canni-actions"><button type="button" class="pcd-btn wp-mini pcd-warn" data-act="restore" data-path="${escAttr(rowPath)}" title="Deze rij is afgewezen. Klik om dat terug te draaien.">Afgewezen, herstel</button></span>`;
+    }
+    if (status === "doorgezet") {
+      return `<span class="canni-actions"><button type="button" class="pcd-btn wp-mini pcd-blue" data-act="restore" data-path="${escAttr(rowPath)}" title="Het advies staat klaar bij die pagina in het Pagina's-tabblad ('half plan'); je pakt het op wanneer je die pagina aanpakt. Klik om dit terug te draaien (haalt het advies daar ook weer weg).">→ Bij pagina's, herstel</button></span>`;
     }
     const reject = `<button type="button" class="pcd-btn wp-mini wp-ghost" data-act="reject" data-path="${escAttr(rowPath)}" title="Wijs deze aanbeveling af; de rij wordt grijs.">Afwijzen</button>`;
     if (redirect) {
@@ -222,11 +227,12 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       return `<span class="canni-actions"><button type="button" class="${cls}" data-act="redirect" data-wpfrom="${escAttr(redirect.from)}" data-wpto="${escAttr(redirect.to)}" title="${escAttr(title)}"${dis}>${label}</button>${done?.verified ? "" : reject}</span>`;
     }
     const doneEdit = status === "uitgevoerd";
-    const label = busy ? "Openen…" : doneEdit ? "✓ Uitgevoerd" : "Uitvoeren";
+    const label = busy ? "Bezig…" : doneEdit ? "✓ Uitgevoerd" : "Uitvoeren";
     const cls = "pcd-btn wp-mini" + (doneEdit ? " pcd-done" : "");
     const title = doneEdit ? "Als uitgevoerd gemarkeerd. Klik om de pagina nogmaals in de WordPress-backend te openen." : wpConf?.configured ? "Opent deze pagina in de WordPress-backend (bewerk-modus), zodat je de aanpassing/interne link kunt doorvoeren. De rij wordt dan als uitgevoerd gemarkeerd." : "Koppel eerst WordPress (onder de tabel).";
     const dis = busy || (!wpConf?.configured && !doneEdit) ? " disabled" : "";
-    return `<span class="canni-actions"><button type="button" class="${cls}" data-act="edit" data-path="${escAttr(rowPath)}" title="${escAttr(title)}"${dis}>${label}</button>${doneEdit ? "" : reject}</span>`;
+    const topage = `<button type="button" class="pcd-btn wp-mini wp-ghost-blue" data-act="topage" data-path="${escAttr(rowPath)}"${busy ? " disabled" : ""} title="Zet het advies van deze rij klaar bij die pagina in het Pagina's-tabblad ('half plan'), zodat je het meeneemt wanneer je die pagina aanpakt.">Naar pagina's</button>`;
+    return `<span class="canni-actions"><button type="button" class="${cls}" data-act="edit" data-path="${escAttr(rowPath)}" title="${escAttr(title)}"${dis}>${label}</button>${doneEdit ? "" : topage + reject}</span>`;
   }
 
   // Tabel verrijken: korte kolomkoppen, "intern linken" vet, knoppen in de
@@ -248,8 +254,8 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       const redirect = wpRedirects.find((x) => x.from === rowPath) || null;
       const isEdit = !redirect && /de-optimaliseren|intern(?:e)?\s+link/i.test(rowText);
       if (redirect || isEdit) cells[redenIdx] += rowButtonsHtml(rowPath, redirect);
-      const rejected = rowStatus[rowPath] === "afgewezen";
-      return `<tr${rejected ? ' class="canni-rejected"' : ""}>` + cells.join("</td>") + "</tr>";
+      const rowCls = rowStatus[rowPath] === "afgewezen" ? "canni-rejected" : rowStatus[rowPath] === "doorgezet" ? "canni-deferred" : "";
+      return `<tr${rowCls ? ` class="${rowCls}"` : ""}>` + cells.join("</td>") + "</tr>";
     });
     return out;
   }
@@ -259,6 +265,19 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   async function setRowStatus(rowPath: string, status: "uitgevoerd" | "afgewezen" | null) {
     setRowStatusMap((m) => { const n = { ...m }; if (status) n[rowPath] = status; else delete n[rowPath]; return n; });
     try { await fetch("/api/admin/canni-row", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, pageUrl: url, rowPath, status }) }); } catch { /* status is hulpinfo */ }
+  }
+
+  // "Naar pagina's": zet het advies van deze rij klaar bij die pagina (als
+  // vertrekpunt/half plan in het Pagina's-tabblad) en markeer de rij blauw.
+  async function sendRowToPage(rowPath: string) {
+    if (wpBusy) return;
+    setWpBusy(rowPath); setWpMsg("");
+    try {
+      const d = await fetch("/api/admin/canni-row", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, pageUrl: url, rowPath, action: "topage" }) }).then((r) => r.json());
+      if (!d.ok) { setWpMsg(d.error || "Doorzetten mislukt."); return; }
+      setRowStatusMap((m) => ({ ...m, [rowPath]: "doorgezet" }));
+      onApplied();
+    } catch { setWpMsg("Doorzetten mislukt."); } finally { setWpBusy(""); }
   }
 
   // "Uitvoeren" bij een intern-linken/de-optimaliseren-rij: open de pagina in de
@@ -288,8 +307,12 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       if (from && to) runWpRedirect(from, to);
     } else if (act === "edit" && path) {
       openInBackend(path);
+    } else if (act === "topage" && path) {
+      sendRowToPage(path);
     } else if (act === "reject" && path) {
-      setRowStatus(path, rowStatus[path] === "afgewezen" ? null : "afgewezen");
+      setRowStatus(path, "afgewezen");
+    } else if (act === "restore" && path) {
+      setRowStatus(path, null);
     }
   }
 
