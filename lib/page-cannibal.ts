@@ -5,7 +5,7 @@ import { getGscForPage, getGscQueryPageMatrix } from "./google";
 import { getAhrefsTopPages, getDomainKeywordsMatching, getUrlOrganicKeywords, getSerpOverview, getKeywordsOverview, ahrefsConfigured } from "./ahrefs";
 import { callClaude } from "./anthropic";
 import { extractClusterAdvice } from "./page-chat-ground";
-import { summariseChatToSpec } from "./page-doc";
+import { cannibalDocSpec } from "./page-doc";
 import { buildPingwinDoc } from "./pingwin-docx";
 import { uploadDocx } from "./drive";
 import { getTasks, appendTasks, deleteTasksByIds } from "./tasks";
@@ -285,7 +285,7 @@ Neem uitsluitend wat in de analyse staat; verzin niets. Geen emoji. Staat er gee
   // 3. Pingwin-document van de dev-inhoud, in de Drive-map van de pagina (indien ingesteld).
   let docLink = "";
   try {
-    const { spec } = await summariseChatToSpec(slug, url, devContent, "Dit is een developer-overzicht: behoud de 301-redirects en de interne-link-lijst exact zoals aangeleverd.");
+    const { spec } = await cannibalDocSpec(slug, url, analysis, devContent);
     const buffer = await buildPingwinDoc(spec);
     const folder = await getPageDriveFolder(slug, url).catch(() => null);
     if (folder?.folderId) { try { ({ link: docLink } = await uploadDocx(folder.folderId, `${safeName(client?.name || slug)}-cannibalisatie-${safeName(path)}.docx`, buffer)); } catch { /* zonder link vastleggen */ } }

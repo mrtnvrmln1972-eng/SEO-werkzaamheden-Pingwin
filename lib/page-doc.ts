@@ -303,6 +303,37 @@ export async function summariseChatToSpec(slug: string, url: string, analysis: s
   return { spec, title };
 }
 
+// Document voor de cannibalisatie-stap: vertelt het verhaal van de cannibalisatie-
+// analyse zelf. GEEN nieuwe data-ronde, GEEN herbeoordeling van de pagina; alleen
+// wat er in de analyse staat, leesbaar voor de klant en exact voor de developer.
+const CANNIBAL_DOC_SYSTEM = `Je bent een senior SEO-strateeg bij bureau Pingwin. Je maakt het rapport van een CANNIBALISATIE- EN CONTENT-MAPPING-analyse voor één landingspagina. Je baseert je UITSLUITEND op de aangeleverde analyse; je verzint niets, je doet GEEN nieuwe beoordeling van de pagina zelf (geen opmerkingen over koppen, teksten, meta of zoekwoordgebruik van de winnende pagina).
+AANSPREEKVORM: gericht aan de eigenaar van de site; spreek de lezer direct aan met "jullie/je". Zoekwoorden zet je vet met **dubbele sterretjes**. Geen jargon zonder uitleg in één zin. Geen emoji.
+Lever precies deze secties:
+1. Wat is cannibalisatie en waarom keken we hiernaar: drie tot vier zinnen in gewone taal (meerdere pagina's op jullie site strijden om hetzelfde zoekwoord, Google twijfelt dan welke hij moet tonen, dat kost posities; we hebben gekeken welke pagina's meedingen en wat we daarmee doen).
+2. Wat eruit kwam: welke pagina de duidelijke winnaar is en waarom (in gewone taal, bijvoorbeeld sterkste pagina met de meeste klikken en links), en kort welke pagina's meededen en welke rol ze hebben.
+3. Wat we per pagina doen: per pagina één begrijpelijke regel, gegroepeerd in drie groepen als bullets met een subheading erboven: (a) pagina's die vervallen en doorsturen naar de winnaar, elk met de reden; (b) pagina's die blijven maar niet meer op dit zoekwoord mikken, elk met wat er verandert; (c) pagina's die we met rust laten, met waarom.
+4. Voor de developer: de exacte lijst 301-redirects (tabel met kolommen "Van" en "Naar") en de exacte lijst interne links (tabel met kolommen "Vanaf", "Naar" en "Ankertekst"), LETTERLIJK overgenomen uit de analyse. Staat er geen enkele redirect of interne link in, zeg dat dan kort.
+5. Wat jullie hiervan gaan merken: twee tot drie zinnen (één sterke pagina in plaats van versnippering; oude links blijven werken door de doorverwijzingen; effect is na enkele weken zichtbaar).
+${DOCSPEC_FORMAT}`;
+
+export async function cannibalDocSpec(slug: string, url: string, analysis: string, devContent: string): Promise<{ spec: DocSpec; title: string }> {
+  const client = await getClientBySlug(slug);
+  const user = `Pagina (de winnaar): ${url}\n\nCANNIBALISATIE- EN CONTENT-MAPPING-ANALYSE:\n${analysis.slice(0, 16000)}\n\nDEVELOPER-OVERZICHT (redirects en interne links, letterlijk overnemen in sectie 4):\n${devContent.slice(0, 6000)}`;
+  const raw = await callClaude(CANNIBAL_DOC_SYSTEM, [{ role: "user", content: user }], 8192, { slug, action: "page_cannibal_doc" });
+  const parsed = extractJsonObject(raw);
+  if (!parsed) throw new Error("Het cannibalisatie-document kon niet worden opgemaakt (het AI-antwoord kwam onvolledig terug). Probeer het opnieuw.");
+  const title = typeof parsed.titel === "string" && parsed.titel.trim() ? parsed.titel.trim() : "Cannibalisatie & content mapping";
+  const spec: DocSpec = {
+    klant: client?.name || slug,
+    rapporttype: "Cannibalisatie & content mapping",
+    titel: title,
+    ondertitel: typeof parsed.ondertitel === "string" ? parsed.ondertitel : url,
+    meta: { Klant: client?.name || slug, Pagina: url },
+    sections: Array.isArray(parsed.sections) ? parsed.sections : [],
+  };
+  return { spec, title };
+}
+
 // Klantversie van een technisch document (analyse/blauwdruk/copy): korte,
 // begrijpelijke duiding voor de klant, aangepast aan het type. Het technische
 // bronstuk blijft de bron voor de volgende stap.
