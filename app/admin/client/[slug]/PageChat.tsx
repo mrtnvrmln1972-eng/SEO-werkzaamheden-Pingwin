@@ -54,7 +54,9 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   const [pcBusy, setPcBusy] = useState(false);
   const [pcOpen, setPcOpen] = useState(false);
   const [applyBusy, setApplyBusy] = useState(false);
-  const [applyMsg, setApplyMsg] = useState("");
+  const [applyMsg, setApplyMsg] = useState(""); // alleen foutmeldingen
+  // Resultaat van "Aanbevelingen overnemen"; blijft staan (browseropslag) na herladen.
+  const [applyInfo, setApplyInfo] = useState<{ doc: boolean; urls: string[] } | null>(null);
   const [canniDone, setCanniDone] = useState(false); // stap 5 afgerond (aanbevelingen overgenomen)
   // Een chat-bericht bewerken (welke index) — gerenderde contentEditable, geen ruwe textarea.
   const [editIdx, setEditIdx] = useState<number | null>(null);
@@ -94,13 +96,9 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     try {
       const d = await fetch("/api/admin/page-cannibal/apply", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url }) }).then((r) => r.json());
       if (!d.ok) { setApplyMsg(d.error || "Overnemen mislukt."); return; }
-      let msg = "Dev-taak aangemaakt in Werkzaamheden " + (d.docLink ? "met een gekoppeld document (de volledige lijst met redirects en interne links staat daarin)" : ", let op: geen Drive-map gekozen, dus geen document. Kies een Drive-map hierboven en neem opnieuw over voor een net taak-document") + ".";
-      const urls: string[] = Array.isArray(d.adviceUrls) ? d.adviceUrls : [];
-      if (urls.length) {
-        const path = (u: string) => { try { return new URL(u).pathname || u; } catch { return u; } };
-        msg += `<br><br><strong>Basisinfo doorgezet naar ${urls.length} gelieerde pagina('s)</strong>, elk krijgt behoud- of de-optimalisatie-advies als vertrekpunt (zichtbaar als 'half plan' bij die pagina):<ul style="margin:6px 0 0;padding-left:18px">${urls.map((u) => `<li>${path(u)}</li>`).join("")}</ul>`;
-      }
-      setApplyMsg(msg);
+      const info = { doc: !!d.docLink, urls: Array.isArray(d.adviceUrls) ? (d.adviceUrls as string[]) : [] };
+      setApplyInfo(info);
+      try { localStorage.setItem(`pw_canniinfo_${slug}_${url}`, JSON.stringify(info)); } catch { /* geen opslag */ }
       setCanniDone(true); try { localStorage.setItem(`pw_cannidone_${slug}_${url}`, "1"); } catch { /* geen opslag */ }
       onApplied();
     } catch { setApplyMsg("Overnemen mislukt."); } finally { setApplyBusy(false); }
@@ -118,15 +116,16 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
 
   // Groene "klaar"-status onthouden (browseropslag), beide per pagina zodat ze groen
   // blijven na heropenen. Doorgeven wordt gewist bij een nieuwe chat (weer oranje).
-  // De chat blijft standaard dicht zodra de strategie is vastgelegd ÉN doorgegeven aan de
-  // betrokken pagina's. Is een van beide nog niet gedaan, dan staat de chat standaard open.
+  // De chat-kaart staat ALTIJD standaard dicht (bewuste keuze); alleen de klaar-statussen
+  // worden hier hersteld.
   useEffect(() => {
     let stratD = false, clusterN = 0;
     try { stratD = localStorage.getItem(`pw_stratdone_${slug}_${url}`) === "1"; } catch { /* geen opslag */ }
     try { const n = Number(localStorage.getItem(`pw_clusterdone_${slug}_${url}`) || "0"); clusterN = Number.isFinite(n) ? n : 0; } catch { clusterN = 0; }
-    setTaskDone(stratD); setClusterDone(clusterN); setChatOpen(!(stratD && clusterN > 0));
+    setTaskDone(stratD); setClusterDone(clusterN);
     try { const sd: Record<string, boolean> = {}; (["analyse", "blauwdruk", "copy"] as const).forEach((k) => { if (localStorage.getItem(`pw_stepdone_${slug}_${url}_${k}`) === "1") sd[k] = true; }); setStepsDone(sd); } catch { setStepsDone({}); }
     try { setCanniDone(localStorage.getItem(`pw_cannidone_${slug}_${url}`) === "1"); } catch { setCanniDone(false); }
+    try { const c = localStorage.getItem(`pw_canniinfo_${slug}_${url}`); if (c) { const p = JSON.parse(c); if (p && typeof p.doc === "boolean" && Array.isArray(p.urls)) setApplyInfo(p); } } catch { /* geen opslag */ }
   }, [slug, url]);
   function markStrategieDone() { setTaskDone(true); try { localStorage.setItem(`pw_stratdone_${slug}_${url}`, "1"); } catch { /* geen opslag */ } if (clusterDone > 0) setChatOpen(false); }
 
@@ -750,9 +749,29 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
               <button type="button" className="ghost-btn small" onClick={openPicker}>{driveFolder ? "Map wijzigen" : "Kies Drive-map"}</button>
             </div>
             <div className="pch-canni-apply">
-              <button type="button" className={"pcd-btn pcd-btn-primary" + (applyBusy ? " busy" : "")} disabled={applyBusy} onClick={applyRec} title="Zet de redirects + interne links door als Dev-taak met document, en de de-optimalisatie-info als basis naar de betreffende pagina's.">{applyBusy ? "Overnemen…" : "Aanbevelingen overnemen"}</button>
-              {applyMsg && <span className="saved-msg" style={{ marginLeft: 10 }} dangerouslySetInnerHTML={{ __html: applyMsg }} />}
+              <button type="button" className={"pcd-btn pcd-btn-primary" + (applyBusy ? " busy" : "") + (canniDone && !applyBusy ? " pcd-done" : "")} disabled={applyBusy} onClick={applyRec} title="Zet de redirects + interne links door als Dev-taak met document, en de de-optimalisatie-info als basis naar de betreffende pagina's.">{applyBusy ? "Overnemen…" : canniDone ? "✓ Aanbevelingen overgenomen" : "Aanbevelingen overnemen"}</button>
+              {applyInfo && (
+                <div className="pch-apply-panel">
+                  <div className="pch-apply-row">
+                    <span className="pch-apply-ico">✓</span>
+                    <div>{applyInfo.doc
+                      ? <><strong>Dev-taak aangemaakt in Werkzaamheden met een gekoppeld document</strong> (de volledige lijst met redirects en interne links staat daarin).</>
+                      : <><strong>Dev-taak aangemaakt in Werkzaamheden zonder document</strong>, er was geen Drive-map gekozen. Kies hierboven een map en neem opnieuw over voor een net taak-document.</>}</div>
+                  </div>
+                  {applyInfo.urls.length > 0 && (<>
+                    <hr className="pch-apply-hr" />
+                    <div className="pch-apply-row">
+                      <span className="pch-apply-ico">✓</span>
+                      <div>
+                        <strong>Basisinfo doorgezet naar {applyInfo.urls.length} gelieerde pagina{applyInfo.urls.length === 1 ? "" : "'s"}</strong>, elk krijgt behoud- of de-optimalisatie-advies als vertrekpunt (zichtbaar als &lsquo;half plan&rsquo; bij die pagina):
+                        <ul>{applyInfo.urls.map((u) => { let p = u; try { p = new URL(u).pathname || u; } catch { /* pad niet te bepalen */ } return <li key={u}>{p}</li>; })}</ul>
+                      </div>
+                    </div>
+                  </>)}
+                </div>
+              )}
             </div>
+            {applyMsg && <div className="login-error" style={{ marginTop: 8 }}>{applyMsg}</div>}
           </div>
         )}
         </div>)}

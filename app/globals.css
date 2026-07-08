@@ -583,7 +583,20 @@ tbody td:last-child { text-align: center; }
 .page-chat-canni { display: flex; flex-direction: column; gap: 10px; border: 1px solid var(--border); border-left: 3px solid var(--brand-teal); border-radius: 12px; padding: 14px 18px; margin: 18px 0 6px; background: var(--brand-teal-light); }
 .pch-canni-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .pch-canni-doc { border-top: 1px solid var(--border); padding-top: 8px; }
-.pch-canni-apply { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.pch-canni-apply { display: flex; align-items: flex-start; gap: 16px; margin-top: 12px; }
+.pch-canni-apply .pcd-btn-primary { flex: 0 0 auto; }
+.pcd-btn-primary.pcd-done { border-color: #2e9e5b; color: #1c7a44; background: #eef7ee; }
+.pcd-btn-primary.pcd-done:hover:not(:disabled) { background: #e2f2e5; }
+/* Groen resultaat-paneel na "Aanbevelingen overnemen" (blijft staan, ook na herladen). */
+.pch-apply-panel { flex: 1 1 auto; min-width: 0; background: #eef7ee; border-radius: 12px; padding: 14px 18px; font-size: 13.5px; line-height: 1.55; color: #245b38; }
+.pch-apply-row { display: flex; align-items: flex-start; gap: 12px; }
+.pch-apply-row > div { min-width: 0; }
+.pch-apply-ico { flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%; background: #2e9e5b; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; margin-top: 1px; }
+.pch-apply-hr { border: 0; border-top: 1px solid #cfe6d4; margin: 12px 0; }
+.pch-apply-panel strong { color: #1c7a44; }
+.pch-apply-panel ul { margin: 8px 0 0; padding-left: 18px; }
+.pch-apply-panel li { margin: 2px 0; }
+@media (max-width: 760px) { .pch-canni-apply { flex-direction: column; align-items: stretch; } }
 .pch-canni-toggle { background: none; border: none; cursor: pointer; font-size: 13px; font-weight: 700; color: var(--brand-teal); padding: 4px 0; text-align: left; width: 100%; }
 .pch-canni-md { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; margin-top: 8px; max-width: 100%; }
 /* Vaste kolomindeling: smalle metriek/label-kolommen (koppen + cellen breken af), brede URL- en reden-kolommen, zodat de tabel minder hoog wordt. */
