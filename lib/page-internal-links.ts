@@ -357,25 +357,25 @@ function assembleMarkdown(a: {
   kansen: { bronPad: string; relevantie: number; ankertekst: string; reden: string }[];
   authOf: Map<string, number>; trafOf: Map<string, number>; editLinks: Map<string, string>; wpConfigured: boolean;
 }): string {
-  const relLabel = (n: number) => n >= 80 ? `${n} (sterk)` : n >= 50 ? `${n} (verwant)` : `${n} (zijdelings)`;
+  const relLabel = (n: number) => n >= 80 ? `${n} sterk` : n >= 50 ? `${n} verwant` : `${n} zijdelings`;
   const lines: string[] = [];
   if (a.summary) lines.push(a.summary.trim(), "");
   if (!a.kansen.length) {
     lines.push("Er zijn nu geen duidelijke interne-link-kansen naar deze pagina gevonden.");
     return lines.join("\n");
   }
-  lines.push("| # | Bronpagina | Relevantie | Verw.dom | GSC-klik | Ankertekst | Reden | Plaatsen |");
+  lines.push("| # | Bronpagina | Rel. | RD | Klik | Ankertekst | Reden | Plaatsen |");
   lines.push("|---|---|---|---|---|---|---|---|");
   a.kansen.forEach((k, i) => {
     const front = `[${k.bronPad}](https://${a.bare}${k.bronPad === "/" ? "" : k.bronPad})`;
     const auth = a.authOf.get(k.bronPad);
     const traf = a.trafOf.get(k.bronPad);
     const edit = a.editLinks.get(k.bronPad);
-    const place = edit ? `[bewerk in WordPress](${edit})` : (a.wpConfigured ? "-" : "koppel WP");
+    const place = edit ? `[bewerken](${edit})` : (a.wpConfigured ? "-" : "koppel WP");
     lines.push(`| ${i + 1} | ${front} | ${relLabel(k.relevantie)} | ${auth ?? "?"} | ${traf ?? 0} | ${k.ankertekst || "-"} | ${k.reden || "-"} | ${place} |`);
   });
   lines.push("");
-  lines.push(`Elke link wijst naar de doelpagina ${a.targetPath}. Volgorde: meest interessant bovenaan (relevantie als voorwaarde, daarna autoriteit via verwijzende domeinen en GSC-verkeer).`);
+  lines.push(`Elke link wijst naar de doelpagina ${a.targetPath}. Volgorde: meest interessant bovenaan (Rel. = relevantie 0-100, RD = externe verwijzende domeinen, Klik = GSC-klikken van de bronpagina).`);
   if (!a.wpConfigured) lines.push("", "_Koppel WordPress (onder de cannibalisatie-tabel) om per bron een directe bewerk-link te krijgen._");
   return lines.join("\n");
 }

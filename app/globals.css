@@ -646,6 +646,21 @@ tbody td:last-child { text-align: center; }
 .pch-canni-md .md-table th:nth-child(8) { width: 37%; }
 /* Kolomkoppen blijven plakken (onder de bovenbalk + de paginalijst-kop) terwijl je door de tabel scrolt. */
 .pch-canni-md .md-table thead th { position: sticky; top: 120px; z-index: 10; }
+/* Interne-links-tabel (stap 6): eigen kolomindeling. Supersmalle #-kolom, compacte
+   metriek-kolommen die niet afbreken, alle ruimte naar Ankertekst en Reden — zodat
+   elke rij zo laag mogelijk blijft en je de lijst in één oogopslag overziet. */
+.pch-il-md .md-table th, .pch-il-md .md-table td { padding: 5px 7px; line-height: 1.35; }
+.pch-il-md .md-table th:nth-child(1) { width: 3%; }
+.pch-il-md .md-table th:nth-child(2) { width: 16%; }
+.pch-il-md .md-table th:nth-child(3) { width: 8%; }
+.pch-il-md .md-table th:nth-child(4), .pch-il-md .md-table th:nth-child(5) { width: 4.5%; }
+.pch-il-md .md-table th:nth-child(6) { width: 17%; }
+.pch-il-md .md-table th:nth-child(7) { width: 38%; }
+.pch-il-md .md-table th:nth-child(8) { width: 9%; }
+/* Koppen, scores en getallen breken niet af; paden breken alleen op logische plekken. */
+.pch-il-md .md-table thead th { white-space: nowrap; }
+.pch-il-md .md-table td:nth-child(1), .pch-il-md .md-table td:nth-child(3), .pch-il-md .md-table td:nth-child(4), .pch-il-md .md-table td:nth-child(5), .pch-il-md .md-table td:nth-child(8) { white-space: nowrap; word-break: normal; }
+.pch-il-md .md-table td:nth-child(2) { word-break: break-word; overflow-wrap: anywhere; }
 /* Tekstkaarten op leesbare breedte houden; de brede cannibalisatie-tabel mag daarbuiten treden. */
 /* Alle secties in de pagina-hub even breed en links uitgelijnd als de chat-kaart. */
 .page-chat, .page-chat-docs, .page-chat-canni, .doc-run-status, .page-chat-input { max-width: 1040px; }

@@ -1123,7 +1123,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
           {il?.result && (
             <div className="pch-canni-doc">
               <button type="button" className="pch-canni-toggle" onClick={() => setIlDocOpen((o) => !o)}>{ilDocOpen ? "▾" : "▸"} Interne-links-voorstel{il.updatedAt ? ` · ${new Date(il.updatedAt).toLocaleString("nl-NL")}` : ""}{il.status === "running" ? " · nieuwe analyse draait…" : ""}</button>
-              {ilDocOpen && <div className="md pch-canni-md" dangerouslySetInnerHTML={{ __html: ilHtml }} />}
+              {ilDocOpen && <div className="md pch-canni-md pch-il-md" dangerouslySetInnerHTML={{ __html: ilHtml }} />}
               {/* Map + overnemen blijven ook zichtbaar als het voorstel is ingeklapt. */}
               <div className="page-chat-drive" style={{ margin: "12px 0 8px" }}>
                 <span className="pcd-label">Opslaan in:</span>
