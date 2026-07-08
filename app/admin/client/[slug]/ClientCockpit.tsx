@@ -61,7 +61,8 @@ export default function ClientCockpit({
   client, emails, metrics, keywords, pages, lastIngest, status, statusUpdatedAt,
   mailLive, msConfigured, msConnected, myEmail, allClients,
   gsc, ga4, googleConfigured, googleConnected, chatConfigured, chatHistory, tasks, initialTab, highlight,
-}: { client: ClientConfig; initialTab?: string; highlight?: string } & CockpitData) {
+  showMailSections = true,
+}: { client: ClientConfig; initialTab?: string; highlight?: string; showMailSections?: boolean } & CockpitData) {
   const router = useRouter();
   const pathname = usePathname();
   const validTab = (t?: string): Tab => (t === "werkzaamheden" || t === "paginas" || t === "resultaten" || t === "klant" || t === "developer" || t === "wijzigingen") ? t : "werkzaamheden";
@@ -293,6 +294,14 @@ export default function ClientCockpit({
               </div>
             )}
 
+            {/* Zonder mail-secties (COCKPIT_MAIL=uit) blijft alleen Zoekwoorden & links staan. */}
+            {!showMailSections && (
+              <div className="cockpit-card">
+                <FocusBlock slug={client.slug} standalone />
+              </div>
+            )}
+
+            {showMailSections && (<>
             <div className="cockpit-card">
               <button type="button" className="ck-collapse-head" onClick={() => setShowStatusBox((v) => !v)}>
                 <span>{showStatusBox ? "▾" : "▸"} Actuele stand van zaken <HelpHint wide text="De lopende correspondentie met de klant (wat er speelt), plus je handmatige 'Zoekwoorden & links'-blok. Klap open om het te zien." /></span>
@@ -463,6 +472,7 @@ export default function ClientCockpit({
               )}
               </div>
             </div>
+            </>)}
 
           </>
         )}

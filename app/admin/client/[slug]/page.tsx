@@ -52,9 +52,16 @@ export default async function ClientCockpitPage({ params, searchParams }: { para
   // Gast zonder toegang tot deze klant: terug naar het overzicht.
   if (!canAccessSlug(scope, params.slug)) redirect("/admin");
 
+  // Wereld-schakelaar: met COCKPIT_MAIL=uit (env-var per Vercel-project) verdwijnen
+  // "Actuele stand van zaken" en "Laatste mails" uit deze hele wereld; alleen het
+  // Zoekwoorden & links-blok blijft staan. Zonder de env-var verandert er niets.
+  const mailSections = process.env.COCKPIT_MAIL !== "uit";
+
   // Mag deze gebruiker de mail en de "Actuele stand van zaken" (status) zien?
-  // Eigenaar altijd; gast alleen als can_see_mail aanstaat.
-  const canSeeMail = scope.canSeeMail;
+  // Eigenaar altijd; gast alleen als can_see_mail aanstaat. En alleen als de
+  // mail-secties in deze wereld überhaupt aanstaan (dan verlaat de data de
+  // server niet eens).
+  const canSeeMail = scope.canSeeMail && mailSections;
 
   const client = await getClientBySlug(params.slug);
   if (!client) redirect("/admin");
@@ -134,6 +141,7 @@ export default async function ClientCockpitPage({ params, searchParams }: { para
       tasks={tasks}
       initialTab={searchParams.tab}
       highlight={searchParams.highlight}
+      showMailSections={mailSections}
     />
   );
 }
