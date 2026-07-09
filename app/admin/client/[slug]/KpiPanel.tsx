@@ -218,6 +218,8 @@ type FocusTier = "prio" | "secundair";
 type Kw = GscComparison["keywords"][number];
 type KwKey = "focus" | "keyword" | "volume" | "position" | "dposition" | "clicks" | "dclicks" | "impressions" | "dimpressions" | "ctr" | "dctr";
 type AhKey = "focus" | "keyword" | "volume" | "position" | "dposition" | "intent" | "kans" | "page";
+type ChKey = "name" | "sessions" | "dsessions" | "users" | "dusers" | "conversions" | "dconversions";
+const CH_COLS_DEFAULT = ["sessions", "users", "conversions"];
 type OppKey = "focus" | "keyword" | "volume" | "difficulty" | "source" | "reason";
 type PageKey = "prio" | "url" | "clicks" | "dclicks" | "impressions" | "dimpressions";
 
@@ -286,6 +288,9 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
   const [pageKwOpen, setPageKwOpen] = useState("");
   const [pageKwData, setPageKwData] = useState<Record<string, PageKw[] | "laden" | "fout">>({});
   const [pageKwSort, setPageKwSort] = useState<"keyword" | "position" | "dposition" | "clicks" | "dclicks" | "impressions" | "dimpressions">("impressions");
+  // GA-kanalentabel: sorteerbaar en de kolomgroepen versleepbaar (net als de andere tabellen).
+  const [chSort, setChSort] = useState<Sort<ChKey>>(null);
+  const [chCols, setChCols] = useState<string[]>(CH_COLS_DEFAULT);
   useEffect(() => { setPageKwData({}); setPageKwOpen(""); }, [days, compare]);
   const [ahSearch, setAhSearch] = useState("");
   const [pageSort, setPageSort] = useState<Sort<PageKey>>({ key: "prio", dir: "asc" });
@@ -299,6 +304,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
     try { setKwCols(sanitizeCols(JSON.parse(localStorage.getItem("pw_kpicols_kw") || "null"), KW_COLS_DEFAULT)); } catch { /* standaard */ }
     try { setPageCols(sanitizeCols(JSON.parse(localStorage.getItem("pw_kpicols_pages") || "null"), PAGE_COLS_DEFAULT)); } catch { /* standaard */ }
     try { setAhCols(sanitizeCols(JSON.parse(localStorage.getItem("pw_kpicols_ah") || "null"), AH_COLS_DEFAULT)); } catch { /* standaard */ }
+    try { setChCols(sanitizeCols(JSON.parse(localStorage.getItem("pw_kpicols_gach") || "null"), CH_COLS_DEFAULT)); } catch { /* standaard */ }
   }, []);
   function moveCol(order: string[], setOrder: (o: string[]) => void, storageKey: string, from: string, to: string) {
     if (from === to) return;
@@ -562,6 +568,23 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
     kans: (k) => <td key="kans" className="kpi-metric-sep">{isFruit(k) ? <span className="pg-kans quickwin">Quick win</span> : <span className="muted">&mdash;</span>}</td>,
     page: (k) => <td key="page" className="kpi-metric-sep kpi-ah-page">{k.url ? <a href={k.url} target="_blank" rel="noreferrer">{shortUrl(k.url)}</a> : <span className="muted" title="Nog geen pagina bekend; klik op Verversen om de pagina's erbij op te halen (kost credits).">&mdash;</span>}</td>,
   };
+  type Ga4Ch = NonNullable<typeof ga4>["channels"][number];
+  const chGetters: Record<ChKey, (c: Ga4Ch) => number | string> = {
+    name: (c) => c.name, sessions: (c) => c.sessions, dsessions: (c) => c.sessions - c.prevSessions,
+    users: (c) => c.users, dusers: (c) => c.users - c.prevUsers,
+    conversions: (c) => c.conversions, dconversions: (c) => c.conversions - c.prevConversions,
+  };
+  const chHead: Record<string, (d: ThHTMLAttributes<HTMLTableCellElement>) => ReactNode> = {
+    sessions: (d) => <Fragment key="sessions"><SortTh thProps={d} label="Sessies" k="sessions" sort={chSort} setSort={setChSort} className="kpi-metric-sep" /><SortTh thProps={d} label="Verschil" title="Verschil sessies met de vergelijkingsperiode" k="dsessions" sort={chSort} setSort={setChSort} className="kpi-delta-th" /></Fragment>,
+    users: (d) => <Fragment key="users"><SortTh thProps={d} label="Gebruikers" k="users" sort={chSort} setSort={setChSort} className="kpi-metric-sep" /><SortTh thProps={d} label="Verschil" title="Verschil gebruikers met de vergelijkingsperiode" k="dusers" sort={chSort} setSort={setChSort} className="kpi-delta-th" /></Fragment>,
+    conversions: (d) => <Fragment key="conversions"><SortTh thProps={d} label="Conversies" k="conversions" sort={chSort} setSort={setChSort} className="kpi-metric-sep" /><SortTh thProps={d} label="Verschil" title="Verschil conversies met de vergelijkingsperiode" k="dconversions" sort={chSort} setSort={setChSort} className="kpi-delta-th" /></Fragment>,
+  };
+  const chCell: Record<string, (c: Ga4Ch) => ReactNode> = {
+    sessions: (c) => <Fragment key="sessions"><td className="kpi-metric-sep">{nl(c.sessions)}</td><td className="kpi-delta-td"><Delta cur={c.sessions} prev={c.prevSessions} /></td></Fragment>,
+    users: (c) => <Fragment key="users"><td className="kpi-metric-sep">{nl(c.users)}</td><td className="kpi-delta-td"><Delta cur={c.users} prev={c.prevUsers} /></td></Fragment>,
+    conversions: (c) => <Fragment key="conversions"><td className="kpi-metric-sep">{nl(c.conversions)}</td><td className="kpi-delta-td"><Delta cur={c.conversions} prev={c.prevConversions} /></td></Fragment>,
+  };
+
   const ahFiltered = ahrefsKw.filter((k) => k.organic !== false && !k.branded && (onlyFruit ? isFruit(k) : true) && (!ahSearch.trim() || k.keyword.toLowerCase().includes(ahSearch.trim().toLowerCase())));
   const ahSorted = applySort(ahFiltered, ahSort, ahGetters);
   const fruitCount = ahrefsKw.filter((k) => k.organic !== false && !k.branded && isFruit(k)).length;
@@ -850,14 +873,15 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
               </div>
               <div className="res-table-wrap">
                 <table className="res-table kpi-table">
-                  <thead><tr><th>Kanaal</th><th className="kpi-metric-sep">Sessies</th><th className="kpi-delta-th" title="Verschil met de vergelijkingsperiode">Verschil</th><th className="kpi-metric-sep">Gebruikers</th><th className="kpi-delta-th" title="Verschil met de vergelijkingsperiode">Verschil</th><th className="kpi-metric-sep">Conversies</th><th className="kpi-delta-th" title="Verschil met de vergelijkingsperiode">Verschil</th></tr></thead>
+                  <thead><tr>
+                    <SortTh label="Kanaal" k="name" sort={chSort} setSort={setChSort} />
+                    {chCols.map((gk) => chHead[gk](colDragProps(gk, chCols, setChCols, "pw_kpicols_gach")))}
+                  </tr></thead>
                   <tbody>
-                    {ga4.channels.map((ch) => (
+                    {applySort(ga4.channels, chSort, chGetters).map((ch) => (
                       <tr key={ch.name}>
                         <td>{GA4_CHANNEL_NL[ch.name] || ch.name}</td>
-                        <td className="kpi-metric-sep">{nl(ch.sessions)}</td><td className="kpi-delta-td"><Delta cur={ch.sessions} prev={ch.prevSessions} /></td>
-                        <td className="kpi-metric-sep">{nl(ch.users)}</td><td className="kpi-delta-td"><Delta cur={ch.users} prev={ch.prevUsers} /></td>
-                        <td className="kpi-metric-sep">{nl(ch.conversions)}</td><td className="kpi-delta-td"><Delta cur={ch.conversions} prev={ch.prevConversions} /></td>
+                        {chCols.map((gk) => chCell[gk](ch))}
                       </tr>
                     ))}
                   </tbody>
