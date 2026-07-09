@@ -222,3 +222,53 @@ export async function applyPageSchema(slug: string, url: string): Promise<{ ok: 
   }]);
   return { ok: true, taskId: ids[0], docLink: doc.link, jsonLink: json.link, ...(title ? {} : {}) };
 }
+
+// ── Site-wide identiteitsblok (deterministisch, geen AI) ──
+// Bouwt Organization/LocalBusiness + WebSite rechtstreeks uit de bevestigde
+// bedrijfsgegevens, met de vaste @id's waar de per-pagina-schema's naar verwijzen.
+export function buildSitewideJsonLd(org: OrgData, siteUrl: string): string {
+  const site = (siteUrl || "").replace(/\/+$/, "");
+  const orgType = org.bedrijfstype === "kliniek" ? "MedicalClinic" : org.bedrijfstype === "lokaal" ? "LocalBusiness" : "Organization";
+  const node: Record<string, unknown> = {
+    "@type": orgType,
+    "@id": `${site}/#organization`,
+    name: org.bedrijfsnaam || undefined,
+    url: `${site}/`,
+  };
+  if (org.logoUrl) node.logo = { "@type": "ImageObject", "@id": `${site}/#logo`, url: org.logoUrl };
+  if (org.telefoon) node.telephone = org.telefoon;
+  if (org.email) node.email = org.email;
+  if (!org.geenBezoekadres && (org.straat || org.plaats)) {
+    node.address = { "@type": "PostalAddress", streetAddress: org.straat || undefined, postalCode: org.postcode || undefined, addressLocality: org.plaats || undefined, addressCountry: "NL" };
+  }
+  if (org.sameAs.length) node.sameAs = org.sameAs;
+  if (org.areaServed.length) node.areaServed = org.areaServed.map((a) => ({ "@type": "Place", name: a }));
+  if (org.priceRange && (orgType === "LocalBusiness" || orgType === "MedicalClinic")) node.priceRange = org.priceRange;
+  if (org.oprichtingsjaar) node.foundingDate = org.oprichtingsjaar;
+  if (org.kvk) node.identifier = [{ "@type": "PropertyValue", name: "KVK", value: org.kvk }];
+  if (org.btw) node.vatID = org.btw;
+  // Openingstijden alleen als leesbare specificatie-tekst beschikbaar is; exacte
+  // OpeningHoursSpecification vergt gestructureerde tijden, dus alleen bij een
+  // herkenbaar patroon opnemen is aan de developer (staat in het document).
+  if (org.reviewGemiddelde && org.reviewAantal) {
+    node.aggregateRating = { "@type": "AggregateRating", ratingValue: org.reviewGemiddelde.replace(",", "."), reviewCount: org.reviewAantal, url: org.reviewUrl || undefined };
+  }
+  const website = {
+    "@type": "WebSite",
+    "@id": `${site}/#website`,
+    url: `${site}/`,
+    name: org.bedrijfsnaam || undefined,
+    publisher: { "@id": `${site}/#organization` },
+    inLanguage: "nl-NL",
+  };
+  const clean = (o: unknown): unknown => {
+    if (Array.isArray(o)) return o.map(clean);
+    if (o && typeof o === "object") {
+      const out: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(o as Record<string, unknown>)) if (v !== undefined && v !== "") out[k] = clean(v);
+      return out;
+    }
+    return o;
+  };
+  return JSON.stringify(clean({ "@context": "https://schema.org", "@graph": [node, website] }), null, 2);
+}

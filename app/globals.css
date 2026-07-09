@@ -1832,3 +1832,6 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .sch-json { margin-top: 10px; }
 .sch-json-head { display: flex; align-items: center; gap: 10px; }
 .sch-json-pre { margin-top: 6px; max-height: 380px; overflow: auto; background: #23211f; color: #eae7e2; font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 11.5px; line-height: 1.5; padding: 12px 14px; border-radius: 10px; white-space: pre; }
+
+.org-sitewide { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 12px; }
+.org-sitewide-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 13.5px; }

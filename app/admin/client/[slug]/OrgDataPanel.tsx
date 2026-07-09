@@ -128,6 +128,30 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
       if (d.ok) { setLocked(next); setMsg(next ? "Vergrendeld: dit is nu de vaste bron voor de structured data." : "Ontgrendeld: de klant kan weer aanvullen."); }
     } catch { setMsg("Vergrendelen mislukt."); } finally { setBusy(""); }
   }
+  const [swJson, setSwJson] = useState("");
+  const [swMsg, setSwMsg] = useState("");
+  const [swCopied, setSwCopied] = useState(false);
+  async function generateSitewide() {
+    if (busy) return;
+    setBusy("sitewide"); setSwMsg("");
+    try {
+      const d = await fetch(`/api/admin/org-data/sitewide?slug=${encodeURIComponent(slug)}`).then((r) => r.json());
+      if (d.ok) { setSwJson(d.jsonld); if (!d.locked) setSwMsg("Let op: de gegevens zijn nog niet vergrendeld; controleer ze eerst met de klant."); }
+      else setSwMsg(d.error || "Genereren mislukt.");
+    } catch { setSwMsg("Genereren mislukt."); } finally { setBusy(""); }
+  }
+  async function copySitewide() {
+    if (!swJson) return;
+    try { await navigator.clipboard.writeText(swJson); setSwCopied(true); setTimeout(() => setSwCopied(false), 2000); } catch { /* handmatig */ }
+  }
+  async function sitewideTask() {
+    if (busy) return;
+    setBusy("swtask"); setSwMsg("");
+    try {
+      const d = await fetch("/api/admin/org-data/sitewide", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }) }).then((r) => r.json());
+      setSwMsg(d.ok ? "Dev-taak aangemaakt in Werkzaamheden, met het .json-bestand in Drive." : d.error || "Doorzetten mislukt.");
+    } catch { setSwMsg("Doorzetten mislukt."); } finally { setBusy(""); }
+  }
   async function copyLink() {
     if (!shareUrl) return;
     try { await navigator.clipboard.writeText(shareUrl); setMsg("Deel-link gekopieerd."); } catch { setMsg("Kopiëren mislukt; selecteer de link zelf."); }
@@ -159,6 +183,17 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
           </div>
           {msg && <div className="saved-msg" style={{ margin: "8px 0" }}>{msg}</div>}
           {data ? <OrgDataForm data={data} onChange={setData} disabled={busy === "autofill"} /> : <div className="muted">Laden…</div>}
+          <div className="org-sitewide">
+            <div className="org-sitewide-head">
+              <strong>Site-brede structured data</strong>
+              <HelpHint wide title="Site-brede structured data" text={"Het identiteitsblok (bedrijf + website) dat op elke pagina van de site hoort te staan. Wordt rechtstreeks uit de gegevens hierboven gebouwd; de per-pagina schema's van stap 7 verwijzen ernaar.\n- Genereer, controleer en kopieer de JSON, of maak er direct een Dev-taak van met het .json-bestand in Drive."} />
+              <button type="button" className="ghost-btn small" onClick={generateSitewide} disabled={!!busy}>{busy === "sitewide" ? "Genereren…" : "Genereer site-brede schema"}</button>
+              {swJson && <button type="button" className="ghost-btn small" onClick={copySitewide}>{swCopied ? "✓ gekopieerd" : "Kopieer JSON"}</button>}
+              {swJson && <button type="button" className="ghost-btn small" onClick={sitewideTask} disabled={!!busy}>{busy === "swtask" ? "Bezig…" : "Als Dev-taak doorzetten"}</button>}
+            </div>
+            {swMsg && <div className="saved-msg" style={{ marginTop: 6 }}>{swMsg}</div>}
+            {swJson && <pre className="sch-json-pre" style={{ marginTop: 8 }}>{swJson}</pre>}
+          </div>
         </div>
       )}
     </div>
