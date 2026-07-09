@@ -81,18 +81,20 @@ export default function BeheerClient({ clients, team }: { clients: ClientLite[];
 
   // ──────────────────────────────── TEAM ─────────────────────────────────
   const [showTeamForm, setShowTeamForm] = useState(false);
-  const [tForm, setTForm] = useState<{ name: string; loginId: string; allowedSlugs: string[]; canSeeMail: boolean }>({
+  const [tForm, setTForm] = useState<{ name: string; loginId: string; allowedSlugs: string[]; canSeeMail: boolean; canEdit: boolean }>({
     name: "",
     loginId: "",
     allowedSlugs: [],
     canSeeMail: false,
+    canEdit: false,
   });
   const [created, setCreated] = useState<{ name: string; loginId: string; password: string } | null>(null);
   const [editUserId, setEditUserId] = useState<number | null>(null);
-  const [uForm, setUForm] = useState<{ name: string; allowedSlugs: string[]; canSeeMail: boolean }>({
+  const [uForm, setUForm] = useState<{ name: string; allowedSlugs: string[]; canSeeMail: boolean; canEdit: boolean }>({
     name: "",
     allowedSlugs: [],
     canSeeMail: false,
+    canEdit: false,
   });
   const [userPassword, setUserPassword] = useState<{ id: number; password: string } | null>(null);
 
@@ -114,7 +116,7 @@ export default function BeheerClient({ clients, team }: { clients: ClientLite[];
       const data = await res.json();
       if (data.ok) {
         setCreated({ name: tForm.name || tForm.loginId, loginId: data.user.loginId, password: data.password });
-        setTForm({ name: "", loginId: "", allowedSlugs: [], canSeeMail: false });
+        setTForm({ name: "", loginId: "", allowedSlugs: [], canSeeMail: false, canEdit: false });
         setShowTeamForm(false);
         router.refresh();
       } else flash(false, data.error || "Aanmaken mislukt.");
@@ -127,7 +129,7 @@ export default function BeheerClient({ clients, team }: { clients: ClientLite[];
 
   function openUser(u: TeamUser) {
     setEditUserId(u.id);
-    setUForm({ name: u.name || "", allowedSlugs: [...u.allowedSlugs], canSeeMail: u.canSeeMail });
+    setUForm({ name: u.name || "", allowedSlugs: [...u.allowedSlugs], canSeeMail: u.canSeeMail, canEdit: u.canEdit });
     setUserPassword(null);
   }
 
@@ -138,7 +140,7 @@ export default function BeheerClient({ clients, team }: { clients: ClientLite[];
       const res = await fetch("/api/admin/team", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, name: uForm.name, allowedSlugs: uForm.allowedSlugs, canSeeMail: uForm.canSeeMail }),
+        body: JSON.stringify({ id, name: uForm.name, allowedSlugs: uForm.allowedSlugs, canSeeMail: uForm.canSeeMail, canEdit: uForm.canEdit }),
       });
       const data = await res.json();
       if (data.ok) {
@@ -312,7 +314,7 @@ export default function BeheerClient({ clients, team }: { clients: ClientLite[];
         {/* ─────────────── TEAM ─────────────── */}
         <h2 style={{ fontSize: 20, fontWeight: 700, margin: "44px 0 6px" }}>Team</h2>
         <p className="muted" style={{ marginBottom: 16 }}>
-          Gasten kunnen inloggen op dit adminscherm en zien alleen de klanten die je aanvinkt. Zet &ldquo;mail &amp; status zichtbaar&rdquo; aan als een gast ook de mails en de actuele stand van zaken mag zien.
+          Gasten kunnen inloggen op dit adminscherm en zien alleen de klanten die je aanvinkt. Standaard is een gast alleen-lezen: rondkijken en openklappen mag, maar geen stappen draaien of iets opslaan. Vink &ldquo;mag wijzigen en uitvoeren&rdquo; aan om dat wel toe te staan.
         </p>
 
         {created && (
@@ -333,18 +335,20 @@ export default function BeheerClient({ clients, team }: { clients: ClientLite[];
                 <th>Naam</th>
                 <th>Inlognaam</th>
                 <th>Klanten</th>
+                <th>Rechten</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
               {team.length === 0 && (
-                <tr><td colSpan={4} className="muted">Nog geen teamgebruikers. Alleen jij (de eigenaar) hebt toegang.</td></tr>
+                <tr><td colSpan={5} className="muted">Nog geen teamgebruikers. Alleen jij (de eigenaar) hebt toegang.</td></tr>
               )}
               {team.map((u) => (
                 <tr key={u.id}>
                   <td style={{ fontWeight: 600 }}>{u.name || <span className="muted">&mdash;</span>}</td>
                   <td>{u.loginId}</td>
                   <td>{u.role === "owner" ? "alles (eigenaar)" : slugsLabel(u.allowedSlugs)}</td>
+                  <td>{u.role === "owner" ? "alles" : u.canEdit ? "Mag wijzigen" : "Alleen lezen"}</td>
                   <td style={{ whiteSpace: "nowrap" }}>
                     <button className="mini-btn" onClick={() => openUser(u)}>Bewerken</button>{" "}
                     <button className="mini-btn" onClick={() => resetUserPw(u.id)} disabled={busy}>Nieuw wachtwoord</button>{" "}
@@ -383,6 +387,17 @@ export default function BeheerClient({ clients, team }: { clients: ClientLite[];
                 selected={uForm.allowedSlugs}
                 onToggle={(slug) => setUForm({ ...uForm, allowedSlugs: toggleSlug(uForm.allowedSlugs, slug) })}
               />
+              <div className="field" style={{ marginTop: 16 }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={uForm.canEdit}
+                    onChange={(e) => setUForm({ ...uForm, canEdit: e.target.checked })}
+                    style={{ width: "auto" }}
+                  />
+                  Mag wijzigen en uitvoeren (uit = alleen lezen: rondkijken mag, acties niet)
+                </label>
+              </div>
               <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
                 <button type="submit" className="primary-btn" disabled={busy}>{busy ? "Opslaan…" : "Opslaan"}</button>
                 <button type="button" className="logout-btn" onClick={() => setEditUserId(null)}>Sluiten</button>
@@ -421,6 +436,17 @@ export default function BeheerClient({ clients, team }: { clients: ClientLite[];
               selected={tForm.allowedSlugs}
               onToggle={(slug) => setTForm({ ...tForm, allowedSlugs: toggleSlug(tForm.allowedSlugs, slug) })}
             />
+            <div className="field" style={{ marginTop: 16 }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={tForm.canEdit}
+                  onChange={(e) => setTForm({ ...tForm, canEdit: e.target.checked })}
+                  style={{ width: "auto" }}
+                />
+                Mag wijzigen en uitvoeren (uit = alleen lezen: rondkijken mag, acties niet)
+              </label>
+            </div>
             <button type="submit" className="primary-btn" style={{ marginTop: 16 }} disabled={busy}>{busy ? "Bezig…" : "Gast aanmaken"}</button>
           </form>
         )}
