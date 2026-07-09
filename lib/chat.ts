@@ -123,6 +123,26 @@ async function buildContext(client: ClientConfig): Promise<string> {
     parts.push("Ahrefs-zoekwoorden: " + keywords.map((k) => `${k.keyword} (pos ${k.position ?? "-"}, vol ${k.volume ?? "-"})`).join("; "));
   }
 
+  // Google Ads (via de GA4-koppeling): prestaties, campagnes en activiteit-signalen,
+  // zodat je in de chat kunt sparren over de inrichting en of er echt aan gewerkt wordt.
+  try {
+    const { getAdsComparison } = await import("./google");
+    const ads = await getAdsComparison(client.slug, client.domain || "", 28, "prev");
+    if (ads?.linked) {
+      const t = (m: string) => ads.totals.find((x) => x.metric === m);
+      const cost = t("cost"), clicks = t("clicks"), conv = t("conversions");
+      const e2 = (n: number | undefined) => (n ?? 0).toFixed(2);
+      parts.push("\nGOOGLE ADS (laatste 28 dagen vs. de 28 dagen ervoor, via GA4-koppeling):");
+      parts.push(`Kosten \u20ac${e2(cost?.cur)} (vorige periode \u20ac${e2(cost?.prev)}), klikken ${Math.round(clicks?.cur || 0)} (${Math.round(clicks?.prev || 0)}), conversies ${Math.round(conv?.cur || 0)} (${Math.round(conv?.prev || 0)}).`);
+      parts.push("Campagnes (nu vs. vorige periode):");
+      for (const c of ads.campaigns.slice(0, 15)) {
+        const status = c.prevCost === 0 && c.cost > 0 ? "NIEUW" : c.cost === 0 && c.prevCost > 0 ? "GESTOPT/STIL" : "loopt";
+        parts.push(`- ${c.name} [${status}]: kosten \u20ac${e2(c.cost)} (was \u20ac${e2(c.prevCost)}), klikken ${Math.round(c.clicks)} (${Math.round(c.prevClicks)}), conversies ${Math.round(c.conversions)} (${Math.round(c.prevConversions)})`);
+      }
+      parts.push("Activiteit-duiding: NIEUW = campagne draaide vorige periode nog niet; GESTOPT/STIL = had toen kosten en nu niet; grote kostenverschuivingen wijzen op actieve wijzigingen. Weinig campagnes en vlakke kosten maandenlang = mogelijk geparkeerd account. Budgetten, biedstrategie-instellingen en de exacte wijzigingshistorie zitten NIET in deze data (die vereisen de Google Ads-API); zeg dat eerlijk als ernaar gevraagd wordt.");
+    }
+  } catch { /* Ads-context is aanvulling */ }
+
   return parts.join("\n");
 }
 
@@ -180,7 +200,7 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
   const system =
     `Je bent de SEO-projectassistent van Pingwin voor de klant ${client.name}. ` +
     `Beantwoord in het Nederlands, uitsluitend op basis van de onderstaande projectcontext ` +
-    `(e-mails inclusief afzender/ontvangers en inhoud, stand van zaken, taken, Search Console incl. 4-maanden zoekwoord-trend, Ahrefs).\n\n` +
+    `(e-mails inclusief afzender/ontvangers en inhoud, stand van zaken, taken, Search Console incl. 4-maanden zoekwoord-trend, Ahrefs, en Google Ads-prestaties per campagne via de GA4-koppeling).\n\n` +
     `OPMAAK: schrijf conversationeel en netjes, zoals in een chat, in Markdown. Geen emoji.\n` +
     `- Schrijf in korte alinea's. Gebruik een kopje (## Kop) alleen als je antwoord echt meerdere onderwerpen behandelt; bij een kort antwoord geen kop.\n` +
     `- Gebruik bullets (-) voor opsommingen en **vet** voor labels/kernpunten.\n` +
