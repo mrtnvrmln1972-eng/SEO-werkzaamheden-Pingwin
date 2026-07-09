@@ -1223,7 +1223,12 @@ button.ck-collapse-head {
 .kpi-page-caret { color: var(--orange); font-size: 11px; display: inline-block; width: 12px; }
 .kpi-page-kw-row > td { background: #fdf7f2; padding: 6px 10px 10px 26px; }
 .kpi-page-kw-table { margin-top: 4px; }
-.kpi-page-kw-table th, .kpi-page-kw-table td { font-size: 12.5px; }
+.kpi-page-kw-table th, .kpi-page-kw-table td { font-size: 12.5px; text-align: left; }
+/* Zoekwoord krijgt de ruimte; de cijferkolommen compact naast elkaar links. */
+.kpi-page-kw-table th:first-child, .kpi-page-kw-table td:first-child { width: 34%; }
+.kpi-page-kw-table th:not(:first-child), .kpi-page-kw-table td:not(:first-child) { width: 11%; white-space: nowrap; }
+.kpi-page-kw-table .pg-sort { cursor: pointer; user-select: none; }
+.kpi-page-kw-table .pg-sort:hover { color: var(--orange); }
 .kpi-ah-page a { color: inherit; text-decoration: underline; text-decoration-color: var(--border); }
 .kpi-ah-page a:hover { text-decoration-color: var(--orange); }
 .kpi-period-inline { display: inline-flex; gap: 6px; align-items: center; }

@@ -352,6 +352,32 @@ export async function getGscForPage(domain: string, pageUrl: string, days = 90):
   }));
 }
 
+// Zoekwoorden van één pagina MET vergelijking (vorige periode of vorig jaar), voor
+// de uitklap in de Pagina's-lijst van de KPI-tab: per zoekwoord ook de deltas.
+export type GscPageKeyword = { keyword: string; clicks: number; impressions: number; position: number; prevClicks: number; prevImpressions: number; prevPosition: number | null };
+export async function getGscForPageCompare(domain: string, pageUrl: string, days = 28, compare: "prev" | "yoy" = "prev"): Promise<GscPageKeyword[]> {
+  const token = await googleAccessToken();
+  if (!token || !domain || !pageUrl) return [];
+  const site = await gscPickSite(token, domain);
+  if (!site) return [];
+  const r = periodRanges(days, compare);
+  const filter = { dimensionFilterGroups: [{ filters: [{ dimension: "page", operator: "equals", expression: pageUrl }] }] };
+  const [cur, prev] = await Promise.all([
+    gscQuery(token, site, { startDate: r.curStart, endDate: r.curEnd, dimensions: ["query"], rowLimit: 100, ...filter }),
+    gscQuery(token, site, { startDate: r.prevStart, endDate: r.prevEnd, dimensions: ["query"], rowLimit: 100, ...filter }),
+  ]);
+  const prevBy = new Map(prev.map((x) => [x.keys?.[0] || "", x]));
+  return cur.map((x) => {
+    const p = prevBy.get(x.keys?.[0] || "");
+    return {
+      keyword: x.keys?.[0] || "",
+      clicks: Math.round(x.clicks), impressions: Math.round(x.impressions), position: Math.round(x.position * 10) / 10,
+      prevClicks: Math.round(p?.clicks || 0), prevImpressions: Math.round(p?.impressions || 0),
+      prevPosition: p ? Math.round(p.position * 10) / 10 : null,
+    };
+  });
+}
+
 // Daglijnen (clicks/impressies/CTR/positie) voor één pagina over een datumbereik.
 // Voor de KPI-impact-grafiek rond een wijziging (60 dagen voor/na).
 export type GscDay = { date: string; clicks: number; impressions: number; ctr: number; position: number };

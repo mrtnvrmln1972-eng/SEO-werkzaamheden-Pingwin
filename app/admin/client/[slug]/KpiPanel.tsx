@@ -280,10 +280,13 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
   const [kwSort, setKwSort] = useState<Sort<KwKey>>({ key: "focus", dir: "asc" });
   const [kwSearch, setKwSearch] = useState("");
   const [pageSearch, setPageSearch] = useState("");
-  // Uitklap per pagina: de zoekwoorden waarop die pagina rankt (Search Console).
-  type PageKw = { keyword: string; clicks: number; impressions: number; position: number };
+  // Uitklap per pagina: de zoekwoorden waarop die pagina rankt (Search Console),
+  // met vergelijking (deltas) en sorteerbare kolommen.
+  type PageKw = { keyword: string; clicks: number; impressions: number; position: number; prevClicks: number; prevImpressions: number; prevPosition: number | null };
   const [pageKwOpen, setPageKwOpen] = useState("");
   const [pageKwData, setPageKwData] = useState<Record<string, PageKw[] | "laden" | "fout">>({});
+  const [pageKwSort, setPageKwSort] = useState<"keyword" | "position" | "dposition" | "clicks" | "dclicks" | "impressions" | "dimpressions">("impressions");
+  useEffect(() => { setPageKwData({}); setPageKwOpen(""); }, [days, compare]);
   const [ahSearch, setAhSearch] = useState("");
   const [pageSort, setPageSort] = useState<Sort<PageKey>>({ key: "prio", dir: "asc" });
   const [oppSort, setOppSort] = useState<Sort<OppKey>>(null);
@@ -479,7 +482,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
     if (Array.isArray(pageKwData[u])) return;
     setPageKwData((m) => ({ ...m, [u]: "laden" }));
     try {
-      const r = await fetch(`/api/admin/kpi/page-keywords?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(u)}&days=${days}`);
+      const r = await fetch(`/api/admin/kpi/page-keywords?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(u)}&days=${days}&compare=${compare}`);
       const d = await r.json();
       setPageKwData((m) => ({ ...m, [u]: d.ok ? (d.keywords || []) : "fout" }));
     } catch { setPageKwData((m) => ({ ...m, [u]: "fout" })); }
@@ -668,10 +671,36 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
                                 <div className="muted" style={{ padding: "6px 8px" }}>Geen zoekwoorden met vertoningen in deze periode.</div>
                               ) : (
                                 <table className="res-table kpi-table kpi-page-kw-table">
-                                  <thead><tr><th>Zoekwoord</th><th>Ranking</th><th>Klikken</th><th>Vertoningen</th></tr></thead>
+                                  <thead><tr>
+                                    <th className="pg-sort" onClick={() => setPageKwSort("keyword")}>Zoekwoord{pageKwSort === "keyword" ? " \u25be" : ""}</th>
+                                    <th className="pg-sort" onClick={() => setPageKwSort("position")}>Ranking{pageKwSort === "position" ? " \u25be" : ""}</th>
+                                    <th className="pg-sort kpi-delta-th" title="Verandering ranking t.o.v. de vergelijkingsperiode (omhoog = beter)" onClick={() => setPageKwSort("dposition")}>Verschil{pageKwSort === "dposition" ? " \u25be" : ""}</th>
+                                    <th className="pg-sort" onClick={() => setPageKwSort("clicks")}>Klikken{pageKwSort === "clicks" ? " \u25be" : ""}</th>
+                                    <th className="pg-sort kpi-delta-th" title="Verandering klikken t.o.v. de vergelijkingsperiode" onClick={() => setPageKwSort("dclicks")}>Verschil{pageKwSort === "dclicks" ? " \u25be" : ""}</th>
+                                    <th className="pg-sort" onClick={() => setPageKwSort("impressions")}>Vertoningen{pageKwSort === "impressions" ? " \u25be" : ""}</th>
+                                    <th className="pg-sort kpi-delta-th" title="Verandering vertoningen t.o.v. de vergelijkingsperiode" onClick={() => setPageKwSort("dimpressions")}>Verschil{pageKwSort === "dimpressions" ? " \u25be" : ""}</th>
+                                  </tr></thead>
                                   <tbody>
-                                    {kwData.map((k) => (
-                                      <tr key={k.keyword}><td>{k.keyword}</td><td>{k.position.toFixed(1)}</td><td>{nl(k.clicks)}</td><td>{nl(k.impressions)}</td></tr>
+                                    {[...kwData].sort((a, b) => {
+                                      switch (pageKwSort) {
+                                        case "keyword": return a.keyword.localeCompare(b.keyword);
+                                        case "position": return a.position - b.position;
+                                        case "dposition": return ((b.prevPosition ?? b.position) - b.position) - ((a.prevPosition ?? a.position) - a.position);
+                                        case "clicks": return b.clicks - a.clicks;
+                                        case "dclicks": return (b.clicks - b.prevClicks) - (a.clicks - a.prevClicks);
+                                        case "dimpressions": return (b.impressions - b.prevImpressions) - (a.impressions - a.prevImpressions);
+                                        default: return b.impressions - a.impressions;
+                                      }
+                                    }).map((k) => (
+                                      <tr key={k.keyword}>
+                                        <td>{k.keyword}</td>
+                                        <td>{k.position.toFixed(1)}</td>
+                                        <td className="kpi-delta-td">{k.prevPosition != null ? <Delta cur={k.position} prev={k.prevPosition} invert isPos /> : <span className="muted" title="Nieuw: rankte in de vergelijkingsperiode nog niet">nieuw</span>}</td>
+                                        <td>{nl(k.clicks)}</td>
+                                        <td className="kpi-delta-td"><Delta cur={k.clicks} prev={k.prevClicks} /></td>
+                                        <td>{nl(k.impressions)}</td>
+                                        <td className="kpi-delta-td"><Delta cur={k.impressions} prev={k.prevImpressions} /></td>
+                                      </tr>
                                     ))}
                                   </tbody>
                                 </table>

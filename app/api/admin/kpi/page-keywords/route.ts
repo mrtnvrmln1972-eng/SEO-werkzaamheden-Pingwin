@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../../lib/admin-auth";
 import { guardSlug } from "../../../../../lib/admin-scope";
 import { getClientBySlug } from "../../../../../lib/clients";
-import { getGscForPage } from "../../../../../lib/google";
+import { getGscForPageCompare } from "../../../../../lib/google";
 
 export const runtime = "nodejs";
 
@@ -17,10 +17,11 @@ export async function GET(req: NextRequest) {
   const url = req.nextUrl.searchParams.get("url") || "";
   if (!url) return NextResponse.json({ ok: false, error: "Geen pagina-URL." }, { status: 400 });
   const days = Math.max(1, Math.min(400, Number(req.nextUrl.searchParams.get("days")) || 28));
+  const compare = req.nextUrl.searchParams.get("compare") === "yoy" ? "yoy" as const : "prev" as const;
   const client = await getClientBySlug(slug);
   if (!client) return NextResponse.json({ ok: false, error: "Klant niet gevonden." }, { status: 404 });
   try {
-    const keywords = await getGscForPage(client.domain || "", url, days);
+    const keywords = await getGscForPageCompare(client.domain || "", url, days, compare);
     return NextResponse.json({ ok: true, keywords });
   } catch {
     return NextResponse.json({ ok: false, error: "Kon de zoekwoorden niet ophalen." }, { status: 500 });
