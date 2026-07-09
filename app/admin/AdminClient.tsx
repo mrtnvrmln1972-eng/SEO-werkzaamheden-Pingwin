@@ -31,6 +31,27 @@ export default function AdminClient({ initialClients, isOwner = true }: { initia
   const [editSlug, setEditSlug] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ maandbudget: "", linkbuilding: "", uurtarief: "" });
   const [editBusy, setEditBusy] = useState(false);
+  // Facturen-signaal per klant (uit Moneybird): aantal + bedrag >30 dagen open.
+  const [overdue, setOverdue] = useState<Record<string, { count: number; total: number }>>({});
+
+  useEffect(() => {
+    if (!isOwner) return;
+    let alive = true;
+    (async () => {
+      try {
+        const res = await fetch("/api/admin/moneybird/openstaand");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data.ok || !data.configured || !alive) return;
+        const map: Record<string, { count: number; total: number }> = {};
+        for (const c of data.byClient as { slug: string; overdueCount: number; overdueTotal: number }[]) {
+          if (c.overdueCount > 0) map[c.slug] = { count: c.overdueCount, total: c.overdueTotal };
+        }
+        setOverdue(map);
+      } catch { /* stil: geen signaal, volgende paginalading opnieuw */ }
+    })();
+    return () => { alive = false; };
+  }, [isOwner]);
 
   function openEdit(e: React.MouseEvent, c: ClientConfig) {
     e.stopPropagation();
@@ -234,7 +255,16 @@ export default function AdminClient({ initialClients, isOwner = true }: { initia
               {clients.map((c) => (
                 <Fragment key={c.slug}>
                   <tr className="clickable-row" onClick={() => openDashboard(c)} title="Open de cockpit van deze klant">
-                    <td><strong>{c.name}</strong> <span className="row-arrow">&rarr;</span></td>
+                    <td>
+                      <strong>{c.name}</strong>
+                      {overdue[c.slug] && (
+                        <span
+                          className="invoice-badge"
+                          title={`${overdue[c.slug].count} factu${overdue[c.slug].count === 1 ? "ur staat" : "ren staan"} langer dan 30 dagen open (€ ${overdue[c.slug].total.toLocaleString("nl-NL", { minimumFractionDigits: 2 })})`}
+                        >!</span>
+                      )}
+                      {" "}<span className="row-arrow">&rarr;</span>
+                    </td>
                     <td>{c.loginId}</td>
                     <td>{c.email || <span className="muted">&mdash;</span>}</td>
                     <td>&euro;{c.budget.maandbudget.toFixed(0)}{c.budget.linkbuilding ? <span className="muted"> (w.v. &euro;{c.budget.linkbuilding.toFixed(0)} LB)</span> : null}</td>

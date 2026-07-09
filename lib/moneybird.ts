@@ -116,6 +116,7 @@ type RawInvoice = {
   id: string | number;
   invoice_id?: string | null;
   state?: string;
+  invoice_date?: string | null;
   date?: string | null;
   due_date?: string | null;
   total_unpaid?: string | number | null;
@@ -143,7 +144,7 @@ function daysSince(dateStr: string | null | undefined): number {
 // dagen klopt, ook als de rest uit de cache komt.
 export async function getOpenInvoices(): Promise<OpenInvoice[]> {
   type Cached = Omit<OpenInvoice, "daysOpen">[];
-  let list = await cacheGet<Cached>("open_invoices", "all", 60);
+  let list = await cacheGet<Cached>("open_invoices", "all_v2", 60);
   if (!list) {
     const raw = (await mbFetchAll("/sales_invoices.json", { filter: "state:open|late|reminded" })) as RawInvoice[];
     list = raw.map((r) => ({
@@ -152,13 +153,14 @@ export async function getOpenInvoices(): Promise<OpenInvoice[]> {
       contactId: r.contact?.id != null ? String(r.contact.id) : r.contact_id != null ? String(r.contact_id) : null,
       contactName: contactDisplayName(r.contact),
       contactEmail: r.contact?.send_invoices_to_email || r.contact?.email || null,
-      date: String(r.date || ""),
+      // Verkoopfacturen hebben de verzenddatum in invoice_date (niet date).
+      date: String(r.invoice_date || r.date || ""),
       dueDate: r.due_date ? String(r.due_date) : null,
       state: String(r.state || "open"),
       totalUnpaid: Number(r.total_unpaid || 0),
       url: mbInvoiceUrl(String(r.id)),
     }));
-    await cacheSet("open_invoices", "all", list);
+    await cacheSet("open_invoices", "all_v2", list);
   }
   return list.map((i) => ({ ...i, daysOpen: daysSince(i.date) }));
 }

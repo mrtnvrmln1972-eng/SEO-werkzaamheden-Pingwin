@@ -20,6 +20,7 @@ import DeveloperOverview from "../../developer/DeveloperOverview";
 import KpiPanel from "./KpiPanel";
 import PagesPanel from "./PagesPanel";
 import WijzigingenPanel from "./WijzigingenPanel";
+import InvoiceAlert from "./InvoiceAlert";
 
 type Tab = "overzicht" | "werkzaamheden" | "paginas" | "resultaten" | "klant" | "developer" | "wijzigingen" | "cannibalisatie" | "interne-links";
 
@@ -285,6 +286,8 @@ export default function ClientCockpit({
       </div>
 
       <div className="container">
+
+        <InvoiceAlert slug={client.slug} />
 
         {tab === "werkzaamheden" && (
           <>

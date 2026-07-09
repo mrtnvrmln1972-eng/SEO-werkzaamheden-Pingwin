@@ -178,6 +178,30 @@ tbody td:last-child { text-align: center; }
 .badge-done.klaar { background: #E8F5E9; color: #2E7D32; }
 .badge-done.gepland { background: var(--gray-light); color: #9E9E9E; }
 .badge-done.bezig { background: #FFF3E0; color: #E65100; }
+/* Facturen-signaal (Moneybird): rood uitroepteken bij een klant met een factuur
+   die langer dan 30 dagen na verzending openstaat. */
+.invoice-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; margin-left: 8px; border-radius: 50%;
+  background: #FDECEA; color: #C62828; border: 1px solid #F5C6C0;
+  font-size: 12px; font-weight: 800; line-height: 1; cursor: help;
+  vertical-align: middle;
+}
+/* Waarschuwingsbalk bovenin de klant-cockpit, met deeplink(s) naar Moneybird. */
+.invoice-alert {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+  background: #FDECEA; border: 1px solid #F5C6C0; border-left: 4px solid #C62828;
+  color: #7B241C; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;
+  font-size: 14px;
+}
+.invoice-alert-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 50%; flex: 0 0 auto;
+  background: #C62828; color: #fff; font-weight: 800; font-size: 14px;
+}
+.invoice-alert-links { display: inline-flex; flex-wrap: wrap; gap: 12px; margin-left: auto; }
+.invoice-alert-links a { color: #C62828; font-weight: 700; text-decoration: underline; text-underline-offset: 2px; white-space: nowrap; }
+.invoice-alert-links a:hover { color: #8E1B1B; }
 /* Documentlink: klassiek blauw + onderstreept, met pijl die op hover wegschuift */
 .doc-link { color: #1a6dd6; text-decoration: underline; text-underline-offset: 2px; font-weight: 600; font-size: 13px; transition: color 0.15s; white-space: nowrap; }
 .doc-link::after { content: " \2192"; display: inline-block; transition: transform 0.15s; }
