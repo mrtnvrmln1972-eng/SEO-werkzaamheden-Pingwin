@@ -28,7 +28,28 @@ const PERIODS = [
   { days: 365, label: "12 maanden" },
 ];
 
-const GA4_LABELS: Record<string, string> = { totalUsers: "Gebruikers", sessions: "Sessies", conversions: "Conversies" };
+// GA4-KPI's: label, volgorde, opmaak en richting (invert = lager is beter).
+function fmtDur(v: number): string { const t = Math.round(v); const m = Math.floor(t / 60), r = t % 60; return `${m}:${String(r).padStart(2, "0")}`; }
+const GA4_CARDS: { key: string; label: string; fmt: (v: number) => string; invert?: boolean; isPos?: boolean }[] = [
+  { key: "totalUsers", label: "Gebruikers", fmt: (v) => nl(Math.round(v)) },
+  { key: "newUsers", label: "Nieuwe gebruikers", fmt: (v) => nl(Math.round(v)) },
+  { key: "sessions", label: "Sessies", fmt: (v) => nl(Math.round(v)) },
+  { key: "screenPageViews", label: "Paginaweergaven", fmt: (v) => nl(Math.round(v)) },
+  { key: "conversions", label: "Conversies", fmt: (v) => nl(Math.round(v)) },
+  { key: "engagementRate", label: "Engagement rate", fmt: (v) => `${(v * 100).toFixed(1)}%`, isPos: true },
+  { key: "bounceRate", label: "Bounce rate", fmt: (v) => `${(v * 100).toFixed(1)}%`, invert: true, isPos: true },
+  { key: "averageSessionDuration", label: "Gem. sessieduur (time on site)", fmt: fmtDur, isPos: true },
+  { key: "avgTimeOnPage", label: "Gem. tijd op pagina", fmt: fmtDur, isPos: true },
+  { key: "screenPageViewsPerSession", label: "Pagina\u2019s per sessie", fmt: (v) => v.toFixed(1), isPos: true },
+];
+// Kanaalnamen uit GA4 in gewone taal.
+const GA4_CHANNEL_NL: Record<string, string> = {
+  "Organic Search": "Organisch zoeken (SEO)", "Direct": "Direct", "Paid Search": "Betaald zoeken (SEA)",
+  "Organic Social": "Social (organisch)", "Paid Social": "Social (betaald)", "Referral": "Verwijzende sites",
+  "Email": "E-mail", "Display": "Display-advertenties", "Organic Video": "Video (organisch)",
+  "Paid Video": "Video (betaald)", "Cross-network": "Cross-network", "Unassigned": "Niet toegewezen",
+  "Organic Shopping": "Shopping (organisch)", "Paid Shopping": "Shopping (betaald)", "Audio": "Audio", "SMS": "SMS",
+};
 
 function shortUrl(url: string): string {
   try { const u = new URL(url); return (u.pathname + u.search) || "/"; } catch { return url; }
@@ -771,19 +792,50 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
       )}
 
       {!loading && ga4 && ga4.totals.length > 0 && (
-        <Collapse title={<>Google Analytics {siteBadge}</>} meta={`laatste ${periodLabel}`} open={isOpen("ga", true)} onToggle={() => toggle("ga", true)}>
-          <div className="kpi-grid">
-            {ga4.totals.map((m) => (
-              <div className="kpi-card" key={m.metric}>
-                <div className="kpi-value-row">
-                  <div className="kpi-value">{nl(m.cur)}</div>
-                  <Delta cur={m.cur} prev={m.prev} pct />
-                </div>
-                <div className="kpi-label">{GA4_LABELS[m.metric] || m.metric}</div>
-                <PeriodCompare prev={m.prev} cur={m.cur} fmt={(v) => nl(Math.round(v))} />
-              </div>
-            ))}
+        <Collapse title={<>Google Analytics {siteBadge}</>} meta={`laatste ${periodLabel} \u00b7 ${compare === "yoy" ? "vs. vorig jaar" : "vs. vorige periode"}`} open={isOpen("ga", true)} onToggle={() => toggle("ga", true)} actions={periodPicker}>
+          <div className="kpi-grid kpi-grid-4">
+            {GA4_CARDS.map((c) => {
+              const m = ga4.totals.find((t) => t.metric === c.key);
+              if (!m) return null;
+              return (
+                <CardTrend
+                  key={c.key}
+                  label={c.label}
+                  values={m.series}
+                  dates={ga4.dates}
+                  prevValues={m.prevSeries}
+                  prev={m.prev}
+                  cur={m.cur}
+                  fmt={c.fmt}
+                  invert={c.invert}
+                  isPos={c.isPos}
+                  periodLabel={`${days} dgn`}
+                />
+              );
+            })}
           </div>
+          {ga4.channels.length > 0 && (
+            <div className="kpi-block" style={{ marginTop: 14 }}>
+              <div className="kpi-block-head">
+                <span className="kpi-block-title">Waar de bezoekers vandaan komen {siteBadge} <HelpHint wide text="De standaard kanaalgroepen van Google Analytics: via welke weg bezoekers op de site kwamen (organisch zoeken, direct, social, verwijzende sites, betaald). Vergeleken met de gekozen vergelijkingsperiode." /></span>
+              </div>
+              <div className="res-table-wrap">
+                <table className="res-table kpi-table">
+                  <thead><tr><th>Kanaal</th><th className="kpi-metric-sep">Sessies</th><th className="kpi-delta-th">\u0394</th><th className="kpi-metric-sep">Gebruikers</th><th className="kpi-delta-th">\u0394</th><th className="kpi-metric-sep">Conversies</th><th className="kpi-delta-th">\u0394</th></tr></thead>
+                  <tbody>
+                    {ga4.channels.map((ch) => (
+                      <tr key={ch.name}>
+                        <td>{GA4_CHANNEL_NL[ch.name] || ch.name}</td>
+                        <td className="kpi-metric-sep">{nl(ch.sessions)}</td><td className="kpi-delta-td"><Delta cur={ch.sessions} prev={ch.prevSessions} /></td>
+                        <td className="kpi-metric-sep">{nl(ch.users)}</td><td className="kpi-delta-td"><Delta cur={ch.users} prev={ch.prevUsers} /></td>
+                        <td className="kpi-metric-sep">{nl(ch.conversions)}</td><td className="kpi-delta-td"><Delta cur={ch.conversions} prev={ch.prevConversions} /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </Collapse>
       )}
     </div>

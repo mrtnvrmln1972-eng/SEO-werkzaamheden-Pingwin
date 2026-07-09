@@ -598,9 +598,19 @@ export async function getGscComparison(domain: string, days: number, compare: "p
   return { connected: true, site, totals, series, keywords, pages, range };
 }
 
-export type Ga4Comparison = { connected: boolean; propertyId: string | null; totals: { metric: string; cur: number; prev: number; series: number[] }[] };
+export type Ga4Metric = { metric: string; cur: number; prev: number; series: number[]; prevSeries: number[] };
+export type Ga4Channel = { name: string; sessions: number; prevSessions: number; users: number; prevUsers: number; conversions: number; prevConversions: number };
+export type Ga4Comparison = {
+  connected: boolean; propertyId: string | null;
+  dates: string[];            // dagen van de huidige periode (voor de grafiek-as)
+  totals: Ga4Metric[];        // per KPI: totaal nu/vorig + dagreeks nu/vorig
+  channels: Ga4Channel[];     // waar de bezoekers vandaan komen (kanalen)
+};
 
-export async function getGa4Comparison(slug: string, domain: string, days: number): Promise<Ga4Comparison | null> {
+// Volledige GA4-vergelijking voor het KPI-dashboard: 10 kern-KPI's met dagreeksen
+// (huidige én vergelijkingsperiode, ook t.o.v. vorig jaar) plus de herkomst-kanalen.
+// "avgTimeOnPage" is afgeleid (engagement-duur / paginaweergaven).
+export async function getGa4Comparison(slug: string, domain: string, days: number, compare: "prev" | "yoy" = "prev"): Promise<Ga4Comparison | null> {
   const token = await googleAccessToken();
   if (!token) return null;
   await ensureSchema();
@@ -610,56 +620,106 @@ export async function getGa4Comparison(slug: string, domain: string, days: numbe
     const found = await ga4DiscoverProperty(token, domain);
     if (found) { propertyId = found; await sql`UPDATE clients SET ga4_property_id = ${found} WHERE slug = ${slug}`; }
   }
-  if (!propertyId) return { connected: true, propertyId: null, totals: [] };
+  if (!propertyId) return { connected: true, propertyId: null, dates: [], totals: [], channels: [] };
 
-  const range = periodRanges(days);
-  async function run(metricNames: string[]) {
-    return fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`, {
+  const range = periodRanges(days, compare);
+  const dateRanges = [
+    { startDate: range.curStart, endDate: range.curEnd },
+    { startDate: range.prevStart, endDate: range.prevEnd },
+  ];
+  async function run(body: Record<string, unknown>) {
+    const res = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`, {
       method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        dateRanges: [
-          { startDate: range.curStart, endDate: range.curEnd },
-          { startDate: range.prevStart, endDate: range.prevEnd },
-        ],
-        metrics: metricNames.map((name) => ({ name })),
-      }),
+      body: JSON.stringify(body),
+    });
+    return res.ok ? res.json() : null;
+  }
+  type ApiRow = { dimensionValues?: { value: string }[]; metricValues?: { value: string }[] };
+
+  // Kern-KPI's; "conversions" kan op sommige properties ontbreken, dan zonder.
+  const FULL = ["totalUsers", "newUsers", "sessions", "screenPageViews", "conversions", "engagementRate", "bounceRate", "averageSessionDuration", "screenPageViewsPerSession", "userEngagementDuration"];
+  let names = FULL;
+  let tj = await run({ dateRanges, metrics: names.map((name) => ({ name })) });
+  if (!tj) { names = FULL.filter((n) => n !== "conversions"); tj = await run({ dateRanges, metrics: names.map((name) => ({ name })) }); }
+  if (!tj) return { connected: true, propertyId, dates: [], totals: [], channels: [] };
+  const trows: ApiRow[] = tj.rows || [];
+  const tCur = trows.find((r) => r.dimensionValues?.[0]?.value === "date_range_0") || trows[0];
+  const tPrev = trows.find((r) => r.dimensionValues?.[0]?.value === "date_range_1") || trows[1];
+  const num = (r: ApiRow | undefined, i: number) => Number(r?.metricValues?.[i]?.value || 0);
+
+  // Dagreeksen voor beide periodes in één aanvraag (dimensies: datum + dateRange).
+  const dates: string[] = [];
+  const seriesCur: Record<string, number[]> = {};
+  const seriesPrev: Record<string, number[]> = {};
+  const dj = await run({
+    dateRanges,
+    dimensions: [{ name: "date" }],
+    metrics: names.map((name) => ({ name })),
+    orderBys: [{ dimension: { dimensionName: "date" } }],
+    limit: 1000,
+  });
+  if (dj) {
+    const drows: ApiRow[] = dj.rows || [];
+    const isCur = (r: ApiRow) => (r.dimensionValues?.[1]?.value || "date_range_0") === "date_range_0";
+    const curRows = drows.filter(isCur);
+    const prevRows = drows.filter((r) => !isCur(r));
+    for (const r of curRows) {
+      const d = r.dimensionValues?.[0]?.value || "";
+      dates.push(d ? `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}` : "");
+    }
+    names.forEach((name, i) => {
+      seriesCur[name] = curRows.map((r) => Number(r.metricValues?.[i]?.value || 0));
+      seriesPrev[name] = prevRows.map((r) => Number(r.metricValues?.[i]?.value || 0));
     });
   }
-  let names = ["totalUsers", "sessions", "conversions"];
-  let res = await run(names);
-  if (!res.ok) { names = ["totalUsers", "sessions"]; res = await run(names); }
-  if (!res.ok) return { connected: true, propertyId, totals: [] };
-  const j = await res.json();
-  const rowsArr: { dimensionValues?: { value: string }[]; metricValues?: { value: string }[] }[] = j.rows || [];
-  const cur = rowsArr.find((r) => r.dimensionValues?.[0]?.value === "date_range_0") || rowsArr[0];
-  const prev = rowsArr.find((r) => r.dimensionValues?.[0]?.value === "date_range_1") || rowsArr[1];
 
-  // Dagreeksen (huidige periode) voor de grafiekjes.
-  const seriesByMetric: Record<string, number[]> = {};
-  try {
-    const dres = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`, {
-      method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        dateRanges: [{ startDate: range.curStart, endDate: range.curEnd }],
-        dimensions: [{ name: "date" }],
-        metrics: names.map((name) => ({ name })),
-        orderBys: [{ dimension: { dimensionName: "date" } }],
-      }),
-    });
-    if (dres.ok) {
-      const dj = await dres.json();
-      const drows: { metricValues?: { value: string }[] }[] = dj.rows || [];
-      names.forEach((name, i) => { seriesByMetric[name] = drows.map((r) => Math.round(Number(r.metricValues?.[i]?.value || 0))); });
-    }
-  } catch { /* grafiekje is optioneel */ }
-
-  const totals = names.map((name, i) => ({
+  const totals: Ga4Metric[] = names.map((name, i) => ({
     metric: name,
-    cur: Math.round(Number(cur?.metricValues?.[i]?.value || 0)),
-    prev: Math.round(Number(prev?.metricValues?.[i]?.value || 0)),
-    series: seriesByMetric[name] || [],
+    cur: num(tCur, i),
+    prev: num(tPrev, i),
+    series: seriesCur[name] || [],
+    prevSeries: seriesPrev[name] || [],
   }));
-  return { connected: true, propertyId, totals };
+
+  // Afgeleide KPI: gemiddelde tijd op pagina = engagement-duur / paginaweergaven.
+  const idxDur = names.indexOf("userEngagementDuration"), idxViews = names.indexOf("screenPageViews");
+  if (idxDur >= 0 && idxViews >= 0) {
+    const per = (dur: number, views: number) => (views > 0 ? dur / views : 0);
+    const dCur = seriesCur.userEngagementDuration || [], vCur = seriesCur.screenPageViews || [];
+    const dPrev = seriesPrev.userEngagementDuration || [], vPrev = seriesPrev.screenPageViews || [];
+    totals.push({
+      metric: "avgTimeOnPage",
+      cur: per(num(tCur, idxDur), num(tCur, idxViews)),
+      prev: per(num(tPrev, idxDur), num(tPrev, idxViews)),
+      series: dCur.map((d, i) => per(d, vCur[i] || 0)),
+      prevSeries: dPrev.map((d, i) => per(d, vPrev[i] || 0)),
+    });
+  }
+
+  // Waar de bezoekers vandaan komen: standaard kanaalgroepen, nu vs. vorige periode.
+  const channels: Ga4Channel[] = [];
+  const chMetrics = names.includes("conversions") ? ["sessions", "totalUsers", "conversions"] : ["sessions", "totalUsers"];
+  const cj = await run({
+    dateRanges,
+    dimensions: [{ name: "sessionDefaultChannelGroup" }],
+    metrics: chMetrics.map((name) => ({ name })),
+    limit: 50,
+  });
+  if (cj) {
+    const byName = new Map<string, Ga4Channel>();
+    for (const r of (cj.rows || []) as ApiRow[]) {
+      const name = r.dimensionValues?.[0]?.value || "Onbekend";
+      const isCur = (r.dimensionValues?.[1]?.value || "date_range_0") === "date_range_0";
+      const c = byName.get(name) || { name, sessions: 0, prevSessions: 0, users: 0, prevUsers: 0, conversions: 0, prevConversions: 0 };
+      const v = (i: number) => Number(r.metricValues?.[i]?.value || 0);
+      if (isCur) { c.sessions = v(0); c.users = v(1); c.conversions = chMetrics.length > 2 ? v(2) : 0; }
+      else { c.prevSessions = v(0); c.prevUsers = v(1); c.prevConversions = chMetrics.length > 2 ? v(2) : 0; }
+      byName.set(name, c);
+    }
+    channels.push(...Array.from(byName.values()).sort((a, b) => b.sessions - a.sessions));
+  }
+
+  return { connected: true, propertyId, dates, totals, channels };
 }
 
 // Gemiddelde positie van de top-zoekwoorden per maand over de laatste 4 maanden.

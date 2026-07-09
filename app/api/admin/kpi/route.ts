@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
   const domain = client.domain || "";
   const [gsc, ga4, pageOrder, keywordFocus] = await Promise.all([
     withTimeout(getGscComparison(domain, days, compare), 9000, null),
-    withTimeout(getGa4Comparison(slug, domain, days), 9000, null),
+    withTimeout(getGa4Comparison(slug, domain, days, compare), 12000, null),
     getPageOrder(slug).catch(() => [] as string[]),
     getKeywordFocus(slug).catch(() => ({})),
   ]);
