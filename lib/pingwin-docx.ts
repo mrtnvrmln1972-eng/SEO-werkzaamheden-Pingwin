@@ -27,6 +27,17 @@ function richRuns(text: string): any[] {
 function bodyPara(text: string): any {
   return new Paragraph({ alignment: AlignmentType.LEFT, spacing: { line: 320, after: 140, before: 0 }, children: richRuns(text) });
 }
+// Monospace-codeblok (bijv. JSON-LD ter referentie): regel voor regel, klein
+// lettertype, lichtgrijze achtergrond, zonder opmaakinterpretatie.
+function codeParas(text: string): any[] {
+  const lines = (text || "").replace(/\r/g, "").split("\n");
+  return lines.map((line, i) => new Paragraph({
+    spacing: { after: i === lines.length - 1 ? 160 : 0, line: 240 },
+    shading: { type: "clear", fill: "F5F3F0" },
+    children: [new TextRun({ text: line || " ", font: "Courier New", size: 15 })],
+  }));
+}
+
 function bulletPara(item: string): any {
   return new Paragraph({ bullet: { level: 0 }, spacing: { after: 80, line: 300 }, children: richRuns(item) });
 }
@@ -37,7 +48,8 @@ export type DocBlock =
   | { type: "bullets"; items: string[] }
   | { type: "highlight"; text: string }
   | { type: "step"; nr: number; title: string; text: string }
-  | { type: "table"; headers: string[]; rows: string[][] };
+  | { type: "table"; headers: string[]; rows: string[][] }
+  | { type: "code"; text: string };
 
 export type DocSection = { heading?: string; blocks: DocBlock[] };
 export type DocSpec = {
@@ -67,6 +79,7 @@ export async function buildPingwinDoc(spec: DocSpec): Promise<Buffer> {
         else if (b.type === "highlight" && b.text) children.push(...P.createHighlightBox(b.text));
         else if (b.type === "step") children.push(P.createStepBlock(b.nr, b.title, b.text));
         else if (b.type === "table" && b.headers?.length && b.rows?.length) children.push(P.createDataTable(b.headers, b.rows));
+        else if (b.type === "code" && b.text) children.push(...codeParas(b.text));
       } catch { /* sla een fout blok over, breek het document niet */ }
     }
   }

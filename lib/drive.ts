@@ -171,3 +171,30 @@ export async function uploadDocx(folderId: string, filename: string, buffer: Buf
 
   return { id: finalId, link, shared, owner, folder, isDoc, note };
 }
+
+// Kale bestands-upload (bijv. een .json met JSON-LD die letterlijk gekopieerd moet
+// kunnen worden): zelfde resumable upload als uploadDocx, maar ZONDER omzetting
+// naar Google-formaat, zodat de inhoud byte-voor-byte intact blijft.
+export async function uploadPlainFile(folderId: string, filename: string, content: string, mimeType = "application/json"): Promise<{ id: string; link: string; shared: boolean }> {
+  const t = await token();
+  const parent = folderId && folderId !== "root" ? folderId : "root";
+  const bytes = new TextEncoder().encode(content);
+  const initRes = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true&fields=id", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${t}`,
+      "Content-Type": "application/json; charset=UTF-8",
+      "X-Upload-Content-Type": mimeType,
+      "X-Upload-Content-Length": String(bytes.length),
+    },
+    body: JSON.stringify({ name: filename, parents: [parent] }),
+  });
+  if (!initRes.ok) throw new Error(await driveErr(initRes, "het starten van de upload"));
+  const uploadUrl = initRes.headers.get("location") || initRes.headers.get("Location");
+  if (!uploadUrl) throw new Error("Geen upload-URL van Drive ontvangen.");
+  const putRes = await fetch(uploadUrl, { method: "PUT", headers: { "Content-Type": mimeType }, body: bytes });
+  if (!putRes.ok) throw new Error(await driveErr(putRes, "het uploaden van de inhoud"));
+  const file = await putRes.json();
+  const shared = await shareAnyone(t, file.id);
+  return { id: file.id, link: `https://drive.google.com/file/d/${file.id}/view?usp=sharing`, shared };
+}

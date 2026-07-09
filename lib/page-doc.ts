@@ -137,6 +137,7 @@ Toegestane bloktypes in "blocks":
 - {"type":"table","headers":["Kol1","Kol2"],"rows":[["a","b"],["c","d"]]}
 - {"type":"highlight","text":"belangrijke callout"}
 - {"type":"step","nr":1,"title":"...","text":"..."}
+- {"type":"code","text":"letterlijke code (bijv. JSON), regeleinden met \\n"} — alleen voor code/markup, nooit voor gewone tekst
 Houd het compleet maar compact. Voor NADRUK mag je woorden vet maken door ze tussen **dubbele sterretjes** te zetten (bijvoorbeeld een zoekwoord); gebruik verder geen markdown-tekens. Gebruik NERGENS emoji of symbolen als iconen (ook niet in classificaties: schrijf CRITICAL/MAJOR/MINOR en PASS/FAIL als gewone tekst, geen gekleurde bolletjes of vinkjes).`;
 
 const ANALYSE_SYSTEM = `Je bent een senior SEO-specialist bij bureau Pingwin en voert een criteria-gestuurde SEO-ANALYSE uit van een BESTAANDE landingspagina.
