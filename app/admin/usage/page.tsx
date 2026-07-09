@@ -5,15 +5,19 @@ import { ADMIN_COOKIE } from "../../../lib/admin-auth";
 import { ADMIN_VIEWAS_COOKIE } from "../../../lib/constants";
 import { getScopeFromCookie } from "../../../lib/admin-scope";
 import { getUsageSummary, getUsageByAction, type UsageRow, type UsageActionRow } from "../../../lib/usage";
+import { getAhrefsSubscriptionUsage } from "../../../lib/ahrefs";
 
 // Leesbare namen voor de acties (welke knop/functie kost hoeveel).
 const ACTION_LABEL: Record<string, string> = {
-  doc_analyse: "Analyse-document", doc_blauwdruk: "Blauwdruk-document", doc_copy: "Copy-document",
+  doc_analyse: "Analyse-document", doc_analyse_diep: "Analyse-document (diep)",
+  doc_blauwdruk: "Blauwdruk-document", doc_blauwdruk_diep: "Blauwdruk-document (diep)",
+  doc_copy: "Copy-document", copy_koplabels: "Copy-koplabels",
   klantversie: "Klantversie (los)", strategie: "Strategie vastleggen", strategie_grounding: "Strategie (grounding)",
   strategie_uitleg: "Strategie-uitleg", projectchat: "Projectchat", page_chat: "Pagina-chat",
   voorstel: "Plan-voorstel", cluster_advies: "Cluster-advies", kansen: "Zoekwoord-kansen",
   klantprofiel: "Klantprofiel", page_cannibal: "Cannibalisatie", page_cannibal_apply: "Cannibalisatie overnemen",
   cannibal_redirect: "Cannibalisatie (site)", internal_links: "Interne links",
+  org_autofill: "Organisatiegegevens invullen", kpi_toelichting: "KPI-toelichting",
 };
 
 export const dynamic = "force-dynamic";
@@ -40,6 +44,26 @@ function euros(n: number): string {
 function num(n: number): string {
   return n.toLocaleString("nl-NL");
 }
+function dateNl(d: Date): string {
+  return d.toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" });
+}
+
+// Klein vraagteken met uitleg (verschijnt als je de muis erop houdt).
+function Hint({ text }: { text: string }) {
+  return (
+    <span
+      title={text}
+      style={{
+        display: "inline-flex", alignItems: "center", justifyContent: "center",
+        width: 16, height: 16, borderRadius: "50%", background: "#eadfce",
+        color: "#8a6a3e", fontSize: 11, fontWeight: 700, cursor: "help",
+        marginLeft: 6, verticalAlign: "text-bottom", flex: "0 0 auto",
+      }}
+    >
+      ?
+    </span>
+  );
+}
 
 export default async function UsagePage({ searchParams }: { searchParams: { period?: string } }) {
   const scope = await getScopeFromCookie(cookies().get(ADMIN_COOKIE)?.value, cookies().get(ADMIN_VIEWAS_COOKIE)?.value);
@@ -52,13 +76,19 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
   const from = new Date();
   if (days) from.setDate(from.getDate() - days);
   else from.setFullYear(2000);
+  // Leesbare omschrijving van de gekozen periode, zodat "deze periode" nooit vaag is.
+  const periodText = days ? `${dateNl(from)} t/m vandaag` : "alle metingen sinds de start";
 
   let rows: UsageRow[] = [];
   let actionRows: UsageActionRow[] = [];
   let loadError = "";
+  let ahrefsSub: { used: number | null; limit: number | null } | null = null;
   try {
-    rows = await getUsageSummary(from.toISOString());
-    actionRows = await getUsageByAction(from.toISOString());
+    [rows, actionRows, ahrefsSub] = await Promise.all([
+      getUsageSummary(from.toISOString()),
+      getUsageByAction(from.toISOString()),
+      getAhrefsSubscriptionUsage(),
+    ]);
   } catch (e) {
     loadError = (e as Error).message;
   }
@@ -66,30 +96,35 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
   const totalCost = rows.reduce((s, r) => s + (r.cost_usd || 0), 0);
   const totalCalls = rows.reduce((s, r) => s + (r.calls || 0), 0);
 
-  // Optelling per dienst (voor de bovenste samenvatting).
-  const byService = new Map<string, { calls: number; cost: number }>();
+  // Optelling per dienst (voor de bovenste tegels), incl. units voor Ahrefs.
+  const byService = new Map<string, { calls: number; cost: number; units: number }>();
   for (const r of rows) {
-    const cur = byService.get(r.service) || { calls: 0, cost: 0 };
+    const cur = byService.get(r.service) || { calls: 0, cost: 0, units: 0 };
     cur.calls += r.calls || 0;
     cur.cost += r.cost_usd || 0;
+    if (r.service === "ahrefs") cur.units += r.tokens_in || 0;
     byService.set(r.service, cur);
   }
+  const ahrefsTotals = byService.get("ahrefs");
 
-  const wrap: React.CSSProperties = { maxWidth: 1200, margin: "0 auto", padding: "22px 20px 50px", fontFamily: "system-ui, -apple-system, sans-serif", color: "#1f2937" };
-  const card: React.CSSProperties = { border: "1px solid #eadfce", borderRadius: 12, background: "#fff", padding: 16, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" };
+  const wrap: React.CSSProperties = { maxWidth: 1320, margin: "0 auto", padding: "26px 24px 60px", fontFamily: "system-ui, -apple-system, sans-serif", color: "#1f2937" };
+  const card: React.CSSProperties = { border: "1px solid #eadfce", borderRadius: 12, background: "#fff", padding: 20, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" };
   // Let op: de globale stylesheet geeft thead th een donkere achtergrond; de
-  // koptekst moet dus wit zijn (bruin op donker is onleesbaar).
-  const th: React.CSSProperties = { textAlign: "left", padding: "7px 10px", fontSize: 12, color: "#fff", fontWeight: 700 };
-  const td: React.CSSProperties = { padding: "7px 10px", borderBottom: "1px solid #f1e9db", fontSize: 13.5 };
-  const numTd: React.CSSProperties = { ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" };
-  const blockTitle: React.CSSProperties = { fontSize: 15, fontWeight: 700, color: "#33302e", margin: 0 };
-  const blockSub: React.CSSProperties = { fontSize: 12.5, color: "#5b6472", margin: "2px 0 10px", lineHeight: 1.45 };
+  // koptekst moet dus wit zijn. Nooit laten omvallen: nowrap op koppen en cijfers.
+  const th: React.CSSProperties = { textAlign: "left", padding: "8px 12px", fontSize: 12, color: "#fff", fontWeight: 700, whiteSpace: "nowrap" };
+  const thNum: React.CSSProperties = { ...th, textAlign: "right" };
+  const td: React.CSSProperties = { padding: "8px 12px", borderBottom: "1px solid #f1e9db", fontSize: 13.5 };
+  const tdNowrap: React.CSSProperties = { ...td, whiteSpace: "nowrap" };
+  const numTd: React.CSSProperties = { ...td, textAlign: "right", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" };
+  const tileLabel: React.CSSProperties = { fontSize: 11.5, color: "#8a6a3e", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, display: "flex", alignItems: "center" };
+  const blockTitle: React.CSSProperties = { fontSize: 16, fontWeight: 700, color: "#33302e", margin: 0, display: "flex", alignItems: "center" };
+  const blockSub: React.CSSProperties = { fontSize: 13, color: "#5b6472", margin: "4px 0 14px", lineHeight: 1.5 };
 
   return (
     <div style={wrap}>
-      {/* Titel, periode-keuze en terug-link op één rij: geen scrollen voor de basis. */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 6 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+      {/* Titel, periode-keuze en terug-link op één rij. */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
           <h1 style={{ fontSize: 22, margin: 0, color: "#d97316" }}>Verbruik</h1>
           <div style={{ display: "flex", gap: 6 }}>
             {PERIODS.map((p) => (
@@ -97,7 +132,7 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
                 key={p.key}
                 href={`/admin/usage?period=${p.key}`}
                 style={{
-                  padding: "4px 12px", borderRadius: 999, fontSize: 13, textDecoration: "none",
+                  padding: "5px 13px", borderRadius: 999, fontSize: 13, textDecoration: "none",
                   border: "1px solid " + (p.key === period ? "#d97316" : "#eadfce"),
                   background: p.key === period ? "#d97316" : "#fff",
                   color: p.key === period ? "#fff" : "#5b6472",
@@ -110,10 +145,10 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
         </div>
         <Link href="/admin" style={{ color: "#8a6a3e", fontSize: 14, textDecoration: "none" }}>&larr; Terug naar overzicht</Link>
       </div>
-      <p style={{ color: "#5b6472", maxWidth: 860, lineHeight: 1.45, margin: "0 0 14px", fontSize: 13 }}>
-        Wat het dashboard verbruikt aan betaalde diensten. <strong>Claude</strong> = de AI (chats, documenten, analyses),
-        gemeten in tokens met echte kosten. <strong>Ahrefs</strong> = zoekwoord-data, gemeten in aanroepen en units,
-        zonder bedrag (valt binnen het Ahrefs-abonnement; herhaalvragen komen uit de cache en kosten niets).
+      <p style={{ color: "#5b6472", maxWidth: 900, lineHeight: 1.5, margin: "0 0 22px", fontSize: 13.5 }}>
+        Wat het dashboard verbruikt aan betaalde diensten in de gekozen periode ({periodText}).
+        <strong> Claude</strong> is de AI (chats, documenten, analyses) en kost geld per gebruik;
+        <strong> Ahrefs</strong> levert de zoekwoord-data en verbruikt units binnen het vaste abonnement.
       </p>
 
       {loadError ? (
@@ -123,27 +158,54 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
       ) : (
         <>
           {/* Bovenaan: de totalen in één rij tegels */}
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 14 }}>
-            <div style={{ ...card, minWidth: 170, padding: "10px 16px" }}>
-              <div style={{ fontSize: 11.5, color: "#8a6a3e", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.4 }}>Totale kosten deze periode</div>
-              <div style={{ fontSize: 24, fontWeight: 700, color: "#d97316", lineHeight: 1.3 }}>{euros(totalCost)}</div>
-              <div style={{ fontSize: 12, color: "#5b6472" }}>{num(totalCalls)} aanroepen in totaal</div>
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 22 }}>
+            <div style={{ ...card, minWidth: 230, padding: "14px 20px" }}>
+              <div style={tileLabel}>
+                Totale kosten
+                <Hint text={`De opgetelde Claude-kosten over de gekozen periode: ${periodText}. Ahrefs telt hier niet mee, want dat valt binnen het vaste abonnement.`} />
+              </div>
+              <div style={{ fontSize: 26, fontWeight: 700, color: "#d97316", lineHeight: 1.35 }}>{euros(totalCost)}</div>
+              <div style={{ fontSize: 12.5, color: "#5b6472" }}>{periodText} &middot; {num(totalCalls)} aanroepen</div>
             </div>
-            {[...byService.entries()].map(([svc, v]) => (
-              <div key={svc} style={{ ...card, minWidth: 150, padding: "10px 16px" }}>
-                <div style={{ fontSize: 11.5, color: "#8a6a3e", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.4 }}>{SERVICE_LABEL[svc] || svc}</div>
-                <div style={{ fontSize: 20, fontWeight: 700, lineHeight: 1.3 }}>{svc === "ahrefs" ? "geen kosten" : euros(v.cost)}</div>
-                <div style={{ fontSize: 12, color: "#5b6472" }}>{num(v.calls)} aanroepen{svc === "ahrefs" ? " (binnen abonnement)" : ""}</div>
+            {[...byService.entries()].filter(([svc]) => svc !== "ahrefs").map(([svc, v]) => (
+              <div key={svc} style={{ ...card, minWidth: 200, padding: "14px 20px" }}>
+                <div style={tileLabel}>
+                  {SERVICE_LABEL[svc] || svc}
+                  {svc === "anthropic" && <Hint text="Alles wat de AI in het dashboard doet: chats, documenten, analyses. Gemeten in tokens (stukjes tekst); de kosten zijn echte dollars op basis van de tokenprijs." />}
+                </div>
+                <div style={{ fontSize: 22, fontWeight: 700, lineHeight: 1.35 }}>{euros(v.cost)}</div>
+                <div style={{ fontSize: 12.5, color: "#5b6472" }}>{num(v.calls)} aanroepen</div>
               </div>
             ))}
+            <div style={{ ...card, minWidth: 260, padding: "14px 20px" }}>
+              <div style={tileLabel}>
+                Ahrefs
+                <Hint text="Zoekwoord-data. Gemeten in units (Ahrefs' eigen tegoed-eenheid) en aanroepen. Er staat geen bedrag bij: het verbruik valt binnen het vaste Ahrefs-abonnement. Herhaalvragen komen uit de cache en verbruiken niets." />
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 700, lineHeight: 1.35 }}>
+                {ahrefsTotals ? `${num(ahrefsTotals.units)} units` : "geen verbruik"}
+              </div>
+              <div style={{ fontSize: 12.5, color: "#5b6472" }}>
+                {ahrefsTotals ? `${num(ahrefsTotals.calls)} aanroepen in deze periode` : "in deze periode"}
+              </div>
+              {ahrefsSub && ahrefsSub.used !== null && (
+                <div style={{ fontSize: 12.5, color: "#5b6472", marginTop: 6, borderTop: "1px solid #f1e9db", paddingTop: 6, display: "flex", alignItems: "center" }}>
+                  Abonnement: {num(ahrefsSub.used)}{ahrefsSub.limit !== null ? ` van ${num(ahrefsSub.limit)}` : ""} units gebruikt
+                  <Hint text="Rechtstreeks bij Ahrefs opgevraagd: het totale unit-verbruik van je Ahrefs-account in de huidige abonnementsmaand (alles meegeteld, ook gebruik buiten dit dashboard om)." />
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Daaronder de twee overzichten naast elkaar: links per klant, rechts per functie. */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(430px, 1fr))", gap: 14, alignItems: "start" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(480px, 1fr))", gap: 18, alignItems: "start" }}>
             {/* Blok 1: per klant */}
             <div style={card}>
-              <h2 style={blockTitle}>1. Per klant</h2>
-              <p style={blockSub}>Wat elke klant deze periode heeft verbruikt, uitgesplitst per dienst (Claude en Ahrefs apart).</p>
+              <h2 style={blockTitle}>
+                1. Per klant
+                <Hint text="Elke regel is één klant + één dienst. Een klant die zowel de AI als Ahrefs gebruikt, staat er dus twee keer: één regel voor Claude en één voor Ahrefs." />
+              </h2>
+              <p style={blockSub}>Wat elke klant deze periode heeft verbruikt, per dienst.</p>
               {rows.length === 0 ? (
                 <div style={{ color: "#5b6472", padding: "8px 4px", fontSize: 13.5 }}>
                   Nog geen verbruik in deze periode.
@@ -154,16 +216,23 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
                     <tr>
                       <th style={th}>Klant</th>
                       <th style={th}>Dienst</th>
-                      <th style={{ ...th, textAlign: "right" }}>Aanroepen</th>
-                      <th style={{ ...th, textAlign: "right" }}>Verbruik</th>
-                      <th style={{ ...th, textAlign: "right" }}>Kosten</th>
+                      <th style={thNum}>Aanroepen</th>
+                      <th style={thNum}>Verbruik</th>
+                      <th style={thNum}>Kosten</th>
                     </tr>
                   </thead>
                   <tbody>
                     {rows.map((r, i) => (
                       <tr key={i}>
-                        <td style={td}>{r.client_name || r.client_slug || "(onbekend)"}</td>
-                        <td style={td}>{SERVICE_LABEL[r.service] || r.service}</td>
+                        <td style={td}>
+                          {r.client_name || r.client_slug || (
+                            <span style={{ color: "#5b6472", display: "inline-flex", alignItems: "center" }}>
+                              Algemeen (geen klant)
+                              <Hint text="Verbruik dat niet aan één klant te koppelen was, bijvoorbeeld algemene functies of oudere metingen van voordat de klant-koppeling bestond. Nieuw verbruik krijgt vrijwel altijd gewoon de klantnaam." />
+                            </span>
+                          )}
+                        </td>
+                        <td style={tdNowrap}>{SERVICE_LABEL[r.service] || r.service}</td>
                         <td style={numTd}>{num(r.calls)}</td>
                         {/* Claude: tokens in+uit samengevat; Ahrefs: units. */}
                         <td style={numTd}>{r.service === "ahrefs" ? `${num(r.tokens_in)} units` : `${num(r.tokens_in + r.tokens_out)} tokens`}</td>
@@ -177,8 +246,11 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
 
             {/* Blok 2: per functie (alleen Claude; Ahrefs heeft geen kosten per functie) */}
             <div style={card}>
-              <h2 style={blockTitle}>2. Per functie (alleen Claude)</h2>
-              <p style={blockSub}>Dezelfde Claude-kosten als hiernaast, maar dan per knop of functie in het dashboard: zo zie je wélke functie het geld kost.</p>
+              <h2 style={blockTitle}>
+                2. Per functie (alleen Claude)
+                <Hint text="Dit zijn dezelfde Claude-kosten als in blok 1, maar anders gegroepeerd: per knop of functie in plaats van per klant. De totalen van beide blokken zijn dus gelijk." />
+              </h2>
+              <p style={blockSub}>Welke knop of functie in het dashboard kost het geld.</p>
               {actionRows.length === 0 ? (
                 <div style={{ color: "#5b6472", padding: "8px 4px", fontSize: 13.5 }}>
                   Nog geen Claude-verbruik in deze periode.
@@ -188,9 +260,9 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
                   <thead>
                     <tr>
                       <th style={th}>Functie</th>
-                      <th style={{ ...th, textAlign: "right" }}>Aanroepen</th>
-                      <th style={{ ...th, textAlign: "right" }}>Tokens</th>
-                      <th style={{ ...th, textAlign: "right" }}>Kosten</th>
+                      <th style={thNum}>Aanroepen</th>
+                      <th style={thNum}>Tokens</th>
+                      <th style={thNum}>Kosten</th>
                     </tr>
                   </thead>
                   <tbody>

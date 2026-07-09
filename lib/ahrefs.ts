@@ -89,16 +89,53 @@ async function ahrefsFetch(path: string, params: Record<string, string>): Promis
     }
     // Verbruik-meting: één regel per echte API-call (cache-hits komen hier nooit).
     // tokens_in hergebruiken we als "units"; mag de echte taak nooit breken.
-    logUsage({
-      slug: ahrefsAls.getStore()?.slug ?? null,
-      service: "ahrefs",
-      action: path,
-      tokensIn: readUnitsHeader(res.headers) ?? 0,
-    }).catch(() => {});
+    // Meta-aanvragen (abonnement-tegoed opvragen) tellen zelf niet als verbruik.
+    if (!path.startsWith("/subscription-info")) {
+      logUsage({
+        slug: ahrefsAls.getStore()?.slug ?? null,
+        service: "ahrefs",
+        action: path,
+        tokensIn: readUnitsHeader(res.headers) ?? 0,
+      }).catch(() => {});
+    }
     return await res.json();
   } finally {
     clearTimeout(timer);
   }
+}
+
+// ── Abonnement-tegoed (voor de verbruik-pagina) ──
+// Vraagt bij Ahrefs op hoeveel API-units er deze abonnementsmaand zijn gebruikt
+// van het totaal. Defensief: velden kunnen per abonnement verschillen, en bij
+// een fout geven we null terug (de pagina verbergt het blokje dan gewoon).
+// Uurcache in het geheugen zodat de verbruik-pagina snel blijft.
+export type AhrefsSubscriptionUsage = { used: number | null; limit: number | null };
+let subUsageCache: { data: AhrefsSubscriptionUsage | null; at: number } | null = null;
+
+export async function getAhrefsSubscriptionUsage(): Promise<AhrefsSubscriptionUsage | null> {
+  if (!ahrefsConfigured()) return null;
+  if (subUsageCache && Date.now() - subUsageCache.at < 3600000) return subUsageCache.data;
+  let data: AhrefsSubscriptionUsage | null = null;
+  try {
+    const raw = (await ahrefsFetch("/subscription-info/limits-and-usage", {})) as Record<string, unknown>;
+    const src = (raw?.limits_and_usage ?? raw) as Record<string, unknown>;
+    const pick = (...keys: string[]): number | null => {
+      for (const k of keys) {
+        const n = Number(src?.[k]);
+        if (Number.isFinite(n) && n >= 0) return n;
+      }
+      return null;
+    };
+    data = {
+      used: pick("units_usage_workspace", "units_usage_api_key", "units_used", "usage"),
+      limit: pick("units_limit_workspace", "units_limit_api_key", "units_limit", "limit"),
+    };
+    if (data.used === null && data.limit === null) data = null;
+  } catch {
+    data = null;
+  }
+  subUsageCache = { data, at: Date.now() };
+  return data;
 }
 
 async function ensureCache(): Promise<void> {
