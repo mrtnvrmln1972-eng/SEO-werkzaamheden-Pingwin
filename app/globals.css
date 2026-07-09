@@ -1515,6 +1515,9 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .compose-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 300; padding: 20px; }
 .compose-modal { width: 560px; max-width: 96vw; max-height: 88vh; display: flex; flex-direction: column; background: var(--white); border-radius: 14px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.25); }
 .compose-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; background: var(--dark); color: var(--white); font-weight: 700; }
+/* Multimedia Concepts-lijst: eigen tint zodat de twee groepen visueel gescheiden zijn */
+.mmc-list table tbody tr { background: #F4F8FB; }
+.mmc-list table tbody tr.clickable-row:hover { background: #E8F0F7; }
 /* Selectie-acties: zwevend knopje bij geselecteerde tekst + toast + mini-compose */
 .selection-pop { position: fixed; transform: translate(-50%, -100%); z-index: 400; display: flex; gap: 4px; background: var(--dark); border-radius: 999px; padding: 4px 6px; box-shadow: 0 6px 20px rgba(0,0,0,0.25); }
 .selection-pop button { border: none; background: none; color: var(--white); font-family: 'Montserrat', sans-serif; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; cursor: pointer; white-space: nowrap; }

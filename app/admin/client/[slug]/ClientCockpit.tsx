@@ -47,7 +47,7 @@ type CockpitData = {
     thisLabel: string;
     nextLabel: string;
   };
-  allClients: { slug: string; name: string }[];
+  allClients: { slug: string; name: string; grp?: string | null }[];
   gsc: GscData | null;
   ga4: Ga4Data | null;
   googleConfigured: boolean;
@@ -251,9 +251,24 @@ export default function ClientCockpit({
             onChange={(e) => router.push(`/admin/client/${e.target.value}`)}
             title="Wissel van klant"
           >
-            {allClients.map((c) => (
-              <option key={c.slug} value={c.slug}>{c.name}</option>
-            ))}
+            {allClients.some((c) => c.grp === "mmc") ? (
+              <>
+                <optgroup label="Mijn eigen klanten">
+                  {allClients.filter((c) => c.grp !== "mmc").map((c) => (
+                    <option key={c.slug} value={c.slug}>{c.name}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="Multimedia Concepts">
+                  {allClients.filter((c) => c.grp === "mmc").map((c) => (
+                    <option key={c.slug} value={c.slug}>{c.name}</option>
+                  ))}
+                </optgroup>
+              </>
+            ) : (
+              allClients.map((c) => (
+                <option key={c.slug} value={c.slug}>{c.name}</option>
+              ))
+            )}
           </select>
           <nav className="header-tabs">
             {([

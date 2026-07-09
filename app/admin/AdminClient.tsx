@@ -15,9 +15,10 @@ const EMPTY = {
   linkbuilding: "",
   uurtarief: "",
   beschikbareUren: "",
+  grp: "",
 };
 
-export default function AdminClient({ initialClients, isOwner = true }: { initialClients: ClientConfig[]; isOwner?: boolean }) {
+export default function AdminClient({ initialClients, isOwner = true, showGroups = false }: { initialClients: ClientConfig[]; isOwner?: boolean; showGroups?: boolean }) {
   const router = useRouter();
   const [clients, setClients] = useState<ClientConfig[]>(initialClients);
   const [form, setForm] = useState({ ...EMPTY });
@@ -128,6 +129,7 @@ export default function AdminClient({ initialClients, isOwner = true }: { initia
           linkbuilding: Number(form.linkbuilding),
           uurtarief: Number(form.uurtarief),
           beschikbareUren: Number(form.beschikbareUren),
+          grp: form.grp,
         }),
       });
       const data = await res.json();
@@ -184,6 +186,89 @@ export default function AdminClient({ initialClients, isOwner = true }: { initia
     navigator.clipboard?.writeText(text);
   }
 
+  // Twee lijsten: eigen klanten en (alleen in de Pingwin-wereld) de
+  // Multimedia Concepts-klanten als aparte sectie met eigen tint.
+  const ownClients = clients.filter((c) => c.grp !== "mmc");
+  const mmcClients = clients.filter((c) => c.grp === "mmc");
+
+  const clientTable = (list: ClientConfig[], emptyText: string) => (
+    <div className="task-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Bedrijf</th>
+            <th>Inlognaam</th>
+            <th>E-mail</th>
+            <th>Maandfee</th>
+            <th>Uurtarief</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {list.length === 0 && (
+            <tr><td colSpan={6} style={{ textAlign: "center", padding: 40, color: "var(--gray)" }}>{emptyText}</td></tr>
+          )}
+          {list.map((c) => (
+            <Fragment key={c.slug}>
+              <tr className="clickable-row" onClick={() => openDashboard(c)} title="Open de cockpit van deze klant">
+                <td>
+                  <strong>{c.name}</strong>
+                  {overdue[c.slug] && (
+                    <span
+                      className="invoice-badge"
+                      title={`${overdue[c.slug].count} factu${overdue[c.slug].count === 1 ? "ur staat" : "ren staan"} langer dan 30 dagen open (€ ${overdue[c.slug].total.toLocaleString("nl-NL", { minimumFractionDigits: 2 })})`}
+                    >!</span>
+                  )}
+                  {" "}<span className="row-arrow">&rarr;</span>
+                </td>
+                <td>{c.loginEnabled ? c.loginId : <span className="muted">geen login</span>}</td>
+                <td>{c.email || <span className="muted">&mdash;</span>}</td>
+                <td>&euro;{c.budget.maandbudget.toFixed(0)}{c.budget.linkbuilding ? <span className="muted"> (w.v. &euro;{c.budget.linkbuilding.toFixed(0)} LB)</span> : null}</td>
+                <td>&euro;{c.budget.uurtarief.toFixed(0)}</td>
+                <td style={{ whiteSpace: "nowrap" }}>
+                  {isOwner ? (
+                    <>
+                      <button className="mini-btn" onClick={(e) => openEdit(e, c)}>Budget</button>{" "}
+                      <button className="mini-btn" onClick={(e) => resetPw(e, c)}>Nieuw wachtwoord</button>{" "}
+                      <button className="mini-btn" onClick={(e) => remove(e, c)}>Verwijder</button>
+                    </>
+                  ) : (
+                    <span className="muted">&mdash;</span>
+                  )}
+                </td>
+              </tr>
+              {editSlug === c.slug && (
+                <tr onClick={(e) => e.stopPropagation()}>
+                  <td colSpan={6} style={{ background: "var(--gray-light)" }}>
+                    <div className="budget-edit">
+                      <div className="budget-edit-title">Budget aanpassen voor {c.name}</div>
+                      <div className="budget-edit-grid">
+                        <label>Maandfee (&euro;, incl. linkbuilding)
+                          <input type="number" value={editForm.maandbudget} onChange={(e) => editSet("maandbudget", e.target.value)} />
+                        </label>
+                        <label>Standaard linkbuilding per maand (&euro;)
+                          <input type="number" value={editForm.linkbuilding} onChange={(e) => editSet("linkbuilding", e.target.value)} />
+                        </label>
+                        <label>Uurtarief (&euro;)
+                          <input type="number" value={editForm.uurtarief} onChange={(e) => editSet("uurtarief", e.target.value)} />
+                        </label>
+                      </div>
+                      <div className="hint" style={{ marginTop: 8 }}>De beschikbare uren worden per maand berekend uit (maandfee &minus; linkbuilding) / uurtarief. Wil je de linkbuilding voor één specifieke maand afwijkend zetten, doe dat in de Werkzaamheden-tab bij die maand; dan passen alleen de uren van die maand zich aan.</div>
+                      <div className="budget-edit-actions">
+                        <button className="primary-btn small" onClick={(e) => saveBudget(e, c)} disabled={editBusy}>{editBusy ? "Opslaan…" : "Opslaan"}</button>
+                        <button className="ghost-btn small" onClick={(e) => { e.stopPropagation(); setEditSlug(null); }}>Annuleren</button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </Fragment>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
   return (
     <>
       <div className="header">
@@ -238,82 +323,19 @@ export default function AdminClient({ initialClients, isOwner = true }: { initia
           </div>
         )}
 
-        <div className="section-title">Klanten ({clients.length})</div>
-        <div className="task-table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Bedrijf</th>
-                <th>Inlognaam</th>
-                <th>E-mail</th>
-                <th>Maandfee</th>
-                <th>Uurtarief</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {clients.length === 0 && (
-                <tr><td colSpan={6} style={{ textAlign: "center", padding: 40, color: "var(--gray)" }}>Nog geen klanten.</td></tr>
-              )}
-              {clients.map((c) => (
-                <Fragment key={c.slug}>
-                  <tr className="clickable-row" onClick={() => openDashboard(c)} title="Open de cockpit van deze klant">
-                    <td>
-                      <strong>{c.name}</strong>
-                      {overdue[c.slug] && (
-                        <span
-                          className="invoice-badge"
-                          title={`${overdue[c.slug].count} factu${overdue[c.slug].count === 1 ? "ur staat" : "ren staan"} langer dan 30 dagen open (€ ${overdue[c.slug].total.toLocaleString("nl-NL", { minimumFractionDigits: 2 })})`}
-                        >!</span>
-                      )}
-                      {" "}<span className="row-arrow">&rarr;</span>
-                    </td>
-                    <td>{c.loginId}</td>
-                    <td>{c.email || <span className="muted">&mdash;</span>}</td>
-                    <td>&euro;{c.budget.maandbudget.toFixed(0)}{c.budget.linkbuilding ? <span className="muted"> (w.v. &euro;{c.budget.linkbuilding.toFixed(0)} LB)</span> : null}</td>
-                    <td>&euro;{c.budget.uurtarief.toFixed(0)}</td>
-                    <td style={{ whiteSpace: "nowrap" }}>
-                      {isOwner ? (
-                        <>
-                          <button className="mini-btn" onClick={(e) => openEdit(e, c)}>Budget</button>{" "}
-                          <button className="mini-btn" onClick={(e) => resetPw(e, c)}>Nieuw wachtwoord</button>{" "}
-                          <button className="mini-btn" onClick={(e) => remove(e, c)}>Verwijder</button>
-                        </>
-                      ) : (
-                        <span className="muted">&mdash;</span>
-                      )}
-                    </td>
-                  </tr>
-                  {editSlug === c.slug && (
-                    <tr onClick={(e) => e.stopPropagation()}>
-                      <td colSpan={6} style={{ background: "var(--gray-light)" }}>
-                        <div className="budget-edit">
-                          <div className="budget-edit-title">Budget aanpassen voor {c.name}</div>
-                          <div className="budget-edit-grid">
-                            <label>Maandfee (&euro;, incl. linkbuilding)
-                              <input type="number" value={editForm.maandbudget} onChange={(e) => editSet("maandbudget", e.target.value)} />
-                            </label>
-                            <label>Standaard linkbuilding per maand (&euro;)
-                              <input type="number" value={editForm.linkbuilding} onChange={(e) => editSet("linkbuilding", e.target.value)} />
-                            </label>
-                            <label>Uurtarief (&euro;)
-                              <input type="number" value={editForm.uurtarief} onChange={(e) => editSet("uurtarief", e.target.value)} />
-                            </label>
-                          </div>
-                          <div className="hint" style={{ marginTop: 8 }}>De beschikbare uren worden per maand berekend uit (maandfee &minus; linkbuilding) / uurtarief. Wil je de linkbuilding voor één specifieke maand afwijkend zetten, doe dat in de Werkzaamheden-tab bij die maand; dan passen alleen de uren van die maand zich aan.</div>
-                          <div className="budget-edit-actions">
-                            <button className="primary-btn small" onClick={(e) => saveBudget(e, c)} disabled={editBusy}>{editBusy ? "Opslaan…" : "Opslaan"}</button>
-                            <button className="ghost-btn small" onClick={(e) => { e.stopPropagation(); setEditSlug(null); }}>Annuleren</button>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </Fragment>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {showGroups && mmcClients.length > 0 ? (
+          <>
+            <div className="section-title">Mijn eigen klanten ({ownClients.length})</div>
+            {clientTable(ownClients, "Nog geen klanten.")}
+            <div className="section-title" style={{ marginTop: 36 }}>Multimedia Concepts ({mmcClients.length})</div>
+            <div className="mmc-list">{clientTable(mmcClients, "Nog geen Multimedia Concepts-klanten.")}</div>
+          </>
+        ) : (
+          <>
+            <div className="section-title">Klanten ({clients.length})</div>
+            {clientTable(clients, "Nog geen klanten.")}
+          </>
+        )}
 
         {isOwner && (
         <div style={{ marginTop: 40 }}>
@@ -338,25 +360,34 @@ export default function AdminClient({ initialClients, isOwner = true }: { initia
               <label>E-mailadres klant</label>
               <input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="contact@klant.nl" />
             </div>
+            {showGroups && (
+              <div className="field">
+                <label>Groep</label>
+                <select className="compose-input" value={form.grp} onChange={(e) => set("grp", e.target.value)}>
+                  <option value="">Mijn eigen klanten</option>
+                  <option value="mmc">Multimedia Concepts (cockpit-only, geen login)</option>
+                </select>
+              </div>
+            )}
             <div className="field field-wide">
-              <label>Google Sheet-link (van het juiste tabblad)</label>
-              <input value={form.sheetUrl} onChange={(e) => set("sheetUrl", e.target.value)} placeholder="https://docs.google.com/spreadsheets/d/.../edit#gid=..." required />
+              <label>Google Sheet-link (van het juiste tabblad{form.grp === "mmc" ? "; optioneel" : ""})</label>
+              <input value={form.sheetUrl} onChange={(e) => set("sheetUrl", e.target.value)} placeholder="https://docs.google.com/spreadsheets/d/.../edit#gid=..." required={form.grp !== "mmc"} />
             </div>
             <div className="field">
               <label>Maandfee (&euro;, incl. linkbuilding)</label>
-              <input type="number" value={form.maandbudget} onChange={(e) => set("maandbudget", e.target.value)} placeholder="1800" required />
+              <input type="number" value={form.maandbudget} onChange={(e) => set("maandbudget", e.target.value)} placeholder="1800" required={form.grp !== "mmc"} />
             </div>
             <div className="field">
               <label>Linkbuilding-budget (&euro;)</label>
-              <input type="number" value={form.linkbuilding} onChange={(e) => set("linkbuilding", e.target.value)} placeholder="600" required />
+              <input type="number" value={form.linkbuilding} onChange={(e) => set("linkbuilding", e.target.value)} placeholder="600" required={form.grp !== "mmc"} />
             </div>
             <div className="field">
               <label>Uurtarief (&euro;)</label>
-              <input type="number" value={form.uurtarief} onChange={(e) => set("uurtarief", e.target.value)} placeholder="100" required />
+              <input type="number" value={form.uurtarief} onChange={(e) => set("uurtarief", e.target.value)} placeholder="100" required={form.grp !== "mmc"} />
             </div>
             <div className="field">
               <label>Beschikbare uren per maand</label>
-              <input type="number" value={form.beschikbareUren} onChange={(e) => set("beschikbareUren", e.target.value)} placeholder="12" required />
+              <input type="number" value={form.beschikbareUren} onChange={(e) => set("beschikbareUren", e.target.value)} placeholder="12" required={form.grp !== "mmc"} />
             </div>
           </div>
 

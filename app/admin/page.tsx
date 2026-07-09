@@ -15,5 +15,7 @@ export default async function AdminPage() {
   const all = await listClients();
   // Gast: alleen de eigen klanten. Eigenaar: alles.
   const clients = scope.isOwner ? all : all.filter((c) => scope.allowedSlugs?.includes(c.slug));
-  return <AdminClient initialClients={clients} isOwner={scope.isOwner} />;
+  // Groepen (Multimedia Concepts) alleen in de Pingwin-wereld tonen.
+  const isNoc = (process.env.VERCEL_PROJECT_PRODUCTION_URL || "").includes("noc-seo-cockpit");
+  return <AdminClient initialClients={clients} isOwner={scope.isOwner} showGroups={!isNoc} />;
 }

@@ -134,7 +134,7 @@ export default async function ClientCockpitPage({ params, searchParams }: { para
       msConnected={ms.connected}
       myEmail={ms.account}
       monthTasks={monthTasks}
-      allClients={allClients.map((c) => ({ slug: c.slug, name: c.name }))}
+      allClients={allClients.map((c) => ({ slug: c.slug, name: c.name, grp: c.grp }))}
       gsc={gsc}
       ga4={ga4}
       googleConfigured={google.configured}

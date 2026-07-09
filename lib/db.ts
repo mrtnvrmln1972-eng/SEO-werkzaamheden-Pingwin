@@ -121,6 +121,10 @@ async function init(): Promise<void> {
   // E-mailadres van het teamlid, voor de knop "Mail inloggegevens".
   await sql`ALTER TABLE team_users ADD COLUMN IF NOT EXISTS email TEXT`;
 
+  // Klantgroep: leeg/null = eigen Pingwin-klant, 'mmc' = Multimedia Concepts
+  // (tweede lijst in het Pingwin-dashboard; cockpit-only, geen login/sheet).
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS grp TEXT`;
+
   // ── App-instellingen (kleine sleutel/waarde-tabel, o.a. administratie-e-mail) ──
   await sql`
     CREATE TABLE IF NOT EXISTS app_settings (

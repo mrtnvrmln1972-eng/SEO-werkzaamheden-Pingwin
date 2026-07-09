@@ -41,6 +41,8 @@ export type ClientConfig = {
   moneybirdContactId: string | null;
   seoProfile: string | null;
   loginEnabled: boolean;
+  // Klantgroep: null = eigen Pingwin-klant, "mmc" = Multimedia Concepts.
+  grp: string | null;
   budget: ClientBudget;
   cockpit: ClientCockpit;
 };
@@ -64,6 +66,7 @@ type ClientRow = {
   moneybird_contact_id: string | null;
   seo_profile: string | null;
   login_enabled: boolean | null;
+  grp: string | null;
   email_domain: string | null;
   work_doc_url: string | null;
   results_url: string | null;
@@ -86,6 +89,7 @@ function rowToConfig(r: ClientRow): ClientConfig {
     moneybirdContactId: r.moneybird_contact_id ?? null,
     seoProfile: r.seo_profile ?? null,
     loginEnabled: r.login_enabled === null || r.login_enabled === undefined ? true : !!r.login_enabled,
+    grp: r.grp || null,
     budget: {
       maandbudget: Number(r.maandbudget),
       linkbuilding: Number(r.linkbuilding),
@@ -158,12 +162,18 @@ export type NewClientInput = {
   name: string;
   loginId: string;
   email: string;
+  // Leeg = geen Google Sheet (cockpit-only klant); het dashboard valt dan
+  // terug op de taken uit de database.
   sheetId: string;
   gid: string;
   maandbudget: number;
   linkbuilding: number;
   uurtarief: number;
   beschikbareUren: number;
+  // Klantgroep (null/leeg = eigen klant, "mmc" = Multimedia Concepts).
+  grp?: string | null;
+  // Klant-login direct uit (voor cockpit-only klanten).
+  loginEnabled?: boolean;
 };
 
 // Maakt een klant aan, genereert een wachtwoord en geeft dat ÉÉN keer terug.
@@ -179,12 +189,14 @@ export async function createClient(
   const { rows } = await sql<ClientRow>`
     INSERT INTO clients
       (slug, login_id, name, email, sheet_id, gid,
-       maandbudget, linkbuilding, urenbudget, uurtarief, beschikbare_uren, password_hash)
+       maandbudget, linkbuilding, urenbudget, uurtarief, beschikbare_uren, password_hash,
+       grp, login_enabled)
     VALUES
       (${slug}, ${input.loginId.trim()}, ${input.name.trim()}, ${input.email.trim() || null},
        ${input.sheetId}, ${input.gid},
        ${input.maandbudget}, ${input.linkbuilding}, ${urenBudget}, ${input.uurtarief},
-       ${input.beschikbareUren}, ${passwordHash})
+       ${input.beschikbareUren}, ${passwordHash},
+       ${(input.grp || "").trim() || null}, ${input.loginEnabled ?? true})
     RETURNING *`;
 
   return { client: rowToConfig(rows[0]), password };

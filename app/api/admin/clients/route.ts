@@ -47,18 +47,31 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { sheetId, gid } = parseSheetUrl(sheetUrl);
-  if (!sheetId) {
-    return NextResponse.json(
-      { ok: false, error: "Kon geen geldige Google Sheet-link herkennen. Plak de volledige link naar het juiste tabblad." },
-      { status: 400 },
-    );
+  // Klantgroep: leeg = eigen klant, "mmc" = Multimedia Concepts (cockpit-only,
+  // login standaard uit, Google Sheet niet verplicht).
+  const grp = String(body.grp || "").trim() || null;
+
+  // Sheet is optioneel geworden (cockpit-only klanten hebben er geen). Is er
+  // wél een link ingevuld, dan moet die geldig zijn.
+  let sheetId = "", gid = "0";
+  if (sheetUrl) {
+    const parsed = parseSheetUrl(sheetUrl);
+    if (!parsed.sheetId) {
+      return NextResponse.json(
+        { ok: false, error: "Kon geen geldige Google Sheet-link herkennen. Plak de volledige link naar het juiste tabblad, of laat het veld leeg (cockpit-only)." },
+        { status: 400 },
+      );
+    }
+    sheetId = parsed.sheetId; gid = parsed.gid;
   }
 
   try {
     const { client, password } = await createClient({
       name, loginId, email, sheetId, gid,
       maandbudget, linkbuilding, uurtarief, beschikbareUren,
+      grp,
+      // MMC-klanten krijgen standaard géén klant-login (cockpit-only).
+      loginEnabled: grp === "mmc" ? false : true,
     });
     return NextResponse.json({ ok: true, client, password });
   } catch (err) {
