@@ -11,7 +11,7 @@ import { callClaude } from "./anthropic";
 // kunnen daar met één klik als taak (zonder maand) worden toegevoegd.
 // ═══════════════════════════════════════════════════════════
 
-export type StrategyAction = { taak: string; wie: string; fase: string; taskId?: number };
+export type StrategyAction = { taak: string; wie: string; fase: string; taskId?: number; done?: boolean };
 export type StrategySession = {
   id: number;
   title: string;
@@ -65,6 +65,19 @@ export async function deleteStrategySession(slug: string, id: number): Promise<b
   await ensureTable();
   const { rowCount } = await sql`DELETE FROM client_strategy_sessions WHERE client_slug = ${slug} AND id = ${id}`;
   return (rowCount || 0) > 0;
+}
+
+// Markeert een actiepunt als verwerkt (of draait dat terug).
+export async function markActionDone(slug: string, id: number, actionIndex: number, done: boolean): Promise<void> {
+  await ensureSchema();
+  await ensureTable();
+  const { rows } = await sql`SELECT actions FROM client_strategy_sessions WHERE client_slug = ${slug} AND id = ${id} LIMIT 1`;
+  if (!rows[0]) return;
+  let actions: StrategyAction[] = [];
+  try { const a = typeof rows[0].actions === "string" ? JSON.parse(rows[0].actions) : rows[0].actions; if (Array.isArray(a)) actions = a; } catch { /* leeg */ }
+  if (!actions[actionIndex]) return;
+  actions[actionIndex] = { ...actions[actionIndex], done };
+  await sql`UPDATE client_strategy_sessions SET actions = ${JSON.stringify(actions)} WHERE client_slug = ${slug} AND id = ${id}`;
 }
 
 // Zet het taak-id bij een actiepunt zodra het als taak is toegevoegd (vinkje in de UI).

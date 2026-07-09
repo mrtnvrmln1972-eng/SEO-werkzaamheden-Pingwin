@@ -11,7 +11,7 @@ import { mdToHtml } from "../../../../lib/markdown";
 // en de actiepunten, die je met één klik als taak (zonder maand) toevoegt.
 // ═══════════════════════════════════════════════════════════
 
-type StrategyAction = { taak: string; wie: string; fase: string; taskId?: number };
+type StrategyAction = { taak: string; wie: string; fase: string; taskId?: number; done?: boolean };
 type StrategySession = { id: number; title: string; summary: string; transcript: string; actions: StrategyAction[]; createdAt: string };
 
 function dNl(iso: string): string {
@@ -67,6 +67,17 @@ export default function StrategyPanel({ slug, openSessionId, onTaskAdded }: { sl
     } catch { setMsg("Toevoegen mislukt."); } finally { setBusyKey(""); }
   }
 
+  // Actiepunt afvinken als verwerkt (of terugdraaien); wordt opgeslagen op de sessie.
+  async function toggleDone(sessionId: number, actionIndex: number, done: boolean) {
+    setSessions((ss) => ss.map((s) => s.id !== sessionId ? s : { ...s, actions: s.actions.map((a, i) => (i === actionIndex ? { ...a, done } : a)) }));
+    try {
+      await fetch("/api/admin/strategy", {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, sessionId, actionIndex, done }),
+      });
+    } catch { /* status is hulpinfo */ }
+  }
+
   async function removeSession(id: number) {
     if (!window.confirm("Deze strategie-sessie verwijderen? (Al toegevoegde taken blijven bestaan.)")) return;
     try {
@@ -106,9 +117,11 @@ export default function StrategyPanel({ slug, openSessionId, onTaskAdded }: { sl
                       <div className="strategy-actions">
                         <div className="strategy-actions-title">Actiepunten uit dit gesprek</div>
                         {s.actions.map((a, i) => (
-                          <div key={i} className="strategy-action">
+                          <div key={i} className={"strategy-action" + (a.done ? " strategy-action-verwerkt" : "")}>
                             <span className="strategy-action-taak">{a.taak}</span>
-                            <span className="strategy-action-meta">{[a.fase, a.wie].filter(Boolean).join(" · ")}</span>
+                            {a.done
+                              ? <button type="button" className="ghost-btn small strategy-verwerkt-btn on" onClick={() => toggleDone(s.id, i, false)} title="Klik om het verwerkt-vinkje weer weg te halen">✓ Verwerkt</button>
+                              : <button type="button" className="ghost-btn small strategy-verwerkt-btn" onClick={() => toggleDone(s.id, i, true)} title="Markeer dit actiepunt als verwerkt (zonder er een taak van te maken)">Verwerkt</button>}
                             {a.taskId
                               ? <span className="strategy-action-done" title="Deze staat al tussen de werkzaamheden">✓ in taken</span>
                               : <button type="button" className="ghost-btn small" disabled={busyKey === `${s.id}:${i}`} onClick={() => addTask(s.id, i)}>{busyKey === `${s.id}:${i}` ? "Bezig…" : "+ Toevoegen aan taken"}</button>}

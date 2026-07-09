@@ -3,7 +3,7 @@ import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
 import { getClientBySlug } from "../../../../lib/clients";
 import { anthropicConfigured } from "../../../../lib/anthropic";
-import { createStrategySession, getStrategySessions, deleteStrategySession } from "../../../../lib/strategy";
+import { createStrategySession, getStrategySessions, deleteStrategySession, markActionDone } from "../../../../lib/strategy";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -39,6 +39,20 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     return NextResponse.json({ ok: false, error: (e as Error).message || "Vastleggen mislukt." }, { status: 500 });
   }
+}
+
+// PATCH: markeert een actiepunt als verwerkt (of draait dat terug).
+export async function PATCH(req: NextRequest) {
+  if (!admin(req)) return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
+  let body: { slug?: string; sessionId?: number; actionIndex?: number; done?: boolean };
+  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: "Ongeldige aanvraag." }, { status: 400 }); }
+  const slug = String(body.slug || "").trim();
+  const g = await guardSlug(req, slug); if (!g.ok) return g.res;
+  const sessionId = Number(body.sessionId || 0);
+  const actionIndex = Number(body.actionIndex ?? -1);
+  if (!slug || !sessionId || actionIndex < 0) return NextResponse.json({ ok: false, error: "Sessie en actiepunt zijn verplicht." }, { status: 400 });
+  await markActionDone(slug, sessionId, actionIndex, body.done !== false).catch(() => { /* status is hulpinfo */ });
+  return NextResponse.json({ ok: true });
 }
 
 // DELETE: verwijdert een strategie-sessie.
