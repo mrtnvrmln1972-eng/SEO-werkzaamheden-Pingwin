@@ -154,6 +154,24 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
     if (thread !== "algemeen") setThread("algemeen");
   }
 
+  // Legt het huidige gesprek vast als site-wide strategie-sessie (Taken-tabblad):
+  // AI maakt er een beschrijvende titel, de conclusie en de actiepunten van.
+  const [strategyBusy, setStrategyBusy] = useState(false);
+  const [strategyMsg, setStrategyMsg] = useState("");
+  async function saveStrategy() {
+    if (strategyBusy || messages.length < 2) return;
+    setStrategyBusy(true); setStrategyMsg(""); setError("");
+    try {
+      const res = await fetch("/api/admin/strategy", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, messages }),
+      });
+      const d = await res.json();
+      if (d.ok) setStrategyMsg(`Vastgelegd als strategie-sessie "${d.session?.title || ""}". Je vindt hem bovenaan het Taken-tabblad onder Site-wide strategie, met de actiepunten om als taak toe te voegen.`);
+      else setError(d.error || "Vastleggen mislukt.");
+    } catch { setError("Vastleggen mislukt."); } finally { setStrategyBusy(false); }
+  }
+
   async function send(text: string) {
     const q = text.trim();
     if (!q || busy) return;
@@ -210,7 +228,13 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
                     ))}
                   </select>
                   <button type="button" className="ghost-btn small" onClick={newThread}>+ Nieuw</button>
+                  {messages.length >= 2 && (
+                    <button type="button" className="ghost-btn small" onClick={saveStrategy} disabled={strategyBusy} title="Legt dit hele gesprek (met conclusie en actiepunten) vast als sessie onder Site-wide strategie, bovenaan het Taken-tabblad.">
+                      {strategyBusy ? "Vastleggen…" : "→ Site-wide strategie"}
+                    </button>
+                  )}
                 </div>
+                {strategyMsg && <div className="saved-msg" style={{ margin: "6px 0" }}>{strategyMsg}</div>}
                 {messages.length === 0 && (
                   <div className="chat-suggest">
                     {SUGGESTIONS.map((s) => (
