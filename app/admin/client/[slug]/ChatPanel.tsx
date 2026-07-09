@@ -203,6 +203,18 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
     } catch { setError("Vastleggen mislukt."); } finally { setStrategyBusy(false); }
   }
 
+  // Eén blok (bericht) uit het gesprek verwijderen; wordt ook op de server opgeslagen.
+  function deleteMessage(idx: number) {
+    setMessages((prev) => {
+      const next = prev.filter((_, i) => i !== idx);
+      fetch("/api/admin/chat", {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, thread, messages: next }),
+      }).catch(() => { /* lokaal is hij al weg */ });
+      return next;
+    });
+  }
+
   async function send(text: string) {
     const q = text.trim();
     if ((!q && !pendingImage) || busy) return;
@@ -279,6 +291,7 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
                 <div className="chat-log">
                   {messages.map((m, i) => (
                     <div key={i} className={"chat-msg " + m.role}>
+                      <button type="button" className="chat-msg-del" title="Dit blok uit het gesprek verwijderen" onClick={() => deleteMessage(i)}>&times;</button>
                       {m.role === "assistant"
                         ? <div className="chat-bubble chat-md" dangerouslySetInnerHTML={{ __html: mdToHtml(m.content) }} />
                         : <div className="chat-bubble">{m.image && <img className="chat-img" src={m.image} alt="Meegestuurde afbeelding" />}{m.content}</div>}

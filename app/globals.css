@@ -1759,3 +1759,10 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .chat-img-preview { display: flex; align-items: center; gap: 10px; margin: 6px 0; padding: 6px 8px; border: 1px dashed var(--border); border-radius: 8px; background: var(--gray-light); font-size: 12px; color: var(--gray); }
 .chat-img-preview img { max-width: 64px; max-height: 48px; border-radius: 6px; border: 1px solid var(--border); }
 .chat-dropping { outline: 2px dashed var(--orange); outline-offset: -6px; border-radius: 10px; }
+
+/* Bericht-blokken in de chat verwijderbaar: kruisje verschijnt bij hover. */
+.chat-msg { position: relative; }
+.chat-msg-del { position: absolute; top: -6px; right: -2px; z-index: 2; width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--border); background: var(--white); color: var(--gray); font-size: 13px; line-height: 1; cursor: pointer; opacity: 0; transition: opacity .12s; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+.chat-msg.user .chat-msg-del { right: auto; left: -2px; }
+.chat-msg:hover .chat-msg-del { opacity: 1; }
+.chat-msg-del:hover { color: #C62828; border-color: #C62828; }

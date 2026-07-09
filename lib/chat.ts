@@ -251,6 +251,11 @@ function chatTools(client: ClientConfig): { tools: ToolDef[]; run: ToolRunner } 
   return { tools, run };
 }
 
+// Vervangt de historie van een gesprek (voor het verwijderen van losse berichten).
+export async function replaceChatHistory(slug: string, thread: string, messages: ChatMessage[]): Promise<void> {
+  await saveChatHistory(slug, thread, messages);
+}
+
 export async function answerChat(slug: string, messages: ChatMessage[], thread = "algemeen"): Promise<{ ok: boolean; answer?: string; error?: string }> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return { ok: false, error: "Geen ANTHROPIC_API_KEY ingesteld." };

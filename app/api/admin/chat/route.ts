@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
-import { answerChat, clearChatHistory, getChatHistory, listChatThreads } from "../../../../lib/chat";
+import { answerChat, clearChatHistory, getChatHistory, listChatThreads, replaceChatHistory } from "../../../../lib/chat";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -36,6 +36,22 @@ export async function POST(req: NextRequest) {
   const result = await answerChat(slug, messages as { role: "user" | "assistant"; content: string }[], thread);
   if (!result.ok) return NextResponse.json({ ok: false, error: result.error }, { status: 502 });
   return NextResponse.json({ ok: true, answer: result.answer });
+}
+
+// PATCH: vervangt de historie van een gesprek (bijv. na het verwijderen van een bericht).
+export async function PATCH(req: NextRequest) {
+  if (!verifyAdminSession(req.cookies.get(ADMIN_COOKIE)?.value)) {
+    return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
+  }
+  let body: Record<string, unknown>;
+  try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: "Ongeldige aanvraag." }, { status: 400 }); }
+  const slug = String(body.slug || "").trim();
+  const g = await guardSlug(req, slug); if (!g.ok) return g.res;
+  const thread = String(body.thread || "algemeen").trim() || "algemeen";
+  const messages = Array.isArray(body.messages) ? body.messages : [];
+  if (!slug) return NextResponse.json({ ok: false, error: "Klant is verplicht." }, { status: 400 });
+  await replaceChatHistory(slug, thread, messages as { role: "user" | "assistant"; content: string }[]);
+  return NextResponse.json({ ok: true });
 }
 
 // Wist één gesprek (thread) van deze klant.
