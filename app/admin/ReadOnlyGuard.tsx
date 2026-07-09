@@ -30,9 +30,33 @@ const SILENT_PATHS = ["/api/admin/tasks", "/api/admin/page-chats", "/api/admin/p
 // Invoervelden die een alleen-lezen gast WEL mag gebruiken (kijk-functies).
 const EDITABLE_OK = ".kpi-period-inline, .page-chat-input, .pchf-row, .chat-input";
 
-export default function ReadOnlyGuard() {
+// Cockpit-pagina's dragen de klant in het pad: /admin/client/[slug] en
+// /admin/preview/[slug]. Daaruit leiden we af bij welke klant de gast nu kijkt.
+function slugFromPath(pathname: string): string | null {
+  const m = pathname.match(/^\/admin\/(?:client|preview)\/([^/?#]+)/);
+  return m ? decodeURIComponent(m[1]).trim().toLowerCase() : null;
+}
+
+// editSlugs: klanten waarop deze gast WEL mag schrijven (per-klant recht).
+// Op die klanten doet de onderschepper niets; overal anders blokkeert hij zoals
+// voorheen. De server (guardSlug) blijft altijd de echte poort.
+export default function ReadOnlyGuard({ editSlugs = [] }: { editSlugs?: string[] }) {
   const [show, setShow] = useState(false);
   const lastPopupRef = useRef(0);
+
+  // Mag er geschreven worden voor deze aanroep? Eerst de slug uit de API-URL
+  // (?slug=...), anders de klant van de pagina waar de gast nu op staat.
+  // Niets herleidbaar = blokkeren (veilig fout; de server zou hem ook weigeren).
+  const canEditFetch = (url: string): boolean => {
+    if (editSlugs.length === 0) return false;
+    try {
+      const u = new URL(url, window.location.origin);
+      const qs = (u.searchParams.get("slug") || "").trim().toLowerCase();
+      if (qs) return editSlugs.includes(qs);
+    } catch {}
+    const pageSlug = slugFromPath(window.location.pathname);
+    return pageSlug !== null && editSlugs.includes(pageSlug);
+  };
 
   useEffect(() => {
     const original = window.fetch.bind(window);
@@ -43,7 +67,7 @@ export default function ReadOnlyGuard() {
       const isWrite = method !== "GET" && method !== "HEAD";
       const isAdminApi = url.startsWith("/api/admin");
       const isAllowed = ALLOWED_PATHS.some((p) => url.startsWith(p));
-      if (isWrite && isAdminApi && !isAllowed) {
+      if (isWrite && isAdminApi && !isAllowed && !canEditFetch(url)) {
         const silent = SILENT_PATHS.some((p) => url.startsWith(p));
         // Maximaal één popup per poging: meerdere geblokkeerde aanroepen vlak na
         // elkaar (autosave-burst, dubbele call) voegen samen tot één venstertje.
@@ -63,13 +87,19 @@ export default function ReadOnlyGuard() {
     return () => {
       window.fetch = original;
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editSlugs.join(",")]);
 
   // Bewerken op slot: contentEditable uit en invoervelden alleen-lezen, behalve
   // de kijk-functies (periodekiezer, chat-vragen). Draait ook op nieuw
   // bijgeladen stukken scherm (MutationObserver).
   useEffect(() => {
     const lock = () => {
+      // Op een klant waar deze gast mag bewerken gaat er niets op slot. De check
+      // zit bewust ín lock(): bij navigeren naar een andere klant beoordeelt de
+      // MutationObserver de verse pagina meteen opnieuw.
+      const pageSlug = slugFromPath(window.location.pathname);
+      if (pageSlug !== null && editSlugs.includes(pageSlug)) return;
       document.querySelectorAll<HTMLElement>('[contenteditable="true"], [contenteditable=""]').forEach((el) => {
         el.setAttribute("contenteditable", "false");
       });
@@ -86,7 +116,8 @@ export default function ReadOnlyGuard() {
     const mo = new MutationObserver(lock);
     mo.observe(document.body, { subtree: true, childList: true });
     return () => mo.disconnect();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editSlugs.join(",")]);
 
   if (!show) return null;
   return (
