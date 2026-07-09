@@ -4,7 +4,7 @@ import { Fragment, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ClientConfig } from "../../lib/clients";
 
-type Created = { name: string; loginId: string; password: string; loginUrl: string };
+type Created = { name: string; loginId: string; password: string; loginUrl: string; shareUrl?: string };
 
 const EMPTY = {
   name: "",
@@ -139,6 +139,7 @@ export default function AdminClient({ initialClients, isOwner = true, showGroups
           loginId: data.client.loginId,
           password: data.password,
           loginUrl: `${window.location.origin}/login`,
+          shareUrl: data.shareToken ? `${window.location.origin}/k/${data.shareToken}` : undefined,
         });
         setForm({ ...EMPTY });
         await refresh();
@@ -309,8 +310,19 @@ export default function AdminClient({ initialClients, isOwner = true, showGroups
 
         {created && (
           <div className="created-box">
-            <div className="created-title">Inloggegevens voor {created.name}</div>
-            <p>Geef deze gegevens aan de klant (het wachtwoord zie je maar één keer). Deze login is alleen voor het klantdashboard.</p>
+            <div className="created-title">Toegang voor {created.name}</div>
+            {created.shareUrl ? (
+              <>
+                <p>Stuur de klant deze deelbare link: die opent het dashboard direct, zonder inloggen. Dit is de standaard werkwijze.</p>
+                <div className="cred-row"><span>Deelbare link</span><code>{created.shareUrl}</code>
+                  <button className="mini-btn" onClick={() => copy(created.shareUrl!)}>Kopieer</button></div>
+                <p className="created-hint" style={{ marginTop: 14 }}>
+                  Wil de klant tóch met een eigen login werken? Deze gegevens zie je maar één keer:
+                </p>
+              </>
+            ) : (
+              <p>Geef deze gegevens aan de klant (het wachtwoord zie je maar één keer). Deze login is alleen voor het klantdashboard.</p>
+            )}
             <div className="cred-row"><span>Link</span><code>{created.loginUrl}</code>
               <button className="mini-btn" onClick={() => copy(created.loginUrl)}>Kopieer</button></div>
             <div className="cred-row"><span>Inlognaam</span><code>{created.loginId}</code>

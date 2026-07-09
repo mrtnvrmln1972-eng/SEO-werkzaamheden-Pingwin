@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminScope, canAccessSlug, guardOwner } from "../../../../lib/admin-scope";
-import { listClients, createClient, deleteClient, updateClientCockpit, updateClientCore, parseSheetUrl, resetClientPassword, setClientBudget } from "../../../../lib/clients";
+import { listClients, createClient, deleteClient, updateClientCockpit, updateClientCore, parseSheetUrl, resetClientPassword, setClientBudget, getOrCreateShareToken } from "../../../../lib/clients";
 
 export const runtime = "nodejs";
 
@@ -73,7 +73,10 @@ export async function POST(req: NextRequest) {
       // MMC-klanten krijgen standaard géén klant-login (cockpit-only).
       loginEnabled: grp === "mmc" ? false : true,
     });
-    return NextResponse.json({ ok: true, client, password });
+    // De deelbare, loginvrije link (/k/<code>) is de standaard manier om het
+    // dashboard met de klant te delen; direct meegeven aan het aanmaak-scherm.
+    const shareToken = await getOrCreateShareToken(client.slug).catch(() => null);
+    return NextResponse.json({ ok: true, client, password, shareToken });
   } catch (err) {
     const msg = (err as Error).message || "";
     if (/duplicate key|unique/i.test(msg)) {
