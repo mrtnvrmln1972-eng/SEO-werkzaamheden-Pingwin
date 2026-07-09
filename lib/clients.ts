@@ -38,6 +38,7 @@ export type ClientConfig = {
   gid: string;
   domain: string | null;
   ahrefsProjectId: string | null;
+  moneybirdContactId: string | null;
   seoProfile: string | null;
   loginEnabled: boolean;
   budget: ClientBudget;
@@ -60,6 +61,7 @@ type ClientRow = {
   password_hash: string;
   domain: string | null;
   ahrefs_project_id: string | null;
+  moneybird_contact_id: string | null;
   seo_profile: string | null;
   login_enabled: boolean | null;
   email_domain: string | null;
@@ -81,6 +83,7 @@ function rowToConfig(r: ClientRow): ClientConfig {
     gid: r.gid,
     domain: r.domain ?? null,
     ahrefsProjectId: r.ahrefs_project_id ?? null,
+    moneybirdContactId: r.moneybird_contact_id ?? null,
     seoProfile: r.seo_profile ?? null,
     loginEnabled: r.login_enabled === null || r.login_enabled === undefined ? true : !!r.login_enabled,
     budget: {
@@ -118,6 +121,13 @@ export async function getMailAllowlist(slug: string): Promise<string> {
 export async function setMailAllowlist(slug: string, text: string): Promise<boolean> {
   await ensureSchema();
   const { rowCount } = await sql`UPDATE clients SET mail_allowlist = ${text.trim() || null} WHERE slug = ${slug}`;
+  return !!rowCount && rowCount > 0;
+}
+
+// Koppelt (of ontkoppelt, met lege waarde) het Moneybird-contact van een klant.
+export async function setMoneybirdContact(slug: string, contactId: string): Promise<boolean> {
+  await ensureSchema();
+  const { rowCount } = await sql`UPDATE clients SET moneybird_contact_id = ${contactId.trim() || null} WHERE slug = ${slug}`;
   return !!rowCount && rowCount > 0;
 }
 

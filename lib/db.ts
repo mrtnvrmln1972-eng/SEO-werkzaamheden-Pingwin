@@ -48,6 +48,8 @@ async function init(): Promise<void> {
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS domain TEXT`;
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS ahrefs_project_id TEXT`;
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS ga4_property_id TEXT`;
+  // Koppeling naar het Moneybird-contact van deze klant (voor het facturen-signaal).
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS moneybird_contact_id TEXT`;
   // Klant-login aan/uit: staat de klant-login voor deze klant open? Standaard aan,
   // zodat bestaande klanten zonder wijziging kunnen blijven inloggen. Zet uit om de
   // klant-login te blokkeren (het adminscherm blijft los daarvan werken).
