@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 
-type Msg = { role: "user" | "assistant"; content: string };
+type Msg = { role: "user" | "assistant"; content: string; image?: string };
 
 // Lichte Markdown → HTML voor nette antwoorden (kopjes, bullets, vet, links).
 function mdToHtml(md: string): string {
@@ -154,6 +154,37 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
     if (thread !== "algemeen") setThread("algemeen");
   }
 
+  // Afbeelding meesturen: slepen of plakken; in de browser verkleind naar max
+  // 1400px (JPEG) zodat versturen en opslaan licht blijven.
+  const [pendingImage, setPendingImage] = useState("");
+  const [dragOver, setDragOver] = useState(false);
+  function acceptImageFile(file: File | null | undefined) {
+    if (!file || !file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const max = 1400;
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext("2d")?.drawImage(img, 0, 0, canvas.width, canvas.height);
+        setPendingImage(canvas.toDataURL("image/jpeg", 0.85));
+      };
+      img.src = String(reader.result || "");
+    };
+    reader.readAsDataURL(file);
+  }
+  function onDropImage(e: React.DragEvent) {
+    e.preventDefault(); e.stopPropagation(); setDragOver(false);
+    acceptImageFile(e.dataTransfer?.files?.[0]);
+  }
+  function onPasteImage(e: React.ClipboardEvent) {
+    const item = Array.from(e.clipboardData?.items || []).find((i) => i.type.startsWith("image/"));
+    if (item) { e.preventDefault(); acceptImageFile(item.getAsFile()); }
+  }
+
   // Legt het huidige gesprek vast als site-wide strategie-sessie (Taken-tabblad):
   // AI maakt er een beschrijvende titel, de conclusie en de actiepunten van.
   const [strategyBusy, setStrategyBusy] = useState(false);
@@ -174,10 +205,12 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
 
   async function send(text: string) {
     const q = text.trim();
-    if (!q || busy) return;
+    if ((!q && !pendingImage) || busy) return;
     setError("");
     setInput("");
-    const next = [...messages, { role: "user" as const, content: q }];
+    const img = pendingImage;
+    setPendingImage("");
+    const next = [...messages, { role: "user" as const, content: q, ...(img ? { image: img } : {}) }];
     setMessages(next);
     setBusy(true);
     try {
@@ -212,7 +245,7 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
               <button type="button" className="chat-float-close" onClick={() => setCollapsed(true)} aria-label="Sluiten">&times;</button>
             </span>
           </div>
-          <div className="chat-float-body">
+          <div className={"chat-float-body" + (dragOver ? " chat-dropping" : "")} onDragOver={(e) => { e.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)} onDrop={onDropImage}>
             {!configured ? (
               <div className="phase2-note">
                 De assistent staat klaar, maar mist nog de AI-sleutel (<code>ANTHROPIC_API_KEY</code> in Vercel).
@@ -248,7 +281,7 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
                     <div key={i} className={"chat-msg " + m.role}>
                       {m.role === "assistant"
                         ? <div className="chat-bubble chat-md" dangerouslySetInnerHTML={{ __html: mdToHtml(m.content) }} />
-                        : <div className="chat-bubble">{m.content}</div>}
+                        : <div className="chat-bubble">{m.image && <img className="chat-img" src={m.image} alt="Meegestuurde afbeelding" />}{m.content}</div>}
                     </div>
                   ))}
                   {busy && <div className="chat-msg assistant"><div className="chat-bubble muted">Aan het denken…</div></div>}
@@ -257,15 +290,23 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
 
                 {error && <div className="login-error" style={{ marginTop: 8 }}>{error}</div>}
 
+                {pendingImage && (
+                  <div className="chat-img-preview">
+                    <img src={pendingImage} alt="Afbeelding klaar om mee te sturen" />
+                    <span>Afbeelding gaat mee met je volgende bericht.</span>
+                    <button type="button" className="ghost-btn small" onClick={() => setPendingImage("")}>&times; weghalen</button>
+                  </div>
+                )}
                 <div className="chat-input">
                   <input
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") send(input); }}
-                    placeholder="Stel een vraag over dit project…"
+                    onPaste={onPasteImage}
+                    placeholder={pendingImage ? "Wat wil je over deze afbeelding weten?" : "Stel een vraag over dit project… (afbeelding erin slepen of plakken mag)"}
                     disabled={busy}
                   />
-                  <button type="button" className="primary-btn small" onClick={() => send(input)} disabled={busy || !input.trim()}>
+                  <button type="button" className="primary-btn small" onClick={() => send(input)} disabled={busy || (!input.trim() && !pendingImage)}>
                     Vraag
                   </button>
                 </div>

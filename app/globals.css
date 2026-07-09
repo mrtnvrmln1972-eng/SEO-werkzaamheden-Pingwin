@@ -1743,3 +1743,9 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .strategy-verwerkt-btn.on { color: #2E7D32; border-color: #2E7D32; }
 .strategy-action-done { flex: 0 0 auto; font-size: 12px; color: #2E7D32; font-weight: 600; }
 .strategy-transcript { margin-top: 10px; max-width: 860px; max-height: 420px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; background: var(--gray-light); }
+
+/* Afbeeldingen in de SEO-assistent: meegestuurde screendumps en previews. */
+.chat-img { display: block; max-width: 240px; max-height: 180px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 6px; cursor: zoom-in; }
+.chat-img-preview { display: flex; align-items: center; gap: 10px; margin: 6px 0; padding: 6px 8px; border: 1px dashed var(--border); border-radius: 8px; background: var(--gray-light); font-size: 12px; color: var(--gray); }
+.chat-img-preview img { max-width: 64px; max-height: 48px; border-radius: 6px; border: 1px solid var(--border); }
+.chat-dropping { outline: 2px dashed var(--orange); outline-offset: -6px; border-radius: 10px; }

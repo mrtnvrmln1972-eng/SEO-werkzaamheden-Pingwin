@@ -126,7 +126,8 @@ async function buildContext(client: ClientConfig): Promise<string> {
   return parts.join("\n");
 }
 
-export type ChatMessage = { role: "user" | "assistant"; content: string };
+// image: optionele afbeelding (data-URL, al verkleind in de browser) bij een user-bericht.
+export type ChatMessage = { role: "user" | "assistant"; content: string; image?: string };
 
 const cleanThread = (t?: string) => (t || "algemeen").trim().slice(0, 80) || "algemeen";
 
@@ -155,7 +156,8 @@ export async function listChatThreads(slug: string): Promise<{ thread: string; c
 
 async function saveChatHistory(slug: string, thread: string, messages: ChatMessage[]): Promise<void> {
   await ensureSchema();
-  const content = JSON.stringify(messages.slice(-40));
+  const keep = messages.slice(-40);
+  const content = JSON.stringify(keep.map((m, i) => (m.image && i < keep.length - 6 ? { role: m.role, content: m.content } : m)));
   await sql`
     INSERT INTO client_chat (client_slug, thread, messages, updated_at)
     VALUES (${slug}, ${cleanThread(thread)}, ${content}, now())
@@ -196,7 +198,19 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
         model: "claude-sonnet-4-6",
         max_tokens: 1500,
         system,
-        messages: messages.slice(-10),
+        messages: messages.slice(-10).map((m) => {
+          if (!m.image) return { role: m.role, content: m.content };
+          // data-URL splitsen in mediatype + base64 voor het Anthropic image-blok.
+          const match = m.image.match(/^data:(image\/[a-z+.-]+);base64,(.+)$/i);
+          if (!match) return { role: m.role, content: m.content };
+          return {
+            role: m.role,
+            content: [
+              { type: "image", source: { type: "base64", media_type: match[1], data: match[2] } },
+              { type: "text", text: m.content || "Bekijk deze afbeelding en betrek hem bij het gesprek." },
+            ],
+          };
+        }),
       }),
     });
     if (!res.ok) {
