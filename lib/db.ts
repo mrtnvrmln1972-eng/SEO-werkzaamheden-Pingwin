@@ -128,6 +128,11 @@ async function init(): Promise<void> {
   // (tweede lijst in het Pingwin-dashboard; cockpit-only, geen login/sheet).
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS grp TEXT`;
 
+  // Ahrefs-sleutel-verwijzing per klant: alleen een LABEL (bv. 'COLLEGA1'), nooit
+  // de sleutel zelf (geen secrets in de database). De echte sleutel staat in
+  // Vercel als env-var AHREFS_API_TOKEN_<LABEL>. Leeg = het hoofdaccount.
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS ahrefs_key_ref TEXT`;
+
   // ── KPI-trend per klant (gevuld door de nachtelijke cron client-trends) ──
   // Voor de "mooie ontwikkeling"-selectie in de klanten-dropdown: per klant en
   // periode (28d/90d) de GSC-klikken/vertoningen nu vs. de periode ervoor.

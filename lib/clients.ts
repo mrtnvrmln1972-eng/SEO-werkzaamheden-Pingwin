@@ -43,6 +43,9 @@ export type ClientConfig = {
   loginEnabled: boolean;
   // Klantgroep: null = eigen Pingwin-klant, "mmc" = Multimedia Concepts.
   grp: string | null;
+  // Label van de Ahrefs-sleutel voor deze klant (env AHREFS_API_TOKEN_<LABEL>);
+  // null = het hoofdaccount. Nooit de sleutel zelf.
+  ahrefsKeyRef: string | null;
   budget: ClientBudget;
   cockpit: ClientCockpit;
 };
@@ -67,6 +70,7 @@ type ClientRow = {
   seo_profile: string | null;
   login_enabled: boolean | null;
   grp: string | null;
+  ahrefs_key_ref: string | null;
   email_domain: string | null;
   work_doc_url: string | null;
   results_url: string | null;
@@ -90,6 +94,7 @@ function rowToConfig(r: ClientRow): ClientConfig {
     seoProfile: r.seo_profile ?? null,
     loginEnabled: r.login_enabled === null || r.login_enabled === undefined ? true : !!r.login_enabled,
     grp: r.grp || null,
+    ahrefsKeyRef: r.ahrefs_key_ref || null,
     budget: {
       maandbudget: Number(r.maandbudget),
       linkbuilding: Number(r.linkbuilding),
@@ -259,11 +264,16 @@ export async function updateClientCore(slug: string, c: ClientCore): Promise<boo
 // bijgewerkt (undefined = ongemoeid laten), zodat dit veilig los te gebruiken is.
 export async function updateClientAdmin(
   slug: string,
-  p: { name?: string; domain?: string | null; email?: string | null; loginEnabled?: boolean },
+  p: { name?: string; domain?: string | null; email?: string | null; loginEnabled?: boolean; ahrefsKeyRef?: string | null },
 ): Promise<boolean> {
   await ensureSchema();
   if (p.name !== undefined && p.name.trim()) {
     await sql`UPDATE clients SET name = ${p.name.trim()} WHERE slug = ${slug}`;
+  }
+  if (p.ahrefsKeyRef !== undefined) {
+    // Alleen een net label (letters/cijfers/underscore), hoofdletters; leeg = hoofdaccount.
+    const ref = String(p.ahrefsKeyRef || "").trim().toUpperCase().replace(/[^A-Z0-9_]/g, "") || null;
+    await sql`UPDATE clients SET ahrefs_key_ref = ${ref} WHERE slug = ${slug}`;
   }
   if (p.domain !== undefined) {
     await sql`UPDATE clients SET domain = ${p.domain || null} WHERE slug = ${slug}`;

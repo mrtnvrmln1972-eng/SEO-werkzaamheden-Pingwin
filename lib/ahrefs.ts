@@ -47,8 +47,35 @@ function readUnitsHeader(headers: Headers): number | null {
   return null;
 }
 
+// ── Eigen Ahrefs-sleutel per klant (via een label, nooit de sleutel zelf) ──
+// clients.ahrefs_key_ref bevat een label (bv. 'COLLEGA1'); de echte sleutel
+// staat in Vercel als AHREFS_API_TOKEN_<LABEL>. Korte cache zodat dit geen
+// extra database-query per Ahrefs-call kost. Geen label of geen env-var
+// gevonden = het hoofdaccount (huidig gedrag).
+const keyRefCache = new Map<string, { ref: string | null; at: number }>();
+
+async function tokenForSlug(slug: string | undefined): Promise<string | undefined> {
+  if (!slug) return undefined;
+  let entry = keyRefCache.get(slug);
+  if (!entry || Date.now() - entry.at > 60000) {
+    let ref: string | null = null;
+    try {
+      await ensureSchema();
+      const { rows } = await sql`SELECT ahrefs_key_ref FROM clients WHERE slug = ${slug} LIMIT 1`;
+      ref = (rows[0]?.ahrefs_key_ref as string | null) || null;
+    } catch {
+      ref = null;
+    }
+    entry = { ref, at: Date.now() };
+    keyRefCache.set(slug, entry);
+  }
+  if (!entry.ref) return undefined;
+  const envName = "AHREFS_API_TOKEN_" + entry.ref.toUpperCase().replace(/[^A-Z0-9_]/g, "");
+  return process.env[envName] || undefined;
+}
+
 async function ahrefsFetch(path: string, params: Record<string, string>): Promise<unknown> {
-  const token = process.env.AHREFS_API_TOKEN;
+  const token = (await tokenForSlug(ahrefsAls.getStore()?.slug)) || process.env.AHREFS_API_TOKEN;
   if (!token) throw new Error("AHREFS_API_TOKEN ontbreekt.");
   const url = new URL(BASE + path);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);

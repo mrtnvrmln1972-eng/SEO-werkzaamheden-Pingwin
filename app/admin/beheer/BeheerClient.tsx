@@ -10,6 +10,8 @@ type ClientLite = {
   email: string | null;
   domain: string | null;
   loginEnabled: boolean;
+  // Label van de Ahrefs-sleutel (env AHREFS_API_TOKEN_<LABEL>); leeg = hoofdaccount.
+  ahrefsKeyRef: string | null;
 };
 
 export default function BeheerClient({ clients, team }: { clients: ClientLite[]; team: TeamUser[] }) {
@@ -56,12 +58,12 @@ export default function BeheerClient({ clients, team }: { clients: ClientLite[];
 
   // ─────────────────────────────── KLANTEN ───────────────────────────────
   const [editSlug, setEditSlug] = useState<string | null>(null);
-  const [cForm, setCForm] = useState({ name: "", domain: "", email: "", loginEnabled: true });
+  const [cForm, setCForm] = useState({ name: "", domain: "", email: "", loginEnabled: true, ahrefsKeyRef: "" });
   const [newPassword, setNewPassword] = useState<{ slug: string; password: string } | null>(null);
 
   function openClient(c: ClientLite) {
     setEditSlug(c.slug);
-    setCForm({ name: c.name, domain: c.domain || "", email: c.email || "", loginEnabled: c.loginEnabled });
+    setCForm({ name: c.name, domain: c.domain || "", email: c.email || "", loginEnabled: c.loginEnabled, ahrefsKeyRef: c.ahrefsKeyRef || "" });
     setNewPassword(null);
   }
 
@@ -72,7 +74,7 @@ export default function BeheerClient({ clients, team }: { clients: ClientLite[];
       const res = await fetch("/api/admin/client-admin", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, name: cForm.name, domain: cForm.domain, email: cForm.email, loginEnabled: cForm.loginEnabled }),
+        body: JSON.stringify({ slug, name: cForm.name, domain: cForm.domain, email: cForm.email, loginEnabled: cForm.loginEnabled, ahrefsKeyRef: cForm.ahrefsKeyRef }),
       });
       const data = await res.json();
       if (data.ok) {
@@ -361,6 +363,19 @@ export default function BeheerClient({ clients, team }: { clients: ClientLite[];
                 <div className="field">
                   <label>Klant-e-mail (of e-maildomein)</label>
                   <input value={cForm.email} onChange={(e) => setCForm({ ...cForm, email: e.target.value })} placeholder="naam@voorbeeld.nl" />
+                </div>
+                <div className="field">
+                  <label>Ahrefs-sleutel-label (leeg = hoofdaccount)</label>
+                  <input
+                    value={cForm.ahrefsKeyRef}
+                    onChange={(e) => setCForm({ ...cForm, ahrefsKeyRef: e.target.value })}
+                    placeholder="bijv. COLLEGA1"
+                    autoCapitalize="characters"
+                    spellCheck={false}
+                  />
+                  <span className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+                    De sleutel zelf zet je in Vercel als env-var AHREFS_API_TOKEN_&lt;LABEL&gt;; hier staat alleen het label.
+                  </span>
                 </div>
                 <div className="field" style={{ justifyContent: "flex-end" }}>
                   <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>

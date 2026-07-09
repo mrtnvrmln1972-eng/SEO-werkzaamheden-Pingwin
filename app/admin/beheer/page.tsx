@@ -25,6 +25,7 @@ export default async function BeheerPage() {
         email: c.email,
         domain: c.domain,
         loginEnabled: c.loginEnabled,
+        ahrefsKeyRef: c.ahrefsKeyRef,
       }))}
       team={team}
     />
