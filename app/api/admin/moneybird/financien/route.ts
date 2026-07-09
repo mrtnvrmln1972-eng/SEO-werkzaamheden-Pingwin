@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { guardOwner } from "../../../../../lib/admin-scope";
 import {
   getProfitLoss, getProfitLossRaw, getLedgerAccounts, getPostDetails,
-  getExpensesByContact, getExpensesByContactRaw, moneybirdConfigured,
+  getExpensesByContact, getExpensesByContactRaw, getMbContacts, moneybirdConfigured,
 } from "../../../../../lib/moneybird";
 
 export const runtime = "nodejs";
@@ -48,7 +48,15 @@ export async function GET(req: NextRequest) {
         const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
         months.push(`${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}`);
       }
-      const perMonth = await Promise.all(months.map((m) => getExpensesByContact(m)));
+      const [perMonthRaw, contacts] = await Promise.all([
+        Promise.all(months.map((m) => getExpensesByContact(m))),
+        getMbContacts(),
+      ]);
+      // Het rapport geeft alleen contact-id's; de namen komen uit de contactenlijst.
+      const nameOf = new Map(contacts.map((c) => [c.id, c.name]));
+      const perMonth = perMonthRaw.map((list) =>
+        list.map((r) => ({ ...r, contactName: r.contactName || nameOf.get(r.contactId) || "Onbekende leverancier" }))
+      );
       return NextResponse.json({ ok: true, configured: true, months, perMonth });
     }
 
