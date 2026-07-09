@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { ADMIN_COOKIE } from "../../lib/admin-auth";
+import { ADMIN_VIEWAS_COOKIE } from "../../lib/constants";
 import { getScopeFromCookie } from "../../lib/admin-scope";
 import { listClients } from "../../lib/clients";
 import AdminClient from "./AdminClient";
@@ -8,7 +9,7 @@ import AdminClient from "./AdminClient";
 export const dynamic = "force-dynamic";
 
 export default async function AdminPage() {
-  const scope = await getScopeFromCookie(cookies().get(ADMIN_COOKIE)?.value);
+  const scope = await getScopeFromCookie(cookies().get(ADMIN_COOKIE)?.value, cookies().get(ADMIN_VIEWAS_COOKIE)?.value);
   if (!scope) redirect("/admin/login");
 
   const all = await listClients();

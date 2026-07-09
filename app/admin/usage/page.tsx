@@ -1,7 +1,9 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { ADMIN_COOKIE, verifyAdminSession } from "../../../lib/admin-auth";
+import { ADMIN_COOKIE } from "../../../lib/admin-auth";
+import { ADMIN_VIEWAS_COOKIE } from "../../../lib/constants";
+import { getScopeFromCookie } from "../../../lib/admin-scope";
 import { getUsageSummary, getUsageByAction, type UsageRow, type UsageActionRow } from "../../../lib/usage";
 
 // Leesbare namen voor de acties (welke knop/functie kost hoeveel).
@@ -40,7 +42,10 @@ function num(n: number): string {
 }
 
 export default async function UsagePage({ searchParams }: { searchParams: { period?: string } }) {
-  if (!verifyAdminSession(cookies().get(ADMIN_COOKIE)?.value)) redirect("/admin/login");
+  const scope = await getScopeFromCookie(cookies().get(ADMIN_COOKIE)?.value, cookies().get(ADMIN_VIEWAS_COOKIE)?.value);
+  if (!scope) redirect("/admin/login");
+  // AI-verbruik (kosten) is uitsluitend voor de eigenaar.
+  if (!scope.isOwner) redirect("/admin");
 
   const period: Period = searchParams.period === "week" ? "week" : searchParams.period === "all" ? "all" : "month";
   const days = PERIODS.find((p) => p.key === period)!.days;

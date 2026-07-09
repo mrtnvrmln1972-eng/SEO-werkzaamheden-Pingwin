@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { ADMIN_COOKIE } from "../../../lib/admin-auth";
+import { ADMIN_VIEWAS_COOKIE } from "../../../lib/constants";
 import { getScopeFromCookie } from "../../../lib/admin-scope";
 import { listClients } from "../../../lib/clients";
 import { listTeamUsers } from "../../../lib/team-users";
@@ -9,7 +10,7 @@ import BeheerClient from "./BeheerClient";
 export const dynamic = "force-dynamic";
 
 export default async function BeheerPage() {
-  const scope = await getScopeFromCookie(cookies().get(ADMIN_COOKIE)?.value);
+  const scope = await getScopeFromCookie(cookies().get(ADMIN_COOKIE)?.value, cookies().get(ADMIN_VIEWAS_COOKIE)?.value);
   if (!scope) redirect("/admin/login");
   // Beheer is uitsluitend voor de eigenaar. Een gast belandt terug op het overzicht.
   if (!scope.isOwner) redirect("/admin");

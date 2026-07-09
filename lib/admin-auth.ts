@@ -58,4 +58,27 @@ export function verifyAdminSession(value: string | undefined | null): boolean {
   return getAdminPrincipal(value) !== null;
 }
 
+// ── Kijk-als-modus ──
+// De eigenaar kan tijdelijk "als gast" kijken via een tweede, ondertekende
+// cookie ("v<id>.<HMAC>"). Deze wordt alleen gehonoreerd als de gewone
+// admin-cookie van de eigenaar is; een gast kan er dus niets mee.
+export function makeViewAsToken(userId: number): string {
+  const who = `v${userId}`;
+  return `${who}.${sign(who)}`;
+}
+
+export function parseViewAsToken(value: string | undefined | null): number | null {
+  if (!value || !secret()) return null;
+  const idx = value.lastIndexOf(".");
+  if (idx <= 0) return null;
+  const who = value.slice(0, idx);
+  const sig = value.slice(idx + 1);
+  const a = Buffer.from(sig);
+  const b = Buffer.from(sign(who));
+  if (a.length !== b.length) return null;
+  if (!crypto.timingSafeEqual(a, b)) return null;
+  const m = who.match(/^v(\d+)$/);
+  return m ? Number(m[1]) : null;
+}
+
 export { ADMIN_COOKIE };

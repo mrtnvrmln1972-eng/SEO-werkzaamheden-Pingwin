@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ADMIN_COOKIE } from "../../../lib/admin-auth";
+import { ADMIN_VIEWAS_COOKIE } from "../../../lib/constants";
 import { getScopeFromCookie } from "../../../lib/admin-scope";
 import { moneybirdConfigured, getProfitLoss, getLedgerAccounts, type ProfitLoss, type LedgerAccount } from "../../../lib/moneybird";
 import FinancienClient from "./FinancienClient";
@@ -18,7 +19,7 @@ function euro(n: number): string {
 }
 
 export default async function FinancienPage({ searchParams }: { searchParams: { periode?: string } }) {
-  const scope = await getScopeFromCookie(cookies().get(ADMIN_COOKIE)?.value);
+  const scope = await getScopeFromCookie(cookies().get(ADMIN_COOKIE)?.value, cookies().get(ADMIN_VIEWAS_COOKIE)?.value);
   if (!scope) redirect("/admin/login");
   if (!scope.isOwner) redirect("/admin");
 

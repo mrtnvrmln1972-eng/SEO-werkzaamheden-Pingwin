@@ -196,6 +196,27 @@ export default function BeheerClient({ clients, team }: { clients: ClientLite[];
     navigator.clipboard?.writeText(text);
   }
 
+  // Kijk-als-modus: zet de cookie en open het adminscherm in een nieuw tabblad,
+  // zodat je precies ziet wat deze gast ziet. Terugkeren kan via het balkje bovenin.
+  async function viewAs(id: number) {
+    setBusy(true);
+    setNotice(null);
+    try {
+      const res = await fetch("/api/admin/view-as", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      const data = await res.json();
+      if (data.ok) window.open("/admin", "_blank");
+      else flash(false, data.error || "Kijk-als-modus starten mislukt.");
+    } catch {
+      flash(false, "Kijk-als-modus starten mislukt.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function slugsLabel(slugs: string[]): string {
     if (slugs.length === 0) return "geen klanten";
     return slugs
@@ -351,6 +372,7 @@ export default function BeheerClient({ clients, team }: { clients: ClientLite[];
                   <td>{u.role === "owner" ? "alles" : u.canEdit ? "Mag wijzigen" : "Alleen lezen"}</td>
                   <td style={{ whiteSpace: "nowrap" }}>
                     <button className="mini-btn" onClick={() => openUser(u)}>Bewerken</button>{" "}
+                    <button className="mini-btn" onClick={() => viewAs(u.id)} disabled={busy} title="Open in een nieuw tabblad precies wat deze gast ziet">Bekijk als</button>{" "}
                     <button className="mini-btn" onClick={() => resetUserPw(u.id)} disabled={busy}>Nieuw wachtwoord</button>{" "}
                     <button className="mini-btn" onClick={() => removeUser(u.id, u.name || u.loginId)} disabled={busy}>Verwijder</button>
                   </td>

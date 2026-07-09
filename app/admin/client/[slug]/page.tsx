@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { ADMIN_COOKIE } from "../../../../lib/admin-auth";
+import { ADMIN_VIEWAS_COOKIE } from "../../../../lib/constants";
 import { getScopeFromCookie, canAccessSlug } from "../../../../lib/admin-scope";
 import { getClientBySlug, listClients, type ClientConfig } from "../../../../lib/clients";
 import { getEmails, getMetrics, getKeywords, getPages, getLastIngest, getStatus } from "../../../../lib/snapshots";
@@ -48,7 +49,7 @@ function buildMonthTasks(tasks: TaskRow[]): MonthTasks {
 }
 
 export default async function ClientCockpitPage({ params, searchParams }: { params: { slug: string }; searchParams: { tab?: string; highlight?: string } }) {
-  const scope = await getScopeFromCookie(cookies().get(ADMIN_COOKIE)?.value);
+  const scope = await getScopeFromCookie(cookies().get(ADMIN_COOKIE)?.value, cookies().get(ADMIN_VIEWAS_COOKIE)?.value);
   if (!scope) redirect("/admin/login");
   // Gast zonder toegang tot deze klant: terug naar het overzicht.
   if (!canAccessSlug(scope, params.slug)) redirect("/admin");

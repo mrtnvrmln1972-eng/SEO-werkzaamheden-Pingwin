@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { ADMIN_COOKIE, getAdminPrincipal } from "./admin-auth";
+import { ADMIN_COOKIE, getAdminPrincipal, parseViewAsToken } from "./admin-auth";
+import { ADMIN_VIEWAS_COOKIE } from "./constants";
 import { getTeamUserById } from "./team-users";
 
 // ═══════════════════════════════════════════════════════════
@@ -21,16 +22,38 @@ export type AdminScope = {
   // false = alleen lezen: rondkijken en openklappen mag, maar geen acties
   // uitvoeren of iets opslaan (guardSlug blokkeert dan alles behalve GET).
   canEdit: boolean;
+  // Gevuld als de eigenaar in de kijk-als-modus zit: de gast die hij nadoet.
+  viewAs?: { id: number; label: string } | null;
 };
 
 // Scope uit een rauwe cookiewaarde. Bruikbaar in server components (via
 // cookies()) én API-routes. null als er geen geldige adminsessie is (cookie
 // ontbreekt/vervalst, of een gast-id dat niet meer bestaat in de database).
-export async function getScopeFromCookie(value: string | undefined | null): Promise<AdminScope | null> {
+// viewAsValue: de optionele kijk-als-cookie; alleen gehonoreerd voor de eigenaar.
+export async function getScopeFromCookie(
+  value: string | undefined | null,
+  viewAsValue?: string | undefined | null,
+): Promise<AdminScope | null> {
   const principal = getAdminPrincipal(value);
   if (!principal) return null;
 
   if (principal.kind === "owner") {
+    // Kijk-als-modus: de eigenaar krijgt tijdelijk exact de scope van de gast,
+    // zodat hij ziet (en niet meer kan) wat die gast ziet en kan.
+    const viewAsId = parseViewAsToken(viewAsValue);
+    if (viewAsId !== null) {
+      const guest = await getTeamUserById(viewAsId);
+      if (guest && guest.role !== "owner") {
+        return {
+          isOwner: false,
+          userId: guest.id,
+          allowedSlugs: guest.allowedSlugs,
+          canSeeMail: false,
+          canEdit: guest.canEdit,
+          viewAs: { id: guest.id, label: guest.name || guest.loginId },
+        };
+      }
+    }
     return { isOwner: true, userId: null, allowedSlugs: null, canSeeMail: true, canEdit: true };
   }
 
@@ -51,9 +74,12 @@ export async function getScopeFromCookie(value: string | undefined | null): Prom
   };
 }
 
-// Scope uit een API-route-request.
+// Scope uit een API-route-request (inclusief de eventuele kijk-als-cookie).
 export async function getAdminScope(req: NextRequest): Promise<AdminScope | null> {
-  return getScopeFromCookie(req.cookies.get(ADMIN_COOKIE)?.value);
+  return getScopeFromCookie(
+    req.cookies.get(ADMIN_COOKIE)?.value,
+    req.cookies.get(ADMIN_VIEWAS_COOKIE)?.value,
+  );
 }
 
 // Mag deze scope bij deze klant (slug)? Owner: altijd. Gast: alleen als de slug
