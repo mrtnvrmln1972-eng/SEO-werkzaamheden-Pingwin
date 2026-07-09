@@ -108,22 +108,24 @@ export default function BeheerClient({ clients, team }: { clients: ClientLite[];
 
   // ──────────────────────────────── TEAM ─────────────────────────────────
   const [showTeamForm, setShowTeamForm] = useState(false);
-  const [tForm, setTForm] = useState<{ name: string; loginId: string; email: string; allowedSlugs: string[]; canSeeMail: boolean; canEdit: boolean }>({
+  const [tForm, setTForm] = useState<{ name: string; loginId: string; email: string; allowedSlugs: string[]; canSeeMail: boolean; canEdit: boolean; editSlugs: string[] }>({
     name: "",
     loginId: "",
     email: "",
     allowedSlugs: [],
     canSeeMail: false,
     canEdit: false,
+    editSlugs: [],
   });
   const [created, setCreated] = useState<{ name: string; loginId: string; password: string } | null>(null);
   const [editUserId, setEditUserId] = useState<number | null>(null);
-  const [uForm, setUForm] = useState<{ name: string; email: string; allowedSlugs: string[]; canSeeMail: boolean; canEdit: boolean }>({
+  const [uForm, setUForm] = useState<{ name: string; email: string; allowedSlugs: string[]; canSeeMail: boolean; canEdit: boolean; editSlugs: string[] }>({
     name: "",
     email: "",
     allowedSlugs: [],
     canSeeMail: false,
     canEdit: false,
+    editSlugs: [],
   });
   const [userPassword, setUserPassword] = useState<{ id: number; password: string } | null>(null);
 
@@ -145,7 +147,7 @@ export default function BeheerClient({ clients, team }: { clients: ClientLite[];
       const data = await res.json();
       if (data.ok) {
         setCreated({ name: tForm.name || tForm.loginId, loginId: data.user.loginId, password: data.password });
-        setTForm({ name: "", loginId: "", email: "", allowedSlugs: [], canSeeMail: false, canEdit: false });
+        setTForm({ name: "", loginId: "", email: "", allowedSlugs: [], canSeeMail: false, canEdit: false, editSlugs: [] });
         setShowTeamForm(false);
         router.refresh();
       } else flash(false, data.error || "Aanmaken mislukt.");
@@ -158,7 +160,7 @@ export default function BeheerClient({ clients, team }: { clients: ClientLite[];
 
   function openUser(u: TeamUser) {
     setEditUserId(u.id);
-    setUForm({ name: u.name || "", email: u.email || "", allowedSlugs: [...u.allowedSlugs], canSeeMail: u.canSeeMail, canEdit: u.canEdit });
+    setUForm({ name: u.name || "", email: u.email || "", allowedSlugs: [...u.allowedSlugs], canSeeMail: u.canSeeMail, canEdit: u.canEdit, editSlugs: [...(u.editSlugs || [])] });
     setUserPassword(null);
   }
 
@@ -169,7 +171,7 @@ export default function BeheerClient({ clients, team }: { clients: ClientLite[];
       const res = await fetch("/api/admin/team", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, name: uForm.name, email: uForm.email, allowedSlugs: uForm.allowedSlugs, canSeeMail: uForm.canSeeMail, canEdit: uForm.canEdit }),
+        body: JSON.stringify({ id, name: uForm.name, email: uForm.email, allowedSlugs: uForm.allowedSlugs, canSeeMail: uForm.canSeeMail, canEdit: uForm.canEdit, editSlugs: uForm.editSlugs }),
       });
       const data = await res.json();
       if (data.ok) {
@@ -426,7 +428,7 @@ export default function BeheerClient({ clients, team }: { clients: ClientLite[];
                   <td style={{ fontWeight: 600 }}>{u.name || <span className="muted">&mdash;</span>}</td>
                   <td>{u.loginId}</td>
                   <td>{u.role === "owner" ? "alles (eigenaar)" : slugsLabel(u.allowedSlugs)}</td>
-                  <td>{u.role === "owner" ? "alles" : u.canEdit ? "Mag wijzigen" : "Alleen lezen"}</td>
+                  <td>{u.role === "owner" ? "alles" : u.canEdit ? "Mag overal wijzigen" : (u.editSlugs || []).length > 0 ? `Bewerken: ${(u.editSlugs || []).length} van ${u.allowedSlugs.length} klanten` : "Alleen lezen"}</td>
                   <td style={{ whiteSpace: "nowrap" }}>
                     <button className="mini-btn" onClick={() => openUser(u)}>Bewerken</button>{" "}
                     <button className="mini-btn" onClick={() => viewAs(u.id)} disabled={busy} title="Open in een nieuw tabblad precies wat deze gast ziet">Bekijk als</button>{" "}
@@ -471,7 +473,15 @@ export default function BeheerClient({ clients, team }: { clients: ClientLite[];
               <ClientPicker
                 clients={clients}
                 selected={uForm.allowedSlugs}
-                onToggle={(slug) => setUForm({ ...uForm, allowedSlugs: toggleSlug(uForm.allowedSlugs, slug) })}
+                onToggle={(slug) => setUForm({
+                  ...uForm,
+                  allowedSlugs: toggleSlug(uForm.allowedSlugs, slug),
+                  // Klant uitvinken haalt ook het bewerken-recht op die klant weg.
+                  editSlugs: uForm.allowedSlugs.includes(slug) ? uForm.editSlugs.filter((s) => s !== slug) : uForm.editSlugs,
+                })}
+                editSelected={uForm.editSlugs}
+                onToggleEdit={(slug) => setUForm({ ...uForm, editSlugs: toggleSlug(uForm.editSlugs, slug) })}
+                editAll={uForm.canEdit}
               />
               <div className="field" style={{ marginTop: 16 }}>
                 <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
@@ -481,7 +491,7 @@ export default function BeheerClient({ clients, team }: { clients: ClientLite[];
                     onChange={(e) => setUForm({ ...uForm, canEdit: e.target.checked })}
                     style={{ width: "auto" }}
                   />
-                  Mag wijzigen en uitvoeren (uit = alleen lezen: rondkijken mag, acties niet)
+                  Mag overal bewerken en uitvoeren (uit = per klant instellen met de knopjes hierboven)
                 </label>
               </div>
               <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
@@ -524,7 +534,14 @@ export default function BeheerClient({ clients, team }: { clients: ClientLite[];
             <ClientPicker
               clients={clients}
               selected={tForm.allowedSlugs}
-              onToggle={(slug) => setTForm({ ...tForm, allowedSlugs: toggleSlug(tForm.allowedSlugs, slug) })}
+              onToggle={(slug) => setTForm({
+                ...tForm,
+                allowedSlugs: toggleSlug(tForm.allowedSlugs, slug),
+                editSlugs: tForm.allowedSlugs.includes(slug) ? tForm.editSlugs.filter((s) => s !== slug) : tForm.editSlugs,
+              })}
+              editSelected={tForm.editSlugs}
+              onToggleEdit={(slug) => setTForm({ ...tForm, editSlugs: toggleSlug(tForm.editSlugs, slug) })}
+              editAll={tForm.canEdit}
             />
             <div className="field" style={{ marginTop: 16 }}>
               <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
@@ -534,7 +551,7 @@ export default function BeheerClient({ clients, team }: { clients: ClientLite[];
                   onChange={(e) => setTForm({ ...tForm, canEdit: e.target.checked })}
                   style={{ width: "auto" }}
                 />
-                Mag wijzigen en uitvoeren (uit = alleen lezen: rondkijken mag, acties niet)
+                Mag overal bewerken en uitvoeren (uit = per klant instellen met de knopjes hierboven)
               </label>
             </div>
             <button type="submit" className="primary-btn" style={{ marginTop: 16 }} disabled={busy}>{busy ? "Bezig…" : "Gast aanmaken"}</button>
@@ -570,10 +587,18 @@ function ClientPicker({
   clients,
   selected,
   onToggle,
+  editSelected,
+  onToggleEdit,
+  editAll,
 }: {
   clients: ClientLite[];
   selected: string[];
   onToggle: (slug: string) => void;
+  // Per-klant schrijfrecht: welke van de geselecteerde klanten mag deze gast bewerken.
+  editSelected: string[];
+  onToggleEdit: (slug: string) => void;
+  // Staat het globale "mag overal bewerken" aan, dan tonen we de vinkjes als aan + uitgeschakeld.
+  editAll: boolean;
 }) {
   return (
     <div className="field-wide">
@@ -583,20 +608,37 @@ function ClientPicker({
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         {clients.map((c) => {
           const on = selected.includes(c.slug);
+          const editOn = editAll || editSelected.includes(c.slug);
           return (
-            <button
-              type="button"
-              key={c.slug}
-              onClick={() => onToggle(c.slug)}
-              className={on ? "primary-btn small" : "mini-btn"}
-              style={{ padding: "6px 12px" }}
-            >
-              {on ? "✓ " : ""}{c.name}
-            </button>
+            <span key={c.slug} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+              <button
+                type="button"
+                onClick={() => onToggle(c.slug)}
+                className={on ? "primary-btn small" : "mini-btn"}
+                style={{ padding: "6px 12px" }}
+              >
+                {on ? "✓ " : ""}{c.name}
+              </button>
+              {on && (
+                <button
+                  type="button"
+                  onClick={() => onToggleEdit(c.slug)}
+                  disabled={editAll}
+                  className={editOn ? "primary-btn small" : "mini-btn"}
+                  style={{ padding: "6px 10px", opacity: editAll ? 0.6 : 1 }}
+                  title={editAll ? "Mag al overal bewerken (globaal vinkje staat aan)" : editOn ? "Mag deze klant bewerken; klik om alleen-lezen te maken" : "Alleen lezen; klik om bewerken toe te staan"}
+                >
+                  {editOn ? "✎ bewerken" : "alleen lezen"}
+                </button>
+              )}
+            </span>
           );
         })}
         {clients.length === 0 && <span className="muted">Nog geen klanten.</span>}
       </div>
+      <p className="muted" style={{ marginTop: 6, fontSize: 12 }}>
+        Per aangevinkte klant kies je of de gast er ook mag bewerken en uitvoeren, of alleen mag lezen.
+      </p>
     </div>
   );
 }

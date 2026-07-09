@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
   const allowedSlugs = Array.isArray(body.allowedSlugs) ? (body.allowedSlugs as unknown[]).map((s) => String(s)) : [];
   const canSeeMail = body.canSeeMail === true;
   const canEdit = body.canEdit === true;
+  const editSlugs = Array.isArray(body.editSlugs) ? (body.editSlugs as unknown[]).map((s) => String(s)) : [];
   const email = String(body.email || "").trim();
 
   if (!loginId) return NextResponse.json({ ok: false, error: "Inlognaam is verplicht." }, { status: 400 });
@@ -35,7 +36,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { user, password } = await createTeamUser({ name, loginId, allowedSlugs, canSeeMail, canEdit, email });
+    const { user, password } = await createTeamUser({ name, loginId, allowedSlugs, canSeeMail, canEdit, editSlugs, email });
     return NextResponse.json({ ok: true, user, password });
   } catch (err) {
     const msg = (err as Error).message || "";
@@ -61,11 +62,12 @@ export async function PATCH(req: NextRequest) {
   }
 
   // Rechten bijwerken (naam, e-mail, klanten, mail-recht, wijzig-recht).
-  const patch: { name?: string | null; allowedSlugs?: string[]; canSeeMail?: boolean; canEdit?: boolean; email?: string | null } = {};
+  const patch: { name?: string | null; allowedSlugs?: string[]; canSeeMail?: boolean; canEdit?: boolean; editSlugs?: string[]; email?: string | null } = {};
   if ("name" in body) patch.name = String(body.name || "").trim() || null;
   if ("allowedSlugs" in body) patch.allowedSlugs = Array.isArray(body.allowedSlugs) ? (body.allowedSlugs as unknown[]).map((s) => String(s)) : [];
   if ("canSeeMail" in body) patch.canSeeMail = body.canSeeMail === true;
   if ("canEdit" in body) patch.canEdit = body.canEdit === true;
+  if ("editSlugs" in body) patch.editSlugs = Array.isArray(body.editSlugs) ? (body.editSlugs as unknown[]).map((s) => String(s)) : [];
   if ("email" in body) patch.email = String(body.email || "").trim() || null;
   const ok = await updateTeamUser(id, patch);
   if (!ok) return NextResponse.json({ ok: false, error: "Gebruiker niet gevonden." }, { status: 404 });
