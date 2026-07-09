@@ -11,6 +11,7 @@ import type { TaskRow } from "../../../../lib/tasks";
 import type { StrategySession } from "../../../../lib/strategy";
 import ChatPanel from "./ChatPanel";
 import TasksEditor from "./TasksEditor";
+import OrgDataPanel from "./OrgDataPanel";
 import FocusBlock from "./FocusBlock";
 import ShareLinkBar from "./ShareLinkBar";
 import HelpHint from "./HelpHint";
@@ -495,7 +496,8 @@ export default function ClientCockpit({
           </>
         )}
 
-        {tab === "klant" && (
+        {tab === "klant" && (<>
+          <OrgDataPanel slug={client.slug} clientEmail={client.email || ""} />
           <div className="cockpit-card client-frame-card">
             <div className="ck-section-head"><span>Klant (zo ziet de klant het)</span>
               <a className="logout-btn" href={`/admin/preview/${client.slug}`} target="_blank" rel="noreferrer">Openen in nieuw tabblad ↗</a>
@@ -503,7 +505,7 @@ export default function ClientCockpit({
             <ShareLinkBar slug={client.slug} />
             <iframe src={`/admin/preview/${client.slug}`} className="client-frame" title="Klant-dashboard" />
           </div>
-        )}
+        </>)}
 
         {paginasVisited && (
           <div style={{ display: tab === "paginas" ? "block" : "none" }}>
