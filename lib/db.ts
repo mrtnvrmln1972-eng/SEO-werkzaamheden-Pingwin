@@ -120,6 +120,9 @@ async function init(): Promise<void> {
   await sql`ALTER TABLE team_users ADD COLUMN IF NOT EXISTS can_edit BOOLEAN NOT NULL DEFAULT false`;
   // E-mailadres van het teamlid, voor de knop "Mail inloggegevens".
   await sql`ALTER TABLE team_users ADD COLUMN IF NOT EXISTS email TEXT`;
+  // Per-klant schrijfrecht: gast mag schrijven op een klant als can_edit aanstaat
+  // (alles) OF de slug in edit_slugs staat. Leeg = gedrag exact als voorheen.
+  await sql`ALTER TABLE team_users ADD COLUMN IF NOT EXISTS edit_slugs TEXT[] NOT NULL DEFAULT '{}'`;
 
   // Klantgroep: leeg/null = eigen Pingwin-klant, 'mmc' = Multimedia Concepts
   // (tweede lijst in het Pingwin-dashboard; cockpit-only, geen login/sheet).

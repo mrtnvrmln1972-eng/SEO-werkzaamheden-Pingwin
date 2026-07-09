@@ -22,6 +22,9 @@ export type AdminScope = {
   // false = alleen lezen: rondkijken en openklappen mag, maar geen acties
   // uitvoeren of iets opslaan (guardSlug blokkeert dan alles behalve GET).
   canEdit: boolean;
+  // Per-klant schrijfrecht: op deze slugs mag de gast wél schrijven, ook als
+  // canEdit uitstaat. null = geen beperking (owner of canEdit=true).
+  editSlugs: string[] | null;
   // Gevuld als de eigenaar in de kijk-als-modus zit: de gast die hij nadoet.
   viewAs?: { id: number; label: string } | null;
 };
@@ -50,11 +53,12 @@ export async function getScopeFromCookie(
           allowedSlugs: guest.allowedSlugs,
           canSeeMail: false,
           canEdit: guest.canEdit,
+          editSlugs: guest.canEdit ? null : guest.editSlugs,
           viewAs: { id: guest.id, label: guest.name || guest.loginId },
         };
       }
     }
-    return { isOwner: true, userId: null, allowedSlugs: null, canSeeMail: true, canEdit: true };
+    return { isOwner: true, userId: null, allowedSlugs: null, canSeeMail: true, canEdit: true, editSlugs: null };
   }
 
   // Teamgebruiker: lees de rechten uit de database. Bestaat de rij niet meer
@@ -62,7 +66,7 @@ export async function getScopeFromCookie(
   const user = await getTeamUserById(principal.userId);
   if (!user) return null;
   if (user.role === "owner") {
-    return { isOwner: true, userId: user.id, allowedSlugs: null, canSeeMail: true, canEdit: true };
+    return { isOwner: true, userId: user.id, allowedSlugs: null, canSeeMail: true, canEdit: true, editSlugs: null };
   }
   return {
     isOwner: false,
@@ -71,6 +75,7 @@ export async function getScopeFromCookie(
     // Gasten zien NOOIT mail of de actuele stand van zaken (bewust hard uitgesloten).
     canSeeMail: false,
     canEdit: user.canEdit,
+    editSlugs: user.canEdit ? null : user.editSlugs,
   };
 }
 
@@ -91,6 +96,15 @@ export function canAccessSlug(scope: AdminScope, slug: string): boolean {
   return scope.allowedSlugs.includes(s);
 }
 
+// Mag deze scope op deze klant (slug) schrijven? Owner en canEdit=true: altijd.
+// Anders alleen als de slug in het per-klant schrijfrecht (editSlugs) staat.
+export function canEditSlug(scope: AdminScope, slug: string): boolean {
+  if (scope.isOwner || scope.canEdit || scope.editSlugs === null) return true;
+  const s = (slug || "").trim().toLowerCase();
+  if (!s) return false;
+  return scope.editSlugs.includes(s);
+}
+
 // Poort voor API-routes: haalt de scope op en checkt de klant-toegang in één keer.
 // Geeft { ok: true, scope } terug, of een kant-en-klare 401/403-Response die de
 // route direct kan retourneren. Zo blijft elke route één regel:
@@ -108,8 +122,9 @@ export async function guardSlug(
   }
   // Alleen-lezen gast: kijken mag (GET/HEAD), maar elke actie of wijziging
   // (POST/PATCH/DELETE) wordt hier centraal geblokkeerd, over alle routes heen.
+  // Per-klant schrijfrecht (editSlugs) kan een klant wél openzetten.
   const method = (req.method || "GET").toUpperCase();
-  if (!scope.canEdit && method !== "GET" && method !== "HEAD") {
+  if (!canEditSlug(scope, slug) && method !== "GET" && method !== "HEAD") {
     return {
       ok: false,
       res: NextResponse.json(
