@@ -22,6 +22,7 @@ import KpiPanel from "./KpiPanel";
 import PagesPanel from "./PagesPanel";
 import WijzigingenPanel from "./WijzigingenPanel";
 import InvoiceAlert from "./InvoiceAlert";
+import SelectionActions from "./SelectionActions";
 
 type Tab = "overzicht" | "werkzaamheden" | "paginas" | "resultaten" | "klant" | "developer" | "wijzigingen" | "cannibalisatie" | "interne-links";
 
@@ -289,6 +290,7 @@ export default function ClientCockpit({
       <div className="container">
 
         <InvoiceAlert slug={client.slug} />
+        <SelectionActions slug={client.slug} clientName={client.name} />
 
         {tab === "werkzaamheden" && (
           <>
