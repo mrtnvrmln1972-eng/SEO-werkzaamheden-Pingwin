@@ -297,6 +297,8 @@ function docUrl(kind: "sales" | "purchase", id: string): string {
 // Kleine afwijkingen t.o.v. het rapport zijn mogelijk (memoriaal-/bankboekingen
 // lopen buiten facturen om); dit is bedoeld om te zien WAAR een post uit bestaat.
 export async function getPostDetails(type: "revenue" | "cost", ledgerId: string, period: string): Promise<PostContact[]> {
+  // Het facturenfilter eist een bereik met begin en eind; één maand wordt "maand..maand".
+  if (/^\d{6}$/.test(period)) period = `${period}..${period}`;
   const key = `${type}:${ledgerId}:${period}`;
   const cached = await cacheGet<PostContact[]>("post_detail", key, 6 * 60);
   if (cached) return cached;
