@@ -9,6 +9,7 @@ import { googleStatus, getGscForClient, getGa4ForClient } from "../../../../lib/
 import { MAAND_VOLGORDE } from "../../../../lib/sheet";
 import { chatConfigured, getChatHistory } from "../../../../lib/chat";
 import { getTasks, type TaskRow } from "../../../../lib/tasks";
+import { getStrategySessions } from "../../../../lib/strategy";
 import ClientCockpit from "./ClientCockpit";
 
 export const dynamic = "force-dynamic";
@@ -69,7 +70,7 @@ export default async function ClientCockpitPage({ params, searchParams }: { para
   // Alle bronnen komen nu uit de database (geen Sheet meer voor de werkzaamheden).
   // Mail en status alleen ophalen als deze gebruiker ze mag zien; anders leeg,
   // zodat de data niet eens de server verlaat.
-  const [storedEmails, metrics, keywords, pages, lastIngest, status, ms, google, allClients, chatHistory, tasks] = await Promise.all([
+  const [storedEmails, metrics, keywords, pages, lastIngest, status, ms, google, allClients, chatHistory, tasks, strategySessions] = await Promise.all([
     canSeeMail ? getEmails(params.slug) : Promise.resolve([]),
     getMetrics(params.slug),
     getKeywords(params.slug),
@@ -81,6 +82,7 @@ export default async function ClientCockpitPage({ params, searchParams }: { para
     listClients(),
     getChatHistory(params.slug),
     getTasks(params.slug),
+    getStrategySessions(params.slug).catch(() => []),
   ]);
 
   // "Lopende werkzaamheden" rechtstreeks uit de database-taken.
@@ -139,6 +141,7 @@ export default async function ClientCockpitPage({ params, searchParams }: { para
       chatConfigured={chatConfigured()}
       chatHistory={chatHistory}
       tasks={tasks}
+      strategySessions={strategySessions}
       initialTab={searchParams.tab}
       highlight={searchParams.highlight}
       showMailSections={mailSections}

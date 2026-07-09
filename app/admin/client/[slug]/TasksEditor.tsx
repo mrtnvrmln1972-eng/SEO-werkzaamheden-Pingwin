@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import type { TaskRow } from "../../../../lib/tasks";
 import { cleanPastedHtml, linkifyPlainText } from "../../../../lib/rich-paste";
-import StrategyPanel from "./StrategyPanel";
+import StrategyPanel, { type StrategySessionData } from "./StrategyPanel";
 
 const MONTHS = ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"];
 const STATUSES = ["Gepland", "Bezig", "Naar Dev", "Klaar"];
@@ -178,7 +178,7 @@ function RichField({ html, onChange, autoFocus, onEnterClose, grow }: { html: st
   );
 }
 
-export default function TasksEditor({ slug, initialTasks, budget, clientName, clientEmail, highlight }: { slug: string; initialTasks: TaskRow[]; budget: Budget; clientName: string; clientEmail?: string; highlight?: string }) {
+export default function TasksEditor({ slug, initialTasks, initialStrategySessions, budget, clientName, clientEmail, highlight }: { slug: string; initialTasks: TaskRow[]; initialStrategySessions?: StrategySessionData[]; budget: Budget; clientName: string; clientEmail?: string; highlight?: string }) {
   const uidRef = useRef(1);
   // "Te doen" is verwijderd; migreer bestaande taken naar "Gepland" bij laden.
   const normalizeStatus = (s: string) => s === "Te doen" ? "Gepland" : s;
@@ -583,7 +583,7 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
 
   return (
     <>
-      <StrategyPanel slug={slug} openSessionId={strategieParam || undefined} onTaskAdded={refreshNewTasks} />
+      <StrategyPanel slug={slug} initialSessions={initialStrategySessions} openSessionId={strategieParam || undefined} onTaskAdded={refreshNewTasks} />
       {klantPop && typeof document !== "undefined" && createPortal(
         <>
           <div className="klant-pop-overlay" onClick={() => setKlantPop(null)} />

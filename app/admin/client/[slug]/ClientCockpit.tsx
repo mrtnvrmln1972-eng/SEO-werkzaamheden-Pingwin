@@ -8,6 +8,7 @@ import type {
 } from "../../../../lib/snapshots";
 import type { GscData, Ga4Data } from "../../../../lib/google";
 import type { TaskRow } from "../../../../lib/tasks";
+import type { StrategySession } from "../../../../lib/strategy";
 import ChatPanel from "./ChatPanel";
 import TasksEditor from "./TasksEditor";
 import FocusBlock from "./FocusBlock";
@@ -51,6 +52,7 @@ type CockpitData = {
   chatConfigured: boolean;
   chatHistory: { role: "user" | "assistant"; content: string }[];
   tasks: TaskRow[];
+  strategySessions: StrategySession[];
 };
 
 // Taaknaam kan opmaak/links bevatten; in compacte lijstjes tonen we platte tekst.
@@ -61,7 +63,7 @@ function stripTags(html: string): string {
 export default function ClientCockpit({
   client, emails, metrics, keywords, pages, lastIngest, status, statusUpdatedAt,
   mailLive, msConfigured, msConnected, myEmail, allClients,
-  gsc, ga4, googleConfigured, googleConnected, chatConfigured, chatHistory, tasks, initialTab, highlight,
+  gsc, ga4, googleConfigured, googleConnected, chatConfigured, chatHistory, tasks, strategySessions, initialTab, highlight,
   showMailSections = true,
 }: { client: ClientConfig; initialTab?: string; highlight?: string; showMailSections?: boolean } & CockpitData) {
   const router = useRouter();
@@ -481,7 +483,7 @@ export default function ClientCockpit({
         )}
 
         {tab === "werkzaamheden" && (
-          <TasksEditor key={`tasks-${highlight || "x"}`} slug={client.slug} initialTasks={tasks} budget={client.budget} clientName={client.name} clientEmail={client.email || ""} highlight={highlight} />
+          <TasksEditor key={`tasks-${highlight || "x"}`} slug={client.slug} initialTasks={tasks} initialStrategySessions={strategySessions} budget={client.budget} clientName={client.name} clientEmail={client.email || ""} highlight={highlight} />
         )}
 
         {tab === "resultaten" && (

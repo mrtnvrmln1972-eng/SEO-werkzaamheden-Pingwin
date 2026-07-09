@@ -14,13 +14,16 @@ import HelpHint from "./HelpHint";
 
 type StrategyAction = { taak: string; wie: string; fase: string; taskId?: number; done?: boolean };
 type StrategySession = { id: number; title: string; summary: string; transcript: string; actions: StrategyAction[]; createdAt: string };
+export type StrategySessionData = StrategySession;
 
 function dNl(iso: string): string {
   try { return new Date(iso).toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" }); } catch { return ""; }
 }
 
-export default function StrategyPanel({ slug, openSessionId, onTaskAdded }: { slug: string; openSessionId?: number; onTaskAdded?: () => void }) {
-  const [sessions, setSessions] = useState<StrategySession[]>([]);
+export default function StrategyPanel({ slug, initialSessions, openSessionId, onTaskAdded }: { slug: string; initialSessions?: StrategySession[]; openSessionId?: number; onTaskAdded?: () => void }) {
+  // Sessies komen server-side mee (initialSessions), zodat het blok direct samen
+  // met de rest van het tabblad in beeld staat; zonder die prop halen we ze op.
+  const [sessions, setSessions] = useState<StrategySession[]>(initialSessions || []);
   const [open, setOpen] = useState(false);
   const [openIds, setOpenIds] = useState<Set<number>>(new Set());
   const [openTranscript, setOpenTranscript] = useState<Set<number>>(new Set());
@@ -34,7 +37,7 @@ export default function StrategyPanel({ slug, openSessionId, onTaskAdded }: { sl
       if (d.ok) setSessions(d.sessions || []);
     } catch { /* stil */ }
   }
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [slug]);
+  useEffect(() => { if (!initialSessions) load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [slug]);
 
   // Vanuit een taak-link (?strategie=<id>): sectie én die sessie openklappen en erheen scrollen.
   useEffect(() => {
