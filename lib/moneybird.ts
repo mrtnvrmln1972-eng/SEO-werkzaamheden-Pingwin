@@ -165,6 +165,95 @@ export async function getOpenInvoices(): Promise<OpenInvoice[]> {
   return list.map((i) => ({ ...i, daysOpen: daysSince(i.date) }));
 }
 
+// ─── Grootboekrekeningen (kostenposten/omzetposten) ───
+
+export type LedgerAccount = {
+  id: string;
+  name: string;
+  accountType: string; // revenue | direct_costs | expenses | other_income_expenses | ...
+  parentId: string | null;
+};
+
+// Alle grootboekrekeningen (voor de namen van de posten). Cache: 7 dagen.
+export async function getLedgerAccounts(): Promise<LedgerAccount[]> {
+  const cached = await cacheGet<LedgerAccount[]>("ledger_accounts", "all", 7 * 24 * 60);
+  if (cached) return cached;
+  const raw = (await mbFetchAll("/ledger_accounts.json")) as { id: string | number; name?: string; account_type?: string; parent_id?: string | number | null }[];
+  const list = raw.map((r) => ({
+    id: String(r.id),
+    name: String(r.name || "Onbekende post"),
+    accountType: String(r.account_type || ""),
+    parentId: r.parent_id != null ? String(r.parent_id) : null,
+  }));
+  await cacheSet("ledger_accounts", "all", list);
+  return list;
+}
+
+// ─── Winst & verlies (rapporten-API) ───
+
+export type LedgerAmount = { ledgerAccountId: string; value: number };
+export type ProfitLoss = {
+  period: string;
+  totalRevenue: number;
+  totalExpenses: number;      // directe kosten + bedrijfskosten samen
+  netProfit: number;
+  revenueByLedger: LedgerAmount[];
+  costsByLedger: LedgerAmount[]; // directe kosten + bedrijfskosten + overig, samengevoegd
+};
+
+function toNum(v: unknown): number {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+function ledgerList(v: unknown): LedgerAmount[] {
+  if (!Array.isArray(v)) return [];
+  return v
+    .map((r) => {
+      const row = r as Record<string, unknown>;
+      return { ledgerAccountId: String(row.ledger_account_id ?? ""), value: toNum(row.value ?? row.amount) };
+    })
+    .filter((r) => r.ledgerAccountId && r.value !== 0);
+}
+
+// Winst & verlies voor een periode (bijv. "this_year", "202601..202612" of
+// "202607" voor één maand). Cache: 6 uur per periode. Het rapport telt zelf
+// alles op; wij hoeven alleen te normaliseren.
+export async function getProfitLoss(period: string): Promise<ProfitLoss> {
+  const cached = await cacheGet<ProfitLoss>("profit_loss", period, 6 * 60);
+  if (cached) return cached;
+  const raw = (await mbFetch("/reports/profit_loss", { period })) as Record<string, unknown>;
+
+  const revenue = toNum(raw.total_revenue ?? raw.revenue);
+  // Kosten kunnen gesplitst terugkomen (directe kosten + bedrijfskosten); we
+  // tonen ze in het dashboard als één kostenkant, uitgesplitst per grootboek.
+  const directCosts = toNum(raw.total_direct_costs ?? raw.direct_costs);
+  const expenses = toNum(raw.total_expenses ?? raw.expenses);
+  const other = toNum(raw.total_other_income_expenses ?? raw.other_income_expenses);
+  const net = raw.net_profit !== undefined || raw.operating_profit !== undefined
+    ? toNum(raw.net_profit ?? raw.operating_profit)
+    : revenue - directCosts - expenses + other;
+
+  const result: ProfitLoss = {
+    period,
+    totalRevenue: revenue,
+    totalExpenses: directCosts + expenses,
+    netProfit: net,
+    revenueByLedger: ledgerList(raw.revenue_by_ledger_account),
+    costsByLedger: [
+      ...ledgerList(raw.direct_costs_by_ledger_account),
+      ...ledgerList(raw.expenses_by_ledger_account),
+      ...ledgerList(raw.other_income_expenses_by_ledger_account),
+    ],
+  };
+  await cacheSet("profit_loss", period, result);
+  return result;
+}
+
+// Ruwe rapport-respons (alleen voor eigenaar-debug: veldnamen live controleren).
+export async function getProfitLossRaw(period: string): Promise<unknown> {
+  return mbFetch("/reports/profit_loss", { period });
+}
+
 // ─── Contacten (voor het koppelen aan dashboard-klanten) ───
 
 export type MbContact = {
