@@ -72,7 +72,9 @@ const rowDomId = (url: string) => "pgrow-" + (url || "").replace(/[^a-zA-Z0-9]/g
 export default function PagesPanel({ slug, initialProfile, clientEmail, clientName, onGoToTask, domain, openTarget }: { slug: string; initialProfile?: string; clientEmail?: string; clientName?: string; onGoToTask?: (taskId: number) => void; domain?: string; openTarget?: { url: string; n: number } | null }) {
   type Opp = { impressions: number; clicks: number; ctr: number; position: number; bestKeyword: string; bestPosition: number | null; bestVolume: number | null; score: number; label: string; level: string };
   const [opps, setOpps] = useState<Record<string, Opp>>({});
-  const [sortKey, setSortKey] = useState<"kans" | "vertoningen" | "positie" | "klikken" | "volume">("kans");
+  // Sortering: "prio" (standaard) = sterretjes bovenaan, dan plan, dan kans.
+  // Elke andere kolom sorteert PUUR op die kolom, los van de sterretjes.
+  const [sortKey, setSortKey] = useState<"prio" | "status" | "pagina" | "kans" | "vertoningen" | "positie" | "klikken" | "volume" | "plan">("prio");
   const [urls, setUrls] = useState<ClientUrl[]>([]);
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
@@ -309,19 +311,27 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
     ? urls.filter((u) => (u.url + " " + u.title).toLowerCase().includes(q.trim().toLowerCase()))
     : urls;
   const sorted = [...filtered].sort((a, b) => {
-    // Aangevinkte prio-pagina's altijd bovenaan.
-    const pa = priority.has(prioKey(a.url)) ? 1 : 0, pb = priority.has(prioKey(b.url)) ? 1 : 0;
-    if (pa !== pb) return pb - pa;
-    // Pagina's met een (half) plan bovenaan: vol plan eerst, dan half plan, dan leeg.
+    const prio = (u: ClientUrl) => (priority.has(prioKey(u.url)) ? 1 : 0);
+    // Vol plan eerst, dan half plan (cluster-advies), dan leeg.
     const rank = (u: ClientUrl) => ((u.plan || "").trim() ? 2 : u.hasClusterAdvice ? 1 : 0);
-    const ra = rank(a), rb = rank(b);
-    if (ra !== rb) return rb - ra;
     const oa = oppOf(a), ob = oppOf(b);
-    if (sortKey === "kans") return (ob?.score || 0) - (oa?.score || 0);
-    if (sortKey === "vertoningen") return (ob?.impressions ?? a.gscImpressions ?? 0) - (oa?.impressions ?? b.gscImpressions ?? 0);
-    if (sortKey === "positie") { const pa = oa?.position ?? 999, pb = ob?.position ?? 999; return pa - pb; }
-    if (sortKey === "volume") return (ob?.bestVolume ?? -1) - (oa?.bestVolume ?? -1);
-    return (b.gscClicks || 0) - (a.gscClicks || 0);
+    const imp = (u: ClientUrl, o?: Opp) => o?.impressions ?? u.gscImpressions ?? 0;
+    switch (sortKey) {
+      case "prio": {
+        // Sterretjes bovenaan, daarbinnen plan-status en dan kans.
+        if (prio(a) !== prio(b)) return prio(b) - prio(a);
+        if (rank(a) !== rank(b)) return rank(b) - rank(a);
+        return (ob?.score || 0) - (oa?.score || 0);
+      }
+      case "status": return (a.status || 999) - (b.status || 999) || a.url.localeCompare(b.url);
+      case "pagina": return a.url.localeCompare(b.url);
+      case "klikken": return (b.gscClicks || 0) - (a.gscClicks || 0);
+      case "vertoningen": return imp(b, ob) - imp(a, oa);
+      case "positie": return (oa?.position ?? 999) - (ob?.position ?? 999);
+      case "volume": return (ob?.bestVolume ?? -1) - (oa?.bestVolume ?? -1);
+      case "kans": return (ob?.score || 0) - (oa?.score || 0);
+      case "plan": return rank(b) - rank(a);
+    }
   });
 
   return (
@@ -425,14 +435,15 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
           <div className="res-table-wrap pages-table-wrap" style={{ marginTop: 12 }}>
             <table className="res-table pages-table">
               <thead><tr>
-                <th></th>
-                <th>Status</th><th>Pagina</th>
+                <th className="pg-sort" onClick={() => setSortKey("prio")} title="Sorteer op prioriteit: sterretjes bovenaan, dan pagina's met een plan, dan op kans">★{sortKey === "prio" ? " ▾" : ""}</th>
+                <th className="pg-sort" onClick={() => setSortKey("status")}>Status{sortKey === "status" ? " ▾" : ""}</th>
+                <th className="pg-sort" onClick={() => setSortKey("pagina")} title="Sorteer alfabetisch op URL">Pagina{sortKey === "pagina" ? " ▾" : ""}</th>
                 <th className="pg-sort" onClick={() => setSortKey("klikken")}>Klikken{sortKey === "klikken" ? " ▾" : ""}</th>
                 <th className="pg-sort" onClick={() => setSortKey("vertoningen")}>Vertoningen{sortKey === "vertoningen" ? " ▾" : ""}</th>
                 <th className="pg-sort" onClick={() => setSortKey("positie")}>Positie{sortKey === "positie" ? " ▾" : ""}</th>
                 <th className="pg-sort" onClick={() => setSortKey("volume")} title="Zoekvolume van het hoofdzoekwoord (meeste vertoningen)">Volume{sortKey === "volume" ? " ▾" : ""}</th>
                 <th className="pg-sort" onClick={() => setSortKey("kans")} title="Veel vertoningen + positie net buiten de top 10 = grote kans">Kans{sortKey === "kans" ? " ▾" : ""}</th>
-                <th>Plan</th>
+                <th className="pg-sort" onClick={() => setSortKey("plan")} title="Sorteer op plan-status: vol plan eerst, dan half plan, dan leeg">Plan{sortKey === "plan" ? " ▾" : ""}</th>
               </tr></thead>
               <tbody>
                 {sorted.map((u) => (
