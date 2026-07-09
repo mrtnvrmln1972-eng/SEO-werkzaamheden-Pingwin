@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../../lib/admin-auth";
-import { guardSlug } from "../../../../../lib/admin-scope";
+import { guardSlug, getAdminScope } from "../../../../../lib/admin-scope";
 import { listFolders, createFolder } from "../../../../../lib/drive";
 import { savePageDriveFolder, getPageDriveFolder } from "../../../../../lib/site-urls";
 
@@ -25,6 +25,12 @@ export async function GET(req: NextRequest) {
     const chosen = slug && url ? await getPageDriveFolder(slug, url).catch(() => null) : null;
     return NextResponse.json({ ok: true, chosen });
   }
+  // PRIVACY: de Google-koppeling is het Drive-account van de eigenaar. Alleen de
+  // eigenaar mag daarin bladeren; gasten zien anders mapnamen die niet voor hen
+  // bedoeld zijn. Gasten krijgen een nette melding (documenten worden gedownload).
+  if (!g.scope.isOwner) {
+    return NextResponse.json({ ok: false, connected: false, error: "De Drive-koppeling is van de eigenaar; alleen de eigenaar kan hier een map kiezen. Jouw documenten worden gewoon als download geleverd." }, { status: 200 });
+  }
   try {
     const folders = await listFolders(parent);
     const chosen = slug && url ? await getPageDriveFolder(slug, url) : null;
@@ -44,6 +50,9 @@ export async function POST(req: NextRequest) {
   const action = String(body.action || "");
   try {
     if (action === "create") {
+      // Mappen aanmaken gebeurt in het Drive-account van de eigenaar: eigenaar-only.
+      const scope = await getAdminScope(req);
+      if (!scope?.isOwner) return NextResponse.json({ ok: false, error: "Alleen de eigenaar kan mappen in Drive maken." }, { status: 403 });
       const parent = String(body.parent || "root");
       const name = String(body.name || "").trim();
       if (!name) return NextResponse.json({ ok: false, error: "Geef een mapnaam." }, { status: 400 });
@@ -53,6 +62,8 @@ export async function POST(req: NextRequest) {
     if (action === "save") {
       const slug = String(body.slug || "").trim();
       const g2 = await guardSlug(req, slug); if (!g2.ok) return g2.res;
+      // Een bestemmingsmap kiezen hoort bij het bladeren: eigenaar-only.
+      if (!g2.scope.isOwner) return NextResponse.json({ ok: false, error: "Alleen de eigenaar kan een Drive-map koppelen." }, { status: 403 });
       const url = String(body.url || "").trim();
       const folderId = String(body.folderId || "").trim();
       const folderName = String(body.folderName || "").trim();
