@@ -44,10 +44,10 @@ const GA4_CARDS: { key: string; label: string; fmt: (v: number) => string; inver
 ];
 // Kanaalnamen uit GA4 in gewone taal.
 const GA4_CHANNEL_NL: Record<string, string> = {
-  "Organic Search": "Organisch zoeken (SEO)", "Direct": "Direct", "Paid Search": "Betaald zoeken (SEA)",
+  "Organic Search": "Organisch zoeken (SEO)", "Direct": "Direct", "Paid Search": "Google Ads zoekadvertenties (SEA)",
   "Organic Social": "Social (organisch)", "Paid Social": "Social (betaald)", "Referral": "Verwijzende sites",
   "Email": "E-mail", "Display": "Display-advertenties", "Organic Video": "Video (organisch)",
-  "Paid Video": "Video (betaald)", "Cross-network": "Cross-network", "Unassigned": "Niet toegewezen",
+  "Paid Video": "Video (betaald)", "Cross-network": "Google Ads cross-network (o.a. Performance Max)", "Unassigned": "Niet toegewezen",
   "Organic Shopping": "Shopping (organisch)", "Paid Shopping": "Shopping (betaald)", "Audio": "Audio", "SMS": "SMS",
 };
 
@@ -821,7 +821,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
               </div>
               <div className="res-table-wrap">
                 <table className="res-table kpi-table">
-                  <thead><tr><th>Kanaal</th><th className="kpi-metric-sep">Sessies</th><th className="kpi-delta-th">\u0394</th><th className="kpi-metric-sep">Gebruikers</th><th className="kpi-delta-th">\u0394</th><th className="kpi-metric-sep">Conversies</th><th className="kpi-delta-th">\u0394</th></tr></thead>
+                  <thead><tr><th>Kanaal</th><th className="kpi-metric-sep">Sessies</th><th className="kpi-delta-th" title="Verschil met de vergelijkingsperiode">Verschil</th><th className="kpi-metric-sep">Gebruikers</th><th className="kpi-delta-th" title="Verschil met de vergelijkingsperiode">Verschil</th><th className="kpi-metric-sep">Conversies</th><th className="kpi-delta-th" title="Verschil met de vergelijkingsperiode">Verschil</th></tr></thead>
                   <tbody>
                     {ga4.channels.map((ch) => (
                       <tr key={ch.name}>
