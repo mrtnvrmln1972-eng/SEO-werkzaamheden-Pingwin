@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
 import { getClientBySlug } from "../../../../lib/clients";
-import { getGscComparison, getGa4Comparison } from "../../../../lib/google";
+import { getGscComparison, getGa4Comparison, getAdsComparison } from "../../../../lib/google";
 import { getPageOrder } from "../../../../lib/kpi-prefs";
 import { getKeywordFocus } from "../../../../lib/keyword-focus";
 
@@ -28,12 +28,13 @@ export async function GET(req: NextRequest) {
   if (!client) return NextResponse.json({ ok: false, error: "Klant niet gevonden." }, { status: 404 });
 
   const domain = client.domain || "";
-  const [gsc, ga4, pageOrder, keywordFocus] = await Promise.all([
+  const [gsc, ga4, ads, pageOrder, keywordFocus] = await Promise.all([
     withTimeout(getGscComparison(domain, days, compare), 9000, null),
     withTimeout(getGa4Comparison(slug, domain, days, compare), 12000, null),
+    withTimeout(getAdsComparison(slug, domain, days, compare), 12000, null),
     getPageOrder(slug).catch(() => [] as string[]),
     getKeywordFocus(slug).catch(() => ({})),
   ]);
 
-  return NextResponse.json({ ok: true, days, domain, gsc, ga4, pageOrder, keywordFocus });
+  return NextResponse.json({ ok: true, days, domain, gsc, ga4, ads, pageOrder, keywordFocus });
 }

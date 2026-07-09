@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useRef, useState, type ReactNode, type ThHTMLAttributes } from "react";
-import type { GscComparison, Ga4Comparison } from "../../../../lib/google";
+import type { GscComparison, Ga4Comparison, AdsComparison } from "../../../../lib/google";
 import type { AhrefsKeyword } from "../../../../lib/ahrefs-keywords";
 import type { Opportunity } from "../../../../lib/keyword-opportunities";
 import HelpHint from "./HelpHint";
@@ -55,6 +55,7 @@ function shortUrl(url: string): string {
   try { const u = new URL(url); return (u.pathname + u.search) || "/"; } catch { return url; }
 }
 function nl(n: number): string { return n.toLocaleString("nl-NL"); }
+function eur(n: number): string { return "\u20ac" + n.toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
 // Interactief lijngrafiekje van het dagverloop: beweeg eroverheen en je ziet de
 // waarde van dat punt. invert=true (positie): dalend = beter. fmt formatteert de
@@ -274,6 +275,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
   const [compare, setCompare] = useState<"prev" | "yoy">("prev");
   const [gsc, setGsc] = useState<GscComparison | null>(null);
   const [ga4, setGa4] = useState<Ga4Comparison | null>(null);
+  const [ads, setAds] = useState<AdsComparison | null>(null);
   const [loading, setLoading] = useState(true);
   const [connected, setConnected] = useState<boolean>(true);
   const [pagesView, setPagesView] = useState<GscPage[]>([]);
@@ -343,6 +345,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
         if (off) return;
         setGsc(d.gsc ?? null);
         setGa4(d.ga4 ?? null);
+        setAds(d.ads ?? null);
         setConnected(!!(d.gsc || d.ga4));
         setFocus(d.keywordFocus || {});
         const pages: GscPage[] = d.gsc?.pages || [];
@@ -969,6 +972,60 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
                 </table>
               </div>
             </div>
+          )}
+        </Collapse>
+      )}
+
+      {!loading && ads && (
+        <Collapse title={<>Google Ads {siteBadge}</>} meta={ads.linked ? `laatste ${periodLabel} \u00b7 ${compare === "yoy" ? "vs. vorig jaar" : "vs. vorige periode"} \u00b7 via de GA4-koppeling` : ""} open={isOpen("ads", true)} onToggle={() => toggle("ads", true)} actions={periodPicker}>
+          {!ads.linked ? (
+            <div className="muted" style={{ fontSize: 12.5 }}>Geen Google Ads-data gevonden in deze periode (geen actieve campagnes, of Google Ads is niet aan GA4 gekoppeld).</div>
+          ) : (
+            <>
+              <div className="kpi-grid kpi-grid-4">
+                {(() => {
+                  const get = (m: string) => ads.totals.find((t) => t.metric === m);
+                  const cost = get("cost"), clicks = get("clicks"), impressions = get("impressions"), conv = get("conversions");
+                  const perDay = (a: number[] | undefined, b: number[] | undefined) => (a || []).map((v, i) => ((b || [])[i] || 0) > 0 ? v / (b || [])[i] : 0);
+                  const cards: { label: string; t?: { cur: number; prev: number; series: number[]; prevSeries: number[] }; fmt: (v: number) => string; invert?: boolean; isPos?: boolean }[] = [
+                    { label: "Advertentiekosten", t: cost, fmt: eur, isPos: true },
+                    { label: "Klikken op advertenties", t: clicks, fmt: (v) => nl(Math.round(v)) },
+                    { label: "Advertentie-vertoningen", t: impressions, fmt: (v) => nl(Math.round(v)) },
+                    { label: "Conversies uit Ads", t: conv ? { ...conv, series: [], prevSeries: [] } : undefined, fmt: (v) => nl(Math.round(v)) },
+                    { label: "Gem. kosten per klik", t: cost && clicks ? { cur: clicks.cur > 0 ? cost.cur / clicks.cur : 0, prev: clicks.prev > 0 ? cost.prev / clicks.prev : 0, series: perDay(cost.series, clicks.series), prevSeries: perDay(cost.prevSeries, clicks.prevSeries) } : undefined, fmt: eur, invert: true, isPos: true },
+                    { label: "Kosten per conversie", t: cost && conv ? { cur: conv.cur > 0 ? cost.cur / conv.cur : 0, prev: conv.prev > 0 ? cost.prev / conv.prev : 0, series: [], prevSeries: [] } : undefined, fmt: eur, invert: true, isPos: true },
+                  ];
+                  return cards.filter((c) => c.t).map((c) => (
+                    <CardTrend key={c.label} label={c.label} values={c.t!.series} dates={ads.dates} prevValues={c.t!.prevSeries} prev={c.t!.prev} cur={c.t!.cur} fmt={c.fmt} invert={c.invert} isPos={c.isPos} periodLabel={`${days} dgn`} />
+                  ));
+                })()}
+              </div>
+              <div className="kpi-block" style={{ marginTop: 14 }}>
+                <div className="kpi-block-head">
+                  <span className="kpi-block-title">Campagnes {siteBadge} <HelpHint wide text="Alle Google Ads-campagnes met verkeer in de gekozen periode, zoals GA4 ze binnenkrijgt. Nieuw = draaide in de vergelijkingsperiode nog niet; Gestopt/stil = had toen wel kosten en nu niet meer. Zo zie je of er actief aan het account gewerkt wordt." /></span>
+                </div>
+                <div className="res-table-wrap">
+                  <table className="res-table kpi-table">
+                    <thead><tr><th>Campagne</th><th className="kpi-metric-sep">Status</th><th className="kpi-metric-sep">Kosten</th><th className="kpi-delta-th" title="Verschil met de vergelijkingsperiode">Verschil</th><th className="kpi-metric-sep">Klikken</th><th className="kpi-delta-th">Verschil</th><th className="kpi-metric-sep">Conversies</th><th className="kpi-delta-th">Verschil</th><th className="kpi-metric-sep" title="Gemiddelde kosten per klik">CPC</th></tr></thead>
+                    <tbody>
+                      {ads.campaigns.map((c) => {
+                        const status = c.prevCost === 0 && c.cost > 0 ? "nieuw" : c.cost === 0 && c.prevCost > 0 ? "gestopt/stil" : "loopt";
+                        return (
+                          <tr key={c.name}>
+                            <td>{c.name}</td>
+                            <td className="kpi-metric-sep">{status === "nieuw" ? <span className="pg-kans quickwin">Nieuw</span> : status === "gestopt/stil" ? <span className="muted">Gestopt/stil</span> : "Loopt"}</td>
+                            <td className="kpi-metric-sep">{eur(c.cost)}</td><td className="kpi-delta-td"><Delta cur={c.cost} prev={c.prevCost} isPos /></td>
+                            <td className="kpi-metric-sep">{nl(Math.round(c.clicks))}</td><td className="kpi-delta-td"><Delta cur={c.clicks} prev={c.prevClicks} /></td>
+                            <td className="kpi-metric-sep">{nl(Math.round(c.conversions))}</td><td className="kpi-delta-td"><Delta cur={c.conversions} prev={c.prevConversions} /></td>
+                            <td className="kpi-metric-sep">{c.clicks > 0 ? eur(c.cost / c.clicks) : <span className="muted">&mdash;</span>}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
           )}
         </Collapse>
       )}

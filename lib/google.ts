@@ -893,3 +893,100 @@ export async function getGa4ForClient(slug: string, domain: string): Promise<Ga4
   const metrics = await ga4RunReport(token, propertyId);
   return { connected: true, propertyId, metrics: metrics || [] };
 }
+
+// ── Google Ads via GA4 (gekoppelde advertentiedata, geen aparte Ads-API nodig) ──
+// Kosten, klikken en vertoningen van Google Ads-campagnes zoals GA4 ze binnenkrijgt
+// via de Ads-koppeling. Genoeg om prestaties én activiteit (nieuwe/gestopte
+// campagnes, budgetverschuivingen) per campagne te volgen.
+export type AdsCampaign = { name: string; cost: number; prevCost: number; clicks: number; prevClicks: number; impressions: number; prevImpressions: number; conversions: number; prevConversions: number; sessions: number; prevSessions: number };
+export type AdsComparison = {
+  linked: boolean;            // false = geen Ads-data in deze GA4-property
+  dates: string[];
+  totals: { metric: string; cur: number; prev: number; series: number[]; prevSeries: number[] }[]; // cost, clicks, impressions, conversions
+  campaigns: AdsCampaign[];
+};
+
+export async function getAdsComparison(slug: string, domain: string, days: number, compare: "prev" | "yoy" = "prev"): Promise<AdsComparison | null> {
+  const token = await googleAccessToken();
+  if (!token) return null;
+  await ensureSchema();
+  const { rows } = await sql`SELECT ga4_property_id FROM clients WHERE slug = ${slug} LIMIT 1`;
+  let propertyId = (rows[0]?.ga4_property_id as string) || "";
+  if (!propertyId && domain) {
+    const found = await ga4DiscoverProperty(token, domain);
+    if (found) { propertyId = found; await sql`UPDATE clients SET ga4_property_id = ${found} WHERE slug = ${slug}`; }
+  }
+  if (!propertyId) return { linked: false, dates: [], totals: [], campaigns: [] };
+
+  const range = periodRanges(days, compare);
+  const dateRanges = [
+    { startDate: range.curStart, endDate: range.curEnd },
+    { startDate: range.prevStart, endDate: range.prevEnd },
+  ];
+  async function run(body: Record<string, unknown>) {
+    const res = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`, {
+      method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    return res.ok ? res.json() : null;
+  }
+  type ApiRow = { dimensionValues?: { value: string }[]; metricValues?: { value: string }[] };
+  const M = ["advertiserAdCost", "advertiserAdClicks", "advertiserAdImpressions", "conversions", "sessions"];
+
+  // Per campagne (beide periodes). sessionGoogleAdsCampaignName pakt alleen Ads-verkeer.
+  const cj = await run({
+    dateRanges,
+    dimensions: [{ name: "sessionGoogleAdsCampaignName" }],
+    metrics: M.map((name) => ({ name })),
+    limit: 100,
+  });
+  if (!cj) return { linked: false, dates: [], totals: [], campaigns: [] };
+  const byName = new Map<string, AdsCampaign>();
+  for (const r of (cj.rows || []) as ApiRow[]) {
+    const name = r.dimensionValues?.[0]?.value || "";
+    if (!name || name === "(not set)") continue;
+    const isCur = (r.dimensionValues?.[1]?.value || "date_range_0") === "date_range_0";
+    const c = byName.get(name) || { name, cost: 0, prevCost: 0, clicks: 0, prevClicks: 0, impressions: 0, prevImpressions: 0, conversions: 0, prevConversions: 0, sessions: 0, prevSessions: 0 };
+    const v = (i: number) => Number(r.metricValues?.[i]?.value || 0);
+    if (isCur) { c.cost += v(0); c.clicks += v(1); c.impressions += v(2); c.conversions += v(3); c.sessions += v(4); }
+    else { c.prevCost += v(0); c.prevClicks += v(1); c.prevImpressions += v(2); c.prevConversions += v(3); c.prevSessions += v(4); }
+    byName.set(name, c);
+  }
+  const campaigns = Array.from(byName.values()).sort((a, b) => b.cost - a.cost);
+  const linked = campaigns.length > 0;
+
+  // Dagreeksen (beide periodes) voor de kaarten met grafiek.
+  const dates: string[] = [];
+  const seriesCur: Record<string, number[]> = {};
+  const seriesPrev: Record<string, number[]> = {};
+  const dj = await run({
+    dateRanges,
+    dimensions: [{ name: "date" }],
+    metrics: ["advertiserAdCost", "advertiserAdClicks", "advertiserAdImpressions", "conversions"].map((name) => ({ name })),
+    orderBys: [{ dimension: { dimensionName: "date" } }],
+    limit: 1000,
+  });
+  const DAY_METRICS = ["advertiserAdCost", "advertiserAdClicks", "advertiserAdImpressions", "conversions"];
+  if (dj) {
+    const drows: ApiRow[] = dj.rows || [];
+    const isCur = (r: ApiRow) => (r.dimensionValues?.[1]?.value || "date_range_0") === "date_range_0";
+    const curRows = drows.filter(isCur), prevRows = drows.filter((r) => !isCur(r));
+    for (const r of curRows) { const d = r.dimensionValues?.[0]?.value || ""; dates.push(d ? `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}` : ""); }
+    DAY_METRICS.forEach((name, i) => {
+      seriesCur[name] = curRows.map((r) => Number(r.metricValues?.[i]?.value || 0));
+      seriesPrev[name] = prevRows.map((r) => Number(r.metricValues?.[i]?.value || 0));
+    });
+  }
+  const sum = (a: number[]) => a.reduce((x, y) => x + y, 0);
+  // Totalen uit de campagnetabel (kosten/klikken/vertoningen) en de dagreeks (conversies
+  // uit de dagreeks zijn site-breed; daarom nemen we conversies uit de campagnes).
+  const tot = (get: (c: AdsCampaign) => number) => campaigns.reduce((x, c) => x + get(c), 0);
+  const totals = [
+    { metric: "cost", cur: tot((c) => c.cost), prev: tot((c) => c.prevCost), series: seriesCur.advertiserAdCost || [], prevSeries: seriesPrev.advertiserAdCost || [] },
+    { metric: "clicks", cur: tot((c) => c.clicks), prev: tot((c) => c.prevClicks), series: seriesCur.advertiserAdClicks || [], prevSeries: seriesPrev.advertiserAdClicks || [] },
+    { metric: "impressions", cur: tot((c) => c.impressions), prev: tot((c) => c.prevImpressions), series: seriesCur.advertiserAdImpressions || [], prevSeries: seriesPrev.advertiserAdImpressions || [] },
+    { metric: "conversions", cur: tot((c) => c.conversions), prev: tot((c) => c.prevConversions), series: [], prevSeries: [] },
+  ];
+  return { linked, dates, totals, campaigns };
+}
+
