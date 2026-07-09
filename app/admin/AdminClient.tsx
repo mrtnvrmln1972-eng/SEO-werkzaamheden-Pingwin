@@ -370,8 +370,8 @@ export default function AdminClient({ initialClients, isOwner = true, showGroups
               </div>
             )}
             <div className="field field-wide">
-              <label>Google Sheet-link (van het juiste tabblad{form.grp === "mmc" ? "; optioneel" : ""})</label>
-              <input value={form.sheetUrl} onChange={(e) => set("sheetUrl", e.target.value)} placeholder="https://docs.google.com/spreadsheets/d/.../edit#gid=..." required={form.grp !== "mmc"} />
+              <label>Google Sheet-link (optioneel; alleen voor oude klanten met een Sheet, nieuwe klanten werken met taken)</label>
+              <input value={form.sheetUrl} onChange={(e) => set("sheetUrl", e.target.value)} placeholder="Leeg laten bij de taken-werkwijze" />
             </div>
             <div className="field">
               <label>Maandfee (&euro;, incl. linkbuilding)</label>

@@ -97,6 +97,13 @@ export default function Dashboard({ name, sheetId, gid, budget, adminPreview, in
     }
 
     async function load() {
+      // Klanten zonder Google Sheet (taken-werkwijze): niets op te halen. Toon
+      // een nette melding in plaats van een laadfout of Sheet-instructies.
+      if (!sheetId) {
+        setError("geen-taken");
+        setLoading(false);
+        return;
+      }
       try {
         const res = await fetch(sheetCsvUrl(sheetId, gid));
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -214,6 +221,13 @@ export default function Dashboard({ name, sheetId, gid, budget, adminPreview, in
           </div>
         )}
 
+        {!loading && error === "geen-taken" && (
+          <div className="error-msg">
+            <strong>Nog geen werkzaamheden ingevuld.</strong>
+            <br />
+            Zodra de eerste werkzaamheden zijn vastgelegd, verschijnen ze hier vanzelf.
+          </div>
+        )}
         {!loading && error === "geen-data" && (
           <div className="error-msg">
             <strong>Geen data gevonden.</strong>
@@ -223,7 +237,7 @@ export default function Dashboard({ name, sheetId, gid, budget, adminPreview, in
           </div>
         )}
 
-        {!loading && error && error !== "geen-data" && (
+        {!loading && error && error !== "geen-data" && error !== "geen-taken" && (
           <div className="error-msg">
             <strong>Kon de Google Sheet niet laden.</strong>
             <br />
