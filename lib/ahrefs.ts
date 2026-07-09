@@ -360,6 +360,33 @@ export async function getSerpOverview(keyword: string, country = "nl"): Promise<
   return result;
 }
 
+// ── Autoriteit: Domain Rating + verwijzende domeinen/backlinks van een doel ──
+// Voor de autoriteits-vergelijking in de chat (kan deze site realistisch winnen
+// van de top-10?). Werkt op eigen domein én concurrent-URL's. 7 dagen gecachet.
+export type SiteAuthority = { target: string; domainRating: number | null; refDomains: number | null; backlinks: number | null };
+
+export async function getSiteAuthority(target: string): Promise<SiteAuthority> {
+  const t = (target || "").trim().replace(/^https?:\/\//, "").replace(/\/$/, "");
+  const empty: SiteAuthority = { target: t, domainRating: null, refDomains: null, backlinks: null };
+  if (!t) return empty;
+  const cached = await cacheGet<SiteAuthority>("authority", t, "-", 7);
+  if (cached) return cached;
+  const today = new Date().toISOString().slice(0, 10);
+  const num = (v: unknown): number | null => (Number.isFinite(Number(v)) ? Number(v) : null);
+  const out: SiteAuthority = { ...empty };
+  try {
+    const d = (await ahrefsFetch("/site-explorer/domain-rating", { target: t, date: today })) as { domain_rating?: { domain_rating?: number } };
+    out.domainRating = num(d?.domain_rating?.domain_rating);
+  } catch { /* DR optioneel */ }
+  try {
+    const b = (await ahrefsFetch("/site-explorer/backlinks-stats", { target: t, date: today, mode: "subdomains" })) as { metrics?: { live?: number; live_refdomains?: number } };
+    out.backlinks = num(b?.metrics?.live);
+    out.refDomains = num(b?.metrics?.live_refdomains);
+  } catch { /* backlinks optioneel */ }
+  if (out.domainRating !== null || out.refDomains !== null) await cacheSet("authority", t, "-", out);
+  return out;
+}
+
 // ── AI-vindbaarheid: citaties van het domein in AI-antwoorden (Ahrefs) ──
 // Per AI-platform het aantal keer dat het domein wordt aangehaald in gegenereerde
 // antwoorden (citations) en hoeveel verschillende pagina's geciteerd worden. Met

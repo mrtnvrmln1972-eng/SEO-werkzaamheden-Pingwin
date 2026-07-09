@@ -1,5 +1,5 @@
 import type { ToolDef } from "./anthropic";
-import { ahrefsConfigured, getKeywordsOverview, getSerpOverview, getKeywordIdeas, getUrlOrganicKeywords } from "./ahrefs";
+import { ahrefsConfigured, getKeywordsOverview, getSerpOverview, getKeywordIdeas, getUrlOrganicKeywords, getSiteAuthority } from "./ahrefs";
 import { fetchPageContent } from "./page-content";
 
 // Gereedschap dat de chat zelf mag inschakelen wanneer het nuttig is.
@@ -23,6 +23,11 @@ export const CHAT_TOOLS: ToolDef[] = [
     name: "ahrefs_url_organic_keywords",
     description: "De zoekwoorden waarop een specifieke URL organisch rankt (positie, volume, verkeer) uit Ahrefs. Gebruik voor de eigen pagina, of voor een concurrent-URL uit de top-10, om een content-gap te vinden: waar rankt de concurrent op dat wij missen?",
     input_schema: { type: "object", properties: { url: { type: "string" }, country: { type: "string" } }, required: ["url"] },
+  },
+  {
+    name: "ahrefs_site_authority",
+    description: "Domain Rating, aantal verwijzende domeinen en backlinks (Ahrefs) van een domein of URL — eigen site of concurrent. Gebruik dit voor de autoriteits-vergelijking (kan de klant realistisch winnen van de top-10?) en voor uitspraken over linkprofiel. Verzin NOOIT een Domain Rating of aantal referring domains; haal ze hiermee op.",
+    input_schema: { type: "object", properties: { target: { type: "string" } }, required: ["target"] },
   },
   {
     name: "fetch_page_content",
@@ -57,6 +62,12 @@ export async function runChatTool(name: string, input: Record<string, unknown>):
     const url = typeof input.url === "string" ? input.url : "";
     if (!url) return "Geen URL opgegeven.";
     return JSON.stringify(await getUrlOrganicKeywords(url, country));
+  }
+  if (name === "ahrefs_site_authority") {
+    if (!ahrefsConfigured()) return need();
+    const target = typeof input.target === "string" ? input.target : "";
+    if (!target) return "Geen doel (domein of URL) opgegeven.";
+    return JSON.stringify(await getSiteAuthority(target));
   }
   if (name === "fetch_page_content") {
     const url = typeof input.url === "string" ? input.url : "";
