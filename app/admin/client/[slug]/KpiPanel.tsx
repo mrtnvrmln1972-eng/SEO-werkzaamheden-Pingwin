@@ -866,6 +866,41 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
               );
             })}
           </div>
+          <div className="kpi-block" style={{ marginTop: 14 }}>
+            <div className="kpi-block-head">
+              <span className="kpi-block-title">AI-verkeer (LLM&rsquo;s en AI-zoek) {siteBadge} <HelpHint wide text="Bezoekers die via een AI-assistent of AI-zoekmachine op de site kwamen: ChatGPT, Perplexity, Google Gemini, Microsoft Copilot, Claude, DeepSeek, Grok en meer. Herkend op de bron van de sessie in Google Analytics. Dit verkeer groeit hard en converteert vaak goed; hier volg je de ontwikkeling per bron." /></span>
+            </div>
+            {ga4.aiSources.length === 0 ? (
+              <div className="muted" style={{ fontSize: 12.5 }}>Nog geen meetbaar AI-verkeer in deze periode. Zodra bezoekers via ChatGPT, Perplexity, Gemini of een andere AI-bron binnenkomen, verschijnen ze hier automatisch.</div>
+            ) : (
+              <div className="res-table-wrap">
+                <table className="res-table kpi-table">
+                  <thead><tr><th>AI-bron</th><th className="kpi-metric-sep">Sessies</th><th className="kpi-delta-th" title="Verschil met de vergelijkingsperiode">Verschil</th><th className="kpi-metric-sep">Gebruikers</th><th className="kpi-delta-th" title="Verschil met de vergelijkingsperiode">Verschil</th><th className="kpi-metric-sep">Conversies</th><th className="kpi-delta-th" title="Verschil met de vergelijkingsperiode">Verschil</th></tr></thead>
+                  <tbody>
+                    {ga4.aiSources.map((ch) => (
+                      <tr key={ch.name}>
+                        <td>{ch.name}</td>
+                        <td className="kpi-metric-sep">{nl(ch.sessions)}</td><td className="kpi-delta-td"><Delta cur={ch.sessions} prev={ch.prevSessions} /></td>
+                        <td className="kpi-metric-sep">{nl(ch.users)}</td><td className="kpi-delta-td"><Delta cur={ch.users} prev={ch.prevUsers} /></td>
+                        <td className="kpi-metric-sep">{nl(ch.conversions)}</td><td className="kpi-delta-td"><Delta cur={ch.conversions} prev={ch.prevConversions} /></td>
+                      </tr>
+                    ))}
+                    {ga4.aiSources.length > 1 && (() => {
+                      const t = ga4.aiSources.reduce((a, c) => ({ name: "Totaal AI-verkeer", sessions: a.sessions + c.sessions, prevSessions: a.prevSessions + c.prevSessions, users: a.users + c.users, prevUsers: a.prevUsers + c.prevUsers, conversions: a.conversions + c.conversions, prevConversions: a.prevConversions + c.prevConversions }), { name: "Totaal AI-verkeer", sessions: 0, prevSessions: 0, users: 0, prevUsers: 0, conversions: 0, prevConversions: 0 });
+                      return (
+                        <tr key="totaal" style={{ fontWeight: 700 }}>
+                          <td>Totaal AI-verkeer</td>
+                          <td className="kpi-metric-sep">{nl(t.sessions)}</td><td className="kpi-delta-td"><Delta cur={t.sessions} prev={t.prevSessions} /></td>
+                          <td className="kpi-metric-sep">{nl(t.users)}</td><td className="kpi-delta-td"><Delta cur={t.users} prev={t.prevUsers} /></td>
+                          <td className="kpi-metric-sep">{nl(t.conversions)}</td><td className="kpi-delta-td"><Delta cur={t.conversions} prev={t.prevConversions} /></td>
+                        </tr>
+                      );
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
           {ga4.channels.length > 0 && (
             <div className="kpi-block" style={{ marginTop: 14 }}>
               <div className="kpi-block-head">

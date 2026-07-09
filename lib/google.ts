@@ -626,11 +626,29 @@ export async function getGscComparison(domain: string, days: number, compare: "p
 
 export type Ga4Metric = { metric: string; cur: number; prev: number; series: number[]; prevSeries: number[] };
 export type Ga4Channel = { name: string; sessions: number; prevSessions: number; users: number; prevUsers: number; conversions: number; prevConversions: number };
+// Bekende AI-bronnen (LLM's en AI-zoek): sessionSource-patronen in GA4.
+const AI_SOURCES: { match: string; label: string }[] = [
+  { match: "chatgpt", label: "ChatGPT" },
+  { match: "openai", label: "ChatGPT (OpenAI)" },
+  { match: "perplexity", label: "Perplexity" },
+  { match: "gemini", label: "Google Gemini" },
+  { match: "bard", label: "Google Gemini (Bard)" },
+  { match: "copilot", label: "Microsoft Copilot" },
+  { match: "claude", label: "Claude" },
+  { match: "anthropic", label: "Claude (Anthropic)" },
+  { match: "deepseek", label: "DeepSeek" },
+  { match: "mistral", label: "Mistral (Le Chat)" },
+  { match: "meta.ai", label: "Meta AI" },
+  { match: "grok", label: "Grok" },
+  { match: "x.ai", label: "Grok (xAI)" },
+  { match: "poe.com", label: "Poe" },
+];
 export type Ga4Comparison = {
   connected: boolean; propertyId: string | null;
   dates: string[];            // dagen van de huidige periode (voor de grafiek-as)
   totals: Ga4Metric[];        // per KPI: totaal nu/vorig + dagreeks nu/vorig
   channels: Ga4Channel[];     // waar de bezoekers vandaan komen (kanalen)
+  aiSources: Ga4Channel[];    // AI-verkeer per bron (ChatGPT, Perplexity, Gemini, ...)
 };
 
 // Volledige GA4-vergelijking voor het KPI-dashboard: 10 kern-KPI's met dagreeksen
@@ -646,7 +664,7 @@ export async function getGa4Comparison(slug: string, domain: string, days: numbe
     const found = await ga4DiscoverProperty(token, domain);
     if (found) { propertyId = found; await sql`UPDATE clients SET ga4_property_id = ${found} WHERE slug = ${slug}`; }
   }
-  if (!propertyId) return { connected: true, propertyId: null, dates: [], totals: [], channels: [] };
+  if (!propertyId) return { connected: true, propertyId: null, dates: [], totals: [], channels: [], aiSources: [] };
 
   const range = periodRanges(days, compare);
   const dateRanges = [
@@ -667,7 +685,7 @@ export async function getGa4Comparison(slug: string, domain: string, days: numbe
   let names = FULL;
   let tj = await run({ dateRanges, metrics: names.map((name) => ({ name })) });
   if (!tj) { names = FULL.filter((n) => n !== "conversions"); tj = await run({ dateRanges, metrics: names.map((name) => ({ name })) }); }
-  if (!tj) return { connected: true, propertyId, dates: [], totals: [], channels: [] };
+  if (!tj) return { connected: true, propertyId, dates: [], totals: [], channels: [], aiSources: [] };
   const trows: ApiRow[] = tj.rows || [];
   const tCur = trows.find((r) => r.dimensionValues?.[0]?.value === "date_range_0") || trows[0];
   const tPrev = trows.find((r) => r.dimensionValues?.[0]?.value === "date_range_1") || trows[1];
@@ -745,7 +763,32 @@ export async function getGa4Comparison(slug: string, domain: string, days: numbe
     channels.push(...Array.from(byName.values()).sort((a, b) => b.sessions - a.sessions));
   }
 
-  return { connected: true, propertyId, dates, totals, channels };
+  // AI-verkeer: sessies vanuit LLM's en AI-zoek (herkenning op sessionSource).
+  const aiSources: Ga4Channel[] = [];
+  const aj = await run({
+    dateRanges,
+    dimensions: [{ name: "sessionSource" }],
+    metrics: chMetrics.map((name) => ({ name })),
+    dimensionFilter: { orGroup: { expressions: AI_SOURCES.map((a) => ({ filter: { fieldName: "sessionSource", stringFilter: { matchType: "CONTAINS", value: a.match, caseSensitive: false } } })) } },
+    limit: 100,
+  });
+  if (aj) {
+    // Bronnen met hetzelfde label samenvoegen (bijv. chat.openai.com + chatgpt.com).
+    const byLabel = new Map<string, Ga4Channel>();
+    for (const r of (aj.rows || []) as ApiRow[]) {
+      const src = (r.dimensionValues?.[0]?.value || "").toLowerCase();
+      const label = AI_SOURCES.find((a) => src.includes(a.match))?.label || src || "Overig AI";
+      const isCur = (r.dimensionValues?.[1]?.value || "date_range_0") === "date_range_0";
+      const c = byLabel.get(label) || { name: label, sessions: 0, prevSessions: 0, users: 0, prevUsers: 0, conversions: 0, prevConversions: 0 };
+      const v = (i: number) => Number(r.metricValues?.[i]?.value || 0);
+      if (isCur) { c.sessions += v(0); c.users += v(1); c.conversions += chMetrics.length > 2 ? v(2) : 0; }
+      else { c.prevSessions += v(0); c.prevUsers += v(1); c.prevConversions += chMetrics.length > 2 ? v(2) : 0; }
+      byLabel.set(label, c);
+    }
+    aiSources.push(...Array.from(byLabel.values()).sort((a, b) => b.sessions - a.sessions));
+  }
+
+  return { connected: true, propertyId, dates, totals, channels, aiSources };
 }
 
 // Gemiddelde positie van de top-zoekwoorden per maand over de laatste 4 maanden.
