@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
   const allowedSlugs = Array.isArray(body.allowedSlugs) ? (body.allowedSlugs as unknown[]).map((s) => String(s)) : [];
   const canSeeMail = body.canSeeMail === true;
   const canEdit = body.canEdit === true;
+  const email = String(body.email || "").trim();
 
   if (!loginId) return NextResponse.json({ ok: false, error: "Inlognaam is verplicht." }, { status: 400 });
   if (!/^[a-zA-Z0-9._-]+$/.test(loginId)) {
@@ -34,7 +35,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { user, password } = await createTeamUser({ name, loginId, allowedSlugs, canSeeMail, canEdit });
+    const { user, password } = await createTeamUser({ name, loginId, allowedSlugs, canSeeMail, canEdit, email });
     return NextResponse.json({ ok: true, user, password });
   } catch (err) {
     const msg = (err as Error).message || "";
@@ -59,12 +60,13 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ ok: true, password });
   }
 
-  // Rechten bijwerken (naam, klanten, mail-recht, wijzig-recht).
-  const patch: { name?: string | null; allowedSlugs?: string[]; canSeeMail?: boolean; canEdit?: boolean } = {};
+  // Rechten bijwerken (naam, e-mail, klanten, mail-recht, wijzig-recht).
+  const patch: { name?: string | null; allowedSlugs?: string[]; canSeeMail?: boolean; canEdit?: boolean; email?: string | null } = {};
   if ("name" in body) patch.name = String(body.name || "").trim() || null;
   if ("allowedSlugs" in body) patch.allowedSlugs = Array.isArray(body.allowedSlugs) ? (body.allowedSlugs as unknown[]).map((s) => String(s)) : [];
   if ("canSeeMail" in body) patch.canSeeMail = body.canSeeMail === true;
   if ("canEdit" in body) patch.canEdit = body.canEdit === true;
+  if ("email" in body) patch.email = String(body.email || "").trim() || null;
   const ok = await updateTeamUser(id, patch);
   if (!ok) return NextResponse.json({ ok: false, error: "Gebruiker niet gevonden." }, { status: 404 });
   return NextResponse.json({ ok: true });

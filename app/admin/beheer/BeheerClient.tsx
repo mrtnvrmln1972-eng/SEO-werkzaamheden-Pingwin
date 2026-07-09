@@ -81,17 +81,19 @@ export default function BeheerClient({ clients, team }: { clients: ClientLite[];
 
   // ──────────────────────────────── TEAM ─────────────────────────────────
   const [showTeamForm, setShowTeamForm] = useState(false);
-  const [tForm, setTForm] = useState<{ name: string; loginId: string; allowedSlugs: string[]; canSeeMail: boolean; canEdit: boolean }>({
+  const [tForm, setTForm] = useState<{ name: string; loginId: string; email: string; allowedSlugs: string[]; canSeeMail: boolean; canEdit: boolean }>({
     name: "",
     loginId: "",
+    email: "",
     allowedSlugs: [],
     canSeeMail: false,
     canEdit: false,
   });
   const [created, setCreated] = useState<{ name: string; loginId: string; password: string } | null>(null);
   const [editUserId, setEditUserId] = useState<number | null>(null);
-  const [uForm, setUForm] = useState<{ name: string; allowedSlugs: string[]; canSeeMail: boolean; canEdit: boolean }>({
+  const [uForm, setUForm] = useState<{ name: string; email: string; allowedSlugs: string[]; canSeeMail: boolean; canEdit: boolean }>({
     name: "",
+    email: "",
     allowedSlugs: [],
     canSeeMail: false,
     canEdit: false,
@@ -116,7 +118,7 @@ export default function BeheerClient({ clients, team }: { clients: ClientLite[];
       const data = await res.json();
       if (data.ok) {
         setCreated({ name: tForm.name || tForm.loginId, loginId: data.user.loginId, password: data.password });
-        setTForm({ name: "", loginId: "", allowedSlugs: [], canSeeMail: false, canEdit: false });
+        setTForm({ name: "", loginId: "", email: "", allowedSlugs: [], canSeeMail: false, canEdit: false });
         setShowTeamForm(false);
         router.refresh();
       } else flash(false, data.error || "Aanmaken mislukt.");
@@ -129,7 +131,7 @@ export default function BeheerClient({ clients, team }: { clients: ClientLite[];
 
   function openUser(u: TeamUser) {
     setEditUserId(u.id);
-    setUForm({ name: u.name || "", allowedSlugs: [...u.allowedSlugs], canSeeMail: u.canSeeMail, canEdit: u.canEdit });
+    setUForm({ name: u.name || "", email: u.email || "", allowedSlugs: [...u.allowedSlugs], canSeeMail: u.canSeeMail, canEdit: u.canEdit });
     setUserPassword(null);
   }
 
@@ -140,7 +142,7 @@ export default function BeheerClient({ clients, team }: { clients: ClientLite[];
       const res = await fetch("/api/admin/team", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, name: uForm.name, allowedSlugs: uForm.allowedSlugs, canSeeMail: uForm.canSeeMail, canEdit: uForm.canEdit }),
+        body: JSON.stringify({ id, name: uForm.name, email: uForm.email, allowedSlugs: uForm.allowedSlugs, canSeeMail: uForm.canSeeMail, canEdit: uForm.canEdit }),
       });
       const data = await res.json();
       if (data.ok) {
@@ -194,6 +196,34 @@ export default function BeheerClient({ clients, team }: { clients: ClientLite[];
 
   function copy(text: string) {
     navigator.clipboard?.writeText(text);
+  }
+
+  // Mail de inloggegevens: genereert server-side een NIEUW wachtwoord en stuurt
+  // dat met de login-URL naar het e-mailadres van het teamlid.
+  const [mailBusyId, setMailBusyId] = useState<number | null>(null);
+  async function mailLogin(u: TeamUser) {
+    if (mailBusyId !== null) return;
+    if (!window.confirm(`Inloggegevens mailen naar ${u.email || u.name || u.loginId}? Er wordt een nieuw wachtwoord gegenereerd; het oude vervalt.`)) return;
+    setMailBusyId(u.id);
+    setNotice(null);
+    setUserPassword(null);
+    try {
+      const res = await fetch("/api/admin/team/mail-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: u.id }),
+      });
+      const data = await res.json();
+      if (data.ok) flash(true, `Inloggegevens gemaild naar ${data.sentTo}.`);
+      else {
+        flash(false, data.error || "Mailen mislukt.");
+        if (data.password) setUserPassword({ id: u.id, password: data.password });
+      }
+    } catch {
+      flash(false, "Mailen mislukt.");
+    } finally {
+      setMailBusyId(null);
+    }
   }
 
   // Kijk-als-modus: zet de cookie en open het adminscherm in een nieuw tabblad,
@@ -373,6 +403,7 @@ export default function BeheerClient({ clients, team }: { clients: ClientLite[];
                   <td style={{ whiteSpace: "nowrap" }}>
                     <button className="mini-btn" onClick={() => openUser(u)}>Bewerken</button>{" "}
                     <button className="mini-btn" onClick={() => viewAs(u.id)} disabled={busy} title="Open in een nieuw tabblad precies wat deze gast ziet">Bekijk als</button>{" "}
+                    <button className="mini-btn" onClick={() => mailLogin(u)} disabled={busy || mailBusyId !== null} title={u.email ? `Mailt een nieuw wachtwoord + de login-URL naar ${u.email}` : "Vul eerst een e-mailadres in (Bewerken)"}>{mailBusyId === u.id ? "Mailen…" : "Mail inloggegevens"}</button>{" "}
                     <button className="mini-btn" onClick={() => resetUserPw(u.id)} disabled={busy}>Nieuw wachtwoord</button>{" "}
                     <button className="mini-btn" onClick={() => removeUser(u.id, u.name || u.loginId)} disabled={busy}>Verwijder</button>
                   </td>
@@ -400,9 +431,15 @@ export default function BeheerClient({ clients, team }: { clients: ClientLite[];
           return (
             <form className="admin-form" style={{ marginTop: 20 }} onSubmit={(e) => { e.preventDefault(); saveUser(u.id); }}>
               <div className="created-title" style={{ marginBottom: 12, fontWeight: 700 }}>Gast bewerken: {u.loginId}</div>
-              <div className="field" style={{ marginBottom: 16 }}>
-                <label>Naam</label>
-                <input value={uForm.name} onChange={(e) => setUForm({ ...uForm, name: e.target.value })} placeholder="Naam van de gast" />
+              <div className="form-grid" style={{ marginBottom: 16 }}>
+                <div className="field">
+                  <label>Naam</label>
+                  <input value={uForm.name} onChange={(e) => setUForm({ ...uForm, name: e.target.value })} placeholder="Naam van de gast" />
+                </div>
+                <div className="field">
+                  <label>E-mailadres (voor het mailen van de inloggegevens)</label>
+                  <input type="email" value={uForm.email} onChange={(e) => setUForm({ ...uForm, email: e.target.value })} placeholder="naam@bedrijf.nl" />
+                </div>
               </div>
               <ClientPicker
                 clients={clients}
@@ -451,6 +488,10 @@ export default function BeheerClient({ clients, team }: { clients: ClientLite[];
                   spellCheck={false}
                   required
                 />
+              </div>
+              <div className="field">
+                <label>E-mailadres (voor het mailen van de inloggegevens)</label>
+                <input type="email" value={tForm.email} onChange={(e) => setTForm({ ...tForm, email: e.target.value })} placeholder="naam@bedrijf.nl" />
               </div>
             </div>
             <ClientPicker

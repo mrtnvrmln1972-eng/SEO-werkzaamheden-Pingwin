@@ -24,6 +24,7 @@ export type TeamUser = {
   allowedSlugs: string[];
   canSeeMail: boolean;
   canEdit: boolean;
+  email: string | null;
   createdAt: string | null;
 };
 
@@ -36,6 +37,7 @@ type TeamRow = {
   allowed_slugs: string[] | null;
   can_see_mail: boolean;
   can_edit: boolean;
+  email: string | null;
   created_at: string | null;
 };
 
@@ -48,6 +50,7 @@ function rowToUser(r: TeamRow): TeamUser {
     allowedSlugs: Array.isArray(r.allowed_slugs) ? r.allowed_slugs : [],
     canSeeMail: !!r.can_see_mail,
     canEdit: !!r.can_edit,
+    email: r.email || null,
     createdAt: r.created_at,
   };
 }
@@ -81,6 +84,7 @@ export type NewTeamUserInput = {
   allowedSlugs: string[];
   canSeeMail: boolean;
   canEdit: boolean;
+  email?: string;
 };
 
 // Maakt een gast aan, genereert een wachtwoord en geeft dat ÉÉN keer terug.
@@ -92,16 +96,16 @@ export async function createTeamUser(
   const passwordHash = hashPassword(password);
   const slugs = sanitizeSlugs(input.allowedSlugs);
   const { rows } = await sql<TeamRow>`
-    INSERT INTO team_users (name, login_id, password_hash, role, allowed_slugs, can_see_mail, can_edit)
+    INSERT INTO team_users (name, login_id, password_hash, role, allowed_slugs, can_see_mail, can_edit, email)
     VALUES (${input.name.trim() || null}, ${input.loginId.trim()}, ${passwordHash}, 'guest',
-            ${slugs as unknown as string}, ${input.canSeeMail}, ${input.canEdit})
+            ${slugs as unknown as string}, ${input.canSeeMail}, ${input.canEdit}, ${(input.email || "").trim() || null})
     RETURNING *`;
   return { user: rowToUser(rows[0]), password };
 }
 
 export async function updateTeamUser(
   id: number,
-  patch: { name?: string | null; allowedSlugs?: string[]; canSeeMail?: boolean; canEdit?: boolean },
+  patch: { name?: string | null; allowedSlugs?: string[]; canSeeMail?: boolean; canEdit?: boolean; email?: string | null },
 ): Promise<boolean> {
   await ensureSchema();
   if (patch.name !== undefined) {
@@ -116,6 +120,9 @@ export async function updateTeamUser(
   }
   if (patch.canEdit !== undefined) {
     await sql`UPDATE team_users SET can_edit = ${patch.canEdit} WHERE id = ${id}`;
+  }
+  if (patch.email !== undefined) {
+    await sql`UPDATE team_users SET email = ${(patch.email || "").trim() || null} WHERE id = ${id}`;
   }
   const { rows } = await sql`SELECT 1 FROM team_users WHERE id = ${id} LIMIT 1`;
   return rows.length > 0;

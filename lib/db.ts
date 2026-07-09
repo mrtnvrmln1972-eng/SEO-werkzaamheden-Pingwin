@@ -118,6 +118,8 @@ async function init(): Promise<void> {
   // Mag deze gast wijzigen/uitvoeren? Standaard false = alleen lezen (rondkijken,
   // openklappen, KPI-periode wisselen), geen stappen draaien of iets opslaan.
   await sql`ALTER TABLE team_users ADD COLUMN IF NOT EXISTS can_edit BOOLEAN NOT NULL DEFAULT false`;
+  // E-mailadres van het teamlid, voor de knop "Mail inloggegevens".
+  await sql`ALTER TABLE team_users ADD COLUMN IF NOT EXISTS email TEXT`;
 
   // ── Data-brug: ingeladen snapshots per klant (uit Outlook / GSC / GA4 / Ahrefs) ──
   // Gevuld via POST /api/admin/ingest. Het dashboard leest hieruit, ook als er
