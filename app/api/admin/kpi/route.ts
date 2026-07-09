@@ -28,6 +28,23 @@ export async function GET(req: NextRequest) {
   if (!client) return NextResponse.json({ ok: false, error: "Klant niet gevonden." }, { status: 404 });
 
   const domain = client.domain || "";
+
+  // Per-sectie verversen: met ?section=gsc|ga4|ads komt alleen dat deel terug,
+  // zodat een periode-wissel in één sectiekop niet de hele tab herlaadt.
+  const section = req.nextUrl.searchParams.get("section") || "";
+  if (section === "gsc") {
+    const gsc = await withTimeout(getGscComparison(domain, days, compare), 9000, null);
+    return NextResponse.json({ ok: true, days, gsc });
+  }
+  if (section === "ga4") {
+    const ga4 = await withTimeout(getGa4Comparison(slug, domain, days, compare), 12000, null);
+    return NextResponse.json({ ok: true, days, ga4 });
+  }
+  if (section === "ads") {
+    const ads = await withTimeout(getAdsComparison(slug, domain, days, compare), 12000, null);
+    return NextResponse.json({ ok: true, days, ads });
+  }
+
   const [gsc, ga4, ads, pageOrder, keywordFocus] = await Promise.all([
     withTimeout(getGscComparison(domain, days, compare), 9000, null),
     withTimeout(getGa4Comparison(slug, domain, days, compare), 12000, null),

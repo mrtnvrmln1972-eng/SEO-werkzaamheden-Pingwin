@@ -273,6 +273,15 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
 
   const [days, setDays] = useState(28);
   const [compare, setCompare] = useState<"prev" | "yoy">("prev");
+  // Per-sectie periode-override: wissel je de periode in een sectiekop, dan
+  // ververst alleen die sectie; de rest houdt de hoofdperiode. Een wissel van
+  // de hoofdperiode (toolbar) wist de overrides weer.
+  type SectionKey = "gsc" | "ga4" | "ads";
+  const [secDays, setSecDays] = useState<Partial<Record<SectionKey, number>>>({});
+  const [secCompare, setSecCompare] = useState<Partial<Record<SectionKey, "prev" | "yoy">>>({});
+  const [secLoading, setSecLoading] = useState<Partial<Record<SectionKey, boolean>>>({});
+  const secAbort = useRef<Partial<Record<SectionKey, AbortController>>>({});
+  const [pageOrder, setPageOrder] = useState<string[]>([]);
   const [gsc, setGsc] = useState<GscComparison | null>(null);
   const [ga4, setGa4] = useState<Ga4Comparison | null>(null);
   const [ads, setAds] = useState<AdsComparison | null>(null);
@@ -340,6 +349,8 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
   useEffect(() => {
     let off = false;
     setLoading(true);
+    // Hoofdperiode geldt weer voor alles: eventuele per-sectie overrides wissen.
+    setSecDays({}); setSecCompare({});
     fetch(`/api/admin/kpi?slug=${encodeURIComponent(slug)}&days=${days}&compare=${compare}`)
       .then((r) => r.json())
       .then((d) => {
@@ -349,12 +360,46 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
         setAds(d.ads ?? null);
         setConnected(!!(d.gsc || d.ga4));
         setFocus(d.keywordFocus || {});
+        const order = Array.isArray(d.pageOrder) ? d.pageOrder : [];
+        setPageOrder(order);
         const pages: GscPage[] = d.gsc?.pages || [];
-        setPagesView(sortByOrder(pages, Array.isArray(d.pageOrder) ? d.pageOrder : []));
+        setPagesView(sortByOrder(pages, order));
       })
       .finally(() => { if (!off) setLoading(false); });
     return () => { off = true; };
   }, [slug, days, compare]);
+
+  // Eén sectie verversen op een eigen periode (de rest blijft ongemoeid).
+  async function loadSection(sec: SectionKey, d: number, c: "prev" | "yoy") {
+    secAbort.current[sec]?.abort();
+    const ac = new AbortController();
+    secAbort.current[sec] = ac;
+    setSecLoading((s) => ({ ...s, [sec]: true }));
+    try {
+      const r = await fetch(`/api/admin/kpi?slug=${encodeURIComponent(slug)}&days=${d}&compare=${c}&section=${sec}`, { signal: ac.signal });
+      const dd = await r.json();
+      if (ac.signal.aborted) return;
+      if (sec === "gsc") {
+        setGsc(dd.gsc ?? null);
+        setPagesView(sortByOrder(dd.gsc?.pages || [], pageOrder));
+        setPageKwData({}); setPageKwOpen("");
+      } else if (sec === "ga4") {
+        setGa4(dd.ga4 ?? null);
+      } else {
+        setAds(dd.ads ?? null);
+      }
+    } catch { /* afgebroken of mislukt: de huidige data blijft staan */ }
+    finally { if (!ac.signal.aborted) setSecLoading((s) => ({ ...s, [sec]: false })); }
+  }
+  function setSectionPeriod(sec: SectionKey, d?: number, c?: "prev" | "yoy") {
+    const nd = d ?? secDays[sec] ?? days;
+    const nc = c ?? secCompare[sec] ?? compare;
+    setSecDays((m) => ({ ...m, [sec]: nd }));
+    setSecCompare((m) => ({ ...m, [sec]: nc }));
+    loadSection(sec, nd, nc);
+  }
+  const effDays = (sec?: SectionKey) => (sec ? secDays[sec] ?? days : days);
+  const effCompare = (sec?: SectionKey) => (sec ? secCompare[sec] ?? compare : compare);
 
   // Markeert of wist prio/secundair voor één zoekwoord (optimistisch, dan opslaan).
   function markFocus(keyword: string, tier: FocusTier | null) {
@@ -506,7 +551,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
     if (Array.isArray(pageKwData[u])) return;
     setPageKwData((m) => ({ ...m, [u]: "laden" }));
     try {
-      const r = await fetch(`/api/admin/kpi/page-keywords?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(u)}&days=${days}&compare=${compare}`);
+      const r = await fetch(`/api/admin/kpi/page-keywords?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(u)}&days=${effDays("gsc")}&compare=${effCompare("gsc")}`);
       const d = await r.json();
       setPageKwData((m) => ({ ...m, [u]: d.ok ? (d.keywords || []) : "fout" }));
     } catch { setPageKwData((m) => ({ ...m, [u]: "fout" })); }
@@ -514,19 +559,22 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
   // Site-label naast de sectiekoppen: de klant ziet op een screenshot direct
   // over welke site de cijfers gaan.
   const siteBadge = domain ? <span className="kpi-site-badge">{domain.replace(/^https?:\/\//i, "").replace(/\/$/, "")}</span> : null;
-  // Herbruikbare periodekiezer (zelfde blokje als bovenaan), ook in de sectie-headers zodat
-  // je daar ziet én kunt kiezen waarmee klikken/vertoningen vergeleken worden.
-  const periodPicker = (
+  // Herbruikbare periodekiezer (zelfde blokje als bovenaan), ook in de sectie-headers.
+  // Zonder sectie: de hoofdperiode (alles herlaadt). Met sectie: alleen die sectie
+  // ververst op de gekozen periode; een spinnertje toont dat die sectie laadt.
+  const periodPicker = (sec?: SectionKey) => (
     <span className="kpi-period-inline" onClick={(e) => e.stopPropagation()}>
-      <select className="kpi-period-select" value={days} onChange={(e) => setDays(Number(e.target.value))}>
+      {sec && secLoading[sec] && <span className="muted" style={{ fontSize: 12 }}>verversen…</span>}
+      <select className="kpi-period-select" value={effDays(sec)} onChange={(e) => (sec ? setSectionPeriod(sec, Number(e.target.value), undefined) : setDays(Number(e.target.value)))}>
         {PERIODS.map((p) => <option key={p.days} value={p.days}>{p.label}</option>)}
       </select>
-      <select className="kpi-period-select" value={compare} onChange={(e) => setCompare(e.target.value as "prev" | "yoy")} title="Waarmee vergelijken">
+      <select className="kpi-period-select" value={effCompare(sec)} onChange={(e) => (sec ? setSectionPeriod(sec, undefined, e.target.value as "prev" | "yoy") : setCompare(e.target.value as "prev" | "yoy"))} title="Waarmee vergelijken">
         <option value="prev">vs. vorige periode</option>
         <option value="yoy">vs. vorig jaar</option>
       </select>
     </span>
   );
+  const secPeriodLabel = (sec: SectionKey) => PERIODS.find((p) => p.days === effDays(sec))?.label || `${effDays(sec)} dagen`;
 
   // Zoekvolume per zoekwoord uit de opgeslagen Ahrefs-pool (geen credits).
   const volMap = new Map<string, number | null>(ahrefsKw.map((k) => [k.keyword.toLowerCase(), k.volume]));
@@ -624,7 +672,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
         <div className="kpi-toolbar-title">Search Console &amp; Analytics</div>
         <div className="kpi-toolbar-right">
           <span className="kpi-compare-note">{compare === "yoy" ? "vergeleken met dezelfde periode vorig jaar" : `vergeleken met vorige ${periodLabel}`}</span>
-          {periodPicker}
+          {periodPicker()}
         </div>
       </div>
 
@@ -646,14 +694,14 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
       {!loading && gsc && gsc.totals && (
         <Collapse title={<>Search Console {siteBadge}</>} meta={`${gsc.range.curStart} t/m ${gsc.range.curEnd}`} open={isOpen("sc", true)} onToggle={() => toggle("sc", true)}>
           <div className="kpi-grid kpi-grid-4">
-            <CardTrend label="Klikken" values={gsc.series.clicks} dates={gsc.series.dates} prevValues={gsc.series.prevClicks} prev={gsc.totals.clicks.prev} cur={gsc.totals.clicks.cur} fmt={(v) => nl(Math.round(v))} periodLabel={`${days} dgn`} metricKey="clicks" onExplain={explainMetric} />
-            <CardTrend label="Vertoningen" values={gsc.series.impressions} dates={gsc.series.dates} prevValues={gsc.series.prevImpressions} prev={gsc.totals.impressions.prev} cur={gsc.totals.impressions.cur} fmt={(v) => nl(Math.round(v))} periodLabel={`${days} dgn`} metricKey="impressions" onExplain={explainMetric} />
-            <CardTrend label="CTR" values={gsc.series.ctr} dates={gsc.series.dates} prevValues={gsc.series.prevCtr} prev={gsc.totals.ctr.prev} cur={gsc.totals.ctr.cur} fmt={(v) => `${v.toFixed(1)}%`} isPos periodLabel={`${days} dgn`} metricKey="ctr" onExplain={explainMetric} />
-            <CardTrend label={<>Gem. positie <span className="kpi-sub-note">(hoger = beter)</span></>} values={gsc.series.position} dates={gsc.series.dates} prevValues={gsc.series.prevPosition} prev={gsc.totals.position.prev} cur={gsc.totals.position.cur} fmt={(v) => v.toFixed(1)} invert isPos periodLabel={`${days} dgn`} metricKey="position" onExplain={explainMetric} />
+            <CardTrend label="Klikken" values={gsc.series.clicks} dates={gsc.series.dates} prevValues={gsc.series.prevClicks} prev={gsc.totals.clicks.prev} cur={gsc.totals.clicks.cur} fmt={(v) => nl(Math.round(v))} periodLabel={`${effDays("gsc")} dgn`} metricKey="clicks" onExplain={explainMetric} />
+            <CardTrend label="Vertoningen" values={gsc.series.impressions} dates={gsc.series.dates} prevValues={gsc.series.prevImpressions} prev={gsc.totals.impressions.prev} cur={gsc.totals.impressions.cur} fmt={(v) => nl(Math.round(v))} periodLabel={`${effDays("gsc")} dgn`} metricKey="impressions" onExplain={explainMetric} />
+            <CardTrend label="CTR" values={gsc.series.ctr} dates={gsc.series.dates} prevValues={gsc.series.prevCtr} prev={gsc.totals.ctr.prev} cur={gsc.totals.ctr.cur} fmt={(v) => `${v.toFixed(1)}%`} isPos periodLabel={`${effDays("gsc")} dgn`} metricKey="ctr" onExplain={explainMetric} />
+            <CardTrend label={<>Gem. positie <span className="kpi-sub-note">(hoger = beter)</span></>} values={gsc.series.position} dates={gsc.series.dates} prevValues={gsc.series.prevPosition} prev={gsc.totals.position.prev} cur={gsc.totals.position.cur} fmt={(v) => v.toFixed(1)} invert isPos periodLabel={`${effDays("gsc")} dgn`} metricKey="position" onExplain={explainMetric} />
           </div>
 
           {gsc.keywords.length > 0 && (
-            <Collapse sub title={<>Zoekwoorden uit Search Console ({gsc.keywords.length}) {siteBadge} <HelpHint wide text="De zoekwoorden waarop deze site in Google gevonden wordt (echte klikken en vertoningen uit Search Console). Markeer belangrijke woorden als prio of secundair; die verschijnen vastgezet bovenaan en zijn gedeeld met de Ahrefs-lijst." /></>} open={isOpen("sc_kw")} onToggle={() => toggle("sc_kw")} actions={<><input className="kpi-kw-search" placeholder="Zoek zoekwoord…" value={kwSearch} onClick={(e) => e.stopPropagation()} onChange={(e) => setKwSearch(e.target.value)} />{periodPicker}</>}>
+            <Collapse sub title={<>Zoekwoorden uit Search Console ({gsc.keywords.length}) {siteBadge} <HelpHint wide text="De zoekwoorden waarop deze site in Google gevonden wordt (echte klikken en vertoningen uit Search Console). Markeer belangrijke woorden als prio of secundair; die verschijnen vastgezet bovenaan en zijn gedeeld met de Ahrefs-lijst." /></>} open={isOpen("sc_kw")} onToggle={() => toggle("sc_kw")} actions={<><input className="kpi-kw-search" placeholder="Zoek zoekwoord…" value={kwSearch} onClick={(e) => e.stopPropagation()} onChange={(e) => setKwSearch(e.target.value)} />{periodPicker("gsc")}</>}>
               <div className="res-table-wrap">
                 <table className="res-table kpi-table">
                   <thead><tr>
@@ -676,7 +724,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
           )}
 
           {pagesView.length > 0 && (
-            <Collapse sub title={<>Pagina&rsquo;s uit Search Console ({pagesView.length}) {siteBadge} <HelpHint wide text="De pagina's van de site met hun klikken en vertoningen uit Search Console. Vink de ster aan om een pagina op prioriteit te zetten; die springt dan (via de ster-kolom) automatisch bovenaan. Gedeeld met de Wijzigingen-tab." /></>} open={isOpen("sc_pages")} onToggle={() => toggle("sc_pages")} actions={<><input className="kpi-kw-search" placeholder="Zoek pagina…" value={pageSearch} onClick={(e) => e.stopPropagation()} onChange={(e) => setPageSearch(e.target.value)} />{periodPicker}</>}>
+            <Collapse sub title={<>Pagina&rsquo;s uit Search Console ({pagesView.length}) {siteBadge} <HelpHint wide text="De pagina's van de site met hun klikken en vertoningen uit Search Console. Vink de ster aan om een pagina op prioriteit te zetten; die springt dan (via de ster-kolom) automatisch bovenaan. Gedeeld met de Wijzigingen-tab." /></>} open={isOpen("sc_pages")} onToggle={() => toggle("sc_pages")} actions={<><input className="kpi-kw-search" placeholder="Zoek pagina…" value={pageSearch} onClick={(e) => e.stopPropagation()} onChange={(e) => setPageSearch(e.target.value)} />{periodPicker("gsc")}</>}>
               <div className="res-table-wrap">
                 <table className="res-table kpi-table">
                   <thead><tr>
@@ -896,7 +944,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
       )}
 
       {!loading && ga4 && ga4.totals.length > 0 && (
-        <Collapse title={<>Google Analytics {siteBadge}</>} meta={`laatste ${periodLabel} \u00b7 ${compare === "yoy" ? "vs. vorig jaar" : "vs. vorige periode"}`} open={isOpen("ga", true)} onToggle={() => toggle("ga", true)} actions={periodPicker}>
+        <Collapse title={<>Google Analytics {siteBadge}</>} meta={`laatste ${secPeriodLabel("ga4")} \u00b7 ${effCompare("ga4") === "yoy" ? "vs. vorig jaar" : "vs. vorige periode"}`} open={isOpen("ga", true)} onToggle={() => toggle("ga", true)} actions={periodPicker("ga4")}>
           <div className="kpi-grid kpi-grid-4">
             {GA4_CARDS.map((c) => {
               const m = ga4.totals.find((t) => t.metric === c.key);
@@ -913,7 +961,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
                   fmt={c.fmt}
                   invert={c.invert}
                   isPos={c.isPos}
-                  periodLabel={`${days} dgn`}
+                  periodLabel={`${effDays("ga4")} dgn`}
                 />
               );
             })}
@@ -980,7 +1028,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
       )}
 
       {!loading && ads && (
-        <Collapse title={<>Google Ads {siteBadge}</>} meta={ads.linked ? `laatste ${periodLabel} \u00b7 ${compare === "yoy" ? "vs. vorig jaar" : "vs. vorige periode"} \u00b7 via de GA4-koppeling` : ""} open={isOpen("ads", true)} onToggle={() => toggle("ads", true)} actions={periodPicker}>
+        <Collapse title={<>Google Ads {siteBadge}</>} meta={ads.linked ? `laatste ${secPeriodLabel("ads")} \u00b7 ${effCompare("ads") === "yoy" ? "vs. vorig jaar" : "vs. vorige periode"} \u00b7 via de GA4-koppeling` : ""} open={isOpen("ads", true)} onToggle={() => toggle("ads", true)} actions={periodPicker("ads")}>
           {!ads.linked ? (
             <div className="muted" style={{ fontSize: 12.5 }}>Geen Google Ads-data gevonden in deze periode (geen actieve campagnes, of Google Ads is niet aan GA4 gekoppeld).</div>
           ) : (
@@ -999,7 +1047,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
                     { label: "Kosten per conversie", t: cost && conv ? { cur: conv.cur > 0 ? cost.cur / conv.cur : 0, prev: conv.prev > 0 ? cost.prev / conv.prev : 0, series: [], prevSeries: [] } : undefined, fmt: eur, invert: true, isPos: true },
                   ];
                   return cards.filter((c) => c.t).map((c) => (
-                    <CardTrend key={c.label} label={c.label} values={c.t!.series} dates={ads.dates} prevValues={c.t!.prevSeries} prev={c.t!.prev} cur={c.t!.cur} fmt={c.fmt} invert={c.invert} isPos={c.isPos} periodLabel={`${days} dgn`} />
+                    <CardTrend key={c.label} label={c.label} values={c.t!.series} dates={ads.dates} prevValues={c.t!.prevSeries} prev={c.t!.prev} cur={c.t!.cur} fmt={c.fmt} invert={c.invert} isPos={c.isPos} periodLabel={`${effDays("ads")} dgn`} />
                   ));
                 })()}
               </div>
