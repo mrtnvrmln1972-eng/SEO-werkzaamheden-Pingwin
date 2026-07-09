@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ProfitLoss, LedgerAccount, PostContact } from "../../../lib/moneybird";
+import { mdToHtml } from "../../../lib/markdown";
 
 // Uitklapbare posten op de financiën-pagina (alleen Maarten):
 // niveau 1 = post (grootboekrekening), niveau 2 = klant/leverancier,
@@ -58,6 +59,7 @@ export default function FinancienClient({ months, ledger, year, selectedMonth }:
       <PostSection title="Opbrengsten per post" type="revenue" posts={revenuePosts} period={period} color="#2E7D32" />
       <PostSection title="Kosten per post" type="cost" posts={costPosts} period={period} color="#C62828" />
       <Abonnementen />
+      <FinanceChat />
       <p style={{ color: "#8a6a3e", fontSize: 12, lineHeight: 1.5 }}>
         De posten komen rechtstreeks uit het winst&amp;verlies-rapport van Moneybird. Bij het openklappen
         zie je de facturen achter een post; boekingen die buiten facturen om lopen (bijvoorbeeld
@@ -152,6 +154,79 @@ function PostDetail({ type, ledgerId, period }: { type: "revenue" | "cost"; ledg
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// ─── Financiën-chat: vragen over de cijfers (besparingen, winst, prognose) ───
+
+type FinMsg = { role: "user" | "assistant"; content: string };
+
+function FinanceChat() {
+  const [messages, setMessages] = useState<FinMsg[]>([]);
+  const [input, setInput] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const endRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    fetch("/api/admin/finance-chat").then((r) => r.json())
+      .then((d) => { if (d.ok && Array.isArray(d.messages)) setMessages(d.messages); })
+      .catch(() => { /* stil */ });
+  }, []);
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }); }, [messages, busy]);
+
+  async function send() {
+    const t = input.trim();
+    if (!t || busy) return;
+    setError("");
+    const next = [...messages, { role: "user" as const, content: t }];
+    setMessages(next); setInput(""); setBusy(true);
+    try {
+      const r = await fetch("/api/admin/finance-chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: next }) });
+      const d = await r.json();
+      if (d.ok) setMessages((m) => [...m, { role: "assistant", content: d.answer }]);
+      else setError(d.error || "Er ging iets mis.");
+    } catch { setError("De adviseur is niet bereikbaar."); } finally { setBusy(false); }
+  }
+
+  async function wis() {
+    if (!window.confirm("Dit gesprek wissen?")) return;
+    setMessages([]); setError("");
+    await fetch("/api/admin/finance-chat", { method: "DELETE" }).catch(() => {});
+  }
+
+  return (
+    <div style={card}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 6 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: "#8a6a3e" }}>Vraag het de cijfers</div>
+        <span style={{ color: "#5b6472", fontSize: 13 }}>besparingen, winstpotentieel, prognose einde jaar</span>
+        {messages.length > 0 && <button type="button" className="ghost-btn small" style={{ marginLeft: "auto" }} onClick={wis}>Gesprek wissen</button>}
+      </div>
+      {messages.length > 0 && (
+        <div style={{ maxHeight: 420, overflowY: "auto", padding: "4px 2px", marginBottom: 10 }}>
+          {messages.map((m, i) => (
+            m.role === "user"
+              ? <div key={i} style={{ background: "#FFF4EE", border: "1px solid #f0d9c8", borderRadius: 10, padding: "8px 12px", margin: "8px 0 8px 15%", fontSize: 14 }}>{m.content}</div>
+              : <div key={i} className="md" style={{ border: "1px solid #f1e9db", borderRadius: 10, padding: "10px 14px", margin: "8px 15% 8px 0", fontSize: 14 }} dangerouslySetInnerHTML={{ __html: mdToHtml(m.content) }} />
+          ))}
+          {busy && <div style={{ color: "#8a6a3e", fontSize: 13, padding: "6px 2px" }}>Aan het rekenen…</div>}
+          <div ref={endRef} />
+        </div>
+      )}
+      {error && <div className="login-error" style={{ marginBottom: 10 }}>{error}</div>}
+      <div style={{ display: "flex", gap: 8 }}>
+        <input
+          className="compose-input"
+          style={{ flex: 1 }}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") send(); }}
+          placeholder="Bijv. Waar kan ik kosten besparen? Wat is de prognose voor het einde van het jaar?"
+          disabled={busy}
+        />
+        <button type="button" className="primary-btn small" onClick={send} disabled={busy || !input.trim()}>{busy ? "Bezig…" : "Vraag"}</button>
+      </div>
     </div>
   );
 }
