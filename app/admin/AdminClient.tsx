@@ -208,6 +208,9 @@ export default function AdminClient({ initialClients, isOwner = true }: { initia
           {isOwner && (
             <a className="logout-btn" href="/admin/usage" title="AI-verbruik en kosten per actie en per klant" style={{ marginLeft: 8 }}>Verbruik</a>
           )}
+          {isOwner && (
+            <a className="logout-btn" href="/admin/financien" title="Opbrengsten en kosten uit Moneybird, met openstaande facturen" style={{ marginLeft: 8 }}>Financi&euml;n</a>
+          )}
           <button className="logout-btn" onClick={logout} style={{ marginLeft: 8 }}>Uitloggen</button>
         </div>
       </div>

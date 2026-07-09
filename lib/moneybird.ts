@@ -206,8 +206,10 @@ function toNum(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 function ledgerList(v: unknown): LedgerAmount[] {
-  if (!Array.isArray(v)) return [];
-  return v
+  // Moneybird nest de uitsplitsing onder { ledger_accounts: [...] }.
+  const arr = Array.isArray(v) ? v : (v as { ledger_accounts?: unknown[] } | null)?.ledger_accounts;
+  if (!Array.isArray(arr)) return [];
+  return arr
     .map((r) => {
       const row = r as Record<string, unknown>;
       return { ledgerAccountId: String(row.ledger_account_id ?? ""), value: toNum(row.value ?? row.amount) };
@@ -219,24 +221,20 @@ function ledgerList(v: unknown): LedgerAmount[] {
 // "202607" voor één maand). Cache: 6 uur per periode. Het rapport telt zelf
 // alles op; wij hoeven alleen te normaliseren.
 export async function getProfitLoss(period: string): Promise<ProfitLoss> {
-  const cached = await cacheGet<ProfitLoss>("profit_loss", period, 6 * 60);
+  const cached = await cacheGet<ProfitLoss>("profit_loss_v2", period, 6 * 60);
   if (cached) return cached;
   const raw = (await mbFetch("/reports/profit_loss", { period })) as Record<string, unknown>;
 
-  const revenue = toNum(raw.total_revenue ?? raw.revenue);
-  // Kosten kunnen gesplitst terugkomen (directe kosten + bedrijfskosten); we
-  // tonen ze in het dashboard als één kostenkant, uitgesplitst per grootboek.
-  const directCosts = toNum(raw.total_direct_costs ?? raw.direct_costs);
-  const expenses = toNum(raw.total_expenses ?? raw.expenses);
-  const other = toNum(raw.total_other_income_expenses ?? raw.other_income_expenses);
-  const net = raw.net_profit !== undefined || raw.operating_profit !== undefined
-    ? toNum(raw.net_profit ?? raw.operating_profit)
-    : revenue - directCosts - expenses + other;
+  // Live geverifieerd (2026-07): total_expenses bevat ALLE kosten (directe
+  // kosten + bedrijfskosten), en total_revenue - total_expenses = net_profit.
+  const revenue = toNum(raw.total_revenue);
+  const expenses = toNum(raw.total_expenses);
+  const net = raw.net_profit !== undefined ? toNum(raw.net_profit) : revenue - expenses;
 
   const result: ProfitLoss = {
     period,
     totalRevenue: revenue,
-    totalExpenses: directCosts + expenses,
+    totalExpenses: expenses,
     netProfit: net,
     revenueByLedger: ledgerList(raw.revenue_by_ledger_account),
     costsByLedger: [
@@ -245,13 +243,149 @@ export async function getProfitLoss(period: string): Promise<ProfitLoss> {
       ...ledgerList(raw.other_income_expenses_by_ledger_account),
     ],
   };
-  await cacheSet("profit_loss", period, result);
+  await cacheSet("profit_loss_v2", period, result);
   return result;
 }
 
 // Ruwe rapport-respons (alleen voor eigenaar-debug: veldnamen live controleren).
 export async function getProfitLossRaw(period: string): Promise<unknown> {
   return mbFetch("/reports/profit_loss", { period });
+}
+
+// ─── Drill-down: facturen achter een grootboekpost ───
+
+export type PostInvoice = {
+  id: string;
+  label: string;       // factuurnummer of omschrijving/referentie
+  date: string;
+  state: string;
+  amount: number;      // aandeel van deze factuur in de gekozen post (excl. btw)
+  url: string;
+};
+export type PostContact = {
+  contactId: string | null;
+  contactName: string;
+  total: number;
+  invoices: PostInvoice[];
+};
+
+type RawDetailRow = {
+  ledger_account_id?: string | number | null;
+  price?: string | number | null;
+  amount?: string | null;
+  total_price_excl_tax_with_discount?: string | number | null;
+  total_price_excl_tax_with_discount_base?: string | number | null;
+};
+type RawDocument = RawInvoice & {
+  reference?: string | null;
+  details?: RawDetailRow[] | null;
+};
+
+function rowAmount(d: RawDetailRow): number {
+  const v = d.total_price_excl_tax_with_discount ?? d.total_price_excl_tax_with_discount_base ?? d.price;
+  return Number(v || 0) || 0;
+}
+
+function docUrl(kind: "sales" | "purchase", id: string): string {
+  return kind === "sales"
+    ? `https://moneybird.com/${administrationId()}/sales_invoices/${id}`
+    : `https://moneybird.com/${administrationId()}/documents/${id}`;
+}
+
+// Alle facturen (verkoop of inkoop+bonnetjes) die in een periode op één
+// grootboekpost boeken, gegroepeerd per klant/leverancier. Cache: 6 uur.
+// Kleine afwijkingen t.o.v. het rapport zijn mogelijk (memoriaal-/bankboekingen
+// lopen buiten facturen om); dit is bedoeld om te zien WAAR een post uit bestaat.
+export async function getPostDetails(type: "revenue" | "cost", ledgerId: string, period: string): Promise<PostContact[]> {
+  const key = `${type}:${ledgerId}:${period}`;
+  const cached = await cacheGet<PostContact[]>("post_detail", key, 6 * 60);
+  if (cached) return cached;
+
+  let docs: { doc: RawDocument; kind: "sales" | "purchase" }[] = [];
+  if (type === "revenue") {
+    const raw = (await mbFetchAll("/sales_invoices.json", { filter: `period:${period}` })) as RawDocument[];
+    docs = raw.map((doc) => ({ doc, kind: "sales" as const }));
+  } else {
+    // Inkoopfacturen en bonnetjes ondersteunen een direct filter op de post.
+    const [pi, rc] = await Promise.all([
+      mbFetchAll("/documents/purchase_invoices.json", { filter: `period:${period},ledger_account_id:${ledgerId}` }),
+      mbFetchAll("/documents/receipts.json", { filter: `period:${period},ledger_account_id:${ledgerId}` }),
+    ]);
+    docs = [...(pi as RawDocument[]), ...(rc as RawDocument[])].map((doc) => ({ doc, kind: "purchase" as const }));
+  }
+
+  const byContact = new Map<string, PostContact>();
+  for (const { doc, kind } of docs) {
+    const share = (doc.details || [])
+      .filter((d) => String(d.ledger_account_id ?? "") === ledgerId)
+      .reduce((s, d) => s + rowAmount(d), 0);
+    if (Math.abs(share) < 0.005) continue; // deze factuur boekt niet op deze post
+    const cid = doc.contact?.id != null ? String(doc.contact.id) : doc.contact_id != null ? String(doc.contact_id) : "";
+    const name = contactDisplayName(doc.contact);
+    const entry = byContact.get(cid || name) || { contactId: cid || null, contactName: name, total: 0, invoices: [] };
+    entry.total += share;
+    entry.invoices.push({
+      id: String(doc.id),
+      label: String(doc.invoice_id || doc.reference || "factuur"),
+      date: String(doc.invoice_date || doc.date || ""),
+      state: String(doc.state || ""),
+      amount: share,
+      url: docUrl(kind, String(doc.id)),
+    });
+    byContact.set(cid || name, entry);
+  }
+
+  const list = [...byContact.values()]
+    .map((c) => ({ ...c, invoices: c.invoices.sort((a, b) => (b.date || "").localeCompare(a.date || "")) }))
+    .sort((a, b) => Math.abs(b.total) - Math.abs(a.total));
+  await cacheSet("post_detail", key, list);
+  return list;
+}
+
+// ─── Kosten per leverancier (voor abonnement-herkenning) ───
+
+export type ContactAmount = { contactId: string; contactName: string; value: number };
+
+function contactAmountList(raw: unknown): ContactAmount[] {
+  // Verwachte vorm: { contacts: [{ contact_id, value, ... }] }, maar we zoeken
+  // defensief naar de eerste array met contact_id/value erin.
+  const root = raw as Record<string, unknown>;
+  let arr: unknown[] | null = Array.isArray(raw) ? (raw as unknown[]) : null;
+  if (!arr && root && typeof root === "object") {
+    for (const v of Object.values(root)) {
+      if (Array.isArray(v)) { arr = v; break; }
+      if (v && typeof v === "object") {
+        const inner = Object.values(v as Record<string, unknown>).find((x) => Array.isArray(x));
+        if (inner) { arr = inner as unknown[]; break; }
+      }
+    }
+  }
+  if (!arr) return [];
+  return arr
+    .map((r) => {
+      const row = r as Record<string, unknown>;
+      const contact = row.contact as Record<string, unknown> | undefined;
+      return {
+        contactId: String(row.contact_id ?? contact?.id ?? ""),
+        contactName: String(row.contact_name ?? contact?.company_name ?? contact?.name ?? ""),
+        value: toNum(row.value ?? row.amount),
+      };
+    })
+    .filter((r) => r.contactId && r.value !== 0);
+}
+
+// Kosten per leverancier in één maand (rapport). Cache: 24 uur per maand.
+export async function getExpensesByContact(month: string): Promise<ContactAmount[]> {
+  const cached = await cacheGet<ContactAmount[]>("expenses_by_contact", month, 24 * 60);
+  if (cached) return cached;
+  const raw = await mbFetch("/reports/expenses_by_contact", { period: month });
+  const list = contactAmountList(raw);
+  await cacheSet("expenses_by_contact", month, list);
+  return list;
+}
+
+export async function getExpensesByContactRaw(month: string): Promise<unknown> {
+  return mbFetch("/reports/expenses_by_contact", { period: month });
 }
 
 // ─── Contacten (voor het koppelen aan dashboard-klanten) ───
