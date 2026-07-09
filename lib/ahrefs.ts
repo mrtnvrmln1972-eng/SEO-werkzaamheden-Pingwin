@@ -254,3 +254,43 @@ export async function getSerpOverview(keyword: string, country = "nl"): Promise<
   await cacheSet("serp", kw, country, result);
   return result;
 }
+
+// ── AI-vindbaarheid: citaties van het domein in AI-antwoorden (Ahrefs) ──
+// Per AI-platform het aantal keer dat het domein wordt aangehaald in gegenereerde
+// antwoorden (citations) en hoeveel verschillende pagina's geciteerd worden. Met
+// een snapshot van ~30 dagen terug voor de ontwikkeling. 1 dag gecachet.
+export type AiPlatformCount = { key: string; label: string; citations: number; pages: number; prevCitations: number | null; prevPages: number | null };
+const AI_PLATFORMS: { key: string; label: string }[] = [
+  { key: "chatgpt", label: "ChatGPT" },
+  { key: "perplexity", label: "Perplexity" },
+  { key: "gemini", label: "Google Gemini" },
+  { key: "copilot", label: "Microsoft Copilot" },
+  { key: "grok", label: "Grok" },
+  { key: "google_ai_mode", label: "Google AI-modus" },
+  { key: "google_ai_overviews", label: "Google AI Overviews" },
+];
+export async function getAiResponsesCount(domain: string): Promise<AiPlatformCount[]> {
+  const d = (domain || "").trim().replace(/^https?:\/\//, "").replace(/\/$/, "");
+  if (!d) return [];
+  const cached = await cacheGet<AiPlatformCount[]>("aicount", d, "nl", 1);
+  if (cached) return cached;
+  const iso = (dt: Date) => dt.toISOString().slice(0, 10);
+  const today = new Date();
+  const monthAgo = new Date(); monthAgo.setDate(monthAgo.getDate() - 30);
+  const select = AI_PLATFORMS.map((p) => p.key).join(",");
+  const fetchAt = async (date: string) => {
+    const data = (await ahrefsFetch("/site-explorer/ai-responses-count", { target: d, mode: "subdomains", select, date })) as { ai_responses_count?: Record<string, { citations?: number; pages?: number }> };
+    return data.ai_responses_count || {};
+  };
+  const cur = await fetchAt(iso(today));
+  let prev: Record<string, { citations?: number; pages?: number }> = {};
+  try { prev = await fetchAt(iso(monthAgo)); } catch { /* ontwikkeling is aanvulling */ }
+  const out = AI_PLATFORMS.map((p) => ({
+    key: p.key, label: p.label,
+    citations: Number(cur[p.key]?.citations || 0), pages: Number(cur[p.key]?.pages || 0),
+    prevCitations: prev[p.key] ? Number(prev[p.key]?.citations || 0) : null,
+    prevPages: prev[p.key] ? Number(prev[p.key]?.pages || 0) : null,
+  }));
+  await cacheSet("aicount", d, "nl", out).catch(() => { /* cache is aanvulling */ });
+  return out;
+}

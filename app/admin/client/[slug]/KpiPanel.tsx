@@ -368,6 +368,17 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
     fetch("/api/admin/changes/priority", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url, priority: on }) }).catch(() => {});
   }
 
+  // AI-vindbaarheid (Ahrefs): citaties van het domein in AI-antwoorden per platform.
+  type AiPlat = { key: string; label: string; citations: number; pages: number; prevCitations: number | null; prevPages: number | null };
+  const [aiPlat, setAiPlat] = useState<AiPlat[] | null>(null);
+  const [aiPlatErr, setAiPlatErr] = useState("");
+  useEffect(() => {
+    fetch(`/api/admin/ahrefs-ai?slug=${encodeURIComponent(slug)}`)
+      .then((r) => r.json())
+      .then((d) => { if (d.ok) setAiPlat(d.platforms || []); else setAiPlatErr(d.error || ""); })
+      .catch(() => setAiPlatErr("AI-vindbaarheid kon niet geladen worden."));
+  }, [slug]);
+
   // Ahrefs-zoekwoorden (domein-brede pool + laaghangend fruit).
   const [ahrefsKw, setAhrefsKw] = useState<AhrefsKeyword[]>([]);
   const [ahrefsBusy, setAhrefsBusy] = useState(false);
@@ -779,6 +790,36 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
                         <td><FocusSelect tier={focus[k.keyword]} onChange={(t) => markFocus(k.keyword, t)} /></td>
                         <td>{k.keyword}</td>
                         {ahCols.map((gk) => ahCell[gk](k))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div className="kpi-block">
+            <div className="kpi-block-head">
+              <span className="kpi-block-title">AI-vindbaarheid {siteBadge} <HelpHint wide text="Hoe vaak AI-platforms deze site aanhalen als bron in hun antwoorden (citaties) en hoeveel verschillende pagina's ze citeren, gemeten door Ahrefs. De pijltjes tonen de ontwikkeling t.o.v. ~30 dagen geleden. Zo volg je of de site terrein wint in ChatGPT, Perplexity, Gemini, Copilot en Google's AI-antwoorden." /></span>
+            </div>
+            {aiPlat === null && !aiPlatErr ? (
+              <div className="muted" style={{ fontSize: 12.5 }}>AI-vindbaarheid laden…</div>
+            ) : aiPlatErr ? (
+              <div className="muted" style={{ fontSize: 12.5 }}>{aiPlatErr}</div>
+            ) : aiPlat && aiPlat.every((pl) => pl.citations === 0) ? (
+              <div className="muted" style={{ fontSize: 12.5 }}>Nog geen citaties gevonden: AI-platforms halen deze site nog niet aan als bron in hun antwoorden. Dit groeit meestal mee met sterke, goed vindbare content.</div>
+            ) : (
+              <div className="res-table-wrap">
+                <table className="res-table kpi-table">
+                  <thead><tr><th>AI-platform</th><th className="kpi-metric-sep">Citaties</th><th className="kpi-delta-th" title="Verschil met ~30 dagen geleden">Verschil</th><th className="kpi-metric-sep">Geciteerde pagina&rsquo;s</th><th className="kpi-delta-th" title="Verschil met ~30 dagen geleden">Verschil</th></tr></thead>
+                  <tbody>
+                    {(aiPlat || []).map((pl) => (
+                      <tr key={pl.key}>
+                        <td>{pl.label}</td>
+                        <td className="kpi-metric-sep">{nl(pl.citations)}</td>
+                        <td className="kpi-delta-td">{pl.prevCitations != null ? <Delta cur={pl.citations} prev={pl.prevCitations} /> : <span className="muted">&mdash;</span>}</td>
+                        <td className="kpi-metric-sep">{nl(pl.pages)}</td>
+                        <td className="kpi-delta-td">{pl.prevPages != null ? <Delta cur={pl.pages} prev={pl.prevPages} /> : <span className="muted">&mdash;</span>}</td>
                       </tr>
                     ))}
                   </tbody>
