@@ -374,12 +374,18 @@ export async function getSiteAuthority(target: string): Promise<SiteAuthority> {
   const today = new Date().toISOString().slice(0, 10);
   const num = (v: unknown): number | null => (Number.isFinite(Number(v)) ? Number(v) : null);
   const out: SiteAuthority = { ...empty };
+  // Een doel MET pad (bv. pingwin.nl/seo-bureau/) = die ene pagina: backlinks
+  // exact op die URL meten. Alleen een domein = de hele site (subdomains).
+  const isPage = t.includes("/");
+  const domainOnly = t.split("/")[0];
   try {
-    const d = (await ahrefsFetch("/site-explorer/domain-rating", { target: t, date: today })) as { domain_rating?: { domain_rating?: number } };
+    // Domain Rating bestaat alleen op domein-niveau; voor een pagina meten we
+    // de DR van het domein erachter (en de backlinks wél van de pagina zelf).
+    const d = (await ahrefsFetch("/site-explorer/domain-rating", { target: domainOnly, date: today })) as { domain_rating?: { domain_rating?: number } };
     out.domainRating = num(d?.domain_rating?.domain_rating);
   } catch { /* DR optioneel */ }
   try {
-    const b = (await ahrefsFetch("/site-explorer/backlinks-stats", { target: t, date: today, mode: "subdomains" })) as { metrics?: { live?: number; live_refdomains?: number } };
+    const b = (await ahrefsFetch("/site-explorer/backlinks-stats", { target: t, date: today, mode: isPage ? "exact" : "subdomains" })) as { metrics?: { live?: number; live_refdomains?: number } };
     out.backlinks = num(b?.metrics?.live);
     out.refDomains = num(b?.metrics?.live_refdomains);
   } catch { /* backlinks optioneel */ }

@@ -26,7 +26,7 @@ export const CHAT_TOOLS: ToolDef[] = [
   },
   {
     name: "ahrefs_site_authority",
-    description: "Domain Rating, aantal verwijzende domeinen en backlinks (Ahrefs) van een domein of URL — eigen site of concurrent. Gebruik dit voor de autoriteits-vergelijking (kan de klant realistisch winnen van de top-10?) en voor uitspraken over linkprofiel. Verzin NOOIT een Domain Rating of aantal referring domains; haal ze hiermee op.",
+    description: "Domain Rating, aantal verwijzende domeinen en backlinks (Ahrefs). Geef een kaal domein (pingwin.nl) voor site-brede autoriteit, of een volledige pagina-URL (pingwin.nl/seo-bureau/) voor de backlinks van precies die pagina (DR is dan van het domein erachter). Gebruik dit voor de autoriteits-vergelijking (kan de klant realistisch winnen van de top-10?), voor pagina-niveau linkanalyse, en voor uitspraken over linkprofiel. Verzin NOOIT een Domain Rating of aantal referring domains; haal ze hiermee op — ook voor concurrenten uit de top-10.",
     input_schema: { type: "object", properties: { target: { type: "string" } }, required: ["target"] },
   },
   {
