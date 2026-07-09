@@ -95,11 +95,11 @@ export async function markActionAdded(slug: string, id: number, actionIndex: num
 
 // Maakt van een chatgesprek een strategie-sessie: beschrijvende titel, de
 // conclusie/terugkoppeling als nette samenvatting, en de concrete actiepunten.
-export async function createStrategySession(slug: string, messages: { role: string; content: string; image?: string }[], clientName: string): Promise<StrategySession> {
+export async function createStrategySession(slug: string, messages: { role: string; content: string; image?: string; images?: string[] }[], clientName: string): Promise<StrategySession> {
   await ensureSchema();
   await ensureTable();
   const transcript = messages
-    .map((m) => `${m.role === "user" ? "**Maarten:**" : "**SEO-assistent:**"}${m.image ? " *(met afbeelding)*" : ""}\n${(m.content || "").trim()}`)
+    .map((m) => `${m.role === "user" ? "**Maarten:**" : "**SEO-assistent:**"}${(m.images?.length || 0) + (m.image ? 1 : 0) > 0 ? " *(met afbeelding)*" : ""}\n${(m.content || "").trim()}`)
     .join("\n\n---\n\n");
 
   const system = `Je bent een senior SEO-strateeg bij bureau Pingwin. Hieronder staat een gesprek uit de SEO-assistent over de site van ${clientName || slug}. Leg dit vast als site-wide strategie-sessie.

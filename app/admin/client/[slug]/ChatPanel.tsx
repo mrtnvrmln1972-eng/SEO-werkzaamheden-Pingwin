@@ -48,13 +48,6 @@ function mdToHtml(md: string): string {
   return out.join("");
 }
 
-const SUGGESTIONS = [
-  "Wat is de laatste stand van zaken?",
-  "Wat staat er nog open bij de klant?",
-  "Wat zijn de laatste vragen over en weer?",
-  "Hoe staan we ervoor in Search Console?",
-];
-
 export default function ChatPanel({ slug, configured, initialMessages }: { slug: string; configured: boolean; initialMessages: Msg[] }) {
   const [messages, setMessages] = useState<Msg[]>(initialMessages || []);
   const [thread, setThread] = useState("algemeen");
@@ -156,7 +149,7 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
 
   // Afbeelding meesturen: slepen of plakken; in de browser verkleind naar max
   // 1400px (JPEG) zodat versturen en opslaan licht blijven.
-  const [pendingImage, setPendingImage] = useState("");
+  const [pendingImages, setPendingImages] = useState<string[]>([]);
   const [dragOver, setDragOver] = useState(false);
   function acceptImageFile(file: File | null | undefined) {
     if (!file || !file.type.startsWith("image/")) return;
@@ -170,7 +163,8 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
         canvas.width = Math.round(img.width * scale);
         canvas.height = Math.round(img.height * scale);
         canvas.getContext("2d")?.drawImage(img, 0, 0, canvas.width, canvas.height);
-        setPendingImage(canvas.toDataURL("image/jpeg", 0.85));
+        const data = canvas.toDataURL("image/jpeg", 0.85);
+        setPendingImages((prev) => (prev.length >= 6 ? prev : [...prev, data]));
       };
       img.src = String(reader.result || "");
     };
@@ -178,7 +172,7 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
   }
   function onDropImage(e: React.DragEvent) {
     e.preventDefault(); e.stopPropagation(); setDragOver(false);
-    acceptImageFile(e.dataTransfer?.files?.[0]);
+    for (const f of Array.from(e.dataTransfer?.files || [])) acceptImageFile(f);
   }
   function onPasteImage(e: React.ClipboardEvent) {
     const item = Array.from(e.clipboardData?.items || []).find((i) => i.type.startsWith("image/"));
@@ -217,12 +211,12 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
 
   async function send(text: string) {
     const q = text.trim();
-    if ((!q && !pendingImage) || busy) return;
+    if ((!q && pendingImages.length === 0) || busy) return;
     setError("");
     setInput("");
-    const img = pendingImage;
-    setPendingImage("");
-    const next = [...messages, { role: "user" as const, content: q, ...(img ? { image: img } : {}) }];
+    const imgs = pendingImages;
+    setPendingImages([]);
+    const next = [...messages, { role: "user" as const, content: q, ...(imgs.length ? { images: imgs } : {}) }];
     setMessages(next);
     setBusy(true);
     try {
@@ -280,21 +274,19 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
                   )}
                 </div>
                 {strategyMsg && <div className="saved-msg" style={{ margin: "6px 0" }}>{strategyMsg}</div>}
-                {messages.length === 0 && (
-                  <div className="chat-suggest">
-                    {SUGGESTIONS.map((s) => (
-                      <button key={s} type="button" className="ql ql-btn" onClick={() => send(s)}>{s}</button>
-                    ))}
-                  </div>
-                )}
-
                 <div className="chat-log">
                   {messages.map((m, i) => (
                     <div key={i} className={"chat-msg " + m.role}>
                       <button type="button" className="chat-msg-del" title="Dit blok uit het gesprek verwijderen" onClick={() => deleteMessage(i)}>&times;</button>
                       {m.role === "assistant"
                         ? <div className="chat-bubble chat-md" dangerouslySetInnerHTML={{ __html: mdToHtml(m.content) }} />
-                        : <div className="chat-bubble">{m.image && <img className="chat-img" src={m.image} alt="Meegestuurde afbeelding" />}{m.content}</div>}
+                        : <div className="chat-bubble">{(m.images?.length || m.image) && (
+                            <span className="chat-img-row">
+                              {[...(m.images || []), ...(m.image ? [m.image] : [])].map((im, j) => (
+                                <img key={j} className="chat-img" src={im} alt={`Meegestuurde afbeelding ${j + 1}`} />
+                              ))}
+                            </span>
+                          )}{m.content}</div>}
                     </div>
                   ))}
                   {busy && <div className="chat-msg assistant"><div className="chat-bubble muted">Aan het denken…</div></div>}
@@ -303,11 +295,17 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
 
                 {error && <div className="login-error" style={{ marginTop: 8 }}>{error}</div>}
 
-                {pendingImage && (
+                {pendingImages.length > 0 && (
                   <div className="chat-img-preview">
-                    <img src={pendingImage} alt="Afbeelding klaar om mee te sturen" />
-                    <span>Afbeelding gaat mee met je volgende bericht.</span>
-                    <button type="button" className="ghost-btn small" onClick={() => setPendingImage("")}>&times; weghalen</button>
+                    <span className="chat-img-row">
+                      {pendingImages.map((im, j) => (
+                        <span key={j} className="chat-img-thumb">
+                          <img src={im} alt={`Afbeelding ${j + 1} klaar om mee te sturen`} />
+                          <button type="button" className="chat-img-thumb-del" title="Deze afbeelding weghalen" onClick={() => setPendingImages((prev) => prev.filter((_, k) => k !== j))}>&times;</button>
+                        </span>
+                      ))}
+                    </span>
+                    <span>{pendingImages.length === 1 ? "Gaat mee met je volgende bericht." : `${pendingImages.length} afbeeldingen gaan mee.`} (max 6)</span>
                   </div>
                 )}
                 <div className="chat-input">
@@ -316,10 +314,10 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") send(input); }}
                     onPaste={onPasteImage}
-                    placeholder={pendingImage ? "Wat wil je over deze afbeelding weten?" : "Stel een vraag over dit project… (afbeelding erin slepen of plakken mag)"}
+                    placeholder={pendingImages.length ? "Wat wil je over deze afbeelding(en) weten?" : "Stel een vraag over dit project… (afbeeldingen erin slepen of plakken mag)"}
                     disabled={busy}
                   />
-                  <button type="button" className="primary-btn small" onClick={() => send(input)} disabled={busy || (!input.trim() && !pendingImage)}>
+                  <button type="button" className="primary-btn small" onClick={() => send(input)} disabled={busy || (!input.trim() && pendingImages.length === 0)}>
                     Vraag
                   </button>
                 </div>

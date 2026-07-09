@@ -149,8 +149,9 @@ async function buildContext(client: ClientConfig): Promise<string> {
   return parts.join("\n");
 }
 
-// image: optionele afbeelding (data-URL, al verkleind in de browser) bij een user-bericht.
-export type ChatMessage = { role: "user" | "assistant"; content: string; image?: string };
+// image/images: optionele afbeeldingen (data-URL's, al verkleind in de browser) bij
+// een user-bericht. "image" blijft bestaan voor oude opgeslagen gesprekken.
+export type ChatMessage = { role: "user" | "assistant"; content: string; image?: string; images?: string[] };
 
 const cleanThread = (t?: string) => (t || "algemeen").trim().slice(0, 80) || "algemeen";
 
@@ -180,7 +181,7 @@ export async function listChatThreads(slug: string): Promise<{ thread: string; c
 async function saveChatHistory(slug: string, thread: string, messages: ChatMessage[]): Promise<void> {
   await ensureSchema();
   const keep = messages.slice(-40);
-  const content = JSON.stringify(keep.map((m, i) => (m.image && i < keep.length - 6 ? { role: m.role, content: m.content } : m)));
+  const content = JSON.stringify(keep.map((m, i) => ((m.image || m.images?.length) && i < keep.length - 6 ? { role: m.role, content: m.content } : m)));
   await sql`
     INSERT INTO client_chat (client_slug, thread, messages, updated_at)
     VALUES (${slug}, ${cleanThread(thread)}, ${content}, now())
@@ -284,14 +285,17 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
     // Agentisch: de assistent kan zelf meten (pagina, GSC, Ahrefs, top-10) vóór hij
     // antwoordt. Vision-berichten (afbeelding) gaan als content-blokken mee.
     const apiMessages = messages.slice(-10).map((m) => {
-      if (!m.image) return { role: m.role, content: m.content };
-      const match = m.image.match(/^data:(image\/[a-z+.-]+);base64,(.+)$/i);
-      if (!match) return { role: m.role, content: m.content };
+      const imgs = [...(m.images || []), ...(m.image ? [m.image] : [])];
+      const blocks = imgs
+        .map((im) => im.match(/^data:(image\/[a-z+.-]+);base64,(.+)$/i))
+        .filter((x): x is RegExpMatchArray => !!x)
+        .map((x) => ({ type: "image", source: { type: "base64", media_type: x[1], data: x[2] } }));
+      if (!blocks.length) return { role: m.role, content: m.content };
       return {
         role: m.role,
         content: [
-          { type: "image", source: { type: "base64", media_type: match[1], data: match[2] } },
-          { type: "text", text: m.content || "Bekijk deze afbeelding en betrek hem bij het gesprek." },
+          ...blocks,
+          { type: "text", text: m.content || (blocks.length > 1 ? "Bekijk deze afbeeldingen en betrek ze bij het gesprek." : "Bekijk deze afbeelding en betrek hem bij het gesprek.") },
         ] as unknown as string,
       };
     });
