@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 
-type Msg = { role: "user" | "assistant"; content: string; image?: string };
+type Msg = { role: "user" | "assistant"; content: string; image?: string; images?: string[] };
 
 // Lichte Markdown → HTML voor nette antwoorden (kopjes, bullets, vet, links).
 function mdToHtml(md: string): string {
