@@ -178,8 +178,18 @@ export async function testWordpressAuth(domain: string, auth: WpAuth): Promise<{
   const t = setTimeout(() => ctrl.abort(), 12000);
   try {
     const res = await fetch(`${base}/wp-json/wp/v2/users/me?_fields=id,name`, { headers: authHeaders(auth) });
-    if (res.ok) return { ok: true };
-    if (res.status === 401 || res.status === 403) return { ok: false, error: "Inloggegevens afgewezen (controleer gebruikersnaam en applicatiewachtwoord)." };
+    // Komt het antwoord wel van WordPress zelf? Een firewall of beveiligings-
+    // plugin geeft vaak een kale HTML-foutpagina van de webserver (Apache/nginx).
+    // Dan liggen de inloggegevens niet aan de gebruiker en zeggen we dat eerlijk.
+    const isJson = (res.headers.get("content-type") || "").includes("json");
+    if (res.ok && isJson) return { ok: true };
+    if (!isJson) {
+      return {
+        ok: false,
+        error: `De webserver van de site blokkeert de WordPress-API van buitenaf (status ${res.status}, antwoord komt van de server, niet van WordPress). Je inloggegevens zijn dus niet het probleem. Vraag de website-beheerder of hoster om /wp-json/ toe te staan (meestal een beveiligingsplugin of firewall-regel).`,
+      };
+    }
+    if (res.status === 401 || res.status === 403) return { ok: false, error: "Inloggegevens afgewezen. Let op: gebruik de INLOGNAAM van WordPress (waarmee je op wp-login inlogt), niet de weergavenaam; en het applicatiewachtwoord, niet het gewone wachtwoord." };
     return { ok: false, error: `WordPress gaf status ${res.status}.` };
   } catch { return { ok: false, error: "WordPress niet bereikbaar." }; } finally { clearTimeout(t); }
 }

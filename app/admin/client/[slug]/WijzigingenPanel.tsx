@@ -299,6 +299,7 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
   const [wpPass, setWpPass] = useState("");
   const [wpSaveBusy, setWpSaveBusy] = useState(false);
   const [wpSaveMsg, setWpSaveMsg] = useState("");
+  const [wpSaveOk, setWpSaveOk] = useState(false);
 
   useEffect(() => {
     fetch(`/api/admin/wp-creds?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).then((d) => { if (d.ok) { setWpSet(!!d.set); setWpUser(d.user || ""); } }).catch(() => {});
@@ -310,15 +311,15 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
     try {
       const r = await fetch("/api/admin/wp-creds", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, user: wpUser.trim(), appPassword: wpPass.trim() }) });
       const d = await r.json();
-      if (d.ok) { setWpSet(true); setWpPass(""); setWpSaveMsg("Inloggegevens opgeslagen en getest."); }
-      else setWpSaveMsg(d.error || "Opslaan mislukt.");
-    } catch { setWpSaveMsg("Opslaan mislukt."); } finally { setWpSaveBusy(false); }
+      if (d.ok) { setWpSet(true); setWpPass(""); setWpSaveOk(true); setWpSaveMsg("Inloggegevens opgeslagen en getest."); }
+      else { setWpSaveOk(false); setWpSaveMsg(d.error || "Opslaan mislukt."); }
+    } catch { setWpSaveOk(false); setWpSaveMsg("Opslaan mislukt."); } finally { setWpSaveBusy(false); }
   }
   async function removeWpCreds() {
     setWpSaveBusy(true); setWpSaveMsg("");
     try {
       await fetch("/api/admin/wp-creds", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, action: "delete" }) });
-      setWpSet(false); setWpPass(""); setWpSaveMsg("Koppeling verwijderd.");
+      setWpSet(false); setWpPass(""); setWpSaveOk(true); setWpSaveMsg("Koppeling verwijderd.");
     } catch { /* stil */ } finally { setWpSaveBusy(false); }
   }
 
@@ -560,7 +561,7 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
             {wpSet && <button type="button" className="ghost-btn small" onClick={removeWpCreds} disabled={wpSaveBusy}>Koppeling verwijderen</button>}
             {wpSet && <span className="muted" style={{ fontSize: 12 }}>Ingesteld{wpUser ? ` (${wpUser})` : ""}.</span>}
           </div>
-          {wpSaveMsg && <div className={wpSaveMsg.includes("mislukt") || wpSaveMsg.includes("werk") ? "login-error" : "saved-msg"} style={{ marginTop: 8 }}>{wpSaveMsg}</div>}
+          {wpSaveMsg && <div className={wpSaveOk ? "saved-msg" : "login-error"} style={{ marginTop: 8 }}>{wpSaveMsg}</div>}
         </div>
       )}
       {showAdd && (
