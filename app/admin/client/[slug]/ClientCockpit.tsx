@@ -270,14 +270,19 @@ export default function ClientCockpit({
               ) : shown.map(opt);
             })()}
           </select>
-          <button
-            type="button"
-            className="ghost-btn small"
-            onClick={() => setDemoFilter(demoFilter === null ? "28" : demoFilter === "28" ? "90" : null)}
-            title="Filtert de klanten-dropdown op klanten met een mooie ontwikkeling (voor schermdelen met potentiële klanten). Klik om te wisselen tussen alle klanten, mooie ontwikkeling laatste 28 dagen en laatste 3 maanden."
-          >
-            {demoFilter === null ? "Alle klanten" : demoFilter === "28" ? "✓ Mooie ontwikkeling (28 dgn)" : "✓ Mooie ontwikkeling (3 mnd)"}
-          </button>
+          {/* Demo-filter (schermdelen): alleen tonen als er trend-data is om op te
+              filteren. In een verse wereld zonder nachtelijke trend-berekening zou
+              de knop de dropdown ogenschijnlijk leegmaken; dan verbergen we hem. */}
+          {allClients.some((c) => c.good28 || c.good90) && (
+            <button
+              type="button"
+              className="ghost-btn small"
+              onClick={() => setDemoFilter(demoFilter === null ? "28" : demoFilter === "28" ? "90" : null)}
+              title="Filtert de klanten-dropdown op klanten met een mooie ontwikkeling (voor schermdelen met potentiële klanten). Klik om te wisselen tussen alle klanten, mooie ontwikkeling laatste 28 dagen en laatste 3 maanden."
+            >
+              {demoFilter === null ? "Alle klanten" : demoFilter === "28" ? "✓ Mooie ontwikkeling (28 dgn)" : "✓ Mooie ontwikkeling (3 mnd)"}
+            </button>
+          )}
           <nav className="header-tabs">
             {([
               ["werkzaamheden", "Taken", ""],
