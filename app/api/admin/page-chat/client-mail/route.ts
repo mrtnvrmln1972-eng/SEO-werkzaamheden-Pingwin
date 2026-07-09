@@ -1,17 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ADMIN_COOKIE, verifyAdminSession } from "../../../../../lib/admin-auth";
+import { getAdminScope } from "../../../../../lib/admin-scope";
 import { callClaude, anthropicConfigured } from "../../../../../lib/anthropic";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-function admin(req: NextRequest): boolean {
-  return verifyAdminSession(req.cookies.get(ADMIN_COOKIE)?.value);
-}
-
 // Zet een SEO-analyse om in een nette, begrijpelijke e-mail voor de klant.
 export async function POST(req: NextRequest) {
-  if (!admin(req)) return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
+  const scope = await getAdminScope(req);
+  if (!scope) return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
+  if (!scope.canEdit) return NextResponse.json({ ok: false, error: "Je hebt nog geen rechten om deze actie uit te voeren." }, { status: 403 });
   if (!anthropicConfigured()) return NextResponse.json({ ok: false, error: "De mail-generatie heeft een ANTHROPIC_API_KEY nodig in Vercel." }, { status: 400 });
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: "Ongeldige aanvraag." }, { status: 400 }); }

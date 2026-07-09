@@ -18,6 +18,9 @@ export type AdminScope = {
   // null = geen beperking (owner ziet alles). Een lijst = alleen die slugs (gast).
   allowedSlugs: string[] | null;
   canSeeMail: boolean;
+  // false = alleen lezen: rondkijken en openklappen mag, maar geen acties
+  // uitvoeren of iets opslaan (guardSlug blokkeert dan alles behalve GET).
+  canEdit: boolean;
 };
 
 // Scope uit een rauwe cookiewaarde. Bruikbaar in server components (via
@@ -28,7 +31,7 @@ export async function getScopeFromCookie(value: string | undefined | null): Prom
   if (!principal) return null;
 
   if (principal.kind === "owner") {
-    return { isOwner: true, userId: null, allowedSlugs: null, canSeeMail: true };
+    return { isOwner: true, userId: null, allowedSlugs: null, canSeeMail: true, canEdit: true };
   }
 
   // Teamgebruiker: lees de rechten uit de database. Bestaat de rij niet meer
@@ -36,7 +39,7 @@ export async function getScopeFromCookie(value: string | undefined | null): Prom
   const user = await getTeamUserById(principal.userId);
   if (!user) return null;
   if (user.role === "owner") {
-    return { isOwner: true, userId: user.id, allowedSlugs: null, canSeeMail: true };
+    return { isOwner: true, userId: user.id, allowedSlugs: null, canSeeMail: true, canEdit: true };
   }
   return {
     isOwner: false,
@@ -44,6 +47,7 @@ export async function getScopeFromCookie(value: string | undefined | null): Prom
     allowedSlugs: user.allowedSlugs,
     // Gasten zien NOOIT mail of de actuele stand van zaken (bewust hard uitgesloten).
     canSeeMail: false,
+    canEdit: user.canEdit,
   };
 }
 
@@ -75,6 +79,18 @@ export async function guardSlug(
   }
   if (!canAccessSlug(scope, slug)) {
     return { ok: false, res: NextResponse.json({ ok: false, error: "Geen toegang tot deze klant." }, { status: 403 }) };
+  }
+  // Alleen-lezen gast: kijken mag (GET/HEAD), maar elke actie of wijziging
+  // (POST/PATCH/DELETE) wordt hier centraal geblokkeerd, over alle routes heen.
+  const method = (req.method || "GET").toUpperCase();
+  if (!scope.canEdit && method !== "GET" && method !== "HEAD") {
+    return {
+      ok: false,
+      res: NextResponse.json(
+        { ok: false, error: "Je hebt nog geen rechten om deze actie uit te voeren." },
+        { status: 403 },
+      ),
+    };
   }
   return { ok: true, scope };
 }

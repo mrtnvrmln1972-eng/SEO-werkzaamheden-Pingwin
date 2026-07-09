@@ -115,6 +115,9 @@ async function init(): Promise<void> {
       can_see_mail  BOOLEAN NOT NULL DEFAULT false,
       created_at    TIMESTAMPTZ DEFAULT now()
     )`;
+  // Mag deze gast wijzigen/uitvoeren? Standaard false = alleen lezen (rondkijken,
+  // openklappen, KPI-periode wisselen), geen stappen draaien of iets opslaan.
+  await sql`ALTER TABLE team_users ADD COLUMN IF NOT EXISTS can_edit BOOLEAN NOT NULL DEFAULT false`;
 
   // ── Data-brug: ingeladen snapshots per klant (uit Outlook / GSC / GA4 / Ahrefs) ──
   // Gevuld via POST /api/admin/ingest. Het dashboard leest hieruit, ook als er
