@@ -48,6 +48,9 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   const [clusterMsg, setClusterMsg] = useState("");
   // Aantal pagina's waaraan het advies is doorgegeven (>0 = knop wordt groen "doorgegeven").
   const [clusterDone, setClusterDone] = useState(0);
+  // Het overzichtje met vinkjes: aan welke pagina's is er vanuit deze pagina
+  // advies doorgegeven (geladen zodra de kaart openklapt).
+  const [outgoing, setOutgoing] = useState<{ url: string; advice: string }[] | null>(null);
   // Achtergrond-run (analyse -> blauwdruk -> copy los van de browser).
   type DocRun = { id: number; status: string; steps: Record<string, string>; links: Record<string, string>; error: string };
   const [run, setRun] = useState<DocRun | null>(null);
@@ -685,11 +688,23 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   // Meegegeven cluster-advies voor deze pagina ophalen (toont de vertrekpunt-kaart).
   useEffect(() => {
     let alive = true;
+    setOutgoing(null);
     fetch(`/api/admin/page-chat/cluster-advice?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}`)
       .then((r) => r.json()).then((d) => { if (alive && d.ok) setIncoming(d.incoming || []); })
       .catch(() => { /* niet kritisch */ });
     return () => { alive = false; };
   }, [slug, url]);
+
+  // Overzichtje met vinkjes: laden zodra de Doorgeven-kaart openklapt en er
+  // eerder advies is doorgegeven.
+  useEffect(() => {
+    if (!doorgevenOpen || clusterDone === 0 || outgoing !== null) return;
+    let alive = true;
+    fetch(`/api/admin/page-chat/cluster-advice?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}&direction=out`)
+      .then((r) => r.json()).then((d) => { if (alive && d.ok) setOutgoing(d.outgoing || []); })
+      .catch(() => { /* niet kritisch */ });
+    return () => { alive = false; };
+  }, [doorgevenOpen, clusterDone, outgoing, slug, url]);
 
   async function loadFolders(parentId: string) {
     setPickBusy(true); setPickErr("");
@@ -873,7 +888,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       const r = await fetch("/api/admin/page-chat/cluster-advice/apply", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, sourceUrl: url, sourceAnalysis: lastAssistant, items }) });
       const d = await r.json();
       if (d.ok) {
-        { const n = d.saved || items.length; setClusterDone(n); try { localStorage.setItem(`pw_clusterdone_${slug}_${url}`, String(n)); } catch { /* geen opslag */ } if (n > 0 && taskDone) setChatOpen(false); }
+        { const n = d.saved || items.length; setClusterDone(n); setOutgoing(null); try { localStorage.setItem(`pw_clusterdone_${slug}_${url}`, String(n)); } catch { /* geen opslag */ } if (n > 0 && taskDone) setChatOpen(false); }
         setClusterMsg(`Advies doorgegeven aan ${d.saved} pagina('s). Hun eigen chat neemt dit voortaan als vertrekpunt mee; in het overzicht krijgen ze de markering "half plan".`);
         setClusterItems(null);
         onClusterApplied?.();
@@ -1094,7 +1109,24 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
           ) : (<>
             <div className="pchf-lead">Raakt deze analyse ook andere pagina&rsquo;s in het cluster? Geef hun advies alvast door.</div>
             {clusterDone > 0 ? (
-              <button type="button" className="pcd-btn pcd-btn-done" disabled>&#10003; Doorgegeven aan {clusterDone} pagina&rsquo;s</button>
+              <>
+                <button type="button" className="pcd-btn pcd-btn-done" disabled>&#10003; Doorgegeven aan {clusterDone} pagina&rsquo;s</button>
+                {outgoing === null ? (
+                  <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>Overzicht laden…</div>
+                ) : outgoing.length === 0 ? null : (
+                  <ul className="pch-cluster-list" style={{ marginTop: 10 }}>
+                    {outgoing.map((it) => (
+                      <li key={it.url} className="pch-cluster-item">
+                        <div className="pch-cluster-head">
+                          <span style={{ color: "#1e8e3e", fontWeight: 700 }}>&#10003;</span>
+                          <span className="pch-cluster-url">{it.url}</span>
+                        </div>
+                        <div className="pch-cluster-advice md" dangerouslySetInnerHTML={{ __html: mdToHtml(it.advice, siteBase) }} />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
             ) : clusterItems === null ? (
               <button type="button" className="pcd-btn" onClick={findClusterAdvice} disabled={clusterBusy}>{clusterBusy ? "Betrokken pagina's zoeken…" : "Advies doorgeven aan betrokken pagina's"}</button>
             ) : clusterItems.length === 0 ? (

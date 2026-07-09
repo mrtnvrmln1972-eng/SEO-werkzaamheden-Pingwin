@@ -326,6 +326,19 @@ export async function deletePageClusterAdvice(slug: string, url: string, sourceU
   await sql`DELETE FROM page_cluster_advice WHERE client_slug = ${slug} AND url = ${u} AND source_url IS NOT DISTINCT FROM ${sourceUrl || null}`;
 }
 
+// Uitgaand: welk advies is er VANUIT deze (bron)pagina doorgegeven aan andere
+// pagina's? Voor het overzichtje met vinkjes in de "Doorgeven"-kaart.
+export async function getOutgoingClusterAdvice(slug: string, sourceUrl: string): Promise<{ url: string; advice: string; createdAt: string | null }[]> {
+  await ensureSchema();
+  await ensureTables();
+  const { rows } = await sql`SELECT url, advice, created_at FROM page_cluster_advice WHERE client_slug = ${slug} AND source_url = ${sourceUrl} ORDER BY url ASC`;
+  return rows.map((r) => ({
+    url: (r.url as string) || "",
+    advice: (r.advice as string) || "",
+    createdAt: r.created_at ? new Date(r.created_at as string).toISOString() : null,
+  }));
+}
+
 export async function getPageClusterAdvice(slug: string, url: string): Promise<ClusterAdvice[]> {
   await ensureSchema();
   await ensureTables();
