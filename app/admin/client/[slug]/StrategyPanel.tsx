@@ -1,0 +1,132 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { mdToHtml } from "../../../../lib/markdown";
+
+// ═══════════════════════════════════════════════════════════
+// SITE-WIDE STRATEGIE, bovenaan het Taken-tabblad
+// ═══════════════════════════════════════════════════════════
+// Toont de strategie-sessies die vanuit de SEO-assistent zijn vastgelegd, elk als
+// eigen toggle: de conclusie/terugkoppeling, het volledige gesprek (uitklapbaar)
+// en de actiepunten, die je met één klik als taak (zonder maand) toevoegt.
+// ═══════════════════════════════════════════════════════════
+
+type StrategyAction = { taak: string; wie: string; fase: string; taskId?: number };
+type StrategySession = { id: number; title: string; summary: string; transcript: string; actions: StrategyAction[]; createdAt: string };
+
+function dNl(iso: string): string {
+  try { return new Date(iso).toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" }); } catch { return ""; }
+}
+
+export default function StrategyPanel({ slug, openSessionId, onTaskAdded }: { slug: string; openSessionId?: number; onTaskAdded?: () => void }) {
+  const [sessions, setSessions] = useState<StrategySession[]>([]);
+  const [open, setOpen] = useState(false);
+  const [openIds, setOpenIds] = useState<Set<number>>(new Set());
+  const [openTranscript, setOpenTranscript] = useState<Set<number>>(new Set());
+  const [busyKey, setBusyKey] = useState("");
+  const [msg, setMsg] = useState("");
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+
+  async function load() {
+    try {
+      const d = await fetch(`/api/admin/strategy?slug=${encodeURIComponent(slug)}`).then((r) => r.json());
+      if (d.ok) setSessions(d.sessions || []);
+    } catch { /* stil */ }
+  }
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [slug]);
+
+  // Vanuit een taak-link (?strategie=<id>): sectie én die sessie openklappen en erheen scrollen.
+  useEffect(() => {
+    if (!openSessionId || !sessions.some((s) => s.id === openSessionId)) return;
+    setOpen(true);
+    setOpenIds((s) => new Set(s).add(openSessionId));
+    setTimeout(() => wrapRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [openSessionId, sessions.length]);
+
+  const toggleId = (id: number, set: Set<number>, setter: (s: Set<number>) => void) => {
+    const n = new Set(set);
+    if (n.has(id)) n.delete(id); else n.add(id);
+    setter(n);
+  };
+
+  async function addTask(sessionId: number, actionIndex: number) {
+    const key = `${sessionId}:${actionIndex}`;
+    if (busyKey) return;
+    setBusyKey(key); setMsg("");
+    try {
+      const d = await fetch("/api/admin/strategy/task", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, sessionId, actionIndex }),
+      }).then((r) => r.json());
+      if (d.ok) {
+        setSessions((ss) => ss.map((s) => s.id !== sessionId ? s : { ...s, actions: s.actions.map((a, i) => (i === actionIndex ? { ...a, taskId: d.taskId } : a)) }));
+        setMsg("Taak toegevoegd (zonder maand); hij staat hieronder tussen de werkzaamheden.");
+        onTaskAdded?.();
+      } else setMsg(d.error || "Toevoegen mislukt.");
+    } catch { setMsg("Toevoegen mislukt."); } finally { setBusyKey(""); }
+  }
+
+  async function removeSession(id: number) {
+    if (!window.confirm("Deze strategie-sessie verwijderen? (Al toegevoegde taken blijven bestaan.)")) return;
+    try {
+      const d = await fetch(`/api/admin/strategy?slug=${encodeURIComponent(slug)}&id=${id}`, { method: "DELETE" }).then((r) => r.json());
+      if (d.ok) setSessions((ss) => ss.filter((s) => s.id !== id));
+    } catch { /* stil */ }
+  }
+
+  if (sessions.length === 0) return null;
+
+  return (
+    <div className="cockpit-card acc-blue strategy-card" ref={wrapRef}>
+      <button type="button" className="strategy-head" onClick={() => setOpen((v) => !v)}>
+        <span className="strategy-caret">{open ? "▾" : "▸"}</span>
+        <span className="strategy-title">Site-wide strategie ({sessions.length})</span>
+        <span className="strategy-sub">gesprekken uit de SEO-assistent, vastgelegd als strategie met actiepunten</span>
+      </button>
+      {open && (
+        <div className="strategy-body">
+          {msg && <div className="saved-msg" style={{ marginBottom: 8 }}>{msg}</div>}
+          {sessions.map((s) => {
+            const isOpen = openIds.has(s.id);
+            return (
+              <div key={s.id} className="strategy-session" id={`strategie-${s.id}`}>
+                <div className="strategy-session-head">
+                  <button type="button" className="strategy-session-toggle" onClick={() => toggleId(s.id, openIds, setOpenIds)}>
+                    <span className="strategy-caret">{isOpen ? "▾" : "▸"}</span>
+                    <span className="strategy-session-title">{s.title}</span>
+                    <span className="strategy-session-date">{dNl(s.createdAt)}</span>
+                  </button>
+                  <button type="button" className="ghost-btn small strategy-del" onClick={() => removeSession(s.id)} title="Sessie verwijderen">verwijderen</button>
+                </div>
+                {isOpen && (
+                  <div className="strategy-session-body">
+                    {s.summary && <div className="md strategy-summary" dangerouslySetInnerHTML={{ __html: mdToHtml(s.summary) }} />}
+                    {s.actions.length > 0 && (
+                      <div className="strategy-actions">
+                        <div className="strategy-actions-title">Actiepunten uit dit gesprek</div>
+                        {s.actions.map((a, i) => (
+                          <div key={i} className="strategy-action">
+                            <span className="strategy-action-taak">{a.taak}</span>
+                            <span className="strategy-action-meta">{[a.fase, a.wie].filter(Boolean).join(" · ")}</span>
+                            {a.taskId
+                              ? <span className="strategy-action-done" title="Deze staat al tussen de werkzaamheden">✓ in taken</span>
+                              : <button type="button" className="ghost-btn small" disabled={busyKey === `${s.id}:${i}`} onClick={() => addTask(s.id, i)}>{busyKey === `${s.id}:${i}` ? "Bezig…" : "+ Toevoegen aan taken"}</button>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <button type="button" className="ghost-btn small" style={{ marginTop: 8 }} onClick={() => toggleId(s.id, openTranscript, setOpenTranscript)}>
+                      {openTranscript.has(s.id) ? "Volledig gesprek verbergen" : "Volledig gesprek tonen"}
+                    </button>
+                    {openTranscript.has(s.id) && <div className="md strategy-transcript" dangerouslySetInnerHTML={{ __html: mdToHtml(s.transcript) }} />}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}

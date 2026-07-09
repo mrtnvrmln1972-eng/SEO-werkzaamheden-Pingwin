@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import type { TaskRow } from "../../../../lib/tasks";
 import { cleanPastedHtml, linkifyPlainText } from "../../../../lib/rich-paste";
+import StrategyPanel from "./StrategyPanel";
 
 const MONTHS = ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"];
 const STATUSES = ["Gepland", "Bezig", "Naar Dev", "Klaar"];
@@ -562,8 +563,27 @@ export default function TasksEditor({ slug, initialTasks, budget, clientName, cl
     );
   }
 
+  // Nieuw toegevoegde taken (bijv. uit een strategie-sessie) ophalen en achteraan
+  // toevoegen, zonder lokale (nog niet opgeslagen) bewerkingen te overschrijven.
+  async function refreshNewTasks() {
+    try {
+      const d = await fetch(`/api/admin/tasks?slug=${encodeURIComponent(slug)}`).then((r) => r.json());
+      if (!d.ok || !Array.isArray(d.tasks)) return;
+      setRows((prev) => {
+        const have = new Set(prev.filter((r) => typeof r.id === "number").map((r) => r.id as number));
+        const fresh = (d.tasks as TaskRow[]).filter((t) => typeof t.id === "number" && !have.has(t.id as number));
+        if (!fresh.length) return prev;
+        return [...prev, ...fresh.map((t) => ({ ...t, status: normalizeStatus(t.status || ""), _uid: `id-${t.id}` }))];
+      });
+    } catch { /* stil */ }
+  }
+
+  // Vanuit een taak-link (?strategie=<id>) de juiste strategie-sessie openklappen.
+  const strategieParam = typeof window !== "undefined" ? Number(new URLSearchParams(window.location.search).get("strategie") || 0) : 0;
+
   return (
     <>
+      <StrategyPanel slug={slug} openSessionId={strategieParam || undefined} onTaskAdded={refreshNewTasks} />
       {klantPop && typeof document !== "undefined" && createPortal(
         <>
           <div className="klant-pop-overlay" onClick={() => setKlantPop(null)} />
