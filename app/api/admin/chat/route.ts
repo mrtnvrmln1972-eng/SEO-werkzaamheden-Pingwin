@@ -4,7 +4,7 @@ import { guardSlug } from "../../../../lib/admin-scope";
 import { answerChat, clearChatHistory, getChatHistory, listChatThreads } from "../../../../lib/chat";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 // De gesprekken (threads) van een klant, en optioneel de historie van één thread.
 export async function GET(req: NextRequest) {

@@ -905,7 +905,7 @@ tbody td:last-child { text-align: center; }
 /* "?"-uitlegbolletje met tooltip bij hover/focus. */
 .help-hint { position: relative; display: inline-flex; align-items: center; margin-left: 6px; cursor: help; vertical-align: middle; }
 .help-hint-q { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; background: var(--orange-light); color: var(--orange-dark); border: 1px solid var(--orange); font-size: 11px; font-weight: 700; line-height: 1; }
-.help-hint-bubble { position: absolute; left: 0; top: calc(100% + 8px); z-index: 80; width: 320px; background: var(--white); color: var(--dark); font-size: 12.5px; font-weight: 400; line-height: 1.55; text-transform: none; letter-spacing: normal; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.16); opacity: 0; visibility: hidden; transition: opacity .12s; pointer-events: none; white-space: normal; display: flex; flex-direction: column; gap: 7px; text-align: left; }
+.help-hint-bubble { position: absolute; left: 0; top: calc(100% + 8px); z-index: 9999; width: 320px; background: var(--white); color: var(--dark); font-size: 12.5px; font-weight: 400; line-height: 1.55; text-transform: none; letter-spacing: normal; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.16); opacity: 0; visibility: hidden; transition: opacity .12s; pointer-events: none; white-space: normal; display: flex; flex-direction: column; gap: 7px; text-align: left; }
 .help-hint-bubble.wide { width: 400px; }
 .hh-label { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase; color: var(--orange-dark); }
 .hh-label-dot { display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; border-radius: 50%; background: var(--orange); color: #fff; font-size: 10px; font-weight: 800; }
@@ -915,6 +915,8 @@ tbody td:last-child { text-align: center; }
 .hh-li { display: flex; align-items: baseline; gap: 8px; color: #444; }
 .hh-li-dot { flex: 0 0 auto; width: 6px; height: 6px; border-radius: 50%; background: var(--orange); position: relative; top: -1px; }
 .help-hint:hover .help-hint-bubble, .help-hint:focus .help-hint-bubble, .help-hint:focus-within .help-hint-bubble { opacity: 1; visibility: visible; }
+/* Portal-variant: vaste positie op de body, altijd zichtbaar zolang hij gerenderd is. */
+.help-hint-bubble.hh-fixed { position: fixed; opacity: 1; visibility: visible; pointer-events: auto; }
 
 /* Inklapbare sectiekop (toggle). Werkt als losse <button> én als ck-section-head. */
 button.ck-collapse-head {

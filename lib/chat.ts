@@ -2,7 +2,10 @@ import { sql, ensureSchema } from "./db";
 import { getClientBySlug } from "./clients";
 import { getEmails, getMetrics, getKeywords, getStatus } from "./snapshots";
 import { msStatus, msSearchClientEmails } from "./ms-graph";
-import { googleStatus, getGscForClient, getGscKeywordTrend } from "./google";
+import { googleStatus, getGscForClient, getGscKeywordTrend, getGscForPage } from "./google";
+import { measurePage } from "./page-measure";
+import { getUrlOrganicKeywords, getSerpOverview, getAhrefsTopPages, ahrefsConfigured } from "./ahrefs";
+import { callClaudeAgentic, type ToolDef, type ToolRunner } from "./anthropic";
 import { sheetCsvUrl, parseCSV, structureData, MAAND_VOLGORDE } from "./sheet";
 import type { ClientConfig } from "./clients";
 
@@ -190,6 +193,64 @@ export async function clearChatHistory(slug: string, thread = "algemeen"): Promi
   await sql`DELETE FROM client_chat WHERE client_slug = ${slug} AND thread = ${cleanThread(thread)}`;
 }
 
+function chatTools(client: ClientConfig): { tools: ToolDef[]; run: ToolRunner } {
+  const domain = (client.domain || "").trim();
+  const toFull = (u: string) => {
+    const t = (u || "").trim();
+    if (/^https?:\/\//i.test(t)) return t;
+    return `https://${(domain || "").replace(/^https?:\/\//i, "").replace(/\/$/, "")}${t.startsWith("/") ? t : `/${t}`}`;
+  };
+  const tools: ToolDef[] = [
+    { name: "meet_pagina", description: "Leest en meet een pagina live uit: meta-title/description, H1/H2/H3, aantal woorden, interne/externe links, afbeeldingen, FAQ en schema. Gebruik dit ZELF om contentkwaliteit en on-page zaken te beoordelen in plaats van ernaar te vragen.", input_schema: { type: "object", properties: { url: { type: "string", description: "Volledige URL of pad (bijv. /zwemvijvers/)" } }, required: ["url"] } },
+    { name: "gsc_pagina", description: "Search Console-zoekwoorden van één pagina (laatste 90 dagen): zoekwoord, klikken, vertoningen, positie.", input_schema: { type: "object", properties: { url: { type: "string", description: "Volledige URL of pad" } }, required: ["url"] } },
+    { name: "ahrefs_pagina", description: "Ahrefs-gegevens van één pagina: organische zoekwoorden met positie/volume/verkeer, plus het aantal verwijzende domeinen (externe autoriteit) van die pagina.", input_schema: { type: "object", properties: { url: { type: "string", description: "Volledige URL of pad" } }, required: ["url"] } },
+    { name: "serp_top10", description: "De actuele top 10 van Google voor een zoekwoord (NL): positie, URL, titel, domain rating en resultaattype. Gebruik dit ZELF om de concurrentie te beoordelen.", input_schema: { type: "object", properties: { zoekwoord: { type: "string" } }, required: ["zoekwoord"] } },
+  ];
+  const run: ToolRunner = async (name, input) => {
+    try {
+      if (name === "meet_pagina") {
+        const m = await measurePage(toFull(String(input.url || "")), { staticOnly: true });
+        if (!m.ok) return `Pagina niet leesbaar (status ${m.status ?? "?"}).`;
+        return [
+          `Status ${m.status}. Title (${m.titleLength} tekens): ${m.metaTitle}`,
+          `Meta-description (${m.descriptionLength} tekens): ${m.metaDescription}`,
+          `H1: ${m.h1.join(" | ") || "(geen)"}`,
+          `H2 (${m.h2.length}): ${m.h2.join(" | ")}`,
+          `H3 (${m.h3.length}): ${m.h3.slice(0, 15).join(" | ")}`,
+          `Woorden: ${m.wordCount}. Interne links: ${m.internalLinkCount}, extern: ${m.externalLinkCount}.`,
+          `Afbeeldingen: ${m.images.length} (zonder alt: ${m.imagesWithoutAlt}). FAQ: ${m.faqDetected ? `ja (${m.faqCount})` : "nee"}. Schema: ${m.schemaTypes.join(", ") || "geen"}.`,
+        ].join("\n");
+      }
+      if (name === "gsc_pagina") {
+        const rows = await getGscForPage(domain, toFull(String(input.url || "")), 90);
+        if (!rows.length) return "Geen GSC-data voor deze pagina (of de Google-koppeling ontbreekt).";
+        return rows.slice(0, 25).map((r) => `${r.keyword}: pos ${r.position}, ${r.clicks} klikken, ${r.impressions} vertoningen`).join("\n");
+      }
+      if (name === "ahrefs_pagina") {
+        if (!ahrefsConfigured()) return "Ahrefs is niet gekoppeld.";
+        const full = toFull(String(input.url || ""));
+        const [kws, top] = await Promise.all([
+          getUrlOrganicKeywords(full, "nl", 30).catch(() => []),
+          getAhrefsTopPages(domain).catch(() => []),
+        ]);
+        const norm = (u: string) => u.replace(/^https?:\/\/(www\.)?/i, "").replace(/\/$/, "");
+        const rd = top.find((t) => norm(t.url) === norm(full))?.refDomains;
+        const kwText = kws.length ? kws.map((k) => `${k.keyword}: pos ${k.position ?? "-"}, vol ${k.volume ?? "-"}, verkeer ${k.traffic ?? "-"}`).join("\n") : "Geen organische zoekwoorden gevonden.";
+        return `Verwijzende domeinen naar deze pagina: ${rd ?? "onbekend"}.\n${kwText}`;
+      }
+      if (name === "serp_top10") {
+        const rows = await getSerpOverview(String(input.zoekwoord || ""), "nl");
+        if (!rows.length) return "Geen SERP-data gevonden.";
+        return rows.slice(0, 10).map((r) => `#${r.position} ${r.url} (DR ${r.domainRating ?? "-"}, ${r.type})${r.title ? ` \u2014 ${r.title}` : ""}`).join("\n");
+      }
+      return "Onbekend gereedschap.";
+    } catch (e) {
+      return `Gereedschap-fout: ${(e as Error).message}`;
+    }
+  };
+  return { tools, run };
+}
+
 export async function answerChat(slug: string, messages: ChatMessage[], thread = "algemeen"): Promise<{ ok: boolean; answer?: string; error?: string }> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return { ok: false, error: "Geen ANTHROPIC_API_KEY ingesteld." };
@@ -208,39 +269,29 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
     `  | Zoekwoord | apr | mei | jun |\n  | --- | --- | --- | --- |\n  | soa test amsterdam | 9 | 7 | 6 |\n` +
     `- Houd zinnen kort en groepeer logisch. Sluit af met een kort actiepunt als dat past.\n\n` +
     `Noem waar relevant het mail-onderwerp, de datum of de ontvanger (bv. of een mail naar de klant of naar jezelf ging). ` +
-    `Staat het antwoord niet in de context, zeg dat eerlijk in plaats van te gokken.\n\n--- PROJECTCONTEXT ---\n${context}`;
+    `Staat het antwoord niet in de context, zeg dat eerlijk in plaats van te gokken.\n\n` +
+    `WERKWIJZE (belangrijk): jij bent de specialist; Maarten wil ANTWOORDEN, geen vragenlijsten.\n` +
+    `- Je hebt gereedschap om ZELF te kijken: meet_pagina (content/koppen/meta/links van een URL), gsc_pagina (zoekwoorden per pagina), ahrefs_pagina (posities, volume en verwijzende domeinen van een pagina) en serp_top10 (de concurrentie op een zoekwoord). GEBRUIK dat gereedschap eerst, en beantwoord de vraag daarna onderbouwd met wat je zag.\n` +
+    `- Stel NOOIT een lijst controlevragen die je zelf kunt beantwoorden (zoals "staat het zoekwoord in de H1?" of "hoeveel backlinks heeft de pagina?"): meet het en vertel het resultaat.\n` +
+    `- Trek zelf de conclusie en sluit af met concrete aanbevelingen in volgorde van impact. Hooguit \u00e9\u00e9n korte vraag, alleen als een echte keuze bij Maarten ligt.\n\n--- PROJECTCONTEXT ---\n${context}`;
 
   try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 1500,
-        system,
-        messages: messages.slice(-10).map((m) => {
-          if (!m.image) return { role: m.role, content: m.content };
-          // data-URL splitsen in mediatype + base64 voor het Anthropic image-blok.
-          const match = m.image.match(/^data:(image\/[a-z+.-]+);base64,(.+)$/i);
-          if (!match) return { role: m.role, content: m.content };
-          return {
-            role: m.role,
-            content: [
-              { type: "image", source: { type: "base64", media_type: match[1], data: match[2] } },
-              { type: "text", text: m.content || "Bekijk deze afbeelding en betrek hem bij het gesprek." },
-            ],
-          };
-        }),
-      }),
+    // Agentisch: de assistent kan zelf meten (pagina, GSC, Ahrefs, top-10) vóór hij
+    // antwoordt. Vision-berichten (afbeelding) gaan als content-blokken mee.
+    const apiMessages = messages.slice(-10).map((m) => {
+      if (!m.image) return { role: m.role, content: m.content };
+      const match = m.image.match(/^data:(image\/[a-z+.-]+);base64,(.+)$/i);
+      if (!match) return { role: m.role, content: m.content };
+      return {
+        role: m.role,
+        content: [
+          { type: "image", source: { type: "base64", media_type: match[1], data: match[2] } },
+          { type: "text", text: m.content || "Bekijk deze afbeelding en betrek hem bij het gesprek." },
+        ] as unknown as string,
+      };
     });
-    if (!res.ok) {
-      let msg = `AI-fout (${res.status}).`;
-      try { const j = await res.json(); msg = j.error?.message || msg; } catch { /* ignore */ }
-      return { ok: false, error: msg };
-    }
-    const j = await res.json();
-    try { const { logUsage } = await import("./usage"); await logUsage({ slug, service: "anthropic", action: "projectchat", model: "claude-sonnet-4-6", tokensIn: j.usage?.input_tokens || 0, tokensOut: j.usage?.output_tokens || 0 }); } catch { /* meting mag de chat niet breken */ }
-    const answer = Array.isArray(j.content) ? j.content.map((c: { text?: string }) => c.text || "").join("") : "";
+    const { tools, run } = chatTools(client);
+    const answer = await callClaudeAgentic(system, apiMessages as { role: "user" | "assistant"; content: string }[], tools, run, 6, 2000, { slug, action: "projectchat" });
     const finalAnswer = answer || "(geen antwoord)";
     await saveChatHistory(slug, thread, [...messages, { role: "assistant", content: finalAnswer }]);
     return { ok: true, answer: finalAnswer };
