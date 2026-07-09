@@ -15,6 +15,26 @@ function euro(n: number): string {
 
 export default function InvoiceAlert({ slug }: { slug: string }) {
   const [overdue, setOverdue] = useState<Inv[]>([]);
+  const [mailState, setMailState] = useState<"idle" | "busy" | "sent">("idle");
+  const [mailErr, setMailErr] = useState("");
+
+  // Stuur de factuurlinks naar het administratie-adres (instelling in Beheer).
+  async function mailAdmin() {
+    if (mailState !== "idle") return;
+    setMailState("busy"); setMailErr("");
+    try {
+      const res = await fetch("/api/admin/invoice-mail", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug }),
+      });
+      const data = await res.json();
+      if (data.ok) setMailState("sent");
+      else { setMailState("idle"); setMailErr(data.error || "Mailen mislukt."); }
+    } catch {
+      setMailState("idle"); setMailErr("Mailen mislukt.");
+    }
+  }
 
   useEffect(() => {
     let alive = true;
@@ -48,7 +68,17 @@ export default function InvoiceAlert({ slug }: { slug: string }) {
             {i.invoiceId} in Moneybird
           </a>
         ))}
+        <button
+          type="button"
+          className="mini-btn"
+          onClick={mailAdmin}
+          disabled={mailState !== "idle"}
+          title="Stuurt de factuurlinks naar het administratie-adres (instelbaar bij Beheer)"
+        >
+          {mailState === "busy" ? "Mailen…" : mailState === "sent" ? "✓ Gemaild" : "Mail naar administratie"}
+        </button>
       </span>
+      {mailErr && <span className="muted" style={{ fontSize: 12 }}>{mailErr}</span>}
     </div>
   );
 }

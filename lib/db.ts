@@ -121,6 +121,13 @@ async function init(): Promise<void> {
   // E-mailadres van het teamlid, voor de knop "Mail inloggegevens".
   await sql`ALTER TABLE team_users ADD COLUMN IF NOT EXISTS email TEXT`;
 
+  // ── App-instellingen (kleine sleutel/waarde-tabel, o.a. administratie-e-mail) ──
+  await sql`
+    CREATE TABLE IF NOT EXISTS app_settings (
+      key   TEXT PRIMARY KEY,
+      value TEXT
+    )`;
+
   // ── Data-brug: ingeladen snapshots per klant (uit Outlook / GSC / GA4 / Ahrefs) ──
   // Gevuld via POST /api/admin/ingest. Het dashboard leest hieruit, ook als er
   // geen Claude-sessie draait. Idempotent: opnieuw inladen overschrijft per sleutel.

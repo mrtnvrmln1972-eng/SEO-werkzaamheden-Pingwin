@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { TeamUser } from "../../../lib/team-users";
 
@@ -16,6 +16,33 @@ export default function BeheerClient({ clients, team }: { clients: ClientLite[];
   const router = useRouter();
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+
+  // ── App-instellingen (administratie-e-mail voor de factuur-mail) ──
+  const [invoiceMail, setInvoiceMail] = useState("");
+  const [settingsBusy, setSettingsBusy] = useState(false);
+  useEffect(() => {
+    fetch("/api/admin/settings").then((r) => r.json())
+      .then((d) => { if (d.ok && d.settings?.invoice_mail_to) setInvoiceMail(d.settings.invoice_mail_to); })
+      .catch(() => { /* stil */ });
+  }, []);
+  async function saveInvoiceMail() {
+    setSettingsBusy(true);
+    setNotice(null);
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: "invoice_mail_to", value: invoiceMail }),
+      });
+      const data = await res.json();
+      if (data.ok) flash(true, "Instelling opgeslagen.");
+      else flash(false, data.error || "Opslaan mislukt.");
+    } catch {
+      flash(false, "Opslaan mislukt.");
+    } finally {
+      setSettingsBusy(false);
+    }
+  }
 
   function flash(ok: boolean, text: string) {
     setNotice({ ok, text });
@@ -513,6 +540,23 @@ export default function BeheerClient({ clients, team }: { clients: ClientLite[];
             <button type="submit" className="primary-btn" style={{ marginTop: 16 }} disabled={busy}>{busy ? "Bezig…" : "Gast aanmaken"}</button>
           </form>
         )}
+
+        {/* ─────────────── INSTELLINGEN ─────────────── */}
+        <h2 style={{ fontSize: 20, fontWeight: 700, margin: "44px 0 6px" }}>Instellingen</h2>
+        <p className="muted" style={{ marginBottom: 16 }}>
+          Het e-mailadres van degene die de administratie bijhoudt. De knop &ldquo;Mail naar administratie&rdquo; bij een openstaande-factuursignaal stuurt de factuurlinks naar dit adres.
+        </p>
+        <form className="admin-form" onSubmit={(e) => { e.preventDefault(); saveInvoiceMail(); }}>
+          <div className="form-grid">
+            <div className="field">
+              <label>Administratie-e-mail (factuur-signalen)</label>
+              <input type="email" value={invoiceMail} onChange={(e) => setInvoiceMail(e.target.value)} placeholder="administratie@bedrijf.nl" />
+            </div>
+            <div className="field" style={{ justifyContent: "flex-end" }}>
+              <button type="submit" className="primary-btn" disabled={settingsBusy} style={{ alignSelf: "flex-start" }}>{settingsBusy ? "Opslaan…" : "Opslaan"}</button>
+            </div>
+          </div>
+        </form>
 
         <div className="admin-footer" style={{ marginTop: 40, color: "var(--gray)", fontSize: 12 }}>
           Pingwin Online Marketing &middot; Beheer
