@@ -1810,3 +1810,18 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .org-field input:disabled, .org-field select:disabled, .org-field textarea:disabled { background: var(--gray-light); color: var(--gray); }
 .org-check { flex-direction: row; align-items: center; gap: 8px; margin-top: 20px; }
 .org-check input { width: 16px; height: 16px; }
+
+/* Deelbare bedrijfsgegevens-pagina voor de klant (zonder login). */
+.org-share-page { min-height: 100vh; background: var(--gray-light); padding: 32px 16px 64px; }
+.org-share-inner { max-width: 860px; margin: 0 auto; background: var(--white); border: 1px solid var(--border); border-radius: 14px; padding: 28px 32px 36px; }
+.org-share-brand { font-size: 12px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: var(--orange); margin-bottom: 6px; }
+.org-share-inner h1 { font-size: 24px; margin: 0 0 18px; color: var(--dark); }
+.org-share-intro h2 { font-size: 15px; margin: 16px 0 6px; color: var(--orange-dark); }
+.org-share-intro p, .org-share-intro li { font-size: 13.5px; line-height: 1.6; color: #444; }
+.org-share-intro ul { margin: 6px 0 6px 18px; padding: 0; }
+.org-share-intro li { margin: 3px 0; }
+.org-share-note { background: var(--orange-light); border-radius: 8px; padding: 10px 14px; margin-top: 10px; }
+.org-share-error { background: #fdecea; color: #C62828; border-radius: 8px; padding: 10px 14px; margin: 14px 0; font-size: 13.5px; }
+.org-share-locked { background: var(--gray-light); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; margin: 14px 0; font-size: 13.5px; color: var(--gray); }
+.org-share-save { display: flex; align-items: center; gap: 14px; margin-top: 16px; }
+.org-share-page .org-share-intro + .org-form, .org-share-inner .org-form { margin-top: 22px; }
