@@ -47,7 +47,7 @@ const GA4_CHANNEL_NL: Record<string, string> = {
   "Organic Search": "Organisch zoeken (SEO)", "Direct": "Direct", "Paid Search": "Google Ads zoekadvertenties (SEA)",
   "Organic Social": "Social (organisch)", "Paid Social": "Social (betaald)", "Referral": "Verwijzende sites",
   "Email": "E-mail", "Display": "Display-advertenties", "Organic Video": "Video (organisch)",
-  "Paid Video": "Video (betaald)", "Cross-network": "Google Ads cross-network (o.a. Performance Max)", "Unassigned": "Niet toegewezen",
+  "Paid Video": "Video (betaald)", "Cross-network": "Google Ads", "Unassigned": "Niet toegewezen",
   "Organic Shopping": "Shopping (organisch)", "Paid Shopping": "Shopping (betaald)", "Audio": "Audio", "SMS": "SMS",
 };
 
@@ -219,6 +219,7 @@ type Kw = GscComparison["keywords"][number];
 type KwKey = "focus" | "keyword" | "volume" | "position" | "dposition" | "clicks" | "dclicks" | "impressions" | "dimpressions" | "ctr" | "dctr";
 type AhKey = "focus" | "keyword" | "volume" | "position" | "dposition" | "intent" | "kans" | "page";
 type ChKey = "name" | "sessions" | "dsessions" | "users" | "dusers" | "conversions" | "dconversions";
+const PKW_COLS_DEFAULT = ["volume", "position", "clicks", "impressions"];
 const CH_COLS_DEFAULT = ["sessions", "users", "conversions"];
 type OppKey = "focus" | "keyword" | "volume" | "difficulty" | "source" | "reason";
 type PageKey = "prio" | "url" | "clicks" | "dclicks" | "impressions" | "dimpressions";
@@ -287,7 +288,8 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
   type PageKw = { keyword: string; clicks: number; impressions: number; position: number; prevClicks: number; prevImpressions: number; prevPosition: number | null };
   const [pageKwOpen, setPageKwOpen] = useState("");
   const [pageKwData, setPageKwData] = useState<Record<string, PageKw[] | "laden" | "fout">>({});
-  const [pageKwSort, setPageKwSort] = useState<"keyword" | "position" | "dposition" | "clicks" | "dclicks" | "impressions" | "dimpressions">("impressions");
+  const [pageKwSort, setPageKwSort] = useState<"keyword" | "volume" | "position" | "dposition" | "clicks" | "dclicks" | "impressions" | "dimpressions">("impressions");
+  const [pkwCols, setPkwCols] = useState<string[]>(PKW_COLS_DEFAULT);
   // GA-kanalentabel: sorteerbaar en de kolomgroepen versleepbaar (net als de andere tabellen).
   const [chSort, setChSort] = useState<Sort<ChKey>>(null);
   const [chCols, setChCols] = useState<string[]>(CH_COLS_DEFAULT);
@@ -305,6 +307,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
     try { setPageCols(sanitizeCols(JSON.parse(localStorage.getItem("pw_kpicols_pages") || "null"), PAGE_COLS_DEFAULT)); } catch { /* standaard */ }
     try { setAhCols(sanitizeCols(JSON.parse(localStorage.getItem("pw_kpicols_ah") || "null"), AH_COLS_DEFAULT)); } catch { /* standaard */ }
     try { setChCols(sanitizeCols(JSON.parse(localStorage.getItem("pw_kpicols_gach") || "null"), CH_COLS_DEFAULT)); } catch { /* standaard */ }
+    try { setPkwCols(sanitizeCols(JSON.parse(localStorage.getItem("pw_kpicols_pagekw") || "null"), PKW_COLS_DEFAULT)); } catch { /* standaard */ }
   }, []);
   function moveCol(order: string[], setOrder: (o: string[]) => void, storageKey: string, from: string, to: string) {
     if (from === to) return;
@@ -707,17 +710,19 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
                                 <table className="res-table kpi-table kpi-page-kw-table">
                                   <thead><tr>
                                     <th className="pg-sort" onClick={() => setPageKwSort("keyword")}>Zoekwoord{pageKwSort === "keyword" ? " \u25be" : ""}</th>
-                                    <th className="pg-sort" onClick={() => setPageKwSort("position")}>Ranking{pageKwSort === "position" ? " \u25be" : ""}</th>
-                                    <th className="pg-sort kpi-delta-th" title="Verandering ranking t.o.v. de vergelijkingsperiode (omhoog = beter)" onClick={() => setPageKwSort("dposition")}>Verschil{pageKwSort === "dposition" ? " \u25be" : ""}</th>
-                                    <th className="pg-sort" onClick={() => setPageKwSort("clicks")}>Klikken{pageKwSort === "clicks" ? " \u25be" : ""}</th>
-                                    <th className="pg-sort kpi-delta-th" title="Verandering klikken t.o.v. de vergelijkingsperiode" onClick={() => setPageKwSort("dclicks")}>Verschil{pageKwSort === "dclicks" ? " \u25be" : ""}</th>
-                                    <th className="pg-sort" onClick={() => setPageKwSort("impressions")}>Vertoningen{pageKwSort === "impressions" ? " \u25be" : ""}</th>
-                                    <th className="pg-sort kpi-delta-th" title="Verandering vertoningen t.o.v. de vergelijkingsperiode" onClick={() => setPageKwSort("dimpressions")}>Verschil{pageKwSort === "dimpressions" ? " \u25be" : ""}</th>
+                                    {pkwCols.map((gk) => {
+                                      const d = colDragProps(gk, pkwCols, setPkwCols, "pw_kpicols_pagekw");
+                                      if (gk === "volume") return <th key="volume" {...d} className="pg-sort" title="Maandelijks zoekvolume uit de opgeslagen Ahrefs-pool (sleep om te herschikken)" onClick={() => setPageKwSort("volume")}>Volume{pageKwSort === "volume" ? " \u25be" : ""}</th>;
+                                      if (gk === "position") return <Fragment key="position"><th {...d} className="pg-sort" onClick={() => setPageKwSort("position")}>Ranking{pageKwSort === "position" ? " \u25be" : ""}</th><th {...d} className="pg-sort kpi-delta-th" title="Verandering ranking t.o.v. de vergelijkingsperiode (omhoog = beter)" onClick={() => setPageKwSort("dposition")}>Verschil{pageKwSort === "dposition" ? " \u25be" : ""}</th></Fragment>;
+                                      if (gk === "clicks") return <Fragment key="clicks"><th {...d} className="pg-sort" onClick={() => setPageKwSort("clicks")}>Klikken{pageKwSort === "clicks" ? " \u25be" : ""}</th><th {...d} className="pg-sort kpi-delta-th" title="Verandering klikken t.o.v. de vergelijkingsperiode" onClick={() => setPageKwSort("dclicks")}>Verschil{pageKwSort === "dclicks" ? " \u25be" : ""}</th></Fragment>;
+                                      return <Fragment key="impressions"><th {...d} className="pg-sort" onClick={() => setPageKwSort("impressions")}>Vertoningen{pageKwSort === "impressions" ? " \u25be" : ""}</th><th {...d} className="pg-sort kpi-delta-th" title="Verandering vertoningen t.o.v. de vergelijkingsperiode" onClick={() => setPageKwSort("dimpressions")}>Verschil{pageKwSort === "dimpressions" ? " \u25be" : ""}</th></Fragment>;
+                                    })}
                                   </tr></thead>
                                   <tbody>
                                     {[...kwData].sort((a, b) => {
                                       switch (pageKwSort) {
                                         case "keyword": return a.keyword.localeCompare(b.keyword);
+                                        case "volume": return (volMap.get(b.keyword.toLowerCase()) ?? -1) - (volMap.get(a.keyword.toLowerCase()) ?? -1);
                                         case "position": return a.position - b.position;
                                         case "dposition": return ((b.prevPosition ?? b.position) - b.position) - ((a.prevPosition ?? a.position) - a.position);
                                         case "clicks": return b.clicks - a.clicks;
@@ -728,12 +733,12 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
                                     }).map((k) => (
                                       <tr key={k.keyword}>
                                         <td>{k.keyword}</td>
-                                        <td>{k.position.toFixed(1)}</td>
-                                        <td className="kpi-delta-td">{k.prevPosition != null ? <Delta cur={k.position} prev={k.prevPosition} invert isPos /> : <span className="muted" title="Nieuw: rankte in de vergelijkingsperiode nog niet">nieuw</span>}</td>
-                                        <td>{nl(k.clicks)}</td>
-                                        <td className="kpi-delta-td"><Delta cur={k.clicks} prev={k.prevClicks} /></td>
-                                        <td>{nl(k.impressions)}</td>
-                                        <td className="kpi-delta-td"><Delta cur={k.impressions} prev={k.prevImpressions} /></td>
+                                        {pkwCols.map((gk) => {
+                                          if (gk === "volume") { const v = volMap.get(k.keyword.toLowerCase()); return <td key="volume">{v != null ? nl(v) : <span className="muted">&mdash;</span>}</td>; }
+                                          if (gk === "position") return <Fragment key="position"><td>{k.position.toFixed(1)}</td><td className="kpi-delta-td">{k.prevPosition != null ? <Delta cur={k.position} prev={k.prevPosition} invert isPos /> : <span className="muted" title="Nieuw: rankte in de vergelijkingsperiode nog niet">nieuw</span>}</td></Fragment>;
+                                          if (gk === "clicks") return <Fragment key="clicks"><td>{nl(k.clicks)}</td><td className="kpi-delta-td"><Delta cur={k.clicks} prev={k.prevClicks} /></td></Fragment>;
+                                          return <Fragment key="impressions"><td>{nl(k.impressions)}</td><td className="kpi-delta-td"><Delta cur={k.impressions} prev={k.prevImpressions} /></td></Fragment>;
+                                        })}
                                       </tr>
                                     ))}
                                   </tbody>
