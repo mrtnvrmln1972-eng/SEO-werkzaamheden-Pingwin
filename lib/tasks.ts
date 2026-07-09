@@ -145,9 +145,9 @@ export async function appendTasks(slug: string, tasks: Partial<TaskRow>[]): Prom
   for (const t of tasks) {
     if (!t.taak || !t.taak.trim()) continue;
     const res = await sql`
-      INSERT INTO client_tasks (client_slug, sort_order, taak, toelichting, klant_toelichting, status, wie, klant_zichtbaar,
+      INSERT INTO client_tasks (client_slug, sort_order, categorie, taak, toelichting, klant_toelichting, uren, status, maand, link, wie, klant_zichtbaar,
                                 fase, cluster, geblokkeerd, blokkade_reden, page_url, updated_at)
-      VALUES (${slug}, ${order}, ${t.taak.trim()}, ${t.toelichting || null}, ${t.klantToelichting || null}, ${t.status || "Gepland"}, ${t.wie || null}, ${t.klantZichtbaar !== false},
+      VALUES (${slug}, ${order}, ${t.categorie || null}, ${t.taak.trim()}, ${t.toelichting || null}, ${t.klantToelichting || null}, ${t.uren ?? null}, ${t.status || "Gepland"}, ${(t.maand || "").toLowerCase() || null}, ${t.link || null}, ${t.wie || null}, ${t.klantZichtbaar !== false},
               ${t.fase || null}, ${t.cluster || null}, ${!!t.geblokkeerd}, ${t.blokkadeReden || null}, ${t.pageUrl || null}, now())
       RETURNING id`;
     if (res.rows[0]?.id != null) ids.push(Number(res.rows[0].id));
