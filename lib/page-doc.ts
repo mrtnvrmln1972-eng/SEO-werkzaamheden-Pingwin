@@ -381,6 +381,34 @@ Lever precies deze secties:
 4. Wat jullie hiervan gaan merken: twee tot drie zinnen (de pagina wordt beter vindbaar doordat de eigen site er vaker en logischer naartoe verwijst; effect is na enkele weken zichtbaar).
 ${DOCSPEC_FORMAT}`;
 
+const SCHEMA_DOC_SYSTEM = `Je bent een senior SEO-strateeg bij bureau Pingwin. Je maakt het KORTE oplever-document van de structured data voor één pagina, leesbaar voor de klant én de developer (samen één document, maximaal ~2 pagina's).
+Baseer je UITSLUITEND op het aangeleverde advies; verzin niets.
+Lever deze secties, elk kort en in gewone taal:
+1. Wat we doen: welke structured data (schema.org) we op deze pagina toevoegen, per onderdeel één regel in begrijpelijke taal.
+2. Waarom dit belangrijk is: betere weergave in Google en betere herkenbaarheid voor AI-zoekmachines (eerlijk: geen garantie, wel een bewezen sterke basis).
+3. Voor de developer: dat de exacte code in het losse .json-bestand in dezelfde Drive-map staat, dat die letterlijk geplakt kan worden (in de head of via de gebruikte SEO-plugin), en dat na plaatsing gecontroleerd wordt met de Rich Results Test (search.google.com/test/rich-results) en validator.schema.org.
+4. Aandachtspunten: alleen als die er zijn (aangeleverd), bijv. bestaande plugin-schema of gegevens die de klant nog moet bevestigen.
+Geen em-dash of en-dash. Geen emoji. ${DOCSPEC_FORMAT}`;
+
+// Kort combi-document (klant + developer) voor de structured data van één pagina.
+export async function schemaDocSpec(slug: string, url: string, advies: string, warnings: string[]): Promise<{ spec: DocSpec; title: string }> {
+  const client = await getClientBySlug(slug);
+  const user = `Pagina: ${url}\n\nADVIES (bron):\n${advies.slice(0, 12000)}${warnings.length ? `\n\nAANDACHTSPUNTEN:\n- ${warnings.join("\n- ")}` : ""}`;
+  const raw = await callClaude(SCHEMA_DOC_SYSTEM, [{ role: "user", content: user }], 4000, { slug, action: "page_schema_doc" });
+  const parsed = extractJsonObject(raw);
+  if (!parsed) throw new Error("Het structured-data-document kon niet worden opgemaakt (het AI-antwoord kwam onvolledig terug). Probeer het opnieuw.");
+  const title = typeof parsed.titel === "string" && parsed.titel.trim() ? parsed.titel.trim() : "Structured data";
+  const spec: DocSpec = {
+    klant: client?.name || slug,
+    rapporttype: "Structured data",
+    titel: title,
+    ondertitel: typeof parsed.ondertitel === "string" ? parsed.ondertitel : url,
+    meta: { Klant: client?.name || slug, Pagina: url },
+    sections: Array.isArray(parsed.sections) ? parsed.sections : [],
+  };
+  return { spec, title };
+}
+
 export async function internalLinksDocSpec(slug: string, url: string, proposal: string): Promise<{ spec: DocSpec; title: string }> {
   const client = await getClientBySlug(slug);
   const user = `Doelpagina (waar de links naartoe gaan): ${url}\n\nINTERNE-LINKS-VOORSTEL:\n${proposal.slice(0, 16000)}`;

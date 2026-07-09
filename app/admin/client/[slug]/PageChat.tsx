@@ -113,6 +113,63 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       onApplied();
     } catch { setIlApplyMsg("Overnemen mislukt."); } finally { setIlApplyBusy(false); }
   }
+  // Stap 7: structured data (achtergrond-analyse + overnemen), spiegelt stap 6.
+  const [sch, setSch] = useState<{ status: string; result: string; jsonld: string; warnings: string[]; error: string; updatedAt: string | null } | null>(null);
+  const [schBusy, setSchBusy] = useState(false);
+  const [schDocOpen, setSchDocOpen] = useState(true);
+  const [schJsonOpen, setSchJsonOpen] = useState(false);
+  const [schCopied, setSchCopied] = useState(false);
+  async function loadSch() {
+    try {
+      const d = await fetch(`/api/admin/page-schema?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}`).then((r) => r.json());
+      if (d.ok) setSch({ status: d.status, result: d.result, jsonld: d.jsonld, warnings: d.warnings || [], error: d.error, updatedAt: d.updatedAt });
+    } catch { /* stil */ }
+  }
+  useEffect(() => { loadSch(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [slug, url]);
+  useEffect(() => {
+    if (sch?.status !== "running") return;
+    const t = setInterval(loadSch, 5000);
+    return () => clearInterval(t); /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [sch?.status, slug, url]);
+  async function runSch() {
+    if (schBusy || sch?.status === "running") return;
+    setSchBusy(true);
+    setSch((s2) => (s2 ? { ...s2, status: "running", error: "" } : { status: "running", result: "", jsonld: "", warnings: [], error: "", updatedAt: null }));
+    try {
+      const d = await fetch("/api/admin/page-schema", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url }) }).then((r) => r.json());
+      if (!d.ok) { setErr(d.error || "Starten mislukt."); await loadSch(); return; }
+      setSchemaOpen(true);
+      await loadSch();
+    } catch { setErr("Starten mislukt."); await loadSch(); } finally { setSchBusy(false); }
+  }
+  async function copySchJson() {
+    if (!sch?.jsonld) return;
+    try { await navigator.clipboard.writeText(sch.jsonld); setSchCopied(true); setTimeout(() => setSchCopied(false), 2000); } catch { /* selecteer handmatig */ }
+  }
+  const [schApplyBusy, setSchApplyBusy] = useState(false);
+  const [schApplyMsg, setSchApplyMsg] = useState("");
+  const [schApplyInfo, setSchApplyInfo] = useState<{ doc: boolean } | null>(null);
+  const [schDone, setSchDone] = useState(false);
+  useEffect(() => {
+    try {
+      setSchDone(localStorage.getItem(`pw_schdone_${slug}_${url}`) === "1");
+      const raw = localStorage.getItem(`pw_schinfo_${slug}_${url}`);
+      setSchApplyInfo(raw ? JSON.parse(raw) : null);
+    } catch { /* geen opslag */ }
+  }, [slug, url]);
+  async function applySch() {
+    if (schApplyBusy) return;
+    setSchApplyBusy(true); setSchApplyMsg("");
+    try {
+      const d = await fetch("/api/admin/page-schema/apply", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url }) }).then((r) => r.json());
+      if (!d.ok) { setSchApplyMsg(d.error || "Overnemen mislukt."); return; }
+      const info = { doc: !!d.docLink };
+      setSchApplyInfo(info);
+      try { localStorage.setItem(`pw_schinfo_${slug}_${url}`, JSON.stringify(info)); } catch { /* geen opslag */ }
+      setSchDone(true); try { localStorage.setItem(`pw_schdone_${slug}_${url}`, "1"); } catch { /* geen opslag */ }
+      onApplied();
+    } catch { setSchApplyMsg("Overnemen mislukt."); } finally { setSchApplyBusy(false); }
+  }
   // Een chat-bericht bewerken (welke index) — gerenderde contentEditable, geen ruwe textarea.
   const [editIdx, setEditIdx] = useState<number | null>(null);
   const editRef = useRef<HTMLDivElement | null>(null);
@@ -1294,14 +1351,64 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
         </div>)}
       </div>
 
-      <div className="page-chat-schema-card step-card step-card-7">
+      <div className={"page-chat-schema-card step-card step-card-7" + (schDone ? " done" : "")}>
         <div className="step-head" onClick={() => setSchemaOpen((o) => !o)}>
           <span className="step-caret">{schemaOpen ? "▾" : "▸"}</span>
-          <span className="step-badge">7</span>
+          <span className="step-badge">{schDone ? "✓" : "7"}</span>
           <span className="step-title">Structured data</span>
-          <span onClick={(e) => e.stopPropagation()}><HelpHint wide text="Straks: de voorgestelde schema-markup (structured data) voor deze pagina, passend bij het pagina-type, als taak + begrijpelijk klantdocument. Deze stap werken we later verder uit." /></span>
+          <span onClick={(e) => e.stopPropagation()}><HelpHint wide title="Structured data (stap 7)" text={"Bepaalt welke schema.org-markup deze pagina nodig heeft, afgestemd op het bedrijfstype (kliniek, webshop, dienstverlener, lokaal, informatief).\n- Gebruikt de bevestigde Bedrijfsgegevens (Klant-tabblad) als bron en detecteert bestaande plugin-schema om dubbelingen te voorkomen.\n- Levert een leesbaar advies plus kant-en-klare JSON-LD als één samenhangende entity graph.\n- Overnemen maakt een kort uitleg-document, een los .json-bestand (letterlijk te plakken) en één Dev-taak."} /></span>
         </div>
-        {schemaOpen && <div className="step-body muted" style={{ fontSize: 13 }}>Nog uit te werken. Hier komt de voorgestelde structured data (schema-markup) voor deze pagina.</div>}
+        {schemaOpen && (<div className="step-body">
+          <div className="pch-canni-row">
+            <span className="pch-canni-lead">Adviseert de structured data (schema.org) voor deze pagina op basis van het bedrijfstype en de bevestigde bedrijfsgegevens, en levert de kant-en-klare JSON-LD voor de developer.</span>
+            <button type="button" className={"pcd-btn" + (schBusy || sch?.status === "running" ? " busy" : "")} disabled={schBusy || sch?.status === "running"} onClick={runSch} title="Draait op de achtergrond; je kunt wegklikken.">{sch?.status === "running" ? "Analyse draait…" : sch?.result ? "Opnieuw analyseren" : "Analyseer structured data"}</button>
+          </div>
+          {sch?.status === "error" && sch.error && <div className="login-error" style={{ marginTop: 8 }}>{sch.error}</div>}
+          {sch?.status === "running" && !sch.result && <div className="muted" style={{ marginTop: 8, fontSize: 13 }}>Analyse draait op de achtergrond (meet de pagina, leest bestaande schema en de bedrijfsgegevens; dit duurt meestal onder een minuut).</div>}
+          {sch?.result && (
+            <div className="pch-canni-doc">
+              <button type="button" className="pch-canni-toggle" onClick={() => setSchDocOpen((o) => !o)}>{schDocOpen ? "▾" : "▸"} Structured data-advies{sch.updatedAt ? ` · ${new Date(sch.updatedAt).toLocaleString("nl-NL")}` : ""}{sch.status === "running" ? " · nieuwe analyse draait…" : ""}</button>
+              {schDocOpen && (
+                <>
+                  {sch.warnings.length > 0 && (
+                    <div className="sch-warnings">
+                      {sch.warnings.map((w, i) => <div key={i} className="sch-warning">⚠ {w}</div>)}
+                    </div>
+                  )}
+                  <div className="md pch-canni-md" dangerouslySetInnerHTML={{ __html: mdToHtml(sch.result, siteBase) }} />
+                  {sch.jsonld && (
+                    <div className="sch-json">
+                      <div className="sch-json-head">
+                        <button type="button" className="pch-canni-toggle" onClick={() => setSchJsonOpen((o) => !o)}>{schJsonOpen ? "▾" : "▸"} De JSON-LD (voor de developer)</button>
+                        <button type="button" className="ghost-btn small" onClick={copySchJson}>{schCopied ? "✓ gekopieerd" : "Kopieer JSON"}</button>
+                      </div>
+                      {schJsonOpen && <pre className="sch-json-pre">{sch.jsonld}</pre>}
+                    </div>
+                  )}
+                </>
+              )}
+              <div className="page-chat-drive" style={{ margin: "12px 0 8px" }}>
+                <span className="pcd-label">Opslaan in:</span>
+                {driveFolder
+                  ? <span className="pcd-folder">{driveFolder.path || driveFolder.name}</span>
+                  : <span className="pcd-folder muted">nog geen Drive-map, kies er een zodat het document en het .json-bestand in de juiste map komen</span>}
+                <button type="button" className="ghost-btn small" onClick={openPicker}>{driveFolder ? "Map wijzigen" : "Kies Drive-map"}</button>
+              </div>
+              <div className="pch-canni-apply">
+                <button type="button" className={"pcd-btn pcd-btn-primary" + (schApplyBusy ? " busy" : "") + (schDone && !schApplyBusy ? " pcd-done" : "")} disabled={schApplyBusy} onClick={applySch} title="Maakt een kort uitleg-document + los .json-bestand in de Drive-map en één Dev-taak.">{schApplyBusy ? "Overnemen…" : schDone ? "✓ Overgenomen" : "Overnemen (document + JSON + taak)"}</button>
+                {schApplyInfo && (
+                  <div className="pch-apply-panel">
+                    <div className="pch-apply-row">
+                      <span className="pch-apply-ico">✓</span>
+                      <div><strong>Dev-taak aangemaakt in Werkzaamheden</strong> met het uitleg-document en het losse .json-bestand (de developer plakt die letterlijk in de site).</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              {schApplyMsg && <div className="login-error" style={{ marginTop: 8 }}>{schApplyMsg}</div>}
+            </div>
+          )}
+        </div>)}
       </div>
 
 

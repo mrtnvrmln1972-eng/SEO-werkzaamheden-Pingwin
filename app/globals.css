@@ -1825,3 +1825,10 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .org-share-locked { background: var(--gray-light); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; margin: 14px 0; font-size: 13.5px; color: var(--gray); }
 .org-share-save { display: flex; align-items: center; gap: 14px; margin-top: 16px; }
 .org-share-page .org-share-intro + .org-form, .org-share-inner .org-form { margin-top: 22px; }
+
+/* Stap 7 structured data: waarschuwingen + JSON-weergave met kopieerknop. */
+.sch-warnings { display: flex; flex-direction: column; gap: 4px; margin: 8px 0; }
+.sch-warning { font-size: 12.5px; background: var(--orange-light); color: var(--orange-dark); border-radius: 8px; padding: 6px 10px; }
+.sch-json { margin-top: 10px; }
+.sch-json-head { display: flex; align-items: center; gap: 10px; }
+.sch-json-pre { margin-top: 6px; max-height: 380px; overflow: auto; background: #23211f; color: #eae7e2; font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 11.5px; line-height: 1.5; padding: 12px 14px; border-radius: 10px; white-space: pre; }
