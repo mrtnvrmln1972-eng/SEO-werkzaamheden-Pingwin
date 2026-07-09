@@ -303,12 +303,13 @@ export default function ClientCockpit({
             )}
 
             {showMailSections && (<>
-            <div className="cockpit-card">
-              <button type="button" className="ck-collapse-head" onClick={() => setShowStatusBox((v) => !v)}>
-                <span>{showStatusBox ? "▾" : "▸"} Actuele stand van zaken <HelpHint wide text="De lopende correspondentie met de klant (wat er speelt), plus je handmatige 'Zoekwoorden & links'-blok. Klap open om het te zien." /></span>
-                {statusUpdatedAt && <span className="ck-updated">bijgewerkt {fmtDate(statusUpdatedAt)}</span>}
+            <div className="cockpit-card strategy-card">
+              <button type="button" className="strategy-head" onClick={() => setShowStatusBox((v) => !v)}>
+                <span className="strategy-caret">{showStatusBox ? "▾" : "▸"}</span>
+                <span className="strategy-title">Actuele stand van zaken <HelpHint wide title="Actuele stand van zaken" text={"Het lopende gesprek met de klant in één oogopslag, samengevat uit de mailwisseling.\n- Links de correspondentie als tijdlijn: wie wat zei (klant of Pingwin) en of het punt open staat of afgehandeld is.\n- Vink 'afgerond' aan om een punt af te handelen; via 'mail openen' spring je naar de originele mail.\n- Rechts je eigen vaste blok met zoekwoorden en links voor deze klant."} /></span>
+                {statusUpdatedAt && <span className="strategy-meta-right">bijgewerkt {fmtDate(statusUpdatedAt)}</span>}
               </button>
-              <div className="sov-layout" style={{ display: showStatusBox ? undefined : "none" }}>
+              <div className="sov-layout strategy-body" style={{ display: showStatusBox ? undefined : "none" }}>
                   <div className="sov-thread">
                     <div className="sov-legend">
                       <span><span className="sov-dot client" /> Klant</span>
@@ -354,11 +355,12 @@ export default function ClientCockpit({
                 </div>
               </div>
 
-            <div className="cockpit-card">
-              <div className="ck-section-head ck-collapse-head" onClick={() => setShowMailsBox((v) => !v)}>
-                <span>{showMailsBox ? "▾" : "▸"} Laatste mails <HelpHint text="De laatste e-mails met deze klant. Klap open om ze te lezen of te doorzoeken." /></span>
-              </div>
-              <div style={{ display: showMailsBox ? undefined : "none" }}>
+            <div className="cockpit-card strategy-card">
+              <button type="button" className="strategy-head" onClick={() => setShowMailsBox((v) => !v)}>
+                <span className="strategy-caret">{showMailsBox ? "▾" : "▸"}</span>
+                <span className="strategy-title">Laatste mails <HelpHint wide title="Laatste mails" text={"De recentste e-mails met deze klant, rechtstreeks uit de mailbox.\n- Klik een mail aan om hem volledig te lezen.\n- Zoek binnen de correspondentie via het zoekveld, of open de zoekopdracht in Superhuman.\n- Via de filterlijst bepaal je welke afzenders hier verschijnen."} /></span>
+              </button>
+              <div className="strategy-body" style={{ display: showMailsBox ? undefined : "none" }}>
               <MailAllowlist slug={client.slug} />
               <div className="sh-search" style={{ marginBottom: 12 }}>
                 <input

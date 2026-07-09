@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { mdToHtml } from "../../../../lib/markdown";
+import HelpHint from "./HelpHint";
 
 // ═══════════════════════════════════════════════════════════
 // SITE-WIDE STRATEGIE, bovenaan het Taken-tabblad
@@ -92,8 +93,7 @@ export default function StrategyPanel({ slug, openSessionId, onTaskAdded }: { sl
     <div className="cockpit-card acc-blue strategy-card" ref={wrapRef}>
       <button type="button" className="strategy-head" onClick={() => setOpen((v) => !v)}>
         <span className="strategy-caret">{open ? "▾" : "▸"}</span>
-        <span className="strategy-title">Site-wide strategie ({sessions.length})</span>
-        <span className="strategy-sub">gesprekken uit de SEO-assistent, vastgelegd als strategie met actiepunten</span>
+        <span className="strategy-title">Site-wide strategie ({sessions.length}) <HelpHint wide title="Site-wide strategie" text={"Strategie-gesprekken over de hele site, vastgelegd vanuit de SEO-assistent met de knop 'Naar Site-wide strategie'.\n- Elke sessie heeft een eigen toggle met de conclusie, het volledige gesprek en de concrete actiepunten.\n- Actiepunten zet je met één klik om in een taak (zonder maand), of je vinkt ze af als verwerkt.\n- Zo filosofeer je vrij in de chat en houd je hier alleen de bruikbare strategie over."} /></span>
       </button>
       {open && (
         <div className="strategy-body">
