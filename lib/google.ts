@@ -543,7 +543,7 @@ export type GscComparison = {
   site: string | null;
   totals: { clicks: MetricPair; impressions: MetricPair; ctr: MetricPair; position: MetricPair } | null;
   series: GscSeries;
-  keywords: { keyword: string; clicks: number; impressions: number; ctr: number; position: number; prevClicks: number; prevImpressions: number; prevCtr: number; prevPosition: number | null }[];
+  keywords: { keyword: string; clicks: number; impressions: number; ctr: number; position: number; prevClicks: number; prevImpressions: number; prevCtr: number; prevPosition: number | null; page: string | null }[];
   pages: { url: string; clicks: number; impressions: number; prevClicks: number; prevImpressions: number }[];
   range: { curStart: string; curEnd: string; prevStart: string; prevEnd: string };
 };
@@ -558,7 +558,7 @@ export async function getGscComparison(domain: string, days: number, compare: "p
   const site = await gscPickSite(token, domain);
   if (!site) return empty;
 
-  const [curTot, prevTot, curKw, prevKw, curPg, prevPg, byDate, byDatePrev] = await Promise.all([
+  const [curTot, prevTot, curKw, prevKw, curPg, prevPg, byDate, byDatePrev, curKwPage] = await Promise.all([
     gscQuery(token, site, { startDate: range.curStart, endDate: range.curEnd }),
     gscQuery(token, site, { startDate: range.prevStart, endDate: range.prevEnd }),
     gscQuery(token, site, { startDate: range.curStart, endDate: range.curEnd, dimensions: ["query"], rowLimit: 100 }),
@@ -567,6 +567,9 @@ export async function getGscComparison(domain: string, days: number, compare: "p
     gscQuery(token, site, { startDate: range.prevStart, endDate: range.prevEnd, dimensions: ["page"], rowLimit: 50 }),
     gscQuery(token, site, { startDate: range.curStart, endDate: range.curEnd, dimensions: ["date"], rowLimit: 500 }),
     gscQuery(token, site, { startDate: range.prevStart, endDate: range.prevEnd, dimensions: ["date"], rowLimit: 500 }),
+    // Aparte query+pagina-combinatie, alleen om per zoekwoord de best rankende
+    // pagina te tonen; de bestaande per-query-cijfers blijven onaangeroerd.
+    gscQuery(token, site, { startDate: range.curStart, endDate: range.curEnd, dimensions: ["query", "page"], rowLimit: 1000 }),
   ]);
 
   // Dagreeksen (op datum gesorteerd) voor de grafiekjes; ook de vorige periode
@@ -595,6 +598,16 @@ export async function getGscComparison(domain: string, days: number, compare: "p
 
   const prevKwMap = new Map<string, GscRow>();
   for (const r of prevKw) { const k = r.keys?.[0]; if (k) prevKwMap.set(k, r); }
+  // Beste pagina per zoekwoord (meeste klikken, dan meeste vertoningen).
+  const bestPage = new Map<string, { page: string; clicks: number; impressions: number }>();
+  for (const r of curKwPage) {
+    const kw = r.keys?.[0]; const pg = r.keys?.[1];
+    if (!kw || !pg) continue;
+    const cur = bestPage.get(kw);
+    if (!cur || r.clicks > cur.clicks || (r.clicks === cur.clicks && r.impressions > cur.impressions)) {
+      bestPage.set(kw, { page: pg, clicks: r.clicks, impressions: r.impressions });
+    }
+  }
   const keywords = curKw.map((r) => {
     const kw = r.keys?.[0] || "";
     const pr = prevKwMap.get(kw);
@@ -606,6 +619,7 @@ export async function getGscComparison(domain: string, days: number, compare: "p
       prevImpressions: pr ? Math.round(pr.impressions) : 0,
       prevCtr: pr ? Math.round(pr.ctr * 1000) / 10 : 0,
       prevPosition: pr ? Math.round(pr.position * 10) / 10 : null,
+      page: bestPage.get(kw)?.page || null,
     };
   });
 
