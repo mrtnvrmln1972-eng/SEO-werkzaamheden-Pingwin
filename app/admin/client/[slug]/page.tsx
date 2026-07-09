@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { ADMIN_COOKIE } from "../../../../lib/admin-auth";
 import { ADMIN_VIEWAS_COOKIE } from "../../../../lib/constants";
 import { getScopeFromCookie, canAccessSlug } from "../../../../lib/admin-scope";
+import { getTrendFlags } from "../../../../lib/trends";
 import { getClientBySlug, listClients, type ClientConfig } from "../../../../lib/clients";
 import { getEmails, getMetrics, getKeywords, getPages, getLastIngest, getStatus } from "../../../../lib/snapshots";
 import { msStatus, msSearchClientEmails } from "../../../../lib/ms-graph";
@@ -108,6 +109,8 @@ export default async function ClientCockpitPage({ params, searchParams }: { para
     return { gsc, ga4 };
   })();
   const [mailRes, googleRes] = await Promise.all([mailPromise, googlePromise]);
+  // Trend-vlaggen voor de klanten-dropdown (gevuld door de nachtelijke cron).
+  const trendFlags = await getTrendFlags().catch(() => ({} as Awaited<ReturnType<typeof getTrendFlags>>));
   const mailLive = mailRes.mailLive;
   const gsc = googleRes.gsc;
   const ga4 = googleRes.ga4;
@@ -134,7 +137,7 @@ export default async function ClientCockpitPage({ params, searchParams }: { para
       msConnected={ms.connected}
       myEmail={ms.account}
       monthTasks={monthTasks}
-      allClients={allClients.map((c) => ({ slug: c.slug, name: c.name, grp: c.grp }))}
+      allClients={allClients.map((c) => ({ slug: c.slug, name: c.name, grp: c.grp, good28: !!trendFlags[c.slug]?.good28, good90: !!trendFlags[c.slug]?.good90 }))}
       gsc={gsc}
       ga4={ga4}
       googleConfigured={google.configured}

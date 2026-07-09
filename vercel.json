@@ -2,6 +2,7 @@
   "crons": [
     { "path": "/api/cron/content-scan", "schedule": "0 4 * * 1" },
     { "path": "/api/cron/facturen-signaal", "schedule": "0 5 * * 1" },
+    { "path": "/api/cron/client-trends", "schedule": "30 3 * * *" },
     { "path": "/api/cron/doc-runs", "schedule": "* * * * *" }
   ]
 }

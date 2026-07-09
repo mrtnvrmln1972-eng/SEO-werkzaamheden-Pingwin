@@ -47,7 +47,7 @@ type CockpitData = {
     thisLabel: string;
     nextLabel: string;
   };
-  allClients: { slug: string; name: string; grp?: string | null }[];
+  allClients: { slug: string; name: string; grp?: string | null; good28?: boolean; good90?: boolean }[];
   gsc: GscData | null;
   ga4: Ga4Data | null;
   googleConfigured: boolean;
@@ -73,6 +73,9 @@ export default function ClientCockpit({
   const pathname = usePathname();
   const validTab = (t?: string): Tab => (t === "werkzaamheden" || t === "paginas" || t === "resultaten" || t === "klant" || t === "developer" || t === "wijzigingen") ? t : "werkzaamheden";
   const [tab, setTab] = useState<Tab>(validTab(initialTab));
+  // Demo-filter voor de klanten-dropdown: alleen klanten met mooie ontwikkeling
+  // (28 dagen of 3 maanden), voor schermdelen met potentiële klanten.
+  const [demoFilter, setDemoFilter] = useState<null | "28" | "90">(null);
   // Toggles bovenaan de (samengevoegde) Werkzaamheden-pagina, standaard gesloten.
   const [showStatusBox, setShowStatusBox] = useState(false);
   const [showMailsBox, setShowMailsBox] = useState(false);
@@ -251,25 +254,30 @@ export default function ClientCockpit({
             onChange={(e) => router.push(`/admin/client/${e.target.value}`)}
             title="Wissel van klant"
           >
-            {allClients.some((c) => c.grp === "mmc") ? (
-              <>
-                <optgroup label="Mijn eigen klanten">
-                  {allClients.filter((c) => c.grp !== "mmc").map((c) => (
-                    <option key={c.slug} value={c.slug}>{c.name}</option>
-                  ))}
-                </optgroup>
-                <optgroup label="Multimedia Concepts">
-                  {allClients.filter((c) => c.grp === "mmc").map((c) => (
-                    <option key={c.slug} value={c.slug}>{c.name}</option>
-                  ))}
-                </optgroup>
-              </>
-            ) : (
-              allClients.map((c) => (
-                <option key={c.slug} value={c.slug}>{c.name}</option>
-              ))
-            )}
+            {(() => {
+              // Vinkje = mooie ontwikkeling (uit de nachtelijke trend-berekening).
+              // In demo-stand tonen we alleen die klanten (voor schermdelen).
+              const good = (c: typeof allClients[number]) => (demoFilter === "90" ? c.good90 : c.good28);
+              const shown = demoFilter ? allClients.filter((c) => good(c) || c.slug === client.slug) : allClients;
+              const opt = (c: typeof allClients[number]) => (
+                <option key={c.slug} value={c.slug}>{good(c) ? "✓ " : ""}{c.name}</option>
+              );
+              return shown.some((c) => c.grp === "mmc") ? (
+                <>
+                  <optgroup label="Mijn eigen klanten">{shown.filter((c) => c.grp !== "mmc").map(opt)}</optgroup>
+                  <optgroup label="Multimedia Concepts">{shown.filter((c) => c.grp === "mmc").map(opt)}</optgroup>
+                </>
+              ) : shown.map(opt);
+            })()}
           </select>
+          <button
+            type="button"
+            className="ghost-btn small"
+            onClick={() => setDemoFilter(demoFilter === null ? "28" : demoFilter === "28" ? "90" : null)}
+            title="Filtert de klanten-dropdown op klanten met een mooie ontwikkeling (voor schermdelen met potentiële klanten). Klik om te wisselen tussen alle klanten, mooie ontwikkeling laatste 28 dagen en laatste 3 maanden."
+          >
+            {demoFilter === null ? "Alle klanten" : demoFilter === "28" ? "✓ Mooie ontwikkeling (28 dgn)" : "✓ Mooie ontwikkeling (3 mnd)"}
+          </button>
           <nav className="header-tabs">
             {([
               ["werkzaamheden", "Taken", ""],

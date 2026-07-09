@@ -125,6 +125,22 @@ async function init(): Promise<void> {
   // (tweede lijst in het Pingwin-dashboard; cockpit-only, geen login/sheet).
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS grp TEXT`;
 
+  // ── KPI-trend per klant (gevuld door de nachtelijke cron client-trends) ──
+  // Voor de "mooie ontwikkeling"-selectie in de klanten-dropdown: per klant en
+  // periode (28d/90d) de GSC-klikken/vertoningen nu vs. de periode ervoor.
+  await sql`
+    CREATE TABLE IF NOT EXISTS client_trends (
+      client_slug     TEXT NOT NULL,
+      period          TEXT NOT NULL,
+      clicks_now      INTEGER NOT NULL DEFAULT 0,
+      clicks_prev     INTEGER NOT NULL DEFAULT 0,
+      impressions_now INTEGER NOT NULL DEFAULT 0,
+      impressions_prev INTEGER NOT NULL DEFAULT 0,
+      is_good         BOOLEAN NOT NULL DEFAULT false,
+      computed_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (client_slug, period)
+    )`;
+
   // ── App-instellingen (kleine sleutel/waarde-tabel, o.a. administratie-e-mail) ──
   await sql`
     CREATE TABLE IF NOT EXISTS app_settings (
