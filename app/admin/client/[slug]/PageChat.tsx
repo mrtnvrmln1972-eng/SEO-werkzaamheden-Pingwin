@@ -24,6 +24,9 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   const [chats, setChats] = useState<ChatSummary[]>([]);
   // Of het gesprek van de actieve chat uitgeklapt is (toggle in de lijst).
   const [convoOpen, setConvoOpen] = useState(false);
+  // Standaard tonen we alleen de originele vraag + de eindconclusie; het hele
+  // tussenliggende gesprek (analyse, doorvragen) klapt open via een knop.
+  const [fullConvoOpen, setFullConvoOpen] = useState(false);
   // De chat-kaart in/uitklappen: je maakt hem een keer, dus zodra de strategie is
   // vastgelegd staat hij standaard dicht (scheelt scrollen).
   const [chatOpen, setChatOpen] = useState(false);
@@ -901,13 +904,19 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     openPicker();
   }
 
-  // Het gesprek van de actieve chat (de eerste vraag staat al als titel, dus die
-  // slaan we over) plus het voorstel en de vastleg/mail-knoppen.
-  const renderConvo = () => (
+  // Het gesprek van de actieve chat plus het voorstel en de vastleg/mail-knoppen.
+  // Ingeklapt tonen we alleen de originele vraag en de eindconclusie (laatste
+  // AI-reactie); het tussenliggende gesprek klapt open via de knop.
+  const renderConvo = () => {
+    let lastAIdx = -1;
+    for (let i = msgs.length - 1; i >= 0; i--) { if (msgs[i].role === "assistant") { lastAIdx = i; break; } }
+    const hiddenCount = fullConvoOpen || lastAIdx <= 1 ? 0 : lastAIdx - 1;
+    const isVisible = (i: number) => hiddenCount === 0 || i === 0 || i >= lastAIdx;
+    return (
     <>
       <div className="page-chat-log">
         {msgs.map((m, i) => {
-          if (i === 0 && m.role === "user") return null;
+          if (!isVisible(i)) return null;
           if (editIdx === i) {
             return (
               <div key={i} className="pch-msg-edit">
@@ -920,14 +929,32 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
             );
           }
           return (
-            <div key={i} className={"pch-msg-wrap " + m.role}>
-              {m.role === "user"
-                ? <div className="page-chat-msg user">{m.content}</div>
-                : <div className="page-chat-msg assistant md" dangerouslySetInnerHTML={{ __html: renderMsgHtml(m.content) }} />}
-              <div className="pch-msg-ctrl">
-                {m.role === "assistant" && <button type="button" className="pch-msg-btn" title="Bewerken" onClick={() => setEditIdx(i)}>✎</button>}
-                <button type="button" className="pch-msg-btn" title="Verwijderen" onClick={() => deleteMsg(i)}>×</button>
+            <div key={i}>
+              {i === 0 && m.role === "user" && (
+                <div className="muted" style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 }}>Oorspronkelijke vraag</div>
+              )}
+              {hiddenCount > 0 && i === lastAIdx && (
+                <div className="muted" style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", margin: "10px 0 4px" }}>Eindconclusie</div>
+              )}
+              <div className={"pch-msg-wrap " + m.role}>
+                {m.role === "user"
+                  ? <div className="page-chat-msg user">{m.content}</div>
+                  : <div className="page-chat-msg assistant md" dangerouslySetInnerHTML={{ __html: renderMsgHtml(m.content) }} />}
+                <div className="pch-msg-ctrl">
+                  {m.role === "assistant" && <button type="button" className="pch-msg-btn" title="Bewerken" onClick={() => setEditIdx(i)}>✎</button>}
+                  <button type="button" className="pch-msg-btn" title="Verwijderen" onClick={() => deleteMsg(i)}>×</button>
+                </div>
               </div>
+              {i === 0 && hiddenCount > 0 && (
+                <button type="button" className="ghost-btn small" style={{ margin: "6px 0 10px" }} onClick={() => setFullConvoOpen(true)}>
+                  ▸ Toon het hele gesprek en de analyse ({hiddenCount} bericht{hiddenCount === 1 ? "" : "en"})
+                </button>
+              )}
+              {fullConvoOpen && i === 0 && lastAIdx > 1 && (
+                <button type="button" className="ghost-btn small" style={{ margin: "6px 0 10px" }} onClick={() => setFullConvoOpen(false)}>
+                  ▾ Verberg het tussenliggende gesprek
+                </button>
+              )}
             </div>
           );
         })}
@@ -946,7 +973,8 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       {lastAssistant && (
         <>
           <div className="page-chat-followup">
-            <div className="pchf-lead">Nog een vervolgvraag over de invulling of de zoekwoorden? Stel hem hier. Ben je klaar met doorpraten, vat het gesprek dan samen tot de conclusie en strategie; die neem je daarna over als plan met &ldquo;Neem plan over&rdquo;.</div>
+            <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Verder sparren?</div>
+            <div className="pchf-lead">Stel je vragen hier, bijvoorbeeld over de invulling of de zoekwoorden. Ben je klaar met bespreken, vat het gesprek dan samen tot de conclusie en strategie; die neem je daarna over als plan met &ldquo;Neem plan over&rdquo;.</div>
             <div className="pchf-row">
               <input className="pchf-input" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(input); }} placeholder="Vervolgvraag over deze pagina…" disabled={busy} />
               <button type="button" className="primary-btn small" onClick={() => send(input)} disabled={busy || !input.trim()}>Vraag</button>
@@ -974,7 +1002,8 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
         </>
       )}
     </>
-  );
+    );
+  };
 
   return (
     <div className="page-chat-wrap">

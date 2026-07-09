@@ -800,7 +800,7 @@ tbody td:last-child { text-align: center; }
 .pcd-doclink { font-size: 13px; font-weight: 600; color: var(--brand-blue); text-decoration: none; white-space: nowrap; }
 .pcd-doclink:hover { text-decoration: underline; }
 /* Bestemmingsmap-regel + Drive-mappenkiezer */
-.page-chat-drive { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 8px 0 2px; font-size: 13px; }
+.page-chat-drive { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 20px 0 2px; font-size: 13px; }
 .pcd-label { color: var(--muted); }
 .pcd-folder { font-weight: 600; }
 .pcd-folder.muted { font-weight: 400; color: var(--muted); }
