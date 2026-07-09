@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
-// Zelfde code, twee werelden: het Vercel-project bepaalt het merk. De NOC-cockpit
+// Zelfde code, drie werelden: het Vercel-project bepaalt het merk. De NOC-cockpit
 // (project noc-seo-cockpit) krijgt het oog van het Nationaal Oogcentrum als favicon,
-// alle andere deployments de Pingwin-pinguïn.
-const isNoc = (process.env.VERCEL_PROJECT_PRODUCTION_URL || "").includes("noc-seo-cockpit");
+// de MMC-wereld (project mmc-seo-dashboard) een eigen titel, en alle andere
+// deployments de Pingwin-pinguïn.
+const prodUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL || "";
+const isNoc = prodUrl.includes("noc-seo-cockpit");
+const isMmc = prodUrl.includes("mmc-seo");
 
 export const metadata: Metadata = {
-  title: isNoc ? "NOC SEO Cockpit" : "Pingwin SEO Dashboard",
+  title: isNoc ? "NOC SEO Cockpit" : isMmc ? "MMC SEO Dashboard" : "Pingwin SEO Dashboard",
   description: "Maandelijks overzicht van SEO-werkzaamheden.",
   icons: { icon: isNoc ? "/favicon-noc.png" : "/favicon-pingwin.png", apple: isNoc ? "/favicon-noc.png" : "/favicon-pingwin.png" },
 };
