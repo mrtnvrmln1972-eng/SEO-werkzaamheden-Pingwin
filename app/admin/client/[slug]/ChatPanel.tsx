@@ -129,6 +129,19 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
     if (d?.ok) { setMessages(d.messages || []); setThreads(d.threads || []); }
   }
 
+  // Van buitenaf te openen op een specifiek gesprek (bijv. de Ads-assistent
+  // vanuit de KPI-tab): luistert naar een window-event.
+  useEffect(() => {
+    function onOpen(e: Event) {
+      const t = ((e as CustomEvent).detail?.thread as string) || "algemeen";
+      setCollapsed(false);
+      switchThread(t);
+    }
+    window.addEventListener("pw-open-chat", onOpen);
+    return () => window.removeEventListener("pw-open-chat", onOpen);
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [thread, slug]);
+
   // Nieuw gesprek starten (bijv. over een pagina, situatie of onderwerp).
   function newThread() {
     const name = window.prompt("Naam van het nieuwe gesprek (bijv. een pagina, situatie of onderwerp):", "");
@@ -263,7 +276,7 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
                   <span className="chat-threads-label">Gesprek:</span>
                   <select className="chat-thread-select" value={thread} onChange={(e) => switchThread(e.target.value)}>
                     {(threads.some((t) => t.thread === thread) ? threads : [{ thread, count: messages.length, updatedAt: "" }, ...threads]).map((t) => (
-                      <option key={t.thread} value={t.thread}>{t.thread === "algemeen" ? "Algemeen" : t.thread}{t.count ? ` (${t.count})` : ""}</option>
+                      <option key={t.thread} value={t.thread}>{t.thread === "algemeen" ? "Algemeen" : t.thread === "ads" ? "Google Ads" : t.thread}{t.count ? ` (${t.count})` : ""}</option>
                     ))}
                   </select>
                   <button type="button" className="ghost-btn small" onClick={newThread}>+ Nieuw</button>

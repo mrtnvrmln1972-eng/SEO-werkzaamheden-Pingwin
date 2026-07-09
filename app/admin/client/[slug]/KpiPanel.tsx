@@ -1028,7 +1028,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
       )}
 
       {!loading && ads && (
-        <Collapse title={<>Google Ads {siteBadge}</>} meta={ads.linked ? `laatste ${secPeriodLabel("ads")} \u00b7 ${effCompare("ads") === "yoy" ? "vs. vorig jaar" : "vs. vorige periode"} \u00b7 via de GA4-koppeling` : ""} open={isOpen("ads", true)} onToggle={() => toggle("ads", true)} actions={periodPicker("ads")}>
+        <Collapse title={<>Google Ads {siteBadge}</>} meta={ads.linked ? `laatste ${secPeriodLabel("ads")} \u00b7 ${effCompare("ads") === "yoy" ? "vs. vorig jaar" : "vs. vorige periode"} \u00b7 via de GA4-koppeling` : ""} open={isOpen("ads", true)} onToggle={() => toggle("ads", true)} actions={<><button type="button" className="ghost-btn small" onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("pw-open-chat", { detail: { thread: "ads" } })); }} title="Opent de Ads-assistent: vraag wat er wordt geoptimaliseerd, wat beter kan en welke vragen je het Ads-bureau moet stellen">Vraag de Ads-assistent</button>{periodPicker("ads")}</>}>
           {!ads.linked ? (
             <div className="muted" style={{ fontSize: 12.5 }}>Geen Google Ads-data gevonden in deze periode (geen actieve campagnes, of Google Ads is niet aan GA4 gekoppeld).</div>
           ) : (

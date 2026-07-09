@@ -149,6 +149,34 @@ async function buildContext(client: ClientConfig): Promise<string> {
   return parts.join("\n");
 }
 
+// ── Ads-chat: eigen, gerichte context (thread "ads") ──
+// Alleen de Google Ads-cijfers (28 dagen én 90 dagen, met campagnes), zodat de
+// Ads-assistent scherp over campagnes en optimalisatie kan adviseren zonder de
+// hele projectcontext mee te slepen.
+async function buildAdsContext(client: ClientConfig): Promise<string> {
+  const parts: string[] = [];
+  parts.push(`KLANT: ${client.name} (${client.domain || "geen domein"})`);
+  const { getAdsComparison } = await import("./google");
+  const e2 = (n: number | undefined) => (n ?? 0).toFixed(2);
+  for (const days of [28, 90]) {
+    try {
+      const ads = await getAdsComparison(client.slug, client.domain || "", days, "prev");
+      if (!ads?.linked) { if (days === 28) parts.push("\nEr is (nog) geen Google Ads-data via de GA4-koppeling gevonden."); continue; }
+      const t = (m: string) => ads.totals.find((x) => x.metric === m);
+      const cost = t("cost"), clicks = t("clicks"), conv = t("conversions");
+      parts.push(`\nGOOGLE ADS, LAATSTE ${days} DAGEN (vs. de ${days} dagen ervoor, via GA4-koppeling):`);
+      parts.push(`Kosten €${e2(cost?.cur)} (was €${e2(cost?.prev)}), klikken ${Math.round(clicks?.cur || 0)} (${Math.round(clicks?.prev || 0)}), conversies ${Math.round(conv?.cur || 0)} (${Math.round(conv?.prev || 0)}).`);
+      parts.push("Campagnes:");
+      for (const c of ads.campaigns.slice(0, 20)) {
+        const status = c.prevCost === 0 && c.cost > 0 ? "NIEUW" : c.cost === 0 && c.prevCost > 0 ? "GESTOPT/STIL" : "loopt";
+        parts.push(`- ${c.name} [${status}]: kosten €${e2(c.cost)} (was €${e2(c.prevCost)}), klikken ${Math.round(c.clicks)} (${Math.round(c.prevClicks)}), conversies ${Math.round(c.conversions)} (${Math.round(c.prevConversions)})`);
+      }
+    } catch { /* periode overslaan */ }
+  }
+  parts.push("\nDUIDING: NIEUW = campagne draaide de vorige periode nog niet; GESTOPT/STIL = had toen kosten en nu niet; grote kostenverschuivingen wijzen op actieve wijzigingen. Weinig campagnes en maandenlang vlakke kosten = mogelijk geparkeerd account. Budget-instellingen, biedstrategieën, zoektermen-rapporten en de exacte wijzigingshistorie zitten NIET in deze data (die vereisen de Google Ads-API); zeg dat eerlijk als ernaar gevraagd wordt.");
+  return parts.join("\n");
+}
+
 // image/images: optionele afbeeldingen (data-URL's, al verkleind in de browser) bij
 // een user-bericht. "image" blijft bestaan voor oude opgeslagen gesprekken.
 export type ChatMessage = { role: "user" | "assistant"; content: string; image?: string; images?: string[] };
@@ -263,9 +291,19 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
   const client = await getClientBySlug(slug);
   if (!client) return { ok: false, error: "Klant niet gevonden." };
 
-  const context = await buildContext(client);
-  const system =
-    `Je bent de SEO-projectassistent van Pingwin voor de klant ${client.name}. ` +
+  // Thread "ads" = de Ads-assistent: eigen grounding en eigen rol; alle andere
+  // threads gebruiken de volledige projectcontext.
+  const isAds = cleanThread(thread) === "ads";
+  const context = isAds ? await buildAdsContext(client) : await buildContext(client);
+  const system = isAds
+    ? `Je bent de Google Ads-specialist van Pingwin voor de klant ${client.name}. ` +
+      `Je helpt Maarten beoordelen wat er in het Ads-account gebeurt en wordt geoptimaliseerd, wat er beter kan en welke vragen hij het Ads-bureau moet stellen. ` +
+      `Baseer je op de onderstaande Ads-context (via de GA4-koppeling; wees eerlijk over wat daar NÍET in zit).\n\n` +
+      `OPMAAK: schrijf conversationeel en netjes, zoals in een chat, in Markdown. Geen emoji. Korte alinea's, bullets (-) voor opsommingen, **vet** voor kernpunten, en cijfers of campagne-vergelijkingen in een nette Markdown-tabel.\n\n` +
+      `WERKWIJZE: jij bent de specialist; geef ANTWOORDEN en concrete optimalisatie-adviezen (budgetverdeling over campagnes, stilgevallen of juist nieuwe campagnes, kosten per conversie, opvallende verschuivingen), in volgorde van impact. ` +
+      `Je kunt met meet_pagina zelf landingspagina's uitlezen om de aansluiting tussen advertentie en pagina te beoordelen. ` +
+      `Sluit waar zinvol af met de vragen die Maarten aan de Ads-beheerder kan stellen. Hooguit één korte wedervraag, alleen bij een echte keuze.\n\n--- ADS-CONTEXT ---\n${context}`
+    : `Je bent de SEO-projectassistent van Pingwin voor de klant ${client.name}. ` +
     `Beantwoord in het Nederlands, uitsluitend op basis van de onderstaande projectcontext ` +
     `(e-mails inclusief afzender/ontvangers en inhoud, stand van zaken, taken, Search Console incl. 4-maanden zoekwoord-trend, Ahrefs, en Google Ads-prestaties per campagne via de GA4-koppeling).\n\n` +
     `OPMAAK: schrijf conversationeel en netjes, zoals in een chat, in Markdown. Geen emoji.\n` +
@@ -300,7 +338,7 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
       };
     });
     const { tools, run } = chatTools(client);
-    const answer = await callClaudeAgentic(system, apiMessages as { role: "user" | "assistant"; content: string }[], tools, run, 6, 2000, { slug, action: "projectchat" });
+    const answer = await callClaudeAgentic(system, apiMessages as { role: "user" | "assistant"; content: string }[], tools, run, 6, 2000, { slug, action: isAds ? "ads-chat" : "projectchat" });
     const finalAnswer = answer || "(geen antwoord)";
     await saveChatHistory(slug, thread, [...messages, { role: "assistant", content: finalAnswer }]);
     return { ok: true, answer: finalAnswer };
