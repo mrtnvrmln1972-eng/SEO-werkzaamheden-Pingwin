@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { ADMIN_COOKIE, getAdminPrincipal, parseViewAsToken } from "./admin-auth";
 import { ADMIN_VIEWAS_COOKIE } from "./constants";
 import { getTeamUserById } from "./team-users";
+import { setAhrefsContext } from "./ahrefs";
 
 // ═══════════════════════════════════════════════════════════
 // TOEGANGSBEREIK (scope) van de ingelogde adminsessie
@@ -133,6 +134,9 @@ export async function guardSlug(
       ),
     };
   }
+  // Klant-context voor de verbruik-meting: elke Ahrefs-call verderop in deze
+  // request weet zo bij welke klant hij hoort. Eén regel dekt alle routes.
+  setAhrefsContext({ slug: (slug || "").trim().toLowerCase() });
   return { ok: true, scope };
 }
 

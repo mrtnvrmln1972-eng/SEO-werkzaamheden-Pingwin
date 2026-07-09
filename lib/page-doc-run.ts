@@ -4,6 +4,7 @@ import { buildPingwinDoc } from "./pingwin-docx";
 import { upsertStepTask } from "./tasks";
 import { getPageDriveFolder } from "./site-urls";
 import { uploadDocx } from "./drive";
+import { setAhrefsContext } from "./ahrefs";
 
 // ═══════════════════════════════════════════════════════════
 // ACHTERGROND-RUN: analyse -> blauwdruk -> copy los van de browser
@@ -190,6 +191,9 @@ async function processRun(id: number): Promise<void> {
   const r = rows[0];
   if (!r) return;
   const slug = r.client_slug as string, url = r.url as string;
+  // Klant-context voor de Ahrefs-verbruik-meting: achtergrond-runs komen niet
+  // door guardSlug, dus hier expliciet zetten (slug staat op de run-rij).
+  setAhrefsContext({ slug });
   const extra = (r.extra as string) || "";
   const folderId = (r.folder_id as string) || "";
   const audience: "intern" | "klant" = (r.audience as string) === "intern" ? "intern" : "klant";

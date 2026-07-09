@@ -34,7 +34,9 @@ export async function logUsage(e: UsageEntry): Promise<void> {
   try {
     const tokensIn = e.tokensIn || 0;
     const tokensOut = e.tokensOut || 0;
-    const cost = estimateCostUsd(e.model || undefined, tokensIn, tokensOut);
+    // Alleen Claude heeft een tokenprijs. Bij andere diensten (ahrefs: units in
+    // tokens_in) zou de standaardprijs een onzin-bedrag opleveren; dus 0.
+    const cost = e.service === "anthropic" ? estimateCostUsd(e.model || undefined, tokensIn, tokensOut) : 0;
     await ensureSchema();
     await sql`
       INSERT INTO service_usage (client_slug, service, action, model, tokens_in, tokens_out, cost_usd)

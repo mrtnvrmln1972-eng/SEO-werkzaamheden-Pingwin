@@ -88,9 +88,10 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
         <Link href="/admin" style={{ color: "#8a6a3e", fontSize: 14, textDecoration: "none" }}>&larr; Terug naar overzicht</Link>
       </div>
       <p style={{ color: "#5b6472", maxWidth: 620, lineHeight: 1.5, marginTop: 8 }}>
-        Wat er wordt uitgegeven aan betaalde diensten, per klant en per periode. Nu gemeten:
-        het Claude-verbruik van dit dashboard (echte tokens per chat). Ahrefs-credits en de
-        totalen rechtstreeks bij de aanbieders volgen in een volgende stap.
+        Wat er wordt uitgegeven aan betaalde diensten, per klant en per periode. Gemeten:
+        het Claude-verbruik (echte tokens, met kosten) en het Ahrefs-verbruik (API-aanroepen
+        en units; herhaalvragen komen uit de cache en kosten niets). Bij Ahrefs staat geen
+        bedrag: de credits vallen binnen het Ahrefs-abonnement.
       </p>
 
       {/* Periode-schakelaar */}
@@ -186,9 +187,10 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
                       <td style={td}>{r.client_name || r.client_slug || "(onbekend)"}</td>
                       <td style={td}>{SERVICE_LABEL[r.service] || r.service}</td>
                       <td style={numTd}>{num(r.calls)}</td>
-                      <td style={numTd}>{num(r.tokens_in)}</td>
-                      <td style={numTd}>{num(r.tokens_out)}</td>
-                      <td style={{ ...numTd, fontWeight: 600 }}>{euros(r.cost_usd)}</td>
+                      {/* Bij Ahrefs is tokens_in het aantal API-units; tokens uit bestaat daar niet. */}
+                      <td style={numTd}>{r.service === "ahrefs" ? `${num(r.tokens_in)} units` : num(r.tokens_in)}</td>
+                      <td style={numTd}>{r.service === "ahrefs" ? "—" : num(r.tokens_out)}</td>
+                      <td style={{ ...numTd, fontWeight: 600 }}>{r.service === "ahrefs" ? "—" : euros(r.cost_usd)}</td>
                     </tr>
                   ))}
                 </tbody>

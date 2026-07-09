@@ -1,4 +1,6 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { sql, ensureSchema } from "./db";
+import { logUsage } from "./usage";
 
 // ═══════════════════════════════════════════════════════════
 // AHREFS API v3 (REST) — zoekvolume + top-10 SERP
@@ -14,6 +16,37 @@ export function ahrefsConfigured(): boolean {
   return !!process.env.AHREFS_API_TOKEN;
 }
 
+// ── Klant-context voor de verbruik-meting ──
+// De Ahrefs-helpers worden diep in de lib aangeroepen zonder slug-parameter.
+// Daarom zetten we de klant-context één keer per request (guardSlug) of per
+// achtergrond-run (doc-runs) in een AsyncLocalStorage; elke Ahrefs-call binnen
+// die async-keten weet dan bij welke klant het verbruik hoort. Een gewone
+// module-variabele zou hier fout zijn: parallelle requests in dezelfde
+// serverless-instance zouden elkaars slug overschrijven.
+const ahrefsAls = new AsyncLocalStorage<{ slug?: string }>();
+
+export function setAhrefsContext(ctx: { slug?: string }): void {
+  ahrefsAls.enterWith(ctx);
+}
+
+export function runWithAhrefsContext<T>(ctx: { slug?: string }, fn: () => Promise<T>): Promise<T> {
+  return ahrefsAls.run(ctx, fn);
+}
+
+// Ahrefs geeft (afhankelijk van endpoint/abonnement) het aantal verbruikte
+// API-units terug in een response-header. Defensief lezen: eerste header die
+// numeriek parsed telt; anders null en telt de regel alleen als call.
+function readUnitsHeader(headers: Headers): number | null {
+  for (const name of ["x-api-units-cost-total-actual", "x-api-units-cost-total", "x-api-units-cost-row", "x-api-units-cost", "x-api-cost"]) {
+    const raw = headers.get(name);
+    if (raw !== null) {
+      const n = Number(raw);
+      if (Number.isFinite(n) && n >= 0) return Math.round(n);
+    }
+  }
+  return null;
+}
+
 async function ahrefsFetch(path: string, params: Record<string, string>): Promise<unknown> {
   const token = process.env.AHREFS_API_TOKEN;
   if (!token) throw new Error("AHREFS_API_TOKEN ontbreekt.");
@@ -27,6 +60,14 @@ async function ahrefsFetch(path: string, params: Record<string, string>): Promis
       const body = await res.text().catch(() => "");
       throw new Error(`Ahrefs ${path}: ${res.status} ${body.slice(0, 300)}`);
     }
+    // Verbruik-meting: één regel per echte API-call (cache-hits komen hier nooit).
+    // tokens_in hergebruiken we als "units"; mag de echte taak nooit breken.
+    logUsage({
+      slug: ahrefsAls.getStore()?.slug ?? null,
+      service: "ahrefs",
+      action: path,
+      tokensIn: readUnitsHeader(res.headers) ?? 0,
+    }).catch(() => {});
     return await res.json();
   } finally {
     clearTimeout(timer);
