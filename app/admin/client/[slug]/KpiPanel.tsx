@@ -463,6 +463,9 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
       setPageKwData((m) => ({ ...m, [u]: d.ok ? (d.keywords || []) : "fout" }));
     } catch { setPageKwData((m) => ({ ...m, [u]: "fout" })); }
   }
+  // Site-label naast de sectiekoppen: de klant ziet op een screenshot direct
+  // over welke site de cijfers gaan.
+  const siteBadge = domain ? <span className="kpi-site-badge">{domain.replace(/^https?:\/\//i, "").replace(/\/$/, "")}</span> : null;
   // Herbruikbare periodekiezer (zelfde blokje als bovenaan), ook in de sectie-headers zodat
   // je daar ziet én kunt kiezen waarmee klikken/vertoningen vergeleken worden.
   const periodPicker = (
@@ -574,7 +577,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
       )}
 
       {!loading && gsc && gsc.totals && (
-        <Collapse title="Search Console" meta={`${gsc.range.curStart} t/m ${gsc.range.curEnd}`} open={isOpen("sc", true)} onToggle={() => toggle("sc", true)}>
+        <Collapse title={<>Search Console {siteBadge}</>} meta={`${gsc.range.curStart} t/m ${gsc.range.curEnd}`} open={isOpen("sc", true)} onToggle={() => toggle("sc", true)}>
           <div className="kpi-grid kpi-grid-4">
             <CardTrend label="Klikken" values={gsc.series.clicks} dates={gsc.series.dates} prevValues={gsc.series.prevClicks} prev={gsc.totals.clicks.prev} cur={gsc.totals.clicks.cur} fmt={(v) => nl(Math.round(v))} periodLabel={`${days} dgn`} metricKey="clicks" onExplain={explainMetric} />
             <CardTrend label="Vertoningen" values={gsc.series.impressions} dates={gsc.series.dates} prevValues={gsc.series.prevImpressions} prev={gsc.totals.impressions.prev} cur={gsc.totals.impressions.cur} fmt={(v) => nl(Math.round(v))} periodLabel={`${days} dgn`} metricKey="impressions" onExplain={explainMetric} />
@@ -583,7 +586,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
           </div>
 
           {gsc.keywords.length > 0 && (
-            <Collapse sub title={<>Zoekwoorden uit Search Console ({gsc.keywords.length}) <HelpHint wide text="De zoekwoorden waarop deze site in Google gevonden wordt (echte klikken en vertoningen uit Search Console). Markeer belangrijke woorden als prio of secundair; die verschijnen vastgezet bovenaan en zijn gedeeld met de Ahrefs-lijst." /></>} meta="markeer een zoekwoord als prio of secundair (prio staat bovenaan) · sleep de kolomkoppen om ze te herschikken" open={isOpen("sc_kw")} onToggle={() => toggle("sc_kw")} actions={<><input className="kpi-kw-search" placeholder="Zoek zoekwoord…" value={kwSearch} onClick={(e) => e.stopPropagation()} onChange={(e) => setKwSearch(e.target.value)} />{periodPicker}</>}>
+            <Collapse sub title={<>Zoekwoorden uit Search Console ({gsc.keywords.length}) {siteBadge} <HelpHint wide text="De zoekwoorden waarop deze site in Google gevonden wordt (echte klikken en vertoningen uit Search Console). Markeer belangrijke woorden als prio of secundair; die verschijnen vastgezet bovenaan en zijn gedeeld met de Ahrefs-lijst." /></>} meta="markeer een zoekwoord als prio of secundair (prio staat bovenaan) · sleep de kolomkoppen om ze te herschikken" open={isOpen("sc_kw")} onToggle={() => toggle("sc_kw")} actions={<><input className="kpi-kw-search" placeholder="Zoek zoekwoord…" value={kwSearch} onClick={(e) => e.stopPropagation()} onChange={(e) => setKwSearch(e.target.value)} />{periodPicker}</>}>
               <div className="res-table-wrap">
                 <table className="res-table kpi-table">
                   <thead><tr>
@@ -606,7 +609,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
           )}
 
           {pagesView.length > 0 && (
-            <Collapse sub title={<>Pagina&rsquo;s uit Search Console ({pagesView.length}) <HelpHint wide text="De pagina's van de site met hun klikken en vertoningen uit Search Console. Vink de ster aan om een pagina op prioriteit te zetten; die springt dan (via de ster-kolom) automatisch bovenaan. Gedeeld met de Wijzigingen-tab." /></>} meta="ster = prioriteit, staat bovenaan · sleep de kolomkoppen om ze te herschikken" open={isOpen("sc_pages")} onToggle={() => toggle("sc_pages")} actions={<><input className="kpi-kw-search" placeholder="Zoek pagina…" value={pageSearch} onClick={(e) => e.stopPropagation()} onChange={(e) => setPageSearch(e.target.value)} />{periodPicker}</>}>
+            <Collapse sub title={<>Pagina&rsquo;s uit Search Console ({pagesView.length}) {siteBadge} <HelpHint wide text="De pagina's van de site met hun klikken en vertoningen uit Search Console. Vink de ster aan om een pagina op prioriteit te zetten; die springt dan (via de ster-kolom) automatisch bovenaan. Gedeeld met de Wijzigingen-tab." /></>} meta="ster = prioriteit, staat bovenaan · sleep de kolomkoppen om ze te herschikken" open={isOpen("sc_pages")} onToggle={() => toggle("sc_pages")} actions={<><input className="kpi-kw-search" placeholder="Zoek pagina…" value={pageSearch} onClick={(e) => e.stopPropagation()} onChange={(e) => setPageSearch(e.target.value)} />{periodPicker}</>}>
               <div className="res-table-wrap">
                 <table className="res-table kpi-table">
                   <thead><tr>
@@ -667,10 +670,10 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
       )}
 
       {!loading && (
-        <Collapse title="Ahrefs" open={isOpen("ahrefs", true)} onToggle={() => toggle("ahrefs", true)}>
+        <Collapse title={<>Ahrefs {siteBadge}</>} open={isOpen("ahrefs", true)} onToggle={() => toggle("ahrefs", true)}>
           <div className="kpi-block">
             <div className="kpi-block-head">
-              <span className="kpi-block-title">Ahrefs-zoekwoorden{ahrefsKw.length ? ` (${ahFiltered.length})` : ""} <HelpHint wide text="Alle organische zoekwoorden van het domein uit Ahrefs (volume, positie, intent), in één keer opgehaald. Laaghangend fruit = commerciële of transactionele zoekwoorden met volume die net buiten de top staan (positie 4-20): daar kun je met beperkte moeite snel meer waardevolle bezoekers scoren. Markeer belangrijke zoekwoorden als prio of secundair; die markering is gedeeld met de Search Console-lijst." /></span>
+              <span className="kpi-block-title">Ahrefs-zoekwoorden{ahrefsKw.length ? ` (${ahFiltered.length})` : ""} {siteBadge} <HelpHint wide text="Alle organische zoekwoorden van het domein uit Ahrefs (volume, positie, intent), in één keer opgehaald. Laaghangend fruit = commerciële of transactionele zoekwoorden met volume die net buiten de top staan (positie 4-20): daar kun je met beperkte moeite snel meer waardevolle bezoekers scoren. Markeer belangrijke zoekwoorden als prio of secundair; die markering is gedeeld met de Search Console-lijst." /></span>
               <span className="kpi-head-actions">
                 <input className="kpi-kw-search" placeholder="Zoek zoekwoord…" value={ahSearch} onClick={(e) => e.stopPropagation()} onChange={(e) => setAhSearch(e.target.value)} />
                 <select className="kpi-period-select" value={ahCompare} onChange={(e) => setAhCompare(e.target.value as typeof ahCompare)} title="Vergelijk de posities met deze periode (pijltjes). Wordt toegepast bij de eerstvolgende keer Verversen (kost credits).">
@@ -713,7 +716,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
 
           <div className="kpi-block">
             <div className="kpi-block-head">
-              <span className="kpi-block-title">Kansen{opps.length ? ` (${opps.length})` : ""} <HelpHint wide text="Relevante zoekwoorden waar de site nog NIET op rankt, gevonden via keyword-ideas rond je kernthema's én concurrenten (waar zij wel scoren, jij niet), en door Claude gefilterd op echte relevantie. Kansen om met nieuwe of uitgebreide content te pakken." /></span>
+              <span className="kpi-block-title">Kansen{opps.length ? ` (${opps.length})` : ""} {siteBadge} <HelpHint wide text="Relevante zoekwoorden waar de site nog NIET op rankt, gevonden via keyword-ideas rond je kernthema's én concurrenten (waar zij wel scoren, jij niet), en door Claude gefilterd op echte relevantie. Kansen om met nieuwe of uitgebreide content te pakken." /></span>
               <span className="kpi-head-actions">
                 <button type="button" className={"ghost-btn small" + (compOpen ? " active" : "")} onClick={() => setCompOpen((v) => !v)}>Concurrenten{competitors.length ? ` (${competitors.length})` : ""}</button>
                 <button type="button" className="primary-btn small" onClick={collectOpps} disabled={oppBusy}>{oppBusy ? "Zoeken…" : (opps.length ? "Opnieuw zoeken" : "Kansen zoeken")}</button>
@@ -768,7 +771,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
       )}
 
       {!loading && ga4 && ga4.totals.length > 0 && (
-        <Collapse title="Google Analytics" meta={`laatste ${periodLabel}`} open={isOpen("ga", true)} onToggle={() => toggle("ga", true)}>
+        <Collapse title={<>Google Analytics {siteBadge}</>} meta={`laatste ${periodLabel}`} open={isOpen("ga", true)} onToggle={() => toggle("ga", true)}>
           <div className="kpi-grid">
             {ga4.totals.map((m) => (
               <div className="kpi-card" key={m.metric}>
