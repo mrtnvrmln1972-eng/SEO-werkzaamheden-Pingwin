@@ -340,9 +340,10 @@ export default function ClientCockpit({
               </div>
             )}
 
-            {/* Zonder mail-secties (COCKPIT_MAIL=uit) blijft alleen Zoekwoorden & links staan. */}
+            {/* Zonder mail-secties (COCKPIT_MAIL=uit) blijft alleen Zoekwoorden & links staan,
+                in dezelfde kaartstijl als de andere inklapbare secties. */}
             {!showMailSections && (
-              <div className="cockpit-card">
+              <div className="cockpit-card strategy-card">
                 <FocusBlock slug={client.slug} standalone />
               </div>
             )}

@@ -154,21 +154,29 @@ export default function FocusBlock({ slug, standalone }: { slug: string; standal
   );
 
   if (standalone) {
+    // Zelfde huisstijl als de andere inklapbare kaarten (Actuele stand van
+    // zaken, Laatste mails): strategy-head met caret + titel.
     return (
       <>
-        <button type="button" className="ck-section-head" style={{ width: "100%", background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", font: "inherit" }} onClick={() => setOpen((v) => !v)}>
-          <span>{open ? "▾" : "▸"} Zoekwoorden &amp; links</span>
+        <button type="button" className="strategy-head" onClick={() => setOpen((v) => !v)}>
+          <span className="strategy-caret">{open ? "▾" : "▸"}</span>
+          <span className="strategy-title">Zoekwoorden &amp; links</span>
         </button>
-        {open && toolbar}
-        {open && editor}
+        {open && (
+          <div className="strategy-body">
+            {toolbar}
+            {editor}
+          </div>
+        )}
       </>
     );
   }
 
   return (
     <div className="sov-tasks">
-      <button type="button" className="sov-tasks-head focus-head" style={{ width: "100%", background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", font: "inherit" }} onClick={() => setOpen((v) => !v)}>
-        <span>{open ? "▾" : "▸"} Zoekwoorden &amp; links</span>
+      <button type="button" className="strategy-head" style={{ padding: 0 }} onClick={() => setOpen((v) => !v)}>
+        <span className="strategy-caret">{open ? "▾" : "▸"}</span>
+        <span className="sov-tasks-head focus-head" style={{ margin: 0 }}>Zoekwoorden &amp; links</span>
       </button>
       {open && toolbar}
       {open && editor}
