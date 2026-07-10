@@ -12,15 +12,30 @@ import { ahrefsConfigured, getKeywordsOverview } from "./ahrefs";
 // Scopes: webmasters.readonly + analytics.readonly
 // ═══════════════════════════════════════════════════════════
 
-const SCOPES = [
+// Twee LOSSE koppelingen (bewust gescheiden, elk een eigen rij in oauth_tokens):
+// - data (provider 'google'): Search Console + Analytics, alleen-lezen. Wie de
+//   cijfers levert (meestal Maarten) koppelt hier, ZONDER Drive-toestemming.
+// - drive (provider 'google_drive'): documenten-opslag. Per wereld koppelt de
+//   eigenaar hier het Drive-account waar documenten moeten landen. Zo kan de
+//   data-koppeling nooit per ongeluk iemands Drive openzetten.
+export type GooglePurpose = "data" | "drive";
+
+const DATA_SCOPES = [
   "https://www.googleapis.com/auth/webmasters.readonly",
   "https://www.googleapis.com/auth/analytics.readonly",
-  // Drive: mappen kunnen browsen + documenten wegschrijven en delen. Full drive
-  // want we tonen een eigen mappenkiezer die de bestaande mappenboom moet uitlezen
-  // (drive.file kan alleen bij eigen/gepickte bestanden, niet de mappen listen).
+  "openid", "email",
+].join(" ");
+
+const DRIVE_SCOPES = [
+  // Full drive want we tonen een eigen mappenkiezer die de bestaande mappenboom
+  // moet uitlezen (drive.file kan alleen bij eigen/gepickte bestanden).
   "https://www.googleapis.com/auth/drive",
   "openid", "email",
 ].join(" ");
+
+function providerFor(purpose: GooglePurpose): string {
+  return purpose === "drive" ? "google_drive" : "google";
+}
 
 export function googleConfigured(): boolean {
   return !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
@@ -30,12 +45,12 @@ export function googleRedirectUri(origin: string): string {
   return `${origin}/api/google/auth/callback`;
 }
 
-export function googleAuthUrl(origin: string, state: string): string {
+export function googleAuthUrl(origin: string, state: string, purpose: GooglePurpose = "data"): string {
   const p = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID || "",
     redirect_uri: googleRedirectUri(origin),
     response_type: "code",
-    scope: SCOPES,
+    scope: purpose === "drive" ? DRIVE_SCOPES : DATA_SCOPES,
     access_type: "offline",
     prompt: "consent",
     include_granted_scopes: "true",
@@ -55,7 +70,7 @@ async function tokenRequest(body: Record<string, string>): Promise<TokenResponse
   return (await res.json()) as TokenResponse;
 }
 
-export async function googleExchangeCode(origin: string, code: string): Promise<{ ok: boolean; error?: string }> {
+export async function googleExchangeCode(origin: string, code: string, purpose: GooglePurpose = "data"): Promise<{ ok: boolean; error?: string }> {
   const data = await tokenRequest({
     client_id: process.env.GOOGLE_CLIENT_ID || "",
     client_secret: process.env.GOOGLE_CLIENT_SECRET || "",
@@ -73,29 +88,49 @@ export async function googleExchangeCode(origin: string, code: string): Promise<
   }
   await sql`
     INSERT INTO oauth_tokens (provider, refresh_token, account, updated_at)
-    VALUES ('google', ${data.refresh_token}, ${account || null}, now())
+    VALUES (${providerFor(purpose)}, ${data.refresh_token}, ${account || null}, now())
     ON CONFLICT (provider) DO UPDATE SET refresh_token = EXCLUDED.refresh_token, account = EXCLUDED.account, updated_at = now()`;
   return { ok: true };
 }
 
 export async function googleStatus(): Promise<{ configured: boolean; connected: boolean; account: string | null }> {
+  return statusFor("google");
+}
+
+// Status van de losse Drive-koppeling (Beheer → Instellingen).
+export async function driveStatus(): Promise<{ configured: boolean; connected: boolean; account: string | null }> {
+  return statusFor("google_drive");
+}
+
+async function statusFor(provider: string): Promise<{ configured: boolean; connected: boolean; account: string | null }> {
   const configured = googleConfigured();
   if (!configured) return { configured, connected: false, account: null };
   await ensureSchema();
-  const { rows } = await sql`SELECT account, refresh_token FROM oauth_tokens WHERE provider = 'google' LIMIT 1`;
+  const { rows } = await sql`SELECT account, refresh_token FROM oauth_tokens WHERE provider = ${provider} LIMIT 1`;
   return { configured, connected: !!rows[0]?.refresh_token, account: (rows[0]?.account as string) || null };
 }
 
-// Beschikbaar voor de Drive-laag (lib/drive.ts). Levert een verse access-token
-// uit de opgeslagen refresh-token; null als Google niet gekoppeld is.
-export async function getGoogleAccessToken(): Promise<string | null> {
-  return googleAccessToken();
+// Drive-koppeling verwijderen (knop "Drive ontkoppelen" in Beheer).
+export async function disconnectDrive(): Promise<void> {
+  await ensureSchema();
+  await sql`DELETE FROM oauth_tokens WHERE provider = 'google_drive'`;
 }
 
-async function googleAccessToken(): Promise<string | null> {
+// Data-koppeling (Search Console + Analytics): access-token uit de 'google'-rij.
+export async function getGoogleAccessToken(): Promise<string | null> {
+  return accessTokenFor("google");
+}
+
+// Drive-koppeling: access-token uit de aparte 'google_drive'-rij. Bewust GEEN
+// terugval op de data-rij: de data-koppeling mag nooit Drive-toegang geven.
+export async function getDriveAccessToken(): Promise<string | null> {
+  return accessTokenFor("google_drive");
+}
+
+async function accessTokenFor(provider: string): Promise<string | null> {
   if (!googleConfigured()) return null;
   await ensureSchema();
-  const { rows } = await sql`SELECT refresh_token FROM oauth_tokens WHERE provider = 'google' LIMIT 1`;
+  const { rows } = await sql`SELECT refresh_token FROM oauth_tokens WHERE provider = ${provider} LIMIT 1`;
   const refresh = rows[0]?.refresh_token as string | undefined;
   if (!refresh) return null;
   const data = await tokenRequest({
@@ -150,7 +185,7 @@ async function gscPickSite(token: string, domain: string): Promise<string | null
 // "GSC laadt niet"-problemen per klant.
 export async function gscDebug(domain: string): Promise<{ connected: boolean; account: string | null; siteCount: number; matchedSite: string | null; candidates: { siteUrl: string; verified: boolean; permission: string; clicks: number | null; impressions: number | null }[] }> {
   const status = await googleStatus();
-  const token = await googleAccessToken();
+  const token = await accessTokenFor("google");
   if (!token) return { connected: false, account: status.account, siteCount: 0, matchedSite: null, candidates: [] };
   const res = await fetch("https://www.googleapis.com/webmasters/v3/sites", { headers: { Authorization: `Bearer ${token}` } });
   if (!res.ok) return { connected: true, account: status.account, siteCount: -1, matchedSite: null, candidates: [] };
@@ -173,7 +208,7 @@ export async function gscDebug(domain: string): Promise<{ connected: boolean; ac
 // elk)? Twee of meer verschillende top-URL's = URL-flipping, het sterkste
 // cannibalisatie-signaal (Google is onzeker welke pagina moet ranken).
 export async function getGscKeywordUrlFlips(domain: string, windows = 3): Promise<{ keyword: string; topUrls: string[]; flips: number }[]> {
-  const token = await googleAccessToken();
+  const token = await accessTokenFor("google");
   if (!token || !domain) return [];
   const site = await gscPickSite(token, domain);
   if (!site) return [];
@@ -217,7 +252,7 @@ export type GscData = {
 };
 
 export async function getGscForClient(domain: string): Promise<GscData | null> {
-  const token = await googleAccessToken();
+  const token = await accessTokenFor("google");
   if (!token) return null;
   if (!domain) return { connected: true, site: null, metrics: [], keywords: [], pages: [] };
   const site = await gscPickSite(token, domain);
@@ -318,7 +353,7 @@ export type GscSeries = { dates: string[]; clicks: number[]; impressions: number
 // Dit is de kern voor cannibalisatie-detectie (bv. homepage die op "hovenier
 // [plaats]" rankt terwijl er een aparte plaatspagina bestaat).
 export async function getGscQueryPageMatrix(domain: string, days = 90, limit = 150): Promise<{ keyword: string; page: string; clicks: number; impressions: number; position: number }[]> {
-  const token = await googleAccessToken();
+  const token = await accessTokenFor("google");
   if (!token || !domain) return [];
   const site = await gscPickSite(token, domain);
   if (!site) return [];
@@ -336,7 +371,7 @@ export async function getGscQueryPageMatrix(domain: string, days = 90, limit = 1
 
 // Zoekwoorden waarop één specifieke pagina rankt (voor grounding in de chat).
 export async function getGscForPage(domain: string, pageUrl: string, days = 90): Promise<{ keyword: string; clicks: number; impressions: number; position: number }[]> {
-  const token = await googleAccessToken();
+  const token = await accessTokenFor("google");
   if (!token || !domain || !pageUrl) return [];
   const site = await gscPickSite(token, domain);
   if (!site) return [];
@@ -356,7 +391,7 @@ export async function getGscForPage(domain: string, pageUrl: string, days = 90):
 // de uitklap in de Pagina's-lijst van de KPI-tab: per zoekwoord ook de deltas.
 export type GscPageKeyword = { keyword: string; clicks: number; impressions: number; position: number; prevClicks: number; prevImpressions: number; prevPosition: number | null };
 export async function getGscForPageCompare(domain: string, pageUrl: string, days = 28, compare: "prev" | "yoy" = "prev"): Promise<GscPageKeyword[]> {
-  const token = await googleAccessToken();
+  const token = await accessTokenFor("google");
   if (!token || !domain || !pageUrl) return [];
   const site = await gscPickSite(token, domain);
   if (!site) return [];
@@ -382,7 +417,7 @@ export async function getGscForPageCompare(domain: string, pageUrl: string, days
 // Voor de KPI-impact-grafiek rond een wijziging (60 dagen voor/na).
 export type GscDay = { date: string; clicks: number; impressions: number; ctr: number; position: number };
 export async function getGscDailyForPage(domain: string, pageUrl: string, startDate: string, endDate: string): Promise<GscDay[]> {
-  const token = await googleAccessToken();
+  const token = await accessTokenFor("google");
   if (!token || !domain || !pageUrl) return [];
   const site = await gscPickSite(token, domain);
   if (!site) return [];
@@ -398,7 +433,7 @@ export async function getGscDailyForPage(domain: string, pageUrl: string, startD
 // Keyword-rankings voor en na een wijzigingsmoment (positie + kliks per zoekwoord).
 export type GscKeywordBA = { keyword: string; positionBefore: number | null; positionAfter: number | null; clicksBefore: number; clicksAfter: number; impressionsBefore: number; impressionsAfter: number; ctrBefore: number | null; ctrAfter: number | null };
 export async function getGscKeywordsBeforeAfter(domain: string, pageUrl: string, changeDate: string, days = 60): Promise<GscKeywordBA[]> {
-  const token = await googleAccessToken();
+  const token = await accessTokenFor("google");
   if (!token || !domain || !pageUrl) return [];
   const site = await gscPickSite(token, domain);
   if (!site) return [];
@@ -437,7 +472,7 @@ export async function getGscKeywordsBeforeAfter(domain: string, pageUrl: string,
 // fruit in het pagina-overzicht (veel vraag + net buiten de top 10).
 export type PageOpportunity = { url: string; clicks: number; impressions: number; ctr: number; position: number; bestKeyword: string; bestPosition: number | null; bestVolume: number | null };
 export async function getGscPageOpportunities(domain: string, days = 90): Promise<PageOpportunity[]> {
-  const token = await googleAccessToken();
+  const token = await accessTokenFor("google");
   if (!token || !domain) return [];
   const site = await gscPickSite(token, domain);
   if (!site) return [];
@@ -487,7 +522,7 @@ export async function getGscPageOpportunities(domain: string, days = 90): Promis
 export type Ga4PageStat = { views: number; timeOnPage: number; bounceRate: number; engagementRate: number; pagesPerSession: number; sessionDuration: number };
 export type Ga4PageSignals = { available: boolean; before: Ga4PageStat; after: Ga4PageStat };
 export async function getGa4PageSignalsBeforeAfter(slug: string, pageUrl: string, changeDate: string, days = 60): Promise<Ga4PageSignals | null> {
-  const token = await googleAccessToken();
+  const token = await accessTokenFor("google");
   if (!token) return null;
   await ensureSchema();
   const { rows } = await sql`SELECT ga4_property_id, domain FROM clients WHERE slug = ${slug} LIMIT 1`;
@@ -549,7 +584,7 @@ export type GscComparison = {
 };
 
 export async function getGscComparison(domain: string, days: number, compare: "prev" | "yoy" = "prev"): Promise<GscComparison | null> {
-  const token = await googleAccessToken();
+  const token = await accessTokenFor("google");
   if (!token) return null;
   const range = periodRanges(days, compare);
   const emptySeries: GscSeries = { dates: [], clicks: [], impressions: [], ctr: [], position: [] };
@@ -669,7 +704,7 @@ export type Ga4Comparison = {
 // (huidige én vergelijkingsperiode, ook t.o.v. vorig jaar) plus de herkomst-kanalen.
 // "avgTimeOnPage" is afgeleid (engagement-duur / paginaweergaven).
 export async function getGa4Comparison(slug: string, domain: string, days: number, compare: "prev" | "yoy" = "prev"): Promise<Ga4Comparison | null> {
-  const token = await googleAccessToken();
+  const token = await accessTokenFor("google");
   if (!token) return null;
   await ensureSchema();
   const { rows } = await sql`SELECT ga4_property_id FROM clients WHERE slug = ${slug} LIMIT 1`;
@@ -809,7 +844,7 @@ export async function getGa4Comparison(slug: string, domain: string, days: numbe
 export type GscTrend = { months: string[]; rows: { keyword: string; positions: (number | null)[] }[] };
 
 export async function getGscKeywordTrend(domain: string): Promise<GscTrend | null> {
-  const token = await googleAccessToken();
+  const token = await accessTokenFor("google");
   if (!token || !domain) return null;
   const site = await gscPickSite(token, domain);
   if (!site) return null;
@@ -891,7 +926,7 @@ async function ga4RunReport(token: string, propertyId: string): Promise<{ metric
 export type Ga4Data = { connected: boolean; propertyId: string | null; metrics: { metric: string; value: number }[] };
 
 export async function getGa4ForClient(slug: string, domain: string): Promise<Ga4Data | null> {
-  const token = await googleAccessToken();
+  const token = await accessTokenFor("google");
   if (!token) return null;
   await ensureSchema();
 
@@ -921,7 +956,7 @@ export type AdsComparison = {
 };
 
 export async function getAdsComparison(slug: string, domain: string, days: number, compare: "prev" | "yoy" = "prev"): Promise<AdsComparison | null> {
-  const token = await googleAccessToken();
+  const token = await accessTokenFor("google");
   if (!token) return null;
   await ensureSchema();
   const { rows } = await sql`SELECT ga4_property_id FROM clients WHERE slug = ${slug} LIMIT 1`;

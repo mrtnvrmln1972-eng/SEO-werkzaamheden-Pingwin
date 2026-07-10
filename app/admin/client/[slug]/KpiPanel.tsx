@@ -681,8 +681,8 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
       {!loading && !connected && (
         <div className="cockpit-card">
           <div className="mail-connect">
-            Koppel Google om Search Console en Analytics te tonen.{" "}
-            <a className="primary-btn small" href="/api/google/auth/start">Koppel Google</a>
+            Koppel Google om Search Console en Analytics te tonen (alleen data; Google Drive koppel je apart in Beheer).{" "}
+            <a className="primary-btn small" href="/api/google/auth/start">Koppel Google (Search Console + Analytics)</a>
           </div>
         </div>
       )}

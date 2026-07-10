@@ -12,5 +12,9 @@ export async function GET(req: NextRequest) {
   if (!googleConfigured()) {
     return NextResponse.redirect(new URL("/admin?google=notconfigured", req.url));
   }
-  return NextResponse.redirect(googleAuthUrl(req.nextUrl.origin, crypto.randomUUID()));
+  // ?purpose=drive = de losse Drive-koppeling; anders de data-koppeling (GSC+GA).
+  // De purpose reist mee in de state, zodat de callback weet waar hij hem opslaat.
+  const purpose = req.nextUrl.searchParams.get("purpose") === "drive" ? "drive" : "data";
+  const state = `${purpose}:${crypto.randomUUID()}`;
+  return NextResponse.redirect(googleAuthUrl(req.nextUrl.origin, state, purpose));
 }

@@ -1,8 +1,10 @@
-import { getGoogleAccessToken } from "./google";
+import { getDriveAccessToken } from "./google";
 
 // Google Drive-laag: mappenboom uitlezen, submap maken, een .docx uploaden en
-// publiek deelbaar maken (iedereen met de link = lezer). Gebruikt de bestaande
-// Google-koppeling (refresh-token) met de drive-scope.
+// publiek deelbaar maken (iedereen met de link = lezer). Gebruikt de LOSSE
+// Drive-koppeling (provider 'google_drive'); bewust gescheiden van de
+// Search Console/Analytics-koppeling zodat data koppelen nooit iemands Drive
+// openzet.
 
 const FOLDER_MIME = "application/vnd.google-apps.folder";
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
@@ -11,8 +13,8 @@ const GDOC_MIME = "application/vnd.google-apps.document";
 export type DriveFolder = { id: string; name: string };
 
 async function token(): Promise<string> {
-  const t = await getGoogleAccessToken();
-  if (!t) throw new Error("Google is niet gekoppeld (of de koppeling mist de Drive-toestemming). Koppel Google opnieuw.");
+  const t = await getDriveAccessToken();
+  if (!t) throw new Error("Google Drive is niet gekoppeld. Koppel hem in Beheer → Instellingen (dit staat los van de Search Console-koppeling).");
   return t;
 }
 

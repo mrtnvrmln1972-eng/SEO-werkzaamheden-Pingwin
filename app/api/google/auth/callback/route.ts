@@ -12,7 +12,9 @@ export async function GET(req: NextRequest) {
   const err = req.nextUrl.searchParams.get("error");
   if (err) return NextResponse.redirect(new URL(`/admin?google=error&msg=${encodeURIComponent(err)}`, req.url));
   if (!code) return NextResponse.redirect(new URL("/admin?google=error&msg=geen+code", req.url));
-  const result = await googleExchangeCode(req.nextUrl.origin, code);
+  // De purpose (data of drive) zit als prefix in de state (gezet door /start).
+  const purpose = (req.nextUrl.searchParams.get("state") || "").startsWith("drive:") ? "drive" : "data";
+  const result = await googleExchangeCode(req.nextUrl.origin, code, purpose);
   if (!result.ok) return NextResponse.redirect(new URL(`/admin?google=error&msg=${encodeURIComponent(result.error || "mislukt")}`, req.url));
   return NextResponse.redirect(new URL("/admin?google=ok", req.url));
 }

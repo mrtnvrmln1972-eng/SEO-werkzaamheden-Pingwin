@@ -22,6 +22,26 @@ export default function BeheerClient({ clients, team }: { clients: ClientLite[];
   // ── App-instellingen (administratie-e-mail voor de factuur-mail) ──
   const [invoiceMail, setInvoiceMail] = useState("");
   const [settingsBusy, setSettingsBusy] = useState(false);
+
+  // ── Google-koppelingen (data en Drive, bewust gescheiden) ──
+  type LinkStatus = { connected: boolean; account: string | null };
+  const [gLinks, setGLinks] = useState<{ data: LinkStatus; drive: LinkStatus } | null>(null);
+  useEffect(() => {
+    fetch("/api/admin/google-links").then((r) => r.json())
+      .then((d) => { if (d.ok) setGLinks({ data: d.data, drive: d.drive }); })
+      .catch(() => { /* stil */ });
+  }, []);
+  async function disconnectDrive() {
+    if (!confirm("Google Drive ontkoppelen? Documenten komen daarna als download tot er opnieuw een Drive is gekoppeld.")) return;
+    try {
+      const res = await fetch("/api/admin/google-links", { method: "DELETE" });
+      const d = await res.json();
+      if (d.ok) {
+        setGLinks((g) => (g ? { ...g, drive: { connected: false, account: null } } : g));
+        flash(true, "Google Drive ontkoppeld.");
+      } else flash(false, d.error || "Ontkoppelen mislukt.");
+    } catch { flash(false, "Ontkoppelen mislukt."); }
+  }
   useEffect(() => {
     fetch("/api/admin/settings").then((r) => r.json())
       .then((d) => { if (d.ok && d.settings?.invoice_mail_to) setInvoiceMail(d.settings.invoice_mail_to); })
@@ -589,6 +609,42 @@ export default function BeheerClient({ clients, team }: { clients: ClientLite[];
             </div>
           </div>
         </form>
+
+        {/* ─────────────── GOOGLE-KOPPELINGEN ─────────────── */}
+        <h2 style={{ fontSize: 20, fontWeight: 700, margin: "44px 0 6px" }}>Google-koppelingen</h2>
+        <p className="muted" style={{ marginBottom: 16 }}>
+          Twee losse koppelingen, bewust gescheiden: de <strong>data-koppeling</strong> bepaalt wiens Google-account de
+          Search Console- en Analytics-cijfers levert; de <strong>Drive-koppeling</strong> bepaalt in wiens Google Drive
+          de documenten landen. Data koppelen geeft dus nooit toegang tot iemands Drive.
+        </p>
+        <div className="task-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Koppeling</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style={{ fontWeight: 600 }}>Search Console + Analytics (data)</td>
+                <td>{!gLinks ? "…" : gLinks.data.connected ? `Gekoppeld${gLinks.data.account ? ` als ${gLinks.data.account}` : ""}` : <span style={{ color: "#c0392b" }}>Niet gekoppeld</span>}</td>
+                <td style={{ whiteSpace: "nowrap" }}>
+                  <a className="mini-btn" href="/api/google/auth/start">{gLinks?.data.connected ? "Opnieuw koppelen" : "Koppelen"}</a>
+                </td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 600 }}>Google Drive (documenten-opslag)</td>
+                <td>{!gLinks ? "…" : gLinks.drive.connected ? `Gekoppeld${gLinks.drive.account ? ` als ${gLinks.drive.account}` : ""}` : <span style={{ color: "#c0392b" }}>Niet gekoppeld (documenten komen als download)</span>}</td>
+                <td style={{ whiteSpace: "nowrap" }}>
+                  <a className="mini-btn" href="/api/google/auth/start?purpose=drive">{gLinks?.drive.connected ? "Opnieuw koppelen" : "Drive koppelen"}</a>{" "}
+                  {gLinks?.drive.connected && <button className="mini-btn" onClick={disconnectDrive}>Ontkoppelen</button>}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
         <div className="admin-footer" style={{ marginTop: 40, color: "var(--gray)", fontSize: 12 }}>
           Pingwin Online Marketing &middot; Beheer
