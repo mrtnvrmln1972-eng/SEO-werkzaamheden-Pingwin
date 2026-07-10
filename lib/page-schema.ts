@@ -50,6 +50,9 @@ async function doEnsure(): Promise<void> {
       updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
       PRIMARY KEY (client_slug, url)
     )`;
+  // Momentopname van de plugin-schema op het moment van de analyse, zodat de
+  // periodieke bewaking kan zien of de plugin sindsdien iets anders levert.
+  await sql`ALTER TABLE client_page_schema ADD COLUMN IF NOT EXISTS plugin_types JSONB NOT NULL DEFAULT '[]'`;
 }
 
 export async function getPageSchema(slug: string, url: string): Promise<PageSchemaState> {
@@ -70,18 +73,19 @@ export async function getPageSchema(slug: string, url: string): Promise<PageSche
   };
 }
 
-async function setState(slug: string, url: string, status: string, patch: { result?: string; jsonld?: string; warnings?: string[]; error?: string } = {}): Promise<void> {
+async function setState(slug: string, url: string, status: string, patch: { result?: string; jsonld?: string; warnings?: string[]; error?: string; pluginTypes?: string[] } = {}): Promise<void> {
   await ensureSchema();
   await ensureTable();
   await sql`
-    INSERT INTO client_page_schema (client_slug, url, status, result, jsonld, warnings, error, updated_at)
-    VALUES (${slug}, ${url}, ${status}, ${patch.result || ""}, ${patch.jsonld || ""}, ${JSON.stringify(patch.warnings || [])}, ${patch.error || ""}, now())
+    INSERT INTO client_page_schema (client_slug, url, status, result, jsonld, warnings, error, plugin_types, updated_at)
+    VALUES (${slug}, ${url}, ${status}, ${patch.result || ""}, ${patch.jsonld || ""}, ${JSON.stringify(patch.warnings || [])}, ${patch.error || ""}, ${JSON.stringify(patch.pluginTypes || [])}, now())
     ON CONFLICT (client_slug, url) DO UPDATE SET
       status = ${status},
       result = COALESCE(NULLIF(${patch.result || ""}, ''), client_page_schema.result),
       jsonld = COALESCE(NULLIF(${patch.jsonld || ""}, ''), client_page_schema.jsonld),
       warnings = ${JSON.stringify(patch.warnings || [])},
       error = ${patch.error || ""},
+      plugin_types = CASE WHEN ${JSON.stringify(patch.pluginTypes || [])}::jsonb <> '[]'::jsonb THEN ${JSON.stringify(patch.pluginTypes || [])}::jsonb ELSE client_page_schema.plugin_types END,
       updated_at = now()`;
 }
 
@@ -135,23 +139,26 @@ ACTUELE SPELREGELS (2026, wijkt af van oudere kennis):
 GEEF UITSLUITEND GELDIGE JSON, exact dit formaat:
 {"paginatype": "korte typering (bijv. dienstpagina, behandelpagina, blogartikel, productpagina)", "advies_md": "markdown-advies", "jsonld": { ...het volledige JSON-LD-object met @context en @graph... }, "waarschuwingen": ["..."]}
 
-Eisen aan advies_md (kort en leesbaar, voor Maarten in het dashboard):
-- "## Wat we op deze pagina toevoegen" met per schema-type één bullet in gewone taal (wat het is + wat het oplevert).
-- "## Waarom dit belangrijk is" (2-4 zinnen, incl. de eerlijke AI-framing).
-- "## Let op" alleen als er echte aandachtspunten zijn (bijv. plugin-schema aangetroffen, ontbrekende bedrijfsgegevens, iets dat eerst zichtbaar op de pagina moet).
-Eisen aan jsonld: één object met "@context":"https://schema.org" en "@graph":[...]; geldige, complete JSON; alleen onderbouwde properties.
-Eisen aan waarschuwingen: concrete punten zoals "Yoast levert al Organization en BreadcrumbList; deze JSON vult alleen aan" of "Bedrijfsgegevens nog niet bevestigd; adres weggelaten". Geen em-dash of en-dash; gebruik komma of dubbele punt. Geen emoji.`;
+SCHRIJFSTIJL (cruciaal): de lezer is een SEO-specialist ZONDER schema-kennis. Elke technische term die je gebruikt leg je in dezelfde zin in gewone taal uit, of je laat hem weg. Zeg nooit kaal "SearchAction wordt niet herhaald conform de spelregels"; zeg "de plugin plaatst code voor een zoekbalkje onder het Google-resultaat (SearchAction); Google is daarmee gestopt, dus wij laten dat bewust weg". Namen als @id, node en entity graph mag je gebruiken, maar alleen met zo'n korte uitleg erbij.
+
+Eisen aan advies_md (kort en leesbaar):
+- "## Wat we op deze pagina toevoegen" met per onderdeel één bullet in gewone taal: wat het is, wat het Google/AI vertelt, en wat het de klant oplevert.
+- "## Waarom dit belangrijk is" (2-4 zinnen, incl. de eerlijke AI-framing, zonder jargon).
+- "## Let op" alleen bij echte aandachtspunten, elk geschreven als: wat we zagen, wat dat betekent, wat de vervolgactie is en wie hem doet.
+Eisen aan jsonld: één object met "@context":"https://schema.org" en "@graph":[...]; geldige, complete JSON; alleen onderbouwde properties. Staat de volledige plugin-JSON-LD hierboven, gebruik dan de ECHTE @id's daaruit voor verwijzingen en herhaal niets wat de plugin al levert; gok nooit en vraag de lezer nooit om zelf @id's te controleren.
+Eisen aan waarschuwingen: maximaal 5, elk één begrijpelijke zin volgens het vaste patroon "wat we zagen: wat dat betekent: wat je nu doet". Voorbeelden van de juiste toon: "De plugin (bijv. Yoast) levert al de basis-schema van deze pagina; onze code vult alleen de medische laag aan en botst daar niet mee." of "Van 5 behandelaren missen het BIG-nummer en de profielpagina; vul die aan op het Bedrijfsgegevens-formulier (Klant-tabblad), dan koppelen we ze bij de volgende analyse automatisch mee." Verwijs bij ontbrekende gegevens ALTIJD naar het Bedrijfsgegevens-formulier als de plek om ze aan te vullen. Geen em-dash of en-dash; gebruik komma of dubbele punt. Geen emoji.`;
 
 export async function runPageSchema(slug: string, url: string): Promise<void> {
   try {
     const client = await getClientBySlug(slug);
     if (!client) throw new Error("Klant niet gevonden.");
-    const [org, plan, measured, gsc, allTasks] = await Promise.all([
+    const [org, plan, measured, gsc, allTasks, rawLd] = await Promise.all([
       getOrgData(slug),
       getPagePlan(slug, url).catch(() => ""),
       measurePage(url, { staticOnly: true }).catch(() => null),
       getGscForPage(client.domain || "", url, 90).catch(() => []),
       getTasks(slug).catch(() => []),
+      fetchRawJsonLd(url),
     ]);
     // Gouden regel: markup moet matchen met de zichtbare content. Staat er nog een
     // niet-afgeronde copy-taak voor deze pagina, dan komen de nieuwe teksten (met
@@ -177,6 +184,7 @@ export async function runPageSchema(slug: string, url: string): Promise<void> {
       `\nBEDRIJFSGEGEVENS:\n${orgToText(org.data, org.locked)}`,
       plan ? `\nPLAN VOOR DEZE PAGINA:\n${String(plan).replace(/<[^>]*>/g, " ").slice(0, 2500)}` : "",
       `\nPAGINA-METING:\n${pageText}`,
+      rawLd.length ? `\nVOLLEDIGE BESTAANDE JSON-LD OP DE PAGINA (plugin-schema; sluit hier EXACT op aan, gebruik de echte @id's):\n${rawLd.join("\n---\n").slice(0, 24000)}` : "",
       gsc.length ? `\nTOP-ZOEKWOORDEN (Search Console, 90d):\n${gsc.slice(0, 12).map((k) => `${k.keyword} (pos ${k.position})`).join("; ")}` : "",
       client.seoProfile ? `\nKLANTPROFIEL (samenvatting):\n${client.seoProfile.slice(0, 1500)}` : "",
     ].filter(Boolean).join("\n");
@@ -188,10 +196,29 @@ export async function runPageSchema(slug: string, url: string): Promise<void> {
     const warnings = Array.isArray(parsed.waarschuwingen) ? parsed.waarschuwingen.map(String).filter(Boolean) : [];
     if (openCopy) warnings.unshift("Er staat nog een niet-afgeronde copy-taak voor deze pagina: de nieuwe teksten (met FAQ's) staan waarschijnlijk nog niet live. Deze analyse is gebaseerd op de huidige pagina; draai stap 7 opnieuw zodra de nieuwe copy live staat.");
     const header = parsed.paginatype ? `**Paginatype:** ${parsed.paginatype}\n\n` : "";
-    await setState(slug, url, "done", { result: header + parsed.advies_md.trim(), jsonld, warnings });
+    await setState(slug, url, "done", { result: header + parsed.advies_md.trim(), jsonld, warnings, pluginTypes: measured?.schemaTypes || [] });
   } catch (e) {
     await setState(slug, url, "error", { error: (e as Error).message || "Analyse mislukt." }).catch(() => { /* status is hulpinfo */ });
   }
+}
+
+// Leest de volledige bestaande JSON-LD-blokken van de pagina (plugin-schema),
+// zodat de analyse exact kan aansluiten op de echte @id's en nodes in plaats van
+// aannames te doen ("plugin-@id onbekend").
+async function fetchRawJsonLd(url: string): Promise<string[]> {
+  try {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 15000);
+    const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 (compatible; PingwinDashboard)" }, signal: ctl.signal });
+    clearTimeout(t);
+    if (!res.ok) return [];
+    const html = await res.text();
+    const out: string[] = [];
+    const re = /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(html))) { const x = (m[1] || "").trim(); if (x) out.push(x.slice(0, 9000)); }
+    return out.slice(0, 6);
+  } catch { return []; }
 }
 
 function pagePath(u: string): string { try { return new URL(u).pathname || u; } catch { return u; } }
