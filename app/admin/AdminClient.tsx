@@ -18,7 +18,7 @@ const EMPTY = {
   grp: "",
 };
 
-export default function AdminClient({ initialClients, isOwner = true, showGroups = false }: { initialClients: ClientConfig[]; isOwner?: boolean; showGroups?: boolean }) {
+export default function AdminClient({ initialClients, isOwner = true, showGroups = false, showFinance = false }: { initialClients: ClientConfig[]; isOwner?: boolean; showGroups?: boolean; showFinance?: boolean }) {
   const router = useRouter();
   const [clients, setClients] = useState<ClientConfig[]>(initialClients);
   const [form, setForm] = useState({ ...EMPTY });
@@ -294,7 +294,9 @@ export default function AdminClient({ initialClients, isOwner = true, showGroups
           {isOwner && (
             <a className="logout-btn" href="/admin/usage" title="AI-verbruik en kosten per actie en per klant" style={{ marginLeft: 8 }}>Verbruik</a>
           )}
-          {isOwner && (
+          {/* Financiën is Maartens privé-administratie: alleen tonen in de wereld
+              waar Moneybird gekoppeld is (Pingwin), nooit in MMC/NOC. */}
+          {isOwner && showFinance && (
             <a className="logout-btn" href="/admin/financien" title="Opbrengsten en kosten uit Moneybird, met openstaande facturen" style={{ marginLeft: 8 }}>Financi&euml;n</a>
           )}
           <button className="logout-btn" onClick={logout} style={{ marginLeft: 8 }}>Uitloggen</button>

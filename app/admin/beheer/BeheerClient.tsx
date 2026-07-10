@@ -14,7 +14,7 @@ type ClientLite = {
   ahrefsKeyRef: string | null;
 };
 
-export default function BeheerClient({ clients, team }: { clients: ClientLite[]; team: TeamUser[] }) {
+export default function BeheerClient({ clients, team, showFinance = false }: { clients: ClientLite[]; team: TeamUser[]; showFinance?: boolean }) {
   const router = useRouter();
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -593,22 +593,26 @@ export default function BeheerClient({ clients, team }: { clients: ClientLite[];
           </form>
         )}
 
-        {/* ─────────────── INSTELLINGEN ─────────────── */}
-        <h2 style={{ fontSize: 20, fontWeight: 700, margin: "44px 0 6px" }}>Instellingen</h2>
-        <p className="muted" style={{ marginBottom: 16 }}>
-          Het e-mailadres van degene die de administratie bijhoudt. De knop &ldquo;Mail naar administratie&rdquo; bij een openstaande-factuursignaal stuurt de factuurlinks naar dit adres.
-        </p>
-        <form className="admin-form" onSubmit={(e) => { e.preventDefault(); saveInvoiceMail(); }}>
-          <div className="form-grid">
-            <div className="field">
-              <label>Administratie-e-mail (factuur-signalen)</label>
-              <input type="email" value={invoiceMail} onChange={(e) => setInvoiceMail(e.target.value)} placeholder="administratie@bedrijf.nl" />
-            </div>
-            <div className="field" style={{ justifyContent: "flex-end" }}>
-              <button type="submit" className="primary-btn" disabled={settingsBusy} style={{ alignSelf: "flex-start" }}>{settingsBusy ? "Opslaan…" : "Opslaan"}</button>
-            </div>
-          </div>
-        </form>
+        {/* ─────────────── INSTELLINGEN (alleen met Moneybird-koppeling) ─────────────── */}
+        {showFinance && (
+          <>
+            <h2 style={{ fontSize: 20, fontWeight: 700, margin: "44px 0 6px" }}>Instellingen</h2>
+            <p className="muted" style={{ marginBottom: 16 }}>
+              Het e-mailadres van degene die de administratie bijhoudt. De knop &ldquo;Mail naar administratie&rdquo; bij een openstaande-factuursignaal stuurt de factuurlinks naar dit adres.
+            </p>
+            <form className="admin-form" onSubmit={(e) => { e.preventDefault(); saveInvoiceMail(); }}>
+              <div className="form-grid">
+                <div className="field">
+                  <label>Administratie-e-mail (factuur-signalen)</label>
+                  <input type="email" value={invoiceMail} onChange={(e) => setInvoiceMail(e.target.value)} placeholder="administratie@bedrijf.nl" />
+                </div>
+                <div className="field" style={{ justifyContent: "flex-end" }}>
+                  <button type="submit" className="primary-btn" disabled={settingsBusy} style={{ alignSelf: "flex-start" }}>{settingsBusy ? "Opslaan…" : "Opslaan"}</button>
+                </div>
+              </div>
+            </form>
+          </>
+        )}
 
         {/* ─────────────── GOOGLE-KOPPELINGEN ─────────────── */}
         <h2 style={{ fontSize: 20, fontWeight: 700, margin: "44px 0 6px" }}>Google-koppelingen</h2>

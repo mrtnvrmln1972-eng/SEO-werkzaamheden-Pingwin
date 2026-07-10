@@ -22,6 +22,9 @@ export default async function FinancienPage({ searchParams }: { searchParams: { 
   const scope = await getScopeFromCookie(cookies().get(ADMIN_COOKIE)?.value, cookies().get(ADMIN_VIEWAS_COOKIE)?.value);
   if (!scope) redirect("/admin/login");
   if (!scope.isOwner) redirect("/admin");
+  // Zonder Moneybird-koppeling bestaat deze pagina niet: Maartens privé-
+  // administratie hoort alleen in de wereld waar de sleutel staat (Pingwin).
+  if (!moneybirdConfigured()) redirect("/admin");
 
   const now = new Date();
   const thisYear = now.getFullYear();

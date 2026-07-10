@@ -4,6 +4,7 @@ import { ADMIN_COOKIE } from "../../lib/admin-auth";
 import { ADMIN_VIEWAS_COOKIE } from "../../lib/constants";
 import { getScopeFromCookie } from "../../lib/admin-scope";
 import { listClients } from "../../lib/clients";
+import { moneybirdConfigured } from "../../lib/moneybird";
 import AdminClient from "./AdminClient";
 
 export const dynamic = "force-dynamic";
@@ -17,5 +18,7 @@ export default async function AdminPage() {
   const clients = scope.isOwner ? all : all.filter((c) => scope.allowedSlugs?.includes(c.slug));
   // Groepen (Multimedia Concepts) alleen in de Pingwin-wereld tonen.
   const isNoc = (process.env.VERCEL_PROJECT_PRODUCTION_URL || "").includes("noc-seo-cockpit");
-  return <AdminClient initialClients={clients} isOwner={scope.isOwner} showGroups={!isNoc} />;
+  // Financiën (Maartens privé-administratie) alleen tonen in de wereld waar
+  // Moneybird ook echt gekoppeld is; in andere werelden bestaat de knop niet.
+  return <AdminClient initialClients={clients} isOwner={scope.isOwner} showGroups={!isNoc} showFinance={moneybirdConfigured()} />;
 }

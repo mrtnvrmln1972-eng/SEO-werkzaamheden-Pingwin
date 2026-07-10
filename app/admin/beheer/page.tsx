@@ -5,6 +5,7 @@ import { ADMIN_VIEWAS_COOKIE } from "../../../lib/constants";
 import { getScopeFromCookie } from "../../../lib/admin-scope";
 import { listClients } from "../../../lib/clients";
 import { listTeamUsers } from "../../../lib/team-users";
+import { moneybirdConfigured } from "../../../lib/moneybird";
 import BeheerClient from "./BeheerClient";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +29,7 @@ export default async function BeheerPage() {
         ahrefsKeyRef: c.ahrefsKeyRef,
       }))}
       team={team}
+      showFinance={moneybirdConfigured()}
     />
   );
 }
