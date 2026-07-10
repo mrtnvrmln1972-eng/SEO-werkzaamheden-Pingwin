@@ -38,6 +38,41 @@ export function anthropicConfigured(): boolean {
   return !!process.env.ANTHROPIC_API_KEY;
 }
 
+// Zelfde als callClaude, maar met Anthropic's ingebouwde websearch aan: het model
+// zoekt zelf gericht op het web (max maxSearches zoekopdrachten, betaald per
+// zoekopdracht) en verwerkt de resultaten in het antwoord. Voor taken waar de
+// benodigde informatie buiten de eigen site ligt (bijv. bedrijfsgegevens vergaren).
+export async function callClaudeWebSearch(system: string, messages: ChatMsg[], maxTokens = 2000, ctx?: UsageCtx, maxSearches = 8): Promise<string> {
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) throw new Error("ANTHROPIC_API_KEY ontbreekt (voeg hem toe in Vercel).");
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 300000);
+  let res: Response;
+  try {
+    res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+      body: JSON.stringify({
+        model: MODEL, max_tokens: maxTokens, system: systemBlocks(system), messages,
+        tools: [{ type: "web_search_20250305", name: "web_search", max_uses: maxSearches }],
+      }),
+      signal: ctrl.signal,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    throw new Error(`Claude-fout ${res.status}: ${t.slice(0, 300)}`);
+  }
+  const j = await res.json();
+  await logClaudeUsage(ctx, j.usage);
+  // Het antwoord kan uit meerdere blokken bestaan (zoekresultaten + tekst); wij
+  // willen alleen de tekstblokken, samengevoegd.
+  const text = Array.isArray(j.content) ? j.content.filter((c: { type?: string }) => c.type === "text").map((c: { text?: string }) => c.text || "").join("") : "";
+  return text;
+}
+
 export async function callClaude(system: string, messages: ChatMsg[], maxTokens = 1800, ctx?: UsageCtx, model = MODEL): Promise<string> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) throw new Error("ANTHROPIC_API_KEY ontbreekt (voeg hem toe in Vercel om de chat te gebruiken).");

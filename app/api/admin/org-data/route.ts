@@ -4,7 +4,7 @@ import { guardSlug } from "../../../../lib/admin-scope";
 import { getOrgData, saveOrgData, setOrgLocked, autofillOrgData, type OrgData } from "../../../../lib/org-data";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 function admin(req: NextRequest): boolean {
   return verifyAdminSession(req.cookies.get(ADMIN_COOKIE)?.value);

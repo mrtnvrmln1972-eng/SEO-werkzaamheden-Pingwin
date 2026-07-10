@@ -58,8 +58,8 @@ export default function OrgShareClient({ token }: { token: string }) {
           </ul>
           <h2>Wat vragen we van jullie?</h2>
           <p>
-            Wij hebben hieronder alvast zoveel mogelijk ingevuld op basis van jullie website. Sommige dingen kunnen
-            wij niet zelf vinden of controleren. Loop de velden na, corrigeer wat niet klopt en vul aan wat ontbreekt.
+            Wij hebben hieronder alvast zoveel mogelijk ingevuld op basis van jullie website en openbare bronnen
+            (zoals het KVK-register en jullie Google-vermelding). Sommige dingen kunnen wij niet zelf vinden of controleren. Loop de velden na, corrigeer wat niet klopt en vul aan wat ontbreekt.
             Klik daarna op <strong>Opslaan</strong>. Wij verwerken het vervolgens in de site: eerst site-breed
             (de vaste bedrijfsinformatie op elke pagina) en daarna per pagina (bijvoorbeeld dienst-, product- of
             behandelinformatie).

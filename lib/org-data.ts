@@ -1,6 +1,6 @@
 import { sql, ensureSchema } from "./db";
 import { getClientBySlug } from "./clients";
-import { callClaude } from "./anthropic";
+import { callClaudeWebSearch } from "./anthropic";
 import crypto from "crypto";
 
 // ═══════════════════════════════════════════════════════════
@@ -222,7 +222,9 @@ export async function autofillOrgData(slug: string): Promise<{ ok: boolean; data
     ...extraPages.map((u, i) => `PAGINA ${u}:\n${htmlToText(extraHtml[i] || "").slice(0, 5000)}`),
   ];
 
-  const system = `Je vult een bedrijfsgegevens-formulier in op basis van de website van het bedrijf (tekst + bestaande JSON-LD hieronder). Dit formulier wordt de bron voor schema.org structured data.
+  const system = `Je vult een bedrijfsgegevens-formulier in voor schema.org structured data. Je hebt twee bronnen: (1) de website van het bedrijf (tekst + bestaande JSON-LD hieronder) en (2) het web via je zoekfunctie.
+GEBRUIK JE ZOEKFUNCTIE ACTIEF voor wat niet op de site staat: het KVK-nummer (zoek in het KVK-register/kvk.nl), de Google Business-vermelding (Google Maps-link + zichtbaar reviewgemiddelde en -aantal), sociale profielen (Facebook, Instagram, LinkedIn, YouTube), reviewplatforms (Trustpilot, Klantenvertellen, Google) en het oprichtingsjaar.
+VERIFICATIE-EIS: neem een gevonden gegeven alleen op als het aantoonbaar bij DIT bedrijf hoort (zelfde naam plus zelfde plaats/domein/telefoon). Bij naamgenoten of twijfel: veld leeg laten en in "notitie" vermelden. Reviewcijfers alleen invullen met de bron-URL erbij in reviewUrl.
 Geef UITSLUITEND geldige JSON met exact deze velden (string tenzij anders vermeld; onvindbaar = lege string/lege lijst, NOOIT gokken of verzinnen):
 {"bedrijfsnaam":"","bedrijfstype":"kliniek|webshop|dienstverlener|lokaal|informatief","rechtsvorm":"","kvk":"","btw":"","telefoon":"","email":"","straat":"","postcode":"","plaats":"","geenBezoekadres":false,"openingstijden":"","logoUrl":"","priceRange":"","oprichtingsjaar":"","sameAs":[],"areaServed":[],"reviewUrl":"","reviewGemiddelde":"","reviewAantal":"","notitie":"","artsen":[{"naam":"","functie":"","specialisatie":"","big":"","fotoUrl":"","profielUrl":""}],"merken":[],"retourUrl":"","retourTermijn":"","verzendInfo":"","diensten":[{"naam":"","omschrijving":""}]}
 - bedrijfstype: kies wat het beste past. kliniek = zorg/medisch; webshop = verkoopt producten online; dienstverlener = diensten/lead-gen (ook aan huis); lokaal = fysieke locatie waar klanten komen (winkel/praktijk/restaurant); informatief = vooral content.
@@ -234,12 +236,16 @@ Geef UITSLUITEND geldige JSON met exact deze velden (string tenzij anders vermel
 - artsen: ALLEEN bij een kliniek/zorgbedrijf: elke arts/behandelaar die op de site staat (team-/over-ons-pagina), met functie, specialisatie en BIG-nummer als dat vermeld staat; anders lege lijst.
 - merken/retourUrl/retourTermijn/verzendInfo: ALLEEN bij een webshop, en alleen wat de site zelf vermeldt; anders leeg.
 - diensten: ALLEEN bij een dienstverlener: de hoofddiensten van de site (naam + één zin omschrijving); anders lege lijst.
-- notitie: één zin met wat je NIET kon vinden en de klant moet aanvullen.`;
+- sameAs: neem ook via de zoekfunctie gevonden en geverifieerde profielen op (volledige URL's).
+- notitie: één zin met wat je NIET kon vinden of niet zeker wist (de klant vult aan).`;
 
   const user = `BESTAANDE JSON-LD OP DE SITE:\n${jsonLd.join("\n---\n") || "(geen aangetroffen)"}\n\n${textParts.join("\n\n")}`;
   try {
-    const raw = await callClaude(system, [{ role: "user", content: user.slice(0, 90000) }], 2000, { slug, action: "org_autofill" });
-    const parsed = JSON.parse(raw.replace(/```json/gi, "").replace(/```/g, "").trim());
+    const raw = await callClaudeWebSearch(system, [{ role: "user", content: user.slice(0, 90000) }], 3000, { slug, action: "org_autofill" }, 8);
+    const cleaned = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    const parsed = JSON.parse(start >= 0 && end > start ? cleaned.slice(start, end + 1) : cleaned);
     const data = normalize(parsed);
     await saveOrgData(slug, data, "admin");
     return { ok: true, data };
