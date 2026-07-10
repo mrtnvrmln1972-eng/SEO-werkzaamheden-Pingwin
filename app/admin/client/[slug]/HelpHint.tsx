@@ -34,12 +34,15 @@ export default function HelpHint({ text, title, wide, xl }: { text: string; titl
     }
   }
 
-  // Inline-opmaak: **vet** wordt een echt <strong>-element (geen HTML-injectie).
+  // Inline-opmaak: **vet** en __onderstreept__ worden echte elementen
+  // (strong/u), zonder HTML-injectie.
   const rich = (s: string): React.ReactNode[] =>
-    s.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+    s.split(/(\*\*[^*]+\*\*|__[^_]+__)/g).map((part, i) =>
       part.startsWith("**") && part.endsWith("**")
         ? <strong key={i}>{part.slice(2, -2)}</strong>
-        : part,
+        : part.startsWith("__") && part.endsWith("__")
+          ? <u key={i}>{part.slice(2, -2)}</u>
+          : part,
     );
 
   return (
