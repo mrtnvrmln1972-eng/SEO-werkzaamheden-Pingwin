@@ -13,6 +13,12 @@ function admin(req: NextRequest): boolean {
 // Live mails met een klant ophalen uit Microsoft 365.
 export async function GET(req: NextRequest) {
   if (!admin(req)) return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
+  // Lichte status-vraag (voor het mailvenster): is er hier een mailkoppeling?
+  // Zonder koppeling valt de UI terug op het eigen mailprogramma (mailto).
+  if (req.nextUrl.searchParams.get("status") === "1") {
+    const s = await msStatus();
+    return NextResponse.json({ ok: true, connected: s.connected });
+  }
   const slug = req.nextUrl.searchParams.get("slug") || "";
   const g = await guardSlug(req, slug); if (!g.ok) return g.res;
   const client = await getClientBySlug(slug);

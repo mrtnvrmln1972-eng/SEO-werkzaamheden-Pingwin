@@ -371,7 +371,17 @@ export default function TasksEditor({ slug, initialTasks, initialStrategySession
 
   // Open het mail-venster in de gekozen modus. Zonder argument: de aangevinkte
   // taken; met indices (de ✉-knop op een rij): precies die taak/taken.
+  // Is er in deze wereld een mailkoppeling (Microsoft 365)? Zonder koppeling
+  // valt het venster terug op het eigen mailprogramma (mailto met de taken +
+  // document-links als gewone URL's). null = nog niet gecheckt.
+  const [mailConnected, setMailConnected] = useState<boolean | null>(null);
+
   function openComposeFor(idxs?: number[], mode: "dev" | "klant" = "dev") {
+    if (mailConnected === null) {
+      fetch("/api/admin/mail?status=1").then((r) => r.json())
+        .then((d) => setMailConnected(d.ok ? !!d.connected : false))
+        .catch(() => setMailConnected(false));
+    }
     setComposeMode(mode);
     let sel = idxs ?? rows.map((r, i) => ({ r, i })).filter((x) => x.r._mail).map((x) => x.i);
     // Niets aangevinkt bij 'developer'? Val terug op alle developer-taken.
@@ -402,6 +412,34 @@ export default function TasksEditor({ slug, initialTasks, initialStrategySession
   function toggleDevSel(i: number) {
     setDevSel((s) => { const c = new Set(s); if (c.has(i)) c.delete(i); else c.add(i); return c; });
   }
+  // Terugval zonder mailkoppeling: open het eigen mailprogramma met alles
+  // voorgevuld. Links (documenten, deel-link) gaan mee als gewone URL's;
+  // mailprogramma's maken die vanzelf klikbaar.
+  function openMailto() {
+    const selected = rows.map((r, i) => ({ r, i })).filter((x) => devSel.has(x.i)).map((x) => x.r);
+    if (!devTo.trim() || selected.length === 0) { setDevMsg("Vul een ontvanger in en kies minstens één taak."); return; }
+    const urlsFrom = (html: string): string[] => [...(html || "").matchAll(/href="([^"]+)"/g)].map((m) => m[1]);
+    const lines: string[] = [];
+    const noteText = stripHtml(devNote).trim();
+    if (noteText) lines.push(noteText, "");
+    lines.push("Werkzaamheden:");
+    for (const t of selected) {
+      lines.push(`- ${stripHtml(t.taak)}${composeMode === "dev" && t.maand ? ` (${t.maand})` : ""}`);
+      const uitleg = stripHtml(composeMode === "klant" ? (t.klantToelichting || "") : (t.toelichting || "")).trim();
+      if (uitleg) lines.push(`  ${uitleg}`);
+      const links = Array.from(new Set([
+        ...(composeMode === "klant" ? [t.clientDocLink || ""] : [t.docLink || "", t.clientDocLink || ""]),
+        ...urlsFrom(t.taak),
+      ].filter(Boolean)));
+      for (const l of links) lines.push(`  Document: ${l}`);
+    }
+    if (composeMode === "klant" && includeDashLink && shareUrl) lines.push("", `Bekijk het zelf in je eigen dashboard: ${shareUrl}`);
+    const subject = `Werkzaamheden — ${clientName}`;
+    window.open(`mailto:${devTo.trim()}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(lines.join("\n"))}`, "_blank");
+    try { localStorage.removeItem(`pw_maildraft_${slug}_${composeMode}`); } catch { /* geen opslag */ }
+    setDevMsg("Geopend in je mailprogramma; verstuur hem daar.");
+  }
+
   async function sendCompose() {
     const selected = rows.map((r, i) => ({ r, i })).filter((x) => devSel.has(x.i)).map((x) => x.r);
     if (!devTo.trim() || selected.length === 0) { setDevMsg("Vul een ontvanger in en kies minstens één taak."); return; }
@@ -657,11 +695,18 @@ export default function TasksEditor({ slug, initialTasks, initialStrategySession
                   Link &ldquo;Bekijk het zelf in je eigen dashboard&rdquo; onderaan toevoegen <span className="muted">(loginvrije link van deze klant; alleen aanvinken als de klant een dashboard heeft)</span>
                 </label>
               )}
-              {devMsg && <div className={devMsg.startsWith("Verstuurd") ? "saved-msg" : "login-error"} style={{ marginTop: 8 }}>{devMsg}</div>}
+              {mailConnected === false && (
+                <div className="muted" style={{ marginTop: 8, fontSize: 12 }}>
+                  In deze omgeving is geen mailkoppeling; de knop opent je eigen mailprogramma met alles voorgevuld (taken en document-links gaan mee als gewone links, opmaak wordt platte tekst).
+                </div>
+              )}
+              {devMsg && <div className={devMsg.startsWith("Verstuurd") || devMsg.startsWith("Geopend") ? "saved-msg" : "login-error"} style={{ marginTop: 8 }}>{devMsg}</div>}
             </div>
             <div className="compose-foot">
               <button type="button" className="logout-btn" onClick={() => setShowCompose(false)}>Annuleren</button>
-              <button type="button" className="primary-btn small" onClick={sendCompose} disabled={devBusy}>{devBusy ? "Versturen..." : "Verstuur per mail"}</button>
+              {mailConnected === false
+                ? <button type="button" className="primary-btn small" onClick={openMailto}>Open in mailprogramma</button>
+                : <button type="button" className="primary-btn small" onClick={sendCompose} disabled={devBusy}>{devBusy ? "Versturen..." : "Verstuur per mail"}</button>}
             </div>
           </div>
         </div>
