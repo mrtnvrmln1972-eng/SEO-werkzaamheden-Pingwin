@@ -18,12 +18,14 @@ export default function HelpHint({ text, title, wide, xl }: { text: string; titl
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
-  // Tekst → alinea's en bullets ("- " aan het regelbegin).
-  const blocks: { type: "p" | "ul"; items: string[] }[] = [];
+  // Tekst → kopjes ("## "), alinea's en bullets ("- " aan het regelbegin).
+  const blocks: { type: "p" | "ul" | "h"; items: string[] }[] = [];
   for (const raw of (text || "").split("\n")) {
     const line = raw.trim();
     if (!line) continue;
-    if (line.startsWith("- ")) {
+    if (line.startsWith("## ")) {
+      blocks.push({ type: "h", items: [line.slice(3)] });
+    } else if (line.startsWith("- ")) {
       const last = blocks[blocks.length - 1];
       if (last && last.type === "ul") last.items.push(line.slice(2));
       else blocks.push({ type: "ul", items: [line.slice(2)] });
@@ -31,6 +33,14 @@ export default function HelpHint({ text, title, wide, xl }: { text: string; titl
       blocks.push({ type: "p", items: [line] });
     }
   }
+
+  // Inline-opmaak: **vet** wordt een echt <strong>-element (geen HTML-injectie).
+  const rich = (s: string): React.ReactNode[] =>
+    s.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+      part.startsWith("**") && part.endsWith("**")
+        ? <strong key={i}>{part.slice(2, -2)}</strong>
+        : part,
+    );
 
   return (
     <span className="help-hint" tabIndex={0} aria-label={title || "Uitleg"}
@@ -47,9 +57,11 @@ export default function HelpHint({ text, title, wide, xl }: { text: string; titl
             {title && <div className="hh-modal-title">{title}</div>}
             <div className="hh-modal-body">
               {blocks.map((b, i) => (
-                b.type === "p"
-                  ? <p key={i}>{b.items[0]}</p>
-                  : <ul key={i}>{b.items.map((it, j) => <li key={j}>{it}</li>)}</ul>
+                b.type === "h"
+                  ? <div className="hh-h" key={i}>{rich(b.items[0])}</div>
+                  : b.type === "p"
+                    ? <p key={i}>{rich(b.items[0])}</p>
+                    : <ul key={i}>{b.items.map((it, j) => <li key={j}>{rich(it)}</li>)}</ul>
               ))}
             </div>
           </div>

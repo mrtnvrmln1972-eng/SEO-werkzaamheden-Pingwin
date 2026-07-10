@@ -1872,3 +1872,6 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .hh-modal-body p:last-child { margin-bottom: 0; }
 .hh-modal-body ul { margin: 0 0 12px; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
 .hh-modal-body li { margin: 0; }
+.hh-modal-body .hh-h { font-size: 13px; font-weight: 700; color: var(--orange-dark); text-transform: uppercase; letter-spacing: 0.5px; margin: 16px 0 8px; padding-bottom: 4px; border-bottom: 1px solid var(--orange-light, #f6dcc8); }
+.hh-modal-body .hh-h:first-child { margin-top: 2px; }
+.hh-modal-body strong { color: var(--dark); }
