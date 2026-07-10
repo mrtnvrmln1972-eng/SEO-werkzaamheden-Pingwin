@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../../lib/admin-auth";
 import { guardSlug } from "../../../../../lib/admin-scope";
-import { anthropicConfigured, callClaude } from "../../../../../lib/anthropic";
+import { anthropicConfigured, callClaude, LIGHT_MODEL } from "../../../../../lib/anthropic";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -75,7 +75,7 @@ Sluit af met 1 korte, praktische aanbeveling.
 OPMAAK: schoon en compact. Gebruik korte bulletpunten en hooguit een enkel vetgedrukt kopje. Geen tabellen, geen emoji, geen ruwe opsomming van alle data. Maximaal ~150 woorden.`;
     const user = `Hier is de data (alleen cijfers, geen conclusies):\n\n${buildData(metric, totals, pages, kws)}`;
 
-    const markdown = await callClaude(system, [{ role: "user", content: user }], 900, { slug, action: "kpi_toelichting" });
+    const markdown = await callClaude(system, [{ role: "user", content: user }], 900, { slug, action: "kpi_toelichting" }, LIGHT_MODEL);
     return NextResponse.json({ ok: true, markdown: markdown.trim() });
   } catch (e) {
     return NextResponse.json({ ok: false, error: `Kon de toelichting niet maken: ${e instanceof Error ? e.message : "onbekende fout"}` }, { status: 500 });

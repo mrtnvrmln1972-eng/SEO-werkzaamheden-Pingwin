@@ -11,6 +11,7 @@ import { sql, ensureSchema } from "./db";
 // nieuwe regels. Prijs onbekend model -> valt terug op DEFAULT_PRICE.
 const PRICES: Record<string, { in: number; out: number }> = {
   "claude-sonnet-4-6": { in: 3, out: 15 },
+  "claude-haiku-4-5": { in: 1, out: 5 },
 };
 const DEFAULT_PRICE = { in: 3, out: 15 };
 

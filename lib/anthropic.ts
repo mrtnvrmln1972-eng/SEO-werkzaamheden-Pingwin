@@ -7,6 +7,9 @@ export type ChatMsg = { role: "user" | "assistant"; content: string };
 export type UsageCtx = { slug?: string; action: string };
 
 const MODEL = "claude-sonnet-4-6";
+// Goedkoop model (± 3x goedkoper) voor aantoonbaar lichte taken: extractie,
+// korte labels, één-regel-correcties. Kernwerk (analyse, copy, chat) blijft op MODEL.
+export const LIGHT_MODEL = "claude-haiku-4-5";
 
 // Prompt-caching: het (vaak enorme) system-prompt gaat als content-blok met een
 // cache-markering mee. Bij een vervolg-aanroep binnen 5 minuten leest de API dat
@@ -19,12 +22,12 @@ function systemBlocks(system: string) {
 
 // Meet het tokengebruik van één of meer Claude-antwoorden. Faalt stil: meten mag
 // de chat nooit breken (logUsage vangt zelf ook fouten af).
-async function logClaudeUsage(ctx: UsageCtx | undefined, usage: Usage | undefined) {
+async function logClaudeUsage(ctx: UsageCtx | undefined, usage: Usage | undefined, model = MODEL) {
   if (!ctx) return;
   try {
     const { logUsage } = await import("./usage");
     await logUsage({
-      slug: ctx.slug, service: "anthropic", action: ctx.action, model: MODEL,
+      slug: ctx.slug, service: "anthropic", action: ctx.action, model,
       tokensIn: usage?.input_tokens || 0, tokensOut: usage?.output_tokens || 0,
       cacheRead: usage?.cache_read_input_tokens || 0, cacheWrite: usage?.cache_creation_input_tokens || 0,
     });
@@ -35,7 +38,7 @@ export function anthropicConfigured(): boolean {
   return !!process.env.ANTHROPIC_API_KEY;
 }
 
-export async function callClaude(system: string, messages: ChatMsg[], maxTokens = 1800, ctx?: UsageCtx): Promise<string> {
+export async function callClaude(system: string, messages: ChatMsg[], maxTokens = 1800, ctx?: UsageCtx, model = MODEL): Promise<string> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) throw new Error("ANTHROPIC_API_KEY ontbreekt (voeg hem toe in Vercel om de chat te gebruiken).");
   // Harde time-out: hangt de Claude-API, dan gooit dit een fout i.p.v. eindeloos te
@@ -47,7 +50,7 @@ export async function callClaude(system: string, messages: ChatMsg[], maxTokens 
     res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({ model: MODEL, max_tokens: maxTokens, system: systemBlocks(system), messages }),
+      body: JSON.stringify({ model, max_tokens: maxTokens, system: systemBlocks(system), messages }),
       signal: ctrl.signal,
     });
   } catch (e) {
@@ -59,7 +62,7 @@ export async function callClaude(system: string, messages: ChatMsg[], maxTokens 
     throw new Error(`Claude-fout ${res.status}: ${t.slice(0, 300)}`);
   }
   const j = await res.json();
-  await logClaudeUsage(ctx, j.usage);
+  await logClaudeUsage(ctx, j.usage, model);
   return (j.content || []).filter((c: { type: string }) => c.type === "text").map((c: { text: string }) => c.text).join("");
 }
 

@@ -8,7 +8,7 @@ import { getClientBySlug } from "./clients";
 import { getGscPageOpportunities, getGscDailyForPage } from "./google";
 import { cacheGet, cacheSet } from "./ahrefs";
 import { measurePage } from "./page-measure";
-import { callClaude } from "./anthropic";
+import { callClaude, LIGHT_MODEL } from "./anthropic";
 import { META_RULES_PROMPT, metaHardIssues, metaPixelInfo, type MetaKind } from "./meta-rules";
 
 let tablesReady = false;
@@ -215,7 +215,7 @@ async function fixHardIssues(kind: MetaKind, text: string, keyword: string, slug
       `Huidige tekst: ${best}`,
       `Geef ALLEEN de nieuwe tekst terug, één regel, geen uitleg of aanhalingstekens.`,
     ].filter(Boolean).join("\n");
-    const raw = await callClaude(META_RULES_PROMPT, [{ role: "user", content: user }], 300, { slug, action: "meta_correctie" }).catch(() => "");
+    const raw = await callClaude(META_RULES_PROMPT, [{ role: "user", content: user }], 300, { slug, action: "meta_correctie" }, LIGHT_MODEL).catch(() => "");
     const cand = (raw || "").trim().split("\n")[0].replace(/^["']|["']$/g, "").trim();
     if (!cand) break;
     const candIssues = metaHardIssues(kind, cand);

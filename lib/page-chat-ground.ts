@@ -2,7 +2,7 @@ import { getClientBySlug } from "./clients";
 import { getClientUrls, getPagePlan, getPageClusterAdvice } from "./site-urls";
 import { getGscForPage, getGscQueryPageMatrix } from "./google";
 import { getTasks } from "./tasks";
-import { callClaude } from "./anthropic";
+import { callClaude, LIGHT_MODEL } from "./anthropic";
 
 // ═══════════════════════════════════════════════════════════
 // GROUNDING VOOR DE PAGINA-CHAT
@@ -168,7 +168,7 @@ Het "plan"-veld is markdown met deze structuur (gebruik ECHT deze opmaak, geen r
 Regels: neem elke concrete taak uit de analyse mee (kort geformuleerd, één regel per taak). Laat "plan" weg als er geen duidelijk nieuw pagina-plan is; laat "tasks" weg als er geen taken zijn. Bevat de analyse geen concreet voorstel (bijvoorbeeld alleen een verhelderende vraag), antwoord dan met {}. Gebruik nergens emoji.
 FASE per taak: neem de fase over zoals de analyse die aangeeft (bijvoorbeeld een sectie "Fase: Bouwen"). Bepaal je hem zelf, gebruik dan: "Bouwen" voor inhoud/on-page werk (H1, title, meta, tekst schrijven, nieuwe pagina, schema); "Herbedraden" ALLEEN voor interne links/ankers ompunten of content verplaatsen tussen pagina's; "Opschonen" voor redirects, canonical, dubbele content of oude termen weghalen. De meeste on-page-optimalisatietaken zijn dus "Bouwen", niet "Herbedraden".`;
   try {
-    const raw = await callClaude(system, [{ role: "user", content: analysis.slice(0, 12000) }], 2500, { action: "voorstel" });
+    const raw = await callClaude(system, [{ role: "user", content: analysis.slice(0, 12000) }], 2500, { action: "voorstel" }, LIGHT_MODEL);
     const jsonText = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
     const parsed = JSON.parse(jsonText);
     const proposal: Proposal = {};
@@ -221,7 +221,7 @@ Regels: gebruik ALLEEN url's die exact in de lijst staan. Neem alleen pagina's o
 BESTAANDE PAGINA'S:
 ${others.map((u) => `- ${u}`).join("\n")}`;
   try {
-    const raw = await callClaude(system, [{ role: "user", content: analysis.slice(0, 12000) }], 2000, { action: "cluster_advies" });
+    const raw = await callClaude(system, [{ role: "user", content: analysis.slice(0, 12000) }], 2000, { action: "cluster_advies" }, LIGHT_MODEL);
     const jsonText = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
     const parsed = JSON.parse(jsonText);
     const items = Array.isArray(parsed.items) ? parsed.items : [];

@@ -3,7 +3,7 @@ import { getClientBySlug } from "./clients";
 import { getClientUrls, getPagePlan, getPageDriveFolder } from "./site-urls";
 import { getGscForPage, getGscQueryPageMatrix } from "./google";
 import { getAhrefsTopPages, getDomainKeywordsMatching, getUrlOrganicKeywords, getSerpOverview, getKeywordsOverview, ahrefsConfigured } from "./ahrefs";
-import { callClaude } from "./anthropic";
+import { callClaude, LIGHT_MODEL } from "./anthropic";
 import { cannibalDocSpec, canniTaskDocSpec } from "./page-doc";
 import { buildPingwinDoc } from "./pingwin-docx";
 import { uploadDocx } from "./drive";
@@ -156,7 +156,7 @@ export async function runPageCannibal(slug: string, url: string): Promise<void> 
       const pick = await callClaude(
         `Je selecteert kandidaat-pagina's die de landingspagina "${subjectPath}" kunnen kannibaliseren. Kies uit de lijst de pagina's die qua plaats/thema in de buurt liggen (bijv. omliggende plaatsen bij een stad, of variant-URL's van dezelfde plaats/dienst; jij kent de Nederlandse geografie). Geef UITSLUITEND de gekozen paden terug, één per regel, maximaal 12, niets anders.`,
         [{ role: "user", content: `Landingspagina: ${subjectPath} (plaats/thema: ${term}).\nKandidaat-pagina's:\n${locPages.slice(0, 120).join("\n")}` }],
-        800, { slug, action: "page_cannibal_pick" },
+        800, { slug, action: "page_cannibal_pick" }, LIGHT_MODEL,
       ).catch(() => "");
       candidates = pick.split("\n").map((l) => l.trim()).filter((l) => l.startsWith("/") && l !== subjectPath).slice(0, 12);
     }
@@ -297,7 +297,7 @@ Beantwoord scanbaar in markdown, hooguit ~200 woorden:
 3. **Advies:** wat zou jij doen (nu uitvoeren / als taak inplannen / naar de pagina-aanpak schuiven / afwijzen), in één of twee zinnen met de kern van het waarom.
 Verzin niets; baseer je alleen op de meegegeven data.`,
     [{ role: "user", content: `Geanalyseerde landingspagina (de beoogde winnaar): ${url}\nRij-pagina waar het voorstel over gaat: ${rowUrl}\n\nVoorstel uit de analyse-tabel:\n${rowLine || "(regel niet gevonden)"}\n\nGSC-data rij-pagina:\n${fmt(gscRow)}\n\nGSC-data winnaar:\n${fmt(gscWinner)}` }],
-    1500, { slug, action: "canni_duiding" },
+    1500, { slug, action: "canni_duiding" }, LIGHT_MODEL,
   );
 }
 

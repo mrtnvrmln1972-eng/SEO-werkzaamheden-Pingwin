@@ -4,7 +4,7 @@ import { getTasks } from "./tasks";
 import { getGscForPage } from "./google";
 import { fetchPageContent } from "./page-content";
 import { measurePage, measureToText, measureCompetitors, competitorsToText } from "./page-measure";
-import { callClaude, callClaudeAgentic, type ToolDef, type ToolRunner } from "./anthropic";
+import { callClaude, callClaudeAgentic, LIGHT_MODEL, type ToolDef, type ToolRunner } from "./anthropic";
 import type { DocSpec } from "./pingwin-docx";
 import { SEO_CRITERIA_MD } from "./seo-criteria";
 import { META_RULES_PROMPT, metaPixelInfo, metaVerdictText, metaHardIssues, type MetaKind } from "./meta-rules";
@@ -706,7 +706,7 @@ async function ensureHeadingLabels(spec: DocSpec, slug: string): Promise<void> {
   const system = `Je bent een senior SEO-copywriter. Hieronder alle tussenkoppen van een copy-document voor een landingspagina, in volgorde. Zet vóór elke kop die een PAGINAKOP is de juiste niveau-aanduiding: "H1 — " (precies één keer, de hoofdkop van de pagina), "H2 — " (sectiekoppen) of "H3 — " (subsecties, praktijkvoorbeelden, FAQ-vragen, call-to-action). Regels die GEEN paginakop zijn (zoals "Paginatitel (meta-title)", "Meta-description" of document-tussenkopjes) laat je EXACT ongewijzigd. Koppen die al een H-label hebben laat je ook ongewijzigd. Verander verder NIETS aan de tekst.
 Geef UITSLUITEND een JSON-array met exact ${blocks.length} strings in dezelfde volgorde terug. Geen tekst eromheen.`;
   const user = blocks.map((b, i) => `${i + 1}. ${b.text}`).join("\n");
-  const raw = await callClaude(system, [{ role: "user", content: user }], 2500, { slug, action: "copy_koplabels" });
+  const raw = await callClaude(system, [{ role: "user", content: user }], 2500, { slug, action: "copy_koplabels" }, LIGHT_MODEL);
   try {
     const arr = JSON.parse(raw.replace(/```json/gi, "").replace(/```/g, "").trim());
     if (Array.isArray(arr) && arr.length === blocks.length && arr.every((x) => typeof x === "string" && x.trim())) {
@@ -787,7 +787,7 @@ async function enforceMetaInSpec(spec: DocSpec, slug: string, primary: string): 
         `Huidige tekst: ${best}`,
         `Geef ALLEEN de nieuwe tekst terug, exact zoals hij in Google moet komen. Geen uitleg, geen aanhalingstekens, één regel.`,
       ].filter(Boolean).join("\n");
-      const raw = await callClaude(META_RULES_PROMPT, [{ role: "user", content: user }], 300, { slug, action: "meta_correctie" }).catch(() => "");
+      const raw = await callClaude(META_RULES_PROMPT, [{ role: "user", content: user }], 300, { slug, action: "meta_correctie" }, LIGHT_MODEL).catch(() => "");
       const cand = (raw || "").trim().split("\n")[0].replace(/^["']|["']$/g, "").trim();
       if (!cand) break;
       // Houd de beste kandidaat: alleen overnemen als hij minder gebreken heeft of smaller is.
