@@ -229,7 +229,7 @@ type PageKey = "prio" | "url" | "clicks" | "dclicks" | "impressions" | "dimpress
 // (Focus/Zoekwoord, ster/Pagina) staan vast links; deze groepen kun je herordenen.
 const KW_COLS_DEFAULT = ["volume", "position", "page", "clicks", "impressions", "ctr"];
 const PAGE_COLS_DEFAULT = ["clicks", "impressions"];
-const AH_COLS_DEFAULT = ["volume", "position", "page", "intent", "kans"];
+const AH_COLS_DEFAULT = ["volume", "position", "page", "intent", "kans", "open"];
 function sanitizeCols(saved: unknown, def: string[]): string[] {
   if (!Array.isArray(saved)) return def;
   const known = saved.filter((k): k is string => typeof k === "string" && def.includes(k));
@@ -628,6 +628,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
     intent: (d) => <SortTh key="intent" thProps={d} label="Intent" k="intent" sort={ahSort} setSort={setAhSort} className="kpi-metric-sep" />,
     kans: (d) => <SortTh key="kans" thProps={d} label="Kans" k="kans" sort={ahSort} setSort={setAhSort} className="kpi-metric-sep" />,
     page: (d) => <SortTh key="page" thProps={d} label="Pagina" title="De pagina die op dit zoekwoord rankt (uit Ahrefs). Leeg? Klik op Verversen om de pagina's erbij op te halen." k="page" sort={ahSort} setSort={setAhSort} className="kpi-metric-sep" />,
+    open: (d) => <th key="open" {...d} className="kpi-metric-sep" aria-label="Open in Pagina's" />,
   };
   const ahCell: Record<string, (k: AhrefsKeyword) => ReactNode> = {
     volume: (k) => <td key="volume" className="kpi-metric-sep">{k.volume != null ? nl(k.volume) : <span className="muted">&mdash;</span>}</td>,
@@ -635,6 +636,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
     intent: (k) => <td key="intent" className="kpi-metric-sep">{k.intent ? <span className={"kw-intent " + k.intent}>{k.intent}</span> : <span className="muted">&mdash;</span>}</td>,
     kans: (k) => <td key="kans" className="kpi-metric-sep">{isFruit(k) ? <span className="pg-kans quickwin">Quick win</span> : <span className="muted">&mdash;</span>}</td>,
     page: (k) => <td key="page" className="kpi-metric-sep kpi-ah-page">{k.url ? <a href={k.url} target="_blank" rel="noreferrer">{shortUrl(k.url)}</a> : <span className="muted" title="Nog geen pagina bekend; klik op Verversen om de pagina's erbij op te halen (kost credits).">&mdash;</span>}</td>,
+    open: (k) => <td key="open" className="kpi-openpage-cell">{k.url ? <button type="button" className="ghost-btn small" onClick={(e) => { e.stopPropagation(); onOpenPage?.(k.url!); }} title="Open deze pagina in het Pagina's-tabje">open in Pagina&rsquo;s</button> : <span className="muted">&mdash;</span>}</td>,
   };
   type Ga4Ch = NonNullable<typeof ga4>["channels"][number];
   const chGetters: Record<ChKey, (c: Ga4Ch) => number | string> = {
