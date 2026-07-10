@@ -105,6 +105,17 @@ function orgToText(org: OrgData, locked: boolean): string {
   if (org.areaServed.length) lines.push(`Werkgebied (areaServed): ${org.areaServed.join(", ")}`);
   add("Reviews-URL", org.reviewUrl);
   if (org.reviewGemiddelde && org.reviewAantal) lines.push(`Reviews (zichtbaar): gemiddeld ${org.reviewGemiddelde} uit ${org.reviewAantal} beoordelingen`);
+  if (org.artsen.length) {
+    lines.push("Artsen/behandelaren (voor Physician-nodes met credentials; koppel de arts(en) die bij deze pagina horen):");
+    for (const a of org.artsen) lines.push(`- ${a.naam}${a.functie ? `, ${a.functie}` : ""}${a.specialisatie ? ` (${a.specialisatie})` : ""}${a.big ? `, BIG: ${a.big}` : ""}${a.profielUrl ? `, profiel: ${a.profielUrl}` : ""}${a.fotoUrl ? `, foto: ${a.fotoUrl}` : ""}`);
+  }
+  if (org.merken.length) lines.push(`Merken (webshop): ${org.merken.join(", ")}`);
+  if (org.retourUrl || org.retourTermijn) lines.push(`Retourbeleid: ${[org.retourTermijn, org.retourUrl].filter(Boolean).join(", ")}`);
+  add("Verzendinformatie", org.verzendInfo);
+  if (org.diensten.length) {
+    lines.push("Diensten (voor Service-nodes):");
+    for (const d of org.diensten) lines.push(`- ${d.naam}${d.omschrijving ? `: ${d.omschrijving}` : ""}`);
+  }
   lines.push(locked ? "STATUS GEGEVENS: door de klant/Pingwin bevestigd en vergrendeld (betrouwbare bron)." : "STATUS GEGEVENS: NOG NIET bevestigd; wees terughoudend met onzekere velden.");
   return lines.join("\n") || "(geen bedrijfsgegevens ingevuld)";
 }

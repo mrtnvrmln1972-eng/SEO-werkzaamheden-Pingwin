@@ -1876,3 +1876,12 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .hh-modal-body .hh-h { font-size: 13px; font-weight: 700; color: var(--orange-dark); text-transform: uppercase; letter-spacing: 0.5px; margin: 16px 0 8px; padding-bottom: 4px; border-bottom: 1px solid var(--orange-light, #f6dcc8); }
 .hh-modal-body .hh-h:first-child { margin-top: 2px; }
 .hh-modal-body strong { color: var(--dark); }
+
+/* Type-specifieke secties in het bedrijfsgegevens-formulier (artsen/diensten/webshop). */
+.org-typesec { border-top: 1px solid var(--border); padding-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.org-typesec-head { font-size: 12.5px; font-weight: 800; color: var(--orange-dark); display: inline-flex; align-items: center; }
+.org-row { display: grid; grid-template-columns: repeat(5, 1fr) auto; gap: 8px; align-items: center; }
+.org-row.org-row-2 { grid-template-columns: 1fr 2fr auto; }
+.org-row input { font-family: inherit; font-size: 13px; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--white); }
+.org-row input:focus { outline: none; border-color: var(--orange); }
+@media (max-width: 760px) { .org-row, .org-row.org-row-2 { grid-template-columns: 1fr 1fr; } }

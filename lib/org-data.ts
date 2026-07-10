@@ -37,6 +37,13 @@ export type OrgData = {
   reviewGemiddelde: string; // alleen als het zichtbaar/echt is
   reviewAantal: string;
   notitie: string;
+  // Type-specifieke aanvullingen (welke sectie getoond wordt volgt uit bedrijfstype):
+  artsen: { naam: string; functie: string; specialisatie: string; big: string; fotoUrl: string; profielUrl: string }[]; // kliniek
+  merken: string[];        // webshop
+  retourUrl: string;       // webshop: pagina met retourbeleid
+  retourTermijn: string;   // webshop: bijv. "30 dagen"
+  verzendInfo: string;     // webshop: bijv. "gratis vanaf €50, levering 1-2 werkdagen"
+  diensten: { naam: string; omschrijving: string }[]; // dienstverlener
 };
 
 export const EMPTY_ORG: OrgData = {
@@ -44,6 +51,7 @@ export const EMPTY_ORG: OrgData = {
   straat: "", postcode: "", plaats: "", geenBezoekadres: false, openingstijden: "", logoUrl: "",
   priceRange: "", oprichtingsjaar: "", sameAs: [], areaServed: [], reviewUrl: "", reviewGemiddelde: "",
   reviewAantal: "", notitie: "",
+  artsen: [], merken: [], retourUrl: "", retourTermijn: "", verzendInfo: "", diensten: [],
 };
 
 export type OrgRecord = { data: OrgData; locked: boolean; shareToken: string; updatedAt: string | null; updatedBy: string };
@@ -79,6 +87,19 @@ function normalize(raw: unknown): OrgData {
     sameAs: arr("sameAs"), areaServed: arr("areaServed"), reviewUrl: str("reviewUrl"),
     reviewGemiddelde: str("reviewGemiddelde"), reviewAantal: str("reviewAantal"), notitie: str("notitie"),
     bedrijfstype: (["kliniek", "webshop", "dienstverlener", "lokaal", "informatief"].includes(type) ? type : "") as OrgData["bedrijfstype"],
+    retourUrl: str("retourUrl"), retourTermijn: str("retourTermijn"), verzendInfo: str("verzendInfo"),
+    merken: arr("merken"),
+    artsen: (Array.isArray(r.artsen) ? (r.artsen as Record<string, unknown>[]) : [])
+      .filter((a) => a && typeof a === "object")
+      .map((a) => ({
+        naam: String(a.naam || "").trim(), functie: String(a.functie || "").trim(), specialisatie: String(a.specialisatie || "").trim(),
+        big: String(a.big || "").trim(), fotoUrl: String(a.fotoUrl || "").trim(), profielUrl: String(a.profielUrl || "").trim(),
+      }))
+      .filter((a) => a.naam),
+    diensten: (Array.isArray(r.diensten) ? (r.diensten as Record<string, unknown>[]) : [])
+      .filter((d) => d && typeof d === "object")
+      .map((d) => ({ naam: String(d.naam || "").trim(), omschrijving: String(d.omschrijving || "").trim() }))
+      .filter((d) => d.naam),
   };
 }
 
@@ -203,13 +224,16 @@ export async function autofillOrgData(slug: string): Promise<{ ok: boolean; data
 
   const system = `Je vult een bedrijfsgegevens-formulier in op basis van de website van het bedrijf (tekst + bestaande JSON-LD hieronder). Dit formulier wordt de bron voor schema.org structured data.
 Geef UITSLUITEND geldige JSON met exact deze velden (string tenzij anders vermeld; onvindbaar = lege string/lege lijst, NOOIT gokken of verzinnen):
-{"bedrijfsnaam":"","bedrijfstype":"kliniek|webshop|dienstverlener|lokaal|informatief","rechtsvorm":"","kvk":"","btw":"","telefoon":"","email":"","straat":"","postcode":"","plaats":"","geenBezoekadres":false,"openingstijden":"","logoUrl":"","priceRange":"","oprichtingsjaar":"","sameAs":[],"areaServed":[],"reviewUrl":"","reviewGemiddelde":"","reviewAantal":"","notitie":""}
+{"bedrijfsnaam":"","bedrijfstype":"kliniek|webshop|dienstverlener|lokaal|informatief","rechtsvorm":"","kvk":"","btw":"","telefoon":"","email":"","straat":"","postcode":"","plaats":"","geenBezoekadres":false,"openingstijden":"","logoUrl":"","priceRange":"","oprichtingsjaar":"","sameAs":[],"areaServed":[],"reviewUrl":"","reviewGemiddelde":"","reviewAantal":"","notitie":"","artsen":[{"naam":"","functie":"","specialisatie":"","big":"","fotoUrl":"","profielUrl":""}],"merken":[],"retourUrl":"","retourTermijn":"","verzendInfo":"","diensten":[{"naam":"","omschrijving":""}]}
 - bedrijfstype: kies wat het beste past. kliniek = zorg/medisch; webshop = verkoopt producten online; dienstverlener = diensten/lead-gen (ook aan huis); lokaal = fysieke locatie waar klanten komen (winkel/praktijk/restaurant); informatief = vooral content.
 - geenBezoekadres: true als het duidelijk een aan-huis/ambulant bedrijf is zonder bezoeklocatie.
 - sameAs: volledige URL's van sociale profielen en een Google Business/Maps-link als die op de site staat.
 - areaServed: plaatsen/regio's die de site expliciet noemt als werkgebied.
 - reviewGemiddelde/reviewAantal: ALLEEN als er op de site zichtbaar een gemiddelde en aantal staan.
 - openingstijden: leesbaar samenvatten, bijv. "ma t/m vr 9:00-17:30, za 10:00-14:00".
+- artsen: ALLEEN bij een kliniek/zorgbedrijf: elke arts/behandelaar die op de site staat (team-/over-ons-pagina), met functie, specialisatie en BIG-nummer als dat vermeld staat; anders lege lijst.
+- merken/retourUrl/retourTermijn/verzendInfo: ALLEEN bij een webshop, en alleen wat de site zelf vermeldt; anders leeg.
+- diensten: ALLEEN bij een dienstverlener: de hoofddiensten van de site (naam + één zin omschrijving); anders lege lijst.
 - notitie: één zin met wat je NIET kon vinden en de klant moet aanvullen.`;
 
   const user = `BESTAANDE JSON-LD OP DE SITE:\n${jsonLd.join("\n---\n") || "(geen aangetroffen)"}\n\n${textParts.join("\n\n")}`;

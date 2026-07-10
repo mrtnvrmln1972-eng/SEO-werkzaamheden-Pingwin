@@ -11,12 +11,15 @@ import HelpHint from "./HelpHint";
 // Het kale formulier (OrgDataForm) wordt hergebruikt op de klant-deelpagina.
 // ═══════════════════════════════════════════════════════════
 
+export type OrgArts = { naam: string; functie: string; specialisatie: string; big: string; fotoUrl: string; profielUrl: string };
+export type OrgDienst = { naam: string; omschrijving: string };
 export type OrgFormData = {
   bedrijfsnaam: string; bedrijfstype: string; rechtsvorm: string; kvk: string; btw: string;
   telefoon: string; email: string; straat: string; postcode: string; plaats: string;
   geenBezoekadres: boolean; openingstijden: string; logoUrl: string; priceRange: string;
   oprichtingsjaar: string; sameAs: string[]; areaServed: string[]; reviewUrl: string;
   reviewGemiddelde: string; reviewAantal: string; notitie: string;
+  artsen: OrgArts[]; merken: string[]; retourUrl: string; retourTermijn: string; verzendInfo: string; diensten: OrgDienst[];
 };
 
 const TYPES: { v: string; label: string }[] = [
@@ -74,6 +77,46 @@ export function OrgDataForm({ data, onChange, disabled }: { data: OrgFormData; o
         <span className="org-label">Werkgebied (plaatsen/regio&rsquo;s, één per regel)<HelpHint text="De plaatsen of regio's waar jullie werken. Vooral belangrijk voor bedrijven zonder bezoekadres." /></span>
         <textarea rows={2} value={data.areaServed.join("\n")} disabled={disabled} onChange={(e) => set({ areaServed: e.target.value.split("\n").map((s) => s.trim()).filter(Boolean) })} />
       </label>
+      {data.bedrijfstype === "kliniek" && (
+        <div className="org-typesec">
+          <div className="org-typesec-head">Artsen en behandelaren<HelpHint wide text="De artsen/behandelaren die op de website staan. Naam, functie en specialisatie helpen Google en AI-systemen het vertrouwen in medische informatie te bepalen; het BIG-nummer is daarbij het sterkste bewijs (openbaar register). Deze gegevens koppelen we aan de behandelpagina's." /></div>
+          {data.artsen.map((a, i) => (
+            <div className="org-row" key={i}>
+              <input placeholder="Naam" value={a.naam} disabled={disabled} onChange={(e) => set({ artsen: data.artsen.map((x, j) => j === i ? { ...x, naam: e.target.value } : x) })} />
+              <input placeholder="Functie (bijv. oogarts)" value={a.functie} disabled={disabled} onChange={(e) => set({ artsen: data.artsen.map((x, j) => j === i ? { ...x, functie: e.target.value } : x) })} />
+              <input placeholder="Specialisatie" value={a.specialisatie} disabled={disabled} onChange={(e) => set({ artsen: data.artsen.map((x, j) => j === i ? { ...x, specialisatie: e.target.value } : x) })} />
+              <input placeholder="BIG-nummer" value={a.big} disabled={disabled} onChange={(e) => set({ artsen: data.artsen.map((x, j) => j === i ? { ...x, big: e.target.value } : x) })} />
+              <input placeholder="Profielpagina-URL" value={a.profielUrl} disabled={disabled} onChange={(e) => set({ artsen: data.artsen.map((x, j) => j === i ? { ...x, profielUrl: e.target.value } : x) })} />
+              {!disabled && <button type="button" className="ghost-btn small" onClick={() => set({ artsen: data.artsen.filter((_, j) => j !== i) })}>&times;</button>}
+            </div>
+          ))}
+          {!disabled && <button type="button" className="ghost-btn small" onClick={() => set({ artsen: [...data.artsen, { naam: "", functie: "", specialisatie: "", big: "", fotoUrl: "", profielUrl: "" }] })}>+ Arts toevoegen</button>}
+        </div>
+      )}
+      {data.bedrijfstype === "webshop" && (
+        <div className="org-typesec">
+          <div className="org-typesec-head">Webshop-gegevens<HelpHint wide text="Retourbeleid en verzendinformatie zijn vereisten van Google om producten met prijs en voorraad in de zoekresultaten te tonen. Vul alleen in wat ook echt op de site staat." /></div>
+          <div className="org-grid">
+            <label className="org-field"><span className="org-label">Merk(en), kommagescheiden</span><input value={data.merken.join(", ")} disabled={disabled} onChange={(e) => set({ merken: e.target.value.split(",").map((m) => m.trim()).filter(Boolean) })} /></label>
+            <label className="org-field"><span className="org-label">Retourbeleid-URL</span><input value={data.retourUrl} disabled={disabled} onChange={(e) => set({ retourUrl: e.target.value })} /></label>
+            <label className="org-field"><span className="org-label">Retourtermijn</span><input placeholder="bijv. 30 dagen" value={data.retourTermijn} disabled={disabled} onChange={(e) => set({ retourTermijn: e.target.value })} /></label>
+            <label className="org-field"><span className="org-label">Verzendinformatie</span><input placeholder="bijv. gratis vanaf €50, 1-2 werkdagen" value={data.verzendInfo} disabled={disabled} onChange={(e) => set({ verzendInfo: e.target.value })} /></label>
+          </div>
+        </div>
+      )}
+      {data.bedrijfstype === "dienstverlener" && (
+        <div className="org-typesec">
+          <div className="org-typesec-head">Diensten<HelpHint wide text="De hoofddiensten van het bedrijf. Elke dienst wordt in de structured data een eigen vermelding die aan het bedrijf en het werkgebied gekoppeld is." /></div>
+          {data.diensten.map((d, i) => (
+            <div className="org-row org-row-2" key={i}>
+              <input placeholder="Dienst (bijv. zwemvijver aanleggen)" value={d.naam} disabled={disabled} onChange={(e) => set({ diensten: data.diensten.map((x, j) => j === i ? { ...x, naam: e.target.value } : x) })} />
+              <input placeholder="Korte omschrijving" value={d.omschrijving} disabled={disabled} onChange={(e) => set({ diensten: data.diensten.map((x, j) => j === i ? { ...x, omschrijving: e.target.value } : x) })} />
+              {!disabled && <button type="button" className="ghost-btn small" onClick={() => set({ diensten: data.diensten.filter((_, j) => j !== i) })}>&times;</button>}
+            </div>
+          ))}
+          {!disabled && <button type="button" className="ghost-btn small" onClick={() => set({ diensten: [...data.diensten, { naam: "", omschrijving: "" }] })}>+ Dienst toevoegen</button>}
+        </div>
+      )}
       <label className="org-field">
         <span className="org-label">Opmerkingen / nog uit te zoeken</span>
         <textarea rows={2} value={data.notitie} disabled={disabled} onChange={(e) => set({ notitie: e.target.value })} />
