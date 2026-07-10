@@ -8,13 +8,26 @@ export type UsageCtx = { slug?: string; action: string };
 
 const MODEL = "claude-sonnet-4-6";
 
+// Prompt-caching: het (vaak enorme) system-prompt gaat als content-blok met een
+// cache-markering mee. Bij een vervolg-aanroep binnen 5 minuten leest de API dat
+// deel uit de cache tegen 10% van het normale tarief.
+type Usage = { input_tokens?: number; output_tokens?: number; cache_read_input_tokens?: number; cache_creation_input_tokens?: number };
+
+function systemBlocks(system: string) {
+  return [{ type: "text", text: system, cache_control: { type: "ephemeral" } }];
+}
+
 // Meet het tokengebruik van één of meer Claude-antwoorden. Faalt stil: meten mag
 // de chat nooit breken (logUsage vangt zelf ook fouten af).
-async function logClaudeUsage(ctx: UsageCtx | undefined, usage: { input_tokens?: number; output_tokens?: number } | undefined) {
+async function logClaudeUsage(ctx: UsageCtx | undefined, usage: Usage | undefined) {
   if (!ctx) return;
   try {
     const { logUsage } = await import("./usage");
-    await logUsage({ slug: ctx.slug, service: "anthropic", action: ctx.action, model: MODEL, tokensIn: usage?.input_tokens || 0, tokensOut: usage?.output_tokens || 0 });
+    await logUsage({
+      slug: ctx.slug, service: "anthropic", action: ctx.action, model: MODEL,
+      tokensIn: usage?.input_tokens || 0, tokensOut: usage?.output_tokens || 0,
+      cacheRead: usage?.cache_read_input_tokens || 0, cacheWrite: usage?.cache_creation_input_tokens || 0,
+    });
   } catch { /* stil: meting mag de chat niet breken */ }
 }
 
@@ -34,7 +47,7 @@ export async function callClaude(system: string, messages: ChatMsg[], maxTokens 
     res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({ model: MODEL, max_tokens: maxTokens, system, messages }),
+      body: JSON.stringify({ model: MODEL, max_tokens: maxTokens, system: systemBlocks(system), messages }),
       signal: ctrl.signal,
     });
   } catch (e) {
@@ -60,25 +73,51 @@ export async function callClaudeAgentic(system: string, messages: ChatMsg[], too
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) throw new Error("ANTHROPIC_API_KEY ontbreekt (voeg hem toe in Vercel).");
   const apiMessages: { role: string; content: unknown }[] = messages.map((m) => ({ role: m.role, content: m.content }));
-  let uIn = 0, uOut = 0; // tokens optellen over alle rondes van dit gesprek
+  const u: Usage = { input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 }; // optellen over alle rondes
+
+  // Cache-markering op de laatste tool-definitie: tools + system vormen samen het
+  // vaste begin van elke ronde en worden zo maar één keer vol betaald.
+  const cachedTools = tools.map((t, i) => (i === tools.length - 1 ? { ...t, cache_control: { type: "ephemeral" } } : t));
+
+  // Verplaats de cache-markering naar het laatste blok van het laatste bericht,
+  // zodat elke ronde de complete gespreksgeschiedenis van de vorige ronde hergebruikt.
+  // Oude markeringen eerst weghalen (maximaal 4 per verzoek toegestaan).
+  function markLastMessage() {
+    for (const m of apiMessages) {
+      if (Array.isArray(m.content)) for (const b of m.content as Record<string, unknown>[]) delete b.cache_control;
+    }
+    const last = apiMessages[apiMessages.length - 1];
+    if (!last) return;
+    if (typeof last.content === "string") last.content = [{ type: "text", text: last.content }];
+    const blocks = last.content as Record<string, unknown>[];
+    if (blocks.length) blocks[blocks.length - 1].cache_control = { type: "ephemeral" };
+  }
 
   async function call(withTools: boolean) {
+    markLastMessage();
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "x-api-key": key as string, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({ model: MODEL, max_tokens: maxTokens, system, messages: apiMessages, ...(withTools ? { tools } : {}) }),
+      body: JSON.stringify({ model: MODEL, max_tokens: maxTokens, system: systemBlocks(system), messages: apiMessages, ...(withTools && tools.length ? { tools: cachedTools } : {}) }),
     });
     if (!res.ok) { const t = await res.text().catch(() => ""); throw new Error(`Claude-fout ${res.status}: ${t.slice(0, 300)}`); }
     return res.json();
   }
 
+  function addUsage(usage: Usage | undefined) {
+    u.input_tokens! += usage?.input_tokens || 0;
+    u.output_tokens! += usage?.output_tokens || 0;
+    u.cache_read_input_tokens! += usage?.cache_read_input_tokens || 0;
+    u.cache_creation_input_tokens! += usage?.cache_creation_input_tokens || 0;
+  }
+
   for (let round = 0; round < maxRounds; round++) {
     const j = await call(true);
-    uIn += j.usage?.input_tokens || 0; uOut += j.usage?.output_tokens || 0;
+    addUsage(j.usage);
     const content: Block[] = j.content || [];
     const toolUses = content.filter((c) => c.type === "tool_use");
     if (j.stop_reason !== "tool_use" || toolUses.length === 0) {
-      await logClaudeUsage(ctx, { input_tokens: uIn, output_tokens: uOut });
+      await logClaudeUsage(ctx, u);
       return content.filter((c) => c.type === "text").map((c) => c.text || "").join("");
     }
     apiMessages.push({ role: "assistant", content });
@@ -92,7 +131,7 @@ export async function callClaudeAgentic(system: string, messages: ChatMsg[], too
   }
   // Rondes op: forceer een tekstantwoord zonder tools.
   const j = await call(false);
-  uIn += j.usage?.input_tokens || 0; uOut += j.usage?.output_tokens || 0;
-  await logClaudeUsage(ctx, { input_tokens: uIn, output_tokens: uOut });
+  addUsage(j.usage);
+  await logClaudeUsage(ctx, u);
   return ((j.content || []) as Block[]).filter((c) => c.type === "text").map((c) => c.text || "").join("") || "(geen antwoord)";
 }

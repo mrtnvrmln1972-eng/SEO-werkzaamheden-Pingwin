@@ -14,9 +14,14 @@ const PRICES: Record<string, { in: number; out: number }> = {
 };
 const DEFAULT_PRICE = { in: 3, out: 15 };
 
-export function estimateCostUsd(model: string | undefined, tokensIn: number, tokensOut: number): number {
+// Cache-tarieven: een cache-read kost 10% van de normale inputprijs, een
+// cache-write 125% (eenmalige toeslag). Zo klopt het bedrag ook met caching aan.
+export function estimateCostUsd(model: string | undefined, tokensIn: number, tokensOut: number, cacheRead = 0, cacheWrite = 0): number {
   const p = (model && PRICES[model]) || DEFAULT_PRICE;
-  return (tokensIn / 1_000_000) * p.in + (tokensOut / 1_000_000) * p.out;
+  return (tokensIn / 1_000_000) * p.in
+    + (cacheRead / 1_000_000) * p.in * 0.1
+    + (cacheWrite / 1_000_000) * p.in * 1.25
+    + (tokensOut / 1_000_000) * p.out;
 }
 
 export type UsageEntry = {
@@ -26,6 +31,8 @@ export type UsageEntry = {
   model?: string | null;
   tokensIn?: number;
   tokensOut?: number;
+  cacheRead?: number;  // tokens uit de prompt-cache gelezen (10% tarief)
+  cacheWrite?: number; // tokens naar de prompt-cache geschreven (125% tarief)
 };
 
 // Schrijft één verbruik-regel. Mag NOOIT de aanroeper laten crashen: als de
@@ -34,13 +41,17 @@ export async function logUsage(e: UsageEntry): Promise<void> {
   try {
     const tokensIn = e.tokensIn || 0;
     const tokensOut = e.tokensOut || 0;
+    const cacheRead = e.cacheRead || 0;
+    const cacheWrite = e.cacheWrite || 0;
     // Alleen Claude heeft een tokenprijs. Bij andere diensten (ahrefs: units in
     // tokens_in) zou de standaardprijs een onzin-bedrag opleveren; dus 0.
-    const cost = e.service === "anthropic" ? estimateCostUsd(e.model || undefined, tokensIn, tokensOut) : 0;
+    const cost = e.service === "anthropic" ? estimateCostUsd(e.model || undefined, tokensIn, tokensOut, cacheRead, cacheWrite) : 0;
     await ensureSchema();
+    // tokens_in blijft het totale input-beeld (vers + cache), zodat het overzicht
+    // dezelfde aantallen toont; de korting zit in cost_usd.
     await sql`
       INSERT INTO service_usage (client_slug, service, action, model, tokens_in, tokens_out, cost_usd)
-      VALUES (${e.slug ?? null}, ${e.service}, ${e.action ?? null}, ${e.model ?? null}, ${tokensIn}, ${tokensOut}, ${cost})`;
+      VALUES (${e.slug ?? null}, ${e.service}, ${e.action ?? null}, ${e.model ?? null}, ${tokensIn + cacheRead + cacheWrite}, ${tokensOut}, ${cost})`;
   } catch (err) {
     // Bewust stil: meting mag de echte taak niet breken.
     console.error("[usage] loggen mislukt:", (err as Error).message);
