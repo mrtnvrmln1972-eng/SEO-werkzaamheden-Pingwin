@@ -7,10 +7,11 @@ import { createPortal } from "react-dom";
 // optionele titel, alinea's en bullets, in de Pingwin-huisstijl. De popover wordt
 // via een portal op document.body gerenderd met een vaste positie, zodat hij nooit
 // wordt afgeknipt door kaarten met overflow of lagere z-index.
-export default function HelpHint({ text, title, wide }: { text: string; title?: string; wide?: boolean }) {
+export default function HelpHint({ text, title, wide, xl }: { text: string; title?: string; wide?: boolean; xl?: boolean }) {
   const ref = useRef<HTMLSpanElement | null>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
-  const width = wide ? 400 : 320;
+  // xl = het grote uitlegvenster voor volledige toelichtingen bij stappen/knoppen.
+  const width = xl ? 600 : wide ? 400 : 320;
 
   function show() {
     const r = ref.current?.getBoundingClientRect();
@@ -18,7 +19,7 @@ export default function HelpHint({ text, title, wide }: { text: string; title?: 
     const left = Math.max(8, Math.min(r.left - 8, window.innerWidth - width - 8));
     // Onder het bolletje; past hij daar niet meer, dan erboven.
     const below = r.bottom + 8;
-    const estH = 220;
+    const estH = xl ? 380 : 220;
     const top = below + estH > window.innerHeight && r.top - estH - 8 > 0 ? Math.max(8, r.top - estH - 8) : below;
     setPos({ left, top });
   }
@@ -43,7 +44,7 @@ export default function HelpHint({ text, title, wide }: { text: string; title?: 
       onClick={(e) => { e.stopPropagation(); if (pos) hide(); else show(); }}>
       <span className="help-hint-q">?</span>
       {pos && typeof document !== "undefined" && createPortal(
-        <span className="help-hint-bubble hh-fixed" style={{ left: pos.left, top: pos.top, width }}>
+        <span className="help-hint-bubble hh-fixed" style={{ left: pos.left, top: pos.top, width, maxHeight: "70vh", overflowY: "auto" }}>
           <span className="hh-label"><span className="hh-label-dot">?</span> Uitleg</span>
           {title && <span className="hh-title">{title}</span>}
           {blocks.map((b, i) => (

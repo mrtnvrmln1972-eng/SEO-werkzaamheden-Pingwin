@@ -831,7 +831,6 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
                 <button type="button" className="primary-btn small" onClick={syncAhrefs} disabled={ahrefsBusy}>{ahrefsBusy ? "Ophalen…" : (ahrefsKw.length ? "Verversen" : "Ahrefs-zoekwoorden ophalen")}</button>
               </span>
             </div>
-            {ahDataCompareDate && <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>Posities vergeleken met {nlDate(ahDataCompareDate)}, de pijltjes tonen de verandering sindsdien.</div>}
             {ahrefsMsg && <div className="saved-msg" style={{ marginBottom: 8 }}>{ahrefsMsg}</div>}
             {ahrefsKw.length === 0 ? (
               <div className="muted">Nog geen Ahrefs-zoekwoorden opgehaald. Klik &ldquo;Ahrefs-zoekwoorden ophalen&rdquo;: dat haalt in één keer het hele domein op (kost Ahrefs-credits) en slaat het op, zodat de scan er daarna zonder credits op draait.</div>
