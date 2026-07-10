@@ -73,6 +73,9 @@ async function doEnsureRunTable(): Promise<void> {
     )`;
   // audience: "klant" (standaard, korte klantversie) of "intern" (uitgebreide versie op verzoek).
   await sql`ALTER TABLE page_doc_runs ADD COLUMN IF NOT EXISTS audience TEXT NOT NULL DEFAULT 'klant'`;
+  // retries: hoe vaak een hangende stap is teruggezet. Noodrem tegen eindeloze
+  // herhaal-lussen (elke mislukte poging kost echt AI-geld).
+  await sql`ALTER TABLE page_doc_runs ADD COLUMN IF NOT EXISTS retries INT NOT NULL DEFAULT 0`;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -181,9 +184,20 @@ async function recoverStale(): Promise<void> {
     WHERE r.status = 'running'
       AND r.analyse_state <> 'running' AND r.blauwdruk_state <> 'running' AND r.copy_state <> 'running'
       AND EXISTS (SELECT 1 FROM page_doc_runs n WHERE n.client_slug = r.client_slug AND n.url = r.url AND n.id > r.id AND n.status = 'running')`;
-  await sql`UPDATE page_doc_runs SET analyse_state = 'pending', updated_at = now() WHERE status = 'running' AND analyse_state = 'running' AND updated_at < now() - interval '13 minutes'`;
-  await sql`UPDATE page_doc_runs SET blauwdruk_state = 'pending', updated_at = now() WHERE status = 'running' AND blauwdruk_state = 'running' AND updated_at < now() - interval '13 minutes'`;
-  await sql`UPDATE page_doc_runs SET copy_state = 'pending', updated_at = now() WHERE status = 'running' AND copy_state = 'running' AND updated_at < now() - interval '13 minutes'`;
+  // NOODREM: na 3 teruggezette (hangende) pogingen stopt de run definitief. Zonder
+  // deze grens blijft een stap die telkens halverwege sneuvelt eindeloos opnieuw
+  // draaien, en elke poging kost het volle AI-bedrag (zo liep Kamsteeg op 10-07-2026
+  // tientallen diepe analyses op zonder dat er iemand iets deed).
+  await sql`
+    UPDATE page_doc_runs SET status = 'error',
+      error = 'Automatisch gestopt: de generatie bleef hangen en is 3 keer opnieuw geprobeerd. Start de run handmatig opnieuw als het document nog nodig is.',
+      updated_at = now()
+    WHERE status = 'running' AND retries >= 3
+      AND (analyse_state = 'running' OR blauwdruk_state = 'running' OR copy_state = 'running')
+      AND updated_at < now() - interval '13 minutes'`;
+  await sql`UPDATE page_doc_runs SET analyse_state = 'pending', retries = retries + 1, updated_at = now() WHERE status = 'running' AND analyse_state = 'running' AND updated_at < now() - interval '13 minutes'`;
+  await sql`UPDATE page_doc_runs SET blauwdruk_state = 'pending', retries = retries + 1, updated_at = now() WHERE status = 'running' AND blauwdruk_state = 'running' AND updated_at < now() - interval '13 minutes'`;
+  await sql`UPDATE page_doc_runs SET copy_state = 'pending', retries = retries + 1, updated_at = now() WHERE status = 'running' AND copy_state = 'running' AND updated_at < now() - interval '13 minutes'`;
 }
 
 async function processRun(id: number): Promise<void> {
