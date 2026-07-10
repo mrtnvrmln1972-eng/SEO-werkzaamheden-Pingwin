@@ -318,6 +318,7 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
     `WERKWIJZE (belangrijk): jij bent de specialist; Maarten wil ANTWOORDEN, geen vragenlijsten.\n` +
     `- Je hebt gereedschap om ZELF te kijken: meet_pagina (content/koppen/meta/links van een URL), gsc_pagina (zoekwoorden per pagina), ahrefs_pagina (posities, volume en verwijzende domeinen van een pagina) en serp_top10 (de concurrentie op een zoekwoord). GEBRUIK dat gereedschap eerst, en beantwoord de vraag daarna onderbouwd met wat je zag.\n` +
     `- Stel NOOIT een lijst controlevragen die je zelf kunt beantwoorden (zoals "staat het zoekwoord in de H1?" of "hoeveel backlinks heeft de pagina?"): meet het en vertel het resultaat.\n` +
+    `- Enkelvoud/meervoud en andere woordvormen tellen als GEDEKT: "veranda's" in een H1 dekt het zoekwoord "veranda" gewoon af (Google begrijpt woordvormen). Zeg dus nooit "het zoekwoord ontbreekt in de H1" als alleen de woordvorm verschilt; beoordeel koppen op kern-overlap en op een onderscheidende propositie.\n` +
     `- Trek zelf de conclusie en sluit af met concrete aanbevelingen in volgorde van impact. Hooguit \u00e9\u00e9n korte vraag, alleen als een echte keuze bij Maarten ligt.\n\n--- PROJECTCONTEXT ---\n${context}`;
 
   try {
