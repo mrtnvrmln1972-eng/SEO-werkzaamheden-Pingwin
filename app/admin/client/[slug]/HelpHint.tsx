@@ -1,30 +1,24 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
-// "?"-bolletje met een nette uitleg-popover (hover of focus): UITLEG-label,
-// optionele titel, alinea's en bullets, in de Pingwin-huisstijl. De popover wordt
-// via een portal op document.body gerenderd met een vaste positie, zodat hij nooit
-// wordt afgeknipt door kaarten met overflow of lagere z-index.
+// "?"-bolletje met uitleg. Klik opent een gecentreerde popup midden in beeld
+// (rustig leesbaar, nette opmaak), sluiten via het kruisje, een klik buiten de
+// popup of Escape. De props wide/xl blijven bestaan voor bestaande aanroepen
+// maar sturen alleen nog de maximale breedte van de popup.
 export default function HelpHint({ text, title, wide, xl }: { text: string; title?: string; wide?: boolean; xl?: boolean }) {
-  const ref = useRef<HTMLSpanElement | null>(null);
-  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
-  // xl = het grote uitlegvenster voor volledige toelichtingen bij stappen/knoppen.
-  const width = xl ? 600 : wide ? 400 : 320;
+  const [open, setOpen] = useState(false);
+  const maxWidth = xl ? 680 : wide ? 560 : 480;
 
-  function show() {
-    const r = ref.current?.getBoundingClientRect();
-    if (!r) return;
-    const left = Math.max(8, Math.min(r.left - 8, window.innerWidth - width - 8));
-    // Onder het bolletje; past hij daar niet meer, dan erboven.
-    const below = r.bottom + 8;
-    const estH = xl ? 380 : 220;
-    const top = below + estH > window.innerHeight && r.top - estH - 8 > 0 ? Math.max(8, r.top - estH - 8) : below;
-    setPos({ left, top });
-  }
-  const hide = () => setPos(null);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
 
+  // Tekst → alinea's en bullets ("- " aan het regelbegin).
   const blocks: { type: "p" | "ul"; items: string[] }[] = [];
   for (const raw of (text || "").split("\n")) {
     const line = raw.trim();
@@ -39,20 +33,27 @@ export default function HelpHint({ text, title, wide, xl }: { text: string; titl
   }
 
   return (
-    <span className="help-hint" tabIndex={0} aria-label={text} ref={ref}
-      onMouseEnter={show} onMouseLeave={hide} onFocus={show} onBlur={hide}
-      onClick={(e) => { e.stopPropagation(); if (pos) hide(); else show(); }}>
-      <span className="help-hint-q">?</span>
-      {pos && typeof document !== "undefined" && createPortal(
-        <span className="help-hint-bubble hh-fixed" style={{ left: pos.left, top: pos.top, width, maxHeight: "70vh", overflowY: "auto" }}>
-          <span className="hh-label"><span className="hh-label-dot">?</span> Uitleg</span>
-          {title && <span className="hh-title">{title}</span>}
-          {blocks.map((b, i) => (
-            b.type === "p"
-              ? <span className="hh-p" key={i}>{b.items[0]}</span>
-              : <span className="hh-ul" key={i}>{b.items.map((it, j) => <span className="hh-li" key={j}><span className="hh-li-dot" />{it}</span>)}</span>
-          ))}
-        </span>,
+    <span className="help-hint" tabIndex={0} aria-label={title || "Uitleg"}
+      onClick={(e) => { e.stopPropagation(); setOpen(true); }}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); setOpen(true); } }}>
+      <span className="help-hint-q" title="Klik voor uitleg">?</span>
+      {open && typeof document !== "undefined" && createPortal(
+        <div className="hh-overlay" onClick={(e) => { e.stopPropagation(); setOpen(false); }} role="dialog" aria-modal="true">
+          <div className="hh-modal" style={{ maxWidth }} onClick={(e) => e.stopPropagation()}>
+            <div className="hh-modal-top">
+              <span className="hh-label"><span className="hh-label-dot">?</span> Uitleg</span>
+              <button type="button" className="hh-modal-close" aria-label="Sluiten" onClick={() => setOpen(false)}>&times;</button>
+            </div>
+            {title && <div className="hh-modal-title">{title}</div>}
+            <div className="hh-modal-body">
+              {blocks.map((b, i) => (
+                b.type === "p"
+                  ? <p key={i}>{b.items[0]}</p>
+                  : <ul key={i}>{b.items.map((it, j) => <li key={j}>{it}</li>)}</ul>
+              ))}
+            </div>
+          </div>
+        </div>,
         document.body,
       )}
     </span>
