@@ -1227,7 +1227,8 @@ button.ck-collapse-head {
 /* KPI-tabellen: geen eigen scroll-context, zodat de kolomkoppen sticky blijven
    t.o.v. het venster tot de volgende lijst (net onder de vaste paginakop). */
 .res-table-wrap:has(.kpi-table) { overflow: visible; }
-.kpi-table thead th { position: sticky; top: 126px; z-index: 20; }
+/* Zelfde afstand als de Pagina's-tabel: de vaste paginakop is ~81px hoog. */
+.kpi-table thead th { position: sticky; top: 80px; z-index: 20; }
 .kpi-scroll { max-height: 460px; overflow-y: auto; }
 .kpi-scroll thead th { position: sticky; top: 0; z-index: 2; }
 
