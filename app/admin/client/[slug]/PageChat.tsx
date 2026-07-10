@@ -120,7 +120,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     } catch { setIlApplyMsg("Overnemen mislukt."); } finally { setIlApplyBusy(false); }
   }
   // Stap 7: structured data (achtergrond-analyse + overnemen), spiegelt stap 6.
-  const [sch, setSch] = useState<{ status: string; result: string; jsonld: string; warnings: string[]; error: string; updatedAt: string | null; stale?: boolean } | null>(null);
+  const [sch, setSch] = useState<{ status: string; result: string; jsonld: string; warnings: string[]; error: string; updatedAt: string | null; stale?: boolean; openCopy?: boolean } | null>(null);
   const [schBusy, setSchBusy] = useState(false);
   const [schDocOpen, setSchDocOpen] = useState(true);
   const [schJsonOpen, setSchJsonOpen] = useState(false);
@@ -128,7 +128,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   async function loadSch() {
     try {
       const d = await fetch(`/api/admin/page-schema?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}`).then((r) => r.json());
-      if (d.ok) setSch({ status: d.status, result: d.result, jsonld: d.jsonld, warnings: d.warnings || [], error: d.error, updatedAt: d.updatedAt, stale: !!d.stale });
+      if (d.ok) setSch({ status: d.status, result: d.result, jsonld: d.jsonld, warnings: d.warnings || [], error: d.error, updatedAt: d.updatedAt, stale: !!d.stale, openCopy: !!d.openCopy });
     } catch { /* stil */ }
   }
   useEffect(() => { loadSch(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [slug, url]);
@@ -139,6 +139,9 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   }, [sch?.status, slug, url]);
   async function runSch() {
     if (schBusy || sch?.status === "running") return;
+    // Structured data is het sluitstuk: de markup moet kloppen met de zichtbare
+    // (nieuwe) tekst. Staat er nog een open copy-taak, eerst expliciet bevestigen.
+    if (sch?.openCopy && !window.confirm("Let op: er staat nog een niet-afgeronde copy-taak voor deze pagina. De structured data hoort pas gemaakt te worden als de nieuwe teksten (met FAQ's) volledig live op de site staan, anders past de markup straks niet bij de pagina.\n\nWeet je zeker dat de pagina al volledig live staat en je nu wilt analyseren?")) return;
     setSchBusy(true);
     setSch((s2) => (s2 ? { ...s2, status: "running", error: "" } : { status: "running", result: "", jsonld: "", warnings: [], error: "", updatedAt: null }));
     try {

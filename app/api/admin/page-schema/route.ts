@@ -5,6 +5,7 @@ import { guardSlug } from "../../../../lib/admin-scope";
 import { anthropicConfigured } from "../../../../lib/anthropic";
 import { getPageSchema, markPageSchemaRunning, runPageSchema } from "../../../../lib/page-schema";
 import { getChangeEventsForUrl } from "../../../../lib/content-tracking";
+import { getTasks } from "../../../../lib/tasks";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -31,7 +32,14 @@ export async function GET(req: NextRequest) {
       stale = !!last && new Date(last).getTime() > new Date(state.updatedAt).getTime();
     } catch { /* signaal is aanvulling */ }
   }
-  return NextResponse.json({ ok: true, ...state, stale });
+  // Volgorde-bewaking: staat er nog een niet-afgeronde copy-taak voor deze pagina,
+  // dan staan de nieuwe teksten waarschijnlijk nog niet live en is de analyse te vroeg.
+  let openCopy = false;
+  try {
+    const tasks = await getTasks(slug);
+    openCopy = tasks.some((t) => t.stepKind === "copy_doc" && (t.pageUrl || "") === url && (t.status || "").toLowerCase() !== "klaar");
+  } catch { /* signaal is aanvulling */ }
+  return NextResponse.json({ ok: true, ...state, stale, openCopy });
 }
 
 // POST: start de analyse (draait server-side door; de kaart pollt de status).
