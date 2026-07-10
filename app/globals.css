@@ -1895,3 +1895,7 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .hh-callout { position: absolute; left: calc(100% + 10px); top: 50%; transform: translateY(-50%); z-index: 70; white-space: nowrap; background: var(--orange); color: #fff; font-size: 12px; font-weight: 700; letter-spacing: .2px; padding: 6px 12px; border-radius: 999px; box-shadow: 0 4px 14px rgba(0,0,0,0.18); pointer-events: none; animation: hh-callout-in .3s ease-out; }
 .hh-callout::before { content: ""; position: absolute; left: -5px; top: 50%; transform: translateY(-50%) rotate(45deg); width: 10px; height: 10px; background: var(--orange); }
 @keyframes hh-callout-in { from { opacity: 0; transform: translateY(-50%) translateX(-6px); } to { opacity: 1; transform: translateY(-50%) translateX(0); } }
+
+/* Status-onbekend-badge: het ?-bolletje van HelpHint netjes in de badge-cel. */
+.url-badge.url-unknown { background: none; border: none; padding: 0; }
+.url-badge.url-unknown .help-hint { margin-left: 0; }

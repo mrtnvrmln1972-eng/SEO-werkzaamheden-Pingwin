@@ -11,7 +11,7 @@ function shortUrl(url: string): string {
   try { const u = new URL(url); return (u.pathname + u.search) || "/"; } catch { return url; }
 }
 function statusBadge(status: number | null, redirectTarget: string) {
-  if (status === null) return <span className="url-badge url-unknown" title="Niet bereikbaar / niet gescand">?</span>;
+  if (status === null) return <span className="url-badge url-unknown"><HelpHint title="Status onbekend" text={"Deze pagina is nog niet gescand of was niet bereikbaar bij de laatste scan.\n- Klik op 'Website inlezen' bovenaan om alle pagina's opnieuw te scannen.\n- Blijft de status leeg, controleer dan of de pagina echt bestaat en bereikbaar is."} /></span>;
   if (status >= 200 && status < 300) return <span className="url-badge url-ok">{status}</span>;
   if (status >= 300 && status < 400) return <span className="url-badge url-redir" title={redirectTarget ? `→ ${redirectTarget}` : "redirect"}>{status}</span>;
   return <span className="url-badge url-bad">{status}</span>;
