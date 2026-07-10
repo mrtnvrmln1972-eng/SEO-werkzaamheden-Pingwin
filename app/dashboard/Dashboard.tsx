@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import type { ClientBudget } from "../../lib/clients";
 import {
   parseCSV,
@@ -10,6 +11,39 @@ import {
   type DashboardData,
 } from "../../lib/sheet";
 import LinkPreview from "../admin/client/[slug]/LinkPreview";
+
+// "?"-uitleg bij een taak: klik opent een nette gecentreerde popup (zelfde
+// opmaak als de uitleg-popups in de cockpit), sluiten via kruisje/buiten/Escape.
+function TaskHelp({ html }: { html: string }) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+  return (
+    <span className="task-help-wrap">
+      <span className="task-help has" tabIndex={0} role="button" aria-label="Toelichting" title="Klik voor toelichting"
+        onClick={(e) => { e.stopPropagation(); setOpen(true); }}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen(true); } }}>?</span>
+      {open && typeof document !== "undefined" && createPortal(
+        <div className="hh-overlay" onClick={(e) => { e.stopPropagation(); setOpen(false); }} role="dialog" aria-modal="true">
+          <div className="hh-modal" style={{ maxWidth: 520 }} onClick={(e) => e.stopPropagation()}>
+            <div className="hh-modal-top">
+              <span className="hh-label"><span className="hh-label-dot">?</span> Toelichting</span>
+              <button type="button" className="hh-modal-close" aria-label="Sluiten" onClick={() => setOpen(false)}>&times;</button>
+            </div>
+            <div className="hh-modal-body md" dangerouslySetInnerHTML={{ __html: html }} />
+          </div>
+        </div>,
+        document.body,
+      )}
+    </span>
+  );
+}
+
+
 
 type Props = {
   name: string;
@@ -394,12 +428,7 @@ function renderRows(monthTasks: DashboardData["tasks"]) {
           <span className="task-name">
             <span className="task-name-text" dangerouslySetInnerHTML={{ __html: clientTaskTitle(task) }} />
             {done && <span className="task-check-dash" title="Klaar">✓</span>}
-            {hasUitleg && (
-              <span className="task-help-wrap">
-                <span className="task-help has" tabIndex={0} aria-label="Toelichting">?</span>
-                <span className="task-tip" dangerouslySetInnerHTML={{ __html: safeHtml(uitleg) }} />
-              </span>
-            )}
+            {hasUitleg && <TaskHelp html={safeHtml(uitleg)} />}
           </span>
         </td>
         <td className="cell-time">{minutes > 0 ? formatTime(minutes) : <span className="muted">&mdash;</span>}</td>
