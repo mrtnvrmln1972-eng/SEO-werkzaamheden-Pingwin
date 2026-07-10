@@ -7,7 +7,7 @@ import { measurePage, measureToText, measureCompetitors, competitorsToText } fro
 import { callClaude, callClaudeAgentic, type ToolDef, type ToolRunner } from "./anthropic";
 import type { DocSpec } from "./pingwin-docx";
 import { SEO_CRITERIA_MD } from "./seo-criteria";
-import { META_RULES_PROMPT, metaPixelInfo, metaVerdictText, type MetaKind } from "./meta-rules";
+import { META_RULES_PROMPT, metaPixelInfo, metaVerdictText, metaHardIssues, type MetaKind } from "./meta-rules";
 import { getPageSpeed, pageSpeedToText } from "./pagespeed";
 import { ahrefsConfigured, getUrlOrganicKeywords, getSerpOverview, getKeywordsOverview, getKeywordIdeas } from "./ahrefs";
 
@@ -773,17 +773,6 @@ function findMetaSpots(spec: DocSpec): MetaSpot[] {
     }
   }
   return spots;
-}
-
-// Harde gebreken die een herschrijving rechtvaardigen (te breed voor Google, pijp,
-// vierkante haken). Te kort laten we staan: dat kost geen afkapping.
-function metaHardIssues(kind: MetaKind, text: string): string[] {
-  const issues: string[] = [];
-  const info = metaPixelInfo(kind, text);
-  if (info.px > info.max) issues.push(`te breed: ${info.px} px, harde grens ${info.max} px (${info.chars} tekens)`);
-  if (kind === "meta_title" && /\|/.test(text)) issues.push("bevat een pijp (|); gebruik een koppelteken of laat het merk weg");
-  if (kind === "meta_title" && /[\[\]]/.test(text)) issues.push("bevat vierkante haken; die worden door Google herschreven");
-  return issues;
 }
 
 async function enforceMetaInSpec(spec: DocSpec, slug: string, primary: string): Promise<void> {

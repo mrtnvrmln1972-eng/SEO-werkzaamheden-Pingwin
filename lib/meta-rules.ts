@@ -115,6 +115,20 @@ export function metaVerdictText(kind: MetaKind, text: string): string {
   return `${info.chars} tekens, ${info.px} px van max ${info.max}; ${woord}`;
 }
 
+/**
+ * Harde gebreken die een herschrijving rechtvaardigen (te breed voor Google,
+ * pijp, vierkante haken). Te kort is geen hard gebrek: dat kost geen afkapping.
+ * Gedeeld door de correctielus in page-doc en de CTR-machine.
+ */
+export function metaHardIssues(kind: MetaKind, text: string): string[] {
+  const issues: string[] = [];
+  const info = metaPixelInfo(kind, text);
+  if (info.px > info.max) issues.push(`te breed: ${info.px} px, harde grens ${info.max} px (${info.chars} tekens)`);
+  if (kind === "meta_title" && /\|/.test(text)) issues.push("bevat een pijp (|); gebruik een koppelteken of laat het merk weg");
+  if (kind === "meta_title" && /[\[\]]/.test(text)) issues.push("bevat vierkante haken; die worden door Google herschreven");
+  return issues;
+}
+
 /* ------------------------------------------------------------------
  * CTR-regelchecks (uitvoerbare vorm van META-01 t/m META-10).
  * ------------------------------------------------------------------ */

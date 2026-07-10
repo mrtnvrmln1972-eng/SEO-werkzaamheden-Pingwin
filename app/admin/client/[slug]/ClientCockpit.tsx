@@ -21,10 +21,11 @@ import DeveloperOverview from "../../developer/DeveloperOverview";
 import KpiPanel from "./KpiPanel";
 import PagesPanel from "./PagesPanel";
 import WijzigingenPanel from "./WijzigingenPanel";
+import MetaCtrPanel from "./MetaCtrPanel";
 import InvoiceAlert from "./InvoiceAlert";
 import SelectionActions from "./SelectionActions";
 
-type Tab = "overzicht" | "werkzaamheden" | "paginas" | "resultaten" | "klant" | "developer" | "wijzigingen" | "cannibalisatie" | "interne-links";
+type Tab = "overzicht" | "werkzaamheden" | "paginas" | "resultaten" | "klant" | "developer" | "wijzigingen" | "cannibalisatie" | "interne-links" | "meta";
 
 // Jouw Superhuman-account (Microsoft 365 hangt hieronder).
 const SUPERHUMAN_ACCOUNT = "Maarten@pingwin.nl";
@@ -74,7 +75,7 @@ export default function ClientCockpit({
   // Directe feedback bij het wisselen van klant: de nieuwe pagina moet server-
   // side data ophalen en dat duurt even; zonder signaal voelt dat als bevroren.
   const [switchingTo, setSwitchingTo] = useState<string | null>(null);
-  const validTab = (t?: string): Tab => (t === "werkzaamheden" || t === "paginas" || t === "resultaten" || t === "klant" || t === "developer" || t === "wijzigingen") ? t : "werkzaamheden";
+  const validTab = (t?: string): Tab => (t === "werkzaamheden" || t === "paginas" || t === "resultaten" || t === "klant" || t === "developer" || t === "wijzigingen" || t === "meta") ? t : "werkzaamheden";
   const [tab, setTab] = useState<Tab>(validTab(initialTab));
   // Demo-filter voor de klanten-dropdown: alleen klanten met mooie ontwikkeling
   // (28 dagen of 3 maanden), voor schermdelen met potentiële klanten.
@@ -297,6 +298,7 @@ export default function ClientCockpit({
               ["werkzaamheden", "Taken", ""],
               ["paginas", "Pagina’s", ""],
               ["resultaten", "KPI’s", ""],
+              ["meta", "Meta & CTR", "Pagina's met veel vertoningen maar te weinig klikken: betere meta-teksten = direct meer bezoekers"],
               ["wijzigingen", "Wijzigingen", ""],
               ["klant", "Klant", ""],
               ["developer", "Developer", "Alle developer-taken over alle klanten"],
@@ -554,6 +556,8 @@ export default function ClientCockpit({
         )}
 
         {tab === "wijzigingen" && <WijzigingenPanel slug={client.slug} />}
+
+        {tab === "meta" && <MetaCtrPanel slug={client.slug} />}
 
         {tab === "developer" && <DeveloperOverview embedded />}
       </div>
