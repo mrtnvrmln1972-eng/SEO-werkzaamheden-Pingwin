@@ -30,9 +30,9 @@ async function driveErr(res: Response, actie: string): Promise<string> {
     return "De Google Drive API staat nog niet aan in je Google Cloud-project. Zet hem aan (console.cloud.google.com, Drive API, Enable) en probeer opnieuw.";
   }
   if (res.status === 403 && /insufficient|scope/i.test(reason + message)) {
-    return "De Google-koppeling mist de Drive-toestemming. Koppel Google opnieuw en vink Google Drive aan.";
+    return "De Drive-koppeling mist de juiste toestemming. Koppel Google Drive opnieuw via Beheer → Google-koppelingen.";
   }
-  if (res.status === 401) return "De Google-koppeling is verlopen. Koppel Google opnieuw.";
+  if (res.status === 401) return "De Google Drive-koppeling is verlopen of ingetrokken. Koppel hem opnieuw via Beheer → Google-koppelingen (knop 'Drive koppelen').";
   return `Drive gaf status ${res.status} bij ${actie}${message ? `: ${message}` : ""}${reason ? ` [${reason}]` : ""}.`;
 }
 
