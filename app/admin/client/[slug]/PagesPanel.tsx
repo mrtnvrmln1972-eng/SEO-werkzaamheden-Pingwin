@@ -372,7 +372,7 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
             {profileOpen ? "▾" : "▸"} Klantprofiel {(profile || "").trim() ? <span className="plan-chip has">ingevuld</span> : <span className="plan-chip">leeg</span>}
             {profileSaved && <span className="focus-save-status" style={{ marginLeft: 8 }}>✓ opgeslagen</span>}
           </button>
-          <span onClick={(e) => e.stopPropagation()}><HelpHint xl title="Wat is het klantprofiel en waar wordt het gebruikt?" text={"Het klantprofiel is de vaste briefing over deze klant: wie het bedrijf is, wat het aanbiedt, voor wie (doelgroep en hun twijfels), het werkgebied (lokaal, regionaal of landelijk), de positionering (prijs, kwaliteit, exclusief, duurzaam) en de tone of voice. Het is het geheugen dat de AI bij ELKE actie voor deze klant meekrijgt.\nHet profiel wordt automatisch gebruikt door:\n- De chat per pagina (stap 2): het advies houdt rekening met positionering en werkgebied; is het profiel leeg, dan gaat de chat er eerst naar vragen.\n- De documenten (analyse, blauwdruk en copy): de teksten klinken naar dit bedrijf in plaats van als generieke AI-tekst.\n- Strategie- en clusterbepaling: welke zoekwoorden en pagina's passen bij wat dit bedrijf wil zijn.\nHoe beter dit profiel, hoe scherper alle adviezen en teksten. Vul het één keer goed in (of laat het opstellen met de knoppen hieronder) en werk het bij wanneer de klant zijn koers wijzigt. Het profiel bestaat uit drie delen: het klantprofiel en de tone-of-voice kun je automatisch laten genereren; het derde deel is jullie eigen kennis over de klant (afspraken, voorkeuren, no-go's), die vul je zelf aan."} /></span>
+          <span onClick={(e) => e.stopPropagation()}><HelpHint xl title="Wat is het klantprofiel en waar wordt het gebruikt?" text={"Het klantprofiel is de vaste briefing over deze klant: wie het bedrijf is, wat het aanbiedt, voor wie (doelgroep en hun twijfels), het werkgebied (lokaal, regionaal of landelijk), de positionering (prijs, kwaliteit, exclusief, duurzaam) en de tone of voice. Het is het geheugen dat de AI bij ELKE actie voor deze klant meekrijgt.\nHet profiel wordt automatisch gebruikt door:\n- De strategie-chat per pagina (stap 1): het advies houdt rekening met positionering en werkgebied; is het profiel leeg, dan gaat de chat er eerst naar vragen.\n- De documenten (analyse, blauwdruk en copy): de teksten klinken naar dit bedrijf in plaats van als generieke AI-tekst.\n- Strategie- en clusterbepaling: welke zoekwoorden en pagina's passen bij wat dit bedrijf wil zijn.\nHoe beter dit profiel, hoe scherper alle adviezen en teksten. Vul het één keer goed in (of laat het opstellen met de knoppen hieronder) en werk het bij wanneer de klant zijn koers wijzigt. Het profiel bestaat uit drie delen: het klantprofiel en de tone-of-voice kun je automatisch laten genereren; het derde deel is jullie eigen kennis over de klant (afspraken, voorkeuren, no-go's), die vul je zelf aan."} /></span>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
             {q.trim() && <span className="sov-sub" style={{ whiteSpace: "nowrap" }}>{filtered.length} van {urls.length}</span>}
             <input className="pages-search" placeholder="Zoek in URL of titel…" value={q} onChange={(e) => setQ(e.target.value)} />
@@ -384,7 +384,7 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
               <button type="button" className={"pcd-btn" + (genBusy === "profile" ? " busy" : "")} onClick={() => generateProfile("profile")} disabled={!!genBusy}>{genBusy === "profile" ? "Klantprofiel opstellen…" : made.profile ? "Klantprofiel gemaakt ✓" : "Klantprofiel opstellen"}</button>
               <span onClick={(e) => e.stopPropagation()}><HelpHint xl title="Wat gebeurt er bij 'Klantprofiel opstellen'?" text={"Deze knop laat de AI de LIVE website van de klant lezen (homepage plus de belangrijkste pagina's) en daaruit een compleet klantprofiel opstellen. Dat gaat in vier stappen:\n- De AI leest de site en destilleert daaruit: wie het bedrijf is, het aanbod en de diensten, de doelgroep en hun vragen of twijfels, het werkgebied en de positionering (waarin onderscheidt dit bedrijf zich).\n- Het resultaat komt als concept in het veld 'Uit klantprofiel' hieronder te staan. Je kunt het daar gewoon nalezen en aanpassen; het is een vertrekpunt, geen eindstation.\n- Er wordt een net opgemaakt Pingwin-document van gemaakt, dat in de gekozen Drive-klantmap komt (of als download als er geen map of Drive-koppeling is).\n- Het verschijnt als afgeronde werkzaamheid in de takenlijst én op het klantdashboard, zodat de klant ziet dat dit werk gedaan is.\nHet profiel wordt daarna automatisch gebruikt door alle chats, analyses en documenten voor deze klant (zie het vraagteken bij 'Klantprofiel' hierboven). Draait op de achtergrond en kost een klein beetje Claude-tegoed; je kunt hem later gewoon opnieuw draaien als de site wezenlijk verandert."} /></span>
               <button type="button" className={"pcd-btn" + (genBusy === "tov" ? " busy" : "")} onClick={() => generateProfile("tov")} disabled={!!genBusy}>{genBusy === "tov" ? "Tone-of-voice analyseren…" : made.tov ? "Tone-of-voice gemaakt ✓" : "Tone-of-voice analyse"}</button>
-              <span onClick={(e) => e.stopPropagation()}><HelpHint xl title="Wat gebeurt er bij 'Tone-of-voice analyse'?" text={"Deze knop laat de AI de bestaande teksten op de live website analyseren op schrijfstijl: hoe klinkt dit bedrijf?\n- De AI kijkt naar aanspreekvorm (je/u), toon (zakelijk, warm, nuchter, speels), zinslengte en woordkeuze, hoe claims worden onderbouwd, en wat het bedrijf juist NIET zegt.\n- Het resultaat komt als apart tone-of-voice-blok in het klantprofiel-veld te staan (onder de kop 'Tone of voice'), naast het inhoudelijke profiel; je kunt het nalezen en bijstellen.\n- Er wordt een Pingwin-document van gemaakt in de Drive-klantmap (of als download) en een afgeronde werkzaamheid in de takenlijst en het klantdashboard.\nWaarom dit belangrijk is: de copy-stap (stap 4) en alle andere teksten die de AI voor deze klant schrijft, volgen deze tone-of-voice. Zo klinken nieuwe teksten als de klant zelf en niet als een willekeurige tekstrobot, en blijft de site consistent als meerdere mensen eraan werken. Draait op de achtergrond; opnieuw draaien mag altijd."} /></span>
+              <span onClick={(e) => e.stopPropagation()}><HelpHint xl title="Wat gebeurt er bij 'Tone-of-voice analyse'?" text={"Deze knop laat de AI de bestaande teksten op de live website analyseren op schrijfstijl: hoe klinkt dit bedrijf?\n- De AI kijkt naar aanspreekvorm (je/u), toon (zakelijk, warm, nuchter, speels), zinslengte en woordkeuze, hoe claims worden onderbouwd, en wat het bedrijf juist NIET zegt.\n- Het resultaat komt als apart tone-of-voice-blok in het klantprofiel-veld te staan (onder de kop 'Tone of voice'), naast het inhoudelijke profiel; je kunt het nalezen en bijstellen.\n- Er wordt een Pingwin-document van gemaakt in de Drive-klantmap (of als download) en een afgeronde werkzaamheid in de takenlijst en het klantdashboard.\nWaarom dit belangrijk is: de copy-stap (stap 3) en alle andere teksten die de AI voor deze klant schrijft, volgen deze tone-of-voice. Zo klinken nieuwe teksten als de klant zelf en niet als een willekeurige tekstrobot, en blijft de site consistent als meerdere mensen eraan werken. Draait op de achtergrond; opnieuw draaien mag altijd."} /></span>
               <span className="muted" style={{ fontSize: 11 }}>Leest de live site, zet een concept in het veld en maakt er een Pingwin-document + taak van.</span>
             </div>
             <div className="page-chat-drive" style={{ marginBottom: 8 }}>
@@ -575,30 +575,6 @@ function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoTo
         <tr className="pages-detail-row">
           <td colSpan={9}>
             <div className="pages-detail">
-              <div className={"pages-plan-card step-card step-card-1" + ((plan || "").trim() ? " done" : "")}>
-                <div className="step-head" onClick={() => setPlanOpen((v) => !v)}>
-                  <span className="step-caret">{planOpen ? "▾" : "▸"}</span>
-                  <span className="step-badge">{(plan || "").trim() ? "✓" : "1"}</span>
-                  <span className="step-title">Plan voor deze pagina</span>
-                  <span onClick={(e) => e.stopPropagation()}><HelpHint xl title="Stap 1 — Het plan voor deze pagina" text={"Het plan is de vastgelegde strategie van deze ene pagina, in vier vaste onderdelen:\n- Rol: wat deze pagina moet zijn in de site (bijv. de landingspagina voor één zoekintentie).\n- Zoekwoorden: het primaire zoekwoord dat deze pagina claimt, plus de secundaire varianten.\n- Acties: wat er concreet moet gebeuren (herschrijven, redirects, interne links, enzovoort).\n- Doel-URL: waar de pagina uiteindelijk moet staan.\nHoe het gevuld wordt: meestal via de chat hieronder (stap 2); laat daar een strategie samenvatten en klik 'Neem plan over', dan vult dit blok zich vanzelf. Zelf typen of bijschaven kan ook, via Bewerken.\nWaarom het belangrijk is: dit plan is leidend voor alles wat volgt. De documenten (analyse, blauwdruk, copy) schrijven naar dit plan toe, en bij cluster- en kannibalisatievraagstukken bepaalt het plan wie de 'eigenaar' van een zoekwoord is; niet de toevallige huidige ranking. Een pagina zonder plan wordt dus ook niet meegewogen als eigenaar van een zoekintentie."} /></span>
-                  {!(plan || "").trim() && <span className="plan-chip">leeg</span>}
-                  {saved && <span className="focus-save-status">opgeslagen</span>}
-                  {planOpen && <span className="step-head-right"><button type="button" className="ghost-btn small" onClick={(e) => { e.stopPropagation(); if (editing) savePlan(); else setEditing(true); }}>{editing ? "Klaar" : "Bewerken"}</button></span>}
-                </div>
-                {planOpen && (
-                  <div className="pages-plan-card-body step-body">
-                    {editing ? (
-                      <div ref={planRef} className="pages-plan-edit md" contentEditable suppressContentEditableWarning />
-                    ) : (
-                      (plan || "").trim()
-                        ? <div className="pages-plan-view md" dangerouslySetInnerHTML={{ __html: renderPlanHtml(plan) }} />
-                        : <div className="pages-plan-view muted">Nog geen plan. Klik op Bewerken, of laat de chat hieronder een voorstel maken.</div>
-                    )}
-                    {u.redirectTarget && <div className="muted" style={{ marginTop: 6 }}>Live redirect: → <a href={u.redirectTarget} target="_blank" rel="noreferrer">{u.redirectTarget}</a></div>}
-                  </div>
-                )}
-              </div>
-
               {(() => {
                 // Een taak hoort bij de pijplijn (blijft staan) als hij een stap-kenmerk
                 // heeft, een gekoppeld document, of een link in de titel (de analyse/
@@ -628,7 +604,32 @@ function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoTo
                 );
               })()}
 
-              <PageChat slug={slug} url={u.url} clientEmail={clientEmail} clientName={clientName} onApplied={(newPlan) => { if (newPlan) setPlan(newPlan); loadTasks(); }} onGoToTask={onGoToTask} onClusterApplied={onDataChanged} pageLive={u.status === 200} />
+              <PageChat
+                slug={slug} url={u.url} clientEmail={clientEmail} clientName={clientName}
+                onApplied={(newPlan) => { if (newPlan) setPlan(newPlan); loadTasks(); }}
+                onGoToTask={onGoToTask} onClusterApplied={onDataChanged} pageLive={u.status === 200}
+                planDone={!!(plan || "").trim()}
+                planSlot={
+                  // De vastgelegde strategie (het plan) hoort bij stap 1 en staat
+                  // bovenin het strategie-blok; de chat eronder werkt ernaartoe.
+                  <div className={"pages-plan-inline" + ((plan || "").trim() ? " done" : "")} style={{ border: "1px solid var(--border)", borderLeft: "3px solid var(--orange)", borderRadius: 10, padding: "10px 14px", marginBottom: 12, background: "#fff" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 6 }}>
+                      <strong style={{ fontSize: 13 }}>Vastgelegde strategie (de conclusie van deze stap)</strong>
+                      {!(plan || "").trim() && <span className="plan-chip">nog geen strategie</span>}
+                      {saved && <span className="focus-save-status">opgeslagen</span>}
+                      <span style={{ marginLeft: "auto" }}><button type="button" className="ghost-btn small" onClick={() => { if (editing) savePlan(); else setEditing(true); }}>{editing ? "Klaar" : "Bewerken"}</button></span>
+                    </div>
+                    {editing ? (
+                      <div ref={planRef} className="pages-plan-edit md" contentEditable suppressContentEditableWarning />
+                    ) : (
+                      (plan || "").trim()
+                        ? <div className="pages-plan-view md" dangerouslySetInnerHTML={{ __html: renderPlanHtml(plan) }} />
+                        : <div className="pages-plan-view muted">Nog geen strategie vastgelegd. Werk hem uit in de chat hieronder en klik &ldquo;Neem plan over&rdquo;, of klik Bewerken om hem zelf te typen.</div>
+                    )}
+                    {u.redirectTarget && <div className="muted" style={{ marginTop: 6 }}>Live redirect: → <a href={u.redirectTarget} target="_blank" rel="noreferrer">{u.redirectTarget}</a></div>}
+                  </div>
+                }
+              />
             </div>
           </td>
         </tr>
