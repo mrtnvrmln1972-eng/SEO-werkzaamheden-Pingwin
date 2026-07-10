@@ -92,6 +92,27 @@ export async function getUsageSummary(fromIso: string): Promise<UsageRow[]> {
 
 export type UsageActionRow = { action: string | null; calls: number; tokens_in: number; tokens_out: number; cost_usd: number };
 
+export type UsageClientActionRow = { client_slug: string | null; action: string | null; calls: number; tokens_in: number; tokens_out: number; cost_usd: number };
+
+// Optelling per KLANT + ACTIE: waar is het bedrag van één klant uit opgebouwd.
+// Voor de uitklapregels in het "Per klant"-blok. Alleen Claude/anthropic.
+export async function getUsageByClientAction(fromIso: string): Promise<UsageClientActionRow[]> {
+  await ensureSchema();
+  const { rows } = await sql`
+    SELECT
+      u.client_slug,
+      u.action,
+      COUNT(*)::int AS calls,
+      COALESCE(SUM(u.tokens_in), 0)::int AS tokens_in,
+      COALESCE(SUM(u.tokens_out), 0)::int AS tokens_out,
+      COALESCE(SUM(u.cost_usd), 0)::float AS cost_usd
+    FROM service_usage u
+    WHERE u.created_at >= ${fromIso} AND u.service = 'anthropic'
+    GROUP BY u.client_slug, u.action
+    ORDER BY cost_usd DESC`;
+  return rows as UsageClientActionRow[];
+}
+
 // Optelling per ACTIE (welke knop/functie kost hoeveel), voor de uitsplitsing. Alleen
 // Claude/anthropic; de actie zegt namelijk welke AI-taak het was.
 export async function getUsageByAction(fromIso: string): Promise<UsageActionRow[]> {

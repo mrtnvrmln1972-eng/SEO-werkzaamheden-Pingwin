@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ADMIN_COOKIE } from "../../../lib/admin-auth";
 import { ADMIN_VIEWAS_COOKIE } from "../../../lib/constants";
 import { getScopeFromCookie } from "../../../lib/admin-scope";
-import { getUsageSummary, getUsageByAction, type UsageRow, type UsageActionRow } from "../../../lib/usage";
+import { getUsageSummary, getUsageByAction, getUsageByClientAction, type UsageRow, type UsageActionRow, type UsageClientActionRow } from "../../../lib/usage";
 import { getAhrefsSubscriptionUsage } from "../../../lib/ahrefs";
 
 // Leesbare namen voor de acties (welke knop/functie kost hoeveel).
@@ -81,16 +81,28 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
 
   let rows: UsageRow[] = [];
   let actionRows: UsageActionRow[] = [];
+  let clientActionRows: UsageClientActionRow[] = [];
   let loadError = "";
   let ahrefsSub: { used: number | null; limit: number | null } | null = null;
   try {
-    [rows, actionRows, ahrefsSub] = await Promise.all([
+    [rows, actionRows, clientActionRows, ahrefsSub] = await Promise.all([
       getUsageSummary(from.toISOString()),
       getUsageByAction(from.toISOString()),
+      getUsageByClientAction(from.toISOString()),
       getAhrefsSubscriptionUsage(),
     ]);
   } catch (e) {
     loadError = (e as Error).message;
+  }
+
+  // Uitsplitsing per klant: welke functies veroorzaken het bedrag. Gegroepeerd op
+  // klant-slug (null = "Algemeen"), binnen een klant gesorteerd op kosten aflopend.
+  const actionsByClient = new Map<string, UsageClientActionRow[]>();
+  for (const r of clientActionRows) {
+    const k = r.client_slug || "";
+    const list = actionsByClient.get(k) || [];
+    list.push(r);
+    actionsByClient.set(k, list);
   }
 
   const totalCost = rows.reduce((s, r) => s + (r.cost_usd || 0), 0);
@@ -199,49 +211,93 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
 
           {/* Daaronder de twee overzichten naast elkaar: links per klant, rechts per functie. */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(480px, 1fr))", gap: 18, alignItems: "start" }}>
-            {/* Blok 1: per klant */}
-            <div style={card}>
+            {/* Blok 1: per klant. Claude-regels zijn uitklapbaar (details/summary,
+                werkt zonder JavaScript): open = de functies waar het bedrag uit
+                bestaat. Ahrefs-regels blijven gewone regels. */}
+            <div style={card} className="usage-cl">
+              <style>{`
+                .usage-cl summary { list-style: none; cursor: pointer; }
+                .usage-cl summary::-webkit-details-marker { display: none; }
+                .usage-cl details[open] .usage-car { transform: rotate(90deg); }
+                .usage-cl summary:hover { background: #fdf6ec; }
+              `}</style>
               <h2 style={blockTitle}>
                 1. Per klant
-                <Hint text="Elke regel is één klant + één dienst. Een klant die zowel de AI als Ahrefs gebruikt, staat er dus twee keer: één regel voor Claude en één voor Ahrefs." />
+                <Hint text="Elke regel is één klant + één dienst. Klik op een Claude-regel om te zien welke functies het bedrag veroorzaken. Een klant die zowel de AI als Ahrefs gebruikt, staat er twee keer: één regel voor Claude en één voor Ahrefs." />
               </h2>
-              <p style={blockSub}>Wat elke klant deze periode heeft verbruikt, per dienst.</p>
+              <p style={blockSub}>Wat elke klant deze periode heeft verbruikt, per dienst. Klik op een Claude-regel voor de uitsplitsing per functie.</p>
               {rows.length === 0 ? (
                 <div style={{ color: "#5b6472", padding: "8px 4px", fontSize: 13.5 }}>
                   Nog geen verbruik in deze periode.
                 </div>
-              ) : (
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead>
-                    <tr>
-                      <th style={th}>Klant</th>
-                      <th style={th}>Dienst</th>
-                      <th style={thNum}>Aanroepen</th>
-                      <th style={thNum}>Verbruik</th>
-                      <th style={thNum}>Kosten</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((r, i) => (
-                      <tr key={i}>
-                        <td style={td}>
-                          {r.client_name || r.client_slug || (
-                            <span style={{ color: "#5b6472", display: "inline-flex", alignItems: "center" }}>
-                              Algemeen (geen klant)
-                              <Hint text="Verbruik dat niet aan één klant te koppelen was, bijvoorbeeld algemene functies of oudere metingen van voordat de klant-koppeling bestond. Nieuw verbruik krijgt vrijwel altijd gewoon de klantnaam." />
-                            </span>
-                          )}
-                        </td>
-                        <td style={tdNowrap}>{SERVICE_LABEL[r.service] || r.service}</td>
-                        <td style={numTd}>{num(r.calls)}</td>
-                        {/* Claude: tokens in+uit samengevat; Ahrefs: units. */}
-                        <td style={numTd}>{r.service === "ahrefs" ? `${num(r.tokens_in)} units` : `${num(r.tokens_in + r.tokens_out)} tokens`}</td>
-                        <td style={{ ...numTd, fontWeight: 600 }}>{r.service === "ahrefs" ? "—" : euros(r.cost_usd)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
+              ) : (() => {
+                // Kolommen van de "tabel" (nu een grid, zodat een regel kan uitklappen).
+                const cols = "minmax(150px, 1.5fr) 100px 90px 150px 100px";
+                const rowGrid: React.CSSProperties = { display: "grid", gridTemplateColumns: cols, alignItems: "center" };
+                const cName = (r: UsageRow) => r.client_name || r.client_slug || "";
+                return (
+                  <div>
+                    {/* Kopregel in dezelfde stijl als de tabelkoppen elders. */}
+                    <div style={{ ...rowGrid, background: "var(--dark, #33302e)", borderRadius: "8px 8px 0 0" }}>
+                      <div style={th}>Klant</div>
+                      <div style={th}>Dienst</div>
+                      <div style={thNum}>Aanroepen</div>
+                      <div style={thNum}>Verbruik</div>
+                      <div style={thNum}>Kosten</div>
+                    </div>
+                    {rows.map((r, i) => {
+                      const nameCell = cName(r) || (
+                        <span style={{ color: "#5b6472", display: "inline-flex", alignItems: "center" }}>
+                          Algemeen (geen klant)
+                          <Hint text="Verbruik dat niet aan één klant te koppelen was, bijvoorbeeld algemene functies of oudere metingen van voordat de klant-koppeling bestond. Nieuw verbruik krijgt vrijwel altijd gewoon de klantnaam." />
+                        </span>
+                      );
+                      const cells = (
+                        <>
+                          <div style={tdNowrap}>{SERVICE_LABEL[r.service] || r.service}</div>
+                          <div style={numTd}>{num(r.calls)}</div>
+                          {/* Claude: tokens in+uit samengevat; Ahrefs: units. */}
+                          <div style={numTd}>{r.service === "ahrefs" ? `${num(r.tokens_in)} units` : `${num(r.tokens_in + r.tokens_out)} tokens`}</div>
+                          <div style={{ ...numTd, fontWeight: 600 }}>{r.service === "ahrefs" ? "—" : euros(r.cost_usd)}</div>
+                        </>
+                      );
+                      // Ahrefs (of Claude zonder uitsplitsing): gewone regel.
+                      const breakdown = r.service === "anthropic" ? (actionsByClient.get(r.client_slug || "") || []) : [];
+                      if (breakdown.length === 0) {
+                        return (
+                          <div key={i} style={rowGrid}>
+                            <div style={{ ...td, paddingLeft: 26 }}>{nameCell}</div>
+                            {cells}
+                          </div>
+                        );
+                      }
+                      return (
+                        <details key={i}>
+                          <summary style={rowGrid}>
+                            <div style={{ ...td, display: "flex", alignItems: "center", gap: 8 }}>
+                              <span className="usage-car" style={{ display: "inline-block", transition: "transform 0.15s", color: "#d97316", fontSize: 11, flex: "0 0 auto" }}>&#9654;</span>
+                              {nameCell}
+                            </div>
+                            {cells}
+                          </summary>
+                          {/* Uitsplitsing: welke functies veroorzaken dit bedrag. */}
+                          <div style={{ background: "#fbf7f0", borderBottom: "1px solid #f1e9db", padding: "4px 0 8px" }}>
+                            {breakdown.map((b, j) => (
+                              <div key={j} style={rowGrid}>
+                                <div style={{ ...td, borderBottom: "none", paddingLeft: 34, color: "#5b6472" }}>{b.action ? (ACTION_LABEL[b.action] || b.action) : "onbekend"}</div>
+                                <div style={{ ...tdNowrap, borderBottom: "none" }} />
+                                <div style={{ ...numTd, borderBottom: "none" }}>{num(b.calls)}</div>
+                                <div style={{ ...numTd, borderBottom: "none" }}>{num(b.tokens_in + b.tokens_out)} tokens</div>
+                                <div style={{ ...numTd, borderBottom: "none" }}>{euros(b.cost_usd)}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </details>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Blok 2: per functie (alleen Claude; Ahrefs heeft geen kosten per functie) */}
