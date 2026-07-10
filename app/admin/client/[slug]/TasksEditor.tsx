@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import type { TaskRow } from "../../../../lib/tasks";
 import { cleanPastedHtml, linkifyPlainText } from "../../../../lib/rich-paste";
 import StrategyPanel, { type StrategySessionData } from "./StrategyPanel";
+import HelpHint from "./HelpHint";
 
 const MONTHS = ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"];
 const STATUSES = ["Gepland", "Bezig", "Naar Dev", "Klaar"];
@@ -608,7 +609,7 @@ export default function TasksEditor({ slug, initialTasks, initialStrategySession
     return (
       <div className="cockpit-card month-card" key={maand || "none"} onDragOver={(e) => e.preventDefault()} onDrop={() => moveRow(maand, null)}>
         <div className="month-card-head clickable" onClick={() => toggleMonth(maand)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.stopPropagation(); moveRow(maand, null); setOpenMonths((o) => ({ ...o, [maand]: true })); }}>
-          <span className="month-card-title">{MONTHS.includes(maand) ? `Taken ${label}` : label} <span className="month-caret">{open ? "▾" : "▸"}</span> <span className="month-card-count">({items.length})</span></span>
+          <span className="month-card-title">{MONTHS.includes(maand) ? `Taken ${label}` : label} <span className="month-caret">{open ? "▾" : "▸"}</span> <span className="month-card-count">({items.length})</span></span> <span onClick={(e) => e.stopPropagation()}><HelpHint xl title="Taken per maand: het werk en de uren" text={"De maandtabel is de administratie van het echte werk: wat er deze maand gebeurt, wie het doet, en hoe het zich verhoudt tot het afgesproken budget.\n## Waar de taken vandaan komen\n- **Uit de stappen:** elke afgeronde stap (strategie-document, analyse, blauwdruk, copy, kannibalisatie-acties, interne links, structured data) zet zichzelf hier neer als werkzaamheid, met de documentlink erbij.\n- **Handmatig:** met '+ taak' voeg je los werk toe; slepen tussen maanden kan gewoon.\n## De uren- en budgetregels bovenin\nHet maandbudget minus het linkbuilding-deel is het urenbudget in geld; gedeeld door het uurtarief geeft dat de beschikbare uren. 'Uren gepland' telt de geplande taken op, 'besteed' de afgeronde, en 'resterend' is wat er nog in de maand past. Zo zie je direct of de maand vol zit voordat je iets toezegt.\n## Wat de klant ziet\nTaken zijn standaard zichtbaar op het klantdashboard (via de deelbare link), inclusief de klant-toelichting; interne developer-opmerkingen blijven intern. De Mail-kolom selecteert taken voor het mailvenster naar de klant of de developer."} /></span>
           {budgetInline(maand, urenBesteed, urenGepland)}
         </div>
         {open && <div className="month-cards">{section(items, maand)}</div>}

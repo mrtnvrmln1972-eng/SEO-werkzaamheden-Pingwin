@@ -996,7 +996,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
             </div>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
               <button type="button" className="pcd-btn pcd-btn-primary" onClick={() => send(SUMMARIZE_PROMPT)} disabled={busy} title="Vat het hele gesprek samen tot de definitieve conclusie en strategie, klaar om over te nemen als plan">Vat samen tot conclusie &amp; strategie</button>
-              <HelpHint text="Laat de AI het gesprek samenvatten tot de definitieve conclusie + strategie. Die neem je daarna met 'Neem plan over' over als de vastgelegde strategie bovenin dit blok. Dit maakt geen document; het document maak je met 'Strategie vastleggen' onderaan." />
+              <HelpHint wide title="Vat samen tot conclusie & strategie" text={"Sluit het gesprek af met deze knop: de AI redeneert dan nog één keer over alles wat besproken en gemeten is en schrijft de **definitieve conclusie plus strategie** uit. Daarbij mag hij zelf nog pagina's en concurrenten nameten om te verifiëren in plaats van te gokken.\nDaarna klik je '**Neem plan over**': de conclusie wordt dan de vastgelegde strategie bovenin dit blok, die alle volgende stappen aanstuurt.\nLet op het verschil: deze knop maakt **geen document**; het document (voor de klant of het archief) maak je met 'Strategie vastleggen' onderaan."} />
             </span>
           </div>
           <div className="page-chat-drive">
@@ -1012,7 +1012,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
             {stratLink
               ? <a href={stratLink} target="_blank" rel="noreferrer" className="pcd-doclink">Document openen ↗</a>
               : taskDone && <span className="muted" style={{ fontSize: 12 }}>document nog niet gekoppeld (kies een Drive-map en leg opnieuw vast)</span>}
-            <HelpHint text="Maakt van de strategie uit deze chat één DOCUMENT (in je Drive-map, of een download als er geen map is gekozen) en legt hem vast als werkzaamheid, met de link ernaast. Dit is iets anders dan 'Vat samen' hierboven: die maakt geen document maar de plantekst." />
+            <HelpHint wide title="Strategie vastleggen (als document)" text={"Maakt van de strategie uit deze chat één net opgemaakt **Pingwin-document**: in de Drive-map van de pagina, of als download zonder Drive-koppeling. Tegelijk wordt hij vastgelegd als afgeronde werkzaamheid in de takenlijst, met de documentlink ernaast; zichtbaar voor de klant als bewijs van het denkwerk.\nHet verschil met 'Vat samen' hierboven: die maakt de **plantekst** (de conclusie in dit blok), deze knop maakt het **document**. Meestal doe je eerst het één en dan het ander."} />
           </div>
         </>
       )}
@@ -1148,7 +1148,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
                 </ul>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                   <button type="button" className="pcd-btn pcd-btn-primary" onClick={applyClusterAdvice} disabled={clusterBusy || clusterSel.length === 0}>{clusterBusy ? "Doorgeven…" : `Doorgeven aan ${clusterSel.length} pagina('s)`}</button>
-                  <HelpHint text="Geeft de basisinfo uit deze analyse door aan de aangevinkte pagina's; die krijgen het als vertrekpunt ('half plan') mee in hun eigen chat en in het overzicht." />
+                  <HelpHint wide title="Doorgeven aan de aangevinkte pagina's" text={"Stuurt het advies uit deze analyse naar de aangevinkte pagina's. Elke ontvangende pagina krijgt het als **vertrekpunt ('half plan')**: het staat daar klaar in de strategie-stap en in het pagina-overzicht, mét de volledige conclusie van dit gesprek als context.\nZo hoef je de clusterbeslissing maar één keer te nemen en spreekt geen enkele pagina hem later per ongeluk tegen."} />
                 </span>
               </>
             )}
