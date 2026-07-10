@@ -412,12 +412,11 @@ export default function TasksEditor({ slug, initialTasks, initialStrategySession
   function toggleDevSel(i: number) {
     setDevSel((s) => { const c = new Set(s); if (c.has(i)) c.delete(i); else c.add(i); return c; });
   }
-  // Terugval zonder mailkoppeling: open het eigen mailprogramma met alles
-  // voorgevuld. Links (documenten, deel-link) gaan mee als gewone URL's;
-  // mailprogramma's maken die vanzelf klikbaar.
-  function openMailto() {
+  // Terugval zonder mailkoppeling: de mailtekst (met document-links als gewone
+  // URL's) opbouwen voor het eigen mailprogramma of het klembord.
+  function buildMailtoText(): { subject: string; text: string } | null {
     const selected = rows.map((r, i) => ({ r, i })).filter((x) => devSel.has(x.i)).map((x) => x.r);
-    if (!devTo.trim() || selected.length === 0) { setDevMsg("Vul een ontvanger in en kies minstens één taak."); return; }
+    if (!devTo.trim() || selected.length === 0) { setDevMsg("Vul een ontvanger in en kies minstens één taak."); return null; }
     const urlsFrom = (html: string): string[] => [...(html || "").matchAll(/href="([^"]+)"/g)].map((m) => m[1]);
     const lines: string[] = [];
     const noteText = stripHtml(devNote).trim();
@@ -434,10 +433,26 @@ export default function TasksEditor({ slug, initialTasks, initialStrategySession
       for (const l of links) lines.push(`  Document: ${l}`);
     }
     if (composeMode === "klant" && includeDashLink && shareUrl) lines.push("", `Bekijk het zelf in je eigen dashboard: ${shareUrl}`);
-    const subject = `Werkzaamheden — ${clientName}`;
-    window.open(`mailto:${devTo.trim()}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(lines.join("\n"))}`, "_blank");
-    try { localStorage.removeItem(`pw_maildraft_${slug}_${composeMode}`); } catch { /* geen opslag */ }
-    setDevMsg("Geopend in je mailprogramma; verstuur hem daar.");
+    return { subject: `Werkzaamheden — ${clientName}`, text: lines.join("\n") };
+  }
+  function openMailto() {
+    const m = buildMailtoText();
+    if (!m) return;
+    // Via een echt anchor-element in dezelfde pagina: dan pakt de browser de
+    // standaard-mailapp. window.open zou een leeg tabblad geven (of niets als
+    // er geen mailprogramma is ingesteld); daarvoor is de kopieer-knop ernaast.
+    const a = document.createElement("a");
+    a.href = `mailto:${devTo.trim()}?subject=${encodeURIComponent(m.subject)}&body=${encodeURIComponent(m.text)}`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setDevMsg("Geopend in je mailprogramma; verstuur hem daar. Gebeurt er niets? Gebruik dan 'Kopieer mailtekst' hiernaast.");
+  }
+  async function copyMailText() {
+    const m = buildMailtoText();
+    if (!m) return;
+    try {
+      await navigator.clipboard.writeText(`Aan: ${devTo.trim()}\nOnderwerp: ${m.subject}\n\n${m.text}`);
+      setDevMsg("Mailtekst gekopieerd; plak hem in een nieuwe mail in je mailprogramma.");
+    } catch { setDevMsg("Kopiëren lukte niet; selecteer en kopieer de tekst handmatig."); }
   }
 
   async function sendCompose() {
@@ -700,12 +715,15 @@ export default function TasksEditor({ slug, initialTasks, initialStrategySession
                   In deze omgeving is geen mailkoppeling; de knop opent je eigen mailprogramma met alles voorgevuld (taken en document-links gaan mee als gewone links, opmaak wordt platte tekst).
                 </div>
               )}
-              {devMsg && <div className={devMsg.startsWith("Verstuurd") || devMsg.startsWith("Geopend") ? "saved-msg" : "login-error"} style={{ marginTop: 8 }}>{devMsg}</div>}
+              {devMsg && <div className={devMsg.startsWith("Verstuurd") || devMsg.startsWith("Geopend") || devMsg.startsWith("Mailtekst") ? "saved-msg" : "login-error"} style={{ marginTop: 8 }}>{devMsg}</div>}
             </div>
             <div className="compose-foot">
               <button type="button" className="logout-btn" onClick={() => setShowCompose(false)}>Annuleren</button>
               {mailConnected === false
-                ? <button type="button" className="primary-btn small" onClick={openMailto}>Open in mailprogramma</button>
+                ? <>
+                    <button type="button" className="ghost-btn small" onClick={copyMailText}>Kopieer mailtekst</button>
+                    <button type="button" className="primary-btn small" onClick={openMailto}>Open in mailprogramma</button>
+                  </>
                 : <button type="button" className="primary-btn small" onClick={sendCompose} disabled={devBusy}>{devBusy ? "Versturen..." : "Verstuur per mail"}</button>}
             </div>
           </div>
