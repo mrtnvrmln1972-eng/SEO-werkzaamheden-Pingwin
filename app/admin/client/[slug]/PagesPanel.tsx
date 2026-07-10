@@ -99,6 +99,8 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
   const [profileSaved, setProfileSaved] = useState(false);
   const profileTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [genBusy, setGenBusy] = useState<"" | "profile" | "tov">("");
+  // De gegenereerde profieldelen (klantprofiel en tone of voice) standaard dicht.
+  const [genPartOpen, setGenPartOpen] = useState<{ profile: boolean; tov: boolean }>({ profile: false, tov: false });
   const [genErr, setGenErr] = useState("");
   const [genMsg, setGenMsg] = useState("");
   const [made, setMade] = useState<Record<string, { link: string; driveError: string; taskId: number | null }>>({});
@@ -403,18 +405,25 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
               </div>
             ))}
 
+            {/* De twee gegenereerde delen als toggle, standaard dicht. */}
             <div className="profile-part acc-teal">
-              <div className="profile-part-head">Uit klantprofiel</div>
-              {parts.profileMd
+              <button type="button" className="profile-part-head" style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", font: "inherit" }} onClick={() => setGenPartOpen((o) => ({ ...o, profile: !o.profile }))}>
+                <span>{genPartOpen.profile ? "▾" : "▸"}</span> Klantprofiel (automatisch gegenereerd)
+                {!parts.profileMd && <span className="plan-chip" style={{ marginLeft: 8 }}>leeg</span>}
+              </button>
+              {genPartOpen.profile && (parts.profileMd
                 ? <div className="md profile-part-body" dangerouslySetInnerHTML={{ __html: mdToHtml(parts.profileMd, domain) }} />
-                : <div className="muted" style={{ fontSize: 12 }}>Nog niet opgesteld. Klik &ldquo;Klantprofiel opstellen&rdquo; hierboven.</div>}
+                : <div className="muted" style={{ fontSize: 12 }}>Nog niet opgesteld. Klik &ldquo;Klantprofiel opstellen&rdquo; hierboven.</div>)}
             </div>
 
             <div className="profile-part acc-blue">
-              <div className="profile-part-head">Uit tone-of-voice-analyse</div>
-              {parts.tovMd
+              <button type="button" className="profile-part-head" style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", font: "inherit" }} onClick={() => setGenPartOpen((o) => ({ ...o, tov: !o.tov }))}>
+                <span>{genPartOpen.tov ? "▾" : "▸"}</span> Tone of voice (automatisch gegenereerd)
+                {!parts.tovMd && <span className="plan-chip" style={{ marginLeft: 8 }}>leeg</span>}
+              </button>
+              {genPartOpen.tov && (parts.tovMd
                 ? <div className="md profile-part-body" dangerouslySetInnerHTML={{ __html: mdToHtml(parts.tovMd, domain) }} />
-                : <div className="muted" style={{ fontSize: 12 }}>Nog niet opgesteld. Klik &ldquo;Tone-of-voice analyse&rdquo; hierboven.</div>}
+                : <div className="muted" style={{ fontSize: 12 }}>Nog niet opgesteld. Klik &ldquo;Tone-of-voice analyse&rdquo; hierboven.</div>)}
             </div>
 
             <div className="profile-part acc-taupe">

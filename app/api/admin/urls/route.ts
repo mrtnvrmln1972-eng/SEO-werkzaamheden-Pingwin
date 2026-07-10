@@ -6,7 +6,7 @@ import { getClientUrls, scanClientUrls } from "../../../../lib/site-urls";
 import { sql } from "../../../../lib/db";
 
 export const runtime = "nodejs";
-export const maxDuration = 300;
+export const maxDuration = 800;
 
 function admin(req: NextRequest): boolean {
   return verifyAdminSession(req.cookies.get(ADMIN_COOKIE)?.value);

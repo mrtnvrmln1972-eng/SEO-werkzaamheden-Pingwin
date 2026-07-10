@@ -6,6 +6,8 @@ import { cleanPastedHtml, linkifyPlainText } from "../../../../lib/rich-paste";
 export default function FocusBlock({ slug, standalone }: { slug: string; standalone?: boolean }) {
   const [initialHtml, setInitialHtml] = useState<string | null>(null);
   const [saving, setSaving] = useState<"idle" | "saving" | "saved">("idle");
+  // Standaard dicht; openklappen via de kop.
+  const [open, setOpen] = useState(false);
   const editorRef = useRef<HTMLDivElement | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initializedRef = useRef(false);
@@ -20,13 +22,14 @@ export default function FocusBlock({ slug, standalone }: { slug: string; standal
     return () => { off = true; };
   }, [slug]);
 
-  // Zet de inhoud eenmalig in de editor zodra die gerenderd is.
+  // Zet de inhoud eenmalig in de editor zodra die gerenderd is. De editor
+  // bestaat pas na het openklappen, dus 'open' zit bewust in de dependencies.
   useEffect(() => {
     if (initialHtml !== null && editorRef.current && !initializedRef.current) {
       editorRef.current.innerHTML = initialHtml;
       initializedRef.current = true;
     }
-  }, [initialHtml]);
+  }, [initialHtml, open]);
 
   function fixLinks() {
     editorRef.current?.querySelectorAll("a[href]").forEach((a) => {
@@ -153,22 +156,22 @@ export default function FocusBlock({ slug, standalone }: { slug: string; standal
   if (standalone) {
     return (
       <>
-        <div className="ck-section-head">
-          <span>Zoekwoorden &amp; links</span>
-        </div>
-        {toolbar}
-        {editor}
+        <button type="button" className="ck-section-head" style={{ width: "100%", background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", font: "inherit" }} onClick={() => setOpen((v) => !v)}>
+          <span>{open ? "▾" : "▸"} Zoekwoorden &amp; links</span>
+        </button>
+        {open && toolbar}
+        {open && editor}
       </>
     );
   }
 
   return (
     <div className="sov-tasks">
-      <div className="sov-tasks-head focus-head">
-        <span>Zoekwoorden &amp; links</span>
-      </div>
-      {toolbar}
-      {editor}
+      <button type="button" className="sov-tasks-head focus-head" style={{ width: "100%", background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", font: "inherit" }} onClick={() => setOpen((v) => !v)}>
+        <span>{open ? "▾" : "▸"} Zoekwoorden &amp; links</span>
+      </button>
+      {open && toolbar}
+      {open && editor}
     </div>
   );
 }

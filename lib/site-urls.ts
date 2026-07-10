@@ -97,7 +97,7 @@ function normUrl(u: string): string {
 }
 
 // ── Sitemap ophalen (incl. sitemap-index), URL's verzamelen ──
-async function fetchSitemapUrls(domain: string, max = 500): Promise<string[]> {
+async function fetchSitemapUrls(domain: string, max = 1500): Promise<string[]> {
   const base = domain.startsWith("http") ? domain.replace(/\/$/, "") : `https://${domain.replace(/^www\./, "").replace(/\/$/, "")}`;
   const candidates = [`${base}/sitemap.xml`, `${base}/sitemap_index.xml`];
   const found = new Set<string>();
@@ -163,7 +163,8 @@ export async function scanClientUrls(slug: string, domain: string): Promise<{ sc
   await ensureTables();
   if (!domain) return { scanned: 0 };
 
-  const urls = await fetchSitemapUrls(domain, 500);
+  // Ruime grens: grote sites (webshops) hebben al snel >500 pagina's in de sitemap.
+  const urls = await fetchSitemapUrls(domain, 1500);
 
   // GSC-cijfers per pagina erbij (laatste 28 dagen), best effort.
   const gscMap = new Map<string, { clicks: number; impressions: number }>();
