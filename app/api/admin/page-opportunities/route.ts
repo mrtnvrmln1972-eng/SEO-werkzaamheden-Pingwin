@@ -3,6 +3,7 @@ import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
 import { getClientBySlug } from "../../../../lib/clients";
 import { getGscPageOpportunities } from "../../../../lib/google";
+import { cacheGet, cacheSet } from "../../../../lib/ahrefs";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -32,7 +33,16 @@ export async function GET(req: NextRequest) {
   const domain = client?.domain || "";
   if (!domain) return NextResponse.json({ ok: true, pages: {} });
 
-  const rows = await getGscPageOpportunities(domain, 90).catch(() => []);
+  // Zware berekening (twee GSC-rapporten + Ahrefs-volumes) 12 uur cachen:
+  // Search Console ververst toch maar één keer per dag, en zonder cache wacht
+  // de Pagina's-tab bij elk bezoek seconden op deze data. ?fresh=1 forceert.
+  type Rows = Awaited<ReturnType<typeof getGscPageOpportunities>>;
+  const fresh = req.nextUrl.searchParams.get("fresh") === "1";
+  let rows: Rows | null = fresh ? null : await cacheGet<Rows>("gsc_opps", domain, "-", 0.5).catch(() => null);
+  if (!rows) {
+    rows = await getGscPageOpportunities(domain, 90).catch(() => []);
+    if (rows.length) await cacheSet("gsc_opps", domain, "-", rows).catch(() => {});
+  }
   const pages: Record<string, { impressions: number; clicks: number; ctr: number; position: number; bestKeyword: string; bestPosition: number | null; bestVolume: number | null; score: number; label: string; level: string }> = {};
   for (const p of rows) {
     const o = opportunity(p.impressions, p.position);

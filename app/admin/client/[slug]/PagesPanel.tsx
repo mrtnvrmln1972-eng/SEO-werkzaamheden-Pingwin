@@ -288,16 +288,36 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
     } catch { setMsg("Toevoegen mislukt."); } finally { setAddingPage(false); }
   }
 
-  // Kans-data (vertoningen/positie/beste zoekwoord) op de achtergrond ophalen.
+  // Kans-data (vertoningen/positie/beste zoekwoord): cache-eerst uit de browser
+  // (instant), daarna verse data op de achtergrond. Zelfde patroon als de lijst.
   useEffect(() => {
+    try {
+      const c = localStorage.getItem(`pw_opps_${slug}`);
+      if (c) { const parsed = JSON.parse(c); if (parsed && typeof parsed === "object") setOpps(parsed); }
+    } catch { /* geen cache */ }
     fetch(`/api/admin/page-opportunities?slug=${encodeURIComponent(slug)}`)
-      .then((r) => r.json()).then((d) => { if (d.ok) setOpps(d.pages || {}); }).catch(() => {});
+      .then((r) => r.json()).then((d) => {
+        if (d.ok) {
+          setOpps(d.pages || {});
+          try { localStorage.setItem(`pw_opps_${slug}`, JSON.stringify(d.pages || {})); } catch { /* cache is extra */ }
+        }
+      }).catch(() => {});
   }, [slug]);
 
-  // Prio-pagina's laden (gedeelde opslag met KPI/Wijzigingen).
+  // Prio-pagina's (sterren): ook cache-eerst, dan verversen.
   useEffect(() => {
+    try {
+      const c = localStorage.getItem(`pw_prio_${slug}`);
+      if (c) { const parsed = JSON.parse(c); if (Array.isArray(parsed)) setPriority(new Set(parsed)); }
+    } catch { /* geen cache */ }
     fetch(`/api/admin/changes/priority?slug=${encodeURIComponent(slug)}`)
-      .then((r) => r.json()).then((d) => { if (d.ok) setPriority(new Set((d.urls || []).map((u: string) => prioKey(u)))); }).catch(() => {});
+      .then((r) => r.json()).then((d) => {
+        if (d.ok) {
+          const keys = (d.urls || []).map((u: string) => prioKey(u));
+          setPriority(new Set(keys));
+          try { localStorage.setItem(`pw_prio_${slug}`, JSON.stringify(keys)); } catch { /* cache is extra */ }
+        }
+      }).catch(() => {}); /* eslint-disable-next-line */
   }, [slug]);
   function togglePriority(url: string) {
     const key = prioKey(url);

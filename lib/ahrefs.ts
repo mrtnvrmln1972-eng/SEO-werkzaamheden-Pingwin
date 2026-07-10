@@ -149,7 +149,7 @@ async function ensureCache(): Promise<void> {
       PRIMARY KEY (kind, k, country)
     )`;
 }
-async function cacheGet<T>(kind: string, key: string, country: string, maxAgeDays: number): Promise<T | null> {
+export async function cacheGet<T>(kind: string, key: string, country: string, maxAgeDays: number): Promise<T | null> {
   await ensureSchema(); await ensureCache();
   const { rows } = await sql`SELECT data, fetched_at FROM ahrefs_cache WHERE kind = ${kind} AND k = ${key} AND country = ${country} LIMIT 1`;
   if (!rows[0]) return null;
@@ -157,7 +157,7 @@ async function cacheGet<T>(kind: string, key: string, country: string, maxAgeDay
   if (ageMs > maxAgeDays * 86400000) return null;
   return rows[0].data as T;
 }
-async function cacheSet(kind: string, key: string, country: string, data: unknown): Promise<void> {
+export async function cacheSet(kind: string, key: string, country: string, data: unknown): Promise<void> {
   await ensureSchema(); await ensureCache();
   await sql`
     INSERT INTO ahrefs_cache (kind, k, country, data, fetched_at) VALUES (${kind}, ${key}, ${country}, ${JSON.stringify(data)}, now())
