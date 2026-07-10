@@ -1851,3 +1851,10 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 
 .org-sitewide { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 12px; }
 .org-sitewide-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 13.5px; }
+
+/* Actuele stand van zaken: correspondentie links, Zoekwoorden & links rechts.
+   De generieke .strategy-body zet flex-direction: column (voor de inklapbare
+   kaarten); voor de sov-layout moet hij weer naast elkaar. Op smal scherm
+   alsnog onder elkaar. */
+.sov-layout.strategy-body { flex-direction: row; }
+@media (max-width: 760px) { .sov-layout.strategy-body { flex-direction: column; } }
