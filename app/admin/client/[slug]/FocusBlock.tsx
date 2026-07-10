@@ -172,14 +172,15 @@ export default function FocusBlock({ slug, standalone }: { slug: string; standal
     );
   }
 
+  // In de rechterkolom van de stand van zaken: gewoon altijd open (zoals in de
+  // Pingwin-wereld); de toggle is alleen voor het losse blok (standalone).
   return (
     <div className="sov-tasks">
-      <button type="button" className="strategy-head" style={{ padding: 0 }} onClick={() => setOpen((v) => !v)}>
-        <span className="strategy-caret">{open ? "▾" : "▸"}</span>
-        <span className="sov-tasks-head focus-head" style={{ margin: 0 }}>Zoekwoorden &amp; links</span>
-      </button>
-      {open && toolbar}
-      {open && editor}
+      <div className="sov-tasks-head focus-head">
+        <span>Zoekwoorden &amp; links</span>
+      </div>
+      {toolbar}
+      {editor}
     </div>
   );
 }
