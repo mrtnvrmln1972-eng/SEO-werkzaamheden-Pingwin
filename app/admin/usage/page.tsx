@@ -22,13 +22,24 @@ const ACTION_LABEL: Record<string, string> = {
 
 export const dynamic = "force-dynamic";
 
-type Period = "week" | "month" | "all";
+type Period = "day" | "week" | "month" | "all";
 
 const PERIODS: { key: Period; label: string; days: number | null }[] = [
+  { key: "day", label: "Vandaag", days: 0 },
   { key: "week", label: "Laatste 7 dagen", days: 7 },
   { key: "month", label: "Laatste 30 dagen", days: 30 },
   { key: "all", label: "Alles", days: null },
 ];
+
+// Middernacht Nederlandse tijd, omgerekend naar servertijd (Vercel draait op UTC).
+// Zo betekent "Vandaag" echt: sinds 00:00 bij Maarten op de klok.
+function nlMidnight(): Date {
+  const now = new Date();
+  const nlClock = new Date(now.toLocaleString("en-US", { timeZone: "Europe/Amsterdam" }));
+  const offsetMs = nlClock.getTime() - now.getTime();
+  nlClock.setHours(0, 0, 0, 0);
+  return new Date(nlClock.getTime() - offsetMs);
+}
 
 const SERVICE_LABEL: Record<string, string> = {
   anthropic: "Claude (AI)",
@@ -71,13 +82,14 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
   // AI-verbruik (kosten) is uitsluitend voor de eigenaar.
   if (!scope.isOwner) redirect("/admin");
 
-  const period: Period = searchParams.period === "week" ? "week" : searchParams.period === "all" ? "all" : "month";
+  const period: Period = searchParams.period === "day" ? "day" : searchParams.period === "week" ? "week" : searchParams.period === "all" ? "all" : "month";
   const days = PERIODS.find((p) => p.key === period)!.days;
-  const from = new Date();
-  if (days) from.setDate(from.getDate() - days);
+  let from = new Date();
+  if (period === "day") from = nlMidnight();
+  else if (days) from.setDate(from.getDate() - days);
   else from.setFullYear(2000);
   // Leesbare omschrijving van de gekozen periode, zodat "deze periode" nooit vaag is.
-  const periodText = days ? `${dateNl(from)} t/m vandaag` : "alle metingen sinds de start";
+  const periodText = period === "day" ? "vandaag, sinds middernacht" : days ? `${dateNl(from)} t/m vandaag` : "alle metingen sinds de start";
 
   let rows: UsageRow[] = [];
   let actionRows: UsageActionRow[] = [];
