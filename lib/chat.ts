@@ -4,6 +4,7 @@ import { getEmails, getMetrics, getKeywords, getStatus } from "./snapshots";
 import { msStatus, msSearchClientEmails } from "./ms-graph";
 import { googleStatus, getGscForClient, getGscKeywordTrend, getGscForPage } from "./google";
 import { measurePage } from "./page-measure";
+import { metaVerdictText } from "./meta-rules";
 import { getUrlOrganicKeywords, getSerpOverview, getAhrefsTopPages, ahrefsConfigured } from "./ahrefs";
 import { callClaudeAgentic, type ToolDef, type ToolRunner } from "./anthropic";
 import { sheetCsvUrl, parseCSV, structureData, MAAND_VOLGORDE } from "./sheet";
@@ -241,8 +242,8 @@ function chatTools(client: ClientConfig): { tools: ToolDef[]; run: ToolRunner } 
         const m = await measurePage(toFull(String(input.url || "")), { staticOnly: true });
         if (!m.ok) return `Pagina niet leesbaar (status ${m.status ?? "?"}).`;
         return [
-          `Status ${m.status}. Title (${m.titleLength} tekens): ${m.metaTitle}`,
-          `Meta-description (${m.descriptionLength} tekens): ${m.metaDescription}`,
+          `Status ${m.status}. Title (${metaVerdictText("meta_title", m.metaTitle)}): ${m.metaTitle}`,
+          `Meta-description (${metaVerdictText("meta_description", m.metaDescription)}): ${m.metaDescription}`,
           `H1: ${m.h1.join(" | ") || "(geen)"}`,
           `H2 (${m.h2.length}): ${m.h2.join(" | ")}`,
           `H3 (${m.h3.length}): ${m.h3.slice(0, 15).join(" | ")}`,

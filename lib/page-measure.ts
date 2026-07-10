@@ -8,6 +8,7 @@
 // ═══════════════════════════════════════════════════════════
 
 import { renderHtml } from "./render-page";
+import { metaVerdictText } from "./meta-rules";
 
 export type MeasuredImage = { file: string; alt: string; altLength: number; hasAlt: boolean; format: string; hasDimensions: boolean; loading: string };
 export type MeasuredLink = { href: string; text: string };
@@ -213,8 +214,8 @@ export function measureToText(m: PageMeasurement, primaryKeyword: string): strin
   const density = m.wordCount && kw ? Math.round(((m.metaTitle + " " + m.h1.join(" ") + " " + m.h2.join(" ")).toLowerCase().split(kw).length - 1) / m.wordCount * 10000) / 100 : 0;
   return [
     `GEMETEN PAGINA-PROFIEL (${m.rendered ? "via headless browser gerenderd" : "statische HTML"}, HTTP ${m.status}). Score de criteria tegen DEZE gemeten waarden:`,
-    `- Meta title: "${m.metaTitle}" (${m.titleLength} tekens; norm 50-60). Primair zoekwoord in eerste 30 tekens: ${m.metaTitle.slice(0, 30).toLowerCase().includes(root) ? "ja" : "nee"}.`,
-    `- Meta description: "${m.metaDescription}" (${m.descriptionLength} tekens; norm 140-160).`,
+    `- Meta title: "${m.metaTitle}" (gemeten: ${metaVerdictText("meta_title", m.metaTitle)}; norm 40-60 tekens en max 580 px, META-02). Primair zoekwoord in eerste 30 tekens: ${m.metaTitle.slice(0, 30).toLowerCase().includes(root) ? "ja" : "nee"} (META-03). Bevat pijp (|): ${/\|/.test(m.metaTitle) ? "ja (fout, META-05: koppelteken gebruiken)" : "nee"}.`,
+    `- Meta description: "${m.metaDescription}" (gemeten: ${metaVerdictText("meta_description", m.metaDescription)}; norm 120-155 tekens en max 920 px, META-07; kern + zoekwoord in de eerste 120 tekens, META-14).`,
     `- H1 (${m.h1.length}x, norm exact 1): ${m.h1.length ? m.h1.map((h) => `"${h}"`).join(" / ") : "GEEN H1"}.`,
     `- H2's (${m.h2.length}, norm 4-12): ${m.h2.map((h) => `"${h}"`).join(" | ") || "geen"}. H2-dekking op zoekwoord/variant: ${h2cov}% (${h2hits}/${m.h2.length}; norm 60-80%).`,
     `- H3's (${m.h3.length}): ${m.h3.slice(0, 20).map((h) => `"${h}"`).join(" | ") || "geen"}.`,

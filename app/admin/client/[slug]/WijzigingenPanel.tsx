@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import HelpHint from "./HelpHint";
+import MetaPixelMeter from "./MetaPixelMeter";
+import type { MetaKind } from "@/lib/meta-rules";
 
 type ArrayDiff = { added: string[]; removed: string[] };
 type FieldChange = { before: string; after: string };
@@ -49,12 +51,22 @@ function clusterChanges(list: ChangeEvent[]): { rep: ChangeEvent; count: number 
   return out;
 }
 
-function Field({ label, change }: { label: string; change: FieldChange }) {
+function Field({ label, change, meter }: { label: string; change: FieldChange; meter?: MetaKind }) {
   return (
     <div className="wz-block">
       <div className="wz-block-head">{label}</div>
-      {change.before && <div className="wz-line removed"><span className="wz-sign">-</span> {change.before}</div>}
-      {change.after && <div className="wz-line added"><span className="wz-sign">+</span> {change.after}</div>}
+      {change.before && (
+        <div className="wz-line removed">
+          <span className="wz-sign">-</span> {change.before}
+          {meter && <MetaPixelMeter kind={meter} text={change.before} />}
+        </div>
+      )}
+      {change.after && (
+        <div className="wz-line added">
+          <span className="wz-sign">+</span> {change.after}
+          {meter && <MetaPixelMeter kind={meter} text={change.after} />}
+        </div>
+      )}
     </div>
   );
 }
@@ -219,8 +231,8 @@ function KpiBlock({ label, sub, children }: { label: string; sub?: string; child
 function DiffView({ diff }: { diff: ContentDiff }) {
   return (
     <div className="wz-diff">
-      {diff.meta_title && <Field label="Paginatitel" change={diff.meta_title} />}
-      {diff.meta_description && <Field label="Meta-beschrijving" change={diff.meta_description} />}
+      {diff.meta_title && <Field label="Paginatitel" change={diff.meta_title} meter="meta_title" />}
+      {diff.meta_description && <Field label="Meta-beschrijving" change={diff.meta_description} meter="meta_description" />}
       {diff.h1 && <Field label="H1" change={diff.h1} />}
       {diff.h2s && <Arr label="H2-koppen" diff={diff.h2s} />}
       {diff.h3s && <Arr label="H3-koppen" diff={diff.h3s} />}

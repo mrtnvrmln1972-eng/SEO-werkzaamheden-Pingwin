@@ -7,6 +7,7 @@ import { measurePage, measureToText, measureCompetitors, competitorsToText } fro
 import { callClaude, callClaudeAgentic, type ToolDef, type ToolRunner } from "./anthropic";
 import type { DocSpec } from "./pingwin-docx";
 import { SEO_CRITERIA_MD } from "./seo-criteria";
+import { META_RULES_PROMPT, metaPixelInfo, metaVerdictText, type MetaKind } from "./meta-rules";
 import { getPageSpeed, pageSpeedToText } from "./pagespeed";
 import { ahrefsConfigured, getUrlOrganicKeywords, getSerpOverview, getKeywordsOverview, getKeywordIdeas } from "./ahrefs";
 
@@ -168,13 +169,15 @@ const BLUEPRINT_SYSTEM = `Je bent een senior SEO-strateeg bij bureau Pingwin en 
 De blauwdruk bevat, elk als eigen sectie:
 1. Zoekwoord-strategie: primair zoekwoord + secundaire/variant-zoekwoorden (tabel met zoekwoord + rol/volume waar bekend).
 2. Headings-structuur: de voorgestelde H1, en de H2's/H3's in volgorde. VARIATIE, GEEN STUFFING: maximaal circa 70% van de koppen bevat het primaire zoekwoord of een semantische variant (boven 80% oogt onnatuurlijk, criterium H2-01); de overige koppen dekken het onderwerp met natuurlijke titels ZONDER het zoekwoord. Bij een LOKAAL zoekwoord (met plaatsnaam): zet de plaatsnaam in HOOGUIT 2 à 3 koppen, niet in elke kop; varieer de rest met de dienst/het subthema. Koppen lezen als sectietitels, niet als zoekopdrachten. Zet vóór ELKE koptitel de niveau-aanduiding (H1, H2 of H3) als klein label, zodat de sitebouwer weet welk opmaakniveau hij moet gebruiken. De FAQ-vraagtitels krijgen ALTIJD de aanduiding H3 (onder een H2 "Veelgestelde vragen").
-3. Meta: 2 varianten meta-title (max ~60 tekens) en 2 varianten meta-description (max ~155 tekens).
+3. Meta: 2 varianten meta-title en 2 varianten meta-description, elk strikt volgens de META-REGELS hieronder (titel 40-60 tekens, description 120-155 tekens); vermeld per variant het tekenaantal tussen haakjes.
 4. FAQ: 4 tot 6 vragen die de zoekintentie dekken.
 5. Interne links: welke andere pagina's naar deze pagina linken en met welke ankertekst.
 6. Beeld-briefs: kort wat voor beeld/alt-tekst per sectie.
 UITGANGSPUNT BEHOUD: vertrek van de bestaande pagina-inhoud + het overgenomen plan en de taken. Geef de PERFECTE invulling voor deze landingspagina: behoud wat er al staat en voldoet aan de criteria + de top-10-eisen, en voeg alleen toe of herschrijf wat daaruit ontbreekt. Maak per sectie duidelijk of het BEHOUDEN, AANPASSEN of NIEUW is. Baseer de structuur op de top-10-analyse van het gekozen zoekwoord.
-Werk conform de Pingwin-criteria: H2-dekking 60-80% (target 70%, criterium H2-01), primair zoekwoord front-loaded in de meta-title (META-03), title 50-60 tekens (META-02), meta-description 140-160 tekens (META-07), FAQ 4-8 vragen die een zoekwoord/long-tail bevatten (FAQ-02/03), en een variantenlijst van 10-15 semantische varianten (KW-04, §17).
+Werk conform de Pingwin-criteria: H2-dekking 60-80% (target 70%, criterium H2-01), primair zoekwoord front-loaded in de meta-title (META-03), title 40-60 tekens (META-02), meta-description 120-155 tekens (META-07), FAQ 4-8 vragen die een zoekwoord/long-tail bevatten (FAQ-02/03), en een variantenlijst van 10-15 semantische varianten (KW-04, §17).
 Gegrond in de data hieronder; verzin geen rankings.
+
+${META_RULES_PROMPT}
 
 RELEVANTE CRITERIA:
 ${SEO_CRITERIA_MD}
@@ -192,6 +195,8 @@ Lever het document met EXACT deze secties, in deze volgorde:
 3. Sectie "Behoud-overzicht": één paragraph met het behoud-principe, daarna één table-blok met kolommen Sectie | Actie | Toelichting (actie = BEHOUDEN/AANGEPAST/VERVANGEN/NIEUW).
 4. Sectie "Volledige copy": de H1 (subheading), per H2 de kop (subheading) + de alineatekst (paragraph-blokken), eventuele bullets, en een FAQ: het FAQ-blok als subheading "Veelgestelde vragen over [onderwerp]" en elke vraag daaronder óók als subheading, met het antwoord als paragraph. Zet vóór ELKE koptitel de niveau-aanduiding (H1, H2 of H3) als klein label; de FAQ-vraagtitels krijgen altijd H3, zodat de sitebouwer het juiste opmaakniveau ziet.
 Gegrond in de data hieronder; verzin geen gemeten waarden die niet uit de data volgen.
+
+${META_RULES_PROMPT}
 
 RELEVANTE CRITERIA:
 ${SEO_CRITERIA_MD}
@@ -471,6 +476,8 @@ LEVER HET DOCUMENT MET EXACT DEZE SECTIES, in deze volgorde:
 Zet vóór ELKE koptitel in sectie 4 de niveau-aanduiding (H1, H2 of H3) als klein label vóór de tekst; FAQ-vraagtitels en praktijkvoorbeelden zijn altijd H3, zodat de sitebouwer het juiste opmaakniveau ziet. Alleen de secties 1 t/m 3 zijn kort; sectie 4 is de volledige, uitgeschreven pagina.
 Laat de scorecard, criteria-ID's, tekencounts en het behoud-overzicht WEG (dat is intern). Geen emoji.
 
+${META_RULES_PROMPT}
+
 RELEVANTE CRITERIA (naslag voor jezelf, niet als tekst in het document):
 ${SEO_CRITERIA_MD}
 
@@ -723,6 +730,92 @@ async function selfCheckCopyHeadings(spec: DocSpec, slug: string): Promise<void>
   if (revised) blocks.forEach((b, i) => { b.text = revised[i]; });
 }
 
+// ── Pixel-correctielus voor meta title/description in gegenereerde documenten ──
+// Het model kan geen pixels tellen; daarom meten we NA generatie de meta-waarden in
+// het document (subheading "Paginatitel (meta-title)"/"Meta-description" met de waarde
+// als paragraph eronder, of de SEO-metadata-tabel) en laten we een te brede of
+// regel-brekende waarde gericht herschrijven. Alleen die ene regel wordt opnieuw
+// gegenereerd, nooit het hele document.
+type MetaSpot = { kind: MetaKind; get: () => string; set: (v: string) => void };
+
+function findMetaSpots(spec: DocSpec): MetaSpot[] {
+  const spots: MetaSpot[] = [];
+  const kindOf = (label: string): MetaKind | null => {
+    if (/meta[\s-]?description|meta[\s-]?beschrijving/i.test(label)) return "meta_description";
+    if (/meta[\s-]?title|paginatitel/i.test(label)) return "meta_title";
+    return null;
+  };
+  for (const sec of spec.sections || []) {
+    const blocks = sec.blocks || [];
+    for (let i = 0; i < blocks.length; i++) {
+      const b = blocks[i];
+      // Patroon 1: subheading met de meta-waarde als eerstvolgende paragraph.
+      if (b.type === "subheading") {
+        const kind = kindOf(b.text || "");
+        const next = blocks[i + 1];
+        if (kind && next && next.type === "paragraph" && (next.text || "").trim()) {
+          spots.push({ kind, get: () => next.text, set: (v) => { next.text = v; } });
+        }
+      }
+      // Patroon 2: SEO-metadata-tabel met rijen [Element, Waarde, Tekens].
+      if (b.type === "table" && Array.isArray(b.rows)) {
+        for (const row of b.rows) {
+          const kind = kindOf(String(row[0] || ""));
+          if (kind && typeof row[1] === "string" && row[1].trim()) {
+            spots.push({
+              kind,
+              get: () => row[1] as string,
+              set: (v) => { row[1] = v; if (row.length > 2) row[2] = `${[...v].length}`; },
+            });
+          }
+        }
+      }
+    }
+  }
+  return spots;
+}
+
+// Harde gebreken die een herschrijving rechtvaardigen (te breed voor Google, pijp,
+// vierkante haken). Te kort laten we staan: dat kost geen afkapping.
+function metaHardIssues(kind: MetaKind, text: string): string[] {
+  const issues: string[] = [];
+  const info = metaPixelInfo(kind, text);
+  if (info.px > info.max) issues.push(`te breed: ${info.px} px, harde grens ${info.max} px (${info.chars} tekens)`);
+  if (kind === "meta_title" && /\|/.test(text)) issues.push("bevat een pijp (|); gebruik een koppelteken of laat het merk weg");
+  if (kind === "meta_title" && /[\[\]]/.test(text)) issues.push("bevat vierkante haken; die worden door Google herschreven");
+  return issues;
+}
+
+async function enforceMetaInSpec(spec: DocSpec, slug: string, primary: string): Promise<void> {
+  const labels: Record<MetaKind, string> = { meta_title: "meta-title", meta_description: "meta-description" };
+  for (const spot of findMetaSpots(spec)) {
+    let best = spot.get().trim();
+    let issues = metaHardIssues(spot.kind, best);
+    for (let attempt = 0; issues.length && attempt < 2; attempt++) {
+      const user = [
+        `Herschrijf deze ${labels[spot.kind]} zodat hij aan de regels voldoet. Gebreken nu: ${issues.join("; ")}.`,
+        primary ? `Primair zoekwoord (moet ${spot.kind === "meta_title" ? "vooraan blijven" : "erin blijven"}): ${primary}` : "",
+        `Huidige tekst: ${best}`,
+        `Geef ALLEEN de nieuwe tekst terug, exact zoals hij in Google moet komen. Geen uitleg, geen aanhalingstekens, één regel.`,
+      ].filter(Boolean).join("\n");
+      const raw = await callClaude(META_RULES_PROMPT, [{ role: "user", content: user }], 300, { slug, action: "meta_correctie" }).catch(() => "");
+      const cand = (raw || "").trim().split("\n")[0].replace(/^["']|["']$/g, "").trim();
+      if (!cand) break;
+      // Houd de beste kandidaat: alleen overnemen als hij minder gebreken heeft of smaller is.
+      const candIssues = metaHardIssues(spot.kind, cand);
+      const smaller = metaPixelInfo(spot.kind, cand).px < metaPixelInfo(spot.kind, best).px;
+      if (candIssues.length < issues.length || (candIssues.length === issues.length && smaller)) {
+        best = cand;
+        issues = candIssues;
+      }
+    }
+    if (best !== spot.get().trim()) {
+      console.warn(`[page-doc] meta gecorrigeerd (${spot.kind}): ${metaVerdictText(spot.kind, best)}`);
+      spot.set(best);
+    }
+  }
+}
+
 // audience "klant" (standaard): korte, klantvriendelijke versie.
 // - analyse/blauwdruk: eerst de DIEPE technische fundering (geketend), daaruit het korte klantdoc.
 // - copy: de VOLLEDIGE uitgeschreven pagina (kernproduct), geen samenvatting.
@@ -783,6 +876,8 @@ Geen emoji. ${DOCSPEC_FORMAT}`;
   if (kind === "copy") {
     await ensureHeadingLabels(spec, slug).catch(() => { /* vangnet is aanvulling */ });
     await selfCheckCopyHeadings(spec, slug).catch(() => { /* controle is aanvulling */ });
+    // Pixel-correctielus: te brede of regel-brekende meta-title/description gericht herschrijven.
+    await enforceMetaInSpec(spec, slug, context.primary).catch(() => { /* correctie is aanvulling */ });
   }
   // Bewaar de tekst-uitkomst zodat de volgende stap in de keten erop voortbouwt.
   await savePageDocOutput(slug, url, kind, specToText(spec)).catch(() => { /* keten is aanvulling, niet kritisch */ });
