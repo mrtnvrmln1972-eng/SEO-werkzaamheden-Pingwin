@@ -27,9 +27,9 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   // Standaard tonen we alleen de originele vraag + de eindconclusie; het hele
   // tussenliggende gesprek (analyse, doorvragen) klapt open via een knop.
   const [fullConvoOpen, setFullConvoOpen] = useState(false);
-  // De chat-kaart in/uitklappen: je maakt hem een keer, dus zodra de strategie is
-  // vastgelegd staat hij standaard dicht (scheelt scrollen).
-  const [chatOpen, setChatOpen] = useState(false);
+  // De strategie-kaart (stap 1) staat open zolang er nog geen strategie is
+  // vastgelegd (daar begint het werk); daarna standaard dicht (scheelt scrollen).
+  const [chatOpen, setChatOpen] = useState(!planDone);
   // Elke stap is een inklapbare, genummerde kaart (toggle).
   const [doorgevenOpen, setDoorgevenOpen] = useState(false);
   const [vervolgOpen, setVervolgOpen] = useState(false);
