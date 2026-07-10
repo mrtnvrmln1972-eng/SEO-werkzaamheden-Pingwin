@@ -412,7 +412,7 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
                 {!parts.profileMd && <span className="plan-chip" style={{ marginLeft: 8 }}>leeg</span>}
               </button>
               {genPartOpen.profile && (parts.profileMd
-                ? <div className="md profile-part-body" dangerouslySetInnerHTML={{ __html: mdToHtml(parts.profileMd, domain) }} />
+                ? <div className="md profile-part-body" dangerouslySetInnerHTML={{ __html: mdToHtml(parts.profileMd.replace(/^##[^\n]*\n?/, ""), domain) }} />
                 : <div className="muted" style={{ fontSize: 12 }}>Nog niet opgesteld. Klik &ldquo;Klantprofiel opstellen&rdquo; hierboven.</div>)}
             </div>
 
@@ -422,7 +422,7 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
                 {!parts.tovMd && <span className="plan-chip" style={{ marginLeft: 8 }}>leeg</span>}
               </button>
               {genPartOpen.tov && (parts.tovMd
-                ? <div className="md profile-part-body" dangerouslySetInnerHTML={{ __html: mdToHtml(parts.tovMd, domain) }} />
+                ? <div className="md profile-part-body" dangerouslySetInnerHTML={{ __html: mdToHtml(parts.tovMd.replace(/^##[^\n]*\n?/, ""), domain) }} />
                 : <div className="muted" style={{ fontSize: 12 }}>Nog niet opgesteld. Klik &ldquo;Tone-of-voice analyse&rdquo; hierboven.</div>)}
             </div>
 
