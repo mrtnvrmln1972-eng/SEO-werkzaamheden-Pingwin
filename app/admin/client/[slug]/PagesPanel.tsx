@@ -347,7 +347,7 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
       }
       case "status": return (a.status || 999) - (b.status || 999) || a.url.localeCompare(b.url);
       case "pagina": return a.url.localeCompare(b.url);
-      case "klikken": return (b.gscClicks || 0) - (a.gscClicks || 0);
+      case "klikken": return ((ob && ob.clicks > 0 ? ob.clicks : b.gscClicks) || 0) - ((oa && oa.clicks > 0 ? oa.clicks : a.gscClicks) || 0);
       case "vertoningen": return imp(b, ob) - imp(a, oa);
       case "positie": return (oa?.position ?? 999) - (ob?.position ?? 999);
       case "volume": return (ob?.bestVolume ?? -1) - (oa?.bestVolume ?? -1);
@@ -589,7 +589,7 @@ function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoTo
           <a href={u.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>{shortUrl(u.url)}</a>
           {opp?.bestKeyword && <div className="pg-kw" title="Beste zoekwoord (meeste vertoningen), met zoekvolume en huidige positie">{opp.bestKeyword}{opp.bestVolume != null ? ` · vol ${opp.bestVolume.toLocaleString("nl-NL")}` : ""}{opp.bestPosition != null ? ` / pos ${opp.bestPosition}` : ""}</div>}
         </td>
-        <td>{u.gscClicks > 0 ? u.gscClicks.toLocaleString("nl-NL") : <span className="muted">&mdash;</span>}</td>
+        <td>{opp && opp.clicks > 0 ? opp.clicks.toLocaleString("nl-NL") : (u.gscClicks > 0 ? u.gscClicks.toLocaleString("nl-NL") : <span className="muted">&mdash;</span>)}</td>
         <td>{opp && opp.impressions > 0 ? opp.impressions.toLocaleString("nl-NL") : (u.gscImpressions > 0 ? u.gscImpressions.toLocaleString("nl-NL") : <span className="muted">&mdash;</span>)}</td>
         <td>{opp && opp.position ? opp.position : <span className="muted">&mdash;</span>}</td>
         <td>{opp?.bestVolume != null ? opp.bestVolume.toLocaleString("nl-NL") : <span className="muted">&mdash;</span>}</td>
