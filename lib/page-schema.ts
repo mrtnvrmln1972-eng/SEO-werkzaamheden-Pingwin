@@ -146,12 +146,17 @@ export async function runPageSchema(slug: string, url: string): Promise<void> {
   try {
     const client = await getClientBySlug(slug);
     if (!client) throw new Error("Klant niet gevonden.");
-    const [org, plan, measured, gsc] = await Promise.all([
+    const [org, plan, measured, gsc, allTasks] = await Promise.all([
       getOrgData(slug),
       getPagePlan(slug, url).catch(() => ""),
       measurePage(url, { staticOnly: true }).catch(() => null),
       getGscForPage(client.domain || "", url, 90).catch(() => []),
+      getTasks(slug).catch(() => []),
     ]);
+    // Gouden regel: markup moet matchen met de zichtbare content. Staat er nog een
+    // niet-afgeronde copy-taak voor deze pagina, dan komen de nieuwe teksten (met
+    // FAQ's) waarschijnlijk nog; stap 7 hoort daarna als sluitstuk.
+    const openCopy = allTasks.some((t) => t.stepKind === "copy_doc" && (t.pageUrl || "") === url && (t.status || "").toLowerCase() !== "klaar");
 
     const site = (() => { try { return new URL(url).origin; } catch { return ""; } })();
     const pageText = measured
@@ -181,6 +186,7 @@ export async function runPageSchema(slug: string, url: string): Promise<void> {
     if (!parsed.jsonld || typeof parsed.advies_md !== "string") throw new Error("Het AI-antwoord kwam onvolledig terug; probeer het opnieuw.");
     const jsonld = JSON.stringify(parsed.jsonld, null, 2);
     const warnings = Array.isArray(parsed.waarschuwingen) ? parsed.waarschuwingen.map(String).filter(Boolean) : [];
+    if (openCopy) warnings.unshift("Er staat nog een niet-afgeronde copy-taak voor deze pagina: de nieuwe teksten (met FAQ's) staan waarschijnlijk nog niet live. Deze analyse is gebaseerd op de huidige pagina; draai stap 7 opnieuw zodra de nieuwe copy live staat.");
     const header = parsed.paginatype ? `**Paginatype:** ${parsed.paginatype}\n\n` : "";
     await setState(slug, url, "done", { result: header + parsed.advies_md.trim(), jsonld, warnings });
   } catch (e) {

@@ -120,7 +120,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     } catch { setIlApplyMsg("Overnemen mislukt."); } finally { setIlApplyBusy(false); }
   }
   // Stap 7: structured data (achtergrond-analyse + overnemen), spiegelt stap 6.
-  const [sch, setSch] = useState<{ status: string; result: string; jsonld: string; warnings: string[]; error: string; updatedAt: string | null } | null>(null);
+  const [sch, setSch] = useState<{ status: string; result: string; jsonld: string; warnings: string[]; error: string; updatedAt: string | null; stale?: boolean } | null>(null);
   const [schBusy, setSchBusy] = useState(false);
   const [schDocOpen, setSchDocOpen] = useState(true);
   const [schJsonOpen, setSchJsonOpen] = useState(false);
@@ -128,7 +128,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   async function loadSch() {
     try {
       const d = await fetch(`/api/admin/page-schema?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}`).then((r) => r.json());
-      if (d.ok) setSch({ status: d.status, result: d.result, jsonld: d.jsonld, warnings: d.warnings || [], error: d.error, updatedAt: d.updatedAt });
+      if (d.ok) setSch({ status: d.status, result: d.result, jsonld: d.jsonld, warnings: d.warnings || [], error: d.error, updatedAt: d.updatedAt, stale: !!d.stale });
     } catch { /* stil */ }
   }
   useEffect(() => { loadSch(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [slug, url]);
@@ -1426,6 +1426,9 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
             <span className="pch-canni-lead">Adviseert de structured data (schema.org) voor deze pagina op basis van het bedrijfstype en de bevestigde bedrijfsgegevens, en levert de kant-en-klare JSON-LD voor de developer.</span>
             <button type="button" className={"pcd-btn" + (schBusy || sch?.status === "running" ? " busy" : "")} disabled={schBusy || sch?.status === "running"} onClick={runSch} title="Draait op de achtergrond; je kunt wegklikken.">{sch?.status === "running" ? "Analyse draait…" : sch?.result ? "Opnieuw analyseren" : "Analyseer structured data"}</button>
           </div>
+          {sch?.stale && (
+            <div className="sch-warning" style={{ marginTop: 8 }}>⚠ De pagina is gewijzigd ná de laatste structured data-analyse; de markup past mogelijk niet meer bij de zichtbare content. Draai de analyse opnieuw en geef de developer de nieuwe JSON.</div>
+          )}
           {sch?.status === "error" && sch.error && <div className="login-error" style={{ marginTop: 8 }}>{sch.error}</div>}
           {sch?.status === "running" && !sch.result && <div className="muted" style={{ marginTop: 8, fontSize: 13 }}>Analyse draait op de achtergrond (meet de pagina, leest bestaande schema en de bedrijfsgegevens; dit duurt meestal onder een minuut).</div>}
           {sch?.result && (

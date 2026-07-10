@@ -4,6 +4,7 @@ import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
 import { anthropicConfigured } from "../../../../lib/anthropic";
 import { getPageSchema, markPageSchemaRunning, runPageSchema } from "../../../../lib/page-schema";
+import { getChangeEventsForUrl } from "../../../../lib/content-tracking";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -20,7 +21,17 @@ export async function GET(req: NextRequest) {
   const url = req.nextUrl.searchParams.get("url") || "";
   if (!slug || !url) return NextResponse.json({ ok: false, error: "Klant en URL zijn verplicht." }, { status: 400 });
   const state = await getPageSchema(slug, url);
-  return NextResponse.json({ ok: true, ...state });
+  // Drift-signaal: is de pagina gewijzigd (Wijzigingen-tab) ná de laatste analyse,
+  // dan past de structured data mogelijk niet meer bij de zichtbare content.
+  let stale = false;
+  if (state.status === "done" && state.updatedAt) {
+    try {
+      const events = await getChangeEventsForUrl(slug, url);
+      const last = events[0]?.detectedAt || "";
+      stale = !!last && new Date(last).getTime() > new Date(state.updatedAt).getTime();
+    } catch { /* signaal is aanvulling */ }
+  }
+  return NextResponse.json({ ok: true, ...state, stale });
 }
 
 // POST: start de analyse (draait server-side door; de kaart pollt de status).
