@@ -71,6 +71,9 @@ export default function ClientCockpit({
 }: { client: ClientConfig; initialTab?: string; highlight?: string; showMailSections?: boolean } & CockpitData) {
   const router = useRouter();
   const pathname = usePathname();
+  // Directe feedback bij het wisselen van klant: de nieuwe pagina moet server-
+  // side data ophalen en dat duurt even; zonder signaal voelt dat als bevroren.
+  const [switchingTo, setSwitchingTo] = useState<string | null>(null);
   const validTab = (t?: string): Tab => (t === "werkzaamheden" || t === "paginas" || t === "resultaten" || t === "klant" || t === "developer" || t === "wijzigingen") ? t : "werkzaamheden";
   const [tab, setTab] = useState<Tab>(validTab(initialTab));
   // Demo-filter voor de klanten-dropdown: alleen klanten met mooie ontwikkeling
@@ -241,6 +244,12 @@ export default function ClientCockpit({
 
   return (
     <>
+      {switchingTo && (
+        <div style={{ position: "fixed", top: 14, left: "50%", transform: "translateX(-50%)", zIndex: 10001, background: "var(--dark, #33302e)", color: "#fff", borderRadius: 999, padding: "8px 18px", fontSize: 13, fontWeight: 600, boxShadow: "0 6px 24px rgba(0,0,0,0.25)", display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ width: 12, height: 12, border: "2px solid rgba(255,255,255,0.35)", borderTopColor: "#fff", borderRadius: "50%", display: "inline-block", animation: "spin 0.8s linear infinite" }} />
+          {switchingTo} laden…
+        </div>
+      )}
       <div className="header">
         <div className="header-left">
           <a href="/admin" className="logo-link" title="Naar het klantenoverzicht">
@@ -251,7 +260,7 @@ export default function ClientCockpit({
           <select
             className="client-switch"
             value={client.slug}
-            onChange={(e) => router.push(`/admin/client/${e.target.value}`)}
+            onChange={(e) => { setSwitchingTo(e.target.options[e.target.selectedIndex]?.text || "…"); router.push(`/admin/client/${e.target.value}`); }}
             title="Wissel van klant"
           >
             {(() => {

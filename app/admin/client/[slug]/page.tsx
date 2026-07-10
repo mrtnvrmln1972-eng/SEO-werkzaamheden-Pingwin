@@ -97,14 +97,14 @@ export default async function ClientCockpitPage({ params, searchParams }: { para
     if (!ms.connected) return { emails: storedEmails, mailLive: false };
     const query = (client.email || client.domain || "").trim();
     if (!query) return { emails: storedEmails, mailLive: false };
-    const live = await withTimeout(msSearchClientEmails(query, ms.account || "", 25), 4000, null);
+    const live = await withTimeout(msSearchClientEmails(query, ms.account || "", 25), 2500, null);
     return live ? { emails: live, mailLive: true } : { emails: storedEmails, mailLive: false };
   })();
   const googlePromise = (async () => {
     if (!google.connected) return { gsc: null, ga4: null };
     const [gsc, ga4] = await Promise.all([
-      withTimeout(getGscForClient(client.domain || ""), 4000, null),
-      withTimeout(getGa4ForClient(params.slug, client.domain || ""), 4000, null),
+      withTimeout(getGscForClient(client.domain || ""), 2500, null),
+      withTimeout(getGa4ForClient(params.slug, client.domain || ""), 2500, null),
     ]);
     return { gsc, ga4 };
   })();
