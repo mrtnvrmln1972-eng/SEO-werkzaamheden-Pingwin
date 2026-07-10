@@ -295,10 +295,10 @@ export default function ClientCockpit({
           )}
           <nav className="header-tabs">
             {([
-              ["werkzaamheden", "Taken", ""],
               ["paginas", "Pagina’s", ""],
-              ["resultaten", "KPI’s", ""],
+              ["werkzaamheden", "Taken", ""],
               ["meta", "Meta & CTR", "Pagina's met veel vertoningen maar te weinig klikken: betere meta-teksten = direct meer bezoekers"],
+              ["resultaten", "KPI’s", ""],
               ["wijzigingen", "Wijzigingen", ""],
               ["klant", "Klant", ""],
               ["developer", "Developer", "Alle developer-taken over alle klanten"],
