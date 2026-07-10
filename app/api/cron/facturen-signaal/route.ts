@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOpenInvoices, moneybirdConfigured } from "../../../../lib/moneybird";
+import { getOpenInvoices, moneybirdConfigured, type OpenInvoice } from "../../../../lib/moneybird";
 import { msSendMail, msStatus } from "../../../../lib/ms-graph";
+import { listClients } from "../../../../lib/clients";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -40,15 +41,34 @@ export async function GET(req: NextRequest) {
   overdue.sort((a, b) => b.daysOpen - a.daysOpen);
   const total = overdue.reduce((s, i) => s + i.totalUnpaid, 0);
 
-  // Bewust simpele mail: aanhef, korte alinea, simpele opsomming, afsluiting.
-  const items = overdue.map((i) =>
-    `<li style="margin-bottom:6px;">${i.contactName}: factuur ${i.invoiceId}, ${euro(i.totalUnpaid)}, ${i.daysOpen} dagen open &mdash; <a href="${i.url}">open in Moneybird</a></li>`
-  ).join("");
+  // Gegroepeerd per klant: aantal facturen + totaalbedrag, met een link naar de
+  // klant-cockpit (daar staat de facturen-balk met de Moneybird-links om te
+  // herinneren). Facturen zonder gekoppelde klant komen onderaan als 'Overig'.
+  const clients = await listClients().catch(() => []);
+  const origin = process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "https://pingwin-seo-dashboard.vercel.app";
+  const groups = new Map<string, { name: string; slug: string | null; invoices: OpenInvoice[] }>();
+  for (const inv of overdue) {
+    const client = clients.find((c) => c.moneybirdContactId && inv.contactId === c.moneybirdContactId);
+    const key = client ? client.slug : `mb:${inv.contactName || "onbekend"}`;
+    const cur = groups.get(key) || { name: client?.name || inv.contactName || "Overig", slug: client?.slug || null, invoices: [] };
+    cur.invoices.push(inv);
+    groups.set(key, cur);
+  }
+  const sorted = [...groups.values()].sort((a, b) => b.invoices.reduce((s, i) => s + i.totalUnpaid, 0) - a.invoices.reduce((s, i) => s + i.totalUnpaid, 0));
+
+  // Bewust simpele mail: aanhef, korte alinea, simpele opsomming per klant, afsluiting.
+  const items = sorted.map((g) => {
+    const sum = g.invoices.reduce((s, i) => s + i.totalUnpaid, 0);
+    const label = `${g.invoices.length === 1 ? "1 factuur" : `${g.invoices.length} facturen`}, samen ${euro(sum)}`;
+    const link = g.slug
+      ? ` &mdash; <a href="${origin}/admin/client/${encodeURIComponent(g.slug)}">open ${g.name} in het dashboard</a> (daar staan de Moneybird-links om te herinneren)`
+      : g.invoices[0]?.url ? ` &mdash; <a href="${g.invoices[0].url}">open in Moneybird</a>` : "";
+    return `<li style="margin-bottom:8px;"><strong>${g.name}</strong>: ${label}${link}</li>`;
+  }).join("");
   const html = [
     `<p>Hoi Maarten,</p>`,
-    `<p>${overdue.length === 1 ? "Er staat 1 factuur" : `Er staan ${overdue.length} facturen`} langer dan ${OVERDUE_DAYS} dagen open, samen ${euro(total)}:</p>`,
+    `<p>${overdue.length === 1 ? "Er staat 1 factuur" : `Er staan ${overdue.length} facturen`} langer dan ${OVERDUE_DAYS} dagen open, samen ${euro(total)}, bij ${sorted.length === 1 ? "1 klant" : `${sorted.length} klanten`}:</p>`,
     `<ul>${items}</ul>`,
-    `<p>Via de link bij elke factuur kun je in Moneybird direct een herinnering versturen.</p>`,
     `<p>Groet,<br/>je Pingwin-dashboard</p>`,
   ].join("");
 

@@ -317,7 +317,7 @@ export default function ClientCockpit({
 
       <div className="container">
 
-        <InvoiceAlert slug={client.slug} />
+        <InvoiceAlert slug={client.slug} clientName={client.name} />
         <SelectionActions slug={client.slug} clientName={client.name} />
 
         {tab === "werkzaamheden" && (
