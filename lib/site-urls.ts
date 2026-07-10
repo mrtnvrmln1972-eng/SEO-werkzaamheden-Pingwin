@@ -96,8 +96,16 @@ function normUrl(u: string): string {
   return (u || "").trim();
 }
 
+// Automatisch gegenereerde filter-/tagpagina's (webshopsystemen zoals Lightspeed
+// zetten er duizenden in de sitemap). Geen pagina's waar SEO-werk op gebeurt;
+// ze zouden de spiegel en de scan-limiet volproppen.
+const EXCLUDED_PATHS = /\/(tags?|labels?)\//i;
+function isExcludedUrl(u: string): boolean {
+  return EXCLUDED_PATHS.test(u);
+}
+
 // ── Sitemap ophalen (incl. sitemap-index), URL's verzamelen ──
-async function fetchSitemapUrls(domain: string, max = 1500): Promise<string[]> {
+async function fetchSitemapUrls(domain: string, max = 3000): Promise<string[]> {
   const base = domain.startsWith("http") ? domain.replace(/\/$/, "") : `https://${domain.replace(/^www\./, "").replace(/\/$/, "")}`;
   const candidates = [`${base}/sitemap.xml`, `${base}/sitemap_index.xml`];
   const found = new Set<string>();
@@ -115,7 +123,7 @@ async function fetchSitemapUrls(domain: string, max = 1500): Promise<string[]> {
       if (isIndex) {
         for (const child of locs) { if (found.size < max) await loadSitemap(child, depth + 1); }
       } else {
-        for (const u of locs) { if (found.size < max) found.add(u); }
+        for (const u of locs) { if (found.size < max && !isExcludedUrl(u)) found.add(u); }
       }
     } catch { /* sitemap optioneel */ }
   }
@@ -163,8 +171,16 @@ export async function scanClientUrls(slug: string, domain: string): Promise<{ sc
   await ensureTables();
   if (!domain) return { scanned: 0 };
 
-  // Ruime grens: grote sites (webshops) hebben al snel >500 pagina's in de sitemap.
-  const urls = await fetchSitemapUrls(domain, 1500);
+  // Ruime grens: grote sites (webshops) hebben al snel duizenden pagina's in de
+  // sitemap. Tag-/filterpagina's worden al bij het lezen uitgesloten.
+  const urls = await fetchSitemapUrls(domain, 3000);
+
+  // Eerder ingelezen tag-/filterpagina's opruimen, maar NOOIT een pagina waar
+  // al een plan op ligt (dan is er bewust werk op gedaan).
+  await sql`
+    DELETE FROM client_urls
+    WHERE client_slug = ${slug} AND url ~* '/(tags?|labels?)/'
+      AND url NOT IN (SELECT url FROM page_plans WHERE client_slug = ${slug})`;
 
   // GSC-cijfers per pagina erbij (laatste 28 dagen), best effort.
   const gscMap = new Map<string, { clicks: number; impressions: number }>();
