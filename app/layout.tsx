@@ -9,10 +9,12 @@ const prodUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL || "";
 const isNoc = prodUrl.includes("noc-seo-cockpit");
 const isMmc = prodUrl.includes("mmc-seo");
 
+const favicon = isNoc ? "/favicon-noc.png" : isMmc ? "/favicon-mmc.png" : "/favicon-pingwin.png";
+
 export const metadata: Metadata = {
   title: isNoc ? "NOC SEO Cockpit" : isMmc ? "MMC SEO Dashboard" : "Pingwin SEO Dashboard",
   description: "Maandelijks overzicht van SEO-werkzaamheden.",
-  icons: { icon: isNoc ? "/favicon-noc.png" : "/favicon-pingwin.png", apple: isNoc ? "/favicon-noc.png" : "/favicon-pingwin.png" },
+  icons: { icon: favicon, apple: favicon },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
