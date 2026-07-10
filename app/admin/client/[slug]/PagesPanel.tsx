@@ -407,7 +407,7 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
 
             {/* De twee gegenereerde delen als toggle, standaard dicht. */}
             <div className="profile-part acc-teal">
-              <button type="button" className="profile-part-head" style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", font: "inherit" }} onClick={() => setGenPartOpen((o) => ({ ...o, profile: !o.profile }))}>
+              <button type="button" className="profile-part-head" style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }} onClick={() => setGenPartOpen((o) => ({ ...o, profile: !o.profile }))}>
                 <span>{genPartOpen.profile ? "▾" : "▸"}</span> Klantprofiel (automatisch gegenereerd)
                 {!parts.profileMd && <span className="plan-chip" style={{ marginLeft: 8 }}>leeg</span>}
               </button>
@@ -417,7 +417,7 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
             </div>
 
             <div className="profile-part acc-blue">
-              <button type="button" className="profile-part-head" style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", font: "inherit" }} onClick={() => setGenPartOpen((o) => ({ ...o, tov: !o.tov }))}>
+              <button type="button" className="profile-part-head" style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }} onClick={() => setGenPartOpen((o) => ({ ...o, tov: !o.tov }))}>
                 <span>{genPartOpen.tov ? "▾" : "▸"}</span> Tone of voice (automatisch gegenereerd)
                 {!parts.tovMd && <span className="plan-chip" style={{ marginLeft: 8 }}>leeg</span>}
               </button>
