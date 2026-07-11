@@ -131,10 +131,11 @@ export async function getStepsEverDone(slug: string, url: string): Promise<{ ana
 }
 
 // ── Cron-worker: verwerk wachtende runs, stap voor stap ──
-export async function processQueuedRuns(): Promise<{ processed: number }> {
+export async function processQueuedRuns(): Promise<{ processed: number; picked: number[] }> {
   await ensureSchema();
   await ensureRunTable();
   await recoverStale();
+  const picked: number[] = [];
   // Blijf binnen één tick runs oppakken zolang er tijdsbudget is: zo werkt één
   // cron-tick een stapel direct-falende (oude) runs in één keer weg in plaats van
   // één per minuut, terwijl een echte generatie de tick vult en de loop vanzelf
@@ -155,10 +156,11 @@ export async function processQueuedRuns(): Promise<{ processed: number }> {
     const id = Number(rows[0].id);
     if (seen.has(id)) break;
     seen.add(id);
+    picked.push(id);
     await processRun(id);
     processed++;
   }
-  return { processed };
+  return { processed, picked };
 }
 
 // Handmatig stoppen (het kruisje in de cockpit): de run gaat op 'error' zodat de
