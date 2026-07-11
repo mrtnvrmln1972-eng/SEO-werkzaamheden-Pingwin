@@ -542,7 +542,9 @@ function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoTo
   const [cleaning, setCleaning] = useState(false);
   // Tweede uitklap: alle zoekwoorden waar deze pagina nu op scoort (Search Console).
   const [kwOpen, setKwOpen] = useState(false);
-  const [kws, setKws] = useState<{ keyword: string; clicks: number; impressions: number; position: number }[] | null>(null);
+  const [kws, setKws] = useState<{ keyword: string; clicks: number; impressions: number; position: number; volume: number | null }[] | null>(null);
+  // Sortering van de zoekwoorden-uitklap; positie sorteert oplopend (laag = goed).
+  const [kwSort, setKwSort] = useState<"klikken" | "vertoningen" | "positie" | "volume">("klikken");
 
   async function toggleKeywords() {
     const next = !kwOpen;
@@ -630,15 +632,27 @@ function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoTo
               {kws === null && <div className="muted">Zoekwoorden laden uit Search Console&hellip;</div>}
               {kws !== null && kws.length === 0 && <div className="muted">Geen zoekwoorden gevonden voor deze pagina (of Search Console heeft nog geen data).</div>}
               {kws !== null && kws.length > 0 && (
-                <table className="res-table" style={{ maxWidth: 720 }}>
-                  <thead><tr><th>Zoekwoord</th><th>Positie</th><th>Klikken</th><th>Vertoningen</th></tr></thead>
+                <table className="res-table" style={{ maxWidth: 860 }}>
+                  <thead><tr>
+                    <th>Zoekwoord</th>
+                    <th className="pg-sort" onClick={() => setKwSort("positie")}>Positie{kwSort === "positie" ? " ▾" : ""}</th>
+                    <th className="pg-sort" onClick={() => setKwSort("klikken")}>Klikken{kwSort === "klikken" ? " ▾" : ""}</th>
+                    <th className="pg-sort" onClick={() => setKwSort("vertoningen")}>Vertoningen{kwSort === "vertoningen" ? " ▾" : ""}</th>
+                    <th className="pg-sort" onClick={() => setKwSort("volume")} title="Maandelijks zoekvolume (Ahrefs)">Volume{kwSort === "volume" ? " ▾" : ""}</th>
+                  </tr></thead>
                   <tbody>
-                    {kws.map((k, i) => (
+                    {[...kws].sort((a, b) =>
+                      kwSort === "positie" ? (a.position || 999) - (b.position || 999)
+                        : kwSort === "vertoningen" ? b.impressions - a.impressions
+                          : kwSort === "volume" ? (b.volume || 0) - (a.volume || 0)
+                            : (b.clicks - a.clicks) || (b.impressions - a.impressions),
+                    ).map((k, i) => (
                       <tr key={i}>
                         <td>{k.keyword}</td>
                         <td>{k.position ? Math.round(k.position * 10) / 10 : "—"}</td>
                         <td>{k.clicks.toLocaleString("nl-NL")}</td>
                         <td>{k.impressions.toLocaleString("nl-NL")}</td>
+                        <td>{k.volume != null ? k.volume.toLocaleString("nl-NL") : <span className="muted">&mdash;</span>}</td>
                       </tr>
                     ))}
                   </tbody>
