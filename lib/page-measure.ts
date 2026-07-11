@@ -17,6 +17,8 @@ export type PageMeasurement = {
   status: number | null;
   rendered: boolean; // via headless browser gerenderd?
   metaTitle: string; titleLength: number;
+  // Aantal echte <title>-tags in de code (buiten svg-logo's om); 1 is correct.
+  titleTagCount: number;
   metaDescription: string; descriptionLength: number;
   canonical: string; robots: string; viewport: string;
   ogTitle: string; ogDescription: string; ogImage: string;
@@ -48,7 +50,7 @@ function metaContent(html: string, key: string, kind: "name" | "property"): stri
 
 export async function measurePage(url: string, opts?: { staticOnly?: boolean }): Promise<PageMeasurement> {
   const empty: PageMeasurement = {
-    ok: false, status: null, rendered: false, metaTitle: "", titleLength: 0, metaDescription: "", descriptionLength: 0,
+    ok: false, status: null, rendered: false, metaTitle: "", titleLength: 0, titleTagCount: 0, metaDescription: "", descriptionLength: 0,
     canonical: "", robots: "", viewport: "", ogTitle: "", ogDescription: "", ogImage: "",
     h1: [], h2: [], h3: [], wordCount: 0, images: [], imagesWithoutAlt: 0, imagesNonWebp: 0,
     internalLinks: [], internalLinkCount: 0, externalLinkCount: 0, schemaTypes: [], faqDetected: false, faqCount: 0,
@@ -71,6 +73,9 @@ export async function measurePage(url: string, opts?: { staticOnly?: boolean }):
   if (!html) return { ...empty, status };
 
   const metaTitle = decode((html.match(/<title[^>]*>([\s\S]*?)<\/title>/i) || ["", ""])[1]);
+  // Echte paginatitels tellen: svg-blokken eerst weghalen (een logo-svg heeft vaak
+  // een eigen <title>, dat is GEEN paginatitel).
+  const titleTagCount = ((html.replace(/<svg[\s\S]*?<\/svg>/gi, " ").match(/<title[\s>]/gi)) || []).length;
   const metaDescription = metaContent(html, "description", "name");
   let host = ""; try { host = new URL(url).host.replace(/^www\./, ""); } catch { /* */ }
 
@@ -122,7 +127,7 @@ export async function measurePage(url: string, opts?: { staticOnly?: boolean }):
 
   return {
     ok: true, status, rendered,
-    metaTitle, titleLength: metaTitle.length, metaDescription, descriptionLength: metaDescription.length,
+    metaTitle, titleLength: metaTitle.length, titleTagCount, metaDescription, descriptionLength: metaDescription.length,
     canonical: attr((html.match(/<link[^>]+rel=["']canonical["'][^>]*>/i) || [""])[0] || "", "href"),
     robots: metaContent(html, "robots", "name") || "default",
     viewport: metaContent(html, "viewport", "name"),
@@ -215,6 +220,7 @@ export function measureToText(m: PageMeasurement, primaryKeyword: string): strin
   return [
     `GEMETEN PAGINA-PROFIEL (${m.rendered ? "via headless browser gerenderd" : "statische HTML"}, HTTP ${m.status}). Score de criteria tegen DEZE gemeten waarden:`,
     `- Meta title: "${m.metaTitle}" (gemeten: ${metaVerdictText("meta_title", m.metaTitle)}; norm 40-60 tekens en max 580 px, META-02). Primair zoekwoord in eerste 30 tekens: ${m.metaTitle.slice(0, 30).toLowerCase().includes(root) ? "ja" : "nee"} (META-03). Bevat pijp (|): ${/\|/.test(m.metaTitle) ? "ja (fout, META-05: koppelteken gebruiken)" : "nee"}.`,
+    `- Aantal <title>-tags in de code: ${m.titleTagCount || 1} (1 is correct; svg-logo's niet meegeteld). LET OP: noem technische code-gebreken (dubbele tags, ontbrekende elementen e.d.) UITSLUITEND als ze letterlijk in deze meetregels staan; leid ze nooit zelf af uit sitenamen of structured data.`,
     `- Meta description: "${m.metaDescription}" (gemeten: ${metaVerdictText("meta_description", m.metaDescription)}; norm 120-155 tekens en max 920 px, META-07; kern + zoekwoord in de eerste 120 tekens, META-14).`,
     `- H1 (${m.h1.length}x, norm exact 1): ${m.h1.length ? m.h1.map((h) => `"${h}"`).join(" / ") : "GEEN H1"}.`,
     `- H2's (${m.h2.length}, norm 4-12): ${m.h2.map((h) => `"${h}"`).join(" | ") || "geen"}. H2-dekking op zoekwoord/variant: ${h2cov}% (${h2hits}/${m.h2.length}; norm 60-80%).`,
