@@ -115,6 +115,20 @@ export async function getLatestDocRun(slug: string, url: string): Promise<DocRun
   return rows[0] ? rowToRun(rows[0]) : null;
 }
 
+// De meest recente documentlink per stap over ALLE runs van deze pagina, zodat de
+// statusregel ook het analyse-document toont als de laatste run hem oversloeg.
+export async function getStepLinks(slug: string, url: string): Promise<Record<DocKind, string>> {
+  await ensureSchema();
+  await ensureRunTable();
+  const { rows } = await sql`
+    SELECT
+      (SELECT analyse_link   FROM page_doc_runs WHERE client_slug = ${slug} AND url = ${url} AND analyse_link   IS NOT NULL ORDER BY id DESC LIMIT 1) AS analyse,
+      (SELECT blauwdruk_link FROM page_doc_runs WHERE client_slug = ${slug} AND url = ${url} AND blauwdruk_link IS NOT NULL ORDER BY id DESC LIMIT 1) AS blauwdruk,
+      (SELECT copy_link      FROM page_doc_runs WHERE client_slug = ${slug} AND url = ${url} AND copy_link      IS NOT NULL ORDER BY id DESC LIMIT 1) AS copy`;
+  const r = rows[0] || {};
+  return { analyse: (r.analyse as string) || "", blauwdruk: (r.blauwdruk as string) || "", copy: (r.copy as string) || "" };
+}
+
 // Welke stappen zijn OOIT klaar (over alle runs voor deze pagina), zodat de knoppen
 // ook retroactief groen zijn als analyse/blauwdruk in een eerdere run zijn gemaakt.
 export async function getStepsEverDone(slug: string, url: string): Promise<{ analyse: boolean; blauwdruk: boolean; copy: boolean }> {

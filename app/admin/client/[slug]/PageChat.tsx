@@ -55,6 +55,9 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   type DocRun = { id: number; status: string; steps: Record<string, string>; links: Record<string, string>; error: string };
   const [run, setRun] = useState<DocRun | null>(null);
   const [runBusy, setRunBusy] = useState(false);
+  // Meest recente documentlink per stap over ALLE runs (zodat een overgeslagen
+  // stap in de statusregel toch zijn document uit een eerdere run toont).
+  const [everLinks, setEverLinks] = useState<Record<"analyse" | "blauwdruk" | "copy", string>>({ analyse: "", blauwdruk: "", copy: "" });
   // Per-stap "klaar"-status (groene knop), per pagina onthouden en gevoed door de run.
   const [stepsDone, setStepsDone] = useState<Record<string, boolean>>({});
   const allStepsDone = !!(stepsDone.analyse && stepsDone.blauwdruk && stepsDone.copy);
@@ -654,6 +657,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       .then((r) => r.json()).then((d) => {
         if (!alive || !d.ok) return;
         setRun(d.run);
+        if (d.everLinks) setEverLinks(d.everLinks);
         // Retroactief groen: stappen die in ÉÉN van de runs ooit klaar zijn.
         if (d.everDone) {
           const upd: Record<string, boolean> = {};
@@ -683,7 +687,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       try {
         const r = await fetch(`/api/admin/page-doc/run?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}`);
         const d = await r.json();
-        if (d.ok) setRun(d.run);
+        if (d.ok) { setRun(d.run); if (d.everLinks) setEverLinks(d.everLinks); }
       } catch { /* stil */ }
     }, 5000);
     return () => clearInterval(t); /* eslint-disable-next-line react-hooks/exhaustive-deps */
@@ -1255,17 +1259,20 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
           {run && (
             <div className="pcd-run-inline">
               <div className="pcd-run-line">
-                {(["analyse", "blauwdruk", "copy"] as const).filter((k) => run.steps[k] !== "skipped").map((k) => {
+                {(["analyse", "blauwdruk", "copy"] as const).filter((k) => run.steps[k] !== "skipped" || everLinks[k]).map((k) => {
                   const nm = k === "analyse" ? "Analyse" : k === "blauwdruk" ? "Blauwdruk" : "Copy";
-                  // Een stap die op 'bezig' stond toen de run stopte of faalde, is niet
-                  // meer bezig: toon dan 'gestopt' in plaats van een liegend 'bezig…'.
-                  const st = run.steps[k] === "done" ? "klaar"
-                    : run.steps[k] === "running" ? (run.status === "running" ? "bezig…" : "gestopt")
-                      : run.steps[k] === "error" ? "fout"
-                        : run.status === "running" ? "wacht" : "niet gedaan";
+                  // Een overgeslagen stap met een document uit een eerdere run telt
+                  // gewoon als 'klaar'; en een stap die op 'bezig' stond toen de run
+                  // stopte, toont 'gestopt' in plaats van een liegend 'bezig…'.
+                  const st = run.steps[k] === "skipped" ? "klaar"
+                    : run.steps[k] === "done" ? "klaar"
+                      : run.steps[k] === "running" ? (run.status === "running" ? "bezig…" : "gestopt")
+                        : run.steps[k] === "error" ? "fout"
+                          : run.status === "running" ? "wacht" : "niet gedaan";
+                  const link = run.links[k] || everLinks[k];
                   return (
-                    <span key={k} className={"pcd-run-item " + (run.steps[k] || "pending")}>
-                      <strong>{nm}</strong> {st}{run.links[k] && <> · <a href={run.links[k]} target="_blank" rel="noreferrer">document</a></>}
+                    <span key={k} className={"pcd-run-item " + (run.steps[k] === "skipped" ? "done" : run.steps[k] || "pending")}>
+                      <strong>{nm}</strong> {st}{link && <> · <a href={link} target="_blank" rel="noreferrer">document</a></>}
                     </span>
                   );
                 })}
