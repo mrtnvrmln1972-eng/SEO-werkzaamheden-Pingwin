@@ -201,27 +201,65 @@ export function parseProposal(text: string): { reply: string; proposal: Proposal
   }
 }
 
+// Pad van een URL, genormaliseerd voor vergelijking: zonder domein, zonder
+// slash aan het eind, kleine letters. Zo matcht "/crp-test/" met
+// "https://site.nl/crp-test" in elke schrijfwijze.
+function pathKey(u: string): string {
+  return normUrl(u).replace(/\/+$/, "").toLowerCase();
+}
+
 // Leest een analyse die ook ANDERE pagina's in het cluster raakt, en haalt er per
 // betrokken andere pagina (uit de bekende URL-lijst) een kort advies uit. Zo kun je
 // dat advies alvast als vertrekpunt aan die pagina's meegeven ("half plan").
+//
+// Betrouwbaarheid boven slimmigheid: pagina's waarvan het pad LETTERLIJK in de
+// analysetekst staat, worden eerst in code gevonden en gegarandeerd als kandidaat
+// meegegeven (vóór de klik-top), en in de opdracht expliciet benoemd. Paden die
+// genoemd worden maar niet in de paginalijst bestaan, komen terug in notFound
+// zodat de gebruiker dat te zien krijgt in plaats van een stil "0 pagina's".
 export async function extractClusterAdvice(
   analysis: string,
   selfUrl: string,
   knownUrls: string[],
-): Promise<{ url: string; advice: string }[]> {
-  if (!analysis.trim()) return [];
-  const others = knownUrls.filter((u) => normUrl(u) !== normUrl(selfUrl)).slice(0, 120);
-  if (others.length === 0) return [];
+): Promise<{ items: { url: string; advice: string }[]; notFound: string[] }> {
+  if (!analysis.trim()) return { items: [], notFound: [] };
+  const all = knownUrls.filter((u) => pathKey(u) !== pathKey(selfUrl));
+  if (all.length === 0) return { items: [], notFound: [] };
+  const textLower = analysis.toLowerCase();
+
+  // 1) Letterlijk genoemde bekende pagina's (deterministisch, in code).
+  const mentioned = all.filter((u) => {
+    const p = pathKey(u);
+    return p.length > 1 && (textLower.includes(p + "/") || textLower.includes(p + " ") || textLower.includes(p + ")") || textLower.includes(p + ",") || textLower.includes(p + ".") || textLower.includes(p + "\n") || textLower.endsWith(p));
+  });
+
+  // 2) Paden die in de tekst staan maar NIET in de paginalijst (melden, niet raden).
+  const knownPaths = new Set(all.map(pathKey).concat([pathKey(selfUrl)]));
+  const pathTokens = Array.from(new Set(
+    (analysis.match(/(?:^|[\s("'`])(\/[a-z0-9][a-z0-9\-_./]*)/gi) || [])
+      .map((m) => m.replace(/^[\s("'`]+/, "").replace(/[).,;:'"`]+$/, ""))
+      .map((p) => p.replace(/\/+$/, "").toLowerCase())
+      .filter((p) => p.length > 3 && /[a-z]/.test(p) && !p.includes("//")),
+  ));
+  const notFound = pathTokens.filter((p) => !knownPaths.has(p));
+
+  // 3) Kandidatenlijst: genoemde pagina's gegarandeerd voorop, daarna de rest
+  //    (de lijst komt al gesorteerd op klikken binnen) tot maximaal 120.
+  const rest = all.filter((u) => !mentioned.includes(u));
+  const others = [...mentioned, ...rest].slice(0, Math.max(120, mentioned.length));
+
   const system = `Je krijgt een SEO-analyse die voor één pagina is gemaakt, maar die ook ANDERE pagina's van dezelfde site raakt (cluster/cannibalisatie). Hieronder staat de lijst met bestaande pagina's van deze site.
 Bepaal voor welke ANDERE pagina's uit die lijst (niet de geanalyseerde pagina zelf) de analyse een concreet strategisch advies of een bedoelde rol bevat, en vat dat per pagina KORT en SCANBAAR samen.
 Antwoord met UITSLUITEND geldige JSON, exact dit formaat, niets eromheen:
 {"items":[{"url":"<exacte url uit de lijst>","advice":"<markdown, kort en scanbaar: één korte zin over de bedoelde rol van deze pagina, dan een lege regel, dan 2 tot 4 bullets die met '- ' beginnen, elk met een vet label. Bijvoorbeeld:\nDeze locatiepagina wordt de eigenaar van de stadsterm.\n\n- **Primair zoekwoord:** soa test amsterdam\n- **Actie:** niet meer concurreren op de generieke term 'soa test'\n- **Interne link:** ankertekst 'soa test Amsterdam' vanuit de homepage\nHou het puntig; geen lange alinea's.>"}]}
 Regels: gebruik ALLEEN url's die exact in de lijst staan. Neem alleen pagina's op waarover de analyse echt iets concreets zegt; verzin niets. Wordt geen enkele andere pagina geraakt, antwoord dan met {"items":[]}. Gebruik nergens emoji.
-
+${mentioned.length ? `\nDeze pagina's worden LETTERLIJK in de analyse genoemd; behandel die zeker (elk met een eigen item), tenzij er echt niets concreets over gezegd wordt:\n${mentioned.map((u) => `- ${u}`).join("\n")}\n` : ""}
 BESTAANDE PAGINA'S:
 ${others.map((u) => `- ${u}`).join("\n")}`;
   try {
-    const raw = await callClaude(system, [{ role: "user", content: analysis.slice(0, 12000) }], 2000, { action: "cluster_advies" }, LIGHT_MODEL);
+    // Bewust het volwaardige model: deze extractie is precisiewerk (welk advies
+    // hoort bij welke pagina); het lichte model liet genoemde pagina's vallen.
+    const raw = await callClaude(system, [{ role: "user", content: analysis.slice(0, 24000) }], 2000, { action: "cluster_advies" });
     const jsonText = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
     const parsed = JSON.parse(jsonText);
     const items = Array.isArray(parsed.items) ? parsed.items : [];
@@ -229,13 +267,13 @@ ${others.map((u) => `- ${u}`).join("\n")}`;
     const seen = new Set<string>();
     for (const it of items) {
       if (!it || typeof it.url !== "string" || typeof it.advice !== "string" || !it.advice.trim()) continue;
-      const match = others.find((u) => normUrl(u) === normUrl(it.url));
-      if (!match || seen.has(normUrl(match))) continue;
-      seen.add(normUrl(match));
+      const match = others.find((u) => pathKey(u) === pathKey(it.url));
+      if (!match || seen.has(pathKey(match))) continue;
+      seen.add(pathKey(match));
       out.push({ url: match, advice: it.advice.trim() });
     }
-    return out;
+    return { items: out, notFound };
   } catch {
-    return [];
+    return { items: [], notFound };
   }
 }

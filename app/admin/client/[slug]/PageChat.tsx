@@ -880,6 +880,10 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       const items: { url: string; advice: string }[] = d.items || [];
       setClusterItems(items);
       setClusterSel(items.map((it) => it.url));
+      // Nooit stil falen: paden die in de conclusie staan maar niet in de
+      // ingelezen paginalijst, worden gemeld in plaats van genegeerd.
+      const notFound: string[] = d.notFound || [];
+      if (notFound.length) setClusterMsg(`Let op: ${notFound.join(", ")} ${notFound.length === 1 ? "wordt" : "worden"} in de tekst genoemd maar staat niet in de ingelezen paginalijst. Bestaat de pagina wel? Lees dan de website opnieuw in (Pagina's-tab) en probeer opnieuw.`);
     } catch { setErr("Betrokken pagina's zoeken mislukt."); } finally { setClusterBusy(false); }
   }
   function toggleCluster(u: string) { setClusterSel((s) => (s.includes(u) ? s.filter((x) => x !== u) : [...s, u])); }

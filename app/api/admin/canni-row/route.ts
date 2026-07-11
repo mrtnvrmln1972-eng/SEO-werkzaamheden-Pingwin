@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
       const analysis = (cur.result || "").trim();
       if (!analysis) return NextResponse.json({ ok: false, error: "Er is geen cannibalisatie-analyse meer voor deze pagina." }, { status: 400 });
       const target = rowFullUrl(pageUrl, rowPath);
-      const items = await extractClusterAdvice(analysis, pageUrl, [target]);
+      const { items } = await extractClusterAdvice(analysis, pageUrl, [target]);
       const advice = items.find((it) => it.url === target)?.advice || items[0]?.advice || "";
       if (!advice) return NextResponse.json({ ok: false, error: "De analyse bevat geen concreet advies voor deze pagina." }, { status: 400 });
       await savePageClusterAdvice(slug, target, advice, pageUrl, analysis);

@@ -27,8 +27,8 @@ export async function POST(req: NextRequest) {
 
   try {
     const urls = await getClientUrls(slug);
-    const items = await extractClusterAdvice(analysis, url, urls.map((u) => u.url));
-    return NextResponse.json({ ok: true, items });
+    const { items, notFound } = await extractClusterAdvice(analysis, url, urls.map((u) => u.url));
+    return NextResponse.json({ ok: true, items, notFound });
   } catch (e) {
     return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 502 });
   }
