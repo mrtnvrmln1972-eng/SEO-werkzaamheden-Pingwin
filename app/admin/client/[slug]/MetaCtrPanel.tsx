@@ -71,6 +71,48 @@ export default function MetaCtrPanel({ slug, backendUrl, onOpenPage }: { slug: s
   // Inlogpagina van de website-beheeromgeving (per klant instelbaar; leeg = /wp-admin/).
   const [beheerUrl, setBeheerUrl] = useState(backendUrl || "");
   const [beheerEdit, setBeheerEdit] = useState(false);
+  // WordPress-koppeling (voor 'Doorvoeren op de site'): status + invulformulier.
+  const [wp, setWp] = useState<{ connected: boolean; username: string | null } | null>(null);
+  const [wpEdit, setWpEdit] = useState(false);
+  const [wpUser, setWpUser] = useState("");
+  const [wpPass, setWpPass] = useState("");
+  const [wpMsg, setWpMsg] = useState("");
+
+  useEffect(() => {
+    fetch(`/api/admin/wp-koppeling?slug=${encodeURIComponent(slug)}`)
+      .then((r) => r.json()).then((d) => { if (d.ok) setWp({ connected: !!d.connected, username: d.username || null }); })
+      .catch(() => {});
+  }, [slug]);
+
+  async function saveWp() {
+    setWpMsg("");
+    const res = await fetch("/api/admin/wp-koppeling", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slug, username: wpUser, appPassword: wpPass }),
+    }).then((r) => r.json()).catch(() => ({ ok: false, error: "Opslaan mislukte." }));
+    if (!res.ok) { setWpMsg(res.error || "Opslaan mislukte."); return; }
+    setWp({ connected: true, username: wpUser });
+    setWpEdit(false); setWpPass("");
+  }
+
+  // Voer de goedgekeurde velden van één pagina door op de gekoppelde site.
+  async function pushToSite(r: KansRow) {
+    setBusy(`${r.url}|push`);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/meta-ctr/push", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, url: r.url }),
+      });
+      const d = await res.json();
+      if (!d.ok) throw new Error(d.error || "Doorvoeren mislukte.");
+      setLocal(r.url, (p) => ({ ...p, status: "doorgevoerd", liveAt: new Date().toISOString() }));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Doorvoeren mislukte.");
+    } finally {
+      setBusy(null);
+    }
+  }
 
   async function saveBeheerUrl(value: string) {
     setBeheerUrl(value.trim());
@@ -205,7 +247,23 @@ export default function MetaCtrPanel({ slug, backendUrl, onOpenPage }: { slug: s
             {beheerUrl ? "Inlogpagina ingesteld ✓" : "Inlogpagina instellen"}
           </button>
         )}
+        <button type="button" className="ghost-btn small" onClick={() => { setWpUser(wp?.username || ""); setWpEdit((v) => !v); }}
+          title="Koppel de WordPress-site met een applicatie-wachtwoord, zodat goedgekeurde meta's met één knop op de site gezet worden. Aanmaken: op de site inloggen → Gebruikers → Profiel → Applicatiewachtwoorden.">
+          {wp?.connected ? `Site gekoppeld ✓ (${wp.username})` : "Site koppelen"}
+        </button>
       </div>
+      {wpEdit && (
+        <div className="org-actions" style={{ margin: "0 0 10px", alignItems: "center", flexWrap: "wrap" }}>
+          <input value={wpUser} onChange={(e) => setWpUser(e.target.value)} placeholder="WordPress-gebruikersnaam"
+            style={{ padding: "5px 10px", border: "1px solid var(--border)", borderRadius: 8, font: "inherit", fontSize: 12.5 }}
+            aria-label="WordPress-gebruikersnaam" />
+          <input value={wpPass} onChange={(e) => setWpPass(e.target.value)} placeholder="Applicatie-wachtwoord (xxxx xxxx xxxx ...)" type="password"
+            style={{ minWidth: 260, padding: "5px 10px", border: "1px solid var(--border)", borderRadius: 8, font: "inherit", fontSize: 12.5 }}
+            aria-label="WordPress applicatie-wachtwoord" />
+          <button type="button" className="primary-btn small" onClick={() => void saveWp()} disabled={!wpUser.trim() || !wpPass.trim()}>Koppeling opslaan</button>
+          {wpMsg && <span className="wz-item-sub" style={{ color: "#c62828" }}>{wpMsg}</span>}
+        </div>
+      )}
       {error && <p className="wz-item-sub" style={{ color: "#c62828" }}>{error}</p>}
       {rows === null && <p className="wz-item-sub">Kansen berekenen uit Search Console&hellip;</p>}
       {rows !== null && rows.length === 0 && !error && <p className="wz-item-sub">Geen duidelijke CTR-kansen gevonden (of Search Console heeft nog geen data voor deze klant).</p>}
@@ -324,6 +382,19 @@ export default function MetaCtrPanel({ slug, backendUrl, onOpenPage }: { slug: s
                           </div>
                         )}
                       </div>
+                      {r.proposal.status !== "doorgevoerd" && (fieldOk(r.proposal, "title") || fieldOk(r.proposal, "desc")) && (
+                        <div className="org-actions" style={{ alignItems: "center" }}>
+                          <button type="button" className="primary-btn small" onClick={() => void pushToSite(r)} disabled={busy === `${r.url}|push`}
+                            title={wp?.connected
+                              ? "Zet de goedgekeurde meta-titel en/of -beschrijving in één keer op de site (via de WordPress-koppeling). De effectmeting start daarna vanzelf."
+                              : "Koppel eerst de site (knop 'Site koppelen' bovenaan) om goedgekeurde meta's met één klik door te voeren."}>
+                            {busy === `${r.url}|push` ? "Doorvoeren…" : "Doorvoeren op de site"}
+                          </button>
+                          <span className="wz-item-sub">
+                            {fieldOk(r.proposal, "title") && fieldOk(r.proposal, "desc") ? "titel + beschrijving" : fieldOk(r.proposal, "title") ? "alleen de goedgekeurde titel" : "alleen de goedgekeurde beschrijving"} wordt doorgevoerd
+                          </span>
+                        </div>
+                      )}
                       {r.proposal.status === "doorgevoerd" && (
                         <div>
                           <div className="wz-block-head">Effect</div>
