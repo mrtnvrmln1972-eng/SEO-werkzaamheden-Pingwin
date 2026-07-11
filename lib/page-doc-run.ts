@@ -201,16 +201,20 @@ async function recoverStale(): Promise<void> {
   // deze grens blijft een stap die telkens halverwege sneuvelt eindeloos opnieuw
   // draaien, en elke poging kost het volle AI-bedrag (zo liep Kamsteeg op 10-07-2026
   // tientallen diepe analyses op zonder dat er iemand iets deed).
+  // De werker geeft tijdens het genereren elke 30s een hartslag (updated_at).
+  // Geen hartslag meer gedurende 3 minuten = de werker is dood (bv. door een
+  // deploy): stap terugzetten zodat de eerstvolgende cron-tik hem hervat. Een
+  // stap mét recente hartslag wordt nooit afgepakt, hoe lang hij ook duurt.
   await sql`
     UPDATE page_doc_runs SET status = 'error',
       error = 'Automatisch gestopt: de generatie bleef hangen en is 3 keer opnieuw geprobeerd. Start de run handmatig opnieuw als het document nog nodig is.',
       updated_at = now()
     WHERE status = 'running' AND retries >= 3
       AND (analyse_state = 'running' OR blauwdruk_state = 'running' OR copy_state = 'running')
-      AND updated_at < now() - interval '13 minutes'`;
-  await sql`UPDATE page_doc_runs SET analyse_state = 'pending', retries = retries + 1, updated_at = now() WHERE status = 'running' AND analyse_state = 'running' AND updated_at < now() - interval '13 minutes'`;
-  await sql`UPDATE page_doc_runs SET blauwdruk_state = 'pending', retries = retries + 1, updated_at = now() WHERE status = 'running' AND blauwdruk_state = 'running' AND updated_at < now() - interval '13 minutes'`;
-  await sql`UPDATE page_doc_runs SET copy_state = 'pending', retries = retries + 1, updated_at = now() WHERE status = 'running' AND copy_state = 'running' AND updated_at < now() - interval '13 minutes'`;
+      AND updated_at < now() - interval '3 minutes'`;
+  await sql`UPDATE page_doc_runs SET analyse_state = 'pending', retries = retries + 1, updated_at = now() WHERE status = 'running' AND analyse_state = 'running' AND updated_at < now() - interval '3 minutes'`;
+  await sql`UPDATE page_doc_runs SET blauwdruk_state = 'pending', retries = retries + 1, updated_at = now() WHERE status = 'running' AND blauwdruk_state = 'running' AND updated_at < now() - interval '3 minutes'`;
+  await sql`UPDATE page_doc_runs SET copy_state = 'pending', retries = retries + 1, updated_at = now() WHERE status = 'running' AND copy_state = 'running' AND updated_at < now() - interval '3 minutes'`;
 }
 
 async function processRun(id: number): Promise<void> {
@@ -231,6 +235,13 @@ async function processRun(id: number): Promise<void> {
     const { rows: cur } = await sql`SELECT status FROM page_doc_runs WHERE id = ${id} LIMIT 1`;
     return (cur[0]?.status as string) !== "running";
   };
+  // Hartslag: zolang deze werker leeft, bewijst hij dat elke 30s. Sneuvelt de
+  // werker (deploy), dan stopt de hartslag en zet recoverStale de stap binnen
+  // 3 minuten terug, waarna de cron hem automatisch hervat.
+  const heartbeat = setInterval(() => {
+    void sql`UPDATE page_doc_runs SET updated_at = now() WHERE id = ${id} AND status = 'running'`.catch(() => { /* hartslag mag nooit iets breken */ });
+  }, 30000);
+  try {
   for (const kind of STEPS) {
     if (states[kind] === "done" || states[kind] === "skipped") continue;
     if (states[kind] === "error") return;
@@ -249,6 +260,7 @@ async function processRun(id: number): Promise<void> {
   }
   // Alle gevraagde stappen klaar (we komen hier alleen zonder fout): run afronden.
   await sql`UPDATE page_doc_runs SET status = 'done', updated_at = now() WHERE id = ${id} AND status = 'running'`;
+  } finally { clearInterval(heartbeat); }
 }
 
 // Vaste kolomnamen (geen dynamische identifiers in getagde SQL), daarom per stap.
