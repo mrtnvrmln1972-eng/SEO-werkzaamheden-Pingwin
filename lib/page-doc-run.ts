@@ -145,12 +145,17 @@ export async function getStepsEverDone(slug: string, url: string): Promise<{ ana
 }
 
 // ── Cron-worker: verwerk wachtende runs, stap voor stap ──
-export async function processQueuedRuns(): Promise<{ processed: number; picked: number[]; queueRows: unknown[] }> {
+export async function processQueuedRuns(): Promise<{ processed: number; picked: number[]; queueRows: unknown[]; probe: unknown }> {
   await ensureSchema();
   await ensureRunTable();
   await recoverStale();
   const picked: number[] = [];
   let queueRows: unknown[] = [];
+  // Diagnose: vanuit WELKE database/schema kijkt deze module, en ziet een simpele
+  // blik (zonder WHERE-voorwaarden) de lopende runs wel?
+  const { rows: probeDb } = await sql`SELECT current_database() AS db, current_schema() AS schema`;
+  const { rows: probeRuns } = await sql`SELECT id, status, analyse_state, blauwdruk_state, copy_state FROM page_doc_runs WHERE status = 'running' ORDER BY id DESC LIMIT 3`;
+  const probe = { db: probeDb[0], runs: probeRuns };
   // Blijf binnen één tick runs oppakken zolang er tijdsbudget is: zo werkt één
   // cron-tick een stapel direct-falende (oude) runs in één keer weg in plaats van
   // één per minuut, terwijl een echte generatie de tick vult en de loop vanzelf
@@ -181,7 +186,7 @@ export async function processQueuedRuns(): Promise<{ processed: number; picked: 
     await processRun(id);
     processed++;
   }
-  return { processed, picked, queueRows };
+  return { processed, picked, queueRows, probe };
 }
 
 // Handmatig stoppen (het kruisje in de cockpit): de run gaat op 'error' zodat de
