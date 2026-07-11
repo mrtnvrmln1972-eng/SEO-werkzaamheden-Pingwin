@@ -10,6 +10,7 @@ import { uploadDocx } from "./drive";
 import { getTasks, appendTasks, deleteTasksByIds } from "./tasks";
 import { getCanniRowStatuses, setCanniRowStatus, getPageRedirects } from "./wp";
 import { mdToHtml } from "./markdown";
+import { measurePage } from "./page-measure";
 
 // ═══════════════════════════════════════════════════════════
 // PER-PAGINA CANNIBALISATIE + CONTENT-MAPPING (de "dubbelslag")
@@ -41,6 +42,13 @@ async function doEnsure(): Promise<void> {
 }
 
 function pagePath(u: string): string { return (u || "").replace(/^https?:\/\/[^/]+/i, "").trim() || (u || ""); }
+
+// Functionele/juridische pagina's horen NOOIT in een cannibalisatie-analyse
+// (het voorwaarden-incident van 11-07-2026: "waarde" matchte als deelwoord in
+// "voorwaarden" en de pagina kreeg een 301-advies zonder enig bewijs).
+const UTILITY_RE = /(voorwaarden|privacy|cookie|disclaimer|sitemap|login|account|klacht|vacature|bedankt|winkelwagen|checkout|contact)/i;
+// Hele woorden uit een pad of tekst (zodat "waarde" niet in "voorwaarden" matcht).
+function wholeWords(s: string): string[] { return (s || "").toLowerCase().split(/[^a-z0-9à-ü]+/i).filter(Boolean); }
 
 // Meest onderscheidende term uit de laatste URL-segment (voor de plaats/thema-match).
 const STOP = new Set(["soa", "test", "kliniek", "klinieken", "poli", "hiv", "spoed", "en", "gratis", "anoniem", "snel", "thuis", "doen", "locaties", "de", "het", "een", "in", "op", "voor", "waar", "kan", "je"]);
@@ -97,7 +105,14 @@ DE DUBBELSLAG (content mapping): per concurrerend zoekwoord beslis je met volume
 
 WINNAAR-WEGING (fase 4), in deze volgorde: verwijzende domeinen (zwaarst) > organische klikken/tractie > businesswaarde > content-diepte > URL-kwaliteit. De pagina met de meeste verwijzende domeinen is niet altijd de bestemming; redirect desnoods de link-rijke pagina naar de businesswaardige. Bij twijfel: de bedoelde eigenaar volgens het plan van de pagina, niet puur de huidige ranking.
 
-ACTIES (beslisboom, licht naar zwaar): niets doen | interne links herverdelen | content differentiëren | canonical | samenvoegen + 301 | de-indexeren (noindex). Lege duplicaten zonder verkeer/links → 301 naar de winnaar.
+BEWIJSPLICHT (hard, gaat boven alles):
+- Neem in de tabel UITSLUITEND de landingspagina zelf en pagina's uit de lijst "TOEGESTANE PAGINA'S VOOR DE TABEL" hieronder. Staat een pagina daar niet in, dan bestaat hij voor deze analyse niet.
+- Citeer in de Reden-kolom kort het bewijs van die pagina (de query-splitsing of de ranking).
+- "Geen verkeer" alléén is NOOIT een reden voor een 301; zonder hard signaal is de actie "niets doen", of laat de pagina weg.
+- Functionele/juridische pagina's (voorwaarden, privacy, cookies, contact en dergelijke) nooit als duplicaat of 301-kandidaat aanmerken.
+- Verw.domeinen "?" betekent ONBEKEND, niet nul: schrijf dan "onbekend" in de RD-kolom.
+
+ACTIES (beslisboom, licht naar zwaar): niets doen | interne links herverdelen | content differentiëren | canonical | samenvoegen + 301 | de-indexeren (noindex). Alleen GECONTROLEERDE duplicaten (aantoonbaar zelfde onderwerp, geen eigen rankings of waarde) → 301 naar de winnaar.
 TAALVARIANTEN (bijv. /en/-paden of een andere taalcode): NOOIT 301 of canonical naar de andere taal adviseren; die pagina bedient een eigen taalgroep (expats/internationals). De juiste actie is dan "hreflang + vertalen (pagina blijft)": hreflang-koppeling tussen beide versies, elk zelf-canonical, en de variant volledig in de eigen taal uitwerken. De query-splitsing telt WEL gewoon mee in de Score.
 
 OUTPUT — KORT EN SCANBAAR, absoluut geen lappen tekst. Denk aan een strak Excel-overzicht, niet aan een rapport. Nette markdown, Nederlands, geen emoji.
@@ -141,6 +156,16 @@ export async function runPageCannibal(slug: string, url: string): Promise<void> 
     const refDom = new Map<string, number>();
     for (const t of topPages) if (t.refDomains != null) refDom.set(pagePath(t.url), t.refDomains);
     const term = matchTerm(subjectPath, subjectKw[0]?.keyword || "");
+
+    // GSC = de waarheid over Google's gedrag: voor de queries van DEZE pagina, welke
+    // andere pagina's krijgen ook vertoningen/klikken op dezelfde query (echte concurrentie).
+    const subjQ = new Set(gscPage.map((r) => r.keyword.toLowerCase()));
+    const byQuery = new Map<string, { page: string; clicks: number; impressions: number; position: number }[]>();
+    for (const r of gscMatrix) {
+      const q = r.keyword.toLowerCase();
+      if (!subjQ.has(q)) continue;
+      const arr = byQuery.get(q) || []; arr.push({ page: pagePath(r.page), clicks: r.clicks, impressions: r.impressions, position: r.position }); byQuery.set(q, arr);
+    }
 
     // Concurrenten die op de plaats/thema-term ranken (best-rankende URL per term).
     const domMatch = term ? await getDomainKeywordsMatching(domain, term, 100).catch(() => []) : [];
@@ -195,15 +220,6 @@ export async function runPageCannibal(slug: string, url: string): Promise<void> 
       serpLines.push(...got);
     }
 
-    // GSC = de waarheid over Google's gedrag: voor de queries van DEZE pagina, welke
-    // andere pagina's krijgen ook vertoningen/klikken op dezelfde query (echte concurrentie).
-    const subjQ = new Set(gscPage.map((r) => r.keyword.toLowerCase()));
-    const byQuery = new Map<string, { page: string; clicks: number; impressions: number; position: number }[]>();
-    for (const r of gscMatrix) {
-      const q = r.keyword.toLowerCase();
-      if (!subjQ.has(q)) continue;
-      const arr = byQuery.get(q) || []; arr.push({ page: pagePath(r.page), clicks: r.clicks, impressions: r.impressions, position: r.position }); byQuery.set(q, arr);
-    }
     const gscLines = [...gscPage]
       .sort((a, b) => b.impressions - a.impressions)
       .slice(0, 20)
@@ -213,9 +229,48 @@ export async function runPageCannibal(slug: string, url: string): Promise<void> 
         return `- "${r.keyword}": deze pagina ${r.clicks} klikken / ${r.impressions} vertoningen, pos ${r.position}${compet}`;
       });
 
-    // Lege duplicaten: status-200 pagina's met de plaats in de URL en geen Ahrefs-verkeer.
+    // DUPLICAAT-VERDENKINGEN — eerst onderzocht vóór ze de context ingaan (bewijsplicht):
+    // hele-woord-match op de kernterm (geen deelwoorden), functionele pagina's uitgesloten,
+    // en daarna de pagina echt gemeten (titel/H1/woordenaantal) om het onderwerp te toetsen.
     const seenAhrefs = new Set(topPages.map((t) => pagePath(t.url)));
-    const emptyDupes = urls.filter((u) => (u.status ?? 200) === 200 && pagePath(u.url) !== subjectPath && pagePath(u.url).toLowerCase().includes(term) && !seenAhrefs.has(pagePath(u.url))).map((u) => pagePath(u.url)).slice(0, 20);
+    const subjectWords = wholeWords(subjectPath).filter((w) => w.length > 2 && !STOP.has(w));
+    const dupeSuspects = urls.filter((u) => {
+      const p = pagePath(u.url);
+      return (u.status ?? 200) === 200 && p !== subjectPath && !UTILITY_RE.test(p)
+        && wholeWords(p).includes(term) && !seenAhrefs.has(p);
+    }).map((u) => pagePath(u.url)).slice(0, 6);
+    const checkedDupes: string[] = [];
+    const dupeEvidence = new Map<string, string>();
+    for (const p of dupeSuspects) {
+      const m = await measurePage(`https://${bare}${p}`, { staticOnly: true }).catch(() => null);
+      if (!m?.ok) continue;
+      const hayWords = new Set(wholeWords(`${m.metaTitle} ${m.h1.join(" ")}`));
+      const overlap = subjectWords.filter((w) => hayWords.has(w)).length;
+      // Alleen bij aantoonbaar hetzelfde onderwerp (kernterm of ≥2 onderwerpwoorden
+      // in titel/H1) mag hij als gecontroleerde verdenking mee; anders volledig weg.
+      if (hayWords.has(term) || overlap >= 2) {
+        checkedDupes.push(`- ${p}: titel "${m.metaTitle}", H1 "${m.h1[0] || "-"}", ${m.wordCount} woorden, geen eigen Ahrefs-rankings`);
+        dupeEvidence.set(p, `gecontroleerd mogelijk duplicaat: zelfde onderwerp in titel/H1, geen eigen rankings (${m.wordCount} woorden)`);
+      }
+    }
+
+    // BEWIJSLIJST: alleen pagina's met minstens één hard signaal mogen in de tabel.
+    const evidence = new Map<string, string>();
+    for (const [q, arr] of byQuery) {
+      for (const p of arr) {
+        if (p.page === subjectPath || evidence.has(p.page)) continue;
+        evidence.set(p.page, `GSC-splitsing op "${q}" (${p.clicks} klik / ${p.impressions} vert, pos ${p.position})`);
+      }
+    }
+    for (const d of domMatch) {
+      const p = pagePath(d.url);
+      if (p !== subjectPath && !evidence.has(p)) evidence.set(p, `rankt op "${d.keyword}" pos ${d.position ?? "?"} (Ahrefs)`);
+    }
+    for (const c of candKw) {
+      if (c.hits.length && !evidence.has(c.path)) evidence.set(c.path, `rankt op "${c.hits[0].keyword}" pos ${c.hits[0].position ?? "?"} (Ahrefs)`);
+    }
+    for (const [p, b] of dupeEvidence) if (!evidence.has(p)) evidence.set(p, b);
+    for (const p of [...evidence.keys()]) if (UTILITY_RE.test(p)) evidence.delete(p);
 
     const context = [
       `LANDINGSPAGINA (het onderwerp): ${subjectPath}`,
@@ -237,7 +292,11 @@ export async function runPageCannibal(slug: string, url: string): Promise<void> 
       "CONTENT MAPPING — top-10 + volume per beslis-zoekwoord (bepaalt: eigen pagina of clusteren):",
       serpLines.join("\n") || "- (geen SERP-data)",
       "",
-      `LEGE DUPLICATEN (status 200, plaats in de URL, geen Ahrefs-verkeer; kandidaat 301 naar de winnaar): ${emptyDupes.length ? emptyDupes.join(", ") : "(geen)"}`,
+      "TOEGESTANE PAGINA'S VOOR DE TABEL (elk met zijn gemeten bewijs; UITSLUITEND deze pagina's mogen als rij worden opgenomen, naast de landingspagina zelf):",
+      evidence.size ? [...evidence].map(([p, b]) => `- ${p}: ${b}`).join("\n") : "- (geen andere pagina's met bewijs; de tabel bevat dan alleen de landingspagina zelf en de conclusie is: geen cannibalisatie)",
+      "",
+      "GECONTROLEERDE DUPLICAAT-VERDENKINGEN (pagina echt gemeten; alleen deze mogen 'duplicaat' heten):",
+      checkedDupes.join("\n") || "- (geen)",
     ].join("\n");
 
     const raw = await callClaude(SYNTH_SYSTEM, [{ role: "user", content: context.slice(0, 40000) }], 8000, { slug, action: "page_cannibal" });
