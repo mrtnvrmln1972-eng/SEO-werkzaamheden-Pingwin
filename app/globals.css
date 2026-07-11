@@ -1642,6 +1642,8 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .wz-diff { display: flex; flex-direction: column; gap: 14px; margin-top: 8px; }
 .wz-block { }
 .wz-block-head { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--gray); margin-bottom: 6px; }
+/* Veld-label boven een meta-regel (Meta-titel / Meta-beschrijving) */
+.wz-field-label { font-size: 12px; font-weight: 600; color: var(--gray); margin: 6px 0 3px; display: flex; align-items: center; }
 .wz-line { font-size: 13px; line-height: 1.5; padding: 6px 10px; border-radius: 7px; margin-bottom: 4px; color: var(--dark); }
 .wz-line.removed { background: #fdecec; }
 .wz-line.added { background: #ecf7ee; }

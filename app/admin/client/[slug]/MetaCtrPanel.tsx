@@ -10,7 +10,8 @@ import MetaPixelMeter from "./MetaPixelMeter";
 // het gemeten effect zodra de wijziging live staat.
 
 type Effect = { ctrBefore: number; ctrAfter: number; clicksBefore: number; clicksAfter: number; daysAfter: number };
-type Proposal = { curTitle: string; curDesc: string; propTitle: string; propDesc: string; status: "open" | "goedgekeurd" | "doorgevoerd" | "afgewezen"; liveAt: string | null; effect: Effect | null };
+type FieldStatus = "open" | "goedgekeurd" | "afgewezen";
+type Proposal = { curTitle: string; curDesc: string; propTitle: string; propDesc: string; status: "open" | "goedgekeurd" | "doorgevoerd" | "afgewezen"; titleStatus: FieldStatus; descStatus: FieldStatus; liveAt: string | null; effect: Effect | null };
 type KansRow = { url: string; keyword: string; clicks: number; impressions: number; ctr: number; expectedCtr: number; position: number; extraClicks: number; proposal: Proposal | null };
 
 function pad(url: string): string {
@@ -62,7 +63,7 @@ export default function MetaCtrPanel({ slug }: { slug: string }) {
       });
       const d = await res.json();
       if (!d.ok) throw new Error(d.error || "Genereren mislukte.");
-      setRows((cur) => (cur || []).map((x) => x.url === r.url ? { ...x, proposal: { curTitle: d.curTitle, curDesc: d.curDesc, propTitle: d.propTitle, propDesc: d.propDesc, status: "open", liveAt: null, effect: null } } : x));
+      setRows((cur) => (cur || []).map((x) => x.url === r.url ? { ...x, proposal: { curTitle: d.curTitle, curDesc: d.curDesc, propTitle: d.propTitle, propDesc: d.propDesc, status: "open", titleStatus: "open", descStatus: "open", liveAt: null, effect: null } } : x));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Genereren mislukte.");
     } finally {
@@ -70,31 +71,66 @@ export default function MetaCtrPanel({ slug }: { slug: string }) {
     }
   }
 
-  async function patch(url: string, fields: { propTitle?: string; propDesc?: string; status?: Proposal["status"] }) {
+  // Eén veld (titel of beschrijving) opnieuw laten schrijven.
+  async function regenField(r: KansRow, field: "title" | "desc") {
+    setBusy(`${r.url}|${field}`);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/meta-ctr", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, url: r.url, field }),
+      });
+      const d = await res.json();
+      if (!d.ok) throw new Error(d.error || "Genereren mislukte.");
+      setLocal(r.url, (p) => field === "title"
+        ? { ...p, propTitle: d.propTitle, titleStatus: "open" }
+        : { ...p, propDesc: d.propDesc, descStatus: "open" });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Genereren mislukte.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function patch(url: string, fields: { propTitle?: string; propDesc?: string; status?: Proposal["status"]; titleStatus?: FieldStatus; descStatus?: FieldStatus }) {
     await fetch("/api/admin/meta-ctr", {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ slug, url, ...fields }),
     }).catch(() => {});
   }
 
-  function setLocal(url: string, fn: (p: Proposal) => Proposal) {
-    setRows((cur) => (cur || []).map((x) => x.url === url && x.proposal ? { ...x, proposal: fn(x.proposal) } : x));
+  // Totaalstatus afleiden uit de twee veld-statussen (zelfde regel als de server):
+  // goedgekeurd zodra minstens één veld goedgekeurd is en niets meer open staat.
+  function derive(p: Proposal): Proposal {
+    if (p.status === "doorgevoerd") return p;
+    const t = p.titleStatus, d = p.descStatus;
+    const status: Proposal["status"] = t === "afgewezen" && d === "afgewezen" ? "afgewezen"
+      : (t === "goedgekeurd" || d === "goedgekeurd") && t !== "open" && d !== "open" ? "goedgekeurd" : "open";
+    return { ...p, status };
   }
 
+  function setLocal(url: string, fn: (p: Proposal) => Proposal) {
+    setRows((cur) => (cur || []).map((x) => x.url === url && x.proposal ? { ...x, proposal: derive(fn(x.proposal)) } : x));
+  }
+
+  // Een veld telt als goedgekeurd zodra het zelf goedgekeurd is, of de hele
+  // pagina al live staat (doorgevoerd).
+  const fieldOk = (p: Proposal, f: "title" | "desc") => p.status === "doorgevoerd" ? true : (f === "title" ? p.titleStatus : p.descStatus) === "goedgekeurd";
+
   async function copyApproved() {
-    const approved = (rows || []).filter((r) => r.proposal && (r.proposal.status === "goedgekeurd" || r.proposal.status === "doorgevoerd"));
+    const approved = (rows || []).filter((r) => r.proposal && (fieldOk(r.proposal, "title") || fieldOk(r.proposal, "desc")));
     if (!approved.length) return;
     const text = approved.map((r) => [
       `Pagina: ${r.url}`,
-      `Nieuwe paginatitel (meta title): ${r.proposal!.propTitle}`,
-      `Nieuwe meta description: ${r.proposal!.propDesc}`,
-    ].join("\n")).join("\n\n");
+      fieldOk(r.proposal!, "title") ? `Nieuwe paginatitel (meta title): ${r.proposal!.propTitle}` : "",
+      fieldOk(r.proposal!, "desc") ? `Nieuwe meta description: ${r.proposal!.propDesc}` : "",
+    ].filter(Boolean).join("\n")).join("\n\n");
     await navigator.clipboard.writeText(`Nieuwe meta-teksten (graag 1-op-1 overnemen in de website):\n\n${text}`).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
   }
 
-  const approvedCount = (rows || []).filter((r) => r.proposal && (r.proposal.status === "goedgekeurd" || r.proposal.status === "doorgevoerd")).length;
+  const approvedCount = (rows || []).filter((r) => r.proposal && (fieldOk(r.proposal, "title") || fieldOk(r.proposal, "desc"))).length;
 
   return (
     <div className="cockpit-card">
@@ -153,11 +189,19 @@ export default function MetaCtrPanel({ slug }: { slug: string }) {
                     <div style={{ display: "grid", gap: 16 }}>
                       <div>
                         <div className="wz-block-head">Huidig op de site</div>
+                        <div className="wz-field-label">Meta-titel</div>
                         <div className="wz-line removed">{r.proposal.curTitle || "(geen paginatitel gevonden)"}<MetaPixelMeter kind="meta_title" text={r.proposal.curTitle} /></div>
+                        <div className="wz-field-label">Meta-beschrijving</div>
                         <div className="wz-line removed">{r.proposal.curDesc || "(geen meta-beschrijving gevonden)"}<MetaPixelMeter kind="meta_description" text={r.proposal.curDesc} /></div>
                       </div>
                       <div>
                         <div className="wz-block-head">Voorstel (aanpasbaar)</div>
+                        <div className="wz-field-label">
+                          Meta-titel
+                          {r.proposal.titleStatus !== "open" && r.proposal.status !== "doorgevoerd" && (
+                            <span style={{ marginLeft: 8, background: STATUS_LABEL[r.proposal.titleStatus].bg, color: STATUS_LABEL[r.proposal.titleStatus].fg, borderRadius: 20, padding: "1px 8px", fontSize: 11, fontWeight: 600 }}>{r.proposal.titleStatus}</span>
+                          )}
+                        </div>
                         <div className="wz-line added">
                           <input
                             value={r.proposal.propTitle}
@@ -167,6 +211,25 @@ export default function MetaCtrPanel({ slug }: { slug: string }) {
                             aria-label="Voorgestelde paginatitel"
                           />
                           <MetaPixelMeter kind="meta_title" text={r.proposal.propTitle} />
+                        </div>
+                        {r.proposal.status !== "doorgevoerd" && (
+                          <div className="org-actions" style={{ margin: "6px 0 12px" }}>
+                            {r.proposal.titleStatus !== "goedgekeurd" ? (
+                              <button type="button" className="primary-btn small" onClick={() => { setLocal(r.url, (p) => ({ ...p, titleStatus: "goedgekeurd" })); void patch(r.url, { titleStatus: "goedgekeurd" }); }}>Goedkeuren</button>
+                            ) : (
+                              <button type="button" className="ghost-btn small" onClick={() => { setLocal(r.url, (p) => ({ ...p, titleStatus: "open" })); void patch(r.url, { titleStatus: "open" }); }}>Goedkeuring intrekken</button>
+                            )}
+                            <button type="button" className="ghost-btn small" onClick={() => void regenField(r, "title")} disabled={busy === `${r.url}|title`}>{busy === `${r.url}|title` ? "Schrijven…" : "Opnieuw genereren"}</button>
+                            {r.proposal.titleStatus !== "afgewezen" && (
+                              <button type="button" className="ghost-btn small" onClick={() => { setLocal(r.url, (p) => ({ ...p, titleStatus: "afgewezen" })); void patch(r.url, { titleStatus: "afgewezen" }); }}>Afwijzen</button>
+                            )}
+                          </div>
+                        )}
+                        <div className="wz-field-label">
+                          Meta-beschrijving
+                          {r.proposal.descStatus !== "open" && r.proposal.status !== "doorgevoerd" && (
+                            <span style={{ marginLeft: 8, background: STATUS_LABEL[r.proposal.descStatus].bg, color: STATUS_LABEL[r.proposal.descStatus].fg, borderRadius: 20, padding: "1px 8px", fontSize: 11, fontWeight: 600 }}>{r.proposal.descStatus}</span>
+                          )}
                         </div>
                         <div className="wz-line added">
                           <textarea
@@ -179,18 +242,19 @@ export default function MetaCtrPanel({ slug }: { slug: string }) {
                           />
                           <MetaPixelMeter kind="meta_description" text={r.proposal.propDesc} />
                         </div>
-                        <div className="org-actions" style={{ marginTop: 8 }}>
-                          {r.proposal.status !== "goedgekeurd" && r.proposal.status !== "doorgevoerd" && (
-                            <button type="button" className="primary-btn small" onClick={() => { setLocal(r.url, (p) => ({ ...p, status: "goedgekeurd" })); void patch(r.url, { status: "goedgekeurd" }); }}>Goedkeuren</button>
-                          )}
-                          {r.proposal.status === "goedgekeurd" && (
-                            <button type="button" className="ghost-btn small" onClick={() => { setLocal(r.url, (p) => ({ ...p, status: "open" })); void patch(r.url, { status: "open" }); }}>Goedkeuring intrekken</button>
-                          )}
-                          <button type="button" className="ghost-btn small" onClick={() => void generate(r)} disabled={busy === r.url}>{busy === r.url ? "Schrijven…" : "Opnieuw genereren"}</button>
-                          {r.proposal.status !== "afgewezen" && r.proposal.status !== "doorgevoerd" && (
-                            <button type="button" className="ghost-btn small" onClick={() => { setLocal(r.url, (p) => ({ ...p, status: "afgewezen" })); void patch(r.url, { status: "afgewezen" }); }}>Afwijzen</button>
-                          )}
-                        </div>
+                        {r.proposal.status !== "doorgevoerd" && (
+                          <div className="org-actions" style={{ margin: "6px 0 0" }}>
+                            {r.proposal.descStatus !== "goedgekeurd" ? (
+                              <button type="button" className="primary-btn small" onClick={() => { setLocal(r.url, (p) => ({ ...p, descStatus: "goedgekeurd" })); void patch(r.url, { descStatus: "goedgekeurd" }); }}>Goedkeuren</button>
+                            ) : (
+                              <button type="button" className="ghost-btn small" onClick={() => { setLocal(r.url, (p) => ({ ...p, descStatus: "open" })); void patch(r.url, { descStatus: "open" }); }}>Goedkeuring intrekken</button>
+                            )}
+                            <button type="button" className="ghost-btn small" onClick={() => void regenField(r, "desc")} disabled={busy === `${r.url}|desc`}>{busy === `${r.url}|desc` ? "Schrijven…" : "Opnieuw genereren"}</button>
+                            {r.proposal.descStatus !== "afgewezen" && (
+                              <button type="button" className="ghost-btn small" onClick={() => { setLocal(r.url, (p) => ({ ...p, descStatus: "afgewezen" })); void patch(r.url, { descStatus: "afgewezen" }); }}>Afwijzen</button>
+                            )}
+                          </div>
+                        )}
                       </div>
                       {r.proposal.status === "doorgevoerd" && (
                         <div>

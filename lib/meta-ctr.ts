@@ -30,6 +30,13 @@ async function ensureTables(): Promise<void> {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       UNIQUE (client_slug, page_url)
     )`;
+  // Per-veld status: titel en beschrijving kunnen los goedgekeurd/afgewezen worden.
+  await sql`ALTER TABLE meta_proposals ADD COLUMN IF NOT EXISTS title_status TEXT NOT NULL DEFAULT 'open'`;
+  await sql`ALTER TABLE meta_proposals ADD COLUMN IF NOT EXISTS desc_status TEXT NOT NULL DEFAULT 'open'`;
+  // Bestaande rijen die als geheel al goedgekeurd/afgewezen waren: veld-statussen
+  // gelijktrekken (eenmalige inhaalslag, raakt alleen oude rijen).
+  await sql`UPDATE meta_proposals SET title_status = 'goedgekeurd', desc_status = 'goedgekeurd' WHERE status IN ('goedgekeurd', 'doorgevoerd') AND title_status = 'open' AND desc_status = 'open'`;
+  await sql`UPDATE meta_proposals SET title_status = 'afgewezen', desc_status = 'afgewezen' WHERE status = 'afgewezen' AND title_status = 'open' AND desc_status = 'open'`;
   tablesReady = true;
 }
 
@@ -53,6 +60,7 @@ export function expectedCtr(position: number): number {
 }
 
 export type MetaProposalStatus = "open" | "goedgekeurd" | "doorgevoerd" | "afgewezen";
+export type MetaFieldStatus = "open" | "goedgekeurd" | "afgewezen";
 
 export type MetaKansRow = {
   url: string;
@@ -68,6 +76,8 @@ export type MetaKansRow = {
     curTitle: string; curDesc: string;
     propTitle: string; propDesc: string;
     status: MetaProposalStatus;
+    titleStatus: MetaFieldStatus;
+    descStatus: MetaFieldStatus;
     liveAt: string | null;
     effect: { ctrBefore: number; ctrAfter: number; clicksBefore: number; clicksAfter: number; daysAfter: number } | null;
   } | null;
@@ -80,13 +90,13 @@ type DbRow = {
   page_url: string; keyword: string | null;
   cur_title: string | null; cur_desc: string | null;
   prop_title: string | null; prop_desc: string | null;
-  status: string; live_at: string | null;
+  status: string; title_status: string; desc_status: string; live_at: string | null;
   ctr_before: number | null; position_before: number | null; impressions_before: number | null;
 };
 
 async function proposalsFor(slug: string): Promise<Map<string, DbRow>> {
   await ensureTables();
-  const { rows } = await sql`SELECT page_url, keyword, cur_title, cur_desc, prop_title, prop_desc, status, live_at, ctr_before, position_before, impressions_before FROM meta_proposals WHERE client_slug = ${slug}`;
+  const { rows } = await sql`SELECT page_url, keyword, cur_title, cur_desc, prop_title, prop_desc, status, title_status, desc_status, live_at, ctr_before, position_before, impressions_before FROM meta_proposals WHERE client_slug = ${slug}`;
   const map = new Map<string, DbRow>();
   for (const r of rows) map.set(norm(String(r.page_url)), r as unknown as DbRow);
   return map;
@@ -127,6 +137,8 @@ export async function getMetaKansen(slug: string): Promise<MetaKansRow[]> {
         curTitle: row.cur_title || "", curDesc: row.cur_desc || "",
         propTitle: row.prop_title || "", propDesc: row.prop_desc || "",
         status: (row.status as MetaProposalStatus) || "open",
+        titleStatus: (row.title_status as MetaFieldStatus) || "open",
+        descStatus: (row.desc_status as MetaFieldStatus) || "open",
         liveAt: row.live_at ? new Date(row.live_at).toISOString() : null,
         effect: null,
       } : null,
@@ -194,7 +206,7 @@ export async function generateMetaProposal(
     VALUES (${slug}, ${url}, ${keyword || null}, ${curTitle}, ${curDesc}, ${title}, ${desc}, 'open', ${base?.ctr ?? null}, ${base?.position ?? null}, ${base?.impressions ?? null})
     ON CONFLICT (client_slug, page_url)
     DO UPDATE SET keyword = ${keyword || null}, cur_title = ${curTitle}, cur_desc = ${curDesc},
-      prop_title = ${title}, prop_desc = ${desc}, status = 'open',
+      prop_title = ${title}, prop_desc = ${desc}, status = 'open', title_status = 'open', desc_status = 'open',
       ctr_before = COALESCE(${base?.ctr ?? null}, meta_proposals.ctr_before),
       position_before = COALESCE(${base?.position ?? null}, meta_proposals.position_before),
       impressions_before = COALESCE(${base?.impressions ?? null}, meta_proposals.impressions_before),
@@ -229,17 +241,86 @@ async function fixHardIssues(kind: MetaKind, text: string, keyword: string, slug
 }
 
 // ── Bewerken en status ──
-export async function updateMetaProposal(slug: string, url: string, fields: { propTitle?: string; propDesc?: string; status?: MetaProposalStatus }): Promise<void> {
+export async function updateMetaProposal(slug: string, url: string, fields: { propTitle?: string; propDesc?: string; status?: MetaProposalStatus; titleStatus?: MetaFieldStatus; descStatus?: MetaFieldStatus }): Promise<void> {
   await ensureTables();
-  if (fields.propTitle !== undefined) await sql`UPDATE meta_proposals SET prop_title = ${fields.propTitle}, updated_at = now() WHERE client_slug = ${slug} AND page_url = ${url}`;
-  if (fields.propDesc !== undefined) await sql`UPDATE meta_proposals SET prop_desc = ${fields.propDesc}, updated_at = now() WHERE client_slug = ${slug} AND page_url = ${url}`;
+  if (fields.propTitle !== undefined) await sql`UPDATE meta_proposals SET prop_title = ${fields.propTitle}, title_status = 'open', updated_at = now() WHERE client_slug = ${slug} AND page_url = ${url}`;
+  if (fields.propDesc !== undefined) await sql`UPDATE meta_proposals SET prop_desc = ${fields.propDesc}, desc_status = 'open', updated_at = now() WHERE client_slug = ${slug} AND page_url = ${url}`;
+  if (fields.titleStatus) await sql`UPDATE meta_proposals SET title_status = ${fields.titleStatus}, updated_at = now() WHERE client_slug = ${slug} AND page_url = ${url}`;
+  if (fields.descStatus) await sql`UPDATE meta_proposals SET desc_status = ${fields.descStatus}, updated_at = now() WHERE client_slug = ${slug} AND page_url = ${url}`;
+  if (fields.titleStatus || fields.descStatus || fields.propTitle !== undefined || fields.propDesc !== undefined) await recomputeStatus(slug, url);
   if (fields.status) {
     await sql`UPDATE meta_proposals SET status = ${fields.status},
+      title_status = CASE WHEN ${fields.status} IN ('goedgekeurd', 'afgewezen') THEN ${fields.status} ELSE title_status END,
+      desc_status = CASE WHEN ${fields.status} IN ('goedgekeurd', 'afgewezen') THEN ${fields.status} ELSE desc_status END,
       approved_at = CASE WHEN ${fields.status} = 'goedgekeurd' THEN now() ELSE approved_at END,
       live_at = CASE WHEN ${fields.status} = 'doorgevoerd' AND live_at IS NULL THEN now() ELSE live_at END,
       updated_at = now()
       WHERE client_slug = ${slug} AND page_url = ${url}`;
   }
+}
+
+// De totaalstatus volgt uit de twee veld-statussen: goedgekeurd zodra minstens
+// één veld goedgekeurd is en niets meer open staat; afgewezen als beide velden
+// afgewezen zijn; anders open. 'doorgevoerd' (live) blijft altijd staan.
+async function recomputeStatus(slug: string, url: string): Promise<void> {
+  await sql`
+    UPDATE meta_proposals SET
+      status = CASE
+        WHEN status = 'doorgevoerd' THEN 'doorgevoerd'
+        WHEN title_status = 'afgewezen' AND desc_status = 'afgewezen' THEN 'afgewezen'
+        WHEN (title_status = 'goedgekeurd' OR desc_status = 'goedgekeurd') AND title_status <> 'open' AND desc_status <> 'open' THEN 'goedgekeurd'
+        ELSE 'open'
+      END,
+      approved_at = CASE
+        WHEN status <> 'doorgevoerd' AND (title_status = 'goedgekeurd' OR desc_status = 'goedgekeurd') AND title_status <> 'open' AND desc_status <> 'open' AND approved_at IS NULL THEN now()
+        ELSE approved_at
+      END,
+      updated_at = now()
+    WHERE client_slug = ${slug} AND page_url = ${url}`;
+}
+
+// ── Eén veld opnieuw laten schrijven (titel óf beschrijving) ──
+// Houdt rekening met het andere veld (geen letterlijke herhaling) en zet alleen
+// het herschreven veld terug op 'open'.
+export async function regenerateMetaField(slug: string, url: string, field: "title" | "desc"): Promise<{ propTitle: string; propDesc: string }> {
+  await ensureTables();
+  const { rows } = await sql`SELECT keyword, prop_title, prop_desc, cur_title, cur_desc FROM meta_proposals WHERE client_slug = ${slug} AND page_url = ${url} LIMIT 1`;
+  const row = rows[0];
+  if (!row) throw new Error("Er is nog geen voorstel voor deze pagina; genereer eerst een volledig voorstel.");
+  const keyword = (row.keyword as string) || "";
+  const client = await getClientBySlug(slug);
+  const m = await measurePage(url, { staticOnly: true }).catch(() => null);
+  const h1 = m?.h1?.[0] || "";
+  const profiel = (client?.seoProfile || "").slice(0, 3500);
+  const kind: MetaKind = field === "title" ? "meta_title" : "meta_description";
+  const label = field === "title" ? "meta-title" : "meta-description";
+  const other = field === "title" ? (row.prop_desc as string) : (row.prop_title as string);
+  const current = field === "title" ? (row.prop_title as string) : (row.prop_desc as string);
+
+  const system = [
+    `Je bent de senior SEO-copywriter van bureau Pingwin voor de klant ${client?.name || slug}. Schrijf in het Nederlands, passend bij het bedrijf.`,
+    profiel ? `PROFIEL VAN DEZE KLANT (toon en inhoud hierop afstemmen):\n${profiel}` : "",
+    META_RULES_PROMPT,
+  ].filter(Boolean).join("\n\n");
+  const user = [
+    `Schrijf een NIEUWE, betere ${label} voor deze pagina (een duidelijk ander, sterker alternatief dan de vorige versie).`,
+    `Pagina: ${url}`,
+    keyword ? `Primair zoekwoord (${field === "title" ? "vooraan in de titel" : "1x letterlijk in de eerste 120 tekens"}): ${keyword}` : "",
+    h1 ? `H1 van de pagina: ${h1}` : "",
+    current ? `Vorige versie (kom met iets beters, niet hetzelfde): ${current}` : "",
+    other ? `De ${field === "title" ? "meta-description" : "meta-title"} die erbij hoort (niet letterlijk herhalen): ${other}` : "",
+    `Geef ALLEEN de nieuwe tekst terug, één regel, geen uitleg of aanhalingstekens.`,
+  ].filter(Boolean).join("\n");
+
+  const raw = await callClaude(system, [{ role: "user", content: user }], 300, { slug, action: "meta_ctr_voorstel" });
+  let text = (raw || "").trim().split("\n")[0].replace(/^["']|["']$/g, "").trim();
+  if (!text) throw new Error("Het voorstel kwam leeg terug. Probeer het opnieuw.");
+  text = await fixHardIssues(kind, text, keyword, slug);
+
+  if (field === "title") await sql`UPDATE meta_proposals SET prop_title = ${text}, title_status = 'open', updated_at = now() WHERE client_slug = ${slug} AND page_url = ${url}`;
+  else await sql`UPDATE meta_proposals SET prop_desc = ${text}, desc_status = 'open', updated_at = now() WHERE client_slug = ${slug} AND page_url = ${url}`;
+  await recomputeStatus(slug, url);
+  return { propTitle: field === "title" ? text : (row.prop_title as string) || "", propDesc: field === "desc" ? text : (row.prop_desc as string) || "" };
 }
 
 // ── Live-detectie ──
@@ -252,8 +333,10 @@ export async function checkLiveProposals(slug: string, rows: MetaKansRow[]): Pro
   await Promise.all(pending.map(async (r) => {
     const m = await measurePage(r.url, { staticOnly: true }).catch(() => null);
     if (!m?.ok || !r.proposal) return;
-    const titleLive = normText(m.metaTitle) === normText(r.proposal.propTitle);
-    const descLive = normText(m.metaDescription) === normText(r.proposal.propDesc);
+    // Alleen goedgekeurde velden tellen mee voor de live-detectie (een afgewezen
+    // titel die toevallig overeenkomt mag de meting niet starten).
+    const titleLive = r.proposal.titleStatus === "goedgekeurd" && normText(m.metaTitle) === normText(r.proposal.propTitle);
+    const descLive = r.proposal.descStatus === "goedgekeurd" && normText(m.metaDescription) === normText(r.proposal.propDesc);
     if (titleLive || descLive) {
       await updateMetaProposal(slug, r.url, { status: "doorgevoerd" });
       r.proposal.status = "doorgevoerd";
