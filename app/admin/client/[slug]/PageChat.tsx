@@ -1257,7 +1257,12 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
               <div className="pcd-run-line">
                 {(["analyse", "blauwdruk", "copy"] as const).filter((k) => run.steps[k] !== "skipped").map((k) => {
                   const nm = k === "analyse" ? "Analyse" : k === "blauwdruk" ? "Blauwdruk" : "Copy";
-                  const st = run.steps[k] === "done" ? "klaar" : run.steps[k] === "running" ? "bezig…" : run.steps[k] === "error" ? "fout" : "wacht";
+                  // Een stap die op 'bezig' stond toen de run stopte of faalde, is niet
+                  // meer bezig: toon dan 'gestopt' in plaats van een liegend 'bezig…'.
+                  const st = run.steps[k] === "done" ? "klaar"
+                    : run.steps[k] === "running" ? (run.status === "running" ? "bezig…" : "gestopt")
+                      : run.steps[k] === "error" ? "fout"
+                        : run.status === "running" ? "wacht" : "niet gedaan";
                   return (
                     <span key={k} className={"pcd-run-item " + (run.steps[k] || "pending")}>
                       <strong>{nm}</strong> {st}{run.links[k] && <> · <a href={run.links[k]} target="_blank" rel="noreferrer">document</a></>}
