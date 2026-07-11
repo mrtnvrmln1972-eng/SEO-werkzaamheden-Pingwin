@@ -17,6 +17,12 @@ function pad(url: string): string {
   try { const u = new URL(url); return (u.pathname + u.search) || "/"; } catch { return url; }
 }
 
+// Beheeromgeving van de website (WordPress-standaard). De login regelt de browser
+// van de gebruiker zelf; het dashboard kent geen site-wachtwoorden.
+function adminUrl(url: string): string {
+  try { return new URL(url).origin + "/wp-admin/"; } catch { return ""; }
+}
+
 const STATUS_LABEL: Record<string, { txt: string; bg: string; fg: string }> = {
   open: { txt: "voorstel klaar", bg: "#fff3e6", fg: "#b25a00" },
   goedgekeurd: { txt: "goedgekeurd, wacht op site", bg: "#e8f1fb", fg: "#1a5da6" },
@@ -114,9 +120,12 @@ export default function MetaCtrPanel({ slug }: { slug: string }) {
           const st = r.proposal ? STATUS_LABEL[r.proposal.status] : null;
           return (
             <div key={r.url} className="wz-item-wrap" style={{ flexDirection: "column", alignItems: "stretch" }}>
-              <button type="button" className="wz-item" onClick={() => setOpenUrl(open ? null : r.url)}>
+              <div role="button" tabIndex={0} className="wz-item" onClick={() => setOpenUrl(open ? null : r.url)}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpenUrl(open ? null : r.url); } }}>
                 <span style={{ minWidth: 0 }}>
-                  <span className="wz-item-title">{pad(r.url)}</span>
+                  {/* De slug is altijd een echte link naar de live pagina. */}
+                  <a className="wz-item-title" href={r.url} target="_blank" rel="noreferrer" title="Open de pagina op de website"
+                    onClick={(e) => e.stopPropagation()} style={{ textDecoration: "none" }}>{pad(r.url)}</a>
                   <span className="wz-item-sub" style={{ display: "block" }}>
                     {r.keyword ? <>zoekwoord &ldquo;{r.keyword}&rdquo; &middot; </> : null}
                     positie {r.position} &middot; {r.impressions.toLocaleString("nl-NL")} vertoningen &middot; CTR {r.ctr}% (verwacht {r.expectedCtr}%)
@@ -125,9 +134,14 @@ export default function MetaCtrPanel({ slug }: { slug: string }) {
                 <span className="wz-item-date" style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   {st && <span style={{ background: st.bg, color: st.fg, borderRadius: 20, padding: "2px 10px", fontSize: 11.5, fontWeight: 600 }}>{st.txt}</span>}
                   {r.extraClicks > 0 && <span title="Geschatte extra klikken per 90 dagen bij een normale klikkans">+{r.extraClicks} klikken mogelijk</span>}
+                  {adminUrl(r.url) && (
+                    <a className="ghost-btn small" href={adminUrl(r.url)} target="_blank" rel="noreferrer"
+                      title="Open de beheeromgeving van de website (inloggen gaat via je eigen browser)"
+                      onClick={(e) => e.stopPropagation()}>Open in beheer</a>
+                  )}
                   <span>{open ? "▾" : "▸"}</span>
                 </span>
-              </button>
+              </div>
               {open && (
                 <div style={{ border: "1px solid var(--border)", borderTop: "none", borderRadius: "0 0 10px 10px", padding: "14px", background: "#fff" }}>
                   {!r.proposal && (
