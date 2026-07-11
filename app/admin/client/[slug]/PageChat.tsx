@@ -582,7 +582,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   }
   function pollStratLink() {
     let tries = 0;
-    const iv = setInterval(async () => { tries++; if ((await loadStratLink()) || tries >= 12) clearInterval(iv); }, 4000);
+    const iv = setInterval(async () => { tries++; if ((await loadStratLink()) || tries >= 60) clearInterval(iv); }, 4000);
   }
   useEffect(() => { setStratLink(""); loadStratLink(); /* eslint-disable-next-line */ }, [slug, url]);
   // Analyse vastgelegd (taak + document) → knop wordt groen "Analyse vastgelegd".
@@ -1030,6 +1030,27 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       </div>
       {lastAssistant && (
         <>
+          <div className="page-chat-drive">
+            <span className="pcd-label">Opslaan in:</span>
+            {driveFolder
+              ? <span className="pcd-folder">{driveFolder.path || driveFolder.name}</span>
+              : <span className="pcd-folder muted">nog geen Drive-map (documenten worden gedownload)</span>}
+            <button type="button" className="ghost-btn small" onClick={openPicker}>{driveFolder ? "Map wijzigen" : "Kies Drive-map"}</button>
+            {driveFolder && <button type="button" className="ghost-btn small" onClick={() => setDriveFolder(null)}>Naar download</button>}
+          </div>
+          <div className="page-chat-tools">
+            <button type="button" className={"pcd-btn " + (taskDone ? "pcd-btn-done" : "pcd-btn-primary") + (taskGen ? " busy" : "")} onClick={() => void makeWorkItem()} disabled={taskGen}>{taskGen ? "Vastleggen…" : taskDone ? "✓ Strategie vastgelegd." : "Strategie vastleggen"}</button>
+            {stratLink
+              ? <a href={stratLink} target="_blank" rel="noreferrer" className="pcd-doclink">Document openen ↗</a>
+              : taskDone && <span className="muted" style={{ fontSize: 12 }}>het document wordt gemaakt; de link verschijnt hier vanzelf</span>}
+            {taskDone && !planDone && lastAssistant && (
+              <button type="button" className="ghost-btn small" onClick={() => void acceptPlan(lastAssistant)}
+                title="De conclusie van dit gesprek staat nog niet als vastgelegde strategie bovenaan (dat kon in de oude werkwijze gebeuren). Deze knop zet hem er alsnog neer, zonder opnieuw samen te vatten.">
+                Conclusie alsnog als strategie bovenaan zetten
+              </button>
+            )}
+            <HelpHint wide title="Strategie vastleggen (alleen het document)" text={"Herkansing voor alleen de documentstap: maakt van de laatste conclusie het nette **Pingwin-document** (in de Drive-map van de pagina, of als download) en legt hem vast als afgeronde werkzaamheid met de documentlink ernaast.\nNormaal hoef je deze knop niet te gebruiken: 'Vat samen & leg strategie vast' doet dit al automatisch. Gebruik hem als de documentstap toen mislukte (bijvoorbeeld zonder Drive-koppeling) of als je alleen een vers document wilt zonder de strategie opnieuw samen te vatten."} />
+          </div>
           <div className="page-chat-followup">
             <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Verder sparren?</div>
             <div className="pchf-lead">Stel je vragen hier, bijvoorbeeld over de invulling of de zoekwoorden. Ben je klaar met bespreken, klik dan op &ldquo;Vat samen &amp; leg strategie vast&rdquo;: de conclusie wordt de vastgelegde strategie bovenaan én het nette document in de Drive-map.</div>
@@ -1044,21 +1065,6 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
               </button>
               <HelpHint wide title="Vat samen & leg strategie vast" text={"Sluit het gesprek af met deze ene knop. Er gebeuren dan drie dingen na elkaar:\n- De AI redeneert nog één keer over alles wat besproken en gemeten is en schrijft de **definitieve conclusie** (hij mag daarbij pagina's en concurrenten nameten in plaats van gokken).\n- Die conclusie wordt meteen de **vastgelegde strategie** bovenin dit blok, die alle volgende stappen aanstuurt (en die je daar altijd nog kunt bewerken).\n- Er wordt het nette **Pingwin-document** van gemaakt in de Drive-map van de pagina (of als download zonder Drive), vastgelegd als afgeronde werkzaamheid.\nChat je daarna verder, dan heet de knop 'Vat opnieuw samen': een nieuwe conclusie vervangt de vastgelegde strategie en er komt een vers document; het oude document blijft in Drive staan.\nOnderbreken kan tijdens het samenvatten met het kruisje; dan wordt er niets vastgelegd."} />
             </span>
-          </div>
-          <div className="page-chat-drive">
-            <span className="pcd-label">Opslaan in:</span>
-            {driveFolder
-              ? <span className="pcd-folder">{driveFolder.path || driveFolder.name}</span>
-              : <span className="pcd-folder muted">nog geen Drive-map (documenten worden gedownload)</span>}
-            <button type="button" className="ghost-btn small" onClick={openPicker}>{driveFolder ? "Map wijzigen" : "Kies Drive-map"}</button>
-            {driveFolder && <button type="button" className="ghost-btn small" onClick={() => setDriveFolder(null)}>Naar download</button>}
-          </div>
-          <div className="page-chat-tools">
-            <button type="button" className={"pcd-btn " + (taskDone ? "pcd-btn-done" : "pcd-btn-primary") + (taskGen ? " busy" : "")} onClick={() => void makeWorkItem()} disabled={taskGen}>{taskGen ? "Vastleggen…" : taskDone ? "✓ Strategie vastgelegd." : "Strategie vastleggen"}</button>
-            {stratLink
-              ? <a href={stratLink} target="_blank" rel="noreferrer" className="pcd-doclink">Document openen ↗</a>
-              : taskDone && <span className="muted" style={{ fontSize: 12 }}>document nog niet gekoppeld (kies een Drive-map en leg opnieuw vast)</span>}
-            <HelpHint wide title="Strategie vastleggen (alleen het document)" text={"Herkansing voor alleen de documentstap: maakt van de laatste conclusie het nette **Pingwin-document** (in de Drive-map van de pagina, of als download) en legt hem vast als afgeronde werkzaamheid met de documentlink ernaast.\nNormaal hoef je deze knop niet te gebruiken: 'Vat samen & leg strategie vast' doet dit al automatisch. Gebruik hem als de documentstap toen mislukte (bijvoorbeeld zonder Drive-koppeling) of als je alleen een vers document wilt zonder de strategie opnieuw samen te vatten."} />
           </div>
         </>
       )}

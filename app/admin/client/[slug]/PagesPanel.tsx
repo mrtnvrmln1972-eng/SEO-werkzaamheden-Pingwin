@@ -715,7 +715,7 @@ function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoTo
                     ) : (
                       (plan || "").trim()
                         ? <div className="pages-plan-view md" dangerouslySetInnerHTML={{ __html: renderPlanHtml(plan) }} />
-                        : <div className="pages-plan-view muted">Nog geen strategie vastgelegd. Werk hem uit in de chat hieronder en klik &ldquo;Neem plan over&rdquo;, of klik Bewerken om hem zelf te typen.</div>
+                        : <div className="pages-plan-view muted">Nog geen strategie vastgelegd. Werk hem uit in de chat hieronder en klik &ldquo;Vat samen &amp; leg strategie vast&rdquo;, of klik Bewerken om hem zelf te typen.</div>
                     )}
                     {u.redirectTarget && <div className="muted" style={{ marginTop: 6 }}>Live redirect: → <a href={u.redirectTarget} target="_blank" rel="noreferrer">{u.redirectTarget}</a></div>}
                   </div>
