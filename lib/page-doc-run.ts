@@ -147,11 +147,16 @@ export async function processQueuedRuns(): Promise<{ processed: number; picked: 
   while (Date.now() - t0 < 45000) {
     // Runs die werk nodig hebben en niet nú al een stap 'running' hebben (voorkomt
     // dat twee cron-ticks dezelfde run tegelijk oppakken).
+    // De tijd-parameter maakt elke aanroep uniek: op 11-07-2026 bleef deze query
+    // (zonder parameters, dus elke keer byte-identiek) een verouderde lege respons
+    // teruggeven terwijl een identieke query ernaast de run wél zag. Een variërende
+    // parameter voorkomt dat zo'n respons ooit hergebruikt kan worden.
     const { rows } = await sql`
       SELECT id FROM page_doc_runs
       WHERE status = 'running'
         AND analyse_state <> 'running' AND blauwdruk_state <> 'running' AND copy_state <> 'running'
         AND (analyse_state = 'pending' OR blauwdruk_state = 'pending' OR copy_state = 'pending')
+        AND ${Date.now()} > 0
       ORDER BY id ASC LIMIT 1`;
     if (queueRows.length === 0) queueRows = rows; // diagnose: wat zag de eerste wachtrij-blik
     if (!rows.length) break;
