@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useRef } from "react";
+import {useState, useRef, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import type { ClientConfig } from "../../../../lib/clients";
 import type {
   EmailSnapshot, MetricSnapshot, KeywordSnapshot, PageSnapshot, ClientStatus,
 } from "../../../../lib/snapshots";
-import type { GscData, Ga4Data } from "../../../../lib/google";
 import type { TaskRow } from "../../../../lib/tasks";
 import type { StrategySession } from "../../../../lib/strategy";
 import ChatPanel from "./ChatPanel";
@@ -38,7 +37,6 @@ type CockpitData = {
   lastIngest: string | null;
   status: ClientStatus;
   statusUpdatedAt: string | null;
-  mailLive: boolean;
   msConfigured: boolean;
   msConnected: boolean;
   myEmail: string | null;
@@ -49,14 +47,10 @@ type CockpitData = {
     nextLabel: string;
   };
   allClients: { slug: string; name: string; grp?: string | null; good28?: boolean; good90?: boolean }[];
-  gsc: GscData | null;
-  ga4: Ga4Data | null;
   googleConfigured: boolean;
   googleConnected: boolean;
   chatConfigured: boolean;
-  chatHistory: { role: "user" | "assistant"; content: string }[];
   tasks: TaskRow[];
-  strategySessions: StrategySession[];
 };
 
 // Taaknaam kan opmaak/links bevatten; in compacte lijstjes tonen we platte tekst.
@@ -65,11 +59,30 @@ function stripTags(html: string): string {
 }
 
 export default function ClientCockpit({
-  client, emails, metrics, keywords, pages, lastIngest, status, statusUpdatedAt,
-  mailLive, msConfigured, msConnected, myEmail, allClients,
-  gsc, ga4, googleConfigured, googleConnected, chatConfigured, chatHistory, tasks, strategySessions, initialTab, highlight,
+  client, emails: initialEmails, metrics, keywords, pages, lastIngest, status, statusUpdatedAt,
+  msConfigured, msConnected, myEmail, allClients,
+  googleConfigured, googleConnected, chatConfigured, tasks, initialTab, highlight,
   showMailSections = true,
 }: { client: ClientConfig; initialTab?: string; highlight?: string; showMailSections?: boolean } & CockpitData) {
+  // Live mail komt NA het tonen binnen (achtergrond-verversing): het scherm opent
+  // met de opgeslagen mails, en zodra Microsoft antwoordt worden ze ververst.
+  const [emails, setEmails] = useState(initialEmails);
+  const [mailLive, setMailLive] = useState(false);
+  useEffect(() => {
+    if (!msConnected || !showMailSections) return;
+    let off = false;
+    fetch(`/api/admin/mail?slug=${encodeURIComponent(client.slug)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (off || !d.ok || !Array.isArray(d.emails) || d.emails.length === 0) return;
+        setEmails(d.emails.filter((e: { fromAddress?: string }) => !/@ahrefs\.com$/i.test((e.fromAddress || "").trim())));
+        setMailLive(true);
+      })
+      .catch(() => { /* opgeslagen mails blijven staan */ });
+    return () => { off = true; };
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [client.slug]);
+
   const router = useRouter();
   const pathname = usePathname();
   // Directe feedback bij het wisselen van klant: de nieuwe pagina moet server-
@@ -529,7 +542,7 @@ export default function ClientCockpit({
         )}
 
         {tab === "werkzaamheden" && (
-          <TasksEditor key={`tasks-${highlight || "x"}`} slug={client.slug} initialTasks={tasks} initialStrategySessions={strategySessions} budget={client.budget} clientName={client.name} clientEmail={client.email || ""} highlight={highlight} />
+          <TasksEditor key={`tasks-${highlight || "x"}`} slug={client.slug} initialTasks={tasks} budget={client.budget} clientName={client.name} clientEmail={client.email || ""} highlight={highlight} />
         )}
 
         {tab === "resultaten" && (
@@ -564,7 +577,7 @@ export default function ClientCockpit({
 
       <div className="footer">Pingwin Online Marketing &middot; Beheer</div>
 
-      <ChatPanel slug={client.slug} configured={chatConfigured} initialMessages={chatHistory} />
+      <ChatPanel slug={client.slug} configured={chatConfigured} />
       <LinkPreview />
     </>
   );

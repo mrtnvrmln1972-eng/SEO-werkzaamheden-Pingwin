@@ -48,8 +48,11 @@ function mdToHtml(md: string): string {
   return out.join("");
 }
 
-export default function ChatPanel({ slug, configured, initialMessages }: { slug: string; configured: boolean; initialMessages: Msg[] }) {
+export default function ChatPanel({ slug, configured, initialMessages }: { slug: string; configured: boolean; initialMessages?: Msg[] }) {
   const [messages, setMessages] = useState<Msg[]>(initialMessages || []);
+  // Zonder meegegeven geschiedenis: het actieve gesprek laden zodra het venster
+  // voor het eerst opent (het scherm zelf hoeft er niet op te wachten).
+  const loadedRef = useRef(false);
   const [thread, setThread] = useState("algemeen");
   const [threads, setThreads] = useState<{ thread: string; count: number; updatedAt: string }[]>([]);
   const [collapsed, setCollapsed] = useState(true);
@@ -251,7 +254,14 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
   return (
     <div className="chat-fab-wrap" ref={wrapRef} style={!collapsed && pos ? { left: pos.x, top: pos.y, right: "auto", bottom: "auto" } : undefined}>
       {collapsed ? (
-        <button type="button" className="chat-fab" onClick={() => setCollapsed(false)}>
+        <button type="button" className="chat-fab" onClick={() => {
+          setCollapsed(false);
+          if (!loadedRef.current && messages.length === 0) {
+            loadedRef.current = true;
+            fetch(`/api/admin/chat?slug=${encodeURIComponent(slug)}&thread=${encodeURIComponent(thread)}`)
+              .then((r) => r.json()).then((d) => { if (d?.ok && Array.isArray(d.messages)) setMessages(d.messages); }).catch(() => {});
+          }
+        }}>
           <span className="chat-fab-dot" /> SEO-assistent{messages.length > 0 ? ` (${messages.length})` : ""}
         </button>
       ) : (
