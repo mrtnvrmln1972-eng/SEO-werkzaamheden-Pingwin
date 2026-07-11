@@ -18,7 +18,15 @@ export async function GET(req: NextRequest) {
     FROM page_doc_runs
     WHERE status = 'running'
     ORDER BY id DESC LIMIT 100`;
-  return NextResponse.json({ ok: true, running: rows });
+  // Diagnose: wat zou de cron-wachtrij op dit moment oppakken? (Zelfde query als
+  // in processQueuedRuns.) Zo zien we direct of wachtrij en werkelijkheid matchen.
+  const { rows: queue } = await sql`
+    SELECT id FROM page_doc_runs
+    WHERE status = 'running'
+      AND analyse_state <> 'running' AND blauwdruk_state <> 'running' AND copy_state <> 'running'
+      AND (analyse_state = 'pending' OR blauwdruk_state = 'pending' OR copy_state = 'pending')
+    ORDER BY id ASC LIMIT 5`;
+  return NextResponse.json({ ok: true, running: rows, queue: queue.map((r) => Number(r.id)) });
 }
 
 export async function POST(req: NextRequest) {
