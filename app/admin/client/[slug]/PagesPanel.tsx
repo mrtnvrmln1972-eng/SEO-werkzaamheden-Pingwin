@@ -540,6 +540,20 @@ function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoTo
   const [planOpen, setPlanOpen] = useState(false);
   const [tasks, setTasks] = useState<{ id: number | null; taak: string; fase: string; wie: string; status: string; docLink?: string; stepKind?: string }[]>([]);
   const [cleaning, setCleaning] = useState(false);
+  // Tweede uitklap: alle zoekwoorden waar deze pagina nu op scoort (Search Console).
+  const [kwOpen, setKwOpen] = useState(false);
+  const [kws, setKws] = useState<{ keyword: string; clicks: number; impressions: number; position: number }[] | null>(null);
+
+  async function toggleKeywords() {
+    const next = !kwOpen;
+    setKwOpen(next);
+    if (!next || kws !== null) return;
+    try {
+      const r = await fetch(`/api/admin/page-keywords?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(u.url)}`);
+      const d = await r.json();
+      setKws(d.ok ? (d.keywords || []) : []);
+    } catch { setKws([]); }
+  }
 
   async function loadTasks() {
     try {
@@ -589,7 +603,16 @@ function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoTo
           <a href={u.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>{shortUrl(u.url)}</a>
           {opp?.bestKeyword && <div className="pg-kw" title="Beste zoekwoord (meeste vertoningen), met zoekvolume en huidige positie">{opp.bestKeyword}{opp.bestVolume != null ? ` · vol ${opp.bestVolume.toLocaleString("nl-NL")}` : ""}{opp.bestPosition != null ? ` / pos ${opp.bestPosition}` : ""}</div>}
         </td>
-        <td>{opp && opp.clicks > 0 ? opp.clicks.toLocaleString("nl-NL") : (u.gscClicks > 0 ? u.gscClicks.toLocaleString("nl-NL") : <span className="muted">&mdash;</span>)}</td>
+        <td>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <button type="button" onClick={(e) => { e.stopPropagation(); void toggleKeywords(); }}
+              title="Alle zoekwoorden en posities waar deze pagina nu op scoort (Search Console, 90 dagen)"
+              style={{ border: "1px solid var(--border)", background: kwOpen ? "var(--orange-light)" : "#fff", borderRadius: 6, cursor: "pointer", padding: "1px 7px", fontSize: 11, color: "var(--gray)", flex: "0 0 auto" }}>
+              {kwOpen ? "▾" : "▸"} zw
+            </button>
+            {opp && opp.clicks > 0 ? opp.clicks.toLocaleString("nl-NL") : (u.gscClicks > 0 ? u.gscClicks.toLocaleString("nl-NL") : <span className="muted">&mdash;</span>)}
+          </div>
+        </td>
         <td>{opp && opp.impressions > 0 ? opp.impressions.toLocaleString("nl-NL") : (u.gscImpressions > 0 ? u.gscImpressions.toLocaleString("nl-NL") : <span className="muted">&mdash;</span>)}</td>
         <td>{opp && opp.position ? opp.position : <span className="muted">&mdash;</span>}</td>
         <td>{opp?.bestVolume != null ? opp.bestVolume.toLocaleString("nl-NL") : <span className="muted">&mdash;</span>}</td>
@@ -600,6 +623,31 @@ function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoTo
             ? <span className="plan-chip half" title="Half plan: al meegewogen in de strategie van een andere pagina, nog niet zelf afgerond.">half plan</span>
             : <span className="plan-chip">leeg</span>}</td>
       </tr>
+      {kwOpen && (
+        <tr className="pages-detail-row">
+          <td colSpan={9}>
+            <div className="pages-detail" style={{ padding: "10px 14px" }}>
+              {kws === null && <div className="muted">Zoekwoorden laden uit Search Console&hellip;</div>}
+              {kws !== null && kws.length === 0 && <div className="muted">Geen zoekwoorden gevonden voor deze pagina (of Search Console heeft nog geen data).</div>}
+              {kws !== null && kws.length > 0 && (
+                <table className="res-table" style={{ maxWidth: 720 }}>
+                  <thead><tr><th>Zoekwoord</th><th>Positie</th><th>Klikken</th><th>Vertoningen</th></tr></thead>
+                  <tbody>
+                    {kws.map((k, i) => (
+                      <tr key={i}>
+                        <td>{k.keyword}</td>
+                        <td>{k.position ? Math.round(k.position * 10) / 10 : "—"}</td>
+                        <td>{k.clicks.toLocaleString("nl-NL")}</td>
+                        <td>{k.impressions.toLocaleString("nl-NL")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </td>
+        </tr>
+      )}
       {open && (
         <tr className="pages-detail-row">
           <td colSpan={9}>
