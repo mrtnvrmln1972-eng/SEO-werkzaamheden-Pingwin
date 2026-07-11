@@ -170,7 +170,7 @@ export async function processQueuedRuns(): Promise<{ processed: number; picked: 
       WHERE status = 'running'
         AND analyse_state <> 'running' AND blauwdruk_state <> 'running' AND copy_state <> 'running'
         AND (analyse_state = 'pending' OR blauwdruk_state = 'pending' OR copy_state = 'pending')
-        AND ${Date.now()} > 0
+        AND ${String(Date.now())} <> ''
       ORDER BY id ASC LIMIT 1`;
     if (queueRows.length === 0) queueRows = rows; // diagnose: wat zag de eerste wachtrij-blik
     if (!rows.length) break;
