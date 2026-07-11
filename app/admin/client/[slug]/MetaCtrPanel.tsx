@@ -311,8 +311,16 @@ export default function MetaCtrPanel({ slug, backendUrl, onOpenPage }: { slug: s
                     <div style={{ display: "grid", gap: 16 }}>
                       <div>
                         <div className="wz-block-head">Huidig op de site</div>
-                        <div className="wz-line removed"><span className="wz-line-label">Meta-titel:</span> {r.proposal.curTitle || "(geen paginatitel gevonden)"}<MetaPixelMeter kind="meta_title" text={r.proposal.curTitle} /></div>
-                        <div className="wz-line removed"><span className="wz-line-label">Meta-beschrijving:</span> {r.proposal.curDesc || "(geen meta-beschrijving gevonden)"}<MetaPixelMeter kind="meta_description" text={r.proposal.curDesc} /></div>
+                        <div className="wz-line removed">
+                          <span className="wz-line-label">Meta-titel:</span> {r.proposal.curTitle || "(geen paginatitel gevonden)"}
+                          <MetaPixelMeter kind="meta_title" text={r.proposal.curTitle} />
+                          <MetaChecklist kind="title" text={r.proposal.curTitle} keyword={r.keyword} other={r.proposal.curDesc} />
+                        </div>
+                        <div className="wz-line removed">
+                          <span className="wz-line-label">Meta-beschrijving:</span> {r.proposal.curDesc || "(geen meta-beschrijving gevonden)"}
+                          <MetaPixelMeter kind="meta_description" text={r.proposal.curDesc} />
+                          <MetaChecklist kind="desc" text={r.proposal.curDesc} keyword={r.keyword} other={r.proposal.curTitle} />
+                        </div>
                       </div>
                       <div>
                         <div className="wz-block-head">Voorstel (aanpasbaar)</div>
