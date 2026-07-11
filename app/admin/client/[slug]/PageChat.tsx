@@ -9,7 +9,7 @@ type Task = { taak: string; fase?: string; wie?: string };
 type Proposal = { plan?: string; tasks?: Task[] };
 type ChatSummary = { id: number; title: string; updatedAt: string; count: number };
 
-// Kant-en-klare opdracht voor de "Vat samen tot conclusie & strategie"-knop.
+// Kant-en-klare opdracht voor de "Vat samen & leg strategie vast"-knop.
 // Consolideert het hele gesprek tot één definitieve conclusie/strategie, die via
 // het bestaande voorstel-mechanisme als plan voor de pagina overgenomen wordt.
 const SUMMARIZE_PROMPT =
@@ -589,11 +589,12 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   const [taskDone, setTaskDone] = useState(false);
   // Vat de chat-analyse samen tot één document (Drive of download) en legt de
   // analyse vast als ÉÉN werkzaamheid met dat document eraan gekoppeld.
-  async function makeWorkItem() {
-    if (!lastAssistant || taskGen) return;
+  async function makeWorkItem(analysisOverride?: string) {
+    const analysis = (analysisOverride || lastAssistant || "").trim();
+    if (!analysis || taskGen) return;
     setTaskGen(true); setErr(""); setApplied("");
     try {
-      const payload = { slug, url, analysis: lastAssistant, extra: nuance.trim() || undefined, background: true, ...(driveFolder ? { folderId: driveFolder.id } : {}) };
+      const payload = { slug, url, analysis, extra: nuance.trim() || undefined, background: true, ...(driveFolder ? { folderId: driveFolder.id } : {}) };
       const r = await fetch("/api/admin/page-analysis-doc", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const ct = r.headers.get("Content-Type") || "";
       if (ct.includes("application/json")) {
@@ -843,9 +844,9 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     sendAbortRef.current?.abort();
   }
 
-  async function send(text: string) {
+  async function send(text: string): Promise<{ reply: string; proposal: Proposal | null } | null> {
     const t = text.trim();
-    if (!t || busy) return;
+    if (!t || busy) return null;
     setErr(""); setApplied(""); setProposal(null); setClusterItems(null); setClusterMsg("");
     const next = [...msgs, { role: "user" as const, content: t }];
     setMsgs(next); setInput(""); setBusy(true);
@@ -854,12 +855,13 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     try {
       const r = await fetch("/api/admin/page-chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url, messages: next }), signal: ctrl.signal });
       const d = await r.json();
-      if (!d.ok) { setErr(d.error || "Chat mislukt."); setBusy(false); return; }
+      if (!d.ok) { setErr(d.error || "Chat mislukt."); setBusy(false); return null; }
       const withReply = [...next, { role: "assistant" as const, content: d.reply }];
       setMsgs(withReply);
       const p: Proposal | null = d.proposal || null;
       setProposal(p);
       persist(withReply); // altijd bewaren, ook zonder overnemen
+      return { reply: String(d.reply || ""), proposal: p };
     } catch (e) {
       if ((e as Error).name === "AbortError") {
         // Onderbroken: antwoord weggooien, vraag terug in het invoerveld.
@@ -869,22 +871,37 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
         setErr("Chat mislukt.");
       }
     } finally { setBusy(false); sendAbortRef.current = null; }
+    return null;
   }
 
-  // Neemt alleen het PLAN over (met de acties erin). De losse acties worden GEEN
-  // aparte werkzaamheden; die lopen via de analyse/blauwdruk/copy-stappen.
-  async function applySelected() {
-    const plan = proposal?.plan;
-    if (!plan) { setErr("Er is geen plan om over te nemen."); return; }
+  // Slaat een plantekst op als de vastgelegde strategie bovenaan (onderdeel van
+  // de gecombineerde knop; de acties erin lopen via analyse/blauwdruk/copy).
+  async function acceptPlan(plan: string): Promise<boolean> {
     try {
       const r = await fetch("/api/admin/page-chat/accept", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url, plan }) });
       const d = await r.json();
-      if (d.ok) {
-        setApplied("Plan overgenomen. De acties staan in het plan; leg de analyse vast als werkzaamheid met de knop hieronder.");
-        setProposal(null);
-        onApplied(plan);
-      } else setErr(d.error || "Overnemen mislukt.");
-    } catch { setErr("Overnemen mislukt."); }
+      if (d.ok) { setProposal(null); onApplied(plan); return true; }
+      setErr(d.error || "Strategie vastleggen mislukte.");
+      return false;
+    } catch { setErr("Strategie vastleggen mislukte."); return false; }
+  }
+
+  // De gecombineerde knop: samenvatten -> vastgelegde strategie bovenaan ->
+  // document in Drive + afgeronde werkzaamheid. Onderbreken kan tijdens het
+  // samenvatten (kruisje bij "Aan het denken"); dan stopt de hele keten.
+  const [finalizePhase, setFinalizePhase] = useState<"" | "samenvatten" | "vastleggen" | "document">("");
+  async function summarizeAndFinalize() {
+    if (busy || taskGen || finalizePhase) return;
+    setFinalizePhase("samenvatten");
+    try {
+      const d = await send(SUMMARIZE_PROMPT);
+      if (!d || !d.reply.trim()) return; // onderbroken of mislukt: niets vastleggen
+      setFinalizePhase("vastleggen");
+      const plan = d.proposal?.plan?.trim() ? d.proposal.plan : d.reply;
+      await acceptPlan(plan);
+      setFinalizePhase("document");
+      await makeWorkItem(d.reply);
+    } finally { setFinalizePhase(""); }
   }
 
   // ── Cluster-advies doorgeven aan andere betrokken pagina's ──
@@ -1011,28 +1028,21 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
           </div>
         )}
       </div>
-      {proposal?.plan && (
-        <div className="page-chat-proposal">
-          <div className="page-chat-proposal-head">Voorstel: plan voor deze pagina</div>
-          <div className="pch-prop-plan md" dangerouslySetInnerHTML={{ __html: mdToHtml(proposal.plan, siteBase) }} />
-          <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>De losse acties staan in dit plan. Ze worden uitgevoerd via de SEO-analyse, blauwdruk en copy, niet als aparte werkzaamheden.</div>
-          <div className="page-chat-proposal-actions">
-            <button type="button" className="primary-btn small" onClick={applySelected}>Neem plan over</button>
-          </div>
-        </div>
-      )}
       {lastAssistant && (
         <>
           <div className="page-chat-followup">
             <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Verder sparren?</div>
-            <div className="pchf-lead">Stel je vragen hier, bijvoorbeeld over de invulling of de zoekwoorden. Ben je klaar met bespreken, vat het gesprek dan samen tot de conclusie en strategie; die neem je daarna over als plan met &ldquo;Neem plan over&rdquo;.</div>
+            <div className="pchf-lead">Stel je vragen hier, bijvoorbeeld over de invulling of de zoekwoorden. Ben je klaar met bespreken, klik dan op &ldquo;Vat samen &amp; leg strategie vast&rdquo;: de conclusie wordt de vastgelegde strategie bovenaan én het nette document in de Drive-map.</div>
             <div className="pchf-row">
               <input className="pchf-input" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(input); }} placeholder="Vervolgvraag over deze pagina…" disabled={busy} />
               <button type="button" className="primary-btn small" onClick={() => send(input)} disabled={busy || !input.trim()}>Vraag</button>
             </div>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <button type="button" className="pcd-btn pcd-btn-primary" onClick={() => send(SUMMARIZE_PROMPT)} disabled={busy} title="Vat het hele gesprek samen tot de definitieve conclusie en strategie, klaar om over te nemen als plan">Vat samen tot conclusie &amp; strategie</button>
-              <HelpHint wide title="Vat samen tot conclusie & strategie" text={"Sluit het gesprek af met deze knop: de AI redeneert dan nog één keer over alles wat besproken en gemeten is en schrijft de **definitieve conclusie plus strategie** uit. Daarbij mag hij zelf nog pagina's en concurrenten nameten om te verifiëren in plaats van te gokken.\nDaarna klik je '**Neem plan over**': de conclusie wordt dan de vastgelegde strategie bovenin dit blok, die alle volgende stappen aanstuurt.\nLet op het verschil: deze knop maakt **geen document**; het document (voor de klant of het archief) maak je met 'Strategie vastleggen' onderaan."} />
+              <button type="button" className="pcd-btn pcd-btn-primary" onClick={() => void summarizeAndFinalize()} disabled={busy || taskGen || !!finalizePhase}
+                title="Vat het hele gesprek samen tot de definitieve conclusie, zet die als vastgelegde strategie bovenaan en maakt er het Pingwin-document van in de Drive-map (of als download).">
+                {finalizePhase === "samenvatten" ? "Samenvatten…" : finalizePhase === "vastleggen" ? "Strategie vastleggen…" : finalizePhase === "document" ? "Document maken…" : (planDone || taskDone) ? "Vat opnieuw samen & leg strategie vast" : "Vat samen & leg strategie vast"}
+              </button>
+              <HelpHint wide title="Vat samen & leg strategie vast" text={"Sluit het gesprek af met deze ene knop. Er gebeuren dan drie dingen na elkaar:\n- De AI redeneert nog één keer over alles wat besproken en gemeten is en schrijft de **definitieve conclusie** (hij mag daarbij pagina's en concurrenten nameten in plaats van gokken).\n- Die conclusie wordt meteen de **vastgelegde strategie** bovenin dit blok, die alle volgende stappen aanstuurt (en die je daar altijd nog kunt bewerken).\n- Er wordt het nette **Pingwin-document** van gemaakt in de Drive-map van de pagina (of als download zonder Drive), vastgelegd als afgeronde werkzaamheid.\nChat je daarna verder, dan heet de knop 'Vat opnieuw samen': een nieuwe conclusie vervangt de vastgelegde strategie en er komt een vers document; het oude document blijft in Drive staan.\nOnderbreken kan tijdens het samenvatten met het kruisje; dan wordt er niets vastgelegd."} />
             </span>
           </div>
           <div className="page-chat-drive">
@@ -1044,11 +1054,11 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
             {driveFolder && <button type="button" className="ghost-btn small" onClick={() => setDriveFolder(null)}>Naar download</button>}
           </div>
           <div className="page-chat-tools">
-            <button type="button" className={"pcd-btn " + (taskDone ? "pcd-btn-done" : "pcd-btn-primary") + (taskGen ? " busy" : "")} onClick={makeWorkItem} disabled={taskGen}>{taskGen ? "Vastleggen…" : taskDone ? "✓ Strategie vastgelegd." : "Strategie vastleggen"}</button>
+            <button type="button" className={"pcd-btn " + (taskDone ? "pcd-btn-done" : "pcd-btn-primary") + (taskGen ? " busy" : "")} onClick={() => void makeWorkItem()} disabled={taskGen}>{taskGen ? "Vastleggen…" : taskDone ? "✓ Strategie vastgelegd." : "Strategie vastleggen"}</button>
             {stratLink
               ? <a href={stratLink} target="_blank" rel="noreferrer" className="pcd-doclink">Document openen ↗</a>
               : taskDone && <span className="muted" style={{ fontSize: 12 }}>document nog niet gekoppeld (kies een Drive-map en leg opnieuw vast)</span>}
-            <HelpHint wide title="Strategie vastleggen (als document)" text={"Maakt van de strategie uit deze chat één net opgemaakt **Pingwin-document**: in de Drive-map van de pagina, of als download zonder Drive-koppeling. Tegelijk wordt hij vastgelegd als afgeronde werkzaamheid in de takenlijst, met de documentlink ernaast; zichtbaar voor de klant als bewijs van het denkwerk.\nHet verschil met 'Vat samen' hierboven: die maakt de **plantekst** (de conclusie in dit blok), deze knop maakt het **document**. Meestal doe je eerst het één en dan het ander."} />
+            <HelpHint wide title="Strategie vastleggen (alleen het document)" text={"Herkansing voor alleen de documentstap: maakt van de laatste conclusie het nette **Pingwin-document** (in de Drive-map van de pagina, of als download) en legt hem vast als afgeronde werkzaamheid met de documentlink ernaast.\nNormaal hoef je deze knop niet te gebruiken: 'Vat samen & leg strategie vast' doet dit al automatisch. Gebruik hem als de documentstap toen mislukte (bijvoorbeeld zonder Drive-koppeling) of als je alleen een vers document wilt zonder de strategie opnieuw samen te vatten."} />
           </div>
         </>
       )}
@@ -1082,7 +1092,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
           <span className="step-caret">{chatOpen ? "▾" : "▸"}</span>
           <span className="step-badge">{planDone || taskDone ? "✓" : "1"}</span>
           <span className="step-title">Strategie voor deze pagina</span>
-          <span onClick={(e) => e.stopPropagation()}><HelpHint xl title="Stap 1 — Strategie voor deze pagina" text={"Alles begint met de strategiebepaling: wat moet deze pagina zijn, op welk zoekwoord, en waarom gaan we die slag winnen? Deze stap bestaat uit de **vastgelegde strategie** (de conclusie bovenin: rol, primair en secundair zoekwoord, acties, doel-URL) en de **strategie-chat** die ernaartoe werkt.\n## Op welke data de chat werkt\n- **Search Console (de waarheid over Google):** de echte rankings, klikken en vertoningen van deze pagina over 90 dagen, plus de sitebrede zoekwoord-naar-pagina-matrix; zo ziet de chat direct of meerdere eigen pagina's op dezelfde term ranken.\n- **De volledige paginalijst** van de site (de spiegel): de chat mag nooit beweren dat een pagina niet bestaat zonder die lijst te checken.\n- **Ahrefs, live op te vragen tijdens het gesprek:** echt maandelijks zoekvolume, keyword difficulty en zoekintentie per term; de top-10 van elk zoekwoord met de Domain Rating van elke concurrent; de backlinks en verwijzende domeinen van de eigen site of een concurrent-URL; en waar elke concurrent-URL zelf op rankt (content-gap).\n- **De echte paginainhoud:** de chat kan elke publieke URL inlezen (titel, koppen, tekst) om intentie en volledigheid te toetsen, ook bij concurrenten.\n- **Het klantprofiel:** positionering, werkgebied en doelgroep sturen elk advies; is het profiel leeg, dan vraagt de chat eerst door in plaats van te gokken.\n## De afwegingen die worden afgedwongen\n- **Zoekintentie eerst:** past het paginatype bij wat de top-10 laat zien? Een transactionele SERP win je niet met een blogartikel.\n- **Samenvoegen of splitsen:** tonen twee termen voor meer dan 50% dezelfde URL's in de top-10, dan is het één intentie en dus één pagina.\n- **Eigen pagina alleen bij echte vraag:** richtlijn vanaf zo'n 100 zoekvolume per maand; daaronder aanhaken als sectie. Varianten tellen mee vanaf zo'n 50.\n- **Eigenaar volgens plan, niet volgens toeval:** de pagina waarvan het plan een zoekintentie claimt is de bestemming; huidige rankings van andere pagina's zijn waarde die daarnaartoe geconsolideerd moet worden, nooit een reden om de strategie om te draaien.\n- **Verzin-verbod:** volumes, posities, Domain Ratings en backlink-aantallen komen aantoonbaar uit de bronnen of worden niet genoemd.\n## Van gesprek naar vastgelegde strategie\nSluit af met 'Vat samen tot conclusie & strategie': het systeem redeneert dan nog één keer agentisch over alle verzamelde data (het mag daarbij zelf extra pagina's en concurrenten meten) en dwingt een complete slotconclusie af: huidige situatie, kansrijke termen met volume, concurrentiepositie, zoekintentie, wat er mist ten opzichte van de top-10, en een helder advies. Met 'Neem plan over' wordt dat de vastgelegde strategie, die alle volgende stappen aanstuurt."} /></span>
+          <span onClick={(e) => e.stopPropagation()}><HelpHint xl title="Stap 1 — Strategie voor deze pagina" text={"Alles begint met de strategiebepaling: wat moet deze pagina zijn, op welk zoekwoord, en waarom gaan we die slag winnen? Deze stap bestaat uit de **vastgelegde strategie** (de conclusie bovenin: rol, primair en secundair zoekwoord, acties, doel-URL) en de **strategie-chat** die ernaartoe werkt.\n## Op welke data de chat werkt\n- **Search Console (de waarheid over Google):** de echte rankings, klikken en vertoningen van deze pagina over 90 dagen, plus de sitebrede zoekwoord-naar-pagina-matrix; zo ziet de chat direct of meerdere eigen pagina's op dezelfde term ranken.\n- **De volledige paginalijst** van de site (de spiegel): de chat mag nooit beweren dat een pagina niet bestaat zonder die lijst te checken.\n- **Ahrefs, live op te vragen tijdens het gesprek:** echt maandelijks zoekvolume, keyword difficulty en zoekintentie per term; de top-10 van elk zoekwoord met de Domain Rating van elke concurrent; de backlinks en verwijzende domeinen van de eigen site of een concurrent-URL; en waar elke concurrent-URL zelf op rankt (content-gap).\n- **De echte paginainhoud:** de chat kan elke publieke URL inlezen (titel, koppen, tekst) om intentie en volledigheid te toetsen, ook bij concurrenten.\n- **Het klantprofiel:** positionering, werkgebied en doelgroep sturen elk advies; is het profiel leeg, dan vraagt de chat eerst door in plaats van te gokken.\n## De afwegingen die worden afgedwongen\n- **Zoekintentie eerst:** past het paginatype bij wat de top-10 laat zien? Een transactionele SERP win je niet met een blogartikel.\n- **Samenvoegen of splitsen:** tonen twee termen voor meer dan 50% dezelfde URL's in de top-10, dan is het één intentie en dus één pagina.\n- **Eigen pagina alleen bij echte vraag:** richtlijn vanaf zo'n 100 zoekvolume per maand; daaronder aanhaken als sectie. Varianten tellen mee vanaf zo'n 50.\n- **Eigenaar volgens plan, niet volgens toeval:** de pagina waarvan het plan een zoekintentie claimt is de bestemming; huidige rankings van andere pagina's zijn waarde die daarnaartoe geconsolideerd moet worden, nooit een reden om de strategie om te draaien.\n- **Verzin-verbod:** volumes, posities, Domain Ratings en backlink-aantallen komen aantoonbaar uit de bronnen of worden niet genoemd.\n## Van gesprek naar vastgelegde strategie\nSluit af met 'Vat samen & leg strategie vast': het systeem redeneert dan nog één keer agentisch over alle verzamelde data (het mag daarbij zelf extra pagina's en concurrenten meten) en dwingt een complete slotconclusie af: huidige situatie, kansrijke termen met volume, concurrentiepositie, zoekintentie, wat er mist ten opzichte van de top-10, en een helder advies. Die conclusie wordt in dezelfde beweging de vastgelegde strategie bovenin (die alle volgende stappen aanstuurt) én het nette Pingwin-document in de Drive-map. Verder chatten kan altijd; met 'Vat opnieuw samen' vervang je de strategie door een nieuwe conclusie."} /></span>
           {chatOpen && (chats.length > 0 || msgs.length > 0) && <span className="step-head-right"><button type="button" className="ghost-btn small" onClick={(e) => { e.stopPropagation(); newChat(); }}>+ Nieuwe chat</button></span>}
         </div>
 
