@@ -17,7 +17,11 @@ export async function GET(req: NextRequest) {
   }
   try {
     const res = await processQueuedRuns();
-    return NextResponse.json({ ok: true, ...res });
+    // Diagnose: hoeveel lopende runs ziet DEZE functie zelf in de database?
+    // (Vergelijken met het beheer-luik; hoort identiek te zijn.)
+    const { sql } = await import("../../../../lib/db");
+    const { rows } = await sql`SELECT id, status, analyse_state, blauwdruk_state, copy_state FROM page_doc_runs WHERE status = 'running' ORDER BY id DESC LIMIT 5`;
+    return NextResponse.json({ ok: true, ...res, zelfTest: rows });
   } catch (e) {
     return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 500 });
   }
