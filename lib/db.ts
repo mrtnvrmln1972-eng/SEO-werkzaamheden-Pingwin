@@ -66,6 +66,9 @@ async function init(): Promise<void> {
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS wp_url TEXT`;
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS wp_user TEXT`;
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS wp_app_pass_enc TEXT`;
+  // Inlogpagina van de website-beheeromgeving (bv. een verborgen WordPress-login);
+  // leeg = standaard /wp-admin/ achter het domein.
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS backend_url TEXT`;
 
   // Doorgevoerde 301-redirects per pagina (uit de cannibalisatie-analyse): welke
   // redirect is wanneer in de website gezet en is hij live geverifieerd (echte 301

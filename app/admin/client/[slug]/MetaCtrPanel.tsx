@@ -12,7 +12,7 @@ import MetaPixelMeter from "./MetaPixelMeter";
 type Effect = { ctrBefore: number; ctrAfter: number; clicksBefore: number; clicksAfter: number; daysAfter: number };
 type FieldStatus = "open" | "goedgekeurd" | "afgewezen";
 type Proposal = { curTitle: string; curDesc: string; propTitle: string; propDesc: string; status: "open" | "goedgekeurd" | "doorgevoerd" | "afgewezen"; titleStatus: FieldStatus; descStatus: FieldStatus; liveAt: string | null; effect: Effect | null };
-type KansRow = { url: string; keyword: string; clicks: number; impressions: number; ctr: number; expectedCtr: number; position: number; extraClicks: number; proposal: Proposal | null };
+type KansRow = { url: string; keyword: string; volume: number | null; clicks: number; impressions: number; ctr: number; expectedCtr: number; position: number; extraClicks: number; proposal: Proposal | null };
 
 function pad(url: string): string {
   try { const u = new URL(url); return (u.pathname + u.search) || "/"; } catch { return url; }
@@ -31,12 +31,24 @@ const STATUS_LABEL: Record<string, { txt: string; bg: string; fg: string }> = {
   afgewezen: { txt: "afgewezen", bg: "#f2f2f2", fg: "#777" },
 };
 
-export default function MetaCtrPanel({ slug }: { slug: string }) {
+export default function MetaCtrPanel({ slug, backendUrl, onOpenPage }: { slug: string; backendUrl?: string | null; onOpenPage?: (url: string) => void }) {
   const [rows, setRows] = useState<KansRow[] | null>(null);
   const [error, setError] = useState("");
   const [openUrl, setOpenUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  // Inlogpagina van de website-beheeromgeving (per klant instelbaar; leeg = /wp-admin/).
+  const [beheerUrl, setBeheerUrl] = useState(backendUrl || "");
+  const [beheerEdit, setBeheerEdit] = useState(false);
+
+  async function saveBeheerUrl(value: string) {
+    setBeheerUrl(value.trim());
+    setBeheerEdit(false);
+    await fetch("/api/admin/clients", {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slug, action: "setBackendUrl", backendUrl: value.trim() }),
+    }).catch(() => {});
+  }
 
   const load = useCallback(async () => {
     setError("");
@@ -146,6 +158,22 @@ export default function MetaCtrPanel({ slug }: { slug: string }) {
           {copied ? "Gekopieerd!" : `Kopieer goedgekeurde meta's (${approvedCount})`}
         </button>
         <button type="button" className="ghost-btn small" onClick={() => { setRows(null); void load(); }}>Vernieuwen</button>
+        {beheerEdit ? (
+          <input
+            autoFocus
+            defaultValue={beheerUrl}
+            placeholder="https://voorbeeld.nl/wp-admin/"
+            onBlur={(e) => void saveBeheerUrl(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") void saveBeheerUrl((e.target as HTMLInputElement).value); if (e.key === "Escape") setBeheerEdit(false); }}
+            style={{ minWidth: 320, padding: "5px 10px", border: "1px solid var(--border)", borderRadius: 8, font: "inherit", fontSize: 12.5 }}
+            aria-label="Inlogpagina van de website-beheeromgeving"
+          />
+        ) : (
+          <button type="button" className="ghost-btn small" onClick={() => setBeheerEdit(true)}
+            title={beheerUrl ? `Inlogpagina: ${beheerUrl} (klik om te wijzigen)` : "Stel de inlogpagina van de website-beheeromgeving in (voor de 'Open in site'-knop). Leeg = /wp-admin/ achter het domein."}>
+            {beheerUrl ? "Inlogpagina ingesteld ✓" : "Inlogpagina instellen"}
+          </button>
+        )}
       </div>
       {error && <p className="wz-item-sub" style={{ color: "#c62828" }}>{error}</p>}
       {rows === null && <p className="wz-item-sub">Kansen berekenen uit Search Console&hellip;</p>}
@@ -161,19 +189,24 @@ export default function MetaCtrPanel({ slug }: { slug: string }) {
                 <span style={{ minWidth: 0 }}>
                   {/* De slug is altijd een echte link naar de live pagina. */}
                   <a className="wz-item-title" href={r.url} target="_blank" rel="noreferrer" title="Open de pagina op de website"
-                    onClick={(e) => e.stopPropagation()} style={{ textDecoration: "none" }}>{pad(r.url)}</a>
+                    onClick={(e) => e.stopPropagation()} style={{ color: "var(--orange)", textDecoration: "underline" }}>{pad(r.url)}</a>
                   <span className="wz-item-sub" style={{ display: "block" }}>
-                    {r.keyword ? <>zoekwoord &ldquo;{r.keyword}&rdquo; &middot; </> : null}
+                    {r.keyword ? <>zoekwoord &ldquo;{r.keyword}&rdquo;{r.volume !== null ? <> ({r.volume.toLocaleString("nl-NL")} zoekopdrachten p/mnd)</> : null} &middot; </> : null}
                     positie {r.position} &middot; {r.impressions.toLocaleString("nl-NL")} vertoningen &middot; CTR {r.ctr}% (verwacht {r.expectedCtr}%)
                   </span>
                 </span>
                 <span className="wz-item-date" style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   {st && <span style={{ background: st.bg, color: st.fg, borderRadius: 20, padding: "2px 10px", fontSize: 11.5, fontWeight: 600 }}>{st.txt}</span>}
                   {r.extraClicks > 0 && <span title="Geschatte extra klikken per 90 dagen bij een normale klikkans">+{r.extraClicks} klikken mogelijk</span>}
-                  {adminUrl(r.url) && (
-                    <a className="ghost-btn small" href={adminUrl(r.url)} target="_blank" rel="noreferrer"
+                  {onOpenPage && (
+                    <button type="button" className="ghost-btn small"
+                      title="Open deze pagina in het Pagina's-tabblad (strategie, copy, verbeterstappen)"
+                      onClick={(e) => { e.stopPropagation(); onOpenPage(r.url); }}>Open in Pagina&rsquo;s</button>
+                  )}
+                  {(beheerUrl || adminUrl(r.url)) && (
+                    <a className="ghost-btn small" href={beheerUrl || adminUrl(r.url)} target="_blank" rel="noreferrer"
                       title="Open de beheeromgeving van de website (inloggen gaat via je eigen browser)"
-                      onClick={(e) => e.stopPropagation()}>Open in beheer</a>
+                      onClick={(e) => e.stopPropagation()}>Open in site</a>
                   )}
                   <span>{open ? "▾" : "▸"}</span>
                 </span>

@@ -46,6 +46,8 @@ export type ClientConfig = {
   // Label van de Ahrefs-sleutel voor deze klant (env AHREFS_API_TOKEN_<LABEL>);
   // null = het hoofdaccount. Nooit de sleutel zelf.
   ahrefsKeyRef: string | null;
+  // Inlogpagina van de website-beheeromgeving (leeg = /wp-admin/ achter het domein).
+  backendUrl: string | null;
   budget: ClientBudget;
   cockpit: ClientCockpit;
 };
@@ -71,6 +73,7 @@ type ClientRow = {
   login_enabled: boolean | null;
   grp: string | null;
   ahrefs_key_ref: string | null;
+  backend_url: string | null;
   email_domain: string | null;
   work_doc_url: string | null;
   results_url: string | null;
@@ -95,6 +98,7 @@ function rowToConfig(r: ClientRow): ClientConfig {
     loginEnabled: r.login_enabled === null || r.login_enabled === undefined ? true : !!r.login_enabled,
     grp: r.grp || null,
     ahrefsKeyRef: r.ahrefs_key_ref || null,
+    backendUrl: r.backend_url || null,
     budget: {
       maandbudget: Number(r.maandbudget),
       linkbuilding: Number(r.linkbuilding),
@@ -214,6 +218,13 @@ export async function resetClientPassword(slug: string): Promise<string | null> 
   const passwordHash = hashPassword(password);
   const { rowCount } = await sql`UPDATE clients SET password_hash = ${passwordHash} WHERE slug = ${slug}`;
   return rowCount && rowCount > 0 ? password : null;
+}
+
+// Inlogpagina van de website-beheeromgeving per klant instellen (leeg = wissen).
+export async function setClientBackendUrl(slug: string, url: string | null): Promise<boolean> {
+  await ensureSchema();
+  const { rowCount } = await sql`UPDATE clients SET backend_url = ${url || null} WHERE slug = ${slug}`;
+  return !!rowCount && rowCount > 0;
 }
 
 export async function updateClientCockpit(slug: string, c: ClientCockpit): Promise<boolean> {

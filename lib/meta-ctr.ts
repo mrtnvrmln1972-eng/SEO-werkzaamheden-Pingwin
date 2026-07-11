@@ -6,7 +6,7 @@
 import { sql, ensureSchema } from "./db";
 import { getClientBySlug } from "./clients";
 import { getGscPageOpportunities, getGscDailyForPage } from "./google";
-import { cacheGet, cacheSet } from "./ahrefs";
+import { cacheGet, cacheSet, getKeywordsOverview } from "./ahrefs";
 import { measurePage } from "./page-measure";
 import { callClaude, LIGHT_MODEL } from "./anthropic";
 import { META_RULES_PROMPT, metaHardIssues, metaPixelInfo, type MetaKind } from "./meta-rules";
@@ -65,6 +65,7 @@ export type MetaFieldStatus = "open" | "goedgekeurd" | "afgewezen";
 export type MetaKansRow = {
   url: string;
   keyword: string;
+  volume: number | null;   // maandelijks zoekvolume van het zoekwoord (Ahrefs, gecached)
   clicks: number;
   impressions: number;
   ctr: number;            // huidige CTR in % (bv. 1.8)
@@ -129,6 +130,7 @@ export async function getMetaKansen(slug: string): Promise<MetaKansRow[]> {
     out.push({
       url: p.url,
       keyword: row?.keyword || p.bestKeyword || "",
+      volume: null,
       clicks: p.clicks, impressions: p.impressions,
       ctr: p.ctr, expectedCtr: Math.round(exp * 1000) / 10,
       position: p.position,
@@ -148,6 +150,12 @@ export async function getMetaKansen(slug: string): Promise<MetaKansRow[]> {
   const top = out.slice(0, 30);
   // Pagina's met een voorstel horen altijd in de lijst, ook buiten de top-30.
   for (const r of out.slice(30)) if (r.proposal) top.push(r);
+  // Maandelijks zoekvolume erbij (Ahrefs, 30 dagen gecached); mag nooit de lijst breken.
+  try {
+    const vols = await getKeywordsOverview(top.map((r) => r.keyword).filter(Boolean));
+    const volMap = new Map(vols.map((v) => [v.keyword, v.volume]));
+    for (const r of top) if (r.keyword) r.volume = volMap.get(r.keyword.trim().toLowerCase()) ?? null;
+  } catch { /* volume is aanvulling */ }
   return top;
 }
 

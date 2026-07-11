@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminScope, canAccessSlug, guardOwner } from "../../../../lib/admin-scope";
-import { listClients, createClient, deleteClient, updateClientCockpit, updateClientCore, parseSheetUrl, resetClientPassword, setClientBudget, getOrCreateShareToken } from "../../../../lib/clients";
+import { listClients, createClient, deleteClient, updateClientCockpit, updateClientCore, parseSheetUrl, resetClientPassword, setClientBudget, setClientBackendUrl, getOrCreateShareToken } from "../../../../lib/clients";
 
 export const runtime = "nodejs";
 
@@ -101,6 +101,13 @@ export async function PATCH(req: NextRequest) {
   const slug = String(body.slug || "").trim();
   if (!slug) {
     return NextResponse.json({ ok: false, error: "Geen klant opgegeven." }, { status: 400 });
+  }
+
+  // Inlogpagina van de website-beheeromgeving (voor de "Open in site"-knop).
+  if (body.action === "setBackendUrl") {
+    const ok = await setClientBackendUrl(slug, String(body.backendUrl || "").trim() || null);
+    if (!ok) return NextResponse.json({ ok: false, error: "Klant niet gevonden." }, { status: 404 });
+    return NextResponse.json({ ok: true });
   }
 
   // Nieuw wachtwoord genereren (het oude is versleuteld en niet terug te lezen).
