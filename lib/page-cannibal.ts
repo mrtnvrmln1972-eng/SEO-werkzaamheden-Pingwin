@@ -170,16 +170,24 @@ export async function runPageCannibal(slug: string, url: string): Promise<void> 
     // Concurrenten die op de plaats/thema-term ranken (best-rankende URL per term).
     const domMatch = term ? await getDomainKeywordsMatching(domain, term, 100).catch(() => []) : [];
 
-    // Kandidaat-pagina's om per-URL uit te diepen (verstopte kapers zoals buitenwijken).
+    // Kandidaat-pagina's om per-URL uit te diepen (verstopte kapers). Thema-onafhankelijk
+    // verzameld (geen vaste dienstenlijst meer, die werkte alleen voor medische sites):
+    // (a) pagina's die in GSC op dezelfde zoekopdrachten opduiken, (b) Ahrefs-
+    // concurrenten op de kernterm, en (c) buurpagina's in de URL-structuur.
     const bare = domain.replace(/^www\./i, "").toLowerCase();
-    const locPages = urls.filter((u) => {
-      const p = pagePath(u.url);
-      return p !== subjectPath && (u.status ?? 200) === 200 && /(soa-poli|soa-kliniek|soa-test|hiv-test|bloedonderzoek|spoed|soa-test-locaties)/i.test(p);
-    }).map((u) => pagePath(u.url));
+    const okPage = (p: string) => p !== subjectPath && !UTILITY_RE.test(p);
+    const parentDir = subjectPath.replace(/\/+$/, "").split("/").slice(0, -1).join("/") + "/";
+    const fromGsc = [...byQuery.values()].flat().map((r) => r.page).filter(okPage);
+    const fromAhrefs = domMatch.map((d) => pagePath(d.url)).filter(okPage);
+    const neighbors = parentDir === "/" ? [] : urls
+      .filter((u) => (u.status ?? 200) === 200)
+      .map((u) => pagePath(u.url))
+      .filter((p) => okPage(p) && p.startsWith(parentDir));
+    const locPages = Array.from(new Set([...fromGsc, ...fromAhrefs, ...neighbors]));
     let candidates: string[] = [];
     if (locPages.length) {
       const pick = await callClaude(
-        `Je selecteert kandidaat-pagina's die de landingspagina "${subjectPath}" kunnen kannibaliseren. Kies uit de lijst de pagina's die qua plaats/thema in de buurt liggen (bijv. omliggende plaatsen bij een stad, of variant-URL's van dezelfde plaats/dienst; jij kent de Nederlandse geografie). Geef UITSLUITEND de gekozen paden terug, één per regel, maximaal 12, niets anders.`,
+        `Je selecteert kandidaat-pagina's die de landingspagina "${subjectPath}" kunnen kannibaliseren. Kies uit de lijst de pagina's die qua onderwerp, dienst of plaats het dichtst bij de landingspagina liggen (varianten van dezelfde dienst, buurtermen, omliggende plaatsen; jij kent de Nederlandse geografie en gangbare diensten). Geef UITSLUITEND de gekozen paden terug, één per regel, maximaal 12, niets anders.`,
         [{ role: "user", content: `Landingspagina: ${subjectPath} (plaats/thema: ${term}).\nKandidaat-pagina's:\n${locPages.slice(0, 120).join("\n")}` }],
         800, { slug, action: "page_cannibal_pick" }, LIGHT_MODEL,
       ).catch(() => "");
@@ -271,6 +279,14 @@ export async function runPageCannibal(slug: string, url: string): Promise<void> 
     }
     for (const [p, b] of dupeEvidence) if (!evidence.has(p)) evidence.set(p, b);
     for (const p of [...evidence.keys()]) if (UTILITY_RE.test(p)) evidence.delete(p);
+
+    // Content-diepte van de tabel-kandidaten echt meten (max 8), zodat de
+    // winnaar-weging (content-diepte) niet meer gegokt hoeft te worden.
+    for (const p of [...evidence.keys()].slice(0, 8)) {
+      if (dupeEvidence.has(p)) continue; // al gemeten bij de duplicaat-controle
+      const m = await measurePage(`https://${bare}${p}`, { staticOnly: true }).catch(() => null);
+      if (m?.ok) evidence.set(p, `${evidence.get(p)} | gemeten: ~${m.wordCount} woorden, H1 "${m.h1[0] || "-"}"`);
+    }
 
     const context = [
       `LANDINGSPAGINA (het onderwerp): ${subjectPath}`,
