@@ -835,14 +835,24 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     /* eslint-disable-next-line react-hooks/exhaustive-deps */
   }, [editIdx]);
 
+  // Onderbreken (het kruisje bij "Aan het denken…"): het antwoord wordt weggegooid
+  // en niet bewaard; de eigen vraag blijft in het invoerveld staan zodat je hem kunt
+  // aanvullen en opnieuw versturen.
+  const sendAbortRef = useRef<AbortController | null>(null);
+  function cancelSend() {
+    sendAbortRef.current?.abort();
+  }
+
   async function send(text: string) {
     const t = text.trim();
     if (!t || busy) return;
     setErr(""); setApplied(""); setProposal(null); setClusterItems(null); setClusterMsg("");
     const next = [...msgs, { role: "user" as const, content: t }];
     setMsgs(next); setInput(""); setBusy(true);
+    const ctrl = new AbortController();
+    sendAbortRef.current = ctrl;
     try {
-      const r = await fetch("/api/admin/page-chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url, messages: next }) });
+      const r = await fetch("/api/admin/page-chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url, messages: next }), signal: ctrl.signal });
       const d = await r.json();
       if (!d.ok) { setErr(d.error || "Chat mislukt."); setBusy(false); return; }
       const withReply = [...next, { role: "assistant" as const, content: d.reply }];
@@ -850,7 +860,15 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       const p: Proposal | null = d.proposal || null;
       setProposal(p);
       persist(withReply); // altijd bewaren, ook zonder overnemen
-    } catch { setErr("Chat mislukt."); } finally { setBusy(false); }
+    } catch (e) {
+      if ((e as Error).name === "AbortError") {
+        // Onderbroken: antwoord weggooien, vraag terug in het invoerveld.
+        setMsgs(msgs);
+        setInput(t);
+      } else {
+        setErr("Chat mislukt.");
+      }
+    } finally { setBusy(false); sendAbortRef.current = null; }
   }
 
   // Neemt alleen het PLAN over (met de acties erin). De losse acties worden GEEN
@@ -870,11 +888,14 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   }
 
   // ── Cluster-advies doorgeven aan andere betrokken pagina's ──
+  const clusterAbortRef = useRef<AbortController | null>(null);
   async function findClusterAdvice() {
     if (!lastAssistant || clusterBusy) return;
     setClusterBusy(true); setClusterMsg(""); setErr("");
+    const ctrl = new AbortController();
+    clusterAbortRef.current = ctrl;
     try {
-      const r = await fetch("/api/admin/page-chat/cluster-advice", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url, analysis: lastAssistant }) });
+      const r = await fetch("/api/admin/page-chat/cluster-advice", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url, analysis: lastAssistant }), signal: ctrl.signal });
       const d = await r.json();
       if (!d.ok) { setErr(d.error || "Betrokken pagina's zoeken mislukt."); return; }
       const items: { url: string; advice: string }[] = d.items || [];
@@ -884,7 +905,9 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       // ingelezen paginalijst, worden gemeld in plaats van genegeerd.
       const notFound: string[] = d.notFound || [];
       if (notFound.length) setClusterMsg(`Let op: ${notFound.join(", ")} ${notFound.length === 1 ? "wordt" : "worden"} in de tekst genoemd maar staat niet in de ingelezen paginalijst. Bestaat de pagina wel? Lees dan de website opnieuw in (Pagina's-tab) en probeer opnieuw.`);
-    } catch { setErr("Betrokken pagina's zoeken mislukt."); } finally { setClusterBusy(false); }
+    } catch (e) {
+      if ((e as Error).name !== "AbortError") setErr("Betrokken pagina's zoeken mislukt.");
+    } finally { setClusterBusy(false); clusterAbortRef.current = null; }
   }
   function toggleCluster(u: string) { setClusterSel((s) => (s.includes(u) ? s.filter((x) => x !== u) : [...s, u])); }
   async function applyClusterAdvice() {
@@ -980,7 +1003,13 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
             </div>
           );
         })}
-        {busy && <div className="page-chat-msg assistant muted">Aan het denken…</div>}
+        {busy && (
+          <div className="page-chat-msg assistant muted" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span>Aan het denken…</span>
+            <button type="button" className="ghost-btn small" onClick={cancelSend}
+              title="Onderbreek dit antwoord. Het wordt weggegooid (niets bewaard); je vraag komt terug in het invoerveld zodat je hem kunt aanvullen.">&times; Onderbreken</button>
+          </div>
+        )}
       </div>
       {proposal?.plan && (
         <div className="page-chat-proposal">
@@ -1137,7 +1166,13 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
                 )}
               </>
             ) : clusterItems === null ? (
-              <button type="button" className="pcd-btn" onClick={findClusterAdvice} disabled={clusterBusy}>{clusterBusy ? "Betrokken pagina's zoeken…" : "Advies doorgeven aan betrokken pagina's"}</button>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <button type="button" className="pcd-btn" onClick={findClusterAdvice} disabled={clusterBusy}>{clusterBusy ? "Betrokken pagina's zoeken…" : "Advies doorgeven aan betrokken pagina's"}</button>
+                {clusterBusy && (
+                  <button type="button" className="ghost-btn small" onClick={() => clusterAbortRef.current?.abort()}
+                    title="Onderbreek het zoeken; er wordt niets opgeslagen.">&times; Onderbreken</button>
+                )}
+              </span>
             ) : clusterItems.length === 0 ? (
               <div className="muted" style={{ fontSize: 12 }}>Geen andere pagina&rsquo;s gevonden waarover deze analyse concreet advies geeft.</div>
             ) : (
@@ -1214,7 +1249,18 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
                   );
                 })}
               </div>
-              {run.status === "running" && <div className="muted" style={{ fontSize: 12, marginTop: 5 }}>Loopt server-side door; wegklikken mag. Verschijnt ook als werkzaamheid.</div>}
+              {run.status === "running" && (
+                <div className="muted" style={{ fontSize: 12, marginTop: 5, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                  <span>Loopt server-side door; wegklikken mag. Verschijnt ook als werkzaamheid.</span>
+                  <button type="button" className="ghost-btn small"
+                    title="Stop deze run direct. Alles wat nog niet af is wordt weggegooid: er wordt niets opgeslagen en er belandt geen half document in Drive."
+                    onClick={async () => {
+                      await fetch(`/api/admin/page-doc/run?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}`, { method: "DELETE" }).catch(() => {});
+                      const s = await fetch(`/api/admin/page-doc/run?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}`).then((x) => x.json()).catch(() => null);
+                      if (s?.ok) setRun(s.run);
+                    }}>&times; Stoppen (niets opslaan)</button>
+                </div>
+              )}
               {run.status === "error" && run.error && <div className="login-error" style={{ marginTop: 6 }}>{run.error}</div>}
             </div>
           )}

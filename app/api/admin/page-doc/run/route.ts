@@ -3,7 +3,7 @@ import { ADMIN_COOKIE, verifyAdminSession } from "../../../../../lib/admin-auth"
 import { guardSlug } from "../../../../../lib/admin-scope";
 import { anthropicConfigured } from "../../../../../lib/anthropic";
 import { waitUntil } from "@vercel/functions";
-import { createDocRun, getLatestDocRun, getStepsEverDone, runNow } from "../../../../../lib/page-doc-run";
+import { createDocRun, getLatestDocRun, getStepsEverDone, runNow, stopDocRun } from "../../../../../lib/page-doc-run";
 
 export const runtime = "nodejs";
 // De waitUntil-worker die de generatie direct doorloopt draait binnen deze functie;
@@ -40,6 +40,18 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 500 });
   }
+}
+
+// DELETE: stop de lopende run voor een pagina (het kruisje). Alles wat nog niet
+// af was wordt weggegooid; er wordt niets meer opgeslagen of naar Drive geüpload.
+export async function DELETE(req: NextRequest) {
+  if (!admin(req)) return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
+  const slug = req.nextUrl.searchParams.get("slug") || "";
+  const url = req.nextUrl.searchParams.get("url") || "";
+  if (!slug || !url) return NextResponse.json({ ok: false, error: "Klant en URL zijn verplicht." }, { status: 400 });
+  const g = await guardSlug(req, slug); if (!g.ok) return g.res;
+  const stopped = await stopDocRun(slug, url);
+  return NextResponse.json({ ok: true, stopped });
 }
 
 // GET: de laatste run-status voor een pagina (voor het live-volgen).

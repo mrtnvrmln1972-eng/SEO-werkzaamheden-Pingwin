@@ -161,6 +161,19 @@ export async function processQueuedRuns(): Promise<{ processed: number }> {
   return { processed };
 }
 
+// Handmatig stoppen (het kruisje in de cockpit): de run gaat op 'error' zodat de
+// cron hem nooit meer oppakt, en lopende stappen slaan hun resultaat niet meer op
+// (zie de canceled-controles in processRun). Er belandt dus ook geen half document
+// in Drive.
+export async function stopDocRun(slug: string, url: string): Promise<number> {
+  await ensureSchema();
+  await ensureRunTable();
+  const { rows } = await sql`
+    UPDATE page_doc_runs SET status = 'error', error = 'Handmatig gestopt; er is niets opgeslagen.', updated_at = now()
+    WHERE client_slug = ${slug} AND url = ${url} AND status = 'running' RETURNING id`;
+  return rows.length;
+}
+
 // Eén specifieke run nu draaien (aangeroepen via waitUntil bij het starten, zodat de
 // run meteen server-side doorloopt zonder op de cron te wachten; de cron is vangnet).
 export async function runNow(id: number): Promise<void> {
@@ -212,15 +225,24 @@ async function processRun(id: number): Promise<void> {
   const folderId = (r.folder_id as string) || "";
   const audience: "intern" | "klant" = (r.audience as string) === "intern" ? "intern" : "klant";
   const states: Record<DocKind, string> = { analyse: r.analyse_state, blauwdruk: r.blauwdruk_state, copy: r.copy_state };
+  // Handmatig gestopt? Dan mag er vanaf dat moment NIETS meer opgeslagen of
+  // geüpload worden, ook niet het resultaat van een stap die net klaar is.
+  const canceled = async (): Promise<boolean> => {
+    const { rows: cur } = await sql`SELECT status FROM page_doc_runs WHERE id = ${id} LIMIT 1`;
+    return (cur[0]?.status as string) !== "running";
+  };
   for (const kind of STEPS) {
     if (states[kind] === "done" || states[kind] === "skipped") continue;
     if (states[kind] === "error") return;
+    if (await canceled()) return;
     const claimed = await claimStep(id, kind);
     if (!claimed) return; // andere worker pakte hem, of de status veranderde
     try {
-      const link = await withHardTimeout(generateAndStoreDoc(slug, url, kind, extra, folderId, audience), 700000, "Genereren duurde te lang (>11,5 min) en is afgebroken. Probeer het opnieuw.");
+      const link = await withHardTimeout(generateAndStoreDoc(slug, url, kind, extra, folderId, audience, canceled), 700000, "Genereren duurde te lang (>11,5 min) en is afgebroken. Probeer het opnieuw.");
+      if (link === null || await canceled()) return; // gestopt: resultaat weggooien
       await finishStep(id, kind, link);
     } catch (e) {
+      if (await canceled()) return; // gestopt: de stopmelding niet overschrijven
       await failStep(id, kind, ((e as Error).message || "onbekende fout").slice(0, 500));
       return;
     }
@@ -254,10 +276,12 @@ async function failStep(id: number, kind: DocKind, msg: string): Promise<void> {
 // Drive (met klantversie + werkzaamheid), net als de synchrone route. Zonder Drive-map
 // wordt het document gegenereerd en als werkzaamheid vastgelegd (zonder downloadlink,
 // want er is geen browser om het bestand naartoe te sturen). Geeft de technische link terug.
-async function generateAndStoreDoc(slug: string, url: string, kind: DocKind, extra: string, folderId: string, audience: "intern" | "klant" = "klant"): Promise<string> {
+async function generateAndStoreDoc(slug: string, url: string, kind: DocKind, extra: string, folderId: string, audience: "intern" | "klant" = "klant", canceled?: () => Promise<boolean>): Promise<string | null> {
   // Standaard alleen de klantversie (direct uit de data): één generatie i.p.v. de dure
   // technische versie + een aparte klant-verkleining. Intern kan op verzoek.
   const { spec, title } = await generateDocSpec(slug, url, kind, extra || undefined, audience);
+  // Ondertussen gestopt? Dan hier afbreken: geen upload naar Drive, geen taak.
+  if (canceled && await canceled()) return null;
   const buffer = await buildPingwinDoc(spec);
   const suffix = audience === "intern" ? "-intern" : "";
   const filename = `${safeName(spec.klant)}-${kind}${suffix}-${safeName(title)}.docx`;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import HelpHint from "./HelpHint";
 import MetaPixelMeter from "./MetaPixelMeter";
 import { checkMetaTitle, checkMetaDescription, type MetaCheck } from "../../../../lib/meta-rules";
@@ -138,21 +138,29 @@ export default function MetaCtrPanel({ slug, backendUrl, onOpenPage }: { slug: s
 
   useEffect(() => { void load(); }, [load]);
 
+  // Onderbreken van een lopende schrijf-actie: het resultaat wordt genegeerd.
+  const abortRef = useRef<AbortController | null>(null);
+  function cancelBusy() { abortRef.current?.abort(); }
+
   async function generate(r: KansRow) {
     setBusy(r.url);
     setError("");
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
     try {
       const res = await fetch("/api/admin/meta-ctr", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ slug, url: r.url, keyword: r.keyword, base: { ctr: r.ctr, position: r.position, impressions: r.impressions } }),
+        signal: ctrl.signal,
       });
       const d = await res.json();
       if (!d.ok) throw new Error(d.error || "Genereren mislukte.");
       setRows((cur) => (cur || []).map((x) => x.url === r.url ? { ...x, proposal: { curTitle: d.curTitle, curDesc: d.curDesc, propTitle: d.propTitle, propDesc: d.propDesc, status: "open", titleStatus: "open", descStatus: "open", liveAt: null, effect: null } } : x));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Genereren mislukte.");
+      if ((e as Error).name !== "AbortError") setError(e instanceof Error ? e.message : "Genereren mislukte.");
     } finally {
       setBusy(null);
+      abortRef.current = null;
     }
   }
 
@@ -160,10 +168,13 @@ export default function MetaCtrPanel({ slug, backendUrl, onOpenPage }: { slug: s
   async function regenField(r: KansRow, field: "title" | "desc") {
     setBusy(`${r.url}|${field}`);
     setError("");
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
     try {
       const res = await fetch("/api/admin/meta-ctr", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ slug, url: r.url, field }),
+        signal: ctrl.signal,
       });
       const d = await res.json();
       if (!d.ok) throw new Error(d.error || "Genereren mislukte.");
@@ -171,9 +182,10 @@ export default function MetaCtrPanel({ slug, backendUrl, onOpenPage }: { slug: s
         ? { ...p, propTitle: d.propTitle, titleStatus: "open" }
         : { ...p, propDesc: d.propDesc, descStatus: "open" });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Genereren mislukte.");
+      if ((e as Error).name !== "AbortError") setError(e instanceof Error ? e.message : "Genereren mislukte.");
     } finally {
       setBusy(null);
+      abortRef.current = null;
     }
   }
 
@@ -303,9 +315,14 @@ export default function MetaCtrPanel({ slug, backendUrl, onOpenPage }: { slug: s
               {open && (
                 <div style={{ border: "1px solid var(--border)", borderTop: "none", borderRadius: "0 0 10px 10px", padding: "14px", background: "#fff" }}>
                   {!r.proposal && (
-                    <button type="button" className="primary-btn small" onClick={() => void generate(r)} disabled={busy === r.url}>
-                      {busy === r.url ? "Voorstel schrijven…" : "Genereer voorstel (AI)"}
-                    </button>
+                    <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
+                      <button type="button" className="primary-btn small" onClick={() => void generate(r)} disabled={busy === r.url}>
+                        {busy === r.url ? "Voorstel schrijven…" : "Genereer voorstel (AI)"}
+                      </button>
+                      {busy === r.url && (
+                        <button type="button" className="ghost-btn small" onClick={cancelBusy} title="Onderbreek het schrijven; het resultaat wordt genegeerd.">&times; Onderbreken</button>
+                      )}
+                    </span>
                   )}
                   {r.proposal && (
                     <div style={{ display: "grid", gap: 16 }}>
@@ -351,6 +368,9 @@ export default function MetaCtrPanel({ slug, backendUrl, onOpenPage }: { slug: s
                               <button type="button" className="ghost-btn small" onClick={() => { setLocal(r.url, (p) => ({ ...p, titleStatus: "open" })); void patch(r.url, { titleStatus: "open" }); }}>Goedkeuring intrekken</button>
                             )}
                             <button type="button" className="ghost-btn small" onClick={() => void regenField(r, "title")} disabled={busy === `${r.url}|title`}>{busy === `${r.url}|title` ? "Schrijven…" : "Opnieuw genereren"}</button>
+                            {busy === `${r.url}|title` && (
+                              <button type="button" className="ghost-btn small" onClick={cancelBusy} title="Onderbreek het schrijven; het resultaat wordt genegeerd.">&times;</button>
+                            )}
                             {r.proposal.titleStatus !== "afgewezen" && (
                               <button type="button" className="ghost-btn small" onClick={() => { setLocal(r.url, (p) => ({ ...p, titleStatus: "afgewezen" })); void patch(r.url, { titleStatus: "afgewezen" }); }}>Afwijzen</button>
                             )}
@@ -384,6 +404,9 @@ export default function MetaCtrPanel({ slug, backendUrl, onOpenPage }: { slug: s
                               <button type="button" className="ghost-btn small" onClick={() => { setLocal(r.url, (p) => ({ ...p, descStatus: "open" })); void patch(r.url, { descStatus: "open" }); }}>Goedkeuring intrekken</button>
                             )}
                             <button type="button" className="ghost-btn small" onClick={() => void regenField(r, "desc")} disabled={busy === `${r.url}|desc`}>{busy === `${r.url}|desc` ? "Schrijven…" : "Opnieuw genereren"}</button>
+                            {busy === `${r.url}|desc` && (
+                              <button type="button" className="ghost-btn small" onClick={cancelBusy} title="Onderbreek het schrijven; het resultaat wordt genegeerd.">&times;</button>
+                            )}
                             {r.proposal.descStatus !== "afgewezen" && (
                               <button type="button" className="ghost-btn small" onClick={() => { setLocal(r.url, (p) => ({ ...p, descStatus: "afgewezen" })); void patch(r.url, { descStatus: "afgewezen" }); }}>Afwijzen</button>
                             )}
