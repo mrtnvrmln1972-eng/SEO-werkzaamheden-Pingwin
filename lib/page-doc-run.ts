@@ -1,4 +1,10 @@
 import { sql, ensureSchema } from "./db";
+import { createClient } from "@vercel/postgres";
+
+// Querytag-vorm die zowel het gedeelde sql-object als de sql van een losse
+// (niet-gepoolde) client dekt; alleen voor de wachtrij-bewaking.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SqlTag = (strings: TemplateStringsArray, ...values: any[]) => Promise<{ rows: any[] }>;
 import { generateDocSpec, type DocKind } from "./page-doc";
 import { buildPingwinDoc } from "./pingwin-docx";
 import { upsertStepTask } from "./tasks";
@@ -145,48 +151,43 @@ export async function getStepsEverDone(slug: string, url: string): Promise<{ ana
 }
 
 // ── Cron-worker: verwerk wachtende runs, stap voor stap ──
-export async function processQueuedRuns(): Promise<{ processed: number; picked: number[]; queueRows: unknown[]; probe: unknown }> {
+export async function processQueuedRuns(): Promise<{ processed: number; picked: number[] }> {
   await ensureSchema();
   await ensureRunTable();
-  await recoverStale();
+  // VERSE verbinding voor de wachtrij-bewaking. Op 11-07-2026 bleek een gepoolde
+  // verbinding met een oude momentopname te kijken: dezelfde query zag via de pool
+  // 0 lopende runs en via een andere verbinding wél de wachtende run. Een eigen,
+  // niet-gepoolde verbinding per tik kan daar nooit last van hebben.
+  const fresh = createClient();
+  await fresh.connect();
+  const freshSql = fresh.sql.bind(fresh) as unknown as SqlTag;
   const picked: number[] = [];
-  let queueRows: unknown[] = [];
-  // Diagnose: vanuit WELKE database/schema kijkt deze module, en ziet een simpele
-  // blik (zonder WHERE-voorwaarden) de lopende runs wel?
-  const { rows: probeDb } = await sql`SELECT current_database() AS db, current_schema() AS schema`;
-  const { rows: probeRuns } = await sql`SELECT id, status, analyse_state, blauwdruk_state, copy_state FROM page_doc_runs WHERE status = 'running' ORDER BY id DESC LIMIT 3`;
-  const probe = { db: probeDb[0], runs: probeRuns };
-  // Blijf binnen één tick runs oppakken zolang er tijdsbudget is: zo werkt één
-  // cron-tick een stapel direct-falende (oude) runs in één keer weg in plaats van
-  // één per minuut, terwijl een echte generatie de tick vult en de loop vanzelf
-  // stopt. De seen-set voorkomt eindeloos herhalen als een run niets verandert.
-  const t0 = Date.now();
-  const seen = new Set<number>();
-  let processed = 0;
-  while (Date.now() - t0 < 45000) {
-    // Runs die werk nodig hebben en niet nú al een stap 'running' hebben (voorkomt
-    // dat twee cron-ticks dezelfde run tegelijk oppakken).
-    // De tijd-parameter maakt elke aanroep uniek: op 11-07-2026 bleef deze query
-    // (zonder parameters, dus elke keer byte-identiek) een verouderde lege respons
-    // teruggeven terwijl een identieke query ernaast de run wél zag. Een variërende
-    // parameter voorkomt dat zo'n respons ooit hergebruikt kan worden.
-    const { rows } = await sql`
-      SELECT id FROM page_doc_runs
-      WHERE status = 'running'
-        AND analyse_state <> 'running' AND blauwdruk_state <> 'running' AND copy_state <> 'running'
-        AND (analyse_state = 'pending' OR blauwdruk_state = 'pending' OR copy_state = 'pending')
-        AND ${String(Date.now())} <> ''
-      ORDER BY id ASC LIMIT 1`;
-    if (queueRows.length === 0) queueRows = rows; // diagnose: wat zag de eerste wachtrij-blik
-    if (!rows.length) break;
-    const id = Number(rows[0].id);
-    if (seen.has(id)) break;
-    seen.add(id);
-    picked.push(id);
-    await processRun(id);
-    processed++;
-  }
-  return { processed, picked, queueRows, probe };
+  try {
+    await recoverStale(freshSql);
+    // Blijf binnen één tick runs oppakken zolang er tijdsbudget is: zo werkt één
+    // cron-tick een stapel direct-falende (oude) runs in één keer weg in plaats van
+    // één per minuut, terwijl een echte generatie de tick vult en de loop vanzelf
+    // stopt. De seen-set voorkomt eindeloos herhalen als een run niets verandert.
+    const t0 = Date.now();
+    const seen = new Set<number>();
+    while (Date.now() - t0 < 45000) {
+      // Runs die werk nodig hebben en niet nú al een stap 'running' hebben (voorkomt
+      // dat twee cron-ticks dezelfde run tegelijk oppakken).
+      const { rows } = await freshSql`
+        SELECT id FROM page_doc_runs
+        WHERE status = 'running'
+          AND analyse_state <> 'running' AND blauwdruk_state <> 'running' AND copy_state <> 'running'
+          AND (analyse_state = 'pending' OR blauwdruk_state = 'pending' OR copy_state = 'pending')
+        ORDER BY id ASC LIMIT 1`;
+      if (!rows.length) break;
+      const id = Number(rows[0].id);
+      if (seen.has(id)) break;
+      seen.add(id);
+      picked.push(id);
+      await processRun(id);
+    }
+  } finally { await fresh.end().catch(() => { /* opruimen mag nooit breken */ }); }
+  return { processed: picked.length, picked };
 }
 
 // Handmatig stoppen (het kruisje in de cockpit): de run gaat op 'error' zodat de
@@ -213,14 +214,14 @@ export async function runNow(id: number): Promise<void> {
 }
 
 // Een stap die te lang 'running' staat (worker gestopt) terugzetten op 'pending'.
-async function recoverStale(): Promise<void> {
+async function recoverStale(q: SqlTag = sql as unknown as SqlTag): Promise<void> {
   // Een run met een fout-stap maar status 'running' (inconsistent, bijv. oude runs)
   // blokkeert de wachtrij voor eeuwig: de cron kiest altijd de oudste run, doet er
   // niets mee en komt nooit toe aan nieuwere runs. Daarom hier afronden als fout.
-  await sql`UPDATE page_doc_runs SET status = 'error', updated_at = now() WHERE status = 'running' AND (analyse_state = 'error' OR blauwdruk_state = 'error' OR copy_state = 'error')`;
+  await q`UPDATE page_doc_runs SET status = 'error', updated_at = now() WHERE status = 'running' AND (analyse_state = 'error' OR blauwdruk_state = 'error' OR copy_state = 'error')`;
   // Dubbele runs voor dezelfde pagina (door herhaald klikken): alleen de nieuwste
   // blijft leven, oudere worden vervangen. Scheelt dubbele documenten en API-kosten.
-  await sql`
+  await q`
     UPDATE page_doc_runs r SET status = 'error', error = 'Vervangen door een nieuwere run voor dezelfde pagina.', updated_at = now()
     WHERE r.status = 'running'
       AND r.analyse_state <> 'running' AND r.blauwdruk_state <> 'running' AND r.copy_state <> 'running'
@@ -233,16 +234,16 @@ async function recoverStale(): Promise<void> {
   // Geen hartslag meer gedurende 3 minuten = de werker is dood (bv. door een
   // deploy): stap terugzetten zodat de eerstvolgende cron-tik hem hervat. Een
   // stap mét recente hartslag wordt nooit afgepakt, hoe lang hij ook duurt.
-  await sql`
+  await q`
     UPDATE page_doc_runs SET status = 'error',
       error = 'Automatisch gestopt: de generatie bleef hangen en is 3 keer opnieuw geprobeerd. Start de run handmatig opnieuw als het document nog nodig is.',
       updated_at = now()
     WHERE status = 'running' AND retries >= 3
       AND (analyse_state = 'running' OR blauwdruk_state = 'running' OR copy_state = 'running')
       AND updated_at < now() - interval '3 minutes'`;
-  await sql`UPDATE page_doc_runs SET analyse_state = 'pending', retries = retries + 1, updated_at = now() WHERE status = 'running' AND analyse_state = 'running' AND updated_at < now() - interval '3 minutes'`;
-  await sql`UPDATE page_doc_runs SET blauwdruk_state = 'pending', retries = retries + 1, updated_at = now() WHERE status = 'running' AND blauwdruk_state = 'running' AND updated_at < now() - interval '3 minutes'`;
-  await sql`UPDATE page_doc_runs SET copy_state = 'pending', retries = retries + 1, updated_at = now() WHERE status = 'running' AND copy_state = 'running' AND updated_at < now() - interval '3 minutes'`;
+  await q`UPDATE page_doc_runs SET analyse_state = 'pending', retries = retries + 1, updated_at = now() WHERE status = 'running' AND analyse_state = 'running' AND updated_at < now() - interval '3 minutes'`;
+  await q`UPDATE page_doc_runs SET blauwdruk_state = 'pending', retries = retries + 1, updated_at = now() WHERE status = 'running' AND blauwdruk_state = 'running' AND updated_at < now() - interval '3 minutes'`;
+  await q`UPDATE page_doc_runs SET copy_state = 'pending', retries = retries + 1, updated_at = now() WHERE status = 'running' AND copy_state = 'running' AND updated_at < now() - interval '3 minutes'`;
 }
 
 async function processRun(id: number): Promise<void> {
