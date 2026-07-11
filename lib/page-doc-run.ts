@@ -131,11 +131,12 @@ export async function getStepsEverDone(slug: string, url: string): Promise<{ ana
 }
 
 // ── Cron-worker: verwerk wachtende runs, stap voor stap ──
-export async function processQueuedRuns(): Promise<{ processed: number; picked: number[] }> {
+export async function processQueuedRuns(): Promise<{ processed: number; picked: number[]; queueRows: unknown[] }> {
   await ensureSchema();
   await ensureRunTable();
   await recoverStale();
   const picked: number[] = [];
+  let queueRows: unknown[] = [];
   // Blijf binnen één tick runs oppakken zolang er tijdsbudget is: zo werkt één
   // cron-tick een stapel direct-falende (oude) runs in één keer weg in plaats van
   // één per minuut, terwijl een echte generatie de tick vult en de loop vanzelf
@@ -152,6 +153,7 @@ export async function processQueuedRuns(): Promise<{ processed: number; picked: 
         AND analyse_state <> 'running' AND blauwdruk_state <> 'running' AND copy_state <> 'running'
         AND (analyse_state = 'pending' OR blauwdruk_state = 'pending' OR copy_state = 'pending')
       ORDER BY id ASC LIMIT 1`;
+    if (queueRows.length === 0) queueRows = rows; // diagnose: wat zag de eerste wachtrij-blik
     if (!rows.length) break;
     const id = Number(rows[0].id);
     if (seen.has(id)) break;
@@ -160,7 +162,7 @@ export async function processQueuedRuns(): Promise<{ processed: number; picked: 
     await processRun(id);
     processed++;
   }
-  return { processed, picked };
+  return { processed, picked, queueRows };
 }
 
 // Handmatig stoppen (het kruisje in de cockpit): de run gaat op 'error' zodat de

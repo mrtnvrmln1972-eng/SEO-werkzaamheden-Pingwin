@@ -21,7 +21,13 @@ export async function GET(req: NextRequest) {
     // (Vergelijken met het beheer-luik; hoort identiek te zijn.)
     const { sql } = await import("../../../../lib/db");
     const { rows } = await sql`SELECT id, status, analyse_state, blauwdruk_state, copy_state FROM page_doc_runs WHERE status = 'running' ORDER BY id DESC LIMIT 5`;
-    return NextResponse.json({ ok: true, ...res, zelfTest: rows });
+    const { rows: zelfTest2 } = await sql`
+      SELECT id FROM page_doc_runs
+      WHERE status = 'running'
+        AND analyse_state <> 'running' AND blauwdruk_state <> 'running' AND copy_state <> 'running'
+        AND (analyse_state = 'pending' OR blauwdruk_state = 'pending' OR copy_state = 'pending')
+      ORDER BY id ASC LIMIT 5`;
+    return NextResponse.json({ ok: true, ...res, zelfTest: rows, zelfTest2: zelfTest2.map((r) => Number(r.id)) });
   } catch (e) {
     return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 500 });
   }
