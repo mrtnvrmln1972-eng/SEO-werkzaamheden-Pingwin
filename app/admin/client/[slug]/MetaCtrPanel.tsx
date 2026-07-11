@@ -3,6 +3,37 @@
 import { useCallback, useEffect, useState } from "react";
 import HelpHint from "./HelpHint";
 import MetaPixelMeter from "./MetaPixelMeter";
+import { checkMetaTitle, checkMetaDescription, type MetaCheck } from "../../../../lib/meta-rules";
+
+// Uitklapbare criteria-checklist onder een meta-veld: toont per regel (META-02
+// t/m META-15) of de tekst eraan voldoet, met de gemeten waarde erbij.
+function MetaChecklist({ kind, text, keyword, other }: { kind: "title" | "desc"; text: string; keyword: string; other: string }) {
+  const [open, setOpen] = useState(false);
+  const checks: MetaCheck[] = kind === "title"
+    ? checkMetaTitle(text, keyword || undefined)
+    : checkMetaDescription(text, keyword || undefined, other || undefined);
+  const passed = checks.filter((c) => c.pass).length;
+  const allOk = passed === checks.length;
+  return (
+    <div style={{ marginTop: 4 }}>
+      <button type="button" onClick={() => setOpen((v) => !v)}
+        style={{ border: "none", background: "transparent", cursor: "pointer", padding: 0, font: "inherit", fontSize: 12, color: allOk ? "#2e7d32" : "#b25a00", fontWeight: 600 }}
+        title="Bekijk per criterium of deze tekst voldoet (dezelfde regels waarmee de AI schrijft)">
+        {open ? "▾" : "▸"} voldoet aan {passed} van {checks.length} criteria
+      </button>
+      {open && (
+        <ul style={{ listStyle: "none", margin: "6px 0 0", padding: 0, display: "grid", gap: 3 }}>
+          {checks.map((c) => (
+            <li key={c.id} style={{ fontSize: 12.5, display: "flex", gap: 7, alignItems: "baseline" }}>
+              <span style={{ color: c.pass ? "#2e7d32" : "#c62828", fontWeight: 700, flex: "0 0 auto" }}>{c.pass ? "✓" : "✗"}</span>
+              <span style={{ color: "var(--dark)" }}>{c.label} <span style={{ color: "var(--gray)" }}>({c.waarde})</span></span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 // De CTR-machine: werklijst van pagina's waar de meta title/description de
 // meeste klikwinst kan opleveren (uit Search Console), met per pagina het
@@ -222,28 +253,29 @@ export default function MetaCtrPanel({ slug, backendUrl, onOpenPage }: { slug: s
                     <div style={{ display: "grid", gap: 16 }}>
                       <div>
                         <div className="wz-block-head">Huidig op de site</div>
-                        <div className="wz-field-label">Meta-titel</div>
-                        <div className="wz-line removed">{r.proposal.curTitle || "(geen paginatitel gevonden)"}<MetaPixelMeter kind="meta_title" text={r.proposal.curTitle} /></div>
-                        <div className="wz-field-label">Meta-beschrijving</div>
-                        <div className="wz-line removed">{r.proposal.curDesc || "(geen meta-beschrijving gevonden)"}<MetaPixelMeter kind="meta_description" text={r.proposal.curDesc} /></div>
+                        <div className="wz-line removed"><span className="wz-line-label">Meta-titel:</span> {r.proposal.curTitle || "(geen paginatitel gevonden)"}<MetaPixelMeter kind="meta_title" text={r.proposal.curTitle} /></div>
+                        <div className="wz-line removed"><span className="wz-line-label">Meta-beschrijving:</span> {r.proposal.curDesc || "(geen meta-beschrijving gevonden)"}<MetaPixelMeter kind="meta_description" text={r.proposal.curDesc} /></div>
                       </div>
                       <div>
                         <div className="wz-block-head">Voorstel (aanpasbaar)</div>
-                        <div className="wz-field-label">
-                          Meta-titel
-                          {r.proposal.titleStatus !== "open" && r.proposal.status !== "doorgevoerd" && (
-                            <span style={{ marginLeft: 8, background: STATUS_LABEL[r.proposal.titleStatus].bg, color: STATUS_LABEL[r.proposal.titleStatus].fg, borderRadius: 20, padding: "1px 8px", fontSize: 11, fontWeight: 600 }}>{r.proposal.titleStatus}</span>
-                          )}
-                        </div>
                         <div className="wz-line added">
-                          <input
-                            value={r.proposal.propTitle}
-                            onChange={(e) => setLocal(r.url, (p) => ({ ...p, propTitle: e.target.value }))}
-                            onBlur={(e) => void patch(r.url, { propTitle: e.target.value })}
-                            style={{ width: "100%", border: "none", background: "transparent", font: "inherit", outline: "none" }}
-                            aria-label="Voorgestelde paginatitel"
-                          />
+                          <div style={{ display: "flex", gap: 6, alignItems: "baseline" }}>
+                            <span className="wz-line-label">
+                              Meta-titel:
+                              {r.proposal.titleStatus !== "open" && r.proposal.status !== "doorgevoerd" && (
+                                <span style={{ marginLeft: 6, background: STATUS_LABEL[r.proposal.titleStatus].bg, color: STATUS_LABEL[r.proposal.titleStatus].fg, borderRadius: 20, padding: "1px 8px", fontSize: 11, fontWeight: 600 }}>{r.proposal.titleStatus}</span>
+                              )}
+                            </span>
+                            <input
+                              value={r.proposal.propTitle}
+                              onChange={(e) => setLocal(r.url, (p) => ({ ...p, propTitle: e.target.value }))}
+                              onBlur={(e) => void patch(r.url, { propTitle: e.target.value })}
+                              style={{ flex: 1, minWidth: 0, border: "none", background: "transparent", font: "inherit", outline: "none" }}
+                              aria-label="Voorgestelde paginatitel"
+                            />
+                          </div>
                           <MetaPixelMeter kind="meta_title" text={r.proposal.propTitle} />
+                          <MetaChecklist kind="title" text={r.proposal.propTitle} keyword={r.keyword} other={r.proposal.propDesc} />
                         </div>
                         {r.proposal.status !== "doorgevoerd" && (
                           <div className="org-actions" style={{ margin: "6px 0 12px" }}>
@@ -258,22 +290,25 @@ export default function MetaCtrPanel({ slug, backendUrl, onOpenPage }: { slug: s
                             )}
                           </div>
                         )}
-                        <div className="wz-field-label">
-                          Meta-beschrijving
-                          {r.proposal.descStatus !== "open" && r.proposal.status !== "doorgevoerd" && (
-                            <span style={{ marginLeft: 8, background: STATUS_LABEL[r.proposal.descStatus].bg, color: STATUS_LABEL[r.proposal.descStatus].fg, borderRadius: 20, padding: "1px 8px", fontSize: 11, fontWeight: 600 }}>{r.proposal.descStatus}</span>
-                          )}
-                        </div>
                         <div className="wz-line added">
-                          <textarea
-                            value={r.proposal.propDesc}
-                            onChange={(e) => setLocal(r.url, (p) => ({ ...p, propDesc: e.target.value }))}
-                            onBlur={(e) => void patch(r.url, { propDesc: e.target.value })}
-                            rows={2}
-                            style={{ width: "100%", border: "none", background: "transparent", font: "inherit", outline: "none", resize: "vertical" }}
-                            aria-label="Voorgestelde meta-beschrijving"
-                          />
+                          <div style={{ display: "flex", gap: 6, alignItems: "baseline" }}>
+                            <span className="wz-line-label">
+                              Meta-beschrijving:
+                              {r.proposal.descStatus !== "open" && r.proposal.status !== "doorgevoerd" && (
+                                <span style={{ marginLeft: 6, background: STATUS_LABEL[r.proposal.descStatus].bg, color: STATUS_LABEL[r.proposal.descStatus].fg, borderRadius: 20, padding: "1px 8px", fontSize: 11, fontWeight: 600 }}>{r.proposal.descStatus}</span>
+                              )}
+                            </span>
+                            <textarea
+                              value={r.proposal.propDesc}
+                              onChange={(e) => setLocal(r.url, (p) => ({ ...p, propDesc: e.target.value }))}
+                              onBlur={(e) => void patch(r.url, { propDesc: e.target.value })}
+                              rows={2}
+                              style={{ flex: 1, minWidth: 0, border: "none", background: "transparent", font: "inherit", outline: "none", resize: "vertical" }}
+                              aria-label="Voorgestelde meta-beschrijving"
+                            />
+                          </div>
                           <MetaPixelMeter kind="meta_description" text={r.proposal.propDesc} />
+                          <MetaChecklist kind="desc" text={r.proposal.propDesc} keyword={r.keyword} other={r.proposal.propTitle} />
                         </div>
                         {r.proposal.status !== "doorgevoerd" && (
                           <div className="org-actions" style={{ margin: "6px 0 0" }}>
