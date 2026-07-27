@@ -11,6 +11,9 @@ export function middleware(req: NextRequest) {
   // Adminscherm (alleen voor Maarten). /admin/login blijft open.
   if (path.startsWith("/admin")) {
     if (path === "/admin/login") return NextResponse.next();
+    // Één-klik-ingang (bookmark): mag door zonder cookie; de route zelf zet
+    // de admin-cookie en stuurt door naar /admin.
+    if (path === "/admin/enter") return NextResponse.next();
     if (!req.cookies.get(ADMIN_COOKIE)?.value) {
       const url = req.nextUrl.clone();
       url.pathname = "/admin/login";
