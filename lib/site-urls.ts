@@ -90,6 +90,22 @@ async function doEnsureTables(): Promise<void> {
     )`;
   // Additief voor bestaande tabellen: de volledige clusteranalyse (bronconclusie) erbij.
   await sql`ALTER TABLE page_cluster_advice ADD COLUMN IF NOT EXISTS source_analysis TEXT`;
+  // De KORTE samenvatting per pagina: de "toplaag" die je meteen ziet als je een
+  // pagina openklapt, boven de volledige (lange) vastgelegde strategie. Drie vaste
+  // regels in gewone taal plus een optionele samenhang-regel. Wordt uit het plan
+  // gedestilleerd (of met de hand bijgesteld), zodat je in één oogopslag weet wat
+  // deze pagina nu doet en moet worden, zonder de hele analyse te lezen.
+  await sql`
+    CREATE TABLE IF NOT EXISTS page_summaries (
+      client_slug TEXT NOT NULL,
+      url         TEXT NOT NULL,
+      nu          TEXT,
+      doel        TEXT,
+      zet         TEXT,
+      related     TEXT,
+      updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (client_slug, url)
+    )`;
 }
 
 function normUrl(u: string): string {
@@ -266,6 +282,30 @@ export async function savePagePlan(slug: string, url: string, plan: string): Pro
     INSERT INTO page_plans (client_slug, url, plan, updated_at)
     VALUES (${slug}, ${url}, ${plan || null}, now())
     ON CONFLICT (client_slug, url) DO UPDATE SET plan = ${plan || null}, updated_at = now()`;
+}
+
+// ── Korte samenvatting per pagina (de toplaag boven de volle strategie) ──
+export type PageSummary = { nu: string; doel: string; zet: string; related: string };
+
+export async function getPageSummary(slug: string, url: string): Promise<PageSummary | null> {
+  await ensureSchema();
+  await ensureTables();
+  const { rows } = await sql`SELECT nu, doel, zet, related FROM page_summaries WHERE client_slug = ${slug} AND url = ${url} LIMIT 1`;
+  const r = rows[0];
+  if (!r) return null;
+  const s = { nu: (r.nu as string) || "", doel: (r.doel as string) || "", zet: (r.zet as string) || "", related: (r.related as string) || "" };
+  // Leeg record telt als "nog geen samenvatting".
+  if (!s.nu && !s.doel && !s.zet && !s.related) return null;
+  return s;
+}
+
+export async function savePageSummary(slug: string, url: string, s: PageSummary): Promise<void> {
+  await ensureSchema();
+  await ensureTables();
+  await sql`
+    INSERT INTO page_summaries (client_slug, url, nu, doel, zet, related, updated_at)
+    VALUES (${slug}, ${url}, ${s.nu || null}, ${s.doel || null}, ${s.zet || null}, ${s.related || null}, now())
+    ON CONFLICT (client_slug, url) DO UPDATE SET nu = ${s.nu || null}, doel = ${s.doel || null}, zet = ${s.zet || null}, related = ${s.related || null}, updated_at = now()`;
 }
 
 // Uitkomst van een gegenereerd document opslaan/ophalen (voor de keten).

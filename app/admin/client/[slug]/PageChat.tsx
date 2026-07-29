@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { mdToHtml } from "../../../../lib/markdown";
 import HelpHint from "./HelpHint";
+import PageSummaryCard from "./PageSummaryCard";
 
 type Msg = { role: "user" | "assistant"; content: string };
 type Task = { taak: string; fase?: string; wie?: string };
@@ -30,6 +31,9 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   // De strategie-kaart (stap 1) staat open zolang er nog geen strategie is
   // vastgelegd (daar begint het werk); daarna standaard dicht (scheelt scrollen).
   const [chatOpen, setChatOpen] = useState(!planDone);
+  // Teller die de korte samenvatting-kaart laat verversen zodra er een nieuwe
+  // strategie is vastgelegd (via 'Vat samen & leg strategie vast').
+  const [summaryAutoGen, setSummaryAutoGen] = useState(0);
   // Elke stap is een inklapbare, genummerde kaart (toggle).
   const [doorgevenOpen, setDoorgevenOpen] = useState(false);
   const [vervolgOpen, setVervolgOpen] = useState(false);
@@ -903,6 +907,9 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       setFinalizePhase("vastleggen");
       const plan = d.proposal?.plan?.trim() ? d.proposal.plan : d.reply;
       await acceptPlan(plan);
+      // De vastgelegde strategie is vernieuwd: laat de korte samenvatting bovenaan
+      // automatisch meelopen zodat de toplaag altijd klopt met de laatste strategie.
+      setSummaryAutoGen((n) => n + 1);
       setFinalizePhase("document");
       await makeWorkItem(d.reply);
     } finally { setFinalizePhase(""); }
@@ -1078,6 +1085,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
 
   return (
     <div className="page-chat-wrap">
+      <PageSummaryCard slug={slug} url={url} planDone={!!(planDone || taskDone)} autoGenSignal={summaryAutoGen} />
       {incoming.length > 0 && (
         <div className="page-chat-incoming">
           <div className="pchf-lead"><strong>Meegegeven vanuit een clusteranalyse.</strong> Dit is als vertrekpunt voor deze pagina bewaard; de chat hieronder neemt het advies én de volledige conclusie automatisch mee.</div>

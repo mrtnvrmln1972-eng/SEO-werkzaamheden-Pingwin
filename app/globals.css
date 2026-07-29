@@ -1901,3 +1901,41 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 /* Status-onbekend-badge: het ?-bolletje van HelpHint netjes in de badge-cel. */
 .url-badge.url-unknown { background: none; border: none; padding: 0; }
 .url-badge.url-unknown .help-hint { margin-left: 0; }
+
+/* ─────────────────────────────────────────────────────────────
+   Korte samenvatting per pagina (de "toplaag" boven de volle strategie).
+   Wat deze pagina nu doet, wat hij moet worden en de belangrijkste zet,
+   in één oogopslag, zodat je niet meteen door de hele analyse hoeft.
+   ───────────────────────────────────────────────────────────── */
+.page-summary-card {
+  border: 1px solid var(--border); border-left: 4px solid var(--orange);
+  border-radius: 12px; background: var(--orange-light);
+  padding: 12px 16px; margin-bottom: 14px;
+}
+.psc-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.psc-title {
+  font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;
+  color: var(--orange-dark); margin-right: auto;
+}
+.psc-body { display: flex; flex-direction: column; gap: 7px; }
+.psc-row { display: flex; align-items: baseline; gap: 12px; }
+.psc-label {
+  flex: 0 0 78px; font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.5px; color: var(--gray); padding-top: 1px;
+}
+.psc-label-key { color: var(--orange-dark); }
+.psc-text { font-size: 14px; line-height: 1.45; color: #1f1f1f; }
+.psc-text-key { font-weight: 700; }
+.psc-related {
+  margin-top: 9px; padding-top: 9px; border-top: 1px dashed var(--border);
+  font-size: 13px; line-height: 1.45; color: var(--gray);
+}
+.psc-empty { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 13px; line-height: 1.45; }
+.psc-edit { display: flex; flex-direction: column; gap: 8px; }
+.psc-edit .psc-row { align-items: center; }
+.psc-input {
+  flex: 1 1 auto; font-family: inherit; font-size: 14px; color: #1f1f1f;
+  padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: #fff;
+}
+.psc-input:focus { outline: none; border-color: var(--orange); box-shadow: 0 0 0 3px rgba(231, 119, 63, 0.15); }
+.psc-actions { display: flex; gap: 8px; margin-top: 2px; }
