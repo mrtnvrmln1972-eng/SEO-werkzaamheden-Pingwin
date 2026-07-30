@@ -41,8 +41,8 @@ export async function getWeekplan(slug: string): Promise<WeekplanTask[]> {
   }));
 }
 
-// Voegt taken toe in een bepaalde week (standaard de huidige week).
-export async function addWeekplanTasks(slug: string, thread: string, tasks: { taak: string; toelichting?: string; wie?: string; url?: string }[], week: { year: number; week: number }): Promise<number> {
+// Voegt taken toe, elk in hun eigen week (jaar + weeknummer).
+export async function addWeekplanTasks(slug: string, thread: string, tasks: { taak: string; toelichting?: string; wie?: string; url?: string; week: { year: number; week: number } }[]): Promise<number> {
   await ensureSchema();
   let n = 0;
   for (const t of tasks) {
@@ -53,7 +53,7 @@ export async function addWeekplanTasks(slug: string, thread: string, tasks: { ta
     const toel = (t.toelichting || "").trim().slice(0, 4000) || null;
     await sql`
       INSERT INTO client_weekplan (client_slug, thread, taak, toelichting, wie, url, week_year, week_no, status, sort_order, updated_at)
-      VALUES (${slug}, ${thread || null}, ${taak.slice(0, 400)}, ${toel}, ${wie}, ${url}, ${week.year}, ${week.week}, 'gepland', ${n}, now())`;
+      VALUES (${slug}, ${thread || null}, ${taak.slice(0, 400)}, ${toel}, ${wie}, ${url}, ${t.week.year}, ${t.week.week}, 'gepland', ${n}, now())`;
     n++;
   }
   return n;

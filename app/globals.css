@@ -2127,6 +2127,7 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .act-wie { flex: none; font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 8px; align-self: flex-start; margin-top: 1px; }
 .act-wie.wie-seo { background: rgba(231, 119, 63, 0.14); color: var(--orange-dark); }
 .act-wie.wie-dev { background: #e5edff; color: #2a4bad; }
+.act-week { flex: none; font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 8px; background: #eef0f2; color: #555; align-self: flex-start; margin-top: 1px; }
 .act-taak-text { flex: 1 1 auto; min-width: 0; color: var(--dark); }
 .act-taak-url { flex: none; color: var(--orange-dark); text-decoration: underline; font-size: 11.5px; white-space: nowrap; }
 .act-card { border: 1px solid var(--border); border-left: 3px solid var(--orange); border-radius: 10px; background: #fff; padding: 10px 12px; }

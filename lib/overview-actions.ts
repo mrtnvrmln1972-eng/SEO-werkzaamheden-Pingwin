@@ -24,7 +24,7 @@ const VALID: ActionType[] = ["pagina_toevoegen", "taak_aanmaken", "plan_vastlegg
 export const EDITABLE: ActionType[] = ["profiel_bijwerken", "strategie_bepalen"];
 
 export type ActionResult = { ok: boolean; message: string; taskIds?: number[]; runId?: number; link?: string; text?: string };
-export type WeekTaak = { taak: string; toelichting?: string; wie?: string; url?: string };
+export type WeekTaak = { taak: string; toelichting?: string; wie?: string; url?: string; week?: number };
 export type ProposedAction = {
   id: string; type: ActionType; reason?: string;
   url?: string; title?: string; taak?: string; fase?: string; wie?: string; plan?: string; steps?: string[]; extra?: string; keyword?: string; tekst?: string;
@@ -132,9 +132,10 @@ export function validateAction(raw: Record<string, unknown>, domain: string, id:
       const taken: WeekTaak[] = rawTaken
         .map((t) => {
           const o = (t || {}) as Record<string, unknown>;
-          const taak = String(o.taak || "").slice(0, 400).trim();
+          const taak = String(o.taak || "").replace(/^\s*week\s*\d+\s*[—:-]+\s*/i, "").slice(0, 400).trim();
           if (!taak) return null;
-          return { taak, toelichting: String(o.info || o.toelichting || "").slice(0, 4000).trim() || undefined, wie: /dev/i.test(String(o.wie || "")) ? "Dev" : "SEO", url: toFullUrl(String(o.url || ""), domain) || undefined };
+          const week = Math.max(1, Math.min(12, Math.round(Number(o.week) || 1)));
+          return { taak, toelichting: String(o.info || o.toelichting || "").slice(0, 4000).trim() || undefined, wie: /dev/i.test(String(o.wie || "")) ? "Dev" : "SEO", url: toFullUrl(String(o.url || ""), domain) || undefined, week };
         })
         .filter(Boolean) as WeekTaak[];
       if (!taken.length) return null;
@@ -187,9 +188,14 @@ export async function executeAction(slug: string, action: ProposedAction, thread
       return { ok: true, message: "Strategie goedgekeurd en vastgelegd bij de pagina. De blauwdruk en copy kunnen nu.", link: url, text: action.tekst };
     }
     case "weekplan_taken": {
-      const week = isoWeek(new Date());
-      const n = await addWeekplanTasks(slug, thread, action.taken || [], week);
-      return n ? { ok: true, message: `${n} ${n === 1 ? "taak" : "taken"} in de weekplanning gezet (week ${week.week}). Dit onderwerp mag dicht; de taken staan in het bord.` } : { ok: false, message: "Geen taken om toe te voegen." };
+      const now = new Date();
+      const tasks = (action.taken || []).map((t) => {
+        const seq = Math.max(1, t.week || 1);
+        const d = new Date(now); d.setDate(now.getDate() + (seq - 1) * 7);
+        return { taak: t.taak, toelichting: t.toelichting, wie: t.wie, url: t.url, week: isoWeek(d) };
+      });
+      const n = await addWeekplanTasks(slug, thread, tasks);
+      return n ? { ok: true, message: `${n} ${n === 1 ? "taak" : "taken"} in de weekplanning gezet, verdeeld over de weken. Dit onderwerp mag dicht; de taken staan in het bord.` } : { ok: false, message: "Geen taken om toe te voegen." };
     }
     case "pijplijn_starten": {
       let steps = (action.steps && action.steps.length ? action.steps : ["analyse", "blauwdruk", "copy"]) as ("analyse" | "blauwdruk" | "copy")[];

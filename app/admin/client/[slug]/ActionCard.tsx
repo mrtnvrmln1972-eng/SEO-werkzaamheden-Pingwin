@@ -5,7 +5,7 @@ import { useRef, useState } from "react";
 export type Action = {
   id: string; type: string; reason?: string;
   url?: string; title?: string; taak?: string; fase?: string; wie?: string; steps?: string[]; tekst?: string;
-  taken?: { taak: string; wie?: string; url?: string }[];
+  taken?: { taak: string; wie?: string; url?: string; week?: number }[];
   executed?: boolean;
   result?: { ok: boolean; message: string; taskIds?: number[]; runId?: number; link?: string; text?: string };
 };
@@ -82,6 +82,7 @@ export default function ActionCard({ action, slug, thread, onExecuted, onGoToPag
           <div className="act-taken">
             {action.taken.map((t, i) => (
               <div key={i} className="act-taak-row">
+                {t.week ? <span className="act-week">wk {t.week}</span> : null}
                 <span className={"act-wie " + (t.wie === "Dev" ? "wie-dev" : "wie-seo")}>{t.wie || "SEO"}</span>
                 <span className="act-taak-text">{t.taak}</span>
                 {t.url && <a className="act-taak-url" href={t.url} target="_blank" rel="noreferrer">{shortUrl(t.url)}</a>}
