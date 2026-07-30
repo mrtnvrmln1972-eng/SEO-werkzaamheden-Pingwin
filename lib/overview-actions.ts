@@ -16,16 +16,19 @@ import { generateMetaProposal } from "./meta-ctr";
 import { measurePage } from "./page-measure";
 import { callClaude, LIGHT_MODEL } from "./anthropic";
 import { sql, ensureSchema } from "./db";
+import { addWeekplanTasks, isoWeek } from "./weekplan";
 
-export type ActionType = "pagina_toevoegen" | "taak_aanmaken" | "plan_vastleggen" | "strategie_bepalen" | "pijplijn_starten" | "structured_data" | "alt_teksten" | "meta_verbeteren" | "profiel_bijwerken";
-const VALID: ActionType[] = ["pagina_toevoegen", "taak_aanmaken", "plan_vastleggen", "strategie_bepalen", "pijplijn_starten", "structured_data", "alt_teksten", "meta_verbeteren", "profiel_bijwerken"];
+export type ActionType = "pagina_toevoegen" | "taak_aanmaken" | "plan_vastleggen" | "strategie_bepalen" | "pijplijn_starten" | "structured_data" | "alt_teksten" | "meta_verbeteren" | "profiel_bijwerken" | "weekplan_taken";
+const VALID: ActionType[] = ["pagina_toevoegen", "taak_aanmaken", "plan_vastleggen", "strategie_bepalen", "pijplijn_starten", "structured_data", "alt_teksten", "meta_verbeteren", "profiel_bijwerken", "weekplan_taken"];
 // Types waarvan de kaart bewerkbaar is (Maarten kan de tekst bijstellen vóór goedkeuren).
 export const EDITABLE: ActionType[] = ["profiel_bijwerken", "strategie_bepalen"];
 
 export type ActionResult = { ok: boolean; message: string; taskIds?: number[]; runId?: number; link?: string; text?: string };
+export type WeekTaak = { taak: string; wie?: string; url?: string };
 export type ProposedAction = {
   id: string; type: ActionType; reason?: string;
   url?: string; title?: string; taak?: string; fase?: string; wie?: string; plan?: string; steps?: string[]; extra?: string; keyword?: string; tekst?: string;
+  taken?: WeekTaak[];
   executed?: boolean; result?: ActionResult;
 };
 
@@ -124,6 +127,19 @@ export function validateAction(raw: Record<string, unknown>, domain: string, id:
       if (!url || !tekst) return null;
       return { ...base, url, tekst: tekst.slice(0, 8000) };
     }
+    case "weekplan_taken": {
+      const rawTaken = Array.isArray(raw.taken) ? raw.taken : [];
+      const taken: WeekTaak[] = rawTaken
+        .map((t) => {
+          const o = (t || {}) as Record<string, unknown>;
+          const taak = String(o.taak || "").slice(0, 400).trim();
+          if (!taak) return null;
+          return { taak, wie: /dev/i.test(String(o.wie || "")) ? "Dev" : "SEO", url: toFullUrl(String(o.url || ""), domain) || undefined };
+        })
+        .filter(Boolean) as WeekTaak[];
+      if (!taken.length) return null;
+      return { ...base, taken: taken.slice(0, 20) };
+    }
     case "pijplijn_starten": {
       if (!url) return null;
       const allowed = ["analyse", "blauwdruk", "copy"];
@@ -147,7 +163,7 @@ export function validateAction(raw: Record<string, unknown>, domain: string, id:
   return null;
 }
 
-export async function executeAction(slug: string, action: ProposedAction): Promise<ActionResult> {
+export async function executeAction(slug: string, action: ProposedAction, thread = ""): Promise<ActionResult> {
   const client = await getClientBySlug(slug);
   const domain = client?.domain || "";
   const url = toFullUrl(action.url || "", domain);
@@ -169,6 +185,11 @@ export async function executeAction(slug: string, action: ProposedAction): Promi
       // van de pagina. Dat opent de poort naar blauwdruk/copy (zie pijplijn_starten).
       await savePagePlan(slug, url, action.tekst || "");
       return { ok: true, message: "Strategie goedgekeurd en vastgelegd bij de pagina. De blauwdruk en copy kunnen nu.", link: url, text: action.tekst };
+    }
+    case "weekplan_taken": {
+      const week = isoWeek(new Date());
+      const n = await addWeekplanTasks(slug, thread, action.taken || [], week);
+      return n ? { ok: true, message: `${n} ${n === 1 ? "taak" : "taken"} in de weekplanning gezet (week ${week.week}). Dit onderwerp mag dicht; de taken staan in het bord.` } : { ok: false, message: "Geen taken om toe te voegen." };
     }
     case "pijplijn_starten": {
       let steps = (action.steps && action.steps.length ? action.steps : ["analyse", "blauwdruk", "copy"]) as ("analyse" | "blauwdruk" | "copy")[];

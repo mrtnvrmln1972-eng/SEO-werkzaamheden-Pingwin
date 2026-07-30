@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
   if (EDITABLE.includes(found.type) && typeof body.edit === "string" && body.edit.trim()) {
     found = { ...found, tekst: String(body.edit).slice(0, 4000).trim() };
   }
-  const result = await executeAction(slug, found);
+  const result = await executeAction(slug, found, thread);
   // Status atomisch als eigen rij wegschrijven (ook bij mislukken, met het
   // resultaat). Bij mislukken blijft 'executed' vals zodat opnieuw proberen kan.
   await recordActionStatus(slug, thread, actionId, result.ok, result);

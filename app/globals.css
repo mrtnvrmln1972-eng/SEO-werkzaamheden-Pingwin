@@ -2069,6 +2069,41 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .ovc-bubble.chat-md table.chat-table th { background: rgba(231, 119, 63, 0.10); color: var(--dark); font-weight: 800; text-align: left; padding: 6px 9px; border: 1px solid var(--border); }
 .ovc-bubble.chat-md table.chat-table td { padding: 6px 9px; border: 1px solid var(--border); }
 .ovc-bubble.chat-md table.chat-table tr:nth-child(even) td { background: var(--gray-light); }
+
+/* Takenlijst op de weekplanning-actiekaart */
+.act-taken { margin: 4px 0 2px; padding-left: 18px; font-size: 12.5px; line-height: 1.45; }
+.act-taken li { margin: 2px 0; }
+
+/* Weekplanning-bord: taken over weekkolommen, huidige week gemarkeerd, slepen. */
+.wp-wrap, .wp-empty { margin-top: 14px; }
+.wp-board { display: flex; gap: 10px; overflow-x: auto; padding: 8px 2px 4px; }
+.wp-col { flex: 0 0 220px; min-width: 220px; background: var(--gray-light); border: 1px solid var(--border); border-radius: 10px; display: flex; flex-direction: column; }
+.wp-col.wp-current { border-color: var(--orange); box-shadow: 0 0 0 2px rgba(231, 119, 63, 0.18); background: #fff8f3; }
+.wp-col.wp-drop { border-color: var(--orange); background: #fdece1; }
+.wp-col-unplanned { background: #f1f2f4; }
+.wp-col-head { padding: 8px 10px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 1px; }
+.wp-col-wk { font-weight: 800; font-size: 12.5px; color: var(--orange); }
+.wp-col.wp-current .wp-col-wk { color: var(--orange-dark); }
+.wp-col-dates { font-size: 11px; color: var(--gray); }
+.wp-col-body { padding: 8px; display: flex; flex-direction: column; gap: 8px; min-height: 44px; flex: 1; }
+.wp-card { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 8px 9px; cursor: grab; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04); }
+.wp-card:active { cursor: grabbing; }
+.wp-card.wp-klaar { opacity: 0.62; }
+.wp-card-taak { font-size: 12.5px; line-height: 1.4; color: var(--dark); }
+.wp-card.wp-klaar .wp-card-taak { text-decoration: line-through; }
+.wp-card-url { display: inline-block; margin-top: 3px; font-size: 11.5px; color: var(--orange-dark); text-decoration: underline; word-break: break-all; }
+.wp-card-foot { display: flex; align-items: center; gap: 6px; margin-top: 7px; flex-wrap: wrap; }
+.wp-wie { font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 8px; }
+.wp-wie.wie-seo { background: rgba(231, 119, 63, 0.14); color: var(--orange-dark); }
+.wp-wie.wie-dev { background: #e5edff; color: #2a4bad; }
+.wp-status { font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 8px; border: none; cursor: pointer; }
+.wp-status-gepland { background: #ececec; color: #555; }
+.wp-status-bezig { background: #fff2cc; color: #8a6d00; }
+.wp-status-klaar { background: #dcf5e3; color: #1c7a3f; }
+.wp-card-actions { margin-left: auto; display: inline-flex; gap: 2px; }
+.wp-icon { border: none; background: transparent; cursor: pointer; font-size: 13px; color: var(--gray); padding: 2px 4px; border-radius: 5px; line-height: 1; }
+.wp-icon:hover { background: var(--gray-light); color: var(--dark); }
+.wp-del:hover { color: #c0392b; }
 .act-card { border: 1px solid var(--border); border-left: 3px solid var(--orange); border-radius: 10px; background: #fff; padding: 10px 12px; }
 .act-card.act-done { border-left-color: #1e824c; background: #f4faf5; }
 .act-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }

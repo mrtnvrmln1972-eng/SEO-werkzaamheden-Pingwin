@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 export type Action = {
   id: string; type: string; reason?: string;
   url?: string; title?: string; taak?: string; fase?: string; wie?: string; steps?: string[]; tekst?: string;
+  taken?: { taak: string; wie?: string; url?: string }[];
   executed?: boolean;
   result?: { ok: boolean; message: string; taskIds?: number[]; runId?: number; link?: string; text?: string };
 };
@@ -19,6 +20,7 @@ const LABEL: Record<string, string> = {
   alt_teksten: "Alt-teksten maken",
   meta_verbeteren: "Meta title/description",
   profiel_bijwerken: "Klantprofiel bijwerken",
+  weekplan_taken: "Taken → weekplanning",
 };
 
 function shortUrl(url: string): string {
@@ -74,6 +76,13 @@ export default function ActionCard({ action, slug, thread, onExecuted, onGoToPag
         {action.url && <span className="act-url">{shortUrl(action.url)}</span>}
       </div>
       {action.taak && <div className="act-line"><strong>Taak:</strong> {action.taak}{action.wie ? ` (${action.wie})` : ""}</div>}
+      {action.taken && action.taken.length > 0 && (
+        <ul className="act-taken">
+          {action.taken.map((t, i) => (
+            <li key={i}>{t.taak}{t.wie ? ` (${t.wie})` : ""}{t.url ? ` — ${shortUrl(t.url)}` : ""}</li>
+          ))}
+        </ul>
+      )}
       {action.title && <div className="act-line"><strong>Titel:</strong> {action.title}</div>}
       {action.steps && action.steps.length > 0 && <div className="act-line"><strong>Stappen:</strong> {action.steps.join(" → ")}</div>}
       {action.reason && <div className="act-reason">{action.reason}</div>}

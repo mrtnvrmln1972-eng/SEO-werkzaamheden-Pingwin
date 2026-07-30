@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import OverviewChat from "./OverviewChat";
+import WeekplanBoard from "./WeekplanBoard";
 
 type Status = {
   totaal: number; leeg: number; halfPlan: number; heeftPlan: number;
@@ -43,7 +44,8 @@ export default function OverviewTab({ slug, clientName, domain, onGoToPage, onGo
   const s = data?.status;
 
   return (
-    <div className="overview-tab ov-layout">
+    <div className="overview-tab">
+      <div className="ov-layout">
       <div className="ov-chatcol">
         <OverviewChat slug={slug} domain={domain} configured={chatConfigured !== false} onGoToPage={onGoToPage} onGoToTask={onGoToTask} />
       </div>
@@ -142,6 +144,8 @@ export default function OverviewTab({ slug, clientName, domain, onGoToPage, onGo
         </div>
       )}
       </div>
+      </div>
+      <WeekplanBoard slug={slug} onGoToPage={onGoToPage} />
     </div>
   );
 }

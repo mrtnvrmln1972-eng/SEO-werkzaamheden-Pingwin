@@ -221,6 +221,25 @@ async function init(): Promise<void> {
       updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
     )`;
 
+  // Weekplanning: taken die uit een bird's eye-onderwerp rollen, verdeeld over
+  // weken (ISO-weeknummer + jaar). Los van de maand-takenlijst (client_tasks).
+  await sql`
+    CREATE TABLE IF NOT EXISTS client_weekplan (
+      id          SERIAL PRIMARY KEY,
+      client_slug TEXT NOT NULL,
+      thread      TEXT,
+      taak        TEXT NOT NULL,
+      wie         TEXT NOT NULL DEFAULT 'SEO',
+      url         TEXT,
+      week_year   INT NOT NULL DEFAULT 0,
+      week_no     INT NOT NULL DEFAULT 0,
+      status      TEXT NOT NULL DEFAULT 'gepland',
+      sort_order  INT NOT NULL DEFAULT 0,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    )`;
+  await sql`CREATE INDEX IF NOT EXISTS ix_client_weekplan_slug ON client_weekplan(client_slug)`;
+
   // Werkzaamheden per klant, ín het dashboard (alternatief voor de Google Sheet).
   // SEO- en Dev-taken samen; per maand, met uren, status, link en zichtbaarheid
   // voor het klant-dashboard. Volgorde via sort_order (slepen).
