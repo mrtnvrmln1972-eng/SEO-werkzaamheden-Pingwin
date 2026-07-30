@@ -2002,7 +2002,7 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .ov-layout .ov-columns { grid-template-columns: 1fr; }
 
 /* Gedokte bird's eye-chat */
-.ovc-card { display: flex; flex-direction: column; padding: 12px 14px; margin-bottom: 0; }
+.ovc-card { display: flex; flex-direction: column; min-height: 460px; padding: 12px 14px; margin-bottom: 0; }
 .ovc-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-bottom: 10px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
 .ovc-title { display: inline-flex; align-items: center; gap: 7px; font-weight: 800; font-size: 14px; color: var(--dark); margin-right: auto; }
 .ovc-log { display: flex; flex-direction: column; gap: 10px; padding-right: 4px; }
