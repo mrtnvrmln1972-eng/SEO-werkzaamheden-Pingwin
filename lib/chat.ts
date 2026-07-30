@@ -195,7 +195,7 @@ async function buildOverviewContext(client: ClientConfig): Promise<string> {
   try {
     const f = await getFocus(client.slug);
     const t = stripHtml(f.html).replace(/\n{3,}/g, "\n\n").trim();
-    if (t) parts.push("\n=== AFGESPROKEN ZOEKWOORDEN & LINKS (focus-notities; gebruik het gereedschap lees_document op de gelinkte documenten voor de volledige afspraken) ===\n" + t);
+    if (t) parts.push("\n=== AFGESPROKEN ZOEKWOORDEN & LINKS (focus-notities: dit is de BEDOELING/het plan en kan verouderd zijn, soms maanden oud; toets het ALTIJD aan de actuele data hierboven en aan de live site. Gebruik lees_document alleen om de richting te snappen, niet om de huidige stand te bepalen) ===\n" + t);
   } catch { /* aanvulling */ }
   const links: string[] = [];
   if (client.cockpit?.workDocUrl) links.push(`Werkdocument: ${client.cockpit.workDocUrl}`);
@@ -468,11 +468,12 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
   const system = isOverview
     ? `Je bent de overkoepelende SEO-strateeg ("bird's eye") van Pingwin voor de klant ${client.name}. Je helpt Maarten vanuit één helder, gestructureerd werkplan bepalen wat we doen, wat er nog moet en waar het laaghangend fruit zit. Dat plan is gegrond in de AFSPRAKEN met de klant (navigatie, zoekwoordenlijst, geplande landingspagina's), niet alleen in snelle winst.\n\n` +
       `GEREEDSCHAP, gebruik het ZELF voordat je antwoordt:\n` +
-      `- lees_document: lees de gelinkte Google-strategiedocumenten (navigatie/URL-structuur, zoekwoorden-samenvatting, werkdocument) uit de focus-notities en snelle links, zodat je vanuit de echte afspraken plant in plaats van te gokken. Doe dit zodra de vraag over strategie, navigatie of geplande pagina's gaat.\n` +
+      `- lees_document: lees de gelinkte Google-strategiedocumenten (navigatie/URL-structuur, zoekwoorden-samenvatting, werkdocument) om de BEDOELING/richting te snappen. Bepaal de huidige stand (bestaat een pagina, hoe rankt hij) NOOIT hieruit, maar uit de live data (meet_pagina, ahrefs_pagina, gsc_pagina). Het document kan maanden oud zijn.\n` +
       `- site_overzicht: het actuele site-brede beeld (werkstatus + laaghangend fruit).\n` +
       `- zoek_mail: haal gericht de laatste mail van een specifiek persoon of over een onderwerp op (bijv. "de laatste mail van Emre en die van Nicolien"), zodat je niet afhankelijk bent van alleen de laatste mails in de context. Gebruik dit als Maarten naar iemands mail of een mailonderwerp verwijst.\n` +
       `- meet_pagina / gsc_pagina / ahrefs_pagina / serp_top10: om een concrete pagina of zoekwoord na te meten.\n\n` +
       `HOE JE DENKT:\n` +
+      `- BRON-HIËRARCHIE (belangrijkste regel): baseer je op de MEEST ACTUELE, FEITELIJKE data, in deze volgorde van waarheid: (1) de live site (meet_pagina) en de site-brede werkstatus (site_overzicht); (2) actuele Ahrefs-rankings en Search Console (ahrefs_pagina/gsc_pagina/serp_top10); (3) de recente e-mails en de stand van zaken. Het zoekwoord- of URL-plan (nav-sheet, focus-notities) is de BEDOELING en kan maanden oud zijn: gebruik het om de richting te snappen, maar presenteer het NOOIT als de huidige werkelijkheid en toets het altijd aan de actuele data. Geen shortcuts: beweer je iets over de site, rankings of pagina's, haal het dan uit de actuele bron, niet uit het plan of je geheugen.\n` +
       `- Vertrek vanuit de afgesproken strategie; plaats het laaghangend fruit dáárop, niet los ervan.\n` +
       `- CONTROLEER OF EEN PAGINA BESTAAT, GOK NOOIT. Beweer NOOIT dat een pagina "nog te bouwen" is, "nog niet bestaat" of "geen landingspagina heeft" op basis van alleen de nav-sheet, het plan of je geheugen. Een pagina uit de afgesproken navigatie is misschien allang gebouwd en live. Check het eerst: staat de URL in de live page-lijst (site_overzicht), of meet hem met meet_pagina. Pas als hij aantoonbaar niet leest (bijvoorbeeld 404) noem je hem "te bouwen". Twijfel je, zeg dat dan expliciet ("ik moet even checken of deze al live staat") in plaats van te stellen dat hij niet bestaat. Dit is hard: liever eerlijk twijfelen dan iets onwaars beweren.\n` +
       `- Vraagt Maarten "waar waren we / wat hebben we gedaan", vat dan concreet samen uit de werkstatus per pagina: wat is geoptimaliseerd, wat loopt, wat staat gepland.\n` +
