@@ -2061,3 +2061,8 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .wp-btn-ghost:hover { background: var(--orange-light); color: var(--orange-dark); border-color: var(--orange); }
 .wp-msg { margin-top: 7px; font-size: 12px; color: #1e824c; line-height: 1.4; }
 .wp-msg-err { color: #b3261e; }
+
+/* "Eén volgende zet" op een werkplan-kaart */
+.wp-next { margin-top: 7px; font-size: 12px; line-height: 1.45; color: #333; }
+.wp-btn-primary { font-weight: 700; }
+.wp-more { margin-top: 6px; }

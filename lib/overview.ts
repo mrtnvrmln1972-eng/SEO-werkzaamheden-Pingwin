@@ -188,11 +188,35 @@ export function pageWorkStatusToText(pages: PageWork[]): string {
   return lines.join("\n");
 }
 
+// ── De "één volgende zet" per pagina (tegen de 7-stappen-overweldiging) ──
+// De kaart kiest zelf, op basis van waar de pagina in de motor staat, de ene
+// logische vervolgstap. Zo hoeft Maarten nooit meer "waar begin ik" te denken.
+export type NextStep = { label: string; actie: "pijplijn_starten" | "meta_verbeteren" | "alt_teksten" | "open" ; steps?: string[]; zin: string };
+
+function nextStep(p: PageWork, opp: { level: string; label: string; position: number | null }): NextStep {
+  if (!p.live) return { label: "Ontwikkel", actie: "pijplijn_starten", steps: ["blauwdruk", "copy"], zin: "Deze pagina bestaat nog niet. Ontwikkel de blauwdruk en de copy." };
+  if (p.hasPlan) {
+    const order = ["analyse", "blauwdruk", "copy"] as const;
+    const missing = order.find((k) => !p.docs.includes(k));
+    if (missing) {
+      const label = missing === "analyse" ? "Doe de analyse" : missing === "blauwdruk" ? "Maak de blauwdruk" : "Schrijf de copy";
+      const naam = missing === "copy" ? "copy" : missing;
+      return { label, actie: "pijplijn_starten", steps: [missing], zin: `Strategie ligt vast, de ${naam} ontbreekt nog.` };
+    }
+    return { label: "Open in Pagina's", actie: "open", zin: "Alles staat klaar. Bekijk de pagina of het effect." };
+  }
+  // Live, nog geen strategie.
+  if (opp.level !== "none") {
+    return { label: "Ontwikkel", actie: "pijplijn_starten", steps: ["analyse", "blauwdruk", "copy"], zin: `Kans (${opp.label}${opp.position != null ? `, positie ${opp.position}` : ""}). De analyse bepaalt wat deze pagina nodig heeft; ontwikkel hem.` };
+  }
+  return { label: "Ontwikkel", actie: "pijplijn_starten", steps: ["analyse", "blauwdruk", "copy"], zin: "Nog geen strategie voor deze pagina. Ontwikkel hem." };
+}
+
 // ── Visueel werkplan: pagina's gegroepeerd in bezig / gepland / gedaan ──
 export type WerkplanItem = {
   url: string; slug: string; live: boolean; status: "bezig" | "gepland" | "gedaan";
   keyword: string; volume: number | null; position: number | null; impressions: number; clicks: number;
-  kansLabel: string; kansLevel: string; docs: string[];
+  kansLabel: string; kansLevel: string; docs: string[]; next: NextStep;
 };
 export type Werkplan = { bezig: WerkplanItem[]; gepland: WerkplanItem[]; gedaan: WerkplanItem[] };
 
@@ -220,6 +244,7 @@ export async function buildWerkplan(slug: string, opts: { fresh?: boolean } = {}
       keyword: o?.bestKeyword || "", volume: o?.bestVolume ?? null, position: o?.position ?? null,
       impressions: o?.impressions ?? p.impressions, clicks: o?.clicks ?? p.clicks,
       kansLabel: opp.label, kansLevel: opp.level, docs: p.docs,
+      next: nextStep(p, { level: opp.level, label: opp.label, position: o?.position ?? null }),
     });
   }
   const byKans = (a: WerkplanItem, b: WerkplanItem) => (b.impressions || 0) - (a.impressions || 0);

@@ -21,7 +21,7 @@ function fmt(n: number): string { return (n || 0).toLocaleString("nl-NL"); }
 
 // Site-breed overzicht per klant: waar staan we (werkstatus) en waar zit het
 // laaghangend fruit. De bird's eye-chat komt in een volgende fase rechts hiernaast.
-export default function OverviewTab({ slug, clientName, onGoToPage, onGoToTask, chatConfigured }: { slug: string; clientName?: string; onGoToPage?: (url: string) => void; onGoToTask?: (taskId: number) => void; chatConfigured?: boolean }) {
+export default function OverviewTab({ slug, clientName, onGoToPage, onGoToTask, onGoToMeta, chatConfigured }: { slug: string; clientName?: string; onGoToPage?: (url: string) => void; onGoToTask?: (taskId: number) => void; onGoToMeta?: () => void; chatConfigured?: boolean }) {
   const [data, setData] = useState<Overview | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -79,7 +79,7 @@ export default function OverviewTab({ slug, clientName, onGoToPage, onGoToTask, 
         )}
       </div>
 
-      <WerkplanPanel slug={slug} onGoToPage={onGoToPage} />
+      <WerkplanPanel slug={slug} onGoToPage={onGoToPage} onGoToMeta={onGoToMeta} />
       </div>
     </div>
   );
