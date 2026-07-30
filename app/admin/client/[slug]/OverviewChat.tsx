@@ -63,6 +63,14 @@ export default function OverviewChat({ slug, configured, onGoToPage, onGoToTask 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Laat het invoerveld meegroeien met de tekst (tot een maximum), zodat je een
+  // langer verhaal kunt typen of plakken.
+  useEffect(() => {
+    const el = inputRef.current;
+    if (el) { el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight, 220) + "px"; }
+  }, [input]);
 
   // De chat groeit mee met de pagina (geen apart scrollboxje); spring naar het
   // laatste bericht zodat het nieuwste stuk in beeld staat en het oude erboven uit
@@ -177,7 +185,15 @@ export default function OverviewChat({ slug, configured, onGoToPage, onGoToTask 
       {error && <div className="login-error" style={{ margin: "6px 0" }}>{error}</div>}
 
       <div className="ovc-input">
-        <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(input); }} placeholder="Stel een vraag of geef een instructie…" disabled={busy} />
+        <textarea
+          ref={inputRef}
+          rows={1}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); } }}
+          placeholder="Stel een vraag of geef een instructie… (Shift+Enter voor een nieuwe regel)"
+          disabled={busy}
+        />
         <button type="button" className="primary-btn small" onClick={() => send(input)} disabled={busy || !input.trim()}>Vraag</button>
       </div>
     </div>

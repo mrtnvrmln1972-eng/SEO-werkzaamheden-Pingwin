@@ -2010,9 +2010,9 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .ovc-msg.user .ovc-bubble { background: var(--orange); color: #fff; border-bottom-right-radius: 4px; }
 .ovc-msg.assistant .ovc-bubble { background: #f4f4f5; color: #1f1f1f; border-bottom-left-radius: 4px; }
 .ovc-msg.assistant .ovc-bubble.muted { background: none; color: var(--gray); font-style: italic; }
-.ovc-input { display: flex; gap: 8px; margin-top: 10px; }
-.ovc-input input { flex: 1; font-family: inherit; font-size: 14px; padding: 9px 12px; border: 1px solid var(--border); border-radius: 9px; }
-.ovc-input input:focus { outline: none; border-color: var(--orange); box-shadow: 0 0 0 3px rgba(231, 119, 63, 0.15); }
+.ovc-input { display: flex; gap: 8px; margin-top: 10px; align-items: flex-end; }
+.ovc-input textarea { flex: 1; font-family: inherit; font-size: 14px; line-height: 1.5; padding: 9px 12px; border: 1px solid var(--border); border-radius: 9px; resize: none; max-height: 220px; overflow-y: auto; }
+.ovc-input textarea:focus { outline: none; border-color: var(--orange); box-shadow: 0 0 0 3px rgba(231, 119, 63, 0.15); }
 
 /* Actie-kaartjes onder een bird's eye-antwoord (voorstellen → één klik goedkeuren) */
 .ovc-actions { width: 100%; display: flex; flex-direction: column; gap: 8px; }
