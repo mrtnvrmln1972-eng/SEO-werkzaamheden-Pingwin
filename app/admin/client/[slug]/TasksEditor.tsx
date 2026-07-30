@@ -8,7 +8,7 @@ import StrategyPanel, { type StrategySessionData } from "./StrategyPanel";
 import HelpHint from "./HelpHint";
 
 const MONTHS = ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"];
-const STATUSES = ["Gepland", "Bezig", "Naar Dev", "Klaar"];
+const STATUSES = ["Gepland", "Bezig", "Naar Dev", "Klaar", "Verwerkt"];
 
 type Budget = { maandbudget: number; linkbuilding: number; uurtarief: number; beschikbareUren: number };
 
@@ -512,53 +512,74 @@ export default function TasksEditor({ slug, initialTasks, initialStrategySession
   const noMonth = indexed.filter((x) => !MONTHS.includes((x.r.maand || "").toLowerCase()));
 
   // Render-functies (geen sub-componenten → geen remount, focus blijft behouden).
+  // De kolomdefinitie is voor beide tabellen (open + verwerkt) gelijk, zodat ze
+  // netjes onder elkaar uitlijnen.
+  function taskColgroup() {
+    return (
+      <colgroup>
+        <col style={{ width: "22px" }} /><col /><col />
+        <col style={{ width: "66px" }} /><col style={{ width: "104px" }} /><col style={{ width: "108px" }} />
+        <col style={{ width: "118px" }} /><col style={{ width: "84px" }} /><col style={{ width: "52px" }} />
+      </colgroup>
+    );
+  }
+  function taskRow({ r, i }: { r: Row; i: number }, maand: string) {
+    const isDev = (r.wie || "").toLowerCase() === "dev";
+    const hl = typeof r.id === "number" && highlightIds.has(r.id);
+    const done = DONE.test(r.status || "");
+    const mailed = !!r.gemaild && !done;
+    const statusCls = done ? "task-done " : "task-open ";
+    return (
+      <tr key={r._uid} id={typeof r.id === "number" ? `task-row-${r.id}` : undefined} onDragOver={(e) => { e.preventDefault(); if (dragIdx !== null && dragIdx !== i && !(dropIdx?.maand === maand && dropIdx.i === i)) setDropIdx({ maand, i }); }} onDrop={(e) => { e.stopPropagation(); moveRow(maand, i); setDropIdx(null); }} className={`${statusCls}${dragIdx === i ? "dragging " : ""}${dropIdx?.maand === maand && dropIdx.i === i && dragIdx !== i ? "drop-target " : ""}${isDev ? "dev-row " : ""}${mailed ? "mailed-row " : ""}${r.geblokkeerd ? "blocked-row " : ""}${hl ? "highlight-row" : ""}`}>
+        <td className="drag-handle" draggable onDragStart={() => setDragIdx(i)} onDragEnd={() => { setDragIdx(null); setDropIdx(null); }} title="Sleep (ook naar een andere maand)">⠿</td>
+        <td>
+          <div className="taak-cell">
+            {r.geblokkeerd && <button type="button" className="taak-lock" title={r.blokkadeReden ? `Geblokkeerd: ${r.blokkadeReden} (klik om vrij te geven)` : "Geblokkeerd (klik om vrij te geven)"} onClick={() => update(i, { geblokkeerd: false })}>🔒</button>}
+            <RichCell html={r.taak} onChange={(v) => update(i, { taak: v })} placeholder="Taak" />
+            {r.cluster && <span className="taak-cluster" title={"Cluster: " + r.cluster}>{r.cluster}</span>}
+            {done && <span className="taak-check" title="Klaar">✓</span>}
+            <button type="button" className={"row-info" + (r.klantToelichting ? " has" : "")} onClick={(e) => klantPop?.i === i ? setKlantPop(null) : openKlantPop(i, e.currentTarget)} title="Toelichting voor de klant (verschijnt als ?-tooltip in het klantdashboard)">?</button>
+          </div>
+        </td>
+        <td><RichCell html={r.toelichting} onChange={(v) => update(i, { toelichting: v })} placeholder="Toelichting" /></td>
+        <td><input className="cell-num" type="number" value={r.uren ?? ""} onChange={(e) => update(i, { uren: e.target.value === "" ? null : Number(e.target.value) })} /></td>
+        <td><select value={r.status} onChange={(e) => update(i, { status: e.target.value })}><option value="">—</option>{STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}</select></td>
+        <td><button type="button" className={"wie-badge " + (isDev ? "wie-dev" : "wie-seo")} onClick={() => update(i, { wie: isDev ? "SEO" : "Dev" })} title="Klik om te wisselen tussen SEO en Developer">{isDev ? "Developer" : "SEO"}</button></td>
+        <td><select value={r.maand} onChange={(e) => update(i, { maand: e.target.value })}><option value="">—</option>{MONTHS.map((m) => <option key={m} value={m}>{m}</option>)}</select></td>
+        <td className="cell-check col-center"><input type="checkbox" checked={!!r._mail} onChange={(e) => update(i, { _mail: e.target.checked })} title="Aanvinken om mee te nemen in een mail (klik daarna op de knop Mail bovenaan)" /></td>
+        <td className="row-actions">
+          <button type="button" className="row-del" onClick={() => removeRow(i)} title="Verwijderen">×</button>
+        </td>
+      </tr>
+    );
+  }
   function section(secRows: { r: Row; i: number }[], maand: string) {
     // Taken blijven staan waar ze gesleept/aangemaakt zijn, ongeacht klaar of niet.
-    const ordered = secRows;
+    // Alleen "Verwerkt" zakt naar het onderste blok; al het andere (incl. Klaar)
+    // blijft bovenaan staan.
+    const open = secRows.filter((x) => !VERWERKT.test(x.r.status || ""));
+    const verwerkt = secRows.filter((x) => VERWERKT.test(x.r.status || ""));
     return (
       <div className="task-section">
         <table className="task-table">
-            <colgroup>
-              <col style={{ width: "22px" }} /><col /><col />
-              <col style={{ width: "66px" }} /><col style={{ width: "104px" }} /><col style={{ width: "108px" }} />
-              <col style={{ width: "118px" }} /><col style={{ width: "84px" }} /><col style={{ width: "52px" }} />
-            </colgroup>
-            <thead><tr><th></th><th>Taak</th><th>Opm. developer</th><th>Uren</th><th>Status</th><th>Wie</th><th>Maand</th><th className="col-center"><button type="button" className="mail-col-btn" onClick={() => openComposeFor(undefined, "klant")} title="Vink taken aan en klik hier om ze te mailen">Mail</button></th><th></th></tr></thead>
+          {taskColgroup()}
+          <thead><tr><th></th><th>Taak</th><th>Opm. developer</th><th>Uren</th><th>Status</th><th>Wie</th><th>Maand</th><th className="col-center"><button type="button" className="mail-col-btn" onClick={() => openComposeFor(undefined, "klant")} title="Vink taken aan en klik hier om ze te mailen">Mail</button></th><th></th></tr></thead>
+          <tbody>
+            {open.map((x) => taskRow(x, maand))}
+            {secRows.length === 0 && <tr><td colSpan={9} className="muted" style={{ padding: 8 }}>Nog geen taken deze maand. Sleep er een hierheen of voeg toe.</td></tr>}
+          </tbody>
+        </table>
+        <button type="button" className="add-task-btn" onClick={() => addRow(maand, "SEO")}>+ taak</button>
+
+        {verwerkt.length > 0 && (
+          <table className="task-table task-table-verwerkt">
+            {taskColgroup()}
+            <thead><tr><th></th><th>Volledig verwerkt ({verwerkt.length})</th><th>Opm. developer</th><th>Uren</th><th>Status</th><th>Wie</th><th>Maand</th><th className="col-center">Mail</th><th></th></tr></thead>
             <tbody>
-              {ordered.map(({ r, i }) => {
-                const isDev = (r.wie || "").toLowerCase() === "dev";
-                const hl = typeof r.id === "number" && highlightIds.has(r.id);
-                const done = DONE.test(r.status || "");
-                const mailed = !!r.gemaild && !done;
-                const statusCls = done ? "task-done " : "task-open ";
-                return (
-                  <tr key={r._uid} id={typeof r.id === "number" ? `task-row-${r.id}` : undefined} onDragOver={(e) => { e.preventDefault(); if (dragIdx !== null && dragIdx !== i && !(dropIdx?.maand === maand && dropIdx.i === i)) setDropIdx({ maand, i }); }} onDrop={(e) => { e.stopPropagation(); moveRow(maand, i); setDropIdx(null); }} className={`${statusCls}${dragIdx === i ? "dragging " : ""}${dropIdx?.maand === maand && dropIdx.i === i && dragIdx !== i ? "drop-target " : ""}${isDev ? "dev-row " : ""}${mailed ? "mailed-row " : ""}${r.geblokkeerd ? "blocked-row " : ""}${hl ? "highlight-row" : ""}`}>
-                    <td className="drag-handle" draggable onDragStart={() => setDragIdx(i)} onDragEnd={() => { setDragIdx(null); setDropIdx(null); }} title="Sleep (ook naar een andere maand)">⠿</td>
-                    <td>
-                      <div className="taak-cell">
-                        {r.geblokkeerd && <button type="button" className="taak-lock" title={r.blokkadeReden ? `Geblokkeerd: ${r.blokkadeReden} (klik om vrij te geven)` : "Geblokkeerd (klik om vrij te geven)"} onClick={() => update(i, { geblokkeerd: false })}>🔒</button>}
-                        <RichCell html={r.taak} onChange={(v) => update(i, { taak: v })} placeholder="Taak" />
-                        {r.cluster && <span className="taak-cluster" title={"Cluster: " + r.cluster}>{r.cluster}</span>}
-                        {done && <span className="taak-check" title="Klaar">✓</span>}
-                        <button type="button" className={"row-info" + (r.klantToelichting ? " has" : "")} onClick={(e) => klantPop?.i === i ? setKlantPop(null) : openKlantPop(i, e.currentTarget)} title="Toelichting voor de klant (verschijnt als ?-tooltip in het klantdashboard)">?</button>
-                      </div>
-                    </td>
-                    <td><RichCell html={r.toelichting} onChange={(v) => update(i, { toelichting: v })} placeholder="Toelichting" /></td>
-                    <td><input className="cell-num" type="number" value={r.uren ?? ""} onChange={(e) => update(i, { uren: e.target.value === "" ? null : Number(e.target.value) })} /></td>
-                    <td><select value={r.status} onChange={(e) => update(i, { status: e.target.value })}><option value="">—</option>{STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}</select></td>
-                    <td><button type="button" className={"wie-badge " + (isDev ? "wie-dev" : "wie-seo")} onClick={() => update(i, { wie: isDev ? "SEO" : "Dev" })} title="Klik om te wisselen tussen SEO en Developer">{isDev ? "Developer" : "SEO"}</button></td>
-                    <td><select value={r.maand} onChange={(e) => update(i, { maand: e.target.value })}><option value="">—</option>{MONTHS.map((m) => <option key={m} value={m}>{m}</option>)}</select></td>
-                    <td className="cell-check col-center"><input type="checkbox" checked={!!r._mail} onChange={(e) => update(i, { _mail: e.target.checked })} title="Aanvinken om mee te nemen in een mail (klik daarna op de knop Mail bovenaan)" /></td>
-                    <td className="row-actions">
-                      <button type="button" className="row-del" onClick={() => removeRow(i)} title="Verwijderen">×</button>
-                    </td>
-                  </tr>
-                );
-              })}
-              {secRows.length === 0 && <tr><td colSpan={9} className="muted" style={{ padding: 8 }}>Nog geen taken deze maand. Sleep er een hierheen of voeg toe.</td></tr>}
+              {verwerkt.map((x) => taskRow(x, maand))}
             </tbody>
           </table>
-        <button type="button" className="add-task-btn" onClick={() => addRow(maand, "SEO")}>+ taak</button>
+        )}
       </div>
     );
   }
@@ -598,7 +619,11 @@ export default function TasksEditor({ slug, initialTasks, initialStrategySession
     );
   }
 
-  const DONE = /klaar|afgerond|gereed|done|voltooid/i;
+  const DONE = /klaar|afgerond|gereed|done|voltooid|verwerkt/i;
+  // "Verwerkt" = volledig afgehandeld (bijv. door de websitebouwer). Deze taken
+  // zakken naar een apart blok onderaan de maandkaart, zodat je er niet meer naar
+  // hoeft te kijken. Ze tellen wel gewoon mee als bestede uren (via DONE hierboven).
+  const VERWERKT = /verwerkt/i;
   function monthCard(maand: string, label: string, items: { r: Row; i: number }[]) {
     const doneMin = items.filter((x) => DONE.test(x.r.status || "")).reduce((s, x) => s + (Number(x.r.uren) || 0), 0);
     const planMin = items.filter((x) => !DONE.test(x.r.status || "")).reduce((s, x) => s + (Number(x.r.uren) || 0), 0);

@@ -1939,3 +1939,9 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 }
 .psc-input:focus { outline: none; border-color: var(--orange); box-shadow: 0 0 0 3px rgba(231, 119, 63, 0.15); }
 .psc-actions { display: flex; gap: 8px; margin-top: 2px; }
+
+/* Tweede blok binnen een maandkaart: de "Volledig verwerkt"-taken. Zwarte
+   scheidingsbalk (niet plakkend, anders botst hij met de bovenste kop), met
+   wat lucht erboven zodat het duidelijk een apart, afgehandeld blok is. */
+.task-table-verwerkt { margin-top: 18px; }
+.task-table-verwerkt thead th { position: static; top: auto; z-index: auto; }
