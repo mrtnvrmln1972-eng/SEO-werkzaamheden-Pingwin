@@ -13,6 +13,7 @@ const LABEL: Record<string, string> = {
   pagina_toevoegen: "Pagina aanmaken",
   taak_aanmaken: "Taak aanmaken",
   plan_vastleggen: "Strategie vastleggen",
+  strategie_bepalen: "Strategie bepalen",
   pijplijn_starten: "Pijplijn starten",
   structured_data: "Structured data",
   alt_teksten: "Alt-teksten maken",
@@ -34,7 +35,7 @@ export default function ActionCard({ action, slug, thread, onExecuted, onGoToPag
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const editRef = useRef<HTMLDivElement>(null);
-  const editable = action.type === "profiel_bijwerken";
+  const editable = action.type === "profiel_bijwerken" || action.type === "strategie_bepalen";
   const done = !!action.executed;
   const result = action.result;
 

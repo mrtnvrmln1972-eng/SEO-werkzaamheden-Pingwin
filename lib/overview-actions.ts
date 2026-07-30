@@ -17,10 +17,10 @@ import { measurePage } from "./page-measure";
 import { callClaude, LIGHT_MODEL } from "./anthropic";
 import { sql, ensureSchema } from "./db";
 
-export type ActionType = "pagina_toevoegen" | "taak_aanmaken" | "plan_vastleggen" | "pijplijn_starten" | "structured_data" | "alt_teksten" | "meta_verbeteren" | "profiel_bijwerken";
-const VALID: ActionType[] = ["pagina_toevoegen", "taak_aanmaken", "plan_vastleggen", "pijplijn_starten", "structured_data", "alt_teksten", "meta_verbeteren", "profiel_bijwerken"];
+export type ActionType = "pagina_toevoegen" | "taak_aanmaken" | "plan_vastleggen" | "strategie_bepalen" | "pijplijn_starten" | "structured_data" | "alt_teksten" | "meta_verbeteren" | "profiel_bijwerken";
+const VALID: ActionType[] = ["pagina_toevoegen", "taak_aanmaken", "plan_vastleggen", "strategie_bepalen", "pijplijn_starten", "structured_data", "alt_teksten", "meta_verbeteren", "profiel_bijwerken"];
 // Types waarvan de kaart bewerkbaar is (Maarten kan de tekst bijstellen vóór goedkeuren).
-export const EDITABLE: ActionType[] = ["profiel_bijwerken"];
+export const EDITABLE: ActionType[] = ["profiel_bijwerken", "strategie_bepalen"];
 
 export type ActionResult = { ok: boolean; message: string; taskIds?: number[]; runId?: number; link?: string; text?: string };
 export type ProposedAction = {
@@ -119,6 +119,11 @@ export function validateAction(raw: Record<string, unknown>, domain: string, id:
       if (!url || !plan) return null;
       return { ...base, url, plan: plan.slice(0, 6000) };
     }
+    case "strategie_bepalen": {
+      const tekst = String(raw.tekst || "").trim();
+      if (!url || !tekst) return null;
+      return { ...base, url, tekst: tekst.slice(0, 8000) };
+    }
     case "pijplijn_starten": {
       if (!url) return null;
       const allowed = ["analyse", "blauwdruk", "copy"];
@@ -159,10 +164,29 @@ export async function executeAction(slug: string, action: ProposedAction): Promi
       await savePagePlan(slug, url, action.plan || "");
       return { ok: true, message: "Strategie vastgelegd bij de pagina.", link: url };
     }
+    case "strategie_bepalen": {
+      // De goedgekeurde (evt. door Maarten bijgestelde) strategie wordt het plan
+      // van de pagina. Dat opent de poort naar blauwdruk/copy (zie pijplijn_starten).
+      await savePagePlan(slug, url, action.tekst || "");
+      return { ok: true, message: "Strategie goedgekeurd en vastgelegd bij de pagina. De blauwdruk en copy kunnen nu.", link: url, text: action.tekst };
+    }
     case "pijplijn_starten": {
       let steps = (action.steps && action.steps.length ? action.steps : ["analyse", "blauwdruk", "copy"]) as ("analyse" | "blauwdruk" | "copy")[];
+      let isNew = false, plan = "";
+      try {
+        const urls = await getClientUrls(slug);
+        const u = urls.find((x) => sameUrl(x.url, url));
+        if (u) { isNew = u.status !== 200; plan = (u.plan || "").trim(); }
+      } catch { /* status onbekend, laat staan */ }
+      // POORT: een nieuwe pagina mag pas blauwdruk/copy als er een goedgekeurde
+      // strategie (plan) ligt. Zo denken we vanaf fase 1 na (incl. cannibalisatie)
+      // voordat we content op de verkeerde term optimaliseren.
+      const wantsBuild = steps.includes("blauwdruk") || steps.includes("copy");
+      if (isNew && wantsBuild && !plan) {
+        return { ok: false, message: "Nog geen goedgekeurde strategie voor deze nieuwe pagina. Keur eerst de strategie (met cannibalisatie-check) goed; daarna kan de blauwdruk en copy." };
+      }
       // Niet-live pagina: analyse overslaan (er is nog niets om te analyseren).
-      try { const urls = await getClientUrls(slug); const u = urls.find((x) => sameUrl(x.url, url)); if (u && u.status !== 200) steps = steps.filter((s) => s !== "analyse"); } catch { /* status onbekend, laat staan */ }
+      if (isNew) steps = steps.filter((s) => s !== "analyse");
       if (!steps.length) steps = ["blauwdruk", "copy"];
       const runId = await createDocRun(slug, url, action.extra || "", "", steps, "klant");
       runNow(runId).catch(() => {});
