@@ -35,12 +35,14 @@ export async function POST(req: NextRequest) {
     return res;
   }
 
-  // 1) Env-eigenaar: alleen het wachtwoord (ADMIN_PASSWORD), zoals altijd. Werkt
-  //    zowel zonder inlognaam als met de inlognaam "admin".
+  // 1) Env-eigenaar: alleen het wachtwoord (ADMIN_PASSWORD). Werkt met een lege
+  //    inlognaam, met "admin", of met het eigenaar-e-mailadres (zodat de
+  //    browser-autofill van maarten@pingwin.nl de login niet blokkeert).
+  const ownerLogin = (process.env.ADMIN_LOGIN || "maarten@pingwin.nl").toLowerCase();
   if (
     process.env.ADMIN_PASSWORD &&
     password === process.env.ADMIN_PASSWORD &&
-    (loginId === "" || loginId.toLowerCase() === "admin")
+    (loginId === "" || loginId.toLowerCase() === "admin" || loginId.toLowerCase() === ownerLogin)
   ) {
     return setCookie(makeAdminSession());
   }
