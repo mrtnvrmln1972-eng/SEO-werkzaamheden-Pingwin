@@ -77,7 +77,6 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
   const [open, setOpen] = useState<string | null>(null);      // welk onderwerp is uitgeklapt (accordion)
   const [messages, setMessages] = useState<Msg[]>([]);        // berichten van het open onderwerp
   const [titleDraft, setTitleDraft] = useState("");           // bewerkbare titel van het open onderwerp
-  const [sumDraft, setSumDraft] = useState("");               // bewerkbare samenvatting van het open onderwerp
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -111,7 +110,7 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
       const d = await fetch("/api/admin/overview/topic", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread, generate: true }) }).then((r) => r.json());
       if (d?.ok && (d.title || d.summary)) {
         setTopics((ts) => normalizeTopics(ts.map((x) => x.thread === thread ? { ...x, ...(d.title ? { title: d.title } : {}), ...(d.summary ? { summary: d.summary } : {}) } : x)));
-        if (openRef.current === thread) { if (d.title) setTitleDraft(d.title); if (d.summary) setSumDraft(d.summary); }
+        if (openRef.current === thread && d.title) setTitleDraft(d.title);
         return;
       }
     } catch { /* stil, meta is optioneel */ }
@@ -143,7 +142,7 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
 
   async function toggleOpen(t: Topic) {
     if (open === t.thread) { setOpen(null); setMessages([]); setError(""); return; }
-    setOpen(t.thread); setMessages([]); setError(""); setInput(""); setTitleDraft(t.title || ""); setSumDraft(t.summary || "");
+    setOpen(t.thread); setMessages([]); setError(""); setInput(""); setTitleDraft(t.title || "");
     const seq = ++loadSeq.current;
     const d = await fetch(`/api/admin/chat?slug=${encodeURIComponent(slug)}&thread=${encodeURIComponent(t.thread)}&nothreads=1`).then((r) => r.json()).catch(() => null);
     if (seq !== loadSeq.current) return;               // een nieuwer onderwerp is intussen geopend
@@ -160,7 +159,7 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
   function newTopic() {
     const t = "overzicht:~" + Date.now().toString(36);
     setTopics((ts) => [{ thread: t, count: 0, title: "", summary: "", done: false }, ...ts]);
-    setOpen(t); setMessages([]); setError(""); setInput(""); setTitleDraft(""); setSumDraft("");
+    setOpen(t); setMessages([]); setError(""); setInput(""); setTitleDraft("");
   }
 
   // Weergavetitel: eigen titel als die er is, anders de naam uit de thread.
@@ -169,11 +168,6 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
   async function saveTitle(thread: string, title: string) {
     setTopics((ts) => ts.map((x) => x.thread === thread ? { ...x, title } : x));
     await fetch("/api/admin/overview/topic", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread, title }) }).catch(() => {});
-  }
-
-  async function saveSummary(thread: string, summary: string) {
-    setTopics((ts) => ts.map((x) => x.thread === thread ? { ...x, summary } : x));
-    await fetch("/api/admin/overview/topic", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread, summary }) }).catch(() => {});
   }
 
   async function toggleDone(thread: string, done: boolean) {
@@ -218,7 +212,7 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
         const newTitle = typeof data.title === "string" && data.title.trim() ? data.title.trim() : "";
         const newSum = typeof data.summary === "string" && data.summary.trim() ? data.summary.trim() : "";
         setTopics((ts) => ts.map((x) => x.thread === t ? { ...x, count: next.length + 1, ...(newTitle ? { title: newTitle } : {}), ...(newSum ? { summary: newSum } : {}) } : x));
-        if (openRef.current === t) { if (newTitle) setTitleDraft(newTitle); if (newSum) setSumDraft(newSum); }
+        if (openRef.current === t && newTitle) setTitleDraft(newTitle);
       } else setError(data.error || "Er ging iets mis.");
     } catch { setError("De assistent is niet bereikbaar."); } finally { setBusy(false); }
   }
@@ -249,29 +243,24 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
                   onChange={(e) => toggleDone(t.thread, e.target.checked)}
                   title="Markeer dit onderwerp als gedaan"
                 />
-                <span className="ovc-topic-title">{titleOf(t)}</span>
-                {!isOpen && t.summary && <span className="ovc-topic-sum">{t.summary}</span>}
+                <div className="ovc-topic-textcol">
+                  {isOpen
+                    ? <input
+                        className="ovc-title-inline"
+                        value={titleDraft}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => setTitleDraft(e.target.value)}
+                        onBlur={() => { if (titleDraft.trim() !== (t.title || "").trim()) saveTitle(t.thread, titleDraft.trim()); }}
+                        placeholder="Titel (vult zichzelf in na je eerste vraag)"
+                        maxLength={80}
+                      />
+                    : <span className="ovc-topic-title">{titleOf(t)}</span>}
+                  {!isOpen && t.summary && <span className="ovc-topic-sum">{t.summary}</span>}
+                </div>
               </div>
 
               {isOpen && (
                 <div className="ovc-topic-body">
-                  <input
-                    className="ovc-title-edit"
-                    value={titleDraft}
-                    onChange={(e) => setTitleDraft(e.target.value)}
-                    onBlur={() => { if (titleDraft.trim() !== (t.title || "").trim()) saveTitle(t.thread, titleDraft.trim()); }}
-                    placeholder="Titel van dit onderwerp (bijv. 'Trifocale lenzenpagina's')"
-                    maxLength={80}
-                  />
-                  <input
-                    className="ovc-sum-edit"
-                    value={sumDraft}
-                    onChange={(e) => setSumDraft(e.target.value)}
-                    onBlur={() => { if (sumDraft.trim() !== (t.summary || "").trim()) saveSummary(t.thread, sumDraft.trim()); }}
-                    placeholder="Korte samenvatting (1 regel): wat speelt er in dit onderwerp?"
-                    maxLength={200}
-                  />
-
                   <div className="ovc-log">
                     {messages.map((m, i) => (
                       <div key={i} className={"ovc-msg " + m.role}>
