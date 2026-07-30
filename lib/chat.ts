@@ -203,6 +203,23 @@ async function buildOverviewContext(client: ClientConfig): Promise<string> {
   if (links.length) parts.push("\n=== SNELLE LINKS (leesbaar met lees_document) ===\n" + links.join("\n"));
   const prof = (client.seoProfile || "").trim();
   if (prof) parts.push("\n=== KLANTPROFIEL (positionering/werkgebied) ===\n" + prof.slice(0, 2500));
+  // Recente e-mails als basisinfo: nieuwe wensen, herzieningen, ingevulde formulieren
+  // van de klant horen mee te wegen in de strategie (nieuwste eerst).
+  try {
+    let emails = await getEmails(client.slug);
+    const ms = await msStatus();
+    if (ms.connected) { const q = (client.email || client.domain || "").trim(); if (q) { const live = await msSearchClientEmails(q, ms.account || "", 12); if (live) emails = live; } }
+    emails = emails.filter((e) => !/@ahrefs\.com$/i.test((e.fromAddress || "").trim()));
+    if (emails.length) {
+      const lines = emails.slice(0, 8).map((e) => {
+        const dir = e.direction === "out" ? "WIJ→klant" : "klant→WIJ";
+        const date = e.receivedAt ? new Date(e.receivedAt).toLocaleDateString("nl-NL") : "";
+        const body = (stripHtml(e.bodyHtml || "") || e.preview || "").replace(/\s+/g, " ").trim().slice(0, 600);
+        return `[${dir}, ${date}] ${e.subject || "(geen onderwerp)"}: ${body}`;
+      });
+      parts.push("\n=== RECENTE E-MAILS (basisinfo; nieuwste eerst; neem relevante punten en herzieningen mee in de strategie) ===\n" + lines.join("\n"));
+    }
+  } catch { /* aanvulling */ }
   try {
     const { status } = await getStatus(client.slug);
     if (status.exchanges.length) parts.push("\n=== STAND VAN ZAKEN ===\n" + status.exchanges.map((ex) => `[${ex.side === "client" ? "KLANT" : "WIJ"}, ${ex.status === "done" ? "afgehandeld" : "OPEN"}] ${ex.text}`).join("\n"));
@@ -385,6 +402,7 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
       `HOE JE DENKT:\n` +
       `- Vertrek vanuit de afgesproken strategie; plaats het laaghangend fruit dáárop, niet los ervan.\n` +
       `- Vraagt Maarten "waar waren we / wat hebben we gedaan", vat dan concreet samen uit de werkstatus per pagina: wat is geoptimaliseerd, wat loopt, wat staat gepland.\n` +
+      `- Werk als proactieve partner: betrek de recente e-mails. Nieuwe wensen, herzieningen, positioneringsvragen of ingevulde formulieren van de klant wegen mee in de strategie; signaleer zelf als een mail iets raakt dat we moeten oppakken of aanpassen.\n` +
       `- Adviseer concrete VERVOLGSTAPPEN, belangrijkste eerst, met in één zin waarom. Zijn er stappen die het dashboard kan uitvoeren (een nieuwe pagina aanmaken, een taak, de pijplijn analyse/blauwdruk/copy starten, structured data, of een alt-tekst-lijst voor de sitebouwer), stel ze dan aan het EIND voor met het gereedschap stel_acties_voor, zodat Maarten ze met één klik kan goedkeuren. Verwijs er kort naar in je tekst; herhaal ze niet als aparte lijst.\n` +
       `- Verzin geen cijfers; noem alleen wat uit de bronnen of het gereedschap komt.\n\n` +
       `OPMAAK: Nederlands, conversationeel, Markdown, geen emoji. Korte alinea's, bullets (-), **vet** voor kernpunten, cijfers in een nette Markdown-tabel. Mens aan het stuur: jij adviseert en stelt voor, Maarten beslist.\n\n--- OVERZICHT-CONTEXT ---\n${context}`
