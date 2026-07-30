@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { monthFromISOWeek } from "./weekplan";
 
 // ═══════════════════════════════════════════════════════════
 // WERKZAAMHEDEN PER KLANT (in het dashboard, niet in Google Sheets)
@@ -28,6 +29,9 @@ export type TaskRow = {
   stepKind?: string;      // pijplijn-stap: "analyse_doc" | "blauwdruk_doc" | "copy_doc"
   docLink?: string;       // technisch document (Drive-link) bij deze stap (intern/dev)
   clientDocLink?: string; // klantversie-document (Drive-link) voor het klantdashboard
+  weekYear?: number;      // ISO-jaar van de geplande week (0 = ongepland)
+  weekNo?: number;        // ISO-weeknummer van de geplande week (0 = ongepland)
+  thread?: string;        // bird's eye-onderwerp waar de taak uit rolde
 };
 
 // Inhoudssleutel van een taak: twee rijen met exact dezelfde inhoud (taak,
@@ -108,7 +112,7 @@ export async function getTasks(slug: string): Promise<TaskRow[]> {
   await migrateStepTaskLinks(slug).catch(() => { /* niet kritisch */ });
   const { rows } = await sql`
     SELECT id, categorie, taak, toelichting, klant_toelichting, uren, status, maand, link, wie, klant_zichtbaar, gemaild,
-           fase, cluster, geblokkeerd, blokkade_reden, page_url, step_kind, doc_link, client_doc_link
+           fase, cluster, geblokkeerd, blokkade_reden, page_url, step_kind, doc_link, client_doc_link, week_year, week_no, thread
     FROM client_tasks WHERE client_slug = ${slug} ORDER BY sort_order ASC, id ASC`;
   const mapped = rows.map((r) => ({
     id: r.id as number,
@@ -131,6 +135,9 @@ export async function getTasks(slug: string): Promise<TaskRow[]> {
     stepKind: r.step_kind ?? "",
     docLink: r.doc_link ?? "",
     clientDocLink: r.client_doc_link ?? "",
+    weekYear: Number(r.week_year ?? 0),
+    weekNo: Number(r.week_no ?? 0),
+    thread: r.thread ?? "",
   }));
   return dedupePageTasks(dedupeTasks(mapped));
 }
@@ -144,11 +151,16 @@ export async function appendTasks(slug: string, tasks: Partial<TaskRow>[]): Prom
   const ids: number[] = [];
   for (const t of tasks) {
     if (!t.taak || !t.taak.trim()) continue;
+    const wy = Number(t.weekYear ?? 0) || 0;
+    const wn = Number(t.weekNo ?? 0) || 0;
+    // Maand voor de klant-rollup: expliciet meegegeven maand wint; anders leiden we
+    // hem af uit de geplande week ("week voor jou, maand voor klant").
+    const maand = (t.maand || "").toLowerCase() || (wn > 0 ? monthFromISOWeek(wy, wn) : null);
     const res = await sql`
       INSERT INTO client_tasks (client_slug, sort_order, categorie, taak, toelichting, klant_toelichting, uren, status, maand, link, wie, klant_zichtbaar,
-                                fase, cluster, geblokkeerd, blokkade_reden, page_url, updated_at)
-      VALUES (${slug}, ${order}, ${t.categorie || null}, ${t.taak.trim()}, ${t.toelichting || null}, ${t.klantToelichting || null}, ${t.uren ?? null}, ${t.status || "Gepland"}, ${(t.maand || "").toLowerCase() || null}, ${t.link || null}, ${t.wie || null}, ${t.klantZichtbaar !== false},
-              ${t.fase || null}, ${t.cluster || null}, ${!!t.geblokkeerd}, ${t.blokkadeReden || null}, ${t.pageUrl || null}, now())
+                                fase, cluster, geblokkeerd, blokkade_reden, page_url, week_year, week_no, thread, updated_at)
+      VALUES (${slug}, ${order}, ${t.categorie || null}, ${t.taak.trim()}, ${t.toelichting || null}, ${t.klantToelichting || null}, ${t.uren ?? null}, ${t.status || "Gepland"}, ${maand}, ${t.link || null}, ${t.wie || null}, ${t.klantZichtbaar !== false},
+              ${t.fase || null}, ${t.cluster || null}, ${!!t.geblokkeerd}, ${t.blokkadeReden || null}, ${t.pageUrl || null}, ${wy}, ${wn}, ${t.thread || null}, now())
       RETURNING id`;
     if (res.rows[0]?.id != null) ids.push(Number(res.rows[0].id));
     order++;
@@ -240,11 +252,11 @@ export async function replaceTasks(slug: string, tasks: TaskRow[]): Promise<numb
     const uren = t.uren === null || t.uren === undefined || Number.isNaN(Number(t.uren)) ? null : Number(t.uren);
     await sql`
       INSERT INTO client_tasks (client_slug, sort_order, categorie, taak, toelichting, klant_toelichting, uren, status, maand, link, wie, klant_zichtbaar, gemaild,
-                                fase, cluster, geblokkeerd, blokkade_reden, page_url, step_kind, doc_link, client_doc_link, updated_at)
+                                fase, cluster, geblokkeerd, blokkade_reden, page_url, step_kind, doc_link, client_doc_link, week_year, week_no, thread, updated_at)
       VALUES (${slug}, ${i}, ${t.categorie || null}, ${t.taak.trim()}, ${t.toelichting || null}, ${t.klantToelichting || null}, ${uren},
               ${t.status || null}, ${(t.maand || "").toLowerCase() || null}, ${t.link || null}, ${t.wie || null}, ${!!t.klantZichtbaar}, ${!!t.gemaild},
               ${t.fase || null}, ${t.cluster || null}, ${!!t.geblokkeerd}, ${t.blokkadeReden || null}, ${t.pageUrl || null},
-              ${t.stepKind || null}, ${t.docLink || null}, ${t.clientDocLink || null}, now())`;
+              ${t.stepKind || null}, ${t.docLink || null}, ${t.clientDocLink || null}, ${Number(t.weekYear ?? 0) || 0}, ${Number(t.weekNo ?? 0) || 0}, ${t.thread || null}, now())`;
     n++;
   }
   return n;
