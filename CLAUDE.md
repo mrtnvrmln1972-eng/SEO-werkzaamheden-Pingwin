@@ -1,5 +1,18 @@
 # CLAUDE.md, projectfoundation Pingwin SEO Dashboard
 
+## Centraal brein (laad dit eerst)
+
+Dit project wordt aangestuurd vanuit het centrale **pingwin-brein**
+(repo `mrtnvrmln1972-eng/pingwin-brein`): daarin staat wie Pingwin is, hoe Maarten wil werken,
+de klant-kennis, de beslissingen en de cockpit-visie. **Lees dat brein aan het begin van elke
+sessie** (plus het relevante klantbestand in `pingwin-brein/klanten/`), zodat je vanuit hetzelfde
+gedeelde geheugen werkt en Maarten niets hoeft te herhalen.
+
+Is het brein-repo in deze sessie als bron beschikbaar (naast dit SEO-repo), lees het dan direct.
+Is het er niet, meld dat dan, zodat Maarten het als bron aan deze omgeving koppelt. Doel: alle
+Pingwin-werelden (SEO-dashboard, Lifemax, social machine) werken vanuit ditzelfde brein, zodat
+je overal dezelfde partner bent die alles van hem weet.
+
 ## Hoe Claude met Maarten werkt
 
 Algemene werkwijze, geldt in elke sessie. Master staat op Maartens Mac in
