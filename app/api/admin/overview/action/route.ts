@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../../lib/admin-auth";
 import { guardSlug } from "../../../../../lib/admin-scope";
-import { getChatHistory, replaceChatHistory, type ChatMessage } from "../../../../../lib/chat";
-import { executeAction, EDITABLE, type ProposedAction } from "../../../../../lib/overview-actions";
+import { getChatHistory, type ChatMessage } from "../../../../../lib/chat";
+import { executeAction, EDITABLE, getActionStatus, recordActionStatus, type ProposedAction } from "../../../../../lib/overview-actions";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -26,27 +26,25 @@ export async function POST(req: NextRequest) {
 
   const history = await getChatHistory(slug, thread) as ChatMessage[];
   let found: ProposedAction | undefined;
-  let msgIdx = -1, actIdx = -1;
-  for (let i = 0; i < history.length; i++) {
-    const acts = history[i].actions;
-    if (!acts) continue;
-    const j = acts.findIndex((a) => a.id === actionId);
-    if (j !== -1) { found = acts[j]; msgIdx = i; actIdx = j; break; }
+  for (const m of history) {
+    const a = m.actions?.find((x) => x.id === actionId);
+    if (a) { found = a; break; }
   }
   if (!found) return NextResponse.json({ ok: false, error: "Actie niet gevonden (mogelijk verlopen uit de historie)." }, { status: 404 });
-  if (found.executed) return NextResponse.json({ ok: true, alreadyDone: true, result: found.result });
+
+  // Al uitgevoerd? Niets opnieuw doen. De status-tabel is de bron van waarheid
+  // (niet de chat-JSON), zodat gelijktijdige goedkeuringen elkaar niet raken.
+  const prior = await getActionStatus(actionId);
+  if (prior?.executed) return NextResponse.json({ ok: true, alreadyDone: true, result: prior.result });
 
   // Bewerkbare acties (bv. profiel_bijwerken): gebruik de door Maarten bijgestelde tekst.
   if (EDITABLE.includes(found.type) && typeof body.edit === "string" && body.edit.trim()) {
     found = { ...found, tekst: String(body.edit).slice(0, 4000).trim() };
   }
   const result = await executeAction(slug, found);
-  // Markeer de actie in de historie (ook bij mislukken, met het resultaat), zodat
-  // de status terugvindbaar blijft. Bij mislukken laten we 'executed' vals zodat
-  // opnieuw proberen mogelijk is.
-  const acts = history[msgIdx].actions!;
-  acts[actIdx] = { ...found, executed: result.ok ? true : false, result };
-  await replaceChatHistory(slug, thread, history);
+  // Status atomisch als eigen rij wegschrijven (ook bij mislukken, met het
+  // resultaat). Bij mislukken blijft 'executed' vals zodat opnieuw proberen kan.
+  await recordActionStatus(slug, thread, actionId, result.ok, result);
 
   return NextResponse.json({ ok: result.ok, result });
 }

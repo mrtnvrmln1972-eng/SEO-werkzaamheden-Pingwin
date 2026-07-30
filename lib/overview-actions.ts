@@ -15,6 +15,7 @@ import { runPageSchema, applyPageSchema } from "./page-schema";
 import { generateMetaProposal } from "./meta-ctr";
 import { measurePage } from "./page-measure";
 import { callClaude, LIGHT_MODEL } from "./anthropic";
+import { sql, ensureSchema } from "./db";
 
 export type ActionType = "pagina_toevoegen" | "taak_aanmaken" | "plan_vastleggen" | "pijplijn_starten" | "structured_data" | "alt_teksten" | "meta_verbeteren" | "profiel_bijwerken";
 const VALID: ActionType[] = ["pagina_toevoegen", "taak_aanmaken", "plan_vastleggen", "pijplijn_starten", "structured_data", "alt_teksten", "meta_verbeteren", "profiel_bijwerken"];
@@ -27,6 +28,49 @@ export type ProposedAction = {
   url?: string; title?: string; taak?: string; fase?: string; wie?: string; plan?: string; steps?: string[]; extra?: string; keyword?: string; tekst?: string;
   executed?: boolean; result?: ActionResult;
 };
+
+// ── Uitvoerstatus per actie (los van de chat-JSON) ─────────────────────────
+// Waarom apart: als Maarten meerdere kaarten snel achter elkaar goedkeurt,
+// schreef de oude aanpak telkens de HÉLE chatgeschiedenis terug; gelijktijdige
+// goedkeuringen overschreven dan elkaars status ("vielen terug"). Elke status is
+// nu een eigen rij (atomair per actie), dus dat kan niet meer gebeuren.
+export type StoredStatus = { executed: boolean; result?: ActionResult };
+
+export async function getActionStatus(actionId: string): Promise<StoredStatus | null> {
+  await ensureSchema();
+  const { rows } = await sql`SELECT executed, result FROM overview_action_status WHERE action_id = ${actionId} LIMIT 1`;
+  if (!rows[0]) return null;
+  return { executed: !!rows[0].executed, result: (rows[0].result as ActionResult) || undefined };
+}
+
+export async function recordActionStatus(slug: string, thread: string, actionId: string, executed: boolean, result: ActionResult): Promise<void> {
+  await ensureSchema();
+  // Een geslaagde uitvoering nooit terugzetten naar niet-uitgevoerd (OR-logica).
+  await sql`
+    INSERT INTO overview_action_status (action_id, client_slug, thread, executed, result, updated_at)
+    VALUES (${actionId}, ${slug}, ${thread}, ${executed}, ${JSON.stringify(result)}::jsonb, now())
+    ON CONFLICT (action_id) DO UPDATE
+      SET executed   = overview_action_status.executed OR EXCLUDED.executed,
+          result     = EXCLUDED.result,
+          thread     = EXCLUDED.thread,
+          updated_at = now()`;
+}
+
+// Verrijkt geladen berichten met de opgeslagen uitvoerstatus, zodat de kaarten
+// na herladen (of op een ander tabblad) hun juiste "✓ gedaan"-stand tonen. De
+// status-tabel is de bron van waarheid, niet de chat-JSON.
+export async function applyActionStatuses<T extends { actions?: ProposedAction[] }>(slug: string, messages: T[]): Promise<T[]> {
+  const hasActions = messages.some((m) => m.actions && m.actions.length > 0);
+  if (!hasActions) return messages;
+  await ensureSchema();
+  const { rows } = await sql`SELECT action_id, executed, result FROM overview_action_status WHERE client_slug = ${slug}`;
+  if (!rows.length) return messages;
+  const map = new Map<string, StoredStatus>();
+  for (const r of rows) map.set(r.action_id as string, { executed: !!r.executed, result: (r.result as ActionResult) || undefined });
+  return messages.map((m) => m.actions
+    ? { ...m, actions: m.actions.map((a) => { const s = map.get(a.id); return s ? { ...a, executed: s.executed, result: s.result ?? a.result } : a; }) }
+    : m);
+}
 
 // De sectie in het klantprofiel die automatisch uit de mail wordt bijgehouden.
 const PROFIEL_SECTIE = "## Uit klantcommunicatie (bijgehouden uit mail)";

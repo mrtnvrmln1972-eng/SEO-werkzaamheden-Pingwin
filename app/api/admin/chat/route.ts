@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
 import { answerChat, clearChatHistory, getChatHistory, listChatThreads, replaceChatHistory } from "../../../../lib/chat";
+import { applyActionStatuses } from "../../../../lib/overview-actions";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -16,7 +17,12 @@ export async function GET(req: NextRequest) {
   const g = await guardSlug(req, slug); if (!g.ok) return g.res;
   const thread = req.nextUrl.searchParams.get("thread") || "";
   const threads = await listChatThreads(slug);
-  const messages = thread ? await getChatHistory(slug, thread) : [];
+  let messages = thread ? await getChatHistory(slug, thread) : [];
+  // Bird's eye-threads: verrijk de actie-kaarten met hun opgeslagen uitvoerstatus,
+  // zodat een goedgekeurde kaart na herladen op "✓ gedaan" blijft staan.
+  if (thread && thread.startsWith("overzicht") && messages.length) {
+    messages = await applyActionStatuses(slug, messages);
+  }
   return NextResponse.json({ ok: true, threads, messages });
 }
 

@@ -201,6 +201,20 @@ async function init(): Promise<void> {
   await sql`ALTER TABLE client_chat DROP CONSTRAINT IF EXISTS client_chat_pkey`;
   await sql`CREATE UNIQUE INDEX IF NOT EXISTS ux_client_chat_thread ON client_chat(client_slug, thread)`;
 
+  // Uitvoerstatus van de bird's eye-actie-kaarten, los van de chat-JSON. Elke
+  // goedkeuring is een eigen rij (atomair per actie), zodat meerdere
+  // goedkeuringen tegelijk elkaars status niet meer overschrijven. action_id is
+  // de unieke id uit stel_acties_voor.
+  await sql`
+    CREATE TABLE IF NOT EXISTS overview_action_status (
+      action_id   TEXT PRIMARY KEY,
+      client_slug TEXT NOT NULL,
+      thread      TEXT NOT NULL,
+      executed    BOOLEAN NOT NULL DEFAULT false,
+      result      JSONB,
+      updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    )`;
+
   // Werkzaamheden per klant, ín het dashboard (alternatief voor de Google Sheet).
   // SEO- en Dev-taken samen; per maand, met uren, status, link en zichtbaarheid
   // voor het klant-dashboard. Volgorde via sort_order (slepen).
