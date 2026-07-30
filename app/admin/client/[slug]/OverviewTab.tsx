@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import OverviewChat from "./OverviewChat";
 
 type Status = {
   totaal: number; leeg: number; halfPlan: number; heeftPlan: number;
@@ -19,7 +20,7 @@ function fmt(n: number): string { return (n || 0).toLocaleString("nl-NL"); }
 
 // Site-breed overzicht per klant: waar staan we (werkstatus) en waar zit het
 // laaghangend fruit. De bird's eye-chat komt in een volgende fase rechts hiernaast.
-export default function OverviewTab({ slug, clientName, onGoToPage }: { slug: string; clientName?: string; onGoToPage?: (url: string) => void }) {
+export default function OverviewTab({ slug, clientName, onGoToPage, chatConfigured }: { slug: string; clientName?: string; onGoToPage?: (url: string) => void; chatConfigured?: boolean }) {
   const [data, setData] = useState<Overview | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -42,7 +43,8 @@ export default function OverviewTab({ slug, clientName, onGoToPage }: { slug: st
   const s = data?.status;
 
   return (
-    <div className="overview-tab">
+    <div className="overview-tab ov-layout">
+      <div className="ov-left">
       <div className="cockpit-card acc-orange">
         <div className="ck-section-head">
           <span>Overzicht{clientName ? ` — ${clientName}` : ""}</span>
@@ -131,6 +133,11 @@ export default function OverviewTab({ slug, clientName, onGoToPage }: { slug: st
           )}
         </div>
       )}
+      </div>
+
+      <div className="ov-right">
+        <OverviewChat slug={slug} configured={chatConfigured !== false} onGoToPage={onGoToPage} />
+      </div>
     </div>
   );
 }

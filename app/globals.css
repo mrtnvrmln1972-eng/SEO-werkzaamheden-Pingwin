@@ -1986,3 +1986,29 @@ tbody tr.row-done:hover { background: #E2F1E2; }
   font-size: 11px; font-weight: 700; color: #1e824c; background: #e6f6ec;
   border-radius: 6px; padding: 1px 8px; white-space: nowrap;
 }
+
+/* ── Overzicht-tab: twee kolommen (overzicht links, bird's eye-chat rechts) ── */
+.ov-layout { display: grid; grid-template-columns: 1.55fr 1fr; gap: 16px; align-items: start; }
+.ov-left { min-width: 0; }
+.ov-right { position: sticky; top: 150px; }
+@media (max-width: 1024px) { .ov-layout { grid-template-columns: 1fr; } .ov-right { position: static; } }
+/* In de smallere linkerkolom fruit/CTR onder elkaar i.p.v. naast elkaar. */
+.ov-layout .ov-columns { grid-template-columns: 1fr; }
+
+/* Gedokte bird's eye-chat */
+.ovc-card { display: flex; flex-direction: column; height: calc(100vh - 210px); min-height: 460px; padding: 12px 14px; margin-bottom: 0; }
+.ovc-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-bottom: 10px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+.ovc-title { display: inline-flex; align-items: center; gap: 7px; font-weight: 800; font-size: 14px; color: var(--dark); margin-right: auto; }
+.ovc-log { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 4px; }
+.ovc-intro { font-size: 13px; line-height: 1.5; padding: 4px 2px; }
+.ovc-msg { position: relative; display: flex; }
+.ovc-msg.user { justify-content: flex-end; }
+.ovc-msg .chat-msg-del { opacity: 0; }
+.ovc-msg:hover .chat-msg-del { opacity: 0.5; }
+.ovc-bubble { max-width: 92%; padding: 8px 12px; border-radius: 12px; font-size: 14px; line-height: 1.5; }
+.ovc-msg.user .ovc-bubble { background: var(--orange); color: #fff; border-bottom-right-radius: 4px; }
+.ovc-msg.assistant .ovc-bubble { background: #f4f4f5; color: #1f1f1f; border-bottom-left-radius: 4px; }
+.ovc-msg.assistant .ovc-bubble.muted { background: none; color: var(--gray); font-style: italic; }
+.ovc-input { display: flex; gap: 8px; margin-top: 10px; }
+.ovc-input input { flex: 1; font-family: inherit; font-size: 14px; padding: 9px 12px; border: 1px solid var(--border); border-radius: 9px; }
+.ovc-input input:focus { outline: none; border-color: var(--orange); box-shadow: 0 0 0 3px rgba(231, 119, 63, 0.15); }

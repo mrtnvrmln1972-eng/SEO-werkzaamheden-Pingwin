@@ -127,6 +127,67 @@ export async function buildOverview(slug: string, opts: { fresh?: boolean } = {}
   return { ok: true, hasDomain: !!domain, status, fruit, ctr, gaten: gatenTop, updatedAt: new Date().toISOString() };
 }
 
+// ── Werkstatus per pagina: wat is gedaan, wat loopt, wat is gepland ──
+export type PageWork = {
+  url: string; live: boolean; hasPlan: boolean; hasClusterAdvice: boolean;
+  docs: string[]; summaryNu: string; summaryDoel: string; summaryZet: string;
+  clicks: number; impressions: number;
+};
+
+export async function getPageWorkStatus(slug: string): Promise<PageWork[]> {
+  const urls = await getClientUrls(slug).catch(() => []);
+  let docsByUrl: Record<string, string[]> = {};
+  let sumByUrl: Record<string, { nu: string; doel: string; zet: string }> = {};
+  try {
+    const { rows } = await sql`SELECT url, array_agg(DISTINCT kind) AS kinds FROM page_doc_outputs WHERE client_slug = ${slug} GROUP BY url`;
+    docsByUrl = Object.fromEntries(rows.map((r) => [norm(String(r.url)), ((r.kinds as string[]) || []).filter(Boolean)]));
+  } catch { docsByUrl = {}; }
+  try {
+    const { rows } = await sql`SELECT url, nu, doel, zet FROM page_summaries WHERE client_slug = ${slug}`;
+    sumByUrl = Object.fromEntries(rows.map((r) => [norm(String(r.url)), { nu: (r.nu as string) || "", doel: (r.doel as string) || "", zet: (r.zet as string) || "" }]));
+  } catch { sumByUrl = {}; }
+  return urls.map((u) => {
+    const k = norm(u.url);
+    const sum = sumByUrl[k] || { nu: "", doel: "", zet: "" };
+    return {
+      url: u.url, live: u.status === 200, hasPlan: !!(u.plan || "").trim(), hasClusterAdvice: !!u.hasClusterAdvice,
+      docs: docsByUrl[k] || [], summaryNu: sum.nu, summaryDoel: sum.doel, summaryZet: sum.zet,
+      clicks: u.gscClicks || 0, impressions: u.gscImpressions || 0,
+    };
+  });
+}
+
+// Tekstweergave van de werkstatus voor de chatcontext: drie groepen (bewerkt,
+// onbewerkt-met-kans, gepland), begrensd zodat de context niet ontploft.
+export function pageWorkStatusToText(pages: PageWork[]): string {
+  const short = (u: string) => { try { const x = new URL(u); return x.pathname + x.search; } catch { return u; } };
+  const bewerkt = pages.filter((p) => p.hasPlan || p.docs.length);
+  const gepland = pages.filter((p) => !p.live && !p.hasPlan && !p.docs.length);
+  const onbewerkt = pages
+    .filter((p) => p.live && !p.hasPlan && !p.docs.length && p.impressions > 0)
+    .sort((a, b) => b.impressions - a.impressions)
+    .slice(0, 15);
+  const lines: string[] = [];
+  if (bewerkt.length) {
+    lines.push(`AL BEWERKTE PAGINA'S (${bewerkt.length}) — hier is al strategie/werk aan gedaan:`);
+    for (const p of bewerkt.slice(0, 40)) {
+      const docs = p.docs.length ? ` [documenten: ${p.docs.join(", ")}]` : "";
+      const plan = p.hasPlan ? " [strategie vastgelegd]" : p.hasClusterAdvice ? " [half plan/vertrekpunt]" : "";
+      const sum = p.summaryZet ? ` — volgende zet: ${p.summaryZet}` : p.summaryDoel ? ` — doel: ${p.summaryDoel}` : "";
+      lines.push(`- ${short(p.url)}${plan}${docs}${sum}`);
+    }
+  }
+  if (onbewerkt.length) {
+    lines.push("\nNOG ONBEWERKTE PAGINA'S MET VERTONINGEN (kans, nog geen plan):");
+    for (const p of onbewerkt) lines.push(`- ${short(p.url)} (${p.impressions} vertoningen, ${p.clicks} klikken)`);
+  }
+  if (gepland.length) {
+    lines.push(`\nGEPLANDE / NOG NIET LIVE PAGINA'S (${gepland.length}):`);
+    for (const p of gepland.slice(0, 25)) lines.push(`- ${short(p.url)}${p.hasPlan ? " [strategie ligt klaar]" : ""}`);
+  }
+  return lines.join("\n");
+}
+
 // Compacte tekstsamenvatting van het overzicht voor de bird's eye-chatcontext.
 // (Gebruikt in Fase B; hier alvast zodat er één bron blijft.)
 export function overviewToText(o: Overview): string {

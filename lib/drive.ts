@@ -66,6 +66,57 @@ export async function folderName(folderId: string): Promise<string> {
   return (j.name as string) || "";
 }
 
+// ── Documentinhoud lezen (Google Doc/Sheet/Slides) ──
+// Haalt een Drive-file-id uit een geplakte URL of losse id. Ondersteunt de
+// gangbare Google-linkvormen (/d/<id>/, ?id=<id>) plus een kale id.
+export function driveIdFromUrl(input: string): string {
+  const s = (input || "").trim();
+  const byPath = s.match(/\/d\/([a-zA-Z0-9_-]{20,})/);
+  if (byPath) return byPath[1];
+  const byQuery = s.match(/[?&]id=([a-zA-Z0-9_-]{20,})/);
+  if (byQuery) return byQuery[1];
+  if (/^[a-zA-Z0-9_-]{20,}$/.test(s)) return s;
+  return "";
+}
+
+// Leest de tekstinhoud van een gekoppeld Google-document (Doc/Sheet/Slides) uit,
+// zodat de bird's eye-agent de afgesproken strategie (navigatie, zoekwoorden,
+// werkdocument) echt kan raadplegen in plaats van alleen de link te zien.
+// Begrensd tot ~12k tekens zodat de context niet ontploft.
+export async function readDriveDoc(idOrUrl: string, maxChars = 12000): Promise<{ ok: boolean; name?: string; text?: string; error?: string }> {
+  const id = driveIdFromUrl(idOrUrl);
+  if (!id) return { ok: false, error: "Geen geldige Google Drive-link of document-id herkend." };
+  let t: string;
+  try { t = await token(); } catch (e) { return { ok: false, error: (e as Error).message }; }
+  const auth = { Authorization: `Bearer ${t}` };
+  // Metadata (naam + type) bepaalt hoe we exporteren.
+  const metaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${id}?fields=name,mimeType&supportsAllDrives=true`, { headers: auth });
+  if (!metaRes.ok) return { ok: false, error: await driveErr(metaRes, "het openen van het document") };
+  const meta = await metaRes.json();
+  const mime = String(meta.mimeType || "");
+  const name = String(meta.name || "");
+  const exportMap: Record<string, string> = {
+    "application/vnd.google-apps.document": "text/plain",
+    "application/vnd.google-apps.spreadsheet": "text/csv",
+    "application/vnd.google-apps.presentation": "text/plain",
+  };
+  let text = "";
+  if (exportMap[mime]) {
+    const ex = await fetch(`https://www.googleapis.com/drive/v3/files/${id}/export?mimeType=${encodeURIComponent(exportMap[mime])}&supportsAllDrives=true`, { headers: auth });
+    if (!ex.ok) return { ok: false, error: await driveErr(ex, "het uitlezen van het document") };
+    text = await ex.text();
+  } else if (/^text\/|^application\/json/.test(mime)) {
+    const dl = await fetch(`https://www.googleapis.com/drive/v3/files/${id}?alt=media&supportsAllDrives=true`, { headers: auth });
+    if (!dl.ok) return { ok: false, error: await driveErr(dl, "het downloaden van het document") };
+    text = await dl.text();
+  } else {
+    return { ok: false, error: `Dit bestandstype (${mime || "onbekend"}) kan ik niet als tekst lezen. Alleen Google Docs, Sheets en Slides.` };
+  }
+  text = text.replace(/\r\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+  const truncated = text.length > maxChars;
+  return { ok: true, name, text: truncated ? text.slice(0, maxChars) + "\n\n[…document afgekapt…]" : text };
+}
+
 export async function createFolder(parentId: string, name: string): Promise<DriveFolder> {
   const t = await token();
   const body = { name, mimeType: FOLDER_MIME, parents: [parentId && parentId !== "root" ? parentId : "root"] };

@@ -8,6 +8,9 @@ import { metaVerdictText } from "./meta-rules";
 import { getUrlOrganicKeywords, getSerpOverview, getAhrefsTopPages, ahrefsConfigured } from "./ahrefs";
 import { callClaudeAgentic, type ToolDef, type ToolRunner } from "./anthropic";
 import { sheetCsvUrl, parseCSV, structureData, MAAND_VOLGORDE } from "./sheet";
+import { getFocus } from "./focus";
+import { buildOverview, overviewToText, getPageWorkStatus, pageWorkStatusToText } from "./overview";
+import { readDriveDoc } from "./drive";
 import type { ClientConfig } from "./clients";
 
 // ═══════════════════════════════════════════════════════════
@@ -178,6 +181,57 @@ async function buildAdsContext(client: ClientConfig): Promise<string> {
   return parts.join("\n");
 }
 
+// ── Bird's eye-chat: eigen, strategie-gegronde context (thread "overzicht") ──
+// De overkoepelende agent werkt vanuit de AFGESPROKEN strategie (focus-notities +
+// gelinkte Google-documenten), de werkstatus per pagina (wat is gedaan/loopt/gepland)
+// en het site-brede laaghangend fruit, zodat hij een gestructureerd werkplan kan
+// aansturen in plaats van alleen losse snelle winst.
+async function buildOverviewContext(client: ClientConfig): Promise<string> {
+  const parts: string[] = [];
+  parts.push(`KLANT: ${client.name} (${client.domain || "geen domein"})`);
+  try { parts.push("\n=== SITE-OVERZICHT (werkstatus + laaghangend fruit) ===\n" + overviewToText(await buildOverview(client.slug))); } catch { /* aanvulling */ }
+  try { const ws = pageWorkStatusToText(await getPageWorkStatus(client.slug)); if (ws.trim()) parts.push("\n=== WERKSTATUS PER PAGINA (wat is gedaan / loopt / gepland) ===\n" + ws); } catch { /* aanvulling */ }
+  try {
+    const f = await getFocus(client.slug);
+    const t = stripHtml(f.html).replace(/\n{3,}/g, "\n\n").trim();
+    if (t) parts.push("\n=== AFGESPROKEN ZOEKWOORDEN & LINKS (focus-notities; gebruik het gereedschap lees_document op de gelinkte documenten voor de volledige afspraken) ===\n" + t);
+  } catch { /* aanvulling */ }
+  const links: string[] = [];
+  if (client.cockpit?.workDocUrl) links.push(`Werkdocument: ${client.cockpit.workDocUrl}`);
+  if (client.cockpit?.resultsUrl) links.push(`Resultaten: ${client.cockpit.resultsUrl}`);
+  if (links.length) parts.push("\n=== SNELLE LINKS (leesbaar met lees_document) ===\n" + links.join("\n"));
+  const prof = (client.seoProfile || "").trim();
+  if (prof) parts.push("\n=== KLANTPROFIEL (positionering/werkgebied) ===\n" + prof.slice(0, 2500));
+  try {
+    const { status } = await getStatus(client.slug);
+    if (status.exchanges.length) parts.push("\n=== STAND VAN ZAKEN ===\n" + status.exchanges.map((ex) => `[${ex.side === "client" ? "KLANT" : "WIJ"}, ${ex.status === "done" ? "afgehandeld" : "OPEN"}] ${ex.text}`).join("\n"));
+  } catch { /* aanvulling */ }
+  try { const tasks = await sheetTaskLines(client); if (tasks.length) parts.push("\n=== LOPENDE WERKZAAMHEDEN (huidige maand) ===\n" + tasks.join("\n")); } catch { /* aanvulling */ }
+  return parts.join("\n");
+}
+
+// De bird's eye krijgt bovenop de gewone read-tools twee site-brede tools:
+// het overzicht opvragen en een gekoppeld Google-document uitlezen.
+function overviewTools(client: ClientConfig, base: { tools: ToolDef[]; run: ToolRunner }): { tools: ToolDef[]; run: ToolRunner } {
+  const extra: ToolDef[] = [
+    { name: "site_overzicht", description: "Het actuele site-brede beeld van deze klant: werkstatus (pagina's met strategie / half plan / nog leeg, gemaakte documenten) plus het laaghangend fruit (striking distance, quick wins) en CTR-onderkansen. Gebruik dit om te bepalen waar we staan en wat prioriteit heeft.", input_schema: { type: "object", properties: {} } },
+    { name: "lees_document", description: "Leest de tekstinhoud van een gekoppeld Google-document (Doc/Sheet/Slides) uit via de Drive-koppeling. Geef een Google-link of document-id. Gebruik dit om de AFGESPROKEN strategie te lezen die in de focus-notities gelinkt staat (navigatie/URL-structuur, zoekwoorden-samenvatting, werkdocument), zodat je vanuit de echte afspraken plant.", input_schema: { type: "object", properties: { link: { type: "string", description: "Google Drive-link of document-id" } }, required: ["link"] } },
+  ];
+  const run: ToolRunner = async (name, input) => {
+    if (name === "site_overzicht") {
+      try { return overviewToText(await buildOverview(client.slug)) + "\n\n" + pageWorkStatusToText(await getPageWorkStatus(client.slug)); }
+      catch (e) { return `Kon overzicht niet ophalen: ${(e as Error).message}`; }
+    }
+    if (name === "lees_document") {
+      const r = await readDriveDoc(String(input.link || ""));
+      if (!r.ok) return `Kon document niet lezen: ${r.error}`;
+      return `Document "${r.name}":\n${r.text}`;
+    }
+    return base.run(name, input);
+  };
+  return { tools: [...base.tools, ...extra], run };
+}
+
 // image/images: optionele afbeeldingen (data-URL's, al verkleind in de browser) bij
 // een user-bericht. "image" blijft bestaan voor oude opgeslagen gesprekken.
 export type ChatMessage = { role: "user" | "assistant"; content: string; image?: string; images?: string[] };
@@ -292,11 +346,25 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
   const client = await getClientBySlug(slug);
   if (!client) return { ok: false, error: "Klant niet gevonden." };
 
-  // Thread "ads" = de Ads-assistent: eigen grounding en eigen rol; alle andere
-  // threads gebruiken de volledige projectcontext.
+  // Thread "ads" = de Ads-assistent, thread "overzicht" = de bird's eye-strateeg;
+  // beide hebben eigen grounding en rol. Alle andere threads = volledige projectcontext.
   const isAds = cleanThread(thread) === "ads";
-  const context = isAds ? await buildAdsContext(client) : await buildContext(client);
-  const system = isAds
+  // "overzicht" én "overzicht:<naam>" (meerdere bird's eye-gesprekken) → bird's eye.
+  const isOverview = cleanThread(thread).startsWith("overzicht");
+  const context = isOverview ? await buildOverviewContext(client) : isAds ? await buildAdsContext(client) : await buildContext(client);
+  const system = isOverview
+    ? `Je bent de overkoepelende SEO-strateeg ("bird's eye") van Pingwin voor de klant ${client.name}. Je helpt Maarten vanuit één helder, gestructureerd werkplan bepalen wat we doen, wat er nog moet en waar het laaghangend fruit zit. Dat plan is gegrond in de AFSPRAKEN met de klant (navigatie, zoekwoordenlijst, geplande landingspagina's), niet alleen in snelle winst.\n\n` +
+      `GEREEDSCHAP, gebruik het ZELF voordat je antwoordt:\n` +
+      `- lees_document: lees de gelinkte Google-strategiedocumenten (navigatie/URL-structuur, zoekwoorden-samenvatting, werkdocument) uit de focus-notities en snelle links, zodat je vanuit de echte afspraken plant in plaats van te gokken. Doe dit zodra de vraag over strategie, navigatie of geplande pagina's gaat.\n` +
+      `- site_overzicht: het actuele site-brede beeld (werkstatus + laaghangend fruit).\n` +
+      `- meet_pagina / gsc_pagina / ahrefs_pagina / serp_top10: om een concrete pagina of zoekwoord na te meten.\n\n` +
+      `HOE JE DENKT:\n` +
+      `- Vertrek vanuit de afgesproken strategie; plaats het laaghangend fruit dáárop, niet los ervan.\n` +
+      `- Vraagt Maarten "waar waren we / wat hebben we gedaan", vat dan concreet samen uit de werkstatus per pagina: wat is geoptimaliseerd, wat loopt, wat staat gepland.\n` +
+      `- Geef een korte, geordende lijst met concrete VERVOLGSTAPPEN, elk als één heldere actie (bijv. "Ontwikkel /tuinaanleg/pergola/ (nieuwe pagina)", "Vul alt-teksten aan op /hovenier-etten-leur/", "Interne link van de hub naar X"), belangrijkste bovenaan, met in één zin waarom. Deze stappen worden straks knoppen; benoem ze dus concreet en uitvoerbaar.\n` +
+      `- Verzin geen cijfers; noem alleen wat uit de bronnen of het gereedschap komt.\n\n` +
+      `OPMAAK: Nederlands, conversationeel, Markdown, geen emoji. Korte alinea's, bullets (-), **vet** voor kernpunten, cijfers in een nette Markdown-tabel. Mens aan het stuur: jij adviseert en stelt voor, Maarten beslist.\n\n--- OVERZICHT-CONTEXT ---\n${context}`
+    : isAds
     ? `Je bent de Google Ads-specialist van Pingwin voor de klant ${client.name}. ` +
       `Je helpt Maarten beoordelen wat er in het Ads-account gebeurt en wordt geoptimaliseerd, wat er beter kan en welke vragen hij het Ads-bureau moet stellen. ` +
       `Baseer je op de onderstaande Ads-context (via de GA4-koppeling; wees eerlijk over wat daar NÍET in zit).\n\n` +
@@ -339,8 +407,9 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
         ] as unknown as string,
       };
     });
-    const { tools, run } = chatTools(client);
-    const answer = await callClaudeAgentic(system, apiMessages as { role: "user" | "assistant"; content: string }[], tools, run, 6, 2000, { slug, action: isAds ? "ads-chat" : "projectchat" });
+    const base = chatTools(client);
+    const { tools, run } = isOverview ? overviewTools(client, base) : base;
+    const answer = await callClaudeAgentic(system, apiMessages as { role: "user" | "assistant"; content: string }[], tools, run, isOverview ? 8 : 6, 2000, { slug, action: isOverview ? "overzicht-chat" : isAds ? "ads-chat" : "projectchat" });
     const finalAnswer = answer || "(geen antwoord)";
     await saveChatHistory(slug, thread, [...messages, { role: "assistant", content: finalAnswer }]);
     return { ok: true, answer: finalAnswer };
