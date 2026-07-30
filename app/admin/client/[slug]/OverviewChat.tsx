@@ -64,7 +64,10 @@ export default function OverviewChat({ slug, configured, onGoToPage, onGoToTask 
   const [error, setError] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, busy]);
+  // De chat groeit mee met de pagina (geen apart scrollboxje); spring naar het
+  // laatste bericht zodat het nieuwste stuk in beeld staat en het oude erboven uit
+  // beeld valt.
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [messages, busy]);
 
   // Threads + historie van het actieve gesprek laden.
   useEffect(() => {
