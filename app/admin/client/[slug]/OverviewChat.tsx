@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import ActionCard, { type Action } from "./ActionCard";
 
-type Msg = { role: "user" | "assistant"; content: string };
+type Msg = { role: "user" | "assistant"; content: string; actions?: Action[] };
 
 // Lichte Markdown → HTML (kopjes, bullets, vet, links, tabellen). Zelfde regels
 // als de zwevende chat, zodat antwoorden overal netjes renderen.
@@ -54,7 +55,7 @@ const labelOf = (t: string) => (t === BASE ? "Overzicht" : t.replace(/^overzicht
 // De gedokte bird's eye-chat in de Overzicht-tab. Gebruikt dezelfde chat-backend
 // als de zwevende assistent, maar met thread-namespace "overzicht" (de agent is
 // dan gegrond in de afgesproken strategie en de site-brede werkstatus).
-export default function OverviewChat({ slug, configured, onGoToPage }: { slug: string; configured: boolean; onGoToPage?: (url: string) => void }) {
+export default function OverviewChat({ slug, configured, onGoToPage, onGoToTask }: { slug: string; configured: boolean; onGoToPage?: (url: string) => void; onGoToTask?: (taskId: number) => void }) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [thread, setThread] = useState(BASE);
   const [threads, setThreads] = useState<{ thread: string; count: number }[]>([]);
@@ -101,6 +102,11 @@ export default function OverviewChat({ slug, configured, onGoToPage }: { slug: s
     if (thread !== BASE) setThread(BASE);
   }
 
+  // Werk de status van één actie bij (na goedkeuren), zowel in beeld als lokaal.
+  function handleExecuted(id: string, result: NonNullable<Action["result"]>, executed: boolean) {
+    setMessages((prev) => prev.map((m) => m.actions ? { ...m, actions: m.actions.map((a) => a.id === id ? { ...a, executed, result } : a) } : m));
+  }
+
   function deleteMessage(idx: number) {
     setMessages((prev) => {
       const next = prev.filter((_, i) => i !== idx);
@@ -118,7 +124,7 @@ export default function OverviewChat({ slug, configured, onGoToPage }: { slug: s
     try {
       const res = await fetch("/api/admin/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread, messages: next }) });
       const data = await res.json();
-      if (data.ok) { setMessages((m) => [...m, { role: "assistant", content: data.answer }]); setThreads((ts) => (ts.some((x) => x.thread === thread) ? ts : [{ thread, count: next.length + 1 }, ...ts])); }
+      if (data.ok) { setMessages((m) => [...m, { role: "assistant", content: data.answer, ...(Array.isArray(data.actions) && data.actions.length ? { actions: data.actions } : {}) }]); setThreads((ts) => (ts.some((x) => x.thread === thread) ? ts : [{ thread, count: next.length + 1 }, ...ts])); }
       else setError(data.error || "Er ging iets mis.");
     } catch { setError("De assistent is niet bereikbaar."); } finally { setBusy(false); }
   }
@@ -152,6 +158,13 @@ export default function OverviewChat({ slug, configured, onGoToPage }: { slug: s
             {m.role === "assistant"
               ? <div className="ovc-bubble chat-md" dangerouslySetInnerHTML={{ __html: mdToHtml(m.content) }} />
               : <div className="ovc-bubble">{m.content}</div>}
+            {m.role === "assistant" && m.actions && m.actions.length > 0 && (
+              <div className="ovc-actions">
+                {m.actions.map((a) => (
+                  <ActionCard key={a.id} action={a} slug={slug} thread={thread} onExecuted={handleExecuted} onGoToPage={onGoToPage} onGoToTask={onGoToTask} />
+                ))}
+              </div>
+            )}
           </div>
         ))}
         {busy && <div className="ovc-msg assistant"><div className="ovc-bubble muted">Aan het nadenken (ik lees zo nodig de strategie en meet pagina&rsquo;s na)…</div></div>}

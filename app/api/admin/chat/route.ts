@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
   }
   const result = await answerChat(slug, messages as { role: "user" | "assistant"; content: string }[], thread);
   if (!result.ok) return NextResponse.json({ ok: false, error: result.error }, { status: 502 });
-  return NextResponse.json({ ok: true, answer: result.answer });
+  return NextResponse.json({ ok: true, answer: result.answer, actions: result.actions });
 }
 
 // PATCH: vervangt de historie van een gesprek (bijv. na het verwijderen van een bericht).

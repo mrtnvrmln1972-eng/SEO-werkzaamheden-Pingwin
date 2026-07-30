@@ -576,7 +576,7 @@ export default function ClientCockpit({
 
         {tab === "developer" && <DeveloperOverview embedded />}
 
-        {tab === "overzicht" && <OverviewTab slug={client.slug} clientName={client.name} onGoToPage={goToPage} chatConfigured={chatConfigured} />}
+        {tab === "overzicht" && <OverviewTab slug={client.slug} clientName={client.name} onGoToPage={goToPage} onGoToTask={goToNewTask} chatConfigured={chatConfigured} />}
       </div>
 
       <div className="footer">Pingwin Online Marketing &middot; Beheer</div>

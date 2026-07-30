@@ -11,6 +11,7 @@ import { sheetCsvUrl, parseCSV, structureData, MAAND_VOLGORDE } from "./sheet";
 import { getFocus } from "./focus";
 import { buildOverview, overviewToText, getPageWorkStatus, pageWorkStatusToText } from "./overview";
 import { readDriveDoc } from "./drive";
+import { validateAction, type ProposedAction } from "./overview-actions";
 import type { ClientConfig } from "./clients";
 
 // ═══════════════════════════════════════════════════════════
@@ -212,10 +213,23 @@ async function buildOverviewContext(client: ClientConfig): Promise<string> {
 
 // De bird's eye krijgt bovenop de gewone read-tools twee site-brede tools:
 // het overzicht opvragen en een gekoppeld Google-document uitlezen.
-function overviewTools(client: ClientConfig, base: { tools: ToolDef[]; run: ToolRunner }): { tools: ToolDef[]; run: ToolRunner } {
+function overviewTools(client: ClientConfig, base: { tools: ToolDef[]; run: ToolRunner }, collected: ProposedAction[]): { tools: ToolDef[]; run: ToolRunner } {
+  const domain = client.domain || "";
   const extra: ToolDef[] = [
     { name: "site_overzicht", description: "Het actuele site-brede beeld van deze klant: werkstatus (pagina's met strategie / half plan / nog leeg, gemaakte documenten) plus het laaghangend fruit (striking distance, quick wins) en CTR-onderkansen. Gebruik dit om te bepalen waar we staan en wat prioriteit heeft.", input_schema: { type: "object", properties: {} } },
     { name: "lees_document", description: "Leest de tekstinhoud van een gekoppeld Google-document (Doc/Sheet/Slides) uit via de Drive-koppeling. Geef een Google-link of document-id. Gebruik dit om de AFGESPROKEN strategie te lezen die in de focus-notities gelinkt staat (navigatie/URL-structuur, zoekwoorden-samenvatting, werkdocument), zodat je vanuit de echte afspraken plant.", input_schema: { type: "object", properties: { link: { type: "string", description: "Google Drive-link of document-id" } }, required: ["link"] } },
+    { name: "stel_acties_voor", description: "Stel één of meer concrete acties voor die Maarten met één klik kan goedkeuren. VOER NIETS ZELF UIT; dit toont alleen knopkaartjes. Gebruik dit aan het EIND van je antwoord voor de vervolgstappen die je adviseert. Verwijs er in je gewone tekst kort naar (bijv. 'hieronder kun je dit met één klik starten'), maar herhaal de acties niet als lijst.", input_schema: { type: "object", properties: { acties: { type: "array", items: { type: "object", properties: {
+      type: { type: "string", enum: ["pagina_toevoegen", "taak_aanmaken", "plan_vastleggen", "pijplijn_starten", "structured_data", "alt_teksten", "meta_verbeteren"], description: "pagina_toevoegen=nieuwe (nog niet bestaande) landingspagina aanmaken; taak_aanmaken=losse taak in de takenlijst; plan_vastleggen=strategie-alinea bij een pagina; pijplijn_starten=analyse/blauwdruk/copy-documenten genereren (belanden in Taken en het klantdashboard); structured_data=schema toevoegen; alt_teksten=alt-tekst-lijst voor de sitebouwer genereren; meta_verbeteren=nieuwe meta-title/description met de geavanceerde regels (pixelbreedte + criteria)." },
+      reason: { type: "string", description: "In één korte zin waarom deze actie nu zinvol is." },
+      url: { type: "string", description: "Pad of volledige URL van de pagina (verplicht behalve bij een losse taak zonder pagina)." },
+      title: { type: "string", description: "Alleen bij pagina_toevoegen: titel van de nieuwe pagina." },
+      taak: { type: "string", description: "Alleen bij taak_aanmaken: de taakomschrijving." },
+      fase: { type: "string", enum: ["Bouwen", "Herbedraden", "Opschonen"], description: "Alleen bij taak_aanmaken." },
+      wie: { type: "string", enum: ["SEO", "Dev"], description: "Alleen bij taak_aanmaken: wie doet het." },
+      plan: { type: "string", description: "Alleen bij plan_vastleggen: de strategie-tekst." },
+      steps: { type: "array", items: { type: "string", enum: ["analyse", "blauwdruk", "copy"] }, description: "Alleen bij pijplijn_starten: welke documenten (standaard alle drie; bij een niet-live pagina laat je analyse weg)." },
+      keyword: { type: "string", description: "Alleen bij meta_verbeteren: het primaire zoekwoord van de pagina." },
+    }, required: ["type"] } } }, required: ["acties"] } },
   ];
   const run: ToolRunner = async (name, input) => {
     if (name === "site_overzicht") {
@@ -227,6 +241,16 @@ function overviewTools(client: ClientConfig, base: { tools: ToolDef[]; run: Tool
       if (!r.ok) return `Kon document niet lezen: ${r.error}`;
       return `Document "${r.name}":\n${r.text}`;
     }
+    if (name === "stel_acties_voor") {
+      const raw = Array.isArray(input.acties) ? input.acties : [];
+      let added = 0, rejected = 0;
+      for (const a of raw) {
+        const id = `a${Date.now().toString(36)}_${collected.length}`;
+        const v = validateAction(a as Record<string, unknown>, domain, id);
+        if (v) { collected.push(v); added++; } else rejected++;
+      }
+      return `${added} actie(s) geregistreerd als knopkaartjes onder je antwoord${rejected ? ` (${rejected} afgekeurd wegens ontbrekende velden)` : ""}. Benoem ze niet nog eens als lijst; verwijs er kort naar.`;
+    }
     return base.run(name, input);
   };
   return { tools: [...base.tools, ...extra], run };
@@ -234,7 +258,7 @@ function overviewTools(client: ClientConfig, base: { tools: ToolDef[]; run: Tool
 
 // image/images: optionele afbeeldingen (data-URL's, al verkleind in de browser) bij
 // een user-bericht. "image" blijft bestaan voor oude opgeslagen gesprekken.
-export type ChatMessage = { role: "user" | "assistant"; content: string; image?: string; images?: string[] };
+export type ChatMessage = { role: "user" | "assistant"; content: string; image?: string; images?: string[]; actions?: ProposedAction[] };
 
 const cleanThread = (t?: string) => (t || "algemeen").trim().slice(0, 80) || "algemeen";
 
@@ -340,7 +364,7 @@ export async function replaceChatHistory(slug: string, thread: string, messages:
   await saveChatHistory(slug, thread, messages);
 }
 
-export async function answerChat(slug: string, messages: ChatMessage[], thread = "algemeen"): Promise<{ ok: boolean; answer?: string; error?: string }> {
+export async function answerChat(slug: string, messages: ChatMessage[], thread = "algemeen"): Promise<{ ok: boolean; answer?: string; error?: string; actions?: ProposedAction[] }> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return { ok: false, error: "Geen ANTHROPIC_API_KEY ingesteld." };
   const client = await getClientBySlug(slug);
@@ -361,7 +385,7 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
       `HOE JE DENKT:\n` +
       `- Vertrek vanuit de afgesproken strategie; plaats het laaghangend fruit dáárop, niet los ervan.\n` +
       `- Vraagt Maarten "waar waren we / wat hebben we gedaan", vat dan concreet samen uit de werkstatus per pagina: wat is geoptimaliseerd, wat loopt, wat staat gepland.\n` +
-      `- Geef een korte, geordende lijst met concrete VERVOLGSTAPPEN, elk als één heldere actie (bijv. "Ontwikkel /tuinaanleg/pergola/ (nieuwe pagina)", "Vul alt-teksten aan op /hovenier-etten-leur/", "Interne link van de hub naar X"), belangrijkste bovenaan, met in één zin waarom. Deze stappen worden straks knoppen; benoem ze dus concreet en uitvoerbaar.\n` +
+      `- Adviseer concrete VERVOLGSTAPPEN, belangrijkste eerst, met in één zin waarom. Zijn er stappen die het dashboard kan uitvoeren (een nieuwe pagina aanmaken, een taak, de pijplijn analyse/blauwdruk/copy starten, structured data, of een alt-tekst-lijst voor de sitebouwer), stel ze dan aan het EIND voor met het gereedschap stel_acties_voor, zodat Maarten ze met één klik kan goedkeuren. Verwijs er kort naar in je tekst; herhaal ze niet als aparte lijst.\n` +
       `- Verzin geen cijfers; noem alleen wat uit de bronnen of het gereedschap komt.\n\n` +
       `OPMAAK: Nederlands, conversationeel, Markdown, geen emoji. Korte alinea's, bullets (-), **vet** voor kernpunten, cijfers in een nette Markdown-tabel. Mens aan het stuur: jij adviseert en stelt voor, Maarten beslist.\n\n--- OVERZICHT-CONTEXT ---\n${context}`
     : isAds
@@ -408,11 +432,13 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
       };
     });
     const base = chatTools(client);
-    const { tools, run } = isOverview ? overviewTools(client, base) : base;
+    const collected: ProposedAction[] = [];
+    const { tools, run } = isOverview ? overviewTools(client, base, collected) : base;
     const answer = await callClaudeAgentic(system, apiMessages as { role: "user" | "assistant"; content: string }[], tools, run, isOverview ? 8 : 6, 2000, { slug, action: isOverview ? "overzicht-chat" : isAds ? "ads-chat" : "projectchat" });
     const finalAnswer = answer || "(geen antwoord)";
-    await saveChatHistory(slug, thread, [...messages, { role: "assistant", content: finalAnswer }]);
-    return { ok: true, answer: finalAnswer };
+    const assistantMsg: ChatMessage = collected.length ? { role: "assistant", content: finalAnswer, actions: collected } : { role: "assistant", content: finalAnswer };
+    await saveChatHistory(slug, thread, [...messages, assistantMsg]);
+    return { ok: true, answer: finalAnswer, actions: collected.length ? collected : undefined };
   } catch (err) {
     return { ok: false, error: "AI niet bereikbaar: " + (err as Error).message };
   }

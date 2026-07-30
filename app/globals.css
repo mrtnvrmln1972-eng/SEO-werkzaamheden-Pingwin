@@ -1987,12 +1987,12 @@ tbody tr.row-done:hover { background: #E2F1E2; }
   border-radius: 6px; padding: 1px 8px; white-space: nowrap;
 }
 
-/* ── Overzicht-tab: twee kolommen (overzicht links, bird's eye-chat rechts) ── */
-.ov-layout { display: grid; grid-template-columns: 1.55fr 1fr; gap: 16px; align-items: start; }
-.ov-left { min-width: 0; }
-.ov-right { position: sticky; top: 150px; }
-@media (max-width: 1024px) { .ov-layout { grid-template-columns: 1fr; } .ov-right { position: static; } }
-/* In de smallere linkerkolom fruit/CTR onder elkaar i.p.v. naast elkaar. */
+/* ── Overzicht-tab: bird's eye-chat links (2/3), overzicht rechts (1/3) ── */
+.ov-layout { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; align-items: start; }
+.ov-chatcol { min-width: 0; }
+.ov-side { min-width: 0; }
+@media (max-width: 1024px) { .ov-layout { grid-template-columns: 1fr; } }
+/* In de smallere rechterkolom fruit/CTR onder elkaar i.p.v. naast elkaar. */
 .ov-layout .ov-columns { grid-template-columns: 1fr; }
 
 /* Gedokte bird's eye-chat */
@@ -2001,8 +2001,9 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .ovc-title { display: inline-flex; align-items: center; gap: 7px; font-weight: 800; font-size: 14px; color: var(--dark); margin-right: auto; }
 .ovc-log { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 4px; }
 .ovc-intro { font-size: 13px; line-height: 1.5; padding: 4px 2px; }
-.ovc-msg { position: relative; display: flex; }
-.ovc-msg.user { justify-content: flex-end; }
+.ovc-msg { position: relative; display: flex; flex-direction: column; gap: 8px; }
+.ovc-msg.user { align-items: flex-end; }
+.ovc-msg.assistant { align-items: flex-start; }
 .ovc-msg .chat-msg-del { opacity: 0; }
 .ovc-msg:hover .chat-msg-del { opacity: 0.5; }
 .ovc-bubble { max-width: 92%; padding: 8px 12px; border-radius: 12px; font-size: 14px; line-height: 1.5; }
@@ -2012,3 +2013,22 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .ovc-input { display: flex; gap: 8px; margin-top: 10px; }
 .ovc-input input { flex: 1; font-family: inherit; font-size: 14px; padding: 9px 12px; border: 1px solid var(--border); border-radius: 9px; }
 .ovc-input input:focus { outline: none; border-color: var(--orange); box-shadow: 0 0 0 3px rgba(231, 119, 63, 0.15); }
+
+/* Actie-kaartjes onder een bird's eye-antwoord (voorstellen → één klik goedkeuren) */
+.ovc-actions { width: 100%; display: flex; flex-direction: column; gap: 8px; }
+.act-card { border: 1px solid var(--border); border-left: 3px solid var(--orange); border-radius: 10px; background: #fff; padding: 10px 12px; }
+.act-card.act-done { border-left-color: #1e824c; background: #f4faf5; }
+.act-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+.act-type { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: var(--orange-dark); }
+.act-card.act-done .act-type { color: #1e824c; }
+.act-url { font-size: 12px; color: #1a6dd6; }
+.act-line { font-size: 13px; line-height: 1.4; margin: 2px 0; }
+.act-reason { font-size: 12px; color: var(--gray); line-height: 1.4; margin: 4px 0 8px; }
+.act-actions { display: flex; align-items: center; gap: 10px; }
+.act-err { font-size: 12px; color: #b3261e; }
+.act-result { margin-top: 4px; }
+.act-ok { font-size: 13px; font-weight: 600; color: #1e824c; }
+.act-copybox { margin-top: 8px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.act-copybox-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 8px; background: #fafafa; border-bottom: 1px solid var(--border); }
+.act-pre { margin: 0; padding: 8px 10px; font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; max-height: 240px; overflow-y: auto; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.act-jump { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
