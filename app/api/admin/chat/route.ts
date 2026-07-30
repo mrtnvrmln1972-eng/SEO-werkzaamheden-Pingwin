@@ -16,7 +16,10 @@ export async function GET(req: NextRequest) {
   if (!slug) return NextResponse.json({ ok: false, error: "Geen klant opgegeven." }, { status: 400 });
   const g = await guardSlug(req, slug); if (!g.ok) return g.res;
   const thread = req.nextUrl.searchParams.get("thread") || "";
-  const threads = await listChatThreads(slug);
+  // nothreads=1: alleen de berichten van dit ene onderwerp (sneller openklappen),
+  // zonder de volledige threadlijst opnieuw op te bouwen (die parseert alle histories).
+  const skipThreads = req.nextUrl.searchParams.get("nothreads") === "1";
+  const threads = skipThreads ? [] : await listChatThreads(slug);
   let messages = thread ? await getChatHistory(slug, thread) : [];
   // Bird's eye-threads: verrijk de actie-kaarten met hun opgeslagen uitvoerstatus,
   // zodat een goedgekeurde kaart na herladen op "✓ gedaan" blijft staan.

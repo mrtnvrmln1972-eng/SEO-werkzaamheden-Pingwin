@@ -20,7 +20,7 @@ function fmt(n: number): string { return (n || 0).toLocaleString("nl-NL"); }
 
 // Site-breed overzicht per klant: waar staan we (werkstatus) en waar zit het
 // laaghangend fruit. De bird's eye-chat komt in een volgende fase rechts hiernaast.
-export default function OverviewTab({ slug, clientName, onGoToPage, onGoToTask, onGoToMeta, chatConfigured }: { slug: string; clientName?: string; onGoToPage?: (url: string) => void; onGoToTask?: (taskId: number) => void; onGoToMeta?: () => void; chatConfigured?: boolean }) {
+export default function OverviewTab({ slug, clientName, domain, onGoToPage, onGoToTask, onGoToMeta, chatConfigured }: { slug: string; clientName?: string; domain?: string; onGoToPage?: (url: string) => void; onGoToTask?: (taskId: number) => void; onGoToMeta?: () => void; chatConfigured?: boolean }) {
   const [data, setData] = useState<Overview | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -45,7 +45,7 @@ export default function OverviewTab({ slug, clientName, onGoToPage, onGoToTask, 
   return (
     <div className="overview-tab ov-layout">
       <div className="ov-chatcol">
-        <OverviewChat slug={slug} configured={chatConfigured !== false} onGoToPage={onGoToPage} onGoToTask={onGoToTask} />
+        <OverviewChat slug={slug} domain={domain} configured={chatConfigured !== false} onGoToPage={onGoToPage} onGoToTask={onGoToTask} />
       </div>
 
       <div className="ov-side">

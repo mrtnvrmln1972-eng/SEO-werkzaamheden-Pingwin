@@ -6,9 +6,24 @@ import ActionCard, { type Action } from "./ActionCard";
 type Msg = { role: "user" | "assistant"; content: string; actions?: Action[] };
 type Topic = { thread: string; count: number; title: string; summary: string; done: boolean };
 
+// Maakt kale URL's én kale paden/slugs (bijv. /hovenier/etten-leur/) automatisch
+// klikbaar naar de live site, zonder bestaande links dubbel te linken. Werkt op de
+// gerenderde HTML: alleen tekst buiten tags en bestaande <a>-links wordt aangeraakt.
+function linkify(html: string, domain: string): string {
+  const base = (domain || "").replace(/^https?:\/\//i, "").replace(/\/+$/, "");
+  const parts = html.split(/(<a\b[^>]*>[\s\S]*?<\/a>|<[^>]+>)/gi);
+  return parts.map((seg, i) => {
+    if (i % 2 === 1 || !seg) return seg; // een tag of bestaande link: niet aanraken
+    let s = seg.replace(/(https?:\/\/[^\s<>"()]+[^\s<>"().,;:!?])/g, (m) => `<a href="${m}" target="_blank" rel="noreferrer">${m}</a>`);
+    if (base) s = s.replace(/(^|[\s(>])(\/[a-z][a-z0-9-]*(?:\/[a-z0-9-]+)*\/)/gi, (_m, pre, path) => `${pre}<a href="https://${base}${path}" target="_blank" rel="noreferrer">${path}</a>`);
+    return s;
+  }).join("");
+}
+
 // Lichte Markdown → HTML (kopjes, bullets, vet, links, tabellen). Zelfde regels
-// als de zwevende chat, zodat antwoorden overal netjes renderen.
-function mdToHtml(md: string): string {
+// als de zwevende chat, zodat antwoorden overal netjes renderen. Slugs en URL's
+// worden aan het eind automatisch klikbaar gemaakt (linkify).
+function mdToHtml(md: string, domain = ""): string {
   const escape = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const inline = (s: string) =>
     escape(s)
@@ -47,7 +62,7 @@ function mdToHtml(md: string): string {
     closeList(); out.push(`<p>${inline(line)}</p>`); i++;
   }
   closeList();
-  return out.join("");
+  return linkify(out.join(""), domain);
 }
 
 const BASE = "overzicht";
@@ -57,7 +72,7 @@ const labelOf = (t: string) => (t === BASE ? "Algemeen" : t.startsWith("overzich
 // standaard dichtgeklapt en toont zijn titel plus een korte samenvatting; je klapt
 // er een open om het gesprek en de actie-kaarten te zien, en je kunt een onderwerp
 // afvinken als "gedaan". Zo zie je in één oogopslag wat er speelt, zonder muur.
-export default function OverviewChat({ slug, configured, onGoToPage, onGoToTask }: { slug: string; configured: boolean; onGoToPage?: (url: string) => void; onGoToTask?: (taskId: number) => void }) {
+export default function OverviewChat({ slug, domain = "", configured, onGoToPage, onGoToTask }: { slug: string; domain?: string; configured: boolean; onGoToPage?: (url: string) => void; onGoToTask?: (taskId: number) => void }) {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [open, setOpen] = useState<string | null>(null);      // welk onderwerp is uitgeklapt (accordion)
   const [messages, setMessages] = useState<Msg[]>([]);        // berichten van het open onderwerp
@@ -86,20 +101,28 @@ export default function OverviewChat({ slug, configured, onGoToPage, onGoToTask 
     return () => { alive = false; };
   }, [slug]);
 
-  // Inhaalslag: bestaande onderwerpen zonder titel of samenvatting krijgen die
-  // automatisch, één voor één (rustig aan, niet alles tegelijk).
+  // Genereer titel + samenvatting voor één onderwerp (met terugwerkende kracht).
+  // Markeert vooraf om dubbele calls te voorkomen; bij mislukken weer vrijgeven
+  // zodat een volgende poging (openen/herladen) het opnieuw probeert.
+  async function genMeta(thread: string) {
+    if (backfilled.current.has(thread)) return;
+    backfilled.current.add(thread);
+    try {
+      const d = await fetch("/api/admin/overview/topic", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread, generate: true }) }).then((r) => r.json());
+      if (d?.ok && (d.title || d.summary)) {
+        setTopics((ts) => normalizeTopics(ts.map((x) => x.thread === thread ? { ...x, ...(d.title ? { title: d.title } : {}), ...(d.summary ? { summary: d.summary } : {}) } : x)));
+        if (openRef.current === thread) { if (d.title) setTitleDraft(d.title); if (d.summary) setSumDraft(d.summary); }
+        return;
+      }
+    } catch { /* stil, meta is optioneel */ }
+    backfilled.current.delete(thread);
+  }
+
+  // Inhaalslag bij het openen van de tab: bestaande onderwerpen zonder titel of
+  // samenvatting krijgen die automatisch, één voor één (rustig aan).
   async function backfillMeta(list: Topic[]) {
-    const need = list.filter((t) => t.count > 0 && (!t.title.trim() || !t.summary.trim()) && !backfilled.current.has(t.thread));
-    for (const t of need) {
-      backfilled.current.add(t.thread);
-      try {
-        const d = await fetch("/api/admin/overview/topic", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread: t.thread, generate: true }) }).then((r) => r.json());
-        if (d?.ok && (d.title || d.summary)) {
-          setTopics((ts) => normalizeTopics(ts.map((x) => x.thread === t.thread ? { ...x, ...(d.title ? { title: d.title } : {}), ...(d.summary ? { summary: d.summary } : {}) } : x)));
-          if (openRef.current === t.thread) { if (d.title) setTitleDraft(d.title); if (d.summary) setSumDraft(d.summary); }
-        }
-      } catch { /* stil, meta is optioneel */ }
-    }
+    const need = list.filter((t) => t.count > 0 && (!t.title.trim() || !t.summary.trim()));
+    for (const t of need) await genMeta(t.thread);
   }
 
   // Zorg dat het basisonderwerp altijd bestaat, en sorteer: openstaand eerst,
@@ -122,9 +145,14 @@ export default function OverviewChat({ slug, configured, onGoToPage, onGoToTask 
     if (open === t.thread) { setOpen(null); setMessages([]); setError(""); return; }
     setOpen(t.thread); setMessages([]); setError(""); setInput(""); setTitleDraft(t.title || ""); setSumDraft(t.summary || "");
     const seq = ++loadSeq.current;
-    const d = await fetch(`/api/admin/chat?slug=${encodeURIComponent(slug)}&thread=${encodeURIComponent(t.thread)}`).then((r) => r.json()).catch(() => null);
+    const d = await fetch(`/api/admin/chat?slug=${encodeURIComponent(slug)}&thread=${encodeURIComponent(t.thread)}&nothreads=1`).then((r) => r.json()).catch(() => null);
     if (seq !== loadSeq.current) return;               // een nieuwer onderwerp is intussen geopend
-    if (d?.ok) { setMessages(d.messages || []); setTopics(normalizeTopics(d.threads || [])); }
+    if (d?.ok) {
+      const msgs = d.messages || [];
+      setMessages(msgs);
+      // Titel/samenvatting ontbreekt maar er is wél gesprek? Maak ze (met terugwerkende kracht).
+      if (msgs.length && (!t.title.trim() || !t.summary.trim())) genMeta(t.thread);
+    }
   }
 
   // Nieuw onderwerp: geen naam-prompt. Je begint gewoon met een vraag; de titel en
@@ -249,7 +277,7 @@ export default function OverviewChat({ slug, configured, onGoToPage, onGoToTask 
                       <div key={i} className={"ovc-msg " + m.role}>
                         <button type="button" className="chat-msg-del" title="Dit blok verwijderen" onClick={() => deleteMessage(i)}>&times;</button>
                         {m.role === "assistant"
-                          ? <div className="ovc-bubble chat-md" dangerouslySetInnerHTML={{ __html: mdToHtml(m.content) }} />
+                          ? <div className="ovc-bubble chat-md" dangerouslySetInnerHTML={{ __html: mdToHtml(m.content, domain) }} />
                           : <div className="ovc-bubble">{m.content}</div>}
                         {m.role === "assistant" && m.actions && m.actions.length > 0 && (
                           <div className="ovc-actions">
