@@ -237,6 +237,7 @@ function overviewTools(client: ClientConfig, base: { tools: ToolDef[]; run: Tool
   const extra: ToolDef[] = [
     { name: "site_overzicht", description: "Het actuele site-brede beeld van deze klant: werkstatus (pagina's met strategie / half plan / nog leeg, gemaakte documenten) plus het laaghangend fruit (striking distance, quick wins) en CTR-onderkansen. Gebruik dit om te bepalen waar we staan en wat prioriteit heeft.", input_schema: { type: "object", properties: {} } },
     { name: "lees_document", description: "Leest de tekstinhoud van een gekoppeld Google-document (Doc/Sheet/Slides) uit via de Drive-koppeling. Geef een Google-link of document-id. Gebruik dit om de AFGESPROKEN strategie te lezen die in de focus-notities gelinkt staat (navigatie/URL-structuur, zoekwoorden-samenvatting, werkdocument), zodat je vanuit de echte afspraken plant.", input_schema: { type: "object", properties: { link: { type: "string", description: "Google Drive-link of document-id" } }, required: ["link"] } },
+    { name: "zoek_mail", description: "Zoekt gericht in de mail van deze klant op een naam, e-mailadres, onderwerp of trefwoord (bijv. 'Emre', 'Nicolien' of 'lenzen') en geeft de gevonden mails terug (afzender, datum, onderwerp, volledige inhoud). Gebruik dit om de laatste mail van een specifiek persoon of over een onderwerp op te halen; zo ben je niet afhankelijk van alleen de laatste mails in de context.", input_schema: { type: "object", properties: { zoekterm: { type: "string", description: "Naam, e-mailadres, onderwerp of trefwoord" } }, required: ["zoekterm"] } },
     { name: "stel_acties_voor", description: "Stel één of meer concrete acties voor als knopkaartjes die Maarten met één klik kan goedkeuren. VOER NIETS ZELF UIT. Gebruik dit ALLEEN wanneer Maarten er EXPLICIET om vraagt (bijv. 'maak er een kaart/taak van', 'pak dit op', 'zet dit door', 'werk dit uit'). NIET uit jezelf en nooit een hele reeks tegelijk; standaard spar je gewoon in tekst. Maak alleen kaarten voor precies wat Maarten aangeeft.", input_schema: { type: "object", properties: { acties: { type: "array", items: { type: "object", properties: {
       type: { type: "string", enum: ["pagina_toevoegen", "taak_aanmaken", "plan_vastleggen", "pijplijn_starten", "structured_data", "alt_teksten", "meta_verbeteren", "profiel_bijwerken"], description: "pagina_toevoegen=nieuwe (nog niet bestaande) landingspagina aanmaken; taak_aanmaken=losse taak in de takenlijst; plan_vastleggen=strategie-alinea bij een pagina; pijplijn_starten=analyse/blauwdruk/copy-documenten genereren (belanden in Taken en het klantdashboard); structured_data=schema toevoegen; alt_teksten=alt-tekst-lijst voor de sitebouwer genereren; meta_verbeteren=nieuwe meta-title/description met de geavanceerde regels (pixelbreedte + criteria); profiel_bijwerken=blijvende nuance uit de mail (positionering, terminologie, no-go's, beslissingen) vastleggen in het klantprofiel, zodat copy/meta/strategie het automatisch meenemen." },
       reason: { type: "string", description: "In één korte zin waarom deze actie nu zinvol is." },
@@ -260,6 +261,26 @@ function overviewTools(client: ClientConfig, base: { tools: ToolDef[]; run: Tool
       const r = await readDriveDoc(String(input.link || ""));
       if (!r.ok) return `Kon document niet lezen: ${r.error}`;
       return `Document "${r.name}":\n${r.text}`;
+    }
+    if (name === "zoek_mail") {
+      const q = String(input.zoekterm || "").trim();
+      if (!q) return "Geef een zoekterm (naam, e-mailadres, onderwerp of trefwoord).";
+      type M = { fromAddress: string | null; subject: string | null; receivedAt: string | null; bodyHtml: string | null; preview: string | null; direction: string | null };
+      const norm = (e: { fromAddress?: string | null; subject?: string | null; receivedAt?: string | null; bodyHtml?: string | null; preview?: string | null; direction?: string | null }): M => ({ fromAddress: e.fromAddress ?? null, subject: e.subject ?? null, receivedAt: e.receivedAt ?? null, bodyHtml: e.bodyHtml ?? null, preview: e.preview ?? null, direction: e.direction ?? null });
+      let mails: M[] = [];
+      try { const ms = await msStatus(); if (ms.connected) { const live = await msSearchClientEmails(q, ms.account || "", 8); if (live) mails = live.map(norm); } } catch { /* val terug op opgeslagen */ }
+      if (!mails.length) {
+        const stored = await getEmails(client.slug, 80).catch(() => []);
+        const ql = q.toLowerCase();
+        mails = stored.filter((e) => `${e.fromAddress || ""} ${e.subject || ""} ${stripHtml(e.bodyHtml || "") || e.preview || ""}`.toLowerCase().includes(ql)).slice(0, 8).map(norm);
+      }
+      if (!mails.length) return `Geen mail gevonden voor "${q}".`;
+      return mails.slice(0, 6).map((e) => {
+        const dir = e.direction === "out" ? "WIJ→klant" : "klant→WIJ";
+        const date = e.receivedAt ? new Date(e.receivedAt).toLocaleDateString("nl-NL") : "";
+        const body = (stripHtml(e.bodyHtml || "") || e.preview || "").replace(/\s+/g, " ").trim().slice(0, 3000);
+        return `[${dir}, ${date}] van ${e.fromAddress || "?"} — ${e.subject || "(geen onderwerp)"}:\n${body}`;
+      }).join("\n\n---\n\n");
     }
     if (name === "stel_acties_voor") {
       const raw = Array.isArray(input.acties) ? input.acties : [];
@@ -401,6 +422,7 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
       `GEREEDSCHAP, gebruik het ZELF voordat je antwoordt:\n` +
       `- lees_document: lees de gelinkte Google-strategiedocumenten (navigatie/URL-structuur, zoekwoorden-samenvatting, werkdocument) uit de focus-notities en snelle links, zodat je vanuit de echte afspraken plant in plaats van te gokken. Doe dit zodra de vraag over strategie, navigatie of geplande pagina's gaat.\n` +
       `- site_overzicht: het actuele site-brede beeld (werkstatus + laaghangend fruit).\n` +
+      `- zoek_mail: haal gericht de laatste mail van een specifiek persoon of over een onderwerp op (bijv. "de laatste mail van Emre en die van Nicolien"), zodat je niet afhankelijk bent van alleen de laatste mails in de context. Gebruik dit als Maarten naar iemands mail of een mailonderwerp verwijst.\n` +
       `- meet_pagina / gsc_pagina / ahrefs_pagina / serp_top10: om een concrete pagina of zoekwoord na te meten.\n\n` +
       `HOE JE DENKT:\n` +
       `- Vertrek vanuit de afgesproken strategie; plaats het laaghangend fruit dáárop, niet los ervan.\n` +
