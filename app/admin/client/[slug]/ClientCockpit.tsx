@@ -9,9 +9,7 @@ import type {
 import type { TaskRow } from "../../../../lib/tasks";
 import type { StrategySession } from "../../../../lib/strategy";
 import ChatPanel from "./ChatPanel";
-import OverviewChat from "./OverviewChat";
-import WeekplanBoard from "./WeekplanBoard";
-import KansenCard from "./KansenCard";
+import OverviewTab from "./OverviewTab";
 import TasksEditor from "./TasksEditor";
 import OrgDataPanel from "./OrgDataPanel";
 import FocusBlock from "./FocusBlock";
@@ -27,7 +25,7 @@ import MetaCtrPanel from "./MetaCtrPanel";
 import InvoiceAlert from "./InvoiceAlert";
 import SelectionActions from "./SelectionActions";
 
-type Tab = "werkzaamheden" | "paginas" | "resultaten" | "klant" | "developer" | "wijzigingen" | "cannibalisatie" | "interne-links" | "meta";
+type Tab = "overzicht" | "werkzaamheden" | "paginas" | "resultaten" | "klant" | "developer" | "wijzigingen" | "cannibalisatie" | "interne-links" | "meta";
 
 // Jouw Superhuman-account (Microsoft 365 hangt hieronder).
 const SUPERHUMAN_ACCOUNT = "Maarten@pingwin.nl";
@@ -91,7 +89,7 @@ export default function ClientCockpit({
   // Directe feedback bij het wisselen van klant: de nieuwe pagina moet server-
   // side data ophalen en dat duurt even; zonder signaal voelt dat als bevroren.
   const [switchingTo, setSwitchingTo] = useState<string | null>(null);
-  const validTab = (t?: string): Tab => (t === "werkzaamheden" || t === "paginas" || t === "resultaten" || t === "klant" || t === "developer" || t === "wijzigingen" || t === "meta") ? t : "werkzaamheden";
+  const validTab = (t?: string): Tab => (t === "overzicht" || t === "werkzaamheden" || t === "paginas" || t === "resultaten" || t === "klant" || t === "developer" || t === "wijzigingen" || t === "meta") ? t : "werkzaamheden";
   const [tab, setTab] = useState<Tab>(validTab(initialTab));
   // Demo-filter voor de klanten-dropdown: alleen klanten met mooie ontwikkeling
   // (28 dagen of 3 maanden), voor schermdelen met potentiële klanten.
@@ -99,10 +97,6 @@ export default function ClientCockpit({
   // Toggles bovenaan de (samengevoegde) Werkzaamheden-pagina, standaard gesloten.
   const [showStatusBox, setShowStatusBox] = useState(false);
   const [showMailsBox, setShowMailsBox] = useState(false);
-  // Eén takenlijst, twee weergaven: "week voor jou" (het weekbord) en "maand voor
-  // klant" (de maand-administratie met uren/budget). Springen we naar een gemarkeerde
-  // taak, dan openen we de maandweergave (daar staat de highlight).
-  const [taakView, setTaakView] = useState<"week" | "maand">(highlight ? "maand" : "week");
 
   // Pagina's blijven na het eerste bezoek in het geheugen (verborgen i.p.v.
   // uitgekleed), zodat je chat/plan-staat bewaard blijft als je van tab wisselt.
@@ -315,8 +309,9 @@ export default function ClientCockpit({
           )}
           <nav className="header-tabs">
             {([
-              ["werkzaamheden", "Taken", "De bird's eye-assistent, de weekplanning en de maand-administratie, samen op één plek"],
+              ["overzicht", "Overzicht", "Site-breed overzicht en de bird's eye-assistent die meedenkt over prioriteiten"],
               ["paginas", "Pagina’s", ""],
+              ["werkzaamheden", "Taken", ""],
               ["meta", "Meta & CTR", "Pagina's met veel vertoningen maar te weinig klikken: betere meta-teksten = direct meer bezoekers"],
               ["resultaten", "KPI’s", ""],
               ["wijzigingen", "Wijzigingen", ""],
@@ -361,25 +356,6 @@ export default function ClientCockpit({
                 </div>
               </div>
             )}
-
-            {/* Het kloppend hart: de bird's eye-assistent denkt mee vanuit strategie,
-                zoekwoorden en pagina's. Wat je besluit, wordt hieronder een taak. */}
-            <OverviewChat slug={client.slug} domain={client.domain || ""} configured={chatConfigured !== false} onGoToPage={goToPage} onGoToTask={goToNewTask} />
-
-            {/* Eén takenlijst, twee weergaven: "week voor jou, maand voor klant". */}
-            <div className="taakview-bar">
-              <div className="taakview-switch">
-                <button type="button" className={"taakview-btn" + (taakView === "week" ? " active" : "")} onClick={() => setTaakView("week")}>Per week</button>
-                <button type="button" className={"taakview-btn" + (taakView === "maand" ? " active" : "")} onClick={() => setTaakView("maand")}>Per maand</button>
-              </div>
-              <span className="taakview-hint muted">{taakView === "week" ? "Jouw planning, per week" : "Wat de klant per maand ziet (uren & budget)"}</span>
-            </div>
-            <div style={{ display: taakView === "week" ? "block" : "none" }}>
-              <WeekplanBoard slug={client.slug} onGoToPage={goToPage} />
-            </div>
-            <div style={{ display: taakView === "maand" ? "block" : "none" }}>
-              <TasksEditor key={`tasks-${highlight || "x"}`} slug={client.slug} initialTasks={tasks} budget={client.budget} clientName={client.name} clientEmail={client.email || ""} highlight={highlight} />
-            </div>
 
             {/* Zonder mail-secties (COCKPIT_MAIL=uit) blijft alleen Zoekwoorden & links staan,
                 in dezelfde kaartstijl als de andere inklapbare secties. */}
@@ -564,11 +540,11 @@ export default function ClientCockpit({
             </div>
             </>)}
 
-            {/* Kansen (laaghangend fruit, CTR, keyword-gaten): dichtgeklapt onderaan,
-                bereikbaar zonder muur van tekst. */}
-            <KansenCard slug={client.slug} clientName={client.name} onGoToPage={goToPage} onGoToMeta={() => changeTab("meta")} />
-
           </>
+        )}
+
+        {tab === "werkzaamheden" && (
+          <TasksEditor key={`tasks-${highlight || "x"}`} slug={client.slug} initialTasks={tasks} budget={client.budget} clientName={client.name} clientEmail={client.email || ""} highlight={highlight} />
         )}
 
         {tab === "resultaten" && (
@@ -599,6 +575,8 @@ export default function ClientCockpit({
         {tab === "meta" && <MetaCtrPanel slug={client.slug} domain={client.domain || ""} backendUrl={client.backendUrl} onOpenPage={goToPage} />}
 
         {tab === "developer" && <DeveloperOverview embedded />}
+
+        {tab === "overzicht" && <OverviewTab slug={client.slug} clientName={client.name} domain={client.domain || ""} onGoToPage={goToPage} onGoToTask={goToNewTask} onGoToMeta={() => changeTab("meta")} chatConfigured={chatConfigured} />}
       </div>
 
       <div className="footer">Pingwin Online Marketing &middot; Beheer</div>

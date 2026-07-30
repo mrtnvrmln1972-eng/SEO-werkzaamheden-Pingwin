@@ -2074,14 +2074,6 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .act-taken { margin: 4px 0 2px; padding-left: 18px; font-size: 12.5px; line-height: 1.45; }
 .act-taken li { margin: 2px 0; }
 
-/* Week/maand-schakelaar boven de takenlijst (Taken-pagina): één lijst, twee weergaven. */
-.taakview-bar { display: flex; align-items: center; gap: 12px; margin: 6px 0 10px; flex-wrap: wrap; }
-.taakview-switch { display: inline-flex; background: var(--gray-light); border: 1px solid var(--border); border-radius: 999px; padding: 3px; }
-.taakview-btn { border: none; background: transparent; padding: 6px 16px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--gray); cursor: pointer; transition: background .15s, color .15s; }
-.taakview-btn:hover { color: var(--dark); }
-.taakview-btn.active { background: var(--orange); color: #fff; }
-.taakview-hint { font-size: 12px; }
-
 /* Weekplanning-bord: taken over weekkolommen, huidige week gemarkeerd, slepen. */
 .wp-wrap, .wp-empty { margin-top: 14px; }
 /* Verticale week-sequence (kanban-lanes onder elkaar) */
