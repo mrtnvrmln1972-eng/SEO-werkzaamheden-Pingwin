@@ -364,6 +364,15 @@ async function autoTopicMeta(slug: string, thread: string, msgs: ChatMessage[]):
   return out;
 }
 
+// Inhaalslag: maak (met terugwerkende kracht) titel + samenvatting voor een
+// bestaand onderwerp op basis van de opgeslagen historie. Voor onderwerpen waar
+// al gewerkt is voordat de auto-titel bestond.
+export async function generateTopicMetaFor(slug: string, thread: string): Promise<{ title?: string; summary?: string }> {
+  const msgs = await getChatHistory(slug, thread);
+  if (!msgs.length) return {};
+  return autoTopicMeta(slug, thread, msgs);
+}
+
 async function saveChatHistory(slug: string, thread: string, messages: ChatMessage[]): Promise<void> {
   await ensureSchema();
   const keep = messages.slice(-40);

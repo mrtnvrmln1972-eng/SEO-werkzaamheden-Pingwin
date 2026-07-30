@@ -71,6 +71,7 @@ export default function OverviewChat({ slug, configured, onGoToPage, onGoToTask 
   const loadSeq = useRef(0);
   const openRef = useRef<string | null>(null);
   useEffect(() => { openRef.current = open; }, [open]);
+  const backfilled = useRef<Set<string>>(new Set());
 
   // Onderwerpen (threads) laden, alleen de bird's eye-namespace ("overzicht*").
   useEffect(() => {
@@ -78,10 +79,28 @@ export default function OverviewChat({ slug, configured, onGoToPage, onGoToTask 
     fetch(`/api/admin/chat?slug=${encodeURIComponent(slug)}`)
       .then((r) => r.json()).then((d) => {
         if (!alive || !d?.ok) return;
-        setTopics(normalizeTopics(d.threads || []));
+        const list = normalizeTopics(d.threads || []);
+        setTopics(list);
+        backfillMeta(list);   // met terugwerkende kracht: titel/samenvatting voor bestaande onderwerpen
       }).catch(() => {});
     return () => { alive = false; };
   }, [slug]);
+
+  // Inhaalslag: bestaande onderwerpen zonder titel of samenvatting krijgen die
+  // automatisch, één voor één (rustig aan, niet alles tegelijk).
+  async function backfillMeta(list: Topic[]) {
+    const need = list.filter((t) => t.count > 0 && (!t.title.trim() || !t.summary.trim()) && !backfilled.current.has(t.thread));
+    for (const t of need) {
+      backfilled.current.add(t.thread);
+      try {
+        const d = await fetch("/api/admin/overview/topic", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread: t.thread, generate: true }) }).then((r) => r.json());
+        if (d?.ok && (d.title || d.summary)) {
+          setTopics((ts) => normalizeTopics(ts.map((x) => x.thread === t.thread ? { ...x, ...(d.title ? { title: d.title } : {}), ...(d.summary ? { summary: d.summary } : {}) } : x)));
+          if (openRef.current === t.thread) { if (d.title) setTitleDraft(d.title); if (d.summary) setSumDraft(d.summary); }
+        }
+      } catch { /* stil, meta is optioneel */ }
+    }
+  }
 
   // Zorg dat het basisonderwerp altijd bestaat, en sorteer: openstaand eerst,
   // "gedaan" onderaan.
