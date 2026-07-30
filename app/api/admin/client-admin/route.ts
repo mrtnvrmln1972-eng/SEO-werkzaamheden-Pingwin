@@ -23,13 +23,12 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ ok: true, password });
   }
 
-  const patch: { name?: string; domain?: string | null; email?: string | null; loginEnabled?: boolean; ahrefsKeyRef?: string | null; toonUren?: boolean } = {};
+  const patch: { name?: string; domain?: string | null; email?: string | null; loginEnabled?: boolean; ahrefsKeyRef?: string | null } = {};
   if ("name" in body) patch.name = String(body.name || "").trim();
   if ("domain" in body) patch.domain = String(body.domain || "").trim() || null;
   if ("email" in body) patch.email = String(body.email || "").trim() || null;
   if ("loginEnabled" in body) patch.loginEnabled = body.loginEnabled === true;
   if ("ahrefsKeyRef" in body) patch.ahrefsKeyRef = String(body.ahrefsKeyRef || "").trim() || null;
-  if ("toonUren" in body) patch.toonUren = body.toonUren === true;
 
   const ok = await updateClientAdmin(slug, patch);
   if (!ok) return NextResponse.json({ ok: false, error: "Klant niet gevonden." }, { status: 404 });

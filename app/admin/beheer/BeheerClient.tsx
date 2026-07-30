@@ -12,8 +12,6 @@ type ClientLite = {
   loginEnabled: boolean;
   // Label van de Ahrefs-sleutel (env AHREFS_API_TOKEN_<LABEL>); leeg = hoofdaccount.
   ahrefsKeyRef: string | null;
-  // Toont het klant-dashboard de uren/budget-cijfers? Standaard uit.
-  toonUren: boolean;
 };
 
 export default function BeheerClient({ clients, team, showFinance = false }: { clients: ClientLite[]; team: TeamUser[]; showFinance?: boolean }) {
@@ -80,12 +78,12 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
 
   // ─────────────────────────────── KLANTEN ───────────────────────────────
   const [editSlug, setEditSlug] = useState<string | null>(null);
-  const [cForm, setCForm] = useState({ name: "", domain: "", email: "", loginEnabled: true, ahrefsKeyRef: "", toonUren: false });
+  const [cForm, setCForm] = useState({ name: "", domain: "", email: "", loginEnabled: true, ahrefsKeyRef: "" });
   const [newPassword, setNewPassword] = useState<{ slug: string; password: string } | null>(null);
 
   function openClient(c: ClientLite) {
     setEditSlug(c.slug);
-    setCForm({ name: c.name, domain: c.domain || "", email: c.email || "", loginEnabled: c.loginEnabled, ahrefsKeyRef: c.ahrefsKeyRef || "", toonUren: c.toonUren });
+    setCForm({ name: c.name, domain: c.domain || "", email: c.email || "", loginEnabled: c.loginEnabled, ahrefsKeyRef: c.ahrefsKeyRef || "" });
     setNewPassword(null);
   }
 
@@ -96,7 +94,7 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
       const res = await fetch("/api/admin/client-admin", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, name: cForm.name, domain: cForm.domain, email: cForm.email, loginEnabled: cForm.loginEnabled, ahrefsKeyRef: cForm.ahrefsKeyRef, toonUren: cForm.toonUren }),
+        body: JSON.stringify({ slug, name: cForm.name, domain: cForm.domain, email: cForm.email, loginEnabled: cForm.loginEnabled, ahrefsKeyRef: cForm.ahrefsKeyRef }),
       });
       const data = await res.json();
       if (data.ok) {
@@ -408,17 +406,6 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
                       style={{ width: "auto" }}
                     />
                     Klant-login staat open (uit = de klant kan niet inloggen)
-                  </label>
-                </div>
-                <div className="field" style={{ justifyContent: "flex-end" }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
-                    <input
-                      type="checkbox"
-                      checked={cForm.toonUren}
-                      onChange={(e) => setCForm({ ...cForm, toonUren: e.target.checked })}
-                      style={{ width: "auto" }}
-                    />
-                    Uren en budget tonen aan de klant (uit = de klant ziet alleen wat er gedaan is, geen urenverantwoording)
                   </label>
                 </div>
               </div>

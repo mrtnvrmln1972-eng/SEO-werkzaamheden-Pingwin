@@ -48,9 +48,6 @@ export type ClientConfig = {
   ahrefsKeyRef: string | null;
   // Inlogpagina van de website-beheeromgeving (leeg = /wp-admin/ achter het domein).
   backendUrl: string | null;
-  // Toont het klant-dashboard de uren/budget-cijfers? Standaard false (activiteit
-  // eerst, geen urenverantwoording); per klant aan te zetten in Beheer.
-  toonUren: boolean;
   budget: ClientBudget;
   cockpit: ClientCockpit;
 };
@@ -77,7 +74,6 @@ type ClientRow = {
   grp: string | null;
   ahrefs_key_ref: string | null;
   backend_url: string | null;
-  toon_uren: boolean | null;
   email_domain: string | null;
   work_doc_url: string | null;
   results_url: string | null;
@@ -103,7 +99,6 @@ function rowToConfig(r: ClientRow): ClientConfig {
     grp: r.grp || null,
     ahrefsKeyRef: r.ahrefs_key_ref || null,
     backendUrl: r.backend_url || null,
-    toonUren: !!r.toon_uren,
     budget: {
       maandbudget: Number(r.maandbudget),
       linkbuilding: Number(r.linkbuilding),
@@ -280,7 +275,7 @@ export async function updateClientCore(slug: string, c: ClientCore): Promise<boo
 // bijgewerkt (undefined = ongemoeid laten), zodat dit veilig los te gebruiken is.
 export async function updateClientAdmin(
   slug: string,
-  p: { name?: string; domain?: string | null; email?: string | null; loginEnabled?: boolean; ahrefsKeyRef?: string | null; toonUren?: boolean },
+  p: { name?: string; domain?: string | null; email?: string | null; loginEnabled?: boolean; ahrefsKeyRef?: string | null },
 ): Promise<boolean> {
   await ensureSchema();
   if (p.name !== undefined && p.name.trim()) {
@@ -299,9 +294,6 @@ export async function updateClientAdmin(
   }
   if (p.loginEnabled !== undefined) {
     await sql`UPDATE clients SET login_enabled = ${p.loginEnabled} WHERE slug = ${slug}`;
-  }
-  if (p.toonUren !== undefined) {
-    await sql`UPDATE clients SET toon_uren = ${p.toonUren} WHERE slug = ${slug}`;
   }
   const { rows } = await sql`SELECT 1 FROM clients WHERE slug = ${slug} LIMIT 1`;
   return rows.length > 0;

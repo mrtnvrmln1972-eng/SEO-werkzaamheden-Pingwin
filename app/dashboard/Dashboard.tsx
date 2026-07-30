@@ -52,9 +52,6 @@ type Props = {
   budget: ClientBudget;
   adminPreview?: boolean;
   initialData?: DashboardData | null;
-  // Toont de klant de uren/budget-cijfers? Standaard uit (activiteit eerst): de
-  // klant ziet wát er gedaan is, niet een urenverantwoording.
-  showHours?: boolean;
 };
 
 // Laat opmaak/links staan, verwijdert scripts, handlers en inline font/kleur-stijlen
@@ -108,7 +105,7 @@ function formatTime(minutes: number): string {
   return `${minutes}m`;
 }
 
-export default function Dashboard({ name, sheetId, gid, budget, adminPreview, initialData, showHours = false }: Props) {
+export default function Dashboard({ name, sheetId, gid, budget, adminPreview, initialData }: Props) {
   const [data, setData] = useState<DashboardData | null>(initialData ?? null);
   const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -309,7 +306,6 @@ export default function Dashboard({ name, sheetId, gid, budget, adminPreview, in
                   {view.geplandCount} gepland
                 </div>
               </div>
-              {showHours && (<>
               <div className="stat-card">
                 <div className="stat-value">{view.totalHours.toFixed(1)}u</div>
                 <div className="stat-label">Uren besteed</div>
@@ -341,7 +337,6 @@ export default function Dashboard({ name, sheetId, gid, budget, adminPreview, in
                 <div className="stat-label">Maandfee</div>
                 <div className="stat-sub">Incl. linkbuilding &euro;{view.b.linkbuilding.toFixed(0)}</div>
               </div>
-              </>)}
             </div>
 
             <div className="progress-wrap">
@@ -361,21 +356,21 @@ export default function Dashboard({ name, sheetId, gid, budget, adminPreview, in
                 <thead>
                   <tr>
                     <th>Taak</th>
-                    {showHours && <th className="cell-time">Uren</th>}
+                    <th className="cell-time">Uren</th>
                     <th>Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {view.monthTasks.length === 0 && (
                     <tr>
-                      <td colSpan={showHours ? 3 : 2} style={{ textAlign: "center", padding: 40, color: "var(--gray)" }}>
+                      <td colSpan={3} style={{ textAlign: "center", padding: 40, color: "var(--gray)" }}>
                         Geen werkzaamheden gevonden voor deze maand.
                       </td>
                     </tr>
                   )}
-                  {renderRows(view.monthTasks, showHours)}
+                  {renderRows(view.monthTasks)}
                 </tbody>
-                {view.monthTasks.length > 0 && showHours && (
+                {view.monthTasks.length > 0 && (
                   <tfoot>
                     <tr className="task-total-row">
                       <td>Totaal</td>
@@ -402,7 +397,7 @@ export default function Dashboard({ name, sheetId, gid, budget, adminPreview, in
   );
 }
 
-function renderRows(monthTasks: DashboardData["tasks"], showHours: boolean) {
+function renderRows(monthTasks: DashboardData["tasks"]) {
   const rows: React.ReactNode[] = [];
   let lastCat = "";
   // Taken blijven in de vastgestelde volgorde staan, ongeacht of ze klaar zijn.
@@ -412,7 +407,7 @@ function renderRows(monthTasks: DashboardData["tasks"], showHours: boolean) {
       lastCat = task.categorie;
       rows.push(
         <tr className="cat-row" key={`cat-${i}`}>
-          <td colSpan={showHours ? 3 : 2}>{task.categorie}</td>
+          <td colSpan={3}>{task.categorie}</td>
         </tr>,
       );
     }
@@ -436,7 +431,7 @@ function renderRows(monthTasks: DashboardData["tasks"], showHours: boolean) {
             {hasUitleg && <TaskHelp html={safeHtml(uitleg)} />}
           </span>
         </td>
-        {showHours && <td className="cell-time">{minutes > 0 ? formatTime(minutes) : <span className="muted">&mdash;</span>}</td>}
+        <td className="cell-time">{minutes > 0 ? formatTime(minutes) : <span className="muted">&mdash;</span>}</td>
         <td><span className={`badge-done ${badgeClass}`}>{badgeLabel}</span></td>
       </tr>,
     );

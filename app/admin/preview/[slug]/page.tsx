@@ -5,7 +5,7 @@ import { ADMIN_VIEWAS_COOKIE } from "../../../../lib/constants";
 import { getScopeFromCookie, canAccessSlug } from "../../../../lib/admin-scope";
 import { getClientBySlug } from "../../../../lib/clients";
 import { getTasks } from "../../../../lib/tasks";
-import { clientDashboardData } from "../../../../lib/sheet";
+import { tasksToDashboardData } from "../../../../lib/sheet";
 import Dashboard from "../../../dashboard/Dashboard";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +22,7 @@ export default async function PreviewPage({ params }: { params: { slug: string }
   // Nieuwe bron: taken uit het dashboard (database). Heeft de klant DB-taken,
   // dan tonen we die; anders valt het dashboard terug op de Google Sheet.
   const tasks = await getTasks(params.slug);
-  const initialData = tasks.length ? clientDashboardData(tasks, client.budget) : undefined;
+  const initialData = tasks.length ? tasksToDashboardData(tasks, client.budget) : undefined;
 
   return (
     <Dashboard
@@ -31,7 +31,6 @@ export default async function PreviewPage({ params }: { params: { slug: string }
       gid={client.gid}
       budget={client.budget}
       initialData={initialData}
-      showHours={client.toonUren}
       adminPreview
     />
   );
