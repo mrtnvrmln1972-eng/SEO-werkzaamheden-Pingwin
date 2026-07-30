@@ -109,7 +109,9 @@ export async function getTasks(slug: string): Promise<TaskRow[]> {
   const { rows } = await sql`
     SELECT id, categorie, taak, toelichting, klant_toelichting, uren, status, maand, link, wie, klant_zichtbaar, gemaild,
            fase, cluster, geblokkeerd, blokkade_reden, page_url, step_kind, doc_link, client_doc_link
-    FROM client_tasks WHERE client_slug = ${slug} ORDER BY sort_order ASC, id ASC`;
+    FROM client_tasks WHERE client_slug = ${slug}
+      AND (step_kind IS NULL OR step_kind NOT LIKE 'weekplan%')
+    ORDER BY sort_order ASC, id ASC`;
   const mapped = rows.map((r) => ({
     id: r.id as number,
     categorie: r.categorie ?? "",
@@ -231,7 +233,8 @@ export async function hasTasks(slug: string): Promise<boolean> {
 // De volgorde in de array bepaalt sort_order (slepen/sorteren).
 export async function replaceTasks(slug: string, tasks: TaskRow[]): Promise<number> {
   await ensureSchema();
-  await sql`DELETE FROM client_tasks WHERE client_slug = ${slug}`;
+  await sql`DELETE FROM client_tasks WHERE client_slug = ${slug}
+    AND (step_kind IS NULL OR step_kind NOT LIKE 'weekplan%')`;
   const clean = dedupeTasks(tasks);
   let n = 0;
   for (let i = 0; i < clean.length; i++) {
