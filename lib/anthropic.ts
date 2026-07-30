@@ -171,10 +171,29 @@ export async function callClaudeAgentic(system: string, messages: ChatMsg[], too
     }));
     apiMessages.push({ role: "user", content: results });
   }
-  // Rondes op (of leeg antwoord): forceer een tekstantwoord zonder tools, met een
-  // expliciete nudge. Twee pogingen; anders een nette melding i.p.v. "(geen antwoord)".
-  apiMessages.push({ role: "user", content: "Geef nu je antwoord in gewone tekst (korte samenvatting plus advies) op basis van alles wat je hierboven hebt opgehaald. Gebruik geen gereedschap meer." });
+  // Rondes op (of leeg antwoord): forceer afronding. Eerst ÉÉN ronde MÉT tools, zodat
+  // de agent alsnog de actie-kaart kan aanmaken (stel_acties_voor) als Maarten om taken
+  // of om iets in de weekplanning vroeg. Daarna een tekst-afronding zonder tools.
+  apiMessages.push({ role: "user", content: "Rond nu af. Vroeg Maarten om taken, om kaarten of om iets in de weekplanning te zetten, roep dan NU het gereedschap aan om die acties écht voor te stellen (beschrijf ze niet alleen). Geef daarna je antwoord in gewone tekst." });
   let text = "";
+  {
+    const j = await call(true);
+    addUsage(j.usage);
+    const content: Block[] = j.content || [];
+    const toolUses = content.filter((c) => c.type === "tool_use");
+    if (toolUses.length) {
+      apiMessages.push({ role: "assistant", content });
+      const results = await Promise.all(toolUses.map(async (tu) => {
+        let out: string;
+        try { out = await run(tu.name || "", tu.input || {}); } catch (e) { out = "Fout: " + (e as Error).message; }
+        return { type: "tool_result", tool_use_id: tu.id, content: out.slice(0, 6000) };
+      }));
+      apiMessages.push({ role: "user", content: results });
+    } else {
+      text = textOf(j);
+    }
+  }
+  // Definitieve tekst zonder tools (twee pogingen); anders een nette melding.
   for (let attempt = 0; attempt < 2 && !text.trim(); attempt++) {
     const j = await call(false);
     addUsage(j.usage);
