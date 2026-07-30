@@ -534,7 +534,7 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
     const base = chatTools(client);
     const collected: ProposedAction[] = [];
     const { tools, run } = isOverview ? overviewTools(client, base, collected) : base;
-    const answer = await callClaudeAgentic(system, apiMessages as { role: "user" | "assistant"; content: string }[], tools, run, isOverview ? 8 : 6, 2000, { slug, action: isOverview ? "overzicht-chat" : isAds ? "ads-chat" : "projectchat" });
+    const answer = await callClaudeAgentic(system, apiMessages as { role: "user" | "assistant"; content: string }[], tools, run, isOverview ? 12 : 6, isOverview ? 3200 : 2000, { slug, action: isOverview ? "overzicht-chat" : isAds ? "ads-chat" : "projectchat" });
     const finalAnswer = answer || "(geen antwoord)";
     const assistantMsg: ChatMessage = collected.length ? { role: "assistant", content: finalAnswer, actions: collected } : { role: "assistant", content: finalAnswer };
     await saveChatHistory(slug, thread, [...messages, assistantMsg]);

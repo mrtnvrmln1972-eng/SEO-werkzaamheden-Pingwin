@@ -149,14 +149,18 @@ export async function callClaudeAgentic(system: string, messages: ChatMsg[], too
     u.cache_creation_input_tokens! += usage?.cache_creation_input_tokens || 0;
   }
 
+  const textOf = (j: { content?: Block[] }) => ((j.content || []) as Block[]).filter((c) => c.type === "text").map((c) => c.text || "").join("");
   for (let round = 0; round < maxRounds; round++) {
     const j = await call(true);
     addUsage(j.usage);
     const content: Block[] = j.content || [];
     const toolUses = content.filter((c) => c.type === "tool_use");
     if (j.stop_reason !== "tool_use" || toolUses.length === 0) {
-      await logClaudeUsage(ctx, u);
-      return content.filter((c) => c.type === "text").map((c) => c.text || "").join("");
+      const text = textOf(j);
+      if (text.trim()) { await logClaudeUsage(ctx, u); return text; }
+      // Klaar maar zonder tekst? Val door naar de geforceerde afronding hieronder.
+      apiMessages.push({ role: "assistant", content: content.length ? content : [{ type: "text", text: "…" }] });
+      break;
     }
     apiMessages.push({ role: "assistant", content });
     // Tools binnen deze ronde parallel uitvoeren (scheelt veel wachttijd).
@@ -167,9 +171,15 @@ export async function callClaudeAgentic(system: string, messages: ChatMsg[], too
     }));
     apiMessages.push({ role: "user", content: results });
   }
-  // Rondes op: forceer een tekstantwoord zonder tools.
-  const j = await call(false);
-  addUsage(j.usage);
+  // Rondes op (of leeg antwoord): forceer een tekstantwoord zonder tools, met een
+  // expliciete nudge. Twee pogingen; anders een nette melding i.p.v. "(geen antwoord)".
+  apiMessages.push({ role: "user", content: "Geef nu je antwoord in gewone tekst (korte samenvatting plus advies) op basis van alles wat je hierboven hebt opgehaald. Gebruik geen gereedschap meer." });
+  let text = "";
+  for (let attempt = 0; attempt < 2 && !text.trim(); attempt++) {
+    const j = await call(false);
+    addUsage(j.usage);
+    text = textOf(j);
+  }
   await logClaudeUsage(ctx, u);
-  return ((j.content || []) as Block[]).filter((c) => c.type === "text").map((c) => c.text || "").join("") || "(geen antwoord)";
+  return text.trim() || "Ik heb de analyse gedaan, maar kon het antwoord niet netjes afronden (waarschijnlijk was de vraag in één keer te breed). Stel hem iets gerichter, bijvoorbeeld één doel of één set pagina's, dan pak ik het meteen goed op.";
 }
