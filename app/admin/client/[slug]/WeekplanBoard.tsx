@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type Task = { id: number; thread: string; taak: string; toelichting: string; wie: string; url: string; weekYear: number; weekNo: number; status: string; sortOrder: number };
 type Current = { year: number; week: number };
@@ -34,13 +34,19 @@ const keyOf = (year: number, week: number) => year * 100 + week;
 // Het weekplanning-bord: taken (uit de bird's eye-onderwerpen) verdeeld over
 // weekkolommen. De huidige week is gemarkeerd. Slepen verplaatst een taak naar
 // een andere week. Per taak: status, mailen naar je developer, pagina openen.
-export default function WeekplanBoard({ slug, onGoToPage }: { slug: string; onGoToPage?: (url: string) => void }) {
+export default function WeekplanBoard({ slug, onGoToPage, clientName, clientEmail, domain }: { slug: string; onGoToPage?: (url: string) => void; clientName?: string; clientEmail?: string; domain?: string }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [current, setCurrent] = useState<Current | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [dragId, setDragId] = useState<number | null>(null);
   const [dropKey, setDropKey] = useState<number | null>(null);
   const [openCard, setOpenCard] = useState<number | null>(null);
+  // "Mail naar klant"-composer: de AI maakt van de "waarom" een klantvriendelijke
+  // uitleg; jij past 'm desgewenst aan en verstuurt via je mailclient.
+  const [mailFor, setMailFor] = useState<Task | null>(null);
+  const [mailBusy, setMailBusy] = useState(false);
+  const [mailErr, setMailErr] = useState("");
+  const mailRef = useRef<HTMLDivElement>(null);
 
   async function load() {
     try {
@@ -97,6 +103,29 @@ export default function WeekplanBoard({ slug, onGoToPage }: { slug: string; onGo
     window.location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   }
 
+  // "Mail naar klant": laat de AI een klantvriendelijke uitleg maken uit de "waarom"
+  // achter de taak. Jij past 'm desgewenst aan in de preview en verstuurt via je mail.
+  async function openMailToClient(t: Task) {
+    setMailFor(t); setMailErr(""); setMailBusy(true);
+    if (mailRef.current) mailRef.current.innerText = "";
+    try {
+      const d = await fetch("/api/admin/task/explain", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, taak: t.taak, toelichting: t.toelichting, url: t.url }) }).then((r) => r.json());
+      if (d?.ok && d.text) { if (mailRef.current) mailRef.current.innerText = d.text; }
+      else setMailErr(d?.error || "Uitleg maken mislukt.");
+    } catch { setMailErr("De assistent is niet bereikbaar."); } finally { setMailBusy(false); }
+  }
+  function copyMailToClient() {
+    const text = (mailRef.current?.innerText || "").trim();
+    if (text) navigator.clipboard?.writeText(text).catch(() => {});
+  }
+  function sendMailToClient() {
+    const text = (mailRef.current?.innerText || "").trim();
+    if (!text || !mailFor) return;
+    const to = (clientEmail || "").trim();
+    const subject = `Update van Pingwin${mailFor.url ? ` — ${shortUrl(mailFor.url)}` : ""}`;
+    window.location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
+  }
+
   function card(t: Task) {
     const open = openCard === t.id;
     const hasInfo = !!t.toelichting.trim();
@@ -112,8 +141,9 @@ export default function WeekplanBoard({ slug, onGoToPage }: { slug: string; onGo
           <span className={"wp-wie " + (t.wie === "Dev" ? "wie-dev" : "wie-seo")}>{t.wie}</span>
           <button type="button" className={"wp-status wp-status-" + t.status} onClick={() => cycleStatus(t)} title="Klik om de status te wisselen">{STATUS_LABEL[t.status] || t.status}</button>
           <span className="wp-card-actions">
-            <button type="button" className="wp-icon" title="Mail naar je developer" onClick={() => mailDev(t)}>✉</button>
-            {t.url && onGoToPage && <button type="button" className="wp-icon" title="Open in Pagina's (hier voer je het werk uit)" onClick={() => onGoToPage(t.url)}>↗</button>}
+            <button type="button" className="wp-act wp-act-klant" title="Mail naar klant: een klantvriendelijke uitleg van deze taak (wat we doen en waarom het goed is), die je kunt versturen." onClick={() => openMailToClient(t)}>Mail klant</button>
+            <button type="button" className="wp-act" title="Mail deze taak naar je developer/sitebouwer." onClick={() => mailDev(t)}>Dev ✉</button>
+            {t.url && onGoToPage && <button type="button" className="wp-act" title="Open de pagina in Pagina's: hier spar je verder en zet je de stappen (analyse, blauwdruk, copy)." onClick={() => onGoToPage(t.url)}>Pagina&rsquo;s ↗</button>}
             <button type="button" className="wp-icon wp-del" title="Verwijderen" onClick={() => remove(t.id)}>×</button>
           </span>
         </div>
@@ -155,6 +185,27 @@ export default function WeekplanBoard({ slug, onGoToPage }: { slug: string; onGo
           </div>
         ))}
       </div>
+
+      {mailFor && (
+        <div className="wp-mail-overlay" onClick={(e) => { if (e.target === e.currentTarget) setMailFor(null); }}>
+          <div className="wp-mail-modal">
+            <div className="wp-mail-head">
+              <span className="wp-mail-title">Mail naar klant{clientName ? ` · ${clientName}` : ""}</span>
+              <button type="button" className="wp-icon wp-del" title="Sluiten" onClick={() => setMailFor(null)}>×</button>
+            </div>
+            <div className="wp-mail-sub muted">Uitleg van: {mailFor.taak.replace(/<[^>]*>/g, "").trim()}</div>
+            <div className="wp-mail-hint muted">De AI maakt een klantvriendelijke uitleg uit de achtergrond van deze taak. Pas 'm gerust aan voor je verstuurt.</div>
+            {mailErr && <div className="login-error" style={{ margin: "6px 0" }}>{mailErr}</div>}
+            <div className="wp-mail-edit" contentEditable suppressContentEditableWarning ref={mailRef} data-placeholder="De uitleg verschijnt hier…" style={{ minHeight: 160, opacity: mailBusy ? 0.5 : 1 }} />
+            {mailBusy && <div className="muted" style={{ marginTop: 6 }}>Uitleg aan het schrijven…</div>}
+            <div className="wp-mail-foot">
+              <button type="button" className="ghost-btn small" onClick={() => openMailToClient(mailFor)} disabled={mailBusy} title="Laat de AI de uitleg opnieuw schrijven">Opnieuw</button>
+              <button type="button" className="ghost-btn small" onClick={copyMailToClient} disabled={mailBusy}>Kopieer</button>
+              <button type="button" className="primary-btn small" onClick={sendMailToClient} disabled={mailBusy} title={clientEmail ? `Open je mail, gericht aan ${clientEmail}` : "Open je mail (vul zelf het klant-adres in)"}>Mail naar klant</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

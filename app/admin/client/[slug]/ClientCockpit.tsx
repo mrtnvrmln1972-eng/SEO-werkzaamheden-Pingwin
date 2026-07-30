@@ -375,7 +375,7 @@ export default function ClientCockpit({
               <span className="taakview-hint muted">{taakView === "week" ? "Jouw planning, per week" : "Wat de klant per maand ziet (uren & budget)"}</span>
             </div>
             <div style={{ display: taakView === "week" ? "block" : "none" }}>
-              <WeekplanBoard slug={client.slug} onGoToPage={goToPage} />
+              <WeekplanBoard slug={client.slug} onGoToPage={goToPage} clientName={client.name} clientEmail={client.email || ""} domain={client.domain || ""} />
             </div>
             <div style={{ display: taakView === "maand" ? "block" : "none" }}>
               <TasksEditor key={`tasks-${highlight || "x"}`} slug={client.slug} initialTasks={tasks} budget={client.budget} clientName={client.name} clientEmail={client.email || ""} highlight={highlight} />
