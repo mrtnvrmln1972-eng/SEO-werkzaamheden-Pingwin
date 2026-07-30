@@ -9,6 +9,7 @@ import type {
 import type { TaskRow } from "../../../../lib/tasks";
 import type { StrategySession } from "../../../../lib/strategy";
 import ChatPanel from "./ChatPanel";
+import OverviewTab from "./OverviewTab";
 import TasksEditor from "./TasksEditor";
 import OrgDataPanel from "./OrgDataPanel";
 import FocusBlock from "./FocusBlock";
@@ -88,7 +89,7 @@ export default function ClientCockpit({
   // Directe feedback bij het wisselen van klant: de nieuwe pagina moet server-
   // side data ophalen en dat duurt even; zonder signaal voelt dat als bevroren.
   const [switchingTo, setSwitchingTo] = useState<string | null>(null);
-  const validTab = (t?: string): Tab => (t === "werkzaamheden" || t === "paginas" || t === "resultaten" || t === "klant" || t === "developer" || t === "wijzigingen" || t === "meta") ? t : "werkzaamheden";
+  const validTab = (t?: string): Tab => (t === "overzicht" || t === "werkzaamheden" || t === "paginas" || t === "resultaten" || t === "klant" || t === "developer" || t === "wijzigingen" || t === "meta") ? t : "werkzaamheden";
   const [tab, setTab] = useState<Tab>(validTab(initialTab));
   // Demo-filter voor de klanten-dropdown: alleen klanten met mooie ontwikkeling
   // (28 dagen of 3 maanden), voor schermdelen met potentiële klanten.
@@ -308,6 +309,7 @@ export default function ClientCockpit({
           )}
           <nav className="header-tabs">
             {([
+              ["overzicht", "Overzicht", "Site-breed overzicht en de bird's eye-assistent die meedenkt over prioriteiten"],
               ["paginas", "Pagina’s", ""],
               ["werkzaamheden", "Taken", ""],
               ["meta", "Meta & CTR", "Pagina's met veel vertoningen maar te weinig klikken: betere meta-teksten = direct meer bezoekers"],
@@ -573,6 +575,8 @@ export default function ClientCockpit({
         {tab === "meta" && <MetaCtrPanel slug={client.slug} backendUrl={client.backendUrl} onOpenPage={goToPage} />}
 
         {tab === "developer" && <DeveloperOverview embedded />}
+
+        {tab === "overzicht" && <OverviewTab slug={client.slug} clientName={client.name} onGoToPage={goToPage} />}
       </div>
 
       <div className="footer">Pingwin Online Marketing &middot; Beheer</div>

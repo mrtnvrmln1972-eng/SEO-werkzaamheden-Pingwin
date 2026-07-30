@@ -1945,3 +1945,44 @@ tbody tr.row-done:hover { background: #E2F1E2; }
    wat lucht erboven zodat het duidelijk een apart, afgehandeld blok is. */
 .task-table-verwerkt { margin-top: 18px; }
 .task-table-verwerkt thead th { position: static; top: auto; z-index: auto; }
+
+/* ─────────────────────────────────────────────────────────────
+   Overzicht-tab (bird's eye): werkstatus-kaartjes + laaghangend fruit.
+   In een volgende fase komt de chat rechts naast dit paneel.
+   ───────────────────────────────────────────────────────────── */
+.overview-tab { display: block; }
+.ov-cards { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+.ov-card {
+  flex: 1 1 110px; min-width: 100px; display: flex; flex-direction: column; align-items: center;
+  gap: 2px; padding: 12px 10px; border: 1px solid var(--border); border-radius: 10px; background: #fff;
+}
+.ov-card .ov-num { font-size: 26px; font-weight: 800; line-height: 1; color: var(--dark); }
+.ov-card .ov-lab { font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--gray); }
+.ov-card.ov-plan { border-color: #bfe6cc; background: #f0faf3; }
+.ov-card.ov-plan .ov-num { color: #1e824c; }
+.ov-card.ov-half { border-color: #ffe0b8; background: #fff8ef; }
+.ov-card.ov-half .ov-num { color: #b5710a; }
+.ov-card.ov-leeg { background: #fafafa; }
+.ov-card.ov-leeg .ov-num { color: var(--gray); }
+.ov-card.ov-bad { border-color: #f3c9c9; background: #fdf1f1; }
+.ov-card.ov-bad .ov-num { color: #b3261e; }
+.ov-docs { margin-top: 10px; font-size: 12px; line-height: 1.5; }
+
+.ov-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 900px) { .ov-columns { grid-template-columns: 1fr; } }
+.ov-hint { font-size: 12px; line-height: 1.4; margin-bottom: 8px; }
+.ov-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.ov-item { padding: 8px 0; border-bottom: 1px solid var(--border); }
+.ov-item:last-child { border-bottom: none; }
+.ov-item-main { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ov-item-sub { font-size: 12px; margin-top: 2px; }
+.ov-link {
+  background: none; border: none; padding: 0; cursor: pointer; font-family: inherit; font-size: 14px;
+  color: #1a6dd6; text-decoration: underline; text-underline-offset: 2px; text-align: left;
+}
+.ov-link:hover { color: #0b4ea8; }
+.ov-kw { font-size: 14px; font-weight: 600; color: #1f1f1f; }
+.ov-gain {
+  font-size: 11px; font-weight: 700; color: #1e824c; background: #e6f6ec;
+  border-radius: 6px; padding: 1px 8px; white-space: nowrap;
+}
