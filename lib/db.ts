@@ -131,6 +131,11 @@ async function init(): Promise<void> {
   // (tweede lijst in het Pingwin-dashboard; cockpit-only, geen login/sheet).
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS grp TEXT`;
 
+  // Toont het klant-dashboard de uren/budget-cijfers? Standaard UIT: de klant ziet
+  // activiteit (wat we deden), geen urenverantwoording. Per klant aan te zetten in
+  // Beheer als een klant het wél wil zien.
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS toon_uren BOOLEAN NOT NULL DEFAULT false`;
+
   // Ahrefs-sleutel-verwijzing per klant: alleen een LABEL (bv. 'COLLEGA1'), nooit
   // de sleutel zelf (geen secrets in de database). De echte sleutel staat in
   // Vercel als env-var AHREFS_API_TOKEN_<LABEL>. Leeg = het hoofdaccount.
