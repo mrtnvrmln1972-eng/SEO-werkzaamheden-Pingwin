@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../../lib/admin-auth";
 import { guardSlug } from "../../../../../lib/admin-scope";
 import { getChatHistory, replaceChatHistory, type ChatMessage } from "../../../../../lib/chat";
-import { executeAction, type ProposedAction } from "../../../../../lib/overview-actions";
+import { executeAction, EDITABLE, type ProposedAction } from "../../../../../lib/overview-actions";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -36,6 +36,10 @@ export async function POST(req: NextRequest) {
   if (!found) return NextResponse.json({ ok: false, error: "Actie niet gevonden (mogelijk verlopen uit de historie)." }, { status: 404 });
   if (found.executed) return NextResponse.json({ ok: true, alreadyDone: true, result: found.result });
 
+  // Bewerkbare acties (bv. profiel_bijwerken): gebruik de door Maarten bijgestelde tekst.
+  if (EDITABLE.includes(found.type) && typeof body.edit === "string" && body.edit.trim()) {
+    found = { ...found, tekst: String(body.edit).slice(0, 4000).trim() };
+  }
   const result = await executeAction(slug, found);
   // Markeer de actie in de historie (ook bij mislukken, met het resultaat), zodat
   // de status terugvindbaar blijft. Bij mislukken laten we 'executed' vals zodat

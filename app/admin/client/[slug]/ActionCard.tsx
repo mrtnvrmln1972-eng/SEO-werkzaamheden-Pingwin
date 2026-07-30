@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 export type Action = {
   id: string; type: string; reason?: string;
-  url?: string; title?: string; taak?: string; fase?: string; wie?: string; steps?: string[];
+  url?: string; title?: string; taak?: string; fase?: string; wie?: string; steps?: string[]; tekst?: string;
   executed?: boolean;
   result?: { ok: boolean; message: string; taskIds?: number[]; runId?: number; link?: string; text?: string };
 };
@@ -17,6 +17,7 @@ const LABEL: Record<string, string> = {
   structured_data: "Structured data",
   alt_teksten: "Alt-teksten maken",
   meta_verbeteren: "Meta title/description",
+  profiel_bijwerken: "Klantprofiel bijwerken",
 };
 
 function shortUrl(url: string): string {
@@ -32,6 +33,8 @@ export default function ActionCard({ action, slug, thread, onExecuted, onGoToPag
 }) {
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const editRef = useRef<HTMLDivElement>(null);
+  const editable = action.type === "profiel_bijwerken";
   const done = !!action.executed;
   const result = action.result;
 
@@ -39,7 +42,8 @@ export default function ActionCard({ action, slug, thread, onExecuted, onGoToPag
     if (busy || done) return;
     setBusy(true);
     try {
-      const r = await fetch("/api/admin/overview/action", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread, actionId: action.id }) });
+      const edit = editable && editRef.current ? (editRef.current.innerText || "").trim() : undefined;
+      const r = await fetch("/api/admin/overview/action", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread, actionId: action.id, ...(edit ? { edit } : {}) }) });
       const d = await r.json();
       if (d.result) onExecuted(action.id, d.result, !!d.ok);
       else onExecuted(action.id, { ok: false, message: d.error || "Uitvoeren mislukt." }, false);
@@ -72,6 +76,13 @@ export default function ActionCard({ action, slug, thread, onExecuted, onGoToPag
       {action.title && <div className="act-line"><strong>Titel:</strong> {action.title}</div>}
       {action.steps && action.steps.length > 0 && <div className="act-line"><strong>Stappen:</strong> {action.steps.join(" → ")}</div>}
       {action.reason && <div className="act-reason">{action.reason}</div>}
+
+      {editable && !done && (
+        <>
+          <div className="act-edit-label muted">Voorstel (pas gerust aan vóór je goedkeurt):</div>
+          <div className="act-edit" contentEditable suppressContentEditableWarning ref={editRef}>{action.tekst}</div>
+        </>
+      )}
 
       {!done && (
         <div className="act-actions">

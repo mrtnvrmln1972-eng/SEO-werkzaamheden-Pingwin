@@ -2066,3 +2066,13 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .wp-next { margin-top: 7px; font-size: 12px; line-height: 1.45; color: #333; }
 .wp-btn-primary { font-weight: 700; }
 .wp-more { margin-top: 6px; }
+
+/* Knop per overzicht-item (fruit → Pagina's, CTR → Meta-tab) */
+.ov-item-actions { margin-top: 5px; }
+.ov-item-btn { font-family: inherit; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 7px; border: 1px solid var(--border); background: #fff; color: var(--gray); cursor: pointer; }
+.ov-item-btn:hover { background: var(--orange-light); color: var(--orange-dark); border-color: var(--orange); }
+
+/* Bewerkbaar voorstel op een actie-kaart (bv. klantprofiel-nuance) */
+.act-edit-label { font-size: 11px; margin: 6px 0 3px; }
+.act-edit { border: 1px solid var(--border); border-radius: 8px; background: #fff; padding: 8px 10px; font-size: 13px; line-height: 1.5; white-space: pre-wrap; min-height: 48px; }
+.act-edit:focus { outline: none; border-color: var(--orange); box-shadow: 0 0 0 3px rgba(231, 119, 63, 0.15); }

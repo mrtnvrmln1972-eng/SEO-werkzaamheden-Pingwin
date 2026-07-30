@@ -7,7 +7,7 @@
 // lib-functies. Mens aan het stuur: er gebeurt nooit iets autonoom.
 // ═══════════════════════════════════════════════════════════
 
-import { getClientBySlug } from "./clients";
+import { getClientBySlug, saveClientProfile } from "./clients";
 import { addManualPage, savePagePlan, getClientUrls } from "./site-urls";
 import { appendTasks } from "./tasks";
 import { createDocRun, runNow } from "./page-doc-run";
@@ -16,15 +16,32 @@ import { generateMetaProposal } from "./meta-ctr";
 import { measurePage } from "./page-measure";
 import { callClaude, LIGHT_MODEL } from "./anthropic";
 
-export type ActionType = "pagina_toevoegen" | "taak_aanmaken" | "plan_vastleggen" | "pijplijn_starten" | "structured_data" | "alt_teksten" | "meta_verbeteren";
-const VALID: ActionType[] = ["pagina_toevoegen", "taak_aanmaken", "plan_vastleggen", "pijplijn_starten", "structured_data", "alt_teksten", "meta_verbeteren"];
+export type ActionType = "pagina_toevoegen" | "taak_aanmaken" | "plan_vastleggen" | "pijplijn_starten" | "structured_data" | "alt_teksten" | "meta_verbeteren" | "profiel_bijwerken";
+const VALID: ActionType[] = ["pagina_toevoegen", "taak_aanmaken", "plan_vastleggen", "pijplijn_starten", "structured_data", "alt_teksten", "meta_verbeteren", "profiel_bijwerken"];
+// Types waarvan de kaart bewerkbaar is (Maarten kan de tekst bijstellen vóór goedkeuren).
+export const EDITABLE: ActionType[] = ["profiel_bijwerken"];
 
 export type ActionResult = { ok: boolean; message: string; taskIds?: number[]; runId?: number; link?: string; text?: string };
 export type ProposedAction = {
   id: string; type: ActionType; reason?: string;
-  url?: string; title?: string; taak?: string; fase?: string; wie?: string; plan?: string; steps?: string[]; extra?: string; keyword?: string;
+  url?: string; title?: string; taak?: string; fase?: string; wie?: string; plan?: string; steps?: string[]; extra?: string; keyword?: string; tekst?: string;
   executed?: boolean; result?: ActionResult;
 };
+
+// De sectie in het klantprofiel die automatisch uit de mail wordt bijgehouden.
+const PROFIEL_SECTIE = "## Uit klantcommunicatie (bijgehouden uit mail)";
+function mergeProfielSectie(current: string, tekst: string): string {
+  const body = (tekst || "").trim();
+  const cur = (current || "").trim();
+  const lines = cur.split("\n");
+  const start = lines.findIndex((l) => l.trim() === PROFIEL_SECTIE);
+  if (start === -1) return (cur ? cur + "\n\n" : "") + PROFIEL_SECTIE + "\n" + body;
+  let end = lines.length;
+  for (let i = start + 1; i < lines.length; i++) { if (/^##\s/.test(lines[i])) { end = i; break; } }
+  const before = lines.slice(0, start).join("\n").trim();
+  const after = lines.slice(end).join("\n").trim();
+  return [before, PROFIEL_SECTIE + "\n" + body, after].filter(Boolean).join("\n\n");
+}
 
 function toFullUrl(u: string, domain: string): string {
   const t = (u || "").trim();
@@ -68,6 +85,11 @@ export function validateAction(raw: Record<string, unknown>, domain: string, id:
     case "meta_verbeteren":
       if (!url) return null;
       return { ...base, url, keyword: String(raw.keyword || "").slice(0, 120).trim() };
+    case "profiel_bijwerken": {
+      const tekst = String(raw.tekst || "").trim();
+      if (!tekst) return null;
+      return { ...base, tekst: tekst.slice(0, 4000) };
+    }
     case "structured_data":
     case "alt_teksten":
       if (!url) return null;
@@ -101,6 +123,11 @@ export async function executeAction(slug: string, action: ProposedAction): Promi
       const runId = await createDocRun(slug, url, action.extra || "", "", steps, "klant");
       runNow(runId).catch(() => {});
       return { ok: true, message: `Pijplijn gestart (${steps.join(" → ")}). Volg de voortgang in de Pagina's-tab.`, runId };
+    }
+    case "profiel_bijwerken": {
+      const merged = mergeProfielSectie(client?.seoProfile || "", action.tekst || "");
+      await saveClientProfile(slug, merged);
+      return { ok: true, message: "Klantprofiel bijgewerkt uit de mail. Copy, meta en strategie gebruiken deze nuance vanaf nu automatisch.", text: action.tekst };
     }
     case "meta_verbeteren": {
       try {
