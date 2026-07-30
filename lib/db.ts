@@ -200,6 +200,11 @@ async function init(): Promise<void> {
   await sql`ALTER TABLE client_chat ADD COLUMN IF NOT EXISTS thread TEXT NOT NULL DEFAULT 'algemeen'`;
   await sql`ALTER TABLE client_chat DROP CONSTRAINT IF EXISTS client_chat_pkey`;
   await sql`CREATE UNIQUE INDEX IF NOT EXISTS ux_client_chat_thread ON client_chat(client_slug, thread)`;
+  // Per onderwerp (thread) in de bird's eye: een korte samenvatting (1-2 regels)
+  // en een "gedaan"-vlag, zodat onderwerpen als dichtgeklapte toggles met een
+  // regel uitleg getoond kunnen worden en afvinkbaar zijn.
+  await sql`ALTER TABLE client_chat ADD COLUMN IF NOT EXISTS summary TEXT`;
+  await sql`ALTER TABLE client_chat ADD COLUMN IF NOT EXISTS done BOOLEAN NOT NULL DEFAULT false`;
 
   // Uitvoerstatus van de bird's eye-actie-kaarten, los van de chat-JSON. Elke
   // goedkeuring is een eigen rij (atomair per actie), zodat meerdere

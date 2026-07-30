@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import ActionCard, { type Action } from "./ActionCard";
 
 type Msg = { role: "user" | "assistant"; content: string; actions?: Action[] };
+type Topic = { thread: string; count: number; summary: string; done: boolean };
 
 // Lichte Markdown → HTML (kopjes, bullets, vet, links, tabellen). Zelfde regels
 // als de zwevende chat, zodat antwoorden overal netjes renderen.
@@ -50,93 +51,115 @@ function mdToHtml(md: string): string {
 }
 
 const BASE = "overzicht";
-const labelOf = (t: string) => (t === BASE ? "Overzicht" : t.replace(/^overzicht:/, ""));
+const labelOf = (t: string) => (t === BASE ? "Algemeen" : t.replace(/^overzicht:/, ""));
 
-// De gedokte bird's eye-chat in de Overzicht-tab. Gebruikt dezelfde chat-backend
-// als de zwevende assistent, maar met thread-namespace "overzicht" (de agent is
-// dan gegrond in de afgesproken strategie en de site-brede werkstatus).
+// De gedokte bird's eye-assistent, nu per ONDERWERP (toggle). Elk onderwerp is
+// standaard dichtgeklapt en toont zijn titel plus een korte samenvatting; je klapt
+// er een open om het gesprek en de actie-kaarten te zien, en je kunt een onderwerp
+// afvinken als "gedaan". Zo zie je in één oogopslag wat er speelt, zonder muur.
 export default function OverviewChat({ slug, configured, onGoToPage, onGoToTask }: { slug: string; configured: boolean; onGoToPage?: (url: string) => void; onGoToTask?: (taskId: number) => void }) {
-  const [messages, setMessages] = useState<Msg[]>([]);
-  const [thread, setThread] = useState(BASE);
-  const [threads, setThreads] = useState<{ thread: string; count: number }[]>([]);
+  const [topics, setTopics] = useState<Topic[]>([]);
+  const [open, setOpen] = useState<string | null>(null);      // welk onderwerp is uitgeklapt (accordion)
+  const [messages, setMessages] = useState<Msg[]>([]);        // berichten van het open onderwerp
+  const [sumDraft, setSumDraft] = useState("");               // bewerkbare samenvatting van het open onderwerp
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const loadSeq = useRef(0);
 
-  // Laat het invoerveld meegroeien met de tekst (tot een maximum), zodat je een
-  // langer verhaal kunt typen of plakken.
-  useEffect(() => {
-    const el = inputRef.current;
-    if (el) { el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight, 220) + "px"; }
-  }, [input]);
-
-  // De chat groeit mee met de pagina (geen apart scrollboxje); spring naar het
-  // laatste bericht zodat het nieuwste stuk in beeld staat en het oude erboven uit
-  // beeld valt.
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [messages, busy]);
-
-  // Threads + historie van het actieve gesprek laden.
+  // Onderwerpen (threads) laden, alleen de bird's eye-namespace ("overzicht*").
   useEffect(() => {
     let alive = true;
-    fetch(`/api/admin/chat?slug=${encodeURIComponent(slug)}&thread=${encodeURIComponent(BASE)}`)
+    fetch(`/api/admin/chat?slug=${encodeURIComponent(slug)}`)
       .then((r) => r.json()).then((d) => {
         if (!alive || !d?.ok) return;
-        setMessages(Array.isArray(d.messages) ? d.messages : []);
-        setThreads((d.threads || []).filter((t: { thread: string }) => t.thread.startsWith("overzicht")));
+        setTopics(normalizeTopics(d.threads || []));
       }).catch(() => {});
     return () => { alive = false; };
   }, [slug]);
 
-  async function switchThread(t: string) {
-    if (t === thread) return;
-    setThread(t); setMessages([]); setError("");
-    const d = await fetch(`/api/admin/chat?slug=${encodeURIComponent(slug)}&thread=${encodeURIComponent(t)}`).then((r) => r.json()).catch(() => null);
-    if (d?.ok) { setMessages(d.messages || []); setThreads((d.threads || []).filter((x: { thread: string }) => x.thread.startsWith("overzicht"))); }
+  // Zorg dat het basisonderwerp altijd bestaat, en sorteer: openstaand eerst,
+  // "gedaan" onderaan.
+  function normalizeTopics(threads: { thread: string; count?: number; summary?: string; done?: boolean }[]): Topic[] {
+    const mine = threads.filter((t) => t.thread.startsWith("overzicht"));
+    const list: Topic[] = mine.map((t) => ({ thread: t.thread, count: t.count || 0, summary: t.summary || "", done: !!t.done }));
+    if (!list.some((t) => t.thread === BASE)) list.unshift({ thread: BASE, count: 0, summary: "", done: false });
+    return list.sort((a, b) => Number(a.done) - Number(b.done));
   }
 
-  function newThread() {
-    const name = window.prompt("Naam van het nieuwe bird's eye-gesprek (bijv. 'Q3-prioriteiten'):", "");
+  // Groeit mee en springt naar het laatste bericht van het open onderwerp.
+  useEffect(() => { if (open) endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [messages, busy, open]);
+  useEffect(() => {
+    const el = inputRef.current;
+    if (el) { el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight, 220) + "px"; }
+  }, [input, open]);
+
+  async function toggleOpen(t: Topic) {
+    if (open === t.thread) { setOpen(null); setMessages([]); setError(""); return; }
+    setOpen(t.thread); setMessages([]); setError(""); setInput(""); setSumDraft(t.summary || "");
+    const seq = ++loadSeq.current;
+    const d = await fetch(`/api/admin/chat?slug=${encodeURIComponent(slug)}&thread=${encodeURIComponent(t.thread)}`).then((r) => r.json()).catch(() => null);
+    if (seq !== loadSeq.current) return;               // een nieuwer onderwerp is intussen geopend
+    if (d?.ok) { setMessages(d.messages || []); setTopics(normalizeTopics(d.threads || [])); }
+  }
+
+  function newTopic() {
+    const name = window.prompt("Naam van het nieuwe onderwerp (bijv. 'Trifocale lenzenpagina's'):", "");
     const clean = (name || "").trim().slice(0, 60);
     if (!clean) return;
     const t = "overzicht:" + clean;
-    setThread(t); setMessages([]); setError("");
-    setThreads((ts) => (ts.some((x) => x.thread === t) ? ts : [{ thread: t, count: 0 }, ...ts]));
+    setTopics((ts) => (ts.some((x) => x.thread === t) ? ts : [{ thread: t, count: 0, summary: "", done: false }, ...ts]));
+    setOpen(t); setMessages([]); setError(""); setInput(""); setSumDraft("");
   }
 
-  async function clearChat() {
-    if (!window.confirm("Dit gesprek wissen?")) return;
-    setMessages([]); setError("");
+  async function saveSummary(thread: string, summary: string) {
+    setTopics((ts) => ts.map((x) => x.thread === thread ? { ...x, summary } : x));
+    await fetch("/api/admin/overview/topic", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread, summary }) }).catch(() => {});
+  }
+
+  async function toggleDone(thread: string, done: boolean) {
+    setTopics((ts) => normalizeTopics(ts.map((x) => x.thread === thread ? { ...x, done } : x)));
+    if (done && open === thread) { setOpen(null); setMessages([]); }
+    await fetch("/api/admin/overview/topic", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread, done }) }).catch(() => {});
+  }
+
+  async function clearChat(thread: string) {
+    if (!window.confirm("Dit onderwerp wissen?")) return;
+    setMessages([]); setOpen(null);
+    setTopics((ts) => ts.filter((x) => x.thread !== thread || x.thread === BASE).map((x) => x.thread === thread ? { ...x, count: 0, summary: "", done: false } : x));
     await fetch(`/api/admin/chat?slug=${encodeURIComponent(slug)}&thread=${encodeURIComponent(thread)}`, { method: "DELETE" }).catch(() => {});
-    setThreads((ts) => ts.filter((x) => x.thread !== thread));
-    if (thread !== BASE) setThread(BASE);
   }
 
-  // Werk de status van één actie bij (na goedkeuren), zowel in beeld als lokaal.
   function handleExecuted(id: string, result: NonNullable<Action["result"]>, executed: boolean) {
     setMessages((prev) => prev.map((m) => m.actions ? { ...m, actions: m.actions.map((a) => a.id === id ? { ...a, executed, result } : a) } : m));
   }
 
   function deleteMessage(idx: number) {
+    if (!open) return;
+    const t = open;
     setMessages((prev) => {
       const next = prev.filter((_, i) => i !== idx);
-      fetch("/api/admin/chat", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread, messages: next }) }).catch(() => {});
+      fetch("/api/admin/chat", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread: t, messages: next }) }).catch(() => {});
       return next;
     });
   }
 
   async function send(text: string) {
     const q = text.trim();
-    if (!q || busy) return;
+    if (!q || busy || !open) return;
+    const t = open;
     setError(""); setInput("");
     const next = [...messages, { role: "user" as const, content: q }];
     setMessages(next); setBusy(true);
     try {
-      const res = await fetch("/api/admin/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread, messages: next }) });
+      const res = await fetch("/api/admin/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread: t, messages: next }) });
       const data = await res.json();
-      if (data.ok) { setMessages((m) => [...m, { role: "assistant", content: data.answer, ...(Array.isArray(data.actions) && data.actions.length ? { actions: data.actions } : {}) }]); setThreads((ts) => (ts.some((x) => x.thread === thread) ? ts : [{ thread, count: next.length + 1 }, ...ts])); }
-      else setError(data.error || "Er ging iets mis.");
+      if (data.ok) {
+        setMessages((m) => [...m, { role: "assistant", content: data.answer, ...(Array.isArray(data.actions) && data.actions.length ? { actions: data.actions } : {}) }]);
+        setTopics((ts) => ts.map((x) => x.thread === t ? { ...x, count: next.length + 1 } : x));
+      } else setError(data.error || "Er ging iets mis.");
     } catch { setError("De assistent is niet bereikbaar."); } finally { setBusy(false); }
   }
 
@@ -148,53 +171,85 @@ export default function OverviewChat({ slug, configured, onGoToPage, onGoToTask 
     <div className="cockpit-card ovc-card">
       <div className="ovc-head">
         <span className="ovc-title"><span className="chat-fab-dot" /> Bird&rsquo;s eye-assistent</span>
-        <select className="chat-thread-select" value={thread} onChange={(e) => switchThread(e.target.value)}>
-          {(threads.some((t) => t.thread === thread) ? threads : [{ thread, count: messages.length }, ...threads]).map((t) => (
-            <option key={t.thread} value={t.thread}>{labelOf(t.thread)}{t.count ? ` (${t.count})` : ""}</option>
-          ))}
-        </select>
-        <button type="button" className="ghost-btn small" onClick={newThread}>+ Nieuw</button>
-        {messages.length > 0 && <button type="button" className="ghost-btn small" onClick={clearChat}>Wissen</button>}
+        <button type="button" className="ghost-btn small" onClick={newTopic}>+ Nieuw onderwerp</button>
       </div>
 
-      <div className="ovc-log">
-        {messages.length === 0 && !busy && (
-          <div className="ovc-intro muted">
-            Vraag bijvoorbeeld: <em>&ldquo;Waar staan we, wat pakken we als eerste op?&rdquo;</em>, <em>&ldquo;Welke pagina&rsquo;s uit onze afgesproken navigatie moeten we nog bouwen?&rdquo;</em>, of <em>&ldquo;Wat hebben we de afgelopen tijd gedaan?&rdquo;</em>. Ik werk vanuit jullie afgesproken strategie en de stand van zaken.
-          </div>
-        )}
-        {messages.map((m, i) => (
-          <div key={i} className={"ovc-msg " + m.role}>
-            <button type="button" className="chat-msg-del" title="Dit blok verwijderen" onClick={() => deleteMessage(i)}>&times;</button>
-            {m.role === "assistant"
-              ? <div className="ovc-bubble chat-md" dangerouslySetInnerHTML={{ __html: mdToHtml(m.content) }} />
-              : <div className="ovc-bubble">{m.content}</div>}
-            {m.role === "assistant" && m.actions && m.actions.length > 0 && (
-              <div className="ovc-actions">
-                {m.actions.map((a) => (
-                  <ActionCard key={a.id} action={a} slug={slug} thread={thread} onExecuted={handleExecuted} onGoToPage={onGoToPage} onGoToTask={onGoToTask} />
-                ))}
+      <div className="ovc-topics">
+        {topics.map((t) => {
+          const isOpen = open === t.thread;
+          return (
+            <div key={t.thread} className={"ovc-topic" + (t.done ? " done" : "") + (isOpen ? " open" : "")}>
+              <div className="ovc-topic-head" onClick={() => toggleOpen(t)}>
+                <span className="ovc-caret">{isOpen ? "▾" : "▸"}</span>
+                <input
+                  type="checkbox"
+                  className="ovc-done"
+                  checked={t.done}
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={(e) => toggleDone(t.thread, e.target.checked)}
+                  title="Markeer dit onderwerp als gedaan"
+                />
+                <span className="ovc-topic-title">{labelOf(t.thread)}</span>
+                {!isOpen && t.summary && <span className="ovc-topic-sum">{t.summary}</span>}
+                {t.count > 0 && <span className="ovc-topic-count">{t.count}</span>}
               </div>
-            )}
-          </div>
-        ))}
-        {busy && <div className="ovc-msg assistant"><div className="ovc-bubble muted">Aan het nadenken (ik lees zo nodig de strategie en meet pagina&rsquo;s na)…</div></div>}
-        <div ref={endRef} />
-      </div>
 
-      {error && <div className="login-error" style={{ margin: "6px 0" }}>{error}</div>}
+              {isOpen && (
+                <div className="ovc-topic-body">
+                  <input
+                    className="ovc-sum-edit"
+                    value={sumDraft}
+                    onChange={(e) => setSumDraft(e.target.value)}
+                    onBlur={() => { if (sumDraft.trim() !== (t.summary || "").trim()) saveSummary(t.thread, sumDraft.trim()); }}
+                    placeholder="Korte samenvatting (1 regel): wat speelt er in dit onderwerp?"
+                    maxLength={200}
+                  />
 
-      <div className="ovc-input">
-        <textarea
-          ref={inputRef}
-          rows={1}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); } }}
-          placeholder="Stel een vraag of geef een instructie… (Shift+Enter voor een nieuwe regel)"
-          disabled={busy}
-        />
-        <button type="button" className="primary-btn small" onClick={() => send(input)} disabled={busy || !input.trim()}>Vraag</button>
+                  <div className="ovc-log">
+                    {messages.length === 0 && !busy && (
+                      <div className="ovc-intro muted">
+                        Nieuw onderwerp. Vraag bijvoorbeeld: <em>&ldquo;Waar staan we hier, wat pakken we als eerste op?&rdquo;</em>, of gooi een URL/screenshot erin met <em>&ldquo;kijk hoe deze pagina rankt&rdquo;</em>. Ik werk vanuit jullie afgesproken strategie en de stand van zaken.
+                      </div>
+                    )}
+                    {messages.map((m, i) => (
+                      <div key={i} className={"ovc-msg " + m.role}>
+                        <button type="button" className="chat-msg-del" title="Dit blok verwijderen" onClick={() => deleteMessage(i)}>&times;</button>
+                        {m.role === "assistant"
+                          ? <div className="ovc-bubble chat-md" dangerouslySetInnerHTML={{ __html: mdToHtml(m.content) }} />
+                          : <div className="ovc-bubble">{m.content}</div>}
+                        {m.role === "assistant" && m.actions && m.actions.length > 0 && (
+                          <div className="ovc-actions">
+                            {m.actions.map((a) => (
+                              <ActionCard key={a.id} action={a} slug={slug} thread={t.thread} onExecuted={handleExecuted} onGoToPage={onGoToPage} onGoToTask={onGoToTask} />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    {busy && <div className="ovc-msg assistant"><div className="ovc-bubble muted">Aan het nadenken (ik lees zo nodig de strategie en meet pagina&rsquo;s na)…</div></div>}
+                    <div ref={endRef} />
+                  </div>
+
+                  {error && <div className="login-error" style={{ margin: "6px 0" }}>{error}</div>}
+
+                  <div className="ovc-input">
+                    <textarea
+                      ref={inputRef}
+                      rows={1}
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); } }}
+                      placeholder="Stel een vraag of geef een instructie… (Shift+Enter voor een nieuwe regel)"
+                      disabled={busy}
+                    />
+                    <button type="button" className="primary-btn small" onClick={() => send(input)} disabled={busy || !input.trim()}>Vraag</button>
+                    {messages.length > 0 && <button type="button" className="ghost-btn small" onClick={() => clearChat(t.thread)}>Wissen</button>}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

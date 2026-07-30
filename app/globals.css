@@ -2022,6 +2022,25 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 
 /* Actie-kaartjes onder een bird's eye-antwoord (voorstellen → één klik goedkeuren) */
 .ovc-actions { width: 100%; display: flex; flex-direction: column; gap: 8px; }
+
+/* Onderwerp-toggles in de bird's eye: standaard dicht, titel + 1 regel
+   samenvatting; uitklappen toont het gesprek en de actie-kaarten. */
+.ovc-topics { display: flex; flex-direction: column; gap: 8px; }
+.ovc-topic { border: 1px solid var(--border); border-radius: 10px; background: var(--white); overflow: hidden; }
+.ovc-topic.open { border-color: var(--orange); box-shadow: 0 1px 6px rgba(231, 119, 63, 0.08); }
+.ovc-topic.done { opacity: 0.6; }
+.ovc-topic-head { display: flex; align-items: center; gap: 8px; padding: 9px 12px; cursor: pointer; user-select: none; }
+.ovc-topic-head:hover { background: var(--gray-light); }
+.ovc-caret { color: var(--orange); font-size: 11px; width: 12px; flex: none; }
+.ovc-done { flex: none; accent-color: var(--orange); cursor: pointer; width: 15px; height: 15px; }
+.ovc-topic-title { font-weight: 800; font-size: 13.5px; color: var(--orange); flex: none; }
+.ovc-topic.done .ovc-topic-title { color: var(--gray); text-decoration: line-through; }
+.ovc-topic-sum { font-size: 12.5px; color: var(--gray); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1 1 auto; min-width: 0; }
+.ovc-topic-count { margin-left: auto; flex: none; font-size: 11px; color: var(--gray); background: var(--gray-light); border-radius: 10px; padding: 1px 8px; }
+.ovc-topic-body { padding: 2px 12px 12px; border-top: 1px solid var(--border); }
+.ovc-sum-edit { width: 100%; font-family: inherit; font-size: 12.5px; color: var(--dark); padding: 6px 9px; border: 1px solid var(--border); border-radius: 7px; margin: 8px 0 10px; background: var(--white); }
+.ovc-sum-edit:focus { outline: none; border-color: var(--orange); box-shadow: 0 0 0 3px rgba(231, 119, 63, 0.12); }
+.ovc-sum-edit::placeholder { color: var(--gray); }
 .act-card { border: 1px solid var(--border); border-left: 3px solid var(--orange); border-radius: 10px; background: #fff; padding: 10px 12px; }
 .act-card.act-done { border-left-color: #1e824c; background: #f4faf5; }
 .act-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }

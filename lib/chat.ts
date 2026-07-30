@@ -315,15 +315,32 @@ export async function getChatHistory(slug: string, thread = "algemeen"): Promise
   }
 }
 
-// Alle gesprekken (threads) van een klant, nieuwste eerst.
-export async function listChatThreads(slug: string): Promise<{ thread: string; count: number; updatedAt: string }[]> {
+// Alle gesprekken (threads) van een klant, nieuwste eerst. Inclusief de
+// onderwerp-samenvatting en de "gedaan"-vlag voor de toggle-weergave.
+export async function listChatThreads(slug: string): Promise<{ thread: string; count: number; updatedAt: string; summary: string; done: boolean }[]> {
   await ensureSchema();
-  const { rows } = await sql`SELECT thread, messages, updated_at FROM client_chat WHERE client_slug = ${slug} ORDER BY updated_at DESC`;
+  const { rows } = await sql`SELECT thread, messages, updated_at, summary, done FROM client_chat WHERE client_slug = ${slug} ORDER BY updated_at DESC`;
   return rows.map((r) => {
     let count = 0;
     try { const p = JSON.parse((r.messages as string) || "[]"); count = Array.isArray(p) ? p.length : 0; } catch { /* leeg */ }
-    return { thread: (r.thread as string) || "algemeen", count, updatedAt: new Date(r.updated_at as string).toISOString() };
+    return { thread: (r.thread as string) || "algemeen", count, updatedAt: new Date(r.updated_at as string).toISOString(), summary: (r.summary as string) || "", done: !!r.done };
   });
+}
+
+// Werkt de samenvatting en/of "gedaan"-status van één onderwerp (thread) bij.
+// Raakt de berichten niet aan. Maakt de rij zo nodig aan (leeg gesprek dat nog
+// geen bericht heeft, maar wel een naam/samenvatting).
+export async function setThreadMeta(slug: string, thread: string, meta: { summary?: string; done?: boolean }): Promise<void> {
+  await ensureSchema();
+  const t = cleanThread(thread);
+  const summary = meta.summary === undefined ? null : String(meta.summary).slice(0, 400);
+  const done = meta.done === undefined ? null : !!meta.done;
+  await sql`
+    INSERT INTO client_chat (client_slug, thread, messages, summary, done, updated_at)
+    VALUES (${slug}, ${t}, '[]', ${summary}, ${done ?? false}, now())
+    ON CONFLICT (client_slug, thread) DO UPDATE SET
+      summary = COALESCE(${summary}, client_chat.summary),
+      done    = COALESCE(${done}, client_chat.done)`;
 }
 
 async function saveChatHistory(slug: string, thread: string, messages: ChatMessage[]): Promise<void> {
