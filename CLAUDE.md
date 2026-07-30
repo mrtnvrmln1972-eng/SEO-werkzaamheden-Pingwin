@@ -25,7 +25,10 @@ laadt. Wijzigt de werkwijze, houd master en alle kopieën gelijk.
   Scanbaar: korte bullets, korte alinea's.
 - **Gewone taal.** Maarten is geen developer. Leg techniek uit zonder jargon.
 - **Verifieer, gok nooit.** Kun je iets niet zien of zeker weten, zeg het en zoek het uit.
-  "Ik weet het niet" mag.
+  "Ik weet het niet" mag. Presenteer een plan of oud document nooit als de huidige werkelijkheid.
+- **Zoek zelf op.** Vraag Maarten niet naar wat je zelf kunt vinden (een domein, URL of cijfer);
+  gebruik de gekoppelde bronnen (mail, Ahrefs, Search Console) en het web uit eigen beweging.
+- **Het heet Pingwin.** Nooit "Penguin" of een andere spelling, ook niet in output.
 - **Bewijs boven beloftes.** Zeg niet "het werkt", laat het zien (test, output, live URL).
   Kondig je een controle aan, voer die dan ook echt uit.
 - **Mens aan het stuur.** Niets gaat autonoom naar buiten; Maarten keurt goed.
