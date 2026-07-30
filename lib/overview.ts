@@ -188,6 +188,48 @@ export function pageWorkStatusToText(pages: PageWork[]): string {
   return lines.join("\n");
 }
 
+// ── Visueel werkplan: pagina's gegroepeerd in bezig / gepland / gedaan ──
+export type WerkplanItem = {
+  url: string; slug: string; live: boolean; status: "bezig" | "gepland" | "gedaan";
+  keyword: string; volume: number | null; position: number | null; impressions: number; clicks: number;
+  kansLabel: string; kansLevel: string; docs: string[];
+};
+export type Werkplan = { bezig: WerkplanItem[]; gepland: WerkplanItem[]; gedaan: WerkplanItem[] };
+
+function shortPath(u: string): string { try { const x = new URL(u); return x.pathname + x.search; } catch { return u; } }
+
+export async function buildWerkplan(slug: string, opts: { fresh?: boolean } = {}): Promise<Werkplan> {
+  const client = await getClientBySlug(slug);
+  const domain = client?.domain || "";
+  const [work, oppRows] = await Promise.all([getPageWorkStatus(slug), gscOpps(domain, !!opts.fresh)]);
+  const oppBy: Record<string, (typeof oppRows)[number]> = Object.fromEntries(oppRows.map((p) => [norm(p.url), p]));
+  const items: WerkplanItem[] = [];
+  for (const p of work) {
+    const o = oppBy[norm(p.url)];
+    const opp = o ? opportunity(o.impressions, o.position) : { score: 0, label: "", level: "none" };
+    const gedaan = p.docs.includes("copy") || (p.hasPlan && p.docs.length > 0);
+    const bezig = !gedaan && (p.hasPlan || p.docs.length > 0 || p.hasClusterAdvice);
+    let status: "bezig" | "gepland" | "gedaan" | null = gedaan ? "gedaan" : bezig ? "bezig" : null;
+    if (!status) {
+      if (!p.live) status = "gepland";            // nog te bouwen pagina
+      else if (opp.level !== "none") status = "gepland"; // bestaande kans, nog niet gestart
+      else continue;                               // live en niets te doen → niet in het werkplan
+    }
+    items.push({
+      url: p.url, slug: shortPath(p.url), live: p.live, status,
+      keyword: o?.bestKeyword || "", volume: o?.bestVolume ?? null, position: o?.position ?? null,
+      impressions: o?.impressions ?? p.impressions, clicks: o?.clicks ?? p.clicks,
+      kansLabel: opp.label, kansLevel: opp.level, docs: p.docs,
+    });
+  }
+  const byKans = (a: WerkplanItem, b: WerkplanItem) => (b.impressions || 0) - (a.impressions || 0);
+  return {
+    bezig: items.filter((i) => i.status === "bezig"),
+    gepland: items.filter((i) => i.status === "gepland").sort(byKans),
+    gedaan: items.filter((i) => i.status === "gedaan").sort((a, b) => a.slug.localeCompare(b.slug)),
+  };
+}
+
 // Compacte tekstsamenvatting van het overzicht voor de bird's eye-chatcontext.
 // (Gebruikt in Fase B; hier alvast zodat er één bron blijft.)
 export function overviewToText(o: Overview): string {

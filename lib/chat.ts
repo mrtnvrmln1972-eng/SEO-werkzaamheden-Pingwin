@@ -211,11 +211,13 @@ async function buildOverviewContext(client: ClientConfig): Promise<string> {
     if (ms.connected) { const q = (client.email || client.domain || "").trim(); if (q) { const live = await msSearchClientEmails(q, ms.account || "", 12); if (live) emails = live; } }
     emails = emails.filter((e) => !/@ahrefs\.com$/i.test((e.fromAddress || "").trim()));
     if (emails.length) {
-      const lines = emails.slice(0, 8).map((e) => {
+      // Ruim meegeven (niet te kort afkappen), zodat de agent volledige mails ziet
+      // en er echte concept-antwoorden op kan maken.
+      const lines = emails.slice(0, 6).map((e) => {
         const dir = e.direction === "out" ? "WIJ→klant" : "klant→WIJ";
         const date = e.receivedAt ? new Date(e.receivedAt).toLocaleDateString("nl-NL") : "";
-        const body = (stripHtml(e.bodyHtml || "") || e.preview || "").replace(/\s+/g, " ").trim().slice(0, 600);
-        return `[${dir}, ${date}] ${e.subject || "(geen onderwerp)"}: ${body}`;
+        const body = (stripHtml(e.bodyHtml || "") || e.preview || "").replace(/\s+/g, " ").trim().slice(0, 3000);
+        return `[${dir}, ${date}] ${e.subject || "(geen onderwerp)"}:\n${body}`;
       });
       parts.push("\n=== RECENTE E-MAILS (basisinfo; nieuwste eerst; neem relevante punten en herzieningen mee in de strategie) ===\n" + lines.join("\n"));
     }

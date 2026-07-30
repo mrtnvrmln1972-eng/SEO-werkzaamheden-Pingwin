@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import OverviewChat from "./OverviewChat";
+import WerkplanPanel from "./WerkplanPanel";
 
 type Status = {
   totaal: number; leeg: number; halfPlan: number; heeftPlan: number;
@@ -78,65 +79,7 @@ export default function OverviewTab({ slug, clientName, onGoToPage, onGoToTask, 
         )}
       </div>
 
-      {data && (data.fruit.length > 0 || data.ctr.length > 0 || data.gaten.length > 0) && (
-        <div className="ov-columns">
-          {/* ── Laaghangend fruit ── */}
-          {data.fruit.length > 0 && (
-            <div className="cockpit-card">
-              <div className="ck-section-head"><span>Laaghangend fruit</span></div>
-              <div className="muted ov-hint">Pagina&rsquo;s die al scoren maar net buiten de top staan. Van boven naar beneden aanpakken.</div>
-              <ul className="ov-list">
-                {data.fruit.map((f) => (
-                  <li key={f.url} className="ov-item">
-                    <div className="ov-item-main">
-                      <span className={"pg-kans " + f.level}>{f.label}</span>
-                      <button type="button" className="ov-link" onClick={() => onGoToPage?.(f.url)} title="Open deze pagina in de Pagina's-tab">{shortUrl(f.url)}</button>
-                    </div>
-                    <div className="ov-item-sub muted">&ldquo;{f.bestKeyword}&rdquo; · positie {f.position} · {fmt(f.impressions)} vertoningen{f.volume != null ? ` · vol ${fmt(f.volume)}` : ""}</div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* ── CTR-onderkans + keyword-gaten ── */}
-          {(data.ctr.length > 0 || data.gaten.length > 0) && (
-            <div className="cockpit-card">
-              {data.ctr.length > 0 && (
-                <>
-                  <div className="ck-section-head"><span>Meta &amp; CTR-onderkans</span></div>
-                  <div className="muted ov-hint">Veel vertoningen, te weinig klikken. Betere titel/omschrijving = direct meer bezoekers.</div>
-                  <ul className="ov-list">
-                    {data.ctr.map((c) => (
-                      <li key={c.url} className="ov-item">
-                        <div className="ov-item-main">
-                          <button type="button" className="ov-link" onClick={() => onGoToPage?.(c.url)}>{shortUrl(c.url)}</button>
-                          <span className="ov-gain">~{fmt(c.extraClicks)} klikken erbij</span>
-                        </div>
-                        <div className="ov-item-sub muted">&ldquo;{c.keyword}&rdquo; · positie {c.position} · CTR {c.ctr}%</div>
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              )}
-              {data.gaten.length > 0 && (
-                <>
-                  <div className="ck-section-head" style={{ marginTop: data.ctr.length > 0 ? 16 : 0 }}><span>Keyword-gaten</span></div>
-                  <div className="muted ov-hint">Relevante zoekwoorden waar de site nog niet op scoort.</div>
-                  <ul className="ov-list">
-                    {data.gaten.map((g, i) => (
-                      <li key={i} className="ov-item">
-                        <div className="ov-item-main"><span className="ov-kw">{g.keyword}</span>{g.volume != null && <span className="ov-gain">vol {fmt(g.volume)}</span>}</div>
-                        {g.reason && <div className="ov-item-sub muted">{g.reason}</div>}
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+      <WerkplanPanel slug={slug} onGoToPage={onGoToPage} />
       </div>
     </div>
   );
