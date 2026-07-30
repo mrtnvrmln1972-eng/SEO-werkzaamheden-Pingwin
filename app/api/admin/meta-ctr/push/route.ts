@@ -4,6 +4,7 @@ import { guardSlug } from "../../../../../lib/admin-scope";
 import { sql, ensureSchema } from "../../../../../lib/db";
 import { updateMetaProposal } from "../../../../../lib/meta-ctr";
 import { pushMetaToSite } from "../../../../../lib/wp-push";
+import { appendTasks } from "../../../../../lib/tasks";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -35,6 +36,14 @@ export async function POST(req: NextRequest) {
     const result = await pushMetaToSite(slug, url, fields);
     if (!result.ok) return NextResponse.json({ ok: false, error: result.detail }, { status: 422 });
     await updateMetaProposal(slug, url, { status: "doorgevoerd" });
+    // De uitvoering wordt standaard als afgevinkte werkzaamheid gelogd (ca. 10 min),
+    // in de huidige maand, zodat het in het takenlijstje terugkomt.
+    try {
+      const pretty = url.replace(/^https?:\/\/[^/]+/i, "") || url;
+      const wat = fields.title && fields.desc ? "meta-titel + beschrijving" : fields.title ? "meta-titel" : "meta-beschrijving";
+      const maand = new Date().toLocaleDateString("nl-NL", { month: "long" }).toLowerCase();
+      await appendTasks(slug, [{ taak: `Verbeterde ${wat} doorgevoerd op ${pretty}`, wie: "SEO", fase: "Opschonen", status: "Klaar", uren: 0.15, maand, pageUrl: url, klantZichtbaar: true }]);
+    } catch { /* taak-log is extra; nooit de push laten falen */ }
     return NextResponse.json({ ok: true, detail: result.detail, pushed: Object.keys(fields) });
   } catch (e) {
     return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 500 });

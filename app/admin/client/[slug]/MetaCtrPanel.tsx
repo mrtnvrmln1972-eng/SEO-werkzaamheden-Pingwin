@@ -62,9 +62,10 @@ const STATUS_LABEL: Record<string, { txt: string; bg: string; fg: string }> = {
   afgewezen: { txt: "afgewezen", bg: "#f2f2f2", fg: "#777" },
 };
 
-export default function MetaCtrPanel({ slug, backendUrl, onOpenPage }: { slug: string; backendUrl?: string | null; onOpenPage?: (url: string) => void }) {
+export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage }: { slug: string; domain?: string; backendUrl?: string | null; onOpenPage?: (url: string) => void }) {
   const [rows, setRows] = useState<KansRow[] | null>(null);
   const [error, setError] = useState("");
+  const [verify, setVerify] = useState<Record<string, { title: string; description: string; url: string }>>({});
   const [openUrl, setOpenUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -109,6 +110,31 @@ export default function MetaCtrPanel({ slug, backendUrl, onOpenPage }: { slug: s
       setLocal(r.url, (p) => ({ ...p, status: "doorgevoerd", liveAt: new Date().toISOString() }));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Doorvoeren mislukte.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  // Volledige, klikbare live-URL van een pagina (r.url is vaak een pad).
+  function fullUrl(u: string): string {
+    if (/^https?:\/\//i.test(u)) return u;
+    const base = (domain || "").replace(/^https?:\/\//i, "").replace(/\/$/, "");
+    return base ? `https://${base}${u.startsWith("/") ? u : `/${u}`}` : u;
+  }
+
+  // Haalt de live meta van de pagina op zodat je ziet dat het echt is doorgevoerd.
+  async function verifyLive(r: KansRow) {
+    setBusy(`${r.url}|verify`);
+    setError("");
+    try {
+      const d = await fetch("/api/admin/meta-ctr/verify", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, url: r.url }),
+      }).then((res) => res.json());
+      if (!d.ok) throw new Error(d.error || "Live controleren mislukte.");
+      setVerify((v) => ({ ...v, [r.url]: { title: d.title || "", description: d.description || "", url: d.url || fullUrl(r.url) } }));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Live controleren mislukte.");
     } finally {
       setBusy(null);
     }
@@ -428,6 +454,24 @@ export default function MetaCtrPanel({ slug, backendUrl, onOpenPage }: { slug: s
                       )}
                       {r.proposal.status === "doorgevoerd" && (
                         <div>
+                          <div className="org-actions meta-done-row" style={{ alignItems: "center", margin: "2px 0 10px" }}>
+                            <span className="meta-live-badge">✓ Is doorgevoerd op de site</span>
+                            <button type="button" className="ghost-btn small" onClick={() => void verifyLive(r)} disabled={busy === `${r.url}|verify`}>{busy === `${r.url}|verify` ? "Controleren…" : "Controleer live"}</button>
+                            <a className="ghost-btn small" href={fullUrl(r.url)} target="_blank" rel="noreferrer">Open pagina</a>
+                          </div>
+                          {verify[r.url] && (() => {
+                            const norm = (s: string) => (s || "").replace(/\s+/g, " ").trim().toLowerCase();
+                            const tMatch = fieldOk(r.proposal, "title") && norm(verify[r.url].title) === norm(r.proposal.propTitle);
+                            const dMatch = fieldOk(r.proposal, "desc") && norm(verify[r.url].description) === norm(r.proposal.propDesc);
+                            const tPushed = fieldOk(r.proposal, "title"), dPushed = fieldOk(r.proposal, "desc");
+                            return (
+                              <div className="meta-live-check">
+                                <div>Live titel {tPushed ? (tMatch ? <span className="meta-ok">✓ staat live</span> : <span className="meta-pending">nog niet zichtbaar</span>) : null}: <strong>{verify[r.url].title || "(leeg)"}</strong></div>
+                                <div>Live beschrijving {dPushed ? (dMatch ? <span className="meta-ok">✓ staat live</span> : <span className="meta-pending">nog niet zichtbaar</span>) : null}: <strong>{verify[r.url].description || "(leeg)"}</strong></div>
+                                {((tPushed && !tMatch) || (dPushed && !dMatch)) && <div className="wz-item-sub muted">Nog niet zichtbaar? Dat kan aan caching liggen; probeer over een paar minuten opnieuw.</div>}
+                              </div>
+                            );
+                          })()}
                           <div className="wz-block-head">Effect</div>
                           {r.proposal.effect ? (
                             <p className="wz-item-sub" style={{ color: "var(--dark)" }}>

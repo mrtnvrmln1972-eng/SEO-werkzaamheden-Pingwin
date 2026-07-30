@@ -572,7 +572,7 @@ export default function ClientCockpit({
 
         {tab === "wijzigingen" && <WijzigingenPanel slug={client.slug} />}
 
-        {tab === "meta" && <MetaCtrPanel slug={client.slug} backendUrl={client.backendUrl} onOpenPage={goToPage} />}
+        {tab === "meta" && <MetaCtrPanel slug={client.slug} domain={client.domain || ""} backendUrl={client.backendUrl} onOpenPage={goToPage} />}
 
         {tab === "developer" && <DeveloperOverview embedded />}
 
