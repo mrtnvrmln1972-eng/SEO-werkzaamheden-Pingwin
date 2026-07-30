@@ -233,7 +233,13 @@ export async function executeAction(slug: string, action: ProposedAction, thread
     case "alt_teksten": {
       const m = await measurePage(url, { staticOnly: true });
       if (!m.ok) return { ok: false, message: `Pagina niet leesbaar (status ${m.status ?? "?"}).` };
-      const missing = m.images.filter((i) => !i.hasAlt || !i.alt.trim());
+      // Ontdubbel op bestandsnaam: lazyload- en responsive-varianten (bijv.
+      // foto-300x200.jpg / foto-600x400.jpg) leveren dezelfde afbeelding meerdere
+      // keren op. De sitebouwer hoeft er maar één alt-tekst per échte afbeelding.
+      const normFile = (f: string) => f.toLowerCase().replace(/-\d+x\d+(?=\.[a-z0-9]+$)/, "");
+      const missingAll = m.images.filter((i) => !i.hasAlt || !i.alt.trim());
+      const seenFiles = new Set<string>();
+      const missing = missingAll.filter((i) => { const k = normFile(i.file); if (!k || seenFiles.has(k)) return false; seenFiles.add(k); return true; });
       if (!missing.length) return { ok: true, message: "Alle afbeeldingen op deze pagina hebben al een alt-tekst." };
       const list = missing.slice(0, 40).map((i) => i.file).join("\n");
       const sys = "Je bent SEO-copywriter. Schrijf per afbeeldingsbestandsnaam een korte, natuurlijke Nederlandse alt-tekst (maximaal ongeveer 12 woorden) die beschrijft wat er waarschijnlijk op staat, passend bij de pagina. Geen keyword-stuffing, begin niet met 'afbeelding van'. Geef PRECIES per regel: bestandsnaam => alt-tekst. Geef niets anders terug, geen inleiding.";
@@ -242,7 +248,8 @@ export async function executeAction(slug: string, action: ProposedAction, thread
       try { text = await callClaude(sys, [{ role: "user", content: user }], 1500, { slug, action: "alt-teksten" }, LIGHT_MODEL); } catch (e) { return { ok: false, message: "Alt-teksten genereren mislukt: " + (e as Error).message }; }
       const toel = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>");
       const ids = await appendTasks(slug, [{ taak: `Alt-teksten toevoegen op ${url}`, wie: "Dev", fase: "Opschonen", status: "Gepland", pageUrl: url, toelichting: toel, klantZichtbaar: false }]).catch(() => [] as number[]);
-      return { ok: true, message: `${missing.length} alt-teksten gegenereerd (kopieer hieronder, ook als Dev-taak gezet).`, text, taskIds: ids };
+      const nuance = missingAll.length > missing.length ? ` (van ${missingAll.length} img-tags op de pagina, incl. responsive/lazyload-varianten)` : "";
+      return { ok: true, message: `${missing.length} unieke afbeeldingen zonder alt-tekst${nuance}; alt-teksten gegenereerd (kopieer hieronder, ook als Dev-taak gezet).`, text, taskIds: ids };
     }
   }
   return { ok: false, message: "Onbekende actie." };

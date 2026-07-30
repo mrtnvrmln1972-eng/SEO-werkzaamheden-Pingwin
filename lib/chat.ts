@@ -408,6 +408,9 @@ function chatTools(client: ClientConfig): { tools: ToolDef[]; run: ToolRunner } 
       if (name === "meet_pagina") {
         const m = await measurePage(toFull(String(input.url || "")), { staticOnly: true });
         if (!m.ok) return `Pagina niet leesbaar (status ${m.status ?? "?"}).`;
+        const normImg = (f: string) => f.toLowerCase().replace(/-\d+x\d+(?=\.[a-z0-9]+$)/, "");
+        const imgUniek = new Set(m.images.map((i) => normImg(i.file))).size;
+        const imgUniekNoAlt = new Set(m.images.filter((i) => !i.hasAlt || !i.alt.trim()).map((i) => normImg(i.file))).size;
         return [
           `Status ${m.status}. Title (${metaVerdictText("meta_title", m.metaTitle)}): ${m.metaTitle}`,
           `Meta-description (${metaVerdictText("meta_description", m.metaDescription)}): ${m.metaDescription}`,
@@ -415,7 +418,7 @@ function chatTools(client: ClientConfig): { tools: ToolDef[]; run: ToolRunner } 
           `H2 (${m.h2.length}): ${m.h2.join(" | ")}`,
           `H3 (${m.h3.length}): ${m.h3.slice(0, 15).join(" | ")}`,
           `Woorden: ${m.wordCount}. Interne links: ${m.internalLinkCount}, extern: ${m.externalLinkCount}.`,
-          `Afbeeldingen: ${m.images.length} (zonder alt: ${m.imagesWithoutAlt}). FAQ: ${m.faqDetected ? `ja (${m.faqCount})` : "nee"}. Schema: ${m.schemaTypes.join(", ") || "geen"}.`,
+          `Afbeeldingen: ${imgUniek} uniek${m.images.length > imgUniek ? ` (${m.images.length} img-tags incl. responsive/lazyload-varianten)` : ""}, zonder alt: ${imgUniekNoAlt} uniek. FAQ: ${m.faqDetected ? `ja (${m.faqCount})` : "nee"}. Schema: ${m.schemaTypes.join(", ") || "geen"}.`,
         ].join("\n");
       }
       if (name === "gsc_pagina") {
