@@ -77,11 +77,18 @@ export default function ActionCard({ action, slug, thread, onExecuted, onGoToPag
       </div>
       {action.taak && <div className="act-line"><strong>Taak:</strong> {action.taak}{action.wie ? ` (${action.wie})` : ""}</div>}
       {action.taken && action.taken.length > 0 && (
-        <ul className="act-taken">
-          {action.taken.map((t, i) => (
-            <li key={i}>{t.taak}{t.wie ? ` (${t.wie})` : ""}{t.url ? ` — ${shortUrl(t.url)}` : ""}</li>
-          ))}
-        </ul>
+        <>
+          <div className="act-taken-head">{action.taken.length} {action.taken.length === 1 ? "taak" : "taken"} · landen in deze week, daarna versleepbaar</div>
+          <div className="act-taken">
+            {action.taken.map((t, i) => (
+              <div key={i} className="act-taak-row">
+                <span className={"act-wie " + (t.wie === "Dev" ? "wie-dev" : "wie-seo")}>{t.wie || "SEO"}</span>
+                <span className="act-taak-text">{t.taak}</span>
+                {t.url && <a className="act-taak-url" href={t.url} target="_blank" rel="noreferrer">{shortUrl(t.url)}</a>}
+              </div>
+            ))}
+          </div>
+        </>
       )}
       {action.title && <div className="act-line"><strong>Titel:</strong> {action.title}</div>}
       {action.steps && action.steps.length > 0 && <div className="act-line"><strong>Stappen:</strong> {action.steps.join(" → ")}</div>}
