@@ -44,10 +44,10 @@ export default function OverviewTab({ slug, clientName, domain, onGoToPage, onGo
   const s = data?.status;
 
   return (
-    <div className="overview-tab">
-      <div className="ov-layout">
+    <div className="overview-tab ov-layout">
       <div className="ov-chatcol">
         <OverviewChat slug={slug} domain={domain} configured={chatConfigured !== false} onGoToPage={onGoToPage} onGoToTask={onGoToTask} />
+        <WeekplanBoard slug={slug} onGoToPage={onGoToPage} />
       </div>
 
       <div className="ov-side">
@@ -144,8 +144,6 @@ export default function OverviewTab({ slug, clientName, domain, onGoToPage, onGo
         </div>
       )}
       </div>
-      </div>
-      <WeekplanBoard slug={slug} onGoToPage={onGoToPage} />
     </div>
   );
 }
