@@ -281,14 +281,6 @@ async function init(): Promise<void> {
   // Klantversie-link: het begrijpelijke document voor de klant (verschijnt in het
   // klantdashboard), naast de technische doc_link (intern/developer).
   await sql`ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS client_doc_link TEXT`;
-  // Weekplanning ín de takenlijst: één lijst, twee weergaven ("week voor jou,
-  // maand voor klant"). Een taak kan aan een ISO-week hangen (week_year + week_no);
-  // de maand (voor de klant-rollup) leiden we daaruit af. thread = het bird's
-  // eye-onderwerp waar de taak uit rolde. Taken met step_kind LIKE 'weekplan%'
-  // zijn de planning-kaarten uit het weekbord (los van de pijplijn-staptaken).
-  await sql`ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS week_year INTEGER NOT NULL DEFAULT 0`;
-  await sql`ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS week_no INTEGER NOT NULL DEFAULT 0`;
-  await sql`ALTER TABLE client_tasks ADD COLUMN IF NOT EXISTS thread TEXT`;
 
   // Focus-blok per klant: afgesproken zoekwoorden + pagina's en snelle links
   // (linkbuilding-sheets, Search Console, Analytics). Eén JSON-rij per klant.

@@ -55,9 +55,7 @@ export const MAAND_VOLGORDE = [
 // dashboard bijhouden. Alle taken zijn klant-zichtbaar; uren staan in minuten.
 export function tasksToDashboardData(tasks: TaskRow[], budget: ClientBudget): DashboardData {
   const mapped: Task[] = tasks
-    // Weekplanning-taken (step_kind 'weekplan…') zijn interne planning, geen
-    // klant-mijlpaal: die horen niet op het klant-dashboard.
-    .filter((t) => (t.taak || "").trim() && !String(t.stepKind || "").startsWith("weekplan"))
+    .filter((t) => (t.taak || "").trim())
     .map((t, i) => ({
       categorie: t.categorie || "",
       taak: t.taak,
