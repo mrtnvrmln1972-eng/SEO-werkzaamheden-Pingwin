@@ -24,7 +24,7 @@ const VALID: ActionType[] = ["pagina_toevoegen", "taak_aanmaken", "plan_vastlegg
 export const EDITABLE: ActionType[] = ["profiel_bijwerken", "strategie_bepalen"];
 
 export type ActionResult = { ok: boolean; message: string; taskIds?: number[]; runId?: number; link?: string; text?: string };
-export type WeekTaak = { taak: string; wie?: string; url?: string };
+export type WeekTaak = { taak: string; toelichting?: string; wie?: string; url?: string };
 export type ProposedAction = {
   id: string; type: ActionType; reason?: string;
   url?: string; title?: string; taak?: string; fase?: string; wie?: string; plan?: string; steps?: string[]; extra?: string; keyword?: string; tekst?: string;
@@ -134,7 +134,7 @@ export function validateAction(raw: Record<string, unknown>, domain: string, id:
           const o = (t || {}) as Record<string, unknown>;
           const taak = String(o.taak || "").slice(0, 400).trim();
           if (!taak) return null;
-          return { taak, wie: /dev/i.test(String(o.wie || "")) ? "Dev" : "SEO", url: toFullUrl(String(o.url || ""), domain) || undefined };
+          return { taak, toelichting: String(o.info || o.toelichting || "").slice(0, 4000).trim() || undefined, wie: /dev/i.test(String(o.wie || "")) ? "Dev" : "SEO", url: toFullUrl(String(o.url || ""), domain) || undefined };
         })
         .filter(Boolean) as WeekTaak[];
       if (!taken.length) return null;

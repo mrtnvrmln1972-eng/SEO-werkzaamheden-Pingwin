@@ -239,6 +239,7 @@ async function init(): Promise<void> {
       updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
     )`;
   await sql`CREATE INDEX IF NOT EXISTS ix_client_weekplan_slug ON client_weekplan(client_slug)`;
+  await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS toelichting TEXT`;
 
   // Werkzaamheden per klant, ín het dashboard (alternatief voor de Google Sheet).
   // SEO- en Dev-taken samen; per maand, met uren, status, link en zichtbaarheid

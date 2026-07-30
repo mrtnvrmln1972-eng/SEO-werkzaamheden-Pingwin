@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-type Task = { id: number; thread: string; taak: string; wie: string; url: string; weekYear: number; weekNo: number; status: string; sortOrder: number };
+type Task = { id: number; thread: string; taak: string; toelichting: string; wie: string; url: string; weekYear: number; weekNo: number; status: string; sortOrder: number };
 type Current = { year: number; week: number };
 
 const STATUS_NEXT: Record<string, string> = { gepland: "bezig", bezig: "klaar", klaar: "gepland" };
@@ -40,6 +40,7 @@ export default function WeekplanBoard({ slug, onGoToPage }: { slug: string; onGo
   const [loaded, setLoaded] = useState(false);
   const [dragId, setDragId] = useState<number | null>(null);
   const [dropKey, setDropKey] = useState<number | null>(null);
+  const [openCard, setOpenCard] = useState<number | null>(null);
 
   async function load() {
     try {
@@ -54,8 +55,8 @@ export default function WeekplanBoard({ slug, onGoToPage }: { slug: string; onGo
   const columns = useMemo(() => {
     if (!current) return [] as { key: number; year: number; week: number; monday: Date; sunday: Date; isCurrent: boolean }[];
     const curMon = mondayOfISOWeek(current.year, current.week);
-    let startMon = new Date(curMon); startMon.setUTCDate(curMon.getUTCDate() - 7);
-    let endMon = new Date(curMon); endMon.setUTCDate(curMon.getUTCDate() + 7 * 8);
+    let startMon = new Date(curMon);
+    let endMon = new Date(curMon); endMon.setUTCDate(curMon.getUTCDate() + 7 * 3);
     for (const t of tasks) {
       if (t.weekNo <= 0) continue;
       const m = mondayOfISOWeek(t.weekYear, t.weekNo);
@@ -97,9 +98,15 @@ export default function WeekplanBoard({ slug, onGoToPage }: { slug: string; onGo
   }
 
   function card(t: Task) {
+    const open = openCard === t.id;
+    const hasInfo = !!t.toelichting.trim();
     return (
-      <div key={t.id} className={"wp-card wp-" + t.status} draggable onDragStart={() => setDragId(t.id)} onDragEnd={() => { setDragId(null); setDropKey(null); }}>
-        <div className="wp-card-taak">{t.taak}</div>
+      <div key={t.id} className={"wp-card wp-" + t.status + (open ? " wp-open" : "")} draggable onDragStart={() => setDragId(t.id)} onDragEnd={() => { setDragId(null); setDropKey(null); }}>
+        <div className={"wp-card-taak" + (hasInfo ? " wp-clickable" : "")} onClick={() => hasInfo && setOpenCard(open ? null : t.id)} title={hasInfo ? "Klik voor de volledige info" : undefined}>
+          {hasInfo && <span className="wp-caret">{open ? "▾" : "▸"}</span>}
+          {t.taak}
+        </div>
+        {open && hasInfo && <div className="wp-card-info">{t.toelichting}</div>}
         {t.url && <a className="wp-card-url" href={t.url} target="_blank" rel="noreferrer">{shortUrl(t.url)}</a>}
         <div className="wp-card-foot">
           <span className={"wp-wie " + (t.wie === "Dev" ? "wie-dev" : "wie-seo")}>{t.wie}</span>

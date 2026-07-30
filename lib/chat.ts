@@ -250,7 +250,7 @@ function overviewTools(client: ClientConfig, base: { tools: ToolDef[]; run: Tool
       steps: { type: "array", items: { type: "string", enum: ["analyse", "blauwdruk", "copy"] }, description: "Alleen bij pijplijn_starten: welke documenten (standaard alle drie; bij een niet-live pagina laat je analyse weg)." },
       keyword: { type: "string", description: "Alleen bij meta_verbeteren: het primaire zoekwoord van de pagina." },
       tekst: { type: "string", description: "Bij profiel_bijwerken: de nuance/tekst voor het klantprofiel. Bij strategie_bepalen: de volledige strategie voor de pagina in gewone leesbare tekst met korte kopregels en '-' voor bullets (GEEN Markdown-symbolen zoals #, | of **), met minimaal: primaire + secundaire zoektermen (bewust ANDERS dan een bestaande pillar op dezelfde term), de verhouding tot bestaande pagina's, het cannibalisatie-oordeel (concurreert deze pagina met een bestaande top-pagina? zo ja, hoe voorkomen we dat: afwijkende termen, URL als kind, interne links omhoog naar de pillar), de gewenste URL/plek, en de kern van de H1/koppen. Maarten kan dit op de kaart nog bijstellen vóór goedkeuren." },
-      taken: { type: "array", description: "Alleen bij weekplan_taken: de lijst concrete taken die uit dit gesprek volgen.", items: { type: "object", properties: { taak: { type: "string", description: "Korte, concrete taakomschrijving." }, wie: { type: "string", enum: ["SEO", "Dev"], description: "Wie voert de taak uit." }, url: { type: "string", description: "Optioneel: de pagina waar de taak over gaat." } }, required: ["taak"] } },
+      taken: { type: "array", description: "Alleen bij weekplan_taken: de lijst concrete taken die uit dit gesprek volgen. Geef PER taak ook alle relevante info mee in 'info', zodat Maarten die later kan uitklappen en de taak week in, week uit kan uitwerken.", items: { type: "object", properties: { taak: { type: "string", description: "Korte, concrete taaktitel (één regel)." }, info: { type: "string", description: "Alle relevante info bij deze taak: waarom, welke zoektermen/pagina, de aanpak, de cannibalisatie-nuance, verwachte impact, enzovoort. Nette leesbare tekst met korte kopregels en '-'-bullets (geen #, | of **)." }, wie: { type: "string", enum: ["SEO", "Dev"], description: "Wie voert de taak uit." }, url: { type: "string", description: "Optioneel: de pagina waar de taak over gaat." } }, required: ["taak"] } },
     }, required: ["type"] } } }, required: ["acties"] } },
   ];
   const run: ToolRunner = async (name, input) => {
@@ -320,12 +320,13 @@ export async function getChatHistory(slug: string, thread = "algemeen"): Promise
 // onderwerp-samenvatting en de "gedaan"-vlag voor de toggle-weergave.
 export async function listChatThreads(slug: string): Promise<{ thread: string; count: number; updatedAt: string; title: string; summary: string; done: boolean }[]> {
   await ensureSchema();
-  const { rows } = await sql`SELECT thread, messages, updated_at, title, summary, done FROM client_chat WHERE client_slug = ${slug} ORDER BY updated_at DESC`;
-  return rows.map((r) => {
-    let count = 0;
-    try { const p = JSON.parse((r.messages as string) || "[]"); count = Array.isArray(p) ? p.length : 0; } catch { /* leeg */ }
-    return { thread: (r.thread as string) || "algemeen", count, updatedAt: new Date(r.updated_at as string).toISOString(), title: (r.title as string) || "", summary: (r.summary as string) || "", done: !!r.done };
-  });
+  // Tel niet door de hele (soms grote) messages-blob te laden en te parsen; we
+  // hoeven alleen te weten óf er berichten zijn (0/1). Scheelt veel laadtijd.
+  const { rows } = await sql`
+    SELECT thread, updated_at, title, summary, done,
+           CASE WHEN messages IS NULL OR btrim(messages) IN ('', '[]') THEN 0 ELSE 1 END AS cnt
+    FROM client_chat WHERE client_slug = ${slug} ORDER BY updated_at DESC`;
+  return rows.map((r) => ({ thread: (r.thread as string) || "algemeen", count: Number(r.cnt) || 0, updatedAt: new Date(r.updated_at as string).toISOString(), title: (r.title as string) || "", summary: (r.summary as string) || "", done: !!r.done }));
 }
 
 // Werkt de samenvatting en/of "gedaan"-status van één onderwerp (thread) bij.
