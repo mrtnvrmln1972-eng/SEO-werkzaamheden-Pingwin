@@ -18,7 +18,8 @@ export async function POST(req: NextRequest) {
   const thread = String(body.thread || "").trim();
   if (!slug || !thread) return NextResponse.json({ ok: false, error: "Klant en onderwerp zijn verplicht." }, { status: 400 });
 
-  const meta: { summary?: string; done?: boolean } = {};
+  const meta: { title?: string; summary?: string; done?: boolean } = {};
+  if (typeof body.title === "string") meta.title = body.title;
   if (typeof body.summary === "string") meta.summary = body.summary;
   if (typeof body.done === "boolean") meta.done = body.done;
   await setThreadMeta(slug, thread, meta);

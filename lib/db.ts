@@ -205,6 +205,7 @@ async function init(): Promise<void> {
   // regel uitleg getoond kunnen worden en afvinkbaar zijn.
   await sql`ALTER TABLE client_chat ADD COLUMN IF NOT EXISTS summary TEXT`;
   await sql`ALTER TABLE client_chat ADD COLUMN IF NOT EXISTS done BOOLEAN NOT NULL DEFAULT false`;
+  await sql`ALTER TABLE client_chat ADD COLUMN IF NOT EXISTS title TEXT`;
 
   // Uitvoerstatus van de bird's eye-actie-kaarten, los van de chat-JSON. Elke
   // goedkeuring is een eigen rij (atomair per actie), zodat meerdere

@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import ActionCard, { type Action } from "./ActionCard";
 
 type Msg = { role: "user" | "assistant"; content: string; actions?: Action[] };
-type Topic = { thread: string; count: number; summary: string; done: boolean };
+type Topic = { thread: string; count: number; title: string; summary: string; done: boolean };
 
 // Lichte Markdown → HTML (kopjes, bullets, vet, links, tabellen). Zelfde regels
 // als de zwevende chat, zodat antwoorden overal netjes renderen.
@@ -51,7 +51,7 @@ function mdToHtml(md: string): string {
 }
 
 const BASE = "overzicht";
-const labelOf = (t: string) => (t === BASE ? "Algemeen" : t.replace(/^overzicht:/, ""));
+const labelOf = (t: string) => (t === BASE ? "Algemeen" : t.startsWith("overzicht:~") ? "Nieuw onderwerp" : t.replace(/^overzicht:/, ""));
 
 // De gedokte bird's eye-assistent, nu per ONDERWERP (toggle). Elk onderwerp is
 // standaard dichtgeklapt en toont zijn titel plus een korte samenvatting; je klapt
@@ -61,6 +61,7 @@ export default function OverviewChat({ slug, configured, onGoToPage, onGoToTask 
   const [topics, setTopics] = useState<Topic[]>([]);
   const [open, setOpen] = useState<string | null>(null);      // welk onderwerp is uitgeklapt (accordion)
   const [messages, setMessages] = useState<Msg[]>([]);        // berichten van het open onderwerp
+  const [titleDraft, setTitleDraft] = useState("");           // bewerkbare titel van het open onderwerp
   const [sumDraft, setSumDraft] = useState("");               // bewerkbare samenvatting van het open onderwerp
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -68,6 +69,8 @@ export default function OverviewChat({ slug, configured, onGoToPage, onGoToTask 
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const loadSeq = useRef(0);
+  const openRef = useRef<string | null>(null);
+  useEffect(() => { openRef.current = open; }, [open]);
 
   // Onderwerpen (threads) laden, alleen de bird's eye-namespace ("overzicht*").
   useEffect(() => {
@@ -82,10 +85,10 @@ export default function OverviewChat({ slug, configured, onGoToPage, onGoToTask 
 
   // Zorg dat het basisonderwerp altijd bestaat, en sorteer: openstaand eerst,
   // "gedaan" onderaan.
-  function normalizeTopics(threads: { thread: string; count?: number; summary?: string; done?: boolean }[]): Topic[] {
+  function normalizeTopics(threads: { thread: string; count?: number; title?: string; summary?: string; done?: boolean }[]): Topic[] {
     const mine = threads.filter((t) => t.thread.startsWith("overzicht"));
-    const list: Topic[] = mine.map((t) => ({ thread: t.thread, count: t.count || 0, summary: t.summary || "", done: !!t.done }));
-    if (!list.some((t) => t.thread === BASE)) list.unshift({ thread: BASE, count: 0, summary: "", done: false });
+    const list: Topic[] = mine.map((t) => ({ thread: t.thread, count: t.count || 0, title: t.title || "", summary: t.summary || "", done: !!t.done }));
+    if (!list.some((t) => t.thread === BASE)) list.unshift({ thread: BASE, count: 0, title: "", summary: "", done: false });
     return list.sort((a, b) => Number(a.done) - Number(b.done));
   }
 
@@ -98,20 +101,27 @@ export default function OverviewChat({ slug, configured, onGoToPage, onGoToTask 
 
   async function toggleOpen(t: Topic) {
     if (open === t.thread) { setOpen(null); setMessages([]); setError(""); return; }
-    setOpen(t.thread); setMessages([]); setError(""); setInput(""); setSumDraft(t.summary || "");
+    setOpen(t.thread); setMessages([]); setError(""); setInput(""); setTitleDraft(t.title || ""); setSumDraft(t.summary || "");
     const seq = ++loadSeq.current;
     const d = await fetch(`/api/admin/chat?slug=${encodeURIComponent(slug)}&thread=${encodeURIComponent(t.thread)}`).then((r) => r.json()).catch(() => null);
     if (seq !== loadSeq.current) return;               // een nieuwer onderwerp is intussen geopend
     if (d?.ok) { setMessages(d.messages || []); setTopics(normalizeTopics(d.threads || [])); }
   }
 
+  // Nieuw onderwerp: geen naam-prompt. Je begint gewoon met een vraag; de titel en
+  // samenvatting worden daarna automatisch ingevuld.
   function newTopic() {
-    const name = window.prompt("Naam van het nieuwe onderwerp (bijv. 'Trifocale lenzenpagina's'):", "");
-    const clean = (name || "").trim().slice(0, 60);
-    if (!clean) return;
-    const t = "overzicht:" + clean;
-    setTopics((ts) => (ts.some((x) => x.thread === t) ? ts : [{ thread: t, count: 0, summary: "", done: false }, ...ts]));
-    setOpen(t); setMessages([]); setError(""); setInput(""); setSumDraft("");
+    const t = "overzicht:~" + Date.now().toString(36);
+    setTopics((ts) => [{ thread: t, count: 0, title: "", summary: "", done: false }, ...ts]);
+    setOpen(t); setMessages([]); setError(""); setInput(""); setTitleDraft(""); setSumDraft("");
+  }
+
+  // Weergavetitel: eigen titel als die er is, anders de naam uit de thread.
+  const titleOf = (t: Topic) => (t.title && t.title.trim()) || labelOf(t.thread);
+
+  async function saveTitle(thread: string, title: string) {
+    setTopics((ts) => ts.map((x) => x.thread === thread ? { ...x, title } : x));
+    await fetch("/api/admin/overview/topic", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread, title }) }).catch(() => {});
   }
 
   async function saveSummary(thread: string, summary: string) {
@@ -158,7 +168,10 @@ export default function OverviewChat({ slug, configured, onGoToPage, onGoToTask 
       const data = await res.json();
       if (data.ok) {
         setMessages((m) => [...m, { role: "assistant", content: data.answer, ...(Array.isArray(data.actions) && data.actions.length ? { actions: data.actions } : {}) }]);
-        setTopics((ts) => ts.map((x) => x.thread === t ? { ...x, count: next.length + 1 } : x));
+        const newTitle = typeof data.title === "string" && data.title.trim() ? data.title.trim() : "";
+        const newSum = typeof data.summary === "string" && data.summary.trim() ? data.summary.trim() : "";
+        setTopics((ts) => ts.map((x) => x.thread === t ? { ...x, count: next.length + 1, ...(newTitle ? { title: newTitle } : {}), ...(newSum ? { summary: newSum } : {}) } : x));
+        if (openRef.current === t) { if (newTitle) setTitleDraft(newTitle); if (newSum) setSumDraft(newSum); }
       } else setError(data.error || "Er ging iets mis.");
     } catch { setError("De assistent is niet bereikbaar."); } finally { setBusy(false); }
   }
@@ -189,13 +202,20 @@ export default function OverviewChat({ slug, configured, onGoToPage, onGoToTask 
                   onChange={(e) => toggleDone(t.thread, e.target.checked)}
                   title="Markeer dit onderwerp als gedaan"
                 />
-                <span className="ovc-topic-title">{labelOf(t.thread)}</span>
+                <span className="ovc-topic-title">{titleOf(t)}</span>
                 {!isOpen && t.summary && <span className="ovc-topic-sum">{t.summary}</span>}
-                {t.count > 0 && <span className="ovc-topic-count">{t.count}</span>}
               </div>
 
               {isOpen && (
                 <div className="ovc-topic-body">
+                  <input
+                    className="ovc-title-edit"
+                    value={titleDraft}
+                    onChange={(e) => setTitleDraft(e.target.value)}
+                    onBlur={() => { if (titleDraft.trim() !== (t.title || "").trim()) saveTitle(t.thread, titleDraft.trim()); }}
+                    placeholder="Titel van dit onderwerp (bijv. 'Trifocale lenzenpagina's')"
+                    maxLength={80}
+                  />
                   <input
                     className="ovc-sum-edit"
                     value={sumDraft}
@@ -206,11 +226,6 @@ export default function OverviewChat({ slug, configured, onGoToPage, onGoToTask 
                   />
 
                   <div className="ovc-log">
-                    {messages.length === 0 && !busy && (
-                      <div className="ovc-intro muted">
-                        Nieuw onderwerp. Vraag bijvoorbeeld: <em>&ldquo;Waar staan we hier, wat pakken we als eerste op?&rdquo;</em>, of gooi een URL/screenshot erin met <em>&ldquo;kijk hoe deze pagina rankt&rdquo;</em>. Ik werk vanuit jullie afgesproken strategie en de stand van zaken.
-                      </div>
-                    )}
                     {messages.map((m, i) => (
                       <div key={i} className={"ovc-msg " + m.role}>
                         <button type="button" className="chat-msg-del" title="Dit blok verwijderen" onClick={() => deleteMessage(i)}>&times;</button>

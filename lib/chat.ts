@@ -6,7 +6,7 @@ import { googleStatus, getGscForClient, getGscKeywordTrend, getGscForPage } from
 import { measurePage } from "./page-measure";
 import { metaVerdictText } from "./meta-rules";
 import { getUrlOrganicKeywords, getSerpOverview, getAhrefsTopPages, ahrefsConfigured } from "./ahrefs";
-import { callClaudeAgentic, type ToolDef, type ToolRunner } from "./anthropic";
+import { callClaudeAgentic, callClaude, LIGHT_MODEL, type ToolDef, type ToolRunner } from "./anthropic";
 import { sheetCsvUrl, parseCSV, structureData, MAAND_VOLGORDE } from "./sheet";
 import { getFocus } from "./focus";
 import { buildOverview, overviewToText, getPageWorkStatus, pageWorkStatusToText } from "./overview";
@@ -317,30 +317,51 @@ export async function getChatHistory(slug: string, thread = "algemeen"): Promise
 
 // Alle gesprekken (threads) van een klant, nieuwste eerst. Inclusief de
 // onderwerp-samenvatting en de "gedaan"-vlag voor de toggle-weergave.
-export async function listChatThreads(slug: string): Promise<{ thread: string; count: number; updatedAt: string; summary: string; done: boolean }[]> {
+export async function listChatThreads(slug: string): Promise<{ thread: string; count: number; updatedAt: string; title: string; summary: string; done: boolean }[]> {
   await ensureSchema();
-  const { rows } = await sql`SELECT thread, messages, updated_at, summary, done FROM client_chat WHERE client_slug = ${slug} ORDER BY updated_at DESC`;
+  const { rows } = await sql`SELECT thread, messages, updated_at, title, summary, done FROM client_chat WHERE client_slug = ${slug} ORDER BY updated_at DESC`;
   return rows.map((r) => {
     let count = 0;
     try { const p = JSON.parse((r.messages as string) || "[]"); count = Array.isArray(p) ? p.length : 0; } catch { /* leeg */ }
-    return { thread: (r.thread as string) || "algemeen", count, updatedAt: new Date(r.updated_at as string).toISOString(), summary: (r.summary as string) || "", done: !!r.done };
+    return { thread: (r.thread as string) || "algemeen", count, updatedAt: new Date(r.updated_at as string).toISOString(), title: (r.title as string) || "", summary: (r.summary as string) || "", done: !!r.done };
   });
 }
 
 // Werkt de samenvatting en/of "gedaan"-status van één onderwerp (thread) bij.
 // Raakt de berichten niet aan. Maakt de rij zo nodig aan (leeg gesprek dat nog
 // geen bericht heeft, maar wel een naam/samenvatting).
-export async function setThreadMeta(slug: string, thread: string, meta: { summary?: string; done?: boolean }): Promise<void> {
+export async function setThreadMeta(slug: string, thread: string, meta: { title?: string; summary?: string; done?: boolean }): Promise<void> {
   await ensureSchema();
   const t = cleanThread(thread);
+  const title = meta.title === undefined ? null : String(meta.title).slice(0, 120);
   const summary = meta.summary === undefined ? null : String(meta.summary).slice(0, 400);
   const done = meta.done === undefined ? null : !!meta.done;
   await sql`
-    INSERT INTO client_chat (client_slug, thread, messages, summary, done, updated_at)
-    VALUES (${slug}, ${t}, '[]', ${summary}, ${done ?? false}, now())
+    INSERT INTO client_chat (client_slug, thread, messages, title, summary, done, updated_at)
+    VALUES (${slug}, ${t}, '[]', ${title}, ${summary}, ${done ?? false}, now())
     ON CONFLICT (client_slug, thread) DO UPDATE SET
+      title   = COALESCE(${title}, client_chat.title),
       summary = COALESCE(${summary}, client_chat.summary),
       done    = COALESCE(${done}, client_chat.done)`;
+}
+
+// Maakt automatisch een korte titel (alleen als die er nog niet is) plus een verse
+// samenvatting van 1-2 regels voor een bird's eye-onderwerp, zodat Maarten die niet
+// zelf hoeft te typen. Draait op het lichte model; faalt stil (meta is optioneel).
+async function autoTopicMeta(slug: string, thread: string, msgs: ChatMessage[]): Promise<{ title?: string; summary?: string }> {
+  const { rows } = await sql`SELECT title FROM client_chat WHERE client_slug = ${slug} AND thread = ${cleanThread(thread)} LIMIT 1`;
+  const needTitle = !((rows[0]?.title as string) || "").trim();
+  const convo = msgs.slice(-6).map((m) => `${m.role === "user" ? "Maarten" : "Assistent"}: ${(m.content || "").slice(0, 800)}`).join("\n").slice(0, 3500);
+  const sys = "Je maakt een korte, kernachtige omschrijving van een SEO-werkoverleg-onderwerp voor in een overzicht. Antwoord UITSLUITEND met geldige JSON, zonder codeblok en zonder extra tekst. Nederlands, gewone taal, geen Markdown-tekens.";
+  const user = `Gesprek:\n${convo}\n\nGeef ${needTitle ? '{"title": "<max 6 woorden, geen punt aan het eind>", "summary": "<1 tot 2 korte regels: wat speelt er>"}' : '{"summary": "<1 tot 2 korte regels: wat speelt er>"}'}`;
+  const raw = await callClaude(sys, [{ role: "user", content: user }], 300, { slug, action: "topic-meta" }, LIGHT_MODEL);
+  let parsed: { title?: string; summary?: string } = {};
+  try { const m = raw.match(/\{[\s\S]*\}/); if (m) parsed = JSON.parse(m[0]); } catch { /* geen geldige JSON */ }
+  const out: { title?: string; summary?: string } = {};
+  if (needTitle && typeof parsed.title === "string" && parsed.title.trim()) out.title = parsed.title.trim().replace(/[.]$/, "").slice(0, 80);
+  if (typeof parsed.summary === "string" && parsed.summary.trim()) out.summary = parsed.summary.trim().slice(0, 200);
+  if (out.title || out.summary) await setThreadMeta(slug, thread, out);
+  return out;
 }
 
 async function saveChatHistory(slug: string, thread: string, messages: ChatMessage[]): Promise<void> {
@@ -422,7 +443,7 @@ export async function replaceChatHistory(slug: string, thread: string, messages:
   await saveChatHistory(slug, thread, messages);
 }
 
-export async function answerChat(slug: string, messages: ChatMessage[], thread = "algemeen"): Promise<{ ok: boolean; answer?: string; error?: string; actions?: ProposedAction[] }> {
+export async function answerChat(slug: string, messages: ChatMessage[], thread = "algemeen"): Promise<{ ok: boolean; answer?: string; error?: string; actions?: ProposedAction[]; title?: string; summary?: string }> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return { ok: false, error: "Geen ANTHROPIC_API_KEY ingesteld." };
   const client = await getClientBySlug(slug);
@@ -501,7 +522,9 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
     const finalAnswer = answer || "(geen antwoord)";
     const assistantMsg: ChatMessage = collected.length ? { role: "assistant", content: finalAnswer, actions: collected } : { role: "assistant", content: finalAnswer };
     await saveChatHistory(slug, thread, [...messages, assistantMsg]);
-    return { ok: true, answer: finalAnswer, actions: collected.length ? collected : undefined };
+    let meta: { title?: string; summary?: string } = {};
+    if (isOverview) { try { meta = await autoTopicMeta(slug, thread, [...messages, assistantMsg]); } catch { /* meta optioneel */ } }
+    return { ok: true, answer: finalAnswer, actions: collected.length ? collected : undefined, title: meta.title, summary: meta.summary };
   } catch (err) {
     return { ok: false, error: "AI niet bereikbaar: " + (err as Error).message };
   }

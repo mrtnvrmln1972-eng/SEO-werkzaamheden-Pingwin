@@ -2041,6 +2041,31 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .ovc-sum-edit { width: 100%; font-family: inherit; font-size: 12.5px; color: var(--dark); padding: 6px 9px; border: 1px solid var(--border); border-radius: 7px; margin: 8px 0 10px; background: var(--white); }
 .ovc-sum-edit:focus { outline: none; border-color: var(--orange); box-shadow: 0 0 0 3px rgba(231, 119, 63, 0.12); }
 .ovc-sum-edit::placeholder { color: var(--gray); }
+.ovc-title-edit { width: 100%; font-family: inherit; font-size: 13.5px; font-weight: 700; color: var(--dark); padding: 7px 9px; border: 1px solid var(--border); border-radius: 7px; margin: 10px 0 0; background: var(--white); }
+.ovc-title-edit:focus { outline: none; border-color: var(--orange); box-shadow: 0 0 0 3px rgba(231, 119, 63, 0.12); }
+.ovc-title-edit::placeholder { color: var(--gray); font-weight: 500; }
+
+/* Mooie, rustige opmaak van de bird's eye-antwoorden: als card, met gekleurde
+   koppen, nette bullets en gekleurde links (Pingwin-stijl). */
+.ovc-msg.assistant .ovc-bubble.chat-md { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 12px 15px; max-width: 100%; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03); }
+.ovc-bubble.chat-md { font-size: 13.5px; line-height: 1.6; color: #1f1f1f; }
+.ovc-bubble.chat-md h3 { font-size: 15px; font-weight: 800; color: var(--orange); margin: 14px 0 6px; padding-bottom: 3px; border-bottom: 2px solid rgba(231, 119, 63, 0.22); }
+.ovc-bubble.chat-md h4, .ovc-bubble.chat-md h5, .ovc-bubble.chat-md h6 { font-size: 13.5px; font-weight: 800; color: var(--orange-dark); margin: 12px 0 4px; }
+.ovc-bubble.chat-md p { margin: 6px 0; }
+.ovc-bubble.chat-md ul { list-style: none; margin: 6px 0; padding-left: 2px; }
+.ovc-bubble.chat-md ul li { position: relative; padding-left: 18px; margin: 4px 0; }
+.ovc-bubble.chat-md ul li::before { content: "\203A"; position: absolute; left: 5px; top: -1px; color: var(--orange); font-weight: 800; }
+.ovc-bubble.chat-md ol { margin: 6px 0 6px 20px; }
+.ovc-bubble.chat-md ol li { margin: 4px 0; }
+.ovc-bubble.chat-md a { color: var(--orange-dark); text-decoration: underline; text-underline-offset: 2px; }
+.ovc-bubble.chat-md a:hover { color: var(--orange); }
+.ovc-bubble.chat-md strong { color: var(--dark); font-weight: 800; }
+.ovc-bubble.chat-md hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+.ovc-bubble.chat-md code { background: rgba(231, 119, 63, 0.10); color: var(--orange-dark); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+.ovc-bubble.chat-md table.chat-table { border-collapse: collapse; width: 100%; margin: 9px 0; font-size: 12.5px; }
+.ovc-bubble.chat-md table.chat-table th { background: rgba(231, 119, 63, 0.10); color: var(--dark); font-weight: 800; text-align: left; padding: 6px 9px; border: 1px solid var(--border); }
+.ovc-bubble.chat-md table.chat-table td { padding: 6px 9px; border: 1px solid var(--border); }
+.ovc-bubble.chat-md table.chat-table tr:nth-child(even) td { background: var(--gray-light); }
 .act-card { border: 1px solid var(--border); border-left: 3px solid var(--orange); border-radius: 10px; background: #fff; padding: 10px 12px; }
 .act-card.act-done { border-left-color: #1e824c; background: #f4faf5; }
 .act-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
