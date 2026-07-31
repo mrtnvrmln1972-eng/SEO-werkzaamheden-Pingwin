@@ -6,7 +6,7 @@ import { googleStatus, getGscForClient, getGscKeywordTrend, getGscForPage } from
 import { measurePage } from "./page-measure";
 import { metaVerdictText } from "./meta-rules";
 import { getUrlOrganicKeywords, getSerpOverview, getAhrefsTopPages, ahrefsConfigured } from "./ahrefs";
-import { callClaudeAgentic, callClaude, callClaudeForcedTool, LIGHT_MODEL, type ToolDef, type ToolRunner } from "./anthropic";
+import { callClaudeAgentic, callClaude, LIGHT_MODEL, type ToolDef, type ToolRunner } from "./anthropic";
 import { sheetCsvUrl, parseCSV, structureData, MAAND_VOLGORDE } from "./sheet";
 import { getFocus } from "./focus";
 import { buildOverview, overviewToText, getPageWorkStatus, pageWorkStatusToText } from "./overview";
@@ -486,33 +486,31 @@ export async function replaceChatHistory(slug: string, thread: string, messages:
   await saveChatHistory(slug, thread, messages);
 }
 
-// Genereert de weektaken GEGARANDEERD via een geforceerde tool-aanroep
-// (tool_choice), gevoed door de analyse + context. Met één retry-vangnet als er 0 geldige
-// taken uitkomen. Geeft een gevalideerde weekplan_taken-actie terug, of null.
+// Haalt de concrete weektaken uit een bird's eye-antwoord en geeft een gevalideerde
+// weekplan_taken-actie terug (of null). Gebruikt het BEPROEFDE JSON-patroon (zoals
+// extractProposal in page-chat-ground): vraag callClaude om UITSLUITEND JSON en parse dat.
+// Geen tool_choice (bleek onbetrouwbaar). De taken staan al concreet IN het antwoord, dus
+// dit is puur extraheren. Eén retry-vangnet.
 async function generateWeekplanActie(client: ClientConfig, context: string, analyse: string, slug: string): Promise<ProposedAction | null> {
-  const forceTool: ToolDef = {
-    name: "weekplan_taken",
-    description: "Zet de concrete weektaken uit de analyse in de weekplanning.",
-    input_schema: { type: "object", properties: { taken: { type: "array", items: { type: "object", properties: {
-      taak: { type: "string", description: "Korte, concrete taaktitel (één regel), geen 'Week X' erin." },
-      week: { type: "integer", description: "1 = deze week, 2 = volgende, enzovoort. Realistisch verdelen." },
-      info: { type: "string", description: "De VOLLEDIGE achtergrond: waar komt het vandaan (bijv. mail van 30 juli), welke pagina/links, hoe het zich verhoudt tot andere pagina's, verwachte impact. Nette leesbare tekst met korte kopregels en '-'-bullets." },
-      wie: { type: "string", enum: ["SEO", "Dev"] },
-      url: { type: "string", description: "De pagina waar de taak over gaat (pad of volledige URL)." },
-      taaktype: { type: "string", enum: ["meta", "alt", "copy", "intern", "strategie", "pijplijn", "structured", "overig"] },
-      bronMail: { type: "string", description: "Optioneel: de webLink van de bronmail (staat bij RECENTE E-MAILS als 'link: ...')." },
-    }, required: ["taak", "week"] } } }, required: ["taken"] },
-  };
-  const baseSystem =
-    `Je bent de Pingwin bird's eye-strateeg voor ${client.name}. Hieronder de context en de analyse (Stand van zaken) die zojuist aan Maarten is gegeven. Zet de concrete WEEKTAKEN die daaruit volgen om via het gereedschap 'weekplan_taken'. Behapbaar en op prioriteit (afspraken met de klant, mail-opvolging, belangrijke/te bouwen pagina's, laaghangend fruit), realistisch verdeeld over de komende weken. Geef per taak de VOLLEDIGE achtergrond in 'info', met url en taaktype. Verzin geen cijfers; gebruik alleen wat in de context/analyse staat.\n\n--- OVERZICHT-CONTEXT ---\n${context}\n\n--- ANALYSE (STAND VAN ZAKEN) ---\n${analyse}`;
+  const system =
+    `Je krijgt hieronder een SEO-weekplanning/analyse voor ${client.name} als tekst (en wat context). Haal er ALLE concrete taken uit die eruit voortkomen.\n` +
+    `Antwoord met UITSLUITEND geldige JSON, niets eromheen, exact dit formaat:\n` +
+    `{"taken":[{"taak":"korte omschrijving in één regel, geen 'Week X' erin","week":1,"info":"de volledige achtergrond: waar komt het vandaan, welke pagina/links, verwachte impact","wie":"SEO","url":"/pad/ of volledige URL of leeg","taaktype":"meta"}]}\n` +
+    `Regels: neem ELKE concrete taak uit de tekst mee. "week" is een getal (1 = deze week, 2 = volgende, enzovoort); neem de week over zoals de tekst die aangeeft, anders verdeel je realistisch. "wie" is "SEO" of "Dev". "taaktype" is één van: meta, alt, copy, intern, strategie, pijplijn, structured, overig. Zet in "info" de volledige achtergrond/redenering. Verzin geen cijfers; gebruik alleen wat in de tekst staat. Geen emoji, geen tekst buiten de JSON.`;
+  const body = `--- WEEKPLANNING / ANALYSE ---\n${analyse}\n\n--- EXTRA CONTEXT (voor url's/achtergrond) ---\n${context.slice(0, 6000)}`;
 
   for (let attempt = 0; attempt < 2; attempt++) {
-    const extra = attempt === 0 ? "" : "\n\nLET OP: de vorige poging leverde geen bruikbare taken. Geef nu MINIMAAL 5 concrete taken, elk met een korte 'taak', een 'week' (getal) en 'info'. Laat niets leeg.";
-    const input = await callClaudeForcedTool(baseSystem + extra, [{ role: "user", content: "Zet de concrete weektaken neer via het gereedschap 'weekplan_taken'." }], forceTool, { slug, action: attempt === 0 ? "overzicht-weekplan" : "overzicht-weekplan-retry" }, 3500).catch(() => null);
-    if (input) {
-      const v = validateAction({ type: "weekplan_taken", ...(input as Record<string, unknown>) }, client.domain || "", `a${Date.now().toString(36)}_wp${attempt}`);
+    const extra = attempt === 0 ? "" : "\n\nLET OP: geef nu MINIMAAL 5 concrete taken, elk met 'taak', 'week' (getal) en 'info'. Laat niets leeg.";
+    try {
+      const raw = await callClaude(system + extra, [{ role: "user", content: body.slice(0, 16000) }], 3500, { slug, action: attempt === 0 ? "overzicht-weekplan" : "overzicht-weekplan-retry" });
+      const jsonText = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
+      const start = jsonText.indexOf("{");
+      const end = jsonText.lastIndexOf("}");
+      const clean = start >= 0 && end > start ? jsonText.slice(start, end + 1) : jsonText;
+      const parsed = JSON.parse(clean) as { taken?: unknown };
+      const v = validateAction({ type: "weekplan_taken", taken: parsed.taken }, client.domain || "", `a${Date.now().toString(36)}_wp${attempt}`);
       if (v && v.taken && v.taken.length) return v;
-    }
+    } catch { /* volgende poging */ }
   }
   return null;
 }
