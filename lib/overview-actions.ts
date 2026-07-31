@@ -17,7 +17,7 @@ import { measurePage } from "./page-measure";
 import { callClaude, LIGHT_MODEL } from "./anthropic";
 import { sql, ensureSchema } from "./db";
 import { addWeekplanTasks, isoWeek } from "./weekplan";
-import { urlKey } from "./url-key";
+import { urlKey, nearestKnownUrl } from "./url-key";
 
 export type ActionType = "pagina_toevoegen" | "taak_aanmaken" | "plan_vastleggen" | "strategie_bepalen" | "pijplijn_starten" | "structured_data" | "alt_teksten" | "meta_verbeteren" | "profiel_bijwerken" | "weekplan_taken";
 const VALID: ActionType[] = ["pagina_toevoegen", "taak_aanmaken", "plan_vastleggen", "strategie_bepalen", "pijplijn_starten", "structured_data", "alt_teksten", "meta_verbeteren", "profiel_bijwerken", "weekplan_taken"];
@@ -210,6 +210,15 @@ export async function executeAction(slug: string, action: ProposedAction, thread
     }
     case "weekplan_taken": {
       const now = new Date();
+      // Vangnet tegen door de AI gevormde paden: een taak-url die net naast een
+      // bestaande URL zit (enkelvoud/meervoud) wordt gecorrigeerd naar de echte.
+      let bekendeUrls: string[] = [];
+      try { bekendeUrls = (await getClientUrls(slug)).map((u) => u.url); } catch { bekendeUrls = []; }
+      for (const t of action.taken || []) {
+        if (!t.url || !bekendeUrls.length) continue;
+        const beter = nearestKnownUrl(t.url, bekendeUrls);
+        if (beter) t.url = beter;
+      }
       const tasks = await Promise.all((action.taken || []).map(async (t) => {
         const seq = Math.max(1, t.week || 1);
         const d = new Date(now); d.setDate(now.getDate() + (seq - 1) * 7);

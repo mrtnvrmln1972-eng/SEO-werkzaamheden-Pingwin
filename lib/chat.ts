@@ -2,6 +2,7 @@ import { sql, ensureSchema } from "./db";
 import { getClientBySlug } from "./clients";
 import { getEmails, getMetrics, getKeywords, getStatus } from "./snapshots";
 import { msStatus, msSearchClientEmails } from "./ms-graph";
+import { getClientUrls } from "./site-urls";
 import { googleStatus, getGscForClient, getGscKeywordTrend, getGscForPage } from "./google";
 import { measurePage } from "./page-measure";
 import { metaVerdictText } from "./meta-rules";
@@ -191,6 +192,21 @@ async function buildAdsContext(client: ClientConfig): Promise<string> {
 async function buildOverviewContext(client: ClientConfig): Promise<string> {
   const parts: string[] = [];
   parts.push(`KLANT: ${client.name} (${client.domain || "geen domein"})`);
+  // De volledige URL-lijst van de site reist ALTIJD mee, zodat het model paden kan
+  // matchen (enkelvoud/meervoud!) en nooit zelf een URL hoeft te vormen. Plus de
+  // scandatum, zodat duidelijk is hoe vers de status-informatie is.
+  try {
+    const urls = await getClientUrls(client.slug);
+    if (urls.length) {
+      const paden = urls.map((u) => { try { return new URL(u.url).pathname; } catch { return u.url; } });
+      const nieuwste = urls.map((u) => u.lastScanned || "").filter(Boolean).sort().pop() || "";
+      const datum = nieuwste ? new Date(nieuwste).toLocaleDateString("nl-NL") : "onbekend";
+      parts.push(
+        `\n=== ALLE BEKENDE URL'S VAN DE SITE (paden uit de sitemap/scan; URL-status laatst gescand: ${datum}) ===\n` +
+        paden.slice(0, 250).join(", ").slice(0, 5000)
+      );
+    }
+  } catch { /* aanvulling */ }
   try { parts.push("\n=== SITE-OVERZICHT (werkstatus + laaghangend fruit) ===\n" + overviewToText(await buildOverview(client.slug))); } catch { /* aanvulling */ }
   try { const ws = pageWorkStatusToText(await getPageWorkStatus(client.slug)); if (ws.trim()) parts.push("\n=== WERKSTATUS PER PAGINA (wat is gedaan / loopt / gepland) ===\n" + ws); } catch { /* aanvulling */ }
   try { const sig = await buildPageSignalsText(client.slug); if (sig.trim()) parts.push("\n=== PAGINA-SIGNALEN (harde feiten van de live pagina's uit de laatste scan; hier baseer je concrete taken op) ===\n" + sig); } catch { /* aanvulling */ }
@@ -234,8 +250,9 @@ async function buildOverviewContext(client: ClientConfig): Promise<string> {
         const dir = e.direction === "out" ? "WIJ→klant" : "klant→WIJ";
         const date = e.receivedAt ? new Date(e.receivedAt).toLocaleDateString("nl-NL") : "";
         const body = (stripHtml(e.bodyHtml || "") || e.preview || "").replace(/\s+/g, " ").trim().slice(0, 3000);
-        const link = (e.webLink || "").trim();
-        return `[${dir}, ${date}] ${e.subject || "(geen onderwerp)"}${link ? `\n(link: ${link})` : ""}:\n${body}`;
+        // Superhuman-deeplink gaat voor (daar werkt Maarten); Outlook-webLink als terugval.
+        const link = ((e as { superhumanLink?: string | null }).superhumanLink || e.webLink || "").trim();
+        return `[${dir}, ${date}] ${e.subject || "(geen onderwerp)"}${link ? `\n(mail-link: ${link})` : ""}:\n${body}`;
       });
       parts.push("\n=== RECENTE E-MAILS (basisinfo; nieuwste eerst; neem relevante punten en herzieningen mee in de strategie) ===\n" + lines.join("\n"));
     }
@@ -284,8 +301,8 @@ function overviewTools(client: ClientConfig, base: { tools: ToolDef[]; run: Tool
     if (name === "zoek_mail") {
       const q = String(input.zoekterm || "").trim();
       if (!q) return "Geef een zoekterm (naam, e-mailadres, onderwerp of trefwoord).";
-      type M = { fromAddress: string | null; subject: string | null; receivedAt: string | null; bodyHtml: string | null; preview: string | null; direction: string | null };
-      const norm = (e: { fromAddress?: string | null; subject?: string | null; receivedAt?: string | null; bodyHtml?: string | null; preview?: string | null; direction?: string | null }): M => ({ fromAddress: e.fromAddress ?? null, subject: e.subject ?? null, receivedAt: e.receivedAt ?? null, bodyHtml: e.bodyHtml ?? null, preview: e.preview ?? null, direction: e.direction ?? null });
+      type M = { fromAddress: string | null; subject: string | null; receivedAt: string | null; bodyHtml: string | null; preview: string | null; direction: string | null; link: string | null };
+      const norm = (e: { fromAddress?: string | null; subject?: string | null; receivedAt?: string | null; bodyHtml?: string | null; preview?: string | null; direction?: string | null; superhumanLink?: string | null; webLink?: string | null }): M => ({ fromAddress: e.fromAddress ?? null, subject: e.subject ?? null, receivedAt: e.receivedAt ?? null, bodyHtml: e.bodyHtml ?? null, preview: e.preview ?? null, direction: e.direction ?? null, link: e.superhumanLink || e.webLink || null });
       let mails: M[] = [];
       try { const ms = await msStatus(); if (ms.connected) { const live = await msSearchClientEmails(q, ms.account || "", 8); if (live) mails = live.map(norm); } } catch { /* val terug op opgeslagen */ }
       if (!mails.length) {
@@ -298,7 +315,7 @@ function overviewTools(client: ClientConfig, base: { tools: ToolDef[]; run: Tool
         const dir = e.direction === "out" ? "WIJ→klant" : "klant→WIJ";
         const date = e.receivedAt ? new Date(e.receivedAt).toLocaleDateString("nl-NL") : "";
         const body = (stripHtml(e.bodyHtml || "") || e.preview || "").replace(/\s+/g, " ").trim().slice(0, 3000);
-        return `[${dir}, ${date}] van ${e.fromAddress || "?"} — ${e.subject || "(geen onderwerp)"}:\n${body}`;
+        return `[${dir}, ${date}] van ${e.fromAddress || "?"} — ${e.subject || "(geen onderwerp)"}${e.link ? `\n(mail-link: ${e.link})` : ""}:\n${body}`;
       }).join("\n\n---\n\n");
     }
     if (name === "stel_acties_voor") {
@@ -572,6 +589,8 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
       `- STAND VAN ZAKEN DEKT ALTIJD DRIE DELEN: (1) wat staat live en hoe presteert het, (2) wat is aangeleverd maar nog niet verwerkt/live, (3) welke pagina's moeten er nog BIJ of uitgebreid worden om de site autoriteit te geven. Deel (3) mag je NOOIT overslaan en redeneer je HOLISTISCH: weeg het TE BOUWEN-blok, de AFGESPROKEN ZOEKWOORDEN & LINKS (daar staat vaak een uitgewerkte navigatie met veel geplande pagina's), de STAND VAN ZAKEN, de RECENTE E-MAILS, Ahrefs/Search Console én de echte site samen, en bedenk ZELF welke grote landingspagina's en thema's de site nog nodig heeft (bijv. tuinaanleg, bestratingsplan, soorten tuinen). Stel die ook voor als ze in geen enkele lijst staan maar de site ze duidelijk mist voor autoriteit. Noem ze concreet (welke pagina/onderwerp, waarom belangrijk), niet in algemene termen.\n` +
       `- Vertrek vanuit de afgesproken strategie; plaats het laaghangend fruit dáárop, niet los ervan.\n` +
       `- CONTROLEER OF EEN PAGINA BESTAAT, GOK NOOIT. Beweer NOOIT dat een pagina "nog te bouwen" is, "nog niet bestaat" of "geen landingspagina heeft" op basis van alleen de nav-sheet, het plan of je geheugen. Een pagina uit de afgesproken navigatie is misschien allang gebouwd en live. Check het eerst: staat de URL in de live page-lijst (site_overzicht), of meet hem met meet_pagina. Pas als hij aantoonbaar niet leest (bijvoorbeeld 404) noem je hem "te bouwen". Twijfel je, zeg dat dan expliciet ("ik moet even checken of deze al live staat") in plaats van te stellen dat hij niet bestaat. Dit is hard: liever eerlijk twijfelen dan iets onwaars beweren.\n` +
+      `- NOEM NOOIT EEN URL OF PAD DAT NIET LETTERLIJK IN DE CONTEXT OF TOOL-UITVOER STAAT. Vorm zelf geen paden (enkelvoud/meervoud, koppeltekens): zoek het juiste pad op in ALLE BEKENDE URL'S VAN DE SITE en gebruik exact dát pad (bijv. /lensimplantatie/edof-lenzen/ en niet /edof-lens/). Staat een onderwerp niet in die lijst, zeg dan expliciet "niet gevonden in de sitemap" en controleer eventueel met meet_pagina; trek nooit conclusies (zoals "bestaat niet") over een pad dat je zelf hebt gevormd.\n` +
+      `- CITEER JE EEN MAIL (datum, afzender of onderwerp), zet er dan ALTIJD de mail-link uit de context achter als markdown-link, bijvoorbeeld [mail van 25 juli](https://mail.superhuman.com/...). De link staat per mail in de context als "(mail-link: ...)". Nooit een mail noemen zonder die link als hij er is.\n` +
       `- Vraagt Maarten "waar waren we / wat hebben we gedaan", vat dan concreet samen uit de werkstatus per pagina: wat is geoptimaliseerd, wat loopt, wat staat gepland.\n` +
       `- Werk als proactieve partner: betrek de recente e-mails. Nieuwe wensen, herzieningen, positioneringsvragen of ingevulde formulieren van de klant wegen mee in de strategie; signaleer zelf als een mail iets raakt dat we moeten oppakken of aanpassen.\n` +
       `- Zie je in de mail blijvende nuance die het klantprofiel raakt (positionering, terminologie, no-go's, beslissingen zoals "beplantingsplan geen aparte pagina"), BENOEM dat kort in je tekst en vraag of je het klantprofiel zult bijwerken. Maak de 'profiel_bijwerken'-kaart pas als Maarten ja zegt (hij kan de tekst dan nog bijstellen).\n` +
