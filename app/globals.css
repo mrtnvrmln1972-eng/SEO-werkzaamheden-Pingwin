@@ -2079,6 +2079,14 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .ovc-bubble.chat-md table.chat-table th { background: rgba(231, 119, 63, 0.10); color: var(--dark); font-weight: 800; text-align: left; padding: 7px 11px; border: 1px solid var(--border); vertical-align: top; }
 .ovc-bubble.chat-md table.chat-table td { padding: 7px 11px; border: 1px solid var(--border); text-align: left; vertical-align: top; }
 .ovc-bubble.chat-md table.chat-table tr:nth-child(even) td { background: var(--gray-light); }
+/* Knop onder een bird's eye-antwoord: zet de concrete taken in het weekplanning-bord. */
+.ovc-maketasks { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 8px 0 2px; }
+.ovc-mk-btn { border: 1px solid var(--orange); background: var(--orange); color: #fff; cursor: pointer; font-size: 12.5px; font-weight: 700; padding: 6px 13px; border-radius: 8px; }
+.ovc-mk-btn:hover { background: var(--orange-dark); border-color: var(--orange-dark); }
+.ovc-mk-btn:disabled { opacity: 0.6; cursor: default; }
+.ovc-mk-msg { font-size: 12px; }
+.ovc-mk-msg.ok { color: #1c7a3f; }
+.ovc-mk-msg.err { color: #b3261e; }
 
 /* Takenlijst op de weekplanning-actiekaart */
 .act-taken { margin: 4px 0 2px; padding-left: 18px; font-size: 12.5px; line-height: 1.45; }

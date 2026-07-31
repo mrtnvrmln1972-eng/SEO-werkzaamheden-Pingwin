@@ -81,6 +81,8 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [expanded, setExpanded] = useState<Set<number>>(new Set()); // lange antwoorden ingeklapt
+  const [mkBusy, setMkBusy] = useState<number | null>(null);        // "zet taken in weekplanning" bezig (bericht-index)
+  const [mkMsg, setMkMsg] = useState<Record<number, string>>({});   // resultaat-melding per bericht
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const loadSeq = useRef(0);
@@ -188,6 +190,19 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
     setMessages((prev) => prev.map((m) => m.actions ? { ...m, actions: m.actions.map((a) => a.id === id ? { ...a, executed, result } : a) } : m));
   }
 
+  // Deterministisch: zet de concrete taken uit dit bird's eye-antwoord om in sleepbare
+  // kaarten in het weekplanning-bord (server-side geforceerde extractie).
+  async function makeTasks(idx: number, content: string, thread: string) {
+    if (mkBusy !== null) return;
+    setMkBusy(idx); setMkMsg((m) => ({ ...m, [idx]: "" }));
+    try {
+      const r = await fetch("/api/admin/weekplan/from-answer", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread, answer: content }) });
+      const d = await r.json();
+      if (d.ok && d.added) { setMkMsg((m) => ({ ...m, [idx]: `✓ ${d.added} ${d.added === 1 ? "taak" : "taken"} in de weekplanning gezet` })); onWeekplanChanged?.(); }
+      else setMkMsg((m) => ({ ...m, [idx]: d.error || "Kon geen taken maken." }));
+    } catch { setMkMsg((m) => ({ ...m, [idx]: "Kon geen taken maken." })); } finally { setMkBusy(null); }
+  }
+
   function deleteMessage(idx: number) {
     if (!open) return;
     const t = open;
@@ -282,6 +297,14 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
                               );
                             })()
                           : <div className="ovc-bubble">{m.content}</div>}
+                        {m.role === "assistant" && (m.content || "").trim().length > 40 && (
+                          <div className="ovc-maketasks">
+                            <button type="button" className="ovc-mk-btn" disabled={mkBusy === i} onClick={() => makeTasks(i, m.content, t.thread)} title="Haal de concrete taken uit dit antwoord en zet ze als sleepbare kaarten in het weekplanning-bord hieronder.">
+                              {mkBusy === i ? "Taken maken…" : "＋ Zet de taken in de weekplanning"}
+                            </button>
+                            {mkMsg[i] && <span className={"ovc-mk-msg" + (mkMsg[i].startsWith("✓") ? " ok" : " err")}>{mkMsg[i]}</span>}
+                          </div>
+                        )}
                         {m.role === "assistant" && m.actions && m.actions.length > 0 && (
                           <div className="ovc-actions">
                             {m.actions.map((a) => (

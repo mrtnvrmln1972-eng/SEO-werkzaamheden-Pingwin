@@ -12,7 +12,7 @@ import { getFocus } from "./focus";
 import { buildOverview, overviewToText, getPageWorkStatus, pageWorkStatusToText } from "./overview";
 import { buildPageSignalsText, buildKeywordStandText, buildTeBouwenText } from "./page-signals";
 import { readDriveDoc } from "./drive";
-import { validateAction, type ProposedAction } from "./overview-actions";
+import { validateAction, executeAction, type ProposedAction } from "./overview-actions";
 import type { ClientConfig } from "./clients";
 
 // ═══════════════════════════════════════════════════════════
@@ -486,28 +486,7 @@ export async function replaceChatHistory(slug: string, thread: string, messages:
   await saveChatHistory(slug, thread, messages);
 }
 
-// GEFASEERD stap 1: de gefocuste analyse-prompt voor een planning-vraag. Één taak:
-// alleen de Stand van zaken schrijven, netjes opgemaakt, gegrond in de meegeleverde
-// context. Geen tools, geen taken (die komen in stap 2). Rustig = betere opmaak en
-// geen vergeten bronnen.
-function buildOverviewAnalysisSystem(client: ClientConfig, context: string): string {
-  return (
-    `Je bent de overkoepelende SEO-strateeg ("bird's eye") van Pingwin voor de klant ${client.name}. ` +
-    `Je taak NU is ALLEEN een heldere STAND VAN ZAKEN schrijven (de analyse), geen taken of planning, geen kaarten (die maakt een aparte stap zo). ` +
-    `Baseer je UITSLUITEND op de context hieronder (paginasignalen, zoekwoordstanden, te bouwen pagina's, site-overzicht, recente mails, stand van zaken, afgesproken zoekwoorden/navigatie). Verzin geen cijfers; noem alleen wat er staat. Twijfel je of iets klopt, zeg dat kort in plaats van te gokken.\n\n` +
-    `INHOUD, dek ALTIJD deze drie delen af:\n` +
-    `1. Wat staat live en hoe presteert het (posities, vertoningen, klikken; wat gaat goed, wat presteert onder de maat).\n` +
-    `2. Wat is aangeleverd maar nog niet bevestigd live (copy aangeleverd maar niet gezien op de pagina, open Dev-acties uit mails).\n` +
-    `3. Wat moet er nog bij of uitgebreid worden om de site autoriteit te geven. Redeneer HOLISTISCH uit alle bronnen (de afgesproken navigatie/zoekwoorden, de mails, de te-bouwen-lijst, de gaten) en bedenk ZELF welke grote landingspagina's en thema's de site nog mist; noem ze concreet (pagina/onderwerp, waarom belangrijk).\n\n` +
-    `OPMAAK (belangrijk, moet er verzorgd en scanbaar uitzien, NOOIT een muur lopende tekst): Nederlands, Markdown, geen emoji.\n` +
-    `- Deel op in BLOKKEN, elk met een eigen gekleurd kopje (## Kop), met een scheidingslijn (--- op een eigen regel) tussen de blokken.\n` +
-    `- Korte BULLETS (-) binnen een blok, geen lange alinea's. **Vet** voor de kernfeiten (paginanaam, positie, aantallen). Pagina's/slugs als klikbaar pad (bijv. /hovenier/etten-leur/).\n` +
-    `- Voor "wat staat live / hoe presteert het" of een cijfervergelijking mag een net klein tabelletje (| Kop | Kop |).\n` +
-    `- Houd het behapbaar; het is een overzicht, geen rapport.\n\n--- OVERZICHT-CONTEXT ---\n${context}`
-  );
-}
-
-// GEFASEERD stap 2: genereer de weektaken GEGARANDEERD via een geforceerde tool-aanroep
+// Genereert de weektaken GEGARANDEERD via een geforceerde tool-aanroep
 // (tool_choice), gevoed door de analyse + context. Met één retry-vangnet als er 0 geldige
 // taken uitkomen. Geeft een gevalideerde weekplan_taken-actie terug, of null.
 async function generateWeekplanActie(client: ClientConfig, context: string, analyse: string, slug: string): Promise<ProposedAction | null> {
@@ -536,6 +515,23 @@ async function generateWeekplanActie(client: ClientConfig, context: string, anal
     }
   }
   return null;
+}
+
+// Deterministische knop-actie: zet de concrete taken uit een BIRD'S EYE-antwoord om in
+// sleepbare kaarten in het weekplanning-bord. Door de mens getriggerd (knop), dus geen
+// afhankelijkheid van modelkeuze of intent-detectie. Werkt bij elk project/elke vraag.
+export async function weekplanFromAnswer(slug: string, answer: string, thread = "overzicht"): Promise<{ ok: boolean; added: number; error?: string }> {
+  const client = await getClientBySlug(slug);
+  if (!client) return { ok: false, added: 0, error: "Klant niet gevonden." };
+  if (!answer || !answer.trim()) return { ok: false, added: 0, error: "Geen antwoord om taken uit te halen." };
+  const context = await buildOverviewContext(client).catch(() => "");
+  const actie = await generateWeekplanActie(client, context, answer, slug).catch(() => null);
+  if (!actie || !actie.taken || !actie.taken.length) return { ok: false, added: 0, error: "Kon geen concrete taken uit dit antwoord halen. Probeer het opnieuw." };
+  const result = await executeAction(slug, actie, thread);
+  // executeAction meldt "N taken in de weekplanning gezet" bij succes.
+  const m = /(\d+)/.exec(result.message || "");
+  const added = result.ok ? (m ? Number(m[1]) : actie.taken.length) : 0;
+  return { ok: result.ok, added, error: result.ok ? undefined : result.message };
 }
 
 export async function answerChat(slug: string, messages: ChatMessage[], thread = "algemeen"): Promise<{ ok: boolean; answer?: string; error?: string; actions?: ProposedAction[]; title?: string; summary?: string }> {
@@ -627,28 +623,10 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
     const base = chatTools(client);
     const collected: ProposedAction[] = [];
     const { tools, run } = isOverview ? overviewTools(client, base, collected) : base;
-
-    // GEFASEERDE WEEKPLANNING (Maartens inzicht: één beurt doet te veel → overload).
-    // Bij een planning-vraag knippen we het op in rustige, gefocuste stappen:
-    //  (1) alleen de analyse (Stand van zaken), zonder tool-gejongleer;
-    //  (2) daarna, geforceerd en met vangnet, de taak-kaarten.
-    // Een gewone/losse vraag blijft de volle agentische chat (mét meet-tools voor drill-down).
-    const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content || "";
-    const planningIntent = isOverview && /\b(planning|weekplan|weekplanning|taken van|maak.*taken|hier taken|oppakken|werklijst|takenlijst|to.?do|aan de slag)\b/i.test(lastUser);
-
-    let answer: string;
-    if (planningIntent) {
-      answer = await callClaude(buildOverviewAnalysisSystem(client, context), apiMessages as { role: "user" | "assistant"; content: string }[], 3200, { slug, action: "overzicht-analyse" });
-    } else {
-      answer = await callClaudeAgentic(system, apiMessages as { role: "user" | "assistant"; content: string }[], tools, run, isOverview ? 12 : 6, isOverview ? 3200 : 2000, { slug, action: isOverview ? "overzicht-chat" : isAds ? "ads-chat" : "projectchat" });
-    }
-
-    // Stap 2: de taak-kaarten, GEGARANDEERD (tool_choice forceert de aanroep), met één
-    // retry-vangnet als er 0 geldige taken uitkomen. Hangt niet af van modelkeuze.
-    if (planningIntent && !collected.some((a) => a.type === "weekplan_taken") && answer && answer.trim()) {
-      const wp = await generateWeekplanActie(client, context, answer, slug).catch(() => null);
-      if (wp) collected.push(wp);
-    }
+    // De chat geeft gewoon zijn rijke agentische antwoord (dat Maarten goed vindt). De
+    // taak-kaarten worden NIET meer hier auto-gegenereerd (te fragiel); dat doet de
+    // deterministische knop "Zet de taken in de weekplanning" (weekplanFromAnswer) op verzoek.
+    const answer = await callClaudeAgentic(system, apiMessages as { role: "user" | "assistant"; content: string }[], tools, run, isOverview ? 12 : 6, isOverview ? 3200 : 2000, { slug, action: isOverview ? "overzicht-chat" : isAds ? "ads-chat" : "projectchat" });
 
     const finalAnswer = answer || "(geen antwoord)";
     const assistantMsg: ChatMessage = collected.length ? { role: "assistant", content: finalAnswer, actions: collected } : { role: "assistant", content: finalAnswer };
