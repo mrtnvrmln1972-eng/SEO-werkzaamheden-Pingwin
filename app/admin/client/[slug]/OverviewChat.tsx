@@ -10,6 +10,21 @@ type Topic = { thread: string; count: number; title: string; summary: string; do
 // Slugs/URL's klikbaar maken: gedeelde bron in lib/linkify.ts (zelfde gedrag als
 // voorheen, nu herbruikbaar voor de projectkaarten en andere output-plekken).
 
+// Aankondigings-/vulzinnen aan het begin van een antwoord ("Nu heb ik alles wat ik
+// nodig heb.") retroactief uit beeld filteren; ze kosten Maarten alleen leestijd.
+function stripAankondiging(md: string): string {
+  const regels = (md || "").split("\n");
+  let i = 0;
+  while (i < regels.length) {
+    const r = regels[i].trim();
+    if (!r) { i++; continue; }
+    if (r.length < 160 && /^(nu heb ik|hier (is|komt|volgt)|hieronder (volgt|staat)|prima[,.]|ok[eé][,.]|goed[,.]|ik ga (nu )?)/i.test(r) && !/^##/.test(r)) { i++; continue; }
+    break;
+  }
+  const rest = regels.slice(i).join("\n").trim();
+  return rest || md;
+}
+
 // Lichte Markdown → HTML (kopjes, bullets, vet, links, tabellen). Zelfde regels
 // als de zwevende chat, zodat antwoorden overal netjes renderen. Slugs en URL's
 // worden aan het eind automatisch klikbaar gemaakt (linkify).
@@ -293,11 +308,12 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
                         <button type="button" className="chat-msg-del" title="Dit blok verwijderen" onClick={() => deleteMessage(i)}>&times;</button>
                         {m.role === "assistant"
                           ? (() => {
-                              const long = (m.content || "").length > 700;
+                              const inhoud = stripAankondiging(m.content || "");
+                              const long = inhoud.length > 700;
                               const isOpen = expanded.has(i);
                               return (
                                 <div className="ovc-bubble chat-md">
-                                  <div className={long && !isOpen ? "ovc-clamp" : undefined} dangerouslySetInnerHTML={{ __html: mdToHtml(m.content, domain) }} />
+                                  <div className={long && !isOpen ? "ovc-clamp" : undefined} dangerouslySetInnerHTML={{ __html: mdToHtml(inhoud, domain) }} />
                                   {long && (
                                     <button type="button" className="ovc-more" onClick={() => setExpanded((s) => { const n = new Set(s); if (n.has(i)) n.delete(i); else n.add(i); return n; })}>
                                       {isOpen ? "Toon minder" : "Toon meer"}

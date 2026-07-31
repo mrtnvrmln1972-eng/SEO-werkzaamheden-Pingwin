@@ -659,7 +659,26 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
     // De chat geeft gewoon zijn rijke agentische antwoord (dat Maarten goed vindt). De
     // taak-kaarten worden NIET meer hier auto-gegenereerd (te fragiel); dat doet de
     // deterministische knop "Zet de taken in de weekplanning" (weekplanFromAnswer) op verzoek.
-    const answer = await callClaudeAgentic(system, apiMessages as { role: "user" | "assistant"; content: string }[], tools, run, isOverview ? 12 : 6, isOverview ? 3200 : 2000, { slug, action: isOverview ? "overzicht-chat" : isAds ? "ads-chat" : "projectchat" });
+    let answer = await callClaudeAgentic(system, apiMessages as { role: "user" | "assistant"; content: string }[], tools, run, isOverview ? 12 : 6, isOverview ? 3200 : 2000, { slug, action: isOverview ? "overzicht-chat" : isAds ? "ads-chat" : "projectchat" });
+
+    // Vangnet: eindigt het antwoord als alleen een aankondiging ("Nu heb ik alles…",
+    // "Hier is de volledige analyse…") zonder de echte inhoud, forceer dan één
+    // afrondingsronde. Dit gebeurde als de agent al zijn rondes aan tools opmaakte.
+    const alleenAankondiging = (s: string) => {
+      const t = (s || "").trim();
+      if (!t) return true;
+      return t.length < 400 && !/(^|\n)##\s/.test(t) && /(nu heb ik|hier (is|komt|volgt)|hieronder (volgt|staat)|ik ga (nu )?)/i.test(t);
+    };
+    if (isOverview && alleenAankondiging(answer)) {
+      try {
+        const vervolg = await callClaudeAgentic(
+          system,
+          [...(apiMessages as { role: "user" | "assistant"; content: string }[]), { role: "assistant", content: answer || "(aankondiging zonder inhoud)" }, { role: "user", content: "Je vorige beurt bevatte alleen een aankondiging zonder de inhoud. Geef NU in één keer de volledige terugkoppeling volgens de OPMAAK-regels, beginnend met het eerste kopje. Geen aankondigings- of vulzinnen." }],
+          tools, run, 6, 3200, { slug, action: "overzicht-chat-afronding" },
+        );
+        if (vervolg && vervolg.trim().length > (answer || "").trim().length) answer = vervolg;
+      } catch { /* dan het oorspronkelijke antwoord */ }
+    }
 
     const finalAnswer = answer || "(geen antwoord)";
     const assistantMsg: ChatMessage = collected.length ? { role: "assistant", content: finalAnswer, actions: collected } : { role: "assistant", content: finalAnswer };
