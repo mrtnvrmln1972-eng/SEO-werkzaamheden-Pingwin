@@ -2062,7 +2062,7 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .ovc-bubble.chat-md > div > .chat-table, .ovc-bubble.chat-md table.chat-table { max-width: 100%; }
 .ovc-bubble.chat-md h3 { font-size: 15.5px; font-weight: 800; color: var(--orange); margin: 20px 0 8px; padding-bottom: 4px; border-bottom: 2px solid rgba(231, 119, 63, 0.22); }
 .ovc-bubble.chat-md h3:first-child, .ovc-bubble.chat-md h4:first-child { margin-top: 2px; }
-.ovc-bubble.chat-md h4, .ovc-bubble.chat-md h5, .ovc-bubble.chat-md h6 { font-size: 13.5px; font-weight: 800; color: var(--orange-dark); margin: 16px 0 5px; }
+.ovc-bubble.chat-md h4, .ovc-bubble.chat-md h5, .ovc-bubble.chat-md h6 { font-size: 13.5px; font-weight: 800; color: var(--orange-dark); margin: 16px 0 6px; padding-bottom: 3px; border-bottom: 1px solid rgba(231, 119, 63, 0.18); display: inline-block; }
 .ovc-bubble.chat-md p { margin: 8px 0; }
 .ovc-bubble.chat-md ul { list-style: none; margin: 8px 0; padding-left: 2px; }
 .ovc-bubble.chat-md ul li { position: relative; padding-left: 18px; margin: 5px 0; }
@@ -2109,6 +2109,12 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .wp-card-taak { font-size: 12.5px; line-height: 1.4; color: var(--dark); }
 .wp-card.wp-klaar .wp-card-taak { text-decoration: line-through; }
 .wp-card-url { display: inline-block; margin-top: 3px; font-size: 11.5px; color: var(--orange-dark); text-decoration: underline; word-break: break-all; }
+/* Rijke kaart-koppelingen (C3b): pagina, copy, bronmail, deep-link naar dashboard. */
+.wp-card-links { display: flex; flex-wrap: wrap; gap: 6px; margin: 5px 0 2px; }
+.wp-link { font-size: 11px; color: var(--orange-dark); text-decoration: none; border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; background: #fff; line-height: 1.5; }
+.wp-link:hover { border-color: var(--orange); background: var(--orange-light); }
+.wp-link-btn { cursor: pointer; font-family: inherit; }
+.tvk-links { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 4px; }
 .wp-card-foot { display: flex; align-items: center; gap: 6px; margin-top: 7px; flex-wrap: wrap; }
 .wp-wie { font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 8px; }
 .wp-wie.wie-seo { background: rgba(231, 119, 63, 0.14); color: var(--orange-dark); }

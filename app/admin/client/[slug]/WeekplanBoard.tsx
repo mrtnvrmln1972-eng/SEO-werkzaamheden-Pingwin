@@ -2,7 +2,16 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
-type Task = { id: number; thread: string; taak: string; toelichting: string; wie: string; url: string; weekYear: number; weekNo: number; status: string; sortOrder: number };
+type Task = { id: number; thread: string; taak: string; toelichting: string; wie: string; url: string; taaktype: string; copyUrl: string; bronMail: string; weekYear: number; weekNo: number; status: string; sortOrder: number };
+
+// Bij welk taaktype hoort welk dashboard-tabblad (voor de deep-link "doe het hier").
+const TAB_FOR_TYPE: Record<string, { tab: string; label: string }> = {
+  meta: { tab: "meta", label: "Meta & CTR ↗" },
+  alt: { tab: "paginas", label: "Pagina's ↗" },
+  copy: { tab: "paginas", label: "Pagina's ↗" },
+  intern: { tab: "paginas", label: "Pagina's ↗" },
+  structured: { tab: "paginas", label: "Pagina's ↗" },
+};
 type Current = { year: number; week: number };
 
 const STATUS_NEXT: Record<string, string> = { gepland: "bezig", bezig: "klaar", klaar: "gepland" };
@@ -34,7 +43,7 @@ const keyOf = (year: number, week: number) => year * 100 + week;
 // Het weekplanning-bord: taken (uit de bird's eye-onderwerpen) verdeeld over
 // weekkolommen. De huidige week is gemarkeerd. Slepen verplaatst een taak naar
 // een andere week. Per taak: status, mailen naar je developer, pagina openen.
-export default function WeekplanBoard({ slug, onGoToPage, clientName, clientEmail, reloadSignal }: { slug: string; onGoToPage?: (url: string) => void; clientName?: string; clientEmail?: string; reloadSignal?: number }) {
+export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, clientName, clientEmail, reloadSignal }: { slug: string; onGoToPage?: (url: string) => void; onGoToTab?: (tab: string) => void; clientName?: string; clientEmail?: string; reloadSignal?: number }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [current, setCurrent] = useState<Current | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -136,7 +145,19 @@ export default function WeekplanBoard({ slug, onGoToPage, clientName, clientEmai
           {t.taak}
         </div>
         {open && hasInfo && <div className="wp-card-info">{t.toelichting}</div>}
-        {t.url && <a className="wp-card-url" href={t.url} target="_blank" rel="noreferrer">{shortUrl(t.url)}</a>}
+        {(() => {
+          const tab = TAB_FOR_TYPE[t.taaktype];
+          const anyLink = t.url || t.copyUrl || t.bronMail || (tab && onGoToTab);
+          if (!anyLink) return null;
+          return (
+            <div className="wp-card-links">
+              {t.url && <a className="wp-link" href={t.url} target="_blank" rel="noreferrer" title="De live pagina">{shortUrl(t.url)}</a>}
+              {t.copyUrl && <a className="wp-link" href={t.copyUrl} target="_blank" rel="noreferrer" title="De aangeleverde copy">Copy ↗</a>}
+              {t.bronMail && <a className="wp-link" href={t.bronMail} target="_blank" rel="noreferrer" title="De mail waar deze taak uit voortkomt">✉ bronmail</a>}
+              {tab && onGoToTab && <button type="button" className="wp-link wp-link-btn" title="Doe het hier in het dashboard" onClick={() => onGoToTab(tab.tab)}>{tab.label}</button>}
+            </div>
+          );
+        })()}
         <div className="wp-card-foot">
           <span className={"wp-wie " + (t.wie === "Dev" ? "wie-dev" : "wie-seo")}>{t.wie}</span>
           <button type="button" className={"wp-status wp-status-" + t.status} onClick={() => cycleStatus(t)} title="Klik om de status te wisselen">{STATUS_LABEL[t.status] || t.status}</button>

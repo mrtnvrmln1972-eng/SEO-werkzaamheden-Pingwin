@@ -5,7 +5,7 @@ import { useRef, useState } from "react";
 export type Action = {
   id: string; type: string; reason?: string;
   url?: string; title?: string; taak?: string; fase?: string; wie?: string; steps?: string[]; tekst?: string;
-  taken?: { taak: string; wie?: string; url?: string; week?: number; toelichting?: string }[];
+  taken?: { taak: string; wie?: string; url?: string; week?: number; toelichting?: string; taaktype?: string; bronMail?: string }[];
   executed?: boolean;
   result?: { ok: boolean; message: string; taskIds?: number[]; runId?: number; link?: string; text?: string };
 };
@@ -47,7 +47,7 @@ export default function ActionCard({ action, slug, thread, onExecuted, onGoToPag
     if (addBusy !== null || addedSet.has(i)) return;
     setAddBusy(i);
     try {
-      const r = await fetch("/api/admin/weekplan/add", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread, taak: t.taak, toelichting: t.toelichting, wie: t.wie, url: t.url, week: t.week }) });
+      const r = await fetch("/api/admin/weekplan/add", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread, taak: t.taak, toelichting: t.toelichting, wie: t.wie, url: t.url, week: t.week, taaktype: t.taaktype, bronMail: t.bronMail }) });
       const d = await r.json();
       if (d.ok) { setAddedSet((s) => new Set(s).add(i)); onWeekplanChanged?.(); }
     } catch { /* stil */ } finally { setAddBusy(null); }
@@ -120,7 +120,10 @@ export default function ActionCard({ action, slug, thread, onExecuted, onGoToPag
                           {added ? "✓ Toegevoegd" : b ? "…" : "→ Weekplanning"}
                         </button>
                       </div>
-                      {t.url && <a className="tvk-url" href={t.url} target="_blank" rel="noreferrer">{shortUrl(t.url)}</a>}
+                      <div className="tvk-links">
+                        {t.url && <a className="tvk-url" href={t.url} target="_blank" rel="noreferrer">{shortUrl(t.url)}</a>}
+                        {t.bronMail && <a className="tvk-url" href={t.bronMail} target="_blank" rel="noreferrer">✉ bronmail</a>}
+                      </div>
                       {t.toelichting && <div className="tvk-why">{t.toelichting}</div>}
                     </div>
                   );

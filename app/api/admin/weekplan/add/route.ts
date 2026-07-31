@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../../lib/admin-auth";
 import { guardSlug } from "../../../../../lib/admin-scope";
 import { addWeekplanTasks, isoWeek } from "../../../../../lib/weekplan";
+import { getStepLinks } from "../../../../../lib/page-doc-run";
 
 export const runtime = "nodejs";
 
@@ -26,11 +27,18 @@ export async function POST(req: NextRequest) {
   d.setDate(d.getDate() + (seq - 1) * 7);
   const week = isoWeek(d);
 
+  const url = body.url ? String(body.url) : undefined;
+  // Copy-link server-side afleiden zodat de bord-kaart direct naar de aangeleverde copy linkt.
+  const copyUrl = url ? await getStepLinks(slug, url).then((s) => s.copy).catch(() => "") : "";
+
   const n = await addWeekplanTasks(slug, String(body.thread || ""), [{
     taak,
     toelichting: body.toelichting ? String(body.toelichting) : undefined,
     wie: body.wie ? String(body.wie) : undefined,
-    url: body.url ? String(body.url) : undefined,
+    url,
+    taaktype: body.taaktype ? String(body.taaktype) : undefined,
+    bronMail: body.bronMail ? String(body.bronMail) : undefined,
+    copyUrl,
     week,
   }]);
   return n ? NextResponse.json({ ok: true, added: n, week }) : NextResponse.json({ ok: false, error: "Toevoegen mislukt." }, { status: 500 });

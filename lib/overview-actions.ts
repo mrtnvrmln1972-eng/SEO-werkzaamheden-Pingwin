@@ -10,7 +10,7 @@
 import { getClientBySlug, saveClientProfile } from "./clients";
 import { addManualPage, savePagePlan, getClientUrls } from "./site-urls";
 import { appendTasks } from "./tasks";
-import { createDocRun, runNow } from "./page-doc-run";
+import { createDocRun, runNow, getStepLinks } from "./page-doc-run";
 import { runPageSchema, applyPageSchema } from "./page-schema";
 import { generateMetaProposal } from "./meta-ctr";
 import { measurePage } from "./page-measure";
@@ -24,7 +24,7 @@ const VALID: ActionType[] = ["pagina_toevoegen", "taak_aanmaken", "plan_vastlegg
 export const EDITABLE: ActionType[] = ["profiel_bijwerken", "strategie_bepalen"];
 
 export type ActionResult = { ok: boolean; message: string; taskIds?: number[]; runId?: number; link?: string; text?: string };
-export type WeekTaak = { taak: string; toelichting?: string; wie?: string; url?: string; week?: number };
+export type WeekTaak = { taak: string; toelichting?: string; wie?: string; url?: string; week?: number; taaktype?: string; bronMail?: string };
 export type ProposedAction = {
   id: string; type: ActionType; reason?: string;
   url?: string; title?: string; taak?: string; fase?: string; wie?: string; plan?: string; steps?: string[]; extra?: string; keyword?: string; tekst?: string;
@@ -135,7 +135,9 @@ export function validateAction(raw: Record<string, unknown>, domain: string, id:
           const taak = String(o.taak || "").replace(/^\s*week\s*\d+\s*[—:-]+\s*/i, "").slice(0, 400).trim();
           if (!taak) return null;
           const week = Math.max(1, Math.min(12, Math.round(Number(o.week) || 1)));
-          return { taak, toelichting: String(o.info || o.toelichting || "").slice(0, 4000).trim() || undefined, wie: /dev/i.test(String(o.wie || "")) ? "Dev" : "SEO", url: toFullUrl(String(o.url || ""), domain) || undefined, week };
+          const taaktype = String(o.taaktype || o.type || "").slice(0, 40).trim().toLowerCase() || undefined;
+          const bronMail = String(o.bronMail || o.bron_mail || o.mail || "").slice(0, 600).trim() || undefined;
+          return { taak, toelichting: String(o.info || o.toelichting || "").slice(0, 4000).trim() || undefined, wie: /dev/i.test(String(o.wie || "")) ? "Dev" : "SEO", url: toFullUrl(String(o.url || ""), domain) || undefined, week, taaktype, bronMail };
         })
         .filter(Boolean) as WeekTaak[];
       if (!taken.length) return null;
@@ -189,11 +191,14 @@ export async function executeAction(slug: string, action: ProposedAction, thread
     }
     case "weekplan_taken": {
       const now = new Date();
-      const tasks = (action.taken || []).map((t) => {
+      const tasks = await Promise.all((action.taken || []).map(async (t) => {
         const seq = Math.max(1, t.week || 1);
         const d = new Date(now); d.setDate(now.getDate() + (seq - 1) * 7);
-        return { taak: t.taak, toelichting: t.toelichting, wie: t.wie, url: t.url, week: isoWeek(d) };
-      });
+        // Copy-link server-side afleiden uit de doc-runs van deze pagina (de kaart
+        // linkt zo direct naar de aangeleverde copy zonder dat de AI het hoeft te weten).
+        const copyUrl = t.url ? await getStepLinks(slug, t.url).then((s) => s.copy).catch(() => "") : "";
+        return { taak: t.taak, toelichting: t.toelichting, wie: t.wie, url: t.url, taaktype: t.taaktype, copyUrl, bronMail: t.bronMail, week: isoWeek(d) };
+      }));
       const n = await addWeekplanTasks(slug, thread, tasks);
       return n ? { ok: true, message: `${n} ${n === 1 ? "taak" : "taken"} in de weekplanning gezet, verdeeld over de weken. Dit onderwerp mag dicht; de taken staan in het bord.` } : { ok: false, message: "Geen taken om toe te voegen." };
     }

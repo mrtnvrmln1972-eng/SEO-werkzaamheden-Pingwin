@@ -10,6 +10,7 @@ import { sql, ensureSchema } from "./db";
 
 export type WeekplanTask = {
   id: number; thread: string; taak: string; toelichting: string; wie: string; url: string;
+  taaktype: string; copyUrl: string; bronMail: string;
   weekYear: number; weekNo: number; status: string; sortOrder: number;
 };
 
@@ -29,20 +30,21 @@ export function isoWeek(d: Date): { year: number; week: number } {
 export async function getWeekplan(slug: string): Promise<WeekplanTask[]> {
   await ensureSchema();
   const { rows } = await sql`
-    SELECT id, thread, taak, toelichting, wie, url, week_year, week_no, status, sort_order
+    SELECT id, thread, taak, toelichting, wie, url, taaktype, copy_url, bron_mail, week_year, week_no, status, sort_order
     FROM client_weekplan WHERE client_slug = ${slug}
     ORDER BY week_year, week_no, sort_order, id`;
   return rows.map((r) => ({
     id: r.id as number, thread: (r.thread as string) || "", taak: (r.taak as string) || "",
     toelichting: (r.toelichting as string) || "",
     wie: (r.wie as string) || "SEO", url: (r.url as string) || "",
+    taaktype: (r.taaktype as string) || "", copyUrl: (r.copy_url as string) || "", bronMail: (r.bron_mail as string) || "",
     weekYear: r.week_year as number, weekNo: r.week_no as number,
     status: (r.status as string) || "gepland", sortOrder: r.sort_order as number,
   }));
 }
 
 // Voegt taken toe, elk in hun eigen week (jaar + weeknummer).
-export async function addWeekplanTasks(slug: string, thread: string, tasks: { taak: string; toelichting?: string; wie?: string; url?: string; week: { year: number; week: number } }[]): Promise<number> {
+export async function addWeekplanTasks(slug: string, thread: string, tasks: { taak: string; toelichting?: string; wie?: string; url?: string; taaktype?: string; copyUrl?: string; bronMail?: string; week: { year: number; week: number } }[]): Promise<number> {
   await ensureSchema();
   let n = 0;
   for (const t of tasks) {
@@ -51,9 +53,12 @@ export async function addWeekplanTasks(slug: string, thread: string, tasks: { ta
     const wie = /dev/i.test(t.wie || "") ? "Dev" : "SEO";
     const url = (t.url || "").trim().slice(0, 400) || null;
     const toel = (t.toelichting || "").trim().slice(0, 4000) || null;
+    const taaktype = (t.taaktype || "").trim().slice(0, 40) || null;
+    const copyUrl = (t.copyUrl || "").trim().slice(0, 600) || null;
+    const bronMail = (t.bronMail || "").trim().slice(0, 600) || null;
     await sql`
-      INSERT INTO client_weekplan (client_slug, thread, taak, toelichting, wie, url, week_year, week_no, status, sort_order, updated_at)
-      VALUES (${slug}, ${thread || null}, ${taak.slice(0, 400)}, ${toel}, ${wie}, ${url}, ${t.week.year}, ${t.week.week}, 'gepland', ${n}, now())`;
+      INSERT INTO client_weekplan (client_slug, thread, taak, toelichting, wie, url, taaktype, copy_url, bron_mail, week_year, week_no, status, sort_order, updated_at)
+      VALUES (${slug}, ${thread || null}, ${taak.slice(0, 400)}, ${toel}, ${wie}, ${url}, ${taaktype}, ${copyUrl}, ${bronMail}, ${t.week.year}, ${t.week.week}, 'gepland', ${n}, now())`;
     n++;
   }
   return n;

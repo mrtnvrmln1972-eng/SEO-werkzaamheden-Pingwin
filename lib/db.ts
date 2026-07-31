@@ -240,6 +240,11 @@ async function init(): Promise<void> {
     )`;
   await sql`CREATE INDEX IF NOT EXISTS ix_client_weekplan_slug ON client_weekplan(client_slug)`;
   await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS toelichting TEXT`;
+  // Rijke kaart-koppelingen (C3b): taaktype (voor de dashboard-deeplink), link naar de
+  // aangeleverde copy, en de bronmail waar de taak uit voortkomt.
+  await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS taaktype TEXT`;
+  await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS copy_url TEXT`;
+  await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS bron_mail TEXT`;
 
   // Werkzaamheden per klant, ín het dashboard (alternatief voor de Google Sheet).
   // SEO- en Dev-taken samen; per maand, met uren, status, link en zichtbaarheid

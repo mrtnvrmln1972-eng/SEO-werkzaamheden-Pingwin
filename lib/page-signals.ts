@@ -5,6 +5,7 @@ import { getKeywords, getPages } from "./snapshots";
 import { metaPixelInfo } from "./meta-rules";
 import { buildWerkplan } from "./overview";
 import { getOpportunities } from "./keyword-opportunities";
+import { getFocus } from "./focus";
 
 // ═══════════════════════════════════════════════════════════
 // PAGINA-SIGNALEN: harde live-feiten als grond voor de bird's eye
@@ -152,18 +153,44 @@ export async function buildKeywordStandText(slug: string): Promise<string> {
 // site nog niet op rankt (kandidaten voor nieuwe autoriteitspagina's). Zodat de
 // stand van zaken niet alleen "wat staat live" toont, maar ook wat er nog moet.
 export async function buildTeBouwenText(slug: string): Promise<string> {
-  const [werk, opps] = await Promise.all([
+  const [werk, opps, urls, focus] = await Promise.all([
     buildWerkplan(slug).catch(() => null),
     getOpportunities(slug).catch(() => []),
+    getClientUrls(slug).catch(() => []),
+    getFocus(slug).catch(() => ({ html: "" })),
   ]);
   const gepland = werk?.gepland || [];
   const teBouwen = gepland.filter((i) => !i.live);
   const uitbreiden = gepland.filter((i) => i.live);
 
+  // Geplande pagina's uit de afgesproken navigatie (Zoekwoorden en links, focus-HTML):
+  // haal de paden/slugs uit de links en toets af tegen wat live staat. Zo komt de
+  // uitgewerkte navigatie (ook thematische autoriteitspagina's) gegrond mee.
+  const liveePaths = new Set(
+    urls.filter((u) => u.status === 200).map((u) => normKey(pathOf(u.url)))
+  );
+  const inWerkplan = new Set(gepland.map((i) => normKey(i.slug)));
+  const navPaths = new Set<string>();
+  const html = (focus as { html?: string }).html || "";
+  for (const m of html.matchAll(/href\s*=\s*["']([^"']+)["']/gi)) {
+    let p = m[1].trim();
+    try { p = new URL(p).pathname; } catch { /* relatief pad */ }
+    if (!p.startsWith("/") || p.length < 3) continue;      // alleen echte interne paden
+    if (/\.(pdf|jpg|png|zip|xlsx?|docx?)$/i.test(p)) continue;
+    if (/^\/(wp-|search|feed|tag\/)/i.test(p)) continue;
+    const key = normKey(p);
+    if (liveePaths.has(key) || inWerkplan.has(key)) continue;  // al live of al genoemd
+    navPaths.add(key);
+  }
+
   const parts: string[] = [];
   if (teBouwen.length) {
     parts.push("Afgesproken/gepland maar nog niet live (bouwen):");
     for (const i of teBouwen.slice(0, 12)) parts.push(`- ${i.slug}${i.keyword ? ` — "${i.keyword}"${i.volume ? `, volume ${i.volume}` : ""}` : ""}`);
+  }
+  if (navPaths.size) {
+    parts.push("Uit de afgesproken navigatie (Zoekwoorden en links), nog niet live, kandidaat om te bouwen:");
+    for (const p of Array.from(navPaths).slice(0, 15)) parts.push(`- ${p}`);
   }
   if (uitbreiden.length) {
     parts.push("Live maar met kans (uitbreiden/optimaliseren):");
