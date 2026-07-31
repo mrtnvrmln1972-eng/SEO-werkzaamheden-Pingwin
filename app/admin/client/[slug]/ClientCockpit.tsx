@@ -359,10 +359,14 @@ export default function ClientCockpit({
               </div>
             )}
 
-            {/* Het kloppend hart: de bird's eye-assistent denkt mee, en wat je besluit
-                landt als kaarten in de weekplanning eronder. Eén werkplek, geen muur. */}
+            {/* Twee kolommen: links (2/3) het kloppend hart (bird's eye + weekplanning),
+                rechts (1/3) stand van zaken, zoekwoorden & links, en de laatste mails. */}
+            <div className="tk-grid">
+            <div className="tk-links">
             <OverviewChat slug={client.slug} domain={client.domain || ""} configured={chatConfigured !== false} onGoToPage={goToPage} onGoToTask={goToNewTask} onWeekplanChanged={() => setWeekplanReload((n) => n + 1)} />
             <WeekplanBoard slug={client.slug} onGoToPage={goToPage} onGoToTab={(t) => changeTab(validTab(t))} clientName={client.name} clientEmail={client.email || ""} reloadSignal={weekplanReload} />
+            </div>
+            <div className="tk-rechts">
 
             {/* Zonder mail-secties (COCKPIT_MAIL=uit) blijft alleen Zoekwoorden & links staan,
                 in dezelfde kaartstijl als de andere inklapbare secties. */}
@@ -379,7 +383,7 @@ export default function ClientCockpit({
                 <span className="strategy-title">Actuele stand van zaken <HelpHint xl title="Actuele stand van zaken" text={"Het lopende gesprek met de klant in één oogopslag, zodat je vóór elk contactmoment in tien seconden weet waar jullie staan.\n## Waar de data vandaan komt\nDe tijdlijn wordt **automatisch samengevat uit de echte mailwisseling** met deze klant (uit de gekoppelde mailbox). Elke ballon is een punt uit de correspondentie: links de klant, rechts Pingwin, met datum en de status open of afgehandeld.\n## Wat je ermee doet\n- **Afvinken:** handel een punt af met het vinkje 'afgerond'; zo blijft alleen het openstaande werk rood.\n- **Terug naar de bron:** 'mail openen' springt naar de originele mail, zodat je nooit hoeft te zoeken.\n- **Vaste kennis rechts:** het blok Zoekwoorden & links is jouw eigen spiekbriefje per klant (afspraken, focus-zoekwoorden, handige links); dat vult zichzelf niet, dat is bewust jouw plek."} /></span>
                 {statusUpdatedAt && <span className="strategy-meta-right">bijgewerkt {fmtDate(statusUpdatedAt)}</span>}
               </button>
-              <div className="sov-layout strategy-body" style={{ display: showStatusBox ? undefined : "none" }}>
+              <div className="strategy-body" style={{ display: showStatusBox ? undefined : "none" }}>
                   <div className="sov-thread">
                     <div className="sov-legend">
                       <span><span className="sov-dot client" /> Klant</span>
@@ -418,12 +422,13 @@ export default function ClientCockpit({
                     })}
                     {status.exchanges.length === 0 && <div className="muted">Nog geen correspondentie samengevat.</div>}
                   </div>
-
-                  <div className="sov-side">
-                    <FocusBlock slug={client.slug} />
-                  </div>
                 </div>
               </div>
+
+            {/* Zoekwoorden & links als eigen kaart in de rechterkolom, onder de stand van zaken. */}
+            <div className="cockpit-card strategy-card">
+              <FocusBlock slug={client.slug} standalone />
+            </div>
 
             <div className="cockpit-card strategy-card">
               <button type="button" className="strategy-head" onClick={() => setShowMailsBox((v) => !v)}>
@@ -546,6 +551,9 @@ export default function ClientCockpit({
               </div>
             </div>
             </>)}
+
+            </div>
+            </div>
 
           </>
         )}
