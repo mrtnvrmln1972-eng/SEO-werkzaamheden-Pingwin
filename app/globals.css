@@ -2016,6 +2016,10 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .ovc-msg.user .ovc-bubble { background: var(--orange); color: #fff; border-bottom-right-radius: 4px; }
 .ovc-msg.assistant .ovc-bubble { background: #f4f4f5; color: #1f1f1f; border-bottom-left-radius: 4px; }
 .ovc-msg.assistant .ovc-bubble.muted { background: none; color: var(--gray); font-style: italic; }
+/* Lange antwoorden standaard ingeklapt (geen muur van tekst) */
+.ovc-clamp { max-height: 190px; overflow: hidden; -webkit-mask-image: linear-gradient(to bottom, #000 68%, transparent); mask-image: linear-gradient(to bottom, #000 68%, transparent); }
+.ovc-more { margin-top: 4px; border: none; background: none; color: var(--orange-dark); font-size: 12px; font-weight: 700; cursor: pointer; padding: 2px 0; }
+.ovc-more:hover { text-decoration: underline; }
 .ovc-input { display: flex; gap: 8px; margin-top: 10px; align-items: flex-end; }
 .ovc-input textarea { flex: 1; font-family: inherit; font-size: 14px; line-height: 1.5; padding: 9px 12px; border: 1px solid var(--border); border-radius: 9px; resize: none; max-height: 220px; overflow-y: auto; }
 .ovc-input textarea:focus { outline: none; border-color: var(--orange); box-shadow: 0 0 0 3px rgba(231, 119, 63, 0.15); }

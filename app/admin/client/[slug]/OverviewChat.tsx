@@ -80,6 +80,7 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [expanded, setExpanded] = useState<Set<number>>(new Set()); // lange antwoorden ingeklapt
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const loadSeq = useRef(0);
@@ -266,7 +267,20 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
                       <div key={i} className={"ovc-msg " + m.role}>
                         <button type="button" className="chat-msg-del" title="Dit blok verwijderen" onClick={() => deleteMessage(i)}>&times;</button>
                         {m.role === "assistant"
-                          ? <div className="ovc-bubble chat-md" dangerouslySetInnerHTML={{ __html: mdToHtml(m.content, domain) }} />
+                          ? (() => {
+                              const long = (m.content || "").length > 700;
+                              const isOpen = expanded.has(i);
+                              return (
+                                <div className="ovc-bubble chat-md">
+                                  <div className={long && !isOpen ? "ovc-clamp" : undefined} dangerouslySetInnerHTML={{ __html: mdToHtml(m.content, domain) }} />
+                                  {long && (
+                                    <button type="button" className="ovc-more" onClick={() => setExpanded((s) => { const n = new Set(s); if (n.has(i)) n.delete(i); else n.add(i); return n; })}>
+                                      {isOpen ? "Toon minder" : "Toon meer"}
+                                    </button>
+                                  )}
+                                </div>
+                              );
+                            })()
                           : <div className="ovc-bubble">{m.content}</div>}
                         {m.role === "assistant" && m.actions && m.actions.length > 0 && (
                           <div className="ovc-actions">

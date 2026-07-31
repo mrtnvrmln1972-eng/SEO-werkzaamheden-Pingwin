@@ -77,19 +77,9 @@ export default function ActionCard({ action, slug, thread, onExecuted, onGoToPag
       </div>
       {action.taak && <div className="act-line"><strong>Taak:</strong> {action.taak}{action.wie ? ` (${action.wie})` : ""}</div>}
       {action.taken && action.taken.length > 0 && (
-        <>
-          <div className="act-taken-head">{action.taken.length} {action.taken.length === 1 ? "taak" : "taken"} · landen in deze week, daarna versleepbaar</div>
-          <div className="act-taken">
-            {action.taken.map((t, i) => (
-              <div key={i} className="act-taak-row">
-                {t.week ? <span className="act-week">wk {t.week}</span> : null}
-                <span className={"act-wie " + (t.wie === "Dev" ? "wie-dev" : "wie-seo")}>{t.wie || "SEO"}</span>
-                <span className="act-taak-text">{t.taak}</span>
-                {t.url && <a className="act-taak-url" href={t.url} target="_blank" rel="noreferrer">{shortUrl(t.url)}</a>}
-              </div>
-            ))}
-          </div>
-        </>
+        // Compact: geen platte takenlijst in de chat. De taken verschijnen als
+        // kaarten in de weekplanning zodra je goedkeurt.
+        <div className="act-taken-head">{action.taken.length} {action.taken.length === 1 ? "taak" : "taken"} verschijnen in je weekplanning, verdeeld over de weken en versleepbaar.</div>
       )}
       {action.title && <div className="act-line"><strong>Titel:</strong> {action.title}</div>}
       {action.steps && action.steps.length > 0 && <div className="act-line"><strong>Stappen:</strong> {action.steps.join(" → ")}</div>}
