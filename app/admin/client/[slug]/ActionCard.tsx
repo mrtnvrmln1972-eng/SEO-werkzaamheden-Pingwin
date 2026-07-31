@@ -91,32 +91,45 @@ export default function ActionCard({ action, slug, thread, onExecuted, onGoToPag
         {action.url && <span className="act-url">{shortUrl(action.url)}</span>}
       </div>
       {action.taak && <div className="act-line"><strong>Taak:</strong> {action.taak}{action.wie ? ` (${action.wie})` : ""}</div>}
-      {action.taken && action.taken.length > 0 && (
-        // Per taak een net kaartje met een eigen knop; je zet ze één voor één door
-        // naar de weekplanning (waar je ze versleept en ermee aan de slag gaat).
-        <div className="tvk-list">
-          {action.taken.map((t, i) => {
-            const added = addedSet.has(i);
-            const b = addBusy === i;
-            return (
-              <div key={i} className={"tvk-card" + (added ? " tvk-added" : "")}>
-                <div className="tvk-top">
-                  <span className={"tvk-wie " + (t.wie === "Dev" ? "wie-dev" : "wie-seo")}>{t.wie || "SEO"}</span>
-                  {t.week ? <span className="tvk-week">wk {t.week}</span> : null}
-                  <span className="tvk-taak">{t.taak}</span>
-                </div>
-                {t.url && <a className="tvk-url" href={t.url} target="_blank" rel="noreferrer">{shortUrl(t.url)}</a>}
-                {t.toelichting && <div className="tvk-why">{t.toelichting}</div>}
-                <div className="tvk-foot">
-                  <button type="button" className={"primary-btn small" + (b ? " busy" : "")} disabled={b || added} onClick={() => addOne(i, t)}>
-                    {added ? "✓ Toegevoegd" : b ? "Bezig…" : "Voeg toe aan weekplanning"}
-                  </button>
-                </div>
+      {action.taken && action.taken.length > 0 && (() => {
+        // Per taak een net kaartje, gegroepeerd per week; met een pilletje
+        // "→ Weekplanning" kopieer je de taak naar de weekplanning en ga je ermee
+        // aan de slag. De achtergrond (waarom) staat meteen in de kaart.
+        const groups = new Map<number, number[]>();
+        action.taken!.forEach((t, i) => {
+          const w = Math.max(1, Number(t.week) || 1);
+          if (!groups.has(w)) groups.set(w, []);
+          groups.get(w)!.push(i);
+        });
+        const weeks = Array.from(groups.keys()).sort((a, b) => a - b);
+        return (
+          <div className="tvk-weeks">
+            {weeks.map((w) => (
+              <div key={w} className="tvk-week-group">
+                <div className="tvk-week-head">Week {w}</div>
+                {groups.get(w)!.map((i) => {
+                  const t = action.taken![i];
+                  const added = addedSet.has(i);
+                  const b = addBusy === i;
+                  return (
+                    <div key={i} className={"tvk-card" + (added ? " tvk-added" : "")}>
+                      <div className="tvk-top">
+                        <span className={"tvk-wie " + (t.wie === "Dev" ? "wie-dev" : "wie-seo")}>{t.wie || "SEO"}</span>
+                        <span className="tvk-taak">{t.taak}</span>
+                        <button type="button" className={"tvk-pill" + (added ? " tvk-pill-done" : "") + (b ? " busy" : "")} disabled={b || added} onClick={() => addOne(i, t)} title="Kopieer deze taak naar de weekplanning">
+                          {added ? "✓ Toegevoegd" : b ? "…" : "→ Weekplanning"}
+                        </button>
+                      </div>
+                      {t.url && <a className="tvk-url" href={t.url} target="_blank" rel="noreferrer">{shortUrl(t.url)}</a>}
+                      {t.toelichting && <div className="tvk-why">{t.toelichting}</div>}
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
-        </div>
-      )}
+            ))}
+          </div>
+        );
+      })()}
       {action.title && <div className="act-line"><strong>Titel:</strong> {action.title}</div>}
       {action.steps && action.steps.length > 0 && <div className="act-line"><strong>Stappen:</strong> {action.steps.join(" → ")}</div>}
       {action.reason && <div className="act-reason">{action.reason}</div>}
