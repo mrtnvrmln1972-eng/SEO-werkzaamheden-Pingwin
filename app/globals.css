@@ -2151,6 +2151,19 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .act-week { flex: none; font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 8px; background: #eef0f2; color: #555; align-self: flex-start; margin-top: 1px; }
 .act-taak-text { flex: 1 1 auto; min-width: 0; color: var(--dark); }
 .act-taak-url { flex: none; color: var(--orange-dark); text-decoration: underline; font-size: 11.5px; white-space: nowrap; }
+/* Voorstel-taakkaarten in de chat: per taak een kaartje met "Voeg toe aan weekplanning" */
+.tvk-list { display: flex; flex-direction: column; gap: 8px; margin: 8px 0 4px; }
+.tvk-card { border: 1px solid var(--border); border-radius: 9px; background: var(--white); padding: 9px 11px; }
+.tvk-card.tvk-added { background: #f4faf5; border-color: #cfe9d6; }
+.tvk-top { display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap; }
+.tvk-wie { flex: none; font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 8px; text-transform: uppercase; }
+.tvk-wie.wie-seo { background: rgba(231, 119, 63, 0.14); color: var(--orange-dark); }
+.tvk-wie.wie-dev { background: #e5edff; color: #2a4bad; }
+.tvk-week { flex: none; font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 8px; background: #eef0f2; color: #555; }
+.tvk-taak { flex: 1 1 auto; min-width: 0; font-weight: 600; font-size: 13px; color: var(--dark); }
+.tvk-url { display: inline-block; margin-top: 4px; color: var(--orange-dark); text-decoration: underline; font-size: 11.5px; }
+.tvk-why { margin-top: 6px; color: var(--gray); font-size: 12px; line-height: 1.45; border-left: 2px solid var(--border); padding-left: 8px; }
+.tvk-foot { margin-top: 8px; display: flex; justify-content: flex-end; }
 .act-card { border: 1px solid var(--border); border-left: 3px solid var(--orange); border-radius: 10px; background: #fff; padding: 10px 12px; }
 .act-card.act-done { border-left-color: #1e824c; background: #f4faf5; }
 .act-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }

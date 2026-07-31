@@ -91,6 +91,9 @@ export default function ClientCockpit({
   const [switchingTo, setSwitchingTo] = useState<string | null>(null);
   const validTab = (t?: string): Tab => (t === "werkzaamheden" || t === "paginas" || t === "resultaten" || t === "klant" || t === "developer" || t === "wijzigingen" || t === "meta") ? t : "werkzaamheden";
   const [tab, setTab] = useState<Tab>(validTab(initialTab));
+  // Teller die de weekplanning laat herladen zodra er vanuit de chat een taak is
+  // toegevoegd (of iets in het bord verandert).
+  const [weekplanReload, setWeekplanReload] = useState(0);
   // Demo-filter voor de klanten-dropdown: alleen klanten met mooie ontwikkeling
   // (28 dagen of 3 maanden), voor schermdelen met potentiële klanten.
   const [demoFilter, setDemoFilter] = useState<null | "28" | "90">(null);
@@ -358,8 +361,8 @@ export default function ClientCockpit({
 
             {/* Het kloppend hart: de bird's eye-assistent denkt mee, en wat je besluit
                 landt als kaarten in de weekplanning eronder. Eén werkplek, geen muur. */}
-            <OverviewChat slug={client.slug} domain={client.domain || ""} configured={chatConfigured !== false} onGoToPage={goToPage} onGoToTask={goToNewTask} />
-            <WeekplanBoard slug={client.slug} onGoToPage={goToPage} clientName={client.name} clientEmail={client.email || ""} />
+            <OverviewChat slug={client.slug} domain={client.domain || ""} configured={chatConfigured !== false} onGoToPage={goToPage} onGoToTask={goToNewTask} onWeekplanChanged={() => setWeekplanReload((n) => n + 1)} />
+            <WeekplanBoard slug={client.slug} onGoToPage={goToPage} clientName={client.name} clientEmail={client.email || ""} reloadSignal={weekplanReload} />
 
             {/* Zonder mail-secties (COCKPIT_MAIL=uit) blijft alleen Zoekwoorden & links staan,
                 in dezelfde kaartstijl als de andere inklapbare secties. */}

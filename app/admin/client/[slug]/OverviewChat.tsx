@@ -72,7 +72,7 @@ const labelOf = (t: string) => (t === BASE ? "Algemeen" : t.startsWith("overzich
 // standaard dichtgeklapt en toont zijn titel plus een korte samenvatting; je klapt
 // er een open om het gesprek en de actie-kaarten te zien, en je kunt een onderwerp
 // afvinken als "gedaan". Zo zie je in één oogopslag wat er speelt, zonder muur.
-export default function OverviewChat({ slug, domain = "", configured, onGoToPage, onGoToTask }: { slug: string; domain?: string; configured: boolean; onGoToPage?: (url: string) => void; onGoToTask?: (taskId: number) => void }) {
+export default function OverviewChat({ slug, domain = "", configured, onGoToPage, onGoToTask, onWeekplanChanged }: { slug: string; domain?: string; configured: boolean; onGoToPage?: (url: string) => void; onGoToTask?: (taskId: number) => void; onWeekplanChanged?: () => void }) {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [open, setOpen] = useState<string | null>(null);      // welk onderwerp is uitgeklapt (accordion)
   const [messages, setMessages] = useState<Msg[]>([]);        // berichten van het open onderwerp
@@ -285,7 +285,7 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
                         {m.role === "assistant" && m.actions && m.actions.length > 0 && (
                           <div className="ovc-actions">
                             {m.actions.map((a) => (
-                              <ActionCard key={a.id} action={a} slug={slug} thread={t.thread} onExecuted={handleExecuted} onGoToPage={onGoToPage} onGoToTask={onGoToTask} />
+                              <ActionCard key={a.id} action={a} slug={slug} thread={t.thread} onExecuted={handleExecuted} onGoToPage={onGoToPage} onGoToTask={onGoToTask} onWeekplanChanged={onWeekplanChanged} />
                             ))}
                           </div>
                         )}

@@ -5,7 +5,7 @@ import { useRef, useState } from "react";
 export type Action = {
   id: string; type: string; reason?: string;
   url?: string; title?: string; taak?: string; fase?: string; wie?: string; steps?: string[]; tekst?: string;
-  taken?: { taak: string; wie?: string; url?: string; week?: number }[];
+  taken?: { taak: string; wie?: string; url?: string; week?: number; toelichting?: string }[];
   executed?: boolean;
   result?: { ok: boolean; message: string; taskIds?: number[]; runId?: number; link?: string; text?: string };
 };
@@ -29,14 +29,29 @@ function shortUrl(url: string): string {
 
 // Eén goedkeur-kaartje onder een bird's eye-antwoord. Er gebeurt pas iets als
 // Maarten op "Goedkeuren" klikt (mens aan het stuur).
-export default function ActionCard({ action, slug, thread, onExecuted, onGoToPage, onGoToTask }: {
+export default function ActionCard({ action, slug, thread, onExecuted, onGoToPage, onGoToTask, onWeekplanChanged }: {
   action: Action; slug: string; thread: string;
   onExecuted: (id: string, result: NonNullable<Action["result"]>, executed: boolean) => void;
   onGoToPage?: (url: string) => void; onGoToTask?: (taskId: number) => void;
+  onWeekplanChanged?: () => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [addedSet, setAddedSet] = useState<Set<number>>(new Set()); // welke voorstel-taken al toegevoegd zijn
+  const [addBusy, setAddBusy] = useState<number | null>(null);
   const editRef = useRef<HTMLDivElement>(null);
+  const isWeekplan = action.type === "weekplan_taken";
+
+  // Voeg één voorgestelde taak toe aan de weekplanning (per taak, niet in bulk).
+  async function addOne(i: number, t: NonNullable<Action["taken"]>[number]) {
+    if (addBusy !== null || addedSet.has(i)) return;
+    setAddBusy(i);
+    try {
+      const r = await fetch("/api/admin/weekplan/add", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread, taak: t.taak, toelichting: t.toelichting, wie: t.wie, url: t.url, week: t.week }) });
+      const d = await r.json();
+      if (d.ok) { setAddedSet((s) => new Set(s).add(i)); onWeekplanChanged?.(); }
+    } catch { /* stil */ } finally { setAddBusy(null); }
+  }
   const editable = action.type === "profiel_bijwerken" || action.type === "strategie_bepalen";
   const done = !!action.executed;
   const result = action.result;
@@ -77,9 +92,30 @@ export default function ActionCard({ action, slug, thread, onExecuted, onGoToPag
       </div>
       {action.taak && <div className="act-line"><strong>Taak:</strong> {action.taak}{action.wie ? ` (${action.wie})` : ""}</div>}
       {action.taken && action.taken.length > 0 && (
-        // Compact: geen platte takenlijst in de chat. De taken verschijnen als
-        // kaarten in de weekplanning zodra je goedkeurt.
-        <div className="act-taken-head">{action.taken.length} {action.taken.length === 1 ? "taak" : "taken"} verschijnen in je weekplanning, verdeeld over de weken en versleepbaar.</div>
+        // Per taak een net kaartje met een eigen knop; je zet ze één voor één door
+        // naar de weekplanning (waar je ze versleept en ermee aan de slag gaat).
+        <div className="tvk-list">
+          {action.taken.map((t, i) => {
+            const added = addedSet.has(i);
+            const b = addBusy === i;
+            return (
+              <div key={i} className={"tvk-card" + (added ? " tvk-added" : "")}>
+                <div className="tvk-top">
+                  <span className={"tvk-wie " + (t.wie === "Dev" ? "wie-dev" : "wie-seo")}>{t.wie || "SEO"}</span>
+                  {t.week ? <span className="tvk-week">wk {t.week}</span> : null}
+                  <span className="tvk-taak">{t.taak}</span>
+                </div>
+                {t.url && <a className="tvk-url" href={t.url} target="_blank" rel="noreferrer">{shortUrl(t.url)}</a>}
+                {t.toelichting && <div className="tvk-why">{t.toelichting}</div>}
+                <div className="tvk-foot">
+                  <button type="button" className={"primary-btn small" + (b ? " busy" : "")} disabled={b || added} onClick={() => addOne(i, t)}>
+                    {added ? "✓ Toegevoegd" : b ? "Bezig…" : "Voeg toe aan weekplanning"}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
       {action.title && <div className="act-line"><strong>Titel:</strong> {action.title}</div>}
       {action.steps && action.steps.length > 0 && <div className="act-line"><strong>Stappen:</strong> {action.steps.join(" → ")}</div>}
@@ -92,7 +128,7 @@ export default function ActionCard({ action, slug, thread, onExecuted, onGoToPag
         </>
       )}
 
-      {!done && (
+      {!done && !isWeekplan && (
         <div className="act-actions">
           <button type="button" className={"primary-btn small" + (busy ? " busy" : "")} onClick={approve} disabled={busy}>{busy ? "Bezig…" : "Goedkeuren"}</button>
           {result && !result.ok && <span className="act-err">{result.message}</span>}

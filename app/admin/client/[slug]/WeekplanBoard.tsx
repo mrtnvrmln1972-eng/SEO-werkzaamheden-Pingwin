@@ -34,7 +34,7 @@ const keyOf = (year: number, week: number) => year * 100 + week;
 // Het weekplanning-bord: taken (uit de bird's eye-onderwerpen) verdeeld over
 // weekkolommen. De huidige week is gemarkeerd. Slepen verplaatst een taak naar
 // een andere week. Per taak: status, mailen naar je developer, pagina openen.
-export default function WeekplanBoard({ slug, onGoToPage, clientName, clientEmail }: { slug: string; onGoToPage?: (url: string) => void; clientName?: string; clientEmail?: string }) {
+export default function WeekplanBoard({ slug, onGoToPage, clientName, clientEmail, reloadSignal }: { slug: string; onGoToPage?: (url: string) => void; clientName?: string; clientEmail?: string; reloadSignal?: number }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [current, setCurrent] = useState<Current | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -54,7 +54,7 @@ export default function WeekplanBoard({ slug, onGoToPage, clientName, clientEmai
       if (d?.ok) { setTasks(d.tasks || []); setCurrent(d.current || null); }
     } catch { /* stil */ } finally { setLoaded(true); }
   }
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [slug]);
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [slug, reloadSignal]);
 
   // Zichtbare weekkolommen: van één week terug (of de vroegste taak) t/m acht
   // weken vooruit (of de laatste taak). Plus een "Ongepland"-kolom (week 0).
