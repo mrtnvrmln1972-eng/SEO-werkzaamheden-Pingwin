@@ -3,6 +3,8 @@ import { getClientUrls } from "./site-urls";
 import { getLatestSnapshots, getLastChangePerUrl } from "./content-tracking";
 import { getKeywords, getPages } from "./snapshots";
 import { metaPixelInfo } from "./meta-rules";
+import { buildWerkplan } from "./overview";
+import { getOpportunities } from "./keyword-opportunities";
 
 // ═══════════════════════════════════════════════════════════
 // PAGINA-SIGNALEN: harde live-feiten als grond voor de bird's eye
@@ -141,6 +143,35 @@ export async function buildKeywordStandText(slug: string): Promise<string> {
   if (strikers.length) {
     parts.push("Binnen handbereik (positie 4-20, hoog volume = kans):");
     for (const k of strikers) parts.push(`- "${k.keyword}": positie ${k.position}${k.volume ? `, volume ${k.volume}` : ""}${k.url ? ` — ${pathOf(k.url)}` : ""}`);
+  }
+  return parts.join("\n");
+}
+
+// Te bouwen / uit te breiden pagina's (autoriteit): de afgesproken maar nog
+// niet-live pagina's, live pagina's met kansen, en de zoekwoord-gaten waar de
+// site nog niet op rankt (kandidaten voor nieuwe autoriteitspagina's). Zodat de
+// stand van zaken niet alleen "wat staat live" toont, maar ook wat er nog moet.
+export async function buildTeBouwenText(slug: string): Promise<string> {
+  const [werk, opps] = await Promise.all([
+    buildWerkplan(slug).catch(() => null),
+    getOpportunities(slug).catch(() => []),
+  ]);
+  const gepland = werk?.gepland || [];
+  const teBouwen = gepland.filter((i) => !i.live);
+  const uitbreiden = gepland.filter((i) => i.live);
+
+  const parts: string[] = [];
+  if (teBouwen.length) {
+    parts.push("Afgesproken/gepland maar nog niet live (bouwen):");
+    for (const i of teBouwen.slice(0, 12)) parts.push(`- ${i.slug}${i.keyword ? ` — "${i.keyword}"${i.volume ? `, volume ${i.volume}` : ""}` : ""}`);
+  }
+  if (uitbreiden.length) {
+    parts.push("Live maar met kans (uitbreiden/optimaliseren):");
+    for (const i of uitbreiden.slice(0, 6)) parts.push(`- ${i.slug}${i.kansLabel ? ` — ${i.kansLabel}` : ""}${i.position != null ? `, positie ${i.position}` : ""}`);
+  }
+  if (opps.length) {
+    parts.push("Zoekwoord-gaten (site rankt hier nog niet, kandidaat voor een nieuwe pagina):");
+    for (const o of opps.slice(0, 10)) parts.push(`- "${o.keyword}"${o.volume ? `, volume ${o.volume}` : ""}${o.reason ? ` — ${o.reason}` : ""}`);
   }
   return parts.join("\n");
 }

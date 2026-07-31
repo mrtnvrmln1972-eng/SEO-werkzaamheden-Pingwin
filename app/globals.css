@@ -2054,24 +2054,30 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 
 /* Mooie, rustige opmaak van de bird's eye-antwoorden: als card, met gekleurde
    koppen, nette bullets en gekleurde links (Pingwin-stijl). */
-.ovc-msg.assistant .ovc-bubble.chat-md { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 12px 15px; max-width: 100%; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03); }
-.ovc-bubble.chat-md { font-size: 13.5px; line-height: 1.6; color: #1f1f1f; }
-.ovc-bubble.chat-md h3 { font-size: 15px; font-weight: 800; color: var(--orange); margin: 14px 0 6px; padding-bottom: 3px; border-bottom: 2px solid rgba(231, 119, 63, 0.22); }
-.ovc-bubble.chat-md h4, .ovc-bubble.chat-md h5, .ovc-bubble.chat-md h6 { font-size: 13.5px; font-weight: 800; color: var(--orange-dark); margin: 12px 0 4px; }
-.ovc-bubble.chat-md p { margin: 6px 0; }
-.ovc-bubble.chat-md ul { list-style: none; margin: 6px 0; padding-left: 2px; }
-.ovc-bubble.chat-md ul li { position: relative; padding-left: 18px; margin: 4px 0; }
+.ovc-msg.assistant .ovc-bubble.chat-md { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; max-width: 100%; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03); }
+.ovc-bubble.chat-md { font-size: 13.5px; line-height: 1.65; color: #1f1f1f; }
+/* Begrensde leesbreedte: lange lopende tekst leest niet prettig over de volle
+   breedte. Tabellen mogen wél de volle breedte pakken (die hebben kolommen). */
+.ovc-bubble.chat-md > div > * { max-width: 680px; }
+.ovc-bubble.chat-md > div > .chat-table, .ovc-bubble.chat-md table.chat-table { max-width: 100%; }
+.ovc-bubble.chat-md h3 { font-size: 15.5px; font-weight: 800; color: var(--orange); margin: 20px 0 8px; padding-bottom: 4px; border-bottom: 2px solid rgba(231, 119, 63, 0.22); }
+.ovc-bubble.chat-md h3:first-child, .ovc-bubble.chat-md h4:first-child { margin-top: 2px; }
+.ovc-bubble.chat-md h4, .ovc-bubble.chat-md h5, .ovc-bubble.chat-md h6 { font-size: 13px; font-weight: 800; letter-spacing: 0.02em; text-transform: uppercase; color: var(--gray); margin: 16px 0 5px; }
+.ovc-bubble.chat-md p { margin: 8px 0; }
+.ovc-bubble.chat-md ul { list-style: none; margin: 8px 0; padding-left: 2px; }
+.ovc-bubble.chat-md ul li { position: relative; padding-left: 18px; margin: 5px 0; }
 .ovc-bubble.chat-md ul li::before { content: "\203A"; position: absolute; left: 5px; top: -1px; color: var(--orange); font-weight: 800; }
-.ovc-bubble.chat-md ol { margin: 6px 0 6px 20px; }
-.ovc-bubble.chat-md ol li { margin: 4px 0; }
+.ovc-bubble.chat-md ul ul, .ovc-bubble.chat-md ol ol, .ovc-bubble.chat-md ul ol, .ovc-bubble.chat-md ol ul { margin: 4px 0 4px 16px; }
+.ovc-bubble.chat-md ol { margin: 8px 0 8px 20px; }
+.ovc-bubble.chat-md ol li { margin: 5px 0; }
 .ovc-bubble.chat-md a { color: var(--orange-dark); text-decoration: underline; text-underline-offset: 2px; }
 .ovc-bubble.chat-md a:hover { color: var(--orange); }
 .ovc-bubble.chat-md strong { color: var(--dark); font-weight: 800; }
-.ovc-bubble.chat-md hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+.ovc-bubble.chat-md hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 .ovc-bubble.chat-md code { background: rgba(231, 119, 63, 0.10); color: var(--orange-dark); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
-.ovc-bubble.chat-md table.chat-table { border-collapse: collapse; width: 100%; margin: 9px 0; font-size: 12.5px; }
-.ovc-bubble.chat-md table.chat-table th { background: rgba(231, 119, 63, 0.10); color: var(--dark); font-weight: 800; text-align: left; padding: 6px 9px; border: 1px solid var(--border); }
-.ovc-bubble.chat-md table.chat-table td { padding: 6px 9px; border: 1px solid var(--border); }
+.ovc-bubble.chat-md table.chat-table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 12.5px; }
+.ovc-bubble.chat-md table.chat-table th { background: rgba(231, 119, 63, 0.10); color: var(--dark); font-weight: 800; text-align: left; padding: 7px 11px; border: 1px solid var(--border); vertical-align: top; }
+.ovc-bubble.chat-md table.chat-table td { padding: 7px 11px; border: 1px solid var(--border); text-align: left; vertical-align: top; }
 .ovc-bubble.chat-md table.chat-table tr:nth-child(even) td { background: var(--gray-light); }
 
 /* Takenlijst op de weekplanning-actiekaart */
