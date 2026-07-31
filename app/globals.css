@@ -2056,13 +2056,13 @@ tbody tr.row-done:hover { background: #E2F1E2; }
    koppen, nette bullets en gekleurde links (Pingwin-stijl). */
 .ovc-msg.assistant .ovc-bubble.chat-md { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; max-width: 100%; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03); }
 .ovc-bubble.chat-md { font-size: 13.5px; line-height: 1.65; color: #1f1f1f; }
-/* Begrensde leesbreedte: lange lopende tekst leest niet prettig over de volle
-   breedte. Tabellen mogen wél de volle breedte pakken (die hebben kolommen). */
-.ovc-bubble.chat-md > div > * { max-width: 680px; }
+/* Begrensde leesbreedte (~2/3): lange lopende tekst leest niet prettig over de
+   volle breedte. Tabellen mogen wél de volle breedte pakken (die hebben kolommen). */
+.ovc-bubble.chat-md > div > * { max-width: 900px; }
 .ovc-bubble.chat-md > div > .chat-table, .ovc-bubble.chat-md table.chat-table { max-width: 100%; }
 .ovc-bubble.chat-md h3 { font-size: 15.5px; font-weight: 800; color: var(--orange); margin: 20px 0 8px; padding-bottom: 4px; border-bottom: 2px solid rgba(231, 119, 63, 0.22); }
 .ovc-bubble.chat-md h3:first-child, .ovc-bubble.chat-md h4:first-child { margin-top: 2px; }
-.ovc-bubble.chat-md h4, .ovc-bubble.chat-md h5, .ovc-bubble.chat-md h6 { font-size: 13px; font-weight: 800; letter-spacing: 0.02em; text-transform: uppercase; color: var(--gray); margin: 16px 0 5px; }
+.ovc-bubble.chat-md h4, .ovc-bubble.chat-md h5, .ovc-bubble.chat-md h6 { font-size: 13.5px; font-weight: 800; color: var(--orange-dark); margin: 16px 0 5px; }
 .ovc-bubble.chat-md p { margin: 8px 0; }
 .ovc-bubble.chat-md ul { list-style: none; margin: 8px 0; padding-left: 2px; }
 .ovc-bubble.chat-md ul li { position: relative; padding-left: 18px; margin: 5px 0; }
