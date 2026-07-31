@@ -2094,6 +2094,12 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 
 /* Weekplanning-bord: taken over weekkolommen, huidige week gemarkeerd, slepen. */
 .wp-wrap, .wp-empty { margin-top: 14px; }
+/* Icoontegel voor panelkoppen (Bird's eye, Weekplanning), stijl voorbeeld. */
+.ovc-icontile { width: 42px; height: 42px; border-radius: 13px; display: grid; place-items: center; flex: 0 0 auto; color: var(--orange); background: linear-gradient(180deg, #fff8f3, #fff1e8); border: 1px solid #ffe0cf; }
+.ovc-icontile svg { width: 21px; height: 21px; }
+.wp-intro { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
+.wp-intro-titel { color: var(--orange-dark); font-size: 16px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px; margin: 2px 0 3px; }
+.wp-col-icoon { margin-left: auto; width: 26px; height: 26px; color: #efc7b4; }
 /* Verticale week-sequence (kanban-lanes onder elkaar) */
 .wp-board { display: flex; flex-direction: column; gap: 10px; padding: 8px 0 4px; }
 .wp-col { background: var(--white); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
@@ -2134,6 +2140,10 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .wp-info-icoon { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 10px; color: var(--orange); background: linear-gradient(145deg, #fff2e9, #fff8f3); border: 1px solid #f6d8c8; }
 .wp-info-icoon svg { width: 16px; height: 16px; }
 .wp-check-lijst, .wp-punt-lijst { margin: 0; padding: 0; list-style: none; }
+/* Doel-punten in twee kolommen op breed scherm (compacter blok). */
+.wp-check-lijst { columns: 2; column-gap: 26px; }
+.wp-check-lijst li { break-inside: avoid; }
+@media (max-width: 760px) { .wp-check-lijst { columns: 1; } }
 .wp-check-lijst li { position: relative; padding-left: 22px; margin: 5px 0; }
 .wp-check-lijst li::before { content: "✓"; position: absolute; left: 0; top: 0; width: 15px; height: 15px; border-radius: 999px; background: #ffe9dc; color: var(--orange-dark); font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
 .wp-punt-lijst li { position: relative; padding-left: 16px; margin: 5px 0; }
@@ -2176,9 +2186,15 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .wp-fase-check input { accent-color: var(--orange); cursor: pointer; }
 .wp-fase-hint { padding: 6px 9px; font-size: 11px; color: var(--orange-dark); background: var(--orange-light); border-top: 1px solid var(--border); border-radius: 0 0 8px 8px; }
 .wp-fase-fouttekst { padding: 6px 9px; font-size: 11px; color: #a12622; }
+.wp-fase-melding { padding: 6px 9px; font-size: 11px; font-weight: 600; color: #1b7f3b; background: #e7f6ec; border-top: 1px solid var(--border); }
+.wp-fase-alles { background: #fbfbfa; }
+.wp-fase-alles-label { font-size: 11.5px; font-weight: 600; color: var(--muted); }
 /* Kaart-chat (zelfde geheugen als de pagina-chat in Pagina's). */
 .wp-chat { margin: 6px 0 4px; }
 .wp-chat-toggle { font-size: 12px; font-weight: 600; color: var(--orange-dark); background: none; border: none; cursor: pointer; padding: 2px 0; }
+/* Prominente chat-knop boven de fases (de chat voedt de fases eronder). */
+.wp-chat-toggle-groot { display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid var(--orange); border-radius: 10px; padding: 6px 14px; background: #fffaf7; font-size: 12.5px; margin: 2px 0 6px; }
+.wp-chat-toggle-groot:hover, .wp-chat-toggle-groot.wp-chat-open { background: var(--orange-light); }
 .wp-chat-body { border: 1px solid var(--border); border-radius: 8px; background: var(--gray-light); padding: 8px; }
 /* De chat groeit gewoon mee met het gesprek; geen mini-scrollvenster. */
 .wp-chat-msgs { display: flex; flex-direction: column; gap: 6px; }
@@ -2202,12 +2218,18 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .wp-mail-instrrij { display: flex; gap: 6px; margin: 4px 0 6px; }
 .wp-mail-instr { flex: 1; border: 1px solid var(--border); border-radius: 7px; padding: 5px 9px; font-size: 12px; font-family: inherit; }
 .wp-mail-instr:focus { outline: none; border-color: var(--orange); }
-.wp-card { background: #fff; border: 1px solid #dedede; border-radius: 14px; padding: 11px 13px; box-shadow: 0 6px 18px rgba(32, 32, 32, 0.05), 0 1px 4px rgba(32, 32, 32, 0.04); }
-.wp-card-kop { display: flex; align-items: flex-start; gap: 7px; }
-.wp-card-koptekst { flex: 1; min-width: 0; }
-.wp-card-grip { flex: 0 0 auto; cursor: grab; color: var(--gray); user-select: none; font-size: 14px; line-height: 1.3; padding: 1px 3px; border-radius: 5px; }
+.wp-card { background: #fff; border: 1px solid #dedede; border-radius: 14px; padding: 13px 14px; box-shadow: 0 6px 18px rgba(32, 32, 32, 0.05), 0 1px 4px rgba(32, 32, 32, 0.04); }
+/* Kaart-grid (stijl weekplanner-voorbeeld): puntjes | icoontegel | inhoud | knoppen. */
+.wp-card-grid { display: grid; grid-template-columns: 18px 44px minmax(0, 1fr) auto; gap: 12px; align-items: start; }
+.wp-card-main { min-width: 0; }
+.wp-card-grip { cursor: grab; color: #8a8d91; user-select: none; font-weight: 900; letter-spacing: 1px; font-size: 13px; line-height: 1.2; padding: 5px 2px 1px; border-radius: 5px; text-align: center; }
 .wp-card-grip:hover { background: var(--gray-light); color: var(--dark); }
 .wp-card-grip:active { cursor: grabbing; }
+.wp-card-tile { width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; color: var(--orange); background: linear-gradient(180deg, #fff8f3, #fff1e8); border: 1px solid #ffe0d2; cursor: pointer; }
+.wp-tile-svg { width: 21px; height: 21px; }
+.wp-card-acties-kolom { display: flex; flex-direction: column; align-items: stretch; gap: 6px; justify-content: flex-end; align-self: stretch; }
+.wp-meta-rij { display: flex; align-items: center; gap: 6px; margin-top: 9px; }
+@media (max-width: 900px) { .wp-card-grid { grid-template-columns: 18px 1fr; } .wp-card-tile { display: none; } .wp-card-main { grid-column: 2; } .wp-card-acties-kolom { grid-column: 2; flex-direction: row; flex-wrap: wrap; justify-content: flex-start; } }
 .wp-card.wp-klaar { opacity: 0.62; }
 .wp-card-taak { font-size: 13.5px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.35; color: var(--dark); }
 .wp-card-sub { font-size: 12px; color: #45484c; margin: 1px 0 2px 15px; line-height: 1.4; }

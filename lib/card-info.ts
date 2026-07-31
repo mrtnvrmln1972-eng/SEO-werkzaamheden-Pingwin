@@ -69,6 +69,12 @@ function faseVanRegel(regel: string): { fase: CardFaseKey; tekst: string } | nul
 
 // Splitst de kaarttekst in het unieke verhaal en fase-sturing. Werkt op oude
 // platte bullets én op het nieuwe formaat met kopjes (Achtergrond/Afspraken/Aanpak).
+// Generieke nul-informatie-regels die alleen ruimte kosten (retroactief wegfilteren).
+const RUIS: RegExp[] = [
+  /^dev bouwt en publiceert de pagina/i,
+  /^de aanpak staat hieronder/i,
+];
+
 export function splitCardInfo(toelichting: string): CardInfo {
   const info: CardInfo = { achtergrond: [], afspraken: [], overig: [], perFase: {} };
   const seen = new Set<string>();
@@ -76,6 +82,7 @@ export function splitCardInfo(toelichting: string): CardInfo {
   for (const raw of (toelichting || "").split("\n")) {
     const regel = raw.trim();
     if (!regel) continue;
+    if (RUIS.some((re) => re.test(regel.replace(/^-\s*/, "")))) continue;
     const k = lineKey(regel);
     if (seen.has(k)) continue;
     seen.add(k);

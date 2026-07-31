@@ -165,8 +165,15 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, clientName,
 
   return (
     <div className="cockpit-card wp-wrap">
-      <div className="ck-section-head"><span>Weekplanning</span></div>
-      <div className="muted ov-hint">Projectkaarten uit de onderwerpen, verdeeld over de weken. Sleep een kaart naar een andere week; klap hem open om de fases te starten en af te vinken.</div>
+      <div className="wp-intro">
+        <span className="ovc-icontile" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M8 3v4M16 3v4M3 10h18" /><path d="M7 14h2M11 14h2M15 14h2M7 18h2M11 18h2" /></svg>
+        </span>
+        <div>
+          <div className="wp-intro-titel">Weekplanning</div>
+          <div className="muted">Projectkaarten uit de onderwerpen, verdeeld over de weken. Sleep een kaart naar een andere week; klap hem open om de fases te starten en af te vinken.</div>
+        </div>
+      </div>
       <div className="wp-board">
         {unplanned.length > 0 && (
           <div className={"wp-col wp-col-unplanned" + (dropKey === 0 ? " wp-drop" : "")}
@@ -184,6 +191,7 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, clientName,
               <span className="wp-col-wk">Week {c.week}</span>
               {c.isCurrent && <span className="wp-col-nu">nu</span>}
               <span className="wp-col-dates">{dm(c.monday)} – {dm(c.sunday)}</span>
+              <svg className="wp-col-icoon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M8 3v4M16 3v4M3 10h18" /></svg>
             </div>
             <div className="wp-col-body">{byKey(c.key).map(renderCard)}</div>
           </div>

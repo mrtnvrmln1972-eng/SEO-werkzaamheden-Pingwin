@@ -183,6 +183,16 @@ export async function getStepLinksAll(slug: string): Promise<Record<string, { an
   return out;
 }
 
+// Uitgaand cluster-advies per bronpagina (één query): hoeveel gelieerde pagina's
+// hebben advies gekregen VANUIT deze pagina. Voor het Gelieerde-vinkje op de kaart.
+export async function getOutgoingClusterCountAll(slug: string): Promise<Record<string, number>> {
+  await ensureSchema();
+  const { rows } = await sql`SELECT source_url, count(*) AS n FROM page_cluster_advice WHERE client_slug = ${slug} AND source_url IS NOT NULL AND source_url <> '' GROUP BY source_url`;
+  const out: Record<string, number> = {};
+  for (const r of rows) out[urlKey(String(r.source_url))] = Number(r.n) || 0;
+  return out;
+}
+
 // ── Cron-worker: verwerk wachtende runs, stap voor stap ──
 export async function processQueuedRuns(): Promise<{ processed: number; picked: number[] }> {
   await ensureSchema();

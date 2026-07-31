@@ -10,7 +10,7 @@
 
 import { sql } from "./db";
 import { getClientBySlug } from "./clients";
-import { getStepsEverDoneAll, getStepLinksAll } from "./page-doc-run";
+import { getStepsEverDoneAll, getStepLinksAll, getOutgoingClusterCountAll } from "./page-doc-run";
 import { getPageSchemaStatusAll } from "./page-schema";
 import { getPhaseMarksAll } from "./phase-marks";
 import { urlKey } from "./url-key";
@@ -230,12 +230,13 @@ export type WeekplanPageInfo = {
 };
 
 export async function getWeekplanPages(slug: string, onlyKeys?: Set<string>): Promise<Record<string, WeekplanPageInfo>> {
-  const [pages, everDone, links, schemaStatus, marks] = await Promise.all([
+  const [pages, everDone, links, schemaStatus, marks, uitgaand] = await Promise.all([
     getPageWorkStatus(slug),
     getStepsEverDoneAll(slug).catch(() => ({} as Record<string, { analyse: boolean; blauwdruk: boolean; copy: boolean }>)),
     getStepLinksAll(slug).catch(() => ({} as Record<string, { analyse: string; blauwdruk: string; copy: string }>)),
     getPageSchemaStatusAll(slug).catch(() => ({} as Record<string, string>)),
     getPhaseMarksAll(slug).catch(() => ({} as Record<string, Partial<Record<string, boolean>>>)),
+    getOutgoingClusterCountAll(slug).catch(() => ({} as Record<string, number>)),
   ]);
   const out: Record<string, WeekplanPageInfo> = {};
   for (const p of pages) {
@@ -249,7 +250,9 @@ export async function getWeekplanPages(slug: string, onlyKeys?: Set<string>): Pr
     out[k] = {
       url: p.url, live: p.live,
       strategie: fase("strategie", p.hasPlan),
-      gelieerde: fase("gelieerde", p.hasClusterAdvice),
+      // Gelieerde pagina's = advies dat VANUIT deze pagina is verstuurd (uitgaand),
+      // niet wat hij ontvangt; anders blijft de fase leeg na een geslaagde Start.
+      gelieerde: fase("gelieerde", (uitgaand[k] || 0) > 0),
       analyse: fase("analyse", p.docs.includes("analyse") || done.analyse),
       blauwdruk: fase("blauwdruk", p.docs.includes("blauwdruk") || done.blauwdruk),
       copy: fase("copy", p.docs.includes("copy") || done.copy),

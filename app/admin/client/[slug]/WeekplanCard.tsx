@@ -78,6 +78,7 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
   const [schemaStatus, setSchemaStatus] = useState<string>(page?.structuredStatus || "idle");
   const [busy, setBusy] = useState<string>("");
   const [foutje, setFoutje] = useState<string>("");
+  const [melding, setMelding] = useState<string>("");
   // Chat (zelfde geheugen als de pagina-chat in Pagina's).
   const [chatOpen, setChatOpen] = useState(false);
   const [msgs, setMsgs] = useState<ChatMsg[]>([]);
@@ -123,16 +124,43 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
 
   useEffect(() => { msgsRef.current?.scrollTo({ top: msgsRef.current.scrollHeight }); }, [msgs, chatBusy]);
 
-  async function startDocStep(step: "analyse" | "blauwdruk" | "copy") {
+  // De laatste chat-conclusie (assistent-antwoord) van deze pagina, ingekort en
+  // plat, zodat hij als sturing mee kan bij het starten van een fase.
+  async function chatConclusie(): Promise<string> {
+    let laatste = [...msgs].reverse().find((m) => m.role === "assistant")?.content || "";
+    if (!laatste && t.url) {
+      try {
+        const d = await fetch(`/api/admin/page-chats?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(t.url)}`).then((r) => r.json());
+        const eerste = d?.chats?.[0];
+        if (eerste?.id) {
+          const c = await fetch(`/api/admin/page-chats?id=${eerste.id}`).then((r) => r.json());
+          const lijst = Array.isArray(c?.chat?.messages) ? (c.chat.messages as ChatMsg[]) : [];
+          laatste = [...lijst].reverse().find((m) => m.role === "assistant")?.content || "";
+        }
+      } catch { /* geen chat, geen conclusie */ }
+    }
+    return laatste.replace(/<[^>]*>/g, " ").replace(/[#*|]/g, "").replace(/\s+/g, " ").trim().slice(0, 600);
+  }
+
+  async function bouwExtra(steps: ("analyse" | "blauwdruk" | "copy")[]): Promise<string> {
+    const parsed = splitCardInfo(t.toelichting);
+    const delen = steps.map((s) => faseSturing(parsed, s)).filter(Boolean);
+    const basis = delen[0] || t.toelichting.slice(0, 900);
+    const extraFases = delen.slice(1).map((d) => d.split("Sturing voor deze stap:")[1] || "").filter(Boolean).join("; ");
+    const conclusie = await chatConclusie();
+    return [basis, extraFases ? `Ook: ${extraFases}` : "", conclusie ? `Conclusie uit de kaart-chat: ${conclusie}` : ""].filter(Boolean).join("\n\n").slice(0, 1500);
+  }
+
+  async function startDocStep(steps: ("analyse" | "blauwdruk" | "copy")[]) {
     if (busy || runActive) return;
-    setBusy(step); setFoutje("");
+    setBusy(steps.join("+")); setFoutje(""); setMelding("");
     try {
-      // Gerichte sturing: de achtergrond plus specifiek de sturing van déze fase,
-      // niet de hele kaarttekst (scherpere documenten, minder ruis).
-      const extra = faseSturing(splitCardInfo(t.toelichting), step) || t.toelichting.slice(0, 1500);
-      const d = await fetch("/api/admin/page-doc/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: t.url, steps: [step], extra, folderId: "", audience: "klant" }) }).then((r) => r.json());
+      // Gerichte sturing: achtergrond + de sturing van deze fase(s) + de laatste
+      // chat-conclusie, niet de hele kaarttekst (scherpere documenten, minder ruis).
+      const extra = await bouwExtra(steps);
+      const d = await fetch("/api/admin/page-doc/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: t.url, steps, extra, folderId: "", audience: "klant" }) }).then((r) => r.json());
       if (!d?.ok) setFoutje(d?.error || "Starten mislukt.");
-      else setRun({ status: "running", steps: { [step]: "running" }, links: {} });
+      else setRun({ status: "running", steps: Object.fromEntries(steps.map((s, i) => [s, i === 0 ? "running" : "pending"])), links: {} });
     } catch { setFoutje("Starten mislukt, probeer het nog een keer."); } finally { setBusy(""); }
   }
 
@@ -140,12 +168,12 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
   // voor het advies aan de andere cluster-pagina's (half plan), in één klik.
   async function startGelieerde() {
     if (busy) return;
-    setBusy("gelieerde"); setFoutje("");
+    setBusy("gelieerde"); setFoutje(""); setMelding("");
     try {
       const d = await fetch("/api/admin/page-cluster-run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: t.url }) }).then((r) => r.json());
       if (!d?.ok) setFoutje(d?.error || "Starten mislukt.");
       else if (!d.saved) setFoutje(d.message || "Geen concreet advies voor gelieerde pagina's gevonden.");
-      else refreshBoard();
+      else { setMelding(`Advies op ${d.saved} gelieerde ${d.saved === 1 ? "pagina" : "pagina's"} klaargezet.`); refreshBoard(); }
     } catch { setFoutje("Starten mislukt, probeer het nog een keer."); } finally { setBusy(""); }
   }
 
@@ -214,7 +242,7 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
   }
 
   function faseStand(key: FaseKey): { label: string; cls: string } {
-    if (page && page[key]) return { label: "✓ Klaar", cls: "wp-fase-klaar" };
+    // Een lopende run wint van "Klaar": bij een herrun moet je zíen dat hij draait.
     if ((key === "analyse" || key === "blauwdruk" || key === "copy") && runActive) {
       const st = run?.steps?.[key] || "";
       if (st === "running") return { label: "Bezig…", cls: "wp-fase-bezig" };
@@ -222,6 +250,7 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
       if (st === "error") return { label: "Fout", cls: "wp-fase-fout" };
     }
     if (key === "structured" && schemaRunning) return { label: "Bezig…", cls: "wp-fase-bezig" };
+    if (page && page[key]) return { label: "✓ Klaar", cls: "wp-fase-klaar" };
     return { label: "Nog niet", cls: "" };
   }
 
@@ -244,8 +273,9 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
       const geblokkeerd = key === "analyse" ? !p.live : (!p.live && !p.strategie);
       const titel = key === "analyse"
         ? (p.live ? "Analyseer de huidige live pagina (met de kaart-achtergrond als sturing)" : "De pagina is nog niet live; een analyse kan pas daarna")
-        : (geblokkeerd ? "Eerst de strategie goedkeuren (nieuwe pagina)" : "Start dit document (met de kaart-achtergrond als sturing)");
-      return <button type="button" className="wp-fase-btn" disabled={geblokkeerd || runActive || !!busy} title={titel} onClick={() => void startDocStep(key)}>{p[key] ? "Opnieuw ↻" : "Start ▷"}</button>;
+        : (geblokkeerd ? "Eerst de strategie goedkeuren (nieuwe pagina)" : "Start dit document (met de kaart-achtergrond en chat-conclusie als sturing)");
+      const tekst = key === "analyse" && !p.live ? "Na livegang" : p[key] ? "Opnieuw ↻" : "Start ▷";
+      return <button type="button" className="wp-fase-btn" disabled={geblokkeerd || runActive || !!busy} title={titel} onClick={() => void startDocStep([key])}>{tekst}</button>;
     }
     if (key === "bouw") {
       return <button type="button" className="wp-fase-btn" title="Mail de developer/sitebouwer over de bouw of publicatie" onClick={() => onMail("dev")}>Dev {"</>"}</button>;
@@ -276,17 +306,16 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
 
   return (
     <div className={"wp-card wp-" + t.status + (open ? " wp-open" : "")}>
-      <div className="wp-card-kop">
+      <div className="wp-card-grid">
         {/* Alleen dit handvat is sleepbaar; de rest van de kaart blijft selecteerbare tekst. */}
-        <span className="wp-card-grip" draggable onDragStart={onDragStart} onDragEnd={onDragEnd} title="Sleep de kaart naar een andere week">⠿</span>
-        <div className="wp-card-koptekst">
+        <span className="wp-card-grip" draggable onDragStart={onDragStart} onDragEnd={onDragEnd} title="Sleep de kaart naar een andere week">⋮⋮</span>
+        <span className="wp-card-tile wp-clickable" onClick={toggleAlsGeenSelectie} aria-hidden="true"><Icoon d={ICOON.doel} className="wp-tile-svg" /></span>
+        <div className="wp-card-main">
           <div className="wp-card-taak wp-clickable" onClick={toggleAlsGeenSelectie} title={open ? "Klik om dicht te klappen" : "Klik voor de fases, info en chat"}>
             <span className="wp-caret">{open ? "▾" : "▸"}</span>
             {titel}
           </div>
           {subtitel && <div className="wp-card-sub wp-clickable" onClick={toggleAlsGeenSelectie}>{subtitel}</div>}
-        </div>
-      </div>
 
       {open && hasInfo && <div className="wp-card-info wp-info-net" dangerouslySetInnerHTML={{ __html: cardInfoHtml(t.toelichting, t.url) }} />}
 
@@ -299,60 +328,12 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
         </div>
       )}
 
-      {/* Open: de hele cyclus verticaal, per fase status + start + vinkje. */}
-      {open && page && <div className="wp-sectie-label">Fases</div>}
-      {open && page && (
-        <div className="wp-fases">
-          {FASEN.map((f) => {
-            const stand = faseStand(f.key);
-            const link = docLink(f.key);
-            const sturing = (info.perFase[f.key as CardFaseKey] || []).join(" · ");
-            return (
-              <div key={f.key} className="wp-fase">
-                <div className="wp-fase-rij">
-                  <label className="wp-fase-check" title="Handmatig afvinken of terugzetten">
-                    <input type="checkbox" checked={!!page[f.key]} onChange={(e) => void vink(f.key, e.target.checked)} />
-                  </label>
-                  <Icoon d={f.icoon} />
-                  <span className="wp-fase-label">{f.label}</span>
-                  <span className={"wp-fase-chip " + stand.cls}>{stand.label}</span>
-                  {link && <a className="wp-link" href={link} target="_blank" rel="noreferrer" title="Open het document">Document ↗</a>}
-                  <span className="wp-fase-spacer" />
-                  {onGoToPage && <button type="button" className="wp-fase-btn wp-fase-btn-licht" title="Bekijk of doe deze stap in Pagina's" onClick={() => onGoToPage(t.url)}>In Pagina&rsquo;s ↗</button>}
-                  {faseActie(f.key)}
-                </div>
-                {sturing && <div className="wp-fase-sturing">{sturing}</div>}
-              </div>
-            );
-          })}
-          {page.live && page.copy && !page.bouw && <div className="wp-fase-hint">De copy is klaar en de pagina staat live. Is de nieuwe tekst verwerkt, vink dan Bouw en publicatie af.</div>}
-          {foutje && <div className="wp-fase-fouttekst">{foutje}</div>}
-        </div>
-      )}
-
-      {/* Chat en Locatie naast elkaar (stijl voorbeeld); de chat klapt eronder uit. */}
-      {open && (t.url || anyLink) && (
-        <div className="wp-onder-rij">
-          {t.url && (
-            <button type="button" className="wp-chat-toggle" onClick={() => (chatOpen ? setChatOpen(false) : void openChat())}>
-              <Icoon d={ICOON.chat} className="wp-sectie-icoon" /> Chat over deze pagina {chatOpen ? "▾" : "▸"}
-            </button>
-          )}
-          {anyLink && (
-            <div className="wp-onder-blok">
-              <div className="wp-sectie-label wp-sectie-metikoon"><Icoon d={ICOON.pin} className="wp-sectie-icoon" /> Locatie</div>
-              <div className="wp-card-links">
-                {t.url && <a className="wp-link" href={t.url} target="_blank" rel="noreferrer" title="De live pagina">{shortUrl(t.url)}</a>}
-                {t.copyUrl && <a className="wp-link" href={t.copyUrl} target="_blank" rel="noreferrer" title="De aangeleverde copy">Copy ↗</a>}
-                {t.bronMail && <a className="wp-link" href={t.bronMail} target="_blank" rel="noreferrer" title="De mail waar deze taak uit voortkomt">✉ bronmail</a>}
-                {tab && onGoToTab && <button type="button" className="wp-link wp-link-btn" title="Doe het hier in het dashboard" onClick={() => onGoToTab(tab.tab)}>{tab.label}</button>}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+      {/* Chat direct onder het Doel-blok: de uitkomst hiervan voedt de fases eronder. */}
       {open && t.url && (
         <div className="wp-chat">
+          <button type="button" className={"wp-chat-toggle wp-chat-toggle-groot" + (chatOpen ? " wp-chat-open" : "")} onClick={() => (chatOpen ? setChatOpen(false) : void openChat())}>
+            <Icoon d={ICOON.chat} className="wp-sectie-icoon" /> Chat over deze pagina {chatOpen ? "▾" : "▸"}
+          </button>
           {chatOpen && (
             <div className="wp-chat-body">
               <div className="wp-chat-msgs" ref={msgsRef}>
@@ -377,7 +358,62 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
         </div>
       )}
 
-      {!open && anyLink && (
+      {/* De cyclus verticaal, per fase status + start + vinkje. */}
+      {open && page && <div className="wp-sectie-label">Fases</div>}
+      {open && page && (
+        <div className="wp-fases">
+          {FASEN.map((f) => {
+            const stand = faseStand(f.key);
+            const link = docLink(f.key);
+            const sturing = (info.perFase[f.key as CardFaseKey] || []).join(" · ");
+            const rij = (
+              <div key={f.key} className="wp-fase">
+                <div className="wp-fase-rij">
+                  <label className="wp-fase-check" title="Handmatig afvinken of terugzetten">
+                    <input type="checkbox" checked={!!page[f.key]} onChange={(e) => void vink(f.key, e.target.checked)} />
+                  </label>
+                  <Icoon d={f.icoon} />
+                  <span className="wp-fase-label">{f.label}</span>
+                  <span className={"wp-fase-chip " + stand.cls}>{stand.label}</span>
+                  {link && <a className="wp-link" href={link} target="_blank" rel="noreferrer" title="Open het document">Document ↗</a>}
+                  <span className="wp-fase-spacer" />
+                  {onGoToPage && <button type="button" className="wp-fase-btn wp-fase-btn-licht" title="Bekijk of doe deze stap in Pagina's" onClick={() => onGoToPage(t.url)}>In Pagina&rsquo;s ↗</button>}
+                  {faseActie(f.key)}
+                </div>
+                {sturing && <div className="wp-fase-sturing">{sturing}</div>}
+              </div>
+            );
+            if (f.key !== "copy") return rij;
+            // Na Copy: de alles-in-één-rij (analyse, blauwdruk en copy achter elkaar).
+            const alleStappen: ("analyse" | "blauwdruk" | "copy")[] = page.live ? ["analyse", "blauwdruk", "copy"] : ["blauwdruk", "copy"];
+            const allesGeblokkeerd = !page.live && !page.strategie;
+            return (
+              <div key="copy-en-alles">
+                {rij}
+                <div className="wp-fase wp-fase-alles">
+                  <div className="wp-fase-rij">
+                    <span className="wp-fase-alles-label">{page.live ? "Analyse, blauwdruk en copy in één keer" : "Blauwdruk en copy in één keer"}</span>
+                    <span className="wp-fase-spacer" />
+                    <button type="button" className="wp-fase-btn" disabled={allesGeblokkeerd || runActive || !!busy}
+                      title={allesGeblokkeerd ? "Eerst de strategie goedkeuren (nieuwe pagina)" : "Draait de documenten achter elkaar, met de kaart-achtergrond en chat-conclusie als sturing"}
+                      onClick={() => void startDocStep(alleStappen)}>Start alles ▷</button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          {page.live && page.copy && !page.bouw && <div className="wp-fase-hint">De copy is klaar en de pagina staat live. Is de nieuwe tekst verwerkt, vink dan Bouw en publicatie af.</div>}
+          {foutje && <div className="wp-fase-fouttekst">{foutje}</div>}
+          {melding && <div className="wp-fase-melding">{melding}</div>}
+        </div>
+      )}
+
+      {open && anyLink && (
+        <div className="wp-onder-blok">
+          <div className="wp-sectie-label wp-sectie-metikoon"><Icoon d={ICOON.pin} className="wp-sectie-icoon" /> Locatie</div>
+        </div>
+      )}
+      {anyLink && (
         <div className="wp-card-links">
           {t.url && <a className="wp-link" href={t.url} target="_blank" rel="noreferrer" title="De live pagina">{shortUrl(t.url)}</a>}
           {t.copyUrl && <a className="wp-link" href={t.copyUrl} target="_blank" rel="noreferrer" title="De aangeleverde copy">Copy ↗</a>}
@@ -386,15 +422,17 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
         </div>
       )}
 
-      <div className="wp-card-foot">
-        <span className={"wp-wie " + (t.wie === "Dev" ? "wie-dev" : "wie-seo")}>{t.wie}</span>
-        <button type="button" className={"wp-status wp-status-" + t.status} onClick={onStatus} title="Klik om de status te wisselen">{STATUS_LABEL[t.status] || t.status}</button>
-        <span className="wp-card-actions">
-          <button type="button" className="wp-act wp-act-klant" title="Mail naar klant: een klantvriendelijke uitleg van deze kaart." onClick={() => onMail("klant")}>Mail klant</button>
-          <button type="button" className="wp-act" title="Mail deze taak naar je developer/sitebouwer." onClick={() => onMail("dev")}>Dev ✉</button>
+          <div className="wp-meta-rij">
+            <span className={"wp-wie " + (t.wie === "Dev" ? "wie-dev" : "wie-seo")}>{t.wie}</span>
+            <button type="button" className={"wp-status wp-status-" + t.status} onClick={onStatus} title="Klik om de status te wisselen">{STATUS_LABEL[t.status] || t.status}</button>
+          </div>
+        </div>
+        <div className="wp-card-acties-kolom">
+          <button type="button" className="wp-act wp-act-klant" title="Mail naar klant: een klantvriendelijke uitleg van deze kaart." onClick={() => onMail("klant")}>✉ Mail klant</button>
+          <button type="button" className="wp-act" title="Mail deze taak naar je developer/sitebouwer." onClick={() => onMail("dev")}>Dev {"<>"}</button>
           {t.url && onGoToPage && <button type="button" className="wp-act" title="Open de pagina in Pagina's voor het diepe werk." onClick={() => onGoToPage(t.url)}>Pagina&rsquo;s ↗</button>}
           <button type="button" className="wp-icon wp-del" title="Verwijderen" onClick={onRemove}>×</button>
-        </span>
+        </div>
       </div>
     </div>
   );
