@@ -17,6 +17,7 @@ import { measurePage } from "./page-measure";
 import { callClaude, LIGHT_MODEL } from "./anthropic";
 import { sql, ensureSchema } from "./db";
 import { addWeekplanTasks, isoWeek } from "./weekplan";
+import { urlKey } from "./url-key";
 
 export type ActionType = "pagina_toevoegen" | "taak_aanmaken" | "plan_vastleggen" | "strategie_bepalen" | "pijplijn_starten" | "structured_data" | "alt_teksten" | "meta_verbeteren" | "profiel_bijwerken" | "weekplan_taken";
 const VALID: ActionType[] = ["pagina_toevoegen", "taak_aanmaken", "plan_vastleggen", "strategie_bepalen", "pijplijn_starten", "structured_data", "alt_teksten", "meta_verbeteren", "profiel_bijwerken", "weekplan_taken"];
@@ -141,7 +142,23 @@ export function validateAction(raw: Record<string, unknown>, domain: string, id:
         })
         .filter(Boolean) as WeekTaak[];
       if (!taken.length) return null;
-      return { ...base, taken: taken.slice(0, 20) };
+      // Vangnet tegen versplintering: meerdere items voor dezelfde pagina in dezelfde
+      // week worden één kaart; het extra item wordt bullets in de toelichting van de
+      // eerste. Items zonder url nooit samenvoegen (losse acties blijven los).
+      const merged: WeekTaak[] = [];
+      const byPage = new Map<string, WeekTaak>();
+      for (const t of taken) {
+        const k = t.url ? `${urlKey(t.url)}|${t.week}` : "";
+        const bestaand = k ? byPage.get(k) : undefined;
+        if (bestaand) {
+          const extra = `- ${t.taak}${t.toelichting ? `\n${t.toelichting.split("\n").map((r) => (r.trim().startsWith("-") ? r : `  ${r}`)).join("\n")}` : ""}`;
+          bestaand.toelichting = `${bestaand.toelichting || ""}\n${extra}`.trim().slice(0, 4000);
+        } else {
+          merged.push(t);
+          if (k) byPage.set(k, t);
+        }
+      }
+      return { ...base, taken: merged.slice(0, 20) };
     }
     case "pijplijn_starten": {
       if (!url) return null;

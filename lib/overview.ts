@@ -10,6 +10,8 @@
 
 import { sql } from "./db";
 import { getClientBySlug } from "./clients";
+import { getStepsEverDoneAll } from "./page-doc-run";
+import { urlKey } from "./url-key";
 import { getClientUrls } from "./site-urls";
 import { getGscPageOpportunities } from "./google";
 import { cacheGet, cacheSet } from "./ahrefs";
@@ -193,7 +195,7 @@ export function pageWorkStatusToText(pages: PageWork[]): string {
 // logische vervolgstap. Zo hoeft Maarten nooit meer "waar begin ik" te denken.
 export type NextStep = { label: string; actie: "pijplijn_starten" | "meta_verbeteren" | "alt_teksten" | "open" ; steps?: string[]; zin: string };
 
-function nextStep(p: PageWork, opp: { level: string; label: string; position: number | null }): NextStep {
+export function nextStep(p: PageWork, opp: { level: string; label: string; position: number | null }): NextStep {
   if (!p.live) return { label: "Ontwikkel", actie: "pijplijn_starten", steps: ["blauwdruk", "copy"], zin: "Deze pagina bestaat nog niet. Ontwikkel de blauwdruk en de copy." };
   if (p.hasPlan) {
     const order = ["analyse", "blauwdruk", "copy"] as const;
@@ -210,6 +212,37 @@ function nextStep(p: PageWork, opp: { level: string; label: string; position: nu
     return { label: "Ontwikkel", actie: "pijplijn_starten", steps: ["analyse", "blauwdruk", "copy"], zin: `Kans (${opp.label}${opp.position != null ? `, positie ${opp.position}` : ""}). De analyse bepaalt wat deze pagina nodig heeft; ontwikkel hem.` };
   }
   return { label: "Ontwikkel", actie: "pijplijn_starten", steps: ["analyse", "blauwdruk", "copy"], zin: "Nog geen strategie voor deze pagina. Ontwikkel hem." };
+}
+
+// ── Pijplijn-stand per pagina voor het weekplanning-bord ──
+// Eén call levert per URL de vinkjes (strategie/analyse/blauwdruk/copy) en de
+// volgende stap, zodat elke pagina-kaart live toont waar de pagina staat.
+// Bewust zonder GSC-call: de GET van het bord moet snel blijven.
+export type WeekplanPageInfo = {
+  url: string; live: boolean;
+  strategie: boolean; analyse: boolean; blauwdruk: boolean; copy: boolean;
+  next: string;
+};
+
+export async function getWeekplanPages(slug: string): Promise<Record<string, WeekplanPageInfo>> {
+  const [pages, everDone] = await Promise.all([
+    getPageWorkStatus(slug),
+    getStepsEverDoneAll(slug).catch(() => ({} as Record<string, { analyse: boolean; blauwdruk: boolean; copy: boolean }>)),
+  ]);
+  const out: Record<string, WeekplanPageInfo> = {};
+  for (const p of pages) {
+    const k = urlKey(p.url);
+    const done = everDone[k] || { analyse: false, blauwdruk: false, copy: false };
+    out[k] = {
+      url: p.url, live: p.live,
+      strategie: p.hasPlan,
+      analyse: p.docs.includes("analyse") || done.analyse,
+      blauwdruk: p.docs.includes("blauwdruk") || done.blauwdruk,
+      copy: p.docs.includes("copy") || done.copy,
+      next: nextStep(p, { level: "none", label: "", position: null }).label,
+    };
+  }
+  return out;
 }
 
 // ── Visueel werkplan: pagina's gegroepeerd in bezig / gepland / gedaan ──

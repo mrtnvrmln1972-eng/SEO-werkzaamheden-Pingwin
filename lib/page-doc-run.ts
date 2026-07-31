@@ -1,5 +1,6 @@
 import { sql, ensureSchema } from "./db";
 import { createClient } from "@vercel/postgres";
+import { urlKey } from "./url-key";
 
 // Querytag-vorm die zowel het gedeelde sql-object als de sql van een losse
 // (niet-gepoolde) client dekt; alleen voor de wachtrij-bewaking.
@@ -148,6 +149,22 @@ export async function getStepsEverDone(slug: string, url: string): Promise<{ ana
     FROM page_doc_runs WHERE client_slug = ${slug} AND url = ${url}`;
   const r = rows[0] || {};
   return { analyse: !!r.analyse, blauwdruk: !!r.blauwdruk, copy: !!r.copy };
+}
+
+// Zelfde als getStepsEverDone, maar voor ALLE pagina's van een klant in één query,
+// zodat het weekplanning-bord per kaart de pijplijn-stand kan tonen zonder N queries.
+export async function getStepsEverDoneAll(slug: string): Promise<Record<string, { analyse: boolean; blauwdruk: boolean; copy: boolean }>> {
+  await ensureSchema();
+  await ensureRunTable();
+  const { rows } = await sql`
+    SELECT url,
+      bool_or(analyse_state = 'done' OR analyse_link IS NOT NULL) AS analyse,
+      bool_or(blauwdruk_state = 'done' OR blauwdruk_link IS NOT NULL) AS blauwdruk,
+      bool_or(copy_state = 'done' OR copy_link IS NOT NULL) AS copy
+    FROM page_doc_runs WHERE client_slug = ${slug} GROUP BY url`;
+  const out: Record<string, { analyse: boolean; blauwdruk: boolean; copy: boolean }> = {};
+  for (const r of rows) out[urlKey(String(r.url))] = { analyse: !!r.analyse, blauwdruk: !!r.blauwdruk, copy: !!r.copy };
+  return out;
 }
 
 // ── Cron-worker: verwerk wachtende runs, stap voor stap ──

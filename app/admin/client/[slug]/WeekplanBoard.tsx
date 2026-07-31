@@ -1,8 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { mdToHtml } from "../../../../lib/markdown";
+import { urlKey } from "../../../../lib/url-key";
 
 type Task = { id: number; thread: string; taak: string; toelichting: string; wie: string; url: string; taaktype: string; copyUrl: string; bronMail: string; weekYear: number; weekNo: number; status: string; sortOrder: number };
+// De pijplijn-stand van een pagina (uit de GET), voor de vinkjes op de kaart.
+type PageInfo = { url: string; live: boolean; strategie: boolean; analyse: boolean; blauwdruk: boolean; copy: boolean; next: string };
 
 // Bij welk taaktype hoort welk dashboard-tabblad (voor de deep-link "doe het hier").
 const TAB_FOR_TYPE: Record<string, { tab: string; label: string }> = {
@@ -11,6 +15,9 @@ const TAB_FOR_TYPE: Record<string, { tab: string; label: string }> = {
   copy: { tab: "paginas", label: "Pagina's ↗" },
   intern: { tab: "paginas", label: "Pagina's ↗" },
   structured: { tab: "paginas", label: "Pagina's ↗" },
+  strategie: { tab: "paginas", label: "Pagina's ↗" },
+  pijplijn: { tab: "paginas", label: "Pagina's ↗" },
+  overig: { tab: "paginas", label: "Pagina's ↗" },
 };
 type Current = { year: number; week: number };
 
@@ -45,6 +52,7 @@ const keyOf = (year: number, week: number) => year * 100 + week;
 // een andere week. Per taak: status, mailen naar je developer, pagina openen.
 export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, clientName, clientEmail, reloadSignal }: { slug: string; onGoToPage?: (url: string) => void; onGoToTab?: (tab: string) => void; clientName?: string; clientEmail?: string; reloadSignal?: number }) {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [pages, setPages] = useState<Record<string, PageInfo>>({});
   const [current, setCurrent] = useState<Current | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [dragId, setDragId] = useState<number | null>(null);
@@ -60,7 +68,7 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, clientName,
   async function load() {
     try {
       const d = await fetch(`/api/admin/weekplan?slug=${encodeURIComponent(slug)}`).then((r) => r.json());
-      if (d?.ok) { setTasks(d.tasks || []); setCurrent(d.current || null); }
+      if (d?.ok) { setTasks(d.tasks || []); setCurrent(d.current || null); setPages(d.pages || {}); }
     } catch { /* stil */ } finally { setLoaded(true); }
   }
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [slug, reloadSignal]);
@@ -144,7 +152,21 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, clientName,
           {hasInfo && <span className="wp-caret">{open ? "▾" : "▸"}</span>}
           {t.taak}
         </div>
-        {open && hasInfo && <div className="wp-card-info">{t.toelichting}</div>}
+        {open && hasInfo && <div className="wp-card-info md" dangerouslySetInnerHTML={{ __html: mdToHtml(t.toelichting) }} />}
+        {(() => {
+          // Pijplijn-stand van de pagina: vinkjes plus de volgende stap. Klik = naar
+          // precies deze pagina in Pagina's (daar gebeurt het werk).
+          const p = t.url ? pages[urlKey(t.url)] : undefined;
+          if (!p) return null;
+          const steps: [string, boolean][] = [["Strategie", p.strategie], ["Analyse", p.analyse], ["Blauwdruk", p.blauwdruk], ["Copy", p.copy]];
+          return (
+            <div className="wp-steps" title="Waar deze pagina staat in de pijplijn. Klik om verder te werken in Pagina's."
+              role={onGoToPage ? "button" : undefined} onClick={() => onGoToPage && onGoToPage(t.url)}>
+              {steps.map(([label, done]) => <span key={label} className={"wp-step" + (done ? " wp-step-done" : "")}>{done ? "✓ " : ""}{label}</span>)}
+              {p.next && <span className="wp-step wp-step-next">Volgende: {p.next}</span>}
+            </div>
+          );
+        })()}
         {(() => {
           const tab = TAB_FOR_TYPE[t.taaktype];
           const anyLink = t.url || t.copyUrl || t.bronMail || (tab && onGoToTab);
