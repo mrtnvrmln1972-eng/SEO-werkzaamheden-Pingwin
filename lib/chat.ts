@@ -486,6 +486,58 @@ export async function replaceChatHistory(slug: string, thread: string, messages:
   await saveChatHistory(slug, thread, messages);
 }
 
+// GEFASEERD stap 1: de gefocuste analyse-prompt voor een planning-vraag. Één taak:
+// alleen de Stand van zaken schrijven, netjes opgemaakt, gegrond in de meegeleverde
+// context. Geen tools, geen taken (die komen in stap 2). Rustig = betere opmaak en
+// geen vergeten bronnen.
+function buildOverviewAnalysisSystem(client: ClientConfig, context: string): string {
+  return (
+    `Je bent de overkoepelende SEO-strateeg ("bird's eye") van Pingwin voor de klant ${client.name}. ` +
+    `Je taak NU is ALLEEN een heldere STAND VAN ZAKEN schrijven (de analyse), geen taken of planning, geen kaarten (die maakt een aparte stap zo). ` +
+    `Baseer je UITSLUITEND op de context hieronder (paginasignalen, zoekwoordstanden, te bouwen pagina's, site-overzicht, recente mails, stand van zaken, afgesproken zoekwoorden/navigatie). Verzin geen cijfers; noem alleen wat er staat. Twijfel je of iets klopt, zeg dat kort in plaats van te gokken.\n\n` +
+    `INHOUD, dek ALTIJD deze drie delen af:\n` +
+    `1. Wat staat live en hoe presteert het (posities, vertoningen, klikken; wat gaat goed, wat presteert onder de maat).\n` +
+    `2. Wat is aangeleverd maar nog niet bevestigd live (copy aangeleverd maar niet gezien op de pagina, open Dev-acties uit mails).\n` +
+    `3. Wat moet er nog bij of uitgebreid worden om de site autoriteit te geven. Redeneer HOLISTISCH uit alle bronnen (de afgesproken navigatie/zoekwoorden, de mails, de te-bouwen-lijst, de gaten) en bedenk ZELF welke grote landingspagina's en thema's de site nog mist; noem ze concreet (pagina/onderwerp, waarom belangrijk).\n\n` +
+    `OPMAAK (belangrijk, moet er verzorgd en scanbaar uitzien, NOOIT een muur lopende tekst): Nederlands, Markdown, geen emoji.\n` +
+    `- Deel op in BLOKKEN, elk met een eigen gekleurd kopje (## Kop), met een scheidingslijn (--- op een eigen regel) tussen de blokken.\n` +
+    `- Korte BULLETS (-) binnen een blok, geen lange alinea's. **Vet** voor de kernfeiten (paginanaam, positie, aantallen). Pagina's/slugs als klikbaar pad (bijv. /hovenier/etten-leur/).\n` +
+    `- Voor "wat staat live / hoe presteert het" of een cijfervergelijking mag een net klein tabelletje (| Kop | Kop |).\n` +
+    `- Houd het behapbaar; het is een overzicht, geen rapport.\n\n--- OVERZICHT-CONTEXT ---\n${context}`
+  );
+}
+
+// GEFASEERD stap 2: genereer de weektaken GEGARANDEERD via een geforceerde tool-aanroep
+// (tool_choice), gevoed door de analyse + context. Met één retry-vangnet als er 0 geldige
+// taken uitkomen. Geeft een gevalideerde weekplan_taken-actie terug, of null.
+async function generateWeekplanActie(client: ClientConfig, context: string, analyse: string, slug: string): Promise<ProposedAction | null> {
+  const forceTool: ToolDef = {
+    name: "weekplan_taken",
+    description: "Zet de concrete weektaken uit de analyse in de weekplanning.",
+    input_schema: { type: "object", properties: { taken: { type: "array", items: { type: "object", properties: {
+      taak: { type: "string", description: "Korte, concrete taaktitel (één regel), geen 'Week X' erin." },
+      week: { type: "integer", description: "1 = deze week, 2 = volgende, enzovoort. Realistisch verdelen." },
+      info: { type: "string", description: "De VOLLEDIGE achtergrond: waar komt het vandaan (bijv. mail van 30 juli), welke pagina/links, hoe het zich verhoudt tot andere pagina's, verwachte impact. Nette leesbare tekst met korte kopregels en '-'-bullets." },
+      wie: { type: "string", enum: ["SEO", "Dev"] },
+      url: { type: "string", description: "De pagina waar de taak over gaat (pad of volledige URL)." },
+      taaktype: { type: "string", enum: ["meta", "alt", "copy", "intern", "strategie", "pijplijn", "structured", "overig"] },
+      bronMail: { type: "string", description: "Optioneel: de webLink van de bronmail (staat bij RECENTE E-MAILS als 'link: ...')." },
+    }, required: ["taak", "week"] } } }, required: ["taken"] },
+  };
+  const baseSystem =
+    `Je bent de Pingwin bird's eye-strateeg voor ${client.name}. Hieronder de context en de analyse (Stand van zaken) die zojuist aan Maarten is gegeven. Zet de concrete WEEKTAKEN die daaruit volgen om via het gereedschap 'weekplan_taken'. Behapbaar en op prioriteit (afspraken met de klant, mail-opvolging, belangrijke/te bouwen pagina's, laaghangend fruit), realistisch verdeeld over de komende weken. Geef per taak de VOLLEDIGE achtergrond in 'info', met url en taaktype. Verzin geen cijfers; gebruik alleen wat in de context/analyse staat.\n\n--- OVERZICHT-CONTEXT ---\n${context}\n\n--- ANALYSE (STAND VAN ZAKEN) ---\n${analyse}`;
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const extra = attempt === 0 ? "" : "\n\nLET OP: de vorige poging leverde geen bruikbare taken. Geef nu MINIMAAL 5 concrete taken, elk met een korte 'taak', een 'week' (getal) en 'info'. Laat niets leeg.";
+    const input = await callClaudeForcedTool(baseSystem + extra, [{ role: "user", content: "Zet de concrete weektaken neer via het gereedschap 'weekplan_taken'." }], forceTool, { slug, action: attempt === 0 ? "overzicht-weekplan" : "overzicht-weekplan-retry" }, 3500).catch(() => null);
+    if (input) {
+      const v = validateAction({ type: "weekplan_taken", ...(input as Record<string, unknown>) }, client.domain || "", `a${Date.now().toString(36)}_wp${attempt}`);
+      if (v && v.taken && v.taken.length) return v;
+    }
+  }
+  return null;
+}
+
 export async function answerChat(slug: string, messages: ChatMessage[], thread = "algemeen"): Promise<{ ok: boolean; answer?: string; error?: string; actions?: ProposedAction[]; title?: string; summary?: string }> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return { ok: false, error: "Geen ANTHROPIC_API_KEY ingesteld." };
@@ -575,40 +627,27 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
     const base = chatTools(client);
     const collected: ProposedAction[] = [];
     const { tools, run } = isOverview ? overviewTools(client, base, collected) : base;
-    const answer = await callClaudeAgentic(system, apiMessages as { role: "user" | "assistant"; content: string }[], tools, run, isOverview ? 12 : 6, isOverview ? 3200 : 2000, { slug, action: isOverview ? "overzicht-chat" : isAds ? "ads-chat" : "projectchat" });
 
-    // GEGARANDEERDE KAARTEN (deterministisch): de taak-kaarten mogen niet afhangen van of
-    // het model uit zichzelf de tool aanriep. Vroeg Maarten om een planning/taken én zitten
-    // er nog geen weekplan-taken in 'collected', dan forceren we ze met een aparte
-    // tool_choice-aanroep, gevoed door de zojuist gegeven analyse + de volledige context.
-    if (isOverview) {
-      const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content || "";
-      const planningIntent = /\b(planning|weekplan|weekplanning|taken van|maak.*taken|hier taken|oppakken|werklijst|takenlijst|to.?do|aan de slag)\b/i.test(lastUser);
-      const hasWeekplan = collected.some((a) => a.type === "weekplan_taken");
-      if (planningIntent && !hasWeekplan && answer && answer.trim()) {
-        try {
-          const forceTool: ToolDef = {
-            name: "weekplan_taken",
-            description: "Zet de concrete weektaken uit de analyse in de weekplanning.",
-            input_schema: { type: "object", properties: { taken: { type: "array", items: { type: "object", properties: {
-              taak: { type: "string", description: "Korte, concrete taaktitel (één regel), geen 'Week X' erin." },
-              week: { type: "integer", description: "1 = deze week, 2 = volgende, enzovoort. Realistisch verdelen." },
-              info: { type: "string", description: "De VOLLEDIGE achtergrond: waar komt het vandaan (bijv. mail van 30 juli), welke pagina/links, hoe het zich verhoudt tot andere pagina's, verwachte impact. Nette leesbare tekst met korte kopregels en '-'-bullets." },
-              wie: { type: "string", enum: ["SEO", "Dev"] },
-              url: { type: "string", description: "De pagina waar de taak over gaat (pad of volledige URL)." },
-              taaktype: { type: "string", enum: ["meta", "alt", "copy", "intern", "strategie", "pijplijn", "structured", "overig"] },
-              bronMail: { type: "string", description: "Optioneel: de webLink van de bronmail (staat bij RECENTE E-MAILS als 'link: ...')." },
-            }, required: ["taak", "week"] } } }, required: ["taken"] },
-          };
-          const forceSystem =
-            `Je bent de Pingwin bird's eye-strateeg voor ${client.name}. Hieronder de volledige context en de analyse die je zojuist aan Maarten gaf. Zet de concrete WEEKTAKEN die daaruit volgen om via het gereedschap 'weekplan_taken'. Behapbaar en op prioriteit (afspraken met de klant, mail-opvolging, belangrijke/te bouwen pagina's, laaghangend fruit), realistisch verdeeld over de komende weken. Geef per taak de volledige achtergrond in 'info', met url en taaktype. Verzin geen cijfers; gebruik alleen wat in de context/analyse staat.\n\n--- OVERZICHT-CONTEXT ---\n${context}\n\n--- JOUW ANALYSE ---\n${answer}`;
-          const input = await callClaudeForcedTool(forceSystem, [{ role: "user", content: "Zet de concrete weektaken neer via het gereedschap 'weekplan_taken'." }], forceTool, { slug, action: "overzicht-weekplan" }, 3500);
-          if (input) {
-            const v = validateAction({ type: "weekplan_taken", ...(input as Record<string, unknown>) }, client.domain || "", `a${Date.now().toString(36)}_wp`);
-            if (v) collected.push(v);
-          }
-        } catch { /* forceren mag de chat nooit breken */ }
-      }
+    // GEFASEERDE WEEKPLANNING (Maartens inzicht: één beurt doet te veel → overload).
+    // Bij een planning-vraag knippen we het op in rustige, gefocuste stappen:
+    //  (1) alleen de analyse (Stand van zaken), zonder tool-gejongleer;
+    //  (2) daarna, geforceerd en met vangnet, de taak-kaarten.
+    // Een gewone/losse vraag blijft de volle agentische chat (mét meet-tools voor drill-down).
+    const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content || "";
+    const planningIntent = isOverview && /\b(planning|weekplan|weekplanning|taken van|maak.*taken|hier taken|oppakken|werklijst|takenlijst|to.?do|aan de slag)\b/i.test(lastUser);
+
+    let answer: string;
+    if (planningIntent) {
+      answer = await callClaude(buildOverviewAnalysisSystem(client, context), apiMessages as { role: "user" | "assistant"; content: string }[], 3200, { slug, action: "overzicht-analyse" });
+    } else {
+      answer = await callClaudeAgentic(system, apiMessages as { role: "user" | "assistant"; content: string }[], tools, run, isOverview ? 12 : 6, isOverview ? 3200 : 2000, { slug, action: isOverview ? "overzicht-chat" : isAds ? "ads-chat" : "projectchat" });
+    }
+
+    // Stap 2: de taak-kaarten, GEGARANDEERD (tool_choice forceert de aanroep), met één
+    // retry-vangnet als er 0 geldige taken uitkomen. Hangt niet af van modelkeuze.
+    if (planningIntent && !collected.some((a) => a.type === "weekplan_taken") && answer && answer.trim()) {
+      const wp = await generateWeekplanActie(client, context, answer, slug).catch(() => null);
+      if (wp) collected.push(wp);
     }
 
     const finalAnswer = answer || "(geen antwoord)";
