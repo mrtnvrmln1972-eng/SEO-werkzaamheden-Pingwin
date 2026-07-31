@@ -43,32 +43,87 @@ export async function getWeekplan(slug: string): Promise<WeekplanTask[]> {
   }));
 }
 
-// Voegt taken toe, elk in hun eigen week (jaar + weeknummer).
-export async function addWeekplanTasks(slug: string, thread: string, tasks: { taak: string; toelichting?: string; wie?: string; url?: string; taaktype?: string; copyUrl?: string; bronMail?: string; week: { year: number; week: number } }[]): Promise<number> {
+// Normaliseert een toelichting-regel voor dedup: trim, lowercase, leidend '- ' weg.
+function lineKey(s: string): string {
+  return s.trim().toLowerCase().replace(/^-\s*/, "");
+}
+
+// Voegt taken toe. Eén pagina = één projectkaart: bestaat er al een niet-klare
+// kaart voor dezelfde pagina (ongeacht week), dan wordt de nieuwe taak daarin
+// gemerged (titel + toelichting als bullets, met regel-dedup) in plaats van een
+// tweede kaart te maken. De kaart houdt zijn week (waar Maarten hem sleepte).
+export async function addWeekplanTasks(slug: string, thread: string, tasks: { taak: string; toelichting?: string; wie?: string; url?: string; taaktype?: string; copyUrl?: string; bronMail?: string; week: { year: number; week: number } }[]): Promise<{ added: number; merged: number }> {
   await ensureSchema();
-  let n = 0;
+  const { urlKey } = await import("./url-key");
+  // Bestaande niet-klare pagina-kaarten, op urlKey (JS-matching, niet in SQL te doen).
+  const { rows: existing } = await sql`
+    SELECT id, url, taak, toelichting, taaktype, copy_url, bron_mail FROM client_weekplan
+    WHERE client_slug = ${slug} AND status <> 'klaar' AND url IS NOT NULL AND url <> ''`;
+  const byPage = new Map<string, { id: number; taak: string; toelichting: string; taaktype: string; copyUrl: string; bronMail: string }>();
+  for (const r of existing) {
+    byPage.set(urlKey(String(r.url)), {
+      id: r.id as number, taak: (r.taak as string) || "", toelichting: (r.toelichting as string) || "",
+      taaktype: (r.taaktype as string) || "", copyUrl: (r.copy_url as string) || "", bronMail: (r.bron_mail as string) || "",
+    });
+  }
+  let added = 0, merged = 0;
   for (const t of tasks) {
     const taak = (t.taak || "").trim();
     if (!taak) continue;
-    // Dedup: dezelfde taak in dezelfde week voor deze klant niet nog eens toevoegen
-    // (voorkomt stille dubbele bord-rijen bij herhaald doorzetten van een voorstel-kaart).
-    const { rows: dup } = await sql`
-      SELECT 1 FROM client_weekplan
-      WHERE client_slug = ${slug} AND week_year = ${t.week.year} AND week_no = ${t.week.week}
-        AND lower(taak) = lower(${taak.slice(0, 400)}) LIMIT 1`;
-    if (dup.length) continue;
-    const wie = /dev/i.test(t.wie || "") ? "Dev" : "SEO";
     const url = (t.url || "").trim().slice(0, 400) || null;
     const toel = (t.toelichting || "").trim().slice(0, 4000) || null;
     const taaktype = (t.taaktype || "").trim().slice(0, 40) || null;
     const copyUrl = (t.copyUrl || "").trim().slice(0, 600) || null;
     const bronMail = (t.bronMail || "").trim().slice(0, 600) || null;
+    const wie = /dev/i.test(t.wie || "") ? "Dev" : "SEO";
+
+    const bestaand = url ? byPage.get(urlKey(url)) : undefined;
+    if (bestaand) {
+      // Mergen in de bestaande projectkaart: nieuwe regels als bullets erbij,
+      // identieke regels overslaan. Lege koppelingen aanvullen, week ongemoeid.
+      const had = new Set(bestaand.toelichting.split("\n").map(lineKey).filter(Boolean));
+      had.add(lineKey(bestaand.taak));
+      const nieuw: string[] = [];
+      if (!had.has(lineKey(taak))) { nieuw.push(`- ${taak}`); had.add(lineKey(taak)); }
+      for (const regel of (toel || "").split("\n")) {
+        const k = lineKey(regel);
+        if (!k || had.has(k)) continue;
+        nieuw.push(regel.trim().startsWith("-") ? regel.trim() : `- ${regel.trim()}`);
+        had.add(k);
+      }
+      if (nieuw.length || (!bestaand.taaktype && taaktype) || (!bestaand.copyUrl && copyUrl) || (!bestaand.bronMail && bronMail)) {
+        const toelNieuw = `${bestaand.toelichting}\n${nieuw.join("\n")}`.trim().slice(0, 4000);
+        await sql`
+          UPDATE client_weekplan SET
+            toelichting = ${toelNieuw},
+            taaktype = COALESCE(NULLIF(taaktype, ''), ${taaktype}),
+            copy_url = COALESCE(NULLIF(copy_url, ''), ${copyUrl}),
+            bron_mail = COALESCE(NULLIF(bron_mail, ''), ${bronMail}),
+            updated_at = now()
+          WHERE client_slug = ${slug} AND id = ${bestaand.id}`;
+        bestaand.toelichting = toelNieuw;
+        merged++;
+      }
+      continue;
+    }
+
+    // Dedup: dezelfde taak in dezelfde week voor deze klant niet nog eens toevoegen
+    // (vangnet voor kaarten zonder pagina bij herhaald doorzetten).
+    const { rows: dup } = await sql`
+      SELECT 1 FROM client_weekplan
+      WHERE client_slug = ${slug} AND week_year = ${t.week.year} AND week_no = ${t.week.week}
+        AND lower(taak) = lower(${taak.slice(0, 400)}) LIMIT 1`;
+    if (dup.length) continue;
     await sql`
       INSERT INTO client_weekplan (client_slug, thread, taak, toelichting, wie, url, taaktype, copy_url, bron_mail, week_year, week_no, status, sort_order, updated_at)
-      VALUES (${slug}, ${thread || null}, ${taak.slice(0, 400)}, ${toel}, ${wie}, ${url}, ${taaktype}, ${copyUrl}, ${bronMail}, ${t.week.year}, ${t.week.week}, 'gepland', ${n}, now())`;
-    n++;
+      VALUES (${slug}, ${thread || null}, ${taak.slice(0, 400)}, ${toel}, ${wie}, ${url}, ${taaktype}, ${copyUrl}, ${bronMail}, ${t.week.year}, ${t.week.week}, 'gepland', ${added}, now())`;
+    if (url) {
+      const { rows: ins } = await sql`SELECT id FROM client_weekplan WHERE client_slug = ${slug} AND url = ${url} AND status <> 'klaar' ORDER BY id DESC LIMIT 1`;
+      if (ins[0]) byPage.set(urlKey(url), { id: ins[0].id as number, taak: taak.slice(0, 400), toelichting: toel || "", taaktype: taaktype || "", copyUrl: copyUrl || "", bronMail: bronMail || "" });
+    }
+    added++;
   }
-  return n;
+  return { added, merged };
 }
 
 export async function updateWeekplanTask(slug: string, id: number, patch: { weekYear?: number; weekNo?: number; status?: string; sortOrder?: number }): Promise<void> {

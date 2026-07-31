@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
   // Copy-link server-side afleiden zodat de bord-kaart direct naar de aangeleverde copy linkt.
   const copyUrl = url ? await getStepLinks(slug, url).then((s) => s.copy).catch(() => "") : "";
 
-  const n = await addWeekplanTasks(slug, String(body.thread || ""), [{
+  const r = await addWeekplanTasks(slug, String(body.thread || ""), [{
     taak,
     toelichting: body.toelichting ? String(body.toelichting) : undefined,
     wie: body.wie ? String(body.wie) : undefined,
@@ -41,5 +41,6 @@ export async function POST(req: NextRequest) {
     copyUrl,
     week,
   }]);
+  const n = r.added + r.merged;
   return n ? NextResponse.json({ ok: true, added: n, week }) : NextResponse.json({ ok: false, error: "Toevoegen mislukt." }, { status: 500 });
 }

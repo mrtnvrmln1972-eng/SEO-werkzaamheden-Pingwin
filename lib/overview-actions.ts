@@ -142,17 +142,19 @@ export function validateAction(raw: Record<string, unknown>, domain: string, id:
         })
         .filter(Boolean) as WeekTaak[];
       if (!taken.length) return null;
-      // Vangnet tegen versplintering: meerdere items voor dezelfde pagina in dezelfde
-      // week worden één kaart; het extra item wordt bullets in de toelichting van de
-      // eerste. Items zonder url nooit samenvoegen (losse acties blijven los).
+      // Vangnet tegen versplintering: meerdere items voor dezelfde pagina worden
+      // één projectkaart (ongeacht week; de kleinste week wint, dat is de start).
+      // Het extra item wordt bullets in de toelichting van de eerste. Items zonder
+      // url nooit samenvoegen (losse acties blijven los).
       const merged: WeekTaak[] = [];
       const byPage = new Map<string, WeekTaak>();
       for (const t of taken) {
-        const k = t.url ? `${urlKey(t.url)}|${t.week}` : "";
+        const k = t.url ? urlKey(t.url) : "";
         const bestaand = k ? byPage.get(k) : undefined;
         if (bestaand) {
           const extra = `- ${t.taak}${t.toelichting ? `\n${t.toelichting.split("\n").map((r) => (r.trim().startsWith("-") ? r : `  ${r}`)).join("\n")}` : ""}`;
           bestaand.toelichting = `${bestaand.toelichting || ""}\n${extra}`.trim().slice(0, 4000);
+          bestaand.week = Math.min(bestaand.week ?? 1, t.week ?? 1);
         } else {
           merged.push(t);
           if (k) byPage.set(k, t);
@@ -216,8 +218,13 @@ export async function executeAction(slug: string, action: ProposedAction, thread
         const copyUrl = t.url ? await getStepLinks(slug, t.url).then((s) => s.copy).catch(() => "") : "";
         return { taak: t.taak, toelichting: t.toelichting, wie: t.wie, url: t.url, taaktype: t.taaktype, copyUrl, bronMail: t.bronMail, week: isoWeek(d) };
       }));
-      const n = await addWeekplanTasks(slug, thread, tasks);
-      return n ? { ok: true, message: `${n} ${n === 1 ? "taak" : "taken"} in de weekplanning gezet, verdeeld over de weken. Dit onderwerp mag dicht; de taken staan in het bord.` } : { ok: false, message: "Geen taken om toe te voegen." };
+      const r = await addWeekplanTasks(slug, thread, tasks);
+      const n = r.added + r.merged;
+      if (!n) return { ok: false, message: "Geen taken om toe te voegen." };
+      const delen: string[] = [];
+      if (r.added) delen.push(`${r.added} ${r.added === 1 ? "nieuwe kaart" : "nieuwe kaarten"}`);
+      if (r.merged) delen.push(`${r.merged} bestaande ${r.merged === 1 ? "paginakaart" : "paginakaarten"} aangevuld`);
+      return { ok: true, message: `${delen.join(" en ")} in de weekplanning. Dit onderwerp mag dicht; het werk staat in het bord.` };
     }
     case "pijplijn_starten": {
       let steps = (action.steps && action.steps.length ? action.steps : ["analyse", "blauwdruk", "copy"]) as ("analyse" | "blauwdruk" | "copy")[];

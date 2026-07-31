@@ -2121,6 +2121,48 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .wp-step-done { color: #1b7f3b; background: #e7f6ec; border-color: #bfe6cc; }
 .wp-step-next { color: var(--orange-dark); background: var(--orange-light); border-color: var(--orange); }
 .wp-steps:hover .wp-step-next { text-decoration: underline; }
+/* Projectkaart: de 7 fases verticaal, met status, startknop en handmatig vinkje. */
+.wp-fases { margin: 8px 0 4px; border: 1px solid var(--border); border-radius: 8px; background: #fff; }
+.wp-fase { display: flex; align-items: center; gap: 8px; padding: 6px 9px; border-bottom: 1px solid var(--border); }
+.wp-fase:last-of-type { border-bottom: none; }
+.wp-fase-label { font-size: 12px; font-weight: 600; color: var(--dark); }
+.wp-fase-chip { font-size: 10px; font-weight: 700; border-radius: 6px; padding: 1px 7px; color: var(--muted); background: #f1f1ef; border: 1px solid var(--border); white-space: nowrap; }
+.wp-fase-chip.wp-fase-klaar { color: #1b7f3b; background: #e7f6ec; border-color: #bfe6cc; }
+.wp-fase-chip.wp-fase-bezig { color: #8a6d00; background: #fff2cc; border-color: #eadb9a; }
+.wp-fase-chip.wp-fase-fout { color: #a12622; background: #fdecec; border-color: #f2c4c2; }
+.wp-fase-spacer { flex: 1; }
+.wp-fase-btn { font-size: 11px; font-weight: 600; border: 1px solid var(--border); background: #fff; border-radius: 6px; padding: 2px 9px; cursor: pointer; color: var(--dark); white-space: nowrap; }
+.wp-fase-btn:hover:not(:disabled) { border-color: var(--orange); color: var(--orange-dark); }
+.wp-fase-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.wp-fase-check { display: flex; align-items: center; }
+.wp-fase-check input { accent-color: var(--orange); cursor: pointer; }
+.wp-fase-hint { padding: 6px 9px; font-size: 11px; color: var(--orange-dark); background: var(--orange-light); border-top: 1px solid var(--border); border-radius: 0 0 8px 8px; }
+.wp-fase-fouttekst { padding: 6px 9px; font-size: 11px; color: #a12622; }
+/* Kaart-chat (zelfde geheugen als de pagina-chat in Pagina's). */
+.wp-chat { margin: 6px 0 4px; }
+.wp-chat-toggle { font-size: 12px; font-weight: 600; color: var(--orange-dark); background: none; border: none; cursor: pointer; padding: 2px 0; }
+.wp-chat-body { border: 1px solid var(--border); border-radius: 8px; background: var(--gray-light); padding: 8px; }
+.wp-chat-msgs { max-height: 320px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+.wp-chat-leeg { font-size: 12px; padding: 4px 2px; }
+.wp-chat-vraag { align-self: flex-end; max-width: 85%; background: var(--orange-light); border: 1px solid var(--orange); border-radius: 8px; padding: 6px 9px; font-size: 12px; }
+.wp-chat-antwoord { align-self: stretch; background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font-size: 12px; line-height: 1.55; }
+.wp-chat-antwoord ul { margin: 4px 0 4px 16px; padding: 0; }
+.wp-chat-acties { margin-top: 6px; }
+.wp-chat-input { display: flex; gap: 6px; margin-top: 8px; }
+.wp-chat-input input { flex: 1; border: 1px solid var(--border); border-radius: 7px; padding: 6px 9px; font-size: 12px; font-family: inherit; }
+.wp-chat-input input:focus { outline: none; border-color: var(--orange); }
+/* Mail-modal v2: ontvanger-pills, e-mailveld, instructie en document-links. */
+.wp-mail-aud { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0 4px; }
+.wp-aud-pill { font-size: 11px; font-weight: 600; border: 1px solid var(--border); background: #fff; border-radius: 999px; padding: 3px 11px; cursor: pointer; color: var(--dark); }
+.wp-aud-pill.wp-aud-actief { color: var(--orange-dark); background: var(--orange-light); border-color: var(--orange); }
+.wp-mail-to { flex: 1; min-width: 180px; border: 1px solid var(--border); border-radius: 7px; padding: 5px 9px; font-size: 12px; font-family: inherit; }
+.wp-mail-to:focus { outline: none; border-color: var(--orange); }
+.wp-mail-links { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 4px 0; font-size: 11px; }
+.wp-mail-linkchip { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; cursor: pointer; background: #fff; }
+.wp-mail-linkchip input { accent-color: var(--orange); }
+.wp-mail-instrrij { display: flex; gap: 6px; margin: 4px 0 6px; }
+.wp-mail-instr { flex: 1; border: 1px solid var(--border); border-radius: 7px; padding: 5px 9px; font-size: 12px; font-family: inherit; }
+.wp-mail-instr:focus { outline: none; border-color: var(--orange); }
 .wp-card { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 8px 9px; cursor: grab; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04); }
 .wp-card:active { cursor: grabbing; }
 .wp-card.wp-klaar { opacity: 0.62; }

@@ -1,28 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { mdToHtml } from "../../../../lib/markdown";
 import { urlKey } from "../../../../lib/url-key";
+import WeekplanCard, { type WpTask, type WpPageInfo } from "./WeekplanCard";
 
-type Task = { id: number; thread: string; taak: string; toelichting: string; wie: string; url: string; taaktype: string; copyUrl: string; bronMail: string; weekYear: number; weekNo: number; status: string; sortOrder: number };
-// De pijplijn-stand van een pagina (uit de GET), voor de vinkjes op de kaart.
-type PageInfo = { url: string; live: boolean; strategie: boolean; analyse: boolean; blauwdruk: boolean; copy: boolean; next: string };
-
-// Bij welk taaktype hoort welk dashboard-tabblad (voor de deep-link "doe het hier").
-const TAB_FOR_TYPE: Record<string, { tab: string; label: string }> = {
-  meta: { tab: "meta", label: "Meta & CTR ↗" },
-  alt: { tab: "paginas", label: "Pagina's ↗" },
-  copy: { tab: "paginas", label: "Pagina's ↗" },
-  intern: { tab: "paginas", label: "Pagina's ↗" },
-  structured: { tab: "paginas", label: "Pagina's ↗" },
-  strategie: { tab: "paginas", label: "Pagina's ↗" },
-  pijplijn: { tab: "paginas", label: "Pagina's ↗" },
-  overig: { tab: "paginas", label: "Pagina's ↗" },
-};
 type Current = { year: number; week: number };
 
 const STATUS_NEXT: Record<string, string> = { gepland: "bezig", bezig: "klaar", klaar: "gepland" };
-const STATUS_LABEL: Record<string, string> = { gepland: "Gepland", bezig: "Bezig", klaar: "Klaar" };
 
 function shortUrl(url: string): string { try { const u = new URL(url); return (u.pathname + u.search) || "/"; } catch { return url; } }
 const dm = (d: Date) => d.toLocaleDateString("nl-NL", { day: "numeric", month: "short" });
@@ -47,20 +31,24 @@ function isoOf(d: Date): Current {
 }
 const keyOf = (year: number, week: number) => year * 100 + week;
 
-// Het weekplanning-bord: taken (uit de bird's eye-onderwerpen) verdeeld over
-// weekkolommen. De huidige week is gemarkeerd. Slepen verplaatst een taak naar
-// een andere week. Per taak: status, mailen naar je developer, pagina openen.
+// Het weekplanning-bord: projectkaarten (één per pagina) verdeeld over weekkolommen.
+// De huidige week is gemarkeerd. Slepen verplaatst een kaart naar een andere week.
+// In de open kaart: de 7 fases (starten, status, afvinken), chat en mailen.
 export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, clientName, clientEmail, reloadSignal }: { slug: string; onGoToPage?: (url: string) => void; onGoToTab?: (tab: string) => void; clientName?: string; clientEmail?: string; reloadSignal?: number }) {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [pages, setPages] = useState<Record<string, PageInfo>>({});
+  const [tasks, setTasks] = useState<WpTask[]>([]);
+  const [pages, setPages] = useState<Record<string, WpPageInfo>>({});
   const [current, setCurrent] = useState<Current | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [dragId, setDragId] = useState<number | null>(null);
   const [dropKey, setDropKey] = useState<number | null>(null);
   const [openCard, setOpenCard] = useState<number | null>(null);
-  // "Mail naar klant"-composer: de AI maakt van de "waarom" een klantvriendelijke
-  // uitleg; jij past 'm desgewenst aan en verstuurt via je mailclient.
-  const [mailFor, setMailFor] = useState<Task | null>(null);
+  // "Mail vanuit de kaart": de AI schrijft een concept uit de kaart-achtergrond;
+  // jij kiest de ontvanger, stuurt eventueel een instructie mee en verstuurt zelf.
+  const [mailFor, setMailFor] = useState<WpTask | null>(null);
+  const [mailAud, setMailAud] = useState<"klant" | "dev" | "anders">("klant");
+  const [mailTo, setMailTo] = useState("");
+  const [mailInstr, setMailInstr] = useState("");
+  const [mailLinks, setMailLinks] = useState<Record<string, boolean>>({});
   const [mailBusy, setMailBusy] = useState(false);
   const [mailErr, setMailErr] = useState("");
   const mailRef = useRef<HTMLDivElement>(null);
@@ -104,7 +92,7 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, clientName,
     setTasks((ts) => ts.map((t) => t.id === id ? { ...t, weekYear: year, weekNo: week } : t));
     await fetch("/api/admin/weekplan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, id, weekYear: year, weekNo: week }) }).catch(() => {});
   }
-  async function cycleStatus(t: Task) {
+  async function cycleStatus(t: WpTask) {
     const status = STATUS_NEXT[t.status] || "gepland";
     setTasks((ts) => ts.map((x) => x.id === t.id ? { ...x, status } : x));
     await fetch("/api/admin/weekplan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, id: t.id, status }) }).catch(() => {});
@@ -113,107 +101,79 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, clientName,
     setTasks((ts) => ts.filter((t) => t.id !== id));
     await fetch("/api/admin/weekplan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, id, delete: true }) }).catch(() => {});
   }
-  function mailDev(t: Task) {
-    let to = ""; try { to = localStorage.getItem("pingwin-dev-email") || ""; } catch { /* geen opslag */ }
-    const subject = `SEO-taak${t.url ? ` — ${shortUrl(t.url)}` : ""}`;
-    const body = `Hoi,\n\nKun je dit oppakken?\n\n${t.taak}${t.url ? `\n\nPagina: ${t.url}` : ""}\n\nDank!`;
-    window.location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+  // Beschikbare document-links voor de mail (uit de pijplijn van de pagina).
+  function docLinksFor(t: WpTask): { key: string; label: string; url: string }[] {
+    const p = t.url ? pages[urlKey(t.url)] : undefined;
+    const uit: { key: string; label: string; url: string }[] = [];
+    if (p?.links.analyse) uit.push({ key: "analyse", label: "Analyse-doc", url: p.links.analyse });
+    if (p?.links.blauwdruk) uit.push({ key: "blauwdruk", label: "Blauwdruk-doc", url: p.links.blauwdruk });
+    const copy = p?.links.copy || t.copyUrl;
+    if (copy) uit.push({ key: "copy", label: "Copy-doc", url: copy });
+    return uit;
   }
 
-  // "Mail naar klant": laat de AI een klantvriendelijke uitleg maken uit de "waarom"
-  // achter de taak. Jij past 'm desgewenst aan in de preview en verstuurt via je mail.
-  async function openMailToClient(t: Task) {
-    setMailFor(t); setMailErr(""); setMailBusy(true);
+  function openMail(t: WpTask, aud: "klant" | "dev") {
+    setMailFor(t); setMailAud(aud); setMailInstr(""); setMailErr(""); setMailLinks({});
+    let devTo = ""; try { devTo = localStorage.getItem("pingwin-dev-email") || ""; } catch { /* geen opslag */ }
+    setMailTo(aud === "klant" ? (clientEmail || "") : aud === "dev" ? devTo : "");
+    void generateMail(t, aud, "", {});
+  }
+
+  async function generateMail(t: WpTask, aud: "klant" | "dev" | "anders", instructie: string, gekozen: Record<string, boolean>) {
+    setMailBusy(true); setMailErr("");
     if (mailRef.current) mailRef.current.innerText = "";
+    const links = docLinksFor(t).filter((l) => gekozen[l.key]).map((l) => ({ label: l.label, url: l.url }));
     try {
-      const d = await fetch("/api/admin/task/explain", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, taak: t.taak, toelichting: t.toelichting, url: t.url }) }).then((r) => r.json());
+      const d = await fetch("/api/admin/task/explain", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, taak: t.taak, toelichting: t.toelichting, url: t.url, audience: aud, instructie, links }) }).then((r) => r.json());
       if (d?.ok && d.text) { if (mailRef.current) mailRef.current.innerText = d.text; }
       else setMailErr(d?.error || "Uitleg maken mislukt.");
     } catch { setMailErr("De assistent is niet bereikbaar."); } finally { setMailBusy(false); }
   }
-  function copyMailToClient() {
+
+  function copyMail() {
     const text = (mailRef.current?.innerText || "").trim();
     if (text) navigator.clipboard?.writeText(text).catch(() => {});
   }
-  function sendMailToClient() {
+  function sendMail() {
     const text = (mailRef.current?.innerText || "").trim();
     if (!text || !mailFor) return;
-    const to = (clientEmail || "").trim();
-    const subject = `Update van Pingwin${mailFor.url ? ` — ${shortUrl(mailFor.url)}` : ""}`;
+    const to = mailTo.trim();
+    if (mailAud === "dev" && to) { try { localStorage.setItem("pingwin-dev-email", to); } catch { /* geen opslag */ } }
+    const subject = mailAud === "dev" ? `SEO-taak${mailFor.url ? ` — ${shortUrl(mailFor.url)}` : ""}` : `Update van Pingwin${mailFor.url ? ` — ${shortUrl(mailFor.url)}` : ""}`;
     window.location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
-  }
-
-  function card(t: Task) {
-    const open = openCard === t.id;
-    const hasInfo = !!t.toelichting.trim();
-    return (
-      <div key={t.id} className={"wp-card wp-" + t.status + (open ? " wp-open" : "")} draggable onDragStart={() => setDragId(t.id)} onDragEnd={() => { setDragId(null); setDropKey(null); }}>
-        <div className={"wp-card-taak" + (hasInfo ? " wp-clickable" : "")} onClick={() => hasInfo && setOpenCard(open ? null : t.id)} title={hasInfo ? "Klik voor de volledige info" : undefined}>
-          {hasInfo && <span className="wp-caret">{open ? "▾" : "▸"}</span>}
-          {t.taak}
-        </div>
-        {open && hasInfo && <div className="wp-card-info md" dangerouslySetInnerHTML={{ __html: mdToHtml(t.toelichting) }} />}
-        {(() => {
-          // Pijplijn-stand van de pagina: vinkjes plus de volgende stap. Klik = naar
-          // precies deze pagina in Pagina's (daar gebeurt het werk).
-          const p = t.url ? pages[urlKey(t.url)] : undefined;
-          if (!p) return null;
-          const steps: [string, boolean][] = [["Strategie", p.strategie], ["Analyse", p.analyse], ["Blauwdruk", p.blauwdruk], ["Copy", p.copy]];
-          return (
-            <div className="wp-steps" title="Waar deze pagina staat in de pijplijn. Klik om verder te werken in Pagina's."
-              role={onGoToPage ? "button" : undefined} onClick={() => onGoToPage && onGoToPage(t.url)}>
-              {steps.map(([label, done]) => <span key={label} className={"wp-step" + (done ? " wp-step-done" : "")}>{done ? "✓ " : ""}{label}</span>)}
-              {p.next && <span className="wp-step wp-step-next">Volgende: {p.next}</span>}
-            </div>
-          );
-        })()}
-        {(() => {
-          const tab = TAB_FOR_TYPE[t.taaktype];
-          const anyLink = t.url || t.copyUrl || t.bronMail || (tab && onGoToTab);
-          if (!anyLink) return null;
-          return (
-            <div className="wp-card-links">
-              {t.url && <a className="wp-link" href={t.url} target="_blank" rel="noreferrer" title="De live pagina">{shortUrl(t.url)}</a>}
-              {t.copyUrl && <a className="wp-link" href={t.copyUrl} target="_blank" rel="noreferrer" title="De aangeleverde copy">Copy ↗</a>}
-              {t.bronMail && <a className="wp-link" href={t.bronMail} target="_blank" rel="noreferrer" title="De mail waar deze taak uit voortkomt">✉ bronmail</a>}
-              {tab && onGoToTab && <button type="button" className="wp-link wp-link-btn" title="Doe het hier in het dashboard" onClick={() => onGoToTab(tab.tab)}>{tab.label}</button>}
-            </div>
-          );
-        })()}
-        <div className="wp-card-foot">
-          <span className={"wp-wie " + (t.wie === "Dev" ? "wie-dev" : "wie-seo")}>{t.wie}</span>
-          <button type="button" className={"wp-status wp-status-" + t.status} onClick={() => cycleStatus(t)} title="Klik om de status te wisselen">{STATUS_LABEL[t.status] || t.status}</button>
-          <span className="wp-card-actions">
-            <button type="button" className="wp-act wp-act-klant" title="Mail naar klant: een klantvriendelijke uitleg van deze taak (wat we doen en waarom), die je kunt versturen." onClick={() => openMailToClient(t)}>Mail klant</button>
-            <button type="button" className="wp-act" title="Mail deze taak naar je developer/sitebouwer." onClick={() => mailDev(t)}>Dev ✉</button>
-            {t.url && onGoToPage && <button type="button" className="wp-act" title="Open de pagina in Pagina's: hier spar je verder en zet je de stappen (analyse, blauwdruk, copy)." onClick={() => onGoToPage(t.url)}>Pagina&rsquo;s ↗</button>}
-            <button type="button" className="wp-icon wp-del" title="Verwijderen" onClick={() => remove(t.id)}>×</button>
-          </span>
-        </div>
-      </div>
-    );
   }
 
   if (loaded && tasks.length === 0) {
     return (
       <div className="cockpit-card wp-empty">
         <div className="ck-section-head"><span>Weekplanning</span></div>
-        <div className="muted ov-hint">Nog geen taken. Vraag de bird&rsquo;s eye in een onderwerp: &ldquo;maak hier taken van&rdquo;, keur ze goed, en ze verschijnen hier per week.</div>
+        <div className="muted ov-hint">Nog geen kaarten. Vraag de bird&rsquo;s eye in een onderwerp om een planning en klik op &ldquo;Zet de taken in de weekplanning&rdquo;; de projectkaarten verschijnen hier per week.</div>
       </div>
     );
   }
 
+  const renderCard = (t: WpTask) => (
+    <WeekplanCard key={t.id} slug={slug} t={t} page={t.url ? pages[urlKey(t.url)] : undefined}
+      open={openCard === t.id}
+      onToggleOpen={() => setOpenCard(openCard === t.id ? null : t.id)}
+      onDragStart={() => setDragId(t.id)} onDragEnd={() => { setDragId(null); setDropKey(null); }}
+      onStatus={() => void cycleStatus(t)} onRemove={() => void remove(t.id)}
+      onMail={(aud) => openMail(t, aud)} onGoToPage={onGoToPage} onGoToTab={onGoToTab}
+      refreshBoard={() => void load()} />
+  );
+
   return (
     <div className="cockpit-card wp-wrap">
       <div className="ck-section-head"><span>Weekplanning</span></div>
-      <div className="muted ov-hint">Taken uit de onderwerpen, verdeeld over de weken. Sleep een taak naar een andere week.</div>
+      <div className="muted ov-hint">Projectkaarten uit de onderwerpen, verdeeld over de weken. Sleep een kaart naar een andere week; klap hem open om de fases te starten en af te vinken.</div>
       <div className="wp-board">
         {unplanned.length > 0 && (
           <div className={"wp-col wp-col-unplanned" + (dropKey === 0 ? " wp-drop" : "")}
             onDragOver={(e) => { e.preventDefault(); if (dragId != null) setDropKey(0); }}
             onDrop={() => { if (dragId != null) move(dragId, 0, 0); setDropKey(null); }}>
             <div className="wp-col-head"><span className="wp-col-wk">Ongepland</span></div>
-            <div className="wp-col-body">{unplanned.map(card)}</div>
+            <div className="wp-col-body">{unplanned.map(renderCard)}</div>
           </div>
         )}
         {columns.map((c) => (
@@ -224,7 +184,7 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, clientName,
               <span className="wp-col-wk">wk {c.week}{c.isCurrent ? " · nu" : ""}</span>
               <span className="wp-col-dates">{dm(c.monday)} – {dm(c.sunday)}</span>
             </div>
-            <div className="wp-col-body">{byKey(c.key).map(card)}</div>
+            <div className="wp-col-body">{byKey(c.key).map(renderCard)}</div>
           </div>
         ))}
       </div>
@@ -233,18 +193,44 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, clientName,
         <div className="wp-mail-overlay" onClick={(e) => { if (e.target === e.currentTarget) setMailFor(null); }}>
           <div className="wp-mail-modal">
             <div className="wp-mail-head">
-              <span className="wp-mail-title">Mail naar klant{clientName ? ` · ${clientName}` : ""}</span>
+              <span className="wp-mail-title">Mail vanuit deze kaart</span>
               <button type="button" className="wp-icon wp-del" title="Sluiten" onClick={() => setMailFor(null)}>×</button>
             </div>
-            <div className="wp-mail-sub muted">Uitleg van: {mailFor.taak.replace(/<[^>]*>/g, "").trim()}</div>
-            <div className="wp-mail-hint muted">De AI maakt een klantvriendelijke uitleg uit de achtergrond van deze taak. Pas 'm gerust aan voor je verstuurt.</div>
+            <div className="wp-mail-sub muted">Over: {mailFor.taak.replace(/<[^>]*>/g, "").trim()}</div>
+            <div className="wp-mail-aud">
+              {([["klant", `Klant${clientName ? ` (${clientName})` : ""}`], ["dev", "Developer"], ["anders", "Anders"]] as const).map(([aud, label]) => (
+                <button key={aud} type="button" className={"wp-aud-pill" + (mailAud === aud ? " wp-aud-actief" : "")}
+                  onClick={() => {
+                    setMailAud(aud);
+                    let devTo = ""; try { devTo = localStorage.getItem("pingwin-dev-email") || ""; } catch { /* geen opslag */ }
+                    setMailTo(aud === "klant" ? (clientEmail || "") : aud === "dev" ? devTo : "");
+                    void generateMail(mailFor, aud, mailInstr, mailLinks);
+                  }}>{label}</button>
+              ))}
+              <input className="wp-mail-to" type="email" value={mailTo} onChange={(e) => setMailTo(e.target.value)} placeholder="E-mailadres ontvanger" />
+            </div>
+            {docLinksFor(mailFor).length > 0 && (
+              <div className="wp-mail-links">
+                <span className="muted">Meesturen:</span>
+                {docLinksFor(mailFor).map((l) => (
+                  <label key={l.key} className="wp-mail-linkchip">
+                    <input type="checkbox" checked={!!mailLinks[l.key]} onChange={(e) => { const nxt = { ...mailLinks, [l.key]: e.target.checked }; setMailLinks(nxt); void generateMail(mailFor, mailAud, mailInstr, nxt); }} />
+                    {l.label}
+                  </label>
+                ))}
+              </div>
+            )}
+            <div className="wp-mail-instrrij">
+              <input className="wp-mail-instr" value={mailInstr} onChange={(e) => setMailInstr(e.target.value)} placeholder="Wat moet er in de mail? (optioneel, bijv. 'leg kort uit waar dit vandaan komt')"
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void generateMail(mailFor, mailAud, mailInstr, mailLinks); } }} />
+              <button type="button" className="ghost-btn small" disabled={mailBusy} onClick={() => void generateMail(mailFor, mailAud, mailInstr, mailLinks)}>Opnieuw</button>
+            </div>
             {mailErr && <div className="login-error" style={{ margin: "6px 0" }}>{mailErr}</div>}
-            <div className="wp-mail-edit" contentEditable suppressContentEditableWarning ref={mailRef} data-placeholder="De uitleg verschijnt hier…" style={{ minHeight: 160, opacity: mailBusy ? 0.5 : 1 }} />
-            {mailBusy && <div className="muted" style={{ marginTop: 6 }}>Uitleg aan het schrijven…</div>}
+            <div className="wp-mail-edit" contentEditable suppressContentEditableWarning ref={mailRef} data-placeholder="De mail verschijnt hier…" style={{ minHeight: 160, opacity: mailBusy ? 0.5 : 1 }} />
+            {mailBusy && <div className="muted" style={{ marginTop: 6 }}>Mail aan het schrijven…</div>}
             <div className="wp-mail-foot">
-              <button type="button" className="ghost-btn small" onClick={() => openMailToClient(mailFor)} disabled={mailBusy} title="Laat de AI de uitleg opnieuw schrijven">Opnieuw</button>
-              <button type="button" className="ghost-btn small" onClick={copyMailToClient} disabled={mailBusy}>Kopieer</button>
-              <button type="button" className="primary-btn small" onClick={sendMailToClient} disabled={mailBusy} title={clientEmail ? `Open je mail, gericht aan ${clientEmail}` : "Open je mail (vul zelf het klant-adres in)"}>Mail naar klant</button>
+              <button type="button" className="ghost-btn small" onClick={copyMail} disabled={mailBusy}>Kopieer</button>
+              <button type="button" className="primary-btn small" onClick={sendMail} disabled={mailBusy} title={mailTo ? `Open je mail, gericht aan ${mailTo}` : "Open je mail (vul eerst de ontvanger in)"}>Versturen</button>
             </div>
           </div>
         </div>

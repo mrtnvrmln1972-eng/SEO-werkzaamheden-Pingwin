@@ -1,5 +1,6 @@
 import { sql, ensureSchema } from "./db";
 import { getClientBySlug } from "./clients";
+import { urlKey } from "./url-key";
 import { getOrgData, type OrgData } from "./org-data";
 import { getPagePlan, getPageDriveFolder } from "./site-urls";
 import { measurePage } from "./page-measure";
@@ -71,6 +72,16 @@ export async function getPageSchema(slug: string, url: string): Promise<PageSche
     error: (r.error as string) || "",
     updatedAt: r.updated_at ? new Date(r.updated_at as string).toISOString() : null,
   };
+}
+
+// Schema-status voor alle pagina's van een klant in één query (projectkaarten).
+export async function getPageSchemaStatusAll(slug: string): Promise<Record<string, string>> {
+  await ensureSchema();
+  await ensureTable();
+  const { rows } = await sql`SELECT url, status FROM client_page_schema WHERE client_slug = ${slug}`;
+  const out: Record<string, string> = {};
+  for (const r of rows) out[urlKey(String(r.url))] = String(r.status || "idle");
+  return out;
 }
 
 async function setState(slug: string, url: string, status: string, patch: { result?: string; jsonld?: string; warnings?: string[]; error?: string; pluginTypes?: string[] } = {}): Promise<void> {

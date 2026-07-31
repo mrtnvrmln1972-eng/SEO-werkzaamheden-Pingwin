@@ -167,6 +167,22 @@ export async function getStepsEverDoneAll(slug: string): Promise<Record<string, 
   return out;
 }
 
+// Site-brede spiegel van getStepLinks: de meest recente documentlink per stap voor
+// ALLE pagina's van een klant in één query (voor de projectkaarten in het bord).
+export async function getStepLinksAll(slug: string): Promise<Record<string, { analyse: string; blauwdruk: string; copy: string }>> {
+  await ensureSchema();
+  await ensureRunTable();
+  const { rows } = await sql`
+    SELECT url,
+      (array_agg(analyse_link   ORDER BY id DESC) FILTER (WHERE analyse_link   IS NOT NULL))[1] AS analyse,
+      (array_agg(blauwdruk_link ORDER BY id DESC) FILTER (WHERE blauwdruk_link IS NOT NULL))[1] AS blauwdruk,
+      (array_agg(copy_link      ORDER BY id DESC) FILTER (WHERE copy_link      IS NOT NULL))[1] AS copy
+    FROM page_doc_runs WHERE client_slug = ${slug} GROUP BY url`;
+  const out: Record<string, { analyse: string; blauwdruk: string; copy: string }> = {};
+  for (const r of rows) out[urlKey(String(r.url))] = { analyse: (r.analyse as string) || "", blauwdruk: (r.blauwdruk as string) || "", copy: (r.copy as string) || "" };
+  return out;
+}
+
 // ── Cron-worker: verwerk wachtende runs, stap voor stap ──
 export async function processQueuedRuns(): Promise<{ processed: number; picked: number[] }> {
   await ensureSchema();

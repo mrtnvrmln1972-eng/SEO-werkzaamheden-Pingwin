@@ -246,6 +246,20 @@ async function init(): Promise<void> {
   await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS copy_url TEXT`;
   await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS bron_mail TEXT`;
 
+  // Handmatige fase-vinkjes per pagina voor de projectkaart in de weekplanning.
+  // Een rij hier wint van de afgeleide stand (beide kanten op: afvinken en terugzetten).
+  // Fase: strategie | gelieerde | analyse | blauwdruk | copy | bouw | structured.
+  await sql`
+    CREATE TABLE IF NOT EXISTS page_phase_marks (
+      client_slug TEXT NOT NULL,
+      url_key     TEXT NOT NULL,
+      fase        TEXT NOT NULL,
+      done        BOOLEAN NOT NULL DEFAULT true,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (client_slug, url_key, fase)
+    )`;
+
   // Werkzaamheden per klant, ín het dashboard (alternatief voor de Google Sheet).
   // SEO- en Dev-taken samen; per maand, met uren, status, link en zichtbaarheid
   // voor het klant-dashboard. Volgorde via sort_order (slepen).

@@ -10,7 +10,9 @@
 
 import { sql } from "./db";
 import { getClientBySlug } from "./clients";
-import { getStepsEverDoneAll } from "./page-doc-run";
+import { getStepsEverDoneAll, getStepLinksAll } from "./page-doc-run";
+import { getPageSchemaStatusAll } from "./page-schema";
+import { getPhaseMarksAll } from "./phase-marks";
 import { urlKey } from "./url-key";
 import { getClientUrls } from "./site-urls";
 import { getGscPageOpportunities } from "./google";
@@ -214,32 +216,48 @@ export function nextStep(p: PageWork, opp: { level: string; label: string; posit
   return { label: "Ontwikkel", actie: "pijplijn_starten", steps: ["analyse", "blauwdruk", "copy"], zin: "Nog geen strategie voor deze pagina. Ontwikkel hem." };
 }
 
-// ── Pijplijn-stand per pagina voor het weekplanning-bord ──
-// Eén call levert per URL de vinkjes (strategie/analyse/blauwdruk/copy) en de
-// volgende stap, zodat elke pagina-kaart live toont waar de pagina staat.
-// Bewust zonder GSC-call: de GET van het bord moet snel blijven.
+// ── Pijplijn-stand per pagina voor het weekplanning-bord (projectkaarten) ──
+// Eén call levert per URL de zeven fases (met handmatige vinkjes die winnen van
+// de afgeleide stand), de documentlinks en de volgende stap. Bewust zonder
+// GSC-call: de GET van het bord moet snel blijven. Met onlyKeys wordt de
+// uitkomst begrensd tot de pagina's die echt in het bord staan (payload).
 export type WeekplanPageInfo = {
   url: string; live: boolean;
-  strategie: boolean; analyse: boolean; blauwdruk: boolean; copy: boolean;
+  strategie: boolean; gelieerde: boolean; analyse: boolean; blauwdruk: boolean; copy: boolean;
+  bouw: boolean; structured: boolean; structuredStatus: string;
   next: string;
+  links: { analyse: string; blauwdruk: string; copy: string };
 };
 
-export async function getWeekplanPages(slug: string): Promise<Record<string, WeekplanPageInfo>> {
-  const [pages, everDone] = await Promise.all([
+export async function getWeekplanPages(slug: string, onlyKeys?: Set<string>): Promise<Record<string, WeekplanPageInfo>> {
+  const [pages, everDone, links, schemaStatus, marks] = await Promise.all([
     getPageWorkStatus(slug),
     getStepsEverDoneAll(slug).catch(() => ({} as Record<string, { analyse: boolean; blauwdruk: boolean; copy: boolean }>)),
+    getStepLinksAll(slug).catch(() => ({} as Record<string, { analyse: string; blauwdruk: string; copy: string }>)),
+    getPageSchemaStatusAll(slug).catch(() => ({} as Record<string, string>)),
+    getPhaseMarksAll(slug).catch(() => ({} as Record<string, Partial<Record<string, boolean>>>)),
   ]);
   const out: Record<string, WeekplanPageInfo> = {};
   for (const p of pages) {
     const k = urlKey(p.url);
+    if (onlyKeys && !onlyKeys.has(k)) continue;
     const done = everDone[k] || { analyse: false, blauwdruk: false, copy: false };
+    const m: Partial<Record<string, boolean>> = marks[k] || {};
+    const sst = schemaStatus[k] || "idle";
+    // Handmatig vinkje wint, beide kanten op; anders de afgeleide stand.
+    const fase = (naam: string, afgeleid: boolean) => (typeof m[naam] === "boolean" ? !!m[naam] : afgeleid);
     out[k] = {
       url: p.url, live: p.live,
-      strategie: p.hasPlan,
-      analyse: p.docs.includes("analyse") || done.analyse,
-      blauwdruk: p.docs.includes("blauwdruk") || done.blauwdruk,
-      copy: p.docs.includes("copy") || done.copy,
+      strategie: fase("strategie", p.hasPlan),
+      gelieerde: fase("gelieerde", p.hasClusterAdvice),
+      analyse: fase("analyse", p.docs.includes("analyse") || done.analyse),
+      blauwdruk: fase("blauwdruk", p.docs.includes("blauwdruk") || done.blauwdruk),
+      copy: fase("copy", p.docs.includes("copy") || done.copy),
+      bouw: fase("bouw", false),
+      structured: fase("structured", sst === "done"),
+      structuredStatus: sst,
       next: nextStep(p, { level: "none", label: "", position: null }).label,
+      links: links[k] || { analyse: "", blauwdruk: "", copy: "" },
     };
   }
   return out;
