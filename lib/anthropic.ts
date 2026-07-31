@@ -202,3 +202,35 @@ export async function callClaudeAgentic(system: string, messages: ChatMsg[], too
   await logClaudeUsage(ctx, u);
   return text.trim() || "Ik heb de analyse gedaan, maar kon het antwoord niet netjes afronden (waarschijnlijk was de vraag in één keer te breed). Stel hem iets gerichter, bijvoorbeeld één doel of één set pagina's, dan pak ik het meteen goed op.";
 }
+
+// Forceert ÉÉN specifieke tool-aanroep (tool_choice) en geeft de ruwe input (JSON)
+// terug. Zo hangt een gegarandeerde, gestructureerde uitkomst (bijv. de weektaken)
+// niet af van of het model uit zichzelf de tool aanroept. Geen agentische loop.
+export async function callClaudeForcedTool(
+  system: string,
+  messages: ChatMsg[],
+  tool: ToolDef,
+  ctx?: UsageCtx,
+  maxTokens = 3000,
+): Promise<Record<string, unknown> | null> {
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) throw new Error("ANTHROPIC_API_KEY ontbreekt (voeg hem toe in Vercel).");
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+    body: JSON.stringify({
+      model: MODEL,
+      max_tokens: maxTokens,
+      system: systemBlocks(system),
+      messages: messages.map((m) => ({ role: m.role, content: m.content })),
+      tools: [tool],
+      tool_choice: { type: "tool", name: tool.name },
+    }),
+  });
+  if (!res.ok) { const t = await res.text().catch(() => ""); throw new Error(`Claude-fout ${res.status}: ${t.slice(0, 300)}`); }
+  const j = await res.json();
+  await logClaudeUsage(ctx, j.usage);
+  const content: Block[] = j.content || [];
+  const tu = content.find((c) => c.type === "tool_use" && c.name === tool.name);
+  return tu?.input || null;
+}

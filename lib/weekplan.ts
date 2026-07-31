@@ -50,6 +50,13 @@ export async function addWeekplanTasks(slug: string, thread: string, tasks: { ta
   for (const t of tasks) {
     const taak = (t.taak || "").trim();
     if (!taak) continue;
+    // Dedup: dezelfde taak in dezelfde week voor deze klant niet nog eens toevoegen
+    // (voorkomt stille dubbele bord-rijen bij herhaald doorzetten van een voorstel-kaart).
+    const { rows: dup } = await sql`
+      SELECT 1 FROM client_weekplan
+      WHERE client_slug = ${slug} AND week_year = ${t.week.year} AND week_no = ${t.week.week}
+        AND lower(taak) = lower(${taak.slice(0, 400)}) LIMIT 1`;
+    if (dup.length) continue;
     const wie = /dev/i.test(t.wie || "") ? "Dev" : "SEO";
     const url = (t.url || "").trim().slice(0, 400) || null;
     const toel = (t.toelichting || "").trim().slice(0, 4000) || null;

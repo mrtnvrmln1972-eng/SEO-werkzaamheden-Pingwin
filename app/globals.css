@@ -2178,6 +2178,7 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .tvk-pill { flex: none; border: 1px solid #f2c9b0; background: var(--orange-light); color: var(--orange-dark); cursor: pointer; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
 .tvk-pill:hover { background: var(--orange); color: #fff; border-color: var(--orange); }
 .tvk-pill.tvk-pill-done { background: #dcf5e3; color: #1c7a3f; border-color: #cfe9d6; cursor: default; }
+.tvk-pill.tvk-pill-err { background: #fdecec; color: #b3261e; border-color: #f3c2bf; }
 .tvk-pill:disabled { cursor: default; }
 .tvk-url { display: inline-block; margin-top: 4px; color: var(--orange-dark); text-decoration: underline; font-size: 11.5px; }
 .tvk-why { margin-top: 6px; color: var(--gray); font-size: 12px; line-height: 1.45; border-left: 2px solid var(--border); padding-left: 8px; }

@@ -39,18 +39,20 @@ export default function ActionCard({ action, slug, thread, onExecuted, onGoToPag
   const [copied, setCopied] = useState(false);
   const [addedSet, setAddedSet] = useState<Set<number>>(new Set()); // welke voorstel-taken al toegevoegd zijn
   const [addBusy, setAddBusy] = useState<number | null>(null);
+  const [addErr, setAddErr] = useState<number | null>(null); // welke taak faalde bij toevoegen
   const editRef = useRef<HTMLDivElement>(null);
   const isWeekplan = action.type === "weekplan_taken";
 
   // Voeg één voorgestelde taak toe aan de weekplanning (per taak, niet in bulk).
   async function addOne(i: number, t: NonNullable<Action["taken"]>[number]) {
     if (addBusy !== null || addedSet.has(i)) return;
-    setAddBusy(i);
+    setAddBusy(i); setAddErr(null);
     try {
       const r = await fetch("/api/admin/weekplan/add", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread, taak: t.taak, toelichting: t.toelichting, wie: t.wie, url: t.url, week: t.week, taaktype: t.taaktype, bronMail: t.bronMail }) });
       const d = await r.json();
       if (d.ok) { setAddedSet((s) => new Set(s).add(i)); onWeekplanChanged?.(); }
-    } catch { /* stil */ } finally { setAddBusy(null); }
+      else setAddErr(i);
+    } catch { setAddErr(i); } finally { setAddBusy(null); }
   }
   const editable = action.type === "profiel_bijwerken" || action.type === "strategie_bepalen";
   const done = !!action.executed;
@@ -116,8 +118,8 @@ export default function ActionCard({ action, slug, thread, onExecuted, onGoToPag
                       <div className="tvk-top">
                         <span className={"tvk-wie " + (t.wie === "Dev" ? "wie-dev" : "wie-seo")}>{t.wie || "SEO"}</span>
                         <span className="tvk-taak">{t.taak}</span>
-                        <button type="button" className={"tvk-pill" + (added ? " tvk-pill-done" : "") + (b ? " busy" : "")} disabled={b || added} onClick={() => addOne(i, t)} title="Kopieer deze taak naar de weekplanning">
-                          {added ? "✓ Toegevoegd" : b ? "…" : "→ Weekplanning"}
+                        <button type="button" className={"tvk-pill" + (added ? " tvk-pill-done" : "") + (b ? " busy" : "") + (addErr === i ? " tvk-pill-err" : "")} disabled={b || added} onClick={() => addOne(i, t)} title={addErr === i ? "Toevoegen mislukt, klik om opnieuw te proberen" : "Kopieer deze taak naar de weekplanning"}>
+                          {added ? "✓ Toegevoegd" : b ? "…" : addErr === i ? "Mislukt, opnieuw" : "→ Weekplanning"}
                         </button>
                       </div>
                       <div className="tvk-links">

@@ -6,7 +6,7 @@ import { googleStatus, getGscForClient, getGscKeywordTrend, getGscForPage } from
 import { measurePage } from "./page-measure";
 import { metaVerdictText } from "./meta-rules";
 import { getUrlOrganicKeywords, getSerpOverview, getAhrefsTopPages, ahrefsConfigured } from "./ahrefs";
-import { callClaudeAgentic, callClaude, LIGHT_MODEL, type ToolDef, type ToolRunner } from "./anthropic";
+import { callClaudeAgentic, callClaude, callClaudeForcedTool, LIGHT_MODEL, type ToolDef, type ToolRunner } from "./anthropic";
 import { sheetCsvUrl, parseCSV, structureData, MAAND_VOLGORDE } from "./sheet";
 import { getFocus } from "./focus";
 import { buildOverview, overviewToText, getPageWorkStatus, pageWorkStatusToText } from "./overview";
@@ -576,6 +576,41 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
     const collected: ProposedAction[] = [];
     const { tools, run } = isOverview ? overviewTools(client, base, collected) : base;
     const answer = await callClaudeAgentic(system, apiMessages as { role: "user" | "assistant"; content: string }[], tools, run, isOverview ? 12 : 6, isOverview ? 3200 : 2000, { slug, action: isOverview ? "overzicht-chat" : isAds ? "ads-chat" : "projectchat" });
+
+    // GEGARANDEERDE KAARTEN (deterministisch): de taak-kaarten mogen niet afhangen van of
+    // het model uit zichzelf de tool aanriep. Vroeg Maarten om een planning/taken én zitten
+    // er nog geen weekplan-taken in 'collected', dan forceren we ze met een aparte
+    // tool_choice-aanroep, gevoed door de zojuist gegeven analyse + de volledige context.
+    if (isOverview) {
+      const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content || "";
+      const planningIntent = /\b(planning|weekplan|weekplanning|taken van|maak.*taken|hier taken|oppakken|werklijst|takenlijst|to.?do|aan de slag)\b/i.test(lastUser);
+      const hasWeekplan = collected.some((a) => a.type === "weekplan_taken");
+      if (planningIntent && !hasWeekplan && answer && answer.trim()) {
+        try {
+          const forceTool: ToolDef = {
+            name: "weekplan_taken",
+            description: "Zet de concrete weektaken uit de analyse in de weekplanning.",
+            input_schema: { type: "object", properties: { taken: { type: "array", items: { type: "object", properties: {
+              taak: { type: "string", description: "Korte, concrete taaktitel (één regel), geen 'Week X' erin." },
+              week: { type: "integer", description: "1 = deze week, 2 = volgende, enzovoort. Realistisch verdelen." },
+              info: { type: "string", description: "De VOLLEDIGE achtergrond: waar komt het vandaan (bijv. mail van 30 juli), welke pagina/links, hoe het zich verhoudt tot andere pagina's, verwachte impact. Nette leesbare tekst met korte kopregels en '-'-bullets." },
+              wie: { type: "string", enum: ["SEO", "Dev"] },
+              url: { type: "string", description: "De pagina waar de taak over gaat (pad of volledige URL)." },
+              taaktype: { type: "string", enum: ["meta", "alt", "copy", "intern", "strategie", "pijplijn", "structured", "overig"] },
+              bronMail: { type: "string", description: "Optioneel: de webLink van de bronmail (staat bij RECENTE E-MAILS als 'link: ...')." },
+            }, required: ["taak", "week"] } } }, required: ["taken"] },
+          };
+          const forceSystem =
+            `Je bent de Pingwin bird's eye-strateeg voor ${client.name}. Hieronder de volledige context en de analyse die je zojuist aan Maarten gaf. Zet de concrete WEEKTAKEN die daaruit volgen om via het gereedschap 'weekplan_taken'. Behapbaar en op prioriteit (afspraken met de klant, mail-opvolging, belangrijke/te bouwen pagina's, laaghangend fruit), realistisch verdeeld over de komende weken. Geef per taak de volledige achtergrond in 'info', met url en taaktype. Verzin geen cijfers; gebruik alleen wat in de context/analyse staat.\n\n--- OVERZICHT-CONTEXT ---\n${context}\n\n--- JOUW ANALYSE ---\n${answer}`;
+          const input = await callClaudeForcedTool(forceSystem, [{ role: "user", content: "Zet de concrete weektaken neer via het gereedschap 'weekplan_taken'." }], forceTool, { slug, action: "overzicht-weekplan" }, 3500);
+          if (input) {
+            const v = validateAction({ type: "weekplan_taken", ...(input as Record<string, unknown>) }, client.domain || "", `a${Date.now().toString(36)}_wp`);
+            if (v) collected.push(v);
+          }
+        } catch { /* forceren mag de chat nooit breken */ }
+      }
+    }
+
     const finalAnswer = answer || "(geen antwoord)";
     const assistantMsg: ChatMessage = collected.length ? { role: "assistant", content: finalAnswer, actions: collected } : { role: "assistant", content: finalAnswer };
     await saveChatHistory(slug, thread, [...messages, assistantMsg]);
