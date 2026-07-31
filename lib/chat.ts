@@ -522,7 +522,13 @@ export async function weekplanFromAnswer(slug: string, answer: string, thread = 
   const client = await getClientBySlug(slug);
   if (!client) return { ok: false, added: 0, error: "Klant niet gevonden." };
   if (!answer || !answer.trim()) return { ok: false, added: 0, error: "Geen antwoord om taken uit te halen." };
-  const context = await buildOverviewContext(client).catch(() => "");
+  // De taken staan al concreet in het antwoord; de context is alleen URL-/achtergrondhulp.
+  // Begrens het verzamelen op 20 seconden, zodat een trage bron (GSC, mail, sheet) de knop
+  // nooit tegen de route-timeout aan kan duwen. Bij overschrijding: gewoon zonder context.
+  const context = await Promise.race([
+    buildOverviewContext(client).catch(() => ""),
+    new Promise<string>((resolve) => setTimeout(() => resolve(""), 20000)),
+  ]);
   const actie = await generateWeekplanActie(client, context, answer, slug).catch(() => null);
   if (!actie || !actie.taken || !actie.taken.length) return { ok: false, added: 0, error: "Kon geen concrete taken uit dit antwoord halen. Probeer het opnieuw." };
   const result = await executeAction(slug, actie, thread);

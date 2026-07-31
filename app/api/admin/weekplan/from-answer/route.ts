@@ -4,7 +4,7 @@ import { guardSlug } from "../../../../../lib/admin-scope";
 import { weekplanFromAnswer } from "../../../../../lib/chat";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 function admin(req: NextRequest): boolean {
   return verifyAdminSession(req.cookies.get(ADMIN_COOKIE)?.value);

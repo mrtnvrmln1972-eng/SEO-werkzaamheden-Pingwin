@@ -195,12 +195,17 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
   async function makeTasks(idx: number, content: string, thread: string) {
     if (mkBusy !== null) return;
     setMkBusy(idx); setMkMsg((m) => ({ ...m, [idx]: "" }));
+    let status = 0;
     try {
       const r = await fetch("/api/admin/weekplan/from-answer", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread, answer: content }) });
+      status = r.status;
       const d = await r.json();
       if (d.ok && d.added) { setMkMsg((m) => ({ ...m, [idx]: `✓ ${d.added} ${d.added === 1 ? "taak" : "taken"} in de weekplanning gezet` })); onWeekplanChanged?.(); }
-      else setMkMsg((m) => ({ ...m, [idx]: d.error || "Kon geen taken maken." }));
-    } catch { setMkMsg((m) => ({ ...m, [idx]: "Kon geen taken maken." })); } finally { setMkBusy(null); }
+      else setMkMsg((m) => ({ ...m, [idx]: d.error || `Kon geen taken maken (server gaf status ${status}). Probeer het nog een keer.` }));
+    } catch {
+      const uitleg = status === 504 || status === 0 ? "waarschijnlijk duurde het te lang" : `server gaf status ${status}`;
+      setMkMsg((m) => ({ ...m, [idx]: `Kon geen taken maken (${uitleg}). Probeer het nog een keer.` }));
+    } finally { setMkBusy(null); }
   }
 
   function deleteMessage(idx: number) {
