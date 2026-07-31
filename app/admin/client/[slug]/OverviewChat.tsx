@@ -2,23 +2,13 @@
 
 import { useState, useRef, useEffect } from "react";
 import ActionCard, { type Action } from "./ActionCard";
+import { linkifyHtml as linkify } from "../../../../lib/linkify";
 
 type Msg = { role: "user" | "assistant"; content: string; actions?: Action[] };
 type Topic = { thread: string; count: number; title: string; summary: string; done: boolean };
 
-// Maakt kale URL's én kale paden/slugs (bijv. /hovenier/etten-leur/) automatisch
-// klikbaar naar de live site, zonder bestaande links dubbel te linken. Werkt op de
-// gerenderde HTML: alleen tekst buiten tags en bestaande <a>-links wordt aangeraakt.
-function linkify(html: string, domain: string): string {
-  const base = (domain || "").replace(/^https?:\/\//i, "").replace(/\/+$/, "");
-  const parts = html.split(/(<a\b[^>]*>[\s\S]*?<\/a>|<[^>]+>)/gi);
-  return parts.map((seg, i) => {
-    if (i % 2 === 1 || !seg) return seg; // een tag of bestaande link: niet aanraken
-    let s = seg.replace(/(https?:\/\/[^\s<>"()]+[^\s<>"().,;:!?])/g, (m) => `<a href="${m}" target="_blank" rel="noreferrer">${m}</a>`);
-    if (base) s = s.replace(/(^|[\s(>])(\/[a-z][a-z0-9-]*(?:\/[a-z0-9-]+)*\/)/gi, (_m, pre, path) => `${pre}<a href="https://${base}${path}" target="_blank" rel="noreferrer">${path}</a>`);
-    return s;
-  }).join("");
-}
+// Slugs/URL's klikbaar maken: gedeelde bron in lib/linkify.ts (zelfde gedrag als
+// voorheen, nu herbruikbaar voor de projectkaarten en andere output-plekken).
 
 // Lichte Markdown → HTML (kopjes, bullets, vet, links, tabellen). Zelfde regels
 // als de zwevende chat, zodat antwoorden overal netjes renderen. Slugs en URL's

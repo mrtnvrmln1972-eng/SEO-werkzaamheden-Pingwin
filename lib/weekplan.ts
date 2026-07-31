@@ -84,6 +84,8 @@ export async function addWeekplanTasks(slug: string, thread: string, tasks: { ta
       const had = new Set(bestaand.toelichting.split("\n").map(lineKey).filter(Boolean));
       had.add(lineKey(bestaand.taak));
       const nieuw: string[] = [];
+      // De nieuwe taaktitel alleen als bullet toevoegen als hij echt iets nieuws
+      // zegt (geen herhaling van de kaarttitel, dat is ruis in het info-blok).
       if (!had.has(lineKey(taak))) { nieuw.push(`- ${taak}`); had.add(lineKey(taak)); }
       for (const regel of (toel || "").split("\n")) {
         const k = lineKey(regel);

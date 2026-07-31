@@ -181,7 +181,8 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, clientName,
             onDragOver={(e) => { e.preventDefault(); if (dragId != null) setDropKey(c.key); }}
             onDrop={() => { if (dragId != null) move(dragId, c.year, c.week); setDropKey(null); }}>
             <div className="wp-col-head">
-              <span className="wp-col-wk">wk {c.week}{c.isCurrent ? " · nu" : ""}</span>
+              <span className="wp-col-wk">Week {c.week}</span>
+              {c.isCurrent && <span className="wp-col-nu">nu</span>}
               <span className="wp-col-dates">{dm(c.monday)} – {dm(c.sunday)}</span>
             </div>
             <div className="wp-col-body">{byKey(c.key).map(renderCard)}</div>

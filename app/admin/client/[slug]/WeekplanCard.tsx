@@ -8,6 +8,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { mdToHtml } from "../../../../lib/markdown";
+import { cardInfoHtml } from "../../../../lib/card-info";
+import { linkifyHtml } from "../../../../lib/linkify";
 import { urlKey } from "../../../../lib/url-key";
 
 export type WpTask = { id: number; thread: string; taak: string; toelichting: string; wie: string; url: string; taaktype: string; copyUrl: string; bronMail: string; weekYear: number; weekNo: number; status: string; sortOrder: number };
@@ -219,15 +221,21 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
   const tab0 = TAB_FOR_TYPE[t.taaktype];
   const tab = tab0 && (tab0.tab !== "paginas" || t.url) ? tab0 : undefined;
   const anyLink = t.url || t.copyUrl || t.bronMail || (tab && onGoToTab);
+  // Titel en subtitel splitsen: "Ontwikkel /pad/ (copy, bouw, ...)" leest rustiger
+  // met het haakjes-deel als eigen regel eronder (stijl weekplanner-voorbeeld).
+  const titelMatch = /^(.*?)\s*(\([^()]{3,}\))\s*$/.exec(t.taak);
+  const titel = titelMatch ? titelMatch[1] : t.taak;
+  const subtitel = titelMatch ? titelMatch[2] : "";
 
   return (
     <div className={"wp-card wp-" + t.status + (open ? " wp-open" : "")} draggable onDragStart={onDragStart} onDragEnd={onDragEnd}>
       <div className="wp-card-taak wp-clickable" onClick={onToggleOpen} title={open ? "Klik om dicht te klappen" : "Klik voor de fases, info en chat"}>
         <span className="wp-caret">{open ? "▾" : "▸"}</span>
-        {t.taak}
+        {titel}
       </div>
+      {subtitel && <div className="wp-card-sub wp-clickable" onClick={onToggleOpen}>{subtitel}</div>}
 
-      {open && hasInfo && <div className="wp-card-info md" dangerouslySetInnerHTML={{ __html: mdToHtml(t.toelichting) }} />}
+      {open && hasInfo && <div className="wp-card-info wp-info-net" dangerouslySetInnerHTML={{ __html: cardInfoHtml(t.toelichting, t.url) }} />}
 
       {/* Dichtgeklapt: compacte fase-chips. Klik = naar de pagina in Pagina's. */}
       {!open && page && (
@@ -239,6 +247,7 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
       )}
 
       {/* Open: de hele cyclus verticaal, per fase status + start + vinkje. */}
+      {open && page && <div className="wp-sectie-label">Fases</div>}
       {open && page && (
         <div className="wp-fases">
           {FASEN.map((f) => {
@@ -274,7 +283,7 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
                 {msgs.length === 0 && !chatBusy && <div className="muted wp-chat-leeg">Stel een vraag of spar over deze pagina. De kaart-achtergrond gaat automatisch mee als context.</div>}
                 {msgs.map((m, i) => m.role === "user"
                   ? <div key={i} className="wp-chat-vraag">{m.content}</div>
-                  : <div key={i} className="wp-chat-antwoord md" dangerouslySetInnerHTML={{ __html: mdToHtml(m.content) }} />)}
+                  : <div key={i} className="wp-chat-antwoord md" dangerouslySetInnerHTML={{ __html: linkifyHtml(mdToHtml(m.content), (() => { try { return new URL(t.url).host; } catch { return ""; } })()) }} />)}
                 {chatBusy && <div className="muted wp-chat-leeg">Aan het nadenken…</div>}
               </div>
               {planVoorstel && (
@@ -292,6 +301,7 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
         </div>
       )}
 
+      {open && anyLink && <div className="wp-sectie-label">Locatie</div>}
       {anyLink && (
         <div className="wp-card-links">
           {t.url && <a className="wp-link" href={t.url} target="_blank" rel="noreferrer" title="De live pagina">{shortUrl(t.url)}</a>}
