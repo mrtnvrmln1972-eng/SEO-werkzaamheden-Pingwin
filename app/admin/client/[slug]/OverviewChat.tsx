@@ -18,6 +18,9 @@ function mdToHtml(md: string, domain = ""): string {
   const inline = (s: string) =>
     escape(s)
       .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>')
+      // Markdown-link met relatief pad: alleen het kale pad tonen (linkify maakt
+      // het klikbaar); zo nooit rommelige [tekst](/pad/)-brackets in beeld.
+      .replace(/\[([^\]]*)\]\((\/[^\s)]+)\)/g, "$2")
       .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
       .replace(/`([^`]+)`/g, "<code>$1</code>")
       .replace(/(^|[\s(])\*([^*\s][^*]*?)\*(?=[\s).,!?]|$)/g, "$1<em>$2</em>");

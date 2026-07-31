@@ -8,7 +8,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { mdToHtml } from "../../../../lib/markdown";
-import { cardInfoHtml } from "../../../../lib/card-info";
+import { cardInfoHtml, splitCardInfo, faseSturing, type CardFaseKey } from "../../../../lib/card-info";
 import { linkifyHtml } from "../../../../lib/linkify";
 import { urlKey } from "../../../../lib/url-key";
 
@@ -105,9 +105,25 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
     if (busy || runActive) return;
     setBusy(step); setFoutje("");
     try {
-      const d = await fetch("/api/admin/page-doc/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: t.url, steps: [step], extra: t.toelichting.slice(0, 1500), folderId: "", audience: "klant" }) }).then((r) => r.json());
+      // Gerichte sturing: de achtergrond plus specifiek de sturing van déze fase,
+      // niet de hele kaarttekst (scherpere documenten, minder ruis).
+      const extra = faseSturing(splitCardInfo(t.toelichting), step) || t.toelichting.slice(0, 1500);
+      const d = await fetch("/api/admin/page-doc/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: t.url, steps: [step], extra, folderId: "", audience: "klant" }) }).then((r) => r.json());
       if (!d?.ok) setFoutje(d?.error || "Starten mislukt.");
       else setRun({ status: "running", steps: { [step]: "running" }, links: {} });
+    } catch { setFoutje("Starten mislukt, probeer het nog een keer."); } finally { setBusy(""); }
+  }
+
+  // Start "Gelieerde pagina's": de vastgelegde strategie wordt server-side de bron
+  // voor het advies aan de andere cluster-pagina's (half plan), in één klik.
+  async function startGelieerde() {
+    if (busy) return;
+    setBusy("gelieerde"); setFoutje("");
+    try {
+      const d = await fetch("/api/admin/page-cluster-run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: t.url }) }).then((r) => r.json());
+      if (!d?.ok) setFoutje(d?.error || "Starten mislukt.");
+      else if (!d.saved) setFoutje(d.message || "Geen concreet advies voor gelieerde pagina's gevonden.");
+      else refreshBoard();
     } catch { setFoutje("Starten mislukt, probeer het nog een keer."); } finally { setBusy(""); }
   }
 
@@ -199,8 +215,8 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
       return <button type="button" className="wp-fase-btn" onClick={() => void openChat("Stel een strategie voor deze pagina voor. Houd rekening met de achtergrond van deze kaart.")}>{p.strategie ? "Bespreek" : "Bespreek strategie"}</button>;
     }
     if (key === "gelieerde") {
-      const kan = p.analyse || p.strategie;
-      return onGoToPage ? <button type="button" className="wp-fase-btn" disabled={!kan} title={kan ? "Werk het cluster-advies uit in Pagina's" : "Eerst de strategie of analyse doen"} onClick={() => onGoToPage(t.url)}>In Pagina&rsquo;s ↗</button> : null;
+      const kan = p.strategie;
+      return <button type="button" className="wp-fase-btn" disabled={!kan || busy === "gelieerde"} title={kan ? "Haal advies voor gelieerde pagina's uit de vastgelegde strategie en zet het bij die pagina's klaar" : "Leg eerst de strategie vast; die is de bron voor het advies"} onClick={() => void startGelieerde()}>{busy === "gelieerde" ? "Bezig…" : p.gelieerde ? "Opnieuw" : "Start"}</button>;
     }
     if (key === "analyse" || key === "blauwdruk" || key === "copy") {
       const geblokkeerd = key === "analyse" ? !p.live : (!p.live && !p.strategie);
@@ -226,6 +242,8 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
   const titelMatch = /^(.*?)\s*(\([^()]{3,}\))\s*$/.exec(t.taak);
   const titel = titelMatch ? titelMatch[1] : t.taak;
   const subtitel = titelMatch ? titelMatch[2] : "";
+  // Eén keer parsen: het unieke verhaal voor het bovenblok, de fase-sturing voor de rijen.
+  const info = splitCardInfo(t.toelichting);
 
   return (
     <div className={"wp-card wp-" + t.status + (open ? " wp-open" : "")} draggable onDragStart={onDragStart} onDragEnd={onDragEnd}>
@@ -253,16 +271,21 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
           {FASEN.map((f) => {
             const stand = faseStand(f.key);
             const link = docLink(f.key);
+            const sturing = (info.perFase[f.key as CardFaseKey] || []).join(" · ");
             return (
               <div key={f.key} className="wp-fase">
-                <label className="wp-fase-check" title="Handmatig afvinken of terugzetten">
-                  <input type="checkbox" checked={!!page[f.key]} onChange={(e) => void vink(f.key, e.target.checked)} />
-                </label>
-                <span className="wp-fase-label">{f.label}</span>
-                <span className={"wp-fase-chip " + stand.cls}>{stand.label}</span>
-                {link && <a className="wp-link" href={link} target="_blank" rel="noreferrer" title="Open het document">Document ↗</a>}
-                <span className="wp-fase-spacer" />
-                {faseActie(f.key)}
+                <div className="wp-fase-rij">
+                  <label className="wp-fase-check" title="Handmatig afvinken of terugzetten">
+                    <input type="checkbox" checked={!!page[f.key]} onChange={(e) => void vink(f.key, e.target.checked)} />
+                  </label>
+                  <span className="wp-fase-label">{f.label}</span>
+                  <span className={"wp-fase-chip " + stand.cls}>{stand.label}</span>
+                  {link && <a className="wp-link" href={link} target="_blank" rel="noreferrer" title="Open het document">Document ↗</a>}
+                  <span className="wp-fase-spacer" />
+                  {onGoToPage && <button type="button" className="wp-fase-btn wp-fase-btn-licht" title="Bekijk of doe deze stap in Pagina's" onClick={() => onGoToPage(t.url)}>In Pagina&rsquo;s ↗</button>}
+                  {faseActie(f.key)}
+                </div>
+                {sturing && <div className="wp-fase-sturing">{sturing}</div>}
               </div>
             );
           })}

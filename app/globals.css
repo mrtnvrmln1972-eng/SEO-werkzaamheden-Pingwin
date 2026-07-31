@@ -2125,6 +2125,10 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .wp-card-info.wp-info-net li { margin: 3px 0; }
 .wp-card-info.wp-info-net a { color: var(--orange-dark); text-decoration: none; }
 .wp-card-info.wp-info-net a:hover { text-decoration: underline; }
+/* Doel-blok: twee kolommen op breed scherm (Doel | Afspraken en herkomst). */
+.wp-info-doel { display: grid; grid-template-columns: 3fr 2fr; gap: 8px 22px; }
+@media (max-width: 700px) { .wp-info-doel { grid-template-columns: 1fr; } }
+.wp-info-verwijzing { margin-top: 8px; font-size: 11px; color: var(--muted); }
 /* Pijplijn-stand op de pagina-kaart: nette pill-chips (stijl weekplanner-voorbeeld). */
 .wp-steps { display: flex; flex-wrap: wrap; gap: 6px; margin: 7px 0 3px; cursor: pointer; }
 .wp-step { font-size: 11px; font-weight: 700; border-radius: 9px; padding: 4px 11px; color: #2f2f31; background: linear-gradient(#f7f7f7, #eeeeee); border: 1px solid transparent; line-height: 1.2; }
@@ -2135,8 +2139,11 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .wp-sectie-label { font-size: 10.5px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: #5e6063; margin: 10px 0 5px; }
 /* Projectkaart: de 7 fases verticaal, met status, startknop en handmatig vinkje. */
 .wp-fases { margin: 8px 0 4px; border: 1px solid var(--border); border-radius: 8px; background: #fff; }
-.wp-fase { display: flex; align-items: center; gap: 8px; padding: 6px 9px; border-bottom: 1px solid var(--border); }
+.wp-fase { padding: 6px 9px; border-bottom: 1px solid var(--border); }
 .wp-fase:last-of-type { border-bottom: none; }
+.wp-fase-rij { display: flex; align-items: center; gap: 8px; }
+.wp-fase-sturing { margin: 3px 0 1px 24px; font-size: 11px; color: var(--muted); line-height: 1.5; }
+.wp-fase-btn-licht { color: var(--gray); border-color: #e3e3e3; }
 .wp-fase-label { font-size: 12px; font-weight: 600; color: var(--dark); }
 .wp-fase-chip { font-size: 10px; font-weight: 700; border-radius: 6px; padding: 1px 7px; color: var(--muted); background: #f1f1ef; border: 1px solid var(--border); white-space: nowrap; }
 .wp-fase-chip.wp-fase-klaar { color: #1b7f3b; background: #e7f6ec; border-color: #bfe6cc; }
@@ -2154,7 +2161,8 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .wp-chat { margin: 6px 0 4px; }
 .wp-chat-toggle { font-size: 12px; font-weight: 600; color: var(--orange-dark); background: none; border: none; cursor: pointer; padding: 2px 0; }
 .wp-chat-body { border: 1px solid var(--border); border-radius: 8px; background: var(--gray-light); padding: 8px; }
-.wp-chat-msgs { max-height: 320px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+/* De chat groeit gewoon mee met het gesprek; geen mini-scrollvenster. */
+.wp-chat-msgs { display: flex; flex-direction: column; gap: 6px; }
 .wp-chat-leeg { font-size: 12px; padding: 4px 2px; }
 .wp-chat-vraag { align-self: flex-end; max-width: 85%; background: var(--orange-light); border: 1px solid var(--orange); border-radius: 8px; padding: 6px 9px; font-size: 12px; }
 .wp-chat-antwoord { align-self: stretch; background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font-size: 12px; line-height: 1.55; }
