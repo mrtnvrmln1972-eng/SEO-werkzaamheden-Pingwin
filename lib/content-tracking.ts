@@ -385,6 +385,54 @@ export async function addWordpressRevisions(slug: string, domain: string, auth: 
   return { scanned, added, hasApi: true, newest };
 }
 
+// De meest recente snapshot per pagina (de wekelijkse content-scan vult deze).
+// Geeft de harde live-feiten die de bird's eye als grond gebruikt: meta, alt-teksten,
+// interne links, woordaantal, schema. Puur DB, één query, dus goedkoop.
+export type LatestSnapshot = {
+  url: string;
+  metaTitle: string;
+  metaDescription: string;
+  h1: string;
+  altTags: { src: string; alt: string }[];
+  internalLinks: { href: string; text: string }[];
+  wordCount: number;
+  schemaTypes: string[];
+  capturedAt: string;
+};
+
+export async function getLatestSnapshots(slug: string): Promise<LatestSnapshot[]> {
+  await ensureSchema();
+  await ensureTables();
+  const { rows } = await sql`
+    SELECT DISTINCT ON (url) url, meta_title, meta_description, h1, alt_tags, internal_links,
+           word_count, schema_types, captured_at
+    FROM page_content_snapshots WHERE client_slug = ${slug}
+    ORDER BY url, captured_at DESC`;
+  return rows.map((r) => ({
+    url: r.url as string,
+    metaTitle: (r.meta_title as string) || "",
+    metaDescription: (r.meta_description as string) || "",
+    h1: (r.h1 as string) || "",
+    altTags: (r.alt_tags as { src: string; alt: string }[]) || [],
+    internalLinks: (r.internal_links as { href: string; text: string }[]) || [],
+    wordCount: Number(r.word_count) || 0,
+    schemaTypes: (r.schema_types as string[]) || [],
+    capturedAt: new Date(r.captured_at as string).toISOString(),
+  }));
+}
+
+// Laatste gedetecteerde wijziging per pagina (voor "copy aangeleverd vs live").
+export async function getLastChangePerUrl(slug: string): Promise<Record<string, string>> {
+  await ensureSchema();
+  await ensureTables();
+  const { rows } = await sql`
+    SELECT url, MAX(detected_at) AS t FROM page_change_events
+    WHERE client_slug = ${slug} GROUP BY url`;
+  const out: Record<string, string> = {};
+  for (const r of rows) if (r.t) out[(r.url as string).replace(/\/+$/, "")] = new Date(r.t as string).toISOString();
+  return out;
+}
+
 export type ChangeEvent = { id: number; url: string; detectedAt: string; summary: string; diff: ContentDiff; isManual: boolean };
 
 export async function getChangeEvents(slug: string, limit = 100): Promise<ChangeEvent[]> {

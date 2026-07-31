@@ -10,6 +10,7 @@ import { callClaudeAgentic, callClaude, LIGHT_MODEL, type ToolDef, type ToolRunn
 import { sheetCsvUrl, parseCSV, structureData, MAAND_VOLGORDE } from "./sheet";
 import { getFocus } from "./focus";
 import { buildOverview, overviewToText, getPageWorkStatus, pageWorkStatusToText } from "./overview";
+import { buildPageSignalsText, buildKeywordStandText } from "./page-signals";
 import { readDriveDoc } from "./drive";
 import { validateAction, type ProposedAction } from "./overview-actions";
 import type { ClientConfig } from "./clients";
@@ -192,6 +193,8 @@ async function buildOverviewContext(client: ClientConfig): Promise<string> {
   parts.push(`KLANT: ${client.name} (${client.domain || "geen domein"})`);
   try { parts.push("\n=== SITE-OVERZICHT (werkstatus + laaghangend fruit) ===\n" + overviewToText(await buildOverview(client.slug))); } catch { /* aanvulling */ }
   try { const ws = pageWorkStatusToText(await getPageWorkStatus(client.slug)); if (ws.trim()) parts.push("\n=== WERKSTATUS PER PAGINA (wat is gedaan / loopt / gepland) ===\n" + ws); } catch { /* aanvulling */ }
+  try { const sig = await buildPageSignalsText(client.slug); if (sig.trim()) parts.push("\n=== PAGINA-SIGNALEN (harde feiten van de live pagina's uit de laatste scan; hier baseer je concrete taken op) ===\n" + sig); } catch { /* aanvulling */ }
+  try { const kw = await buildKeywordStandText(client.slug); if (kw.trim()) parts.push("\n=== ZOEKWOORDEN MET STAND (Search Console: waar staan ze en bewegen ze) ===\n" + kw); } catch { /* aanvulling */ }
   try {
     const f = await getFocus(client.slug);
     const t = stripHtml(f.html).replace(/\n{3,}/g, "\n\n").trim();
@@ -208,7 +211,20 @@ async function buildOverviewContext(client: ClientConfig): Promise<string> {
   try {
     let emails = await getEmails(client.slug);
     const ms = await msStatus();
-    if (ms.connected) { const q = (client.email || client.domain || "").trim(); if (q) { const live = await msSearchClientEmails(q, ms.account || "", 12); if (live) emails = live; } }
+    // Live Outlook-mails SAMENVOEGEN met de ingelezen mails (niet vervangen): zo
+    // blijven mails van de sitebouwer/developer (die vaak onder een ander adres in
+    // de ingelezen lijst staan) meewegen naast de live klant-correspondentie.
+    if (ms.connected) {
+      const q = (client.email || client.domain || "").trim();
+      if (q) {
+        const live = await msSearchClientEmails(q, ms.account || "", 12).catch(() => null);
+        if (live && live.length) {
+          const seen = new Set(live.map((e) => e.id));
+          emails = [...live, ...emails.filter((e) => !seen.has(e.id))]
+            .sort((a, b) => (b.receivedAt || "").localeCompare(a.receivedAt || ""));
+        }
+      }
+    }
     emails = emails.filter((e) => !/@ahrefs\.com$/i.test((e.fromAddress || "").trim()));
     if (emails.length) {
       // Ruim meegeven (niet te kort afkappen), zodat de agent volledige mails ziet
@@ -478,16 +494,19 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
       `- meet_pagina / gsc_pagina / ahrefs_pagina / serp_top10: om een concrete pagina of zoekwoord na te meten.\n\n` +
       `HOE JE DENKT:\n` +
       `- BRON-HIËRARCHIE (belangrijkste regel): baseer je op de MEEST ACTUELE, FEITELIJKE data, in deze volgorde van waarheid: (1) de live site (meet_pagina) en de site-brede werkstatus (site_overzicht); (2) actuele Ahrefs-rankings en Search Console (ahrefs_pagina/gsc_pagina/serp_top10); (3) de recente e-mails en de stand van zaken. Het zoekwoord- of URL-plan (nav-sheet, focus-notities) is de BEDOELING en kan maanden oud zijn: gebruik het om de richting te snappen, maar presenteer het NOOIT als de huidige werkelijkheid en toets het altijd aan de actuele data. Geen shortcuts: beweer je iets over de site, rankings of pagina's, haal het dan uit de actuele bron, niet uit het plan of je geheugen.\n` +
+      `- DE CONTEXT HIERONDER BEVAT AL HARDE FEITEN: het blok PAGINA-SIGNALEN (meta leeg/te lang, afbeeldingen zonder alt, orphan-pagina's, "copy aangeleverd maar nog niet live") uit de laatste sitescan, en ZOEKWOORDEN MET STAND (posities en bewegingen) uit Search Console. Dít is je vertrekpunt: gebruik deze feiten direct in je analyse en taken, zodat je terugkoppeling concreet is en niet generiek. Meet pas live (meet_pagina/gsc_pagina) bij als een pagina niet in de signalen staat of je een detail vers wilt bevestigen.\n` +
+      `- HOLISTISCH, BIJ ELKE VRAAG: weeg altijd het complete beeld mee (paginasignalen, zoekwoord-standen, laaghangend fruit uit site_overzicht, de afgesproken landingspagina's/zoekwoorden, de mails met klant én sitebouwer, en wat er al gedaan is). Dat geldt niet alleen bij "maak een weekplanning", maar bij elke vraag, ook een losse strategievraag ("moeten we deze pagina toevoegen?").\n` +
       `- Vertrek vanuit de afgesproken strategie; plaats het laaghangend fruit dáárop, niet los ervan.\n` +
       `- CONTROLEER OF EEN PAGINA BESTAAT, GOK NOOIT. Beweer NOOIT dat een pagina "nog te bouwen" is, "nog niet bestaat" of "geen landingspagina heeft" op basis van alleen de nav-sheet, het plan of je geheugen. Een pagina uit de afgesproken navigatie is misschien allang gebouwd en live. Check het eerst: staat de URL in de live page-lijst (site_overzicht), of meet hem met meet_pagina. Pas als hij aantoonbaar niet leest (bijvoorbeeld 404) noem je hem "te bouwen". Twijfel je, zeg dat dan expliciet ("ik moet even checken of deze al live staat") in plaats van te stellen dat hij niet bestaat. Dit is hard: liever eerlijk twijfelen dan iets onwaars beweren.\n` +
       `- Vraagt Maarten "waar waren we / wat hebben we gedaan", vat dan concreet samen uit de werkstatus per pagina: wat is geoptimaliseerd, wat loopt, wat staat gepland.\n` +
       `- Werk als proactieve partner: betrek de recente e-mails. Nieuwe wensen, herzieningen, positioneringsvragen of ingevulde formulieren van de klant wegen mee in de strategie; signaleer zelf als een mail iets raakt dat we moeten oppakken of aanpassen.\n` +
       `- Zie je in de mail blijvende nuance die het klantprofiel raakt (positionering, terminologie, no-go's, beslissingen zoals "beplantingsplan geen aparte pagina"), BENOEM dat kort in je tekst en vraag of je het klantprofiel zult bijwerken. Maak de 'profiel_bijwerken'-kaart pas als Maarten ja zegt (hij kan de tekst dan nog bijstellen).\n` +
-      `- GEEF EEN ECHTE, INHOUDELIJKE TERUGKOPPELING (dit wil Maarten zien): je analyse en advies, wat je signaleert, wat nog niet goed geoptimaliseerd is, wat beter moet, en welke landingspagina's je op basis van de afspraken oppakt. Per week mag je kort de context/reden geven (waarom deze week dit). Leesbaar en scanbaar met korte alinea's en kopjes; geen loze zin, maar ook geen eindeloze muur. De concrete TAKEN schrijf je NIET als tabel in je tekst, maar geef je mee via 'weekplan_taken' (die verschijnen als kaartjes onder je terugkoppeling).\n` +
+      `- GEEF EEN ECHTE, INHOUDELIJKE TERUGKOPPELING (dit wil Maarten zien): je analyse en advies, gegrond in de PAGINA-SIGNALEN, ZOEKWOORDEN MET STAND en de mails. Benoem CONCRETE feiten (welke meta leeg is, welke copy nog niet live bevestigd is, wie welk werk nog open heeft, welke pagina stijgt of daalt, welke mail-opvolging nodig is), niet in vage termen als "strategie + pijplijn". Per week mag je kort de context/reden geven (waarom deze week dit). Leesbaar en scanbaar met korte alinea's en kopjes; geen loze zin, maar ook geen eindeloze muur. De concrete TAKEN schrijf je NIET als tabel in je tekst, maar geef je mee via 'weekplan_taken' (die verschijnen als kaartjes onder je terugkoppeling).\n` +
       `- STANDAARD spar je alleen in gewone tekst: geef een KORTE, heldere terugkoppeling (belangrijkste eerst), zonder kaarten aan te maken. Vat bondig samen wat je zou doen (bijvoorbeeld "twee nieuwe URL's aanmaken, één bestaande pagina met een toelichting bijwerken") en vraag of Maarten daar kaarten/taken van wil. Geen muur tekst, geen lange lijst; houd het overzichtelijk.\n` +
       `- Gebruik het gereedschap stel_acties_voor ALLEEN als Maarten er EXPLICIET om vraagt ("maak er een kaart/taak van", "pak dit op", "zet dit door", "ja doe maar", "werk dit uit"). Dus NOOIT uit jezelf een reeks acties genereren; eerst sparren, dan pas op verzoek de kaarten, en alleen voor precies wat hij aangeeft.\n` +
       `- NIEUWE PAGINA = EERST STRATEGIE (verplicht, met cannibalisatie-check). Voor een nieuwe pagina is de eerste stap NOOIT blauwdruk of copy, maar een doordachte strategie. Doe ZELF eerst de cannibalisatie-check: kijk met ahrefs_pagina/gsc_pagina/serp_top10 (en site_overzicht) of de site al rankt op de doeltermen van de nieuwe pagina. Rankt er al een bestaande pagina hoog op die term (een "pillar"), dan mag de nieuwe pagina die term NIET overnemen; hij moet ondersteunen: afwijkende/specifiekere zoektermen, bij voorkeur een URL als kind onder de pillar, en interne links omhoog naar de pillar. Stel de strategie voor als 'strategie_bepalen'-kaart (bewerkbaar; Maarten past aan/keurt goed). Pas NA goedkeuren mag 'pijplijn_starten' met blauwdruk/copy; stel die dus niet eerder voor. Gooit Maarten een URL of screenshot met "kijk hoe deze rankt", neem die pagina dan mee in de strategie.\n` +
       `- WEEKPLANNING: vraagt Maarten "maak een weekplanning", "maak hier taken van" of "wat kunnen we oppakken", geef dan (a) je inhoudelijke terugkoppeling in tekst, met per week kort de context/reden, EN (b) roep in DEZELFDE beurt 'stel_acties_voor' aan met één 'weekplan_taken' waarin de concrete taken staan: per taak de wie (SEO of Dev), de pagina (url), de week (1 = deze week, 2 = volgende, enzovoort) en in 'info' de achtergrond/waarom (waar komt het vandaan, hoe verhoudt het zich tot andere pagina's, wat speelt er). Schrijf de taken NIET óók als tabel/lijst in je tekst; ze verschijnen als kaartjes. Kondig het niet alleen aan ("laat me die klaarzetten"): maak de kaart echt.\n` +
+      `- GEEN MUUR VAN TAKEN (belangrijk): de rijke context is om te WEGEN, niet om alles wat je signaleert als taak uit te spugen. Kies een behapbaar, op prioriteit gesorteerd geheel (richtlijn: een handvol taken per week, niet elk gevonden kansje). Bouw de prioriteit in deze weging: (1) afspraken met de klant (landingspagina's + zoekwoorden), (2) recente mails / open opvolging, (3) belangrijke pagina's die nog opgezet of geoptimaliseerd moeten worden voor de site (autoriteit), (4) laaghangend fruit als aanvulling. Een mooie mix, van hoog naar laag. Een planning mag enkele weken tot ~twee maanden vooruit reiken (week 1 tot 8+), maar gedoseerd en gemotiveerd, niet alles tegelijk.\n` +
       `- Verzin geen cijfers; noem alleen wat uit de bronnen of het gereedschap komt.\n\n` +
       `OPMAAK: Nederlands, conversationeel, Markdown, geen emoji. Scanbaar: korte alinea's, kopjes (## Kop) per onderwerp/week waar dat helpt, bullets (-), **vet** voor kernpunten. Een kleine tabel mag bij een échte cijfervergelijking; gebruik GEEN tabel om de takenlijst in te zetten (die komt als kaartjes). Mens aan het stuur: jij adviseert en stelt voor, Maarten beslist.\n\n--- OVERZICHT-CONTEXT ---\n${context}`
     : isAds
