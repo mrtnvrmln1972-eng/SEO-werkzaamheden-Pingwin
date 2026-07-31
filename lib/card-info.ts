@@ -111,30 +111,32 @@ export function faseSturing(info: CardInfo, fase: CardFaseKey, max = 1500): stri
   return delen.join("\n\n").slice(0, max);
 }
 
-function lijst(regels: string[]): string {
-  return `<ul>${regels.map((r) => `<li>${inline(r)}</li>`).join("")}</ul>`;
+// Inline SVG-iconen (huisstijl-oranje via currentColor), stijl van het voorbeeld.
+const SVG = (paden: string, cls = "") => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paden.split("|").map((d) => `<path d="${d}"></path>`).join("")}</svg>`;
+const ICO_VLAG = SVG("M4 21V4|M4 4h12l-2 4 2 4H4");
+const ICO_KLEMBORD = SVG("M9 4h6v3H9z|M9 4H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2|M9 12h6|M9 16h4");
+const ICO_INFO = SVG("M12 12m-9 0a9 9 0 1 0 18 0 9 9 0 1 0-18 0|M12 8h.01|M12 11v5");
+
+function lijst(regels: string[], cls: string): string {
+  return `<ul class="${cls}">${regels.map((r) => `<li>${inline(r)}</li>`).join("")}</ul>`;
+}
+
+function infoKaart(icoon: string, kop: string, inhoud: string): string {
+  return `<div class="wp-info-kaart"><div class="wp-info-kaarthead"><span class="wp-info-icoon">${icoon}</span><span class="wp-info-kop">${kop}</span></div>${inhoud}</div>`;
 }
 
 export function cardInfoHtml(toelichting: string, pageUrl?: string): string {
   const domain = (() => { try { return pageUrl ? new URL(pageUrl).host : ""; } catch { return ""; } })();
   const info = splitCardInfo(toelichting);
-  const links: string[] = [];
+  const kaarten: string[] = [];
   if (info.achtergrond.length) {
-    links.push(`<div class="wp-info-kop">Doel</div>`);
-    links.push(info.achtergrond.map((r) => `<p>${inline(r)}</p>`).join(""));
+    kaarten.push(infoKaart(ICO_VLAG, "Doel", lijst(info.achtergrond, "wp-check-lijst")));
   }
-  if (info.overig.length) {
-    links.push(`<div class="wp-info-kop">Overige punten</div>`);
-    links.push(lijst(info.overig));
+  const aanpak = [...info.overig, ...info.afspraken];
+  if (aanpak.length) {
+    kaarten.push(infoKaart(ICO_KLEMBORD, "Aanpak en taken", lijst(aanpak, "wp-punt-lijst")));
   }
-  const rechts: string[] = [];
-  if (info.afspraken.length) {
-    rechts.push(`<div class="wp-info-kop">Afspraken en herkomst</div>`);
-    rechts.push(lijst(info.afspraken));
-  }
-  const kolommen = rechts.length
-    ? `<div class="wp-info-doel"><div>${links.join("")}</div><div>${rechts.join("")}</div></div>`
-    : links.join("");
-  const verwijzing = heeftFases(info) ? `<div class="wp-info-verwijzing">De aanpak staat hieronder in de fases.</div>` : "";
-  return linkifyHtml(kolommen + verwijzing, domain);
+  const kolommen = kaarten.length ? `<div class="wp-info-doel${kaarten.length === 1 ? " wp-info-een" : ""}">${kaarten.join("")}</div>` : "";
+  const banner = heeftFases(info) ? `<div class="wp-info-banner">${ICO_INFO}<span>De aanpak start hieronder in de fases.</span></div>` : "";
+  return linkifyHtml(kolommen + banner, domain);
 }

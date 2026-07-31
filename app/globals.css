@@ -387,7 +387,7 @@ tbody td:last-child { text-align: center; }
 .dev-day-head { font-size: 12px; font-weight: 700; color: var(--dark); padding: 8px 10px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; line-height: 1.2; }
 .dev-day-head span { font-weight: 500; color: var(--gray); font-size: 11px; }
 .dev-day-body { flex: 1 1 auto; padding: 8px; display: flex; flex-direction: column; gap: 8px; }
-.dev-task-card { background: #fff; border: 1px solid var(--border); border-left: 3px solid var(--orange); border-radius: 7px; padding: 9px 11px; cursor: grab; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.dev-task-card { background: #fff; border: 1px solid var(--border); border-left: 3px solid var(--orange); border-radius: 7px; padding: 9px 11px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
 .dev-task-card:active { cursor: grabbing; }
 .dev-task-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 3px; }
 .dev-task-client { font-size: 10px; font-weight: 700; color: var(--orange-dark); text-transform: uppercase; letter-spacing: 0.3px; }
@@ -2117,7 +2117,7 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .wp-card-info.md li { margin: 2px 0; }
 /* Net gestructureerd info-blok op de projectkaart: oranje sectiekopjes, rustige
    lijsten, klikbare links. Werkt met terugwerkende kracht op oude kaarten. */
-.wp-card-info.wp-info-net { white-space: normal; max-width: 720px; }
+.wp-card-info.wp-info-net { white-space: normal; max-width: 960px; background: transparent; padding: 0; }
 .wp-card-info.wp-info-net .wp-info-kop { color: var(--orange-dark); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; margin: 10px 0 4px; }
 .wp-card-info.wp-info-net .wp-info-kop:first-child { margin-top: 0; }
 .wp-card-info.wp-info-net p { margin: 0 0 6px; }
@@ -2125,10 +2125,29 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .wp-card-info.wp-info-net li { margin: 3px 0; }
 .wp-card-info.wp-info-net a { color: var(--orange-dark); text-decoration: none; }
 .wp-card-info.wp-info-net a:hover { text-decoration: underline; }
-/* Doel-blok: twee kolommen op breed scherm (Doel | Afspraken en herkomst). */
-.wp-info-doel { display: grid; grid-template-columns: 3fr 2fr; gap: 8px 22px; }
-@media (max-width: 700px) { .wp-info-doel { grid-template-columns: 1fr; } }
-.wp-info-verwijzing { margin-top: 8px; font-size: 11px; color: var(--muted); }
+/* Doel-blok: twee sub-kaarten naast elkaar (Doel | Aanpak en taken), stijl voorbeeld. */
+.wp-info-doel { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.wp-info-doel.wp-info-een { grid-template-columns: 1fr; }
+@media (max-width: 760px) { .wp-info-doel { grid-template-columns: 1fr; } }
+.wp-info-kaart { background: #fff; border: 1px solid #ececec; border-radius: 12px; padding: 11px 13px; }
+.wp-info-kaarthead { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; }
+.wp-info-icoon { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 10px; color: var(--orange); background: linear-gradient(145deg, #fff2e9, #fff8f3); border: 1px solid #f6d8c8; }
+.wp-info-icoon svg { width: 16px; height: 16px; }
+.wp-check-lijst, .wp-punt-lijst { margin: 0; padding: 0; list-style: none; }
+.wp-check-lijst li { position: relative; padding-left: 22px; margin: 5px 0; }
+.wp-check-lijst li::before { content: "✓"; position: absolute; left: 0; top: 0; width: 15px; height: 15px; border-radius: 999px; background: #ffe9dc; color: var(--orange-dark); font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+.wp-punt-lijst li { position: relative; padding-left: 16px; margin: 5px 0; }
+.wp-punt-lijst li::before { content: ""; position: absolute; left: 2px; top: 7px; width: 6px; height: 6px; border-radius: 999px; background: var(--orange); }
+.wp-info-banner { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 7px 11px; border-radius: 10px; background: #fff3ec; color: var(--orange-dark); font-size: 11.5px; }
+.wp-info-banner svg { width: 15px; height: 15px; flex: 0 0 auto; }
+/* Iconen op fase-rijen en sectiekopjes. */
+.wp-fase-icoon { width: 16px; height: 16px; color: var(--orange); flex: 0 0 auto; }
+.wp-sectie-icoon { width: 14px; height: 14px; color: var(--orange); vertical-align: -2px; margin-right: 4px; }
+.wp-sectie-metikoon { display: flex; align-items: center; margin: 0 0 5px; }
+/* Chat-toggle en Locatie naast elkaar. */
+.wp-onder-rij { display: flex; align-items: flex-start; gap: 26px; flex-wrap: wrap; margin: 8px 0 2px; }
+.wp-onder-rij .wp-chat-toggle { display: inline-flex; align-items: center; padding-top: 1px; }
+.wp-onder-blok { min-width: 0; }
 /* Pijplijn-stand op de pagina-kaart: nette pill-chips (stijl weekplanner-voorbeeld). */
 .wp-steps { display: flex; flex-wrap: wrap; gap: 6px; margin: 7px 0 3px; cursor: pointer; }
 .wp-step { font-size: 11px; font-weight: 700; border-radius: 9px; padding: 4px 11px; color: #2f2f31; background: linear-gradient(#f7f7f7, #eeeeee); border: 1px solid transparent; line-height: 1.2; }
@@ -2183,8 +2202,12 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .wp-mail-instrrij { display: flex; gap: 6px; margin: 4px 0 6px; }
 .wp-mail-instr { flex: 1; border: 1px solid var(--border); border-radius: 7px; padding: 5px 9px; font-size: 12px; font-family: inherit; }
 .wp-mail-instr:focus { outline: none; border-color: var(--orange); }
-.wp-card { background: #fff; border: 1px solid #dedede; border-radius: 14px; padding: 11px 13px; cursor: grab; box-shadow: 0 6px 18px rgba(32, 32, 32, 0.05), 0 1px 4px rgba(32, 32, 32, 0.04); }
-.wp-card:active { cursor: grabbing; }
+.wp-card { background: #fff; border: 1px solid #dedede; border-radius: 14px; padding: 11px 13px; box-shadow: 0 6px 18px rgba(32, 32, 32, 0.05), 0 1px 4px rgba(32, 32, 32, 0.04); }
+.wp-card-kop { display: flex; align-items: flex-start; gap: 7px; }
+.wp-card-koptekst { flex: 1; min-width: 0; }
+.wp-card-grip { flex: 0 0 auto; cursor: grab; color: var(--gray); user-select: none; font-size: 14px; line-height: 1.3; padding: 1px 3px; border-radius: 5px; }
+.wp-card-grip:hover { background: var(--gray-light); color: var(--dark); }
+.wp-card-grip:active { cursor: grabbing; }
 .wp-card.wp-klaar { opacity: 0.62; }
 .wp-card-taak { font-size: 13.5px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.35; color: var(--dark); }
 .wp-card-sub { font-size: 12px; color: #45484c; margin: 1px 0 2px 15px; line-height: 1.4; }

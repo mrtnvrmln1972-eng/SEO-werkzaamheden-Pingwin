@@ -130,7 +130,12 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
   }
 
   // Groeit mee en springt naar het laatste bericht van het open onderwerp.
-  useEffect(() => { if (open) endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [messages, busy, open]);
+  // Niet springen terwijl Maarten tekst aan het selecteren is (kopiëren gaat voor).
+  useEffect(() => {
+    const sel = typeof window !== "undefined" ? window.getSelection() : null;
+    if (sel && !sel.isCollapsed) return;
+    if (open) endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages, busy, open]);
   useEffect(() => {
     const el = inputRef.current;
     if (el) { el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight, 220) + "px"; }

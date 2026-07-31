@@ -167,9 +167,10 @@ export default function DeveloperOverview({ initialTasks, embedded }: { initialT
   const undated = rows.map((r, idx) => ({ r, idx })).filter((x) => !x.r.execDate);
 
   const taskCard = (r: Row, idx: number) => (
-    <div key={r.clientSlug + "|" + r.taskKey} className={"dev-task-card " + (r.devDone ? "dev-done" : "dev-todo")} draggable
-      onDragStart={() => setDragTaskIdx(idx)} onDragEnd={() => setDragTaskIdx(null)}>
+    <div key={r.clientSlug + "|" + r.taskKey} className={"dev-task-card " + (r.devDone ? "dev-done" : "dev-todo")}>
       <div className="dev-task-top">
+        {/* Alleen het handvat sleept; de kaarttekst blijft selecteerbaar/kopieerbaar. */}
+        <span className="drag-handle" draggable onDragStart={() => setDragTaskIdx(idx)} onDragEnd={() => setDragTaskIdx(null)} title="Sleep naar een dag">⠿</span>
         <span className="dev-task-client">{r.clientName}</span>
         {r.fase && <span className="dev-task-fase">{r.fase}</span>}
       </div>

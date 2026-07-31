@@ -29,14 +29,36 @@ const TAB_FOR_TYPE: Record<string, { tab: string; label: string }> = {
 const STATUS_LABEL: Record<string, string> = { gepland: "Gepland", bezig: "Bezig", klaar: "Klaar" };
 
 type FaseKey = "strategie" | "gelieerde" | "analyse" | "blauwdruk" | "copy" | "bouw" | "structured";
-const FASEN: { key: FaseKey; label: string; kort: string }[] = [
-  { key: "strategie", label: "Strategie", kort: "Strategie" },
-  { key: "gelieerde", label: "Gelieerde pagina's", kort: "Gelieerd" },
-  { key: "analyse", label: "Analyse", kort: "Analyse" },
-  { key: "blauwdruk", label: "Blauwdruk", kort: "Blauwdruk" },
-  { key: "copy", label: "Copy", kort: "Copy" },
-  { key: "bouw", label: "Bouw en publicatie", kort: "Bouw" },
-  { key: "structured", label: "Structured data", kort: "Schema" },
+
+// Klein inline SVG-setje in huisstijl-oranje (geen library), stijl van het voorbeeld.
+function Icoon({ d, className = "wp-fase-icoon" }: { d: string; className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {d.split("|").map((p, i) => <path key={i} d={p} />)}
+    </svg>
+  );
+}
+const ICOON = {
+  strategie: "M4 21V4|M4 4h12l-2 4 2 4H4",
+  gelieerde: "M18 8a3 3 0 1 0-3-3 3 3 0 0 0 3 3Z|M6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z|M18 22a3 3 0 1 0-3-3 3 3 0 0 0 3 3Z|M8.7 10.6l6.6-3.2|M8.7 13.4l6.6 3.2",
+  analyse: "M17 11a6 6 0 1 1-12 0 6 6 0 0 1 12 0Z|M21 21l-4.3-4.3",
+  blauwdruk: "M12 20h9|M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z",
+  copy: "M14 3H6v18h12V7l-4-4Z|M14 3v4h4",
+  bouw: "M12 17V9|M12 9l-3 3|M12 9l3 3|M20 17a4 4 0 0 0-1-7.9A6 6 0 0 0 7.2 8 5 5 0 0 0 4 17",
+  structured: "M12 3c4.4 0 8 1.3 8 3s-3.6 3-8 3-8-1.3-8-3 3.6-3 8-3Z|M20 6v12c0 1.7-3.6 3-8 3s-8-1.3-8-3V6|M20 12c0 1.7-3.6 3-8 3s-8-1.3-8-3",
+  chat: "M21 12a8 8 0 0 1-8 8H4l2-3a8 8 0 1 1 15-5Z",
+  pin: "M12 21s7-6.1 7-11a7 7 0 1 0-14 0c0 4.9 7 11 7 11Z|M12 10.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z",
+  doel: "M12 12m-9 0a9 9 0 1 0 18 0 9 9 0 1 0-18 0|M12 12m-5 0a5 5 0 1 0 10 0 5 5 0 1 0-10 0|M12 12m-1 0a1 1 0 1 0 2 0 1 1 0 1 0-2 0",
+};
+
+const FASEN: { key: FaseKey; label: string; kort: string; icoon: string }[] = [
+  { key: "strategie", label: "Strategie", kort: "Strategie", icoon: ICOON.strategie },
+  { key: "gelieerde", label: "Gelieerde pagina's", kort: "Gelieerd", icoon: ICOON.gelieerde },
+  { key: "analyse", label: "Analyse", kort: "Analyse", icoon: ICOON.analyse },
+  { key: "blauwdruk", label: "Blauwdruk", kort: "Blauwdruk", icoon: ICOON.blauwdruk },
+  { key: "copy", label: "Copy", kort: "Copy", icoon: ICOON.copy },
+  { key: "bouw", label: "Bouw en publicatie", kort: "Bouw", icoon: ICOON.bouw },
+  { key: "structured", label: "Structured data", kort: "Schema", icoon: ICOON.structured },
 ];
 
 type RunInfo = { status: string; steps: Record<string, string>; links: Record<string, string> } | null;
@@ -216,20 +238,20 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
     }
     if (key === "gelieerde") {
       const kan = p.strategie;
-      return <button type="button" className="wp-fase-btn" disabled={!kan || busy === "gelieerde"} title={kan ? "Haal advies voor gelieerde pagina's uit de vastgelegde strategie en zet het bij die pagina's klaar" : "Leg eerst de strategie vast; die is de bron voor het advies"} onClick={() => void startGelieerde()}>{busy === "gelieerde" ? "Bezig…" : p.gelieerde ? "Opnieuw" : "Start"}</button>;
+      return <button type="button" className="wp-fase-btn" disabled={!kan || busy === "gelieerde"} title={kan ? "Haal advies voor gelieerde pagina's uit de vastgelegde strategie en zet het bij die pagina's klaar" : "Leg eerst de strategie vast; die is de bron voor het advies"} onClick={() => void startGelieerde()}>{busy === "gelieerde" ? "Bezig…" : p.gelieerde ? "Opnieuw ↻" : "Start ▷"}</button>;
     }
     if (key === "analyse" || key === "blauwdruk" || key === "copy") {
       const geblokkeerd = key === "analyse" ? !p.live : (!p.live && !p.strategie);
       const titel = key === "analyse"
         ? (p.live ? "Analyseer de huidige live pagina (met de kaart-achtergrond als sturing)" : "De pagina is nog niet live; een analyse kan pas daarna")
         : (geblokkeerd ? "Eerst de strategie goedkeuren (nieuwe pagina)" : "Start dit document (met de kaart-achtergrond als sturing)");
-      return <button type="button" className="wp-fase-btn" disabled={geblokkeerd || runActive || !!busy} title={titel} onClick={() => void startDocStep(key)}>{p[key] ? "Opnieuw" : "Start"}</button>;
+      return <button type="button" className="wp-fase-btn" disabled={geblokkeerd || runActive || !!busy} title={titel} onClick={() => void startDocStep(key)}>{p[key] ? "Opnieuw ↻" : "Start ▷"}</button>;
     }
     if (key === "bouw") {
-      return <button type="button" className="wp-fase-btn" title="Mail de developer/sitebouwer over de bouw of publicatie" onClick={() => onMail("dev")}>Dev ✉</button>;
+      return <button type="button" className="wp-fase-btn" title="Mail de developer/sitebouwer over de bouw of publicatie" onClick={() => onMail("dev")}>Dev {"</>"}</button>;
     }
     if (key === "structured") {
-      return <button type="button" className="wp-fase-btn" disabled={schemaRunning || !!busy} title={!p.bouw && p.copy ? "Let op: staat de nieuwe copy al live? Anders is de analyse te vroeg." : "Start de structured-data-analyse"} onClick={() => void startSchema()}>{p.structured ? "Opnieuw" : "Start"}</button>;
+      return <button type="button" className="wp-fase-btn" disabled={schemaRunning || !!busy} title={!p.bouw && p.copy ? "Let op: staat de nieuwe copy al live? Anders is de analyse te vroeg." : "Start de structured-data-analyse"} onClick={() => void startSchema()}>{p.structured ? "Opnieuw ↻" : "Start ▷"}</button>;
     }
     return null;
   }
@@ -245,13 +267,26 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
   // Eén keer parsen: het unieke verhaal voor het bovenblok, de fase-sturing voor de rijen.
   const info = splitCardInfo(t.toelichting);
 
+  // Dichtklappen mag nooit een lopende tekstselectie opeten (kopiëren gaat voor).
+  const toggleAlsGeenSelectie = () => {
+    const s = typeof window !== "undefined" ? window.getSelection() : null;
+    if (s && !s.isCollapsed) return;
+    onToggleOpen();
+  };
+
   return (
-    <div className={"wp-card wp-" + t.status + (open ? " wp-open" : "")} draggable onDragStart={onDragStart} onDragEnd={onDragEnd}>
-      <div className="wp-card-taak wp-clickable" onClick={onToggleOpen} title={open ? "Klik om dicht te klappen" : "Klik voor de fases, info en chat"}>
-        <span className="wp-caret">{open ? "▾" : "▸"}</span>
-        {titel}
+    <div className={"wp-card wp-" + t.status + (open ? " wp-open" : "")}>
+      <div className="wp-card-kop">
+        {/* Alleen dit handvat is sleepbaar; de rest van de kaart blijft selecteerbare tekst. */}
+        <span className="wp-card-grip" draggable onDragStart={onDragStart} onDragEnd={onDragEnd} title="Sleep de kaart naar een andere week">⠿</span>
+        <div className="wp-card-koptekst">
+          <div className="wp-card-taak wp-clickable" onClick={toggleAlsGeenSelectie} title={open ? "Klik om dicht te klappen" : "Klik voor de fases, info en chat"}>
+            <span className="wp-caret">{open ? "▾" : "▸"}</span>
+            {titel}
+          </div>
+          {subtitel && <div className="wp-card-sub wp-clickable" onClick={toggleAlsGeenSelectie}>{subtitel}</div>}
+        </div>
       </div>
-      {subtitel && <div className="wp-card-sub wp-clickable" onClick={onToggleOpen}>{subtitel}</div>}
 
       {open && hasInfo && <div className="wp-card-info wp-info-net" dangerouslySetInnerHTML={{ __html: cardInfoHtml(t.toelichting, t.url) }} />}
 
@@ -278,6 +313,7 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
                   <label className="wp-fase-check" title="Handmatig afvinken of terugzetten">
                     <input type="checkbox" checked={!!page[f.key]} onChange={(e) => void vink(f.key, e.target.checked)} />
                   </label>
+                  <Icoon d={f.icoon} />
                   <span className="wp-fase-label">{f.label}</span>
                   <span className={"wp-fase-chip " + stand.cls}>{stand.label}</span>
                   {link && <a className="wp-link" href={link} target="_blank" rel="noreferrer" title="Open het document">Document ↗</a>}
@@ -294,12 +330,29 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
         </div>
       )}
 
-      {/* Chat over deze pagina (zelfde geheugen als in Pagina's). */}
+      {/* Chat en Locatie naast elkaar (stijl voorbeeld); de chat klapt eronder uit. */}
+      {open && (t.url || anyLink) && (
+        <div className="wp-onder-rij">
+          {t.url && (
+            <button type="button" className="wp-chat-toggle" onClick={() => (chatOpen ? setChatOpen(false) : void openChat())}>
+              <Icoon d={ICOON.chat} className="wp-sectie-icoon" /> Chat over deze pagina {chatOpen ? "▾" : "▸"}
+            </button>
+          )}
+          {anyLink && (
+            <div className="wp-onder-blok">
+              <div className="wp-sectie-label wp-sectie-metikoon"><Icoon d={ICOON.pin} className="wp-sectie-icoon" /> Locatie</div>
+              <div className="wp-card-links">
+                {t.url && <a className="wp-link" href={t.url} target="_blank" rel="noreferrer" title="De live pagina">{shortUrl(t.url)}</a>}
+                {t.copyUrl && <a className="wp-link" href={t.copyUrl} target="_blank" rel="noreferrer" title="De aangeleverde copy">Copy ↗</a>}
+                {t.bronMail && <a className="wp-link" href={t.bronMail} target="_blank" rel="noreferrer" title="De mail waar deze taak uit voortkomt">✉ bronmail</a>}
+                {tab && onGoToTab && <button type="button" className="wp-link wp-link-btn" title="Doe het hier in het dashboard" onClick={() => onGoToTab(tab.tab)}>{tab.label}</button>}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
       {open && t.url && (
         <div className="wp-chat">
-          <button type="button" className="wp-chat-toggle" onClick={() => (chatOpen ? setChatOpen(false) : void openChat())}>
-            {chatOpen ? "▾" : "▸"} Chat over deze pagina
-          </button>
           {chatOpen && (
             <div className="wp-chat-body">
               <div className="wp-chat-msgs" ref={msgsRef}>
@@ -324,8 +377,7 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
         </div>
       )}
 
-      {open && anyLink && <div className="wp-sectie-label">Locatie</div>}
-      {anyLink && (
+      {!open && anyLink && (
         <div className="wp-card-links">
           {t.url && <a className="wp-link" href={t.url} target="_blank" rel="noreferrer" title="De live pagina">{shortUrl(t.url)}</a>}
           {t.copyUrl && <a className="wp-link" href={t.copyUrl} target="_blank" rel="noreferrer" title="De aangeleverde copy">Copy ↗</a>}
