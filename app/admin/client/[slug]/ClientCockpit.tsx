@@ -359,7 +359,7 @@ export default function ClientCockpit({
             {/* Het kloppend hart: de bird's eye-assistent denkt mee, en wat je besluit
                 landt als kaarten in de weekplanning eronder. Eén werkplek, geen muur. */}
             <OverviewChat slug={client.slug} domain={client.domain || ""} configured={chatConfigured !== false} onGoToPage={goToPage} onGoToTask={goToNewTask} />
-            <WeekplanBoard slug={client.slug} onGoToPage={goToPage} />
+            <WeekplanBoard slug={client.slug} onGoToPage={goToPage} clientName={client.name} clientEmail={client.email || ""} />
 
             {/* Zonder mail-secties (COCKPIT_MAIL=uit) blijft alleen Zoekwoorden & links staan,
                 in dezelfde kaartstijl als de andere inklapbare secties. */}

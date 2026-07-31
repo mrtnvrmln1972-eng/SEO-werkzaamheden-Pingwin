@@ -2111,10 +2111,27 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .wp-status-gepland { background: #ececec; color: #555; }
 .wp-status-bezig { background: #fff2cc; color: #8a6d00; }
 .wp-status-klaar { background: #dcf5e3; color: #1c7a3f; }
-.wp-card-actions { margin-left: auto; display: inline-flex; gap: 2px; }
+.wp-card-actions { margin-left: auto; display: inline-flex; gap: 4px; align-items: center; flex-wrap: wrap; }
 .wp-icon { border: none; background: transparent; cursor: pointer; font-size: 13px; color: var(--gray); padding: 2px 4px; border-radius: 5px; line-height: 1; }
 .wp-icon:hover { background: var(--gray-light); color: var(--dark); }
 .wp-del:hover { color: #c0392b; }
+/* Kleine tekstknoppen op de taakkaart (mail klant/dev, open in Pagina's) */
+.wp-act { border: 1px solid var(--border); background: var(--white); cursor: pointer; font-size: 11px; font-weight: 600; color: var(--gray); padding: 3px 8px; border-radius: 999px; line-height: 1.4; white-space: nowrap; }
+.wp-act:hover { background: var(--gray-light); color: var(--dark); }
+.wp-act-klant { color: var(--orange-dark); border-color: #f2c9b0; }
+.wp-act-klant:hover { background: var(--orange-light); color: var(--orange-dark); }
+
+/* "Mail naar klant"-composer (overlay met bewerkbare preview) */
+.wp-mail-overlay { position: fixed; inset: 0; z-index: 10002; background: rgba(0,0,0,0.28); display: flex; align-items: flex-start; justify-content: center; padding: 6vh 16px; overflow-y: auto; }
+.wp-mail-modal { background: var(--white); border: 1px solid var(--border); border-radius: 14px; width: 100%; max-width: 640px; padding: 18px 20px 16px; box-shadow: 0 18px 50px rgba(0,0,0,0.25); }
+.wp-mail-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.wp-mail-title { font-weight: 800; color: var(--orange-dark); font-size: 15px; }
+.wp-mail-sub { font-size: 13px; margin-top: 4px; }
+.wp-mail-hint { font-size: 12px; margin: 6px 0 10px; }
+.wp-mail-edit { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; font-size: 14px; line-height: 1.55; white-space: pre-wrap; background: #fffdfb; outline: none; }
+.wp-mail-edit:focus { border-color: var(--orange); }
+.wp-mail-edit:empty::before { content: attr(data-placeholder); color: var(--gray); }
+.wp-mail-foot { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 12px; }
 
 /* Meta doorgevoerd-status: groene "is doorgevoerd" + live-controle */
 .meta-done-row { gap: 8px; }
