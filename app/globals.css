@@ -2189,6 +2189,12 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .wp-fase-melding { padding: 6px 9px; font-size: 11px; font-weight: 600; color: #1b7f3b; background: #e7f6ec; border-top: 1px solid var(--border); }
 .wp-fase-alles { background: #fbfbfa; }
 .wp-fase-alles-label { font-size: 11.5px; font-weight: 600; color: var(--muted); }
+/* "Ruim op"-rij boven het Doel-blok. */
+.wp-opruim-rij { display: flex; align-items: center; gap: 9px; margin: 6px 0 4px; }
+.wp-opruim-ok { font-size: 11px; font-weight: 600; color: #1b7f3b; }
+.wp-opruim-fout { font-size: 11px; color: #a12622; }
+/* Verwijder-kruisje per onderwerp in de Bird's eye-lijst. */
+.ovc-topic-del { margin-left: auto; flex: 0 0 auto; font-size: 15px; }
 /* Kaart-chat (zelfde geheugen als de pagina-chat in Pagina's). */
 .wp-chat { margin: 6px 0 4px; }
 .wp-chat-toggle { font-size: 12px; font-weight: 600; color: var(--orange-dark); background: none; border: none; cursor: pointer; padding: 2px 0; }

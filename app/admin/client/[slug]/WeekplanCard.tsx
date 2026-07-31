@@ -79,6 +79,7 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
   const [busy, setBusy] = useState<string>("");
   const [foutje, setFoutje] = useState<string>("");
   const [melding, setMelding] = useState<string>("");
+  const [opruimMsg, setOpruimMsg] = useState<string>("");
   // Chat (zelfde geheugen als de pagina-chat in Pagina's).
   const [chatOpen, setChatOpen] = useState(false);
   const [msgs, setMsgs] = useState<ChatMsg[]>([]);
@@ -185,6 +186,17 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
       if (!d?.ok) setFoutje(d?.error || "Starten mislukt.");
       else setSchemaStatus("running");
     } catch { setFoutje("Starten mislukt, probeer het nog een keer."); } finally { setBusy(""); }
+  }
+
+  // "Ruim op": herschrijft de kaarttekst server-side naar het strakke formaat.
+  async function ruimOp() {
+    if (busy) return;
+    setBusy("opruimen"); setOpruimMsg("");
+    try {
+      const d = await fetch("/api/admin/weekplan/tidy", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, id: t.id }) }).then((r) => r.json());
+      if (d?.ok) { setOpruimMsg("Kaart opgeruimd."); refreshBoard(); }
+      else setOpruimMsg(d?.error || "Opruimen mislukt; er is niets gewijzigd.");
+    } catch { setOpruimMsg("Opruimen mislukt; er is niets gewijzigd."); } finally { setBusy(""); }
   }
 
   async function vink(fase: FaseKey, done: boolean) {
@@ -317,6 +329,14 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
           </div>
           {subtitel && <div className="wp-card-sub wp-clickable" onClick={toggleAlsGeenSelectie}>{subtitel}</div>}
 
+      {open && hasInfo && (
+        <div className="wp-opruim-rij">
+          <button type="button" className="wp-fase-btn" disabled={busy === "opruimen"}
+            title="Laat de AI de kaarttekst één keer herschrijven naar het strakke formaat (niets verzinnen, niets weggooien)."
+            onClick={() => void ruimOp()}>{busy === "opruimen" ? "Bezig…" : "Ruim op"}</button>
+          {opruimMsg && <span className={opruimMsg.startsWith("Kaart") ? "wp-opruim-ok" : "wp-opruim-fout"}>{opruimMsg}</span>}
+        </div>
+      )}
       {open && hasInfo && <div className="wp-card-info wp-info-net" dangerouslySetInnerHTML={{ __html: cardInfoHtml(t.toelichting, t.url) }} />}
 
       {/* Dichtgeklapt: compacte fase-chips. Klik = naar de pagina in Pagina's. */}

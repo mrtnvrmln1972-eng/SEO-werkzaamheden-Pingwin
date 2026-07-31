@@ -64,7 +64,27 @@ function faseVanRegel(regel: string): { fase: CardFaseKey; tekst: string } | nul
       return { fase, tekst: toon };
     }
   }
+  // Inhoud-herkenning voor opdracht-zinnen zonder nette prefix ("Controleer en
+  // finaliseer de copy…"). Werkwoord-vangrail: alleen regels die als instructie
+  // beginnen; kenniszinnen ("De blauwdruk ligt al klaar…") blijven in Doel.
+  const isInstructie = /^(controleer|finaliseer|schrijf|maak|voeg|verwerk|corrigeer|optimaliseer|herstel|verkort|plaats|bouw|publiceer|pas\b|zet\b|update|implementeer)/i.test(kaal);
+  if (isInstructie) {
+    const laag = kaal.toLowerCase();
+    if (/structured data|schema(\.org)?\b/.test(laag)) return { fase: "structured", tekst: kaal };
+    if (/alt[- ]?tekst|interne links?|publiceer|\bbouw\b|live zetten/.test(laag)) return { fase: "bouw", tekst: kaal };
+    if (/\bcopy\b|webtekst|paginatekst|meta[- ]?(titel|title|description)|prijstabel/.test(laag)) return { fase: "copy", tekst: kaal };
+    if (/blauwdruk/.test(laag)) return { fase: "blauwdruk", tekst: kaal };
+    if (/analyse/.test(laag)) return { fase: "analyse", tekst: kaal };
+    if (/strategie/.test(laag)) return { fase: "strategie", tekst: kaal };
+  }
   return null;
+}
+
+// Communicatie- en referentieregels zijn geen taken: die horen als geheugensteun
+// onder Afspraken en herkomst (mail naar de klant gaat via de kaart-knoppen).
+function isCommunicatie(regel: string): boolean {
+  const kaal = regel.replace(/^-\s*/, "").trim().toLowerCase();
+  return /(stuur|verstuur|mail)\b.*?(bevestiging|mail|richting|naar)|bevestigingsmail|bekijk (de )?(website|site)\b.*(richtlijn|referentie)/.test(kaal);
 }
 
 // Splitst de kaarttekst in het unieke verhaal en fase-sturing. Werkt op oude
@@ -92,6 +112,10 @@ export function splitCardInfo(toelichting: string): CardInfo {
       else if (/aanpak|deeltaken|taken|stappen/.test(kop)) sectie = "aanpak";
       else sectie = "achtergrond";
       continue; // het kopje zelf niet dubbel tonen; de render zet eigen kopjes
+    }
+    if (isCommunicatie(regel)) {
+      info.afspraken.push(regel.replace(/^-\s*/, "").trim());
+      continue;
     }
     const fase = faseVanRegel(regel);
     if (fase) {

@@ -144,6 +144,12 @@ export async function updateWeekplanTask(slug: string, id: number, patch: { week
     WHERE client_slug = ${slug} AND id = ${id}`;
 }
 
+// Herschreven kaarttekst opslaan (de "Ruim op"-knop; altijd door Maarten getriggerd).
+export async function updateWeekplanToelichting(slug: string, id: number, toelichting: string): Promise<void> {
+  await ensureSchema();
+  await sql`UPDATE client_weekplan SET toelichting = ${toelichting.trim().slice(0, 4000)}, updated_at = now() WHERE client_slug = ${slug} AND id = ${id}`;
+}
+
 export async function deleteWeekplanTask(slug: string, id: number): Promise<void> {
   await ensureSchema();
   await sql`DELETE FROM client_weekplan WHERE client_slug = ${slug} AND id = ${id}`;

@@ -279,6 +279,10 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
                     : <span className="ovc-topic-title">{titleOf(t)}</span>}
                   {!isOpen && t.summary && <span className="ovc-topic-sum">{t.summary}</span>}
                 </div>
+                {t.thread !== BASE && (
+                  <button type="button" className="wp-icon wp-del ovc-topic-del" title="Dit onderwerp verwijderen"
+                    onClick={(e) => { e.stopPropagation(); void clearChat(t.thread); }}>×</button>
+                )}
               </div>
 
               {isOpen && (
