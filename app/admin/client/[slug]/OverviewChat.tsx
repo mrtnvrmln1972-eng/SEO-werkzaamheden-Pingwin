@@ -18,7 +18,7 @@ function stripAankondiging(md: string): string {
   while (i < regels.length) {
     const r = regels[i].trim();
     if (!r) { i++; continue; }
-    if (r.length < 160 && /^(nu heb ik|hier (is|komt|volgt)|hieronder (volgt|staat)|prima[,.]|ok[eé][,.]|goed[,.]|ik ga (nu )?)/i.test(r) && !/^##/.test(r)) { i++; continue; }
+    if (r.length < 160 && /^(nu heb ik|hier (is|komt|volgt)|hieronder (volgt|staat)|prima[,.]|ok[eé][,.]|goed[,.]|helder[,.! ]|ik ga (nu )?)/i.test(r) && !/^##/.test(r)) { i++; continue; }
     break;
   }
   const rest = regels.slice(i).join("\n").trim();

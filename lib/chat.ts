@@ -680,6 +680,22 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
       } catch { /* dan het oorspronkelijke antwoord */ }
     }
 
+    // Aankondigings-/vulzinnen aan het begin ook uit de OPGESLAGEN tekst knippen,
+    // zodat nieuwe antwoorden schoon de historie in gaan (de weergave filtert
+    // daarnaast retroactief voor oude berichten).
+    if (isOverview && answer) {
+      const regels = answer.split("\n");
+      let i = 0;
+      while (i < regels.length) {
+        const r = regels[i].trim();
+        if (!r) { i++; continue; }
+        if (r.length < 160 && !/^##/.test(r) && /^(nu heb ik|hier (is|komt|volgt)|hieronder (volgt|staat)|prima[,.]|ok[eé][,.]|goed[,.]|helder[,.! ]|ik ga (nu )?)/i.test(r)) { i++; continue; }
+        break;
+      }
+      const rest = regels.slice(i).join("\n").trim();
+      if (rest) answer = rest;
+    }
+
     const finalAnswer = answer || "(geen antwoord)";
     const assistantMsg: ChatMessage = collected.length ? { role: "assistant", content: finalAnswer, actions: collected } : { role: "assistant", content: finalAnswer };
     await saveChatHistory(slug, thread, [...messages, assistantMsg]);
