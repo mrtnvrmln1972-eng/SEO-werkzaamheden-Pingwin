@@ -66,12 +66,17 @@ type ChatMsg = { role: "user" | "assistant"; content: string };
 
 function shortUrl(url: string): string { try { const u = new URL(url); return (u.pathname + u.search) || "/"; } catch { return url; } }
 
-export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDragStart, onDragEnd, onStatus, onRemove, onMail, onGoToPage, onGoToTab, refreshBoard }: {
+export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDragStart, onDragEnd, onStatus, onRemove, onMail, onGoToPage, onGoToTab, onOpenMailDate, refreshBoard }: {
   slug: string; t: WpTask; page?: WpPageInfo; open: boolean;
   onToggleOpen: () => void; onDragStart: () => void; onDragEnd: () => void;
   onStatus: () => void; onRemove: () => void; onMail: (aud: "klant" | "dev") => void;
-  onGoToPage?: (url: string) => void; onGoToTab?: (tab: string) => void; refreshBoard: () => void;
+  onGoToPage?: (url: string) => void; onGoToTab?: (tab: string) => void;
+  onOpenMailDate?: (datum: string) => void; refreshBoard: () => void;
 }) {
+  // Dashboard-deeplinks vanuit een kaart openen in een NIEUW browsertabblad,
+  // zodat je het bord niet kwijtraakt terwijl je iets uitzoekt.
+  const openPaginaNieuwTab = () => window.open(`/admin/client/${slug}?tab=paginas&page=${encodeURIComponent(t.url)}`, "_blank");
+  const openTabNieuwTab = (tabNaam: string) => window.open(`/admin/client/${slug}?tab=${tabNaam}${tabNaam === "paginas" && t.url ? `&page=${encodeURIComponent(t.url)}` : ""}`, "_blank");
   const hasInfo = !!t.toelichting.trim();
   const [run, setRun] = useState<RunInfo>(null);
   const [everLinks, setEverLinks] = useState<Record<string, string>>({});
@@ -262,7 +267,7 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
       if (st === "error") return { label: "Fout", cls: "wp-fase-fout" };
     }
     if (key === "structured" && schemaRunning) return { label: "Bezig…", cls: "wp-fase-bezig" };
-    if (page && page[key]) return { label: "✓ Klaar", cls: "wp-fase-klaar" };
+    if (page && page[key]) return { label: "✓", cls: "wp-fase-klaar" };
     return { label: "Nog niet", cls: "" };
   }
 
@@ -290,7 +295,7 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
       return <button type="button" className="wp-fase-btn" disabled={geblokkeerd || runActive || !!busy} title={titel} onClick={() => void startDocStep([key])}>{tekst}</button>;
     }
     if (key === "bouw") {
-      return <button type="button" className="wp-fase-btn" title="Mail de developer/sitebouwer over de bouw of publicatie" onClick={() => onMail("dev")}>Dev {"</>"}</button>;
+      return <button type="button" className="wp-fase-btn" title="Mail over de bouw of publicatie (ontvanger kies je in het venster)" onClick={() => onMail("dev")}>Mail</button>;
     }
     if (key === "structured") {
       return <button type="button" className="wp-fase-btn" disabled={schemaRunning || !!busy} title={!p.bouw && p.copy ? "Let op: staat de nieuwe copy al live? Anders is de analyse te vroeg." : "Start de structured-data-analyse"} onClick={() => void startSchema()}>{p.structured ? "Opnieuw ↻" : "Start ▷"}</button>;
@@ -344,7 +349,14 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
           {opruimMsg && <span className={opruimMsg.startsWith("Kaart") ? "wp-opruim-ok" : "wp-opruim-fout"}>{opruimMsg}</span>}
         </div>
       )}
-      {open && hasInfo && <div className="wp-card-info wp-info-net" dangerouslySetInnerHTML={{ __html: cardInfoHtml(t.toelichting, t.url) }} />}
+      {open && hasInfo && (
+        <div className="wp-card-info wp-info-net"
+          onClick={(e) => {
+            const el = (e.target as HTMLElement).closest?.(".wp-maildatum") as HTMLElement | null;
+            if (el && onOpenMailDate) { e.stopPropagation(); onOpenMailDate(el.dataset.datum || ""); }
+          }}
+          dangerouslySetInnerHTML={{ __html: cardInfoHtml(t.toelichting, t.url) }} />
+      )}
 
       {/* Dichtgeklapt: compacte fase-chips. Klik = naar de pagina in Pagina's. */}
       {!open && page && (
@@ -400,11 +412,12 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
                     <input type="checkbox" checked={!!page[f.key]} onChange={(e) => void vink(f.key, e.target.checked)} />
                   </label>
                   <span className="wp-fase-label">{f.label}</span>
-                  <span className={"wp-fase-chip " + stand.cls}>{stand.label}</span>
-                  {link && <a className="wp-link" href={link} target="_blank" rel="noreferrer" title="Open het document">Document ↗</a>}
                   <span className="wp-fase-spacer" />
-                  {onGoToPage && <button type="button" className="wp-fase-btn wp-fase-btn-licht" title="Bekijk of doe deze stap in Pagina's" onClick={() => onGoToPage(t.url)}>In Pagina&rsquo;s ↗</button>}
+                  {/* Alle pillen rechts, in vaste volgorde: Document | In Pagina's | actie | status. */}
+                  {link && <a className="wp-fase-btn wp-fase-doc" href={link} target="_blank" rel="noreferrer" title="Open het document">Document ↗</a>}
+                  <button type="button" className="wp-fase-btn wp-fase-btn-licht" title="Bekijk of doe deze stap in Pagina's (nieuw tabblad)" onClick={openPaginaNieuwTab}>In Pagina&rsquo;s ↗</button>
                   {faseActie(f.key)}
+                  <span className={"wp-fase-chip " + stand.cls} title={stand.label === "✓" ? "Klaar" : undefined}>{stand.label}</span>
                 </div>
                 {sturing && <div className="wp-fase-sturing">{sturing}</div>}
               </div>
@@ -434,17 +447,14 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
         </div>
       )}
 
-      {open && anyLink && <div className="wp-sectie-label">Locatie</div>}
-      {/* Eén nette onderste regel: links en acties samen, uitgelijnd op één rij. */}
+      {/* Eén nette onderste regel, alles rechts uitgelijnd: links plus de Mail-knop. */}
       <div className="wp-card-links wp-onder-regel">
         {t.url && <a className="wp-link" href={t.url} target="_blank" rel="noreferrer" title="De live pagina">{shortUrl(t.url)}</a>}
         {t.copyUrl && <a className="wp-link" href={t.copyUrl} target="_blank" rel="noreferrer" title="De aangeleverde copy">Copy ↗</a>}
         {t.bronMail && <a className="wp-link" href={t.bronMail} target="_blank" rel="noreferrer" title="De mail waar deze taak uit voortkomt">✉ bronmail</a>}
-        {tab && onGoToTab && <button type="button" className="wp-link wp-link-btn" title="Doe het hier in het dashboard" onClick={() => onGoToTab(tab.tab)}>{tab.label}</button>}
-        <span className="wp-fase-spacer" />
-        <button type="button" className="wp-act wp-act-klant" title="Mail naar klant: een klantvriendelijke uitleg van deze kaart." onClick={() => onMail("klant")}>✉ Mail klant</button>
-        <button type="button" className="wp-act" title="Mail deze taak naar je developer/sitebouwer." onClick={() => onMail("dev")}>Dev {"<>"}</button>
-        {t.url && onGoToPage && <button type="button" className="wp-act" title="Open de pagina in Pagina's voor het diepe werk." onClick={() => onGoToPage(t.url)}>Pagina&rsquo;s ↗</button>}
+        {tab && <button type="button" className="wp-link wp-link-btn" title="Open dit dashboard-onderdeel in een nieuw tabblad" onClick={() => openTabNieuwTab(tab.tab)}>{tab.label}</button>}
+        {t.url && <button type="button" className="wp-link wp-link-btn" title="Open de pagina in Pagina's (nieuw tabblad)" onClick={openPaginaNieuwTab}>Pagina&rsquo;s ↗</button>}
+        <button type="button" className="wp-act wp-act-klant" title="Mail over deze kaart; de ontvanger (klant, developer of anders) kies je in het venster." onClick={() => onMail("klant")}>✉ Mail</button>
       </div>
         </div>
       </div>

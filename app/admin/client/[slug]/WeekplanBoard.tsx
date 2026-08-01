@@ -34,7 +34,7 @@ const keyOf = (year: number, week: number) => year * 100 + week;
 // Het weekplanning-bord: projectkaarten (één per pagina) verdeeld over weekkolommen.
 // De huidige week is gemarkeerd. Slepen verplaatst een kaart naar een andere week.
 // In de open kaart: de 7 fases (starten, status, afvinken), chat en mailen.
-export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, clientName, clientEmail, reloadSignal }: { slug: string; onGoToPage?: (url: string) => void; onGoToTab?: (tab: string) => void; clientName?: string; clientEmail?: string; reloadSignal?: number }) {
+export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailDate, clientName, clientEmail, reloadSignal }: { slug: string; onGoToPage?: (url: string) => void; onGoToTab?: (tab: string) => void; onOpenMailDate?: (datum: string) => void; clientName?: string; clientEmail?: string; reloadSignal?: number }) {
   const [tasks, setTasks] = useState<WpTask[]>([]);
   const [pages, setPages] = useState<Record<string, WpPageInfo>>({});
   const [current, setCurrent] = useState<Current | null>(null);
@@ -159,7 +159,7 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, clientName,
       onToggleOpen={() => setOpenCard(openCard === t.id ? null : t.id)}
       onDragStart={() => setDragId(t.id)} onDragEnd={() => { setDragId(null); setDropKey(null); }}
       onStatus={() => void cycleStatus(t)} onRemove={() => void remove(t.id)}
-      onMail={(aud) => openMail(t, aud)} onGoToPage={onGoToPage} onGoToTab={onGoToTab}
+      onMail={(aud) => openMail(t, aud)} onGoToPage={onGoToPage} onGoToTab={onGoToTab} onOpenMailDate={onOpenMailDate}
       refreshBoard={() => void load()} />
   );
 

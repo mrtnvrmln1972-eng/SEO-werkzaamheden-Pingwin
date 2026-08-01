@@ -63,9 +63,9 @@ function stripTags(html: string): string {
 export default function ClientCockpit({
   client, emails: initialEmails, metrics, keywords, pages, lastIngest, status, statusUpdatedAt,
   msConfigured, msConnected, myEmail, allClients,
-  googleConfigured, googleConnected, chatConfigured, tasks, initialTab, highlight,
+  googleConfigured, googleConnected, chatConfigured, tasks, initialTab, initialPage, highlight,
   showMailSections = true,
-}: { client: ClientConfig; initialTab?: string; highlight?: string; showMailSections?: boolean } & CockpitData) {
+}: { client: ClientConfig; initialTab?: string; initialPage?: string; highlight?: string; showMailSections?: boolean } & CockpitData) {
   // Live mail komt NA het tonen binnen (achtergrond-verversing): het scherm opent
   // met de opgeslagen mails, en zodra Microsoft antwoordt worden ze ververst.
   const [emails, setEmails] = useState(initialEmails);
@@ -104,6 +104,17 @@ export default function ClientCockpit({
 
   // Afzender-filter als klein popovertje in de Laatste mails-kop.
   const [showAfzenders, setShowAfzenders] = useState(false);
+
+  // Deeplink vanuit een nieuw tabblad (?tab=paginas&page=...): open direct de
+  // juiste pagina-rij zodra de cockpit geladen is.
+  const initialPageRef = useRef(false);
+  useEffect(() => {
+    if (initialPageRef.current || !initialPage) return;
+    initialPageRef.current = true;
+    const timer = setTimeout(() => goToPage(initialPage), 400);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // De stand van zaken bijwerken uit de recente mails (server-side samenvatting).
   const [statusBusy, setStatusBusy] = useState(false);
@@ -265,6 +276,27 @@ export default function ClientCockpit({
     }
   });
 
+  // Een mail-verwijzing in een projectkaart ("Mail 9-7-2026") opent die mail in
+  // het venster Laatste mails: datum parsen en de eerste mail van die dag openen.
+  function openMailByDate(datum: string) {
+    const mnd: Record<string, number> = { januari: 1, februari: 2, maart: 3, april: 4, mei: 5, juni: 6, juli: 7, augustus: 8, september: 9, oktober: 10, november: 11, december: 12 };
+    let d = 0, m = 0, y = 0;
+    const num = /^(\d{1,2})[-/](\d{1,2})(?:[-/](\d{2,4}))?$/.exec(datum.trim());
+    if (num) { d = +num[1]; m = +num[2]; y = num[3] ? +num[3] : 0; }
+    else {
+      const t = /^(\d{1,2})\s+([a-z]+)(?:\s+(\d{2,4}))?$/i.exec(datum.trim());
+      if (t) { d = +t[1]; m = mnd[t[2].toLowerCase()] || 0; y = t[3] ? +t[3] : 0; }
+    }
+    if (!d || !m) return;
+    const jaar = y ? (y < 100 ? 2000 + y : y) : 0;
+    const idx = emails.findIndex((e) => {
+      if (!e.receivedAt) return false;
+      const dt = new Date(e.receivedAt);
+      return dt.getDate() === d && dt.getMonth() + 1 === m && (!jaar || dt.getFullYear() === jaar);
+    });
+    if (idx >= 0) openInDashboard(emails[idx].id, idx);
+  }
+
   function openInDashboard(id: string, idx: number) {
     setTab("werkzaamheden");
     setShowMailsBox(true);
@@ -393,7 +425,7 @@ export default function ClientCockpit({
             <div className="tk-grid">
             <div className="tk-links">
             <OverviewChat slug={client.slug} domain={client.domain || ""} configured={chatConfigured !== false} onGoToPage={goToPage} onGoToTask={goToNewTask} onWeekplanChanged={() => setWeekplanReload((n) => n + 1)} />
-            <WeekplanBoard slug={client.slug} onGoToPage={goToPage} onGoToTab={(t) => changeTab(validTab(t))} clientName={client.name} clientEmail={client.email || ""} reloadSignal={weekplanReload} />
+            <WeekplanBoard slug={client.slug} onGoToPage={goToPage} onGoToTab={(t) => changeTab(validTab(t))} onOpenMailDate={openMailByDate} clientName={client.name} clientEmail={client.email || ""} reloadSignal={weekplanReload} />
             </div>
             <div className="tk-rechts">
 

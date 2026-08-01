@@ -2287,7 +2287,14 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .wp-kop-rij { display: flex; align-items: flex-start; gap: 10px; }
 .wp-kop-tekst { flex: 1; min-width: 0; }
 .wp-kop-acties { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; }
-.wp-onder-regel { align-items: center; margin-top: 9px; padding-top: 9px; border-top: 1px solid #ececec; }
+.wp-onder-regel { align-items: center; justify-content: flex-end; margin-top: 9px; padding-top: 9px; border-top: 1px solid #ececec; }
+/* Document-pil in dezelfde maat als de andere fase-pillen; status-pil (✓/Nog niet)
+   helemaal rechts, klein en gecentreerd. */
+.wp-fase-doc { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+.wp-fase-rij .wp-fase-chip { min-width: 62px; }
+.wp-fase-chip.wp-fase-klaar { min-width: 34px; font-size: 12px; }
+.wp-maildatum { color: var(--orange-dark); font-weight: 600; text-decoration: underline dotted; cursor: pointer; }
+.wp-maildatum:hover { text-decoration: underline; }
 .wp-card-grip { cursor: grab; color: #8a8d91; user-select: none; font-weight: 900; letter-spacing: 1px; font-size: 13px; line-height: 1.2; padding: 5px 2px 1px; border-radius: 5px; text-align: center; }
 .wp-card-grip:hover { background: var(--gray-light); color: var(--dark); }
 .wp-card-grip:active { cursor: grabbing; }

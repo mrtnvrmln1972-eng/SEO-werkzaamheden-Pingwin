@@ -21,8 +21,14 @@ function escapeHtml(s: string): string {
 }
 
 // Inline-opmaak binnen één regel: **vet** renderen, nooit ruwe sterretjes tonen.
+// Mail-verwijzingen ("Mail 9-7-2026", "mail van 25 juli") worden klikbaar: de
+// kaart opent die mail dan in het venster Laatste mails (delegate in de kaart).
 function inline(s: string): string {
-  return escapeHtml(s).replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").replace(/\*/g, "");
+  return escapeHtml(s)
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*/g, "")
+    .replace(/\b([Mm]ail(?:tje)?(?:\s+van)?\s+)(\d{1,2}[-/]\d{1,2}(?:[-/]\d{2,4})?|\d{1,2}\s+(?:januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)(?:\s+\d{2,4})?)/g,
+      '$1<span class="wp-maildatum" data-datum="$2" role="button" title="Open deze mail in Laatste mails">$2</span>');
 }
 
 // Genormaliseerde sleutel voor regel-dedup (zelfde logica als de merge in weekplan.ts).
@@ -130,7 +136,6 @@ export function splitCardInfo(toelichting: string): CardInfo {
   return info;
 }
 
-const heeftFases = (info: CardInfo) => Object.values(info.perFase).some((r) => r && r.length);
 
 // De korte, gerichte sturing die meegaat als een fase vanaf de kaart start:
 // de achtergrond plus specifiek de sturing van díe fase (niet de hele lap).
@@ -146,7 +151,6 @@ export function faseSturing(info: CardInfo, fase: CardFaseKey, max = 1500): stri
 const SVG = (paden: string, cls = "") => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paden.split("|").map((d) => `<path d="${d}"></path>`).join("")}</svg>`;
 const ICO_VLAG = SVG("M4 21V4|M4 4h12l-2 4 2 4H4");
 const ICO_KLEMBORD = SVG("M9 4h6v3H9z|M9 4H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2|M9 12h6|M9 16h4");
-const ICO_INFO = SVG("M12 12m-9 0a9 9 0 1 0 18 0 9 9 0 1 0-18 0|M12 8h.01|M12 11v5");
 
 function lijst(regels: string[], cls: string): string {
   return `<ul class="${cls}">${regels.map((r) => `<li>${inline(r)}</li>`).join("")}</ul>`;
@@ -168,6 +172,5 @@ export function cardInfoHtml(toelichting: string, pageUrl?: string): string {
     kaarten.push(infoKaart(ICO_KLEMBORD, "Aanpak en taken", lijst(aanpak, "wp-punt-lijst")));
   }
   const kolommen = kaarten.length ? `<div class="wp-info-doel${kaarten.length === 1 ? " wp-info-een" : ""}">${kaarten.join("")}</div>` : "";
-  const banner = heeftFases(info) ? `<div class="wp-info-banner">${ICO_INFO}<span>De aanpak start hieronder in de fases.</span></div>` : "";
-  return linkifyHtml(kolommen + banner, domain);
+  return linkifyHtml(kolommen, domain);
 }
