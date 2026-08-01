@@ -24,6 +24,7 @@ Twee pagina's die op hetzelfde zoekwoord verschijnen is geen probleem als ze ver
 - Twee pagina's met **verschillende zoekintentie** (informatief vs. transactioneel).
 - Één sterke pagina die op **honderden varianten** rankt (dat is juist goed).
 - Overlap op **merknaam of navigatietermen**.
+- **Dubbele listing:** twee eigen URL's die tegelijk in de top-10 staan en samen méér klikken pakken dan één zou doen. Dat is twee plekken bezetten, dus winst; flag zo'n paar alleen als er óók een positie-plafond of flipping speelt.
 
 Waarom dit ertoe doet: als je false positives meeneemt, verlies je vertrouwen én ga je pagina's redirecten die prima naast elkaar mogen bestaan. De waarde zit in scherpte, niet in volume.
 
@@ -42,7 +43,7 @@ Zie `references/databronnen.md` voor concreet hoe je elke bron ophaalt in Cowork
 
 ### Fase 2 — Kandidaten identificeren (niet alle overlap)
 Cluster URL's die op hetzelfde keyword ranken, en filter direct op de echte signalen in plaats van alle overlap mee te nemen:
-- **URL-flip-detectie:** wisselt de rankende URL binnen ~90 dagen ≥2 keer? Dan is Google onzeker. Sterkste signaal.
+- **URL-flip-detectie:** bepaal per week de winnende URL (de URL met de meeste vertoningen op die query) en tel de wissels; wisselt de winnaar binnen ~90 dagen ≥2 keer, dan is Google onzeker. Sterkste signaal. **Ruisfilter:** sla queries met te weinig volume over (vuistregel: minder dan ~50 vertoningen in 90 dagen); daar flipt de winnaar door toeval, niet door twijfel.
 - **Positie-plafond:** ranken beide URL's structureel op **positie 5-20** (de zone waar consolidatie het meeste oplevert)?
 - **Klik-verdeling:** krijgen beide URL's substantiële klikken op dezelfde query (dus niet 98/2)?
 
@@ -65,6 +66,8 @@ Als consolidatie nodig is, weeg deze factoren in **deze prioriteitsvolgorde**:
 Belangrijk: vaak is de URL met de meeste backlinks niet de beste bestemming. Dan **redirect je de link-rijke pagina naar de businesswaardige pagina**, zodat je én de equity behoudt én de juiste pagina laat ranken.
 
 ### Fase 5 — Beslisboom per kandidaat-paar
+Check éérst de bestaande technische signalen (crawl): ligt er al een canonical of redirect die Google negeert, dan is het probleem "conflicterende signalen", niet ontbrekende consolidatie. De ingreep is dan repareren: interne links, sitemap en content in lijn brengen met de bedoelde canonical, in plaats van opnieuw samenvoegen.
+
 Niet alles wordt een redirect. Kies de lichtste ingreep die werkt, van licht naar zwaar:
 1. **Niets doen** — verschillende intentie, of één pagina domineert al duidelijk.
 2. **Interne links herverdelen** — stuur interne ankers naar de gewenste winnaar, verzwak de verliezer. Vaak genoeg om Google's keuze te sturen zonder iets te verwijderen.

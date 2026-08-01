@@ -63,11 +63,14 @@ Een link in de hoofdcontent (binnen een relevante alinea) telt zwaarder dan een 
 - Zo niet, of er een korte, relevante zin kan worden toegevoegd die de link draagt.
 - De positie in de content (hoe hoger en hoe centraler, hoe beter).
 
+**Menu-, footer- en sidebarlinks zijn een aparte beslissing, geen content-link.** Zo'n link staat sitewide op élke pagina tegelijk: hij geeft per stuk weinig door, en met een exact-match anker oogt hij al snel over-geoptimaliseerd. Stel hem alleen voor als bewuste structuurkeuze (bijvoorbeeld een pillar die in het hoofdmenu hoort), benoem hem dan expliciet als sitewide, en reken hem nooit mee als gewone bron-link in de scoring.
+
 ### Fase 5 — Ankertekst-strategie (het meest onderschatte deel)
 Ankertekst is een direct ranking-signaal, maar exact-match ankers over-optimaliseren is een risico. Hier zit het echte vakmanschap:
 - **Varieer de ankertekst:** gebruik niet steeds exact het primaire zoekwoord. Bouw een natuurlijke mix van exact-match, partial-match, varianten uit het keywordpaspoort, en beschrijvende ankers. Een gezond intern ankerprofiel lijkt op natuurlijke taal, niet op een keyword-lijst.
 - **Relevantie boven exactheid:** de ankertekst en de omringende zin moeten samen de doelpagina beschrijven; Google leest de context rond de link mee.
 - **Vermijd generieke ankers** ("lees meer", "klik hier") voor pagina's die je wilt versterken; die geven geen relevantiesignaal.
+- **Herschrijf eerst bestaande generieke ankers:** linken er al pagina's naar de doelpagina met een "lees meer"-achtig anker, maak dáár eerst beschrijvende ankers van voordat je nieuwe links toevoegt. Dat is de goedkoopste winst (geen nieuwe link nodig, alleen een betere tekst) en die herschrijvingen tellen mee in het ankerprofiel.
 - **Bewaak het totale ankerprofiel per doelpagina:** houd bij welke ankers al naar de doelpagina wijzen (bestaand plus voorgesteld), zodat je niet twintig keer exact hetzelfde anker plaatst. Dit profiel-als-geheel bewaken is het kritieke stuk dat losse suggesties missen.
 
 ### Fase 6 — Linkwaarde-hygiëne en risico's
@@ -80,6 +83,7 @@ Voordat je links legt, controleer je op structurele valkuilen:
 
 ### Fase 7 — Uitvoeren, meten, itereren
 - Genereer per doelpagina een concrete actielijst: bronpagina, exacte passage, voorgestelde ankertekst, positie.
+- **Plafond per ronde:** plaats per doelpagina maximaal 3 tot 5 nieuwe links per run; meer tegelijk maakt de meting hieronder onleesbaar (je weet niet welke link het deed). De overige kandidaten bewaar je voor de volgende run.
 - Voer door (handmatig, of in het dashboard semi-geautomatiseerd).
 - Meet na **4 tot 8 weken:** positie van de doelpagina op het primaire keyword, aantal interne inkomende links (moet gestegen zijn), click depth, en of de doelpagina meer interne klikken ontvangt.
 - Itereer: bij onvoldoende beweging voeg je meer of sterkere bronlinks toe.

@@ -61,6 +61,8 @@ Lever naast het leesbare rapport ook exact deze JSON, zodat het Pingwin-dashboar
 
 ## Veldregels
 - `voorgesteldeLinks` is per doelpagina gerangschikt op `score` (hoogste eerst). Neem alleen bronnen op die nog NIET naar de doelpagina linken en die thematisch relevant zijn; een sterke maar off-topic link hoort er niet in.
+- Uitzondering op "nog niet linkend": een bestaande link met een generiek anker ("lees meer", "klik hier") mag wél als kans worden opgenomen; zet dan het extra veld `bestaandAnker` met het huidige anker erbij, zodat duidelijk is dat dit een herschrijving van een bestaande link is, geen nieuwe link. Deze herschrijvingen gaan vóór nieuwe links.
+- Maximaal 3 tot 5 voorgestelde nieuwe links per doelpagina per run (het plafond uit fase 7); rangschik en laat de rest weg of benoem ze kort in `clusterNotities`.
 - `relevantie` is een getal 0-100 uit de semantische match tussen bron- en doelcontent (het lezen van beide pagina's), niet uit keyword-overlap alleen.
 - `ankertype` bewaakt het profiel: varieer over exact / partial / variant / beschrijvend. Als het bestaande profiel al veel exact-match bevat, kies dan bewust een ander type en licht dat toe in `verwachteImpact` of de passage.
 - `ankerprofiel` bevat zowel de bestaande ankers (`status: "bestaand"`) als de nieuw voorgestelde (`status: "voorgesteld"`), zodat over-optimalisatie zichtbaar is.
