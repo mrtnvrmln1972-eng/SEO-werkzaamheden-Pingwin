@@ -195,6 +195,18 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
     } catch { setFoutje("Starten mislukt, probeer het nog een keer."); } finally { setBusy(""); }
   }
 
+  // "Controleer live": staat het geadviseerde schema nu echt op de pagina?
+  const [verifyMsg, setVerifyMsg] = useState<{ tekst: string; ok: boolean } | null>(null);
+  async function controleerLive() {
+    if (busy) return;
+    setBusy("verify"); setVerifyMsg(null); setFoutje("");
+    try {
+      const d = await fetch("/api/admin/page-schema/verify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: t.url }) }).then((r) => r.json());
+      if (d?.ok) setVerifyMsg({ tekst: d.melding || "", ok: !!d.geplaatst && !(d.dubbel || []).length });
+      else setFoutje(d?.error || "Controleren mislukte.");
+    } catch { setFoutje("Controleren mislukte; probeer het nog een keer."); } finally { setBusy(""); }
+  }
+
   // "Ruim op": herschrijft de kaarttekst server-side naar het strakke formaat.
   async function ruimOp() {
     if (busy) return;
@@ -334,7 +346,12 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
       return <button type="button" className="wp-fase-btn" title="Mail over de bouw of publicatie (ontvanger kies je in het venster)" onClick={() => onMail("dev")}>Mail</button>;
     }
     if (key === "structured") {
-      return <button type="button" className="wp-fase-btn" disabled={schemaRunning || !!busy} title={!p.bouw && p.copy ? "Let op: staat de nieuwe copy al live? Anders is de analyse te vroeg." : "Start de structured-data-analyse"} onClick={() => void startSchema()}>{p.structured ? "Opnieuw ↻" : "Start ▷"}</button>;
+      return (
+        <>
+          <button type="button" className="wp-fase-btn" disabled={schemaRunning || !!busy} title={!p.bouw && p.copy ? "Let op: staat de nieuwe copy al live? Anders is de analyse te vroeg." : "Start de structured-data-analyse"} onClick={() => void startSchema()}>{p.structured ? "Opnieuw ↻" : "Start ▷"}</button>
+          <button type="button" className="wp-fase-btn wp-fase-btn-licht" disabled={!!busy || schemaRunning} title="Her-fetcht de live pagina en checkt of het geadviseerde schema er nu echt staat (en niet dubbel)." onClick={() => void controleerLive()}>{busy === "verify" ? "Checken…" : "Controleer live"}</button>
+        </>
+      );
     }
     return null;
   }
@@ -501,6 +518,7 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
               </div>
             );
           })}
+          {verifyMsg && <div className={verifyMsg.ok ? "wp-doc-ok" : "wp-doc-fout"}>{verifyMsg.tekst}</div>}
           {page.live && page.copy && !page.bouw && <div className="wp-fase-hint">De copy is klaar en de pagina staat live. Is de nieuwe tekst verwerkt, vink dan Bouw en publicatie af.</div>}
           {foutje && <div className="wp-fase-fouttekst">{foutje}</div>}
           {melding && <div className="wp-fase-melding">{melding}</div>}

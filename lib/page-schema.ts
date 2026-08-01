@@ -31,6 +31,7 @@ export type PageSchemaState = {
   warnings: string[];
   error: string;
   updatedAt: string | null;
+  inventory?: { plugin?: string; pluginLabel?: string; types?: string[] };
 };
 
 let tableReady: Promise<void> | null = null;
@@ -54,6 +55,9 @@ async function doEnsure(): Promise<void> {
   // Momentopname van de plugin-schema op het moment van de analyse, zodat de
   // periodieke bewaking kan zien of de plugin sindsdien iets anders levert.
   await sql`ALTER TABLE client_page_schema ADD COLUMN IF NOT EXISTS plugin_types JSONB NOT NULL DEFAULT '[]'`;
+  // Inventarisatie (in code vastgesteld): welke plugin levert al schema en welke
+  // types/@id's staan er, zodat de kaart en de prompt op harde feiten draaien.
+  await sql`ALTER TABLE client_page_schema ADD COLUMN IF NOT EXISTS inventory JSONB NOT NULL DEFAULT '{}'`;
 }
 
 export async function getPageSchema(slug: string, url: string): Promise<PageSchemaState> {
@@ -71,6 +75,7 @@ export async function getPageSchema(slug: string, url: string): Promise<PageSche
     warnings,
     error: (r.error as string) || "",
     updatedAt: r.updated_at ? new Date(r.updated_at as string).toISOString() : null,
+    inventory: (typeof r.inventory === "object" && r.inventory) ? (r.inventory as PageSchemaState["inventory"]) : undefined,
   };
 }
 
@@ -84,12 +89,12 @@ export async function getPageSchemaStatusAll(slug: string): Promise<Record<strin
   return out;
 }
 
-async function setState(slug: string, url: string, status: string, patch: { result?: string; jsonld?: string; warnings?: string[]; error?: string; pluginTypes?: string[] } = {}): Promise<void> {
+async function setState(slug: string, url: string, status: string, patch: { result?: string; jsonld?: string; warnings?: string[]; error?: string; pluginTypes?: string[]; inventory?: unknown } = {}): Promise<void> {
   await ensureSchema();
   await ensureTable();
   await sql`
-    INSERT INTO client_page_schema (client_slug, url, status, result, jsonld, warnings, error, plugin_types, updated_at)
-    VALUES (${slug}, ${url}, ${status}, ${patch.result || ""}, ${patch.jsonld || ""}, ${JSON.stringify(patch.warnings || [])}, ${patch.error || ""}, ${JSON.stringify(patch.pluginTypes || [])}, now())
+    INSERT INTO client_page_schema (client_slug, url, status, result, jsonld, warnings, error, plugin_types, inventory, updated_at)
+    VALUES (${slug}, ${url}, ${status}, ${patch.result || ""}, ${patch.jsonld || ""}, ${JSON.stringify(patch.warnings || [])}, ${patch.error || ""}, ${JSON.stringify(patch.pluginTypes || [])}, ${JSON.stringify(patch.inventory || {})}, now())
     ON CONFLICT (client_slug, url) DO UPDATE SET
       status = ${status},
       result = COALESCE(NULLIF(${patch.result || ""}, ''), client_page_schema.result),
@@ -97,6 +102,7 @@ async function setState(slug: string, url: string, status: string, patch: { resu
       warnings = ${JSON.stringify(patch.warnings || [])},
       error = ${patch.error || ""},
       plugin_types = CASE WHEN ${JSON.stringify(patch.pluginTypes || [])}::jsonb <> '[]'::jsonb THEN ${JSON.stringify(patch.pluginTypes || [])}::jsonb ELSE client_page_schema.plugin_types END,
+      inventory = CASE WHEN ${JSON.stringify(patch.inventory || {})}::jsonb <> '{}'::jsonb THEN ${JSON.stringify(patch.inventory || {})}::jsonb ELSE client_page_schema.inventory END,
       updated_at = now()`;
 }
 
@@ -177,6 +183,16 @@ export async function runPageSchema(slug: string, url: string): Promise<void> {
     // FAQ's) waarschijnlijk nog; stap 7 hoort daarna als sluitstuk.
     const openCopy = allTasks.some((t) => t.stepKind === "copy_doc" && (t.pageUrl || "") === url && (t.status || "").toLowerCase() !== "klaar");
 
+    // Inventarisatie in code: welke plugin levert al schema, welke types en @id's.
+    const { analyzeExistingSchema, validateJsonLd, normalizePaginatype, missingExpected } = await import("./schema-check");
+    const inventory = analyzeExistingSchema(rawLd);
+    // Drift-bewaking: levert de plugin nu iets anders dan bij de vorige analyse?
+    const vorige = await getPageSchema(slug, url).catch(() => null);
+    const vorigeTypes = new Set((vorige?.inventory?.types || []) as string[]);
+    const drift = vorige?.updatedAt && vorigeTypes.size
+      ? inventory.types.filter((t) => !vorigeTypes.has(t)).concat([...vorigeTypes].filter((t) => !inventory.types.includes(t)))
+      : [];
+
     const site = (() => { try { return new URL(url).origin; } catch { return ""; } })();
     const pageText = measured
       ? [
@@ -197,19 +213,49 @@ export async function runPageSchema(slug: string, url: string): Promise<void> {
       kennis ? `\nKENNISBANK (door Maarten bevestigde extra gegevens; net zo betrouwbaar als de bedrijfsgegevens, gebruik ze waar relevant):\n${kennis}` : "",
       plan ? `\nPLAN VOOR DEZE PAGINA:\n${String(plan).replace(/<[^>]*>/g, " ").slice(0, 2500)}` : "",
       `\nPAGINA-METING:\n${pageText}`,
+      `\nPLUGIN-DETECTIE (in code vastgesteld, HARD FEIT): ${inventory.plugin === "geen" ? "er staat nog geen structured data op deze pagina." : `${inventory.pluginLabel} levert al schema met types: ${inventory.types.join(", ") || "onbekend"}. Deze types NIET opnieuw definiëren; alleen aanvullen en verwijzen met de bestaande @id's.`}`,
       rawLd.length ? `\nVOLLEDIGE BESTAANDE JSON-LD OP DE PAGINA (plugin-schema; sluit hier EXACT op aan, gebruik de echte @id's):\n${rawLd.join("\n---\n").slice(0, 24000)}` : "",
       gsc.length ? `\nTOP-ZOEKWOORDEN (Search Console, 90d):\n${gsc.slice(0, 12).map((k) => `${k.keyword} (pos ${k.position})`).join("; ")}` : "",
       client.seoProfile ? `\nKLANTPROFIEL (samenvatting):\n${client.seoProfile.slice(0, 1500)}` : "",
     ].filter(Boolean).join("\n");
 
     const raw = await callClaude(SCHEMA_SYSTEM, [{ role: "user", content: user }], 6000, { slug, action: "page_schema" });
-    const parsed = JSON.parse(raw.replace(/```json/gi, "").replace(/```/g, "").trim()) as { paginatype?: string; advies_md?: string; jsonld?: unknown; waarschuwingen?: unknown };
+    let parsed = JSON.parse(raw.replace(/```json/gi, "").replace(/```/g, "").trim()) as { paginatype?: string; advies_md?: string; jsonld?: unknown; waarschuwingen?: unknown };
     if (!parsed.jsonld || typeof parsed.advies_md !== "string") throw new Error("Het AI-antwoord kwam onvolledig terug; probeer het opnieuw.");
+
+    // Validatie in code + maximaal één herstelronde: fouten gaan met naam en
+    // toenaam terug de motor in; wat daarna nog fout is wordt een zichtbare waarschuwing.
+    const bevestigd = `${orgToText(org.data, org.locked)}\n${kennis || ""}`;
+    const valCtx = { bestaand: inventory, paginaTekst: pageText, bevestigd };
+    let check = validateJsonLd(parsed.jsonld, valCtx);
+    if (check.errors.length) {
+      try {
+        const herstel = await callClaude(SCHEMA_SYSTEM, [
+          { role: "user", content: user },
+          { role: "assistant", content: raw },
+          { role: "user", content: `Onze automatische controle vond deze FOUTEN in je JSON-LD; herstel ze allemaal en geef het volledige antwoord opnieuw in exact hetzelfde JSON-formaat:\n${check.errors.map((e) => `- ${e}`).join("\n")}` },
+        ], 6000, { slug, action: "page_schema_herstel" });
+        const hersteld = JSON.parse(herstel.replace(/```json/gi, "").replace(/```/g, "").trim()) as typeof parsed;
+        if (hersteld.jsonld && typeof hersteld.advies_md === "string") {
+          parsed = hersteld;
+          check = validateJsonLd(parsed.jsonld, valCtx);
+        }
+      } catch { /* herstelronde is een extra; de fouten blijven zichtbaar */ }
+    }
+
     const jsonld = JSON.stringify(parsed.jsonld, null, 2);
     const warnings = Array.isArray(parsed.waarschuwingen) ? parsed.waarschuwingen.map(String).filter(Boolean) : [];
+    warnings.push(...check.warnings);
+    for (const e of check.errors) warnings.unshift(`CONTROLE: ${e}`);
+    // Routing-controle: welke verwachte schema-types voor dit soort bedrijf en
+    // deze soort pagina ontbreken er nog (bestaand + nieuw samen)?
+    const paginatype = normalizePaginatype(parsed.paginatype || "");
+    const mist = missingExpected(org.data.bedrijfstype || "", paginatype, inventory.types, parsed.jsonld);
+    if (mist.length) warnings.push(`Voor een ${paginatype}-pagina van dit bedrijfstype hoort er ook ${mist.join(" en ")} te staan; dat zit nog niet in het bestaande of nieuwe schema.`);
+    if (drift.length) warnings.unshift(`De plugin levert nu andere schema-types dan bij de vorige analyse (verschil: ${drift.join(", ")}); controleer of eerdere aanvullingen nog kloppen.`);
     if (openCopy) warnings.unshift("Er staat nog een niet-afgeronde copy-taak voor deze pagina: de nieuwe teksten (met FAQ's) staan waarschijnlijk nog niet live. Deze analyse is gebaseerd op de huidige pagina; draai stap 7 opnieuw zodra de nieuwe copy live staat.");
-    const header = parsed.paginatype ? `**Paginatype:** ${parsed.paginatype}\n\n` : "";
-    await setState(slug, url, "done", { result: header + parsed.advies_md.trim(), jsonld, warnings, pluginTypes: measured?.schemaTypes || [] });
+    const header = `**Paginatype:** ${parsed.paginatype || paginatype}\n**Bestaand schema:** ${inventory.plugin === "geen" ? "geen" : `${inventory.pluginLabel} (${inventory.types.join(", ") || "types onbekend"})`}\n\n`;
+    await setState(slug, url, "done", { result: header + (parsed.advies_md || "").trim(), jsonld, warnings, pluginTypes: measured?.schemaTypes || [], inventory });
   } catch (e) {
     await setState(slug, url, "error", { error: (e as Error).message || "Analyse mislukt." }).catch(() => { /* status is hulpinfo */ });
   }
@@ -218,7 +264,7 @@ export async function runPageSchema(slug: string, url: string): Promise<void> {
 // Leest de volledige bestaande JSON-LD-blokken van de pagina (plugin-schema),
 // zodat de analyse exact kan aansluiten op de echte @id's en nodes in plaats van
 // aannames te doen ("plugin-@id onbekend").
-async function fetchRawJsonLd(url: string): Promise<string[]> {
+export async function fetchRawJsonLd(url: string): Promise<string[]> {
   try {
     const ctl = new AbortController();
     const t = setTimeout(() => ctl.abort(), 15000);
