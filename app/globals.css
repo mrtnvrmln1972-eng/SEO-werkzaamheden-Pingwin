@@ -2130,7 +2130,9 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .ovc-act-lijst { border-color: var(--orange); color: var(--orange); font-size: 13px; }
 .ovc-act-lijst:hover, .ovc-act-lijst.ovc-act-aan { background: var(--orange); color: #fff; }
 .ovc-lijstkeuze { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; font-size: 12.5px; border: 1px solid var(--border, #e5ded6); border-left: 3px solid var(--orange); border-radius: 9px; padding: 7px 10px; background: #fffdfb; }
-.wp-info-lijstbtn { float: right; width: 20px; height: 20px; margin-left: 8px; border-radius: 50%; border: 1.5px solid var(--orange); color: var(--orange); background: #fff; font-size: 12px; line-height: 16px; text-align: center; cursor: pointer; padding: 0; opacity: 0.6; }
+/* Vast rechts per regel (geen float, dus nooit zwevend in het midden van de kaart). */
+.wp-card-info.wp-info-net li { position: relative; padding-right: 30px; }
+.wp-info-lijstbtn { position: absolute; right: 0; top: 1px; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--orange); color: var(--orange); background: #fff; font-size: 12px; line-height: 16px; text-align: center; cursor: pointer; padding: 0; opacity: 0.6; }
 .wp-info-lijstbtn:hover { background: var(--orange); color: #fff; opacity: 1; }
 /* Status-stipjes in plaats van emoji's (retroactief op oude antwoorden). */
 .st-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin: 0 2px; vertical-align: baseline; }
@@ -2145,7 +2147,7 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 
 /* Documenten op de kaart: dropzone, voorstel en versie-archief. */
 .wp-docs { margin: 10px 0; display: flex; flex-direction: column; gap: 8px; }
-.wp-docdrop { border: 1.5px dashed var(--line, #e5ded6); border-radius: 10px; padding: 10px 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12.5px; background: #fffdfb; transition: border-color 0.12s, background 0.12s; }
+.wp-docdrop { border: 1.5px dashed var(--line, #e5ded6); border-radius: 10px; padding: 12px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 12.5px; background: #fffdfb; transition: border-color 0.12s, background 0.12s; }
 .wp-docdrop-actief { border-color: var(--orange); background: #fff6f1; }
 .wp-docdrop-tekst { color: var(--muted, #8a7a6c); }
 .wp-docdrop-of { color: var(--muted, #8a7a6c); }
@@ -2368,14 +2370,20 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .wp-fase-alles { background: #fbfbfa; }
 .wp-fase-alles-label { font-size: 11.5px; font-weight: 600; color: var(--muted); }
 /* "Ruim op"-rij boven het Doel-blok. */
-.wp-opruim-rij { display: flex; align-items: center; gap: 9px; margin: 6px 0 4px; }
+/* "Ruim op" rechts uitgelijnd op dezelfde lijn als de kaartinhoud, niet zwevend links. */
+.wp-opruim-rij { display: flex; align-items: center; justify-content: flex-end; gap: 9px; margin: 4px 0 6px; }
+.wp-opruim-rij .wp-fase-btn { padding: 3px 10px; font-size: 11px; opacity: 0.75; }
+.wp-opruim-rij .wp-fase-btn:hover { opacity: 1; }
 .wp-opruim-ok { font-size: 11px; font-weight: 600; color: #1b7f3b; }
 .wp-opruim-fout { font-size: 11px; color: #a12622; }
 /* Verwijder-kruisje per onderwerp in de Bird's eye-lijst. */
 .ovc-topic-del { margin-left: auto; flex: 0 0 auto; font-size: 15px; }
 /* Kaart-chat (zelfde geheugen als de pagina-chat in Pagina's). */
 .wp-chat { margin: 6px 0 4px; }
-.wp-chat-toggle { font-size: 12px; font-weight: 600; color: var(--orange-dark); background: none; border: none; cursor: pointer; padding: 2px 0; }
+.wp-chat-toggle { font-size: 12px; font-weight: 600; color: var(--orange-dark); background: none; border: none; cursor: pointer; padding: 4px 0; }
+.wp-chat-toggle:hover { text-decoration: underline; text-underline-offset: 3px; }
+/* Zichtbare focus voor toetsenbord, overal hetzelfde (toegankelijkheid). */
+button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; border-radius: 4px; }
 /* Prominente chat-knop boven de fases (de chat voedt de fases eronder). */
 .wp-chat-toggle-groot { display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid var(--orange); border-radius: 10px; padding: 6px 14px; background: #fffaf7; font-size: 12.5px; margin: 2px 0 6px; }
 .wp-chat-toggle-groot:hover, .wp-chat-toggle-groot.wp-chat-open { background: var(--orange-light); }
@@ -2461,7 +2469,7 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .wp-icon:hover { background: var(--gray-light); color: var(--dark); }
 .wp-del:hover { color: #c0392b; }
 /* Kleine tekstknoppen op de taakkaart (mail klant/dev, open in Pagina's) */
-.wp-act { border: 1px solid #dcdcdc; background: var(--white); cursor: pointer; font-size: 11.5px; font-weight: 600; color: #5b5b5d; padding: 5px 12px; border-radius: 10px; line-height: 1.4; white-space: nowrap; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02); }
+.wp-act { border: 1px solid #dcdcdc; background: var(--white); cursor: pointer; font-size: 11.5px; font-weight: 600; color: #5b5b5d; padding: 4px 12px; border-radius: 10px; line-height: 1.5; white-space: nowrap; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02); }
 .wp-act:hover { background: var(--gray-light); color: var(--dark); }
 .wp-act-klant { color: var(--orange); border-color: #f2c9b0; }
 .wp-act-klant:hover { background: var(--orange-light); color: var(--orange-dark); }
@@ -2575,3 +2583,8 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .act-edit-label { font-size: 11px; margin: 6px 0 3px; }
 .act-edit { border: 1px solid var(--border); border-radius: 8px; background: #fff; padding: 8px 10px; font-size: 13px; line-height: 1.5; white-space: pre-wrap; min-height: 48px; }
 .act-edit:focus { outline: none; border-color: var(--orange); box-shadow: 0 0 0 3px rgba(231, 119, 63, 0.15); }
+
+/* Toegankelijkheid: wie animaties uit heeft staan, krijgt ze ook echt niet. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}

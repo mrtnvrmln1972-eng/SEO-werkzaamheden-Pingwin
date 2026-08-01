@@ -85,8 +85,7 @@ export default function DocVersies({ slug, url }: { slug: string; url: string })
           <span className="muted">Document lezen en vergelijken…</span>
         ) : (
           <>
-            <span className="wp-docdrop-tekst">Sleep hier een teruggekregen document naartoe (.docx, .txt, .md)</span>
-            <span className="wp-docdrop-of">of plak een Drive-link:</span>
+            <span className="wp-docdrop-tekst">Sleep een teruggekregen document hierheen (.docx, .txt, .md) of plak een Drive-link:</span>
             <span className="wp-docdrop-linkrij">
               <input className="wp-docdrop-input" value={linkVeld} placeholder="https://docs.google.com/…"
                 onChange={(e) => setLinkVeld(e.target.value)}
