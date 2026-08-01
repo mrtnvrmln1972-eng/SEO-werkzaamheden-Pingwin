@@ -321,13 +321,20 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
       <div className="wp-card-grid">
         {/* Alleen dit handvat is sleepbaar; de rest van de kaart blijft selecteerbare tekst. */}
         <span className="wp-card-grip" draggable onDragStart={onDragStart} onDragEnd={onDragEnd} title="Sleep de kaart naar een andere week">⋮⋮</span>
-        <span className="wp-card-tile wp-clickable" onClick={toggleAlsGeenSelectie} aria-hidden="true"><Icoon d={ICOON.doel} className="wp-tile-svg" /></span>
         <div className="wp-card-main">
-          <div className="wp-card-taak wp-clickable" onClick={toggleAlsGeenSelectie} title={open ? "Klik om dicht te klappen" : "Klik voor de fases, info en chat"}>
-            <span className="wp-caret">{open ? "▾" : "▸"}</span>
-            {titel}
+          <div className="wp-kop-rij">
+            <div className="wp-kop-tekst">
+              <div className="wp-card-taak wp-clickable" onClick={toggleAlsGeenSelectie} title={open ? "Klik om dicht te klappen" : "Klik voor de fases, info en chat"}>
+                <span className="wp-caret">{open ? "▾" : "▸"}</span>
+                {titel}
+              </div>
+              {subtitel && <div className="wp-card-sub wp-clickable" onClick={toggleAlsGeenSelectie}>{subtitel}</div>}
+            </div>
+            <span className="wp-kop-acties">
+              <button type="button" className={"wp-status wp-status-" + t.status} onClick={onStatus} title="Klik om de status te wisselen">{STATUS_LABEL[t.status] || t.status}</button>
+              <button type="button" className="wp-icon wp-del" title="Verwijderen" onClick={onRemove}>×</button>
+            </span>
           </div>
-          {subtitel && <div className="wp-card-sub wp-clickable" onClick={toggleAlsGeenSelectie}>{subtitel}</div>}
 
       {open && hasInfo && (
         <div className="wp-opruim-rij">
@@ -392,7 +399,6 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
                   <label className="wp-fase-check" title="Handmatig afvinken of terugzetten">
                     <input type="checkbox" checked={!!page[f.key]} onChange={(e) => void vink(f.key, e.target.checked)} />
                   </label>
-                  <Icoon d={f.icoon} />
                   <span className="wp-fase-label">{f.label}</span>
                   <span className={"wp-fase-chip " + stand.cls}>{stand.label}</span>
                   {link && <a className="wp-link" href={link} target="_blank" rel="noreferrer" title="Open het document">Document ↗</a>}
@@ -428,30 +434,18 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
         </div>
       )}
 
-      {open && anyLink && (
-        <div className="wp-onder-blok">
-          <div className="wp-sectie-label wp-sectie-metikoon"><Icoon d={ICOON.pin} className="wp-sectie-icoon" /> Locatie</div>
-        </div>
-      )}
-      {anyLink && (
-        <div className="wp-card-links">
-          {t.url && <a className="wp-link" href={t.url} target="_blank" rel="noreferrer" title="De live pagina">{shortUrl(t.url)}</a>}
-          {t.copyUrl && <a className="wp-link" href={t.copyUrl} target="_blank" rel="noreferrer" title="De aangeleverde copy">Copy ↗</a>}
-          {t.bronMail && <a className="wp-link" href={t.bronMail} target="_blank" rel="noreferrer" title="De mail waar deze taak uit voortkomt">✉ bronmail</a>}
-          {tab && onGoToTab && <button type="button" className="wp-link wp-link-btn" title="Doe het hier in het dashboard" onClick={() => onGoToTab(tab.tab)}>{tab.label}</button>}
-        </div>
-      )}
-
-          <div className="wp-meta-rij">
-            <span className={"wp-wie " + (t.wie === "Dev" ? "wie-dev" : "wie-seo")}>{t.wie}</span>
-            <button type="button" className={"wp-status wp-status-" + t.status} onClick={onStatus} title="Klik om de status te wisselen">{STATUS_LABEL[t.status] || t.status}</button>
-          </div>
-        </div>
-        <div className="wp-card-acties-kolom">
-          <button type="button" className="wp-act wp-act-klant" title="Mail naar klant: een klantvriendelijke uitleg van deze kaart." onClick={() => onMail("klant")}>✉ Mail klant</button>
-          <button type="button" className="wp-act" title="Mail deze taak naar je developer/sitebouwer." onClick={() => onMail("dev")}>Dev {"<>"}</button>
-          {t.url && onGoToPage && <button type="button" className="wp-act" title="Open de pagina in Pagina's voor het diepe werk." onClick={() => onGoToPage(t.url)}>Pagina&rsquo;s ↗</button>}
-          <button type="button" className="wp-icon wp-del" title="Verwijderen" onClick={onRemove}>×</button>
+      {open && anyLink && <div className="wp-sectie-label">Locatie</div>}
+      {/* Eén nette onderste regel: links en acties samen, uitgelijnd op één rij. */}
+      <div className="wp-card-links wp-onder-regel">
+        {t.url && <a className="wp-link" href={t.url} target="_blank" rel="noreferrer" title="De live pagina">{shortUrl(t.url)}</a>}
+        {t.copyUrl && <a className="wp-link" href={t.copyUrl} target="_blank" rel="noreferrer" title="De aangeleverde copy">Copy ↗</a>}
+        {t.bronMail && <a className="wp-link" href={t.bronMail} target="_blank" rel="noreferrer" title="De mail waar deze taak uit voortkomt">✉ bronmail</a>}
+        {tab && onGoToTab && <button type="button" className="wp-link wp-link-btn" title="Doe het hier in het dashboard" onClick={() => onGoToTab(tab.tab)}>{tab.label}</button>}
+        <span className="wp-fase-spacer" />
+        <button type="button" className="wp-act wp-act-klant" title="Mail naar klant: een klantvriendelijke uitleg van deze kaart." onClick={() => onMail("klant")}>✉ Mail klant</button>
+        <button type="button" className="wp-act" title="Mail deze taak naar je developer/sitebouwer." onClick={() => onMail("dev")}>Dev {"<>"}</button>
+        {t.url && onGoToPage && <button type="button" className="wp-act" title="Open de pagina in Pagina's voor het diepe werk." onClick={() => onGoToPage(t.url)}>Pagina&rsquo;s ↗</button>}
+      </div>
         </div>
       </div>
     </div>

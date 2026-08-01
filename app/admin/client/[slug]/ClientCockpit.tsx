@@ -101,6 +101,26 @@ export default function ClientCockpit({
   const [showStatusBox, setShowStatusBox] = useState(false);
   const [showMailsBox, setShowMailsBox] = useState(false);
 
+  // De stand van zaken bijwerken uit de recente mails (server-side samenvatting).
+  const [statusBusy, setStatusBusy] = useState(false);
+  const statusAutoRef = useRef(false);
+  async function refreshStatus() {
+    if (statusBusy) return;
+    setStatusBusy(true);
+    try {
+      const d = await fetch("/api/admin/status-refresh", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug: client.slug }) }).then((r) => r.json());
+      if (d?.ok) router.refresh();
+    } catch { /* stil; knop kan opnieuw */ } finally { setStatusBusy(false); }
+  }
+  // Loopt de tijdlijn meer dan twee dagen achter, ververs hem dan stil op de achtergrond.
+  useEffect(() => {
+    if (statusAutoRef.current) return;
+    statusAutoRef.current = true;
+    const oud = !statusUpdatedAt || (Date.now() - new Date(statusUpdatedAt).getTime()) > 2 * 24 * 3600 * 1000;
+    if (oud) void refreshStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Pagina's blijven na het eerste bezoek in het geheugen (verborgen i.p.v.
   // uitgekleed), zodat je chat/plan-staat bewaard blijft als je van tab wisselt.
   const [paginasVisited, setPaginasVisited] = useState(validTab(initialTab) === "paginas");
@@ -381,7 +401,11 @@ export default function ClientCockpit({
               <button type="button" className="strategy-head" onClick={() => setShowStatusBox((v) => !v)}>
                 <span className="strategy-caret">{showStatusBox ? "▾" : "▸"}</span>
                 <span className="strategy-title">Actuele stand van zaken <HelpHint xl title="Actuele stand van zaken" text={"Het lopende gesprek met de klant in één oogopslag, zodat je vóór elk contactmoment in tien seconden weet waar jullie staan.\n## Waar de data vandaan komt\nDe tijdlijn wordt **automatisch samengevat uit de echte mailwisseling** met deze klant (uit de gekoppelde mailbox). Elke ballon is een punt uit de correspondentie: links de klant, rechts Pingwin, met datum en de status open of afgehandeld.\n## Wat je ermee doet\n- **Afvinken:** handel een punt af met het vinkje 'afgerond'; zo blijft alleen het openstaande werk rood.\n- **Terug naar de bron:** 'mail openen' springt naar de originele mail, zodat je nooit hoeft te zoeken.\n- **Vaste kennis rechts:** het blok Zoekwoorden & links is jouw eigen spiekbriefje per klant (afspraken, focus-zoekwoorden, handige links); dat vult zichzelf niet, dat is bewust jouw plek."} /></span>
-                {statusUpdatedAt && <span className="strategy-meta-right">bijgewerkt {fmtDate(statusUpdatedAt)}</span>}
+                <span className="strategy-meta-right">
+                  {statusUpdatedAt && <>bijgewerkt {fmtDate(statusUpdatedAt)} · </>}
+                  <span role="button" className="sov-refresh" title="Vat de recente mails opnieuw samen tot de actuele stand van zaken"
+                    onClick={(e) => { e.stopPropagation(); void refreshStatus(); }}>{statusBusy ? "Bezig…" : "Vernieuwen"}</span>
+                </span>
               </button>
               <div className="strategy-body" style={{ display: showStatusBox ? undefined : "none" }}>
                   <div className="sov-thread">
