@@ -2090,8 +2090,19 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .ovc-msg.assistant { align-items: flex-start; }
 .ovc-msg .chat-msg-del { opacity: 0.28; }
 .ovc-msg:hover .chat-msg-del { opacity: 0.9; }
-.ovc-bubble { max-width: 92%; padding: 8px 12px; border-radius: 12px; font-size: 14px; line-height: 1.5; }
-.ovc-msg.user .ovc-bubble { background: var(--orange); color: #fff; border-bottom-right-radius: 4px; }
+.ovc-bubble { max-width: 92%; padding: var(--s-2) var(--s-3); border-radius: var(--r-md); font-size: var(--fs-base); line-height: var(--lh-base); }
+/* Opdracht/vraag van Maarten: geen felle oranje balk met witte tekst meer
+   (onrustig en te weinig contrast), maar een rustige zacht-oranje kaart met
+   donkere tekst, op de schaal-tokens. Geldt retroactief voor alle onderwerpen. */
+.ovc-msg.user .ovc-bubble {
+  background: var(--orange-light);
+  border: 1px solid #F3C9B3;
+  border-left: 3px solid var(--orange);
+  color: var(--dark);
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-md);
+  white-space: pre-wrap;
+}
 .ovc-msg.assistant .ovc-bubble { background: #f4f4f5; color: #1f1f1f; border-bottom-left-radius: 4px; }
 .ovc-msg.assistant .ovc-bubble.muted { background: none; color: var(--gray); font-style: italic; }
 /* Lange antwoorden standaard ingeklapt (geen muur van tekst) */
