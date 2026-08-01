@@ -2261,6 +2261,11 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 /* De chat groeit gewoon mee met het gesprek; geen mini-scrollvenster. */
 .wp-chat-msgs { display: flex; flex-direction: column; gap: 6px; }
 .wp-chat-leeg { font-size: 12px; padding: 4px 2px; }
+.wp-chat-blok { position: relative; display: flex; flex-direction: column; }
+.wp-chat-blok-vraag { align-items: flex-end; }
+.wp-chat-del { position: absolute; top: 2px; right: 2px; z-index: 2; border: none; background: rgba(255, 255, 255, 0.85); color: var(--gray); border-radius: 999px; width: 18px; height: 18px; line-height: 1; font-size: 12px; cursor: pointer; opacity: 0; transition: opacity 0.12s; }
+.wp-chat-blok:hover .wp-chat-del { opacity: 1; }
+.wp-chat-del:hover { color: #c0392b; }
 .wp-chat-vraag { align-self: flex-end; max-width: 85%; background: var(--orange-light); border: 1px solid var(--orange); border-radius: 8px; padding: 6px 9px; font-size: 12px; }
 .wp-chat-antwoord { align-self: stretch; background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font-size: 12px; line-height: 1.55; }
 .wp-chat-antwoord ul { margin: 4px 0 4px 16px; padding: 0; }

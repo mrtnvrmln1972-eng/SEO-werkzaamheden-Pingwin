@@ -247,6 +247,14 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
     } catch { setFoutje("De assistent is niet bereikbaar."); } finally { setChatBusy(false); }
   }
 
+  // Eén chatbericht weghalen (kruisje); de opgeslagen historie gaat meteen mee.
+  async function verwijderChatBericht(i: number) {
+    const nieuw = msgs.filter((_, idx) => idx !== i);
+    setMsgs(nieuw);
+    if (!t.url) return;
+    try { await fetch("/api/admin/page-chats", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: t.url, id: chatId, messages: nieuw }) }); } catch { /* stil */ }
+  }
+
   async function legStrategieVast() {
     const plan = planVoorstel.trim() || [...msgs].reverse().find((m) => m.role === "assistant")?.content || "";
     if (!plan || !t.url) return;
@@ -377,9 +385,14 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
             <div className="wp-chat-body">
               <div className="wp-chat-msgs" ref={msgsRef}>
                 {msgs.length === 0 && !chatBusy && <div className="muted wp-chat-leeg">Stel een vraag of spar over deze pagina. De kaart-achtergrond gaat automatisch mee als context.</div>}
-                {msgs.map((m, i) => m.role === "user"
-                  ? <div key={i} className="wp-chat-vraag">{m.content}</div>
-                  : <div key={i} className="wp-chat-antwoord md" dangerouslySetInnerHTML={{ __html: linkifyHtml(mdToHtml(m.content), (() => { try { return new URL(t.url).host; } catch { return ""; } })()) }} />)}
+                {msgs.map((m, i) => (
+                  <div key={i} className={"wp-chat-blok " + (m.role === "user" ? "wp-chat-blok-vraag" : "")}>
+                    <button type="button" className="wp-chat-del" title="Dit bericht verwijderen" onClick={() => void verwijderChatBericht(i)}>×</button>
+                    {m.role === "user"
+                      ? <div className="wp-chat-vraag">{m.content}</div>
+                      : <div className="wp-chat-antwoord md" dangerouslySetInnerHTML={{ __html: linkifyHtml(mdToHtml(m.content), (() => { try { return new URL(t.url).host; } catch { return ""; } })()) }} />}
+                  </div>
+                ))}
                 {chatBusy && <div className="muted wp-chat-leeg">Aan het nadenken…</div>}
               </div>
               {planVoorstel && (
