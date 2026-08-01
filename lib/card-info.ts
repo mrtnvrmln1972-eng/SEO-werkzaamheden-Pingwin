@@ -172,5 +172,11 @@ export function cardInfoHtml(toelichting: string, pageUrl?: string): string {
     kaarten.push(infoKaart(ICO_KLEMBORD, "Aanpak en taken", lijst(aanpak, "wp-punt-lijst")));
   }
   const kolommen = kaarten.length ? `<div class="wp-info-doel${kaarten.length === 1 ? " wp-info-een" : ""}">${kaarten.join("")}</div>` : "";
-  return linkifyHtml(kolommen, domain);
+  // Geen emoji's in het dashboard: status-emoji's uit oudere kaartteksten worden
+  // retroactief nette stipjes (zelfde betekenis, rustiger beeld).
+  const zonderEmoji = linkifyHtml(kolommen, domain)
+    .replace(/✅|✔️|✔/g, '<span class="st-dot st-ok" title="In orde"></span>')
+    .replace(/❌|✖️|✖|⛔/g, '<span class="st-dot st-fout" title="Probleem"></span>')
+    .replace(/⚠️|⚠/g, '<span class="st-dot st-warn" title="Let op"></span>');
+  return zonderEmoji;
 }

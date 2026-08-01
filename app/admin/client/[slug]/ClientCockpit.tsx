@@ -555,10 +555,8 @@ export default function ClientCockpit({
                         </div>
                         {open && (
                           <div className="email-body">
-                            <div className="email-actions">
-                              {shLink && <a className="ql" href={shLink} target="_blank" rel="noreferrer">Open in Superhuman</a>}
-                              {shLink && <a className="ql" href={shLink} target="_blank" rel="noreferrer">Beantwoorden in Superhuman</a>}
-                            </div>
+                            {/* Eén klein Superhuman-knopje in de kop is genoeg; de drie
+                                losse links deden alle drie hetzelfde. */}
                             {e.bodyHtml ? (
                               <div className="email-html" dangerouslySetInnerHTML={{ __html: sanitizeEmail(e.bodyHtml) }} />
                             ) : (

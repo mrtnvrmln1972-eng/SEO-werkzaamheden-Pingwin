@@ -200,7 +200,7 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
     setBusy("opruimen"); setOpruimMsg("");
     try {
       const d = await fetch("/api/admin/weekplan/tidy", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, id: t.id }) }).then((r) => r.json());
-      if (d?.ok) { setOpruimMsg("Kaart opgeruimd."); refreshBoard(); }
+      if (d?.ok) { setOpruimMsg("Kaarttekst herschreven naar het vaste formaat (zelfde inhoud, geen dubbelingen)."); refreshBoard(); }
       else setOpruimMsg(d?.error || "Opruimen mislukt; er is niets gewijzigd.");
     } catch { setOpruimMsg("Opruimen mislukt; er is niets gewijzigd."); } finally { setBusy(""); }
   }
@@ -474,7 +474,8 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
                   {faseActie(f.key)}
                   <span className={"wp-fase-chip " + stand.cls} title={stand.label === "✓" ? "Klaar" : undefined}>{stand.label}</span>
                 </div>
-                {sturing && <div className="wp-fase-sturing">{sturing}</div>}
+                {/* Slugs/URL's in de sturing zijn altijd klikbaar (harde huisregel). */}
+                {sturing && <div className="wp-fase-sturing" dangerouslySetInnerHTML={{ __html: linkifyHtml(sturing.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"), (() => { try { return new URL(t.url).host; } catch { return ""; } })()) }} />}
               </div>
             );
             if (f.key !== "copy") return rij;
@@ -506,10 +507,10 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
       <div className="wp-card-links wp-onder-regel">
         {t.url && <a className="wp-link" href={t.url} target="_blank" rel="noreferrer" title="De live pagina">{shortUrl(t.url)}</a>}
         {t.copyUrl && <a className="wp-link" href={t.copyUrl} target="_blank" rel="noreferrer" title="De aangeleverde copy">Copy</a>}
-        {t.bronMail && <a className="wp-link" href={t.bronMail} target="_blank" rel="noreferrer" title="De mail waar deze taak uit voortkomt">✉ bronmail</a>}
+        {t.bronMail && <a className="wp-link" href={t.bronMail} target="_blank" rel="noreferrer" title="De mail waar deze taak uit voortkomt">Bronmail</a>}
         {tab && <button type="button" className="wp-link wp-link-btn" title="Open dit dashboard-onderdeel in een nieuw tabblad" onClick={() => openTabNieuwTab(tab.tab)}>{tab.label}</button>}
         {t.url && <button type="button" className="wp-link wp-link-btn" title="Open de pagina in Pagina's (nieuw tabblad)" onClick={openPaginaNieuwTab}>Pagina&rsquo;s</button>}
-        <button type="button" className="wp-act wp-act-klant" title="Mail over deze kaart; de ontvanger (klant, developer of anders) kies je in het venster." onClick={() => onMail("klant")}>✉ Mail</button>
+        <button type="button" className="wp-act wp-act-klant" title="Mail over deze kaart; de ontvanger (klant, developer of anders) kies je in het venster." onClick={() => onMail("klant")}>Mail</button>
       </div>
         </div>
       </div>
