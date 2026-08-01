@@ -2125,7 +2125,8 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .tk-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; align-items: start; }
 .tk-links, .tk-rechts { min-width: 0; }
 .tk-rechts .cockpit-card { margin-top: 14px; }
-.tk-rechts .cockpit-card:first-child { margin-top: 14px; }
+/* Razorsharp: beide kolommen beginnen op exact dezelfde hoogte. */
+.tk-links > .cockpit-card:first-child, .tk-rechts > .cockpit-card:first-child { margin-top: 0; }
 @media (max-width: 1150px) { .tk-grid { grid-template-columns: 1fr; } }
 
 /* Weekplanning-bord: taken over weekkolommen, huidige week gemarkeerd, slepen. */
@@ -2203,6 +2204,10 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .wp-fase { padding: 6px 9px; border-bottom: 1px solid var(--border); }
 .wp-fase:last-of-type { border-bottom: none; }
 .wp-fase-rij { display: flex; align-items: center; gap: 8px; }
+/* Vaste kolommen in de fase-rijen: labels, chips en knoppen recht onder elkaar. */
+.wp-fase-rij .wp-fase-label { flex: 0 0 148px; }
+.wp-fase-chip { min-width: 72px; display: inline-flex; justify-content: center; }
+.wp-fase-rij .wp-fase-btn { min-width: 112px; text-align: center; justify-content: center; }
 .wp-fase-sturing { margin: 3px 0 1px 24px; font-size: 11px; color: var(--muted); line-height: 1.5; }
 .wp-fase-btn-licht { color: var(--gray); border-color: #e3e3e3; }
 .wp-fase-label { font-size: 12px; font-weight: 600; color: var(--dark); }
@@ -2272,8 +2277,11 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .wp-card-acties-kolom { display: flex; flex-direction: column; align-items: stretch; gap: 6px; justify-content: flex-end; align-self: stretch; }
 .wp-meta-rij { display: flex; align-items: center; gap: 6px; margin-top: 9px; }
 .wp-card.wp-klaar { opacity: 0.62; }
-.wp-card-taak { font-size: 13.5px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.35; color: var(--dark); }
-.wp-card-sub { font-size: 12px; color: #45484c; margin: 1px 0 2px 15px; line-height: 1.4; }
+/* Titel, subtitel, chips en links allemaal op exact dezelfde linkerlijn: het
+   caret hangt in de goot links van de tekst in plaats van de tekst in te duwen. */
+.wp-card-taak { position: relative; font-size: 13.5px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.35; color: var(--dark); }
+.wp-card-taak .wp-caret { position: absolute; left: -13px; top: 2px; margin-right: 0; }
+.wp-card-sub { font-size: 12px; color: #45484c; margin: 1px 0 2px 0; line-height: 1.4; }
 .wp-card.wp-klaar .wp-card-taak { text-decoration: line-through; }
 .wp-card-url { display: inline-block; margin-top: 3px; font-size: 11.5px; color: var(--orange-dark); text-decoration: underline; word-break: break-all; }
 /* Rijke kaart-koppelingen (C3b): pagina, copy, bronmail, deep-link naar dashboard. */

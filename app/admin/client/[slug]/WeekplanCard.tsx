@@ -275,7 +275,7 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
     const p = page;
     if (!p) return null;
     if (key === "strategie") {
-      return <button type="button" className="wp-fase-btn" onClick={() => void openChat("Stel een strategie voor deze pagina voor. Houd rekening met de achtergrond van deze kaart.")}>{p.strategie ? "Bespreek" : "Bespreek strategie"}</button>;
+      return <button type="button" className="wp-fase-btn" title={p.strategie ? "Bespreek of stel de strategie bij in de kaart-chat" : "Stel in de kaart-chat een strategie voor deze pagina op"} onClick={() => void openChat("Stel een strategie voor deze pagina voor. Houd rekening met de achtergrond van deze kaart.")}>Bespreek</button>;
     }
     if (key === "gelieerde") {
       const kan = p.strategie;

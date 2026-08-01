@@ -18,11 +18,14 @@ export async function GET(req: NextRequest) {
   if (!slug) return NextResponse.json({ ok: false, error: "Geen klant opgegeven." }, { status: 400 });
   const g = await guardSlug(req, slug); if (!g.ok) return g.res;
   // De pijplijn-stand per pagina reist mee, zodat elke projectkaart in het bord
-  // live de fases en de volgende stap toont. Gefilterd op de pagina's die echt
-  // in het bord staan (payload). Faalt dat, dan gewoon geen chips.
-  const tasks = await getWeekplan(slug);
+  // live de fases en de volgende stap toont. Taken en paginastand laden PARALLEL
+  // (sneller bord); daarna filteren op de pagina's die echt in het bord staan.
+  const [tasks, allePages] = await Promise.all([
+    getWeekplan(slug),
+    getWeekplanPages(slug).catch(() => ({} as Awaited<ReturnType<typeof getWeekplanPages>>)),
+  ]);
   const keys = new Set(tasks.filter((t) => t.url).map((t) => urlKey(t.url || "")));
-  const pages = keys.size ? await getWeekplanPages(slug, keys).catch(() => ({})) : {};
+  const pages = Object.fromEntries(Object.entries(allePages).filter(([k]) => keys.has(k)));
   const now = new Date();
   return NextResponse.json({ ok: true, tasks, current: isoWeek(now), pages });
 }
