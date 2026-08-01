@@ -195,6 +195,25 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
     } catch { setFoutje("Starten mislukt, probeer het nog een keer."); } finally { setBusy(""); }
   }
 
+  // "Op bespreeklijst": een aanpak-punt van deze kaart naar iemands afvinklijstje.
+  const [lijstPunt, setLijstPunt] = useState("");
+  const [lijstMsg, setLijstMsg] = useState("");
+  const [lijstPersonen, setLijstPersonen] = useState<string[]>(["Klant", "Dev"]);
+  useEffect(() => {
+    if (!open) return;
+    fetch(`/api/admin/discuss?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).then((d) => {
+      if (d?.ok) setLijstPersonen([...new Set(["Klant", "Dev", ...(d.items || []).map((i: { persoon: string }) => i.persoon)])] as string[]);
+    }).catch(() => {});
+  }, [open, slug]);
+  async function zetOpLijst(persoon: string) {
+    const tekst = lijstPunt;
+    setLijstPunt("");
+    try {
+      const d = await fetch("/api/admin/discuss", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "add", slug, persoon, tekst: `${tekst}${t.url ? ` (${t.url})` : ""}` }) }).then((r) => r.json());
+      setLijstMsg(d?.ok ? `Op de bespreeklijst van ${persoon === "Dev" ? "Sander (Dev)" : persoon} gezet.` : (d?.error || "Op de lijst zetten mislukte."));
+    } catch { setLijstMsg("Op de lijst zetten mislukte."); }
+  }
+
   // "Controleer live": staat het geadviseerde schema nu echt op de pagina?
   const [verifyMsg, setVerifyMsg] = useState<{ tekst: string; ok: boolean } | null>(null);
   async function controleerLive() {
@@ -406,10 +425,29 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
         <div className="wp-card-info wp-info-net"
           onClick={(e) => {
             const el = (e.target as HTMLElement).closest?.(".wp-maildatum") as HTMLElement | null;
-            if (el && onOpenMailDate) { e.stopPropagation(); onOpenMailDate(el.dataset.datum || ""); }
+            if (el && onOpenMailDate) { e.stopPropagation(); onOpenMailDate(el.dataset.datum || ""); return; }
+            const lb = (e.target as HTMLElement).closest?.(".wp-info-lijstbtn") as HTMLElement | null;
+            if (lb) {
+              e.stopPropagation();
+              const li = lb.closest("li");
+              const kloon = li?.cloneNode(true) as HTMLElement | undefined;
+              kloon?.querySelectorAll(".wp-info-lijstbtn").forEach((b) => b.remove());
+              const tekst = (kloon?.textContent || "").replace(/\s+/g, " ").trim();
+              if (tekst) { setLijstPunt(tekst); setLijstMsg(""); }
+            }
           }}
           dangerouslySetInnerHTML={{ __html: cardInfoHtml(t.toelichting, t.url) }} />
       )}
+      {open && lijstPunt && (
+        <div className="ovc-lijstkeuze">
+          <span>Op welke bespreeklijst?</span>
+          {lijstPersonen.map((p) => (
+            <button key={p} type="button" className="wp-fase-btn" onClick={() => void zetOpLijst(p)}>{p === "Dev" ? "Sander (Dev)" : p}</button>
+          ))}
+          <button type="button" className="wp-icon wp-del" title="Annuleren" onClick={() => setLijstPunt("")}>×</button>
+        </div>
+      )}
+      {open && lijstMsg && <div className="wp-doc-ok">{lijstMsg}</div>}
 
       {/* Dichtgeklapt: compacte fase-chips. Klik = naar de pagina in Pagina's. */}
       {!open && page && (

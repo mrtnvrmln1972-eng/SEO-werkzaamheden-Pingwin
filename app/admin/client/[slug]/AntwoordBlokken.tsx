@@ -12,7 +12,7 @@ import { useEffect, useRef, useState } from "react";
 
 type Sectie = { kop: string; md: string };
 type Feedback = { key: string; msg: string; ok: boolean };
-type PuntStaat = "taak" | "weg" | "klaar";
+type PuntStaat = "taak" | "weg" | "klaar" | "lijst";
 
 // Klein en stabiel: hash om een punt te herkennen over herlaadbeurten heen.
 function hash(s: string): string {
@@ -99,6 +99,7 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
       acties.querySelector(".ovc-act-plus")?.classList.toggle("ovc-act-aan", staat === "taak");
       acties.querySelector(".ovc-act-x")?.classList.toggle("ovc-act-aan", staat === "weg");
       acties.querySelector(".ovc-act-v")?.classList.toggle("ovc-act-aan", staat === "klaar");
+      acties.querySelector(".ovc-act-lijst")?.classList.toggle("ovc-act-aan", staat === "lijst");
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [content, versie, slug, thread]);
@@ -122,7 +123,26 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
     } finally { setBusyKey(""); }
   }
 
-  // Klik op een knopje bij een punt: + = kaart maken, × = negeren, ✓ = afvinken.
+  // "Op bespreeklijst": kies de persoon; het punt gaat naar diens afvinklijstje.
+  const [lijstVoor, setLijstVoor] = useState<{ key: string; tekst: string; sleutel: string } | null>(null);
+  const [personen, setPersonen] = useState<string[]>(["Klant", "Dev"]);
+  useEffect(() => {
+    fetch(`/api/admin/discuss?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).then((d) => {
+      if (d?.ok) setPersonen([...new Set(["Klant", "Dev", ...(d.items || []).map((i: { persoon: string }) => i.persoon)])] as string[]);
+    }).catch(() => {});
+  }, [slug]);
+  async function zetOpLijst(persoon: string) {
+    if (!lijstVoor) return;
+    const { key, tekst, sleutel } = lijstVoor;
+    setLijstVoor(null);
+    try {
+      const d = await fetch("/api/admin/discuss", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "add", slug, persoon, tekst }) }).then((r) => r.json());
+      if (d?.ok) { zetStaat(sleutel, "lijst"); setFeedback({ key, msg: `Op de bespreeklijst van ${persoon === "Dev" ? "Sander (Dev)" : persoon} gezet.`, ok: true }); }
+      else setFeedback({ key, msg: d?.error || "Op de lijst zetten mislukte.", ok: false });
+    } catch { setFeedback({ key, msg: "Op de lijst zetten mislukte.", ok: false }); }
+  }
+
+  // Klik op een knopje bij een punt: + = kaart, × = negeren, ✓ = afvinken, » = bespreeklijst.
   function klikOpPunt(e: React.MouseEvent, s: Sectie, key: string) {
     const btn = (e.target as HTMLElement).closest?.(".ovc-act") as HTMLElement | null;
     if (!btn) return;
@@ -140,12 +160,16 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
       zetStaat(sleutel, huidig === "weg" ? null : "weg");
     } else if (btn.classList.contains("ovc-act-v")) {
       zetStaat(sleutel, huidig === "klaar" ? null : "klaar");
+    } else if (btn.classList.contains("ovc-act-lijst")) {
+      setFeedback(null);
+      setLijstVoor({ key, tekst: punt, sleutel });
     }
   }
 
   // Elk herkenbaar punt wordt een taakrijtje met rechts de drie knopjes.
   const ACTIES = '<span class="ovc-acties">'
     + '<button type="button" class="ovc-act ovc-act-plus" title="Voeg toe als kaart in de weekplanning">+</button>'
+    + '<button type="button" class="ovc-act ovc-act-lijst" title="Zet dit punt op een bespreeklijst (Sander, klant, ...)">&raquo;</button>'
     + '<button type="button" class="ovc-act ovc-act-x" title="Negeer dit voorstel">×</button>'
     + '<button type="button" class="ovc-act ovc-act-v" title="Vink af: dit is gedaan">✓</button>'
     + "</span>";
@@ -173,6 +197,15 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
             )}
             <div className="chat-md ovc-blok-inhoud" onClick={(e) => klikOpPunt(e, s, klikKey)}
               dangerouslySetInnerHTML={{ __html: metKnopjes(toHtml(s.md)) }} />
+            {lijstVoor && (lijstVoor.key === klikKey) && (
+              <div className="ovc-lijstkeuze">
+                <span>Op welke bespreeklijst?</span>
+                {personen.map((p) => (
+                  <button key={p} type="button" className="wp-fase-btn" onClick={() => void zetOpLijst(p)}>{p === "Dev" ? "Sander (Dev)" : p}</button>
+                ))}
+                <button type="button" className="wp-icon wp-del" title="Annuleren" onClick={() => setLijstVoor(null)}>×</button>
+              </div>
+            )}
             {busyKey === klikKey && <div className="ovc-blok-feedback">Kaart maken…</div>}
             {feedback && (feedback.key === key || feedback.key === klikKey) && (
               <div className={"ovc-blok-feedback" + (feedback.ok ? " ok" : " err")}>

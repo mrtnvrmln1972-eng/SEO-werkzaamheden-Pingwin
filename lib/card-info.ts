@@ -153,7 +153,10 @@ const ICO_VLAG = SVG("M4 21V4|M4 4h12l-2 4 2 4H4");
 const ICO_KLEMBORD = SVG("M9 4h6v3H9z|M9 4H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2|M9 12h6|M9 16h4");
 
 function lijst(regels: string[], cls: string): string {
-  return `<ul class="${cls}">${regels.map((r) => `<li>${inline(r)}</li>`).join("")}</ul>`;
+  // Aanpak-punten krijgen een klein »-knopje: zet dit punt op een bespreeklijst
+  // (Sander, klant, ...). De kaart-component vangt de klik af.
+  const knop = cls === "wp-punt-lijst" ? '<button type="button" class="wp-info-lijstbtn" title="Zet dit punt op een bespreeklijst">&raquo;</button>' : "";
+  return `<ul class="${cls}">${regels.map((r) => `<li>${knop}${inline(r)}</li>`).join("")}</ul>`;
 }
 
 function infoKaart(icoon: string, kop: string, inhoud: string): string {

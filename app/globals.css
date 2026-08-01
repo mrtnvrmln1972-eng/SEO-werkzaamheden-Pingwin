@@ -2107,7 +2107,7 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .ovc-blok-inhoud ul, .ovc-blok-inhoud ol { list-style: none; padding-left: 0; margin: 8px 0; }
 .ovc-blok-inhoud ul > li, .ovc-blok-inhoud ol > li, .ovc-blok-inhoud p.ovc-punt {
   position: relative; border: 1px solid var(--border, #e5ded6); border-radius: 10px;
-  background: #fff; padding: 10px 96px 10px 14px; margin: 0 0 8px; line-height: 1.5;
+  background: #fff; padding: 10px 126px 10px 14px; margin: 0 0 8px; line-height: 1.5;
 }
 .ovc-acties { position: absolute; right: 10px; top: 8px; display: inline-flex; gap: 5px; }
 .ovc-act { width: 22px; height: 22px; border-radius: 50%; background: #fff; font-size: 14px; line-height: 18px; text-align: center; cursor: pointer; padding: 0; border: 1.5px solid; }
@@ -2126,6 +2126,12 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .ovc-gedaan a { color: inherit; }
 .ovc-weg { opacity: 0.45; }
 .ovc-weg .ovc-act-x { opacity: 1; }
+/* »-knopje: punt naar een bespreeklijst; plus het keuzemenuutje. */
+.ovc-act-lijst { border-color: var(--orange); color: var(--orange); font-size: 13px; }
+.ovc-act-lijst:hover, .ovc-act-lijst.ovc-act-aan { background: var(--orange); color: #fff; }
+.ovc-lijstkeuze { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; font-size: 12.5px; border: 1px solid var(--border, #e5ded6); border-left: 3px solid var(--orange); border-radius: 9px; padding: 7px 10px; background: #fffdfb; }
+.wp-info-lijstbtn { float: right; width: 20px; height: 20px; margin-left: 8px; border-radius: 50%; border: 1.5px solid var(--orange); color: var(--orange); background: #fff; font-size: 12px; line-height: 16px; text-align: center; cursor: pointer; padding: 0; opacity: 0.6; }
+.wp-info-lijstbtn:hover { background: var(--orange); color: #fff; opacity: 1; }
 /* Status-stipjes in plaats van emoji's (retroactief op oude antwoorden). */
 .st-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin: 0 2px; vertical-align: baseline; }
 .st-dot.st-ok { background: #1c7a3f; }
