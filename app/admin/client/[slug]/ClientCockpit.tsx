@@ -18,6 +18,7 @@ import ShareLinkBar from "./ShareLinkBar";
 import HelpHint from "./HelpHint";
 import MailAllowlist from "./MailAllowlist";
 import LinkPreview from "./LinkPreview";
+import { mdToHtml } from "../../../../lib/markdown";
 import DeveloperOverview from "../../developer/DeveloperOverview";
 import KpiPanel from "./KpiPanel";
 import PagesPanel from "./PagesPanel";
@@ -315,6 +316,30 @@ export default function ClientCockpit({
     window.open(`https://mail.superhuman.com/${SUPERHUMAN_ACCOUNT}/search/${encodeURIComponent(q)}`, "_blank");
   }
 
+  // Slim vraagveld: een vraag in gewone taal wordt beantwoord uit de mails die
+  // al in het dashboard hangen; de relevante mails komen bovenaan te staan.
+  const [vraagBusy, setVraagBusy] = useState(false);
+  const [vraagAntwoord, setVraagAntwoord] = useState("");
+  const [vraagIds, setVraagIds] = useState<string[]>([]);
+  const [vraagFout, setVraagFout] = useState("");
+  async function vraagMails() {
+    const vraag = shQuery.trim();
+    if (!vraag || vraagBusy) return;
+    setVraagBusy(true); setVraagFout(""); setVraagAntwoord(""); setVraagIds([]);
+    try {
+      const d = await fetch("/api/admin/mail-vraag", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug: client.slug, vraag }) }).then((r) => r.json());
+      if (d?.ok) { setVraagAntwoord(d.antwoord || ""); setVraagIds(Array.isArray(d.ids) ? d.ids : []); }
+      else setVraagFout(d?.error || "Zoeken mislukte; probeer het nog een keer.");
+    } catch { setVraagFout("Zoeken mislukte; probeer het nog een keer."); }
+    finally { setVraagBusy(false); }
+  }
+  const getoondeEmails = vraagIds.length
+    ? [...emails].sort((a, b) => {
+        const ra = vraagIds.indexOf(a.id), rb = vraagIds.indexOf(b.id);
+        return (ra < 0 ? 99 : ra) - (rb < 0 ? 99 : rb);
+      })
+    : emails;
+
 
   return (
     <>
@@ -508,13 +533,23 @@ export default function ClientCockpit({
                 <input
                   value={shQuery}
                   onChange={(e) => setShQuery(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") openSuperhuman(); }}
-                  placeholder="Zoek bij deze klant, bijv. reviewsterren..."
+                  onKeyDown={(e) => { if (e.key === "Enter") void vraagMails(); }}
+                  placeholder='Stel een vraag, bijv. "staat er iets in de mail over het document klantenservice Bogart?"'
                 />
-                <button type="button" className="btn-omrand" onClick={openSuperhuman} disabled={!clientMailQuery}>
+                <button type="button" className="primary-btn small" onClick={() => void vraagMails()} disabled={vraagBusy || !shQuery.trim()}>
+                  {vraagBusy ? "Zoeken…" : "Vraag"}
+                </button>
+                <button type="button" className="btn-omrand" onClick={openSuperhuman} disabled={!clientMailQuery} title="Doorzoek het volledige archief in Superhuman">
                   Zoek in Superhuman
                 </button>
               </div>
+              {vraagFout && <div className="wp-doc-fout" style={{ marginBottom: 10 }}>{vraagFout}</div>}
+              {vraagAntwoord && (
+                <div className="mail-vraag-antwoord">
+                  <div className="md" dangerouslySetInnerHTML={{ __html: mdToHtml(vraagAntwoord) }} />
+                  <button type="button" className="ghost-btn small" onClick={() => { setVraagAntwoord(""); setVraagIds([]); }}>Wis</button>
+                </div>
+              )}
               {lastIngest && <div className="ck-updated" style={{ marginBottom: 12 }}>bijgewerkt {fmtDate(lastIngest)}</div>}
               {msConfigured && !msConnected && (
                 <div className="mail-connect">
@@ -529,11 +564,12 @@ export default function ClientCockpit({
                 </div>
               ) : (
                 <div className="email-list">
-                  {emails.map((e, idx) => {
+                  {getoondeEmails.map((e) => {
+                    const idx = emails.indexOf(e);
                     const open = openEmail === e.id;
                     const shLink = e.superhumanLink || e.webLink || "";
                     return (
-                      <div className={"email-row" + (open ? " open" : "")} key={e.id} id={`mail-${idx}`}>
+                      <div className={"email-row" + (open ? " open" : "") + (vraagIds.includes(e.id) ? " email-hit" : "")} key={e.id} id={`mail-${idx}`}>
                         <div className="email-head" onClick={() => openMail(e, open)}>
                           <div className="email-head-main">
                             <div className="email-top">
