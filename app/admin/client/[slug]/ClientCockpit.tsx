@@ -102,6 +102,9 @@ export default function ClientCockpit({
   const [showStatusBox, setShowStatusBox] = useState(false);
   const [showMailsBox, setShowMailsBox] = useState(false);
 
+  // Afzender-filter als klein popovertje in de Laatste mails-kop.
+  const [showAfzenders, setShowAfzenders] = useState(false);
+
   // De stand van zaken bijwerken uit de recente mails (server-side samenvatting).
   const [statusBusy, setStatusBusy] = useState(false);
   const statusAutoRef = useRef(false);
@@ -452,9 +455,23 @@ export default function ClientCockpit({
               <button type="button" className="strategy-head" onClick={() => setShowMailsBox((v) => !v)}>
                 <span className="strategy-caret">{showMailsBox ? "▾" : "▸"}</span>
                 <span className="strategy-title">Laatste mails <HelpHint xl title="Laatste mails" text={"De recentste e-mails met deze klant, **live uit de gekoppelde mailbox** (Microsoft 365); je hoeft dus niet te wisselen tussen dashboard en mailprogramma om de context te zien.\n## Wat je ermee kunt\n- **Lezen:** klik een mail aan om hem volledig in het dashboard te lezen.\n- **Zoeken:** doorzoek de correspondentie via het zoekveld, of open dezelfde zoekopdracht direct in Superhuman voor het volledige archief.\n- **Filteren:** via de filterlijst bepaal je welke afzenders hier meetellen, zodat nieuwsbrieven en automatische mails de tijdlijn niet vervuilen.\n## Goed om te weten\nGasten zonder mail-recht zien dit blok nooit (privacy is hard afgedwongen op de server), en de 'Actuele stand van zaken' hierboven wordt uit deze zelfde mailstroom samengevat."} /></span>
+                <span className="mails-kop-mini">
+                  <span className="afz-link" role="button" title="Welke afzenders horen bij deze klant? Klik om ze te bekijken of aan te passen."
+                    onClick={(e) => { e.stopPropagation(); setShowAfzenders((v) => !v); }}>afzenders ?</span>
+                  {mailLive
+                    ? <span className="ms-dot" title="Live gekoppeld met Microsoft 365" />
+                    : msConfigured && <a className="afz-link" href="/api/ms/auth/start" onClick={(e) => e.stopPropagation()} title="Koppel Microsoft 365 om live mail te zien">koppelen</a>}
+                </span>
               </button>
+              {showAfzenders && (
+                <div className="afz-popover">
+                  <MailAllowlist slug={client.slug} />
+                  <div className="afz-voet muted">
+                    Loopt de live mail achter of is de koppeling verlopen, dan helpt <a className="afz-link" href="/api/ms/auth/start">opnieuw koppelen</a>.
+                  </div>
+                </div>
+              )}
               <div className="strategy-body" style={{ display: showMailsBox ? undefined : "none" }}>
-              <MailAllowlist slug={client.slug} />
               <div className="sh-search" style={{ marginBottom: 12 }}>
                 <input
                   value={shQuery}
@@ -462,17 +479,11 @@ export default function ClientCockpit({
                   onKeyDown={(e) => { if (e.key === "Enter") openSuperhuman(); }}
                   placeholder="Zoek bij deze klant, bijv. reviewsterren..."
                 />
-                <button type="button" className="primary-btn small" onClick={openSuperhuman} disabled={!clientMailQuery}>
+                <button type="button" className="btn-omrand" onClick={openSuperhuman} disabled={!clientMailQuery}>
                   Zoek in Superhuman
                 </button>
               </div>
               {lastIngest && <div className="ck-updated" style={{ marginBottom: 12 }}>bijgewerkt {fmtDate(lastIngest)}</div>}
-              {mailLive && (
-                <div className="mail-live-badge">
-                  ● Live uit Microsoft 365
-                  <a className="mail-reconnect" href="/api/ms/auth/start">opnieuw koppelen</a>
-                </div>
-              )}
               {msConfigured && !msConnected && (
                 <div className="mail-connect">
                   Koppel Microsoft 365 om de volledige mails te zien en vanuit het dashboard te beantwoorden.{" "}
@@ -660,6 +671,9 @@ function sanitizeEmail(html: string): string {
   return html
     .replace(/<\s*script[\s\S]*?<\s*\/\s*script\s*>/gi, "")
     .replace(/<\s*style[\s\S]*?<\s*\/\s*style\s*>/gi, "")
+    // Inline-bijlagen (cid:) kunnen in de browser niet laden en tonen als kapotte
+    // plaatjes; die halen we weg. Gewone (https-)afbeeldingen blijven staan.
+    .replace(/<img[^>]*src\s*=\s*["']cid:[^"']*["'][^>]*>/gi, "")
     .replace(/\son\w+\s*=\s*"[^"]*"/gi, "")
     .replace(/\son\w+\s*=\s*'[^']*'/gi, "")
     .replace(/javascript:/gi, "")

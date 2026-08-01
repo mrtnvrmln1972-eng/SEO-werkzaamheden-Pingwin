@@ -308,12 +308,14 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
                         <button type="button" className="chat-msg-del" title="Dit blok verwijderen" onClick={() => deleteMessage(i)}>&times;</button>
                         {m.role === "assistant"
                           ? (() => {
+                              // Antwoorden staan meteen volledig open: geen mini-venster
+                              // met "Toon meer" meer (Maarten wil alles in één keer zien).
                               const inhoud = stripAankondiging(m.content || "");
-                              const long = inhoud.length > 700;
-                              const isOpen = expanded.has(i);
+                              const long = false;
+                              const isOpen = true;
                               return (
                                 <div className="ovc-bubble chat-md">
-                                  <div className={long && !isOpen ? "ovc-clamp" : undefined} dangerouslySetInnerHTML={{ __html: mdToHtml(inhoud, domain) }} />
+                                  <div dangerouslySetInnerHTML={{ __html: mdToHtml(inhoud, domain) }} />
                                   {long && (
                                     <button type="button" className="ovc-more" onClick={() => setExpanded((s) => { const n = new Set(s); if (n.has(i)) n.delete(i); else n.add(i); return n; })}>
                                       {isOpen ? "Toon minder" : "Toon meer"}
