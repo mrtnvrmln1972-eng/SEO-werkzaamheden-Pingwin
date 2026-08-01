@@ -214,6 +214,26 @@ export async function executeAction(slug: string, action: ProposedAction, thread
       // bestaande URL zit (enkelvoud/meervoud) wordt gecorrigeerd naar de echte.
       let bekendeUrls: string[] = [];
       try { bekendeUrls = (await getClientUrls(slug)).map((u) => u.url); } catch { bekendeUrls = []; }
+      // Harde regel: NOOIT meerdere pagina's in één kaart. Staan er twee of meer
+      // bekende paden in de kaarttitel, splits dan in één kaart per pagina (met
+      // dezelfde toelichting/week); de upsert voegt ze daarna netjes samen met
+      // eventueel bestaande paginakaarten.
+      if (bekendeUrls.length && action.taken?.length) {
+        const pad = (u: string) => { try { return new URL(u).pathname; } catch { return ""; } };
+        const gesplitst: typeof action.taken = [];
+        for (const t of action.taken) {
+          const inTitel = bekendeUrls.filter((u) => { const p = pad(u); return p.length > 1 && t.taak.includes(p); });
+          // Ontdubbel op urlKey en laat ouder-paden vallen die alleen als voorvoegsel
+          // van een specifieker gevonden pad in de titel staan.
+          const uniek = [...new Map(inTitel.map((u) => [urlKey(u), u])).values()];
+          const paden = uniek.map(pad);
+          const echte = uniek.filter((_, i) => !paden.some((p, j) => j !== i && p !== paden[i] && p.startsWith(paden[i])));
+          if (echte.length >= 2) {
+            for (const u of echte) gesplitst.push({ ...t, taak: `Optimaliseer ${pad(u)}`, url: u });
+          } else gesplitst.push(t);
+        }
+        action.taken = gesplitst.slice(0, 20);
+      }
       for (const t of action.taken || []) {
         if (!t.url || !bekendeUrls.length) continue;
         const beter = nearestKnownUrl(t.url, bekendeUrls);

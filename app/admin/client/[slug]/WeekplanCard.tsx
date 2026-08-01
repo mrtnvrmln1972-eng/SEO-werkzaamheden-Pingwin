@@ -11,6 +11,7 @@ import { mdToHtml } from "../../../../lib/markdown";
 import { cardInfoHtml, splitCardInfo, faseSturing, type CardFaseKey } from "../../../../lib/card-info";
 import { linkifyHtml } from "../../../../lib/linkify";
 import { urlKey } from "../../../../lib/url-key";
+import AntwoordBlokken from "./AntwoordBlokken";
 
 export type WpTask = { id: number; thread: string; taak: string; toelichting: string; wie: string; url: string; taaktype: string; copyUrl: string; bronMail: string; weekYear: number; weekNo: number; status: string; sortOrder: number };
 export type WpPageInfo = { url: string; live: boolean; strategie: boolean; gelieerde: boolean; analyse: boolean; blauwdruk: boolean; copy: boolean; bouw: boolean; structured: boolean; structuredStatus: string; next: string; links: { analyse: string; blauwdruk: string; copy: string } };
@@ -211,39 +212,63 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
     } catch { /* stil */ }
   }
 
-  // Chat: laden (meest recente pagina-chat) bij eerste keer openklappen.
+  // Een kaart zonder pagina krijgt een eigen bird's eye-gesprek (volledige
+  // site-context en tools), gekoppeld aan deze kaart via een vaste thread.
+  const kaartThread = `overzicht:kaart:${t.id}`;
+
+  // Chat: laden bij eerste keer openklappen. Met pagina: de meest recente
+  // pagina-chat (zelfde geheugen als Pagina's); zonder pagina: het eigen
+  // kaart-gesprek via de bird's eye-chat.
   async function openChat(prefill?: string) {
     setChatOpen(true);
     if (prefill) setInput(prefill);
-    if (msgs.length || !t.url) return;
+    if (msgs.length) return;
     try {
-      const d = await fetch(`/api/admin/page-chats?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(t.url)}`).then((r) => r.json());
-      const eerste = d?.chats?.[0];
-      if (eerste?.id) {
-        const c = await fetch(`/api/admin/page-chats?id=${eerste.id}`).then((r) => r.json());
-        if (c?.ok && Array.isArray(c.chat?.messages)) { setMsgs(c.chat.messages); setChatId(eerste.id); }
+      if (t.url) {
+        const d = await fetch(`/api/admin/page-chats?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(t.url)}`).then((r) => r.json());
+        const eerste = d?.chats?.[0];
+        if (eerste?.id) {
+          const c = await fetch(`/api/admin/page-chats?id=${eerste.id}`).then((r) => r.json());
+          if (c?.ok && Array.isArray(c.chat?.messages)) { setMsgs(c.chat.messages); setChatId(eerste.id); }
+        }
+      } else {
+        const d = await fetch(`/api/admin/chat?slug=${encodeURIComponent(slug)}&thread=${encodeURIComponent(kaartThread)}&nothreads=1`).then((r) => r.json());
+        if (d?.ok && Array.isArray(d.messages)) {
+          // Alleen de tekst; actie-kaarten uit dit gesprek renderen we hier niet.
+          setMsgs((d.messages as ChatMsg[]).map((m) => ({ role: m.role, content: m.content })).filter((m) => (m.content || "").trim()));
+        }
       }
     } catch { /* stil */ }
   }
 
   async function sendChat() {
     const tekst = input.trim();
-    if (!tekst || chatBusy || !t.url) return;
+    if (!tekst || chatBusy) return;
     setInput(""); setChatBusy(true); setFoutje("");
     const next: ChatMsg[] = [...msgs, { role: "user", content: tekst }];
     setMsgs(next);
     try {
       // De kaart-achtergrond reist als los context-bericht mee (niet opgeslagen,
       // dus de chat-titel blijft de echte vraag en de context is altijd actueel).
-      const seed: ChatMsg | null = hasInfo ? { role: "user", content: `Achtergrond van deze projectkaart (context, hoeft geen apart antwoord):\n${t.toelichting.slice(0, 2000)}` } : null;
+      const seed: ChatMsg | null = hasInfo ? { role: "user", content: `Achtergrond van deze projectkaart "${t.taak}" (context, hoeft geen apart antwoord):\n${t.toelichting.slice(0, 2000)}` } : null;
       const outgoing = seed ? [seed, ...next.slice(-11)] : next.slice(-12);
-      const d = await fetch("/api/admin/page-chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: t.url, messages: outgoing }) }).then((r) => r.json());
-      if (!d?.ok) { setFoutje(d?.error || "De assistent is niet bereikbaar."); setChatBusy(false); return; }
-      const withReply: ChatMsg[] = [...next, { role: "assistant", content: String(d.reply || "") }];
-      setMsgs(withReply);
-      if (d.proposal?.plan) setPlanVoorstel(String(d.proposal.plan));
-      const s = await fetch("/api/admin/page-chats", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: t.url, id: chatId, messages: withReply }) }).then((r) => r.json()).catch(() => null);
-      if (s?.ok && s.id) setChatId(s.id);
+      if (t.url) {
+        const d = await fetch("/api/admin/page-chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: t.url, messages: outgoing }) }).then((r) => r.json());
+        if (!d?.ok) { setFoutje(d?.error || "De assistent is niet bereikbaar."); setChatBusy(false); return; }
+        const withReply: ChatMsg[] = [...next, { role: "assistant", content: String(d.reply || "") }];
+        setMsgs(withReply);
+        if (d.proposal?.plan) setPlanVoorstel(String(d.proposal.plan));
+        const s = await fetch("/api/admin/page-chats", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: t.url, id: chatId, messages: withReply }) }).then((r) => r.json()).catch(() => null);
+        if (s?.ok && s.id) setChatId(s.id);
+      } else {
+        const d = await fetch("/api/admin/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread: kaartThread, messages: outgoing }) }).then((r) => r.json());
+        if (!d?.ok) { setFoutje(d?.error || "De assistent is niet bereikbaar."); setChatBusy(false); return; }
+        const withReply: ChatMsg[] = [...next, { role: "assistant", content: String(d.answer || "") }];
+        setMsgs(withReply);
+        // De server slaat inclusief het context-bericht op; vervang de historie
+        // meteen door de schone lijst zodat de seed nooit in beeld komt.
+        await fetch("/api/admin/chat", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread: kaartThread, messages: withReply }) }).catch(() => {});
+      }
     } catch { setFoutje("De assistent is niet bereikbaar."); } finally { setChatBusy(false); }
   }
 
@@ -251,8 +276,10 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
   async function verwijderChatBericht(i: number) {
     const nieuw = msgs.filter((_, idx) => idx !== i);
     setMsgs(nieuw);
-    if (!t.url) return;
-    try { await fetch("/api/admin/page-chats", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: t.url, id: chatId, messages: nieuw }) }); } catch { /* stil */ }
+    try {
+      if (t.url) await fetch("/api/admin/page-chats", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: t.url, id: chatId, messages: nieuw }) });
+      else await fetch("/api/admin/chat", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread: kaartThread, messages: nieuw }) });
+    } catch { /* stil */ }
   }
 
   async function legStrategieVast() {
@@ -375,22 +402,37 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
         </div>
       )}
 
-      {/* Chat direct onder het Doel-blok: de uitkomst hiervan voedt de fases eronder. */}
-      {open && t.url && (
+      {/* Chat direct onder het Doel-blok: de uitkomst hiervan voedt de fases eronder.
+          Ook op kaarten zonder pagina, dan met een eigen bird's eye-gesprek. */}
+      {open && (
         <div className="wp-chat">
           <button type="button" className={"wp-chat-toggle wp-chat-toggle-groot" + (chatOpen ? " wp-chat-open" : "")} onClick={() => (chatOpen ? setChatOpen(false) : void openChat())}>
-            <Icoon d={ICOON.chat} className="wp-sectie-icoon" /> Chat over deze pagina {chatOpen ? "▾" : "▸"}
+            <Icoon d={ICOON.chat} className="wp-sectie-icoon" /> {t.url ? "Chat over deze pagina" : "Chat over deze taak"} {chatOpen ? "▾" : "▸"}
           </button>
           {chatOpen && (
             <div className="wp-chat-body">
               <div className="wp-chat-msgs" ref={msgsRef}>
-                {msgs.length === 0 && !chatBusy && <div className="muted wp-chat-leeg">Stel een vraag of spar over deze pagina. De kaart-achtergrond gaat automatisch mee als context.</div>}
+                {msgs.length === 0 && !chatBusy && (
+                  <div className="muted wp-chat-leeg">
+                    {t.url
+                      ? "Stel een vraag of spar over deze pagina. De kaart-achtergrond gaat automatisch mee als context."
+                      : "Stel een vraag of zoek dit verder uit; de assistent kent de hele site. Van elk punt in het antwoord kun je direct een kaart maken."}
+                  </div>
+                )}
                 {msgs.map((m, i) => (
                   <div key={i} className={"wp-chat-blok " + (m.role === "user" ? "wp-chat-blok-vraag" : "")}>
                     <button type="button" className="wp-chat-del" title="Dit bericht verwijderen" onClick={() => void verwijderChatBericht(i)}>×</button>
                     {m.role === "user"
                       ? <div className="wp-chat-vraag">{m.content}</div>
-                      : <div className="wp-chat-antwoord md" dangerouslySetInnerHTML={{ __html: linkifyHtml(mdToHtml(m.content), (() => { try { return new URL(t.url).host; } catch { return ""; } })()) }} />}
+                      : <div className="wp-chat-antwoord md">
+                          <AntwoordBlokken
+                            slug={slug}
+                            thread={t.thread}
+                            content={m.content}
+                            toHtml={(md) => linkifyHtml(mdToHtml(md), (() => { try { return new URL(t.url).host; } catch { return ""; } })())}
+                            onWeekplanChanged={refreshBoard}
+                          />
+                        </div>}
                   </div>
                 ))}
                 {chatBusy && <div className="muted wp-chat-leeg">Aan het nadenken…</div>}

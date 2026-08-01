@@ -20,10 +20,11 @@ export async function POST(req: NextRequest) {
   const g = await guardSlug(req, slug); if (!g.ok) return g.res;
   const answer = String(body.answer || "");
   const thread = String(body.thread || "overzicht");
+  const enkel = body.enkel === true;
   if (!slug || !answer.trim()) return NextResponse.json({ ok: false, error: "Klant en antwoord zijn verplicht." }, { status: 400 });
 
   try {
-    const r = await weekplanFromAnswer(slug, answer, thread);
+    const r = await weekplanFromAnswer(slug, answer, thread, enkel);
     return NextResponse.json(r);
   } catch (e) {
     return NextResponse.json({ ok: false, added: 0, error: "Taken maken mislukt: " + (e as Error).message }, { status: 500 });

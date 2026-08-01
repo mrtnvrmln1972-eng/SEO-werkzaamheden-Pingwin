@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import ActionCard, { type Action } from "./ActionCard";
+import AntwoordBlokken from "./AntwoordBlokken";
 import { linkifyHtml as linkify } from "../../../../lib/linkify";
 
 type Msg = { role: "user" | "assistant"; content: string; actions?: Action[] };
@@ -88,7 +89,6 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [expanded, setExpanded] = useState<Set<number>>(new Set()); // lange antwoorden ingeklapt
   const [mkBusy, setMkBusy] = useState<number | null>(null);        // "zet taken in weekplanning" bezig (bericht-index)
   const [mkMsg, setMkMsg] = useState<Record<number, string>>({});   // resultaat-melding per bericht
   const endRef = useRef<HTMLDivElement>(null);
@@ -138,7 +138,9 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
   // Zorg dat het basisonderwerp altijd bestaat, en sorteer: openstaand eerst,
   // "gedaan" onderaan.
   function normalizeTopics(threads: { thread: string; count?: number; title?: string; summary?: string; done?: boolean }[]): Topic[] {
-    const mine = threads.filter((t) => t.thread.startsWith("overzicht"));
+    // De eigen gesprekken van projectkaarten ("overzicht:kaart:<id>") horen bij
+    // die kaart, niet in deze onderwerpenlijst.
+    const mine = threads.filter((t) => t.thread.startsWith("overzicht") && !t.thread.startsWith("overzicht:kaart:"));
     const list: Topic[] = mine.map((t) => ({ thread: t.thread, count: t.count || 0, title: t.title || "", summary: t.summary || "", done: !!t.done }));
     if (!list.some((t) => t.thread === BASE)) list.unshift({ thread: BASE, count: 0, title: "", summary: "", done: false });
     return list.sort((a, b) => Number(a.done) - Number(b.done));
@@ -213,7 +215,13 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
       const r = await fetch("/api/admin/weekplan/from-answer", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread, answer: content }) });
       status = r.status;
       const d = await r.json();
-      if (d.ok && d.added) { setMkMsg((m) => ({ ...m, [idx]: `✓ ${d.added} ${d.added === 1 ? "taak" : "taken"} in de weekplanning gezet` })); onWeekplanChanged?.(); }
+      if (d.ok && (d.added || d.merged)) {
+        const delen: string[] = [];
+        if (d.added) delen.push(`${d.added} ${d.added === 1 ? "nieuwe kaart" : "nieuwe kaarten"}`);
+        if (d.merged) delen.push(`${d.merged} bestaande ${d.merged === 1 ? "paginakaart" : "paginakaarten"} aangevuld`);
+        setMkMsg((m) => ({ ...m, [idx]: `✓ ${delen.join(" en ")} in de weekplanning` }));
+        onWeekplanChanged?.();
+      }
       else setMkMsg((m) => ({ ...m, [idx]: d.error || `Kon geen taken maken (server gaf status ${status}). Probeer het nog een keer.` }));
     } catch {
       const uitleg = status === 504 || status === 0 ? "waarschijnlijk duurde het te lang" : `server gaf status ${status}`;
@@ -307,23 +315,19 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
                       <div key={i} className={"ovc-msg " + m.role}>
                         <button type="button" className="chat-msg-del" title="Dit blok verwijderen" onClick={() => deleteMessage(i)}>&times;</button>
                         {m.role === "assistant"
-                          ? (() => {
-                              // Antwoorden staan meteen volledig open: geen mini-venster
-                              // met "Toon meer" meer (Maarten wil alles in één keer zien).
-                              const inhoud = stripAankondiging(m.content || "");
-                              const long = false;
-                              const isOpen = true;
-                              return (
-                                <div className="ovc-bubble chat-md">
-                                  <div dangerouslySetInnerHTML={{ __html: mdToHtml(inhoud, domain) }} />
-                                  {long && (
-                                    <button type="button" className="ovc-more" onClick={() => setExpanded((s) => { const n = new Set(s); if (n.has(i)) n.delete(i); else n.add(i); return n; })}>
-                                      {isOpen ? "Toon minder" : "Toon meer"}
-                                    </button>
-                                  )}
-                                </div>
-                              );
-                            })()
+                          ? (
+                              // Antwoorden renderen als sectie-kaartjes met per sectie en
+                              // per bullet een taak-knopje (retroactief op oude berichten).
+                              <div className="ovc-bubble ovc-bubble-blokken">
+                                <AntwoordBlokken
+                                  slug={slug}
+                                  thread={t.thread}
+                                  content={stripAankondiging(m.content || "")}
+                                  toHtml={(md) => mdToHtml(md, domain)}
+                                  onWeekplanChanged={onWeekplanChanged}
+                                />
+                              </div>
+                            )
                           : <div className="ovc-bubble">{m.content}</div>}
                         {m.role === "assistant" && (m.content || "").trim().length > 40 && (
                           <div className="ovc-maketasks">
