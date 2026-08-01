@@ -163,13 +163,14 @@ export async function runPageSchema(slug: string, url: string): Promise<void> {
   try {
     const client = await getClientBySlug(slug);
     if (!client) throw new Error("Klant niet gevonden.");
-    const [org, plan, measured, gsc, allTasks, rawLd] = await Promise.all([
+    const [org, plan, measured, gsc, allTasks, rawLd, kennis] = await Promise.all([
       getOrgData(slug),
       getPagePlan(slug, url).catch(() => ""),
       measurePage(url, { staticOnly: true }).catch(() => null),
       getGscForPage(client.domain || "", url, 90).catch(() => []),
       getTasks(slug).catch(() => []),
       fetchRawJsonLd(url),
+      import("./schema-knowledge").then((m) => m.knowledgeText(slug)).catch(() => ""),
     ]);
     // Gouden regel: markup moet matchen met de zichtbare content. Staat er nog een
     // niet-afgeronde copy-taak voor deze pagina, dan komen de nieuwe teksten (met
@@ -193,6 +194,7 @@ export async function runPageSchema(slug: string, url: string): Promise<void> {
       `PAGINA: ${url}`,
       `SITE: ${site}`,
       `\nBEDRIJFSGEGEVENS:\n${orgToText(org.data, org.locked)}`,
+      kennis ? `\nKENNISBANK (door Maarten bevestigde extra gegevens; net zo betrouwbaar als de bedrijfsgegevens, gebruik ze waar relevant):\n${kennis}` : "",
       plan ? `\nPLAN VOOR DEZE PAGINA:\n${String(plan).replace(/<[^>]*>/g, " ").slice(0, 2500)}` : "",
       `\nPAGINA-METING:\n${pageText}`,
       rawLd.length ? `\nVOLLEDIGE BESTAANDE JSON-LD OP DE PAGINA (plugin-schema; sluit hier EXACT op aan, gebruik de echte @id's):\n${rawLd.join("\n---\n").slice(0, 24000)}` : "",

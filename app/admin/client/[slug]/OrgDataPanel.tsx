@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import HelpHint from "./HelpHint";
+import Kennisbank from "./Kennisbank";
 
 // ═══════════════════════════════════════════════════════════
 // BEDRIJFSGEGEVENS (fundament voor structured data)
@@ -237,6 +238,7 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
             {swMsg && <div className="saved-msg" style={{ marginTop: 6 }}>{swMsg}</div>}
             {swJson && <pre className="sch-json-pre" style={{ marginTop: 8 }}>{swJson}</pre>}
           </div>
+          <Kennisbank slug={slug} />
         </div>
       )}
     </div>
