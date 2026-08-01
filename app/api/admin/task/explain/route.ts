@@ -42,8 +42,11 @@ export async function POST(req: NextRequest) {
   const profiel = (client?.seoProfile || "").slice(0, 1500);
 
   const opmaakRegels = [
-    `Harde regels voor de opmaak (dit is een echte mail):`,
-    `- Simpel: aanhef, een paar korte alinea's, hooguit een paar simpele bullets, afsluiting. Geen kopjes, geen tabellen, geen vetgedrukte woorden, geen Markdown-tekens.`,
+    `Harde regels voor de opmaak en lengte (dit is een echte mail, niemand leest een muur van tekst):`,
+    `- MAXIMAAL 120 woorden tussen aanhef en afsluiting. Liever korter. Dit is hard.`,
+    `- Opbouw: aanhef, één openingszin met de kern, dan de concrete punten als korte '-'-bullets (elk één regel), eventueel één slotzin, afsluiting.`,
+    `- Vertel NOOIT het proces na ("voor we aan de slag gingen hebben we uitgebreid gekeken naar..."): alleen wat er gebeurt of gebeurd is en wat het oplevert.`,
+    `- Alinea's van hooguit twee zinnen. Geen kopjes, geen tabellen, geen vetgedrukte woorden, geen Markdown-tekens.`,
     `- Gebruik nooit een los liggend streepje als zinsscheiding; gebruik een komma, puntkomma, haakjes of een nieuwe zin.`,
     `- Nederlands. Kort en concreet. Geen loze beloftes.`,
   ];
