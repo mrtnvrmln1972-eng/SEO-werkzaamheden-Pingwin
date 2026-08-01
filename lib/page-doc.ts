@@ -851,6 +851,8 @@ Geen emoji. ${DOCSPEC_FORMAT}`;
     const deepParsed = await runDocGen(SYSTEMS[kind], baseUser, deepMax, slug, kind, `doc_${kind}_diep`);
     const { spec: deepSpec } = buildDocSpec(deepParsed, "intern", kind, clientName, url);
     await savePageDocOutput(slug, url, kind, specToText(deepSpec)).catch(() => { /* keten is aanvulling */ });
+    const { registerGeneratedVersion } = await import("./doc-versions");
+    await registerGeneratedVersion(slug, url, kind, `${kind} (gegenereerd)`, "", specToText(deepSpec));
     return clientVersionSpec(slug, url, kind, specToText(deepSpec), extra);
   }
 
@@ -870,5 +872,7 @@ Geen emoji. ${DOCSPEC_FORMAT}`;
   }
   // Bewaar de tekst-uitkomst zodat de volgende stap in de keten erop voortbouwt.
   await savePageDocOutput(slug, url, kind, specToText(spec)).catch(() => { /* keten is aanvulling, niet kritisch */ });
+  const { registerGeneratedVersion } = await import("./doc-versions");
+  await registerGeneratedVersion(slug, url, kind, `${kind} (gegenereerd)`, "", specToText(spec));
   return { spec, title };
 }

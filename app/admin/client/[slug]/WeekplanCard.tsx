@@ -12,6 +12,7 @@ import { cardInfoHtml, splitCardInfo, faseSturing, type CardFaseKey } from "../.
 import { linkifyHtml } from "../../../../lib/linkify";
 import { urlKey } from "../../../../lib/url-key";
 import AntwoordBlokken from "./AntwoordBlokken";
+import DocVersies from "./DocVersies";
 
 export type WpTask = { id: number; thread: string; taak: string; toelichting: string; wie: string; url: string; taaktype: string; copyUrl: string; bronMail: string; weekYear: number; weekNo: number; status: string; sortOrder: number };
 export type WpPageInfo = { url: string; live: boolean; strategie: boolean; gelieerde: boolean; analyse: boolean; blauwdruk: boolean; copy: boolean; bouw: boolean; structured: boolean; structuredStatus: string; next: string; links: { analyse: string; blauwdruk: string; copy: string } };
@@ -401,6 +402,9 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
           {(() => { const eerste = FASEN.find((f) => !page[f.key]); return eerste ? <span className="wp-step wp-step-next">Volgende: {eerste.label}</span> : <span className="wp-step wp-step-done">Alles klaar</span>; })()}
         </div>
       )}
+
+      {/* Documenten: klantversies erin slepen; verwerken is een bewuste klik. */}
+      {open && t.url && <DocVersies slug={slug} url={t.url} />}
 
       {/* Chat direct onder het Doel-blok: de uitkomst hiervan voedt de fases eronder.
           Ook op kaarten zonder pagina, dan met een eigen bird's eye-gesprek. */}
