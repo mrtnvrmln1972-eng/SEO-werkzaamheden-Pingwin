@@ -11,6 +11,7 @@ import type { StrategySession } from "../../../../lib/strategy";
 import ChatPanel from "./ChatPanel";
 import OverviewChat from "./OverviewChat";
 import WeekplanBoard from "./WeekplanBoard";
+import ZijPaneel from "./ZijPaneel";
 import OrgDataPanel from "./OrgDataPanel";
 import FocusBlock from "./FocusBlock";
 import ShareLinkBar from "./ShareLinkBar";
@@ -367,6 +368,11 @@ export default function ClientCockpit({
 
         <InvoiceAlert slug={client.slug} clientName={client.name} />
         <SelectionActions slug={client.slug} clientName={client.name} />
+        {/* Zoekwoorden & links als inschuifbaar zijpaneel: altijd binnen handbereik
+            via het tabje aan de rechterrand, op elk tabblad van de cockpit. */}
+        <ZijPaneel label="Zoekwoorden & links">
+          <FocusBlock slug={client.slug} />
+        </ZijPaneel>
 
         {tab === "werkzaamheden" && (
           <>
@@ -387,14 +393,6 @@ export default function ClientCockpit({
             <WeekplanBoard slug={client.slug} onGoToPage={goToPage} onGoToTab={(t) => changeTab(validTab(t))} clientName={client.name} clientEmail={client.email || ""} reloadSignal={weekplanReload} />
             </div>
             <div className="tk-rechts">
-
-            {/* Zonder mail-secties (COCKPIT_MAIL=uit) blijft alleen Zoekwoorden & links staan,
-                in dezelfde kaartstijl als de andere inklapbare secties. */}
-            {!showMailSections && (
-              <div className="cockpit-card strategy-card">
-                <FocusBlock slug={client.slug} standalone />
-              </div>
-            )}
 
             {showMailSections && (<>
             <div className="cockpit-card strategy-card">
@@ -449,10 +447,6 @@ export default function ClientCockpit({
                 </div>
               </div>
 
-            {/* Zoekwoorden & links als eigen kaart in de rechterkolom, onder de stand van zaken. */}
-            <div className="cockpit-card strategy-card">
-              <FocusBlock slug={client.slug} standalone />
-            </div>
 
             <div className="cockpit-card strategy-card">
               <button type="button" className="strategy-head" onClick={() => setShowMailsBox((v) => !v)}>
