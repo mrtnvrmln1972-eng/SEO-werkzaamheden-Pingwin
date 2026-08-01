@@ -105,6 +105,9 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
     return (kloon.textContent || "").replace(/\s+/g, " ").trim();
   }
   const puntKey = (tekst: string) => hash(`${thread}|${norm(tekst)}`);
+  // Sectie-herkenning: ook een hele sectie (bijv. een tabel-sectie) kan als
+  // "verwerkt in de weekplanning" gemarkeerd worden en klapt dan in.
+  const sectieSleutel = (s: Sectie) => hash(`${thread}|sectie|${norm(`${s.kop}|${s.md.slice(0, 200)}`)}`);
 
   // Alle punt-sleutels binnen een sectie-blok (groepskopjes tellen niet mee).
   function sleutelsVan(blok: Element): string[] {
@@ -161,6 +164,7 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
       if (!root) return;
       const alle: string[] = [];
       root.querySelectorAll(".ovc-blok").forEach((blok) => alle.push(...sleutelsVan(blok)));
+      for (const s of secties) alle.push(sectieSleutel(s));
       zetStaatBulk(alle.filter((k) => !marks[k]), "taak");
     };
     window.addEventListener("pingwin-antwoord-verwerkt", handler);
@@ -171,8 +175,11 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
   async function maakTaak(key: string, tekst: string, puntSleutel?: string, sectieKeys?: string[]) {
     if (busyKey) return;
     setBusyKey(key); setFeedback(null);
+    // Nooit stil blijven hangen op "Bezig…": na 90 seconden een nette melding.
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 90000);
     try {
-      const r = await fetch("/api/admin/weekplan/from-answer", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread, answer: tekst, enkel: true }) });
+      const r = await fetch("/api/admin/weekplan/from-answer", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread, answer: tekst, enkel: true }), signal: ctrl.signal });
       const d = await r.json();
       if (d?.ok && (d.added || d.merged)) {
         const delen: string[] = [];
@@ -183,9 +190,10 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
         if (sectieKeys?.length) zetStaatBulk(sectieKeys.filter((k) => !marks[k]), "taak");
         onWeekplanChanged?.();
       } else setFeedback({ key, msg: d?.error || "Kon hier geen kaart van maken. Probeer het nog een keer.", ok: false });
-    } catch {
-      setFeedback({ key, msg: "Kon hier geen kaart van maken. Probeer het nog een keer.", ok: false });
-    } finally { setBusyKey(""); }
+    } catch (e) {
+      const teLang = (e as Error)?.name === "AbortError";
+      setFeedback({ key, msg: teLang ? "Dit duurde te lang. Mogelijk zijn de kaarten tóch gemaakt; kijk in de weekplanning en probeer het anders nog een keer." : "Kon hier geen kaart van maken. Probeer het nog een keer.", ok: false });
+    } finally { clearTimeout(timer); setBusyKey(""); }
   }
 
   // "Op bespreeklijst": kies de persoon in een menuutje naast de aangeklikte regel.
@@ -266,25 +274,41 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
         const klikKey = `${key}-punt`;
         const t = tellers[key];
         const afgehandeld = t ? t.taak + t.lijst + t.weg + t.klaar : 0;
+        const sHash = sectieSleutel(s);
+        const sectieVerwerkt = marks[sHash] === "taak";
         return (
           <div key={i} className={"ovc-blok" + (s.kop ? "" : " ovc-blok-intro")} data-skey={key}>
             {(s.kop || heeftKoppen) && (
               <div className="ovc-blok-kop">
                 {s.kop && <span className="ovc-blok-titel">{s.kop}</span>}
                 <span className="ovc-blok-spacer" />
-                <button type="button" className="ovc-blok-taakbtn" disabled={!!busyKey}
-                  title="Maak kaarten van deze hele sectie (één per pagina) en klap de sectie in"
-                  onClick={(e) => {
-                    const blok = (e.currentTarget as HTMLElement).closest(".ovc-blok");
-                    void maakTaak(key, `${s.kop ? `Sectie: ${s.kop}\n` : ""}${s.md}`, undefined, blok ? sleutelsVan(blok) : []);
-                  }}>
-                  {busyKey === key ? "Bezig…" : "+ Taak"}
-                </button>
+                {!sectieVerwerkt && (
+                  <button type="button" className="ovc-blok-taakbtn" disabled={!!busyKey}
+                    title="Maak kaarten van deze hele sectie (één per pagina) en klap de sectie in"
+                    onClick={(e) => {
+                      const blok = (e.currentTarget as HTMLElement).closest(".ovc-blok");
+                      void maakTaak(key, `${s.kop ? `Sectie: ${s.kop}\n` : ""}${s.md}`, undefined, [...(blok ? sleutelsVan(blok) : []), sHash]);
+                    }}>
+                    {busyKey === key ? "Bezig…" : "+ Taak"}
+                  </button>
+                )}
               </div>
             )}
-            <div className="chat-md ovc-blok-inhoud" onClick={(e) => klikOpPunt(e, s, klikKey)}
-              dangerouslySetInnerHTML={{ __html: metKnopjes(toHtml(s.md)) }} />
-            {afgehandeld > 0 && (
+            {/* Sectie verwerkt (ook tabel-secties): ingeklapt tot één regeltje. */}
+            {sectieVerwerkt && (
+              <div className="ovc-afgerond-rij ovc-sectie-verwerkt">
+                <span className="st-dot st-ok" />
+                <button type="button" className="ovc-verwerkt-tekst" onClick={() => setToon((v) => ({ ...v, [key]: !v[key] }))}>
+                  Verwerkt in de weekplanning <span className="ovc-afgerond-toggle">{toon[key] ? "verberg ▴" : "toon ▾"}</span>
+                </button>
+                <button type="button" className="ovc-herstel" title="Terugdraaien: de sectie weer als open suggestie tonen" onClick={() => zetStaat(sHash, null)}>herstel</button>
+              </div>
+            )}
+            {(!sectieVerwerkt || toon[key]) && (
+              <div className={"chat-md ovc-blok-inhoud" + (sectieVerwerkt ? " ovc-sectie-gedempt" : "")} onClick={(e) => klikOpPunt(e, s, klikKey)}
+                dangerouslySetInnerHTML={{ __html: metKnopjes(toHtml(s.md)) }} />
+            )}
+            {!sectieVerwerkt && afgehandeld > 0 && (
               <button type="button" className="ovc-afgerond-rij" onClick={() => setToon((v) => ({ ...v, [key]: !v[key] }))}>
                 <span className="st-dot st-ok" /> {afgehandeld} {afgehandeld === 1 ? "punt" : "punten"} afgehandeld: {samenvatting(t)} <span className="ovc-afgerond-toggle">{toon[key] ? "verberg ▴" : "toon ▾"}</span>
               </button>

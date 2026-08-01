@@ -2250,6 +2250,13 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .ovc-afgerond-rij { display: flex; align-items: center; gap: 7px; width: 100%; text-align: left; border: none; background: none; cursor: pointer; padding: 6px 4px; margin-top: 2px; font: inherit; font-size: 12px; color: var(--muted, #6f645a); border-top: 1px dashed var(--border, #e5ded6); }
 .ovc-afgerond-rij:hover { color: var(--dark, #2b2b2b); }
 .ovc-afgerond-toggle { margin-left: auto; font-weight: 600; color: var(--orange-dark); }
+/* Hele sectie verwerkt (ook tabellen): één regeltje met toon/herstel. */
+.ovc-sectie-verwerkt { cursor: default; }
+.ovc-verwerkt-tekst { display: inline-flex; align-items: center; gap: var(--s-2, 8px); border: none; background: none; cursor: pointer; padding: 0; font: inherit; color: inherit; }
+.ovc-verwerkt-tekst .ovc-afgerond-toggle { margin-left: var(--s-2, 8px); }
+.ovc-herstel { margin-left: auto; border: none; background: none; cursor: pointer; padding: var(--s-1, 4px) var(--s-2, 8px); font-size: var(--fs-xs, 11px); font-weight: 600; color: var(--muted, #8a7a6c); text-decoration: underline; text-underline-offset: 3px; }
+.ovc-herstel:hover { color: var(--orange-dark); }
+.ovc-sectie-gedempt { opacity: 0.6; }
 
 /* Genegeerd: doorgestreept en gedempt, maar bewust in beeld (nogmaals klikken haalt terug). */
 .ovc-weg { opacity: 0.55; text-decoration: line-through; color: var(--muted, #8a7a6c); }
