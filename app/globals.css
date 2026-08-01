@@ -2112,6 +2112,11 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 /* In de kaart-chat mogen de blokken iets compacter. */
 .wp-chat-antwoord .ovc-blok { padding: 10px 14px; }
 
+/* Werklijst sitebouwer: knop + status rechts in de weekplanning-kop. */
+.wp-intro-acties { margin-left: auto; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.wp-intro-acties .wp-fase-btn { padding: 6px 13px; font-size: 12px; }
+.wp-intro-acties .wp-link { font-size: 12.5px; }
+
 /* Takenlijst op de weekplanning-actiekaart */
 .act-taken { margin: 4px 0 2px; padding-left: 18px; font-size: 12.5px; line-height: 1.45; }
 .act-taken li { margin: 2px 0; }

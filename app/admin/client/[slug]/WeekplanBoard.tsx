@@ -52,6 +52,43 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailD
   const [mailBusy, setMailBusy] = useState(false);
   const [mailErr, setMailErr] = useState("");
   const mailRef = useRef<HTMLDivElement>(null);
+  // Werklijst sitebouwer: site-brede meta's + alt-teksten als één document + één Dev-kaart.
+  const [wlBusy, setWlBusy] = useState(false);
+  const [wlMsg, setWlMsg] = useState("");
+  const [wlLink, setWlLink] = useState("");
+  const [wlFout, setWlFout] = useState(false);
+
+  // Laatste werklijst-stand tonen (link naar het document als die er is).
+  useEffect(() => {
+    let alive = true;
+    fetch(`/api/admin/dev-worklist?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).then((d) => {
+      if (!alive || !d?.ok) return;
+      if (d.status === "running") { setWlBusy(true); setWlMsg(""); void volgWerklijst(); }
+      else if (d.status === "done" && d.docLink) { setWlLink(d.docLink); setWlMsg("Open de werklijst"); }
+    }).catch(() => {});
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug]);
+
+  async function volgWerklijst() {
+    for (let i = 0; i < 70; i++) {
+      await new Promise((r) => setTimeout(r, 5000));
+      const d = await fetch(`/api/admin/dev-worklist?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).catch(() => null);
+      if (!d?.ok || d.status === "running") continue;
+      setWlBusy(false);
+      if (d.status === "done") { setWlFout(false); setWlLink(d.docLink || ""); setWlMsg(d.docLink ? "Open de werklijst" : (d.result || "Werklijst klaar.")); void load(); }
+      else { setWlFout(true); setWlLink(""); setWlMsg(d.error || "Werklijst maken mislukt."); }
+      return;
+    }
+    setWlBusy(false); setWlFout(true); setWlMsg("Duurde te lang; probeer het nog een keer.");
+  }
+
+  async function startWerklijst() {
+    if (wlBusy) return;
+    setWlBusy(true); setWlMsg(""); setWlLink(""); setWlFout(false);
+    fetch("/api/admin/dev-worklist", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }) }).catch(() => {});
+    void volgWerklijst();
+  }
 
   async function load() {
     try {
@@ -172,6 +209,16 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailD
         <div>
           <div className="wp-intro-titel">Weekplanning</div>
           <div className="muted">Projectkaarten uit de onderwerpen, verdeeld over de weken. Sleep een kaart naar een andere week; klap hem open om de fases te starten en af te vinken.</div>
+        </div>
+        <div className="wp-intro-acties">
+          <button type="button" className="wp-fase-btn" disabled={wlBusy}
+            title="Crawlt de live pagina's en maakt één document voor de sitebouwer met kant-en-klare meta's en alt-teksten, plus één Dev-kaart in het bord."
+            onClick={() => void startWerklijst()}>{wlBusy ? "Werklijst maken…" : "Werklijst sitebouwer"}</button>
+          {wlMsg && (
+            wlLink
+              ? <a className="wp-link" href={wlLink} target="_blank" rel="noreferrer">{wlMsg}</a>
+              : <span className={"ovc-mk-msg" + (wlFout ? " err" : " ok")}>{wlMsg}</span>
+          )}
         </div>
       </div>
       <div className="wp-board">
