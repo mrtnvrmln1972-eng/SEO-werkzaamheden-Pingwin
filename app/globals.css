@@ -23,7 +23,83 @@
   --border: #E0E0E0;
   --red: #D32F2F;
   --red-light: #FFEBEE;
+
+  /* ── Design-fundament: schaal-tokens (batch 1) ──────────────────
+     Elke afstand, tekstgrootte, hoekronding en schaduw komt voortaan
+     uit deze schalen. Nooit meer losse pixelwaardes in nieuwe UI. */
+
+  /* Spacing-schaal (veelvouden van 4) */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-8: 32px;
+  --s-10: 40px;
+  --s-12: 48px;
+
+  /* Type-schaal (vaste groottes + bijpassende regelhoogtes) */
+  --fs-xs: 11px;   --lh-xs: 16px;   /* labels, chips, kleine meta */
+  --fs-sm: 12.5px; --lh-sm: 18px;   /* secundaire tekst, samenvattingen */
+  --fs-base: 14px; --lh-base: 22px; /* lopende tekst, knoppen, invoer */
+  --fs-md: 16px;   --lh-md: 24px;   /* kaart- en paneelkoppen */
+  --fs-lg: 20px;   --lh-lg: 28px;   /* sectietitels */
+  --fs-xl: 26px;   --lh-xl: 32px;   /* grote cijfers, paginakoppen */
+
+  /* Radius-schaal */
+  --r-sm: 6px;     /* kleine knopjes, badges */
+  --r-md: 10px;    /* knoppen, invoervelden, sub-kaarten */
+  --r-lg: 14px;    /* kaarten en panelen */
+  --r-full: 999px; /* pillen en ronde chips */
+
+  /* Shadow-schaal */
+  --shadow-sm: 0 1px 3px rgba(51, 48, 46, 0.06);
+  --shadow-md: 0 4px 16px rgba(51, 48, 46, 0.07), 0 1px 3px rgba(51, 48, 46, 0.05);
+  --shadow-lg: 0 8px 24px rgba(51, 48, 46, 0.10), 0 2px 6px rgba(51, 48, 46, 0.06);
 }
+
+/* ── Design-fundament: gedeelde bouwstenen (batch 1) ──────────────
+   Herbruikbare basisclasses op de schaal-tokens hierboven. Nieuwe UI
+   bouwt hiermee; bestaande schermen migreren per batch. */
+
+/* Kaart: de standaard witte container met rand, ronding en schaduw. */
+.card {
+  background: var(--white);
+  border: 1px solid #E7E4E0;
+  border-radius: var(--r-lg);
+  padding: var(--s-6);
+  box-shadow: var(--shadow-md);
+}
+
+/* Sectie binnen een kaart: vaste verticale ademruimte tussen blokken. */
+.section { margin-bottom: var(--s-6); }
+.section:last-child { margin-bottom: 0; }
+
+/* Rij: elementen naast elkaar, verticaal gecentreerd, vaste tussenruimte. */
+.row { display: flex; align-items: center; gap: var(--s-3); }
+
+/* Chip: kleine status- of labelpil. */
+.chip {
+  display: inline-flex; align-items: center; gap: var(--s-1);
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
+  padding: 2px var(--s-2); border-radius: var(--r-full);
+  background: var(--gray-light); color: var(--gray);
+}
+
+/* Knop: standaard actieknop op de tokens; .btn-primary is de oranje variant. */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--s-2);
+  font-family: 'Montserrat', sans-serif;
+  font-size: var(--fs-base); line-height: var(--lh-base); font-weight: 700;
+  padding: var(--s-2) var(--s-4); border-radius: var(--r-md);
+  border: 1px solid var(--border); background: var(--white); color: var(--gray);
+  cursor: pointer; transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.btn:hover { border-color: var(--orange); color: var(--orange-dark); }
+.btn:disabled { opacity: 0.6; cursor: default; }
+.btn-primary { background: var(--orange); border-color: var(--orange); color: var(--white); }
+.btn-primary:hover { background: var(--orange-dark); border-color: var(--orange-dark); color: var(--white); }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -2002,11 +2078,11 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .ov-layout .ov-columns { grid-template-columns: 1fr; }
 
 /* Gedokte bird's eye-chat */
-/* Zelfde padding als elke andere cockpit-kaart, zodat icoontjes en titels op
-   het Taken-tab op exact dezelfde verticale lijn staan. */
-.ovc-card { display: flex; flex-direction: column; padding: 18px 24px; margin-bottom: 0; }
-.ovc-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-bottom: 10px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
-.ovc-title { display: inline-flex; align-items: center; gap: 7px; font-weight: 800; font-size: 14px; color: var(--dark); margin-right: auto; }
+/* Herbouwd op de schaal-tokens (batch 1): vaste padding rondom, gelijke
+   afstanden uit de spacing-schaal, tekstgroottes uit de type-schaal. */
+.ovc-card { display: flex; flex-direction: column; padding: var(--s-5) var(--s-6); margin-bottom: 0; }
+.ovc-head { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; padding-bottom: var(--s-4); border-bottom: 1px solid var(--border); margin-bottom: var(--s-4); }
+.ovc-title { display: inline-flex; align-items: center; gap: var(--s-2); font-weight: 800; font-size: var(--fs-md); line-height: var(--lh-md); color: var(--dark); margin-right: auto; }
 .ovc-log { display: flex; flex-direction: column; gap: 10px; padding-right: 4px; }
 .ovc-intro { font-size: 13px; line-height: 1.5; padding: 4px 2px; }
 .ovc-msg { position: relative; display: flex; flex-direction: column; gap: 8px; }
@@ -2031,19 +2107,19 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 
 /* Onderwerp-toggles in de bird's eye: standaard dicht, titel + 1 regel
    samenvatting; uitklappen toont het gesprek en de actie-kaarten. */
-.ovc-topics { display: flex; flex-direction: column; gap: 8px; }
-.ovc-topic { border: 1px solid var(--border); border-radius: 10px; background: var(--white); overflow: hidden; }
-.ovc-topic.open { border-color: var(--orange); box-shadow: 0 1px 6px rgba(231, 119, 63, 0.08); }
+.ovc-topics { display: flex; flex-direction: column; gap: var(--s-2); }
+.ovc-topic { border: 1px solid var(--border); border-radius: var(--r-md); background: var(--white); overflow: hidden; }
+.ovc-topic.open { border-color: var(--orange); box-shadow: var(--shadow-sm); }
 .ovc-topic.done { opacity: 0.6; }
-.ovc-topic-head { display: flex; align-items: flex-start; gap: 8px; padding: 10px 12px; cursor: pointer; user-select: none; }
+.ovc-topic-head { display: flex; align-items: flex-start; gap: var(--s-2); padding: var(--s-3) var(--s-4); cursor: pointer; user-select: none; }
 .ovc-topic-head:hover { background: var(--gray-light); }
-.ovc-caret { color: var(--orange); font-size: 11px; width: 12px; flex: none; margin-top: 3px; }
-.ovc-done { flex: none; accent-color: var(--orange); cursor: pointer; width: 15px; height: 15px; margin-top: 1px; }
-.ovc-topic-textcol { display: flex; flex-direction: column; gap: 2px; flex: 1 1 auto; min-width: 0; }
-.ovc-topic-title { font-weight: 800; font-size: 13.5px; color: var(--orange); }
+.ovc-caret { color: var(--orange); font-size: var(--fs-xs); line-height: var(--lh-xs); width: var(--s-3); flex: none; margin-top: 1px; text-align: center; }
+.ovc-done { flex: none; accent-color: var(--orange); cursor: pointer; width: 16px; height: 16px; margin-top: 1px; }
+.ovc-topic-textcol { display: flex; flex-direction: column; gap: var(--s-1); flex: 1 1 auto; min-width: 0; }
+.ovc-topic-title { font-weight: 800; font-size: var(--fs-base); line-height: var(--lh-xs); color: var(--orange); }
 .ovc-topic.done .ovc-topic-title { color: var(--gray); text-decoration: line-through; }
-.ovc-topic-sum { font-size: 12.5px; color: var(--gray); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.ovc-title-inline { border: none; background: transparent; font-family: inherit; font-weight: 800; font-size: 13.5px; color: var(--orange); padding: 0; width: 100%; }
+.ovc-topic-sum { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ovc-title-inline { border: none; background: transparent; font-family: inherit; font-weight: 800; font-size: var(--fs-base); line-height: var(--lh-xs); color: var(--orange); padding: 0; width: 100%; }
 .ovc-title-inline:focus { outline: none; border-bottom: 1px solid var(--orange); }
 .ovc-title-inline::placeholder { color: var(--gray); font-weight: 500; }
 .ovc-topic-body { padding: 2px 12px 12px; border-top: 1px solid var(--border); }
@@ -2294,9 +2370,9 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 
 /* Weekplanning-bord: taken over weekkolommen, huidige week gemarkeerd, slepen. */
 .wp-wrap, .wp-empty { margin-top: 14px; }
-/* Icoontegel voor panelkoppen (Bird's eye, Weekplanning), stijl voorbeeld. */
-.ovc-icontile { width: 42px; height: 42px; border-radius: 13px; display: grid; place-items: center; flex: 0 0 auto; color: var(--orange); background: linear-gradient(180deg, #fff8f3, #fff1e8); border: 1px solid #ffe0cf; }
-.ovc-icontile svg { width: 21px; height: 21px; }
+/* Icoontegel voor panelkoppen (Bird's eye, Weekplanning), op de schaal-tokens. */
+.ovc-icontile { width: var(--s-10); height: var(--s-10); border-radius: var(--r-md); display: grid; place-items: center; flex: 0 0 auto; color: var(--orange); background: linear-gradient(180deg, #fff8f3, #fff1e8); border: 1px solid #ffe0cf; }
+.ovc-icontile svg { width: var(--s-5); height: var(--s-5); }
 /* Zelfde kop-ritme en typografie als de Bird's eye-kop (razorsharp uitgelijnd). */
 .wp-intro { display: flex; align-items: center; gap: 8px; padding-bottom: 10px; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
 .wp-intro-titel { color: var(--dark); font-size: 14px; font-weight: 800; margin: 0 0 2px; }
