@@ -127,9 +127,12 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
 
   // Elk herkenbaar punt krijgt een plusje: bullets én paragrafen die met een
   // vetgedrukt kopwoord beginnen ("Zwemvijver — ...", "Structured data — ...").
+  // Elk punt als echt taakrijtje: vinkvakje links (gaat aan zodra er een kaart
+  // van gemaakt is), de tekst ernaast, en rechts het oranje plus-rondje.
+  const PUNT_PREFIX = '<span class="ovc-check" aria-hidden="true"></span><button type="button" class="ovc-li-plus" title="Maak van dit punt een kaart in de weekplanning">+</button>';
   const metPlusjes = (html: string) => vervangEmoji(html)
-    .replace(/<li>/g, '<li><button type="button" class="ovc-li-plus" title="Maak van dit punt een kaart in de weekplanning">+</button>')
-    .replace(/<p><strong>/g, '<p class="ovc-punt"><button type="button" class="ovc-li-plus" title="Maak van dit punt een kaart in de weekplanning">+</button><strong>');
+    .replace(/<li>/g, `<li>${PUNT_PREFIX}`)
+    .replace(/<p><strong>/g, `<p class="ovc-punt">${PUNT_PREFIX}<strong>`);
 
   return (
     <div className="ovc-blokken" ref={rootRef}>
