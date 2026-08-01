@@ -17,14 +17,14 @@ export type WpPageInfo = { url: string; live: boolean; strategie: boolean; gelie
 
 // Bij welk taaktype hoort welk dashboard-tabblad (voor de deep-link "doe het hier").
 const TAB_FOR_TYPE: Record<string, { tab: string; label: string }> = {
-  meta: { tab: "meta", label: "Meta & CTR ↗" },
-  alt: { tab: "paginas", label: "Pagina's ↗" },
-  copy: { tab: "paginas", label: "Pagina's ↗" },
-  intern: { tab: "paginas", label: "Pagina's ↗" },
-  structured: { tab: "paginas", label: "Pagina's ↗" },
-  strategie: { tab: "paginas", label: "Pagina's ↗" },
-  pijplijn: { tab: "paginas", label: "Pagina's ↗" },
-  overig: { tab: "paginas", label: "Pagina's ↗" },
+  meta: { tab: "meta", label: "Meta & CTR" },
+  alt: { tab: "paginas", label: "Pagina's" },
+  copy: { tab: "paginas", label: "Pagina's" },
+  intern: { tab: "paginas", label: "Pagina's" },
+  structured: { tab: "paginas", label: "Pagina's" },
+  strategie: { tab: "paginas", label: "Pagina's" },
+  pijplijn: { tab: "paginas", label: "Pagina's" },
+  overig: { tab: "paginas", label: "Pagina's" },
 };
 const STATUS_LABEL: Record<string, string> = { gepland: "Gepland", bezig: "Bezig", klaar: "Klaar" };
 
@@ -427,8 +427,8 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
                   <span className="wp-fase-label">{f.label}</span>
                   <span className="wp-fase-spacer" />
                   {/* Alle pillen rechts, in vaste volgorde: Document | In Pagina's | actie | status. */}
-                  {link && <a className="wp-fase-btn wp-fase-doc" href={link} target="_blank" rel="noreferrer" title="Open het document">Document ↗</a>}
-                  <button type="button" className="wp-fase-btn wp-fase-btn-licht" title="Bekijk of doe deze stap in Pagina's (nieuw tabblad)" onClick={openPaginaNieuwTab}>In Pagina&rsquo;s ↗</button>
+                  {link && <a className="wp-fase-btn wp-fase-doc" href={link} target="_blank" rel="noreferrer" title="Open het document">Document</a>}
+                  <button type="button" className="wp-fase-btn wp-fase-btn-licht" title="Bekijk of doe deze stap in Pagina's (nieuw tabblad)" onClick={openPaginaNieuwTab}>In Pagina&rsquo;s</button>
                   {faseActie(f.key)}
                   <span className={"wp-fase-chip " + stand.cls} title={stand.label === "✓" ? "Klaar" : undefined}>{stand.label}</span>
                 </div>
@@ -463,10 +463,10 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
       {/* Eén nette onderste regel, alles rechts uitgelijnd: links plus de Mail-knop. */}
       <div className="wp-card-links wp-onder-regel">
         {t.url && <a className="wp-link" href={t.url} target="_blank" rel="noreferrer" title="De live pagina">{shortUrl(t.url)}</a>}
-        {t.copyUrl && <a className="wp-link" href={t.copyUrl} target="_blank" rel="noreferrer" title="De aangeleverde copy">Copy ↗</a>}
+        {t.copyUrl && <a className="wp-link" href={t.copyUrl} target="_blank" rel="noreferrer" title="De aangeleverde copy">Copy</a>}
         {t.bronMail && <a className="wp-link" href={t.bronMail} target="_blank" rel="noreferrer" title="De mail waar deze taak uit voortkomt">✉ bronmail</a>}
         {tab && <button type="button" className="wp-link wp-link-btn" title="Open dit dashboard-onderdeel in een nieuw tabblad" onClick={() => openTabNieuwTab(tab.tab)}>{tab.label}</button>}
-        {t.url && <button type="button" className="wp-link wp-link-btn" title="Open de pagina in Pagina's (nieuw tabblad)" onClick={openPaginaNieuwTab}>Pagina&rsquo;s ↗</button>}
+        {t.url && <button type="button" className="wp-link wp-link-btn" title="Open de pagina in Pagina's (nieuw tabblad)" onClick={openPaginaNieuwTab}>Pagina&rsquo;s</button>}
         <button type="button" className="wp-act wp-act-klant" title="Mail over deze kaart; de ontvanger (klant, developer of anders) kies je in het venster." onClick={() => onMail("klant")}>✉ Mail</button>
       </div>
         </div>
