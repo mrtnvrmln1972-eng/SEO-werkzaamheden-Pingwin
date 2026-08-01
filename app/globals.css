@@ -2134,8 +2134,13 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 /* Afgevinkt = doorgestreept; genegeerd = gedempt. */
 .ovc-gedaan { text-decoration: line-through; color: var(--muted, #8a7a6c); }
 .ovc-gedaan a { color: inherit; }
-.ovc-weg { opacity: 0.45; }
+/* Genegeerd: doorgestreept en gedempt, maar bewust in beeld (nogmaals klikken haalt terug). */
+.ovc-weg { opacity: 0.55; text-decoration: line-through; color: var(--muted, #8a7a6c); }
+.ovc-weg a { color: inherit; }
 .ovc-weg .ovc-act-x { opacity: 1; }
+/* Persoonskeuze als zwevend menuutje naast de aangeklikte regel. */
+.ovc-lijstpop { position: fixed; z-index: 60; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; max-width: 320px; border: 1px solid var(--border, #e5ded6); border-left: 3px solid var(--orange); border-radius: 10px; padding: 9px 12px; background: #fff; box-shadow: 0 10px 28px rgba(32, 32, 32, 0.14); font-size: 12.5px; }
+.ovc-lijstpop-kop { font-weight: 700; }
 /* »-knopje: punt naar een bespreeklijst; plus het keuzemenuutje. */
 .ovc-act-lijst { border-color: var(--orange); color: var(--orange); font-size: 13px; }
 .ovc-act-lijst:hover, .ovc-act-lijst.ovc-act-aan { background: var(--orange); color: #fff; }
@@ -2226,6 +2231,10 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .wp-intro-acties { margin-left: auto; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
 .wp-intro-acties .wp-fase-btn { padding: 6px 13px; font-size: 12px; }
 .wp-intro-acties .wp-link { font-size: 12.5px; }
+/* Werklijst-blok op de sitebouwer-kaart: knop, status en het document bij elkaar. */
+.wp-werklijst { border: 1px solid var(--border, #e5ded6); border-left: 3px solid var(--orange); border-radius: 10px; padding: 10px 14px; margin: 10px 0; display: flex; flex-direction: column; gap: 7px; background: #fffdfb; font-size: 12.5px; }
+.wp-werklijst-rij { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.wp-werklijst-sam { line-height: 1.5; }
 
 /* Takenlijst op de weekplanning-actiekaart */
 .act-taken { margin: 4px 0 2px; padding-left: 18px; font-size: 12.5px; line-height: 1.45; }

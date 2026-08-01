@@ -461,6 +461,10 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
       {/* Documenten: klantversies erin slepen; verwerken is een bewuste klik. */}
       {open && t.url && <DocVersies slug={slug} url={t.url} />}
 
+      {/* Werklijst-sitebouwer-kaart: hier hoort het echte werk te staan, niet
+          alleen een omschrijving. Knop, status en het kant-en-klare document. */}
+      {open && !t.url && /werklijst sitebouwer|site-?breed/i.test(t.taak) && <WerklijstBlok slug={slug} refreshBoard={refreshBoard} />}
+
       {/* Chat direct onder het Doel-blok: de uitkomst hiervan voedt de fases eronder.
           Ook op kaarten zonder pagina, dan met een eigen bird's eye-gesprek. */}
       {open && (
@@ -576,6 +580,58 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
       </div>}
         </div>
       </div>
+    </div>
+  );
+}
+
+// Blok op de werklijst-sitebouwer-kaart: maak of ververs de site-brede werklijst
+// (meta's en alt-teksten kant-en-klaar) en toon de status, samenvatting en het
+// document. De motor zet na afloop zelf de doc-link en samenvatting op de kaart.
+function WerklijstBlok({ slug, refreshBoard }: { slug: string; refreshBoard: () => void }) {
+  const [status, setStatus] = useState<string>("idle");
+  const [docLink, setDocLink] = useState("");
+  const [resultaat, setResultaat] = useState("");
+  const [fout, setFout] = useState("");
+
+  async function haal(): Promise<string> {
+    const d = await fetch(`/api/admin/dev-worklist?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).catch(() => null);
+    if (d?.ok) { setStatus(d.status || "idle"); setDocLink(d.docLink || ""); setResultaat(d.result || ""); if (d.status === "error") setFout(d.error || ""); }
+    return d?.status || "idle";
+  }
+  useEffect(() => {
+    void haal().then((s) => { if (s === "running") void volg(); });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug]);
+
+  async function volg() {
+    for (let i = 0; i < 70; i++) {
+      await new Promise((r) => setTimeout(r, 5000));
+      const s = await haal();
+      if (s === "done" || s === "error") { if (s === "done") refreshBoard(); return; }
+    }
+  }
+  function start() {
+    setStatus("running"); setFout(""); setResultaat("");
+    fetch("/api/admin/dev-worklist", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }) }).catch(() => {});
+    void volg();
+  }
+
+  return (
+    <div className="wp-werklijst">
+      <div className="wp-werklijst-rij">
+        <span className="wp-sectie-label" style={{ margin: 0 }}>Werklijst voor de sitebouwer</span>
+        <span className="wp-fase-spacer" />
+        {docLink && <a className="wp-fase-btn wp-fase-doc" href={docLink} target="_blank" rel="noreferrer" title="Het kant-en-klare werkdocument (meta's en alt-teksten per pagina)">Document</a>}
+        <button type="button" className="wp-fase-btn" disabled={status === "running"} onClick={start}>
+          {status === "running" ? "Bezig… (paar minuten)" : docLink ? "Ververs werklijst" : "Maak de werklijst"}
+        </button>
+      </div>
+      {status === "running" && <div className="muted">De pagina's worden gemeten en de meta's en alt-teksten geschreven; dit duurt een paar minuten. Je kunt intussen gewoon verder.</div>}
+      {resultaat && status === "done" && <div className="wp-werklijst-sam">{resultaat}</div>}
+      {fout && <div className="wp-doc-fout">{fout}</div>}
+      {!docLink && status !== "running" && !resultaat && (
+        <div className="muted">Nog geen werklijst gemaakt. De werklijst meet alle live pagina&rsquo;s en zet per pagina de nieuwe meta&rsquo;s en alt-teksten kant-en-klaar in één document voor Sander.</div>
+      )}
     </div>
   );
 }

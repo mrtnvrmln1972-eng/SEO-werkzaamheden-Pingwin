@@ -126,9 +126,16 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
     } finally { setBusyKey(""); }
   }
 
-  // "Op bespreeklijst": kies de persoon; het punt gaat naar diens afvinklijstje.
-  const [lijstVoor, setLijstVoor] = useState<{ key: string; tekst: string; sleutel: string } | null>(null);
+  // "Op bespreeklijst": kies de persoon in een menuutje dat naast de aangeklikte
+  // regel verschijnt (niet onderaan het blok, dat viel buiten beeld).
+  const [lijstVoor, setLijstVoor] = useState<{ key: string; tekst: string; sleutel: string; x: number; y: number } | null>(null);
   const [personen, setPersonen] = useState<string[]>(["Klant", "Dev"]);
+  useEffect(() => {
+    if (!lijstVoor) return;
+    const sluit = (e: MouseEvent) => { if (!(e.target as HTMLElement).closest?.(".ovc-lijstpop")) setLijstVoor(null); };
+    document.addEventListener("mousedown", sluit);
+    return () => document.removeEventListener("mousedown", sluit);
+  }, [lijstVoor]);
   useEffect(() => {
     fetch(`/api/admin/discuss?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).then((d) => {
       if (d?.ok) setPersonen([...new Set(["Klant", "Dev", ...(d.items || []).map((i: { persoon: string }) => i.persoon)])] as string[]);
@@ -165,7 +172,8 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
       zetStaat(sleutel, huidig === "klaar" ? null : "klaar");
     } else if (btn.classList.contains("ovc-act-lijst")) {
       setFeedback(null);
-      setLijstVoor({ key, tekst: punt, sleutel });
+      const r = btn.getBoundingClientRect();
+      setLijstVoor({ key, tekst: punt, sleutel, x: r.left, y: r.bottom });
     }
   }
 
@@ -200,15 +208,6 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
             )}
             <div className="chat-md ovc-blok-inhoud" onClick={(e) => klikOpPunt(e, s, klikKey)}
               dangerouslySetInnerHTML={{ __html: metKnopjes(toHtml(s.md)) }} />
-            {lijstVoor && (lijstVoor.key === klikKey) && (
-              <div className="ovc-lijstkeuze">
-                <span>Op welke bespreeklijst?</span>
-                {personen.map((p) => (
-                  <button key={p} type="button" className="wp-fase-btn" onClick={() => void zetOpLijst(p)}>{p === "Dev" ? "Sander (Dev)" : p}</button>
-                ))}
-                <button type="button" className="wp-icon wp-del" title="Annuleren" onClick={() => setLijstVoor(null)}>×</button>
-              </div>
-            )}
             {busyKey === klikKey && <div className="ovc-blok-feedback">Kaart maken…</div>}
             {feedback && (feedback.key === key || feedback.key === klikKey) && (
               <div className={"ovc-blok-feedback" + (feedback.ok ? " ok" : " err")}>
@@ -218,6 +217,15 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
           </div>
         );
       })}
+      {lijstVoor && typeof window !== "undefined" && (
+        <div className="ovc-lijstpop" style={{ left: Math.max(8, Math.min(lijstVoor.x, window.innerWidth - 300)), top: lijstVoor.y + 6 }}>
+          <span className="ovc-lijstpop-kop">Op welke bespreeklijst?</span>
+          {personen.map((p) => (
+            <button key={p} type="button" className="wp-fase-btn" onClick={() => void zetOpLijst(p)}>{p === "Dev" ? "Sander (Dev)" : p}</button>
+          ))}
+          <button type="button" className="wp-icon wp-del" title="Annuleren" onClick={() => setLijstVoor(null)}>×</button>
+        </div>
+      )}
     </div>
   );
 }
