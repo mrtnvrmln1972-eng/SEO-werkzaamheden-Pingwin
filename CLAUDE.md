@@ -28,6 +28,10 @@ laadt. Wijzigt de werkwijze, houd master en alle kopieën gelijk.
   "Ik weet het niet" mag. Presenteer een plan of oud document nooit als de huidige werkelijkheid.
 - **Zoek zelf op.** Vraag Maarten niet naar wat je zelf kunt vinden (een domein, URL of cijfer);
   gebruik de gekoppelde bronnen (mail, Ahrefs, Search Console) en het web uit eigen beweging.
+- **Doe het zelf als het kan.** Kan iets via code, een config-bestand of een API, doe het dan
+  zelf in plaats van Maarten klik-instructies te sturen (voorbeeld: Vercel-instelling via
+  `vercel.json` i.p.v. een klikroute). Check standaard eerst of jij het kunt doen; alleen wat
+  echt niet anders kan (inloggen, betalen, een besluit) komt bij Maarten terecht.
 - **Het heet Pingwin.** Nooit "Penguin" of een andere spelling, ook niet in output.
 - **Bewijs boven beloftes.** Zeg niet "het werkt", laat het zien (test, output, live URL).
   Kondig je een controle aan, voer die dan ook echt uit.
