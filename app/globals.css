@@ -75,7 +75,7 @@
 /* Kaart: de standaard witte container met rand, ronding en schaduw. */
 .card {
   background: var(--white);
-  border: 1px solid #E7E4E0;
+  border: 1px solid var(--card-border);
   border-radius: var(--r-lg);
   padding: var(--s-6);
   box-shadow: var(--shadow-md);
@@ -187,7 +187,7 @@ body {
 .stats-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; margin-bottom: 24px; }
 .stat-card {
   background: var(--white); border-radius: 14px; padding: 16px 18px;
-  border: 1px solid #E7E4E0; border-top: 2px solid var(--brand-orange-soft);
+  border: 1px solid var(--card-border); border-top: 2px solid var(--brand-orange-soft);
   box-shadow: 0 2px 10px rgba(51,48,46,0.06);
 }
 .stat-card.over-budget { border-top-color: var(--red); background: var(--red-light); }
@@ -202,7 +202,7 @@ body {
 /* Progress bar */
 .progress-wrap {
   background: var(--white); border-radius: 14px; padding: 16px 18px;
-  margin-bottom: 24px; border: 1px solid #E7E4E0; box-shadow: 0 2px 10px rgba(51,48,46,0.06);
+  margin-bottom: 24px; border: 1px solid var(--card-border); box-shadow: 0 2px 10px rgba(51,48,46,0.06);
 }
 .progress-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 .progress-title { font-size: 13px; font-weight: 700; color: var(--dark); }
@@ -213,12 +213,12 @@ body {
   border-radius: 5px; transition: width 0.6s ease;
 }
 /* Werkzaamheden-tabel in het klantdashboard in een nette box. */
-.dashboard-tasks { background: var(--white); border: 1px solid #E7E4E0; border-radius: 14px; box-shadow: 0 2px 10px rgba(51,48,46,0.06); padding: 8px 10px 6px; }
+.dashboard-tasks { background: var(--white); border: 1px solid var(--card-border); border-radius: 14px; box-shadow: 0 2px 10px rgba(51,48,46,0.06); padding: 8px 10px 6px; }
 
 /* Task table */
 .section-title {
-  font-size: 20px; font-weight: 700; color: var(--dark);
-  margin-bottom: 16px; display: flex; align-items: center; gap: 10px;
+  font-size: var(--fs-lg); line-height: var(--lh-lg); font-weight: 700; color: var(--dark);
+  margin-bottom: var(--s-4); display: flex; align-items: center; gap: var(--s-2);
 }
 .section-title::before {
   content: ''; width: 4px; height: 24px; background: var(--orange);
@@ -438,7 +438,7 @@ tbody td:last-child { text-align: center; }
 .clickable-row:hover .row-arrow { opacity: 1; }
 
 /* Cockpit tabs */
-.tabs { display: flex; gap: 6px; flex-wrap: wrap; border-bottom: 2px solid var(--border); margin-bottom: 24px; }
+.tabs { display: flex; gap: var(--s-2); flex-wrap: wrap; border-bottom: 2px solid var(--border); margin-bottom: var(--s-6); }
 .tab {
   border: none; background: none; padding: 12px 18px; cursor: pointer;
   font-family: 'Montserrat', sans-serif; font-size: 14px; font-weight: 600; color: var(--gray);
@@ -491,7 +491,7 @@ tbody td:last-child { text-align: center; }
 @media (max-width: 900px) { .dev-week-grid { grid-template-columns: repeat(7, minmax(180px, 1fr)); } }
 
 /* Pagina's-tab: URL-lijst (spiegel) + plan-alinea */
-.pages-search { width: 100%; max-width: 420px; font-size: 13px; padding: 8px 11px; border: 1px solid var(--border); border-radius: 8px; outline: none; }
+.pages-search { width: 100%; max-width: 420px; font-size: var(--fs-sm); padding: var(--s-2) var(--s-3); border: 1px solid var(--border); border-radius: var(--r-sm); outline: none; }
 .pages-search:focus { border-color: var(--orange); }
 /* Klantprofiel-toggle links, zoekbalk rechts op één rij. */
 .profile-search-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 8px 0 4px; flex-wrap: wrap; }
@@ -583,7 +583,7 @@ tbody td:last-child { text-align: center; }
 .profile-note { margin-top: 8px; padding: 7px 11px; border-radius: 8px; background: var(--red-light); border: 1px solid var(--red); color: var(--red); font-weight: 700; font-size: 12px; }
 .profile-gen-buttons { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
 /* De drie delen van het klantprofiel: netjes gerenderde kaarten met titel + accent. */
-.profile-part { background: #fff; border: 1px solid #E7E4E0; border-radius: 12px; padding: 12px 15px; margin-top: 12px; box-shadow: 0 2px 10px rgba(51,48,46,0.05); }
+.profile-part { background: #fff; border: 1px solid var(--card-border); border-radius: 12px; padding: 12px 15px; margin-top: 12px; box-shadow: 0 2px 10px rgba(51,48,46,0.05); }
 .profile-part.acc-teal { border-left: 4px solid var(--brand-teal); }
 .profile-part.acc-blue { border-left: 4px solid var(--brand-blue); }
 .profile-part.acc-taupe { border-left: 4px solid var(--brand-taupe); }
@@ -1000,9 +1000,9 @@ tbody td:last-child { text-align: center; }
 /* ── Cockpit: data-brug weergaven (Communicatie + Resultaten) ── */
 .ck-section-head {
   display: flex; align-items: baseline; justify-content: space-between;
-  font-weight: 700; color: var(--dark); font-size: 14px;
+  font-weight: 700; color: var(--dark); font-size: var(--fs-base); line-height: var(--lh-base);
   text-transform: uppercase; letter-spacing: 0.5px;
-  margin: 4px 0 14px; padding-bottom: 8px; border-bottom: 2px solid var(--orange);
+  margin: 0 0 var(--s-4); padding-bottom: var(--s-2); border-bottom: 2px solid var(--orange);
 }
 /* Oranje kopjes in het hele dashboard. */
 .ck-section-head, button.ck-collapse-head, .section-title, .month-card-title,
@@ -1132,8 +1132,8 @@ button.ck-collapse-head {
 /* Superhuman-zoekvak in de sectiekop */
 .sh-search { display: flex; align-items: center; gap: 8px; text-transform: none; letter-spacing: 0; }
 .sh-search input {
-  font-family: 'Montserrat', sans-serif; font-size: 13px; font-weight: 400;
-  padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px;
+  font-family: 'Montserrat', sans-serif; font-size: var(--fs-sm); font-weight: 400;
+  padding: var(--s-2) var(--s-3); border: 1px solid var(--border); border-radius: var(--r-sm);
   width: 240px; max-width: 42vw; text-transform: none; letter-spacing: 0;
 }
 .sh-search input:focus { outline: none; border-color: var(--orange); }
@@ -1510,7 +1510,7 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .header-month-select:hover { border-color: var(--orange); color: var(--orange); }
 /* Mailknoppen in elke maandkop */
 .month-head-actions { display: inline-flex; gap: 6px; margin-left: 14px; margin-right: auto; }
-.ghost-btn.small { background: none; border: 1px solid var(--border); color: var(--gray); padding: 3px 9px; font-size: 12px; border-radius: 6px; cursor: pointer; }
+.ghost-btn.small { background: none; border: 1px solid var(--border); color: var(--gray); padding: var(--s-1) var(--s-3); font-size: var(--fs-xs); line-height: var(--lh-xs); border-radius: var(--r-sm); cursor: pointer; }
 .ghost-btn.small:hover { border-color: var(--orange); color: var(--orange); }
 .task-card .task-section { margin-bottom: 0; }
 .budget-inline { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: baseline; justify-content: flex-end; }
@@ -1751,7 +1751,7 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .wz-detail-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; align-items: start; margin-top: 10px; }
 @media (max-width: 900px) { .wz-detail-grid { grid-template-columns: 1fr; } }
 /* De twee helften als nette sub-kaarten met accent + titel. */
-.wz-detail-card { background: #fff; border: 1px solid #E7E4E0; border-radius: 12px; padding: 16px 18px; box-shadow: 0 2px 10px rgba(51,48,46,0.06); }
+.wz-detail-card { background: #fff; border: 1px solid var(--card-border); border-radius: 12px; padding: 16px 18px; box-shadow: 0 2px 10px rgba(51,48,46,0.06); }
 .wz-detail-card.acc-taupe { border-left: 4px solid var(--brand-taupe); }
 .wz-detail-card.acc-teal { border-left: 4px solid var(--brand-teal); }
 .wz-detail-card-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--orange-dark); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid var(--brand-teal-light); }
@@ -1869,7 +1869,7 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .strategy-sub { font-weight: 400; font-size: 12px; color: var(--gray); }
 .strategy-head .strategy-meta-right { margin-left: auto; font-weight: 400; font-size: 12px; color: var(--gray); }
 .strategy-caret { color: var(--orange); font-size: 12px; }
-.strategy-body { padding: 10px 16px 14px; display: flex; flex-direction: column; gap: 8px; }
+.strategy-body { padding: var(--s-3) var(--s-4) var(--s-4); display: flex; flex-direction: column; gap: var(--s-2); }
 .strategy-session { border: 1px solid var(--border); border-radius: 10px; background: var(--white); }
 .strategy-session-head { display: flex; align-items: center; gap: 8px; padding: 4px 10px 4px 4px; }
 .strategy-session-toggle { flex: 1 1 auto; display: flex; align-items: baseline; gap: 8px; background: none; border: none; padding: 8px 10px; font-family: inherit; font-size: 13.5px; font-weight: 600; color: var(--dark); text-align: left; cursor: pointer; }
@@ -2248,12 +2248,12 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .ovc-weg a { color: inherit; }
 .ovc-weg .ovc-act-x { opacity: 1; }
 /* Persoonskeuze als zwevend menuutje naast de aangeklikte regel. */
-.ovc-lijstpop { position: fixed; z-index: 60; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; max-width: 320px; border: 1px solid var(--border, #e5ded6); border-left: 3px solid var(--orange); border-radius: 10px; padding: 9px 12px; background: #fff; box-shadow: 0 10px 28px rgba(32, 32, 32, 0.14); font-size: 12.5px; }
+.ovc-lijstpop { position: fixed; z-index: 60; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; max-width: 320px; border: 1px solid var(--card-border); border-left: 3px solid var(--orange); border-radius: 10px; padding: 9px 12px; background: #fff; box-shadow: 0 10px 28px rgba(32, 32, 32, 0.14); font-size: 12.5px; }
 .ovc-lijstpop-kop { font-weight: 700; }
 /* »-knopje: punt naar een bespreeklijst; plus het keuzemenuutje. */
 .ovc-act-lijst { border-color: var(--orange); color: var(--orange); font-size: 13px; }
 .ovc-act-lijst:hover, .ovc-act-lijst.ovc-act-aan { background: var(--orange); color: #fff; }
-.ovc-lijstkeuze { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; font-size: 12.5px; border: 1px solid var(--border, #e5ded6); border-left: 3px solid var(--orange); border-radius: 9px; padding: 7px 10px; background: #fffdfb; }
+.ovc-lijstkeuze { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; font-size: 12.5px; border: 1px solid var(--card-border); border-left: 3px solid var(--orange); border-radius: 9px; padding: 7px 10px; background: #fffdfb; }
 /* Vast rechts per regel (geen float, dus nooit zwevend in het midden van de kaart). */
 .wp-card-info.wp-info-net li { position: relative; padding-right: 30px; }
 .wp-info-lijstbtn { position: absolute; right: 0; top: 1px; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--orange); color: var(--orange); background: #fff; font-size: 12px; line-height: 16px; text-align: center; cursor: pointer; padding: 0; opacity: 0.6; }
@@ -2271,15 +2271,16 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 
 /* Documenten op de kaart: dropzone, voorstel en versie-archief. */
 .wp-docs { margin: 10px 0; display: flex; flex-direction: column; gap: 8px; }
-.wp-docdrop { border: 1.5px dashed var(--line, #e5ded6); border-radius: 10px; padding: 12px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 12.5px; background: #fffdfb; transition: border-color 0.12s, background 0.12s; }
+.wp-docdrop { border: 1.5px dashed var(--card-border); border-radius: var(--r-md); padding: var(--s-3) var(--s-4); display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3); font-size: var(--fs-sm); line-height: var(--lh-sm); background: #fffdfb; transition: border-color 0.12s, background 0.12s; }
 .wp-docdrop-actief { border-color: var(--orange); background: #fff6f1; }
 .wp-docdrop-tekst { color: var(--muted, #8a7a6c); }
 .wp-docdrop-of { color: var(--muted, #8a7a6c); }
 .wp-docdrop-linkrij { display: inline-flex; gap: 6px; align-items: center; flex: 1; min-width: 220px; }
-.wp-docdrop-input { flex: 1; min-width: 140px; border: 1px solid var(--line, #e5ded6); border-radius: 8px; padding: 5px 9px; font-size: 12.5px; font-family: inherit; }
-.wp-docvoorstel { border: 1px solid var(--line, #e5ded6); border-left: 3px solid var(--orange); border-radius: 10px; padding: 10px 14px; display: flex; flex-direction: column; gap: 7px; background: #fff; }
+.wp-docdrop-input { flex: 1; min-width: 140px; border: 1px solid var(--border); border-radius: var(--r-sm); padding: var(--s-1) var(--s-3); font-size: var(--fs-sm); line-height: var(--lh-sm); font-family: inherit; }
+.wp-docdrop-input:focus { outline: none; border-color: var(--orange); }
+.wp-docvoorstel { border: 1px solid var(--card-border); border-left: 3px solid var(--orange); border-radius: 10px; padding: 10px 14px; display: flex; flex-direction: column; gap: 7px; background: #fff; }
 .wp-docvoorstel-kop { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13px; flex-wrap: wrap; }
-.wp-docvoorstel-kind { border: 1px solid var(--line, #e5ded6); border-radius: 8px; padding: 3px 7px; font-size: 12.5px; font-family: inherit; }
+.wp-docvoorstel-kind { border: 1px solid var(--card-border); border-radius: 8px; padding: 3px 7px; font-size: 12.5px; font-family: inherit; }
 .wp-doc-vergelijk { font-weight: 400; font-size: 12px; color: #1c7a3f; }
 .wp-doc-vergelijk.wp-doc-ouder { color: #b3261e; }
 .wp-docvoorstel-tekst { font-size: 12.5px; line-height: 1.5; }
@@ -2304,25 +2305,28 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .kb-gaps-kop { font-weight: 700; color: #b3261e; font-size: 13px; margin-bottom: 6px; }
 .kb-gaps ul { margin: 0 0 8px; padding-left: 18px; font-size: 12.5px; display: flex; flex-direction: column; gap: 3px; }
 .kb-entiteiten { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
-.kb-cat { border: 1px solid var(--line, #e5ded6); border-radius: 10px; padding: 10px 14px; background: #fff; }
+.kb-cat { border: 1px solid var(--card-border); border-radius: 10px; padding: 10px 14px; background: #fff; }
 .kb-cat-kop { font-weight: 700; color: var(--orange); font-size: 12.5px; margin-bottom: 6px; }
 .kb-cat ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; font-size: 12.5px; }
-.kb-stand { border: 1px solid var(--line, #e5ded6); border-radius: 10px; padding: 8px 14px; background: #fff; }
+.kb-stand { border: 1px solid var(--card-border); border-radius: 10px; padding: 8px 14px; background: #fff; }
 .kb-stand-kop { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .kb-stand-oud { font-size: 11.5px; color: var(--orange); font-weight: 600; }
 .kb-stand-tekst { margin-top: 8px; font-size: 13px; max-width: 760px; }
 
 /* Bespreeklijsten per persoon (onder de actuele stand van zaken).
    Op de schaal-tokens: één ritme voor koppen, rijen en punten. */
-.bl-kop { display: flex; align-items: flex-start; gap: var(--s-3); flex-wrap: wrap; margin-bottom: var(--s-3); }
+/* De kaart eromheen (strategy-card) heeft padding 0; de kop en lijsten
+   regelen dus hun eigen ruimte, zodat niets tegen de rand plakt. */
+.bl-kop { display: flex; align-items: flex-start; gap: var(--s-3); flex-wrap: wrap; padding: var(--s-4) var(--s-4) var(--s-3); margin-bottom: 0; }
+.bl-kop .strategy-title { font-weight: 700; font-size: var(--fs-base); line-height: var(--lh-base); color: var(--dark); }
 .bl-kop-tekst { display: flex; flex-direction: column; gap: var(--s-1); }
 .bl-sub { font-size: var(--fs-sm); line-height: var(--lh-sm); }
-.bl-lijst { border-top: 1px solid #f0ebe5; }
-.bl-head { display: flex; align-items: center; gap: var(--s-2); width: 100%; padding: var(--s-2) var(--s-1); border-radius: var(--r-sm); }
-.bl-head:hover { background: var(--gray-light, #f6f3ef); }
+.bl-lijst { border-top: 1px solid var(--card-border); }
+/* .bl-head erft de gradient-kopstijl van .strategy-head; hier alleen ritme. */
+.bl-head { display: flex; align-items: center; gap: var(--s-2); width: 100%; }
 .bl-titel { font-weight: 700; font-size: var(--fs-base); line-height: var(--lh-base); }
 .bl-gedeeld { font-size: var(--fs-xs); line-height: var(--lh-xs); margin-left: auto; }
-.bl-body { padding: var(--s-1) 0 var(--s-4) var(--s-5); display: flex; flex-direction: column; gap: var(--s-2); }
+.bl-body { padding: var(--s-3) var(--s-4) var(--s-4); display: flex; flex-direction: column; gap: var(--s-2); }
 .bl-add { display: flex; gap: var(--s-2); align-items: center; max-width: 560px; }
 .bl-add .wp-docdrop-input { flex: 1; }
 .bl-punten { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s-2); max-width: 720px; }
@@ -2333,7 +2337,7 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .bl-nieuw-rij { display: inline-flex; }
 
 /* Slim vraagveld bij Laatste mails: antwoordkaart + gemarkeerde mails. */
-.mail-vraag-antwoord { border: 1px solid var(--line, #e5ded6); border-left: 3px solid var(--orange); border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; background: #fffdfb; font-size: 13px; max-width: 760px; }
+.mail-vraag-antwoord { border: 1px solid var(--card-border); border-left: 3px solid var(--orange); border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; background: #fffdfb; font-size: 13px; max-width: 760px; }
 .mail-vraag-antwoord .ghost-btn { margin-top: 6px; }
 .email-row.email-hit { border-color: var(--orange); box-shadow: 0 0 0 1px var(--orange) inset; }
 
@@ -2342,7 +2346,7 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .wp-intro-acties .wp-fase-btn { padding: 6px 13px; font-size: 12px; }
 .wp-intro-acties .wp-link { font-size: 12.5px; }
 /* Werklijst-blok op de sitebouwer-kaart: knop, status en het document bij elkaar. */
-.wp-werklijst { border: 1px solid var(--border, #e5ded6); border-left: 3px solid var(--orange); border-radius: 10px; padding: 10px 14px; margin: 10px 0; display: flex; flex-direction: column; gap: 7px; background: #fffdfb; font-size: 12.5px; }
+.wp-werklijst { border: 1px solid var(--card-border); border-left: 3px solid var(--orange); border-radius: 10px; padding: 10px 14px; margin: 10px 0; display: flex; flex-direction: column; gap: 7px; background: #fffdfb; font-size: 12.5px; }
 .wp-werklijst-rij { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .wp-werklijst-sam { line-height: 1.5; }
 
@@ -2387,7 +2391,7 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .zp-tab { position: fixed; right: 0; z-index: 10005; writing-mode: vertical-rl; padding: 14px 8px; border: none; border-radius: 10px 0 0 10px; background: var(--orange); color: #fff; font-size: 12.5px; font-weight: 700; letter-spacing: 0.3px; cursor: pointer; box-shadow: 0 4px 14px rgba(231, 119, 63, 0.35); transition: transform 0.18s ease, background 0.18s ease; }
 .zp-tab:hover { transform: translateX(-4px); background: var(--orange-dark); }
 .zp-tab.zp-tab-open { background: var(--orange-dark); }
-.zp-paneel { position: fixed; right: 0; z-index: 10004; width: min(440px, 92vw); max-height: calc(100vh - 170px); overflow-y: auto; background: #fff; border: 1px solid var(--border); border-right: none; border-radius: 14px 0 0 14px; box-shadow: -12px 8px 34px rgba(30, 35, 40, 0.16); transform: translateX(105%); transition: transform 0.22s ease; padding: 12px 14px 14px; }
+.zp-paneel { position: fixed; right: 0; z-index: 10004; width: min(440px, 92vw); max-height: calc(100vh - 170px); overflow-y: auto; background: #fff; border: 1px solid var(--card-border); border-right: none; border-radius: var(--r-lg) 0 0 var(--r-lg); box-shadow: -12px 8px 34px rgba(30, 35, 40, 0.16); transform: translateX(105%); transition: transform 0.22s ease; padding: var(--s-4); }
 .zp-paneel.zp-open { transform: translateX(0); }
 .zp-kop { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
 .zp-titel { color: var(--orange-dark); font-weight: 800; font-size: 14px; }
@@ -2526,7 +2530,7 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 /* Zichtbare focus voor toetsenbord, overal hetzelfde (toegankelijkheid). */
 button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; border-radius: 4px; }
 /* Prominente chat-knop boven de fases (de chat voedt de fases eronder). */
-.wp-chat-toggle-groot { display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid var(--orange); border-radius: 10px; padding: 6px 14px; background: #fffaf7; font-size: 12.5px; margin: 2px 0 6px; }
+.wp-chat-toggle-groot { display: inline-flex; align-items: center; gap: var(--s-2); border: 1.5px solid var(--orange); border-radius: var(--r-full); padding: var(--s-2) var(--s-4); background: #fffaf7; font-size: var(--fs-sm); line-height: var(--lh-sm); margin: var(--s-1) 0 var(--s-2); }
 .wp-chat-toggle-groot:hover, .wp-chat-toggle-groot.wp-chat-open { background: var(--orange-light); }
 .wp-chat-body { border: 1px solid var(--border); border-radius: 8px; background: var(--gray-light); padding: 8px; }
 /* De chat groeit gewoon mee met het gesprek; geen mini-scrollvenster. */
