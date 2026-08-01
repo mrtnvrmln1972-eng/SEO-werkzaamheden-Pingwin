@@ -59,8 +59,10 @@ export default function BespreekLijsten({ slug, clientName, clientEmail }: { slu
   return (
     <div className="cockpit-card strategy-card">
       <div className="bl-kop">
-        <span className="strategy-title">Bespreeklijsten</span>
-        <span className="muted">per persoon: bijhouden, afvinken en in één klik mailen</span>
+        <div className="bl-kop-tekst">
+          <span className="strategy-title">Bespreeklijsten</span>
+          <span className="bl-sub muted">Per persoon: bijhouden, afvinken en in één klik mailen.</span>
+        </div>
         <span className="wp-fase-spacer" />
         {toonNieuw ? (
           <span className="bl-nieuw-rij">

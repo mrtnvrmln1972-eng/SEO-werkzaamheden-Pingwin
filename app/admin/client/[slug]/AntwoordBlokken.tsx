@@ -93,6 +93,9 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
     root.querySelectorAll(".ovc-acties").forEach((acties) => {
       const doel = acties.closest("li, p");
       if (!doel) return;
+      // Groepskopjes ("Lokale hovenierspagina's ...:") zijn geen taken: geen
+      // kader en geen knopjes, gewoon een tussenkopje boven de rijtjes.
+      if (/:\s*$/.test(puntTekst(doel))) { doel.classList.add("ovc-groepkop"); acties.remove(); return; }
       const staat = s[puntKey(puntTekst(doel))] || "";
       doel.classList.toggle("ovc-gedaan", staat === "klaar");
       doel.classList.toggle("ovc-weg", staat === "weg");
