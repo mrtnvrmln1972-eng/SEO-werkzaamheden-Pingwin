@@ -25,7 +25,11 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
   {
     let kop = "";
     let buf: string[] = [];
-    const push = () => { const md = buf.join("\n").trim(); if (md || kop) secties.push({ kop, md }); buf = []; };
+    // Een blok zonder kop dat alleen scheidingslijnen of witruimte bevat (bijv. een
+    // losse "---" vóór de eerste kop) is geen sectie: overslaan, anders komt er een
+    // leeg kaartje met alleen een knopje in beeld.
+    const triviaal = (md: string) => !md.split("\n").some((r) => r.replace(/[-*_#\s]/g, "").length > 0);
+    const push = () => { const md = buf.join("\n").trim(); if (kop || (md && !triviaal(md))) secties.push({ kop, md }); buf = []; };
     for (const r of (content || "").split("\n")) {
       const m = /^##\s+(.*)$/.exec(r.trim());
       if (m) { push(); kop = m[1].replace(/[#*]/g, "").trim(); } else buf.push(r);
@@ -81,7 +85,7 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
                 {s.kop && <span className="ovc-blok-titel">{s.kop}</span>}
                 <span className="ovc-blok-spacer" />
                 <button type="button" className="ovc-blok-taakbtn" disabled={!!busyKey}
-                  title="Maak van deze hele sectie één kaart in de weekplanning"
+                  title="Maak kaarten van deze sectie: één per pagina die erin voorkomt"
                   onClick={() => void maakTaak(key, `${s.kop ? `Sectie: ${s.kop}\n` : ""}${s.md}`)}>
                   {busyKey === key ? "Bezig…" : "+ Taak"}
                 </button>

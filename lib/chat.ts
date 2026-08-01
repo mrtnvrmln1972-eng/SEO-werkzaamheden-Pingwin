@@ -523,9 +523,15 @@ async function generateWeekplanActie(client: ClientConfig, context: string, anal
     `- Streef naar 3 tot 6 kaarten in totaal, nooit meer dan 10. Liever één stevige paginakaart met zes bullets dan zes losse snippers.\n` +
     `- "taaktype" van een gebundelde paginakaart: kies het zwaartepunt (meestal "pijplijn" als er analyse/blauwdruk/copy/bouw in zit, anders het meest voorkomende type).\n` +
     `Verder: "week" is een getal (1 = deze week, 2 = volgende, enzovoort); neem de startweek over zoals de tekst die aangeeft, anders realistisch. "wie" is "SEO" of "Dev". "taaktype" is één van: meta, alt, copy, intern, strategie, pijplijn, structured, overig. Bouw "info" op in secties, elk met een kort kopje op een eigen regel dat eindigt op een dubbele punt. Eerst "Achtergrond:" met korte, puntige regels: elk punt één zin van hooguit vijftien woorden; splits een lang verhaal in meerdere korte punten (wat is er mis, welke cijfers, cannibalisatie-nuance, waarom nu). Dan alleen als er afspraken of bronnen zijn "Afspraken en herkomst:" met '-'-bullets (mail-datum, wie, referenties). Daarna "Aanpak per fase:" met per regel een '-'-bullet die begint met exact een fasenaam en dubbele punt, alleen voor fases die nodig zijn: "- Analyse: ...", "- Blauwdruk: ...", "- Copy: ...", "- Bouw: ...", "- Structured data: ...". Micro-taken horen bij de juiste fase-regel (meta-title/description bij Copy; alt-teksten, interne links en andere developer-punten bij Bouw). Herhaal nooit de kaarttitel als bullet en beschrijf een fase nooit dubbel. Verzin geen cijfers; gebruik alleen wat in de tekst staat. Geen emoji, geen Markdown-symbolen (#, | of **), geen tekst buiten de JSON.`;
-  // Enkel-modus (per-punt-knopje): één punt in, precies één kaart uit.
+  // Enkel-modus (per-punt- of per-sectie-knopje): verdeel de geselecteerde tekst
+  // slim PER PAGINA, want per pagina doorlopen we de fases.
   const enkelRegel = enkel
-    ? `\nENKEL-MODUS, overschrijft het aantal: de tekst hieronder is ÉÉN punt uit een analyse. Maak er PRECIES ÉÉN kaart van; alleen als het punt expliciet meerdere pagina's noemt, maak je één kaart per genoemde pagina. Gebruik hetzelfde info-formaat (Achtergrond:, alleen indien relevant Afspraken en herkomst:, Aanpak per fase:). Gaat het punt over een specifieke pagina, vul dan de "url" in.`
+    ? `\nENKEL-MODUS, overschrijft het streefgetal: de tekst hieronder is ÉÉN sectie of ÉÉN punt uit een analyse. Verdeel hem PER PAGINA:\n` +
+      `- Herken alle pagina's/paden die in de tekst voorkomen (toets ze aan de bekende URL's in de context) en maak per pagina PRECIES ÉÉN kaart, met de deeltaken van díe pagina als fase-bullets. Neem geen punten van andere pagina's mee.\n` +
+      `- Ook geplande NIEUWE pagina's (bijv. locatiepagina's of pagina's uit de zoekwoordenlijst) zijn pagina's: per nieuwe pagina één kaart, met het bedoelde pad als "url" als dat in de tekst of context staat.\n` +
+      `- Punten die aan geen enkele pagina hangen, bundel je samen in ÉÉN restkaart zonder url; versnipper die niet.\n` +
+      `- Gaat de tekst maar over één pagina of één los punt, dan is het gewoon één kaart.\n` +
+      `Gebruik hetzelfde info-formaat (Achtergrond:, alleen indien relevant Afspraken en herkomst:, Aanpak per fase:).`
     : "";
   const body = `--- WEEKPLANNING / ANALYSE ---\n${analyse}\n\n--- EXTRA CONTEXT (voor url's/achtergrond) ---\n${context.slice(0, 6000)}`;
 
