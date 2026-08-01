@@ -6,6 +6,7 @@
 // bevestigt. Het rode lijstje toont wat er voor dit soort bedrijf nog mist.
 
 import { useEffect, useState } from "react";
+import { mdToHtml } from "../../../../lib/markdown";
 
 type Entiteit = { id: number; categorie: string; naam: string; velden: Record<string, string>; bron: string; updatedAt: string };
 type Voorstel = { id: number; bron: string; samenvatting: string; entiteiten: { categorie: string; naam: string; velden: Record<string, string>; oordeel: string }[] };
@@ -72,6 +73,23 @@ export default function Kennisbank({ slug }: { slug: string }) {
     finally { setBusy(""); }
   }
 
+  // Laatste stand structured data (app-breed, via websearch; maandelijks verversen).
+  const [stand, setStand] = useState<{ datum: string; tekst: string; verouderd: boolean } | null>(null);
+  const [standOpen, setStandOpen] = useState(false);
+  useEffect(() => {
+    fetch("/api/admin/schema-actueel").then((r) => r.json()).then((d) => { if (d?.ok) setStand(d.stand || null); }).catch(() => {});
+  }, []);
+  async function ververStand() {
+    setBusy("stand"); setFout("");
+    try {
+      const d = await fetch("/api/admin/schema-actueel", { method: "POST" }).then((r) => r.json());
+      if (d?.ok) { setStand(d.stand); setStandOpen(true); }
+      else setFout(d?.error || "Onderzoek mislukte.");
+    } catch { setFout("Onderzoek mislukte; probeer het nog een keer."); }
+    finally { setBusy(""); }
+  }
+  const standDatum = stand ? new Date(stand.datum).toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" }) : "";
+
   const perCat = CAT_VOLGORDE.map((c) => ({ cat: c, items: entiteiten.filter((e) => e.categorie === c) })).filter((g) => g.items.length);
 
   return (
@@ -125,6 +143,17 @@ export default function Kennisbank({ slug }: { slug: string }) {
           <button type="button" className="wp-fase-btn" disabled={!!busy} onClick={() => void maakTaak()}>{busy === "taak" ? "Bezig…" : "Zet als kaart in de weekplanning"}</button>
         </div>
       )}
+      <div className="kb-stand">
+        <div className="kb-stand-kop">
+          <button type="button" className="wp-chat-toggle" onClick={() => setStandOpen(!standOpen)}>
+            Laatste stand structured data {stand ? `(${standDatum})` : ""} {standOpen ? "▾" : "▸"}
+          </button>
+          {stand?.verouderd && <span className="kb-stand-oud">ouder dan een maand</span>}
+          <button type="button" className="wp-fase-btn" disabled={!!busy} onClick={() => void ververStand()}>{busy === "stand" ? "Onderzoeken… (kan een minuut duren)" : stand ? "Ververs" : "Onderzoek nu"}</button>
+        </div>
+        {standOpen && stand && <div className="md kb-stand-tekst" dangerouslySetInnerHTML={{ __html: mdToHtml(stand.tekst) }} />}
+        {!stand && <div className="muted">Nog geen onderzoek gedaan; klik op &ldquo;Onderzoek nu&rdquo; voor de actuele richtlijnen (Google en AI) en hoe wij ze toepassen.</div>}
+      </div>
       {perCat.length > 0 && (
         <div className="kb-entiteiten">
           {perCat.map((g) => (
