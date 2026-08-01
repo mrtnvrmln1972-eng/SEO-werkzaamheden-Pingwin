@@ -8,6 +8,20 @@ import { SESSION_COOKIE, ADMIN_COOKIE } from "./lib/constants";
 export function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
 
+  // Maarten met een admin-sessie hoort nooit op de klant-login of het
+  // klantdashboard te stranden: stuur hem door naar zijn cockpit (daar
+  // zitten de klant-previews). De klant-login zelf blijft ongewijzigd.
+  const isAdmin = Boolean(req.cookies.get(ADMIN_COOKIE)?.value);
+  const isKlant = Boolean(req.cookies.get(SESSION_COOKIE)?.value);
+  if (isAdmin && !isKlant && (path === "/login" || path.startsWith("/dashboard"))) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/admin";
+    return NextResponse.redirect(url);
+  }
+
+  // De klant-login zelf blijft altijd bereikbaar (zonder admin-sessie).
+  if (path === "/login") return NextResponse.next();
+
   // Adminscherm (alleen voor Maarten). /admin/login blijft open.
   if (path.startsWith("/admin")) {
     if (path === "/admin/login") return NextResponse.next();
@@ -32,5 +46,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/admin", "/admin/:path*"],
+  matcher: ["/login", "/dashboard/:path*", "/admin", "/admin/:path*"],
 };
