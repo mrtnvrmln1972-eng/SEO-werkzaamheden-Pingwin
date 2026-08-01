@@ -1,9 +1,10 @@
 "use client";
 
 // Gedeelde weergave van een assistent-antwoord als sectie-kaartjes (per "## "-kop).
-// Elk afzonderlijk herkenbaar punt (bullet én vetgedrukt punt) krijgt een plusje om
-// er direct een kaart in de weekplanning van te maken; na het aanmaken wordt het
-// plusje een groen vinkje en wordt de regel doorgestreept (onthouden per klant).
+// Elk afzonderlijk herkenbaar punt (bullet én vetgedrukt punt) is een taakrijtje
+// met rechts drie knopjes: groen plusje (voeg toe als kaart in de weekplanning),
+// rood kruisje (negeer het voorstel) en groen vinkje (afvinken, gedaan =
+// doorgestreept). De keuze wordt per klant onthouden, dus ook na herladen.
 // Status-emoji's uit oude antwoorden worden vervangen door nette stipjes.
 // Puur weergave-laag, dus met terugwerkende kracht op alle bestaande chats.
 
@@ -11,6 +12,7 @@ import { useEffect, useRef, useState } from "react";
 
 type Sectie = { kop: string; md: string };
 type Feedback = { key: string; msg: string; ok: boolean };
+type PuntStaat = "taak" | "weg" | "klaar";
 
 // Klein en stabiel: hash om een punt te herkennen over herlaadbeurten heen.
 function hash(s: string): string {
@@ -37,17 +39,25 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
 }) {
   const [busyKey, setBusyKey] = useState("");
   const [feedback, setFeedback] = useState<Feedback | null>(null);
-  const [versie, setVersie] = useState(0); // her-toepassen van vinkjes na een klik
+  const [versie, setVersie] = useState(0); // her-toepassen van staten na een klik
   const rootRef = useRef<HTMLDivElement>(null);
-  const opslag = `pingwin-wp-punten:${slug}`;
+  const opslag = `pingwin-wp-punten2:${slug}`;
+  const opslagOud = `pingwin-wp-punten:${slug}`;
 
-  const gedaan = (): Set<string> => {
-    try { return new Set(JSON.parse(window.localStorage.getItem(opslag) || "[]") as string[]); } catch { return new Set(); }
-  };
-  const markeerGedaan = (key: string) => {
+  // Staat per punt (hash → taak/weg/klaar); oude vorm (lijst van "kaart gemaakt") migreert mee.
+  const staten = (): Record<string, PuntStaat> => {
     try {
-      const s = gedaan(); s.add(key);
-      window.localStorage.setItem(opslag, JSON.stringify([...s].slice(-400)));
+      const nieuw = JSON.parse(window.localStorage.getItem(opslag) || "{}") as Record<string, PuntStaat>;
+      const oud = JSON.parse(window.localStorage.getItem(opslagOud) || "[]") as string[];
+      for (const k of oud) if (!nieuw[k]) nieuw[k] = "taak";
+      return nieuw;
+    } catch { return {}; }
+  };
+  const zetStaat = (key: string, staat: PuntStaat | null) => {
+    try {
+      const s = staten();
+      if (staat) s[key] = staat; else delete s[key];
+      window.localStorage.setItem(opslag, JSON.stringify(s));
     } catch { /* opslag is best effort */ }
     setVersie((v) => v + 1);
   };
@@ -67,28 +77,28 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
   }
   const heeftKoppen = secties.some((s) => s.kop);
 
-  // Punt-tekst van het element achter een plusje (zonder het knopje zelf).
+  // Punt-tekst van het element (zonder de knopjes).
   function puntTekst(el: Element): string {
     const kloon = el.cloneNode(true) as HTMLElement;
-    kloon.querySelectorAll(".ovc-li-plus").forEach((b) => b.remove());
+    kloon.querySelectorAll(".ovc-acties").forEach((b) => b.remove());
     return (kloon.textContent || "").replace(/\s+/g, " ").trim();
   }
   const puntKey = (tekst: string) => hash(`${thread}|${norm(tekst)}`);
 
-  // Na elke render: eerder aangemaakte punten hun vinkje + doorstreping teruggeven.
+  // Na elke render: de onthouden staat per punt terugzetten op de knopjes en de regel.
   useEffect(() => {
     const root = rootRef.current;
     if (!root) return;
-    const done = gedaan();
-    root.querySelectorAll(".ovc-li-plus").forEach((btn) => {
-      const doel = btn.closest("li, p");
+    const s = staten();
+    root.querySelectorAll(".ovc-acties").forEach((acties) => {
+      const doel = acties.closest("li, p");
       if (!doel) return;
-      const key = puntKey(puntTekst(doel));
-      const is = done.has(key);
-      btn.classList.toggle("ovc-plus-done", is);
-      (btn as HTMLElement).textContent = is ? "✓" : "+";
-      (btn as HTMLElement).title = is ? "Hier is al een kaart van gemaakt" : "Maak van dit punt een kaart in de weekplanning";
-      doel.classList.toggle("ovc-gedaan", is);
+      const staat = s[puntKey(puntTekst(doel))] || "";
+      doel.classList.toggle("ovc-gedaan", staat === "klaar");
+      doel.classList.toggle("ovc-weg", staat === "weg");
+      acties.querySelector(".ovc-act-plus")?.classList.toggle("ovc-act-aan", staat === "taak");
+      acties.querySelector(".ovc-act-x")?.classList.toggle("ovc-act-aan", staat === "weg");
+      acties.querySelector(".ovc-act-v")?.classList.toggle("ovc-act-aan", staat === "klaar");
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [content, versie, slug, thread]);
@@ -104,7 +114,7 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
         if (d.added) delen.push(`${d.added} ${d.added === 1 ? "kaart toegevoegd" : "kaarten toegevoegd"}`);
         if (d.merged) delen.push(`${d.merged} bestaande ${d.merged === 1 ? "paginakaart" : "paginakaarten"} aangevuld`);
         setFeedback({ key, msg: `${delen.join(" en ")}`, ok: true });
-        if (puntSleutel) markeerGedaan(puntSleutel);
+        if (puntSleutel) zetStaat(puntSleutel, "taak");
         onWeekplanChanged?.();
       } else setFeedback({ key, msg: d?.error || "Kon hier geen kaart van maken. Probeer het nog een keer.", ok: false });
     } catch {
@@ -112,27 +122,36 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
     } finally { setBusyKey(""); }
   }
 
-  // Klik op een punt-plusje: precies dat punt (bullet of vetgedrukt punt) als kaart.
+  // Klik op een knopje bij een punt: + = kaart maken, × = negeren, ✓ = afvinken.
   function klikOpPunt(e: React.MouseEvent, s: Sectie, key: string) {
-    const btn = (e.target as HTMLElement).closest?.(".ovc-li-plus") as HTMLElement | null;
+    const btn = (e.target as HTMLElement).closest?.(".ovc-act") as HTMLElement | null;
     if (!btn) return;
     e.preventDefault(); e.stopPropagation();
-    if (btn.classList.contains("ovc-plus-done")) return;
     const doel = btn.closest("li, p");
     if (!doel) return;
     const punt = puntTekst(doel);
     if (!punt) return;
-    void maakTaak(key, `${s.kop ? `Sectie: ${s.kop}\n` : ""}Punt: ${punt}`, puntKey(punt));
+    const sleutel = puntKey(punt);
+    const huidig = staten()[sleutel] || "";
+    if (btn.classList.contains("ovc-act-plus")) {
+      if (huidig === "taak") { zetStaat(sleutel, null); return; }
+      void maakTaak(key, `${s.kop ? `Sectie: ${s.kop}\n` : ""}Punt: ${punt}`, sleutel);
+    } else if (btn.classList.contains("ovc-act-x")) {
+      zetStaat(sleutel, huidig === "weg" ? null : "weg");
+    } else if (btn.classList.contains("ovc-act-v")) {
+      zetStaat(sleutel, huidig === "klaar" ? null : "klaar");
+    }
   }
 
-  // Elk herkenbaar punt krijgt een plusje: bullets én paragrafen die met een
-  // vetgedrukt kopwoord beginnen ("Zwemvijver — ...", "Structured data — ...").
-  // Elk punt als echt taakrijtje: vinkvakje links (gaat aan zodra er een kaart
-  // van gemaakt is), de tekst ernaast, en rechts het oranje plus-rondje.
-  const PUNT_PREFIX = '<span class="ovc-check" aria-hidden="true"></span><button type="button" class="ovc-li-plus" title="Maak van dit punt een kaart in de weekplanning">+</button>';
-  const metPlusjes = (html: string) => vervangEmoji(html)
-    .replace(/<li>/g, `<li>${PUNT_PREFIX}`)
-    .replace(/<p><strong>/g, `<p class="ovc-punt">${PUNT_PREFIX}<strong>`);
+  // Elk herkenbaar punt wordt een taakrijtje met rechts de drie knopjes.
+  const ACTIES = '<span class="ovc-acties">'
+    + '<button type="button" class="ovc-act ovc-act-plus" title="Voeg toe als kaart in de weekplanning">+</button>'
+    + '<button type="button" class="ovc-act ovc-act-x" title="Negeer dit voorstel">×</button>'
+    + '<button type="button" class="ovc-act ovc-act-v" title="Vink af: dit is gedaan">✓</button>'
+    + "</span>";
+  const metKnopjes = (html: string) => vervangEmoji(html)
+    .replace(/<li>/g, `<li>${ACTIES}`)
+    .replace(/<p><strong>/g, `<p class="ovc-punt">${ACTIES}<strong>`);
 
   return (
     <div className="ovc-blokken" ref={rootRef}>
@@ -153,7 +172,7 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
               </div>
             )}
             <div className="chat-md ovc-blok-inhoud" onClick={(e) => klikOpPunt(e, s, klikKey)}
-              dangerouslySetInnerHTML={{ __html: metPlusjes(toHtml(s.md)) }} />
+              dangerouslySetInnerHTML={{ __html: metKnopjes(toHtml(s.md)) }} />
             {busyKey === klikKey && <div className="ovc-blok-feedback">Kaart maken…</div>}
             {feedback && (feedback.key === key || feedback.key === klikKey) && (
               <div className={"ovc-blok-feedback" + (feedback.ok ? " ok" : " err")}>

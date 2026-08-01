@@ -19,6 +19,7 @@ import HelpHint from "./HelpHint";
 import MailAllowlist from "./MailAllowlist";
 import LinkPreview from "./LinkPreview";
 import { mdToHtml } from "../../../../lib/markdown";
+import BespreekLijsten from "./BespreekLijsten";
 import DeveloperOverview from "../../developer/DeveloperOverview";
 import KpiPanel from "./KpiPanel";
 import PagesPanel from "./PagesPanel";
@@ -507,6 +508,8 @@ export default function ClientCockpit({
                 </div>
               </div>
 
+            {/* Bespreeklijsten per persoon, direct onder de actuele stand. */}
+            <BespreekLijsten slug={client.slug} clientName={client.name} clientEmail={client.email || clientMailQuery} />
 
             <div className="cockpit-card strategy-card">
               <button type="button" className="strategy-head" onClick={() => setShowMailsBox((v) => !v)}>

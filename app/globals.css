@@ -2101,26 +2101,31 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .ovc-blok-taakbtn:hover { background: var(--orange); color: #fff; }
 .ovc-blok-taakbtn:disabled { opacity: 0.55; cursor: default; }
 .ovc-blok-inhoud h2, .ovc-blok-inhoud h3 { margin-top: 8px; }
-/* Elk herkenbaar punt is een echt taakrijtje: omkaderd, vinkvakje links,
-   oranje plus-rondje rechts. Bullets én vetgedrukte punten, altijd uitgelijnd. */
+/* Elk herkenbaar punt is een echt taakrijtje: omkaderd en uitgelijnd, met
+   rechts drie knopjes: groen plusje (taak), rood kruisje (negeer), groen
+   vinkje (gedaan). Bullets én vetgedrukte punten. */
 .ovc-blok-inhoud ul, .ovc-blok-inhoud ol { list-style: none; padding-left: 0; margin: 8px 0; }
 .ovc-blok-inhoud ul > li, .ovc-blok-inhoud ol > li, .ovc-blok-inhoud p.ovc-punt {
   position: relative; border: 1px solid var(--border, #e5ded6); border-radius: 10px;
-  background: #fff; padding: 10px 48px 10px 42px; margin: 0 0 8px; line-height: 1.5;
+  background: #fff; padding: 10px 96px 10px 14px; margin: 0 0 8px; line-height: 1.5;
 }
-.ovc-check { position: absolute; left: 13px; top: 11px; width: 16px; height: 16px; border: 1.5px solid #cfc7bd; border-radius: 5px; background: #fff; }
-.ovc-li-plus { position: absolute; right: 11px; top: 9px; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--orange); color: var(--orange); background: #fff; font-size: 15px; line-height: 18px; text-align: center; cursor: pointer; padding: 0; }
-.ovc-li-plus:hover { background: var(--orange); color: #fff; }
-/* Sub-bullets binnen een taakrijtje blijven gewone bullets, zonder eigen vakjes. */
+.ovc-acties { position: absolute; right: 10px; top: 8px; display: inline-flex; gap: 5px; }
+.ovc-act { width: 22px; height: 22px; border-radius: 50%; background: #fff; font-size: 14px; line-height: 18px; text-align: center; cursor: pointer; padding: 0; border: 1.5px solid; }
+.ovc-act-plus { border-color: #1c7a3f; color: #1c7a3f; }
+.ovc-act-plus:hover, .ovc-act-plus.ovc-act-aan { background: #1c7a3f; color: #fff; }
+.ovc-act-x { border-color: #b3261e; color: #b3261e; }
+.ovc-act-x:hover, .ovc-act-x.ovc-act-aan { background: #b3261e; color: #fff; }
+.ovc-act-v { border-color: #1c7a3f; color: #1c7a3f; }
+.ovc-act-v:hover, .ovc-act-v.ovc-act-aan { background: #1c7a3f; color: #fff; }
+/* Sub-bullets binnen een taakrijtje blijven gewone bullets, zonder eigen knopjes. */
 .ovc-blok-inhoud li ul, .ovc-blok-inhoud li ol { list-style: disc; padding-left: 20px; margin: 6px 0 0; }
 .ovc-blok-inhoud li li { border: none; border-radius: 0; padding: 1px 0; margin: 0; background: transparent; }
-.ovc-blok-inhoud li li > .ovc-check, .ovc-blok-inhoud li li > .ovc-li-plus { display: none; }
-/* Aangemaakt punt: vinkvakje aan, plus wordt groen vinkje, regel doorgestreept. */
-.ovc-li-plus.ovc-plus-done { border-color: #1c7a3f; color: #fff; background: #1c7a3f; cursor: default; }
+.ovc-blok-inhoud li li > .ovc-acties { display: none; }
+/* Afgevinkt = doorgestreept; genegeerd = gedempt. */
 .ovc-gedaan { text-decoration: line-through; color: var(--muted, #8a7a6c); }
 .ovc-gedaan a { color: inherit; }
-.ovc-gedaan > .ovc-check { border-color: #1c7a3f; background: #1c7a3f; }
-.ovc-gedaan > .ovc-check::after { content: "✓"; position: absolute; inset: 0; color: #fff; font-size: 12px; line-height: 16px; text-align: center; font-weight: 700; }
+.ovc-weg { opacity: 0.45; }
+.ovc-weg .ovc-act-x { opacity: 1; }
 /* Status-stipjes in plaats van emoji's (retroactief op oude antwoorden). */
 .st-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin: 0 2px; vertical-align: baseline; }
 .st-dot.st-ok { background: #1c7a3f; }
@@ -2174,6 +2179,22 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .kb-stand-kop { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .kb-stand-oud { font-size: 11.5px; color: var(--orange); font-weight: 600; }
 .kb-stand-tekst { margin-top: 8px; font-size: 13px; max-width: 760px; }
+
+/* Bespreeklijsten per persoon (onder de actuele stand van zaken). */
+.bl-kop { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.bl-lijst { border-top: 1px solid #f0ebe5; }
+.bl-head { display: flex; align-items: center; gap: 8px; width: 100%; }
+.bl-titel { font-weight: 700; font-size: 13px; }
+.bl-gedeeld { font-size: 11.5px; margin-left: auto; }
+.bl-body { padding: 2px 0 12px 22px; display: flex; flex-direction: column; gap: 8px; }
+.bl-add { display: flex; gap: 6px; align-items: center; max-width: 560px; }
+.bl-add .wp-docdrop-input { flex: 1; }
+.bl-punten { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-width: 720px; }
+.bl-punten li { display: flex; align-items: baseline; gap: 8px; border: 1px solid var(--border, #e5ded6); border-radius: 9px; padding: 7px 10px; font-size: 12.5px; background: #fff; }
+.bl-punten li.bl-klaar .bl-tekst { text-decoration: line-through; color: var(--muted, #8a7a6c); }
+.bl-tekst { flex: 1; min-width: 0; }
+.bl-nieuw { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--orange); background: #fdeee7; border-radius: 8px; padding: 1px 7px; }
+.bl-nieuw-rij { display: inline-flex; }
 
 /* Slim vraagveld bij Laatste mails: antwoordkaart + gemarkeerde mails. */
 .mail-vraag-antwoord { border: 1px solid var(--line, #e5ded6); border-left: 3px solid var(--orange); border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; background: #fffdfb; font-size: 13px; max-width: 760px; }
