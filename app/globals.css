@@ -2134,6 +2134,14 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 /* Afgevinkt = doorgestreept; genegeerd = gedempt. */
 .ovc-gedaan { text-decoration: line-through; color: var(--muted, #8a7a6c); }
 .ovc-gedaan a { color: inherit; }
+/* Doorzetten = verplaatsen: afgehandelde punten klappen in; het samenvattings-
+   regeltje onderaan de sectie klapt ze desgewenst weer open. */
+.ovc-dicht { display: none; }
+.ovc-afgehandeld:not(.ovc-dicht) { opacity: 0.7; }
+.ovc-afgerond-rij { display: flex; align-items: center; gap: 7px; width: 100%; text-align: left; border: none; background: none; cursor: pointer; padding: 6px 4px; margin-top: 2px; font: inherit; font-size: 12px; color: var(--muted, #6f645a); border-top: 1px dashed var(--border, #e5ded6); }
+.ovc-afgerond-rij:hover { color: var(--dark, #2b2b2b); }
+.ovc-afgerond-toggle { margin-left: auto; font-weight: 600; color: var(--orange-dark); }
+
 /* Genegeerd: doorgestreept en gedempt, maar bewust in beeld (nogmaals klikken haalt terug). */
 .ovc-weg { opacity: 0.55; text-decoration: line-through; color: var(--muted, #8a7a6c); }
 .ovc-weg a { color: inherit; }

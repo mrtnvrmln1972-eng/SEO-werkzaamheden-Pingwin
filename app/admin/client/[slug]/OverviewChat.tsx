@@ -220,6 +220,9 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
         if (d.added) delen.push(`${d.added} ${d.added === 1 ? "nieuwe kaart" : "nieuwe kaarten"}`);
         if (d.merged) delen.push(`${d.merged} bestaande ${d.merged === 1 ? "paginakaart" : "paginakaarten"} aangevuld`);
         setMkMsg((m) => ({ ...m, [idx]: `✓ ${delen.join(" en ")} in de weekplanning` }));
+        // Doorzetten = verplaatsen: het hele antwoord is nu verwerkt, dus de
+        // punten klappen in (AntwoordBlokken vangt dit event op).
+        window.dispatchEvent(new CustomEvent("pingwin-antwoord-verwerkt", { detail: { thread } }));
         onWeekplanChanged?.();
       }
       else setMkMsg((m) => ({ ...m, [idx]: d.error || `Kon geen taken maken (server gaf status ${status}). Probeer het nog een keer.` }));

@@ -1,18 +1,20 @@
 "use client";
 
 // Gedeelde weergave van een assistent-antwoord als sectie-kaartjes (per "## "-kop).
-// Elk afzonderlijk herkenbaar punt (bullet én vetgedrukt punt) is een taakrijtje
-// met rechts drie knopjes: groen plusje (voeg toe als kaart in de weekplanning),
-// rood kruisje (negeer het voorstel) en groen vinkje (afvinken, gedaan =
-// doorgestreept). De keuze wordt per klant onthouden, dus ook na herladen.
-// Status-emoji's uit oude antwoorden worden vervangen door nette stipjes.
-// Puur weergave-laag, dus met terugwerkende kracht op alle bestaande chats.
+// De Bird's eye is de BRIEVENBUS: elk herkenbaar punt is een taakrijtje met vier
+// knopjes (+ = kaart in de weekplanning, » = bespreeklijst, × = negeren,
+// ✓ = gedaan). Doorzetten is verplaatsen: zodra een punt een bestemming heeft,
+// klapt het in; onderaan de sectie blijft één samenvattingsregeltje ("N
+// afgehandeld: ...") dat je kunt openklappen om keuzes terug te draaien.
+// De keuzes staan centraal in de database (zelfde stand op elk apparaat; een
+// herhaald punt in een later antwoord staat automatisch al ingeklapt).
 
 import { useEffect, useRef, useState } from "react";
 
 type Sectie = { kop: string; md: string };
 type Feedback = { key: string; msg: string; ok: boolean };
 type PuntStaat = "taak" | "weg" | "klaar" | "lijst";
+type Teller = { taak: number; lijst: number; weg: number; klaar: number };
 
 // Klein en stabiel: hash om een punt te herkennen over herlaadbeurten heen.
 function hash(s: string): string {
@@ -39,27 +41,46 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
 }) {
   const [busyKey, setBusyKey] = useState("");
   const [feedback, setFeedback] = useState<Feedback | null>(null);
-  const [versie, setVersie] = useState(0); // her-toepassen van staten na een klik
+  const [marks, setMarks] = useState<Record<string, PuntStaat>>({});
+  const [toon, setToon] = useState<Record<string, boolean>>({}); // afgehandelde punten tonen per sectie
+  const [tellers, setTellers] = useState<Record<string, Teller>>({});
   const rootRef = useRef<HTMLDivElement>(null);
-  const opslag = `pingwin-wp-punten2:${slug}`;
-  const opslagOud = `pingwin-wp-punten:${slug}`;
 
-  // Staat per punt (hash → taak/weg/klaar); oude vorm (lijst van "kaart gemaakt") migreert mee.
-  const staten = (): Record<string, PuntStaat> => {
-    try {
-      const nieuw = JSON.parse(window.localStorage.getItem(opslag) || "{}") as Record<string, PuntStaat>;
-      const oud = JSON.parse(window.localStorage.getItem(opslagOud) || "[]") as string[];
-      for (const k of oud) if (!nieuw[k]) nieuw[k] = "taak";
-      return nieuw;
-    } catch { return {}; }
-  };
+  // Centrale markeringen laden; oude browser-opslag eenmalig meenemen.
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const d = await fetch(`/api/admin/answer-marks?slug=${encodeURIComponent(slug)}&thread=${encodeURIComponent(thread)}`).then((r) => r.json()).catch(() => null);
+      if (!alive) return;
+      const server: Record<string, PuntStaat> = (d?.ok && d.marks) || {};
+      // Migratie van de oude localStorage-vorm (één keer, daarna leidt de database).
+      try {
+        const oud1 = JSON.parse(window.localStorage.getItem(`pingwin-wp-punten2:${slug}`) || "{}") as Record<string, PuntStaat>;
+        const oud2 = JSON.parse(window.localStorage.getItem(`pingwin-wp-punten:${slug}`) || "[]") as string[];
+        const bulk: Record<string, PuntStaat> = {};
+        for (const [k, v] of Object.entries(oud1)) if (!server[k]) bulk[k] = v;
+        for (const k of oud2) if (!server[k] && !bulk[k]) bulk[k] = "taak";
+        if (Object.keys(bulk).length) {
+          await fetch("/api/admin/answer-marks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread, bulk }) }).catch(() => {});
+          Object.assign(server, bulk);
+        }
+        window.localStorage.removeItem(`pingwin-wp-punten2:${slug}`);
+        window.localStorage.removeItem(`pingwin-wp-punten:${slug}`);
+      } catch { /* migratie is best effort */ }
+      setMarks(server);
+    })();
+    return () => { alive = false; };
+  }, [slug, thread]);
+
   const zetStaat = (key: string, staat: PuntStaat | null) => {
-    try {
-      const s = staten();
-      if (staat) s[key] = staat; else delete s[key];
-      window.localStorage.setItem(opslag, JSON.stringify(s));
-    } catch { /* opslag is best effort */ }
-    setVersie((v) => v + 1);
+    setMarks((m) => { const n = { ...m }; if (staat) n[key] = staat; else delete n[key]; return n; });
+    void fetch("/api/admin/answer-marks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread, hash: key, staat }) }).catch(() => {});
+  };
+  const zetStaatBulk = (keys: string[], staat: PuntStaat) => {
+    if (!keys.length) return;
+    setMarks((m) => { const n = { ...m }; for (const k of keys) n[k] = staat; return n; });
+    const bulk = Object.fromEntries(keys.map((k) => [k, staat]));
+    void fetch("/api/admin/answer-marks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread, bulk }) }).catch(() => {});
   };
 
   // Splits de ruwe markdown per "## "-kop; tekst vóór de eerste kop is een intro-blok.
@@ -85,29 +106,69 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
   }
   const puntKey = (tekst: string) => hash(`${thread}|${norm(tekst)}`);
 
-  // Na elke render: de onthouden staat per punt terugzetten op de knopjes en de regel.
+  // Alle punt-sleutels binnen een sectie-blok (groepskopjes tellen niet mee).
+  function sleutelsVan(blok: Element): string[] {
+    const uit: string[] = [];
+    blok.querySelectorAll(".ovc-acties").forEach((acties) => {
+      const doel = acties.closest("li, p");
+      if (!doel) return;
+      const t = puntTekst(doel);
+      if (t && !/:\s*$/.test(t)) uit.push(puntKey(t));
+    });
+    return uit;
+  }
+
+  // Na elke render: staat per punt toepassen (knopjes, doorstrepen, inklappen)
+  // en de samenvattingstellers per sectie bijwerken.
   useEffect(() => {
     const root = rootRef.current;
     if (!root) return;
-    const s = staten();
-    root.querySelectorAll(".ovc-acties").forEach((acties) => {
-      const doel = acties.closest("li, p");
-      if (!doel) return;
-      // Groepskopjes ("Lokale hovenierspagina's ...:") zijn geen taken: geen
-      // kader en geen knopjes, gewoon een tussenkopje boven de rijtjes.
-      if (/:\s*$/.test(puntTekst(doel))) { doel.classList.add("ovc-groepkop"); acties.remove(); return; }
-      const staat = s[puntKey(puntTekst(doel))] || "";
-      doel.classList.toggle("ovc-gedaan", staat === "klaar");
-      doel.classList.toggle("ovc-weg", staat === "weg");
-      acties.querySelector(".ovc-act-plus")?.classList.toggle("ovc-act-aan", staat === "taak");
-      acties.querySelector(".ovc-act-x")?.classList.toggle("ovc-act-aan", staat === "weg");
-      acties.querySelector(".ovc-act-v")?.classList.toggle("ovc-act-aan", staat === "klaar");
-      acties.querySelector(".ovc-act-lijst")?.classList.toggle("ovc-act-aan", staat === "lijst");
+    const nieuweTellers: Record<string, Teller> = {};
+    root.querySelectorAll(".ovc-blok").forEach((blok) => {
+      const sKey = (blok as HTMLElement).dataset.skey || "";
+      const teller: Teller = { taak: 0, lijst: 0, weg: 0, klaar: 0 };
+      blok.querySelectorAll(".ovc-acties").forEach((acties) => {
+        const doel = acties.closest("li, p");
+        if (!doel) return;
+        const t = puntTekst(doel);
+        // Groepskopjes ("Lokale hovenierspagina's ...:") zijn geen taken.
+        if (/:\s*$/.test(t)) { doel.classList.add("ovc-groepkop"); acties.remove(); return; }
+        const staat = marks[puntKey(t)] || "";
+        if (staat) teller[staat as PuntStaat]++;
+        doel.classList.toggle("ovc-gedaan", staat === "klaar");
+        doel.classList.toggle("ovc-weg", staat === "weg");
+        doel.classList.toggle("ovc-afgehandeld", !!staat);
+        // Afgehandeld = ingeklapt, tenzij Maarten de sectie heeft opengeklapt.
+        doel.classList.toggle("ovc-dicht", !!staat && !toon[sKey]);
+        acties.querySelector(".ovc-act-plus")?.classList.toggle("ovc-act-aan", staat === "taak");
+        acties.querySelector(".ovc-act-x")?.classList.toggle("ovc-act-aan", staat === "weg");
+        acties.querySelector(".ovc-act-v")?.classList.toggle("ovc-act-aan", staat === "klaar");
+        acties.querySelector(".ovc-act-lijst")?.classList.toggle("ovc-act-aan", staat === "lijst");
+      });
+      if (sKey) nieuweTellers[sKey] = teller;
     });
+    setTellers((oud) => (JSON.stringify(oud) === JSON.stringify(nieuweTellers) ? oud : nieuweTellers));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [content, versie, slug, thread]);
+  }, [content, marks, toon, slug, thread]);
 
-  async function maakTaak(key: string, tekst: string, puntSleutel?: string) {
+  // De grote knop "Zet de taken in de weekplanning" (buiten dit component) meldt
+  // zich via een window-event: heel het antwoord is dan verwerkt → alles inklappen.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const det = (e as CustomEvent).detail as { thread?: string } | undefined;
+      if (det?.thread && det.thread !== thread) return;
+      const root = rootRef.current;
+      if (!root) return;
+      const alle: string[] = [];
+      root.querySelectorAll(".ovc-blok").forEach((blok) => alle.push(...sleutelsVan(blok)));
+      zetStaatBulk(alle.filter((k) => !marks[k]), "taak");
+    };
+    window.addEventListener("pingwin-antwoord-verwerkt", handler);
+    return () => window.removeEventListener("pingwin-antwoord-verwerkt", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [thread, marks]);
+
+  async function maakTaak(key: string, tekst: string, puntSleutel?: string, sectieKeys?: string[]) {
     if (busyKey) return;
     setBusyKey(key); setFeedback(null);
     try {
@@ -119,6 +180,7 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
         if (d.merged) delen.push(`${d.merged} bestaande ${d.merged === 1 ? "paginakaart" : "paginakaarten"} aangevuld`);
         setFeedback({ key, msg: `${delen.join(" en ")}`, ok: true });
         if (puntSleutel) zetStaat(puntSleutel, "taak");
+        if (sectieKeys?.length) zetStaatBulk(sectieKeys.filter((k) => !marks[k]), "taak");
         onWeekplanChanged?.();
       } else setFeedback({ key, msg: d?.error || "Kon hier geen kaart van maken. Probeer het nog een keer.", ok: false });
     } catch {
@@ -126,8 +188,7 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
     } finally { setBusyKey(""); }
   }
 
-  // "Op bespreeklijst": kies de persoon in een menuutje dat naast de aangeklikte
-  // regel verschijnt (niet onderaan het blok, dat viel buiten beeld).
+  // "Op bespreeklijst": kies de persoon in een menuutje naast de aangeklikte regel.
   const [lijstVoor, setLijstVoor] = useState<{ key: string; tekst: string; sleutel: string; x: number; y: number } | null>(null);
   const [personen, setPersonen] = useState<string[]>(["Klant", "Dev"]);
   useEffect(() => {
@@ -162,7 +223,7 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
     const punt = puntTekst(doel);
     if (!punt) return;
     const sleutel = puntKey(punt);
-    const huidig = staten()[sleutel] || "";
+    const huidig = marks[sleutel] || "";
     if (btn.classList.contains("ovc-act-plus")) {
       if (huidig === "taak") { zetStaat(sleutel, null); return; }
       void maakTaak(key, `${s.kop ? `Sectie: ${s.kop}\n` : ""}Punt: ${punt}`, sleutel);
@@ -171,13 +232,14 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
     } else if (btn.classList.contains("ovc-act-v")) {
       zetStaat(sleutel, huidig === "klaar" ? null : "klaar");
     } else if (btn.classList.contains("ovc-act-lijst")) {
+      if (huidig === "lijst") { zetStaat(sleutel, null); return; }
       setFeedback(null);
       const r = btn.getBoundingClientRect();
       setLijstVoor({ key, tekst: punt, sleutel, x: r.left, y: r.bottom });
     }
   }
 
-  // Elk herkenbaar punt wordt een taakrijtje met rechts de drie knopjes.
+  // Elk herkenbaar punt wordt een taakrijtje met rechts de vier knopjes.
   const ACTIES = '<span class="ovc-acties">'
     + '<button type="button" class="ovc-act ovc-act-plus" title="Voeg toe als kaart in de weekplanning">+</button>'
     + '<button type="button" class="ovc-act ovc-act-lijst" title="Zet dit punt op een bespreeklijst (Sander, klant, ...)">&raquo;</button>'
@@ -188,26 +250,45 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
     .replace(/<li>/g, `<li>${ACTIES}`)
     .replace(/<p><strong>/g, `<p class="ovc-punt">${ACTIES}<strong>`);
 
+  const samenvatting = (t: Teller): string => {
+    const delen: string[] = [];
+    if (t.taak) delen.push(`${t.taak} in de weekplanning`);
+    if (t.lijst) delen.push(`${t.lijst} op een bespreeklijst`);
+    if (t.weg) delen.push(`${t.weg} genegeerd`);
+    if (t.klaar) delen.push(`${t.klaar} gedaan`);
+    return delen.join(" · ");
+  };
+
   return (
     <div className="ovc-blokken" ref={rootRef}>
       {secties.map((s, i) => {
         const key = `s${i}`;
         const klikKey = `${key}-punt`;
+        const t = tellers[key];
+        const afgehandeld = t ? t.taak + t.lijst + t.weg + t.klaar : 0;
         return (
-          <div key={i} className={"ovc-blok" + (s.kop ? "" : " ovc-blok-intro")}>
+          <div key={i} className={"ovc-blok" + (s.kop ? "" : " ovc-blok-intro")} data-skey={key}>
             {(s.kop || heeftKoppen) && (
               <div className="ovc-blok-kop">
                 {s.kop && <span className="ovc-blok-titel">{s.kop}</span>}
                 <span className="ovc-blok-spacer" />
                 <button type="button" className="ovc-blok-taakbtn" disabled={!!busyKey}
-                  title="Maak kaarten van deze hele sectie: één per pagina die erin voorkomt"
-                  onClick={() => void maakTaak(key, `${s.kop ? `Sectie: ${s.kop}\n` : ""}${s.md}`)}>
+                  title="Maak kaarten van deze hele sectie (één per pagina) en klap de sectie in"
+                  onClick={(e) => {
+                    const blok = (e.currentTarget as HTMLElement).closest(".ovc-blok");
+                    void maakTaak(key, `${s.kop ? `Sectie: ${s.kop}\n` : ""}${s.md}`, undefined, blok ? sleutelsVan(blok) : []);
+                  }}>
                   {busyKey === key ? "Bezig…" : "+ Taak"}
                 </button>
               </div>
             )}
             <div className="chat-md ovc-blok-inhoud" onClick={(e) => klikOpPunt(e, s, klikKey)}
               dangerouslySetInnerHTML={{ __html: metKnopjes(toHtml(s.md)) }} />
+            {afgehandeld > 0 && (
+              <button type="button" className="ovc-afgerond-rij" onClick={() => setToon((v) => ({ ...v, [key]: !v[key] }))}>
+                <span className="st-dot st-ok" /> {afgehandeld} {afgehandeld === 1 ? "punt" : "punten"} afgehandeld: {samenvatting(t)} <span className="ovc-afgerond-toggle">{toon[key] ? "verberg ▴" : "toon ▾"}</span>
+              </button>
+            )}
             {busyKey === klikKey && <div className="ovc-blok-feedback">Kaart maken…</div>}
             {feedback && (feedback.key === key || feedback.key === klikKey) && (
               <div className={"ovc-blok-feedback" + (feedback.ok ? " ok" : " err")}>
