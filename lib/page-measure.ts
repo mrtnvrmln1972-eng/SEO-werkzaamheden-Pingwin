@@ -10,7 +10,10 @@
 import { renderHtml } from "./render-page";
 import { metaVerdictText } from "./meta-rules";
 
-export type MeasuredImage = { file: string; alt: string; altLength: number; hasAlt: boolean; format: string; hasDimensions: boolean; loading: string };
+// src = de volledige afbeeldings-URL (absoluut gemaakt), zodat de werklijst een
+// duimnageltje en een klikbare link kan tonen en aan de map kan zien of een
+// afbeelding uit het thema komt (vast onderdeel) of uit de mediabibliotheek.
+export type MeasuredImage = { file: string; src: string; alt: string; altLength: number; hasAlt: boolean; format: string; hasDimensions: boolean; loading: string };
 export type MeasuredLink = { href: string; text: string };
 export type PageMeasurement = {
   ok: boolean;
@@ -41,6 +44,21 @@ function tags(html: string, tag: string, limit: number): string[] {
 function attr(tag: string, name: string): string {
   const m = tag.match(new RegExp(`${name}\\s*=\\s*["']([^"']*)["']`, "i"));
   return m ? m[1] : "";
+}
+// Lazy-loaders zetten vaak een 1x1-placeholder of een data:-URI in src en de
+// echte afbeelding in data-src/data-lazy-src/srcset. Pak de eerste die er echt
+// uitziet, anders levert de werklijst een duimnageltje van een leeg pixeltje.
+function imgSrc(tag: string): string {
+  const kandidaten = [attr(tag, "src"), attr(tag, "data-src"), attr(tag, "data-lazy-src"), attr(tag, "data-original")];
+  for (const k of kandidaten) if (k && !k.startsWith("data:")) return k;
+  const set = attr(tag, "srcset") || attr(tag, "data-srcset");
+  const eerste = set.split(",")[0]?.trim().split(/\s+/)[0] || "";
+  return eerste && !eerste.startsWith("data:") ? eerste : (kandidaten.find(Boolean) || "");
+}
+// Relatieve src ("/wp-content/...") absoluut maken tegen de pagina-URL.
+function absUrl(src: string, pageUrl: string): string {
+  if (!src || src.startsWith("data:")) return "";
+  try { return new URL(src, pageUrl).toString(); } catch { return ""; }
 }
 function metaContent(html: string, key: string, kind: "name" | "property"): string {
   const re1 = new RegExp(`<meta[^>]+${kind}=["']${key}["'][^>]*content=["']([^"']*)["']`, "i");
@@ -81,10 +99,10 @@ export async function measurePage(url: string, opts?: { staticOnly?: boolean }):
 
   // Afbeeldingen: alt, formaat, dimensies, lazy-loading.
   const images: MeasuredImage[] = [...html.matchAll(/<img\b[^>]*>/gi)].map((m) => {
-    const src = attr(m[0], "src"), file = (src.split("?")[0].split("/").pop() || src).slice(0, 120);
+    const src = imgSrc(m[0]), file = (src.split("?")[0].split("/").pop() || src).slice(0, 120);
     const alt = decode(attr(m[0], "alt"));
     const ext = (file.split(".").pop() || "").toLowerCase();
-    return { file, alt, altLength: alt.length, hasAlt: /\balt\s*=/.test(m[0]), format: ext, hasDimensions: /\bwidth\s*=/.test(m[0]) && /\bheight\s*=/.test(m[0]), loading: attr(m[0], "loading") || "default" };
+    return { file, src: absUrl(src, url), alt, altLength: alt.length, hasAlt: /\balt\s*=/.test(m[0]), format: ext, hasDimensions: /\bwidth\s*=/.test(m[0]) && /\bheight\s*=/.test(m[0]), loading: attr(m[0], "loading") || "default" };
   }).filter((i) => i.file).slice(0, 150);
 
   // Interne + externe links.

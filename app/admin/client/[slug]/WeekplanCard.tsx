@@ -645,7 +645,8 @@ function WerklijstBlok({ slug, refreshBoard }: { slug: string; refreshBoard: () 
         <span className="wp-sectie-label" style={{ margin: 0 }}>Werklijst voor de sitebouwer</span>
         {teller && <span className="wp-werklijst-teller">{teller.gedaan}/{teller.totaal} gedaan · {teller.geverifieerd} gecontroleerd</span>}
         <span className="wp-fase-spacer" />
-        {shareToken && <a className="wp-fase-btn wp-fase-btn-primair" href={`/share/werklijst/${shareToken}`} target="_blank" rel="noreferrer" title="De klikbare afwerkpagina voor de sitebouwer (deelbare link, geen inlog nodig)">Afwerkpagina</a>}
+        <a className="wp-fase-btn wp-fase-btn-primair" href={`/admin/client/${slug}/werklijst`} target="_blank" rel="noreferrer" title="De Pingwin-versie: huidige meta naast ons voorstel, met de knop Voer door in de site">Onze werklijst</a>
+        {shareToken && <a className="wp-fase-btn" href={`/share/werklijst/${shareToken}`} target="_blank" rel="noreferrer" title="De klikbare afwerkpagina voor de sitebouwer (deelbare link, geen inlog nodig)">Voor de sitebouwer</a>}
         {docLink && <a className="wp-fase-btn wp-fase-doc" href={docLink} target="_blank" rel="noreferrer" title="Hetzelfde overzicht als document">Document</a>}
         <button type="button" className="wp-fase-btn" disabled={status === "running"} onClick={start}>
           {status === "running" ? "Bezig… (paar minuten)" : docLink || shareToken ? "Ververs werklijst" : "Maak de werklijst"}
