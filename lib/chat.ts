@@ -323,9 +323,25 @@ function overviewTools(client: ClientConfig, base: { tools: ToolDef[]; run: Tool
   return { tools: [...base.tools, ...extra], run };
 }
 
+// Eén voorgestelde taak uit de oogst-stap (zie "eerst sparren" onderaan dit bestand).
+// "waarom" is voor het scherm (waarom volgt dit uit het gesprek), "info" is de
+// achtergrond die op de projectkaart belandt.
+export type OogstTaak = {
+  taak: string; waarom: string; info?: string; url?: string; taaktype?: string;
+  week?: number; wie?: string; zekerheid: "hoog" | "middel" | "laag";
+};
+// geenTaak = wat de assistent bewust NIET als werk zag. Dat tonen we grijs, zodat
+// zichtbaar is dat het is meegewogen en er niets stilletjes wegvalt.
+export type OogstResultaat = { taken: OogstTaak[]; geenTaak: string[]; verwerkt?: boolean };
+
 // image/images: optionele afbeeldingen (data-URL's, al verkleind in de browser) bij
 // een user-bericht. "image" blijft bestaan voor oude opgeslagen gesprekken.
-export type ChatMessage = { role: "user" | "assistant"; content: string; image?: string; images?: string[]; actions?: ProposedAction[] };
+// soort/oogst: berichten die uit de knoppen komen (conclusie, takenvoorstel) in
+// plaats van uit een vraag van Maarten.
+export type ChatMessage = {
+  role: "user" | "assistant"; content: string; image?: string; images?: string[];
+  actions?: ProposedAction[]; soort?: "conclusie" | "oogst"; oogst?: OogstResultaat;
+};
 
 const cleanThread = (t?: string) => (t || "algemeen").trim().slice(0, 80) || "algemeen";
 
