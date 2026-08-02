@@ -55,13 +55,37 @@ export type ViewKeyStatus = {
   mislukteReden: ViewKeyFailReason | null;
 };
 
-/** Staat er een geldige kijk-sleutel klaar, en wanneer is hij voor het laatst gebruikt? */
-export async function getViewKeyStatus(): Promise<ViewKeyStatus> {
+/**
+ * De enige plek waar "welke sleutel staat er klaar" wordt opgezocht.
+ *
+ * Waarom dit één functie is: dezelfde vraag stond eerder op drie plekken apart
+ * uitgetypt (de status in de cockpit, de controle bij binnenkomst, en het
+ * meetpunt). Ze gaven verschillende antwoorden op hetzelfde moment, over
+ * dezelfde tabel: het meetpunt vond sleutel 5, de controle zag er nul. Daardoor
+ * bleef de cockpit "staat uit" tonen terwijl er wel degelijk een sleutel klaar
+ * stond, en werd elke nieuwe sleutel voor niets aangemaakt. Met één opzoeking
+ * kunnen ze niet meer uit elkaar lopen. Nooit meer een eigen kopie maken.
+ */
+export type ActiveKeyRow = { id: number; key_hash: string | null; created_at: string | null; last_used: string | null };
+
+export async function getActiveKey(): Promise<ActiveKeyRow | null> {
   await ensureSchema();
   await ensureTable();
+  const { rows } = await sql`SELECT id, key_hash, created_at, last_used FROM claude_view_key WHERE revoked_at IS NULL ORDER BY id DESC LIMIT 1`;
+  const r = rows[0];
+  if (!r) return null;
+  return {
+    id: Number(r.id),
+    key_hash: (r.key_hash as string) ?? null,
+    created_at: (r.created_at as string) ?? null,
+    last_used: (r.last_used as string) ?? null,
+  };
+}
+
+/** Staat er een geldige kijk-sleutel klaar, en wanneer is hij voor het laatst gebruikt? */
+export async function getViewKeyStatus(): Promise<ViewKeyStatus> {
   const [actief, mislukt] = await Promise.all([
-    sql`SELECT created_at, last_used FROM claude_view_key
-        WHERE revoked_at IS NULL ORDER BY id DESC LIMIT 1`,
+    getActiveKey(),
     sql`SELECT failed_at, reason FROM claude_view_fail WHERE id = 1`,
   ]);
   const f = mislukt.rows[0];
@@ -69,12 +93,11 @@ export async function getViewKeyStatus(): Promise<ViewKeyStatus> {
     laatstMislukt: f?.failed_at ? new Date(f.failed_at as string).toISOString() : null,
     mislukteReden: (f?.reason as ViewKeyFailReason) ?? null,
   };
-  const r = actief.rows[0];
-  if (!r) return { actief: false, aangemaakt: null, laatstGebruikt: null, ...fail };
+  if (!actief) return { actief: false, aangemaakt: null, laatstGebruikt: null, ...fail };
   return {
     actief: true,
-    aangemaakt: r.created_at ? new Date(r.created_at as string).toISOString() : null,
-    laatstGebruikt: r.last_used ? new Date(r.last_used as string).toISOString() : null,
+    aangemaakt: actief.created_at ? new Date(actief.created_at).toISOString() : null,
+    laatstGebruikt: actief.last_used ? new Date(actief.last_used).toISOString() : null,
     ...fail,
   };
 }
@@ -139,18 +162,23 @@ export type ViewKeyDiagnose = {
   // en niet in de gegevens.
   gevondenId: number | null;
   hashAanwezig: boolean;
+  variantOudId: number | null;
   rijen: { id: number; aangemaakt: string | null; ingetrokken: boolean }[];
 };
 
 export async function viewKeyDiagnose(): Promise<ViewKeyDiagnose> {
   await ensureSchema();
   await ensureTable();
-  const [tel, zoek, lijst] = await Promise.all([
+  const [tel, zoek, zoekOud, lijst] = await Promise.all([
     sql`SELECT COUNT(*)::int AS totaal, COUNT(revoked_at)::int AS ingetrokken, MAX(created_at) AS laatste
         FROM claude_view_key`,
-    // Letterlijk dezelfde opzoeking als de controle doet, inclusief de kolom
-    // key_hash, zodat er geen enkel verschil meer overblijft om achter te schuilen.
+    // Twee keer dezelfde vraag: de gedeelde opzoeking die de controle nu gebruikt,
+    // en de oude losse variant. Ze horen hetzelfde te zeggen. Zeggen ze dat niet,
+    // dan is dat hier meteen zichtbaar in plaats van pas na een ronde gokken.
     sql`SELECT id, key_hash FROM claude_view_key WHERE revoked_at IS NULL ORDER BY id DESC LIMIT 1`,
+    sql`
+      SELECT id, key_hash FROM claude_view_key
+      WHERE revoked_at IS NULL ORDER BY id DESC LIMIT 1`,
     sql`SELECT id, created_at, revoked_at FROM claude_view_key ORDER BY id DESC LIMIT 8`,
   ]);
   const r = tel.rows[0];
@@ -160,6 +188,7 @@ export async function viewKeyDiagnose(): Promise<ViewKeyDiagnose> {
     laatsteAangemaakt: r?.laatste ? new Date(r.laatste as string).toISOString() : null,
     gevondenId: zoek.rows[0] ? Number(zoek.rows[0].id) : null,
     hashAanwezig: zoek.rows[0] ? Boolean(zoek.rows[0].key_hash) : false,
+    variantOudId: zoekOud.rows[0] ? Number(zoekOud.rows[0].id) : null,
     rijen: lijst.rows.map((x) => ({
       id: Number(x.id),
       aangemaakt: x.created_at ? new Date(x.created_at as string).toISOString() : null,
@@ -189,24 +218,21 @@ export async function checkViewKey(sleutel: string): Promise<ViewKeyCheck> {
     await noteFail("leeg");
     return { ok: false, reden: "leeg" };
   }
-  const { rows } = await sql`
-    SELECT id, key_hash FROM claude_view_key
-    WHERE revoked_at IS NULL ORDER BY id DESC LIMIT 1`;
-  const r = rows[0];
+  const r = await getActiveKey();
   if (!r) {
     await noteFail("geen-sleutel");
-    return { ok: false, reden: "geen-sleutel", gezien: rows.length };
+    return { ok: false, reden: "geen-sleutel", gezien: 0 };
   }
   if (!r.key_hash) {
     // Een rij zonder hash valt niet te controleren. Dat is iets anders dan geen
     // sleutel, en moet apart zichtbaar zijn in plaats van als "verkeerde sleutel".
     await noteFail("andere-sleutel");
-    return { ok: false, reden: "andere-sleutel", gezien: rows.length, kolomLeeg: true };
+    return { ok: false, reden: "andere-sleutel", gezien: 1, kolomLeeg: true };
   }
-  if (!verifyPassword(s, r.key_hash as string)) {
+  if (!verifyPassword(s, r.key_hash)) {
     await noteFail("andere-sleutel");
-    return { ok: false, reden: "andere-sleutel", gezien: rows.length };
+    return { ok: false, reden: "andere-sleutel", gezien: 1 };
   }
-  await sql`UPDATE claude_view_key SET last_used = now() WHERE id = ${r.id as number}`;
+  await sql`UPDATE claude_view_key SET last_used = now() WHERE id = ${r.id}`;
   return { ok: true };
 }
