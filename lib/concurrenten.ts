@@ -349,7 +349,25 @@ export function bepaalZwakkePaginas(
       continue;                                        // eigen term: niet opruimen
     }
 
-    const dubbel = eigen.map((w) => bezitter.get(w)).filter((b): b is { pad: string; vertoningen: number } => !!b && b.pad !== pad).map((b) => b.pad);
+    // Waar moet deze pagina naartoe? Dat staat in de zoekwoorden die hij LEENT.
+    // /soa-test-veldhoven/ haalt zijn vertoningen op "onedayclinic eindhoven";
+    // de pagina die "eindhoven" bezit is dus het voor de hand liggende doel.
+    // Zo komt het doel uit de data in plaats van uit aardrijkskunde die we niet
+    // hebben. Leent een pagina van twee steden, dan noemen we ze allebei en
+    // laten we de keuze aan Maarten, in plaats van er een te gokken.
+    const uitEigenNaam = eigen.map((w) => bezitter.get(w)).filter((b): b is { pad: string; vertoningen: number } => !!b && b.pad !== pad);
+    const uitGeleend = new Map<string, number>();
+    for (const r2 of rijen) {
+      for (const w of r2.keyword.toLowerCase().split(/[^a-z0-9]+/)) {
+        if (w.length <= 3) continue;
+        const b = bezitter.get(w);
+        if (b && b.pad !== pad) uitGeleend.set(b.pad, (uitGeleend.get(b.pad) || 0) + r2.vertoningen);
+      }
+    }
+    const dubbel = [
+      ...uitEigenNaam.sort((a, b) => b.vertoningen - a.vertoningen).map((b) => b.pad),
+      ...[...uitGeleend.entries()].sort((a, b) => b[1] - a[1]).map(([p2]) => p2),
+    ];
     kandidaten.push({
       pad, url: u.url, eigenWoorden: eigen,
       klikken: g.klikken, vertoningen: g.vertoningen,
@@ -368,7 +386,11 @@ export function bepaalZwakkePaginas(
     "",
   ];
   for (const k of top) {
-    const doel = k.dubbelMet.length ? ` -> voor de hand liggend doel: ${k.dubbelMet[0]} (die bezit deze term wel)` : " -> geen andere pagina bezit deze term; kies zelf het juiste doel of laat staan";
+    const doel = k.dubbelMet.length === 1
+      ? ` -> voor de hand liggend doel: ${k.dubbelMet[0]}`
+      : k.dubbelMet.length > 1
+      ? ` -> mogelijk doel: ${k.dubbelMet.slice(0, 3).join(" of ")} (deze pagina leent van meerdere; laat Maarten kiezen, gok er zelf geen)`
+      : " -> geen doel af te leiden uit de data; vraag Maarten waar deze pagina heen moet of laat hem staan";
     regels.push(`${k.pad} [${k.klikken} klikken, ${k.vertoningen} vertoningen]${doel}`);
     regels.push(`  geen eigen term op: ${k.eigenWoorden.join(", ")}${k.geleendeTop ? `; leent vooral "${k.geleendeTop.keyword}" (positie ${k.geleendeTop.positie}, ${k.geleendeTop.vertoningen} vertoningen)` : "; krijgt helemaal geen vertoningen"}`);
   }
