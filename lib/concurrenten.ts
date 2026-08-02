@@ -191,6 +191,8 @@ export function bepaalZwakkePaginas(
   urls: { url: string; status: number | null }[],
   minVertoningen = 10,
   dagen = 90,
+  minKlikken = 10,
+  minEigenVertoningen = 300,
 ): { ok: boolean; reden?: string; tekst: string } {
   if (!paren.length) return { ok: false, reden: "Geen Search Console-data beschikbaar.", tekst: "Geen Search Console-data beschikbaar; doe hier geen uitspraak over welke pagina's opgeruimd kunnen worden." };
 
@@ -237,6 +239,8 @@ export function bepaalZwakkePaginas(
   }
 
   const dubbelingen: ZwakkePagina[] = [];
+  const twijfel: ZwakkePagina[] = [];
+  const dubbelSet = new Set<string>();
   const zonderData: string[] = [];
   for (const { u, eigen, g } of alles) {
     const pad = padVan(u.url);
@@ -257,6 +261,7 @@ export function bepaalZwakkePaginas(
       const sterker = eigen.map((w) => bezitter.get(w))
         .filter((b): b is { pad: string; vertoningen: number } => !!b && b.pad !== pad && b.vertoningen >= eigenTerm.vertoningen * 1.5);
       if (sterker.length) {
+        dubbelSet.add(pad);
         dubbelingen.push({
           pad, url: u.url, eigenWoorden: eigen,
           klikken: g.klikken, vertoningen: g.vertoningen,
@@ -264,7 +269,20 @@ export function bepaalZwakkePaginas(
           geleendeTop: geleend, dubbelMet: [...new Set(sterker.map((b) => b.pad))],
         });
       }
-      continue;                                        // eigen term: verder met rust laten
+      // Eigen term, maar levert die ook echt iets op? Leiden haalt 73 klikken op
+      // positie 2,2; Haarlem haalt er 6 in negentig dagen. Allebei "eigen term",
+      // maar dat is niet hetzelfde besluit. Het magere geval krijgt daarom een
+      // eigen categorie in plaats van automatisch groen licht.
+      const sterk = g.klikken >= minKlikken || eigenTerm.vertoningen >= minEigenVertoningen;
+      if (!sterk && !dubbelSet.has(pad)) {
+        twijfel.push({
+          pad, url: u.url, eigenWoorden: eigen,
+          klikken: g.klikken, vertoningen: g.vertoningen,
+          eigenTerm: { keyword: eigenTerm.keyword, positie: eigenTerm.positie, vertoningen: eigenTerm.vertoningen },
+          geleendeTop: geleend, dubbelMet: [],
+        });
+      }
+      continue;                                        // eigen term: niet opruimen
     }
 
     const dubbel = eigen.map((w) => bezitter.get(w)).filter((b): b is { pad: string; vertoningen: number } => !!b && b.pad !== pad).map((b) => b.pad);
@@ -298,6 +316,15 @@ export function bepaalZwakkePaginas(
     for (const d of dubbelingen.slice(0, 30)) {
       regels.push(`${d.pad} [${d.klikken} klikken, ${d.vertoningen} vertoningen] -> samenvoegen met ${d.dubbelMet[0]}`);
       regels.push(`  eigen term "${d.eigenTerm?.keyword}" op positie ${d.eigenTerm?.positie} met ${d.eigenTerm?.vertoningen} vertoningen, maar ${d.dubbelMet[0]} scoort daar sterker`);
+    }
+  }
+
+  if (twijfel.length) {
+    twijfel.sort((a, b) => a.klikken - b.klikken);
+    regels.push("");
+    regels.push(`TWIJFELGEVALLEN (${twijfel.length}): deze pagina's ranken op hun eigen term, maar leveren weinig op (minder dan ${minKlikken} klikken en minder dan ${minEigenVertoningen} vertoningen op die term). Ze hebben dus bestaansrecht op papier, maar nauwelijks in de praktijk. Beoordeel ze apart: houden en versterken, of samenvoegen met een sterkere pagina. Stel ze NOOIT zonder meer voor als opruimwerk.`);
+    for (const t of twijfel.slice(0, 30)) {
+      regels.push(`${t.pad} [${t.klikken} klikken, ${t.vertoningen} vertoningen] eigen term "${t.eigenTerm?.keyword}" op positie ${t.eigenTerm?.positie} met ${t.eigenTerm?.vertoningen} vertoningen`);
     }
   }
 
