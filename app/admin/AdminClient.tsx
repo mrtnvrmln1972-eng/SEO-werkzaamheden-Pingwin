@@ -25,6 +25,10 @@ function KijkSleutel() {
   const [bezig, setBezig] = useState(false);
   const [open, setOpen] = useState(false);
   const [kopie, setKopie] = useState(false);
+  // Een mislukte knopdruk moet je kunnen zíen. Eerst gebeurde er bij een fout
+  // helemaal niets op het scherm: geen sleutel, geen melding. Dan denk je dat
+  // het gelukt is terwijl er niets klaarstaat, en dat kost een hele ronde.
+  const [fout, setFout] = useState<string | null>(null);
 
   async function laad() {
     const d = await fetch("/api/admin/kijk-sleutel").then((r) => r.json()).catch(() => null);
@@ -41,18 +45,31 @@ function KijkSleutel() {
   async function maak() {
     if (status?.actief && !window.confirm("Er is al een sleutel. Een nieuwe maken trekt de oude in; Claude komt er dan pas weer bij als je de nieuwe in je Claude-omgeving zet.\n\nDoorgaan?")) return;
     setBezig(true);
+    setFout(null);
     try {
       const d = await fetch("/api/admin/kijk-sleutel", { method: "POST" }).then((r) => r.json());
-      if (d?.ok) { setSleutel(d.sleutel); await laad(); }
+      if (!d?.ok) { setFout(d?.error || "De sleutel kon niet aangemaakt worden. Probeer het nog een keer."); return; }
+      setSleutel(d.sleutel);
+      await laad();
+      // Controle na afloop: staat hij er nu écht? De knop mag pas "gelukt"
+      // uitstralen als het dashboard zelf bevestigt dat er een sleutel klaarstaat.
+      const na = await fetch("/api/admin/kijk-sleutel").then((r) => r.json()).catch(() => null);
+      if (!na?.actief) setFout("De sleutel is aangemaakt maar staat niet klaar in het dashboard. Druk nog een keer op de knop.");
+    } catch {
+      setFout("Het dashboard antwoordde niet. Controleer je verbinding en probeer het nog een keer.");
     } finally { setBezig(false); }
   }
 
   async function trekIn() {
     if (!window.confirm("Claude kan hierna niet meer meekijken. Jouw eigen login verandert niet.\n\nDoorgaan?")) return;
     setBezig(true);
+    setFout(null);
     try {
-      await fetch("/api/admin/kijk-sleutel", { method: "DELETE" });
+      const d = await fetch("/api/admin/kijk-sleutel", { method: "DELETE" }).then((r) => r.json());
+      if (!d?.ok) { setFout(d?.error || "Intrekken is niet gelukt. Probeer het nog een keer."); return; }
       setSleutel(""); await laad();
+    } catch {
+      setFout("Het dashboard antwoordde niet. Controleer je verbinding en probeer het nog een keer.");
     } finally { setBezig(false); }
   }
 
@@ -100,6 +117,8 @@ function KijkSleutel() {
               {waaromNiet[status.mislukteReden]}
             </p>
           )}
+
+          {fout && <p className="kijk-alarm">{fout}</p>}
 
           {sleutel && (
             <div className="kijk-nieuw">
