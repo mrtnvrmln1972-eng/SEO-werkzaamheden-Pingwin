@@ -104,25 +104,29 @@ async function metBrowser<T>(werk: (page: any) => Promise<T>): Promise<T | null>
   }
 }
 
-/** Eén screenshot van de klantpagina, als data-URI voor op de omslag. */
-export async function sfeerbeeld(url: string): Promise<string | null> {
-  if (!url) return null;
+/**
+ * De omslag als PNG, inclusief het sfeerbeeld van de klantpagina.
+ * Null betekent: gebruik de tekst-omslag.
+ *
+ * Het sfeerbeeld en de omslag gaan bewust door één browserstart. Twee keer
+ * opstarten kost op Vercel een paar seconden extra per document, en er worden er
+ * drie per pagina gemaakt (analyse, blauwdruk, copy).
+ */
+export async function omslagPng(g: OmslagGegevens, paginaUrl?: string): Promise<Buffer | null> {
   return metBrowser(async (page) => {
-    await page.setViewport({ width: 1280, height: 860, deviceScaleFactor: 1 });
-    await page.setUserAgent("Mozilla/5.0 (compatible; PingwinBot/1.0; +https://pingwin.nl)");
-    await page.goto(url, { waitUntil: "networkidle2", timeout: 20000 });
-    await new Promise((r) => setTimeout(r, 700));
-    const buf = await page.screenshot({ type: "jpeg", quality: 72 });
-    return `data:image/jpeg;base64,${Buffer.from(buf).toString("base64")}`;
-  });
-}
-
-/** De omslag als PNG. Null betekent: gebruik de tekst-omslag. */
-export async function omslagPng(g: OmslagGegevens): Promise<Buffer | null> {
-  const html = omslagHtml(g);
-  return metBrowser(async (page) => {
+    let beeld: string | null = null;
+    if (paginaUrl) {
+      try {
+        await page.setViewport({ width: 1280, height: 860, deviceScaleFactor: 1 });
+        await page.setUserAgent("Mozilla/5.0 (compatible; PingwinBot/1.0; +https://pingwin.nl)");
+        await page.goto(paginaUrl, { waitUntil: "networkidle2", timeout: 20000 });
+        await new Promise((r) => setTimeout(r, 700));
+        const shot = await page.screenshot({ type: "jpeg", quality: 72 });
+        beeld = `data:image/jpeg;base64,${Buffer.from(shot).toString("base64")}`;
+      } catch { beeld = null; }   // geen sfeerbeeld is geen reden om de omslag te laten vallen
+    }
     await page.setViewport({ width: 1000, height: 700, deviceScaleFactor: 2.4 });
-    await page.setContent(html, { waitUntil: "networkidle0", timeout: 20000 });
+    await page.setContent(omslagHtml({ ...g, sfeerbeeld: beeld }), { waitUntil: "networkidle0", timeout: 20000 });
     const el = await page.$(".cover");
     const buf = await el.screenshot({ type: "png" });
     return Buffer.from(buf);

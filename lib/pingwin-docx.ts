@@ -4,7 +4,7 @@ import { Kaders, T, sectiekop, copyKop, callout, stapkaart, citaat, kpiblok,
          datatabel, subkop, bullet, codeRegels, P, cel, tabel, GEEN_RAND, lijnRand,
          run, type KpiRegel } from "./huisstijl/blokken";
 import { verwerkVormen } from "./huisstijl/vorm";
-import { omslagPng, sfeerbeeld, OMSLAG_BREEDTE, OMSLAG_HOOGTE } from "./huisstijl/omslag";
+import { omslagPng, OMSLAG_BREEDTE, OMSLAG_HOOGTE } from "./huisstijl/omslag";
 
 // Bouwt een .docx in de Pingwin-huisstijl uit een gestructureerde inhoud.
 //
@@ -100,14 +100,12 @@ export async function buildPingwinDoc(spec: DocSpec): Promise<Buffer> {
   const kids: any[] = [];
 
   // ── omslag ──────────────────────────────────────────────────
-  const beeld = spec.sfeerbeeldUrl ? await sfeerbeeld(spec.sfeerbeeldUrl).catch(() => null) : null;
   const png = await omslagPng({
     kicker: spec.rapporttype || "Pingwin rapportage",
     titel: spec.titel,
     ondertitel: spec.ondertitel,
     meta: { Klant: spec.klant, ...(spec.meta || {}) },
-    sfeerbeeld: beeld,
-  }).catch(() => null);
+  }, spec.sfeerbeeldUrl).catch(() => null);
   if (png) {
     kids.push(new Paragraph({ spacing: { after: 340 }, children: [new ImageRun({
       type: "png", data: png, transformation: { width: OMSLAG_BREEDTE, height: OMSLAG_HOOGTE },
