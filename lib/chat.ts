@@ -503,13 +503,20 @@ function chatTools(client: ClientConfig): { tools: ToolDef[]; run: ToolRunner } 
       if (name === "cannibalisatie_analyse") {
         const st = await getCannibalAnalysis(client.slug);
         if (st.status === "running") return "De volledige cannibalisatie-analyse draait nog. Zeg dat tegen Maarten, geef aan dat het een paar minuten kost, en doe zelf GEEN uitspraak over welke pagina's opgeruimd moeten worden.";
-        if (input.opnieuw === true || st.status === "idle" || st.status === "error" || !st.result) {
+        // Een maand oude "klaar" is geen klaar. De analyse van One Day Clinic stond
+        // op done met een uitkomst van 6 juli; zonder deze controle zou die als de
+        // huidige stand worden gepresenteerd. Ouder dan een week = opnieuw draaien.
+        const dagenOud = st.updatedAt ? (Date.now() - new Date(st.updatedAt).getTime()) / 86400000 : Infinity;
+        if (input.opnieuw === true || st.status === "idle" || st.status === "error" || !st.result || dagenOud > 7) {
           try { void runCannibalRedirect(client.slug); } catch { /* best effort */ }
-          return "Ik heb de volledige cannibalisatie-analyse zojuist gestart; die kost een paar minuten. Zeg dat tegen Maarten en doe zelf GEEN uitspraak over wat er opgeruimd moet worden. Vraag hem zo weer te vragen, dan is de complete redirectlijst er.";
+          const oud = st.result && Number.isFinite(dagenOud)
+            ? ` Er ligt nog een uitkomst van ${Math.round(dagenOud)} dagen geleden (${st.updatedAt ? new Date(st.updatedAt).toLocaleDateString("nl-NL") : "?"}); die is te oud om op te vertrouwen en gebruik je NIET.`
+            : "";
+          return `Ik heb de volledige cannibalisatie-analyse zojuist gestart; die kost een paar minuten.${oud} Zeg dat tegen Maarten en doe zelf GEEN uitspraak over wat er opgeruimd moet worden. Vraag hem zo opnieuw te vragen, dan is de verse redirectlijst er.`;
         }
         const r = st.result;
         const regels: string[] = [
-          `VOLLEDIGE CANNIBALISATIE-ANALYSE (${st.updatedAt ? new Date(st.updatedAt).toLocaleString("nl-NL") : "onbekend"}). Dit is de complete uitkomst; NEEM DE REDIRECTMAP HIERONDER LETTERLIJK EN VOLLEDIG OVER, laat geen regel weg en verzin er geen bij.`,
+          `VOLLEDIGE CANNIBALISATIE-ANALYSE, uitgevoerd op ${st.updatedAt ? new Date(st.updatedAt).toLocaleString("nl-NL") : "onbekend"} (${Math.round(dagenOud)} dagen oud; noem die datum in je antwoord). Dit is de complete uitkomst; NEEM DE REDIRECTMAP HIERONDER LETTERLIJK EN VOLLEDIG OVER, laat geen regel weg en verzin er geen bij.`,
           r.samenvatting || "",
         ];
         if (r.datakwaliteit) regels.push(`Datakwaliteit: ${JSON.stringify(r.datakwaliteit)}`);
