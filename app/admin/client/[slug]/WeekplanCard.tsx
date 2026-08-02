@@ -82,12 +82,12 @@ type ChatMsg = { role: "user" | "assistant"; content: string };
 
 function shortUrl(url: string): string { try { const u = new URL(url); return (u.pathname + u.search) || "/"; } catch { return url; } }
 
-export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDragStart, onDragEnd, onStatus, onRemove, onMail, onGoToPage, onGoToTab, onOpenMailDate, refreshBoard }: {
+export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDragStart, onDragEnd, onStatus, onRemove, onMail, onGoToPage, onGoToTab, onOpenMailDate, mailLinks, refreshBoard }: {
   slug: string; t: WpTask; page?: WpPageInfo; open: boolean;
   onToggleOpen: () => void; onDragStart: () => void; onDragEnd: () => void;
   onStatus: () => void; onRemove: () => void; onMail: (aud: "klant" | "dev") => void;
   onGoToPage?: (url: string) => void; onGoToTab?: (tab: string) => void;
-  onOpenMailDate?: (datum: string) => void; refreshBoard: () => void;
+  onOpenMailDate?: (datum: string) => void; mailLinks?: Record<string, string>; refreshBoard: () => void;
 }) {
   // Dashboard-deeplinks vanuit een kaart openen in een NIEUW browsertabblad,
   // zodat je het bord niet kwijtraakt terwijl je iets uitzoekt.
@@ -469,7 +469,7 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
               if (tekst) { setLijstPunt(tekst); setLijstMsg(""); }
             }
           }}
-          dangerouslySetInnerHTML={{ __html: cardInfoHtml(t.toelichting, t.url, t.taak, cijferRegel(page)) }} />
+          dangerouslySetInnerHTML={{ __html: cardInfoHtml(t.toelichting, t.url, t.taak, cijferRegel(page), mailLinks) }} />
       )}
       {open && lijstPunt && (
         <div className="ovc-lijstkeuze">
@@ -579,7 +579,16 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
                   <span className="wp-fase-spacer" />
                   {/* Alle pillen rechts, in vaste volgorde: Document | In Pagina's | actie | status. */}
                   {link && <a className="wp-fase-btn wp-fase-doc" href={link} target="_blank" rel="noreferrer" title="Open het document">Document</a>}
-                  <button type="button" className="wp-fase-btn wp-fase-btn-licht" title="Bekijk of doe deze stap in Pagina's (nieuw tabblad)" onClick={openPaginaNieuwTab}>In Pagina&rsquo;s</button>
+                  {f.key === "copy" && (
+                    <button type="button" className="wp-fase-btn" disabled={(!page.live && !page.strategie) || runActive || !!busy}
+                      title={(!page.live && !page.strategie) ? "Eerst de strategie goedkeuren (nieuwe pagina)" : "Draait analyse, blauwdruk en copy achter elkaar"}
+                      onClick={() => void startDocStep(page.live ? ["analyse", "blauwdruk", "copy"] : ["blauwdruk", "copy"])}>
+                      {page.live ? "Alles in één keer ▷" : "Blauwdruk + copy ▷"}
+                    </button>
+                  )}
+                  {/* Bouw en publicatie bestaat niet als stap op de Pagina's-pagina,
+                      dus daar heeft deze knop niets om naartoe te gaan. */}
+                  {f.key !== "bouw" && <button type="button" className="wp-fase-btn wp-fase-btn-licht" title="Bekijk of doe deze stap in Pagina's (nieuw tabblad)" onClick={openPaginaNieuwTab}>In Pagina&rsquo;s</button>}
                   {faseActie(f.key)}
                   <span className={"wp-fase-chip " + stand.cls} title={stand.label === "✓" ? "Klaar" : undefined}>{stand.label}</span>
                 </div>
@@ -588,21 +597,12 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
               </div>
             );
             if (f.key !== "copy") return rij;
-            // Na Copy: de alles-in-één-rij (analyse, blauwdruk en copy achter elkaar).
-            const alleStappen: ("analyse" | "blauwdruk" | "copy")[] = page.live ? ["analyse", "blauwdruk", "copy"] : ["blauwdruk", "copy"];
-            const allesGeblokkeerd = !page.live && !page.strategie;
+            // "Start alles" stond als eigen regel onder Copy, met een label links en
+            // een knop rechts. Dat kostte een regel en liep uit de pas met de andere
+            // rijen. Hij hoort gewoon bij Copy, want dat is de laatste van de drie.
             return (
               <div key="copy-en-alles">
                 {rij}
-                <div className="wp-fase wp-fase-alles">
-                  <div className="wp-fase-rij">
-                    <span className="wp-fase-alles-label">{page.live ? "Analyse, blauwdruk en copy in één keer" : "Blauwdruk en copy in één keer"}</span>
-                    <span className="wp-fase-spacer" />
-                    <button type="button" className="wp-fase-btn" disabled={allesGeblokkeerd || runActive || !!busy}
-                      title={allesGeblokkeerd ? "Eerst de strategie goedkeuren (nieuwe pagina)" : "Draait de documenten achter elkaar, met de kaart-achtergrond en chat-conclusie als sturing"}
-                      onClick={() => void startDocStep(alleStappen)}>Start alles ▷</button>
-                  </div>
-                </div>
               </div>
             );
           })}

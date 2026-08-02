@@ -2901,6 +2901,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 }
 .wp-fase-bullet.aan { border-color: #1e824c; background: #1e824c; }
 
+/* Een mailverwijzing is voortaan een echte link. Kennen we de mail niet, dan is het
+   gewone tekst: liever geen aanwijzing dan een oranje woord dat nergens heen gaat. */
+.wp-maillink { color: var(--orange-dark); font-weight: 600; text-decoration: none; }
+.wp-maillink:hover { text-decoration: underline; }
+
 /* "Eén volgende zet" op een werkplan-kaart */
 .wp-next { margin-top: 7px; font-size: 12px; line-height: 1.45; color: #333; }
 .wp-btn-primary { font-weight: 700; }

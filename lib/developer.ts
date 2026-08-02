@@ -57,6 +57,22 @@ async function ensureDevTable(): Promise<void> {
   await sql`ALTER TABLE developer_overview ADD COLUMN IF NOT EXISTS done_at TIMESTAMPTZ`;
 }
 
+/**
+ * De regels uit een kaarttekst die over de bouw gaan.
+ *
+ * De hele toelichting doorzetten leverde een blok van tien regels op met cijfers,
+ * cannibalisatie-nuance en de aanpak van analyse tot copy. Voor de sitebouwer is
+ * dat ruis: die moet weten welke tekst waar moet komen. Vindt hij niets specifieks,
+ * dan valt hij terug op de eerste paar regels, zodat er nooit een lege opdracht staat.
+ */
+function devSturing(toelichting: string): string {
+  const regels = (toelichting || "").split("\n").map((r) => r.trim()).filter(Boolean);
+  const bouw = regels.filter((r) => /^-?\s*(bouw|publicatie|publiceer|dev|alt[- ]?tekst|interne links?|structured data|schema)\s*:/i.test(r));
+  if (bouw.length) return bouw.map((r) => r.replace(/^-\s*/, "")).join("\n");
+  const zonderKopjes = regels.filter((r) => !/^[A-ZÀ-Ž][^:]{1,40}:$/.test(r));
+  return zonderKopjes.slice(0, 3).map((r) => r.replace(/^-\s*/, "")).join("\n");
+}
+
 export async function getDeveloperTasks(): Promise<DevTask[]> {
   await ensureSchema();
   await ensureDevTable();
@@ -127,7 +143,10 @@ export async function getDeveloperTasks(): Promise<DevTask[]> {
       clientName: (r.client_name as string) ?? slug,
       taskKey: key,
       taak: (r.taak as string) ?? "",
-      toelichting: (r.toelichting as string) ?? "",
+      // Alleen de sturing voor de bouw, niet het hele verhaal. De kaart bevat
+      // achtergrond, cijfers en de aanpak per fase; een sitebouwer heeft daar niets
+      // aan en moet gewoon weten wát hij moet doen.
+      toelichting: devSturing((r.toelichting as string) ?? ""),
       uren: null,
       // Een doorgezette kaart telt als open dev-werk, tenzij de developer hem afvinkte.
       status: mm?.devDone ? "klaar" : "naar dev",

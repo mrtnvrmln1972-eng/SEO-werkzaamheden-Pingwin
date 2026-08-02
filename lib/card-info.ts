@@ -31,15 +31,48 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+// Mail-verwijzingen ("mail van 5-7") worden een ECHTE link naar die mail, als we
+// hem kennen. Eerder werd elke datum oranje en klikbaar gemaakt, ook als er geen
+// mail bij hoorde: dan zag je een oranje woordje dat nergens heen ging. Dat gebeurde
+// precies wanneer de assistent een mail noemde die niet in het postvak van deze
+// klant zit. Kennen we de mail niet, dan blijft het gewone tekst.
+export type MailLinks = Record<string, string>;   // "5-7" of "5-7-2026" → link
+
+// Dezelfde datum in verschillende schrijfwijzen naar één sleutel.
+function datumSleutel(d: number, m: number, j?: number): string {
+  return j ? `${d}-${m}-${j}` : `${d}-${m}`;
+}
+const MAAND: Record<string, number> = {
+  januari: 1, februari: 2, maart: 3, april: 4, mei: 5, juni: 6,
+  juli: 7, augustus: 8, september: 9, oktober: 10, november: 11, december: 12,
+};
+function sleutelUitTekst(tekst: string): string | null {
+  const num = /^(\d{1,2})[-/](\d{1,2})(?:[-/](\d{2,4}))?$/.exec(tekst.trim());
+  if (num) {
+    const j = num[3] ? (Number(num[3]) < 100 ? 2000 + Number(num[3]) : Number(num[3])) : undefined;
+    return datumSleutel(Number(num[1]), Number(num[2]), j);
+  }
+  const tx = /^(\d{1,2})\s+([a-zà-ž]+)(?:\s+(\d{2,4}))?$/i.exec(tekst.trim());
+  if (tx && MAAND[tx[2].toLowerCase()]) {
+    const j = tx[3] ? (Number(tx[3]) < 100 ? 2000 + Number(tx[3]) : Number(tx[3])) : undefined;
+    return datumSleutel(Number(tx[1]), MAAND[tx[2].toLowerCase()], j);
+  }
+  return null;
+}
+
 // Inline-opmaak binnen één regel: **vet** renderen, nooit ruwe sterretjes tonen.
-// Mail-verwijzingen ("Mail 9-7-2026", "mail van 25 juli") worden klikbaar: de
-// kaart opent die mail dan in het venster Laatste mails (delegate in de kaart).
-function inline(s: string): string {
+function inline(s: string, mails?: MailLinks): string {
   return escapeHtml(s)
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
     .replace(/\*/g, "")
     .replace(/\b([Mm]ail(?:tje)?(?:\s+van)?\s+)(\d{1,2}[-/]\d{1,2}(?:[-/]\d{2,4})?|\d{1,2}\s+(?:januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)(?:\s+\d{2,4})?)/g,
-      '$1<span class="wp-maildatum" data-datum="$2" role="button" title="Open deze mail in Laatste mails">$2</span>');
+      (heel, voor: string, datum: string) => {
+        if (!mails) return heel;
+        const k = sleutelUitTekst(datum);
+        const link = k ? (mails[k] || mails[k.split("-").slice(0, 2).join("-")]) : "";
+        if (!link) return heel;   // onbekende mail blijft gewone tekst, geen dode link
+        return `${voor}<a class="wp-maillink" href="${link}" target="_blank" rel="noreferrer" title="Open deze mail">${datum}</a>`;
+      });
 }
 
 // Genormaliseerde sleutel voor regel-dedup (zelfde logica als de merge in weekplan.ts).
@@ -259,27 +292,27 @@ const SVG = (paden: string, cls = "") => `<svg class="${cls}" viewBox="0 0 24 24
 const ICO_VLAG = SVG("M4 21V4|M4 4h12l-2 4 2 4H4");
 const ICO_KLEMBORD = SVG("M9 4h6v3H9z|M9 4H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2|M9 12h6|M9 16h4");
 
-function lijst(regels: string[], cls: string): string {
+function lijst(regels: string[], cls: string, mails?: MailLinks): string {
   // Elk punt (Doel én Aanpak) krijgt een klein »-knopje: zet dit punt op een
   // bespreeklijst (Sander, klant, ...). De kaart-component vangt de klik af.
   const knop = '<button type="button" class="wp-info-lijstbtn" title="Zet dit punt op een bespreeklijst">&raquo;</button>';
-  return `<ul class="${cls}">${regels.map((r) => `<li>${knop}${inline(r)}</li>`).join("")}</ul>`;
+  return `<ul class="${cls}">${regels.map((r) => `<li>${knop}${inline(r, mails)}</li>`).join("")}</ul>`;
 }
 
 function infoKaart(icoon: string, kop: string, inhoud: string): string {
   return `<div class="wp-info-kaart"><div class="wp-info-kaarthead"><span class="wp-info-icoon">${icoon}</span><span class="wp-info-kop">${kop}</span></div>${inhoud}</div>`;
 }
 
-export function cardInfoHtml(toelichting: string, pageUrl?: string, taak?: string, cijfers?: string): string {
+export function cardInfoHtml(toelichting: string, pageUrl?: string, taak?: string, cijfers?: string, mails?: MailLinks): string {
   const domain = (() => { try { return pageUrl ? new URL(pageUrl).host : ""; } catch { return ""; } })();
   const info = splitCardInfo(toelichting, taak);
   const kaarten: string[] = [];
   if (info.achtergrond.length) {
-    kaarten.push(infoKaart(ICO_VLAG, "Waarom deze pagina", lijst(info.achtergrond, "wp-check-lijst")));
+    kaarten.push(infoKaart(ICO_VLAG, "Waarom deze pagina", lijst(info.achtergrond, "wp-check-lijst", mails)));
   }
   const aanpak = ontdubbel([...info.overig, ...info.afspraken]);
   if (aanpak.length) {
-    kaarten.push(infoKaart(ICO_KLEMBORD, "Aanpak en afspraken", lijst(aanpak, "wp-punt-lijst")));
+    kaarten.push(infoKaart(ICO_KLEMBORD, "Aanpak en afspraken", lijst(aanpak, "wp-punt-lijst", mails)));
   }
   const kolommen = kaarten.length ? `<div class="wp-info-doel${kaarten.length === 1 ? " wp-info-een" : ""}">${kaarten.join("")}</div>` : "";
 
@@ -291,7 +324,7 @@ export function cardInfoHtml(toelichting: string, pageUrl?: string, taak?: strin
   // Wat niet in de begrensde kaart past staat hier, ingeklapt. Niets raakt kwijt;
   // het staat alleen niet meer in de weg. <details> heeft geen JavaScript nodig.
   const notities = info.rest.length
-    ? `<details class="wp-info-rest"><summary>Eerdere notities (${info.rest.length})</summary>${lijst(info.rest, "wp-punt-lijst")}</details>`
+    ? `<details class="wp-info-rest"><summary>Eerdere notities (${info.rest.length})</summary>${lijst(info.rest, "wp-punt-lijst", mails)}</details>`
     : "";
   // Geen emoji's in het dashboard: status-emoji's uit oudere kaartteksten worden
   // retroactief nette stipjes (zelfde betekenis, rustiger beeld).

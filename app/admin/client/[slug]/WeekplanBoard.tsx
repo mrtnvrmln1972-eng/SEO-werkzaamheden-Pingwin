@@ -35,6 +35,31 @@ const keyOf = (year: number, week: number) => year * 100 + week;
 // De huidige week is gemarkeerd. Slepen verplaatst een kaart naar een andere week.
 // In de open kaart: de 7 fases (starten, status, afvinken), chat en mailen.
 export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailDate, clientName, clientEmail, reloadSignal }: { slug: string; onGoToPage?: (url: string) => void; onGoToTab?: (tab: string) => void; onOpenMailDate?: (datum: string) => void; clientName?: string; clientEmail?: string; reloadSignal?: number }) {
+  // Datum → link naar de mail, uit de mails van DEZE klant. Zo wordt "mail van 5-7"
+  // een echte link, en blijft een mail die we niet kennen gewone tekst in plaats van
+  // een oranje woordje dat nergens heen gaat.
+  const [mailDatumLinks, setMailDatumLinks] = useState<Record<string, string>>({});
+  useEffect(() => {
+    let leeft = true;
+    fetch(`/api/admin/mail?slug=${encodeURIComponent(slug)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (!leeft || !d?.ok) return;
+        const m: Record<string, string> = {};
+        for (const e of (d.emails || []) as { receivedAt?: string; superhumanLink?: string; webLink?: string }[]) {
+          const link = e.superhumanLink || e.webLink;
+          if (!e.receivedAt || !link) continue;
+          const dt = new Date(e.receivedAt);
+          if (Number.isNaN(dt.getTime())) continue;
+          const d1 = `${dt.getDate()}-${dt.getMonth() + 1}`;
+          m[d1] = m[d1] || link;
+          m[`${d1}-${dt.getFullYear()}`] = link;
+        }
+        setMailDatumLinks(m);
+      })
+      .catch(() => {});
+    return () => { leeft = false; };
+  }, [slug]);
   const [tasks, setTasks] = useState<WpTask[]>([]);
   const [pages, setPages] = useState<Record<string, WpPageInfo>>({});
   const [current, setCurrent] = useState<Current | null>(null);
@@ -216,7 +241,7 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailD
       onToggleOpen={() => setOpenCard(openCard === t.id ? null : t.id)}
       onDragStart={() => setDragId(t.id)} onDragEnd={() => { setDragId(null); setDropKey(null); }}
       onStatus={() => void cycleStatus(t)} onRemove={() => void remove(t.id)}
-      onMail={(aud) => openMail(t, aud)} onGoToPage={onGoToPage} onGoToTab={onGoToTab} onOpenMailDate={onOpenMailDate}
+      onMail={(aud) => openMail(t, aud)} onGoToPage={onGoToPage} onGoToTab={onGoToTab} onOpenMailDate={onOpenMailDate} mailLinks={mailDatumLinks}
       refreshBoard={() => void load()} />
   );
 
