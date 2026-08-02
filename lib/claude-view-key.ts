@@ -129,21 +129,33 @@ export type ViewKeyDiagnose = {
   totaal: number;         // alle sleutels ooit, ook ingetrokken
   ingetrokken: number;    // hoeveel daarvan zijn ingetrokken
   laatsteAangemaakt: string | null;
+  // Precies dezelfde opzoeking als de controle doet. Vindt de telling hierboven
+  // wél een actieve sleutel en deze niet, dan zit het verschil in de opzoeking
+  // en niet in de gegevens.
+  gevondenId: number | null;
+  rijen: { id: number; aangemaakt: string | null; ingetrokken: boolean }[];
 };
 
 export async function viewKeyDiagnose(): Promise<ViewKeyDiagnose> {
   await ensureSchema();
   await ensureTable();
-  const { rows } = await sql`
-    SELECT COUNT(*)::int AS totaal,
-           COUNT(revoked_at)::int AS ingetrokken,
-           MAX(created_at) AS laatste
-    FROM claude_view_key`;
-  const r = rows[0];
+  const [tel, zoek, lijst] = await Promise.all([
+    sql`SELECT COUNT(*)::int AS totaal, COUNT(revoked_at)::int AS ingetrokken, MAX(created_at) AS laatste
+        FROM claude_view_key`,
+    sql`SELECT id FROM claude_view_key WHERE revoked_at IS NULL ORDER BY id DESC LIMIT 1`,
+    sql`SELECT id, created_at, revoked_at FROM claude_view_key ORDER BY id DESC LIMIT 8`,
+  ]);
+  const r = tel.rows[0];
   return {
     totaal: Number(r?.totaal ?? 0),
     ingetrokken: Number(r?.ingetrokken ?? 0),
     laatsteAangemaakt: r?.laatste ? new Date(r.laatste as string).toISOString() : null,
+    gevondenId: zoek.rows[0] ? Number(zoek.rows[0].id) : null,
+    rijen: lijst.rows.map((x) => ({
+      id: Number(x.id),
+      aangemaakt: x.created_at ? new Date(x.created_at as string).toISOString() : null,
+      ingetrokken: x.revoked_at !== null,
+    })),
   };
 }
 
