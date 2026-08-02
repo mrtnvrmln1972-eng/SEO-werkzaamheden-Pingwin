@@ -950,6 +950,40 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
   // "overzicht" én "overzicht:<naam>" (meerdere bird's eye-gesprekken) → bird's eye.
   const isOverview = cleanThread(thread).startsWith("overzicht");
   const context = isOverview ? await buildOverviewContext(client) : isAds ? await buildAdsContext(client) : await buildContext(client);
+  // ── Opruimvraag? Dan start de motor, niet het model ────────────────────────
+  // Vier keer op rij hetzelfde patroon: iets belangrijks afhankelijk maken van de
+  // keuze van het model, en het model kiest het niet. De cannibalisatie-motor bleef
+  // op zijn uitkomst van 6 juli staan omdat de chat de tool simpelweg nooit
+  // aanriep. Dus doen we het hier, in code, vóór het antwoord begint.
+  let opruimBlok = "";
+  if (isOverview) {
+    const laatste = [...messages].reverse().find((m) => m.role === "user")?.content || "";
+    if (/opruim|redirect|omleid|cannibal|kannibal|in de weg|dunne pagina|concurrerende pagina|dubbel/i.test(laatste)) {
+      try {
+        const st = await getCannibalAnalysis(client.slug);
+        const dagen = st.updatedAt ? (Date.now() - new Date(st.updatedAt).getTime()) / 86400000 : Infinity;
+        if (st.status === "running") {
+          opruimBlok = "\n\n=== DE VOLLEDIGE CANNIBALISATIE-ANALYSE DRAAIT OP DIT MOMENT ===\nZeg tegen Maarten dat de analyse loopt en over een paar minuten klaar is, en dat hij het dan opnieuw moet vragen. Geef GEEN eigen opruimlijst; die zou onvolledig zijn.";
+        } else if (!st.result || dagen > 7) {
+          try { void runCannibalRedirect(client.slug); } catch { /* best effort */ }
+          opruimBlok = `\n\n=== DE VOLLEDIGE CANNIBALISATIE-ANALYSE IS ZOJUIST GESTART ===\n${st.result ? `De vorige uitkomst is van ${new Date(st.updatedAt as string).toLocaleDateString("nl-NL")}, ${Math.round(dagen)} dagen oud, en wordt NIET gebruikt.` : "Er was nog geen analyse."}\nBEGIN JE ANTWOORD HIERMEE: zeg dat de volledige analyse nu draait, dat het een paar minuten kost, en dat Maarten het daarna opnieuw moet vragen voor de complete redirectlijst. Geef ondertussen GEEN eigen opruimlijst uit de snelle hulpjes; die is aantoonbaar onvolledig gebleken.`;
+        } else {
+          const r = st.result;
+          const regels = [`\n\n=== VOLLEDIGE CANNIBALISATIE-ANALYSE (${new Date(st.updatedAt as string).toLocaleDateString("nl-NL")}) ===`, `Dit is de complete uitkomst van de motor. NEEM DE REDIRECTMAP LETTERLIJK EN VOLLEDIG OVER, laat geen regel weg en verzin er geen bij. Noem de datum van de analyse.`, r.samenvatting || ""];
+          if (r.redirectMap?.length) {
+            regels.push(`REDIRECTMAP (${r.redirectMap.length} regels):`);
+            for (const m of r.redirectMap) regels.push(`- ${m.van} -> ${m.naar}${m.mergeContent ? " [content samenvoegen]" : ""}${m.reden ? `: ${m.reden}` : ""}`);
+          }
+          if (r.interneLinks?.length) {
+            regels.push(`INTERNE LINKS (${r.interneLinks.length} regels):`);
+            for (const l of r.interneLinks) regels.push(`- vanaf ${l.vanaf} naar ${l.naar}${l.ankertekst ? ` met ankertekst "${l.ankertekst}"` : ""}`);
+          }
+          opruimBlok = regels.join("\n");
+        }
+      } catch { /* de motor mag een antwoord nooit blokkeren */ }
+    }
+  }
+
   const system = isOverview
     ? `Je bent de overkoepelende SEO-strateeg ("bird's eye") van Pingwin voor de klant ${client.name}. Je helpt Maarten vanuit één helder, gestructureerd werkplan bepalen wat we doen, wat er nog moet en waar het laaghangend fruit zit. Dat plan is gegrond in de AFSPRAKEN met de klant (navigatie, zoekwoordenlijst, geplande landingspagina's), niet alleen in snelle winst.\n\n` +
       `GEREEDSCHAP, gebruik het ZELF voordat je antwoordt:\n` +
@@ -997,7 +1031,7 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
       `  - Een 404 op een pagina die juist NIEUW moet komen (aangevraagd, gepland, blauwdruk klaar) is LOGISCH, geen bevinding: noem die status neutraal "nog te bouwen", niet alarmerend "404 — bestaat niet".\n` +
       `  - Voor cijfervergelijkingen (bijv. wat staat live / hoe presteert het, of een lijst producten/prijzen) een net klein tabelletje (| Kop | Kop |). Gebruik GEEN tabel voor de takenlijst (die komt als kaartjes).\n` +
       `  - Doel: het leest als een verzorgd overzicht met oranje kopjes, streepjes ertussen, vet en linkjes, niet als een lap tekst.\n` +
-      `Mens aan het stuur: jij adviseert en stelt voor, Maarten beslist.\n\n--- OVERZICHT-CONTEXT ---\n${context}`
+      `Mens aan het stuur: jij adviseert en stelt voor, Maarten beslist.\n\n--- OVERZICHT-CONTEXT ---\n${context}${opruimBlok}`
     : isAds
     ? `Je bent de Google Ads-specialist van Pingwin voor de klant ${client.name}. ` +
       `Je helpt Maarten beoordelen wat er in het Ads-account gebeurt en wordt geoptimaliseerd, wat er beter kan en welke vragen hij het Ads-bureau moet stellen. ` +
