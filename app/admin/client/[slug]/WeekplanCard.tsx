@@ -33,6 +33,19 @@ const STATUS_LABEL: Record<string, string> = { gepland: "Gepland", bezig: "Bezig
 
 type FaseKey = "strategie" | "gelieerde" | "analyse" | "blauwdruk" | "copy" | "bouw" | "structured";
 
+// De cijferregel op de kaart, opgebouwd uit de meting. Leeg als er niets gemeten is;
+// dan tonen we liever niets dan een nul die niets betekent.
+function cijferRegel(p?: { vertoningen?: number; klikken?: number; doorgevoerd?: boolean | null; live?: boolean }): string {
+  if (!p) return "";
+  const delen: string[] = [];
+  if (p.vertoningen) delen.push(`${p.vertoningen.toLocaleString("nl-NL")} vertoningen`);
+  if (p.klikken) delen.push(`${p.klikken.toLocaleString("nl-NL")} klikken`);
+  if (p.live === false) delen.push("nog niet live");
+  if (p.doorgevoerd === true) delen.push("copy staat live");
+  else if (p.doorgevoerd === false) delen.push("copy nog niet doorgevoerd");
+  return delen.join(" · ");
+}
+
 // Klein inline SVG-setje in huisstijl-oranje (geen library), stijl van het voorbeeld.
 function Icoon({ d, className = "wp-fase-icoon" }: { d: string; className?: string }) {
   return (
@@ -202,6 +215,9 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
   const [lijstPersonen, setLijstPersonen] = useState<string[]>(["Klant", "Dev"]);
   // Developer van DEZE klant; leeg = gewoon "Dev" tonen.
   const [devNaam, setDevNaam] = useState<string | null>(null);
+  // Welke fases hun sturing tonen. Dicht is de standaard: je wilt de instructie
+  // van de stap waar je mee bezig bent, niet die van alle vijf tegelijk.
+  const [faseOpen, setFaseOpen] = useState<Record<string, boolean>>({});
   useEffect(() => {
     if (!open) return;
     fetch(`/api/admin/discuss?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).then((d) => {
@@ -442,7 +458,7 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
               if (tekst) { setLijstPunt(tekst); setLijstMsg(""); }
             }
           }}
-          dangerouslySetInnerHTML={{ __html: cardInfoHtml(t.toelichting, t.url, t.taak) }} />
+          dangerouslySetInnerHTML={{ __html: cardInfoHtml(t.toelichting, t.url, t.taak, cijferRegel(page)) }} />
       )}
       {open && lijstPunt && (
         <div className="ovc-lijstkeuze">
@@ -528,7 +544,11 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
           {FASEN.map((f) => {
             const stand = faseStand(f.key);
             const link = docLink(f.key);
+            // Eén regel sturing per fase, en pas zichtbaar als je die fase opent.
+            // Stonden ze alle vijf tegelijk open, dan las je de instructie voor Copy
+            // terwijl je bij Analyse zat en paste de kaart nergens meer in één blik.
             const sturing = (info.perFase[f.key as CardFaseKey] || []).join(" · ");
+            const sturingOpen = !!faseOpen[f.key];
             const rij = (
               <div key={f.key} className="wp-fase">
                 <div className="wp-fase-rij">
@@ -536,6 +556,13 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
                     <input type="checkbox" checked={!!page[f.key]} onChange={(e) => void vink(f.key, e.target.checked)} />
                   </label>
                   <span className="wp-fase-label">{f.label}</span>
+                  {sturing && (
+                    <button type="button" className="wp-fase-uitleg"
+                      title={sturingOpen ? "Verberg de sturing voor deze stap" : "Toon de sturing voor deze stap"}
+                      onClick={() => setFaseOpen((v) => ({ ...v, [f.key]: !v[f.key] }))}>
+                      {sturingOpen ? "uitleg ▴" : "uitleg ▾"}
+                    </button>
+                  )}
                   <span className="wp-fase-spacer" />
                   {/* Alle pillen rechts, in vaste volgorde: Document | In Pagina's | actie | status. */}
                   {link && <a className="wp-fase-btn wp-fase-doc" href={link} target="_blank" rel="noreferrer" title="Open het document">Document</a>}
@@ -544,7 +571,7 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
                   <span className={"wp-fase-chip " + stand.cls} title={stand.label === "✓" ? "Klaar" : undefined}>{stand.label}</span>
                 </div>
                 {/* Slugs/URL's in de sturing zijn altijd klikbaar (harde huisregel). */}
-                {sturing && <div className="wp-fase-sturing" dangerouslySetInnerHTML={{ __html: linkifyHtml(sturing.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"), (() => { try { return new URL(t.url).host; } catch { return ""; } })()) }} />}
+                {sturing && sturingOpen && <div className="wp-fase-sturing" dangerouslySetInnerHTML={{ __html: linkifyHtml(sturing.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"), (() => { try { return new URL(t.url).host; } catch { return ""; } })()) }} />}
               </div>
             );
             if (f.key !== "copy") return rij;

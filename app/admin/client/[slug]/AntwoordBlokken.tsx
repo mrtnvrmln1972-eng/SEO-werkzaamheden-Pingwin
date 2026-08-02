@@ -17,6 +17,7 @@
 import { useEffect, useRef, useState } from "react";
 import { puntSoort, knopjesVoor, isGroepskop, stripMarker, type PuntSoort } from "../../../../lib/punt-soort";
 import { devLabel } from "../../../../lib/personen";
+import { striptVulzinnen, heeftInhoud } from "../../../../lib/vulzinnen";
 
 type Sectie = { kop: string; md: string };
 type Feedback = { key: string; msg: string; ok: boolean };
@@ -90,6 +91,11 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
     void fetch("/api/admin/answer-marks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread, bulk }) }).catch(() => {});
   };
 
+  // Aankondigingszinnen ("Dan heb ik nu het volledige beeld. Hier is wat er speelt:")
+  // gaan er hier uit, vóór het opsplitsen. Anders werd zo'n zin een eigen blokje met
+  // een "+ Taak"-knop erbij, dus een knop om van een loze zin een taak te maken.
+  const schoon = striptVulzinnen(content || "");
+
   // Splits de ruwe markdown per "## "-kop; tekst vóór de eerste kop is een intro-blok.
   const secties: Sectie[] = [];
   {
@@ -97,7 +103,7 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
     let buf: string[] = [];
     const triviaal = (md: string) => !md.split("\n").some((r) => r.replace(/[-*_#\s]/g, "").length > 0);
     const push = () => { const md = buf.join("\n").trim(); if (kop || (md && !triviaal(md))) secties.push({ kop, md }); buf = []; };
-    for (const r of (content || "").split("\n")) {
+    for (const r of schoon.split("\n")) {
       const m = /^##\s+(.*)$/.exec(r.trim());
       if (m) { push(); kop = m[1].replace(/[#*]/g, "").trim(); } else buf.push(r);
     }
@@ -332,7 +338,7 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
               <div className="ovc-blok-kop">
                 {s.kop && <span className="ovc-blok-titel">{s.kop}</span>}
                 <span className="ovc-blok-spacer" />
-                {!sectieVerwerkt && (
+                {!sectieVerwerkt && heeftInhoud(s.md) && (
                   <button type="button" className="ovc-blok-taakbtn" disabled={!!busyKey}
                     title="Maak kaarten van deze hele sectie (één per pagina) en klap de sectie in"
                     onClick={(e) => {

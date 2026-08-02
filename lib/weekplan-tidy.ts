@@ -33,6 +33,7 @@ export function tidySystemPrompt(taak: string, url?: string | null): string {
     `Regels: verzin NIETS en gooi NIETS inhoudelijks weg; alleen dubbelingen en herhaling van de kaarttitel mogen vervallen.`,
     `DUBBELINGEN: dezelfde constatering in andere woorden is een dubbeling. Houd er één over, de meest volledige.`,
     `TEGENSTRIJDIGE CIJFERS: staan er twee metingen van dezelfde pagina (bijvoorbeeld twee posities of twee aantallen vertoningen), houd dan ALLEEN de laatste aan, dat is de regel die het verst naar onder staat. Nooit allebei laten staan.`,
+    `BEGRENZING: hooguit VIER regels onder Achtergrond. Kies de vier die iemand echt nodig heeft om deze klus te doen; laat de rest weg alleen als hij elders al staat, en verzin niets nieuws.`,
     `PER FASE ÉÉN REGEL: staan er meerdere instructies voor dezelfde fase, voeg die samen tot één regel zonder informatie te verliezen.`,
     `Elke instructie hoort bij precies één fase-regel, niet ook nog in Achtergrond. Geen Markdown-symbolen (#, | of **), geen emoji, geen tekst buiten dit formaat.`,
   ].join("\n");
@@ -59,10 +60,15 @@ export async function tidyCard(slug: string, id: number): Promise<string | null>
       1500,
       { slug, action: "weekplan_tidy_merge" },
     )).trim();
-    // Vangrail: komt er iets terug dat veel korter is dan het origineel, dan is er
-    // waarschijnlijk inhoud gesneuveld. Dan liever de rommel houden dan stil iets
-    // kwijtraken dat voor een blauwdruk nodig is.
-    if (!nieuw || nieuw.length < 20 || nieuw.length < oud.length * 0.35) return null;
+    // Vangrail tegen een mislukt antwoord. Bewust NIET op lengte-verhouding: het
+    // opruimen mag een kaart van 29 regels naar 4 brengen, dus een ratio-drempel
+    // zou juist de geslaagde opruimingen weigeren. In plaats daarvan kijken we of
+    // het formaat er nog staat: zonder "Achtergrond:"-kop is het geen opruiming
+    // maar iets anders, en dan blijft de oude tekst staan.
+    if (!nieuw || nieuw.length < 60) return null;
+    if (!/^\s*achtergrond\s*:/im.test(nieuw)) return null;
+    // Ging het origineel over fases, dan horen die er ook nog in te staan.
+    if (/aanpak per fase/i.test(oud) && !/aanpak per fase/i.test(nieuw)) return null;
     await updateWeekplanToelichting(slug, id, nieuw);
     return nieuw;
   } catch {

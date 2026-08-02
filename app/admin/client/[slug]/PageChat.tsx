@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { mdToHtml } from "../../../../lib/markdown";
+import { striptVulzinnen } from "../../../../lib/vulzinnen";
 import HelpHint from "./HelpHint";
 import PageSummaryCard from "./PageSummaryCard";
 
@@ -822,7 +823,10 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   // Alleen als het ECHT al HTML is (sluittags) én GEEN markdown-syntax bevat, laten we het staan.
   // Anders altijd via mdToHtml, dat '<' escapet — zo verschijnt een genoemde tag als `<h1>`
   // als leestekst i.p.v. dat hij als echte kop wordt gerenderd (en de markdown blijft ruw).
-  function renderMsgHtml(content: string): string {
+  function renderMsgHtml(ruw: string): string {
+    // Aankondigingszinnen eruit, net als in de Bird's eye: dit filter draaide daar
+    // wel en hier niet, dus in de kaart-chat stonden ze er nog gewoon.
+    const content = striptVulzinnen(ruw);
     const hasClosingTag = /<\/[a-z][a-z0-9]*>/i.test(content);
     const looksMarkdown = /(^|\n)#{1,6}\s|\*\*[^*]|(^|\n)\s*[-*]\s|(^|\n)\s*\d+\.\s|\|[^|]*\|/.test(content);
     return hasClosingTag && !looksMarkdown ? content : mdToHtml(content, siteBase);

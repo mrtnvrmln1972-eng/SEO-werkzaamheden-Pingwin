@@ -2727,6 +2727,39 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
   background: var(--gray-light); border-radius: var(--r-sm); padding: 0 var(--s-2);
 }
 .ovc-msg.ovc-msg-dicht { border-bottom: 1px solid var(--card-border); padding-bottom: 0; }
+
+/* Jouw eigen vraag: compact, alles achter elkaar, kernwoorden vet zodat je hem
+   in één oogopslag terugvindt. De witregels kostten een half scherm per gesprek. */
+.ovc-bubble-vraag { white-space: normal; }
+.ovc-bubble-vraag strong { font-weight: 700; }
+
+/* Cijfers op de kaart: uit de meting, één vaste plek, dus nooit meer twee
+   metingen die elkaar tegenspreken. */
+.wp-info-cijfers {
+  font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray);
+  background: var(--gray-light); border-radius: var(--r-sm);
+  padding: var(--s-1) var(--s-3); margin-bottom: var(--s-3); display: inline-block;
+}
+
+/* Wat niet in de begrensde kaart past: ingeklapt, niets weggegooid. */
+.wp-info-rest { margin-top: var(--s-3); }
+.wp-info-rest > summary {
+  cursor: pointer; font-size: var(--fs-xs); line-height: var(--lh-xs);
+  color: var(--gray); font-weight: 600; list-style: none;
+}
+.wp-info-rest > summary::-webkit-details-marker { display: none; }
+.wp-info-rest > summary::before { content: "▸ "; color: var(--orange); }
+.wp-info-rest[open] > summary::before { content: "▾ "; }
+.wp-info-rest > summary:hover { color: var(--orange-dark); }
+
+/* Sturing per fase pas bij het openklappen; anders lees je de instructie voor
+   Copy terwijl je bij Analyse zit. */
+.wp-fase-uitleg {
+  background: none; border: none; padding: 0 var(--s-1); cursor: pointer;
+  font: inherit; font-size: var(--fs-xs); line-height: var(--lh-xs);
+  color: var(--orange-dark); font-weight: 600;
+}
+.wp-fase-uitleg:hover { text-decoration: underline; }
 .act-card { border: 1px solid var(--border); border-left: 3px solid var(--orange); border-radius: 10px; background: #fff; padding: 10px 12px; }
 .act-card.act-done { border-left-color: #1e824c; background: #f4faf5; }
 .act-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }

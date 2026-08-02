@@ -15,7 +15,17 @@ export type CardInfo = {
   afspraken: string[];     // mail-datums, wie, referenties
   overig: string[];        // punten die nergens anders passen
   perFase: Partial<Record<CardFaseKey, string[]>>;
+  // Wat er niet in de begrensde kaart past. Gaat NIET verloren: het staat ingeklapt
+  // onderaan onder "Eerdere notities", voor als je het voor een blauwdruk nodig hebt.
+  rest: string[];
 };
+
+// Hoeveel regels een kaart in één blik mag tonen. Een kaart hoort te bevatten wat je
+// nodig hebt om díe klus te doen, niet alles wat we ooit over de pagina wisten. Bij
+// Paul Hoevenaars stonden er twaalf regels onder Doel voor een pagina waar drie
+// dingen over te zeggen zijn.
+const MAX_WAAROM = 4;
+const MAX_AFSPRAKEN = 4;
 
 function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -61,10 +71,11 @@ function inhoudswoorden(s: string): Set<string> {
       .filter((w) => w.length > 2 && !STOPWOORDEN.has(w)),
   );
 }
-function zelfdePunt(a: Set<string>, b: Set<string>): boolean {
+function zelfdePunt(a: Set<string>, b: Set<string>, drempel = 0.7): boolean {
   if (!a.size || !b.size) return false;
   let gedeeld = 0;
   for (const w of a) if (b.has(w)) gedeeld++;
+  if (drempel !== 0.7) return gedeeld / Math.min(a.size, b.size) >= drempel;
   // Ten opzichte van de KORTSTE regel: een korte samenvatting van een lange regel
   // is ook een dubbeling, en die zou bij delen door de langste onder de drempel vallen.
   return gedeeld / Math.min(a.size, b.size) >= 0.7;
@@ -149,7 +160,7 @@ const RUIS: RegExp[] = [
 ];
 
 export function splitCardInfo(toelichting: string, taak?: string): CardInfo {
-  const info: CardInfo = { achtergrond: [], afspraken: [], overig: [], perFase: {} };
+  const info: CardInfo = { achtergrond: [], afspraken: [], overig: [], perFase: {}, rest: [] };
   const seen = new Set<string>();
   // De titel van de kaart hoort niet als bullet IN de kaart. Bij het samenvoegen
   // werd de titel van het nieuwe punt er telkens bij geplakt, dus stond hij er
@@ -163,7 +174,16 @@ export function splitCardInfo(toelichting: string, taak?: string): CardInfo {
     const k = lineKey(regel);
     if (seen.has(k)) continue;
     seen.add(k);
-    if (titelWoorden && zelfdePunt(titelWoorden, inhoudswoorden(regel))) continue;
+    // Herhaalt deze regel de kaarttitel? Bij het samenvoegen werd de titel van het
+    // nieuwe punt telkens als bullet aangeplakt, dus stond hij er soms twee keer in,
+    // net anders geformuleerd ("Ontwikkel /diensten/tuinontwerp/ (uitbreiding met
+    // beplantingsplan)" naast de titel "Breid /diensten/tuinontwerp/ uit en verwerk
+    // beplantingsplan"). Ruimere drempel dan elders, want een misser hier kost niets:
+    // de regel verdwijnt niet maar zakt naar Eerdere notities.
+    if (titelWoorden && zelfdePunt(titelWoorden, inhoudswoorden(regel), 0.55)) {
+      info.rest.push(regel.replace(/^-\s*/, "").trim());
+      continue;
+    }
     if (isKopje(regel)) {
       const kop = regel.replace(/:$/, "").toLowerCase();
       if (/afspraken|herkomst|bron/.test(kop)) sectie = "afspraken";
@@ -202,6 +222,24 @@ export function splitCardInfo(toelichting: string, taak?: string): CardInfo {
   for (const f of Object.keys(info.perFase) as CardFaseKey[]) {
     info.perFase[f] = ontdubbel(info.perFase[f] || []);
   }
+
+  // Begrenzen: wat er boven de limiet uitkomt verhuist naar "Eerdere notities".
+  // Weggooien doen we nooit; het staat straks ingeklapt onderaan de kaart.
+  if (info.achtergrond.length > MAX_WAAROM) {
+    info.rest.push(...info.achtergrond.slice(MAX_WAAROM));
+    info.achtergrond = info.achtergrond.slice(0, MAX_WAAROM);
+  }
+  if (info.afspraken.length > MAX_AFSPRAKEN) {
+    info.rest.push(...info.afspraken.slice(MAX_AFSPRAKEN));
+    info.afspraken = info.afspraken.slice(0, MAX_AFSPRAKEN);
+  }
+  // Per fase één regel; de rest is bijna altijd een andere formulering van dezelfde
+  // instructie en hoort niet naast de stap te staan waar je mee bezig bent.
+  for (const f of Object.keys(info.perFase) as CardFaseKey[]) {
+    const v = info.perFase[f] || [];
+    if (v.length > 1) { info.rest.push(...v.slice(1)); info.perFase[f] = v.slice(0, 1); }
+  }
+  info.rest = ontdubbel(info.rest);
   return info;
 }
 
@@ -232,21 +270,32 @@ function infoKaart(icoon: string, kop: string, inhoud: string): string {
   return `<div class="wp-info-kaart"><div class="wp-info-kaarthead"><span class="wp-info-icoon">${icoon}</span><span class="wp-info-kop">${kop}</span></div>${inhoud}</div>`;
 }
 
-export function cardInfoHtml(toelichting: string, pageUrl?: string, taak?: string): string {
+export function cardInfoHtml(toelichting: string, pageUrl?: string, taak?: string, cijfers?: string): string {
   const domain = (() => { try { return pageUrl ? new URL(pageUrl).host : ""; } catch { return ""; } })();
   const info = splitCardInfo(toelichting, taak);
   const kaarten: string[] = [];
   if (info.achtergrond.length) {
-    kaarten.push(infoKaart(ICO_VLAG, "Doel", lijst(info.achtergrond, "wp-check-lijst")));
+    kaarten.push(infoKaart(ICO_VLAG, "Waarom deze pagina", lijst(info.achtergrond, "wp-check-lijst")));
   }
   const aanpak = ontdubbel([...info.overig, ...info.afspraken]);
   if (aanpak.length) {
     kaarten.push(infoKaart(ICO_KLEMBORD, "Aanpak en afspraken", lijst(aanpak, "wp-punt-lijst")));
   }
   const kolommen = kaarten.length ? `<div class="wp-info-doel${kaarten.length === 1 ? " wp-info-een" : ""}">${kaarten.join("")}</div>` : "";
+
+  // De cijfers komen uit de METING, nooit uit geschreven tekst. Zolang een getal in
+  // een zin stond, konden er twee metingen naast elkaar blijven staan (positie 27.9
+  // met 869 vertoningen én positie 30.1 met 615). Eén vaste plek maakt dat onmogelijk.
+  const cijferRegel = cijfers ? `<div class="wp-info-cijfers">${escapeHtml(cijfers)}</div>` : "";
+
+  // Wat niet in de begrensde kaart past staat hier, ingeklapt. Niets raakt kwijt;
+  // het staat alleen niet meer in de weg. <details> heeft geen JavaScript nodig.
+  const notities = info.rest.length
+    ? `<details class="wp-info-rest"><summary>Eerdere notities (${info.rest.length})</summary>${lijst(info.rest, "wp-punt-lijst")}</details>`
+    : "";
   // Geen emoji's in het dashboard: status-emoji's uit oudere kaartteksten worden
   // retroactief nette stipjes (zelfde betekenis, rustiger beeld).
-  const zonderEmoji = linkifyHtml(kolommen, domain)
+  const zonderEmoji = linkifyHtml(cijferRegel + kolommen + notities, domain)
     .replace(/✅|✔️|✔/g, '<span class="st-dot st-ok" title="In orde"></span>')
     .replace(/❌|✖️|✖|⛔/g, '<span class="st-dot st-fout" title="Probleem"></span>')
     .replace(/⚠️|⚠/g, '<span class="st-dot st-warn" title="Let op"></span>');

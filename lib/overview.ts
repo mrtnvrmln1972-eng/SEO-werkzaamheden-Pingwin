@@ -239,6 +239,9 @@ export function nextStep(p: PageWork, opp: { level: string; label: string; posit
 // uitkomst begrensd tot de pagina's die echt in het bord staan (payload).
 export type WeekplanPageInfo = {
   url: string; live: boolean;
+  // Cijfers voor de kaart. Uit de meting, zodat een getal nog maar op één plek kan
+  // staan en twee metingen elkaar niet meer kunnen tegenspreken.
+  klikken: number; vertoningen: number; doorgevoerd: boolean | null;
   strategie: boolean; gelieerde: boolean; analyse: boolean; blauwdruk: boolean; copy: boolean;
   bouw: boolean; structured: boolean; structuredStatus: string;
   next: string;
@@ -266,6 +269,7 @@ export async function getWeekplanPages(slug: string, onlyKeys?: Set<string>): Pr
     const fase = (naam: string, afgeleid: boolean) => (typeof m[naam] === "boolean" ? !!m[naam] : afgeleid);
     out[k] = {
       url: p.url, live: p.live,
+      klikken: p.clicks, vertoningen: p.impressions, doorgevoerd: p.doorgevoerd,
       strategie: fase("strategie", p.hasPlan),
       // Gelieerde pagina's = advies dat VANUIT deze pagina is verstuurd (uitgaand),
       // niet wat hij ontvangt; anders blijft de fase leeg na een geslaagde Start.

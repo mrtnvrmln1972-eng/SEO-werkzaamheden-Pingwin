@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import ActionCard, { type Action } from "./ActionCard";
 import AntwoordBlokken from "./AntwoordBlokken";
 import { linkifyHtml as linkify } from "../../../../lib/linkify";
+import { vraagHtml } from "../../../../lib/vraag-opmaak";
 
 type Msg = { role: "user" | "assistant"; content: string; actions?: Action[] };
 type Topic = { thread: string; count: number; title: string; summary: string; done: boolean };
@@ -11,8 +12,24 @@ type Topic = { thread: string; count: number; title: string; summary: string; do
 // Slugs/URL's klikbaar maken: gedeelde bron in lib/linkify.ts (zelfde gedrag als
 // voorheen, nu herbruikbaar voor de projectkaarten en andere output-plekken).
 
-// Aankondigings-/vulzinnen aan het begin van een antwoord ("Nu heb ik alles wat ik
-// nodig heb.") retroactief uit beeld filteren; ze kosten Maarten alleen leestijd.
+// De weekplanning stond twee keer in hetzelfde antwoord: als opsomming in de tekst
+// ("Week 1 — ... Week 2 — ...") én als voorstel-blok met exact dezelfde taken. Dat
+// leverde ook twee tellingen op die elkaar leken tegen te spreken ("3 punten
+// afgehandeld" naast "3 van de 5 staan nog niet in de weekplanning"). Het blok is de
+// waarheid, want dat is wat je echt kunt doorzetten; de opsomming gaat eruit. De
+// prompt verbiedt die opsomming al, maar de assistent houdt zich daar niet altijd
+// aan, en dit werkt ook op alle antwoorden die er al staan.
+function zonderWeekrecap(md: string, heeftVoorstel: boolean): string {
+  if (!heeftVoorstel) return md;
+  const regels = (md || "").split("\n");
+  const uit = regels.filter((r) => {
+    const t = r.trim().replace(/^[-*]\s*/, "").replace(/\*\*/g, "");
+    return !/^week\s*\d+\s*[—–:-]/i.test(t);
+  });
+  const samen = uit.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  return samen || md;
+}
+
 // Het eerste kopje van een antwoord, als samenvatting op de ingeklapte balk.
 // Zonder kopje de eerste zin, zodat je altijd ziet waar het antwoord over ging.
 function eersteKop(md: string): string {
@@ -22,21 +39,7 @@ function eersteKop(md: string): string {
     if (kop) return kop[1].replace(/[#*]/g, "").trim().slice(0, 90);
   }
   const tekst = (md || "").replace(/^[-*#>\s]+/, "").replace(/\*\*/g, "").trim();
-  const zin = tekst.split(/(?<=[.!?])\s/)[0] || tekst;
-  return zin.slice(0, 90) || "Eerder antwoord";
-}
-
-function stripAankondiging(md: string): string {
-  const regels = (md || "").split("\n");
-  let i = 0;
-  while (i < regels.length) {
-    const r = regels[i].trim();
-    if (!r) { i++; continue; }
-    if (r.length < 160 && /^(nu heb ik|hier (is|komt|volgt)|hieronder (volgt|staat)|prima[,.]|ok[eé][,.]|goed[,.]|helder[,.! ]|ik ga (nu )?)/i.test(r) && !/^##/.test(r)) { i++; continue; }
-    break;
-  }
-  const rest = regels.slice(i).join("\n").trim();
-  return rest || md;
+  return (tekst.split(/(?<=[.!?])\s/)[0] || tekst).slice(0, 90) || "Eerder antwoord";
 }
 
 // Lichte Markdown → HTML (kopjes, bullets, vet, links, tabellen). Zelfde regels
@@ -355,13 +358,19 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
                                 <AntwoordBlokken
                                   slug={slug}
                                   thread={t.thread}
-                                  content={stripAankondiging(m.content || "")}
+                                  content={zonderWeekrecap(m.content || "", (m.actions || []).some((a) => a.type === "weekplan_taken"))}
                                   toHtml={(md) => mdToHtml(md, domain)}
                                   onWeekplanChanged={onWeekplanChanged}
                                 />
                               </div>
                             )
-                          : <div className="ovc-bubble">{m.content}</div>}
+                          : (
+                              // Jouw eigen vraag compact: alinea's achter elkaar en de
+                              // kernwoorden vet, zodat je hem kunt scannen. De witregels
+                              // kostten een half scherm per gesprek.
+                              <div className="ovc-bubble ovc-bubble-vraag"
+                                dangerouslySetInnerHTML={{ __html: vraagHtml(m.content || "") }} />
+                            )}
                         {/* De grote knop maakt kaarten door het HELE antwoord opnieuw
                             door de assistent te halen; die verzint dan eigen titels,
                             weken en achtergrond. Staat er al een voorstel-blok onder
