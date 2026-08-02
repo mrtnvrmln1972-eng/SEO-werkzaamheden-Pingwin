@@ -2,7 +2,7 @@ import { sql, ensureSchema } from "./db";
 import { getClientBySlug } from "./clients";
 import { getEmails, getMetrics, getKeywords, getStatus } from "./snapshots";
 import { msStatus, msSearchClientEmails } from "./ms-graph";
-import { getClientUrls } from "./site-urls";
+import { getClientUrls, buildUrlContext } from "./site-urls";
 import { googleStatus, getGscForClient, getGscKeywordTrend, getGscForPage } from "./google";
 import { measurePage } from "./page-measure";
 import { metaVerdictText } from "./meta-rules";
@@ -14,6 +14,7 @@ import { buildOverview, overviewToText, getPageWorkStatus, pageWorkStatusToText 
 import { buildPageSignalsText, buildKeywordStandText, buildTeBouwenText } from "./page-signals";
 import { readDriveDoc } from "./drive";
 import { validateAction, executeAction, type ProposedAction } from "./overview-actions";
+import { controleerAntwoord, herstelOpdracht } from "./antwoord-controle";
 import type { ClientConfig } from "./clients";
 
 // ═══════════════════════════════════════════════════════════
@@ -195,17 +196,13 @@ async function buildOverviewContext(client: ClientConfig): Promise<string> {
   // De volledige URL-lijst van de site reist ALTIJD mee, zodat het model paden kan
   // matchen (enkelvoud/meervoud!) en nooit zelf een URL hoeft te vormen. Plus de
   // scandatum, zodat duidelijk is hoe vers de status-informatie is.
+  // De URL-lijst mét status en redirect-bestemming, plus een verse sitemap-check.
+  // Eerder gingen alleen de kale paden mee en werd de status weggegooid; daardoor
+  // zag een al opgeruimde pagina er precies zo uit als een levende. Zie
+  // buildUrlContext in lib/site-urls.ts voor de volledige uitleg.
   try {
-    const urls = await getClientUrls(client.slug);
-    if (urls.length) {
-      const paden = urls.map((u) => { try { return new URL(u.url).pathname; } catch { return u.url; } });
-      const nieuwste = urls.map((u) => u.lastScanned || "").filter(Boolean).sort().pop() || "";
-      const datum = nieuwste ? new Date(nieuwste).toLocaleDateString("nl-NL") : "onbekend";
-      parts.push(
-        `\n=== ALLE BEKENDE URL'S VAN DE SITE (paden uit de sitemap/scan; URL-status laatst gescand: ${datum}) ===\n` +
-        paden.slice(0, 250).join(", ").slice(0, 5000)
-      );
-    }
+    const blok = await buildUrlContext(client.slug, client.domain || "");
+    if (blok) parts.push("\n" + blok);
   } catch { /* aanvulling */ }
   try { parts.push("\n=== SITE-OVERZICHT (werkstatus + laaghangend fruit) ===\n" + overviewToText(await buildOverview(client.slug))); } catch { /* aanvulling */ }
   try { const ws = pageWorkStatusToText(await getPageWorkStatus(client.slug)); if (ws.trim()) parts.push("\n=== WERKSTATUS PER PAGINA (wat is gedaan / loopt / gepland) ===\n" + ws); } catch { /* aanvulling */ }
@@ -441,6 +438,7 @@ function chatTools(client: ClientConfig): { tools: ToolDef[]; run: ToolRunner } 
   };
   const tools: ToolDef[] = [
     { name: "meet_pagina", description: "Leest en meet een pagina live uit: meta-title/description, H1/H2/H3, aantal woorden, interne/externe links, afbeeldingen, FAQ en schema. Gebruik dit ZELF om contentkwaliteit en on-page zaken te beoordelen in plaats van ernaar te vragen.", input_schema: { type: "object", properties: { url: { type: "string", description: "Volledige URL of pad (bijv. /zwemvijvers/)" } }, required: ["url"] } },
+    { name: "controleer_url", description: "Controleert LIVE wat een URL echt doet: bestaat hij (200), is hij al omgeleid (301/302, en waarheen), of is hij weg (404). Volgt de omleiding NIET, dus dit is de enige betrouwbare manier om te weten of een pagina nog leeft. Gebruik dit ALTIJD voordat je zegt dat een pagina live staat, nog gebouwd moet worden, of opgeruimd/omgeleid moet worden. Ook voor een pad dat niet in de bekende URL-lijst staat.", input_schema: { type: "object", properties: { url: { type: "string", description: "Volledige URL of pad" } }, required: ["url"] } },
     { name: "gsc_pagina", description: "Search Console-zoekwoorden van één pagina (laatste 90 dagen): zoekwoord, klikken, vertoningen, positie.", input_schema: { type: "object", properties: { url: { type: "string", description: "Volledige URL of pad" } }, required: ["url"] } },
     { name: "ahrefs_pagina", description: "Ahrefs-gegevens van één pagina: organische zoekwoorden met positie/volume/verkeer, plus het aantal verwijzende domeinen (externe autoriteit) van die pagina.", input_schema: { type: "object", properties: { url: { type: "string", description: "Volledige URL of pad" } }, required: ["url"] } },
     { name: "serp_top10", description: "De actuele top 10 van Google voor een zoekwoord (NL): positie, URL, titel, domain rating en resultaattype. Gebruik dit ZELF om de concurrentie te beoordelen.", input_schema: { type: "object", properties: { zoekwoord: { type: "string" } }, required: ["zoekwoord"] } },
@@ -449,13 +447,22 @@ function chatTools(client: ClientConfig): { tools: ToolDef[]; run: ToolRunner } 
   const run: ToolRunner = async (name, input) => {
     try {
       if (name === "meet_pagina") {
-        const m = await measurePage(toFull(String(input.url || "")), { staticOnly: true });
+        const gevraagd = toFull(String(input.url || ""));
+        const m = await measurePage(gevraagd, { staticOnly: true });
         if (!m.ok) return `Pagina niet leesbaar (status ${m.status ?? "?"}).`;
+        // Een omleiding MOET bovenaan staan. Zonder deze regel meet je vier
+        // omgeleide URL's, krijg je vier keer de doelpagina terug (zelfde titel,
+        // zelfde woordaantal) en concludeer je "vier identieke duplicaten",
+        // terwijl ze allang zijn opgeruimd. Dat is precies wat er misging.
+        const padOf = (u: string) => { try { return new URL(u).pathname; } catch { return u; } };
+        const omleiding = m.redirected && padOf(m.finalUrl) !== padOf(gevraagd)
+          ? `LET OP, DIT IS EEN OMLEIDING. ${padOf(gevraagd)} leidt door naar ${padOf(m.finalUrl)}. Alles hieronder is gemeten op ${padOf(m.finalUrl)}, NIET op ${padOf(gevraagd)}. ${padOf(gevraagd)} is dus AL opgeruimd: noem hem geen duplicaat, geen dunne pagina en stel niet voor om hem om te leiden.\n`
+          : "";
         const normImg = (f: string) => f.toLowerCase().replace(/-\d+x\d+(?=\.[a-z0-9]+$)/, "");
         const imgUniek = new Set(m.images.map((i) => normImg(i.file))).size;
         const imgUniekNoAlt = new Set(m.images.filter((i) => !i.hasAlt || !i.alt.trim()).map((i) => normImg(i.file))).size;
         return [
-          `Status ${m.status}. Title (${metaVerdictText("meta_title", m.metaTitle)}): ${m.metaTitle}`,
+          omleiding + `Status ${m.status}. Title (${metaVerdictText("meta_title", m.metaTitle)}): ${m.metaTitle}`,
           `Meta-description (${metaVerdictText("meta_description", m.metaDescription)}): ${m.metaDescription}`,
           `H1: ${m.h1.join(" | ") || "(geen)"}`,
           `H2 (${m.h2.length}): ${m.h2.join(" | ")}`,
@@ -463,6 +470,25 @@ function chatTools(client: ClientConfig): { tools: ToolDef[]; run: ToolRunner } 
           `Woorden: ${m.wordCount}. Interne links: ${m.internalLinkCount}, extern: ${m.externalLinkCount}.`,
           `Afbeeldingen: ${imgUniek} uniek${m.images.length > imgUniek ? ` (${m.images.length} img-tags incl. responsive/lazyload-varianten)` : ""}, zonder alt: ${imgUniekNoAlt} uniek. FAQ: ${m.faqDetected ? `ja (${m.faqCount})` : "nee"}. Schema: ${m.schemaTypes.join(", ") || "geen"}.`,
         ].join("\n");
+      }
+      if (name === "controleer_url") {
+        // redirect: "manual" is hier het hele punt: we willen de ECHTE status van
+        // dit adres zien, niet die van de pagina waar hij eventueel heen wijst.
+        const doel = toFull(String(input.url || ""));
+        const padOf2 = (u: string) => { try { return new URL(u).pathname; } catch { return u; } };
+        try {
+          const ctrl = new AbortController();
+          const t = setTimeout(() => ctrl.abort(), 10000);
+          const res = await fetch(doel, { redirect: "manual", signal: ctrl.signal, headers: { "User-Agent": "Mozilla/5.0 PingwinBot" } }).finally(() => clearTimeout(t));
+          if (res.status >= 300 && res.status < 400) {
+            const naar = res.headers.get("location") || "";
+            return `${padOf2(doel)}: ${res.status} OMGELEID naar ${naar ? padOf2(naar) : "onbekende bestemming"}. Deze pagina is AL opgeruimd. Stel niet voor om hem om te leiden en noem hem geen duplicaat.`;
+          }
+          if (res.status >= 400) return `${padOf2(doel)}: ${res.status}, deze pagina bestaat NIET (meer).`;
+          return `${padOf2(doel)}: ${res.status}, staat echt live.`;
+        } catch (e) {
+          return `${padOf2(doel)}: niet te controleren (${(e as Error).message}). Doe hier GEEN uitspraak over de status.`;
+        }
       }
       if (name === "gsc_pagina") {
         const rows = await getGscForPage(domain, toFull(String(input.url || "")), 90);
@@ -479,7 +505,10 @@ function chatTools(client: ClientConfig): { tools: ToolDef[]; run: ToolRunner } 
         const norm = (u: string) => u.replace(/^https?:\/\/(www\.)?/i, "").replace(/\/$/, "");
         const rd = top.find((t) => norm(t.url) === norm(full))?.refDomains;
         const kwText = kws.length ? kws.map((k) => `${k.keyword}: pos ${k.position ?? "-"}, vol ${k.volume ?? "-"}, verkeer ${k.traffic ?? "-"}`).join("\n") : "Geen organische zoekwoorden gevonden.";
-        return `Verwijzende domeinen naar deze pagina: ${rd ?? "onbekend"}.\n${kwText}`;
+        const rdText = rd === undefined || rd === null
+          ? "Verwijzende domeinen naar deze pagina: NIET OPGEHAALD (deze pagina staat niet in de Ahrefs top-pages). Noem hier GEEN getal; zeg dat het niet gemeten is."
+          : `Verwijzende domeinen naar deze pagina: ${rd} (Ahrefs).`;
+        return `${rdText}\n${kwText}`;
       }
       if (name === "serp_top10") {
         const rows = await getSerpOverview(String(input.zoekwoord || ""), "nl");
@@ -834,7 +863,9 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
       `- NIEUWE PAGINA = EERST STRATEGIE (verplicht, met cannibalisatie-check). Voor een nieuwe pagina is de eerste stap NOOIT blauwdruk of copy, maar een doordachte strategie. Doe ZELF eerst de cannibalisatie-check: kijk met ahrefs_pagina/gsc_pagina/serp_top10 (en site_overzicht) of de site al rankt op de doeltermen van de nieuwe pagina. Rankt er al een bestaande pagina hoog op die term (een "pillar"), dan mag de nieuwe pagina die term NIET overnemen; hij moet ondersteunen: afwijkende/specifiekere zoektermen, bij voorkeur een URL als kind onder de pillar, en interne links omhoog naar de pillar. Stel de strategie voor als 'strategie_bepalen'-kaart (bewerkbaar; Maarten past aan/keurt goed). Pas NA goedkeuren mag 'pijplijn_starten' met blauwdruk/copy; stel die dus niet eerder voor. Gooit Maarten een URL of screenshot met "kijk hoe deze rankt", neem die pagina dan mee in de strategie.\n` +
       `- WEEKPLANNING: vraagt Maarten om een planning of taken (bijv. "kun je een planning maken", "maak een weekplanning", "maak hier taken van", "wat kunnen we oppakken", "geef een werklijstje"), geef dan (a) je inhoudelijke terugkoppeling in tekst = ALLEEN de STAND VAN ZAKEN (de analyse), netjes opgemaakt volgens de OPMAAK-regels (blokken met oranje kopjes, streepjes ertussen, bullets, vet, linkjes). GEEN aparte "Prioriteitsvolgorde"- of "Weekplanning per week"-tekstlijst, want dat is de dubbele lijst die Maarten niet wil. EN (b) roep in DEZELFDE beurt 'stel_acties_voor' aan met één 'weekplan_taken': dát is de planning. Per taak: de wie (SEO of Dev), de pagina (url), het taaktype, de week (1 = deze week, 2 = volgende, enzovoort), en in 'info' de VOLLEDIGE achtergrond/redenering (waar komt het vandaan zoals de mail van 30 juli, welke interne links, hoe het zich verhoudt tot andere pagina's, verwachte impact). Elke losse taak is een aparte kaart in de juiste week; de per-week-redenering leeft dus in de kaarten, niet in je tekst. CRUCIAAL: vraag NIET eerst "zal ik dit in de weekplanning zetten?"; de planning-vraag IS het verzoek, maak de kaarten meteen. Kondig het niet aan, maak ze echt. Roep 'weekplan_taken' in ÉÉN keer aan met alle taken er meteen in (nooit leeg, nooit "in twee stappen"). Eindig je beurt NOOIT met alleen een aankondiging als "hier komt de planning" of "ik ga de kaarten aanmaken" zonder de gevulde tool-aanroep: die gevulde aanroep ÍS de planning. Wordt een actie afgekeurd, doe hem dan in dezelfde beurt opnieuw, correct gevuld.\n` +
       `- GEEN MUUR VAN TAKEN (belangrijk): de rijke context is om te WEGEN, niet om alles wat je signaleert als taak uit te spugen. Kies een behapbaar, op prioriteit gesorteerd geheel (richtlijn: een handvol taken per week, niet elk gevonden kansje). Bouw de prioriteit in deze weging: (1) afspraken met de klant (landingspagina's + zoekwoorden), (2) recente mails / open opvolging, (3) belangrijke pagina's die nog opgezet of geoptimaliseerd moeten worden voor de site (autoriteit), (4) laaghangend fruit als aanvulling. Een mooie mix, van hoog naar laag. Een planning mag enkele weken tot ~twee maanden vooruit reiken (week 1 tot 8+), maar gedoseerd en gemotiveerd, niet alles tegelijk.\n` +
-      `- Verzin geen cijfers; noem alleen wat uit de bronnen of het gereedschap komt.\n\n` +
+      `- ELK RANKINGCIJFER KOMT UIT EEN VERSE AANROEP, NOOIT UIT JE HOOFD (hard, hier is het eerder grondig misgegaan). Noem je een positie, een Domain Rating of een aantal verwijzende domeinen, dan heb je in DEZE beurt gsc_pagina, ahrefs_pagina of serp_top10 aangeroepen en neem je het cijfer letterlijk over. Zet er de bron bij, bijvoorbeeld "positie 3,6 (Search Console, 90 dagen)" of "positie 7 (Ahrefs)". Search Console en Ahrefs zijn twee verschillende bronnen die verschillende cijfers geven; haal ze nooit door elkaar en presenteer nooit het ene als het andere. Geeft een bron geen data, schrijf dan "Ahrefs: geen positie bekend". Vul NOOIT een getal in dat plausibel lijkt.\n` +
+      `- STATUS VAN EEN PAGINA CONTROLEER JE MET controleer_url, ALTIJD. Voordat je zegt dat een pagina live staat, nog gebouwd moet worden, dun is, een duplicaat is of opgeruimd/omgeleid moet worden: controleer hem. meet_pagina volgt een omleiding en toont dan de inhoud van de DOELpagina; staat er "LET OP, DIT IS EEN OMLEIDING" in de uitvoer, dan is de gevraagde pagina AL opgeruimd en zeg je dat, in plaats van hem als duplicaat op te voeren. Een pagina die in de context onder OMGELEID staat is klaar; die stel je nooit voor om op te ruimen.\n` +
+      `- Verzin geen cijfers; noem alleen wat uit de bronnen of het gereedschap komt. Er draait een automatische feitencontrole op je antwoord: elk pad en elk cijfer wordt naast de context en de tool-uitvoer gelegd. Wat daar niet in staat wordt tegengehouden en moet je overdoen. Schrijf dus liever "niet gemeten" dan een getal te gokken.\n\n` +
       `OPMAAK (heel belangrijk voor Maarten, dit moet er verzorgd en scanbaar uitzien, NOOIT een muur lopende tekst). Nederlands, Markdown, geen emoji (dus ook geen vinkjes of kruisjes als tekens; schrijf gewoon "live", "404" of "let op"). Verplichte structuur, elke terugkoppeling:\n` +
       `  - Begin DIRECT met het eerste kopje. GEEN aankondigings- of vulzinnen zoals "Nu heb ik alles wat ik nodig heb" of "Hier de volledige terugkoppeling"; die kosten Maarten alleen leestijd.\n` +
       `  - Deel je antwoord op in BLOKKEN, elk met een eigen gekleurd kopje (## Kop). Zet een scheidingslijn (--- op een eigen regel, wordt een streepje) TUSSEN de blokken.\n` +
@@ -892,7 +923,16 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
     });
     const base = chatTools(client);
     const collected: ProposedAction[] = [];
-    const { tools, run } = isOverview ? overviewTools(client, base, collected) : base;
+    const { tools, run: rawRun } = isOverview ? overviewTools(client, base, collected) : base;
+    // Alles wat het gereedschap in DEZE beurt teruggaf, bewaren. Dat is samen met
+    // de context het enige bewijsmateriaal; de feitencontrole hieronder toetst het
+    // antwoord daartegen.
+    const toolUitvoer: string[] = [];
+    const run: ToolRunner = async (naam, invoer) => {
+      const uit = await rawRun(naam, invoer);
+      toolUitvoer.push(`[${naam}] ${uit}`);
+      return uit;
+    };
     // De chat geeft gewoon zijn rijke agentische antwoord (dat Maarten goed vindt). De
     // taak-kaarten worden NIET meer hier auto-gegenereerd (te fragiel); dat doet de
     // deterministische knop "Zet de taken in de weekplanning" (weekplanFromAnswer) op verzoek.
@@ -931,6 +971,43 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
       }
       const rest = regels.slice(i).join("\n").trim();
       if (rest) answer = rest;
+    }
+
+    // ── Feitencontrole: geen cijfer of pad zonder bron ──────────────────────
+    // Dit is de rem die er niet was. De prompt zei al "verzin geen cijfers"; dat
+    // hield niets tegen. Nu wordt het antwoord getoetst aan de context plus wat
+    // de tools echt teruggaven, en moet het over als er iets niet klopt.
+    if (isOverview && answer) {
+      try {
+        const bekendePaden = (await getClientUrls(client.slug).catch(() => []))
+          .map((u) => { try { return new URL(u.url).pathname; } catch { return u.url; } });
+        const bronnen = context + "\n" + toolUitvoer.join("\n");
+        let controle = controleerAntwoord(answer, bronnen, bekendePaden);
+        if (!controle.ok) {
+          const hersteld = await callClaudeAgentic(
+            system,
+            [...(apiMessages as { role: "user" | "assistant"; content: string }[]),
+             { role: "assistant", content: answer },
+             { role: "user", content: herstelOpdracht(controle) }],
+            tools, run, 6, 3200, { slug, action: "overzicht-chat-feitencontrole" },
+          );
+          if (hersteld && hersteld.trim()) {
+            const naControle = controleerAntwoord(hersteld, context + "\n" + toolUitvoer.join("\n"), bekendePaden);
+            answer = hersteld;
+            controle = naControle;
+          }
+          // Nog steeds niet rond? Dan verzwijgen we dat niet, maar zetten we er
+          // met zoveel woorden boven wat er niet is nagetrokken. Liever een
+          // zichtbare waarschuwing dan een cijfer dat betrouwbaar lijkt.
+          if (!controle.ok) {
+            const punten = [
+              ...(controle.cijfers.length ? [`cijfers die niet zijn opgehaald: ${controle.cijfers.join("; ")}`] : []),
+              ...(controle.paden.length ? [`paden die niet in de sitemap staan: ${controle.paden.join(", ")}`] : []),
+            ];
+            answer = `## Let op, niet alles hieronder is nagetrokken\n\nDe feitencontrole kreeg deze punten niet bevestigd uit Search Console, Ahrefs of de sitemap: ${punten.join(", ")}. Behandel die als onbetrouwbaar en vraag om ze na te meten.\n\n---\n\n${answer}`;
+          }
+        }
+      } catch { /* de controle mag een antwoord nooit helemaal blokkeren */ }
     }
 
     const finalAnswer = answer || "(geen antwoord)";

@@ -18,6 +18,13 @@ export type MeasuredLink = { href: string; text: string };
 export type PageMeasurement = {
   ok: boolean;
   status: number | null;
+  // Was dit een omleiding, en waar kwamen we uit? Dit MOET mee naar boven.
+  // Zonder deze twee velden meet je /hiv-testen-amsterdam/ en krijg je zwijgend
+  // de inhoud van /soa-klinieken/soa-test-amsterdam/ terug: status 200, zelfde
+  // titel, zelfde woordaantal. Vier omgeleide URL's leverden zo vier "identieke
+  // duplicaten" op die in werkelijkheid allang waren opgeruimd.
+  redirected: boolean;
+  finalUrl: string;
   rendered: boolean; // via headless browser gerenderd?
   metaTitle: string; titleLength: number;
   // Aantal echte <title>-tags in de code (buiten svg-logo's om); 1 is correct.
@@ -68,7 +75,7 @@ function metaContent(html: string, key: string, kind: "name" | "property"): stri
 
 export async function measurePage(url: string, opts?: { staticOnly?: boolean }): Promise<PageMeasurement> {
   const empty: PageMeasurement = {
-    ok: false, status: null, rendered: false, metaTitle: "", titleLength: 0, titleTagCount: 0, metaDescription: "", descriptionLength: 0,
+    ok: false, status: null, redirected: false, finalUrl: "", rendered: false, metaTitle: "", titleLength: 0, titleTagCount: 0, metaDescription: "", descriptionLength: 0,
     canonical: "", robots: "", viewport: "", ogTitle: "", ogDescription: "", ogImage: "",
     h1: [], h2: [], h3: [], wordCount: 0, images: [], imagesWithoutAlt: 0, imagesNonWebp: 0,
     internalLinks: [], internalLinkCount: 0, externalLinkCount: 0, schemaTypes: [], faqDetected: false, faqCount: 0,
@@ -78,17 +85,22 @@ export async function measurePage(url: string, opts?: { staticOnly?: boolean }):
   // staticOnly slaat de browser over (voor concurrent-pagina's: snel, geen latency).
   const r = opts?.staticOnly ? { html: "", status: null as number | null, rendered: false } : await renderHtml(url);
   let html = r.html, status = r.status, rendered = r.rendered;
+  // Een omleiding mag nooit stil blijven. We volgen hem wel (de inhoud van de
+  // doelpagina is bruikbaar), maar leggen vast DAT het gebeurde en waarheen.
+  let redirected = false, finalUrl = url;
   if (!html) {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 12000);
     try {
       const res = await fetch(url, { redirect: "follow", signal: ctrl.signal, headers: { "User-Agent": "Mozilla/5.0 PingwinBot" } });
       status = res.status;
+      redirected = !!res.redirected;
+      finalUrl = res.url || url;
       if (res.ok) html = await res.text();
     } catch { /* laat leeg */ } finally { clearTimeout(t); }
     rendered = false;
   }
-  if (!html) return { ...empty, status };
+  if (!html) return { ...empty, status, redirected, finalUrl };
 
   const metaTitle = decode((html.match(/<title[^>]*>([\s\S]*?)<\/title>/i) || ["", ""])[1]);
   // Echte paginatitels tellen: svg-blokken eerst weghalen (een logo-svg heeft vaak
@@ -144,7 +156,7 @@ export async function measurePage(url: string, opts?: { staticOnly?: boolean }):
   const faqCount = [...h2, ...h3].filter((h) => /\?$/.test(h.trim())).length;
 
   return {
-    ok: true, status, rendered,
+    ok: true, status, redirected, finalUrl, rendered,
     metaTitle, titleLength: metaTitle.length, titleTagCount, metaDescription, descriptionLength: metaDescription.length,
     canonical: attr((html.match(/<link[^>]+rel=["']canonical["'][^>]*>/i) || [""])[0] || "", "href"),
     robots: metaContent(html, "robots", "name") || "default",
