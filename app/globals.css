@@ -2182,14 +2182,68 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .ovc-bubble.chat-md table.chat-table th { background: rgba(231, 119, 63, 0.10); color: var(--dark); font-weight: 800; text-align: left; padding: 7px 11px; border: 1px solid var(--border); vertical-align: top; }
 .ovc-bubble.chat-md table.chat-table td { padding: 7px 11px; border: 1px solid var(--border); text-align: left; vertical-align: top; }
 .ovc-bubble.chat-md table.chat-table tr:nth-child(even) td { background: var(--gray-light); }
-/* Knop onder een bird's eye-antwoord: zet de concrete taken in het weekplanning-bord. */
-.ovc-maketasks { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; margin: var(--s-2) 0 0; }
-.ovc-mk-btn { border: 1px solid var(--orange); background: var(--orange); color: #fff; cursor: pointer; font-size: 12.5px; font-weight: 700; padding: 6px 13px; border-radius: 8px; }
-.ovc-mk-btn:hover { background: var(--orange-dark); border-color: var(--orange-dark); }
-.ovc-mk-btn:disabled { opacity: 0.6; cursor: default; }
-.ovc-mk-msg { font-size: 12px; }
-.ovc-mk-msg.ok { color: #1c7a3f; }
-.ovc-mk-msg.err { color: #b3261e; }
+/* ── Eerst sparren, dan concluderen, dan pas taken ────────────────────────────
+   De twee knoppen onder het gesprek. Ze staan bewust ONDER het hele gesprek en
+   niet bij een los antwoord: beide stappen wegen het complete gesprek. */
+.ovc-oogst { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; margin-top: var(--s-3); padding-top: var(--s-3); border-top: 1px solid var(--border); }
+.ovc-oogst-uitleg { font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); flex: 1 1 200px; }
+
+/* De conclusie is een antwoord met een eigen accent, zodat je hem terugvindt. */
+.ovc-msg.assistant .ovc-bubble.chat-md.ovc-conclusie { border-left: 3px solid var(--orange); background: #FFFBF8; }
+/* Label in --dark, niet in oranje: op 11px haalt oranje op wit geen AA-contrast.
+   Het oranje randje links draagt hier het accent. */
+.ovc-conclusie-label { font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--dark); margin-bottom: var(--s-2); }
+
+/* Het takenvoorstel: aanvinken wat er echt in de weekplanning hoort. */
+.tv-blok { width: 100%; background: var(--white); border: 1px solid var(--card-border); border-radius: var(--r-lg); padding: var(--s-4) var(--s-5); box-shadow: var(--shadow-sm); }
+.tv-kop { display: flex; align-items: baseline; gap: var(--s-3); flex-wrap: wrap; padding-bottom: var(--s-2); margin-bottom: var(--s-3); border-bottom: 1px solid #F3E9E1; }
+.tv-koptitel { font-weight: 800; font-size: var(--fs-md); line-height: var(--lh-md); color: var(--orange); }
+.tv-kopmeta { font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); }
+.tv-leeg { font-size: var(--fs-base); line-height: var(--lh-base); color: var(--gray); margin: 0 0 var(--s-2); }
+
+.tv-rij { position: relative; display: flex; align-items: flex-start; gap: var(--s-3); padding: var(--s-3) 0; border-bottom: 1px solid var(--border); }
+.tv-rij:last-of-type { border-bottom: none; }
+/* Niet-aangevinkt dimmen we NIET met opacity: juist die regels moet je goed kunnen
+   lezen om te beslissen. Alleen de titel wordt rustiger; het vinkje is het signaal. */
+.tv-rij:not(.aan) .tv-titel { color: var(--gray); font-weight: 600; }
+.tv-vink { flex: none; accent-color: var(--orange); cursor: pointer; width: 18px; height: 18px; margin-top: 2px; }
+.tv-tekst { display: flex; flex-direction: column; gap: var(--s-1); flex: 1 1 auto; min-width: 0; }
+.tv-titel { border: none; border-bottom: 1px solid transparent; background: transparent; font-family: inherit; font-weight: 700; font-size: var(--fs-base); line-height: var(--lh-base); color: var(--dark); padding: 0; width: 100%; max-width: 70ch; }
+.tv-titel:hover:not(:disabled) { border-bottom-color: var(--border); }
+.tv-titel:focus-visible { outline: none; border-bottom-color: var(--orange); box-shadow: 0 2px 0 -1px var(--orange); }
+.tv-titel:disabled { color: var(--gray); }
+.tv-waarom { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray); max-width: 70ch; }
+.tv-meta { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; margin-top: var(--s-1); }
+.tv-chip { font-size: var(--fs-xs); line-height: var(--lh-xs); padding: 2px var(--s-2); border-radius: var(--r-full); background: var(--gray-light); color: var(--gray); font-weight: 700; }
+/* Zekerheid is ook aan het WOORD herkenbaar ("duidelijk"/"waarschijnlijk"/"suggestie"),
+   niet alleen aan de kleur. Tekstkleuren halen AA op hun eigen achtergrond. */
+.tv-zeker-hoog { background: rgba(28, 122, 63, 0.10); color: #1c7a3f; }
+.tv-zeker-middel { background: rgba(231, 119, 63, 0.14); color: var(--dark); }
+.tv-zeker-laag { background: var(--gray-light); color: var(--gray); }
+.tv-pad { font-size: var(--fs-xs); line-height: var(--lh-xs); }
+
+.tv-rij-acties { position: relative; flex: none; }
+.tv-lijst-btn { border: 1px solid var(--border); background: var(--white); color: var(--gray); cursor: pointer; width: 28px; height: 28px; border-radius: var(--r-sm); font-size: var(--fs-base); line-height: 1; }
+.tv-lijst-btn:hover { border-color: var(--orange); color: var(--orange-dark); }
+.tv-lijst-btn:focus-visible { outline: 2px solid var(--orange); outline-offset: 1px; }
+.tv-lijstpop { position: absolute; right: 0; top: 28px; z-index: 20; display: flex; flex-direction: column; min-width: 140px; background: var(--white); border: 1px solid var(--card-border); border-radius: var(--r-md); box-shadow: var(--shadow-lg); overflow: hidden; }
+.tv-lijstpop button { border: none; background: none; text-align: left; padding: var(--s-2) var(--s-3); font-size: var(--fs-sm); line-height: var(--lh-sm); cursor: pointer; color: var(--dark); }
+.tv-lijstpop button:hover { background: var(--gray-light); }
+
+/* Wat bewust GEEN taak is: zichtbaar dat het is meegewogen, zonder ruimte op te eisen. */
+.tv-geen { margin-top: var(--s-3); padding-top: var(--s-3); border-top: 1px solid var(--border); }
+.tv-geen-kop { display: flex; align-items: center; gap: var(--s-2); border: none; background: none; padding: 0; cursor: pointer; font-family: inherit; font-size: var(--fs-sm); line-height: var(--lh-sm); font-weight: 700; color: var(--gray); }
+.tv-geen-kop:hover { color: var(--dark); }
+.tv-geen-kop:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; border-radius: var(--r-sm); }
+.tv-geen-pijl { color: var(--orange-dark); font-size: var(--fs-xs); }
+.tv-geen-lijst { margin: var(--s-2) 0 0; padding-left: var(--s-5); display: flex; flex-direction: column; gap: var(--s-1); }
+.tv-geen-lijst li { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray); max-width: 70ch; }
+
+.tv-voet { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; margin-top: var(--s-4); padding-top: var(--s-3); border-top: 1px solid #F3E9E1; }
+.tv-klaar { margin-top: var(--s-3); font-size: var(--fs-sm); line-height: var(--lh-sm); font-weight: 700; color: #1c7a3f; }
+.tv-melding { margin-top: var(--s-2); font-size: var(--fs-sm); line-height: var(--lh-sm); }
+.tv-melding.ok { color: #1c7a3f; }
+.tv-melding.err { color: #b3261e; }
 
 /* Assistent-antwoorden als sectie-kaartjes met taak-knopjes (retroactief, alle werelden). */
 .ovc-bubble-blokken { background: transparent; border: none; padding: 0; }

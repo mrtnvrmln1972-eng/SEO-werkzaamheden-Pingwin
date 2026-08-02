@@ -595,6 +595,205 @@ export async function weekplanFromAnswer(slug: string, answer: string, thread = 
   return { ok: result.ok, added, merged, error: result.ok ? undefined : result.message };
 }
 
+// ═══════════════════════════════════════════════════════════
+// EERST SPARREN, DAN CONCLUDEREN, DAN PAS TAKEN
+// ═══════════════════════════════════════════════════════════
+// Waarom dit bestaat: de bird's eye hing vier knopjes aan ELKE bullet, en een
+// regex (lib/punt-soort.ts) moest per regel raden of het werk was. Dat raden gaat
+// mis ("Foto's met locatiecontext versterken dit" is een inzicht, geen taak) en het
+// gebeurt op het verkeerde moment: midden in een gesprek waarin nog gedacht wordt.
+// Nu is het één bewuste denkstap over het HELE gesprek, door Maarten getriggerd:
+// eerst sparren (geen knopjes), dan "Trek de conclusie", dan pas "Welke taken
+// volgen hieruit?". Dat laatste levert een voorstel dat hij aanvinkt; niets gaat
+// automatisch door. Zo is er nog maar één weg naar een taak.
+// ═══════════════════════════════════════════════════════════
+
+// Het hele gesprek als leesbare tekst voor de conclusie- en oogst-stap. Bewust NIET
+// messages.slice(-10) zoals de gewone beurt: juist het complete verloop telt hier.
+// Bij een heel lang gesprek houden we het EINDE vast (daar staat de afweging).
+function gesprekAlsTekst(messages: ChatMessage[], max = 24000): string {
+  const regels = messages
+    .filter((m) => m.soort !== "oogst" && (m.content || "").trim().length > 10)
+    .map((m) => `${m.role === "user" ? "MAARTEN" : "ASSISTENT"}: ${(m.content || "").trim()}`);
+  const tekst = regels.join("\n\n");
+  return tekst.length > max ? "(het begin van het gesprek is ingekort)\n\n" + tekst.slice(-max) : tekst;
+}
+
+/**
+ * Stap 1 van het oogsten: lees het hele gesprek terug en schrijf de conclusie.
+ * Bewust GEEN nieuwe analyse en geen gereedschap: dit vat samen waar het gesprek
+ * op uitkomt, zodat de takenstap daarna iets heeft om zich op te baseren.
+ */
+export async function trekConclusie(slug: string, thread = "overzicht"): Promise<{ ok: boolean; answer?: string; error?: string }> {
+  if (!process.env.ANTHROPIC_API_KEY) return { ok: false, error: "Geen ANTHROPIC_API_KEY ingesteld." };
+  const client = await getClientBySlug(slug);
+  if (!client) return { ok: false, error: "Klant niet gevonden." };
+  const messages = await getChatHistory(slug, thread);
+  const gesprek = gesprekAlsTekst(messages);
+  if (!gesprek.trim()) return { ok: false, error: "Er is nog geen gesprek om een conclusie uit te trekken." };
+
+  const system =
+    `Je bent de bird's eye-strateeg van Pingwin voor de klant ${client.name}. Hieronder staat een volledig gesprek tussen Maarten en jou. Trek daar nu de conclusie uit.\n\n` +
+    `WAT DIT WEL EN NIET IS: dit is een samenvattende conclusie van wat er in dit gesprek is besproken en afgewogen. Geen nieuwe analyse, geen nieuwe feiten, geen takenlijst en geen weekplanning; de taken komen in een aparte stap hierna.\n\n` +
+    `STRUCTUUR, precies deze kopjes (laat een kopje weg als er niets zinnigs onder staat):\n` +
+    `## Waar we op uitkomen\n## Wat we nu weten\n## Wat nog open staat\n\n` +
+    `REGELS:\n` +
+    `- Nederlands, Markdown, geen emoji.\n` +
+    `- Korte bullets (-), één gedachte per bullet. Geen lange alinea's, geen muur.\n` +
+    `- Begin DIRECT met het eerste kopje. Geen aankondigings- of vulzinnen ("Hier is de conclusie", "Nu heb ik het beeld compleet").\n` +
+    `- Onder "Wat nog open staat" horen echte open punten: wat we niet weten, waar we op wachten, of waar Maarten of de klant nog over moet beslissen.\n` +
+    `- **Vet** voor de kernfeiten. Pagina's en paden schrijf je KAAL als pad (/hovenier-oss/); die worden vanzelf klikbaar. Nooit [tekst](/pad/).\n` +
+    `- Verzin niets dat niet in het gesprek staat.`;
+
+  try {
+    const raw = await callClaude(system, [{ role: "user", content: gesprek }], 1600, { slug, action: "overzicht-conclusie" });
+    const answer = (raw || "").trim();
+    if (!answer) return { ok: false, error: "De conclusie kwam leeg terug. Probeer het nog een keer." };
+    const bericht: ChatMessage = { role: "assistant", content: answer, soort: "conclusie" };
+    await saveChatHistory(slug, thread, [...messages, bericht]);
+    return { ok: true, answer };
+  } catch (err) {
+    return { ok: false, error: "AI niet bereikbaar: " + (err as Error).message };
+  }
+}
+
+/**
+ * Stap 2 van het oogsten: bepaal welk werk er uit het HELE gesprek volgt.
+ * Levert een VOORSTEL op (niets wordt automatisch weggezet). "geen_taak" maakt
+ * zichtbaar wat bewust niet als werk is aangemerkt, zodat er niets stilletjes
+ * wegvalt en Maarten kan zien dat het is meegewogen.
+ */
+export async function oogstTaken(slug: string, thread = "overzicht"): Promise<{ ok: boolean; oogst?: OogstResultaat; error?: string }> {
+  if (!process.env.ANTHROPIC_API_KEY) return { ok: false, error: "Geen ANTHROPIC_API_KEY ingesteld." };
+  const client = await getClientBySlug(slug);
+  if (!client) return { ok: false, error: "Klant niet gevonden." };
+  const messages = await getChatHistory(slug, thread);
+  const gesprek = gesprekAlsTekst(messages);
+  if (!gesprek.trim()) return { ok: false, error: "Er is nog geen gesprek om taken uit te halen." };
+
+  // Context is hier alleen hulp voor juiste paden en achtergrond; het gesprek is
+  // leidend. Begrensd op 20 seconden zodat een trage bron de route niet ophoudt.
+  const context = await Promise.race([
+    buildOverviewContext(client).catch(() => ""),
+    new Promise<string>((resolve) => setTimeout(() => resolve(""), 20000)),
+  ]);
+
+  const system =
+    `Je bepaalt welk werk er volgt uit een gesprek tussen Maarten en de bird's eye-strateeg van Pingwin voor de klant ${client.name}.\n` +
+    `Antwoord met UITSLUITEND geldige JSON, niets eromheen, exact dit formaat:\n` +
+    `{"taken":[{"taak":"korte concrete titel in één regel","waarom":"in één zin waarom dit uit dit gesprek volgt","info":"de achtergrond voor op de kaart","url":"/pad/ of leeg","taaktype":"copy","week":1,"wie":"SEO","zekerheid":"hoog"}],"geen_taak":["punt uit het gesprek dat bewust geen taak is"]}\n\n` +
+    `WAT IS EEN TAAK (dit is de kern van je opdracht): alleen werk dat iemand echt moet UITVOEREN en dat nog niet gedaan is. Een constatering, een cijfer, een stand van zaken, een uitleg, een inzicht of een overweging is GEEN taak, ook niet als de zin met een werkwoord begint. "Foto's met locatiecontext versterken de pagina" is een inzicht; "Voeg foto's met locatiecontext toe aan /hovenier-oss/" is een taak. Bij twijfel zet je het in "geen_taak", niet in "taken". Liever drie taken die kloppen dan tien die half kloppen.\n` +
+    `"geen_taak": de belangrijkste punten uit het gesprek die je bewust NIET als taak opvoert, elk in één korte regel in gewone taal. Zo ziet Maarten dat je ze hebt meegewogen. Hooguit acht regels; laat triviale zinnen weg.\n` +
+    `"waarom": één zin die teruggrijpt op wat er in dit gesprek is besproken of besloten. Niet algemeen ("goed voor SEO"), maar specifiek.\n` +
+    `"zekerheid": "hoog" als het gesprek hier duidelijk op uitkomt of Maarten het zelf zegt; "middel" bij een logische maar niet uitgesproken vervolgstap; "laag" bij een suggestie van jezelf die hij makkelijk kan laten vallen.\n\n` +
+    `BUNDEL-REGELS (net als de projectkaarten in het dashboard):\n` +
+    `- Per pagina PRECIES ÉÉN taak, over alle weken heen. Alle deeltaken voor die pagina (meta, alt-teksten, copy, interne links, structured data, bouwen en publiceren) zet je als '-'-bullets in "info", niet als losse taken.\n` +
+    `- NOOIT meerdere pagina's in één taak of in één titel. Gaat een aanpak over drie pagina's, maak dan drie taken met dezelfde achtergrond, elk met de eigen "url".\n` +
+    `- Site-brede meta- of alt-opruiming over veel pagina's is ÉÉN Dev-taak "Werklijst sitebouwer: meta's en alt-teksten site-breed" zonder url, nooit een stapel losse kaartjes.\n` +
+    `- Streef naar 2 tot 6 taken, nooit meer dan 10. Een gesprek dat nergens op uitkomt mag gerust nul taken opleveren; zet dan alles in "geen_taak".\n` +
+    `- "week": 1 = deze week, 2 = volgende, enzovoort; realistisch verdeeld. "wie" is "SEO" of "Dev". "taaktype" is één van: meta, alt, copy, intern, strategie, pijplijn, structured, overig.\n\n` +
+    `"info" bouw je op in secties met een kort kopje op een eigen regel dat eindigt op een dubbele punt. Eerst "Achtergrond:" met korte puntige regels van hooguit vijftien woorden (wat is er mis, welke cijfers, waarom nu), hooguit vier regels. Dan alleen indien relevant "Afspraken en herkomst:" met '-'-bullets (mail-datum, wie). Dan "Aanpak per fase:" met per regel een '-'-bullet die begint met exact een fasenaam en dubbele punt ("- Analyse: ...", "- Copy: ...", "- Bouw: ..."), alleen voor fases die nodig zijn. Herhaal nooit de titel als bullet en noem een cijfer maar één keer.\n\n` +
+    `VERDER: gebruik alleen paden die letterlijk in het gesprek of de context staan; vorm zelf geen paden. Verzin geen cijfers. Geen emoji, geen Markdown-symbolen (#, | of **) en geen tekst buiten de JSON.`;
+
+  const body = `--- HET GESPREK ---\n${gesprek}\n\n--- EXTRA CONTEXT (alleen voor juiste paden en achtergrond) ---\n${context.slice(0, 6000)}`;
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const extra = attempt === 0 ? "" : "\n\nLET OP: je vorige antwoord was geen geldige JSON. Geef nu UITSLUITEND het JSON-object, zonder tekst eromheen.";
+    try {
+      const raw = await callClaude(system + extra, [{ role: "user", content: body.slice(0, 30000) }], 3500, { slug, action: attempt === 0 ? "overzicht-oogst" : "overzicht-oogst-retry" });
+      const jsonText = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
+      const start = jsonText.indexOf("{");
+      const end = jsonText.lastIndexOf("}");
+      const parsed = JSON.parse(start >= 0 && end > start ? jsonText.slice(start, end + 1) : jsonText) as { taken?: unknown; geen_taak?: unknown };
+
+      const taken: OogstTaak[] = (Array.isArray(parsed.taken) ? parsed.taken : [])
+        .map((t) => {
+          const o = (t || {}) as Record<string, unknown>;
+          const taak = String(o.taak || "").replace(/^\s*week\s*\d+\s*[—:-]+\s*/i, "").slice(0, 400).trim();
+          if (!taak) return null;
+          const zeker = String(o.zekerheid || "").toLowerCase();
+          return {
+            taak,
+            waarom: String(o.waarom || "").slice(0, 400).trim(),
+            info: String(o.info || o.toelichting || "").slice(0, 4000).trim() || undefined,
+            url: String(o.url || "").slice(0, 400).trim() || undefined,
+            taaktype: String(o.taaktype || "").slice(0, 40).trim().toLowerCase() || undefined,
+            week: Math.max(1, Math.min(12, Math.round(Number(o.week) || 1))),
+            wie: /dev/i.test(String(o.wie || "")) ? "Dev" : "SEO",
+            zekerheid: (zeker === "hoog" || zeker === "laag" ? zeker : "middel") as OogstTaak["zekerheid"],
+          } as OogstTaak;
+        })
+        .filter(Boolean)
+        .slice(0, 10) as OogstTaak[];
+
+      const geenTaak = (Array.isArray(parsed.geen_taak) ? parsed.geen_taak : [])
+        .map((r) => String(r || "").slice(0, 300).trim())
+        .filter(Boolean)
+        .slice(0, 8);
+
+      // Nul taken is een geldige uitkomst (een gesprek hoeft nergens op uit te komen),
+      // maar dan moet er wel íets te zien zijn, anders lijkt het op een fout.
+      if (!taken.length && !geenTaak.length) continue;
+
+      const oogst: OogstResultaat = { taken, geenTaak };
+      const bericht: ChatMessage = { role: "assistant", content: "Voorstel: dit werk volgt uit dit gesprek.", soort: "oogst", oogst };
+      await saveChatHistory(slug, thread, [...messages, bericht]);
+      return { ok: true, oogst };
+    } catch { /* volgende poging */ }
+  }
+  return { ok: false, error: "Kon geen taken uit dit gesprek halen. Probeer het nog een keer." };
+}
+
+/**
+ * Stap 3: de taken die Maarten heeft AANGEVINKT als projectkaarten wegzetten.
+ * Loopt door dezelfde poort als alle andere kaarten (validateAction/executeAction),
+ * zodat bundelen per pagina, padcorrectie en samenvoegen precies gelijk blijven.
+ */
+export async function zetOogstWeg(slug: string, thread: string, index: number, taken: OogstTaak[]): Promise<{ ok: boolean; added: number; merged: number; error?: string }> {
+  const client = await getClientBySlug(slug);
+  if (!client) return { ok: false, added: 0, merged: 0, error: "Klant niet gevonden." };
+  if (!taken.length) return { ok: false, added: 0, merged: 0, error: "Er is niets aangevinkt." };
+
+  const actie = validateAction(
+    {
+      type: "weekplan_taken",
+      taken: taken.map((t) => ({
+        taak: t.taak,
+        // Zonder eigen achtergrond is het "waarom" nog altijd betere context dan niets.
+        info: (t.info || "").trim() || (t.waarom ? `Achtergrond:\n- ${t.waarom}` : ""),
+        wie: t.wie, url: t.url, week: t.week, taaktype: t.taaktype,
+      })),
+    },
+    client.domain || "",
+    `a${Date.now().toString(36)}_oogst`,
+  );
+  if (!actie || !actie.taken || !actie.taken.length) return { ok: false, added: 0, merged: 0, error: "De aangevinkte taken waren niet compleet genoeg om kaarten van te maken." };
+
+  const result = await executeAction(slug, actie, thread);
+  const mA = /(\d+)\s+nieuwe/.exec(result.message || "");
+  const mM = /(\d+)\s+bestaande/.exec(result.message || "");
+  const merged = result.ok && mM ? Number(mM[1]) : 0;
+  const added = result.ok ? (mA ? Number(mA[1]) : (merged ? 0 : actie.taken.length)) : 0;
+
+  // Het voorstel is verwerkt: markeer het, zodat het na herladen ingeklapt staat
+  // en er niet per ongeluk twee keer dezelfde kaarten uit komen.
+  if (result.ok) {
+    try {
+      const msgs = await getChatHistory(slug, thread);
+      // De plek kan verschoven zijn (Maarten kan een bericht verwijderd hebben);
+      // val dan terug op het laatste voorstel dat nog niet verwerkt is.
+      let plek = msgs[index]?.oogst ? index : -1;
+      if (plek < 0) for (let i = msgs.length - 1; i >= 0; i--) { if (msgs[i].oogst && !msgs[i].oogst?.verwerkt) { plek = i; break; } }
+      const m = plek >= 0 ? msgs[plek] : null;
+      if (m && m.oogst) {
+        msgs[plek] = { ...m, oogst: { ...m.oogst, verwerkt: true } };
+        await saveChatHistory(slug, thread, msgs);
+      }
+    } catch { /* markering is bijzaak, de kaarten staan er */ }
+  }
+  return { ok: result.ok, added, merged, error: result.ok ? undefined : result.message };
+}
+
 export async function answerChat(slug: string, messages: ChatMessage[], thread = "algemeen"): Promise<{ ok: boolean; answer?: string; error?: string; actions?: ProposedAction[]; title?: string; summary?: string }> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return { ok: false, error: "Geen ANTHROPIC_API_KEY ingesteld." };
@@ -629,7 +828,8 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
       `- MAILS: NOOIT EEN NAAM OF AFSPRAAK VERZINNEN BIJ DEZE KLANT. Noem je een mail, dan moet die in de RECENTE E-MAILS van DEZE klant staan. Vind je met zoek_mail iets uit een ander gesprek (bijvoorbeeld over een andere klant of een algemene mail aan een leverancier), gebruik dat dan hooguit als achtergrond en schrijf het NIET toe aan deze klant, en noem er geen personen bij alsof die voor deze klant werken. Bij twijfel laat je de naam weg en schrijf je alleen wat er is afgesproken. Zet bij een mailverwijzing altijd de datum in de vorm 'mail van 5-7', want daarmee wordt hij in het dashboard klikbaar.\n` +
       `- NIET HERHALEN WAT JE AL VERTELD HEBT (hard, dit is de grootste ergernis). Kijk naar je EERDERE antwoorden in dit gesprek. Heb je de paginastand (de tabel met pagina's, posities, vertoningen, klikken, woorden) daar al gegeven, geef die dan NIET opnieuw. Verwijs ernaar in één regel ("de standentabel staat in mijn eerste antwoord") en behandel alleen wat NIEUW is: het antwoord op de gestelde vraag, wat er sindsdien veranderd is, en je oordeel. Een vervolgvraag over één pagina of één zoekwoord verdient een antwoord over díe pagina, niet een compleet nieuw site-overzicht. In een gesprek van vier vragen hoort de complete stand er hooguit ÉÉN keer in te staan.\n` +
       `- GEEF EEN ECHTE, INHOUDELIJKE TERUGKOPPELING (dit wil Maarten zien): je analyse en advies, gegrond in de PAGINA-SIGNALEN, ZOEKWOORDEN MET STAND en de mails. Benoem CONCRETE feiten (welke meta leeg is, welke copy nog niet live bevestigd is, wie welk werk nog open heeft, welke pagina stijgt of daalt, welke mail-opvolging nodig is), niet in vage termen als "strategie + pijplijn". Leesbaar en scanbaar met korte alinea's en kopjes; geen loze zin, maar ook geen eindeloze muur. GEEN DUBBELE LIJST: je tekst-terugkoppeling is de ANALYSE (de stand van zaken). Schrijf de taken en de per-week-planning NIET als tekstlijst (dus geen "Prioriteitsvolgorde"- of "Weekplanning per week"-lijst in de tekst); die komen als kaartjes via 'weekplan_taken'. De redenering/achtergrond per taak (waar komt het vandaan, welke mail, welke links, hoe verhoudt het zich) zet je in het 'info'-veld van die kaart, niet nog eens in de tekst.\n` +
-      `- Bij een OPEN vraag of sparren (dus GEEN planning/taken-verzoek) spar je alleen in gewone tekst: geef een heldere terugkoppeling (netjes opgemaakt, belangrijkste eerst), zonder kaarten aan te maken. Vat bondig samen wat je zou doen (bijvoorbeeld "twee nieuwe URL's aanmaken, één bestaande pagina met een toelichting bijwerken") en vraag of Maarten daar kaarten/taken van wil. Vraagt hij wél om een planning of taken, dan geldt WEEKPLANNING hieronder: dan maak je de kaarten meteen.\n` +
+      `- SPARREN IS DE STANDAARD (belangrijkste gedragsregel). Dit is een gesprek tussen twee vakmensen, geen takenfabriek. Geef je analyse, je afweging en je oordeel in gewone tekst; Maarten leest en praat verder. Maak NIET uit jezelf kaarten of taken, en sluit niet standaard af met "zal ik hier taken van maken?". Er staan twee knoppen onder het gesprek waarmee Maarten zelf de conclusie trekt en daarna laat bepalen welk werk eruit volgt; die stappen wegen het HELE gesprek en doen dat beter dan jij halverwege kunt.\n` +
+      `- ÉÉN WEDERVRAAG MAG, en is vaak beter dan gokken. Hangt je antwoord wezenlijk af van iets dat je niet kunt opzoeken (een keuze van Maarten of de klant, een voorkeur, een budget of prioriteit), stel dan ÉÉN gerichte vraag terug en geef alvast je beste inschatting erbij. Nooit meerdere vragen tegelijk en nooit een vraag die je zelf kunt beantwoorden met je gereedschap; dan meet je het gewoon.\n` +
       `- Gebruik het gereedschap stel_acties_voor ALLEEN als Maarten er EXPLICIET om vraagt ("maak er een kaart/taak van", "pak dit op", "zet dit door", "ja doe maar", "werk dit uit"). Dus NOOIT uit jezelf een reeks acties genereren; eerst sparren, dan pas op verzoek de kaarten, en alleen voor precies wat hij aangeeft. LET OP: een planning-vraag ("kun je een planning maken", "maak een weekplanning", "maak hier taken van", "wat kunnen we oppakken", "geef een werklijstje") IS zo'n expliciet verzoek; dan maak je de kaarten METEEN (zie WEEKPLANNING), zonder eerst nog te vragen of hij dat wil.\n` +
       `- NIEUWE PAGINA = EERST STRATEGIE (verplicht, met cannibalisatie-check). Voor een nieuwe pagina is de eerste stap NOOIT blauwdruk of copy, maar een doordachte strategie. Doe ZELF eerst de cannibalisatie-check: kijk met ahrefs_pagina/gsc_pagina/serp_top10 (en site_overzicht) of de site al rankt op de doeltermen van de nieuwe pagina. Rankt er al een bestaande pagina hoog op die term (een "pillar"), dan mag de nieuwe pagina die term NIET overnemen; hij moet ondersteunen: afwijkende/specifiekere zoektermen, bij voorkeur een URL als kind onder de pillar, en interne links omhoog naar de pillar. Stel de strategie voor als 'strategie_bepalen'-kaart (bewerkbaar; Maarten past aan/keurt goed). Pas NA goedkeuren mag 'pijplijn_starten' met blauwdruk/copy; stel die dus niet eerder voor. Gooit Maarten een URL of screenshot met "kijk hoe deze rankt", neem die pagina dan mee in de strategie.\n` +
       `- WEEKPLANNING: vraagt Maarten om een planning of taken (bijv. "kun je een planning maken", "maak een weekplanning", "maak hier taken van", "wat kunnen we oppakken", "geef een werklijstje"), geef dan (a) je inhoudelijke terugkoppeling in tekst = ALLEEN de STAND VAN ZAKEN (de analyse), netjes opgemaakt volgens de OPMAAK-regels (blokken met oranje kopjes, streepjes ertussen, bullets, vet, linkjes). GEEN aparte "Prioriteitsvolgorde"- of "Weekplanning per week"-tekstlijst, want dat is de dubbele lijst die Maarten niet wil. EN (b) roep in DEZELFDE beurt 'stel_acties_voor' aan met één 'weekplan_taken': dát is de planning. Per taak: de wie (SEO of Dev), de pagina (url), het taaktype, de week (1 = deze week, 2 = volgende, enzovoort), en in 'info' de VOLLEDIGE achtergrond/redenering (waar komt het vandaan zoals de mail van 30 juli, welke interne links, hoe het zich verhoudt tot andere pagina's, verwachte impact). Elke losse taak is een aparte kaart in de juiste week; de per-week-redenering leeft dus in de kaarten, niet in je tekst. CRUCIAAL: vraag NIET eerst "zal ik dit in de weekplanning zetten?"; de planning-vraag IS het verzoek, maak de kaarten meteen. Kondig het niet aan, maak ze echt. Roep 'weekplan_taken' in ÉÉN keer aan met alle taken er meteen in (nooit leeg, nooit "in twee stappen"). Eindig je beurt NOOIT met alleen een aankondiging als "hier komt de planning" of "ik ga de kaarten aanmaken" zonder de gevulde tool-aanroep: die gevulde aanroep ÍS de planning. Wordt een actie afgekeurd, doe hem dan in dezelfde beurt opnieuw, correct gevuld.\n` +
@@ -639,7 +839,7 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
       `  - Begin DIRECT met het eerste kopje. GEEN aankondigings- of vulzinnen zoals "Nu heb ik alles wat ik nodig heb" of "Hier de volledige terugkoppeling"; die kosten Maarten alleen leestijd.\n` +
       `  - Deel je antwoord op in BLOKKEN, elk met een eigen gekleurd kopje (## Kop). Zet een scheidingslijn (--- op een eigen regel, wordt een streepje) TUSSEN de blokken.\n` +
       `  - Binnen een blok: korte BULLETS (-), geen lange alinea's. Eén gedachte per bullet.\n` +
-      `  - SOORT PER BULLET (belangrijk, hier hangen de knopjes in het scherm aan). Verreweg de meeste bullets zijn CONSTATERINGEN (een stand, een cijfer, een bevinding): die schrijf je gewoon, zonder prefix. Is een bullet echt een OPDRACHT die uitgevoerd moet worden en die niet al als weekkaart is aangemaakt, begin die regel dan met "Doen: ". Ligt een punt bij iemand anders (de klant, de sitebouwer/developer), begin dan met "Vraag: ". Gebruik deze twee prefixen SPAARZAAM en nooit voor een statusregel; in het scherm krijgt alleen "Doen:" een knopje om er een kaart van te maken. De prefix zelf wordt weggehaald voor hij in beeld komt.\n` +
+      `  - GEEN PREFIXEN zoals "Doen:" of "Vraag:" meer voor een bullet. Schrijf gewoon wat je te zeggen hebt. Welk werk er uit een gesprek volgt bepaalt Maarten met de knop "Welke taken volgen hieruit?", die het HELE gesprek weegt; jij hoeft losse regels dus niet als taak te markeren.\n` +
       `  - **Vet** voor de kernfeiten (paginanaam, positie, aantallen, prijs, datum). Pagina's/URL's/slugs schrijf je KAAL als pad (bijv. /lensimplantatie/); die worden automatisch klikbaar. NOOIT markdown-linksyntax [tekst](/pad/) gebruiken voor paden, dat geeft rommelige brackets in beeld.\n` +
       `  - Een 404 op een pagina die juist NIEUW moet komen (aangevraagd, gepland, blauwdruk klaar) is LOGISCH, geen bevinding: noem die status neutraal "nog te bouwen", niet alarmerend "404 — bestaat niet".\n` +
       `  - Voor cijfervergelijkingen (bijv. wat staat live / hoe presteert het, of een lijst producten/prijzen) een net klein tabelletje (| Kop | Kop |). Gebruik GEEN tabel voor de takenlijst (die komt als kaartjes).\n` +
@@ -673,7 +873,9 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
   try {
     // Agentisch: de assistent kan zelf meten (pagina, GSC, Ahrefs, top-10) vóór hij
     // antwoordt. Vision-berichten (afbeelding) gaan als content-blokken mee.
-    const apiMessages = messages.slice(-10).map((m) => {
+    // Het takenvoorstel is een scherm-element, geen gespreksbeurt: die placeholder
+    // ("Voorstel: dit werk volgt uit dit gesprek.") hoort niet in de context.
+    const apiMessages = messages.filter((m) => m.soort !== "oogst").slice(-10).map((m) => {
       const imgs = [...(m.images || []), ...(m.image ? [m.image] : [])];
       const blocks = imgs
         .map((im) => im.match(/^data:(image\/[a-z+.-]+);base64,(.+)$/i))

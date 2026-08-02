@@ -2,11 +2,12 @@
 
 import { useState, useRef, useEffect } from "react";
 import ActionCard, { type Action } from "./ActionCard";
-import AntwoordBlokken from "./AntwoordBlokken";
+import TakenVoorstel, { type Oogst } from "./TakenVoorstel";
 import { linkifyHtml as linkify } from "../../../../lib/linkify";
 import { vraagHtml } from "../../../../lib/vraag-opmaak";
+import { striptVulzinnen } from "../../../../lib/vulzinnen";
 
-type Msg = { role: "user" | "assistant"; content: string; actions?: Action[] };
+type Msg = { role: "user" | "assistant"; content: string; actions?: Action[]; soort?: "conclusie" | "oogst"; oogst?: Oogst };
 type Topic = { thread: string; count: number; title: string; summary: string; done: boolean };
 
 // Slugs/URL's klikbaar maken: gedeelde bron in lib/linkify.ts (zelfde gedrag als
@@ -105,10 +106,9 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [mkBusy, setMkBusy] = useState<number | null>(null);        // "zet taken in weekplanning" bezig (bericht-index)
+  const [oogstBusy, setOogstBusy] = useState<"" | "conclusie" | "taken">("");   // welke oogst-knop draait
   // Welke eerdere antwoorden Maarten weer heeft opengeklapt (bericht-index).
   const [openBericht, setOpenBericht] = useState<Record<number, boolean>>({});
-  const [mkMsg, setMkMsg] = useState<Record<number, string>>({});   // resultaat-melding per bericht
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const loadSeq = useRef(0);
@@ -223,31 +223,28 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
     setMessages((prev) => prev.map((m) => m.actions ? { ...m, actions: m.actions.map((a) => a.id === id ? { ...a, executed, result } : a) } : m));
   }
 
-  // Deterministisch: zet de concrete taken uit dit bird's eye-antwoord om in sleepbare
-  // kaarten in het weekplanning-bord (server-side geforceerde extractie).
-  async function makeTasks(idx: number, content: string, thread: string) {
-    if (mkBusy !== null) return;
-    setMkBusy(idx); setMkMsg((m) => ({ ...m, [idx]: "" }));
-    let status = 0;
+  // Eerst sparren, dan concluderen, dan pas taken. Beide stappen wegen het HELE
+  // gesprek (niet één antwoord, niet één bullet) en worden door Maarten getriggerd.
+  async function oogst(stap: "conclusie" | "taken") {
+    if (oogstBusy || !open) return;
+    const t = open;
+    setOogstBusy(stap); setError("");
     try {
-      const r = await fetch("/api/admin/weekplan/from-answer", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread, answer: content }) });
-      status = r.status;
+      const r = await fetch("/api/admin/overview/oogst", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread: t, stap }) });
       const d = await r.json();
-      if (d.ok && (d.added || d.merged)) {
-        const delen: string[] = [];
-        if (d.added) delen.push(`${d.added} ${d.added === 1 ? "nieuwe kaart" : "nieuwe kaarten"}`);
-        if (d.merged) delen.push(`${d.merged} bestaande ${d.merged === 1 ? "paginakaart" : "paginakaarten"} aangevuld`);
-        setMkMsg((m) => ({ ...m, [idx]: `✓ ${delen.join(" en ")} in de weekplanning` }));
-        // Doorzetten = verplaatsen: het hele antwoord is nu verwerkt, dus de
-        // punten klappen in (AntwoordBlokken vangt dit event op).
-        window.dispatchEvent(new CustomEvent("pingwin-antwoord-verwerkt", { detail: { thread } }));
-        onWeekplanChanged?.();
-      }
-      else setMkMsg((m) => ({ ...m, [idx]: d.error || `Kon geen taken maken (server gaf status ${status}). Probeer het nog een keer.` }));
-    } catch {
-      const uitleg = status === 504 || status === 0 ? "waarschijnlijk duurde het te lang" : `server gaf status ${status}`;
-      setMkMsg((m) => ({ ...m, [idx]: `Kon geen taken maken (${uitleg}). Probeer het nog een keer.` }));
-    } finally { setMkBusy(null); }
+      if (openRef.current !== t) return;                 // Maarten is intussen naar een ander onderwerp
+      if (d?.ok) {
+        if (stap === "conclusie") setMessages((m) => [...m, { role: "assistant", content: d.answer, soort: "conclusie" }]);
+        else setMessages((m) => [...m, { role: "assistant", content: "Voorstel: dit werk volgt uit dit gesprek.", soort: "oogst", oogst: d.oogst }]);
+      } else setError(d?.error || `Er ging iets mis (server gaf status ${r.status}).`);
+    } catch { setError("De assistent is niet bereikbaar."); }
+    finally { setOogstBusy(""); }
+  }
+
+  // Een verwerkt voorstel blijft staan, maar onthoudt dat het verwerkt is (ook na
+  // herladen, want de server zet dezelfde vlag in de historie).
+  function markeerVerwerkt(idx: number) {
+    setMessages((prev) => prev.map((m, i) => (i === idx && m.oogst ? { ...m, oogst: { ...m.oogst, verwerkt: true } } : m)));
   }
 
   function deleteMessage(idx: number) {
@@ -350,18 +347,30 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
                             {dicht && <span className="ovc-msg-vouw-meta">eerder antwoord</span>}
                           </button>
                         )}
-                        {dicht ? null : m.role === "assistant"
+                        {dicht ? null : m.soort === "oogst" && m.oogst
                           ? (
-                              // Antwoorden renderen als sectie-kaartjes met per sectie en
-                              // per bullet een taak-knopje (retroactief op oude berichten).
-                              <div className="ovc-bubble ovc-bubble-blokken">
-                                <AntwoordBlokken
-                                  slug={slug}
-                                  thread={t.thread}
-                                  content={zonderWeekrecap(m.content || "", (m.actions || []).some((a) => a.type === "weekplan_taken"))}
-                                  toHtml={(md) => mdToHtml(md, domain)}
-                                  onWeekplanChanged={onWeekplanChanged}
-                                />
+                              // Het takenvoorstel: geen gewone tekst maar een lijst met
+                              // vinkjes. Dit is de ENIGE weg van gesprek naar taak.
+                              <TakenVoorstel
+                                slug={slug}
+                                thread={t.thread}
+                                index={i}
+                                oogst={m.oogst}
+                                domain={domain}
+                                onWeekplanChanged={onWeekplanChanged}
+                                onVerwerkt={() => markeerVerwerkt(i)}
+                              />
+                            )
+                          : m.role === "assistant"
+                          ? (
+                              // Gewoon leesbaar antwoord, zonder knopjes achter de regels.
+                              // Het raden per bullet is eruit: welk werk uit een gesprek
+                              // volgt bepaalt de knop "Welke taken volgen hieruit?", die
+                              // het hele gesprek weegt. Vulzinnen gaan er retroactief uit,
+                              // dus ook bij antwoorden die er al stonden.
+                              <div className={"ovc-bubble chat-md" + (m.soort === "conclusie" ? " ovc-conclusie" : "")}>
+                                {m.soort === "conclusie" && <div className="ovc-conclusie-label">Conclusie van dit gesprek</div>}
+                                <div dangerouslySetInnerHTML={{ __html: mdToHtml(striptVulzinnen(zonderWeekrecap(m.content || "", (m.actions || []).some((a) => a.type === "weekplan_taken"))), domain) }} />
                               </div>
                             )
                           : (
@@ -371,22 +380,6 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
                               <div className="ovc-bubble ovc-bubble-vraag"
                                 dangerouslySetInnerHTML={{ __html: vraagHtml(m.content || "") }} />
                             )}
-                        {/* De grote knop maakt kaarten door het HELE antwoord opnieuw
-                            door de assistent te halen; die verzint dan eigen titels,
-                            weken en achtergrond. Staat er al een voorstel-blok onder
-                            het antwoord, dan is dat de doordachte versie en levert de
-                            knop alleen een tweede, afwijkende kaart voor dezelfde
-                            pagina op. Precies zo kreeg /hovenier-eindhoven/ twee namen.
-                            Zonder voorstel blijft de knop bestaan als vangnet. */}
-                        {!dicht && m.role === "assistant" && (m.content || "").trim().length > 40
-                          && !(m.actions || []).some((a) => a.type === "weekplan_taken") && (
-                          <div className="ovc-maketasks">
-                            <button type="button" className="ovc-mk-btn" disabled={mkBusy === i} onClick={() => makeTasks(i, m.content, t.thread)} title="Haal de concrete taken uit dit antwoord en zet ze als sleepbare kaarten in het weekplanning-bord hieronder.">
-                              {mkBusy === i ? "Taken maken…" : "＋ Zet de taken in de weekplanning"}
-                            </button>
-                            {mkMsg[i] && <span className={"ovc-mk-msg" + (mkMsg[i].startsWith("✓") ? " ok" : " err")}>{mkMsg[i]}</span>}
-                          </div>
-                        )}
                         {m.role === "assistant" && m.actions && m.actions.length > 0 && (
                           <div className="ovc-actions">
                             {m.actions.map((a) => (
@@ -398,8 +391,29 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
                     );
                     })}
                     {busy && <div className="ovc-msg assistant"><div className="ovc-bubble muted">Aan het nadenken (ik lees zo nodig de strategie en meet pagina&rsquo;s na)…</div></div>}
+                    {oogstBusy === "conclusie" && <div className="ovc-msg assistant"><div className="ovc-bubble muted">Het hele gesprek aan het teruglezen…</div></div>}
+                    {oogstBusy === "taken" && <div className="ovc-msg assistant"><div className="ovc-bubble muted">Aan het wegen welk werk hier echt uit volgt…</div></div>}
                     <div ref={endRef} />
                   </div>
+
+                  {/* Eerst sparren, dan concluderen, dan pas taken. De tweede knop
+                      verschijnt pas als er een conclusie ligt: taken bepalen zonder
+                      conclusie is precies het raden dat we eruit wilden hebben. */}
+                  {messages.some((m) => m.role === "assistant") && (
+                    <div className="ovc-oogst">
+                      <button type="button" className="ghost-btn small" disabled={!!oogstBusy || busy} onClick={() => void oogst("conclusie")}
+                        title="Lees het hele gesprek terug en vat samen waar we op uitkomen, wat we weten en wat nog open staat.">
+                        {oogstBusy === "conclusie" ? "Bezig…" : "Trek de conclusie"}
+                      </button>
+                      {messages.some((m) => m.soort === "conclusie") && (
+                        <button type="button" className="primary-btn small" disabled={!!oogstBusy || busy} onClick={() => void oogst("taken")}
+                          title="Bepaal op basis van het hele gesprek welk werk hieruit volgt. Je krijgt een voorstel dat je zelf aanvinkt.">
+                          {oogstBusy === "taken" ? "Bezig…" : "Welke taken volgen hieruit?"}
+                        </button>
+                      )}
+                      <span className="ovc-oogst-uitleg">Taken maak je hier, niet per regel: beide stappen wegen het hele gesprek.</span>
+                    </div>
+                  )}
 
                   {error && <div className="login-error" style={{ margin: "6px 0" }}>{error}</div>}
 
