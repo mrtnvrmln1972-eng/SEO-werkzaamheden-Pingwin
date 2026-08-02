@@ -1044,16 +1044,26 @@ export async function getAdsComparison(slug: string, domain: string, days: numbe
 // pagina's elkaar in de weg zitten: dat is geen inschatting maar een overlap in
 // de data. Eén aanroep, want per pagina vragen zou tientallen calls kosten.
 export type GscPaar = { keyword: string; page: string; clicks: number; impressions: number; position: number };
-export async function getGscQueryPagePairs(domain: string, days = 90, rowLimit = 5000): Promise<GscPaar[]> {
+export async function getGscQueryPagePairs(domain: string, days = 90, maxRijen = 50000): Promise<GscPaar[]> {
   const token = await accessTokenFor("google");
   if (!token || !domain) return [];
   const site = await gscPickSite(token, domain);
   if (!site) return [];
   const r = periodRanges(days);
-  const rows = await gscQuery(token, site, {
-    startDate: r.curStart, endDate: r.curEnd,
-    dimensions: ["query", "page"], rowLimit,
-  });
+  // BLADEREN IS HIER ESSENTIEEL, niet netjes-doen. Google sorteert op klikken van
+  // hoog naar laag, en juist de pagina's die we zoeken (dunne locatiepagina's met
+  // nul klikken) staan helemaal onderaan. Met één ophaal van 5000 rijen vielen
+  // ze buiten de boot en zag de analyse ze nooit, hoe goed de logica ook was.
+  const perKeer = 25000;                                  // maximum van de API
+  const rows: Awaited<ReturnType<typeof gscQuery>> = [];
+  for (let start = 0; start < maxRijen; start += perKeer) {
+    const batch = await gscQuery(token, site, {
+      startDate: r.curStart, endDate: r.curEnd,
+      dimensions: ["query", "page"], rowLimit: Math.min(perKeer, maxRijen - start), startRow: start,
+    });
+    rows.push(...batch);
+    if (batch.length < perKeer) break;                    // laatste bladzijde
+  }
   return rows.map((x) => ({
     keyword: x.keys?.[0] || "", page: x.keys?.[1] || "",
     clicks: Math.round(x.clicks), impressions: Math.round(x.impressions), position: Math.round(x.position * 10) / 10,
