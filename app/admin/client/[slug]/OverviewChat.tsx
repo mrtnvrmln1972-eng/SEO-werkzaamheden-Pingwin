@@ -13,6 +13,19 @@ type Topic = { thread: string; count: number; title: string; summary: string; do
 
 // Aankondigings-/vulzinnen aan het begin van een antwoord ("Nu heb ik alles wat ik
 // nodig heb.") retroactief uit beeld filteren; ze kosten Maarten alleen leestijd.
+// Het eerste kopje van een antwoord, als samenvatting op de ingeklapte balk.
+// Zonder kopje de eerste zin, zodat je altijd ziet waar het antwoord over ging.
+function eersteKop(md: string): string {
+  for (const raw of (md || "").split("\n")) {
+    const r = raw.trim();
+    const kop = /^#{1,3}\s+(.*)$/.exec(r);
+    if (kop) return kop[1].replace(/[#*]/g, "").trim().slice(0, 90);
+  }
+  const tekst = (md || "").replace(/^[-*#>\s]+/, "").replace(/\*\*/g, "").trim();
+  const zin = tekst.split(/(?<=[.!?])\s/)[0] || tekst;
+  return zin.slice(0, 90) || "Eerder antwoord";
+}
+
 function stripAankondiging(md: string): string {
   const regels = (md || "").split("\n");
   let i = 0;
@@ -90,6 +103,8 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [mkBusy, setMkBusy] = useState<number | null>(null);        // "zet taken in weekplanning" bezig (bericht-index)
+  // Welke eerdere antwoorden Maarten weer heeft opengeklapt (bericht-index).
+  const [openBericht, setOpenBericht] = useState<Record<number, boolean>>({});
   const [mkMsg, setMkMsg] = useState<Record<number, string>>({});   // resultaat-melding per bericht
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -314,10 +329,25 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
               {isOpen && (
                 <div className="ovc-topic-body">
                   <div className="ovc-log">
-                    {messages.map((m, i) => (
-                      <div key={i} className={"ovc-msg " + m.role}>
+                    {messages.map((m, i) => {
+                    // Alleen het LAATSTE antwoord staat open. De eerdere vouwen samen
+                    // tot hun eerste kopje, want elk antwoord herhaalde de complete
+                    // paginatabel: vier antwoorden, elfduizend tekens, en het bruikbare
+                    // stond onderaan. Er verdwijnt niets; één klik zet het weer open.
+                    const laatsteAntwoord = messages.map((x) => x.role).lastIndexOf("assistant");
+                    const inklapbaar = m.role === "assistant" && i < laatsteAntwoord;
+                    const dicht = inklapbaar && !openBericht[i];
+                    return (
+                      <div key={i} className={"ovc-msg " + m.role + (dicht ? " ovc-msg-dicht" : "")}>
                         <button type="button" className="chat-msg-del" title="Dit blok verwijderen" onClick={() => deleteMessage(i)}>&times;</button>
-                        {m.role === "assistant"
+                        {inklapbaar && (
+                          <button type="button" className="ovc-msg-vouw" onClick={() => setOpenBericht((v) => ({ ...v, [i]: !v[i] }))}>
+                            <span className="ovc-msg-vouw-pijl">{dicht ? "▸" : "▾"}</span>
+                            <span className="ovc-msg-vouw-titel">{eersteKop(m.content || "")}</span>
+                            {dicht && <span className="ovc-msg-vouw-meta">eerder antwoord</span>}
+                          </button>
+                        )}
+                        {dicht ? null : m.role === "assistant"
                           ? (
                               // Antwoorden renderen als sectie-kaartjes met per sectie en
                               // per bullet een taak-knopje (retroactief op oude berichten).
@@ -332,7 +362,15 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
                               </div>
                             )
                           : <div className="ovc-bubble">{m.content}</div>}
-                        {m.role === "assistant" && (m.content || "").trim().length > 40 && (
+                        {/* De grote knop maakt kaarten door het HELE antwoord opnieuw
+                            door de assistent te halen; die verzint dan eigen titels,
+                            weken en achtergrond. Staat er al een voorstel-blok onder
+                            het antwoord, dan is dat de doordachte versie en levert de
+                            knop alleen een tweede, afwijkende kaart voor dezelfde
+                            pagina op. Precies zo kreeg /hovenier-eindhoven/ twee namen.
+                            Zonder voorstel blijft de knop bestaan als vangnet. */}
+                        {!dicht && m.role === "assistant" && (m.content || "").trim().length > 40
+                          && !(m.actions || []).some((a) => a.type === "weekplan_taken") && (
                           <div className="ovc-maketasks">
                             <button type="button" className="ovc-mk-btn" disabled={mkBusy === i} onClick={() => makeTasks(i, m.content, t.thread)} title="Haal de concrete taken uit dit antwoord en zet ze als sleepbare kaarten in het weekplanning-bord hieronder.">
                               {mkBusy === i ? "Taken maken…" : "＋ Zet de taken in de weekplanning"}
@@ -348,7 +386,8 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
                           </div>
                         )}
                       </div>
-                    ))}
+                    );
+                    })}
                     {busy && <div className="ovc-msg assistant"><div className="ovc-bubble muted">Aan het nadenken (ik lees zo nodig de strategie en meet pagina&rsquo;s na)…</div></div>}
                     <div ref={endRef} />
                   </div>

@@ -2702,6 +2702,31 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 }
 .tvk-why-toggle:hover { text-decoration: underline; }
 .tvk-why-inhoud { margin-top: var(--s-2); }
+
+/* Stand van het voorstel: wat staat er nog niet in de weekplanning. */
+.tvk-stand {
+  display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap;
+  font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--muted);
+  background: var(--orange-light); border-radius: var(--r-sm);
+  padding: var(--s-2) var(--s-3); margin-bottom: var(--s-3);
+}
+.tvk-stand-klaar { color: #1e824c; font-weight: 600; }
+
+/* Eerdere antwoorden ingeklapt tot hun kopje: het gesprek herhaalde per antwoord
+   de complete paginatabel, waardoor het bruikbare antwoord onderaan verdween. */
+.ovc-msg-vouw {
+  display: flex; align-items: center; gap: var(--s-2); width: 100%;
+  background: none; border: none; padding: var(--s-2) 0; cursor: pointer;
+  font: inherit; text-align: left; color: var(--muted);
+}
+.ovc-msg-vouw:hover .ovc-msg-vouw-titel { color: var(--orange-dark); }
+.ovc-msg-vouw-pijl { color: var(--orange); font-size: var(--fs-xs); }
+.ovc-msg-vouw-titel { font-weight: 600; font-size: var(--fs-sm); line-height: var(--lh-sm); }
+.ovc-msg-vouw-meta {
+  font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray);
+  background: var(--gray-light); border-radius: var(--r-sm); padding: 0 var(--s-2);
+}
+.ovc-msg.ovc-msg-dicht { border-bottom: 1px solid var(--card-border); padding-bottom: 0; }
 .act-card { border: 1px solid var(--border); border-left: 3px solid var(--orange); border-radius: 10px; background: #fff; padding: 10px 12px; }
 .act-card.act-done { border-left-color: #1e824c; background: #f4faf5; }
 .act-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }

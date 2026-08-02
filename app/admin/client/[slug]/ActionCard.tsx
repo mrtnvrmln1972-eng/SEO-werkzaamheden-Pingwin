@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { urlKey } from "../../../../lib/url-key";
 import { splitCardInfo, cardInfoHtml } from "../../../../lib/card-info";
 
 export type Action = {
@@ -43,6 +44,39 @@ export default function ActionCard({ action, slug, thread, onExecuted, onGoToPag
   const [addErr, setAddErr] = useState<number | null>(null); // welke taak faalde bij toevoegen
   const editRef = useRef<HTMLDivElement>(null);
   const isWeekplan = action.type === "weekplan_taken";
+
+  // Wat staat er AL in de weekplanning? Bewust afgeleid uit het bord zelf en niet
+  // uit een vinkje in dit scherm: dat vinkje leefde alleen in deze sessie, dus na
+  // een herlaadbeurt zag alles er weer onaangeraakt uit en zette je dingen dubbel
+  // door. Bij Paul Hoevenaars bleven de twee belangrijkste week 1-kaarten zo
+  // ongemerkt liggen terwijl week 3 en 4 er wel in stonden.
+  const [inBord, setInBord] = useState<{ urls: Set<string>; titels: Set<string> } | null>(null);
+  useEffect(() => {
+    if (!isWeekplan) return;
+    let leeft = true;
+    fetch(`/api/admin/weekplan?slug=${encodeURIComponent(slug)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (!leeft || !d?.ok) return;
+        const urls = new Set<string>(), titels = new Set<string>();
+        for (const t of (d.tasks || []) as { url?: string; taak?: string }[]) {
+          if (t.url) urls.add(urlKey(t.url));
+          if (t.taak) titels.add(t.taak.trim().toLowerCase());
+        }
+        setInBord({ urls, titels });
+      })
+      .catch(() => {});
+    return () => { leeft = false; };
+  }, [slug, isWeekplan]);
+
+  // Een voorgestelde taak staat er al als er een kaart voor dezelfde pagina is
+  // (kaarten zijn per pagina) of, zonder pagina, met dezelfde titel.
+  function staatErAl(t: NonNullable<Action["taken"]>[number], i: number): boolean {
+    if (addedSet.has(i)) return true;
+    if (!inBord) return false;
+    if (t.url && inBord.urls.has(urlKey(t.url))) return true;
+    return !t.url && !!t.taak && inBord.titels.has(t.taak.trim().toLowerCase());
+  }
 
   // Voeg één voorgestelde taak toe aan de weekplanning (per taak, niet in bulk).
   async function addOne(i: number, t: NonNullable<Action["taken"]>[number]) {
@@ -105,22 +139,40 @@ export default function ActionCard({ action, slug, thread, onExecuted, onGoToPag
           groups.get(w)!.push(i);
         });
         const weeks = Array.from(groups.keys()).sort((a, b) => a - b);
+        const open = action.taken!.map((t, i) => ({ t, i })).filter(({ t, i }) => !staatErAl(t, i));
         return (
           <div className="tvk-weeks">
+            {/* Zonder deze regel is niet te zien dat er nog kaarten klaarstaan: bij
+                Paul Hoevenaars bleven de twee belangrijkste week 1-taken liggen
+                terwijl week 3 en 4 er wel in stonden, en dat zag er hetzelfde uit. */}
+            {inBord && (
+              <div className="tvk-stand">
+                {open.length === 0
+                  ? <span className="tvk-stand-klaar">Alle {action.taken!.length} taken staan in de weekplanning.</span>
+                  : <>
+                      <span>{open.length} van de {action.taken!.length} {open.length === 1 ? "taak staat" : "taken staan"} nog niet in de weekplanning.</span>
+                      <button type="button" className="tvk-pill" disabled={addBusy !== null}
+                        title="Zet in één keer alle taken door die er nog niet in staan"
+                        onClick={async () => { for (const { t, i } of open) await addOne(i, t); }}>
+                        Zet de rest erin
+                      </button>
+                    </>}
+              </div>
+            )}
             {weeks.map((w) => (
               <div key={w} className="tvk-week-group">
                 <div className="tvk-week-head">Week {w}</div>
                 {groups.get(w)!.map((i) => {
                   const t = action.taken![i];
-                  const added = addedSet.has(i);
+                  const added = staatErAl(t, i);
                   const b = addBusy === i;
                   return (
                     <div key={i} className={"tvk-card" + (added ? " tvk-added" : "")}>
                       <div className="tvk-top">
                         <span className={"tvk-wie " + (t.wie === "Dev" ? "wie-dev" : "wie-seo")}>{t.wie || "SEO"}</span>
                         <span className="tvk-taak">{t.taak}</span>
-                        <button type="button" className={"tvk-pill" + (added ? " tvk-pill-done" : "") + (b ? " busy" : "") + (addErr === i ? " tvk-pill-err" : "")} disabled={b || added} onClick={() => addOne(i, t)} title={addErr === i ? "Toevoegen mislukt, klik om opnieuw te proberen" : "Kopieer deze taak naar de weekplanning"}>
-                          {added ? "✓ Toegevoegd" : b ? "…" : addErr === i ? "Mislukt, opnieuw" : "→ Weekplanning"}
+                        <button type="button" className={"tvk-pill" + (added ? " tvk-pill-done" : "") + (b ? " busy" : "") + (addErr === i ? " tvk-pill-err" : "")} disabled={b || added} onClick={() => addOne(i, t)} title={added ? "Er staat al een kaart voor deze pagina in het bord" : addErr === i ? "Toevoegen mislukt, klik om opnieuw te proberen" : "Kopieer deze taak naar de weekplanning"}>
+                          {added ? "✓ Staat in de weekplanning" : b ? "…" : addErr === i ? "Mislukt, opnieuw" : "→ Weekplanning"}
                         </button>
                       </div>
                       <div className="tvk-links">
