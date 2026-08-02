@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, makeViewerSession } from "../../../lib/admin-auth";
-import { checkViewKey } from "../../../lib/claude-view-key";
+import { checkViewKey, viewKeyDiagnose } from "../../../lib/claude-view-key";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -49,8 +49,14 @@ export async function GET(req: NextRequest) {
         "Deze sleutel is verlopen: er staat een nieuwere klaar. Maak op /admin een nieuwe sleutel en zet die in de Claude-omgeving.",
       leeg: "Er kwam geen sleutel mee in het verzoek.",
     };
+    // Meetpunt bij een afwijzing: hoeveel sleutels staan er überhaupt in deze
+    // database, en wanneer is de laatste aangemaakt? Zonder dit is niet te
+    // onderscheiden of de knop in de cockpit ergens anders terechtkomt, of dat
+    // de sleutel hier wél binnenkomt en daarna verdwijnt. Alleen aantallen en
+    // tijdstippen, dus veilig om onbeschermd mee te sturen.
+    const diagnose = await viewKeyDiagnose().catch(() => null);
     return NextResponse.json(
-      { ok: false, reden: uitkomst.reden, error: uitleg[uitkomst.reden] },
+      { ok: false, reden: uitkomst.reden, error: uitleg[uitkomst.reden], diagnose },
       { status: 401 },
     );
   }

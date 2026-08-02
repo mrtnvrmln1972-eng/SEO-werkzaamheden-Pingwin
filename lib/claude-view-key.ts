@@ -118,6 +118,35 @@ export type ViewKeyFailReason =
 
 export type ViewKeyCheck = { ok: true } | { ok: false; reden: ViewKeyFailReason };
 
+/**
+ * Telling voor het geval een sleutel geweigerd wordt terwijl de knop in de
+ * cockpit wél een sleutel teruggaf. Dan is de vraag: komt de knopdruk in
+ * dezelfde database terecht als deze controle, en blijft de rij daar staan?
+ * Alleen aantallen en tijdstippen, nooit een sleutel of een hash, zodat dit
+ * ook op de open ingang mee mag zonder iets weg te geven.
+ */
+export type ViewKeyDiagnose = {
+  totaal: number;         // alle sleutels ooit, ook ingetrokken
+  ingetrokken: number;    // hoeveel daarvan zijn ingetrokken
+  laatsteAangemaakt: string | null;
+};
+
+export async function viewKeyDiagnose(): Promise<ViewKeyDiagnose> {
+  await ensureSchema();
+  await ensureTable();
+  const { rows } = await sql`
+    SELECT COUNT(*)::int AS totaal,
+           COUNT(revoked_at)::int AS ingetrokken,
+           MAX(created_at) AS laatste
+    FROM claude_view_key`;
+  const r = rows[0];
+  return {
+    totaal: Number(r?.totaal ?? 0),
+    ingetrokken: Number(r?.ingetrokken ?? 0),
+    laatsteAangemaakt: r?.laatste ? new Date(r.laatste as string).toISOString() : null,
+  };
+}
+
 async function noteFail(reden: ViewKeyFailReason): Promise<void> {
   await sql`
     INSERT INTO claude_view_fail (id, failed_at, reason) VALUES (1, now(), ${reden})
