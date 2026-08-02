@@ -178,6 +178,7 @@ export default function FocusBlock({ slug, standalone }: { slug: string; standal
     <div className="sov-tasks">
       <div className="sov-tasks-head focus-head">
         <span>Zoekwoorden &amp; links</span>
+        <a className="focus-nav-link" href={`/admin/client/${slug}/navigatie`} target="_blank" rel="noreferrer" title="De hele sitestructuur (huidig én beoogd) met voortgang per pagina">Navigatie-roadmap &rarr;</a>
       </div>
       {toolbar}
       {editor}
