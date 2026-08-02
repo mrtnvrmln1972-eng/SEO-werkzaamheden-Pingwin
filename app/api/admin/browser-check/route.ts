@@ -28,6 +28,14 @@ export async function GET(req: NextRequest) {
     stap.pad = await chr.executablePath().catch((e: unknown) => { stap.padFout = String(e); return null; });
     if (!stap.pad) return NextResponse.json({ ok: false, waar: "executablePath", stap });
 
+    // Uitgepakt of niet: hier zie je of de systeembibliotheken echt zijn meegekomen.
+    try {
+      const fs = await import("fs");
+      stap.tmp = fs.readdirSync("/tmp").slice(0, 25);
+      stap.ldPath = process.env.LD_LIBRARY_PATH || "(leeg)";
+      stap.libs = fs.existsSync("/tmp/al2023") ? fs.readdirSync("/tmp/al2023").slice(0, 10) : "(geen /tmp/al2023)";
+    } catch (e) { stap.tmpFout = String(e); }
+
     browser = await pup.launch({
       args: [...(chr.args || []), "--no-sandbox", "--disable-setuid-sandbox"],
       executablePath: stap.pad as string,
