@@ -1,5 +1,5 @@
 import { sql } from "@vercel/postgres";
-import { hashPassword } from "./password";
+import { hashPassword, generatePassword } from "./password";
 
 // ═══════════════════════════════════════════════════════════
 // DATABASE-INITIALISATIE (zelfhelend)
@@ -381,8 +381,12 @@ async function init(): Promise<void> {
   // al een no-op (ON CONFLICT DO NOTHING). Zet de var alleen als je bewust de
   // demo-klanten wilt terugzetten.
   if (process.env.SEED_DEMO_CLIENTS === "true") {
-  // Eerste klant (One Day Clinic) zodat zijn login meteen werkt.
-  const hash = hashPassword("OneDayClinic2026");
+  // Eerste klant (One Day Clinic) zodat zijn login meteen bestaat.
+  // Het wachtwoord staat bewust NIET in de code: deze repo is openbaar. Zet
+  // desgewenst SEED_CLIENT_PASSWORD; laat je dat leeg, dan krijgt de klant een
+  // willekeurig wachtwoord dat niemand kent en genereer je er via het
+  // adminscherm een nieuw. Beter een onbruikbaar wachtwoord dan een openbaar.
+  const hash = hashPassword(process.env.SEED_CLIENT_PASSWORD || generatePassword(24));
   await sql`
     INSERT INTO clients
       (slug, login_id, name, email, sheet_id, gid,
