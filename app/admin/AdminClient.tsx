@@ -11,8 +11,16 @@ type Created = { name: string; loginId: string; password: string; loginUrl: stri
 // keer een link te delen. Hier maakt hij daar één keer een sleutel voor aan.
 // De uitleg staat er bewust helemaal bij: hij hoeft dan nooit meer te vragen
 // hoe het ook alweer zat, en een volgende sessie kan het hier teruglezen.
+type KijkStatus = {
+  actief: boolean;
+  aangemaakt: string | null;
+  laatstGebruikt: string | null;
+  laatstMislukt: string | null;
+  mislukteReden: "geen-sleutel" | "andere-sleutel" | "leeg" | null;
+};
+
 function KijkSleutel() {
-  const [status, setStatus] = useState<{ actief: boolean; aangemaakt: string | null; laatstGebruikt: string | null } | null>(null);
+  const [status, setStatus] = useState<KijkStatus | null>(null);
   const [sleutel, setSleutel] = useState("");
   const [bezig, setBezig] = useState(false);
   const [open, setOpen] = useState(false);
@@ -20,7 +28,13 @@ function KijkSleutel() {
 
   async function laad() {
     const d = await fetch("/api/admin/kijk-sleutel").then((r) => r.json()).catch(() => null);
-    if (d?.ok) setStatus({ actief: d.actief, aangemaakt: d.aangemaakt, laatstGebruikt: d.laatstGebruikt });
+    if (d?.ok) setStatus({
+      actief: d.actief,
+      aangemaakt: d.aangemaakt,
+      laatstGebruikt: d.laatstGebruikt,
+      laatstMislukt: d.laatstMislukt ?? null,
+      mislukteReden: d.mislukteReden ?? null,
+    });
   }
   useEffect(() => { void laad(); }, []);
 
@@ -43,6 +57,19 @@ function KijkSleutel() {
   }
 
   const datum = (s: string | null) => (s ? new Date(s).toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" }) : "");
+  const tijdstip = (s: string | null) =>
+    s ? new Date(s).toLocaleString("nl-NL", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }) : "";
+
+  // Een mislukte poging is alleen nog nieuws als hij ná het laatste geslaagde
+  // bezoek kwam; anders gaat het om een oude poging die allang opgelost is.
+  const mislukt = status?.laatstMislukt || null;
+  const openstaand =
+    mislukt && (!status?.laatstGebruikt || new Date(mislukt) > new Date(status.laatstGebruikt)) ? mislukt : null;
+  const waaromNiet: Record<NonNullable<KijkStatus["mislukteReden"]>, string> = {
+    "geen-sleutel": "er stond toen geen sleutel klaar. Zet meekijken hieronder aan.",
+    "andere-sleutel": "hij gebruikte een oudere sleutel. Maak hieronder een nieuwe en zet die in je Claude-omgeving.",
+    leeg: "er kwam geen sleutel mee. Controleer of PINGWIN_KIJK_SLEUTEL in je Claude-omgeving staat.",
+  };
 
   return (
     <div className="kijk-kaart">
@@ -64,6 +91,13 @@ function KijkSleutel() {
             <p className="kijk-meta">
               Sleutel aangemaakt op {datum(status.aangemaakt)}.{" "}
               {status.laatstGebruikt ? `Laatst gebruikt op ${datum(status.laatstGebruikt)}.` : "Nog niet gebruikt."}
+            </p>
+          )}
+
+          {openstaand && status?.mislukteReden && (
+            <p className="kijk-alarm">
+              Claude probeerde mee te kijken op {tijdstip(openstaand)} en kwam er niet in:{" "}
+              {waaromNiet[status.mislukteReden]}
             </p>
           )}
 

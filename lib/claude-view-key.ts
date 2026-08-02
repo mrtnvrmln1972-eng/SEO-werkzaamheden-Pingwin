@@ -36,23 +36,46 @@ async function doEnsure(): Promise<void> {
       revoked_at TIMESTAMPTZ,
       last_used  TIMESTAMPTZ
     )`;
+  // Mislukte pogingen worden apart bijgehouden, los van de sleutelrijen: ook
+  // als er helemaal geen sleutel klaarstaat wil de cockpit kunnen laten zien
+  // dat Claude het geprobeerd heeft. Eén rij, altijd id = 1.
+  await sql`
+    CREATE TABLE IF NOT EXISTS claude_view_fail (
+      id       INTEGER PRIMARY KEY,
+      failed_at TIMESTAMPTZ NOT NULL,
+      reason    TEXT NOT NULL
+    )`;
 }
 
-export type ViewKeyStatus = { actief: boolean; aangemaakt: string | null; laatstGebruikt: string | null };
+export type ViewKeyStatus = {
+  actief: boolean;
+  aangemaakt: string | null;
+  laatstGebruikt: string | null;
+  laatstMislukt: string | null;
+  mislukteReden: ViewKeyFailReason | null;
+};
 
 /** Staat er een geldige kijk-sleutel klaar, en wanneer is hij voor het laatst gebruikt? */
 export async function getViewKeyStatus(): Promise<ViewKeyStatus> {
   await ensureSchema();
   await ensureTable();
-  const { rows } = await sql`
-    SELECT created_at, last_used FROM claude_view_key
-    WHERE revoked_at IS NULL ORDER BY id DESC LIMIT 1`;
-  const r = rows[0];
-  if (!r) return { actief: false, aangemaakt: null, laatstGebruikt: null };
+  const [actief, mislukt] = await Promise.all([
+    sql`SELECT created_at, last_used FROM claude_view_key
+        WHERE revoked_at IS NULL ORDER BY id DESC LIMIT 1`,
+    sql`SELECT failed_at, reason FROM claude_view_fail WHERE id = 1`,
+  ]);
+  const f = mislukt.rows[0];
+  const fail = {
+    laatstMislukt: f?.failed_at ? new Date(f.failed_at as string).toISOString() : null,
+    mislukteReden: (f?.reason as ViewKeyFailReason) ?? null,
+  };
+  const r = actief.rows[0];
+  if (!r) return { actief: false, aangemaakt: null, laatstGebruikt: null, ...fail };
   return {
     actief: true,
     aangemaakt: r.created_at ? new Date(r.created_at as string).toISOString() : null,
     laatstGebruikt: r.last_used ? new Date(r.last_used as string).toISOString() : null,
+    ...fail,
   };
 }
 
@@ -78,21 +101,49 @@ export async function revokeViewKey(): Promise<void> {
   await sql`UPDATE claude_view_key SET revoked_at = now() WHERE revoked_at IS NULL`;
 }
 
+// Waarom een poging mislukte. Bewust drie aparte redenen in plaats van één
+// "ongeldig": ze vragen om drie verschillende acties van Maarten, en zonder dit
+// onderscheid is een geweigerde sleutel van buitenaf niet te onderzoeken.
+export type ViewKeyFailReason =
+  | "geen-sleutel"   // er staat er helemaal geen klaar: meekijken is uit of ingetrokken
+  | "andere-sleutel" // er staat er wél een klaar, maar niet deze: waarschijnlijk een nieuwere
+  | "leeg";          // er kwam niets mee
+
+export type ViewKeyCheck = { ok: true } | { ok: false; reden: ViewKeyFailReason };
+
+async function noteFail(reden: ViewKeyFailReason): Promise<void> {
+  await sql`
+    INSERT INTO claude_view_fail (id, failed_at, reason) VALUES (1, now(), ${reden})
+    ON CONFLICT (id) DO UPDATE SET failed_at = now(), reason = ${reden}`;
+}
+
 /**
  * Klopt deze sleutel? Zo ja, stempelt hij meteen "laatst gebruikt", zodat in de
- * cockpit te zien is of Claude er nog gebruik van maakt.
+ * cockpit te zien is of Claude er nog gebruik van maakt. Zo nee, legt hij de
+ * mislukte poging vast, zodat de cockpit kan tonen dát Claude het probeerde en
+ * waarom het niet lukte. Gooit door als de database niet meewerkt; dat is iets
+ * anders dan een sleutel die niet klopt en mag niet als afwijzing eindigen.
  */
-export async function checkViewKey(sleutel: string): Promise<boolean> {
+export async function checkViewKey(sleutel: string): Promise<ViewKeyCheck> {
   const s = (sleutel || "").trim();
-  if (!s) return false;
   await ensureSchema();
   await ensureTable();
+  if (!s) {
+    await noteFail("leeg");
+    return { ok: false, reden: "leeg" };
+  }
   const { rows } = await sql`
     SELECT id, key_hash FROM claude_view_key
     WHERE revoked_at IS NULL ORDER BY id DESC LIMIT 1`;
   const r = rows[0];
-  if (!r) return false;
-  if (!verifyPassword(s, r.key_hash as string)) return false;
+  if (!r) {
+    await noteFail("geen-sleutel");
+    return { ok: false, reden: "geen-sleutel" };
+  }
+  if (!verifyPassword(s, r.key_hash as string)) {
+    await noteFail("andere-sleutel");
+    return { ok: false, reden: "andere-sleutel" };
+  }
   await sql`UPDATE claude_view_key SET last_used = now() WHERE id = ${r.id as number}`;
-  return true;
+  return { ok: true };
 }

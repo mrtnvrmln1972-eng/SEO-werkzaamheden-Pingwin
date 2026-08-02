@@ -26,8 +26,33 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "Server niet geconfigureerd." }, { status: 500 });
   }
   const sleutel = req.nextUrl.searchParams.get("sleutel") || "";
-  if (!(await checkViewKey(sleutel).catch(() => false))) {
-    return NextResponse.json({ ok: false, error: "Ongeldige of ingetrokken kijk-sleutel." }, { status: 401 });
+
+  // Het antwoord vertelt precies wát er mis is. Eerst stond hier één algemene
+  // afwijzing, en dan is van buitenaf niet te zien of meekijken uitstaat, of de
+  // sleutel verouderd is, of de database hapert; dat kost een ronde heen en weer
+  // met Maarten. De sleutel zelf is 48 willekeurige tekens, dus dit onderscheid
+  // helpt niemand die hem probeert te raden.
+  let uitkomst;
+  try {
+    uitkomst = await checkViewKey(sleutel);
+  } catch {
+    return NextResponse.json(
+      { ok: false, error: "De sleutel kon niet gecontroleerd worden; de database antwoordde niet." },
+      { status: 503 },
+    );
+  }
+  if (!uitkomst.ok) {
+    const uitleg: Record<typeof uitkomst.reden, string> = {
+      "geen-sleutel":
+        "Er staat geen kijk-sleutel klaar. Zet meekijken aan op /admin en zet de nieuwe sleutel in de Claude-omgeving.",
+      "andere-sleutel":
+        "Deze sleutel is verlopen: er staat een nieuwere klaar. Maak op /admin een nieuwe sleutel en zet die in de Claude-omgeving.",
+      leeg: "Er kwam geen sleutel mee in het verzoek.",
+    };
+    return NextResponse.json(
+      { ok: false, reden: uitkomst.reden, error: uitleg[uitkomst.reden] },
+      { status: 401 },
+    );
   }
 
   // Kaal antwoord in plaats van een omleiding: Claude haalt dit op met een
