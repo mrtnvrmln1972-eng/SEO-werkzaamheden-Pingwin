@@ -117,6 +117,30 @@ Wijzigen gaat voor alle env-sleutels hetzelfde: Vercel → project `pingwin-seo-
 Settings → Environment Variables → aanpassen → één keer opnieuw deployen. Klantwachtwoord kwijt?
 Genereer een nieuw via het adminscherm; het platte wachtwoord zie je één keer.
 
+### Meekijken: doe dit meteen, zonder eerst rond te zoeken
+
+Vraagt Maarten om mee te kijken, dan is dat één handeling. Niet gaan zoeken, niet eerst de
+code lezen, niet aan hem vragen: dit is het recept.
+
+```bash
+curl -s -c /tmp/kijk.txt "https://pingwin-seo-dashboard.vercel.app/api/kijk?sleutel=$PINGWIN_KIJK_SLEUTEL"
+```
+
+Daarna elke pagina met `-b /tmp/kijk.txt` ophalen. De sleutel staat als `PINGWIN_KIJK_SLEUTEL`
+in de Claude-omgeving (nooit in een bestand). Je krijgt een alleen-lezen sessie: je ziet alles
+wat Maarten ziet, wijzigen wordt geweigerd. Wat het antwoord betekent:
+
+| Antwoord | Wat er aan de hand is |
+|---|---|
+| `ok: true` | binnen, ga verder |
+| `geen-sleutel` | meekijken staat uit; Maarten zet het aan op `/admin` |
+| `andere-sleutel` | jouw sleutel is verouderd; hij staat nog niet in deze omgeving |
+| `leeg` | `PINGWIN_KIJK_SLEUTEL` staat niet in deze omgeving |
+
+Let op: een omgevingsvariabele geldt pas vanaf een **nieuwe** chat. Krijg je `andere-sleutel`
+vlak nadat Maarten hem heeft geplakt, dan is dit nog de oude sessie; dat lost een nieuwe chat op,
+niet een nieuwe sleutel (een nieuwe sleutel maken trekt juist de goede in).
+
 ### Waarom `/admin/enter` een sleutel MOET hebben
 
 Die route deelt een volledige adminsessie uit. Het slot stond eerst standaard uit, waardoor
