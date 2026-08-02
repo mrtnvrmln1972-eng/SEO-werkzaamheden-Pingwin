@@ -230,6 +230,7 @@ export type ZwakkePagina = {
   eigenTerm: { keyword: string; positie: number; vertoningen: number } | null;
   geleendeTop: { keyword: string; positie: number; vertoningen: number } | null;
   dubbelMet: string[];   // andere pagina's over dezelfde plaats/dienst
+  doelBewijs?: string;   // het zoekwoord waaruit dat doel is afgeleid
 };
 
 const STOP = new Set(["de", "het", "een", "en", "van", "in", "op", "voor", "met", "bij", "je", "te", "www", "nl", "index", "home", "page"]);
@@ -281,7 +282,7 @@ export function bepaalZwakkePaginas(
   }
 
   // Wie bezit welk onderscheidend woord? Nodig om een doel voor te stellen.
-  const bezitter = new Map<string, { pad: string; vertoningen: number }>();
+  const bezitter = new Map<string, { pad: string; vertoningen: number; klikken: number }>();
   const kandidaten: ZwakkePagina[] = [];
   const alles: { u: typeof live[number]; eigen: string[]; g: NonNullable<ReturnType<typeof perPagina.get>> | undefined }[] = [];
 
@@ -297,7 +298,7 @@ export function bepaalZwakkePaginas(
         .sort((a, b) => b.vertoningen - a.vertoningen)[0];
       if (beste) {
         const huidig = bezitter.get(w);
-        if (!huidig || beste.vertoningen > huidig.vertoningen) bezitter.set(w, { pad, vertoningen: beste.vertoningen });
+        if (!huidig || beste.vertoningen > huidig.vertoningen) bezitter.set(w, { pad, vertoningen: beste.vertoningen, klikken: g.klikken });
       }
     }
   }
@@ -323,7 +324,7 @@ export function bepaalZwakkePaginas(
       // sterker? Dan zijn het er twee voor hetzelfde onderwerp: samenvoegen.
       // Zo komt /soa-poli-zaandam/ naar boven naast /soa-klinieken/soa-test-zaandam/.
       const sterker = eigen.map((w) => bezitter.get(w))
-        .filter((b): b is { pad: string; vertoningen: number } => !!b && b.pad !== pad && b.vertoningen >= eigenTerm.vertoningen * 1.5);
+        .filter((b): b is { pad: string; vertoningen: number; klikken: number } => !!b && b.pad !== pad && b.vertoningen >= eigenTerm.vertoningen * 1.5);
       if (sterker.length) {
         dubbelSet.add(pad);
         dubbelingen.push({
@@ -355,23 +356,35 @@ export function bepaalZwakkePaginas(
     // Zo komt het doel uit de data in plaats van uit aardrijkskunde die we niet
     // hebben. Leent een pagina van twee steden, dan noemen we ze allebei en
     // laten we de keuze aan Maarten, in plaats van er een te gokken.
-    const uitEigenNaam = eigen.map((w) => bezitter.get(w)).filter((b): b is { pad: string; vertoningen: number } => !!b && b.pad !== pad);
+    // Een doel moet zélf een sterke pagina zijn. Anders stuur je een dunne pagina
+    // naar een andere dunne pagina, en dan heb je niets opgelost.
+    const bruikbaar = (b: { pad: string; vertoningen: number; klikken: number } | undefined) =>
+      !!b && b.pad !== pad && (b.klikken >= minKlikken || b.vertoningen >= minEigenVertoningen);
+    const uitEigenNaam = eigen.map((w) => bezitter.get(w)).filter(bruikbaar) as { pad: string; vertoningen: number; klikken: number }[];
     const uitGeleend = new Map<string, number>();
+    const bewijs = new Map<string, string>();   // welk zoekwoord wees dit doel aan
     for (const r2 of rijen) {
       for (const w of r2.keyword.toLowerCase().split(/[^a-z0-9]+/)) {
         if (w.length <= 3) continue;
         const b = bezitter.get(w);
-        if (b && b.pad !== pad) uitGeleend.set(b.pad, (uitGeleend.get(b.pad) || 0) + r2.vertoningen);
+        if (!b || !bruikbaar(b)) continue;
+        uitGeleend.set(b.pad, (uitGeleend.get(b.pad) || 0) + r2.vertoningen);
+        if (!bewijs.has(b.pad)) bewijs.set(b.pad, r2.keyword);
       }
     }
+    const gesorteerd = [...uitGeleend.entries()].sort((a, b) => b[1] - a[1]);
+    // Alleen een tweede optie tonen als die er echt dicht bij zit; anders is de
+    // eerste gewoon het antwoord en maakt een rijtje het alleen vager.
+    const tweede = gesorteerd.length > 1 && gesorteerd[1][1] >= gesorteerd[0][1] * 0.6 ? [gesorteerd[1][0]] : [];
     const dubbel = [
       ...uitEigenNaam.sort((a, b) => b.vertoningen - a.vertoningen).map((b) => b.pad),
-      ...[...uitGeleend.entries()].sort((a, b) => b[1] - a[1]).map(([p2]) => p2),
+      ...(gesorteerd.length ? [gesorteerd[0][0], ...tweede] : []),
     ];
     kandidaten.push({
       pad, url: u.url, eigenWoorden: eigen,
       klikken: g.klikken, vertoningen: g.vertoningen,
       eigenTerm: null, geleendeTop: geleend, dubbelMet: [...new Set(dubbel)],
+      doelBewijs: dubbel.length ? bewijs.get(dubbel[dubbel.length - 1]) || bewijs.get(dubbel[0]) || "" : "",
     });
   }
 
@@ -389,10 +402,10 @@ export function bepaalZwakkePaginas(
     const doel = k.dubbelMet.length === 1
       ? ` -> voor de hand liggend doel: ${k.dubbelMet[0]}`
       : k.dubbelMet.length > 1
-      ? ` -> mogelijk doel: ${k.dubbelMet.slice(0, 3).join(" of ")} (deze pagina leent van meerdere; laat Maarten kiezen, gok er zelf geen)`
+      ? ` -> doel: ${k.dubbelMet.slice(0, 2).join(" of ")} (twee kandidaten die dicht bij elkaar liggen; laat Maarten kiezen)`
       : " -> geen doel af te leiden uit de data; vraag Maarten waar deze pagina heen moet of laat hem staan";
     regels.push(`${k.pad} [${k.klikken} klikken, ${k.vertoningen} vertoningen]${doel}`);
-    regels.push(`  geen eigen term op: ${k.eigenWoorden.join(", ")}${k.geleendeTop ? `; leent vooral "${k.geleendeTop.keyword}" (positie ${k.geleendeTop.positie}, ${k.geleendeTop.vertoningen} vertoningen)` : "; krijgt helemaal geen vertoningen"}`);
+    regels.push(`  geen eigen term op: ${k.eigenWoorden.join(", ")}${k.geleendeTop ? `; leent vooral "${k.geleendeTop.keyword}" (positie ${k.geleendeTop.positie}, ${k.geleendeTop.vertoningen} vertoningen)` : "; krijgt helemaal geen vertoningen"}${k.doelBewijs ? `; doel afgeleid uit het zoekwoord "${k.doelBewijs}" (controleer of dat klopt voordat je het adviseert)` : ""}`);
   }
 
   if (dubbelingen.length) {
