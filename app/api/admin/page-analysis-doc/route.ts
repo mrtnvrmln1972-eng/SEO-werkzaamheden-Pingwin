@@ -4,7 +4,7 @@ import { guardSlug } from "../../../../lib/admin-scope";
 import { waitUntil } from "@vercel/functions";
 import { anthropicConfigured, callClaude } from "../../../../lib/anthropic";
 import { summariseChatToSpec } from "../../../../lib/page-doc";
-import { buildPingwinDoc } from "../../../../lib/pingwin-docx";
+import { buildPingwinDoc, laatsteOmslagGelukt } from "../../../../lib/pingwin-docx";
 import { upsertStepTask } from "../../../../lib/tasks";
 import { getPageDriveFolder } from "../../../../lib/site-urls";
 import { uploadDocx } from "../../../../lib/drive";
@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
     try { ({ link, shared, owner, folder, isDoc, note } = await uploadDocx(folderId, filename, buffer)); }
     catch (e) { return NextResponse.json({ ok: false, error: `Document gemaakt, maar upload naar Drive mislukte: ${e instanceof Error ? e.message : "onbekende fout"}` }, { status: 502 }); }
     const taskId = await logTask(link);
-    return NextResponse.json({ ok: true, delivered: "drive", link, filename, taskId, title, shared, owner, folder, isDoc, note });
+    return NextResponse.json({ ok: true, delivered: "drive", link, filename, taskId, title, shared, owner, folder, isDoc, note, omslag: laatsteOmslagGelukt(), omslagMelding: laatsteOmslagGelukt() ? "" : "De omslag kon niet getekend worden; het document heeft nu een sobere tekst-omslag." });
   }
 
   const taskId = await logTask("");

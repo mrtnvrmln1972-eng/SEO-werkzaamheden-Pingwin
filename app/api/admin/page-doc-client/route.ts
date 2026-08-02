@@ -3,7 +3,7 @@ import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
 import { anthropicConfigured } from "../../../../lib/anthropic";
 import { clientVersionSpec, type DocKind } from "../../../../lib/page-doc";
-import { buildPingwinDoc } from "../../../../lib/pingwin-docx";
+import { buildPingwinDoc, laatsteOmslagGelukt } from "../../../../lib/pingwin-docx";
 import { getPageDriveFolder, getPageDocOutputs } from "../../../../lib/site-urls";
 import { setClientDocLink } from "../../../../lib/tasks";
 import { uploadDocx } from "../../../../lib/drive";
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
     catch (e) { return NextResponse.json({ ok: false, error: `Document gemaakt, maar upload naar Drive mislukte: ${e instanceof Error ? e.message : "onbekende fout"}` }, { status: 502 }); }
     // Koppel de klantversie aan de stap-werkzaamheid zodat hij in het klantdashboard verschijnt.
     await setClientDocLink(slug, url, STEP_KIND[kind], link).catch(() => null);
-    return NextResponse.json({ ok: true, delivered: "drive", link, filename, title, shared, owner, folder, isDoc, note });
+    return NextResponse.json({ ok: true, delivered: "drive", link, filename, title, shared, owner, folder, isDoc, note , omslag: laatsteOmslagGelukt(), omslagMelding: laatsteOmslagGelukt() ? "" : "De omslag kon niet getekend worden; het document heeft nu een sobere tekst-omslag." });
   }
 
   return new NextResponse(new Uint8Array(buffer), {

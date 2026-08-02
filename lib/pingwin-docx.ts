@@ -46,6 +46,13 @@ export type DocSpec = {
 
 const logoBuffer = () => Buffer.from(PINGWIN_LOGO_BASE64, "base64");
 
+// Viel de omslag terug op de tekst-versie? De terugval is bewust stil (liever een
+// sobere omslag dan een kapot document), maar stil betekende ook: onopgemerkt.
+// Maarten kreeg maandenlang een kaal document zonder dat iets dat meldde. De
+// routes lezen dit uit en zeggen het erbij.
+let omslagGelukt = true;
+export function laatsteOmslagGelukt(): boolean { return omslagGelukt; }
+
 function kopregel(klant: string, rapporttype: string): any {
   const merk = [klant, rapporttype].filter(Boolean).join("  ·  ");
   return new Header({ children: [
@@ -106,6 +113,7 @@ export async function buildPingwinDoc(spec: DocSpec): Promise<Buffer> {
     ondertitel: spec.ondertitel,
     meta: { Klant: spec.klant, ...(spec.meta || {}) },
   }, spec.sfeerbeeldUrl).catch(() => null);
+  omslagGelukt = !!png;
   if (png) {
     kids.push(new Paragraph({ spacing: { after: 340 }, children: [new ImageRun({
       type: "png", data: png, transformation: { width: OMSLAG_BREEDTE, height: OMSLAG_HOOGTE },
