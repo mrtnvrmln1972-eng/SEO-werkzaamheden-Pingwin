@@ -29,6 +29,7 @@ function KijkSleutel() {
   // helemaal niets op het scherm: geen sleutel, geen melding. Dan denk je dat
   // het gelukt is terwijl er niets klaarstaat, en dat kost een hele ronde.
   const [fout, setFout] = useState<string | null>(null);
+  const [getest, setGetest] = useState(false);
 
   async function laad() {
     const d = await fetch("/api/admin/kijk-sleutel").then((r) => r.json()).catch(() => null);
@@ -46,15 +47,20 @@ function KijkSleutel() {
     if (status?.actief && !window.confirm("Er is al een sleutel. Een nieuwe maken trekt de oude in; Claude komt er dan pas weer bij als je de nieuwe in je Claude-omgeving zet.\n\nDoorgaan?")) return;
     setBezig(true);
     setFout(null);
+    setGetest(false);
     try {
       const d = await fetch("/api/admin/kijk-sleutel", { method: "POST" }).then((r) => r.json());
       if (!d?.ok) { setFout(d?.error || "De sleutel kon niet aangemaakt worden. Probeer het nog een keer."); return; }
       setSleutel(d.sleutel);
       await laad();
-      // Controle na afloop: staat hij er nu écht? De knop mag pas "gelukt"
-      // uitstralen als het dashboard zelf bevestigt dat er een sleutel klaarstaat.
-      const na = await fetch("/api/admin/kijk-sleutel").then((r) => r.json()).catch(() => null);
-      if (!na?.actief) setFout("De sleutel is aangemaakt maar staat niet klaar in het dashboard. Druk nog een keer op de knop.");
+      // Zelftest: probeer de verse sleutel meteen uit op de ingang die Claude
+      // straks gebruikt. Alleen uitproberen, dus zonder je eigen adminsessie te
+      // raken. Pas als die deur echt opengaat mag hier "gelukt" staan; eerder gaf
+      // deze knop een sleutel terug die nergens werkte, en dat bleef onzichtbaar.
+      const t = await fetch(`/api/kijk?test=1&sleutel=${encodeURIComponent(d.sleutel)}`)
+        .then((r) => r.json()).catch(() => null);
+      setGetest(t?.ok === true);
+      if (!t?.ok) setFout("De sleutel is aangemaakt, maar de ingang accepteert hem nog niet. Druk nog een keer op de knop.");
     } catch {
       setFout("Het dashboard antwoordde niet. Controleer je verbinding en probeer het nog een keer.");
     } finally { setBezig(false); }
@@ -123,6 +129,7 @@ function KijkSleutel() {
           {sleutel && (
             <div className="kijk-nieuw">
               <p><strong>Dit is je sleutel. Je ziet hem één keer.</strong></p>
+              {getest && <p className="kijk-getest">Getest: de ingang laat deze sleutel binnen.</p>}
               <code className="kijk-waarde">PINGWIN_KIJK_SLEUTEL={sleutel}</code>
               <button
                 type="button"

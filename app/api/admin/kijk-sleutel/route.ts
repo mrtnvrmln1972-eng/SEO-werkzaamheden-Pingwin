@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { guardOwner } from "../../../../lib/admin-scope";
-import { getViewKeyStatus, createViewKey, revokeViewKey } from "../../../../lib/claude-view-key";
+import { getViewKeyStatus, createViewKey, revokeViewKey, viewKeyDiagnose } from "../../../../lib/claude-view-key";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,7 +11,11 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   const g = await guardOwner(req); if (!g.ok) return g.res;
-  return NextResponse.json({ ok: true, ...(await getViewKeyStatus()) });
+  // De telling hoort hier, achter de adminlogin: hoeveel sleutels er zijn, welke
+  // actief is en wanneer hij is aangemaakt. Zo is een rare situatie na te kijken
+  // zonder dat er iets van op een open ingang komt te staan.
+  const [status, diagnose] = await Promise.all([getViewKeyStatus(), viewKeyDiagnose().catch(() => null)]);
+  return NextResponse.json({ ok: true, ...status, diagnose });
 }
 
 // Nieuwe sleutel. De platte waarde komt hier één keer terug en wordt daarna

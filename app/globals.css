@@ -2896,6 +2896,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .kijk-body p { margin: 0 0 var(--s-3, 12px); }
 .kijk-meta { color: var(--muted, #6f645a); }
 .kijk-alarm { color: #8a3b12; background: #fdf1ea; border-left: 3px solid var(--orange, #F15829); border-radius: var(--r-sm, 8px); padding: var(--s-3, 12px) var(--s-4, 16px); }
+/* Geslaagde zelftest: zelfde vorm als de waarschuwing hierboven, in groen, zodat
+   goed en fout naast elkaar herkenbaar zijn zonder een nieuwe bouwsteen. */
+.kijk-getest { color: #1f6b3a; background: #eef8f1; border-left: 3px solid #2e9e5b; border-radius: var(--r-sm, 8px); padding: var(--s-3, 12px) var(--s-4, 16px); }
 .kijk-nieuw { background: #fffdfb; border: 1px solid var(--orange, #F15829); border-radius: var(--r-md, 10px); padding: var(--s-4, 16px); margin-bottom: var(--s-4, 16px); }
 .kijk-waarde { display: block; word-break: break-all; background: #f6f1ec; border-radius: var(--r-sm, 8px); padding: var(--s-3, 12px); margin-bottom: var(--s-3, 12px); font-size: var(--fs-xs, 12px); }
 .kijk-stappen { margin: var(--s-4, 16px) 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: var(--s-2, 8px); }

@@ -162,23 +162,16 @@ export type ViewKeyDiagnose = {
   // en niet in de gegevens.
   gevondenId: number | null;
   hashAanwezig: boolean;
-  variantOudId: number | null;
   rijen: { id: number; aangemaakt: string | null; ingetrokken: boolean }[];
 };
 
 export async function viewKeyDiagnose(): Promise<ViewKeyDiagnose> {
   await ensureSchema();
   await ensureTable();
-  const [tel, zoek, zoekOud, lijst] = await Promise.all([
+  const [tel, zoek, lijst] = await Promise.all([
     sql`SELECT COUNT(*)::int AS totaal, COUNT(revoked_at)::int AS ingetrokken, MAX(created_at) AS laatste
         FROM claude_view_key`,
-    // Twee keer dezelfde vraag: de gedeelde opzoeking die de controle nu gebruikt,
-    // en de oude losse variant. Ze horen hetzelfde te zeggen. Zeggen ze dat niet,
-    // dan is dat hier meteen zichtbaar in plaats van pas na een ronde gokken.
     sql`SELECT id, key_hash FROM claude_view_key WHERE revoked_at IS NULL ORDER BY id DESC LIMIT 1`,
-    sql`
-      SELECT id, key_hash FROM claude_view_key
-      WHERE revoked_at IS NULL ORDER BY id DESC LIMIT 1`,
     sql`SELECT id, created_at, revoked_at FROM claude_view_key ORDER BY id DESC LIMIT 8`,
   ]);
   const r = tel.rows[0];
@@ -188,13 +181,30 @@ export async function viewKeyDiagnose(): Promise<ViewKeyDiagnose> {
     laatsteAangemaakt: r?.laatste ? new Date(r.laatste as string).toISOString() : null,
     gevondenId: zoek.rows[0] ? Number(zoek.rows[0].id) : null,
     hashAanwezig: zoek.rows[0] ? Boolean(zoek.rows[0].key_hash) : false,
-    variantOudId: zoekOud.rows[0] ? Number(zoekOud.rows[0].id) : null,
     rijen: lijst.rows.map((x) => ({
       id: Number(x.id),
       aangemaakt: x.created_at ? new Date(x.created_at as string).toISOString() : null,
       ingetrokken: x.revoked_at !== null,
     })),
   };
+}
+
+/**
+ * Dezelfde controle als bij binnenkomst, maar zonder één spoor achter te laten:
+ * geen sessie, geen "laatst gebruikt"-stempel en geen mislukte poging in het log.
+ * Hiermee kan de cockpit een verse sleutel meteen zelf uitproberen en pas
+ * "gelukt" zeggen als de deur ook echt opengaat. Dat is de hele reden dat dit
+ * bestaat: eerder gaf de knop een sleutel terug die daarna nergens werkte, en
+ * dat bleef onzichtbaar tot Claude er een halve ochtend later op stukliep.
+ */
+export async function testViewKey(sleutel: string): Promise<ViewKeyCheck> {
+  const s = (sleutel || "").trim();
+  if (!s) return { ok: false, reden: "leeg" };
+  const r = await getActiveKey();
+  if (!r) return { ok: false, reden: "geen-sleutel", gezien: 0 };
+  if (!r.key_hash) return { ok: false, reden: "andere-sleutel", gezien: 1, kolomLeeg: true };
+  if (!verifyPassword(s, r.key_hash)) return { ok: false, reden: "andere-sleutel", gezien: 1 };
+  return { ok: true };
 }
 
 async function noteFail(reden: ViewKeyFailReason): Promise<void> {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, makeViewerSession } from "../../../lib/admin-auth";
-import { checkViewKey, viewKeyDiagnose } from "../../../lib/claude-view-key";
+import { checkViewKey, testViewKey } from "../../../lib/claude-view-key";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,6 +27,19 @@ export async function GET(req: NextRequest) {
   }
   const sleutel = req.nextUrl.searchParams.get("sleutel") || "";
 
+  // Uitprobeer-stand voor de cockpit: alleen kijken of deze sleutel de deur zou
+  // openen, zonder hem te gebruiken. Geen sessie-cookie (die zou Maartens eigen
+  // adminsessie overschrijven met een alleen-lezen sessie), geen stempel en geen
+  // mislukte poging in het log. Zo kan de knop zichzelf bewijzen.
+  if (req.nextUrl.searchParams.get("test") === "1") {
+    try {
+      const t = await testViewKey(sleutel);
+      return NextResponse.json(t.ok ? { ok: true } : { ok: false, reden: t.reden }, { status: t.ok ? 200 : 401 });
+    } catch {
+      return NextResponse.json({ ok: false, error: "De database antwoordde niet." }, { status: 503 });
+    }
+  }
+
   // Het antwoord vertelt precies wát er mis is. Eerst stond hier één algemene
   // afwijzing, en dan is van buitenaf niet te zien of meekijken uitstaat, of de
   // sleutel verouderd is, of de database hapert; dat kost een ronde heen en weer
@@ -49,21 +62,10 @@ export async function GET(req: NextRequest) {
         "Deze sleutel is verlopen: er staat een nieuwere klaar. Maak op /admin een nieuwe sleutel en zet die in de Claude-omgeving.",
       leeg: "Er kwam geen sleutel mee in het verzoek.",
     };
-    // Meetpunt bij een afwijzing: hoeveel sleutels staan er überhaupt in deze
-    // database, en wanneer is de laatste aangemaakt? Zonder dit is niet te
-    // onderscheiden of de knop in de cockpit ergens anders terechtkomt, of dat
-    // de sleutel hier wél binnenkomt en daarna verdwijnt. Alleen aantallen en
-    // tijdstippen, dus veilig om onbeschermd mee te sturen.
-    const diagnose = await viewKeyDiagnose().catch(() => null);
+    // De telling die hier tijdens het uitzoeken bij zat hoort niet op een open
+    // ingang thuis; hij staat nu achter de adminlogin, in de cockpit zelf.
     return NextResponse.json(
-      {
-        ok: false,
-        reden: uitkomst.reden,
-        error: uitleg[uitkomst.reden],
-        gezien: uitkomst.gezien ?? null,
-        kolomLeeg: uitkomst.kolomLeeg ?? false,
-        diagnose,
-      },
+      { ok: false, reden: uitkomst.reden, error: uitleg[uitkomst.reden] },
       { status: 401 },
     );
   }
