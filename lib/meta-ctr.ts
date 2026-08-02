@@ -4,6 +4,7 @@
 // de status (open -> goedgekeurd -> doorgevoerd) en meet daarna het effect
 // (CTR voor/na) uit Search Console.
 import { sql, ensureSchema } from "./db";
+import { logActiviteit } from "./activiteit";
 import { getClientBySlug } from "./clients";
 import { getGscPageOpportunities, getGscDailyForPage } from "./google";
 import { cacheGet, cacheSet, getKeywordsOverview } from "./ahrefs";
@@ -264,6 +265,17 @@ export async function updateMetaProposal(slug: string, url: string, fields: { pr
       live_at = CASE WHEN ${fields.status} = 'doorgevoerd' AND live_at IS NULL THEN now() ELSE live_at END,
       updated_at = now()
       WHERE client_slug = ${slug} AND page_url = ${url}`;
+    // Doorgevoerd = er staat nu iets nieuws in het zoekresultaat. Dat is werk dat
+    // we voor de klant deden, dus het hoort in het logboek.
+    if (fields.status === "doorgevoerd") {
+      const { rows } = await sql`SELECT id, live_at FROM meta_proposals WHERE client_slug = ${slug} AND page_url = ${url} LIMIT 1`;
+      if (rows[0]) {
+        await logActiviteit({
+          slug, soort: "meta", bron: "meta_proposals", bronId: Number(rows[0].id),
+          gebeurdeOp: (rows[0].live_at as string) || undefined, url,
+        });
+      }
+    }
   }
 }
 

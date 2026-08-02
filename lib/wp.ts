@@ -4,6 +4,7 @@
 // password uit client_wp_creds (lib/wp-creds.ts, ook gebruikt voor de
 // bewerkingshistorie) en de site-URL uit het klant-domein.
 import { sql, ensureSchema } from "./db";
+import { logActiviteit } from "./activiteit";
 import { getClientBySlug } from "./clients";
 import { getWpCreds } from "./wp-creds";
 import { baseFromDomain } from "./wordpress";
@@ -161,4 +162,10 @@ export async function savePageRedirect(slug: string, pageUrl: string, fromPath: 
     VALUES (${slug}, ${pageUrl}, ${fromPath}, ${toPath}, ${verified}, ${redirectionId})
     ON CONFLICT (slug, page_url, from_path)
     DO UPDATE SET to_path = ${toPath}, verified = ${verified}, redirection_id = COALESCE(${redirectionId}, page_redirects.redirection_id), executed_at = now()`;
+  // Een gezette redirect is uitgevoerd werk voor de klant: oude adressen blijven
+  // werken en er gaan geen bezoekers verloren.
+  await logActiviteit({
+    slug, soort: "redirect", bron: "page_redirects", bronId: `${pageUrl}|${fromPath}`,
+    url: pageUrl, intern: `Redirect ${fromPath} → ${toPath}`,
+  });
 }

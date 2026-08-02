@@ -18,6 +18,7 @@
 
 import { sql, ensureSchema } from "./db";
 import { fetchPageContent } from "./page-content";
+import { logActiviteit } from "./activiteit";
 import { urlKey } from "./url-key";
 
 // Vanaf dit aandeel gevonden koppen noemen we de copy doorgevoerd. Niet 100%:
@@ -153,6 +154,14 @@ export async function runCopyLiveCheck(slug: string): Promise<{ gemeten: number;
         VALUES (${slug}, ${m.url}, now(), ${m.status}, ${m.totaal}, ${m.gevonden}, ${m.doorgevoerd}, ${m.meetbaar})
         ON CONFLICT (client_slug, url) DO UPDATE
           SET checked_at = now(), status = ${m.status}, total = ${m.totaal}, found = ${m.gevonden}, live = ${m.doorgevoerd}, measured = ${m.meetbaar}`;
+      // Staat de copy aantoonbaar live, dan is dat een mijlpaal voor deze pagina.
+      // Eén regel per pagina: de herkomst is de URL, dus een volgende controle
+      // levert geen tweede regel op.
+      if (m.doorgevoerd) {
+        await logActiviteit({
+          slug, soort: "copy-live", bron: "page_copy_live", bronId: m.url, url: m.url,
+        });
+      }
       uit.push({ ...m, gemeten: gemetenOp });
     }
   }

@@ -26,10 +26,11 @@ import PagesPanel from "./PagesPanel";
 import WijzigingenPanel from "./WijzigingenPanel";
 import MetaCtrPanel from "./MetaCtrPanel";
 import DocumentenPanel from "./DocumentenPanel";
+import ActiviteitPanel from "./ActiviteitPanel";
 import InvoiceAlert from "./InvoiceAlert";
 import SelectionActions from "./SelectionActions";
 
-type Tab = "werkzaamheden" | "paginas" | "documenten" | "resultaten" | "klant" | "developer" | "wijzigingen" | "cannibalisatie" | "interne-links" | "meta";
+type Tab = "werkzaamheden" | "paginas" | "documenten" | "activiteit" | "resultaten" | "klant" | "developer" | "wijzigingen" | "cannibalisatie" | "interne-links" | "meta";
 
 // Jouw Superhuman-account (Microsoft 365 hangt hieronder).
 const SUPERHUMAN_ACCOUNT = "Maarten@pingwin.nl";
@@ -93,7 +94,7 @@ export default function ClientCockpit({
   // Directe feedback bij het wisselen van klant: de nieuwe pagina moet server-
   // side data ophalen en dat duurt even; zonder signaal voelt dat als bevroren.
   const [switchingTo, setSwitchingTo] = useState<string | null>(null);
-  const validTab = (t?: string): Tab => (t === "werkzaamheden" || t === "paginas" || t === "documenten" || t === "resultaten" || t === "klant" || t === "developer" || t === "wijzigingen" || t === "meta") ? t : "werkzaamheden";
+  const validTab = (t?: string): Tab => (t === "werkzaamheden" || t === "paginas" || t === "documenten" || t === "activiteit" || t === "resultaten" || t === "klant" || t === "developer" || t === "wijzigingen" || t === "meta") ? t : "werkzaamheden";
   const [tab, setTab] = useState<Tab>(validTab(initialTab));
   // Teller die de weekplanning laat herladen zodra er vanuit de chat een taak is
   // toegevoegd (of iets in het bord verandert).
@@ -398,6 +399,7 @@ export default function ClientCockpit({
               ["werkzaamheden", "Taken", "De bird's eye-assistent en de weekplanning, jouw werkplek"],
               ["paginas", "Pagina’s", ""],
               ["documenten", "Documenten", "Alle analyses, blauwdrukken en copy per pagina, per maand, met of het al op de site staat"],
+              ["activiteit", "Wat we doen", "Alles wat we voor deze klant hebben uitgevoerd, per maand: analyses, copy, meta-teksten, alt-teksten, structured data en redirects"],
               ["meta", "Meta & CTR", "Pagina's met veel vertoningen maar te weinig klikken: betere meta-teksten = direct meer bezoekers"],
               ["resultaten", "KPI’s", ""],
               ["wijzigingen", "Wijzigingen", ""],
@@ -683,6 +685,7 @@ export default function ClientCockpit({
         )}
 
         {tab === "documenten" && <DocumentenPanel slug={client.slug} onGoToPage={goToPage} />}
+        {tab === "activiteit" && <ActiviteitPanel slug={client.slug} />}
         {tab === "wijzigingen" && <WijzigingenPanel slug={client.slug} />}
 
         {tab === "meta" && <MetaCtrPanel slug={client.slug} domain={client.domain || ""} backendUrl={client.backendUrl} onOpenPage={goToPage} />}

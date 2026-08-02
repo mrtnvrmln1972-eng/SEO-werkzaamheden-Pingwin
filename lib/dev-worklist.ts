@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { logActiviteit } from "./activiteit";
 import { getClientBySlug } from "./clients";
 import { getClientUrls, getPageDriveFolder } from "./site-urls";
 import { getPages } from "./snapshots";
@@ -723,6 +724,15 @@ export async function setWorklistMark(slug: string, itemKey: string, done: boole
     INSERT INTO dev_worklist_marks (client_slug, item_key, done, done_by, done_at)
     VALUES (${slug}, ${itemKey}, ${done}, ${door || null}, ${done ? new Date().toISOString() : null})
     ON CONFLICT (client_slug, item_key) DO UPDATE SET done = ${done}, done_by = ${door || null}, done_at = ${done ? new Date().toISOString() : null}`;
+  // Afvinken door de sitebouwer is echt uitgevoerd werk; terugzetten niet.
+  if (done) {
+    const isAlt = itemKey.startsWith("a|");
+    await logActiviteit({
+      slug, soort: isAlt ? "alt" : "meta", bron: "dev_worklist_marks", bronId: itemKey,
+      wie: "Sitebouwer",
+      intern: `${isAlt ? "Alt-tekst" : "Meta-tekst"} doorgevoerd door de sitebouwer${door ? ` (${door})` : ""}`,
+    });
+  }
 }
 
 async function setVerified(slug: string, itemKey: string, verified: boolean): Promise<void> {

@@ -2852,6 +2852,39 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .doc-datum { opacity: 0.7; font-weight: 400; }
 .doc-open { margin-left: var(--s-2); }
 
+/* ── "Wat we doen": het activiteitenlogboek per klant ── */
+.act-tellers { display: flex; flex-wrap: wrap; gap: var(--s-1); margin-bottom: var(--s-2); }
+.act-teller {
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 600;
+  color: var(--orange-dark); background: var(--orange-light);
+  border-radius: var(--r-sm); padding: 0 var(--s-2);
+}
+.act-rij {
+  display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2);
+  border-bottom: 1px solid var(--card-border); padding: var(--s-2) 0;
+  font-size: var(--fs-sm); line-height: var(--lh-sm);
+}
+.act-rij:last-child { border-bottom: none; }
+.act-datum { color: var(--gray); font-size: var(--fs-xs); min-width: 44px; }
+.act-soort {
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
+  border-radius: var(--r-sm); padding: 0 var(--s-2);
+  color: var(--brand-taupe); background: var(--brand-taupe-light);
+}
+.act-soort-copy, .act-soort-copy-live { color: #1e824c; background: #eaf6ef; }
+.act-soort-meta, .act-soort-alt { color: #1a6dd6; background: #e7f1fa; }
+.act-soort-paginawijziging { color: var(--gray); background: var(--gray-light); }
+.act-tekst { color: var(--body-text); }
+.act-pad { color: #1a6dd6; text-decoration: none; font-size: var(--fs-xs); }
+.act-pad:hover { text-decoration: underline; }
+.act-spacer { flex: 1 1 auto; }
+.act-deel {
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 600; cursor: pointer;
+  border-radius: var(--r-sm); padding: 0 var(--s-2);
+  border: 1px solid var(--border); background: var(--gray-light); color: var(--gray);
+}
+.act-deel.aan { border-color: #cfe8da; background: #eaf6ef; color: #1e824c; }
+
 /* "Eén volgende zet" op een werkplan-kaart */
 .wp-next { margin-top: 7px; font-size: 12px; line-height: 1.45; color: #333; }
 .wp-btn-primary { font-weight: 700; }

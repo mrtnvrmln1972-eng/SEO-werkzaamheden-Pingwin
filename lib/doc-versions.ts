@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { logActiviteit } from "./activiteit";
 import { getClientBySlug } from "./clients";
 import { getPageDocOutputs, savePageDocOutput, getPageDriveFolder } from "./site-urls";
 import { callClaude, LIGHT_MODEL } from "./anthropic";
@@ -79,7 +80,19 @@ export async function registerGeneratedVersion(slug: string, url: string, kind: 
     await ensureTable();
     await sql`
       INSERT INTO page_doc_versions (client_slug, url, kind, source, naam, drive_link, tekst, samenvatting, vergelijking, status)
-      VALUES (${slug}, ${url}, ${kind}, 'pingwin', ${naam || null}, ${driveLink || null}, ${(tekst || "").slice(0, 60000) || null}, ${samenvatting || "Gegenereerd door het dashboard."}, ${null}, 'verwerkt')`;
+      VALUES (${slug}, ${url}, ${kind}, 'pingwin', ${naam || null}, ${driveLink || null}, ${(tekst || "").slice(0, 60000) || null}, ${samenvatting || "Gegenereerd door het dashboard."}, ${null}, 'verwerkt')
+      RETURNING id`;
+    // Een opgeleverd document is werk dat we voor de klant deden; alleen de drie
+    // soorten die daar echt over gaan, niet elk intern bestand.
+    if (kind === "analyse" || kind === "blauwdruk" || kind === "copy") {
+      const { rows } = await sql`SELECT id FROM page_doc_versions WHERE client_slug = ${slug} AND url = ${url} AND kind = ${kind} ORDER BY id DESC LIMIT 1`;
+      if (rows[0]) {
+        await logActiviteit({
+          slug, soort: kind, bron: "page_doc_versions", bronId: Number(rows[0].id),
+          url, bewijs: driveLink || null,
+        });
+      }
+    }
   } catch { /* archief is best effort */ }
 }
 
