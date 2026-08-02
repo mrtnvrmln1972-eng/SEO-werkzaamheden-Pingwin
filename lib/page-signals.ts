@@ -103,9 +103,15 @@ export async function buildPageSignalsText(slug: string): Promise<string> {
     const p = pageByUrl.get(key);
     const kw = kwDev[key];
     const metaBits: string[] = [];
-    const clicks = p?.clicks ?? u.gscClicks;
-    const impr = p?.impressions ?? u.gscImpressions;
-    if (clicks || impr) metaBits.push(`klikken ${clicks || 0}, vertoningen ${impr || 0}`);
+    // ALLEEN het verse Search Console-cijfer. De terugval op de scan-kolom is
+    // eruit: die stond op 0 bij pagina's die er in werkelijkheid duizenden
+    // vertoningen hebben (/testen-in-amsterdam-welke-opties-heb-je/ stond op 0
+    // tegen 4911 echt). Op precies zo'n 0 wordt besloten een pagina op te ruimen.
+    // Geen cijfer is beter dan een fout cijfer.
+    const clicks = p?.clicks;
+    const impr = p?.impressions;
+    if (p && (clicks || impr)) metaBits.push(`klikken ${clicks || 0}, vertoningen ${impr || 0} (Search Console)`);
+    else if (!p) metaBits.push("verkeerscijfer niet bekend, haal het op met gsc_pagina voordat je hier iets over zegt");
     if (kw) metaBits.push(`positie ${kw.best} op "${kw.kw}"${kw.delta != null && kw.delta !== 0 ? ` (${kw.delta > 0 ? "+" : ""}${kw.delta})` : ""}`);
     const meta = metaBits.length ? ` [${metaBits.join("; ")}]` : "";
     lines.push({ txt: `- ${pathOf(u.url)}: ${sig.join("; ")}${meta}`, weight });

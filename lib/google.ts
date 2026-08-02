@@ -1039,3 +1039,23 @@ export async function getAdsComparison(slug: string, domain: string, days: numbe
   return { linked, dates, totals, campaigns };
 }
 
+
+// Alle (zoekwoord, pagina)-combinaties in één keer. Nodig om te bepalen WELKE
+// pagina's elkaar in de weg zitten: dat is geen inschatting maar een overlap in
+// de data. Eén aanroep, want per pagina vragen zou tientallen calls kosten.
+export type GscPaar = { keyword: string; page: string; clicks: number; impressions: number; position: number };
+export async function getGscQueryPagePairs(domain: string, days = 90, rowLimit = 5000): Promise<GscPaar[]> {
+  const token = await accessTokenFor("google");
+  if (!token || !domain) return [];
+  const site = await gscPickSite(token, domain);
+  if (!site) return [];
+  const r = periodRanges(days);
+  const rows = await gscQuery(token, site, {
+    startDate: r.curStart, endDate: r.curEnd,
+    dimensions: ["query", "page"], rowLimit,
+  });
+  return rows.map((x) => ({
+    keyword: x.keys?.[0] || "", page: x.keys?.[1] || "",
+    clicks: Math.round(x.clicks), impressions: Math.round(x.impressions), position: Math.round(x.position * 10) / 10,
+  })).filter((x) => x.keyword && x.page);
+}

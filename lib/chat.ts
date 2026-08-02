@@ -15,6 +15,8 @@ import { buildPageSignalsText, buildKeywordStandText, buildTeBouwenText } from "
 import { readDriveDoc } from "./drive";
 import { validateAction, executeAction, type ProposedAction } from "./overview-actions";
 import { controleerAntwoord, herstelOpdracht } from "./antwoord-controle";
+import { overlappendePaginas, overlapAlsTekst } from "./concurrenten";
+import { getPageInternalLinks, runPageInternalLinks } from "./page-internal-links";
 import type { ClientConfig } from "./clients";
 
 // ═══════════════════════════════════════════════════════════
@@ -439,6 +441,8 @@ function chatTools(client: ClientConfig): { tools: ToolDef[]; run: ToolRunner } 
   const tools: ToolDef[] = [
     { name: "meet_pagina", description: "Leest en meet een pagina live uit: meta-title/description, H1/H2/H3, aantal woorden, interne/externe links, afbeeldingen, FAQ en schema. Gebruik dit ZELF om contentkwaliteit en on-page zaken te beoordelen in plaats van ernaar te vragen.", input_schema: { type: "object", properties: { url: { type: "string", description: "Volledige URL of pad (bijv. /zwemvijvers/)" } }, required: ["url"] } },
     { name: "controleer_url", description: "Controleert LIVE wat een URL echt doet: bestaat hij (200), is hij al omgeleid (301/302, en waarheen), of is hij weg (404). Volgt de omleiding NIET, dus dit is de enige betrouwbare manier om te weten of een pagina nog leeft. Gebruik dit ALTIJD voordat je zegt dat een pagina live staat, nog gebouwd moet worden, of opgeruimd/omgeleid moet worden. Ook voor een pad dat niet in de bekende URL-lijst staat.", input_schema: { type: "object", properties: { url: { type: "string", description: "Volledige URL of pad" } }, required: ["url"] } },
+    { name: "concurrerende_paginas", description: "DE ENIGE JUISTE MANIER om te bepalen welke pagina's een doelpagina in de weg zitten. Zoekt in Search Console welke andere pagina's van deze klant vertoningen krijgen op DEZELFDE zoekwoorden, en geeft per concurrent de gedeelde zoekwoorden met posities, de live status, en de EIGEN sterkste zoekterm van die pagina (het bestaansrecht). Gebruik dit ALTIJD bij vragen over cannibalisatie, concurrerende pagina's, opruimen, redirects of 'welke pagina's zitten in de weg'. Leid dit NOOIT zelf af uit de URL-lijst: dan mis je pagina's en verzin je pagina's. De uitkomst is compleet; noem er geen andere bij.", input_schema: { type: "object", properties: { url: { type: "string", description: "De doelpagina (volledige URL of pad)" } }, required: ["url"] } },
+    { name: "interne_link_kansen", description: "De interne-link-analyse van het dashboard voor één pagina: vanaf welke bestaande pagina's je het beste naar deze pagina kunt linken, gewogen op autoriteit, verkeer en relevantie. Gebruik dit ALTIJD als het gaat over het versterken van een pagina, interne links leggen, linkwaarde sturen of autoriteit doorgeven. Geef nooit zelf een lijst bronpagina's uit je hoofd.", input_schema: { type: "object", properties: { url: { type: "string", description: "De pagina die je wilt versterken (volledige URL of pad)" } }, required: ["url"] } },
     { name: "gsc_pagina", description: "Search Console-zoekwoorden van één pagina (laatste 90 dagen): zoekwoord, klikken, vertoningen, positie.", input_schema: { type: "object", properties: { url: { type: "string", description: "Volledige URL of pad" } }, required: ["url"] } },
     { name: "ahrefs_pagina", description: "Ahrefs-gegevens van één pagina: organische zoekwoorden met positie/volume/verkeer, plus het aantal verwijzende domeinen (externe autoriteit) van die pagina.", input_schema: { type: "object", properties: { url: { type: "string", description: "Volledige URL of pad" } }, required: ["url"] } },
     { name: "serp_top10", description: "De actuele top 10 van Google voor een zoekwoord (NL): positie, URL, titel, domain rating en resultaattype. Gebruik dit ZELF om de concurrentie te beoordelen.", input_schema: { type: "object", properties: { zoekwoord: { type: "string" } }, required: ["zoekwoord"] } },
@@ -470,6 +474,19 @@ function chatTools(client: ClientConfig): { tools: ToolDef[]; run: ToolRunner } 
           `Woorden: ${m.wordCount}. Interne links: ${m.internalLinkCount}, extern: ${m.externalLinkCount}.`,
           `Afbeeldingen: ${imgUniek} uniek${m.images.length > imgUniek ? ` (${m.images.length} img-tags incl. responsive/lazyload-varianten)` : ""}, zonder alt: ${imgUniekNoAlt} uniek. FAQ: ${m.faqDetected ? `ja (${m.faqCount})` : "nee"}. Schema: ${m.schemaTypes.join(", ") || "geen"}.`,
         ].join("\n");
+      }
+      if (name === "concurrerende_paginas") {
+        const r = await overlappendePaginas(client.slug, domain, toFull(String(input.url || "")));
+        return overlapAlsTekst(r);
+      }
+      if (name === "interne_link_kansen") {
+        const doel = toFull(String(input.url || ""));
+        const st = await getPageInternalLinks(client.slug, doel);
+        if (st.status === "done" && st.result) return `INTERNE-LINK-KANSEN voor ${doel} (analyse van ${st.updatedAt ? new Date(st.updatedAt).toLocaleDateString("nl-NL") : "onbekend"}):\n${st.result}`;
+        if (st.status === "running") return "De interne-link-analyse voor deze pagina draait nog. Zeg dat, en doe zelf geen uitspraak over welke pagina's moeten linken.";
+        // Nog nooit gedraaid: start hem, zodat de volgende vraag hem wel heeft.
+        try { void runPageInternalLinks(client.slug, doel); } catch { /* best effort */ }
+        return "Voor deze pagina is nog geen interne-link-analyse gedraaid; ik ben hem nu gestart. Doe zelf GEEN uitspraak over welke pagina's moeten linken, en zeg dat de analyse eraan komt.";
       }
       if (name === "controleer_url") {
         // redirect: "manual" is hier het hele punt: we willen de ECHTE status van
@@ -707,6 +724,28 @@ export async function oogstTaken(slug: string, thread = "overzicht"): Promise<{ 
     new Promise<string>((resolve) => setTimeout(() => resolve(""), 20000)),
   ]);
 
+  // Gaat het gesprek over opruimen of concurrerende pagina's, dan halen we de
+  // overlap-analyse er ZELF bij voor de pagina's die in het gesprek voorkomen.
+  // Anders vertelt de taak het gesprek na ("stel een redirectlijst op") in plaats
+  // van de lijst mee te leveren, en moet het werk alsnog een keer over.
+  let hardeData = "";
+  if (/redirect|omleid|opruim|cannibal|kannibal|concurre|in de weg|dubbel|duplicaat/i.test(gesprek)) {
+    const paden = [...new Set([...gesprek.matchAll(/(?<![\w:])\/[a-z0-9][a-z0-9-]*(?:\/[a-z0-9][a-z0-9-]*)*\//gi)].map((m) => m[0]))];
+    const bekend = await getClientUrls(slug).catch(() => []);
+    const bekendePaden = new Map(bekend.map((u) => { try { return [new URL(u.url).pathname, u.url] as const; } catch { return [u.url, u.url] as const; } }));
+    // Alleen de pagina's waar het gesprek echt om draait: de vaakst genoemde live paden.
+    const telling = paden
+      .filter((p) => bekendePaden.has(p))
+      .map((p) => ({ p, n: (gesprek.match(new RegExp(p.replace(/[/-]/g, "\\$&"), "g")) || []).length }))
+      .sort((a, b) => b.n - a.n).slice(0, 3);
+    const stukken: string[] = [];
+    for (const { p } of telling) {
+      try { stukken.push(overlapAlsTekst(await overlappendePaginas(slug, client.domain || "", bekendePaden.get(p) as string))); }
+      catch { /* deze pagina overslaan */ }
+    }
+    if (stukken.length) hardeData = "\n\n--- VERSE OVERLAP-ANALYSE UIT SEARCH CONSOLE (leidend boven wat er in het gesprek staat) ---\n" + stukken.join("\n\n");
+  }
+
   const system =
     `Je bepaalt welk werk er volgt uit een gesprek tussen Maarten en de bird's eye-strateeg van Pingwin voor de klant ${client.name}.\n` +
     `Antwoord met UITSLUITEND geldige JSON, niets eromheen, exact dit formaat:\n` +
@@ -722,9 +761,12 @@ export async function oogstTaken(slug: string, thread = "overzicht"): Promise<{ 
     `- Streef naar 2 tot 6 taken, nooit meer dan 10. Een gesprek dat nergens op uitkomt mag gerust nul taken opleveren; zet dan alles in "geen_taak".\n` +
     `- "week": 1 = deze week, 2 = volgende, enzovoort; realistisch verdeeld. "wie" is "SEO" of "Dev". "taaktype" is één van: meta, alt, copy, intern, strategie, pijplijn, structured, overig.\n\n` +
     `"info" bouw je op in secties met een kort kopje op een eigen regel dat eindigt op een dubbele punt. Eerst "Achtergrond:" met korte puntige regels van hooguit vijftien woorden (wat is er mis, welke cijfers, waarom nu), hooguit vier regels. Dan alleen indien relevant "Afspraken en herkomst:" met '-'-bullets (mail-datum, wie). Dan "Aanpak per fase:" met per regel een '-'-bullet die begint met exact een fasenaam en dubbele punt ("- Analyse: ...", "- Copy: ...", "- Bouw: ..."), alleen voor fases die nodig zijn. Herhaal nooit de titel als bullet en noem een cijfer maar één keer.\n\n` +
-    `VERDER: gebruik alleen paden die letterlijk in het gesprek of de context staan; vorm zelf geen paden. Verzin geen cijfers. Geen emoji, geen Markdown-symbolen (#, | of **) en geen tekst buiten de JSON.`;
+    `HET CONCRETE WERK MOET IN DE TAAK ZITTEN, NIET ERNAAR VERWIJZEN (hard, hier ging het mis). Een taak als "stel een redirectlijst op" is waardeloos: dan moet het werk alsnog gedaan worden. Staat de lijst in het gesprek of in de verse overlap-analyse, dan zet je hem VOLUIT in "info" onder het kopje "Redirecttabel:", met per regel exact: "- /bronpad/ -> /doelpad/ (reden; cijfers van die pagina)". Dat is wat de sitebouwer uitvoert zonder na te denken. Hetzelfde geldt voor interne links: onder "Interne links:" per regel "- vanaf /bronpad/ met ankertekst \"...\" naar /doelpad/". Vat NOOIT een tabel samen tot een zin.\n` +
+    `NOOIT EEN OPRUIMADVIES ZONDER DE CIJFERS. Stel je voor om een pagina om te leiden of te verwijderen, dan zet je in diezelfde regel wat die pagina NU presteert (eigen sterkste zoekterm, positie, vertoningen) uit de overlap-analyse. Heeft een pagina een eigen sterke zoekterm die de doelpagina niet bedient, dan is omleiden waarschijnlijk FOUT: die zet je niet in de redirecttabel maar noem je in "geen_taak" met de reden dat hij eigen verkeer heeft. Zonder cijfers geen redirect.\n` +
+    `IS ER EEN VERSE OVERLAP-ANALYSE MEEGELEVERD, DAN IS DIE LEIDEND boven wat er in het gesprek staat. Het gesprek kan pagina's gemist hebben of een pagina noemen die al omgeleid is. Neem alle concurrenten uit die analyse mee, en laat elke pagina die daar als "AL OMGELEID" staat volledig weg.\n` +
+    `VERDER: gebruik alleen paden die letterlijk in het gesprek, de overlap-analyse of de context staan; vorm zelf geen paden. Verzin geen cijfers. Geen emoji, geen Markdown-symbolen (#, | of **) en geen tekst buiten de JSON.`;
 
-  const body = `--- HET GESPREK ---\n${gesprek}\n\n--- EXTRA CONTEXT (alleen voor juiste paden en achtergrond) ---\n${context.slice(0, 6000)}`;
+  const body = `--- HET GESPREK ---\n${gesprek}${hardeData}\n\n--- EXTRA CONTEXT (alleen voor juiste paden en achtergrond) ---\n${context.slice(0, 6000)}`;
 
   for (let attempt = 0; attempt < 2; attempt++) {
     const extra = attempt === 0 ? "" : "\n\nLET OP: je vorige antwoord was geen geldige JSON. Geef nu UITSLUITEND het JSON-object, zonder tekst eromheen.";
@@ -763,6 +805,20 @@ export async function oogstTaken(slug: string, thread = "overzicht"): Promise<{ 
       // Nul taken is een geldige uitkomst (een gesprek hoeft nergens op uit te komen),
       // maar dan moet er wel íets te zien zijn, anders lijkt het op een fout.
       if (!taken.length && !geenTaak.length) continue;
+
+      // Dezelfde feitencontrole als op een chatantwoord. Die zat er hier nog niet
+      // op, waardoor een taak ongemerkt "433 live locaties" kon bevatten.
+      const bronnen = gesprek + "\n" + hardeData + "\n" + context;
+      const bekendePaden = (await getClientUrls(slug).catch(() => []))
+        .map((u) => { try { return new URL(u.url).pathname; } catch { return u.url; } });
+      const teToetsen = taken.map((t) => `${t.taak}\n${t.waarom}\n${t.info || ""}`).join("\n") + "\n" + geenTaak.join("\n");
+      const controle = controleerAntwoord(teToetsen, bronnen, bekendePaden);
+      if (!controle.ok && attempt === 0) continue;   // één keer opnieuw, dan pas doorlaten
+      if (!controle.ok) {
+        // Tweede poging ook niet rond: benoem het zichtbaar in plaats van te verzwijgen.
+        const punten = [...controle.cijfers, ...controle.paden].slice(0, 8).join("; ");
+        geenTaak.unshift(`Let op: deze punten zijn niet nagetrokken en kunnen fout zijn: ${punten}. Controleer ze voordat je ze uitvoert.`);
+      }
 
       const oogst: OogstResultaat = { taken, geenTaak };
       const bericht: ChatMessage = { role: "assistant", content: "Voorstel: dit werk volgt uit dit gesprek.", soort: "oogst", oogst };
@@ -863,6 +919,10 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
       `- NIEUWE PAGINA = EERST STRATEGIE (verplicht, met cannibalisatie-check). Voor een nieuwe pagina is de eerste stap NOOIT blauwdruk of copy, maar een doordachte strategie. Doe ZELF eerst de cannibalisatie-check: kijk met ahrefs_pagina/gsc_pagina/serp_top10 (en site_overzicht) of de site al rankt op de doeltermen van de nieuwe pagina. Rankt er al een bestaande pagina hoog op die term (een "pillar"), dan mag de nieuwe pagina die term NIET overnemen; hij moet ondersteunen: afwijkende/specifiekere zoektermen, bij voorkeur een URL als kind onder de pillar, en interne links omhoog naar de pillar. Stel de strategie voor als 'strategie_bepalen'-kaart (bewerkbaar; Maarten past aan/keurt goed). Pas NA goedkeuren mag 'pijplijn_starten' met blauwdruk/copy; stel die dus niet eerder voor. Gooit Maarten een URL of screenshot met "kijk hoe deze rankt", neem die pagina dan mee in de strategie.\n` +
       `- WEEKPLANNING: vraagt Maarten om een planning of taken (bijv. "kun je een planning maken", "maak een weekplanning", "maak hier taken van", "wat kunnen we oppakken", "geef een werklijstje"), geef dan (a) je inhoudelijke terugkoppeling in tekst = ALLEEN de STAND VAN ZAKEN (de analyse), netjes opgemaakt volgens de OPMAAK-regels (blokken met oranje kopjes, streepjes ertussen, bullets, vet, linkjes). GEEN aparte "Prioriteitsvolgorde"- of "Weekplanning per week"-tekstlijst, want dat is de dubbele lijst die Maarten niet wil. EN (b) roep in DEZELFDE beurt 'stel_acties_voor' aan met één 'weekplan_taken': dát is de planning. Per taak: de wie (SEO of Dev), de pagina (url), het taaktype, de week (1 = deze week, 2 = volgende, enzovoort), en in 'info' de VOLLEDIGE achtergrond/redenering (waar komt het vandaan zoals de mail van 30 juli, welke interne links, hoe het zich verhoudt tot andere pagina's, verwachte impact). Elke losse taak is een aparte kaart in de juiste week; de per-week-redenering leeft dus in de kaarten, niet in je tekst. CRUCIAAL: vraag NIET eerst "zal ik dit in de weekplanning zetten?"; de planning-vraag IS het verzoek, maak de kaarten meteen. Kondig het niet aan, maak ze echt. Roep 'weekplan_taken' in ÉÉN keer aan met alle taken er meteen in (nooit leeg, nooit "in twee stappen"). Eindig je beurt NOOIT met alleen een aankondiging als "hier komt de planning" of "ik ga de kaarten aanmaken" zonder de gevulde tool-aanroep: die gevulde aanroep ÍS de planning. Wordt een actie afgekeurd, doe hem dan in dezelfde beurt opnieuw, correct gevuld.\n` +
       `- GEEN MUUR VAN TAKEN (belangrijk): de rijke context is om te WEGEN, niet om alles wat je signaleert als taak uit te spugen. Kies een behapbaar, op prioriteit gesorteerd geheel (richtlijn: een handvol taken per week, niet elk gevonden kansje). Bouw de prioriteit in deze weging: (1) afspraken met de klant (landingspagina's + zoekwoorden), (2) recente mails / open opvolging, (3) belangrijke pagina's die nog opgezet of geoptimaliseerd moeten worden voor de site (autoriteit), (4) laaghangend fruit als aanvulling. Een mooie mix, van hoog naar laag. Een planning mag enkele weken tot ~twee maanden vooruit reiken (week 1 tot 8+), maar gedoseerd en gemotiveerd, niet alles tegelijk.\n` +
+      `- VERSE DATA WINT ALTIJD VAN CONTEXT (harde volgorde). De blokken hieronder zijn een momentopname en kunnen verouderd of onvolledig zijn. Een tool die je NU aanroept geeft de werkelijkheid. Spreken ze elkaar tegen, dan gebruik je de tool-uitkomst en benoem je het verschil ("de opgeslagen scan zei X, live is het Y"); kies nooit stilzwijgend een van beide. Ontbreekt een cijfer in de context, dan is dat GEEN nul: dat is onbekend, en dan haal je het op.\n` +
+      `- WELKE PAGINA'S ELKAAR IN DE WEG ZITTEN, ZOEK JE OP MET concurrerende_paginas. NOOIT zelf afleiden uit de URL-lijst. Dat is twee keer misgegaan: pagina's gemist die er echt toe deden, en pagina's verzonnen die niet bestaan. De tool leest Search Console en geeft de VOLLEDIGE lijst; die neem je over zoals hij is.\n` +
+      `- GEEN OPRUIMADVIES ZONDER DE CIJFERS VAN DIE PAGINA. Stel je voor een pagina om te leiden of te verwijderen, dan noem je in dezelfde adem wat die pagina nu presteert: zijn eigen sterkste zoekterm, positie en vertoningen. Heeft een pagina een eigen sterke term die de doelpagina niet bedient, dan heeft hij BESTAANSRECHT en leid je hem niet om; zeg dat expliciet. Een pagina wegzetten op basis van "lijkt dun" zonder cijfers doe je nooit.\n` +
+      `- GAAT HET OVER EEN PAGINA VERSTERKEN OF INTERNE LINKS, gebruik dan interne_link_kansen. Verzin nooit zelf welke pagina's zouden moeten linken; die analyse weegt autoriteit en relevantie en die van jou niet.\n` +
       `- ELK RANKINGCIJFER KOMT UIT EEN VERSE AANROEP, NOOIT UIT JE HOOFD (hard, hier is het eerder grondig misgegaan). Noem je een positie, een Domain Rating of een aantal verwijzende domeinen, dan heb je in DEZE beurt gsc_pagina, ahrefs_pagina of serp_top10 aangeroepen en neem je het cijfer letterlijk over. Zet er de bron bij, bijvoorbeeld "positie 3,6 (Search Console, 90 dagen)" of "positie 7 (Ahrefs)". Search Console en Ahrefs zijn twee verschillende bronnen die verschillende cijfers geven; haal ze nooit door elkaar en presenteer nooit het ene als het andere. Geeft een bron geen data, schrijf dan "Ahrefs: geen positie bekend". Vul NOOIT een getal in dat plausibel lijkt.\n` +
       `- STATUS VAN EEN PAGINA CONTROLEER JE MET controleer_url, ALTIJD. Voordat je zegt dat een pagina live staat, nog gebouwd moet worden, dun is, een duplicaat is of opgeruimd/omgeleid moet worden: controleer hem. meet_pagina volgt een omleiding en toont dan de inhoud van de DOELpagina; staat er "LET OP, DIT IS EEN OMLEIDING" in de uitvoer, dan is de gevraagde pagina AL opgeruimd en zeg je dat, in plaats van hem als duplicaat op te voeren. Een pagina die in de context onder OMGELEID staat is klaar; die stel je nooit voor om op te ruimen.\n` +
       `- Verzin geen cijfers; noem alleen wat uit de bronnen of het gereedschap komt. Er draait een automatische feitencontrole op je antwoord: elk pad en elk cijfer wordt naast de context en de tool-uitvoer gelegd. Wat daar niet in staat wordt tegengehouden en moet je overdoen. Schrijf dus liever "niet gemeten" dan een getal te gokken.\n\n` +
