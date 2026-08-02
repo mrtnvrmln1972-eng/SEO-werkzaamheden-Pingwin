@@ -41,9 +41,20 @@ export async function POST(req: NextRequest) {
   const naam = client?.name || "de klant";
   const profiel = (client?.seoProfile || "").slice(0, 1500);
 
+  // Aanhef uit het adres: "Tonny@pingwin.nl" wordt "Hoi Tonny,". Bewust hier
+  // uitgerekend en niet aan de assistent overgelaten, want die gokt dan een naam.
+  const adres = String(body.to || "").trim();
+  const lokaal = adres.split("@")[0].replace(/[._-]+/g, " ").trim();
+  const voornaam = lokaal ? lokaal.split(/\s+/)[0].replace(/^./, (c) => c.toUpperCase()) : "";
+  const aanhef = voornaam ? `Hoi ${voornaam},` : "Hoi,";
+
   const opmaakRegels = [
     `Harde regels voor de opmaak en lengte (dit is een echte mail, niemand leest een muur van tekst):`,
     `- MAXIMAAL 120 woorden tussen aanhef en afsluiting. Liever korter. Dit is hard.`,
+    `- Begin met EXACT deze aanhef op een eigen regel: "${aanhef}". Verzin er zelf geen naam bij.`,
+    `- De EERSTE regel van je antwoord is "Onderwerp: ..." met een korte, concrete onderwerpregel; daarna een lege regel en pas dan de aanhef.`,
+    `- Noem een document bij zijn NAAM ("het copy-document", "de blauwdruk"), nooit als kale URL. Het dashboard hangt de link automatisch aan die woorden; een URL van honderd tekens in de lopende tekst is onleesbaar.`,
+    `- Geen interne meetgegevens in de mail: geen pixelbreedtes, posities, vertoningen of scores. Zeg wat er moet gebeuren en verwijs naar het document voor de tekst.`,
     `- Opbouw: aanhef, één openingszin met de kern, dan de concrete punten als korte '-'-bullets (elk één regel), eventueel één slotzin, afsluiting.`,
     `- Vertel NOOIT het proces na ("voor we aan de slag gingen hebben we uitgebreid gekeken naar..."): alleen wat er gebeurt of gebeurd is en wat het oplevert.`,
     `- Alinea's van hooguit twee zinnen. Geen kopjes, geen tabellen, geen vetgedrukte woorden, geen Markdown-tekens.`,
@@ -74,7 +85,7 @@ export async function POST(req: NextRequest) {
 
   const system = [
     ...doelgroep,
-    links.length ? `\nDeze documentlinks mag je als kale URL in de mail opnemen waar relevant (bijvoorbeeld ter controle of review):\n${links.map((l) => `- ${l.label}: ${l.url}`).join("\n")}` : ``,
+    links.length ? `\nDeze documenten gaan mee. Noem ze bij hun NAAM waar relevant; de link wordt automatisch aan die woorden gehangen, dus zet zelf NOOIT de URL in de tekst:\n${links.map((l) => `- ${l.label}`).join("\n")}` : ``,
     instructie ? `\nEXTRA WENS VAN DE GEBRUIKER (volg dit):\n${instructie}` : ``,
     profiel && audience === "klant" ? `\nContext over de klant (gebruik subtiel om de toon te raken, niet letterlijk overnemen):\n${profiel}` : ``,
   ].filter(Boolean).join("\n");

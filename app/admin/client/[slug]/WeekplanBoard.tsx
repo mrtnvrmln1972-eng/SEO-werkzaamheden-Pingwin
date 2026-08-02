@@ -76,6 +76,10 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailD
   const [mailLinks, setMailLinks] = useState<Record<string, boolean>>({});
   const [mailBusy, setMailBusy] = useState(false);
   const [mailErr, setMailErr] = useState("");
+  // Het onderwerp staat in een eigen veld in plaats van als eerste regel in de body.
+  const [mailOnderwerp, setMailOnderwerp] = useState("");
+  const [mailVerzendt, setMailVerzendt] = useState(false);
+  const [mailKlaar, setMailKlaar] = useState("");
   const mailRef = useRef<HTMLDivElement>(null);
   // Werklijst sitebouwer: site-brede meta's + alt-teksten als één document + één Dev-kaart.
   const [wlBusy, setWlBusy] = useState(false);
@@ -207,8 +211,17 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailD
     if (mailRef.current) mailRef.current.innerText = "";
     const links = docLinksFor(t).filter((l) => gekozen[l.key]).map((l) => ({ label: l.label, url: l.url }));
     try {
-      const d = await fetch("/api/admin/task/explain", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, taak: t.taak, toelichting: t.toelichting, url: t.url, audience: aud, instructie, links }) }).then((r) => r.json());
-      if (d?.ok && d.text) { if (mailRef.current) mailRef.current.innerText = d.text; }
+      const d = await fetch("/api/admin/task/explain", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, taak: t.taak, toelichting: t.toelichting, url: t.url, audience: aud, instructie, links, to: mailTo }) }).then((r) => r.json());
+      if (d?.ok && d.text) {
+        // De onderwerpregel hoort niet in de body maar in een eigen veld: zo zie je
+        // hem meteen en wordt hij ook echt het onderwerp van de verstuurde mail.
+        const regels = String(d.text).split("\n");
+        const eerste = regels[0] || "";
+        const m = /^\s*onderwerp\s*:\s*(.+)$/i.exec(eerste);
+        if (m) { setMailOnderwerp(m[1].trim()); regels.shift(); while (regels[0] !== undefined && !regels[0].trim()) regels.shift(); }
+        else setMailOnderwerp("");
+        if (mailRef.current) mailRef.current.innerText = regels.join("\n").trim();
+      }
       else setMailErr(d?.error || "Uitleg maken mislukt.");
     } catch { setMailErr("De assistent is niet bereikbaar."); } finally { setMailBusy(false); }
   }
@@ -217,13 +230,28 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailD
     const text = (mailRef.current?.innerText || "").trim();
     if (text) navigator.clipboard?.writeText(text).catch(() => {});
   }
-  function sendMail() {
+  // Verstuurt de mail echt, via Microsoft 365. Eerder zette deze knop alleen
+  // window.location.href op een mailto-link; met een lange tekst plus een volledige
+  // Google Docs-URL wordt die link zo lang dat browsers hem stil laten vallen. Dan
+  // klik je en gebeurt er niets, precies wat Maarten zag.
+  async function sendMail() {
     const text = (mailRef.current?.innerText || "").trim();
-    if (!text || !mailFor) return;
+    if (!text || !mailFor || mailVerzendt) return;
     const to = mailTo.trim();
-    if (mailAud === "dev" && to) { try { localStorage.setItem("pingwin-dev-email", to); } catch { /* geen opslag */ } }
-    const subject = mailAud === "dev" ? `SEO-taak${mailFor.url ? ` — ${shortUrl(mailFor.url)}` : ""}` : `Update van Pingwin${mailFor.url ? ` — ${shortUrl(mailFor.url)}` : ""}`;
-    window.location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
+    if (!to) { setMailErr("Vul eerst het e-mailadres van de ontvanger in."); return; }
+    if (mailAud === "dev") { try { localStorage.setItem("pingwin-dev-email", to); } catch { /* geen opslag */ } }
+    const onderwerp = mailOnderwerp.trim() || `SEO-taak${mailFor.url ? ` — ${shortUrl(mailFor.url)}` : ""}`;
+    const links = docLinksFor(mailFor).filter((l) => mailLinks[l.key]).map((l) => ({ label: l.label, url: l.url }));
+    setMailVerzendt(true); setMailErr("");
+    try {
+      const d = await fetch("/api/admin/task/mail", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, to, onderwerp, tekst: text, links }),
+      }).then((r) => r.json());
+      if (d?.ok) { setMailKlaar(d.samenvatting || "Verstuurd."); setTimeout(() => { setMailFor(null); setMailKlaar(""); }, 1600); }
+      else setMailErr(d?.error || "Versturen mislukte.");
+    } catch { setMailErr("Versturen mislukte."); }
+    finally { setMailVerzendt(false); }
   }
 
   if (loaded && tasks.length === 0) {
@@ -332,12 +360,23 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailD
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void generateMail(mailFor, mailAud, mailInstr, mailLinks); } }} />
               <button type="button" className="ghost-btn small" disabled={mailBusy} onClick={() => void generateMail(mailFor, mailAud, mailInstr, mailLinks)}>Opnieuw</button>
             </div>
-            {mailErr && <div className="login-error" style={{ margin: "6px 0" }}>{mailErr}</div>}
-            <div className="wp-mail-edit" contentEditable suppressContentEditableWarning ref={mailRef} data-placeholder="De mail verschijnt hier…" style={{ minHeight: 160, opacity: mailBusy ? 0.5 : 1 }} />
+            {mailErr && <div className="login-error wp-mail-fout">{mailErr}</div>}
+            {mailKlaar && <div className="wp-mail-klaar">{mailKlaar}</div>}
+            {/* Het onderwerp stond als eerste regel in de body, waardoor je het
+                niet als onderwerp herkende en het ook niet het echte onderwerp van
+                de verstuurde mail was. Nu een eigen veld, bewerkbaar. */}
+            <label className="wp-mail-onderwerp">
+              <span className="wp-mail-onderwerp-label">Onderwerp</span>
+              <input value={mailOnderwerp} onChange={(e) => setMailOnderwerp(e.target.value)} placeholder="Onderwerp van de mail" />
+            </label>
+            <div className="wp-mail-edit" contentEditable suppressContentEditableWarning ref={mailRef} data-placeholder="De mail verschijnt hier…" style={{ opacity: mailBusy ? 0.5 : 1 }} />
             {mailBusy && <div className="muted" style={{ marginTop: 6 }}>Mail aan het schrijven…</div>}
             <div className="wp-mail-foot">
               <button type="button" className="ghost-btn small" onClick={copyMail} disabled={mailBusy}>Kopieer</button>
-              <button type="button" className="primary-btn small" onClick={sendMail} disabled={mailBusy} title={mailTo ? `Open je mail, gericht aan ${mailTo}` : "Open je mail (vul eerst de ontvanger in)"}>Versturen</button>
+              <button type="button" className="primary-btn small" onClick={() => void sendMail()} disabled={mailBusy || mailVerzendt}
+                title={mailTo ? `Verstuurt de mail nu naar ${mailTo}` : "Vul eerst het e-mailadres van de ontvanger in"}>
+                {mailVerzendt ? "Versturen…" : "Versturen"}
+              </button>
             </div>
           </div>
         </div>
