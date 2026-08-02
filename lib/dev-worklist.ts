@@ -24,6 +24,30 @@ import { urlKey } from "./url-key";
 
 export type DevWorklistState = { status: "idle" | "running" | "done" | "error"; docLink: string; result: string; error: string; updatedAt: string | null };
 
+// De opgeslagen puntjes voor de afwerkpagina: per pagina de kant-en-klare
+// meta's en per afbeelding de alt-tekst. Sleutels zijn stabiel over runs heen.
+export type WorklistAlt = { file: string; alt: string; dubbel: boolean };
+export type WorklistPage = {
+  url: string; path: string;
+  curTitle: string; curDesc: string;
+  newTitle: string; newDesc: string;
+  copyDoc: string;
+  alts: WorklistAlt[];
+};
+export type WorklistMark = { done: boolean; doneBy: string; verified: boolean };
+export type WorklistData = {
+  state: DevWorklistState;
+  pages: WorklistPage[];
+  dubbel: { file: string; paths: string[] }[];
+  shareToken: string;
+  marks: Record<string, WorklistMark>;
+};
+
+// Stabiele sleutels: m|<pagina>|title, m|<pagina>|desc, a|<pagina>|<bestand>.
+export const metaKey = (url: string, veld: "title" | "desc") => `m|${urlKeyOf(url)}|${veld}`;
+export const altKey = (url: string, file: string) => `a|${urlKeyOf(url)}|${normFile(file)}`;
+function urlKeyOf(u: string): string { try { const x = new URL(u); return (x.host + x.pathname).replace(/\/+$/, "").toLowerCase(); } catch { return (u || "").toLowerCase(); } }
+
 const CRAWL_LIMIT = 60;   // maximaal zoveel live pagina's meten
 const ALT_PAGE_LIMIT = 30; // voor zoveel probleempagina's schrijven we alt-teksten
 const ALT_PER_PAGE = 40;   // maximaal zoveel afbeeldingen per pagina
@@ -42,6 +66,24 @@ async function doEnsure(): Promise<void> {
       result      TEXT,
       error       TEXT,
       updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    )`;
+  // Werklijst 2.0: elk puntje wordt bewaard (voor de deelbare afwerkpagina),
+  // plus de dubbel-gebruikte afbeeldingen en een deel-token voor de sitebouwer.
+  await sql`ALTER TABLE client_dev_worklist ADD COLUMN IF NOT EXISTS items JSONB`;
+  await sql`ALTER TABLE client_dev_worklist ADD COLUMN IF NOT EXISTS dubbel JSONB`;
+  await sql`ALTER TABLE client_dev_worklist ADD COLUMN IF NOT EXISTS share_token TEXT`;
+  // Vinkjes los van de lijst, zodat een nieuwe run ze niet wist: done = door een
+  // mens afgevinkt, verified = door het dashboard live gecontroleerd.
+  await sql`
+    CREATE TABLE IF NOT EXISTS dev_worklist_marks (
+      client_slug TEXT NOT NULL,
+      item_key    TEXT NOT NULL,
+      done        BOOLEAN NOT NULL DEFAULT false,
+      done_by     TEXT,
+      done_at     TIMESTAMPTZ,
+      verified    BOOLEAN NOT NULL DEFAULT false,
+      verified_at TIMESTAMPTZ,
+      PRIMARY KEY (client_slug, item_key)
     )`;
 }
 
@@ -240,6 +282,22 @@ export async function runDevWorklist(slug: string): Promise<{ ok: boolean; docLi
       }
     }
 
+    // 6b. Elk puntje bewaren voor de deelbare afwerkpagina + deel-token.
+    const pages: WorklistPage[] = probleem.map((p) => ({
+      url: p.url, path: p.path,
+      curTitle: p.m.metaTitle, curDesc: p.m.metaDescription,
+      newTitle: p.newTitle, newDesc: p.newDesc, copyDoc: p.copyDoc,
+      alts: p.missingAlts.map((a) => ({ file: a.file, alt: a.alt, dubbel: dubbel.some((d) => d.file === normFile(a.file)) })),
+    }));
+    const dubbelLijst = dubbel.map((d) => ({ file: d.file, paths: [...d.paths] }));
+    const { randomBytes } = await import("crypto");
+    const { rows: tokRows } = await sql`SELECT share_token FROM client_dev_worklist WHERE client_slug = ${slug} LIMIT 1`;
+    const shareToken = (tokRows[0]?.share_token as string) || randomBytes(18).toString("base64url");
+    await sql`
+      UPDATE client_dev_worklist SET items = ${JSON.stringify(pages)}, dubbel = ${JSON.stringify(dubbelLijst)}, share_token = ${shareToken}
+      WHERE client_slug = ${slug}`;
+    const afwerkLink = `/share/werklijst/${shareToken}`;
+
     // 7. Eén verzamelkaart in de weekplanning (upsert op vaste titel, nooit dubbel).
     const KAART = "Werklijst sitebouwer: meta's en alt-teksten site-breed";
     const toel = [
@@ -248,7 +306,8 @@ export async function runDevWorklist(slug: string): Promise<{ ok: boolean; docLi
       `- ${totAlt} afbeeldingen zonder alt-tekst, verdeeld over ${altProbleem.length} pagina's.`,
       dubbel.length ? `- ${dubbel.length} afbeeldingen staan op meerdere pagina's (zelfde alt overal, klopt maar op één plek).` : "",
       "Aanpak per fase:",
-      docLink ? `- Bouw: werk de werklijst af (${docLink}); alles staat er kant-en-klaar in.` : "- Bouw: werk de werklijst af; genereer hem opnieuw voor een actuele versie.",
+      `- Bouw: werk de afwerkpagina af (${afwerkLink}); daar staat alles klikbaar en afvinkbaar klaar voor de sitebouwer.`,
+      docLink ? `- Bouw: hetzelfde overzicht als document: ${docLink}` : "",
     ].filter(Boolean).join("\n");
     const { rows: bestaand } = await sql`SELECT id FROM client_weekplan WHERE client_slug = ${slug} AND taak = ${KAART} AND status <> 'klaar' ORDER BY id DESC LIMIT 1`;
     if (bestaand[0]) {
@@ -267,4 +326,93 @@ export async function runDevWorklist(slug: string): Promise<{ ok: boolean; docLi
     await setState(slug, "error", "", "", (e as Error).message);
     return { ok: false, error: (e as Error).message };
   }
+}
+
+// ── Werklijst 2.0: lezen, afvinken en automatische live-controle ──
+
+export async function getWorklistData(slug: string): Promise<WorklistData> {
+  await ensureSchema();
+  await ensureTable();
+  const state = await getDevWorklist(slug);
+  const { rows } = await sql`SELECT items, dubbel, share_token FROM client_dev_worklist WHERE client_slug = ${slug} LIMIT 1`;
+  const r = rows[0];
+  const pages = (Array.isArray(r?.items) ? r?.items : []) as WorklistPage[];
+  const dubbel = (Array.isArray(r?.dubbel) ? r?.dubbel : []) as { file: string; paths: string[] }[];
+  const shareToken = (r?.share_token as string) || "";
+  const { rows: mRows } = await sql`SELECT item_key, done, done_by, verified FROM dev_worklist_marks WHERE client_slug = ${slug}`;
+  const marks: Record<string, WorklistMark> = {};
+  for (const m of mRows) marks[m.item_key as string] = { done: !!m.done, doneBy: (m.done_by as string) || "", verified: !!m.verified };
+  return { state, pages, dubbel, shareToken, marks };
+}
+
+export async function getSlugByWorklistToken(token: string): Promise<string | null> {
+  await ensureSchema();
+  await ensureTable();
+  if (!token) return null;
+  const { rows } = await sql`SELECT client_slug FROM client_dev_worklist WHERE share_token = ${token} LIMIT 1`;
+  return (rows[0]?.client_slug as string) || null;
+}
+
+export async function setWorklistMark(slug: string, itemKey: string, done: boolean, door: string): Promise<void> {
+  await ensureSchema();
+  await ensureTable();
+  await sql`
+    INSERT INTO dev_worklist_marks (client_slug, item_key, done, done_by, done_at)
+    VALUES (${slug}, ${itemKey}, ${done}, ${door || null}, ${done ? new Date().toISOString() : null})
+    ON CONFLICT (client_slug, item_key) DO UPDATE SET done = ${done}, done_by = ${door || null}, done_at = ${done ? new Date().toISOString() : null}`;
+}
+
+async function setVerified(slug: string, itemKey: string, verified: boolean): Promise<void> {
+  await sql`
+    INSERT INTO dev_worklist_marks (client_slug, item_key, verified, verified_at)
+    VALUES (${slug}, ${itemKey}, ${verified}, ${verified ? new Date().toISOString() : null})
+    ON CONFLICT (client_slug, item_key) DO UPDATE SET verified = ${verified}, verified_at = ${verified ? new Date().toISOString() : null}`;
+}
+
+// Automatische controle: meet de live pagina's opnieuw en zet het groene
+// "gecontroleerd"-vinkje op elk punt dat echt klopt (meta is de nieuwe tekst,
+// alt staat op de afbeelding). Werkt ook de dubbel-status bij, zodat de knop
+// "Alles uniek, controleer maar" van de sitebouwer hiermee afgehandeld wordt.
+export async function verifyDevWorklist(slug: string): Promise<{ ok: boolean; samenvatting: string; error?: string }> {
+  const data = await getWorklistData(slug);
+  if (!data.pages.length) return { ok: false, samenvatting: "", error: "Er is nog geen werklijst; maak die eerst." };
+  const gelijk = (a: string, b: string) => a.trim().replace(/\s+/g, " ").toLowerCase() === b.trim().replace(/\s+/g, " ").toLowerCase() && !!a.trim();
+  let geverifieerd = 0, totaal = 0;
+  const gebruik = new Map<string, Set<string>>();
+  const metingen = new Map<string, PageMeasurement>();
+  for (let i = 0; i < data.pages.length; i += 6) {
+    await Promise.all(data.pages.slice(i, i + 6).map(async (p) => {
+      const m = await measurePage(p.url, { staticOnly: true }).catch(() => null);
+      if (m?.ok) metingen.set(p.url, m);
+    }));
+  }
+  for (const p of data.pages) {
+    const m = metingen.get(p.url);
+    if (!m) continue;
+    if (p.newTitle) { totaal++; const okT = gelijk(m.metaTitle, p.newTitle); await setVerified(slug, metaKey(p.url, "title"), okT); if (okT) geverifieerd++; }
+    if (p.newDesc) { totaal++; const okD = gelijk(m.metaDescription, p.newDesc); await setVerified(slug, metaKey(p.url, "desc"), okD); if (okD) geverifieerd++; }
+    const perFile = new Map<string, boolean>();
+    for (const img of m.images) {
+      const k = normFile(img.file);
+      if (!k) continue;
+      if (img.hasAlt && img.alt.trim()) perFile.set(k, true);
+      else if (!perFile.has(k)) perFile.set(k, false);
+      const e = gebruik.get(k) || new Set<string>();
+      e.add(p.path);
+      gebruik.set(k, e);
+    }
+    for (const a of p.alts) {
+      totaal++;
+      const okA = perFile.get(normFile(a.file)) === true;
+      await setVerified(slug, altKey(p.url, a.file), okA);
+      if (okA) geverifieerd++;
+    }
+  }
+  // Dubbel-status verversen: welke afbeeldingen staan nu nog op meerdere pagina's?
+  const nogDubbel = new Set([...gebruik.entries()].filter(([f, paths]) => paths.size >= 2 && !/(logo|icon|favicon|avatar)/.test(f)).map(([f]) => f));
+  const pages = data.pages.map((p) => ({ ...p, alts: p.alts.map((a) => ({ ...a, dubbel: nogDubbel.has(normFile(a.file)) })) }));
+  const dubbelLijst = [...gebruik.entries()].filter(([f]) => nogDubbel.has(f)).map(([file, paths]) => ({ file, paths: [...paths] })).slice(0, 40);
+  await sql`UPDATE client_dev_worklist SET items = ${JSON.stringify(pages)}, dubbel = ${JSON.stringify(dubbelLijst)} WHERE client_slug = ${slug}`;
+  const samenvatting = `Live gecontroleerd: ${geverifieerd} van ${totaal} punten staan er goed op. ${nogDubbel.size ? `${nogDubbel.size} afbeeldingen staan nog op meerdere pagina's.` : "Alle afbeeldingen zijn nu uniek."}`;
+  return { ok: true, samenvatting };
 }

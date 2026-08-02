@@ -2751,3 +2751,42 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
+
+/* ── Afwerkpagina werklijst (publiek, /share/werklijst/…) ── */
+.wp-werklijst-teller { font-size: var(--fs-xs, 11.5px); font-weight: 700; color: #1c7a3f; background: #eaf5ee; border-radius: var(--r-full, 99px); padding: 2px 10px; margin-left: var(--s-2, 8px); }
+.wl-wrap { max-width: 880px; margin: 0 auto; padding: var(--s-8, 32px) var(--s-4, 16px) var(--s-12, 48px); display: flex; flex-direction: column; gap: var(--s-4, 16px); font-family: inherit; }
+.wl-kop h1 { color: var(--orange, #F15829); font-size: var(--fs-xl, 24px); margin: var(--s-2, 8px) 0; }
+.wl-logo { font-weight: 800; letter-spacing: 0.3px; color: var(--dark, #2b2b2b); }
+.wl-logo span { color: var(--orange, #F15829); font-weight: 600; }
+.wl-intro { max-width: 70ch; line-height: 1.6; margin: 0 0 var(--s-3, 12px); }
+.wl-voortgang { display: flex; align-items: center; gap: var(--s-3, 12px); font-size: var(--fs-sm, 12.5px); margin-bottom: var(--s-2, 8px); }
+.wl-balk { flex: 0 0 220px; height: 10px; border-radius: var(--r-full, 99px); background: #f0ebe5; overflow: hidden; }
+.wl-balk-vul { height: 100%; background: var(--orange, #F15829); border-radius: var(--r-full, 99px); transition: width 0.3s; }
+.wl-naam { font-size: var(--fs-sm, 12.5px); color: var(--muted, #6f645a); }
+.wl-naam input { margin-left: var(--s-2, 8px); border: 1px solid var(--border, #e5ded6); border-radius: var(--r-sm, 8px); padding: 5px 10px; font: inherit; }
+.wl-kaart { background: #fff; border: 1px solid var(--border, #e5ded6); border-left: 3px solid var(--orange, #F15829); border-radius: var(--r-lg, 14px); padding: var(--s-5, 20px) var(--s-6, 24px); box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.06)); }
+.wl-kaart h2 { color: var(--orange-dark, #c93f16); font-size: var(--fs-lg, 17px); margin: 0 0 var(--s-3, 12px); }
+.wl-stap1 { border-left-color: #b3261e; }
+.wl-stap1 h2 { color: #b3261e; }
+.wl-dubbel { margin: var(--s-3, 12px) 0; padding-left: 20px; display: flex; flex-direction: column; gap: var(--s-1, 4px); font-size: var(--fs-sm, 13px); }
+.wl-knop { border: none; background: var(--orange, #F15829); color: #fff; font: inherit; font-weight: 700; padding: var(--s-2, 8px) var(--s-5, 20px); border-radius: var(--r-full, 99px); cursor: pointer; }
+.wl-knop:hover { filter: brightness(0.95); }
+.wl-checkmsg { margin-top: var(--s-2, 8px); font-size: var(--fs-sm, 13px); }
+.wl-pagina { border-top: 1px solid #f0ebe5; padding: var(--s-4, 16px) 0; }
+.wl-pagina-kop { display: flex; align-items: baseline; gap: var(--s-3, 12px); margin-bottom: var(--s-2, 8px); }
+.wl-pagina-kop a { color: var(--orange, #F15829); font-weight: 700; text-decoration: none; }
+.wl-pagina-kop a:hover { text-decoration: underline; }
+.wl-pagina-teller { font-size: var(--fs-xs, 11.5px); color: var(--muted, #6f645a); }
+.wl-copydoc { font-size: var(--fs-sm, 13px); margin: 0 0 var(--s-2, 8px); }
+.wl-rij { display: flex; align-items: flex-start; gap: var(--s-3, 12px); border: 1px solid var(--border, #e5ded6); border-radius: var(--r-md, 10px); padding: var(--s-2, 8px) var(--s-3, 12px); margin-bottom: var(--s-2, 8px); background: #fffdfb; }
+.wl-rij-af { opacity: 0.75; }
+.wl-rij-af .wl-rij-tekst { text-decoration: line-through; color: var(--muted, #6f645a); }
+.wl-check { padding-top: 3px; }
+.wl-rij-body { flex: 1; min-width: 0; }
+.wl-rij-label { font-size: var(--fs-xs, 11px); font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--muted, #6f645a); margin-bottom: 2px; }
+.wl-rij-tekst { font-size: var(--fs-sm, 13.5px); line-height: 1.5; user-select: all; }
+.wl-kopieer { border: 1px solid var(--orange, #F15829); color: var(--orange, #F15829); background: #fff; border-radius: var(--r-full, 99px); padding: 3px 12px; font: inherit; font-size: var(--fs-xs, 11.5px); font-weight: 600; cursor: pointer; white-space: nowrap; }
+.wl-kopieer:hover { background: var(--orange, #F15829); color: #fff; }
+.wl-verified { align-self: center; font-size: var(--fs-xs, 10.5px); font-weight: 700; text-transform: uppercase; color: #1c7a3f; background: #eaf5ee; border-radius: var(--r-full, 99px); padding: 2px 9px; white-space: nowrap; }
+.wl-voet { text-align: center; font-size: var(--fs-xs, 11.5px); color: var(--muted, #6f645a); }
+@media (max-width: 640px) { .wl-rij { flex-wrap: wrap; } .wl-balk { flex-basis: 140px; } }

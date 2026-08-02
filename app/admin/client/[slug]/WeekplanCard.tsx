@@ -592,11 +592,34 @@ function WerklijstBlok({ slug, refreshBoard }: { slug: string; refreshBoard: () 
   const [docLink, setDocLink] = useState("");
   const [resultaat, setResultaat] = useState("");
   const [fout, setFout] = useState("");
+  const [shareToken, setShareToken] = useState("");
+  const [teller, setTeller] = useState<{ totaal: number; gedaan: number; geverifieerd: number } | null>(null);
+  const [actieBusy, setActieBusy] = useState("");
+  const [actieMsg, setActieMsg] = useState("");
 
   async function haal(): Promise<string> {
     const d = await fetch(`/api/admin/dev-worklist?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).catch(() => null);
-    if (d?.ok) { setStatus(d.status || "idle"); setDocLink(d.docLink || ""); setResultaat(d.result || ""); if (d.status === "error") setFout(d.error || ""); }
+    if (d?.ok) {
+      setStatus(d.status || "idle"); setDocLink(d.docLink || ""); setResultaat(d.result || "");
+      setShareToken(d.shareToken || "");
+      setTeller(d.totaal ? { totaal: d.totaal, gedaan: d.gedaan || 0, geverifieerd: d.geverifieerd || 0 } : null);
+      if (d.status === "error") setFout(d.error || "");
+    }
     return d?.status || "idle";
+  }
+
+  // Live-controle of WordPress-doorvoer vanaf de kaart.
+  async function actie(soort: "verify" | "meta" | "alt") {
+    if (actieBusy) return;
+    setActieBusy(soort); setActieMsg("");
+    try {
+      const url = soort === "verify" ? "/api/admin/dev-worklist/verify" : "/api/admin/dev-worklist/push";
+      const body = soort === "verify" ? { slug } : { slug, wat: soort };
+      const d = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((r) => r.json());
+      setActieMsg(d?.ok ? (d.samenvatting || d.melding || "Klaar.") : (d?.error || "Dat lukte niet; probeer het nog een keer."));
+      void haal();
+    } catch { setActieMsg("Dat lukte niet; probeer het nog een keer."); }
+    finally { setActieBusy(""); }
   }
   useEffect(() => {
     void haal().then((s) => { if (s === "running") void volg(); });
@@ -620,17 +643,27 @@ function WerklijstBlok({ slug, refreshBoard }: { slug: string; refreshBoard: () 
     <div className="wp-werklijst">
       <div className="wp-werklijst-rij">
         <span className="wp-sectie-label" style={{ margin: 0 }}>Werklijst voor de sitebouwer</span>
+        {teller && <span className="wp-werklijst-teller">{teller.gedaan}/{teller.totaal} gedaan · {teller.geverifieerd} gecontroleerd</span>}
         <span className="wp-fase-spacer" />
-        {docLink && <a className="wp-fase-btn wp-fase-doc" href={docLink} target="_blank" rel="noreferrer" title="Het kant-en-klare werkdocument (meta's en alt-teksten per pagina)">Document</a>}
+        {shareToken && <a className="wp-fase-btn wp-fase-btn-primair" href={`/share/werklijst/${shareToken}`} target="_blank" rel="noreferrer" title="De klikbare afwerkpagina voor de sitebouwer (deelbare link, geen inlog nodig)">Afwerkpagina</a>}
+        {docLink && <a className="wp-fase-btn wp-fase-doc" href={docLink} target="_blank" rel="noreferrer" title="Hetzelfde overzicht als document">Document</a>}
         <button type="button" className="wp-fase-btn" disabled={status === "running"} onClick={start}>
-          {status === "running" ? "Bezig… (paar minuten)" : docLink ? "Ververs werklijst" : "Maak de werklijst"}
+          {status === "running" ? "Bezig… (paar minuten)" : docLink || shareToken ? "Ververs werklijst" : "Maak de werklijst"}
         </button>
       </div>
+      {shareToken && (
+        <div className="wp-werklijst-rij">
+          <button type="button" className="wp-fase-btn" disabled={!!actieBusy} title="Meet de live pagina's en zet groene gecontroleerd-vinkjes op alles wat er echt goed op staat" onClick={() => void actie("verify")}>{actieBusy === "verify" ? "Controleren…" : "Controleer live"}</button>
+          <button type="button" className="wp-fase-btn" disabled={!!actieBusy} title="Zet alle nieuwe meta-titles en descriptions rechtstreeks in WordPress (site moet gekoppeld zijn via Meta & CTR)" onClick={() => void actie("meta")}>{actieBusy === "meta" ? "Doorvoeren…" : "Zet meta's in WordPress"}</button>
+          <button type="button" className="wp-fase-btn" disabled={!!actieBusy} title="Zet de alt-teksten van unieke afbeeldingen rechtstreeks in WordPress; dubbel gebruikte blijven voor de sitebouwer" onClick={() => void actie("alt")}>{actieBusy === "alt" ? "Doorvoeren…" : "Zet alt-teksten in WordPress"}</button>
+        </div>
+      )}
+      {actieMsg && <div className="wp-werklijst-sam">{actieMsg}</div>}
       {status === "running" && <div className="muted">De pagina's worden gemeten en de meta's en alt-teksten geschreven; dit duurt een paar minuten. Je kunt intussen gewoon verder.</div>}
-      {resultaat && status === "done" && <div className="wp-werklijst-sam">{resultaat}</div>}
+      {resultaat && status === "done" && !actieMsg && <div className="wp-werklijst-sam">{resultaat}</div>}
       {fout && <div className="wp-doc-fout">{fout}</div>}
-      {!docLink && status !== "running" && !resultaat && (
-        <div className="muted">Nog geen werklijst gemaakt. De werklijst meet alle live pagina&rsquo;s en zet per pagina de nieuwe meta&rsquo;s en alt-teksten kant-en-klaar in één document voor Sander.</div>
+      {!docLink && !shareToken && status !== "running" && !resultaat && (
+        <div className="muted">Nog geen werklijst gemaakt. De werklijst meet alle live pagina&rsquo;s en zet per pagina de nieuwe meta&rsquo;s en alt-teksten klaar op een klikbare afwerkpagina voor Sander.</div>
       )}
     </div>
   );

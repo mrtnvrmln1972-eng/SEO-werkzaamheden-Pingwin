@@ -43,19 +43,20 @@ export async function getWpStatus(slug: string): Promise<{ connected: boolean; u
   return { connected: !!(r?.wp_user && r?.wp_app_pass_enc), username: (r?.wp_user as string) || null };
 }
 
-type WpAuth = { origin: string; header: string };
+export type WpAuth = { origin: string; header: string };
 
-async function authFor(slug: string, pageUrl: string): Promise<WpAuth> {
+export async function authFor(slug: string, pageUrl: string): Promise<WpAuth> {
   await ensureSchema();
   const { rows } = await sql`SELECT wp_user, wp_app_pass_enc FROM clients WHERE slug = ${slug} LIMIT 1`;
   const r = rows[0];
   if (!r?.wp_user || !r?.wp_app_pass_enc) throw new Error("Deze site is nog niet gekoppeld. Klik op 'Site koppelen' en vul de WordPress-gebruikersnaam en het applicatie-wachtwoord in.");
-  const pass = decryptSecret(r.wp_app_pass_enc as string);
+  const pass = decryptSecret(r.wp_app_pass_enc as string).replace(/\s+/g, "");
+  // WordPress toont het applicatie-wachtwoord met spaties; die horen er niet in.
   const origin = new URL(pageUrl).origin;
   return { origin, header: "Basic " + Buffer.from(`${r.wp_user}:${pass}`).toString("base64") };
 }
 
-async function wpFetch(auth: WpAuth, path: string, init?: RequestInit): Promise<Response> {
+export async function wpFetch(auth: WpAuth, path: string, init?: RequestInit): Promise<Response> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 20000);
   try {
@@ -68,7 +69,7 @@ async function wpFetch(auth: WpAuth, path: string, init?: RequestInit): Promise<
 }
 
 // Zoek het WordPress-bericht (pagina of post) dat bij deze URL hoort, op slug.
-async function findPost(auth: WpAuth, pageUrl: string): Promise<{ type: "pages" | "posts"; id: number }> {
+export async function findPost(auth: WpAuth, pageUrl: string): Promise<{ type: "pages" | "posts"; id: number }> {
   const path = new URL(pageUrl).pathname.replace(/\/+$/, "");
   const slug = path.split("/").filter(Boolean).pop() || "";
   if (!slug) throw new Error("De homepage heeft geen eigen slug; voer die meta handmatig door.");
@@ -118,4 +119,42 @@ export async function pushMetaToSite(slug: string, pageUrl: string, fields: { ti
     ok: false,
     detail: "De site heeft de wijziging niet opgeslagen: de Yoast-velden staan niet open voor de REST API. Laat het Pingwin-snippet op de site installeren (eenmalig, vraag Maarten/de sitebouwer) en probeer het opnieuw.",
   };
+}
+
+// ── Alt-teksten via de mediabibliotheek ──────────────────────
+// De alt-tekst hangt in WordPress aan de afbeelding zelf (wp/v2/media), dus dit
+// werkt goed voor UNIEKE afbeeldingen; dubbel gebruikte krijgen sitebreed
+// dezelfde alt en horen hier niet in (die markeert de werklijst voor de
+// sitebouwer). Per bestand: media zoeken op naam, alt zetten, terug-controleren.
+
+function baseName(file: string): string {
+  return (file || "").replace(/-\d+x\d+(?=\.[a-z0-9]+$)/i, "").replace(/\.[a-z0-9]+$/i, "");
+}
+
+export async function pushAltTexts(slug: string, pageUrl: string, alts: { file: string; alt: string }[]): Promise<{ ok: boolean; gezet: number; mislukt: string[]; detail: string }> {
+  const auth = await authFor(slug, pageUrl);
+  let gezet = 0;
+  const mislukt: string[] = [];
+  for (const a of alts.slice(0, 60)) {
+    const naam = baseName(a.file);
+    const alt = (a.alt || "").trim();
+    if (!naam || !alt) { if (a.file) mislukt.push(a.file); continue; }
+    try {
+      const zoek = await wpFetch(auth, `/media?search=${encodeURIComponent(naam)}&per_page=10`);
+      if (!zoek.ok) { mislukt.push(a.file); continue; }
+      const kandidaten = (await zoek.json()) as { id: number; source_url?: string }[];
+      const match = kandidaten.find((k) => baseName((k.source_url || "").split("/").pop() || "") === naam) || kandidaten[0];
+      if (!match?.id) { mislukt.push(a.file); continue; }
+      const zet = await wpFetch(auth, `/media/${match.id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ alt_text: alt }) });
+      if (!zet.ok) { mislukt.push(a.file); continue; }
+      // Terug-controle: heeft WordPress de alt echt opgeslagen?
+      const terug = (await zet.json()) as { alt_text?: string };
+      if ((terug.alt_text || "").trim() === alt) gezet++;
+      else mislukt.push(a.file);
+    } catch { mislukt.push(a.file); }
+  }
+  const detail = mislukt.length
+    ? `${gezet} alt-teksten gezet; ${mislukt.length} niet gevonden of geweigerd (${mislukt.slice(0, 5).join(", ")}${mislukt.length > 5 ? ", ..." : ""}).`
+    : `${gezet} alt-teksten gezet en gecontroleerd.`;
+  return { ok: gezet > 0 || mislukt.length === 0, gezet, mislukt, detail };
 }
