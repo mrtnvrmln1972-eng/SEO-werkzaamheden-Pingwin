@@ -56,7 +56,14 @@ export async function GET(req: NextRequest) {
     // tijdstippen, dus veilig om onbeschermd mee te sturen.
     const diagnose = await viewKeyDiagnose().catch(() => null);
     return NextResponse.json(
-      { ok: false, reden: uitkomst.reden, error: uitleg[uitkomst.reden], diagnose },
+      {
+        ok: false,
+        reden: uitkomst.reden,
+        error: uitleg[uitkomst.reden],
+        gezien: uitkomst.gezien ?? null,
+        kolomLeeg: uitkomst.kolomLeeg ?? false,
+        diagnose,
+      },
       { status: 401 },
     );
   }

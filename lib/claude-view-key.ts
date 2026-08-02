@@ -116,7 +116,12 @@ export type ViewKeyFailReason =
   | "andere-sleutel" // er staat er wél een klaar, maar niet deze: waarschijnlijk een nieuwere
   | "leeg";          // er kwam niets mee
 
-export type ViewKeyCheck = { ok: true } | { ok: false; reden: ViewKeyFailReason };
+// gezien: hoeveel rijen de controle zelf terugkreeg. Staat er volgens de telling
+// wél een sleutel klaar en ziet de controle er nul, dan is dit het bewijs dat het
+// verschil in de opzoeking zit en niet in de gegevens.
+export type ViewKeyCheck =
+  | { ok: true }
+  | { ok: false; reden: ViewKeyFailReason; gezien?: number; kolomLeeg?: boolean };
 
 /**
  * Telling voor het geval een sleutel geweigerd wordt terwijl de knop in de
@@ -133,6 +138,7 @@ export type ViewKeyDiagnose = {
   // wél een actieve sleutel en deze niet, dan zit het verschil in de opzoeking
   // en niet in de gegevens.
   gevondenId: number | null;
+  hashAanwezig: boolean;
   rijen: { id: number; aangemaakt: string | null; ingetrokken: boolean }[];
 };
 
@@ -142,7 +148,9 @@ export async function viewKeyDiagnose(): Promise<ViewKeyDiagnose> {
   const [tel, zoek, lijst] = await Promise.all([
     sql`SELECT COUNT(*)::int AS totaal, COUNT(revoked_at)::int AS ingetrokken, MAX(created_at) AS laatste
         FROM claude_view_key`,
-    sql`SELECT id FROM claude_view_key WHERE revoked_at IS NULL ORDER BY id DESC LIMIT 1`,
+    // Letterlijk dezelfde opzoeking als de controle doet, inclusief de kolom
+    // key_hash, zodat er geen enkel verschil meer overblijft om achter te schuilen.
+    sql`SELECT id, key_hash FROM claude_view_key WHERE revoked_at IS NULL ORDER BY id DESC LIMIT 1`,
     sql`SELECT id, created_at, revoked_at FROM claude_view_key ORDER BY id DESC LIMIT 8`,
   ]);
   const r = tel.rows[0];
@@ -151,6 +159,7 @@ export async function viewKeyDiagnose(): Promise<ViewKeyDiagnose> {
     ingetrokken: Number(r?.ingetrokken ?? 0),
     laatsteAangemaakt: r?.laatste ? new Date(r.laatste as string).toISOString() : null,
     gevondenId: zoek.rows[0] ? Number(zoek.rows[0].id) : null,
+    hashAanwezig: zoek.rows[0] ? Boolean(zoek.rows[0].key_hash) : false,
     rijen: lijst.rows.map((x) => ({
       id: Number(x.id),
       aangemaakt: x.created_at ? new Date(x.created_at as string).toISOString() : null,
@@ -186,11 +195,17 @@ export async function checkViewKey(sleutel: string): Promise<ViewKeyCheck> {
   const r = rows[0];
   if (!r) {
     await noteFail("geen-sleutel");
-    return { ok: false, reden: "geen-sleutel" };
+    return { ok: false, reden: "geen-sleutel", gezien: rows.length };
+  }
+  if (!r.key_hash) {
+    // Een rij zonder hash valt niet te controleren. Dat is iets anders dan geen
+    // sleutel, en moet apart zichtbaar zijn in plaats van als "verkeerde sleutel".
+    await noteFail("andere-sleutel");
+    return { ok: false, reden: "andere-sleutel", gezien: rows.length, kolomLeeg: true };
   }
   if (!verifyPassword(s, r.key_hash as string)) {
     await noteFail("andere-sleutel");
-    return { ok: false, reden: "andere-sleutel" };
+    return { ok: false, reden: "andere-sleutel", gezien: rows.length };
   }
   await sql`UPDATE claude_view_key SET last_used = now() WHERE id = ${r.id as number}`;
   return { ok: true };
