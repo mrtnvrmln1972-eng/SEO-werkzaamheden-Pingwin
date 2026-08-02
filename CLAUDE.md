@@ -32,6 +32,9 @@ laadt. Wijzigt de werkwijze, houd master en alle kopieën gelijk.
   zelf in plaats van Maarten klik-instructies te sturen (voorbeeld: Vercel-instelling via
   `vercel.json` i.p.v. een klikroute). Check standaard eerst of jij het kunt doen; alleen wat
   echt niet anders kan (inloggen, betalen, een besluit) komt bij Maarten terecht.
+- **Panklare links, nooit terminal-omwegen.** Resultaat altijd als klikbare link of een knop
+  waar Maarten al is (dashboard, Drive, chat). Kan iets alleen met server-inloggegevens die
+  Claude niet heeft, bouw dan een dashboard-knop; Maarten is daar al ingelogd.
 - **Het heet Pingwin.** Nooit "Penguin" of een andere spelling, ook niet in output.
 - **Bewijs boven beloftes.** Zeg niet "het werkt", laat het zien (test, output, live URL).
   Kondig je een controle aan, voer die dan ook echt uit.
