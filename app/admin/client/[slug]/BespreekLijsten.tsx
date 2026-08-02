@@ -7,6 +7,7 @@
 // "gedeeld", zodat je ziet wat de ander al heeft en wat er nieuw is.
 
 import { useEffect, useState } from "react";
+import { persoonLabel, devVoornaam } from "../../../../lib/personen";
 
 type Item = { id: number; persoon: string; tekst: string; klaar: boolean; gedeeldAt: string | null; createdAt: string | null };
 
@@ -17,17 +18,19 @@ export default function BespreekLijsten({ slug, clientName, clientEmail }: { slu
   const [nieuwNaam, setNieuwNaam] = useState("");
   const [toonNieuw, setToonNieuw] = useState(false);
   const [busy, setBusy] = useState(false);
+  // Developer van DEZE klant; leeg = gewoon "Dev", geen verzonnen naam.
+  const [devNaam, setDevNaam] = useState<string | null>(null);
 
   async function laad() {
     const d = await fetch(`/api/admin/discuss?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).catch(() => null);
-    if (d?.ok) setItems(d.items || []);
+    if (d?.ok) { setItems(d.items || []); setDevNaam(d.devName || null); }
   }
   useEffect(() => { void laad(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [slug]);
 
   const DEFAULTS = ["Klant", "Dev"];
   const personen = [...new Set([...DEFAULTS, ...items.map((i) => i.persoon)])];
   const van = (p: string) => items.filter((i) => i.persoon === p);
-  const labelVan = (p: string) => (p === "Klant" && clientName ? `${clientName} (klant)` : p === "Dev" ? "Sander (Dev)" : p);
+  const labelVan = (p: string) => persoonLabel(p, { devName: devNaam, clientName });
 
   async function post(body: Record<string, unknown>) {
     setBusy(true);
@@ -45,7 +48,7 @@ export default function BespreekLijsten({ slug, clientName, clientEmail }: { slu
   function mailLijst(p: string) {
     const open = van(p).filter((i) => !i.klaar);
     if (!open.length) return;
-    const naam = p === "Dev" ? "Sander" : (clientName || "").split(" ")[0] || "";
+    const naam = p === "Dev" ? devVoornaam(devNaam) : (clientName || "").split(" ")[0] || "";
     const body = encodeURIComponent(
       `Beste ${naam || ""},\n\nHierbij de openstaande punten op een rij:\n\n${open.map((i) => `- ${i.tekst}`).join("\n")}\n\nWil je ze oppakken en even laten weten als iets klaar is of vragen oproept?\n\nMet vriendelijke groet,\nMaarten Vermeulen\nPingwin Online Marketing`,
     );

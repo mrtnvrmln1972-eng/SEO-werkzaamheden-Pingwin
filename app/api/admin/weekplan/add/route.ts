@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../../lib/admin-auth";
 import { guardSlug } from "../../../../../lib/admin-scope";
 import { addWeekplanTasks, isoWeek } from "../../../../../lib/weekplan";
+import { tidyCards } from "../../../../../lib/weekplan-tidy";
 import { getStepLinks } from "../../../../../lib/page-doc-run";
 
 export const runtime = "nodejs";
+// Bij samenvoegen in een bestaande kaart draait er een opruimstap van de assistent;
+// zonder ruimere tijd kapt Vercel dat af halverwege.
+export const maxDuration = 120;
 
 function admin(req: NextRequest): boolean {
   return verifyAdminSession(req.cookies.get(ADMIN_COOKIE)?.value);
@@ -41,6 +45,9 @@ export async function POST(req: NextRequest) {
     copyUrl,
     week,
   }]);
+  // Is er in een bestaande kaart samengevoegd, ruim die dan meteen op. Anders
+  // groeit dezelfde constatering in steeds andere woorden aan tot een muur.
+  if (r.mergedIds.length) await tidyCards(slug, r.mergedIds).catch(() => 0);
   const n = r.added + r.merged;
   return n ? NextResponse.json({ ok: true, added: n, week }) : NextResponse.json({ ok: false, error: "Toevoegen mislukt." }, { status: 500 });
 }

@@ -52,7 +52,7 @@ function lineKey(s: string): string {
 // kaart voor dezelfde pagina (ongeacht week), dan wordt de nieuwe taak daarin
 // gemerged (titel + toelichting als bullets, met regel-dedup) in plaats van een
 // tweede kaart te maken. De kaart houdt zijn week (waar Maarten hem sleepte).
-export async function addWeekplanTasks(slug: string, thread: string, tasks: { taak: string; toelichting?: string; wie?: string; url?: string; taaktype?: string; copyUrl?: string; bronMail?: string; week: { year: number; week: number } }[]): Promise<{ added: number; merged: number }> {
+export async function addWeekplanTasks(slug: string, thread: string, tasks: { taak: string; toelichting?: string; wie?: string; url?: string; taaktype?: string; copyUrl?: string; bronMail?: string; week: { year: number; week: number } }[]): Promise<{ added: number; merged: number; mergedIds: number[] }> {
   await ensureSchema();
   const { urlKey } = await import("./url-key");
   // Bestaande niet-klare pagina-kaarten, op urlKey (JS-matching, niet in SQL te doen).
@@ -67,6 +67,10 @@ export async function addWeekplanTasks(slug: string, thread: string, tasks: { ta
     });
   }
   let added = 0, merged = 0;
+  // Welke bestaande kaarten iets kregen aangeplakt. De aanroeper laat die daarna
+  // opruimen (lib/weekplan-tidy.ts): samenvoegen hoort een denkstap te zijn, niet
+  // een plakstap, anders groeit dezelfde constatering in tien formuleringen aan.
+  const mergedIds = new Set<number>();
   for (const t of tasks) {
     const taak = (t.taak || "").trim();
     if (!taak) continue;
@@ -104,6 +108,7 @@ export async function addWeekplanTasks(slug: string, thread: string, tasks: { ta
             updated_at = now()
           WHERE client_slug = ${slug} AND id = ${bestaand.id}`;
         bestaand.toelichting = toelNieuw;
+        mergedIds.add(bestaand.id);
         merged++;
       }
       continue;
@@ -125,7 +130,7 @@ export async function addWeekplanTasks(slug: string, thread: string, tasks: { ta
     }
     added++;
   }
-  return { added, merged };
+  return { added, merged, mergedIds: [...mergedIds] };
 }
 
 export async function updateWeekplanTask(slug: string, id: number, patch: { weekYear?: number; weekNo?: number; status?: string; sortOrder?: number }): Promise<void> {

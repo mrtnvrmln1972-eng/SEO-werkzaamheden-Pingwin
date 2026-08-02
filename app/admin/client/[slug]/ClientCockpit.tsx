@@ -93,7 +93,7 @@ export default function ClientCockpit({
   // Directe feedback bij het wisselen van klant: de nieuwe pagina moet server-
   // side data ophalen en dat duurt even; zonder signaal voelt dat als bevroren.
   const [switchingTo, setSwitchingTo] = useState<string | null>(null);
-  const validTab = (t?: string): Tab => (t === "werkzaamheden" || t === "paginas" || t === "resultaten" || t === "klant" || t === "developer" || t === "wijzigingen" || t === "meta") ? t : "werkzaamheden";
+  const validTab = (t?: string): Tab => (t === "werkzaamheden" || t === "paginas" || t === "documenten" || t === "resultaten" || t === "klant" || t === "developer" || t === "wijzigingen" || t === "meta") ? t : "werkzaamheden";
   const [tab, setTab] = useState<Tab>(validTab(initialTab));
   // Teller die de weekplanning laat herladen zodra er vanuit de chat een taak is
   // toegevoegd (of iets in het bord verandert).
@@ -665,6 +665,7 @@ export default function ClientCockpit({
         )}
 
         {tab === "klant" && (<>
+          <SitebouwerVeld slug={client.slug} start={client.cockpit.devName || ""} />
           <OrgDataPanel slug={client.slug} clientEmail={client.email || ""} />
           <div className="cockpit-card client-frame-card">
             <div className="ck-section-head"><span>Klant (zo ziet de klant het)</span>
@@ -821,3 +822,48 @@ function shortUrl(url: string): string {
   }
 }
 
+
+// Wie bouwt de site van DEZE klant. Stond eerder hardgecodeerd als "Sander" in
+// zes schermen, waardoor bij elke klant dezelfde naam in beeld kwam. Leeg laten
+// mag: dan noemt het dashboard hem gewoon "Dev" en verzint het niemand.
+function SitebouwerVeld({ slug, start }: { slug: string; start: string }) {
+  const [naam, setNaam] = useState(start);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const gewijzigd = naam.trim() !== start.trim();
+
+  async function bewaar() {
+    if (busy || !gewijzigd) return;
+    setBusy(true); setMsg("");
+    try {
+      const d = await fetch("/api/admin/clients", {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, action: "devName", devName: naam.trim() }),
+      }).then((r) => r.json());
+      setMsg(d?.ok ? "Bewaard." : (d?.error || "Bewaren mislukte."));
+    } catch { setMsg("Bewaren mislukte."); }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <div className="cockpit-card">
+      <div className="ck-section-head"><span>Sitebouwer</span></div>
+      <div className="dev-veld">
+        <input
+          className="compose-input"
+          value={naam}
+          onChange={(e) => { setNaam(e.target.value); setMsg(""); }}
+          onKeyDown={(e) => { if (e.key === "Enter") void bewaar(); }}
+          placeholder="Naam van de sitebouwer (leeg laten mag)"
+        />
+        <button type="button" className="btn" onClick={() => void bewaar()} disabled={busy || !gewijzigd}>
+          {busy ? "Bezig…" : "Bewaar"}
+        </button>
+        {msg && <span className="dev-veld-msg">{msg}</span>}
+      </div>
+      <div className="muted" style={{ fontSize: "var(--fs-sm)", marginTop: "var(--s-2)" }}>
+        Deze naam komt terug op de bespreeklijsten en bij de werklijst. Vul je niets in, dan staat er gewoon &ldquo;Dev&rdquo;.
+      </div>
+    </div>
+  );
+}

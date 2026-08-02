@@ -2694,6 +2694,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .tvk-pill:disabled { cursor: default; }
 .tvk-url { display: inline-block; margin-top: 4px; color: var(--orange-dark); text-decoration: underline; font-size: 11.5px; }
 .tvk-why { margin-top: 6px; color: var(--gray); font-size: 12px; line-height: 1.45; border-left: 2px solid var(--border); padding-left: 8px; }
+/* De achtergrond bij een voorstel staat ingeklapt: eerst zien wát er wordt
+   voorgesteld, de onderbouwing op één klik. */
+.tvk-why-toggle {
+  background: none; border: none; padding: 0; cursor: pointer; font: inherit;
+  color: var(--orange-dark); font-weight: 600;
+}
+.tvk-why-toggle:hover { text-decoration: underline; }
+.tvk-why-inhoud { margin-top: var(--s-2); }
 .act-card { border: 1px solid var(--border); border-left: 3px solid var(--orange); border-radius: 10px; background: #fff; padding: 10px 12px; }
 .act-card.act-done { border-left-color: #1e824c; background: #f4faf5; }
 .act-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
@@ -2751,6 +2759,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .wp-head-geschreven { color: #8a5a00; }
 .wp-chip-geschreven { color: #8a5a00; background: #fff3d9; }
 .wp-chip-onbekend { color: var(--gray); background: var(--gray-light); }
+
+/* Sitebouwer-veld op de Klant-tab. */
+.dev-veld { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; }
+.dev-veld .compose-input { flex: 1 1 240px; min-width: 200px; }
+.dev-veld-msg { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray); }
 .wp-live-meting { margin-top: var(--s-1); font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); }
 .wp-check-btn { font-size: var(--fs-xs); font-weight: 600; padding: var(--s-1) var(--s-3); border-radius: var(--r-sm); text-transform: none; letter-spacing: 0; }
 .wp-check-msg { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--muted); background: var(--orange-light); border-radius: var(--r-sm); padding: var(--s-2) var(--s-3); margin-bottom: var(--s-3); }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { splitCardInfo, cardInfoHtml } from "../../../../lib/card-info";
 
 export type Action = {
   id: string; type: string; reason?: string;
@@ -126,7 +127,14 @@ export default function ActionCard({ action, slug, thread, onExecuted, onGoToPag
                         {t.url && <a className="tvk-url" href={t.url} target="_blank" rel="noreferrer">{shortUrl(t.url)}</a>}
                         {t.bronMail && <a className="tvk-url" href={t.bronMail} target="_blank" rel="noreferrer">✉ bronmail</a>}
                       </div>
-                      {t.toelichting && <div className="tvk-why">{t.toelichting}</div>}
+                      {/* De toelichting werd hier als ruwe tekst in een div gezet.
+                          De regeleindes vallen dan weg in HTML, dus alles plakte aan
+                          elkaar tot één onleesbare regel met puntjes ertussen, terwijl
+                          de assistent hem juist netjes in secties had geschreven.
+                          Nu door dezelfde parser als de kaart zelf: Doel, Afspraken en
+                          per fase. Standaard ingeklapt, want in een voorstel wil je
+                          eerst zien wát er wordt voorgesteld, niet alle achtergrond. */}
+                      {t.toelichting && <VoorstelToelichting tekst={t.toelichting} pageUrl={t.url} taak={t.taak} /> }
                     </div>
                   );
                 })}
@@ -174,6 +182,29 @@ export default function ActionCard({ action, slug, thread, onExecuted, onGoToPag
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// De achtergrond bij een voorgestelde taak, in dezelfde opmaak als de kaart waar
+// hij straks terechtkomt. Ingeklapt tot één samenvattende regel: bij een voorstel
+// wil je eerst zien wát er wordt voorgesteld. Eén klik toont het hele verhaal, dus
+// er gaat niets verloren dat je voor een blauwdruk nodig hebt.
+function VoorstelToelichting({ tekst, pageUrl, taak }: { tekst: string; pageUrl?: string; taak?: string }) {
+  const [open, setOpen] = useState(false);
+  const info = splitCardInfo(tekst, taak);
+  const fases = Object.keys(info.perFase).length;
+  const punten = info.achtergrond.length + info.overig.length + info.afspraken.length;
+  const delen: string[] = [];
+  if (punten) delen.push(`${punten} ${punten === 1 ? "punt" : "punten"} achtergrond`);
+  if (fases) delen.push(`${fases} ${fases === 1 ? "fase" : "fases"}`);
+
+  return (
+    <div className="tvk-why">
+      <button type="button" className="tvk-why-toggle" onClick={() => setOpen((o) => !o)}>
+        {open ? "Verberg achtergrond ▴" : `Toon achtergrond ▾${delen.length ? ` (${delen.join(", ")})` : ""}`}
+      </button>
+      {open && <div className="tvk-why-inhoud" dangerouslySetInnerHTML={{ __html: cardInfoHtml(tekst, pageUrl, taak) }} />}
     </div>
   );
 }

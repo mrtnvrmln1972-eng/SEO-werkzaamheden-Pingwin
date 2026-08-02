@@ -16,6 +16,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { puntSoort, knopjesVoor, isGroepskop, stripMarker, type PuntSoort } from "../../../../lib/punt-soort";
+import { devLabel } from "../../../../lib/personen";
 
 type Sectie = { kop: string; md: string };
 type Feedback = { key: string; msg: string; ok: boolean };
@@ -243,6 +244,8 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
   // "Op bespreeklijst": kies de persoon in een menuutje naast de aangeklikte regel.
   const [lijstVoor, setLijstVoor] = useState<{ key: string; tekst: string; sleutel: string; x: number; y: number } | null>(null);
   const [personen, setPersonen] = useState<string[]>(["Klant", "Dev"]);
+  // De developer van DEZE klant; leeg = we tonen gewoon "Dev" en verzinnen niemand.
+  const [devNaam, setDevNaam] = useState<string | null>(null);
   useEffect(() => {
     if (!lijstVoor) return;
     const sluit = (e: MouseEvent) => { if (!(e.target as HTMLElement).closest?.(".ovc-lijstpop")) setLijstVoor(null); };
@@ -251,7 +254,10 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
   }, [lijstVoor]);
   useEffect(() => {
     fetch(`/api/admin/discuss?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).then((d) => {
-      if (d?.ok) setPersonen([...new Set(["Klant", "Dev", ...(d.items || []).map((i: { persoon: string }) => i.persoon)])] as string[]);
+      if (d?.ok) {
+        setPersonen([...new Set(["Klant", "Dev", ...(d.items || []).map((i: { persoon: string }) => i.persoon)])] as string[]);
+        setDevNaam(d.devName || null);
+      }
     }).catch(() => {});
   }, [slug]);
   async function zetOpLijst(persoon: string) {
@@ -260,7 +266,7 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
     setLijstVoor(null);
     try {
       const d = await fetch("/api/admin/discuss", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "add", slug, persoon, tekst }) }).then((r) => r.json());
-      if (d?.ok) { zetStaat(sleutel, "lijst"); setFeedback({ key, msg: `Op de bespreeklijst van ${persoon === "Dev" ? "Sander (Dev)" : persoon} gezet.`, ok: true }); }
+      if (d?.ok) { zetStaat(sleutel, "lijst"); setFeedback({ key, msg: `Op de bespreeklijst van ${persoon === "Dev" ? devLabel(devNaam) : persoon} gezet.`, ok: true }); }
       else setFeedback({ key, msg: d?.error || "Op de lijst zetten mislukte.", ok: false });
     } catch { setFeedback({ key, msg: "Op de lijst zetten mislukte.", ok: false }); }
   }
@@ -294,7 +300,7 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
   // Elk herkenbaar punt wordt een taakrijtje met rechts de vier knopjes.
   const ACTIES = '<span class="ovc-acties">'
     + '<button type="button" class="ovc-act ovc-act-plus" title="Voeg toe als kaart in de weekplanning">+</button>'
-    + '<button type="button" class="ovc-act ovc-act-lijst" title="Zet dit punt op een bespreeklijst (Sander, klant, ...)">&raquo;</button>'
+    + '<button type="button" class="ovc-act ovc-act-lijst" title="Zet dit punt op een bespreeklijst (klant, developer, ...)">&raquo;</button>'
     + '<button type="button" class="ovc-act ovc-act-x" title="Negeer dit voorstel">×</button>'
     + '<button type="button" class="ovc-act ovc-act-v" title="Vink af: dit is gedaan">✓</button>'
     + "</span>";
@@ -370,7 +376,7 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
         <div className="ovc-lijstpop" style={{ left: Math.max(8, Math.min(lijstVoor.x, window.innerWidth - 300)), top: lijstVoor.y + 6 }}>
           <span className="ovc-lijstpop-kop">Op welke bespreeklijst?</span>
           {personen.map((p) => (
-            <button key={p} type="button" className="wp-fase-btn" onClick={() => void zetOpLijst(p)}>{p === "Dev" ? "Sander (Dev)" : p}</button>
+            <button key={p} type="button" className="wp-fase-btn" onClick={() => void zetOpLijst(p)}>{p === "Dev" ? devLabel(devNaam) : p}</button>
           ))}
           <button type="button" className="wp-icon wp-del" title="Annuleren" onClick={() => setLijstVoor(null)}>×</button>
         </div>

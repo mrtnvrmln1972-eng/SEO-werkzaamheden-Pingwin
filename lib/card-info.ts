@@ -6,6 +6,7 @@
 // De opgeslagen data blijft ongemoeid; dit is puur de weergave-laag.
 
 import { linkifyHtml } from "./linkify";
+import { puntSoort } from "./punt-soort";
 
 export type CardFaseKey = "strategie" | "gelieerde" | "analyse" | "blauwdruk" | "copy" | "bouw" | "structured";
 
@@ -34,6 +35,52 @@ function inline(s: string): string {
 // Genormaliseerde sleutel voor regel-dedup (zelfde logica als de merge in weekplan.ts).
 function lineKey(s: string): string {
   return s.trim().toLowerCase().replace(/^-\s*/, "").replace(/\s+/g, " ");
+}
+
+// ── Ontdubbelen op betekenis, niet op letters ──
+// Het samenvoegen van kaarten plakte nieuwe regels erbij en herkende alleen
+// LETTERLIJK gelijke regels als dubbel. Daardoor stond er drie keer hetzelfde in
+// andere woorden: "De pagina heeft 77 vertoningen en 0 klikken: zichtbaar maar
+// trekt geen verkeer aan" naast "De pagina staat op 77 vertoningen en 0 klikken,
+// dus er is zichtbaarheid maar geen conversie".
+//
+// Hier vergelijken we op de inhoudswoorden van een regel. Delen twee regels het
+// merendeel van hun woorden, dan is het hetzelfde punt en houden we de langste
+// (die bevat meestal de meeste informatie). Dit zit in de WEERGAVE-laag, dus het
+// geldt meteen voor alle kaarten die er al staan.
+const STOPWOORDEN = new Set([
+  "de", "het", "een", "en", "of", "maar", "dus", "want", "die", "dat", "er", "is", "zijn", "was", "wordt",
+  "worden", "heeft", "hebben", "met", "voor", "van", "op", "in", "aan", "bij", "naar", "te", "als", "ook",
+  "nog", "geen", "niet", "wel", "al", "om", "per", "deze", "dit", "we", "ze", "je", "meer", "veel", "tot",
+]);
+function inhoudswoorden(s: string): Set<string> {
+  return new Set(
+    lineKey(s)
+      .replace(/[^a-z0-9à-ÿ/.\- ]/gi, " ")
+      .split(/\s+/)
+      .filter((w) => w.length > 2 && !STOPWOORDEN.has(w)),
+  );
+}
+function zelfdePunt(a: Set<string>, b: Set<string>): boolean {
+  if (!a.size || !b.size) return false;
+  let gedeeld = 0;
+  for (const w of a) if (b.has(w)) gedeeld++;
+  // Ten opzichte van de KORTSTE regel: een korte samenvatting van een lange regel
+  // is ook een dubbeling, en die zou bij delen door de langste onder de drempel vallen.
+  return gedeeld / Math.min(a.size, b.size) >= 0.7;
+}
+
+/** Houdt per punt één regel over: de langste van een groep die hetzelfde zegt. */
+export function ontdubbel(regels: string[]): string[] {
+  const uit: { tekst: string; woorden: Set<string> }[] = [];
+  for (const r of regels) {
+    const w = inhoudswoorden(r);
+    const bestaand = uit.find((x) => zelfdePunt(x.woorden, w));
+    if (!bestaand) { uit.push({ tekst: r, woorden: w }); continue; }
+    // De langere formulering wint: die bevat doorgaans het cijfer of de nuance.
+    if (r.length > bestaand.tekst.length) { bestaand.tekst = r; bestaand.woorden = w; }
+  }
+  return uit.map((x) => x.tekst);
 }
 
 // Een kort regeltje dat op ':' eindigt is een sectiekopje ("Achtergrond:", "Deeltaken:").
@@ -101,9 +148,13 @@ const RUIS: RegExp[] = [
   /^de aanpak staat hieronder/i,
 ];
 
-export function splitCardInfo(toelichting: string): CardInfo {
+export function splitCardInfo(toelichting: string, taak?: string): CardInfo {
   const info: CardInfo = { achtergrond: [], afspraken: [], overig: [], perFase: {} };
   const seen = new Set<string>();
+  // De titel van de kaart hoort niet als bullet IN de kaart. Bij het samenvoegen
+  // werd de titel van het nieuwe punt er telkens bij geplakt, dus stond hij er
+  // soms twee keer in, licht anders geformuleerd.
+  const titelWoorden = taak ? inhoudswoorden(taak) : null;
   let sectie: "achtergrond" | "afspraken" | "aanpak" = "achtergrond";
   for (const raw of (toelichting || "").split("\n")) {
     const regel = raw.trim();
@@ -112,6 +163,7 @@ export function splitCardInfo(toelichting: string): CardInfo {
     const k = lineKey(regel);
     if (seen.has(k)) continue;
     seen.add(k);
+    if (titelWoorden && zelfdePunt(titelWoorden, inhoudswoorden(regel))) continue;
     if (isKopje(regel)) {
       const kop = regel.replace(/:$/, "").toLowerCase();
       if (/afspraken|herkomst|bron/.test(kop)) sectie = "afspraken";
@@ -132,6 +184,23 @@ export function splitCardInfo(toelichting: string): CardInfo {
     if (sectie === "afspraken") info.afspraken.push(kaal);
     else if (sectie === "aanpak") info.overig.push(kaal);
     else info.achtergrond.push(kaal);
+  }
+  // Aangeplakte regels erven de sectie van het blok ervóór, want bij het
+  // samenvoegen komen ze zonder eigen kopje binnen. Daardoor belandden
+  // constateringen onder "Aanpak en taken" en kregen ze een knopje om door te
+  // zetten. Een constatering hoort bij Doel, wat er ook boven stond.
+  const echtWerk: string[] = [];
+  for (const r of info.overig) {
+    if (puntSoort(r) === "feit") info.achtergrond.push(r);
+    else echtWerk.push(r);
+  }
+  info.overig = echtWerk;
+
+  info.achtergrond = ontdubbel(info.achtergrond);
+  info.afspraken = ontdubbel(info.afspraken);
+  info.overig = ontdubbel(info.overig);
+  for (const f of Object.keys(info.perFase) as CardFaseKey[]) {
+    info.perFase[f] = ontdubbel(info.perFase[f] || []);
   }
   return info;
 }
@@ -163,16 +232,16 @@ function infoKaart(icoon: string, kop: string, inhoud: string): string {
   return `<div class="wp-info-kaart"><div class="wp-info-kaarthead"><span class="wp-info-icoon">${icoon}</span><span class="wp-info-kop">${kop}</span></div>${inhoud}</div>`;
 }
 
-export function cardInfoHtml(toelichting: string, pageUrl?: string): string {
+export function cardInfoHtml(toelichting: string, pageUrl?: string, taak?: string): string {
   const domain = (() => { try { return pageUrl ? new URL(pageUrl).host : ""; } catch { return ""; } })();
-  const info = splitCardInfo(toelichting);
+  const info = splitCardInfo(toelichting, taak);
   const kaarten: string[] = [];
   if (info.achtergrond.length) {
     kaarten.push(infoKaart(ICO_VLAG, "Doel", lijst(info.achtergrond, "wp-check-lijst")));
   }
-  const aanpak = [...info.overig, ...info.afspraken];
+  const aanpak = ontdubbel([...info.overig, ...info.afspraken]);
   if (aanpak.length) {
-    kaarten.push(infoKaart(ICO_KLEMBORD, "Aanpak en taken", lijst(aanpak, "wp-punt-lijst")));
+    kaarten.push(infoKaart(ICO_KLEMBORD, "Aanpak en afspraken", lijst(aanpak, "wp-punt-lijst")));
   }
   const kolommen = kaarten.length ? `<div class="wp-info-doel${kaarten.length === 1 ? " wp-info-een" : ""}">${kaarten.join("")}</div>` : "";
   // Geen emoji's in het dashboard: status-emoji's uit oudere kaartteksten worden

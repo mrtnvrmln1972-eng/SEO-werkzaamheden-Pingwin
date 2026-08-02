@@ -11,6 +11,7 @@ import { mdToHtml } from "../../../../lib/markdown";
 import { cardInfoHtml, splitCardInfo, faseSturing, type CardFaseKey } from "../../../../lib/card-info";
 import { linkifyHtml } from "../../../../lib/linkify";
 import { urlKey } from "../../../../lib/url-key";
+import { devLabel } from "../../../../lib/personen";
 import AntwoordBlokken from "./AntwoordBlokken";
 import DocVersies from "./DocVersies";
 
@@ -151,7 +152,7 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
   }
 
   async function bouwExtra(steps: ("analyse" | "blauwdruk" | "copy")[]): Promise<string> {
-    const parsed = splitCardInfo(t.toelichting);
+    const parsed = splitCardInfo(t.toelichting, t.taak);
     const delen = steps.map((s) => faseSturing(parsed, s)).filter(Boolean);
     const basis = delen[0] || t.toelichting.slice(0, 900);
     const extraFases = delen.slice(1).map((d) => d.split("Sturing voor deze stap:")[1] || "").filter(Boolean).join("; ");
@@ -199,10 +200,15 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
   const [lijstPunt, setLijstPunt] = useState("");
   const [lijstMsg, setLijstMsg] = useState("");
   const [lijstPersonen, setLijstPersonen] = useState<string[]>(["Klant", "Dev"]);
+  // Developer van DEZE klant; leeg = gewoon "Dev" tonen.
+  const [devNaam, setDevNaam] = useState<string | null>(null);
   useEffect(() => {
     if (!open) return;
     fetch(`/api/admin/discuss?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).then((d) => {
-      if (d?.ok) setLijstPersonen([...new Set(["Klant", "Dev", ...(d.items || []).map((i: { persoon: string }) => i.persoon)])] as string[]);
+      if (d?.ok) {
+        setLijstPersonen([...new Set(["Klant", "Dev", ...(d.items || []).map((i: { persoon: string }) => i.persoon)])] as string[]);
+        setDevNaam(d.devName || null);
+      }
     }).catch(() => {});
   }, [open, slug]);
   async function zetOpLijst(persoon: string) {
@@ -210,7 +216,7 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
     setLijstPunt("");
     try {
       const d = await fetch("/api/admin/discuss", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "add", slug, persoon, tekst: `${tekst}${t.url ? ` (${t.url})` : ""}` }) }).then((r) => r.json());
-      setLijstMsg(d?.ok ? `Op de bespreeklijst van ${persoon === "Dev" ? "Sander (Dev)" : persoon} gezet.` : (d?.error || "Op de lijst zetten mislukte."));
+      setLijstMsg(d?.ok ? `Op de bespreeklijst van ${persoon === "Dev" ? devLabel(devNaam) : persoon} gezet.` : (d?.error || "Op de lijst zetten mislukte."));
     } catch { setLijstMsg("Op de lijst zetten mislukte."); }
   }
 
@@ -384,7 +390,7 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
   const titel = titelMatch ? titelMatch[1] : t.taak;
   const subtitel = titelMatch ? titelMatch[2] : "";
   // Eén keer parsen: het unieke verhaal voor het bovenblok, de fase-sturing voor de rijen.
-  const info = splitCardInfo(t.toelichting);
+  const info = splitCardInfo(t.toelichting, t.taak);
 
   // Dichtklappen mag nooit een lopende tekstselectie opeten (kopiëren gaat voor).
   const toggleAlsGeenSelectie = () => {
@@ -436,13 +442,13 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
               if (tekst) { setLijstPunt(tekst); setLijstMsg(""); }
             }
           }}
-          dangerouslySetInnerHTML={{ __html: cardInfoHtml(t.toelichting, t.url) }} />
+          dangerouslySetInnerHTML={{ __html: cardInfoHtml(t.toelichting, t.url, t.taak) }} />
       )}
       {open && lijstPunt && (
         <div className="ovc-lijstkeuze">
           <span>Op welke bespreeklijst?</span>
           {lijstPersonen.map((p) => (
-            <button key={p} type="button" className="wp-fase-btn" onClick={() => void zetOpLijst(p)}>{p === "Dev" ? "Sander (Dev)" : p}</button>
+            <button key={p} type="button" className="wp-fase-btn" onClick={() => void zetOpLijst(p)}>{p === "Dev" ? devLabel(devNaam) : p}</button>
           ))}
           <button type="button" className="wp-icon wp-del" title="Annuleren" onClick={() => setLijstPunt("")}>×</button>
         </div>
@@ -664,7 +670,7 @@ function WerklijstBlok({ slug, refreshBoard }: { slug: string; refreshBoard: () 
       {resultaat && status === "done" && !actieMsg && <div className="wp-werklijst-sam">{resultaat}</div>}
       {fout && <div className="wp-doc-fout">{fout}</div>}
       {!docLink && !shareToken && status !== "running" && !resultaat && (
-        <div className="muted">Nog geen werklijst gemaakt. De werklijst meet alle live pagina&rsquo;s en zet per pagina de nieuwe meta&rsquo;s en alt-teksten klaar op een klikbare afwerkpagina voor Sander.</div>
+        <div className="muted">Nog geen werklijst gemaakt. De werklijst meet alle live pagina&rsquo;s en zet per pagina de nieuwe meta&rsquo;s en alt-teksten klaar op een klikbare afwerkpagina voor de sitebouwer.</div>
       )}
     </div>
   );

@@ -135,6 +135,10 @@ async function init(): Promise<void> {
   // de sleutel zelf (geen secrets in de database). De echte sleutel staat in
   // Vercel als env-var AHREFS_API_TOKEN_<LABEL>. Leeg = het hoofdaccount.
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS ahrefs_key_ref TEXT`;
+  // Naam van de sitebouwer/developer van DEZE klant. Stond eerder hardgecodeerd
+  // als "Sander" in zes schermen, waardoor bij elke klant Sander in beeld kwam
+  // terwijl hij alleen voor Kamsteeg bouwt. Leeg = gewoon "Dev" tonen.
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS dev_name TEXT`;
 
   // ── KPI-trend per klant (gevuld door de nachtelijke cron client-trends) ──
   // Voor de "mooie ontwikkeling"-selectie in de klanten-dropdown: per klant en

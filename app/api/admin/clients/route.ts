@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminScope, canAccessSlug, guardOwner } from "../../../../lib/admin-scope";
-import { listClients, createClient, deleteClient, updateClientCockpit, updateClientCore, parseSheetUrl, resetClientPassword, setClientBudget, setClientBackendUrl, getOrCreateShareToken } from "../../../../lib/clients";
+import { listClients, createClient, deleteClient, updateClientCockpit, updateClientCore, parseSheetUrl, resetClientPassword, setClientBudget, setClientBackendUrl, setClientDevName, getOrCreateShareToken } from "../../../../lib/clients";
 
 export const runtime = "nodejs";
 
@@ -126,6 +126,12 @@ export async function PATCH(req: NextRequest) {
       uurtarief: Number(body.uurtarief) || 0,
       beschikbareUren: Number(body.beschikbareUren) || 0,
     });
+    if (!ok) return NextResponse.json({ ok: false, error: "Klant niet gevonden." }, { status: 404 });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (body.action === "devName") {
+    const ok = await setClientDevName(slug, String(body.devName || ""));
     if (!ok) return NextResponse.json({ ok: false, error: "Klant niet gevonden." }, { status: 404 });
     return NextResponse.json({ ok: true });
   }

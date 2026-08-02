@@ -704,7 +704,7 @@ export default function TasksEditor({ slug, initialTasks, initialStrategySession
               </div>
               <label className="compose-label">{composeMode === "klant" ? "Aan (e-mail klant)" : "Aan (e-mail developer)"}</label>
               <div className="compose-autocomplete">
-                <input className="compose-input" value={devTo} onChange={(e) => onDevToChange(e.target.value)} onFocus={() => { if (emailSug.length) setEmailSugOpen(true); }} onBlur={() => setTimeout(() => setEmailSugOpen(false), 150)} placeholder={composeMode === "klant" ? "klant@bedrijf.nl" : "Begin te typen, bijv. Sander…"} autoComplete="off" />
+                <input className="compose-input" value={devTo} onChange={(e) => onDevToChange(e.target.value)} onFocus={() => { if (emailSug.length) setEmailSugOpen(true); }} onBlur={() => setTimeout(() => setEmailSugOpen(false), 150)} placeholder={composeMode === "klant" ? "klant@bedrijf.nl" : "Begin te typen, bijv. de naam van de sitebouwer…"} autoComplete="off" />
                 {emailSugOpen && emailSug.length > 0 && (
                   <ul className="compose-suggest">
                     {emailSug.map((p) => (

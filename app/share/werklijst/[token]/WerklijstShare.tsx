@@ -67,7 +67,7 @@ export default function WerklijstShare({ token }: { token: string }) {
         <div className="wl-logo">Pingwin <span>Online Marketing</span></div>
         <h1>Werklijst website{clientName ? ` ${clientName}` : ""}</h1>
         <p className="wl-intro">Eén lijstje, en het is geen spoed. De teksten op de site regelen wij zelf; daar hoef je niets voor te doen. Wat hieronder staat zijn foto&rsquo;s die op meerdere pagina&rsquo;s terugkomen. Een eigen foto per pagina werkt beter, voor de bezoeker en voor Google. Pak eruit wat je kunt en vink af; ben je klaar, druk dan op de knop onderaan, dan controleert het dashboard het zelf.</p>
-        <label className="wl-naam">Je naam (voor de vinkjes): <input value={naam} onChange={(e) => setNaam(e.target.value)} placeholder="bijv. Sander" /></label>
+        <label className="wl-naam">Je naam (voor de vinkjes): <input value={naam} onChange={(e) => setNaam(e.target.value)} placeholder="je voornaam" /></label>
       </div>
 
       <WerklijstLijst

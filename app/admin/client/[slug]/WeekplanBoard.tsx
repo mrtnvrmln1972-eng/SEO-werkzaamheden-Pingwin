@@ -57,6 +57,10 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailD
   const [wlMsg, setWlMsg] = useState("");
   const [wlLink, setWlLink] = useState("");
   const [wlFout, setWlFout] = useState(false);
+  // Alle kaarten in één keer laten opruimen (dubbelingen uit oude samenvoegingen).
+  const [opruimBusy, setOpruimBusy] = useState(false);
+  const [opruimMsg, setOpruimMsg] = useState("");
+  const [opruimFout, setOpruimFout] = useState(false);
 
   // Laatste werklijst-stand tonen (link naar het document als die er is).
   useEffect(() => {
@@ -81,6 +85,22 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailD
       return;
     }
     setWlBusy(false); setWlFout(true); setWlMsg("Duurde te lang; probeer het nog een keer.");
+  }
+
+  async function ruimAllesOp() {
+    if (opruimBusy) return;
+    setOpruimBusy(true); setOpruimMsg(""); setOpruimFout(false);
+    try {
+      const d = await fetch("/api/admin/weekplan/tidy", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, all: true }),
+      }).then((r) => r.json());
+      setOpruimFout(!d?.ok);
+      setOpruimMsg(d?.ok ? d.samenvatting : (d?.error || "Opruimen mislukte."));
+      if (d?.ok) await load();
+    } catch {
+      setOpruimFout(true); setOpruimMsg("Opruimen mislukte.");
+    } finally { setOpruimBusy(false); }
   }
 
   async function startWerklijst() {
@@ -219,6 +239,12 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailD
               ? <a className="wp-link" href={wlLink} target="_blank" rel="noreferrer">{wlMsg}</a>
               : <span className={"ovc-mk-msg" + (wlFout ? " err" : " ok")}>{wlMsg}</span>
           )}
+          {/* Kaarten van vóór het automatisch opruimen staan nog vol dubbelingen.
+              Eén klik haalt die overal weg; nieuwe samenvoegingen ruimen zichzelf op. */}
+          <button type="button" className="wp-fase-btn" disabled={opruimBusy}
+            title="Laat de assistent elke kaart één keer netjes herschrijven: dubbelingen eruit, per fase één regel. Er wordt niets inhoudelijks weggegooid."
+            onClick={() => void ruimAllesOp()}>{opruimBusy ? "Opruimen…" : "Ruim alle kaarten op"}</button>
+          {opruimMsg && <span className={"ovc-mk-msg" + (opruimFout ? " err" : " ok")}>{opruimMsg}</span>}
         </div>
       </div>
       <div className="wp-board">
