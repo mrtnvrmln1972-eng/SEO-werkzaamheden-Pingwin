@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { urlKey } from "../../../../lib/url-key";
+import { herzetAanhef } from "../../../../lib/aanhef";
 import WeekplanCard, { type WpTask, type WpPageInfo } from "./WeekplanCard";
 
 type Current = { year: number; week: number };
@@ -202,16 +203,21 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailD
   function openMail(t: WpTask, aud: "klant" | "dev") {
     setMailFor(t); setMailAud(aud); setMailInstr(""); setMailErr(""); setMailLinks({});
     let devTo = ""; try { devTo = localStorage.getItem("pingwin-dev-email") || ""; } catch { /* geen opslag */ }
-    setMailTo(aud === "klant" ? (clientEmail || "") : aud === "dev" ? devTo : "");
-    void generateMail(t, aud, "", {});
+    const to = aud === "klant" ? (clientEmail || "") : aud === "dev" ? devTo : "";
+    setMailTo(to);
+    // Het adres gaat als argument mee. Het stond eerder alleen in de toestand, en
+    // die is vlak na setMailTo nog niet bijgewerkt, dus kwam er een leeg adres bij
+    // de assistent aan en werd de aanhef "Hoi," in plaats van "Hoi Maarten,".
+    void generateMail(t, aud, "", {}, to);
   }
 
-  async function generateMail(t: WpTask, aud: "klant" | "dev" | "anders", instructie: string, gekozen: Record<string, boolean>) {
+  async function generateMail(t: WpTask, aud: "klant" | "dev" | "anders", instructie: string, gekozen: Record<string, boolean>, to?: string) {
     setMailBusy(true); setMailErr("");
     if (mailRef.current) mailRef.current.innerText = "";
+    const adres = to !== undefined ? to : mailTo;
     const links = docLinksFor(t).filter((l) => gekozen[l.key]).map((l) => ({ label: l.label, url: l.url }));
     try {
-      const d = await fetch("/api/admin/task/explain", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, taak: t.taak, toelichting: t.toelichting, url: t.url, audience: aud, instructie, links, to: mailTo }) }).then((r) => r.json());
+      const d = await fetch("/api/admin/task/explain", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, taak: t.taak, toelichting: t.toelichting, url: t.url, audience: aud, instructie, links, to: adres }) }).then((r) => r.json());
       if (d?.ok && d.text) {
         // De onderwerpregel hoort niet in de body maar in een eigen veld: zo zie je
         // hem meteen en wordt hij ook echt het onderwerp van de verstuurde mail.
@@ -338,11 +344,20 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailD
                   onClick={() => {
                     setMailAud(aud);
                     let devTo = ""; try { devTo = localStorage.getItem("pingwin-dev-email") || ""; } catch { /* geen opslag */ }
-                    setMailTo(aud === "klant" ? (clientEmail || "") : aud === "dev" ? devTo : "");
-                    void generateMail(mailFor, aud, mailInstr, mailLinks);
+                    const to = aud === "klant" ? (clientEmail || "") : aud === "dev" ? devTo : "";
+                    setMailTo(to);
+                    void generateMail(mailFor, aud, mailInstr, mailLinks, to);
                   }}>{label}</button>
               ))}
-              <input className="wp-mail-to" type="email" value={mailTo} onChange={(e) => setMailTo(e.target.value)} placeholder="E-mailadres ontvanger" />
+              {/* Typ je zelf een ander adres, dan verandert de aanhef mee zodra je het
+                  veld verlaat. Zo verstuur je nooit "Hoi," terwijl er een naam bij hoort. */}
+              <input className="wp-mail-to" type="email" value={mailTo} placeholder="E-mailadres ontvanger"
+                onChange={(e) => setMailTo(e.target.value)}
+                onBlur={(e) => {
+                  if (!mailRef.current) return;
+                  const nieuw = herzetAanhef(mailRef.current.innerText || "", e.target.value);
+                  if (nieuw !== mailRef.current.innerText) mailRef.current.innerText = nieuw;
+                }} />
             </div>
             {docLinksFor(mailFor).length > 0 && (
               <div className="wp-mail-links">

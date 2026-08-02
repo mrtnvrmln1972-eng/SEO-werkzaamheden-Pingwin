@@ -7,6 +7,7 @@
 
 import { linkifyHtml } from "./linkify";
 import { puntSoort } from "./punt-soort";
+import { striptToeschrijvingen, type HerkomstContext } from "./herkomst";
 
 export type CardFaseKey = "strategie" | "gelieerde" | "analyse" | "blauwdruk" | "copy" | "bouw" | "structured";
 
@@ -192,7 +193,12 @@ const RUIS: RegExp[] = [
   /^de aanpak staat hieronder/i,
 ];
 
-export function splitCardInfo(toelichting: string, taak?: string): CardInfo {
+export function splitCardInfo(toelichting: string, taak?: string, herkomst?: HerkomstContext): CardInfo {
+  // Namen van personen die niet aantoonbaar bij deze klant horen gaan er hier al
+  // uit, vóór alle andere verwerking. Zo werkt het met terugwerkende kracht voor
+  // elke kaart die er al staat, en komt zo'n naam ook niet meer in een mail
+  // terecht die uit deze tekst wordt gemaakt. Zie lib/herkomst.ts voor het waarom.
+  toelichting = striptToeschrijvingen(toelichting || "", herkomst || {});
   const info: CardInfo = { achtergrond: [], afspraken: [], overig: [], perFase: {}, rest: [] };
   const seen = new Set<string>();
   // De titel van de kaart hoort niet als bullet IN de kaart. Bij het samenvoegen
@@ -303,9 +309,9 @@ function infoKaart(icoon: string, kop: string, inhoud: string): string {
   return `<div class="wp-info-kaart"><div class="wp-info-kaarthead"><span class="wp-info-icoon">${icoon}</span><span class="wp-info-kop">${kop}</span></div>${inhoud}</div>`;
 }
 
-export function cardInfoHtml(toelichting: string, pageUrl?: string, taak?: string, cijfers?: string, mails?: MailLinks): string {
+export function cardInfoHtml(toelichting: string, pageUrl?: string, taak?: string, cijfers?: string, mails?: MailLinks, herkomst?: HerkomstContext): string {
   const domain = (() => { try { return pageUrl ? new URL(pageUrl).host : ""; } catch { return ""; } })();
-  const info = splitCardInfo(toelichting, taak);
+  const info = splitCardInfo(toelichting, taak, herkomst);
   const kaarten: string[] = [];
   if (info.achtergrond.length) {
     kaarten.push(infoKaart(ICO_VLAG, "Waarom deze pagina", lijst(info.achtergrond, "wp-check-lijst", mails)));
