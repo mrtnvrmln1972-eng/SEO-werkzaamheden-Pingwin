@@ -242,7 +242,7 @@ const woordenVan = (pad: string) => pad.toLowerCase().split(/[^a-z0-9]+/).filter
  * die opgeruimd of samengevoegd kunnen worden, met de pagina die de term wél
  * bezit als voor de hand liggend doel.
  */
-export async function zwakkePaginas(slug: string, domain: string, minVertoningen = 10, dagen = 90): Promise<{ ok: boolean; reden?: string; tekst: string }> {
+export async function zwakkePaginas(slug: string, domain: string, minVertoningen = 10, dagen = 90): Promise<{ ok: boolean; reden?: string; tekst: string; kandidaten?: ZwakkePagina[] }> {
   const [paren, urls] = await Promise.all([
     getGscQueryPagePairs(domain, dagen).catch(() => []),
     getClientUrls(slug).catch(() => []),
@@ -258,7 +258,7 @@ export function bepaalZwakkePaginas(
   dagen = 90,
   minKlikken = 10,
   minEigenVertoningen = 300,
-): { ok: boolean; reden?: string; tekst: string } {
+): { ok: boolean; reden?: string; tekst: string; kandidaten?: ZwakkePagina[] } {
   if (!paren.length) return { ok: false, reden: "Geen Search Console-data beschikbaar.", tekst: "Geen Search Console-data beschikbaar; doe hier geen uitspraak over welke pagina's opgeruimd kunnen worden." };
 
   const live = urls.filter((u) => u.status === 200);
@@ -431,5 +431,5 @@ export function bepaalZwakkePaginas(
     regels.push("");
     regels.push(`NIET TE BEOORDELEN (${zonderData.length}): deze live pagina's krijgen in deze periode geen enkele vertoning. Dat kan betekenen dat ze niets doen, maar het kan ook een functionele pagina zijn (contact, afspraak maken). Doe hier GEEN opruimvoorstel over zonder ze eerst apart te bekijken: ${zonderData.slice(0, 40).join(", ")}${zonderData.length > 40 ? `, en nog ${zonderData.length - 40}` : ""}.`);
   }
-  return { ok: true, tekst: regels.join("\n") };
+  return { ok: true, tekst: regels.join("\n"), kandidaten: [...kandidaten, ...dubbelingen] };
 }

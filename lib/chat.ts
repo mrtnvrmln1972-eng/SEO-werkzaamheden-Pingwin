@@ -477,8 +477,26 @@ function chatTools(client: ClientConfig): { tools: ToolDef[]; run: ToolRunner } 
         ].join("\n");
       }
       if (name === "concurrerende_paginas") {
-        const r = await overlappendePaginas(client.slug, domain, toFull(String(input.url || "")));
-        return overlapAlsTekst(r);
+        const doel = toFull(String(input.url || ""));
+        const doelPad = (() => { try { return new URL(doel).pathname; } catch { return doel; } })();
+        // De site-brede opruimlijst gaat ALTIJD mee, ook als hij er niet om vraagt.
+        // Eerder moest het model daar zelf een tweede tool voor aanroepen, en dat
+        // deed het niet: na zes pagina-analyses waren de beurten op en bleven juist
+        // de dunne locatiepagina's (Mijdrecht, Rijswijk, Houten) buiten beeld.
+        const [r, zwak] = await Promise.all([
+          overlappendePaginas(client.slug, domain, doel),
+          zwakkePaginas(client.slug, domain).catch(() => null),
+        ]);
+        let uit = overlapAlsTekst(r);
+        const bij = (zwak?.kandidaten || []).filter((k) => k.dubbelMet.some((d) => d === doelPad));
+        if (bij.length) {
+          uit += `\n\n=== DUNNE PAGINA'S DIE BIJ ${doelPad} HOREN (${bij.length}) ===\n`
+            + `Deze pagina's verdienen geen eigen zoekterm en wijzen op basis van hun zoekwoorden naar DEZE stadspagina. Ze staan niet in de overlap hierboven omdat ze te weinig vertoningen hebben om zoekwoorden te delen, maar ze versnipperen wel de autoriteit. NEEM ZE OP IN JE ANTWOORD.\n`
+            + bij.map((k) => `- ${k.pad} [${k.klikken} klikken, ${k.vertoningen} vertoningen] -> 301 naar ${doelPad}; leent "${k.geleendeTop?.keyword ?? "?"}"`).join("\n");
+        } else if (zwak?.ok) {
+          uit += `\n\n(Geen dunne pagina's die specifiek naar ${doelPad} wijzen. Gebruik dunne_paginas voor het volledige site-brede beeld.)`;
+        }
+        return uit;
       }
       if (name === "dunne_paginas") {
         const r = await zwakkePaginas(client.slug, domain);
