@@ -99,17 +99,33 @@ Eén gedeeld ontwerp, data per klant. Eén vaste URL voor alle klanten; de login
 
 **Eerste klant:** One Day Clinic, klant-login `onedayclinic`.
 
-**Wachtwoorden staan NOOIT in dit bestand.** Deze repo is openbaar; alles wat hier staat is
-wereldwijd leesbaar en blijft ook na verwijderen in de git-geschiedenis staan. Waar ze wél staan:
+**Wachtwoorden en sleutels staan NOOIT in dit bestand.** Deze repo is openbaar; alles wat hier
+staat is wereldwijd leesbaar en blijft ook na verwijderen in de git-geschiedenis staan.
 
-| Wachtwoord | Waar het leeft | Wie kan erbij |
-|---|---|---|
-| Adminlogin (Maarten) | Vercel-env `ADMIN_PASSWORD` | alleen Maarten |
-| Klantlogins | als scrypt-hash in de database | niemand, ook Maarten niet |
+### Hoe Maarten inlogt (en wat hij moet onthouden)
 
-Adminwachtwoord wijzigen: Vercel → project `pingwin-seo-dashboard` → Settings → Environment
-Variables → `ADMIN_PASSWORD`. Daarna één keer opnieuw deployen zodat de nieuwe waarde actief wordt.
-Klantwachtwoord kwijt? Genereer een nieuw via het adminscherm; het platte wachtwoord zie je één keer.
+**In de praktijk: niets.** Zijn ingang is een bookmark. Alles hieronder is er voor als die
+bookmark ooit kwijt is.
+
+| Sleutel | Waarvoor | Waar hij leeft | Onthouden? |
+|---|---|---|---|
+| `ADMIN_MAGIC_KEY` | zit in de bookmark `/admin/enter?key=…`, één klik en je bent binnen | Vercel-env | nee, de browser onthoudt de link |
+| `ADMIN_PASSWORD` | reserve-ingang, intypen op `/admin/login` | Vercel-env | ja, in de wachtwoordmanager |
+| Klantlogins | de klant in zijn eigen dashboard | scrypt-hash in de database | kan niemand lezen, ook Maarten niet |
+
+Wijzigen gaat voor alle env-sleutels hetzelfde: Vercel → project `pingwin-seo-dashboard` →
+Settings → Environment Variables → aanpassen → één keer opnieuw deployen. Klantwachtwoord kwijt?
+Genereer een nieuw via het adminscherm; het platte wachtwoord zie je één keer.
+
+### Waarom `/admin/enter` een sleutel MOET hebben
+
+Die route deelt een volledige adminsessie uit. Het slot stond eerst standaard uit, waardoor
+iedereen die het adres intikte binnen was; het adres staat in deze openbare repo, dus dat was
+te vinden. Live aangetroffen en dichtgezet op 02-08-2026.
+
+De code is daarna omgedraaid: **geen `ADMIN_MAGIC_KEY` ingesteld = de ingang bestaat niet.**
+Nooit terugdraaien naar "standaard open". Beveiliging hoort niet iets te zijn dat je aan moet
+zetten. Dezelfde regel geldt voor elke nieuwe Pingwin-wereld die deze code overneemt.
 
 **Let op:** er is ook nog een oude losse Netlify-versie (`pingwin-seo-one-day-clinic.netlify.app`, gepubliceerd vanaf Maartens Desktop). Die gebruikt de klant nu. Niet weggooien tot we overstappen.
 
