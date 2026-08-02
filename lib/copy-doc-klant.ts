@@ -28,17 +28,37 @@ export const COPY_UITLEG_SECTIE: DocSection = {
   ],
 };
 
-// Maatwerk-paragraafje: zoekintentie, huidige ranking en waarom deze term telt.
-export async function overDezePaginaSectie(slug: string, url: string, copyTekst: string): Promise<DocSection | null> {
+// Vaste opening: wat we van de klant vragen (door Maarten vastgesteld).
+export const COPY_INTRO_SECTIE: DocSection = {
+  heading: "Lees na, pas aan en stuur terug",
+  blocks: [{ type: "highlight", text: "Op basis van de SEO-analyse, de blauwdruk en de top 10-analyse hebben we deze copy ontwikkeld die voldoet aan de perfecte invulling voor deze pagina. Uiteraard heb jij veel meer verstand van jouw vak en je bedrijf dan wij, dus vragen we je wel om deze teksten goed door te nemen en aan te passen waar nodig. Als je deze teksten (al dan niet aangepast) terugstuurt, dan zullen wij ze op de juiste, SEO-geoptimaliseerde manier in de website verwerken." }],
+};
+
+// Drie maatwerk-secties in één AI-aanroep: waar de teksten over gaan, welke
+// zoekwoorden erin verwerkt zijn (met per zoekwoord de reden) en wat dit voor
+// de vindbaarheid betekent. Gevoed met de echte Search Console-cijfers.
+export async function maatwerkSecties(slug: string, url: string, copyTekst: string, analyseTekst: string): Promise<DocSection[]> {
   const client = await getClientBySlug(slug);
   const gsc = client?.domain ? await getGscForPage(client.domain, url, 90).catch(() => []) : [];
-  const data = gsc.slice(0, 10).map((k) => `"${k.keyword}" op positie ${k.position}`).join("; ");
-  const sys = `Je bent SEO-strateeg bij bureau Pingwin. Schrijf voor in een klantdocument een kort maatwerk-stukje "Over deze pagina": 3 tot 5 zinnen in gewone taal over (1) de zoekintentie van deze pagina, (2) hoe de pagina nu al scoort (gebruik de echte cijfers als die er zijn), en (3) waarom deze zoekterm belangrijk is voor dit bedrijf. Persoonlijk en concreet, geen jargon, geen emoji, geen inleiding of kop. Alleen de alinea zelf.`;
-  const user = `Pagina: ${url}\nBedrijf: ${client?.name || ""}\n${data ? `Huidige posities (Search Console, 90 dagen): ${data}` : "Nog geen meetbare posities (bijvoorbeeld een nieuwe pagina)."}\n\nEerste deel van de nieuwe tekst (voor context over het onderwerp):\n${copyTekst.slice(0, 1500)}`;
+  const data = gsc.slice(0, 12).map((k) => `"${k.keyword}": positie ${Math.round(k.position * 10) / 10}, ${k.clicks} klikken, ${k.impressions} vertoningen`).join("\n") || "Nog geen meetbare posities (bijvoorbeeld een nieuwe pagina).";
+  const sys = `Je bent SEO-strateeg bij bureau Pingwin en schrijft de uitleg voor de klant in een copy-briefing. Schrijf in gewone taal, persoonlijk, zonder jargon en zonder emoji.
+Geef UITSLUITEND geldige JSON met exact deze velden:
+{"waarover":"3 tot 5 zinnen: waar de nieuwe teksten over gaan. Noem de groei in omvang als je die kunt afleiden (van korte introductie naar volwaardige dienstenpagina), de toon en de positionering van dit bedrijf.",
+ "zoekwoorden":[{"kw":"zoekwoord","reden":"één korte zin waarom dit zoekwoord erin zit; noem bij het hoofdzoekwoord de echte positie als die er is"}],
+ "vindbaarheid":"3 tot 5 zinnen: wat dit voor de vindbaarheid betekent. Wees eerlijk en concreet, gebruik de echte cijfers, benoem de oorzaak van het probleem en wat er nu verandert."}
+Regels: 4 tot 7 zoekwoorden, het hoofdzoekwoord eerst; verzin geen cijfers, gebruik alleen wat in de data staat.`;
+  const user = `Pagina: ${url}\nBedrijf: ${client?.name || ""}\n\nHUIDIGE POSITIES (Search Console, 90 dagen):\n${data}\n\nDE NIEUWE TEKST:\n${copyTekst.slice(0, 9000)}\n\n${analyseTekst ? `UIT DE ANALYSE VAN DE HUIDIGE PAGINA:\n${analyseTekst.slice(0, 3000)}` : ""}`;
   try {
-    const tekst = (await callClaude(sys, [{ role: "user", content: user }], 600, { slug, action: "copy-doc-maatwerk" })).trim();
-    return tekst ? { heading: "Over deze pagina", blocks: [{ type: "paragraph", text: tekst }] } : null;
-  } catch { return null; }
+    const raw = await callClaude(sys, [{ role: "user", content: user }], 2000, { slug, action: "copy-doc-maatwerk" });
+    const clean = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
+    const p = JSON.parse(clean.slice(clean.indexOf("{"), clean.lastIndexOf("}") + 1)) as { waarover?: string; zoekwoorden?: { kw: string; reden: string }[]; vindbaarheid?: string };
+    const uit: DocSection[] = [];
+    if (p.waarover) uit.push({ heading: "Waar de nieuwe teksten over gaan", blocks: [{ type: "paragraph", text: p.waarover }] });
+    const kws = (p.zoekwoorden || []).filter((k) => k?.kw).slice(0, 8);
+    if (kws.length) uit.push({ heading: "Welke zoekwoorden erin verwerkt zijn", blocks: [{ type: "table", headers: ["Zoekwoord", "Waarom dit erin zit"], rows: kws.map((k) => [k.kw, k.reden || ""]) }] });
+    if (p.vindbaarheid) uit.push({ heading: "Wat dit voor jullie vindbaarheid betekent", blocks: [{ type: "paragraph", text: p.vindbaarheid }] });
+    return uit;
+  } catch { return []; }
 }
 
 // Meta-titel en description uit de copy, getoetst met de pixel-motor.
@@ -101,18 +121,23 @@ export async function buildCopyKlantSpec(slug: string, url: string): Promise<{ o
   const copy = outputs["copy"] || "";
   if (!copy.trim()) return { ok: false, error: "Voor deze pagina is nog geen copy gegenereerd; draai eerst de copy-stap." };
   const pad = (() => { try { return new URL(url).pathname; } catch { return url; } })();
-  const [over, meta] = await Promise.all([overDezePaginaSectie(slug, url, copy), metaSectie(slug, copy)]);
+  const [maatwerk, meta] = await Promise.all([
+    maatwerkSecties(slug, url, copy, outputs["analyse"] || ""),
+    metaSectie(slug, copy),
+  ]);
   const copySecties = copyNaarSecties(copy).filter((s) => !/seo-metadata|scorecard|behoud/i.test(s.heading || ""));
   const spec: DocSpec = {
     klant: client.name,
-    rapporttype: "Nieuwe pagina-invulling",
-    titel: `Nieuwe tekst voor ${pad}`,
-    ondertitel: "De complete, publicatieklare invulling van deze pagina, inclusief hoe hij tot stand kwam.",
+    rapporttype: "Copy-briefing",
+    titel: `Nieuwe teksten voor ${pad}`,
+    ondertitel: "Uitleg voor de klant plus de volledige webteksten om na te lezen en te corrigeren.",
+    meta: { Pagina: pad, Datum: new Date().toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" }) },
     sections: [
+      COPY_INTRO_SECTIE,
       COPY_UITLEG_SECTIE,
-      ...(over ? [over] : []),
+      ...maatwerk,
       ...(meta ? [meta] : []),
-      { heading: "De nieuwe pagina", blocks: [{ type: "paragraph", text: "Hieronder de volledige nieuwe tekst. Bij elke kop staat de aanduiding (H1, H2, H3) zodat de sitebouwer precies weet welk kopniveau hij moet gebruiken." }] },
+      { heading: "De volledige webteksten (lees na en corrigeer)", blocks: [{ type: "paragraph", text: "Hieronder de volledige teksten voor de pagina. Lees ze door, pas aan waar nodig en geef je correcties terug aan Pingwin. Bij elke kop staat de aanduiding (H1, H2, H3), zodat de sitebouwer precies weet welk kopniveau hij moet gebruiken." }] },
       ...copySecties,
     ],
   };

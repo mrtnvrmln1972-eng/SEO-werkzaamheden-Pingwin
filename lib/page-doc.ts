@@ -874,5 +874,15 @@ Geen emoji. ${DOCSPEC_FORMAT}`;
   await savePageDocOutput(slug, url, kind, specToText(spec)).catch(() => { /* keten is aanvulling, niet kritisch */ });
   const { registerGeneratedVersion } = await import("./doc-versions");
   await registerGeneratedVersion(slug, url, kind, `${kind} (gegenereerd)`, "", specToText(spec));
+  // De copy die naar de klant gaat, krijgt het vaste briefing-formaat: uitleg
+  // over de aanpak, de zoekwoorden met hun reden, wat het voor de vindbaarheid
+  // betekent, de meta's met pixel-oordeel en dan pas de volledige webteksten.
+  if (kind === "copy" && audience === "klant") {
+    try {
+      const { buildCopyKlantSpec } = await import("./copy-doc-klant");
+      const r = await buildCopyKlantSpec(slug, url);
+      if (r.ok && r.spec) return { spec: r.spec, title: r.spec.titel };
+    } catch { /* bij twijfel het gewone document, nooit een lege oplevering */ }
+  }
   return { spec, title };
 }
