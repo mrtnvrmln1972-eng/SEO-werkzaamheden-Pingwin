@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { guardSlug } from "../../../../../lib/admin-scope";
 import { msSendMail, msStatus } from "../../../../../lib/ms-graph";
+import { getClientBySlug } from "../../../../../lib/clients";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -37,6 +38,30 @@ function linkify(html: string, links: { label: string; url: string }[]): string 
   return uit;
 }
 
+// Adressen opschonen. Microsoft weigerde "maarten@pingwin.nl," omdat de komma als
+// onderdeel van het adres meeging: "Recipient is not resolved". Splitsen op komma en
+// puntkomma lost dat op en maakt meerdere ontvangers meteen mogelijk.
+function adressen(ruw: string): string[] {
+  return (ruw || "")
+    .split(/[,;]+/)
+    .map((a) => a.trim().replace(/^[<]|[>]$/g, ""))
+    .filter(Boolean);
+}
+const ADRES_OK = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+// Paden naar de live site worden echte links, zodat de sitebouwer overal kan
+// doorklikken zonder een URL over te typen.
+function linkifyPaden(html: string, domein: string): string {
+  const basis = (domein || "").replace(/^https?:\/\//i, "").replace(/\/+$/, "");
+  if (!basis) return html;
+  const delen = html.split(/(<a\b[^>]*>[\s\S]*?<\/a>|<[^>]+>)/gi);
+  return delen.map((seg, i) => {
+    if (i % 2 === 1 || !seg) return seg;   // een tag of bestaande link: niet aanraken
+    return seg.replace(/(^|[\s(>])(\/[a-z][a-z0-9-]*(?:\/[a-z0-9-]+)*\/?)(?=[\s).,:;!?]|$)/gi,
+      (_m, pre, pad) => `${pre}<a href="https://${basis}${pad}">${pad}</a>`);
+  }).join("");
+}
+
 function naarHtml(tekst: string, links: { label: string; url: string }[]): string {
   const veilig = (tekst || "")
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -65,10 +90,15 @@ export async function POST(req: NextRequest) {
   if (!slug) return NextResponse.json({ ok: false, error: "Klant verplicht." }, { status: 400 });
   const g = await guardSlug(req, slug); if (!g.ok) return g.res;
 
-  const to = String(body.to || "").trim();
+  const ontvangers = adressen(String(body.to || ""));
+  const to = ontvangers.join(", ");
   const tekst = String(body.tekst || "").trim();
   const onderwerp = String(body.onderwerp || "").trim();
-  if (!to) return NextResponse.json({ ok: false, error: "Vul eerst het e-mailadres van de ontvanger in." }, { status: 400 });
+  if (!ontvangers.length) return NextResponse.json({ ok: false, error: "Vul eerst het e-mailadres van de ontvanger in." }, { status: 400 });
+  // Vóór het versturen controleren, zodat je een begrijpelijke melding krijgt in
+  // plaats van een afwijzing van Microsoft achteraf.
+  const fout = ontvangers.filter((a) => !ADRES_OK.test(a));
+  if (fout.length) return NextResponse.json({ ok: false, error: `Dit lijkt geen geldig e-mailadres: ${fout.join(", ")}` }, { status: 400 });
   if (!tekst) return NextResponse.json({ ok: false, error: "De mail is nog leeg." }, { status: 400 });
 
   const st = await msStatus().catch(() => ({ configured: false, connected: false, account: null }));
@@ -83,8 +113,9 @@ export async function POST(req: NextRequest) {
   }
 
   const links = (Array.isArray(body.links) ? body.links : []).filter((l) => l && l.url && l.label);
-  const html = naarHtml(tekst, links);
-  const r = await msSendMail([to], onderwerp || "Bericht van Pingwin", html);
+  const klant = await getClientBySlug(slug).catch(() => null);
+  const html = linkifyPaden(naarHtml(tekst, links), klant?.domain || "");
+  const r = await msSendMail(ontvangers, onderwerp || "Bericht van Pingwin", html);
   if (!r.ok) return NextResponse.json({ ok: false, error: r.error || "Versturen mislukte." }, { status: 502 });
   return NextResponse.json({ ok: true, sentTo: r.sentTo, samenvatting: `Verstuurd naar ${to}.` });
 }

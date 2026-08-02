@@ -573,6 +573,10 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
             // Stonden ze alle vijf tegelijk open, dan las je de instructie voor Copy
             // terwijl je bij Analyse zat en paste de kaart nergens meer in één blik.
             const sturing = (info.perFase[f.key as CardFaseKey] || []).join(" · ");
+            // Een regel die alleen een document benoemt ("Copy-document: ...docx")
+            // voegt niets toe naast het linkje ernaast. Alleen echte sturing krijgt
+            // een uitleg-knop; de rest is ruis in een rij die rustig moet zijn.
+            const sturingNuttig = !!sturing && !/^\s*[a-zà-ž -]{0,20}document\s*:/i.test(sturing) && !/\.(docx?|pdf|md)\b/i.test(sturing.slice(0, 90));
             const sturingOpen = !!faseOpen[f.key];
             const rij = (
               <div key={f.key} className={"wp-fase" + (f.key === "bouw" ? " wp-fase-scheiding" : "")}>
@@ -583,7 +587,11 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
                       iets doet (de knop) en één dat iets zegt (het chipje rechts). */}
                   <span className={"wp-fase-bullet" + (page[f.key] ? " aan" : "")} aria-hidden="true" />
                   <span className="wp-fase-label">{f.label}</span>
-                  {sturing && (
+                  {/* Was een volle "Document"-knop rechts, drie keer in dezelfde
+                      kaart. Een klein linkje achter de naam doet hetzelfde en houdt
+                      de rij rustig. */}
+                  {link && <a className="wp-fase-doclink" href={link} target="_blank" rel="noreferrer" title="Open het document">(link)</a>}
+                  {sturingNuttig && (
                     <button type="button" className="wp-fase-uitleg"
                       title={sturingOpen ? "Verberg de sturing voor deze stap" : "Toon de sturing voor deze stap"}
                       onClick={() => setFaseOpen((v) => ({ ...v, [f.key]: !v[f.key] }))}>
@@ -592,7 +600,6 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
                   )}
                   <span className="wp-fase-spacer" />
                   {/* Alle pillen rechts, in vaste volgorde: Document | In Pagina's | actie | status. */}
-                  {link && <a className="wp-fase-btn wp-fase-doc" href={link} target="_blank" rel="noreferrer" title="Open het document">Document</a>}
                   {f.key === "copy" && (
                     <button type="button" className="wp-fase-btn" disabled={(!page.live && !page.strategie) || runActive || !!busy}
                       title={(!page.live && !page.strategie) ? "Eerst de strategie goedkeuren (nieuwe pagina)" : "Draait analyse, blauwdruk en copy achter elkaar"}
@@ -607,7 +614,7 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
                   <span className={"wp-fase-chip " + stand.cls} title={stand.label === "✓" ? "Klaar" : undefined}>{stand.label}</span>
                 </div>
                 {/* Slugs/URL's in de sturing zijn altijd klikbaar (harde huisregel). */}
-                {sturing && sturingOpen && <div className="wp-fase-sturing" dangerouslySetInnerHTML={{ __html: linkifyHtml(sturing.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"), (() => { try { return new URL(t.url).host; } catch { return ""; } })()) }} />}
+                {sturingNuttig && sturingOpen && <div className="wp-fase-sturing" dangerouslySetInnerHTML={{ __html: linkifyHtml(sturing.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"), (() => { try { return new URL(t.url).host; } catch { return ""; } })()) }} />}
               </div>
             );
             if (f.key !== "copy") return rij;
