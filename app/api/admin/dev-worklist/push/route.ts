@@ -17,9 +17,13 @@ export const maxDuration = 300;
 //   - één pagina: { slug, wat, url }
 //   - één regel:  { slug, wat: "alt", url, file }  of  { slug, wat: "meta", url, veld }
 //
-// Alt-teksten van foto's die nog uniek gemaakt moeten worden gaan er nooit in:
-// de alt hangt in WordPress aan de foto zelf en zou dan op de verkeerde pagina
-// terechtkomen. Die blijven in de lijst staan, rood, tot ze uniek zijn.
+// Alt-teksten gaan per AFBEELDING, niet per pagina: pushAltTexts schrijft naar
+// de mediabibliotheek, en daar hangt de alt-tekst aan het bestand. Vandaar dat
+// een foto op veertig pagina's ook één keer doorgevoerd wordt.
+//
+// Er wordt niets meer geblokkeerd. Vroeger hielden we een gedeelde foto tegen,
+// omdat de alt-tekst bij één pagina hoorde en dan op de andere niet klopte. De
+// tekst beschrijft nu wat er op de foto staat, dus hij klopt overal.
 export async function POST(req: NextRequest) {
   if (!verifyAdminSession(req.cookies.get(ADMIN_COOKIE)?.value)) return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
   let body: Record<string, unknown>;
@@ -35,17 +39,16 @@ export async function POST(req: NextRequest) {
   const data = await getWorklistData(slug);
   if (!data.pages.length) return NextResponse.json({ ok: false, error: "Er is nog geen werklijst; maak die eerst." }, { status: 400 });
 
-  const doelen: WorklistPage[] = alleenUrl ? data.pages.filter((p) => p.url === alleenUrl) : data.pages.slice(0, 60);
-  if (!doelen.length) return NextResponse.json({ ok: false, error: "Die pagina staat niet in de werklijst." }, { status: 400 });
-  const afgekapt = !alleenUrl && data.pages.length > 60 ? data.pages.length - 60 : 0;
-
-  let gelukt = 0, mislukt = 0, geblokkeerd = 0;
+  let gelukt = 0, mislukt = 0, zonderTekst = 0, afgekapt = 0;
   const meldingen: string[] = [];
   const noteer = (regel: string) => { if (meldingen.length < 5) meldingen.push(regel); };
 
-  for (const p of doelen) {
-    try {
-      if (wat === "meta") {
+  if (wat === "meta") {
+    const doelen: WorklistPage[] = alleenUrl ? data.pages.filter((p) => p.url === alleenUrl) : data.pages.slice(0, 60);
+    if (!doelen.length) return NextResponse.json({ ok: false, error: "Die pagina staat niet in de werklijst." }, { status: 400 });
+    afgekapt = !alleenUrl && data.pages.length > 60 ? data.pages.length - 60 : 0;
+    for (const p of doelen) {
+      try {
         const doeTitle = p.newTitle && alleenVeld !== "desc";
         const doeDesc = p.newDesc && alleenVeld !== "title";
         if (!doeTitle && !doeDesc) continue;
@@ -55,31 +58,41 @@ export async function POST(req: NextRequest) {
           if (doeTitle) await setWorklistMark(slug, metaKey(p.url, "title"), true, "Pingwin (automatisch)");
           if (doeDesc) await setWorklistMark(slug, metaKey(p.url, "desc"), true, "Pingwin (automatisch)");
         } else { mislukt++; noteer(`${p.path}: ${r.detail}`); }
-      } else {
-        // Alleen wat er nu op mag: niet geblokkeerd, wel een alt-tekst nodig,
-        // en (bij een losse regel) precies de aangeklikte afbeelding.
-        const kandidaten = p.alts.filter((a) => (!alleenFile || normFile(a.file) === normFile(alleenFile)));
-        const mag = kandidaten.filter((a) => !a.dubbel && a.altNodig !== false && a.alt.trim());
-        geblokkeerd += kandidaten.filter((a) => a.dubbel).length;
-        if (!mag.length) continue;
-        const r = await pushAltTexts(slug, p.url, mag);
+      } catch (e) {
+        // Eén pagina die klapt (bijvoorbeeld geen koppeling) mag de rest niet
+        // meeslepen; we melden het en gaan door.
+        mislukt++;
+        noteer(`${p.path}: ${(e as Error).message}`);
+      }
+    }
+  } else {
+    // Alt-teksten: één keer per afbeelding, want zo staat het ook in WordPress.
+    const kandidaten = data.images.filter((a) => (!alleenFile || normFile(a.file) === normFile(alleenFile)));
+    if (!kandidaten.length) return NextResponse.json({ ok: false, error: "Die afbeelding staat niet in de werklijst." }, { status: 400 });
+    const mag = kandidaten.filter((a) => a.altNodig !== false && a.alt.trim()).slice(0, 60);
+    zonderTekst = kandidaten.filter((a) => a.altNodig !== false && !a.alt.trim()).length;
+    afgekapt = Math.max(0, kandidaten.filter((a) => a.altNodig !== false && a.alt.trim()).length - mag.length);
+    if (mag.length) {
+      // pushAltTexts schrijft naar de mediabibliotheek; de pagina-URL is er
+      // alleen om de juiste site-inloggegevens te kiezen.
+      const auth = alleenUrl || data.pages[0]?.url || "";
+      try {
+        const r = await pushAltTexts(slug, auth, mag);
         gelukt += r.gezet;
         mislukt += r.mislukt.length;
-        for (const a of mag) if (!r.mislukt.includes(a.file)) await setWorklistMark(slug, altKey(p.url, a.file), true, "Pingwin (automatisch)");
-        if (r.mislukt.length) noteer(`${p.path}: ${r.detail}`);
+        for (const a of mag) if (!r.mislukt.includes(a.file)) await setWorklistMark(slug, altKey(a.file), true, "Pingwin (automatisch)");
+        if (r.mislukt.length) noteer(r.detail);
+      } catch (e) {
+        mislukt += mag.length;
+        noteer((e as Error).message);
       }
-    } catch (e) {
-      // Eén pagina die klapt (bijvoorbeeld geen koppeling) mag de rest niet
-      // meeslepen; we melden het en gaan door.
-      mislukt++;
-      noteer(`${p.path}: ${(e as Error).message}`);
     }
   }
 
   const label = wat === "meta" ? "pagina's met meta's" : "alt-teksten";
   const delen = [`${gelukt} ${label} doorgevoerd`];
   if (mislukt) delen.push(`${mislukt} mislukt`);
-  if (geblokkeerd) delen.push(`${geblokkeerd} overgeslagen (foto moet eerst uniek worden gemaakt)`);
-  if (afgekapt) delen.push(`${afgekapt} pagina's niet meegenomen (maximaal 60 per keer)`);
-  return NextResponse.json({ ok: true, gelukt, mislukt, geblokkeerd, melding: `${delen.join(", ")}.${meldingen.length ? ` ${meldingen.join(" · ")}` : ""}` });
+  if (zonderTekst) delen.push(`${zonderTekst} overgeslagen (nog geen alt-tekst geschreven)`);
+  if (afgekapt) delen.push(`${afgekapt} niet meegenomen (maximaal 60 per keer)`);
+  return NextResponse.json({ ok: true, gelukt, mislukt, geblokkeerd: zonderTekst, melding: `${delen.join(", ")}.${meldingen.length ? ` ${meldingen.join(" · ")}` : ""}` });
 }

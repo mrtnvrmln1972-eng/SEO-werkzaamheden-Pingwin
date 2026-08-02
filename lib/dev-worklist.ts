@@ -1,10 +1,11 @@
 import { sql, ensureSchema } from "./db";
 import { getClientBySlug } from "./clients";
 import { getClientUrls, getPageDriveFolder } from "./site-urls";
+import { getPages } from "./snapshots";
 import { getStepLinksAll } from "./page-doc-run";
 import { measurePage, type PageMeasurement } from "./page-measure";
 import { metaHardIssues } from "./meta-rules";
-import { callClaude, LIGHT_MODEL } from "./anthropic";
+import { callClaude, callClaudeImages, beeldGeschikt, LIGHT_MODEL } from "./anthropic";
 import { buildPingwinDoc, type DocSection } from "./pingwin-docx";
 import { uploadDocx } from "./drive";
 import { isoWeek } from "./weekplan";
@@ -35,36 +36,66 @@ export type WorklistAlt = {
   file: string; src: string; alt: string; dubbel: boolean;
   soort: ImageSoort; reden: string; altNodig: boolean;
   paginas: number; paths: string[];
+  // Heeft de AI de foto echt bekeken, of alleen de bestandsnaam gelezen?
+  gezien?: boolean;
+  // Wat is er te zien, in een paar woorden. Komt uit het kijken naar de foto en
+  // is de basis voor de vraag "passen de foto's bij het onderwerp van de pagina".
+  onderwerp?: string;
 };
+// Waarom staat er geen voorstel? Zonder deze stand vult het scherm een leeg vak
+// met "(zelf beschrijven wat erop staat)", en dat leest als een opdracht terwijl
+// wij er simpelweg niet aan toe zijn gekomen.
+export type MetaStand = "voorstel" | "goed" | "copydoc" | "mislukt";
 export type WorklistPage = {
   url: string; path: string;
   curTitle: string; curDesc: string;
   newTitle: string; newDesc: string;
   copyDoc: string;
-  alts: WorklistAlt[];
+  titleStand?: MetaStand; descStand?: MetaStand;
+  // Passen de foto's bij het onderwerp? beeldTotaal = contentfoto's op deze
+  // pagina, beeldRaak = daarvan die het onderwerp van de pagina laten zien.
+  beeldTotaal?: number; beeldRaak?: number; beeldOnderwerp?: string;
+  alts?: WorklistAlt[]; // alleen nog voor oude, opgeslagen lijsten
 };
 export type WorklistMark = { done: boolean; doneBy: string; verified: boolean };
+// Wat is er buiten de grenzen gevallen? Nooit meer stil overslaan.
+export type WorklistOverslag = { altBeeld: number; paginas: number; perPagina: number };
 export type WorklistData = {
   state: DevWorklistState;
   pages: WorklistPage[];
+  /** De alt-teksten, één regel per afbeelding (zo slaat WordPress het ook op). */
+  images: WorklistAlt[];
   dubbel: { file: string; src: string; paths: string[] }[];
   gemeten: number;
   soorten: Record<string, ImageSoort>;
   shareToken: string;
   marks: Record<string, WorklistMark>;
+  overslag: WorklistOverslag;
 };
 
-// Stabiele sleutels: m|<pagina>|title, m|<pagina>|desc, a|<pagina>|<bestand>.
+// Stabiele sleutels: m|<pagina>|title, m|<pagina>|desc, a|<bestand>.
+//
+// De alt-sleutel hing eerst aan de pagina (a|<pagina>|<bestand>). Dat was fout:
+// WordPress bewaart één alt-tekst per afbeelding, dus een logo op veertig
+// pagina's gaf veertig regels die je veertig keer moest afvinken. De sleutel
+// hangt nu aan het bestand. Oude vinkjes gaan niet verloren: die worden bij het
+// lezen samengevouwen (zie legacyAltKeys).
 export const metaKey = (url: string, veld: "title" | "desc") => `m|${urlKeyOf(url)}|${veld}`;
-export const altKey = (url: string, file: string) => `a|${urlKeyOf(url)}|${normFile(file)}`;
+export const altKey = (file: string) => `a|${normFile(file)}`;
+/** Sleutel zoals hij vóór de omslag was; alleen nog om oude vinkjes te lezen. */
+export const altKeyLegacy = (url: string, file: string) => `a|${urlKeyOf(url)}|${normFile(file)}`;
 // Handmatige indeling van een afbeelding staat los van de pagina: één keuze per
 // bestand, site-breed, precies zoals de alt-tekst zelf ook site-breed is.
 export const soortKey = (file: string) => `i|${normFile(file)}`;
 function urlKeyOf(u: string): string { try { const x = new URL(u); return (x.host + x.pathname).replace(/\/+$/, "").toLowerCase(); } catch { return (u || "").toLowerCase(); } }
 
-const CRAWL_LIMIT = 60;   // maximaal zoveel live pagina's meten
-const ALT_PAGE_LIMIT = 30; // voor zoveel probleempagina's schrijven we alt-teksten
+// Grenzen. Ze blijven bestaan (elke alt-tekst kost een AI-aanroep), maar ze zijn
+// niet langer stil: wat erbuiten valt wordt geteld en in beeld gemeld, met een
+// knop om de rest alsnog te doen. Zie WorklistOverslag.
+const CRAWL_LIMIT = 60;    // maximaal zoveel live pagina's meten
+const ALT_IMAGE_LIMIT = 120; // voor zoveel afbeeldingen schrijven we een alt-tekst
 const ALT_PER_PAGE = 40;   // maximaal zoveel afbeeldingen per pagina
+const BEELD_PER_CALL = 6;  // zoveel foto's tegelijk aan het model laten zien
 
 let tableReady: Promise<void> | null = null;
 function ensureTable(): Promise<void> {
@@ -89,6 +120,11 @@ async function doEnsure(): Promise<void> {
   // Hoeveel live pagina's er gemeten zijn; nodig om te bepalen of een afbeelding
   // "op vrijwel alle pagina's" staat en dus een vast onderdeel is.
   await sql`ALTER TABLE client_dev_worklist ADD COLUMN IF NOT EXISTS gemeten INTEGER`;
+  // Alt-teksten per afbeelding (site-breed), los van de pagina's. Plus wat er
+  // buiten de grenzen viel, zodat het scherm dat kan melden in plaats van een
+  // leeg vak te tonen dat op een opdracht lijkt.
+  await sql`ALTER TABLE client_dev_worklist ADD COLUMN IF NOT EXISTS images JSONB`;
+  await sql`ALTER TABLE client_dev_worklist ADD COLUMN IF NOT EXISTS overslag JSONB`;
   // Vinkjes los van de lijst, zodat een nieuwe run ze niet wist: done = door een
   // mens afgevinkt, verified = door het dashboard live gecontroleerd.
   await sql`
@@ -166,21 +202,123 @@ async function proposeMetas(slug: string, clientName: string, pages: PageWork[])
   }
 }
 
-// Alt-teksten voor één pagina (zelfde patroon als de losse alt_teksten-actie).
-async function proposeAlts(slug: string, p: PageWork, nodig: (file: string) => boolean): Promise<void> {
-  // Puur decoratieve afbeeldingen slaan we over: die horen een LEEG alt-veld te
-  // krijgen, en dan is een verzonnen beschrijving juist fout (en zonde van de AI).
-  const teSchrijven = p.missingAlts.filter((i) => nodig(i.file));
-  if (!teSchrijven.length) return;
-  const sys = "Je bent SEO-copywriter. Schrijf per afbeeldingsbestandsnaam een korte, natuurlijke Nederlandse alt-tekst (maximaal ongeveer 12 woorden) die beschrijft wat er waarschijnlijk op staat, passend bij de pagina. Geen keyword-stuffing, begin niet met 'afbeelding van'. Geef PRECIES per regel: bestandsnaam => alt-tekst. Geef niets anders terug, geen inleiding.";
-  const user = `Pagina: ${p.url}\nTitel: ${p.m.metaTitle}\nH1: ${p.m.h1.join(" | ")}\nOnderwerpen (H2): ${p.m.h2.slice(0, 10).join(" | ")}\n\nAfbeeldingen zonder alt-tekst:\n${teSchrijven.map((i) => i.file).join("\n")}`;
-  const text = await callClaude(sys, [{ role: "user", content: user }], 1500, { slug, action: "dev-worklist-alt" }, LIGHT_MODEL).catch(() => "");
-  const map = new Map<string, string>();
+// ── Alt-teksten, per afbeelding en op basis van de foto zelf ──
+//
+// Waarom dit anders is dan eerst: de oude versie vroeg om een tekst die
+// beschrijft wat er "waarschijnlijk" op staat, want het model kreeg alleen de
+// bestandsnaam. Dat is per definitie gokken en levert vage teksten op.
+//
+// Nu kijkt het model naar de foto. En omdat WordPress één alt-tekst per
+// afbeelding bewaart, beschrijft die tekst wát er te zien is en niet waar één
+// pagina over gaat. Dat is niet vager maar juist concreter: niet "tuin", maar
+// "grijze betonklinkers in keperverband op een oprit". Zo klopt hij op elke
+// pagina waar de foto staat, en valt er niets meer te blokkeren.
+
+type ImageWork = {
+  file: string;      // genormaliseerde bestandsnaam
+  src: string;       // volledige URL
+  paths: string[];   // op welke pagina's hij staat
+  alt: string;       // het voorstel
+  onderwerp: string; // wat er te zien is, in een paar woorden
+  gezien: boolean;   // heeft het model de foto echt bekeken?
+};
+
+const ALT_SYS =
+  "Je bent SEO-copywriter bij bureau Pingwin. Je krijgt afbeeldingen te zien, elk met zijn bestandsnaam ervoor.\n" +
+  "Schrijf per afbeelding een korte, natuurlijke Nederlandse alt-tekst (maximaal ongeveer 12 woorden) die beschrijft WAT ER OP DE FOTO TE ZIEN IS.\n" +
+  "Belangrijk: beschrijf de foto, niet het onderwerp van de website. Dezelfde foto kan op meerdere pagina's staan, dus de tekst moet overal kloppen.\n" +
+  "Wees concreet: niet 'tuin' maar 'grijze betonklinkers in keperverband op een oprit'. Geen keyword-stuffing, begin niet met 'afbeelding van'.\n" +
+  "Geef daarnaast het onderwerp van de foto in maximaal drie woorden.\n" +
+  "Antwoord PRECIES zo, één regel per afbeelding, niets eromheen:\n" +
+  "bestandsnaam => alt-tekst | onderwerp";
+
+/** Leest de regels 'bestand => alt | onderwerp' terug in de afbeeldingen. */
+function leesAltRegels(text: string, groep: ImageWork[], gezien: boolean): void {
+  const map = new Map<string, { alt: string; onderwerp: string }>();
   for (const line of text.split("\n")) {
     const m = /^(.+?)\s*=>\s*(.+)$/.exec(line.trim());
-    if (m) map.set(normFile(m[1].trim()), m[2].trim());
+    if (!m) continue;
+    const rest = m[2].trim();
+    const pipe = rest.lastIndexOf("|");
+    map.set(normFile(m[1].trim()), {
+      alt: (pipe > 0 ? rest.slice(0, pipe) : rest).trim(),
+      onderwerp: pipe > 0 ? rest.slice(pipe + 1).trim() : "",
+    });
   }
-  for (const i of p.missingAlts) i.alt = map.get(normFile(i.file)) || i.alt;
+  for (const i of groep) {
+    const v = map.get(normFile(i.file));
+    if (!v?.alt) continue;
+    i.alt = v.alt;
+    i.onderwerp = v.onderwerp;
+    i.gezien = gezien;
+  }
+}
+
+/**
+ * Schrijft alt-teksten voor één groepje afbeeldingen. Eerst mét de foto's erbij;
+ * lukt dat niet (een 404, een formaat dat de API niet aankan, een te groot
+ * bestand), dan valt hij terug op alleen de bestandsnamen. Terugvallen is beter
+ * dan niets opleveren, maar het wordt wel vastgelegd: `gezien` blijft dan false,
+ * zodat het scherm eerlijk kan tonen dat die tekst een gok is.
+ */
+async function proposeAltsVoorGroep(slug: string, groep: ImageWork[]): Promise<void> {
+  if (!groep.length) return;
+  const context = groep.map((i) => `${i.file} (staat op: ${i.paths.slice(0, 3).join(", ") || "onbekend"})`).join("\n");
+  const opdracht = `Schrijf nu voor elk van de ${groep.length} afbeeldingen hierboven de alt-tekst.\n\nDe bestandsnamen op een rij:\n${context}`;
+
+  const metBeeld = groep.filter((i) => beeldGeschikt(i.src));
+  if (metBeeld.length) {
+    try {
+      const text = await callClaudeImages(
+        ALT_SYS,
+        opdracht,
+        metBeeld.map((i) => ({ url: i.src, label: `Bestandsnaam: ${i.file}` })),
+        1500,
+        { slug, action: "dev-worklist-alt-beeld" },
+        LIGHT_MODEL,
+      );
+      leesAltRegels(text, metBeeld, true);
+    } catch { /* stil: hieronder volgt de terugval zonder beeld */ }
+  }
+
+  // Alles wat nog geen tekst heeft (geen bruikbare URL, of het kijken mislukte)
+  // krijgt alsnog een voorstel op basis van de bestandsnaam.
+  const rest = groep.filter((i) => !i.alt);
+  if (!rest.length) return;
+  const sysTekst = ALT_SYS.replace("Je krijgt afbeeldingen te zien, elk met zijn bestandsnaam ervoor.", "Je krijgt alleen bestandsnamen; de foto's zelf kun je niet zien. Leid af wat er waarschijnlijk op staat.");
+  const text = await callClaude(
+    sysTekst,
+    [{ role: "user", content: `Afbeeldingen:\n${rest.map((i) => `${i.file} (staat op: ${i.paths.slice(0, 3).join(", ") || "onbekend"})`).join("\n")}` }],
+    1500,
+    { slug, action: "dev-worklist-alt" },
+    LIGHT_MODEL,
+  ).catch(() => "");
+  leesAltRegels(text, rest, false);
+}
+
+// ── Passen de foto's bij het onderwerp van de pagina? ──
+//
+// Een ruw signaal, bewust simpel gehouden: we vergelijken de woorden uit het
+// onderwerp van de foto met die uit de H1 van de pagina. Het is bedoeld om je
+// ergens naar te laten kíjken, niet als oordeel. Daarom staat er in beeld een
+// cijfer ("9 foto's, waarvan 2 over bestrating") en geen waarschuwing.
+
+const STOPWOORDEN = new Set(["de", "het", "een", "en", "of", "in", "op", "van", "voor", "met", "aan", "bij", "te", "door", "uit", "naar", "je", "uw", "ons", "onze", "die", "dat", "is", "zijn", "wordt", "worden", "laten", "meer", "beste", "goede", "nieuw", "nieuwe"]);
+
+function kernwoorden(tekst: string): string[] {
+  return (tekst || "").toLowerCase().replace(/[^a-z0-9\s-]/g, " ").split(/[\s-]+/)
+    .filter((w) => w.length >= 4 && !STOPWOORDEN.has(w));
+}
+
+/** Deelt de foto een kernwoord met het onderwerp van de pagina? */
+function beeldPastBijPagina(onderwerp: string, paginaWoorden: string[]): boolean {
+  if (!onderwerp || !paginaWoorden.length) return false;
+  const foto = kernwoorden(onderwerp);
+  // Stam-vergelijking op de eerste zes letters, zodat "bestrating" en
+  // "bestraten" elkaar vinden zonder dat we een woordenboek nodig hebben.
+  const stam = (w: string) => w.slice(0, 6);
+  const pagina = new Set(paginaWoorden.map(stam));
+  return foto.some((w) => pagina.has(stam(w)));
 }
 
 export async function runDevWorklist(slug: string): Promise<{ ok: boolean; docLink?: string; error?: string }> {
@@ -257,11 +395,43 @@ export async function runDevWorklist(slug: string): Promise<{ ok: boolean; docLi
     for (let i = 0; i < teSchrijven.length; i += 8) {
       await proposeMetas(slug, client.name, teSchrijven.slice(i, i + 8)).catch(() => { /* pagina's zonder voorstel houden hun issue-tekst */ });
     }
-    // 5. Alt-teksten schrijven (begrensd aantal pagina's, drie tegelijk).
-    const altPaginas = altProbleem.slice(0, ALT_PAGE_LIMIT);
-    for (let i = 0; i < altPaginas.length; i += 3) {
-      await Promise.all(altPaginas.slice(i, i + 3).map((p) => proposeAlts(slug, p, (f) => oordeelVan(f).altNodig)));
+    // 5. Alt-teksten schrijven, per AFBEELDING en niet per pagina. WordPress
+    //    bewaart één alt-tekst per afbeelding, dus een logo op veertig pagina's
+    //    is één regel werk, geen veertig. Dat scheelt honderden regels.
+    const missendeBestanden = new Set<string>();
+    for (const p of measured) for (const a of p.missingAlts) missendeBestanden.add(normFile(a.file));
+
+    const alleBeelden: ImageWork[] = [...usage.values()]
+      .filter((e) => missendeBestanden.has(e.file) && oordeelVan(e.file).altNodig)
+      .map((e) => ({ file: e.file, src: e.src, paths: [...e.paths], alt: "", onderwerp: "", gezien: false }));
+
+    // Volgorde naar belang: een foto op een pagina die bezoek trekt gaat voor.
+    // Zonder Search Console-cijfers valt hij terug op "op de meeste pagina's".
+    // Eerder werd hier simpelweg de eerste dertig genomen in scanvolgorde, dus
+    // welke pagina's bediend werden was toeval.
+    const verkeer = new Map<string, number>();
+    for (const pg of await getPages(slug, 200).catch(() => [])) {
+      verkeer.set(pagePath(pg.url), Math.max(pg.clicks || 0, (pg.impressions || 0) / 20));
     }
+    const gewicht = (i: ImageWork) => Math.max(0, ...i.paths.map((p) => verkeer.get(p) || 0));
+    alleBeelden.sort((a, b) => (gewicht(b) - gewicht(a)) || (b.paths.length - a.paths.length));
+
+    const teDoen = alleBeelden.slice(0, ALT_IMAGE_LIMIT);
+    const overslag: WorklistOverslag = {
+      altBeeld: Math.max(0, alleBeelden.length - teDoen.length),
+      paginas: Math.max(0, (await getClientUrls(slug)).filter((u) => u.status === 200).length - urls.length),
+      perPagina: measured.filter((p) => p.missingAlts.length >= ALT_PER_PAGE).length,
+    };
+    for (let i = 0; i < teDoen.length; i += BEELD_PER_CALL * 3) {
+      const blok = teDoen.slice(i, i + BEELD_PER_CALL * 3);
+      const groepen: ImageWork[][] = [];
+      for (let j = 0; j < blok.length; j += BEELD_PER_CALL) groepen.push(blok.slice(j, j + BEELD_PER_CALL));
+      await Promise.all(groepen.map((g) => proposeAltsVoorGroep(slug, g).catch(() => { /* deze groep blijft leeg */ })));
+    }
+    const beeldPerBestand = new Map(teDoen.map((i) => [i.file, i]));
+    // De alt-tekst terugschrijven naar de pagina's, zodat het document en de
+    // live-controle er ook bij kunnen.
+    for (const p of measured) for (const a of p.missingAlts) a.alt = beeldPerBestand.get(normFile(a.file))?.alt || "";
 
     // 6. Het document bouwen (Pingwin-huisstijl) en naar Drive zetten.
     const totAlt = altProbleem.reduce((n, p) => n + p.missingAlts.length, 0);
@@ -272,17 +442,38 @@ export async function runDevWorklist(slug: string): Promise<{ ok: boolean; docLi
         { type: "paragraph", text: `Deze werklijst dekt de ${probleem.length} pagina's van ${client.name} waar de meta's of alt-teksten nog niet op orde zijn (gemeten op ${measured.length} live pagina's). Per pagina staan de nieuwe meta-title en meta-description kant-en-klaar om te plakken, plus per afbeelding een voorgestelde alt-tekst.` },
         { type: "bullets", items: [
           "Meta's: vervang de huidige title en description door de voorstellen hieronder (tekenaantal staat erbij).",
-          "Alt-teksten: plak per afbeelding de voorgestelde alt-tekst in het alt-veld.",
+          "Alt-teksten: die staan in één lijst, één regel per afbeelding. Zet hem in de mediabibliotheek bij de afbeelding zelf, dan staat hij meteen goed op elke pagina waar die foto voorkomt.",
           "Staat bij een pagina een verwijzing naar het copydocument, dan staan de meta's dáár al kant-en-klaar in.",
         ] },
-        { type: "highlight", text: "Belangrijk: alleen echte contentfoto's die op een handvol pagina's terugkomen hoeven uniek gemaakt te worden. Die staan in de aparte lijst hieronder. Vaste onderdelen van de site (logo, header, footer, keurmerken, icoontjes) horen juist overal hetzelfde te zijn; die krijgen één goede alt-tekst en hoeven niet vervangen te worden." },
+        { type: "highlight", text: "De alt-tekst beschrijft wat er op de foto te zien is, niet waar de pagina over gaat. Dat is bewust: WordPress bewaart één alt-tekst per afbeelding, dus een tekst die bij één pagina hoort klopt niet op de andere. Zo klopt hij overal, en hoeft er niets geblokkeerd te worden." },
       ],
     });
+    // De alt-teksten: één lijst voor de hele site, elke afbeelding één keer.
+    // Dit is de grootste opschoning: dezelfde foto op veertig pagina's was
+    // veertig regels, terwijl het in WordPress één handeling is.
+    const altRijen = alleBeelden.map((i) => {
+      const gedaan = beeldPerBestand.get(i.file);
+      const tekst = gedaan?.alt || "(nog niet geschreven, zie de opmerking onderaan)";
+      const waar = i.paths.slice(0, 4).join(", ") + (i.paths.length > 4 ? `, en nog ${i.paths.length - 4}` : "");
+      return [i.file, tekst, `${i.paths.length}x: ${waar}`];
+    });
+    if (altRijen.length) {
+      sections.push({
+        heading: `Alt-teksten (${altRijen.length} afbeeldingen)`,
+        blocks: [
+          { type: "paragraph", text: "Eén regel per afbeelding. Zet de tekst in de mediabibliotheek bij de afbeelding zelf; dan staat hij in één keer goed op elke pagina waar die foto voorkomt." },
+          { type: "table", headers: ["Afbeelding", "Alt-tekst", "Waar hij staat"], rows: altRijen },
+          ...(overslag.altBeeld
+            ? [{ type: "highlight" as const, text: `Let op: voor ${overslag.altBeeld} afbeeldingen is nog geen alt-tekst geschreven. Dat is een grens in ons dashboard (maximaal ${ALT_IMAGE_LIMIT} per keer), geen oordeel over die foto's. De drukste pagina's zijn als eerste gedaan; de rest volgt in een volgende ronde.` }]
+            : []),
+        ],
+      });
+    }
     if (dubbel.length) {
       sections.push({
-        heading: "Afbeeldingen die uniek gemaakt moeten worden",
+        heading: "Foto's die beter een eigen foto konden zijn",
         blocks: [
-          { type: "paragraph", text: "Dit zijn contentfoto's die op meerdere pagina's staan. De alt-tekst hangt in WordPress aan de foto zelf, dus die klopt maar op één van die pagina's. Vervang ze per pagina door een eigen foto. Vaste onderdelen zoals het logo staan hier bewust niet bij." },
+          { type: "paragraph", text: "Dit zijn contentfoto's die op meerdere pagina's terugkomen. Dat is geen fout en het houdt niets tegen: de alt-tekst hierboven klopt er gewoon op. Een eigen foto per pagina werkt alleen beter, voor de bezoeker en voor Google. Zie het als een suggestie. Vaste onderdelen zoals het logo staan hier bewust niet bij." },
           { type: "table", headers: ["Afbeelding", "Aantal", "Pagina's"], rows: dubbel.map((d) => [d.file, String(d.paths.size), [...d.paths].slice(0, 6).join(", ") + (d.paths.size > 6 ? `, en nog ${d.paths.size - 6}` : "")]) },
         ],
       });
@@ -299,14 +490,13 @@ export async function runDevWorklist(slug: string): Promise<{ ok: boolean; docLi
           blocks.push({ type: "table", headers: ["Element", "Nieuw voorstel", "Lengte"], rows });
         }
       }
+      // De alt-teksten staan bewust NIET meer per pagina: ze staan in één lijst
+      // hierboven, want in WordPress hangen ze aan de afbeelding. Hier alleen
+      // nog een verwijzing, zodat je weet dat er beeldwerk ligt.
       if (p.missingAlts.length) {
-        blocks.push({ type: "subheading", text: `Alt-teksten (${p.missingAlts.length} afbeeldingen)` });
-        blocks.push({ type: "table", headers: ["Afbeelding", "Alt-tekst", "Soort"], rows: p.missingAlts.map((i) => {
-          const o = oordeelVan(i.file);
-          const tekst = !o.altNodig ? "(laat het alt-veld leeg, dit is versiering)" : (i.alt || "(zelf beschrijven wat erop staat)");
-          return [i.file, tekst, o.moetUniek ? "eerst uniek maken" : o.reden];
-        }) });
+        blocks.push({ type: "paragraph", text: `Op deze pagina missen ${p.missingAlts.length} afbeeldingen een alt-tekst. Die staan in de lijst "Alt-teksten" hierboven, op bestandsnaam.` });
       }
+      if (!blocks.length) continue;
       sections.push({ heading: p.path, blocks });
     }
     const buffer = await buildPingwinDoc({
@@ -328,26 +518,62 @@ export async function runDevWorklist(slug: string): Promise<{ ok: boolean; docLi
     }
 
     // 6b. Elk puntje bewaren voor de deelbare afwerkpagina + deel-token.
-    const pages: WorklistPage[] = probleem.map((p) => ({
-      url: p.url, path: p.path,
-      curTitle: p.m.metaTitle, curDesc: p.m.metaDescription,
-      newTitle: p.newTitle, newDesc: p.newDesc, copyDoc: p.copyDoc,
-      alts: p.missingAlts.map((a) => {
-        const o = oordeelVan(a.file);
-        const u = usage.get(normFile(a.file));
-        return {
-          file: a.file, src: a.src || u?.src || "", alt: a.alt, dubbel: o.moetUniek,
-          soort: o.soort, reden: o.reden, altNodig: o.altNodig,
-          paginas: u?.paths.size || 1, paths: [...(u?.paths || [])].slice(0, 6),
-        };
-      }),
-    }));
+
+    // Wat is er op elke foto te zien? Voor de foto's die we net bekeken hebben
+    // weten we dat; voor foto's die al een alt-tekst hadden gebruiken we die
+    // tekst, want dat is precies wat hij hoort te beschrijven.
+    const onderwerpVan = new Map<string, string>();
+    for (const p of measured) for (const img of p.m.images) {
+      const k = normFile(img.file);
+      if (k && img.alt?.trim() && !onderwerpVan.has(k)) onderwerpVan.set(k, img.alt.trim());
+    }
+    for (const i of teDoen) {
+      const t = i.onderwerp || i.alt;
+      if (t) onderwerpVan.set(i.file, t);
+    }
+
+    const standVan = (issues: string[], voorstel: string, copyDoc: string): MetaStand =>
+      !issues.length ? "goed" : copyDoc ? "copydoc" : voorstel ? "voorstel" : "mislukt";
+
+    const pages: WorklistPage[] = probleem.map((p) => {
+      // Alleen echte contentfoto's tellen mee; een logo of een icoontje hoort
+      // niet over het onderwerp van de pagina te gaan.
+      const content = [...new Set(p.m.images.map((i) => normFile(i.file)).filter(Boolean))]
+        .filter((k) => { const o = oordeelVan(k); return o.altNodig && o.soort !== "sitebreed"; });
+      const woorden = kernwoorden(`${p.m.h1.join(" ")} ${p.m.metaTitle}`);
+      const raak = content.filter((k) => beeldPastBijPagina(onderwerpVan.get(k) || "", woorden));
+      return {
+        url: p.url, path: p.path,
+        curTitle: p.m.metaTitle, curDesc: p.m.metaDescription,
+        newTitle: p.newTitle, newDesc: p.newDesc, copyDoc: p.copyDoc,
+        titleStand: standVan(p.titleIssues, p.newTitle, p.copyDoc),
+        descStand: standVan(p.descIssues, p.newDesc, p.copyDoc),
+        beeldTotaal: content.length, beeldRaak: raak.length,
+        beeldOnderwerp: woorden.slice(0, 2).join(" ") || p.path,
+      };
+    });
+
+    // De afbeeldingenlijst: élke afbeelding precies één keer, ook de ones die
+    // buiten de grens vielen (die krijgen alt "" en worden apart geteld, in
+    // plaats van stil te verdwijnen achter een zin die op een opdracht lijkt).
+    const images: WorklistAlt[] = alleBeelden.map((i) => {
+      const o = oordeelVan(i.file);
+      const gedaan = beeldPerBestand.get(i.file);
+      return {
+        file: i.file, src: i.src, alt: gedaan?.alt || "",
+        dubbel: false, // niets blokkeert nog: de tekst beschrijft de foto, dus hij klopt overal
+        soort: o.soort, reden: o.reden, altNodig: o.altNodig,
+        paginas: i.paths.length, paths: i.paths.slice(0, 6),
+        gezien: !!gedaan?.gezien, onderwerp: gedaan?.onderwerp || "",
+      };
+    });
+
     const dubbelLijst = dubbel.map((d) => ({ file: d.file, src: d.src, paths: [...d.paths] }));
     const { randomBytes } = await import("crypto");
     const { rows: tokRows } = await sql`SELECT share_token FROM client_dev_worklist WHERE client_slug = ${slug} LIMIT 1`;
     const shareToken = (tokRows[0]?.share_token as string) || randomBytes(18).toString("base64url");
     await sql`
-      UPDATE client_dev_worklist SET items = ${JSON.stringify(pages)}, dubbel = ${JSON.stringify(dubbelLijst)}, share_token = ${shareToken}, gemeten = ${measured.length}
+      UPDATE client_dev_worklist SET items = ${JSON.stringify(pages)}, images = ${JSON.stringify(images)}, overslag = ${JSON.stringify(overslag)}, dubbel = ${JSON.stringify(dubbelLijst)}, share_token = ${shareToken}, gemeten = ${measured.length}
       WHERE client_slug = ${slug}`;
     const afwerkLink = `/share/werklijst/${shareToken}`;
 
@@ -387,12 +613,13 @@ export async function getWorklistData(slug: string): Promise<WorklistData> {
   await ensureSchema();
   await ensureTable();
   const state = await getDevWorklist(slug);
-  const { rows } = await sql`SELECT items, dubbel, share_token, gemeten FROM client_dev_worklist WHERE client_slug = ${slug} LIMIT 1`;
+  const { rows } = await sql`SELECT items, images, overslag, dubbel, share_token, gemeten FROM client_dev_worklist WHERE client_slug = ${slug} LIMIT 1`;
   const r = rows[0];
   const ruw = (Array.isArray(r?.items) ? r?.items : []) as WorklistPage[];
   const ruwDubbel = (Array.isArray(r?.dubbel) ? r?.dubbel : []) as { file: string; src: string; paths: string[] }[];
   const shareToken = (r?.share_token as string) || "";
   const gemeten = Number(r?.gemeten) || ruw.length || 1;
+  const overslag = (r?.overslag && typeof r.overslag === "object" ? r.overslag : { altBeeld: 0, paginas: 0, perPagina: 0 }) as WorklistOverslag;
   const { rows: mRows } = await sql`SELECT item_key, done, done_by, verified, soort FROM dev_worklist_marks WHERE client_slug = ${slug}`;
   const marks: Record<string, WorklistMark> = {};
   const soorten: Record<string, ImageSoort> = {};
@@ -401,16 +628,54 @@ export async function getWorklistData(slug: string): Promise<WorklistData> {
     const k = String(m.item_key || "");
     if (k.startsWith("i|") && m.soort) soorten[k.slice(2)] = m.soort as ImageSoort;
   }
-  // Werklijsten van vóór de indeling missen soort/src/paginas, en hun "maak
-  // uniek"-lijst bevat nog het logo en de vaste header. Allebei repareren we bij
-  // het LEZEN, zodat bestaande lijsten meteen goed in beeld staan zonder eerst
-  // opnieuw te hoeven draaien (regel: met terugwerkende kracht).
+  // Werklijsten van vóór de indeling missen soort/src/paginas. Dat repareren we
+  // bij het LEZEN, zodat bestaande lijsten meteen goed in beeld staan zonder
+  // eerst opnieuw te hoeven draaien (regel: met terugwerkende kracht).
   const pages = ruw.map((p) => ({ ...p, alts: (p.alts || []).map((a) => verrijkAlt(a, ruwDubbel, gemeten, soorten)) }));
+
+  // De afbeeldingenlijst. Draait deze klant nog op een lijst van vóór de omslag,
+  // dan bouwen we hem hier alsnog op uit de losse alt-regels per pagina: elke
+  // afbeelding één keer, met alle pagina's waar hij op staat erbij.
+  let images = (Array.isArray(r?.images) ? r?.images : []) as WorklistAlt[];
+  if (!images.length && pages.length) {
+    const bundel = new Map<string, WorklistAlt>();
+    for (const p of pages) for (const a of p.alts || []) {
+      const k = normFile(a.file);
+      const bestaand = bundel.get(k);
+      if (bestaand) {
+        if (!bestaand.paths.includes(p.path)) bestaand.paths.push(p.path);
+        if (!bestaand.alt && a.alt) bestaand.alt = a.alt;
+        if (!bestaand.src && a.src) bestaand.src = a.src;
+      } else {
+        bundel.set(k, { ...a, file: k, paths: [...new Set([...(a.paths || []), p.path])] });
+      }
+    }
+    images = [...bundel.values()];
+  }
+  images = images
+    .map((a) => ({ ...verrijkAlt(a, ruwDubbel, gemeten, soorten), dubbel: false }))
+    .sort((a, b) => (b.paginas || 0) - (a.paginas || 0) || a.file.localeCompare(b.file));
+
+  // Oude vinkjes redden: die hingen aan pagina + bestand (a|<pagina>|<bestand>).
+  // Is één van die pagina-vinkjes gezet, dan geldt de afbeelding als gedaan,
+  // want het is in WordPress ook echt één handeling geweest.
+  for (const img of images) {
+    const nieuw = altKey(img.file);
+    if (marks[nieuw]?.done || marks[nieuw]?.verified) continue;
+    const oud = (img.paths || []).map((pad) => {
+      const pg = pages.find((p) => p.path === pad);
+      return pg ? marks[altKeyLegacy(pg.url, img.file)] : undefined;
+    });
+    const done = oud.some((m) => m?.done);
+    const verified = oud.some((m) => m?.verified);
+    if (done || verified) marks[nieuw] = { done, doneBy: oud.find((m) => m?.done)?.doneBy || "", verified };
+  }
+
   const dubbel = ruwDubbel.filter((d) => {
     const k = normFile(d.file);
     return pasHandmatigToe(classifyImage({ file: k, src: d.src || "", paginas: d.paths?.length || 2, totaalPaginas: gemeten }), soorten[k] || null).moetUniek;
   });
-  return { state, pages, dubbel, gemeten, soorten, shareToken, marks };
+  return { state, pages, images, dubbel, gemeten, soorten, shareToken, marks, overslag };
 }
 
 /** Vult een opgeslagen alt-regel aan met de indeling (ook bij oude data). */
@@ -478,6 +743,7 @@ export async function verifyDevWorklist(slug: string): Promise<{ ok: boolean; sa
   let geverifieerd = 0, totaal = 0;
   const gebruik = new Map<string, Set<string>>();
   const bronnen = new Map<string, string>(); // bestandsnaam -> volledige afbeeldings-URL
+  const staatErOp = new Map<string, { gevuld: boolean; attribuut: boolean }>();
   const metingen = new Map<string, PageMeasurement>();
   for (let i = 0; i < data.pages.length; i += 6) {
     await Promise.all(data.pages.slice(i, i + 6).map(async (p) => {
@@ -490,28 +756,29 @@ export async function verifyDevWorklist(slug: string): Promise<{ ok: boolean; sa
     if (!m) continue;
     if (p.newTitle) { totaal++; const okT = gelijk(m.metaTitle, p.newTitle); await setVerified(slug, metaKey(p.url, "title"), okT); if (okT) geverifieerd++; }
     if (p.newDesc) { totaal++; const okD = gelijk(m.metaDescription, p.newDesc); await setVerified(slug, metaKey(p.url, "desc"), okD); if (okD) geverifieerd++; }
-    const perFile = new Map<string, { gevuld: boolean; attribuut: boolean }>();
     for (const img of m.images) {
       const k = normFile(img.file);
       if (!k) continue;
-      const st = perFile.get(k) || { gevuld: false, attribuut: false };
+      const st = staatErOp.get(k) || { gevuld: false, attribuut: false };
       if (img.hasAlt) st.attribuut = true;
       if (img.hasAlt && img.alt.trim()) st.gevuld = true;
-      perFile.set(k, st);
+      staatErOp.set(k, st);
       const e = gebruik.get(k) || new Set<string>();
       e.add(p.path);
       gebruik.set(k, e);
       if (img.src && !bronnen.has(k)) bronnen.set(k, img.src);
     }
-    for (const a of p.alts) {
-      totaal++;
-      const st = perFile.get(normFile(a.file));
-      // Decoratieve afbeeldingen zijn juist goed met een LEEG alt-attribuut;
-      // daar is "alt staat erop" dus niet de maatstaf.
-      const okA = a.altNodig === false ? !!st?.attribuut : st?.gevuld === true;
-      await setVerified(slug, altKey(p.url, a.file), okA);
-      if (okA) geverifieerd++;
-    }
+  }
+  // Alt-teksten controleren per AFBEELDING, niet per pagina: in WordPress is het
+  // één veld, dus het is ook één controle en één vinkje.
+  for (const a of data.images) {
+    totaal++;
+    const st = staatErOp.get(normFile(a.file));
+    // Decoratieve afbeeldingen zijn juist goed met een LEEG alt-attribuut;
+    // daar is "alt staat erop" dus niet de maatstaf.
+    const okA = a.altNodig === false ? !!st?.attribuut : st?.gevuld === true;
+    await setVerified(slug, altKey(a.file), okA);
+    if (okA) geverifieerd++;
   }
   // Opnieuw indelen op de verse meting: welke foto's moeten nog uniek worden?
   // Vaste onderdelen (logo, header, icoontjes) vallen hier vanzelf buiten.
@@ -524,17 +791,15 @@ export async function verifyDevWorklist(slug: string): Promise<{ ok: boolean; sa
       handmatig[k] || null,
     );
   };
-  const nogUniekMaken = new Set([...gebruik.keys()].filter((f) => oordeelVan(f).moetUniek));
-  const pages = data.pages.map((p) => ({
-    ...p,
-    alts: p.alts.map((a) => {
-      const k = normFile(a.file);
-      const o = oordeelVan(a.file);
-      return { ...a, src: a.src || bronnen.get(k) || "", dubbel: o.moetUniek, soort: o.soort, reden: o.reden, altNodig: o.altNodig, paginas: gebruik.get(k)?.size || a.paginas || 1, paths: [...(gebruik.get(k) || [])].slice(0, 6) };
-    }),
-  }));
-  const dubbelLijst = [...gebruik.entries()].filter(([f]) => nogUniekMaken.has(f)).map(([file, paths]) => ({ file, src: bronnen.get(file) || "", paths: [...paths] })).slice(0, 40);
-  await sql`UPDATE client_dev_worklist SET items = ${JSON.stringify(pages)}, dubbel = ${JSON.stringify(dubbelLijst)} WHERE client_slug = ${slug}`;
-  const samenvatting = `Live gecontroleerd: ${geverifieerd} van ${totaal} punten staan er goed op. ${nogUniekMaken.size ? `${nogUniekMaken.size} contentfoto's moeten nog uniek gemaakt worden.` : "Alle contentfoto's zijn nu uniek."}`;
+  // "Zou beter kunnen": een suggestie voor de sitebouwer, geen blokkade meer.
+  const beterEigenFoto = new Set([...gebruik.keys()].filter((f) => oordeelVan(f).moetUniek));
+  const images = data.images.map((a) => {
+    const k = normFile(a.file);
+    const o = oordeelVan(a.file);
+    return { ...a, src: a.src || bronnen.get(k) || "", dubbel: false, soort: o.soort, reden: o.reden, altNodig: o.altNodig, paginas: gebruik.get(k)?.size || a.paginas || 1, paths: [...(gebruik.get(k) || [])].slice(0, 6) };
+  });
+  const dubbelLijst = [...gebruik.entries()].filter(([f]) => beterEigenFoto.has(f)).map(([file, paths]) => ({ file, src: bronnen.get(file) || "", paths: [...paths] })).slice(0, 40);
+  await sql`UPDATE client_dev_worklist SET images = ${JSON.stringify(images)}, dubbel = ${JSON.stringify(dubbelLijst)} WHERE client_slug = ${slug}`;
+  const samenvatting = `Live gecontroleerd: ${geverifieerd} van ${totaal} punten staan er goed op. ${beterEigenFoto.size ? `${beterEigenFoto.size} foto's zouden beter een eigen foto kunnen zijn (suggestie, niets blokkeert).` : "Alle contentfoto's zijn uniek."}`;
   return { ok: true, samenvatting };
 }

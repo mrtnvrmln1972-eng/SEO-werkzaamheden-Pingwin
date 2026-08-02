@@ -2848,7 +2848,44 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .wl-dubbel li { display: flex; align-items: center; gap: var(--s-3, 12px); border: 1px solid var(--border, #e5ded6); border-radius: var(--r-md, 10px); padding: var(--s-2, 8px) var(--s-3, 12px); background: #fffdfb; }
 .wl-dubbel-body { flex: 1; min-width: 0; }
 
-@media (max-width: 640px) { .wl-rij { flex-wrap: wrap; } .wl-balk { flex-basis: 140px; } .wl-rij-knoppen { width: 100%; justify-content: flex-start; } }
+/* ── Werklijst 3.0: samenvatting bovenaan, blokken die dicht beginnen ──
+   De lijst was tientallen schermen hoog en vrijwel volledig rood. Nu open je
+   zelf wat je wilt zien, en begint elk blok dicht met alleen een teller. */
+.wl-sam { display: flex; align-items: center; gap: var(--s-4, 16px); flex-wrap: wrap; background: #fffdfb; border: 1px solid var(--border, #e5ded6); border-radius: var(--r-lg, 14px); padding: var(--s-4, 16px) var(--s-5, 20px); font-size: var(--fs-sm, 13.5px); line-height: 1.6; }
+.wl-sam strong { color: var(--orange-dark, #c93f16); }
+
+.wl-blok-kop { display: flex; align-items: center; gap: var(--s-3, 12px); flex-wrap: wrap; }
+.wl-blok-titel { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: var(--s-2, 8px); border: none; background: transparent; font: inherit; font-size: var(--fs-lg, 17px); font-weight: 700; color: var(--orange-dark, #c93f16); cursor: pointer; padding: 0; text-align: left; }
+.wl-blok-titel:hover { filter: brightness(1.1); }
+.wl-blok-pijl { border: none; background: transparent; color: var(--muted, #6f645a); font: inherit; cursor: pointer; padding: 0; flex: 0 0 auto; }
+.wl-blok-teller { font-size: var(--fs-xs, 11.5px); font-weight: 600; color: var(--muted, #6f645a); text-transform: none; letter-spacing: 0; }
+.wl-blok-balk { height: 6px; border-radius: var(--r-full, 99px); background: #f0ebe5; overflow: hidden; margin: var(--s-3, 12px) 0 var(--s-2, 8px); }
+.wl-blok-uitleg { font-size: var(--fs-sm, 13px); color: var(--muted, #6f645a); line-height: 1.6; margin: 0; max-width: 70ch; }
+.wl-blok-body { margin-top: var(--s-4, 16px); }
+
+/* Meta-stand: er staat altijd een regel, ook als er niets te doen is. */
+.wl-stand { align-self: center; font-size: var(--fs-xs, 10.5px); font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; border-radius: var(--r-full, 99px); padding: 2px 9px; white-space: nowrap; }
+.wl-stand-goed { color: #1c7a3f; background: #eaf5ee; }
+.wl-stand-copydoc { color: #2b5f8a; background: #e8f0f7; }
+.wl-stand-mislukt { color: #b3261e; background: #fdeceb; }
+.wl-stand-voorstel { color: var(--orange-dark, #c93f16); background: #fdefe9; }
+/* Een rij zonder actie: geen kopieerknop, rustiger achtergrond. */
+.wl-rij-stil { background: #faf8f6; border-style: dashed; }
+
+/* Passen de foto's bij het onderwerp van de pagina? Ruw signaal, geen oordeel. */
+.wl-beeld { font-size: var(--fs-xs, 11px); color: var(--muted, #6f645a); background: #f3efeb; border-radius: var(--r-full, 99px); padding: 2px 9px; white-space: nowrap; }
+.wl-beeld-nul { color: #9a6b00; background: #fdf4e3; }
+
+/* Wat er buiten een grens viel: melden, nooit stil overslaan. */
+.wl-melding { font-size: var(--fs-sm, 13px); line-height: 1.6; color: #6b4e00; background: #fdf9ee; border: 1px solid #efdfb8; border-radius: var(--r-sm, 8px); padding: var(--s-3, 12px) var(--s-4, 16px); margin: var(--s-3, 12px) 0 0; max-width: 70ch; }
+/* Alt-tekst zonder dat de foto bekeken kon worden: eerlijk labelen. */
+.wl-gok { font-size: var(--fs-xs, 10.5px); font-weight: 600; text-transform: none; letter-spacing: 0; color: #9a6b00; background: #fdf4e3; border-radius: var(--r-full, 99px); padding: 1px 8px; margin-left: var(--s-2, 8px); }
+
+.wl-schakel { display: flex; align-items: center; gap: var(--s-2, 8px); font-size: var(--fs-sm, 12.5px); color: var(--muted, #6f645a); margin-bottom: var(--s-3, 12px); cursor: pointer; }
+.wl-sug-af { opacity: 0.6; }
+.wl-sug-af .wl-bestand { text-decoration: line-through; }
+
+@media (max-width: 640px) { .wl-rij { flex-wrap: wrap; } .wl-balk { flex-basis: 140px; } .wl-rij-knoppen { width: 100%; justify-content: flex-start; } .wl-blok-kop { align-items: flex-start; } }
 
 /* ── Navigatie-roadmap ── */
 .nv-wrap { max-width: 1100px; margin: 0 auto; padding: var(--s-6, 24px) var(--s-4, 16px) var(--s-12, 48px); display: flex; flex-direction: column; gap: var(--s-4, 16px); }

@@ -101,6 +101,64 @@ export async function callClaude(system: string, messages: ChatMsg[], maxTokens 
   return (j.content || []).filter((c: { type: string }) => c.type === "text").map((c: { text: string }) => c.text).join("");
 }
 
+// ── Variant met afbeeldingen erbij: Claude kíjkt naar de foto ──
+//
+// Aanleiding: de alt-teksten in de werklijst werden geschreven op alleen de
+// bestandsnaam ("wat staat er waarschijnlijk op"). Dat levert per definitie een
+// gok op, en dus vage teksten. Met de foto erbij wordt het een beschrijving.
+//
+// De API haalt de afbeelding zelf op via de URL. Dat kan mislukken (404, te
+// groot, verkeerd formaat) en dan faalt het hele verzoek, niet één afbeelding.
+// De aanroeper moet dus een terugval zonder afbeeldingen hebben.
+
+export type VisionImage = { url: string; label: string };
+
+/** Formaten die de API aankan. SVG valt hier bewust buiten (niet ondersteund). */
+const BEELD_OK = /\.(jpe?g|png|gif|webp)(\?|#|$)/i;
+
+/** Filtert de afbeeldingen die we überhaupt mogen meesturen. */
+export function beeldGeschikt(url: string): boolean {
+  return !!url && /^https?:\/\//i.test(url) && BEELD_OK.test(url);
+}
+
+export async function callClaudeImages(system: string, tekst: string, images: VisionImage[], maxTokens = 1500, ctx?: UsageCtx, model = MODEL): Promise<string> {
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) throw new Error("ANTHROPIC_API_KEY ontbreekt (voeg hem toe in Vercel).");
+  const bruikbaar = images.filter((i) => beeldGeschikt(i.url));
+  if (!bruikbaar.length) throw new Error("Geen bruikbare afbeeldingen om te tonen.");
+
+  // Per afbeelding eerst het label (zodat het model weet welke naam erbij hoort),
+  // dan de afbeelding zelf. De opdracht komt achteraan, na alle beelden.
+  const content: Record<string, unknown>[] = [];
+  for (const i of bruikbaar) {
+    content.push({ type: "text", text: i.label });
+    content.push({ type: "image", source: { type: "url", url: i.url } });
+  }
+  content.push({ type: "text", text: tekst });
+
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 300000);
+  let res: Response;
+  try {
+    res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+      body: JSON.stringify({ model, max_tokens: maxTokens, system: systemBlocks(system), messages: [{ role: "user", content }] }),
+      signal: ctrl.signal,
+    });
+  } catch (e) {
+    if (e instanceof Error && e.name === "AbortError") throw new Error("Claude reageerde niet binnen de tijdslimiet (time-out).");
+    throw e;
+  } finally { clearTimeout(timer); }
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    throw new Error(`Claude-fout ${res.status}: ${t.slice(0, 300)}`);
+  }
+  const j = await res.json();
+  await logClaudeUsage(ctx, j.usage, model);
+  return (j.content || []).filter((c: { type: string }) => c.type === "text").map((c: { text: string }) => c.text).join("");
+}
+
 // ── Agentische variant: Claude mag tools aanroepen (bv. Ahrefs) ──
 export type ToolDef = { name: string; description: string; input_schema: Record<string, unknown> };
 export type ToolRunner = (name: string, input: Record<string, unknown>) => Promise<string>;

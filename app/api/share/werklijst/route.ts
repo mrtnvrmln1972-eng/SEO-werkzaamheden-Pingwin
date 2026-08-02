@@ -17,7 +17,11 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     ok: true,
     clientName: client?.name || "",
-    pages: data.pages,
+    // Alleen wat de sitebouwer nodig heeft. De meta's en alt-teksten voert
+    // Pingwin zelf door, dus die staan hier bewust niet meer bij; pages levert
+    // alleen nog de basis-URL om paden klikbaar te maken.
+    pages: data.pages.map((p) => ({ url: p.url, path: p.path })),
+    images: [],
     dubbel: data.dubbel,
     marks: data.marks,
     updatedAt: data.state.updatedAt,

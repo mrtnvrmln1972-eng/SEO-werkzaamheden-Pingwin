@@ -1,21 +1,22 @@
 "use client";
 
-// De afwerkpagina voor de sitebouwer: twee banen die tegelijk lopen.
-// Baan 1 (mensenwerk): contentfoto's uniek maken, met de knop "Alles uniek,
-// controleer maar" die het dashboard zelf laat nameten. Baan 2: per pagina de
-// kant-en-klare meta's en alt-teksten, met kopieerknop en afvinkvakje per punt.
-// Het groene "gecontroleerd door Pingwin"-vinkje zet het dashboard zelf na een
-// live-meting; zo hoeft niemand elkaar te mailen of na te lopen.
+// De pagina voor de sitebouwer. Bewust maar één ding: welke foto's beter een
+// eigen foto konden zijn.
+//
+// Hij had hier eerst ook alle meta's en alt-teksten staan, met de helft in het
+// rood geblokkeerd. Dat is weg: die twee voert Pingwin zelf door met een knop,
+// dus het is geen werk voor hem. Wat overblijft is een suggestielijst, geen
+// opdracht: doet hij er niets mee, dan staat de site alsnog goed.
 //
 // De lijst zelf komt uit app/_werklijst/WerklijstLijst.tsx, hetzelfde component
-// dat de cockpit gebruikt. Hier zonder doorvoerknoppen: doorvoeren in de site
-// doet Pingwin, niet de sitebouwer.
+// dat de cockpit gebruikt, maar zonder de admin-vlag.
 
 import { useEffect, useState } from "react";
-import WerklijstLijst, { type Pagina, type Mark, type DubbelItem } from "../../../_werklijst/WerklijstLijst";
+import WerklijstLijst, { type Pagina, type Alt, type Mark, type DubbelItem } from "../../../_werklijst/WerklijstLijst";
 
 export default function WerklijstShare({ token }: { token: string }) {
   const [pages, setPages] = useState<Pagina[]>([]);
+  const [images, setImages] = useState<Alt[]>([]);
   const [dubbel, setDubbel] = useState<DubbelItem[]>([]);
   const [marks, setMarks] = useState<Record<string, Mark>>({});
   const [clientName, setClientName] = useState("");
@@ -28,7 +29,7 @@ export default function WerklijstShare({ token }: { token: string }) {
   async function laad() {
     try {
       const d = await fetch(`/api/share/werklijst?token=${encodeURIComponent(token)}`).then((r) => r.json());
-      if (d?.ok) { setPages(d.pages || []); setDubbel(d.dubbel || []); setMarks(d.marks || {}); setClientName(d.clientName || ""); }
+      if (d?.ok) { setPages(d.pages || []); setImages(d.images || []); setDubbel(d.dubbel || []); setMarks(d.marks || {}); setClientName(d.clientName || ""); }
       else setFout(d?.error || "Kon de werklijst niet laden.");
     } catch { setFout("Kon de werklijst niet laden; ververs de pagina."); }
     finally { setLaden(false); }
@@ -65,12 +66,13 @@ export default function WerklijstShare({ token }: { token: string }) {
       <div className="wl-kop">
         <div className="wl-logo">Pingwin <span>Online Marketing</span></div>
         <h1>Werklijst website{clientName ? ` ${clientName}` : ""}</h1>
-        <p className="wl-intro">Alles staat hier kant-en-klaar: kopieer de tekst, zet hem in WordPress en vink af. Het dashboard controleert automatisch of het live staat (het groene &ldquo;gecontroleerd&rdquo;); je hoeft dus niets terug te melden behalve de knop hieronder bij stap 1.</p>
+        <p className="wl-intro">Eén lijstje, en het is geen spoed. De teksten op de site regelen wij zelf; daar hoef je niets voor te doen. Wat hieronder staat zijn foto&rsquo;s die op meerdere pagina&rsquo;s terugkomen. Een eigen foto per pagina werkt beter, voor de bezoeker en voor Google. Pak eruit wat je kunt en vink af; ben je klaar, druk dan op de knop onderaan, dan controleert het dashboard het zelf.</p>
         <label className="wl-naam">Je naam (voor de vinkjes): <input value={naam} onChange={(e) => setNaam(e.target.value)} placeholder="bijv. Sander" /></label>
       </div>
 
       <WerklijstLijst
         pages={pages}
+        images={images}
         dubbel={dubbel}
         marks={marks}
         siteUrl={siteUrl}

@@ -24,8 +24,9 @@ export async function GET(req: NextRequest) {
   for (const p of data.pages) {
     if (p.newTitle) keys.push(metaKey(p.url, "title"));
     if (p.newDesc) keys.push(metaKey(p.url, "desc"));
-    for (const a of p.alts) keys.push(altKey(p.url, a.file));
   }
+  // Eén sleutel per afbeelding, niet per pagina: in WordPress is het ook één veld.
+  for (const a of data.images) keys.push(altKey(a.file));
   const gedaan = keys.filter((k) => data.marks[k]?.done || data.marks[k]?.verified).length;
   const geverifieerd = keys.filter((k) => data.marks[k]?.verified).length;
   // De kaart in de weekplanning heeft alleen de tellers nodig; de Pingwin-versie
@@ -34,7 +35,7 @@ export async function GET(req: NextRequest) {
   const client = vol ? await getClientBySlug(slug) : null;
   return NextResponse.json({
     ok: true, ...data.state, shareToken: data.shareToken, totaal: keys.length, gedaan, geverifieerd,
-    ...(vol ? { clientName: client?.name || "", pages: data.pages, dubbel: data.dubbel, marks: data.marks } : {}),
+    ...(vol ? { clientName: client?.name || "", pages: data.pages, images: data.images, dubbel: data.dubbel, marks: data.marks, overslag: data.overslag } : {}),
   });
 }
 
