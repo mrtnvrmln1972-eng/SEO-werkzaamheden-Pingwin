@@ -2526,6 +2526,13 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .wp-fase-chip.wp-fase-klaar { color: #1b7f3b; background: #e7f6ec; border-color: #bfe6cc; }
 .wp-fase-chip.wp-fase-bezig { color: #8a6d00; background: #fff2cc; border-color: #eadb9a; }
 .wp-fase-chip.wp-fase-fout { color: #a12622; background: #fdecec; border-color: #f2c4c2; }
+/* Nog niet af: rood kruisje in dezelfde pilvorm als het groene vinkje. Zo hoef je
+   niets te lezen om te zien wat er staat. */
+.wp-fase-chip.wp-fase-open { color: #a12622; background: #fdecec; border-color: #f2c4c2; min-width: 34px; font-size: 12px; }
+/* Bouw en publicatie is het moment dat het werk naar de sitebouwer gaat; dat mag
+   je zien, dus een lijn boven die stap. */
+.wp-fase.wp-fase-scheiding { border-top: 1px solid var(--card-border); margin-top: var(--s-2); padding-top: var(--s-2); }
+.wp-fase-btn.wp-fase-btn-aan { border-color: #1e824c; color: #1e824c; background: #eaf6ef; }
 .wp-fase-spacer { flex: 1; }
 .wp-fase-btn { font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 600; border: 1px solid var(--border); background: #fff; border-radius: var(--r-sm); padding: var(--s-1) var(--s-3); cursor: pointer; color: var(--dark); white-space: nowrap; }
 .wp-fase-btn:hover:not(:disabled) { border-color: var(--orange); color: var(--orange-dark); }

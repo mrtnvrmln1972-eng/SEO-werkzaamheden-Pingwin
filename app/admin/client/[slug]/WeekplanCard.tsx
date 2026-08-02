@@ -368,7 +368,9 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
     }
     if (key === "structured" && schemaRunning) return { label: "Bezig…", cls: "wp-fase-bezig" };
     if (page && page[key]) return { label: "✓", cls: "wp-fase-klaar" };
-    return { label: "Nog niet", cls: "" };
+    // Was grijze tekst "Nog niet". Een kruisje in dezelfde pilvorm leest sneller:
+    // rood is niet af, groen is af, en je hoeft niets te lezen om dat te zien.
+    return { label: "✕", cls: "wp-fase-open" };
   }
 
   function docLink(key: FaseKey): string {
@@ -395,7 +397,19 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
       return <button type="button" className="wp-fase-btn" disabled={geblokkeerd || runActive || !!busy} title={titel} onClick={() => void startDocStep([key])}>{tekst}</button>;
     }
     if (key === "bouw") {
-      return <button type="button" className="wp-fase-btn" title="Mail over de bouw of publicatie (ontvanger kies je in het venster)" onClick={() => onMail("dev")}>Mail</button>;
+      return (
+        <>
+          {/* Hier verlaat het werk jouw handen, dus hier hoort de knop naar de
+              developerlijst. Stond eerder onderaan de kaart, ver van deze stap. */}
+          <button type="button" className={"wp-fase-btn" + (naarDev ? " wp-fase-btn-aan" : "")}
+            disabled={devBezig}
+            title={naarDev ? "Staat op de developerlijst. Klik om hem er weer af te halen." : "Zet deze kaart op de developerlijst, naast de andere taken voor de sitebouwer."}
+            onClick={() => void zetNaarDev()}>
+            {devBezig ? "Bezig…" : naarDev ? "✓ Op developerlijst" : "Naar dev"}
+          </button>
+          <button type="button" className="wp-fase-btn" title="Mail over de bouw of publicatie (ontvanger kies je in het venster)" onClick={() => onMail("dev")}>Mail</button>
+        </>
+      );
     }
     if (key === "structured") {
       return (
@@ -561,7 +575,7 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
             const sturing = (info.perFase[f.key as CardFaseKey] || []).join(" · ");
             const sturingOpen = !!faseOpen[f.key];
             const rij = (
-              <div key={f.key} className="wp-fase">
+              <div key={f.key} className={"wp-fase" + (f.key === "bouw" ? " wp-fase-scheiding" : "")}>
                 <div className="wp-fase-rij">
                   {/* Was een aankruisvakje, maar dat leek op iets dat je moest doen
                       terwijl het alleen een aantekening maakte. Het dashboard meet
@@ -625,12 +639,12 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
         {/* De developerpagina werd alleen gevoed door de oude takentabel, dus met de
             weekplanning was mailen het enige wat er nog over was. Hiermee staat de
             kaart weer gewoon op die pagina, waar jij en de sitebouwer hem allebei zien. */}
-        <button type="button" className={"wp-link wp-link-btn" + (naarDev ? " wp-link-aan" : "")}
+        {!page && <button type="button" className={"wp-link wp-link-btn" + (naarDev ? " wp-link-aan" : "")}
           disabled={devBezig}
           title={naarDev ? "Staat op de developerpagina. Klik om hem er weer af te halen." : "Zet deze kaart op de developerpagina, naast de andere taken voor de sitebouwer."}
           onClick={() => void zetNaarDev()}>
-          {devBezig ? "Bezig…" : naarDev ? "✓ Op developerpagina" : "Naar developer"}
-        </button>
+          {devBezig ? "Bezig…" : naarDev ? "✓ Op developerlijst" : "Naar developer"}
+        </button>}
         <button type="button" className="wp-act wp-act-klant" title="Mail over deze kaart; de ontvanger (klant, developer of anders) kies je in het venster." onClick={() => onMail("klant")}>Mail</button>
       </div>}
         </div>
