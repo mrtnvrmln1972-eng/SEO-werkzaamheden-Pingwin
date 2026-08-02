@@ -89,8 +89,15 @@ export async function createViewKey(): Promise<string> {
   // 40 tekens uit de alfabet-generator: ruim te lang om te raden, en zonder
   // tekens die in een URL of een .env-regel voor verwarring zorgen.
   const plat = `pw-kijk-${generatePassword(40)}`;
-  await sql`UPDATE claude_view_key SET revoked_at = now() WHERE revoked_at IS NULL`;
-  await sql`INSERT INTO claude_view_key (key_hash) VALUES (${hashPassword(plat)})`;
+  // Intrekken en aanmaken zitten bewust in één statement. Als losse stappen kan
+  // de tweede mislukken nadat de eerste is gelukt, en dan staat er ineens geen
+  // enkele sleutel meer klaar terwijl het scherm niets laat merken; meekijken
+  // staat dan uit zonder dat iemand het doorheeft.
+  await sql`
+    WITH ingetrokken AS (
+      UPDATE claude_view_key SET revoked_at = now() WHERE revoked_at IS NULL RETURNING id
+    )
+    INSERT INTO claude_view_key (key_hash) VALUES (${hashPassword(plat)})`;
   return plat;
 }
 
