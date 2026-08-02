@@ -426,7 +426,9 @@ export default function WerklijstLijst(p: Props) {
           <p className="wl-melding">
             Voor {telling.zonderTekst} afbeeldingen is nog geen alt-tekst geschreven. Dat is een grens in ons eigen
             dashboard, geen oordeel over die foto&rsquo;s: we schrijven er een vast aantal per ronde en beginnen bij de
-            pagina&rsquo;s die het meeste bezoek trekken. Draai de werklijst nog een keer voor de rest.
+            pagina&rsquo;s die het meeste bezoek trekken. Wil je de rest ook? Druk eerst op &ldquo;Voer alle alt-teksten
+            door&rdquo; hierboven en maak daarna de werklijst opnieuw aan in de cockpit; de volgende ronde pakt dan
+            precies deze {telling.zonderTekst} op.
           </p>
         )}
         {overslag && overslag.paginas > 0 && (
