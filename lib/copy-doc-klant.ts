@@ -45,18 +45,38 @@ export async function maatwerkSecties(slug: string, url: string, copyTekst: stri
 Geef UITSLUITEND geldige JSON met exact deze velden:
 {"waarover":"3 tot 5 zinnen: waar de nieuwe teksten over gaan. Noem de groei in omvang als je die kunt afleiden (van korte introductie naar volwaardige dienstenpagina), de toon en de positionering van dit bedrijf.",
  "zoekwoorden":[{"kw":"zoekwoord","reden":"één korte zin waarom dit zoekwoord erin zit; noem bij het hoofdzoekwoord de echte positie als die er is"}],
- "vindbaarheid":"3 tot 5 zinnen: wat dit voor de vindbaarheid betekent. Wees eerlijk en concreet, gebruik de echte cijfers, benoem de oorzaak van het probleem en wat er nu verandert."}
-Regels: 4 tot 7 zoekwoorden, het hoofdzoekwoord eerst; verzin geen cijfers, gebruik alleen wat in de data staat.`;
+ "vindbaarheid":"één of twee zinnen die de kern samenvatten: waar de pagina nu staat en wat er verandert.",
+ "vindbaarheidPunten":["3 tot 5 losse punten, elk één korte regel. Eerst wat er misging, dan wat de nieuwe tekst oplost. Gebruik de echte cijfers."],
+ "kpi":[{"label":"korte naam van de meetwaarde","waarde":"het getal","verschil":"eventueel de vorige waarde, anders leeg","status":"goed of actie of neutraal"}]}
+Regels: 4 tot 7 zoekwoorden, het hoofdzoekwoord eerst; verzin geen cijfers, gebruik alleen wat in de data staat.
+Voor "kpi": 2 tot 4 regels, uitsluitend uit de meegegeven Search Console-cijfers (positie, klikken, vertoningen van het hoofdzoekwoord). Zijn er geen cijfers, geef dan een lege lijst.
+Status: "actie" als het slecht staat, "goed" als het goed staat of duidelijk verbetert, anders "neutraal".`;
   const user = `Pagina: ${url}\nBedrijf: ${client?.name || ""}\n\nHUIDIGE POSITIES (Search Console, 90 dagen):\n${data}\n\nDE NIEUWE TEKST:\n${copyTekst.slice(0, 9000)}\n\n${analyseTekst ? `UIT DE ANALYSE VAN DE HUIDIGE PAGINA:\n${analyseTekst.slice(0, 3000)}` : ""}`;
   try {
     const raw = await callClaude(sys, [{ role: "user", content: user }], 2000, { slug, action: "copy-doc-maatwerk" });
     const clean = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
-    const p = JSON.parse(clean.slice(clean.indexOf("{"), clean.lastIndexOf("}") + 1)) as { waarover?: string; zoekwoorden?: { kw: string; reden: string }[]; vindbaarheid?: string };
+    const p = JSON.parse(clean.slice(clean.indexOf("{"), clean.lastIndexOf("}") + 1)) as {
+      waarover?: string; zoekwoorden?: { kw: string; reden: string }[]; vindbaarheid?: string;
+      vindbaarheidPunten?: string[]; kpi?: { label?: string; waarde?: string; verschil?: string; status?: string }[];
+    };
     const uit: DocSection[] = [];
     if (p.waarover) uit.push({ heading: "Waar de nieuwe teksten over gaan", blocks: [{ type: "paragraph", text: p.waarover }] });
     const kws = (p.zoekwoorden || []).filter((k) => k?.kw).slice(0, 8);
     if (kws.length) uit.push({ heading: "Welke zoekwoorden erin verwerkt zijn", blocks: [{ type: "table", headers: ["Zoekwoord", "Waarom dit erin zit"], rows: kws.map((k) => [k.kw, k.reden || ""]) }] });
-    if (p.vindbaarheid) uit.push({ heading: "Wat dit voor jullie vindbaarheid betekent", blocks: [{ type: "paragraph", text: p.vindbaarheid }] });
+    // De stand in cijfers, dan de kern in één zin, dan de punten los. Een lap tekst
+    // met getallen erdoorheen leest niemand; dit wel.
+    const kpi = (p.kpi || []).filter((k) => k?.label && k?.waarde).slice(0, 4).map((k) => ({
+      label: String(k.label), waarde: String(k.waarde), verschil: k.verschil ? String(k.verschil) : "",
+      status: (["goed", "actie", "neutraal"].includes(String(k.status)) ? k.status : "neutraal") as "goed" | "actie" | "neutraal",
+    }));
+    const punten = (p.vindbaarheidPunten || []).filter(Boolean).map(String).slice(0, 6);
+    if (p.vindbaarheid || kpi.length || punten.length) {
+      const blocks: DocBlock[] = [];
+      if (kpi.length) blocks.push({ type: "kpi", rows: kpi });
+      if (p.vindbaarheid) blocks.push({ type: "paragraph", text: p.vindbaarheid });
+      if (punten.length) blocks.push({ type: "bullets", items: punten });
+      uit.push({ heading: "Wat dit voor jullie vindbaarheid betekent", blocks });
+    }
     return uit;
   } catch { return []; }
 }
@@ -132,6 +152,9 @@ export async function buildCopyKlantSpec(slug: string, url: string): Promise<{ o
     titel: `Nieuwe teksten voor ${pad}`,
     ondertitel: "Uitleg voor de klant plus de volledige webteksten om na te lezen en te corrigeren.",
     meta: { Pagina: pad, Datum: new Date().toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" }) },
+    // Sfeerbeeld van de pagina zelf op de omslag, en het slotcitaat uit de huisstijl.
+    sfeerbeeldUrl: url,
+    slotcitaat: "Lees de teksten na en pas ze aan waar jij het beter weet. Daarna zetten wij ze SEO-geoptimaliseerd op de site.",
     sections: [
       COPY_INTRO_SECTIE,
       COPY_UITLEG_SECTIE,

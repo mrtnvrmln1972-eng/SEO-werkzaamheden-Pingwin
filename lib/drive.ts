@@ -8,7 +8,6 @@ import { getDriveAccessToken } from "./google";
 
 const FOLDER_MIME = "application/vnd.google-apps.folder";
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-const GDOC_MIME = "application/vnd.google-apps.document";
 
 export type DriveFolder = { id: string; name: string };
 
@@ -179,28 +178,19 @@ export async function uploadDocx(folderId: string, filename: string, buffer: Buf
   if (!putRes.ok) throw new Error(await driveErr(putRes, "het uploaden van de inhoud"));
   const file = await putRes.json();
 
-  // Probeer het geuploade .docx om te zetten naar een echte Google Doc (opent
-  // betrouwbaar in de browser). Lukt dat niet (bv. een Gedeelde Drive die het
-  // blokkeert), dan houden we gewoon het Word-bestand aan.
-  let finalId = file.id as string;
-  let isDoc = false;
-  let note = "";
-  try {
-    const copyRes = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}/copy?supportsAllDrives=true&fields=id`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${t}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ name: filename.replace(/\.docx$/i, ""), mimeType: GDOC_MIME, parents: [parent] }),
-    });
-    if (copyRes.ok) {
-      const doc = await copyRes.json();
-      finalId = doc.id;
-      isDoc = true;
-      // Ruim het losse Word-bestand op zodat er niet twee versies in de map staan.
-      await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?supportsAllDrives=true`, { method: "DELETE", headers: { Authorization: `Bearer ${t}` } }).catch(() => { /* niet kritisch */ });
-    } else {
-      note = await driveErr(copyRes, "het omzetten naar Google Doc");
-    }
-  } catch (e) { note = e instanceof Error ? e.message : "omzetten mislukt"; }
+  // Het Word-bestand blijft staan zoals het is.
+  //
+  // Hier werd het .docx eerder omgezet naar een Google Doc. Dat leek handig (opent
+  // in de browser), maar die omzetting plet de opmaak: de omslag, de afgeronde
+  // kaders, de kleurvlakken en de status-pillen overleven het niet. Maarten kreeg
+  // daardoor altijd een kaal document te zien en nooit het echte bestand.
+  //
+  // Drive laat een .docx gewoon zien in de voorvertoning, en de klant of de
+  // sitebouwer kan het openen in Word, de tekst aanpassen en overnemen. Nooit
+  // meer omzetten dus.
+  const finalId = file.id as string;
+  const isDoc = false;
+  const note = "";
 
   const shared = await shareAnyone(t, finalId);
 
