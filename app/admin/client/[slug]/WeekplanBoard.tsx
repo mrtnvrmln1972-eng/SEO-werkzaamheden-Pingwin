@@ -264,7 +264,7 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailD
     return (
       <div className="cockpit-card wp-empty">
         <div className="ck-section-head"><span>Weekplanning</span></div>
-        <div className="muted ov-hint">Nog geen kaarten. Vraag de bird&rsquo;s eye in een onderwerp om een planning en klik op &ldquo;Zet de taken in de weekplanning&rdquo;; de projectkaarten verschijnen hier per week.</div>
+        <div className="muted ov-hint">Nog geen kaarten. Spar eerst in een onderwerp bij de bird&rsquo;s eye, klik dan op &ldquo;Trek de conclusie&rdquo; en daarna op &ldquo;Welke taken volgen hieruit?&rdquo;. Je krijgt een voorstel dat je zelf aanvinkt; de projectkaarten verschijnen hier per week.</div>
       </div>
     );
   }

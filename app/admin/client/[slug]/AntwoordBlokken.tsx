@@ -205,7 +205,7 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [content, marks, toon, slug, thread]);
 
-  // De grote knop "Zet de taken in de weekplanning" (buiten dit component) meldt
+  // Een knop buiten dit component die een heel antwoord doorzet, meldt
   // zich via een window-event: heel het antwoord is dan verwerkt → alles inklappen.
   useEffect(() => {
     const handler = (e: Event) => {
