@@ -17,6 +17,19 @@ export async function GET(req: NextRequest) {
   const stap: Record<string, unknown> = {};
   let browser: { close: () => Promise<void> } | null = null;
   try {
+    // Dezelfde voorbereiding als lib/browser.ts doet, anders meet je iets anders
+    // dan wat de documenten in het echt gebruiken.
+    await import("../../../../lib/browser");
+    if (!process.env.AWS_EXECUTION_ENV && !process.env.AWS_LAMBDA_JS_RUNTIME) {
+      process.env.AWS_LAMBDA_JS_RUNTIME = "nodejs20.x";
+    }
+    {
+      const fs = await import("fs");
+      if (fs.existsSync("/tmp/chromium") && !fs.existsSync("/tmp/al2023/lib")) {
+        fs.rmSync("/tmp/chromium", { force: true });
+        stap.opgeruimd = "half uitgepakte /tmp/chromium verwijderd";
+      }
+    }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const chromium: any = await import("@sparticuz/chromium").catch((e) => { stap.importChromium = String(e); return null; });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

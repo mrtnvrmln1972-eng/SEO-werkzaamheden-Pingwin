@@ -10,6 +10,7 @@
 
 import { PINGWIN_LOGO_BASE64 } from "../pingwin-logo";
 import { MONTSERRAT_WOFF2, MAARTEN_JPG } from "./beelden";
+import { metBrowser } from "../browser";
 
 export type OmslagGegevens = {
   kicker: string;
@@ -78,30 +79,6 @@ h1{font-size:37px;line-height:1.16;font-weight:800;margin-bottom:12px;letter-spa
     <div class="quote">&ldquo;${esc(g.citaat || "Geschreven om gevonden te worden én om te overtuigen.")}&rdquo;<div class="wie">&ndash; Maarten van Pingwin</div></div>
   </div>
 </div></body></html>`;
-}
-
-let browserOnbeschikbaar = false;
-
-async function metBrowser<T>(werk: (page: any) => Promise<T>): Promise<T | null> {
-  if (browserOnbeschikbaar) return null;
-  let browser: any = null;
-  try {
-    const chromium: any = await import("@sparticuz/chromium").catch(() => null);
-    const puppeteer: any = await import("puppeteer-core").catch(() => null);
-    if (!chromium || !puppeteer) { browserOnbeschikbaar = true; return null; }
-    const chr = chromium.default || chromium;
-    const pup = puppeteer.default || puppeteer;
-    browser = await pup.launch({
-      args: [...(chr.args || []), "--no-sandbox", "--disable-setuid-sandbox"],
-      executablePath: await chr.executablePath(),
-      headless: true,
-    });
-    return await werk(await browser.newPage());
-  } catch {
-    return null;
-  } finally {
-    try { if (browser) await browser.close(); } catch { /* niet kritisch */ }
-  }
 }
 
 /**
