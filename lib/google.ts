@@ -1044,7 +1044,17 @@ export async function getAdsComparison(slug: string, domain: string, days: numbe
 // pagina's elkaar in de weg zitten: dat is geen inschatting maar een overlap in
 // de data. Eén aanroep, want per pagina vragen zou tientallen calls kosten.
 export type GscPaar = { keyword: string; page: string; clicks: number; impressions: number; position: number };
+// Kort geheugen per serverinstantie. Zonder dit haalt één vraag over zes
+// pagina's zes keer dezelfde tienduizenden rijen op; dan loopt de beurt uit de
+// tijd en komt de opruimlijst er helemaal niet meer bij. Vijf minuten is ruim
+// genoeg voor één gesprek en kort genoeg om nooit oude cijfers te tonen.
+const paarCache = new Map<string, { tijd: number; data: GscPaar[] }>();
+const PAAR_TTL = 5 * 60 * 1000;
+
 export async function getGscQueryPagePairs(domain: string, days = 90, maxRijen = 50000): Promise<GscPaar[]> {
+  const sleutel = `${domain}|${days}|${maxRijen}`;
+  const c = paarCache.get(sleutel);
+  if (c && Date.now() - c.tijd < PAAR_TTL) return c.data;
   const token = await accessTokenFor("google");
   if (!token || !domain) return [];
   const site = await gscPickSite(token, domain);
@@ -1064,8 +1074,10 @@ export async function getGscQueryPagePairs(domain: string, days = 90, maxRijen =
     rows.push(...batch);
     if (batch.length < perKeer) break;                    // laatste bladzijde
   }
-  return rows.map((x) => ({
+  const uit = rows.map((x) => ({
     keyword: x.keys?.[0] || "", page: x.keys?.[1] || "",
     clicks: Math.round(x.clicks), impressions: Math.round(x.impressions), position: Math.round(x.position * 10) / 10,
   })).filter((x) => x.keyword && x.page);
+  paarCache.set(sleutel, { tijd: Date.now(), data: uit });
+  return uit;
 }
