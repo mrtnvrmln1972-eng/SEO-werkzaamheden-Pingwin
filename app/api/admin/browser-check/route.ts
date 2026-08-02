@@ -58,7 +58,18 @@ export async function GET(req: NextRequest) {
     const page = await (browser as any).newPage();
     await page.setContent("<b>ok</b>", { waitUntil: "domcontentloaded" });
     const shot = await page.screenshot({ type: "png" });
-    return NextResponse.json({ ok: true, stap, bytes: (shot as Buffer).length });
+    stap.kaleScreenshot = (shot as Buffer).length;
+
+    // En nu de echte omslag, met het ingesloten lettertype en het portret erin.
+    // Als dit lukt, klopt het hele pad dat de documenten gebruiken.
+    const { omslagPng } = await import("../../../../lib/huisstijl/omslag");
+    const png = await omslagPng({
+      kicker: "Proef", titel: "Werkt de omslag op deze server?",
+      ondertitel: "Zo ja, dan krijgen de documenten hem ook.",
+      meta: { Klant: "Proef", Datum: new Date().toLocaleDateString("nl-NL") },
+    });
+    stap.omslagBytes = png ? png.length : 0;
+    return NextResponse.json({ ok: true, omslag: !!png, stap });
   } catch (e) {
     return NextResponse.json({ ok: false, waar: "launch", fout: e instanceof Error ? `${e.message}` : String(e), stap });
   } finally {
