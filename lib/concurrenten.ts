@@ -33,6 +33,7 @@ export type Concurrent = {
   gedeeldeVertoningen: number;
   eigenTop: { keyword: string; positie: number; vertoningen: number; klikken: number } | null;
   eigenVertoningen: number;
+  oordeel?: "kan-weg" | "bestaansrecht" | "al-opgeruimd";
 };
 
 export type OverlapResultaat = {
@@ -41,6 +42,7 @@ export type OverlapResultaat = {
   doelPad: string;
   doelZoekwoorden: number;
   concurrenten: Concurrent[];
+  siteBrede?: string[];
 };
 
 const padVan = (u: string) => { try { return new URL(u).pathname; } catch { return u; } };
@@ -98,13 +100,59 @@ export async function overlappendePaginas(slug: string, domain: string, doelUrl:
     }
   }
 
+  // ── Ruis eruit ─────────────────────────────────────────────────────────────
+  // Zonder dit is de uitkomst onbruikbaar: bij One Day Clinic overlapt élke
+  // pagina met élke pagina, want iedereen rankt op de merknaam en op de
+  // site-brede term "soa test". Dan krijg je een muur van "heeft bestaansrecht"
+  // en zie je de pagina's die er echt toe doen niet.
+  //   - MERKTERMEN: bevatten een woord uit de merknaam/het domein. Overlap daarop
+  //     is normaal en niet op te lossen met een redirect.
+  //   - SITE-BREDE TERMEN: een zoekwoord waar veel pagina's tegelijk op ranken is
+  //     een structureel probleem van de hele site, geen ruzie tussen twee pagina's.
+  const merkWoorden = new Set(
+    (domain.replace(/^https?:\/\//, "").split(".")[0] || "")
+      .split(/[^a-z0-9]+/i).filter((w) => w.length > 3).map((w) => w.toLowerCase()),
+  );
+  const isMerk = (kw: string) => {
+    const k = kw.toLowerCase().replace(/\s+/g, "");
+    for (const m of merkWoorden) if (k.includes(m)) return true;
+    return false;
+  };
+  const paginasPerTerm = new Map<string, Set<string>>();
+  for (const p of paren) {
+    if (p.impressions < 5) continue;
+    const k = p.keyword.toLowerCase();
+    if (!paginasPerTerm.has(k)) paginasPerTerm.set(k, new Set());
+    paginasPerTerm.get(k)!.add(norm(p.page));
+  }
+  const isSiteBreed = (kw: string) => (paginasPerTerm.get(kw.toLowerCase())?.size || 0) >= 5;
+
+  const siteBrede = new Set<string>();
+  for (const c of perPagina.values()) {
+    const scherp = c.gedeeld.filter((g) => {
+      if (isMerk(g.keyword)) return false;
+      if (isSiteBreed(g.keyword)) { siteBrede.add(g.keyword); return false; }
+      return true;
+    });
+    c.gedeeld = scherp;
+    c.gedeeldeVertoningen = scherp.reduce((n, g) => n + g.vertoningen, 0);
+    // Heeft deze concurrent een EIGEN zoekterm, of leent hij alles? Dat bepaalt
+    // of hij opgeruimd kan worden of juist met rust gelaten moet worden.
+    const eigenWoorden = padVan(c.url).toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 3);
+    const eigenNietMerk = c.eigenTop && !isMerk(c.eigenTop.keyword) && !isSiteBreed(c.eigenTop.keyword)
+      && eigenWoorden.some((w) => c.eigenTop!.keyword.toLowerCase().includes(w));
+    c.oordeel = c.status !== null && c.status >= 300 && c.status < 400 ? "al-opgeruimd"
+      : eigenNietMerk ? "bestaansrecht" : "kan-weg";
+  }
+
   const concurrenten = [...perPagina.values()]
     .filter((c) => c.gedeeld.length > 0)
     .map((c) => ({ ...c, gedeeld: c.gedeeld.sort((a, b) => b.vertoningen - a.vertoningen).slice(0, 6) }))
-    .sort((a, b) => b.gedeeldeVertoningen - a.gedeeldeVertoningen)
+    // Wat je kunt opruimen eerst; daarna pas de pagina's die mogen blijven.
+    .sort((a, b) => (a.oordeel === "kan-weg" ? 0 : 1) - (b.oordeel === "kan-weg" ? 0 : 1) || b.gedeeldeVertoningen - a.gedeeldeVertoningen)
     .slice(0, 25);
 
-  return { ok: true, doelPad, doelZoekwoorden: doelKw.length, concurrenten };
+  return { ok: true, doelPad, doelZoekwoorden: doelKw.length, concurrenten, siteBrede: [...siteBrede].slice(0, 10) };
 }
 
 /** De uitkomst als tekst voor de chat: compleet, met de cijfers die een besluit dragen. */
@@ -112,14 +160,19 @@ export function overlapAlsTekst(r: OverlapResultaat): string {
   if (!r.ok) return r.reden || "Geen overlap-analyse mogelijk.";
   if (!r.concurrenten.length) return `Geen enkele andere pagina krijgt vertoningen op de zoekwoorden van ${r.doelPad}. Er is hier geen cannibalisatie; stel geen opruiming voor.`;
 
+  const kanWeg = r.concurrenten.filter((c) => c.oordeel === "kan-weg");
+  const rest = r.concurrenten.filter((c) => c.oordeel !== "kan-weg");
   const regels: string[] = [
-    `OVERLAP-ANALYSE voor ${r.doelPad}, uit Search Console (90 dagen). Dit is de VOLLEDIGE lijst pagina's die vertoningen krijgen op dezelfde zoekwoorden; noem er geen andere bij en laat er geen weg.`,
-    `Doelpagina heeft ${r.doelZoekwoorden} zoekwoorden. ${r.concurrenten.length} pagina('s) overlappen daarmee.`,
+    `OVERLAP-ANALYSE voor ${r.doelPad}, uit Search Console (90 dagen), vers opgehaald.`,
+    `Merktermen en site-brede termen zijn eruit gefilterd: daar rankt élke pagina op, dus die zeggen niets over cannibalisatie tussen twee pagina's en zijn niet met een redirect op te lossen.${r.siteBrede?.length ? ` Als site-breed behandeld: ${r.siteBrede.map((k) => `"${k}"`).join(", ")}. Dat is een structureel vraagstuk voor de hele site, geen ruzie tussen twee pagina's; benoem het hooguit één keer en maak er geen redirectadvies van.` : ""}`,
     "",
-    "BESLISREGEL: 'gedeeld' is wat de doelpagina in de weg zit. 'Eigen sterkste zoekterm' is het BESTAANSRECHT van die pagina. Staat een pagina sterk op een eigen term die de doelpagina niet bedient, dan is omleiden verkeerd: dan verlies je dat verkeer. Stel alleen omleiden voor als de pagina vrijwel niets eigens heeft. Noem bij elk advies deze cijfers.",
+    `HET ANTWOORD ZIT IN DE EERSTE GROEP. ${kanWeg.length} van de ${r.concurrenten.length} concurrenten heeft GEEN eigen zoekterm en kan dus opgeruimd of samengevoegd worden. De rest heeft bestaansrecht: die laat je met rust, en die noem je hooguit kort. Begin je antwoord met de eerste groep.`,
   ];
+  if (!kanWeg.length) regels.push("LET OP: er is geen enkele concurrent zonder eigen zoekterm. Zeg dat er voor deze pagina niets op te ruimen valt, en gebruik dunne_paginas als Maarten site-breed wil opruimen.");
 
-  for (const c of r.concurrenten) {
+  regels.push("");
+  regels.push(`=== KAN WEG OF SAMENVOEGEN (${kanWeg.length}) ===`);
+  for (const c of kanWeg) {
     const statusTekst = c.status !== null && c.status >= 300 && c.status < 400
       ? `AL OMGELEID (${c.status} naar ${c.redirectTarget ? padVan(c.redirectTarget) : "onbekend"}), dus KLAAR: niet voorstellen om op te ruimen`
       : c.status !== null && c.status >= 400 ? `${c.status}, bestaat niet meer`
@@ -129,10 +182,21 @@ export function overlapAlsTekst(r: OverlapResultaat): string {
     regels.push(`  gedeeld met de doelpagina: ${c.gedeeld.map((g) => `"${g.keyword}" (deze pagina positie ${g.positie}, ${g.vertoningen} vertoningen; doelpagina staat daar op ${g.positieDoel ?? "?"})`).join("; ")}`);
     regels.push(`  gedeelde vertoningen totaal: ${c.gedeeldeVertoningen}`);
     if (c.eigenTop) {
-      const eigen = r.concurrenten.length && !c.gedeeld.some((g) => g.keyword.toLowerCase() === c.eigenTop!.keyword.toLowerCase());
-      regels.push(`  eigen sterkste zoekterm: "${c.eigenTop.keyword}" op positie ${c.eigenTop.positie}, ${c.eigenTop.vertoningen} vertoningen, ${c.eigenTop.klikken} klikken${eigen ? " (die term bedient de doelpagina NIET; dit is bestaansrecht, wees voorzichtig met omleiden)" : ""}`);
+      // Alleen "bestaansrecht" zeggen als het oordeel dat óók is. Anders stond er
+      // bij een op te ruimen pagina "kan weg" en "wees voorzichtig" door elkaar.
+      const duiding = c.oordeel === "bestaansrecht"
+        ? " (eigen term die de doelpagina niet bedient: BESTAANSRECHT, niet omleiden)"
+        : " (dit is een merk- of andermans term, geen eigen onderwerp: deze pagina verdient niets van zichzelf)";
+      regels.push(`  sterkste zoekterm van deze pagina: "${c.eigenTop.keyword}" op positie ${c.eigenTop.positie}, ${c.eigenTop.vertoningen} vertoningen, ${c.eigenTop.klikken} klikken${duiding}`);
     }
     regels.push(`  vertoningen van deze pagina in totaal: ${c.eigenVertoningen}`);
+  }
+
+  regels.push("");
+  regels.push(`=== HEBBEN BESTAANSRECHT, NIET OMLEIDEN (${rest.length}) ===`);
+  for (const c of rest) {
+    const st = c.oordeel === "al-opgeruimd" ? " [AL OMGELEID, klaar]" : "";
+    regels.push(`${c.pad}${st}: eigen term "${c.eigenTop?.keyword ?? "?"}" op positie ${c.eigenTop?.positie ?? "?"} (${c.eigenTop?.vertoningen ?? 0} vertoningen); deelt ${c.gedeeldeVertoningen} vertoningen met de doelpagina`);
   }
   return regels.join("\n");
 }
