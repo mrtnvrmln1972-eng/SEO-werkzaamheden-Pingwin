@@ -16,6 +16,16 @@ export async function POST(req: NextRequest) {
   const url = String(body.url || "").trim();
   if (!slug || !url) return NextResponse.json({ ok: false, error: "Klant en pagina zijn verplicht." }, { status: 400 });
   const g = await guardSlug(req, slug); if (!g.ok) return g.res;
-  const r = await maakCopyKlantDoc(slug, url);
+  // Een pad ("/tuinontwerp/strandtuin/") is genoeg: we zoeken de volledige URL erbij.
+  let volUrl = url;
+  if (url.startsWith("/")) {
+    const { getClientUrls } = await import("../../../../../lib/site-urls");
+    const urls = await getClientUrls(slug);
+    const netjes = (p: string) => p.replace(/\/+$/, "").toLowerCase();
+    const match = urls.find((u) => { try { return netjes(new URL(u.url).pathname) === netjes(url); } catch { return false; } });
+    if (!match) return NextResponse.json({ ok: false, error: `Geen pagina gevonden met pad ${url}.` }, { status: 404 });
+    volUrl = match.url;
+  }
+  const r = await maakCopyKlantDoc(slug, volUrl);
   return r.ok ? NextResponse.json({ ok: true, link: r.link }) : NextResponse.json({ ok: false, error: r.error }, { status: 500 });
 }
