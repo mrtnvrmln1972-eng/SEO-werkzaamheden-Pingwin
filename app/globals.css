@@ -2887,6 +2887,19 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 
 @media (max-width: 640px) { .wl-rij { flex-wrap: wrap; } .wl-balk { flex-basis: 140px; } .wl-rij-knoppen { width: 100%; justify-content: flex-start; } .wl-blok-kop { align-items: flex-start; } }
 
+/* ── Claude laten meekijken (adminscherm) ── */
+.kijk-kaart { margin-top: var(--s-8, 32px); background: #fff; border: 1px solid var(--border, #e5ded6); border-radius: var(--r-lg, 14px); padding: var(--s-4, 16px) var(--s-5, 20px); }
+.kijk-kop { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3, 12px); width: 100%; border: none; background: transparent; font: inherit; font-weight: 700; color: var(--dark, #2b2b2b); cursor: pointer; padding: 0; text-align: left; }
+.kijk-stand { font-size: var(--fs-xs, 11.5px); font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--muted, #6f645a); background: #f3efeb; border-radius: var(--r-full, 99px); padding: 2px 10px; white-space: nowrap; }
+.kijk-stand-aan { color: #1c7a3f; background: #eaf5ee; }
+.kijk-body { margin-top: var(--s-4, 16px); font-size: var(--fs-sm, 13.5px); line-height: 1.6; max-width: 70ch; }
+.kijk-body p { margin: 0 0 var(--s-3, 12px); }
+.kijk-meta { color: var(--muted, #6f645a); }
+.kijk-nieuw { background: #fffdfb; border: 1px solid var(--orange, #F15829); border-radius: var(--r-md, 10px); padding: var(--s-4, 16px); margin-bottom: var(--s-4, 16px); }
+.kijk-waarde { display: block; word-break: break-all; background: #f6f1ec; border-radius: var(--r-sm, 8px); padding: var(--s-3, 12px); margin-bottom: var(--s-3, 12px); font-size: var(--fs-xs, 12px); }
+.kijk-stappen { margin: var(--s-4, 16px) 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: var(--s-2, 8px); }
+.kijk-knoppen { display: flex; gap: var(--s-3, 12px); flex-wrap: wrap; }
+
 /* ── Navigatie-roadmap ── */
 .nv-wrap { max-width: 1100px; margin: 0 auto; padding: var(--s-6, 24px) var(--s-4, 16px) var(--s-12, 48px); display: flex; flex-direction: column; gap: var(--s-4, 16px); }
 .nv-terug { color: var(--orange, #F15829); text-decoration: none; font-size: var(--fs-sm, 13px); font-weight: 600; }
