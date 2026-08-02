@@ -108,6 +108,39 @@ export async function getDeveloperTasks(): Promise<DevTask[]> {
     };
   });
 
+  // Kaarten uit de weekplanning die naar de developer zijn doorgezet. Die staan in
+  // een andere tabel dan de oude taken, dus ze moeten er apart bij; anders blijft de
+  // developerpagina hangen op werk van vóór de overstap.
+  const wp = await sql`
+    SELECT w.id, w.client_slug, w.taak, w.toelichting, w.url, w.week_year, w.week_no, w.status,
+           c.name AS client_name
+    FROM client_weekplan w
+    LEFT JOIN clients c ON c.slug = w.client_slug
+    WHERE w.naar_dev = true
+    ORDER BY w.week_year, w.week_no, w.sort_order`.then((r) => r.rows).catch(() => [] as Record<string, unknown>[]);
+  for (const r of wp) {
+    const slug = r.client_slug as string;
+    const key = `wp:${Number(r.id)}`;
+    const mm = metaMap.get(slug + "|" + key);
+    list.push({
+      clientSlug: slug,
+      clientName: (r.client_name as string) ?? slug,
+      taskKey: key,
+      taak: (r.taak as string) ?? "",
+      toelichting: (r.toelichting as string) ?? "",
+      uren: null,
+      // Een doorgezette kaart telt als open dev-werk, tenzij de developer hem afvinkte.
+      status: mm?.devDone ? "klaar" : "naar dev",
+      maand: r.week_no ? `week ${r.week_no}` : "",
+      link: (r.url as string) ?? "",
+      fase: "",
+      execDate: mm?.execDate ?? "",
+      position: mm?.position ?? null,
+      devDone: mm?.devDone ?? false,
+      devNote: mm?.devNote ?? "",
+    });
+  }
+
   // Alleen echt relevante rijen: open ('naar dev') of door de developer afgevinkt.
   // Een 'klaar'-taak die niet dev-afgevinkt is (andere klaar-taak) valt hiermee weg.
   const relevant = list.filter((t) => t.status.toLowerCase() === "naar dev" || t.devDone);

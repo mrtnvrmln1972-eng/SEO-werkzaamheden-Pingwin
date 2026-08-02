@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
-import { getWeekplan, updateWeekplanTask, deleteWeekplanTask, isoWeek } from "../../../../lib/weekplan";
+import { getWeekplan, updateWeekplanTask, deleteWeekplanTask, isoWeek, setWeekplanNaarDev } from "../../../../lib/weekplan";
 import { getWeekplanPages } from "../../../../lib/overview";
 import { urlKey } from "../../../../lib/url-key";
 
@@ -41,6 +41,13 @@ export async function POST(req: NextRequest) {
   if (!slug || !id) return NextResponse.json({ ok: false, error: "Klant en taak-id zijn verplicht." }, { status: 400 });
 
   if (body.delete === true) { await deleteWeekplanTask(slug, id); return NextResponse.json({ ok: true }); }
+
+  // Naar de developerpagina doorzetten. Bewust hier en niet via een aparte route:
+  // het is gewoon een eigenschap van de kaart, net als de week of de status.
+  if (typeof body.naarDev === "boolean") {
+    await setWeekplanNaarDev(slug, id, body.naarDev);
+    return NextResponse.json({ ok: true });
+  }
 
   const patch: { weekYear?: number; weekNo?: number; status?: string; sortOrder?: number } = {};
   if (typeof body.weekYear === "number") patch.weekYear = body.weekYear;

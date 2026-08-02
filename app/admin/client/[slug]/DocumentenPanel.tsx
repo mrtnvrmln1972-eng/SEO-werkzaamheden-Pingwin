@@ -32,6 +32,12 @@ export default function DocumentenPanel({ slug, onGoToPage }: { slug: string; on
   const [paginas, setPaginas] = useState<DocPagina[] | null>(null);
   const [laden, setLaden] = useState(true);
   const [fout, setFout] = useState("");
+  // Documenten die wel tekst hebben maar geen bestand in Drive: die kun je hier
+  // alsnog laten aanmaken. De pijplijn sloeg de tekst altijd op, maar maakte alleen
+  // een bestand als er op dat moment een Drive-map was ingesteld.
+  const [herstelBezig, setHerstelBezig] = useState(false);
+  const [herstelMsg, setHerstelMsg] = useState("");
+  const [herstelFout, setHerstelFout] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -43,6 +49,26 @@ export default function DocumentenPanel({ slug, onGoToPage }: { slug: string; on
       .finally(() => { if (alive) setLaden(false); });
     return () => { alive = false; };
   }, [slug]);
+
+  async function herstel() {
+    if (herstelBezig) return;
+    setHerstelBezig(true); setHerstelMsg(""); setHerstelFout(false);
+    try {
+      const d = await fetch("/api/admin/documenten", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, herstel: true }),
+      }).then((r) => r.json());
+      setHerstelFout(!d?.ok);
+      setHerstelMsg(d?.ok
+        ? d.samenvatting + (d.overgeslagen?.length ? ` (${d.overgeslagen.map((o: { reden: string }) => o.reden)[0]})` : "")
+        : (d?.error || "Herstellen mislukte."));
+      if (d?.ok && d.hersteld) {
+        const n = await fetch(`/api/admin/documenten?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).catch(() => null);
+        if (n?.ok) setPaginas(n.paginas || []);
+      }
+    } catch { setHerstelFout(true); setHerstelMsg("Herstellen mislukte."); }
+    finally { setHerstelBezig(false); }
+  }
 
   if (laden && !paginas) return <div className="cockpit-card"><div className="muted">Documenten laden…</div></div>;
   if (fout) return <div className="cockpit-card"><div className="muted">{fout}</div></div>;
@@ -71,7 +97,14 @@ export default function DocumentenPanel({ slug, onGoToPage }: { slug: string; on
 
   return (
     <div className="cockpit-card">
-      <div className="ck-section-head"><span>Documenten</span></div>
+      <div className="ck-section-head">
+        <span>Documenten</span>
+        <button type="button" className="btn btn-ghost wp-check-btn" disabled={herstelBezig} onClick={() => void herstel()}
+          title="Documenten die wel tekst hebben maar geen bestand in Drive alsnog aanmaken in de huisstijl. De opgeslagen tekst is de bron; de inhoud verandert niet.">
+          {herstelBezig ? "Bezig met aanmaken…" : "Maak ontbrekende documenten"}
+        </button>
+      </div>
+      {herstelMsg && <div className={"wp-check-msg" + (herstelFout ? " err" : "")}>{herstelMsg}</div>}
       <div className="doc-samenvatting">
         {totaal} {totaal === 1 ? "document" : "documenten"} over {paginas.length} {paginas.length === 1 ? "pagina" : "pagina’s"}
         {live > 0 && <> &middot; {live} staat live</>}

@@ -247,6 +247,11 @@ async function init(): Promise<void> {
   // Rijke kaart-koppelingen (C3b): taaktype (voor de dashboard-deeplink), link naar de
   // aangeleverde copy, en de bronmail waar de taak uit voortkomt.
   await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS taaktype TEXT`;
+  // Naar de developerpagina doorgezet. Die pagina werd alleen gevoed door de OUDE
+  // takentabel (client_tasks met status "naar dev"); de weekplanning schreef daar
+  // niets in, dus na de overstap was mailen het enige wat er nog over was.
+  await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS naar_dev BOOLEAN NOT NULL DEFAULT false`;
+  await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS naar_dev_at TIMESTAMPTZ`;
   await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS copy_url TEXT`;
   await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS bron_mail TEXT`;
 

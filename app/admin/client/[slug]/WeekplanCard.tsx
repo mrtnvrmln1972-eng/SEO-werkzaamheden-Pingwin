@@ -15,8 +15,8 @@ import { devLabel } from "../../../../lib/personen";
 import AntwoordBlokken from "./AntwoordBlokken";
 import DocVersies from "./DocVersies";
 
-export type WpTask = { id: number; thread: string; taak: string; toelichting: string; wie: string; url: string; taaktype: string; copyUrl: string; bronMail: string; weekYear: number; weekNo: number; status: string; sortOrder: number };
-export type WpPageInfo = { url: string; live: boolean; strategie: boolean; gelieerde: boolean; analyse: boolean; blauwdruk: boolean; copy: boolean; bouw: boolean; structured: boolean; structuredStatus: string; next: string; links: { analyse: string; blauwdruk: string; copy: string } };
+export type WpTask = { id: number; thread: string; taak: string; toelichting: string; wie: string; url: string; taaktype: string; copyUrl: string; bronMail: string; weekYear: number; weekNo: number; status: string; sortOrder: number; naarDev?: boolean };
+export type WpPageInfo = { url: string; live: boolean; klikken?: number; vertoningen?: number; doorgevoerd?: boolean | null; strategie: boolean; gelieerde: boolean; analyse: boolean; blauwdruk: boolean; copy: boolean; bouw: boolean; structured: boolean; structuredStatus: string; next: string; links: { analyse: string; blauwdruk: string; copy: string } };
 
 // Bij welk taaktype hoort welk dashboard-tabblad (voor de deep-link "doe het hier").
 const TAB_FOR_TYPE: Record<string, { tab: string; label: string }> = {
@@ -218,6 +218,24 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
   // Welke fases hun sturing tonen. Dicht is de standaard: je wilt de instructie
   // van de stap waar je mee bezig bent, niet die van alle vijf tegelijk.
   const [faseOpen, setFaseOpen] = useState<Record<string, boolean>>({});
+  // Staat deze kaart op de developerpagina?
+  const [naarDev, setNaarDev] = useState<boolean>(t.naarDev === true);
+  const [devBezig, setDevBezig] = useState(false);
+
+  async function zetNaarDev() {
+    if (devBezig) return;
+    const nieuw = !naarDev;
+    setDevBezig(true);
+    try {
+      const d = await fetch("/api/admin/weekplan", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, id: t.id, naarDev: nieuw }),
+      }).then((r) => r.json());
+      if (d?.ok) setNaarDev(nieuw);
+      else setFoutje(d?.error || "Doorzetten naar de developer mislukte.");
+    } catch { setFoutje("Doorzetten naar de developer mislukte."); }
+    finally { setDevBezig(false); }
+  }
   useEffect(() => {
     if (!open) return;
     fetch(`/api/admin/discuss?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).then((d) => {
@@ -257,13 +275,6 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
       if (d?.ok) { setOpruimMsg("Kaarttekst herschreven naar het vaste formaat (zelfde inhoud, geen dubbelingen)."); refreshBoard(); }
       else setOpruimMsg(d?.error || "Opruimen mislukt; er is niets gewijzigd.");
     } catch { setOpruimMsg("Opruimen mislukt; er is niets gewijzigd."); } finally { setBusy(""); }
-  }
-
-  async function vink(fase: FaseKey, done: boolean) {
-    try {
-      await fetch("/api/admin/weekplan/phase", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: t.url, fase, done }) });
-      refreshBoard();
-    } catch { /* stil */ }
   }
 
   // Een kaart zonder pagina krijgt een eigen bird's eye-gesprek (volledige
@@ -552,9 +563,11 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
             const rij = (
               <div key={f.key} className="wp-fase">
                 <div className="wp-fase-rij">
-                  <label className="wp-fase-check" title="Handmatig afvinken of terugzetten">
-                    <input type="checkbox" checked={!!page[f.key]} onChange={(e) => void vink(f.key, e.target.checked)} />
-                  </label>
+                  {/* Was een aankruisvakje, maar dat leek op iets dat je moest doen
+                      terwijl het alleen een aantekening maakte. Het dashboard meet
+                      elke fase inmiddels zelf, dus er blijft per rij één ding over dat
+                      iets doet (de knop) en één dat iets zegt (het chipje rechts). */}
+                  <span className={"wp-fase-bullet" + (page[f.key] ? " aan" : "")} aria-hidden="true" />
                   <span className="wp-fase-label">{f.label}</span>
                   {sturing && (
                     <button type="button" className="wp-fase-uitleg"
@@ -609,6 +622,15 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
         {/* Geen dubbele knop: bij paginakaarten dekt de Pagina's-knop hieronder het al. */}
         {tab && tab.tab !== "paginas" && <button type="button" className="wp-link wp-link-btn" title="Open dit dashboard-onderdeel in een nieuw tabblad" onClick={() => openTabNieuwTab(tab.tab)}>{tab.label}</button>}
         {t.url && <button type="button" className="wp-link wp-link-btn" title="Open de pagina in Pagina's (nieuw tabblad)" onClick={openPaginaNieuwTab}>Pagina&rsquo;s</button>}
+        {/* De developerpagina werd alleen gevoed door de oude takentabel, dus met de
+            weekplanning was mailen het enige wat er nog over was. Hiermee staat de
+            kaart weer gewoon op die pagina, waar jij en de sitebouwer hem allebei zien. */}
+        <button type="button" className={"wp-link wp-link-btn" + (naarDev ? " wp-link-aan" : "")}
+          disabled={devBezig}
+          title={naarDev ? "Staat op de developerpagina. Klik om hem er weer af te halen." : "Zet deze kaart op de developerpagina, naast de andere taken voor de sitebouwer."}
+          onClick={() => void zetNaarDev()}>
+          {devBezig ? "Bezig…" : naarDev ? "✓ Op developerpagina" : "Naar developer"}
+        </button>
         <button type="button" className="wp-act wp-act-klant" title="Mail over deze kaart; de ontvanger (klant, developer of anders) kies je in het venster." onClick={() => onMail("klant")}>Mail</button>
       </div>}
         </div>

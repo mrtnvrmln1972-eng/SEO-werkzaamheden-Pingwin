@@ -77,6 +77,15 @@ export async function POST(req: NextRequest) {
 
   const stepTitle = `${STEP_TITLE[kind]}: ${pagePath(url)}`;
 
+  // Zonder Drive-map werd de tekst wél opgeslagen maar kwam er nooit een bestand,
+  // zonder dat iemand dat merkte. Precies zo raakten de documenten van 2 juli zoek.
+  if (!folderId && !wantDownload) {
+    return NextResponse.json({
+      ok: false,
+      error: "Er is voor deze pagina nog geen Drive-map ingesteld, dus er kan geen document worden aangemaakt. Kies eerst een map bij 'Opslaan in'. De tekst is wel bewaard; met de herstelknop op het Documenten-tabblad maak je het bestand daarna alsnog.",
+    }, { status: 400 });
+  }
+
   if (folderId && !wantDownload) {
     // 1. Technische versie naar Drive.
     let link: string, shared: boolean, owner: string, folder: string, isDoc: boolean, note: string;

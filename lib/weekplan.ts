@@ -9,7 +9,7 @@
 import { sql, ensureSchema } from "./db";
 
 export type WeekplanTask = {
-  id: number; thread: string; taak: string; toelichting: string; wie: string; url: string;
+  id: number; thread: string; taak: string; toelichting: string; wie: string; url: string; naarDev?: boolean;
   taaktype: string; copyUrl: string; bronMail: string;
   weekYear: number; weekNo: number; status: string; sortOrder: number;
 };
@@ -30,12 +30,13 @@ export function isoWeek(d: Date): { year: number; week: number } {
 export async function getWeekplan(slug: string): Promise<WeekplanTask[]> {
   await ensureSchema();
   const { rows } = await sql`
-    SELECT id, thread, taak, toelichting, wie, url, taaktype, copy_url, bron_mail, week_year, week_no, status, sort_order
+    SELECT id, thread, taak, toelichting, wie, url, taaktype, copy_url, bron_mail, week_year, week_no, status, sort_order, naar_dev
     FROM client_weekplan WHERE client_slug = ${slug}
     ORDER BY week_year, week_no, sort_order, id`;
   return rows.map((r) => ({
     id: r.id as number, thread: (r.thread as string) || "", taak: (r.taak as string) || "",
     toelichting: (r.toelichting as string) || "",
+    naarDev: r.naar_dev === true,
     wie: (r.wie as string) || "SEO", url: (r.url as string) || "",
     taaktype: (r.taaktype as string) || "", copyUrl: (r.copy_url as string) || "", bronMail: (r.bron_mail as string) || "",
     weekYear: r.week_year as number, weekNo: r.week_no as number,
@@ -150,6 +151,20 @@ export async function updateWeekplanTask(slug: string, id: number, patch: { week
 }
 
 // Herschreven kaarttekst opslaan (de "Ruim op"-knop; altijd door Maarten getriggerd).
+/**
+ * Zet een kaart op de developerpagina, of haalt hem er weer af.
+ *
+ * Die pagina werd alleen gevoed door de OUDE takentabel (client_tasks met status
+ * "naar dev"). De weekplanning schreef daar niets in, ook niet als een kaart op Dev
+ * stond, dus na de overstap was mailen het enige wat er nog over was. Dit hangt de
+ * draad terug.
+ */
+export async function setWeekplanNaarDev(slug: string, id: number, naarDev: boolean): Promise<void> {
+  await ensureSchema();
+  await sql`UPDATE client_weekplan SET naar_dev = ${naarDev}, naar_dev_at = ${naarDev ? new Date().toISOString() : null}, updated_at = now()
+            WHERE client_slug = ${slug} AND id = ${id}`;
+}
+
 export async function updateWeekplanToelichting(slug: string, id: number, toelichting: string): Promise<void> {
   await ensureSchema();
   await sql`UPDATE client_weekplan SET toelichting = ${toelichting.trim().slice(0, 4000)}, updated_at = now() WHERE client_slug = ${slug} AND id = ${id}`;
