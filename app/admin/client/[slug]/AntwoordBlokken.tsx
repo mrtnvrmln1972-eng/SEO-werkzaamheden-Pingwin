@@ -1,8 +1,13 @@
 "use client";
 
 // Gedeelde weergave van een assistent-antwoord als sectie-kaartjes (per "## "-kop).
-// De Bird's eye is de BRIEVENBUS: elk herkenbaar punt is een taakrijtje met vier
-// knopjes (+ = kaart in de weekplanning, » = bespreeklijst, × = negeren,
+// De Bird's eye is de BRIEVENBUS, maar NIET elk punt is een taak: lib/punt-soort.ts
+// bepaalt per regel of het werk, een constatering of een vraag aan iemand is, en
+// alleen de knopjes die daarbij horen blijven staan. Eerder kreeg elke <li> alle
+// vier de knopjes, waardoor een statusregel ("wat er live is en hoe het presteert")
+// een plusje kreeg; dat maakte de lijst onbruikbaar. De soort wordt in de
+// weergave-laag bepaald, dus het geldt ook voor alle antwoorden die er al staan.
+// Vier knopjes (+ = kaart in de weekplanning, » = bespreeklijst, × = negeren,
 // ✓ = gedaan). Doorzetten is verplaatsen: zodra een punt een bestemming heeft,
 // klapt het in; onderaan de sectie blijft één samenvattingsregeltje ("N
 // afgehandeld: ...") dat je kunt openklappen om keuzes terug te draaien.
@@ -10,6 +15,7 @@
 // herhaald punt in een later antwoord staat automatisch al ingeklapt).
 
 import { useEffect, useRef, useState } from "react";
+import { puntSoort, knopjesVoor, isGroepskop, stripMarker, type PuntSoort } from "../../../../lib/punt-soort";
 
 type Sectie = { kop: string; md: string };
 type Feedback = { key: string; msg: string; ok: boolean };
@@ -104,19 +110,47 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
     kloon.querySelectorAll(".ovc-acties").forEach((b) => b.remove());
     return (kloon.textContent || "").replace(/\s+/g, " ").trim();
   }
-  const puntKey = (tekst: string) => hash(`${thread}|${norm(tekst)}`);
+  // De sleutel gaat over de KALE tekst (zonder "Doen:"-markering), zodat hij
+  // hetzelfde blijft nadat de markering uit beeld is gehaald. Oude antwoorden
+  // hebben geen markering, dus hun bestaande sleutels blijven precies gelijk.
+  const puntKey = (tekst: string) => hash(`${thread}|${norm(stripMarker(tekst))}`);
+
+  // Bepaalt de soort één keer per regel en onthoudt hem op het element, zodat de
+  // uitkomst niet verandert nadat de markering uit beeld is gehaald.
+  function soortVan(doel: Element, ruw: string): PuntSoort {
+    const bewaard = (doel as HTMLElement).dataset.soort as PuntSoort | undefined;
+    if (bewaard) return bewaard;
+    const s = puntSoort(ruw);
+    (doel as HTMLElement).dataset.soort = s;
+    return s;
+  }
+
+  // Haalt een "Doen: "-achtige markering uit het eerste tekstknooppunt weg; die is
+  // voor de indeling bedoeld en hoort nooit in beeld te komen.
+  function verbergMarkering(doel: Element): void {
+    const loop = document.createTreeWalker(doel, NodeFilter.SHOW_TEXT);
+    let n = loop.nextNode();
+    while (n && !(n.nodeValue || "").trim()) n = loop.nextNode();
+    if (!n) return;
+    const kaal = stripMarker(n.nodeValue || "");
+    if (kaal !== (n.nodeValue || "").trim()) n.nodeValue = kaal;
+  }
   // Sectie-herkenning: ook een hele sectie (bijv. een tabel-sectie) kan als
   // "verwerkt in de weekplanning" gemarkeerd worden en klapt dan in.
   const sectieSleutel = (s: Sectie) => hash(`${thread}|sectie|${norm(`${s.kop}|${s.md.slice(0, 200)}`)}`);
 
-  // Alle punt-sleutels binnen een sectie-blok (groepskopjes tellen niet mee).
+  // Alle WERK-sleutels binnen een sectie-blok. Groepskopjes en constateringen
+  // tellen niet mee: die worden geen kaart, dus ze horen ook niet als "verwerkt"
+  // gemarkeerd te worden als je de hele sectie doorzet.
   function sleutelsVan(blok: Element): string[] {
     const uit: string[] = [];
     blok.querySelectorAll(".ovc-acties").forEach((acties) => {
       const doel = acties.closest("li, p");
       if (!doel) return;
       const t = puntTekst(doel);
-      if (t && !/:\s*$/.test(t)) uit.push(puntKey(t));
+      if (!t || isGroepskop(t)) return;
+      if (soortVan(doel, t) !== "werk") return;
+      uit.push(puntKey(t));
     });
     return uit;
   }
@@ -135,7 +169,17 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
         if (!doel) return;
         const t = puntTekst(doel);
         // Groepskopjes ("Lokale hovenierspagina's ...:") zijn geen taken.
-        if (/:\s*$/.test(t)) { doel.classList.add("ovc-groepkop"); acties.remove(); return; }
+        if (isGroepskop(t)) { doel.classList.add("ovc-groepkop"); acties.remove(); return; }
+        // Alleen de knopjes die bij de soort horen; de rest verdwijnt. Een
+        // constatering houdt dus alleen de bespreeklijst over, geen plusje.
+        const soort = soortVan(doel, t);
+        verbergMarkering(doel);
+        const mag = knopjesVoor(soort);
+        if (!mag.plus) acties.querySelector(".ovc-act-plus")?.remove();
+        if (!mag.lijst) acties.querySelector(".ovc-act-lijst")?.remove();
+        if (!mag.weg) acties.querySelector(".ovc-act-x")?.remove();
+        if (!mag.vink) acties.querySelector(".ovc-act-v")?.remove();
+        doel.classList.toggle("ovc-punt-feit", soort === "feit");
         const staat = marks[puntKey(t)] || "";
         if (staat) teller[staat as PuntStaat]++;
         doel.classList.toggle("ovc-gedaan", staat === "klaar");

@@ -2220,6 +2220,17 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .ovc-blok-inhoud .ovc-groepkop, .ovc-blok-inhoud ul > li.ovc-groepkop, .ovc-blok-inhoud p.ovc-punt.ovc-groepkop {
   border: none; background: transparent; padding: 6px 2px 2px; margin: 4px 0 2px; border-radius: 0;
 }
+/* Constateringen zijn geen taken. Ze lezen als tekst in plaats van als kaartje,
+   zodat je in één oogopslag ziet wat werk is en wat een stand van zaken is.
+   Alleen de bespreeklijst blijft binnen handbereik, dus ook minder ruimte rechts. */
+.ovc-blok-inhoud ul > li.ovc-punt-feit, .ovc-blok-inhoud ol > li.ovc-punt-feit,
+.ovc-blok-inhoud p.ovc-punt.ovc-punt-feit {
+  border: none; background: transparent; border-radius: 0;
+  padding: var(--s-1) var(--s-8) var(--s-1) var(--s-4); margin: 0 0 var(--s-1);
+}
+.ovc-blok-inhoud ul > li.ovc-punt-feit::before, .ovc-blok-inhoud ol > li.ovc-punt-feit::before {
+  content: "•"; position: absolute; left: var(--s-1); color: var(--brand-taupe);
+}
 .ovc-act { width: 22px; height: 22px; border-radius: 50%; background: #fff; font-size: 14px; line-height: 18px; text-align: center; cursor: pointer; padding: 0; border: 1.5px solid; }
 .ovc-act-plus { border-color: #1c7a3f; color: #1c7a3f; }
 .ovc-act-plus:hover, .ovc-act-plus.ovc-act-aan { background: #1c7a3f; color: #fff; }
@@ -2731,6 +2742,44 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .wp-btn-ghost:hover { background: var(--orange-light); color: var(--orange-dark); border-color: var(--orange); }
 .wp-msg { margin-top: 7px; font-size: 12px; color: #1e824c; line-height: 1.4; }
 .wp-msg-err { color: #b3261e; }
+
+/* ── Geschreven versus doorgevoerd ──
+   "Gedaan" betekent voortaan dat de copy aantoonbaar op de site staat. Pagina's
+   waarvan de copy wel klaar is maar nog niet is doorgevoerd krijgen een eigen
+   groep, zodat je in één blik ziet waar het werk vastzit (meestal bij de
+   sitebouwer). De meting eronder maakt dat oordeel navolgbaar. */
+.wp-head-geschreven { color: #8a5a00; }
+.wp-chip-geschreven { color: #8a5a00; background: #fff3d9; }
+.wp-chip-onbekend { color: var(--gray); background: var(--gray-light); }
+.wp-live-meting { margin-top: var(--s-1); font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); }
+.wp-check-btn { font-size: var(--fs-xs); font-weight: 600; padding: var(--s-1) var(--s-3); border-radius: var(--r-sm); text-transform: none; letter-spacing: 0; }
+.wp-check-msg { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--muted); background: var(--orange-light); border-radius: var(--r-sm); padding: var(--s-2) var(--s-3); margin-bottom: var(--s-3); }
+
+/* Documenten als klikbare chips in plaats van kale tekst ("docs: analyse, copy").
+   Elke verwijzing naar een document is één klik weg; harde opmaakregel. */
+.wp-doc-chips { display: inline-flex; flex-wrap: wrap; gap: var(--s-1); }
+.wp-doc-chip { font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 600; border-radius: var(--r-sm); padding: 0 var(--s-2); text-decoration: none; color: #1e824c; background: #eaf6ef; border: 1px solid #cfe8da; }
+.wp-doc-chip:hover { background: #1e824c; border-color: #1e824c; color: #fff; }
+.wp-doc-chip-leeg { color: var(--gray); background: var(--gray-light); border-color: var(--border); cursor: default; }
+.wp-doc-chip-leeg:hover { background: var(--gray-light); border-color: var(--border); color: var(--gray); }
+
+/* ── Documenten-tab: alles wat we voor deze klant maakten, per maand ── */
+.doc-samenvatting { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray); margin-bottom: var(--s-4); }
+.doc-maand { margin-bottom: var(--s-6); }
+.doc-maand:last-child { margin-bottom: 0; }
+.doc-maand-kop {
+  display: flex; align-items: center; gap: var(--s-2);
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.6px; color: var(--orange-dark);
+  margin-bottom: var(--s-2);
+}
+.doc-rij { border: 1px solid var(--border); border-radius: var(--r-md); background: #fff; padding: var(--s-2) var(--s-3); margin-bottom: var(--s-2); }
+.doc-rij:last-child { margin-bottom: 0; }
+.doc-rij-top { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; }
+.doc-rij-docs { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-1); margin-top: var(--s-2); }
+.doc-chip-live { color: #1e824c; background: #eaf6ef; }
+.doc-datum { opacity: 0.7; font-weight: 400; }
+.doc-open { margin-left: var(--s-2); }
 
 /* "Eén volgende zet" op een werkplan-kaart */
 .wp-next { margin-top: 7px; font-size: 12px; line-height: 1.45; color: #333; }

@@ -19,6 +19,7 @@ import { getGscPageOpportunities } from "./google";
 import { cacheGet, cacheSet } from "./ahrefs";
 import { getMetaKansen } from "./meta-ctr";
 import { getOpportunities } from "./keyword-opportunities";
+import { getCopyLiveAll } from "./copy-live";
 
 const norm = (u: string) => (u || "").trim().replace(/\/+$/, "");
 
@@ -136,10 +137,15 @@ export type PageWork = {
   url: string; live: boolean; hasPlan: boolean; hasClusterAdvice: boolean;
   docs: string[]; summaryNu: string; summaryDoel: string; summaryZet: string;
   clicks: number; impressions: number;
+  // Staat de geschreven copy aantoonbaar op de pagina? null = nog niet gemeten.
+  doorgevoerd: boolean | null;
 };
 
 export async function getPageWorkStatus(slug: string): Promise<PageWork[]> {
-  const urls = await getClientUrls(slug).catch(() => []);
+  const [urls, copyLive] = await Promise.all([
+    getClientUrls(slug).catch(() => []),
+    getCopyLiveAll(slug).catch(() => ({} as Record<string, { doorgevoerd: boolean; meetbaar: boolean }>)),
+  ]);
   let docsByUrl: Record<string, string[]> = {};
   let sumByUrl: Record<string, { nu: string; doel: string; zet: string }> = {};
   try {
@@ -157,6 +163,9 @@ export async function getPageWorkStatus(slug: string): Promise<PageWork[]> {
       url: u.url, live: u.status === 200, hasPlan: !!(u.plan || "").trim(), hasClusterAdvice: !!u.hasClusterAdvice,
       docs: docsByUrl[k] || [], summaryNu: sum.nu, summaryDoel: sum.doel, summaryZet: sum.zet,
       clicks: u.gscClicks || 0, impressions: u.gscImpressions || 0,
+      // Alleen een oordeel als we de pagina echt konden lezen; anders null
+      // ("nog niet gecontroleerd"), nooit een onterechte "staat niet live".
+      doorgevoerd: copyLive[urlKey(u.url)]?.meetbaar ? copyLive[urlKey(u.url)].doorgevoerd : null,
     };
   });
 }
@@ -178,7 +187,14 @@ export function pageWorkStatusToText(pages: PageWork[]): string {
       const docs = p.docs.length ? ` [documenten: ${p.docs.join(", ")}]` : "";
       const plan = p.hasPlan ? " [strategie vastgelegd]" : p.hasClusterAdvice ? " [half plan/vertrekpunt]" : "";
       const sum = p.summaryZet ? ` — volgende zet: ${p.summaryZet}` : p.summaryDoel ? ` — doel: ${p.summaryDoel}` : "";
-      lines.push(`- ${short(p.url)}${plan}${docs}${sum}`);
+      // Geschreven is niet doorgevoerd. Zonder dit onderscheid noemt de assistent
+      // een pagina "klaar" terwijl de tekst nog bij de sitebouwer ligt.
+      const live = p.docs.includes("copy")
+        ? p.doorgevoerd === true ? " [copy staat LIVE op de pagina]"
+          : p.doorgevoerd === false ? " [copy GESCHREVEN maar nog NIET doorgevoerd op de site]"
+          : " [nog niet gecontroleerd of de copy live staat]"
+        : "";
+      lines.push(`- ${short(p.url)}${plan}${docs}${live}${sum}`);
     }
   }
   if (onbewerkt.length) {
@@ -230,13 +246,14 @@ export type WeekplanPageInfo = {
 };
 
 export async function getWeekplanPages(slug: string, onlyKeys?: Set<string>): Promise<Record<string, WeekplanPageInfo>> {
-  const [pages, everDone, links, schemaStatus, marks, uitgaand] = await Promise.all([
+  const [pages, everDone, links, schemaStatus, marks, uitgaand, copyLive] = await Promise.all([
     getPageWorkStatus(slug),
     getStepsEverDoneAll(slug).catch(() => ({} as Record<string, { analyse: boolean; blauwdruk: boolean; copy: boolean }>)),
     getStepLinksAll(slug).catch(() => ({} as Record<string, { analyse: string; blauwdruk: string; copy: string }>)),
     getPageSchemaStatusAll(slug).catch(() => ({} as Record<string, string>)),
     getPhaseMarksAll(slug).catch(() => ({} as Record<string, Partial<Record<string, boolean>>>)),
     getOutgoingClusterCountAll(slug).catch(() => ({} as Record<string, number>)),
+    getCopyLiveAll(slug).catch(() => ({} as Record<string, { doorgevoerd: boolean; percentage: number; gemeten: string | null }>)),
   ]);
   const out: Record<string, WeekplanPageInfo> = {};
   for (const p of pages) {
@@ -256,7 +273,10 @@ export async function getWeekplanPages(slug: string, onlyKeys?: Set<string>): Pr
       analyse: fase("analyse", p.docs.includes("analyse") || done.analyse),
       blauwdruk: fase("blauwdruk", p.docs.includes("blauwdruk") || done.blauwdruk),
       copy: fase("copy", p.docs.includes("copy") || done.copy),
-      bouw: fase("bouw", false),
+      // Bouw en publicatie werd hier hard op false gezet en wachtte dus altijd op
+      // een handmatig vinkje. Nu meet copy-live.ts of de geschreven koppen echt
+      // op de pagina staan; een handmatig vinkje wint daar nog steeds van.
+      bouw: fase("bouw", copyLive[k]?.doorgevoerd === true),
       structured: fase("structured", sst === "done"),
       structuredStatus: sst,
       next: nextStep(p, { level: "none", label: "", position: null }).label,
@@ -267,27 +287,45 @@ export async function getWeekplanPages(slug: string, onlyKeys?: Set<string>): Pr
 }
 
 // ── Visueel werkplan: pagina's gegroepeerd in bezig / gepland / gedaan ──
+// "gedaan" betekent voortaan: de copy staat aantoonbaar op de site. Is de copy wel
+// geschreven maar nog niet doorgevoerd, dan is dat een eigen groep ("geschreven").
+// Eerder vielen die twee samen, waardoor het werkplan pagina's als klaar toonde die
+// nog bij de sitebouwer lagen.
+export type WerkplanStatus = "bezig" | "gepland" | "geschreven" | "gedaan";
 export type WerkplanItem = {
-  url: string; slug: string; live: boolean; status: "bezig" | "gepland" | "gedaan";
+  url: string; slug: string; live: boolean; status: WerkplanStatus;
   keyword: string; volume: number | null; position: number | null; impressions: number; clicks: number;
   kansLabel: string; kansLevel: string; docs: string[]; next: NextStep;
+  doorgevoerd: boolean; copyLivePct: number | null; copyLiveGemeten: string | null; copyLiveMeetbaar: boolean;
+  // De documenten zelf, zodat "docs: analyse, copy" geen kale tekst is maar
+  // linkjes waar je meteen op kunt klikken (harde opmaakregel: elke verwijzing klikbaar).
+  links: { analyse: string; blauwdruk: string; copy: string };
 };
-export type Werkplan = { bezig: WerkplanItem[]; gepland: WerkplanItem[]; gedaan: WerkplanItem[] };
+export type Werkplan = { bezig: WerkplanItem[]; gepland: WerkplanItem[]; geschreven: WerkplanItem[]; gedaan: WerkplanItem[] };
 
 function shortPath(u: string): string { try { const x = new URL(u); return x.pathname + x.search; } catch { return u; } }
 
 export async function buildWerkplan(slug: string, opts: { fresh?: boolean } = {}): Promise<Werkplan> {
   const client = await getClientBySlug(slug);
   const domain = client?.domain || "";
-  const [work, oppRows] = await Promise.all([getPageWorkStatus(slug), gscOpps(domain, !!opts.fresh)]);
+  const [work, oppRows, copyLive, docLinks] = await Promise.all([
+    getPageWorkStatus(slug),
+    gscOpps(domain, !!opts.fresh),
+    getCopyLiveAll(slug).catch(() => ({} as Record<string, { doorgevoerd: boolean; percentage: number; gemeten: string | null; meetbaar: boolean }>)),
+    getStepLinksAll(slug).catch(() => ({} as Record<string, { analyse: string; blauwdruk: string; copy: string }>)),
+  ]);
   const oppBy: Record<string, (typeof oppRows)[number]> = Object.fromEntries(oppRows.map((p) => [norm(p.url), p]));
   const items: WerkplanItem[] = [];
   for (const p of work) {
     const o = oppBy[norm(p.url)];
     const opp = o ? opportunity(o.impressions, o.position) : { score: 0, label: "", level: "none" };
-    const gedaan = p.docs.includes("copy") || (p.hasPlan && p.docs.length > 0);
-    const bezig = !gedaan && (p.hasPlan || p.docs.length > 0 || p.hasClusterAdvice);
-    let status: "bezig" | "gepland" | "gedaan" | null = gedaan ? "gedaan" : bezig ? "bezig" : null;
+    const meting = copyLive[urlKey(p.url)];
+    const doorgevoerd = meting?.doorgevoerd === true;
+    // Copy klaar = wij hebben hem geschreven. Dat is nog geen "gedaan": pas als de
+    // koppen aantoonbaar op de live pagina staan is het werk echt af.
+    const copyKlaar = p.docs.includes("copy") || (p.hasPlan && p.docs.length > 0);
+    const bezig = !copyKlaar && (p.hasPlan || p.docs.length > 0 || p.hasClusterAdvice);
+    let status: WerkplanStatus | null = copyKlaar ? (doorgevoerd ? "gedaan" : "geschreven") : bezig ? "bezig" : null;
     if (!status) {
       if (!p.live) status = "gepland";            // nog te bouwen pagina
       else if (opp.level !== "none") status = "gepland"; // bestaande kans, nog niet gestart
@@ -299,13 +337,18 @@ export async function buildWerkplan(slug: string, opts: { fresh?: boolean } = {}
       impressions: o?.impressions ?? p.impressions, clicks: o?.clicks ?? p.clicks,
       kansLabel: opp.label, kansLevel: opp.level, docs: p.docs,
       next: nextStep(p, { level: opp.level, label: opp.label, position: o?.position ?? null }),
+      doorgevoerd, copyLivePct: meting ? meting.percentage : null, copyLiveGemeten: meting?.gemeten ?? null,
+      copyLiveMeetbaar: meting?.meetbaar === true,
+      links: docLinks[urlKey(p.url)] || { analyse: "", blauwdruk: "", copy: "" },
     });
   }
   const byKans = (a: WerkplanItem, b: WerkplanItem) => (b.impressions || 0) - (a.impressions || 0);
+  const opNaam = (a: WerkplanItem, b: WerkplanItem) => a.slug.localeCompare(b.slug);
   return {
     bezig: items.filter((i) => i.status === "bezig"),
     gepland: items.filter((i) => i.status === "gepland").sort(byKans),
-    gedaan: items.filter((i) => i.status === "gedaan").sort((a, b) => a.slug.localeCompare(b.slug)),
+    geschreven: items.filter((i) => i.status === "geschreven").sort(opNaam),
+    gedaan: items.filter((i) => i.status === "gedaan").sort(opNaam),
   };
 }
 

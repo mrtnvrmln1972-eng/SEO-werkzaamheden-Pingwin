@@ -25,10 +25,11 @@ import KpiPanel from "./KpiPanel";
 import PagesPanel from "./PagesPanel";
 import WijzigingenPanel from "./WijzigingenPanel";
 import MetaCtrPanel from "./MetaCtrPanel";
+import DocumentenPanel from "./DocumentenPanel";
 import InvoiceAlert from "./InvoiceAlert";
 import SelectionActions from "./SelectionActions";
 
-type Tab = "werkzaamheden" | "paginas" | "resultaten" | "klant" | "developer" | "wijzigingen" | "cannibalisatie" | "interne-links" | "meta";
+type Tab = "werkzaamheden" | "paginas" | "documenten" | "resultaten" | "klant" | "developer" | "wijzigingen" | "cannibalisatie" | "interne-links" | "meta";
 
 // Jouw Superhuman-account (Microsoft 365 hangt hieronder).
 const SUPERHUMAN_ACCOUNT = "Maarten@pingwin.nl";
@@ -396,6 +397,7 @@ export default function ClientCockpit({
             {([
               ["werkzaamheden", "Taken", "De bird's eye-assistent en de weekplanning, jouw werkplek"],
               ["paginas", "Pagina’s", ""],
+              ["documenten", "Documenten", "Alle analyses, blauwdrukken en copy per pagina, per maand, met of het al op de site staat"],
               ["meta", "Meta & CTR", "Pagina's met veel vertoningen maar te weinig klikken: betere meta-teksten = direct meer bezoekers"],
               ["resultaten", "KPI’s", ""],
               ["wijzigingen", "Wijzigingen", ""],
@@ -679,6 +681,7 @@ export default function ClientCockpit({
           </div>
         )}
 
+        {tab === "documenten" && <DocumentenPanel slug={client.slug} onGoToPage={goToPage} />}
         {tab === "wijzigingen" && <WijzigingenPanel slug={client.slug} />}
 
         {tab === "meta" && <MetaCtrPanel slug={client.slug} domain={client.domain || ""} backendUrl={client.backendUrl} onOpenPage={goToPage} />}

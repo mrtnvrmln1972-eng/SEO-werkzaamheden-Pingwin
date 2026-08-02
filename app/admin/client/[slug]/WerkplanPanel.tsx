@@ -3,15 +3,41 @@
 import { useEffect, useState } from "react";
 
 type NextStep = { label: string; actie: "pijplijn_starten" | "meta_verbeteren" | "alt_teksten" | "open"; steps?: string[]; zin: string };
+type DocLinks = { analyse: string; blauwdruk: string; copy: string };
 type Item = {
-  url: string; slug: string; live: boolean; status: "bezig" | "gepland" | "gedaan";
+  url: string; slug: string; live: boolean; status: "bezig" | "gepland" | "geschreven" | "gedaan";
   keyword: string; volume: number | null; position: number | null; impressions: number; clicks: number;
   kansLabel: string; kansLevel: string; docs: string[]; next: NextStep;
+  doorgevoerd: boolean; copyLivePct: number | null; copyLiveGemeten: string | null; copyLiveMeetbaar: boolean;
+  links: DocLinks;
 };
-type Werkplan = { ok: boolean; bezig: Item[]; gepland: Item[]; gedaan: Item[] };
+type Werkplan = { ok: boolean; bezig: Item[]; gepland: Item[]; geschreven: Item[]; gedaan: Item[] };
 
 function fmt(n: number | null): string { return (n || 0).toLocaleString("nl-NL"); }
 const ahrefsKwUrl = (kw: string) => `https://app.ahrefs.com/keywords-explorer/google/nl/overview?keyword=${encodeURIComponent(kw)}`;
+const DOC_LABEL: Record<string, string> = { analyse: "Analyse", blauwdruk: "Blauwdruk", copy: "Copy" };
+
+// De documenten als linkjes in plaats van als kale tekst. Is er (nog) geen link
+// bewaard, dan tonen we de naam wel maar zonder link; zo zie je nog steeds dat
+// het document bestaat.
+function DocChips({ docs, links }: { docs: string[]; links?: DocLinks }) {
+  if (!docs.length) return null;
+  const volgorde = ["analyse", "blauwdruk", "copy"].filter((k) => docs.includes(k));
+  const rest = docs.filter((d) => !volgorde.includes(d));
+  return (
+    // Bewust NIET de klasse wp-docs: die bestaat al voor het documentenblok op de
+    // weekplan-kaart en zou deze chips onder elkaar zetten.
+    <span className="wp-doc-chips">
+      {[...volgorde, ...rest].map((d) => {
+        const href = links?.[d as keyof DocLinks] || "";
+        const label = DOC_LABEL[d] || d;
+        return href
+          ? <a key={d} className="wp-doc-chip" href={href} target="_blank" rel="noreferrer" title={`Open het ${label.toLowerCase()}-document`}>{label}</a>
+          : <span key={d} className="wp-doc-chip wp-doc-chip-leeg" title="Dit document bestaat, maar er is geen link bewaard">{label}</span>;
+      })}
+    </span>
+  );
+}
 
 // Eén pagina-kaart: de ene volgende zet als primaire knop, de rest secundair
 // achter "meer". De klik ís de goedkeuring; de zware back-end draait erachter.
@@ -43,14 +69,31 @@ function PageCard({ it, slug, onGoToPage, onGoToMeta }: { it: Item; slug: string
         <a className="wp-slug" href={it.url} target="_blank" rel="noreferrer" title="Open de live pagina">{it.slug}</a>
         {it.kansLabel && <span className={"pg-kans " + it.kansLevel}>{it.kansLabel}</span>}
         {!it.live && <span className="wp-chip wp-chip-plan">te bouwen</span>}
+        {it.status === "geschreven" && (
+          it.copyLiveMeetbaar
+            ? <span className="wp-chip wp-chip-geschreven" title="De copy is geschreven maar staat nog niet op de pagina">nog niet doorgevoerd</span>
+            : <span className="wp-chip wp-chip-onbekend" title="De pagina kon niet gelezen worden, dus we weten niet of de copy erop staat">niet gecontroleerd</span>
+        )}
       </div>
-      {(it.keyword || it.impressions > 0) && (
+      {(it.keyword || it.impressions > 0 || it.docs.length > 0) && (
         <div className="wp-meta">
           {it.keyword && <span className="wp-kw">{it.keyword}</span>}
           {it.position != null && <span>pos {it.position}</span>}
           {it.impressions > 0 && <span>{fmt(it.impressions)} vert.</span>}
           {it.volume != null && <span>vol {fmt(it.volume)}</span>}
-          {it.docs.length > 0 && <span className="wp-docs">docs: {it.docs.join(", ")}</span>}
+          <DocChips docs={it.docs} links={it.links} />
+        </div>
+      )}
+
+      {/* Wat de meting zag, zodat "nog niet doorgevoerd" navolgbaar is en niet
+          zomaar een oordeel. */}
+      {it.copyLivePct != null && it.status !== "gepland" && (
+        <div className="wp-live-meting">
+          {!it.copyLiveMeetbaar
+            ? "De pagina kon niet gelezen worden, dus dit is niet gecontroleerd."
+            : it.doorgevoerd
+              ? `Copy staat live (${it.copyLivePct}% van de koppen gevonden op de pagina).`
+              : `Copy nog niet op de pagina gevonden (${it.copyLivePct}% van de koppen).`}
         </div>
       )}
 
@@ -84,25 +127,55 @@ export default function WerkplanPanel({ slug, onGoToPage, onGoToMeta }: { slug: 
   const [data, setData] = useState<Werkplan | null>(null);
   const [loading, setLoading] = useState(true);
   const [gedaanOpen, setGedaanOpen] = useState(false);
+  const [checkBezig, setCheckBezig] = useState(false);
+  const [checkMsg, setCheckMsg] = useState("");
   const cacheKey = `pw_werkplan_${slug}`;
+
+  function laad(): Promise<void> {
+    return fetch(`/api/admin/werkplan?slug=${encodeURIComponent(slug)}`)
+      .then((r) => r.json())
+      .then((d) => { if (d?.ok) { setData(d); try { localStorage.setItem(cacheKey, JSON.stringify(d)); } catch { /* cache is extra */ } } })
+      .catch(() => {});
+  }
+
+  // Meet of de geschreven copy echt op de site staat en ververs daarna het plan,
+  // zodat je meteen ziet wat er verschuift van "geschreven" naar "gedaan".
+  async function controleerSite() {
+    if (checkBezig) return;
+    setCheckBezig(true); setCheckMsg("");
+    try {
+      const d = await fetch("/api/admin/copy-live", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }) }).then((r) => r.json());
+      setCheckMsg(d?.ok ? d.samenvatting : (d?.error || "De controle mislukte."));
+      if (d?.ok) await laad();
+    } catch {
+      setCheckMsg("De controle mislukte. Probeer het nog een keer.");
+    } finally { setCheckBezig(false); }
+  }
 
   useEffect(() => {
     let alive = true;
     try { const c = localStorage.getItem(cacheKey); if (c) { const p = JSON.parse(c); if (p?.ok) { setData(p); setLoading(false); } } } catch { /* geen cache */ }
-    fetch(`/api/admin/werkplan?slug=${encodeURIComponent(slug)}`)
-      .then((r) => r.json()).then((d) => { if (alive && d.ok) { setData(d); try { localStorage.setItem(cacheKey, JSON.stringify(d)); } catch { /* extra */ } } })
-      .catch(() => {}).finally(() => { if (alive) setLoading(false); });
+    laad().finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; }; /* eslint-disable-next-line react-hooks/exhaustive-deps */
   }, [slug]);
 
   if (loading && !data) return <div className="cockpit-card"><div className="muted">Werkplan laden…</div></div>;
   if (!data) return null;
   const { bezig, gepland, gedaan } = data;
-  const empty = bezig.length === 0 && gepland.length === 0 && gedaan.length === 0;
+  // Oudere gecachte antwoorden kennen de groep "geschreven" nog niet.
+  const geschreven = data.geschreven || [];
+  const empty = bezig.length === 0 && gepland.length === 0 && geschreven.length === 0 && gedaan.length === 0;
 
   return (
     <div className="cockpit-card wp-panel">
-      <div className="ck-section-head"><span>Werkplan</span></div>
+      <div className="ck-section-head">
+        <span>Werkplan</span>
+        <button type="button" className="btn btn-ghost wp-check-btn" onClick={() => void controleerSite()} disabled={checkBezig}
+          title="Haalt elke pagina met copy op van de site en kijkt of de geschreven koppen er echt op staan">
+          {checkBezig ? "Bezig met controleren…" : "Controleer de site"}
+        </button>
+      </div>
+      {checkMsg && <div className="wp-check-msg">{checkMsg}</div>}
       {empty && <div className="muted" style={{ fontSize: 13 }}>Nog geen werkplan. Vraag de bird&rsquo;s eye hiernaast bijvoorbeeld: &ldquo;Vul het werkplan vanuit onze afgesproken navigatie.&rdquo;</div>}
 
       {bezig.length > 0 && (
@@ -116,6 +189,13 @@ export default function WerkplanPanel({ slug, onGoToPage, onGoToMeta }: { slug: 
         <div className="wp-group">
           <div className="wp-group-head wp-head-gepland">Gepland / kansen <span className="wp-count">{gepland.length}</span></div>
           {gepland.map((it) => <PageCard key={it.url} it={it} slug={slug} onGoToPage={onGoToPage} onGoToMeta={onGoToMeta} />)}
+        </div>
+      )}
+
+      {geschreven.length > 0 && (
+        <div className="wp-group">
+          <div className="wp-group-head wp-head-geschreven">Geschreven, nog niet doorgevoerd <span className="wp-count">{geschreven.length}</span></div>
+          {geschreven.map((it) => <PageCard key={it.url} it={it} slug={slug} onGoToPage={onGoToPage} onGoToMeta={onGoToMeta} />)}
         </div>
       )}
 

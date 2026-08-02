@@ -25,7 +25,10 @@ export async function fetchPageContent(url: string): Promise<PageContent> {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), 12000);
   try {
-    const res = await fetch(url, { redirect: "follow", signal: ctl.signal });
+    // Zonder User-Agent weigeren veel klantsites (WordPress met een
+    // beveiligingsplugin) het verzoek met een 403. De rest van het dashboard
+    // stuurt deze al mee (page-measure.ts, page-schema.ts); hier ontbrak hij nog.
+    const res = await fetch(url, { redirect: "follow", signal: ctl.signal, headers: { "User-Agent": "Mozilla/5.0 PingwinBot" } });
     if (!res.ok) return { ...empty, status: res.status };
     const html = await res.text();
 
