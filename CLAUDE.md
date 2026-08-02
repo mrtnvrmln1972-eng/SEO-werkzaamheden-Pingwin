@@ -36,9 +36,10 @@ laadt. Wijzigt de werkwijze, houd master en alle kopieën gelijk.
 - **Bewijs boven beloftes.** Zeg niet "het werkt", laat het zien (test, output, live URL).
   Kondig je een controle aan, voer die dan ook echt uit.
 - **Mens aan het stuur.** Niets gaat autonoom naar buiten; Maarten keurt goed.
-- **Plannen eerst in gewone taal in de chat.** Werk je een plan uit, leg het dan altijd éérst
-  begrijpelijk uit in de chat zelf; Maarten hoeft geen zijpaneel te openen. Wat er toch in een
-  planbestand of paneel staat, is diezelfde begrijpelijke tekst, techniek hooguit kort onderaan.
+- **Plannen eerst in gewone taal in de chat, en het planbestand is óók gewone taal.** Eerst de
+  volledige uitleg begrijpelijk in de chat, vóór elke goedkeuringsvraag. Het planbestand in het
+  zijpaneel bevat exact diezelfde begrijpelijke tekst, met hooguit twee regels techniek onderaan
+  onder "Technisch voetnootje". Maarten hoeft het zijpaneel nooit te openen.
 
 **Meedenken als coach, niet als uitvoerder**
 
