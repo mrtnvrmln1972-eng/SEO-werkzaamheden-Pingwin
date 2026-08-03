@@ -3256,3 +3256,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .opr-details summary { cursor: pointer; font-weight: 700; font-size: var(--fs-sm); color: var(--gray); }
 .opr-details summary:hover { color: var(--dark); }
 .opr-voet-balk { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; margin-top: var(--s-4); padding-top: var(--s-3); border-top: 1px solid #F3E9E1; }
+/* Structuuroverzicht boven de werklijst. */
+.opr-str { margin-bottom: var(--s-6); }
+.opr-str-laden { margin-bottom: var(--s-4); font-size: var(--fs-sm); }
+.opr-str-kpi { display: flex; gap: var(--s-3); flex-wrap: wrap; margin-bottom: var(--s-3); }
+.opr-str-kpi div { flex: 1 1 130px; border: 1px solid var(--card-border); border-radius: var(--r-lg); padding: var(--s-3) var(--s-4); }
+.opr-str-kpi b { display: block; font-size: var(--fs-xl); line-height: var(--lh-xl); color: var(--orange-dark); }
+.opr-str-kpi span { font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); }
+.opr-num { text-align: right; white-space: nowrap; }
+.opr-dood { color: var(--orange-dark); }
+.opr-vb { font-family: ui-monospace, Menlo, monospace; font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); }
+.opr-details-body { margin-top: var(--s-3); }

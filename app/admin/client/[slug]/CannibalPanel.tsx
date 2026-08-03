@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { mdToHtml } from "../../../../lib/markdown";
 import OpruimTabel from "./OpruimTabel";
+import OpruimStructuur from "./OpruimStructuur";
 
 type ClusterUrl = { url: string; rol?: string; positie?: number; klikken?: number; impressies?: number; verwijzendeDomeinen?: number; intentie?: string };
 type Signalen = { urlFlip?: boolean; flipsIn90d?: number; positiePlafond?: boolean; klikVerdeling?: boolean };
@@ -94,6 +95,8 @@ export default function CannibalPanel({ slug, domain = "" }: { slug: string; dom
               </div>
             )}
 
+            <OpruimStructuur slug={slug} />
+
             {/* De werklijst eerst. Het verhaal eronder: een lijst is om af te werken,
                 proza is om te begrijpen, en in die volgorde. */}
             {result.redirectMap && result.redirectMap.length > 0 && (
@@ -110,6 +113,12 @@ export default function CannibalPanel({ slug, domain = "" }: { slug: string; dom
               </details>
             )}
 
+            {/* Alle onderbouwing bij elkaar en dichtgeklapt. Stond eerst als zeven
+                lappen proza vóór de tabel; dat is om te begrijpen, niet om af te
+                werken. Openklappen kan altijd, het gaat nergens heen. */}
+            <details className="opr-details">
+              <summary>Onderbouwing per cluster ({result.clusters.length}) en interne-link-acties</summary>
+              <div className="opr-details-body">
             {result.clusters.length === 0 && <div className="muted" style={{ marginTop: 8 }}>Geen echte cannibalisatie-clusters gevonden.</div>}
 
             {result.clusters.map((c, i) => {
@@ -152,28 +161,6 @@ export default function CannibalPanel({ slug, domain = "" }: { slug: string; dom
               );
             })}
 
-            {result.redirectMap && result.redirectMap.length > 0 && (
-              <div className="cannibal-tech">
-                <div className="pcd-docs-head">301-redirectmap</div>
-                <div className="res-table-wrap">
-                  <table className="res-table">
-                    <thead><tr><th>Van</th><th>Naar</th><th>Type</th><th>Content mergen</th><th>Reden</th></tr></thead>
-                    <tbody>
-                      {result.redirectMap.map((r, i) => (
-                        <tr key={i}>
-                          <td>{r.van}</td>
-                          <td>{r.naar}</td>
-                          <td>{r.type || "301"}</td>
-                          <td>{r.mergeContent ? "ja" : "—"}</td>
-                          <td className="muted" style={{ fontSize: 12 }}>{r.reden || ""}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
             {result.interneLinks && result.interneLinks.length > 0 && (
               <div className="cannibal-tech">
                 <div className="pcd-docs-head">Interne-link-acties</div>
@@ -194,6 +181,8 @@ export default function CannibalPanel({ slug, domain = "" }: { slug: string; dom
                 </div>
               </div>
             )}
+              </div>
+            </details>
           </>
         )}
       </div>
