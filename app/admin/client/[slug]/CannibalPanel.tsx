@@ -12,7 +12,7 @@ type RedirectMapItem = { van: string; naar: string; type?: string; mergeContent?
 type InterneLink = { vanaf: string; naar: string; ankertekst?: string; reden?: string };
 type Datakwaliteit = { gsc?: boolean; gscTijdreeks?: boolean; ahrefsZoekwoorden?: boolean; ahrefsBacklinks?: boolean; crawl?: boolean; opmerking?: string };
 type Result = { samenvatting: string; datakwaliteit?: Datakwaliteit; clusters: Cluster[]; redirectMap?: RedirectMapItem[]; interneLinks?: InterneLink[]; generatedAt: string | null };
-type State = { status: string; result: Result | null; error: string; updatedAt: string | null };
+type State = { status: string; result: Result | null; error: string; updatedAt: string | null; stap?: number; stappen?: number; stapLabel?: string };
 
 function actionClass(a: string): string {
   const s = (a || "").toLowerCase();
@@ -36,7 +36,7 @@ export default function CannibalPanel({ slug, domain = "" }: { slug: string; dom
   async function load() {
     try {
       const d = await fetch(`/api/admin/cannibal-redirect?slug=${encodeURIComponent(slug)}`).then((r) => r.json());
-      if (d.ok) setState({ status: d.status, result: d.result, error: d.error, updatedAt: d.updatedAt });
+      if (d.ok) setState({ status: d.status, result: d.result, error: d.error, updatedAt: d.updatedAt, stap: d.stap, stappen: d.stappen, stapLabel: d.stapLabel });
     } catch { /* stil */ }
   }
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [slug]);
@@ -62,6 +62,11 @@ export default function CannibalPanel({ slug, domain = "" }: { slug: string; dom
   const running = state?.status === "running";
   const result = state?.result;
   const dk = result?.datakwaliteit;
+  // De datum van de lijst die je NU ziet. Niet updatedAt: dat is tijdens een run de
+  // hartslag van de werker, dus een oude lijst zou vers lijken.
+  const lijstDatum = result?.generatedAt || (state?.status === "done" ? state?.updatedAt : null);
+  const regels = result?.redirectMap?.length || 0;
+  const stappen = state?.stappen || 5;
 
   return (
     <div className="cannibal-panel">
@@ -77,12 +82,25 @@ export default function CannibalPanel({ slug, domain = "" }: { slug: string; dom
         </p>
         {err && <div className="login-error" style={{ marginBottom: 8 }}>{err}</div>}
         {state?.status === "error" && state.error && <div className="login-error" style={{ marginBottom: 8 }}>{state.error}</div>}
-        {running && !result && <div className="muted">Analyse draait op de achtergrond… (dit kan een minuut duren)</div>}
+        {/* Voortgang, want een spinner zonder stand is niet te onderscheiden van
+            vastgelopen. Precies dat gebeurde op 03-08-2026: de run was al dood en
+            het scherm bleef "draait…" tonen. */}
+        {running && (
+          <div className="opr-voortgang">
+            <span className="opr-voortgang-stap">Stap {state?.stap || 1} van {stappen}</span>
+            <span className="opr-voortgang-label">{state?.stapLabel || "De analyse wordt gestart"}</span>
+            {regels > 0 && <span className="opr-voortgang-tel">{regels} regels tot nu toe</span>}
+            <span className="opr-voortgang-tijd">De hele analyse duurt een kwartier tot twintig minuten. Je kunt wegklikken; hij loopt door.</span>
+          </div>
+        )}
         {!result && !running && state?.status !== "error" && <div className="muted">Nog geen analyse. Klik &ldquo;Analyse draaien&rdquo;.</div>}
 
         {result && (
           <>
-            {state?.updatedAt && <div className="ck-updated" style={{ marginBottom: 10 }}>bijgewerkt {new Date(state.updatedAt).toLocaleString("nl-NL")}{running ? " · nieuwe analyse draait…" : ""}</div>}
+            <div className="ck-updated" style={{ marginBottom: 10 }}>
+              {lijstDatum ? `Deze lijst is van ${new Date(lijstDatum).toLocaleString("nl-NL")}` : "Deze lijst heeft geen datum"}
+              {running ? " · de nieuwe analyse draait nog, dit is nog de vorige" : ""}
+            </div>
 
             {dk && (
               <div className="cannibal-dk">

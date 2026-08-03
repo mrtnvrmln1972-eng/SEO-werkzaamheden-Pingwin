@@ -3,10 +3,12 @@ import { waitUntil } from "@vercel/functions";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
 import { anthropicConfigured } from "../../../../lib/anthropic";
-import { getCannibalAnalysis, markCannibalRunning, runCannibalRedirect } from "../../../../lib/cannibal-redirect";
+import { getCannibalAnalysis, startCannibalRun, runCannibalRedirect } from "../../../../lib/cannibal-redirect";
 
 export const runtime = "nodejs";
-export const maxDuration = 300;
+// 800s (Vercel Pro/Fluid), net als de documenten-werker. Eén analyse duurt langer dan
+// dit venster; wat er niet in past hervat de cron-werker /api/cron/opruim-runs.
+export const maxDuration = 800;
 
 function admin(req: NextRequest): boolean {
   return verifyAdminSession(req.cookies.get(ADMIN_COOKIE)?.value);
@@ -30,7 +32,7 @@ export async function POST(req: NextRequest) {
   const slug = String(body.slug || "").trim();
   if (!slug) return NextResponse.json({ ok: false, error: "Geen klant opgegeven." }, { status: 400 });
   const g = await guardSlug(req, slug); if (!g.ok) return g.res;
-  await markCannibalRunning(slug);
+  await startCannibalRun(slug);
   waitUntil(runCannibalRedirect(slug));
   return NextResponse.json({ ok: true, started: true });
 }

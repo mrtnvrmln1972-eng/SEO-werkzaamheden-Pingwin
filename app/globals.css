@@ -3217,6 +3217,27 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
    lees je. Andersom (zoals het eerst was) is zeventig regels onwerkbaar. */
 .opr-blok { margin-bottom: var(--s-6); }
 .opr-kop { font-weight: 800; font-size: var(--fs-md); line-height: var(--lh-md); color: var(--orange); margin-bottom: var(--s-3); }
+/* Voortgang van de opruim-analyse. Een spinner zonder stand is niet te
+   onderscheiden van vastgelopen; hier staat altijd bij welke stap hij is. */
+.opr-voortgang {
+  display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap;
+  margin-bottom: var(--s-4); padding: var(--s-3) var(--s-4);
+  border: 1px solid var(--border); border-left: 3px solid var(--orange);
+  border-radius: var(--r-md); background: var(--brand-orange-faint);
+}
+.opr-voortgang-stap {
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.03em;
+  padding: 2px var(--s-2); border-radius: var(--r-full);
+  background: var(--orange); color: #fff; white-space: nowrap;
+}
+.opr-voortgang-label { font-size: var(--fs-sm); line-height: var(--lh-sm); font-weight: 700; color: var(--dark); }
+.opr-voortgang-tel {
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
+  padding: 2px var(--s-2); border-radius: var(--r-full);
+  border: 1px solid var(--border); color: var(--gray); white-space: nowrap;
+}
+.opr-voortgang-tijd { flex: 1 1 100%; font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); }
 .opr-balk { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; margin-bottom: var(--s-3); }
 .opr-zoek { flex: 1 1 220px; font-family: inherit; font-size: var(--fs-base); line-height: var(--lh-base); padding: var(--s-2) var(--s-3); border: 1px solid var(--border); border-radius: var(--r-md); }
 .opr-zoek:focus { outline: none; border-color: var(--orange); box-shadow: 0 0 0 3px rgba(231, 119, 63, 0.15); }

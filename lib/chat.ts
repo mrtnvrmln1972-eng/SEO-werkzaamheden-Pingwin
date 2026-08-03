@@ -17,7 +17,7 @@ import { validateAction, executeAction, type ProposedAction } from "./overview-a
 import { controleerAntwoord, herstelOpdracht } from "./antwoord-controle";
 import { overlappendePaginas, overlapAlsTekst, zwakkePaginas } from "./concurrenten";
 import { getPageInternalLinks, runPageInternalLinks } from "./page-internal-links";
-import { getCannibalAnalysis, runCannibalRedirect } from "./cannibal-redirect";
+import { getCannibalAnalysis, resultDatum, startCannibalRun, runCannibalRedirect } from "./cannibal-redirect";
 import type { ClientConfig } from "./clients";
 
 // ═══════════════════════════════════════════════════════════
@@ -502,15 +502,16 @@ function chatTools(client: ClientConfig): { tools: ToolDef[]; run: ToolRunner } 
       }
       if (name === "cannibalisatie_analyse") {
         const st = await getCannibalAnalysis(client.slug);
-        if (st.status === "running") return "De volledige cannibalisatie-analyse draait nog. Zeg dat tegen Maarten, geef aan dat het een paar minuten kost, en doe zelf GEEN uitspraak over welke pagina's opgeruimd moeten worden.";
+        if (st.status === "running") return `De volledige cannibalisatie-analyse draait nog: stap ${st.stap} van ${st.stappen} (${st.stapLabel}). Zeg dat tegen Maarten, noem bij welke stap hij is, geef aan dat de hele analyse een kwartier tot twintig minuten kost, en doe zelf GEEN uitspraak over welke pagina's opgeruimd moeten worden.`;
         // Een maand oude "klaar" is geen klaar. De analyse van One Day Clinic stond
         // op done met een uitkomst van 6 juli; zonder deze controle zou die als de
         // huidige stand worden gepresenteerd. Ouder dan een week = opnieuw draaien.
-        const dagenOud = st.updatedAt ? (Date.now() - new Date(st.updatedAt).getTime()) / 86400000 : Infinity;
+        const datum = resultDatum(st);
+        const dagenOud = datum ? (Date.now() - new Date(datum).getTime()) / 86400000 : Infinity;
         if (input.opnieuw === true || st.status === "idle" || st.status === "error" || !st.result || dagenOud > 7) {
-          try { void runCannibalRedirect(client.slug); } catch { /* best effort */ }
+          try { void startCannibalRun(client.slug).then(() => runCannibalRedirect(client.slug)).catch(() => { /* de cron pikt hem op */ }); } catch { /* best effort */ }
           const oud = st.result && Number.isFinite(dagenOud)
-            ? ` Er ligt nog een uitkomst van ${Math.round(dagenOud)} dagen geleden (${st.updatedAt ? new Date(st.updatedAt).toLocaleDateString("nl-NL") : "?"}); die is te oud om op te vertrouwen en gebruik je NIET.`
+            ? ` Er ligt nog een uitkomst van ${Math.round(dagenOud)} dagen geleden (${datum ? new Date(datum).toLocaleDateString("nl-NL") : "?"}); die is te oud om op te vertrouwen en gebruik je NIET.`
             : "";
           return `Ik heb de volledige cannibalisatie-analyse zojuist gestart; die kost een paar minuten.${oud} Zeg dat tegen Maarten en doe zelf GEEN uitspraak over wat er opgeruimd moet worden. Vraag hem zo opnieuw te vragen, dan is de verse redirectlijst er.`;
         }
@@ -961,15 +962,16 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
     if (/opruim|redirect|omleid|cannibal|kannibal|in de weg|dunne pagina|concurrerende pagina|dubbel/i.test(laatste)) {
       try {
         const st = await getCannibalAnalysis(client.slug);
-        const dagen = st.updatedAt ? (Date.now() - new Date(st.updatedAt).getTime()) / 86400000 : Infinity;
+        const datum = resultDatum(st);
+        const dagen = datum ? (Date.now() - new Date(datum).getTime()) / 86400000 : Infinity;
         if (st.status === "running") {
-          opruimBlok = "\n\n=== DE VOLLEDIGE CANNIBALISATIE-ANALYSE DRAAIT OP DIT MOMENT ===\nZeg tegen Maarten dat de analyse loopt en over een paar minuten klaar is, en dat hij het dan opnieuw moet vragen. Geef GEEN eigen opruimlijst; die zou onvolledig zijn.";
+          opruimBlok = `\n\n=== DE VOLLEDIGE CANNIBALISATIE-ANALYSE DRAAIT OP DIT MOMENT (stap ${st.stap} van ${st.stappen}: ${st.stapLabel}) ===\nZeg tegen Maarten dat de analyse loopt, bij welke stap hij is, en dat hij het straks opnieuw moet vragen. Geef GEEN eigen opruimlijst; die zou onvolledig zijn.`;
         } else if (!st.result || dagen > 7) {
-          try { void runCannibalRedirect(client.slug); } catch { /* best effort */ }
-          opruimBlok = `\n\n=== DE VOLLEDIGE CANNIBALISATIE-ANALYSE IS ZOJUIST GESTART ===\n${st.result ? `De vorige uitkomst is van ${new Date(st.updatedAt as string).toLocaleDateString("nl-NL")}, ${Math.round(dagen)} dagen oud, en wordt NIET gebruikt.` : "Er was nog geen analyse."}\nBEGIN JE ANTWOORD HIERMEE: zeg dat de volledige analyse nu draait, dat het een paar minuten kost, en dat Maarten het daarna opnieuw moet vragen voor de complete redirectlijst. Geef ondertussen GEEN eigen opruimlijst uit de snelle hulpjes; die is aantoonbaar onvolledig gebleken.`;
+          try { void startCannibalRun(client.slug).then(() => runCannibalRedirect(client.slug)).catch(() => { /* de cron pikt hem op */ }); } catch { /* best effort */ }
+          opruimBlok = `\n\n=== DE VOLLEDIGE CANNIBALISATIE-ANALYSE IS ZOJUIST GESTART ===\n${st.result && datum ? `De vorige uitkomst is van ${new Date(datum).toLocaleDateString("nl-NL")}, ${Math.round(dagen)} dagen oud, en wordt NIET gebruikt.` : "Er was nog geen analyse."}\nBEGIN JE ANTWOORD HIERMEE: zeg dat de volledige analyse nu draait, dat het een kwartier tot twintig minuten kost, en dat Maarten het daarna opnieuw moet vragen voor de complete redirectlijst. Geef ondertussen GEEN eigen opruimlijst uit de snelle hulpjes; die is aantoonbaar onvolledig gebleken.`;
         } else {
           const r = st.result;
-          const regels = [`\n\n=== VOLLEDIGE CANNIBALISATIE-ANALYSE (${new Date(st.updatedAt as string).toLocaleDateString("nl-NL")}) ===`, `Dit is de complete uitkomst van de motor. NEEM DE REDIRECTMAP LETTERLIJK EN VOLLEDIG OVER, laat geen regel weg en verzin er geen bij. Noem de datum van de analyse.`, r.samenvatting || ""];
+          const regels = [`\n\n=== VOLLEDIGE CANNIBALISATIE-ANALYSE (${datum ? new Date(datum).toLocaleDateString("nl-NL") : "datum onbekend"}) ===`, `Dit is de complete uitkomst van de motor. NEEM DE REDIRECTMAP LETTERLIJK EN VOLLEDIG OVER, laat geen regel weg en verzin er geen bij. Noem de datum van de analyse.`, r.samenvatting || ""];
           if (r.redirectMap?.length) {
             regels.push(`REDIRECTMAP (${r.redirectMap.length} regels):`);
             for (const m of r.redirectMap) regels.push(`- ${m.van} -> ${m.naar}${m.mergeContent ? " [content samenvoegen]" : ""}${m.reden ? `: ${m.reden}` : ""}`);
