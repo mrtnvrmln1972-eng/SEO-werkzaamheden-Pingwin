@@ -262,12 +262,28 @@ export function splitsPerPagina<T extends SplitsbareTaak>(taken: T[], bekendeUrl
 }
 
 // "Controleer of de CRP-pagina's live staan" plus /crp-test/ wordt
-// "/crp-test/: controleer of de CRP-pagina's live staan".
-function kaartTitel(origineel: string, pad: string): string {
-  const schoon = (origineel || "").trim().replace(/^[/\w-]+:\s*/, "");
+// "/crp-test/: controleer of de copy live staat".
+//
+// De meervoudsverwijzing gaat eruit: het pad staat er nu voor, dus "CRP-pagina's"
+// in de titel is niet alleen overbodig maar ronduit misleidend. Je leest dan een
+// kaart over één pagina waarin staat dat het over meerdere pagina's gaat, en dat
+// is precies waarom een gesplitste kaart er ongesplitst uitzag.
+export function kaartTitel(origineel: string, pad: string): string {
+  let schoon = (origineel || "").trim().replace(/^[/\w-]+:\s*/, "");
+  schoon = schoon
+    .replace(new RegExp(MEERVOUD.source, "gi"), "")
+    .replace(/\s*\b(?:de|het|beide|alle|die|deze)\s*$/i, "")
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s+([,.])/g, "$1")
+    .trim();
   if (!schoon) return `Optimaliseer ${pad}`;
   const kort = schoon.charAt(0).toLowerCase() + schoon.slice(1);
   return `${pad}: ${kort}`.slice(0, 200);
+}
+
+/** De opdracht zonder het pad ervoor: "/crp-test/: controleer X" wordt "controleer X". */
+export function opdrachtZonderPad(titel: string): string {
+  return (titel || "").replace(/^\/[^\s:]*:\s*/, "").trim();
 }
 
 export async function executeAction(slug: string, action: ProposedAction, thread = ""): Promise<ActionResult> {
