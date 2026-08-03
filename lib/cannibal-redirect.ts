@@ -63,7 +63,9 @@ export type CannibalState = {
 };
 
 // Onderzoek, hoofdanalyse, en daarna de kandidatenlijst blok voor blok aflopen.
-const MAX_RONDES = 6;
+// 8 rondes van 40 = 320 kandidaten. One Day Clinic heeft er 283; met 6 rondes
+// bleven er ruim veertig liggen en dat is precies het werk waar het om begonnen is.
+const MAX_RONDES = 8;
 const BLOK = 40;                 // kandidaten per ronde
 const STAPPEN = 2 + MAX_RONDES;
 function stapVan(fase: CannibalFase, ronde: number): { stap: number; label: string } {
@@ -244,7 +246,11 @@ async function afronden(slug: string): Promise<void> {
 // hem op bij de stap waar hij was.
 function startHartslag(slug: string): () => void {
   const t = setInterval(() => {
-    void sql`UPDATE client_cannibal_analysis SET updated_at = now() WHERE client_slug = ${slug}`.catch(() => { /* stil */ });
+    // Via q, dus via dezelfde verbinding als de rest van de stap. Stond op de
+    // gedeelde verbinding en landde daardoor niet tijdens een cron-tik: de run
+    // leek stil te staan terwijl hij gewoon werkte, met dubbel werk en een valse
+    // "vastgelopen" tot gevolg.
+    void q`UPDATE client_cannibal_analysis SET updated_at = now() WHERE client_slug = ${slug}`.catch(() => { /* stil */ });
   }, 30000);
   return () => clearInterval(t);
 }
@@ -427,22 +433,35 @@ async function stapMetReden(slug: string): Promise<{ uit: "verder" | "klaar"; re
 
     // STAP 2 — vaste synthese naar JSON: altijd een antwoord, werkt ook zonder bevindingen.
     if (row.fase === "synth") {
+      // Stap 2 schrijft het VERHAAL (clusters, onderbouwing, interne links), niet de
+      // volledige werklijst; die komt uit de rondes, die de kandidatenlijst aflopen.
+      // Zonder deze afbakening probeerde hij beide te doen, werd het antwoord te lang
+      // en werd de JSON afgekapt (03-08-2026, 11:38). Twee keer hetzelfde werk doen
+      // maakte het antwoord bovendien niet beter.
+      const afbakening = `\n\nBELANGRIJK voor de omvang van je antwoord: zet in "redirectMap" ALLEEN de pagina's uit de echte cannibalisatie-clusters hierboven (de gevallen met een hard signaal). De lange lijst opruimkandidaten wordt in een aparte stap pagina voor pagina behandeld; die hoef je hier NIET over te nemen. Houd "onderbouwing" en "verwachteImpact" per cluster bij twee of drie zinnen. Lever compacte, geldige JSON die zeker afkomt.`;
       const phase2 = row.findings.length > 40
-        ? `${seed}\n\nBEVINDINGEN UIT HET AGENTISCH ONDERZOEK (gebruik deze; ze bevatten diepte-data zoals secundaire merk+geo-rankings en intentie-checks):\n${row.findings}\n\nLever nu de volledige analyse als JSON volgens het output-schema.`
-        : `${seed}\n\nLever nu de volledige analyse als JSON volgens het output-schema.`;
-      const raw = await callClaude(systeem, [{ role: "user", content: phase2.slice(0, 48000) }], 16000, { slug, action: "cannibal_redirect" });
+        ? `${seed}\n\nBEVINDINGEN UIT HET AGENTISCH ONDERZOEK (gebruik deze; ze bevatten diepte-data zoals secundaire merk+geo-rankings en intentie-checks):\n${row.findings}\n\nLever nu de analyse als JSON volgens het output-schema.${afbakening}`
+        : `${seed}\n\nLever nu de analyse als JSON volgens het output-schema.${afbakening}`;
 
-      const cleaned = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
-      const jsonText = extractJsonObject(cleaned);
-      let parsed: { samenvatting?: unknown; datakwaliteit?: unknown; clusters?: unknown; redirectMap?: unknown; interneLinks?: unknown };
-      try {
-        parsed = JSON.parse(jsonText);
-      } catch {
-        const looksTruncated = jsonText.trim().startsWith("{") && !jsonText.trim().endsWith("}");
-        await faal(slug, looksTruncated
-          ? "De analyse werd afgekapt voordat de JSON af was (te lang). Probeer het opnieuw."
-          : `De analyse kwam niet als geldige JSON terug. Probeer het opnieuw.${cleaned ? ` (begon met: ${cleaned.slice(0, 120).replace(/\s+/g, " ")})` : ""}`);
-        return { uit: "klaar", reden: "antwoord was geen geldige JSON" };
+      // Ruimere limiet, en bij een afgekapt antwoord één herkansing met een strakkere
+      // opdracht. Een te lang antwoord is geen reden om de hele analyse weg te gooien.
+      let parsed: { samenvatting?: unknown; datakwaliteit?: unknown; clusters?: unknown; redirectMap?: unknown; interneLinks?: unknown } | null = null;
+      let laatsteTekst = "";
+      for (let poging = 0; poging < 2 && !parsed; poging++) {
+        const extra = poging === 0 ? "" : `\n\nJe vorige antwoord werd afgekapt omdat het te lang was. Geef het nu KORTER: hooguit de acht belangrijkste clusters, onderbouwing van één zin per cluster, en een samenvatting van hooguit tien regels.`;
+        const raw = await callClaude(systeem, [{ role: "user", content: (phase2 + extra).slice(0, 48000) }], 32000, { slug, action: poging === 0 ? "cannibal_redirect" : "cannibal_redirect_herkansing" });
+        const cleaned = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
+        laatsteTekst = cleaned;
+        try { parsed = JSON.parse(extractJsonObject(cleaned)); } catch { parsed = null; }
+      }
+
+      // Nog steeds niets bruikbaars? Dan gaan we tóch door naar de rondes. Het verhaal
+      // is dan leeg, maar de werklijst is wat Maarten nodig heeft en die komt daar
+      // vandaan. Alles weggooien om een mislukte samenvatting is de verkeerde ruil.
+      if (!parsed) {
+        const leeg: CannibalResult = { samenvatting: "", clusters: [], redirectMap: [], interneLinks: [], generatedAt: new Date().toISOString() };
+        await q`UPDATE client_cannibal_analysis SET result = ${JSON.stringify(leeg)}, fase = 'ronde', ronde = 0, retries = 0, updated_at = now() WHERE client_slug = ${slug}`;
+        return { uit: "verder", reden: `hoofdanalyse gaf geen geldige JSON (${laatsteTekst.slice(0, 80).replace(/\s+/g, " ")}), door naar de kandidaten` };
       }
 
       const result: CannibalResult = {
@@ -509,15 +528,21 @@ ${lijst}
 Jouw taak per pagina: bevestig het voorgestelde doel, of corrigeer het als de data een beter doel aanwijst, en geef in één korte zin de reden. Neem een pagina NIET op als hij moet blijven (bijvoorbeeld een functionele pagina zoals contact of afspraak maken, of een pagina met een eigen duidelijke rol); laat hem dan gewoon weg. Verzin geen pagina's die niet in deze lijst staan. Stuur nooit naar een doel dat zelf zwak is.
 
 Lever UITSLUITEND JSON: {"redirectMap":[{"van":"/pad/","naar":"/doel/","type":"301","mergeContent":false,"reden":"..."}]}. Hoort er niets uit deze lijst opgeruimd te worden, geef dan {"redirectMap":[]}.`.slice(0, 48000) }],
-        8000, { slug, action: `cannibal_redirect_ronde${row.ronde + 2}` },
+        16000, { slug, action: `cannibal_redirect_ronde${row.ronde + 2}` },
       );
-    } catch { await afronden(slug); return { uit: "klaar", reden: "ronde gaf een fout" }; }
+    } catch {
+      await slaBlokOver(slug, row, blok);
+      return { uit: "verder", reden: `ronde ${row.ronde + 1} gaf een fout, blok overgeslagen` };
+    }
 
     let nieuweRijen: RedirectMapItem[] = [];
     try {
       const j = JSON.parse(extractJsonObject(extraRuw.replace(/```json/gi, "").replace(/```/g, "").trim())) as { redirectMap?: unknown };
       nieuweRijen = Array.isArray(j.redirectMap) ? (j.redirectMap as RedirectMapItem[]) : [];
-    } catch { await afronden(slug); return { uit: "klaar", reden: "ronde gaf geen geldige JSON" }; }
+    } catch {
+      await slaBlokOver(slug, row, blok);
+      return { uit: "verder", reden: `ronde ${row.ronde + 1} gaf geen geldige JSON, blok overgeslagen` };
+    }
 
     // Alleen pagina's uit dit blok; verzonnen paden vallen af.
     const inBlok = new Set(blok.map((k) => padOf(k.pad)));
@@ -538,6 +563,14 @@ Lever UITSLUITEND JSON: {"redirectMap":[{"van":"/pad/","naar":"/doel/","type":"3
   } finally {
     stopHartslag();
   }
+}
+
+// Een blok dat niet te beoordelen was, telt tóch als behandeld en de analyse gaat
+// door met het volgende blok. Eén mislukte ronde mag nooit de hele analyse
+// beëindigen; dat gebeurde op 03-08-2026 en kostte de complete werklijst.
+async function slaBlokOver(slug: string, row: CannibalRow, blok: ZwakkePagina[]): Promise<void> {
+  const nu = [...new Set([...(row.behandeld || []), ...blok.map((k) => padOf(k.pad))])];
+  await q`UPDATE client_cannibal_analysis SET behandeld = ${JSON.stringify(nu)}, ronde = ${row.ronde + 1}, retries = 0, updated_at = now() WHERE client_slug = ${slug}`;
 }
 
 // Tijdsbudget per werker: ruim binnen het venster van 800s, zodat de werker zelf
@@ -593,7 +626,7 @@ async function werkAf(opgepakt: string[]): Promise<{ opgepakt: string[]; redenen
     UPDATE client_cannibal_analysis
     SET status = 'error', fase = '', seed = NULL, findings = NULL, updated_at = now(),
         error = 'Vastgelopen: de analyse is drie keer opnieuw opgepakt en bleef steken. Klik op “Opnieuw analyseren” om hem opnieuw te starten.'
-    WHERE status = 'running' AND retries >= 3 AND updated_at < now() - interval '5 minutes'`;
+    WHERE status = 'running' AND retries >= 3 AND updated_at < now() - interval '3 minutes'`;
 
   const t0 = Date.now();
   const redenen: string[] = [];
@@ -610,7 +643,7 @@ async function werkAf(opgepakt: string[]): Promise<{ opgepakt: string[]; redenen
       UPDATE client_cannibal_analysis SET retries = retries + 1, updated_at = now()
       WHERE client_slug = (
         SELECT client_slug FROM client_cannibal_analysis
-        WHERE status = 'running' AND updated_at < now() - interval '5 minutes'
+        WHERE status = 'running' AND updated_at < now() - interval '3 minutes'
         ORDER BY updated_at ASC LIMIT 1)
       RETURNING client_slug`;
     if (!rows.length) break;
