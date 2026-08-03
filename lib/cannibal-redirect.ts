@@ -60,7 +60,9 @@ function stapVan(fase: CannibalFase, ronde: number): { stap: number; label: stri
   if (fase === "gather") return { stap: 1, label: "Data verzamelen en de verdachte pagina's onderzoeken" };
   if (fase === "synth") return { stap: 2, label: "De hoofdanalyse schrijven" };
   if (fase === "ronde") { const r = Math.min(Math.max(ronde, 0), 2); return { stap: 3 + r, label: `Doorloopronde ${r + 1} van 3: de rest van de site nalopen` }; }
-  return { stap: STAPPEN, label: "Klaar" };
+  // Geen fase terwijl de run loopt: opstarten, of een oude run uit de opzet van
+  // vóór de stappen. Nooit "Klaar" tonen; dat was precies de leugen op het scherm.
+  return { stap: 1, label: "De analyse wordt opgestart" };
 }
 
 let tableReady: Promise<void> | null = null;
