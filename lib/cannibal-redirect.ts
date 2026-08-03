@@ -7,6 +7,7 @@ import { getGscForPage, getGscKeywordUrlFlips } from "./google";
 import { getAhrefsTopPages, getUrlOrganicKeywords, ahrefsConfigured } from "./ahrefs";
 import { fetchPageContent } from "./page-content";
 import { callClaude, callClaudeAgentic, type ToolDef, type ToolRunner } from "./anthropic";
+import { regelsAlsInstructie } from "./opruim-regels";
 
 // ═══════════════════════════════════════════════════════════
 // KEYWORD-CANNIBALISATIE-ANALYSE (dashboard-integratie van de skill)
@@ -195,6 +196,8 @@ De KERN-DATA (Ahrefs per pagina + pagina's zonder verkeer + flips) staat in het 
 
 // Draait de analyse in twee fasen: agentic onderzoek (tools) -> vaste JSON-synthese.
 // Faalt nooit op een lege loop: fase 2 werkt ook uit de ruwe data. Idempotent qua opslag.
+const padOf = (u: string) => { try { return new URL(u).pathname; } catch { return (u || "").trim(); } };
+
 export async function runCannibalRedirect(slug: string): Promise<void> {
   try {
     await ensureSchema();
@@ -250,7 +253,12 @@ export async function runCannibalRedirect(slug: string): Promise<void> {
     const phase2 = clean.length > 40
       ? `${seedData}\n\nBEVINDINGEN UIT HET AGENTISCH ONDERZOEK (gebruik deze; ze bevatten diepte-data zoals secundaire merk+geo-rankings en intentie-checks):\n${clean}\n\nLever nu de volledige analyse als JSON volgens het output-schema.`
       : `${seedData}\n\nLever nu de volledige analyse als JSON volgens het output-schema.`;
-    const raw = await callClaude(buildSystemPrompt(), [{ role: "user", content: phase2.slice(0, 48000) }], 16000, { slug, action: "cannibal_redirect" });
+    // Eerdere besluiten van Maarten gaan mee als harde regels. Zo hoeft hij een
+    // correctie ("Monster hoort bij Den Haag", "deze houden we") maar één keer te
+    // maken en maakt de analyse dezelfde fout nooit meer.
+    const eerdere = await regelsAlsInstructie(slug).catch(() => "");
+    const systeem = eerdere ? `${buildSystemPrompt()}\n\n${eerdere}` : buildSystemPrompt();
+    const raw = await callClaude(systeem, [{ role: "user", content: phase2.slice(0, 48000) }], 16000, { slug, action: "cannibal_redirect" });
 
     const cleaned = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
     const jsonText = extractJsonObject(cleaned);
@@ -273,6 +281,39 @@ export async function runCannibalRedirect(slug: string): Promise<void> {
       interneLinks: Array.isArray(parsed.interneLinks) ? (parsed.interneLinks as InterneLink[]) : [],
       generatedAt: new Date().toISOString(),
     };
+    // ── Doorgaan tot er niets nieuws meer komt ──────────────────────────────
+    // Dit is het verschil met Cowork. Daar loopt een agent net zolang door tot
+    // hij klaar is; hier deed de motor één ronde en stopte, ongeacht of hij de
+    // hele site had gehad. Gevolg: 18 regels waar er 69 te vinden waren.
+    // Nu vragen we per ronde expliciet naar wat er NOG NIET in staat, en stoppen
+    // pas als een ronde niets nieuws oplevert (of na drie rondes).
+    const gezien = new Set((result.redirectMap || []).map((m) => padOf(String(m.van || ""))));
+    for (let ronde = 0; ronde < 3; ronde++) {
+      const alGenoemd = [...gezien].slice(0, 400).join(", ");
+      let extraRuw = "";
+      try {
+        extraRuw = await callClaude(
+          systeem,
+          [{ role: "user", content: `${seedData}\n\nJe hebt deze pagina's AL beoordeeld en die hoef je niet opnieuw te noemen:\n${alGenoemd}\n\nKijk nu naar de pagina's die je NOG NIET hebt beoordeeld. Zoek daar de resterende dunne, dubbele en overbodige pagina's. Let met name op locatiepagina's die nauwelijks vertoningen hebben en geen eigen zoekterm bezitten; die vallen buiten de clusters omdat ze met niemand concurreren, maar ze versnipperen wel de autoriteit. Lever UITSLUITEND JSON: {"redirectMap":[{"van":"/pad/","naar":"/doel/","type":"301","mergeContent":false,"reden":"..."}]}. Vind je niets nieuws, geef dan {"redirectMap":[]}.`.slice(0, 48000) }],
+          8000, { slug, action: `cannibal_redirect_ronde${ronde + 2}` },
+        );
+      } catch { break; }
+      let nieuweRijen: RedirectMapItem[] = [];
+      try {
+        const j = JSON.parse(extractJsonObject(extraRuw.replace(/```json/gi, "").replace(/```/g, "").trim())) as { redirectMap?: unknown };
+        nieuweRijen = Array.isArray(j.redirectMap) ? (j.redirectMap as RedirectMapItem[]) : [];
+      } catch { break; }
+      const echtNieuw = nieuweRijen.filter((m) => {
+        const v = padOf(String(m.van || ""));
+        if (!v || gezien.has(v)) return false;
+        gezien.add(v);
+        return true;
+      });
+      if (!echtNieuw.length) break;                    // niets nieuws: klaar
+      result.redirectMap = [...(result.redirectMap || []), ...echtNieuw];
+      await setState(slug, "running", result, "");     // tussenstand alvast tonen
+    }
+
     await setState(slug, "done", result, "");
   } catch (e) {
     try { await setState(slug, "error", null, `Analyse mislukt: ${e instanceof Error ? e.message : "onbekende fout"}`); } catch { /* stil */ }

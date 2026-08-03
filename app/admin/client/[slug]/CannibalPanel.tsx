@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { mdToHtml } from "../../../../lib/markdown";
+import OpruimTabel from "./OpruimTabel";
 
 type ClusterUrl = { url: string; rol?: string; positie?: number; klikken?: number; impressies?: number; verwijzendeDomeinen?: number; intentie?: string };
 type Signalen = { urlFlip?: boolean; flipsIn90d?: number; positiePlafond?: boolean; klikVerdeling?: boolean };
@@ -26,7 +27,7 @@ function scoreClass(s?: string): string {
 }
 function num(n?: number): string { return n != null && Number.isFinite(n) ? String(Math.round(n * 10) / 10) : "—"; }
 
-export default function CannibalPanel({ slug }: { slug: string }) {
+export default function CannibalPanel({ slug, domain = "" }: { slug: string; domain?: string }) {
   const [state, setState] = useState<State | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -93,7 +94,21 @@ export default function CannibalPanel({ slug }: { slug: string }) {
               </div>
             )}
 
-            {result.samenvatting && <div className="cannibal-summary md" dangerouslySetInnerHTML={{ __html: mdToHtml(result.samenvatting) }} />}
+            {/* De werklijst eerst. Het verhaal eronder: een lijst is om af te werken,
+                proza is om te begrijpen, en in die volgorde. */}
+            {result.redirectMap && result.redirectMap.length > 0 && (
+              <div className="opr-blok">
+                <div className="opr-kop">Werklijst: wat waar naartoe</div>
+                <OpruimTabel slug={slug} domain={domain} rijen={result.redirectMap} />
+              </div>
+            )}
+
+            {result.samenvatting && (
+              <details className="opr-details">
+                <summary>Samenvatting en onderbouwing per cluster</summary>
+                <div className="cannibal-summary md" dangerouslySetInnerHTML={{ __html: mdToHtml(result.samenvatting) }} />
+              </details>
+            )}
 
             {result.clusters.length === 0 && <div className="muted" style={{ marginTop: 8 }}>Geen echte cannibalisatie-clusters gevonden.</div>}
 

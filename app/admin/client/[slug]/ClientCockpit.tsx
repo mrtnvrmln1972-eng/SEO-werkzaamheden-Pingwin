@@ -697,7 +697,7 @@ export default function ClientCockpit({
         {/* Deze twee schermen bestonden al maar hingen nergens in de UI, dus niemand
             kon erbij. Hier hoort de volledige redirectlijst thuis, niet in de chat:
             een lijst is een scherm, een oordeel is een gesprek. */}
-        {tab === "cannibalisatie" && <CannibalPanel slug={client.slug} />}
+        {tab === "cannibalisatie" && <CannibalPanel slug={client.slug} domain={client.domain || ""} />}
         {tab === "interne-links" && <InternalLinksPanel slug={client.slug} />}
 
         {tab === "developer" && <DeveloperOverview embedded />}
