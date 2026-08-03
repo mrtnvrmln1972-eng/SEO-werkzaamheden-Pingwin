@@ -135,6 +135,42 @@ async function laatsteZoekronde(slug: string, k: string): Promise<Date | null> {
   return rows[0]?.m ? new Date(rows[0].m as string) : null;
 }
 
+// ── Tot welke mail is deze pagina bijgewerkt? ──
+// Niet "wanneer zochten we voor het laatst", maar "welke mail was toen de
+// nieuwste". Dat verschil is de hele crux: het tijdstip van de laatste zoekronde
+// verspringt bij élke keer dat je een kaart opent, dus een mail die vlak dáárvoor
+// binnenkwam viel permanent buiten de boot. Met de mail zelf als peilmerk kan dat
+// niet meer: is er klantmail nieuwer dan het peilmerk, dan wordt er precies één
+// keer opnieuw gezocht.
+async function ensureScanTabel(): Promise<void> {
+  await sql`
+    CREATE TABLE IF NOT EXISTS page_mail_scans (
+      client_slug TEXT NOT NULL,
+      url_key     TEXT NOT NULL,
+      tot_mail    TIMESTAMPTZ,
+      gescand_op  TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (client_slug, url_key)
+    )`;
+}
+
+async function nieuwsteKlantMail(slug: string): Promise<Date | null> {
+  const { rows } = await sql`SELECT max(received_at) AS m FROM client_emails WHERE client_slug = ${slug}`;
+  return rows[0]?.m ? new Date(rows[0].m as string) : null;
+}
+
+async function scanPeilmerk(slug: string, k: string): Promise<Date | null | undefined> {
+  const { rows } = await sql`SELECT tot_mail FROM page_mail_scans WHERE client_slug = ${slug} AND url_key = ${k} LIMIT 1`;
+  if (!rows.length) return undefined;                       // nog nooit gescand
+  return rows[0].tot_mail ? new Date(rows[0].tot_mail as string) : null;
+}
+
+async function zetPeilmerk(slug: string, k: string, tot: Date | null): Promise<void> {
+  await sql`
+    INSERT INTO page_mail_scans (client_slug, url_key, tot_mail, gescand_op)
+    VALUES (${slug}, ${k}, ${tot ? tot.toISOString() : null}, now())
+    ON CONFLICT (client_slug, url_key) DO UPDATE SET tot_mail = EXCLUDED.tot_mail, gescand_op = now()`;
+}
+
 // ── Zoektermen afleiden uit de pagina ──
 // Het pad is het sterkste signaal: mensen plakken links in mail. Daarna de titel
 // en het hoofdzoekwoord uit het plan. Stopwoorden en te korte delen vallen af,
@@ -609,25 +645,25 @@ export async function haalBijlagenBinnen(slug: string, url: string): Promise<{ k
  * dus voortaan reden genoeg om opnieuw te kijken; dat kost een DB-query, geen
  * mailronde, want de mailset van de klant staat al in de database.
  */
-export async function zoekMailsIndienNodig(slug: string, url: string, maxDagen = 1): Promise<void> {
+export async function zoekMailsIndienNodig(slug: string, url: string, maxDagen = 7): Promise<void> {
   await ensureSchema();
   await ensureTable();
+  await ensureScanTabel();
   const k = urlKey(url);
-  const laatste = await laatsteZoekronde(slug, k);
-  if (!laatste) { await zoekMailsVoorPagina(slug, url).catch(() => { /* stil */ }); return; }
-  const oud = Date.now() - laatste.getTime() >= maxDagen * 864e5;
-  if (!oud && !(await nieuweMailSinds(slug, laatste))) return;
-  await zoekMailsVoorPagina(slug, url).catch(() => { /* zoeken mag het dossier nooit breken */ });
-}
 
-// Is er klantmail binnengekomen ná de laatste zoekronde van deze pagina?
-async function nieuweMailSinds(slug: string, sinds: Date): Promise<boolean> {
-  try {
-    const { rows } = await sql`
-      SELECT 1 FROM client_emails
-      WHERE client_slug = ${slug} AND received_at > ${sinds.toISOString()} LIMIT 1`;
-    return rows.length > 0;
-  } catch { return false; }
+  const [peil, nieuwste] = await Promise.all([scanPeilmerk(slug, k), nieuwsteKlantMail(slug)]);
+  const nooitGescand = peil === undefined;
+  const nieuweMail = !!nieuwste && (!peil || nieuwste.getTime() > peil.getTime());
+
+  if (!nooitGescand && !nieuweMail) {
+    // Geen nieuwe mail: alleen nog de oude tijdsklep, zodat een pagina waarvan de
+    // zoektermen zijn veranderd toch af en toe opnieuw langs de postbus gaat.
+    const laatste = await laatsteZoekronde(slug, k);
+    if (laatste && Date.now() - laatste.getTime() < maxDagen * 864e5) return;
+  }
+
+  await zoekMailsVoorPagina(slug, url).catch(() => { /* zoeken mag het dossier nooit breken */ });
+  await zetPeilmerk(slug, k, nieuwste).catch(() => { /* peilmerk is een versnelling, geen must */ });
 }
 
 /** Vastpinnen: deze mail hoort bij deze pagina, punt. */
