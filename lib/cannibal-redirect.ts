@@ -8,6 +8,7 @@ import { getAhrefsTopPages, getUrlOrganicKeywords, ahrefsConfigured } from "./ah
 import { fetchPageContent } from "./page-content";
 import { callClaude, callClaudeAgentic, type ToolDef, type ToolRunner } from "./anthropic";
 import { regelsAlsInstructie } from "./opruim-regels";
+import { getSetting, setSetting, SETTING_OPRUIM_CRON_TIK } from "./settings";
 
 // ═══════════════════════════════════════════════════════════
 // KEYWORD-CANNIBALISATIE-ANALYSE (dashboard-integratie van de skill)
@@ -52,6 +53,8 @@ export type CannibalState = {
   status: "idle" | "running" | "done" | "error";
   result: CannibalResult | null; error: string; updatedAt: string | null;
   fase: CannibalFase; ronde: number; stap: number; stappen: number; stapLabel: string;
+  // Wanneer het cron-vangnet voor het laatst langskwam, en of het stilstaat.
+  cronTik: string | null; cronStil: boolean;
 };
 
 // Vijf stappen: onderzoek, hoofdanalyse, en drie doorloop-rondes.
@@ -154,9 +157,15 @@ export async function getCannibalAnalysis(slug: string): Promise<CannibalState> 
   await ensureSchema();
   await ensureTable();
   const r = await readRow(slug);
-  if (!r) return { status: "idle", result: null, error: "", updatedAt: null, fase: "", ronde: 0, stap: 0, stappen: STAPPEN, stapLabel: "" };
+  // Vangnet-tik: staat hij langer dan een kwartier stil, dan draait de cron niet
+  // en heeft wachten geen zin (de knop "Nu hervatten" is dan de weg).
+  const cronTik = await getSetting(SETTING_OPRUIM_CRON_TIK).catch(() => null);
+  const cronStil = !cronTik || (Date.now() - new Date(cronTik).getTime()) > 900000;
+  if (!r) return { status: "idle", result: null, error: "", updatedAt: null, fase: "", ronde: 0, stap: 0, stappen: STAPPEN, stapLabel: "", cronTik, cronStil };
   const { stap, label } = stapVan(r.fase, r.ronde);
   return {
+    cronTik,
+    cronStil,
     status: (r.status as CannibalState["status"]) || "idle",
     result: r.result,
     error: r.error,
@@ -271,6 +280,10 @@ De KERN-DATA (Ahrefs per pagina + pagina's zonder verkeer + flips) staat in het 
 - Rond af met een LEESBARE bevindingen-tekst (geen JSON, geen tools meer): per plaats/thema-cluster de concurrerende pagina's met top-zoekwoord/positie/verwijzende domeinen, de winnaar met onderbouwing, de voorgestelde actie (301 / de-optimaliseren / interne links / behouden), en of de intentie echt overlapt. Noem ook lege duplicaat-varianten die naar de plaatswinnaar moeten redirecten.`;
 }
 
+// Harde klok op het agentische onderzoek van stap 1. Elke stap moet gegarandeerd
+// binnen één venster passen; anders komt hij nooit af, ook niet met hervatten.
+const ONDERZOEK_BUDGET_MS = 360000; // 6 minuten
+
 const padOf = (u: string) => { try { return new URL(u).pathname; } catch { return (u || "").trim(); } };
 
 // Bouwt de kern-data één keer per run en bewaart hem, zodat een hervatting niet
@@ -342,7 +355,12 @@ async function stapCannibal(slug: string): Promise<"verder" | "klaar"> {
         findings = await callClaudeAgentic(
           buildGatherSystem(),
           [{ role: "user", content: `${seed}\n\nOnderzoek de meest verdachte pagina's met de tools en schrijf daarna je bevindingen (leesbare tekst, geen JSON).`.slice(0, 40000) }],
-          CANNIBAL_TOOLS, makeCannibalRunner(domain), 8, 6000, { slug, action: "cannibal_gather" },
+          // Zes minuten en vijf rondes. Op 03-08-2026 liep deze stap zonder klok
+          // 13 minuten door en werd toen door het venster afgekapt: alles weg, en
+          // elke hervatting liep tegen dezelfde muur. Een stap die niet gegarandeerd
+          // binnen één venster past komt nooit af, hoe vaak je hem ook hervat.
+          CANNIBAL_TOOLS, makeCannibalRunner(domain), 5, 6000, { slug, action: "cannibal_gather" },
+          Date.now() + ONDERZOEK_BUDGET_MS,
         );
       } catch { findings = ""; }
       const clean = findings.replace(/\(geen antwoord\)/gi, "").trim();
@@ -458,6 +476,9 @@ export async function runCannibalRedirect(slug: string): Promise<void> {
 export async function processCannibalQueue(): Promise<{ opgepakt: string[] }> {
   await ensureSchema();
   await ensureTable();
+  // Meteen vastleggen dát hij langskwam, vóór al het werk. Zo is op het scherm te
+  // zien of het vangnet draait, ook als er niets op te pakken viel.
+  await setSetting(SETTING_OPRUIM_CRON_TIK, new Date().toISOString()).catch(() => { /* stil */ });
   const opgepakt: string[] = [];
 
   await sql`

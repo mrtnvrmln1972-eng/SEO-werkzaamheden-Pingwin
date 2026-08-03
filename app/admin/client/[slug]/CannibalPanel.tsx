@@ -12,7 +12,7 @@ type RedirectMapItem = { van: string; naar: string; type?: string; mergeContent?
 type InterneLink = { vanaf: string; naar: string; ankertekst?: string; reden?: string };
 type Datakwaliteit = { gsc?: boolean; gscTijdreeks?: boolean; ahrefsZoekwoorden?: boolean; ahrefsBacklinks?: boolean; crawl?: boolean; opmerking?: string };
 type Result = { samenvatting: string; datakwaliteit?: Datakwaliteit; clusters: Cluster[]; redirectMap?: RedirectMapItem[]; interneLinks?: InterneLink[]; generatedAt: string | null };
-type State = { status: string; result: Result | null; error: string; updatedAt: string | null; stap?: number; stappen?: number; stapLabel?: string };
+type State = { status: string; result: Result | null; error: string; updatedAt: string | null; stap?: number; stappen?: number; stapLabel?: string; cronTik?: string | null; cronStil?: boolean };
 
 function actionClass(a: string): string {
   const s = (a || "").toLowerCase();
@@ -36,7 +36,7 @@ export default function CannibalPanel({ slug, domain = "" }: { slug: string; dom
   async function load() {
     try {
       const d = await fetch(`/api/admin/cannibal-redirect?slug=${encodeURIComponent(slug)}`).then((r) => r.json());
-      if (d.ok) setState({ status: d.status, result: d.result, error: d.error, updatedAt: d.updatedAt, stap: d.stap, stappen: d.stappen, stapLabel: d.stapLabel });
+      if (d.ok) setState({ status: d.status, result: d.result, error: d.error, updatedAt: d.updatedAt, stap: d.stap, stappen: d.stappen, stapLabel: d.stapLabel, cronTik: d.cronTik, cronStil: d.cronStil });
     } catch { /* stil */ }
   }
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [slug]);
@@ -57,6 +57,17 @@ export default function CannibalPanel({ slug, domain = "" }: { slug: string; dom
       if (!d.ok) { setErr(d.error || "Starten mislukt."); await load(); return; }
       await load();
     } catch { setErr("Starten mislukt."); await load(); } finally { setBusy(false); }
+  }
+
+  // Hervatten zonder opnieuw te beginnen: de ontsnapping als het vangnet wegblijft.
+  async function hervat() {
+    if (busy) return;
+    setBusy(true); setErr("");
+    try {
+      const d = await fetch("/api/admin/cannibal-redirect", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, hervat: true }) }).then((r) => r.json());
+      if (!d.ok) setErr(d.error || "Hervatten mislukt.");
+      await load();
+    } catch { setErr("Hervatten mislukt."); await load(); } finally { setBusy(false); }
   }
 
   const running = state?.status === "running";
@@ -90,7 +101,13 @@ export default function CannibalPanel({ slug, domain = "" }: { slug: string; dom
             <span className="opr-voortgang-stap">Stap {state?.stap || 1} van {stappen}</span>
             <span className="opr-voortgang-label">{state?.stapLabel || "De analyse wordt gestart"}</span>
             {regels > 0 && <span className="opr-voortgang-tel">{regels} regels tot nu toe</span>}
-            <span className="opr-voortgang-tijd">De hele analyse duurt een kwartier tot twintig minuten. Je kunt wegklikken; hij loopt door.</span>
+            <button type="button" className="ghost-btn small" onClick={hervat} disabled={busy} title="Draait de eerstvolgende stap meteen, zonder de analyse opnieuw te beginnen.">Nu hervatten</button>
+            <span className="opr-voortgang-tijd">
+              De hele analyse duurt een kwartier tot twintig minuten. Je kunt wegklikken; hij loopt door.
+              {" "}{state?.cronStil
+                ? "Let op: het vangnet dat vastgelopen analyses oppakt, draait nu niet. Blijft de stap hangen, klik dan op Nu hervatten."
+                : `Vangnet draaide voor het laatst om ${new Date(state?.cronTik as string).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })}.`}
+            </span>
           </div>
         )}
         {!result && !running && state?.status !== "error" && <div className="muted">Nog geen analyse. Klik &ldquo;Analyse draaien&rdquo;.</div>}

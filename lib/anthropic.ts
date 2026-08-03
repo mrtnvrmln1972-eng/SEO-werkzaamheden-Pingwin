@@ -165,7 +165,13 @@ export type ToolRunner = (name: string, input: Record<string, unknown>) => Promi
 
 type Block = { type: string; text?: string; id?: string; name?: string; input?: Record<string, unknown> };
 
-export async function callClaudeAgentic(system: string, messages: ChatMsg[], tools: ToolDef[], run: ToolRunner, maxRounds = 6, maxTokens = 2200, ctx?: UsageCtx): Promise<string> {
+// deadlineMs: absoluut tijdstip (Date.now()-schaal) waarna de agent geen nieuwe
+// onderzoeksronde meer begint en afrondt met wat hij heeft. Nodig voor werk dat in
+// een serverless-venster moet passen: zonder klok loopt de agent door tot het
+// venster hem afkapt en is ALLES weg (zo strandde de opruim-analyse op 03-08-2026
+// na 800 seconden, midden in het onderzoek). Halve bevindingen zijn bruikbaar,
+// afgekapte niet. Laat leeg voor een gesprek dat gewoon mag doorlopen.
+export async function callClaudeAgentic(system: string, messages: ChatMsg[], tools: ToolDef[], run: ToolRunner, maxRounds = 6, maxTokens = 2200, ctx?: UsageCtx, deadlineMs?: number): Promise<string> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) throw new Error("ANTHROPIC_API_KEY ontbreekt (voeg hem toe in Vercel).");
   const apiMessages: { role: string; content: unknown }[] = messages.map((m) => ({ role: m.role, content: m.content }));
@@ -208,7 +214,10 @@ export async function callClaudeAgentic(system: string, messages: ChatMsg[], too
   }
 
   const textOf = (j: { content?: Block[] }) => ((j.content || []) as Block[]).filter((c) => c.type === "text").map((c) => c.text || "").join("");
+  let uitTijd = false;
   for (let round = 0; round < maxRounds; round++) {
+    // Tijd op? Niet aan een nieuwe ronde beginnen; hieronder volgt de afronding.
+    if (deadlineMs && Date.now() > deadlineMs) { uitTijd = true; break; }
     const j = await call(true);
     addUsage(j.usage);
     const content: Block[] = j.content || [];
@@ -232,9 +241,13 @@ export async function callClaudeAgentic(system: string, messages: ChatMsg[], too
   // Rondes op (of leeg antwoord): forceer afronding. Eerst ÉÉN ronde MÉT tools, zodat
   // de agent alsnog de actie-kaart kan aanmaken (stel_acties_voor) als Maarten om taken
   // of om iets in de weekplanning vroeg. Daarna een tekst-afronding zonder tools.
-  apiMessages.push({ role: "user", content: "Rond nu af. Vroeg Maarten om taken, om kaarten of om iets in de weekplanning te zetten, roep dan NU het gereedschap aan om die acties écht voor te stellen (beschrijf ze niet alleen). Geef daarna je antwoord in gewone tekst." });
+  apiMessages.push({ role: "user", content: uitTijd
+    ? "De tijd voor onderzoek is op. Rond NU af in gewone tekst met wat je tot nu toe hebt gevonden; roep geen gereedschap meer aan. Een onvolledige bevinding is prima, zeg er dan bij wat je niet meer hebt kunnen nakijken."
+    : "Rond nu af. Vroeg Maarten om taken, om kaarten of om iets in de weekplanning te zetten, roep dan NU het gereedschap aan om die acties écht voor te stellen (beschrijf ze niet alleen). Geef daarna je antwoord in gewone tekst." });
   let text = "";
-  {
+  // Uit de tijd gelopen? Dan geen ronde mét tools meer, want die kan opnieuw
+  // minutenlang gereedschap aanroepen en juist de afronding onmogelijk maken.
+  if (!uitTijd) {
     const j = await call(true);
     addUsage(j.usage);
     const content: Block[] = j.content || [];
