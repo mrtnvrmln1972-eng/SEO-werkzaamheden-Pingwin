@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { urlKey } from "../../../../lib/url-key";
 import { splitCardInfo, cardInfoHtml } from "../../../../lib/card-info";
+import PaginaDossier from "./PaginaDossier";
 
 export type Action = {
   id: string; type: string; reason?: string;
@@ -51,6 +52,34 @@ export default function ActionCard({ action, slug, thread, onExecuted, onGoToPag
   // door. Bij Paul Hoevenaars bleven de twee belangrijkste week 1-kaarten zo
   // ongemerkt liggen terwijl week 3 en 4 er wel in stonden.
   const [inBord, setInBord] = useState<{ urls: Set<string>; titels: Set<string> } | null>(null);
+
+  // Datum → mail-link, zodat "mail van 22 juli" in de achtergrond een echte link
+  // wordt. Zelfde bron en zelfde sleutels als het weekplan-bord.
+  const [mailLinks, setMailLinks] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!isWeekplan) return;
+    let leeft = true;
+    fetch(`/api/admin/mail?slug=${encodeURIComponent(slug)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (!leeft || !d?.ok) return;
+        const map: Record<string, string> = {};
+        for (const e of (d.emails || []) as { receivedAt?: string; webLink?: string; superhumanLink?: string }[]) {
+          const link = e.superhumanLink || e.webLink || "";
+          if (!link || !e.receivedAt) continue;
+          const dt = new Date(e.receivedAt);
+          if (Number.isNaN(dt.getTime())) continue;
+          const dm = `${dt.getDate()}-${dt.getMonth() + 1}`;
+          if (!map[dm]) map[dm] = link;
+          const dmj = `${dm}-${dt.getFullYear()}`;
+          if (!map[dmj]) map[dmj] = link;
+        }
+        setMailLinks(map);
+      })
+      .catch(() => { /* dan blijft een maildatum gewone tekst, geen dode link */ });
+    return () => { leeft = false; };
+  }, [slug, isWeekplan]);
+
   useEffect(() => {
     if (!isWeekplan) return;
     let leeft = true;
@@ -186,7 +215,11 @@ export default function ActionCard({ action, slug, thread, onExecuted, onGoToPag
                           Nu door dezelfde parser als de kaart zelf: Doel, Afspraken en
                           per fase. Standaard ingeklapt, want in een voorstel wil je
                           eerst zien wát er wordt voorgesteld, niet alle achtergrond. */}
-                      {t.toelichting && <VoorstelToelichting tekst={t.toelichting} pageUrl={t.url} taak={t.taak} /> }
+                      {t.toelichting && <VoorstelToelichting tekst={t.toelichting} pageUrl={t.url} taak={t.taak} mailLinks={mailLinks} /> }
+                      {/* Hetzelfde dossierblok als op de kaart in de weekplanning:
+                          de mails, documenten en stand van deze pagina. Zo weet je
+                          al vóór het doorzetten wat er speelt. */}
+                      {t.url && <PaginaDossier slug={slug} url={t.url} compact />}
                     </div>
                   );
                 })}
@@ -242,7 +275,7 @@ export default function ActionCard({ action, slug, thread, onExecuted, onGoToPag
 // hij straks terechtkomt. Ingeklapt tot één samenvattende regel: bij een voorstel
 // wil je eerst zien wát er wordt voorgesteld. Eén klik toont het hele verhaal, dus
 // er gaat niets verloren dat je voor een blauwdruk nodig hebt.
-function VoorstelToelichting({ tekst, pageUrl, taak }: { tekst: string; pageUrl?: string; taak?: string }) {
+function VoorstelToelichting({ tekst, pageUrl, taak, mailLinks }: { tekst: string; pageUrl?: string; taak?: string; mailLinks?: Record<string, string> }) {
   const [open, setOpen] = useState(false);
   const info = splitCardInfo(tekst, taak);
   const fases = Object.keys(info.perFase).length;
@@ -256,7 +289,10 @@ function VoorstelToelichting({ tekst, pageUrl, taak }: { tekst: string; pageUrl?
       <button type="button" className="tvk-why-toggle" onClick={() => setOpen((o) => !o)}>
         {open ? "Verberg achtergrond ▴" : `Toon achtergrond ▾${delen.length ? ` (${delen.join(", ")})` : ""}`}
       </button>
-      {open && <div className="tvk-why-inhoud" dangerouslySetInnerHTML={{ __html: cardInfoHtml(tekst, pageUrl, taak) }} />}
+      {/* De maildatums werden hier NIET klikbaar gemaakt: de kaart in de
+          weekplanning gaf de mail-map wel mee, dit voorstel niet. Daardoor liep
+          "mail van 22 juli" hier altijd dood. Nu gelijkgetrokken. */}
+      {open && <div className="tvk-why-inhoud" dangerouslySetInnerHTML={{ __html: cardInfoHtml(tekst, pageUrl, taak, undefined, mailLinks) }} />}
     </div>
   );
 }

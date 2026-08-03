@@ -14,6 +14,7 @@ import { urlKey } from "../../../../lib/url-key";
 import { devLabel } from "../../../../lib/personen";
 import AntwoordBlokken from "./AntwoordBlokken";
 import DocVersies from "./DocVersies";
+import PaginaDossier from "./PaginaDossier";
 
 export type WpTask = { id: number; thread: string; taak: string; toelichting: string; wie: string; url: string; taaktype: string; copyUrl: string; bronMail: string; weekYear: number; weekNo: number; status: string; sortOrder: number; naarDev?: boolean };
 export type WpPageInfo = { url: string; live: boolean; klikken?: number; vertoningen?: number; doorgevoerd?: boolean | null; strategie: boolean; gelieerde: boolean; analyse: boolean; blauwdruk: boolean; copy: boolean; bouw: boolean; structured: boolean; structuredStatus: string; next: string; links: { analyse: string; blauwdruk: string; copy: string } };
@@ -485,6 +486,12 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
           }}
           dangerouslySetInnerHTML={{ __html: cardInfoHtml(t.toelichting, t.url, t.taak, cijferRegel(page), mailLinks) }} />
       )}
+
+      {/* Het paginadossier: wie wat wilde, wie wat maakte, wat er nog niet is
+          gebeurd, met de mails en documenten die erbij horen. Zelfde blok als in
+          de chat en op de voorgestelde taak, want het leest dezelfde opgeslagen
+          alinea. */}
+      {open && t.url && <PaginaDossier slug={slug} url={t.url} />}
       {open && lijstPunt && (
         <div className="ovc-lijstkeuze">
           <span>Op welke bespreeklijst?</span>

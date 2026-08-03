@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { urlKey } from "./url-key";
 import { logActiviteit } from "./activiteit";
 import { getClientBySlug } from "./clients";
 import { getPageDocOutputs, savePageDocOutput, getPageDriveFolder } from "./site-urls";
@@ -70,6 +71,21 @@ export async function listVersions(slug: string, url: string): Promise<DocVersio
     FROM page_doc_versions WHERE client_slug = ${slug} AND url = ${url} AND status <> 'genegeerd'
     ORDER BY id DESC LIMIT 40`;
   return rows.map(rowToVersion);
+}
+
+// Zelfde lijst, maar vergelijkend op de genormaliseerde sleutel. De tabel bewaart
+// de rauwe URL, dus een versie die onder "https://www.x.nl/pad" is opgeslagen werd
+// niet gevonden bij een kaart met "https://x.nl/pad/". Voor het paginadossier is
+// dat het verschil tussen wel en geen documenten zien.
+export async function listVersionsForKey(slug: string, url: string): Promise<DocVersion[]> {
+  await ensureSchema();
+  await ensureTable();
+  const k = urlKey(url);
+  const { rows } = await sql`
+    SELECT id, url, kind, source, naam, drive_link, samenvatting, vergelijking, status, created_at
+    FROM page_doc_versions WHERE client_slug = ${slug} AND status <> 'genegeerd'
+    ORDER BY id DESC LIMIT 400`;
+  return rows.filter((r) => urlKey(String(r.url || "")) === k).slice(0, 40).map(rowToVersion);
 }
 
 // Elke generator-run legt zijn resultaat ook als versie in het archief
