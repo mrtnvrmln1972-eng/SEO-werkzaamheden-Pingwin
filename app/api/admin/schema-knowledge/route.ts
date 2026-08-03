@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
-import { sql } from "../../../../lib/db";
 import { uploadDocx, readDriveDoc } from "../../../../lib/drive";
+import { ensureClientFolder } from "../../../../lib/drive-map";
 import { listKnowledge, getOpenProposal, proposeKnowledge, confirmKnowledge, ignoreKnowledge, knowledgeGaps } from "../../../../lib/schema-knowledge";
 
 export const runtime = "nodejs";
@@ -22,13 +22,12 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ ok: true, entities, gaps, proposal });
 }
 
-// Een Drive-map voor klant-brede uploads: de map van de pagina met het kortste
-// pad (meestal de hoofdmap-achtige), anders de Drive-hoofdmap.
+// De klantmap, die nu gewoon bestaat (of automatisch wordt aangemaakt).
+// Hier stond eerder een noodgreep: "pak de map van de pagina met het kortste
+// pad, anders de hoofdmap van Drive". Daarmee kon een klantdocument in een
+// willekeurige paginamap of los in Maartens Drive belanden.
 async function clientFolderId(slug: string): Promise<string> {
-  try {
-    const { rows } = await sql`SELECT folder_id, url FROM page_drive_folders WHERE client_slug = ${slug} ORDER BY length(url) ASC LIMIT 1`;
-    return (rows[0]?.folder_id as string) || "root";
-  } catch { return "root"; }
+  return (await ensureClientFolder(slug).catch(() => null)) || "root";
 }
 
 export async function POST(req: NextRequest) {

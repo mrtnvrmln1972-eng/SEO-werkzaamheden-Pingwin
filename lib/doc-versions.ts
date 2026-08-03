@@ -3,6 +3,7 @@ import { urlKey } from "./url-key";
 import { logActiviteit } from "./activiteit";
 import { getClientBySlug } from "./clients";
 import { getPageDocOutputs, savePageDocOutput, getPageDriveFolder } from "./site-urls";
+import { ensureFolderFor } from "./drive-map";
 import { callClaude, LIGHT_MODEL } from "./anthropic";
 import { buildPingwinDoc, type DocSection, type DocBlock } from "./pingwin-docx";
 import { uploadDocx, uploadEnConverteer, readDriveDoc } from "./drive";
@@ -145,23 +146,26 @@ export async function leesAangeleverdDocument(
     return { ok: false, error: "Dit bestandstype kan ik nog niet lezen. Gebruik .docx, .pdf, .txt of .md." };
   }
 
-  const folder = await getPageDriveFolder(slug, url).catch(() => null);
-  if (!folder?.folderId) {
-    return { ok: false, error: "Deze pagina heeft nog geen Drive-map; koppel die eerst (tab Pagina's)." };
+  // Map automatisch aanmaken als hij er nog niet is (pagina-map onder de
+  // klantmap). Eerder moest Maarten die eerst met de hand kiezen, en tot dat
+  // moment weigerde elke drop.
+  const folderId = await ensureFolderFor(slug, url);
+  if (!folderId) {
+    return { ok: false, error: "Geen toegang tot Google Drive; koppel Drive opnieuw in het adminscherm." };
   }
   const datum = new Date().toISOString().slice(0, 10);
 
   try {
     if (isDocx) {
       // Origineel onaangetast bewaren, en een omgezette kopie uitlezen.
-      const up = await uploadDocx(folder.folderId, `Aangeleverd-${datum}-${naam}`, buf);
-      const lees = await uploadEnConverteer(folder.folderId, `Leeskopie-${datum}-${naam}`, buf, DOCX_MIME_IN);
+      const up = await uploadDocx(folderId, `Aangeleverd-${datum}-${naam}`, buf);
+      const lees = await uploadEnConverteer(folderId, `Leeskopie-${datum}-${naam}`, buf, DOCX_MIME_IN);
       const read = await readDriveDoc(lees.id, 60000);
       return read.ok && (read.text || "").trim()
         ? { ok: true, tekst: read.text || "", driveLink: up.link }
         : { ok: false, error: "Kon geen leesbare tekst uit het Word-bestand halen." };
     }
-    const lees = await uploadEnConverteer(folder.folderId, `Aangeleverd-${datum}-${naam}`, buf, "application/pdf");
+    const lees = await uploadEnConverteer(folderId, `Aangeleverd-${datum}-${naam}`, buf, "application/pdf");
     const read = await readDriveDoc(lees.id, 60000);
     return read.ok && (read.text || "").trim()
       ? { ok: true, tekst: read.text || "", driveLink: lees.link }

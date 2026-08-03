@@ -72,7 +72,9 @@ export async function POST(req: NextRequest) {
   try {
     const url = await volledigeUrl(slug, gevraagd);
     if (!url) return NextResponse.json({ ok: false, error: "Deze pagina staat niet in de lijst van deze klant." }, { status: 404 });
-    const vers = await getPageDossier(slug, url, { verseMail: true });
+    // Bewust forceren: wie op Ververs drukt wil een nieuwe zoekronde, niet
+    // het antwoord van vorige week.
+    const vers = await getPageDossier(slug, url, { forceerMail: true });
     const { tekst, controle } = await getDossierTekst(slug, url, { ververs: true, dossier: vers });
     return NextResponse.json({ ok: true, tekst, controle, html: dossierBlokHtml(vers, tekst), mails: vers.mails });
   } catch {

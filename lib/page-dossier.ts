@@ -7,7 +7,7 @@ import { listVersionsForKey, KIND_LABEL, type DocVersion } from "./doc-versions"
 import { getStepLinks } from "./page-doc-run";
 import { getActiviteit, SOORT_LABEL, type Activiteit } from "./activiteit";
 import { listChatsForKey, type ChatSummary } from "./page-chats";
-import { getPaginaMails, zoekMailsIndienNodig, HARD_BEWIJS, type PaginaMail } from "./page-emails";
+import { getPaginaMails, zoekMailsIndienNodig, zoekMailsVoorPagina, HARD_BEWIJS, type PaginaMail } from "./page-emails";
 
 // ═══════════════════════════════════════════════════════════
 // HET PAGINADOSSIER
@@ -63,12 +63,20 @@ function versieToDoc(v: DocVersion): DossierDoc {
 
 /**
  * Verzamelt het volledige dossier van één pagina.
- * Doet standaard GEEN netwerkverkeer naar Outlook; met `verseMail` wordt er
- * hooguit één keer per week opnieuw naar bijpassende mail gezocht.
+ * Doet standaard GEEN netwerkverkeer naar Outlook. Met `verseMail` wordt er
+ * hooguit één keer per week opnieuw gezocht (lui, voor gewoon openklappen); met
+ * `forceerMail` wordt er ALTIJD opnieuw gezocht.
+ *
+ * Dat onderscheid is er niet voor niets: de Ververs-knop gebruikte de luie weg,
+ * dus wie bewust op verversen drukte kreeg gewoon het oude antwoord terug. Bij
+ * One Day Clinic bleven daardoor mailkoppelingen staan die met een oudere, te
+ * ruime regel waren gevonden, en ontbrak juist de mail met de teruggestuurde
+ * teksten.
  */
-export async function getPageDossier(slug: string, url: string, opts: { verseMail?: boolean } = {}): Promise<PageDossier> {
+export async function getPageDossier(slug: string, url: string, opts: { verseMail?: boolean; forceerMail?: boolean } = {}): Promise<PageDossier> {
   const k = urlKey(url);
-  if (opts.verseMail) await zoekMailsIndienNodig(slug, url).catch(() => { /* nooit blokkerend */ });
+  if (opts.forceerMail) await zoekMailsVoorPagina(slug, url).catch(() => { /* nooit blokkerend */ });
+  else if (opts.verseMail) await zoekMailsIndienNodig(slug, url).catch(() => { /* nooit blokkerend */ });
 
   const [client, pages, copyLiveAll, plan, samenvatting, outputs, versies, stepLinks, activiteit, chats, mails, uitgaand] =
     await Promise.all([

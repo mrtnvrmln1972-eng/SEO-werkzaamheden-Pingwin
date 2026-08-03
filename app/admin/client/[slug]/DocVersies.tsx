@@ -5,7 +5,8 @@
 // verandert niets aan de geldende versie tot Maarten op "Verwerk" klikt. Elke
 // versie blijft bewaard in het archief eronder.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { mdToHtml } from "../../../../lib/markdown";
 
 type Versie = { id: number; kind: string; source: "pingwin" | "klant"; naam: string; driveLink: string; samenvatting: string; vergelijking: string; status: string; createdAt: string };
 type Voorstel = { id: number; kind: string; kindLabel: string; naam: string; vergelijking: string; samenvatting: string };
@@ -17,6 +18,7 @@ export default function DocVersies({ slug, url }: { slug: string; url: string })
   const [versies, setVersies] = useState<Versie[]>([]);
   const [lijstOpen, setLijstOpen] = useState(false);
   const [drag, setDrag] = useState(false);
+  const bestandRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState("");
   const [fout, setFout] = useState("");
   const [okMsg, setOkMsg] = useState("");
@@ -85,7 +87,18 @@ export default function DocVersies({ slug, url }: { slug: string; url: string })
           <span className="muted">Document lezen en vergelijken…</span>
         ) : (
           <>
-            <span className="wp-docdrop-tekst">Sleep een teruggekregen document hierheen (.docx, .txt, .md) of plak een Drive-link:</span>
+            {/* Slepen werkt, maar niet iedereen sleept. Vandaar ook een gewone
+                knop om te bladeren. Pdf staat er nu bij: klanten sturen hun
+                geredigeerde teksten juist vaak als pdf terug. */}
+            <span className="wp-docdrop-tekst">
+              Sleep een teruggekregen document hierheen (.docx, .pdf, .txt, .md),{" "}
+              <button type="button" className="wp-docdrop-kies" disabled={!!busy}
+                onClick={() => bestandRef.current?.click()}>kies een bestand</button>{" "}
+              of plak een Drive-link:
+            </span>
+            <input ref={bestandRef} type="file" className="wp-docdrop-verborgen"
+              accept=".docx,.pdf,.txt,.md,.json,.csv"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) void drop(f); e.target.value = ""; }} />
             <span className="wp-docdrop-linkrij">
               <input className="wp-docdrop-input" value={linkVeld} placeholder="https://docs.google.com/…"
                 onChange={(e) => setLinkVeld(e.target.value)}
@@ -103,7 +116,9 @@ export default function DocVersies({ slug, url }: { slug: string; url: string })
             </select>
             <span className={"wp-doc-vergelijk" + (voorstel.vergelijking === "ouder" ? " wp-doc-ouder" : "")}>{vergelijkTekst[voorstel.vergelijking] || ""}</span>
           </div>
-          <div className="wp-docvoorstel-tekst">{voorstel.samenvatting}</div>
+          {/* Gerenderd, niet als platte tekst: het model levert soms markdown en
+              dan stonden er sterretjes in beeld. */}
+          <div className="wp-docvoorstel-tekst md" dangerouslySetInnerHTML={{ __html: mdToHtml(voorstel.samenvatting || "") }} />
           <div className="wp-docvoorstel-acties">
             <button type="button" className="wp-fase-btn wp-fase-btn-primair" disabled={!!busy} onClick={() => void besluit("verwerk")}>{busy === "verwerk" ? "Samenvoegen…" : "Verwerk tot geldende versie"}</button>
             <button type="button" className="wp-fase-btn" disabled={!!busy} onClick={() => void besluit("negeer")}>Negeer</button>
