@@ -482,13 +482,25 @@ export async function runCannibalRedirect(slug: string): Promise<void> {
 // Die wordt hier opgepakt bij de stap waar hij was. Na drie vergeefse pogingen
 // stopt hij definitief: zonder die noodrem blijft een stap die telkens sneuvelt
 // eindeloos opnieuw draaien, en elke poging kost het volle AI-bedrag.
-export async function processCannibalQueue(): Promise<{ opgepakt: string[]; redenen: string[] }> {
+export async function processCannibalQueue(): Promise<{ opgepakt: string[]; redenen: string[]; diagnose?: unknown }> {
   await ensureSchema();
   await ensureTable();
   // Meteen vastleggen dát hij langskwam, vóór al het werk. Zo is op het scherm te
   // zien of het vangnet draait, ook als er niets op te pakken viel.
   await setSetting(SETTING_OPRUIM_CRON_TIK, new Date().toISOString()).catch(() => { /* stil */ });
   const opgepakt: string[] = [];
+
+  // Diagnose: laat precies zien wát deze werker leest. Op 03-08-2026 las de cron
+  // fase='' terwijl het scherm op hetzelfde moment fase='gather' teruggaf; zonder
+  // dit is niet vast te stellen of dat aan de rij ligt of aan de verbinding.
+  let diagnose: unknown = null;
+  try {
+    const { rows } = await sql`
+      SELECT current_database() AS db, current_schema() AS schema, client_slug, status, fase, ronde, retries, updated_at,
+             (seed IS NOT NULL) AS heeft_seed, length(coalesce(fase, '')) AS fase_lengte
+      FROM client_cannibal_analysis WHERE status = 'running' ORDER BY updated_at ASC LIMIT 5`;
+    diagnose = rows;
+  } catch (e) { diagnose = { fout: (e as Error).message }; }
 
   await sql`
     UPDATE client_cannibal_analysis
@@ -526,5 +538,5 @@ export async function processCannibalQueue(): Promise<{ opgepakt: string[]; rede
       if (r.uit === "klaar") break;
     }
   }
-  return { opgepakt, redenen };
+  return { opgepakt, redenen, diagnose };
 }
