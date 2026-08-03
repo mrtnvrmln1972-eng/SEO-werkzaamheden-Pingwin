@@ -143,9 +143,12 @@ function tijdlijn(d: PageDossier): string {
 // Eén nette regel met de documenten en de pagina, als gewone oranje links met
 // een puntje ertussen. Dit stond eerder als een rij grijze blokjes in beeld, en
 // dat vloekte met de rest van het dashboard.
-function linkRegel(d: PageDossier): string {
+function linkRegel(d: PageDossier, alGetoond = false): string {
   const delen: string[] = [];
-  for (const v of d.klantvoorstellen) {
+  // De teruggekregen teksten staan al achter de "nu:"-regel, precies waar het
+  // werk begint. Ze hier nóg een keer neerzetten liet dezelfde pdf twee keer in
+  // beeld staan, alsof er twee versies lagen.
+  if (!alGetoond) for (const v of d.klantvoorstellen) {
     delen.push(v.link
       ? `<a class="pd-link pd-link-klant" href="${esc(v.link)}" target="_blank" rel="noreferrer" title="Teruggekregen van de klant, nog te verwerken">${esc(v.naam)}</a>`
       : `<span class="pd-link-uit" title="Teruggekregen van de klant, nog te verwerken">${esc(v.naam)}</span>`);
@@ -191,15 +194,18 @@ export function dossierBlokHtml(d: PageDossier, tekst: string, opts: { compact?:
   let verhaal = linkifyMailDatums(linkifyHtml(mdToHtml(tekst || ""), domein), d.mails);
   // Links achter de "nu:"-regel, de stap waar het werk begint.
   const nuLinks = nuRegelLinks(d);
+  let voorstellenGetoond = false;
   if (nuLinks) {
+    const voor = verhaal;
     verhaal = verhaal.replace(/(<li>\s*nu\s*:[\s\S]*?)(<\/li>)/i, (heel, inhoud, slot) => `${inhoud}${nuLinks}${slot}`);
+    voorstellenGetoond = verhaal !== voor && d.klantvoorstellen.some((v) => v.link);
   }
 
   return [
     '<div class="pd-blok">',
     '<div class="pd-kop"><span class="pd-koptekst">Waar deze pagina staat</span></div>',
     verhaal ? `<div class="pd-verhaal md">${verhaal}</div>` : "",
-    linkRegel(d),
+    linkRegel(d, voorstellenGetoond),
     // De doorzet-chip is juist op de compacte kaart het nuttigst; de rest van de
     // statusregel blijft daar weg.
     opts.compact ? statusChips({ ...d, stand: null, klantvoorstellen: [] }, tekst) : statusChips(d, tekst),

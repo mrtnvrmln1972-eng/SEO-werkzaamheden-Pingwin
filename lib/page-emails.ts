@@ -561,16 +561,29 @@ export async function zoekMailsVoorPagina(slug: string, url: string): Promise<{ 
   // gaat weg. Zonder dit blijven mails staan die met een oudere, ruimere regel
   // zijn gevonden; precies de reden dat er mails over de SOA-test bij de
   // CRP-pagina bleven hangen. Vastgepind en weggeklikt blijven met rust.
-  if (gehouden.length) {
-    // Lijst als tekst met scheidingsteken: de sql-helper accepteert geen array
+  //
+  // TWEE VANGRAILS, met bloed geschreven. Hier stond eerder: leverde de ronde
+  // niets op, gooi dan ALLES weg. Eén ronde die niet doorkwam (Graph even
+  // onbereikbaar, een time-out, de zeef die niets teruggaf) wiste daarmee het
+  // hele maildossier van een pagina, en dat is precies wat er gebeurde: zes
+  // gekoppelde mails weg na één lege ronde.
+  //
+  // 1. Levert een ronde niets op, dan verandert er niets. Een lege uitkomst is
+  //    bijna altijd een mislukte ronde, nooit bewijs dat er niets is.
+  // 2. Alleen mails die deze ronde LANGS ZIJN GEKOMEN en afvielen gaan weg. Een
+  //    mail die de zoekopdracht deze keer niet teruggaf, is niet weerlegd en
+  //    blijft dus gewoon staan.
+  const gezien = bruikbaar.map((m) => m.id);
+  if (gehouden.length && gezien.length) {
+    // Lijsten als tekst met scheidingsteken: de sql-helper accepteert geen array
     // als parameter, en een message-id bevat nooit een verticale streep.
-    const houd = gehouden.join("|");
+    const houd = "|" + gehouden.join("|") + "|";
+    const zag = "|" + gezien.join("|") + "|";
     await sql`
       DELETE FROM page_emails
       WHERE client_slug = ${slug} AND url_key = ${k} AND bron = 'auto'
-        AND position('|' || message_id || '|' in ${"|" + houd + "|"}) = 0`;
-  } else {
-    await sql`DELETE FROM page_emails WHERE client_slug = ${slug} AND url_key = ${k} AND bron = 'auto'`;
+        AND position('|' || message_id || '|' in ${zag}) > 0
+        AND position('|' || message_id || '|' in ${houd}) = 0`;
   }
 
   // Teksten die de klant terugstuurde meteen klaarzetten, zodat ze op de kaart
@@ -656,10 +669,21 @@ export async function zoekMailsIndienNodig(slug: string, url: string, maxDagen =
   const nieuweMail = !!nieuwste && (!peil || nieuwste.getTime() > peil.getTime());
 
   if (!nooitGescand && !nieuweMail) {
-    // Geen nieuwe mail: alleen nog de oude tijdsklep, zodat een pagina waarvan de
-    // zoektermen zijn veranderd toch af en toe opnieuw langs de postbus gaat.
     const laatste = await laatsteZoekronde(slug, k);
-    if (laatste && Date.now() - laatste.getTime() < maxDagen * 864e5) return;
+    // Staat er geen enkele mail bij deze pagina, dan valt er niets te verliezen
+    // en proberen we het gewoon opnieuw (met een uur ertussen, anders zou elke
+    // keer dat je een kaart opent een mailronde starten). Zonder deze regel
+    // bleef een pagina die door een mislukte ronde leeg raakte dagenlang leeg.
+    if (!laatste) {
+      const { rows } = await sql`SELECT count(*)::int AS n FROM page_emails WHERE client_slug = ${slug} AND url_key = ${k}`;
+      if (!Number(rows[0]?.n || 0)) {
+        const rust = await sql`SELECT gescand_op FROM page_mail_scans WHERE client_slug = ${slug} AND url_key = ${k} LIMIT 1`;
+        const laatsteScan = rust.rows[0]?.gescand_op ? new Date(rust.rows[0].gescand_op as string) : null;
+        if (laatsteScan && Date.now() - laatsteScan.getTime() < 36e5) return;
+      } else return;
+    } else if (Date.now() - laatste.getTime() < maxDagen * 864e5) return;
+    // Alleen nog de oude tijdsklep, zodat een pagina waarvan de zoektermen zijn
+    // veranderd toch af en toe opnieuw langs de postbus gaat.
   }
 
   await zoekMailsVoorPagina(slug, url).catch(() => { /* zoeken mag het dossier nooit breken */ });

@@ -121,7 +121,18 @@ export async function getPageDossier(slug: string, url: string, opts: { verseMai
     }
   }
 
-  const klantvoorstellen = versies.filter((v) => v.status === "voorstel").map(versieToDoc);
+  // Ontdubbeld op bestandsnaam: dezelfde teruggekregen pdf komt vaak twee keer
+  // binnen (bijlage in twee mails van hetzelfde gesprek, of nog eens met de hand
+  // erin gesleept). Op de kaart stond hij dan ook twee keer, wat leest alsof er
+  // twee verschillende versies liggen. Eén per naam, en de versie mét link wint.
+  const voorstellen = versies.filter((v) => v.status === "voorstel").map(versieToDoc);
+  const perNaam = new Map<string, DossierDoc>();
+  for (const v of voorstellen) {
+    const sleutel = (v.naam || v.label || "").trim().toLowerCase();
+    const bestaand = perNaam.get(sleutel);
+    if (!bestaand || (!bestaand.link && v.link)) perNaam.set(sleutel, v);
+  }
+  const klantvoorstellen = [...perNaam.values()];
 
   return {
     url,
