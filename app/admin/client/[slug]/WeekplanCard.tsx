@@ -15,6 +15,7 @@ import { devLabel } from "../../../../lib/personen";
 import AntwoordBlokken from "./AntwoordBlokken";
 import DocVersies from "./DocVersies";
 import PaginaDossier from "./PaginaDossier";
+import DeelKnoppen from "./DeelKnoppen";
 
 export type WpTask = { id: number; thread: string; taak: string; toelichting: string; wie: string; url: string; taaktype: string; copyUrl: string; bronMail: string; weekYear: number; weekNo: number; status: string; sortOrder: number; naarDev?: boolean };
 export type WpPageInfo = { url: string; live: boolean; klikken?: number; vertoningen?: number; doorgevoerd?: boolean | null; strategie: boolean; gelieerde: boolean; analyse: boolean; blauwdruk: boolean; copy: boolean; bouw: boolean; structured: boolean; structuredStatus: string; next: string; links: { analyse: string; blauwdruk: string; copy: string } };
@@ -659,6 +660,12 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
           onClick={() => void zetNaarDev()}>
           {devBezig ? "Bezig…" : naarDev ? "✓ Op developerlijst" : "Naar developer"}
         </button>}
+        {/* Ook hier moet je kunnen delen: het werk is doorgezet, en dan wil je er een
+            stuk van kunnen maken dat de klant leest. Alleen de documentknop, want de
+            mailknop staat er hiernaast al. */}
+        <DeelKnoppen slug={slug} titel={t.taak.replace(/<[^>]*>/g, "").trim()}
+          tekst={[t.taak.replace(/<[^>]*>/g, "").trim(), t.toelichting.replace(/<[^>]*>/g, "").trim()].filter(Boolean).join("\n\n")}
+          url={t.url || undefined} toon="document" compact knopClass="wp-link wp-link-btn" />
         <button type="button" className="wp-act wp-act-klant" title="Mail over deze kaart; de ontvanger (klant, developer of anders) kies je in het venster." onClick={() => onMail("klant")}>Mail</button>
       </div>}
         </div>

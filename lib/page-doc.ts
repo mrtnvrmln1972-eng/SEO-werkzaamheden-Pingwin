@@ -309,6 +309,56 @@ export async function summariseChatToSpec(slug: string, url: string, analysis: s
   return { spec, title };
 }
 
+// ═══════════════════════════════════════════════════════════
+// VAN EEN GESPREK EEN DOCUMENT
+// ═══════════════════════════════════════════════════════════
+// Alles hierboven hangt aan één pagina. Een bird's eye-analyse doet dat niet: die
+// gaat over de hele site (cannibalisatie, link equity, locatiepagina's) en stond
+// daardoor alleen in de chat. Deze variant werkt op het gesprek zelf, zodat je er
+// met één knop een deelbaar document van maakt.
+const GESPREK_DOC_SYSTEM = `Je bent een senior SEO-strateeg bij bureau Pingwin. Je zet een intern gesprek/analyse over de site van een klant om in één leesbaar adviesdocument DAT DE KLANT ZELF LEEST.
+AANSPREEKVORM: gericht aan de eigenaar van de site. Spreek direct aan met "jullie/je" ("jullie site", "we stellen voor"). Nooit in de derde persoon over de klant praten.
+GEWONE TAAL: geen vakjargon zonder uitleg. Gebruik je een vakterm (cannibalisatie, link equity, canonical), leg hem in dezelfde zin in gewone woorden uit, of vermijd hem. Zoekwoorden zet je vet met **dubbele sterretjes**. Geen emoji.
+VERZIN NIETS: alles komt uit het gesprek hieronder. Staat er een cijfer, pagina of zoekwoord in, neem dat letterlijk over; staat het er niet in, laat het weg.
+GEEN CHAT-SPOREN: geen "zoals ik hierboven zei", geen verwijzingen naar de chat, geen vragen aan de lezer, geen interne opmerkingen over het dashboard of de weekplanning.
+Bouw het document als volgt op (sla een sectie zonder inhoud stilzwijgend over):
+1. Waar het over gaat: drie tot vier zinnen. Wat hebben we bekeken en waarom is dat belangrijk voor jullie vindbaarheid.
+2. Wat we zien: de bevindingen, elk kort en concreet, met de pagina's erbij waar het over gaat.
+3. Wat we voorstellen: de aanpak, per punt één begrijpelijke regel met wat we doen en waarom.
+4. Wat jullie hiervan gaan merken: twee tot drie zinnen over het verwachte effect en de termijn. Beloof niets hards.
+5. Wat we van jullie nodig hebben: alleen als het gesprek daar iets over zegt (teksten, akkoord, toegang). Anders weglaten.
+${DOCSPEC_FORMAT}`;
+
+/**
+ * Maakt van een bird's eye-antwoord (of een heel gesprek) één klantklaar document.
+ * Niet aan een pagina gebonden: `titelHint` is bijvoorbeeld de titel van de chat.
+ */
+export async function gesprekDocSpec(slug: string, gesprek: string, titelHint?: string, extra?: string): Promise<{ spec: DocSpec; title: string }> {
+  const client = await getClientBySlug(slug);
+  const user = `KLANT: ${client?.name || slug}${client?.domain ? ` (${client.domain})` : ""}${titelHint ? `\nONDERWERP VAN HET GESPREK: ${titelHint}` : ""}
+
+GESPREK/ANALYSE:
+${gesprek.slice(0, 60000)}${extra ? `\n\nEXTRA STURING: ${extra}` : ""}`;
+  const raw = await callClaude(GESPREK_DOC_SYSTEM, [{ role: "user", content: user }], 8192, { slug, action: "gesprek-document" });
+  const parsed = extractJsonObject(raw);
+  if (!parsed || !Array.isArray(parsed.sections) || !parsed.sections.length) {
+    throw new Error("De analyse kon niet worden opgemaakt (het AI-antwoord kwam onvolledig terug). Probeer het opnieuw, of maak het gesprek iets korter.");
+  }
+  const title = typeof parsed.titel === "string" && parsed.titel.trim() ? parsed.titel.trim() : (titelHint || "Advies");
+  const spec: DocSpec = {
+    klant: client?.name || slug,
+    rapporttype: "Advies",
+    titel: title,
+    ondertitel: typeof parsed.ondertitel === "string" ? parsed.ondertitel : "Opgesteld door Pingwin",
+    meta: {
+      Klant: client?.name || slug,
+      Datum: new Date().toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" }),
+    },
+    sections: parsed.sections as DocSpec["sections"],
+  };
+  return { spec, title };
+}
+
 // Document voor de cannibalisatie-stap: vertelt het verhaal van de cannibalisatie-
 // analyse zelf. GEEN nieuwe data-ronde, GEEN herbeoordeling van de pagina; alleen
 // wat er in de analyse staat, leesbaar voor de klant en exact voor de developer.

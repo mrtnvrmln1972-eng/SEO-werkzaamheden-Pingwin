@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import ActionCard, { type Action } from "./ActionCard";
 import TakenVoorstel, { type Oogst } from "./TakenVoorstel";
+import DeelKnoppen from "./DeelKnoppen";
 import { linkifyHtml as linkify } from "../../../../lib/linkify";
 import { vraagHtml } from "../../../../lib/vraag-opmaak";
 import { striptVulzinnen } from "../../../../lib/vulzinnen";
@@ -29,6 +30,16 @@ function zonderWeekrecap(md: string, heeftVoorstel: boolean): string {
   });
   const samen = uit.join("\n").replace(/\n{3,}/g, "\n\n").trim();
   return samen || md;
+}
+
+// Wat er gedeeld wordt als je er een document of een mail van maakt. Is er een
+// conclusie getrokken, dan is dát het stuk: dat is de gewogen samenvatting van het
+// hele gesprek. Anders alle antwoorden achter elkaar, want één los antwoord mist
+// vaak de helft van de redenering.
+function deelTekst(msgs: Msg[]): string {
+  const conclusie = msgs.filter((m) => m.soort === "conclusie").map((m) => m.content || "").filter(Boolean);
+  if (conclusie.length) return conclusie[conclusie.length - 1];
+  return msgs.filter((m) => m.role === "assistant" && m.soort !== "oogst").map((m) => (m.content || "").trim()).filter(Boolean).join("\n\n");
 }
 
 // Het eerste kopje van een antwoord, als samenvatting op de ingeklapte balk.
@@ -98,7 +109,7 @@ const labelOf = (t: string) => (t === BASE ? "Algemeen" : t.startsWith("overzich
 // standaard dichtgeklapt en toont zijn titel plus een korte samenvatting; je klapt
 // er een open om het gesprek en de actie-kaarten te zien, en je kunt een onderwerp
 // afvinken als "gedaan". Zo zie je in één oogopslag wat er speelt, zonder muur.
-export default function OverviewChat({ slug, domain = "", configured, onGoToPage, onGoToTask, onWeekplanChanged }: { slug: string; domain?: string; configured: boolean; onGoToPage?: (url: string) => void; onGoToTask?: (taskId: number) => void; onWeekplanChanged?: () => void }) {
+export default function OverviewChat({ slug, domain = "", configured, onGoToPage, onGoToTask, onWeekplanChanged, clientName, clientEmail }: { slug: string; domain?: string; configured: boolean; onGoToPage?: (url: string) => void; onGoToTask?: (taskId: number) => void; onWeekplanChanged?: () => void; clientName?: string; clientEmail?: string }) {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [open, setOpen] = useState<string | null>(null);      // welk onderwerp is uitgeklapt (accordion)
   const [messages, setMessages] = useState<Msg[]>([]);        // berichten van het open onderwerp
@@ -412,6 +423,23 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
                         </button>
                       )}
                       <span className="ovc-oogst-uitleg">Taken maak je hier, niet per regel: beide stappen wegen het hele gesprek.</span>
+                    </div>
+                  )}
+
+                  {/* Delen met de klant. Een analyse over de hele site (cannibalisatie,
+                      link equity, locatiepagina's) stond alleen in de chat; hiermee wordt
+                      het een document in huisstijl of een mail. Gedeeld met wat je op een
+                      weekplan-kaart ziet, zodat het overal hetzelfde werkt. */}
+                  {messages.some((m) => m.role === "assistant") && (
+                    <div className="ovc-deel">
+                      <span className="ovc-deel-label">Delen met de klant</span>
+                      <DeelKnoppen
+                        slug={slug}
+                        titel={titleOf(t)}
+                        tekst={deelTekst(messages)}
+                        clientName={clientName}
+                        clientEmail={clientEmail}
+                      />
                     </div>
                   )}
 

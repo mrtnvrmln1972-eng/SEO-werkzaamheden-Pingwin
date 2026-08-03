@@ -458,7 +458,7 @@ export default function ClientCockpit({
                 rechts (1/3) stand van zaken, zoekwoorden & links, en de laatste mails. */}
             <div className="tk-grid">
             <div className="tk-links">
-            <OverviewChat slug={client.slug} domain={client.domain || ""} configured={chatConfigured !== false} onGoToPage={goToPage} onGoToTask={goToNewTask} onWeekplanChanged={() => setWeekplanReload((n) => n + 1)} />
+            <OverviewChat slug={client.slug} domain={client.domain || ""} configured={chatConfigured !== false} onGoToPage={goToPage} onGoToTask={goToNewTask} onWeekplanChanged={() => setWeekplanReload((n) => n + 1)} clientName={client.name} clientEmail={client.email || ""} />
             <WeekplanBoard slug={client.slug} onGoToPage={goToPage} onGoToTab={(t) => changeTab(validTab(t))} onOpenMailDate={openMailByDate} clientName={client.name} clientEmail={client.email || ""} reloadSignal={weekplanReload} />
             </div>
             <div className="tk-rechts">
