@@ -82,6 +82,10 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailD
   const [mailVerzendt, setMailVerzendt] = useState(false);
   const [mailKlaar, setMailKlaar] = useState("");
   const mailRef = useRef<HTMLDivElement>(null);
+  // Alle documenten die bij de pagina van deze kaart horen (inclusief de teksten
+  // die de klant terugstuurde). De kaart kende alleen analyse/blauwdruk/copy, dus
+  // juist de herziene versie kon je niet meesturen.
+  const [mailDocs, setMailDocs] = useState<{ label: string; url: string }[]>([]);
   // Werklijst sitebouwer: site-brede meta's + alt-teksten als één document + één Dev-kaart.
   const [wlBusy, setWlBusy] = useState(false);
   const [wlMsg, setWlMsg] = useState("");
@@ -189,19 +193,74 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailD
     await fetch("/api/admin/weekplan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, id, delete: true }) }).catch(() => {});
   }
 
-  // Beschikbare document-links voor de mail (uit de pijplijn van de pagina).
+  // Alles wat je vanuit deze kaart kunt meesturen: de teksten die de klant
+  // terugstuurde, onze eigen documenten, én de pagina zelf. Die laatste ontbrak,
+  // terwijl de developer juist moet weten wáár de tekst naartoe moet; die link
+  // moest je elke keer met de hand uit de kaart kopiëren.
   function docLinksFor(t: WpTask): { key: string; label: string; url: string }[] {
-    const p = t.url ? pages[urlKey(t.url)] : undefined;
     const uit: { key: string; label: string; url: string }[] = [];
-    if (p?.links.analyse) uit.push({ key: "analyse", label: "Analyse-doc", url: p.links.analyse });
-    if (p?.links.blauwdruk) uit.push({ key: "blauwdruk", label: "Blauwdruk-doc", url: p.links.blauwdruk });
-    const copy = p?.links.copy || t.copyUrl;
-    if (copy) uit.push({ key: "copy", label: "Copy-doc", url: copy });
+    const gezien = new Set<string>();
+    const voegToe = (key: string, label: string, url: string) => {
+      const u = (url || "").trim();
+      if (!u || gezien.has(u)) return;
+      gezien.add(u);
+      uit.push({ key, label, url: u });
+    };
+    if (t.url) voegToe("pagina", "De pagina", t.url);
+    // Server-lijst (klantversies eerst), met de pijplijn-links van het bord als
+    // terugval zolang die lijst nog niet binnen is.
+    for (const d of mailDocs) voegToe(d.url, d.label, d.url);
+    const p = t.url ? pages[urlKey(t.url)] : undefined;
+    if (p?.links.copy || t.copyUrl) voegToe("copy", "Copy-doc", p?.links.copy || t.copyUrl);
+    if (p?.links.blauwdruk) voegToe("blauwdruk", "Blauwdruk-doc", p.links.blauwdruk);
+    if (p?.links.analyse) voegToe("analyse", "Analyse-doc", p.links.analyse);
     return uit;
   }
 
+  // ── Het concept blijft staan ──
+  // Sluit je het mailvenster om even iets uit de kaart te halen, dan was je tekst
+  // weg en begon de assistent opnieuw. Nu bewaren we het concept per kaart, ook
+  // over een herlaadbeurt heen, en openen we daarmee in plaats van met een verse
+  // generatie. Wissen doe je bewust, met de knop Opnieuw.
+  const conceptSleutel = (id: number) => `pingwin-mailconcept-${slug}-${id}`;
+  type Concept = { aud: "klant" | "dev" | "anders"; to: string; onderwerp: string; tekst: string; instr: string; links: Record<string, boolean> };
+  function leesConcept(id: number): Concept | null {
+    try { const s = localStorage.getItem(conceptSleutel(id)); return s ? JSON.parse(s) as Concept : null; } catch { return null; }
+  }
+  function bewaarConcept(id: number) {
+    try {
+      const c: Concept = {
+        aud: mailAud, to: mailTo, onderwerp: mailOnderwerp,
+        tekst: mailRef.current?.innerText || "", instr: mailInstr, links: mailLinks,
+      };
+      if (!c.tekst.trim() && !c.onderwerp.trim()) return;
+      localStorage.setItem(conceptSleutel(id), JSON.stringify(c));
+    } catch { /* zonder opslag is het concept alleen deze sessie */ }
+  }
+  function wisConcept(id: number) {
+    try { localStorage.removeItem(conceptSleutel(id)); } catch { /* niets */ }
+  }
+
   function openMail(t: WpTask, aud: "klant" | "dev") {
-    setMailFor(t); setMailAud(aud); setMailInstr(""); setMailErr(""); setMailLinks({});
+    setMailFor(t); setMailErr(""); setMailDocs([]);
+    // De volledige documentlijst van deze pagina ophalen (klantversies incluis).
+    if (t.url) {
+      fetch(`/api/admin/weekplan/dev?slug=${encodeURIComponent(slug)}&id=${t.id}`)
+        .then((r) => r.json())
+        .then((d) => { if (d?.ok && Array.isArray(d.docs)) setMailDocs(d.docs); })
+        .catch(() => {});
+    }
+
+    // Lag er nog een concept? Dan pak je dat op waar je gebleven was.
+    const c = leesConcept(t.id);
+    if (c) {
+      setMailAud(c.aud); setMailTo(c.to); setMailOnderwerp(c.onderwerp);
+      setMailInstr(c.instr || ""); setMailLinks(c.links || {});
+      setTimeout(() => { if (mailRef.current) mailRef.current.innerText = c.tekst || ""; }, 0);
+      return;
+    }
+
+    setMailAud(aud); setMailInstr(""); setMailLinks({});
     let devTo = ""; try { devTo = localStorage.getItem("pingwin-dev-email") || ""; } catch { /* geen opslag */ }
     const to = aud === "klant" ? (clientEmail || "") : aud === "dev" ? devTo : "";
     setMailTo(to);
@@ -209,6 +268,12 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailD
     // die is vlak na setMailTo nog niet bijgewerkt, dus kwam er een leeg adres bij
     // de assistent aan en werd de aanhef "Hoi," in plaats van "Hoi Maarten,".
     void generateMail(t, aud, "", {}, to);
+  }
+
+  // Sluiten bewaart, niet weggooien.
+  function sluitMail() {
+    if (mailFor) bewaarConcept(mailFor.id);
+    setMailFor(null);
   }
 
   async function generateMail(t: WpTask, aud: "klant" | "dev" | "anders", instructie: string, gekozen: Record<string, boolean>, to?: string) {
@@ -254,7 +319,7 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailD
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ slug, to, onderwerp, tekst: text, links }),
       }).then((r) => r.json());
-      if (d?.ok) { setMailKlaar(d.samenvatting || "Verstuurd."); setTimeout(() => { setMailFor(null); setMailKlaar(""); }, 1600); }
+      if (d?.ok) { wisConcept(mailFor.id); setMailKlaar(d.samenvatting || "Verstuurd."); setTimeout(() => { setMailFor(null); setMailKlaar(""); }, 1600); }
       else setMailErr(d?.error || "Versturen mislukte.");
     } catch { setMailErr("Versturen mislukte."); }
     finally { setMailVerzendt(false); }
@@ -331,11 +396,11 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailD
       </div>
 
       {mailFor && (
-        <div className="wp-mail-overlay" onClick={(e) => { if (e.target === e.currentTarget) setMailFor(null); }}>
+        <div className="wp-mail-overlay" onClick={(e) => { if (e.target === e.currentTarget) sluitMail(); }}>
           <div className="wp-mail-modal">
             <div className="wp-mail-head">
               <span className="wp-mail-title">Mail vanuit deze kaart</span>
-              <button type="button" className="wp-icon wp-del" title="Sluiten" onClick={() => setMailFor(null)}>×</button>
+              <button type="button" className="wp-icon wp-del" title="Sluiten (je concept blijft bewaard)" onClick={sluitMail}>×</button>
             </div>
             <div className="wp-mail-sub muted">Over: {mailFor.taak.replace(/<[^>]*>/g, "").trim()}</div>
             <div className="wp-mail-aud">
@@ -373,7 +438,7 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailD
             <div className="wp-mail-instrrij">
               <input className="wp-mail-instr" value={mailInstr} onChange={(e) => setMailInstr(e.target.value)} placeholder="Wat moet er in de mail? (optioneel, bijv. 'leg kort uit waar dit vandaan komt')"
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void generateMail(mailFor, mailAud, mailInstr, mailLinks); } }} />
-              <button type="button" className="ghost-btn small" disabled={mailBusy} onClick={() => void generateMail(mailFor, mailAud, mailInstr, mailLinks)}>Opnieuw</button>
+              <button type="button" className="ghost-btn small" disabled={mailBusy} title="Laat de assistent de mail opnieuw schrijven (je huidige tekst gaat verloren)" onClick={() => { wisConcept(mailFor.id); void generateMail(mailFor, mailAud, mailInstr, mailLinks); }}>Opnieuw</button>
             </div>
             {mailErr && <div className="login-error wp-mail-fout">{mailErr}</div>}
             {mailKlaar && <div className="wp-mail-klaar">{mailKlaar}</div>}
@@ -384,7 +449,7 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailD
               <span className="wp-mail-onderwerp-label">Onderwerp</span>
               <input value={mailOnderwerp} onChange={(e) => setMailOnderwerp(e.target.value)} placeholder="Onderwerp van de mail" />
             </label>
-            <div className="wp-mail-edit" contentEditable suppressContentEditableWarning ref={mailRef} data-placeholder="De mail verschijnt hier…" style={{ opacity: mailBusy ? 0.5 : 1 }} />
+            <div className="wp-mail-edit" contentEditable suppressContentEditableWarning ref={mailRef} data-placeholder="De mail verschijnt hier…" style={{ opacity: mailBusy ? 0.5 : 1 }} onBlur={() => mailFor && bewaarConcept(mailFor.id)} />
             {mailBusy && <div className="muted" style={{ marginTop: 6 }}>Mail aan het schrijven…</div>}
             <div className="wp-mail-foot">
               <button type="button" className="ghost-btn small" onClick={copyMail} disabled={mailBusy}>Kopieer</button>

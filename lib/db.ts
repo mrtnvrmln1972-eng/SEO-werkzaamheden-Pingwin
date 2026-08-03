@@ -254,6 +254,13 @@ async function init(): Promise<void> {
   await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS naar_dev_at TIMESTAMPTZ`;
   await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS copy_url TEXT`;
   await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS bron_mail TEXT`;
+  // Wat er naar de developer gaat, apart van de kaart zelf: de opdracht zoals de
+  // sitebouwer hem leest, de opmerkingen erbij, en welke documenten meegaan. Los
+  // gehouden van taak/toelichting, want de kaart is van Maarten en dit is de
+  // doorgeefversie; die twee mogen uit elkaar lopen zonder elkaar te overschrijven.
+  await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS dev_taak TEXT`;
+  await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS dev_toelichting TEXT`;
+  await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS dev_docs JSONB`;
 
   // Handmatige fase-vinkjes per pagina voor de projectkaart in de weekplanning.
   // Een rij hier wint van de afgeleide stand (beide kanten op: afvinken en terugzetten).

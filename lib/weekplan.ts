@@ -159,10 +159,43 @@ export async function updateWeekplanTask(slug: string, id: number, patch: { week
  * stond, dus na de overstap was mailen het enige wat er nog over was. Dit hangt de
  * draad terug.
  */
-export async function setWeekplanNaarDev(slug: string, id: number, naarDev: boolean): Promise<void> {
+export async function setWeekplanNaarDev(
+  slug: string,
+  id: number,
+  naarDev: boolean,
+  dev?: { taak?: string; toelichting?: string; docs?: { label: string; url: string }[] },
+): Promise<void> {
   await ensureSchema();
   await sql`UPDATE client_weekplan SET naar_dev = ${naarDev}, naar_dev_at = ${naarDev ? new Date().toISOString() : null}, updated_at = now()
             WHERE client_slug = ${slug} AND id = ${id}`;
+  if (!dev) return;
+  // De doorgeefversie: alleen zetten wat is meegegeven, zodat je later één veld
+  // kunt bijstellen zonder de rest kwijt te raken.
+  const taak = dev.taak === undefined ? null : dev.taak.trim().slice(0, 300);
+  const toel = dev.toelichting === undefined ? null : dev.toelichting.trim().slice(0, 4000);
+  const docs = dev.docs === undefined ? null : JSON.stringify(dev.docs.slice(0, 8));
+  await sql`
+    UPDATE client_weekplan SET
+      dev_taak        = COALESCE(${taak}, dev_taak),
+      dev_toelichting = COALESCE(${toel}, dev_toelichting),
+      dev_docs        = COALESCE(${docs}::jsonb, dev_docs),
+      updated_at = now()
+    WHERE client_slug = ${slug} AND id = ${id}`;
+}
+
+/** Wat er op dit moment naar de developer zou gaan (voor het doorzet-venster). */
+export async function getWeekplanDev(slug: string, id: number): Promise<{ taak: string; toelichting: string; docs: { label: string; url: string }[] } | null> {
+  await ensureSchema();
+  const { rows } = await sql`
+    SELECT taak, toelichting, dev_taak, dev_toelichting, dev_docs
+    FROM client_weekplan WHERE client_slug = ${slug} AND id = ${id} LIMIT 1`;
+  const r = rows[0];
+  if (!r) return null;
+  return {
+    taak: String(r.dev_taak || r.taak || ""),
+    toelichting: String(r.dev_toelichting || ""),
+    docs: Array.isArray(r.dev_docs) ? (r.dev_docs as { label: string; url: string }[]) : [],
+  };
 }
 
 export async function updateWeekplanToelichting(slug: string, id: number, toelichting: string): Promise<void> {

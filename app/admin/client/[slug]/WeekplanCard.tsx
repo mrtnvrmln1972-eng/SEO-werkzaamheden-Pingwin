@@ -16,6 +16,7 @@ import AntwoordBlokken from "./AntwoordBlokken";
 import DocVersies from "./DocVersies";
 import PaginaDossier from "./PaginaDossier";
 import DeelKnoppen from "./DeelKnoppen";
+import DevDoorzetten from "./DevDoorzetten";
 
 export type WpTask = { id: number; thread: string; taak: string; toelichting: string; wie: string; url: string; taaktype: string; copyUrl: string; bronMail: string; weekYear: number; weekNo: number; status: string; sortOrder: number; naarDev?: boolean };
 export type WpPageInfo = { url: string; live: boolean; klikken?: number; vertoningen?: number; doorgevoerd?: boolean | null; strategie: boolean; gelieerde: boolean; analyse: boolean; blauwdruk: boolean; copy: boolean; bouw: boolean; structured: boolean; structuredStatus: string; next: string; links: { analyse: string; blauwdruk: string; copy: string } };
@@ -223,19 +224,22 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
   // Staat deze kaart op de developerpagina?
   const [naarDev, setNaarDev] = useState<boolean>(t.naarDev === true);
   const [devBezig, setDevBezig] = useState(false);
+  const [devVenster, setDevVenster] = useState(false);
 
+  // Doorzetten opent eerst het venster: welke documenten gaan mee, en hoe luidt
+  // de opdracht. Eraf halen is één klik, want daar valt niets te kiezen.
   async function zetNaarDev() {
     if (devBezig) return;
-    const nieuw = !naarDev;
+    if (!naarDev) { setDevVenster(true); return; }
     setDevBezig(true);
     try {
       const d = await fetch("/api/admin/weekplan", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, id: t.id, naarDev: nieuw }),
+        body: JSON.stringify({ slug, id: t.id, naarDev: false }),
       }).then((r) => r.json());
-      if (d?.ok) setNaarDev(nieuw);
-      else setFoutje(d?.error || "Doorzetten naar de developer mislukte.");
-    } catch { setFoutje("Doorzetten naar de developer mislukte."); }
+      if (d?.ok) setNaarDev(false);
+      else setFoutje(d?.error || "Van de developerlijst halen mislukte.");
+    } catch { setFoutje("Van de developerlijst halen mislukte."); }
     finally { setDevBezig(false); }
   }
   useEffect(() => {
@@ -670,6 +674,15 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
       </div>}
         </div>
       </div>
+
+      {devVenster && (
+        <DevDoorzetten
+          slug={slug} id={t.id}
+          kaartTitel={t.taak.replace(/<[^>]*>/g, "").trim()}
+          onSluit={() => setDevVenster(false)}
+          onKlaar={() => { setDevVenster(false); setNaarDev(true); refreshBoard(); }}
+        />
+      )}
     </div>
   );
 }

@@ -29,6 +29,13 @@ export type DevTask = {
   position: number | null;
   devDone: boolean;    // door de developer afgevinkt als klaar
   devNote: string;     // terugkoppeling van de developer
+  /**
+   * De documenten die bij deze taak horen: de copy die verwerkt moet worden, de
+   * blauwdruk, en de teksten die de klant terugstuurde. Zonder deze kreeg de
+   * sitebouwer een opdracht als "zet de nieuwe copy live" zonder de copy erbij,
+   * en moest hij die alsnog per mail opvragen.
+   */
+  docs: { label: string; url: string }[];
 };
 
 function stripTags(html: string): string {
@@ -65,12 +72,53 @@ async function ensureDevTable(): Promise<void> {
  * dat ruis: die moet weten welke tekst waar moet komen. Vindt hij niets specifieks,
  * dan valt hij terug op de eerste paar regels, zodat er nooit een lege opdracht staat.
  */
-function devSturing(toelichting: string): string {
+export function devSturing(toelichting: string): string {
   const regels = (toelichting || "").split("\n").map((r) => r.trim()).filter(Boolean);
   const bouw = regels.filter((r) => /^-?\s*(bouw|publicatie|publiceer|dev|alt[- ]?tekst|interne links?|structured data|schema)\s*:/i.test(r));
   if (bouw.length) return bouw.map((r) => r.replace(/^-\s*/, "")).join("\n");
   const zonderKopjes = regels.filter((r) => !/^[A-ZÀ-Ž][^:]{1,40}:$/.test(r));
   return zonderKopjes.slice(0, 3).map((r) => r.replace(/^-\s*/, "")).join("\n");
+}
+
+/**
+ * De documenten die bij één pagina horen, in de volgorde waarin een sitebouwer
+ * ze nodig heeft: eerst de tekst die verwerkt moet worden, dan de onderbouwing.
+ *
+ * De teruggekregen klantversie staat bewust vóór onze eigen copy: als de klant
+ * de tekst nog heeft geredigeerd, is dát de tekst die de site in moet.
+ */
+export async function docsVoorPagina(slug: string, url: string): Promise<{ label: string; url: string }[]> {
+  if (!url) return [];
+  const uit: { label: string; url: string }[] = [];
+  const gezien = new Set<string>();
+  const voegToe = (label: string, link: string) => {
+    const l = (link || "").trim();
+    if (!l || gezien.has(l)) return;
+    gezien.add(l);
+    uit.push({ label, url: l });
+  };
+
+  try {
+    const { rows } = await sql`
+      SELECT naam, drive_link, status, source FROM page_doc_versions
+      WHERE client_slug = ${slug} AND url = ${url} AND drive_link IS NOT NULL AND drive_link <> ''
+      ORDER BY created_at DESC LIMIT 8`;
+    for (const r of rows) {
+      const naam = String(r.naam || "Document");
+      const klant = String(r.source || "") === "klant" || String(r.status || "") === "voorstel";
+      voegToe(klant ? `${naam} (van de klant)` : naam, String(r.drive_link));
+    }
+  } catch { /* zonder klantversies verder */ }
+
+  try {
+    const { getStepLinks } = await import("./page-doc-run");
+    const s = await getStepLinks(slug, url);
+    voegToe("Copy", s.copy);
+    voegToe("Blauwdruk", s.blauwdruk);
+    voegToe("Analyse", s.analyse);
+  } catch { /* zonder pijplijn-documenten verder */ }
+
+  return uit.slice(0, 6);
 }
 
 export async function getDeveloperTasks(): Promise<DevTask[]> {
@@ -121,6 +169,7 @@ export async function getDeveloperTasks(): Promise<DevTask[]> {
       position: mm?.position ?? null,
       devDone: mm?.devDone ?? false,
       devNote: mm?.devNote ?? "",
+      docs: [],
     };
   });
 
@@ -129,6 +178,7 @@ export async function getDeveloperTasks(): Promise<DevTask[]> {
   // developerpagina hangen op werk van vóór de overstap.
   const wp = await sql`
     SELECT w.id, w.client_slug, w.taak, w.toelichting, w.url, w.week_year, w.week_no, w.status,
+           w.dev_taak, w.dev_toelichting, w.dev_docs,
            c.name AS client_name
     FROM client_weekplan w
     LEFT JOIN clients c ON c.slug = w.client_slug
@@ -142,11 +192,13 @@ export async function getDeveloperTasks(): Promise<DevTask[]> {
       clientSlug: slug,
       clientName: (r.client_name as string) ?? slug,
       taskKey: key,
-      taak: (r.taak as string) ?? "",
+      // De doorgeefversie wint: die heeft Maarten bij het doorzetten zelf
+      // bijgesteld. Staat die er niet, dan de kaart zelf.
+      taak: (r.dev_taak as string) || (r.taak as string) || "",
       // Alleen de sturing voor de bouw, niet het hele verhaal. De kaart bevat
       // achtergrond, cijfers en de aanpak per fase; een sitebouwer heeft daar niets
       // aan en moet gewoon weten wát hij moet doen.
-      toelichting: devSturing((r.toelichting as string) ?? ""),
+      toelichting: (r.dev_toelichting as string) || devSturing((r.toelichting as string) ?? ""),
       uren: null,
       // Een doorgezette kaart telt als open dev-werk, tenzij de developer hem afvinkte.
       status: mm?.devDone ? "klaar" : "naar dev",
@@ -157,6 +209,12 @@ export async function getDeveloperTasks(): Promise<DevTask[]> {
       position: mm?.position ?? null,
       devDone: mm?.devDone ?? false,
       devNote: mm?.devNote ?? "",
+      // Handmatig gekozen documenten gaan voor: bij een herziene tekst van de
+      // klant moet die de site op, niet onze eigen copy. Is er niets gekozen,
+      // dan alles wat bij de pagina hoort.
+      docs: Array.isArray(r.dev_docs) && (r.dev_docs as unknown[]).length
+        ? (r.dev_docs as { label: string; url: string }[])
+        : await docsVoorPagina(slug, (r.url as string) || ""),
     });
   }
 

@@ -484,6 +484,25 @@ tbody td:last-child { text-align: center; }
 .dev-task-uren { font-size: 11px; color: var(--gray); font-weight: 600; }
 .dev-task-doc { font-size: 11px; font-weight: 600; color: #1a6dd6; text-decoration: none; }
 .dev-task-doc:hover { text-decoration: underline; }
+/* De documenten bij een dev-taak: de copy, de blauwdruk, de teksten van de klant. */
+.dev-task-docs { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-2); }
+.dev-doc-link { font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--pingwin); text-decoration: underline; }
+.dev-doc-link:hover { text-decoration: none; }
+
+/* Het doorzet-venster: opdracht, opmerkingen en welke documenten meegaan. */
+.dev-doorzet .dev-veld { display: block; margin-top: var(--s-3); }
+.dev-veld-label { display: block; font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); margin-bottom: var(--s-1); }
+.dev-doorzet .dev-veld input[type="text"],
+.dev-doorzet .dev-veld input:not([type]),
+.dev-doorzet .dev-veld textarea {
+  width: 100%; padding: var(--s-2); border: 1px solid var(--border); border-radius: var(--r-sm);
+  font: inherit; font-size: var(--fs-sm); line-height: var(--lh-sm); background: var(--bg); color: inherit;
+}
+.dev-doorzet .dev-veld textarea { resize: vertical; }
+.dev-doc-keuze { display: flex; flex-direction: column; gap: var(--s-1); }
+.dev-doc-optie { display: flex; align-items: center; gap: var(--s-2); font-size: var(--fs-sm); line-height: var(--lh-sm); }
+.dev-doc-naam { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dev-doc-open { font-size: var(--fs-xs); color: var(--pingwin); text-decoration: underline; }
 .dev-pool { margin-top: 14px; border: 1px dashed var(--border); border-radius: 8px; padding: 12px; background: var(--white); }
 .dev-pool-head { font-size: 12px; font-weight: 700; color: var(--gray); margin-bottom: 8px; }
 .dev-pool-body { display: flex; flex-wrap: wrap; gap: 10px; }
