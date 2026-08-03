@@ -139,6 +139,7 @@ type GraphMessage = {
   body?: { contentType?: string; content?: string | null };
   conversationId?: string | null;
   webLink?: string | null;
+  hasAttachments?: boolean | null;
 };
 
 export type LiveEmail = {
@@ -153,6 +154,10 @@ export type LiveEmail = {
   bodyHtml: string | null;
   direction: string | null;
   toAddresses: string[];
+  // Optioneel: alleen gevuld door msSearchMail. Bestaande aanroepers die deze
+  // velden niet kennen blijven gewoon werken.
+  conversationId?: string | null;
+  hasAttachments?: boolean;
 };
 
 const SUPERHUMAN_ACCOUNT_FALLBACK = "Maarten@pingwin.nl";
@@ -191,18 +196,24 @@ export async function msSearchPeople(query: string, limit = 8): Promise<Person[]
   return out;
 }
 
-// Haalt de recente mails met een klant op (zoekt op het e-maildomein/-adres).
-export async function msSearchClientEmails(query: string, account: string, limit = 15): Promise<LiveEmail[] | null> {
+// Zoekt in de eigen mailbox met een vrije zoekopdracht (Graph $search, KQL).
+// Losgetrokken uit msSearchClientEmails zodat er óók op ONDERWERP gezocht kan
+// worden ("alles over CRP binnen deze klant") en niet alleen op het klantdomein.
+// searchQuery = wat Graph doorzoekt; superhumanQuery = wat in de Superhuman-
+// zoeklink terechtkomt (blijft het klantdomein, anders opent Superhuman een
+// zoekopdracht die daar niets oplevert).
+export async function msSearchMail(searchQuery: string, account: string, limit = 15, superhumanQuery?: string): Promise<LiveEmail[] | null> {
   const token = await msAccessToken();
   if (!token) return null;
   const url =
-    `https://graph.microsoft.com/v1.0/me/messages?$search="${encodeURIComponent(query)}"` +
+    `https://graph.microsoft.com/v1.0/me/messages?$search=${encodeURIComponent(`"${searchQuery}"`)}` +
     `&$top=${limit}` +
-    `&$select=id,subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,body,conversationId,webLink`;
+    `&$select=id,subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,body,conversationId,webLink,hasAttachments`;
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}`, ConsistencyLevel: "eventual" } });
   if (!res.ok) return null;
   const j = (await res.json()) as { value?: GraphMessage[] };
   const items: GraphMessage[] = Array.isArray(j.value) ? j.value : [];
+  const shQuery = superhumanQuery || searchQuery;
   const mails: LiveEmail[] = items.map((m) => {
     const fromAddr = m.from?.emailAddress?.address || null;
     const out = !!(fromAddr && account && fromAddr.toLowerCase() === account.toLowerCase());
@@ -218,14 +229,50 @@ export async function msSearchClientEmails(query: string, account: string, limit
       receivedAt: m.receivedDateTime ?? null,
       preview: m.bodyPreview ?? null,
       webLink: m.webLink ?? null,
-      superhumanLink: m.conversationId ? superhumanThreadLink(account, query, m.conversationId) : null,
+      superhumanLink: m.conversationId ? superhumanThreadLink(account, shQuery, m.conversationId) : null,
       bodyHtml,
       direction: out ? "out" : "in",
       toAddresses: (m.toRecipients || []).map((r) => r.emailAddress?.address || "").filter(Boolean),
+      conversationId: m.conversationId ?? null,
+      hasAttachments: !!m.hasAttachments,
     };
   });
   mails.sort((a, b) => (b.receivedAt || "").localeCompare(a.receivedAt || ""));
   return mails;
+}
+
+// Haalt de recente mails met een klant op (zoekt op het e-maildomein/-adres).
+export async function msSearchClientEmails(query: string, account: string, limit = 15): Promise<LiveEmail[] | null> {
+  return msSearchMail(query, account, limit, query);
+}
+
+// ── Bijlagen bij een mail ──
+// Klanten sturen hun geredigeerde teksten als bijlage terug. Die gingen tot nu
+// toe volledig verloren: de chat kreeg ze niet te zien en het versie-archief
+// evenmin. Hiermee kan een tekstbijlage als klantversie bij de pagina belanden.
+export type MailBijlage = { id: string; naam: string; type: string; grootte: number };
+
+export async function msListAttachments(messageId: string): Promise<MailBijlage[] | null> {
+  const token = await msAccessToken();
+  if (!token) return null;
+  const url = `https://graph.microsoft.com/v1.0/me/messages/${encodeURIComponent(messageId)}/attachments?$select=id,name,contentType,size,isInline`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) return null;
+  const j = (await res.json()) as { value?: { id?: string; name?: string; contentType?: string; size?: number; isInline?: boolean }[] };
+  return (j.value || [])
+    .filter((a) => !a.isInline && a.name)
+    .map((a) => ({ id: a.id || "", naam: a.name || "", type: a.contentType || "", grootte: Number(a.size || 0) }));
+}
+
+export async function msGetAttachment(messageId: string, attachmentId: string): Promise<{ naam: string; buffer: Buffer } | null> {
+  const token = await msAccessToken();
+  if (!token) return null;
+  const url = `https://graph.microsoft.com/v1.0/me/messages/${encodeURIComponent(messageId)}/attachments/${encodeURIComponent(attachmentId)}`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) return null;
+  const j = (await res.json()) as { name?: string; contentBytes?: string };
+  if (!j.contentBytes) return null;
+  return { naam: j.name || "bijlage", buffer: Buffer.from(j.contentBytes, "base64") };
 }
 
 function sanitizeOutgoing(html: string): string {

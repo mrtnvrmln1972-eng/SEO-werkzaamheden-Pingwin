@@ -18,6 +18,9 @@ import { controleerAntwoord, herstelOpdracht } from "./antwoord-controle";
 import { overlappendePaginas, overlapAlsTekst, zwakkePaginas } from "./concurrenten";
 import { getPageInternalLinks, runPageInternalLinks } from "./page-internal-links";
 import { getCannibalAnalysis, resultDatum, startCannibalRun, runCannibalRedirect } from "./cannibal-redirect";
+import { getGekoppeldeMails } from "./page-emails";
+import { getPageDossier, dossierToText } from "./page-dossier";
+import { getOpgeslagenTekst } from "./page-dossier-tekst";
 import type { ClientConfig } from "./clients";
 
 // ═══════════════════════════════════════════════════════════
@@ -40,6 +43,54 @@ function stripHtml(html: string): string {
     .replace(/<\/(p|div|br|li|tr|h[1-6])\s*>/gi, "\n")
     .replace(/<[^>]+>/g, " ")
     .replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&").replace(/&lt;/gi, "<").replace(/&gt;/gi, ">").replace(/&#39;|&apos;/gi, "'").replace(/&quot;/gi, '"');
+}
+
+// ── Welke mails gaan er mee in de context, en hoe volledig ──
+//
+// Het venster was "de laatste tien, elk afgekapt op 700 tekens". Daardoor viel
+// een oudere thread buiten beeld zodra er nieuwere mail binnenkwam, en werd een
+// lange mail met teksten middenin afgekapt. Precies de mail die je nodig hebt
+// als je vraagt wat er met een pagina moet gebeuren.
+//
+// Nu: een mail die aan een pagina is VASTGEPIND gaat altijd mee en krijgt ruimte,
+// hoe oud hij ook is. De rest volgt op datum, binnen een totaalbudget, zodat de
+// context niet alsnog volloopt.
+type ChatMail = {
+  id: string; subject: string | null; fromAddress: string | null; receivedAt: string | null;
+  preview: string | null; bodyHtml: string | null; direction: string | null; webLink?: string | null;
+  superhumanLink?: string | null;
+};
+
+function kiesMails(
+  emails: ChatMail[],
+  gekoppeld: Map<string, { url: string; bron: string; score: number }>,
+  opts: { budget?: number; ruim?: number; kort?: number } = {},
+): string[] {
+  const budget = opts.budget ?? 12000;
+  const ruim = opts.ruim ?? 3000;
+  const kort = opts.kort ?? 1200;
+
+  const vast = emails.filter((e) => gekoppeld.get(e.id)?.bron === "pin");
+  const rest = emails.filter((e) => gekoppeld.get(e.id)?.bron !== "pin");
+  const volgorde = [...vast, ...rest];
+
+  const regels: string[] = [];
+  let op = 0;
+  for (const e of volgorde) {
+    const koppeling = gekoppeld.get(e.id);
+    const isVast = koppeling?.bron === "pin";
+    if (!isVast && op >= budget) break;
+    const ruimte = isVast ? ruim : Math.min(kort, Math.max(0, budget - op));
+    if (ruimte < 200 && !isVast) break;
+    const dir = e.direction === "out" ? "WIJ→klant" : "klant→WIJ";
+    const datum = e.receivedAt ? new Date(e.receivedAt).toLocaleDateString("nl-NL") : "";
+    const body = (stripHtml(e.bodyHtml || "") || e.preview || "").replace(/\s+/g, " ").trim().slice(0, ruimte);
+    const link = (e.superhumanLink || e.webLink || "").trim();
+    const bij = koppeling ? ` [hoort bij ${koppeling.url}${isVast ? ", vastgepind" : ""}]` : "";
+    regels.push(`[${dir}, ${datum}]${bij} ${e.subject || "(geen onderwerp)"}${link ? `\n(mail-link: ${link})` : ""}:\n${body}`);
+    op += body.length;
+  }
+  return regels;
 }
 
 async function sheetTaskLines(client: ClientConfig): Promise<string[]> {
@@ -74,17 +125,13 @@ async function buildContext(client: ClientConfig): Promise<string> {
   }
   emails = emails.filter((e) => !/@ahrefs\.com$/i.test((e.fromAddress || "").trim()));
   if (emails.length > 0) {
-    parts.push("\nRECENTE E-MAILS (nieuwste eerst, met afzender/ontvangers en inhoud):");
-    for (const e of emails.slice(0, 10)) {
-      const dir = e.direction === "out" ? "WIJ→klant" : "klant→WIJ";
-      const date = e.receivedAt ? new Date(e.receivedAt).toLocaleString("nl-NL") : "";
-      const to = (e.toAddresses || []).join(", ");
-      const bodyText = (stripHtml(e.bodyHtml || "") || e.preview || "").replace(/\s+/g, " ").trim().slice(0, 700);
-      parts.push(
-        `--- [${dir}, ${date}] Onderwerp: ${e.subject || "(geen onderwerp)"}\n` +
-        `Van: ${e.fromAddress || "?"}${to ? ` | Aan: ${to}` : ""}\n` +
-        `Inhoud: ${bodyText}`,
-      );
+    // Vastgepinde mail hoort er altijd bij, ook als hij ouder is dan de laatste
+    // tien; de rest volgt op datum binnen een totaalbudget.
+    const gekoppeld = await getGekoppeldeMails(client.slug).catch(() => new Map());
+    const regels = kiesMails(emails as ChatMail[], gekoppeld);
+    if (regels.length) {
+      parts.push("\nRECENTE E-MAILS (nieuwste eerst; mails die bij een pagina horen staan vooraan):");
+      parts.push(regels.join("\n---\n"));
     }
   }
 
@@ -245,16 +292,12 @@ async function buildOverviewContext(client: ClientConfig): Promise<string> {
     emails = emails.filter((e) => !/@ahrefs\.com$/i.test((e.fromAddress || "").trim()));
     if (emails.length) {
       // Ruim meegeven (niet te kort afkappen), zodat de agent volledige mails ziet
-      // en er echte concept-antwoorden op kan maken.
-      const lines = emails.slice(0, 6).map((e) => {
-        const dir = e.direction === "out" ? "WIJ→klant" : "klant→WIJ";
-        const date = e.receivedAt ? new Date(e.receivedAt).toLocaleDateString("nl-NL") : "";
-        const body = (stripHtml(e.bodyHtml || "") || e.preview || "").replace(/\s+/g, " ").trim().slice(0, 3000);
-        // Superhuman-deeplink gaat voor (daar werkt Maarten); Outlook-webLink als terugval.
-        const link = ((e as { superhumanLink?: string | null }).superhumanLink || e.webLink || "").trim();
-        return `[${dir}, ${date}] ${e.subject || "(geen onderwerp)"}${link ? `\n(mail-link: ${link})` : ""}:\n${body}`;
-      });
-      parts.push("\n=== RECENTE E-MAILS (basisinfo; nieuwste eerst; neem relevante punten en herzieningen mee in de strategie) ===\n" + lines.join("\n"));
+      // en er echte concept-antwoorden op kan maken. Mails die aan een pagina zijn
+      // vastgepind gaan altijd mee, ook als ze maanden oud zijn: dat is vaak juist
+      // de mail waarin de klant de teksten heeft teruggestuurd.
+      const gekoppeld = await getGekoppeldeMails(client.slug).catch(() => new Map());
+      const lines = kiesMails(emails as ChatMail[], gekoppeld, { budget: 14000, ruim: 3000, kort: 1500 });
+      parts.push("\n=== RECENTE E-MAILS (basisinfo; mails die bij een pagina horen staan vooraan; neem relevante punten en herzieningen mee in de strategie) ===\n" + lines.join("\n"));
     }
   } catch { /* aanvulling */ }
   try {
@@ -450,9 +493,16 @@ function chatTools(client: ClientConfig): { tools: ToolDef[]; run: ToolRunner } 
     { name: "ahrefs_pagina", description: "Ahrefs-gegevens van één pagina: organische zoekwoorden met positie/volume/verkeer, plus het aantal verwijzende domeinen (externe autoriteit) van die pagina.", input_schema: { type: "object", properties: { url: { type: "string", description: "Volledige URL of pad" } }, required: ["url"] } },
     { name: "serp_top10", description: "De actuele top 10 van Google voor een zoekwoord (NL): positie, URL, titel, domain rating en resultaattype. Gebruik dit ZELF om de concurrentie te beoordelen.", input_schema: { type: "object", properties: { zoekwoord: { type: "string" } }, required: ["zoekwoord"] } },
     { name: "zoek_mail", description: "Zoekt gericht in de mail van deze klant op een naam, e-mailadres, onderwerp of trefwoord (bijv. 'Emre', 'Nicolien' of 'lenzen') en geeft de gevonden mails terug (afzender, datum, onderwerp, volledige inhoud, mail-link). Gebruik dit om de laatste mail van een specifiek persoon of over een onderwerp op te halen.", input_schema: { type: "object", properties: { zoekterm: { type: "string", description: "Naam, e-mailadres, onderwerp of trefwoord" } }, required: ["zoekterm"] } },
+    { name: "pagina_dossier", description: "HET COMPLETE DOSSIER van één pagina: de stand (welke stappen af zijn, of de copy live staat), de mails die aantoonbaar over deze pagina gaan (met datum en afzender), de documenten die we gemaakt hebben, teksten die de klant heeft teruggestuurd en nog verwerkt moeten worden, en wat er met de pagina is gebeurd. Gebruik dit ALTIJD voordat je zegt wat er met een pagina moet gebeuren of wie er aan zet is; dan weet je of er al over gemaild is en of er al teksten liggen. Noem een mail als 'de mail van 22 juli' (dag plus maand), want dat wordt automatisch een klikbare link.", input_schema: { type: "object", properties: { url: { type: "string", description: "Volledige URL of pad van de pagina" } }, required: ["url"] } },
   ];
   const run: ToolRunner = async (name, input) => {
     try {
+      if (name === "pagina_dossier") {
+        const doel = toFull(String(input.url || ""));
+        const d = await getPageDossier(client.slug, doel, { verseMail: true });
+        const alinea = await getOpgeslagenTekst(client.slug, doel).catch(() => "");
+        return dossierToText(d) + (alinea ? `\n\nEERDER VASTGELEGDE SAMENVATTING: ${alinea}` : "");
+      }
       if (name === "meet_pagina") {
         const gevraagd = toFull(String(input.url || ""));
         const m = await measurePage(gevraagd, { staticOnly: true });

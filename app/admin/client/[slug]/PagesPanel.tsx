@@ -5,6 +5,7 @@ import type { ClientUrl } from "../../../../lib/site-urls";
 import { mdToHtml } from "../../../../lib/markdown";
 import ImportAnalysis from "./ImportAnalysis";
 import PageChat from "./PageChat";
+import PaginaDossier from "./PaginaDossier";
 import HelpHint from "./HelpHint";
 
 function shortUrl(url: string): string {
@@ -666,6 +667,11 @@ function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoTo
         <tr className="pages-detail-row">
           <td colSpan={9}>
             <div className="pages-detail">
+              {/* Het paginadossier bovenaan: wat er speelt, met de mails en
+                  documenten erbij. Zelfde blok als op de kaart in de weekplanning
+                  en op de voorgestelde taak in de chat. */}
+              <PaginaDossier slug={slug} url={u.url} />
+
               {(() => {
                 // Een taak hoort bij de pijplijn (blijft staan) als hij een stap-kenmerk
                 // heeft, een gekoppeld document, of een link in de titel (de analyse/

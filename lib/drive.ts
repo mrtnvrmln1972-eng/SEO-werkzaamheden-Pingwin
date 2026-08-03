@@ -215,6 +215,38 @@ export async function uploadDocx(folderId: string, filename: string, buffer: Buf
   return { id: finalId, link, shared, owner, folder, isDoc, note };
 }
 
+// Upload MÉT omzetting naar een Google Doc, puur om de TEKST eruit te kunnen
+// lezen. Bedoeld voor aangeleverde bestanden waarvan we de inhoud nodig hebben
+// maar de opmaak niet: een pdf van de klant (Drive doet de tekstherkenning) of
+// een .docx. Het origineel gaat hier dus wél door de omzetting, en dat mag,
+// want dit bestand is een LEESKOPIE. Wil je het origineel bewaren zoals het is,
+// gebruik dan uploadDocx; die zet bewust niets om.
+export async function uploadEnConverteer(folderId: string, filename: string, buffer: Buffer, sourceMime: string): Promise<{ id: string; link: string }> {
+  const t = await token();
+  const parent = folderId && folderId !== "root" ? folderId : "root";
+  const bytes = new Uint8Array(buffer);
+  const initRes = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true&fields=id", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${t}`,
+      "Content-Type": "application/json; charset=UTF-8",
+      "X-Upload-Content-Type": sourceMime,
+      "X-Upload-Content-Length": String(bytes.length),
+    },
+    // mimeType op het doelformaat = Drive converteert bij het opslaan.
+    body: JSON.stringify({ name: filename, parents: [parent], mimeType: "application/vnd.google-apps.document" }),
+  });
+  if (!initRes.ok) throw new Error(await driveErr(initRes, "het starten van de upload"));
+  const uploadUrl = initRes.headers.get("location") || initRes.headers.get("Location");
+  if (!uploadUrl) throw new Error("Geen upload-URL van Drive ontvangen.");
+  const putRes = await fetch(uploadUrl, { method: "PUT", headers: { "Content-Type": sourceMime }, body: bytes });
+  if (!putRes.ok) throw new Error(await driveErr(putRes, "het uploaden van de inhoud"));
+  const file = await putRes.json();
+  const id = file.id as string;
+  await shareAnyone(t, id).catch(() => false);
+  return { id, link: `https://docs.google.com/document/d/${id}/edit?usp=sharing` };
+}
+
 // Kale bestands-upload (bijv. een .json met JSON-LD die letterlijk gekopieerd moet
 // kunnen worden): zelfde resumable upload als uploadDocx, maar ZONDER omzetting
 // naar Google-formaat, zodat de inhoud byte-voor-byte intact blijft.

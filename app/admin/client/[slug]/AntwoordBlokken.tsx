@@ -14,10 +14,11 @@
 // De keuzes staan centraal in de database (zelfde stand op elk apparaat; een
 // herhaald punt in een later antwoord staat automatisch al ingeklapt).
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { puntSoort, knopjesVoor, isGroepskop, stripMarker, type PuntSoort } from "../../../../lib/punt-soort";
 import { devLabel } from "../../../../lib/personen";
 import { striptVulzinnen, heeftInhoud } from "../../../../lib/vulzinnen";
+import PaginaDossier from "./PaginaDossier";
 
 type Sectie = { kop: string; md: string };
 type Feedback = { key: string; msg: string; ok: boolean };
@@ -53,6 +54,24 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
   const [toon, setToon] = useState<Record<string, boolean>>({}); // afgehandelde punten tonen per sectie
   const [tellers, setTellers] = useState<Record<string, Teller>>({});
   const rootRef = useRef<HTMLDivElement>(null);
+
+  // Over welke pagina's gáát dit antwoord? Van die pagina's tonen we onderaan het
+  // dossierblok: dezelfde alinea en dezelfde linkjes als op de kaart in de
+  // weekplanning. Bewust hooguit twee en in compacte vorm, anders wordt een
+  // antwoord alsnog een muur. Bestaat een genoemd pad niet bij deze klant, dan
+  // komt er niets terug (de server controleert dat).
+  const genoemdePaden = useMemo(() => {
+    const uit: string[] = [];
+    const zien = new Set<string>();
+    for (const m of (content || "").matchAll(/(?<![\w:])\/[a-z0-9][a-z0-9-]*(?:\/[a-z0-9-]+)*\//gi)) {
+      const p = m[0].toLowerCase();
+      if (zien.has(p)) continue;
+      zien.add(p);
+      uit.push(p);
+      if (uit.length >= 2) break;
+    }
+    return uit;
+  }, [content]);
 
   // Centrale markeringen laden; oude browser-opslag eenmalig meenemen.
   useEffect(() => {
@@ -378,6 +397,7 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
           </div>
         );
       })}
+      {genoemdePaden.map((p) => <PaginaDossier key={p} slug={slug} url={p} compact />)}
       {lijstVoor && typeof window !== "undefined" && (
         <div className="ovc-lijstpop" style={{ left: Math.max(8, Math.min(lijstVoor.x, window.innerWidth - 300)), top: lijstVoor.y + 6 }}>
           <span className="ovc-lijstpop-kop">Op welke bespreeklijst?</span>
