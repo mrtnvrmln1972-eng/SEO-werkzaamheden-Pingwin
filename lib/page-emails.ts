@@ -142,6 +142,13 @@ async function laatsteZoekronde(slug: string, k: string): Promise<Date | null> {
 // binnenkwam viel permanent buiten de boot. Met de mail zelf als peilmerk kan dat
 // niet meer: is er klantmail nieuwer dan het peilmerk, dan wordt er precies één
 // keer opnieuw gezocht.
+// Elke keer dat de manier van zoeken of scoren verbetert, gaat dit getal omhoog.
+// Een pagina die met een oudere versie is gescand wordt dan één keer opnieuw
+// bekeken. Zonder dit blijft een verbetering onzichtbaar op precies de pagina's
+// waarvoor hij bedoeld was: het systeem denkt "ik ben bij", terwijl die stand
+// met de oude, te smalle zoekregels is vastgelegd.
+const SCAN_VERSIE = 2;
+
 async function ensureScanTabel(): Promise<void> {
   await sql`
     CREATE TABLE IF NOT EXISTS page_mail_scans (
@@ -151,6 +158,7 @@ async function ensureScanTabel(): Promise<void> {
       gescand_op  TIMESTAMPTZ NOT NULL DEFAULT now(),
       PRIMARY KEY (client_slug, url_key)
     )`;
+  await sql`ALTER TABLE page_mail_scans ADD COLUMN IF NOT EXISTS versie INT NOT NULL DEFAULT 1`;
 }
 
 async function nieuwsteKlantMail(slug: string): Promise<Date | null> {
@@ -159,16 +167,20 @@ async function nieuwsteKlantMail(slug: string): Promise<Date | null> {
 }
 
 async function scanPeilmerk(slug: string, k: string): Promise<Date | null | undefined> {
-  const { rows } = await sql`SELECT tot_mail FROM page_mail_scans WHERE client_slug = ${slug} AND url_key = ${k} LIMIT 1`;
+  const { rows } = await sql`SELECT tot_mail, versie FROM page_mail_scans WHERE client_slug = ${slug} AND url_key = ${k} LIMIT 1`;
   if (!rows.length) return undefined;                       // nog nooit gescand
+  // Met een oudere zoekversie gescand? Dan telt die stand niet: behandel de
+  // pagina alsof hij nog nooit langs de postbus is geweest.
+  if (Number(rows[0].versie || 1) < SCAN_VERSIE) return undefined;
   return rows[0].tot_mail ? new Date(rows[0].tot_mail as string) : null;
 }
 
 async function zetPeilmerk(slug: string, k: string, tot: Date | null): Promise<void> {
   await sql`
-    INSERT INTO page_mail_scans (client_slug, url_key, tot_mail, gescand_op)
-    VALUES (${slug}, ${k}, ${tot ? tot.toISOString() : null}, now())
-    ON CONFLICT (client_slug, url_key) DO UPDATE SET tot_mail = EXCLUDED.tot_mail, gescand_op = now()`;
+    INSERT INTO page_mail_scans (client_slug, url_key, tot_mail, gescand_op, versie)
+    VALUES (${slug}, ${k}, ${tot ? tot.toISOString() : null}, now(), ${SCAN_VERSIE})
+    ON CONFLICT (client_slug, url_key) DO UPDATE
+      SET tot_mail = EXCLUDED.tot_mail, gescand_op = now(), versie = EXCLUDED.versie`;
 }
 
 // ── Zoektermen afleiden uit de pagina ──
