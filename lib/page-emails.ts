@@ -671,15 +671,15 @@ export async function zoekMailsIndienNodig(slug: string, url: string, maxDagen =
   if (!nooitGescand && !nieuweMail) {
     const laatste = await laatsteZoekronde(slug, k);
     // Staat er geen enkele mail bij deze pagina, dan valt er niets te verliezen
-    // en proberen we het gewoon opnieuw (met een uur ertussen, anders zou elke
-    // keer dat je een kaart opent een mailronde starten). Zonder deze regel
+    // en proberen we het gewoon opnieuw (met tien minuten ertussen, anders zou
+    // elke keer dat je een kaart opent een mailronde starten). Zonder deze regel
     // bleef een pagina die door een mislukte ronde leeg raakte dagenlang leeg.
     if (!laatste) {
       const { rows } = await sql`SELECT count(*)::int AS n FROM page_emails WHERE client_slug = ${slug} AND url_key = ${k}`;
       if (!Number(rows[0]?.n || 0)) {
         const rust = await sql`SELECT gescand_op FROM page_mail_scans WHERE client_slug = ${slug} AND url_key = ${k} LIMIT 1`;
         const laatsteScan = rust.rows[0]?.gescand_op ? new Date(rust.rows[0].gescand_op as string) : null;
-        if (laatsteScan && Date.now() - laatsteScan.getTime() < 36e5) return;
+        if (laatsteScan && Date.now() - laatsteScan.getTime() < 6e5) return;
       } else return;
     } else if (Date.now() - laatste.getTime() < maxDagen * 864e5) return;
     // Alleen nog de oude tijdsklep, zodat een pagina waarvan de zoektermen zijn
