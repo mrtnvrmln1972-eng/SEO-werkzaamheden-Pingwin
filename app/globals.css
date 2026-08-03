@@ -503,6 +503,16 @@ tbody td:last-child { text-align: center; }
 .dev-doc-optie { display: flex; align-items: center; gap: var(--s-2); font-size: var(--fs-sm); line-height: var(--lh-sm); }
 .dev-doc-naam { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dev-doc-open { font-size: var(--fs-xs); color: var(--pingwin); text-decoration: underline; }
+
+/* De kaarttitel bijstellen: potloodje in de kop, invulveld als je klikt. */
+.wp-titel-pen { border: 0; background: none; padding: 0 var(--s-1); margin-left: var(--s-1); color: var(--gray); cursor: pointer; font-size: var(--fs-xs); opacity: 0; transition: opacity .12s ease; }
+.wp-card-taak:hover .wp-titel-pen { opacity: 1; }
+.wp-titel-pen:hover { color: var(--pingwin); }
+.wp-titel-bewerk { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; }
+.wp-titel-bewerk input {
+  flex: 1 1 260px; padding: var(--s-1) var(--s-2); border: 1px solid var(--border); border-radius: var(--r-sm);
+  font: inherit; font-size: var(--fs-sm); line-height: var(--lh-sm); background: var(--bg); color: inherit;
+}
 .dev-pool { margin-top: 14px; border: 1px dashed var(--border); border-radius: 8px; padding: 12px; background: var(--white); }
 .dev-pool-head { font-size: 12px; font-weight: 700; color: var(--gray); margin-bottom: 8px; }
 .dev-pool-body { display: flex; flex-wrap: wrap; gap: 10px; }

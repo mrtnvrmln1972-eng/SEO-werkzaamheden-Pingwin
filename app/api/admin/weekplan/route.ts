@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
-import { getWeekplan, updateWeekplanTask, deleteWeekplanTask, isoWeek, setWeekplanNaarDev } from "../../../../lib/weekplan";
+import { getWeekplan, updateWeekplanTask, deleteWeekplanTask, isoWeek, setWeekplanNaarDev, setWeekplanKaart } from "../../../../lib/weekplan";
 import { getWeekplanPages } from "../../../../lib/overview";
 import { splitsBestaandeKaarten } from "../../../../lib/weekplan-splitsen";
 import { urlKey } from "../../../../lib/url-key";
@@ -53,6 +53,16 @@ export async function POST(req: NextRequest) {
   // het is gewoon een eigenschap van de kaart, net als de week of de status.
   if (typeof body.naarDev === "boolean") {
     await setWeekplanNaarDev(slug, id, body.naarDev);
+    return NextResponse.json({ ok: true });
+  }
+
+  // Titel bijstellen. De kaarttitel is wat je in het bord leest en wat als
+  // opdracht doorgaat; die moet je kunnen herschrijven zonder de kaart opnieuw
+  // te maken.
+  if (typeof body.taak === "string") {
+    const nieuw = body.taak.trim();
+    if (!nieuw) return NextResponse.json({ ok: false, error: "Een kaart moet een titel houden." }, { status: 400 });
+    await setWeekplanKaart(slug, id, { taak: nieuw });
     return NextResponse.json({ ok: true });
   }
 

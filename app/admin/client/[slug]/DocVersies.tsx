@@ -91,7 +91,7 @@ export default function DocVersies({ slug, url }: { slug: string; url: string })
                 knop om te bladeren. Pdf staat er nu bij: klanten sturen hun
                 geredigeerde teksten juist vaak als pdf terug. */}
             <span className="wp-docdrop-tekst">
-              Sleep een teruggekregen document hierheen (.docx, .pdf, .txt, .md),{" "}
+              <strong>Voeg een bestand toe.</strong>{" "}
               <button type="button" className="wp-docdrop-kies" disabled={!!busy}
                 onClick={() => bestandRef.current?.click()}>kies een bestand</button>{" "}
               of plak een Drive-link:

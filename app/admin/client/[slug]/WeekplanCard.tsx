@@ -225,6 +225,26 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
   const [naarDev, setNaarDev] = useState<boolean>(t.naarDev === true);
   const [devBezig, setDevBezig] = useState(false);
   const [devVenster, setDevVenster] = useState(false);
+  // De kaarttitel bijstellen. Dit is wat je in het bord leest en wat als opdracht
+  // doorgaat naar de developer, dus je moet hem kunnen herschrijven.
+  const [titelBewerk, setTitelBewerk] = useState(false);
+  const [titelDraft, setTitelDraft] = useState("");
+  const [titelBezig, setTitelBezig] = useState(false);
+
+  async function bewaarTitel() {
+    const nieuw = titelDraft.trim();
+    if (!nieuw || nieuw === t.taak.trim()) { setTitelBewerk(false); return; }
+    setTitelBezig(true);
+    try {
+      const d = await fetch("/api/admin/weekplan", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, id: t.id, taak: nieuw }),
+      }).then((r) => r.json());
+      if (d?.ok) { setTitelBewerk(false); refreshBoard(); }
+      else setFoutje(d?.error || "Titel opslaan mislukte.");
+    } catch { setFoutje("Titel opslaan mislukte."); }
+    finally { setTitelBezig(false); }
+  }
 
   // Doorzetten opent eerst het venster: welke documenten gaan mee, en hoe luidt
   // de opdracht. Eraf halen is één klik, want daar valt niets te kiezen.
@@ -454,10 +474,25 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
         <div className="wp-card-main">
           <div className="wp-kop-rij">
             <div className="wp-kop-tekst">
-              <div className="wp-card-taak wp-clickable" onClick={toggleAlsGeenSelectie} title={open ? "Klik om dicht te klappen" : "Klik voor de fases, info en chat"}>
-                <span className="wp-caret">{open ? "▾" : "▸"}</span>
-                {titel}
-              </div>
+              {titelBewerk ? (
+                <div className="wp-titel-bewerk">
+                  <input autoFocus value={titelDraft} disabled={titelBezig}
+                    onChange={(e) => setTitelDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") { e.preventDefault(); void bewaarTitel(); }
+                      if (e.key === "Escape") { e.preventDefault(); setTitelBewerk(false); }
+                    }} />
+                  <button type="button" className="wp-fase-btn" disabled={titelBezig} onClick={() => void bewaarTitel()}>{titelBezig ? "Bezig…" : "Bewaar"}</button>
+                  <button type="button" className="wp-fase-btn wp-fase-btn-licht" disabled={titelBezig} onClick={() => setTitelBewerk(false)}>Annuleer</button>
+                </div>
+              ) : (
+                <div className="wp-card-taak wp-clickable" onClick={toggleAlsGeenSelectie} title={open ? "Klik om dicht te klappen" : "Klik voor de fases, info en chat"}>
+                  <span className="wp-caret">{open ? "▾" : "▸"}</span>
+                  {titel}
+                  <button type="button" className="wp-titel-pen" title="Titel aanpassen"
+                    onClick={(e) => { e.stopPropagation(); setTitelDraft(t.taak.replace(/<[^>]*>/g, "").trim()); setTitelBewerk(true); }}>✎</button>
+                </div>
+              )}
               {subtitel && <div className="wp-card-sub wp-clickable" onClick={toggleAlsGeenSelectie}>{subtitel}</div>}
             </div>
             <span className="wp-kop-acties">
@@ -640,7 +675,6 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
             );
           })}
           {verifyMsg && <div className={verifyMsg.ok ? "wp-doc-ok" : "wp-doc-fout"}>{verifyMsg.tekst}</div>}
-          {page.live && page.copy && !page.bouw && <div className="wp-fase-hint">De copy is klaar en de pagina staat live. Is de nieuwe tekst verwerkt, vink dan Bouw en publicatie af.</div>}
           {foutje && <div className="wp-fase-fouttekst">{foutje}</div>}
           {melding && <div className="wp-fase-melding">{melding}</div>}
         </div>
