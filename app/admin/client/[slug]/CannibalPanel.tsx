@@ -137,7 +137,16 @@ export default function CannibalPanel({ slug, domain = "" }: { slug: string; dom
                 proza is om te begrijpen, en in die volgorde. */}
             {result.redirectMap && result.redirectMap.length > 0 && (
               <div className="opr-blok">
+                <div className="opr-kop-rij">
                 <div className="opr-kop">Werklijst: wat waar naartoe</div>
+                {/* Downloaden als CSV: opent met een dubbelklik in Excel en is te
+                    importeren in Google Sheets. Platte rijen met duidelijke
+                    van/naar-kolommen, zoals Maartens eigen Excel. */}
+                <a className="ghost-btn small" href={`/api/admin/opruim-export?slug=${encodeURIComponent(slug)}`}
+                   title="Downloadt de volledige lijst als CSV. Dubbelklikken opent hem in Excel; in Google Sheets via Bestand, Importeren.">
+                  Download voor Excel of Sheets
+                </a>
+              </div>
                 <OpruimTabel slug={slug} domain={domain} rijen={result.redirectMap} />
               </div>
             )}
