@@ -9,6 +9,7 @@ import { getAhrefsTopPages, getUrlOrganicKeywords, ahrefsConfigured } from "./ah
 import { fetchPageContent } from "./page-content";
 import { callClaude, callClaudeAgentic, type ToolDef, type ToolRunner } from "./anthropic";
 import { regelsAlsInstructie } from "./opruim-regels";
+import { zwakkePaginas, type ZwakkePagina } from "./concurrenten";
 import { getSetting, setSetting, SETTING_OPRUIM_CRON_TIK } from "./settings";
 
 // ═══════════════════════════════════════════════════════════
@@ -58,12 +59,14 @@ export type CannibalState = {
   cronTik: string | null; cronStil: boolean;
 };
 
-// Vijf stappen: onderzoek, hoofdanalyse, en drie doorloop-rondes.
-const STAPPEN = 5;
+// Onderzoek, hoofdanalyse, en daarna de kandidatenlijst blok voor blok aflopen.
+const MAX_RONDES = 6;
+const BLOK = 40;                 // kandidaten per ronde
+const STAPPEN = 2 + MAX_RONDES;
 function stapVan(fase: CannibalFase, ronde: number): { stap: number; label: string } {
   if (fase === "gather") return { stap: 1, label: "Data verzamelen en de verdachte pagina's onderzoeken" };
   if (fase === "synth") return { stap: 2, label: "De hoofdanalyse schrijven" };
-  if (fase === "ronde") { const r = Math.min(Math.max(ronde, 0), 2); return { stap: 3 + r, label: `Doorloopronde ${r + 1} van 3: de rest van de site nalopen` }; }
+  if (fase === "ronde") { const r = Math.min(Math.max(ronde, 0), MAX_RONDES - 1); return { stap: 3 + r, label: `Ronde ${r + 1} van ${MAX_RONDES}: de opruimkandidaten nalopen` }; }
   // Geen fase terwijl de run loopt: opstarten, of een oude run uit de opzet van
   // vóór de stappen. Nooit "Klaar" tonen; dat was precies de leugen op het scherm.
   return { stap: 1, label: "De analyse wordt opgestart" };
@@ -90,6 +93,11 @@ async function doEnsure(): Promise<void> {
   await sql`ALTER TABLE client_cannibal_analysis ADD COLUMN IF NOT EXISTS retries INT NOT NULL DEFAULT 0`;
   await sql`ALTER TABLE client_cannibal_analysis ADD COLUMN IF NOT EXISTS seed TEXT`;
   await sql`ALTER TABLE client_cannibal_analysis ADD COLUMN IF NOT EXISTS findings TEXT`;
+  // De al berekende opruimkandidaten (zwakkePaginas), zodat de doorloop-rondes ze
+  // blok voor blok kunnen afwerken in plaats van ze zelf te moeten ontdekken.
+  await sql`ALTER TABLE client_cannibal_analysis ADD COLUMN IF NOT EXISTS kandidaten TEXT`;
+  // Welke kandidaten al zijn voorgelegd, inclusief de pagina's die mochten blijven.
+  await sql`ALTER TABLE client_cannibal_analysis ADD COLUMN IF NOT EXISTS behandeld TEXT`;
 }
 
 function pagePath(u: string): string { return (u || "").replace(/^https?:\/\/[^/]+/i, "").trim() || (u || ""); }
@@ -145,10 +153,17 @@ const q: SqlTag = (strings, ...values) => actieveSql(strings, ...values);
 type CannibalRow = {
   status: string; result: CannibalResult | null; error: string; updatedAt: string | null;
   fase: CannibalFase; ronde: number; retries: number; seed: string; findings: string;
+  kandidaten: ZwakkePagina[]; behandeld: string[];
 };
 
+// JSON-kolom die ook leeg of stuk mag zijn: altijd een lijst terug, nooit een fout.
+function lijstVan<T>(v: unknown): T[] {
+  if (!v) return [];
+  try { const j = JSON.parse(String(v)); return Array.isArray(j) ? (j as T[]) : []; } catch { return []; }
+}
+
 async function readRow(slug: string): Promise<CannibalRow | null> {
-  const { rows } = await q`SELECT status, result, error, updated_at, fase, ronde, retries, seed, findings FROM client_cannibal_analysis WHERE client_slug = ${slug} LIMIT 1`;
+  const { rows } = await q`SELECT status, result, error, updated_at, fase, ronde, retries, seed, findings, kandidaten, behandeld FROM client_cannibal_analysis WHERE client_slug = ${slug} LIMIT 1`;
   const r = rows[0];
   if (!r) return null;
   let result: CannibalResult | null = null;
@@ -163,6 +178,8 @@ async function readRow(slug: string): Promise<CannibalRow | null> {
     retries: Number(r.retries) || 0,
     seed: (r.seed as string) || "",
     findings: (r.findings as string) || "",
+    kandidaten: lijstVan<ZwakkePagina>(r.kandidaten),
+    behandeld: lijstVan<string>(r.behandeld),
   };
 }
 
@@ -206,7 +223,7 @@ export async function startCannibalRun(slug: string): Promise<void> {
   await q`
     INSERT INTO client_cannibal_analysis (client_slug, status, result, error, fase, ronde, retries, seed, findings, updated_at)
     VALUES (${slug}, 'running', NULL, NULL, 'gather', 0, 0, NULL, NULL, now())
-    ON CONFLICT (client_slug) DO UPDATE SET status = 'running', error = NULL, fase = 'gather', ronde = 0, retries = 0, seed = NULL, findings = NULL, updated_at = now()`;
+    ON CONFLICT (client_slug) DO UPDATE SET status = 'running', error = NULL, fase = 'gather', ronde = 0, retries = 0, seed = NULL, findings = NULL, kandidaten = NULL, behandeld = NULL, updated_at = now()`;
 }
 
 async function faal(slug: string, msg: string): Promise<void> {
@@ -301,11 +318,16 @@ const padOf = (u: string) => { try { return new URL(u).pathname; } catch { retur
 
 // Bouwt de kern-data één keer per run en bewaart hem, zodat een hervatting niet
 // opnieuw Ahrefs en Search Console bevraagt (scheelt tijd én verbruik).
-async function bouwSeed(slug: string, clientNaam: string, domain: string): Promise<{ ok: true; seed: string } | { ok: false; error: string }> {
-  const [topPages, urls, flips] = await Promise.all([
+async function bouwSeed(slug: string, clientNaam: string, domain: string): Promise<{ ok: true; seed: string; kandidaten: ZwakkePagina[] } | { ok: false; error: string }> {
+  const [topPages, urls, flips, zwak] = await Promise.all([
     getAhrefsTopPages(domain, 300).catch(() => [] as Awaited<ReturnType<typeof getAhrefsTopPages>>),
     getClientUrls(slug).catch(() => []),
     getGscKeywordUrlFlips(domain, 3).catch(() => [] as { keyword: string; topUrls: string[]; flips: number }[]),
+    // Het dashboard weet zélf al welke pagina's geen eigen zoekterm hebben en met
+    // welke pagina ze dubbelen. Tot 03-08-2026 kreeg de motor die lijst niet en
+    // moest hij alles opnieuw ontdekken uit de Ahrefs-tabel; dat leverde 14 regels
+    // op terwijl er 189 kandidaten klaarlagen. Nu gaat de lijst gewoon mee.
+    zwakkePaginas(slug, domain).catch(() => ({ ok: false as const, tekst: "", kandidaten: [] as ZwakkePagina[] })),
   ]);
   if (!topPages.length) return { ok: false, error: "Geen Ahrefs-data terug voor dit domein. Controleer de Ahrefs-koppeling (AHREFS_API_TOKEN) en of het domein klopt." };
 
@@ -316,7 +338,7 @@ async function bouwSeed(slug: string, clientNaam: string, domain: string): Promi
     .map((u) => `- ${pagePath(u.url)} | status ${u.status ?? "?"} | ${u.gscClicks} clicks`).join("\n");
   const flipLines = flips.slice(0, 60).map((f) => `- "${f.keyword}": ${f.topUrls.join(" -> ")} (${f.flips}x)`).join("\n");
 
-  return { ok: true, seed: [
+  return { ok: true, kandidaten: zwak.kandidaten || [], seed: [
     `KLANT: ${clientNaam || slug} (domein: ${domain})`,
     "",
     `DATAKWALITEIT (neem over in datakwaliteit): gsc=true, gscTijdreeks=${flips.length > 0}, ahrefsZoekwoorden=true, ahrefsBacklinks=true (verwijzende domeinen per pagina), crawl=false.`,
@@ -329,6 +351,8 @@ async function bouwSeed(slug: string, clientNaam: string, domain: string): Promi
     "",
     "URL-FLIP-TIJDREEKS (top-rankende URL per zoekwoord over 3 vensters van ~30 dagen):",
     flipLines || "- (geen flips gedetecteerd)",
+    "",
+    zwak.tekst || "",
   ].join("\n") };
 }
 
@@ -366,7 +390,7 @@ async function stapMetReden(slug: string): Promise<{ uit: "verder" | "klaar"; re
       const s = await bouwSeed(slug, client?.name || "", domain);
       if (!s.ok) { await faal(slug, s.error); return { uit: "klaar", reden: "kern-data mislukt" }; }
       seed = s.seed;
-      await q`UPDATE client_cannibal_analysis SET seed = ${seed}, updated_at = now() WHERE client_slug = ${slug}`;
+      await q`UPDATE client_cannibal_analysis SET seed = ${seed}, kandidaten = ${JSON.stringify(s.kandidaten)}, updated_at = now() WHERE client_slug = ${slug}`;
     }
 
     // STAP 1 — agentic onderzoek: het model zoomt in op verdachte pagina's en schrijft
@@ -428,23 +452,43 @@ async function stapMetReden(slug: string): Promise<{ uit: "verder" | "klaar"; re
       return { uit: "verder", reden: "hoofdanalyse klaar" };
     }
 
-    // ── STAP 3 t/m 5: doorgaan tot er niets nieuws meer komt ────────────────
-    // Dit is het verschil met Cowork. Daar loopt een agent net zolang door tot
-    // hij klaar is; hier deed de motor één ronde en stopte, ongeacht of hij de
-    // hele site had gehad. Gevolg: 18 regels waar er 69 te vinden waren.
-    // Nu vragen we per ronde expliciet naar wat er NOG NIET in staat, en stoppen
-    // pas als een ronde niets nieuws oplevert (of na drie rondes).
+    // ── DE RONDES: de bekende kandidatenlijst blok voor blok aflopen ────────
+    // Tot 03-08-2026 vroegen we het model hier om zélf de resterende overbodige
+    // pagina's te vinden. Dat leverde 14 regels op, terwijl het dashboard al 189
+    // kandidaten had berekend uit Search Console, mét het voor de hand liggende
+    // doel erbij. We lieten de AI dus zoeken naar iets dat al bekend was. Nu
+    // krijgt hij de lijst en hoeft hij alleen nog per pagina het doel te bepalen,
+    // of te zeggen dat een pagina juist moet blijven.
     const result = row.result;
     if (!result) { await faal(slug, "De tussenstand is verdwenen; start de analyse opnieuw."); return { uit: "klaar", reden: "tussenstand weg" }; }
-    if (row.ronde >= 3) { await afronden(slug); return { uit: "klaar", reden: "drie rondes gehad" }; }
+    if (row.ronde >= MAX_RONDES) { await afronden(slug); return { uit: "klaar", reden: `${MAX_RONDES} rondes gehad` }; }
 
     const gezien = new Set((result.redirectMap || []).map((m) => padOf(String(m.van || ""))));
-    const alGenoemd = [...gezien].slice(0, 400).join(", ");
+    const behandeld = new Set([...gezien, ...(row.behandeld || [])]);
+    const blok = (row.kandidaten || []).filter((k) => !behandeld.has(padOf(k.pad))).slice(0, BLOK);
+    if (!blok.length) { await afronden(slug); return { uit: "klaar", reden: "alle kandidaten beoordeeld" }; }
+
+    const lijst = blok.map((k) => {
+      const doel = k.dubbelMet.length === 1 ? `voorstel doel: ${k.dubbelMet[0]}`
+        : k.dubbelMet.length > 1 ? `voorstel doel: ${k.dubbelMet.slice(0, 2).join(" OF ")} (kies de beste)`
+        : "geen doel af te leiden uit de data";
+      const leent = k.geleendeTop ? `leent "${k.geleendeTop.keyword}" (pos ${k.geleendeTop.positie}, ${k.geleendeTop.vertoningen} vert.)` : "krijgt geen vertoningen";
+      return `- ${k.pad} [${k.klikken} klikken, ${k.vertoningen} vertoningen] ${leent}; ${doel}`;
+    }).join("\n");
+
     let extraRuw = "";
     try {
       extraRuw = await callClaude(
         systeem,
-        [{ role: "user", content: `${seed}\n\nJe hebt deze pagina's AL beoordeeld en die hoef je niet opnieuw te noemen:\n${alGenoemd}\n\nKijk nu naar de pagina's die je NOG NIET hebt beoordeeld. Zoek daar de resterende dunne, dubbele en overbodige pagina's. Let met name op locatiepagina's die nauwelijks vertoningen hebben en geen eigen zoekterm bezitten; die vallen buiten de clusters omdat ze met niemand concurreren, maar ze versnipperen wel de autoriteit. Lever UITSLUITEND JSON: {"redirectMap":[{"van":"/pad/","naar":"/doel/","type":"301","mergeContent":false,"reden":"..."}]}. Vind je niets nieuws, geef dan {"redirectMap":[]}.`.slice(0, 48000) }],
+        [{ role: "user", content: `${seed}
+
+BEOORDEEL NU DEZE ${blok.length} PAGINA'S, en UITSLUITEND deze. Het zijn opruimkandidaten die het dashboard al uit Search Console heeft afgeleid: ze ranken op geen enkele zoekterm die hun eigen onderwerp bevat, dus alles wat ze binnenhalen is geleend van merk- of andere-plaatstermen. Het voorgestelde doel is óók uit de data afgeleid (de pagina die de geleende term wél bezit).
+
+${lijst}
+
+Jouw taak per pagina: bevestig het voorgestelde doel, of corrigeer het als de data een beter doel aanwijst, en geef in één korte zin de reden. Neem een pagina NIET op als hij moet blijven (bijvoorbeeld een functionele pagina zoals contact of afspraak maken, of een pagina met een eigen duidelijke rol); laat hem dan gewoon weg. Verzin geen pagina's die niet in deze lijst staan. Stuur nooit naar een doel dat zelf zwak is.
+
+Lever UITSLUITEND JSON: {"redirectMap":[{"van":"/pad/","naar":"/doel/","type":"301","mergeContent":false,"reden":"..."}]}. Hoort er niets uit deze lijst opgeruimd te worden, geef dan {"redirectMap":[]}.`.slice(0, 48000) }],
         8000, { slug, action: `cannibal_redirect_ronde${row.ronde + 2}` },
       );
     } catch { await afronden(slug); return { uit: "klaar", reden: "ronde gaf een fout" }; }
@@ -455,17 +499,22 @@ async function stapMetReden(slug: string): Promise<{ uit: "verder" | "klaar"; re
       nieuweRijen = Array.isArray(j.redirectMap) ? (j.redirectMap as RedirectMapItem[]) : [];
     } catch { await afronden(slug); return { uit: "klaar", reden: "ronde gaf geen geldige JSON" }; }
 
+    // Alleen pagina's uit dit blok; verzonnen paden vallen af.
+    const inBlok = new Set(blok.map((k) => padOf(k.pad)));
     const echtNieuw = nieuweRijen.filter((m) => {
       const v = padOf(String(m.van || ""));
-      if (!v || gezien.has(v)) return false;
+      if (!v || gezien.has(v) || !inBlok.has(v)) return false;
       gezien.add(v);
       return true;
     });
-    if (!echtNieuw.length) { await afronden(slug); return { uit: "klaar", reden: "niets nieuws meer" }; }
 
+    // Het hele blok is behandeld, ook de pagina's die mochten blijven. Zonder dat
+    // te onthouden zou de volgende ronde dezelfde pagina's opnieuw voorleggen en
+    // nooit door de lijst heen komen.
+    const nuBehandeld = [...new Set([...(row.behandeld || []), ...blok.map((k) => padOf(k.pad))])];
     result.redirectMap = [...(result.redirectMap || []), ...echtNieuw];
-    await q`UPDATE client_cannibal_analysis SET result = ${JSON.stringify(result)}, ronde = ${row.ronde + 1}, retries = 0, updated_at = now() WHERE client_slug = ${slug}`;
-    return { uit: "verder", reden: `ronde ${row.ronde + 1}: ${echtNieuw.length} nieuwe regels` };
+    await q`UPDATE client_cannibal_analysis SET result = ${JSON.stringify(result)}, behandeld = ${JSON.stringify(nuBehandeld)}, ronde = ${row.ronde + 1}, retries = 0, updated_at = now() WHERE client_slug = ${slug}`;
+    return { uit: "verder", reden: `ronde ${row.ronde + 1}: ${echtNieuw.length} van ${blok.length} beoordeeld als opruimen` };
   } finally {
     stopHartslag();
   }
