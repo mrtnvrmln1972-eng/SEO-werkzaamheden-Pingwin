@@ -8,7 +8,7 @@ import OpruimStructuur from "./OpruimStructuur";
 type ClusterUrl = { url: string; rol?: string; positie?: number; klikken?: number; impressies?: number; verwijzendeDomeinen?: number; intentie?: string };
 type Signalen = { urlFlip?: boolean; flipsIn90d?: number; positiePlafond?: boolean; klikVerdeling?: boolean };
 type Cluster = { keyword: string; volume?: number; score?: string; signalen?: Signalen; intentie?: string; urls: ClusterUrl[]; winnaar: string; actie: string; onderbouwing?: string; verwachteImpact?: string };
-type RedirectMapItem = { van: string; naar: string; type?: string; mergeContent?: boolean; reden?: string };
+type RedirectMapItem = { van: string; naar: string; type?: string; mergeContent?: boolean; verhuizen?: boolean; reden?: string };
 type InterneLink = { vanaf: string; naar: string; ankertekst?: string; reden?: string };
 type Datakwaliteit = { gsc?: boolean; gscTijdreeks?: boolean; ahrefsZoekwoorden?: boolean; ahrefsBacklinks?: boolean; crawl?: boolean; opmerking?: string };
 type Result = { samenvatting: string; datakwaliteit?: Datakwaliteit; clusters: Cluster[]; redirectMap?: RedirectMapItem[]; interneLinks?: InterneLink[]; generatedAt: string | null };
@@ -32,6 +32,10 @@ export default function CannibalPanel({ slug, domain = "" }: { slug: string; dom
   const [state, setState] = useState<State | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  // De gekozen URL-vorm. Die gaat als harde regel mee in elke volgende analyse.
+  const [vorm, setVorm] = useState("");
+  const [vormOpgeslagen, setVormOpgeslagen] = useState("");
+  const [vormMsg, setVormMsg] = useState("");
 
   async function load() {
     try {
@@ -40,6 +44,23 @@ export default function CannibalPanel({ slug, domain = "" }: { slug: string; dom
     } catch { /* stil */ }
   }
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [slug]);
+
+  useEffect(() => {
+    fetch(`/api/admin/opruim-structuur-regel?slug=${encodeURIComponent(slug)}`)
+      .then((r) => r.json())
+      .then((d) => { if (d.ok) { setVorm(d.vorm || ""); setVormOpgeslagen(d.vorm || ""); } })
+      .catch(() => { /* stil */ });
+  }, [slug]);
+
+  async function bewaarVorm() {
+    setVormMsg("");
+    try {
+      const d = await fetch("/api/admin/opruim-structuur-regel", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, vorm }) }).then((r) => r.json());
+      if (!d.ok) { setVormMsg(d.error || "Opslaan mislukt."); return; }
+      setVormOpgeslagen(d.vorm || "");
+      setVormMsg(d.vorm ? "Opgeslagen. Vanaf de volgende analyse is dit de enige toegestane vorm." : "Structuurkeuze gewist.");
+    } catch { setVormMsg("Opslaan mislukt."); }
+  }
 
   useEffect(() => {
     if (state?.status !== "running") return;
@@ -131,13 +152,37 @@ export default function CannibalPanel({ slug, domain = "" }: { slug: string; dom
               </div>
             )}
 
+            <div className="opr-vorm">
+              <div className="opr-vorm-kop">Gekozen URL-structuur</div>
+              <p className="muted" style={{ fontSize: 12, margin: 0 }}>
+                E&eacute;n vaste vorm voor dit type pagina. De analyse leidt daarna nooit meer om naar een vorm die je uitfaseert,
+                en markeert een sterke pagina op de verkeerde vorm als <em>verhuizen</em> in plaats van als omleiding.
+              </p>
+              <div className="opr-vorm-rij">
+                <input className="opr-zoek" value={vorm} onChange={(e) => setVorm(e.target.value)}
+                  placeholder="/soa-klinieken/soa-test-&lt;plaats&gt;/" spellCheck={false}
+                  aria-label="Gekozen URL-structuur" />
+                <button type="button" className="ghost-btn small" onClick={bewaarVorm} disabled={vorm === vormOpgeslagen}>Opslaan</button>
+              </div>
+              {vormMsg && <div className="muted" style={{ fontSize: 12 }}>{vormMsg}</div>}
+            </div>
+
             <OpruimStructuur slug={slug} />
 
             {/* De werklijst eerst. Het verhaal eronder: een lijst is om af te werken,
                 proza is om te begrijpen, en in die volgorde. */}
             {result.redirectMap && result.redirectMap.length > 0 && (
               <div className="opr-blok">
+                <div className="opr-kop-rij">
                 <div className="opr-kop">Werklijst: wat waar naartoe</div>
+                {/* Downloaden als CSV: opent met een dubbelklik in Excel en is te
+                    importeren in Google Sheets. Platte rijen met duidelijke
+                    van/naar-kolommen, zoals Maartens eigen Excel. */}
+                <a className="ghost-btn small" href={`/api/admin/opruim-export?slug=${encodeURIComponent(slug)}`}
+                   title="Downloadt de volledige lijst als CSV. Dubbelklikken opent hem in Excel; in Google Sheets via Bestand, Importeren.">
+                  Download voor Excel of Sheets
+                </a>
+              </div>
                 <OpruimTabel slug={slug} domain={domain} rijen={result.redirectMap} />
               </div>
             )}

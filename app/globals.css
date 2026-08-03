@@ -3238,6 +3238,15 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
    De lijst staat bovenaan en het verhaal eronder: een lijst werk je af, proza
    lees je. Andersom (zoals het eerst was) is zeventig regels onwerkbaar. */
 .opr-blok { margin-bottom: var(--s-6); }
+.opr-chip.verhuis { background: var(--brand-blue-light); color: var(--brand-blue); }
+.opr-vorm { display: flex; flex-direction: column; gap: var(--s-2); margin-bottom: var(--s-5);
+  padding: var(--s-4); border: 1px solid var(--border); border-left: 3px solid var(--orange);
+  border-radius: var(--r-md); background: var(--brand-orange-faint); }
+.opr-vorm-kop { font-weight: 800; font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--orange); }
+.opr-vorm-rij { display: flex; gap: var(--s-2); align-items: center; flex-wrap: wrap; }
+.opr-vorm-rij .opr-zoek { flex: 1 1 320px; font-family: ui-monospace, Menlo, Consolas, monospace; }
+.opr-kop-rij { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); flex-wrap: wrap; margin-bottom: var(--s-3); }
+.opr-kop-rij .opr-kop { margin-bottom: 0; }
 .opr-kop { font-weight: 800; font-size: var(--fs-md); line-height: var(--lh-md); color: var(--orange); margin-bottom: var(--s-3); }
 /* Voortgang van de opruim-analyse. Een spinner zonder stand is niet te
    onderscheiden van vastgelopen; hier staat altijd bij welke stap hij is. */

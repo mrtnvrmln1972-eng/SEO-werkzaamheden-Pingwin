@@ -14,7 +14,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-export type RedirectRij = { van: string; naar: string; type?: string; mergeContent?: boolean; reden?: string };
+export type RedirectRij = { van: string; naar: string; type?: string; mergeContent?: boolean; verhuizen?: boolean; reden?: string };
 type Regel = { van: string; besluit: "houden" | "redirect" | "genegeerd"; naar: string; notitie: string; doorgevoerd: boolean };
 
 const pad = (u: string) => { try { return new URL(u).pathname; } catch { return (u || "").trim(); } };
@@ -137,7 +137,11 @@ export default function OpruimTabel({ slug, domain, rijen }: { slug: string; dom
                       {[...new Set([doel, ...doelen])].map((d) => <option key={d} value={d}>{d}</option>)}
                     </select>
                   </td>
-                  <td>{r.mergeContent ? <span className="opr-chip merge">samenvoegen</span> : <span className="opr-leeg">&mdash;</span>}</td>
+                  <td>
+                    {r.verhuizen && <span className="opr-chip verhuis" title="De content gaat naar de nieuwe URL en de oude URL wijst daarheen. Hier moet dus eerst iets gebouwd worden.">verhuizen</span>}
+                    {r.mergeContent && <span className="opr-chip merge">samenvoegen</span>}
+                    {!r.verhuizen && !r.mergeContent && <span className="opr-leeg">&mdash;</span>}
+                  </td>
                   <td>
                     <div className="opr-knoppen">
                       <button type="button" className={"opr-btn" + (reg?.besluit === "houden" ? " aan" : "")} onClick={() => bewaar(v, { besluit: reg?.besluit === "houden" ? "redirect" : "houden" })} title="Deze pagina blijft staan; de volgende analyse stelt hem nooit meer voor">Houden</button>

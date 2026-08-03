@@ -36,7 +36,10 @@ export type RedirectCluster = {
   keyword: string; volume?: number; score?: string; signalen?: ClusterSignalen; intentie?: string;
   urls: ClusterUrl[]; winnaar: string; actie: string; onderbouwing?: string; verwachteImpact?: string;
 };
-export type RedirectMapItem = { van: string; naar: string; type?: string; mergeContent?: boolean; reden?: string };
+// verhuizen: de content gaat naar de doel-URL en de oude URL wijst daarheen. Dat
+// is iets anders dan een gewone omleiding naar een bestaande, sterkere pagina;
+// bij een verhuizing moet er eerst iets gebouwd worden.
+export type RedirectMapItem = { van: string; naar: string; type?: string; mergeContent?: boolean; verhuizen?: boolean; reden?: string };
 export type InterneLink = { vanaf: string; naar: string; ankertekst?: string; reden?: string };
 export type Datakwaliteit = { gsc?: boolean; gscTijdreeks?: boolean; ahrefsZoekwoorden?: boolean; ahrefsBacklinks?: boolean; crawl?: boolean; opmerking?: string };
 export type CannibalResult = {
@@ -273,6 +276,7 @@ De data hieronder is al voor je verzameld. Redeneer per plaats/thema; verzin nie
 - Neem ALLEEN echte cannibalisatie op (hard signaal + overlappende intentie). Een informatieve blog naast een transactionele pagina = geen cannibalisatie; laat die eruit.
 - Winnaar-weging: verwijzende domeinen (zwaarst) > organische tractie > businesswaarde. De pagina met de meeste verwijzende domeinen is niet altijd de bestemming; redirect desnoods de link-rijke pagina naar de businesswaardige pagina. Gesloten/verplaatste locaties: 301 naar de dichtstbijzijnde open pagina, niet 410 (behoud de verwijzende domeinen).
 - Vul per cluster "signalen" (urlFlip/flipsIn90d uit de flip-tijdreeks, positiePlafond 5-20, klikVerdeling) en per URL "verwijzendeDomeinen" in. Vul "datakwaliteit" in: gsc=true, gscTijdreeks (kwamen er flips mee?), ahrefsZoekwoorden=true, ahrefsBacklinks=true, crawl=false.
+- Elk item in "redirectMap" mag een veld "verhuizen" (true/false) hebben. true betekent: deze pagina is zelf de sterkste voor zijn onderwerp, maar staat op de verkeerde URL-vorm; de content gaat naar de doel-URL en de oude URL wijst daarheen. false (of weglaten) is een gewone omleiding naar een bestaande, sterkere pagina. Zet true ALLEEN als de doelpagina nu nog niet bestaat of leeg is; anders is het een gewone omleiding.
 - Antwoord met UITSLUITEND geldige JSON volgens het output-schema hierboven. Geen tekst eromheen, geen emoji, geen markdown-codeblok.`;
 }
 
@@ -527,7 +531,7 @@ ${lijst}
 
 Jouw taak per pagina: bevestig het voorgestelde doel, of corrigeer het als de data een beter doel aanwijst, en geef in één korte zin de reden. Neem een pagina NIET op als hij moet blijven (bijvoorbeeld een functionele pagina zoals contact of afspraak maken, of een pagina met een eigen duidelijke rol); laat hem dan gewoon weg. Verzin geen pagina's die niet in deze lijst staan. Stuur nooit naar een doel dat zelf zwak is.
 
-Lever UITSLUITEND JSON: {"redirectMap":[{"van":"/pad/","naar":"/doel/","type":"301","mergeContent":false,"reden":"..."}]}. Hoort er niets uit deze lijst opgeruimd te worden, geef dan {"redirectMap":[]}.`.slice(0, 48000) }],
+Lever UITSLUITEND JSON: {"redirectMap":[{"van":"/pad/","naar":"/doel/","type":"301","mergeContent":false,"verhuizen":false,"reden":"..."}]}. Hoort er niets uit deze lijst opgeruimd te worden, geef dan {"redirectMap":[]}.`.slice(0, 48000) }],
         16000, { slug, action: `cannibal_redirect_ronde${row.ronde + 2}` },
       );
     } catch {
