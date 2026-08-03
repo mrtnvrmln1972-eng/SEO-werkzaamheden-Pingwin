@@ -197,6 +197,11 @@ export async function zoektermenVoorPagina(slug: string, url: string): Promise<Z
   // 2. Het laatste padsegment als woorden ("crp-waarde-testen" → "crp waarde testen").
   const laatste = pad.split("/").filter(Boolean).pop() || "";
   if (laatste) {
+    // Mét koppeltekens én als losse woorden. Mensen schrijven "de CRP-test" in
+    // een mail, precies zoals de slug. Zochten we alleen op "crp test", dan werd
+    // dat door de mailzoeker als twee losse woorden behandeld en gleed "CRP-test"
+    // er doorheen; dat is één van de manieren waarop een mail onvindbaar bleef.
+    voegToe(laatste, 3);
     voegToe(laatste.replace(/-/g, " "), 2);
     // Losse betekenisvolle woorden uit de slug, voor mails die het pad niet noemen.
     for (const w of laatste.split("-")) voegToe(w, 1);
@@ -267,6 +272,15 @@ function scoreMail(
   if (pad && pad.length > 3 && eigenPlusOnderwerp.includes(pad.toLowerCase())) {
     score += HARD_BEWIJS;
     redenen.push(`noemt zelf het pad ${pad}`);
+  }
+  // De slug zonder schuine streep telt net zo hard: "de CRP-test is aangepast"
+  // is even ondubbelzinnig als het volledige pad, en zo schrijft iedereen het in
+  // een mail. Alleen bij een slug die specifiek genoeg is, dus met een streepje
+  // erin of minstens acht tekens; anders zou "diensten" hele postbussen vangen.
+  const slug = (pad.split("/").filter(Boolean).pop() || "").toLowerCase();
+  if (score < HARD_BEWIJS && slug && (slug.includes("-") || slug.length >= 8) && eigenPlusOnderwerp.includes(slug)) {
+    score += HARD_BEWIJS;
+    redenen.push(`noemt de pagina bij naam (${slug})`);
   }
   if (score < HARD_BEWIJS) {
     for (const link of docLinks) {
