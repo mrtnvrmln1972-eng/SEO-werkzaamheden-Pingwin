@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { sql, ensureSchema } from "./db";
+import { createClient } from "@vercel/postgres";
 import { getClientBySlug } from "./clients";
 import { getClientUrls } from "./site-urls";
 import { getGscForPage, getGscKeywordUrlFlips } from "./google";
@@ -129,13 +130,25 @@ function loadSkillMethodology(): string {
   return skillCache;
 }
 
+// ── Welke verbinding de rij-functies gebruiken ─────────────────────────────
+// Standaard de gedeelde (gepoolde) verbinding. De cron-werker zet hier tijdelijk
+// een eigen, niet-gepoolde verbinding neer. Reden: op 11-07-2026 bleek in dit
+// project al eens dat een gepoolde verbinding naar een oude momentopname keek
+// (de documenten-werker zag via de pool 0 wachtende runs en via een eigen
+// verbinding wél de wachtende run). Op 03-08-2026 gebeurde hier hetzelfde: de
+// cron las fase='' terwijl de rij fase='gather' bevatte, en zijn schrijfacties
+// landden niet (retries bleef 0 na duizend claims).
+type SqlTag = (strings: TemplateStringsArray, ...values: unknown[]) => Promise<{ rows: Record<string, unknown>[] }>;
+let actieveSql: SqlTag = sql as unknown as SqlTag;
+const q: SqlTag = (strings, ...values) => actieveSql(strings, ...values);
+
 type CannibalRow = {
   status: string; result: CannibalResult | null; error: string; updatedAt: string | null;
   fase: CannibalFase; ronde: number; retries: number; seed: string; findings: string;
 };
 
 async function readRow(slug: string): Promise<CannibalRow | null> {
-  const { rows } = await sql`SELECT status, result, error, updated_at, fase, ronde, retries, seed, findings FROM client_cannibal_analysis WHERE client_slug = ${slug} LIMIT 1`;
+  const { rows } = await q`SELECT status, result, error, updated_at, fase, ronde, retries, seed, findings FROM client_cannibal_analysis WHERE client_slug = ${slug} LIMIT 1`;
   const r = rows[0];
   if (!r) return null;
   let result: CannibalResult | null = null;
@@ -190,18 +203,18 @@ export function resultDatum(st: CannibalState): string | null {
 export async function startCannibalRun(slug: string): Promise<void> {
   await ensureSchema();
   await ensureTable();
-  await sql`
+  await q`
     INSERT INTO client_cannibal_analysis (client_slug, status, result, error, fase, ronde, retries, seed, findings, updated_at)
     VALUES (${slug}, 'running', NULL, NULL, 'gather', 0, 0, NULL, NULL, now())
     ON CONFLICT (client_slug) DO UPDATE SET status = 'running', error = NULL, fase = 'gather', ronde = 0, retries = 0, seed = NULL, findings = NULL, updated_at = now()`;
 }
 
 async function faal(slug: string, msg: string): Promise<void> {
-  await sql`UPDATE client_cannibal_analysis SET status = 'error', error = ${msg}, fase = '', seed = NULL, findings = NULL, updated_at = now() WHERE client_slug = ${slug}`;
+  await q`UPDATE client_cannibal_analysis SET status = 'error', error = ${msg}, fase = '', seed = NULL, findings = NULL, updated_at = now() WHERE client_slug = ${slug}`;
 }
 
 async function afronden(slug: string): Promise<void> {
-  await sql`UPDATE client_cannibal_analysis SET status = 'done', error = NULL, fase = '', seed = NULL, findings = NULL, updated_at = now() WHERE client_slug = ${slug}`;
+  await q`UPDATE client_cannibal_analysis SET status = 'done', error = NULL, fase = '', seed = NULL, findings = NULL, updated_at = now() WHERE client_slug = ${slug}`;
 }
 
 // Hartslag: zolang deze werker leeft, bewijst hij dat elke 30s. Stopt de hartslag
@@ -323,28 +336,37 @@ async function bouwSeed(slug: string, clientNaam: string, domain: string): Promi
 // Doet precies één ding en slaat het resultaat op. "verder" = er is nog werk,
 // "klaar" = deze run is af (of afgebroken met een fout).
 async function stapCannibal(slug: string): Promise<"verder" | "klaar"> {
+  return (await stapMetReden(slug)).uit;
+}
+
+// Zelfde stap, maar vertelt er ook bij WAAROM hij stopte. Zonder die reden is een
+// werker die instant "klaar" zegt niet te onderscheiden van een werker die zijn
+// werk deed; op 03-08-2026 pakte de cron dezelfde klant duizend keer op zonder dat
+// er iets veranderde, en was van buitenaf niet te zien welke tak dat veroorzaakte.
+async function stapMetReden(slug: string): Promise<{ uit: "verder" | "klaar"; reden: string }> {
   const row = await readRow(slug);
-  if (!row || row.status !== "running") return "klaar";
+  if (!row) return { uit: "klaar", reden: "geen rij gevonden" };
+  if (row.status !== "running") return { uit: "klaar", reden: `status is ${row.status}, niet running` };
   // Een run zonder fase komt uit de oude opzet (alles in één keer) en is stil
   // afgekapt; die kan niet hervat worden omdat er niets van bewaard is.
   if (!row.fase) {
     await faal(slug, "Deze analyse is halverwege vastgelopen in de oude opzet en kan niet hervat worden. Klik op “Opnieuw analyseren”; hij loopt nu wel door tot het eind.");
-    return "klaar";
+    return { uit: "klaar", reden: "oude run zonder fase, niet hervatbaar" };
   }
 
   const client = await getClientBySlug(slug);
   const domain = client?.domain || "";
-  if (!domain) { await faal(slug, "Deze klant heeft nog geen domein ingevuld."); return "klaar"; }
-  if (!ahrefsConfigured()) { await faal(slug, "Hiervoor is een AHREFS_API_TOKEN nodig in Vercel."); return "klaar"; }
+  if (!domain) { await faal(slug, "Deze klant heeft nog geen domein ingevuld."); return { uit: "klaar", reden: "geen domein" }; }
+  if (!ahrefsConfigured()) { await faal(slug, "Hiervoor is een AHREFS_API_TOKEN nodig in Vercel."); return { uit: "klaar", reden: "geen Ahrefs-sleutel" }; }
 
   const stopHartslag = startHartslag(slug);
   try {
     let seed = row.seed;
     if (!seed) {
       const s = await bouwSeed(slug, client?.name || "", domain);
-      if (!s.ok) { await faal(slug, s.error); return "klaar"; }
+      if (!s.ok) { await faal(slug, s.error); return { uit: "klaar", reden: "kern-data mislukt" }; }
       seed = s.seed;
-      await sql`UPDATE client_cannibal_analysis SET seed = ${seed}, updated_at = now() WHERE client_slug = ${slug}`;
+      await q`UPDATE client_cannibal_analysis SET seed = ${seed}, updated_at = now() WHERE client_slug = ${slug}`;
     }
 
     // STAP 1 — agentic onderzoek: het model zoomt in op verdachte pagina's en schrijft
@@ -364,8 +386,8 @@ async function stapCannibal(slug: string): Promise<"verder" | "klaar"> {
         );
       } catch { findings = ""; }
       const clean = findings.replace(/\(geen antwoord\)/gi, "").trim();
-      await sql`UPDATE client_cannibal_analysis SET findings = ${clean}, fase = 'synth', retries = 0, updated_at = now() WHERE client_slug = ${slug}`;
-      return "verder";
+      await q`UPDATE client_cannibal_analysis SET findings = ${clean}, fase = 'synth', retries = 0, updated_at = now() WHERE client_slug = ${slug}`;
+      return { uit: "verder", reden: "onderzoek klaar" };
     }
 
     // Eerdere besluiten van Maarten gaan mee als harde regels. Zo hoeft hij een
@@ -391,7 +413,7 @@ async function stapCannibal(slug: string): Promise<"verder" | "klaar"> {
         await faal(slug, looksTruncated
           ? "De analyse werd afgekapt voordat de JSON af was (te lang). Probeer het opnieuw."
           : `De analyse kwam niet als geldige JSON terug. Probeer het opnieuw.${cleaned ? ` (begon met: ${cleaned.slice(0, 120).replace(/\s+/g, " ")})` : ""}`);
-        return "klaar";
+        return { uit: "klaar", reden: "antwoord was geen geldige JSON" };
       }
 
       const result: CannibalResult = {
@@ -402,8 +424,8 @@ async function stapCannibal(slug: string): Promise<"verder" | "klaar"> {
         interneLinks: Array.isArray(parsed.interneLinks) ? (parsed.interneLinks as InterneLink[]) : [],
         generatedAt: new Date().toISOString(),
       };
-      await sql`UPDATE client_cannibal_analysis SET result = ${JSON.stringify(result)}, fase = 'ronde', ronde = 0, retries = 0, updated_at = now() WHERE client_slug = ${slug}`;
-      return "verder";
+      await q`UPDATE client_cannibal_analysis SET result = ${JSON.stringify(result)}, fase = 'ronde', ronde = 0, retries = 0, updated_at = now() WHERE client_slug = ${slug}`;
+      return { uit: "verder", reden: "hoofdanalyse klaar" };
     }
 
     // ── STAP 3 t/m 5: doorgaan tot er niets nieuws meer komt ────────────────
@@ -413,8 +435,8 @@ async function stapCannibal(slug: string): Promise<"verder" | "klaar"> {
     // Nu vragen we per ronde expliciet naar wat er NOG NIET in staat, en stoppen
     // pas als een ronde niets nieuws oplevert (of na drie rondes).
     const result = row.result;
-    if (!result) { await faal(slug, "De tussenstand is verdwenen; start de analyse opnieuw."); return "klaar"; }
-    if (row.ronde >= 3) { await afronden(slug); return "klaar"; }
+    if (!result) { await faal(slug, "De tussenstand is verdwenen; start de analyse opnieuw."); return { uit: "klaar", reden: "tussenstand weg" }; }
+    if (row.ronde >= 3) { await afronden(slug); return { uit: "klaar", reden: "drie rondes gehad" }; }
 
     const gezien = new Set((result.redirectMap || []).map((m) => padOf(String(m.van || ""))));
     const alGenoemd = [...gezien].slice(0, 400).join(", ");
@@ -425,13 +447,13 @@ async function stapCannibal(slug: string): Promise<"verder" | "klaar"> {
         [{ role: "user", content: `${seed}\n\nJe hebt deze pagina's AL beoordeeld en die hoef je niet opnieuw te noemen:\n${alGenoemd}\n\nKijk nu naar de pagina's die je NOG NIET hebt beoordeeld. Zoek daar de resterende dunne, dubbele en overbodige pagina's. Let met name op locatiepagina's die nauwelijks vertoningen hebben en geen eigen zoekterm bezitten; die vallen buiten de clusters omdat ze met niemand concurreren, maar ze versnipperen wel de autoriteit. Lever UITSLUITEND JSON: {"redirectMap":[{"van":"/pad/","naar":"/doel/","type":"301","mergeContent":false,"reden":"..."}]}. Vind je niets nieuws, geef dan {"redirectMap":[]}.`.slice(0, 48000) }],
         8000, { slug, action: `cannibal_redirect_ronde${row.ronde + 2}` },
       );
-    } catch { await afronden(slug); return "klaar"; }
+    } catch { await afronden(slug); return { uit: "klaar", reden: "ronde gaf een fout" }; }
 
     let nieuweRijen: RedirectMapItem[] = [];
     try {
       const j = JSON.parse(extractJsonObject(extraRuw.replace(/```json/gi, "").replace(/```/g, "").trim())) as { redirectMap?: unknown };
       nieuweRijen = Array.isArray(j.redirectMap) ? (j.redirectMap as RedirectMapItem[]) : [];
-    } catch { await afronden(slug); return "klaar"; }
+    } catch { await afronden(slug); return { uit: "klaar", reden: "ronde gaf geen geldige JSON" }; }
 
     const echtNieuw = nieuweRijen.filter((m) => {
       const v = padOf(String(m.van || ""));
@@ -439,11 +461,11 @@ async function stapCannibal(slug: string): Promise<"verder" | "klaar"> {
       gezien.add(v);
       return true;
     });
-    if (!echtNieuw.length) { await afronden(slug); return "klaar"; }  // niets nieuws: klaar
+    if (!echtNieuw.length) { await afronden(slug); return { uit: "klaar", reden: "niets nieuws meer" }; }
 
     result.redirectMap = [...(result.redirectMap || []), ...echtNieuw];
-    await sql`UPDATE client_cannibal_analysis SET result = ${JSON.stringify(result)}, ronde = ${row.ronde + 1}, retries = 0, updated_at = now() WHERE client_slug = ${slug}`;
-    return "verder";
+    await q`UPDATE client_cannibal_analysis SET result = ${JSON.stringify(result)}, ronde = ${row.ronde + 1}, retries = 0, updated_at = now() WHERE client_slug = ${slug}`;
+    return { uit: "verder", reden: `ronde ${row.ronde + 1}: ${echtNieuw.length} nieuwe regels` };
   } finally {
     stopHartslag();
   }
@@ -473,7 +495,7 @@ export async function runCannibalRedirect(slug: string): Promise<void> {
 // Die wordt hier opgepakt bij de stap waar hij was. Na drie vergeefse pogingen
 // stopt hij definitief: zonder die noodrem blijft een stap die telkens sneuvelt
 // eindeloos opnieuw draaien, en elke poging kost het volle AI-bedrag.
-export async function processCannibalQueue(): Promise<{ opgepakt: string[] }> {
+export async function processCannibalQueue(): Promise<{ opgepakt: string[]; redenen: string[] }> {
   await ensureSchema();
   await ensureTable();
   // Meteen vastleggen dát hij langskwam, vóór al het werk. Zo is op het scherm te
@@ -481,17 +503,41 @@ export async function processCannibalQueue(): Promise<{ opgepakt: string[] }> {
   await setSetting(SETTING_OPRUIM_CRON_TIK, new Date().toISOString()).catch(() => { /* stil */ });
   const opgepakt: string[] = [];
 
-  await sql`
+  // Eigen, niet-gepoolde verbinding voor deze hele tik. Zie de toelichting bij
+  // actieveSql: via de pool las deze werker verouderde waarden en landden zijn
+  // schrijfacties niet.
+  const vers = createClient();
+  await vers.connect();
+  const vorige = actieveSql;
+  actieveSql = vers.sql.bind(vers) as unknown as SqlTag;
+  try {
+    return await werkAf(opgepakt);
+  } finally {
+    actieveSql = vorige;
+    await vers.end().catch(() => { /* opruimen mag nooit breken */ });
+  }
+}
+
+async function werkAf(opgepakt: string[]): Promise<{ opgepakt: string[]; redenen: string[] }> {
+
+  await q`
     UPDATE client_cannibal_analysis
     SET status = 'error', fase = '', seed = NULL, findings = NULL, updated_at = now(),
         error = 'Vastgelopen: de analyse is drie keer opnieuw opgepakt en bleef steken. Klik op “Opnieuw analyseren” om hem opnieuw te starten.'
     WHERE status = 'running' AND retries >= 3 AND updated_at < now() - interval '5 minutes'`;
 
   const t0 = Date.now();
-  while (Date.now() - t0 < WERKER_BUDGET_MS) {
+  const redenen: string[] = [];
+  // Elke klant hoogstens één keer per tik. Zonder deze rem draaide de werker op
+  // 03-08-2026 duizend rondjes om dezelfde klant in 661 seconden: de claim zei
+  // telkens "ik heb hem", maar er veranderde niets aan de rij. De documenten-
+  // werker heeft dezelfde rem, met dezelfde reden. Verandert een run niets, dan
+  // is doorgaan zinloos en schadelijk, want elke ronde kost geld.
+  const gezien = new Set<string>();
+  while (Date.now() - t0 < WERKER_BUDGET_MS && gezien.size < 8) {
     // Claimen en hartslag zetten in één stap, zodat twee cron-tikken nooit
     // dezelfde run tegelijk oppakken.
-    const { rows } = await sql`
+    const { rows } = await q`
       UPDATE client_cannibal_analysis SET retries = retries + 1, updated_at = now()
       WHERE client_slug = (
         SELECT client_slug FROM client_cannibal_analysis
@@ -500,10 +546,15 @@ export async function processCannibalQueue(): Promise<{ opgepakt: string[] }> {
       RETURNING client_slug`;
     if (!rows.length) break;
     const slug = String(rows[0].client_slug);
+    if (gezien.has(slug)) { redenen.push(`${slug}: claim blijft dezelfde rij teruggeven, gestopt`); break; }
+    gezien.add(slug);
     opgepakt.push(slug);
+    // Alle resterende stappen van deze klant afwerken zolang er tijd is.
     while (Date.now() - t0 < WERKER_BUDGET_MS) {
-      if (await stapCannibal(slug) === "klaar") break;
+      const r = await stapMetReden(slug);
+      redenen.push(`${slug}: ${r.reden}`);
+      if (r.uit === "klaar") break;
     }
   }
-  return { opgepakt };
+  return { opgepakt, redenen };
 }
