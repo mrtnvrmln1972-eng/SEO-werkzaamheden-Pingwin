@@ -246,7 +246,11 @@ async function afronden(slug: string): Promise<void> {
 // hem op bij de stap waar hij was.
 function startHartslag(slug: string): () => void {
   const t = setInterval(() => {
-    void sql`UPDATE client_cannibal_analysis SET updated_at = now() WHERE client_slug = ${slug}`.catch(() => { /* stil */ });
+    // Via q, dus via dezelfde verbinding als de rest van de stap. Stond op de
+    // gedeelde verbinding en landde daardoor niet tijdens een cron-tik: de run
+    // leek stil te staan terwijl hij gewoon werkte, met dubbel werk en een valse
+    // "vastgelopen" tot gevolg.
+    void q`UPDATE client_cannibal_analysis SET updated_at = now() WHERE client_slug = ${slug}`.catch(() => { /* stil */ });
   }, 30000);
   return () => clearInterval(t);
 }
@@ -524,15 +528,21 @@ ${lijst}
 Jouw taak per pagina: bevestig het voorgestelde doel, of corrigeer het als de data een beter doel aanwijst, en geef in één korte zin de reden. Neem een pagina NIET op als hij moet blijven (bijvoorbeeld een functionele pagina zoals contact of afspraak maken, of een pagina met een eigen duidelijke rol); laat hem dan gewoon weg. Verzin geen pagina's die niet in deze lijst staan. Stuur nooit naar een doel dat zelf zwak is.
 
 Lever UITSLUITEND JSON: {"redirectMap":[{"van":"/pad/","naar":"/doel/","type":"301","mergeContent":false,"reden":"..."}]}. Hoort er niets uit deze lijst opgeruimd te worden, geef dan {"redirectMap":[]}.`.slice(0, 48000) }],
-        8000, { slug, action: `cannibal_redirect_ronde${row.ronde + 2}` },
+        16000, { slug, action: `cannibal_redirect_ronde${row.ronde + 2}` },
       );
-    } catch { await afronden(slug); return { uit: "klaar", reden: "ronde gaf een fout" }; }
+    } catch {
+      await slaBlokOver(slug, row, blok);
+      return { uit: "verder", reden: `ronde ${row.ronde + 1} gaf een fout, blok overgeslagen` };
+    }
 
     let nieuweRijen: RedirectMapItem[] = [];
     try {
       const j = JSON.parse(extractJsonObject(extraRuw.replace(/```json/gi, "").replace(/```/g, "").trim())) as { redirectMap?: unknown };
       nieuweRijen = Array.isArray(j.redirectMap) ? (j.redirectMap as RedirectMapItem[]) : [];
-    } catch { await afronden(slug); return { uit: "klaar", reden: "ronde gaf geen geldige JSON" }; }
+    } catch {
+      await slaBlokOver(slug, row, blok);
+      return { uit: "verder", reden: `ronde ${row.ronde + 1} gaf geen geldige JSON, blok overgeslagen` };
+    }
 
     // Alleen pagina's uit dit blok; verzonnen paden vallen af.
     const inBlok = new Set(blok.map((k) => padOf(k.pad)));
@@ -553,6 +563,14 @@ Lever UITSLUITEND JSON: {"redirectMap":[{"van":"/pad/","naar":"/doel/","type":"3
   } finally {
     stopHartslag();
   }
+}
+
+// Een blok dat niet te beoordelen was, telt tóch als behandeld en de analyse gaat
+// door met het volgende blok. Eén mislukte ronde mag nooit de hele analyse
+// beëindigen; dat gebeurde op 03-08-2026 en kostte de complete werklijst.
+async function slaBlokOver(slug: string, row: CannibalRow, blok: ZwakkePagina[]): Promise<void> {
+  const nu = [...new Set([...(row.behandeld || []), ...blok.map((k) => padOf(k.pad))])];
+  await q`UPDATE client_cannibal_analysis SET behandeld = ${JSON.stringify(nu)}, ronde = ${row.ronde + 1}, retries = 0, updated_at = now() WHERE client_slug = ${slug}`;
 }
 
 // Tijdsbudget per werker: ruim binnen het venster van 800s, zodat de werker zelf
@@ -608,7 +626,7 @@ async function werkAf(opgepakt: string[]): Promise<{ opgepakt: string[]; redenen
     UPDATE client_cannibal_analysis
     SET status = 'error', fase = '', seed = NULL, findings = NULL, updated_at = now(),
         error = 'Vastgelopen: de analyse is drie keer opnieuw opgepakt en bleef steken. Klik op “Opnieuw analyseren” om hem opnieuw te starten.'
-    WHERE status = 'running' AND retries >= 3 AND updated_at < now() - interval '5 minutes'`;
+    WHERE status = 'running' AND retries >= 3 AND updated_at < now() - interval '3 minutes'`;
 
   const t0 = Date.now();
   const redenen: string[] = [];
@@ -625,7 +643,7 @@ async function werkAf(opgepakt: string[]): Promise<{ opgepakt: string[]; redenen
       UPDATE client_cannibal_analysis SET retries = retries + 1, updated_at = now()
       WHERE client_slug = (
         SELECT client_slug FROM client_cannibal_analysis
-        WHERE status = 'running' AND updated_at < now() - interval '5 minutes'
+        WHERE status = 'running' AND updated_at < now() - interval '3 minutes'
         ORDER BY updated_at ASC LIMIT 1)
       RETURNING client_slug`;
     if (!rows.length) break;
