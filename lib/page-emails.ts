@@ -3,7 +3,9 @@ import { urlKey } from "./url-key";
 import { getClientBySlug } from "./clients";
 import { getPagePlan, getPageSummary, getClientUrls } from "./site-urls";
 import { getStepLinks } from "./page-doc-run";
-import { msStatus, msSearchMail, type LiveEmail } from "./ms-graph";
+import { msStatus, msSearchMail, msListAttachments, type LiveEmail } from "./ms-graph";
+import { eigenTekst } from "./mail-tekst";
+import { callClaude, anthropicConfigured, LIGHT_MODEL } from "./anthropic";
 
 // ═══════════════════════════════════════════════════════════
 // MAIL PER PAGINA
@@ -40,6 +42,8 @@ export type PaginaMail = {
   score: number;
   reden: string;
   heeftBijlagen: boolean;
+  bijlageNamen: string[];
+  kern: string;
 };
 
 // Score-drempels. Onder BEWAAR_VANAF wordt een treffer weggegooid: liever geen
@@ -78,6 +82,12 @@ async function doEnsure(): Promise<void> {
       UNIQUE (client_slug, url_key, message_id)
     )`;
   await sql`CREATE INDEX IF NOT EXISTS ix_page_emails_pagina ON page_emails (client_slug, url_key)`;
+  // Namen van de bijlagen: vaak het echte bewijs waar een mail over gaat, en
+  // nodig om in de tijdlijn te kunnen tonen wát er is teruggestuurd.
+  await sql`ALTER TABLE page_emails ADD COLUMN IF NOT EXISTS bijlage_namen TEXT`;
+  // Eén zin over wat er in deze mail gebeurde, geschreven door de zeef. Dit is
+  // de regel die als stap in de tijdlijn op de kaart komt.
+  await sql`ALTER TABLE page_emails ADD COLUMN IF NOT EXISTS kern TEXT`;
 }
 
 function rowToMail(r: Record<string, unknown>): PaginaMail {
@@ -95,6 +105,8 @@ function rowToMail(r: Record<string, unknown>): PaginaMail {
     score: Number(r.score || 0),
     reden: (r.reden as string) || "",
     heeftBijlagen: !!r.heeft_bijlagen,
+    bijlageNamen: String(r.bijlage_namen || "").split(" | ").map((x) => x.trim()).filter(Boolean),
+    kern: (r.kern as string) || "",
   };
 }
 
@@ -105,7 +117,7 @@ export async function getPaginaMails(slug: string, url: string): Promise<PaginaM
   const k = urlKey(url);
   const { rows } = await sql`
     SELECT id, message_id, onderwerp, van_naam, van_adres, ontvangen_op, web_link,
-           superhuman_link, preview, heeft_bijlagen, bron, score, reden
+           superhuman_link, preview, heeft_bijlagen, bijlage_namen, kern, bron, score, reden
     FROM page_emails
     WHERE client_slug = ${slug} AND url_key = ${k} AND bron <> 'weg'
     ORDER BY (bron = 'pin') DESC, score DESC, ontvangen_op DESC NULLS LAST
@@ -170,33 +182,53 @@ export async function zoektermenVoorPagina(slug: string, url: string): Promise<Z
 }
 
 // ── Scoren ──
-// Hard bewijs (pad of documentlink letterlijk in de mail) telt zwaar; een term in
-// het onderwerp telt middelzwaar; alleen in de body telt licht.
+//
+// ALLEEN op wat de afzender zelf schreef, plus de namen van de bijlagen. Reden:
+// onder elke reply hangt de hele thread, dus wie de volledige body leest ziet in
+// élke mail van een thread het pad en de documentlinks staan. Zo belandde een
+// mail over de SOA-test en een belafspraak als "hard bewijs" bij de CRP-pagina.
+//
+// Andersom net zo belangrijk: de mail waarin de klant zijn geredigeerde teksten
+// terugstuurt zegt vaak alleen "de teksten zijn aangepast" en noemt het onderwerp
+// niet. Het bewijs zit dan in de bijlagenaam (Tekst CRP-waarde 21-07-2026.pdf).
 function scoreMail(
   mail: { subject: string | null; bodyHtml: string | null; preview: string | null; fromAddress: string | null },
   pad: string,
   docLinks: string[],
   termen: Zoekterm[],
   klantDomein: string,
+  bijlageNamen: string[] = [],
 ): { score: number; reden: string } {
   const onderwerp = (mail.subject || "").toLowerCase();
-  const body = `${mail.bodyHtml || ""} ${mail.preview || ""}`.toLowerCase();
-  const alles = `${onderwerp} ${body}`;
+  const eigen = eigenTekst(mail.bodyHtml || "", mail.preview || "", 4000).toLowerCase();
+  const bijlagen = bijlageNamen.join(" ").toLowerCase();
+  const eigenPlusOnderwerp = `${onderwerp} ${eigen} ${bijlagen}`;
   let score = 0;
   const redenen: string[] = [];
 
-  if (pad && pad.length > 3 && alles.includes(pad.toLowerCase())) {
+  if (pad && pad.length > 3 && eigenPlusOnderwerp.includes(pad.toLowerCase())) {
     score += HARD_BEWIJS;
-    redenen.push(`noemt het pad ${pad}`);
+    redenen.push(`noemt zelf het pad ${pad}`);
   }
-  for (const link of docLinks) {
-    // Google Docs-links vergelijken op het document-id, niet op de hele URL:
-    // dezelfde link komt met en zonder ?usp=sharing voorbij.
-    const id = /\/d\/([a-z0-9_-]{20,})/i.exec(link)?.[1];
-    if (id && alles.includes(id.toLowerCase())) {
+  if (score < HARD_BEWIJS) {
+    for (const link of docLinks) {
+      // Google Docs-links vergelijken op het document-id, niet op de hele URL:
+      // dezelfde link komt met en zonder ?usp=sharing voorbij.
+      const id = /\/d\/([a-z0-9_-]{20,})/i.exec(link)?.[1];
+      if (id && eigen.includes(id.toLowerCase())) {
+        score += HARD_BEWIJS;
+        redenen.push("stuurt een document van deze pagina mee");
+        break;
+      }
+    }
+  }
+  // Een bijlage die het onderwerp van de pagina in de naam heeft is even hard
+  // bewijs als het pad: dat is de teruggestuurde tekst.
+  if (score < HARD_BEWIJS && bijlagen) {
+    const treffer = termen.find((t) => t.gewicht >= 2 && bijlagen.includes(t.term));
+    if (treffer) {
       score += HARD_BEWIJS;
-      redenen.push("noemt een document van deze pagina");
-      break;
+      redenen.push(`bijlage over "${treffer.term}"`);
     }
   }
   if (score < HARD_BEWIJS) {
@@ -204,17 +236,81 @@ function scoreMail(
       if (onderwerp.includes(t.term)) { score += 2; redenen.push(`"${t.term}" in het onderwerp`); break; }
     }
     for (const t of termen) {
-      if (body.includes(t.term)) { score += 1; redenen.push(`"${t.term}" in de mail`); break; }
+      if (eigen.includes(t.term)) { score += 2; redenen.push(`schrijft zelf over "${t.term}"`); break; }
     }
   }
+  // "Van de klant" is alleen een bonus BOVENOP een inhoudelijke treffer, nooit
+  // een reden op zich. Anders haalt elke klantmail in de thread de drempel.
   const van = (mail.fromAddress || "").toLowerCase();
-  if (klantDomein && van.endsWith(`@${klantDomein}`)) { score += 1; redenen.push("van de klant"); }
+  if (score >= BEWAAR_VANAF && klantDomein && van.endsWith(`@${klantDomein}`)) {
+    score += 1;
+    redenen.push("van de klant");
+  }
 
   return { score, reden: redenen.join(", ") };
 }
 
 function stripHtml(html: string): string {
   return (html || "").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
+}
+
+// ── Tweede zeef: begrijpt waar een mail over gaat ──
+//
+// De puntentelling hierboven is stevig maar dom: hij herkent woorden, geen
+// betekenis. Deze stap legt alle kandidaten in ÉÉN korte vraag voor: hoort deze
+// mail bij deze pagina, en wat is er in één zin gebeurd? Die zin is meteen de
+// regel die in de tijdlijn op de kaart komt.
+//
+// Eén aanroep per pagina, niet per mail, en hooguit eens per week. Valt hij uit
+// (geen sleutel, storing, onleesbaar antwoord), dan blijft de puntentelling
+// gewoon gelden: de zeef mag het koppelen nooit blokkeren.
+type Oordeel = { hoort: boolean; kern: string };
+
+async function beoordeelMails(
+  slug: string,
+  pad: string,
+  paginaTitel: string,
+  kandidaten: { id: string; subject: string | null; fromName: string | null; eigen: string; bijlagen: string[]; datum: string }[],
+): Promise<Map<string, Oordeel>> {
+  const uit = new Map<string, Oordeel>();
+  if (!kandidaten.length || !anthropicConfigured()) return uit;
+
+  const systeem = `Je helpt een SEO-bureau bepalen welke e-mails écht over één specifieke webpagina gaan.
+
+DE PAGINA: ${pad}${paginaTitel ? ` (${paginaTitel})` : ""}
+
+Je krijgt e-mails met alleen het deel dat de afzender ZELF schreef (de geciteerde geschiedenis is er al afgehaald).
+
+Beoordeel per mail:
+- "hoort": true als deze mail inhoudelijk over DEZE pagina gaat: de tekst ervan, de opzet, correcties erop, of een afspraak die specifiek deze pagina betreft. false als de mail over een ander onderwerp gaat (een andere pagina, een belafspraak in het algemeen, een factuur, een rapportage), ook al zat hij in dezelfde mailwisseling.
+- "kern": in één korte zin wat er in deze mail gebeurde, in gewone taal, vanuit het bureau gezien. Bijvoorbeeld "Amit stuurde de aangepaste teksten terug als pdf" of "jij stelde de nieuwe opzet voor met een apart doel per pagina". Geen datum erin, die staat er al voor. Maximaal 14 woorden.
+
+Antwoord met UITSLUITEND geldige JSON: een array met per mail {"id": "<exact het meegegeven id>", "hoort": true/false, "kern": "<zin>"}. Geen tekst eromheen.`;
+
+  const lijst = kandidaten.map((k) => [
+    `--- id: ${k.id}`,
+    `datum: ${k.datum}`,
+    `van: ${k.fromName || "onbekend"}`,
+    `onderwerp: ${k.subject || "(geen)"}`,
+    k.bijlagen.length ? `bijlagen: ${k.bijlagen.join(", ")}` : "",
+    `eigen tekst: ${k.eigen.slice(0, 700) || "(niets eigen geschreven)"}`,
+  ].filter(Boolean).join("\n")).join("\n\n");
+
+  try {
+    const raw = await callClaude(systeem, [{ role: "user", content: lijst }], 1200, { slug, action: "mail-zeef" }, LIGHT_MODEL);
+    const schoon = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
+    const van = schoon.indexOf("["), tot = schoon.lastIndexOf("]");
+    if (van === -1 || tot <= van) return uit;
+    const rijen = JSON.parse(schoon.slice(van, tot + 1)) as { id?: string; hoort?: boolean; kern?: string }[];
+    for (const r of Array.isArray(rijen) ? rijen : []) {
+      const id = String(r.id || "").trim();
+      if (!id) continue;
+      uit.set(id, { hoort: r.hoort !== false, kern: String(r.kern || "").replace(/\s+/g, " ").trim().slice(0, 160) });
+    }
+  } catch {
+    /* onleesbaar antwoord of storing: de puntentelling beslist */
+  }
+  return uit;
 }
 
 /**
@@ -291,27 +387,85 @@ export async function zoekMailsVoorPagina(slug: string, url: string): Promise<{ 
   // Nieuwsbrieven van tools zijn nooit een gesprek over een pagina.
   const bruikbaar = [...kandidaten.values()].filter((m) => !/@(ahrefs|semrush|google)\.com$/i.test((m.fromAddress || "").trim()));
 
+  // Bijlagenamen ophalen voor de mails die bijlagen hebben. Vaak zit juist daar
+  // het bewijs ("Tekst CRP-waarde 21-07-2026.pdf"), terwijl de mail zelf alleen
+  // "de teksten zijn aangepast" zegt. Begrensd, want dit is een extra aanroep
+  // per mail; mails met bijlagen zijn zeldzaam genoeg om dat te dragen.
+  const namenPerMail = new Map<string, string[]>();
+  const metBijlagen = bruikbaar.filter((m) => m.hasAttachments).slice(0, 8);
+  for (const m of metBijlagen) {
+    const lijst = await msListAttachments(m.id).catch(() => null);
+    if (lijst) namenPerMail.set(m.id, lijst.map((a) => a.naam));
+  }
+
+  // Eerst de puntentelling, dan de zeef over wat overblijft. Andersom zou de zeef
+  // over tientallen mails moeten oordelen die er duidelijk niet bij horen.
+  const geslaagd = bruikbaar
+    .map((m) => ({ m, namen: namenPerMail.get(m.id) || [] }))
+    .map((x) => ({ ...x, ...scoreMail(x.m, pad, docLinks, termen, klantDomein, x.namen) }))
+    .filter((x) => x.score >= BEWAAR_VANAF);
+
+  const urls2 = await getClientUrls(slug).catch(() => []);
+  const titel = urls2.find((u) => urlKey(u.url) === k)?.title || "";
+  const oordelen = await beoordeelMails(slug, pad, titel, geslaagd.map((x) => ({
+    id: x.m.id,
+    subject: x.m.subject,
+    fromName: x.m.fromName,
+    eigen: eigenTekst(x.m.bodyHtml || "", x.m.preview || "", 700),
+    bijlagen: x.namen,
+    datum: x.m.receivedAt ? new Date(x.m.receivedAt).toLocaleDateString("nl-NL") : "",
+  })));
+
   let bewaard = 0;
-  for (const m of bruikbaar) {
-    const { score, reden } = scoreMail(m, pad, docLinks, termen, klantDomein);
-    if (score < BEWAAR_VANAF) continue;
-    const preview = (m.preview || stripHtml(m.bodyHtml || "")).slice(0, 400);
+  const gehouden: string[] = [];
+  for (const { m, namen, score, reden } of geslaagd) {
+    const oordeel = oordelen.get(m.id);
+    // De zeef mag alleen afwijzen, nooit toevoegen. Weet hij het niet (geen
+    // antwoord voor deze mail), dan blijft de puntentelling leidend.
+    if (oordeel && !oordeel.hoort) continue;
+    const kern = oordeel?.kern || "";
+    // Bewaar het EIGEN deel als preview: dat is wat er in de tijdlijn en in de
+    // samenvatting terechtkomt. De geciteerde thread eronder zou daar alleen maar
+    // een oud verhaal herhalen.
+    const preview = (eigenTekst(m.bodyHtml || "", m.preview || "", 600) || stripHtml(m.bodyHtml || "")).slice(0, 600);
     await sql`
       INSERT INTO page_emails (client_slug, url_key, url, message_id, conversation_id, onderwerp,
                                van_naam, van_adres, ontvangen_op, web_link, superhuman_link, preview,
-                               heeft_bijlagen, bron, score, reden, gevonden_op)
+                               heeft_bijlagen, bijlage_namen, kern, bron, score, reden, gevonden_op)
       VALUES (${slug}, ${k}, ${url}, ${m.id}, ${m.conversationId || null}, ${(m.subject || "").slice(0, 300)},
               ${(m.fromName || "").slice(0, 120)}, ${(m.fromAddress || "").slice(0, 200)},
               ${m.receivedAt || null}, ${m.webLink || null}, ${m.superhumanLink || null}, ${preview},
-              ${!!m.hasAttachments}, 'auto', ${score}, ${reden.slice(0, 300)}, now())
+              ${!!m.hasAttachments}, ${namen.join(" | ").slice(0, 500) || null}, ${kern || null},
+              'auto', ${score}, ${reden.slice(0, 300)}, now())
       ON CONFLICT (client_slug, url_key, message_id) DO UPDATE
         SET score = EXCLUDED.score, reden = EXCLUDED.reden, gevonden_op = now(),
+            preview = EXCLUDED.preview,
+            kern = COALESCE(EXCLUDED.kern, page_emails.kern),
             web_link = COALESCE(EXCLUDED.web_link, page_emails.web_link),
             superhuman_link = COALESCE(EXCLUDED.superhuman_link, page_emails.superhuman_link),
-            heeft_bijlagen = EXCLUDED.heeft_bijlagen
+            heeft_bijlagen = EXCLUDED.heeft_bijlagen,
+            bijlage_namen = COALESCE(EXCLUDED.bijlage_namen, page_emails.bijlage_namen)
         WHERE page_emails.bron = 'auto'`;
+    gehouden.push(m.id);
     bewaard++;
   }
+
+  // Wat er eerder automatisch bij is gezet maar deze ronde niet meer voldoet,
+  // gaat weg. Zonder dit blijven mails staan die met een oudere, ruimere regel
+  // zijn gevonden; precies de reden dat er mails over de SOA-test bij de
+  // CRP-pagina bleven hangen. Vastgepind en weggeklikt blijven met rust.
+  if (gehouden.length) {
+    // Lijst als tekst met scheidingsteken: de sql-helper accepteert geen array
+    // als parameter, en een message-id bevat nooit een verticale streep.
+    const houd = gehouden.join("|");
+    await sql`
+      DELETE FROM page_emails
+      WHERE client_slug = ${slug} AND url_key = ${k} AND bron = 'auto'
+        AND position('|' || message_id || '|' in ${"|" + houd + "|"}) = 0`;
+  } else {
+    await sql`DELETE FROM page_emails WHERE client_slug = ${slug} AND url_key = ${k} AND bron = 'auto'`;
+  }
+
   return { gevonden: bruikbaar.length, bewaard };
 }
 
@@ -376,7 +530,7 @@ export async function getPaginaMail(slug: string, id: number): Promise<(PaginaMa
   await ensureTable();
   const { rows } = await sql`
     SELECT id, url, message_id, onderwerp, van_naam, van_adres, ontvangen_op, web_link,
-           superhuman_link, preview, heeft_bijlagen, bron, score, reden
+           superhuman_link, preview, heeft_bijlagen, bijlage_namen, kern, bron, score, reden
     FROM page_emails WHERE client_slug = ${slug} AND id = ${id} LIMIT 1`;
   if (!rows[0]) return null;
   return { ...rowToMail(rows[0]), url: String(rows[0].url || "") };

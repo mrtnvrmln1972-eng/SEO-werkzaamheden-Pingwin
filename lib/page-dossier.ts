@@ -165,10 +165,13 @@ export function dossierToText(d: PageDossier): string {
     for (const m of d.mails) {
       const datum = m.ontvangenOp ? new Date(m.ontvangenOp).toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" }) : "";
       const zeker = m.bron === "pin" ? "VASTGEPIND" : m.score >= HARD_BEWIJS ? "HARD BEWIJS" : "mogelijk relevant";
-      // Ruim meegeven: op een korte preview kon het model niet zien dát de klant
-      // de teksten had teruggestuurd, en greep het naar een losse belafspraak die
-      // toevallig in dezelfde thread stond.
-      r.push(`- [${zeker}] ${datum}, van ${m.vanNaam || m.vanAdres}: "${m.onderwerp}"${m.heeftBijlagen ? " MET BIJLAGEN" : ""}.\n  Inhoud: ${m.preview.slice(0, 700)}`);
+      // De kernzin komt uit de zeef die de mail al beoordeeld heeft; die is
+      // preciezer dan wat er uit een ruwe preview te halen valt. Daaronder nog de
+      // eigen tekst van de afzender (zonder geciteerde thread), voor de nuance.
+      const bijlagen = m.bijlageNamen.length ? ` BIJLAGEN: ${m.bijlageNamen.join(", ")}.` : m.heeftBijlagen ? " MET BIJLAGEN." : "";
+      r.push(`- [${zeker}] ${datum}, van ${m.vanNaam || m.vanAdres}: "${m.onderwerp}".${bijlagen}`);
+      if (m.kern) r.push(`  Wat er gebeurde: ${m.kern}`);
+      r.push(`  Eigen tekst: ${m.preview.slice(0, 500)}`);
     }
   }
   if (d.klantvoorstellen.length) {

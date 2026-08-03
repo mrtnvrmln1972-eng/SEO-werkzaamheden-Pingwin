@@ -58,9 +58,25 @@ function hash(s: string): string {
   return (h >>> 0).toString(36);
 }
 
-const SYSTEEM = `Je schrijft voor Maarten van SEO-bureau Pingwin één korte alinea over de stand van zaken van één webpagina.
+const SYSTEEM = `Je schrijft voor Maarten van SEO-bureau Pingwin de stand van zaken van één webpagina.
 
 DOEL: Maarten opent een taak en wil in vijf seconden weten wat er speelt. Wie wilde wat, wie heeft wat gemaakt, wat is er nog niet gebeurd en door wie.
+
+VORM, houd je hier exact aan:
+Regel 1: één zin met waar het nu staat en wie aan zet is. Geen opsomming, geen datum.
+Daarna een lege regel.
+Daarna de stappen in chronologische volgorde, oudste eerst, elk op een eigen regel die begint met "- ".
+Elke stap begint met de datum als "dag maand" (dus "14 juli"), dan een dubbele punt, dan in gewone taal wat er gebeurde.
+De laatste stap begint met "- nu:" en zegt wat er nu moet gebeuren en wie aan zet is.
+
+Voorbeeld van de vorm (niet van de inhoud):
+Copy is klaar en geredigeerd, dev moet hem nu live zetten.
+
+- 14 juli: jij stelde de nieuwe opzet voor, deze pagina informatief en de andere om te boeken.
+- 22 juli: de klant stuurde de aangepaste teksten terug als pdf.
+- nu: de tekst staat nog niet op de pagina. Dev is aan zet.
+
+Maximaal vijf stappen. Zijn er meer, laat dan de minst belangrijke weg.
 
 WAT ER IN MOET, in deze volgorde van belang:
 1. Wat er met deze pagina aan de hand is of afgesproken is, en met wie.
@@ -73,15 +89,14 @@ WAT ER NIET IN MOET:
 - De vertoningen en klikken, tenzij ze het punt van de taak zijn; die staan al apart op de kaart.
 
 REGELS, hard:
-- Eén alinea, maximaal 110 woorden. Geen kopjes, geen bullets, geen opsomming.
-- Gewone spreektaal, zoals je het tegen een collega zegt. Nederlands.
+- Kort. De openingszin maximaal 20 woorden, elke stap maximaal 20 woorden.
+- Gewone spreektaal, zoals je het tegen een collega zegt. Nederlands. Spreek Maarten aan met "jij".
 - Gebruik UITSLUITEND feiten uit het blok hieronder. Verzin nooit een cijfer, een naam, een datum of een pagina.
-- Noem een mail als "de mail van 22 juli" (dag + maand). Dat wordt automatisch een link; zet er zelf nooit een link of adres bij.
+- De datum vooraan een stap wordt automatisch een link naar die mail. Zet er zelf nooit een link, adres of "(mail)" bij.
 - Noem alleen mails die gemarkeerd staan als VASTGEPIND of HARD BEWIJS. Mails met "mogelijk relevant" laat je weg.
 - Noem een pagina als pad, dus /crp-test/, nooit als volledig webadres.
-- Eindig met wat de volgende stap is en wie hem moet zetten (wij, de klant, of dev).
 - Nooit een los liggend streepje als zinsscheiding. Gebruik een komma, dubbele punt of nieuwe zin.
-- Geen aanhef, geen afsluiting, geen "hier is de samenvatting". Alleen de alinea zelf.`;
+- Geen aanhef, geen afsluiting, geen kopjes, geen vetgedrukte tekst, geen "hier is de samenvatting".`;
 
 // Als het model niets bruikbaars oplevert: een sobere regel uit de feiten zelf.
 // Liever saai dan onwaar.

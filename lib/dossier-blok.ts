@@ -6,16 +6,16 @@ import type { PageDossier, DossierDoc } from "./page-dossier";
 // ═══════════════════════════════════════════════════════════
 // HET DOSSIERBLOK: wat je op de kaart ziet
 // ═══════════════════════════════════════════════════════════
-// Bewust karig. Eén alinea, een rij linkjes, een rij statussen, en de rest
-// ingeklapt. De voorraadkast is groot; dit venster is klein. Zou hier alles in
-// komen, dan is het middel erger dan de kwaal.
+// Bewust karig. Eén regel met de conclusie, daaronder de stappen als bullets
+// met de datum als link naar de mail, dan één regel met de documenten, en de
+// rest ingeklapt. De voorraadkast is groot; dit venster is klein. Zou hier alles
+// in komen, dan is het middel erger dan de kwaal.
 //
 // Dit is een pure functie die HTML teruggeeft, zodat exact hetzelfde blok op
 // alle plekken gerenderd kan worden: bird's eye-chat, voorgestelde taak,
 // weekplankaart en Pagina's.
 // ═══════════════════════════════════════════════════════════
 
-const MAX_MAILS = 3;
 const MAX_DOCS = 4;
 
 function esc(s: string): string {
@@ -24,19 +24,13 @@ function esc(s: string): string {
 
 const MAAND = ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"];
 
-function datumKort(iso: string | null): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  return `${d.getDate()} ${MAAND[d.getMonth()]}`;
-}
-
 function mailLink(m: PaginaMail): string {
   return m.superhumanLink || m.webLink || "";
 }
 
-// "de mail van 22 juli" in de alinea wordt een echte link naar díe mail.
-// Kennen we de datum niet, dan blijft het gewone tekst: nooit een dode link.
+// De datum vooraan een stap wordt een echte link naar díe mail, met de knopjes
+// er klein achter (vastpinnen, wegklikken, teksten binnenhalen). Kennen we de
+// datum niet, dan blijft het gewone tekst: nooit een dode link.
 function linkifyMailDatums(html: string, mails: PaginaMail[]): string {
   if (!mails.length) return html;
   const perDatum = new Map<string, PaginaMail>();
@@ -49,6 +43,7 @@ function linkifyMailDatums(html: string, mails: PaginaMail[]): string {
   }
   if (!perDatum.size) return html;
 
+  const gebruikt = new Set<number>();
   // Alleen buiten bestaande tags en links vervangen.
   const delen = html.split(/(<a\b[^>]*>[\s\S]*?<\/a>|<[^>]+>)/gi);
   return delen.map((seg, i) => {
@@ -58,48 +53,36 @@ function linkifyMailDatums(html: string, mails: PaginaMail[]): string {
       (heel) => {
         const m = perDatum.get(heel.toLowerCase());
         const link = m ? mailLink(m) : "";
-        if (!link) return heel;
-        return `<a class="wp-maillink" href="${esc(link)}" target="_blank" rel="noreferrer" title="${esc(m!.onderwerp)}">${heel}</a>`;
+        if (!m || !link) return heel;
+        // Knopjes maar één keer per mail, achter de eerste vermelding.
+        const eersteKeer = !gebruikt.has(m.id);
+        gebruikt.add(m.id);
+        return `<a class="pd-link" href="${esc(link)}" target="_blank" rel="noreferrer" title="${esc(m.onderwerp)}">${heel}</a>${eersteKeer ? mailKnopjes(m) : ""}`;
       },
     );
   }).join("");
 }
 
-// Een mail als chip. Bevestigd (vastgepind of hard bewijs) ziet er stellig uit;
-// een automatische treffer krijgt een vraagteken plus twee knopjes, zodat een gok
-// nooit voor een feit doorgaat en je hem met één klik afhandelt.
-function mailChip(m: PaginaMail): string {
-  const link = mailLink(m);
-  const wie = m.vanNaam || m.vanAdres || "onbekend";
-  const datum = datumKort(m.ontvangenOp);
-  const vast = m.bron === "pin" || m.score >= HARD_BEWIJS;
-  const titel = vast
-    ? `${m.onderwerp}${m.reden ? ` (${m.reden})` : ""}`
-    : `Automatisch gevonden: ${m.reden || "lijkt over deze pagina te gaan"}`;
-  const label = `${esc(wie.split(" ")[0])}${datum ? `, ${datum}` : ""}`;
-  const bij = m.heeftBijlagen ? '<span class="pd-bij">bijlage</span>' : "";
-  const inhoud = `<span class="pd-ico">✉</span>${label}${bij}`;
-  const kern = link
-    ? `<a class="pd-chip-link" href="${esc(link)}" target="_blank" rel="noreferrer" title="${esc(titel)}">${inhoud}</a>`
-    : `<span class="pd-chip-link" title="${esc(titel)}">${inhoud}</span>`;
-  const acties = vast
-    ? (m.bron === "pin" ? `<button type="button" class="pd-knop pd-los" data-mail="${m.id}" title="Niet meer vastpinnen">📌</button>` : "")
-    : `<button type="button" class="pd-knop pd-pin" data-mail="${m.id}" title="Deze mail hoort hier: vastpinnen">📌</button>` +
-      `<button type="button" class="pd-knop pd-weg" data-mail="${m.id}" title="Hoort hier niet, en vraag het niet nog eens">×</button>`;
-  // Zitten er teksten bij? Dan kun je ze met één klik als klantversie klaarzetten
-  // in het documentenvak dat er al is.
-  const bijlageKnop = m.heeftBijlagen
-    ? `<button type="button" class="pd-knop pd-bijlage" data-mail="${m.id}" title="Zet de tekstbijlagen uit deze mail klaar als klantversie">↓</button>`
-    : "";
-  return `<span class="pd-chip${vast ? " pd-vast" : " pd-gok"}">${kern}${bijlageKnop}${acties}</span>`;
-}
-
-function docChip(d: DossierDoc, klant = false): string {
-  const label = klant ? `${esc(d.naam)}` : esc(d.label);
-  const inhoud = `<span class="pd-ico">▤</span>${label}${klant ? '<span class="pd-bij">te verwerken</span>' : ""}`;
-  return d.link
-    ? `<a class="pd-chip${klant ? " pd-klant" : ""}" href="${esc(d.link)}" target="_blank" rel="noreferrer" title="Open het document">${inhoud}</a>`
-    : `<span class="pd-chip pd-leeg" title="Deze tekst bestaat, maar er is geen document van">${inhoud}</span>`;
+// De knopjes bij een mail: klein en grijs, ze lichten pas op als je er met de
+// muis overheen gaat. Ze zaten eerst in een omkaderd blokje, en dat maakte een
+// rustige regel tekst onnodig druk.
+function mailKnopjes(m: PaginaMail): string {
+  const vast = m.bron === "pin";
+  const zeker = vast || m.score >= HARD_BEWIJS;
+  const knoppen: string[] = [];
+  if (m.heeftBijlagen) {
+    const titel = m.bijlageNamen.length
+      ? `Zet deze bijlagen klaar als klantversie: ${m.bijlageNamen.join(", ")}`
+      : "Zet de tekstbijlagen uit deze mail klaar als klantversie";
+    knoppen.push(`<button type="button" class="pd-knop pd-bijlage" data-mail="${m.id}" title="${esc(titel)}">&#8595;</button>`);
+  }
+  if (vast) {
+    knoppen.push(`<button type="button" class="pd-knop pd-los" data-mail="${m.id}" title="Vastgepind aan deze pagina. Klik om los te maken.">&#9679;</button>`);
+  } else {
+    knoppen.push(`<button type="button" class="pd-knop pd-pin" data-mail="${m.id}" title="${zeker ? "Vastpinnen aan deze pagina" : `Automatisch gevonden: ${esc(m.reden || "lijkt hierover te gaan")}. Klik om te bevestigen.`}">&#9675;</button>`);
+    knoppen.push(`<button type="button" class="pd-knop pd-weg" data-mail="${m.id}" title="Hoort hier niet, en vraag het niet nog eens">&times;</button>`);
+  }
+  return `<span class="pd-knopjes${zeker ? "" : " pd-onzeker"}">${knoppen.join("")}</span>`;
 }
 
 // De statusregel: alleen wat je moet weten om te beslissen wat je nu doet.
@@ -122,14 +105,15 @@ function statusChips(d: PageDossier): string {
 
 function tijdlijn(d: PageDossier): string {
   const rijen = d.activiteit.slice(0, 10);
-  const extraMails = d.mails.slice(MAX_MAILS);
   const extraDocs = d.documenten.slice(MAX_DOCS);
-  const aantal = rijen.length + extraMails.length + extraDocs.length + d.chats.length;
+  const aantal = rijen.length + extraDocs.length + d.chats.length;
   if (!aantal) return "";
 
   const delen: string[] = [];
-  if (extraMails.length || extraDocs.length) {
-    delen.push(`<div class="pd-rij">${[...extraMails.map(mailChip), ...extraDocs.map((x) => docChip(x))].join("")}</div>`);
+  if (extraDocs.length) {
+    delen.push(`<div class="pd-links">${extraDocs.map((x) => (x.link
+      ? `<a class="pd-link" href="${esc(x.link)}" target="_blank" rel="noreferrer">${esc(x.label)}</a>`
+      : `<span class="pd-link-uit">${esc(x.label)}</span>`)).join('<span class="pd-scheider">·</span>')}</div>`);
   }
   if (rijen.length) {
     delen.push(`<ul class="pd-tijdlijn">${rijen.map((a) => {
@@ -145,27 +129,42 @@ function tijdlijn(d: PageDossier): string {
   return `<details class="pd-meer"><summary>Tijdlijn en eerdere notities (${aantal})</summary><div class="pd-meer-body">${delen.join("")}</div></details>`;
 }
 
+// Eén nette regel met de documenten en de pagina, als gewone oranje links met
+// een puntje ertussen. Dit stond eerder als een rij grijze blokjes in beeld, en
+// dat vloekte met de rest van het dashboard.
+function linkRegel(d: PageDossier): string {
+  const delen: string[] = [];
+  for (const v of d.klantvoorstellen) {
+    delen.push(v.link
+      ? `<a class="pd-link pd-link-klant" href="${esc(v.link)}" target="_blank" rel="noreferrer" title="Teruggekregen van de klant, nog te verwerken">${esc(v.naam)}</a>`
+      : `<span class="pd-link-uit" title="Teruggekregen van de klant, nog te verwerken">${esc(v.naam)}</span>`);
+  }
+  for (const x of d.documenten.slice(0, MAX_DOCS)) {
+    delen.push(x.link
+      ? `<a class="pd-link" href="${esc(x.link)}" target="_blank" rel="noreferrer" title="Open het document">${esc(x.label)}</a>`
+      : `<span class="pd-link-uit" title="Deze tekst bestaat, maar er is geen document van">${esc(x.label)}</span>`);
+  }
+  if (d.url) {
+    delen.push(`<a class="pd-link" href="${esc(d.url)}" target="_blank" rel="noreferrer" title="De live pagina">${esc(d.pad)}</a>`);
+  }
+  return delen.length ? `<div class="pd-links">${delen.join('<span class="pd-scheider">·</span>')}</div>` : "";
+}
+
 /**
- * Het volledige blok als HTML. `tekst` is de opgeslagen alinea.
+ * Het volledige blok als HTML. `tekst` is de opgeslagen stand van zaken:
+ * één regel conclusie plus de stappen als bullets.
  */
 export function dossierBlokHtml(d: PageDossier, tekst: string, opts: { compact?: boolean } = {}): string {
   const domein = d.domein;
-  // De alinea: markdown → HTML, slugs klikbaar, maildatums naar de echte mail.
-  const alinea = linkifyMailDatums(linkifyHtml(mdToHtml(tekst || ""), domein), d.mails);
-
-  const mails = d.mails.slice(0, MAX_MAILS).map(mailChip);
-  const docs = d.documenten.slice(0, MAX_DOCS).map((x) => docChip(x));
-  const klant = d.klantvoorstellen.map((x) => docChip(x, true));
-  const pagina = d.url
-    ? `<a class="pd-chip" href="${esc(d.url)}" target="_blank" rel="noreferrer" title="De live pagina"><span class="pd-ico">↗</span>${esc(d.pad)}</a>`
-    : "";
-  const linkrij = [...klant, ...mails, ...docs, pagina].filter(Boolean);
+  // Markdown → HTML (de bullets worden een echte lijst), slugs klikbaar, en de
+  // datum vooraan elke stap wordt een link naar die mail.
+  const verhaal = linkifyMailDatums(linkifyHtml(mdToHtml(tekst || ""), domein), d.mails);
 
   return [
     '<div class="pd-blok">',
     '<div class="pd-kop"><span class="pd-koptekst">Waar deze pagina staat</span></div>',
-    alinea ? `<div class="pd-alinea md">${alinea}</div>` : "",
-    linkrij.length ? `<div class="pd-rij">${linkrij.join("")}</div>` : "",
+    verhaal ? `<div class="pd-verhaal md">${verhaal}</div>` : "",
+    linkRegel(d),
     opts.compact ? "" : statusChips(d),
     opts.compact ? "" : tijdlijn(d),
     "</div>",
