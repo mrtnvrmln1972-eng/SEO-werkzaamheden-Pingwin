@@ -54,6 +54,10 @@ export default function CannibalPanel({ slug, domain = "" }: { slug: string; dom
 
   async function bewaarVorm() {
     setVormMsg("");
+    // Leeg veld terwijl er nog niets is vastgelegd: dat was de val. De knop stond
+    // dan uitgeschakeld en er gebeurde niets, terwijl het grijze voorbeeld in het
+    // veld eruitzag alsof er al iets stond. Nu krijg je gewoon antwoord.
+    if (!vorm.trim() && !vormOpgeslagen) { setVormMsg("Er staat nog niets in het veld. Het grijze voorbeeld is alleen een suggestie; typ de vorm die je wilt vastleggen."); return; }
     try {
       const d = await fetch("/api/admin/opruim-structuur-regel", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, vorm }) }).then((r) => r.json());
       if (!d.ok) { setVormMsg(d.error || "Opslaan mislukt."); return; }
@@ -153,16 +157,21 @@ export default function CannibalPanel({ slug, domain = "" }: { slug: string; dom
             )}
 
             <div className="opr-vorm">
-              <div className="opr-vorm-kop">Gekozen URL-structuur</div>
+              <div className="opr-vorm-kop">
+                Gekozen URL-structuur
+                {vormOpgeslagen
+                  ? <span className="opr-chip merge" style={{ marginLeft: 8 }}>actief: {vormOpgeslagen}</span>
+                  : <span className="opr-chip" style={{ marginLeft: 8 }}>nog niet vastgelegd</span>}
+              </div>
               <p className="muted" style={{ fontSize: 12, margin: 0 }}>
                 E&eacute;n vaste vorm voor dit type pagina. De analyse leidt daarna nooit meer om naar een vorm die je uitfaseert,
                 en markeert een sterke pagina op de verkeerde vorm als <em>verhuizen</em> in plaats van als omleiding.
               </p>
               <div className="opr-vorm-rij">
                 <input className="opr-zoek" value={vorm} onChange={(e) => setVorm(e.target.value)}
-                  placeholder="/soa-klinieken/soa-test-&lt;plaats&gt;/" spellCheck={false}
+                  placeholder="bijvoorbeeld: /soa-klinieken/soa-test-&lt;plaats&gt;/" spellCheck={false}
                   aria-label="Gekozen URL-structuur" />
-                <button type="button" className="ghost-btn small" onClick={bewaarVorm} disabled={vorm === vormOpgeslagen}>Opslaan</button>
+                <button type="button" className="ghost-btn small" onClick={bewaarVorm}>Opslaan</button>
               </div>
               {vormMsg && <div className="muted" style={{ fontSize: 12 }}>{vormMsg}</div>}
             </div>
