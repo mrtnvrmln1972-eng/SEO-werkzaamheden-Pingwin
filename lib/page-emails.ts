@@ -147,7 +147,7 @@ async function laatsteZoekronde(slug: string, k: string): Promise<Date | null> {
 // bekeken. Zonder dit blijft een verbetering onzichtbaar op precies de pagina's
 // waarvoor hij bedoeld was: het systeem denkt "ik ben bij", terwijl die stand
 // met de oude, te smalle zoekregels is vastgelegd.
-const SCAN_VERSIE = 2;
+const SCAN_VERSIE = 3;
 
 async function ensureScanTabel(): Promise<void> {
   await sql`
@@ -251,18 +251,27 @@ export async function zoektermenVoorPagina(slug: string, url: string): Promise<Z
 // 21-07-2026.pdf" tegenover "/crp-waarde-testen" levert twee treffers (crp,
 // waarde). Datums en extensies tellen nooit mee.
 export function bijlageOverlap(bestandsnaam: string, pad: string): number {
-  const woorden = (s: string) => new Set(
-    s.toLowerCase()
-      .replace(/\.[a-z0-9]{2,5}$/i, "")           // extensie eraf
-      .replace(/\d{1,4}[-.]\d{1,2}[-.]\d{2,4}/g, " ")  // datums eraf
-      .split(/[^a-zà-ÿ0-9]+/i)
-      .filter((w) => w.length >= 3 && !/^\d+$/.test(w) && !STOP.has(w)),
-  );
-  const uitPad = woorden(pad);
+  // BEWUST ZONDER STOPWOORDEN. Die lijst is er voor zóéktermen ("de", "van",
+  // "test" als los woord levert de halve postbus op). Maar in een pad is "test"
+  // juist betekenisvol: /crp-test/ kromp daardoor tot het ene woord "crp", en
+  // dan haalde geen enkele bijlage de drempel van twee. Zo bleef de teruggestuurde
+  // tekst "Tekst CRP-test 21-07-2026.pdf" onaangeraakt liggen, terwijl de mail
+  // ernaast wél gekoppeld was.
+  const delen = (s: string) => s.toLowerCase()
+    .replace(/\.[a-z0-9]{2,5}$/i, "")                 // extensie eraf
+    .replace(/\d{1,4}[-.]\d{1,2}[-.]\d{2,4}/g, " ")   // datums eraf
+    .split(/[^a-zà-ÿ0-9]+/i)
+    .filter((w) => w.length >= 3 && !/^\d+$/.test(w));
+
+  const uitPad = new Set(delen(pad));
   if (!uitPad.size) return 0;
-  const uitNaam = woorden(bestandsnaam);
+  const uitNaam = new Set(delen(bestandsnaam));
+  // Ook de aan elkaar geschreven variant, want zo heten bestanden vaak:
+  // "OneDayClinicvoorstelcrptestpagina.docx" bevat geen enkel scheidingsteken,
+  // maar gaat overduidelijk over deze pagina.
+  const plat = [...uitNaam].join("");
   let n = 0;
-  for (const w of uitPad) if (uitNaam.has(w)) n++;
+  for (const w of uitPad) if (uitNaam.has(w) || plat.includes(w)) n++;
   return n;
 }
 
