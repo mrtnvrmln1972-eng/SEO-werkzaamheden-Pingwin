@@ -12,7 +12,7 @@ type Status = {
 type Fruit = { url: string; bestKeyword: string; position: number; impressions: number; clicks: number; volume: number | null; score: number; label: string; level: string };
 type Ctr = { url: string; keyword: string; extraClicks: number; ctr: number; position: number };
 type Gat = { keyword: string; volume: number | null; difficulty: number | null; reason: string };
-type Overview = { ok: boolean; hasDomain: boolean; status: Status; fruit: Fruit[]; ctr: Ctr[]; gaten: Gat[]; updatedAt: string };
+type Overview = { ok: boolean; hasDomain: boolean; status: Status; fruit: Fruit[]; ctr: Ctr[]; gaten: Gat[]; extraKlaar?: boolean; updatedAt: string };
 
 function shortUrl(url: string): string {
   try { const u = new URL(url); return (u.pathname + u.search) || "/"; } catch { return url; }
@@ -25,14 +25,31 @@ export default function OverviewTab({ slug, clientName, domain, onGoToPage, onGo
   const [data, setData] = useState<Overview | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  // Draait de tweede ronde nog? Dan tonen de twee trage blokken dat ze onderweg zijn.
+  const [aanvullen, setAanvullen] = useState(false);
   const cacheKey = `pw_overview_${slug}`;
+
+  // In twee ronden. Eerst wat er direct is (tellingen en laaghangend fruit, onder
+  // een seconde), daarna de twee blokken die rekenwerk kosten. Het overzicht stond
+  // anders zeven seconden leeg te wachten op 3 kB aan uitkomst.
+  async function haal(qs: string) {
+    const r = await fetch(`/api/admin/overview?slug=${encodeURIComponent(slug)}${qs}`);
+    const d = await r.json();
+    if (!d.ok) return null;
+    setData(d);
+    try { localStorage.setItem(cacheKey, JSON.stringify(d)); } catch { /* cache is extra */ }
+    return d;
+  }
 
   async function load(fresh = false) {
     if (fresh) setRefreshing(true);
     try {
-      const r = await fetch(`/api/admin/overview?slug=${encodeURIComponent(slug)}${fresh ? "&fresh=1" : ""}`);
-      const d = await r.json();
-      if (d.ok) { setData(d); try { localStorage.setItem(cacheKey, JSON.stringify(d)); } catch { /* cache is extra */ } }
+      if (fresh) { await haal("&fresh=1"); return; }
+      const snel = await haal("&snel=1");
+      setLoading(false);
+      // Stonden de trage blokken nog niet klaar, dan die nu ophalen; de rest van
+      // het scherm is dan allang zichtbaar.
+      if (!snel || snel.extraKlaar === false) { setAanvullen(true); await haal("").finally(() => setAanvullen(false)); }
     } catch { /* stil */ } finally { setLoading(false); setRefreshing(false); }
   }
 
@@ -105,6 +122,12 @@ export default function OverviewTab({ slug, clientName, domain, onGoToPage, onGo
           )}
 
           {/* ── CTR-onderkans + keyword-gaten ── */}
+          {aanvullen && data.ctr.length === 0 && data.gaten.length === 0 && (
+            <div className="ov-col">
+              <div className="ck-section-head"><span>CTR-onderkans en keyword-gaten</span></div>
+              <div className="muted" style={{ fontSize: 13 }}>Deze twee worden er nog bij gehaald&hellip;</div>
+            </div>
+          )}
           {(data.ctr.length > 0 || data.gaten.length > 0) && (
             <div className="cockpit-card">
               {data.ctr.length > 0 && (

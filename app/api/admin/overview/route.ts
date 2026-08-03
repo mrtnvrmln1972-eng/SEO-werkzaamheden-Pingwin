@@ -18,8 +18,10 @@ export async function GET(req: NextRequest) {
   if (!slug) return NextResponse.json({ ok: false, error: "Klant verplicht." }, { status: 400 });
   const g = await guardSlug(req, slug); if (!g.ok) return g.res;
   const fresh = req.nextUrl.searchParams.get("fresh") === "1";
+  // snel=1: alleen wat er direct is, zodat het scherm niet zeven seconden leeg staat.
+  const snel = req.nextUrl.searchParams.get("snel") === "1";
   try {
-    const overview = await buildOverview(slug, { fresh });
+    const overview = await buildOverview(slug, { fresh, snel });
     return NextResponse.json(overview);
   } catch {
     return NextResponse.json({ ok: false, error: "Overzicht kon niet worden opgebouwd." }, { status: 500 });

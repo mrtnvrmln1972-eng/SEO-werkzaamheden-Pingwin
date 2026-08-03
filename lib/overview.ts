@@ -56,6 +56,8 @@ export type Overview = {
   fruit: OverviewFruit[];
   ctr: OverviewCtr[];
   gaten: OverviewGat[];
+  /** Stonden de trage blokken (meta-kansen, keyword-gaten) al klaar? */
+  extraKlaar?: boolean;
   updatedAt: string;
 };
 
@@ -82,15 +84,37 @@ async function gscOpps(domain: string, fresh: boolean) {
   return rows;
 }
 
-export async function buildOverview(slug: string, opts: { fresh?: boolean } = {}): Promise<Overview> {
+// De twee trage blokken (meta-kansen en keyword-gaten) kostten samen zeven tot
+// acht seconden per keer dat je de Bird's eye opende, voor 3 kB aan uitkomst die
+// nauwelijks per uur verandert. Ze krijgen daarom dezelfde cache als de Search
+// Console-data eronder: 12 uur, met de verversknop als ontsnapping.
+async function metCache<T>(kind: string, slug: string, fresh: boolean, maak: () => Promise<T>): Promise<T | null> {
+  if (!fresh) {
+    const uit = await cacheGet<T>(kind, slug, "-", 0.5).catch(() => null);
+    if (uit) return uit;
+  }
+  const vers = await maak().catch(() => null);
+  if (vers && (!Array.isArray(vers) || vers.length)) await cacheSet(kind, slug, "-", vers).catch(() => {});
+  return vers;
+}
+
+// snel: lever meteen wat er zonder rekenwerk is. De trage blokken komen alleen mee
+// als ze al in de cache staan; anders haalt het scherm ze in een tweede ronde op.
+// Zo staat het overzicht er direct in plaats van na zeven seconden.
+export async function buildOverview(slug: string, opts: { fresh?: boolean; snel?: boolean } = {}): Promise<Overview> {
   const client = await getClientBySlug(slug);
   const domain = client?.domain || "";
+
+  const traag = async <T>(kind: string, maak: () => Promise<T>): Promise<T | null> =>
+    opts.snel
+      ? await cacheGet<T>(kind, slug, "-", 0.5).catch(() => null)
+      : await metCache<T>(kind, slug, !!opts.fresh, maak);
 
   const [urls, oppRows, ctrRows, gaten, docs] = await Promise.all([
     getClientUrls(slug).catch(() => []),
     gscOpps(domain, !!opts.fresh),
-    getMetaKansen(slug).catch(() => []),
-    getOpportunities(slug).catch(() => []),
+    traag("ov_meta_kansen", () => getMetaKansen(slug)),
+    traag("ov_keyword_gaten", () => getOpportunities(slug)),
     docCounts(slug),
   ]);
 
@@ -121,15 +145,21 @@ export async function buildOverview(slug: string, opts: { fresh?: boolean } = {}
     .slice(0, 8);
 
   // ── CTR-onderkans (veel vertoningen, te weinig klikken) ──
-  const ctr: OverviewCtr[] = [...ctrRows]
+  const ctr: OverviewCtr[] = [...(ctrRows || [])]
     .sort((a, b) => b.extraClicks - a.extraClicks)
     .slice(0, 5)
     .map((r) => ({ url: r.url, keyword: r.keyword, extraClicks: r.extraClicks, ctr: r.ctr, position: r.position }));
 
   // ── Keyword-gaten (site rankt hier nog niet op) ──
-  const gatenTop: OverviewGat[] = gaten.slice(0, 5).map((g) => ({ keyword: g.keyword, volume: g.volume, difficulty: g.difficulty, reason: g.reason }));
+  const gatenTop: OverviewGat[] = (gaten || []).slice(0, 5).map((g) => ({ keyword: g.keyword, volume: g.volume, difficulty: g.difficulty, reason: g.reason }));
 
-  return { ok: true, hasDomain: !!domain, status, fruit, ctr, gaten: gatenTop, updatedAt: new Date().toISOString() };
+  return {
+    ok: true, hasDomain: !!domain, status, fruit, ctr, gaten: gatenTop,
+    // false = meta-kansen en keyword-gaten stonden nog niet klaar; het scherm haalt
+    // ze dan in een tweede ronde op zonder de rest te laten wachten.
+    extraKlaar: ctrRows != null && gaten != null,
+    updatedAt: new Date().toISOString(),
+  };
 }
 
 // ── Werkstatus per pagina: wat is gedaan, wat loopt, wat is gepland ──
