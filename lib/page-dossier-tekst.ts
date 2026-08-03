@@ -78,6 +78,12 @@ Copy is klaar en geredigeerd, dev moet hem nu live zetten.
 
 Maximaal vijf stappen. Zijn er meer, laat dan de minst belangrijke weg.
 
+KAN HET DOOR NAAR DE SITEBOUWER? Dat is de vraag waarvoor Maarten deze tekst leest, dus die beantwoord je expliciet in de "- nu:"-regel, in gewone woorden:
+- Ligt er een goedgekeurde of teruggekregen tekst voor DEZE pagina en is er geen open vraag meer over, dan eindigt de nu-regel met "kan door naar de sitebouwer".
+- Wacht je nog op een antwoord van de klant (bijvoorbeeld of een correctie doorgevoerd mag worden), dan eindigt de nu-regel met "wachten op antwoord" plus van wie.
+- Weet je het uit de feiten niet zeker, zeg dan wat er nog ontbreekt. Nooit gokken en nooit "kan door" zeggen als er nog een vraag openstaat.
+Gaat een mail over een BEOORDELING van de tekst (voldoet hij aan de eisen of niet), dan is dat de belangrijkste stap in het rijtje en hoort de uitkomst voor DEZE pagina er letterlijk in te staan.
+
 WAT ER IN MOET, in deze volgorde van belang:
 1. Wat er met deze pagina aan de hand is of afgesproken is, en met wie.
 2. Of iemand iets heeft aangeleverd of teruggestuurd (teksten, correcties, een document), en of dat nog verwerkt moet worden. Dit is het belangrijkste punt: als de klant teksten heeft teruggestuurd, moet dat er ALTIJD in staan.

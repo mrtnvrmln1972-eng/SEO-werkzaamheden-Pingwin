@@ -86,8 +86,19 @@ function mailKnopjes(m: PaginaMail): string {
 }
 
 // De statusregel: alleen wat je moet weten om te beslissen wat je nu doet.
-function statusChips(d: PageDossier): string {
+// De eerste chip beantwoordt de vraag waarvoor je de kaart opent: kan dit door
+// naar de sitebouwer, of wachten we nog op iemand? Die staat in de nu-regel van
+// het verhaal, dus lezen we hem daaruit; zo geldt hij ook voor alle kaarten die
+// er al stonden.
+function statusChips(d: PageDossier, tekst = ""): string {
   const chips: string[] = [];
+  const nu = /(^|\n)\s*[-*]?\s*nu\s*:(.*)$/im.exec(tekst || "");
+  const nuRegel = (nu?.[2] || "").toLowerCase();
+  if (/kan door naar de sitebouwer|kan naar de sitebouwer|kan door naar de developer/.test(nuRegel)) {
+    chips.push('<span class="pd-stat pd-ok" title="Volgens de laatste stand ligt alles er; je kunt deze kaart doorzetten.">Kan door naar de sitebouwer</span>');
+  } else if (/wachten op antwoord|wacht(en)? op /.test(nuRegel)) {
+    chips.push('<span class="pd-stat pd-let" title="Er staat nog een vraag open; eerst antwoord afwachten.">Wachten op antwoord</span>');
+  }
   const s = d.stand;
   if (s) {
     if (s.copy) chips.push('<span class="pd-stat pd-ok">Copy klaar</span>');
@@ -189,7 +200,9 @@ export function dossierBlokHtml(d: PageDossier, tekst: string, opts: { compact?:
     '<div class="pd-kop"><span class="pd-koptekst">Waar deze pagina staat</span></div>',
     verhaal ? `<div class="pd-verhaal md">${verhaal}</div>` : "",
     linkRegel(d),
-    opts.compact ? "" : statusChips(d),
+    // De doorzet-chip is juist op de compacte kaart het nuttigst; de rest van de
+    // statusregel blijft daar weg.
+    opts.compact ? statusChips({ ...d, stand: null, klantvoorstellen: [] }, tekst) : statusChips(d, tekst),
     opts.compact ? "" : tijdlijn(d),
     "</div>",
   ].filter(Boolean).join("");

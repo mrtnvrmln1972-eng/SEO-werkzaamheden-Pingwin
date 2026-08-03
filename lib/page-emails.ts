@@ -598,14 +598,36 @@ export async function haalBijlagenBinnen(slug: string, url: string): Promise<{ k
   return { klaar };
 }
 
-/** Zoekt alleen als er nog niets is of de laatste ronde ouder is dan een week. */
-export async function zoekMailsIndienNodig(slug: string, url: string, maxDagen = 7): Promise<void> {
+/**
+ * Zoekt als er nog niets is, als de laatste ronde oud is, of, en dat is het
+ * belangrijkste, als er sindsdien nieuwe klantmail binnen is.
+ *
+ * De poort stond op een week. Dat betekende in de praktijk: je mailt vanochtend
+ * met de klant over precies deze pagina, en de kaart weet daar dagenlang niets
+ * van. Terwijl juist de laatste mail bepaalt of het werk klaar is om door te
+ * zetten of dat je nog op een antwoord wacht. Eén nieuwe mail in de postbus is
+ * dus voortaan reden genoeg om opnieuw te kijken; dat kost een DB-query, geen
+ * mailronde, want de mailset van de klant staat al in de database.
+ */
+export async function zoekMailsIndienNodig(slug: string, url: string, maxDagen = 1): Promise<void> {
   await ensureSchema();
   await ensureTable();
   const k = urlKey(url);
   const laatste = await laatsteZoekronde(slug, k);
-  if (laatste && Date.now() - laatste.getTime() < maxDagen * 864e5) return;
+  if (!laatste) { await zoekMailsVoorPagina(slug, url).catch(() => { /* stil */ }); return; }
+  const oud = Date.now() - laatste.getTime() >= maxDagen * 864e5;
+  if (!oud && !(await nieuweMailSinds(slug, laatste))) return;
   await zoekMailsVoorPagina(slug, url).catch(() => { /* zoeken mag het dossier nooit breken */ });
+}
+
+// Is er klantmail binnengekomen ná de laatste zoekronde van deze pagina?
+async function nieuweMailSinds(slug: string, sinds: Date): Promise<boolean> {
+  try {
+    const { rows } = await sql`
+      SELECT 1 FROM client_emails
+      WHERE client_slug = ${slug} AND received_at > ${sinds.toISOString()} LIMIT 1`;
+    return rows.length > 0;
+  } catch { return false; }
 }
 
 /** Vastpinnen: deze mail hoort bij deze pagina, punt. */
