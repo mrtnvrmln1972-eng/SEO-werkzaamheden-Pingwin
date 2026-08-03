@@ -24,6 +24,8 @@ import DeveloperOverview from "../../developer/DeveloperOverview";
 import KpiPanel from "./KpiPanel";
 import PagesPanel from "./PagesPanel";
 import WijzigingenPanel from "./WijzigingenPanel";
+import CannibalPanel from "./CannibalPanel";
+import InternalLinksPanel from "./InternalLinksPanel";
 import MetaCtrPanel from "./MetaCtrPanel";
 import DocumentenPanel from "./DocumentenPanel";
 import ActiviteitPanel from "./ActiviteitPanel";
@@ -94,7 +96,7 @@ export default function ClientCockpit({
   // Directe feedback bij het wisselen van klant: de nieuwe pagina moet server-
   // side data ophalen en dat duurt even; zonder signaal voelt dat als bevroren.
   const [switchingTo, setSwitchingTo] = useState<string | null>(null);
-  const validTab = (t?: string): Tab => (t === "werkzaamheden" || t === "paginas" || t === "documenten" || t === "activiteit" || t === "resultaten" || t === "klant" || t === "developer" || t === "wijzigingen" || t === "meta") ? t : "werkzaamheden";
+  const validTab = (t?: string): Tab => (t === "werkzaamheden" || t === "paginas" || t === "documenten" || t === "activiteit" || t === "resultaten" || t === "klant" || t === "developer" || t === "wijzigingen" || t === "meta" || t === "cannibalisatie" || t === "interne-links") ? t : "werkzaamheden";
   const [tab, setTab] = useState<Tab>(validTab(initialTab));
   // Teller die de weekplanning laat herladen zodra er vanuit de chat een taak is
   // toegevoegd (of iets in het bord verandert).
@@ -401,6 +403,8 @@ export default function ClientCockpit({
               ["documenten", "Documenten", "Alle analyses, blauwdrukken en copy per pagina, per maand, met of het al op de site staat"],
               ["activiteit", "Wat we doen", "Alles wat we voor deze klant hebben uitgevoerd, per maand: analyses, copy, meta-teksten, alt-teksten, structured data en redirects"],
               ["meta", "Meta & CTR", "Pagina's met veel vertoningen maar te weinig klikken: betere meta-teksten = direct meer bezoekers"],
+              ["cannibalisatie", "Opruimen", "Welke pagina's elkaar in de weg zitten, met de volledige redirectlijst: van, naar en waarom. Draait in de achtergrond, dus geen chat die samenvat"],
+              ["interne-links", "Interne links", "Vanaf welke pagina's je het beste naar een doelpagina linkt, gewogen op autoriteit en relevantie"],
               ["resultaten", "KPI’s", ""],
               ["wijzigingen", "Wijzigingen", ""],
               ["klant", "Klant", ""],
@@ -689,6 +693,12 @@ export default function ClientCockpit({
         {tab === "wijzigingen" && <WijzigingenPanel slug={client.slug} />}
 
         {tab === "meta" && <MetaCtrPanel slug={client.slug} domain={client.domain || ""} backendUrl={client.backendUrl} onOpenPage={goToPage} />}
+
+        {/* Deze twee schermen bestonden al maar hingen nergens in de UI, dus niemand
+            kon erbij. Hier hoort de volledige redirectlijst thuis, niet in de chat:
+            een lijst is een scherm, een oordeel is een gesprek. */}
+        {tab === "cannibalisatie" && <CannibalPanel slug={client.slug} />}
+        {tab === "interne-links" && <InternalLinksPanel slug={client.slug} />}
 
         {tab === "developer" && <DeveloperOverview embedded />}
       </div>
