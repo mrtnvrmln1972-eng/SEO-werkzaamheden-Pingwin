@@ -20,8 +20,13 @@ export const maxDuration = 60;
 // Documentnamen worden echte links. De assistent noemt het document bij naam
 // ("het copy-document"); hier hangen we de link eraan, zodat er nooit een kale
 // URL van honderd tekens in de mail staat.
-function linkify(html: string, links: { label: string; url: string }[]): string {
+// Geeft naast de tekst terug WELKE links er niet in pasten. Die mogen nooit stil
+// verdwijnen: op 03-08-2026 stuurde Maarten een mail met "kun je deze tekst op de
+// bijgevoegde link plaatsen?" terwijl de aangevinkte link nergens stond. De
+// ontvanger verwijst dan naar iets wat er niet is.
+function linkify(html: string, links: { label: string; url: string }[]): { html: string; ongeplaatst: { label: string; url: string }[] } {
   let uit = html;
+  const ongeplaatst: { label: string; url: string }[] = [];
   for (const l of links) {
     if (!l.url || !l.label) continue;
     // Alleen de eerste vermelding linken: een mail met drie keer dezelfde link
@@ -33,9 +38,18 @@ function linkify(html: string, links: { label: string; url: string }[]): string 
       continue;
     }
     // Staat de naam niet in de tekst, dan een kale URL vervangen door de naam.
-    if (uit.includes(l.url)) uit = uit.split(l.url).join(`<a href="${l.url}">${l.label}</a>`);
+    if (uit.includes(l.url)) { uit = uit.split(l.url).join(`<a href="${l.url}">${l.label}</a>`); continue; }
+    ongeplaatst.push(l);
   }
-  return uit;
+  return { html: uit, ongeplaatst };
+}
+
+// Wat niet in de lopende tekst paste, komt er onderaan alsnog bij. Simpel, zoals
+// een mail hoort: een regel per link, geen tabel en geen kopjes.
+function plakOnderaan(html: string, links: { label: string; url: string }[]): string {
+  if (!links.length) return html;
+  const regels = links.map((l) => `<p><a href="${l.url}">${l.label}</a></p>`).join("\n");
+  return `${html}\n${regels}`;
 }
 
 // Adressen opschonen. Microsoft weigerde "maarten@pingwin.nl," omdat de komma als
@@ -62,7 +76,7 @@ function linkifyPaden(html: string, domein: string): string {
   }).join("");
 }
 
-function naarHtml(tekst: string, links: { label: string; url: string }[]): string {
+function naarHtml(tekst: string, links: { label: string; url: string }[]): { html: string; ongeplaatst: { label: string; url: string }[] } {
   const veilig = (tekst || "")
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const regels = veilig.split("\n").map((r) => r.trimEnd());
@@ -114,7 +128,8 @@ export async function POST(req: NextRequest) {
 
   const links = (Array.isArray(body.links) ? body.links : []).filter((l) => l && l.url && l.label);
   const klant = await getClientBySlug(slug).catch(() => null);
-  const html = linkifyPaden(naarHtml(tekst, links), klant?.domain || "");
+  const { html: metLinks, ongeplaatst } = naarHtml(tekst, links);
+  const html = linkifyPaden(plakOnderaan(metLinks, ongeplaatst), klant?.domain || "");
   const r = await msSendMail(ontvangers, onderwerp || "Bericht van Pingwin", html);
   if (!r.ok) return NextResponse.json({ ok: false, error: r.error || "Versturen mislukte." }, { status: 502 });
   return NextResponse.json({ ok: true, sentTo: r.sentTo, samenvatting: `Verstuurd naar ${to}.` });

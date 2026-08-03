@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
 
   const system = [
     ...doelgroep,
-    links.length ? `\nDeze documenten gaan mee. Noem ze bij hun NAAM waar relevant; de link wordt automatisch aan die woorden gehangen, dus zet zelf NOOIT de URL in de tekst:\n${links.map((l) => `- ${l.label}`).join("\n")}` : ``,
+    links.length ? `\nDeze documenten en pagina's gaan mee. Noem ELK van deze namen LETTERLIJK in de tekst; de link wordt automatisch aan die exacte woorden gehangen, dus zet zelf NOOIT de URL in de tekst. Schrijf nooit "de bijgevoegde link", "bijgaand" of "in de bijlage" als omschrijving, want dan is er niets om de link aan te hangen en verdwijnt hij:\n${links.map((l) => `- ${l.label}`).join("\n")}` : ``,
     instructie ? `\nEXTRA WENS VAN DE GEBRUIKER (volg dit):\n${instructie}` : ``,
     profiel && audience === "klant" ? `\nContext over de klant (gebruik subtiel om de toon te raken, niet letterlijk overnemen):\n${profiel}` : ``,
   ].filter(Boolean).join("\n");
