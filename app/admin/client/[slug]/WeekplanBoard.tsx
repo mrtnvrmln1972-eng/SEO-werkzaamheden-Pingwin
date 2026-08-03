@@ -270,7 +270,10 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailD
     // Het adres gaat als argument mee. Het stond eerder alleen in de toestand, en
     // die is vlak na setMailTo nog niet bijgewerkt, dus kwam er een leeg adres bij
     // de assistent aan en werd de aanhef "Hoi," in plaats van "Hoi Maarten,".
-    void generateMail(t, aud, "", t.url ? { pagina: true } : {}, to);
+    // Geen automatische tekst meer: Maarten dicteert zijn mails en moest een
+    // standaardtekst eerst weggooien. De knop "Laat Claude schrijven" doet het
+    // alsnog wanneer hij dat wil.
+    setMailLinks(t.url ? { pagina: true } : {});
   }
 
   // Sluiten bewaart, niet weggooien.
@@ -414,7 +417,7 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailD
                     let devTo = ""; try { devTo = localStorage.getItem("pingwin-dev-email") || ""; } catch { /* geen opslag */ }
                     const to = aud === "klant" ? (clientEmail || "") : aud === "dev" ? devTo : "";
                     setMailTo(to);
-                    void generateMail(mailFor, aud, mailInstr, mailLinks, to);
+                    // Bewust geen herschrijving: dat zou ingesproken tekst wissen.
                   }}>{label}</button>
               ))}
               {/* Typ je zelf een ander adres, dan verandert de aanhef mee zodra je het
@@ -432,7 +435,7 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailD
                 <span className="muted">Meesturen:</span>
                 {docLinksFor(mailFor).map((l) => (
                   <label key={l.key} className="wp-mail-linkchip">
-                    <input type="checkbox" checked={!!mailLinks[l.key]} onChange={(e) => { const nxt = { ...mailLinks, [l.key]: e.target.checked }; setMailLinks(nxt); void generateMail(mailFor, mailAud, mailInstr, nxt); }} />
+                    <input type="checkbox" checked={!!mailLinks[l.key]} onChange={(e) => setMailLinks({ ...mailLinks, [l.key]: e.target.checked })} />
                     {l.label}
                   </label>
                 ))}
@@ -441,7 +444,7 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailD
             <div className="wp-mail-instrrij">
               <input className="wp-mail-instr" value={mailInstr} onChange={(e) => setMailInstr(e.target.value)} placeholder="Wat moet er in de mail? (optioneel, bijv. 'leg kort uit waar dit vandaan komt')"
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void generateMail(mailFor, mailAud, mailInstr, mailLinks); } }} />
-              <button type="button" className="ghost-btn small" disabled={mailBusy} title="Laat de assistent de mail opnieuw schrijven (je huidige tekst gaat verloren)" onClick={() => { wisConcept(mailFor.id); void generateMail(mailFor, mailAud, mailInstr, mailLinks); }}>Opnieuw</button>
+              <button type="button" className="ghost-btn small" disabled={mailBusy} title="Laat de assistent de mail opnieuw schrijven (je huidige tekst gaat verloren)" onClick={() => { wisConcept(mailFor.id); void generateMail(mailFor, mailAud, mailInstr, mailLinks); }}>Laat Claude schrijven</button>
             </div>
             {mailErr && <div className="login-error wp-mail-fout">{mailErr}</div>}
             {mailKlaar && <div className="wp-mail-klaar">{mailKlaar}</div>}

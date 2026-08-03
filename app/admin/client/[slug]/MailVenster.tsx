@@ -53,8 +53,11 @@ export default function MailVenster({
   const bodyRef = useRef<HTMLDivElement>(null);
 
   // Eén keer bij openen een concept schrijven.
+  // Leeg beginnen. Maarten dicteert zijn mails met Wispr Flow en typt dus meteen;
+  // een automatisch geschreven standaardtekst moet hij dan eerst weggooien. Wil hij
+  // wél een voorzet, dan is daar de knop "Laat Claude schrijven".
   useEffect(() => {
-    void schrijf(aud, instr, gekozen, clientEmail || "");
+    bodyRef.current?.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -124,7 +127,7 @@ export default function MailVenster({
                 let devTo = ""; try { devTo = localStorage.getItem("pingwin-dev-email") || ""; } catch { /* geen opslag */ }
                 const adres = a === "klant" ? (clientEmail || "") : a === "dev" ? devTo : "";
                 setTo(adres);
-                void schrijf(a, instr, gekozen, adres);
+                // Bewust geen herschrijving: dat zou ingesproken tekst wissen.
               }}>{label}</button>
           ))}
           <input className="wp-mail-to" type="email" value={to} placeholder="E-mailadres ontvanger"
@@ -141,7 +144,7 @@ export default function MailVenster({
             {bijlagen.map((b) => (
               <label key={b.key} className="wp-mail-linkchip">
                 <input type="checkbox" checked={!!gekozen[b.key]}
-                  onChange={(e) => { const nxt = { ...gekozen, [b.key]: e.target.checked }; setGekozen(nxt); void schrijf(aud, instr, nxt); }} />
+                  onChange={(e) => setGekozen({ ...gekozen, [b.key]: e.target.checked })} />
                 {b.label}
               </label>
             ))}
@@ -151,7 +154,7 @@ export default function MailVenster({
           <input className="wp-mail-instr" value={instr} onChange={(e) => setInstr(e.target.value)}
             placeholder="Wat moet er in de mail? (optioneel, bijv. 'leg kort uit waarom dit nu belangrijk is')"
             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void schrijf(aud, instr, gekozen); } }} />
-          <button type="button" className="ghost-btn small" disabled={busy} onClick={() => void schrijf(aud, instr, gekozen)}>Opnieuw</button>
+          <button type="button" className="ghost-btn small" disabled={busy} onClick={() => void schrijf(aud, instr, gekozen)}>Laat Claude schrijven</button>
         </div>
         {fout && <div className="login-error wp-mail-fout">{fout}</div>}
         {klaar && <div className="wp-mail-klaar">{klaar}</div>}
