@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import ActionCard, { type Action } from "./ActionCard";
 import TakenVoorstel, { type Oogst } from "./TakenVoorstel";
 import DeelKnoppen from "./DeelKnoppen";
+import ChatBestanden, { type ChatFile } from "./ChatBestanden";
 import { linkifyHtml as linkify } from "../../../../lib/linkify";
 import { vraagHtml } from "../../../../lib/vraag-opmaak";
 import { striptVulzinnen } from "../../../../lib/vulzinnen";
@@ -230,6 +231,24 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
     await fetch(`/api/admin/chat?slug=${encodeURIComponent(slug)}&thread=${encodeURIComponent(thread)}`, { method: "DELETE" }).catch(() => {});
   }
 
+  // Een binnengekomen bestand meldt zich in het gesprek zelf, als bericht met de
+  // link en de kern erbij. Zo zie je terug wanneer je wat hebt neergelegd, en de
+  // assistent heeft het in de geschiedenis staan naast de context die de server
+  // er al bij zet.
+  function meldBestand(thread: string, f: ChatFile) {
+    const wat = f.soort === "afbeelding" ? "Afbeelding" : "Document";
+    const regels = [
+      `${wat} toegevoegd aan het dossier: ${f.link ? `[${f.naam}](${f.link})` : f.naam}`,
+      f.kern ? `\n${f.kern}` : "",
+    ].filter(Boolean).join("\n");
+    setMessages((m) => {
+      const next: Msg[] = [...m, { role: "user", content: regels }];
+      fetch("/api/admin/chat", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread, messages: next }) }).catch(() => {});
+      return next;
+    });
+    setTopics((ts) => ts.map((x) => x.thread === thread ? { ...x, count: x.count + 1 } : x));
+  }
+
   function handleExecuted(id: string, result: NonNullable<Action["result"]>, executed: boolean) {
     setMessages((prev) => prev.map((m) => m.actions ? { ...m, actions: m.actions.map((a) => a.id === id ? { ...a, executed, result } : a) } : m));
   }
@@ -444,6 +463,10 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
                   )}
 
                   {error && <div className="login-error" style={{ margin: "6px 0" }}>{error}</div>}
+
+                  {/* De dropzone van dit gesprek: wat je hier laat vallen komt in de
+                      klantmap in Drive én in de context van dit gesprek. */}
+                  <ChatBestanden slug={slug} thread={t.thread} onToegevoegd={(f) => meldBestand(t.thread, f)} />
 
                   <div className="ovc-input">
                     <textarea

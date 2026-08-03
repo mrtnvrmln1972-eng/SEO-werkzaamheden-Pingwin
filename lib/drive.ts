@@ -250,6 +250,35 @@ export async function uploadEnConverteer(folderId: string, filename: string, buf
 // Kale bestands-upload (bijv. een .json met JSON-LD die letterlijk gekopieerd moet
 // kunnen worden): zelfde resumable upload als uploadDocx, maar ZONDER omzetting
 // naar Google-formaat, zodat de inhoud byte-voor-byte intact blijft.
+// Binaire upload van een aangeleverd bestand, ZONDER omzetting: een screenshot,
+// een pdf, een zip, wat er ook in de dropzone valt. uploadDocx zet het mime-type
+// vast op Word en uploadPlainFile werkt alleen op tekst, dus voor "leg dit bestand
+// neer zoals het is" was er nog geen weg.
+export async function uploadBestand(folderId: string, filename: string, buffer: Buffer, mimeType: string): Promise<{ id: string; link: string; shared: boolean }> {
+  const t = await token();
+  const parent = folderId && folderId !== "root" ? folderId : "root";
+  const bytes = new Uint8Array(buffer);
+  const mime = mimeType || "application/octet-stream";
+  const initRes = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true&fields=id", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${t}`,
+      "Content-Type": "application/json; charset=UTF-8",
+      "X-Upload-Content-Type": mime,
+      "X-Upload-Content-Length": String(bytes.length),
+    },
+    body: JSON.stringify({ name: filename, parents: [parent] }),
+  });
+  if (!initRes.ok) throw new Error(await driveErr(initRes, "het starten van de upload"));
+  const uploadUrl = initRes.headers.get("location") || initRes.headers.get("Location");
+  if (!uploadUrl) throw new Error("Geen upload-URL van Drive ontvangen.");
+  const putRes = await fetch(uploadUrl, { method: "PUT", headers: { "Content-Type": mime }, body: bytes });
+  if (!putRes.ok) throw new Error(await driveErr(putRes, "het uploaden van de inhoud"));
+  const file = await putRes.json();
+  const shared = await shareAnyone(t, file.id).catch(() => false);
+  return { id: file.id as string, link: `https://drive.google.com/file/d/${file.id}/view?usp=sharing`, shared };
+}
+
 export async function uploadPlainFile(folderId: string, filename: string, content: string, mimeType = "application/json"): Promise<{ id: string; link: string; shared: boolean }> {
   const t = await token();
   const parent = folderId && folderId !== "root" ? folderId : "root";

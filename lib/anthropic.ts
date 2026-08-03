@@ -111,7 +111,10 @@ export async function callClaude(system: string, messages: ChatMsg[], maxTokens 
 // groot, verkeerd formaat) en dan faalt het hele verzoek, niet één afbeelding.
 // De aanroeper moet dus een terugval zonder afbeeldingen hebben.
 
-export type VisionImage = { url: string; label: string };
+// Een afbeelding komt binnen als URL (een beeld dat al ergens op het web staat)
+// of als ruwe bytes (een screenshot die net in de dropzone viel en nog nergens
+// publiek staat). Beide gaan naar dezelfde aanroep.
+export type VisionImage = { url: string; label: string; base64?: string; mediaType?: string };
 
 /** Formaten die de API aankan. SVG valt hier bewust buiten (niet ondersteund). */
 const BEELD_OK = /\.(jpe?g|png|gif|webp)(\?|#|$)/i;
@@ -124,7 +127,7 @@ export function beeldGeschikt(url: string): boolean {
 export async function callClaudeImages(system: string, tekst: string, images: VisionImage[], maxTokens = 1500, ctx?: UsageCtx, model = MODEL): Promise<string> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) throw new Error("ANTHROPIC_API_KEY ontbreekt (voeg hem toe in Vercel).");
-  const bruikbaar = images.filter((i) => beeldGeschikt(i.url));
+  const bruikbaar = images.filter((i) => (i.base64 && i.mediaType) || beeldGeschikt(i.url));
   if (!bruikbaar.length) throw new Error("Geen bruikbare afbeeldingen om te tonen.");
 
   // Per afbeelding eerst het label (zodat het model weet welke naam erbij hoort),
@@ -132,7 +135,9 @@ export async function callClaudeImages(system: string, tekst: string, images: Vi
   const content: Record<string, unknown>[] = [];
   for (const i of bruikbaar) {
     content.push({ type: "text", text: i.label });
-    content.push({ type: "image", source: { type: "url", url: i.url } });
+    content.push(i.base64 && i.mediaType
+      ? { type: "image", source: { type: "base64", media_type: i.mediaType, data: i.base64 } }
+      : { type: "image", source: { type: "url", url: i.url } });
   }
   content.push({ type: "text", text: tekst });
 

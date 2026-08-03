@@ -22,6 +22,7 @@ import { getGekoppeldeMails } from "./page-emails";
 import { isRuisMail } from "./mail-tekst";
 import { getPageDossier, dossierToText } from "./page-dossier";
 import { getOpgeslagenTekst } from "./page-dossier-tekst";
+import { getClientFiles, bestandenContext } from "./client-files";
 import type { ClientConfig } from "./clients";
 
 // ═══════════════════════════════════════════════════════════
@@ -1009,7 +1010,16 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
   const isAds = cleanThread(thread) === "ads";
   // "overzicht" én "overzicht:<naam>" (meerdere bird's eye-gesprekken) → bird's eye.
   const isOverview = cleanThread(thread).startsWith("overzicht");
-  const context = isOverview ? await buildOverviewContext(client) : isAds ? await buildAdsContext(client) : await buildContext(client);
+  let context = isOverview ? await buildOverviewContext(client) : isAds ? await buildAdsContext(client) : await buildContext(client);
+  // Wat je in dit gesprek naar binnen hebt gesleept, leest de assistent mee: de
+  // teksten die de klant terugstuurde, de screenshot van het zoekresultaat. Zonder
+  // dit blok landde een gedropt bestand wel in het dossier, maar wist het gesprek
+  // waarin je het liet vallen er niets van.
+  try {
+    const bestanden = await getClientFiles(slug, { thread: cleanThread(thread) });
+    const blok = bestandenContext(bestanden);
+    if (blok) context += "\n\n=== " + blok;
+  } catch { /* aanvulling */ }
   // ── Opruimvraag? Dan start de motor, niet het model ────────────────────────
   // Vier keer op rij hetzelfde patroon: iets belangrijks afhankelijk maken van de
   // keuze van het model, en het model kiest het niet. De cannibalisatie-motor bleef
