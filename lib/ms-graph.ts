@@ -218,36 +218,63 @@ export async function msSearchMail(searchQuery: string, account: string, limit =
   const j = (await res.json()) as { value?: GraphMessage[] };
   const items: GraphMessage[] = Array.isArray(j.value) ? j.value : [];
   const shQuery = superhumanQuery || searchQuery;
-  const mails: LiveEmail[] = items.map((m) => {
-    const fromAddr = m.from?.emailAddress?.address || null;
-    const out = !!(fromAddr && account && fromAddr.toLowerCase() === account.toLowerCase());
-    const body = m.body;
-    const bodyHtml = body
-      ? (body.contentType === "html" ? (body.content ?? null) : (body.content ? `<pre>${body.content}</pre>` : null))
-      : null;
-    return {
-      id: m.id,
-      subject: m.subject ?? null,
-      fromName: m.from?.emailAddress?.name ?? null,
-      fromAddress: fromAddr,
-      receivedAt: m.receivedDateTime ?? null,
-      preview: m.bodyPreview ?? null,
-      webLink: m.webLink ?? null,
-      superhumanLink: m.conversationId ? superhumanThreadLink(account, shQuery, m.conversationId) : null,
-      bodyHtml,
-      direction: out ? "out" : "in",
-      toAddresses: (m.toRecipients || []).map((r) => r.emailAddress?.address || "").filter(Boolean),
-      conversationId: m.conversationId ?? null,
-      hasAttachments: !!m.hasAttachments,
-    };
-  });
+  const mails: LiveEmail[] = items.map((m) => graphNaarMail(m, account, shQuery));
   mails.sort((a, b) => (b.receivedAt || "").localeCompare(a.receivedAt || ""));
   return mails;
+}
+
+// Eén Graph-bericht naar ons eigen mailtype. Stond twee keer in deze module;
+// nu op één plek, zodat zoeken en een thread ophalen hetzelfde opleveren.
+function graphNaarMail(m: GraphMessage, account: string, superhumanQuery: string): LiveEmail {
+  const fromAddr = m.from?.emailAddress?.address || null;
+  const out = !!(fromAddr && account && fromAddr.toLowerCase() === account.toLowerCase());
+  const body = m.body;
+  const bodyHtml = body
+    ? (body.contentType === "html" ? (body.content ?? null) : (body.content ? `<pre>${body.content}</pre>` : null))
+    : null;
+  return {
+    id: m.id,
+    subject: m.subject ?? null,
+    fromName: m.from?.emailAddress?.name ?? null,
+    fromAddress: fromAddr,
+    receivedAt: m.receivedDateTime ?? null,
+    preview: m.bodyPreview ?? null,
+    webLink: m.webLink ?? null,
+    superhumanLink: m.conversationId ? superhumanThreadLink(account, superhumanQuery, m.conversationId) : null,
+    bodyHtml,
+    direction: out ? "out" : "in",
+    toAddresses: (m.toRecipients || []).map((r) => r.emailAddress?.address || "").filter(Boolean),
+    conversationId: m.conversationId ?? null,
+    hasAttachments: !!m.hasAttachments,
+  };
 }
 
 // Haalt de recente mails met een klant op (zoekt op het e-maildomein/-adres).
 export async function msSearchClientEmails(query: string, account: string, limit = 15): Promise<LiveEmail[] | null> {
   return msSearchMail(`"${query}"`, account, limit, query);
+}
+
+// Alle berichten van één gesprek, exact opgehaald op conversationId.
+//
+// Dit is bewust GEEN zoekopdracht: zoeken geeft de nieuwste zoveel mails terug,
+// en juist de oudste mail van een thread (waarin het verzoek staat, met het pad
+// en de documentlinks) viel daar telkens buiten. Een gesprek hoort in zijn
+// geheel opgehaald te worden, niet steekproefsgewijs.
+export async function msGetThread(conversationId: string, account: string, limit = 40, superhumanQuery = ""): Promise<LiveEmail[] | null> {
+  const token = await msAccessToken();
+  if (!token || !conversationId) return null;
+  const filter = `conversationId eq '${conversationId.replace(/'/g, "''")}'`;
+  const url =
+    `https://graph.microsoft.com/v1.0/me/messages?$filter=${encodeURIComponent(filter)}` +
+    `&$top=${limit}` +
+    `&$select=id,subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,body,conversationId,webLink,hasAttachments`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) return null;
+  const j = (await res.json()) as { value?: GraphMessage[] };
+  const items: GraphMessage[] = Array.isArray(j.value) ? j.value : [];
+  const mails = items.map((m) => graphNaarMail(m, account, superhumanQuery || conversationId));
+  mails.sort((a, b) => (a.receivedAt || "").localeCompare(b.receivedAt || ""));  // oudste eerst: het verhaal op volgorde
+  return mails;
 }
 
 // ── Bijlagen bij een mail ──

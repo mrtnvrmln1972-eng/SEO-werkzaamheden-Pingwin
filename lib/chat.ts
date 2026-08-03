@@ -19,6 +19,7 @@ import { overlappendePaginas, overlapAlsTekst, zwakkePaginas } from "./concurren
 import { getPageInternalLinks, runPageInternalLinks } from "./page-internal-links";
 import { getCannibalAnalysis, resultDatum, startCannibalRun, runCannibalRedirect } from "./cannibal-redirect";
 import { getGekoppeldeMails } from "./page-emails";
+import { isRuisMail } from "./mail-tekst";
 import { getPageDossier, dossierToText } from "./page-dossier";
 import { getOpgeslagenTekst } from "./page-dossier-tekst";
 import type { ClientConfig } from "./clients";
@@ -123,7 +124,11 @@ async function buildContext(client: ClientConfig): Promise<string> {
       if (live) emails = live;
     }
   }
-  emails = emails.filter((e) => !/@ahrefs\.com$/i.test((e.fromAddress || "").trim()));
+  // Automatische meldingen eruit, met hetzelfde filter dat ook bij het koppelen
+  // aan een pagina geldt. Bij One Day Clinic waren negen van de twintig "laatste
+  // mails" meldingen van Ahrefs, Search Console of een agenda-uitnodiging; die
+  // verdrongen de echte correspondentie.
+  emails = emails.filter((e) => !isRuisMail(e));
   if (emails.length > 0) {
     // Vastgepinde mail hoort er altijd bij, ook als hij ouder is dan de laatste
     // tien; de rest volgt op datum binnen een totaalbudget.
@@ -289,7 +294,11 @@ async function buildOverviewContext(client: ClientConfig): Promise<string> {
         }
       }
     }
-    emails = emails.filter((e) => !/@ahrefs\.com$/i.test((e.fromAddress || "").trim()));
+    // Automatische meldingen eruit, met hetzelfde filter dat ook bij het koppelen
+  // aan een pagina geldt. Bij One Day Clinic waren negen van de twintig "laatste
+  // mails" meldingen van Ahrefs, Search Console of een agenda-uitnodiging; die
+  // verdrongen de echte correspondentie.
+  emails = emails.filter((e) => !isRuisMail(e));
     if (emails.length) {
       // Ruim meegeven (niet te kort afkappen), zodat de agent volledige mails ziet
       // en er echte concept-antwoorden op kan maken. Mails die aan een pagina zijn

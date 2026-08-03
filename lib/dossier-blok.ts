@@ -150,6 +150,25 @@ function linkRegel(d: PageDossier): string {
   return delen.length ? `<div class="pd-links">${delen.join('<span class="pd-scheider">·</span>')}</div>` : "";
 }
 
+// De laatste stap ("nu: de aangepaste teksten moeten op de pagina") eindigde
+// zonder iets om aan te klikken, terwijl daar juist het werk begint. Hier komen
+// de teruggekregen teksten en de mail waar ze uit komen achter te staan, zodat
+// je vanaf die regel direct verder kunt.
+function nuRegelLinks(d: PageDossier): string {
+  const delen: string[] = [];
+  for (const v of d.klantvoorstellen.slice(0, 3)) {
+    if (v.link) delen.push(`<a class="pd-link pd-link-klant" href="${esc(v.link)}" target="_blank" rel="noreferrer" title="Teruggekregen van de klant, nog te verwerken">${esc(v.naam)}</a>`);
+  }
+  // De nieuwste mail met bijlagen: daar kwamen die teksten vandaan.
+  const bron = d.mails.find((m) => m.heeftBijlagen && (m.bron === "pin" || m.score >= HARD_BEWIJS));
+  const bronLink = bron ? (bron.superhumanLink || bron.webLink) : "";
+  if (bron && bronLink) {
+    delen.push(`<a class="pd-link" href="${esc(bronLink)}" target="_blank" rel="noreferrer" title="${esc(bron.onderwerp)}">de mail erbij</a>`);
+  }
+  if (!delen.length) return "";
+  return ` <span class="pd-nu-links">${delen.join('<span class="pd-scheider">·</span>')}</span>`;
+}
+
 /**
  * Het volledige blok als HTML. `tekst` is de opgeslagen stand van zaken:
  * één regel conclusie plus de stappen als bullets.
@@ -158,7 +177,12 @@ export function dossierBlokHtml(d: PageDossier, tekst: string, opts: { compact?:
   const domein = d.domein;
   // Markdown → HTML (de bullets worden een echte lijst), slugs klikbaar, en de
   // datum vooraan elke stap wordt een link naar die mail.
-  const verhaal = linkifyMailDatums(linkifyHtml(mdToHtml(tekst || ""), domein), d.mails);
+  let verhaal = linkifyMailDatums(linkifyHtml(mdToHtml(tekst || ""), domein), d.mails);
+  // Links achter de "nu:"-regel, de stap waar het werk begint.
+  const nuLinks = nuRegelLinks(d);
+  if (nuLinks) {
+    verhaal = verhaal.replace(/(<li>\s*nu\s*:[\s\S]*?)(<\/li>)/i, (heel, inhoud, slot) => `${inhoud}${nuLinks}${slot}`);
+  }
 
   return [
     '<div class="pd-blok">',

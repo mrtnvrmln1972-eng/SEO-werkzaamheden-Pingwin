@@ -3418,3 +3418,24 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .wp-docdrop-kies:disabled { opacity: .5; cursor: default; }
 .wp-docvoorstel-tekst.md p { margin: 0; }
 .wp-docvoorstel-tekst.md p + p { margin-top: var(--s-2); }
+
+/* Taak die al in de weekplanning staat: één grijs regeltje in het chatantwoord.
+   De volledige kaart hoort maar op één plek te staan, en dat is het bord. */
+.tvk-card.tvk-ingeklapt {
+  display: flex; align-items: center; gap: var(--s-2);
+  padding: var(--s-2) var(--s-3);
+  background: transparent; border-style: dashed;
+}
+.tvk-ingeklapt-tekst {
+  flex: 1 1 auto; min-width: 0;
+  font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.tvk-naar-bord {
+  border: 0; background: transparent; cursor: pointer; padding: 0;
+  font-size: var(--fs-xs); line-height: var(--lh-xs);
+  color: var(--orange-dark); text-decoration: underline; text-underline-offset: 2px;
+  white-space: nowrap;
+}
+.tvk-naar-bord:hover { color: var(--orange); }
+.pd-nu-links { margin-left: var(--s-1); font-size: var(--fs-sm); }

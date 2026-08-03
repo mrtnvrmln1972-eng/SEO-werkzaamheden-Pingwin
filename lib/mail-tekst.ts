@@ -81,6 +81,49 @@ export function naarTekst(html: string): string {
 // over gaat, en vervuilen de kernzin in de tijdlijn.
 const GROET = /\n\s*(met vriendelijke groet|vriendelijke groet|groetjes|groet|hartelijke groet|mvg|met hartelijke groet|dank alvast|bedankt alvast)\b[\s\S]*$/i;
 
+// ── Ruis: automatische meldingen die geen gesprek zijn ──
+//
+// Bij One Day Clinic waren negen van de twintig "laatste mails" meldingen van
+// Ahrefs, Search Console en een agenda-uitnodiging. Die verdringen de echte
+// correspondentie, zowel in de chat als bij het koppelen aan een pagina.
+//
+// Dit filter kijkt naar de AFZENDER en het SOORT bericht, nooit naar de inhoud.
+// Mail van de klant, van onszelf of van de sitebouwer valt hier dus nooit onder,
+// ook niet als iemand toevallig over rankings schrijft.
+const RUIS_AFZENDER = [
+  /@ahrefs\.com$/i,
+  /@semrush\.com$/i,
+  /@moz\.com$/i,
+  /@sitebulb\.com$/i,
+  /@screamingfrog\.co\.uk$/i,
+  /^sc-noreply@google\.com$/i,          // Search Console
+  /^analytics-noreply@google\.com$/i,
+  /^noreply(-|@)/i,
+  /^no-reply(-|@)/i,
+  /^donotreply@/i,
+  /^notifications?@/i,
+  /^mailer-daemon@/i,
+];
+
+// Agenda-uitnodigingen komen van een echte collega, dus die herken je aan het
+// bericht zelf en niet aan de afzender.
+const RUIS_ONDERWERP = [
+  /^(uitnodiging|invitation|invite)\s*:/i,
+  /^(geaccepteerd|accepted|afgewezen|declined|tentatief|tentative)\s*:/i,
+  /^(bijgewerkt|updated|geannuleerd|canceled|cancelled)\s*:.*\d{1,2}:\d{2}/i,
+  /^automatisch antwoord\s*:/i,
+  /^automatic reply\s*:/i,
+  /^out of office/i,
+];
+
+/** Is dit een automatische melding in plaats van een gesprek? */
+export function isRuisMail(m: { fromAddress?: string | null; subject?: string | null }): boolean {
+  const van = (m.fromAddress || "").trim();
+  if (van && RUIS_AFZENDER.some((re) => re.test(van))) return true;
+  const onderwerp = (m.subject || "").trim();
+  return !!onderwerp && RUIS_ONDERWERP.some((re) => re.test(onderwerp));
+}
+
 /** Het eigen deel van een mail als leesbare tekst, zonder handtekening. */
 export function eigenTekst(bodyHtml: string, preview = "", max = 1200): string {
   const { eigen } = splitsMail(bodyHtml);

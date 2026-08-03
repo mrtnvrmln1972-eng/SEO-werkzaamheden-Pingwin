@@ -195,8 +195,28 @@ export default function ActionCard({ action, slug, thread, onExecuted, onGoToPag
                   const t = action.taken![i];
                   const added = staatErAl(t, i);
                   const b = addBusy === i;
+
+                  // Staat de taak in de weekplanning, dan hoort hij daar thuis en
+                  // niet nog een keer hier. Eén grijs regeltje met een link is
+                  // genoeg: je ziet dat het besproken is, maar het werk staat maar
+                  // op één plek. Eerder bleef de volledige kaart met dossierblok
+                  // staan, dus alles stond dubbel in beeld.
+                  if (added) {
+                    return (
+                      <div key={i} className="tvk-card tvk-added tvk-ingeklapt">
+                        <span className="st-dot st-ok" />
+                        <span className="tvk-ingeklapt-tekst">{t.taak}</span>
+                        <button type="button" className="tvk-naar-bord"
+                          title="Open deze kaart in de weekplanning"
+                          onClick={() => window.open(`/admin/client/${slug}?tab=werkzaamheden${t.url ? `&page=${encodeURIComponent(t.url)}` : ""}`, "_blank")}>
+                          staat in de weekplanning
+                        </button>
+                      </div>
+                    );
+                  }
+
                   return (
-                    <div key={i} className={"tvk-card" + (added ? " tvk-added" : "")}>
+                    <div key={i} className="tvk-card">
                       <div className="tvk-top">
                         <span className={"tvk-wie " + (t.wie === "Dev" ? "wie-dev" : "wie-seo")}>{t.wie || "SEO"}</span>
                         <span className="tvk-taak">{t.taak}</span>

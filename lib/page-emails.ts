@@ -3,9 +3,11 @@ import { urlKey } from "./url-key";
 import { getClientBySlug } from "./clients";
 import { getPagePlan, getPageSummary, getClientUrls } from "./site-urls";
 import { getStepLinks } from "./page-doc-run";
-import { msStatus, msSearchMail, msListAttachments, type LiveEmail } from "./ms-graph";
-import { eigenTekst } from "./mail-tekst";
+import { msStatus, msSearchMail, msGetThread, msListAttachments, msGetAttachment, type LiveEmail } from "./ms-graph";
+import { eigenTekst, isRuisMail } from "./mail-tekst";
 import { callClaude, anthropicConfigured, LIGHT_MODEL } from "./anthropic";
+import { leesAangeleverdDocument, proposeVersion } from "./doc-versions";
+import { logActiviteit } from "./activiteit";
 
 // ═══════════════════════════════════════════════════════════
 // MAIL PER PAGINA
@@ -191,6 +193,26 @@ export async function zoektermenVoorPagina(slug: string, url: string): Promise<Z
 // Andersom net zo belangrijk: de mail waarin de klant zijn geredigeerde teksten
 // terugstuurt zegt vaak alleen "de teksten zijn aangepast" en noemt het onderwerp
 // niet. Het bewijs zit dan in de bijlagenaam (Tekst CRP-waarde 21-07-2026.pdf).
+// Hoeveel betekenisvolle woorden van een pad komen terug in een bestandsnaam?
+// Streepjes, punten en cijfers doen er niet toe: "Tekst CRP-waarde
+// 21-07-2026.pdf" tegenover "/crp-waarde-testen" levert twee treffers (crp,
+// waarde). Datums en extensies tellen nooit mee.
+export function bijlageOverlap(bestandsnaam: string, pad: string): number {
+  const woorden = (s: string) => new Set(
+    s.toLowerCase()
+      .replace(/\.[a-z0-9]{2,5}$/i, "")           // extensie eraf
+      .replace(/\d{1,4}[-.]\d{1,2}[-.]\d{2,4}/g, " ")  // datums eraf
+      .split(/[^a-zà-ÿ0-9]+/i)
+      .filter((w) => w.length >= 3 && !/^\d+$/.test(w) && !STOP.has(w)),
+  );
+  const uitPad = woorden(pad);
+  if (!uitPad.size) return 0;
+  const uitNaam = woorden(bestandsnaam);
+  let n = 0;
+  for (const w of uitPad) if (uitNaam.has(w)) n++;
+  return n;
+}
+
 function scoreMail(
   mail: { subject: string | null; bodyHtml: string | null; preview: string | null; fromAddress: string | null },
   pad: string,
@@ -224,11 +246,16 @@ function scoreMail(
   }
   // Een bijlage die het onderwerp van de pagina in de naam heeft is even hard
   // bewijs als het pad: dat is de teruggestuurde tekst.
-  if (score < HARD_BEWIJS && bijlagen) {
-    const treffer = termen.find((t) => t.gewicht >= 2 && bijlagen.includes(t.term));
-    if (treffer) {
+  //
+  // Op WOORDNIVEAU vergelijken, niet als hele zin. "Tekst CRP-waarde
+  // 21-07-2026.pdf" hoort bij /crp-waarde-testen/, maar bevat de letterlijke
+  // frase "crp waarde testen" niet. Daar liep het eerder op stuk, precies bij de
+  // mail waarin de klant zijn teksten terugstuurde.
+  if (score < HARD_BEWIJS && bijlageNamen.length) {
+    const beste = Math.max(0, ...bijlageNamen.map((n) => bijlageOverlap(n, pad)));
+    if (beste >= 2) {
       score += HARD_BEWIJS;
-      redenen.push(`bijlage over "${treffer.term}"`);
+      redenen.push("bijlage met de naam van deze pagina");
     }
   }
   if (score < HARD_BEWIJS) {
@@ -384,8 +411,33 @@ export async function zoekMailsVoorPagina(slug: string, url: string): Promise<{ 
     }
   }
 
-  // Nieuwsbrieven van tools zijn nooit een gesprek over een pagina.
-  const bruikbaar = [...kandidaten.values()].filter((m) => !/@(ahrefs|semrush|google)\.com$/i.test((m.fromAddress || "").trim()));
+  // Automatische meldingen zijn nooit een gesprek over een pagina.
+  let bruikbaar = [...kandidaten.values()].filter((m) => !isRuisMail(m));
+
+  // ── Van losse mails naar het GESPREK ──
+  //
+  // Zoeken geeft de nieuwste zoveel mails terug. Juist de oudste mail van een
+  // thread, waarin het verzoek staat met het pad en de documentlinks, viel daar
+  // telkens buiten: bij One Day Clinic werd de mail van 14 juli nooit gevonden,
+  // terwijl die het hele verhaal draagt.
+  //
+  // Daarom: zodra ÉÉN mail hard bewijs bevat, is het hele gesprek relevant en
+  // halen we het compleet op via het gespreks-kenmerk. Dat is exact en niet
+  // afhankelijk van een gok op zoekwoorden.
+  if (status.connected) {
+    const relevanteThreads = new Set<string>();
+    for (const m of bruikbaar) {
+      if (!m.conversationId) continue;
+      if (relevanteThreads.has(m.conversationId)) continue;
+      const { score } = scoreMail(m, pad, docLinks, termen, klantDomein, []);
+      if (score >= HARD_BEWIJS) relevanteThreads.add(m.conversationId);
+    }
+    for (const cid of [...relevanteThreads].slice(0, 4)) {
+      const thread = await msGetThread(cid, status.account || "", 40, klantQuery).catch(() => null);
+      for (const m of thread || []) if (!kandidaten.has(m.id)) kandidaten.set(m.id, m);
+    }
+    bruikbaar = [...kandidaten.values()].filter((m) => !isRuisMail(m));
+  }
 
   // Bijlagenamen ophalen voor de mails die bijlagen hebben. Vaak zit juist daar
   // het bewijs ("Tekst CRP-waarde 21-07-2026.pdf"), terwijl de mail zelf alleen
@@ -398,11 +450,30 @@ export async function zoekMailsVoorPagina(slug: string, url: string): Promise<{ 
     if (lijst) namenPerMail.set(m.id, lijst.map((a) => a.naam));
   }
 
-  // Eerst de puntentelling, dan de zeef over wat overblijft. Andersom zou de zeef
-  // over tientallen mails moeten oordelen die er duidelijk niet bij horen.
+  // Welke gesprekken gaan over deze pagina? Eén mail met hard bewijs maakt het
+  // hele gesprek relevant.
+  const relevanteThreads = new Set<string>();
+  for (const m of bruikbaar) {
+    const { score } = scoreMail(m, pad, docLinks, termen, klantDomein, namenPerMail.get(m.id) || []);
+    if (score >= HARD_BEWIJS && m.conversationId) relevanteThreads.add(m.conversationId);
+  }
+
+  // Binnen een relevant gesprek telt een mail mee als hij iets TOEVOEGT: het
+  // verzoek zelf, een bijlage, of eigen tekst over deze pagina. Een "prima, doen
+  // we" of een belafspraak voegt niets toe en valt af, ook al zit hij in dezelfde
+  // thread. Dat is precies het verschil dat eerder ontbrak.
   const geslaagd = bruikbaar
     .map((m) => ({ m, namen: namenPerMail.get(m.id) || [] }))
-    .map((x) => ({ ...x, ...scoreMail(x.m, pad, docLinks, termen, klantDomein, x.namen) }))
+    .map((x) => {
+      const s = scoreMail(x.m, pad, docLinks, termen, klantDomein, x.namen);
+      const inThread = !!x.m.conversationId && relevanteThreads.has(x.m.conversationId);
+      if (s.score < BEWAAR_VANAF && inThread && x.m.hasAttachments) {
+        // Een bijlage in een gesprek dat over deze pagina gaat is bijna altijd de
+        // teruggestuurde tekst; dat is de mail die je juist wilt zien.
+        return { ...x, score: HARD_BEWIJS, reden: "bijlage in het gesprek over deze pagina" };
+      }
+      return { ...x, ...s, inThread };
+    })
     .filter((x) => x.score >= BEWAAR_VANAF);
 
   const urls2 = await getClientUrls(slug).catch(() => []);
@@ -466,7 +537,65 @@ export async function zoekMailsVoorPagina(slug: string, url: string): Promise<{ 
     await sql`DELETE FROM page_emails WHERE client_slug = ${slug} AND url_key = ${k} AND bron = 'auto'`;
   }
 
+  // Teksten die de klant terugstuurde meteen klaarzetten, zodat ze op de kaart
+  // aanklikbaar staan zonder omweg via de mailbox.
+  await haalBijlagenBinnen(slug, url).catch(() => { /* nooit blokkerend */ });
+
   return { gevonden: bruikbaar.length, bewaard };
+}
+
+/**
+ * Zet tekstbijlagen uit de gekoppelde mails van een pagina automatisch klaar als
+ * klantversie. Dat scheelt de omweg via Superhuman: downloaden, terugvinden en
+ * weer inslepen.
+ *
+ * Alleen bijlagen waarvan de NAAM bij deze pagina past worden opgepakt. Een mail
+ * kan de teksten voor twee pagina's bevatten (Tekst CRP-waarde en Tekst CRP-test);
+ * die horen dan elk bij hun eigen pagina en niet allebei bij allebei.
+ *
+ * Er wordt niets verwerkt: het komt als voorstel klaar te staan, zichtbaar op de
+ * kaart, en Maarten beslist.
+ */
+export async function haalBijlagenBinnen(slug: string, url: string): Promise<{ klaar: string[] }> {
+  const klaar: string[] = [];
+  let pad = "";
+  try { pad = new URL(url).pathname.replace(/\/+$/, ""); } catch { return { klaar }; }
+
+  const mails = await getPaginaMails(slug, url).catch(() => [] as PaginaMail[]);
+  const metBijlagen = mails.filter((m) => m.heeftBijlagen && (m.bron === "pin" || m.score >= HARD_BEWIJS));
+  if (!metBijlagen.length) return { klaar };
+
+  // Wat staat er al klaar of is al verwerkt? Nooit twee keer hetzelfde bestand.
+  const { rows: bestaand } = await sql`
+    SELECT naam FROM page_doc_versions WHERE client_slug = ${slug} AND url = ${url}`;
+  const alBinnen = new Set(bestaand.map((r) => String(r.naam || "").toLowerCase()));
+
+  for (const m of metBijlagen.slice(0, 5)) {
+    const lijst = await msListAttachments(m.messageId).catch(() => null);
+    if (!lijst) continue;
+    for (const a of lijst) {
+      if (!/\.(docx|pdf|txt|md)$/i.test(a.naam)) continue;
+      if (alBinnen.has(a.naam.toLowerCase())) continue;
+      // Hoort deze bijlage bij DEZE pagina? Anders laten liggen voor de pagina
+      // waar hij wel bij hoort.
+      if (bijlageOverlap(a.naam, pad) < 2) continue;
+
+      const bin = await msGetAttachment(m.messageId, a.id).catch(() => null);
+      if (!bin) continue;
+      const lees = await leesAangeleverdDocument(slug, url, bin.naam, bin.buffer).catch(() => null);
+      if (!lees?.ok || !lees.tekst) continue;
+      await proposeVersion(slug, url, bin.naam, lees.tekst, lees.driveLink || "").catch(() => null);
+      alBinnen.add(a.naam.toLowerCase());
+      klaar.push(a.naam);
+      await logActiviteit({
+        slug, soort: "copy", bron: "mail-bijlage", bronId: `${m.messageId}:${a.id}`,
+        url, wie: "Pingwin", zichtbaar: false,
+        intern: `Klantversie uit de mail van ${m.vanNaam || m.vanAdres}: ${a.naam}`,
+        bewijs: m.superhumanLink || m.webLink || null,
+      }).catch(() => null);
+    }
+  }
+  return { klaar };
 }
 
 /** Zoekt alleen als er nog niets is of de laatste ronde ouder is dan een week. */
