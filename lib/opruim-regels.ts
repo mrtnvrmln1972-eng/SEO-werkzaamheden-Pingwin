@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { getSetting, setSetting } from "./settings";
 
 // ═══════════════════════════════════════════════════════════
 // JOUW CORRECTIES ZIJN VOORTAAN VASTE REGELS
@@ -86,13 +87,42 @@ export async function zetOpruimRegel(slug: string, van: string, patch: Partial<O
  * De correcties als instructie voor de volgende analyse. Dit gaat mee de motor
  * in, zodat een besluit van Maarten nooit twee keer genomen hoeft te worden.
  */
+// ── De gekozen URL-structuur ───────────────────────────────────────────────
+// Eén vaste vorm voor een type pagina, bijvoorbeeld /soa-klinieken/soa-test-<plaats>/.
+// Zonder zo'n keuze blijft opruimen dweilen met de kraan open: One Day Clinic had
+// 433 live pagina's in 299 verschillende URL-vormen, en de motor stelde daardoor
+// omleidingen voor naar vormen die we juist willen uitfaseren.
+export async function getUrlStructuur(slug: string): Promise<string> {
+  return (await getSetting(`url_structuur:${slug}`).catch(() => null)) || "";
+}
+export async function zetUrlStructuur(slug: string, vorm: string): Promise<void> {
+  await setSetting(`url_structuur:${slug}`, (vorm || "").trim());
+}
+
+export async function structuurAlsInstructie(slug: string): Promise<string> {
+  const vorm = await getUrlStructuur(slug);
+  if (!vorm) return "";
+  return [
+    "GEKOZEN URL-STRUCTUUR. Dit is een HARDE regel en gaat vóór je eigen voorkeur.",
+    `De enige toegestane vorm voor dit type pagina is: ${vorm}`,
+    "Gevolgen die je strikt toepast:",
+    `- Stel NOOIT een omleiding voor NAAR een pagina die niet deze vorm heeft, tenzij die doelpagina aantoonbaar op zijn eigen onderwerp rankt en de doelvorm nog niet bestaat.`,
+    `- Is de sterkste pagina van een plaats een ANDERE vorm, en rankt hij op zijn eigen plaatsnaam, zet dan "verhuizen": true. Dat betekent dat de content naar de doelvorm gaat en de oude URL daarheen doorverwijst. Vul bij "naar" dan de doel-URL in de gekozen vorm in, ook als die nu nog niet bestaat.`,
+    `- Rankt zo'n sterkste pagina NIET op zijn eigen plaatsnaam maar op die van een grotere stad (bijvoorbeeld een dorpspagina die op "merk grote-stad" binnenkomt), dan is het GEEN verhuizing: leid hem gewoon om naar de pagina van die grotere stad, in de gekozen vorm. Zet "verhuizen" dan op false.`,
+    `- Levert een plaats in geen enkele variant verkeer op, kies dan de doelvorm als bestemming en leid de rest daarheen. Geen verhuizing, geen discussie.`,
+  ].join("\n");
+}
+
 export async function regelsAlsInstructie(slug: string): Promise<string> {
+  const structuur = await structuurAlsInstructie(slug);
   const regels = await getOpruimRegels(slug).catch(() => []);
-  if (!regels.length) return "";
+  if (!regels.length) return structuur;
   const houden = regels.filter((r) => r.besluit === "houden");
   const gecorrigeerd = regels.filter((r) => r.besluit === "redirect" && r.naar);
   const genegeerd = regels.filter((r) => r.besluit === "genegeerd");
-  const uit: string[] = ["EERDERE BESLUITEN VAN MAARTEN. Dit zijn HARDE regels; ze overrulen je eigen analyse zonder discussie."];
+  const uit: string[] = [];
+  if (structuur) uit.push(structuur, "");
+  uit.push("EERDERE BESLUITEN VAN MAARTEN. Dit zijn HARDE regels; ze overrulen je eigen analyse zonder discussie.");
   if (houden.length) uit.push(`NOOIT omleiden of opruimen (Maarten heeft besloten dat deze blijven): ${houden.map((r) => r.van + (r.notitie ? ` (${r.notitie})` : "")).join(", ")}.`);
   if (gecorrigeerd.length) uit.push(`Vast redirect-doel, gebruik EXACT dit doel en verzin er geen ander: ${gecorrigeerd.map((r) => `${r.van} -> ${r.naar}`).join("; ")}.`);
   if (genegeerd.length) uit.push(`Niet meer noemen, Maarten heeft ze bewust weggezet: ${genegeerd.map((r) => r.van).join(", ")}.`);

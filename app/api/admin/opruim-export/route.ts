@@ -38,13 +38,14 @@ export async function GET(req: NextRequest) {
   // Besluiten die Maarten al nam, zodat hij in Excel ziet wat hij eerder vond.
   const besluit = new Map(regels.map((r) => [r.van, r]));
 
-  const kop = ["Van (pad)", "Naar (pad)", "Van (volledige URL)", "Naar (volledige URL)", "Type", "Content samenvoegen", "Reden", "Eerder besluit", "Status"];
+  const kop = ["Van (pad)", "Naar (pad)", "Van (volledige URL)", "Naar (volledige URL)", "Type", "Actie", "Content samenvoegen", "Reden", "Eerder besluit", "Status"];
   const lijnen = [kop.map(veld).join(";")];
   for (const m of rijen) {
     const b = besluit.get(m.van);
     lijnen.push([
       m.van, m.naar, vol(m.van), vol(m.naar),
       m.type || "301",
+      m.verhuizen ? "verhuizen (content naar de nieuwe URL)" : "omleiden",
       m.mergeContent ? "ja" : "nee",
       m.reden || "",
       b ? (b.besluit === "houden" ? "houden: niet omleiden" : b.besluit === "genegeerd" ? "genegeerd" : b.naar ? `ander doel gekozen: ${b.naar}` : "") : "",
