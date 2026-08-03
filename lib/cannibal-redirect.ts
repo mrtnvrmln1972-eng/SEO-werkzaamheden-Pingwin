@@ -57,6 +57,9 @@ export type CannibalState = {
   fase: CannibalFase; ronde: number; stap: number; stappen: number; stapLabel: string;
   // Wanneer het cron-vangnet voor het laatst langskwam, en of het stilstaat.
   cronTik: string | null; cronStil: boolean;
+  // Hoever is hij door de opruimkandidaten? Zichtbaar op het scherm, zodat
+  // "geen lijst" en "lijst helemaal gehad" niet meer op elkaar lijken.
+  kandidaten: number; beoordeeld: number;
 };
 
 // Onderzoek, hoofdanalyse, en daarna de kandidatenlijst blok voor blok aflopen.
@@ -191,11 +194,13 @@ export async function getCannibalAnalysis(slug: string): Promise<CannibalState> 
   // en heeft wachten geen zin (de knop "Nu hervatten" is dan de weg).
   const cronTik = await getSetting(SETTING_OPRUIM_CRON_TIK).catch(() => null);
   const cronStil = !cronTik || (Date.now() - new Date(cronTik).getTime()) > 900000;
-  if (!r) return { status: "idle", result: null, error: "", updatedAt: null, fase: "", ronde: 0, stap: 0, stappen: STAPPEN, stapLabel: "", cronTik, cronStil };
+  if (!r) return { status: "idle", result: null, error: "", updatedAt: null, fase: "", ronde: 0, stap: 0, stappen: STAPPEN, stapLabel: "", cronTik, cronStil, kandidaten: 0, beoordeeld: 0 };
   const { stap, label } = stapVan(r.fase, r.ronde);
   return {
     cronTik,
     cronStil,
+    kandidaten: r.kandidaten.length,
+    beoordeeld: r.behandeld.length,
     status: (r.status as CannibalState["status"]) || "idle",
     result: r.result,
     error: r.error,
@@ -411,7 +416,7 @@ async function stapMetReden(slug: string): Promise<{ uit: "verder" | "klaar"; re
       } catch { findings = ""; }
       const clean = findings.replace(/\(geen antwoord\)/gi, "").trim();
       await q`UPDATE client_cannibal_analysis SET findings = ${clean}, fase = 'synth', retries = 0, updated_at = now() WHERE client_slug = ${slug}`;
-      return { uit: "verder", reden: "onderzoek klaar" };
+      return { uit: "verder", reden: `onderzoek klaar (${(await readRow(slug))?.kandidaten.length ?? 0} opruimkandidaten in de lijst)` };
     }
 
     // Eerdere besluiten van Maarten gaan mee als harde regels. Zo hoeft hij een
@@ -465,8 +470,23 @@ async function stapMetReden(slug: string): Promise<{ uit: "verder" | "klaar"; re
 
     const gezien = new Set((result.redirectMap || []).map((m) => padOf(String(m.van || ""))));
     const behandeld = new Set([...gezien, ...(row.behandeld || [])]);
-    const blok = (row.kandidaten || []).filter((k) => !behandeld.has(padOf(k.pad))).slice(0, BLOK);
-    if (!blok.length) { await afronden(slug); return { uit: "klaar", reden: "alle kandidaten beoordeeld" }; }
+
+    // Lijst kwijt? Dan hem opnieuw ophalen in plaats van te doen alsof we klaar
+    // zijn. Op 03-08-2026 stopte de analyse na één ronde omdat de lijst leeg in de
+    // rij stond; "geen kandidaten" en "alle kandidaten gehad" zien er van buiten
+    // hetzelfde uit, en dat verschil moet de motor zelf kunnen herstellen.
+    let kandidaten = row.kandidaten || [];
+    if (!kandidaten.length) {
+      const opnieuw = await zwakkePaginas(slug, domain).catch(() => null);
+      kandidaten = opnieuw?.kandidaten || [];
+      if (kandidaten.length) await q`UPDATE client_cannibal_analysis SET kandidaten = ${JSON.stringify(kandidaten)}, updated_at = now() WHERE client_slug = ${slug}`;
+    }
+
+    const blok = kandidaten.filter((k) => !behandeld.has(padOf(k.pad))).slice(0, BLOK);
+    if (!blok.length) {
+      await afronden(slug);
+      return { uit: "klaar", reden: kandidaten.length ? `alle ${kandidaten.length} kandidaten beoordeeld` : "geen kandidatenlijst beschikbaar" };
+    }
 
     const lijst = blok.map((k) => {
       const doel = k.dubbelMet.length === 1 ? `voorstel doel: ${k.dubbelMet[0]}`
