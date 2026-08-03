@@ -199,14 +199,18 @@ export async function msSearchPeople(query: string, limit = 8): Promise<Person[]
 // Zoekt in de eigen mailbox met een vrije zoekopdracht (Graph $search, KQL).
 // Losgetrokken uit msSearchClientEmails zodat er óók op ONDERWERP gezocht kan
 // worden ("alles over CRP binnen deze klant") en niet alleen op het klantdomein.
-// searchQuery = wat Graph doorzoekt; superhumanQuery = wat in de Superhuman-
-// zoeklink terechtkomt (blijft het klantdomein, anders opent Superhuman een
-// zoekopdracht die daar niets oplevert).
+// searchQuery = een COMPLETE, al gequote KQL-uitdrukking; de aanroeper bepaalt de
+// aanhalingstekens. Dat is bewust: er werd hier eerst een extra paar quotes
+// omheen gezet, waardoor een samengestelde zoekopdracht ('adres AND "crp"')
+// geneste aanhalingstekens kreeg en Graph er stil niets mee deed. Het zoeken op
+// onderwerp leek dus te werken maar leverde nooit iets op.
+// superhumanQuery = wat in de Superhuman-zoeklink terechtkomt (blijft het
+// klantdomein, anders opent Superhuman een zoekopdracht die daar niets oplevert).
 export async function msSearchMail(searchQuery: string, account: string, limit = 15, superhumanQuery?: string): Promise<LiveEmail[] | null> {
   const token = await msAccessToken();
   if (!token) return null;
   const url =
-    `https://graph.microsoft.com/v1.0/me/messages?$search=${encodeURIComponent(`"${searchQuery}"`)}` +
+    `https://graph.microsoft.com/v1.0/me/messages?$search=${encodeURIComponent(searchQuery)}` +
     `&$top=${limit}` +
     `&$select=id,subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,body,conversationId,webLink,hasAttachments`;
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}`, ConsistencyLevel: "eventual" } });
@@ -243,7 +247,7 @@ export async function msSearchMail(searchQuery: string, account: string, limit =
 
 // Haalt de recente mails met een klant op (zoekt op het e-maildomein/-adres).
 export async function msSearchClientEmails(query: string, account: string, limit = 15): Promise<LiveEmail[] | null> {
-  return msSearchMail(query, account, limit, query);
+  return msSearchMail(`"${query}"`, account, limit, query);
 }
 
 // ── Bijlagen bij een mail ──

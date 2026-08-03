@@ -165,7 +165,10 @@ export function dossierToText(d: PageDossier): string {
     for (const m of d.mails) {
       const datum = m.ontvangenOp ? new Date(m.ontvangenOp).toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" }) : "";
       const zeker = m.bron === "pin" ? "VASTGEPIND" : m.score >= HARD_BEWIJS ? "HARD BEWIJS" : "mogelijk relevant";
-      r.push(`- [${zeker}] ${datum}, van ${m.vanNaam || m.vanAdres}: "${m.onderwerp}"${m.heeftBijlagen ? " (met bijlagen)" : ""}. ${m.preview.slice(0, 220)}`);
+      // Ruim meegeven: op een korte preview kon het model niet zien dát de klant
+      // de teksten had teruggestuurd, en greep het naar een losse belafspraak die
+      // toevallig in dezelfde thread stond.
+      r.push(`- [${zeker}] ${datum}, van ${m.vanNaam || m.vanAdres}: "${m.onderwerp}"${m.heeftBijlagen ? " MET BIJLAGEN" : ""}.\n  Inhoud: ${m.preview.slice(0, 700)}`);
     }
   }
   if (d.klantvoorstellen.length) {

@@ -62,6 +62,16 @@ const SYSTEEM = `Je schrijft voor Maarten van SEO-bureau Pingwin één korte ali
 
 DOEL: Maarten opent een taak en wil in vijf seconden weten wat er speelt. Wie wilde wat, wie heeft wat gemaakt, wat is er nog niet gebeurd en door wie.
 
+WAT ER IN MOET, in deze volgorde van belang:
+1. Wat er met deze pagina aan de hand is of afgesproken is, en met wie.
+2. Of iemand iets heeft aangeleverd of teruggestuurd (teksten, correcties, een document), en of dat nog verwerkt moet worden. Dit is het belangrijkste punt: als de klant teksten heeft teruggestuurd, moet dat er ALTIJD in staan.
+3. Wat er nog niet gebeurd is, en wie daarvoor aan zet is.
+
+WAT ER NIET IN MOET:
+- Een opsomming van welke stappen af zijn. Noem alleen wat NOG moet gebeuren.
+- Losse afspraken die niet over deze pagina gaan (een belafspraak, een vergadering, een onderwerp uit dezelfde mailthread dat een andere pagina betreft). Staat er in een mail iets dat niet over deze pagina gaat, laat het weg.
+- De vertoningen en klikken, tenzij ze het punt van de taak zijn; die staan al apart op de kaart.
+
 REGELS, hard:
 - Eén alinea, maximaal 110 woorden. Geen kopjes, geen bullets, geen opsomming.
 - Gewone spreektaal, zoals je het tegen een collega zegt. Nederlands.

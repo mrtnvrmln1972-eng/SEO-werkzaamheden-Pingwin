@@ -245,9 +245,15 @@ export async function zoekMailsVoorPagina(slug: string, url: string): Promise<{ 
   // plus een ronde op de klant zelf (die vangt de lopende thread).
   const kandidaten = new Map<string, LiveEmail>();
   if (status.connected) {
-    const rondes = [klantQuery, ...termen.slice(0, 3).map((t) => `${klantQuery} AND "${t.term}"`)];
+    // Eén ronde op de klant zelf (vangt de lopende thread) en per zoekterm een
+    // ronde binnen die correspondentie. De quotes horen HIER, want msSearchMail
+    // krijgt een complete KQL-uitdrukking.
+    const rondes = [
+      `"${klantQuery}"`,
+      ...termen.slice(0, 3).map((t) => `"${klantQuery}" AND "${t.term}"`),
+    ];
     for (const q of rondes) {
-      const res = await msSearchMail(q, status.account || "", 15, klantQuery).catch(() => null);
+      const res = await msSearchMail(q, status.account || "", 20, klantQuery).catch(() => null);
       for (const m of res || []) if (!kandidaten.has(m.id)) kandidaten.set(m.id, m);
     }
   }
