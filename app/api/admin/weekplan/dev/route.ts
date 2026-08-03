@@ -35,12 +35,17 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     ok: true,
-    // Nog niets doorgezet? Dan als voorstel de kaarttitel en alleen de regels die
-    // over de bouw gaan; dat is precies wat er nu automatisch werd doorgestuurd.
-    taak: opgeslagen?.taak || kaart.taak || "",
-    toelichting: opgeslagen?.toelichting || devSturing(kaart.toelichting || ""),
+    // Alleen wat er eerder is doorgezet. De velden beginnen bewust LEEG: Maarten
+    // schrijft de opdracht voor de sitebouwer zelf, en een voorgevuld veld met de
+    // kaarttekst erin moest hij eerst weggooien. Laat hij ze leeg, dan valt de
+    // developerlijst terug op de kaart, dus er gaat nooit een lege taak de deur uit.
+    taak: opgeslagen?.taak && opgeslagen.taak !== kaart.taak ? opgeslagen.taak : "",
+    toelichting: opgeslagen?.toelichting || "",
     docs: beschikbaar,
-    gekozen: gekozen.map((d) => d.url),
+    // De pagina staat standaard aan; de rest kies je zelf.
+    gekozen: gekozen.length ? gekozen.map((d) => d.url) : (kaart.url ? [kaart.url] : []),
+    voorstelTaak: kaart.taak || "",
+    voorstelToelichting: devSturing(kaart.toelichting || ""),
     url: kaart.url || "",
   });
 }

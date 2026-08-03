@@ -29,6 +29,7 @@ export default function DevDoorzetten({ slug, id, kaartTitel, onKlaar, onSluit }
   const [laden, setLaden] = useState(true);
   const [taak, setTaak] = useState("");
   const [toelichting, setToelichting] = useState("");
+  const [hintTaak, setHintTaak] = useState("");
   const [docs, setDocs] = useState<Doc[]>([]);
   const [gekozen, setGekozen] = useState<Record<string, boolean>>({});
   const [bezig, setBezig] = useState(false);
@@ -41,12 +42,14 @@ export default function DevDoorzetten({ slug, id, kaartTitel, onKlaar, onSluit }
       .then((d) => {
         if (off) return;
         if (!d?.ok) { setFout(d?.error || "Kon de gegevens niet ophalen."); setLaden(false); return; }
+        // Leeg beginnen: dit zijn jouw woorden voor de sitebouwer. Laat je ze
+        // leeg, dan gaat de kaarttekst mee zoals hij is.
         setTaak(String(d.taak || "").replace(/<[^>]*>/g, "").trim());
         setToelichting(String(d.toelichting || ""));
+        setHintTaak(String(d.voorstelTaak || "").replace(/<[^>]*>/g, "").trim());
         setDocs(Array.isArray(d.docs) ? d.docs : []);
-        // Nog nooit doorgezet? Dan staat er niets aangevinkt: kiezen is de hele
-        // bedoeling van dit venster, en een standaardvinkje zou die keuze weer
-        // uit handen nemen.
+        // De pagina staat standaard aan (daar moet het gebeuren); welke tekst
+        // meegaat kies je zelf, want dat is precies de keuze waar dit venster voor is.
         const v: Record<string, boolean> = {};
         for (const u of (d.gekozen || []) as string[]) v[u] = true;
         setGekozen(v);
@@ -87,8 +90,8 @@ export default function DevDoorzetten({ slug, id, kaartTitel, onKlaar, onSluit }
         {laden ? <div className="muted" style={{ padding: "12px 0" }}>Bezig met ophalen…</div> : (
           <>
             <label className="dev-veld">
-              <span className="dev-veld-label">Wat moet er gebeuren</span>
-              <input value={taak} onChange={(e) => setTaak(e.target.value)} placeholder="De opdracht zoals de sitebouwer hem leest" />
+              <span className="dev-veld-label">Wat moet er gebeuren <span className="muted">(leeg laten = de kaarttekst gaat mee)</span></span>
+              <input value={taak} onChange={(e) => setTaak(e.target.value)} placeholder={hintTaak || "De opdracht zoals de sitebouwer hem leest"} />
             </label>
 
             <label className="dev-veld">
@@ -121,7 +124,7 @@ export default function DevDoorzetten({ slug, id, kaartTitel, onKlaar, onSluit }
 
             <div className="wp-mail-foot">
               <button type="button" className="ghost-btn small" onClick={onSluit}>Annuleren</button>
-              <button type="button" className="primary-btn small" disabled={bezig || !taak.trim()} onClick={() => void doorzetten()}>
+              <button type="button" className="primary-btn small" disabled={bezig} onClick={() => void doorzetten()}>
                 {bezig ? "Bezig…" : "Zet op de developerlijst"}
               </button>
             </div>

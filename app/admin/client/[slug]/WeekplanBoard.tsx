@@ -260,14 +260,17 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailD
       return;
     }
 
-    setMailAud(aud); setMailInstr(""); setMailLinks({});
+    // De pagina staat standaard aangevinkt: bij elke mail hierover wil je weten
+    // om wélke pagina het gaat, en die link overtypen uit de kaart was precies
+    // het werk dat dit venster moest wegnemen.
+    setMailAud(aud); setMailInstr(""); setMailLinks(t.url ? { pagina: true } : {});
     let devTo = ""; try { devTo = localStorage.getItem("pingwin-dev-email") || ""; } catch { /* geen opslag */ }
     const to = aud === "klant" ? (clientEmail || "") : aud === "dev" ? devTo : "";
     setMailTo(to);
     // Het adres gaat als argument mee. Het stond eerder alleen in de toestand, en
     // die is vlak na setMailTo nog niet bijgewerkt, dus kwam er een leeg adres bij
     // de assistent aan en werd de aanhef "Hoi," in plaats van "Hoi Maarten,".
-    void generateMail(t, aud, "", {}, to);
+    void generateMail(t, aud, "", t.url ? { pagina: true } : {}, to);
   }
 
   // Sluiten bewaart, niet weggooien.

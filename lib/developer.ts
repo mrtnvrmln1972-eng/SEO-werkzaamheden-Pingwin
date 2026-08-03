@@ -98,13 +98,26 @@ export async function docsVoorPagina(slug: string, url: string): Promise<{ label
     uit.push({ label, url: l });
   };
 
+  // De pagina zelf staat vooraan en is de standaardkeuze: de sitebouwer moet
+  // altijd weten wáár de tekst naartoe moet, en die link stond nergens in de
+  // doorgezette taak.
+  voegToe("De pagina", url);
+
   try {
     const { rows } = await sql`
       SELECT naam, drive_link, status, source FROM page_doc_versions
       WHERE client_slug = ${slug} AND url = ${url} AND drive_link IS NOT NULL AND drive_link <> ''
       ORDER BY created_at DESC LIMIT 8`;
+    // Ontdubbeld op BESTANDSNAAM, niet op link. Hetzelfde document komt vaak twee
+    // keer binnen (dezelfde bijlage in twee mails van hetzelfde gesprek), elke
+    // keer met een eigen Drive-link. In de lijst stond hij dan twee keer met
+    // exact dezelfde naam, en dan lijkt het alsof er twee versies zijn.
+    const perNaam = new Set<string>();
     for (const r of rows) {
       const naam = String(r.naam || "Document");
+      const sleutel = naam.trim().toLowerCase();
+      if (perNaam.has(sleutel)) continue;
+      perNaam.add(sleutel);
       const klant = String(r.source || "") === "klant" || String(r.status || "") === "voorstel";
       voegToe(klant ? `${naam} (van de klant)` : naam, String(r.drive_link));
     }
