@@ -3066,6 +3066,19 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
 
+/* ── Werklijst-blok op de takenkaart ──
+   Twee groepjes: bovenaan bekijken (verandert niets), eronder doen (verandert de
+   site of kost tijd). Eerder stond alles op één rij die van vier naar zeven knoppen
+   sprong zodra er een werklijst was, dus je zag nooit twee keer hetzelfde scherm.
+   De knoppen staan nu altijd, uitgeschakeld met uitleg zolang er niets te zien is. */
+.wp-werklijst-doen { margin-top: var(--s-2, 8px); padding-top: var(--s-2, 8px); border-top: 1px solid var(--line, #e6e6e6); }
+.wp-werklijst-groep { font-size: var(--fs-xs, 11px); font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted, #6b7280); margin-right: var(--s-1, 4px); }
+.wp-fase-btn-uit { opacity: 0.45; pointer-events: none; cursor: default; }
+
+/* Dossier en documenten als één blok: "wat is er over deze pagina" is één vraag. */
+.wp-overdeze { border: 1px solid var(--line, #e6e6e6); border-radius: var(--r-md, 10px); padding: var(--s-3, 12px); margin: var(--s-3, 12px) 0; display: flex; flex-direction: column; gap: var(--s-2, 8px); }
+.wp-overdeze-kop { font-size: var(--fs-xs, 10.5px); font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted, #5e6063); }
+
 /* ── Afwerkpagina werklijst (publiek, /share/werklijst/…) ── */
 .wp-werklijst-teller { font-size: var(--fs-xs, 11.5px); font-weight: 700; color: #1c7a3f; background: #eaf5ee; border-radius: var(--r-full, 99px); padding: 2px 10px; margin-left: var(--s-2, 8px); }
 .wl-wrap { max-width: 880px; margin: 0 auto; padding: var(--s-8, 32px) var(--s-4, 16px) var(--s-12, 48px); display: flex; flex-direction: column; gap: var(--s-4, 16px); font-family: inherit; }

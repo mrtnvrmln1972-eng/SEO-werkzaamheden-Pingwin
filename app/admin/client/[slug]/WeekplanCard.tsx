@@ -531,7 +531,16 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
           gebeurd, met de mails en documenten die erbij horen. Zelfde blok als in
           de chat en op de voorgestelde taak, want het leest dezelfde opgeslagen
           alinea. */}
-      {open && t.url && <PaginaDossier slug={slug} url={t.url} />}
+      {/* Dossier en documenten stonden als twee losse blokken op de kaart, met de
+          fase-chips ertussen. Voor Maarten is dat één vraag ("wat is er over deze
+          pagina"), dus het is één blok met twee kopjes geworden. */}
+      {open && t.url && (
+        <div className="wp-overdeze">
+          <div className="wp-overdeze-kop">Over deze pagina</div>
+          <PaginaDossier slug={slug} url={t.url} />
+          <DocVersies slug={slug} url={t.url} />
+        </div>
+      )}
       {open && lijstPunt && (
         <div className="ovc-lijstkeuze">
           <span>Op welke bespreeklijst?</span>
@@ -552,8 +561,6 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
         </div>
       )}
 
-      {/* Documenten: klantversies erin slepen; verwerken is een bewuste klik. */}
-      {open && t.url && <DocVersies slug={slug} url={t.url} />}
 
       {/* Werklijst-sitebouwer-kaart: hier hoort het echte werk te staan, niet
           alleen een omschrijving. Knop, status en het kant-en-klare document. */}
@@ -745,15 +752,26 @@ function WerklijstBlok({ slug, refreshBoard }: { slug: string; refreshBoard: () 
     return d?.status || "idle";
   }
 
-  // Live-controle of WordPress-doorvoer vanaf de kaart.
-  async function actie(soort: "verify" | "meta" | "alt") {
+  // Live-controle of doorvoer vanaf de kaart. "Doorvoeren" is bewust één handeling:
+  // meta's en alt-teksten waren twee losse knoppen, maar dat is Maartens onderscheid
+  // niet. Hij denkt "zet het erop"; welk soort veld het is, is techniek. De twee
+  // stappen draaien dus na elkaar en de meldingen worden samengevoegd.
+  async function actie(soort: "verify" | "doorvoeren") {
     if (actieBusy) return;
     setActieBusy(soort); setActieMsg("");
     try {
-      const url = soort === "verify" ? "/api/admin/dev-worklist/verify" : "/api/admin/dev-worklist/push";
-      const body = soort === "verify" ? { slug } : { slug, wat: soort };
-      const d = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((r) => r.json());
-      setActieMsg(d?.ok ? (d.samenvatting || d.melding || "Klaar.") : (d?.error || "Dat lukte niet; probeer het nog een keer."));
+      if (soort === "verify") {
+        const d = await fetch("/api/admin/dev-worklist/verify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }) }).then((r) => r.json());
+        setActieMsg(d?.ok ? (d.samenvatting || d.melding || "Klaar.") : (d?.error || "Dat lukte niet; probeer het nog een keer."));
+      } else {
+        const delen: string[] = [];
+        for (const wat of ["meta", "alt"] as const) {
+          const d = await fetch("/api/admin/dev-worklist/push", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, wat }) }).then((r) => r.json());
+          const tekst = d?.ok ? (d.samenvatting || d.melding || "") : (d?.error || "");
+          if (tekst) delen.push(`${wat === "meta" ? "Meta's" : "Alt-teksten"}: ${tekst}`);
+        }
+        setActieMsg(delen.length ? delen.join(" · ") : "Er was niets meer om door te voeren.");
+      }
       void haal();
     } catch { setActieMsg("Dat lukte niet; probeer het nog een keer."); }
     finally { setActieBusy(""); }
@@ -776,26 +794,39 @@ function WerklijstBlok({ slug, refreshBoard }: { slug: string; refreshBoard: () 
     void volg();
   }
 
+  // Er is pas iets te bekijken of door te voeren als de werklijst een keer gedraaid
+  // heeft. Vroeger verdwenen die knoppen dan gewoon, waardoor de rij van vier naar
+  // zeven sprong en het scherm onder je handen veranderde. Nu staan ze er altijd,
+  // uitgeschakeld, en vertellen ze zelf wat er eerst moet gebeuren.
+  const klaar = !!shareToken;
+  const nogNiet = "Maak eerst de werklijst; dan valt er pas iets te bekijken.";
+
   return (
     <div className="wp-werklijst">
+      {/* Bekijken: veilig, verandert niets aan de site. */}
       <div className="wp-werklijst-rij">
         <span className="wp-sectie-label" style={{ margin: 0 }}>Werklijst voor de sitebouwer</span>
         {teller && <span className="wp-werklijst-teller">{teller.gedaan}/{teller.totaal} gedaan · {teller.geverifieerd} gecontroleerd</span>}
         <span className="wp-fase-spacer" />
-        <a className="wp-fase-btn wp-fase-btn-primair" href={`/admin/client/${slug}/werklijst`} target="_blank" rel="noreferrer" title="De Pingwin-versie: huidige meta naast ons voorstel, met de knop Voer door in de site">Onze werklijst</a>
-        {shareToken && <a className="wp-fase-btn" href={`/share/werklijst/${shareToken}`} target="_blank" rel="noreferrer" title="De klikbare afwerkpagina voor de sitebouwer (deelbare link, geen inlog nodig)">Voor de sitebouwer</a>}
-        {docLink && <a className="wp-fase-btn wp-fase-doc" href={docLink} target="_blank" rel="noreferrer" title="Hetzelfde overzicht als document">Document</a>}
-        <button type="button" className="wp-fase-btn" disabled={status === "running"} onClick={start}>
-          {status === "running" ? "Bezig… (paar minuten)" : docLink || shareToken ? "Ververs werklijst" : "Maak de werklijst"}
-        </button>
+        <a className={"wp-fase-btn wp-fase-btn-primair" + (klaar ? "" : " wp-fase-btn-uit")} href={klaar ? `/admin/client/${slug}/werklijst` : undefined} target="_blank" rel="noreferrer"
+          title={klaar ? "Onze eigen versie: de huidige meta naast ons voorstel, met de knop Voer door in de site" : nogNiet}>Onze werklijst</a>
+        <a className={"wp-fase-btn" + (klaar ? "" : " wp-fase-btn-uit")} href={klaar ? `/share/werklijst/${shareToken}` : undefined} target="_blank" rel="noreferrer"
+          title={klaar ? "De klikbare afwerkpagina om te delen met de sitebouwer (geen inlog nodig)" : nogNiet}>Voor de sitebouwer</a>
       </div>
-      {shareToken && (
-        <div className="wp-werklijst-rij">
-          <button type="button" className="wp-fase-btn" disabled={!!actieBusy} title="Meet de live pagina's en zet groene gecontroleerd-vinkjes op alles wat er echt goed op staat" onClick={() => void actie("verify")}>{actieBusy === "verify" ? "Controleren…" : "Controleer live"}</button>
-          <button type="button" className="wp-fase-btn" disabled={!!actieBusy} title="Zet alle nieuwe meta-titles en descriptions rechtstreeks in WordPress (site moet gekoppeld zijn via Meta & CTR)" onClick={() => void actie("meta")}>{actieBusy === "meta" ? "Doorvoeren…" : "Zet meta's in WordPress"}</button>
-          <button type="button" className="wp-fase-btn" disabled={!!actieBusy} title="Zet de alt-teksten van unieke afbeeldingen rechtstreeks in WordPress; dubbel gebruikte blijven voor de sitebouwer" onClick={() => void actie("alt")}>{actieBusy === "alt" ? "Doorvoeren…" : "Zet alt-teksten in WordPress"}</button>
-        </div>
-      )}
+      {/* Doen: deze drie veranderen wel iets, of kosten tijd. */}
+      <div className="wp-werklijst-rij wp-werklijst-doen">
+        <span className="wp-werklijst-groep">Doen</span>
+        <button type="button" className="wp-fase-btn" disabled={status === "running" || !!actieBusy}
+          title="Meet alle live pagina's opnieuw en schrijft de nieuwe meta's en alt-teksten; duurt een paar minuten" onClick={start}>
+          {status === "running" ? "Bezig… (paar minuten)" : klaar ? "Ververs werklijst" : "Maak de werklijst"}
+        </button>
+        <button type="button" className="wp-fase-btn" disabled={!klaar || !!actieBusy || status === "running"}
+          title={klaar ? "Zet de nieuwe meta's én alt-teksten rechtstreeks in de site (moet gekoppeld zijn via Meta & CTR). Wat niet automatisch kan, blijft voor de sitebouwer staan." : nogNiet}
+          onClick={() => void actie("doorvoeren")}>{actieBusy === "doorvoeren" ? "Doorvoeren…" : "Voer door in de site"}</button>
+        <button type="button" className="wp-fase-btn" disabled={!klaar || !!actieBusy || status === "running"}
+          title={klaar ? "Meet de live pagina's en zet groene gecontroleerd-vinkjes op alles wat er echt goed op staat" : nogNiet}
+          onClick={() => void actie("verify")}>{actieBusy === "verify" ? "Controleren…" : "Controleer live"}</button>
+      </div>
       {actieMsg && <div className="wp-werklijst-sam">{actieMsg}</div>}
       {status === "running" && <div className="muted">De pagina's worden gemeten en de meta's en alt-teksten geschreven; dit duurt een paar minuten. Je kunt intussen gewoon verder.</div>}
       {resultaat && status === "done" && !actieMsg && <div className="wp-werklijst-sam">{resultaat}</div>}
