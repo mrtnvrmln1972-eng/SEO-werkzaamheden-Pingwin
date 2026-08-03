@@ -407,12 +407,25 @@ export async function zoekMailsVoorPagina(slug: string, url: string): Promise<{ 
     // Eén ronde op de klant zelf (vangt de lopende thread) en per zoekterm een
     // ronde binnen die correspondentie. De quotes horen HIER, want msSearchMail
     // krijgt een complete KQL-uitdrukking.
+    //
+    // De klantronde is bewust RUIM (veertig in plaats van twintig): hij is het
+    // anker waar de rest op leunt. Vindt hij de mail met het pad niet, dan is er
+    // ook geen gesprek om compleet op te halen, en blijft een pagina leeg.
+    //
+    // En er gaat een ronde op de ZOEKTERM ALLEEN mee. De koppeling zat eerst
+    // altijd vast aan het klantadres, maar precies de mails die ertoe doen gaan
+    // vaak níet naar dat adres: jij mailt de contactpersoon rechtstreeks, of de
+    // sitebouwer, en dan komt "info@klant.nl" nergens in de mail voor. Zo'n mail
+    // werd dan alleen gevonden als hij toevallig in een gesprek zat dat al
+    // gekoppeld was. De score en de zeef daarna bepalen of hij echt hierbij
+    // hoort, dus ruimer zoeken kost geen precisie.
     const rondes = [
       `"${klantQuery}"`,
       ...termen.slice(0, 3).map((t) => `"${klantQuery}" AND "${t.term}"`),
+      ...termen.slice(0, 2).map((t) => `"${t.term}"`),
     ];
     for (const q of rondes) {
-      const res = await msSearchMail(q, status.account || "", 20, klantQuery).catch(() => null);
+      const res = await msSearchMail(q, status.account || "", 40, klantQuery).catch(() => null);
       for (const m of res || []) if (!kandidaten.has(m.id)) kandidaten.set(m.id, m);
     }
   }
