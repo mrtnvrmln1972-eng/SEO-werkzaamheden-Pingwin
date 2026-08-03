@@ -3378,3 +3378,11 @@ a.pd-chip-link:hover { background: var(--gray-light); }
 }
 .pd-ververs:hover:not(:disabled) { background: var(--orange-light); color: var(--orange-dark); }
 .pd-ververs:disabled { opacity: .5; cursor: default; }
+.pd-melding {
+  margin-top: var(--s-2);
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r-sm);
+  background: var(--brand-teal-light);
+  color: #0B7C91;
+  font-size: var(--fs-sm); line-height: var(--lh-sm);
+}

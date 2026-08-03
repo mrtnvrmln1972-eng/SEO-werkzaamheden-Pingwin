@@ -340,6 +340,30 @@ export async function wegMail(slug: string, id: number): Promise<void> {
   await sql`UPDATE page_emails SET bron = 'weg' WHERE client_slug = ${slug} AND id = ${id}`;
 }
 
+/**
+ * Alle mails die aan een pagina van deze klant hangen, per bericht-id.
+ * Gebruikt door de chat: een mail die aan een pagina is vastgepind hoort altijd
+ * mee te wegen, ook als hij ver buiten de laatste tien valt. Precies daar zat
+ * het gat: een thread van twee maanden geleden met de teruggestuurde teksten
+ * verdween uit beeld zodra er nieuwere mail binnenkwam.
+ */
+export async function getGekoppeldeMails(slug: string): Promise<Map<string, { url: string; bron: MailBron; score: number }>> {
+  await ensureSchema();
+  await ensureTable();
+  const { rows } = await sql`
+    SELECT message_id, url, bron, score FROM page_emails
+    WHERE client_slug = ${slug} AND bron <> 'weg'`;
+  const uit = new Map<string, { url: string; bron: MailBron; score: number }>();
+  for (const r of rows) {
+    const id = String(r.message_id || "");
+    const bestaand = uit.get(id);
+    const nieuw = { url: String(r.url || ""), bron: (r.bron as MailBron) || "auto", score: Number(r.score || 0) };
+    // Vastgepind wint van een gewone treffer.
+    if (!bestaand || (nieuw.bron === "pin" && bestaand.bron !== "pin")) uit.set(id, nieuw);
+  }
+  return uit;
+}
+
 /** Eén mail ophalen (voor het binnenhalen van een bijlage). */
 export async function getPaginaMail(slug: string, id: number): Promise<(PaginaMail & { url: string }) | null> {
   await ensureSchema();

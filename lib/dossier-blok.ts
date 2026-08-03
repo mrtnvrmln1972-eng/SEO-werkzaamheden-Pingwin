@@ -86,7 +86,12 @@ function mailChip(m: PaginaMail): string {
     ? (m.bron === "pin" ? `<button type="button" class="pd-knop pd-los" data-mail="${m.id}" title="Niet meer vastpinnen">📌</button>` : "")
     : `<button type="button" class="pd-knop pd-pin" data-mail="${m.id}" title="Deze mail hoort hier: vastpinnen">📌</button>` +
       `<button type="button" class="pd-knop pd-weg" data-mail="${m.id}" title="Hoort hier niet, en vraag het niet nog eens">×</button>`;
-  return `<span class="pd-chip${vast ? " pd-vast" : " pd-gok"}">${kern}${acties}</span>`;
+  // Zitten er teksten bij? Dan kun je ze met één klik als klantversie klaarzetten
+  // in het documentenvak dat er al is.
+  const bijlageKnop = m.heeftBijlagen
+    ? `<button type="button" class="pd-knop pd-bijlage" data-mail="${m.id}" title="Zet de tekstbijlagen uit deze mail klaar als klantversie">↓</button>`
+    : "";
+  return `<span class="pd-chip${vast ? " pd-vast" : " pd-gok"}">${kern}${bijlageKnop}${acties}</span>`;
 }
 
 function docChip(d: DossierDoc, klant = false): string {

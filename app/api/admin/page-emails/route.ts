@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { guardSlug } from "../../../../lib/admin-scope";
-import { getPaginaMails, zoekMailsVoorPagina, pinMail, losMail, wegMail } from "../../../../lib/page-emails";
+import { getPaginaMails, getPaginaMail, zoekMailsVoorPagina, pinMail, losMail, wegMail } from "../../../../lib/page-emails";
+import { msListAttachments, msGetAttachment } from "../../../../lib/ms-graph";
+import { leesAangeleverdDocument, proposeVersion } from "../../../../lib/doc-versions";
+import { logActiviteit } from "../../../../lib/activiteit";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -38,6 +41,41 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, ...r, mails: await getPaginaMails(slug, url) });
     }
     if (!id) return NextResponse.json({ ok: false, error: "Mail is verplicht." }, { status: 400 });
+
+    // Tekstbijlagen uit deze mail als klantversie klaarzetten. Ze verschijnen
+    // daarna in het bestaande Documenten-blokje op de kaart, met de knoppen
+    // Verwerk en Negeer die er al zijn. Geen nieuw besluitscherm dus.
+    if (actie === "bijlage") {
+      const m = await getPaginaMail(slug, id);
+      if (!m) return NextResponse.json({ ok: false, error: "Mail niet gevonden." }, { status: 404 });
+      const lijst = await msListAttachments(m.messageId);
+      if (lijst === null) return NextResponse.json({ ok: false, error: "De mailkoppeling staat uit of de mail is niet meer op te halen." }, { status: 502 });
+      const bruikbaar = lijst.filter((a) => /\.(docx|pdf|txt|md)$/i.test(a.naam));
+      if (!bruikbaar.length) return NextResponse.json({ ok: false, error: "Deze mail heeft geen tekstbijlage." }, { status: 400 });
+
+      const klaar: string[] = [];
+      const mislukt: string[] = [];
+      for (const a of bruikbaar) {
+        const bin = await msGetAttachment(m.messageId, a.id);
+        if (!bin) { mislukt.push(a.naam); continue; }
+        const lees = await leesAangeleverdDocument(slug, m.url, bin.naam, bin.buffer);
+        if (!lees.ok || !lees.tekst) { mislukt.push(`${a.naam} (${lees.error || "onleesbaar"})`); continue; }
+        await proposeVersion(slug, m.url, bin.naam, lees.tekst, lees.driveLink || "");
+        klaar.push(a.naam);
+        await logActiviteit({
+          slug, soort: "copy", bron: "mail-bijlage", bronId: `${m.messageId}:${a.id}`,
+          url: m.url, wie: "Pingwin", zichtbaar: false,
+          intern: `Klantversie uit de mail van ${m.vanNaam || m.vanAdres}: ${a.naam}`,
+          bewijs: m.webLink || m.superhumanLink || null,
+        });
+      }
+      return NextResponse.json({
+        ok: klaar.length > 0,
+        klaar, mislukt,
+        error: klaar.length ? undefined : `Geen enkele bijlage kon ingelezen worden. ${mislukt.join("; ")}`,
+      });
+    }
+
     if (actie === "pin") await pinMail(slug, id);
     else if (actie === "los") await losMail(slug, id);
     else if (actie === "weg") await wegMail(slug, id);

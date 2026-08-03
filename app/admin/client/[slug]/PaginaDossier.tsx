@@ -21,6 +21,7 @@ export default function PaginaDossier({ slug, url, compact = false }: {
   const [html, setHtml] = useState("");
   const [staat, setStaat] = useState<"laden" | "klaar" | "leeg" | "fout">("laden");
   const [bezig, setBezig] = useState(false);
+  const [melding, setMelding] = useState("");
   const doosRef = useRef<HTMLDivElement>(null);
 
   const laad = useCallback(async () => {
@@ -34,19 +35,26 @@ export default function PaginaDossier({ slug, url, compact = false }: {
 
   useEffect(() => { void laad(); }, [laad]);
 
-  // Een mail vastpinnen, losmaken of wegklikken. De knopjes zitten in de HTML
-  // die de server maakt, dus we vangen de klik hier op één plek af.
-  async function mailActie(actie: "pin" | "los" | "weg", id: number) {
+  // Een mail vastpinnen, losmaken, wegklikken, of de bijlagen eruit halen. De
+  // knopjes zitten in de HTML die de server maakt, dus we vangen de klik hier op
+  // één plek af.
+  async function mailActie(actie: "pin" | "los" | "weg" | "bijlage", id: number) {
     if (bezig) return;
     setBezig(true);
+    setMelding("");
     try {
       const d = await fetch("/api/admin/page-emails", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ slug, url, actie, id }),
       }).then((r) => r.json());
+      if (actie === "bijlage") {
+        setMelding(d?.ok
+          ? `Klaargezet als klantversie: ${(d.klaar || []).join(", ")}. Je verwerkt hem hieronder bij Documenten.`
+          : d?.error || "De bijlagen konden niet ingelezen worden.");
+      }
       if (d?.ok) await laad();
-    } catch { /* stil: de knop doet het gewoon de volgende keer */ }
+    } catch { setMelding("Dat lukte niet. Probeer het nog een keer."); }
     finally { setBezig(false); }
   }
 
@@ -78,11 +86,15 @@ export default function PaginaDossier({ slug, url, compact = false }: {
         e.stopPropagation();
         const id = Number(el.dataset.mail || 0);
         if (!id) return;
-        const actie = el.classList.contains("pd-pin") ? "pin" : el.classList.contains("pd-los") ? "los" : "weg";
+        const actie = el.classList.contains("pd-pin") ? "pin"
+          : el.classList.contains("pd-los") ? "los"
+          : el.classList.contains("pd-bijlage") ? "bijlage"
+          : "weg";
         void mailActie(actie, id);
       }}
     >
       <div dangerouslySetInnerHTML={{ __html: html }} />
+      {melding && <div className="pd-melding">{melding}</div>}
       {!compact && (
         <div className="pd-voet">
           <button type="button" className="pd-ververs" disabled={bezig} onClick={() => void ververs()}

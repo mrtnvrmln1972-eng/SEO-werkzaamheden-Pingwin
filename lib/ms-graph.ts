@@ -246,6 +246,35 @@ export async function msSearchClientEmails(query: string, account: string, limit
   return msSearchMail(query, account, limit, query);
 }
 
+// ── Bijlagen bij een mail ──
+// Klanten sturen hun geredigeerde teksten als bijlage terug. Die gingen tot nu
+// toe volledig verloren: de chat kreeg ze niet te zien en het versie-archief
+// evenmin. Hiermee kan een tekstbijlage als klantversie bij de pagina belanden.
+export type MailBijlage = { id: string; naam: string; type: string; grootte: number };
+
+export async function msListAttachments(messageId: string): Promise<MailBijlage[] | null> {
+  const token = await msAccessToken();
+  if (!token) return null;
+  const url = `https://graph.microsoft.com/v1.0/me/messages/${encodeURIComponent(messageId)}/attachments?$select=id,name,contentType,size,isInline`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) return null;
+  const j = (await res.json()) as { value?: { id?: string; name?: string; contentType?: string; size?: number; isInline?: boolean }[] };
+  return (j.value || [])
+    .filter((a) => !a.isInline && a.name)
+    .map((a) => ({ id: a.id || "", naam: a.name || "", type: a.contentType || "", grootte: Number(a.size || 0) }));
+}
+
+export async function msGetAttachment(messageId: string, attachmentId: string): Promise<{ naam: string; buffer: Buffer } | null> {
+  const token = await msAccessToken();
+  if (!token) return null;
+  const url = `https://graph.microsoft.com/v1.0/me/messages/${encodeURIComponent(messageId)}/attachments/${encodeURIComponent(attachmentId)}`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) return null;
+  const j = (await res.json()) as { name?: string; contentBytes?: string };
+  if (!j.contentBytes) return null;
+  return { naam: j.name || "bijlage", buffer: Buffer.from(j.contentBytes, "base64") };
+}
+
 function sanitizeOutgoing(html: string): string {
   return html
     .replace(/<\s*script[\s\S]*?<\s*\/\s*script\s*>/gi, "")

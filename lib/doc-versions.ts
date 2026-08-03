@@ -5,7 +5,9 @@ import { getClientBySlug } from "./clients";
 import { getPageDocOutputs, savePageDocOutput, getPageDriveFolder } from "./site-urls";
 import { callClaude, LIGHT_MODEL } from "./anthropic";
 import { buildPingwinDoc, type DocSection, type DocBlock } from "./pingwin-docx";
-import { uploadDocx } from "./drive";
+import { uploadDocx, uploadEnConverteer, readDriveDoc } from "./drive";
+
+const DOCX_MIME_IN = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 // ═══════════════════════════════════════════════════════════
 // DOCUMENTVERSIES (archief + geldende versie, zonder ooit iets te verliezen)
@@ -117,6 +119,57 @@ export async function registerGeneratedVersion(slug: string, url: string, kind: 
 export type DropProposal = {
   id: number; kind: string; kindLabel: string; naam: string; vergelijking: string; samenvatting: string;
 };
+
+// ── Aangeleverd bestand omzetten naar tekst ──
+// Eén plek voor alle manieren waarop een document binnenkomt: gesleept in het
+// dashboard, of als bijlage bij een mail van de klant. Platte tekst gaat direct;
+// .docx wordt bewaard zoals hij is en apart als leeskopie omgezet; een pdf kan
+// alleen via de omzetting (Drive haalt de tekst eruit).
+//
+// Pdf staat hier bewust bij: klanten sturen hun geredigeerde teksten vaak als
+// pdf terug, en zonder dit kon het dashboard juist dát bestand niet lezen.
+export async function leesAangeleverdDocument(
+  slug: string,
+  url: string,
+  naam: string,
+  buf: Buffer,
+): Promise<{ ok: boolean; tekst?: string; driveLink?: string; error?: string }> {
+  if (/\.(txt|md|json|csv)$/i.test(naam)) {
+    const tekst = buf.toString("utf8");
+    return tekst.trim() ? { ok: true, tekst, driveLink: "" } : { ok: false, error: "Het bestand is leeg." };
+  }
+
+  const isDocx = /\.docx$/i.test(naam);
+  const isPdf = /\.pdf$/i.test(naam);
+  if (!isDocx && !isPdf) {
+    return { ok: false, error: "Dit bestandstype kan ik nog niet lezen. Gebruik .docx, .pdf, .txt of .md." };
+  }
+
+  const folder = await getPageDriveFolder(slug, url).catch(() => null);
+  if (!folder?.folderId) {
+    return { ok: false, error: "Deze pagina heeft nog geen Drive-map; koppel die eerst (tab Pagina's)." };
+  }
+  const datum = new Date().toISOString().slice(0, 10);
+
+  try {
+    if (isDocx) {
+      // Origineel onaangetast bewaren, en een omgezette kopie uitlezen.
+      const up = await uploadDocx(folder.folderId, `Aangeleverd-${datum}-${naam}`, buf);
+      const lees = await uploadEnConverteer(folder.folderId, `Leeskopie-${datum}-${naam}`, buf, DOCX_MIME_IN);
+      const read = await readDriveDoc(lees.id, 60000);
+      return read.ok && (read.text || "").trim()
+        ? { ok: true, tekst: read.text || "", driveLink: up.link }
+        : { ok: false, error: "Kon geen leesbare tekst uit het Word-bestand halen." };
+    }
+    const lees = await uploadEnConverteer(folder.folderId, `Aangeleverd-${datum}-${naam}`, buf, "application/pdf");
+    const read = await readDriveDoc(lees.id, 60000);
+    return read.ok && (read.text || "").trim()
+      ? { ok: true, tekst: read.text || "", driveLink: lees.link }
+      : { ok: false, error: "Kon geen leesbare tekst uit de pdf halen (mogelijk een scan zonder tekstlaag)." };
+  } catch (e) {
+    return { ok: false, error: "Inlezen mislukte: " + (e as Error).message };
+  }
+}
 
 export async function proposeVersion(slug: string, url: string, naam: string, tekst: string, driveLink: string, kindHint?: string): Promise<DropProposal> {
   await ensureSchema();
