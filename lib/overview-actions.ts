@@ -225,6 +225,11 @@ export function splitsPerPagina<T extends SplitsbareTaak>(taken: T[], bekendeUrl
 
     // 1. Letterlijke paden, eerst in de titel en anders in de achtergrond.
     let gevonden = bekendeUrls.filter((u) => { const p = padVanUrl(u); return p.length > 1 && titel.includes(p); });
+    // Staat er precies ÉÉN pad in de titel, dan is de kaart al aan één pagina
+    // toegewezen en blijft hij dat. De achtergrondtekst noemt bijna altijd ook de
+    // zusterpagina's, dus zonder deze rem zou een net gesplitste kaart bij elke
+    // volgende ronde opnieuw uiteenvallen.
+    if (gevonden.length === 1) { uit.push(t); continue; }
     if (gevonden.length < 2) {
       const inTekst = bekendeUrls.filter((u) => { const p = padVanUrl(u); return p.length > 1 && achtergrond.includes(p); });
       if (inTekst.length >= 2) gevonden = inTekst;

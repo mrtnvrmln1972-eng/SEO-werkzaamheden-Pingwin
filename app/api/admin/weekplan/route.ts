@@ -3,6 +3,7 @@ import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
 import { getWeekplan, updateWeekplanTask, deleteWeekplanTask, isoWeek, setWeekplanNaarDev } from "../../../../lib/weekplan";
 import { getWeekplanPages } from "../../../../lib/overview";
+import { splitsBestaandeKaarten } from "../../../../lib/weekplan-splitsen";
 import { urlKey } from "../../../../lib/url-key";
 
 export const runtime = "nodejs";
@@ -20,6 +21,12 @@ export async function GET(req: NextRequest) {
   // De pijplijn-stand per pagina reist mee, zodat elke projectkaart in het bord
   // live de fases en de volgende stap toont. Taken en paginastand laden PARALLEL
   // (sneller bord); daarna filteren op de pagina's die echt in het bord staan.
+  // Eerst de opruimstap: kaarten die over meerdere pagina's gaan alsnog per
+  // pagina zetten. Dit geldt met terugwerkende kracht, want de splitser draaide
+  // tot nu toe alleen bij het aanmaken en de kaarten die er al stonden bleven
+  // dubbel. Doet niets als er niets te splitsen valt.
+  await splitsBestaandeKaarten(slug).catch(() => ({ gesplitst: 0, toegevoegd: 0 }));
+
   const [tasks, allePages] = await Promise.all([
     getWeekplan(slug),
     getWeekplanPages(slug).catch(() => ({} as Awaited<ReturnType<typeof getWeekplanPages>>)),

@@ -170,6 +170,18 @@ export async function updateWeekplanToelichting(slug: string, id: number, toelic
   await sql`UPDATE client_weekplan SET toelichting = ${toelichting.trim().slice(0, 4000)}, updated_at = now() WHERE client_slug = ${slug} AND id = ${id}`;
 }
 
+// De titel (en de pagina) van een bestaande kaart bijstellen. Gebruikt door de
+// terugwerkende splitsing: een kaart die over twee pagina's ging wordt de kaart
+// van één pagina, met de opdracht ongewijzigd.
+export async function setWeekplanKaart(slug: string, id: number, kaart: { taak: string; url?: string }): Promise<void> {
+  await ensureSchema();
+  const url = (kaart.url || "").trim().slice(0, 400) || null;
+  await sql`
+    UPDATE client_weekplan
+    SET taak = ${kaart.taak.trim().slice(0, 300)}, url = COALESCE(${url}, url), updated_at = now()
+    WHERE client_slug = ${slug} AND id = ${id}`;
+}
+
 export async function deleteWeekplanTask(slug: string, id: number): Promise<void> {
   await ensureSchema();
   await sql`DELETE FROM client_weekplan WHERE client_slug = ${slug} AND id = ${id}`;
