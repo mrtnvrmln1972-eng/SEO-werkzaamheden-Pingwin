@@ -256,6 +256,42 @@ function faseVanRegel(regel: string): { fase: CardFaseKey; tekst: string } | nul
   return null;
 }
 
+// ═══════════════════════════════════════════════════════════
+// MAILADMINISTRATIE HOORT NIET IN "AANPAK EN AFSPRAKEN"
+// ═══════════════════════════════════════════════════════════
+// De mailgeschiedenis stond twee keer op de kaart: bevroren in de geschreven
+// tekst ("Mail van 31-7: Maarten presenteerde het dashboard") en levend in "Waar
+// deze pagina staat", dat zichzelf bijhoudt uit de mailbox. De bevroren versie is
+// degene die veroudert en je verkeerd informeert, dus die hoort daar weg.
+//
+// Het verschil dat telt is niet "gaat het over mail", maar wáár de verwijzing
+// staat:
+//
+//   "Mail van 31-7: Maarten presenteerde ..."       → begint als administratie:
+//                                                     dát er gemaild is. Archief.
+//   "Ahren (mail van 3-8) bevestigt: geen tabel"    → een besluit, met de mail als
+//                                                     bron. Blijft, zonder de bron.
+//
+// Wat overblijft onder Aanpak en afspraken is dus alleen wat we gaan doen en wat
+// ons tegenhoudt ("Wacht op reply Emre voor copy kan starten"). Weggooien doen we
+// nooit: de administratie zakt naar Eerdere notities.
+
+// Begint de regel met een mailverwijzing? Dan is het een logregel.
+const MAILKOP = /^(?:mail(?:tje)?\s+(?:van\s+)?(?:[a-zà-ÿ]+\s+(?:aan\s+[a-zà-ÿ]+\s+)?)??\d{1,2}[-/]\d{1,2}(?:[-/]\d{2,4})?|mail(?:tje)?\s+van\s+\d{1,2}\s+[a-zà-ÿ]+)\s*[:.-]\s*/i;
+
+function isMailLogregel(regel: string): boolean {
+  return MAILKOP.test(regel.replace(/^-\s*/, "").trim());
+}
+
+// Een besluit dat toevallig naar een mail verwijst: de verwijzing eruit, het
+// besluit blijft staan. De datum zelf staat al in de tijdlijn eronder.
+function stripMailBron(regel: string): string {
+  return regel
+    .replace(/\s*\((?:zie\s+)?mail(?:tje)?\s+(?:van\s+)?[^)]*\)\s*/i, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 // Communicatie- en referentieregels zijn geen taken: die horen als geheugensteun
 // onder Afspraken en herkomst (mail naar de klant gaat via de kaart-knoppen).
 function isCommunicatie(regel: string): boolean {
@@ -332,6 +368,22 @@ export function splitCardInfo(toelichting: string, taak?: string, herkomst?: Her
     else echtWerk.push(r);
   }
   info.overig = echtWerk;
+
+  // Mailadministratie uit Aanpak en afspraken: de tijdlijn eronder houdt zichzelf
+  // bij en is dus altijd actueel; deze regels waren dat na een dag al niet meer.
+  // Een besluit dat naar een mail verwijst blijft staan, alleen zonder de bron.
+  const afsprakenSchoon: string[] = [];
+  for (const r of info.afspraken) {
+    if (isMailLogregel(r)) info.rest.push(r);
+    else afsprakenSchoon.push(stripMailBron(r));
+  }
+  info.afspraken = afsprakenSchoon;
+  const overigSchoon: string[] = [];
+  for (const r of info.overig) {
+    if (isMailLogregel(r)) info.rest.push(r);
+    else overigSchoon.push(stripMailBron(r));
+  }
+  info.overig = overigSchoon;
 
   info.achtergrond = ontdubbel(info.achtergrond);
   info.afspraken = ontdubbel(info.afspraken);
