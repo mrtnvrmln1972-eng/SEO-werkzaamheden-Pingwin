@@ -76,6 +76,46 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailD
   const [dropKey, setDropKey] = useState<number | null>(null);
   // Boven welke kaart komt de gesleepte kaart terecht (herordenen binnen een week).
   const [dropVoor, setDropVoor] = useState<number | null>(null);
+  // Zelf een taak toevoegen: in welke weekkolom staat het formuliertje open.
+  const [nieuwVoor, setNieuwVoor] = useState<number | null>(null);
+  const [nieuwTaak, setNieuwTaak] = useState("");
+  const [nieuwUrl, setNieuwUrl] = useState("");
+  const [nieuwWie, setNieuwWie] = useState("SEO");
+  const [nieuwBezig, setNieuwBezig] = useState(false);
+  const [nieuwFout, setNieuwFout] = useState("");
+  // De pagina's van deze klant, om uit te kiezen bij een nieuwe taak. Zonder pagina
+  // werkt een kaart ook, maar mét pagina krijgt hij de fases, het dossier en de mail
+  // erbij; dat is het verschil tussen een geheugensteuntje en een werkende kaart.
+  const [paginas, setPaginas] = useState<string[]>([]);
+  useEffect(() => {
+    let leeft = true;
+    fetch(`/api/admin/urls?slug=${encodeURIComponent(slug)}`)
+      .then((r) => r.json())
+      .then((d) => { if (leeft && d?.ok) setPaginas(((d.urls || []) as { url: string }[]).map((u) => u.url).filter(Boolean)); })
+      .catch(() => {});
+    return () => { leeft = false; };
+  }, [slug]);
+
+  async function maakTaak(c: { year: number; week: number; monday: Date }) {
+    const taak = nieuwTaak.trim();
+    if (!taak || nieuwBezig) return;
+    setNieuwBezig(true); setNieuwFout("");
+    try {
+      // De server rekent in "over hoeveel weken", dus dat leiden we af uit de
+      // maandag van deze kolom ten opzichte van die van de huidige week.
+      const nuMaandag = current ? mondayOfISOWeek(current.year, current.week) : c.monday;
+      const seq = Math.max(1, Math.round((c.monday.getTime() - nuMaandag.getTime()) / (7 * 24 * 3600 * 1000)) + 1);
+      const d = await fetch("/api/admin/weekplan/add", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, taak, url: nieuwUrl.trim() || undefined, wie: nieuwWie, week: seq }),
+      }).then((r) => r.json());
+      if (d?.ok) {
+        setNieuwTaak(""); setNieuwUrl(""); setNieuwVoor(null);
+        await load();
+      } else setNieuwFout(d?.error || "Toevoegen lukte niet.");
+    } catch { setNieuwFout("Toevoegen lukte niet."); }
+    finally { setNieuwBezig(false); }
+  }
   const [openCard, setOpenCard] = useState<number | null>(null);
   // "Mail vanuit de kaart": de AI schrijft een concept uit de kaart-achtergrond;
   // jij kiest de ontvanger, stuurt eventueel een instructie mee en verstuurt zelf.
@@ -372,7 +412,7 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailD
     return (
       <div className="cockpit-card wp-empty">
         <div className="ck-section-head"><span>Weekplanning</span></div>
-        <div className="muted ov-hint">Nog geen kaarten. Spar eerst in een onderwerp bij de bird&rsquo;s eye, klik dan op &ldquo;Trek de conclusie&rdquo; en daarna op &ldquo;Welke taken volgen hieruit?&rdquo;. Je krijgt een voorstel dat je zelf aanvinkt; de projectkaarten verschijnen hier per week.</div>
+        <div className="muted ov-hint">Nog geen kaarten. Klik op het plusje in een weekkop om er zelf een toe te voegen. Of spar eerst in een onderwerp bij de bird&rsquo;s eye, klik dan op &ldquo;Trek de conclusie&rdquo; en daarna op &ldquo;Welke taken volgen hieruit?&rdquo;; je krijgt dan een voorstel dat je zelf aanvinkt.</div>
       </div>
     );
   }
@@ -405,6 +445,9 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailD
 
   return (
     <div className="cockpit-card wp-wrap">
+      {/* De pagina's om uit te kiezen bij een nieuwe taak. Typen mag ook; de lijst
+          is een hulpmiddel, geen keurslijf. */}
+      <datalist id="wp-paginas">{paginas.slice(0, 600).map((u) => <option key={u} value={u} />)}</datalist>
       <div className="wp-intro">
         <span className="ovc-icontile" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M8 3v4M16 3v4M3 10h18" /><path d="M7 14h2M11 14h2M15 14h2M7 18h2M11 18h2" /></svg>
@@ -447,8 +490,41 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailD
               <span className="wp-col-wk">Week {c.week}</span>
               {c.isCurrent && <span className="wp-col-nu">nu</span>}
               <span className="wp-col-dates">{dm(c.monday)} – {dm(c.sunday)}</span>
+              {/* Zelf een taak beginnen. Kaarten konden alleen ontstaan uit een
+                  bird's eye-gesprek, dus een klus die je gewoon even wilt vastleggen
+                  moest je eerst ergens uitpraten. Het plusje staat in de weekkop, dan
+                  is de week al gekozen op het moment dat je klikt. */}
+              <button type="button" className="wp-col-plus"
+                title={`Zelf een taak toevoegen aan week ${c.week}`}
+                onClick={() => { setNieuwVoor(nieuwVoor === c.key ? null : c.key); setNieuwFout(""); }}>+</button>
               <svg className="wp-col-icoon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M8 3v4M16 3v4M3 10h18" /></svg>
             </div>
+            {nieuwVoor === c.key && (
+              <div className="wp-nieuw">
+                <input className="wp-nieuw-taak" value={nieuwTaak} autoFocus
+                  placeholder="Wat moet er gebeuren?"
+                  onChange={(e) => setNieuwTaak(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && nieuwTaak.trim()) void maakTaak(c); if (e.key === "Escape") setNieuwVoor(null); }} />
+                <input className="wp-nieuw-url" value={nieuwUrl} list="wp-paginas"
+                  placeholder="Over welke pagina? (mag leeg)"
+                  onChange={(e) => setNieuwUrl(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && nieuwTaak.trim()) void maakTaak(c); if (e.key === "Escape") setNieuwVoor(null); }} />
+                <div className="wp-nieuw-rij">
+                  <select value={nieuwWie} onChange={(e) => setNieuwWie(e.target.value)} title="Wie pakt dit op?">
+                    <option value="SEO">SEO</option>
+                    <option value="Dev">Sitebouwer</option>
+                    <option value="Klant">Klant</option>
+                  </select>
+                  <span className="wp-fase-spacer" />
+                  <button type="button" className="wp-fase-btn" onClick={() => setNieuwVoor(null)}>Annuleren</button>
+                  <button type="button" className="wp-fase-btn wp-fase-btn-primair"
+                    disabled={!nieuwTaak.trim() || nieuwBezig} onClick={() => void maakTaak(c)}>
+                    {nieuwBezig ? "Bezig…" : "Toevoegen"}
+                  </button>
+                </div>
+                {nieuwFout && <div className="wp-doc-fout">{nieuwFout}</div>}
+              </div>
+            )}
             <div className="wp-col-body">{byKey(c.key).map(renderCard)}</div>
           </div>
         ))}

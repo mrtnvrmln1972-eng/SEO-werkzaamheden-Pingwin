@@ -3830,3 +3830,23 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .pd-koppel-van { font-weight: 700; color: var(--dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pd-koppel-onderwerp { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pd-koppel-datum { color: var(--gray); font-size: var(--fs-xs); white-space: nowrap; }
+
+/* ── Zelf een taak toevoegen in de weekplanning ──
+   Kaarten konden alleen ontstaan uit een bird's eye-gesprek, dus een klus die je
+   gewoon even wilt vastleggen moest je eerst ergens uitpraten. Het plusje staat in
+   de weekkop, dan is de week al gekozen op het moment dat je klikt. */
+.wp-col-plus {
+  width: 20px; height: 20px; line-height: 1; display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border); background: #fff; color: var(--gray);
+  border-radius: var(--r-sm); font-size: 15px; font-weight: 700; cursor: pointer; padding: 0;
+}
+.wp-col-plus:hover { border-color: var(--orange); color: var(--orange); background: var(--orange-light); }
+.wp-nieuw { display: flex; flex-direction: column; gap: var(--s-2); padding: var(--s-3); margin-bottom: var(--s-2);
+  background: #fff; border: 1px solid var(--orange); border-radius: var(--r-md); }
+.wp-nieuw input, .wp-nieuw select {
+  font: inherit; font-size: var(--fs-sm); padding: 6px var(--s-2);
+  border: 1px solid var(--border); border-radius: var(--r-sm); background: #fff; color: inherit; width: 100%;
+}
+.wp-nieuw-taak { font-weight: 600; }
+.wp-nieuw-rij { display: flex; align-items: center; gap: var(--s-2); }
+.wp-nieuw-rij select { width: auto; }
