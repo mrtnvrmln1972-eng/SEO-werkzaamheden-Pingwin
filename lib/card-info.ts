@@ -37,7 +37,42 @@ function escapeHtml(s: string): string {
 // mail bij hoorde: dan zag je een oranje woordje dat nergens heen ging. Dat gebeurde
 // precies wanneer de assistent een mail noemde die niet in het postvak van deze
 // klant zit. Kennen we de mail niet, dan blijft het gewone tekst.
-export type MailLinks = Record<string, string>;   // "5-7" of "5-7-2026" → link
+// Per datum ALLE mails van die dag, niet één. Er stond eerder één link per datum,
+// dus bij meerdere mails op dezelfde dag won willekeurig de eerste of de laatste
+// (de korte sleutel hield de eerste, de lange overschreef met de laatste). Een zin
+// als "Ahren (mail van 3-8) bevestigt" kwam daardoor uit bij de mail van iemand
+// anders die dag. Nu kiezen we op naam, en bij twijfel liever géén link dan een
+// verkeerde: de datum blijft dan gewone tekst.
+export type MailKandidaat = { link: string; van: string; onderwerp: string };
+export type MailLinks = Record<string, string | MailKandidaat[]>;   // "5-7" of "5-7-2026"
+
+// Welke mail van die dag bedoelt deze zin? De zin noemt bijna altijd de persoon
+// ("Ahren (mail van 3-8) bevestigt", "Mail van 31-7: Maarten presenteerde"). Die
+// naam is het enige betrouwbare onderscheid dat we hebben.
+function namenVan(k: MailKandidaat): string[] {
+  // Alleen de voornaam/achternaam-delen, geen mailadres-staart: in de zin staat
+  // "Ahren", niet "ahren@onedayclinic.nl".
+  return (k.van || "").split(/[<>@\s,;.]+/).map((n) => n.replace(/[^a-zà-ÿ-]/gi, "")).filter((n) => n.length > 2);
+}
+
+function kiesMail(kandidaten: string | MailKandidaat[], zin: string, voor?: string): string {
+  if (typeof kandidaten === "string") return kandidaten;
+  if (!kandidaten.length) return "";
+  if (kandidaten.length === 1) return kandidaten[0].link;
+  // "Mail Maarten aan Emre 31-7" gaat over de mail VAN Maarten. De naam vlak achter
+  // "mail" is de afzender, dus die telt zwaarder dan een naam verderop in de zin.
+  const afzender = (voor || "").replace(/^\s*mail(?:tje)?\s+(?:van\s+)?/i, "").split(/\s+aan\s+/i)[0].trim().toLowerCase();
+  if (afzender) {
+    for (const k of kandidaten) {
+      if (namenVan(k).some((n) => n.toLowerCase() === afzender)) return k.link;
+    }
+  }
+  const kaal = zin.toLowerCase();
+  for (const k of kandidaten) {
+    if (namenVan(k).some((n) => kaal.includes(n.toLowerCase()))) return k.link;
+  }
+  return "";   // meerdere mails, geen naam die het uitwijst: geen gok, geen link
+}
 
 // Dezelfde datum in verschillende schrijfwijzen naar één sleutel.
 function datumSleutel(d: number, m: number, j?: number): string {
@@ -79,12 +114,20 @@ function inline(s: string, mails?: MailLinks): string {
   return markeerOudeCijfers(escapeHtml(s)
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
     .replace(/\*/g, ""))
-    .replace(/\b([Mm]ail(?:tje)?(?:\s+van)?\s+)(\d{1,2}[-/]\d{1,2}(?:[-/]\d{2,4})?|\d{1,2}\s+(?:januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)(?:\s+\d{2,4})?)/g,
+    // Er stond alleen "mail (van) <datum>". In de praktijk schrijft de assistent
+    // "Mail Emre 25-7-2026" of "Mail Maarten aan Emre 31-7-2026", met de naam tussen
+    // "mail" en de datum, en dan viel de hele verwijzing buiten dit patroon: geen
+    // link, terwijl de mail er wel was. De namen mogen er nu tussen staan; ze helpen
+    // bovendien om de juiste mail van die dag te kiezen.
+    .replace(/\b([Mm]ail(?:tje)?\s+(?:van\s+)?(?:[A-Za-zÀ-ÿ]+\s+(?:aan\s+[A-Za-zÀ-ÿ]+\s+)?)??)(\d{1,2}[-/]\d{1,2}(?:[-/]\d{2,4})?|\d{1,2}\s+(?:januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)(?:\s+\d{2,4})?)/g,
       (heel, voor: string, datum: string) => {
         if (!mails) return heel;
         const k = sleutelUitTekst(datum);
-        const link = k ? (mails[k] || mails[k.split("-").slice(0, 2).join("-")]) : "";
-        if (!link) return heel;   // onbekende mail blijft gewone tekst, geen dode link
+        const treffer = k ? (mails[k] ?? mails[k.split("-").slice(0, 2).join("-")]) : undefined;
+        // De hele zin gaat mee, want daarin staat de naam die uitwijst wélke mail
+        // van die dag bedoeld wordt.
+        const link = treffer ? kiesMail(treffer, s, voor) : "";
+        if (!link) return heel;   // onbekende of dubbelzinnige mail blijft gewone tekst
         return `${voor}<a class="wp-maillink" href="${link}" target="_blank" rel="noreferrer" title="Open deze mail">${datum}</a>`;
       });
 }

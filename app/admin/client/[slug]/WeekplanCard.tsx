@@ -8,7 +8,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { mdToHtml } from "../../../../lib/markdown";
-import { cardInfoHtml, splitCardInfo, eerdereNotitiesHtml, faseSturing, type CardFaseKey } from "../../../../lib/card-info";
+import { cardInfoHtml, splitCardInfo, eerdereNotitiesHtml, faseSturing, type CardFaseKey, type MailLinks } from "../../../../lib/card-info";
 import { linkifyHtml } from "../../../../lib/linkify";
 import { urlKey } from "../../../../lib/url-key";
 import { devLabel } from "../../../../lib/personen";
@@ -90,7 +90,7 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
   onToggleOpen: () => void; onDragStart: () => void; onDragEnd: () => void;
   onStatus: () => void; onRemove: () => void; onMail: (aud: "klant" | "dev") => void;
   onGoToPage?: (url: string) => void; onGoToTab?: (tab: string) => void;
-  onOpenMailDate?: (datum: string) => void; mailLinks?: Record<string, string>; refreshBoard: () => void;
+  onOpenMailDate?: (datum: string) => void; mailLinks?: MailLinks; refreshBoard: () => void;
 }) {
   // Dashboard-deeplinks vanuit een kaart openen in een NIEUW browsertabblad,
   // zodat je het bord niet kwijtraakt terwijl je iets uitzoekt.

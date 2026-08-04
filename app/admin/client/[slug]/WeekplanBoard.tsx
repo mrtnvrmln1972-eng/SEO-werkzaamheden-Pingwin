@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { urlKey } from "../../../../lib/url-key";
 import { herzetAanhef } from "../../../../lib/aanhef";
 import WeekplanCard, { type WpTask, type WpPageInfo } from "./WeekplanCard";
+import { type MailKandidaat, type MailLinks } from "../../../../lib/card-info";
 
 type Current = { year: number; week: number };
 
@@ -39,22 +40,28 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailD
   // Datum → link naar de mail, uit de mails van DEZE klant. Zo wordt "mail van 5-7"
   // een echte link, en blijft een mail die we niet kennen gewone tekst in plaats van
   // een oranje woordje dat nergens heen gaat.
-  const [mailDatumLinks, setMailDatumLinks] = useState<Record<string, string>>({});
+  const [mailDatumLinks, setMailDatumLinks] = useState<MailLinks>({});
   useEffect(() => {
     let leeft = true;
     fetch(`/api/admin/mail?slug=${encodeURIComponent(slug)}`)
       .then((r) => r.json())
       .then((d) => {
         if (!leeft || !d?.ok) return;
-        const m: Record<string, string> = {};
-        for (const e of (d.emails || []) as { receivedAt?: string; superhumanLink?: string; webLink?: string }[]) {
+        // Alle mails van een dag bewaren, niet één. Er stond hier m[d1] = m[d1] || link
+        // (eerste wint) naast m[d1-jaar] = link (laatste wint), dus welke mail je kreeg
+        // hing af van de volgorde uit de API. Op een dag met meerdere mails kwam
+        // "mail van 3-8" zo bij de verkeerde afzender uit. De keuze gebeurt nu op naam,
+        // in card-info.ts, met de zin erbij.
+        const m: Record<string, MailKandidaat[]> = {};
+        for (const e of (d.emails || []) as { receivedAt?: string; superhumanLink?: string; webLink?: string; fromAddress?: string; fromName?: string; subject?: string }[]) {
           const link = e.superhumanLink || e.webLink;
           if (!e.receivedAt || !link) continue;
           const dt = new Date(e.receivedAt);
           if (Number.isNaN(dt.getTime())) continue;
+          const kandidaat: MailKandidaat = { link, van: `${e.fromName || ""} ${e.fromAddress || ""}`.trim(), onderwerp: e.subject || "" };
           const d1 = `${dt.getDate()}-${dt.getMonth() + 1}`;
-          m[d1] = m[d1] || link;
-          m[`${d1}-${dt.getFullYear()}`] = link;
+          (m[d1] ||= []).push(kandidaat);
+          (m[`${d1}-${dt.getFullYear()}`] ||= []).push(kandidaat);
         }
         setMailDatumLinks(m);
       })

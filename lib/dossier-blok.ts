@@ -33,15 +33,36 @@ function mailLink(m: PaginaMail): string {
 // datum niet, dan blijft het gewone tekst: nooit een dode link.
 function linkifyMailDatums(html: string, mails: PaginaMail[]): string {
   if (!mails.length) return html;
-  const perDatum = new Map<string, PaginaMail>();
+  // Alle mails van een dag, niet alleen de eerste. Met één mail per datum kwam een
+  // regel als "3 augustus: Ahren analyseerde de pagina" uit bij wie die dag toevallig
+  // het eerst in de lijst stond. Op drukke dagen (28 juli had er zeven) is dat vrijwel
+  // altijd de verkeerde. Welke het is, leiden we af uit de naam in dezelfde regel.
+  const perDatum = new Map<string, PaginaMail[]>();
   for (const m of mails) {
     if (!m.ontvangenOp) continue;
     const d = new Date(m.ontvangenOp);
     if (Number.isNaN(d.getTime())) continue;
     const sleutels = [`${d.getDate()} ${MAAND[d.getMonth()]}`, `${d.getDate()}-${d.getMonth() + 1}`];
-    for (const s of sleutels) if (!perDatum.has(s)) perDatum.set(s, m);
+    for (const s of sleutels) {
+      const lijst = perDatum.get(s) || [];
+      lijst.push(m);
+      perDatum.set(s, lijst);
+    }
   }
   if (!perDatum.size) return html;
+
+  // De regel waarin de datum staat noemt bijna altijd de persoon. Geen naam die het
+  // uitwijst: dan liever gewone tekst dan een link naar de verkeerde mail.
+  const kiesUitDag = (kandidaten: PaginaMail[], regel: string): PaginaMail | null => {
+    if (kandidaten.length === 1) return kandidaten[0];
+    const kaal = regel.toLowerCase();
+    for (const m of kandidaten) {
+      const namen = `${m.vanNaam || ""} ${m.vanAdres || ""}`
+        .split(/[<>@\s,;.]+/).map((n) => n.replace(/[^a-zà-ÿ-]/gi, "")).filter((n) => n.length > 2);
+      if (namen.some((n) => kaal.includes(n.toLowerCase()))) return m;
+    }
+    return null;
+  };
 
   const gebruikt = new Set<number>();
   // Alleen buiten bestaande tags en links vervangen.
@@ -51,7 +72,7 @@ function linkifyMailDatums(html: string, mails: PaginaMail[]): string {
     return seg.replace(
       /\b(\d{1,2}\s+(?:januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)|\d{1,2}-\d{1,2})\b/gi,
       (heel) => {
-        const m = perDatum.get(heel.toLowerCase());
+        const m = kiesUitDag(perDatum.get(heel.toLowerCase()) || [], seg);
         const link = m ? mailLink(m) : "";
         if (!m || !link) return heel;
         // Knopjes maar één keer per mail, achter de eerste vermelding.
