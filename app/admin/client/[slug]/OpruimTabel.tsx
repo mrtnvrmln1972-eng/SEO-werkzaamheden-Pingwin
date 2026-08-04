@@ -12,7 +12,7 @@
 // opgeslagen als vaste regel en gaat mee naar de volgende analyse, zodat je een
 // besluit nooit twee keer hoeft te nemen.
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 
 export type RedirectRij = { van: string; naar: string; type?: string; mergeContent?: boolean; verhuizen?: boolean; reden?: string };
 type Regel = { van: string; besluit: "houden" | "redirect" | "genegeerd"; naar: string; notitie: string; doorgevoerd: boolean };
@@ -60,6 +60,22 @@ export default function OpruimTabel({ slug, domain, rijen }: { slug: string; dom
     });
   }, [rijen, regels, filter, toon]);
 
+  // Voor de gegroepeerde weergave: de rijen op volgorde van bestemming, grootste
+  // groep eerst, zodat de plek waar het meeste in opgaat bovenaan staat.
+  const gegroepeerd = useMemo(() => {
+    const per = new Map<string, typeof zichtbaar>();
+    for (const r of zichtbaar) {
+      const d = regels[pad(r.van)]?.naar || pad(r.naar);
+      if (!per.has(d)) per.set(d, []);
+      per.get(d)!.push(r);
+    }
+    return [...per.entries()].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]));
+  }, [zichtbaar, regels]);
+
+  // Alles wat naar dezelfde pagina gaat bij elkaar: alles van Rotterdam onder de
+  // Rotterdam-pagina. Zestig regels op volgorde van binnenkomst zegt niets; per
+  // bestemming zie je meteen welke pagina de winnaar is en wat daar in opgaat.
+  const [groepeer, setGroepeer] = useState(true);
   const doelen = useMemo(() => [...new Set(rijen.map((r) => pad(r.naar)))].sort(), [rijen]);
   const aantalKlaar = rijen.filter((r) => regels[pad(r.van)]?.doorgevoerd).length;
 
@@ -100,6 +116,10 @@ export default function OpruimTabel({ slug, domain, rijen }: { slug: string; dom
             </button>
           ))}
         </div>
+        <button type="button" className={"opr-tab" + (groepeer ? " aan" : "")} onClick={() => setGroepeer(!groepeer)}
+          title="Zet alles wat naar dezelfde pagina gaat bij elkaar, met die doelpagina als kop.">
+          {groepeer ? "Gegroepeerd per doelpagina" : "Alles onder elkaar"}
+        </button>
         <span className="opr-telling">{zichtbaar.length} van {rijen.length} regels{aantalKlaar ? `, ${aantalKlaar} doorgevoerd` : ""}</span>
       </div>
 
@@ -117,7 +137,18 @@ export default function OpruimTabel({ slug, domain, rijen }: { slug: string; dom
             </tr>
           </thead>
           <tbody>
-            {zichtbaar.map((r, i) => {
+            {(groepeer ? gegroepeerd : [["", zichtbaar] as const]).map(([doelKop, rijenIn], gi) => (
+              <Fragment key={doelKop || gi}>
+                {groepeer && (
+                  <tr className="opr-groepkop">
+                    <td colSpan={7}>
+                      <span className="opr-groepkop-label">Gaat op in</span>
+                      <a className="opr-pad opr-doel" href={site(doelKop)} target="_blank" rel="noreferrer">{doelKop}</a>
+                      <span className="opr-groepkop-tel">{rijenIn.length} {rijenIn.length === 1 ? "pagina" : "pagina’s"}</span>
+                    </td>
+                  </tr>
+                )}
+                {rijenIn.map((r, i) => {
               const v = pad(r.van), n = pad(r.naar);
               const reg = regels[v];
               const doel = reg?.naar || n;
@@ -157,6 +188,8 @@ export default function OpruimTabel({ slug, domain, rijen }: { slug: string; dom
                 </tr>
               );
             })}
+              </Fragment>
+            ))}
           </tbody>
         </table>
       </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { mdToHtml } from "../../../../lib/markdown";
+import { linkifyHtml } from "../../../../lib/linkify";
 import OpruimTabel from "./OpruimTabel";
 import OpruimStructuur from "./OpruimStructuur";
 
@@ -27,6 +28,35 @@ function scoreClass(s?: string): string {
   return "laag";
 }
 function num(n?: number): string { return n != null && Number.isFinite(n) ? String(Math.round(n * 10) / 10) : "—"; }
+
+const padVanUrl = (u: string) => { try { return new URL(u).pathname; } catch { return (u || "").trim(); } };
+
+// Wat gebeurt er met deze pagina? Een cluster gaat over ÉÉN zoekwoord, dus een
+// pagina kan hier "verliezer" zijn en tegelijk de winnaar van zijn eigen zoekwoord.
+// /soa-klinieken/soa-test-rotterdam/ verliest van /spoed-soa-test/ maar blijft
+// gewoon staan. Dat stond nergens, waardoor het leek alsof hij op de nominatie
+// stond. De werklijst bepaalt wat er gebeurt; staat een pagina daar niet in, dan
+// gebeurt er niets. Hier lezen we dat af in plaats van het opnieuw te bedenken.
+// Een alinea van acht zinnen leest niet. Staat er nog geen opsomming in, dan maken
+// we er zinnen-per-regel van, zodat het scanbaar wordt in plaats van een muur.
+function alsBullets(tekst: string): string {
+  const t = (tekst || "").trim();
+  if (!t || /^\s*[-*]\s/m.test(t)) return t;              // heeft al bullets
+  const zinnen = t.split(/(?<=[.!?])\s+(?=[A-Z/])/).map((z) => z.trim()).filter(Boolean);
+  return zinnen.length < 2 ? t : zinnen.map((z) => `- ${z}`).join("\n");
+}
+
+type Uitkomst = { tekst: string; cls: string; doel?: string };
+function uitkomstVoor(url: string, winnaar: string, rijen: RedirectMapItem[]): Uitkomst {
+  const pad = padVanUrl(url);
+  const rij = rijen.find((r) => padVanUrl(r.van) === pad);
+  if (rij) return rij.verhuizen
+    ? { tekst: "verhuist naar", cls: "verhuis", doel: rij.naar }
+    : { tekst: "wordt omgeleid naar", cls: "redir", doel: rij.naar };
+  if (padVanUrl(winnaar) === pad) return { tekst: "blijft, wint hier", cls: "keep" };
+  if (rijen.some((r) => padVanUrl(r.naar) === pad)) return { tekst: "blijft, is zelf een doelpagina", cls: "keep" };
+  return { tekst: "blijft staan, geen actie", cls: "keep" };
+}
 
 export default function CannibalPanel({ slug, domain = "" }: { slug: string; domain?: string }) {
   const [state, setState] = useState<State | null>(null);
@@ -230,23 +260,40 @@ export default function CannibalPanel({ slug, domain = "" }: { slug: string; dom
                   </div>
                   <div className="res-table-wrap">
                     <table className="res-table">
-                      <thead><tr><th>Pagina</th><th>Rol</th><th>Positie</th><th>Clicks</th><th>Vert.</th><th>Intentie</th></tr></thead>
+                      <thead><tr><th>Pagina</th><th>Wat gebeurt ermee</th><th>Positie</th><th>Clicks</th><th>Vert.</th></tr></thead>
                       <tbody>
-                        {c.urls.map((u, j) => (
-                          <tr key={j} className={"cannibal-row " + (u.url === c.winnaar ? "redir" : "")}>
-                            <td><a href={u.url} target="_blank" rel="noreferrer">{u.url}</a></td>
-                            <td>{u.rol || "—"}</td>
-                            <td>{num(u.positie)}</td>
-                            <td>{u.klikken != null ? u.klikken : "—"}</td>
-                            <td>{u.impressies != null ? u.impressies : "—"}</td>
-                            <td className="muted" style={{ fontSize: 12 }}>{u.intentie || "—"}</td>
-                          </tr>
-                        ))}
+                        {c.urls.map((u, j) => {
+                          const uit = uitkomstVoor(u.url, c.winnaar, result.redirectMap || []);
+                          return (
+                            <tr key={j} className={"cannibal-row " + (u.url === c.winnaar ? "redir" : "")}>
+                              <td><a href={u.url} target="_blank" rel="noreferrer">{padVanUrl(u.url)}</a></td>
+                              <td>
+                                <span className={"opr-chip " + uit.cls}>{uit.tekst}</span>
+                                {uit.doel && <> <a href={uit.doel.startsWith("http") ? uit.doel : `https://${(domain || "").replace(/^https?:\/\//, "")}${uit.doel}`} target="_blank" rel="noreferrer">{padVanUrl(uit.doel)}</a></>}
+                              </td>
+                              <td>{num(u.positie)}</td>
+                              <td>{u.klikken != null ? u.klikken : "—"}</td>
+                              <td>{u.impressies != null ? u.impressies : "—"}</td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
-                  {c.onderbouwing && <div className="cannibal-reason"><strong>Onderbouwing:</strong> {c.onderbouwing}</div>}
-                  {c.verwachteImpact && <div className="cannibal-reason muted"><strong>Verwachte impact:</strong> {c.verwachteImpact}</div>}
+                  {c.onderbouwing && (
+                    <div className="cannibal-reason">
+                      <strong>Onderbouwing</strong>
+                      {/* Was één lap platte tekst met kale paden erin. Nu gerenderd met
+                          bullets en elke slug klikbaar, zoals overal in het dashboard. */}
+                      <div className="md" dangerouslySetInnerHTML={{ __html: linkifyHtml(mdToHtml(alsBullets(c.onderbouwing)), domain) }} />
+                    </div>
+                  )}
+                  {c.verwachteImpact && (
+                    <div className="cannibal-reason muted">
+                      <strong>Verwachte impact</strong>
+                      <div className="md" dangerouslySetInnerHTML={{ __html: linkifyHtml(mdToHtml(c.verwachteImpact), domain) }} />
+                    </div>
+                  )}
                 </div>
               );
             })}
