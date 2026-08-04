@@ -549,14 +549,23 @@ tbody td:last-child { text-align: center; }
 }
 .prio-zoek:focus { outline: none; border-color: var(--orange); }
 
-/* Brede tabel scrollt binnen zijn eigen kader; de pagina zelf nooit. */
-.prio-tabel-wrap { overflow-x: auto; }
+/* GEEN eigen scroll-context: een wrapper met overflow maakt van zichzelf het
+   scrollkader, en dan plakt de kolomkop aan die wrapper in plaats van aan het
+   venster. Zelfde reden als bij .pages-table-wrap en de KPI-tabellen. */
+.prio-tabel-wrap { overflow: visible; }
 .prio-tabel { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); line-height: var(--lh-sm); }
+/* Kolomkop blijft staan tijdens het scrollen, net onder de vaste paginakop
+   (~81px), zodat je bij regel veertig nog steeds ziet welke kolom wat is.
+   De donkere achtergrond komt uit de globale `thead th`-regel; de tekst moet
+   dus wit zijn. Stond op grijs, en grijs op zwart is niet te lezen. */
 .prio-tabel th {
+  position: sticky; top: 80px; z-index: 20;
   text-align: left; padding: var(--s-2) var(--s-3);
   font-size: var(--fs-xs); line-height: var(--lh-xs); text-transform: uppercase; letter-spacing: 0.5px;
-  color: var(--gray); border-bottom: 2px solid var(--border); white-space: nowrap;
+  color: var(--white); border-bottom: 2px solid var(--border); white-space: nowrap;
 }
+/* De globale regel centreert de laatste kolomkop; hier is dat "Wie doet het". */
+.prio-tabel thead th:last-child { text-align: left; }
 .prio-tabel th.num, .prio-tabel td.num { text-align: right; white-space: nowrap; }
 .prio-tabel td { padding: var(--s-3); border-bottom: 1px solid var(--border); vertical-align: top; }
 .prio-rij:hover { background: var(--brand-orange-faint); }
@@ -582,6 +591,34 @@ tbody td:last-child { text-align: center; }
   font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
 }
 .prio-skip { margin-bottom: var(--s-4); }
+
+/* Twee filterrijen: op wanneer, en op soort werk. */
+.prio-filter-label {
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray);
+  min-width: 76px;
+}
+
+/* De categorie is de knop waarmee je aan de slag gaat: hij maakt waar dat past een
+   kaart in de planning en springt naar de plek waar het werk gebeurt. */
+.prio-cat {
+  display: inline-block; text-align: left;
+  padding: var(--s-1) var(--s-2); margin: 0;
+  border: 1px solid var(--orange); border-radius: var(--r-md);
+  background: var(--white); color: var(--orange-dark);
+  font-family: 'Montserrat', sans-serif;
+  font-size: var(--fs-sm); line-height: var(--lh-sm); font-weight: 600;
+  cursor: pointer;
+}
+.prio-cat:hover:enabled { background: var(--orange); color: var(--white); }
+.prio-cat:disabled { opacity: 0.6; cursor: default; }
+
+.prio-gepland-chip {
+  display: block; margin-top: var(--s-1);
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700; color: #1c7a3f;
+}
+/* Staat er al een kaart voor, dan mag de regel rustiger in beeld staan. */
+.prio-gepland .prio-titel { color: var(--muted); }
 
 /* Developer Overview */
 .dev-intro { font-size: 13px; color: var(--gray); margin: 0 0 16px; max-width: 720px; line-height: 1.5; }

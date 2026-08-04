@@ -74,7 +74,9 @@ export type Bevinding = {
   ctrActueel?: number | null;             // alleen lens 2
   benchmarkCtr?: number | null;           // alleen lens 2
   rationale: string;
-  vervolgSkill: string;
+  /** Niet meer gevuld: de categorie wordt bij het tonen afgeleid uit `type`, zodat
+   *  ook eerder gedraaide scans meteen de nieuwe namen krijgen. */
+  vervolgSkill?: string;
   bron: string;              // waar de cijfers vandaan komen, voor de controle
   // Berekend
   ctrUplift?: number;
@@ -149,18 +151,9 @@ export const TIER_NAAM: Record<string, string> = {
   "1": "Deze week", "2": "Deze maand", "3": "Dit kwartaal", "4": "Strategisch", SKIP: "Niet doen",
 };
 
-/** Vaste mapping bevinding-type naar de skill die het werk doet (uit SKILL.md). */
-export const VERVOLG_SKILL: Record<string, string> = {
-  striking_distance: "seo-analyse-landingpage, dan seo-copywriting",
-  ctr_underperform: "Meta & CTR (het tabje hiernaast)",
-  cannibalisatie: "Opruimen (het tabje hiernaast)",
-  verouderde_topper: "seo-analyse-landingpage, dan seo-copywriting",
-  content_gap: "blauwdruk-seo-landingpage, dan seo-copywriting",
-  featured_snippet: "seo-copywriting (alleen het FAQ-blok)",
-  schema_gap: "structured data op de Klant-tab",
-  interne_links: "Interne links (het tabje hiernaast)",
-  aeo: "klantprofiel, dan tone-of-voice, dan seo-copywriting",
-};
+// De categorie-tabel staat in een apart bestand zonder server-afhankelijkheden,
+// zodat het scherm hem ook kan gebruiken. Hier doorgegeven voor de serverkant.
+export { CATEGORIE, CATEGORIE_VOLGORDE, categorieVan, type Categorie } from "./prioriteiten-categorie";
 
 /**
  * De verwachte opbrengst voor de samenvatting: extra klikken per maand uit tier 1

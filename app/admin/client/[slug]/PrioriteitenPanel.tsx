@@ -7,6 +7,8 @@
 // samenvat, want een lijst is een scherm en een oordeel is een gesprek.
 
 import { useEffect, useState } from "react";
+import { urlKey } from "../../../../lib/url-key";
+import { categorieVan, CATEGORIE_VOLGORDE } from "../../../../lib/prioriteiten-categorie";
 
 type Lens = { sleutel: string; naam: string; status: string; toelichting: string; gevonden: number };
 type Regel = {
@@ -26,6 +28,7 @@ type State = {
   status: string; result: Result | null; error: string; updatedAt: string | null;
   stap: number; stappen: number; stapLabel: string; cronStil: boolean;
   laatsteAutoRonde: string | null;
+  inPlanning: string[];
   propositie: { zin: string; voorstel: string };
 };
 
@@ -47,13 +50,20 @@ function zekerheid(c: number): string {
   return c >= 0.9 ? "hard gemeten" : c >= 0.6 ? "afgeleid" : "schatting";
 }
 
-export default function PrioriteitenPanel({ slug, domain = "" }: { slug: string; domain?: string }) {
+export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
+  slug: string;
+  domain?: string;
+  /** Springt naar het juiste tabblad en opent daar meteen de betreffende regel. */
+  onGaNaar?: (tab: string, url: string) => void;
+}) {
   const [st, setSt] = useState<State | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [prop, setProp] = useState("");
   const [propMsg, setPropMsg] = useState("");
   const [tonen, setTonen] = useState<string>("alles");
+  const [soort, setSoort] = useState<string>("alles");
+  const [bezigId, setBezigId] = useState<string | null>(null);
   const [zoek, setZoek] = useState("");
   const [openSkip, setOpenSkip] = useState(false);
   const [openLenzen, setOpenLenzen] = useState(false);
@@ -106,11 +116,61 @@ export default function PrioriteitenPanel({ slug, domain = "" }: { slug: string;
   const Pad = ({ pad }: { pad: string }) =>
     domain ? <a className="opr-pad" href={site(pad)} target="_blank" rel="noreferrer">{pad}</a> : <>{pad}</>;
 
+  // Staat er al een kaart voor deze pagina in de planning? Afgelezen uit de
+  // planning zelf, niet apart bijgehouden, zodat afvinken hier vanzelf doorwerkt.
+  const planSet = new Set(st?.inPlanning || []);
+  const staatInPlanning = (r: Regel) => !!r.url && planSet.has(urlKey(r.url));
+
+  /**
+   * "Hier ga ik mee aan de slag": maak er waar dat past een kaart van in de
+   * planning van deze week, en spring daarna naar de plek waar het werk gebeurt.
+   *
+   * De kaart gaat door de bestaande poort (/api/admin/weekplan/add). Die splitst
+   * per pagina en voegt samen op URL, dus twee keer klikken op dezelfde pagina
+   * geeft geen tweede kaart maar een regel op de bestaande.
+   *
+   * De reden uit deze lijst gaat mee als toelichting. Dat is precies het veld dat
+   * op de kaart als "Waarom deze pagina" verschijnt en dat de mailknop gebruikt,
+   * dus je kunt de klant meteen uitleggen waarom we dit oppakken.
+   */
+  async function pakOp(r: Regel) {
+    const cat = categorieVan(r.type);
+    if (bezigId) return;
+    setBezigId(r.id);
+    try {
+      if (cat.kaart) {
+        const pad = r.url || "";
+        const toelichting = [
+          "Achtergrond:",
+          `- ${r.rationale}`,
+          `- Zoekwoord "${r.zoekwoord}", ${getal(r.maandvolume)} zoekopdrachten per maand.`,
+          r.huidigePositie
+            ? `- Staat nu op positie ${r.huidigePositie}, doel is ${r.targetPositie}.`
+            : `- Rankt hier nog niet; doel is positie ${r.targetPositie}.`,
+          `- Naar schatting ${getal(r.extraKlikkenPerMaand)} extra bezoekers per maand (${zekerheid(r.confidence)}).`,
+          "- Bron: uit de vindbaarheidsscan van deze site.",
+        ].join("\n");
+        await fetch("/api/admin/weekplan/add", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            slug,
+            taak: `${cat.naam}${pad ? `: ${pad}` : `: ${r.zoekwoord}`}`,
+            url: pad, week: 1, toelichting, wie: "SEO",
+            taaktype: cat.taaktype, thread: "prioriteiten",
+          }),
+        }).then((x) => x.json()).catch(() => null);
+        await load();   // het vinkje meteen bijwerken
+      }
+      onGaNaar?.(cat.tab, r.url || "");
+    } finally { setBezigId(null); }
+  }
+
   const res = st?.result || null;
   const regels = res?.regels || [];
   const zichtbaar = regels.filter((r) => {
     if (r.tier === "SKIP") return false;
     if (tonen !== "alles" && r.tier !== tonen) return false;
+    if (soort !== "alles" && categorieVan(r.type).naam !== soort) return false;
     if (zoek.trim()) {
       const q = zoek.toLowerCase();
       if (!(`${r.titel} ${r.zoekwoord} ${r.url}`.toLowerCase().includes(q))) return false;
@@ -209,7 +269,10 @@ export default function PrioriteitenPanel({ slug, domain = "" }: { slug: string;
             </div>
           )}
 
+          {/* Twee rijen filters: op wanneer, en op soort werk. Ze stapelen, dus
+              "deze maand" plus "Meta & klikdoor" kan gewoon. */}
           <div className="prio-filters">
+            <span className="prio-filter-label">Wanneer</span>
             <button type="button" className={"chip" + (tonen === "alles" ? " chip-aan" : "")} onClick={() => setTonen("alles")}>
               Alles ({regels.filter((r) => r.tier !== "SKIP").length})
             </button>
@@ -224,6 +287,22 @@ export default function PrioriteitenPanel({ slug, domain = "" }: { slug: string;
             })}
             <input className="prio-zoek" placeholder="Zoek op zoekwoord of pagina" value={zoek} onChange={(e) => setZoek(e.target.value)} />
           </div>
+          <div className="prio-filters">
+            <span className="prio-filter-label">Soort werk</span>
+            <button type="button" className={"chip" + (soort === "alles" ? " chip-aan" : "")} onClick={() => setSoort("alles")}>
+              Alles
+            </button>
+            {CATEGORIE_VOLGORDE.map((naam) => {
+              const n = regels.filter((r) => r.tier !== "SKIP" && categorieVan(r.type).naam === naam).length;
+              if (!n) return null;
+              return (
+                <button key={naam} type="button"
+                  className={"chip" + (soort === naam ? " chip-aan" : "")} onClick={() => setSoort(naam)}>
+                  {naam} ({n})
+                </button>
+              );
+            })}
+          </div>
 
           <div className="prio-tabel-wrap">
             <table className="prio-tabel">
@@ -235,24 +314,41 @@ export default function PrioriteitenPanel({ slug, domain = "" }: { slug: string;
                 </tr>
               </thead>
               <tbody>
-                {zichtbaar.map((r) => (
-                  <tr key={r.id} className={`prio-rij prio-tier-${r.tier}`}>
-                    <td><span className={`prio-badge prio-badge-${r.tier}`}>{TIERS.find((t) => t.id === r.tier)?.naam || r.tier}</span>
-                      {r.nieuw && <span className="prio-nieuw">nieuw</span>}</td>
-                    <td>
-                      <div className="prio-titel">{r.titel}</div>
-                      <div className="prio-reden">{r.rationale}</div>
-                      <div className="prio-bron">Bron: {r.bron} · {zekerheid(r.confidence)}</div>
-                    </td>
-                    <td className="prio-url">{r.url ? <Pad pad={r.url} /> : <span className="muted">nieuwe pagina</span>}</td>
-                    <td>{r.zoekwoord || "—"}</td>
-                    <td className="num">{getal(r.maandvolume)}</td>
-                    <td className="num">{r.huidigePositie ? `${r.huidigePositie} → ${r.targetPositie}` : `→ ${r.targetPositie}`}</td>
-                    <td className="num prio-uplift">{getal(r.extraKlikkenPerMaand)}</td>
-                    <td>{r.effort <= 3 ? "klein" : r.effort <= 6 ? "middel" : "groot"}</td>
-                    <td className="prio-skill">{r.vervolgSkill}</td>
-                  </tr>
-                ))}
+                {zichtbaar.map((r) => {
+                  const cat = categorieVan(r.type);
+                  const gepland = staatInPlanning(r);
+                  return (
+                    <tr key={r.id} className={`prio-rij prio-tier-${r.tier}` + (gepland ? " prio-gepland" : "")}>
+                      <td><span className={`prio-badge prio-badge-${r.tier}`}>{TIERS.find((t) => t.id === r.tier)?.naam || r.tier}</span>
+                        {r.nieuw && <span className="prio-nieuw">nieuw</span>}</td>
+                      <td>
+                        <div className="prio-titel">{r.titel}</div>
+                        <div className="prio-reden">{r.rationale}</div>
+                        <div className="prio-bron">Bron: {r.bron} · {zekerheid(r.confidence)}</div>
+                      </td>
+                      <td className="prio-url">{r.url ? <Pad pad={r.url} /> : <span className="muted">nieuwe pagina</span>}</td>
+                      <td>{r.zoekwoord || "—"}</td>
+                      <td className="num">{getal(r.maandvolume)}</td>
+                      <td className="num">{r.huidigePositie ? `${r.huidigePositie} → ${r.targetPositie}` : `→ ${r.targetPositie}`}</td>
+                      <td className="num prio-uplift">{getal(r.extraKlikkenPerMaand)}</td>
+                      <td>{r.effort <= 3 ? "klein" : r.effort <= 6 ? "middel" : "groot"}</td>
+                      <td className="prio-skill">
+                        <button
+                          type="button"
+                          className="prio-cat"
+                          disabled={bezigId === r.id}
+                          title={cat.kaart
+                            ? `Zet dit in de planning van deze week en ga naar ${cat.naam.toLowerCase()}`
+                            : `Ga naar ${cat.naam.toLowerCase()} voor deze pagina`}
+                          onClick={() => pakOp(r)}
+                        >
+                          {bezigId === r.id ? "Bezig…" : cat.naam}
+                        </button>
+                        {gepland && <span className="prio-gepland-chip" title="Er staat een kaart voor deze pagina in de planning">✓ in de planning</span>}
+                      </td>
+                    </tr>
+                  );
+                })}
                 {!zichtbaar.length && (
                   <tr><td colSpan={9} className="muted prio-leeg">Niets gevonden met deze filters.</td></tr>
                 )}

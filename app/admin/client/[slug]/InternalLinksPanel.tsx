@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { urlKey } from "../../../../lib/url-key";
 import { mdToHtml } from "../../../../lib/markdown";
 
 type SuggestedLink = { bronUrl: string; relevantie?: number; autoriteit?: string; verkeer?: number; linkbudget?: string; score?: string; passage?: string; nieuweZin?: boolean; ankertekst?: string; ankertype?: string; positie?: string; verwachteImpact?: string };
@@ -20,7 +21,14 @@ function scoreClass(s?: string): string {
 }
 function num(n?: number): string { return n != null && Number.isFinite(n) ? String(Math.round(n * 10) / 10) : "—"; }
 
-export default function InternalLinksPanel({ slug }: { slug: string }) {
+// Vast herkenningspunt per doelpagina, zodat een ander scherm hierheen kan scrollen.
+const ilBlokId = (url: string) => "ilrow-" + (url || "").replace(/[^a-zA-Z0-9]/g, "-");
+
+export default function InternalLinksPanel({ slug, openTarget }: {
+  slug: string;
+  /** Van buiten meteen op het blok van één doelpagina landen. */
+  openTarget?: { url: string; n: number } | null;
+}) {
   const [state, setState] = useState<State | null>(null);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [rows, setRows] = useState<{ url: string; positie?: number; primairZoekwoord?: string }[]>([]);
@@ -30,6 +38,23 @@ export default function InternalLinksPanel({ slug }: { slug: string }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [configuring, setConfiguring] = useState(false);
+
+  // Binnenkomen vanuit de prioriteitenscan: scrol naar het blok van die doelpagina.
+  // Matchen met de gedeelde urlKey, want deze lijst draagt volledige URL's en de
+  // scan werkt met paden.
+  const openHandledRef = useRef(0);
+  useEffect(() => {
+    const doelen = state?.result?.doelpaginas;
+    if (!openTarget || !doelen?.length) return;
+    if (openHandledRef.current === openTarget.n) return;
+    openHandledRef.current = openTarget.n;
+    const doel = urlKey(openTarget.url);
+    const match = doelen.find((t) => urlKey(t.url) === doel);
+    if (!match) return;
+    setTimeout(() => {
+      document.getElementById(ilBlokId(match.url))?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 80);
+  }, [openTarget, state]);
 
   async function load() {
     try {
@@ -163,7 +188,7 @@ export default function InternalLinksPanel({ slug }: { slug: string }) {
             {result.doelpaginas.length === 0 && <div className="muted" style={{ marginTop: 8 }}>Geen link-adviezen gegenereerd.</div>}
 
             {result.doelpaginas.map((tp, i) => (
-              <div className="cannibal-cluster" key={i}>
+              <div className="cannibal-cluster" key={i} id={ilBlokId(tp.url)}>
                 <div className="cannibal-cluster-head">
                   <strong><a href={tp.url} target="_blank" rel="noreferrer">{tp.url}</a></strong>
                   {tp.laag && <span className={"il-laag " + (tp.laag.toLowerCase().includes("pillar") ? "pillar" : "dochter")}>{tp.laag}</span>}

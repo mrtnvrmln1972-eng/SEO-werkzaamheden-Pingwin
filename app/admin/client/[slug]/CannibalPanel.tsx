@@ -58,7 +58,12 @@ function uitkomstVoor(url: string, winnaar: string, rijen: RedirectMapItem[]): U
   return { tekst: "blijft staan, geen actie", cls: "keep" };
 }
 
-export default function CannibalPanel({ slug, domain = "" }: { slug: string; domain?: string }) {
+export default function CannibalPanel({ slug, domain = "", openTarget }: {
+  slug: string; domain?: string;
+  /** Doorgegeven aan de werklijst, zodat je vanuit een ander scherm meteen op de
+      juiste pagina landt in plaats van zelf te moeten filteren. */
+  openTarget?: { url: string; n: number } | null;
+}) {
   const [state, setState] = useState<State | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -222,7 +227,7 @@ export default function CannibalPanel({ slug, domain = "" }: { slug: string; dom
                   Download voor Excel of Sheets
                 </a>
               </div>
-                <OpruimTabel slug={slug} domain={domain} rijen={result.redirectMap} />
+                <OpruimTabel slug={slug} domain={domain} rijen={result.redirectMap} openTarget={openTarget} />
               </div>
             )}
 

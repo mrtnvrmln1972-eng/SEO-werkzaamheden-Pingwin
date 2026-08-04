@@ -163,6 +163,25 @@ export default function ClientCockpit({
     router.refresh();
   }
 
+  // Vanuit de prioriteitenscan naar de plek waar het werk gebeurt: wissel van tab
+  // EN geef de pagina door, zodat je daar op de juiste regel landt in plaats van
+  // opnieuw te moeten zoeken. De teller zorgt dat twee keer klikken op dezelfde
+  // pagina ook twee keer werkt.
+  const [metaTarget, setMetaTarget] = useState<{ url: string; n: number } | null>(null);
+  const [opruimTarget, setOpruimTarget] = useState<{ url: string; n: number } | null>(null);
+  const [linkTarget, setLinkTarget] = useState<{ url: string; n: number } | null>(null);
+  function gaNaar(doelTab: string, url: string) {
+    if (doelTab === "paginas" && url) { goToPage(url); return; }
+    const t = validTab(doelTab);
+    if (url) {
+      const bump = (v: { url: string; n: number } | null) => ({ url, n: (v?.n || 0) + 1 });
+      if (t === "meta") setMetaTarget(bump);
+      else if (t === "cannibalisatie") setOpruimTarget(bump);
+      else if (t === "interne-links") setLinkTarget(bump);
+    }
+    changeTab(t);
+  }
+
   // Vanuit de KPI's een pagina openen in het Pagina's-tabje: wissel van tab en geef
   // de doel-URL door (met oplopende teller zodat herhaald klikken op dezelfde pagina
   // opnieuw opent en scrollt).
@@ -728,14 +747,14 @@ export default function ClientCockpit({
         {tab === "activiteit" && <ActiviteitPanel slug={client.slug} />}
         {tab === "wijzigingen" && <WijzigingenPanel slug={client.slug} />}
 
-        {tab === "meta" && <MetaCtrPanel slug={client.slug} domain={client.domain || ""} backendUrl={client.backendUrl} onOpenPage={goToPage} />}
+        {tab === "meta" && <MetaCtrPanel slug={client.slug} domain={client.domain || ""} backendUrl={client.backendUrl} onOpenPage={goToPage} openTarget={metaTarget} />}
 
         {/* Deze twee schermen bestonden al maar hingen nergens in de UI, dus niemand
             kon erbij. Hier hoort de volledige redirectlijst thuis, niet in de chat:
             een lijst is een scherm, een oordeel is een gesprek. */}
-        {tab === "prioriteiten" && <PrioriteitenPanel slug={client.slug} domain={client.domain || ""} />}
-        {tab === "cannibalisatie" && <CannibalPanel slug={client.slug} domain={client.domain || ""} />}
-        {tab === "interne-links" && <InternalLinksPanel slug={client.slug} />}
+        {tab === "prioriteiten" && <PrioriteitenPanel slug={client.slug} domain={client.domain || ""} onGaNaar={gaNaar} />}
+        {tab === "cannibalisatie" && <CannibalPanel slug={client.slug} domain={client.domain || ""} openTarget={opruimTarget} />}
+        {tab === "interne-links" && <InternalLinksPanel slug={client.slug} openTarget={linkTarget} />}
 
         {tab === "developer" && <DeveloperOverview embedded />}
       </div>

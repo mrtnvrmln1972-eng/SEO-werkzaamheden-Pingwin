@@ -12,14 +12,20 @@
 // opgeslagen als vaste regel en gaat mee naar de volgende analyse, zodat je een
 // besluit nooit twee keer hoeft te nemen.
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
 export type RedirectRij = { van: string; naar: string; type?: string; mergeContent?: boolean; verhuizen?: boolean; reden?: string };
 type Regel = { van: string; besluit: "houden" | "redirect" | "genegeerd"; naar: string; notitie: string; doorgevoerd: boolean };
 
 const pad = (u: string) => { try { return new URL(u).pathname; } catch { return (u || "").trim(); } };
 
-export default function OpruimTabel({ slug, domain, rijen }: { slug: string; domain: string; rijen: RedirectRij[] }) {
+export default function OpruimTabel({ slug, domain, rijen, openTarget }: {
+  slug: string; domain: string; rijen: RedirectRij[];
+  /** Van buiten binnenkomen op één pagina: vult het filterveld met dat pad, zodat
+      je alleen de regels ziet die daarover gaan. Hergebruikt het filter dat er al
+      is; een aparte "spring hierheen"-machinerie zou hetzelfde nog eens doen. */
+  openTarget?: { url: string; n: number } | null;
+}) {
   const [regels, setRegels] = useState<Record<string, Regel>>({});
   const [filter, setFilter] = useState("");
   const [toon, setToon] = useState<"open" | "alles" | "klaar">("open");
@@ -28,6 +34,16 @@ export default function OpruimTabel({ slug, domain, rijen }: { slug: string; dom
   const [sel, setSel] = useState<Record<string, boolean>>({});
   const [push, setPush] = useState(false);
   const [pushMsg, setPushMsg] = useState("");
+
+  // Binnenkomen vanuit de prioriteitenscan: filter meteen op dat pad, en toon ook
+  // de al doorgevoerde regels, anders lijkt de lijst leeg als het net af is.
+  const openHandledRef = useRef(0);
+  useEffect(() => {
+    if (!openTarget || openHandledRef.current === openTarget.n) return;
+    openHandledRef.current = openTarget.n;
+    setFilter(pad(openTarget.url));
+    setToon("alles");
+  }, [openTarget]);
 
   useEffect(() => {
     fetch(`/api/admin/opruim-regels?slug=${encodeURIComponent(slug)}`)

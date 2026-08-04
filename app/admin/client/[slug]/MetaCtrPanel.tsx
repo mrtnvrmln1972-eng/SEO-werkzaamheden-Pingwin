@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import HelpHint from "./HelpHint";
 import MetaPixelMeter from "./MetaPixelMeter";
 import { checkMetaTitle, checkMetaDescription, type MetaCheck } from "../../../../lib/meta-rules";
+import { urlKey } from "../../../../lib/url-key";
 
 // Uitklapbare criteria-checklist onder een meta-veld: toont per regel (META-02
 // t/m META-15) of de tekst eraan voldoet, met de gemeten waarde erbij.
@@ -62,11 +63,38 @@ const STATUS_LABEL: Record<string, { txt: string; bg: string; fg: string }> = {
   afgewezen: { txt: "afgewezen", bg: "#f2f2f2", fg: "#777" },
 };
 
-export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage }: { slug: string; domain?: string; backendUrl?: string | null; onOpenPage?: (url: string) => void }) {
+// Vast herkenningspunt per rij, zodat een ander scherm hierheen kan scrollen.
+const metaRowId = (url: string) => "mrow-" + (url || "").replace(/[^a-zA-Z0-9]/g, "-");
+
+export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, openTarget }: {
+  slug: string; domain?: string; backendUrl?: string | null;
+  onOpenPage?: (url: string) => void;
+  /** Van buiten meteen op één pagina landen (vanuit de prioriteitenscan). De teller
+      zorgt dat twee keer klikken op dezelfde pagina ook twee keer werkt. */
+  openTarget?: { url: string; n: number } | null;
+}) {
   const [rows, setRows] = useState<KansRow[] | null>(null);
   const [error, setError] = useState("");
   const [verify, setVerify] = useState<Record<string, { title: string; description: string; url: string }>>({});
   const [openUrl, setOpenUrl] = useState<string | null>(null);
+
+  // Binnenkomen vanuit een ander scherm: klap die ene pagina open en scrol hem in
+  // beeld, zodat je hier niet opnieuw hoeft te zoeken. Zelfde recept als het
+  // Pagina's-scherm; matchen met de gedeelde urlKey, want de ene lijst heeft www
+  // en een slash op het eind en de andere niet.
+  const openHandledRef = useRef(0);
+  useEffect(() => {
+    if (!openTarget || rows === null) return;
+    if (openHandledRef.current === openTarget.n) return;
+    openHandledRef.current = openTarget.n;
+    const doel = urlKey(openTarget.url);
+    const match = (rows || []).find((x) => urlKey(x.url) === doel);
+    if (!match) return;
+    setOpenUrl(match.url);
+    setTimeout(() => {
+      document.getElementById(metaRowId(match.url))?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 80);
+  }, [openTarget, rows]);
   const [busy, setBusy] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   // Inlogpagina van de website-beheeromgeving (per klant instelbaar; leeg = /wp-admin/).
@@ -310,7 +338,7 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage }: {
           const open = openUrl === r.url;
           const st = r.proposal ? STATUS_LABEL[r.proposal.status] : null;
           return (
-            <div key={r.url} className="wz-item-wrap" style={{ flexDirection: "column", alignItems: "stretch" }}>
+            <div key={r.url} id={metaRowId(r.url)} className="wz-item-wrap" style={{ flexDirection: "column", alignItems: "stretch" }}>
               <div role="button" tabIndex={0} className="wz-item" onClick={() => setOpenUrl(open ? null : r.url)}
                 onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpenUrl(open ? null : r.url); } }}>
                 <span style={{ minWidth: 0 }}>

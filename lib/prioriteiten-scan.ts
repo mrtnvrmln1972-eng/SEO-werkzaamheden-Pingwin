@@ -8,9 +8,11 @@ import { getInternalLinksState } from "./internal-links";
 import { getOpportunities } from "./keyword-opportunities";
 import {
   scoreBevinding, wijsTiersToe, confidenceVoorLens, verwachteUplift,
-  ctrVoorPositie, VERVOLG_SKILL, type Bevinding,
+  ctrVoorPositie, type Bevinding,
 } from "./prioriteiten-score";
 import { getSetting, setSetting } from "./settings";
+import { getWeekplan } from "./weekplan";
+import { urlKey } from "./url-key";
 
 // ═══════════════════════════════════════════════════════════
 // VINDBAARHEID-PRIORITEITENSCAN (dashboard-motor van de skill)
@@ -68,6 +70,15 @@ export type PrioState = {
   cronStil: boolean;
   /** Draait hij vanzelf, en wanneer was de laatste automatische ronde? */
   laatsteAutoRonde: string | null;
+  /**
+   * Voor welke pagina's staat er al een kaart in de planning (nog niet klaar)?
+   * Als `urlKey`, zodat www en een slash op het eind niet uitmaken.
+   *
+   * Bewust NIET apart bijgehouden op de bevinding zelf: dan zou het vinkje op het
+   * winstscherm uit de pas gaan lopen zodra je een kaart afvinkt of weggooit. Nu
+   * is de planning de enige waarheid en klopt het scherm altijd.
+   */
+  inPlanning: string[];
 };
 
 const STAPPEN = 4;
@@ -139,9 +150,14 @@ export async function getPrioriteitenScan(slug: string): Promise<PrioState> {
   const r = await readRow(slug);
   const cronTik = await getSetting(SETTING_PRIO_CRON_TIK).catch(() => null);
   const cronStil = !cronTik || (Date.now() - new Date(cronTik).getTime()) > 900000;
+  // Welke pagina's staan al in de planning? Rechtstreeks uit de weekplanning, dus
+  // afvinken of weggooien laat het vinkje vanzelf verdwijnen.
+  const inPlanning = await getWeekplan(slug)
+    .then((ks) => [...new Set(ks.filter((k) => k.status !== "klaar" && k.url).map((k) => urlKey(k.url)))])
+    .catch(() => [] as string[]);
   if (!r) {
     return { status: "idle", result: null, error: "", updatedAt: null, fase: "", stap: 0,
-      stappen: STAPPEN, stapLabel: "", cronTik, cronStil, laatsteAutoRonde: null };
+      stappen: STAPPEN, stapLabel: "", cronTik, cronStil, laatsteAutoRonde: null, inPlanning };
   }
   const { stap, label } = stapVan(r.fase);
   return {
@@ -155,6 +171,7 @@ export async function getPrioriteitenScan(slug: string): Promise<PrioState> {
     stapLabel: r.status === "running" ? label : "",
     cronTik, cronStil,
     laatsteAutoRonde: r.autoRonde,
+    inPlanning,
   };
 }
 
@@ -295,7 +312,7 @@ async function stapEigen(slug: string, propositie: string, kern: string[]): Prom
       effort: 1, timeToEffect: 1, confidence: confidenceVoorLens("ctr_underperform"),
       ctrActueel: huidig, benchmarkCtr: verwacht,
       rationale: `Deze pagina wordt goed getoond op positie ${m.position.toFixed(1)}, maar de CTR is ${m.ctr.toFixed(1)}% terwijl ${m.expectedCtr.toFixed(1)}% normaal is voor die positie. Een betere titel en omschrijving pakken dat direct.`,
-      vervolgSkill: VERVOLG_SKILL.ctr_underperform, bron: "Search Console, via het tabje Meta & CTR",
+      bron: "Search Console, via het tabje Meta & CTR",
     });
   }
 
@@ -313,7 +330,7 @@ async function stapEigen(slug: string, propositie: string, kern: string[]): Prom
       intentie: bepaalIntentie(c.keyword), relevanceFit: bepaalFit(c.keyword, kern, propositie),
       effort: 4, timeToEffect: 2, confidence: confidenceVoorLens("cannibalisatie"),
       rationale: c.onderbouwing || `Meerdere pagina's ranken op dit zoekwoord, waardoor ze elkaar verdringen. ${c.actie || "Samenvoegen of omleiden naar de sterkste."}`,
-      vervolgSkill: VERVOLG_SKILL.cannibalisatie, bron: "de opruimanalyse, via het tabje Opruimen",
+      bron: "de opruimanalyse, via het tabje Opruimen",
     });
   }
 
@@ -332,7 +349,7 @@ async function stapEigen(slug: string, propositie: string, kern: string[]): Prom
       intentie: bepaalIntentie(kw), relevanceFit: bepaalFit(kw, kern, propositie),
       effort: 3, timeToEffect: 2, confidence: confidenceVoorLens("interne_links"),
       rationale: "Deze pagina krijgt weinig interne links, terwijl hij commercieel belangrijk is. Meer links vanaf sterke pagina's duwt hem omhoog zonder nieuwe content.",
-      vervolgSkill: VERVOLG_SKILL.interne_links, bron: "de interne-link-analyse, via het tabje Interne links",
+      bron: "de interne-link-analyse, via het tabje Interne links",
     });
   }
 
@@ -348,7 +365,7 @@ async function stapEigen(slug: string, propositie: string, kern: string[]): Prom
       intentie: bepaalIntentie(g.keyword), relevanceFit: bepaalFit(g.keyword, kern, propositie),
       effort: 6, timeToEffect: 4, confidence: confidenceVoorLens("content_gap"),
       rationale: g.reason || "Er is zoekvraag op dit onderwerp, maar geen eigen pagina die erop mikt.",
-      vervolgSkill: VERVOLG_SKILL.content_gap, bron: "de kansenlijst (Ahrefs plus concurrenten)",
+      bron: "de kansenlijst (Ahrefs plus concurrenten)",
     });
   }
   return uit;
@@ -385,7 +402,7 @@ async function stapVers(slug: string, propositie: string, kern: string[], startI
       intentie: bepaalIntentie(kw), relevanceFit: bepaalFit(kw, kern, propositie),
       effort: 3, timeToEffect: 2, confidence: confidenceVoorLens("striking_distance"),
       rationale: `Deze pagina staat al op positie ${pos.toFixed(0)} en wordt goed getoond. Van pagina 2 naar de top 3 is de kortste weg naar meer bezoekers, want de pagina bestaat al.`,
-      vervolgSkill: VERVOLG_SKILL.striking_distance, bron: "Search Console, laatste 90 dagen",
+      bron: "Search Console, laatste 90 dagen",
     });
   }
 
@@ -410,7 +427,7 @@ async function stapVers(slug: string, propositie: string, kern: string[], startI
           intentie: bepaalIntentie(k.keyword), relevanceFit: bepaalFit(k.keyword, kern, propositie),
           effort: 4, timeToEffect: 2, confidence: confidenceVoorLens("verouderde_topper"),
           rationale: `Deze pagina stond op positie ${vorig} en is gezakt naar ${pos}. Terugwinnen wat je had is bijna altijd goedkoper dan iets nieuws bouwen; meestal is de content ingehaald door een concurrent.`,
-          vervolgSkill: VERVOLG_SKILL.verouderde_topper, bron: "Ahrefs, positie nu tegen vorige meting",
+      bron: "Ahrefs, positie nu tegen vorige meting",
         });
         gezien.add(sleutel);
         continue;
@@ -425,7 +442,7 @@ async function stapVers(slug: string, propositie: string, kern: string[], startI
           intentie: bepaalIntentie(k.keyword), relevanceFit: bepaalFit(k.keyword, kern, propositie),
           effort: 3, timeToEffect: 2, confidence: confidenceVoorLens("striking_distance"),
           rationale: `Positie ${pos} met ${vol} zoekopdrachten per maand. De pagina bestaat al, dus dit is bijwerken in plaats van bouwen.`,
-          vervolgSkill: VERVOLG_SKILL.striking_distance, bron: "Ahrefs, organische zoekwoorden",
+      bron: "Ahrefs, organische zoekwoorden",
         });
       }
     }
@@ -442,7 +459,7 @@ async function stapVers(slug: string, propositie: string, kern: string[], startI
         intentie: "commercial", relevanceFit: 0.8,
         effort: 7, timeToEffect: 4, confidence: confidenceVoorLens("aeo"),
         rationale: `Over alle AI-platforms samen wordt deze site ${totaal} keer aangehaald. Klanten zoeken steeds vaker via AI; wie daar niet genoemd wordt, bestaat in dat kanaal niet.`,
-        vervolgSkill: VERVOLG_SKILL.aeo, bron: "Ahrefs Brand Radar, via de KPI's",
+      bron: "Ahrefs Brand Radar, via de KPI's",
       });
     }
   }
