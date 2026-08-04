@@ -35,21 +35,49 @@ export async function GET(req: NextRequest) {
   const live = urls.filter((u) => u.status === 200);
   if (!live.length) return NextResponse.json({ ok: true, families: [], totaalLive: 0, dood: 0 });
 
-  // Hoe vaak komt elk woord voor? Wat zeldzaam is, is de plaatsnaam.
-  const freq = new Map<string, number>();
+  // Wanneer is een woord een PLAATS? Eerder was dat "komt zelden voor", en dat gaf
+  // onzin: /testosteron-bloedtest/, /afspraak-maken/ en /algemene-voorwaarden/
+  // verschenen als /<plaats>-<plaats>/, waarna de telling "42 pagina's, 35 dood"
+  // de algemene voorwaarden op één hoop gooide met Gouda.
+  //
+  // Een plaatsnaam herken je aan iets anders: hij komt terug in MEERDERE
+  // verschillende URL-vormen. Gouda staat in /soa-poli-gouda/ én in
+  // /soa-klinieken/soa-test-gouda/. "testosteron" staat op één pagina, in één vorm.
   const woorden = (p: string) => p.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 2);
+  const freq = new Map<string, number>();
   for (const u of live) for (const w of new Set(woorden(padVan(u.url)))) freq.set(w, (freq.get(w) || 0) + 1);
   const grens = Math.max(3, Math.round(live.length * 0.06));
+
+  // Stap 1: welke woorden vullen hetzelfde gat? Neem een pad, haal er één woord
+  // uit, en kijk welke andere woorden op die plek voorkomen. In /soa-poli-gouda/
+  // levert dat gouda, haarlem, nijmegen enzovoort op: één familie.
+  const vullers = new Map<string, Set<string>>();
+  for (const u of live) {
+    const pad = padVan(u.url).toLowerCase();
+    for (const w of new Set(woorden(pad))) {
+      const gat = pad.split(w).join("*");
+      if (!vullers.has(gat)) vullers.set(gat, new Set());
+      vullers.get(gat)!.add(w);
+    }
+  }
+  // Stap 2: hoe groot is de familie waar een woord bij hoort? Een plaatsnaam heeft
+  // tientallen broers en zussen (alle steden waar de klant zit). Een ziekte of een
+  // dienst heeft er een handvol. Die twintig is het verschil tussen "gouda" en
+  // "chlamydia", en tussen "amsterdam" en "voorwaarden".
+  const familie = new Map<string, Set<string>>();
+  for (const set of vullers.values()) {
+    if (set.size < 3) continue;
+    for (const w of set) {
+      if (!familie.has(w)) familie.set(w, new Set());
+      for (const b of set) familie.get(w)!.add(b);
+    }
+  }
+  const isPlaats = (w: string) => (familie.get(w)?.size || 0) >= 20 && (freq.get(w) || 0) <= grens;
 
   const vormVan = (p: string): string => {
     const seg = p.replace(/^\/|\/$/g, "").split("/");
     if (!seg[0]) return "/";
-    const uit = seg.map((s) => {
-      const delen = s.split("-");
-      const vervangen = delen.map((d) => ((freq.get(d.toLowerCase()) || 0) <= grens && d.length > 2 ? "<plaats>" : d));
-      // Alleen als er echt iets zeldzaams in zat is dit een locatievorm.
-      return vervangen.join("-");
-    });
+    const uit = seg.map((s) => s.split("-").map((d) => (isPlaats(d.toLowerCase()) ? "<plaats>" : d)).join("-"));
     return "/" + uit.join("/") + "/";
   };
 
@@ -58,6 +86,9 @@ export async function GET(req: NextRequest) {
     const p = padVan(u.url);
     const v = vormVan(p);
     if (!v.includes("<plaats>")) continue;         // geen locatievorm, niet interessant hier
+    // Een pad dat ALLEEN uit een plaatsnaam bestaat is geen patroon maar een los
+    // woord: zo belandden /bloedtesten/ en /afscheiding/ in de lijst.
+    if (v === "/<plaats>/") continue;
     if (!perVorm.has(v)) perVorm.set(v, []);
     perVorm.get(v)!.push(p);
   }
@@ -76,7 +107,9 @@ export async function GET(req: NextRequest) {
       dood: paden.filter((p) => doodSet.has(p)).length,
       voorbeelden: paden.slice(0, 3),
     }))
-    .filter((f) => f.aantal > 1)
+    // Minder dan drie pagina's is geen patroon maar toeval; die regels maakten de
+    // lijst lang zonder er iets aan toe te voegen.
+    .filter((f) => f.aantal >= 3)
     .sort((a, b) => b.aantal - a.aantal);
 
   return NextResponse.json({
