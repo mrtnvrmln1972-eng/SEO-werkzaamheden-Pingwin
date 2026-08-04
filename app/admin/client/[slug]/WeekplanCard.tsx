@@ -525,9 +525,13 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
           paginadossier (wat er echt gebeurd is) en de documenten. Ze vertelden
           hetzelfde verhaal vanuit drie hoeken, met eigen kopjes en eigen archieven,
           dus je las hetzelfde drie keer en wist niet welke de actuele was. */}
-      {open && (hasInfo || t.url) && (
+      {/* Het blok staat er altijd zodra de kaart open is, ook bij een taak die je
+          zelf hebt aangemaakt en die nog geen achtergrond of pagina heeft. Anders
+          krijgt zo'n kaart een kale, andere vorm dan de rest en kun je er geen
+          document bij leggen, terwijl dat juist het eerste is wat je wilt doen. */}
+      {open && (
         <div className="wp-overdeze">
-          <div className="wp-overdeze-kop">Over deze pagina</div>
+          <div className="wp-overdeze-kop">{t.url ? "Over deze pagina" : "Over deze taak"}</div>
           {hasInfo && (
             <div className="wp-card-info wp-info-net"
               onClick={(e) => {
@@ -546,7 +550,15 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
               dangerouslySetInnerHTML={{ __html: cardInfoHtml(t.toelichting, t.url, t.taak, cijferRegel(page), mailLinks, undefined, true) }} />
           )}
           {t.url && <PaginaDossier slug={slug} url={t.url} kaartTekst={t.toelichting} kaartTitel={t.taak} />}
-          {t.url && <DocVersies slug={slug} url={t.url} />}
+          {/* Documenten hangen aan de pagina als die er is, en anders aan de taak
+              zelf. Zo kun je bij élke kaart een document neerleggen, ook bij een
+              klus die niet over één pagina gaat (een rapportage, een werklijst). */}
+          <DocVersies slug={slug} url={t.url || `taak:${t.id}`} />
+          {!hasInfo && !t.url && (
+            <div className="muted wp-overdeze-leeg">
+              Nog geen achtergrond. Leg hier een document neer, of stel een vraag in de chat hieronder; wat daaruit komt kun je als achtergrond vastleggen.
+            </div>
+          )}
           {/* Eén archief onderaan het blok. Er stonden er twee vlak onder elkaar,
               "Eerdere notities" en "Tijdlijn en eerdere notities", allebei met een
               eigen aantal, dus het leek alsof er twee verschillende geschiedenissen

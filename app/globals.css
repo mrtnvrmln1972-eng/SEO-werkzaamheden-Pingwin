@@ -3850,3 +3850,5 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .wp-nieuw-taak { font-weight: 600; }
 .wp-nieuw-rij { display: flex; align-items: center; gap: var(--s-2); }
 .wp-nieuw-rij select { width: auto; }
+/* Een zelf aangemaakte taak heeft nog geen achtergrond; dan wijst dit de weg. */
+.wp-overdeze-leeg { font-size: var(--fs-sm); line-height: var(--lh-sm); padding: var(--s-1) 0; }
