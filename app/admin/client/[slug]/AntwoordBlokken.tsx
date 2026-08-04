@@ -18,6 +18,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { puntSoort, knopjesVoor, isGroepskop, stripMarker, type PuntSoort } from "../../../../lib/punt-soort";
 import { devLabel } from "../../../../lib/personen";
 import { striptVulzinnen, heeftInhoud } from "../../../../lib/vulzinnen";
+import { analyseNaarMailHtml } from "../../../../lib/mail-opmaak";
 import PaginaDossier from "./PaginaDossier";
 
 type Sectie = { kop: string; md: string };
@@ -54,6 +55,43 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
   const [toon, setToon] = useState<Record<string, boolean>>({}); // afgehandelde punten tonen per sectie
   const [tellers, setTellers] = useState<Record<string, Teller>>({});
   const rootRef = useRef<HTMLDivElement>(null);
+  // Deze analyse doorsturen met behoud van opmaak.
+  const [stuurOpen, setStuurOpen] = useState(false);
+  const [stuurAan, setStuurAan] = useState("");
+  const [stuurOnderwerp, setStuurOnderwerp] = useState("");
+  const [stuurIntro, setStuurIntro] = useState("");
+  const [stuurBezig, setStuurBezig] = useState(false);
+  const [stuurMsg, setStuurMsg] = useState<{ ok: boolean; tekst: string } | null>(null);
+
+  // Het onderwerp voorinvullen met de eerste kop uit het antwoord, zodat je meestal
+  // alleen nog de ontvanger hoeft te typen.
+  useEffect(() => {
+    if (stuurOnderwerp) return;
+    const kop = /^#{1,3}\s+(.+)$/m.exec(content || "");
+    if (kop) setStuurOnderwerp(kop[1].replace(/[*_`]/g, "").trim().slice(0, 120));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [content]);
+
+  async function stuurAnalyse() {
+    if (stuurBezig || !stuurAan.trim()) return;
+    setStuurBezig(true); setStuurMsg(null);
+    try {
+      // De hele analyse zoals hij op het scherm staat, dus inclusief tabellen.
+      const html = analyseNaarMailHtml(toHtml(content || ""), {
+        intro: stuurIntro.trim() || undefined,
+        bron: "Opgesteld in het Pingwin SEO-dashboard.",
+      });
+      const d = await fetch("/api/admin/mail", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "compose", slug, to: stuurAan.trim(), subject: stuurOnderwerp.trim() || "Analyse", html }),
+      }).then((r) => r.json());
+      if (d?.ok) {
+        setStuurMsg({ ok: true, tekst: `Verstuurd aan ${(d.sentTo || []).join(", ") || stuurAan.trim()}.` });
+        setStuurOpen(false);
+      } else setStuurMsg({ ok: false, tekst: d?.error || "Versturen lukte niet." });
+    } catch { setStuurMsg({ ok: false, tekst: "Versturen lukte niet." }); }
+    finally { setStuurBezig(false); }
+  }
 
   // Over welke pagina's gáát dit antwoord? Van die pagina's tonen we onderaan het
   // dossierblok: dezelfde alinea en dezelfde linkjes als op de kaart in de
@@ -398,6 +436,43 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
         );
       })}
       {genoemdePaden.map((p) => <PaginaDossier key={p} slug={slug} url={p} compact />)}
+
+      {/* Een analyse als deze kon je alleen als platte tekst doorsturen: het gewone
+          mailvenster leest innerText, dus de koppen, tabellen en lijstjes vielen weg.
+          Juist het werk dat je wilt laten zien ging kapot in de laatste stap. Deze
+          knop stuurt het antwoord door zoals het hier staat. */}
+      <div className="ovc-doorstuur">
+        {!stuurOpen ? (
+          <button type="button" className="wp-fase-btn" onClick={() => setStuurOpen(true)}
+            title="Stuur deze analyse door met dezelfde opmaak: koppen, tabellen en lijsten blijven staan">
+            Mail deze analyse
+          </button>
+        ) : (
+          <div className="ovc-doorstuur-venster">
+            <div className="ovc-doorstuur-rij">
+              <label>Aan</label>
+              <input value={stuurAan} onChange={(e) => setStuurAan(e.target.value)}
+                placeholder="naam@bedrijf.nl, tweede@bedrijf.nl" />
+            </div>
+            <div className="ovc-doorstuur-rij">
+              <label>Onderwerp</label>
+              <input value={stuurOnderwerp} onChange={(e) => setStuurOnderwerp(e.target.value)} />
+            </div>
+            <div className="ovc-doorstuur-rij">
+              <label>Vooraf</label>
+              <textarea value={stuurIntro} onChange={(e) => setStuurIntro(e.target.value)} rows={3}
+                placeholder="Korte begeleidende zin (mag leeg)" />
+            </div>
+            <div className="ovc-doorstuur-acties">
+              <button type="button" className="wp-fase-btn wp-fase-btn-primair" disabled={stuurBezig || !stuurAan.trim()}
+                onClick={() => void stuurAnalyse()}>{stuurBezig ? "Versturen…" : "Verstuur"}</button>
+              <button type="button" className="wp-fase-btn" disabled={stuurBezig} onClick={() => { setStuurOpen(false); setStuurMsg(null); }}>Annuleren</button>
+              <span className="muted">De opmaak gaat mee zoals hierboven.</span>
+            </div>
+            {stuurMsg && <div className={stuurMsg.ok ? "wp-doc-ok" : "wp-doc-fout"}>{stuurMsg.tekst}</div>}
+          </div>
+        )}
+      </div>
       {lijstVoor && typeof window !== "undefined" && (
         <div className="ovc-lijstpop" style={{ left: Math.max(8, Math.min(lijstVoor.x, window.innerWidth - 300)), top: lijstVoor.y + 6 }}>
           <span className="ovc-lijstpop-kop">Op welke bespreeklijst?</span>
