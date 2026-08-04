@@ -545,7 +545,7 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
               }}
               dangerouslySetInnerHTML={{ __html: cardInfoHtml(t.toelichting, t.url, t.taak, cijferRegel(page), mailLinks, undefined, true) }} />
           )}
-          {t.url && <PaginaDossier slug={slug} url={t.url} kaartTekst={t.toelichting} />}
+          {t.url && <PaginaDossier slug={slug} url={t.url} kaartTekst={t.toelichting} kaartTitel={t.taak} />}
           {t.url && <DocVersies slug={slug} url={t.url} />}
           {/* Eén archief onderaan het blok. Er stonden er twee vlak onder elkaar,
               "Eerdere notities" en "Tijdlijn en eerdere notities", allebei met een

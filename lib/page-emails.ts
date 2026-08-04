@@ -1,5 +1,6 @@
 import { sql, ensureSchema } from "./db";
 import { urlKey } from "./url-key";
+import { HARD_BEWIJS } from "./constants";
 import { getClientBySlug } from "./clients";
 import { getPagePlan, getPageSummary, getClientUrls } from "./site-urls";
 import { getStepLinks } from "./page-doc-run";
@@ -52,7 +53,7 @@ export type PaginaMail = {
 // mail dan een verkeerde. Vanaf HARD_BEWIJS mag hij in de samenvatting genoemd
 // worden, ook zonder dat Maarten hem heeft vastgepind.
 const BEWAAR_VANAF = 2;
-export const HARD_BEWIJS = 3;
+export { HARD_BEWIJS };
 
 let tableReady: Promise<void> | null = null;
 function ensureTable(): Promise<void> {
@@ -147,7 +148,7 @@ async function laatsteZoekronde(slug: string, k: string): Promise<Date | null> {
 // bekeken. Zonder dit blijft een verbetering onzichtbaar op precies de pagina's
 // waarvoor hij bedoeld was: het systeem denkt "ik ben bij", terwijl die stand
 // met de oude, te smalle zoekregels is vastgelegd.
-const SCAN_VERSIE = 3;
+const SCAN_VERSIE = 4;
 
 async function ensureScanTabel(): Promise<void> {
   await sql`
@@ -191,6 +192,49 @@ const STOP = new Set(["de", "het", "een", "en", "van", "voor", "met", "over", "b
 
 export type Zoekterm = { term: string; gewicht: number };
 
+// ── Waar de KAART over gaat, als zoekterm ──
+//
+// Het pad is het sterkste signaal, maar niet altijd het signaal waarmee mensen
+// mailen. Op /lensimplantatie/edof-lenzen/ lag een kaart over de toeslag op de
+// "EDOF Speciality" lens; in die mailwisseling staat het pad nergens, wel de
+// productnaam. Zochten we alleen op het pad en de slug, dan bleef precies de
+// correspondentie die bij de klus hoorde onvindbaar, terwijl een ander traject
+// op diezelfde pagina (dat het pad wél noemde) de kaart overnam.
+//
+// We pakken uit de kaart alleen de EIGENNAMEN: twee of meer aaneengesloten
+// woorden met een hoofdletter, plus wat tussen aanhalingstekens staat. Dat zijn
+// product- en projectnamen, precies wat in een mail terugkomt. Losse woorden uit
+// de kaarttekst laten we met rust; die leveren de halve postbus op.
+const KAART_RUIS = /^(update|nieuw|nieuwe|copy|blauwdruk|analyse|bouw|meta|title|description|alt|teksten|tekst|pagina|structured|data|seo|google)$/i;
+
+async function kaarttermenVoorPagina(slug: string, k: string): Promise<string[]> {
+  const { rows } = await sql`
+    SELECT taak, toelichting, url FROM client_weekplan
+    WHERE client_slug = ${slug} AND status <> 'klaar' AND url IS NOT NULL AND url <> ''`;
+  const uit: string[] = [];
+  const zien = new Set<string>();
+  for (const r of rows) {
+    // urlKey-matching in JS, nooit in SQL: anders mis je een kaart door een www'tje.
+    if (urlKey(String(r.url || "")) !== k) continue;
+    // Titel eerst: dáár staat waar de klus over gaat. De toelichting noemt ook de
+    // trajecten eromheen, en die mogen de titel niet uit de lijst duwen.
+    for (const bron of [String(r.taak || ""), String(r.toelichting || "")]) {
+      if (!bron.trim()) continue;
+      for (const m of bron.matchAll(/"([^"\n]{4,40})"|\b([A-ZÀ-Ý][\wÀ-ÿ]*(?:[ -][A-ZÀ-Ý][\wÀ-ÿ]*)+)\b/g)) {
+        // "Mail Nicoline Trap 31-7" levert de persoon op, niet het onderwerp; de
+        // aanloop eraf, dan houd je over waar het echt over gaat.
+        const term = (m[1] || m[2] || "").trim().toLowerCase().replace(/^(?:mail(?:tje)?|reactie|antwoord)\s+(?:van\s+|aan\s+)?/, "");
+        if (term.length < 5 || term.length > 40 || zien.has(term)) continue;
+        const woorden = term.split(/[\s-]+/).filter(Boolean);
+        if (woorden.every((w) => KAART_RUIS.test(w))) continue;
+        zien.add(term);
+        uit.push(term);
+      }
+    }
+  }
+  return uit;
+}
+
 export async function zoektermenVoorPagina(slug: string, url: string): Promise<Zoekterm[]> {
   const termen: Zoekterm[] = [];
   const zien = new Set<string>();
@@ -220,11 +264,15 @@ export async function zoektermenVoorPagina(slug: string, url: string): Promise<Z
   }
 
   // 3. Titel van de pagina en het hoofdzoekwoord uit het plan.
-  const [urls, plan, samenvatting] = await Promise.all([
+  const [urls, plan, samenvatting, kaarttermen] = await Promise.all([
     getClientUrls(slug).catch(() => []),
     getPagePlan(slug, url).catch(() => ""),
     getPageSummary(slug, url).catch(() => null),
+    kaarttermenVoorPagina(slug, urlKey(url)).catch(() => [] as string[]),
   ]);
+  // De eigennamen uit de kaart komen vóór de titel en het plan: dit is waar de
+  // klus over gaat, en dus waar de mail over gaat.
+  for (const t of kaarttermen.slice(0, 3)) voegToe(t, 2);
   const zelf = urls.find((u) => urlKey(u.url) === urlKey(url));
   if (zelf?.title) voegToe(zelf.title.split(/[|\-–—]/)[0], 2);
   const planEersteZin = (plan || "").split(/[.\n]/)[0] || "";
@@ -233,7 +281,9 @@ export async function zoektermenVoorPagina(slug: string, url: string): Promise<Z
   else if (planEersteZin.length < 60) voegToe(planEersteZin, 1);
   if (samenvatting?.doel && samenvatting.doel.length < 60) voegToe(samenvatting.doel, 1);
 
-  return termen.sort((a, b) => b.gewicht - a.gewicht).slice(0, 5);
+  // Zes in plaats van vijf: de eigennamen uit de kaart komen er nu bij, en anders
+  // zouden die precies de paginatitel eruit duwen.
+  return termen.sort((a, b) => b.gewicht - a.gewicht).slice(0, 6);
 }
 
 // ── Scoren ──

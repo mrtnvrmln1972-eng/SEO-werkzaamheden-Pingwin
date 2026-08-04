@@ -32,21 +32,31 @@ async function volledigeUrl(slug: string, invoer: string): Promise<string> {
   return treffer?.url || "";
 }
 
+// Waar de kaart over gaat, meegegeven door het scherm. Zonder titel geen focus:
+// dan is dit het pagina-brede verhaal, precies zoals het altijd was.
+function leesFocus(taak: string | null, kaart: string | null): { taak: string; tekst: string } | undefined {
+  const t = (taak || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  if (!t) return undefined;
+  return { taak: t.slice(0, 300), tekst: (kaart || "").replace(/\s+/g, " ").trim().slice(0, 1500) };
+}
+
 export async function GET(req: NextRequest) {
   const slug = req.nextUrl.searchParams.get("slug") || "";
   const gevraagd = req.nextUrl.searchParams.get("url") || "";
   const compact = req.nextUrl.searchParams.get("compact") === "1";
+  const focus = leesFocus(req.nextUrl.searchParams.get("taak"), req.nextUrl.searchParams.get("kaart"));
   if (!slug || !gevraagd) return NextResponse.json({ ok: false, error: "Klant en pagina zijn verplicht." }, { status: 400 });
   const g = await guardSlug(req, slug); if (!g.ok) return g.res;
 
   try {
     const url = await volledigeUrl(slug, gevraagd);
     if (!url) return NextResponse.json({ ok: true, tekst: "", html: "", onbekend: true });
-    const { tekst, controle, dossier } = await getDossierTekst(slug, url);
+    const { tekst, controle, bijgewerktTot, dossier } = await getDossierTekst(slug, url, { focus });
     return NextResponse.json({
       ok: true,
       tekst,
       controle,
+      bijgewerktTot,
       html: dossierBlokHtml(dossier, tekst, { compact }),
       mails: dossier.mails,
       documenten: dossier.documenten,
@@ -66,6 +76,7 @@ export async function POST(req: NextRequest) {
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: "Ongeldige aanvraag." }, { status: 400 }); }
   const slug = String(body.slug || "");
   const gevraagd = String(body.url || "");
+  const focus = leesFocus(String(body.taak || ""), String(body.kaart || ""));
   if (!slug || !gevraagd) return NextResponse.json({ ok: false, error: "Klant en pagina zijn verplicht." }, { status: 400 });
   const g = await guardSlug(req, slug); if (!g.ok) return g.res;
 
@@ -75,8 +86,8 @@ export async function POST(req: NextRequest) {
     // Bewust forceren: wie op Ververs drukt wil een nieuwe zoekronde, niet
     // het antwoord van vorige week.
     const vers = await getPageDossier(slug, url, { forceerMail: true });
-    const { tekst, controle } = await getDossierTekst(slug, url, { ververs: true, dossier: vers });
-    return NextResponse.json({ ok: true, tekst, controle, html: dossierBlokHtml(vers, tekst), mails: vers.mails });
+    const { tekst, controle, bijgewerktTot } = await getDossierTekst(slug, url, { ververs: true, dossier: vers, focus });
+    return NextResponse.json({ ok: true, tekst, controle, bijgewerktTot, html: dossierBlokHtml(vers, tekst), mails: vers.mails });
   } catch {
     return NextResponse.json({ ok: false, error: "Verversen mislukte." }, { status: 500 });
   }

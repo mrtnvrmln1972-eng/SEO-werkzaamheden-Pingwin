@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { laatsteDatumInTekst } from "../../../../lib/card-info";
+import { HARD_BEWIJS } from "../../../../lib/constants";
 
 // ═══════════════════════════════════════════════════════════
 // HET DOSSIERBLOK OP HET SCHERM
@@ -14,12 +15,52 @@ import { laatsteDatumInTekst } from "../../../../lib/card-info";
 // plekken identiek is en er nooit ruwe Markdown in beeld komt.
 // ═══════════════════════════════════════════════════════════
 
-export default function PaginaDossier({ slug, url, compact = false, kaartTekst }: {
+type Achterstand = { aantal: number; van: string[] };
+
+// ── Loopt deze kaart achter op de mailbox? ──
+//
+// Drie dingen gingen hier eerder mis, en samen maakten ze een melding die je niet
+// weg kon krijgen. Eén: de meetlat was alleen de laatste datum die IN de
+// kaarttekst stond, en die tekst verandert niet als je bijwerkt. Twee: er werd
+// geteld over álle gevonden mails, ook de zwakke voorstellen, terwijl de
+// samenvatting die per definitie nooit gebruikt; die kon dus nooit "verwerkt"
+// raken. Drie: na het bijwerken werd er helemaal niet opnieuw geteld.
+//
+// Nu is de meetlat de laatste van twee: wat er in de kaarttekst staat, en tot
+// welke mail het verhaal gelezen heeft. Dat tweede zet de server bij elke keer
+// dat het verhaal geschreven wordt, dus na bijwerken is de melding weg, en komt
+// alleen terug als er echt nieuwe mail is.
+function telAchterstand(d: { mails?: unknown; bijgewerktTot?: string | null } | null, kaartTekst?: string): Achterstand {
+  const leeg: Achterstand = { aantal: 0, van: [] };
+  if (!d) return leeg;
+  const uitTekst = kaartTekst ? laatsteDatumInTekst(kaartTekst) : null;
+  const uitVerhaal = d.bijgewerktTot ? new Date(d.bijgewerktTot) : null;
+  const grenzen = [uitTekst, uitVerhaal].filter((x): x is Date => !!x && !Number.isNaN(x.getTime()));
+  if (!grenzen.length) return leeg;
+  const grens = grenzen.sort((a, b) => b.getTime() - a.getTime())[0];
+
+  const na = ((d.mails || []) as { ontvangenOp?: string; vanNaam?: string; bron?: string; score?: number }[])
+    // Alleen mails die ook echt in het verhaal terecht kunnen komen. Een
+    // "mogelijk relevant"-treffer mag geen melding veroorzaken die geen enkele
+    // verversing kan oplossen.
+    .filter((m) => m.bron === "pin" || (m.score || 0) >= HARD_BEWIJS)
+    .filter((m) => { const dt = m.ontvangenOp ? new Date(m.ontvangenOp) : null; return dt && !Number.isNaN(dt.getTime()) && dt > grens; });
+  return { aantal: na.length, van: Array.from(new Set(na.map((m) => (m.vanNaam || "").split(" ")[0]).filter(Boolean))) };
+}
+
+export default function PaginaDossier({ slug, url, compact = false, kaartTekst, kaartTitel }: {
   slug: string;
   url: string;
   compact?: boolean;
   /** De geschreven kaarttekst, om te zien of die achterloopt op de mailbox. */
   kaartTekst?: string;
+  /**
+   * De titel van de kaart. Staat die er, dan gaat het verhaal over DEZE klus en
+   * niet over alles wat er ooit over de pagina gemaild is. Een pagina kan meer
+   * dan één traject dragen; zonder titel wint het traject dat het meest gemaild
+   * is, ook als de kaart over iets heel anders gaat.
+   */
+  kaartTitel?: string;
 }) {
   const [html, setHtml] = useState("");
   const [staat, setStaat] = useState<"laden" | "klaar" | "leeg" | "fout">("laden");
@@ -32,21 +73,20 @@ export default function PaginaDossier({ slug, url, compact = false, kaartTekst }
   const [nieuwer, setNieuwer] = useState<{ aantal: number; van: string[] }>({ aantal: 0, van: [] });
   const doosRef = useRef<HTMLDivElement>(null);
 
+  // De focus gaat mee naar de server, zodat het verhaal over deze klus gaat.
+  const focusQuery = kaartTitel
+    ? `&taak=${encodeURIComponent(kaartTitel.replace(/<[^>]*>/g, " ").slice(0, 300))}&kaart=${encodeURIComponent((kaartTekst || "").slice(0, 1500))}`
+    : "";
+
   const laad = useCallback(async () => {
     if (!url) { setStaat("leeg"); return; }
     try {
-      const d = await fetch(`/api/admin/page-dossier?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}${compact ? "&compact=1" : ""}`).then((r) => r.json());
+      const d = await fetch(`/api/admin/page-dossier?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}${compact ? "&compact=1" : ""}${focusQuery}`).then((r) => r.json());
       if (d?.ok && d.html) { setHtml(d.html); setStaat("klaar"); }
       else setStaat(d?.ok ? "leeg" : "fout");
-      const grens = kaartTekst ? laatsteDatumInTekst(kaartTekst) : null;
-      if (grens) {
-        const na = ((d?.mails || []) as { ontvangenOp?: string; vanNaam?: string }[])
-          .filter((m) => { const dt = m.ontvangenOp ? new Date(m.ontvangenOp) : null; return dt && !Number.isNaN(dt.getTime()) && dt > grens; });
-        const van = Array.from(new Set(na.map((m) => (m.vanNaam || "").split(" ")[0]).filter(Boolean)));
-        setNieuwer({ aantal: na.length, van });
-      } else setNieuwer({ aantal: 0, van: [] });
+      setNieuwer(telAchterstand(d, kaartTekst));
     } catch { setStaat("fout"); }
-  }, [slug, url, compact, kaartTekst]);
+  }, [slug, url, compact, kaartTekst, focusQuery]);
 
   useEffect(() => { void laad(); }, [laad]);
 
@@ -79,17 +119,33 @@ export default function PaginaDossier({ slug, url, compact = false, kaartTekst }
     finally { setBezig(false); }
   }
 
+  // Bijwerken: nieuwe zoekronde door de mailbox, het verhaal opnieuw geschreven,
+  // en daarna de stand van de melding opnieuw bepalen. Dat laatste ontbrak, dus
+  // wie op de knop drukte zag drie keer achter elkaar niets veranderen.
   async function ververs() {
     if (bezig) return;
+    const waren = nieuwer.aantal;
     setBezig(true);
+    setMelding("");
     try {
       const d = await fetch("/api/admin/page-dossier", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, url }),
+        body: JSON.stringify({ slug, url, taak: kaartTitel || "", kaart: kaartTekst || "" }),
       }).then((r) => r.json());
-      if (d?.ok && d.html) setHtml(d.html);
-    } catch { /* stil */ }
+      if (d?.ok) {
+        if (d.html) { setHtml(d.html); setStaat("klaar"); }
+        const stand = telAchterstand(d, kaartTekst);
+        setNieuwer(stand);
+        const verwerkt = Math.max(0, waren - stand.aantal);
+        setMelding(verwerkt
+          ? `Bijgewerkt, ${verwerkt === 1 ? "1 nieuwe mail" : `${verwerkt} nieuwe mails`} verwerkt.`
+          : "Bijgewerkt. Er was niets nieuws te verwerken.");
+        setTimeout(() => setMelding(""), 6000);
+      } else {
+        setMelding(d?.error || "Bijwerken lukte niet. Probeer het nog een keer.");
+      }
+    } catch { setMelding("Bijwerken lukte niet. Probeer het nog een keer."); }
     finally { setBezig(false); }
   }
 
