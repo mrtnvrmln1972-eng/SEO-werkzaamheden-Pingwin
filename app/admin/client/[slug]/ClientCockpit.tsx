@@ -12,6 +12,7 @@ import ChatPanel from "./ChatPanel";
 import OverviewChat from "./OverviewChat";
 import WeekplanBoard from "./WeekplanBoard";
 import ZijPaneel from "./ZijPaneel";
+import HeaderMenu from "./HeaderMenu";
 import OrgDataPanel from "./OrgDataPanel";
 import FocusBlock from "./FocusBlock";
 import ShareLinkBar from "./ShareLinkBar";
@@ -396,22 +397,55 @@ export default function ClientCockpit({
               {demoFilter === null ? "Alle klanten" : demoFilter === "28" ? "✓ Mooie ontwikkeling (28 dgn)" : "✓ Mooie ontwikkeling (3 mnd)"}
             </button>
           )}
+          {/* Zes knoppen in plaats van elf tabjes. Wat bij elkaar hoort zit onder een
+              uitklapmenu: "Klant" toont wat we voor deze klant doen, "Site-breed" de
+              gereedschappen die over de hele site kijken. De tab-waarden in de URL
+              blijven ongewijzigd, dus bestaande bookmarks komen nog goed uit. */}
           <nav className="header-tabs">
             {([
               ["werkzaamheden", "Taken", "De bird's eye-assistent en de weekplanning, jouw werkplek"],
               ["paginas", "Pagina’s", ""],
-              ["documenten", "Documenten", "Alle analyses, blauwdrukken en copy per pagina, per maand, met of het al op de site staat"],
-              ["activiteit", "Wat we doen", "Alles wat we voor deze klant hebben uitgevoerd, per maand: analyses, copy, meta-teksten, alt-teksten, structured data en redirects"],
-              ["meta", "Meta & CTR", "Pagina's met veel vertoningen maar te weinig klikken: betere meta-teksten = direct meer bezoekers"],
-              ["cannibalisatie", "Opruimen", "Welke pagina's elkaar in de weg zitten, met de volledige redirectlijst: van, naar en waarom. Draait in de achtergrond, dus geen chat die samenvat"],
-              ["interne-links", "Interne links", "Vanaf welke pagina's je het beste naar een doelpagina linkt, gewogen op autoriteit en relevantie"],
-              ["resultaten", "KPI’s", ""],
-              ["wijzigingen", "Wijzigingen", ""],
-              ["klant", "Klant", ""],
-              ["developer", "Developer", "Alle developer-taken over alle klanten"],
             ] as [Tab, string, string][]).map(([id, label, title]) => (
               // Echte link (href) zodat cmd/middel-klik in een nieuw tabblad opent;
               // gewone klik wisselt client-side van tab.
+              <a
+                key={id}
+                href={`${pathname}?tab=${id}`}
+                title={title || undefined}
+                className={"tab" + (tab === id ? " active" : "")}
+                onClick={(e) => { if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return; e.preventDefault(); changeTab(id); }}
+              >{label}</a>
+            ))}
+
+            <HeaderMenu<Tab>
+              label="Site-breed"
+              active={tab}
+              hrefFor={(id) => `${pathname}?tab=${id}`}
+              onPick={changeTab}
+              items={[
+                { id: "meta", label: "Meta & CTR", hint: "Veel vertoningen, te weinig klikken: betere meta-teksten leveren direct bezoekers op" },
+                { id: "cannibalisatie", label: "Opruimen", hint: "Welke pagina's elkaar in de weg zitten, met de volledige redirectlijst: van, naar en waarom" },
+                { id: "interne-links", label: "Interne links", hint: "Vanaf welke pagina's je het beste naar een doelpagina linkt, gewogen op autoriteit en relevantie" },
+              ]}
+            />
+
+            <HeaderMenu<Tab>
+              label="Klant"
+              active={tab}
+              hrefFor={(id) => `${pathname}?tab=${id}`}
+              onPick={changeTab}
+              items={[
+                { id: "documenten", label: "Documenten", hint: "Alle analyses, blauwdrukken en copy per pagina en per maand, met of het al op de site staat" },
+                { id: "activiteit", label: "Wat we doen", hint: "Alles wat we voor deze klant uitvoerden, per maand: copy, meta, alt-teksten, structured data en redirects" },
+                { id: "wijzigingen", label: "Wijzigingen", hint: "Wat er op de site van de klant veranderd is sinds de vorige controle" },
+                { id: "klant", label: "Klantgegevens", hint: "Profiel, bedrijfsgegevens, kennisbank en de instellingen van deze klant" },
+              ]}
+            />
+
+            {([
+              ["resultaten", "KPI’s", ""],
+              ["developer", "Developer", "Alle developer-taken over alle klanten"],
+            ] as [Tab, string, string][]).map(([id, label, title]) => (
               <a
                 key={id}
                 href={`${pathname}?tab=${id}`}

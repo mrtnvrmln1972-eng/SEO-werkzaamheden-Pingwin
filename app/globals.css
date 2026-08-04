@@ -449,6 +449,43 @@ tbody td:last-child { text-align: center; }
 .tab-link { text-decoration: none; display: inline-block; }
 .tab-link:hover { color: var(--orange); }
 
+/* ── Uitklapmenu in de kopbalk (Klant, Site-breed) ────────────────
+   Bundelt bij elkaar horende tabjes zodat de balk zes knoppen telt in
+   plaats van elf. De knop licht op zodra een van zijn items open staat. */
+.hm-wrap { position: relative; display: inline-flex; }
+.hm-knop {
+  display: inline-flex; align-items: center; gap: var(--s-2);
+  border-bottom: 3px solid transparent;
+}
+.hm-pijl { width: 10px; height: 6px; flex: none; transition: transform 0.15s; }
+.hm-knop.hm-open .hm-pijl { transform: rotate(180deg); }
+.hm-knop.hm-open { color: var(--orange-dark); }
+.hm-paneel {
+  position: absolute; top: calc(100% + var(--s-2)); left: 0; z-index: 70;
+  min-width: 260px; max-width: 320px;
+  display: flex; flex-direction: column;
+  padding: var(--s-2);
+  background: var(--white);
+  border: 1px solid var(--card-border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+}
+.hm-item {
+  display: flex; flex-direction: column; gap: var(--s-1);
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r-md);
+  border-left: 3px solid transparent;
+  text-decoration: none; color: var(--body-text);
+}
+.hm-item:hover { background: var(--orange-light); }
+.hm-item-actief { border-left-color: var(--orange); background: var(--brand-orange-faint); }
+.hm-item-label {
+  font-family: 'Montserrat', sans-serif;
+  font-size: var(--fs-base); line-height: var(--lh-base); font-weight: 600;
+}
+.hm-item-actief .hm-item-label { color: var(--orange-dark); }
+.hm-item-hint { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray); }
+
 /* Developer Overview */
 .dev-intro { font-size: 13px; color: var(--gray); margin: 0 0 16px; max-width: 720px; line-height: 1.5; }
 .dev-client-card { padding: 16px 18px; }
