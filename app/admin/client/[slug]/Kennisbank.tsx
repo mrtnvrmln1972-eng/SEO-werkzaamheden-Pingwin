@@ -114,9 +114,10 @@ export default function Kennisbank({ slug, onVerwerkt }: { slug: string; onVerwe
           d.nieuweVestigingen ? `${d.nieuweVestigingen} vestiging${d.nieuweVestigingen === 1 ? "" : "en"}` : "",
           d.nieuweArtsen ? `${d.nieuweArtsen} arts${d.nieuweArtsen === 1 ? "" : "en"}` : "",
         ].filter(Boolean).join(" en ");
-        setOkMsg(d.gevuld
+        const schoon = d.opgeruimd ? ` ${d.opgeruimd} dubbele regel${d.opgeruimd === 1 ? "" : "s"} samengevoegd.` : "";
+        setOkMsg((d.gevuld
           ? `De bedrijfsgegevens hierboven zijn bijgewerkt${extra ? ` met ${extra}` : ""}. Wat nog ontbreekt staat daar in het rood.`
-          : "De bedrijfsgegevens waren al bij (of staan op slot); er viel niets meer te vullen.");
+          : "De bedrijfsgegevens waren al bij (of staan op slot); er viel niets meer te vullen.") + schoon);
         onVerwerkt?.();
         void laad();
       } else setFout(d?.error || "Dat lukte niet.");

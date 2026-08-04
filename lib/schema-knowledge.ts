@@ -82,6 +82,46 @@ export function normaliseerVelden(velden: Record<string, string>): Record<string
   return uit;
 }
 
+// ─── Dubbel herkennen: op identiteit, niet op letterlijke naam ───
+// "Dr. Amit Atwal" en "Amit Atwal" zijn dezelfde arts; "OneDayClinic Utrecht" en
+// "Utrecht (Amsterdamsestraatweg 542)" dezelfde vestiging. Vergelijken op de
+// exacte naam leverde daardoor bij elke aanlevering een nieuwe regel op. Daarom
+// bepalen we per gegeven een identiteit: een BIG-nummer is uniek, een adres met
+// postcode en huisnummer ook; pas als die er niet zijn valt hij terug op de naam.
+const TITELS = /\b(dr|drs|prof|ir|ing|mr|mevr|mw|dhr)\b\.?/gi;
+const RECHTSVORMEN = /\b(b\.?v\.?|n\.?v\.?|v\.?o\.?f\.?|holding)\b/gi;
+function naamKaal(n: string): string {
+  return String(n || "").toLowerCase().replace(TITELS, " ").replace(RECHTSVORMEN, " ")
+    .replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+/g, " ");
+}
+const cijfers = (s: string) => String(s || "").replace(/\D/g, "");
+
+export function identiteit(categorie: string, naam: string, velden: Record<string, string>): string {
+  const v = velden || {};
+  if (categorie === "persoon" && cijfers(v.big).length >= 8) return `persoon|big:${cijfers(v.big)}`;
+  if (categorie === "locatie") {
+    const pc = String(v.postcode || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const nr = (String(v.adres || "").match(/\d+\s*[a-z]?/i) || [""])[0].replace(/\s+/g, "").toLowerCase();
+    if (pc && nr) return `locatie|adres:${pc}-${nr}`;
+    const straat = naamKaal(v.adres || ""), plaats = naamKaal(v.plaats || "");
+    if (straat && plaats) return `locatie|adres:${plaats}-${straat}`;
+  }
+  return `${categorie}|${naamKaal(naam) || String(naam || "").trim().toLowerCase()}`;
+}
+
+// Velden samenvoegen. Bij "ouder" materiaal vullen we alleen lege plekken aan,
+// zodat verouderde gegevens nooit een nieuwere waarde overschrijven.
+function voegVeldenSamen(bestaand: Record<string, string>, nieuw: Record<string, string>, ouder: boolean): Record<string, string> {
+  const uit = { ...(bestaand || {}) };
+  for (const [k, v] of Object.entries(nieuw || {})) {
+    const waarde = String(v || "").trim();
+    if (!waarde) continue;
+    if (ouder && String(uit[k] || "").trim()) continue;
+    uit[k] = waarde;
+  }
+  return uit;
+}
+
 let tableReady: Promise<void> | null = null;
 function ensureTable(): Promise<void> {
   if (!tableReady) tableReady = doEnsure().catch((e) => { tableReady = null; throw e; });
@@ -135,11 +175,211 @@ export async function getOpenProposals(slug: string): Promise<KennisVoorstel[]> 
   }));
 }
 
+// ─── Een JSON-LD-bestand exact inlezen (geen AI) ───
+// Een aangeleverd schema-bestand ÍS al gestructureerde data. Dat door een model
+// laten samenvatten is niet alleen verspilling, het verliest ook gegevens: juist
+// de geneste stukken (sameAs-lijst, BIG-nummer in identifier, adres, tijden per
+// dag) sneuvelden. Daarom lezen we zo'n bestand regel voor regel uit; wat erin
+// staat komt erin, niets meer en niets minder.
+
+type LdNode = Record<string, unknown>;
+const DAG_KORT: Record<string, string> = {
+  monday: "ma", tuesday: "di", wednesday: "wo", thursday: "do", friday: "vr", saturday: "za", sunday: "zo",
+};
+const DAG_VOLGORDE = ["ma", "di", "wo", "do", "vr", "za", "zo"];
+
+function ldTypes(n: LdNode): string[] {
+  const t = n["@type"];
+  return (Array.isArray(t) ? t : [t]).map((x) => String(x || "")).filter(Boolean);
+}
+function ldTekst(v: unknown): string {
+  if (v == null) return "";
+  if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") return String(v).trim();
+  if (Array.isArray(v)) return v.map(ldTekst).filter(Boolean).join(", ");
+  const o = v as LdNode;
+  return String(o.name || o.url || o.value || o.telephone || o.email || "").trim();
+}
+function ldUrls(v: unknown): string[] {
+  return ldTekst(v).split(/[\s,;]+/).filter((s) => /^https?:\/\//i.test(s));
+}
+// identifier: {propertyID: "BIG-register", value: "…"} → de waarde bij een label.
+function ldIdentifier(n: LdNode, zoek: RegExp): string {
+  const lijst = Array.isArray(n.identifier) ? n.identifier : n.identifier ? [n.identifier] : [];
+  for (const i of lijst as LdNode[]) {
+    if (i && typeof i === "object" && zoek.test(String(i.propertyID || i.name || ""))) return ldTekst(i.value);
+  }
+  return "";
+}
+function ldAdres(n: LdNode): { adres: string; postcode: string; plaats: string } {
+  const a = (n.address && typeof n.address === "object" ? n.address : {}) as LdNode;
+  return { adres: ldTekst(a.streetAddress), postcode: ldTekst(a.postalCode), plaats: ldTekst(a.addressLocality) };
+}
+// openingHoursSpecification → leesbare regel, opeenvolgende gelijke dagen samen:
+// "ma 12:00-20:00, di t/m vr 09:00-17:00, za 09:00-12:00".
+function ldOpeningstijden(n: LdNode): string {
+  const spec = Array.isArray(n.openingHoursSpecification) ? n.openingHoursSpecification : n.openingHoursSpecification ? [n.openingHoursSpecification] : [];
+  const perDag = new Map<string, string>();
+  for (const s of spec as LdNode[]) {
+    const dagen = Array.isArray(s.dayOfWeek) ? s.dayOfWeek : [s.dayOfWeek];
+    const tijd = `${ldTekst(s.opens)}-${ldTekst(s.closes)}`;
+    if (tijd === "-") continue;
+    for (const d of dagen) {
+      const kort = DAG_KORT[String(d || "").toLowerCase().replace(/^https?:\/\/schema\.org\//, "").toLowerCase()];
+      if (kort) perDag.set(kort, tijd);
+    }
+  }
+  if (!perDag.size) return ldTekst(n.openingHours);
+  const stukken: string[] = [];
+  let start = "", vorige = "", tijd = "";
+  for (const dag of DAG_VOLGORDE) {
+    const t = perDag.get(dag);
+    if (t && t === tijd) { vorige = dag; continue; }
+    if (start) stukken.push(vorige && vorige !== start ? `${start} t/m ${vorige} ${tijd}` : `${start} ${tijd}`);
+    start = t ? dag : ""; vorige = t ? dag : ""; tijd = t || "";
+  }
+  if (start) stukken.push(vorige && vorige !== start ? `${start} t/m ${vorige} ${tijd}` : `${start} ${tijd}`);
+  return stukken.join(", ");
+}
+
+function schoon(velden: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(Object.entries(velden).filter(([, v]) => String(v || "").trim()));
+}
+
+export function entiteitenUitJsonLd(tekst: string): { samenvatting: string; entiteiten: KennisVoorstel["entiteiten"] } | null {
+  let data: unknown;
+  try { data = JSON.parse(tekst); } catch { return null; }
+  const wortel = (Array.isArray(data) ? data : [data]) as LdNode[];
+  const nodes: LdNode[] = [];
+  for (const w of wortel) {
+    if (!w || typeof w !== "object") continue;
+    const graph = w["@graph"];
+    if (Array.isArray(graph)) nodes.push(...(graph as LdNode[]));
+    else nodes.push(w);
+  }
+  if (!nodes.length || !nodes.some((n) => ldTypes(n).length)) return null;
+
+  const entiteiten: KennisVoorstel["entiteiten"] = [];
+  const tel = { organisatie: 0, persoon: 0, locatie: 0, dienst: 0 };
+  for (const n of nodes) {
+    const types = ldTypes(n);
+    const naam = ldTekst(n.name);
+    if (!naam || types.includes("WebSite")) continue;
+    const isPersoon = types.some((t) => /^(Person|Physician|MedicalDoctor|Nurse)$/i.test(t));
+    const isBedrijf = types.some((t) => /(Organization|Clinic|LocalBusiness|Hospital|Store|Dentist|Pharmacy)/i.test(t));
+    const isDienst = types.some((t) => /(Procedure|Service|Product|Offer|MedicalTest|MedicalTherapy)/i.test(t));
+    const adres = ldAdres(n);
+    const contact = (n.contactPoint && typeof n.contactPoint === "object" ? n.contactPoint : {}) as LdNode;
+
+    if (isPersoon) {
+      const links = ldUrls(n.sameAs);
+      const werkt = (Array.isArray(n.affiliation) ? n.affiliation : n.affiliation ? [n.affiliation] : []) as LdNode[];
+      entiteiten.push({
+        categorie: "persoon", naam, oordeel: "nieuw",
+        velden: schoon({
+          functie: ldTekst(n.jobTitle),
+          specialisatie: ldTekst(n.medicalSpecialty),
+          big: ldIdentifier(n, /BIG/i),
+          linkedin: links.find((u) => /linkedin/i.test(u)) || "",
+          profielUrl: links.find((u) => !/linkedin/i.test(u)) || links[0] || "",
+          foto: ldTekst(n.image),
+          vestigingen: werkt.map((a) => ldTekst(a.name)).filter(Boolean).join(", "),
+        }),
+      });
+      tel.persoon++;
+    } else if (isBedrijf && adres.adres) {
+      // Een bedrijfsnode MÉT adres is een vestiging.
+      entiteiten.push({
+        categorie: "locatie", naam, oordeel: "nieuw",
+        velden: schoon({
+          adres: adres.adres, postcode: adres.postcode, plaats: adres.plaats,
+          telefoon: ldTekst(n.telephone) || ldTekst(contact.telephone),
+          email: ldTekst(n.email) || ldTekst(contact.email),
+          openingstijden: ldOpeningstijden(n),
+          profielUrl: ldTekst(n.url), omschrijving: ldTekst(n.description),
+        }),
+      });
+      tel.locatie++;
+    } else if (isBedrijf) {
+      // Zonder adres: de overkoepelende organisatie (of een verzamelnode).
+      const socials = [...ldUrls(n.sameAs)];
+      entiteiten.push({
+        categorie: "organisatie", naam, oordeel: "nieuw",
+        velden: schoon({
+          bedrijfstype: types.some((t) => /Medical|Clinic|Hospital|Dentist|Pharmacy/i.test(t)) ? "kliniek" : "",
+          telefoon: ldTekst(n.telephone) || ldTekst(contact.telephone),
+          email: ldTekst(n.email) || ldTekst(contact.email),
+          kvk: ldIdentifier(n, /KVK|KvK/i), btw: ldIdentifier(n, /BTW|VAT/i),
+          logo: ldTekst(n.logo) || ldTekst(n.image),
+          oprichtingsjaar: ldTekst(n.foundingDate),
+          priceRange: ldTekst(n.priceRange),
+          areaServed: ldTekst(n.areaServed),
+          openingstijden: ldOpeningstijden(n),
+          sameAs: socials.join(", "),
+          omschrijving: ldTekst(n.description),
+        }),
+      });
+      tel.organisatie++;
+    } else if (isDienst) {
+      entiteiten.push({
+        categorie: "dienst", naam, oordeel: "nieuw",
+        velden: schoon({
+          omschrijving: ldTekst(n.description) || ldTekst(n.howPerformed),
+          profielUrl: ldTekst(n.url),
+        }),
+      });
+      tel.dienst++;
+    }
+  }
+  if (!entiteiten.length) return null;
+  // Eén bestand beschrijft hetzelfde bedrijf soms in meerdere nodes (organisatie,
+  // kliniek, koepel). Die horen één regel te worden, anders staat dezelfde naam
+  // straks dubbel in de kennisbank.
+  const samengevoegd: KennisVoorstel["entiteiten"] = [];
+  const index = new Map<string, number>();
+  for (const e of entiteiten) {
+    const k = identiteit(e.categorie, e.naam, e.velden);
+    const bestaat = index.get(k);
+    if (bestaat === undefined) { index.set(k, samengevoegd.length); samengevoegd.push(e); continue; }
+    const doel = samengevoegd[bestaat];
+    doel.velden = voegVeldenSamen(doel.velden, e.velden, true);
+    if (e.naam.length > doel.naam.length) doel.naam = e.naam;
+  }
+  entiteiten.length = 0; entiteiten.push(...samengevoegd);
+  for (const k of Object.keys(tel) as (keyof typeof tel)[]) tel[k] = entiteiten.filter((e) => e.categorie === k).length;
+  const delen = [
+    tel.organisatie ? `${tel.organisatie} organisatie${tel.organisatie === 1 ? "" : "s"}` : "",
+    tel.locatie ? `${tel.locatie} vestiging${tel.locatie === 1 ? "" : "en"}` : "",
+    tel.persoon ? `${tel.persoon} perso${tel.persoon === 1 ? "on" : "nen"}` : "",
+    tel.dienst ? `${tel.dienst} dienst${tel.dienst === 1 ? "" : "en"}` : "",
+  ].filter(Boolean);
+  return {
+    samenvatting: `Een schema-bestand (JSON-LD), letterlijk ingelezen: ${delen.join(", ")}. Er is niets geïnterpreteerd of aangevuld; alleen wat er in het bestand staat.`,
+    entiteiten,
+  };
+}
+
 // Drop → AI structureert naar entiteiten en vergelijkt met wat er al staat.
 export async function proposeKnowledge(slug: string, bron: string, tekst: string): Promise<KennisVoorstel> {
   await ensureSchema();
   await ensureTable();
   const huidig = await listKnowledge(slug);
+
+  // Is het aangeleverde stuk zelf al JSON-LD, lees het dan exact in.
+  const uitJson = entiteitenUitJsonLd(tekst);
+  if (uitJson) {
+    const bestaand = new Map(huidig.map((e) => [`${e.categorie}|${sleutel(e.naam)}`, e]));
+    const entiteiten = uitJson.entiteiten.map((e) => ({
+      ...e,
+      velden: normaliseerVelden(e.velden),
+      oordeel: bestaand.has(`${e.categorie}|${sleutel(e.naam)}`) ? ("aanvulling" as const) : ("nieuw" as const),
+    }));
+    const { rows } = await sql`
+      INSERT INTO client_schema_knowledge (client_slug, soort, bron, samenvatting, velden, status)
+      VALUES (${slug}, 'drop', ${bron}, ${uitJson.samenvatting}, ${JSON.stringify({ entiteiten })}, 'voorstel')
+      RETURNING id`;
+    return { id: rows[0].id as number, bron, samenvatting: uitJson.samenvatting, entiteiten };
+  }
+
   const huidigTekst = huidig.map((e) => `- [${e.categorie}] ${e.naam}: ${JSON.stringify(e.velden)}`).join("\n") || "(kennisbank is nog leeg)";
   const sys = `Je bent structured data-specialist bij SEO-bureau Pingwin. Je krijgt aangeleverd materiaal over een klant (documenten, gegevens over artsen/medewerkers, schema-code, wat dan ook) en structureert dat tot entiteiten voor de structured data-kennisbank.
 Regels:
@@ -183,21 +423,55 @@ export async function confirmKnowledge(slug: string, id: number): Promise<{ ok: 
   if (!rows[0]) return { ok: false, error: "Voorstel niet gevonden (misschien al verwerkt)." };
   const entiteiten = ((rows[0].velden as { entiteiten?: KennisVoorstel["entiteiten"] })?.entiteiten) || [];
   const huidig = await listKnowledge(slug);
-  const key = (c: string, n: string) => `${c}|${n.trim().toLowerCase()}`;
-  const byKey = new Map(huidig.map((e) => [key(e.categorie, e.naam), e]));
+  // Op identiteit vergelijken, en de kaart meelopend bijwerken: zo landt een
+  // gegeven dat twee keer in dezelfde aanlevering staat óók op één regel.
+  const byKey = new Map<string, KennisEntiteit>();
+  for (const e of huidig) if (!byKey.has(identiteit(e.categorie, e.naam, e.velden))) byKey.set(identiteit(e.categorie, e.naam, e.velden), e);
   let verwerkt = 0;
   for (const e of entiteiten) {
-    const bestaand = byKey.get(key(e.categorie, e.naam));
-    // Samenvoegen: nieuwe waarden winnen per veld, bestaande velden zonder nieuwe waarde blijven.
-    const velden = { ...(bestaand?.velden || {}), ...Object.fromEntries(Object.entries(e.velden || {}).filter(([, v]) => String(v || "").trim())) };
+    const sleutelId = identiteit(e.categorie, e.naam, e.velden || {});
+    const bestaand = byKey.get(sleutelId);
+    const velden = voegVeldenSamen(bestaand?.velden || {}, e.velden || {}, e.oordeel === "ouder");
+    // De duidelijkste naam winnen laten: de langste van de twee (met titel of
+    // met plaatsaanduiding) zegt doorgaans meer dan de korte variant.
+    const naam = bestaand && bestaand.naam.length >= e.naam.trim().length ? bestaand.naam : e.naam.trim();
     if (bestaand) await sql`UPDATE client_schema_knowledge SET status = 'vervangen' WHERE client_slug = ${slug} AND id = ${bestaand.id}`;
-    await sql`
+    const ins = await sql`
       INSERT INTO client_schema_knowledge (client_slug, soort, categorie, naam, velden, bron, status)
-      VALUES (${slug}, 'entiteit', ${e.categorie}, ${e.naam.trim()}, ${JSON.stringify(velden)}, ${`voorstel #${id}`}, 'actueel')`;
+      VALUES (${slug}, 'entiteit', ${e.categorie}, ${naam}, ${JSON.stringify(velden)}, ${`voorstel #${id}`}, 'actueel')
+      RETURNING id`;
+    byKey.set(sleutelId, { id: ins.rows[0].id as number, categorie: e.categorie, naam, velden, bron: `voorstel #${id}`, updatedAt: "" });
     verwerkt++;
   }
   await sql`UPDATE client_schema_knowledge SET status = 'verwerkt' WHERE client_slug = ${slug} AND id = ${id}`;
+  await opruimenDubbel(slug);
   return { ok: true, verwerkt };
+}
+
+// Wat er al dubbel in de kennisbank staat (van vóór het ontdubbelen) alsnog
+// samenvoegen: nieuwste regel wint per veld, oudere regels gaan op "vervangen".
+export async function opruimenDubbel(slug: string): Promise<number> {
+  const huidig = await listKnowledge(slug);
+  const groepen = new Map<string, KennisEntiteit[]>();
+  for (const e of huidig) {
+    const k = identiteit(e.categorie, e.naam, e.velden);
+    groepen.set(k, [...(groepen.get(k) || []), e]);
+  }
+  let opgeruimd = 0;
+  for (const groep of groepen.values()) {
+    if (groep.length < 2) continue;
+    const gesorteerd = [...groep].sort((a, b) => b.id - a.id); // nieuwste eerst
+    const winnaar = gesorteerd[0];
+    let velden = { ...winnaar.velden };
+    for (const ouder of gesorteerd.slice(1)) velden = voegVeldenSamen(velden, ouder.velden, true);
+    const naam = gesorteerd.map((g) => g.naam).sort((a, b) => b.length - a.length)[0];
+    await sql`UPDATE client_schema_knowledge SET velden = ${JSON.stringify(velden)}, naam = ${naam} WHERE client_slug = ${slug} AND id = ${winnaar.id}`;
+    for (const weg of gesorteerd.slice(1)) {
+      await sql`UPDATE client_schema_knowledge SET status = 'vervangen' WHERE client_slug = ${slug} AND id = ${weg.id}`;
+      opgeruimd++;
+    }
+  }
+  return opgeruimd;
 }
 
 // Alle openstaande voorstellen in één klik verwerken (na een reeks drops).
@@ -245,15 +519,45 @@ export function splitsAdres(adres: string): { straat: string; postcode: string; 
   return { straat, postcode, plaats };
 }
 
+// Veldnamen waarin een sociale of externe profiel-link kan zitten.
+const SOCIAL_VELDEN = /^(sameas|socials?|sociale?profielen|facebook|instagram|linkedin|twitter|x|youtube|tiktok|pinterest|whatsapp|mapsurl|googlebusiness|googlemaps|vermeldingen)$/i;
+
 const sleutel = (s: string) => String(s || "").trim().toLowerCase().replace(/\s+/g, " ");
 const vul = (huidig: string, nieuw: string) => (String(huidig || "").trim() ? huidig : String(nieuw || "").trim());
 
 export async function applyKnowledgeToOrg(slug: string): Promise<{ gevuld: number; nieuweVestigingen: number; nieuweArtsen: number }> {
   const [rec, entiteiten] = await Promise.all([getOrgData(slug), listKnowledge(slug)]);
   if (rec.locked) return { gevuld: 0, nieuweVestigingen: 0, nieuweArtsen: 0 };
-  const d: OrgData = JSON.parse(JSON.stringify(rec.data));
-  const voor = JSON.stringify(d);
+  const voor = JSON.stringify(rec.data);
+  const { data, nieuweVestigingen, nieuweArtsen } = kennisNaarOrg(rec.data, entiteiten);
+  const gevuld = JSON.stringify(data) === voor ? 0 : 1;
+  if (gevuld) await saveOrgData(slug, data, "admin");
+  return { gevuld, nieuweVestigingen, nieuweArtsen };
+}
+
+// De omzetting zelf: los van de database, zodat hij te controleren is.
+export function kennisNaarOrg(bron: OrgData, entiteiten: KennisEntiteit[]): { data: OrgData; nieuweVestigingen: number; nieuweArtsen: number } {
+  const d: OrgData = JSON.parse(JSON.stringify(bron));
   let nieuweVestigingen = 0, nieuweArtsen = 0;
+
+  // Eerst opruimen wat er al dubbel in het formulier staat.
+  const gezienV = new Map<string, OrgVestiging>();
+  for (const v of d.vestigingen) {
+    const k = identiteit("locatie", v.naam, { adres: v.straat, postcode: v.postcode, plaats: v.plaats });
+    const eerder = gezienV.get(k);
+    if (!eerder) { gezienV.set(k, v); continue; }
+    for (const veld of Object.keys(LEGE_VESTIGING) as (keyof OrgVestiging)[]) eerder[veld] = vul(eerder[veld], v[veld]);
+  }
+  d.vestigingen = [...gezienV.values()];
+  const gezienA = new Map<string, OrgData["artsen"][number]>();
+  for (const a of d.artsen) {
+    const k = identiteit("persoon", a.naam, { big: a.big });
+    const eerder = gezienA.get(k);
+    if (!eerder) { gezienA.set(k, a); continue; }
+    eerder.functie = vul(eerder.functie, a.functie); eerder.specialisatie = vul(eerder.specialisatie, a.specialisatie);
+    eerder.big = vul(eerder.big, a.big); eerder.fotoUrl = vul(eerder.fotoUrl, a.fotoUrl); eerder.profielUrl = vul(eerder.profielUrl, a.profielUrl);
+  }
+  d.artsen = [...gezienA.values()];
 
   // Organisatie-entiteiten: de algemene bedrijfsvelden.
   for (const o of entiteiten.filter((e) => e.categorie === "organisatie")) {
@@ -267,16 +571,29 @@ export async function applyKnowledgeToOrg(slug: string): Promise<{ gevuld: numbe
       const a = splitsAdres(v.adres);
       d.straat = vul(d.straat, a.straat); d.postcode = vul(d.postcode, a.postcode); d.plaats = vul(d.plaats, a.plaats);
     }
-    for (const link of [v.linkedin, v.profielUrl, v.mapsUrl]) {
-      const u = String(link || "").trim();
-      if (/^https?:\/\//i.test(u) && !d.sameAs.some((s) => sleutel(s) === sleutel(u))) d.sameAs.push(u);
+    d.priceRange = vul(d.priceRange, v.priceRange);
+    if (!d.bedrijfstype && ["kliniek", "webshop", "dienstverlener", "lokaal", "informatief"].includes(v.bedrijfstype || "")) {
+      d.bedrijfstype = v.bedrijfstype as OrgData["bedrijfstype"];
+    }
+    for (const plek of String(v.areaServed || "").split(/[,;\n]+/).map((s) => s.trim()).filter(Boolean)) {
+      if (!d.areaServed.some((a) => sleutel(a) === sleutel(plek))) d.areaServed.push(plek);
+    }
+    // Sociale profielen: alles wat als link in een social-veld of in de sameAs-lijst
+    // staat. Eerder werden alleen "linkedin" en "profielUrl" bekeken, waardoor een
+    // aangeleverde sameAs-lijst met Facebook, Instagram en X nergens aankwam.
+    for (const [naam, waarde] of Object.entries(v)) {
+      if (!SOCIAL_VELDEN.test(naam.replace(/[^a-z0-9]/gi, ""))) continue;
+      for (const u of String(waarde || "").split(/[\s,;]+/)) {
+        if (/^https?:\/\//i.test(u) && !d.sameAs.some((s) => sleutel(s) === sleutel(u))) d.sameAs.push(u);
+      }
     }
   }
 
   // Locaties → vestigingen (elke locatie een eigen rij met adres en tijden).
   for (const l of entiteiten.filter((e) => e.categorie === "locatie")) {
     const a = splitsAdres(l.velden.adres || "");
-    const bestaand = d.vestigingen.find((x) => sleutel(x.naam) === sleutel(l.naam) || (a.plaats && sleutel(x.plaats) === sleutel(a.plaats) && !x.naam));
+    const kern = identiteit("locatie", l.naam, l.velden);
+    const bestaand = d.vestigingen.find((x) => identiteit("locatie", x.naam, { adres: x.straat, postcode: x.postcode, plaats: x.plaats }) === kern);
     const rij: OrgVestiging = bestaand || { ...LEGE_VESTIGING, naam: l.naam };
     rij.naam = vul(rij.naam, l.naam);
     rij.straat = vul(rij.straat, a.straat);
@@ -291,8 +608,10 @@ export async function applyKnowledgeToOrg(slug: string): Promise<{ gevuld: numbe
 
   // Personen → artsen en behandelaren.
   for (const p of entiteiten.filter((e) => e.categorie === "persoon")) {
-    const bestaand = d.artsen.find((a) => sleutel(a.naam) === sleutel(p.naam));
+    const kern = identiteit("persoon", p.naam, p.velden);
+    const bestaand = d.artsen.find((a) => identiteit("persoon", a.naam, { big: a.big }) === kern);
     const rij = bestaand || { naam: p.naam, functie: "", specialisatie: "", big: "", fotoUrl: "", profielUrl: "" };
+    if (p.naam.length > rij.naam.length) rij.naam = p.naam;
     rij.functie = vul(rij.functie, p.velden.functie);
     rij.specialisatie = vul(rij.specialisatie, p.velden.specialisatie);
     rij.big = vul(rij.big, p.velden.big);
@@ -303,7 +622,7 @@ export async function applyKnowledgeToOrg(slug: string): Promise<{ gevuld: numbe
 
   // Diensten → dienstenlijst.
   for (const s of entiteiten.filter((e) => e.categorie === "dienst")) {
-    const bestaand = d.diensten.find((x) => sleutel(x.naam) === sleutel(s.naam));
+    const bestaand = d.diensten.find((x) => naamKaal(x.naam) === naamKaal(s.naam));
     if (bestaand) bestaand.omschrijving = vul(bestaand.omschrijving, s.velden.omschrijving);
     else d.diensten.push({ naam: s.naam, omschrijving: s.velden.omschrijving || "" });
   }
@@ -316,9 +635,7 @@ export async function applyKnowledgeToOrg(slug: string): Promise<{ gevuld: numbe
     d.openingstijden = vul(d.openingstijden, v.openingstijden);
   }
 
-  const gevuld = JSON.stringify(d) === voor ? 0 : 1;
-  if (gevuld) await saveOrgData(slug, d, "admin");
-  return { gevuld, nieuweVestigingen, nieuweArtsen };
+  return { data: d, nieuweVestigingen, nieuweArtsen };
 }
 
 // ─── Rood lijstje "Nog aan te leveren": wat mist er voor dit soort bedrijf ───
@@ -334,7 +651,8 @@ export async function knowledgeGaps(slug: string): Promise<string[]> {
   // meenemen: zo verschijnt een aangeleverde locatie meteen in het lijstje met
   // precies wat er van díé locatie nog mist.
   for (const l of entiteiten.filter((e) => e.categorie === "locatie")) {
-    if (d.vestigingen.some((v) => sleutel(v.naam) === sleutel(l.naam))) continue;
+    const kern = identiteit("locatie", l.naam, l.velden);
+    if (d.vestigingen.some((v) => identiteit("locatie", v.naam, { adres: v.straat, postcode: v.postcode, plaats: v.plaats }) === kern)) continue;
     const a = splitsAdres(l.velden.adres || "");
     d.vestigingen.push({
       ...LEGE_VESTIGING, naam: l.naam, straat: a.straat,
@@ -344,14 +662,15 @@ export async function knowledgeGaps(slug: string): Promise<string[]> {
     });
   }
   for (const p of entiteiten.filter((e) => e.categorie === "persoon")) {
-    if (d.artsen.some((a) => sleutel(a.naam) === sleutel(p.naam))) continue;
+    const kern = identiteit("persoon", p.naam, p.velden);
+    if (d.artsen.some((a) => identiteit("persoon", a.naam, { big: a.big }) === kern)) continue;
     d.artsen.push({
       naam: p.naam, functie: p.velden.functie || "", specialisatie: p.velden.specialisatie || "",
       big: p.velden.big || "", fotoUrl: p.velden.foto || "", profielUrl: p.velden.profielUrl || p.velden.linkedin || "",
     });
   }
   for (const s of entiteiten.filter((e) => e.categorie === "dienst")) {
-    if (!d.diensten.some((x) => sleutel(x.naam) === sleutel(s.naam))) d.diensten.push({ naam: s.naam, omschrijving: s.velden.omschrijving || "" });
+    if (!d.diensten.some((x) => naamKaal(x.naam) === naamKaal(s.naam))) d.diensten.push({ naam: s.naam, omschrijving: s.velden.omschrijving || "" });
   }
   return ontbrekendeVelden(d).map((o) => o.regel).slice(0, 40);
 }
