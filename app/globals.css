@@ -2738,6 +2738,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .wp-kop-tekst { flex: 1; min-width: 0; }
 .wp-kop-acties { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; }
 .wp-onder-regel { align-items: center; justify-content: flex-end; margin-top: var(--s-3); padding-top: var(--s-3); border-top: 1px solid #ececec; }
+/* Twee groepjes op de onderste regel: links "waar kan ik heen", rechts "wat stuur
+   ik weg". Stonden eerder als zes gelijke pilletjes naast elkaar, waardoor Mail er
+   even onschuldig bij stond als een link naar de live pagina. */
+.wp-onder-groep { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
+.wp-onder-scheiding { width: 1px; align-self: stretch; min-height: 18px; background: #e0e0e0; margin: 0 var(--s-1); }
+.wp-onder-lab { font-size: var(--fs-xs, 10.5px); font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted, #8a8a8a); }
 /* Document-pil in dezelfde maat als de andere fase-pillen; status-pil (✓/Nog niet)
    helemaal rechts, klein en gecentreerd. */
 .wp-fase-doc { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }

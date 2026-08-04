@@ -687,31 +687,37 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
         </div>
       )}
 
-      {/* Eén nette onderste regel, alles rechts uitgelijnd: links plus de Mail-knop.
-          Alleen op de open kaart; dichtgeklapt blijft de kaart compact. */}
+      {/* De onderste regel had zes identieke pilletjes naast elkaar: vier die je
+          ergens heen brengen en twee die iets naar buiten sturen. Aan de vorm was
+          dat verschil niet te zien, dus stond "Mail" er even onschuldig bij als een
+          link naar de live pagina. Nu twee groepjes met een scheiding ertussen:
+          links "waar kan ik heen", rechts "wat stuur ik weg". */}
       {open && <div className="wp-card-links wp-onder-regel">
-        {t.url && <a className="wp-link" href={t.url} target="_blank" rel="noreferrer" title="De live pagina">{shortUrl(t.url)}</a>}
-        {t.copyUrl && <a className="wp-link" href={t.copyUrl} target="_blank" rel="noreferrer" title="De aangeleverde copy">Copy</a>}
-        {t.bronMail && <a className="wp-link" href={t.bronMail} target="_blank" rel="noreferrer" title="De mail waar deze taak uit voortkomt">Bronmail</a>}
-        {/* Geen dubbele knop: bij paginakaarten dekt de Pagina's-knop hieronder het al. */}
-        {tab && tab.tab !== "paginas" && <button type="button" className="wp-link wp-link-btn" title="Open dit dashboard-onderdeel in een nieuw tabblad" onClick={() => openTabNieuwTab(tab.tab)}>{tab.label}</button>}
-        {t.url && <button type="button" className="wp-link wp-link-btn" title="Open de pagina in Pagina's (nieuw tabblad)" onClick={openPaginaNieuwTab}>Pagina&rsquo;s</button>}
-        {/* De developerpagina werd alleen gevoed door de oude takentabel, dus met de
-            weekplanning was mailen het enige wat er nog over was. Hiermee staat de
-            kaart weer gewoon op die pagina, waar jij en de sitebouwer hem allebei zien. */}
-        {!page && <button type="button" className={"wp-link wp-link-btn" + (naarDev ? " wp-link-aan" : "")}
-          disabled={devBezig}
-          title={naarDev ? "Staat op de developerpagina. Klik om hem er weer af te halen." : "Zet deze kaart op de developerpagina, naast de andere taken voor de sitebouwer."}
-          onClick={() => void zetNaarDev()}>
-          {devBezig ? "Bezig…" : naarDev ? "✓ Op developerlijst" : "Naar developer"}
-        </button>}
-        {/* Ook hier moet je kunnen delen: het werk is doorgezet, en dan wil je er een
-            stuk van kunnen maken dat de klant leest. Alleen de documentknop, want de
-            mailknop staat er hiernaast al. */}
-        <DeelKnoppen slug={slug} titel={t.taak.replace(/<[^>]*>/g, "").trim()}
-          tekst={[t.taak.replace(/<[^>]*>/g, "").trim(), t.toelichting.replace(/<[^>]*>/g, "").trim()].filter(Boolean).join("\n\n")}
-          url={t.url || undefined} toon="document" compact knopClass="wp-link wp-link-btn" />
-        <button type="button" className="wp-act wp-act-klant" title="Mail over deze kaart; de ontvanger (klant, developer of anders) kies je in het venster." onClick={() => onMail("klant")}>Mail</button>
+        <span className="wp-onder-groep">
+          {t.url && <a className="wp-link" href={t.url} target="_blank" rel="noreferrer" title="De live pagina">{shortUrl(t.url)}</a>}
+          {t.copyUrl && <a className="wp-link" href={t.copyUrl} target="_blank" rel="noreferrer" title="De aangeleverde copy">Copy</a>}
+          {t.bronMail && <a className="wp-link" href={t.bronMail} target="_blank" rel="noreferrer" title="De mail waar deze taak uit voortkomt">Bronmail</a>}
+          {/* Geen dubbele knop: bij paginakaarten dekt de Pagina's-knop hieronder het al. */}
+          {tab && tab.tab !== "paginas" && <button type="button" className="wp-link wp-link-btn" title="Open dit dashboard-onderdeel in een nieuw tabblad" onClick={() => openTabNieuwTab(tab.tab)}>{tab.label}</button>}
+          {t.url && <button type="button" className="wp-link wp-link-btn" title="Open de pagina in Pagina's (nieuw tabblad)" onClick={openPaginaNieuwTab}>Pagina&rsquo;s</button>}
+        </span>
+        <span className="wp-onder-scheiding" aria-hidden="true" />
+        <span className="wp-onder-groep wp-onder-delen">
+          <span className="wp-onder-lab">Delen</span>
+          {/* De developerpagina werd alleen gevoed door de oude takentabel, dus met de
+              weekplanning was mailen het enige wat er nog over was. Hiermee staat de
+              kaart weer gewoon op die pagina, waar jij en de sitebouwer hem allebei zien. */}
+          {!page && <button type="button" className={"wp-link wp-link-btn" + (naarDev ? " wp-link-aan" : "")}
+            disabled={devBezig}
+            title={naarDev ? "Staat op de developerpagina. Klik om hem er weer af te halen." : "Zet deze kaart op de developerpagina, naast de andere taken voor de sitebouwer."}
+            onClick={() => void zetNaarDev()}>
+            {devBezig ? "Bezig…" : naarDev ? "✓ Op developerlijst" : "Naar developer"}
+          </button>}
+          <DeelKnoppen slug={slug} titel={t.taak.replace(/<[^>]*>/g, "").trim()}
+            tekst={[t.taak.replace(/<[^>]*>/g, "").trim(), t.toelichting.replace(/<[^>]*>/g, "").trim()].filter(Boolean).join("\n\n")}
+            url={t.url || undefined} toon="document" compact knopClass="wp-link wp-link-btn" />
+          <button type="button" className="wp-act wp-act-klant" title="Mail over deze kaart; de ontvanger (klant, developer of anders) kies je in het venster." onClick={() => onMail("klant")}>Mail</button>
+        </span>
       </div>}
         </div>
       </div>
