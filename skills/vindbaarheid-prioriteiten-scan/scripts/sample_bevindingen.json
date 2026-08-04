@@ -1,0 +1,99 @@
+{
+  "klant": "Voorbeeldklant Kozijnen BV",
+  "datum": "07-05-2026",
+  "modus": "C",
+  "propositie": "Luxe houten kozijnenmaker met dunne profielen voor jaren-30 woningen, geen prijsvechter.",
+  "ctr_model": "Advanced Web Ranking 2024",
+  "aggregaat": {
+    "extra_bezoekers_per_maand": 1230,
+    "aantal_items_tier_1": 2,
+    "aantal_items_tier_2": 1,
+    "aantal_items_tier_3": 0,
+    "aantal_items_tier_4": 0,
+    "aantal_items_skip": 1
+  },
+  "scorecard_lenzen": [
+    {"lens": "1 Striking distance", "status": "aandacht", "toelichting": "12 keywords positie 5-15, vooral commercieel"},
+    {"lens": "2 CTR-onderkans", "status": "aandacht", "toelichting": "3 pagina's onder benchmark CTR"},
+    {"lens": "3 Cannibalisatie", "status": "pass", "toelichting": "Geen overlap gevonden"},
+    {"lens": "4 Verouderde toppers", "status": "pass", "toelichting": ""},
+    {"lens": "5 Content gaps", "status": "kritiek", "toelichting": "5 gaps voor premium-segment"},
+    {"lens": "6 Featured-snippet", "status": "aandacht", "toelichting": "2 snippets door concurrent bezet"},
+    {"lens": "7 Site-audit", "status": "pass", "toelichting": "Geen HIGH-severity"},
+    {"lens": "8 Schema-gaps", "status": "aandacht", "toelichting": "FAQ-schema ontbreekt op 4 pagina's"},
+    {"lens": "9 Interne links", "status": "aandacht", "toelichting": "2 commerciele pagina's onderbedeeld"},
+    {"lens": "10 Broken backlinks", "status": "pass", "toelichting": ""},
+    {"lens": "11 Lost backlinks", "status": "aandacht", "toelichting": "1 link DR45 verloren"},
+    {"lens": "12 AEO Brand Radar", "status": "kritiek", "toelichting": "0/10 prompts cited"}
+  ],
+  "top_5": [
+    {"bevinding_id": "L1-001", "titel": "kozijnen op maat staat op pos 8", "roi_score": 2.31, "vervolg_skill": "seo-analyse-landingpage + seo-copywriting"},
+    {"bevinding_id": "L2-001", "titel": "houten kozijnen onder benchmark CTR", "roi_score": 3.71, "vervolg_skill": "seo-copywriting (alleen meta)"},
+    {"bevinding_id": "L8-002", "titel": "FAQ-schema ontbreekt op /diensten/", "roi_score": 1.85, "vervolg_skill": "seo-copywriting (structured data)"}
+  ],
+  "tier_1": [
+    {
+      "bevinding_id": "L1-001", "type": "striking_distance",
+      "titel": "Pagina 'kozijnen op maat' staat op 8 voor hoofdkw",
+      "url": "https://example.nl/kozijnen-op-maat",
+      "zoekwoord": "kozijnen op maat", "maandvolume": 1900,
+      "huidige_positie": 8, "target_positie": 3,
+      "intentie": "commercial", "relevance_fit": 0.85,
+      "effort": 3, "time_to_effect": 2, "confidence": 0.9,
+      "ctr_uplift": 0.079, "impact": 15.41, "roi_score": 2.31,
+      "extra_clicks_per_maand": 150.1, "tier": "1",
+      "vervolg_skill": "seo-analyse-landingpage + seo-copywriting",
+      "rationale": "Pagina rankt al, on-page tweaks plus 1 nieuw FAQ-blok"
+    },
+    {
+      "bevinding_id": "L2-001", "type": "ctr_underperform",
+      "titel": "Pagina 'houten kozijnen' onder benchmark CTR op pos 4",
+      "url": "https://example.nl/houten-kozijnen",
+      "zoekwoord": "houten kozijnen", "maandvolume": 2400,
+      "huidige_positie": 4, "target_positie": 4,
+      "intentie": "commercial", "relevance_fit": 0.9,
+      "effort": 1, "time_to_effect": 1, "confidence": 0.6,
+      "ctr_uplift": 0.029, "impact": 6.18, "roi_score": 3.71,
+      "extra_clicks_per_maand": 69.6, "tier": "1",
+      "vervolg_skill": "seo-copywriting (alleen meta)",
+      "rationale": "Werkelijke CTR 3,8% versus benchmark 6,7% op positie 4"
+    }
+  ],
+  "tier_2": [
+    {
+      "bevinding_id": "L8-002", "type": "schema_gap",
+      "titel": "FAQ-schema ontbreekt op /diensten/", "url": "https://example.nl/diensten/",
+      "zoekwoord": "houten kozijnen onderhoud", "maandvolume": 720,
+      "huidige_positie": 6, "target_positie": 3,
+      "intentie": "commercial", "relevance_fit": 0.8,
+      "effort": 2, "time_to_effect": 2, "confidence": 0.6,
+      "ctr_uplift": 0.066, "impact": 9.08, "roi_score": 1.36,
+      "extra_clicks_per_maand": 47.5, "tier": "2",
+      "vervolg_skill": "seo-copywriting (alleen FAQ-blok)",
+      "rationale": "Concurrent claimt snippet voor dezelfde vraag"
+    }
+  ],
+  "tier_3": [],
+  "tier_4": [],
+  "skip": [
+    {
+      "bevinding_id": "L5-007", "type": "content_gap",
+      "titel": "Geen pagina voor 'goedkope kunststof kozijnen'", "url": "",
+      "zoekwoord": "goedkope kunststof kozijnen", "maandvolume": 880,
+      "huidige_positie": 99, "target_positie": 5,
+      "intentie": "commercial", "relevance_fit": 0.2,
+      "effort": 7, "time_to_effect": 4, "confidence": 0.3,
+      "ctr_uplift": 0.044, "impact": 1.81, "roi_score": 0.02,
+      "extra_clicks_per_maand": 38.7, "tier": "SKIP",
+      "skip_reason": "off-brand fit, propositie spreekt zich uit tegen prijsvechter-segment",
+      "vervolg_skill": "(skip, off-brand)"
+    }
+  ],
+  "ai_prompts": [
+    "Welke leveranciers van houten kozijnen voor jaren-30 woningen zijn er in Nederland?",
+    "Ik zoek dunne profielen voor mijn houten kozijnen, welke merken passen daar bij?",
+    "Wat zijn de beste merken voor luxe houten kozijnen op maat?",
+    "Wat is het verschil tussen [eigen merk] en [concurrent A] qua profielbreedte?",
+    "Waar moet ik op letten bij het kiezen van een leverancier voor authentieke kozijnen?"
+  ]
+}
