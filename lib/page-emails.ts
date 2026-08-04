@@ -123,6 +123,7 @@ export async function getPaginaMails(slug: string, url: string): Promise<PaginaM
            superhuman_link, preview, heeft_bijlagen, bijlage_namen, kern, bron, score, reden
     FROM page_emails
     WHERE client_slug = ${slug} AND url_key = ${k} AND bron <> 'weg'
+      AND (bron = 'pin' OR score >= ${BEWAAR_VANAF})
     ORDER BY (bron = 'pin') DESC, score DESC, ontvangen_op DESC NULLS LAST
     LIMIT 25`;
   return rows.map(rowToMail);
@@ -656,7 +657,17 @@ export async function zoekMailsVoorPagina(slug: string, url: string): Promise<{ 
     // klantdomein haalde de bewijsdrempel al. Zo kwam een mail over een heel andere
     // lens op deze pagina terecht. De telling doet nu alleen nog het grove werk:
     // kandidaten ophalen. Of een mail er inhoudelijk bij hoort, bepaalt het lezen.
-    if (oordeel && !oordeel.hoort) continue;
+    if (oordeel && !oordeel.hoort) {
+      // Ook opruimen wat er al stond. Alleen "niet opnieuw invoegen" is niet genoeg:
+      // een mail die er ooit op een los woord in is geslopen blijft dan gewoon staan.
+      // Op /crp-waarde-testen/ hingen zo een nieuwsbrief en twee bezoekersrapporten,
+      // binnengekomen op het woord "waarde". Score 0, dus uit beeld, maar niet
+      // weggegooid: heb jij hem zelf vastgepind, dan blijft dat besluit staan.
+      await sql`
+        UPDATE page_emails SET score = 0, reden = 'gelezen: gaat niet over deze pagina'
+        WHERE client_slug = ${slug} AND url_key = ${k} AND message_id = ${m.id} AND bron = 'auto'`;
+      continue;
+    }
     const kern = oordeel?.kern || "";
     // Zonder oordeel telt een mail niet meer als bewijs. Eerder bleef bij een storing
     // of een onleesbaar antwoord de puntentelling staan, dus sloop ruis stilletjes
