@@ -74,6 +74,8 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailD
   const [loaded, setLoaded] = useState(false);
   const [dragId, setDragId] = useState<number | null>(null);
   const [dropKey, setDropKey] = useState<number | null>(null);
+  // Boven welke kaart komt de gesleepte kaart terecht (herordenen binnen een week).
+  const [dropVoor, setDropVoor] = useState<number | null>(null);
   const [openCard, setOpenCard] = useState<number | null>(null);
   // "Mail vanuit de kaart": de AI schrijft een concept uit de kaart-achtergrond;
   // jij kiest de ontvanger, stuurt eventueel een instructie mee en verstuurt zelf.
@@ -184,11 +186,39 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailD
   }, [current, tasks]);
 
   const unplanned = tasks.filter((t) => t.weekNo <= 0);
-  const byKey = (key: number) => tasks.filter((t) => t.weekNo > 0 && keyOf(t.weekYear, t.weekNo) === key);
+  // Op volgorde, want die kun je nu zelf slepen. Zonder deze sortering kreeg je de
+  // volgorde van de database terug en sprong een versleepte kaart weer terug.
+  const byKey = (key: number) => tasks
+    .filter((t) => t.weekNo > 0 && keyOf(t.weekYear, t.weekNo) === key)
+    .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0) || a.id - b.id);
 
   async function move(id: number, year: number, week: number) {
     setTasks((ts) => ts.map((t) => t.id === id ? { ...t, weekYear: year, weekNo: week } : t));
     await fetch("/api/admin/weekplan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, id, weekYear: year, weekNo: week }) }).catch(() => {});
+  }
+
+  // Kaarten binnen een week op volgorde zetten. Je kon een kaart alleen naar een
+  // andere week slepen; binnen de week lag de volgorde vast, terwijl juist daar
+  // staat wat je maandag als eerste oppakt. Je sleept nu op een kaart en hij komt
+  // daarvóór; laat je onderaan de kolom los, dan gaat hij achteraan.
+  async function moveVoor(id: number, doelId: number | null, year: number, week: number) {
+    if (id === doelId) return;
+    const huidig = tasks.find((t) => t.id === id);
+    if (!huidig) return;
+    const anders = tasks.filter((t) => t.id !== id);
+    const inKolom = anders
+      .filter((t) => t.weekYear === year && t.weekNo === week)
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id);
+    const plek = doelId == null ? inKolom.length : Math.max(0, inKolom.findIndex((t) => t.id === doelId));
+    const verplaatst = { ...huidig, weekYear: year, weekNo: week };
+    const nieuweVolgorde = [...inKolom.slice(0, plek), verplaatst, ...inKolom.slice(plek)];
+    // Hernummeren met stappen van 10, zodat een latere invoeging er nog tussen past.
+    const genummerd = nieuweVolgorde.map((t, i) => ({ ...t, sortOrder: (i + 1) * 10 }));
+    const perId = new Map(genummerd.map((t) => [t.id, t]));
+    setTasks((ts) => ts.map((t) => perId.get(t.id) || t));
+    await Promise.all(genummerd.map((t) =>
+      fetch("/api/admin/weekplan", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, id: t.id, weekYear: year, weekNo: week, sortOrder: t.sortOrder }) }).catch(() => {})));
   }
   async function cycleStatus(t: WpTask) {
     const status = STATUS_NEXT[t.status] || "gepland";
@@ -347,14 +377,30 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailD
     );
   }
 
+  // Elke kaart is zelf een doelgebied, zodat je binnen een week de volgorde kunt
+  // bepalen. De streep verschijnt boven de kaart waar hij terechtkomt.
   const renderCard = (t: WpTask) => (
-    <WeekplanCard key={t.id} slug={slug} t={t} page={t.url ? pages[urlKey(t.url)] : undefined}
-      open={openCard === t.id}
-      onToggleOpen={() => setOpenCard(openCard === t.id ? null : t.id)}
-      onDragStart={() => setDragId(t.id)} onDragEnd={() => { setDragId(null); setDropKey(null); }}
-      onStatus={() => void cycleStatus(t)} onRemove={() => void remove(t.id)}
-      onMail={(aud) => openMail(t, aud)} onGoToPage={onGoToPage} onGoToTab={onGoToTab} onOpenMailDate={onOpenMailDate} mailLinks={mailDatumLinks}
-      refreshBoard={() => void load()} />
+    <div key={t.id}
+      className={"wp-kaart-doel" + (dropVoor === t.id && dragId !== t.id ? " wp-kaart-doel-aan" : "")}
+      onDragOver={(e) => {
+        if (dragId == null || dragId === t.id) return;
+        e.preventDefault(); e.stopPropagation();
+        setDropVoor(t.id); setDropKey(keyOf(t.weekYear, t.weekNo));
+      }}
+      onDrop={(e) => {
+        if (dragId == null) return;
+        e.preventDefault(); e.stopPropagation();
+        void moveVoor(dragId, t.id, t.weekYear, t.weekNo);
+        setDropVoor(null); setDropKey(null);
+      }}>
+      <WeekplanCard slug={slug} t={t} page={t.url ? pages[urlKey(t.url)] : undefined}
+        open={openCard === t.id}
+        onToggleOpen={() => setOpenCard(openCard === t.id ? null : t.id)}
+        onDragStart={() => setDragId(t.id)} onDragEnd={() => { setDragId(null); setDropKey(null); setDropVoor(null); }}
+        onStatus={() => void cycleStatus(t)} onRemove={() => void remove(t.id)}
+        onMail={(aud) => openMail(t, aud)} onGoToPage={onGoToPage} onGoToTab={onGoToTab} onOpenMailDate={onOpenMailDate} mailLinks={mailDatumLinks}
+        refreshBoard={() => void load()} />
+    </div>
   );
 
   return (
@@ -395,8 +441,8 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailD
         )}
         {columns.map((c) => (
           <div key={c.key} className={"wp-col" + (c.isCurrent ? " wp-current" : "") + (dropKey === c.key ? " wp-drop" : "")}
-            onDragOver={(e) => { e.preventDefault(); if (dragId != null) setDropKey(c.key); }}
-            onDrop={() => { if (dragId != null) move(dragId, c.year, c.week); setDropKey(null); }}>
+            onDragOver={(e) => { e.preventDefault(); if (dragId != null) { setDropKey(c.key); setDropVoor(null); } }}
+            onDrop={() => { if (dragId != null) void moveVoor(dragId, null, c.year, c.week); setDropKey(null); setDropVoor(null); }}>
             <div className="wp-col-head">
               <span className="wp-col-wk">Week {c.week}</span>
               {c.isCurrent && <span className="wp-col-nu">nu</span>}

@@ -49,6 +49,28 @@ export type MailLinks = Record<string, string | MailKandidaat[]>;   // "5-7" of 
 // Welke mail van die dag bedoelt deze zin? De zin noemt bijna altijd de persoon
 // ("Ahren (mail van 3-8) bevestigt", "Mail van 31-7: Maarten presenteerde"). Die
 // naam is het enige betrouwbare onderscheid dat we hebben.
+// De laatste datum die in een kaarttekst genoemd wordt. Daarmee kan de kaart zien
+// dat hij achterloopt: staat er inmiddels nieuwere mail, dan klopt een zin als
+// "antwoord nog niet ontvangen" niet meer. De kaarttekst is een momentopname, de
+// mailbox loopt door; zonder deze vergelijking blijft de kaart onterecht wachten.
+export function laatsteDatumInTekst(tekst: string, aanname?: number): Date | null {
+  const jaar = aanname || new Date().getFullYear();
+  let nieuwste: Date | null = null;
+  const pak = (d: number, m: number, j?: number) => {
+    const dt = new Date(j || jaar, m - 1, d);
+    if (!Number.isNaN(dt.getTime()) && (!nieuwste || dt > nieuwste)) nieuwste = dt;
+  };
+  for (const m of (tekst || "").matchAll(/\b(\d{1,2})[-/](\d{1,2})(?:[-/](\d{2,4}))?\b/g)) {
+    const j = m[3] ? (Number(m[3]) < 100 ? 2000 + Number(m[3]) : Number(m[3])) : undefined;
+    if (Number(m[1]) <= 31 && Number(m[2]) <= 12) pak(Number(m[1]), Number(m[2]), j);
+  }
+  for (const m of (tekst || "").matchAll(/\b(\d{1,2})\s+(januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)(?:\s+(\d{4}))?\b/gi)) {
+    const mnd = MAAND[m[2].toLowerCase()];
+    if (mnd) pak(Number(m[1]), mnd, m[3] ? Number(m[3]) : undefined);
+  }
+  return nieuwste;
+}
+
 function namenVan(k: MailKandidaat): string[] {
   // Alleen de voornaam/achternaam-delen, geen mailadres-staart: in de zin staat
   // "Ahren", niet "ahren@onedayclinic.nl".

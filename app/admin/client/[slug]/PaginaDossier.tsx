@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { laatsteDatumInTekst } from "../../../../lib/card-info";
 
 // ═══════════════════════════════════════════════════════════
 // HET DOSSIERBLOK OP HET SCHERM
@@ -13,15 +14,22 @@ import { useCallback, useEffect, useRef, useState } from "react";
 // plekken identiek is en er nooit ruwe Markdown in beeld komt.
 // ═══════════════════════════════════════════════════════════
 
-export default function PaginaDossier({ slug, url, compact = false }: {
+export default function PaginaDossier({ slug, url, compact = false, kaartTekst }: {
   slug: string;
   url: string;
   compact?: boolean;
+  /** De geschreven kaarttekst, om te zien of die achterloopt op de mailbox. */
+  kaartTekst?: string;
 }) {
   const [html, setHtml] = useState("");
   const [staat, setStaat] = useState<"laden" | "klaar" | "leeg" | "fout">("laden");
   const [bezig, setBezig] = useState(false);
   const [melding, setMelding] = useState("");
+  // Mails die binnenkwamen ná de laatste datum die in de kaarttekst staat. Zonder
+  // dit blijft een kaart zeggen "wacht op antwoord" terwijl het antwoord er al
+  // twee mails geleden was: de tekst is geschreven op één moment, de mailbox loopt
+  // door, en niets bracht die twee bij elkaar.
+  const [nieuwer, setNieuwer] = useState<{ aantal: number; van: string[] }>({ aantal: 0, van: [] });
   const doosRef = useRef<HTMLDivElement>(null);
 
   const laad = useCallback(async () => {
@@ -30,8 +38,15 @@ export default function PaginaDossier({ slug, url, compact = false }: {
       const d = await fetch(`/api/admin/page-dossier?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}${compact ? "&compact=1" : ""}`).then((r) => r.json());
       if (d?.ok && d.html) { setHtml(d.html); setStaat("klaar"); }
       else setStaat(d?.ok ? "leeg" : "fout");
+      const grens = kaartTekst ? laatsteDatumInTekst(kaartTekst) : null;
+      if (grens) {
+        const na = ((d?.mails || []) as { ontvangenOp?: string; vanNaam?: string }[])
+          .filter((m) => { const dt = m.ontvangenOp ? new Date(m.ontvangenOp) : null; return dt && !Number.isNaN(dt.getTime()) && dt > grens; });
+        const van = Array.from(new Set(na.map((m) => (m.vanNaam || "").split(" ")[0]).filter(Boolean)));
+        setNieuwer({ aantal: na.length, van });
+      } else setNieuwer({ aantal: 0, van: [] });
     } catch { setStaat("fout"); }
-  }, [slug, url, compact]);
+  }, [slug, url, compact, kaartTekst]);
 
   useEffect(() => { void laad(); }, [laad]);
 
@@ -99,6 +114,20 @@ export default function PaginaDossier({ slug, url, compact = false }: {
         void mailActie(actie, id);
       }}
     >
+      {/* De kaarttekst is geschreven op één moment; de mailbox loopt door. Kwam er
+          daarna nog mail, dan klopt een zin als "wacht op antwoord" niet meer en
+          zegt de kaart dat nu zelf, in plaats van je stilletjes te laten wachten. */}
+      {nieuwer.aantal > 0 && (
+        <div className="pd-achter">
+          <strong>Deze kaart loopt achter.</strong>{" "}
+          {nieuwer.aantal === 1 ? "Er kwam 1 mail binnen" : `Er kwamen ${nieuwer.aantal} mails binnen`}
+          {nieuwer.van.length ? ` (${nieuwer.van.join(", ")})` : ""} na wat er in de kaarttekst staat.
+          <button type="button" className="pd-ververs" disabled={bezig} onClick={() => void ververs()}
+            title="Lees de nieuwe mail en schrijf de stand van deze pagina opnieuw">
+            {bezig ? "Bezig…" : "Werk bij"}
+          </button>
+        </div>
+      )}
       <div dangerouslySetInnerHTML={{ __html: html }} />
       {melding && <div className="pd-melding">{melding}</div>}
       {!compact && (

@@ -3681,3 +3681,25 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 }
 .tvk-naar-bord:hover { color: var(--orange); }
 .pd-nu-links { margin-left: var(--s-1); font-size: var(--fs-sm); }
+
+/* ── Kaarten binnen een week op volgorde slepen ──
+   Je kon een kaart alleen naar een andere week slepen; binnen de week lag de
+   volgorde vast, terwijl daar juist staat wat je maandag als eerste oppakt.
+   Elke kaart is nu zelf een doelgebied; de streep toont waar hij terechtkomt. */
+.wp-kaart-doel { position: relative; }
+.wp-kaart-doel-aan::before {
+  content: ""; position: absolute; left: 0; right: 0; top: calc(var(--s-1) * -1);
+  height: 3px; border-radius: var(--r-full); background: var(--orange, #F15829);
+  box-shadow: 0 0 0 3px rgba(241, 88, 41, 0.18);
+}
+
+/* De kaart zegt zelf dat hij achterloopt zodra er mail binnenkwam na de laatste
+   datum in de kaarttekst. Anders blijft er "wacht op antwoord" staan terwijl het
+   antwoord er al is. */
+.pd-achter {
+  display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap;
+  font-size: var(--fs-sm); line-height: var(--lh-sm);
+  color: #8a5000; background: #fff6ec; border: 1px solid #f3d3b0;
+  border-radius: var(--r-sm); padding: var(--s-2) var(--s-3); margin-bottom: var(--s-2);
+}
+.pd-achter strong { color: #7a4600; }
