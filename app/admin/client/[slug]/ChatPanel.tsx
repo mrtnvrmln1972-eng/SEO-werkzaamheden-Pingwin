@@ -71,6 +71,31 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
     try { const c = localStorage.getItem(`pw_chatsize_${slug}`); if (c) { const s = JSON.parse(c); if (typeof s?.w === "number" && typeof s?.h === "number") setSize(s); } } catch { /* geen opslag */ }
   }, [slug]);
 
+  /**
+   * Houdt het venster hélemaal in beeld. Stond eerder alleen een ondergrens op
+   * (linkerbovenhoek tot 80px van de rechterrand), en omdat het venster 720 breed
+   * is kon je het zo tot een sliver naar buiten schuiven. Die positie wordt per
+   * klant onthouden, dus daarna verdween de assistent bij élke klik opnieuw: de
+   * knop maakt plaats voor een venster dat buiten het scherm staat. Hetzelfde
+   * gebeurde na het versmallen van het browservenster of het wisselen van scherm.
+   */
+  function binnenBeeld(p: { x: number; y: number }, s: { w: number; h: number } | null) {
+    const w = s?.w ?? 720;                                            // .chat-float
+    const h = s?.h ?? Math.min(Math.round(window.innerHeight * 0.8), 880);
+    const maxX = Math.max(4, window.innerWidth - w - 8);
+    const maxY = Math.max(4, window.innerHeight - h - 8);
+    return { x: Math.min(Math.max(4, p.x), maxX), y: Math.min(Math.max(4, p.y), maxY) };
+  }
+
+  // Wordt het browservenster kleiner terwijl de chat openstaat, dan schuift hij mee
+  // naar binnen in plaats van erbuiten te belanden.
+  useEffect(() => {
+    if (collapsed) return;
+    const opnieuw = () => setPos((p) => (p ? binnenBeeld(p, size) : p));
+    window.addEventListener("resize", opnieuw);
+    return () => window.removeEventListener("resize", opnieuw);
+  }, [collapsed, size]);
+
   function onDragStart(e: React.MouseEvent) {
     if ((e.target as HTMLElement).closest("button")) return; // knoppen niet als sleep
     e.preventDefault();
@@ -78,9 +103,7 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
     const rect = wrapRef.current?.getBoundingClientRect();
     const origX = rect ? rect.left : window.innerWidth - 660, origY = rect ? rect.top : window.innerHeight - 560;
     const move = (ev: MouseEvent) => {
-      const nx = Math.max(4, Math.min(window.innerWidth - 80, origX + (ev.clientX - startX)));
-      const ny = Math.max(4, Math.min(window.innerHeight - 60, origY + (ev.clientY - startY)));
-      setPos({ x: nx, y: ny });
+      setPos(binnenBeeld({ x: origX + (ev.clientX - startX), y: origY + (ev.clientY - startY) }, size));
     };
     const up = () => {
       window.removeEventListener("mousemove", move);
@@ -256,6 +279,9 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
       {collapsed ? (
         <button type="button" className="chat-fab" onClick={() => {
           setCollapsed(false);
+          // Een onthouden positie kan van een breder scherm komen; eerst terughalen
+          // in beeld, anders opent hij buiten het venster en lijkt hij verdwenen.
+          setPos((p) => (p ? binnenBeeld(p, size) : p));
           if (!loadedRef.current && messages.length === 0) {
             loadedRef.current = true;
             fetch(`/api/admin/chat?slug=${encodeURIComponent(slug)}&thread=${encodeURIComponent(thread)}`)
