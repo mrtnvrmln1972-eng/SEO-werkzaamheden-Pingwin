@@ -17,11 +17,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { puntSoort, knopjesVoor, isGroepskop, stripMarker, type PuntSoort } from "../../../../lib/punt-soort";
 import { devLabel } from "../../../../lib/personen";
-import { striptVulzinnen, heeftInhoud } from "../../../../lib/vulzinnen";
+import { heeftInhoud } from "../../../../lib/vulzinnen";
+import { splitsAntwoord, type Sectie } from "../../../../lib/antwoord-secties";
 import { analyseNaarMailHtml } from "../../../../lib/mail-opmaak";
 import PaginaDossier from "./PaginaDossier";
 
-type Sectie = { kop: string; md: string };
 type Feedback = { key: string; msg: string; ok: boolean };
 type PuntStaat = "taak" | "weg" | "klaar" | "lijst";
 type Teller = { taak: number; lijst: number; weg: number; klaar: number };
@@ -42,11 +42,14 @@ function vervangEmoji(html: string): string {
     .replace(/⚠️|⚠/g, '<span class="st-dot st-warn" title="Let op"></span>');
 }
 
-export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekplanChanged }: {
+export default function AntwoordBlokken({ slug, thread, content, toHtml, siteUrl, onWeekplanChanged }: {
   slug: string;
   thread: string;
   content: string;
   toHtml: (md: string) => string;
+  /** Host van de klantsite, zodat een slug als /prijs-en-kosten/ ook in de mail
+      naar de echte pagina linkt (harde huisregel: nooit een dode slug tonen). */
+  siteUrl?: string;
   onWeekplanChanged?: () => void;
 }) {
   const [busyKey, setBusyKey] = useState("");
@@ -76,8 +79,13 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
     if (stuurBezig || !stuurAan.trim()) return;
     setStuurBezig(true); setStuurMsg(null);
     try {
-      // De hele analyse zoals hij op het scherm staat, dus inclusief tabellen.
-      const html = analyseNaarMailHtml(toHtml(content || ""), {
+      // Bewust de RUWE markdown, niet toHtml(): de mail knipt zelf per sectie, want
+      // de "## "-koppen moeten uit de tekst vóór ze een oranje titel boven een kaart
+      // kunnen worden. Gaf je de voorgerenderde HTML mee, dan bleven het grijze
+      // regeltjes en bestonden de kaarten niet.
+      const html = analyseNaarMailHtml(content || "", {
+        siteUrl,
+        titel: stuurOnderwerp.trim() || "Analyse",
         intro: stuurIntro.trim() || undefined,
         bron: "Opgesteld in het Pingwin SEO-dashboard.",
       });
@@ -148,24 +156,10 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
     void fetch("/api/admin/answer-marks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread, bulk }) }).catch(() => {});
   };
 
-  // Aankondigingszinnen ("Dan heb ik nu het volledige beeld. Hier is wat er speelt:")
-  // gaan er hier uit, vóór het opsplitsen. Anders werd zo'n zin een eigen blokje met
-  // een "+ Taak"-knop erbij, dus een knop om van een loze zin een taak te maken.
-  const schoon = striptVulzinnen(content || "");
-
-  // Splits de ruwe markdown per "## "-kop; tekst vóór de eerste kop is een intro-blok.
-  const secties: Sectie[] = [];
-  {
-    let kop = "";
-    let buf: string[] = [];
-    const triviaal = (md: string) => !md.split("\n").some((r) => r.replace(/[-*_#\s]/g, "").length > 0);
-    const push = () => { const md = buf.join("\n").trim(); if (kop || (md && !triviaal(md))) secties.push({ kop, md }); buf = []; };
-    for (const r of schoon.split("\n")) {
-      const m = /^##\s+(.*)$/.exec(r.trim());
-      if (m) { push(); kop = m[1].replace(/[#*]/g, "").trim(); } else buf.push(r);
-    }
-    push();
-  }
+  // De knip per "## "-kop staat in lib/antwoord-secties.ts, want de mail moet exact
+  // dezelfde indeling gebruiken. Stond die logica alleen hier, dan kregen scherm en
+  // mail na de eerste wijziging een andere indeling.
+  const secties: Sectie[] = splitsAntwoord(content || "");
   const heeftKoppen = secties.some((s) => s.kop);
 
   // Punt-tekst van het element (zonder de knopjes).

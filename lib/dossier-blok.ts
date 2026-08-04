@@ -224,7 +224,11 @@ export function dossierBlokHtml(d: PageDossier, tekst: string, opts: { compact?:
 
   return [
     '<div class="pd-blok">',
-    '<div class="pd-kop"><span class="pd-koptekst">Waar deze pagina staat</span></div>',
+    // Het pad staat in de kop. Onder een chat-antwoord kunnen twee van deze blokken
+    // onder elkaar staan (voor twee pagina's die het antwoord noemt), en met alleen
+    // "Waar deze pagina staat" boven allebei leek dat dubbelop terwijl het over
+    // verschillende pagina's ging.
+    `<div class="pd-kop"><span class="pd-koptekst">Waar ${d.pad ? `${esc(d.pad)} ` : "deze pagina "}staat</span></div>`,
     verhaal ? `<div class="pd-verhaal md">${verhaal}</div>` : "",
     linkRegel(d, voorstellenGetoond),
     // De doorzet-chip is juist op de compacte kaart het nuttigst; de rest van de

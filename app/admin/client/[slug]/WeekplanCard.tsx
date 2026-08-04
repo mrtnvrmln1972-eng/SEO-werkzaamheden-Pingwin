@@ -612,6 +612,7 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
                             thread={t.thread}
                             content={m.content}
                             toHtml={(md) => linkifyHtml(mdToHtml(md), (() => { try { return new URL(t.url).host; } catch { return ""; } })())}
+                            siteUrl={(() => { try { return new URL(t.url).origin; } catch { return ""; } })()}
                             onWeekplanChanged={refreshBoard}
                           />
                         </div>}
