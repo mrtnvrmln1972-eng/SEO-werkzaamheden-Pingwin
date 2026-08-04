@@ -155,7 +155,7 @@ export async function getPageDossier(slug: string, url: string, opts: { verseMai
 // ── Het dossier als tekst ──
 // Voor de prompt van de samenvatting én als bronmateriaal voor de feitencontrole.
 // Alleen wat bewijsbaar is; geen interpretatie.
-export function dossierToText(d: PageDossier): string {
+export function dossierToText(d: PageDossier, metFocus = false): string {
   const r: string[] = [];
   r.push(`PAGINA: ${d.pad} (${d.url}) van ${d.klantNaam}`);
 
@@ -180,7 +180,13 @@ export function dossierToText(d: PageDossier): string {
   if (d.samenvatting?.doel) r.push(`DOEL VAN DE PAGINA: ${d.samenvatting.doel}`);
 
   if (d.mails.length) {
-    r.push("MAILS DIE OVER DEZE PAGINA GAAN (nieuwste eerst):");
+    // De kop is bewust anders zodra de kaart een eigen klus heeft. "MAILS DIE OVER
+    // DEZE PAGINA GAAN" leest als: alles hieronder hoort in je verhaal. Op een pagina
+    // waar twee dingen tegelijk spelen is dat onwaar, en het model volgde de kop in
+    // plaats van de focus-instructie.
+    r.push(metFocus
+      ? "MAILS DIE BIJ DEZE PAGINA HOREN (nieuwste eerst). LET OP: deze horen bij de pagina, maar niet per se bij jouw klus. Toets per mail of hij echt over jouw klus gaat."
+      : "MAILS DIE OVER DEZE PAGINA GAAN (nieuwste eerst):");
     for (const m of d.mails) {
       const datum = m.ontvangenOp ? new Date(m.ontvangenOp).toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" }) : "";
       const zeker = m.bron === "pin" ? "VASTGEPIND" : m.score >= HARD_BEWIJS ? "HARD BEWIJS" : "mogelijk relevant";

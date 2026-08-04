@@ -145,6 +145,11 @@ function systeemMetFocus(focus: DossierFocus): string {
     "",
     "Op deze pagina kan meer dan één ding tegelijk spelen. Jouw verhaal gaat UITSLUITEND over de klus hierboven: waar díe staat, wie daarvoor aan zet is.",
     "Een mail of afspraak die over een ANDER traject op dezelfde pagina gaat (een andere wens, een andere categorie, een ander project) hoort niet in de stappen en niet in de nu-regel.",
+    "",
+    "Toets elke mail met deze vraag: brengt hij DEZE klus verder, of gaat hij over iets anders dat toevallig dezelfde pagina raakt? Twee signalen dat het een ander traject is:",
+    "- de mail gaat over meerdere pagina's tegelijk, of over de indeling, categorisering of structuur van een groep pagina's. Een klus op één pagina gaat over de inhoud van díe pagina, niet over hoe de groep is ingedeeld.",
+    "- je merkt dat je erbij moet schrijven dat het \"onder andere\" of \"ook\" over deze pagina gaat. Moet je dat erbij zeggen, dan is het per definitie een ander traject en hoort de mail niet in de stappen.",
+    "Bij twijfel: laat de mail weg uit de stappen. Een verhaal dat één ding scherp vertelt is meer waard dan een verhaal dat alles noemt.",
     "Speelt er wel zoiets, zet er dan NA de nu-regel precies één extra regel onder, zo:",
     '- speelt ook: in het kort waar dat andere traject over gaat, met de datum van de laatste mail erover vooraan die zin.',
     "Maximaal die ene regel, en alleen als er echt een ander traject speelt. Nooit twee, nooit uitweiden, en nooit als het over jouw klus gaat.",
@@ -227,7 +232,7 @@ export async function getDossierTekst(
     const feitenVoorModel = dossierToText({
       ...d,
       mails: d.mails.filter((m) => m.bron === "pin" || m.score >= HARD_BEWIJS),
-    });
+    }, !!focus);
 
     const systeem = focus ? systeemMetFocus(focus) : SYSTEEM;
 
