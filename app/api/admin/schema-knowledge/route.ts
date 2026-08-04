@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
-import { uploadDocx, readDriveDoc } from "../../../../lib/drive";
+import { uploadDocx, uploadEnConverteer, readDriveDoc } from "../../../../lib/drive";
 import { ensureClientFolder } from "../../../../lib/drive-map";
-import { listKnowledge, getOpenProposal, proposeKnowledge, confirmKnowledge, ignoreKnowledge, knowledgeGaps, applyKnowledgeToOrg } from "../../../../lib/schema-knowledge";
+import { listKnowledge, getOpenProposals, proposeKnowledge, confirmKnowledge, confirmAllKnowledge, ignoreKnowledge, knowledgeGaps, applyKnowledgeToOrg } from "../../../../lib/schema-knowledge";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -18,8 +18,8 @@ export async function GET(req: NextRequest) {
   const slug = req.nextUrl.searchParams.get("slug") || "";
   if (!slug) return NextResponse.json({ ok: false, error: "Geen klant opgegeven." }, { status: 400 });
   const g = await guardSlug(req, slug); if (!g.ok) return g.res;
-  const [entities, gaps, proposal] = await Promise.all([listKnowledge(slug), knowledgeGaps(slug), getOpenProposal(slug)]);
-  return NextResponse.json({ ok: true, entities, gaps, proposal });
+  const [entities, gaps, proposals] = await Promise.all([listKnowledge(slug), knowledgeGaps(slug), getOpenProposals(slug)]);
+  return NextResponse.json({ ok: true, entities, gaps, proposals, proposal: proposals[0] || null });
 }
 
 // De klantmap, die nu gewoon bestaat (of automatisch wordt aangemaakt).
@@ -30,6 +30,38 @@ async function clientFolderId(slug: string): Promise<string> {
   return (await ensureClientFolder(slug).catch(() => null)) || "root";
 }
 
+// De tekst uit één aangeleverd bestand halen. Naast .docx en platte tekst nu ook
+// pdf en scans/foto's: artsen-fiches komen meestal als pdf binnen en werden
+// eerder simpelweg geweigerd. Drive doet de omzetting (inclusief tekstherkenning
+// op een scan), daar hoeft geen extra pakket voor in de app.
+async function tekstUitBestand(slug: string, file: File): Promise<{ naam: string; tekst: string; fout?: string }> {
+  const naam = file.name || "aangeleverd-materiaal";
+  const buf = Buffer.from(await file.arrayBuffer());
+  const datum = new Date().toISOString().slice(0, 10);
+  try {
+    if (/\.(txt|md|json|csv)$/i.test(naam)) return { naam, tekst: buf.toString("utf8") };
+    if (/\.docx$/i.test(naam)) {
+      const up = await uploadDocx(await clientFolderId(slug), `Kennisbank-${datum}-${naam}`, buf);
+      const read = await readDriveDoc(up.id, 60000);
+      return { naam, tekst: read.ok ? read.text || "" : "", fout: read.ok ? undefined : read.error };
+    }
+    if (/\.(pdf|doc|rtf|odt|png|jpe?g|webp|gif|tiff?)$/i.test(naam)) {
+      const mime = /\.pdf$/i.test(naam) ? "application/pdf"
+        : /\.doc$/i.test(naam) ? "application/msword"
+        : /\.rtf$/i.test(naam) ? "application/rtf"
+        : /\.odt$/i.test(naam) ? "application/vnd.oasis.opendocument.text"
+        : /\.png$/i.test(naam) ? "image/png"
+        : /\.webp$/i.test(naam) ? "image/webp"
+        : /\.gif$/i.test(naam) ? "image/gif"
+        : /\.tiff?$/i.test(naam) ? "image/tiff" : "image/jpeg";
+      const up = await uploadEnConverteer(await clientFolderId(slug), `Kennisbank-${datum}-${naam}`, buf, mime);
+      const read = await readDriveDoc(up.id, 60000);
+      return { naam, tekst: read.ok ? read.text || "" : "", fout: read.ok ? undefined : read.error };
+    }
+    return { naam, tekst: "", fout: "dit bestandstype kan ik niet lezen (wel: pdf, docx, txt, md, json, csv, scan of foto)" };
+  } catch (e) { return { naam, tekst: "", fout: (e as Error).message }; }
+}
+
 export async function POST(req: NextRequest) {
   if (!admin(req)) return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
   const ctype = req.headers.get("content-type") || "";
@@ -38,25 +70,24 @@ export async function POST(req: NextRequest) {
     const form = await req.formData().catch(() => null);
     if (!form) return NextResponse.json({ ok: false, error: "Geen bestand ontvangen." }, { status: 400 });
     const slug = String(form.get("slug") || "").trim();
-    const file = form.get("file");
-    if (!slug || !(file instanceof File)) return NextResponse.json({ ok: false, error: "Klant en bestand zijn verplicht." }, { status: 400 });
+    // ALLE meegestuurde bestanden, niet alleen het eerste: eerder werd bij het
+    // slepen van een stapel fiches stilletjes alleen het bovenste verwerkt.
+    const files = form.getAll("file").filter((f): f is File => f instanceof File);
+    if (!slug || !files.length) return NextResponse.json({ ok: false, error: "Klant en bestand zijn verplicht." }, { status: 400 });
     const g = await guardSlug(req, slug); if (!g.ok) return g.res;
-    const naam = file.name || "aangeleverd-materiaal";
-    const buf = Buffer.from(await file.arrayBuffer());
-    let tekst = "";
-    if (/\.(txt|md|json|csv)$/i.test(naam)) tekst = buf.toString("utf8");
-    else if (/\.docx$/i.test(naam)) {
-      try {
-        const up = await uploadDocx(await clientFolderId(slug), `Kennisbank-${new Date().toISOString().slice(0, 10)}-${naam}`, buf);
-        const read = await readDriveDoc(up.id, 60000);
-        if (read.ok) tekst = read.text || "";
-      } catch (e) { return NextResponse.json({ ok: false, error: "Uploaden mislukte: " + (e as Error).message }, { status: 500 }); }
-    } else return NextResponse.json({ ok: false, error: "Dit bestandstype kan ik nog niet lezen. Sleep een .docx, .txt, .md of .json, of plak tekst/een Drive-link." }, { status: 400 });
-    if (!tekst.trim()) return NextResponse.json({ ok: false, error: "Kon geen leesbare tekst uit het bestand halen." }, { status: 400 });
-    try {
-      const proposal = await proposeKnowledge(slug, naam, tekst);
-      return NextResponse.json({ ok: true, proposal });
-    } catch (e) { return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 500 }); }
+
+    const proposals: unknown[] = [];
+    const fouten: string[] = [];
+    for (const file of files) {
+      const { naam, tekst, fout } = await tekstUitBestand(slug, file);
+      if (fout || !tekst.trim()) { fouten.push(`${naam}: ${fout || "geen leesbare tekst gevonden"}`); continue; }
+      try { proposals.push(await proposeKnowledge(slug, naam, tekst)); }
+      catch (e) { fouten.push(`${naam}: ${(e as Error).message}`); }
+    }
+    if (!proposals.length) {
+      return NextResponse.json({ ok: false, error: fouten.join(" · ") || "Kon niets uit deze bestanden halen." }, { status: 400 });
+    }
+    return NextResponse.json({ ok: true, proposals, proposal: proposals[0], fouten });
   }
 
   let body: Record<string, unknown>;
@@ -87,6 +118,11 @@ export async function POST(req: NextRequest) {
       // eindstation, de velden in het formulier moeten gevuld raken.
       const toegepast = await applyKnowledgeToOrg(slug).catch(() => ({ gevuld: 0, nieuweVestigingen: 0, nieuweArtsen: 0 }));
       return NextResponse.json({ ok: true, verwerkt: r.verwerkt, ...toegepast });
+    }
+    if (action === "verwerkAlles") {
+      const r = await confirmAllKnowledge(slug);
+      const toegepast = await applyKnowledgeToOrg(slug).catch(() => ({ gevuld: 0, nieuweVestigingen: 0, nieuweArtsen: 0 }));
+      return NextResponse.json({ ok: true, ...r, ...toegepast });
     }
     if (action === "toepassen") {
       // Voor wat al eerder in de kennisbank kwam: alsnog in de velden zetten.

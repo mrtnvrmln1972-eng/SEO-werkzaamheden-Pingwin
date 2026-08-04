@@ -118,16 +118,21 @@ export async function listKnowledge(slug: string): Promise<KennisEntiteit[]> {
   }));
 }
 
-export async function getOpenProposal(slug: string): Promise<KennisVoorstel | null> {
+// ALLE openstaande voorstellen. Eerder werd er maar één getoond en gooide een
+// volgende drop de vorige weg: sleepte je vijf documenten achter elkaar, dan
+// overleefde alleen het laatste, zonder melding. Vandaar dat er materiaal
+// "gedropt maar nooit aangekomen" bleek. Nu blijft elk voorstel staan tot jij
+// erover beslist.
+export async function getOpenProposals(slug: string): Promise<KennisVoorstel[]> {
   await ensureSchema();
   await ensureTable();
   const { rows } = await sql`
     SELECT id, bron, samenvatting, velden FROM client_schema_knowledge
-    WHERE client_slug = ${slug} AND soort = 'drop' AND status = 'voorstel' ORDER BY id DESC LIMIT 1`;
-  const r = rows[0];
-  if (!r) return null;
-  const v = (r.velden as { entiteiten?: KennisVoorstel["entiteiten"] }) || {};
-  return { id: r.id as number, bron: (r.bron as string) || "", samenvatting: (r.samenvatting as string) || "", entiteiten: v.entiteiten || [] };
+    WHERE client_slug = ${slug} AND soort = 'drop' AND status = 'voorstel' ORDER BY id ASC`;
+  return rows.map((r) => ({
+    id: r.id as number, bron: (r.bron as string) || "", samenvatting: (r.samenvatting as string) || "",
+    entiteiten: ((r.velden as { entiteiten?: KennisVoorstel["entiteiten"] }) || {}).entiteiten || [],
+  }));
 }
 
 // Drop → AI structureert naar entiteiten en vergelijkt met wat er al staat.
@@ -161,8 +166,8 @@ Antwoord met UITSLUITEND geldige JSON: {"samenvatting":"...","entiteiten":[{"cat
     .slice(0, 200);
   if (!entiteiten.length) throw new Error("Geen herkenbare gegevens gevonden in het aangeleverde materiaal.");
   const samenvatting = (parsed.samenvatting || "Aangeleverd materiaal.").trim();
-  // Eventueel ouder open voorstel sluiten: er is altijd maar één voorstel open.
-  await sql`UPDATE client_schema_knowledge SET status = 'genegeerd' WHERE client_slug = ${slug} AND soort = 'drop' AND status = 'voorstel'`;
+  // Bewust GEEN eerder voorstel sluiten: elk aangeleverd stuk blijft staan tot
+  // Maarten het verwerkt of negeert. Anders verdwijnt materiaal ongemerkt.
   const { rows } = await sql`
     INSERT INTO client_schema_knowledge (client_slug, soort, bron, samenvatting, velden, status)
     VALUES (${slug}, 'drop', ${bron}, ${samenvatting}, ${JSON.stringify({ entiteiten })}, 'voorstel')
@@ -193,6 +198,17 @@ export async function confirmKnowledge(slug: string, id: number): Promise<{ ok: 
   }
   await sql`UPDATE client_schema_knowledge SET status = 'verwerkt' WHERE client_slug = ${slug} AND id = ${id}`;
   return { ok: true, verwerkt };
+}
+
+// Alle openstaande voorstellen in één klik verwerken (na een reeks drops).
+export async function confirmAllKnowledge(slug: string): Promise<{ voorstellen: number; verwerkt: number }> {
+  const open = await getOpenProposals(slug);
+  let verwerkt = 0;
+  for (const v of open) {
+    const r = await confirmKnowledge(slug, v.id);
+    if (r.ok) verwerkt += r.verwerkt || 0;
+  }
+  return { voorstellen: open.length, verwerkt };
 }
 
 export async function ignoreKnowledge(slug: string, id: number): Promise<void> {

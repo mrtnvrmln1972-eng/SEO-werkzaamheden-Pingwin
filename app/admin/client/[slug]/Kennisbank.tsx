@@ -5,7 +5,7 @@
 // dashboard structureert dat tot entiteiten met een voorstel dat hij eerst
 // bevestigt. Het rode lijstje toont wat er voor dit soort bedrijf nog mist.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { mdToHtml } from "../../../../lib/markdown";
 
 type Entiteit = { id: number; categorie: string; naam: string; velden: Record<string, string>; bron: string; updatedAt: string };
@@ -18,16 +18,18 @@ const OORDEEL: Record<string, string> = { nieuw: "nieuw", aanvulling: "aanvullin
 export default function Kennisbank({ slug, onVerwerkt }: { slug: string; onVerwerkt?: () => void }) {
   const [entiteiten, setEntiteiten] = useState<Entiteit[]>([]);
   const [gaps, setGaps] = useState<string[]>([]);
-  const [voorstel, setVoorstel] = useState<Voorstel | null>(null);
+  const [voorstellen, setVoorstellen] = useState<Voorstel[]>([]);
   const [drag, setDrag] = useState(false);
   const [busy, setBusy] = useState("");
   const [fout, setFout] = useState("");
   const [okMsg, setOkMsg] = useState("");
   const [plakVeld, setPlakVeld] = useState("");
+  const [bezigMet, setBezigMet] = useState("");
+  const kiesRef = useRef<HTMLInputElement | null>(null);
 
   async function laad() {
     const d = await fetch(`/api/admin/schema-knowledge?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).catch(() => null);
-    if (d?.ok) { setEntiteiten(d.entities || []); setGaps(d.gaps || []); setVoorstel(d.proposal || null); }
+    if (d?.ok) { setEntiteiten(d.entities || []); setGaps(d.gaps || []); setVoorstellen(d.proposals || (d.proposal ? [d.proposal] : [])); }
   }
   useEffect(() => { void laad(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [slug]);
 
@@ -35,17 +37,36 @@ export default function Kennisbank({ slug, onVerwerkt }: { slug: string; onVerwe
     setBusy("lezen"); setFout(""); setOkMsg("");
     try {
       const d = await fetch("/api/admin/schema-knowledge", init).then((r) => r.json());
-      if (d?.ok && d.proposal) { setVoorstel(d.proposal); setPlakVeld(""); }
-      else if (d?.ok) void laad();
-      else setFout(d?.error || foutTekst);
+      if (d?.ok) {
+        setPlakVeld("");
+        if (Array.isArray(d.fouten) && d.fouten.length) setFout(`Niet gelukt: ${d.fouten.join(" · ")}`);
+        await laad();
+      } else setFout(d?.error || foutTekst);
     } catch { setFout(foutTekst); }
-    finally { setBusy(""); }
+    finally { setBusy(""); setBezigMet(""); }
   }
 
-  function drop(file: File) {
-    const form = new FormData();
-    form.append("file", file); form.append("slug", slug);
-    void verstuur({ method: "POST", body: form }, "Kon het bestand niet verwerken.");
+  // Alle bestanden tegelijk, in blokjes: eerder werd bij een stapel alleen het
+  // bovenste bestand verwerkt en verdwenen de rest zonder melding.
+  async function drop(files: File[]) {
+    if (!files.length) return;
+    setBusy("lezen"); setFout(""); setOkMsg("");
+    const mislukt: string[] = [];
+    for (let i = 0; i < files.length; i += 3) {
+      const groep = files.slice(i, i + 3);
+      setBezigMet(`${Math.min(i + groep.length, files.length)} van ${files.length}: ${groep.map((f) => f.name).join(", ")}`);
+      const form = new FormData();
+      form.append("slug", slug);
+      for (const f of groep) form.append("file", f);
+      try {
+        const d = await fetch("/api/admin/schema-knowledge", { method: "POST", body: form }).then((r) => r.json());
+        if (!d?.ok) mislukt.push(d?.error || groep.map((f) => f.name).join(", "));
+        else if (Array.isArray(d.fouten) && d.fouten.length) mislukt.push(...d.fouten);
+      } catch { mislukt.push(groep.map((f) => f.name).join(", ")); }
+    }
+    setBezigMet(""); setBusy("");
+    if (mislukt.length) setFout(`Niet gelukt: ${mislukt.join(" · ")}`);
+    await laad();
   }
   function plak() {
     const v = plakVeld.trim();
@@ -53,23 +74,32 @@ export default function Kennisbank({ slug, onVerwerkt }: { slug: string; onVerwe
     const isLink = /^https?:\/\//i.test(v) && /drive\.google|docs\.google/.test(v);
     void verstuur({ method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(isLink ? { action: "link", slug, driveLink: v } : { action: "tekst", slug, tekst: v }) }, "Kon dit niet verwerken.");
   }
-  async function besluit(actie: "verwerk" | "negeer") {
-    if (!voorstel) return;
-    setBusy(actie); setFout("");
+  function melding(d: { verwerkt?: number; nieuweVestigingen?: number; nieuweArtsen?: number }): string {
+    const extra = [
+      d.nieuweVestigingen ? `${d.nieuweVestigingen} nieuwe vestiging${d.nieuweVestigingen === 1 ? "" : "en"}` : "",
+      d.nieuweArtsen ? `${d.nieuweArtsen} nieuwe arts${d.nieuweArtsen === 1 ? "" : "en"}` : "",
+    ].filter(Boolean).join(" en ");
+    return `${d.verwerkt || 0} gegevens verwerkt en doorgezet naar de bedrijfsgegevens hierboven${extra ? `, waaronder ${extra}` : ""}. Wat nog ontbreekt staat daar in het rood.`;
+  }
+
+  async function besluit(actie: "verwerk" | "negeer", id: number) {
+    setBusy(`${actie}-${id}`); setFout("");
     try {
-      const d = await fetch("/api/admin/schema-knowledge", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: actie, slug, id: voorstel.id }) }).then((r) => r.json());
+      const d = await fetch("/api/admin/schema-knowledge", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: actie, slug, id }) }).then((r) => r.json());
       if (d?.ok) {
-        setVoorstel(null);
-        if (actie === "verwerk") {
-          const extra = [
-            d.nieuweVestigingen ? `${d.nieuweVestigingen} nieuwe vestiging${d.nieuweVestigingen === 1 ? "" : "en"}` : "",
-            d.nieuweArtsen ? `${d.nieuweArtsen} nieuwe arts${d.nieuweArtsen === 1 ? "" : "en"}` : "",
-          ].filter(Boolean).join(" en ");
-          setOkMsg(`${d.verwerkt || 0} gegevens verwerkt en doorgezet naar de bedrijfsgegevens hierboven${extra ? `, waaronder ${extra}` : ""}. Wat nog ontbreekt staat daar in het rood.`);
-          onVerwerkt?.();
-        }
+        if (actie === "verwerk") { setOkMsg(melding(d)); onVerwerkt?.(); }
         void laad();
       }
+      else setFout(d?.error || "Dat lukte niet.");
+    } catch { setFout("Dat lukte niet; probeer het nog een keer."); }
+    finally { setBusy(""); }
+  }
+
+  async function verwerkAlles() {
+    setBusy("alles"); setFout(""); setOkMsg("");
+    try {
+      const d = await fetch("/api/admin/schema-knowledge", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "verwerkAlles", slug }) }).then((r) => r.json());
+      if (d?.ok) { setOkMsg(`${d.voorstellen || 0} aanleveringen verwerkt. ${melding(d)}`); onVerwerkt?.(); void laad(); }
       else setFout(d?.error || "Dat lukte niet.");
     } catch { setFout("Dat lukte niet; probeer het nog een keer."); }
     finally { setBusy(""); }
@@ -133,10 +163,15 @@ export default function Kennisbank({ slug, onVerwerkt }: { slug: string; onVerwe
       <div className={"wp-docdrop" + (drag ? " wp-docdrop-actief" : "")}
         onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
         onDragLeave={() => setDrag(false)}
-        onDrop={(e) => { e.preventDefault(); setDrag(false); const f = e.dataTransfer.files?.[0]; if (f) drop(f); }}>
-        {busy === "lezen" ? <span className="muted">Materiaal lezen en structureren…</span> : (
+        onDrop={(e) => { e.preventDefault(); setDrag(false); void drop(Array.from(e.dataTransfer.files || [])); }}>
+        {busy === "lezen" ? <span className="muted">Materiaal lezen en structureren… {bezigMet}</span> : (
           <>
-            <span className="wp-docdrop-tekst">Sleep hier een bestand naartoe (.docx, .txt, .md, .json)</span>
+            <input ref={kiesRef} type="file" multiple style={{ display: "none" }}
+              onChange={(e) => { void drop(Array.from(e.target.files || [])); e.target.value = ""; }} />
+            <span className="wp-docdrop-tekst">
+              Sleep hier je bestanden naartoe, meerdere tegelijk mag (pdf, docx, txt, md, json, csv, ook scans en foto&rsquo;s)
+              {" "}of <button type="button" className="wp-chat-toggle" onClick={() => kiesRef.current?.click()}>kies ze uit een map</button>
+            </span>
             <span className="wp-docdrop-of">of plak tekst of een Drive-link:</span>
             <span className="wp-docdrop-linkrij">
               <input className="wp-docdrop-input" value={plakVeld} placeholder="Tekst of https://docs.google.com/…"
@@ -146,9 +181,17 @@ export default function Kennisbank({ slug, onVerwerkt }: { slug: string; onVerwe
           </>
         )}
       </div>
-      {voorstel && (
-        <div className="wp-docvoorstel">
-          <div className="wp-docvoorstel-kop">Voorstel uit &ldquo;{voorstel.bron}&rdquo;</div>
+      {voorstellen.length > 1 && (
+        <div className="kb-voorstel-balk">
+          <strong>{voorstellen.length} aanleveringen wachten op je akkoord.</strong>
+          <button type="button" className="wp-fase-btn wp-fase-btn-primair" disabled={!!busy} onClick={() => void verwerkAlles()}>
+            {busy === "alles" ? "Verwerken…" : `Verwerk alle ${voorstellen.length}`}
+          </button>
+        </div>
+      )}
+      {voorstellen.map((voorstel) => (
+        <div className="wp-docvoorstel" key={voorstel.id}>
+          <div className="wp-docvoorstel-kop">Voorstel uit &ldquo;{voorstel.bron}&rdquo; ({voorstel.entiteiten.length} gegevens)</div>
           <div className="wp-docvoorstel-tekst">{voorstel.samenvatting}</div>
           <ul className="kb-voorstel-lijst">
             {voorstel.entiteiten.map((e, i) => (
@@ -160,12 +203,12 @@ export default function Kennisbank({ slug, onVerwerkt }: { slug: string; onVerwe
             ))}
           </ul>
           <div className="wp-docvoorstel-acties">
-            <button type="button" className="wp-fase-btn wp-fase-btn-primair" disabled={!!busy} onClick={() => void besluit("verwerk")}>{busy === "verwerk" ? "Verwerken…" : "Verwerk in kennisbank"}</button>
-            <button type="button" className="wp-fase-btn" disabled={!!busy} onClick={() => void besluit("negeer")}>Negeer</button>
+            <button type="button" className="wp-fase-btn wp-fase-btn-primair" disabled={!!busy} onClick={() => void besluit("verwerk", voorstel.id)}>{busy === `verwerk-${voorstel.id}` ? "Verwerken…" : "Verwerk in kennisbank"}</button>
+            <button type="button" className="wp-fase-btn" disabled={!!busy} onClick={() => void besluit("negeer", voorstel.id)}>Negeer</button>
             <span className="muted">Bestaande gegevens blijven bewaard; nieuwe waarden vullen aan.</span>
           </div>
         </div>
-      )}
+      ))}
       {okMsg && <div className="wp-doc-ok">{okMsg}</div>}
       {fout && <div className="wp-doc-fout">{fout}</div>}
       {gaps.length > 0 && (
