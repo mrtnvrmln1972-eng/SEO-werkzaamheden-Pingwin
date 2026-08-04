@@ -8,7 +8,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { mdToHtml } from "../../../../lib/markdown";
-import { cardInfoHtml, splitCardInfo, faseSturing, type CardFaseKey } from "../../../../lib/card-info";
+import { cardInfoHtml, splitCardInfo, eerdereNotitiesHtml, faseSturing, type CardFaseKey } from "../../../../lib/card-info";
 import { linkifyHtml } from "../../../../lib/linkify";
 import { urlKey } from "../../../../lib/url-key";
 import { devLabel } from "../../../../lib/personen";
@@ -394,6 +394,11 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
     }
     if (key === "structured" && schemaRunning) return { label: "Bezig…", cls: "wp-fase-bezig" };
     if (page && page[key]) return { label: "✓", cls: "wp-fase-klaar" };
+    // Bouw en publicatie bleef rood zolang de tekst niet live stond, ook als Maarten
+    // zijn deel allang gedaan had en het bij de sitebouwer lag. Rood las dan als
+    // "er moet nog iets van jou komen", terwijl er juist gewacht werd. Er zit een
+    // stand tussen: doorgezet naar de developer, nog niet live.
+    if (key === "bouw" && naarDev) return { label: "Bij de developer", cls: "wp-fase-wacht" };
     // Was grijze tekst "Nog niet". Een kruisje in dezelfde pilvorm leest sneller:
     // rood is niet af, groen is af, en je hoeft niets te lezen om dat te zien.
     return { label: "✕", cls: "wp-fase-open" };
@@ -458,6 +463,12 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
   const subtitel = titelMatch ? titelMatch[2] : "";
   // Eén keer parsen: het unieke verhaal voor het bovenblok, de fase-sturing voor de rijen.
   const info = splitCardInfo(t.toelichting, t.taak);
+  // De oude notities worden apart opgehaald zodat ze onderaan het blok "Over deze
+  // pagina" komen, bij het archief van het dossier, in plaats van als tweede
+  // archief midden op de kaart.
+  const ouder = hasInfo ? eerdereNotitiesHtml(t.toelichting, t.url, t.taak, mailLinks) : null;
+  const eerdereNotities = ouder?.html || "";
+  const eerdereAantal = ouder?.aantal || 0;
 
   // Dichtklappen mag nooit een lopende tekstselectie opeten (kopiëren gaat voor).
   const toggleAlsGeenSelectie = () => {
@@ -509,36 +520,43 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
           {opruimMsg && <span className={opruimMsg.startsWith("Kaart") ? "wp-opruim-ok" : "wp-opruim-fout"}>{opruimMsg}</span>}
         </div>
       )}
-      {open && hasInfo && (
-        <div className="wp-card-info wp-info-net"
-          onClick={(e) => {
-            const el = (e.target as HTMLElement).closest?.(".wp-maildatum") as HTMLElement | null;
-            if (el && onOpenMailDate) { e.stopPropagation(); onOpenMailDate(el.dataset.datum || ""); return; }
-            const lb = (e.target as HTMLElement).closest?.(".wp-info-lijstbtn") as HTMLElement | null;
-            if (lb) {
-              e.stopPropagation();
-              const li = lb.closest("li");
-              const kloon = li?.cloneNode(true) as HTMLElement | undefined;
-              kloon?.querySelectorAll(".wp-info-lijstbtn").forEach((b) => b.remove());
-              const tekst = (kloon?.textContent || "").replace(/\s+/g, " ").trim();
-              if (tekst) { setLijstPunt(tekst); setLijstMsg(""); }
-            }
-          }}
-          dangerouslySetInnerHTML={{ __html: cardInfoHtml(t.toelichting, t.url, t.taak, cijferRegel(page), mailLinks) }} />
-      )}
-
-      {/* Het paginadossier: wie wat wilde, wie wat maakte, wat er nog niet is
-          gebeurd, met de mails en documenten die erbij horen. Zelfde blok als in
-          de chat en op de voorgestelde taak, want het leest dezelfde opgeslagen
-          alinea. */}
-      {/* Dossier en documenten stonden als twee losse blokken op de kaart, met de
-          fase-chips ertussen. Voor Maarten is dat één vraag ("wat is er over deze
-          pagina"), dus het is één blok met twee kopjes geworden. */}
-      {open && t.url && (
+      {/* Alles wat over deze pagina gaat staat in één blok. Het zaten er eerst drie
+          los onder elkaar: "Waarom deze pagina" (het geschreven verhaal), het
+          paginadossier (wat er echt gebeurd is) en de documenten. Ze vertelden
+          hetzelfde verhaal vanuit drie hoeken, met eigen kopjes en eigen archieven,
+          dus je las hetzelfde drie keer en wist niet welke de actuele was. */}
+      {open && (hasInfo || t.url) && (
         <div className="wp-overdeze">
           <div className="wp-overdeze-kop">Over deze pagina</div>
-          <PaginaDossier slug={slug} url={t.url} />
-          <DocVersies slug={slug} url={t.url} />
+          {hasInfo && (
+            <div className="wp-card-info wp-info-net"
+              onClick={(e) => {
+                const el = (e.target as HTMLElement).closest?.(".wp-maildatum") as HTMLElement | null;
+                if (el && onOpenMailDate) { e.stopPropagation(); onOpenMailDate(el.dataset.datum || ""); return; }
+                const lb = (e.target as HTMLElement).closest?.(".wp-info-lijstbtn") as HTMLElement | null;
+                if (lb) {
+                  e.stopPropagation();
+                  const li = lb.closest("li");
+                  const kloon = li?.cloneNode(true) as HTMLElement | undefined;
+                  kloon?.querySelectorAll(".wp-info-lijstbtn").forEach((b) => b.remove());
+                  const tekst = (kloon?.textContent || "").replace(/\s+/g, " ").trim();
+                  if (tekst) { setLijstPunt(tekst); setLijstMsg(""); }
+                }
+              }}
+              dangerouslySetInnerHTML={{ __html: cardInfoHtml(t.toelichting, t.url, t.taak, cijferRegel(page), mailLinks, undefined, true) }} />
+          )}
+          {t.url && <PaginaDossier slug={slug} url={t.url} />}
+          {t.url && <DocVersies slug={slug} url={t.url} />}
+          {/* Eén archief onderaan het blok. Er stonden er twee vlak onder elkaar,
+              "Eerdere notities" en "Tijdlijn en eerdere notities", allebei met een
+              eigen aantal, dus het leek alsof er twee verschillende geschiedenissen
+              waren. Dit is de plek waar de oude notities uit de kaarttekst landen. */}
+          {hasInfo && eerdereNotities && (
+            <details className="wp-info-rest wp-overdeze-archief">
+              <summary>Eerdere notities ({eerdereAantal})</summary>
+              <div dangerouslySetInnerHTML={{ __html: eerdereNotities }} />
+            </details>
+          )}
         </div>
       )}
       {open && lijstPunt && (
@@ -616,8 +634,20 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
         </div>
       )}
 
-      {/* De cyclus verticaal, per fase status + start + vinkje. */}
-      {open && page && <div className="wp-sectie-label">Fases</div>}
+      {/* De cyclus verticaal, per fase status + start + vinkje. "Alles in één keer"
+          hoort bij de eerste drie fases samen, niet bij Copy alleen, dus hij staat
+          hier boven het blok in plaats van in één van de rijen. */}
+      {open && page && (
+        <div className="wp-fases-kop">
+          <span className="wp-sectie-label" style={{ margin: 0 }}>Fases</span>
+          <span className="wp-fase-spacer" />
+          <button type="button" className="wp-fase-btn" disabled={(!page.live && !page.strategie) || runActive || !!busy}
+            title={(!page.live && !page.strategie) ? "Eerst de strategie goedkeuren (nieuwe pagina)" : "Draait analyse, blauwdruk en copy achter elkaar"}
+            onClick={() => void startDocStep(page.live ? ["analyse", "blauwdruk", "copy"] : ["blauwdruk", "copy"])}>
+            {page.live ? "Alles in één keer ▷" : "Blauwdruk + copy ▷"}
+          </button>
+        </div>
+      )}
       {open && page && (
         <div className="wp-fases">
           {FASEN.map((f) => {
@@ -653,14 +683,11 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
                     </button>
                   )}
                   <span className="wp-fase-spacer" />
-                  {/* Alle pillen rechts, in vaste volgorde: Document | In Pagina's | actie | status. */}
-                  {f.key === "copy" && (
-                    <button type="button" className="wp-fase-btn" disabled={(!page.live && !page.strategie) || runActive || !!busy}
-                      title={(!page.live && !page.strategie) ? "Eerst de strategie goedkeuren (nieuwe pagina)" : "Draait analyse, blauwdruk en copy achter elkaar"}
-                      onClick={() => void startDocStep(page.live ? ["analyse", "blauwdruk", "copy"] : ["blauwdruk", "copy"])}>
-                      {page.live ? "Alles in één keer ▷" : "Blauwdruk + copy ▷"}
-                    </button>
-                  )}
+                  {/* Alle pillen rechts, in vaste volgorde: Document | In Pagina's | actie | status.
+                      "Alles in één keer" hing hier in de Copy-rij en maakte die rij
+                      hoger dan de andere zes, waardoor de hele kolom uit de pas liep.
+                      Die knop slaat ook niet op Copy alleen maar op drie fases, dus
+                      hij staat nu boven het blok. */}
                   {/* Bouw en publicatie bestaat niet als stap op de Pagina's-pagina,
                       dus daar heeft deze knop niets om naartoe te gaan. */}
                   {f.key !== "bouw" && <button type="button" className="wp-fase-btn wp-fase-btn-licht" title="Bekijk of doe deze stap in Pagina's (nieuw tabblad)" onClick={openPaginaNieuwTab}>In Pagina&rsquo;s</button>}
@@ -671,15 +698,7 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
                 {sturingNuttig && sturingOpen && <div className="wp-fase-sturing" dangerouslySetInnerHTML={{ __html: linkifyHtml(sturing.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"), (() => { try { return new URL(t.url).host; } catch { return ""; } })()) }} />}
               </div>
             );
-            if (f.key !== "copy") return rij;
-            // "Start alles" stond als eigen regel onder Copy, met een label links en
-            // een knop rechts. Dat kostte een regel en liep uit de pas met de andere
-            // rijen. Hij hoort gewoon bij Copy, want dat is de laatste van de drie.
-            return (
-              <div key="copy-en-alles">
-                {rij}
-              </div>
-            );
+            return rij;
           })}
           {verifyMsg && <div className={verifyMsg.ok ? "wp-doc-ok" : "wp-doc-fout"}>{verifyMsg.tekst}</div>}
           {foutje && <div className="wp-fase-fouttekst">{foutje}</div>}

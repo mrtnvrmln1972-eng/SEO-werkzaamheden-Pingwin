@@ -66,6 +66,26 @@ function rowToVersion(r: Record<string, unknown>): DocVersion {
   };
 }
 
+// Dezelfde bijlage kon twee keer in het archief belanden: op /crp-waarde-testen/
+// stonden twee rijen "Tekst CRP-waarde 21-07-2026.pdf", allebei ingelezen in
+// dezelfde minuut. Dan lijkt het alsof er twee verschillende versies zijn terwijl
+// het één document is. We houden de nieuwste van elk paar en laten de rest weg uit
+// de lijst; weggooien doen we niet, de rij blijft gewoon in de tabel staan. Werkt
+// hierdoor ook voor de dubbelingen die er nu al in zitten.
+function ontdubbelVersies(lijst: DocVersion[]): DocVersion[] {
+  const gezien = new Set<string>();
+  const uniek: DocVersion[] = [];
+  for (const v of lijst) {           // komt al op id DESC binnen, dus nieuwste eerst
+    const naam = (v.naam || "").trim().toLowerCase();
+    const minuut = String(v.createdAt || "").slice(0, 16);
+    const sleutel = naam ? `${naam}|${v.kind}|${minuut}` : `#${v.id}`;
+    if (gezien.has(sleutel)) continue;
+    gezien.add(sleutel);
+    uniek.push(v);
+  }
+  return uniek;
+}
+
 export async function listVersions(slug: string, url: string): Promise<DocVersion[]> {
   await ensureSchema();
   await ensureTable();
@@ -73,7 +93,7 @@ export async function listVersions(slug: string, url: string): Promise<DocVersio
     SELECT id, kind, source, naam, drive_link, samenvatting, vergelijking, status, created_at
     FROM page_doc_versions WHERE client_slug = ${slug} AND url = ${url} AND status <> 'genegeerd'
     ORDER BY id DESC LIMIT 40`;
-  return rows.map(rowToVersion);
+  return ontdubbelVersies(rows.map(rowToVersion));
 }
 
 // Zelfde lijst, maar vergelijkend op de genormaliseerde sleutel. De tabel bewaart
@@ -88,7 +108,7 @@ export async function listVersionsForKey(slug: string, url: string): Promise<Doc
     SELECT id, url, kind, source, naam, drive_link, samenvatting, vergelijking, status, created_at
     FROM page_doc_versions WHERE client_slug = ${slug} AND status <> 'genegeerd'
     ORDER BY id DESC LIMIT 400`;
-  return rows.filter((r) => urlKey(String(r.url || "")) === k).slice(0, 40).map(rowToVersion);
+  return ontdubbelVersies(rows.filter((r) => urlKey(String(r.url || "")) === k).slice(0, 40).map(rowToVersion));
 }
 
 // Elke generator-run legt zijn resultaat ook als versie in het archief

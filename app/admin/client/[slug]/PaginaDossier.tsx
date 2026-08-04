@@ -49,9 +49,15 @@ export default function PaginaDossier({ slug, url, compact = false }: {
         body: JSON.stringify({ slug, url, actie, id }),
       }).then((r) => r.json());
       if (actie === "bijlage") {
-        setMelding(d?.ok
+        const gelukt = !!d?.ok;
+        setMelding(gelukt
           ? `Klaargezet als klantversie: ${(d.klaar || []).join(", ")}. Je verwerkt hem hieronder bij Documenten.`
           : d?.error || "De bijlagen konden niet ingelezen worden.");
+        // Een melding die blijft staan wordt meubilair: hij hoorde bij een handeling
+        // die klaar is, maar bleef de rest van de sessie de kaart in beslag nemen.
+        // Gelukte melding gaat vanzelf weg; een foutmelding blijft, want daar moet
+        // je nog iets mee.
+        if (gelukt) setTimeout(() => setMelding(""), 6000);
       }
       if (d?.ok) await laad();
     } catch { setMelding("Dat lukte niet. Probeer het nog een keer."); }

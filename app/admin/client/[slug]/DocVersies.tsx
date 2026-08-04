@@ -110,8 +110,13 @@ export default function DocVersies({ slug, url }: { slug: string; url: string })
       </div>
       {voorstel && (
         <div className="wp-docvoorstel">
+          {/* Stond er als "Herkend als [keuzelijst]": systeemtaal die niet zegt wat
+              er van je gevraagd wordt. Nu een gewone vraag, zodat meteen duidelijk
+              is dat hier iets op jouw akkoord ligt te wachten. */}
           <div className="wp-docvoorstel-kop">
-            Herkend als <select className="wp-docvoorstel-kind" value={kindKeuze} onChange={(e) => setKindKeuze(e.target.value)}>
+            <strong>Er ligt een nieuw document klaar.</strong>
+            <span>Volgens mij is dit de</span>
+            <select className="wp-docvoorstel-kind" value={kindKeuze} onChange={(e) => setKindKeuze(e.target.value)}>
               {KINDS.map((k) => <option key={k} value={k}>{KIND_LABEL[k]}</option>)}
             </select>
             <span className={"wp-doc-vergelijk" + (voorstel.vergelijking === "ouder" ? " wp-doc-ouder" : "")}>{vergelijkTekst[voorstel.vergelijking] || ""}</span>

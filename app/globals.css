@@ -2448,6 +2448,8 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
 .wp-docdrop-input:focus { outline: none; border-color: var(--orange); }
 .wp-docvoorstel { border: 1px solid var(--card-border); border-left: 3px solid var(--orange); border-radius: 10px; padding: 10px 14px; display: flex; flex-direction: column; gap: 7px; background: #fff; }
 .wp-docvoorstel-kop { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13px; flex-wrap: wrap; }
+/* De vraag zelf is gewone tekst; alleen de kop en de keuze mogen opvallen. */
+.wp-docvoorstel-kop > span { font-weight: 400; color: var(--gray); }
 .wp-docvoorstel-kind { border: 1px solid var(--card-border); border-radius: 8px; padding: 3px 7px; font-size: 12.5px; font-family: inherit; }
 .wp-doc-vergelijk { font-weight: 400; font-size: 12px; color: #1c7a3f; }
 .wp-doc-vergelijk.wp-doc-ouder { color: #b3261e; }
@@ -2785,7 +2787,15 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
    helemaal rechts, klein en gecentreerd. */
 .wp-fase-doc { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
 .wp-fase-rij .wp-fase-chip { min-width: 62px; }
-.wp-fase-chip.wp-fase-klaar { min-width: 34px; font-size: 12px; }
+/* Vinkje en kruisje zijn allebei één teken en horen dus even breed te zijn. Het
+   vinkje kreeg hier een smallere maat, het kruisje niet: die stond eerder in het
+   bestand en werd door de regel hierboven weer breed getrokken. Daardoor stond de
+   hele statuskolom scheef. Nu staan ze samen, ná die regel, dus gelijk. */
+.wp-fase-chip.wp-fase-klaar,
+.wp-fase-chip.wp-fase-open { min-width: 34px; font-size: 12px; }
+/* Doorgezet naar de sitebouwer, nog niet live: geen rood (dat leest als "jij moet
+   nog iets doen") maar oranje wachtend. Tekstchip, dus wel de volle breedte. */
+.wp-fase-chip.wp-fase-wacht { color: #8a5000; background: #fff1e2; border-color: #f3d3b0; min-width: 62px; }
 .wp-maildatum { color: var(--orange-dark); font-weight: 600; text-decoration: underline dotted; cursor: pointer; }
 .wp-maildatum:hover { text-decoration: underline; }
 .wp-card-grip { cursor: grab; color: #8a8d91; user-select: none; font-weight: 900; letter-spacing: 1px; font-size: 13px; line-height: 1; padding: 3px 2px; border-radius: 5px; text-align: center; align-self: start; margin-top: 2px; }
@@ -2921,8 +2931,19 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .wp-info-cijfers {
   font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray);
   background: var(--gray-light); border-radius: var(--r-sm);
-  padding: var(--s-1) var(--s-3); margin-bottom: var(--s-3); display: inline-block;
+  padding: var(--s-1) var(--s-3); margin-bottom: var(--s-3);
+  display: inline-flex; align-items: center; gap: var(--s-2);
 }
+/* Twee getallen op één kaart spraken elkaar tegen: de verse meting bovenaan en een
+   ouder getal in een geschreven zin eronder. Beide houden hun eigen label, zodat
+   je nooit meer hoeft te raden welke van nu is. */
+.wp-cijfer-nu-lab, .wp-cijfer-toen-lab {
+  font-size: 9.5px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase;
+  border-radius: var(--r-full); padding: 1px 6px; white-space: nowrap;
+}
+.wp-cijfer-nu-lab { color: #1b7f3b; background: #e7f6ec; border: 1px solid #bfe6cc; }
+.wp-cijfer-toen-lab { color: var(--gray); background: #efedea; border: 1px solid #e0dcd7; margin-left: 4px; }
+.wp-cijfer-toen { white-space: nowrap; }
 
 /* Wat niet in de begrensde kaart past: ingeklapt, niets weggegooid. */
 .wp-info-rest { margin-top: var(--s-3); }
@@ -3118,9 +3139,17 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .wp-werklijst-groep { font-size: var(--fs-xs, 11px); font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted, #6b7280); margin-right: var(--s-1, 4px); }
 .wp-fase-btn-uit { opacity: 0.45; pointer-events: none; cursor: default; }
 
-/* Dossier en documenten als één blok: "wat is er over deze pagina" is één vraag. */
+/* Waarom-blok, dossier en documenten als één blok: "wat is er over deze pagina" is
+   één vraag, en werden drie losse blokken die hetzelfde verhaal drie keer vertelden. */
 .wp-overdeze { border: 1px solid var(--line, #e6e6e6); border-radius: var(--r-md, 10px); padding: var(--s-3, 12px); margin: var(--s-3, 12px) 0; display: flex; flex-direction: column; gap: var(--s-2, 8px); }
 .wp-overdeze-kop { font-size: var(--fs-xs, 10.5px); font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted, #5e6063); }
+/* Eén archief, onderaan het blok, met een lijn erboven zodat het duidelijk de
+   afsluiting is en niet nog een sectie. */
+.wp-overdeze-archief { border-top: 1px solid var(--line, #e6e6e6); padding-top: var(--s-2, 8px); margin-top: var(--s-1, 4px); }
+
+/* "Alles in één keer" hoort bij de eerste drie fases samen, niet in de Copy-rij:
+   daar maakte hij die ene rij hoger dan de andere zes. */
+.wp-fases-kop { display: flex; align-items: center; gap: var(--s-2, 8px); margin: var(--s-3, 12px) 0 var(--s-1, 4px); flex-wrap: wrap; }
 
 /* ── Afwerkpagina werklijst (publiek, /share/werklijst/…) ── */
 .wp-werklijst-teller { font-size: var(--fs-xs, 11.5px); font-weight: 700; color: #1c7a3f; background: #eaf5ee; border-radius: var(--r-full, 99px); padding: 2px 10px; margin-left: var(--s-2, 8px); }

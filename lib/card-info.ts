@@ -62,10 +62,23 @@ function sleutelUitTekst(tekst: string): string | null {
 }
 
 // Inline-opmaak binnen één regel: **vet** renderen, nooit ruwe sterretjes tonen.
+// Getallen die in een geschreven zin staan zijn een momentopname van het moment
+// dat de kaart geschreven werd. De verse meting staat bovenaan de kaart. Stonden
+// die twee naast elkaar zonder onderscheid, dan las je op één kaart 70.773
+// vertoningen bovenaan en 36.326 in de tekst eronder, en wist je niet meer welke
+// klopte. Het getal blijft staan (het is echte historie), maar krijgt zichtbaar
+// mee dat het van toen is. Werkt met terugwerkende kracht voor elke kaart die er
+// al staat, want het gebeurt hier in de weergave en niet in de opgeslagen tekst.
+const GEMETEN = /(\d[\d.,]*)(\s*)(vertoningen|klikken|impressies)\b/gi;
+function markeerOudeCijfers(html: string): string {
+  return html.replace(GEMETEN, (heel, getal: string, spatie: string, woord: string) =>
+    `<span class="wp-cijfer-toen" title="Zoals gemeten toen deze kaart geschreven werd. De actuele meting staat bovenaan de kaart.">${getal}${spatie}${woord}<span class="wp-cijfer-toen-lab">toen</span></span>`);
+}
+
 function inline(s: string, mails?: MailLinks): string {
-  return escapeHtml(s)
+  return markeerOudeCijfers(escapeHtml(s)
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*/g, "")
+    .replace(/\*/g, ""))
     .replace(/\b([Mm]ail(?:tje)?(?:\s+van)?\s+)(\d{1,2}[-/]\d{1,2}(?:[-/]\d{2,4})?|\d{1,2}\s+(?:januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)(?:\s+\d{2,4})?)/g,
       (heel, voor: string, datum: string) => {
         if (!mails) return heel;
@@ -309,7 +322,17 @@ function infoKaart(icoon: string, kop: string, inhoud: string): string {
   return `<div class="wp-info-kaart"><div class="wp-info-kaarthead"><span class="wp-info-icoon">${icoon}</span><span class="wp-info-kop">${kop}</span></div>${inhoud}</div>`;
 }
 
-export function cardInfoHtml(toelichting: string, pageUrl?: string, taak?: string, cijfers?: string, mails?: MailLinks, herkomst?: HerkomstContext): string {
+// De "Eerdere notities" apart, zodat de kaart ze onderaan het gedeelde blok
+// "Over deze pagina" kan zetten in plaats van midden op de kaart, vlak boven het
+// tweede archief van het paginadossier. Geeft null als er niets ouds is.
+export function eerdereNotitiesHtml(toelichting: string, pageUrl?: string, taak?: string, mails?: MailLinks, herkomst?: HerkomstContext): { html: string; aantal: number } | null {
+  const info = splitCardInfo(toelichting, taak, herkomst);
+  if (!info.rest.length) return null;
+  const domain = (() => { try { return pageUrl ? new URL(pageUrl).host : ""; } catch { return ""; } })();
+  return { html: linkifyHtml(lijst(info.rest, "wp-punt-lijst", mails), domain), aantal: info.rest.length };
+}
+
+export function cardInfoHtml(toelichting: string, pageUrl?: string, taak?: string, cijfers?: string, mails?: MailLinks, herkomst?: HerkomstContext, zonderNotities?: boolean): string {
   const domain = (() => { try { return pageUrl ? new URL(pageUrl).host : ""; } catch { return ""; } })();
   const info = splitCardInfo(toelichting, taak, herkomst);
   const kaarten: string[] = [];
@@ -325,11 +348,13 @@ export function cardInfoHtml(toelichting: string, pageUrl?: string, taak?: strin
   // De cijfers komen uit de METING, nooit uit geschreven tekst. Zolang een getal in
   // een zin stond, konden er twee metingen naast elkaar blijven staan (positie 27.9
   // met 869 vertoningen én positie 30.1 met 615). Eén vaste plek maakt dat onmogelijk.
-  const cijferRegel = cijfers ? `<div class="wp-info-cijfers">${escapeHtml(cijfers)}</div>` : "";
+  const cijferRegel = cijfers
+    ? `<div class="wp-info-cijfers"><span class="wp-cijfer-nu-lab">Nu gemeten</span>${escapeHtml(cijfers)}</div>`
+    : "";
 
   // Wat niet in de begrensde kaart past staat hier, ingeklapt. Niets raakt kwijt;
   // het staat alleen niet meer in de weg. <details> heeft geen JavaScript nodig.
-  const notities = info.rest.length
+  const notities = info.rest.length && !zonderNotities
     ? `<details class="wp-info-rest"><summary>Eerdere notities (${info.rest.length})</summary>${lijst(info.rest, "wp-punt-lijst", mails)}</details>`
     : "";
   // Geen emoji's in het dashboard: status-emoji's uit oudere kaartteksten worden
