@@ -3,7 +3,7 @@ import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
 import { uploadDocx, readDriveDoc } from "../../../../lib/drive";
 import { ensureClientFolder } from "../../../../lib/drive-map";
-import { listKnowledge, getOpenProposal, proposeKnowledge, confirmKnowledge, ignoreKnowledge, knowledgeGaps } from "../../../../lib/schema-knowledge";
+import { listKnowledge, getOpenProposal, proposeKnowledge, confirmKnowledge, ignoreKnowledge, knowledgeGaps, applyKnowledgeToOrg } from "../../../../lib/schema-knowledge";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -82,7 +82,16 @@ export async function POST(req: NextRequest) {
     }
     if (action === "verwerk") {
       const r = await confirmKnowledge(slug, Number(body.id || 0));
-      return r.ok ? NextResponse.json({ ok: true, verwerkt: r.verwerkt }) : NextResponse.json({ ok: false, error: r.error }, { status: 500 });
+      if (!r.ok) return NextResponse.json({ ok: false, error: r.error }, { status: 500 });
+      // Meteen doorzetten naar de bedrijfsgegevens: de kennisbank is geen
+      // eindstation, de velden in het formulier moeten gevuld raken.
+      const toegepast = await applyKnowledgeToOrg(slug).catch(() => ({ gevuld: 0, nieuweVestigingen: 0, nieuweArtsen: 0 }));
+      return NextResponse.json({ ok: true, verwerkt: r.verwerkt, ...toegepast });
+    }
+    if (action === "toepassen") {
+      // Voor wat al eerder in de kennisbank kwam: alsnog in de velden zetten.
+      const r = await applyKnowledgeToOrg(slug);
+      return NextResponse.json({ ok: true, ...r });
     }
     if (action === "negeer") {
       await ignoreKnowledge(slug, Number(body.id || 0));

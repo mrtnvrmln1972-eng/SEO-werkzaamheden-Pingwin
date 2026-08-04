@@ -15,7 +15,7 @@ const CAT_LABEL: Record<string, string> = { organisatie: "Organisatie", persoon:
 const CAT_VOLGORDE = ["organisatie", "persoon", "locatie", "dienst", "overig"];
 const OORDEEL: Record<string, string> = { nieuw: "nieuw", aanvulling: "aanvulling", ouder: "let op: ouder" };
 
-export default function Kennisbank({ slug }: { slug: string }) {
+export default function Kennisbank({ slug, onVerwerkt }: { slug: string; onVerwerkt?: () => void }) {
   const [entiteiten, setEntiteiten] = useState<Entiteit[]>([]);
   const [gaps, setGaps] = useState<string[]>([]);
   const [voorstel, setVoorstel] = useState<Voorstel | null>(null);
@@ -58,11 +58,42 @@ export default function Kennisbank({ slug }: { slug: string }) {
     setBusy(actie); setFout("");
     try {
       const d = await fetch("/api/admin/schema-knowledge", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: actie, slug, id: voorstel.id }) }).then((r) => r.json());
-      if (d?.ok) { setVoorstel(null); if (actie === "verwerk") setOkMsg(`${d.verwerkt || 0} gegevens verwerkt in de kennisbank.`); void laad(); }
+      if (d?.ok) {
+        setVoorstel(null);
+        if (actie === "verwerk") {
+          const extra = [
+            d.nieuweVestigingen ? `${d.nieuweVestigingen} nieuwe vestiging${d.nieuweVestigingen === 1 ? "" : "en"}` : "",
+            d.nieuweArtsen ? `${d.nieuweArtsen} nieuwe arts${d.nieuweArtsen === 1 ? "" : "en"}` : "",
+          ].filter(Boolean).join(" en ");
+          setOkMsg(`${d.verwerkt || 0} gegevens verwerkt en doorgezet naar de bedrijfsgegevens hierboven${extra ? `, waaronder ${extra}` : ""}. Wat nog ontbreekt staat daar in het rood.`);
+          onVerwerkt?.();
+        }
+        void laad();
+      }
       else setFout(d?.error || "Dat lukte niet.");
     } catch { setFout("Dat lukte niet; probeer het nog een keer."); }
     finally { setBusy(""); }
   }
+  // Alles wat al in de kennisbank staat alsnog in de bedrijfsgegevens zetten.
+  async function zetInVelden() {
+    setBusy("velden"); setFout(""); setOkMsg("");
+    try {
+      const d = await fetch("/api/admin/schema-knowledge", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "toepassen", slug }) }).then((r) => r.json());
+      if (d?.ok) {
+        const extra = [
+          d.nieuweVestigingen ? `${d.nieuweVestigingen} vestiging${d.nieuweVestigingen === 1 ? "" : "en"}` : "",
+          d.nieuweArtsen ? `${d.nieuweArtsen} arts${d.nieuweArtsen === 1 ? "" : "en"}` : "",
+        ].filter(Boolean).join(" en ");
+        setOkMsg(d.gevuld
+          ? `De bedrijfsgegevens hierboven zijn bijgewerkt${extra ? ` met ${extra}` : ""}. Wat nog ontbreekt staat daar in het rood.`
+          : "De bedrijfsgegevens waren al bij (of staan op slot); er viel niets meer te vullen.");
+        onVerwerkt?.();
+        void laad();
+      } else setFout(d?.error || "Dat lukte niet.");
+    } catch { setFout("Dat lukte niet."); }
+    finally { setBusy(""); }
+  }
+
   async function maakTaak() {
     setBusy("taak"); setFout("");
     try {
@@ -96,7 +127,8 @@ export default function Kennisbank({ slug }: { slug: string }) {
     <div className="kb-wrap">
       <div className="org-sitewide-head" style={{ marginTop: 18 }}>
         <strong>Kennisbank structured data</strong>
-        <span className="muted">Gooi hier alles in: documenten, artsen-gegevens, schema-code. Verwerken gebeurt pas na jouw akkoord.</span>
+        <span className="muted">Gooi hier alles in: documenten, artsen-gegevens, schema-code. Verwerken gebeurt pas na jouw akkoord; daarna vult het de velden hierboven vanzelf.</span>
+        <button type="button" className="wp-fase-btn" disabled={!!busy} onClick={() => void zetInVelden()}>{busy === "velden" ? "Bezig…" : "Kennisbank in de velden zetten"}</button>
       </div>
       <div className={"wp-docdrop" + (drag ? " wp-docdrop-actief" : "")}
         onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
@@ -138,7 +170,7 @@ export default function Kennisbank({ slug }: { slug: string }) {
       {fout && <div className="wp-doc-fout">{fout}</div>}
       {gaps.length > 0 && (
         <div className="kb-gaps">
-          <div className="kb-gaps-kop">Nog aan te leveren ({gaps.length})</div>
+          <div className="kb-gaps-kop">Nog aan te leveren ({gaps.length}) &mdash; dit zijn dezelfde velden die hierboven rood staan</div>
           <ul>{gaps.map((r, i) => <li key={i}>{r}</li>)}</ul>
           <button type="button" className="wp-fase-btn" disabled={!!busy} onClick={() => void maakTaak()}>{busy === "taak" ? "Bezig…" : "Zet als kaart in de weekplanning"}</button>
         </div>

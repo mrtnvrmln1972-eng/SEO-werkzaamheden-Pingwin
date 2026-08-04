@@ -1,6 +1,7 @@
 import { sql, ensureSchema } from "./db";
 import { getClientBySlug } from "./clients";
 import { callClaudeWebSearch } from "./anthropic";
+import { LEGE_VESTIGING, type OrgVestiging } from "./org-vereist";
 import crypto from "crypto";
 
 // ═══════════════════════════════════════════════════════════
@@ -37,6 +38,9 @@ export type OrgData = {
   reviewGemiddelde: string; // alleen als het zichtbaar/echt is
   reviewAantal: string;
   notitie: string;
+  // Vestigingen: elke locatie met eigen adres en openingstijden. Bij meerdere
+  // vestigingen zijn dít de adressen (het hoofdadres hierboven blijft leeg mogen).
+  vestigingen: OrgVestiging[];
   // Type-specifieke aanvullingen (welke sectie getoond wordt volgt uit bedrijfstype):
   artsen: { naam: string; functie: string; specialisatie: string; big: string; fotoUrl: string; profielUrl: string }[]; // kliniek
   merken: string[];        // webshop
@@ -50,7 +54,7 @@ export const EMPTY_ORG: OrgData = {
   bedrijfsnaam: "", bedrijfstype: "", rechtsvorm: "", kvk: "", btw: "", telefoon: "", email: "",
   straat: "", postcode: "", plaats: "", geenBezoekadres: false, openingstijden: "", logoUrl: "",
   priceRange: "", oprichtingsjaar: "", sameAs: [], areaServed: [], reviewUrl: "", reviewGemiddelde: "",
-  reviewAantal: "", notitie: "",
+  reviewAantal: "", notitie: "", vestigingen: [],
   artsen: [], merken: [], retourUrl: "", retourTermijn: "", verzendInfo: "", diensten: [],
 };
 
@@ -89,6 +93,15 @@ function normalize(raw: unknown): OrgData {
     bedrijfstype: (["kliniek", "webshop", "dienstverlener", "lokaal", "informatief"].includes(type) ? type : "") as OrgData["bedrijfstype"],
     retourUrl: str("retourUrl"), retourTermijn: str("retourTermijn"), verzendInfo: str("verzendInfo"),
     merken: arr("merken"),
+    vestigingen: (Array.isArray(r.vestigingen) ? (r.vestigingen as Record<string, unknown>[]) : [])
+      .filter((v) => v && typeof v === "object")
+      .map((v) => ({
+        ...LEGE_VESTIGING,
+        naam: String(v.naam || "").trim(), straat: String(v.straat || "").trim(), postcode: String(v.postcode || "").trim(),
+        plaats: String(v.plaats || "").trim(), telefoon: String(v.telefoon || "").trim(), email: String(v.email || "").trim(),
+        openingstijden: String(v.openingstijden || "").trim(), mapsUrl: String(v.mapsUrl || "").trim(),
+      }))
+      .filter((v) => v.naam || v.straat || v.plaats),
     artsen: (Array.isArray(r.artsen) ? (r.artsen as Record<string, unknown>[]) : [])
       .filter((a) => a && typeof a === "object")
       .map((a) => ({
@@ -226,13 +239,14 @@ export async function autofillOrgData(slug: string): Promise<{ ok: boolean; data
 GEBRUIK JE ZOEKFUNCTIE ACTIEF voor wat niet op de site staat: het KVK-nummer (zoek in het KVK-register/kvk.nl), de Google Business-vermelding (Google Maps-link + zichtbaar reviewgemiddelde en -aantal), sociale profielen (Facebook, Instagram, LinkedIn, YouTube), reviewplatforms (Trustpilot, Klantenvertellen, Google) en het oprichtingsjaar.
 VERIFICATIE-EIS: neem een gevonden gegeven alleen op als het aantoonbaar bij DIT bedrijf hoort (zelfde naam plus zelfde plaats/domein/telefoon). Bij naamgenoten of twijfel: veld leeg laten en in "notitie" vermelden. Reviewcijfers alleen invullen met de bron-URL erbij in reviewUrl.
 Geef UITSLUITEND geldige JSON met exact deze velden (string tenzij anders vermeld; onvindbaar = lege string/lege lijst, NOOIT gokken of verzinnen):
-{"bedrijfsnaam":"","bedrijfstype":"kliniek|webshop|dienstverlener|lokaal|informatief","rechtsvorm":"","kvk":"","btw":"","telefoon":"","email":"","straat":"","postcode":"","plaats":"","geenBezoekadres":false,"openingstijden":"","logoUrl":"","priceRange":"","oprichtingsjaar":"","sameAs":[],"areaServed":[],"reviewUrl":"","reviewGemiddelde":"","reviewAantal":"","notitie":"","artsen":[{"naam":"","functie":"","specialisatie":"","big":"","fotoUrl":"","profielUrl":""}],"merken":[],"retourUrl":"","retourTermijn":"","verzendInfo":"","diensten":[{"naam":"","omschrijving":""}]}
+{"bedrijfsnaam":"","bedrijfstype":"kliniek|webshop|dienstverlener|lokaal|informatief","rechtsvorm":"","kvk":"","btw":"","telefoon":"","email":"","straat":"","postcode":"","plaats":"","geenBezoekadres":false,"openingstijden":"","logoUrl":"","priceRange":"","oprichtingsjaar":"","sameAs":[],"areaServed":[],"reviewUrl":"","reviewGemiddelde":"","reviewAantal":"","notitie":"","vestigingen":[{"naam":"","straat":"","postcode":"","plaats":"","telefoon":"","email":"","openingstijden":"","mapsUrl":""}],"artsen":[{"naam":"","functie":"","specialisatie":"","big":"","fotoUrl":"","profielUrl":""}],"merken":[],"retourUrl":"","retourTermijn":"","verzendInfo":"","diensten":[{"naam":"","omschrijving":""}]}
 - bedrijfstype: kies wat het beste past. kliniek = zorg/medisch; webshop = verkoopt producten online; dienstverlener = diensten/lead-gen (ook aan huis); lokaal = fysieke locatie waar klanten komen (winkel/praktijk/restaurant); informatief = vooral content.
 - geenBezoekadres: true als het duidelijk een aan-huis/ambulant bedrijf is zonder bezoeklocatie.
 - sameAs: volledige URL's van sociale profielen en een Google Business/Maps-link als die op de site staat.
 - areaServed: plaatsen/regio's die de site expliciet noemt als werkgebied.
 - reviewGemiddelde/reviewAantal: ALLEEN als er op de site zichtbaar een gemiddelde en aantal staan.
 - openingstijden: leesbaar samenvatten, bijv. "ma t/m vr 9:00-17:30, za 10:00-14:00".
+- vestigingen: ELKE locatie die het bedrijf heeft, met per locatie het volledige adres, telefoon en openingstijden. Heeft het bedrijf maar één locatie, zet die dan óók als vestiging én in de losse adresvelden hierboven. Heeft het meerdere locaties, vul dan alle vestigingen en laat de losse adresvelden leeg of gebruik ze voor het hoofdkantoor. Zoek de ontbrekende adressen en openingstijden actief op (locatie-/contactpagina's en de Google Business-vermelding per vestiging).
 - artsen: ALLEEN bij een kliniek/zorgbedrijf: elke arts/behandelaar die op de site staat (team-/over-ons-pagina), met functie, specialisatie en BIG-nummer als dat vermeld staat; anders lege lijst.
 - merken/retourUrl/retourTermijn/verzendInfo: ALLEEN bij een webshop, en alleen wat de site zelf vermeldt; anders leeg.
 - diensten: ALLEEN bij een dienstverlener: de hoofddiensten van de site (naam + één zin omschrijving); anders lege lijst.

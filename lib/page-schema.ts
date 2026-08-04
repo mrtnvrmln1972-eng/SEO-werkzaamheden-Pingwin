@@ -121,6 +121,13 @@ function orgToText(org: OrgData, locked: boolean): string {
   if (org.geenBezoekadres) lines.push("Bezoekadres: GEEN (aan-huis/ambulant bedrijf)");
   else add("Adres", [org.straat, org.postcode, org.plaats].filter(Boolean).join(", "));
   add("Openingstijden", org.openingstijden);
+  if (org.vestigingen?.length) {
+    lines.push("Vestigingen (elk een eigen locatie-node, gekoppeld aan het bedrijf):");
+    for (const v of org.vestigingen) {
+      const adres = [v.straat, [v.postcode, v.plaats].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+      lines.push(`- ${v.naam || v.plaats || "vestiging"}${adres ? `: ${adres}` : ""}${v.telefoon ? `, tel ${v.telefoon}` : ""}${v.openingstijden ? `, open: ${v.openingstijden}` : ""}`);
+    }
+  }
   add("Logo-URL", org.logoUrl); add("Prijsindicatie", org.priceRange); add("Oprichtingsjaar", org.oprichtingsjaar);
   if (org.sameAs.length) lines.push(`Profielen (sameAs): ${org.sameAs.join(", ")}`);
   if (org.areaServed.length) lines.push(`Werkgebied (areaServed): ${org.areaServed.join(", ")}`);
@@ -329,6 +336,30 @@ export async function applyPageSchema(slug: string, url: string): Promise<{ ok: 
 // ── Site-wide identiteitsblok (deterministisch, geen AI) ──
 // Bouwt Organization/LocalBusiness + WebSite rechtstreeks uit de bevestigde
 // bedrijfsgegevens, met de vaste @id's waar de per-pagina-schema's naar verwijzen.
+// Leesbare openingstijden ("ma t/m vr 8:30-17:00, za 10:00-14:00") omzetten naar
+// de notatie die schema.org verwacht ("Mo-Fr 08:30-17:00"). Lukt een stuk niet,
+// dan laten we dat stuk weg: liever niets dan een verkeerde tijd in de markup.
+const DAGEN: Record<string, string> = {
+  ma: "Mo", maandag: "Mo", di: "Tu", dinsdag: "Tu", wo: "We", woensdag: "We", do: "Th", donderdag: "Th",
+  vr: "Fr", vrijdag: "Fr", za: "Sa", zaterdag: "Sa", zo: "Su", zondag: "Su",
+};
+export function openingstijdenNaarSchema(tekst: string): string[] {
+  const uit: string[] = [];
+  for (const deel of String(tekst || "").split(/[,;\n]+/)) {
+    const s = deel.trim().toLowerCase();
+    if (!s || /gesloten/.test(s)) continue;
+    const tijd = s.match(/(\d{1,2})[:.](\d{2})\s*(?:-|tot|t\/m|–)\s*(\d{1,2})[:.](\d{2})/);
+    if (!tijd) continue;
+    const van = `${tijd[1].padStart(2, "0")}:${tijd[2]}`;
+    const tot = `${tijd[3].padStart(2, "0")}:${tijd[4]}`;
+    const reeks = s.match(/\b([a-z]{2,9})\s*(?:-|t\/m|tot en met|tm|–)\s*([a-z]{2,9})\b/);
+    const los = s.match(/^\s*([a-z]{2,9})\b/);
+    if (reeks && DAGEN[reeks[1]] && DAGEN[reeks[2]]) uit.push(`${DAGEN[reeks[1]]}-${DAGEN[reeks[2]]} ${van}-${tot}`);
+    else if (los && DAGEN[los[1]]) uit.push(`${DAGEN[los[1]]} ${van}-${tot}`);
+  }
+  return uit;
+}
+
 export function buildSitewideJsonLd(org: OrgData, siteUrl: string): string {
   const site = (siteUrl || "").replace(/\/+$/, "");
   const orgType = org.bedrijfstype === "kliniek" ? "MedicalClinic" : org.bedrijfstype === "lokaal" ? "LocalBusiness" : "Organization";
@@ -350,9 +381,10 @@ export function buildSitewideJsonLd(org: OrgData, siteUrl: string): string {
   if (org.oprichtingsjaar) node.foundingDate = org.oprichtingsjaar;
   if (org.kvk) node.identifier = [{ "@type": "PropertyValue", name: "KVK", value: org.kvk }];
   if (org.btw) node.vatID = org.btw;
-  // Openingstijden alleen als leesbare specificatie-tekst beschikbaar is; exacte
-  // OpeningHoursSpecification vergt gestructureerde tijden, dus alleen bij een
-  // herkenbaar patroon opnemen is aan de developer (staat in het document).
+  // Openingstijden alleen als ze eenduidig te lezen zijn; een tijd die we niet
+  // zeker weten hoort niet in de markup (Google rekent dat aan als foute data).
+  const uren = openingstijdenNaarSchema(org.openingstijden);
+  if (uren.length) node.openingHours = uren;
   if (org.reviewGemiddelde && org.reviewAantal) {
     node.aggregateRating = { "@type": "AggregateRating", ratingValue: org.reviewGemiddelde.replace(",", "."), reviewCount: org.reviewAantal, url: org.reviewUrl || undefined };
   }
@@ -364,6 +396,30 @@ export function buildSitewideJsonLd(org: OrgData, siteUrl: string): string {
     publisher: { "@id": `${site}/#organization` },
     inLanguage: "nl-NL",
   };
+  // Elke vestiging een eigen locatie-node, gekoppeld aan het bedrijf. Dit is wat
+  // Google en AI-assistenten nodig hebben om per plaats een vermelding te maken.
+  const vestigingType = org.bedrijfstype === "kliniek" ? "MedicalClinic" : "LocalBusiness";
+  const vestigingen = (org.vestigingen || [])
+    .filter((v) => v.straat || v.plaats)
+    .map((v, i) => {
+      const slug = (v.naam || v.plaats || `vestiging-${i + 1}`).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      const uur = openingstijdenNaarSchema(v.openingstijden);
+      return {
+        "@type": vestigingType,
+        "@id": `${site}/#vestiging-${slug}`,
+        name: [org.bedrijfsnaam, v.naam].filter(Boolean).join(" ") || undefined,
+        parentOrganization: { "@id": `${site}/#organization` },
+        address: { "@type": "PostalAddress", streetAddress: v.straat || undefined, postalCode: v.postcode || undefined, addressLocality: v.plaats || undefined, addressCountry: "NL" },
+        telephone: v.telefoon || org.telefoon || undefined,
+        email: v.email || undefined,
+        url: v.mapsUrl || undefined,
+        openingHours: uur.length ? uur : undefined,
+        image: org.logoUrl || undefined,
+        priceRange: org.priceRange || undefined,
+      };
+    });
+  if (vestigingen.length) node.department = vestigingen.map((v) => ({ "@id": v["@id"] }));
+
   const clean = (o: unknown): unknown => {
     if (Array.isArray(o)) return o.map(clean);
     if (o && typeof o === "object") {
@@ -373,5 +429,5 @@ export function buildSitewideJsonLd(org: OrgData, siteUrl: string): string {
     }
     return o;
   };
-  return JSON.stringify(clean({ "@context": "https://schema.org", "@graph": [node, website] }), null, 2);
+  return JSON.stringify(clean({ "@context": "https://schema.org", "@graph": [node, ...vestigingen, website] }), null, 2);
 }

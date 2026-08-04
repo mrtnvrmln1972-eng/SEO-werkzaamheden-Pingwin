@@ -2193,6 +2193,31 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .hh-modal-body strong { color: var(--dark); }
 
 /* Type-specifieke secties in het bedrijfsgegevens-formulier (artsen/diensten/webshop). */
+/* Ontbrekende-maar-nodige velden: zichtbaar in het rood, niet verstopt. */
+.org-mis-balk {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s-1) var(--s-2);
+  border: 1px solid #f0c7c3; border-left: 3px solid var(--red); border-radius: var(--r-md);
+  background: var(--red-light); color: var(--red);
+  padding: var(--s-2) var(--s-3); font-size: var(--fs-xs); line-height: var(--lh-xs); margin-bottom: var(--s-3);
+}
+.org-mis-balk span { color: var(--dark); }
+.org-mis > .org-label { color: var(--red); }
+.org-mis input, .org-mis select, .org-mis textarea, .org-mis-input { border-color: var(--red) !important; background: var(--red-light); }
+.org-mis input::placeholder, .org-mis-input::placeholder { color: var(--red); opacity: 0.75; }
+.org-mis-vlag {
+  margin-left: var(--s-2); font-size: var(--fs-xs); font-weight: 700; color: var(--red);
+  background: var(--white); border: 1px solid #f0c7c3; border-radius: var(--r-full); padding: 0 var(--s-2);
+}
+
+/* Vestigingen: per locatie een blokje met adres, contact en openingstijden. */
+.org-vest { border: 1px solid var(--border); border-radius: var(--r-md); padding: var(--s-3); display: flex; flex-direction: column; gap: var(--s-2); background: var(--white); }
+.org-vest-kop { display: flex; align-items: center; gap: var(--s-2); }
+.org-vest-naam { flex: 1; font-weight: 700; }
+.org-vest-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: var(--s-2); }
+.org-vest input { font-family: inherit; font-size: 13px; padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--white); width: 100%; }
+.org-vest input:focus { outline: none; border-color: var(--orange); }
+.org-vest input:disabled { background: var(--gray-light); color: var(--gray); }
+
 .org-typesec { border-top: 1px solid var(--border); padding-top: 10px; display: flex; flex-direction: column; gap: 8px; }
 .org-typesec-head { font-size: 12.5px; font-weight: 800; color: var(--orange-dark); display: inline-flex; align-items: center; }
 .org-row { display: grid; grid-template-columns: repeat(5, 1fr) auto; gap: 8px; align-items: center; }
