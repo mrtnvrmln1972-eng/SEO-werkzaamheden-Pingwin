@@ -28,12 +28,13 @@ import WijzigingenPanel from "./WijzigingenPanel";
 import CannibalPanel from "./CannibalPanel";
 import InternalLinksPanel from "./InternalLinksPanel";
 import MetaCtrPanel from "./MetaCtrPanel";
+import PrioriteitenPanel from "./PrioriteitenPanel";
 import DocumentenPanel from "./DocumentenPanel";
 import ActiviteitPanel from "./ActiviteitPanel";
 import InvoiceAlert from "./InvoiceAlert";
 import SelectionActions from "./SelectionActions";
 
-type Tab = "werkzaamheden" | "paginas" | "documenten" | "activiteit" | "resultaten" | "klant" | "developer" | "wijzigingen" | "cannibalisatie" | "interne-links" | "meta";
+type Tab = "werkzaamheden" | "paginas" | "documenten" | "activiteit" | "resultaten" | "klant" | "developer" | "wijzigingen" | "cannibalisatie" | "interne-links" | "meta" | "prioriteiten";
 
 // Jouw Superhuman-account (Microsoft 365 hangt hieronder).
 const SUPERHUMAN_ACCOUNT = "Maarten@pingwin.nl";
@@ -97,7 +98,7 @@ export default function ClientCockpit({
   // Directe feedback bij het wisselen van klant: de nieuwe pagina moet server-
   // side data ophalen en dat duurt even; zonder signaal voelt dat als bevroren.
   const [switchingTo, setSwitchingTo] = useState<string | null>(null);
-  const validTab = (t?: string): Tab => (t === "werkzaamheden" || t === "paginas" || t === "documenten" || t === "activiteit" || t === "resultaten" || t === "klant" || t === "developer" || t === "wijzigingen" || t === "meta" || t === "cannibalisatie" || t === "interne-links") ? t : "werkzaamheden";
+  const validTab = (t?: string): Tab => (t === "werkzaamheden" || t === "paginas" || t === "documenten" || t === "activiteit" || t === "resultaten" || t === "klant" || t === "developer" || t === "wijzigingen" || t === "meta" || t === "cannibalisatie" || t === "interne-links" || t === "prioriteiten") ? t : "werkzaamheden";
   const [tab, setTab] = useState<Tab>(validTab(initialTab));
   // Teller die de weekplanning laat herladen zodra er vanuit de chat een taak is
   // toegevoegd (of iets in het bord verandert).
@@ -423,6 +424,7 @@ export default function ClientCockpit({
               hrefFor={(id) => `${pathname}?tab=${id}`}
               onPick={changeTab}
               items={[
+                { id: "prioriteiten", label: "Prioriteitenscan", hint: "Waar zit de snelste winst op deze site: alle kansen op volgorde, van deze week tot strategisch" },
                 { id: "meta", label: "Meta & CTR", hint: "Veel vertoningen, te weinig klikken: betere meta-teksten leveren direct bezoekers op" },
                 { id: "cannibalisatie", label: "Opruimen", hint: "Welke pagina's elkaar in de weg zitten, met de volledige redirectlijst: van, naar en waarom" },
                 { id: "interne-links", label: "Interne links", hint: "Vanaf welke pagina's je het beste naar een doelpagina linkt, gewogen op autoriteit en relevantie" },
@@ -731,6 +733,7 @@ export default function ClientCockpit({
         {/* Deze twee schermen bestonden al maar hingen nergens in de UI, dus niemand
             kon erbij. Hier hoort de volledige redirectlijst thuis, niet in de chat:
             een lijst is een scherm, een oordeel is een gesprek. */}
+        {tab === "prioriteiten" && <PrioriteitenPanel slug={client.slug} domain={client.domain || ""} />}
         {tab === "cannibalisatie" && <CannibalPanel slug={client.slug} domain={client.domain || ""} />}
         {tab === "interne-links" && <InternalLinksPanel slug={client.slug} />}
 

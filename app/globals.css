@@ -486,6 +486,103 @@ tbody td:last-child { text-align: center; }
 .hm-item-actief .hm-item-label { color: var(--orange-dark); }
 .hm-item-hint { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray); }
 
+/* ── Prioriteitenscan ─────────────────────────────────────────────
+   Zelfde vorm als het opruimscherm: knop, voortgang, platte tabel.
+   Alles op de schaal-tokens; geen losse pixelwaardes. */
+.prio-intro { max-width: 62ch; margin: var(--s-1) 0 0; }
+.prio-knoppen { display: flex; align-items: center; gap: var(--s-2); }
+
+.prio-propositie {
+  margin: var(--s-5) 0; padding: var(--s-4);
+  background: var(--brand-orange-faint);
+  border: 1px solid var(--card-border); border-left: 3px solid var(--orange);
+  border-radius: var(--r-md);
+}
+.prio-label { display: block; font-weight: 700; font-size: var(--fs-base); line-height: var(--lh-base); color: var(--dark); }
+.prio-hint { max-width: 70ch; margin: var(--s-1) 0 var(--s-3); font-size: var(--fs-sm); line-height: var(--lh-sm); }
+.prio-prop-rij { display: flex; gap: var(--s-2); align-items: center; flex-wrap: wrap; }
+.prio-prop-veld {
+  flex: 1 1 420px; min-width: 0;
+  padding: var(--s-2) var(--s-3);
+  font-family: 'Montserrat', sans-serif; font-size: var(--fs-base); line-height: var(--lh-base);
+  color: var(--body-text); background: var(--white);
+  border: 1px solid var(--border); border-radius: var(--r-md);
+}
+.prio-prop-veld:focus { outline: none; border-color: var(--orange); box-shadow: 0 0 0 3px rgba(231, 119, 63, 0.15); }
+.prio-prop-msg { margin-top: var(--s-2); font-size: var(--fs-sm); line-height: var(--lh-sm); color: #1c7a3f; }
+.prio-waarschuwing { margin-top: var(--s-2); font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--orange-dark); }
+
+.prio-samenvatting {
+  margin: var(--s-5) 0 var(--s-2);
+  font-size: var(--fs-md); line-height: var(--lh-md); color: var(--body-text); max-width: 78ch;
+}
+.prio-meta { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray); margin-bottom: var(--s-4); }
+
+.prio-klap {
+  display: block; margin: var(--s-4) 0 var(--s-2); padding: 0;
+  border: none; background: none; cursor: pointer;
+  font-family: 'Montserrat', sans-serif; font-size: var(--fs-base); line-height: var(--lh-base);
+  font-weight: 600; color: var(--orange-dark);
+}
+.prio-klap:hover { color: var(--orange); }
+
+.prio-lenzen { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--s-2); margin-bottom: var(--s-4); }
+.prio-lens {
+  padding: var(--s-2) var(--s-3); border-radius: var(--r-md);
+  border: 1px solid var(--card-border); border-left: 3px solid var(--border);
+  background: var(--white);
+}
+.prio-lens-naam { display: block; font-weight: 600; font-size: var(--fs-base); line-height: var(--lh-base); }
+.prio-lens-tekst { display: block; font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray); }
+.prio-lens-pass { border-left-color: #1c7a3f; }
+.prio-lens-aandacht { border-left-color: var(--orange); }
+.prio-lens-kritiek { border-left-color: var(--red); }
+.prio-lens-niet-aangesloten { background: var(--gray-light); opacity: 0.75; }
+
+.prio-filters { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; margin-bottom: var(--s-3); }
+.chip-aan { background: var(--orange); color: var(--white); border-color: var(--orange); }
+.prio-zoek {
+  margin-left: auto; min-width: 220px;
+  padding: var(--s-2) var(--s-3);
+  font-family: 'Montserrat', sans-serif; font-size: var(--fs-sm); line-height: var(--lh-sm);
+  border: 1px solid var(--border); border-radius: var(--r-md);
+}
+.prio-zoek:focus { outline: none; border-color: var(--orange); }
+
+/* Brede tabel scrollt binnen zijn eigen kader; de pagina zelf nooit. */
+.prio-tabel-wrap { overflow-x: auto; }
+.prio-tabel { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); line-height: var(--lh-sm); }
+.prio-tabel th {
+  text-align: left; padding: var(--s-2) var(--s-3);
+  font-size: var(--fs-xs); line-height: var(--lh-xs); text-transform: uppercase; letter-spacing: 0.5px;
+  color: var(--gray); border-bottom: 2px solid var(--border); white-space: nowrap;
+}
+.prio-tabel th.num, .prio-tabel td.num { text-align: right; white-space: nowrap; }
+.prio-tabel td { padding: var(--s-3); border-bottom: 1px solid var(--border); vertical-align: top; }
+.prio-rij:hover { background: var(--brand-orange-faint); }
+.prio-titel { font-weight: 600; color: var(--dark); }
+.prio-reden { color: var(--gray); margin-top: var(--s-1); max-width: 60ch; }
+.prio-bron { color: var(--brand-taupe); font-size: var(--fs-xs); line-height: var(--lh-xs); margin-top: var(--s-1); }
+.prio-url { max-width: 220px; word-break: break-word; }
+.prio-skill { color: var(--gray); max-width: 200px; }
+.prio-uplift { font-weight: 700; color: var(--orange-dark); }
+.prio-leeg { text-align: center; padding: var(--s-8) var(--s-3); }
+
+.prio-badge {
+  display: inline-block; padding: 2px var(--s-2); border-radius: var(--r-full);
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700; white-space: nowrap;
+}
+.prio-badge-1 { background: var(--accent); color: var(--white); }
+.prio-badge-2 { background: var(--orange); color: var(--white); }
+.prio-badge-3 { background: var(--brand-orange-soft); color: var(--dark); }
+.prio-badge-4 { background: var(--gray-light); color: var(--muted); }
+.prio-nieuw {
+  display: inline-block; margin-left: var(--s-1); padding: 2px var(--s-2);
+  border-radius: var(--r-full); border: 1px solid var(--brand-teal); color: var(--brand-teal);
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
+}
+.prio-skip { margin-bottom: var(--s-4); }
+
 /* Developer Overview */
 .dev-intro { font-size: 13px; color: var(--gray); margin: 0 0 16px; max-width: 720px; line-height: 1.5; }
 .dev-client-card { padding: 16px 18px; }
