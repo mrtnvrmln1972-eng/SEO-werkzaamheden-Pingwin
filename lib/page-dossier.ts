@@ -188,7 +188,10 @@ export function dossierToText(d: PageDossier): string {
       // preciezer dan wat er uit een ruwe preview te halen valt. Daaronder nog de
       // eigen tekst van de afzender (zonder geciteerde thread), voor de nuance.
       const bijlagen = m.bijlageNamen.length ? ` BIJLAGEN: ${m.bijlageNamen.join(", ")}.` : m.heeftBijlagen ? " MET BIJLAGEN." : "";
-      r.push(`- [${zeker}] ${datum}, van ${m.vanNaam || m.vanAdres}: "${m.onderwerp}".${bijlagen}`);
+      // Het mailnummer gaat mee zodat een tijdlijnregel exact aan één mail hangt.
+      // Zonder dit was het verhaal vrije tekst en werd achteraf op de datum geraden
+      // welke mail bedoeld werd; met meerdere mails op een dag is dat gokken.
+      r.push(`- [${zeker}] mail#${m.id} ${datum}, van ${m.vanNaam || m.vanAdres}: "${m.onderwerp}".${bijlagen}`);
       if (m.kern) r.push(`  Wat er gebeurde: ${m.kern}`);
       r.push(`  Eigen tekst: ${m.preview.slice(0, 500)}`);
     }

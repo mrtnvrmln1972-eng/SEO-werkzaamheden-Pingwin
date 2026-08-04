@@ -31,7 +31,30 @@ function mailLink(m: PaginaMail): string {
 // De datum vooraan een stap wordt een echte link naar díe mail, met de knopjes
 // er klein achter (vastpinnen, wegklikken, teksten binnenhalen). Kennen we de
 // datum niet, dan blijft het gewone tekst: nooit een dode link.
-function linkifyMailDatums(html: string, mails: PaginaMail[]): string {
+/**
+ * Het mailnummer dat het model achter de datum zet, omzetten naar een echte link op
+ * die datum. Dit is de exacte weg: geen giswerk meer op de datum, ook niet als er
+ * tien mails op één dag staan. Het nummer zelf verdwijnt uit beeld.
+ */
+function linkifyMailNummers(html: string, mails: PaginaMail[]): { html: string; geraakt: Set<number> } {
+  const perId = new Map(mails.map((m) => [m.id, m]));
+  const geraakt = new Set<number>();
+  const uit = html.replace(
+    /(\d{1,2}\s+[a-zà-ÿ]+|\d{1,2}-\d{1,2})?(\s*)\[?\s*mail#(\d+)\s*\]?/gi,
+    (heel, datum: string | undefined, _sp: string, nr: string) => {
+      const m = perId.get(Number(nr));
+      const link = m ? mailLink(m) : "";
+      if (!m || !link) return datum || "";          // onbekend nummer: alleen het nummer weg
+      geraakt.add(m.id);
+      const tekst = datum || "de mail";
+      const knopjes = mailKnopjes(m);
+      return `<a class="pd-link" href="${esc(link)}" target="_blank" rel="noreferrer" title="${esc(m.onderwerp)}">${tekst}</a>${knopjes}`;
+    },
+  );
+  return { html: uit, geraakt };
+}
+
+function linkifyMailDatums(html: string, mails: PaginaMail[], alGeraakt: Set<number> = new Set()): string {
   if (!mails.length) return html;
   // Alle mails van een dag, niet alleen de eerste. Met één mail per datum kwam een
   // regel als "3 augustus: Ahren analyseerde de pagina" uit bij wie die dag toevallig
@@ -51,9 +74,16 @@ function linkifyMailDatums(html: string, mails: PaginaMail[]): string {
   }
   if (!perDatum.size) return html;
 
-  // De regel waarin de datum staat noemt bijna altijd de persoon. Geen naam die het
-  // uitwijst: dan liever gewone tekst dan een link naar de verkeerde mail.
+  // Terugval voor verhalen die nog geen mailnummer hebben. Eerst op naam, dan op
+  // inhoud: welke mail gaat het meest over wat er in deze regel staat.
+  //
+  // Alleen op naam kijken werkte niet, want de tijdlijn schrijft bewust "jij" en "de
+  // klant" in plaats van namen. Er viel dus nooit iets te matchen en de link verdween
+  // helemaal, wat erger is dan de kwaal: je kunt dan nergens meer heen. Woordoverlap
+  // met het onderwerp en de kernzin wijst er in de praktijk wél de goede aan, en is
+  // hoe dan ook een betere gok dan "de eerste mail van die dag".
   const kiesUitDag = (kandidaten: PaginaMail[], regel: string): PaginaMail | null => {
+    if (!kandidaten.length) return null;
     if (kandidaten.length === 1) return kandidaten[0];
     const kaal = regel.toLowerCase();
     for (const m of kandidaten) {
@@ -61,10 +91,20 @@ function linkifyMailDatums(html: string, mails: PaginaMail[]): string {
         .split(/[<>@\s,;.]+/).map((n) => n.replace(/[^a-zà-ÿ-]/gi, "")).filter((n) => n.length > 2);
       if (namen.some((n) => kaal.includes(n.toLowerCase()))) return m;
     }
-    return null;
+    // Woorden uit de regel die iets betekenen, tegen onderwerp en kernzin van de mail.
+    const woorden = new Set(kaal.split(/[^a-zà-ÿ0-9-]+/).filter((w) => w.length > 4));
+    let beste: PaginaMail | null = null;
+    let hoogste = 0;
+    for (const m of kandidaten) {
+      const tekst = `${m.onderwerp || ""} ${m.kern || ""}`.toLowerCase();
+      let raak = 0;
+      for (const w of woorden) if (tekst.includes(w)) raak++;
+      if (raak > hoogste) { hoogste = raak; beste = m; }
+    }
+    return hoogste > 0 ? beste : kandidaten[0];
   };
 
-  const gebruikt = new Set<number>();
+  const gebruikt = new Set<number>(alGeraakt);   // knopjes maar één keer per mail
   // Alleen buiten bestaande tags en links vervangen.
   const delen = html.split(/(<a\b[^>]*>[\s\S]*?<\/a>|<[^>]+>)/gi);
   return delen.map((seg, i) => {
@@ -212,7 +252,11 @@ export function dossierBlokHtml(d: PageDossier, tekst: string, opts: { compact?:
   const domein = d.domein;
   // Markdown → HTML (de bullets worden een echte lijst), slugs klikbaar, en de
   // datum vooraan elke stap wordt een link naar die mail.
-  let verhaal = linkifyMailDatums(linkifyHtml(mdToHtml(tekst || ""), domein), d.mails);
+  // Eerst exact op mailnummer. Verhalen van vóór deze wijziging hebben die nummers
+  // nog niet; daarvoor blijft de datum-methode als terugval staan, zodat er nooit een
+  // regel zonder link overblijft terwijl het verhaal opnieuw geschreven wordt.
+  const opNummer = linkifyMailNummers(linkifyHtml(mdToHtml(tekst || ""), domein), d.mails);
+  let verhaal = linkifyMailDatums(opNummer.html, d.mails, opNummer.geraakt);
   // Links achter de "nu:"-regel, de stap waar het werk begint.
   const nuLinks = nuRegelLinks(d);
   let voorstellenGetoond = false;

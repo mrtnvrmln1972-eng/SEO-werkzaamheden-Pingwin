@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { laatsteDatumInTekst } from "../../../../lib/card-info";
 import { HARD_BEWIJS } from "../../../../lib/constants";
 
+type MailKeus = { id: string; subject?: string; fromName?: string; fromAddress?: string; receivedAt?: string };
+
 // ═══════════════════════════════════════════════════════════
 // HET DOSSIERBLOK OP HET SCHERM
 // ═══════════════════════════════════════════════════════════
@@ -71,12 +73,40 @@ export default function PaginaDossier({ slug, url, compact = false, kaartTekst, 
   // twee mails geleden was: de tekst is geschreven op één moment, de mailbox loopt
   // door, en niets bracht die twee bij elkaar.
   const [nieuwer, setNieuwer] = useState<{ aantal: number; van: string[] }>({ aantal: 0, van: [] });
+  // Zelf een mail koppelen: de lijst met mails van deze klant om uit te kiezen.
+  const [kiesOpen, setKiesOpen] = useState(false);
+  const [mailKeuze, setMailKeuze] = useState<MailKeus[] | null>(null);
   const doosRef = useRef<HTMLDivElement>(null);
 
   // De focus gaat mee naar de server, zodat het verhaal over deze klus gaat.
   const focusQuery = kaartTitel
     ? `&taak=${encodeURIComponent(kaartTitel.replace(/<[^>]*>/g, " ").slice(0, 300))}&kaart=${encodeURIComponent((kaartTekst || "").slice(0, 1500))}`
     : "";
+  async function haalMailKeuze() {
+    setMailKeuze(null);
+    try {
+      const d = await fetch(`/api/admin/mail?slug=${encodeURIComponent(slug)}`).then((r) => r.json());
+      setMailKeuze(d?.ok ? ((d.emails || []) as MailKeus[]) : []);
+    } catch { setMailKeuze([]); }
+  }
+
+  async function koppel(messageId: string) {
+    if (bezig) return;
+    setBezig(true); setMelding("");
+    try {
+      const d = await fetch("/api/admin/page-emails", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, url, actie: "koppel", messageId }),
+      }).then((r) => r.json());
+      if (d?.ok) {
+        setKiesOpen(false);
+        setMelding("Gekoppeld. Klik op Ververs om de stand opnieuw te laten schrijven.");
+        setTimeout(() => setMelding(""), 8000);
+        await laad();
+      } else setMelding(d?.error || "Koppelen lukte niet.");
+    } catch { setMelding("Koppelen lukte niet."); }
+    finally { setBezig(false); }
+  }
 
   const laad = useCallback(async () => {
     if (!url) { setStaat("leeg"); return; }
@@ -186,8 +216,36 @@ export default function PaginaDossier({ slug, url, compact = false, kaartTekst, 
       )}
       <div dangerouslySetInnerHTML={{ __html: html }} />
       {melding && <div className="pd-melding">{melding}</div>}
+      {/* Zelf een mail erbij hangen. Je kon een mail wél wegklikken maar niet
+          toevoegen, dus een mail die de automaat miste was definitief weg uit het
+          dossier. Nu is een misser nooit meer een probleem. */}
+      {!compact && kiesOpen && (
+        <div className="pd-koppel">
+          <div className="pd-koppel-kop">Welke mail hoort hier ook bij?</div>
+          {mailKeuze === null ? <div className="muted">Mails ophalen…</div> : mailKeuze.length === 0 ? (
+            <div className="muted">Geen mails gevonden voor deze klant.</div>
+          ) : (
+            <ul className="pd-koppel-lijst">
+              {mailKeuze.map((m) => (
+                <li key={m.id}>
+                  <button type="button" disabled={bezig} onClick={() => void koppel(m.id)} title="Hang deze mail aan deze pagina">
+                    <span className="pd-koppel-van">{m.fromName || m.fromAddress || "onbekend"}</span>
+                    <span className="pd-koppel-onderwerp">{m.subject || "(geen onderwerp)"}</span>
+                    <span className="pd-koppel-datum">{m.receivedAt ? new Date(m.receivedAt).toLocaleDateString("nl-NL", { day: "numeric", month: "short" }) : ""}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
       {!compact && (
         <div className="pd-voet">
+          <button type="button" className="pd-ververs" disabled={bezig}
+            onClick={() => { setKiesOpen((o) => !o); if (!kiesOpen) void haalMailKeuze(); }}
+            title="Hang zelf een mail aan deze pagina, als de automaat hem niet gevonden heeft">
+            {kiesOpen ? "Annuleren" : "Mail erbij zoeken"}
+          </button>
           <button type="button" className="pd-ververs" disabled={bezig} onClick={() => void ververs()}
             title="Zoek opnieuw naar mail en schrijf de samenvatting opnieuw">
             {bezig ? "Bezig…" : "Ververs"}

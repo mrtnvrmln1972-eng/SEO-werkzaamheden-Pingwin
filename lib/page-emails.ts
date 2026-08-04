@@ -148,6 +148,10 @@ async function laatsteZoekronde(slug: string, k: string): Promise<Date | null> {
 // bekeken. Zonder dit blijft een verbetering onzichtbaar op precies de pagina's
 // waarvoor hij bedoeld was: het systeem denkt "ik ben bij", terwijl die stand
 // met de oude, te smalle zoekregels is vastgelegd.
+// Versie 4: het oordeel beslist, niet de puntentelling, en het model krijgt de
+// andere pagina's van de klant als context. Pagina's die met versie 3 of ouder zijn
+// gescand worden dus één keer opnieuw bekeken, zodat mails die er op een los woord
+// in geslopen zijn er alsnog uit vallen.
 const SCAN_VERSIE = 4;
 
 async function ensureScanTabel(): Promise<void> {
@@ -419,21 +423,35 @@ async function beoordeelMails(
   pad: string,
   paginaTitel: string,
   kandidaten: { id: string; subject: string | null; fromName: string | null; eigen: string; bijlagen: string[]; datum: string }[],
+  zusters: { pad: string; titel: string }[] = [],
 ): Promise<Map<string, Oordeel>> {
   const uit = new Map<string, Oordeel>();
   if (!kandidaten.length || !anthropicConfigured()) return uit;
 
+  // De zusterpagina's zijn de sleutel. Zonder die lijst kon het model alleen zien
+  // "gaat dit over /lensimplantatie/edof-lenzen/?" en dan lijkt een mail over de
+  // LuxLife PRO-ART-lens er zó bij te horen: er staat immers "EDOF-lens" in. Mét
+  // de lijst ziet het model dat daar een eigen pagina voor is, en dat de mail
+  // daar hoort en niet hier. Dat is het verschil tussen woorden herkennen en
+  // begrijpen waar iets over gaat.
+  const zusterLijst = zusters.length
+    ? `\n\nANDERE PAGINA'S VAN DEZE KLANT (een mail die hierover gaat hoort NIET bij de pagina hierboven, tenzij hij ook echt over die pagina gaat):\n${zusters.map((z) => `- ${z.pad}${z.titel ? ` (${z.titel})` : ""}`).join("\n")}`
+    : "";
+
   const systeem = `Je helpt een SEO-bureau bepalen welke e-mails écht over één specifieke webpagina gaan.
 
-DE PAGINA: ${pad}${paginaTitel ? ` (${paginaTitel})` : ""}
+DE PAGINA: ${pad}${paginaTitel ? ` (${paginaTitel})` : ""}${zusterLijst}
 
 Je krijgt e-mails met alleen het deel dat de afzender ZELF schreef (de geciteerde geschiedenis is er al afgehaald).
 
+Lees de mail en bepaal waar hij inhoudelijk over gaat. Ga NIET af op losse woorden die toevallig ook in de paginanaam staan: een mail die "EDOF-lens" noemt terwijl hij gaat over de vraag welk lenstype de LuxLife PRO-ART is, gaat over die andere lens en niet over de EDOF-pagina.
+
 Beoordeel per mail:
-- "hoort": true als deze mail inhoudelijk over DEZE pagina gaat: de tekst ervan, de opzet, correcties erop, of een afspraak die specifiek deze pagina betreft. false als de mail over een ander onderwerp gaat (een andere pagina, een belafspraak in het algemeen, een factuur, een rapportage), ook al zat hij in dezelfde mailwisseling.
+- "hoort": true als deze mail inhoudelijk over DEZE pagina gaat: de tekst ervan, de opzet, correcties erop, of een afspraak die specifiek deze pagina betreft. false als de mail over een ander onderwerp gaat (een andere pagina, een ander product, een belafspraak, een factuur, een rapportage), ook al zat hij in dezelfde mailwisseling en ook al komen er woorden uit de paginanaam in voor.
+- Gaat een mail over MEERDERE pagina's en is deze pagina daar één van, dan is "hoort" gewoon true. Een mail mag bij meer dan één pagina horen.
 - "kern": in één korte zin wat er in deze mail gebeurde, in gewone taal, vanuit het bureau gezien. Bijvoorbeeld "Amit stuurde de aangepaste teksten terug als pdf" of "jij stelde de nieuwe opzet voor met een apart doel per pagina". Geen datum erin, die staat er al voor. Maximaal 14 woorden.
 
-Antwoord met UITSLUITEND geldige JSON: een array met per mail {"id": "<exact het meegegeven id>", "hoort": true/false, "kern": "<zin>"}. Geen tekst eromheen.`;
+Antwoord met UITSLUITEND geldige JSON: een array met per mail {"id": "<exact het meegegeven id>", "hoort": true/false, "kern": "<zin>"}. Geef voor ELKE meegegeven mail een regel terug. Geen tekst eromheen.`;
 
   const lijst = kandidaten.map((k) => [
     `--- id: ${k.id}`,
@@ -612,6 +630,14 @@ export async function zoekMailsVoorPagina(slug: string, url: string): Promise<{ 
 
   const urls2 = await getClientUrls(slug).catch(() => []);
   const titel = urls2.find((u) => urlKey(u.url) === k)?.title || "";
+  // De andere pagina's van deze klant gaan mee als context, zodat het model een mail
+  // bij de juiste pagina kan leggen in plaats van bij de eerste die er qua woorden op
+  // lijkt. Begrensd, want de lijst kan lang zijn en hoeft alleen de buren te tonen.
+  const zusters = urls2
+    .filter((u) => urlKey(u.url) !== k)
+    .map((u) => { try { return { pad: new URL(u.url).pathname.replace(/\/+$/, ""), titel: u.title || "" }; } catch { return { pad: "", titel: "" }; } })
+    .filter((z) => z.pad)
+    .slice(0, 60);
   const oordelen = await beoordeelMails(slug, pad, titel, geslaagd.map((x) => ({
     id: x.m.id,
     subject: x.m.subject,
@@ -619,16 +645,26 @@ export async function zoekMailsVoorPagina(slug: string, url: string): Promise<{ 
     eigen: eigenTekst(x.m.bodyHtml || "", x.m.preview || "", 700),
     bijlagen: x.namen,
     datum: x.m.receivedAt ? new Date(x.m.receivedAt).toLocaleDateString("nl-NL") : "",
-  })));
+  })), zusters);
 
   let bewaard = 0;
   const gehouden: string[] = [];
   for (const { m, namen, score, reden } of geslaagd) {
     const oordeel = oordelen.get(m.id);
-    // De zeef mag alleen afwijzen, nooit toevoegen. Weet hij het niet (geen
-    // antwoord voor deze mail), dan blijft de puntentelling leidend.
+    // Het oordeel beslist, niet de puntentelling. Die telling knipt de paginanaam in
+    // losse woorden ("edof", "lenzen"), en één zo'n woord plus een afzender op het
+    // klantdomein haalde de bewijsdrempel al. Zo kwam een mail over een heel andere
+    // lens op deze pagina terecht. De telling doet nu alleen nog het grove werk:
+    // kandidaten ophalen. Of een mail er inhoudelijk bij hoort, bepaalt het lezen.
     if (oordeel && !oordeel.hoort) continue;
     const kern = oordeel?.kern || "";
+    // Zonder oordeel telt een mail niet meer als bewijs. Eerder bleef bij een storing
+    // of een onleesbaar antwoord de puntentelling staan, dus sloop ruis stilletjes
+    // naar binnen zonder dat iemand het merkte. Hij blijft wel bewaard en zichtbaar
+    // in de maillijst; hij mag alleen het verhaal op de kaart niet meer in.
+    const zekerheid = oordeel?.hoort
+      ? Math.max(score, HARD_BEWIJS)
+      : Math.min(score, HARD_BEWIJS - 1);
     // Bewaar het EIGEN deel als preview: dat is wat er in de tijdlijn en in de
     // samenvatting terechtkomt. De geciteerde thread eronder zou daar alleen maar
     // een oud verhaal herhalen.
@@ -641,7 +677,7 @@ export async function zoekMailsVoorPagina(slug: string, url: string): Promise<{ 
               ${(m.fromName || "").slice(0, 120)}, ${(m.fromAddress || "").slice(0, 200)},
               ${m.receivedAt || null}, ${m.webLink || null}, ${m.superhumanLink || null}, ${preview},
               ${!!m.hasAttachments}, ${namen.join(" | ").slice(0, 500) || null}, ${kern || null},
-              'auto', ${score}, ${reden.slice(0, 300)}, now())
+              'auto', ${zekerheid}, ${(oordeel?.hoort ? `gelezen: hoort bij deze pagina${reden ? `, ${reden}` : ""}` : reden || "alleen woordtreffer").slice(0, 300)}, now())
       ON CONFLICT (client_slug, url_key, message_id) DO UPDATE
         SET score = EXCLUDED.score, reden = EXCLUDED.reden, gevonden_op = now(),
             preview = EXCLUDED.preview,
@@ -786,6 +822,43 @@ export async function zoekMailsIndienNodig(slug: string, url: string, maxDagen =
 
   await zoekMailsVoorPagina(slug, url).catch(() => { /* zoeken mag het dossier nooit breken */ });
   await zetPeilmerk(slug, k, nieuwste).catch(() => { /* peilmerk is een versnelling, geen must */ });
+}
+
+/**
+ * Een mail zelf aan een pagina hangen, ook als de automaat hem niet gevonden had.
+ *
+ * Dit ontbrak: je kon een mail wél wegklikken maar niet toevoegen, dus een mail die
+ * buiten de zoekronde viel was definitief weg uit het dossier. Voor een cockpit waar
+ * de historie moet kloppen is dat een gat, en het is ook de reden dat de automaat nu
+ * strenger mag zijn: mist hij er een, dan zet jij hem er zelf bij.
+ *
+ * Komt binnen als 'pin', want dit is een besluit van een mens en dat wint van elke
+ * telling. Bestaat de rij al (bijvoorbeeld weggeklikt), dan wordt hij weer vastgezet.
+ */
+export async function koppelMail(slug: string, url: string, messageId: string): Promise<{ ok: boolean; error?: string }> {
+  await ensureSchema();
+  await ensureTable();
+  const k = urlKey(url);
+  const { rows } = await sql`
+    SELECT id, subject, from_name, from_address, received_at, web_link, superhuman_link, preview, body_html
+    FROM client_emails WHERE client_slug = ${slug} AND id = ${messageId} LIMIT 1`;
+  const m = rows[0];
+  if (!m) return { ok: false, error: "Die mail staat niet in de mailbox van deze klant." };
+  // Het eigen deel als preview, net als bij een automatisch gevonden mail: de
+  // geciteerde thread eronder herhaalt alleen een oud verhaal.
+  const preview = (eigenTekst(String(m.body_html || ""), String(m.preview || ""), 600) || String(m.preview || "")).slice(0, 600);
+  await sql`
+    INSERT INTO page_emails (client_slug, url_key, url, message_id, onderwerp,
+                             van_naam, van_adres, ontvangen_op, web_link, superhuman_link, preview,
+                             bron, score, reden, gevonden_op, bevestigd_op)
+    VALUES (${slug}, ${k}, ${url}, ${messageId}, ${String(m.subject || "").slice(0, 300)},
+            ${String(m.from_name || "").slice(0, 120)}, ${String(m.from_address || "").slice(0, 200)},
+            ${(m.received_at as string) || null}, ${(m.web_link as string) || null}, ${(m.superhuman_link as string) || null},
+            ${preview},
+            'pin', ${HARD_BEWIJS}, 'zelf aan deze pagina gekoppeld', now(), now())
+    ON CONFLICT (client_slug, url_key, message_id) DO UPDATE
+      SET bron = 'pin', score = ${HARD_BEWIJS}, reden = 'zelf aan deze pagina gekoppeld', bevestigd_op = now()`;
+  return { ok: true };
 }
 
 /** Vastpinnen: deze mail hoort bij deze pagina, punt. */

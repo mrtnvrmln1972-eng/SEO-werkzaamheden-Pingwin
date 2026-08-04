@@ -94,8 +94,8 @@ De laatste stap begint met "- nu:" en zegt wat er nu moet gebeuren en wie aan ze
 Voorbeeld van de vorm (niet van de inhoud):
 Copy is klaar en geredigeerd, dev moet hem nu live zetten.
 
-- 14 juli: jij stelde de nieuwe opzet voor, deze pagina informatief en de andere om te boeken.
-- 22 juli: de klant stuurde de aangepaste teksten terug als pdf.
+- 14 juli [mail#812]: jij stelde de nieuwe opzet voor, deze pagina informatief en de andere om te boeken.
+- 22 juli [mail#845]: de klant stuurde de aangepaste teksten terug als pdf.
 - nu: de tekst staat nog niet op de pagina. Dev is aan zet.
 
 Maximaal vijf stappen. Zijn er meer, laat dan de minst belangrijke weg.
@@ -120,7 +120,9 @@ REGELS, hard:
 - Kort. De openingszin maximaal 20 woorden, elke stap maximaal 20 woorden.
 - Gewone spreektaal, zoals je het tegen een collega zegt. Nederlands. Spreek Maarten aan met "jij".
 - Gebruik UITSLUITEND feiten uit het blok hieronder. Verzin nooit een cijfer, een naam, een datum of een pagina.
-- De datum vooraan een stap wordt automatisch een link naar die mail. Zet er zelf nooit een link, adres of "(mail)" bij.
+- Komt een stap uit een mail, zet dan direct achter de datum het nummer van die mail tussen blokhaken, exact zoals het in het blok hieronder staat: "- 22 juli [mail#845]: ...". Dat nummer wordt de link naar die mail en is daarna niet meer zichtbaar. Neem het over zoals het er staat, verzin nooit een nummer, en gebruik het nummer van de mail waar die stap echt over gaat.
+- Komt een stap niet uit een mail (bijvoorbeeld de "- nu:"-regel), laat de blokhaken dan weg.
+- Zet er zelf nooit een link, adres of "(mail)" bij.
 - Noem alleen mails die gemarkeerd staan als VASTGEPIND of HARD BEWIJS. Mails met "mogelijk relevant" laat je weg.
 - Noem een pagina als pad, dus /crp-test/, nooit als volledig webadres.
 - Nooit een los liggend streepje als zinsscheiding. Gebruik een komma, dubbele punt of nieuwe zin.

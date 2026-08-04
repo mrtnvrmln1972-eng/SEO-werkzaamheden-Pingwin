@@ -3761,3 +3761,19 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 }
 .ovc-doorstuur-rij textarea { resize: vertical; min-height: 56px; }
 .ovc-doorstuur-acties { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; margin-top: var(--s-1); }
+
+/* ── Zelf een mail aan een pagina hangen ──
+   Wegklikken kon al, toevoegen niet: een mail die de automaat miste was daardoor
+   definitief weg uit het dossier. Deze lijst laat je er zelf een aanwijzen. */
+.pd-koppel { border: 1px solid var(--card-border); border-radius: var(--r-md); padding: var(--s-3); margin-top: var(--s-3); background: #fff; }
+.pd-koppel-kop { font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.4px; text-transform: uppercase; color: var(--gray); margin-bottom: var(--s-2); }
+.pd-koppel-lijst { list-style: none; margin: 0; padding: 0; max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: var(--s-1); }
+.pd-koppel-lijst button {
+  width: 100%; display: grid; grid-template-columns: minmax(80px, 22%) 1fr auto; gap: var(--s-2);
+  align-items: baseline; text-align: left; background: #fff; border: 1px solid var(--border);
+  border-radius: var(--r-sm); padding: var(--s-2) var(--s-3); font: inherit; font-size: var(--fs-sm); cursor: pointer;
+}
+.pd-koppel-lijst button:hover { border-color: var(--orange); background: var(--orange-light); }
+.pd-koppel-van { font-weight: 700; color: var(--dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pd-koppel-onderwerp { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pd-koppel-datum { color: var(--gray); font-size: var(--fs-xs); white-space: nowrap; }
