@@ -74,6 +74,12 @@ export function ontbrekendeVelden(d: OrgVeldenBron): Ontbrekend[] {
   // ── Vestigingen: zonder adres en tijden geen vermelding per locatie ──
   vestigingen.forEach((v, i) => {
     const naam = v.naam?.trim() || v.plaats?.trim() || `vestiging ${i + 1}`;
+    // Een locatie waarvan we alleen de naam kennen levert één regel op in plaats
+    // van vier; anders verzuipt het lijstje in dezelfde melding per veld.
+    if (leeg(v.straat) && leeg(v.postcode) && leeg(v.plaats) && leeg(v.openingstijden)) {
+      mis(`vestiging.${i}.straat`, "Adres en openingstijden", `Vestiging ${naam}: hiervan is alleen de naam bekend, adres en openingstijden ontbreken nog.`);
+      return;
+    }
     if (leeg(v.straat)) mis(`vestiging.${i}.straat`, "Straat + huisnummer", `Vestiging ${naam}: straat en huisnummer ontbreken.`);
     if (leeg(v.postcode)) mis(`vestiging.${i}.postcode`, "Postcode", `Vestiging ${naam}: postcode ontbreekt.`);
     if (leeg(v.plaats)) mis(`vestiging.${i}.plaats`, "Plaats", `Vestiging ${naam}: plaats ontbreekt.`);

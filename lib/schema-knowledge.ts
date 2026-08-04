@@ -485,6 +485,15 @@ export async function confirmAllKnowledge(slug: string): Promise<{ voorstellen: 
   return { voorstellen: open.length, verwerkt };
 }
 
+// Eén regel uit de kennisbank halen. Hij verdwijnt uit het overzicht, uit het
+// rode lijstje en uit de structured data, maar de rij blijft in de historie
+// staan (status 'verwijderd'), zodat er nooit iets echt weg is.
+export async function deleteKnowledgeEntity(slug: string, id: number): Promise<void> {
+  await ensureSchema();
+  await ensureTable();
+  await sql`UPDATE client_schema_knowledge SET status = 'verwijderd' WHERE client_slug = ${slug} AND id = ${id} AND soort = 'entiteit'`;
+}
+
 export async function ignoreKnowledge(slug: string, id: number): Promise<void> {
   await ensureSchema();
   await ensureTable();

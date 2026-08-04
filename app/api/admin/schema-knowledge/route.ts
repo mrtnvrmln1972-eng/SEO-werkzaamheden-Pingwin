@@ -3,7 +3,7 @@ import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
 import { uploadDocx, uploadEnConverteer, readDriveDoc } from "../../../../lib/drive";
 import { ensureClientFolder } from "../../../../lib/drive-map";
-import { listKnowledge, getOpenProposals, proposeKnowledge, confirmKnowledge, confirmAllKnowledge, ignoreKnowledge, knowledgeGaps, applyKnowledgeToOrg, opruimenDubbel } from "../../../../lib/schema-knowledge";
+import { listKnowledge, getOpenProposals, proposeKnowledge, confirmKnowledge, confirmAllKnowledge, ignoreKnowledge, knowledgeGaps, applyKnowledgeToOrg, opruimenDubbel, deleteKnowledgeEntity } from "../../../../lib/schema-knowledge";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -130,6 +130,14 @@ export async function POST(req: NextRequest) {
       const opgeruimd = await opruimenDubbel(slug).catch(() => 0);
       const r = await applyKnowledgeToOrg(slug);
       return NextResponse.json({ ok: true, opgeruimd, ...r });
+    }
+    if (action === "verwijder") {
+      await deleteKnowledgeEntity(slug, Number(body.id || 0));
+      return NextResponse.json({ ok: true });
+    }
+    if (action === "opruimen") {
+      const opgeruimd = await opruimenDubbel(slug);
+      return NextResponse.json({ ok: true, opgeruimd });
     }
     if (action === "negeer") {
       await ignoreKnowledge(slug, Number(body.id || 0));

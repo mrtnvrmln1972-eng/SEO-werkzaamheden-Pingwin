@@ -125,6 +125,26 @@ export default function Kennisbank({ slug, onVerwerkt }: { slug: string; onVerwe
     finally { setBusy(""); }
   }
 
+  async function verwijder(id: number, naam: string) {
+    if (!window.confirm(`"${naam}" uit de kennisbank halen? Hij verdwijnt uit het overzicht, uit het rode lijstje en uit de structured data.`)) return;
+    setBusy(`weg-${id}`); setFout("");
+    try {
+      const d = await fetch("/api/admin/schema-knowledge", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "verwijder", slug, id }) }).then((r) => r.json());
+      if (d?.ok) void laad(); else setFout(d?.error || "Verwijderen lukte niet.");
+    } catch { setFout("Verwijderen lukte niet."); }
+    finally { setBusy(""); }
+  }
+
+  async function ruimOp() {
+    setBusy("opruimen"); setFout(""); setOkMsg("");
+    try {
+      const d = await fetch("/api/admin/schema-knowledge", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "opruimen", slug }) }).then((r) => r.json());
+      if (d?.ok) { setOkMsg(d.opgeruimd ? `${d.opgeruimd} dubbele regels samengevoegd.` : "Geen dubbele regels gevonden."); void laad(); }
+      else setFout(d?.error || "Opruimen lukte niet.");
+    } catch { setFout("Opruimen lukte niet."); }
+    finally { setBusy(""); }
+  }
+
   async function maakTaak() {
     setBusy("taak"); setFout("");
     try {
@@ -160,6 +180,7 @@ export default function Kennisbank({ slug, onVerwerkt }: { slug: string; onVerwe
         <strong>Kennisbank structured data</strong>
         <span className="muted">Gooi hier alles in: documenten, artsen-gegevens, schema-code. Verwerken gebeurt pas na jouw akkoord; daarna vult het de velden hierboven vanzelf.</span>
         <button type="button" className="wp-fase-btn" disabled={!!busy} onClick={() => void zetInVelden()}>{busy === "velden" ? "Bezig…" : "Kennisbank in de velden zetten"}</button>
+        <button type="button" className="wp-fase-btn" disabled={!!busy} onClick={() => void ruimOp()}>{busy === "opruimen" ? "Bezig…" : "Dubbelen samenvoegen"}</button>
       </div>
       <div className={"wp-docdrop" + (drag ? " wp-docdrop-actief" : "")}
         onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
@@ -240,6 +261,8 @@ export default function Kennisbank({ slug, onVerwerkt }: { slug: string; onVerwe
                   <li key={e.id}>
                     <strong>{e.naam}</strong>
                     <span className="muted kb-velden">{Object.entries(e.velden).map(([k, v]) => `${k}: ${v}`).join(" · ") || "(nog geen details)"}</span>
+                    <button type="button" className="kb-weg" title="Uit de kennisbank halen" disabled={!!busy}
+                      onClick={() => void verwijder(e.id, e.naam)}>&times;</button>
                   </li>
                 ))}
               </ul>
