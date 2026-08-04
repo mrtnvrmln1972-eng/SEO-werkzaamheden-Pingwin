@@ -564,8 +564,15 @@ tbody td:last-child { text-align: center; }
   font-size: var(--fs-xs); line-height: var(--lh-xs); text-transform: uppercase; letter-spacing: 0.5px;
   color: var(--white); border-bottom: 2px solid var(--border); white-space: nowrap;
 }
-/* De globale regel centreert de laatste kolomkop; hier is dat "Wie doet het". */
+/* De globale regel centreert de laatste kolomkop; hier is dat "Aan de slag". */
 .prio-tabel thead th:last-child { text-align: left; }
+/* Klikbare kolomkop. Ziet eruit als de kop, gedraagt zich als een knop. */
+.prio-sorteer {
+  background: none; border: 0; padding: 0; cursor: pointer; font: inherit;
+  color: inherit; text-transform: inherit; letter-spacing: inherit; white-space: nowrap;
+}
+.prio-sorteer:hover { color: var(--brand-orange-soft); }
+.prio-sorteer.aan { color: var(--orange); }
 .prio-tabel th.num, .prio-tabel td.num { text-align: right; white-space: nowrap; }
 .prio-tabel td { padding: var(--s-3); border-bottom: 1px solid var(--border); vertical-align: top; }
 .prio-rij:hover { background: var(--brand-orange-faint); }
@@ -577,20 +584,35 @@ tbody td:last-child { text-align: center; }
 .prio-uplift { font-weight: 700; color: var(--orange-dark); }
 .prio-leeg { text-align: center; padding: var(--s-8) var(--s-3); }
 
-.prio-badge {
-  display: inline-block; padding: 2px var(--s-2); border-radius: var(--r-full);
-  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700; white-space: nowrap;
-}
-.prio-badge-1 { background: var(--accent); color: var(--white); }
-.prio-badge-2 { background: var(--orange); color: var(--white); }
-.prio-badge-3 { background: var(--brand-orange-soft); color: var(--dark); }
-.prio-badge-4 { background: var(--gray-light); color: var(--muted); }
+/* De tier-badge (deze week / deze maand) stond hier; die kolom is van het scherm
+   verdwenen, dus de opmaak ervan ook. */
 .prio-nieuw {
   display: inline-block; margin-left: var(--s-1); padding: 2px var(--s-2);
   border-radius: var(--r-full); border: 1px solid var(--brand-teal); color: var(--brand-teal);
   font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
 }
 .prio-skip { margin-bottom: var(--s-4); }
+
+/* De balk per soort werk. Zelfde vorm als de groepkop in het opruimscherm, zodat
+   een groepkop in dit dashboard er overal hetzelfde uitziet; hier klapt hij open
+   en dicht, en staat de te winnen opbrengst erin. */
+.prio-groepkop td {
+  background: var(--brand-orange-faint); border-top: 2px solid var(--orange);
+  padding: 0;
+}
+.prio-groepknop {
+  display: flex; align-items: baseline; gap: var(--s-2); width: 100%;
+  padding: var(--s-3); background: none; border: 0; cursor: pointer;
+  font: inherit; text-align: left; color: var(--dark);
+}
+.prio-groepknop:hover { background: var(--brand-orange-soft); }
+.prio-groepkop-pijl { color: var(--orange); }
+.prio-groepkop-naam { font-weight: 700; font-size: var(--fs-base); line-height: var(--lh-base); }
+.prio-groepkop-tel { font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); }
+.prio-groepkop-winst {
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700; color: var(--orange-dark);
+  margin-left: auto;
+}
 
 /* Twee filterrijen: op wanneer, en op soort werk. */
 .prio-filter-label {

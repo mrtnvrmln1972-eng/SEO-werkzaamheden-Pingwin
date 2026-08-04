@@ -153,7 +153,7 @@ export const TIER_NAAM: Record<string, string> = {
 
 // De categorie-tabel staat in een apart bestand zonder server-afhankelijkheden,
 // zodat het scherm hem ook kan gebruiken. Hier doorgegeven voor de serverkant.
-export { CATEGORIE, CATEGORIE_VOLGORDE, categorieVan, type Categorie } from "./prioriteiten-categorie";
+export { CATEGORIE, categorieVan, type Categorie } from "./prioriteiten-categorie";
 
 /**
  * De verwachte opbrengst voor de samenvatting: extra klikken per maand uit tier 1

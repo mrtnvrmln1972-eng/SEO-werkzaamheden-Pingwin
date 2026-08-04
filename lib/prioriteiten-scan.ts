@@ -296,10 +296,19 @@ async function stapEigen(slug: string, propositie: string, kern: string[]): Prom
   let n = 0;
   const id = (p: string) => `${p}${++n}`;
 
+  // Wie zijn merknaam intikt heeft je al gevonden; daar valt niets te winnen.
+  // De striking-distance-lens filterde dat al, deze twee niet, en daardoor stonden
+  // merkregels bovenaan de lijst. Bij opruimen en interne links blijft een
+  // merkzoekwoord wél staan: dáár betekent het echt werk (twee pagina's die om de
+  // merknaam vechten is een probleem).
+  const eigenaar = await getClientBySlug(slug).catch(() => null);
+  const merk = (kw: string) => isMerkterm(kw, eigenaar?.name || "", eigenaar?.domain || "");
+
   // Lens 2, CTR-onderkans. Draait al als Meta & CTR; hier alleen uitgelezen.
   const meta = await getMetaKansen(slug).catch(() => []);
   for (const m of meta.slice(0, 40)) {
     if (!m.keyword || m.impressions < 500) continue;
+    if (merk(m.keyword)) continue;
     const huidig = m.ctr / 100, verwacht = m.expectedCtr / 100;
     if (verwacht - huidig < 0.005) continue;
     uit.push({
@@ -357,6 +366,7 @@ async function stapEigen(slug: string, propositie: string, kern: string[]): Prom
   const gaps = await getOpportunities(slug).catch(() => []);
   for (const g of gaps.slice(0, 30)) {
     if (!g.keyword || !(g.volume || 0)) continue;
+    if (merk(g.keyword)) continue;
     uit.push({
       id: id("GAP"), type: "content_gap",
       titel: `Geen pagina voor "${g.keyword}"`,
@@ -388,7 +398,11 @@ async function stapVers(slug: string, propositie: string, kern: string[], startI
     const kw = p.bestKeyword || "";
     const pos = p.bestPosition ?? p.position;
     if (!kw || !pos || pos < 5 || pos > 20) continue;
-    if (p.impressions < 300) continue;              // 100/maand over 90 dagen
+    // Vertoningen van het ZOEKWOORD, niet van de pagina. Stond hier eerst wel: een
+    // pagina die op twintig zoekwoorden samen 200.000 keer verschijnt werd zo één
+    // zoekwoord van 200.000, en dat schoof onzin naar de top van de lijst.
+    const kwVertoningen = p.bestImpressions || 0;
+    if (kwVertoningen < 300) continue;              // 100/maand over 90 dagen
     if (isMerkterm(kw, client?.name || "", domein)) continue;
     const sleutel = `${kw}|${pad(p.url)}`;
     if (gezien.has(sleutel)) continue;
@@ -397,7 +411,7 @@ async function stapVers(slug: string, propositie: string, kern: string[], startI
       id: id("SD"), type: "striking_distance",
       titel: `"${kw}" staat op ${pos.toFixed(0)}, net buiten beeld`,
       url: pad(p.url), zoekwoord: kw,
-      maandvolume: Math.max(p.bestVolume || 0, Math.round(p.impressions / 3)),
+      maandvolume: Math.max(p.bestVolume || 0, Math.round(kwVertoningen / 3)),
       huidigePositie: Math.round(pos), targetPositie: 3,
       intentie: bepaalIntentie(kw), relevanceFit: bepaalFit(kw, kern, propositie),
       effort: 3, timeToEffect: 2, confidence: confidenceVoorLens("striking_distance"),

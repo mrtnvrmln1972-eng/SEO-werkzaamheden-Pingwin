@@ -32,11 +32,9 @@ export const CATEGORIE: Record<string, Categorie> = {
   aeo:               { naam: "AI-zichtbaarheid", tab: "resultaten", taaktype: "overig", kaart: false },
 };
 
-/** Alle categorienamen in vaste volgorde, voor de filterknoppen boven de tabel. */
-export const CATEGORIE_VOLGORDE: string[] = [
-  "Pagina optimaliseren", "Meta & klikdoor", "Opruimen", "Interne links",
-  "Nieuwe pagina", "Structured data", "AI-zichtbaarheid",
-];
+// Er stond hier een vaste volgorde van categorieën, voor de filterknoppen boven de
+// tabel. Die knoppen zijn er niet meer: het scherm bundelt de lijst per categorie en
+// zet de bundels op te winnen opbrengst, want waar de winst zit verschilt per klant.
 
 export function categorieVan(type: string): Categorie {
   return CATEGORIE[type] || { naam: "Overig", tab: "paginas", taaktype: "overig", kaart: false };

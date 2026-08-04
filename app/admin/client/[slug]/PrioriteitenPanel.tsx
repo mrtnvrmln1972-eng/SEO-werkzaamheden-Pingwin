@@ -6,9 +6,9 @@
 // daarna de uitkomst als platte, filterbare tabel. Geen model dat de lijst
 // samenvat, want een lijst is een scherm en een oordeel is een gesprek.
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { urlKey } from "../../../../lib/url-key";
-import { categorieVan, CATEGORIE_VOLGORDE } from "../../../../lib/prioriteiten-categorie";
+import { categorieVan } from "../../../../lib/prioriteiten-categorie";
 
 type Lens = { sleutel: string; naam: string; status: string; toelichting: string; gevonden: number };
 type Regel = {
@@ -32,11 +32,16 @@ type State = {
   propositie: { zin: string; voorstel: string };
 };
 
-const TIERS: { id: string; naam: string; uitleg: string }[] = [
-  { id: "1", naam: "Deze week", uitleg: "Weinig werk, snel effect, en we weten het vrij zeker." },
-  { id: "2", naam: "Deze maand", uitleg: "Iets meer werk, effect binnen een paar weken tot maanden." },
-  { id: "3", naam: "Dit kwartaal", uitleg: "Grotere klussen die wel de moeite waard zijn." },
-  { id: "4", naam: "Strategisch", uitleg: "Lange adem, maar met blijvend effect." },
+// Waarop de lijst gesorteerd staat. Bewust géén "wanneer" meer: de scan deelde
+// zelf in deze week / deze maand / dit kwartaal, en dat is een gok over een agenda
+// die hij niet kent. Wat een kans oplevert is wél te meten, dus dat bepaalt de
+// volgorde. De indeling bestaat achter de schermen nog wel, want de scan gebruikt
+// hem om te bepalen wat er in "bewust niet doen" valt.
+type SortVeld = "extra" | "volume" | "positie";
+const SORT_KOP: { veld: SortVeld; label: string }[] = [
+  { veld: "volume", label: "Zoekvolume" },
+  { veld: "positie", label: "Positie" },
+  { veld: "extra", label: "Extra bezoekers" },
 ];
 
 function datum(s?: string | null): string {
@@ -61,12 +66,13 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
   const [err, setErr] = useState("");
   const [prop, setProp] = useState("");
   const [propMsg, setPropMsg] = useState("");
-  const [tonen, setTonen] = useState<string>("alles");
-  const [soort, setSoort] = useState<string>("alles");
   const [bezigId, setBezigId] = useState<string | null>(null);
   const [zoek, setZoek] = useState("");
   const [openSkip, setOpenSkip] = useState(false);
   const [openLenzen, setOpenLenzen] = useState(false);
+  const [openGroep, setOpenGroep] = useState<Record<string, boolean>>({});
+  const [sortVeld, setSortVeld] = useState<SortVeld>("extra");
+  const [sortAf, setSortAf] = useState(true);
 
   async function load() {
     try {
@@ -166,19 +172,76 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
   }
 
   const res = st?.result || null;
-  const regels = res?.regels || [];
-  const zichtbaar = regels.filter((r) => {
+  const regels = useMemo(() => res?.regels || [], [res]);
+  const zoekt = zoek.trim().length > 0;
+  const zichtbaar = useMemo(() => regels.filter((r) => {
     if (r.tier === "SKIP") return false;
-    if (tonen !== "alles" && r.tier !== tonen) return false;
-    if (soort !== "alles" && categorieVan(r.type).naam !== soort) return false;
-    if (zoek.trim()) {
-      const q = zoek.toLowerCase();
+    if (zoekt) {
+      const q = zoek.trim().toLowerCase();
       if (!(`${r.titel} ${r.zoekwoord} ${r.url}`.toLowerCase().includes(q))) return false;
     }
     return true;
-  });
+  }), [regels, zoek, zoekt]);
+
+  // Zeven dichte balken in plaats van honderd losse regels, en de balk met de
+  // meeste te winnen bezoekers bovenaan. Bij de ene klant is dat meta-werk, bij de
+  // andere opruimen; dat wil je zien zonder eerst alles open te klikken.
+  const groepen = useMemo(() => {
+    const richting = sortAf ? -1 : 1;
+    const waarde = (r: Regel): number => {
+      if (sortVeld === "volume") return r.maandvolume || 0;
+      // Rankt hier nog niet (0) hoort achteraan, niet vooraan.
+      if (sortVeld === "positie") return r.huidigePositie || 999;
+      return r.extraKlikkenPerMaand ?? 0;
+    };
+    const per = new Map<string, Regel[]>();
+    for (const r of zichtbaar) {
+      const naam = categorieVan(r.type).naam;
+      if (!per.has(naam)) per.set(naam, []);
+      per.get(naam)!.push(r);
+    }
+    return [...per.entries()]
+      .map(([naam, rijen]) => ({
+        naam,
+        rijen: [...rijen].sort((a, b) => (waarde(a) - waarde(b)) * richting),
+        opbrengst: rijen.reduce((s, r) => s + (r.extraKlikkenPerMaand ?? 0), 0),
+      }))
+      .sort((a, b) => b.opbrengst - a.opbrengst || b.rijen.length - a.rijen.length || a.naam.localeCompare(b.naam));
+  }, [zichtbaar, sortVeld, sortAf]);
+
+  // Zoek je iets, dan klapt alles met een treffer vanzelf open; anders zou je na
+  // het typen alsnog zeven balken moeten opentikken om te zien wat er gevonden is.
+  const groepOpen = (naam: string) => zoekt || !!openGroep[naam];
+  function sorteerOp(veld: SortVeld) {
+    if (veld === sortVeld) setSortAf((v) => !v);
+    else { setSortVeld(veld); setSortAf(true); }
+  }
+
   const skips = regels.filter((r) => r.tier === "SKIP");
   const propositieLeeg = !(st?.propositie?.zin || "").trim();
+
+  /**
+   * De samenvatting wordt hier gemaakt en niet bij het draaien van de scan, zodat
+   * een scan van vorige maand meteen de nieuwe tekst laat zien. Vaste huisregel:
+   * zulke wijzigingen horen in de weergave-laag, niet in de opgeslagen data.
+   */
+  const samenvatting = useMemo(() => {
+    const punten = regels.filter((r) => r.tier !== "SKIP");
+    if (!punten.length) return "Geen openstaande kansen gevonden bij deze scan.";
+    const uplift = Math.round(punten.reduce((s, r) => s + (r.extraKlikkenPerMaand ?? 0) * r.confidence, 0));
+    // Bewust geteld over álle punten, niet over wat het zoekveld overlaat: de
+    // samenvatting hoort de scan samen te vatten, niet je zoekopdracht.
+    const soorten = new Set(punten.map((r) => categorieVan(r.type).naam)).size;
+    const stukken = [`${punten.length} ${punten.length === 1 ? "kans" : "kansen"} gevonden, verdeeld over ${soorten} ${soorten === 1 ? "soort werk" : "soorten werk"}.`];
+    if (uplift > 0) stukken.push(`Alles bij elkaar naar schatting ${getal(uplift)} extra bezoekers per maand, gewogen naar hoe zeker we het weten. Dat is een verwachting, geen belofte.`);
+    if (skips.length) stukken.push(`${skips.length} ${skips.length === 1 ? "kans is" : "kansen zijn"} bewust afgevallen, met de reden erbij.`);
+    if (res?.delta?.vorigeDatum) {
+      stukken.push(res.delta.nieuw || res.delta.opgelost
+        ? `Sinds de vorige scan: ${res.delta.nieuw} nieuw, ${res.delta.opgelost} opgelost.`
+        : "Sinds de vorige scan is er niets veranderd.");
+    }
+    return stukken.join(" ");
+  }, [regels, skips.length, res]);
 
   return (
     <div className="cockpit-card acc-orange prio-panel">
@@ -247,7 +310,7 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
 
       {res && (
         <>
-          <div className="prio-samenvatting">{res.samenvatting}</div>
+          <div className="prio-samenvatting">{samenvatting}</div>
           <div className="prio-meta">
             Lijst van {datum(res.generatedAt)}
             {res.delta?.vorigeDatum && <> · vorige scan {datum(res.delta.vorigeDatum)}</>}
@@ -269,88 +332,83 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
             </div>
           )}
 
-          {/* Twee rijen filters: op wanneer, en op soort werk. Ze stapelen, dus
-              "deze maand" plus "Meta & klikdoor" kan gewoon. */}
           <div className="prio-filters">
-            <span className="prio-filter-label">Wanneer</span>
-            <button type="button" className={"chip" + (tonen === "alles" ? " chip-aan" : "")} onClick={() => setTonen("alles")}>
-              Alles ({regels.filter((r) => r.tier !== "SKIP").length})
-            </button>
-            {TIERS.map((t) => {
-              const n = regels.filter((r) => r.tier === t.id).length;
-              return (
-                <button key={t.id} type="button" title={t.uitleg}
-                  className={"chip" + (tonen === t.id ? " chip-aan" : "")} onClick={() => setTonen(t.id)}>
-                  {t.naam} ({n})
-                </button>
-              );
-            })}
             <input className="prio-zoek" placeholder="Zoek op zoekwoord of pagina" value={zoek} onChange={(e) => setZoek(e.target.value)} />
-          </div>
-          <div className="prio-filters">
-            <span className="prio-filter-label">Soort werk</span>
-            <button type="button" className={"chip" + (soort === "alles" ? " chip-aan" : "")} onClick={() => setSoort("alles")}>
-              Alles
-            </button>
-            {CATEGORIE_VOLGORDE.map((naam) => {
-              const n = regels.filter((r) => r.tier !== "SKIP" && categorieVan(r.type).naam === naam).length;
-              if (!n) return null;
-              return (
-                <button key={naam} type="button"
-                  className={"chip" + (soort === naam ? " chip-aan" : "")} onClick={() => setSoort(naam)}>
-                  {naam} ({n})
-                </button>
-              );
-            })}
+            {zoekt && <span className="prio-filter-label">{zichtbaar.length} van de {regels.filter((r) => r.tier !== "SKIP").length}</span>}
           </div>
 
           <div className="prio-tabel-wrap">
             <table className="prio-tabel">
               <thead>
                 <tr>
-                  <th>Wanneer</th><th>Wat</th><th>Pagina</th><th>Zoekwoord</th>
-                  <th className="num">Zoekvolume</th><th className="num">Positie</th>
-                  <th className="num">Extra bezoekers</th><th>Werk</th><th>Wie doet het</th>
+                  <th>Wat</th><th>Pagina</th><th>Zoekwoord</th>
+                  {SORT_KOP.map((k) => (
+                    <th key={k.veld} className="num">
+                      <button type="button" className={"prio-sorteer" + (sortVeld === k.veld ? " aan" : "")}
+                        title={`Sorteer op ${k.label.toLowerCase()}`} onClick={() => sorteerOp(k.veld)}>
+                        {k.label}{sortVeld === k.veld ? (sortAf ? " ▾" : " ▴") : ""}
+                      </button>
+                    </th>
+                  ))}
+                  <th>Werk</th><th>Aan de slag</th>
                 </tr>
               </thead>
               <tbody>
-                {zichtbaar.map((r) => {
-                  const cat = categorieVan(r.type);
-                  const gepland = staatInPlanning(r);
+                {groepen.map((g) => {
+                  const uit = groepOpen(g.naam);
                   return (
-                    <tr key={r.id} className={`prio-rij prio-tier-${r.tier}` + (gepland ? " prio-gepland" : "")}>
-                      <td><span className={`prio-badge prio-badge-${r.tier}`}>{TIERS.find((t) => t.id === r.tier)?.naam || r.tier}</span>
-                        {r.nieuw && <span className="prio-nieuw">nieuw</span>}</td>
-                      <td>
-                        <div className="prio-titel">{r.titel}</div>
-                        <div className="prio-reden">{r.rationale}</div>
-                        <div className="prio-bron">Bron: {r.bron} · {zekerheid(r.confidence)}</div>
-                      </td>
-                      <td className="prio-url">{r.url ? <Pad pad={r.url} /> : <span className="muted">nieuwe pagina</span>}</td>
-                      <td>{r.zoekwoord || "—"}</td>
-                      <td className="num">{getal(r.maandvolume)}</td>
-                      <td className="num">{r.huidigePositie ? `${r.huidigePositie} → ${r.targetPositie}` : `→ ${r.targetPositie}`}</td>
-                      <td className="num prio-uplift">{getal(r.extraKlikkenPerMaand)}</td>
-                      <td>{r.effort <= 3 ? "klein" : r.effort <= 6 ? "middel" : "groot"}</td>
-                      <td className="prio-skill">
-                        <button
-                          type="button"
-                          className="prio-cat"
-                          disabled={bezigId === r.id}
-                          title={cat.kaart
-                            ? `Zet dit in de planning van deze week en ga naar ${cat.naam.toLowerCase()}`
-                            : `Ga naar ${cat.naam.toLowerCase()} voor deze pagina`}
-                          onClick={() => pakOp(r)}
-                        >
-                          {bezigId === r.id ? "Bezig…" : cat.naam}
-                        </button>
-                        {gepland && <span className="prio-gepland-chip" title="Er staat een kaart voor deze pagina in de planning">✓ in de planning</span>}
-                      </td>
-                    </tr>
+                    <Fragment key={g.naam}>
+                      <tr className="prio-groepkop">
+                        <td colSpan={8}>
+                          <button type="button" className="prio-groepknop" aria-expanded={uit}
+                            onClick={() => setOpenGroep((m) => ({ ...m, [g.naam]: !groepOpen(g.naam) }))}>
+                            <span className="prio-groepkop-pijl">{uit ? "▾" : "▸"}</span>
+                            <span className="prio-groepkop-naam">{g.naam}</span>
+                            <span className="prio-groepkop-tel">{g.rijen.length} {g.rijen.length === 1 ? "punt" : "punten"}</span>
+                            {g.opbrengst > 0 && (
+                              <span className="prio-groepkop-winst">samen ongeveer {getal(g.opbrengst)} extra bezoekers per maand</span>
+                            )}
+                          </button>
+                        </td>
+                      </tr>
+                      {uit && g.rijen.map((r) => {
+                        const cat = categorieVan(r.type);
+                        const gepland = staatInPlanning(r);
+                        return (
+                          <tr key={r.id} className={"prio-rij" + (gepland ? " prio-gepland" : "")}>
+                            <td>
+                              <div className="prio-titel">{r.titel}{r.nieuw && <span className="prio-nieuw">nieuw</span>}</div>
+                              <div className="prio-reden">{r.rationale}</div>
+                              <div className="prio-bron">Bron: {r.bron} · {zekerheid(r.confidence)}</div>
+                            </td>
+                            <td className="prio-url">{r.url ? <Pad pad={r.url} /> : <span className="muted">nieuwe pagina</span>}</td>
+                            <td>{r.zoekwoord || "—"}</td>
+                            <td className="num">{getal(r.maandvolume)}</td>
+                            <td className="num">{r.huidigePositie ? `${r.huidigePositie} → ${r.targetPositie}` : `→ ${r.targetPositie}`}</td>
+                            <td className="num prio-uplift">{getal(r.extraKlikkenPerMaand)}</td>
+                            <td>{r.effort <= 3 ? "klein" : r.effort <= 6 ? "middel" : "groot"}</td>
+                            <td className="prio-skill">
+                              <button
+                                type="button"
+                                className="prio-cat"
+                                disabled={bezigId === r.id}
+                                title={cat.kaart
+                                  ? `Zet dit in de planning van deze week en ga naar ${cat.naam.toLowerCase()}`
+                                  : `Ga naar ${cat.naam.toLowerCase()} voor deze pagina`}
+                                onClick={() => pakOp(r)}
+                              >
+                                {bezigId === r.id ? "Bezig…" : cat.kaart ? "In de planning" : "Ga erheen"}
+                              </button>
+                              {gepland && <span className="prio-gepland-chip" title="Er staat een kaart voor deze pagina in de planning">✓ in de planning</span>}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </Fragment>
                   );
                 })}
-                {!zichtbaar.length && (
-                  <tr><td colSpan={9} className="muted prio-leeg">Niets gevonden met deze filters.</td></tr>
+                {!groepen.length && (
+                  <tr><td colSpan={8} className="muted prio-leeg">Niets gevonden met deze zoekterm.</td></tr>
                 )}
               </tbody>
             </table>

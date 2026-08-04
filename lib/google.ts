@@ -470,7 +470,13 @@ export async function getGscKeywordsBeforeAfter(domain: string, pageUrl: string,
 // Kans-data per pagina: vertoningen, kliks, CTR, gemiddelde positie en het beste
 // zoekwoord (meeste vertoningen) met zijn positie. Voor het spotten van laaghangend
 // fruit in het pagina-overzicht (veel vraag + net buiten de top 10).
-export type PageOpportunity = { url: string; clicks: number; impressions: number; ctr: number; position: number; bestKeyword: string; bestPosition: number | null; bestVolume: number | null };
+// `impressions` is de hele PAGINA, `bestImpressions` alleen het beste zoekwoord.
+// Dat onderscheid is er niet voor niets: wie de paginatotalen aan één zoekwoord
+// hangt, komt uit op fantasiegetallen (een pagina met 200.000 vertoningen op
+// twintig zoekwoorden werd zo één zoekwoord van 200.000). Meta-werk raakt de hele
+// pagina, dus daar hoort `impressions`; één zoekwoord omhoog duwen hoort bij
+// `bestImpressions`.
+export type PageOpportunity = { url: string; clicks: number; impressions: number; ctr: number; position: number; bestKeyword: string; bestImpressions: number; bestPosition: number | null; bestVolume: number | null };
 export async function getGscPageOpportunities(domain: string, days = 90): Promise<PageOpportunity[]> {
   const token = await accessTokenFor("google");
   if (!token || !domain) return [];
@@ -496,7 +502,8 @@ export async function getGscPageOpportunities(domain: string, days = 90): Promis
       url,
       clicks: Math.round(x.clicks), impressions: Math.round(x.impressions),
       ctr: Math.round(x.ctr * 1000) / 10, position: Math.round(x.position * 10) / 10,
-      bestKeyword: b?.keyword || "", bestPosition: b ? Math.round(b.position * 10) / 10 : null,
+      bestKeyword: b?.keyword || "", bestImpressions: Math.round(b?.impressions || 0),
+      bestPosition: b ? Math.round(b.position * 10) / 10 : null,
       bestVolume: null as number | null,
     };
   });
