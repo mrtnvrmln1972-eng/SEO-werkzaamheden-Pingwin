@@ -393,6 +393,24 @@ export function beoordeelUitNavigatie(beeld: Sitebeeld, doelPad: string): Meting
   if (!tellers.gelezen) {
     return { uitslag: "onmeetbaar", bewijs: "geen enkele pagina was leesbaar, dus over het menu valt niets te zeggen", details };
   }
+
+  // Bestaat de pagina zelf nog wel? Zo niet, dan is "hij staat niet in het menu"
+  // een nietszeggende waarheid: een pagina die er niet is, staat nergens. Dit als
+  // "goed" melden suggereert dat de bouwer hem netjes uit de navigatie heeft
+  // gehaald, terwijl de pagina gewoon weg is. Een proef met een verzonnen pad
+  // kreeg zo een groen vinkje, en dat is precies het soort valse geruststelling
+  // waar een controle onbruikbaar van wordt.
+  const doelPagina = beeld.paginas.find((p) => p.pad === doel);
+  if (doelPagina && !doelPagina.meetbaar) {
+    const weg = doelPagina.status !== null && doelPagina.status >= 400;
+    return {
+      uitslag: weg ? "vervallen" : "onmeetbaar",
+      bewijs: weg
+        ? `${doel} bestaat niet (meer): die pagina antwoordt met ${doelPagina.status}. Of hij uit het menu gehaald is valt daardoor niet vast te stellen.`
+        : `${doel} kon ik niet lezen: ${doelPagina.reden}. Over het menu valt dan niets te zeggen.`,
+      details: { ...details, doelStatus: doelPagina.status, doelReden: doelPagina.reden },
+    };
+  }
   if (!beeld.navigatieBetrouwbaar) {
     return {
       uitslag: "onmeetbaar",

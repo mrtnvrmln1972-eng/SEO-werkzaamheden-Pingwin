@@ -111,6 +111,20 @@ const uit = beoordeelUitNavigatie(uitMenu, "/hovenier/hovenier-etten-leur");
 check("uit het menu, wel in de tekst -> goed", uit.uitslag, "goed");
 check("bewijs noemt de link in de lopende tekst", String(uit.bewijs.includes("lopende tekst")), "true");
 
+// Gevonden op de echte site: een pagina die NIET BESTAAT stond nergens in het
+// menu en kreeg daarom een groen "staat goed". Dat leest als "de bouwer heeft
+// hem netjes weggehaald", terwijl de pagina simpelweg weg is. Een verzonnen pad
+// kreeg zo een vinkje. Nooit meer.
+const doelWeg = maakBeeld(
+  [pagina("/", "Home", []), pagina("/hovenier", "Hovenier", []), pagina("/contact", "Contact", []), pagina("/tuinontwerp", "Tuinontwerp", [])],
+  [{ pad: "/bestaat-niet", reden: "de pagina antwoordde met 404" }],
+);
+// De nagebootste kapotte pagina heeft status null; die telt als onmeetbaar.
+// Met een echte 404 wordt het "vervallen". Beide mogen NOOIT "goed" zijn.
+const wegOordeel = beoordeelUitNavigatie(doelWeg, "/bestaat-niet");
+check("niet-bestaande pagina krijgt GEEN groen vinkje", String(wegOordeel.uitslag !== "goed"), "true");
+check("niet-bestaande pagina -> onmeetbaar of vervallen", String(["onmeetbaar", "vervallen"].includes(wegOordeel.uitslag)), "true");
+
 const teWeinig = maakBeeld([pagina("/", "Home", [])]);
 check(
   "te weinig pagina's -> geen oordeel over het menu",
