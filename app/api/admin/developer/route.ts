@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { guardOwner } from "../../../../lib/admin-scope";
+import { guardDev } from "../../../../lib/admin-scope";
 import {
   getDeveloperTasks, saveDeveloperOrder, setDeveloperStatus,
   nieuweDevTaak, bewerkDevTaak, voegDevDocToe, verwijderDevDoc, verwijderDevTaak,
@@ -15,13 +15,13 @@ export const maxDuration = 120;
 const MAX_BYTES = 20 * 1024 * 1024;
 
 export async function GET(req: NextRequest) {
-  // Cross-client developer-overzicht: alleen de eigenaar.
-  const g = await guardOwner(req); if (!g.ok) return g.res;
+  // Cross-client developer-overzicht: de eigenaar en de developer zelf.
+  const g = await guardDev(req); if (!g.ok) return g.res;
   return NextResponse.json({ ok: true, tasks: await getDeveloperTasks() });
 }
 
 export async function POST(req: NextRequest) {
-  const g = await guardOwner(req); if (!g.ok) return g.res;
+  const g = await guardDev(req); if (!g.ok) return g.res;
 
   // Een bestand bij een taak (een zip met beelden, een pdf, een export). Het gaat
   // naar de Drive-map van de klant en hangt daarna als klikbare link aan de taak,

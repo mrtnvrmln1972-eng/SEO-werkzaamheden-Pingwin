@@ -27,6 +27,8 @@ export type TeamUser = {
   // Per-klant schrijfrecht: op deze slugs mag de gast ook schrijven als
   // can_edit uitstaat. Altijd een deelverzameling van allowedSlugs.
   editSlugs: string[];
+  // Mag het developer-overzicht openen (alle klanten, alleen de dev-taken).
+  canDev: boolean;
   email: string | null;
   createdAt: string | null;
 };
@@ -41,6 +43,7 @@ type TeamRow = {
   can_see_mail: boolean;
   can_edit: boolean;
   edit_slugs: string[] | null;
+  can_dev: boolean;
   email: string | null;
   created_at: string | null;
 };
@@ -55,6 +58,7 @@ function rowToUser(r: TeamRow): TeamUser {
     canSeeMail: !!r.can_see_mail,
     canEdit: !!r.can_edit,
     editSlugs: Array.isArray(r.edit_slugs) ? r.edit_slugs : [],
+    canDev: !!r.can_dev,
     email: r.email || null,
     createdAt: r.created_at,
   };
@@ -90,6 +94,7 @@ export type NewTeamUserInput = {
   canSeeMail: boolean;
   canEdit: boolean;
   editSlugs?: string[];
+  canDev?: boolean;
   email?: string;
 };
 
@@ -104,17 +109,18 @@ export async function createTeamUser(
   // Schrijfrecht kan alleen op klanten die de gast ook mag zien.
   const editSlugs = sanitizeSlugs(input.editSlugs || []).filter((s) => slugs.includes(s));
   const { rows } = await sql<TeamRow>`
-    INSERT INTO team_users (name, login_id, password_hash, role, allowed_slugs, can_see_mail, can_edit, edit_slugs, email)
+    INSERT INTO team_users (name, login_id, password_hash, role, allowed_slugs, can_see_mail, can_edit, edit_slugs, can_dev, email)
     VALUES (${input.name.trim() || null}, ${input.loginId.trim()}, ${passwordHash}, 'guest',
             ${slugs as unknown as string}, ${input.canSeeMail}, ${input.canEdit},
-            ${editSlugs as unknown as string}, ${(input.email || "").trim() || null})
+            ${editSlugs as unknown as string}, ${input.canDev === true},
+            ${(input.email || "").trim() || null})
     RETURNING *`;
   return { user: rowToUser(rows[0]), password };
 }
 
 export async function updateTeamUser(
   id: number,
-  patch: { name?: string | null; allowedSlugs?: string[]; canSeeMail?: boolean; canEdit?: boolean; editSlugs?: string[]; email?: string | null },
+  patch: { name?: string | null; allowedSlugs?: string[]; canSeeMail?: boolean; canEdit?: boolean; editSlugs?: string[]; canDev?: boolean; email?: string | null },
 ): Promise<boolean> {
   await ensureSchema();
   if (patch.name !== undefined) {
@@ -140,6 +146,9 @@ export async function updateTeamUser(
   }
   if (patch.canEdit !== undefined) {
     await sql`UPDATE team_users SET can_edit = ${patch.canEdit} WHERE id = ${id}`;
+  }
+  if (patch.canDev !== undefined) {
+    await sql`UPDATE team_users SET can_dev = ${patch.canDev} WHERE id = ${id}`;
   }
   if (patch.email !== undefined) {
     await sql`UPDATE team_users SET email = ${(patch.email || "").trim() || null} WHERE id = ${id}`;

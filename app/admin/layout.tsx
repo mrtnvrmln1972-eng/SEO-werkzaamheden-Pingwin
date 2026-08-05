@@ -17,7 +17,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <>
       {scope?.viewAs && <ViewAsBanner label={scope.viewAs.label} />}
-      {scope && !scope.canEdit && <ReadOnlyGuard editSlugs={scope.editSlugs ?? []} />}
+      {scope && !scope.canEdit && (
+        <ReadOnlyGuard
+          editSlugs={scope.editSlugs ?? []}
+          devOk={scope.canDev && scope.userId !== null}
+        />
+      )}
       {children}
     </>
   );

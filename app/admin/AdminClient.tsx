@@ -175,7 +175,7 @@ const EMPTY = {
   grp: "",
 };
 
-export default function AdminClient({ initialClients, isOwner = true, showGroups = false, showFinance = false }: { initialClients: ClientConfig[]; isOwner?: boolean; showGroups?: boolean; showFinance?: boolean }) {
+export default function AdminClient({ initialClients, isOwner = true, canDev = false, showGroups = false, showFinance = false }: { initialClients: ClientConfig[]; isOwner?: boolean; canDev?: boolean; showGroups?: boolean; showFinance?: boolean }) {
   const router = useRouter();
   const [clients, setClients] = useState<ClientConfig[]>(initialClients);
   const [form, setForm] = useState({ ...EMPTY });
@@ -528,7 +528,7 @@ export default function AdminClient({ initialClients, isOwner = true, showGroups
           {isOwner && (
             <a className="logout-btn" href="/admin/beheer" title="Klanten en teamgebruikers beheren">Beheer</a>
           )}
-          {isOwner && (
+          {(isOwner || canDev) && (
             <a className="logout-btn" href="/admin/developer" title="Alle developer-taken over alle klanten" style={{ marginLeft: 8 }}>Developer</a>
           )}
           {isOwner && (

@@ -126,6 +126,12 @@ async function init(): Promise<void> {
   // Per-klant schrijfrecht: gast mag schrijven op een klant als can_edit aanstaat
   // (alles) OF de slug in edit_slugs staat. Leeg = gedrag exact als voorheen.
   await sql`ALTER TABLE team_users ADD COLUMN IF NOT EXISTS edit_slugs TEXT[] NOT NULL DEFAULT '{}'`;
+  // Mag deze gast het developer-overzicht (alle klanten, alleen de dev-taken)?
+  // Standaard false: niemand krijgt er iets bij tenzij het hier wordt aangezet.
+  // Dit is bewust een eigen recht en geen klant-recht: de sitebouwer werkt over
+  // alle klanten heen, maar hoeft de rest van de cockpit (mail, KPI's, chat,
+  // financiën) niet te zien.
+  await sql`ALTER TABLE team_users ADD COLUMN IF NOT EXISTS can_dev BOOLEAN NOT NULL DEFAULT false`;
 
   // Klantgroep: leeg/null = eigen Pingwin-klant, 'mmc' = Multimedia Concepts
   // (tweede lijst in het Pingwin-dashboard; cockpit-only, geen login/sheet).

@@ -13,6 +13,13 @@ export default async function AdminPage() {
   const scope = await getScopeFromCookie(cookies().get(ADMIN_COOKIE)?.value, cookies().get(ADMIN_VIEWAS_COOKIE)?.value);
   if (!scope) redirect("/admin/login");
 
+  // De developer heeft hier niets te zoeken: zijn scherm is de takenlijst over
+  // alle klanten. Heeft hij geen enkele klant toegewezen gekregen, dan zou hij
+  // hier een leeg overzicht zien; dus sturen we hem meteen naar zijn eigen lijst.
+  if (!scope.isOwner && scope.canDev && (scope.allowedSlugs?.length ?? 0) === 0) {
+    redirect("/admin/developer");
+  }
+
   const all = await listClients();
   // Wie welke klant mag zien staat op één plek: canAccessSlug in lib/admin-scope.
   // Hier stond diezelfde regel nog een keer uitgeschreven, en die twee liepen
@@ -26,5 +33,5 @@ export default async function AdminPage() {
   const isNoc = (process.env.VERCEL_PROJECT_PRODUCTION_URL || "").includes("noc-seo-cockpit");
   // Financiën (Maartens privé-administratie) alleen tonen in de wereld waar
   // Moneybird ook echt gekoppeld is; in andere werelden bestaat de knop niet.
-  return <AdminClient initialClients={clients} isOwner={scope.isOwner} showGroups={!isNoc} showFinance={moneybirdConfigured()} />;
+  return <AdminClient initialClients={clients} isOwner={scope.isOwner} canDev={scope.canDev} showGroups={!isNoc} showFinance={moneybirdConfigured()} />;
 }

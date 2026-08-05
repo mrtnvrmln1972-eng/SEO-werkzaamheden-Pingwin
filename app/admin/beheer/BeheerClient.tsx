@@ -130,7 +130,7 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
 
   // ──────────────────────────────── TEAM ─────────────────────────────────
   const [showTeamForm, setShowTeamForm] = useState(false);
-  const [tForm, setTForm] = useState<{ name: string; loginId: string; email: string; allowedSlugs: string[]; canSeeMail: boolean; canEdit: boolean; editSlugs: string[] }>({
+  const [tForm, setTForm] = useState<{ name: string; loginId: string; email: string; allowedSlugs: string[]; canSeeMail: boolean; canEdit: boolean; editSlugs: string[]; canDev: boolean }>({
     name: "",
     loginId: "",
     email: "",
@@ -138,16 +138,18 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
     canSeeMail: false,
     canEdit: false,
     editSlugs: [],
+    canDev: false,
   });
   const [created, setCreated] = useState<{ name: string; loginId: string; password: string } | null>(null);
   const [editUserId, setEditUserId] = useState<number | null>(null);
-  const [uForm, setUForm] = useState<{ name: string; email: string; allowedSlugs: string[]; canSeeMail: boolean; canEdit: boolean; editSlugs: string[] }>({
+  const [uForm, setUForm] = useState<{ name: string; email: string; allowedSlugs: string[]; canSeeMail: boolean; canEdit: boolean; editSlugs: string[]; canDev: boolean }>({
     name: "",
     email: "",
     allowedSlugs: [],
     canSeeMail: false,
     canEdit: false,
     editSlugs: [],
+    canDev: false,
   });
   const [userPassword, setUserPassword] = useState<{ id: number; password: string } | null>(null);
 
@@ -169,7 +171,7 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
       const data = await res.json();
       if (data.ok) {
         setCreated({ name: tForm.name || tForm.loginId, loginId: data.user.loginId, password: data.password });
-        setTForm({ name: "", loginId: "", email: "", allowedSlugs: [], canSeeMail: false, canEdit: false, editSlugs: [] });
+        setTForm({ name: "", loginId: "", email: "", allowedSlugs: [], canSeeMail: false, canEdit: false, editSlugs: [], canDev: false });
         setShowTeamForm(false);
         router.refresh();
       } else flash(false, data.error || "Aanmaken mislukt.");
@@ -182,7 +184,7 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
 
   function openUser(u: TeamUser) {
     setEditUserId(u.id);
-    setUForm({ name: u.name || "", email: u.email || "", allowedSlugs: [...u.allowedSlugs], canSeeMail: u.canSeeMail, canEdit: u.canEdit, editSlugs: [...(u.editSlugs || [])] });
+    setUForm({ name: u.name || "", email: u.email || "", allowedSlugs: [...u.allowedSlugs], canSeeMail: u.canSeeMail, canEdit: u.canEdit, editSlugs: [...(u.editSlugs || [])], canDev: !!u.canDev });
     setUserPassword(null);
   }
 
@@ -193,7 +195,7 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
       const res = await fetch("/api/admin/team", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, name: uForm.name, email: uForm.email, allowedSlugs: uForm.allowedSlugs, canSeeMail: uForm.canSeeMail, canEdit: uForm.canEdit, editSlugs: uForm.editSlugs }),
+        body: JSON.stringify({ id, name: uForm.name, email: uForm.email, allowedSlugs: uForm.allowedSlugs, canSeeMail: uForm.canSeeMail, canEdit: uForm.canEdit, editSlugs: uForm.editSlugs, canDev: uForm.canDev }),
       });
       const data = await res.json();
       if (data.ok) {
@@ -463,7 +465,10 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
                   <td style={{ fontWeight: 600 }}>{u.name || <span className="muted">&mdash;</span>}</td>
                   <td>{u.loginId}</td>
                   <td>{u.role === "owner" ? "alles (eigenaar)" : slugsLabel(u.allowedSlugs)}</td>
-                  <td>{u.role === "owner" ? "alles" : u.canEdit ? "Mag overal wijzigen" : (u.editSlugs || []).length > 0 ? `Bewerken: ${(u.editSlugs || []).length} van ${u.allowedSlugs.length} klanten` : "Alleen lezen"}</td>
+                  <td>
+                    {u.role === "owner" ? "alles" : u.canEdit ? "Mag overal wijzigen" : (u.editSlugs || []).length > 0 ? `Bewerken: ${(u.editSlugs || []).length} van ${u.allowedSlugs.length} klanten` : "Alleen lezen"}
+                    {u.canDev && <div className="muted" style={{ fontSize: 12 }}>+ developer-taken</div>}
+                  </td>
                   <td style={{ whiteSpace: "nowrap" }}>
                     <button className="mini-btn" onClick={() => openUser(u)}>Bewerken</button>{" "}
                     <button className="mini-btn" onClick={() => viewAs(u.id)} disabled={busy} title="Open in een nieuw tabblad precies wat deze gast ziet">Bekijk als</button>{" "}
@@ -529,6 +534,17 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
                   Mag overal bewerken en uitvoeren (uit = per klant instellen met de knopjes hierboven)
                 </label>
               </div>
+              <div className="field" style={{ marginTop: 12 }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={uForm.canDev}
+                    onChange={(e) => setUForm({ ...uForm, canDev: e.target.checked })}
+                    style={{ width: "auto" }}
+                  />
+                  Developer-taken (alle klanten): eigen scherm met de taken die naar Dev staan, afvinken en terugkoppelen
+                </label>
+              </div>
               <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
                 <button type="submit" className="primary-btn" disabled={busy}>{busy ? "Opslaan…" : "Opslaan"}</button>
                 <button type="button" className="logout-btn" onClick={() => setEditUserId(null)}>Sluiten</button>
@@ -587,6 +603,17 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
                   style={{ width: "auto" }}
                 />
                 Mag overal bewerken en uitvoeren (uit = per klant instellen met de knopjes hierboven)
+              </label>
+            </div>
+              <div className="field" style={{ marginTop: 12 }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={tForm.canDev}
+                  onChange={(e) => setTForm({ ...tForm, canDev: e.target.checked })}
+                  style={{ width: "auto" }}
+                />
+                Developer-taken (alle klanten): eigen scherm met de taken die naar Dev staan, afvinken en terugkoppelen
               </label>
             </div>
             <button type="submit" className="primary-btn" style={{ marginTop: 16 }} disabled={busy}>{busy ? "Bezig…" : "Gast aanmaken"}</button>

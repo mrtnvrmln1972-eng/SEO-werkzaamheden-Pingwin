@@ -26,6 +26,10 @@ export type AdminScope = {
   // Per-klant schrijfrecht: op deze slugs mag de gast wél schrijven, ook als
   // canEdit uitstaat. null = geen beperking (owner of canEdit=true).
   editSlugs: string[] | null;
+  // Mag het developer-overzicht (/admin/developer) openen: alle klanten, maar
+  // alleen de taken die naar de developer zijn doorgezet. Owner altijd; een gast
+  // alleen als dat recht aanstaat.
+  canDev: boolean;
   // Gevuld als de eigenaar in de kijk-als-modus zit: de gast die hij nadoet.
   viewAs?: { id: number; label: string } | null;
 };
@@ -48,7 +52,7 @@ export async function getScopeFromCookie(
   // Let op: editSlugs mag hier niet null zijn, want null betekent juist
   // "geen beperking" in canEditSlug.
   if (principal.kind === "viewer") {
-    return { isOwner: false, userId: null, allowedSlugs: null, canSeeMail: true, canEdit: false, editSlugs: [] };
+    return { isOwner: false, userId: null, allowedSlugs: null, canSeeMail: true, canEdit: false, editSlugs: [], canDev: true };
   }
 
   if (principal.kind === "owner") {
@@ -65,11 +69,12 @@ export async function getScopeFromCookie(
           canSeeMail: false,
           canEdit: guest.canEdit,
           editSlugs: guest.canEdit ? null : guest.editSlugs,
+          canDev: guest.canDev,
           viewAs: { id: guest.id, label: guest.name || guest.loginId },
         };
       }
     }
-    return { isOwner: true, userId: null, allowedSlugs: null, canSeeMail: true, canEdit: true, editSlugs: null };
+    return { isOwner: true, userId: null, allowedSlugs: null, canSeeMail: true, canEdit: true, editSlugs: null, canDev: true };
   }
 
   // Teamgebruiker: lees de rechten uit de database. Bestaat de rij niet meer
@@ -77,7 +82,7 @@ export async function getScopeFromCookie(
   const user = await getTeamUserById(principal.userId);
   if (!user) return null;
   if (user.role === "owner") {
-    return { isOwner: true, userId: user.id, allowedSlugs: null, canSeeMail: true, canEdit: true, editSlugs: null };
+    return { isOwner: true, userId: user.id, allowedSlugs: null, canSeeMail: true, canEdit: true, editSlugs: null, canDev: true };
   }
   return {
     isOwner: false,
@@ -87,6 +92,7 @@ export async function getScopeFromCookie(
     canSeeMail: false,
     canEdit: user.canEdit,
     editSlugs: user.canEdit ? null : user.editSlugs,
+    canDev: user.canDev,
   };
 }
 
@@ -147,6 +153,28 @@ export async function guardSlug(
   // Klant-context voor de verbruik-meting: elke Ahrefs-call verderop in deze
   // request weet zo bij welke klant hij hoort. Eén regel dekt alle routes.
   setAhrefsContext({ slug: (slug || "").trim().toLowerCase() });
+  return { ok: true, scope };
+}
+
+// Poort voor het developer-overzicht (alle klanten, alleen de dev-taken).
+// Lezen mag de eigenaar en iedere gast met het dev-recht. Schrijven (afvinken,
+// terugkoppeling, een taak bijstellen) mag de eigenaar en een ECHTE gast met dat
+// recht; de meekijk-sessie (userId null) blijft alleen-lezen, net als overal.
+export async function guardDev(
+  req: NextRequest,
+): Promise<{ ok: true; scope: AdminScope } | { ok: false; res: NextResponse }> {
+  const scope = await getAdminScope(req);
+  if (!scope) {
+    return { ok: false, res: NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 }) };
+  }
+  if (!scope.isOwner && !scope.canDev) {
+    return { ok: false, res: NextResponse.json({ ok: false, error: "Geen toegang tot het developer-overzicht." }, { status: 403 }) };
+  }
+  const method = (req.method || "GET").toUpperCase();
+  const magSchrijven = scope.isOwner || (scope.canDev && scope.userId !== null);
+  if (!magSchrijven && method !== "GET" && method !== "HEAD") {
+    return { ok: false, res: NextResponse.json({ ok: false, error: "Je kunt hier alleen meekijken." }, { status: 403 }) };
+  }
   return { ok: true, scope };
 }
 
