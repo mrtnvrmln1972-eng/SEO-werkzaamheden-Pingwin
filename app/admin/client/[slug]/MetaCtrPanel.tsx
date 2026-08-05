@@ -513,6 +513,20 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
                           <MetaChecklist kind="desc" text={r.proposal.curDesc} keyword={r.keyword} other={r.proposal.curTitle} />
                         </div>
                       </div>
+                      {/* Ook als er al een voorstel ligt: staat er een meta in het
+                          copydocument, dan is dat de tekst die bij de nieuwe pagina hoort.
+                          Eén tekst per zoekresultaat, niet twee die om voorrang strijden. */}
+                      {r.copydoc && !r.copydoc.live && (
+                        <div className="org-actions" style={{ alignItems: "center", flexWrap: "wrap" }}>
+                          <span className="wz-item-sub" style={{ color: "var(--dark)" }}>
+                            Er staat ook een meta in het copydocument van deze pagina, met dezelfde regels geschreven.
+                          </span>
+                          <button type="button" className="ghost-btn small" onClick={() => void neemCopydoc(r)} disabled={busy === `${r.url}|copydoc`}
+                            title="Vervang dit voorstel door de tekst uit het copydocument en keur hem meteen goed.">
+                            {busy === `${r.url}|copydoc` ? "Overnemen…" : "Neem die over"}
+                          </button>
+                        </div>
+                      )}
                       <div>
                         <div className="wz-block-head">Voorstel (aanpasbaar)</div>
                         <div className="wz-line added">

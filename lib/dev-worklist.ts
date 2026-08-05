@@ -656,7 +656,28 @@ export async function getWorklistData(slug: string): Promise<WorklistData> {
   // Werklijsten van vóór de indeling missen soort/src/paginas. Dat repareren we
   // bij het LEZEN, zodat bestaande lijsten meteen goed in beeld staan zonder
   // eerst opnieuw te hoeven draaien (regel: met terugwerkende kracht).
-  const pages = ruw.map((p) => ({ ...p, alts: (p.alts || []).map((a) => verrijkAlt(a, ruwDubbel, gemeten, soorten)) }));
+  //
+  // Datzelfde geldt voor de meta's, en dat is hier belangrijker dan het lijkt.
+  // In opgeslagen lijsten staan nog de teksten die de werklijst vroeger zelf
+  // schreef, zonder goedkeuring. Die mogen niet meer in beeld komen, ook niet
+  // tot iemand de lijst opnieuw draait. Daarom lezen we de meta's bij het LEZEN
+  // uit Meta & CTR: wat daar goedgekeurd is en nog niet live staat, is de tekst;
+  // al het andere valt weg. Wordt een meta daar doorgevoerd of ingetrokken, dan
+  // verdwijnt hij hier vanzelf.
+  const goedgekeurd = await goedgekeurdeMetas(slug).catch(() => new Map<string, { title: string; desc: string }>());
+  const standVanVeld = (nieuw: string, huidig: string, kind: "meta_title" | "meta_description", copyDoc: string): MetaStand =>
+    nieuw ? "voorstel" : !(huidig ? metaHardIssues(kind, huidig).length : 1) ? "goed" : copyDoc ? "copydoc" : "wacht";
+  const pages = ruw.map((p) => {
+    const g = goedgekeurd.get(urlKey(p.url)) || { title: "", desc: "" };
+    return {
+      ...p,
+      newTitle: g.title,
+      newDesc: g.desc,
+      titleStand: standVanVeld(g.title, p.curTitle, "meta_title", p.copyDoc),
+      descStand: standVanVeld(g.desc, p.curDesc, "meta_description", p.copyDoc),
+      alts: (p.alts || []).map((a) => verrijkAlt(a, ruwDubbel, gemeten, soorten)),
+    };
+  });
 
   // De afbeeldingenlijst. Draait deze klant nog op een lijst van vóór de omslag,
   // dan bouwen we hem hier alsnog op uit de losse alt-regels per pagina: elke
