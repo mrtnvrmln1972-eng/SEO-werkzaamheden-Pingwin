@@ -538,6 +538,9 @@ tbody td:last-child { text-align: center; }
 .prio-lens-aandacht { border-left-color: var(--orange); }
 .prio-lens-kritiek { border-left-color: var(--red); }
 .prio-lens-niet-aangesloten { background: var(--gray-light); opacity: 0.75; }
+/* Bron bestaat, maar is nooit gedraaid: geen grijs (dat leest als "niet van
+   toepassing") maar een oranje rand, want dit is werk dat klaarligt. */
+.prio-lens-niet-gedraaid { border-left-color: var(--orange-dark); background: var(--brand-orange-faint); }
 
 .prio-filters { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; margin-bottom: var(--s-3); }
 .chip-aan { background: var(--orange); color: var(--white); border-color: var(--orange); }

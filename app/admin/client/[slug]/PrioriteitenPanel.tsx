@@ -343,7 +343,10 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
 
           {/* Scorecard: welke brillen keken mee, en welke nog niet. */}
           <button type="button" className="prio-klap" onClick={() => setOpenLenzen((v) => !v)}>
-            {openLenzen ? "▾" : "▸"} Waar is naar gekeken ({res.lenzen.filter((l) => l.status !== "niet-aangesloten").length} van de {res.lenzen.length} brillen aangesloten)
+            {/* Bewust "keken mee" en niet "aangesloten": een bril waarvan de
+                analyse nooit gedraaid is, is wél aangesloten maar heeft niet
+                gekeken. Dat als aangesloten tellen leest als "gecontroleerd". */}
+            {openLenzen ? "▾" : "▸"} Waar is naar gekeken ({res.lenzen.filter((l) => l.status !== "niet-aangesloten" && l.status !== "niet-gedraaid").length} van de {res.lenzen.length} brillen keken mee)
           </button>
           {openLenzen && (
             <div className="prio-lenzen">

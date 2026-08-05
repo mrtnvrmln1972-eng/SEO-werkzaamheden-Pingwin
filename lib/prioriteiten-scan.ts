@@ -38,7 +38,11 @@ export const SETTING_PRIO_CRON_TIK = "prio_cron_laatste_tik";
 export type Lens = {
   sleutel: string;
   naam: string;
-  status: "pass" | "aandacht" | "kritiek" | "niet-aangesloten";
+  // "pass" betekent: gekeken, niets gevonden. "niet-gedraaid" betekent: de
+  // onderliggende analyse bestaat wel, maar is voor deze klant nog nooit gedraaid,
+  // dus er is niet gekeken. Dat verschil moet zichtbaar zijn, anders leest een
+  // lege lijst als "hier is niets te halen" terwijl niemand heeft gekeken.
+  status: "pass" | "aandacht" | "kritiek" | "niet-aangesloten" | "niet-gedraaid";
   toelichting: string;
   gevonden: number;
 };
@@ -402,7 +406,11 @@ async function stapVers(slug: string, propositie: string, kern: string[], startI
     // pagina die op twintig zoekwoorden samen 200.000 keer verschijnt werd zo één
     // zoekwoord van 200.000, en dat schoof onzin naar de top van de lijst.
     const kwVertoningen = p.bestImpressions || 0;
-    if (kwVertoningen < 300) continue;              // 100/maand over 90 dagen
+    // 100 over 90 dagen, dus ruim 30 vertoningen per maand op dat ene zoekwoord.
+    // Stond op 300, maar die drempel gold eerst voor de vertoningen van een héle
+    // pagina; per zoekwoord is hij veel zwaarder en viel een lokale klant er
+    // doorheen (bij een hovenier haalt bijna geen enkel zoekwoord dat los).
+    if (kwVertoningen < 100) continue;
     if (isMerkterm(kw, client?.name || "", domein)) continue;
     const sleutel = `${kw}|${pad(p.url)}`;
     if (gezien.has(sleutel)) continue;
@@ -497,10 +505,40 @@ const NIET_AANGESLOTEN: [string, string][] = [
   ["backlinks", "Kapotte en verdwenen backlinks"],
 ];
 
-function bouwLenzen(regels: Bevinding[]): Lens[] {
+/**
+ * Drie lenzen lezen niet zelf, maar halen hun bevindingen uit een analyse die
+ * elders in het dashboard draait. Is die voor deze klant nooit gedraaid, dan komt
+ * er niets uit, en dat is iets ánders dan "niets gevonden". Zonder dit onderscheid
+ * meldt de scan "pass, niets dat aandacht vraagt" over een bril die dicht zat.
+ */
+const LENS_BRON: Record<string, string> = {
+  cannibalisatie: "de opruimanalyse, op het tabje Opruimen",
+  interne_links: "de interne-link-analyse, op het tabje Interne links",
+  content_gap: "de kansenlijst, op het tabje Pagina's",
+};
+async function bronnenGedraaid(slug: string): Promise<Set<string>> {
+  const [canni, links, gaps] = await Promise.all([
+    getCannibalAnalysis(slug).catch(() => null),
+    getInternalLinksState(slug).catch(() => null),
+    getOpportunities(slug).catch(() => []),
+  ]);
+  const uit = new Set<string>();
+  if (canni?.result?.clusters?.length) uit.add("cannibalisatie");
+  if (links?.result?.doelpaginas?.length) uit.add("interne_links");
+  if (gaps.length) uit.add("content_gap");
+  return uit;
+}
+
+function bouwLenzen(regels: Bevinding[], gedraaid: Set<string>): Lens[] {
   const lenzen: Lens[] = LENS_NAMEN.map(([sleutel, naam]) => {
     const eigen = regels.filter((r) => r.type === sleutel && r.tier !== "SKIP");
     const urgent = eigen.filter((r) => r.tier === "1").length;
+    if (!eigen.length && LENS_BRON[sleutel] && !gedraaid.has(sleutel)) {
+      return {
+        sleutel, naam, status: "niet-gedraaid" as const, gevonden: 0,
+        toelichting: `Hier is niet gekeken: ${LENS_BRON[sleutel]} is voor deze klant nog niet gedraaid. Draai die eerst, dan telt deze bril mee.`,
+      };
+    }
     const status: Lens["status"] = urgent > 0 ? "kritiek" : eigen.length > 0 ? "aandacht" : "pass";
     return {
       sleutel, naam, status, gevonden: eigen.length,
@@ -589,7 +627,7 @@ export async function runPrioriteitenScan(slug: string): Promise<void> {
       samenvatting: bouwSamenvatting(bevindingen, uplift, delta),
       propositie,
       verwachteKlikkenPerMaand: uplift,
-      lenzen: bouwLenzen(bevindingen),
+      lenzen: bouwLenzen(bevindingen, await bronnenGedraaid(slug)),
       regels,
       delta,
       generatedAt: new Date().toISOString(),
