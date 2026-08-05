@@ -4403,3 +4403,47 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .tvk-opnieuw { margin-left: var(--s-2); border: 1px solid var(--card-border); background: #fff; color: var(--orange-dark); font-size: var(--fs-xs); font-weight: 700; padding: 1px var(--s-2); border-radius: var(--r-full); cursor: pointer; }
 .tvk-opnieuw:hover { background: var(--orange-light); border-color: var(--orange); }
 .tvk-opnieuw:disabled { opacity: 0.6; cursor: default; }
+
+/* ═══ HET WEEKBORD (voorbeeldscherm) ═══
+   Eén regel per taak in plaats van een lompe kaart: wie, wat, de zeven fases als
+   stipjes en de volgende stap. Zo zie je in één blik waar het werk hangt. */
+.wb-wrap { max-width: 1100px; margin: 0 auto; padding: var(--s-6) var(--s-4) var(--s-12); }
+.wb-kop { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s-4); margin-bottom: var(--s-4); }
+.wb-titel { font-size: var(--fs-xl); line-height: var(--lh-xl); font-weight: 800; color: var(--dark); }
+.wb-sub { font-size: var(--fs-sm); line-height: var(--lh-sm); }
+.wb-leeg { padding: var(--s-6) 0; font-size: var(--fs-sm); }
+.wb-stand { background: var(--orange-light); border: 1px solid var(--card-border); border-radius: var(--r-md); padding: var(--s-3) var(--s-4); font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--dark); margin-bottom: var(--s-5); }
+
+.wb-week { margin-bottom: var(--s-5); }
+.wb-weekkop { display: flex; align-items: baseline; gap: var(--s-3); padding-bottom: var(--s-2); border-bottom: 2px solid var(--card-border); margin-bottom: var(--s-1); }
+.wb-nu .wb-weekkop { border-bottom-color: var(--orange); }
+.wb-weeknr { font-size: var(--fs-md); font-weight: 800; color: var(--dark); }
+.wb-weekdatum { font-size: var(--fs-xs); color: var(--gray); }
+.wb-nulabel { font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #fff; background: var(--orange); border-radius: var(--r-full); padding: 1px 8px; }
+.wb-weeksom { margin-left: auto; font-size: var(--fs-xs); }
+
+.wb-rij { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-2) var(--s-2); border-bottom: 1px solid var(--card-border); cursor: pointer; }
+.wb-rij:hover { background: #FFFAF7; }
+.wb-rij-open { background: var(--orange-light); }
+.wb-wie { flex: 0 0 auto; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px; padding: 2px 7px; border-radius: var(--r-full); }
+.wb-wie.wie-dev { background: #E8F0FE; color: #1A56B0; }
+.wb-wie.wie-seo { background: var(--orange-light); color: var(--orange-dark); }
+.wb-wat { flex: 1 1 auto; min-width: 0; display: flex; align-items: baseline; gap: var(--s-2); overflow: hidden; }
+.wb-pad { font-weight: 700; font-size: var(--fs-sm); color: var(--dark); white-space: nowrap; }
+.wb-taak { font-size: var(--fs-xs); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wb-taak-vol { font-size: var(--fs-sm); color: var(--dark); }
+.wb-nieuw { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #b3261e; background: #fdf3f2; border-radius: var(--r-full); padding: 1px 6px; }
+
+/* De fase-balk: zeven stipjes, altijd even breed zodat de kolom naar beneden leesbaar is. */
+.wb-rail { flex: 0 0 auto; display: inline-flex; gap: 4px; }
+.wb-stip { width: 11px; height: 11px; border-radius: 50%; background: #E6DED6; display: inline-block; }
+.wb-stip.af { background: #1c7a3f; }
+.wb-stip.nu { background: var(--orange); box-shadow: 0 0 0 3px var(--orange-light); }
+.wb-next { flex: 0 0 130px; text-align: right; font-size: var(--fs-xs); color: var(--gray); white-space: nowrap; }
+
+.wb-detail { padding: var(--s-3) var(--s-4) var(--s-4) 46px; background: #FFFDFB; border-bottom: 1px solid var(--card-border); font-size: var(--fs-sm); line-height: var(--lh-sm); }
+.wb-detail-knoppen { display: flex; gap: var(--s-2); margin-top: var(--s-3); }
+.wb-los { margin-top: var(--s-3); }
+.wb-los-kop { font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray); margin-bottom: var(--s-1); }
+.wb-rij-los { cursor: default; }
+.wb-voet { font-size: var(--fs-xs); line-height: var(--lh-sm); margin-top: var(--s-5); }
