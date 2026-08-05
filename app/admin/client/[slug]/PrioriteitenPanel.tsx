@@ -60,6 +60,19 @@ const SORT_KOP: { veld: SortVeld; label: string }[] = [
   { veld: "extra", label: "Extra bezoekers" },
 ];
 
+/**
+ * De brillen die hun punten uit een andere analyse halen, met de knop om die
+ * analyse hier meteen te starten. Zonder dit moet je zelf bedenken welk tabje je
+ * nodig hebt, ernaartoe klikken, daar de analyse starten en weer terugkomen; en
+ * de melding dát er iets ontbreekt zat tot nu toe weggeklapt, dus in de praktijk
+ * zag je alleen een korte lijst en geen reden.
+ */
+const ONTBREKENDE_BRON: Record<string, { knop: string; url: string; achtergrond: boolean }> = {
+  cannibalisatie: { knop: "Opruimanalyse draaien", url: "/api/admin/cannibal-redirect", achtergrond: true },
+  interne_links: { knop: "Interne-link-analyse draaien", url: "/api/admin/internal-links", achtergrond: true },
+  content_gap: { knop: "Kansenlijst ophalen", url: "/api/admin/keyword-opportunities", achtergrond: false },
+};
+
 function datum(s?: string | null): string {
   if (!s) return "";
   return new Date(s).toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" });
@@ -89,6 +102,8 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
   const [openGroep, setOpenGroep] = useState<Record<string, boolean>>({});
   const [sortVeld, setSortVeld] = useState<SortVeld>("extra");
   const [sortAf, setSortAf] = useState(true);
+  const [bronBezig, setBronBezig] = useState<string | null>(null);
+  const [bronMsg, setBronMsg] = useState<Record<string, string>>({});
 
   async function load() {
     try {
@@ -130,6 +145,30 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
       }).then((r) => r.json());
       setPropMsg(d.ok ? "Bewaard. Vanaf de volgende scan telt deze zin mee." : (d.error || "Bewaren lukte niet."));
     } catch { setPropMsg("Bewaren lukte niet."); }
+  }
+
+  /** Start de ontbrekende analyse hier, zonder eerst naar het andere tabje te gaan. */
+  async function draaiBron(sleutel: string) {
+    const b = ONTBREKENDE_BRON[sleutel];
+    if (!b || bronBezig) return;
+    setBronBezig(sleutel);
+    setBronMsg((m) => ({ ...m, [sleutel]: "" }));
+    try {
+      const d = await fetch(b.url, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug }),
+      }).then((r) => r.json());
+      setBronMsg((m) => ({
+        ...m,
+        [sleutel]: d?.ok
+          ? (b.achtergrond
+            ? "Draait nu, dat duurt een paar minuten. Klik daarna bovenaan op “Opnieuw scannen”."
+            : `Klaar, ${d.total ?? 0} kansen opgehaald. Klik nu bovenaan op “Opnieuw scannen”.`)
+          : (d?.error || "Starten lukte niet."),
+      }));
+    } catch {
+      setBronMsg((m) => ({ ...m, [sleutel]: "Starten lukte niet." }));
+    } finally { setBronBezig(null); }
   }
 
   // Elk pad wordt een klikbare link naar de live pagina (vaste huisregel: nooit
@@ -241,6 +280,7 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
     else { setSortVeld(veld); setSortAf(true); }
   }
 
+  const ontbrekend = (res?.lenzen || []).filter((l) => l.status === "niet-gedraaid" && ONTBREKENDE_BRON[l.sleutel]);
   const skips = regels.filter((r) => r.tier === "SKIP");
   const propositieLeeg = !(st?.propositie?.zin || "").trim();
 
@@ -340,6 +380,34 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
             {res.delta?.vorigeDatum && <> · vorige scan {datum(res.delta.vorigeDatum)}</>}
             {st?.laatsteAutoRonde && <> · draait vanzelf eens per maand</>}
           </div>
+
+          {/* Wat er níet is gekeken hoort niet weggeklapt te staan: dat is precies
+              de reden dat de lijst kort is. Dus in het zicht, met de startknop erbij. */}
+          {ontbrekend.length > 0 && (
+            <div className="prio-ontbreekt">
+              <div className="prio-ontbreekt-kop">
+                {ontbrekend.length === 1
+                  ? "Eén onderdeel heeft niet meegekeken"
+                  : `${ontbrekend.length} onderdelen hebben niet meegekeken`}
+              </div>
+              <p className="muted prio-hint">
+                Deze halen hun punten uit een analyse die voor deze klant nog niet gedraaid is.
+                Er is dus niets gevonden omdat er niet gekeken is, niet omdat er niets te halen valt.
+                Start ze hier en scan daarna opnieuw.
+              </p>
+              {ontbrekend.map((l) => (
+                <div key={l.sleutel} className="prio-ontbreekt-rij">
+                  <span className="prio-ontbreekt-naam">{l.naam}</span>
+                  <button type="button" className="ghost-btn small"
+                    disabled={bronBezig === l.sleutel}
+                    onClick={() => draaiBron(l.sleutel)}>
+                    {bronBezig === l.sleutel ? "Starten…" : ONTBREKENDE_BRON[l.sleutel].knop}
+                  </button>
+                  {bronMsg[l.sleutel] && <span className="prio-ontbreekt-msg">{bronMsg[l.sleutel]}</span>}
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Scorecard: welke brillen keken mee, en welke nog niet. */}
           <button type="button" className="prio-klap" onClick={() => setOpenLenzen((v) => !v)}>

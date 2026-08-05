@@ -594,6 +594,21 @@ tbody td:last-child { text-align: center; }
   border-radius: var(--r-full); border: 1px solid var(--brand-teal); color: var(--brand-teal);
   font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
 }
+/* "Hier is niet gekeken", in het zicht en met de startknop erbij. */
+.prio-ontbreekt {
+  border: 1px solid var(--orange); border-left-width: 3px; border-radius: var(--r-md);
+  background: var(--brand-orange-faint); padding: var(--s-4); margin-bottom: var(--s-4);
+}
+.prio-ontbreekt-kop {
+  font-weight: 700; font-size: var(--fs-base); line-height: var(--lh-base); color: var(--orange-dark);
+}
+.prio-ontbreekt-rij {
+  display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap;
+  padding: var(--s-2) 0; border-top: 1px solid var(--border);
+}
+.prio-ontbreekt-naam { font-weight: 600; color: var(--dark); min-width: 22ch; }
+.prio-ontbreekt-msg { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray); }
+
 .prio-skip { margin-bottom: var(--s-4); }
 
 /* De balk per soort werk. Zelfde vorm als de groepkop in het opruimscherm, zodat
