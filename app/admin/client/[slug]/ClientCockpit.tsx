@@ -455,7 +455,7 @@ export default function ClientCockpit({
               // de tabbalk exact zoals hij was.
               ...(isLead ? [["lead", "Lead", "De werkplek voor deze lead: gesprek, dossier en documenten"] as [Tab, string, string]] : []),
               ["werkzaamheden", "Taken", "Overview: je prioriteiten, de chats en de weekplanning"],
-              ["paginas", "Pagina’s", ""],
+              ["paginas", "Pagina’s", "Elke pagina van deze site: hoe hij scoort, wat eraan gedaan is en wat er nog moet"],
             ] as [Tab, string, string][]).map(([id, label, title]) => (
               // Echte link (href) zodat cmd/middel-klik in een nieuw tabblad opent;
               // gewone klik wisselt client-side van tab.
@@ -495,7 +495,7 @@ export default function ClientCockpit({
             />
 
             {([
-              ["resultaten", "KPI’s", ""],
+              ["resultaten", "KPI’s", "Hoe deze klant ervoor staat: posities, vertoningen, klikken en de ontwikkeling daarvan"],
               ["developer", "Developer", "Alle developer-taken over alle klanten"],
             ] as [Tab, string, string][]).map(([id, label, title]) => (
               <a
