@@ -1373,6 +1373,15 @@ button.ck-collapse-head {
 .email-head-main { min-width: 0; flex: 1 1 auto; }
 .email-head-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
 .email-caret { font-size: 10px; color: var(--gray); }
+/* Mail uit het overzicht halen: klein kruisje, bevestigen in de rij zelf. */
+.email-del { border: 0; background: none; cursor: pointer; color: #9A9086; font-size: var(--fs-md); line-height: 1; padding: 2px 4px; border-radius: var(--r-sm); }
+.email-del:hover { color: var(--accent); background: var(--orange-light); }
+.email-weg-vraag { display: inline-flex; align-items: center; gap: var(--s-2); font-size: var(--fs-xs); color: var(--gray); }
+.email-weg-ja, .email-weg-nee { border: 1px solid var(--card-border); background: #fff; cursor: pointer; font-size: var(--fs-xs); font-weight: 700; padding: 2px 8px; border-radius: var(--r-sm); }
+.email-weg-ja { color: #B03A2E; border-color: #E6C3BD; }
+.email-weg-ja:hover { background: #FBEDEA; }
+.email-weg-nee { color: var(--gray); }
+.email-weg-nee:hover { background: var(--orange-light); }
 .ql-mini { font-size: 11px !important; padding: 4px 10px !important; }
 .email-top { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--gray); margin-bottom: 3px; }
 .email-dir { font-size: 10px; font-weight: 700; text-transform: uppercase; padding: 1px 6px; border-radius: 10px; }

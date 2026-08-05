@@ -140,6 +140,7 @@ type GraphMessage = {
   conversationId?: string | null;
   webLink?: string | null;
   hasAttachments?: boolean | null;
+  isDraft?: boolean | null;
 };
 
 export type LiveEmail = {
@@ -212,11 +213,16 @@ export async function msSearchMail(searchQuery: string, account: string, limit =
   const url =
     `https://graph.microsoft.com/v1.0/me/messages?$search=${encodeURIComponent(searchQuery)}` +
     `&$top=${limit}` +
-    `&$select=id,subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,body,conversationId,webLink,hasAttachments`;
+    `&$select=id,subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,body,conversationId,webLink,hasAttachments,isDraft`;
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}`, ConsistencyLevel: "eventual" } });
   if (!res.ok) return null;
   const j = (await res.json()) as { value?: GraphMessage[] };
-  const items: GraphMessage[] = Array.isArray(j.value) ? j.value : [];
+  // Concepten horen hier nooit in. Superhuman schreef een tijdlang automatisch
+  // AI-concepten bij binnenkomende mail; die stonden als losse berichten in de
+  // mailbox en dus ook in "Laatste mails". Een concept is per definitie niet
+  // verstuurd en dus geen correspondentie: filteren bij de bron, zodat het in
+  // het hele dashboard weg is (mails, chat, stand van zaken, pagina-dossiers).
+  const items: GraphMessage[] = (Array.isArray(j.value) ? j.value : []).filter((m) => !m.isDraft);
   const shQuery = superhumanQuery || searchQuery;
   const mails: LiveEmail[] = items.map((m) => graphNaarMail(m, account, shQuery));
   mails.sort((a, b) => (b.receivedAt || "").localeCompare(a.receivedAt || ""));
@@ -267,11 +273,11 @@ export async function msGetThread(conversationId: string, account: string, limit
   const url =
     `https://graph.microsoft.com/v1.0/me/messages?$filter=${encodeURIComponent(filter)}` +
     `&$top=${limit}` +
-    `&$select=id,subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,body,conversationId,webLink,hasAttachments`;
+    `&$select=id,subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,body,conversationId,webLink,hasAttachments,isDraft`;
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
   if (!res.ok) return null;
   const j = (await res.json()) as { value?: GraphMessage[] };
-  const items: GraphMessage[] = Array.isArray(j.value) ? j.value : [];
+  const items: GraphMessage[] = (Array.isArray(j.value) ? j.value : []).filter((m) => !m.isDraft);  // concepten horen niet in een gesprek
   const mails = items.map((m) => graphNaarMail(m, account, superhumanQuery || conversationId));
   mails.sort((a, b) => (a.receivedAt || "").localeCompare(b.receivedAt || ""));  // oudste eerst: het verhaal op volgorde
   return mails;

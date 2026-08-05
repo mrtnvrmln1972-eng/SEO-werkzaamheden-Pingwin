@@ -197,6 +197,17 @@ async function init(): Promise<void> {
   await sql`ALTER TABLE client_emails ADD COLUMN IF NOT EXISTS superhuman_link TEXT`;
   await sql`ALTER TABLE client_emails ADD COLUMN IF NOT EXISTS body_html TEXT`;
 
+  // Weggegooide mails: de lijst "Laatste mails" komt live uit de mailbox, dus
+  // wegklikken kan alleen door te onthouden wát er weg moest. Dit raakt de
+  // mailbox zelf niet; het bericht blijft gewoon in Outlook/Superhuman staan.
+  await sql`
+    CREATE TABLE IF NOT EXISTS client_mail_hidden (
+      client_slug TEXT NOT NULL,
+      message_id  TEXT NOT NULL,
+      hidden_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (client_slug, message_id)
+    )`;
+
   // Actuele stand van zaken per klant: een set kaartjes (titel/kleur/bullets),
   // opgeslagen als JSON-tekst. Wordt via de brug bijgewerkt op basis van de mails.
   await sql`

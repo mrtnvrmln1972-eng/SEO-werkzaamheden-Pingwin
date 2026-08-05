@@ -88,6 +88,30 @@ function fromMatchesAllowlist(fromAddress: string | null, entries: string[]): bo
   return entries.some((e) => (e.includes("@") ? from === e : dom === e || dom.endsWith("." + e)));
 }
 
+// ── Weggegooide mails ──
+// "Laatste mails" toont live mail uit de mailbox. Wegklikken kan daar dus niet
+// door een rij te verwijderen; we onthouden welke berichten weg moeten en laten
+// ze overal weg. De mail zelf blijft in Outlook/Superhuman gewoon staan.
+export async function getVerborgenMails(slug: string): Promise<string[]> {
+  await ensureSchema();
+  const { rows } = await sql`SELECT message_id FROM client_mail_hidden WHERE client_slug = ${slug}`;
+  return rows.map((r) => String(r.message_id));
+}
+
+export async function verbergMail(slug: string, messageId: string): Promise<void> {
+  await ensureSchema();
+  await sql`
+    INSERT INTO client_mail_hidden (client_slug, message_id) VALUES (${slug}, ${messageId})
+    ON CONFLICT (client_slug, message_id) DO NOTHING`;
+  // Ook uit de opgeslagen kopie halen, anders komt hij via de snapshots terug.
+  await sql`DELETE FROM client_emails WHERE client_slug = ${slug} AND id = ${messageId}`;
+}
+
+export async function toonMailWeer(slug: string, messageId: string): Promise<void> {
+  await ensureSchema();
+  await sql`DELETE FROM client_mail_hidden WHERE client_slug = ${slug} AND message_id = ${messageId}`;
+}
+
 export async function getEmails(slug: string, limit = 50): Promise<EmailSnapshot[]> {
   await ensureSchema();
   const { rows } = await sql`
@@ -98,9 +122,11 @@ export async function getEmails(slug: string, limit = 50): Promise<EmailSnapshot
   // (uitgaande mail van onszelf blijft altijd staan). Leeg = alles tonen.
   const { rows: cRows } = await sql`SELECT mail_allowlist FROM clients WHERE slug = ${slug} LIMIT 1`;
   const entries = parseAllowlist((cRows[0]?.mail_allowlist as string) || "");
-  const filtered = entries.length
+  const weg = new Set(await getVerborgenMails(slug));
+  const filtered = (entries.length
     ? rows.filter((r) => r.direction === "out" || fromMatchesAllowlist(r.from_address as string, entries))
-    : rows;
+    : rows
+  ).filter((r) => !weg.has(String(r.id)));
   return filtered.map((r) => ({
     id: r.id,
     subject: r.subject,

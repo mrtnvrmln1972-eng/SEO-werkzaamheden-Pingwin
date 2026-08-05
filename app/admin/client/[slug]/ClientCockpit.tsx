@@ -375,6 +375,18 @@ export default function ClientCockpit({
     } catch { setVraagFout("Zoeken mislukte; probeer het nog een keer."); }
     finally { setVraagBusy(false); }
   }
+  // Een mail uit dit overzicht weghalen. Bevestigen gebeurt in de rij zelf
+  // (geen browser-popup), en de rij verdwijnt meteen: hij komt ook na verversen
+  // niet terug. De mail zelf blijft gewoon in de mailbox staan.
+  const [mailWeg, setMailWeg] = useState<string | null>(null);
+  async function verwijderMail(id: string) {
+    setMailWeg(null);
+    setEmails((lijst) => lijst.filter((m) => m.id !== id));
+    try {
+      await fetch(`/api/admin/mail?slug=${encodeURIComponent(client.slug)}&id=${encodeURIComponent(id)}`, { method: "DELETE" });
+    } catch { /* de rij is al weg; bij verversen komt hij hooguit terug */ }
+  }
+
   const getoondeEmails = vraagIds.length
     ? [...emails].sort((a, b) => {
         const ra = vraagIds.indexOf(a.id), rb = vraagIds.indexOf(b.id);
@@ -721,6 +733,20 @@ export default function ClientCockpit({
                           <div className="email-head-actions">
                             {shLink && (
                               <a className="ql ql-mini" href={shLink} target="_blank" rel="noreferrer" onClick={(ev) => ev.stopPropagation()}>Superhuman</a>
+                            )}
+                            {mailWeg === e.id ? (
+                              <span className="email-weg-vraag" onClick={(ev) => ev.stopPropagation()}>
+                                Weghalen?
+                                <button type="button" className="email-weg-ja" onClick={() => void verwijderMail(e.id)}>ja</button>
+                                <button type="button" className="email-weg-nee" onClick={() => setMailWeg(null)}>nee</button>
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                className="email-del"
+                                title="Haal deze mail uit dit overzicht (blijft in je mailbox staan)"
+                                onClick={(ev) => { ev.stopPropagation(); setMailWeg(e.id); }}
+                              >×</button>
                             )}
                             <span className="email-caret">{open ? "▲" : "▼"}</span>
                           </div>

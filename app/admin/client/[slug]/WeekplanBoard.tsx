@@ -201,19 +201,23 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailD
   }
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [slug, reloadSignal]);
 
-  // Zichtbare weekkolommen: van één week terug (of de vroegste taak) t/m acht
-  // weken vooruit (of de laatste taak). Plus een "Ongepland"-kolom (week 0).
+  // Zichtbare weekkolommen: vanaf de huidige week (of eerder, als daar nog taken
+  // staan) tot en met de laatste week met taken, plus precies één lege week om
+  // naartoe te slepen. Er stonden hier standaard drie lege weken achteraan; dat
+  // maakte het bord onnodig breed. Eén vooruit is genoeg, de rest gaat weg.
   const columns = useMemo(() => {
     if (!current) return [] as { key: number; year: number; week: number; monday: Date; sunday: Date; isCurrent: boolean }[];
     const curMon = mondayOfISOWeek(current.year, current.week);
     let startMon = new Date(curMon);
-    let endMon = new Date(curMon); endMon.setUTCDate(curMon.getUTCDate() + 7 * 3);
+    let laatsteMetTaak = new Date(curMon);
     for (const t of tasks) {
       if (t.weekNo <= 0) continue;
       const m = mondayOfISOWeek(t.weekYear, t.weekNo);
       if (m.getTime() < startMon.getTime()) startMon = m;
-      if (m.getTime() > endMon.getTime()) endMon = m;
+      if (m.getTime() > laatsteMetTaak.getTime()) laatsteMetTaak = m;
     }
+    const endMon = new Date(laatsteMetTaak);
+    endMon.setUTCDate(laatsteMetTaak.getUTCDate() + 7);  // de ene lege week vooruit
     const cols: { key: number; year: number; week: number; monday: Date; sunday: Date; isCurrent: boolean }[] = [];
     const d = new Date(startMon);
     while (d.getTime() <= endMon.getTime()) {
