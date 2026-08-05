@@ -51,7 +51,9 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
     if (filter === "onder50") n = n.filter((x) => x.pct < 50);
     return n;
   }, [nodes, blik, filter]);
-  const kinderenVan = (parent: string) => zicht.filter((n) => n.parent === parent).sort((a, b) => a.volgorde - b.volgorde);
+  // Een pagina kan nooit haar eigen kind zijn; zonder deze rem loopt de boom
+  // oneindig rond en klapt het scherm eruit.
+  const kinderenVan = (parent: string) => zicht.filter((n) => n.parent === parent && n.url !== parent).sort((a, b) => a.volgorde - b.volgorde);
   // Hoofdniveau: parent "" of een parent die zelf niet (zichtbaar) bestaat.
   const paden = new Set(zicht.map((n) => n.url));
   const hoofd = zicht.filter((n) => !n.parent || !paden.has(n.parent)).sort((a, b) => a.volgorde - b.volgorde);
@@ -62,7 +64,9 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
   const kleur = (n: Node) => (!n.live ? "nv-rood" : n.pct >= 100 ? "nv-groen" : "nv-oranje");
   const liveUrl = (pad: string) => (domain ? `https://${domain}${pad}` : pad);
 
-  const Rij = ({ n, diepte }: { n: Node; diepte: number }) => {
+  const Rij = ({ n, diepte, keten = [] }: { n: Node; diepte: number; keten?: string[] }) => {
+    // Zit deze pagina al hoger in de tak, dan is de structuur rond; stoppen.
+    if (keten.includes(n.url)) return null;
     const kids = kinderenVan(n.url);
     const isDicht = dicht[n.url];
     const tak = [n, ...alleOnder(n.url)];
@@ -92,7 +96,7 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
           {n.pct < 100 && n.live && <button type="button" className="nv-mini" title="Markeer voltooid: vinkt alle fases af (zelfde vinkjes als op de projectkaart)" onClick={() => void post({ action: "voltooi", url: n.url }, "voltooi")}>✓</button>}
           <button type="button" className="nv-mini nv-mini-del" title="Uit de beoogde structuur halen (de live pagina zelf blijft gewoon bestaan)" onClick={() => void post({ action: "del", url: n.url }, "del")}>×</button>
         </div>
-        {!isDicht && kids.map((k) => <Rij key={k.url} n={k} diepte={diepte + 1} />)}
+        {!isDicht && kids.map((k) => <Rij key={k.url} n={k} diepte={diepte + 1} keten={[...keten, n.url]} />)}
         {!isDicht && (nieuwIn === n.url ? (
           <div className="nv-nieuw" style={{ marginLeft: 22 }}>
             <input className="nv-term-input" autoFocus value={nieuwPad} placeholder="/pad/nieuwe-pagina/"
@@ -105,9 +109,11 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
       </div>
     );
   };
-  function alleOnder(parent: string): Node[] {
-    const direct = zicht.filter((n) => n.parent === parent);
-    return [...direct, ...direct.flatMap((d) => alleOnder(d.url))];
+  function alleOnder(parent: string, gezien: Set<string> = new Set()): Node[] {
+    if (gezien.has(parent)) return [];
+    gezien.add(parent);
+    const direct = kinderenVan(parent);
+    return [...direct, ...direct.flatMap((d) => alleOnder(d.url, gezien))];
   }
 
   return (

@@ -57,7 +57,10 @@ const netPad = (p: string) => {
   let x = (p || "").trim();
   try { if (/^https?:\/\//i.test(x)) x = new URL(x).pathname; } catch { /* pad houden */ }
   if (!x.startsWith("/")) x = "/" + x;
-  return x.replace(/\/+$/, "") + (x === "/" ? "" : "/");
+  // De homepage moet "/" blijven; een leeg pad zou zichzelf als ouder krijgen
+  // (parent is óók "") en dan loopt de boom in de roadmap oneindig rond.
+  const kaal = x.replace(/\/+$/, "");
+  return kaal ? kaal + "/" : "/";
 };
 
 async function leesPlan(slug: string, staat: "actueel" | "voorstel"): Promise<NavNode[]> {
