@@ -20,6 +20,7 @@ import { urlKey } from "../../../../../lib/url-key";
 import { cardInfoHtml } from "../../../../../lib/card-info";
 import { dagenSinds, type FaseSinds } from "../../../../../lib/fase-historie";
 import { volgendeFase, aanZet } from "../../../../../lib/fase-volgorde";
+import WeekplanCard, { type WpTask, type WpPageInfo } from "../WeekplanCard";
 
 type FaseKey = "strategie" | "gelieerde" | "analyse" | "blauwdruk" | "copy" | "bouw" | "structured";
 const FASEN: { key: FaseKey; kort: string }[] = [
@@ -251,28 +252,25 @@ export default function Weekbord({ slug, clientName, domain }: { slug: string; c
                     </span>
                   </div>
                   {open === t.id && (
-                    <div className="wb-detail">
-                      {/* Door dezelfde renderer als de echte kaart: "Waarom deze
-                          pagina" en "Aanpak en afspraken" als nette blokjes, met
-                          de dubbelingen eruit. Ruwe regels dumpen gaf precies de
-                          muur tekst die dit scherm juist moest wegnemen. */}
-                      <div dangerouslySetInnerHTML={{ __html: cardInfoHtml(t.toelichting || "", t.url || undefined, kaal(t.taak)) }} />
-                      <div className="wb-detail-knoppen">
-                        <span className="wb-wacht muted">Wacht op {wachtOp(t)}{wacht !== null && wacht > 0 && `, al ${wacht} ${wacht === 1 ? "dag" : "dagen"}`}.</span>
-                        <span className="wb-spacer" />
-                        <button type="button" className="ghost-btn small" disabled={bezig === t.id}
-                          onClick={() => void wijzig(t.id, { status: t.status === "bezig" ? "gepland" : "bezig" })}>
-                          {t.status === "bezig" ? "Niet meer bezig" : "Ik ben hiermee bezig"}
-                        </button>
-                        <button type="button" className="ghost-btn small" disabled={bezig === t.id}
-                          onClick={() => void wijzig(t.id, { status: t.status === "klaar" ? "gepland" : "klaar" })}>
-                          {t.status === "klaar" ? "Terug naar gepland" : "Afgerond"}
-                        </button>
-                        <button type="button" className="ghost-btn small" disabled={bezig === t.id} title="Naar volgende week"
-                          onClick={() => weekOp(t, 1)}>Week later</button>
-                        {t.url && <a className="ghost-btn small" href={t.url} target="_blank" rel="noreferrer">Live pagina</a>}
-                        <a className="ghost-btn small" href={`/admin/client/${slug}?tab=werkzaamheden${t.url ? `&page=${encodeURIComponent(t.url)}` : ""}`}>Volledige kaart</a>
-                      </div>
+                    <div className="wb-kaart">
+                      {/* De ECHTE projectkaart, niet een namaak-samenvatting: alle
+                          drie de infoblokken, de fases met hun knoppen en vinkjes,
+                          de chat, de documenten en de mailknoppen. Zo kan het bord
+                          nooit achterlopen op de kaart, want het is dezelfde kaart.
+                          Compacter maken doen we met opmaak (.wb-kaart), niet door
+                          er een tweede versie naast te bouwen. */}
+                      <WeekplanCard
+                        slug={slug} t={t as unknown as WpTask} page={p as unknown as WpPageInfo}
+                        open
+                        onToggleOpen={() => setOpen(null)}
+                        onDragStart={() => {}} onDragEnd={() => {}}
+                        onStatus={() => void wijzig(t.id, { status: t.status === "klaar" ? "gepland" : t.status === "bezig" ? "klaar" : "bezig" })}
+                        onRemove={() => void wijzig(t.id, { delete: true })}
+                        onMail={() => { /* de kaart opent zijn eigen mailvenster via Delen */ }}
+                        onGoToPage={(u) => window.open(`/admin/client/${slug}?tab=paginas&page=${encodeURIComponent(u)}`, "_blank")}
+                        onGoToTab={(tab) => window.open(`/admin/client/${slug}?tab=${tab}`, "_blank")}
+                        refreshBoard={() => void laad()}
+                      />
                     </div>
                   )}
                 </div>
