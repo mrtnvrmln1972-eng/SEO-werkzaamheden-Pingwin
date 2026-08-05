@@ -2134,13 +2134,62 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 /* Bedrijfsgegevens-formulier (structured data-bron): net grid, ook op de deelpagina. */
 .org-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .org-form { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
-.org-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px 14px; }
-.org-field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
-.org-label { font-size: 12px; font-weight: 700; color: var(--dark); display: inline-flex; align-items: center; }
-.org-field input, .org-field select, .org-field textarea { font-family: inherit; font-size: 13px; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--white); }
+/* ── Bedrijfsgegevens: één vaste vorm per blok ──────────────────────────
+   Elk onderdeel (algemeen, vestigingen, bereikbaarheid, artsen, diensten,
+   opmerkingen) is een blok op een zacht warm vlak, met een oranje kopje en
+   een dun lijntje. De invoervelden blijven wit en liggen daardoor zichtbaar
+   op het blok; zonder dat verschil oogde het scherm één groot wit vlak. */
+.org-form { display: flex; flex-direction: column; gap: var(--s-4); }
+.org-sec {
+  background: var(--brand-orange-faint);
+  border: 1px solid var(--card-border);
+  border-radius: var(--r-lg);
+  padding: var(--s-3) var(--s-4) var(--s-4);
+  display: flex; flex-direction: column; gap: var(--s-3);
+}
+.org-sec-kop {
+  margin: 0; display: flex; align-items: center; gap: var(--s-2);
+  font-size: var(--fs-sm); line-height: var(--lh-sm); font-weight: 800;
+  color: var(--orange-dark); letter-spacing: 0.02em;
+  padding-bottom: var(--s-2); border-bottom: 1px solid var(--card-border);
+}
+.org-sec-aantal {
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700; color: var(--gray);
+  background: var(--white); border: 1px solid var(--card-border);
+  border-radius: var(--r-full); padding: 0 var(--s-2); min-width: 22px; text-align: center;
+}
+.org-kolom { display: flex; flex-direction: column; gap: var(--s-3); }
+
+/* Een rij binnen een blok (vestiging, arts, dienst): wit kaartje, naam boven,
+   details eronder. Op smal scherm klappen de details onder elkaar. */
+.org-rij, .org-vest {
+  background: var(--white); border: 1px solid var(--card-border); border-radius: var(--r-md);
+  padding: var(--s-3); display: flex; flex-direction: column; gap: var(--s-2);
+}
+.org-rij-kop, .org-vest-kop { display: flex; align-items: center; gap: var(--s-2); }
+.org-rij-kop > input:first-child, .org-vest-naam { flex: 1; font-weight: 700; }
+.org-rij-grid, .org-vest-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: var(--s-2);
+}
+.org-rij input {
+  font-family: inherit; font-size: var(--fs-base); line-height: var(--lh-base);
+  padding: var(--s-2) var(--s-3); border: 1px solid var(--border);
+  border-radius: var(--r-md); background: var(--white); width: 100%;
+}
+.org-rij input:focus { outline: none; border-color: var(--orange); }
+.org-rij input:disabled { background: var(--gray-light); color: var(--gray); }
+
+.org-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: var(--s-3) var(--s-4); }
+.org-field { display: flex; flex-direction: column; gap: var(--s-1); font-size: var(--fs-base); }
+.org-label { font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700; color: var(--dark); display: inline-flex; align-items: center; flex-wrap: wrap; gap: var(--s-1); }
+.org-field input, .org-field select, .org-field textarea {
+  font-family: inherit; font-size: var(--fs-base); line-height: var(--lh-base);
+  padding: var(--s-2) var(--s-3); border: 1px solid var(--border);
+  border-radius: var(--r-md); background: var(--white);
+}
 .org-field input:focus, .org-field select:focus, .org-field textarea:focus { outline: none; border-color: var(--orange); }
 .org-field input:disabled, .org-field select:disabled, .org-field textarea:disabled { background: var(--gray-light); color: var(--gray); }
-.org-check { flex-direction: row; align-items: center; gap: 8px; margin-top: 20px; }
+.org-check { flex-direction: row; align-items: center; gap: var(--s-2); align-self: end; padding-bottom: var(--s-2); }
 .org-check input { width: 16px; height: 16px; }
 
 /* Deelbare bedrijfsgegevens-pagina voor de klant (zonder login). */
@@ -2210,21 +2259,14 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 }
 
 /* Vestigingen: per locatie een blokje met adres, contact en openingstijden. */
-.org-vest { border: 1px solid var(--border); border-radius: var(--r-md); padding: var(--s-3); display: flex; flex-direction: column; gap: var(--s-2); background: var(--white); }
-.org-vest-kop { display: flex; align-items: center; gap: var(--s-2); }
-.org-vest-naam { flex: 1; font-weight: 700; }
-.org-vest-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: var(--s-2); }
-.org-vest input { font-family: inherit; font-size: 13px; padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--white); width: 100%; }
+.org-vest input {
+  font-family: inherit; font-size: var(--fs-base); line-height: var(--lh-base);
+  padding: var(--s-2) var(--s-3); border: 1px solid var(--border);
+  border-radius: var(--r-md); background: var(--white); width: 100%;
+}
 .org-vest input:focus { outline: none; border-color: var(--orange); }
 .org-vest input:disabled { background: var(--gray-light); color: var(--gray); }
 
-.org-typesec { border-top: 1px solid var(--border); padding-top: 10px; display: flex; flex-direction: column; gap: 8px; }
-.org-typesec-head { font-size: 12.5px; font-weight: 800; color: var(--orange-dark); display: inline-flex; align-items: center; }
-.org-row { display: grid; grid-template-columns: repeat(5, 1fr) auto; gap: 8px; align-items: center; }
-.org-row.org-row-2 { grid-template-columns: 1fr 2fr auto; }
-.org-row input { font-family: inherit; font-size: 13px; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--white); }
-.org-row input:focus { outline: none; border-color: var(--orange); }
-@media (max-width: 760px) { .org-row, .org-row.org-row-2 { grid-template-columns: 1fr 1fr; } }
 
 /* Aandachtstrekker op de uitleg-vraagtekens: 10 seconden pulseren + tekstwolkje. */
 @keyframes hh-pulse {
@@ -2682,12 +2724,16 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
   width: 100%; display: flex; align-items: center; gap: var(--s-2); cursor: pointer;
   background: none; border: 0; text-align: left; padding: var(--s-2) var(--s-3); font-family: inherit;
 }
-.kb-groep-kop:hover { background: var(--gray-light); }
+.kb-groep-kop { background: var(--brand-orange-faint); border-bottom: 1px solid transparent; }
+.kb-groep-kop:hover { background: var(--brand-orange-soft); }
+.kb-groep-kop:focus-visible { outline: 2px solid var(--orange); outline-offset: -2px; }
+.kb-groep-body { border-top: 1px solid var(--card-border); padding-top: var(--s-3); }
 .kb-groep-caret { color: var(--gray); font-size: var(--fs-xs); }
-.kb-groep-titel { font-weight: 700; color: var(--orange); font-size: var(--fs-sm); line-height: var(--lh-sm); }
+.kb-groep-titel { font-weight: 800; color: var(--orange-dark); font-size: var(--fs-sm); line-height: var(--lh-sm); letter-spacing: 0.02em; }
 .kb-groep-aantal {
   font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700; color: var(--gray);
-  background: var(--gray-light); border-radius: var(--r-full); padding: 0 var(--s-2);
+  background: var(--white); border: 1px solid var(--card-border);
+  border-radius: var(--r-full); padding: 0 var(--s-2); min-width: 22px; text-align: center;
 }
 .kb-groep-sub { font-size: var(--fs-xs); color: var(--gray); margin-left: auto; }
 .kb-groep-kop-klein .kb-groep-titel { color: var(--gray); font-weight: 600; }

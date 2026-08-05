@@ -64,6 +64,19 @@ export function OrgDataForm({ data, onChange, disabled }: { data: OrgFormData; o
   );
   const aantalMist = mist.size;
 
+  // Eén vaste vorm voor elk blok: oranje kopje, dun lijntje, en de velden op een
+  // zacht vlak zodat de witte invoervelden er zichtbaar op liggen.
+  const sectie = (titel: string, inhoud: React.ReactNode, opties?: { aantal?: number; hint?: React.ReactNode }) => (
+    <section className="org-sec">
+      <h4 className="org-sec-kop">
+        <span>{titel}</span>
+        {typeof opties?.aantal === "number" && <span className="org-sec-aantal">{opties.aantal}</span>}
+        {opties?.hint}
+      </h4>
+      {inhoud}
+    </section>
+  );
+
   return (
     <div className="org-form">
       {aantalMist > 0 && (
@@ -72,7 +85,7 @@ export function OrgDataForm({ data, onChange, disabled }: { data: OrgFormData; o
           <span>Ze staan hieronder in het rood. Vul ze aan waar je kunt; de rest vragen we bij de klant op.</span>
         </div>
       )}
-      <div className="org-grid">
+      {sectie("Algemene bedrijfsgegevens", <div className="org-grid">
         {veld("Bedrijfsnaam", "bedrijfsnaam")}
         <label className={"org-field" + (mist.has("bedrijfstype") ? " org-mis" : "")}>
           <span className="org-label">Bedrijfstype<HelpHint text="Bepaalt welk soort structured data we gebruiken: een kliniek krijgt medische schema's, een webshop product-schema's, een dienstverlener service-schema's." />{mist.has("bedrijfstype") && <span className="org-mis-vlag">ontbreekt nog</span>}</span>
@@ -99,13 +112,9 @@ export function OrgDataForm({ data, onChange, disabled }: { data: OrgFormData; o
         {veld("Reviews-pagina (URL)", "reviewUrl", { hint: "Waar de reviews zichtbaar staan (bijv. Google-reviews of een reviewpagina op de site)." })}
         {veld("Reviewgemiddelde", "reviewGemiddelde", { placeholder: "bijv. 4,8", hint: "Alleen invullen als dit cijfer ook echt zichtbaar is voor bezoekers; verzonnen cijfers zijn tegen de regels van Google." })}
         {veld("Aantal reviews", "reviewAantal", { placeholder: "bijv. 127" })}
-      </div>
+      </div>)}
 
-      <div className="org-typesec">
-        <div className="org-typesec-head">
-          Vestigingen ({(data.vestigingen || []).length})
-          <HelpHint wide text="Elke locatie waar klanten of patiënten terechtkunnen, met eigen adres, telefoonnummer en openingstijden. Google en AI-assistenten maken hier per vestiging een eigen vermelding van, gekoppeld aan het bedrijf; dat is wat lokale zichtbaarheid ('kliniek Utrecht') mogelijk maakt. Zonder adres én openingstijden kan die vermelding niet worden gemaakt, daarom staan die velden rood zolang ze leeg zijn." />
-        </div>
+      {sectie("Vestigingen", <>
         {(data.vestigingen || []).map((v, i) => (
           <div className="org-vest" key={i}>
             <div className="org-vest-kop">
@@ -131,7 +140,8 @@ export function OrgDataForm({ data, onChange, disabled }: { data: OrgFormData; o
           </div>
         ))}
         {!disabled && <button type="button" className="ghost-btn small" onClick={() => set({ vestigingen: [...(data.vestigingen || []), { ...LEGE_VESTIGING }] })}>+ Vestiging toevoegen</button>}
-      </div>
+      </>, { aantal: (data.vestigingen || []).length, hint: <HelpHint wide text="Elke locatie waar klanten of patiënten terechtkunnen, met eigen adres, telefoonnummer en openingstijden. Google en AI-assistenten maken hier per vestiging een eigen vermelding van, gekoppeld aan het bedrijf; dat is wat lokale zichtbaarheid ('kliniek Utrecht') mogelijk maakt. Zonder adres én openingstijden kan die vermelding niet worden gemaakt, daarom staan die velden rood zolang ze leeg zijn." /> })}
+      {sectie("Bereikbaarheid en vindbaarheid", <div className="org-kolom">
       <label className={"org-field" + (mist.has("sameAs") ? " org-mis" : "")}>
         <span className="org-label">Sociale profielen en vermeldingen (één per regel)<HelpHint text="Volledige links naar Facebook, Instagram, LinkedIn, YouTube, de Google Business-vermelding, KVK-pagina, enz. Deze vertellen Google en AI-systemen dat al die profielen bij hetzelfde bedrijf horen." />{mist.has("sameAs") && <span className="org-mis-vlag">ontbreekt nog</span>}</span>
         <textarea rows={3} value={data.sameAs.join("\n")} disabled={disabled} onChange={(e) => set({ sameAs: e.target.value.split("\n").map((s) => s.trim()).filter(Boolean) })} />
@@ -140,54 +150,58 @@ export function OrgDataForm({ data, onChange, disabled }: { data: OrgFormData; o
         <span className="org-label">Werkgebied (plaatsen/regio&rsquo;s, één per regel)<HelpHint text="De plaatsen of regio's waar jullie werken. Vooral belangrijk voor bedrijven zonder bezoekadres." />{mist.has("areaServed") && <span className="org-mis-vlag">ontbreekt nog</span>}</span>
         <textarea rows={2} value={data.areaServed.join("\n")} disabled={disabled} onChange={(e) => set({ areaServed: e.target.value.split("\n").map((s) => s.trim()).filter(Boolean) })} />
       </label>
+      </div>)}
       {/* Secties tonen zodra er inhoud is, ook als het bedrijfstype nog leeg is
           of anders staat: je eigen gegevens horen niet onzichtbaar te worden
           door een keuzelijstje. Het bedrijfstype bepaalt alleen nog welke sectie
           we uit onszelf aanbieden om aan te vullen. */}
       {(data.bedrijfstype === "kliniek" || data.artsen.length > 0) && (
-        <div className="org-typesec">
-          <div className="org-typesec-head">Artsen en behandelaren ({data.artsen.length})<HelpHint wide text="De artsen/behandelaren die op de website staan. Naam, functie en specialisatie helpen Google en AI-systemen het vertrouwen in medische informatie te bepalen; het BIG-nummer is daarbij het sterkste bewijs (openbaar register). Deze gegevens koppelen we aan de behandelpagina's." /></div>
+        sectie("Artsen en behandelaren", <>
           {data.artsen.map((a, i) => (
-            <div className="org-row" key={i}>
-              {rijVeld(a.naam, "Naam", `arts.${i}.naam`, (v) => set({ artsen: data.artsen.map((x, j) => j === i ? { ...x, naam: v } : x) }))}
-              {rijVeld(a.functie, "Functie (bijv. oogarts)", `arts.${i}.functie`, (v) => set({ artsen: data.artsen.map((x, j) => j === i ? { ...x, functie: v } : x) }))}
-              {rijVeld(a.specialisatie, "Specialisatie", `arts.${i}.specialisatie`, (v) => set({ artsen: data.artsen.map((x, j) => j === i ? { ...x, specialisatie: v } : x) }))}
-              {rijVeld(a.big, "BIG-nummer", `arts.${i}.big`, (v) => set({ artsen: data.artsen.map((x, j) => j === i ? { ...x, big: v } : x) }))}
-              {rijVeld(a.profielUrl, "Profielpagina-URL", `arts.${i}.profielUrl`, (v) => set({ artsen: data.artsen.map((x, j) => j === i ? { ...x, profielUrl: v } : x) }))}
-              {!disabled && <button type="button" className="ghost-btn small" onClick={() => set({ artsen: data.artsen.filter((_, j) => j !== i) })}>&times;</button>}
+            <div className="org-rij" key={i}>
+              <div className="org-rij-kop">
+                {rijVeld(a.naam, "Naam", `arts.${i}.naam`, (v) => set({ artsen: data.artsen.map((x, j) => j === i ? { ...x, naam: v } : x) }))}
+                {!disabled && <button type="button" className="ghost-btn small" title="Deze persoon verwijderen" onClick={() => set({ artsen: data.artsen.filter((_, j) => j !== i) })}>&times;</button>}
+              </div>
+              <div className="org-rij-grid">
+                {rijVeld(a.functie, "Functie (bijv. oogarts)", `arts.${i}.functie`, (v) => set({ artsen: data.artsen.map((x, j) => j === i ? { ...x, functie: v } : x) }))}
+                {rijVeld(a.specialisatie, "Specialisatie", `arts.${i}.specialisatie`, (v) => set({ artsen: data.artsen.map((x, j) => j === i ? { ...x, specialisatie: v } : x) }))}
+                {rijVeld(a.big, "BIG-nummer", `arts.${i}.big`, (v) => set({ artsen: data.artsen.map((x, j) => j === i ? { ...x, big: v } : x) }))}
+                {rijVeld(a.profielUrl, "Profielpagina of LinkedIn", `arts.${i}.profielUrl`, (v) => set({ artsen: data.artsen.map((x, j) => j === i ? { ...x, profielUrl: v } : x) }))}
+              </div>
             </div>
           ))}
           {!disabled && <button type="button" className="ghost-btn small" onClick={() => set({ artsen: [...data.artsen, { naam: "", functie: "", specialisatie: "", big: "", fotoUrl: "", profielUrl: "" }] })}>+ Arts toevoegen</button>}
-        </div>
+        </>, { aantal: data.artsen.length, hint: <HelpHint wide text="De artsen/behandelaren die op de website staan. Naam, functie en specialisatie helpen Google en AI-systemen het vertrouwen in medische informatie te bepalen; het BIG-nummer is daarbij het sterkste bewijs (openbaar register). Deze gegevens koppelen we aan de behandelpagina's." /> })
       )}
       {(data.bedrijfstype === "webshop" || data.merken.length > 0 || data.retourUrl || data.retourTermijn || data.verzendInfo) && (
-        <div className="org-typesec">
-          <div className="org-typesec-head">Webshop-gegevens<HelpHint wide text="Retourbeleid en verzendinformatie zijn vereisten van Google om producten met prijs en voorraad in de zoekresultaten te tonen. Vul alleen in wat ook echt op de site staat." /></div>
-          <div className="org-grid">
+        sectie("Webshop-gegevens", <div className="org-grid">
             <label className="org-field"><span className="org-label">Merk(en), kommagescheiden</span><input value={data.merken.join(", ")} disabled={disabled} onChange={(e) => set({ merken: e.target.value.split(",").map((m) => m.trim()).filter(Boolean) })} /></label>
             <label className="org-field"><span className="org-label">Retourbeleid-URL</span><input value={data.retourUrl} disabled={disabled} onChange={(e) => set({ retourUrl: e.target.value })} /></label>
             <label className="org-field"><span className="org-label">Retourtermijn</span><input placeholder="bijv. 30 dagen" value={data.retourTermijn} disabled={disabled} onChange={(e) => set({ retourTermijn: e.target.value })} /></label>
             <label className="org-field"><span className="org-label">Verzendinformatie</span><input placeholder="bijv. gratis vanaf €50, 1-2 werkdagen" value={data.verzendInfo} disabled={disabled} onChange={(e) => set({ verzendInfo: e.target.value })} /></label>
-          </div>
-        </div>
+        </div>, { hint: <HelpHint wide text="Retourbeleid en verzendinformatie zijn vereisten van Google om producten met prijs en voorraad in de zoekresultaten te tonen. Vul alleen in wat ook echt op de site staat." /> })
       )}
       {(data.bedrijfstype === "dienstverlener" || data.diensten.length > 0) && (
-        <div className="org-typesec">
-          <div className="org-typesec-head">Diensten en behandelingen ({data.diensten.length})<HelpHint wide text="De hoofddiensten of behandelingen van het bedrijf. Elke dienst wordt in de structured data een eigen vermelding die aan het bedrijf en het werkgebied gekoppeld is." /></div>
+        sectie("Diensten en behandelingen", <>
           {data.diensten.map((d, i) => (
-            <div className="org-row org-row-2" key={i}>
-              {rijVeld(d.naam, "Dienst (bijv. zwemvijver aanleggen)", `dienst.${i}.naam`, (v) => set({ diensten: data.diensten.map((x, j) => j === i ? { ...x, naam: v } : x) }))}
+            <div className="org-rij" key={i}>
+              <div className="org-rij-kop">
+                {rijVeld(d.naam, "Dienst of behandeling", `dienst.${i}.naam`, (v) => set({ diensten: data.diensten.map((x, j) => j === i ? { ...x, naam: v } : x) }))}
+                {!disabled && <button type="button" className="ghost-btn small" title="Deze dienst verwijderen" onClick={() => set({ diensten: data.diensten.filter((_, j) => j !== i) })}>&times;</button>}
+              </div>
               {rijVeld(d.omschrijving, "Korte omschrijving", `dienst.${i}.omschrijving`, (v) => set({ diensten: data.diensten.map((x, j) => j === i ? { ...x, omschrijving: v } : x) }))}
-              {!disabled && <button type="button" className="ghost-btn small" onClick={() => set({ diensten: data.diensten.filter((_, j) => j !== i) })}>&times;</button>}
             </div>
           ))}
           {!disabled && <button type="button" className="ghost-btn small" onClick={() => set({ diensten: [...data.diensten, { naam: "", omschrijving: "" }] })}>+ Dienst toevoegen</button>}
-        </div>
+        </>, { aantal: data.diensten.length, hint: <HelpHint wide text="De hoofddiensten of behandelingen van het bedrijf. Elke dienst wordt in de structured data een eigen vermelding die aan het bedrijf en het werkgebied gekoppeld is." /> })
       )}
-      <label className="org-field">
-        <span className="org-label">Opmerkingen / nog uit te zoeken</span>
-        <textarea rows={2} value={data.notitie} disabled={disabled} onChange={(e) => set({ notitie: e.target.value })} />
-      </label>
+      {sectie("Opmerkingen", (
+        <label className="org-field">
+          <span className="org-label">Wat er nog uitgezocht moet worden</span>
+          <textarea rows={2} value={data.notitie} disabled={disabled} onChange={(e) => set({ notitie: e.target.value })} />
+        </label>
+      ))}
     </div>
   );
 }

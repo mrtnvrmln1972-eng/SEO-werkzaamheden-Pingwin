@@ -785,7 +785,6 @@ export default function ClientCockpit({
         )}
 
         {tab === "klant" && (<>
-          <SitebouwerVeld slug={client.slug} start={client.cockpit.devName || ""} />
           <OrgDataPanel slug={client.slug} clientEmail={client.email || ""} />
           <div className="cockpit-card client-frame-card">
             <div className="ck-section-head"><span>Klant (zo ziet de klant het)</span>
@@ -815,7 +814,12 @@ export default function ClientCockpit({
         {tab === "cannibalisatie" && <CannibalPanel slug={client.slug} domain={client.domain || ""} openTarget={opruimTarget} />}
         {tab === "interne-links" && <InternalLinksPanel slug={client.slug} openTarget={linkTarget} />}
 
-        {tab === "developer" && <DeveloperOverview embedded />}
+        {tab === "developer" && (<>
+          {/* De naam van de sitebouwer hoort bij het developer-werk, niet bovenaan
+              het klantscherm. De naam zelf werkt overal hetzelfde door. */}
+          <SitebouwerVeld slug={client.slug} start={client.cockpit.devName || ""} />
+          <DeveloperOverview embedded />
+        </>)}
       </div>
 
       <div className="footer">Pingwin Online Marketing &middot; Beheer</div>
