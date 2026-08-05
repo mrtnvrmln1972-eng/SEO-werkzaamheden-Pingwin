@@ -108,8 +108,8 @@ export default function ActionCard({ action, slug, thread, onExecuted, onGoToPag
   }
 
   // Voeg één voorgestelde taak toe aan de weekplanning (per taak, niet in bulk).
-  async function addOne(i: number, t: NonNullable<Action["taken"]>[number]) {
-    if (addBusy !== null || addedSet.has(i)) return;
+  async function addOne(i: number, t: NonNullable<Action["taken"]>[number], opnieuw = false) {
+    if (addBusy !== null || (addedSet.has(i) && !opnieuw)) return;
     setAddBusy(i); setAddErr(null);
     try {
       const r = await fetch("/api/admin/weekplan/add", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread, taak: t.taak, toelichting: t.toelichting, wie: t.wie, url: t.url, week: t.week, taaktype: t.taaktype, bronMail: t.bronMail }) });
@@ -211,6 +211,13 @@ export default function ActionCard({ action, slug, thread, onExecuted, onGoToPag
                           onClick={() => window.open(`/admin/client/${slug}?tab=werkzaamheden${t.url ? `&page=${encodeURIComponent(t.url)}` : ""}`, "_blank")}>
                           staat in de weekplanning
                         </button>
+                        {/* Toch opnieuw wegzetten. Nodig als de kaart die er staat
+                            scheef is (verkeerde pagina, verkeerde titel): je gooit
+                            hem weg in het bord en zet hem hier opnieuw weg, zonder
+                            het hele gesprek over te doen. */}
+                        <button type="button" className="tvk-opnieuw" disabled={b}
+                          title="Zet deze taak opnieuw weg in de weekplanning, ook al staat er al een kaart."
+                          onClick={() => addOne(i, t, true)}>{b ? "…" : "opnieuw"}</button>
                       </div>
                     );
                   }

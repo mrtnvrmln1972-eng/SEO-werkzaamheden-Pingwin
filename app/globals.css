@@ -4387,3 +4387,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .dev-doc-upload { display: flex; gap: var(--s-2); align-items: center; flex-wrap: wrap; margin-top: var(--s-3); }
 .dev-doc-upload .muted { font-size: var(--fs-xs); line-height: var(--lh-xs); }
 .dev-doc-hint { margin-top: var(--s-2); font-size: var(--fs-xs); line-height: var(--lh-xs); }
+
+/* "Opnieuw" naast een taak die al in de weekplanning staat: nodig als de kaart
+   die er staat scheef is (verkeerde pagina), zodat je hem kunt weggooien en hier
+   opnieuw kunt wegzetten zonder het gesprek over te doen. */
+.tvk-opnieuw { margin-left: var(--s-2); border: 1px solid var(--card-border); background: #fff; color: var(--orange-dark); font-size: var(--fs-xs); font-weight: 700; padding: 1px var(--s-2); border-radius: var(--r-full); cursor: pointer; }
+.tvk-opnieuw:hover { background: var(--orange-light); border-color: var(--orange); }
+.tvk-opnieuw:disabled { opacity: 0.6; cursor: default; }
