@@ -175,7 +175,10 @@ export async function leesSiteMenu(slug: string): Promise<{ ok: boolean; items?:
   const beste = kandidaten.sort((a, b) => (b.length + b.filter((x) => x.parent).length) - (a.length + a.filter((x) => x.parent).length))[0];
   if (!beste || beste.length < 3) return { ok: false, error: "Geen hoofdmenu gevonden op de homepage." };
 
-  return { ok: true, items: beste };
+  // De homepage staat zelden in het menu (het logo linkt ernaar) maar hoort er
+  // wel bij; hij komt vooraan te staan.
+  const compleet = beste.some((n) => n.url === "/") ? beste : [{ url: "/", parent: "", hoofdzoekterm: "", volume: null, volgorde: -1, label: "Homepage" }, ...beste];
+  return { ok: true, items: compleet };
 }
 
 /** Hetzelfde, maar dan bewaard als de weergave "Huidige site". */

@@ -32,6 +32,16 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
   }
   useEffect(() => { void laad(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [slug]);
 
+  // Is het menu van de site nog nooit uitgelezen, doe dat dan meteen zelf; dan
+  // staat de huidige site er zonder dat je ergens op hoeft te klikken.
+  const [zelfGeprobeerd, setZelfGeprobeerd] = useState(false);
+  useEffect(() => {
+    if (zelfGeprobeerd || menu.length > 0 || nodes.length === 0) return;
+    setZelfGeprobeerd(true);
+    void post({ action: "menu" }, "menu");
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [menu.length, nodes.length, zelfGeprobeerd]);
+
   async function post(body: Record<string, unknown>, busyLabel: string) {
     setBusy(busyLabel); setMsg("");
     try {
