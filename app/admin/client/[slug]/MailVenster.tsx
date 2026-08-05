@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { herzetAanhef } from "../../../../lib/aanhef";
-import { mailUitTekst } from "../../../../lib/mail-uit-gesprek";
-import { analyseNaarMailHtml } from "../../../../lib/mail-opmaak";
+import { mailUitTekst, zonderControleblok } from "../../../../lib/mail-uit-gesprek";
+import { analyseNaarMailHtml, htmlNaarMailHtml } from "../../../../lib/mail-opmaak";
 import { mdToHtml } from "../../../../lib/markdown";
 import { striptVulzinnen } from "../../../../lib/vulzinnen";
 
@@ -89,8 +89,14 @@ export default function MailVenster({
     }
     return "";
   }, [blokMd]);
-  // Voorbeeld van het blok, zodat je ziet wat er meegaat.
-  const blokHtml = useMemo(() => (blokMd ? mdToHtml(striptVulzinnen(blokMd), siteUrl || "") : ""), [blokMd, siteUrl]);
+  // Het blok zoals het in de mail komt: bewerkbaar, want de eerste regels van een
+  // antwoord zijn vaak intern gepraat dat een klant niet hoeft te lezen. De
+  // waarschuwing van de feitencontrole gaat er sowieso af; die is voor Maarten.
+  const blokHtml = useMemo(
+    () => (blokMd ? mdToHtml(striptVulzinnen(zonderControleblok(blokMd)), siteUrl || "") : ""),
+    [blokMd, siteUrl],
+  );
+  const blokRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (concept && bodyRef.current) {
@@ -155,13 +161,18 @@ export default function MailVenster({
     // blijft alles zoals het was: platte tekst via de bestaande route.
     if (metBlok) {
       try {
-        const html = analyseNaarMailHtml(blokMd || "", {
+        // Wat je in het voorbeeld hebt bijgeschaafd is wat er weggaat.
+        const bewerkt = (blokRef.current?.innerHTML || "").trim();
+        const opties = {
           intro: tekst || undefined,
           titel: onderwerp.trim() || onderwerpVan.slice(0, 120),
           bron: "Opgesteld in het Pingwin SEO-dashboard.",
           siteUrl: siteUrl || undefined,
           bijlagen: links,
-        });
+        };
+        const html = bewerkt
+          ? htmlNaarMailHtml(bewerkt, opties)
+          : analyseNaarMailHtml(zonderControleblok(blokMd || ""), opties);
         const d = await fetch("/api/admin/mail", {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ mode: "compose", slug, to: adres, subject: onderwerp.trim() || onderwerpVan.slice(0, 120), html }),
@@ -254,10 +265,16 @@ export default function MailVenster({
           blokAan ? (
             <div className="wp-mail-blok">
               <div className="wp-mail-blok-kop">
-                <span>Dit blok gaat mee</span>
+                <span>Dit blok gaat mee &middot; je kunt erin typen en schrappen</span>
                 <button type="button" className="wp-mail-leeg" onClick={() => setBlokAan(false)}>blok weglaten</button>
               </div>
-              <div className="wp-mail-blok-body md" dangerouslySetInnerHTML={{ __html: blokHtml }} />
+              <div
+                className="wp-mail-blok-body md"
+                contentEditable
+                suppressContentEditableWarning
+                ref={blokRef}
+                dangerouslySetInnerHTML={{ __html: blokHtml }}
+              />
             </div>
           ) : (
             <div className="wp-mail-bron muted">

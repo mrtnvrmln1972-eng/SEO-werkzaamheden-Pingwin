@@ -138,7 +138,16 @@ function stijlen(html: string): string {
 
 /** Eén sectie van het antwoord als witte kaart met oranje titel. */
 function sectieKaart(kop: string, md: string, siteUrl?: string): string {
-  let inhoud = mdToHtml(md, siteUrl).replace(WEG, "");
+  return sectieKaartHtml(kop, mdToHtml(md, siteUrl));
+}
+
+/**
+ * Zelfde kaart, maar dan met al gerenderde HTML. Nodig omdat je het blok in het
+ * mailvenster kunt bijschaven: wat je daar ziet is HTML, en dát moet de mail in,
+ * niet de oorspronkelijke markdown.
+ */
+function sectieKaartHtml(kop: string, html: string): string {
+  let inhoud = html.replace(WEG, "");
   inhoud = inhoud.replace(/\sclass="[^"]*"/gi, "").replace(/\sdata-[a-z-]+="[^"]*"/gi, "").replace(/\scontenteditable="[^"]*"/gi, "");
   inhoud = tabellen(inhoud);
   inhoud = punten(inhoud);
@@ -158,9 +167,30 @@ function sectieKaart(kop: string, md: string, siteUrl?: string): string {
  * markdown en geen voorgerenderde HTML, want de sectie-knip moet vóór het renderen
  * gebeuren (anders bestaan de kaarten niet).
  */
-export function analyseNaarMailHtml(markdown: string, opties?: { intro?: string; titel?: string; bron?: string; siteUrl?: string; bijlagen?: { label: string; url: string }[] }): string {
+export function analyseNaarMailHtml(markdown: string, opties?: MailOpties): string {
   const secties = splitsAntwoord(markdown || "");
-  const kaarten = secties.map((s) => sectieKaart(s.kop, s.md, opties?.siteUrl)).join("");
+  return bouwMail(secties.map((s) => sectieKaart(s.kop, s.md, opties?.siteUrl)).join(""), opties);
+}
+
+export type MailOpties = { intro?: string; titel?: string; bron?: string; siteUrl?: string; bijlagen?: { label: string; url: string }[] };
+
+/**
+ * Zelfde mail, maar uit HTML die je zelf hebt bijgeschaafd in het mailvenster.
+ * Knipt op de kopjes die `mdToHtml` maakt (h3 t/m h6), zodat je dezelfde witte
+ * kaarten met oranje titels krijgt als bij de markdown-weg.
+ */
+export function htmlNaarMailHtml(html: string, opties?: MailOpties): string {
+  const stukken = (html || "").split(/(?=<h[3-6]\b)/i).filter((s) => s.trim());
+  const kaarten = stukken.map((stuk) => {
+    const m = /^<h[3-6][^>]*>([\s\S]*?)<\/h[3-6]>/i.exec(stuk.trim());
+    const kop = m ? m[1].replace(/<[^>]*>/g, "").trim() : "";
+    const rest = m ? stuk.trim().slice(m[0].length) : stuk;
+    return sectieKaartHtml(kop, rest);
+  }).join("");
+  return bouwMail(kaarten, opties);
+}
+
+function bouwMail(kaarten: string, opties?: MailOpties): string {
 
   // Kopbalk: hiermee leest het als een rapport van Pingwin en niet als een
   // doorgestuurd mailtje.

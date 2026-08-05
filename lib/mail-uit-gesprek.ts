@@ -13,6 +13,18 @@
 
 export type MailConcept = { onderwerp: string; body: string };
 
+// De feitencontrole zet boven een antwoord soms een waarschuwing ("Let op, niet
+// alles hieronder is nagetrokken…"). Die is voor Maarten bedoeld, nooit voor een
+// klant: hij moet dus uit het blok dat de mail in gaat. De waarschuwing loopt tot
+// en met de scheidingslijn die eronder staat.
+export function zonderControleblok(md: string): string {
+  const t = (md || "").replace(
+    /^\s*#{1,6}\s*Let op,? niet alles hieronder is nagetrokken[\s\S]*?\n-{3,}\s*\n/i,
+    "",
+  );
+  return t.trim();
+}
+
 const AANHEF = /^(beste|hallo|hoi|dag|geachte)\b[^\n]{0,60}$/i;
 const AFSLUITING = /^(met vriendelijke groet|vriendelijke groet|hartelijke groet|groeten|groet|met hartelijke groet)\b/i;
 

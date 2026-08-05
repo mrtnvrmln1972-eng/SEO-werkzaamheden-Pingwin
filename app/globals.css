@@ -3074,7 +3074,8 @@ body.zp-sleept { user-select: none; cursor: grabbing; }
 /* Het blok dat meegaat, als voorbeeld onder je intro. Je ziet wat er weggaat. */
 .wp-mail-blok { margin-top: var(--s-3); border: 1px solid var(--card-border); border-radius: var(--r-md); background: #FAF8F6; }
 .wp-mail-blok-kop { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); padding: var(--s-2) var(--s-3); border-bottom: 1px solid var(--card-border); font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--gray); }
-.wp-mail-blok-body { padding: var(--s-3); max-height: 260px; overflow-y: auto; font-size: var(--fs-sm); line-height: var(--lh-sm); }
+.wp-mail-blok-body { padding: var(--s-3); max-height: 320px; overflow-y: auto; font-size: var(--fs-sm); line-height: var(--lh-sm); outline: none; }
+.wp-mail-blok-body:focus { background: #fff; box-shadow: inset 0 0 0 2px var(--orange-light); }
 .wp-mail-blok-body h3, .wp-mail-blok-body h4, .wp-mail-blok-body h5 { color: var(--orange-dark); }
 .wp-mail-blok-body table { width: 100%; border-collapse: collapse; }
 .wp-mail-blok-body th, .wp-mail-blok-body td { border: 1px solid var(--card-border); padding: 4px 8px; text-align: left; }
