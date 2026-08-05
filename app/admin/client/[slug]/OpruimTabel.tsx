@@ -28,6 +28,69 @@ type Regel = { van: string; besluit: "houden" | "redirect" | "genegeerd"; naar: 
 
 const pad = (u: string) => { try { return new URL(u).pathname; } catch { return (u || "").trim(); } };
 
+// Het bewijs als verhaaltje in plaats van als lijstje cijfers.
+//
+// Waarom: het uitklapje toonde een kop plus een rij URL's met "positie 1 · 124
+// klikken · 1400 vertoningen". Dat is data, geen uitleg. Je moest zelf bedenken
+// wat het betekende, en een klant helemaal. Dezelfde cijfers, nu in zinnen die
+// zeggen wat er aan de hand is en wat het oplevert. Er komt geen getal in dat
+// niet uit de analyse komt; ontbreekt een cijfer, dan blijft die zin weg.
+function getal(n?: number): string { return n != null && Number.isFinite(n) ? String(Math.round(n)) : ""; }
+function plek(n?: number): string { return n != null && Number.isFinite(n) ? String(Math.round(n * 10) / 10) : ""; }
+
+function BewijsUitleg({ b, v, doel, verhuizen, merge, site }: {
+  b: Bewijs; v: string; doel: string; verhuizen?: boolean; merge?: boolean;
+  site: (p: string) => string;
+}) {
+  const Link = ({ p }: { p: string }) => (
+    <a className="opr-pad" href={site(p)} target="_blank" rel="noreferrer">{p}</a>
+  );
+  const winnaar = pad(b.winnaar);
+  const deze = b.urls.find((u) => pad(u.url) === v);
+  const win = b.urls.find((u) => pad(u.url) === winnaar);
+  const rest = b.urls.filter((u) => pad(u.url) !== v && pad(u.url) !== winnaar);
+
+  const dezeKlik = getal(deze?.klikken), winKlik = getal(win?.klikken);
+  const dezePlek = plek(deze?.positie), winPlek = plek(win?.positie);
+
+  return (
+    <div className="opr-bewijs">
+      <p>
+        Google laat deze pagina vooral zien bij mensen die zoeken op <strong>&ldquo;{b.keyword}&rdquo;</strong>.
+        {b.urls.length > 1
+          ? ` Dat doen op dezelfde zoekopdracht nog ${b.urls.length - 1} ${b.urls.length - 1 === 1 ? "andere pagina" : "andere pagina’s"} van deze site ook, dus concurreren ze met elkaar om dezelfde bezoeker.`
+          : ""}
+        {b.urlFlip ? ` Google weet daardoor zelf niet welke hij moet tonen: hij wisselde er de afgelopen maanden ${b.flipsIn90d && b.flipsIn90d > 1 ? `${b.flipsIn90d} keer` : "meermaals"} tussen.` : ""}
+      </p>
+      <p>
+        De sterkste van het stel is <Link p={winnaar} />.
+        {winPlek ? ` Die staat gemiddeld op plek ${winPlek}` : " Die wint deze zoekopdracht"}
+        {winKlik ? ` en levert ${winKlik} ${winKlik === "1" ? "bezoeker" : "bezoekers"} op` : ""}.
+        {deze && v !== winnaar
+          ? ` Deze pagina zelf komt niet verder dan ${dezePlek ? `plek ${dezePlek}` : "de achterhoede"}${dezeKlik ? ` en haalt er ${dezeKlik} ${dezeKlik === "1" ? "bezoeker" : "bezoekers"} uit` : " en levert vrijwel niets op"}.`
+          : ""}
+      </p>
+      <p>
+        {verhuizen
+          ? <>Daarom verhuist de inhoud van deze pagina naar <Link p={doel} />, en wijst dit oude adres daarheen. Google krijgt dan nog maar één pagina te zien voor dit onderwerp, op het adres dat we willen aanhouden, en de opgebouwde waarde van allebei komt daar samen.</>
+          : merge
+            ? <>Daarom voegen we de bruikbare tekst van deze pagina samen met <Link p={doel} /> en leiden we dit adres daarheen. Eén sterke pagina in plaats van twee halve, zonder dat er inhoud verloren gaat.</>
+            : <>Daarom leiden we deze pagina door naar <Link p={doel} />. Google hoeft dan niet meer te kiezen, alle bezoekers komen op de beste pagina uit, en de kracht die deze pagina had telt daar voortaan mee.</>}
+      </p>
+      {rest.length > 0 && (
+        <p className="opr-bewijs-rest">
+          Op dezelfde zoekopdracht doen ook nog mee:{" "}
+          {rest.map((u, k) => (
+            <span key={k}>
+              {k > 0 ? ", " : ""}<Link p={pad(u.url)} />{plek(u.positie) ? ` (plek ${plek(u.positie)})` : ""}
+            </span>
+          ))}. Wat daarmee gebeurt, staat bij die regels zelf; staan ze niet in deze lijst, dan blijven ze gewoon staan.
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function OpruimTabel({ slug, domain, rijen, openTarget, bewijs = {} }: {
   slug: string; domain: string; rijen: RedirectRij[];
   /** Van buiten binnenkomen op één pagina: vult het filterveld met dat pad, zodat
@@ -216,25 +279,7 @@ export default function OpruimTabel({ slug, domain, rijen, openTarget, bewijs = 
                         {/* Het bewijs uit de cannibalisatie-analyse, als het er is:
                             welk zoekwoord, wie wint, en de cijfers per pagina. */}
                         {bewijs[v] && (
-                          <div className="opr-bewijs">
-                            <div className="opr-bewijs-kop">
-                              Bewijs: op <strong>&ldquo;{bewijs[v].keyword}&rdquo;</strong> concurreren deze pagina&rsquo;s met elkaar
-                              {bewijs[v].urlFlip ? `, en Google wisselde er ${bewijs[v].flipsIn90d || "meerdere"} keer tussen` : ""}.
-                            </div>
-                            <ul className="opr-bewijs-lijst">
-                              {bewijs[v].urls.map((u, k) => (
-                                <li key={k} className={pad(u.url) === pad(bewijs[v].winnaar) ? "wint" : ""}>
-                                  <a className="opr-pad" href={site(pad(u.url))} target="_blank" rel="noreferrer">{pad(u.url)}</a>
-                                  {pad(u.url) === pad(bewijs[v].winnaar) && <span className="opr-chip keep">wint hier</span>}
-                                  <span className="opr-bewijs-cijfers">
-                                    {u.positie != null ? `positie ${Math.round(u.positie * 10) / 10}` : ""}
-                                    {u.klikken != null ? ` · ${u.klikken} klikken` : ""}
-                                    {u.impressies != null ? ` · ${u.impressies} vertoningen` : ""}
-                                  </span>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
+                          <BewijsUitleg b={bewijs[v]} v={v} doel={doel} verhuizen={r.verhuizen} merge={r.mergeContent} site={site} />
                         )}
                       </div>
                     )}
