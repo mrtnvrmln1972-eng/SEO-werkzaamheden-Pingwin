@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { cleanPastedHtml, linkifyPlainText } from "../../../../lib/rich-paste";
+import RijkTekstVeld from "./RijkTekstVeld";
 
 /**
  * Eén vrij opmaakbaar tekstveld per klant, met knoppenbalk en automatisch opslaan.
@@ -22,9 +22,8 @@ export default function FocusBlock({ slug, standalone, soort = "focus", titel }:
   const [saving, setSaving] = useState<"idle" | "saving" | "saved">("idle");
   // Standaard dicht; openklappen via de kop.
   const [open, setOpen] = useState(false);
-  const editorRef = useRef<HTMLDivElement | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const initializedRef = useRef(false);
+  const laatsteHtmlRef = useRef("");
 
   // Laad de opgeslagen inhoud.
   useEffect(() => {
@@ -36,27 +35,12 @@ export default function FocusBlock({ slug, standalone, soort = "focus", titel }:
     return () => { off = true; };
   }, [slug, veld]);
 
-  // Zet de inhoud eenmalig in de editor zodra die gerenderd is. De editor
-  // bestaat pas na het openklappen, dus 'open' zit bewust in de dependencies.
-  useEffect(() => {
-    if (initialHtml !== null && editorRef.current && !initializedRef.current) {
-      editorRef.current.innerHTML = initialHtml;
-      initializedRef.current = true;
-    }
-  }, [initialHtml, open]);
-
-  function fixLinks() {
-    editorRef.current?.querySelectorAll("a[href]").forEach((a) => {
-      (a as HTMLAnchorElement).target = "_blank";
-      (a as HTMLAnchorElement).rel = "noreferrer";
-    });
-  }
-
-  function triggerSave() {
+  function triggerSave(html: string) {
+    laatsteHtmlRef.current = html;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     setSaving("idle");
     saveTimerRef.current = setTimeout(async () => {
-      const content = editorRef.current?.innerHTML || "";
+      const content = laatsteHtmlRef.current;
       setSaving("saving");
       try {
         const res = await fetch("/api/admin/focus", {
@@ -71,101 +55,17 @@ export default function FocusBlock({ slug, standalone, soort = "focus", titel }:
     }, 1000);
   }
 
-  function cmd(command: string, value?: string) {
-    editorRef.current?.focus();
-    document.execCommand(command, false, value);
-  }
-
-  function addLink() {
-    editorRef.current?.focus();
-    const url = window.prompt("Link naar (URL of document):", "https://");
-    if (!url) return;
-    const sel = window.getSelection();
-    if (sel && !sel.isCollapsed) document.execCommand("createLink", false, url);
-    else document.execCommand("insertHTML", false, `<a href="${url}" target="_blank" rel="noreferrer">${url}</a>`);
-    fixLinks();
-    triggerSave();
-  }
-
-  function onInput() {
-    fixLinks();
-    triggerSave();
-  }
-
-  // Klik op een link opent hem in een nieuw tabblad (ook in de bewerkbare editor).
-  function onClick(e: React.MouseEvent) {
-    const t = e.target as HTMLElement;
-    const a = (t.tagName === "A" ? t : t.closest("a")) as HTMLAnchorElement | null;
-    if (a && a.href && !a.href.startsWith("javascript:")) {
-      e.preventDefault();
-      window.open(a.href, "_blank", "noreferrer");
-    }
-  }
-
-  function onKeyDown(e: React.KeyboardEvent) {
-    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-      e.preventDefault();
-      addLink();
-    }
-    // Cmd+Shift+V (plakken zonder opmaak) handelt de browser zelf af: er komt
-    // dan geen text/html mee, dus onPaste plakt vanzelf platte tekst.
-  }
-
-  function onPaste(e: React.ClipboardEvent) {
-    const pasteHtml = e.clipboardData.getData("text/html");
-    const pasteText = e.clipboardData.getData("text/plain");
-
-    // HTML (cellen, links, opmaak uit Sheets/Docs/web): opschonen tot kale
-    // tekst + klikbare links. Tabellen blijven als nette tabel behouden.
-    if (pasteHtml && /<\w/.test(pasteHtml)) {
-      const cleaned = cleanPastedHtml(pasteHtml, { keepTables: true });
-      if (cleaned) {
-        e.preventDefault();
-        document.execCommand("insertHTML", false, cleaned);
-        fixLinks();
-        triggerSave();
-        return;
-      }
-    }
-
-    // URL in platte tekst: auto-linken.
-    if (pasteText && /https?:\/\//i.test(pasteText)) {
-      e.preventDefault();
-      document.execCommand("insertHTML", false, linkifyPlainText(pasteText));
-      triggerSave();
-      return;
-    }
-
-    // Standaard paste; links daarna alsnog fixen.
-    setTimeout(() => { fixLinks(); triggerSave(); }, 0);
-  }
-
   const saveLabel = saving === "saving" ? "Opslaan..." : saving === "saved" ? "✓ Opgeslagen" : "";
 
-  const toolbar = (
-    <div className="focus-toolbar">
-      <button type="button" onClick={() => cmd("bold")} title="Vet (Cmd+B)"><strong>B</strong></button>
-      <button type="button" onClick={() => cmd("italic")} title="Cursief (Cmd+I)"><em>I</em></button>
-      <button type="button" onClick={() => cmd("insertUnorderedList")} title="Bullets">&bull; lijst</button>
-      <button type="button" onClick={() => cmd("insertOrderedList")} title="Genummerd">1. lijst</button>
-      <button type="button" onClick={addLink} title="Link toevoegen (Cmd+K)">&#128279; link</button>
-      <button type="button" onClick={() => cmd("unlink")} title="Link verwijderen">link weg</button>
-      {saveLabel && <span className="focus-save-status">{saveLabel}</span>}
-    </div>
-  );
-
-  const editor = (
-    <div
-      ref={editorRef}
-      className={"focus-rich focus-editable" + (initialHtml === null ? " focus-loading" : "")}
-      contentEditable={initialHtml !== null}
-      suppressContentEditableWarning
-      onInput={onInput}
-      onClick={onClick}
-      onKeyDown={onKeyDown}
-      onPaste={onPaste}
-    />
-  );
+  // Het veld zelf (knoppenbalk + bewerkbaar vlak) is gedeeld met de
+  // bespreekpunten; hier blijft alleen het laden en opslaan over.
+  const veldBlok = initialHtml === null
+    ? <div className="focus-rich focus-loading" />
+    : <RijkTekstVeld
+        waarde={initialHtml}
+        onChange={triggerSave}
+        toolbarExtra={saveLabel ? <span className="focus-save-status">{saveLabel}</span> : null}
+      />;
 
   if (standalone) {
     // Zelfde huisstijl als de andere inklapbare kaarten (Actuele stand van
@@ -178,8 +78,7 @@ export default function FocusBlock({ slug, standalone, soort = "focus", titel }:
         </button>
         {open && (
           <div className="strategy-body">
-            {toolbar}
-            {editor}
+            {veldBlok}
           </div>
         )}
       </>
@@ -194,8 +93,7 @@ export default function FocusBlock({ slug, standalone, soort = "focus", titel }:
         <span>{titel || "Zoekwoorden & links"}</span>
         {soort === "focus" && <a className="focus-nav-link" href={`/admin/client/${slug}/navigatie`} target="_blank" rel="noreferrer" title="De hele sitestructuur (huidig én beoogd) met voortgang per pagina">Navigatie-roadmap &rarr;</a>}
       </div>
-      {toolbar}
-      {editor}
+      {veldBlok}
     </div>
   );
 }

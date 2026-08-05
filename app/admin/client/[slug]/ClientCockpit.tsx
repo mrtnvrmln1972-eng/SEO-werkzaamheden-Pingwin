@@ -654,7 +654,7 @@ export default function ClientCockpit({
               </div>
 
             {/* Bespreeklijsten per persoon, direct onder de actuele stand. */}
-            <BespreekLijsten slug={client.slug} clientName={client.name} clientEmail={client.email || clientMailQuery} />
+            <BespreekLijsten slug={client.slug} clientName={client.name} clientEmail={client.email || clientMailQuery} domain={client.domain} />
 
             <div className="cockpit-card strategy-card">
               <button type="button" className="strategy-head" onClick={() => setShowMailsBox((v) => !v)}>

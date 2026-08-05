@@ -2813,10 +2813,30 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
 .bl-titel { font-weight: 700; font-size: var(--fs-base); line-height: var(--lh-base); }
 .bl-gedeeld { font-size: var(--fs-xs); line-height: var(--lh-xs); margin-left: auto; }
 .bl-body { padding: var(--s-3) var(--s-4) var(--s-4); display: flex; flex-direction: column; gap: var(--s-2); }
-.bl-add { display: flex; gap: var(--s-2); align-items: center; max-width: 560px; }
+.bl-add { display: flex; flex-direction: column; gap: var(--s-2); align-items: stretch; max-width: 720px; }
 .bl-add .wp-docdrop-input { flex: 1; }
+.bl-add-veld { flex: 1; min-width: 0; }
+.bl-add-knoppen { display: flex; gap: var(--s-2); }
+/* Een bespreekpunt is kort: het opmaakveld hoeft niet zo hoog te zijn als het
+   grote blok Zoekwoorden & links, maar het groeit wel mee met de inhoud. */
+.bl-invoer, .bl-bewerk .focus-editable { min-height: 44px; }
+.bl-invoer:empty::before, .bl-bewerk .focus-editable:empty::before { content: attr(data-placeholder); color: var(--gray); }
+.bl-bewerk { flex: 1; min-width: 0; }
+.bl-bewerk .focus-toolbar { margin-bottom: var(--s-1); }
+.bl-bewerk-klaar { font-size: var(--fs-xs); font-weight: 700; color: var(--orange-dark); border: 1px solid var(--orange) !important; }
+/* Klikken op een punt opent het bewerkveld; dat mag je zien. */
+.bl-tekst-klik { cursor: text; border-radius: var(--r-sm); }
+.bl-tekst-klik:hover { background: var(--orange-light); }
+.bl-tekst p { margin: 0 0 var(--s-1); }
+.bl-tekst p:last-child { margin-bottom: 0; }
+.bl-tekst ul, .bl-tekst ol { margin: var(--s-1) 0; padding-left: 20px; }
+.bl-tekst a { color: var(--orange-dark); text-decoration: underline; word-break: break-word; }
+.bl-mail { display: flex; gap: var(--s-2); align-items: center; flex-wrap: wrap; max-width: 720px; }
+.bl-mail .wp-docdrop-input { flex: 1; min-width: 220px; }
+.bl-mail-label { font-size: var(--fs-xs); font-weight: 700; color: var(--gray); }
+.bl-mail-msg { font-size: var(--fs-xs); }
 .bl-punten { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s-2); max-width: 720px; }
-.bl-punten li { display: flex; align-items: baseline; gap: var(--s-2); border: 1px solid var(--card-border); border-radius: var(--r-md); padding: var(--s-2) var(--s-3); font-size: var(--fs-sm); line-height: var(--lh-sm); background: #fff; }
+.bl-punten li { display: flex; align-items: flex-start; gap: var(--s-2); border: 1px solid var(--card-border); border-radius: var(--r-md); padding: var(--s-2) var(--s-3); font-size: var(--fs-sm); line-height: var(--lh-sm); background: #fff; }
 .bl-punten li.bl-klaar .bl-tekst { text-decoration: line-through; color: var(--muted, #8a7a6c); }
 .bl-tekst { flex: 1; min-width: 0; }
 .bl-nieuw { font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700; text-transform: uppercase; color: var(--orange); background: #fdeee7; border-radius: var(--r-full); padding: 1px var(--s-2); }
