@@ -2835,3 +2835,71 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .focus-nav-link { margin-left: auto; font-size: var(--fs-xs, 11.5px); font-weight: 600; color: var(--orange, #F15829); text-decoration: none; }
 .focus-nav-link:hover { text-decoration: underline; }
 @media (max-width: 700px) { .nv-rij { flex-wrap: wrap; } .nv-balkje-groot { width: 160px; } }
+
+/* ═══════════════════════════════════════════════════════════
+   LEADOMGEVING (eigen tabblad, alleen zichtbaar bij een lead)
+   Chat links, dossier en plank rechts. Volledig op de schaal-tokens
+   (--s-*, --fs-*, --r-*), geen hardgecodeerde afstanden of groottes.
+   ═══════════════════════════════════════════════════════════ */
+.lead-grid { display: grid; grid-template-columns: 2fr 1fr; gap: var(--s-6); align-items: start; }
+.lead-kolom-links, .lead-kolom-rechts { min-width: 0; }
+
+/* ── De chat ── */
+.lead-chat { display: flex; flex-direction: column; }
+.lead-chat-kop { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s-4); margin-bottom: var(--s-5); }
+.lead-chat-titel { font-size: var(--fs-lg); line-height: var(--lh-lg); font-weight: 700; color: var(--dark); }
+.lead-chat-sub { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--muted); margin-top: var(--s-1); }
+.lead-chat-verloop { display: flex; flex-direction: column; gap: var(--s-4); max-height: 62vh; overflow-y: auto; padding-right: var(--s-2); }
+.lead-chat-leeg { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--muted); max-width: 70ch; }
+.lead-chat-leeg ul { margin: var(--s-3) 0; padding-left: var(--s-5); }
+.lead-chat-leeg li { margin-bottom: var(--s-2); }
+.lead-bericht { max-width: 92%; border-radius: var(--r-md); padding: var(--s-3) var(--s-4); font-size: var(--fs-base); line-height: var(--lh-base); }
+.lead-bericht.van-mij { align-self: flex-end; background: var(--orange-light); color: var(--dark); }
+.lead-bericht.van-ai { align-self: flex-start; background: var(--gray-light); width: 100%; max-width: 100%; }
+.lead-bericht-tekst { white-space: pre-wrap; }
+.lead-bericht .md { max-width: 80ch; }
+.lead-chat-invoer { display: flex; gap: var(--s-3); align-items: flex-end; margin-top: var(--s-5); }
+.lead-chat-invoer textarea {
+  flex: 1; font-family: inherit; font-size: var(--fs-base); line-height: var(--lh-base);
+  padding: var(--s-3); border: 1px solid var(--border); border-radius: var(--r-md);
+  resize: none; max-height: 320px; overflow-y: auto;
+}
+.lead-chat-invoer textarea:focus { outline: none; border-color: var(--orange); }
+
+/* ── Dossier en plank ── */
+.lead-blok-kop { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s-4); margin-bottom: var(--s-4); }
+.lead-blok-titel { font-size: var(--fs-md); line-height: var(--lh-md); font-weight: 700; color: var(--dark); }
+.lead-blok-sub { font-size: var(--fs-xs); color: var(--muted); margin-top: var(--s-1); }
+.lead-dropzone {
+  border: 1px dashed var(--border); border-radius: var(--r-md); padding: var(--s-5) var(--s-4);
+  text-align: center; font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--muted);
+  cursor: pointer; transition: border-color .15s ease, background .15s ease;
+}
+.lead-dropzone:hover, .lead-dropzone.sleep { border-color: var(--orange); background: var(--orange-light); color: var(--dark); }
+.lead-toevoegen { margin-top: var(--s-4); display: flex; flex-direction: column; gap: var(--s-3); }
+.lead-toevoegen textarea {
+  font-family: inherit; font-size: var(--fs-sm); line-height: var(--lh-sm);
+  padding: var(--s-3); border: 1px solid var(--border); border-radius: var(--r-md); resize: vertical;
+}
+.lead-toevoegen textarea:focus, .lead-maak textarea:focus { outline: none; border-color: var(--orange); }
+.lead-maak { margin-bottom: var(--s-4); display: flex; flex-direction: column; gap: var(--s-3); }
+.lead-maak textarea {
+  font-family: inherit; font-size: var(--fs-sm); line-height: var(--lh-sm);
+  padding: var(--s-3); border: 1px solid var(--border); border-radius: var(--r-md); resize: vertical;
+}
+.lead-maak-knoppen { display: flex; gap: var(--s-2); flex-wrap: wrap; }
+.lead-lijst { display: flex; flex-direction: column; gap: var(--s-3); margin-top: var(--s-4); }
+.lead-leeg { font-size: var(--fs-sm); padding: var(--s-4) 0; }
+.lead-item { border: 1px solid var(--border); border-radius: var(--r-md); padding: var(--s-3) var(--s-4); }
+.lead-item-kop { display: flex; align-items: center; gap: var(--s-2); cursor: pointer; }
+.lead-item-titel { font-size: var(--fs-sm); line-height: var(--lh-sm); font-weight: 600; color: var(--dark); flex: 1; min-width: 0; }
+.lead-item-datum { font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; }
+.lead-item-sam { font-size: var(--fs-xs); line-height: 1.5; color: var(--muted); margin-top: var(--s-2); }
+.lead-item-volledig { margin-top: var(--s-3); max-height: 320px; overflow-y: auto; background: var(--gray-light); border-radius: var(--r-sm); padding: var(--s-3); }
+.lead-item-volledig pre { margin: 0; white-space: pre-wrap; font-family: inherit; font-size: var(--fs-xs); line-height: 1.55; color: var(--dark); }
+.lead-item-acties { margin-top: var(--s-3); display: flex; gap: var(--s-2); flex-wrap: wrap; align-items: center; }
+
+@media (max-width: 1100px) {
+  .lead-grid { grid-template-columns: 1fr; }
+  .lead-chat-verloop { max-height: 50vh; }
+}

@@ -27,8 +27,9 @@ import WijzigingenPanel from "./WijzigingenPanel";
 import MetaCtrPanel from "./MetaCtrPanel";
 import InvoiceAlert from "./InvoiceAlert";
 import SelectionActions from "./SelectionActions";
+import LeadTab from "./LeadTab";
 
-type Tab = "werkzaamheden" | "paginas" | "resultaten" | "klant" | "developer" | "wijzigingen" | "cannibalisatie" | "interne-links" | "meta";
+type Tab = "lead" | "werkzaamheden" | "paginas" | "resultaten" | "klant" | "developer" | "wijzigingen" | "cannibalisatie" | "interne-links" | "meta";
 
 // Jouw Superhuman-account (Microsoft 365 hangt hieronder).
 const SUPERHUMAN_ACCOUNT = "Maarten@pingwin.nl";
@@ -92,7 +93,10 @@ export default function ClientCockpit({
   // Directe feedback bij het wisselen van klant: de nieuwe pagina moet server-
   // side data ophalen en dat duurt even; zonder signaal voelt dat als bevroren.
   const [switchingTo, setSwitchingTo] = useState<string | null>(null);
-  const validTab = (t?: string): Tab => (t === "werkzaamheden" || t === "paginas" || t === "resultaten" || t === "klant" || t === "developer" || t === "wijzigingen" || t === "meta") ? t : "werkzaamheden";
+  // Is dit een lead, dan is de leadomgeving het startscherm. Voor klanten
+  // verandert er niets: die beginnen zoals altijd op Taken.
+  const isLead = client.fase === "lead";
+  const validTab = (t?: string): Tab => (t === "lead" || t === "werkzaamheden" || t === "paginas" || t === "resultaten" || t === "klant" || t === "developer" || t === "wijzigingen" || t === "meta") ? t : (isLead ? "lead" : "werkzaamheden");
   const [tab, setTab] = useState<Tab>(validTab(initialTab));
   // Teller die de weekplanning laat herladen zodra er vanuit de chat een taak is
   // toegevoegd (of iets in het bord verandert).
@@ -394,6 +398,9 @@ export default function ClientCockpit({
           )}
           <nav className="header-tabs">
             {([
+              // Het lead-tabje verschijnt alleen bij een lead; bij een klant is
+              // de tabbalk exact zoals hij was.
+              ...(isLead ? [["lead", "Lead", "De werkplek voor deze lead: gesprek, dossier en documenten"] as [Tab, string, string]] : []),
               ["werkzaamheden", "Taken", "De bird's eye-assistent en de weekplanning, jouw werkplek"],
               ["paginas", "Pagina’s", ""],
               ["meta", "Meta & CTR", "Pagina's met veel vertoningen maar te weinig klikken: betere meta-teksten = direct meer bezoekers"],
@@ -434,6 +441,10 @@ export default function ClientCockpit({
         <ZijPaneel label="Zoekwoorden & links">
           <FocusBlock slug={client.slug} />
         </ZijPaneel>
+
+        {tab === "lead" && (
+          <LeadTab slug={client.slug} naam={client.name} domain={client.domain || ""} />
+        )}
 
         {tab === "werkzaamheden" && (
           <>

@@ -14,6 +14,9 @@ import { buildOverview, overviewToText, getPageWorkStatus, pageWorkStatusToText 
 import { buildPageSignalsText, buildKeywordStandText, buildTeBouwenText } from "./page-signals";
 import { readDriveDoc } from "./drive";
 import { validateAction, executeAction, type ProposedAction } from "./overview-actions";
+import { dossierIndexText, searchDossier, getDossierItem, addDossierItem } from "./lead-dossier";
+import { listLeadDocs, maakLeadDocument, SJABLONEN } from "./lead-doc";
+import { getSiteAuthority } from "./ahrefs";
 import type { ClientConfig } from "./clients";
 
 // ═══════════════════════════════════════════════════════════
@@ -263,6 +266,118 @@ async function buildOverviewContext(client: ClientConfig): Promise<string> {
   } catch { /* aanvulling */ }
   try { const tasks = await sheetTaskLines(client); if (tasks.length) parts.push("\n=== LOPENDE WERKZAAMHEDEN (huidige maand) ===\n" + tasks.join("\n")); } catch { /* aanvulling */ }
   return parts.join("\n");
+}
+
+// ── Lead-chat: de werkplek voor een bedrijf dat nog geen klant is ──
+// Bewust een eigen, lichte context. Een lead heeft geen Search Console, geen
+// weekplanning en geen lopende werkzaamheden; wat hij wél heeft is een website
+// die we van buitenaf kunnen meten, en een dossier dat groeit met alles wat
+// Maarten aanlevert. De inhoud van dat dossier reist NIET mee: alleen de
+// inhoudsopgave. De chat haalt zelf op wat hij nodig heeft.
+async function buildLeadContext(client: ClientConfig): Promise<string> {
+  const parts: string[] = [];
+  parts.push(`BEDRIJF: ${client.name}${client.domain ? ` (website: ${client.domain})` : " (nog geen website ingevuld)"}`);
+  parts.push(`FASE: lead (nog geen klant). We hebben GEEN toegang tot hun Search Console of Analytics; alles wat we weten komt uit onze eigen meting van de live site, uit Ahrefs, en uit wat Maarten aanlevert.`);
+  if (client.email) parts.push(`Contact-e-mail: ${client.email}`);
+
+  const index = await dossierIndexText(client.slug).catch(() => "");
+  parts.push(
+    "\n=== HET DOSSIER (inhoudsopgave; nieuwste eerst) ===\n" +
+    (index
+      ? index + "\n\nDit is BEWUST alleen een inhoudsopgave. Heb je de volledige inhoud van een stuk nodig, haal die dan op met zoek_dossier of lees_dossier. Verzin nooit wat er in een stuk staat."
+      : "(het dossier is nog leeg; Maarten kan documenten en notities toevoegen, en jij kunt ze bewaren met bewaar_in_dossier)")
+  );
+
+  try {
+    const docs = await listLeadDocs(client.slug);
+    if (docs.length) {
+      parts.push(
+        "\n=== AL GEMAAKTE DOCUMENTEN (de plank) ===\n" +
+        docs.slice(0, 20).map((d) => {
+          const datum = d.createdAt ? new Date(d.createdAt).toLocaleDateString("nl-NL") : "";
+          return `- ${d.titel} (${datum})${d.opdracht ? ` — opdracht was: ${d.opdracht.slice(0, 200)}` : ""}${d.driveLink ? `\n  link: ${d.driveLink}` : ""}`;
+        }).join("\n")
+      );
+    }
+  } catch { /* aanvulling */ }
+
+  // De paginalijst van hun site, als die al gescand is. Alleen de paden, zodat
+  // je nooit zelf een URL hoeft te vormen.
+  try {
+    const urls = await getClientUrls(client.slug);
+    if (urls.length) {
+      const paden = urls.map((u) => { try { return new URL(u.url).pathname; } catch { return u.url; } });
+      parts.push(`\n=== BEKENDE PAGINA'S VAN HUN SITE (${urls.length}) ===\n` + paden.slice(0, 200).join(", ").slice(0, 4000));
+    } else {
+      parts.push("\n=== HUN SITE ===\nDe site is nog niet ingelezen. Wil je weten welke pagina's er zijn, gebruik dan meet_pagina op losse URL's, of vraag Maarten of hij de site laat scannen.");
+    }
+  } catch { /* aanvulling */ }
+
+  return parts.join("\n");
+}
+
+// Het gereedschap van de lead-chat, bovenop de gewone meet-tools: het dossier
+// doorzoeken en lezen, iets blijvends bewaren, en een document maken.
+function leadTools(client: ClientConfig, base: { tools: ToolDef[]; run: ToolRunner }): { tools: ToolDef[]; run: ToolRunner } {
+  const sjabloonLijst = SJABLONEN.map((s) => `${s.key} (${s.naam}: ${s.omschrijving})`).join("; ");
+  const extra: ToolDef[] = [
+    { name: "zoek_dossier", description: "Zoekt in het dossier van dit bedrijf op een trefwoord (bijvoorbeeld 'budget', 'Ads', 'concurrent', 'propositie') en geeft de gevonden stukken MET hun volledige inhoud terug. Gebruik dit voordat je iets beweert over wat er is aangeleverd of afgesproken.", input_schema: { type: "object", properties: { zoekterm: { type: "string" } }, required: ["zoekterm"] } },
+    { name: "lees_dossier", description: "Leest één stuk uit het dossier volledig, op nummer (het nummer tussen blokhaken in de inhoudsopgave, bijvoorbeeld 12 voor [#12]).", input_schema: { type: "object", properties: { id: { type: "integer" } }, required: ["id"] } },
+    { name: "bewaar_in_dossier", description: "Bewaart iets blijvends over dit bedrijf in het dossier, zodat het bij elk volgend document en gesprek meegaat. Gebruik dit voor feiten die blijven gelden (wat de klant belangrijk vindt, hun propositie, een concurrent, een besluit). NIET voor eenmalige instructies voor één document (zoals het budget van dít voorstel); die geef je gewoon mee aan maak_document.", input_schema: { type: "object", properties: { titel: { type: "string", description: "Korte herkenbare titel" }, inhoud: { type: "string", description: "De volledige tekst die bewaard moet blijven" }, soort: { type: "string", enum: ["notitie", "document", "analyse", "meting", "overig"] } }, required: ["titel", "inhoud"] } },
+    { name: "ahrefs_site", description: "Domain Rating, aantal verwijzende domeinen en backlinks van een heel domein (werkt op elk domein, ook van een bedrijf dat nog geen klant is). Gebruik dit voor de autoriteitsvergelijking met concurrenten. Verzin deze cijfers nooit.", input_schema: { type: "object", properties: { domein: { type: "string", description: "Kaal domein, bijvoorbeeld tudorkozijnen.nl" } }, required: ["domein"] } },
+    { name: "maak_document", description: `Maakt een compleet document in de Pingwin-huisstijl en zet het als bewerkbaar bestand in Drive, met een link op de plank. Beschikbare sjablonen: ${sjabloonLijst}. Gebruik dit ALLEEN wanneer Maarten er expliciet om vraagt ("maak een voorstel", "werk dit uit tot een document"). Zet in 'opdracht' ALLES wat Maarten voor dit specifieke document heeft meegegeven: het budget, waar de klant waarde aan hecht, welke pagina's erin moeten, de looptijd, en wat er juist niet in moet. Dat wint van de standaardaanpak.`, input_schema: { type: "object", properties: { sjabloon: { type: "string", description: "De sleutel van het sjabloon, bijvoorbeeld seo-voorstel" }, opdracht: { type: "string", description: "Alles wat Maarten voor dit document heeft meegegeven, in zijn eigen woorden samengevat" } }, required: ["sjabloon"] } },
+  ];
+
+  const run: ToolRunner = async (name, input) => {
+    try {
+      if (name === "zoek_dossier") {
+        const term = String(input.zoekterm || "").trim();
+        if (!term) return "Geef een zoekterm.";
+        const items = await searchDossier(client.slug, term);
+        if (!items.length) return `Niets in het dossier gevonden voor "${term}".`;
+        return items.map((i) => {
+          const datum = i.createdAt ? new Date(i.createdAt).toLocaleDateString("nl-NL") : "";
+          return `[#${i.id}] ${i.titel} (${datum})${i.driveLink ? `\nlink: ${i.driveLink}` : ""}\n${(i.inhoud || i.samenvatting).slice(0, 6000)}`;
+        }).join("\n\n---\n\n");
+      }
+      if (name === "lees_dossier") {
+        const id = Number(input.id || 0);
+        const item = id ? await getDossierItem(client.slug, id) : null;
+        if (!item) return "Dat nummer staat niet in het dossier van dit bedrijf.";
+        const datum = item.createdAt ? new Date(item.createdAt).toLocaleDateString("nl-NL") : "";
+        return `[#${item.id}] ${item.titel} (${datum})${item.driveLink ? `\nlink: ${item.driveLink}` : ""}\n\n${(item.inhoud || item.samenvatting).slice(0, 20000)}`;
+      }
+      if (name === "bewaar_in_dossier") {
+        const titel = String(input.titel || "").trim();
+        const inhoud = String(input.inhoud || "").trim();
+        if (!inhoud) return "Geen inhoud om te bewaren.";
+        const item = await addDossierItem(client.slug, { titel, inhoud, soort: String(input.soort || "notitie"), bron: "Uit het gesprek met Maarten" });
+        return `Bewaard in het dossier als [#${item.id}] ${item.titel}. Noem dit kort in je antwoord, in één regel.`;
+      }
+      if (name === "ahrefs_site") {
+        if (!ahrefsConfigured()) return "Ahrefs is niet gekoppeld.";
+        const target = String(input.domein || "").trim().replace(/^https?:\/\//i, "").replace(/^www\./i, "").replace(/\/.*$/, "");
+        if (!target) return "Geen domein opgegeven.";
+        return JSON.stringify(await getSiteAuthority(target));
+      }
+      if (name === "maak_document") {
+        const sjabloon = String(input.sjabloon || "seo-voorstel").trim();
+        const opdracht = String(input.opdracht || "").trim();
+        const r = await maakLeadDocument(client.slug, sjabloon, opdracht);
+        if (!r.ok) return `Document maken mislukt: ${r.error || "onbekende fout"}`;
+        const link = r.doc?.driveLink || "";
+        return [
+          `Document gemaakt: "${r.doc?.titel}".`,
+          link ? `Het staat op de plank en is te openen en te bewerken: ${link}` : `Let op: het document is gemaakt maar kon niet in Drive gezet worden${r.driveError ? ` (${r.driveError})` : ""}. Meld dat eerlijk.`,
+          "Vat in je antwoord in een paar regels samen wat er in het document staat en welke keuzes je gemaakt hebt, en geef de link. Plak niet het hele document in de chat.",
+        ].join("\n");
+      }
+      return base.run(name, input);
+    } catch (e) {
+      return `Gereedschap-fout: ${(e as Error).message}`;
+    }
+  };
+  return { tools: [...base.tools, ...extra], run };
 }
 
 // De bird's eye krijgt bovenop de gewone read-tools twee site-brede tools:
@@ -590,8 +705,34 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
   const isAds = cleanThread(thread) === "ads";
   // "overzicht" én "overzicht:<naam>" (meerdere bird's eye-gesprekken) → bird's eye.
   const isOverview = cleanThread(thread).startsWith("overzicht");
-  const context = isOverview ? await buildOverviewContext(client) : isAds ? await buildAdsContext(client) : await buildContext(client);
-  const system = isOverview
+  // Thread "lead" = de leadomgeving: eigen lichte context (dossier + plank),
+  // los van alles wat voor bestaande klanten gebouwd is.
+  const isLead = cleanThread(thread) === "lead";
+  const context = isLead
+    ? await buildLeadContext(client)
+    : isOverview ? await buildOverviewContext(client) : isAds ? await buildAdsContext(client) : await buildContext(client);
+  const system = isLead
+    ? `Je bent een ervaren SEO-consultant van bureau Pingwin en je werkt samen met Maarten aan ${client.name}, een bedrijf dat nog geen klant is. Dit is de werkplek waar alles rond deze lead samenkomt: wat we weten, wat we meten en wat we opleveren.\n\n` +
+      `HOE MAARTEN MET JE WERKT (belangrijk):\n` +
+      `- Hij dumpt vrij wat hij denkt: wat de klant belangrijk vindt, welke pagina in de analyse moet, wat het budget mag zijn, een stuk van een collega. Er is GEEN vast formaat waar hij zich aan moet houden; jij vist eruit wat waar hoort.\n` +
+      `- Vertelt hij iets dat BLIJVEND geldt voor dit bedrijf (hun propositie, een concurrent, wat ze belangrijk vinden, een besluit), bewaar dat dan met bewaar_in_dossier en meld dat in één regel. Gaat het om een instructie voor één document (het budget van dít voorstel, welke pagina erin moet), bewaar dat dan NIET apart maar geef het mee in de opdracht van maak_document.\n` +
+      `- Vraagt hij om een document ("maak een voorstel", "werk dit uit"), gebruik dan maak_document en zet ALLES wat hij heeft meegegeven in de opdracht. Vat daarna in een paar regels samen wat erin staat en geef de link. Plak nooit het hele document in de chat.\n\n` +
+      `WAT JE WEL EN NIET KUNT METEN BIJ EEN LEAD (hard, hier geen aannames):\n` +
+      `- WEL: hun live pagina's uitlezen (meet_pagina), waar hun pagina's op ranken met positie en volume (ahrefs_pagina), de autoriteit van hun domein en dat van concurrenten (ahrefs_site), en de top 10 op een zoekwoord (serp_top10). Dat werkt allemaal zonder toegang van de klant.\n` +
+      `- NIET: Search Console en Analytics. Die zijn van hen; wij hebben er geen toegang toe. Gebruik gsc_pagina hier dus niet en beloof nooit cijfers die daar vandaan zouden moeten komen.\n` +
+      `- Noem je cijfers in een terugkoppeling of document, zeg er dan bij dat het schattingen van buitenaf zijn. Dat is eerlijk én een verkoopargument: met toegang tot hun eigen cijfers wordt het scherper.\n\n` +
+      `HOE JE DENKT:\n` +
+      `- Verzin NOOIT cijfers, posities, zoekvolumes, bedragen of bevindingen. Meet het, of zeg dat je het nog niet weet.\n` +
+      `- Het dossier hieronder is BEWUST alleen een inhoudsopgave. Moet je weten wat er precies in een stuk staat, haal het dan op met zoek_dossier of lees_dossier. Beweer nooit iets over de inhoud van een stuk dat je niet gelezen hebt.\n` +
+      `- Meet uit jezelf voordat je antwoordt. Vraagt Maarten "hoe staat deze landingpagina ervoor", dan meet je hem en vertel je wat je zag; je stelt geen controlevragen die je zelf kunt beantwoorden.\n` +
+      `- Denk mee als consultant, niet als uitvoerder: benoem wat je zou doen en waarom, in volgorde van impact.\n\n` +
+      `OPMAAK (Nederlands, Markdown, geen emoji):\n` +
+      `- Begin direct met de inhoud. Geen aankondigingszinnen zoals "Ik ga even kijken" of "Hier is het resultaat".\n` +
+      `- Korte kopjes (## Kop), korte bullets (-), **vet** voor kernfeiten (paginanaam, positie, bedrag, datum). Geen muur tekst.\n` +
+      `- Pagina's en paden schrijf je KAAL (bijv. /kozijnen/), die worden automatisch klikbaar. Gebruik geen markdown-linksyntax voor paden.\n` +
+      `- Gebruik nooit een los liggend streepje als zinsscheiding; gebruik een komma, dubbele punt, haakjes of een nieuwe zin.\n\n` +
+      `Mens aan het stuur: jij adviseert, meet en stelt op; Maarten beslist en verstuurt.\n\n--- LEAD-CONTEXT ---\n${context}`
+    : isOverview
     ? `Je bent de overkoepelende SEO-strateeg ("bird's eye") van Pingwin voor de klant ${client.name}. Je helpt Maarten vanuit één helder, gestructureerd werkplan bepalen wat we doen, wat er nog moet en waar het laaghangend fruit zit. Dat plan is gegrond in de AFSPRAKEN met de klant (navigatie, zoekwoordenlijst, geplande landingspagina's), niet alleen in snelle winst.\n\n` +
       `GEREEDSCHAP, gebruik het ZELF voordat je antwoordt:\n` +
       `- lees_document: lees de gelinkte Google-strategiedocumenten (navigatie/URL-structuur, zoekwoorden-samenvatting, werkdocument) om de BEDOELING/richting te snappen. Bepaal de huidige stand (bestaat een pagina, hoe rankt hij) NOOIT hieruit, maar uit de live data (meet_pagina, ahrefs_pagina, gsc_pagina). Het document kan maanden oud zijn.\n` +
@@ -671,11 +812,11 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
     });
     const base = chatTools(client);
     const collected: ProposedAction[] = [];
-    const { tools, run } = isOverview ? overviewTools(client, base, collected) : base;
+    const { tools, run } = isLead ? leadTools(client, base) : isOverview ? overviewTools(client, base, collected) : base;
     // De chat geeft gewoon zijn rijke agentische antwoord (dat Maarten goed vindt). De
     // taak-kaarten worden NIET meer hier auto-gegenereerd (te fragiel); dat doet de
     // deterministische knop "Zet de taken in de weekplanning" (weekplanFromAnswer) op verzoek.
-    let answer = await callClaudeAgentic(system, apiMessages as { role: "user" | "assistant"; content: string }[], tools, run, isOverview ? 12 : 6, isOverview ? 3200 : 2000, { slug, action: isOverview ? "overzicht-chat" : isAds ? "ads-chat" : "projectchat" });
+    let answer = await callClaudeAgentic(system, apiMessages as { role: "user" | "assistant"; content: string }[], tools, run, isOverview ? 12 : isLead ? 10 : 6, isOverview ? 3200 : isLead ? 3000 : 2000, { slug, action: isOverview ? "overzicht-chat" : isLead ? "lead-chat" : isAds ? "ads-chat" : "projectchat" });
 
     // Vangnet: eindigt het antwoord als alleen een aankondiging ("Nu heb ik alles…",
     // "Hier is de volledige analyse…") zonder de echte inhoud, forceer dan één

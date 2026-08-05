@@ -214,7 +214,10 @@ export default function AdminClient({ initialClients, isOwner = true, showGroups
 
   async function remove(e: React.MouseEvent, c: ClientConfig) {
     e.stopPropagation();
-    if (!window.confirm(`Klant "${c.name}" verwijderen? Hun login werkt daarna niet meer.`)) return;
+    const vraag = c.fase === "lead"
+      ? `Lead "${c.name}" verwijderen? Het gesprek, het dossier en de documenten gaan mee weg.`
+      : `Klant "${c.name}" verwijderen? Hun login werkt daarna niet meer.`;
+    if (!window.confirm(vraag)) return;
     await fetch(`/api/admin/clients?slug=${encodeURIComponent(c.slug)}`, { method: "DELETE" });
     await refresh();
   }
