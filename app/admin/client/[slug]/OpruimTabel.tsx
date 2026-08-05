@@ -38,13 +38,52 @@ const pad = (u: string) => { try { return new URL(u).pathname; } catch { return 
 function getal(n?: number): string { return n != null && Number.isFinite(n) ? String(Math.round(n)) : ""; }
 function plek(n?: number): string { return n != null && Number.isFinite(n) ? String(Math.round(n * 10) / 10) : ""; }
 
-function BewijsUitleg({ b, v, doel, verhuizen, merge, site }: {
-  b: Bewijs; v: string; doel: string; verhuizen?: boolean; merge?: boolean;
+// De reden uit de analyse is vaak een telegramstijl-regeltje ("0 klikken, 75
+// vertoningen; interne testpagina zonder eigen term. Direct opruimen."). Dat is
+// geen zin, dus maken we er een korte opsomming van die wél leest.
+function redenDelen(reden: string): string[] {
+  return (reden || "").split(/[;.]\s+|\n/).map((d) => d.trim().replace(/[.;]$/, "")).filter((d) => d.length > 2);
+}
+
+function BewijsUitleg({ b, v, doel, verhuizen, merge, reden, site }: {
+  /** Het clusterbewijs, als de pagina in een cluster zat. Kandidaten uit de
+      doorloop-rondes hebben dat niet; die krijgen hetzelfde verhaal, alleen met
+      de reden uit de analyse in plaats van de cijfers uit het cluster. */
+  b?: Bewijs; v: string; doel: string; verhuizen?: boolean; merge?: boolean; reden?: string;
   site: (p: string) => string;
 }) {
   const Link = ({ p }: { p: string }) => (
     <a className="opr-pad" href={site(p)} target="_blank" rel="noreferrer">{p}</a>
   );
+
+  const Conclusie = () => (
+    <p>
+      {verhuizen
+        ? <><strong>Wat we doen:</strong> de inhoud van deze pagina verhuist naar <Link p={doel} />, en dit oude adres gaat daarheen wijzen. Google krijgt dan nog maar één pagina te zien voor dit onderwerp, op het adres dat we willen aanhouden, en de opgebouwde waarde van allebei komt daar samen.</>
+        : merge
+          ? <><strong>Wat we doen:</strong> de bruikbare tekst van deze pagina gaat mee naar <Link p={doel} />, en dit adres wijst daarna daarheen. Eén sterke pagina in plaats van twee halve, zonder dat er inhoud verloren gaat.</>
+          : <><strong>Wat we doen:</strong> deze pagina wijst voortaan door naar <Link p={doel} />. Google hoeft dan niet meer te kiezen, bezoekers komen op de beste pagina uit, en de kracht die deze pagina had telt daar voortaan mee.</>}
+    </p>
+  );
+
+  // Geen cluster: dan is dit een pagina die op geen enkele eigen zoekterm scoort.
+  if (!b) {
+    const delen = redenDelen(reden || "");
+    return (
+      <div className="opr-bewijs">
+        <p>
+          Deze pagina scoort in Google <strong>op geen enkel zoekwoord dat over zijn eigen onderwerp gaat</strong>.
+          Wat hij binnenhaalt, leent hij van de merknaam of van een andere plaats. Hij zit dus niemand in de weg,
+          maar hij verdeelt wel de kracht van de site over meer pagina&rsquo;s dan nodig.
+        </p>
+        {delen.length > 1
+          ? <ul className="opr-bewijs-punten">{delen.map((d, k) => <li key={k}>{d}</li>)}</ul>
+          : reden ? <p><strong>Wat de analyse zag:</strong> {reden}</p> : null}
+        <Conclusie />
+      </div>
+    );
+  }
+
   const winnaar = pad(b.winnaar);
   const deze = b.urls.find((u) => pad(u.url) === v);
   const win = b.urls.find((u) => pad(u.url) === winnaar);
@@ -63,20 +102,14 @@ function BewijsUitleg({ b, v, doel, verhuizen, merge, site }: {
         {b.urlFlip ? ` Google weet daardoor zelf niet welke hij moet tonen: hij wisselde er de afgelopen maanden ${b.flipsIn90d && b.flipsIn90d > 1 ? `${b.flipsIn90d} keer` : "meermaals"} tussen.` : ""}
       </p>
       <p>
-        De sterkste van het stel is <Link p={winnaar} />.
+        <strong>De sterkste van het stel is <Link p={winnaar} />.</strong>
         {winPlek ? ` Die staat gemiddeld op plek ${winPlek}` : " Die wint deze zoekopdracht"}
         {winKlik ? ` en levert ${winKlik} ${winKlik === "1" ? "bezoeker" : "bezoekers"} op` : ""}.
         {deze && v !== winnaar
           ? ` Deze pagina zelf komt niet verder dan ${dezePlek ? `plek ${dezePlek}` : "de achterhoede"}${dezeKlik ? ` en haalt er ${dezeKlik} ${dezeKlik === "1" ? "bezoeker" : "bezoekers"} uit` : " en levert vrijwel niets op"}.`
           : ""}
       </p>
-      <p>
-        {verhuizen
-          ? <>Daarom verhuist de inhoud van deze pagina naar <Link p={doel} />, en wijst dit oude adres daarheen. Google krijgt dan nog maar één pagina te zien voor dit onderwerp, op het adres dat we willen aanhouden, en de opgebouwde waarde van allebei komt daar samen.</>
-          : merge
-            ? <>Daarom voegen we de bruikbare tekst van deze pagina samen met <Link p={doel} /> en leiden we dit adres daarheen. Eén sterke pagina in plaats van twee halve, zonder dat er inhoud verloren gaat.</>
-            : <>Daarom leiden we deze pagina door naar <Link p={doel} />. Google hoeft dan niet meer te kiezen, alle bezoekers komen op de beste pagina uit, en de kracht die deze pagina had telt daar voortaan mee.</>}
-      </p>
+      <Conclusie />
       {rest.length > 0 && (
         <p className="opr-bewijs-rest">
           Op dezelfde zoekopdracht doen ook nog mee:{" "}
@@ -273,14 +306,12 @@ export default function OpruimTabel({ slug, domain, rijen, openTarget, bewijs = 
                     <button type="button" className="opr-meer" onClick={() => setOpen((o) => ({ ...o, [v]: !o[v] }))}>
                       {open[v] ? "▾" : "▸"} {open[v] ? "minder" : "reden"}
                     </button>
+                    {/* Elke regel krijgt hetzelfde verhaal: wat er aan de hand is, en
+                        wat we eraan doen. Zat de pagina in een cluster, dan met de
+                        cijfers erbij; zo niet, dan met de reden uit de analyse. */}
                     {open[v] && (
                       <div className="opr-uitleg">
-                        <div>{r.reden || "Geen onderbouwing meegegeven."}</div>
-                        {/* Het bewijs uit de cannibalisatie-analyse, als het er is:
-                            welk zoekwoord, wie wint, en de cijfers per pagina. */}
-                        {bewijs[v] && (
-                          <BewijsUitleg b={bewijs[v]} v={v} doel={doel} verhuizen={r.verhuizen} merge={r.mergeContent} site={site} />
-                        )}
+                        <BewijsUitleg b={bewijs[v]} v={v} doel={doel} verhuizen={r.verhuizen} merge={r.mergeContent} reden={r.reden} site={site} />
                       </div>
                     )}
                   </td>

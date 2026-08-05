@@ -3862,7 +3862,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .opr-uitleg-blok strong { color: var(--dark); }
 /* Het bewijs leest als een verhaaltje, niet als een rij cijfers: lopende zinnen,
    ruime regelhoogte en een begrensde leesbreedte, met de links in de tekst zelf. */
-.opr-bewijs { margin-top: var(--s-2); padding-top: var(--s-2); border-top: 1px solid var(--border); max-width: 68ch; }
+.opr-bewijs { margin-top: var(--s-2); padding-top: var(--s-2); border-top: 1px solid var(--border); max-width: 68ch; text-align: left; }
+.opr-bewijs-punten { margin: 0 0 var(--s-2); padding-left: var(--s-4); display: flex; flex-direction: column; gap: 2px; font-size: var(--fs-xs); line-height: 1.6; color: var(--muted); }
 .opr-bewijs p { margin: 0 0 var(--s-2); font-size: var(--fs-xs); line-height: 1.65; color: var(--muted); }
 .opr-bewijs p:last-child { margin-bottom: 0; }
 .opr-bewijs strong { color: var(--dark); }
@@ -3934,10 +3935,24 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .opr-btn { border: 1px solid var(--border); background: var(--white); color: var(--gray); cursor: pointer; font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700; padding: var(--s-1) var(--s-2); border-radius: var(--r-sm); white-space: nowrap; }
 .opr-btn.aan { border-color: var(--orange); background: rgba(231, 119, 63, 0.12); color: var(--orange-dark); }
 .opr-btn:focus-visible { outline: 2px solid var(--orange); outline-offset: 1px; }
-.opr-reden { max-width: 340px; }
+/* Uitleg leest van links naar rechts, nooit gecentreerd; de tabel erft anders de
+   centrering van het kaartje eromheen en dan staat elke zin als een gedicht. */
+.opr-reden { max-width: 380px; text-align: left; }
+.opr-tabel td, .opr-tabel .opr-groepkop td { text-align: left; }
 .opr-meer { border: none; background: none; padding: 0; cursor: pointer; font-family: inherit; font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700; color: var(--gray); }
 .opr-meer:hover { color: var(--dark); }
-.opr-uitleg { margin-top: var(--s-1); font-size: var(--fs-xs); line-height: var(--lh-sm); color: var(--gray); max-width: 60ch; }
+.opr-uitleg { margin-top: var(--s-1); font-size: var(--fs-xs); line-height: var(--lh-sm); color: var(--gray); max-width: 60ch; text-align: left; }
+.opr-uitleg .opr-bewijs { border-top: none; margin-top: 0; padding-top: 0; }
+
+/* Advertentiepagina's: het slot vóór de analyse. Zolang het niet is ingevuld
+   valt het blok op, daarna is het gewoon een rustig kaartje. */
+.opr-ads.nodig { border-color: var(--orange); background: var(--brand-orange-faint); }
+.opr-chip.nodig { background: var(--orange); color: var(--white); }
+.opr-ads-veld { width: 100%; margin-top: var(--s-2); font-family: ui-monospace, Menlo, monospace; font-size: var(--fs-xs); line-height: 1.6; padding: var(--s-2); border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--white); color: var(--dark); resize: vertical; }
+.opr-ads-veld:focus-visible { outline: 2px solid var(--orange); outline-offset: 1px; }
+.opr-ads-geen { display: flex; align-items: center; gap: var(--s-2); font-size: var(--fs-xs); color: var(--gray); cursor: pointer; }
+.opr-ads-geen input { accent-color: var(--orange); width: 16px; height: 16px; cursor: pointer; }
+.opr-ads code { font-family: ui-monospace, Menlo, monospace; background: var(--gray-light); padding: 0 4px; border-radius: var(--r-sm); }
 .opr-melding { margin-top: var(--s-2); font-size: var(--fs-xs); line-height: var(--lh-xs); color: #1c7a3f; }
 .opr-voet { margin-top: var(--s-3); font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray); max-width: 70ch; }
 .opr-details { margin-top: var(--s-5); border-top: 1px solid var(--border); padding-top: var(--s-3); }

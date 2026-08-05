@@ -71,6 +71,13 @@ export default function CannibalPanel({ slug, domain = "", openTarget }: {
   const [vorm, setVorm] = useState("");
   const [vormOpgeslagen, setVormOpgeslagen] = useState("");
   const [vormMsg, setVormMsg] = useState("");
+  // De advertentiepagina's. Die moeten bekend zijn vóór de analyse: een Ads-pagina
+  // staat meestal op noindex, haalt dus niets uit Google, en ziet er in de data uit
+  // als dood gewicht terwijl de advertenties erheen wijzen.
+  const [adsTekst, setAdsTekst] = useState("");
+  const [adsGeen, setAdsGeen] = useState(false);
+  const [adsIngevuld, setAdsIngevuld] = useState(true);
+  const [adsMsg, setAdsMsg] = useState("");
 
   async function load() {
     try {
@@ -83,9 +90,35 @@ export default function CannibalPanel({ slug, domain = "", openTarget }: {
   useEffect(() => {
     fetch(`/api/admin/opruim-structuur-regel?slug=${encodeURIComponent(slug)}`)
       .then((r) => r.json())
-      .then((d) => { if (d.ok) { setVorm(d.vorm || ""); setVormOpgeslagen(d.vorm || ""); } })
+      .then((d) => {
+        if (!d.ok) return;
+        setVorm(d.vorm || ""); setVormOpgeslagen(d.vorm || "");
+        const a = d.ads as { paden?: string[]; geen?: boolean; ingevuld?: boolean } | undefined;
+        setAdsTekst((a?.paden || []).join("\n"));
+        setAdsGeen(!!a?.geen);
+        setAdsIngevuld(!!a?.ingevuld);
+      })
       .catch(() => { /* stil */ });
   }, [slug]);
+
+  async function bewaarAds(geen?: boolean) {
+    setAdsMsg("");
+    const wilGeen = geen === undefined ? adsGeen : geen;
+    const paden = adsTekst.split(/[\n,]/).map((p) => p.trim()).filter(Boolean);
+    if (!paden.length && !wilGeen) { setAdsMsg("Vul de pagina's in, of vink aan dat deze klant geen advertentiepagina's heeft."); return; }
+    try {
+      const d = await fetch("/api/admin/opruim-structuur-regel", {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, ads: paden, geenAds: wilGeen && !paden.length }),
+      }).then((r) => r.json());
+      if (!d.ok) { setAdsMsg(d.error || "Opslaan mislukt."); return; }
+      const a = d.ads as { paden: string[]; geen: boolean; ingevuld: boolean };
+      setAdsTekst(a.paden.join("\n")); setAdsGeen(a.geen); setAdsIngevuld(a.ingevuld);
+      setAdsMsg(a.paden.length
+        ? `Vastgelegd. Deze ${a.paden.length === 1 ? "pagina blijft" : "pagina's blijven"} buiten elke analyse en buiten de werklijst.`
+        : "Vastgelegd: deze klant heeft geen advertentiepagina's.");
+    } catch { setAdsMsg("Opslaan mislukt."); }
+  }
 
   async function bewaarVorm() {
     setVormMsg("");
@@ -184,7 +217,8 @@ export default function CannibalPanel({ slug, domain = "", openTarget }: {
       <div className="cockpit-card acc-orange">
         <div className="ck-section-head">
           <span>Keyword-cannibalisatie-analyse</span>
-          <button type="button" className={"pcd-btn pcd-btn-primary" + (running ? " busy" : "")} onClick={run} disabled={busy || running}>
+          <button type="button" className={"pcd-btn pcd-btn-primary" + (running ? " busy" : "")} onClick={run} disabled={busy || running || !adsIngevuld}
+            title={adsIngevuld ? "" : "Vul eerst de advertentiepagina's in, anders kan de analyse er een voorstellen om op te ruimen."}>
             {running ? "Analyse draait…" : result ? "Opnieuw analyseren" : "Analyse draaien"}
           </button>
         </div>
@@ -215,6 +249,36 @@ export default function CannibalPanel({ slug, domain = "", openTarget }: {
             wegklikken.
           </p>
         </div>
+        {/* Eerst dit, dan pas analyseren. Een Google Ads-landingspagina staat vaak op
+            noindex: hij haalt niets uit Google en lijkt daarom dood gewicht, terwijl de
+            advertenties erheen wijzen. Zo'n pagina opruimen kost meteen geld. */}
+        <div className={"opr-vorm opr-ads" + (adsIngevuld ? "" : " nodig")}>
+          <div className="opr-vorm-kop">
+            Advertentiepagina&rsquo;s (Google Ads)
+            {adsIngevuld
+              ? <span className="opr-chip merge" style={{ marginLeft: 8 }}>{adsGeen ? "geen" : `${adsTekst.split("\n").filter(Boolean).length} vastgelegd`}</span>
+              : <span className="opr-chip nodig" style={{ marginLeft: 8 }}>invullen vóór de analyse</span>}
+          </div>
+          <p className="muted" style={{ fontSize: 12, margin: 0 }}>
+            Landingspagina&rsquo;s waar je advertenties naartoe sturen staan meestal op <strong>noindex</strong>. Ze halen dus
+            niets uit Google en zien er in de data uit als dode pagina&rsquo;s, terwijl ze juist moeten blijven bestaan.
+            Zet ze hier neer, dan blijven ze buiten de analyse en buiten de werklijst. E&eacute;n pad per regel; een map
+            zoals <code>/ads/</code> dekt meteen alles daaronder.
+          </p>
+          <textarea className="opr-ads-veld" value={adsTekst} rows={3} spellCheck={false}
+            onChange={(e) => { setAdsTekst(e.target.value); if (e.target.value.trim()) setAdsGeen(false); }}
+            placeholder={"/landing-page/\n/ads/\n/actie-soa-test/"} aria-label="Advertentiepagina's" />
+          <div className="opr-vorm-rij">
+            <button type="button" className="ghost-btn small" onClick={() => void bewaarAds()}>Opslaan</button>
+            <label className="opr-ads-geen">
+              <input type="checkbox" checked={adsGeen} disabled={!!adsTekst.trim()}
+                onChange={(e) => { setAdsGeen(e.target.checked); if (e.target.checked) void bewaarAds(true); }} />
+              Deze klant heeft geen advertentiepagina&rsquo;s
+            </label>
+          </div>
+          {adsMsg && <div className="muted" style={{ fontSize: 12 }}>{adsMsg}</div>}
+        </div>
+
         {err && <div className="login-error" style={{ marginBottom: 8 }}>{err}</div>}
         {state?.status === "error" && state.error && <div className="login-error" style={{ marginBottom: 8 }}>{state.error}</div>}
         {/* Voortgang, want een spinner zonder stand is niet te onderscheiden van

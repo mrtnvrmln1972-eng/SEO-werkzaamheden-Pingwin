@@ -113,8 +113,56 @@ export async function structuurAlsInstructie(slug: string): Promise<string> {
   ].join("\n");
 }
 
+// ── Advertentiepagina's (Google Ads) ───────────────────────────────────────
+// Een Ads-landingspagina staat vaak op noindex en haalt dus nul uit Google. Voor
+// de opruim-analyse ziet zo'n pagina eruit als dood gewicht, terwijl hij gewoon
+// moet blijven bestaan: de advertenties wijzen erheen. Eén keer opruimen van zo'n
+// pagina kost echt geld. Daarom vragen we ze vóór de analyse uit en zetten we ze
+// buiten schot; ze komen niet in de kandidatenlijst en niet in de werklijst.
+export type AdsPaginas = { paden: string[]; geen: boolean; ingevuld: boolean };
+
+export async function getAdsPaginas(slug: string): Promise<AdsPaginas> {
+  const ruw = await getSetting(`ads_paginas:${slug}`).catch(() => null);
+  if (!ruw) return { paden: [], geen: false, ingevuld: false };
+  try {
+    const d = JSON.parse(ruw) as { paden?: unknown; geen?: unknown };
+    const paden = Array.isArray(d.paden) ? d.paden.map((p) => padVan(String(p))).filter(Boolean) : [];
+    const geen = d.geen === true;
+    return { paden, geen, ingevuld: geen || paden.length > 0 };
+  } catch { return { paden: [], geen: false, ingevuld: false }; }
+}
+
+export async function zetAdsPaginas(slug: string, paden: string[], geen: boolean): Promise<AdsPaginas> {
+  const schoon = [...new Set(paden.map((p) => padVan(String(p))).filter(Boolean))];
+  await setSetting(`ads_paginas:${slug}`, JSON.stringify({ paden: schoon, geen: !!geen && !schoon.length }));
+  return { paden: schoon, geen: !!geen && !schoon.length, ingevuld: !!geen || schoon.length > 0 };
+}
+
+/** Is een pad een advertentiepagina? Ook alles eronder telt mee, zodat een hele
+    map (bijvoorbeeld /ads/) in één regel afgeschermd is. */
+export function isAdsPad(pad: string, ads: AdsPaginas): boolean {
+  const p = padVan(pad).replace(/\/$/, "").toLowerCase();
+  return ads.paden.some((a) => {
+    const b = a.replace(/\/$/, "").toLowerCase();
+    return p === b || p.startsWith(b + "/");
+  });
+}
+
+export async function adsAlsInstructie(slug: string): Promise<string> {
+  const ads = await getAdsPaginas(slug);
+  if (!ads.paden.length) return "";
+  return [
+    "ADVERTENTIEPAGINA'S. Dit is een HARDE regel en kent geen uitzondering.",
+    `Deze pagina's (en alles eronder) zijn landingspagina's voor Google Ads: ${ads.paden.join(", ")}.`,
+    "Ze staan vaak op noindex en halen daarom weinig of niets uit de organische zoekresultaten. Dat is de bedoeling, geen probleem.",
+    "- Stel ze NOOIT voor om op te ruimen, om te leiden, samen te voegen of te verhuizen.",
+    "- Noem ze ook niet als verliezer in een cluster en gebruik ze niet als redirect-doel.",
+    "- Kom je ze tegen in de data, sla ze dan gewoon over.",
+  ].join("\n");
+}
+
 export async function regelsAlsInstructie(slug: string): Promise<string> {
-  const structuur = await structuurAlsInstructie(slug);
+  const structuur = [await structuurAlsInstructie(slug), await adsAlsInstructie(slug)].filter(Boolean).join("\n\n");
   const regels = await getOpruimRegels(slug).catch(() => []);
   if (!regels.length) return structuur;
   const houden = regels.filter((r) => r.besluit === "houden");

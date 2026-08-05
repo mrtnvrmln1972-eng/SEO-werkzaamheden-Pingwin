@@ -8,7 +8,7 @@ import { getGscForPage, getGscKeywordUrlFlips } from "./google";
 import { getAhrefsTopPages, getUrlOrganicKeywords, ahrefsConfigured } from "./ahrefs";
 import { fetchPageContent } from "./page-content";
 import { callClaude, callClaudeAgentic, type ToolDef, type ToolRunner } from "./anthropic";
-import { regelsAlsInstructie } from "./opruim-regels";
+import { regelsAlsInstructie, getAdsPaginas, isAdsPad } from "./opruim-regels";
 import { zwakkePaginas, type ZwakkePagina } from "./concurrenten";
 import { getSetting, setSetting, SETTING_OPRUIM_CRON_TIK } from "./settings";
 
@@ -346,6 +346,11 @@ async function bouwSeed(slug: string, clientNaam: string, domain: string): Promi
   ]);
   if (!topPages.length) return { ok: false, error: "Geen Ahrefs-data terug voor dit domein. Controleer de Ahrefs-koppeling (AHREFS_API_TOKEN) en of het domein klopt." };
 
+  // Advertentiepagina's gaan er meteen uit. Ze halen niets uit Google omdat ze op
+  // noindex staan, dus ze zouden bovenaan de opruimlijst belanden terwijl de
+  // advertenties erheen wijzen. Opruimen kost dan echt geld.
+  const ads = await getAdsPaginas(slug).catch(() => ({ paden: [], geen: false, ingevuld: false }));
+
   const ahrefsSeen = new Set(topPages.map((t) => pagePath(t.url)));
   const ahrefsTable = [...topPages].sort((a, b) => (b.traffic || 0) - (a.traffic || 0)).slice(0, 240)
     .map((t) => `- ${pagePath(t.url)} | top:"${t.topKeyword}" pos ${t.position ?? "?"} | ${t.traffic ?? 0} verkeer | ${t.refDomains ?? "?"} verw.domeinen | ${t.keywords ?? "?"}kw`).join("\n");
@@ -353,7 +358,7 @@ async function bouwSeed(slug: string, clientNaam: string, domain: string): Promi
     .map((u) => `- ${pagePath(u.url)} | status ${u.status ?? "?"} | ${u.gscClicks} clicks`).join("\n");
   const flipLines = flips.slice(0, 60).map((f) => `- "${f.keyword}": ${f.topUrls.join(" -> ")} (${f.flips}x)`).join("\n");
 
-  return { ok: true, kandidaten: zwak.kandidaten || [], seed: [
+  return { ok: true, kandidaten: (zwak.kandidaten || []).filter((k) => !isAdsPad(k.pad, ads)), seed: [
     `KLANT: ${clientNaam || slug} (domein: ${domain})`,
     "",
     `DATAKWALITEIT (neem over in datakwaliteit): gsc=true, gscTijdreeks=${flips.length > 0}, ahrefsZoekwoorden=true, ahrefsBacklinks=true (verwijzende domeinen per pagina), crawl=false.`,
@@ -468,11 +473,14 @@ async function stapMetReden(slug: string): Promise<{ uit: "verder" | "klaar"; re
         return { uit: "verder", reden: `hoofdanalyse gaf geen geldige JSON (${laatsteTekst.slice(0, 80).replace(/\s+/g, " ")}), door naar de kandidaten` };
       }
 
+      const adsNu = await getAdsPaginas(slug).catch(() => ({ paden: [], geen: false, ingevuld: false }));
       const result: CannibalResult = {
         samenvatting: typeof parsed.samenvatting === "string" ? parsed.samenvatting : "",
         datakwaliteit: parsed.datakwaliteit && typeof parsed.datakwaliteit === "object" ? (parsed.datakwaliteit as Datakwaliteit) : undefined,
         clusters: Array.isArray(parsed.clusters) ? (parsed.clusters as RedirectCluster[]) : [],
-        redirectMap: Array.isArray(parsed.redirectMap) ? (parsed.redirectMap as RedirectMapItem[]) : [],
+        // Ook hier het Ads-slot dicht: een instructie is een verzoek, dit is een garantie.
+        redirectMap: (Array.isArray(parsed.redirectMap) ? (parsed.redirectMap as RedirectMapItem[]) : [])
+          .filter((m) => !isAdsPad(String(m.van || ""), adsNu)),
         interneLinks: Array.isArray(parsed.interneLinks) ? (parsed.interneLinks as InterneLink[]) : [],
         generatedAt: new Date().toISOString(),
       };
@@ -498,10 +506,11 @@ async function stapMetReden(slug: string): Promise<{ uit: "verder" | "klaar"; re
     // zijn. Op 03-08-2026 stopte de analyse na één ronde omdat de lijst leeg in de
     // rij stond; "geen kandidaten" en "alle kandidaten gehad" zien er van buiten
     // hetzelfde uit, en dat verschil moet de motor zelf kunnen herstellen.
-    let kandidaten = row.kandidaten || [];
+    const ads = await getAdsPaginas(slug).catch(() => ({ paden: [], geen: false, ingevuld: false }));
+    let kandidaten = (row.kandidaten || []).filter((k) => !isAdsPad(k.pad, ads));
     if (!kandidaten.length) {
       const opnieuw = await zwakkePaginas(slug, domain).catch(() => null);
-      kandidaten = opnieuw?.kandidaten || [];
+      kandidaten = (opnieuw?.kandidaten || []).filter((k) => !isAdsPad(k.pad, ads));
       if (kandidaten.length) await q`UPDATE client_cannibal_analysis SET kandidaten = ${JSON.stringify(kandidaten)}, updated_at = now() WHERE client_slug = ${slug}`;
     }
 
