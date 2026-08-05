@@ -416,6 +416,14 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
                     const laatsteAntwoord = messages.map((x) => x.role).lastIndexOf("assistant");
                     const inklapbaar = m.role === "assistant" && i < laatsteAntwoord;
                     const dicht = inklapbaar && !openBericht[i];
+                    // Er is maar ÉÉN actueel takenvoorstel. Twee keer op "Welke taken
+                    // volgen hieruit?" drukken zette er vroeger een tweede blok onder;
+                    // die staan nu nog in bestaande gesprekken. Alleen het laatste
+                    // voorstel tonen, dus ook met terugwerkende kracht opgeruimd.
+                    if (m.soort === "oogst") {
+                      const laatsteOogst = messages.map((x) => (x.soort === "oogst" ? 1 : 0)).lastIndexOf(1);
+                      if (i !== laatsteOogst) return null;
+                    }
                     return (
                       <div key={i} className={"ovc-msg " + m.role + (dicht ? " ovc-msg-dicht" : "")}>
                         <button type="button" className="chat-msg-del" title="Dit blok verwijderen" onClick={() => deleteMessage(i)}>&times;</button>

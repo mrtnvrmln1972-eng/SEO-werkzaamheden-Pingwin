@@ -363,7 +363,15 @@ export async function executeAction(slug: string, action: ProposedAction, thread
         // Een taak die juist een NIEUWE pagina bouwt niet ombuigen naar de
         // dichtstbijzijnde bestaande pagina: dan verdwijnt de kaart in een
         // bestaande pagina en bestaat de nieuwe pagina nergens.
-        if (nieuwPaginaPad(t.taak || "", bekendeUrls)) continue;
+        if (nieuwPaginaPad(t.taak || "", bekendeUrls)) {
+          // Zet hem meteen als geplande pagina in de paginalijst. Zonder dat kent
+          // het bord de pagina niet en blijft het fase-blok op de kaart leeg,
+          // terwijl je juist bij een nieuwe pagina alle zeven fases wilt kunnen
+          // starten. Dezelfde weg als "Voeg een pagina toe" op het tabblad
+          // Pagina's, dus hij verschijnt daar en in de navigatie-roadmap ook.
+          await addManualPage(slug, t.url, (t.taak || "").slice(0, 200)).catch(() => null);
+          continue;
+        }
         const beter = nearestKnownUrl(t.url, bekendeUrls);
         if (beter) t.url = beter;
       }

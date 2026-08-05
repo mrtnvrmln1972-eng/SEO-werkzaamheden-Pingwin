@@ -4,8 +4,8 @@ import { guardSlug } from "../../../../../lib/admin-scope";
 import { addWeekplanTasks, isoWeek } from "../../../../../lib/weekplan";
 import { tidyCards } from "../../../../../lib/weekplan-tidy";
 import { getStepLinks } from "../../../../../lib/page-doc-run";
-import { getClientUrls } from "../../../../../lib/site-urls";
-import { splitsPerPagina } from "../../../../../lib/overview-actions";
+import { getClientUrls, addManualPage } from "../../../../../lib/site-urls";
+import { splitsPerPagina, nieuwPaginaPad } from "../../../../../lib/overview-actions";
 
 export const runtime = "nodejs";
 // Bij samenvoegen in een bestaande kaart draait er een opruimstap van de assistent;
@@ -47,6 +47,16 @@ export async function POST(req: NextRequest) {
     toelichting: body.toelichting ? String(body.toelichting) : undefined,
     url,
   }], bekendeUrls).slice(0, 10);
+
+  // Gaat de taak over een pagina die nog niet bestaat, zet die dan meteen als
+  // geplande pagina in de paginalijst. Anders kent het bord de pagina niet en
+  // blijft het fase-blok op de kaart leeg, juist waar je alle zeven fases nodig
+  // hebt.
+  for (const t of gesplitst) {
+    if (t.url && nieuwPaginaPad(t.taak || "", bekendeUrls)) {
+      await addManualPage(slug, t.url, (t.taak || "").slice(0, 200)).catch(() => null);
+    }
+  }
 
   const rijen = await Promise.all(gesplitst.map(async (t) => ({
     taak: t.taak,
