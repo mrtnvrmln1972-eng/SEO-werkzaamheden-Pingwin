@@ -571,11 +571,15 @@ export function kennisNaarOrg(bron: OrgData, entiteiten: KennisEntiteit[]): { da
     if (!eerder) { gezienV.set(k, v); continue; }
     for (const veld of Object.keys(LEGE_VESTIGING) as (keyof OrgVestiging)[]) eerder[veld] = vul(eerder[veld], v[veld]);
   }
-  // Rijen die alleen een naam dragen (een plaats die ooit als "locatie" werd
-  // opgepikt, zoals een testpunt) zijn geen vestiging en verdwijnen uit het
-  // formulier. Alles met een adres, tijden of contactgegevens blijft staan.
-  d.vestigingen = [...gezienV.values()].filter((v) =>
-    [v.straat, v.postcode, v.plaats, v.openingstijden, v.telefoon, v.email, v.mapsUrl].some((x) => String(x || "").trim()));
+  // Rijen die niets méér dragen dan een plaatsnaam (een testpunt of een stad die
+  // ooit als "locatie" werd opgepikt) zijn geen vestiging en verdwijnen uit het
+  // formulier. Zodra er een huisnummer, postcode, openingstijd of contactgegeven
+  // in staat, blijft de rij gewoon staan; zelf ingetypte rijen raak je dus niet kwijt.
+  d.vestigingen = [...gezienV.values()].filter((v) => {
+    const echt = /\d/.test(v.straat || "") || String(v.postcode || "").trim();
+    const inhoud = [v.openingstijden, v.telefoon, v.email, v.mapsUrl].some((x) => String(x || "").trim());
+    return echt || inhoud;
+  });
   const gezienA = new Map<string, OrgData["artsen"][number]>();
   for (const a of d.artsen) {
     const k = identiteit("persoon", a.naam, { big: a.big });
