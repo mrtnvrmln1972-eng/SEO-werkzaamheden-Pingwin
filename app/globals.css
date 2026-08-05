@@ -3066,6 +3066,11 @@ body.zp-sleept { user-select: none; cursor: grabbing; }
 .wp-fase-doclink:hover { text-decoration: underline; }
 
 /* ── Mailvenster: alles op de vaste schaal, onderwerp duidelijk apart ── */
+/* Staat er een mail uit het gesprek in het vak, dan zie je dat, met één klik om
+   hem weg te halen als je liever zelf dicteert. */
+.wp-mail-bron { display: flex; align-items: center; gap: var(--s-2); font-size: var(--fs-xs); line-height: var(--lh-xs); margin-bottom: var(--s-1); }
+.wp-mail-leeg { border: none; background: none; color: var(--orange-dark); font-size: var(--fs-xs); font-weight: 700; cursor: pointer; padding: 0; text-decoration: underline; }
+.wp-mail-leeg:hover { color: var(--accent); }
 .wp-mail-onderwerp { display: flex; align-items: center; gap: var(--s-3); margin: var(--s-3) 0; }
 .wp-mail-onderwerp-label {
   font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;

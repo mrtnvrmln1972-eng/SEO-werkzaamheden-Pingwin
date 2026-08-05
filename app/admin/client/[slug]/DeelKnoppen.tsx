@@ -20,13 +20,19 @@ import MailVenster, { type MailBijlage } from "./MailVenster";
 // ═══════════════════════════════════════════════════════════
 
 export default function DeelKnoppen({
-  slug, titel, tekst, url, clientName, clientEmail, compact, toon = "beide", knopClass = "ghost-btn small",
+  slug, titel, tekst, mailBron, url, clientName, clientEmail, compact, toon = "beide", knopClass = "ghost-btn small",
 }: {
   slug: string;
   /** Waar het over gaat: de titel van het onderwerp of van de kaart. */
   titel: string;
   /** De inhoud die gedeeld wordt: het antwoord of het hele gesprek. */
   tekst: string;
+  /**
+   * Het volledige gesprek, voor het geval daar al een geschreven mail in staat.
+   * `tekst` is voor het document en knijpt terug tot de conclusie; een mail die
+   * eerder in het gesprek werd geschreven valt daar dan buiten.
+   */
+  mailBron?: string;
   url?: string;
   clientName?: string;
   clientEmail?: string;
@@ -88,6 +94,7 @@ export default function DeelKnoppen({
           onderwerpVan={titel}
           taak={titel}
           toelichting={tekst}
+          mailBron={mailBron}
           url={url}
           bijlagen={bijlagen}
           standaardAangevinkt={docLink ? ["advies"] : []}

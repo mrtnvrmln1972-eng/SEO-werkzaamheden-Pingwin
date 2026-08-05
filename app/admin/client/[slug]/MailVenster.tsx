@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { herzetAanhef } from "../../../../lib/aanhef";
+import { mailUitTekst } from "../../../../lib/mail-uit-gesprek";
 
 // ═══════════════════════════════════════════════════════════
 // HET MAILVENSTER
@@ -18,7 +19,7 @@ import { herzetAanhef } from "../../../../lib/aanhef";
 export type MailBijlage = { key: string; label: string; url: string };
 
 export default function MailVenster({
-  slug, titel, onderwerpVan, taak, toelichting, url, bijlagen = [], clientName, clientEmail, standaardAangevinkt = [], onClose,
+  slug, titel, onderwerpVan, taak, toelichting, mailBron, url, bijlagen = [], clientName, clientEmail, standaardAangevinkt = [], onClose,
 }: {
   slug: string;
   /** Kop van het venster, bijvoorbeeld "Mail vanuit dit gesprek". */
@@ -29,6 +30,12 @@ export default function MailVenster({
   taak: string;
   /** De achtergrond waar de assistent uit put (het gesprek, de analyse). */
   toelichting: string;
+  /**
+   * De volledige gesprekstekst waarin een al geschreven mail kan staan. Los van
+   * `toelichting`, want die is soms ingekort tot alleen de conclusie en juist dan
+   * valt de geschreven mail eruit. Leeg = we kijken in `toelichting`.
+   */
+  mailBron?: string;
   url?: string;
   bijlagen?: MailBijlage[];
   clientName?: string;
@@ -52,14 +59,27 @@ export default function MailVenster({
   const [klaar, setKlaar] = useState("");
   const bodyRef = useRef<HTMLDivElement>(null);
 
-  // Eén keer bij openen een concept schrijven.
-  // Leeg beginnen. Maarten dicteert zijn mails met Wispr Flow en typt dus meteen;
-  // een automatisch geschreven standaardtekst moet hij dan eerst weggooien. Wil hij
-  // wél een voorzet, dan is daar de knop "Laat Claude schrijven".
+  // Staat er in het gesprek al een geschreven mail, dan begint het venster dáármee.
+  // Niet opnieuw geschreven: letterlijk zijn eigen tekst. Herkent hij geen mail
+  // (een analyse, een lijstje), dan blijft het vak leeg zoals het was: Maarten
+  // dicteert met Wispr Flow en wil geen voorzet die hij eerst moet weggooien.
+  const concept = useMemo(() => mailUitTekst(mailBron || toelichting || ""), [mailBron, toelichting]);
+  const [overgenomen, setOvergenomen] = useState(false);
   useEffect(() => {
+    if (concept && bodyRef.current) {
+      bodyRef.current.innerText = concept.body;
+      if (concept.onderwerp) setOnderwerp(concept.onderwerp);
+      setOvergenomen(true);
+    }
     bodyRef.current?.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function leegmaken() {
+    if (bodyRef.current) bodyRef.current.innerText = "";
+    setOvergenomen(false);
+    bodyRef.current?.focus();
+  }
 
   async function schrijf(
     doelgroep: "klant" | "dev" | "anders",
@@ -67,7 +87,7 @@ export default function MailVenster({
     keuze: Record<string, boolean>,
     adres?: string,
   ) {
-    setBusy(true); setFout("");
+    setBusy(true); setFout(""); setOvergenomen(false);
     if (bodyRef.current) bodyRef.current.innerText = "";
     const links = bijlagen.filter((b) => keuze[b.key]).map((b) => ({ label: b.label, url: b.url }));
     try {
@@ -162,6 +182,12 @@ export default function MailVenster({
           <span className="wp-mail-onderwerp-label">Onderwerp</span>
           <input value={onderwerp} onChange={(e) => setOnderwerp(e.target.value)} placeholder="Onderwerp van de mail" />
         </label>
+        {overgenomen && (
+          <div className="wp-mail-bron muted">
+            Overgenomen uit het gesprek
+            <button type="button" className="wp-mail-leeg" onClick={leegmaken}>leegmaken</button>
+          </div>
+        )}
         <div className="wp-mail-edit" contentEditable suppressContentEditableWarning ref={bodyRef} data-placeholder="De mail verschijnt hier…" style={{ opacity: busy ? 0.5 : 1 }} />
         {busy && <div className="muted" style={{ marginTop: 6 }}>Mail aan het schrijven…</div>}
         <div className="wp-mail-foot">

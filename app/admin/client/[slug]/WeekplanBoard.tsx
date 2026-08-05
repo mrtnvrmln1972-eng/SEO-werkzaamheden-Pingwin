@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { urlKey } from "../../../../lib/url-key";
 import { herzetAanhef } from "../../../../lib/aanhef";
 import WeekplanCard, { type WpTask, type WpPageInfo } from "./WeekplanCard";
+import { mailUitTekst } from "../../../../lib/mail-uit-gesprek";
 import { type MailKandidaat, type MailLinks } from "../../../../lib/card-info";
 
 type Current = { year: number; week: number };
@@ -355,6 +356,13 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailD
     // standaardtekst eerst weggooien. De knop "Laat Claude schrijven" doet het
     // alsnog wanneer hij dat wil.
     setMailLinks(t.url ? { pagina: true } : {});
+    // Staat er in de kaarttekst al een geschreven mail (aanhef plus afsluiting),
+    // dan begint het venster dáármee. Geen mail herkend: leeg, zoals hierboven.
+    const concept = mailUitTekst((t.toelichting || "").replace(/<[^>]*>/g, ""));
+    if (concept) {
+      if (concept.onderwerp) setMailOnderwerp(concept.onderwerp);
+      setTimeout(() => { if (mailRef.current) mailRef.current.innerText = concept.body; }, 0);
+    }
   }
 
   // Sluiten bewaart, niet weggooien.

@@ -38,6 +38,14 @@ function zonderWeekrecap(md: string, heeftVoorstel: boolean): string {
 // conclusie getrokken, dan is dát het stuk: dat is de gewogen samenvatting van het
 // hele gesprek. Anders alle antwoorden achter elkaar, want één los antwoord mist
 // vaak de helft van de redenering.
+// Alle antwoorden achter elkaar. Het mailvenster kijkt hierin of er al een
+// geschreven mail in het gesprek staat; `deelTekst` hieronder knijpt terug tot de
+// laatste conclusie (goed voor een document), en juist dan viel zo'n mail eruit.
+function alleAntwoorden(msgs: Msg[]): string {
+  return msgs.filter((m) => m.role === "assistant" && m.soort !== "oogst")
+    .map((m) => (m.content || "").trim()).filter(Boolean).join("\n\n");
+}
+
 function deelTekst(msgs: Msg[]): string {
   const conclusie = msgs.filter((m) => m.soort === "conclusie").map((m) => m.content || "").filter(Boolean);
   if (conclusie.length) return conclusie[conclusie.length - 1];
@@ -476,6 +484,7 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
                         slug={slug}
                         titel={titleOf(t)}
                         tekst={deelTekst(messages)}
+                        mailBron={alleAntwoorden(messages)}
                         clientName={clientName}
                         clientEmail={clientEmail}
                       />
