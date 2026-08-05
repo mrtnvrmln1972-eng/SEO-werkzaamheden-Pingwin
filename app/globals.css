@@ -608,6 +608,15 @@ tbody td:last-child { text-align: center; }
 }
 .prio-ontbreekt-naam { font-weight: 600; color: var(--dark); min-width: 22ch; }
 .prio-ontbreekt-msg { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray); }
+/* Advertentiepagina's invullen zonder het scherm te verlaten. */
+.prio-ads { flex-basis: 100%; margin-top: var(--s-2); }
+.prio-ads-veld {
+  width: 100%; max-width: 52ch; padding: var(--s-2); border: 1px solid var(--border);
+  border-radius: var(--r-sm); font-family: inherit; font-size: var(--fs-sm); line-height: var(--lh-sm);
+  background: var(--white); resize: vertical;
+}
+.prio-ads-veld:focus { outline: none; border-color: var(--orange); }
+.prio-ads-rij { display: flex; gap: var(--s-2); align-items: center; flex-wrap: wrap; margin-top: var(--s-2); }
 
 .prio-skip { margin-bottom: var(--s-4); }
 

@@ -104,6 +104,14 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
   const [sortAf, setSortAf] = useState(true);
   const [bronBezig, setBronBezig] = useState<string | null>(null);
   const [bronMsg, setBronMsg] = useState<Record<string, string>>({});
+  // De opruimanalyse weigert te starten zolang niet vastligt welke pagina's
+  // advertentiepagina's zijn (die staan op noindex en zien er in de data uit als
+  // dood gewicht, terwijl ze juist moeten blijven). Dat invulveld stond alleen op
+  // het Opruimen-tabje, dus je werd hier weggestuurd. Nu kan het hier meteen.
+  const [adsTekst, setAdsTekst] = useState("");
+  const [adsBezig, setAdsBezig] = useState(false);
+  const [adsMsg, setAdsMsg] = useState("");
+  const adsNodig = /advertentie|landingspagina/i.test(bronMsg.cannibalisatie || "");
 
   async function load() {
     try {
@@ -169,6 +177,30 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
     } catch {
       setBronMsg((m) => ({ ...m, [sleutel]: "Starten lukte niet." }));
     } finally { setBronBezig(null); }
+  }
+
+  /**
+   * Advertentiepagina's vastleggen en de opruimanalyse meteen daarna starten, zodat
+   * het bij één handeling blijft in plaats van opslaan, terugklikken en opnieuw
+   * beginnen. `geen` legt vast dat deze klant er geen heeft; dat is net zo goed een
+   * antwoord en de analyse heeft er genoeg aan.
+   */
+  async function bewaarAds(geen: boolean) {
+    if (adsBezig) return;
+    const paden = adsTekst.split(/[\n,]/).map((p) => p.trim()).filter(Boolean);
+    if (!paden.length && !geen) { setAdsMsg("Vul de pagina's in, of kies “deze klant heeft er geen”."); return; }
+    setAdsBezig(true); setAdsMsg("");
+    try {
+      const d = await fetch("/api/admin/opruim-structuur-regel", {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, ads: paden, geenAds: geen && !paden.length }),
+      }).then((r) => r.json());
+      if (!d.ok) { setAdsMsg(d.error || "Opslaan lukte niet."); return; }
+      setAdsMsg(paden.length
+        ? `Vastgelegd, ${paden.length === 1 ? "die pagina blijft" : "die pagina's blijven"} buiten de analyse. Ik start de opruimanalyse nu.`
+        : "Vastgelegd: geen advertentiepagina's. Ik start de opruimanalyse nu.");
+      await draaiBron("cannibalisatie");
+    } catch { setAdsMsg("Opslaan lukte niet."); } finally { setAdsBezig(false); }
   }
 
   // Elk pad wordt een klikbare link naar de live pagina (vaste huisregel: nooit
@@ -404,6 +436,30 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
                     {bronBezig === l.sleutel ? "Starten…" : ONTBREKENDE_BRON[l.sleutel].knop}
                   </button>
                   {bronMsg[l.sleutel] && <span className="prio-ontbreekt-msg">{bronMsg[l.sleutel]}</span>}
+                  {l.sleutel === "cannibalisatie" && adsNodig && (
+                    <div className="prio-ads">
+                      <p className="muted prio-hint">
+                        Pagina&rsquo;s waar je advertenties naartoe sturen staan meestal op noindex. Ze halen dus niets
+                        uit Google en zien er in de data uit als dode pagina&rsquo;s, terwijl ze juist moeten blijven.
+                        Zet ze hier neer, dan blijven ze buiten de analyse. E&eacute;n pad per regel; een map zoals{" "}
+                        <code>/ads/</code> dekt alles daaronder.
+                      </p>
+                      <textarea className="prio-ads-veld" rows={3} spellCheck={false} value={adsTekst}
+                        placeholder={"/landing-page/\n/ads/\n/actie-voorjaar/"} aria-label="Advertentiepagina's"
+                        onChange={(e) => setAdsTekst(e.target.value)} />
+                      <div className="prio-ads-rij">
+                        <button type="button" className="ghost-btn small" disabled={adsBezig}
+                          onClick={() => void bewaarAds(false)}>
+                          {adsBezig ? "Bezig…" : "Opslaan en analyse starten"}
+                        </button>
+                        <button type="button" className="ghost-btn small" disabled={adsBezig || !!adsTekst.trim()}
+                          onClick={() => void bewaarAds(true)}>
+                          Deze klant heeft er geen
+                        </button>
+                      </div>
+                      {adsMsg && <div className="prio-ontbreekt-msg">{adsMsg}</div>}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
