@@ -23,8 +23,10 @@ export type Oppakker = {
   huidigePositie: number | null; vertoningen: number; botstMet: string[];
 };
 
-export default function OpruimOppakken({ slug, domain, rijen, clientName, clientEmail }: {
+export default function OpruimOppakken({ slug, domain, rijen, clientName, clientEmail, alleenLezen = false }: {
   slug: string; domain: string; rijen: Oppakker[]; clientName?: string; clientEmail?: string;
+  /** Leesmodus voor de deellink: wel de uitleg en de uitklappers, geen knoppen. */
+  alleenLezen?: boolean;
 }) {
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [mailVoor, setMailVoor] = useState<Oppakker | null>(null);
@@ -97,7 +99,7 @@ export default function OpruimOppakken({ slug, domain, rijen, clientName, client
               <th>Kansrijk op</th>
               <th>Per maand</th>
               <th>Moeilijkheid</th>
-              <th>Actie</th>
+              {!alleenLezen && <th>Actie</th>}
               <th>Waarom</th>
             </tr>
           </thead>
@@ -108,7 +110,7 @@ export default function OpruimOppakken({ slug, domain, rijen, clientName, client
                 <td><strong>{o.term}</strong></td>
                 <td>{o.volume != null ? `${o.volume}x` : "—"}</td>
                 <td>{o.moeilijkheid != null ? o.moeilijkheid : "—"}</td>
-                <td>
+                {!alleenLezen && <td>
                   <button type="button" className="opr-btn" disabled={!!bezig} onClick={() => void naarWeekplan(o)}
                     title="Zet deze pagina als taak op de weekplanning. Daar krijgt hij zijn fases: analyse, blauwdruk, copy.">
                     {bezig === o.pad ? "Bezig…" : "Zet op de weekplanning"}
@@ -118,7 +120,7 @@ export default function OpruimOppakken({ slug, domain, rijen, clientName, client
                     Mail naar klant
                   </button>
                   {klaar[o.pad] && <div className="opr-melding" style={{ marginTop: 4 }}>{klaar[o.pad]}</div>}
-                </td>
+                </td>}
                 <td className="opr-reden">
                   <button type="button" className="opr-meer" onClick={() => setOpen((m) => ({ ...m, [o.pad]: !m[o.pad] }))}>
                     {open[o.pad] ? "▾ minder" : "▸ reden"}
@@ -158,7 +160,7 @@ export default function OpruimOppakken({ slug, domain, rijen, clientName, client
         </table>
       </div>
 
-      {mailVoor && (
+      {!alleenLezen && mailVoor && (
         <MailVenster
           slug={slug}
           titel="Mail dit voorstel naar de klant"

@@ -12,11 +12,17 @@ import { useEffect, useState } from "react";
 type Familie = { vorm: string; aantal: number; dood: number; voorbeelden: string[] };
 type Data = { families: Familie[]; totaalLive: number; totaalVormen: number; dood: number; gemeten: boolean };
 
-export default function OpruimStructuur({ slug }: { slug: string }) {
-  const [d, setD] = useState<Data | null>(null);
-  const [bezig, setBezig] = useState(true);
+export default function OpruimStructuur({ slug, data }: {
+  slug: string;
+  /** Al opgehaalde structuur (de publieke deelpagina krijgt hem meegeleverd en
+      mag de adminroute niet aanroepen). Leeg = zelf ophalen, zoals altijd. */
+  data?: Data | null;
+}) {
+  const [d, setD] = useState<Data | null>(data || null);
+  const [bezig, setBezig] = useState(!data);
 
   useEffect(() => {
+    if (data) { setD(data); setBezig(false); return; }
     let leeft = true;
     fetch(`/api/admin/opruim-structuur?slug=${encodeURIComponent(slug)}`)
       .then((r) => r.json())
@@ -24,7 +30,7 @@ export default function OpruimStructuur({ slug }: { slug: string }) {
       .catch(() => {})
       .finally(() => { if (leeft) setBezig(false); });
     return () => { leeft = false; };
-  }, [slug]);
+  }, [slug, data]);
 
   if (bezig) return <div className="muted opr-str-laden">Structuur van de site wordt bepaald…</div>;
   if (!d || !d.families.length) return null;

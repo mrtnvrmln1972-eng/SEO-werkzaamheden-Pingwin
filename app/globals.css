@@ -3870,9 +3870,30 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
    niet te zien was waar de ene sectie ophield en de volgende begon. Elke sectie
    is nu een eigen kaart met een kop en een lijn eronder, zodat het scherm ook
    met een deellink naar een klant kan. */
+/* Witte kaarten op een zachte, warme ondergrond: dat geeft diepte zonder dat
+   het oranje van de merkkleur ergens mee gaat vechten. De schaduw is bewust
+   groot en laag-contrast (een grote zachte val plus een dun randje), want een
+   harde schaduw oogt goedkoop en een kleine valt weg op wit. */
+.cannibal-panel {
+  background: linear-gradient(180deg, #FBF8F5 0%, #F7F3EF 100%);
+  border-radius: var(--r-lg); padding: var(--s-5); margin: calc(var(--s-2) * -1) calc(var(--s-3) * -1);
+}
 .opr-kaart {
-  background: var(--white); border: 1px solid var(--card-border); border-radius: var(--r-lg);
-  padding: var(--s-5); margin-bottom: var(--s-5); box-shadow: var(--shadow-sm); text-align: left;
+  background: var(--white); border: 1px solid rgba(51, 48, 46, 0.06); border-radius: var(--r-lg);
+  padding: var(--s-5); margin-bottom: var(--s-5); text-align: left;
+  box-shadow: 0 1px 2px rgba(51, 48, 46, 0.04), 0 12px 28px -8px rgba(51, 48, 46, 0.14);
+  transition: box-shadow 0.25s ease, transform 0.25s ease;
+}
+/* Het kaartje komt een haartje omhoog als je erover gaat. Twee pixels is genoeg:
+   je voelt het meer dan dat je het ziet, en dat is precies de bedoeling. */
+.opr-kaart:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgba(51, 48, 46, 0.05), 0 20px 40px -10px rgba(231, 119, 63, 0.22);
+  border-color: rgba(231, 119, 63, 0.18);
+}
+@media (prefers-reduced-motion: reduce) {
+  .opr-kaart { transition: none; }
+  .opr-kaart:hover { transform: none; }
 }
 .opr-kaart > .opr-kop, .opr-kaart > .opr-kop-rij { padding-bottom: var(--s-3); border-bottom: 1px solid var(--card-border); margin-bottom: var(--s-4); }
 .opr-kaart > .opr-kop-rij > .opr-kop { padding-bottom: 0; border-bottom: none; margin-bottom: 0; }
@@ -4495,3 +4516,17 @@ button.wb-stip:disabled { cursor: wait; opacity: 0.6; }
 .wb-detail-knoppen { flex-wrap: wrap; align-items: center; }
 .wp-bordlink { margin-left: var(--s-3); font-size: var(--fs-xs); font-weight: 700; color: var(--orange-dark); text-decoration: underline; }
 .wp-bordlink:hover { color: var(--accent); }
+
+/* ── De publieke deelpagina van het opruimrapport ──────────────────────────
+   Dezelfde kaarten als in de cockpit, maar als een rustig document: een kop
+   met de merknaam, een begrensde leesbreedte en dezelfde warme ondergrond. */
+.opr-deel { min-height: 100vh; background: linear-gradient(180deg, #FBF8F5 0%, #F5F1ED 100%); padding: var(--s-8) var(--s-4) var(--s-10); }
+.opr-deel-kop { max-width: 1200px; margin: 0 auto var(--s-6); }
+.opr-deel-merk { font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; font-size: var(--fs-xs); color: var(--orange); margin-bottom: var(--s-2); }
+.opr-deel-kop h1 { font-size: var(--fs-xl); line-height: var(--lh-xl); color: var(--dark); margin: 0 0 var(--s-1); }
+.opr-deel-kop p { margin: 0; color: var(--gray); font-size: var(--fs-sm); }
+.opr-deel-body { max-width: 1200px; margin: 0 auto; background: none; padding: 0; }
+.opr-deel-voet { max-width: 1200px; margin: var(--s-6) auto 0; color: var(--gray); font-size: var(--fs-xs); text-align: center; }
+.opr-deel-leeg { min-height: 60vh; display: flex; align-items: center; justify-content: center; color: var(--gray); font-size: var(--fs-sm); }
+/* De deelkaart in de cockpit: iets nadrukkelijker, want dit is wat naar buiten gaat. */
+.opr-deelkaart { border-left: 3px solid var(--orange); }

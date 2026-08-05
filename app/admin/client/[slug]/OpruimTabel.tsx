@@ -124,8 +124,12 @@ function BewijsUitleg({ b, v, doel, verhuizen, merge, reden, site }: {
   );
 }
 
-export default function OpruimTabel({ slug, domain, rijen, openTarget, bewijs = {} }: {
+export default function OpruimTabel({ slug, domain, rijen, openTarget, bewijs = {}, alleenLezen = false }: {
   slug: string; domain: string; rijen: RedirectRij[];
+  /** Leesmodus voor de publieke deellink: geen vinkjes, geen besluitknoppen,
+      geen doorvoerknop. Alleen kijken en uitklappen. Het echte slot zit op de
+      adminroutes; dit voorkomt dat er knoppen staan die tóch niets doen. */
+  alleenLezen?: boolean;
   /** Van buiten binnenkomen op één pagina: vult het filterveld met dat pad, zodat
       je alleen de regels ziet die daarover gaan. Hergebruikt het filter dat er al
       is; een aparte "spring hierheen"-machinerie zou hetzelfde nog eens doen. */
@@ -153,13 +157,15 @@ export default function OpruimTabel({ slug, domain, rijen, openTarget, bewijs = 
   }, [openTarget]);
 
   useEffect(() => {
+    if (alleenLezen) return;
     fetch(`/api/admin/opruim-regels?slug=${encodeURIComponent(slug)}`)
       .then((r) => r.json())
       .then((d) => { if (d?.ok) setRegels(Object.fromEntries((d.regels as Regel[]).map((r) => [r.van, r]))); })
       .catch(() => {});
-  }, [slug]);
+  }, [slug, alleenLezen]);
 
   function bewaar(van: string, patch: Partial<Regel>) {
+    if (alleenLezen) return;
     const v = pad(van);
     const basis: Regel = { van: v, besluit: "redirect", naar: "", notitie: "", doorgevoerd: false };
     setRegels((m) => ({ ...m, [v]: { ...basis, ...m[v], ...patch, van: v } }));
@@ -250,12 +256,12 @@ export default function OpruimTabel({ slug, domain, rijen, openTarget, bewijs = 
         <table className="opr-tabel">
           <thead>
             <tr>
-              <th className="opr-vink">Kies</th>
-              <th className="opr-vink">Klaar</th>
+              {!alleenLezen && <th className="opr-vink">Kies</th>}
+              {!alleenLezen && <th className="opr-vink">Klaar</th>}
               <th>Deze pagina (van)</th>
               <th>Gaat naar (doel)</th>
               <th>Content</th>
-              <th>Besluit</th>
+              {!alleenLezen && <th>Besluit</th>}
               <th>Waarom</th>
             </tr>
           </thead>
@@ -264,7 +270,7 @@ export default function OpruimTabel({ slug, domain, rijen, openTarget, bewijs = 
               <Fragment key={doelKop || gi}>
                 {groepeer && (
                   <tr className="opr-groepkop">
-                    <td colSpan={7}>
+                    <td colSpan={alleenLezen ? 4 : 7}>
                       <span className="opr-groepkop-label">Gaat op in</span>
                       <a className="opr-pad opr-doel" href={site(doelKop)} target="_blank" rel="noreferrer">{doelKop}</a>
                       <span className="opr-groepkop-tel">{rijenIn.length} {rijenIn.length === 1 ? "pagina" : "pagina’s"}</span>
@@ -278,30 +284,30 @@ export default function OpruimTabel({ slug, domain, rijen, openTarget, bewijs = 
               const uit = reg?.besluit === "houden" || reg?.besluit === "genegeerd";
               return (
                 <tr key={v + i} className={(reg?.doorgevoerd ? "klaar " : "") + (uit ? "uit" : "")}>
-                  <td className="opr-vink">
+                  {!alleenLezen && <td className="opr-vink">
                     <input type="checkbox" checked={!!sel[v]} disabled={!!reg?.doorgevoerd || uit} onChange={(e) => setSel((m) => ({ ...m, [v]: e.target.checked }))} title="Kies deze regel om door te voeren" />
-                  </td>
-                  <td className="opr-vink">
+                  </td>}
+                  {!alleenLezen && <td className="opr-vink">
                     <input type="checkbox" checked={!!reg?.doorgevoerd} onChange={(e) => bewaar(v, { doorgevoerd: e.target.checked })} title="Deze redirect is doorgevoerd op de site" />
-                  </td>
+                  </td>}
                   <td><a className="opr-pad" href={site(v)} target="_blank" rel="noreferrer">{v}</a></td>
                   <td>
                     <a className="opr-pad opr-doel" href={site(doel)} target="_blank" rel="noreferrer">{doel}</a>
-                    <select className="opr-select" value={doel} onChange={(e) => bewaar(v, { naar: e.target.value, besluit: "redirect" })} title="Ander doel kiezen; die keuze onthoudt het dashboard">
+                    {!alleenLezen && <select className="opr-select" value={doel} onChange={(e) => bewaar(v, { naar: e.target.value, besluit: "redirect" })} title="Ander doel kiezen; die keuze onthoudt het dashboard">
                       {[...new Set([doel, ...doelen])].map((d) => <option key={d} value={d}>{d}</option>)}
-                    </select>
+                    </select>}
                   </td>
                   <td>
                     {r.verhuizen && <span className="opr-chip verhuis" title="De content gaat naar de nieuwe URL en de oude URL wijst daarheen. Hier moet dus eerst iets gebouwd worden.">verhuizen</span>}
                     {r.mergeContent && <span className="opr-chip merge">samenvoegen</span>}
                     {!r.verhuizen && !r.mergeContent && <span className="opr-leeg">&mdash;</span>}
                   </td>
-                  <td>
+                  {!alleenLezen && <td>
                     <div className="opr-knoppen">
                       <button type="button" className={"opr-btn" + (reg?.besluit === "houden" ? " aan" : "")} onClick={() => bewaar(v, { besluit: reg?.besluit === "houden" ? "redirect" : "houden" })} title="Deze pagina blijft staan; de volgende analyse stelt hem nooit meer voor">Houden</button>
                       <button type="button" className={"opr-btn" + (reg?.besluit === "genegeerd" ? " aan" : "")} onClick={() => bewaar(v, { besluit: reg?.besluit === "genegeerd" ? "redirect" : "genegeerd" })} title="Niet meer tonen">Negeren</button>
                     </div>
-                  </td>
+                  </td>}
                   <td className="opr-reden">
                     <button type="button" className="opr-meer" onClick={() => setOpen((o) => ({ ...o, [v]: !o[v] }))}>
                       {open[v] ? "▾" : "▸"} {open[v] ? "minder" : "reden"}
@@ -323,17 +329,17 @@ export default function OpruimTabel({ slug, domain, rijen, openTarget, bewijs = 
           </tbody>
         </table>
       </div>
-      <div className="opr-voet-balk">
+      {!alleenLezen && <div className="opr-voet-balk">
         <button type="button" className="primary-btn small" disabled={push || !gekozen.length} onClick={() => void doorvoeren()}>
           {push ? "Bezig met doorvoeren…" : `Voer ${gekozen.length} ${gekozen.length === 1 ? "redirect" : "redirects"} door op de site`}
         </button>
         <span className="opr-telling">Zet 301-omleidingen klaar via de Redirection-plugin en meet daarna live na of ze echt werken.</span>
-      </div>
+      </div>}
       {pushMsg && <div className="opr-melding">{pushMsg}</div>}
       {melding && <div className="opr-melding">{melding}</div>}
-      <p className="opr-voet">
+      {!alleenLezen && <p className="opr-voet">
         Vink af wat is doorgevoerd. Zet je een regel op <strong>Houden</strong> of kies je een ander doel, dan onthoudt het dashboard dat en maakt de volgende analyse dezelfde fout niet meer.
-      </p>
+      </p>}
     </div>
   );
 }

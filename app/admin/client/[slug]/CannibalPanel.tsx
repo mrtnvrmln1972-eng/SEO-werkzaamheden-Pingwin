@@ -83,6 +83,28 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
   // eigen zoekterm gaan van de omleidlijst af naar "oppakken".
   const [weegBezig, setWeegBezig] = useState(false);
   const [weegMsg, setWeegMsg] = useState("");
+  // De deellink: één adres dat je aan een klant kunt geven. Daar valt alleen te
+  // lezen en uit te klappen; alles wat iets vastlegt zit achter de adminroutes.
+  const [deelUrl, setDeelUrl] = useState("");
+  const [deelMsg, setDeelMsg] = useState("");
+
+  useEffect(() => {
+    fetch(`/api/admin/opruim-deellink?slug=${encodeURIComponent(slug)}`)
+      .then((r) => r.json()).then((d) => { if (d?.ok) setDeelUrl(d.url || ""); }).catch(() => { /* stil */ });
+  }, [slug]);
+
+  async function deellink(actie: "maken" | "vernieuwen" | "intrekken") {
+    setDeelMsg("");
+    try {
+      const d = await fetch("/api/admin/opruim-deellink", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, actie }),
+      }).then((r) => r.json());
+      if (!d?.ok) { setDeelMsg(d?.error || "Mislukt."); return; }
+      setDeelUrl(d.url || "");
+      setDeelMsg(actie === "intrekken" ? "De link is ingetrokken en werkt niet meer."
+        : actie === "vernieuwen" ? "Nieuwe link gemaakt; de vorige werkt niet meer." : "Link klaar om te delen.");
+    } catch { setDeelMsg("Mislukt."); }
+  }
 
   async function weegOpnieuw() {
     if (weegBezig) return;
@@ -327,6 +349,32 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
 
         {result && (
           <>
+            {/* De deellink. Bewust een eigen kaart bovenaan: dit is wat je aan
+                een klant geeft, en je wilt in één oogopslag zien of hij aanstaat. */}
+            <div className="opr-kaart opr-deelkaart">
+              <div className="opr-kop-rij">
+                <div className="opr-kop">Deelbare link voor de klant</div>
+                <div className="opr-kaart-acties">
+                  {!deelUrl && <button type="button" className="ghost-btn small" onClick={() => void deellink("maken")}>Maak een deellink</button>}
+                  {deelUrl && <button type="button" className="ghost-btn small" onClick={() => { void navigator.clipboard.writeText(deelUrl); setDeelMsg("Gekopieerd."); }}>Kopieer</button>}
+                  {deelUrl && <a className="ghost-btn small" href={deelUrl} target="_blank" rel="noreferrer">Bekijk zoals de klant hem ziet</a>}
+                  {deelUrl && <button type="button" className="ghost-btn small" onClick={() => void deellink("vernieuwen")} title="Maakt een nieuw adres; de oude link werkt daarna niet meer.">Nieuw adres</button>}
+                  {deelUrl && <button type="button" className="ghost-btn small" onClick={() => void deellink("intrekken")}>Intrekken</button>}
+                </div>
+              </div>
+              <div className="opr-kaart-tekst">
+                <p>
+                  Eén adres dat je aan iedereen kunt geven, zonder inloggen. Daar staat hetzelfde verhaal als hier:
+                  alle kaarten, alle uitklappers, alle onderbouwing. <strong>Alleen kijken</strong>, verder niets:
+                  geen vinkjes, geen houden of negeren, geen doorvoeren, geen weekplanning en geen mail.
+                </p>
+                {deelUrl
+                  ? <p><a className="opr-pad" href={deelUrl} target="_blank" rel="noreferrer">{deelUrl}</a></p>
+                  : <p>Er staat nog geen link open. Zolang je er geen maakt, is dit rapport nergens publiek te zien.</p>}
+                {deelMsg && <p><strong>{deelMsg}</strong></p>}
+              </div>
+            </div>
+
             <div className="ck-updated" style={{ marginBottom: 10 }}>
               {lijstDatum ? `Deze lijst is van ${new Date(lijstDatum).toLocaleString("nl-NL")}` : "Deze lijst heeft geen datum"}
               {running ? " · de nieuwe analyse draait nog, dit is nog de vorige" : ""}
