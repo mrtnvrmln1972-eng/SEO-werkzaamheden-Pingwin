@@ -7,6 +7,7 @@
 // zeven fases die ook op de projectkaarten staan.
 
 import { useEffect, useMemo, useState } from "react";
+import { kaartTekst, faseVoorstel } from "../../../../../lib/weekplan-kaarttekst";
 
 type Punt = { naam: string; behaald: number; max: number; uitleg: string };
 type Node = {
@@ -170,6 +171,43 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
     </>
   );
 
+  // Een pagina vanuit deze roadmap als projectkaart in de weekplanning zetten.
+  // Dit is de plek waar je ziet welke pagina achterloopt (score, woorden, fases),
+  // dus hier hoort de knop die er werk van maakt. De kaarttekst gaat door dezelfde
+  // bouwer als elders, zodat de kaart met fases en pagina-context opengaat.
+  const [planBezig, setPlanBezig] = useState("");
+  async function naarPlanning(n: Node) {
+    if (planBezig) return;
+    setPlanBezig(n.url);
+    try {
+      const achtergrond: string[] = [];
+      if (!n.live) achtergrond.push(`Deze pagina bestaat nog niet; ${n.url} is het beoogde adres uit de navigatie-roadmap.`);
+      if (n.hoofdzoekterm) achtergrond.push(`Hoofdzoekterm "${n.hoofdzoekterm}"${n.volume != null ? `, ${n.volume.toLocaleString("nl-NL")} zoekopdrachten per maand` : ""}.`);
+      if (n.score !== null) achtergrond.push(`Score ${n.score}/100 (${n.scoreLabel})${n.woorden !== null ? `, ${n.woorden}${n.woordenGeschat ? " geschatte" : ""} woorden eigen tekst` : ""}.`);
+      const zwak = (n.punten || []).filter((p) => p.max > 0 && p.behaald < p.max).map((p) => p.naam);
+      if (zwak.length) achtergrond.push(`Zwakste onderdelen nu: ${zwak.slice(0, 4).join(", ")}.`);
+      achtergrond.push(`${n.fasesKlaar} van de 7 fases staan af.`);
+      const toelichting = kaartTekst({
+        achtergrond,
+        afspraken: ["Bron: opgepakt vanuit de navigatie-roadmap."],
+        fases: faseVoorstel({ nieuw: !n.live, zoekwoord: n.hoofdzoekterm, pad: n.url }),
+      });
+      await fetch("/api/admin/weekplan/add", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, taak: `${n.live ? "Pagina oppakken" : "Nieuwe pagina"}: ${padVan(n.url)}`, url: liveUrl(n.url), week: 1, wie: "SEO", taaktype: "pijplijn", thread: "navigatie", toelichting }),
+      });
+      setMsg(`In de planning gezet: ${padVan(n.url)}.`);
+      await laad();
+    } catch { setMsg("In de planning zetten mislukte; probeer het nog een keer."); }
+    finally { setPlanBezig(""); }
+  }
+  const padVan = (u: string) => { try { return new URL(u).pathname; } catch { return u; } };
+  const PlanKnop = ({ n }: { n: Node }) => (
+    n.inPlan
+      ? <span className="nv-badge-plan" title="Deze pagina staat al als kaart in de weekplanning.">in planning</span>
+      : <button type="button" className="nv-plan" disabled={planBezig === n.url} title="Zet deze pagina als projectkaart in de weekplanning van deze week, met de fases en de pagina-context erin." onClick={() => void naarPlanning(n)}>{planBezig === n.url ? "…" : "+ planning"}</button>
+  );
+
   // Eén regel in een kolom: naam, voortgang en de acties die bij hover verschijnen.
   const Regel = ({ n, diepte, keten = [] }: { n: Node; diepte: number; keten?: string[] }) => {
     if (keten.includes(n.url)) return null;
@@ -186,6 +224,7 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
           {!n.live && <span className="nv-badge-mist" title="Deze pagina bestaat nog niet">nieuw</span>}
           <Cijfers n={n} />
           <span className="nv-acties">
+            <PlanKnop n={n} />
             {n.pct < 100 && n.live && <button type="button" className="nv-mini" title="Markeer voltooid: vinkt alle zeven fases af" onClick={() => void post({ action: "voltooi", url: n.url }, "voltooi")}>✓</button>}
             {blik === "beoogd" && <button type="button" className="nv-mini nv-mini-del" title="Uit de beoogde structuur halen (de live pagina blijft bestaan)" onClick={() => void post({ action: "del", url: n.url }, "del")}>×</button>}
           </span>
@@ -326,6 +365,7 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
                 <th className="pg-sort nv-getal" onClick={() => sorteerOp("woorden")} title="Eigen tekst, zonder menu en footer">Woorden{pijl("woorden")}</th>
                 <th className="pg-sort nv-getal" onClick={() => sorteerOp("score")} title="Hoe goed de pagina als landingpagina is ingericht">Score{pijl("score")}</th>
                 <th className="pg-sort nv-getal" onClick={() => sorteerOp("pct")} title="Hoeveel van de zeven fases klaar zijn">Fases{pijl("pct")}</th>
+                <th title="Zet deze pagina als projectkaart in de weekplanning">Planning</th>
               </tr>
             </thead>
             <tbody>
@@ -340,9 +380,10 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
                   <td className="nv-getal">{n.woorden === null ? <span className="nv-leegwaarde">&ndash;</span> : `${n.woorden}${n.woordenGeschat ? "~" : ""}`}</td>
                   <td className="nv-getal">{n.score === null ? <span className="nv-leegwaarde">&ndash;</span> : <span className={"nv-score " + n.scoreNiveau} title={scoreUitleg(n)}>{n.score}</span>}</td>
                   <td className="nv-getal">{n.pct}%</td>
+                  <td><PlanKnop n={n} /></td>
                 </tr>
               ))}
-              {lijst.length === 0 && <tr><td colSpan={5} className="nv-muted">Geen pagina&rsquo;s in deze selectie.</td></tr>}
+              {lijst.length === 0 && <tr><td colSpan={6} className="nv-muted">Geen pagina&rsquo;s in deze selectie.</td></tr>}
             </tbody>
           </table>
         </div>

@@ -3769,6 +3769,16 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .nv-acties { display: flex; gap: 4px; width: 44px; justify-content: flex-end; flex: 0 0 auto; }
 .nv-mini { width: 19px; height: 19px; border-radius: 50%; border: 1px solid #1c7a3f; color: #1c7a3f; background: #fff; font-size: 10px; cursor: pointer; padding: 0; opacity: 0; transition: opacity 0.15s; }
 .nv-item:hover .nv-mini { opacity: 1; }
+/* "+ planning": een pagina vanuit de roadmap als projectkaart wegzetten.
+   Bewust altijd zichtbaar (gedimd), niet pas bij hover; een knop die je moet
+   zoeken wordt niet gebruikt. */
+.nv-plan, .pg-planknop { border: 1px solid var(--card-border); background: #fff; color: var(--orange-dark); font-size: var(--fs-xs); font-weight: 700; padding: 2px var(--s-2); border-radius: var(--r-full); cursor: pointer; white-space: nowrap; }
+.nv-plan:hover, .pg-planknop:hover { background: var(--orange-light); border-color: var(--orange); }
+.nv-plan:disabled, .pg-planknop:disabled { opacity: 0.6; cursor: default; }
+.nv-plan { opacity: 0.55; transition: opacity 0.15s; }
+.nv-item:hover .nv-plan, .nv-lijst .nv-plan { opacity: 1; }
+.nv-badge-plan { font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; color: #1c7a3f; background: #f1f8f3; border-radius: var(--r-full); padding: 1px 7px; white-space: nowrap; }
+.pg-plan-cell { white-space: nowrap; }
 .nv-mini:hover { background: #1c7a3f; color: #fff; }
 .nv-mini-del { border-color: #cfc7bd; color: #8a7a6c; }
 .nv-mini-del:hover { background: #b3261e; border-color: #b3261e; color: #fff; }

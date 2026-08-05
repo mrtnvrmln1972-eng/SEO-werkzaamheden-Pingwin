@@ -9,6 +9,22 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { urlKey } from "../../../../lib/url-key";
 import { categorieVan } from "../../../../lib/prioriteiten-categorie";
+import { kaartTekst, faseVoorstel } from "../../../../lib/weekplan-kaarttekst";
+
+// Het bedoelde adres van een pagina die nog niet bestaat (content gap). De kaart
+// heeft een URL nodig om de fases en de pagina-context te kunnen tonen; zonder
+// URL opent hij half leeg. Dit is een voorstel, geen bewering: het pad staat ook
+// in de kaarttekst zodat je het kunt wijzigen voor je gaat bouwen.
+function bedoeldPad(zoekwoord: string, domain: string): string {
+  const slugje = (zoekwoord || "")
+    .toLowerCase().trim()
+    .replace(/['"]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  if (!slugje) return "";
+  const host = (domain || "").replace(/^https?:\/\//i, "").replace(/\/+$/, "");
+  return host ? `https://${host}/${slugje}/` : `/${slugje}/`;
+}
 
 type Lens = { sleutel: string; naam: string; status: string; toelichting: string; gevonden: number };
 type Regel = {
@@ -145,17 +161,25 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
     setBezigId(r.id);
     try {
       if (cat.kaart) {
-        const pad = r.url || "";
-        const toelichting = [
-          "Achtergrond:",
-          `- ${r.rationale}`,
-          `- Zoekwoord "${r.zoekwoord}", ${getal(r.maandvolume)} zoekopdrachten per maand.`,
-          r.huidigePositie
-            ? `- Staat nu op positie ${r.huidigePositie}, doel is ${r.targetPositie}.`
-            : `- Rankt hier nog niet; doel is positie ${r.targetPositie}.`,
-          `- Naar schatting ${getal(r.extraKlikkenPerMaand)} extra bezoekers per maand (${zekerheid(r.confidence)}).`,
-          "- Bron: uit de vindbaarheidsscan van deze site.",
-        ].join("\n");
+        // Een content gap heeft nog geen pagina, dus ook geen URL. Zonder URL
+        // blijft het fase-blok op de kaart leeg (de kaart zoekt de pagina op).
+        // Daarom leiden we het bedoelde pad af uit het zoekwoord; dat is precies
+        // wat de assistent ook doet als hij een nieuwe pagina inplant.
+        const nieuw = !r.url;
+        const pad = r.url || bedoeldPad(r.zoekwoord, domain);
+        const toelichting = kaartTekst({
+          achtergrond: [
+            r.rationale,
+            `Zoekwoord "${r.zoekwoord}", ${getal(r.maandvolume)} zoekopdrachten per maand.`,
+            r.huidigePositie
+              ? `Staat nu op positie ${r.huidigePositie}, doel is ${r.targetPositie}.`
+              : `Rankt hier nog niet; doel is positie ${r.targetPositie}.`,
+            `Naar schatting ${getal(r.extraKlikkenPerMaand)} extra bezoekers per maand (${zekerheid(r.confidence)}).`,
+            nieuw ? `Deze pagina bestaat nog niet; ${pad} is het voorgestelde adres.` : "",
+          ].filter(Boolean),
+          afspraken: ["Bron: uit de vindbaarheidsscan van deze site."],
+          fases: faseVoorstel({ nieuw, zoekwoord: r.zoekwoord, positie: r.huidigePositie || null, doel: r.targetPositie || null, pad }),
+        });
         await fetch("/api/admin/weekplan/add", {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
