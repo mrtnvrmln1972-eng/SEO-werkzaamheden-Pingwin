@@ -131,8 +131,13 @@ export type MetaFieldStatus = "open" | "goedgekeurd" | "afgewezen";
  *  - klikwinst: wordt goed gevonden, maar te weinig aangeklikt voor zijn positie
  *  - kapot:     de meta ontbreekt of valt buiten de regels
  *  - goed:      niets aan de hand; staat er zodat je ziet dat hij bekeken is
+ *  - onbekend:  deze pagina is nog niet gemeten, dus we weten het simpelweg niet
+ *
+ * Die laatste is er bewust. Zonder meting stond er "staat al goed" bij honderden
+ * pagina's die niemand ooit bekeken had; dat is een oordeel dat we niet konden
+ * onderbouwen. Niet weten mag, doen alsof je het weet niet.
  */
-export type MetaReden = "klikwinst" | "kapot" | "goed";
+export type MetaReden = "klikwinst" | "kapot" | "goed" | "onbekend";
 
 export type MetaKansRow = {
   url: string;
@@ -271,7 +276,7 @@ export async function getMetaKansen(slug: string): Promise<MetaKansRow[]> {
     const kapot = issues.title.length > 0 || issues.desc.length > 0;
     // Klikwinst telt pas als er echt iets te halen valt; anders is het ruis.
     const klikwinst = impressions >= 100 && extraClicks >= 5;
-    const reden: MetaReden = klikwinst ? "klikwinst" : kapot ? "kapot" : "goed";
+    const reden: MetaReden = klikwinst ? "klikwinst" : kapot ? "kapot" : gemeten ? "goed" : "onbekend";
 
     // Staat de meta uit het copydocument al op de pagina? Dan is er niets te doen.
     const cdLive = !!cd && ((!!cd.title && normText(cd.title) === normText(curTitle)) || (!!cd.desc && normText(cd.desc) === normText(curDesc)));
@@ -300,7 +305,7 @@ export async function getMetaKansen(slug: string): Promise<MetaKansRow[]> {
 
   // Op volgorde van opbrengst: eerst de gemiste klikken, daarna de kapotte
   // meta's (de meest vertoonde eerst), en onderaan wat al goed staat.
-  const bak = (r: MetaKansRow) => r.reden === "klikwinst" ? 0 : r.reden === "kapot" ? 1 : 2;
+  const bak = (r: MetaKansRow) => r.reden === "klikwinst" ? 0 : r.reden === "kapot" ? 1 : r.reden === "onbekend" ? 2 : 3;
   out.sort((a, b) => bak(a) - bak(b) || (b.extraClicks - a.extraClicks) || (b.impressions - a.impressions) || a.url.localeCompare(b.url));
   // Maandelijks zoekvolume erbij (Ahrefs, 30 dagen gecached); mag nooit de lijst
   // breken. Alleen voor de bovenste dertig: de lijst is nu compleet, en volume

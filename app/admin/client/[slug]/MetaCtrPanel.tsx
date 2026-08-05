@@ -44,7 +44,7 @@ function MetaChecklist({ kind, text, keyword, other }: { kind: "title" | "desc";
 type Effect = { ctrBefore: number; ctrAfter: number; clicksBefore: number; clicksAfter: number; daysAfter: number };
 type FieldStatus = "open" | "goedgekeurd" | "afgewezen";
 type Proposal = { curTitle: string; curDesc: string; propTitle: string; propDesc: string; status: "open" | "goedgekeurd" | "doorgevoerd" | "afgewezen"; titleStatus: FieldStatus; descStatus: FieldStatus; liveAt: string | null; effect: Effect | null };
-type Reden = "klikwinst" | "kapot" | "goed";
+type Reden = "klikwinst" | "kapot" | "goed" | "onbekend";
 type KansRow = {
   url: string; keyword: string; volume: number | null; clicks: number; impressions: number;
   ctr: number; expectedCtr: number; position: number; extraClicks: number;
@@ -60,6 +60,7 @@ const REDEN_LABEL: Record<Reden, { txt: string; bg: string; fg: string; uitleg: 
   klikwinst: { txt: "klikwinst", bg: "#fff3e6", fg: "#b25a00", uitleg: "Wordt goed gevonden, maar krijgt te weinig klikken voor zijn positie." },
   kapot: { txt: "meta niet in orde", bg: "#fdeaea", fg: "#c62828", uitleg: "De meta ontbreekt of valt buiten de regels (lengte, pijp, vierkante haken)." },
   goed: { txt: "staat al goed", bg: "#eef6ef", fg: "#2e7d32", uitleg: "Niets aan de hand; staat hier zodat je ziet dat de pagina bekeken is." },
+  onbekend: { txt: "nog niet gemeten", bg: "#f2f2f2", fg: "#777", uitleg: "Deze pagina is nog niet gelezen, dus we weten niet of zijn meta deugt. Druk op \u201cMeet de pagina\u2019s\u201d." },
 };
 
 function pad(url: string): string {
@@ -92,7 +93,7 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
   const [rows, setRows] = useState<KansRow[] | null>(null);
   const [error, setError] = useState("");
   // Filter op de reden; standaard alles wat aandacht vraagt (dus zonder "staat al goed").
-  const [filter, setFilter] = useState<"werk" | "klikwinst" | "kapot" | "goed" | "alles">("werk");
+  const [filter, setFilter] = useState<"werk" | "klikwinst" | "kapot" | "onbekend" | "goed" | "alles">("werk");
   const [meetBusy, setMeetBusy] = useState(false);
   const [meetMsg, setMeetMsg] = useState("");
   const [verify, setVerify] = useState<Record<string, { title: string; description: string; url: string }>>({});
@@ -400,6 +401,7 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
           { id: "werk", label: `Vraagt aandacht (${n("klikwinst") + n("kapot")})` },
           { id: "klikwinst", label: `Klikwinst (${n("klikwinst")})` },
           { id: "kapot", label: `Meta niet in orde (${n("kapot")})` },
+          { id: "onbekend", label: `Nog niet gemeten (${n("onbekend")})` },
           { id: "goed", label: `Staat al goed (${n("goed")})` },
           { id: "alles", label: `Alles (${(rows || []).length})` },
         ];
@@ -412,7 +414,7 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
         );
       })()}
       <div className="wz-list">
-        {(rows || []).filter((r) => filter === "alles" ? true : filter === "werk" ? r.reden !== "goed" : r.reden === filter).map((r) => {
+        {(rows || []).filter((r) => filter === "alles" ? true : filter === "werk" ? (r.reden === "klikwinst" || r.reden === "kapot") : r.reden === filter).map((r) => {
           const open = openUrl === r.url;
           const st = r.proposal ? STATUS_LABEL[r.proposal.status] : null;
           return (
