@@ -4167,3 +4167,66 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
   .lead-grid { grid-template-columns: 1fr; }
   .lead-chat-verloop { max-height: 50vh; }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   CONTROLE VANUIT DE MAIL: "is dit echt verwerkt in de site?"
+   Volledig op de schaal-tokens; geen losse maten, rondingen of schaduwen.
+   ═══════════════════════════════════════════════════════════ */
+.mc-blok { margin-top: var(--s-5); padding-top: var(--s-4); border-top: 1px solid var(--border); }
+.mc-start { display: flex; gap: var(--s-2); align-items: center; flex-wrap: wrap; }
+.mc-vraag {
+  flex: 1 1 320px; min-width: 0;
+  padding: var(--s-2) var(--s-3);
+  border: 1px solid var(--border); border-radius: var(--r-md);
+  font-size: var(--fs-base); line-height: var(--lh-base); font-family: inherit;
+}
+.mc-vraag:focus { outline: none; border-color: var(--orange); }
+.mc-uitleg { margin-top: var(--s-2); max-width: 78ch; }
+
+.mc-uitslag { margin-top: var(--s-4); display: flex; flex-direction: column; gap: var(--s-3); }
+.mc-bezig { display: flex; align-items: center; gap: var(--s-2); font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray); }
+.mc-spin {
+  width: 12px; height: 12px; border-radius: var(--r-full);
+  border: 2px solid var(--border); border-top-color: var(--orange);
+  animation: mc-draai 0.8s linear infinite;
+}
+@keyframes mc-draai { to { transform: rotate(360deg); } }
+
+.mc-samenvatting {
+  background: var(--brand-orange-faint);
+  border: 1px solid var(--card-border); border-radius: var(--r-md);
+  padding: var(--s-3) var(--s-4);
+  font-size: var(--fs-base); line-height: var(--lh-base); max-width: 78ch;
+}
+
+.mc-punt { padding: var(--s-4); display: flex; flex-direction: column; gap: var(--s-2); }
+.mc-punt-kop { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; }
+.mc-punt-titel { font-size: var(--fs-base); line-height: var(--lh-base); font-weight: 600; color: var(--body-text); }
+.mc-chip {
+  display: inline-block; padding: var(--s-1) var(--s-2); border-radius: var(--r-full);
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
+  color: var(--white); white-space: nowrap;
+}
+.mc-chip-soort { background: var(--brand-taupe); }
+.mc-chip-eigen { background: var(--brand-blue); }
+
+.mc-regel { display: flex; gap: var(--s-3); align-items: baseline; flex-wrap: wrap; }
+.mc-etiket {
+  flex: 0 0 auto; min-width: 108px;
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
+  color: var(--gray); text-transform: lowercase;
+}
+.mc-citaat { flex: 1 1 260px; font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--muted); font-style: italic; max-width: 78ch; }
+.mc-bewijs { flex: 1 1 260px; font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--body-text); max-width: 78ch; }
+.mc-bewijs a { color: var(--orange-dark); text-decoration: underline; }
+
+.mc-knoppen { display: flex; gap: var(--s-2); align-items: center; flex-wrap: wrap; margin-top: var(--s-1); }
+.mc-lijst { margin: 0; padding-left: var(--s-5); font-size: var(--fs-sm); line-height: var(--lh-sm); }
+.mc-lijst li { margin-bottom: var(--s-1); }
+.mc-onduidelijk { border-left: 3px solid var(--brand-taupe); }
+.mc-concept { padding: var(--s-4); display: flex; flex-direction: column; gap: var(--s-3); }
+.mc-verstuurd { font-size: var(--fs-sm); line-height: var(--lh-sm); color: #1a7f37; }
+
+@media (max-width: 700px) {
+  .mc-etiket { min-width: 0; flex-basis: 100%; }
+}

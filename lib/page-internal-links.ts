@@ -47,10 +47,10 @@ async function doEnsure(): Promise<void> {
     )`;
 }
 
-function pagePath(u: string): string { return (u || "").replace(/^https?:\/\/[^/]+/i, "").split("#")[0].split("?")[0].replace(/\/+$/, "") || "/"; }
+export function pagePath(u: string): string { return (u || "").replace(/^https?:\/\/[^/]+/i, "").split("#")[0].split("?")[0].replace(/\/+$/, "") || "/"; }
 
 // Normaliseert een href naar een schoon intern pad, of null als extern/geen echte link.
-function toPath(href: string, domain: string): string | null {
+export function toPath(href: string, domain: string): string | null {
   if (!href) return null;
   let h = href.trim();
   if (!h || h.startsWith("#") || /^(mailto:|tel:|javascript:)/i.test(h)) return null;
@@ -72,7 +72,7 @@ function toPath(href: string, domain: string): string | null {
 // Nederlandse stopwoorden + generieke SEO-woorden die geen onderscheidende
 // onderwerp-term zijn (voor het bepalen van de thematische tokens van de doelpagina).
 const STOP = new Set(["de", "het", "een", "en", "of", "in", "op", "voor", "van", "te", "met", "aan", "bij", "als", "dat", "die", "dit", "je", "u", "we", "wij", "is", "zijn", "was", "waar", "wat", "hoe", "kan", "kun", "wil", "naar", "over", "per", "ook", "meer", "hier", "onze", "ons", "uw", "home", "pagina", "welkom", "contact", "nl", "www", "http", "https", "html", "php"]);
-function topicTokens(parts: string[]): Set<string> {
+export function topicTokens(parts: string[]): Set<string> {
   const out = new Set<string>();
   for (const p of parts) {
     for (const w of (p || "").toLowerCase().replace(/[^\p{L}\p{N}\s-]+/gu, " ").split(/[\s-]+/)) {
@@ -81,7 +81,7 @@ function topicTokens(parts: string[]): Set<string> {
   }
   return out;
 }
-function tokenHits(text: string, tokens: Set<string>): string[] {
+export function tokenHits(text: string, tokens: Set<string>): string[] {
   const t = (text || "").toLowerCase();
   const hits: string[] = [];
   for (const tok of tokens) if (t.includes(tok)) hits.push(tok);
@@ -97,7 +97,7 @@ function tokenHits(text: string, tokens: Set<string>): string[] {
 function decodeEnt(s: string): string {
   return (s || "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#0?39;|&apos;|&#8217;/g, "'").replace(/&nbsp;|&#160;/g, " ").replace(/\s+/g, " ").trim();
 }
-function stripHtmlTags(s: string): string { return decodeEnt((s || "").replace(/<[^>]+>/g, " ")); }
+export function stripHtmlTags(s: string): string { return decodeEnt((s || "").replace(/<[^>]+>/g, " ")); }
 function tagTexts(html: string, tag: string, max: number): string[] {
   const out: string[] = [];
   const re = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, "gi");
@@ -105,7 +105,7 @@ function tagTexts(html: string, tag: string, max: number): string[] {
   while ((m = re.exec(html)) && out.length < max) { const t = stripHtmlTags(m[1]).slice(0, 160); if (t) out.push(t); }
   return out;
 }
-function contentScope(html: string): string {
+export function contentScope(html: string): string {
   const main = html.match(/<main[\s\S]*?<\/main>/i);
   if (main) return main[0];
   let h = (html.match(/<body[\s\S]*?<\/body>/i) || [html])[0];

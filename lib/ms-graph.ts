@@ -312,6 +312,64 @@ export async function msGetAttachment(messageId: string, attachmentId: string): 
   return { naam: j.name || "bijlage", buffer: Buffer.from(j.contentBytes, "base64") };
 }
 
+// Antwoordt ÉCHT in de bestaande thread, met een deterministische ontvanger.
+//
+// Waarom naast msReplyHtml: die verstuurt bewust een nieuwe mail met "RE: " ervoor
+// (zie de uitleg daar), en dat werkt prima, maar het bericht komt daardoor los in
+// de mailbox van de ontvanger te staan; het gesprek valt uit elkaar. Voor een
+// controle-antwoord is dat vervelend, want dat hoort juist onder het verzoek te
+// hangen waar het over gaat.
+//
+// createReply levert een concept mét de juiste conversationId en antwoord-headers.
+// Het bezwaar tegen createReply (de ontvanger blijft op jezelf plakken bij je eigen
+// verzonden mail) lossen we op door in dezelfde stap toRecipients hard te
+// overschrijven, vóór het versturen. Zo krijgen we allebei: echte threading én een
+// ontvanger die niet kan verspringen.
+export async function msReplyInThread(messageId: string, html: string, toOverride?: string[]): Promise<{ ok: boolean; error?: string; sentTo?: string[] }> {
+  const token = await msAccessToken();
+  if (!token) return { ok: false, error: "Niet gekoppeld met Microsoft." };
+  const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+
+  let recipients = (toOverride || []).map((a) => a.trim()).filter(Boolean);
+  if (recipients.length === 0) {
+    recipients = (await replyRecipients(token, messageId)).map((r) => r.emailAddress?.address || "").filter(Boolean);
+  }
+  if (recipients.length === 0) return { ok: false, error: "Geen ontvanger gevonden. Vul het Aan-veld in." };
+
+  // 1. Concept-antwoord laten maken door Graph (met citaat, headers en thread-id).
+  const maak = await fetch(`https://graph.microsoft.com/v1.0/me/messages/${encodeURIComponent(messageId)}/createReply`, { method: "POST", headers });
+  if (!maak.ok) {
+    // Lukt dit niet, dan is een losse mail beter dan helemaal geen antwoord.
+    return msReplyHtml(messageId, html, recipients);
+  }
+  const concept = (await maak.json()) as { id?: string; body?: { content?: string } };
+  if (!concept.id) return msReplyHtml(messageId, html, recipients);
+
+  // 2. Onze tekst bovenaan zetten, en de ontvanger hard vastzetten.
+  const bestaand = concept.body?.content || "";
+  const patch = await fetch(`https://graph.microsoft.com/v1.0/me/messages/${encodeURIComponent(concept.id)}`, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify({
+      body: { contentType: "HTML", content: `${sanitizeOutgoing(html)}<br><br>${bestaand}` },
+      toRecipients: recipients.map((a) => ({ emailAddress: { address: a } })),
+      ccRecipients: [],
+    }),
+  });
+  if (!patch.ok) {
+    // Concept opruimen zodat er geen half bericht blijft rondslingeren.
+    await fetch(`https://graph.microsoft.com/v1.0/me/messages/${encodeURIComponent(concept.id)}`, { method: "DELETE", headers }).catch(() => null);
+    return msReplyHtml(messageId, html, recipients);
+  }
+
+  // 3. Versturen.
+  const send = await fetch(`https://graph.microsoft.com/v1.0/me/messages/${encodeURIComponent(concept.id)}/send`, { method: "POST", headers });
+  if (send.status === 202 || send.ok) return { ok: true, sentTo: recipients };
+  let msg = `Versturen mislukt (${send.status}).`;
+  try { const j = await send.json(); msg = j.error?.message || msg; } catch { /* ignore */ }
+  return { ok: false, error: msg };
+}
+
 function sanitizeOutgoing(html: string): string {
   return html
     .replace(/<\s*script[\s\S]*?<\s*\/\s*script\s*>/gi, "")

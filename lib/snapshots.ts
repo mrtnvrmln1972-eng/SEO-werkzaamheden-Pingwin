@@ -20,6 +20,10 @@ export type EmailSnapshot = {
   bodyHtml: string | null;
   direction: string | null;
   toAddresses?: string[];
+  // Het gesprek waar deze mail bij hoort. Alleen gevuld bij live mail uit
+  // Microsoft 365; de controleknop heeft dit nodig om de héle thread op te halen
+  // in plaats van alleen het bericht dat toevallig openstaat.
+  conversationId?: string | null;
 };
 
 // Actuele stand van zaken = een gesprek klant ↔ wij, plus losse taken.

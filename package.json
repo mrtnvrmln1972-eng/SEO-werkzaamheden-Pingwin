@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "proef": "npx --yes tsx proeven/site-controle.proef.ts"
   },
   "dependencies": {
     "@sparticuz/chromium": "^131.0.1",

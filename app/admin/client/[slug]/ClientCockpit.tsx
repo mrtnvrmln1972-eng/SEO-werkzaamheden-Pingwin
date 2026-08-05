@@ -34,6 +34,7 @@ import ActiviteitPanel from "./ActiviteitPanel";
 import InvoiceAlert from "./InvoiceAlert";
 import SelectionActions from "./SelectionActions";
 import LeadTab from "./LeadTab";
+import MailControlePanel from "./MailControlePanel";
 
 type Tab = "lead" | "werkzaamheden" | "paginas" | "documenten" | "activiteit" | "resultaten" | "klant" | "developer" | "wijzigingen" | "cannibalisatie" | "interne-links" | "meta" | "prioriteiten";
 
@@ -797,6 +798,18 @@ export default function ClientCockpit({
                                   {replyMsg && <span className={"reply-msg" + (replyMsg.startsWith("Verstuurd") ? " ok" : " err")}>{replyMsg}</span>}
                                 </div>
                               </div>
+                            )}
+                            {/* Controleren of de verzoeken uit deze thread ook echt
+                                in de site verwerkt zijn. Staat hier omdat Maarten
+                                hier toch al is als hij de mail leest. */}
+                            {mailLive && e.conversationId && (
+                              <MailControlePanel
+                                slug={client.slug}
+                                domein={client.domain || ""}
+                                conversationId={e.conversationId}
+                                messageId={e.id}
+                                onderwerp={e.subject || ""}
+                              />
                             )}
                           </div>
                         )}
