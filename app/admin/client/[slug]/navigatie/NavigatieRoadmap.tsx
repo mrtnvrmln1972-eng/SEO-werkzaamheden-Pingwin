@@ -14,6 +14,7 @@ type Node = {
   live: boolean; pct: number; fasesKlaar: number; inPlan: boolean; label?: string;
   woorden: number | null; woordenGeschat: boolean; score: number | null;
   scoreNiveau: "goed" | "matig" | "zwak" | null; scoreLabel: string; punten: Punt[]; gemetenOp: string | null;
+  bucket?: boolean;
 };
 type Voorstel = { url: string; parent: string; hoofdzoekterm: string; volume: number | null };
 type Filter = "alles" | "onvoltooid" | "ontbrekend" | "onder50";
@@ -21,6 +22,8 @@ type Filter = "alles" | "onvoltooid" | "ontbrekend" | "onder50";
 export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: string; clientName: string; domain: string }) {
   const [nodes, setNodes] = useState<Node[]>([]);
   const [menu, setMenu] = useState<Node[]>([]);
+  const [huidig, setHuidig] = useState<Node[]>([]);
+  const [gescand, setGescand] = useState<{ op: string | null; aantal: number; teveel: number }>({ op: null, aantal: 0, teveel: 0 });
   const [voorstel, setVoorstel] = useState<Voorstel[]>([]);
   const [ontbrekend, setOntbrekend] = useState<string[]>([]);
   const [weergave, setWeergave] = useState<"kolommen" | "lijst">("kolommen");
@@ -37,7 +40,11 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
 
   async function laad() {
     const d = await fetch(`/api/admin/nav-plan?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).catch(() => null);
-    if (d?.ok) { setNodes(d.nodes || []); setMenu(d.menu || []); setVoorstel(d.voorstel || []); setOntbrekend(d.ontbrekend || []); }
+    if (d?.ok) {
+      setNodes(d.nodes || []); setMenu(d.menu || []); setHuidig(d.huidig || []);
+      setVoorstel(d.voorstel || []); setOntbrekend(d.ontbrekend || []);
+      setGescand({ op: d.laatstGescand || null, aantal: d.aantalGescand || 0, teveel: d.losTeveel || 0 });
+    }
   }
   useEffect(() => { void laad(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [slug]);
 
@@ -72,13 +79,26 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
     finally { setBusy(""); }
   }
 
+  // Hele site opnieuw inlezen: eerst de sitemap (welke pagina's bestaan er),
+  // daarna het menu (hoe hangen ze samen). Los van elkaar heeft het weinig zin.
+  async function scanSite() {
+    setBusy("scan"); setMsg("");
+    try {
+      const d = await fetch("/api/admin/urls", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }) }).then((r) => r.json());
+      if (!d?.ok) { setMsg(d?.error || "De sitescan lukte niet; probeer het nog een keer."); return; }
+      await fetch("/api/admin/nav-plan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, action: "menu" }) }).catch(() => null);
+      await laad();
+    } catch { setMsg("De sitescan lukte niet; probeer het nog een keer."); }
+    finally { setBusy(""); }
+  }
+
   // Welke lijst tonen we, en wat blijft er na het filter over?
-  const bron = blik === "huidig" ? menu : nodes;
+  const bron = blik === "huidig" ? huidig : nodes;
   const zicht = useMemo(() => {
     let n = bron;
-    if (filter === "onvoltooid") n = n.filter((x) => x.pct < 100);
-    if (filter === "ontbrekend") n = n.filter((x) => !x.live);
-    if (filter === "onder50") n = n.filter((x) => x.pct < 50);
+    if (filter === "onvoltooid") n = n.filter((x) => x.bucket || x.pct < 100);
+    if (filter === "ontbrekend") n = n.filter((x) => x.bucket || !x.live);
+    if (filter === "onder50") n = n.filter((x) => x.bucket || x.pct < 50);
     return n;
   }, [bron, filter]);
 
@@ -93,12 +113,14 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
     return [...direct, ...direct.flatMap((d) => alleOnder(d.url, gezien))];
   }
 
-  const totaal = bron.length;
-  const klaarTotaal = bron.filter((n) => n.pct === 100).length;
-  const totaalPct = totaal ? Math.round(bron.reduce((s, n) => s + n.pct, 0) / totaal) : 0;
-  const ontbreekt = bron.filter((n) => !n.live).length;
-  const begonnen = bron.filter((n) => n.pct > 0 && n.pct < 100).length;
+  const echt = bron.filter((n) => !n.bucket);
+  const totaal = echt.length;
+  const klaarTotaal = echt.filter((n) => n.pct === 100).length;
+  const totaalPct = totaal ? Math.round(echt.reduce((s, n) => s + n.pct, 0) / totaal) : 0;
+  const ontbreekt = echt.filter((n) => !n.live).length;
+  const begonnen = echt.filter((n) => n.pct > 0 && n.pct < 100).length;
 
+  const oudeScan = !!gescand.op && Date.now() - new Date(gescand.op).getTime() > 14 * 24 * 3600 * 1000;
   const kleur = (n: Node) => (!n.live ? "nv-rood" : n.pct >= 100 ? "nv-groen" : n.pct > 0 ? "nv-oranje" : "nv-grijs");
   const liveUrl = (pad: string) => (domain ? `https://${domain.replace(/^https?:\/\//, "")}${pad}` : pad);
   const naam = (n: Node) => n.label || n.hoofdzoekterm || (n.url === "/" ? "Homepage" : (n.url.split("/").filter(Boolean).pop() || n.url).replace(/-/g, " "));
@@ -119,7 +141,7 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
   }
   const pijl = (key: string) => (sorteer.key === key ? (sorteer.dir === "op" ? " ▲" : " ▼") : "");
   const lijst = useMemo(() => {
-    const kopie = [...zicht];
+    const kopie = zicht.filter((n) => !n.bucket);
     const richting = sorteer.dir === "op" ? 1 : -1;
     kopie.sort((a, b) => {
       if (sorteer.key === "naam") return naam(a).localeCompare(naam(b)) * richting;
@@ -186,23 +208,26 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
 
   const Kolom = ({ n }: { n: Node }) => {
     const kids = kinderenVan(n.url);
-    const tak = [n, ...alleOnder(n.url)];
+    const tak = (n.bucket ? alleOnder(n.url) : [n, ...alleOnder(n.url)]).filter((x) => !x.bucket);
     const takKlaar = tak.filter((x) => x.pct === 100).length;
-    const takPct = Math.round(tak.reduce((s, x) => s + x.pct, 0) / tak.length);
+    const takPct = tak.length ? Math.round(tak.reduce((s, x) => s + x.pct, 0) / tak.length) : 0;
     const isDicht = dicht["kolom:" + n.url];
     return (
       <div className="nv-kolom">
-        <div className={"nv-kolomkop " + kleur(n)}>
+        <div className={"nv-kolomkop " + (n.bucket ? "nv-grijs" : kleur(n))}>
           <button type="button" className="nv-caret" title={isDicht ? "Uitklappen" : "Inklappen"} onClick={() => setDicht((v) => ({ ...v, ["kolom:" + n.url]: !v["kolom:" + n.url] }))}>{isDicht ? "▸" : "▾"}</button>
-          <a className="nv-kolomnaam" href={liveUrl(n.url)} target="_blank" rel="noreferrer" title={n.url}>{naam(n)}</a>
-          {tak.length > 1 && <span className="nv-taktotaal" title="Voltooide pagina's in deze tak">{takKlaar}/{tak.length}</span>}
+          {n.bucket
+            ? <span className="nv-kolomnaam nv-kolomnaam-los" title="Deze pagina's komen nergens in het hoofdmenu terug. Een bezoeker vindt ze alleen via een link in een tekst of via Google.">Niet in het menu</span>
+            : <a className="nv-kolomnaam" href={liveUrl(n.url)} target="_blank" rel="noreferrer" title={n.url}>{naam(n)}</a>}
+          {tak.length > (n.bucket ? 0 : 1) && <span className="nv-taktotaal" title="Voltooide pagina's in deze tak">{takKlaar}/{tak.length}</span>}
         </div>
-        <span className="nv-balkje"><span className={"nv-balkvul " + kleur(n)} style={{ width: `${Math.max(takPct, 3)}%` }} /></span>
+        {!n.bucket && <span className="nv-balkje"><span className={"nv-balkvul " + kleur(n)} style={{ width: `${Math.max(takPct, 3)}%` }} /></span>}
         {!isDicht && (
           <div className="nv-kolomlijst">
-            {tak.length === 1 && <div className={"nv-item " + kleur(n)} style={{ paddingLeft: 10 }}><span className="nv-caret nv-caret-leeg" /><a className="nv-naam" href={liveUrl(n.url)} target="_blank" rel="noreferrer">{n.url}</a><span className="nv-spacer" /><Cijfers n={n} /></div>}
+            {tak.length === 1 && !n.bucket && <div className={"nv-item " + kleur(n)} style={{ paddingLeft: 10 }}><span className="nv-caret nv-caret-leeg" /><a className="nv-naam" href={liveUrl(n.url)} target="_blank" rel="noreferrer">{n.url}</a><span className="nv-spacer" /><Cijfers n={n} /></div>}
             {kids.map((k) => <Regel key={k.url} n={k} diepte={0} keten={[n.url]} />)}
-            {blik === "beoogd" && (nieuwIn === n.url ? (
+            {gescand.teveel > 0 && n.bucket && <div className="nv-muted" style={{ padding: "4px 6px" }}>+ {gescand.teveel} pagina&rsquo;s niet getoond</div>}
+            {blik === "beoogd" && !n.bucket && (nieuwIn === n.url ? (
               <input className="nv-term-input" autoFocus value={nieuwPad} placeholder="/pad/nieuwe-pagina/"
                 onChange={(e) => setNieuwPad(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && nieuwPad.trim()) { void post({ action: "add", url: nieuwPad.trim(), parent: n.url }, "add"); setNieuwIn(null); setNieuwPad(""); } if (e.key === "Escape") setNieuwIn(null); }} />
@@ -251,7 +276,10 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
             </button>
           )}
           {blik === "huidig" ? (
-            <button type="button" className="wp-fase-btn" disabled={!!busy} title="Leest het menu van de homepage uit, zodat deze weergave precies de navigatie van de site is." onClick={() => void post({ action: "menu" }, "menu")}>{busy === "menu" ? "Menu uitlezen…" : "Menu opnieuw uitlezen"}</button>
+            <>
+              <button type="button" className="wp-fase-btn" disabled={!!busy} title="Haalt de sitemap opnieuw op, controleert elke pagina en leest daarna het menu opnieuw uit. Duurt een paar minuten; laat dit scherm open staan." onClick={() => void scanSite()}>{busy === "scan" ? "Site scannen… (paar minuten)" : "Hele site opnieuw scannen"}</button>
+              <button type="button" className="wp-fase-btn" disabled={!!busy} title="Alleen het menu opnieuw uitlezen; dat is in tien seconden klaar." onClick={() => void post({ action: "menu" }, "menu")}>{busy === "menu" ? "Menu uitlezen…" : "Alleen het menu"}</button>
+            </>
           ) : (
             <>
               <button type="button" className="wp-fase-btn" disabled={!!busy} title="De AI bouwt een voorstel voor de beoogde eindstructuur uit de live pagina's, je Zoekwoorden & links-afspraken en de zoekwoorddata; jij bevestigt." onClick={() => void post({ action: "voorstel" }, "voorstel")}>{busy === "voorstel" ? "Voorstel maken… (halve minuut)" : "Stel de structuur voor"}</button>
@@ -265,6 +293,13 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
             </>
           )}
         </div>
+        {blik === "huidig" && (
+          <div className={"nv-scanregel" + (oudeScan ? " nv-scanoud" : "")}>
+            {gescand.op
+              ? <>Site voor het laatst gescand op {datum(gescand.op)} · {gescand.aantal} pagina&rsquo;s gevonden{oudeScan ? " · dat is alweer even geleden, scan hem opnieuw als er pagina\u2019s bij zijn gekomen" : ""}</>
+              : <>De site is nog nooit gescand. Klik op &ldquo;Hele site opnieuw scannen&rdquo; om alle pagina&rsquo;s in beeld te krijgen.</>}
+          </div>
+        )}
         {msg && <div className="wp-doc-fout">{msg}</div>}
       </div>
 
@@ -315,12 +350,13 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
       {kolommen.length === 0 && weergave === "kolommen" && (
         <div className="nv-leeg">
           {blik === "huidig"
-            ? <>Het menu van de site is nog niet uitgelezen. Klik op <strong>&ldquo;Menu opnieuw uitlezen&rdquo;</strong>, dan staat hier de navigatie van de site precies zoals een bezoeker hem ziet.</>
+            ? <>Er is nog niets van deze site ingelezen. Klik op <strong>&ldquo;Hele site opnieuw scannen&rdquo;</strong>, dan staat hier de navigatie met alle pagina&rsquo;s erin.</>
             : <>Nog geen beoogde structuur. Klik op <strong>&ldquo;Stel de structuur voor&rdquo;</strong>, of voeg zelf een hoofdmenu-item toe.</>}
         </div>
       )}
       <p className="nv-uitleg">
-        Elke kolom is een hoofdmenu-item, eronder staat het submenu. Grijs = nog niets aan gedaan · oranje = onderweg · groen = alle zeven fases klaar · rood = pagina bestaat nog niet.
+        Elke kolom is een hoofdmenu-item, eronder staan het submenu en alle pagina&rsquo;s die qua adres onder dat menu-item vallen.
+        De laatste kolom bevat de pagina&rsquo;s die nergens in het menu terugkomen: die zijn voor een bezoeker alleen via een link in een tekst of via Google te vinden. Grijs = nog niets aan gedaan · oranje = onderweg · groen = alle zeven fases klaar · rood = pagina bestaat nog niet.
         Per pagina staan drie getallen: het aantal woorden eigen tekst (zonder menu en footer), de score 0-100 voor hoe goed de pagina is ingericht
         (tekst, koppen, meta, alt-teksten, interne links en structured data) en het percentage van de zeven fases dat klaar is. Zweef over een score voor de onderbouwing.
         De score komt uit de wekelijkse scan, dus niet uit dit moment; pas je vandaag iets aan, klik dan op de meetknop. Een tilde (~) bij het woordaantal betekent dat het nog een schatting is.

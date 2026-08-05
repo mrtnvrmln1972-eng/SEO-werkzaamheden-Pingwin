@@ -3756,6 +3756,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .nv-lijst .nv-muted { font-size: var(--fs-xs, 11.5px); }
 .nv-getal { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .nv-lijst .nv-score { display: inline-block; }
+.nv-kolomnaam-los { color: var(--muted, #6f645a); font-weight: 700; font-size: var(--fs-md, 14.5px); cursor: help; }
+.nv-scanregel { font-size: var(--fs-xs, 11.5px); color: var(--muted, #6f645a); margin-top: var(--s-2, 8px); }
+.nv-scanoud { color: #8a5a00; background: #fff8ec; border-radius: var(--r-sm, 8px); padding: 4px 10px; display: inline-block; }
 .nv-leeg { background: #fff; border: 1px solid var(--border, #e5ded6); border-radius: var(--r-lg, 14px); padding: var(--s-5, 20px); font-size: var(--fs-sm, 13px); color: var(--muted, #6f645a); }
 .nv-uitleg { font-size: var(--fs-xs, 12px); color: var(--muted, #6f645a); max-width: 100ch; }
 .focus-nav-link { margin-left: auto; font-size: var(--fs-xs, 11.5px); font-weight: 600; color: var(--orange, #F15829); text-decoration: none; }

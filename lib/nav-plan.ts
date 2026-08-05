@@ -42,6 +42,7 @@ export type RoadmapNode = NavNode & {
   scoreLabel: string;
   punten: ScorePunt[];
   gemetenOp: string | null;
+  bucket?: boolean;       // de verzamelkolom "Niet in het menu", zelf geen pagina
 };
 
 let tableReady: Promise<void> | null = null;
@@ -273,9 +274,49 @@ export async function completeNavPage(slug: string, url: string, domain: string)
   for (const f of PHASE_KEYS) await setPhaseMark(slug, vol, f, true);
 }
 
+// ── "Huidige site": het menu als ruggengraat, alle pagina's erin ──────
+// Het menu bepaalt de kolommen en de volgorde, maar élke live pagina hoort in
+// beeld. Een pagina die niet in het menu staat hangt onder het menu-item (of de
+// eerder geplaatste pagina) waar zijn adres onder valt; past hij nergens onder,
+// dan komt hij in de verzamelkolom. Dat laatste is geen restbak maar een
+// bevinding: die pagina's zijn vanuit de navigatie niet te bereiken.
+
+export const BUITEN_MENU = "#buiten-menu";
+const MAX_LOS = 400;                       // anders wordt die ene kolom onleesbaar
+const PAGINERING = /\/(page|pagina)\/\d+\/$/i;
+
+/** Zoekt de ouder van een pad: van diep naar ondiep, de eerste die al bestaat. */
+function ouderVan(pad: string, geplaatst: Set<string>): string {
+  const stukken = pad.split("/").filter(Boolean);
+  // i >= 1 laat "/" structureel buiten beschouwing: de homepage is een
+  // voorvoegsel van álles, en zonder deze grens belandt de hele site eronder.
+  // Meteen ook de garantie dat een ouder altijd korter is, dus geen kringetje.
+  for (let i = stukken.length - 1; i >= 1; i--) {
+    const kandidaat = "/" + stukken.slice(0, i).join("/") + "/";
+    if (geplaatst.has(kandidaat)) return kandidaat;
+  }
+  return BUITEN_MENU;
+}
+
+export function bouwHuidigeSite(menu: NavNode[], livePaden: string[]): { nodes: NavNode[]; losTeveel: number } {
+  const geplaatst = new Set(menu.map((n) => n.url));
+  const uit: NavNode[] = [...menu];
+  const kandidaten = [...new Set(livePaden.map(netPad))]
+    .filter((p) => !geplaatst.has(p) && !PAGINERING.test(p))
+    // Ondiep eerst, zodat een ouder altijd geplaatst is voor zijn kind aan de beurt komt.
+    .sort((a, b) => (a.split("/").filter(Boolean).length - b.split("/").filter(Boolean).length) || a.localeCompare(b, "nl"));
+  const losTeveel = Math.max(kandidaten.length - MAX_LOS, 0);
+  kandidaten.slice(0, MAX_LOS).forEach((pad, i) => {
+    const ouder = ouderVan(pad, geplaatst);
+    geplaatst.add(pad);
+    uit.push({ url: pad, parent: ouder === pad ? BUITEN_MENU : ouder, hoofdzoekterm: "", volume: null, volgorde: 1000 + i, label: "" });
+  });
+  return { nodes: uit, losTeveel };
+}
+
 // ── De roadmap zelf: plan + live-status + voortgang gecombineerd ──
 
-export async function getRoadmap(slug: string): Promise<{ nodes: RoadmapNode[]; menu: RoadmapNode[]; voorstel: NavNode[]; domain: string; ontbrekend: string[] }> {
+export async function getRoadmap(slug: string): Promise<{ nodes: RoadmapNode[]; menu: RoadmapNode[]; huidig: RoadmapNode[]; voorstel: NavNode[]; domain: string; ontbrekend: string[]; laatstGescand: string | null; aantalGescand: number; losTeveel: number }> {
   const client = await getClientBySlug(slug);
   const domain = client?.domain || "";
   const [plan, voorstel, menu, urls, pages, snaps] = await Promise.all([
@@ -336,15 +377,34 @@ export async function getRoadmap(slug: string): Promise<{ nodes: RoadmapNode[]; 
     };
   };
   const nodes: RoadmapNode[] = [...basis, ...extra].map(verrijk);
-  // Het uitgelezen menu: pagina's die in het menu staan maar niet in de
-  // sitemap-scan zaten, zijn nog steeds live (ze staan immers in het menu).
-  const menuNodes: RoadmapNode[] = menu.map((n) => { const r = verrijk(n); return { ...r, live: r.live || liveByPad.size === 0 }; });
+  // Een pagina die in het live menu staat, bestaat. Kent de sitemap-scan hem
+  // niet (bijvoorbeeld omdat die scan ouder is dan de pagina), dan is dat geen
+  // reden om "bestaat nog niet" te roepen. Kent de scan hem wél maar als kapot,
+  // dan blijft hij rood; anders zou een gebroken menulink onzichtbaar worden.
+  const menuLive = (pad: string) => (liveByPad.has(pad) ? !!liveByPad.get(pad) : true);
+
+  // "Huidige site": het menu als ruggengraat met alle live pagina's erin.
+  const livePaden = urls.filter((u) => u.status === 200).map((u) => { try { return netPad(new URL(u.url).pathname); } catch { return ""; } }).filter(Boolean);
+  const { nodes: huidigRuw, losTeveel } = bouwHuidigeSite(menu, livePaden);
+  const huidig: RoadmapNode[] = huidigRuw.map((n) => {
+    const r = verrijk(n);
+    return { ...r, live: menu.some((m) => m.url === n.url) ? menuLive(n.url) : r.live };
+  });
+  if (huidig.some((n) => n.parent === BUITEN_MENU)) {
+    huidig.push({
+      url: BUITEN_MENU, parent: "", hoofdzoekterm: "", volume: null, volgorde: 9999, label: "Niet in het menu",
+      live: true, pct: 0, fasesKlaar: 0, inPlan: false,
+      woorden: null, woordenGeschat: false, score: null, scoreNiveau: null, scoreLabel: "", punten: [], gemetenOp: null, bucket: true,
+    });
+  }
+  const menuNodes: RoadmapNode[] = menu.map((n) => { const r = verrijk(n); return { ...r, live: menuLive(n.url) }; });
   // Pagina's die een (nieuwe) meting nodig hebben: nog nooit gemeten, of nog
   // met een geschat woordaantal (snapshot van vóór het meten van de eigen
   // tekst). De knop in het scherm scant die alsnog.
-  const ontbrekend = [...nodes, ...menuNodes]
-    .filter((n) => n.live && domain && (n.score === null || n.woordenGeschat))
+  const ontbrekend = [...nodes, ...huidig]
+    .filter((n) => !n.bucket && n.live && domain && (n.score === null || n.woordenGeschat))
     .map((n) => `https://${domain}${n.url}`)
     .filter((u, i, a) => a.indexOf(u) === i);
-  return { nodes, menu: menuNodes, voorstel, domain, ontbrekend };
+  const laatstGescand = urls.map((u) => u.lastScanned || "").filter(Boolean).sort().pop() || null;
+  return { nodes, menu: menuNodes, huidig, voorstel, domain, ontbrekend, laatstGescand, aantalGescand: urls.length, losTeveel };
 }
