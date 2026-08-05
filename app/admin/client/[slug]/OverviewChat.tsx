@@ -8,6 +8,7 @@ import ChatBestanden, { type ChatFile } from "./ChatBestanden";
 import { linkifyHtml as linkify } from "../../../../lib/linkify";
 import { vraagHtml } from "../../../../lib/vraag-opmaak";
 import { striptVulzinnen } from "../../../../lib/vulzinnen";
+import { eersteKop } from "../../../../lib/chat-vouw";
 
 type Msg = { role: "user" | "assistant"; content: string; actions?: Action[]; soort?: "conclusie" | "oogst"; oogst?: Oogst };
 type Topic = { thread: string; count: number; title: string; summary: string; done: boolean };
@@ -41,18 +42,6 @@ function deelTekst(msgs: Msg[]): string {
   const conclusie = msgs.filter((m) => m.soort === "conclusie").map((m) => m.content || "").filter(Boolean);
   if (conclusie.length) return conclusie[conclusie.length - 1];
   return msgs.filter((m) => m.role === "assistant" && m.soort !== "oogst").map((m) => (m.content || "").trim()).filter(Boolean).join("\n\n");
-}
-
-// Het eerste kopje van een antwoord, als samenvatting op de ingeklapte balk.
-// Zonder kopje de eerste zin, zodat je altijd ziet waar het antwoord over ging.
-function eersteKop(md: string): string {
-  for (const raw of (md || "").split("\n")) {
-    const r = raw.trim();
-    const kop = /^#{1,3}\s+(.*)$/.exec(r);
-    if (kop) return kop[1].replace(/[#*]/g, "").trim().slice(0, 90);
-  }
-  const tekst = (md || "").replace(/^[-*#>\s]+/, "").replace(/\*\*/g, "").trim();
-  return (tekst.split(/(?<=[.!?])\s/)[0] || tekst).slice(0, 90) || "Eerder antwoord";
 }
 
 // Lichte Markdown → HTML (kopjes, bullets, vet, links, tabellen). Zelfde regels

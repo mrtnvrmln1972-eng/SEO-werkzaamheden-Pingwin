@@ -50,9 +50,14 @@ export async function buildSystemPrompt(slug: string, url: string): Promise<stri
 
   // De volledige bronconclusie(s) waaruit het cluster-advies komt: als context mee
   // in de grounding, zodat de chat hier de hele strategie als vertrekpunt heeft.
+  // Alle bronconclusies gingen hier ongekort mee (5000 tekens per stuk, elke
+  // beurt opnieuw). Dat was een stapel eigen tekst waar het antwoord zich aan
+  // spiegelde, en het maakte elk antwoord langer dan het vorige. Alleen de meest
+  // recente bronconclusie, en korter: als vertrekpunt is dat genoeg.
   const clusterFullContext = (() => {
     const full = Array.from(new Set(clusterAdvice.map((a) => (a.sourceAnalysis || "").trim()).filter(Boolean)));
-    return full.length ? `VOLLEDIGE CLUSTERANALYSE ALS CONTEXT (de bronconclusie waaruit dit advies komt; gebruik als vertrekpunt en toets aan de live feiten):\n${full.map((c) => c.slice(0, 5000)).join("\n---\n")}` : "";
+    const laatste = full[full.length - 1];
+    return laatste ? `CLUSTERANALYSE ALS CONTEXT (de bronconclusie waaruit dit advies komt; gebruik als vertrekpunt en toets aan de live feiten, schrijf hem niet over):\n${laatste.slice(0, 1500)}` : "";
   })();
 
   const facts = [
@@ -111,6 +116,7 @@ HARDE REGELS:
 - Redirect nooit naar een URL die niet bestaat. Toets een redirect-doel aan de live status. Toets het plan-label altijd aan de echte ranking en titel.
 - Antwoord in NETTE markdown zodat het als rapport oogt: korte kopjes (## en ###), bullets, en waar het helpt een kleine tabel, bijvoorbeeld | Zoekwoord | Positie | Vertoningen | URL |. Houd het scanbaar, geen muur van tekst. Gebruik nergens emoji.
 - Enkelvoud/meervoud en andere woordvormen tellen als GEDEKT: een H1 met "veranda's" dekt het zoekwoord "veranda" af. Beoordeel koppen op kern-overlap en propositie, niet op exacte woordvorm.
+- SCHAAL JE ANTWOORD MEE MET DE VRAAG, EN HERHAAL JEZELF NOOIT. De eerste, brede vraag in een gesprek verdient de volledige analyse (kopjes, tabel, taken, plan). Een vervolgvraag verdient een KORT, direct antwoord dat alleen beantwoordt wat er gevraagd is: geen herhaalde tabel, geen herhaalde sectie "Taken", geen herhaald plan, geen samenvatting van wat je al eerder schreef. Alles wat eerder in dit gesprek staat geldt als bekend; verwijs ernaar in één zin ("zoals hierboven bij de zoekwoordkeuze") in plaats van het over te schrijven. Herhaal alleen iets als de gebruiker er expliciet om vraagt of als je conclusie echt verandert, en zeg dan wát er verandert en waarom. Vraagt de gebruiker om een samenvatting of eindconclusie, dan mag je wél alles bundelen; dat is de enige uitzondering.
 - Doe je concrete aanbevelingen, benoem de taken dan duidelijk in je antwoord: geef een sectie "Taken" met per taak wat er moet gebeuren, de fase (Bouwen/Herbedraden/Opschonen) en of het SEO- of Dev-werk is. Benoem ook kort het nieuwe plan voor de pagina (rol, primair + secundair zoekwoord, actie, doel-URL). Je hoeft GEEN machineleesbaar blok toe te voegen; het systeem haalt de taken en het plan er zelf uit voor de accepteer-lijst. Stel je alleen een verhelderende vraag, benoem dan geen taken.
 
 WERKWIJZE, WEEG ALTIJD DEZE INVALSHOEKEN AF (haal er actief data bij via de tools):

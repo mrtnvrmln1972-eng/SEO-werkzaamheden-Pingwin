@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { mdToHtml } from "../../../../lib/markdown";
 import { striptVulzinnen } from "../../../../lib/vulzinnen";
+import { eersteKop } from "../../../../lib/chat-vouw";
 import HelpHint from "./HelpHint";
 import PageSummaryCard from "./PageSummaryCard";
 
@@ -26,9 +27,11 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   const [chats, setChats] = useState<ChatSummary[]>([]);
   // Of het gesprek van de actieve chat uitgeklapt is (toggle in de lijst).
   const [convoOpen, setConvoOpen] = useState(false);
-  // Standaard tonen we alleen de originele vraag + de eindconclusie; het hele
-  // tussenliggende gesprek (analyse, doorvragen) klapt open via een knop.
-  const [fullConvoOpen, setFullConvoOpen] = useState(false);
+  // Welke eerdere antwoorden je zelf hebt opengeklapt. Standaard staat alleen het
+  // LAATSTE antwoord open; de antwoorden daarvoor vouwen samen tot hun eigen
+  // kopje. Hiervoor stond er één alles-of-niets-knop ("toon het hele gesprek"),
+  // die ook de tussenliggende vragen verstopte. Zelfde patroon als de Overview-chat.
+  const [openBericht, setOpenBericht] = useState<Record<number, boolean>>({});
   // De strategie-kaart (stap 1) staat open zolang er nog geen strategie is
   // vastgelegd (daar begint het werk); daarna standaard dicht (scheelt scrollen).
   const [chatOpen, setChatOpen] = useState(!planDone);
@@ -815,6 +818,9 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     loadChats(); /* eslint-disable-next-line */
   }, [slug, url]);
 
+  // Welke chat vraagt om bevestiging voordat hij weggaat ("nieuw" = de chat die
+  // nog niet bewaard is; die had helemaal geen kruisje).
+  const [wegChat, setWegChat] = useState<number | "nieuw" | null>(null);
   function newChat() { setMsgs([]); setChatId(null); setProposal(null); setApplied(""); setErr(""); setConvoOpen(true); setClusterItems(null); setClusterMsg(""); setClusterDone(0); try { localStorage.removeItem(`pw_clusterdone_${slug}_${url}`); } catch { /* geen opslag */ } }
 
   async function openChat(id: number) {
@@ -828,11 +834,13 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     } catch { /* stil */ }
   }
 
-  async function removeChat(id: number, e: React.MouseEvent) {
-    e.stopPropagation();
-    if (!window.confirm("Deze chat verwijderen?")) return;
-    await fetch(`/api/admin/page-chats?id=${id}`, { method: "DELETE" }).catch(() => {});
+  // Een hele chat weggooien. Ook hier bevestig je in de rij zelf; een browserpopup
+  // ziet er niet uit en het was niet te zien of er iets gebeurde.
+  async function removeChat(id: number) {
+    setWegChat(null);
+    setChats((lijst) => lijst.filter((c) => c.id !== id));
     if (chatId === id) newChat();
+    await fetch(`/api/admin/page-chats?id=${id}`, { method: "DELETE" }).catch(() => {});
     loadChats();
   }
 
@@ -856,11 +864,18 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     const looksMarkdown = /(^|\n)#{1,6}\s|\*\*[^*]|(^|\n)\s*[-*]\s|(^|\n)\s*\d+\.\s|\|[^|]*\|/.test(content);
     return hasClosingTag && !looksMarkdown ? content : mdToHtml(content, siteBase);
   }
+  // Een bericht weghalen. Bevestigen gebeurt in de regel zelf (geen browserpopup),
+  // en wat je weghaalt is meteen bewaard. Is dit het laatste bericht, dan is de
+  // hele chat leeg: die gooien we dan ook echt weg in plaats van een lege rij te
+  // laten staan.
+  const [wegIdx, setWegIdx] = useState<number | null>(null);
   function deleteMsg(i: number) {
-    if (!window.confirm("Dit bericht uit de chat verwijderen?")) return;
+    setWegIdx(null);
     const next = msgs.filter((_, j) => j !== i);
-    setMsgs(next); setEditIdx(null);
-    if (next.length) persist(next); else newChat();
+    setMsgs(next); setEditIdx(null); setOpenBericht({});
+    if (next.length) { persist(next); return; }
+    if (chatId !== null) { void fetch(`/api/admin/page-chats?id=${chatId}`, { method: "DELETE" }).then(loadChats).catch(() => {}); }
+    newChat();
   }
   function saveEdit(i: number) {
     const html = (editRef.current?.innerHTML || "").trim();
@@ -881,7 +896,9 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     sendAbortRef.current?.abort();
   }
 
-  async function send(text: string): Promise<{ reply: string; proposal: Proposal | null } | null> {
+  // volledig = stuur het hele gesprek ongekort mee. Alleen voor het samenvatten;
+  // een gewone vraag krijgt de ingekorte geschiedenis (zie lib/chat-inkorten.ts).
+  async function send(text: string, volledig = false): Promise<{ reply: string; proposal: Proposal | null } | null> {
     const t = text.trim();
     if (!t || busy) return null;
     setErr(""); setApplied(""); setProposal(null); setClusterItems(null); setClusterMsg("");
@@ -890,7 +907,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     const ctrl = new AbortController();
     sendAbortRef.current = ctrl;
     try {
-      const r = await fetch("/api/admin/page-chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url, messages: next }), signal: ctrl.signal });
+      const r = await fetch("/api/admin/page-chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url, messages: next, volledig }), signal: ctrl.signal });
       const d = await r.json();
       if (!d.ok) { setErr(d.error || "Chat mislukt."); setBusy(false); return null; }
       const withReply = [...next, { role: "assistant" as const, content: d.reply }];
@@ -931,7 +948,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     if (busy || taskGen || finalizePhase) return;
     setFinalizePhase("samenvatten");
     try {
-      const d = await send(SUMMARIZE_PROMPT);
+      const d = await send(SUMMARIZE_PROMPT, true);
       if (!d || !d.reply.trim()) return; // onderbroken of mislukt: niets vastleggen
       setFinalizePhase("vastleggen");
       const plan = d.proposal?.plan?.trim() ? d.proposal.plan : d.reply;
@@ -1007,18 +1024,18 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   }
 
   // Het gesprek van de actieve chat plus het voorstel en de vastleg/mail-knoppen.
-  // Ingeklapt tonen we alleen de originele vraag en de eindconclusie (laatste
-  // AI-reactie); het tussenliggende gesprek klapt open via de knop.
+  // Je vragen staan allemaal in beeld; alleen het LAATSTE antwoord staat open.
+  // Eerdere antwoorden vouwen samen tot hun eigen kopje, want elk antwoord
+  // herhaalde het vorige rapport; zo werd het gesprek onleesbaar lang. Er
+  // verdwijnt niets, één klik zet een antwoord weer open.
   const renderConvo = () => {
-    let lastAIdx = -1;
-    for (let i = msgs.length - 1; i >= 0; i--) { if (msgs[i].role === "assistant") { lastAIdx = i; break; } }
-    const hiddenCount = fullConvoOpen || lastAIdx <= 1 ? 0 : lastAIdx - 1;
-    const isVisible = (i: number) => hiddenCount === 0 || i === 0 || i >= lastAIdx;
+    const lastAIdx = msgs.map((m) => m.role).lastIndexOf("assistant");
     return (
     <>
       <div className="page-chat-log">
         {msgs.map((m, i) => {
-          if (!isVisible(i)) return null;
+          const inklapbaar = m.role === "assistant" && i < lastAIdx;
+          const dicht = inklapbaar && !openBericht[i];
           if (editIdx === i) {
             return (
               <div key={i} className="pch-msg-edit">
@@ -1035,28 +1052,35 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
               {i === 0 && m.role === "user" && (
                 <div className="muted" style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 }}>Oorspronkelijke vraag</div>
               )}
-              {hiddenCount > 0 && i === lastAIdx && (
+              {lastAIdx > 1 && i === lastAIdx && (
                 <div className="muted" style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", margin: "10px 0 4px" }}>Eindconclusie</div>
               )}
               <div className={"pch-msg-wrap " + m.role}>
-                {m.role === "user"
+                {inklapbaar && (
+                  <button type="button" className="ovc-msg-vouw" onClick={() => setOpenBericht((v) => ({ ...v, [i]: !v[i] }))}>
+                    <span className="ovc-msg-vouw-pijl">{dicht ? "▸" : "▾"}</span>
+                    <span className="ovc-msg-vouw-titel">{eersteKop(m.content || "")}</span>
+                    {dicht && <span className="ovc-msg-vouw-meta">eerder antwoord</span>}
+                  </button>
+                )}
+                {!dicht && (m.role === "user"
                   ? <div className="page-chat-msg user">{m.content}</div>
-                  : <div className="page-chat-msg assistant md" dangerouslySetInnerHTML={{ __html: renderMsgHtml(m.content) }} />}
+                  : <div className="page-chat-msg assistant md" dangerouslySetInnerHTML={{ __html: renderMsgHtml(m.content) }} />)}
                 <div className="pch-msg-ctrl">
-                  {m.role === "assistant" && <button type="button" className="pch-msg-btn" title="Bewerken" onClick={() => setEditIdx(i)}>✎</button>}
-                  <button type="button" className="pch-msg-btn" title="Verwijderen" onClick={() => deleteMsg(i)}>×</button>
+                  {wegIdx === i ? (
+                    <span className="pch-weg-vraag">
+                      Weghalen?
+                      <button type="button" className="pch-weg-ja" onClick={() => deleteMsg(i)}>ja</button>
+                      <button type="button" className="pch-weg-nee" onClick={() => setWegIdx(null)}>nee</button>
+                    </span>
+                  ) : (
+                    <>
+                      {m.role === "assistant" && !dicht && <button type="button" className="pch-msg-btn" title="Bewerken" onClick={() => setEditIdx(i)}>✎</button>}
+                      <button type="button" className="pch-msg-btn" title="Dit bericht weghalen" onClick={() => setWegIdx(i)}>×</button>
+                    </>
+                  )}
                 </div>
               </div>
-              {i === 0 && hiddenCount > 0 && (
-                <button type="button" className="ghost-btn small" style={{ margin: "6px 0 10px" }} onClick={() => setFullConvoOpen(true)}>
-                  ▸ Toon het hele gesprek en de analyse ({hiddenCount} bericht{hiddenCount === 1 ? "" : "en"})
-                </button>
-              )}
-              {fullConvoOpen && i === 0 && lastAIdx > 1 && (
-                <button type="button" className="ghost-btn small" style={{ margin: "6px 0 10px" }} onClick={() => setFullConvoOpen(false)}>
-                  ▾ Verberg het tussenliggende gesprek
-                </button>
-              )}
             </div>
           );
         })}
@@ -1154,6 +1178,15 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
               <div className="pch-item-head" onClick={() => setConvoOpen((o) => !o)}>
                 <span className="pch-caret">{convoOpen ? "▾" : "▸"}</span>
                 <span className="pch-title">{analyseTitle}</span>
+                {wegChat === "nieuw" ? (
+                  <span className="pch-weg-vraag" onClick={(e) => e.stopPropagation()}>
+                    Weggooien?
+                    <button type="button" className="pch-weg-ja" onClick={() => { setWegChat(null); newChat(); }}>ja</button>
+                    <button type="button" className="pch-weg-nee" onClick={() => setWegChat(null)}>nee</button>
+                  </span>
+                ) : (
+                  <button type="button" className="pch-del" title="Deze chat weggooien" onClick={(e) => { e.stopPropagation(); setWegChat("nieuw"); }}>&times;</button>
+                )}
               </div>
               {convoOpen && <div className="pch-item-body">{renderConvo()}</div>}
             </div>
@@ -1167,7 +1200,15 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
                 <div className="pch-item-head" onClick={() => { if (active) setConvoOpen((o) => !o); else { openChat(c.id); setConvoOpen(true); } }}>
                   <span className="pch-caret">{open ? "▾" : "▸"}</span>
                   <span className="pch-title">{active ? analyseTitle : c.title}</span>
-                  <button type="button" className="pch-del" title="Chat verwijderen" onClick={(e) => removeChat(c.id, e)}>&times;</button>
+                  {wegChat === c.id ? (
+                    <span className="pch-weg-vraag" onClick={(e) => e.stopPropagation()}>
+                      Weggooien?
+                      <button type="button" className="pch-weg-ja" onClick={() => void removeChat(c.id)}>ja</button>
+                      <button type="button" className="pch-weg-nee" onClick={() => setWegChat(null)}>nee</button>
+                    </span>
+                  ) : (
+                    <button type="button" className="pch-del" title="Deze chat weggooien" onClick={(e) => { e.stopPropagation(); setWegChat(c.id); }}>&times;</button>
+                  )}
                 </div>
                 {open && <div className="pch-item-body">{renderConvo()}</div>}
               </div>

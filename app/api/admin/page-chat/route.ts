@@ -4,6 +4,7 @@ import { guardSlug } from "../../../../lib/admin-scope";
 import { callClaudeAgentic, anthropicConfigured, type ChatMsg } from "../../../../lib/anthropic";
 import { buildSystemPrompt, parseProposal, extractProposal } from "../../../../lib/page-chat-ground";
 import { CHAT_TOOLS, runChatTool } from "../../../../lib/chat-tools";
+import { korteGeschiedenis } from "../../../../lib/chat-inkorten";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -26,7 +27,12 @@ export async function POST(req: NextRequest) {
 
   try {
     const system = await buildSystemPrompt(slug, url);
-    const raw = await callClaudeAgentic(system, messages.slice(-12), CHAT_TOOLS, runChatTool, 9, 4096, { slug, action: "page_chat" });
+    // Bij samenvatten gaat het hele gesprek volledig mee (die stap moet alles
+    // overzien); bij een gewone vraag gaan oudere antwoorden ingekort mee, zodat
+    // de AI zijn eigen rapporten niet elke beurt opnieuw uitschrijft.
+    const volledig = body.volledig === true;
+    const historie = volledig ? messages.slice(-12) : korteGeschiedenis(messages);
+    const raw = await callClaudeAgentic(system, historie, CHAT_TOOLS, runChatTool, 9, 4096, { slug, action: "page_chat" });
     const { reply } = parseProposal(raw);
     // Aparte extractie voor een altijd-complete accepteer-lijst (nooit afgekapt).
     const proposal = await extractProposal(reply).catch(() => null);

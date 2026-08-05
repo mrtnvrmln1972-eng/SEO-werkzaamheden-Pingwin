@@ -870,8 +870,18 @@ tbody td:last-child { text-align: center; }
 /* Bericht-regel met bewerk/verwijder-knoppen (verschijnen bij hover) */
 .pch-msg-wrap { position: relative; }
 .pch-msg-wrap.user { display: flex; justify-content: flex-end; }
-.pch-msg-ctrl { position: absolute; top: 4px; right: 4px; display: flex; gap: 2px; opacity: 0; transition: opacity .12s; }
+/* De knopjes stonden op onzichtbaar tot je er toevallig precies overheen zweefde,
+   dus het kruisje om een bericht weg te halen was niet te vinden. Nu altijd zicht-
+   baar (gedimd), zoals in de Overview-chat. */
+.pch-msg-ctrl { position: absolute; top: 4px; right: 4px; display: flex; align-items: center; gap: 2px; opacity: 0.35; transition: opacity .12s; }
 .pch-msg-wrap:hover .pch-msg-ctrl { opacity: 1; }
+.pch-weg-vraag { display: inline-flex; align-items: center; gap: var(--s-2); font-size: var(--fs-xs); color: var(--gray); background: #fff; border: 1px solid var(--card-border); border-radius: var(--r-sm); padding: 2px var(--s-2); }
+.pch-weg-ja, .pch-weg-nee { border: 1px solid var(--card-border); background: #fff; cursor: pointer; font-size: var(--fs-xs); font-weight: 700; padding: 1px 7px; border-radius: var(--r-sm); }
+.pch-weg-ja { color: #B03A2E; border-color: #E6C3BD; }
+.pch-weg-ja:hover { background: #FBEDEA; }
+.pch-weg-nee { color: var(--gray); }
+.pch-weg-nee:hover { background: var(--orange-light); }
+.pch-item-head .pch-weg-vraag { flex: 0 0 auto; }
 .pch-msg-btn { background: rgba(255,255,255,0.92); border: 1px solid var(--border); border-radius: 6px; width: 22px; height: 22px; line-height: 1; cursor: pointer; font-size: 13px; color: var(--dark); padding: 0; }
 .pch-msg-btn:hover { background: var(--brand-orange-soft); border-color: var(--orange); }
 .pch-msg-edit { margin: 4px 0; }
