@@ -1,21 +1,22 @@
 "use client";
 
-// De interactieve roadmap: één boom (de beoogde structuur) waar de huidige site
-// een weergave van is. Per pagina: hoofdzoekterm, klikbare slug en een
-// voortgangsbalk (rood = bestaat nog niet, oranje = onderweg, groen = klaar).
-// Totalen per hoofdcategorie en voor de hele site, filters, inklapbare takken,
-// en het AI-voorstel voor de beoogde structuur dat Maarten eerst bevestigt.
+// De navigatie-roadmap: de site zoals hij in het menu staat, in kolommen naast
+// elkaar (hoofdmenu bovenaan, submenu eronder), net als een navigatiebalk.
+// Twee weergaven: "Huidige site" (het menu dat we van de site uitlezen) en
+// "Beoogde structuur" (waar we naartoe werken). Per pagina de voortgang uit de
+// zeven fases die ook op de projectkaarten staan.
 
 import { useEffect, useMemo, useState } from "react";
 
-type Node = { url: string; parent: string; hoofdzoekterm: string; volume: number | null; volgorde: number; live: boolean; pct: number; fasesKlaar: number; inPlan: boolean };
+type Node = { url: string; parent: string; hoofdzoekterm: string; volume: number | null; volgorde: number; live: boolean; pct: number; fasesKlaar: number; inPlan: boolean; label?: string };
 type Voorstel = { url: string; parent: string; hoofdzoekterm: string; volume: number | null };
 type Filter = "alles" | "onvoltooid" | "ontbrekend" | "onder50";
 
 export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: string; clientName: string; domain: string }) {
   const [nodes, setNodes] = useState<Node[]>([]);
+  const [menu, setMenu] = useState<Node[]>([]);
   const [voorstel, setVoorstel] = useState<Voorstel[]>([]);
-  const [blik, setBlik] = useState<"beoogd" | "huidig">("beoogd");
+  const [blik, setBlik] = useState<"beoogd" | "huidig">("huidig");
   const [filter, setFilter] = useState<Filter>("alles");
   const [dicht, setDicht] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState("");
@@ -27,7 +28,7 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
 
   async function laad() {
     const d = await fetch(`/api/admin/nav-plan?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).catch(() => null);
-    if (d?.ok) { setNodes(d.nodes || []); setVoorstel(d.voorstel || []); }
+    if (d?.ok) { setNodes(d.nodes || []); setMenu(d.menu || []); setVoorstel(d.voorstel || []); }
   }
   useEffect(() => { void laad(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [slug]);
 
@@ -42,73 +43,20 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
     return false;
   }
 
-  // Filteren en boom opbouwen (hoofdniveau → kinderen).
+  // Welke lijst tonen we, en wat blijft er na het filter over?
+  const bron = blik === "huidig" ? menu : nodes;
   const zicht = useMemo(() => {
-    let n = nodes;
-    if (blik === "huidig") n = n.filter((x) => x.live);
+    let n = bron;
     if (filter === "onvoltooid") n = n.filter((x) => x.pct < 100);
     if (filter === "ontbrekend") n = n.filter((x) => !x.live);
     if (filter === "onder50") n = n.filter((x) => x.pct < 50);
     return n;
-  }, [nodes, blik, filter]);
-  // Een pagina kan nooit haar eigen kind zijn; zonder deze rem loopt de boom
-  // oneindig rond en klapt het scherm eruit.
+  }, [bron, filter]);
+
   const kinderenVan = (parent: string) => zicht.filter((n) => n.parent === parent && n.url !== parent).sort((a, b) => a.volgorde - b.volgorde);
-  // Hoofdniveau: parent "" of een parent die zelf niet (zichtbaar) bestaat.
   const paden = new Set(zicht.map((n) => n.url));
-  const hoofd = zicht.filter((n) => !n.parent || !paden.has(n.parent)).sort((a, b) => a.volgorde - b.volgorde);
+  const kolommen = zicht.filter((n) => !n.parent || !paden.has(n.parent)).sort((a, b) => a.volgorde - b.volgorde);
 
-  const totaalPct = nodes.length ? Math.round(nodes.reduce((s, n) => s + n.pct, 0) / nodes.length) : 0;
-  const klaarTotaal = nodes.filter((n) => n.pct === 100).length;
-
-  const kleur = (n: Node) => (!n.live ? "nv-rood" : n.pct >= 100 ? "nv-groen" : "nv-oranje");
-  const liveUrl = (pad: string) => (domain ? `https://${domain}${pad}` : pad);
-
-  const Rij = ({ n, diepte, keten = [] }: { n: Node; diepte: number; keten?: string[] }) => {
-    // Zit deze pagina al hoger in de tak, dan is de structuur rond; stoppen.
-    if (keten.includes(n.url)) return null;
-    const kids = kinderenVan(n.url);
-    const isDicht = dicht[n.url];
-    const tak = [n, ...alleOnder(n.url)];
-    const takKlaar = tak.filter((x) => x.pct === 100).length;
-    return (
-      <div className="nv-tak" style={{ marginLeft: diepte ? 22 : 0 }}>
-        <div className={"nv-rij " + kleur(n)}>
-          {kids.length > 0
-            ? <button type="button" className="nv-caret" onClick={() => setDicht((v) => ({ ...v, [n.url]: !v[n.url] }))}>{isDicht ? "▸" : "▾"}</button>
-            : <span className="nv-caret nv-caret-leeg" />}
-          <a className="nv-slug" href={liveUrl(n.url)} target="_blank" rel="noreferrer">{n.url}</a>
-          {bewerk === n.url ? (
-            <input className="nv-term-input" autoFocus value={bewerkTerm} placeholder="hoofdzoekterm"
-              onChange={(e) => setBewerkTerm(e.target.value)}
-              onBlur={() => { setBewerk(null); void post({ action: "update", url: n.url, hoofdzoekterm: bewerkTerm }, "term"); }}
-              onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }} />
-          ) : (
-            <button type="button" className="nv-term" title="Klik om de hoofdzoekterm aan te passen" onClick={() => { setBewerk(n.url); setBewerkTerm(n.hoofdzoekterm); }}>
-              {n.hoofdzoekterm || "(hoofdzoekterm)"}{n.volume ? ` · ${n.volume} vol.` : ""}
-            </button>
-          )}
-          <span className="nv-spacer" />
-          {kids.length > 0 && <span className="nv-taktotaal">{takKlaar}/{tak.length}</span>}
-          {!n.live && <span className="nv-badge-mist">bestaat nog niet</span>}
-          <span className="nv-balkje" title={`${n.fasesKlaar} van 7 fases klaar`}><span className={"nv-balkvul " + kleur(n)} style={{ width: `${Math.max(n.pct, 4)}%` }} /></span>
-          <span className="nv-pct">{n.pct}%</span>
-          {n.pct < 100 && n.live && <button type="button" className="nv-mini" title="Markeer voltooid: vinkt alle fases af (zelfde vinkjes als op de projectkaart)" onClick={() => void post({ action: "voltooi", url: n.url }, "voltooi")}>✓</button>}
-          <button type="button" className="nv-mini nv-mini-del" title="Uit de beoogde structuur halen (de live pagina zelf blijft gewoon bestaan)" onClick={() => void post({ action: "del", url: n.url }, "del")}>×</button>
-        </div>
-        {!isDicht && kids.map((k) => <Rij key={k.url} n={k} diepte={diepte + 1} keten={[...keten, n.url]} />)}
-        {!isDicht && (nieuwIn === n.url ? (
-          <div className="nv-nieuw" style={{ marginLeft: 22 }}>
-            <input className="nv-term-input" autoFocus value={nieuwPad} placeholder="/pad/nieuwe-pagina/"
-              onChange={(e) => setNieuwPad(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && nieuwPad.trim()) { void post({ action: "add", url: nieuwPad.trim(), parent: n.url }, "add"); setNieuwIn(null); setNieuwPad(""); } if (e.key === "Escape") setNieuwIn(null); }} />
-          </div>
-        ) : kids.length > 0 && (
-          <button type="button" className="nv-addlink" style={{ marginLeft: 22 }} onClick={() => { setNieuwIn(n.url); setNieuwPad(""); }}>+ pagina in deze tak</button>
-        ))}
-      </div>
-    );
-  };
   function alleOnder(parent: string, gezien: Set<string> = new Set()): Node[] {
     if (gezien.has(parent)) return [];
     gezien.add(parent);
@@ -116,20 +64,101 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
     return [...direct, ...direct.flatMap((d) => alleOnder(d.url, gezien))];
   }
 
+  const totaal = bron.length;
+  const klaarTotaal = bron.filter((n) => n.pct === 100).length;
+  const totaalPct = totaal ? Math.round(bron.reduce((s, n) => s + n.pct, 0) / totaal) : 0;
+  const ontbreekt = bron.filter((n) => !n.live).length;
+  const begonnen = bron.filter((n) => n.pct > 0 && n.pct < 100).length;
+
+  const kleur = (n: Node) => (!n.live ? "nv-rood" : n.pct >= 100 ? "nv-groen" : n.pct > 0 ? "nv-oranje" : "nv-grijs");
+  const liveUrl = (pad: string) => (domain ? `https://${domain.replace(/^https?:\/\//, "")}${pad}` : pad);
+  const naam = (n: Node) => n.label || n.hoofdzoekterm || (n.url === "/" ? "Homepage" : (n.url.split("/").filter(Boolean).pop() || n.url).replace(/-/g, " "));
+
+  // Eén regel in een kolom: naam, voortgang en de acties die bij hover verschijnen.
+  const Regel = ({ n, diepte, keten = [] }: { n: Node; diepte: number; keten?: string[] }) => {
+    if (keten.includes(n.url)) return null;
+    const kids = kinderenVan(n.url);
+    const isDicht = dicht[n.url];
+    return (
+      <>
+        <div className={"nv-item " + kleur(n)} style={{ paddingLeft: 10 + diepte * 14 }}>
+          {kids.length > 0
+            ? <button type="button" className="nv-caret" title={isDicht ? "Uitklappen" : "Inklappen"} onClick={() => setDicht((v) => ({ ...v, [n.url]: !v[n.url] }))}>{isDicht ? "▸" : "▾"}</button>
+            : <span className="nv-caret nv-caret-leeg" />}
+          <a className="nv-naam" href={liveUrl(n.url)} target="_blank" rel="noreferrer" title={n.url}>{naam(n)}</a>
+          <span className="nv-spacer" />
+          {!n.live && <span className="nv-badge-mist" title="Deze pagina bestaat nog niet">nieuw</span>}
+          <span className="nv-pct" title={`${n.fasesKlaar} van 7 fases klaar`}>{n.pct}%</span>
+          <span className="nv-acties">
+            {n.pct < 100 && n.live && <button type="button" className="nv-mini" title="Markeer voltooid: vinkt alle zeven fases af" onClick={() => void post({ action: "voltooi", url: n.url }, "voltooi")}>✓</button>}
+            {blik === "beoogd" && <button type="button" className="nv-mini nv-mini-del" title="Uit de beoogde structuur halen (de live pagina blijft bestaan)" onClick={() => void post({ action: "del", url: n.url }, "del")}>×</button>}
+          </span>
+        </div>
+        {blik === "beoogd" && (bewerk === n.url ? (
+          <input className="nv-term-input" autoFocus value={bewerkTerm} placeholder="hoofdzoekterm"
+            style={{ marginLeft: 10 + diepte * 14 }}
+            onChange={(e) => setBewerkTerm(e.target.value)}
+            onBlur={() => { setBewerk(null); void post({ action: "update", url: n.url, hoofdzoekterm: bewerkTerm }, "term"); }}
+            onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }} />
+        ) : (
+          <button type="button" className="nv-term" style={{ marginLeft: 26 + diepte * 14 }} title="Klik om de hoofdzoekterm aan te passen" onClick={() => { setBewerk(n.url); setBewerkTerm(n.hoofdzoekterm); }}>
+            {n.hoofdzoekterm || "+ zoekterm"}{n.volume ? ` · ${n.volume} vol.` : ""}
+          </button>
+        ))}
+        {!isDicht && kids.map((k) => <Regel key={k.url} n={k} diepte={diepte + 1} keten={[...keten, n.url]} />)}
+      </>
+    );
+  };
+
+  const Kolom = ({ n }: { n: Node }) => {
+    const kids = kinderenVan(n.url);
+    const tak = [n, ...alleOnder(n.url)];
+    const takKlaar = tak.filter((x) => x.pct === 100).length;
+    const takPct = Math.round(tak.reduce((s, x) => s + x.pct, 0) / tak.length);
+    const isDicht = dicht["kolom:" + n.url];
+    return (
+      <div className="nv-kolom">
+        <div className={"nv-kolomkop " + kleur(n)}>
+          <button type="button" className="nv-caret" title={isDicht ? "Uitklappen" : "Inklappen"} onClick={() => setDicht((v) => ({ ...v, ["kolom:" + n.url]: !v["kolom:" + n.url] }))}>{isDicht ? "▸" : "▾"}</button>
+          <a className="nv-kolomnaam" href={liveUrl(n.url)} target="_blank" rel="noreferrer" title={n.url}>{naam(n)}</a>
+          {tak.length > 1 && <span className="nv-taktotaal" title="Voltooide pagina's in deze tak">{takKlaar}/{tak.length}</span>}
+        </div>
+        <span className="nv-balkje"><span className={"nv-balkvul " + kleur(n)} style={{ width: `${Math.max(takPct, 3)}%` }} /></span>
+        {!isDicht && (
+          <div className="nv-kolomlijst">
+            {tak.length === 1 && <div className={"nv-item " + kleur(n)} style={{ paddingLeft: 10 }}><span className="nv-caret nv-caret-leeg" /><a className="nv-naam" href={liveUrl(n.url)} target="_blank" rel="noreferrer">{n.url}</a><span className="nv-spacer" /><span className="nv-pct">{n.pct}%</span></div>}
+            {kids.map((k) => <Regel key={k.url} n={k} diepte={0} keten={[n.url]} />)}
+            {blik === "beoogd" && (nieuwIn === n.url ? (
+              <input className="nv-term-input" autoFocus value={nieuwPad} placeholder="/pad/nieuwe-pagina/"
+                onChange={(e) => setNieuwPad(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && nieuwPad.trim()) { void post({ action: "add", url: nieuwPad.trim(), parent: n.url }, "add"); setNieuwIn(null); setNieuwPad(""); } if (e.key === "Escape") setNieuwIn(null); }} />
+            ) : (
+              <button type="button" className="nv-addlink" onClick={() => { setNieuwIn(n.url); setNieuwPad(""); }}>+ pagina hier</button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="nv-wrap">
       <div className="nv-kop">
         <a className="nv-terug" href={`/admin/client/${slug}?tab=paginas`}>&larr; terug naar de cockpit</a>
         <h1>Navigatie &amp; voortgang: {clientName}</h1>
+        <div className="nv-cijfers">
+          <span className="nv-cijfer"><strong>{totaalPct}%</strong> gemiddeld af</span>
+          <span className="nv-cijfer"><strong>{klaarTotaal}</strong> van {totaal} pagina&rsquo;s helemaal klaar</span>
+          <span className="nv-cijfer"><strong>{begonnen}</strong> onderweg</span>
+          {ontbreekt > 0 && <span className="nv-cijfer"><strong>{ontbreekt}</strong> bestaat nog niet</span>}
+        </div>
         <div className="nv-totaal">
           <span className="nv-balkje nv-balkje-groot"><span className="nv-balkvul nv-groen" style={{ width: `${totaalPct}%` }} /></span>
-          <strong>{totaalPct}%</strong>
-          <span className="nv-muted">{klaarTotaal} van {nodes.length} pagina&rsquo;s voltooid</span>
         </div>
         <div className="nv-balk-acties">
           <span className="nv-schakel">
-            <button type="button" className={blik === "beoogd" ? "aan" : ""} onClick={() => setBlik("beoogd")}>Beoogde structuur</button>
             <button type="button" className={blik === "huidig" ? "aan" : ""} onClick={() => setBlik("huidig")}>Huidige site</button>
+            <button type="button" className={blik === "beoogd" ? "aan" : ""} onClick={() => setBlik("beoogd")}>Beoogde structuur</button>
           </span>
           <select className="nv-filter" value={filter} onChange={(e) => setFilter(e.target.value as Filter)}>
             <option value="alles">Alle pagina&rsquo;s</option>
@@ -138,19 +167,25 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
             <option value="onder50">Onder de 50%</option>
           </select>
           <span className="nv-spacer" />
-          <button type="button" className="wp-fase-btn" disabled={!!busy} title="De AI bouwt een voorstel voor de beoogde eindstructuur uit de live pagina's, je Zoekwoorden & links-afspraken en de zoekwoorddata; jij bevestigt." onClick={() => void post({ action: "voorstel" }, "voorstel")}>{busy === "voorstel" ? "Voorstel maken… (halve minuut)" : "Stel de structuur voor"}</button>
-          {nieuwIn === "" ? (
-            <input className="nv-term-input" autoFocus value={nieuwPad} placeholder="/pad/nieuwe-pagina/"
-              onChange={(e) => setNieuwPad(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && nieuwPad.trim()) { void post({ action: "add", url: nieuwPad.trim(), parent: "" }, "add"); setNieuwIn(null); setNieuwPad(""); } if (e.key === "Escape") setNieuwIn(null); }} />
+          {blik === "huidig" ? (
+            <button type="button" className="wp-fase-btn" disabled={!!busy} title="Leest het menu van de homepage uit, zodat deze weergave precies de navigatie van de site is." onClick={() => void post({ action: "menu" }, "menu")}>{busy === "menu" ? "Menu uitlezen…" : "Menu opnieuw uitlezen"}</button>
           ) : (
-            <button type="button" className="wp-fase-btn" onClick={() => { setNieuwIn(""); setNieuwPad(""); }}>+ pagina</button>
+            <>
+              <button type="button" className="wp-fase-btn" disabled={!!busy} title="De AI bouwt een voorstel voor de beoogde eindstructuur uit de live pagina's, je Zoekwoorden & links-afspraken en de zoekwoorddata; jij bevestigt." onClick={() => void post({ action: "voorstel" }, "voorstel")}>{busy === "voorstel" ? "Voorstel maken… (halve minuut)" : "Stel de structuur voor"}</button>
+              {nieuwIn === "" ? (
+                <input className="nv-term-input" autoFocus value={nieuwPad} placeholder="/pad/nieuwe-pagina/"
+                  onChange={(e) => setNieuwPad(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && nieuwPad.trim()) { void post({ action: "add", url: nieuwPad.trim(), parent: "" }, "add"); setNieuwIn(null); setNieuwPad(""); } if (e.key === "Escape") setNieuwIn(null); }} />
+              ) : (
+                <button type="button" className="wp-fase-btn" onClick={() => { setNieuwIn(""); setNieuwPad(""); }}>+ hoofdmenu-item</button>
+              )}
+            </>
           )}
         </div>
         {msg && <div className="wp-doc-fout">{msg}</div>}
       </div>
 
-      {voorstel.length > 0 && (
+      {voorstel.length > 0 && blik === "beoogd" && (
         <div className="nv-voorstel">
           <strong>Voorstel klaar: {voorstel.length} pagina&rsquo;s in de beoogde structuur.</strong>
           <span className="nv-muted">Bevestig om hem te gebruiken (daarna kun je alles aanpassen), of gooi hem weg.</span>
@@ -159,11 +194,20 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
         </div>
       )}
 
-      <div className="nv-boom">
-        {hoofd.map((n) => <Rij key={n.url} n={n} diepte={0} />)}
-        {hoofd.length === 0 && <div className="nv-muted">Nog geen pagina&rsquo;s in beeld. Draai eerst een sitescan (tab Pagina&rsquo;s) of klik &ldquo;Stel de structuur voor&rdquo;.</div>}
+      <div className="nv-kolommen">
+        {kolommen.map((n) => <Kolom key={n.url} n={n} />)}
       </div>
-      <p className="nv-uitleg">Rood = pagina bestaat nog niet · oranje = bestaat maar nog niet af · groen = alle fases klaar. Het percentage komt uit de zeven fases die ook op de projectkaarten staan; afvinken daar telt hier automatisch mee.</p>
+      {kolommen.length === 0 && (
+        <div className="nv-leeg">
+          {blik === "huidig"
+            ? <>Het menu van de site is nog niet uitgelezen. Klik op <strong>&ldquo;Menu opnieuw uitlezen&rdquo;</strong>, dan staat hier de navigatie van de site precies zoals een bezoeker hem ziet.</>
+            : <>Nog geen beoogde structuur. Klik op <strong>&ldquo;Stel de structuur voor&rdquo;</strong>, of voeg zelf een hoofdmenu-item toe.</>}
+        </div>
+      )}
+      <p className="nv-uitleg">
+        Elke kolom is een hoofdmenu-item, eronder staat het submenu. Grijs = nog niets aan gedaan · oranje = onderweg · groen = alle zeven fases klaar · rood = pagina bestaat nog niet.
+        Het percentage komt uit dezelfde zeven fases als op de projectkaarten; afvinken daar telt hier automatisch mee.
+      </p>
     </div>
   );
 }

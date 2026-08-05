@@ -3624,17 +3624,21 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .kijk-knoppen { display: flex; gap: var(--s-3, 12px); flex-wrap: wrap; }
 
 /* ── Navigatie-roadmap ── */
-.nv-wrap { max-width: 1100px; margin: 0 auto; padding: var(--s-6, 24px) var(--s-4, 16px) var(--s-12, 48px); display: flex; flex-direction: column; gap: var(--s-4, 16px); }
+.nv-wrap { max-width: 1760px; margin: 0 auto; padding: var(--s-6, 24px) var(--s-6, 24px) var(--s-12, 48px); display: flex; flex-direction: column; gap: var(--s-4, 16px); }
 .nv-terug { color: var(--orange, #F15829); text-decoration: none; font-size: var(--fs-sm, 13px); font-weight: 600; }
 .nv-terug:hover { text-decoration: underline; }
 .nv-kop h1 { color: var(--orange, #F15829); font-size: var(--fs-xl, 22px); margin: var(--s-2, 8px) 0; }
+.nv-cijfers { display: flex; flex-wrap: wrap; gap: var(--s-2, 8px) var(--s-3, 12px); margin-bottom: var(--s-2, 8px); }
+.nv-cijfer { font-size: var(--fs-sm, 12.5px); color: var(--muted, #6f645a); background: #fff; border: 1px solid var(--border, #e5ded6); border-radius: var(--r-full, 99px); padding: 3px 12px; }
+.nv-cijfer strong { color: var(--dark, #2b2b2b); font-size: var(--fs-sm, 13px); }
 .nv-totaal { display: flex; align-items: center; gap: var(--s-3, 12px); margin-bottom: var(--s-3, 12px); font-size: var(--fs-sm, 13px); }
-.nv-balkje { display: inline-block; width: 120px; height: 8px; border-radius: var(--r-full, 99px); background: #f0ebe5; overflow: hidden; flex: 0 0 auto; }
-.nv-balkje-groot { width: 260px; height: 12px; }
+.nv-balkje { display: block; width: 100%; height: 6px; border-radius: var(--r-full, 99px); background: #efe9e2; overflow: hidden; flex: 0 0 auto; }
+.nv-balkje-groot { max-width: 420px; height: 10px; }
 .nv-balkvul { display: block; height: 100%; border-radius: var(--r-full, 99px); transition: width 0.3s; }
 .nv-balkvul.nv-groen { background: #1c7a3f; }
 .nv-balkvul.nv-oranje { background: var(--orange, #F15829); }
 .nv-balkvul.nv-rood { background: #b3261e; }
+.nv-balkvul.nv-grijs { background: #c3b9ae; }
 .nv-muted { color: var(--muted, #6f645a); font-size: var(--fs-sm, 12.5px); }
 .nv-balk-acties { display: flex; align-items: center; gap: var(--s-3, 12px); flex-wrap: wrap; }
 .nv-schakel { display: inline-flex; border: 1px solid var(--border, #e5ded6); border-radius: var(--r-full, 99px); overflow: hidden; }
@@ -3643,30 +3647,43 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .nv-filter { border: 1px solid var(--border, #e5ded6); border-radius: var(--r-sm, 8px); padding: 6px 10px; font: inherit; font-size: var(--fs-sm, 12.5px); }
 .nv-spacer { flex: 1; }
 .nv-voorstel { display: flex; align-items: center; gap: var(--s-3, 12px); flex-wrap: wrap; border: 1px solid var(--border, #e5ded6); border-left: 3px solid var(--orange, #F15829); border-radius: var(--r-md, 10px); padding: var(--s-3, 12px) var(--s-4, 16px); background: #fff6f1; font-size: var(--fs-sm, 13px); }
-.nv-boom { background: #fff; border: 1px solid var(--border, #e5ded6); border-radius: var(--r-lg, 14px); padding: var(--s-4, 16px) var(--s-5, 20px); box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.06)); }
-.nv-rij { display: flex; align-items: center; gap: var(--s-2, 8px); padding: 6px 8px; border-radius: var(--r-sm, 8px); }
-.nv-rij:hover { background: var(--gray-light, #f8f5f1); }
-.nv-caret { border: none; background: none; cursor: pointer; color: var(--orange, #F15829); font-size: 12px; width: 18px; padding: 0; }
-.nv-caret-leeg { display: inline-block; width: 18px; }
-.nv-slug { color: var(--dark, #2b2b2b); font-weight: 700; font-size: var(--fs-sm, 13px); text-decoration: none; }
-.nv-slug:hover { color: var(--orange, #F15829); text-decoration: underline; }
-.nv-term { border: none; background: none; cursor: pointer; font: inherit; font-size: var(--fs-xs, 12px); color: var(--muted, #6f645a); padding: 1px 6px; border-radius: 6px; }
+
+/* De navigatie als kolommen: hoofdmenu naast elkaar, submenu eronder. */
+.nv-kolommen { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: var(--s-4, 16px); align-items: start; }
+.nv-kolom { background: #fff; border: 1px solid var(--border, #e5ded6); border-radius: var(--r-lg, 14px); box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.06)); padding: var(--s-3, 12px) var(--s-3, 12px) var(--s-2, 8px); display: flex; flex-direction: column; gap: var(--s-2, 8px); }
+.nv-kolomkop { display: flex; align-items: center; gap: var(--s-2, 8px); }
+.nv-kolomnaam { color: var(--dark, #2b2b2b); font-weight: 700; font-size: var(--fs-md, 14.5px); text-decoration: none; text-transform: capitalize; }
+.nv-kolomnaam:hover { color: var(--orange, #F15829); text-decoration: underline; }
+.nv-kolomlijst { display: flex; flex-direction: column; }
+.nv-item { display: flex; align-items: center; gap: 6px; padding: 4px 6px 4px 0; border-radius: var(--r-sm, 8px); border-left: 3px solid transparent; }
+.nv-item.nv-groen { border-left-color: #1c7a3f; }
+.nv-item.nv-oranje { border-left-color: var(--orange, #F15829); }
+.nv-item.nv-rood { border-left-color: #b3261e; }
+.nv-item.nv-grijs { border-left-color: #ded6cd; }
+.nv-item:hover { background: var(--gray-light, #f8f5f1); }
+.nv-caret { border: none; background: none; cursor: pointer; color: var(--orange, #F15829); font-size: 11px; width: 16px; padding: 0; flex: 0 0 auto; }
+.nv-caret-leeg { display: inline-block; width: 16px; flex: 0 0 auto; }
+.nv-naam { color: var(--dark, #2b2b2b); font-size: var(--fs-sm, 13px); text-decoration: none; text-transform: capitalize; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nv-naam:hover { color: var(--orange, #F15829); text-decoration: underline; }
+.nv-term { border: none; background: none; cursor: pointer; font: inherit; font-size: var(--fs-xs, 11.5px); color: var(--muted, #6f645a); padding: 0 6px 2px; border-radius: 6px; text-align: left; }
 .nv-term:hover { background: #fdeee7; color: var(--orange-dark, #c93f16); }
-.nv-term-input { border: 1px solid var(--border, #e5ded6); border-radius: var(--r-sm, 8px); padding: 3px 8px; font: inherit; font-size: var(--fs-xs, 12px); min-width: 200px; }
-.nv-taktotaal { font-size: var(--fs-xs, 11px); font-weight: 700; color: var(--muted, #6f645a); background: #f0ebe5; border-radius: var(--r-full, 99px); padding: 1px 8px; }
-.nv-badge-mist { font-size: var(--fs-xs, 10.5px); font-weight: 700; text-transform: uppercase; color: #b3261e; background: #fdf3f2; border-radius: var(--r-full, 99px); padding: 2px 8px; white-space: nowrap; }
-.nv-pct { font-size: var(--fs-xs, 11.5px); font-weight: 700; width: 38px; text-align: right; font-variant-numeric: tabular-nums; }
-.nv-mini { width: 20px; height: 20px; border-radius: 50%; border: 1px solid #1c7a3f; color: #1c7a3f; background: #fff; font-size: 11px; cursor: pointer; padding: 0; opacity: 0.4; }
-.nv-rij:hover .nv-mini { opacity: 1; }
+.nv-term-input { border: 1px solid var(--border, #e5ded6); border-radius: var(--r-sm, 8px); padding: 3px 8px; font: inherit; font-size: var(--fs-xs, 12px); min-width: 160px; max-width: 100%; }
+.nv-taktotaal { font-size: var(--fs-xs, 11px); font-weight: 700; color: var(--muted, #6f645a); background: #f0ebe5; border-radius: var(--r-full, 99px); padding: 1px 8px; margin-left: auto; flex: 0 0 auto; }
+.nv-badge-mist { font-size: var(--fs-xs, 10px); font-weight: 700; text-transform: uppercase; color: #b3261e; background: #fdf3f2; border-radius: var(--r-full, 99px); padding: 1px 7px; white-space: nowrap; }
+.nv-pct { font-size: var(--fs-xs, 11px); font-weight: 700; color: var(--muted, #6f645a); width: 32px; text-align: right; font-variant-numeric: tabular-nums; flex: 0 0 auto; }
+.nv-acties { display: flex; gap: 4px; width: 44px; justify-content: flex-end; flex: 0 0 auto; }
+.nv-mini { width: 19px; height: 19px; border-radius: 50%; border: 1px solid #1c7a3f; color: #1c7a3f; background: #fff; font-size: 10px; cursor: pointer; padding: 0; opacity: 0; transition: opacity 0.15s; }
+.nv-item:hover .nv-mini { opacity: 1; }
 .nv-mini:hover { background: #1c7a3f; color: #fff; }
 .nv-mini-del { border-color: #cfc7bd; color: #8a7a6c; }
 .nv-mini-del:hover { background: #b3261e; border-color: #b3261e; color: #fff; }
-.nv-addlink { border: none; background: none; cursor: pointer; font: inherit; font-size: var(--fs-xs, 11.5px); color: var(--orange, #F15829); padding: 2px 8px; opacity: 0.7; }
+.nv-addlink { border: none; background: none; cursor: pointer; font: inherit; font-size: var(--fs-xs, 11.5px); color: var(--orange, #F15829); padding: 4px 6px; opacity: 0.7; text-align: left; }
 .nv-addlink:hover { opacity: 1; text-decoration: underline; }
-.nv-uitleg { font-size: var(--fs-xs, 12px); color: var(--muted, #6f645a); max-width: 80ch; }
+.nv-leeg { background: #fff; border: 1px solid var(--border, #e5ded6); border-radius: var(--r-lg, 14px); padding: var(--s-5, 20px); font-size: var(--fs-sm, 13px); color: var(--muted, #6f645a); }
+.nv-uitleg { font-size: var(--fs-xs, 12px); color: var(--muted, #6f645a); max-width: 100ch; }
 .focus-nav-link { margin-left: auto; font-size: var(--fs-xs, 11.5px); font-weight: 600; color: var(--orange, #F15829); text-decoration: none; }
 .focus-nav-link:hover { text-decoration: underline; }
-@media (max-width: 700px) { .nv-rij { flex-wrap: wrap; } .nv-balkje-groot { width: 160px; } }
+@media (max-width: 700px) { .nv-kolommen { grid-template-columns: 1fr; } }
 
 /* ── Opruimlijst als werkbare tabel ───────────────────────────────────────────
    De lijst staat bovenaan en het verhaal eronder: een lijst werk je af, proza

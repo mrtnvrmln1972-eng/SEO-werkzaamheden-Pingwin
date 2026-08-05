@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
-import { getRoadmap, proposeNavPlan, confirmNavPlan, discardNavPlanProposal, upsertNavPage, deleteNavPage, completeNavPage } from "../../../../lib/nav-plan";
+import { getRoadmap, scanSiteMenu, proposeNavPlan, confirmNavPlan, discardNavPlanProposal, upsertNavPage, deleteNavPage, completeNavPage } from "../../../../lib/nav-plan";
 import { getClientBySlug } from "../../../../lib/clients";
 
 export const runtime = "nodejs";
@@ -30,6 +30,7 @@ export async function POST(req: NextRequest) {
   const action = String(body.action || "").trim();
   try {
     if (action === "voorstel") { const r = await proposeNavPlan(slug); return r.ok ? NextResponse.json({ ok: true, aantal: r.aantal }) : NextResponse.json({ ok: false, error: r.error }, { status: 500 }); }
+    if (action === "menu") { const r = await scanSiteMenu(slug); return r.ok ? NextResponse.json({ ok: true, aantal: r.aantal }) : NextResponse.json({ ok: false, error: r.error }, { status: 500 }); }
     if (action === "bevestig") { await confirmNavPlan(slug); return NextResponse.json({ ok: true }); }
     if (action === "verwerp") { await discardNavPlanProposal(slug); return NextResponse.json({ ok: true }); }
     if (action === "add" || action === "update") {
