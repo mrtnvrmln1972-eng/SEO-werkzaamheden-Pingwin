@@ -142,8 +142,8 @@ function menuUitUl(blok: string, host: string): NavNode[] {
   return out;
 }
 
-/** Leest de homepage uit en bewaart het hoofdmenu als "huidige site". */
-export async function scanSiteMenu(slug: string): Promise<{ ok: boolean; aantal?: number; error?: string }> {
+/** Leest het hoofdmenu van de homepage, zonder iets op te slaan. */
+export async function leesSiteMenu(slug: string): Promise<{ ok: boolean; items?: NavNode[]; error?: string }> {
   const client = await getClientBySlug(slug);
   const domain = (client?.domain || "").replace(/^https?:\/\//, "").replace(/\/.*$/, "");
   if (!domain) return { ok: false, error: "Deze klant heeft nog geen domein ingevuld." };
@@ -175,8 +175,15 @@ export async function scanSiteMenu(slug: string): Promise<{ ok: boolean; aantal?
   const beste = kandidaten.sort((a, b) => (b.length + b.filter((x) => x.parent).length) - (a.length + a.filter((x) => x.parent).length))[0];
   if (!beste || beste.length < 3) return { ok: false, error: "Geen hoofdmenu gevonden op de homepage." };
 
-  await schrijfPlan(slug, "menu", beste);
-  return { ok: true, aantal: beste.length };
+  return { ok: true, items: beste };
+}
+
+/** Hetzelfde, maar dan bewaard als de weergave "Huidige site". */
+export async function scanSiteMenu(slug: string): Promise<{ ok: boolean; aantal?: number; error?: string }> {
+  const r = await leesSiteMenu(slug);
+  if (!r.ok || !r.items) return { ok: false, error: r.error };
+  await schrijfPlan(slug, "menu", r.items);
+  return { ok: true, aantal: r.items.length };
 }
 
 // ── AI-voorstel voor de beoogde structuur (Maarten bevestigt) ──
