@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "proef": "npx --yes tsx proeven/site-controle.proef.ts"
+    "proef": "npx --yes tsx proeven/site-controle.proef.ts && npx --yes tsx proeven/mail-tekst.proef.ts"
   },
   "dependencies": {
     "@sparticuz/chromium": "^131.0.1",

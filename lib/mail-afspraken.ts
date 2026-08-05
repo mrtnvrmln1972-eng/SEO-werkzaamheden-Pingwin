@@ -24,7 +24,7 @@
 // ═══════════════════════════════════════════════════════════
 
 import { callClaudeForcedTool, type ToolDef } from "./anthropic";
-import { eigenTekst, isRuisMail } from "./mail-tekst";
+import { eigenTekstRijk, isRuisMail } from "./mail-tekst";
 import { pagePath } from "./page-internal-links";
 import type { LiveEmail } from "./ms-graph";
 import type { ClientUrl } from "./site-urls";
@@ -114,7 +114,20 @@ const TOOL: ToolDef = {
             gevraagdOp: { type: "string", description: "Datum van die mail als JJJJ-MM-DD, of leeg als het uit de vraag van de gebruiker komt." },
             devCitaat: { type: "string", description: "Wat de websitebouwer hierover terugzei, LETTERLIJK overgenomen. Leeg als hij er niets over zei." },
             devCitaatOp: { type: "string", description: "Datum van dat antwoord als JJJJ-MM-DD, of leeg." },
-            bronPad: { type: "string", description: "Bij interne-link: het pad van de pagina waar de link op moet komen, bijvoorbeeld /hovenier/. Leeg bij de andere soorten." },
+            bronPad: { type: "string", description: "Bij interne-link met ÉÉN bronpagina: het pad van de pagina waar de link op moet komen, bijvoorbeeld /hovenier/. Leeg als je hieronder 'bronnen' invult, en leeg bij de andere soorten." },
+            bronnen: {
+              type: "array",
+              description: "Bij interne-link met MEERDERE bronpagina's (vaak een tabel of genummerde lijst): één regel per bronpagina. Neem een tabel over zoals hij staat, van links naar rechts.",
+              items: {
+                type: "object",
+                properties: {
+                  bronPad: { type: "string", description: "Pad van de pagina waar de link vandaan moet komen, bijvoorbeeld /hovenier/." },
+                  plek: { type: "string", description: "Waar op die bronpagina, als dat genoemd wordt. Anders leeg." },
+                  ankerHint: { type: "string", description: "De voorgestelde ankertekst voor deze bron, als die genoemd wordt. Anders leeg." },
+                },
+                required: ["bronPad"],
+              },
+            },
             doelPad: { type: "string", description: "Het pad van de pagina waar het om draait, bijvoorbeeld /tuinontwerp/strandtuin/. Kies uitsluitend uit de lijst met bestaande pagina's, tenzij de tekst een pad noemt dat er niet in staat; neem dat dan letterlijk over." },
             ankerHint: { type: "string", description: "De ankertekst die gevraagd of gesuggereerd is, als die genoemd wordt. Anders leeg." },
             plek: { type: "string", description: "Waar op de pagina het zou moeten komen, als dat genoemd wordt (bijvoorbeeld: onder de H2 'Werkgebied'). Anders leeg." },
@@ -146,11 +159,26 @@ WAT JE NIET OPNEEMT
 CITATEN ZIJN HEILIG
 Het veld "citaat" moet LETTERLIJK in de aangeleverde tekst voorkomen, woord voor woord. Kun je geen letterlijk citaat vinden, neem het punt dan niet op. Een verzonnen citaat is erger dan een gemist punt: het systeem gooit punten met een niet-bestaand citaat automatisch weg.
 
+MEERDERE BRONPAGINA'S IN ÉÉN VERZOEK
+Vraagt een verzoek om links vanaf verschillende pagina's naar dezelfde doelpagina (vaak in een tabel of een genummerde lijst), neem dan één punt op met een regel per bronpagina in "bronnen". Het "citaat" mag voor die regels hetzelfde zijn. Een tabel neem je over zoals hij staat, van links naar rechts, en elke rij is één bronpagina. Maak er dus GEEN los punt per rij en laat ook geen rijen weg.
+
 PADEN
 Gebruik alleen paden die in de meegeleverde lijst met bestaande pagina's staan. Noemt de tekst uitdrukkelijk een pad dat niet in die lijst staat, neem dat dan letterlijk over; het systeem controleert zelf of die pagina nog bestaat. Verzin nooit een pad dat nergens genoemd wordt. Weet je niet zeker om welke pagina het gaat, laat het pad dan leeg.
 
 LET OP DE JUISTE WEBSITE
 Deze klant kan meerdere websites hebben, en een onderwerpregel zegt niets over welke site bedoeld wordt. Ga alleen af op wat er in de tekst zelf staat en op de meegeleverde lijst met pagina's.`;
+
+// Hoeveel tekst we per mail meenemen. Bewust verschillend, want de mails in zo'n
+// thread zijn dat ook: onze verzoekmails zijn lang en dicht (die van 30 juli telt
+// 5765 tekens met twee tabellen erin), de antwoorden van de bouwer zijn kort
+// ("is gedaan", "die pagina bestaat niet meer").
+//
+// Eén budget voor allebei was precies de fout: op 2500 tekens viel Punt 2 met de
+// zes gevraagde interne links eruit, want dat begon op teken 2043 en de tabellen
+// liepen door tot 4500. De kop haalde het, de inhoud niet.
+const BUDGET_VERZOEK = 12000; // ruim twee keer de langste echte verzoekmail
+const BUDGET_ANTWOORD = 3000; // genoeg voor de reactie; meer voegt niets toe
+const BUDGET_THREAD = 90000;  // bovengrens over de hele thread
 
 /** De thread omzetten naar leesbare tekst, ontdaan van citaten en ruis. */
 function threadNaarTekst(mails: LiveEmail[]): { tekst: string; bronTekst: string } {
@@ -159,21 +187,40 @@ function threadNaarTekst(mails: LiveEmail[]): { tekst: string; bronTekst: string
     .slice()
     .sort((a, b) => (a.receivedAt || "").localeCompare(b.receivedAt || ""));
 
-  const regels: string[] = [];
-  const bron: string[] = [];
-  for (const m of bruikbaar) {
+  // Van nieuw naar oud opbouwen, zodat bij een lange thread de OUDSTE mails
+  // sneuvelen en niet de nieuwste. Daar staat immers wat er nu geldt.
+  type Stuk = { datum: string; wie: string; richting: string; tekst: string };
+  const stukken: Stuk[] = [];
+  let totaal = 0;
+  for (let i = bruikbaar.length - 1; i >= 0; i--) {
+    const m = bruikbaar[i];
+    const uitgaand = m.direction === "out";
+    let budget = uitgaand ? BUDGET_VERZOEK : BUDGET_ANTWOORD;
+    // Ver terug in de thread mag het krapper; de laatste twee mails houden altijd
+    // hun volle budget.
+    const positieVanAchter = bruikbaar.length - 1 - i;
+    if (positieVanAchter >= 2 && totaal > BUDGET_THREAD * 0.6) budget = Math.floor(budget / 2);
+
     // Alleen de eigen tekst: zonder dit telt hetzelfde verzoek vijf keer mee
     // omdat iedereen elkaar citeert, en dan levert de controle vijf keer
-    // hetzelfde punt op.
-    const tekst = eigenTekst(m.bodyHtml || "", m.preview || "", 2500);
+    // hetzelfde punt op. Met tabellen, want daar staan de bron-doel-paren in.
+    const tekst = eigenTekstRijk(m.bodyHtml || "", m.preview || "", budget);
     if (!tekst.trim()) continue;
-    const datum = (m.receivedAt || "").slice(0, 10);
-    const wie = m.fromName || m.fromAddress || "onbekend";
-    const richting = m.direction === "out" ? "VERZOEK VAN ONS" : "ANTWOORD";
-    regels.push(`--- ${datum} | ${wie} | ${richting} ---\n${tekst}`);
-    bron.push(tekst);
+    if (totaal + tekst.length > BUDGET_THREAD) break;
+    totaal += tekst.length;
+    stukken.push({
+      datum: (m.receivedAt || "").slice(0, 10),
+      wie: m.fromName || m.fromAddress || "onbekend",
+      richting: uitgaand ? "VERZOEK VAN ONS" : "ANTWOORD",
+      tekst,
+    });
   }
-  return { tekst: regels.join("\n\n"), bronTekst: bron.join("\n") };
+
+  stukken.reverse(); // weer oudste eerst, zoals het model het aangeboden krijgt
+  return {
+    tekst: stukken.map((s) => `--- ${s.datum} | ${s.wie} | ${s.richting} ---\n${s.tekst}`).join("\n\n"),
+    bronTekst: stukken.map((s) => s.tekst).join("\n"),
+  };
 }
 
 /** Wie in deze thread is de developer? De externe deelnemer, niet wij en niet de klant. */
@@ -285,7 +332,6 @@ export async function haalAfspraken(opts: {
     const soortRuw = String(p.soort || "anders");
     const soort: AfspraakSoort = soortRuw === "interne-link" || soortRuw === "uit-navigatie" ? soortRuw : "anders";
     const doelPad = schoonPad(String(p.doelPad || ""));
-    const bronPad = schoonPad(String(p.bronPad || ""));
 
     // Nacontrole 3: zonder pagina valt er niets te meten. Naar Maarten dus, niet
     // naar de meter. Dit vangt ook het geval waarin een punt eigenlijk over de
@@ -294,30 +340,62 @@ export async function haalAfspraken(opts: {
       onduidelijk.push({ tekst: titel, reden: "ik kon er geen pagina op deze website bij vinden" });
       continue;
     }
-    if (soort === "interne-link" && !bronPad) {
+
+    // Eén verzoek kan meerdere bronpagina's noemen: "leg vanaf de homepage, vanaf
+    // /hovenier/ en vanaf de buurpagina een link naar deze pagina" is één zin in de
+    // mail maar drie dingen om te meten. Elke bron wordt dus een eigen punt.
+    const ruweBronnen = Array.isArray(p.bronnen) ? (p.bronnen as Record<string, unknown>[]) : [];
+    const bronnen = ruweBronnen.length
+      ? ruweBronnen.map((b) => ({
+          pad: schoonPad(String(b.bronPad || "")),
+          plek: String(b.plek || p.plek || "").trim().slice(0, 200),
+          anker: String(b.ankerHint || p.ankerHint || "").trim().slice(0, 120),
+          ruw: String(b.bronPad || ""),
+        }))
+      : [{
+          pad: schoonPad(String(p.bronPad || "")),
+          plek: String(p.plek || "").trim().slice(0, 200),
+          anker: String(p.ankerHint || "").trim().slice(0, 120),
+          ruw: String(p.bronPad || ""),
+        }];
+
+    const bruikbareBronnen = bronnen.filter((b) => b.pad);
+    if (soort === "interne-link" && !bruikbareBronnen.length) {
       onduidelijk.push({ tekst: titel, reden: "het is me niet duidelijk vanaf welke pagina de link moet komen" });
       continue;
     }
+    // Eén bron die niet te herleiden is mag de andere vijf niet meeslepen: die ene
+    // gaat als vraag naar Maarten, de rest wordt gewoon gemeten.
+    if (soort === "interne-link") {
+      for (const b of bronnen) {
+        if (!b.pad && b.ruw.trim()) {
+          onduidelijk.push({ tekst: `${titel} (bron "${b.ruw.trim().slice(0, 60)}")`, reden: "die bronpagina kon ik niet thuisbrengen op deze website" });
+        }
+      }
+    }
 
-    const key = maakKey(soort, doelPad, bronPad, citaat);
-    if (gezien.has(key)) continue;
-    gezien.add(key);
+    const teMaken = soort === "interne-link" ? bruikbareBronnen : [bronnen[0] || { pad: "", plek: "", anker: "", ruw: "" }];
+    for (const b of teMaken) {
+      const key = maakKey(soort, doelPad, b.pad, citaat);
+      if (gezien.has(key)) continue;
+      gezien.add(key);
 
-    afspraken.push({
-      puntKey: key,
-      soort,
-      // Nacontrole 2: hardheid komt uit de tabel hierboven, niet uit het model.
-      hard: HARD[soort],
-      titel,
-      gevraagd: citaat.slice(0, 400),
-      gevraagdOp: String(p.gevraagdOp || "").slice(0, 10),
-      devClaim: String(p.devCitaat || "").trim().slice(0, 400),
-      devClaimOp: String(p.devCitaatOp || "").slice(0, 10),
-      bronPad,
-      doelPad,
-      ankerHint: String(p.ankerHint || "").trim().slice(0, 120),
-      plek: String(p.plek || "").trim().slice(0, 200),
-    });
+      afspraken.push({
+        puntKey: key,
+        soort,
+        // Nacontrole 2: hardheid komt uit de tabel hierboven, niet uit het model.
+        hard: HARD[soort],
+        titel,
+        gevraagd: citaat.slice(0, 400),
+        gevraagdOp: String(p.gevraagdOp || "").slice(0, 10),
+        devClaim: String(p.devCitaat || "").trim().slice(0, 400),
+        devClaimOp: String(p.devCitaatOp || "").slice(0, 10),
+        bronPad: b.pad,
+        doelPad,
+        ankerHint: b.anker,
+        plek: b.plek,
+      });
+    }
   }
 
   // Paden die het model noemde maar die we niet kennen, zijn niet per se fout:

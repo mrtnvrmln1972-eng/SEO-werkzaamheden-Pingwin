@@ -449,6 +449,35 @@ export function beoordeelUitNavigatie(beeld: Sitebeeld, doelPad: string): Meting
 export type Bestaat = { bestaat: boolean; status: number | null; omleiding: string };
 
 /**
+ * Kan een verzoek dat vanaf deze bronpagina moet komen überhaupt nog uitgevoerd
+ * worden? Geeft null als er niets aan de hand is; dan gaat de gewone meting door.
+ *
+ * Twee gevallen waarin het antwoord "vervallen" is en niet "niet gedaan":
+ * de pagina is weg (404), of de pagina is een omleiding geworden en bestaat dus
+ * niet meer als eigen pagina. Dat laatste is precies /hovenier/hovenier-breda/,
+ * waar de websitebouwer zelf naar vroeg: die rol werd door de homepage overgenomen.
+ * Zonder dit onderscheid krijgt hij een verwijt voor iets dat onmogelijk was.
+ */
+export function beoordeelBron(bronPad: string, bron: Bestaat | undefined): Meting | null {
+  if (!bronPad || !bron) return null;
+  if (!bron.bestaat && bron.status !== null) {
+    return {
+      uitslag: "vervallen",
+      bewijs: `de bronpagina ${bronPad} bestaat niet (meer): die antwoordt met ${bron.status}. Dit verzoek kan dus niet uitgevoerd worden.`,
+      details: { bronPad, status: bron.status },
+    };
+  }
+  if (bron.bestaat && bron.omleiding) {
+    return {
+      uitslag: "vervallen",
+      bewijs: `de bronpagina ${bronPad} bestaat niet meer als eigen pagina; die stuurt door naar ${bron.omleiding}. Een link vanaf die pagina kan dus niet gelegd worden.`,
+      details: { bronPad, omleiding: bron.omleiding, status: bron.status },
+    };
+  }
+  return null;
+}
+
+/**
  * Bestaat deze pagina, en zo ja: komen we er rechtstreeks of via een omleiding?
  * Dit is wat "vervallen" van "niet gedaan" onderscheidt. Sander meldde dat
  * /hovenier/hovenier-breda/ niet meer bestaat; zonder deze controle zou het

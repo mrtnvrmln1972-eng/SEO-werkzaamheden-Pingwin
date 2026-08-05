@@ -23,7 +23,7 @@ import { getClientUrls } from "./site-urls";
 import { msStatus, msGetThread, type LiveEmail } from "./ms-graph";
 import { haalAfspraken, type Afspraak } from "./mail-afspraken";
 import {
-  bouwSitebeeld, bestaatPagina, beoordeelInterneLink, beoordeelUitNavigatie,
+  bouwSitebeeld, bestaatPagina, beoordeelInterneLink, beoordeelUitNavigatie, beoordeelBron,
   type Sitebeeld, type Meting, type Uitslag,
 } from "./site-controle";
 import { pagePath } from "./page-internal-links";
@@ -283,15 +283,19 @@ function kiesCrawlPaden(afspraken: Afspraak[], urls: { url: string; gscClicks: n
     if (a.bronPad) nodig.add(a.bronPad);
     if (a.doelPad) nodig.add(a.doelPad);
   }
-  // Aanvullen tot minstens acht pagina's met de drukst bezochte pagina's van de
-  // site. Zonder die extra pagina's is niet vast te stellen wat site-breed is, en
-  // dan zou elke menu-link als gewone link tellen.
+  // Aanvullen met de drukst bezochte pagina's van de site. Zonder die extra
+  // pagina's is niet vast te stellen wat site-breed is, en dan zou elke menu-link
+  // als gewone link tellen.
+  //
+  // De grens staat op twaalf en niet op tien: één verzoek kan zes bronpagina's
+  // noemen, en dan zijn er al zeven verplichte paden. Met maar drie opvulpagina's
+  // wordt de drempel voor "dit is navigatie" te wankel om op te bouwen.
   const extra = urls
     .filter((u) => (u.status ?? 200) < 400)
     .sort((a, b) => (b.gscClicks || 0) - (a.gscClicks || 0))
     .map((u) => pagePath(u.url));
   for (const p of extra) {
-    if (nodig.size >= 10) break;
+    if (nodig.size >= 12) break;
     nodig.add(p);
   }
   return [...nodig];
@@ -315,16 +319,8 @@ function meetPunt(a: Afspraak, beeld: Sitebeeld, bestaan: Map<string, Awaited<Re
   // Eerst: kan dit punt überhaupt nog? Een bronpagina die niet meer bestaat maakt
   // het verzoek onuitvoerbaar, en dat is iets anders dan niet uitgevoerd. Dit is
   // precies het geval van /hovenier/hovenier-breda/, waar de bouwer zelf op wees.
-  if (a.bronPad) {
-    const bron = bestaan.get(a.bronPad);
-    if (bron && !bron.bestaat && bron.status !== null) {
-      return {
-        uitslag: "vervallen",
-        bewijs: `de bronpagina ${a.bronPad} bestaat niet (meer): die antwoordt met ${bron.status}. Dit verzoek kan dus niet uitgevoerd worden.`,
-        details: { bronPad: a.bronPad, status: bron.status },
-      };
-    }
-  }
+  const bronOordeel = beoordeelBron(a.bronPad, bestaan.get(a.bronPad));
+  if (bronOordeel) return bronOordeel;
 
   if (a.soort === "uit-navigatie") return beoordeelUitNavigatie(beeld, a.doelPad);
 

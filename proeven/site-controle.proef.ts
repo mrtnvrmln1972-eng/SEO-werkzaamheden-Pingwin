@@ -2,7 +2,7 @@
 // Doel: aantonen dat "staat er niet" en "kon ik niet meten" NIET op hetzelfde
 // uitkomen, en dat een menulink niet als contextuele link telt.
 
-import { beoordeelAnker, beoordeelInterneLink, beoordeelUitNavigatie, type Sitebeeld } from "../lib/site-controle";
+import { beoordeelAnker, beoordeelBron, beoordeelInterneLink, beoordeelUitNavigatie, type Sitebeeld } from "../lib/site-controle";
 
 const MENU = [
   { naar: "/", anker: "Home", inTekst: false, beeldlink: false, nofollow: false },
@@ -33,6 +33,10 @@ const bestaatNiet = { bestaat: false, status: 404, omleiding: "" };
 const onbereikbaar = { bestaat: false, status: null, omleiding: "" };
 
 let fouten = 0;
+function checkWaar(naam: string, waar: boolean) {
+  if (!waar) fouten++;
+  console.log(`${waar ? "OK  " : "FOUT"} | ${naam}`);
+}
 function check(naam: string, gekregen: string, verwacht: string) {
   const ok = gekregen === verwacht;
   if (!ok) fouten++;
@@ -124,6 +128,18 @@ const doelWeg = maakBeeld(
 const wegOordeel = beoordeelUitNavigatie(doelWeg, "/bestaat-niet");
 check("niet-bestaande pagina krijgt GEEN groen vinkje", String(wegOordeel.uitslag !== "goed"), "true");
 check("niet-bestaande pagina -> onmeetbaar of vervallen", String(["onmeetbaar", "vervallen"].includes(wegOordeel.uitslag)), "true");
+
+// ── Kan het verzoek nog wel? ──
+// /hovenier/hovenier-breda/ op de echte site is een 301 geworden. Een link vanaf
+// een pagina die niet meer bestaat is niet "vergeten", die is onmogelijk. Zonder
+// dit onderscheid krijgt de bouwer een verwijt voor iets dat hij niet kón doen.
+check("bronpagina met een 404 -> vervallen", String(beoordeelBron("/hovenier/hovenier-breda", bestaatNiet)?.uitslag), "vervallen");
+const omgeleid = beoordeelBron("/hovenier/hovenier-breda", { bestaat: true, status: 200, omleiding: "/hovenier" });
+check("omgeleide bronpagina -> vervallen", String(omgeleid?.uitslag), "vervallen");
+checkWaar("het bewijs noemt waar de omleiding heen gaat", String(omgeleid?.bewijs).includes("/hovenier"));
+check("gewone bronpagina -> geen bezwaar, gewoon doormeten", String(beoordeelBron("/hovenier", bestaat)), "null");
+check("onbereikbare bronpagina -> geen vals 'vervallen'", String(beoordeelBron("/hovenier", onbereikbaar)), "null");
+check("geen bronpagina opgegeven -> geen bezwaar", String(beoordeelBron("", bestaatNiet)), "null");
 
 const teWeinig = maakBeeld([pagina("/", "Home", [])]);
 check(
