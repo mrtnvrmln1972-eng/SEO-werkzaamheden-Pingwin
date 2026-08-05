@@ -28,6 +28,10 @@ export default function AdminClient({ initialClients, isOwner = true, showGroups
   const [origin, setOrigin] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
+  // Nieuwe lead: alleen een naam en een website (geen inlog, sheet of budget).
+  const [showLeadForm, setShowLeadForm] = useState(false);
+  const [leadForm, setLeadForm] = useState({ name: "", domain: "", email: "" });
+  const [leadBusy, setLeadBusy] = useState(false);
   // Budget bewerken per klant (maandfee, linkbuilding, uurtarief, uren)
   const [editSlug, setEditSlug] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ maandbudget: "", linkbuilding: "", uurtarief: "" });
@@ -153,6 +157,42 @@ export default function AdminClient({ initialClients, isOwner = true, showGroups
     setBusy(false);
   }
 
+  // Lead aanmaken: naam + website is genoeg. De rest (inlog, sheet, budget)
+  // hoort bij een klant en komt pas als de lead er een wordt.
+  async function onSubmitLead(e: React.FormEvent) {
+    e.preventDefault();
+    setLeadBusy(true); setError("");
+    try {
+      const res = await fetch("/api/admin/clients", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "lead", name: leadForm.name, domain: leadForm.domain, email: leadForm.email }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setLeadForm({ name: "", domain: "", email: "" });
+        setShowLeadForm(false);
+        await refresh();
+        setNotice({ ok: true, text: `Lead "${data.client.name}" aangemaakt. Open hem om te beginnen.` });
+      } else setError(data.error || "Lead aanmaken mislukt.");
+    } catch { setError("Lead aanmaken mislukt."); } finally { setLeadBusy(false); }
+  }
+
+  // Fase omzetten. Alles wat aan het bedrijf hangt (chat, dossier, documenten)
+  // blijft staan; alleen het label verandert.
+  async function setFase(e: React.MouseEvent, c: ClientConfig, fase: string, vraag: string) {
+    e.stopPropagation();
+    if (!window.confirm(vraag)) return;
+    try {
+      const res = await fetch("/api/admin/clients", {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: c.slug, action: "setFase", fase }),
+      });
+      const data = await res.json();
+      if (data.ok) { await refresh(); setNotice({ ok: true, text: `${c.name} staat nu op ${fase}.` }); }
+      else setError(data.error || "Fase omzetten mislukt.");
+    } catch { setError("Fase omzetten mislukt."); }
+  }
+
   async function logout() {
     await fetch("/api/admin/logout", { method: "POST" });
     window.location.href = "/admin/login";
@@ -187,10 +227,50 @@ export default function AdminClient({ initialClients, isOwner = true, showGroups
     navigator.clipboard?.writeText(text);
   }
 
-  // Twee lijsten: eigen klanten en (alleen in de Pingwin-wereld) de
-  // Multimedia Concepts-klanten als aparte sectie met eigen tint.
-  const ownClients = clients.filter((c) => c.grp !== "mmc");
-  const mmcClients = clients.filter((c) => c.grp === "mmc");
+  // Leads staan in een eigen lijst; ze hebben geen inlog, sheet of budget en
+  // horen dus niet tussen de klantkolommen. De klantlijsten blijven precies
+  // zoals ze waren (eigen klanten en, in de Pingwin-wereld, Multimedia Concepts).
+  const leads = clients.filter((c) => c.fase === "lead");
+  const klanten = clients.filter((c) => c.fase !== "lead");
+  const ownClients = klanten.filter((c) => c.grp !== "mmc");
+  const mmcClients = klanten.filter((c) => c.grp === "mmc");
+
+  const leadTable = (
+    <div className="task-table-wrap">
+      <table>
+        <thead>
+          <tr><th>Bedrijf</th><th>Website</th><th>E-mail</th><th></th></tr>
+        </thead>
+        <tbody>
+          {leads.length === 0 && (
+            <tr><td colSpan={4} style={{ textAlign: "center", padding: 40, color: "var(--gray)" }}>
+              Nog geen leads. Maak er een aan met alleen een naam en een website.
+            </td></tr>
+          )}
+          {leads.map((c) => (
+            <tr key={c.slug} className="clickable-row" onClick={() => openDashboard(c)} title="Open de leadomgeving">
+              <td><strong>{c.name}</strong> <span className="row-arrow">&rarr;</span></td>
+              <td>
+                {c.domain
+                  ? <a href={`https://${c.domain}`} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>{c.domain}</a>
+                  : <span className="muted">&mdash;</span>}
+              </td>
+              <td>{c.email || <span className="muted">&mdash;</span>}</td>
+              <td style={{ whiteSpace: "nowrap" }}>
+                {isOwner ? (
+                  <>
+                    <button className="mini-btn" onClick={(e) => setFase(e, c, "klant", `${c.name} omzetten naar klant? Alles blijft staan; alleen het label verandert.`)}>Maak klant</button>{" "}
+                    <button className="mini-btn" onClick={(e) => setFase(e, c, "verloren", `${c.name} op "niet doorgegaan" zetten? Je kunt dat later terugdraaien.`)}>Niet doorgegaan</button>{" "}
+                    <button className="mini-btn" onClick={(e) => remove(e, c)}>Verwijder</button>
+                  </>
+                ) : <span className="muted">&mdash;</span>}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 
   const clientTable = (list: ClientConfig[], emptyText: string) => (
     <div className="task-table-wrap">
@@ -337,6 +417,45 @@ export default function AdminClient({ initialClients, isOwner = true, showGroups
           </div>
         )}
 
+        {/* Leads: eigen lijst boven de klanten. Een lead is dezelfde soort rij
+            als een klant, maar zonder inlog, sheet en budget. */}
+        <div className="section-title">Leads ({leads.length})</div>
+        {leadTable}
+        {isOwner && (
+          <div style={{ marginTop: 12 }}>
+            <button type="button" className="logout-btn" onClick={() => setShowLeadForm((v) => !v)}>
+              {showLeadForm ? "− Formulier sluiten" : "+ Nieuwe lead"}
+            </button>
+          </div>
+        )}
+        {isOwner && showLeadForm && (
+          <form className="admin-form" style={{ marginTop: 16 }} onSubmit={onSubmitLead}>
+            <div className="form-grid">
+              <div className="field">
+                <label>Bedrijfsnaam</label>
+                <input value={leadForm.name} onChange={(e) => setLeadForm((f) => ({ ...f, name: e.target.value }))} placeholder="Tudor Kozijnen" required />
+              </div>
+              <div className="field">
+                <label>Website</label>
+                <input value={leadForm.domain} onChange={(e) => setLeadForm((f) => ({ ...f, domain: e.target.value }))} placeholder="tudorkozijnen.nl" />
+              </div>
+              <div className="field">
+                <label>E-mailadres (optioneel)</label>
+                <input type="email" value={leadForm.email} onChange={(e) => setLeadForm((f) => ({ ...f, email: e.target.value }))} placeholder="contact@bedrijf.nl" />
+              </div>
+            </div>
+            <div className="hint" style={{ marginBottom: 12 }}>
+              Meer is niet nodig. Een lead krijgt geen inlog, geen Google Sheet en geen budget; dat komt pas als hij klant wordt.
+            </div>
+            {error && <div className="login-error">{error}</div>}
+            <button type="submit" className="primary-btn" disabled={leadBusy}>
+              {leadBusy ? "Bezig…" : "Lead aanmaken"}
+            </button>
+          </form>
+        )}
+
+        <div style={{ marginTop: 36 }} />
+
         {showGroups && mmcClients.length > 0 ? (
           <>
             <div className="section-title">Mijn eigen klanten ({ownClients.length})</div>
@@ -346,8 +465,8 @@ export default function AdminClient({ initialClients, isOwner = true, showGroups
           </>
         ) : (
           <>
-            <div className="section-title">Klanten ({clients.length})</div>
-            {clientTable(clients, "Nog geen klanten.")}
+            <div className="section-title">Klanten ({klanten.length})</div>
+            {clientTable(klanten, "Nog geen klanten.")}
           </>
         )}
 

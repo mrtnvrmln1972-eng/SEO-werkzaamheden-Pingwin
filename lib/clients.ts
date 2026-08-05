@@ -28,11 +28,25 @@ export type ClientCockpit = {
   notes: string | null;
 };
 
+// Levensfase van een bedrijf in het dashboard. Een lead en een klant zijn
+// hetzelfde soort rij; alleen de fase verschilt. Leeg in de database betekent
+// "klant", zodat bestaande klanten ongewijzigd blijven werken.
+export const FASES = ["lead", "klant", "oud", "verloren"] as const;
+export type Fase = (typeof FASES)[number];
+export const FASE_LABEL: Record<Fase, string> = {
+  lead: "Lead",
+  klant: "Klant",
+  oud: "Oud-klant",
+  verloren: "Niet doorgegaan",
+};
+
 export type ClientConfig = {
   id: number;
   slug: string;
   loginId: string;
   name: string;
+  // Levensfase; altijd gevuld (leeg in de database wordt "klant").
+  fase: Fase;
   email: string | null;
   sheetId: string;
   gid: string;
@@ -55,17 +69,19 @@ export type ClientConfig = {
 type ClientRow = {
   id: number;
   slug: string;
-  login_id: string;
+  // Leeg bij een lead (die heeft geen inlog).
+  login_id: string | null;
   name: string;
+  fase: string | null;
   email: string | null;
-  sheet_id: string;
+  sheet_id: string | null;
   gid: string;
   maandbudget: string | number;
   linkbuilding: string | number;
   urenbudget: string | number;
   uurtarief: string | number;
   beschikbare_uren: string | number;
-  password_hash: string;
+  password_hash: string | null;
   domain: string | null;
   ahrefs_project_id: string | null;
   moneybird_contact_id: string | null;
@@ -82,14 +98,22 @@ type ClientRow = {
   notes: string | null;
 };
 
+// Lege/onbekende fase telt als "klant": zo blijven alle bestaande rijen, die
+// deze kolom nog niet gevuld hebben, zich precies hetzelfde gedragen.
+function toFase(v: string | null | undefined): Fase {
+  const t = String(v || "").trim().toLowerCase();
+  return (FASES as readonly string[]).includes(t) ? (t as Fase) : "klant";
+}
+
 function rowToConfig(r: ClientRow): ClientConfig {
   return {
     id: r.id,
     slug: r.slug,
-    loginId: r.login_id,
+    loginId: r.login_id || "",
     name: r.name,
+    fase: toFase(r.fase),
     email: r.email,
-    sheetId: r.sheet_id,
+    sheetId: r.sheet_id || "",
     gid: r.gid,
     domain: r.domain ?? null,
     ahrefsProjectId: r.ahrefs_project_id ?? null,
@@ -156,9 +180,12 @@ export async function getClientForLogin(
 ): Promise<{ config: ClientConfig; passwordHash: string } | null> {
   await ensureSchema();
   const id = loginId.trim().toLowerCase();
+  if (!id) return null;
   const { rows } = await sql<ClientRow>`SELECT * FROM clients WHERE lower(login_id) = ${id} LIMIT 1`;
   if (!rows[0]) return null;
-  return { config: rowToConfig(rows[0]), passwordHash: rows[0].password_hash };
+  // Een lead heeft geen wachtwoord-hash; lege string laat de controle netjes
+  // falen in plaats van te klappen.
+  return { config: rowToConfig(rows[0]), passwordHash: rows[0].password_hash || "" };
 }
 
 export async function listClients(): Promise<ClientConfig[]> {
@@ -209,6 +236,52 @@ export async function createClient(
     RETURNING *`;
 
   return { client: rowToConfig(rows[0]), password };
+}
+
+// ── Een lead aanmaken ──
+// Een lead is dezelfde rij als een klant, maar dan met alleen een naam en een
+// website: geen inlog, geen Google Sheet, geen wachtwoord en geen budget. De
+// klant-login staat uit, zodat er langs die kant niets open kan staan.
+export async function createLead(
+  input: { name: string; domain: string; email?: string },
+): Promise<ClientConfig> {
+  await ensureSchema();
+  const base = slugify(input.name);
+  if (!base) throw new Error("Geen bruikbare naam voor deze lead.");
+  // Botst de slug met een bestaand bedrijf, dan tellen we door (lead-2, lead-3).
+  let slug = base;
+  for (let n = 2; n < 50; n++) {
+    const { rows } = await sql`SELECT 1 FROM clients WHERE slug = ${slug} LIMIT 1`;
+    if (!rows.length) break;
+    slug = `${base}-${n}`;
+  }
+  const { rows } = await sql<ClientRow>`
+    INSERT INTO clients
+      (slug, login_id, name, email, sheet_id, gid, domain,
+       maandbudget, linkbuilding, urenbudget, uurtarief, beschikbare_uren,
+       password_hash, fase, login_enabled)
+    VALUES
+      (${slug}, NULL, ${input.name.trim()}, ${(input.email || "").trim() || null}, NULL, '0',
+       ${normalizeDomain(input.domain)},
+       0, 0, 0, 0, 0, NULL, 'lead', false)
+    RETURNING *`;
+  return rowToConfig(rows[0]);
+}
+
+// Zet de levensfase om ("maak klant" en terug). Alles wat er hangt (chat,
+// dossier, documenten) blijft gewoon staan; alleen het label verandert.
+export async function setClientFase(slug: string, fase: Fase): Promise<boolean> {
+  await ensureSchema();
+  const { rowCount } = await sql`UPDATE clients SET fase = ${fase} WHERE slug = ${slug}`;
+  return !!rowCount && rowCount > 0;
+}
+
+// Website netjes maken: "pingwin.nl", "www.pingwin.nl/", "https://pingwin.nl"
+// worden allemaal "pingwin.nl". Zo werkt de site-scan er meteen op.
+export function normalizeDomain(value: string): string | null {
+  const t = (value || "").trim().toLowerCase();
+  if (!t) return null;
+  return t.replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "").trim() || null;
 }
 
 // Genereert een nieuw wachtwoord voor een bestaande klant.

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminScope, canAccessSlug, guardOwner } from "../../../../lib/admin-scope";
-import { listClients, createClient, deleteClient, updateClientCockpit, updateClientCore, parseSheetUrl, resetClientPassword, setClientBudget, setClientBackendUrl, getOrCreateShareToken } from "../../../../lib/clients";
+import { listClients, createClient, createLead, setClientFase, deleteClient, updateClientCockpit, updateClientCore, parseSheetUrl, resetClientPassword, setClientBudget, setClientBackendUrl, getOrCreateShareToken, FASES, type Fase } from "../../../../lib/clients";
 
 export const runtime = "nodejs";
 
@@ -28,6 +28,20 @@ export async function POST(req: NextRequest) {
   const loginId = String(body.loginId || "").trim();
   const email = String(body.email || "").trim();
   const sheetUrl = String(body.sheetUrl || "").trim();
+
+  // ── Een lead aanmaken: alleen een naam en een website ──
+  // Bewust een eigen, korte route: geen inlog, geen Sheet, geen budget. Raakt
+  // het bestaande klant-aanmaakpad hieronder niet aan.
+  if (String(body.mode || "") === "lead") {
+    const domain = String(body.domain || "").trim();
+    if (!name) return NextResponse.json({ ok: false, error: "Vul de bedrijfsnaam in." }, { status: 400 });
+    try {
+      const client = await createLead({ name, domain, email });
+      return NextResponse.json({ ok: true, client });
+    } catch (err) {
+      return NextResponse.json({ ok: false, error: "Lead aanmaken mislukt: " + ((err as Error).message || "") }, { status: 500 });
+    }
+  }
 
   const maandbudget = Number(body.maandbudget) || 0;
   const linkbuilding = Number(body.linkbuilding) || 0;
@@ -101,6 +115,18 @@ export async function PATCH(req: NextRequest) {
   const slug = String(body.slug || "").trim();
   if (!slug) {
     return NextResponse.json({ ok: false, error: "Geen klant opgegeven." }, { status: 400 });
+  }
+
+  // Levensfase omzetten ("maak klant" en terug). Alles wat aan het bedrijf hangt
+  // blijft staan; alleen het label verandert.
+  if (body.action === "setFase") {
+    const fase = String(body.fase || "").trim().toLowerCase();
+    if (!(FASES as readonly string[]).includes(fase)) {
+      return NextResponse.json({ ok: false, error: "Onbekende fase." }, { status: 400 });
+    }
+    const ok = await setClientFase(slug, fase as Fase);
+    if (!ok) return NextResponse.json({ ok: false, error: "Bedrijf niet gevonden." }, { status: 404 });
+    return NextResponse.json({ ok: true });
   }
 
   // Inlogpagina van de website-beheeromgeving (voor de "Open in site"-knop).

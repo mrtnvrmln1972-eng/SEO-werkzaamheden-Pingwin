@@ -131,6 +131,20 @@ async function init(): Promise<void> {
   // (tweede lijst in het Pingwin-dashboard; cockpit-only, geen login/sheet).
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS grp TEXT`;
 
+  // ── Levensfase: lead of klant ──
+  // Een lead en een klant zijn hetzelfde soort rij; ze verschillen alleen in
+  // fase. Leeg/null betekent 'klant', zodat ALLE bestaande klanten zich exact
+  // hetzelfde blijven gedragen zonder dat er iets gemigreerd hoeft te worden.
+  // Waarden: 'lead' | 'klant' | 'oud' | 'verloren'.
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS fase TEXT`;
+  // Een lead heeft geen inlog, geen Google Sheet en geen wachtwoord. Die drie
+  // kolommen stonden op NOT NULL; dat wordt losgelaten zodat een lead met
+  // alleen een naam en een website aangemaakt kan worden. Een UNIQUE-kolom mag
+  // in Postgres meerdere lege waarden bevatten, dus login_id blijft veilig.
+  await sql`ALTER TABLE clients ALTER COLUMN login_id DROP NOT NULL`;
+  await sql`ALTER TABLE clients ALTER COLUMN sheet_id DROP NOT NULL`;
+  await sql`ALTER TABLE clients ALTER COLUMN password_hash DROP NOT NULL`;
+
   // Ahrefs-sleutel-verwijzing per klant: alleen een LABEL (bv. 'COLLEGA1'), nooit
   // de sleutel zelf (geen secrets in de database). De echte sleutel staat in
   // Vercel als env-var AHREFS_API_TOKEN_<LABEL>. Leeg = het hoofdaccount.
