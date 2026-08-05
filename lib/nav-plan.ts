@@ -339,9 +339,11 @@ export async function getRoadmap(slug: string): Promise<{ nodes: RoadmapNode[]; 
   // Het uitgelezen menu: pagina's die in het menu staan maar niet in de
   // sitemap-scan zaten, zijn nog steeds live (ze staan immers in het menu).
   const menuNodes: RoadmapNode[] = menu.map((n) => { const r = verrijk(n); return { ...r, live: r.live || liveByPad.size === 0 }; });
-  // Pagina's die nog geen meting hebben; de knop in het scherm scant die alsnog.
+  // Pagina's die een (nieuwe) meting nodig hebben: nog nooit gemeten, of nog
+  // met een geschat woordaantal (snapshot van vóór het meten van de eigen
+  // tekst). De knop in het scherm scant die alsnog.
   const ontbrekend = [...nodes, ...menuNodes]
-    .filter((n) => n.live && n.score === null && domain)
+    .filter((n) => n.live && domain && (n.score === null || n.woordenGeschat))
     .map((n) => `https://${domain}${n.url}`)
     .filter((u, i, a) => a.indexOf(u) === i);
   return { nodes, menu: menuNodes, voorstel, domain, ontbrekend };

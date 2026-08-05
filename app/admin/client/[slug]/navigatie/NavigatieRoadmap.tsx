@@ -246,8 +246,8 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
           </span>
           <span className="nv-spacer" />
           {ontbrekend.length > 0 && (
-            <button type="button" className="wp-fase-btn" disabled={!!busy} title="Meet de tekst, koppen, meta en alt-teksten van deze pagina's, zodat ze een score krijgen." onClick={() => void meet()}>
-              {busy === "meten" ? "Pagina\u2019s meten… (kan een minuut duren)" : `Meet de ${ontbrekend.length} nog niet gemeten pagina\u2019s`}
+            <button type="button" className="wp-fase-btn" disabled={!!busy} title="Haalt deze pagina's op en meet tekst, koppen, meta en alt-teksten opnieuw. Zolang dit niet is gedraaid, is het woordaantal een schatting (te herkennen aan de tilde)." onClick={() => void meet()}>
+              {busy === "meten" ? "Pagina\u2019s meten… (kan een minuut duren)" : `Meet ${ontbrekend.length} pagina\u2019s precies`}
             </button>
           )}
           {blik === "huidig" ? (
