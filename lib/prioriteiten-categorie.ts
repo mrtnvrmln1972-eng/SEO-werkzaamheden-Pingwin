@@ -29,6 +29,10 @@ export const CATEGORIE: Record<string, Categorie> = {
   cannibalisatie:    { naam: "Opruimen", tab: "cannibalisatie", taaktype: "overig", kaart: false },
   interne_links:     { naam: "Interne links", tab: "interne-links", taaktype: "intern", kaart: false },
   schema_gap:        { naam: "Structured data", tab: "paginas", taaktype: "structured", kaart: false },
+  // Een kapotte backlink los je op met een omleiding, en dat is precies wat het
+  // opruimscherm doet. Vandaar dezelfde plek, maar een eigen naam: het is geen
+  // cannibalisatie en het zou verwarrend zijn als het onder "Opruimen" viel.
+  backlinks:         { naam: "Kapotte links", tab: "cannibalisatie", taaktype: "overig", kaart: false },
   aeo:               { naam: "AI-zichtbaarheid", tab: "resultaten", taaktype: "overig", kaart: false },
 };
 

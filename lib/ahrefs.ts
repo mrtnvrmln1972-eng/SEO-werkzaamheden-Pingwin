@@ -247,6 +247,33 @@ function intentFromFlags(r: { is_transactional?: boolean; is_commercial?: boolea
   return "";
 }
 
+/**
+ * Backlinks die naar een pagina wijzen die niet meer bestaat. Dat is verdiende
+ * autoriteit die in een 404 valt: één omleiding en je hebt hem terug, zonder dat
+ * er iemand gemaild hoeft te worden. Gesorteerd op de sterkte van het verwijzende
+ * domein, want daar zit de waarde.
+ */
+export type KapotteBacklink = { naar: string; van: string; domainRating: number | null; anchor: string };
+export async function getBrokenBacklinks(domain: string, limit = 100): Promise<KapotteBacklink[]> {
+  const d = (domain || "").trim().replace(/^https?:\/\//, "").replace(/\/$/, "");
+  if (!d) return [];
+  const cached = await cacheGet<KapotteBacklink[]>("brokenbl", d, "-", 7);
+  if (cached) return cached;
+  const data = (await ahrefsFetch("/site-explorer/broken-backlinks", {
+    target: d, mode: "subdomains", limit: String(limit),
+    select: "url_to,url_from,domain_rating_source,anchor",
+    order_by: "domain_rating_source:desc",
+  })) as { backlinks?: Record<string, unknown>[] };
+  const rows = (data.backlinks || []).map((r) => ({
+    naar: String(r.url_to || ""),
+    van: String(r.url_from || ""),
+    domainRating: r.domain_rating_source == null ? null : Number(r.domain_rating_source),
+    anchor: String(r.anchor || ""),
+  })).filter((r) => r.naar && r.van);
+  await cacheSet("brokenbl", d, "-", rows).catch(() => {});
+  return rows;
+}
+
 // Alle organische zoekwoorden van een heel DOMEIN (incl. subdomeinen) met volume,
 // positie, CPC, verkeer, zoekintentie en of het een merk-zoekwoord is. De basis
 // voor de laaghangend-fruit-scan. Eén call voor het hele domein (credit-bewust).

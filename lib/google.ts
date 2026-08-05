@@ -1058,6 +1058,42 @@ export type GscPaar = { keyword: string; page: string; clicks: number; impressio
 const paarCache = new Map<string, { tijd: number; data: GscPaar[] }>();
 const PAAR_TTL = 5 * 60 * 1000;
 
+/**
+ * Zelfde paren, maar met de positie van de vórige even lange periode ernaast.
+ * Hiermee kun je wegzakkers vinden zonder Ahrefs, en dat is precies waar het
+ * misging: Ahrefs kent van een kleine lokale site soms maar een handvol
+ * zoekwoorden, terwijl Search Console de volledige werkelijkheid heeft.
+ * `positieVorig` is null als het zoekwoord er toen nog niet was.
+ */
+export type GscPaarVergelijk = GscPaar & { positieVorig: number | null; vertoningenVorig: number };
+export async function getGscQueryPagePairsCompare(domain: string, days = 90, limit = 25000): Promise<GscPaarVergelijk[]> {
+  const token = await accessTokenFor("google");
+  if (!token || !domain) return [];
+  const site = await gscPickSite(token, domain);
+  if (!site) return [];
+  const r = periodRanges(days);
+  const [nu, toen] = await Promise.all([
+    gscQuery(token, site, { startDate: r.curStart, endDate: r.curEnd, dimensions: ["query", "page"], rowLimit: limit }),
+    gscQuery(token, site, { startDate: r.prevStart, endDate: r.prevEnd, dimensions: ["query", "page"], rowLimit: limit }),
+  ]);
+  const vorig = new Map<string, { position: number; impressions: number }>();
+  for (const x of toen) {
+    const k = `${x.keys?.[0] || ""}|${x.keys?.[1] || ""}`;
+    vorig.set(k, { position: x.position, impressions: Math.round(x.impressions) });
+  }
+  return nu.map((x) => {
+    const keyword = x.keys?.[0] || "", page = x.keys?.[1] || "";
+    const v = vorig.get(`${keyword}|${page}`);
+    return {
+      keyword, page,
+      clicks: Math.round(x.clicks), impressions: Math.round(x.impressions),
+      position: Math.round(x.position * 10) / 10,
+      positieVorig: v ? Math.round(v.position * 10) / 10 : null,
+      vertoningenVorig: v ? v.impressions : 0,
+    };
+  }).filter((x) => x.keyword && x.page);
+}
+
 export async function getGscQueryPagePairs(domain: string, days = 90, maxRijen = 50000): Promise<GscPaar[]> {
   const sleutel = `${domain}|${days}|${maxRijen}`;
   const c = paarCache.get(sleutel);
