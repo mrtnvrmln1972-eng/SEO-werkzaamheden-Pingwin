@@ -32,8 +32,11 @@ export async function POST(req: NextRequest) {
   const email = String(body.email || "").trim();
 
   if (!loginId) return NextResponse.json({ ok: false, error: "Inlognaam is verplicht." }, { status: 400 });
-  if (!/^[a-zA-Z0-9._-]+$/.test(loginId)) {
-    return NextResponse.json({ ok: false, error: "Inlognaam mag alleen letters, cijfers, punt, streepje of underscore bevatten (geen spaties)." }, { status: 400 });
+  // Een e-mailadres als inlognaam is de normaalste zaak (en wat de browser
+  // voorstelt), dus @ en + horen erbij. Spaties blijven eruit: die leveren een
+  // login op die niemand betrouwbaar kan intypen.
+  if (!/^[a-zA-Z0-9._+@-]+$/.test(loginId)) {
+    return NextResponse.json({ ok: false, error: "Inlognaam mag geen spaties bevatten. Letters, cijfers, punt, streepje, underscore, + en @ mogen wel." }, { status: 400 });
   }
 
   try {

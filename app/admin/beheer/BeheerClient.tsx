@@ -66,8 +66,15 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
     }
   }
 
+  // De melding stond bovenaan de pagina. Werk je onderin in het teamformulier,
+  // dan gebeurde er in beeld dus niets en leek de knop kapot. Daarom scrollen we
+  // de melding altijd in beeld, en staat een fout uit het teamformulier ook
+  // direct bij de knop zelf.
   function flash(ok: boolean, text: string) {
     setNotice({ ok, text });
+    setTimeout(() => {
+      document.getElementById("beheer-melding")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 50);
   }
 
   async function logout() {
@@ -329,7 +336,7 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
 
       <div className="container">
         {notice && (
-          <div className={notice.ok ? "saved-msg" : "login-error"} style={{ marginBottom: 16 }}>
+          <div id="beheer-melding" className={notice.ok ? "saved-msg" : "login-error"} style={{ marginBottom: 16 }}>
             {notice.text}
           </div>
         )}
@@ -617,6 +624,9 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
               </label>
             </div>
             <button type="submit" className="primary-btn" style={{ marginTop: 16 }} disabled={busy}>{busy ? "Bezig…" : "Gast aanmaken"}</button>
+            {notice && !notice.ok && (
+              <div className="login-error" style={{ marginTop: 12 }}>{notice.text}</div>
+            )}
           </form>
         )}
 
