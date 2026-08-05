@@ -10,6 +10,8 @@ import { getUrlOrganicKeywords, getSerpOverview, getAhrefsTopPages, ahrefsConfig
 import { callClaudeAgentic, callClaude, LIGHT_MODEL, type ToolDef, type ToolRunner } from "./anthropic";
 import { sheetCsvUrl, parseCSV, structureData, MAAND_VOLGORDE } from "./sheet";
 import { getFocus } from "./focus";
+import { notitiesTekst } from "./notities";
+import { htmlNaarTekst } from "./veilige-html";
 import { buildOverview, overviewToText, getPageWorkStatus, pageWorkStatusToText } from "./overview";
 import { buildPageSignalsText, buildKeywordStandText, buildTeBouwenText } from "./page-signals";
 import { readDriveDoc } from "./drive";
@@ -48,6 +50,18 @@ function stripHtml(html: string): string {
     .replace(/<\/(p|div|br|li|tr|h[1-6])\s*>/gi, "\n")
     .replace(/<[^>]+>/g, " ")
     .replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&").replace(/&lt;/gi, "<").replace(/&gt;/gi, ">").replace(/&#39;|&apos;/gi, "'").replace(/&quot;/gi, '"');
+}
+
+// Notities van Maarten over deze klant. Wat hij in een notitie plakt (een
+// telefoontje, een afspraak, iets wat hij zag) hoort de assistent te weten,
+// zonder dat hij het per gesprek opnieuw uitlegt. Geen notities = geen blok.
+async function notitiesBlok(slug: string): Promise<string> {
+  try {
+    const t = await notitiesTekst(slug);
+    return t
+      ? "\n=== NOTITIES VAN MAARTEN OVER DEZE KLANT (eigen aantekeningen: telefoontjes, afspraken, waarnemingen; betrouwbare achtergrond, spreekt de klantwens aan) ===\n" + t
+      : "";
+  } catch { return ""; }
 }
 
 // ── Welke mails gaan er mee in de context, en hoe volledig ──
@@ -213,6 +227,13 @@ async function buildContext(client: ClientConfig): Promise<string> {
     }
   } catch { /* Ads-context is aanvulling */ }
 
+  // Klantprofiel en notities: deze chat had ze allebei niet, terwijl het juist de
+  // achtergrond is waarmee je een antwoord op maat geeft.
+  const prof = (client.seoProfile || "").trim();
+  if (prof) parts.push("\n=== KLANTPROFIEL (positionering/werkgebied) ===\n" + prof.slice(0, 2500));
+  const nt = await notitiesBlok(client.slug);
+  if (nt) parts.push(nt);
+
   return parts.join("\n");
 }
 
@@ -277,8 +298,17 @@ async function buildOverviewContext(client: ClientConfig): Promise<string> {
   if (client.cockpit?.workDocUrl) links.push(`Werkdocument: ${client.cockpit.workDocUrl}`);
   if (client.cockpit?.resultsUrl) links.push(`Resultaten: ${client.cockpit.resultsUrl}`);
   if (links.length) parts.push("\n=== SNELLE LINKS (leesbaar met lees_document) ===\n" + links.join("\n"));
+  // Top Prio's: Maartens eigen prioriteitenlijstje. Dat bereikte tot nu toe geen
+  // enkele prompt, terwijl het juist stuurt waar de aandacht heen moet.
+  try {
+    const f = await getFocus(client.slug);
+    const p = htmlNaarTekst(f.prioHtml).trim();
+    if (p) parts.push("\n=== TOP PRIO'S (wat Maarten zelf bovenaan heeft gezet; laat dit meewegen in wat je voorstelt) ===\n" + p.slice(0, 2000));
+  } catch { /* aanvulling */ }
   const prof = (client.seoProfile || "").trim();
   if (prof) parts.push("\n=== KLANTPROFIEL (positionering/werkgebied) ===\n" + prof.slice(0, 2500));
+  const nt = await notitiesBlok(client.slug);
+  if (nt) parts.push(nt);
   // Recente e-mails als basisinfo: nieuwe wensen, herzieningen, ingevulde formulieren
   // van de klant horen mee te wegen in de strategie (nieuwste eerst).
   try {

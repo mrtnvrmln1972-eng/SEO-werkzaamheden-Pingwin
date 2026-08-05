@@ -3,6 +3,7 @@ import { getClientUrls, getPagePlan, getPageClusterAdvice } from "./site-urls";
 import { getGscForPage, getGscQueryPageMatrix } from "./google";
 import { getTasks } from "./tasks";
 import { callClaude, LIGHT_MODEL } from "./anthropic";
+import { notitiesTekst } from "./notities";
 
 // ═══════════════════════════════════════════════════════════
 // GROUNDING VOOR DE PAGINA-CHAT
@@ -20,11 +21,12 @@ export type Proposal = { plan?: string; tasks?: { taak: string; fase?: string; w
 export async function buildSystemPrompt(slug: string, url: string): Promise<string> {
   const client = await getClientBySlug(slug);
   const domain = client?.domain || "";
-  const [urls, plan, tasks, clusterAdvice] = await Promise.all([
+  const [urls, plan, tasks, clusterAdvice, notities] = await Promise.all([
     getClientUrls(slug),
     getPagePlan(slug, url),
     getTasks(slug),
     getPageClusterAdvice(slug, url),
+    notitiesTekst(slug).catch(() => ""),
   ]);
   const [kw, matrix] = await Promise.all([
     getGscForPage(domain, url).catch(() => []),
@@ -65,6 +67,7 @@ export async function buildSystemPrompt(slug: string, url: string): Promise<stri
     "",
     "KLANTPROFIEL (positionering, werkgebied, karakter):",
     (client?.seoProfile || "").trim() || "(NOG NIET INGEVULD, vraag hiernaar als het relevant is)",
+    ...(notities ? ["", "NOTITIES VAN MAARTEN OVER DEZE KLANT (eigen aantekeningen: telefoontjes, afspraken, waarnemingen; betrouwbare achtergrond, hierin staat vaak wat de klant wel of juist niet wil):", notities] : []),
     "",
     `GEOPENDE PAGINA: ${url}`,
     `LIVE STATUS: ${self ? (self.status ?? "onbekend") : "niet in de gescande lijst (mogelijk nog niet live)"}${self?.redirectTarget ? ` → ${self.redirectTarget}` : ""}`,

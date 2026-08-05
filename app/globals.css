@@ -2848,6 +2848,21 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
 .bl-mail .wp-docdrop-input { flex: 1; min-width: 220px; }
 .bl-mail-label { font-size: var(--fs-xs); font-weight: 700; color: var(--gray); }
 .bl-mail-msg { font-size: var(--fs-xs); }
+
+/* ── Notities per klant ── */
+.nt-leeg { padding: var(--s-2) var(--s-4) var(--s-4); font-size: var(--fs-sm); }
+.nt-head { display: flex; align-items: center; gap: var(--s-2); }
+.nt-vouw { border: none; background: none; cursor: pointer; padding: 0; display: inline-flex; }
+.nt-titel { flex: 1; min-width: 0; cursor: text; border-radius: var(--r-sm); padding: 0 var(--s-1); }
+.nt-titel:hover { background: var(--orange-light); }
+.nt-titel-input { flex: 1; min-width: 0; }
+.nt-veld { min-height: 160px; }
+.nt-veld:empty::before { content: attr(data-placeholder); color: var(--gray); }
+/* Dichtgeklapt zie je de eerste regels, zodat je de juiste notitie herkent. */
+.nt-voorproef { padding: 0 var(--s-4) var(--s-3) 34px; font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray); cursor: pointer; max-height: 44px; overflow: hidden; }
+.nt-voorproef p, .nt-voorproef ul, .nt-voorproef ol { margin: 0; padding-left: 16px; }
+.nt-voorproef a { color: var(--orange-dark); }
+.nt-weg-vraag { display: inline-flex; align-items: center; gap: var(--s-2); font-size: var(--fs-xs); color: var(--gray); }
 .bl-punten { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s-2); max-width: 720px; }
 .bl-punten li { display: flex; align-items: flex-start; gap: var(--s-2); border: 1px solid var(--card-border); border-radius: var(--r-md); padding: var(--s-2) var(--s-3); font-size: var(--fs-sm); line-height: var(--lh-sm); background: #fff; }
 .bl-punten li.bl-klaar .bl-tekst { text-decoration: line-through; color: var(--muted, #8a7a6c); }
@@ -2910,10 +2925,26 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
 .zp-tab { position: fixed; right: 0; z-index: 10005; writing-mode: vertical-rl; padding: 14px 8px; border: none; border-radius: 10px 0 0 10px; background: var(--orange); color: #fff; font-size: 12.5px; font-weight: 700; letter-spacing: 0.3px; cursor: pointer; box-shadow: 0 4px 14px rgba(231, 119, 63, 0.35); transition: transform 0.18s ease, background 0.18s ease; }
 .zp-tab:hover { transform: translateX(-4px); background: var(--orange-dark); }
 .zp-tab.zp-tab-open { background: var(--orange-dark); }
-.zp-paneel { position: fixed; right: 0; z-index: 10004; width: min(440px, 92vw); max-height: calc(100vh - 170px); overflow-y: auto; background: #fff; border: 1px solid var(--card-border); border-right: none; border-radius: var(--r-lg) 0 0 var(--r-lg); box-shadow: -12px 8px 34px rgba(30, 35, 40, 0.16); transform: translateX(105%); transition: transform 0.22s ease; padding: var(--s-4); }
+.zp-paneel { position: fixed; right: 0; z-index: 10004; max-width: 96vw; max-height: calc(100vh - 170px); overflow-y: auto; background: #fff; border: 1px solid var(--card-border); border-right: none; border-radius: var(--r-lg) 0 0 var(--r-lg); box-shadow: -12px 8px 34px rgba(30, 35, 40, 0.16); transform: translateX(105%); transition: transform 0.22s ease; padding: var(--s-4); }
 .zp-paneel.zp-open { transform: translateX(0); }
 .zp-kop { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
 .zp-titel { color: var(--orange-dark); font-weight: 800; font-size: 14px; }
+.zp-kop-knoppen { display: inline-flex; align-items: center; gap: var(--s-2); flex: 0 0 auto; }
+.zp-knop { border: 1px solid var(--card-border); background: #fff; color: var(--orange-dark); font-size: var(--fs-xs); font-weight: 700; padding: 3px var(--s-2); border-radius: var(--r-sm); cursor: pointer; }
+.zp-knop:hover { background: var(--orange-light); border-color: var(--orange); }
+/* Greep aan de linkerrand: breder of smaller slepen. */
+.zp-greep { position: absolute; left: 0; top: 0; bottom: 0; width: 8px; cursor: ew-resize; background: transparent; }
+.zp-greep:hover { background: var(--orange-light); }
+/* Losgemaakt: een venster midden op het scherm. */
+.zp-paneel.zp-los { right: auto; border-right: 1px solid var(--card-border); border-radius: var(--r-lg); transform: translateX(0) scale(0.98); opacity: 0; pointer-events: none; transition: opacity 0.18s ease, transform 0.18s ease; max-height: none; display: flex; flex-direction: column; }
+.zp-paneel.zp-los.zp-open { transform: translateX(0) scale(1); opacity: 1; pointer-events: auto; }
+.zp-paneel.zp-los .zp-inhoud { flex: 1; min-height: 0; overflow-y: auto; }
+.zp-kop-sleep { cursor: grab; user-select: none; }
+.zp-kop-sleep:active { cursor: grabbing; }
+.zp-formaat { position: absolute; right: 2px; bottom: 2px; width: 16px; height: 16px; cursor: nwse-resize; border-right: 2px solid var(--orange); border-bottom: 2px solid var(--orange); border-radius: 0 0 var(--r-sm) 0; opacity: 0.6; }
+.zp-formaat:hover { opacity: 1; }
+/* Tijdens slepen geen tekstselectie in het hele scherm. */
+body.zp-sleept { user-select: none; cursor: grabbing; }
 .zp-inhoud .sov-tasks { border: none; padding: 0; background: transparent; }
 
 /* Taken-tab: twee kolommen. Links (2/3) bird's eye + weekplanning, rechts (1/3)
