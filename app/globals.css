@@ -2666,7 +2666,46 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
   border-radius: var(--r-sm); cursor: pointer; line-height: 1; padding: 0 var(--s-2); font-size: var(--fs-sm);
 }
 .kb-weg:hover { border-color: var(--red); color: var(--red); }
-.kb-entiteiten li { display: flex; align-items: center; gap: var(--s-2); }
+/* Het kennisbank-overzicht: per soort inklapbaar, per regel een net kaartje met
+   labels en waarden onder elkaar. Vervangt de oude muur van "veld: waarde"-tekst. */
+.org-bewaar { margin-left: auto; font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); white-space: nowrap; }
+.org-bewaar-fout { color: var(--red); font-weight: 700; }
+.org-geen-vest {
+  font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--red);
+  background: var(--red-light); border: 1px solid #f0c7c3; border-radius: var(--r-full);
+  padding: 0 var(--s-2); white-space: nowrap;
+}
+
+.kb-lijst { display: flex; flex-direction: column; gap: var(--s-2); }
+.kb-groep { border: 1px solid var(--card-border); border-radius: var(--r-md); background: var(--white); overflow: hidden; }
+.kb-groep-kop {
+  width: 100%; display: flex; align-items: center; gap: var(--s-2); cursor: pointer;
+  background: none; border: 0; text-align: left; padding: var(--s-2) var(--s-3); font-family: inherit;
+}
+.kb-groep-kop:hover { background: var(--gray-light); }
+.kb-groep-caret { color: var(--gray); font-size: var(--fs-xs); }
+.kb-groep-titel { font-weight: 700; color: var(--orange); font-size: var(--fs-sm); line-height: var(--lh-sm); }
+.kb-groep-aantal {
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700; color: var(--gray);
+  background: var(--gray-light); border-radius: var(--r-full); padding: 0 var(--s-2);
+}
+.kb-groep-sub { font-size: var(--fs-xs); color: var(--gray); margin-left: auto; }
+.kb-groep-kop-klein .kb-groep-titel { color: var(--gray); font-weight: 600; }
+.kb-groep-body {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--s-2); padding: 0 var(--s-3) var(--s-3);
+}
+.kb-subgroep { grid-column: 1 / -1; border-top: 1px solid var(--card-border); margin-top: var(--s-1); }
+.kb-subgroep .kb-groep-body { padding-left: 0; padding-right: 0; }
+.kb-kaart { border: 1px solid var(--card-border); border-radius: var(--r-md); padding: var(--s-2) var(--s-3); background: var(--white); }
+.kb-kaart-kop { display: flex; align-items: center; gap: var(--s-2); margin-bottom: var(--s-1); }
+.kb-kaart-naam { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--dark); }
+.kb-kaart-velden { margin: 0; display: flex; flex-direction: column; gap: 2px; }
+.kb-veld { display: grid; grid-template-columns: 96px 1fr; gap: var(--s-2); align-items: baseline; }
+.kb-veld dt { font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); font-weight: 600; }
+.kb-veld dd { margin: 0; font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--dark); overflow-wrap: anywhere; }
+.kb-veld dd a { color: var(--orange); }
+@media (max-width: 620px) { .kb-veld { grid-template-columns: 1fr; gap: 0; } }
 
 .kb-voorstel-balk {
   display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3);

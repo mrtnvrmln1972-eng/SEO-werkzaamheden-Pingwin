@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import HelpHint from "./HelpHint";
 import Kennisbank from "./Kennisbank";
 import { ontbrekendeSleutels, LEGE_VESTIGING, type OrgVestiging } from "../../../../lib/org-vereist";
@@ -111,7 +111,13 @@ export function OrgDataForm({ data, onChange, disabled }: { data: OrgFormData; o
             <div className="org-vest-kop">
               <input className="org-vest-naam" placeholder="Naam van de vestiging (bijv. Utrecht)" value={v.naam} disabled={disabled}
                 onChange={(e) => zetVestiging(i, { naam: e.target.value })} />
-              {!disabled && <button type="button" className="ghost-btn small" onClick={() => set({ vestigingen: (data.vestigingen || []).filter((_, j) => j !== i) })}>&times;</button>}
+              {/* Zonder huisnummer, postcode of openingstijden is dit een genoemde
+                  plaats en geen vestiging. Dat zeggen we hier, met de knop erbij,
+                  zodat je niet hoeft te zoeken hoe je hem kwijtraakt. */}
+              {!/\d/.test(v.straat || "") && !String(v.postcode || "").trim() && !String(v.openingstijden || "").trim() && (
+                <span className="org-geen-vest">geen bezoekadres, dus geen vestiging</span>
+              )}
+              {!disabled && <button type="button" className="ghost-btn small" title="Deze vestiging verwijderen" onClick={() => set({ vestigingen: (data.vestigingen || []).filter((_, j) => j !== i) })}>&times;</button>}
             </div>
             <div className="org-vest-grid">
               {rijVeld(v.straat, "Straat + huisnummer", `vestiging.${i}.straat`, (x) => zetVestiging(i, { straat: x }))}
@@ -134,9 +140,13 @@ export function OrgDataForm({ data, onChange, disabled }: { data: OrgFormData; o
         <span className="org-label">Werkgebied (plaatsen/regio&rsquo;s, één per regel)<HelpHint text="De plaatsen of regio's waar jullie werken. Vooral belangrijk voor bedrijven zonder bezoekadres." />{mist.has("areaServed") && <span className="org-mis-vlag">ontbreekt nog</span>}</span>
         <textarea rows={2} value={data.areaServed.join("\n")} disabled={disabled} onChange={(e) => set({ areaServed: e.target.value.split("\n").map((s) => s.trim()).filter(Boolean) })} />
       </label>
-      {data.bedrijfstype === "kliniek" && (
+      {/* Secties tonen zodra er inhoud is, ook als het bedrijfstype nog leeg is
+          of anders staat: je eigen gegevens horen niet onzichtbaar te worden
+          door een keuzelijstje. Het bedrijfstype bepaalt alleen nog welke sectie
+          we uit onszelf aanbieden om aan te vullen. */}
+      {(data.bedrijfstype === "kliniek" || data.artsen.length > 0) && (
         <div className="org-typesec">
-          <div className="org-typesec-head">Artsen en behandelaren<HelpHint wide text="De artsen/behandelaren die op de website staan. Naam, functie en specialisatie helpen Google en AI-systemen het vertrouwen in medische informatie te bepalen; het BIG-nummer is daarbij het sterkste bewijs (openbaar register). Deze gegevens koppelen we aan de behandelpagina's." /></div>
+          <div className="org-typesec-head">Artsen en behandelaren ({data.artsen.length})<HelpHint wide text="De artsen/behandelaren die op de website staan. Naam, functie en specialisatie helpen Google en AI-systemen het vertrouwen in medische informatie te bepalen; het BIG-nummer is daarbij het sterkste bewijs (openbaar register). Deze gegevens koppelen we aan de behandelpagina's." /></div>
           {data.artsen.map((a, i) => (
             <div className="org-row" key={i}>
               {rijVeld(a.naam, "Naam", `arts.${i}.naam`, (v) => set({ artsen: data.artsen.map((x, j) => j === i ? { ...x, naam: v } : x) }))}
@@ -150,7 +160,7 @@ export function OrgDataForm({ data, onChange, disabled }: { data: OrgFormData; o
           {!disabled && <button type="button" className="ghost-btn small" onClick={() => set({ artsen: [...data.artsen, { naam: "", functie: "", specialisatie: "", big: "", fotoUrl: "", profielUrl: "" }] })}>+ Arts toevoegen</button>}
         </div>
       )}
-      {data.bedrijfstype === "webshop" && (
+      {(data.bedrijfstype === "webshop" || data.merken.length > 0 || data.retourUrl || data.retourTermijn || data.verzendInfo) && (
         <div className="org-typesec">
           <div className="org-typesec-head">Webshop-gegevens<HelpHint wide text="Retourbeleid en verzendinformatie zijn vereisten van Google om producten met prijs en voorraad in de zoekresultaten te tonen. Vul alleen in wat ook echt op de site staat." /></div>
           <div className="org-grid">
@@ -161,9 +171,9 @@ export function OrgDataForm({ data, onChange, disabled }: { data: OrgFormData; o
           </div>
         </div>
       )}
-      {data.bedrijfstype === "dienstverlener" && (
+      {(data.bedrijfstype === "dienstverlener" || data.diensten.length > 0) && (
         <div className="org-typesec">
-          <div className="org-typesec-head">Diensten<HelpHint wide text="De hoofddiensten van het bedrijf. Elke dienst wordt in de structured data een eigen vermelding die aan het bedrijf en het werkgebied gekoppeld is." /></div>
+          <div className="org-typesec-head">Diensten en behandelingen ({data.diensten.length})<HelpHint wide text="De hoofddiensten of behandelingen van het bedrijf. Elke dienst wordt in de structured data een eigen vermelding die aan het bedrijf en het werkgebied gekoppeld is." /></div>
           {data.diensten.map((d, i) => (
             <div className="org-row org-row-2" key={i}>
               {rijVeld(d.naam, "Dienst (bijv. zwemvijver aanleggen)", `dienst.${i}.naam`, (v) => set({ diensten: data.diensten.map((x, j) => j === i ? { ...x, naam: v } : x) }))}
@@ -190,28 +200,50 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
   const [msg, setMsg] = useState("");
   const [open, setOpen] = useState(false);
 
+  // Wat er in het formulier staat en wat er als laatste bewaard is. Zolang die
+  // twee gelijk zijn valt er niets op te slaan; wijkt het af, dan slaan we het
+  // vanzelf op. Zo kan een keuze (zoals het bedrijfstype) niet meer verdwijnen
+  // doordat het formulier tussendoor opnieuw geladen wordt.
+  const bewaard = useRef<string>("");
+  const [bewaarStand, setBewaarStand] = useState<"" | "bezig" | "klaar" | "fout">("");
+
   async function laadOrg() {
     const d = await fetch(`/api/admin/org-data?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).catch(() => null);
-    if (d?.ok) { setData(d.data); setLocked(!!d.locked); setShareToken(d.shareToken || ""); }
+    if (d?.ok) { bewaard.current = JSON.stringify(d.data); setData(d.data); setLocked(!!d.locked); setShareToken(d.shareToken || ""); }
   }
   useEffect(() => { void laadOrg(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [slug]);
 
   const shareUrl = shareToken && typeof window !== "undefined" ? `${window.location.origin}/share/org/${shareToken}` : "";
 
-  async function save() {
-    if (!data || busy) return;
-    setBusy("save"); setMsg("");
+  async function save(stil = false) {
+    if (!data) return true;
+    const nu = JSON.stringify(data);
+    if (nu === bewaard.current) return true; // niets veranderd
+    if (!stil) { setBusy("save"); setMsg(""); }
+    setBewaarStand("bezig");
     try {
       const d = await fetch("/api/admin/org-data", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, action: "save", data }) }).then((r) => r.json());
-      setMsg(d.ok ? "Opgeslagen." : d.error || "Opslaan mislukt.");
-    } catch { setMsg("Opslaan mislukt."); } finally { setBusy(""); }
+      if (d.ok) { bewaard.current = nu; setBewaarStand("klaar"); if (!stil) setMsg("Opgeslagen."); return true; }
+      setBewaarStand("fout"); setMsg(d.error || "Opslaan mislukt."); return false;
+    } catch { setBewaarStand("fout"); setMsg("Opslaan mislukt."); return false; }
+    finally { if (!stil) setBusy(""); }
   }
+
+  // Automatisch opslaan, kort nadat je stopt met typen of kiezen. Niet tijdens
+  // het automatisch vullen of als de gegevens vergrendeld zijn.
+  useEffect(() => {
+    if (!data || locked || busy === "autofill") return;
+    if (JSON.stringify(data) === bewaard.current) return;
+    const t = setTimeout(() => { void save(true); }, 1200);
+    return () => clearTimeout(t);
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [data, locked, busy]);
   async function autofill() {
     if (busy) return;
     setBusy("autofill"); setMsg("");
     try {
       const d = await fetch("/api/admin/org-data", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, action: "autofill" }) }).then((r) => r.json());
-      if (d.ok) { setData(d.data); setMsg("Automatisch gevuld vanaf de website; loop de velden na en vul aan waar nodig."); }
+      if (d.ok) { bewaard.current = JSON.stringify(d.data); setData(d.data); setMsg("Automatisch gevuld vanaf de website; loop de velden na en vul aan waar nodig."); }
       else setMsg(d.error || "Automatisch vullen mislukt.");
     } catch { setMsg("Automatisch vullen mislukt."); } finally { setBusy(""); }
   }
@@ -273,10 +305,16 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
         <div className="strategy-body">
           <div className="org-actions">
             <button type="button" className="primary-btn small" onClick={autofill} disabled={!!busy}>{busy === "autofill" ? "Website + web doorzoeken… (kan een minuut duren)" : "Automatisch vullen (website + web)"}</button>
-            <button type="button" className="ghost-btn small" onClick={save} disabled={!!busy || !data}>{busy === "save" ? "Opslaan…" : "Opslaan"}</button>
+            <button type="button" className="ghost-btn small" onClick={() => void save()} disabled={!!busy || !data}>{busy === "save" ? "Opslaan…" : "Opslaan"}</button>
             <button type="button" className="ghost-btn small" onClick={toggleLock} disabled={!!busy}>{locked ? "Ontgrendelen" : "Vergrendelen"}</button>
             {shareUrl && <button type="button" className="ghost-btn small" onClick={copyLink} title={shareUrl}>Deel-link kopiëren</button>}
             {shareUrl && <button type="button" className="ghost-btn small" onClick={mailLink}>Mail naar klant</button>}
+            {/* Wat er met je wijziging gebeurt, zonder dat je op Opslaan hoeft te letten. */}
+            {bewaarStand && (
+              <span className={"org-bewaar" + (bewaarStand === "fout" ? " org-bewaar-fout" : "")}>
+                {bewaarStand === "bezig" ? "opslaan…" : bewaarStand === "klaar" ? "✓ opgeslagen" : "opslaan mislukt"}
+              </span>
+            )}
           </div>
           {msg && <div className="saved-msg" style={{ margin: "8px 0" }}>{msg}</div>}
           {data ? <OrgDataForm data={data} onChange={setData} disabled={busy === "autofill"} /> : <div className="muted">Laden…</div>}
@@ -291,7 +329,7 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
             {swMsg && <div className="saved-msg" style={{ marginTop: 6 }}>{swMsg}</div>}
             {swJson && <pre className="sch-json-pre" style={{ marginTop: 8 }}>{swJson}</pre>}
           </div>
-          <Kennisbank slug={slug} onVerwerkt={() => { void laadOrg(); }} />
+          <Kennisbank slug={slug} voorActie={() => save(true)} onVerwerkt={() => { void laadOrg(); }} />
         </div>
       )}
     </div>

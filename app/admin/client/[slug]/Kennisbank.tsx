@@ -15,7 +15,7 @@ const CAT_LABEL: Record<string, string> = { organisatie: "Organisatie", persoon:
 const CAT_VOLGORDE = ["organisatie", "persoon", "locatie", "dienst", "overig"];
 const OORDEEL: Record<string, string> = { nieuw: "nieuw", aanvulling: "aanvulling", ouder: "let op: ouder" };
 
-export default function Kennisbank({ slug, onVerwerkt }: { slug: string; onVerwerkt?: () => void }) {
+export default function Kennisbank({ slug, onVerwerkt, voorActie }: { slug: string; onVerwerkt?: () => void; voorActie?: () => Promise<boolean | void> }) {
   const [entiteiten, setEntiteiten] = useState<Entiteit[]>([]);
   const [gaps, setGaps] = useState<string[]>([]);
   const [voorstellen, setVoorstellen] = useState<Voorstel[]>([]);
@@ -83,6 +83,7 @@ export default function Kennisbank({ slug, onVerwerkt }: { slug: string; onVerwe
   }
 
   async function besluit(actie: "verwerk" | "negeer", id: number) {
+    await voorActie?.(); // eerst bewaren wat in het formulier openstaat, anders gaat dat verloren
     setBusy(`${actie}-${id}`); setFout("");
     try {
       const d = await fetch("/api/admin/schema-knowledge", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: actie, slug, id }) }).then((r) => r.json());
@@ -96,6 +97,7 @@ export default function Kennisbank({ slug, onVerwerkt }: { slug: string; onVerwe
   }
 
   async function verwerkAlles() {
+    await voorActie?.(); // eerst bewaren wat in het formulier openstaat, anders gaat dat verloren
     setBusy("alles"); setFout(""); setOkMsg("");
     try {
       const d = await fetch("/api/admin/schema-knowledge", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "verwerkAlles", slug }) }).then((r) => r.json());
@@ -106,6 +108,7 @@ export default function Kennisbank({ slug, onVerwerkt }: { slug: string; onVerwe
   }
   // Alles wat al in de kennisbank staat alsnog in de bedrijfsgegevens zetten.
   async function zetInVelden() {
+    await voorActie?.(); // eerst bewaren wat in het formulier openstaat, anders gaat dat verloren
     setBusy("velden"); setFout(""); setOkMsg("");
     try {
       const d = await fetch("/api/admin/schema-knowledge", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "toepassen", slug }) }).then((r) => r.json());
@@ -173,6 +176,47 @@ export default function Kennisbank({ slug, onVerwerkt }: { slug: string; onVerwe
   const standDatum = stand ? new Date(stand.datum).toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" }) : "";
 
   const perCat = CAT_VOLGORDE.map((c) => ({ cat: c, items: entiteiten.filter((e) => e.categorie === c) })).filter((g) => g.items.length);
+
+  // ── Het overzicht: nette kaartjes in plaats van een muur tekst ──
+  const [openCat, setOpenCat] = useState<Record<string, boolean>>({});
+  const [openRest, setOpenRest] = useState(false);
+  // Alleen een locatie met huisnummer of postcode is een vestiging.
+  const isVestiging = (e: Entiteit) => /\d/.test(e.velden.adres || "") || !!(e.velden.postcode || "").trim();
+  // Velden die over onze eigen administratie gaan horen niet in beeld.
+  const INTERN = /^(schemaid|bronbestand|bron|opmerking|actie_\d+|id)$/i;
+  const LABELS: Record<string, string> = {
+    adres: "Adres", postcode: "Postcode", plaats: "Plaats", telefoon: "Telefoon", email: "E-mail",
+    openingstijden: "Openingstijden", functie: "Functie", specialisatie: "Specialisatie", big: "BIG-nummer",
+    linkedin: "LinkedIn", profielUrl: "Pagina", foto: "Foto", omschrijving: "Omschrijving", kvk: "KVK",
+    btw: "BTW-id", logo: "Logo", oprichtingsjaar: "Opgericht", sameAs: "Profielen", mapsUrl: "Google Maps",
+    vestigingen: "Werkt bij", priceRange: "Prijsindicatie", areaServed: "Werkgebied", bedrijfstype: "Bedrijfstype",
+  };
+  const isLink = (v: string) => /^https?:\/\//i.test(v.trim());
+  const kaart = (e: Entiteit) => {
+    const velden = Object.entries(e.velden).filter(([k, v]) => !INTERN.test(k) && String(v || "").trim());
+    return (
+      <div className="kb-kaart" key={e.id}>
+        <div className="kb-kaart-kop">
+          <strong className="kb-kaart-naam">{e.naam}</strong>
+          {e.categorie === "locatie" && !isVestiging(e) && (
+            <span className="kb-geen-vestiging" title="Zonder bezoekadres tellen we dit niet als vestiging; het vraagt dus ook niet om openingstijden.">geen vestiging</span>
+          )}
+          <button type="button" className="kb-weg" title="Uit de kennisbank halen" disabled={!!busy}
+            onClick={() => void verwijder(e.id, e.naam)}>&times;</button>
+        </div>
+        {velden.length ? (
+          <dl className="kb-kaart-velden">
+            {velden.map(([k, v]) => (
+              <div className="kb-veld" key={k}>
+                <dt>{LABELS[k] || k}</dt>
+                <dd>{isLink(v) ? <a href={v} target="_blank" rel="noreferrer">{v.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")}</a> : v}</dd>
+              </div>
+            ))}
+          </dl>
+        ) : <div className="muted">Nog geen details bekend.</div>}
+      </div>
+    );
+  };
 
   return (
     <div className="kb-wrap">
@@ -252,25 +296,37 @@ export default function Kennisbank({ slug, onVerwerkt }: { slug: string; onVerwe
         {!stand && <div className="muted">Nog geen onderzoek gedaan; klik op &ldquo;Onderzoek nu&rdquo; voor de actuele richtlijnen (Google en AI) en hoe wij ze toepassen.</div>}
       </div>
       {perCat.length > 0 && (
-        <div className="kb-entiteiten">
-          {perCat.map((g) => (
-            <div key={g.cat} className="kb-cat">
-              <div className="kb-cat-kop">{CAT_LABEL[g.cat]} ({g.items.length})</div>
-              <ul>
-                {g.items.map((e) => (
-                  <li key={e.id}>
-                    <strong>{e.naam}</strong>
-                    {e.categorie === "locatie" && !(/\d/.test(e.velden.adres || "") || (e.velden.postcode || "").trim()) && (
-                      <span className="kb-geen-vestiging" title="Zonder bezoekadres tellen we dit niet als vestiging; het vraagt dus ook niet om openingstijden.">geen vestiging</span>
+        <div className="kb-lijst">
+          {perCat.map((g) => {
+            const open = !!openCat[g.cat];
+            const echt = g.cat === "locatie" ? g.items.filter((e) => isVestiging(e)) : g.items;
+            const rest = g.cat === "locatie" ? g.items.filter((e) => !isVestiging(e)) : [];
+            return (
+              <div key={g.cat} className="kb-groep">
+                <button type="button" className="kb-groep-kop" onClick={() => setOpenCat({ ...openCat, [g.cat]: !open })}>
+                  <span className="kb-groep-caret">{open ? "▾" : "▸"}</span>
+                  <span className="kb-groep-titel">{CAT_LABEL[g.cat] || g.cat}</span>
+                  <span className="kb-groep-aantal">{g.items.length}</span>
+                  {rest.length > 0 && <span className="kb-groep-sub">{echt.length} met bezoekadres</span>}
+                </button>
+                {open && (
+                  <div className="kb-groep-body">
+                    {echt.map((e) => kaart(e))}
+                    {rest.length > 0 && (
+                      <div className="kb-subgroep">
+                        <button type="button" className="kb-groep-kop kb-groep-kop-klein" onClick={() => setOpenRest(!openRest)}>
+                          <span className="kb-groep-caret">{openRest ? "▾" : "▸"}</span>
+                          <span className="kb-groep-titel">Zonder bezoekadres, geen vestiging</span>
+                          <span className="kb-groep-aantal">{rest.length}</span>
+                        </button>
+                        {openRest && <div className="kb-groep-body">{rest.map((e) => kaart(e))}</div>}
+                      </div>
                     )}
-                    <span className="muted kb-velden">{Object.entries(e.velden).map(([k, v]) => `${k}: ${v}`).join(" · ") || "(nog geen details)"}</span>
-                    <button type="button" className="kb-weg" title="Uit de kennisbank halen" disabled={!!busy}
-                      onClick={() => void verwijder(e.id, e.naam)}>&times;</button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

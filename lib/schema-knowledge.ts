@@ -1,5 +1,6 @@
 import { sql, ensureSchema } from "./db";
 import { getOrgData, saveOrgData, type OrgData } from "./org-data";
+import { getClientBySlug } from "./clients";
 import { ontbrekendeVelden, LEGE_VESTIGING, type OrgVestiging } from "./org-vereist";
 import { callClaude } from "./anthropic";
 
@@ -552,15 +553,25 @@ export async function applyKnowledgeToOrg(slug: string): Promise<{ gevuld: numbe
   const [rec, entiteiten] = await Promise.all([getOrgData(slug), listKnowledge(slug)]);
   if (rec.locked) return { gevuld: 0, nieuweVestigingen: 0, nieuweArtsen: 0 };
   const voor = JSON.stringify(rec.data);
-  const { data, nieuweVestigingen, nieuweArtsen } = kennisNaarOrg(rec.data, entiteiten);
+  const client = await getClientBySlug(slug).catch(() => null);
+  const { data, nieuweVestigingen, nieuweArtsen } = kennisNaarOrg(rec.data, entiteiten, client?.domain || "");
   const gevuld = JSON.stringify(data) === voor ? 0 : 1;
   if (gevuld) await saveOrgData(slug, data, "admin");
   return { gevuld, nieuweVestigingen, nieuweArtsen };
 }
 
 // De omzetting zelf: los van de database, zodat hij te controleren is.
-export function kennisNaarOrg(bron: OrgData, entiteiten: KennisEntiteit[]): { data: OrgData; nieuweVestigingen: number; nieuweArtsen: number } {
+export function kennisNaarOrg(bron: OrgData, entiteiten: KennisEntiteit[], eigenDomein = ""): { data: OrgData; nieuweVestigingen: number; nieuweArtsen: number } {
   const d: OrgData = JSON.parse(JSON.stringify(bron));
+  // De eigen website hoort niet tussen de sociale profielen: "sameAs" gaat over
+  // vermeldingen elders (Facebook, LinkedIn, Google Business), niet over jezelf.
+  const eigen = String(eigenDomein || "").replace(/^https?:\/\//i, "").replace(/^www\./i, "").replace(/\/.*$/, "").toLowerCase();
+  const isEigenSite = (u: string) => {
+    if (!eigen) return false;
+    const host = u.replace(/^https?:\/\//i, "").replace(/^www\./i, "").replace(/\/.*$/, "").toLowerCase();
+    return host === eigen;
+  };
+  if (eigen) d.sameAs = d.sameAs.filter((u) => !isEigenSite(u));
   let nieuweVestigingen = 0, nieuweArtsen = 0;
 
   // Eerst opruimen wat er al dubbel in het formulier staat.
@@ -575,11 +586,13 @@ export function kennisNaarOrg(bron: OrgData, entiteiten: KennisEntiteit[]): { da
   // ooit als "locatie" werd opgepikt) zijn geen vestiging en verdwijnen uit het
   // formulier. Zodra er een huisnummer, postcode, openingstijd of contactgegeven
   // in staat, blijft de rij gewoon staan; zelf ingetypte rijen raak je dus niet kwijt.
-  d.vestigingen = [...gezienV.values()].filter((v) => {
-    const echt = /\d/.test(v.straat || "") || String(v.postcode || "").trim();
-    const inhoud = [v.openingstijden, v.telefoon, v.email, v.mapsUrl].some((x) => String(x || "").trim());
-    return echt || inhoud;
-  });
+  // Wat een vestiging maakt is een bezoekadres (huisnummer of postcode), eigen
+  // openingstijden of een eigen Maps-vermelding. Een telefoonnummer of e-mail
+  // telt bewust niet mee: dat is bij een keten voor alle locaties hetzelfde en
+  // maakt van een genoemde plaats dus geen vestiging.
+  d.vestigingen = [...gezienV.values()].filter((v) =>
+    /\d/.test(v.straat || "") || String(v.postcode || "").trim()
+    || String(v.openingstijden || "").trim() || String(v.mapsUrl || "").trim());
   const gezienA = new Map<string, OrgData["artsen"][number]>();
   for (const a of d.artsen) {
     const k = identiteit("persoon", a.naam, { big: a.big });
@@ -615,7 +628,8 @@ export function kennisNaarOrg(bron: OrgData, entiteiten: KennisEntiteit[]): { da
     for (const [naam, waarde] of Object.entries(v)) {
       if (!SOCIAL_VELDEN.test(naam.replace(/[^a-z0-9]/gi, ""))) continue;
       for (const u of String(waarde || "").split(/[\s,;]+/)) {
-        if (/^https?:\/\//i.test(u) && !d.sameAs.some((s) => sleutel(s) === sleutel(u))) d.sameAs.push(u);
+        if (!/^https?:\/\//i.test(u) || isEigenSite(u)) continue;
+        if (!d.sameAs.some((s) => sleutel(s) === sleutel(u))) d.sameAs.push(u);
       }
     }
   }
