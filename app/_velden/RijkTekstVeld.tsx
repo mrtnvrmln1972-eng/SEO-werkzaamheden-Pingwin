@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
-import { cleanPastedHtml, linkifyPlainText } from "../../../../lib/rich-paste";
+import { cleanPastedHtml, linkifyPlainText } from "../../lib/rich-paste";
 
 /**
  * Eén opmaakbaar tekstveld met knoppenbalk, voor overal in het dashboard.

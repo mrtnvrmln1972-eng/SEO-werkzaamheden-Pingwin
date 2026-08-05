@@ -4230,3 +4230,47 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 @media (max-width: 700px) {
   .mc-etiket { min-width: 0; flex-basis: 100%; }
 }
+
+/* ── Developer: zelf taken aanmaken, bijwerken en er documenten aan hangen ──
+   Eén venster voor een nieuwe én een bestaande taak, met dezelfde velden als de
+   rest van het dashboard (opmaakbaar tekstveld, nette kaartranden, schaal-tokens). */
+.dev-nieuw-btn {
+  font-size: var(--fs-xs); font-weight: 700; padding: var(--s-1) var(--s-3);
+  border: 1px solid var(--orange); background: var(--orange); color: #fff;
+  border-radius: var(--r-full); cursor: pointer; margin-left: var(--s-3);
+}
+.dev-nieuw-btn:hover { filter: brightness(1.06); }
+.dev-client-card-head { display: flex; align-items: center; gap: var(--s-2); }
+.dev-client-card-head .dev-nieuw-btn { margin-left: auto; }
+.dev-rij-acties { display: flex; gap: var(--s-2); flex-wrap: wrap; }
+
+.dev-venster { width: 760px; }
+.dev-venster .rtv { margin-bottom: var(--s-2); }
+.dev-venster .dev-veld-rijk { min-height: 90px; }
+.dev-venster-msg {
+  margin-top: var(--s-3); font-size: var(--fs-sm); line-height: var(--lh-sm);
+  color: var(--muted); background: var(--orange-light);
+  border-radius: var(--r-sm); padding: var(--s-2) var(--s-3);
+}
+.dev-weg-btn { margin-right: auto; }
+
+.dev-docs-blok {
+  margin-top: var(--s-5); padding-top: var(--s-4);
+  border-top: 1px solid var(--border);
+}
+.dev-docs-lijst { list-style: none; margin: var(--s-2) 0 var(--s-3); padding: 0; display: grid; gap: var(--s-2); }
+.dev-docs-lijst li {
+  display: flex; align-items: center; gap: var(--s-2);
+  background: var(--gray-light); border-radius: var(--r-sm); padding: var(--s-2) var(--s-3);
+}
+.dev-docs-lijst .dev-doc-link { flex: 1; word-break: break-word; }
+.dev-doc-weg {
+  border: none; background: none; cursor: pointer; color: var(--gray);
+  font-size: var(--fs-md); line-height: 1; padding: 0 var(--s-1);
+}
+.dev-doc-weg:hover { color: var(--orange); }
+.dev-doc-toevoegen { display: flex; gap: var(--s-2); flex-wrap: wrap; align-items: center; }
+.dev-doc-toevoegen .compose-input { flex: 1 1 200px; }
+.dev-doc-upload { display: flex; gap: var(--s-2); align-items: center; flex-wrap: wrap; margin-top: var(--s-3); }
+.dev-doc-upload .muted { font-size: var(--fs-xs); line-height: var(--lh-xs); }
+.dev-doc-hint { margin-top: var(--s-2); font-size: var(--fs-xs); line-height: var(--lh-xs); }

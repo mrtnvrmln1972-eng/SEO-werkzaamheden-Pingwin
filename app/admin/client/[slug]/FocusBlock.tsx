@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import RijkTekstVeld from "./RijkTekstVeld";
+import RijkTekstVeld from "../../../_velden/RijkTekstVeld";
 
 /**
  * Eén vrij opmaakbaar tekstveld per klant, met knoppenbalk en automatisch opslaan.

@@ -15,7 +15,7 @@ import { useEffect, useRef, useState } from "react";
 import { persoonLabel, devVoornaam } from "../../../../lib/personen";
 import { linkifyHtml } from "../../../../lib/linkify";
 import { escapeHtml, isHtml, htmlNaarTekst } from "../../../../lib/veilige-html";
-import RijkTekstVeld from "./RijkTekstVeld";
+import RijkTekstVeld from "../../../_velden/RijkTekstVeld";
 
 type Item = { id: number; persoon: string; tekst: string; klaar: boolean; gedeeldAt: string | null; createdAt: string | null };
 

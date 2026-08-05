@@ -864,12 +864,10 @@ export default function ClientCockpit({
         {tab === "cannibalisatie" && <CannibalPanel slug={client.slug} domain={client.domain || ""} openTarget={opruimTarget} />}
         {tab === "interne-links" && <InternalLinksPanel slug={client.slug} openTarget={linkTarget} />}
 
-        {tab === "developer" && (<>
-          {/* De naam van de sitebouwer hoort bij het developer-werk, niet bovenaan
-              het klantscherm. De naam zelf werkt overal hetzelfde door. */}
-          <SitebouwerVeld slug={client.slug} start={client.cockpit.devName || ""} />
-          <DeveloperOverview embedded />
-        </>)}
+        {/* Alleen het developer-werk van DEZE klant; het overzicht over alle
+            klanten heen staat op /admin/developer. Nieuwe taken die je hier
+            aanmaakt landen dus vanzelf bij de juiste klant. */}
+        {tab === "developer" && <DeveloperOverview embedded slug={client.slug} clientName={client.name} />}
       </div>
 
       <div className="footer">Pingwin Online Marketing &middot; Beheer</div>
@@ -1005,47 +1003,3 @@ function shortUrl(url: string): string {
 }
 
 
-// Wie bouwt de site van DEZE klant. Stond eerder hardgecodeerd als "Sander" in
-// zes schermen, waardoor bij elke klant dezelfde naam in beeld kwam. Leeg laten
-// mag: dan noemt het dashboard hem gewoon "Dev" en verzint het niemand.
-function SitebouwerVeld({ slug, start }: { slug: string; start: string }) {
-  const [naam, setNaam] = useState(start);
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState("");
-  const gewijzigd = naam.trim() !== start.trim();
-
-  async function bewaar() {
-    if (busy || !gewijzigd) return;
-    setBusy(true); setMsg("");
-    try {
-      const d = await fetch("/api/admin/clients", {
-        method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, action: "devName", devName: naam.trim() }),
-      }).then((r) => r.json());
-      setMsg(d?.ok ? "Bewaard." : (d?.error || "Bewaren mislukte."));
-    } catch { setMsg("Bewaren mislukte."); }
-    finally { setBusy(false); }
-  }
-
-  return (
-    <div className="cockpit-card">
-      <div className="ck-section-head"><span>Sitebouwer</span></div>
-      <div className="dev-veld">
-        <input
-          className="compose-input"
-          value={naam}
-          onChange={(e) => { setNaam(e.target.value); setMsg(""); }}
-          onKeyDown={(e) => { if (e.key === "Enter") void bewaar(); }}
-          placeholder="Naam van de sitebouwer (leeg laten mag)"
-        />
-        <button type="button" className="btn" onClick={() => void bewaar()} disabled={busy || !gewijzigd}>
-          {busy ? "Bezig…" : "Bewaar"}
-        </button>
-        {msg && <span className="dev-veld-msg">{msg}</span>}
-      </div>
-      <div className="muted" style={{ fontSize: "var(--fs-sm)", marginTop: "var(--s-2)" }}>
-        Deze naam komt terug op de bespreeklijsten en bij de werklijst. Vul je niets in, dan staat er gewoon &ldquo;Dev&rdquo;.
-      </div>
-    </div>
-  );
-}
