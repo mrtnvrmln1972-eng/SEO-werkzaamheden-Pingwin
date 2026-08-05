@@ -225,7 +225,10 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
   }
 
   async function clearChat(thread: string) {
-    if (!window.confirm("Dit onderwerp wissen?")) return;
+    const basis = thread === BASE;
+    if (!window.confirm(basis
+      ? "Dit is het eerste gesprek en dat blijft bestaan. De inhoud leegmaken?"
+      : "Dit onderwerp wissen?")) return;
     setMessages([]); setOpen(null);
     setTopics((ts) => ts.filter((x) => x.thread !== thread || x.thread === BASE).map((x) => x.thread === thread ? { ...x, count: 0, summary: "", done: false } : x));
     await fetch(`/api/admin/chat?slug=${encodeURIComponent(slug)}&thread=${encodeURIComponent(thread)}`, { method: "DELETE" }).catch(() => {});
@@ -360,10 +363,14 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
                     : <span className="ovc-topic-title">{titleOf(t)}</span>}
                   {!isOpen && t.summary && <span className="ovc-topic-sum">{t.summary}</span>}
                 </div>
-                {t.thread !== BASE && (
-                  <button type="button" className="wp-icon wp-del ovc-topic-del" title="Dit onderwerp verwijderen"
-                    onClick={(e) => { e.stopPropagation(); void clearChat(t.thread); }}>×</button>
-                )}
+                {/* Het eerste gesprek (de basis) mag niet verdwijnen, want er moet er
+                    altijd één zijn. Maar het kruisje werd daarvoor helemáál weggelaten,
+                    en dan lijkt die rij gewoon kapot: je zoekt een knop die er niet is.
+                    Nu staat hij er wel en maakt hij dat onderwerp leeg in plaats van
+                    het weg te gooien. Dat kon clearChat al. */}
+                <button type="button" className="wp-icon wp-del ovc-topic-del"
+                  title={t.thread === BASE ? "Dit onderwerp leegmaken (het eerste gesprek blijft bestaan)" : "Dit onderwerp verwijderen"}
+                  onClick={(e) => { e.stopPropagation(); void clearChat(t.thread); }}>×</button>
               </div>
 
               {isOpen && (
