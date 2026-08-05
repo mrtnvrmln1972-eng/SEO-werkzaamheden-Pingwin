@@ -7,7 +7,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { linkifyHtml } from "../../../../lib/linkify";
-import RijkTekstVeld from "./RijkTekstVeld";
+import RijkTekstVeld from "../../../_velden/RijkTekstVeld";
 
 type Notitie = { id: number; titel: string; inhoud: string; createdAt: string | null; updatedAt: string | null };
 
