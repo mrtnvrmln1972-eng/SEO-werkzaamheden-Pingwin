@@ -38,7 +38,10 @@ export async function POST(req: NextRequest) {
   if (body.action === "autofill") {
     const res = await autofillOrgData(slug);
     if (!res.ok) return NextResponse.json({ ok: false, error: res.error }, { status: 500 });
-    return NextResponse.json({ ok: true, data: res.data });
+    return NextResponse.json({
+      ok: true, data: res.data, gevuld: res.gevuld,
+      nieuweVestigingen: res.nieuweVestigingen, nieuweArtsen: res.nieuweArtsen, nieuweDiensten: res.nieuweDiensten,
+    });
   }
   if (!body.data) return NextResponse.json({ ok: false, error: "Geen gegevens meegegeven." }, { status: 400 });
   const res = await saveOrgData(slug, body.data, "admin");

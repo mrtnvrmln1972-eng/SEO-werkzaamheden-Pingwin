@@ -1,7 +1,7 @@
 import { sql, ensureSchema } from "./db";
 import { getClientBySlug } from "./clients";
 import { callClaudeWebSearch } from "./anthropic";
-import { LEGE_VESTIGING, type OrgVestiging } from "./org-vereist";
+import { LEGE_VESTIGING, identiteit, naamKaal, ontbrekendeVelden, type OrgVestiging } from "./org-vereist";
 import crypto from "crypto";
 
 // ═══════════════════════════════════════════════════════════
@@ -215,6 +215,59 @@ export async function getSlugByOrgToken(token: string): Promise<string | null> {
 // en laat Claude het formulier zo compleet mogelijk invullen. Onvindbare velden
 // blijven leeg (de klant vult aan via de deellink). Er wordt niets verzonnen.
 
+// ─── Samenvoegen in plaats van vervangen ───
+// Het automatisch ophalen zette eerder de hele rij in de plaats van wat er stond.
+// Eén klik kon daarmee bevestigde vestigingen, BIG-nummers en behandelingen
+// wissen. Vanaf nu geldt: wat ingevuld is blijft staan, gevonden gegevens landen
+// alleen in lege velden, en onbekende vestigingen/artsen/diensten komen erbij.
+export function voegOrgSamen(bestaand: OrgData, gevonden: OrgData): { data: OrgData; gevuld: number; nieuweVestigingen: number; nieuweArtsen: number; nieuweDiensten: number } {
+  const d: OrgData = JSON.parse(JSON.stringify(bestaand));
+  let gevuld = 0;
+  const vul = <K extends keyof OrgData>(k: K) => {
+    const huidig = String(d[k] ?? "").trim();
+    const nieuw = String(gevonden[k] ?? "").trim();
+    if (!huidig && nieuw) { (d[k] as unknown as string) = nieuw; gevuld++; }
+  };
+  (["bedrijfsnaam", "bedrijfstype", "rechtsvorm", "kvk", "btw", "telefoon", "email", "straat", "postcode",
+    "plaats", "openingstijden", "logoUrl", "priceRange", "oprichtingsjaar", "reviewUrl", "reviewGemiddelde",
+    "reviewAantal", "retourUrl", "retourTermijn", "verzendInfo", "notitie"] as (keyof OrgData)[]).forEach(vul);
+
+  // Lijsten van losse waarden: aanvullen, nooit vervangen.
+  for (const k of ["sameAs", "areaServed", "merken"] as const) {
+    for (const w of gevonden[k] || []) {
+      if (!d[k].some((x) => naamKaal(x) === naamKaal(w))) { d[k].push(w); gevuld++; }
+    }
+  }
+
+  const vulRij = (doel: Record<string, string>, bron: Record<string, string>) => {
+    for (const [k, v] of Object.entries(bron)) {
+      if (String(v || "").trim() && !String(doel[k] || "").trim()) { doel[k] = v; gevuld++; }
+    }
+  };
+  const vestId = (v: OrgVestiging) => identiteit("locatie", v.naam, { adres: v.straat, postcode: v.postcode, plaats: v.plaats });
+  let nieuweVestigingen = 0, nieuweArtsen = 0, nieuweDiensten = 0;
+  for (const v of gevonden.vestigingen || []) {
+    // Op adres én op naam vergelijken. Vindt het web een afwijkend adres voor een
+    // vestiging die we al kennen, dan hoort dat geen tweede regel op te leveren:
+    // de naam wijst hem aan, en het bestaande adres blijft gewoon staan.
+    const bestaandeRij = d.vestigingen.find((x) => vestId(x) === vestId(v))
+      || (naamKaal(v.naam) ? d.vestigingen.find((x) => naamKaal(x.naam) === naamKaal(v.naam)) : undefined);
+    if (bestaandeRij) vulRij(bestaandeRij as unknown as Record<string, string>, v as unknown as Record<string, string>);
+    else { d.vestigingen.push({ ...v }); nieuweVestigingen++; }
+  }
+  for (const a of gevonden.artsen || []) {
+    const bestaandeRij = d.artsen.find((x) => identiteit("persoon", x.naam, { big: x.big }) === identiteit("persoon", a.naam, { big: a.big }));
+    if (bestaandeRij) vulRij(bestaandeRij as unknown as Record<string, string>, a as unknown as Record<string, string>);
+    else { d.artsen.push({ ...a }); nieuweArtsen++; }
+  }
+  for (const s of gevonden.diensten || []) {
+    const bestaandeRij = d.diensten.find((x) => naamKaal(x.naam) === naamKaal(s.naam));
+    if (bestaandeRij) vulRij(bestaandeRij as unknown as Record<string, string>, s as unknown as Record<string, string>);
+    else { d.diensten.push({ ...s }); nieuweDiensten++; }
+  }
+  return { data: d, gevuld, nieuweVestigingen, nieuweArtsen, nieuweDiensten };
+}
+
 async function fetchPage(url: string): Promise<string> {
   try {
     const ctl = new AbortController();
@@ -243,7 +296,8 @@ function htmlToText(html: string): string {
     .replace(/\s+/g, " ").trim();
 }
 
-export async function autofillOrgData(slug: string): Promise<{ ok: boolean; data?: OrgData; error?: string }> {
+// Ophalen wat er nog ontbreekt. Vult alleen lege plekken; overschrijft nooit.
+export async function autofillOrgData(slug: string): Promise<{ ok: boolean; data?: OrgData; error?: string; gevuld?: number; nieuweVestigingen?: number; nieuweArtsen?: number; nieuweDiensten?: number }> {
   const client = await getClientBySlug(slug);
   const domain = (client?.domain || "").trim();
   if (!domain) return { ok: false, error: "Deze klant heeft nog geen domein ingevuld." };
@@ -299,9 +353,15 @@ Geef UITSLUITEND geldige JSON met exact deze velden (string tenzij anders vermel
     const start = cleaned.indexOf("{");
     const end = cleaned.lastIndexOf("}");
     const parsed = JSON.parse(start >= 0 && end > start ? cleaned.slice(start, end + 1) : cleaned);
-    const data = normalize(parsed);
-    await saveOrgData(slug, data, "admin");
-    return { ok: true, data };
+    const gevonden = normalize(parsed);
+    const huidig = await getOrgData(slug);
+    if (huidig.locked) return { ok: false, error: "Deze gegevens zijn vergrendeld; er wordt niets meer aangevuld." };
+    const uitkomst = voegOrgSamen(huidig.data, gevonden);
+    if (uitkomst.gevuld) await saveOrgData(slug, uitkomst.data, "admin");
+    return {
+      ok: true, data: uitkomst.data, gevuld: uitkomst.gevuld,
+      nieuweVestigingen: uitkomst.nieuweVestigingen, nieuweArtsen: uitkomst.nieuweArtsen, nieuweDiensten: uitkomst.nieuweDiensten,
+    };
   } catch (e) {
     return { ok: false, error: `Automatisch vullen mislukt: ${(e as Error).message}` };
   }

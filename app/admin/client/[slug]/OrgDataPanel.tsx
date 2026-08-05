@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import HelpHint from "./HelpHint";
 import Kennisbank from "./Kennisbank";
-import { ontbrekendeSleutels, LEGE_VESTIGING, type OrgVestiging } from "../../../../lib/org-vereist";
+import { ontbrekendeSleutels, ontbrekendeVelden, LEGE_VESTIGING, type OrgVestiging } from "../../../../lib/org-vereist";
 
 // ═══════════════════════════════════════════════════════════
 // BEDRIJFSGEGEVENS (fundament voor structured data)
@@ -254,12 +254,25 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
   }, [data, locked, busy]);
   async function autofill() {
     if (busy) return;
+    // Eerst bewaren wat openstaat: anders zou de server met verouderde gegevens
+    // samenvoegen en lijkt een net ingevuld veld alsnog leeg.
+    await save(true);
     setBusy("autofill"); setMsg("");
     try {
       const d = await fetch("/api/admin/org-data", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, action: "autofill" }) }).then((r) => r.json());
-      if (d.ok) { bewaard.current = JSON.stringify(d.data); setData(d.data); setMsg("Automatisch gevuld vanaf de website; loop de velden na en vul aan waar nodig."); }
-      else setMsg(d.error || "Automatisch vullen mislukt.");
-    } catch { setMsg("Automatisch vullen mislukt."); } finally { setBusy(""); }
+      if (d.ok) {
+        bewaard.current = JSON.stringify(d.data); setData(d.data);
+        const erbij = [
+          d.nieuweVestigingen ? `${d.nieuweVestigingen} vestiging${d.nieuweVestigingen === 1 ? "" : "en"}` : "",
+          d.nieuweArtsen ? `${d.nieuweArtsen} arts${d.nieuweArtsen === 1 ? "" : "en"}` : "",
+          d.nieuweDiensten ? `${d.nieuweDiensten} dienst${d.nieuweDiensten === 1 ? "" : "en"}` : "",
+        ].filter(Boolean).join(", ");
+        setMsg(d.gevuld
+          ? `${d.gevuld} lege ${d.gevuld === 1 ? "veld" : "velden"} aangevuld${erbij ? `, en erbij gekomen: ${erbij}` : ""}. Bestaande gegevens zijn niet gewijzigd; loop het even na.`
+          : "Niets nieuws gevonden op de website of het web. Bestaande gegevens zijn niet gewijzigd.");
+      }
+      else setMsg(d.error || "Ophalen mislukt.");
+    } catch { setMsg("Ophalen mislukt."); } finally { setBusy(""); }
   }
   async function toggleLock() {
     if (busy) return;
@@ -318,7 +331,16 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
       {open && (
         <div className="strategy-body">
           <div className="org-actions">
-            <button type="button" className="primary-btn small" onClick={autofill} disabled={!!busy}>{busy === "autofill" ? "Website + web doorzoeken… (kan een minuut duren)" : "Automatisch vullen (website + web)"}</button>
+            {/* Alleen actief zolang er iets te halen valt: zonder gaten hoeft er
+                niets opgehaald te worden, en vergrendeld is de klant akkoord. */}
+            <button type="button" className="primary-btn small" onClick={autofill}
+              disabled={!!busy || locked || !data || ontbrekendeVelden({ ...data, vestigingen: data.vestigingen || [] }).length === 0}
+              title={locked ? "De gegevens zijn vergrendeld; er wordt niets meer aangevuld."
+                : !data || ontbrekendeVelden({ ...data, vestigingen: data.vestigingen || [] }).length === 0
+                ? "Alles wat we nodig hebben staat er al; er valt niets meer op te halen."
+                : "Zoekt de website en het web af naar wat hier nog ontbreekt. Vult alleen lege velden; bestaande gegevens blijven staan."}>
+              {busy === "autofill" ? "Website + web doorzoeken… (kan een minuut duren)" : "Ontbrekende gegevens ophalen"}
+            </button>
             <button type="button" className="ghost-btn small" onClick={() => void save()} disabled={!!busy || !data}>{busy === "save" ? "Opslaan…" : "Opslaan"}</button>
             <button type="button" className="ghost-btn small" onClick={toggleLock} disabled={!!busy}>{locked ? "Ontgrendelen" : "Vergrendelen"}</button>
             {shareUrl && <button type="button" className="ghost-btn small" onClick={copyLink} title={shareUrl}>Deel-link kopiëren</button>}

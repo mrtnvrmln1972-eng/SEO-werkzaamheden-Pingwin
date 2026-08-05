@@ -1,7 +1,8 @@
 import { sql, ensureSchema } from "./db";
 import { getOrgData, saveOrgData, type OrgData } from "./org-data";
 import { getClientBySlug } from "./clients";
-import { ontbrekendeVelden, LEGE_VESTIGING, type OrgVestiging } from "./org-vereist";
+import { ontbrekendeVelden, identiteit, naamKaal, isEchteVestiging, LEGE_VESTIGING, type OrgVestiging } from "./org-vereist";
+export { identiteit, isEchteVestiging } from "./org-vereist";
 import { callClaude } from "./anthropic";
 
 // ═══════════════════════════════════════════════════════════
@@ -84,45 +85,9 @@ export function normaliseerVelden(velden: Record<string, string>): Record<string
   return uit;
 }
 
-// ─── Dubbel herkennen: op identiteit, niet op letterlijke naam ───
-// "Dr. Amit Atwal" en "Amit Atwal" zijn dezelfde arts; "OneDayClinic Utrecht" en
-// "Utrecht (Amsterdamsestraatweg 542)" dezelfde vestiging. Vergelijken op de
-// exacte naam leverde daardoor bij elke aanlevering een nieuwe regel op. Daarom
-// bepalen we per gegeven een identiteit: een BIG-nummer is uniek, een adres met
-// postcode en huisnummer ook; pas als die er niet zijn valt hij terug op de naam.
-const TITELS = /\b(dr|drs|prof|ir|ing|mr|mevr|mw|dhr)\b\.?/gi;
-const RECHTSVORMEN = /\b(b\.?v\.?|n\.?v\.?|v\.?o\.?f\.?|holding)\b/gi;
-function naamKaal(n: string): string {
-  return String(n || "").toLowerCase().replace(TITELS, " ").replace(RECHTSVORMEN, " ")
-    .replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+/g, " ");
-}
-const cijfers = (s: string) => String(s || "").replace(/\D/g, "");
-
-// Is dit een échte vestiging? Alleen een locatie met een bezoekadres telt mee.
-// De structured data-lezer haalt namelijk ook plaatsen op die alléén genoemd
-// worden (een testpunt, een stad in een opsomming). Dat zijn geen vestigingen
-// met een balie en openingstijden, dus die horen niet in het formulier en
-// mogen ook niet als "adres ontbreekt" in het rode lijstje verschijnen.
-// De toets: er staat een huisnummer in het adres, of er is een postcode.
-export function isEchteVestiging(velden: Record<string, string>): boolean {
-  const adres = String(velden?.adres || "").trim();
-  const postcode = String(velden?.postcode || "").trim();
-  if (!adres) return false;
-  return /\d/.test(adres) || !!postcode;
-}
-
-export function identiteit(categorie: string, naam: string, velden: Record<string, string>): string {
-  const v = velden || {};
-  if (categorie === "persoon" && cijfers(v.big).length >= 8) return `persoon|big:${cijfers(v.big)}`;
-  if (categorie === "locatie") {
-    const pc = String(v.postcode || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
-    const nr = (String(v.adres || "").match(/\d+\s*[a-z]?/i) || [""])[0].replace(/\s+/g, "").toLowerCase();
-    if (pc && nr) return `locatie|adres:${pc}-${nr}`;
-    const straat = naamKaal(v.adres || ""), plaats = naamKaal(v.plaats || "");
-    if (straat && plaats) return `locatie|adres:${plaats}-${straat}`;
-  }
-  return `${categorie}|${naamKaal(naam) || String(naam || "").trim().toLowerCase()}`;
-}
+// De identiteits-helpers (wanneer is iets hetzelfde gegeven) staan in
+// lib/org-vereist.ts, zodat zowel de kennisbank als het automatisch ophalen
+// dezelfde regels gebruiken zonder kringverwijzing tussen de bestanden.
 
 // Velden samenvoegen. Bij "ouder" materiaal vullen we alleen lege plekken aan,
 // zodat verouderde gegevens nooit een nieuwere waarde overschrijven.
