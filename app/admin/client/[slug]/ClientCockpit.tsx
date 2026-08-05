@@ -874,9 +874,10 @@ export default function ClientCockpit({
         {tab === "cannibalisatie" && <CannibalPanel slug={client.slug} domain={client.domain || ""} openTarget={opruimTarget} clientName={client.name} clientEmail={client.email || ""} />}
         {tab === "interne-links" && <InternalLinksPanel slug={client.slug} openTarget={linkTarget} />}
 
-        {/* Alleen het developer-werk van DEZE klant; het overzicht over alle
-            klanten heen staat op /admin/developer. Nieuwe taken die je hier
-            aanmaakt landen dus vanzelf bij de juiste klant. */}
+        {/* Hetzelfde overzicht als /admin/developer: ALLE klanten bij elkaar, want
+            dit is de lijst die met de developer wordt gedeeld en die werkt over
+            klanten heen. Deze klant staat wel bovenaan, en een nieuwe taak die je
+            hier aanmaakt landt vanzelf bij hem. */}
         {tab === "developer" && <DeveloperOverview embedded slug={client.slug} clientName={client.name} />}
       </div>
 

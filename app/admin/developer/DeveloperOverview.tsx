@@ -48,16 +48,17 @@ function stripText(html: string): string {
 export default function DeveloperOverview({ initialTasks, embedded, slug, clientName }: {
   initialTasks?: DevTask[];
   embedded?: boolean;
-  /** Ingebed in één klant: dan alleen de taken van die klant, en nieuwe taken landen daar. */
+  /** Ingebed in één klant: nieuwe taken landen bij die klant en zijn groep staat bovenaan. */
   slug?: string;
   clientName?: string;
 }) {
   const router = useRouter();
-  // In de klant-cockpit hoort alleen het werk van díe klant te staan; het
-  // volledige overzicht over alle klanten heen blijft op /admin/developer.
-  const vanKlant = React.useCallback((list: DevTask[]) => (slug ? list.filter((t) => t.clientSlug === slug) : list), [slug]);
-  const [rows, setRows] = useState<Row[]>(vanKlant(initialTasks ?? []));
-  const rowsRef = useRef<Row[]>(vanKlant(initialTasks ?? []));
+  // Dit scherm toont ALTIJD alle klanten, ook als het in de cockpit van één klant
+  // hangt: het is het overzicht dat Maarten met de developer deelt, en die werkt
+  // over klanten heen. Wat de klant-cockpit toevoegt is alleen dat een nieuwe taak
+  // vanzelf bij díe klant landt en dat zijn groep bovenaan staat.
+  const [rows, setRows] = useState<Row[]>(initialTasks ?? []);
+  const rowsRef = useRef<Row[]>(initialTasks ?? []);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [saving, setSaving] = useState<"idle" | "saving" | "saved">("idle");
@@ -74,9 +75,8 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
 
   // Na aanmaken, bewerken of weggooien komt de hele lijst terug van de server.
   function zetLijst(list: DevTask[]) {
-    const next = vanKlant(list);
-    rowsRef.current = next;
-    setRows(next);
+    rowsRef.current = list;
+    setRows(list);
   }
 
   // Opent de mailclient met een kant-en-klare terugkoppeling aan Maarten.
@@ -119,10 +119,10 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
     let off = false;
     fetch("/api/admin/developer")
       .then((r) => r.json())
-      .then((d) => { if (!off && d.ok) { const l = vanKlant(d.tasks); setRows(l); rowsRef.current = l; } })
+      .then((d) => { if (!off && d.ok) { setRows(d.tasks); rowsRef.current = d.tasks; } })
       .finally(() => { if (!off) setLoading(false); });
     return () => { off = true; };
-  }, [initialTasks, vanKlant]);
+  }, [initialTasks]);
 
   function commit(next: Row[]) {
     rowsRef.current = next;
@@ -178,6 +178,9 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
   });
   // Afgevinkte (klaar) taken onderaan per klant; de rest houdt zijn volgorde.
   groups.forEach((g) => g.items.sort((a, b) => (a.r.devDone ? 1 : 0) - (b.r.devDone ? 1 : 0)));
+  // Sta je in de cockpit van een klant, dan staat díe klant bovenaan. De rest blijft
+  // gewoon staan: dit is en blijft het overzicht over alle klanten heen.
+  if (slug) groups.sort((a, b) => (a.clientSlug === slug ? -1 : 0) - (b.clientSlug === slug ? -1 : 0));
 
   // Weekplanning: taken per uitvoerdatum + de nog niet ingeplande taken.
   const weekStart = mondayOf(weekOffset);
@@ -229,20 +232,20 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
             {slug && (
               <button type="button" className="dev-nieuw-btn" onClick={() => setVenster({ taak: null, clientSlug: slug, clientName: clientName || slug })}>+ Nieuwe taak</button>
             )}
-            <button type="button" className={view === "list" ? "active" : ""} onClick={() => setView("list")}>Lijst{slug ? "" : " per klant"}</button>
+            <button type="button" className={view === "list" ? "active" : ""} onClick={() => setView("list")}>Lijst per klant</button>
             <button type="button" className={view === "week" ? "active" : ""} onClick={() => setView("week")}>Weekplanning</button>
           </span>
         </div>
         <p className="dev-intro">
           {view === "list"
-            ? "De taken die op status “Naar Dev” staan, plus de taken die je hier zelf aanmaakt. Sleep een taak om de prioriteit te bepalen, zet een uitvoerdatum, en open “Bewerk” om de opdracht, de opmerking en de documenten (ook een zip) bij te werken."
+            ? "Alle klanten bij elkaar: de taken die op status “Naar Dev” staan, plus de taken die je zelf aanmaakt. Sleep een taak binnen een klant om de prioriteit te bepalen, zet een uitvoerdatum, en open “Bewerk” om de opdracht, de opmerking en de documenten (ook een zip) bij te werken."
             : "Sleep taken naar een dag om ze in te plannen. De datum blijft bewaard (dezelfde als de uitvoerdatum in de lijst)."}
         </p>
         {loading && <p className="muted">Taken laden…</p>}
         {!loading && rows.length === 0 && (
           <p className="muted">
             Nog geen taken op &ldquo;Naar Dev&rdquo;. Zet een kaart in de weekplanning door naar de developer, of maak hier zelf een taak aan
-            {slug ? " met de knop “Nieuwe taak” hierboven." : " vanuit de cockpit van een klant."}
+            {slug ? " met de knop “Nieuwe taak” hierboven." : " met de knop “Taak” bij een klant."}
           </p>
         )}
 
