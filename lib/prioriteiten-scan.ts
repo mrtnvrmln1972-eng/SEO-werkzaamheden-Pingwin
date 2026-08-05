@@ -1,6 +1,6 @@
 import { sql, ensureSchema } from "./db";
 import { getClientBySlug } from "./clients";
-import { getGscQueryPageMatrix } from "./google";
+import { getGscQueryPagePairs } from "./google";
 import { getSiteOrganicKeywords, getAiResponsesCount, ahrefsConfigured, getKeywordsOverview } from "./ahrefs";
 import { getMetaKansen } from "./meta-ctr";
 import { getCannibalAnalysis } from "./cannibal-redirect";
@@ -403,7 +403,12 @@ async function stapVers(slug: string, propositie: string, kern: string[], startI
   // dan één kans per pagina vinden: bij een site van 22 pagina's dus hooguit 22
   // kandidaten, en na de positiefilter bleven er twee over. Terwijl juist het
   // tweede en derde zoekwoord van een pagina vaak net buiten de top 10 hangen.
-  const matrix = await getGscQueryPageMatrix(domein, 90, 5000).catch(() => []);
+  // Bewust getGscQueryPagePairs en niet de kleine variant: die haalt één keer
+  // 5000 rijen op, en Google sorteert op klikken. De rijen die we zoeken (weinig
+  // klikken, wel vertoningen) staan juist onderaan en vielen daar buiten. Deze
+  // bladert door tot 50.000 rijen en heeft een kort geheugen, dus hij is ook niet
+  // duurder als een ander scherm hem net ophaalde.
+  const matrix = await getGscQueryPagePairs(domein, 90).catch(() => []);
   const kandidaten = matrix
     .filter((m) => m.keyword && m.page && m.position >= 5 && m.position <= 20
       && m.impressions >= 100                      // ruim 30 vertoningen per maand
@@ -439,7 +444,13 @@ async function stapVers(slug: string, propositie: string, kern: string[], startI
 
   // Lens 1 en 4 uit Ahrefs: striking distance die GSC mist, plus wegzakkers.
   if (ahrefsConfigured()) {
-    const kws = await getSiteOrganicKeywords(domein, "nl", 400).catch(() => []);
+    // Het vergelijkmoment MOET mee, anders vraagt Ahrefs de vorige positie niet
+    // op en is `positionPrev` altijd leeg. De wegzakker-toets hieronder begint met
+    // `if (vorig && ...)` en was daardoor sinds de bouw dood: die bril meldde bij
+    // elke klant "niets gevonden dat aandacht vraagt" zonder ooit te kunnen
+    // vinden. Negentig dagen terug, zelfde venster als de rest van de scan.
+    const toen = new Date(); toen.setDate(toen.getDate() - 90);
+    const kws = await getSiteOrganicKeywords(domein, "nl", 400, toen.toISOString().slice(0, 10)).catch(() => []);
     for (const k of kws) {
       if (!k.keyword || k.branded) continue;
       if (isMerkterm(k.keyword, client?.name || "", domein)) continue;
