@@ -11,6 +11,7 @@ import { callClaude, callClaudeAgentic, type ToolDef, type ToolRunner } from "./
 import { regelsAlsInstructie, getAdsPaginas, isAdsPad } from "./opruim-regels";
 import { zwakkePaginas, type ZwakkePagina } from "./concurrenten";
 import { weegKandidaten, weegPaden, type Oppakker } from "./opruim-waarde";
+import { vindOnderwerpen, tweelingenVan, type Onderwerp } from "./opruim-onderwerpen";
 import { getSetting, setSetting, SETTING_OPRUIM_CRON_TIK } from "./settings";
 
 // ═══════════════════════════════════════════════════════════
@@ -50,6 +51,9 @@ export type CannibalResult = {
       met echt volume zitten. Die gaan niet naar de omleidlijst maar naar een
       eigen lijst: herontwikkelen in plaats van weghalen. */
   oppakken?: Oppakker[];
+  /** Onderwerpen die over meerdere pagina's verspreid liggen zonder dat er één
+      van in de top 10 staat. Eén omleiding is daar het verkeerde antwoord. */
+  onderwerpen?: Onderwerp[];
 };
 // De analyse draait in hervatbare stappen. Reden: één volledige analyse kost 10 tot
 // 20 minuten (agentisch onderzoek + de grote JSON-synthese + drie doorloop-rondes) en
@@ -115,6 +119,8 @@ async function doEnsure(): Promise<void> {
   // volume heeft. Aparte kolom, zodat ze ook aan een oudere uitkomst worden
   // meegegeven zonder de analyse opnieuw te draaien.
   await sql`ALTER TABLE client_cannibal_analysis ADD COLUMN IF NOT EXISTS oppakken TEXT`;
+  // Onderwerpen die over meerdere pagina's verspreid liggen: een keuze, geen regel.
+  await sql`ALTER TABLE client_cannibal_analysis ADD COLUMN IF NOT EXISTS onderwerpen TEXT`;
 }
 
 function pagePath(u: string): string { return (u || "").replace(/^https?:\/\/[^/]+/i, "").trim() || (u || ""); }
@@ -170,7 +176,7 @@ const q: SqlTag = (strings, ...values) => actieveSql(strings, ...values);
 type CannibalRow = {
   status: string; result: CannibalResult | null; error: string; updatedAt: string | null;
   fase: CannibalFase; ronde: number; retries: number; seed: string; findings: string;
-  kandidaten: ZwakkePagina[]; behandeld: string[]; oppakken: Oppakker[];
+  kandidaten: ZwakkePagina[]; behandeld: string[]; oppakken: Oppakker[]; onderwerpen: Onderwerp[];
 };
 
 // JSON-kolom die ook leeg of stuk mag zijn: altijd een lijst terug, nooit een fout.
@@ -180,7 +186,7 @@ function lijstVan<T>(v: unknown): T[] {
 }
 
 async function readRow(slug: string): Promise<CannibalRow | null> {
-  const { rows } = await q`SELECT status, result, error, updated_at, fase, ronde, retries, seed, findings, kandidaten, behandeld, oppakken FROM client_cannibal_analysis WHERE client_slug = ${slug} LIMIT 1`;
+  const { rows } = await q`SELECT status, result, error, updated_at, fase, ronde, retries, seed, findings, kandidaten, behandeld, oppakken, onderwerpen FROM client_cannibal_analysis WHERE client_slug = ${slug} LIMIT 1`;
   const r = rows[0];
   if (!r) return null;
   let result: CannibalResult | null = null;
@@ -198,6 +204,7 @@ async function readRow(slug: string): Promise<CannibalRow | null> {
     kandidaten: lijstVan<ZwakkePagina>(r.kandidaten),
     behandeld: lijstVan<string>(r.behandeld),
     oppakken: lijstVan<Oppakker>(r.oppakken),
+    onderwerpen: lijstVan<Onderwerp>(r.onderwerpen),
   };
 }
 
@@ -217,7 +224,7 @@ export async function getCannibalAnalysis(slug: string): Promise<CannibalState> 
     kandidaten: r.kandidaten.length,
     beoordeeld: r.behandeld.length,
     status: (r.status as CannibalState["status"]) || "idle",
-    result: r.result ? { ...r.result, oppakken: r.oppakken } : r.result,
+    result: r.result ? { ...r.result, oppakken: r.oppakken, onderwerpen: r.onderwerpen } : r.result,
     error: r.error,
     updatedAt: r.updatedAt,
     fase: r.fase,
@@ -252,17 +259,25 @@ export async function startCannibalRun(slug: string): Promise<void> {
  * lijst "oppakken". Zo geldt de nieuwe regel meteen voor de uitkomst die er nu
  * is, in plaats van pas na een nieuwe analyse van twintig minuten.
  */
-export async function weegOpruimlijstOpnieuw(slug: string, domain: string): Promise<{ gered: number; over: number; oppakken: Oppakker[] }> {
+export async function weegOpruimlijstOpnieuw(slug: string, domain: string): Promise<{ gered: number; over: number; oppakken: Oppakker[]; onderwerpen: number }> {
   await ensureSchema();
   await ensureTable();
   const row = await readRow(slug);
+
+  // Meteen ook de verspreide onderwerpen bepalen. Eén knop, twee controles: dit
+  // hoort bij elkaar en het scheelt Maarten een tweede handeling.
+  const onderwerpen = await vindOnderwerpen(slug, domain).catch(() => [] as Onderwerp[]);
+  if (onderwerpen.length) {
+    await q`UPDATE client_cannibal_analysis SET onderwerpen = ${JSON.stringify(onderwerpen)}, updated_at = now() WHERE client_slug = ${slug}`;
+  }
+
   const result = row?.result;
   const rijen = result?.redirectMap || [];
-  if (!result || !rijen.length) return { gered: 0, over: 0, oppakken: row?.oppakken || [] };
+  if (!result || !rijen.length) return { gered: 0, over: 0, oppakken: row?.oppakken || [], onderwerpen: onderwerpen.length };
 
   const oppakken = await weegPaden(domain, rijen.map((r) => ({ pad: padOf(String(r.van || "")) })));
   const gered = new Set(oppakken.map((o) => padOf(o.pad)));
-  if (!gered.size) return { gered: 0, over: rijen.length, oppakken: row?.oppakken || [] };
+  if (!gered.size) return { gered: 0, over: rijen.length, oppakken: row?.oppakken || [], onderwerpen: onderwerpen.length };
 
   const over = rijen.filter((r) => !gered.has(padOf(String(r.van || ""))));
   const nieuw: CannibalResult = { ...result, redirectMap: over };
@@ -270,7 +285,7 @@ export async function weegOpruimlijstOpnieuw(slug: string, domain: string): Prom
   const samen = [...(row?.oppakken || []), ...oppakken];
   const uniek = [...new Map(samen.map((o) => [padOf(o.pad), o])).values()].sort((a, b) => (b.volume || 0) - (a.volume || 0));
   await q`UPDATE client_cannibal_analysis SET result = ${JSON.stringify(nieuw)}, oppakken = ${JSON.stringify(uniek)}, updated_at = now() WHERE client_slug = ${slug}`;
-  return { gered: gered.size, over: over.length, oppakken: uniek };
+  return { gered: gered.size, over: over.length, oppakken: uniek, onderwerpen: onderwerpen.length };
 }
 
 async function faal(slug: string, msg: string): Promise<void> {
@@ -455,7 +470,11 @@ async function stapMetReden(slug: string): Promise<{ uit: "verder" | "klaar"; re
       const gewogen = await weegKandidaten(domain, s.kandidaten).catch(() => null);
       const kandidaten = gewogen ? gewogen.rest : s.kandidaten;
       const oppakken = gewogen ? gewogen.oppakken : [];
-      await q`UPDATE client_cannibal_analysis SET seed = ${seed}, kandidaten = ${JSON.stringify(kandidaten)}, oppakken = ${JSON.stringify(oppakken)}, updated_at = now() WHERE client_slug = ${slug}`;
+      // Onderwerpen die over meerdere pagina's verspreid liggen zonder dat er één
+      // van in de top 10 staat. Dat is geen omleidklusje maar een keuze welke
+      // pagina de thuisbasis wordt, dus het krijgt een eigen lijst.
+      const onderwerpen = await vindOnderwerpen(slug, domain).catch(() => [] as Onderwerp[]);
+      await q`UPDATE client_cannibal_analysis SET seed = ${seed}, kandidaten = ${JSON.stringify(kandidaten)}, oppakken = ${JSON.stringify(oppakken)}, onderwerpen = ${JSON.stringify(onderwerpen)}, updated_at = now() WHERE client_slug = ${slug}`;
     }
 
     // STAP 1 — agentic onderzoek: het model zoomt in op verdachte pagina's en schrijft
@@ -569,12 +588,20 @@ async function stapMetReden(slug: string): Promise<{ uit: "verder" | "klaar"; re
       return { uit: "klaar", reden: kandidaten.length ? `alle ${kandidaten.length} kandidaten beoordeeld` : "geen kandidatenlijst beschikbaar" };
     }
 
+    // De inhoudelijke tweeling erbij: een bestaande pagina die over hetzelfde
+    // gaat. Zonder dat koos de motor het doel puur op "wie bezit de geleende
+    // term", en dan gaat /soa-test-thuis/ naar /anonieme-soa-test/ terwijl
+    // /soa-thuistest/ er letterlijk staat.
+    const allePaden = await getClientUrls(slug).then((u) => u.filter((x) => (x.status ?? 200) === 200).map((x) => padOf(x.url))).catch(() => [] as string[]);
+
     const lijst = blok.map((k) => {
+      const tweeling = tweelingenVan(k.pad, allePaden).filter((t) => padOf(t) !== padOf(k.pad));
+      const zelfdeOnderwerp = tweeling.length ? ` | pagina's over hetzelfde onderwerp: ${tweeling.join(", ")}` : "";
       const doel = k.dubbelMet.length === 1 ? `voorstel doel: ${k.dubbelMet[0]}`
         : k.dubbelMet.length > 1 ? `voorstel doel: ${k.dubbelMet.slice(0, 2).join(" OF ")} (kies de beste)`
         : "geen doel af te leiden uit de data";
       const leent = k.geleendeTop ? `leent "${k.geleendeTop.keyword}" (pos ${k.geleendeTop.positie}, ${k.geleendeTop.vertoningen} vert.)` : "krijgt geen vertoningen";
-      return `- ${k.pad} [${k.klikken} klikken, ${k.vertoningen} vertoningen] ${leent}; ${doel}`;
+      return `- ${k.pad} [${k.klikken} klikken, ${k.vertoningen} vertoningen] ${leent}; ${doel}${zelfdeOnderwerp}`;
     }).join("\n");
 
     let extraRuw = "";
@@ -586,6 +613,8 @@ async function stapMetReden(slug: string): Promise<{ uit: "verder" | "klaar"; re
 BEOORDEEL NU DEZE ${blok.length} PAGINA'S, en UITSLUITEND deze. Het zijn opruimkandidaten die het dashboard al uit Search Console heeft afgeleid: ze ranken op geen enkele zoekterm die hun eigen onderwerp bevat, dus alles wat ze binnenhalen is geleend van merk- of andere-plaatstermen. Het voorgestelde doel is óók uit de data afgeleid (de pagina die de geleende term wél bezit).
 
 ${lijst}
+
+Let op de twee soorten kandidaat-bestemmingen. Het "voorstel doel" is de pagina die de GELEENDE zoekterm bezit; dat is een aanwijzing, geen bewijs. Staat er ook een pagina bij "pagina's over hetzelfde onderwerp", dan gaat die vaak vóór: een bezoeker die op deze pagina zou landen, hoort thuis bij de pagina over hetzelfde onderwerp, niet bij de pagina die toevallig de meeste vertoningen had. Kies de bestemming waar de bezoeker het antwoord vindt dat hij zocht, en zeg in de reden waarom je die kiest.
 
 Jouw taak per pagina: bevestig het voorgestelde doel, of corrigeer het als de data een beter doel aanwijst, en geef in één korte zin de reden. Neem een pagina NIET op als hij moet blijven (bijvoorbeeld een functionele pagina zoals contact of afspraak maken, of een pagina met een eigen duidelijke rol); laat hem dan gewoon weg. Verzin geen pagina's die niet in deze lijst staan. Stuur nooit naar een doel dat zelf zwak is.
 

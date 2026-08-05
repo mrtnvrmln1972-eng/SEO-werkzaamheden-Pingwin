@@ -14,6 +14,7 @@ import OpruimTabel from "../../../admin/client/[slug]/OpruimTabel";
 import OpruimStructuur from "../../../admin/client/[slug]/OpruimStructuur";
 import OpruimOppakken, { type Oppakker } from "../../../admin/client/[slug]/OpruimOppakken";
 import OpruimSamenvatting from "../../../admin/client/[slug]/OpruimSamenvatting";
+import OpruimOnderwerpen, { type Onderwerp } from "../../../admin/client/[slug]/OpruimOnderwerpen";
 
 type ClusterUrl = { url: string; positie?: number; klikken?: number; impressies?: number };
 type Cluster = { keyword: string; winnaar: string; urls: ClusterUrl[]; onderbouwing?: string; signalen?: { urlFlip?: boolean; flipsIn90d?: number } };
@@ -21,7 +22,7 @@ type RedirectMapItem = { van: string; naar: string; mergeContent?: boolean; verh
 type InterneLink = { vanaf: string; naar: string; ankertekst?: string };
 type Result = {
   samenvatting: string; clusters: Cluster[]; redirectMap?: RedirectMapItem[];
-  interneLinks?: InterneLink[]; oppakken?: Oppakker[]; generatedAt: string | null;
+  interneLinks?: InterneLink[]; oppakken?: Oppakker[]; onderwerpen?: Onderwerp[]; generatedAt: string | null;
 };
 type Data = { clientName: string; domain: string; result: Result | null; updatedAt: string | null; structuur: { families: { vorm: string; aantal: number; dood: number; voorbeelden: string[] }[]; totaalLive: number; totaalVormen: number; dood: number; gemeten: boolean } | null };
 
@@ -94,6 +95,10 @@ export default function OpruimShare({ token }: { token: string }) {
         </div>
 
         {d.structuur && <OpruimStructuur slug="" data={d.structuur} />}
+
+        {r?.onderwerpen && r.onderwerpen.length > 0 && (
+          <OpruimOnderwerpen slug="" domain={domain} rijen={r.onderwerpen} alleenLezen />
+        )}
 
         {r?.oppakken && r.oppakken.length > 0 && (
           <OpruimOppakken slug="" domain={domain} rijen={r.oppakken} alleenLezen />

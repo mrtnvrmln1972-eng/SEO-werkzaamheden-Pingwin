@@ -7,6 +7,7 @@ import OpruimTabel from "./OpruimTabel";
 import OpruimStructuur from "./OpruimStructuur";
 import OpruimOppakken, { type Oppakker } from "./OpruimOppakken";
 import OpruimSamenvatting from "./OpruimSamenvatting";
+import OpruimOnderwerpen, { type Onderwerp } from "./OpruimOnderwerpen";
 
 type ClusterUrl = { url: string; rol?: string; positie?: number; klikken?: number; impressies?: number; verwijzendeDomeinen?: number; intentie?: string };
 type Signalen = { urlFlip?: boolean; flipsIn90d?: number; positiePlafond?: boolean; klikVerdeling?: boolean };
@@ -14,7 +15,7 @@ type Cluster = { keyword: string; volume?: number; score?: string; signalen?: Si
 type RedirectMapItem = { van: string; naar: string; type?: string; mergeContent?: boolean; verhuizen?: boolean; reden?: string };
 type InterneLink = { vanaf: string; naar: string; ankertekst?: string; reden?: string };
 type Datakwaliteit = { gsc?: boolean; gscTijdreeks?: boolean; ahrefsZoekwoorden?: boolean; ahrefsBacklinks?: boolean; crawl?: boolean; opmerking?: string };
-type Result = { oppakken?: Oppakker[]; samenvatting: string; datakwaliteit?: Datakwaliteit; clusters: Cluster[]; redirectMap?: RedirectMapItem[]; interneLinks?: InterneLink[]; generatedAt: string | null };
+type Result = { oppakken?: Oppakker[]; onderwerpen?: Onderwerp[]; samenvatting: string; datakwaliteit?: Datakwaliteit; clusters: Cluster[]; redirectMap?: RedirectMapItem[]; interneLinks?: InterneLink[]; generatedAt: string | null };
 type State = { status: string; result: Result | null; error: string; updatedAt: string | null; stap?: number; stappen?: number; stapLabel?: string; cronTik?: string | null; cronStil?: boolean; kandidaten?: number; beoordeeld?: number };
 
 function actionClass(a: string): string {
@@ -118,6 +119,7 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
       setWeegMsg(d.gered
         ? `${d.gered} ${d.gered === 1 ? "pagina" : "pagina's"} van de opruimlijst gehaald: hun eigen zoekterm heeft volume. Ze staan nu onder "Oppakken".`
         : "Geen pagina's op de opruimlijst met een waardevolle eigen zoekterm; de lijst blijft zoals hij was.");
+      if (d.onderwerpen) setWeegMsg((m) => `${m} Daarnaast ${d.onderwerpen === 1 ? "is 1 onderwerp" : `zijn ${d.onderwerpen} onderwerpen`} gevonden die over meerdere pagina's verspreid ${d.onderwerpen === 1 ? "ligt" : "liggen"}.`);
       await load();
     } catch { setWeegMsg("Controle mislukt."); }
     finally { setWeegBezig(false); }
@@ -429,6 +431,11 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
 
             <OpruimStructuur slug={slug} />
 
+            {/* Eerst de gemiste kansen, dan pas het opruimwerk: hier zit de
+                grootste opbrengst, en het is ook het besluit dat het meeste
+                nadenken vraagt. */}
+            <OpruimOnderwerpen slug={slug} domain={domain} rijen={result.onderwerpen || []} clientName={clientName} clientEmail={clientEmail} />
+
             <OpruimOppakken slug={slug} domain={domain} rijen={result.oppakken || []} clientName={clientName} clientEmail={clientEmail} />
 
             {/* De werklijst eerst. Het verhaal eronder: een lijst is om af te werken,
@@ -448,8 +455,8 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
                 {/* De rem ook over een lijst die er al ligt, zonder een nieuwe
                     analyse van twintig minuten. */}
                 <button type="button" className="ghost-btn small" onClick={() => void weegOpnieuw()} disabled={weegBezig}
-                  title="Kijkt per pagina op deze lijst of zijn eigen zoekterm zoekvolume heeft. Zo ja, dan gaat hij eraf en komt hij bij Oppakken te staan.">
-                  {weegBezig ? "Bezig met controleren…" : "Controleer op waardevolle pagina's"}
+                  title="Twee controles in één: pagina's met een waardevolle eigen zoekterm gaan van deze lijst af, en onderwerpen die over meerdere pagina's verspreid liggen komen bovenaan te staan.">
+                  {weegBezig ? "Bezig met controleren…" : "Controleer op gemiste kansen"}
                 </button>
                 </div>
               </div>
