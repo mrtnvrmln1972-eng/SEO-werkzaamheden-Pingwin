@@ -1,7 +1,7 @@
 import { sql, ensureSchema } from "./db";
 import { getClientBySlug } from "./clients";
-import { getGscPageOpportunities } from "./google";
-import { getSiteOrganicKeywords, getAiResponsesCount, ahrefsConfigured } from "./ahrefs";
+import { getGscQueryPageMatrix } from "./google";
+import { getSiteOrganicKeywords, getAiResponsesCount, ahrefsConfigured, getKeywordsOverview } from "./ahrefs";
 import { getMetaKansen } from "./meta-ctr";
 import { getCannibalAnalysis } from "./cannibal-redirect";
 import { getInternalLinksState } from "./internal-links";
@@ -397,33 +397,42 @@ async function stapVers(slug: string, propositie: string, kern: string[], startI
   // Lens 1, striking distance: positie 5 tot 20 met serieuze vertoningen. De twee
   // bronnen worden ontdubbeld op zoekwoord plus pagina, zoals de skill voorschrijft.
   const gezien = new Set<string>();
-  const gsc = await getGscPageOpportunities(domein, 90).catch(() => []);
-  for (const p of gsc) {
-    const kw = p.bestKeyword || "";
-    const pos = p.bestPosition ?? p.position;
-    if (!kw || !pos || pos < 5 || pos > 20) continue;
-    // Vertoningen van het ZOEKWOORD, niet van de pagina. Stond hier eerst wel: een
-    // pagina die op twintig zoekwoorden samen 200.000 keer verschijnt werd zo één
-    // zoekwoord van 200.000, en dat schoof onzin naar de top van de lijst.
-    const kwVertoningen = p.bestImpressions || 0;
-    // 100 over 90 dagen, dus ruim 30 vertoningen per maand op dat ene zoekwoord.
-    // Stond op 300, maar die drempel gold eerst voor de vertoningen van een héle
-    // pagina; per zoekwoord is hij veel zwaarder en viel een lokale klant er
-    // doorheen (bij een hovenier haalt bijna geen enkel zoekwoord dat los).
-    if (kwVertoningen < 100) continue;
-    if (isMerkterm(kw, client?.name || "", domein)) continue;
-    const sleutel = `${kw}|${pad(p.url)}`;
+  // ELK zoekwoord per pagina, niet alleen het grootste. Hier stond eerst
+  // getGscPageOpportunities, en dat houdt per pagina één zoekwoord over (dat met
+  // de meeste vertoningen) en gooit de rest weg. Daarmee kon deze bril nooit meer
+  // dan één kans per pagina vinden: bij een site van 22 pagina's dus hooguit 22
+  // kandidaten, en na de positiefilter bleven er twee over. Terwijl juist het
+  // tweede en derde zoekwoord van een pagina vaak net buiten de top 10 hangen.
+  const matrix = await getGscQueryPageMatrix(domein, 90, 5000).catch(() => []);
+  const kandidaten = matrix
+    .filter((m) => m.keyword && m.page && m.position >= 5 && m.position <= 20
+      && m.impressions >= 100                      // ruim 30 vertoningen per maand
+      && !isMerkterm(m.keyword, client?.name || "", domein))
+    .sort((a, b) => b.impressions - a.impressions)
+    .slice(0, 150);                                // grote sites niet laten ontploffen
+
+  // Zoekvolume erbij waar Ahrefs het weet, in één call. Weet hij het niet, dan
+  // blijven de vertoningen de basis; dat is een meting, geen schatting.
+  const volMap = new Map<string, number>();
+  if (ahrefsConfigured() && kandidaten.length) {
+    const uniek = [...new Set(kandidaten.map((m) => m.keyword))].slice(0, 100);
+    const ov = await getKeywordsOverview(uniek, "nl").catch(() => []);
+    for (const o of ov) if (o.volume != null) volMap.set(o.keyword.toLowerCase(), o.volume);
+  }
+
+  for (const m of kandidaten) {
+    const sleutel = `${m.keyword}|${pad(m.page)}`;
     if (gezien.has(sleutel)) continue;
     gezien.add(sleutel);
     uit.push({
       id: id("SD"), type: "striking_distance",
-      titel: `"${kw}" staat op ${pos.toFixed(0)}, net buiten beeld`,
-      url: pad(p.url), zoekwoord: kw,
-      maandvolume: Math.max(p.bestVolume || 0, Math.round(kwVertoningen / 3)),
-      huidigePositie: Math.round(pos), targetPositie: 3,
-      intentie: bepaalIntentie(kw), relevanceFit: bepaalFit(kw, kern, propositie),
+      titel: `"${m.keyword}" staat op ${m.position.toFixed(0)}, net buiten beeld`,
+      url: pad(m.page), zoekwoord: m.keyword,
+      maandvolume: Math.max(volMap.get(m.keyword.toLowerCase()) || 0, Math.round(m.impressions / 3)),
+      huidigePositie: Math.round(m.position), targetPositie: 3,
+      intentie: bepaalIntentie(m.keyword), relevanceFit: bepaalFit(m.keyword, kern, propositie),
       effort: 3, timeToEffect: 2, confidence: confidenceVoorLens("striking_distance"),
-      rationale: `Deze pagina staat al op positie ${pos.toFixed(0)} en wordt goed getoond. Van pagina 2 naar de top 3 is de kortste weg naar meer bezoekers, want de pagina bestaat al.`,
+      rationale: `Deze pagina staat al op positie ${m.position.toFixed(0)} en werd de afgelopen 90 dagen ${m.impressions} keer getoond op dit zoekwoord. Van pagina 2 naar de top 3 is de kortste weg naar meer bezoekers, want de pagina bestaat al.`,
       bron: "Search Console, laatste 90 dagen",
     });
   }
