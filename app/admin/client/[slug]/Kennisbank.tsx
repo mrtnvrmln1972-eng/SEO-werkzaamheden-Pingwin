@@ -120,7 +120,11 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie }: { slug: stri
         const schoon = d.opgeruimd ? ` ${d.opgeruimd} dubbele regel${d.opgeruimd === 1 ? "" : "s"} samengevoegd.` : "";
         setOkMsg((d.gevuld
           ? `De bedrijfsgegevens hierboven zijn bijgewerkt${extra ? ` met ${extra}` : ""}. Wat nog ontbreekt staat daar in het rood.`
-          : "De bedrijfsgegevens waren al bij (of staan op slot); er viel niets meer te vullen.") + schoon);
+          : entiteiten.length === 0
+            ? (voorstellen.length
+              ? "De kennisbank is nog leeg: de aanlevering hieronder wacht nog op je akkoord. Verwerk die eerst, dan landen de gegevens vanzelf in de velden."
+              : "De kennisbank is nog leeg; sleep eerst materiaal in de dropzone.")
+            : "De bedrijfsgegevens waren al bij (of staan op slot); er viel niets meer te vullen.") + schoon);
         onVerwerkt?.();
         void laad();
       } else setFout(d?.error || "Dat lukte niet.");
@@ -223,7 +227,13 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie }: { slug: stri
       <div className="org-sitewide-head" style={{ marginTop: 18 }}>
         <strong>Kennisbank structured data</strong>
         <span className="muted">Gooi hier alles in: documenten, artsen-gegevens, schema-code. Verwerken gebeurt pas na jouw akkoord; daarna vult het de velden hierboven vanzelf.</span>
-        <button type="button" className="wp-fase-btn" disabled={!!busy} onClick={() => void zetInVelden()}>{busy === "velden" ? "Bezig…" : "Kennisbank in de velden zetten"}</button>
+        <button type="button" className="wp-fase-btn" onClick={() => void zetInVelden()}
+          disabled={!!busy || entiteiten.length === 0}
+          title={entiteiten.length === 0
+            ? (voorstellen.length ? "De kennisbank is nog leeg; verwerk eerst de aanlevering hieronder." : "De kennisbank is nog leeg; sleep er eerst materiaal in.")
+            : "Zet alles wat in de kennisbank staat in de velden hierboven. Bestaande waarden blijven staan."}>
+          {busy === "velden" ? "Bezig…" : "Kennisbank in de velden zetten"}
+        </button>
         <button type="button" className="wp-fase-btn" disabled={!!busy} onClick={() => void ruimOp()}>{busy === "opruimen" ? "Bezig…" : "Dubbelen samenvoegen"}</button>
       </div>
       <div className={"wp-docdrop" + (drag ? " wp-docdrop-actief" : "")}
@@ -247,11 +257,16 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie }: { slug: stri
           </>
         )}
       </div>
-      {voorstellen.length > 1 && (
+      {/* Ook bij één aanlevering: zonder deze stap belandt er niets in de velden,
+          en dan lijkt het alsof de knop hierboven stuk is. */}
+      {voorstellen.length > 0 && (
         <div className="kb-voorstel-balk">
-          <strong>{voorstellen.length} aanleveringen wachten op je akkoord.</strong>
+          <strong>
+            {voorstellen.length === 1 ? "1 aanlevering wacht" : `${voorstellen.length} aanleveringen wachten`} op je akkoord.
+          </strong>
+          <span className="muted">Pas na verwerken komen de gegevens in de velden hierboven.</span>
           <button type="button" className="wp-fase-btn wp-fase-btn-primair" disabled={!!busy} onClick={() => void verwerkAlles()}>
-            {busy === "alles" ? "Verwerken…" : `Verwerk alle ${voorstellen.length}`}
+            {busy === "alles" ? "Verwerken…" : voorstellen.length === 1 ? "Verwerk en zet in de velden" : `Verwerk alle ${voorstellen.length} en zet in de velden`}
           </button>
         </div>
       )}
