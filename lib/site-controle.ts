@@ -141,6 +141,20 @@ function haalLinks(html: string, domein: string, inTekst: boolean): Link[] {
   return uit;
 }
 
+function haalKoppen(html: string): string[] {
+  const uit: string[] = [];
+  for (const m of html.matchAll(/<h([1-3])\b[^>]*>([\s\S]*?)<\/h\1\s*>/gi)) {
+    const t = stripHtmlTags(m[2]).slice(0, 160);
+    if (t) uit.push(t);
+    if (uit.length >= 60) break;
+  }
+  return uit;
+}
+
+function platteTekst(html: string): string {
+  return stripHtmlTags(html.replace(/<\s*(script|style)[\s\S]*?<\s*\/\s*\1\s*>/gi, " ")).slice(0, 20000);
+}
+
 // ── Het beeld van de site: meerdere pagina's naast elkaar ──
 
 export type GelezenPagina = {
@@ -155,6 +169,10 @@ export type GelezenPagina = {
   /** Alleen de links binnen de lopende tekst. */
   inTekst: Link[];
   titel: string;
+  /** H1 tot en met H3 binnen de lopende tekst; koppen uit menu en footer tellen niet mee. */
+  koppen: string[];
+  /** De lopende tekst zelf, ingekort; voor de steekproef op zinnen uit een document. */
+  tekst: string;
 };
 
 export type Sitebeeld = {
@@ -187,8 +205,9 @@ export async function bouwSitebeeld(domein: string, paden: string[]): Promise<Si
       uniek.slice(i, i + BATCH).map(async (pad): Promise<GelezenPagina> => {
         const url = volledigeUrl(domein, pad);
         const g = await leesPagina(url);
+        const leeg = { alle: [], inTekst: [], titel: "", koppen: [], tekst: "" };
         if (!g.meetbaar) {
-          return { pad, url, meetbaar: false, reden: g.reden, status: g.status, gerenderd: g.gerenderd, alle: [], inTekst: [], titel: "" };
+          return { pad, url, meetbaar: false, reden: g.reden, status: g.status, gerenderd: g.gerenderd, ...leeg };
         }
         const scope = contentScope(g.html);
         const titel = stripHtmlTags((g.html.match(/<title[^>]*>([\s\S]*?)<\/title>/i) || ["", ""])[1]).slice(0, 160);
@@ -198,9 +217,12 @@ export async function bouwSitebeeld(domein: string, paden: string[]): Promise<Si
         // niet aan te pas kwam). Geen links én geen titel: dan meten we niets.
         const alle = haalLinks(g.html, domein, false);
         if (!alle.length && !titel) {
-          return { pad, url, meetbaar: false, reden: "de pagina gaf geen leesbare inhoud terug", status: g.status, gerenderd: g.gerenderd, alle: [], inTekst: [], titel: "" };
+          return { pad, url, meetbaar: false, reden: "de pagina gaf geen leesbare inhoud terug", status: g.status, gerenderd: g.gerenderd, ...leeg };
         }
-        return { pad, url, meetbaar: true, reden: "", status: g.status, gerenderd: g.gerenderd, alle, inTekst, titel };
+        // Koppen uit de LOPENDE TEKST, niet uit menu of footer: een menu-item dat
+        // toevallig zo heet als een kop uit het document zou anders meetellen als
+        // "de content staat erop".
+        return { pad, url, meetbaar: true, reden: "", status: g.status, gerenderd: g.gerenderd, alle, inTekst, titel, koppen: haalKoppen(scope), tekst: platteTekst(scope) };
       }),
     );
     paginas.push(...deel);
@@ -441,6 +463,74 @@ export function beoordeelUitNavigatie(beeld: Sitebeeld, doelPad: string): Meting
     uitslag: "niet",
     bewijs: `${doel} staat nog steeds site-breed in het menu of de footer: op ${tellers.inNavigatie} van de ${tellers.gelezen} gelezen pagina's${tellers.ankers.length ? `, als "${tellers.ankers[0]}"` : ""}`,
     details,
+  };
+}
+
+// ── Staat de aangeleverde content op de pagina? ──
+
+/**
+ * Vergelijkt de koppen uit een aangeleverd document met de koppen op de live
+ * pagina, en neemt drie steekproefzinnen mee als extra bewijs.
+ *
+ * Bewust op koppen en niet op de lopende tekst: een sitebouwer mag alinea's
+ * herschikken of een zin aanpassen, dat maakt de content niet "niet doorgevoerd".
+ * Koppen zijn de ruggengraat en veranderen zelden ongemerkt. Dat voorbehoud staat
+ * daarom ook in elke bewijsregel; zonder die zin leest "over het algemeen
+ * doorgevoerd" als meer dan het is.
+ *
+ * De vergelijking zelf komt uit copy-live.ts, zodat het werkplan-scherm en deze
+ * controle nooit iets anders beweren over dezelfde pagina.
+ */
+export function beoordeelCopy(
+  beeld: Sitebeeld,
+  doelPad: string,
+  bron: { koppen: string[]; tekst: string; naam: string; datum: string; herkomst: string },
+  vergelijk: (bedoeld: string[], live: string[]) => { totaal: number; gevonden: number; percentage: number; ontbreekt: string[] },
+): Meting {
+  const doel = pagePath(doelPad);
+  const pagina = beeld.paginas.find((p) => p.pad === doel);
+  const noemer = bron.naam ? `"${bron.naam}"${bron.datum ? ` (bijlage bij de mail van ${bron.datum})` : ""}` : "het aangeleverde document";
+  const voorbehoud = "Ik heb alleen de koppen vergeleken, niet de lopende tekst.";
+  const details: Record<string, unknown> = { doelPad: doel, herkomst: bron.herkomst, document: bron.naam, koppenInDocument: bron.koppen.length };
+
+  // Te weinig koppen om iets zinnigs over te zeggen. Twee koppen is een muntworp.
+  if (bron.koppen.length < 3) {
+    return { uitslag: "onmeetbaar", bewijs: `${noemer} heeft te weinig koppen om mee te vergelijken`, details };
+  }
+  if (!pagina) {
+    return { uitslag: "onmeetbaar", bewijs: `${doel} is niet meegenomen in de meting`, details };
+  }
+  if (!pagina.meetbaar) {
+    return { uitslag: "onmeetbaar", bewijs: `${doel} kon ik niet lezen: ${pagina.reden}`, details: { ...details, reden: pagina.reden } };
+  }
+  if (!pagina.koppen.length) {
+    return { uitslag: "onmeetbaar", bewijs: `op ${pagina.url} vond ik geen enkele kop in de lopende tekst, dus valt er niets te vergelijken`, details };
+  }
+
+  const v = vergelijk(bron.koppen, pagina.koppen);
+  // Steekproef op hele zinnen: puur bewijsmateriaal, nooit sturend voor de
+  // uitslag. Een bijlage kan een briefing zijn in plaats van de definitieve tekst.
+  const zinnen = bron.tekst
+    .split(/(?<=[.!?])\s+/)
+    .map((z) => z.trim())
+    .filter((z) => z.length >= 60 && z.length <= 300 && !bron.koppen.includes(z))
+    .slice(0, 30);
+  const gekozen = [zinnen[0], zinnen[Math.floor(zinnen.length / 2)], zinnen[zinnen.length - 1]].filter(Boolean) as string[];
+  const platLive = pagina.tekst.toLowerCase().replace(/\s+/g, " ");
+  const raak = gekozen.filter((z) => platLive.includes(z.toLowerCase().replace(/\s+/g, " ").slice(0, 80))).length;
+  const steekproef = gekozen.length ? ` ${raak} van de ${gekozen.length} steekproefzinnen uit het document staan ook op de pagina.` : "";
+
+  const aandeel = v.totaal ? v.gevonden / v.totaal : 0;
+  const uitslag: Uitslag = aandeel >= 0.8 ? "goed" : aandeel >= 0.4 ? "deels" : "niet";
+  const missend = v.ontbreekt.slice(0, 5);
+  const missendTekst = uitslag === "goed" || !missend.length
+    ? ""
+    : ` Deze ${missend.length === 1 ? "kop staat" : "koppen staan"} er niet: ${missend.map((k) => `"${k}"`).join(", ")}${v.ontbreekt.length > missend.length ? " en meer" : ""}.`;
+
+  return {
+    uitslag,
+    bewijs: `van de ${v.totaal} koppen uit ${noemer} ${v.gevonden === 1 ? "staat er 1" : `staan er ${v.gevonden}`} op ${pagina.url}.${missendTekst}${steekproef} ${voorbehoud}`,
+    details: { ...details, totaal: v.totaal, gevonden: v.gevonden, percentage: v.percentage, ontbreekt: v.ontbreekt.slice(0, 10), steekproefRaak: raak, steekproefTotaal: gekozen.length },
   };
 }
 

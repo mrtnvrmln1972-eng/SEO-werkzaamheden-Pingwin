@@ -2,7 +2,8 @@
 // Doel: aantonen dat "staat er niet" en "kon ik niet meten" NIET op hetzelfde
 // uitkomen, en dat een menulink niet als contextuele link telt.
 
-import { beoordeelAnker, beoordeelBron, beoordeelInterneLink, beoordeelUitNavigatie, type Sitebeeld } from "../lib/site-controle";
+import { beoordeelAnker, beoordeelBron, beoordeelCopy, beoordeelInterneLink, beoordeelUitNavigatie, type Sitebeeld } from "../lib/site-controle";
+import { vergelijkKoppen } from "../lib/copy-live";
 
 const MENU = [
   { naar: "/", anker: "Home", inTekst: false, beeldlink: false, nofollow: false },
@@ -10,18 +11,22 @@ const MENU = [
   { naar: "/hovenier/hovenier-etten-leur", anker: "Hovenier Etten-Leur", inTekst: false, beeldlink: false, nofollow: false },
 ];
 
-function pagina(pad: string, titel: string, inTekst: { naar: string; anker: string; nofollow?: boolean; beeldlink?: boolean }[], metMenu = true) {
+function pagina(
+  pad: string, titel: string,
+  inTekst: { naar: string; anker: string; nofollow?: boolean; beeldlink?: boolean }[],
+  metMenu = true, koppen: string[] = [], tekst_ = "",
+) {
   const tekst = inTekst.map((l) => ({ naar: l.naar, anker: l.anker, inTekst: true, beeldlink: !!l.beeldlink, nofollow: !!l.nofollow }));
   return {
     pad, url: `https://kamsteegtuinen.nl${pad}`, meetbaar: true, reden: "", status: 200, gerenderd: true,
-    alle: [...(metMenu ? MENU : []), ...tekst], inTekst: tekst, titel,
+    alle: [...(metMenu ? MENU : []), ...tekst], inTekst: tekst, titel, koppen, tekst: tekst_,
   };
 }
 
 function maakBeeld(paginas: ReturnType<typeof pagina>[], kapot: { pad: string; reden: string }[] = []): Sitebeeld {
   const stuk = kapot.map((k) => ({
     pad: k.pad, url: `https://kamsteegtuinen.nl${k.pad}`, meetbaar: false, reden: k.reden,
-    status: null, gerenderd: false, alle: [], inTekst: [], titel: "",
+    status: null, gerenderd: false, alle: [], inTekst: [], titel: "", koppen: [], tekst: "",
   }));
   const alle = [...paginas, ...stuk];
   const gelukt = paginas.length;
@@ -140,6 +145,57 @@ checkWaar("het bewijs noemt waar de omleiding heen gaat", String(omgeleid?.bewij
 check("gewone bronpagina -> geen bezwaar, gewoon doormeten", String(beoordeelBron("/hovenier", bestaat)), "null");
 check("onbereikbare bronpagina -> geen vals 'vervallen'", String(beoordeelBron("/hovenier", onbereikbaar)), "null");
 check("geen bronpagina opgegeven -> geen bezwaar", String(beoordeelBron("", bestaatNiet)), "null");
+
+// ── Staat de aangeleverde content op de pagina? ──
+// Alleen koppen worden vergeleken; een sitebouwer mag alinea's herschikken zonder
+// dat de content daarmee "niet doorgevoerd" is. Daarom staat dat voorbehoud ook in
+// élke bewijsregel.
+const DOC_KOPPEN = ["Strandtuin aanleggen", "Wat is een strandtuin", "Beplanting voor een strandtuin",
+  "Onderhoud van uw strandtuin", "Wat kost een strandtuin", "Onze werkwijze", "Veelgestelde vragen",
+  "Strandtuin laten ontwerpen", "Contact opnemen"];
+const DOC_TEKST = "Een strandtuin is een tuin met een duinachtige uitstraling die je het hele jaar door kunt gebruiken. ".repeat(4);
+const bronDoc = (koppen: string[]) => ({ koppen, tekst: DOC_TEKST, naam: "Strandtuin-copy.docx", datum: "2026-07-07", herkomst: "bijlage" });
+
+function copyBeeld(paginaKoppen: string[]) {
+  return maakBeeld([
+    pagina("/tuinontwerp/strandtuin", "Strandtuin", [], true, paginaKoppen, DOC_TEKST),
+    pagina("/", "Home", [], true, ["Welkom"], ""),
+    pagina("/hovenier", "Hovenier", [], true, ["Hovenier"], ""),
+  ]);
+}
+
+const bijna = beoordeelCopy(copyBeeld(DOC_KOPPEN.slice(0, 8)), "/tuinontwerp/strandtuin", bronDoc(DOC_KOPPEN), vergelijkKoppen);
+check("8 van de 9 koppen gevonden -> goed", bijna.uitslag, "goed");
+checkWaar("het bewijs zegt dat alleen koppen vergeleken zijn", bijna.bewijs.includes("alleen de koppen"));
+
+const half = beoordeelCopy(copyBeeld(DOC_KOPPEN.slice(0, 5)), "/tuinontwerp/strandtuin", bronDoc(DOC_KOPPEN), vergelijkKoppen);
+check("5 van de 9 koppen gevonden -> deels", half.uitslag, "deels");
+// De eerste vijf koppen staan er wél; het bewijs moet dus de zesde noemen en niet
+// de vijfde. Zo weet je zeker dat de lijst met ontbrekende koppen echt klopt en
+// niet toevallig iets opsomt.
+checkWaar("het bewijs noemt welke koppen ontbreken", half.bewijs.includes("Onze werkwijze"));
+checkWaar("en noemt géén kop die er wél staat", !half.bewijs.includes('"Wat kost een strandtuin"'));
+
+check("1 van de 9 koppen gevonden -> niet",
+  beoordeelCopy(copyBeeld(DOC_KOPPEN.slice(0, 1)), "/tuinontwerp/strandtuin", bronDoc(DOC_KOPPEN), vergelijkKoppen).uitslag, "niet");
+
+// Te weinig koppen in het brondocument: geen oordeel. Twee koppen is een muntworp.
+check("brondocument met 2 koppen -> onmeetbaar",
+  beoordeelCopy(copyBeeld(DOC_KOPPEN), "/tuinontwerp/strandtuin", bronDoc(DOC_KOPPEN.slice(0, 2)), vergelijkKoppen).uitslag, "onmeetbaar");
+
+// Pagina onleesbaar mag NOOIT "niet doorgevoerd" opleveren.
+const copyKapot = maakBeeld(
+  [pagina("/", "Home", [], true, ["Welkom"], ""), pagina("/hovenier", "Hovenier", [], true, ["Hovenier"], ""), pagina("/contact", "Contact", [], true, ["Contact"], "")],
+  [{ pad: "/tuinontwerp/strandtuin", reden: "de site weigerde ons te lezen (403)" }],
+);
+const copyOnleesbaar = beoordeelCopy(copyKapot, "/tuinontwerp/strandtuin", bronDoc(DOC_KOPPEN), vergelijkKoppen);
+check("onleesbare pagina -> onmeetbaar, niet 'niet'", copyOnleesbaar.uitslag, "onmeetbaar");
+checkWaar("en het bewijs noemt de reden", copyOnleesbaar.bewijs.includes("403"));
+
+// Een kop die alleen in het menu staat mag niet meetellen als "content staat erop":
+// de koppen op een GelezenPagina komen uit de lopende tekst, niet uit de navigatie.
+const alleenMenu = beoordeelCopy(copyBeeld([]), "/tuinontwerp/strandtuin", bronDoc(DOC_KOPPEN), vergelijkKoppen);
+check("pagina zonder koppen in de lopende tekst -> onmeetbaar", alleenMenu.uitslag, "onmeetbaar");
 
 const teWeinig = maakBeeld([pagina("/", "Home", [])]);
 check(

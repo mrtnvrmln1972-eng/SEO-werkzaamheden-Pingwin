@@ -23,9 +23,11 @@ import { getClientUrls } from "./site-urls";
 import { msStatus, msGetThread, type LiveEmail } from "./ms-graph";
 import { haalAfspraken, type Afspraak } from "./mail-afspraken";
 import {
-  bouwSitebeeld, bestaatPagina, beoordeelInterneLink, beoordeelUitNavigatie, beoordeelBron,
+  bouwSitebeeld, bestaatPagina, beoordeelInterneLink, beoordeelUitNavigatie, beoordeelBron, beoordeelCopy,
   type Sitebeeld, type Meting, type Uitslag,
 } from "./site-controle";
+import { vergelijkKoppen } from "./copy-live";
+import { haalCopyBron, type CopyBron } from "./copy-bron";
 import { pagePath } from "./page-internal-links";
 import { callClaudeForcedTool, type ToolDef } from "./anthropic";
 import { mdToHtml } from "./markdown";
@@ -315,7 +317,13 @@ async function bestaanKaart(domein: string, paden: string[]): Promise<Map<string
   return kaart;
 }
 
-function meetPunt(a: Afspraak, beeld: Sitebeeld, bestaan: Map<string, Awaited<ReturnType<typeof bestaatPagina>>>, doelTitel: string): Meting {
+function meetPunt(
+  a: Afspraak,
+  beeld: Sitebeeld,
+  bestaan: Map<string, Awaited<ReturnType<typeof bestaatPagina>>>,
+  doelTitel: string,
+  copyBronnen: Map<string, CopyBron>,
+): Meting {
   // Eerst: kan dit punt überhaupt nog? Een bronpagina die niet meer bestaat maakt
   // het verzoek onuitvoerbaar, en dat is iets anders dan niet uitgevoerd. Dit is
   // precies het geval van /hovenier/hovenier-breda/, waar de bouwer zelf op wees.
@@ -329,11 +337,23 @@ function meetPunt(a: Afspraak, beeld: Sitebeeld, bestaan: Map<string, Awaited<Re
     return beoordeelInterneLink(beeld, a.bronPad, a.doelPad, doelTitel, doel);
   }
 
-  // Richtinggevende punten (styling, kleuren, teksten) meet deze versie nog niet.
+  if (a.soort === "copy") {
+    const bron = copyBronnen.get(a.doelPad);
+    if (!bron || bron.reden) {
+      return {
+        uitslag: "onmeetbaar",
+        bewijs: bron?.reden || "ik kon de aangeleverde tekst niet vinden om mee te vergelijken",
+        details: { doelPad: a.doelPad },
+      };
+    }
+    return beoordeelCopy(beeld, a.doelPad, bron, vergelijkKoppen);
+  }
+
+  // Styling, kleuren en afbeeldingen meet deze versie nog niet.
   // Liever eerlijk zwijgen dan een oordeel geven dat nergens op steunt.
   return {
     uitslag: "onmeetbaar",
-    bewijs: "dit punt gaat niet over links; dat meet ik in deze versie nog niet automatisch",
+    bewijs: "dit punt gaat over vormgeving; dat meet ik nog niet automatisch",
     details: { soort: a.soort },
   };
 }
@@ -428,14 +448,30 @@ export async function runControle(id: number): Promise<void> {
       return faal(id, `Ik kon geen enkele pagina van ${client.domain} lezen: ${reden}. Zolang dat zo is kan ik niets over deze site beweren.`);
     }
 
+    // 3b. De aangeleverde tekst zoeken voor elk content-punt: eerst ons eigen
+    // copy-document, anders de bijlage uit deze mailwisseling.
+    const titelVan = new Map(beeld.paginas.map((p) => [p.pad, p.titel]));
+    const copyBronnen = new Map<string, CopyBron>();
+    const copyPaden = [...new Set(lijst.afspraken.filter((a) => a.soort === "copy").map((a) => a.doelPad))];
+    if (copyPaden.length) {
+      await stap(id, "de aangeleverde tekst zoeken");
+      for (const pad of copyPaden) {
+        const bron = await haalCopyBron(slug, pad, titelVan.get(pad) || "", mails).catch(() => null);
+        if (bron) copyBronnen.set(pad, bron);
+      }
+    }
+
     // 4. Oordelen.
     await stap(id, "de punten beoordelen");
-    const titelVan = new Map(beeld.paginas.map((p) => [p.pad, p.titel]));
     const punten: ControlePunt[] = [];
     for (const a of lijst.afspraken) {
-      const m = meetPunt(a, beeld, bestaan, titelVan.get(a.doelPad) || "");
+      const m = meetPunt(a, beeld, bestaan, titelVan.get(a.doelPad) || "", copyBronnen);
+      // Uit ons eigen copy-document tellen we koppen in een bekend formaat: dat is
+      // hard. Uit een vreemde Word-bijlage is het een gok, want dat kan net zo goed
+      // een briefing zijn. De herkomst bepaalt de hardheid, niet het model.
+      const hard = a.soort === "copy" ? copyBronnen.get(a.doelPad)?.herkomst === "copydoc" : a.hard;
       punten.push({
-        puntKey: a.puntKey, soort: a.soort, hard: a.hard, titel: a.titel,
+        puntKey: a.puntKey, soort: a.soort, hard, titel: a.titel,
         gevraagd: a.gevraagd, gevraagdOp: a.gevraagdOp, devClaim: a.devClaim, devClaimOp: a.devClaimOp,
         bronPad: a.bronPad, doelPad: a.doelPad, plek: a.plek,
         uitslag: m.uitslag, bewijs: m.bewijs, details: m.details, handmatig: "",

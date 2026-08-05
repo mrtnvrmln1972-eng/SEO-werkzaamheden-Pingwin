@@ -29,7 +29,7 @@ import { pagePath } from "./page-internal-links";
 import type { LiveEmail } from "./ms-graph";
 import type { ClientUrl } from "./site-urls";
 
-export type AfspraakSoort = "interne-link" | "uit-navigatie" | "anders";
+export type AfspraakSoort = "interne-link" | "uit-navigatie" | "copy" | "anders";
 
 export type Afspraak = {
   /** Stabiele sleutel, zodat twee controles van dezelfde thread vergelijkbaar zijn. */
@@ -70,6 +70,10 @@ export type Afsprakenlijst = {
 const HARD: Record<AfspraakSoort, boolean> = {
   "interne-link": true,
   "uit-navigatie": true,
+  // Copy is hard als de tekst uit ons eigen copy-document komt, en richtinggevend
+  // als hij uit een mailbijlage komt: dat kan ook een briefing zijn in plaats van
+  // de definitieve tekst. De motor stelt dat bij zodra de herkomst bekend is.
+  copy: false,
   anders: false,
 };
 
@@ -106,8 +110,8 @@ const TOOL: ToolDef = {
           properties: {
             soort: {
               type: "string",
-              enum: ["interne-link", "uit-navigatie", "anders"],
-              description: "interne-link = er moet een link vanaf een pagina naar een andere pagina komen. uit-navigatie = een pagina moet juist UIT het menu of de footer. anders = al het overige (styling, kleur, teksten, afbeeldingen).",
+              enum: ["interne-link", "uit-navigatie", "copy", "anders"],
+              description: "interne-link = er moet een link vanaf een pagina naar een andere pagina komen. uit-navigatie = een pagina moet juist UIT het menu of de footer. copy = een aangeleverde tekst of document moet op een pagina verwerkt worden. anders = al het overige (styling, kleur, afbeeldingen).",
             },
             titel: { type: "string", description: "Korte omschrijving van het punt in gewone taal, maximaal 80 tekens." },
             citaat: { type: "string", description: "De zin uit de tekst waarin dit gevraagd wordt, LETTERLIJK overgenomen. Verzin niets; neem exact over wat er staat." },
@@ -330,7 +334,7 @@ export async function haalAfspraken(opts: {
     }
 
     const soortRuw = String(p.soort || "anders");
-    const soort: AfspraakSoort = soortRuw === "interne-link" || soortRuw === "uit-navigatie" ? soortRuw : "anders";
+    const soort: AfspraakSoort = soortRuw === "interne-link" || soortRuw === "uit-navigatie" || soortRuw === "copy" ? soortRuw : "anders";
     const doelPad = schoonPad(String(p.doelPad || ""));
 
     // Nacontrole 3: zonder pagina valt er niets te meten. Naar Maarten dus, niet
