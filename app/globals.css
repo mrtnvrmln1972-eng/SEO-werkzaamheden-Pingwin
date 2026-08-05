@@ -4549,14 +4549,12 @@ button.wb-stip:disabled { cursor: wait; opacity: 0.6; }
    Het is dezelfde kaart als op het tabblad Taken, met alle infoblokken, fases,
    knoppen en de chat; alleen strakker gezet. Zo hoeft er geen tweede, magere
    versie naast te bestaan die vanzelf achterloopt. */
-.wb-kaart { padding: 0 0 var(--s-3) 34px; border-bottom: 1px solid var(--card-border); background: #FFFDFB; }
-.wb-kaart .wp-kaart { border: 1px solid var(--card-border); border-radius: var(--r-md); box-shadow: none; margin: 0; }
-/* De kop van de kaart is dubbel: die staat al in de regel erboven. */
-.wb-kaart .wp-kaart-kop { display: none; }
-.wb-kaart .wp-overdeze { padding: var(--s-3); gap: var(--s-2); }
-.wb-kaart .wp-info-kaart { padding: var(--s-2) var(--s-3); }
-.wb-kaart .wp-fases { padding: 0 var(--s-3) var(--s-2); }
-.wb-kaart .wp-fase-rij { padding: 3px 0; }
-.wb-kaart .wp-chat { padding: 0 var(--s-3) var(--s-2); }
-.wb-kaart .wp-onder-regel { padding: 0 var(--s-3) var(--s-3); }
+.wb-kaart { padding: 0 var(--s-2) var(--s-3) 34px; border-bottom: 1px solid var(--card-border); background: #FFFDFB; }
+.wb-kaart .wp-card { border: 1px solid var(--card-border); border-radius: var(--r-md); box-shadow: none; margin: 0; padding: var(--s-3); }
+/* Twee dingen zijn op het bord dubbel of dood: het rijtje stipjes staat al in de
+   regel erboven, en slepen gebeurt hier niet (dat blijft op het tabblad Taken).
+   De kop zelf blijft wél staan, want daar zitten de status- en verwijderknop. */
 .wb-kaart .wp-steps { display: none; }
+.wb-kaart .wp-card-grip { display: none; }
+.wb-kaart .wp-card-grid { grid-template-columns: minmax(0, 1fr); gap: 0; }
+.wb-kaart .wp-fase-rij { padding: 3px 0; }
