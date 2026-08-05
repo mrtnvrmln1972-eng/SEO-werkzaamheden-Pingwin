@@ -5,6 +5,7 @@ import { mdToHtml } from "../../../../lib/markdown";
 import { linkifyHtml } from "../../../../lib/linkify";
 import OpruimTabel from "./OpruimTabel";
 import OpruimStructuur from "./OpruimStructuur";
+import OpruimOppakken, { type Oppakker } from "./OpruimOppakken";
 
 type ClusterUrl = { url: string; rol?: string; positie?: number; klikken?: number; impressies?: number; verwijzendeDomeinen?: number; intentie?: string };
 type Signalen = { urlFlip?: boolean; flipsIn90d?: number; positiePlafond?: boolean; klikVerdeling?: boolean };
@@ -12,7 +13,7 @@ type Cluster = { keyword: string; volume?: number; score?: string; signalen?: Si
 type RedirectMapItem = { van: string; naar: string; type?: string; mergeContent?: boolean; verhuizen?: boolean; reden?: string };
 type InterneLink = { vanaf: string; naar: string; ankertekst?: string; reden?: string };
 type Datakwaliteit = { gsc?: boolean; gscTijdreeks?: boolean; ahrefsZoekwoorden?: boolean; ahrefsBacklinks?: boolean; crawl?: boolean; opmerking?: string };
-type Result = { samenvatting: string; datakwaliteit?: Datakwaliteit; clusters: Cluster[]; redirectMap?: RedirectMapItem[]; interneLinks?: InterneLink[]; generatedAt: string | null };
+type Result = { oppakken?: Oppakker[]; samenvatting: string; datakwaliteit?: Datakwaliteit; clusters: Cluster[]; redirectMap?: RedirectMapItem[]; interneLinks?: InterneLink[]; generatedAt: string | null };
 type State = { status: string; result: Result | null; error: string; updatedAt: string | null; stap?: number; stappen?: number; stapLabel?: string; cronTik?: string | null; cronStil?: boolean; kandidaten?: number; beoordeeld?: number };
 
 function actionClass(a: string): string {
@@ -58,8 +59,8 @@ function uitkomstVoor(url: string, winnaar: string, rijen: RedirectMapItem[]): U
   return { tekst: "blijft staan, geen actie", cls: "keep" };
 }
 
-export default function CannibalPanel({ slug, domain = "", openTarget }: {
-  slug: string; domain?: string;
+export default function CannibalPanel({ slug, domain = "", openTarget, clientName, clientEmail }: {
+  slug: string; domain?: string; clientName?: string; clientEmail?: string;
   /** Doorgegeven aan de werklijst, zodat je vanuit een ander scherm meteen op de
       juiste pagina landt in plaats van zelf te moeten filteren. */
   openTarget?: { url: string; n: number } | null;
@@ -78,6 +79,26 @@ export default function CannibalPanel({ slug, domain = "", openTarget }: {
   const [adsGeen, setAdsGeen] = useState(false);
   const [adsIngevuld, setAdsIngevuld] = useState(true);
   const [adsMsg, setAdsMsg] = useState("");
+  // De waarde-rem over een lijst die er al ligt: pagina's met een waardevolle
+  // eigen zoekterm gaan van de omleidlijst af naar "oppakken".
+  const [weegBezig, setWeegBezig] = useState(false);
+  const [weegMsg, setWeegMsg] = useState("");
+
+  async function weegOpnieuw() {
+    if (weegBezig) return;
+    setWeegBezig(true); setWeegMsg("");
+    try {
+      const d = await fetch("/api/admin/opruim-waarde", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }),
+      }).then((r) => r.json());
+      if (!d.ok) { setWeegMsg(d.error || "Controle mislukt."); return; }
+      setWeegMsg(d.gered
+        ? `${d.gered} ${d.gered === 1 ? "pagina" : "pagina's"} van de opruimlijst gehaald: hun eigen zoekterm heeft volume. Ze staan nu onder "Oppakken".`
+        : "Geen pagina's op de opruimlijst met een waardevolle eigen zoekterm; de lijst blijft zoals hij was.");
+      await load();
+    } catch { setWeegMsg("Controle mislukt."); }
+    finally { setWeegBezig(false); }
+  }
 
   async function load() {
     try {
@@ -341,6 +362,8 @@ export default function CannibalPanel({ slug, domain = "", openTarget }: {
 
             <OpruimStructuur slug={slug} />
 
+            <OpruimOppakken slug={slug} domain={domain} rijen={result.oppakken || []} clientName={clientName} clientEmail={clientEmail} />
+
             {/* De werklijst eerst. Het verhaal eronder: een lijst is om af te werken,
                 proza is om te begrijpen, en in die volgorde. */}
             {result.redirectMap && result.redirectMap.length > 0 && (
@@ -354,7 +377,14 @@ export default function CannibalPanel({ slug, domain = "", openTarget }: {
                    title="Downloadt de volledige lijst als CSV. Dubbelklikken opent hem in Excel; in Google Sheets via Bestand, Importeren.">
                   Download voor Excel of Sheets
                 </a>
+                {/* De rem ook over een lijst die er al ligt, zonder een nieuwe
+                    analyse van twintig minuten. */}
+                <button type="button" className="ghost-btn small" onClick={() => void weegOpnieuw()} disabled={weegBezig}
+                  title="Kijkt per pagina op deze lijst of zijn eigen zoekterm zoekvolume heeft. Zo ja, dan gaat hij eraf en komt hij bij Oppakken te staan.">
+                  {weegBezig ? "Bezig met controleren…" : "Controleer op waardevolle pagina's"}
+                </button>
               </div>
+                {weegMsg && <div className="opr-melding">{weegMsg}</div>}
                 <OpruimTabel slug={slug} domain={domain} rijen={result.redirectMap} openTarget={openTarget} bewijs={bewijsPerPad} />
               </div>
             )}

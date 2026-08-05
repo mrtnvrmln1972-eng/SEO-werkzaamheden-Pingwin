@@ -10,6 +10,7 @@ import { fetchPageContent } from "./page-content";
 import { callClaude, callClaudeAgentic, type ToolDef, type ToolRunner } from "./anthropic";
 import { regelsAlsInstructie, getAdsPaginas, isAdsPad } from "./opruim-regels";
 import { zwakkePaginas, type ZwakkePagina } from "./concurrenten";
+import { weegKandidaten, weegPaden, type Oppakker } from "./opruim-waarde";
 import { getSetting, setSetting, SETTING_OPRUIM_CRON_TIK } from "./settings";
 
 // ═══════════════════════════════════════════════════════════
@@ -45,6 +46,10 @@ export type Datakwaliteit = { gsc?: boolean; gscTijdreeks?: boolean; ahrefsZoekw
 export type CannibalResult = {
   samenvatting: string; datakwaliteit?: Datakwaliteit; clusters: RedirectCluster[];
   redirectMap?: RedirectMapItem[]; interneLinks?: InterneLink[]; generatedAt: string | null;
+  /** Pagina's die er in de data uitzien als dood gewicht, maar op een zoekterm
+      met echt volume zitten. Die gaan niet naar de omleidlijst maar naar een
+      eigen lijst: herontwikkelen in plaats van weghalen. */
+  oppakken?: Oppakker[];
 };
 // De analyse draait in hervatbare stappen. Reden: één volledige analyse kost 10 tot
 // 20 minuten (agentisch onderzoek + de grote JSON-synthese + drie doorloop-rondes) en
@@ -106,6 +111,10 @@ async function doEnsure(): Promise<void> {
   await sql`ALTER TABLE client_cannibal_analysis ADD COLUMN IF NOT EXISTS kandidaten TEXT`;
   // Welke kandidaten al zijn voorgelegd, inclusief de pagina's die mochten blijven.
   await sql`ALTER TABLE client_cannibal_analysis ADD COLUMN IF NOT EXISTS behandeld TEXT`;
+  // De pagina's die juist NIET opgeruimd mogen worden omdat hun eigen zoekterm
+  // volume heeft. Aparte kolom, zodat ze ook aan een oudere uitkomst worden
+  // meegegeven zonder de analyse opnieuw te draaien.
+  await sql`ALTER TABLE client_cannibal_analysis ADD COLUMN IF NOT EXISTS oppakken TEXT`;
 }
 
 function pagePath(u: string): string { return (u || "").replace(/^https?:\/\/[^/]+/i, "").trim() || (u || ""); }
@@ -161,7 +170,7 @@ const q: SqlTag = (strings, ...values) => actieveSql(strings, ...values);
 type CannibalRow = {
   status: string; result: CannibalResult | null; error: string; updatedAt: string | null;
   fase: CannibalFase; ronde: number; retries: number; seed: string; findings: string;
-  kandidaten: ZwakkePagina[]; behandeld: string[];
+  kandidaten: ZwakkePagina[]; behandeld: string[]; oppakken: Oppakker[];
 };
 
 // JSON-kolom die ook leeg of stuk mag zijn: altijd een lijst terug, nooit een fout.
@@ -171,7 +180,7 @@ function lijstVan<T>(v: unknown): T[] {
 }
 
 async function readRow(slug: string): Promise<CannibalRow | null> {
-  const { rows } = await q`SELECT status, result, error, updated_at, fase, ronde, retries, seed, findings, kandidaten, behandeld FROM client_cannibal_analysis WHERE client_slug = ${slug} LIMIT 1`;
+  const { rows } = await q`SELECT status, result, error, updated_at, fase, ronde, retries, seed, findings, kandidaten, behandeld, oppakken FROM client_cannibal_analysis WHERE client_slug = ${slug} LIMIT 1`;
   const r = rows[0];
   if (!r) return null;
   let result: CannibalResult | null = null;
@@ -188,6 +197,7 @@ async function readRow(slug: string): Promise<CannibalRow | null> {
     findings: (r.findings as string) || "",
     kandidaten: lijstVan<ZwakkePagina>(r.kandidaten),
     behandeld: lijstVan<string>(r.behandeld),
+    oppakken: lijstVan<Oppakker>(r.oppakken),
   };
 }
 
@@ -207,7 +217,7 @@ export async function getCannibalAnalysis(slug: string): Promise<CannibalState> 
     kandidaten: r.kandidaten.length,
     beoordeeld: r.behandeld.length,
     status: (r.status as CannibalState["status"]) || "idle",
-    result: r.result,
+    result: r.result ? { ...r.result, oppakken: r.oppakken } : r.result,
     error: r.error,
     updatedAt: r.updatedAt,
     fase: r.fase,
@@ -234,6 +244,33 @@ export async function startCannibalRun(slug: string): Promise<void> {
     INSERT INTO client_cannibal_analysis (client_slug, status, result, error, fase, ronde, retries, seed, findings, updated_at)
     VALUES (${slug}, 'running', NULL, NULL, 'gather', 0, 0, NULL, NULL, now())
     ON CONFLICT (client_slug) DO UPDATE SET status = 'running', error = NULL, fase = 'gather', ronde = 0, retries = 0, seed = NULL, findings = NULL, kandidaten = NULL, behandeld = NULL, updated_at = now()`;
+}
+
+/**
+ * De waarde-rem over een werklijst die er al ligt. Elke pagina die op de
+ * omleidlijst staat maar een eigen zoekterm met volume heeft, verhuist naar de
+ * lijst "oppakken". Zo geldt de nieuwe regel meteen voor de uitkomst die er nu
+ * is, in plaats van pas na een nieuwe analyse van twintig minuten.
+ */
+export async function weegOpruimlijstOpnieuw(slug: string, domain: string): Promise<{ gered: number; over: number; oppakken: Oppakker[] }> {
+  await ensureSchema();
+  await ensureTable();
+  const row = await readRow(slug);
+  const result = row?.result;
+  const rijen = result?.redirectMap || [];
+  if (!result || !rijen.length) return { gered: 0, over: 0, oppakken: row?.oppakken || [] };
+
+  const oppakken = await weegPaden(domain, rijen.map((r) => ({ pad: padOf(String(r.van || "")) })));
+  const gered = new Set(oppakken.map((o) => padOf(o.pad)));
+  if (!gered.size) return { gered: 0, over: rijen.length, oppakken: row?.oppakken || [] };
+
+  const over = rijen.filter((r) => !gered.has(padOf(String(r.van || ""))));
+  const nieuw: CannibalResult = { ...result, redirectMap: over };
+  // Samenvoegen met wat er al stond, zodat een tweede controle niets kwijtmaakt.
+  const samen = [...(row?.oppakken || []), ...oppakken];
+  const uniek = [...new Map(samen.map((o) => [padOf(o.pad), o])).values()].sort((a, b) => (b.volume || 0) - (a.volume || 0));
+  await q`UPDATE client_cannibal_analysis SET result = ${JSON.stringify(nieuw)}, oppakken = ${JSON.stringify(uniek)}, updated_at = now() WHERE client_slug = ${slug}`;
+  return { gered: gered.size, over: over.length, oppakken: uniek };
 }
 
 async function faal(slug: string, msg: string): Promise<void> {
@@ -410,7 +447,15 @@ async function stapMetReden(slug: string): Promise<{ uit: "verder" | "klaar"; re
       const s = await bouwSeed(slug, client?.name || "", domain);
       if (!s.ok) { await faal(slug, s.error); return { uit: "klaar", reden: "kern-data mislukt" }; }
       seed = s.seed;
-      await q`UPDATE client_cannibal_analysis SET seed = ${seed}, kandidaten = ${JSON.stringify(s.kandidaten)}, updated_at = now() WHERE client_slug = ${slug}`;
+      // De rem vóór de opruimlijst: kandidaten waarvan de eigen zoekterm volume
+      // heeft en die niemand anders bezit, gaan er hier uit. Ze komen op een
+      // eigen lijst ("oppakken") en worden dus nooit aan het model voorgelegd
+      // als opruimkandidaat. Zonder deze stap stelde de analyse voor om
+      // /soa-test-kopen/ (500 zoekopdrachten per maand) op te heffen.
+      const gewogen = await weegKandidaten(domain, s.kandidaten).catch(() => null);
+      const kandidaten = gewogen ? gewogen.rest : s.kandidaten;
+      const oppakken = gewogen ? gewogen.oppakken : [];
+      await q`UPDATE client_cannibal_analysis SET seed = ${seed}, kandidaten = ${JSON.stringify(kandidaten)}, oppakken = ${JSON.stringify(oppakken)}, updated_at = now() WHERE client_slug = ${slug}`;
     }
 
     // STAP 1 — agentic onderzoek: het model zoomt in op verdachte pagina's en schrijft
@@ -507,10 +552,14 @@ async function stapMetReden(slug: string): Promise<{ uit: "verder" | "klaar"; re
     // rij stond; "geen kandidaten" en "alle kandidaten gehad" zien er van buiten
     // hetzelfde uit, en dat verschil moet de motor zelf kunnen herstellen.
     const ads = await getAdsPaginas(slug).catch(() => ({ paden: [], geen: false, ingevuld: false }));
-    let kandidaten = (row.kandidaten || []).filter((k) => !isAdsPad(k.pad, ads));
+    // Pagina's met een waardevolle eigen zoekterm blijven buiten de opruimlijst,
+    // ook als de kandidatenlijst onderweg opnieuw wordt opgehaald.
+    const beschermd = new Set((row.oppakken || []).map((o) => padOf(o.pad)));
+    const mag = (k: ZwakkePagina) => !isAdsPad(k.pad, ads) && !beschermd.has(padOf(k.pad));
+    let kandidaten = (row.kandidaten || []).filter(mag);
     if (!kandidaten.length) {
       const opnieuw = await zwakkePaginas(slug, domain).catch(() => null);
-      kandidaten = (opnieuw?.kandidaten || []).filter((k) => !isAdsPad(k.pad, ads));
+      kandidaten = (opnieuw?.kandidaten || []).filter(mag);
       if (kandidaten.length) await q`UPDATE client_cannibal_analysis SET kandidaten = ${JSON.stringify(kandidaten)}, updated_at = now() WHERE client_slug = ${slug}`;
     }
 
@@ -561,7 +610,7 @@ Lever UITSLUITEND JSON: {"redirectMap":[{"van":"/pad/","naar":"/doel/","type":"3
     const inBlok = new Set(blok.map((k) => padOf(k.pad)));
     const echtNieuw = nieuweRijen.filter((m) => {
       const v = padOf(String(m.van || ""));
-      if (!v || gezien.has(v) || !inBlok.has(v)) return false;
+      if (!v || gezien.has(v) || !inBlok.has(v) || beschermd.has(v)) return false;
       gezien.add(v);
       return true;
     });

@@ -865,7 +865,7 @@ export default function ClientCockpit({
             kon erbij. Hier hoort de volledige redirectlijst thuis, niet in de chat:
             een lijst is een scherm, een oordeel is een gesprek. */}
         {tab === "prioriteiten" && <PrioriteitenPanel slug={client.slug} domain={client.domain || ""} onGaNaar={gaNaar} />}
-        {tab === "cannibalisatie" && <CannibalPanel slug={client.slug} domain={client.domain || ""} openTarget={opruimTarget} />}
+        {tab === "cannibalisatie" && <CannibalPanel slug={client.slug} domain={client.domain || ""} openTarget={opruimTarget} clientName={client.name} clientEmail={client.email || ""} />}
         {tab === "interne-links" && <InternalLinksPanel slug={client.slug} openTarget={linkTarget} />}
 
         {/* Alleen het developer-werk van DEZE klant; het overzicht over alle
