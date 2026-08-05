@@ -59,13 +59,23 @@ export default function FocusBlock({ slug, standalone, soort = "focus", titel }:
 
   // Het veld zelf (knoppenbalk + bewerkbaar vlak) is gedeeld met de
   // bespreekpunten; hier blijft alleen het laden en opslaan over.
+  // Deksel op een lang veld. Staat hier de stand van zes landingpagina's in, dan
+  // duwde dat de hele tab weg: dit veld had geen eigen inklap en geen maximale
+  // hoogte, dus zodra het blok erboven één keer open stond, stond alles open (en
+  // dat onthoudt de browser). Nu zie je het begin met "toon alles" eronder.
+  const [alles, setAlles] = useState(false);
   const veldBlok = initialHtml === null
     ? <div className="focus-rich focus-loading" />
-    : <RijkTekstVeld
-        waarde={initialHtml}
-        onChange={triggerSave}
-        toolbarExtra={saveLabel ? <span className="focus-save-status">{saveLabel}</span> : null}
-      />;
+    : <div className={"veld-deksel" + (alles ? " veld-open" : "")}>
+        <RijkTekstVeld
+          waarde={initialHtml}
+          onChange={triggerSave}
+          toolbarExtra={saveLabel ? <span className="focus-save-status">{saveLabel}</span> : null}
+        />
+        <button type="button" className="veld-meer" onClick={() => setAlles((v) => !v)}>
+          {alles ? "toon minder" : "toon alles"}
+        </button>
+      </div>;
 
   if (standalone) {
     // Zelfde huisstijl als de andere inklapbare kaarten (Actuele stand van

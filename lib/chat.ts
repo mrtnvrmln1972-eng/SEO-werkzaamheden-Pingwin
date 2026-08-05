@@ -11,6 +11,8 @@ import { callClaudeAgentic, callClaude, LIGHT_MODEL, type ToolDef, type ToolRunn
 import { sheetCsvUrl, parseCSV, structureData, MAAND_VOLGORDE } from "./sheet";
 import { getFocus } from "./focus";
 import { notitiesTekst } from "./notities";
+import { korteGeschiedenis } from "./chat-inkorten";
+import type { ChatMsg } from "./anthropic";
 import { htmlNaarTekst } from "./veilige-html";
 import { buildOverview, overviewToText, getPageWorkStatus, pageWorkStatusToText } from "./overview";
 import { buildPageSignalsText, buildKeywordStandText, buildTeBouwenText } from "./page-signals";
@@ -1304,7 +1306,11 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
     // antwoordt. Vision-berichten (afbeelding) gaan als content-blokken mee.
     // Het takenvoorstel is een scherm-element, geen gespreksbeurt: die placeholder
     // ("Voorstel: dit werk volgt uit dit gesprek.") hoort niet in de context.
-    const apiMessages = messages.filter((m) => m.soort !== "oogst").slice(-10).map((m) => {
+    // Oudere antwoorden gaan INGEKORT mee (kopjes plus de eerste regels). Zonder
+    // dat las de assistent bij elke vraag zes eigen rapporten terug en schreef er
+    // een zevende bij dat alles herhaalde; twee opeenvolgende antwoorden vertelden
+    // dan hetzelfde verhaal. Je eigen vragen en het laatste antwoord blijven heel.
+    const apiMessages = korteGeschiedenis(messages.filter((m) => m.soort !== "oogst").slice(-10) as ChatMsg[]).map((m: ChatMsg & { images?: string[]; image?: string }) => {
       const imgs = [...(m.images || []), ...(m.image ? [m.image] : [])];
       const blocks = imgs
         .map((im) => im.match(/^data:(image\/[a-z+.-]+);base64,(.+)$/i))

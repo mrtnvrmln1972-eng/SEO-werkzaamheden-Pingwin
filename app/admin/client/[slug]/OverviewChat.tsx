@@ -280,7 +280,17 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
       if (openRef.current !== t) return;                 // Maarten is intussen naar een ander onderwerp
       if (d?.ok) {
         if (stap === "conclusie") setMessages((m) => [...m, { role: "assistant", content: d.answer, soort: "conclusie" }]);
-        else setMessages((m) => [...m, { role: "assistant", content: "Voorstel: dit werk volgt uit dit gesprek.", soort: "oogst", oogst: d.oogst }]);
+        else setMessages((m) => {
+          // Nog een keer op "Welke taken volgen hieruit?" drukken gaf een tweede,
+          // bijna identiek voorstel-blok eronder. Een nog niet verwerkt voorstel
+          // wordt daarom vervángen: er is er altijd maar één actueel.
+          const nieuw: Msg = { role: "assistant", content: "Voorstel: dit werk volgt uit dit gesprek.", soort: "oogst", oogst: d.oogst };
+          const idx = m.map((x) => (x.soort === "oogst" && !x.oogst?.verwerkt ? 1 : 0)).lastIndexOf(1);
+          if (idx < 0) return [...m, nieuw];
+          const kopie = [...m];
+          kopie[idx] = nieuw;
+          return kopie;
+        });
       } else setError(d?.error || `Er ging iets mis (server gaf status ${r.status}).`);
     } catch { setError("De assistent is niet bereikbaar."); }
     finally { setOogstBusy(""); }
