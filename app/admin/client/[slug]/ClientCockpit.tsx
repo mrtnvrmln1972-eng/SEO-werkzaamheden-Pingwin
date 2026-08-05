@@ -591,6 +591,12 @@ export default function ClientCockpit({
                 <button type="button" className="strategy-head" onClick={() => setOvOpen((v) => ({ ...v, week: !v.week }))}>
                   <span className="strategy-caret">{ovOpen.week ? "▾" : "▸"}</span>
                   <span className="strategy-title">Week Planning</span>
+                  {/* Naar het compacte weekbord. Stond eerst in de kop van de
+                      weekplanning zelf, maar die kop is hier verborgen (de titel
+                      staat al op deze toggle), dus daar was hij onbereikbaar. */}
+                  <a className="wp-bordlink" href={`/admin/client/${client.slug}/weekbord`}
+                     onClick={(e) => e.stopPropagation()}
+                     title="Alle kaarten als één regel per taak, met de fase-stand ernaast">compact weekbord &rarr;</a>
                 </button>
                 {ovOpen.week && (
                   <div className="strategy-body">

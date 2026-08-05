@@ -19,6 +19,7 @@ import { useEffect, useMemo, useState } from "react";
 import { urlKey } from "../../../../../lib/url-key";
 import { cardInfoHtml } from "../../../../../lib/card-info";
 import { dagenSinds, type FaseSinds } from "../../../../../lib/fase-historie";
+import { volgendeFase, aanZet } from "../../../../../lib/fase-volgorde";
 
 type FaseKey = "strategie" | "gelieerde" | "analyse" | "blauwdruk" | "copy" | "bouw" | "structured";
 const FASEN: { key: FaseKey; kort: string }[] = [
@@ -118,14 +119,14 @@ export default function Weekbord({ slug, clientName, domain }: { slug: string; c
   function volgende(t: Taak): string {
     const p = infoVan(t);
     if (!p) return t.status === "klaar" ? "afgerond" : "loopt";
-    const eerste = FASEN.find((f) => !p[f.key]);
-    if (!eerste) return "alle fases af";
-    return eerste.kort.toLowerCase();
+    const f = volgendeFase(p, p.live);
+    if (!f) return "alle fases af";
+    return (FASEN.find((x) => x.key === f)?.kort || f).toLowerCase();
   }
   const huidigeFase = (t: Taak): FaseKey | null => {
     const p = infoVan(t);
     if (!p) return null;
-    return FASEN.find((f) => !p[f.key])?.key || null;
+    return volgendeFase(p, p.live);
   };
   // Hoeveel dagen staat deze kaart al bij dezelfde stap? Pas gevuld vanaf het
   // moment dat het dashboard dit is gaan bijhouden, dus in het begin leeg.
@@ -134,14 +135,12 @@ export default function Weekbord({ slug, clientName, domain }: { slug: string; c
     if (!f || !t.url) return null;
     return dagenSinds(sinds[urlKey(t.url)]?.[f]);
   }
-  // Bouw, publicatie en schema zijn dev-werk; de rest is van jou. De kaart zegt
-  // het ook (wie), maar de fase is preciezer: een SEO-kaart die bij bouw staat
-  // wacht wel degelijk op de dev.
+  // Wie is er aan zet? Dat volgt uit de FASE, niet uit het chipje op de kaart.
+  // Een kaart kan aan de dev toegewezen zijn terwijl de strategie nog bepaald
+  // moet worden; dan wacht hij op Maarten. Gedeelde regel met de kaart.
   function wachtOp(t: Taak): string {
-    const f = huidigeFase(t);
-    if (!f) return t.wie === "Dev" ? "de dev" : "jou";
-    if (f === "bouw" || f === "structured") return "de dev";
-    return t.wie === "Dev" ? "de dev" : "jou";
+    const p = infoVan(t);
+    return aanZet(p || null, p?.live ?? true, t.wie);
   }
 
   // Per week groeperen, oplopend, en binnen de week paginawerk eerst.

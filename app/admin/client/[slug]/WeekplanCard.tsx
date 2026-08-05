@@ -13,6 +13,7 @@ import { linkifyHtml } from "../../../../lib/linkify";
 import { urlKey } from "../../../../lib/url-key";
 import { devLabel } from "../../../../lib/personen";
 import { eersteKop } from "../../../../lib/chat-vouw";
+import { volgendeFase, faseLabel } from "../../../../lib/fase-volgorde";
 import AntwoordBlokken from "./AntwoordBlokken";
 import DocVersies from "./DocVersies";
 import PaginaDossier from "./PaginaDossier";
@@ -116,6 +117,17 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
   // Bevestigen gebeurt in de rij zelf: het nummer van het bericht dat weg mag,
   // of "chat" voor het hele gesprek.
   const [wegVraag, setWegVraag] = useState<number | "chat" | null>(null);
+  // Een fase met de hand op klaar zetten (of terugzetten). Zelfde weg als het
+  // vinkje op het weekbord, dus beide schermen blijven gelijk lopen.
+  const [vinkBezig, setVinkBezig] = useState<string>("");
+  async function zetFase(fase: string, af: boolean) {
+    if (!t.url || vinkBezig) return;
+    setVinkBezig(fase);
+    try {
+      await fetch("/api/admin/weekplan/phase", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: t.url, fase, done: af }) });
+      refreshBoard();
+    } catch { /* stil; het bord herlaadt zo toch */ } finally { setVinkBezig(""); }
+  }
   const laatsteAntwoord = msgs.map((m) => m.role).lastIndexOf("assistant");
   const [input, setInput] = useState("");
   const [chatBusy, setChatBusy] = useState(false);
@@ -606,10 +618,14 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
 
       {/* Dichtgeklapt: compacte fase-chips. Klik = naar de pagina in Pagina's. */}
       {!open && page && (
-        <div className="wp-steps" title="Waar deze pagina staat in de pijplijn. Klik open voor starten en afvinken."
+        <div className="wp-steps" title="De stand van deze pagina. Klik om de kaart te openen; daar kun je fases starten en afvinken."
           role="button" onClick={onToggleOpen}>
           {FASEN.map((f) => <span key={f.key} className={"wp-step" + (page[f.key] ? " wp-step-done" : "")}>{page[f.key] ? "✓ " : ""}{f.kort}</span>)}
-          {(() => { const eerste = FASEN.find((f) => !page[f.key]); return eerste ? <span className="wp-step wp-step-next">Volgende: {eerste.label}</span> : <span className="wp-step wp-step-done">Alles klaar</span>; })()}
+          {/* Dezelfde berekening als de knop in het fase-blok: bestaat de pagina
+              nog niet, dan wordt analyse overgeslagen. Eerder rekende de chip het
+              zelf uit en zei hij "Volgende: Strategie" terwijl de knop ernaast
+              "Blauwdruk + copy" startte. */}
+          {(() => { const f = volgendeFase(page, page.live); return f ? <span className="wp-step wp-step-next">Volgende: {faseLabel(f)}</span> : <span className="wp-step wp-step-done">Alles klaar</span>; })()}
         </div>
       )}
 
@@ -618,6 +634,89 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
           alleen een omschrijving. Knop, status en het kant-en-klare document. */}
       {open && !t.url && /werklijst sitebouwer|site-?breed/i.test(t.taak) && <WerklijstBlok slug={slug} refreshBoard={refreshBoard} />}
 
+      {/* De fases staan hier, direct onder "Over deze pagina" en boven de chat.
+          Ze stonden onderaan, ónder het hele gesprek, dus je scrolde er straal
+          langs: eerst zien waarom deze pagina, dan de stand en wat je kunt
+          starten, en pas daarna praten. */}
+      {/* De cyclus verticaal, per fase status + start + vinkje. "Alles in één keer"
+          hoort bij de eerste drie fases samen, niet bij Copy alleen, dus hij staat
+          hier boven het blok in plaats van in één van de rijen. */}
+      {open && page && (
+        <div className="wp-fases-kop">
+          <span className="wp-sectie-label" style={{ margin: 0 }}>Fases</span>
+          <span className="wp-fase-spacer" />
+          <button type="button" className="wp-fase-btn" disabled={(!page.live && !page.strategie) || runActive || !!busy}
+            title={(!page.live && !page.strategie) ? "Eerst de strategie goedkeuren (nieuwe pagina)" : "Draait analyse, blauwdruk en copy achter elkaar"}
+            onClick={() => void startDocStep(page.live ? ["analyse", "blauwdruk", "copy"] : ["blauwdruk", "copy"])}>
+            {page.live ? "Alles in één keer ▷" : "Blauwdruk + copy ▷"}
+          </button>
+        </div>
+      )}
+      {open && page && (
+        <div className="wp-fases">
+          {FASEN.map((f) => {
+            const stand = faseStand(f.key);
+            const link = docLink(f.key);
+            // Eén regel sturing per fase, en pas zichtbaar als je die fase opent.
+            // Stonden ze alle vijf tegelijk open, dan las je de instructie voor Copy
+            // terwijl je bij Analyse zat en paste de kaart nergens meer in één blik.
+            const sturing = (info.perFase[f.key as CardFaseKey] || []).join(" · ");
+            // Een regel die alleen een document benoemt ("Copy-document: ...docx")
+            // voegt niets toe naast het linkje ernaast. Alleen echte sturing krijgt
+            // een uitleg-knop; de rest is ruis in een rij die rustig moet zijn.
+            const sturingNuttig = !!sturing && !/^\s*[a-zà-ž -]{0,20}document\s*:/i.test(sturing) && !/\.(docx?|pdf|md)\b/i.test(sturing.slice(0, 90));
+            const sturingOpen = !!faseOpen[f.key];
+            const rij = (
+              <div key={f.key} className={"wp-fase" + (f.key === "bouw" ? " wp-fase-scheiding" : "")}>
+                <div className="wp-fase-rij">
+                  {/* Was een aankruisvakje, maar dat leek op iets dat je moest doen
+                      terwijl het alleen een aantekening maakte. Het dashboard meet
+                      elke fase inmiddels zelf, dus er blijft per rij één ding over dat
+                      iets doet (de knop) en één dat iets zegt (het chipje rechts). */}
+                  {/* Het vinkje is terug. Het dashboard meet de meeste fases zelf,
+                      maar niet alles gebeurt in het dashboard: heb je de strategie
+                      in een gesprek bepaald of de dev het live gezet, dan zet je het
+                      hier zelf om. Handmatig wint van de gemeten stand, beide kanten
+                      op, en het weekbord toont hetzelfde vinkje. */}
+                  <label className="wp-fase-vink" title={page[f.key] ? "Afgerond, klik om terug te zetten" : "Markeer deze fase als afgerond"}>
+                    <input type="checkbox" checked={!!page[f.key]} disabled={vinkBezig === f.key}
+                      onChange={(e) => void zetFase(f.key, e.target.checked)} />
+                  </label>
+                  <span className="wp-fase-label">{f.label}</span>
+                  {/* Was een volle "Document"-knop rechts, drie keer in dezelfde
+                      kaart. Een klein linkje achter de naam doet hetzelfde en houdt
+                      de rij rustig. */}
+                  {link && <a className="wp-fase-doclink" href={link} target="_blank" rel="noreferrer" title="Open het document">(link)</a>}
+                  {sturingNuttig && (
+                    <button type="button" className="wp-fase-uitleg"
+                      title={sturingOpen ? "Verberg de sturing voor deze stap" : "Toon de sturing voor deze stap"}
+                      onClick={() => setFaseOpen((v) => ({ ...v, [f.key]: !v[f.key] }))}>
+                      {sturingOpen ? "uitleg ▴" : "uitleg ▾"}
+                    </button>
+                  )}
+                  <span className="wp-fase-spacer" />
+                  {/* Alle pillen rechts, in vaste volgorde: Document | In Pagina's | actie | status.
+                      "Alles in één keer" hing hier in de Copy-rij en maakte die rij
+                      hoger dan de andere zes, waardoor de hele kolom uit de pas liep.
+                      Die knop slaat ook niet op Copy alleen maar op drie fases, dus
+                      hij staat nu boven het blok. */}
+                  {/* Bouw en publicatie bestaat niet als stap op de Pagina's-pagina,
+                      dus daar heeft deze knop niets om naartoe te gaan. */}
+                  {f.key !== "bouw" && <button type="button" className="wp-fase-btn wp-fase-btn-licht" title="Bekijk of doe deze stap in Pagina's (nieuw tabblad)" onClick={openPaginaNieuwTab}>In Pagina&rsquo;s</button>}
+                  {faseActie(f.key)}
+                  <span className={"wp-fase-chip " + stand.cls} title={stand.label === "✓" ? "Klaar" : undefined}>{stand.label}</span>
+                </div>
+                {/* Slugs/URL's in de sturing zijn altijd klikbaar (harde huisregel). */}
+                {sturingNuttig && sturingOpen && <div className="wp-fase-sturing" dangerouslySetInnerHTML={{ __html: linkifyHtml(sturing.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"), (() => { try { return new URL(t.url).host; } catch { return ""; } })()) }} />}
+              </div>
+            );
+            return rij;
+          })}
+          {verifyMsg && <div className={verifyMsg.ok ? "wp-doc-ok" : "wp-doc-fout"}>{verifyMsg.tekst}</div>}
+          {foutje && <div className="wp-fase-fouttekst">{foutje}</div>}
+          {melding && <div className="wp-fase-melding">{melding}</div>}
+        </div>
+      )}
       {/* Chat direct onder het Doel-blok: de uitkomst hiervan voedt de fases eronder.
           Ook op kaarten zonder pagina, dan met een eigen bird's eye-gesprek. */}
       {open && (
@@ -699,77 +798,6 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
         </div>
       )}
 
-      {/* De cyclus verticaal, per fase status + start + vinkje. "Alles in één keer"
-          hoort bij de eerste drie fases samen, niet bij Copy alleen, dus hij staat
-          hier boven het blok in plaats van in één van de rijen. */}
-      {open && page && (
-        <div className="wp-fases-kop">
-          <span className="wp-sectie-label" style={{ margin: 0 }}>Fases</span>
-          <span className="wp-fase-spacer" />
-          <button type="button" className="wp-fase-btn" disabled={(!page.live && !page.strategie) || runActive || !!busy}
-            title={(!page.live && !page.strategie) ? "Eerst de strategie goedkeuren (nieuwe pagina)" : "Draait analyse, blauwdruk en copy achter elkaar"}
-            onClick={() => void startDocStep(page.live ? ["analyse", "blauwdruk", "copy"] : ["blauwdruk", "copy"])}>
-            {page.live ? "Alles in één keer ▷" : "Blauwdruk + copy ▷"}
-          </button>
-        </div>
-      )}
-      {open && page && (
-        <div className="wp-fases">
-          {FASEN.map((f) => {
-            const stand = faseStand(f.key);
-            const link = docLink(f.key);
-            // Eén regel sturing per fase, en pas zichtbaar als je die fase opent.
-            // Stonden ze alle vijf tegelijk open, dan las je de instructie voor Copy
-            // terwijl je bij Analyse zat en paste de kaart nergens meer in één blik.
-            const sturing = (info.perFase[f.key as CardFaseKey] || []).join(" · ");
-            // Een regel die alleen een document benoemt ("Copy-document: ...docx")
-            // voegt niets toe naast het linkje ernaast. Alleen echte sturing krijgt
-            // een uitleg-knop; de rest is ruis in een rij die rustig moet zijn.
-            const sturingNuttig = !!sturing && !/^\s*[a-zà-ž -]{0,20}document\s*:/i.test(sturing) && !/\.(docx?|pdf|md)\b/i.test(sturing.slice(0, 90));
-            const sturingOpen = !!faseOpen[f.key];
-            const rij = (
-              <div key={f.key} className={"wp-fase" + (f.key === "bouw" ? " wp-fase-scheiding" : "")}>
-                <div className="wp-fase-rij">
-                  {/* Was een aankruisvakje, maar dat leek op iets dat je moest doen
-                      terwijl het alleen een aantekening maakte. Het dashboard meet
-                      elke fase inmiddels zelf, dus er blijft per rij één ding over dat
-                      iets doet (de knop) en één dat iets zegt (het chipje rechts). */}
-                  <span className={"wp-fase-bullet" + (page[f.key] ? " aan" : "")} aria-hidden="true" />
-                  <span className="wp-fase-label">{f.label}</span>
-                  {/* Was een volle "Document"-knop rechts, drie keer in dezelfde
-                      kaart. Een klein linkje achter de naam doet hetzelfde en houdt
-                      de rij rustig. */}
-                  {link && <a className="wp-fase-doclink" href={link} target="_blank" rel="noreferrer" title="Open het document">(link)</a>}
-                  {sturingNuttig && (
-                    <button type="button" className="wp-fase-uitleg"
-                      title={sturingOpen ? "Verberg de sturing voor deze stap" : "Toon de sturing voor deze stap"}
-                      onClick={() => setFaseOpen((v) => ({ ...v, [f.key]: !v[f.key] }))}>
-                      {sturingOpen ? "uitleg ▴" : "uitleg ▾"}
-                    </button>
-                  )}
-                  <span className="wp-fase-spacer" />
-                  {/* Alle pillen rechts, in vaste volgorde: Document | In Pagina's | actie | status.
-                      "Alles in één keer" hing hier in de Copy-rij en maakte die rij
-                      hoger dan de andere zes, waardoor de hele kolom uit de pas liep.
-                      Die knop slaat ook niet op Copy alleen maar op drie fases, dus
-                      hij staat nu boven het blok. */}
-                  {/* Bouw en publicatie bestaat niet als stap op de Pagina's-pagina,
-                      dus daar heeft deze knop niets om naartoe te gaan. */}
-                  {f.key !== "bouw" && <button type="button" className="wp-fase-btn wp-fase-btn-licht" title="Bekijk of doe deze stap in Pagina's (nieuw tabblad)" onClick={openPaginaNieuwTab}>In Pagina&rsquo;s</button>}
-                  {faseActie(f.key)}
-                  <span className={"wp-fase-chip " + stand.cls} title={stand.label === "✓" ? "Klaar" : undefined}>{stand.label}</span>
-                </div>
-                {/* Slugs/URL's in de sturing zijn altijd klikbaar (harde huisregel). */}
-                {sturingNuttig && sturingOpen && <div className="wp-fase-sturing" dangerouslySetInnerHTML={{ __html: linkifyHtml(sturing.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"), (() => { try { return new URL(t.url).host; } catch { return ""; } })()) }} />}
-              </div>
-            );
-            return rij;
-          })}
-          {verifyMsg && <div className={verifyMsg.ok ? "wp-doc-ok" : "wp-doc-fout"}>{verifyMsg.tekst}</div>}
-          {foutje && <div className="wp-fase-fouttekst">{foutje}</div>}
-          {melding && <div className="wp-fase-melding">{melding}</div>}
-        </div>
-      )}
 
       {/* De onderste regel had zes identieke pilletjes naast elkaar: vier die je
           ergens heen brengen en twee die iets naar buiten sturen. Aan de vorm was

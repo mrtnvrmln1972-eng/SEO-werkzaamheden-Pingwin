@@ -4530,3 +4530,7 @@ button.wb-stip:disabled { cursor: wait; opacity: 0.6; }
 .opr-deel-leeg { min-height: 60vh; display: flex; align-items: center; justify-content: center; color: var(--gray); font-size: var(--fs-sm); }
 /* De deelkaart in de cockpit: iets nadrukkelijker, want dit is wat naar buiten gaat. */
 .opr-deelkaart { border-left: 3px solid var(--orange); }
+/* Het vinkje per fase op de projectkaart: klein, vóór de fasenaam. */
+.wp-fase-vink { display: inline-flex; align-items: center; flex: 0 0 auto; }
+.wp-fase-vink input { width: 15px; height: 15px; accent-color: #1c7a3f; cursor: pointer; margin: 0; }
+.wp-fase-vink input:disabled { cursor: wait; opacity: 0.6; }
