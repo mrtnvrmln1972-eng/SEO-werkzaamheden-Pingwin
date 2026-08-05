@@ -17,6 +17,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { urlKey } from "../../../../../lib/url-key";
+import { cardInfoHtml } from "../../../../../lib/card-info";
 
 type FaseKey = "strategie" | "gelieerde" | "analyse" | "blauwdruk" | "copy" | "bouw" | "structured";
 const FASEN: { key: FaseKey; kort: string }[] = [
@@ -189,7 +190,11 @@ export default function Weekbord({ slug, clientName, domain }: { slug: string; c
                   </div>
                   {open === t.id && (
                     <div className="wb-detail">
-                      <div className="md" dangerouslySetInnerHTML={{ __html: (t.toelichting || "").split("\n").map((r) => `<div>${r.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</div>`).join("") }} />
+                      {/* Door dezelfde renderer als de echte kaart: "Waarom deze
+                          pagina" en "Aanpak en afspraken" als nette blokjes, met
+                          de dubbelingen eruit. Ruwe regels dumpen gaf precies de
+                          muur tekst die dit scherm juist moest wegnemen. */}
+                      <div dangerouslySetInnerHTML={{ __html: cardInfoHtml(t.toelichting || "", t.url || undefined, kaal(t.taak)) }} />
                       <div className="wb-detail-knoppen">
                         {t.url && <a className="ghost-btn small" href={t.url} target="_blank" rel="noreferrer">Live pagina</a>}
                         <a className="ghost-btn small" href={`/admin/client/${slug}?tab=werkzaamheden${t.url ? `&page=${encodeURIComponent(t.url)}` : ""}`}>Open de volledige kaart</a>
