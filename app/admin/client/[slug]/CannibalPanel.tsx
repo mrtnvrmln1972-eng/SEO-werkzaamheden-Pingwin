@@ -130,6 +130,46 @@ export default function CannibalPanel({ slug, domain = "", openTarget }: {
     } catch { setErr("Hervatten mislukt."); await load(); } finally { setBusy(false); }
   }
 
+  // Per pagina het bewijs uit de clusters opzoeken, zodat het onder de juiste regel
+  // van de werklijst komt in plaats van in een aparte sectie met eigen vormgeving.
+  const bewijsPerPad: Record<string, import("./OpruimTabel").Bewijs> = {};
+  for (const c of state?.result?.clusters || []) {
+    for (const u of c.urls) {
+      const p = padVanUrl(u.url);
+      if (bewijsPerPad[p]) continue;
+      bewijsPerPad[p] = {
+        keyword: c.keyword, winnaar: c.winnaar, urls: c.urls,
+        onderbouwing: c.onderbouwing, urlFlip: c.signalen?.urlFlip, flipsIn90d: c.signalen?.flipsIn90d,
+      };
+    }
+  }
+
+  const siteUrl = (p: string) => {
+    const pad = padVanUrl(p);
+    return pad.startsWith("http") ? pad : `https://${(domain || "").replace(/^https?:\/\//, "").replace(/\/$/, "")}${pad}`;
+  };
+
+  // Wat blijft er bewust staan? Alle pagina's die in een cluster meedoen maar niet
+  // in de werklijst voorkomen. Een klant wil niet alleen zien wat je weghaalt.
+  const blijftStaan: { pad: string; reden: string }[] = (() => {
+    const rijen = state?.result?.redirectMap || [];
+    const weg = new Set(rijen.map((r) => padVanUrl(r.van)));
+    const doelen = new Set(rijen.map((r) => padVanUrl(r.naar)));
+    const uit = new Map<string, string>();
+    for (const c of state?.result?.clusters || []) {
+      for (const u of c.urls) {
+        const p = padVanUrl(u.url);
+        if (weg.has(p) || uit.has(p)) continue;
+        uit.set(p, doelen.has(p)
+          ? `Andere pagina's gaan hierin op; dit is de pagina die blijft winnen op "${c.keyword}".`
+          : padVanUrl(c.winnaar) === p
+            ? `Wint op "${c.keyword}" en blijft de pagina voor dat onderwerp.`
+            : `Doet mee op "${c.keyword}" maar wint op zijn eigen onderwerp; er is geen reden om hem op te ruimen.`);
+      }
+    }
+    return [...uit.entries()].map(([pad, reden]) => ({ pad, reden })).sort((a, b) => a.pad.localeCompare(b.pad));
+  })();
+
   const running = state?.status === "running";
   const result = state?.result;
   const dk = result?.datakwaliteit;
@@ -148,9 +188,33 @@ export default function CannibalPanel({ slug, domain = "", openTarget }: {
             {running ? "Analyse draait…" : result ? "Opnieuw analyseren" : "Analyse draaien"}
           </button>
         </div>
-        <p className="muted" style={{ fontSize: 12, margin: "2px 0 12px" }}>
-          Draait de agentic skill <em>keyword-cannibalisatie-analyse</em> (dezelfde methodiek als in Cowork): onderscheidt echte cannibalisatie van false positives via URL-flip-detectie over tijd, positie-plafond, klik-verdeling en intentie-check, en geeft per cluster een winnaar met de lichtste effectieve actie. Je kunt wegklikken; het draait op de achtergrond.
-        </p>
+        {/* Was een alinea vol vaktaal (URL-flip-detectie, positie-plafond,
+            klik-verdeling, false positives). Zelfs een SEO-specialist haakte daarop
+            af, laat staan een klant die straks de deellink krijgt. Nu in gewone taal,
+            met de echte aantallen erbij. */}
+        <div className="opr-uitleg-blok">
+          <p>
+            Deze pagina zoekt uit welke pagina&rsquo;s van de site elkaar in de weg zitten of niets opleveren,
+            en wat er per pagina moet gebeuren. Dat gebeurt langs twee wegen.
+          </p>
+          <ul>
+            <li>
+              <strong>Pagina&rsquo;s die om hetzelfde zoekwoord vechten.</strong> Search Console laat zien welke pagina in de
+              loop van de tijd bovenkomt op een zoekwoord. Wisselt dat steeds tussen twee pagina&rsquo;s van deze site, dan
+              twijfelt Google en verliezen ze allebei.
+            </li>
+            <li>
+              <strong>Pagina&rsquo;s die op geen enkel eigen zoekwoord ranken.</strong> Alles wat ze binnenhalen lenen ze van
+              de merknaam of van een grote stad. Ze concurreren met niemand, maar ze versnipperen wel de autoriteit van
+              de site.
+            </li>
+          </ul>
+          <p>
+            Alles komt samen in <strong>&eacute;&eacute;n werklijst</strong> hieronder: per pagina waar hij heen gaat en
+            waarom. Klap een regel open en je ziet het bewijs erbij. De analyse draait op de achtergrond; je kunt
+            wegklikken.
+          </p>
+        </div>
         {err && <div className="login-error" style={{ marginBottom: 8 }}>{err}</div>}
         {state?.status === "error" && state.error && <div className="login-error" style={{ marginBottom: 8 }}>{state.error}</div>}
         {/* Voortgang, want een spinner zonder stand is niet te onderscheiden van
@@ -227,95 +291,32 @@ export default function CannibalPanel({ slug, domain = "", openTarget }: {
                   Download voor Excel of Sheets
                 </a>
               </div>
-                <OpruimTabel slug={slug} domain={domain} rijen={result.redirectMap} openTarget={openTarget} />
+                <OpruimTabel slug={slug} domain={domain} rijen={result.redirectMap} openTarget={openTarget} bewijs={bewijsPerPad} />
               </div>
             )}
 
-            {result.samenvatting && (
-              <details className="opr-details">
-                <summary>Samenvatting en onderbouwing per cluster</summary>
-                <div className="cannibal-summary md" dangerouslySetInnerHTML={{ __html: mdToHtml(result.samenvatting) }} />
-              </details>
-            )}
-
-            {/* Alle onderbouwing bij elkaar en dichtgeklapt. Stond eerst als zeven
-                lappen proza vóór de tabel; dat is om te begrijpen, niet om af te
-                werken. Openklappen kan altijd, het gaat nergens heen. */}
-            <details className="opr-details">
-              <summary>Onderbouwing per cluster ({result.clusters.length}) en interne-link-acties</summary>
-              <div className="opr-details-body">
-            {result.clusters.length === 0 && <div className="muted" style={{ marginTop: 8 }}>Geen echte cannibalisatie-clusters gevonden.</div>}
-
-            {result.clusters.map((c, i) => {
-              const sig = c.signalen || {};
-              return (
-                <div className="cannibal-cluster" key={i}>
-                  <div className="cannibal-cluster-head">
-                    <strong>{c.keyword}</strong>
-                    {c.volume != null && <span className="muted">vol {c.volume}</span>}
-                    {c.score && <span className={"cannibal-score " + scoreClass(c.score)}>{c.score}</span>}
-                    {c.intentie && <span className="cannibal-ptype">intentie: {c.intentie}</span>}
-                  </div>
-                  <div className="cannibal-signals">
-                    {sig.urlFlip && <span className="cannibal-sig flip">URL-flip{sig.flipsIn90d ? ` ×${sig.flipsIn90d}` : ""}</span>}
-                    {sig.positiePlafond && <span className="cannibal-sig">positie-plafond 5-20</span>}
-                    {sig.klikVerdeling && <span className="cannibal-sig">klikken verdeeld</span>}
-                    <span className="muted" style={{ fontSize: 12 }}>winnaar: <strong>{c.winnaar}</strong></span>
-                    <span className={"cannibal-act " + actionClass(c.actie)}>{c.actie}</span>
-                  </div>
-                  <div className="res-table-wrap">
-                    <table className="res-table">
-                      <thead><tr><th>Pagina</th><th>Wat gebeurt ermee</th><th>Positie</th><th>Clicks</th><th>Vert.</th></tr></thead>
-                      <tbody>
-                        {c.urls.map((u, j) => {
-                          const uit = uitkomstVoor(u.url, c.winnaar, result.redirectMap || []);
-                          return (
-                            <tr key={j} className={"cannibal-row " + (u.url === c.winnaar ? "redir" : "")}>
-                              <td><a href={u.url} target="_blank" rel="noreferrer">{padVanUrl(u.url)}</a></td>
-                              <td>
-                                <span className={"opr-chip " + uit.cls}>{uit.tekst}</span>
-                                {uit.doel && <> <a href={uit.doel.startsWith("http") ? uit.doel : `https://${(domain || "").replace(/^https?:\/\//, "")}${uit.doel}`} target="_blank" rel="noreferrer">{padVanUrl(uit.doel)}</a></>}
-                              </td>
-                              <td>{num(u.positie)}</td>
-                              <td>{u.klikken != null ? u.klikken : "—"}</td>
-                              <td>{u.impressies != null ? u.impressies : "—"}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                  {c.onderbouwing && (
-                    <div className="cannibal-reason">
-                      <strong>Onderbouwing</strong>
-                      {/* Was één lap platte tekst met kale paden erin. Nu gerenderd met
-                          bullets en elke slug klikbaar, zoals overal in het dashboard. */}
-                      <div className="md" dangerouslySetInnerHTML={{ __html: linkifyHtml(mdToHtml(alsBullets(c.onderbouwing)), domain) }} />
-                    </div>
-                  )}
-                  {c.verwachteImpact && (
-                    <div className="cannibal-reason muted">
-                      <strong>Verwachte impact</strong>
-                      <div className="md" dangerouslySetInnerHTML={{ __html: linkifyHtml(mdToHtml(c.verwachteImpact), domain) }} />
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-
+            {/* ── Wat er daarna nog moet gebeuren: de interne links ──
+                Deze komen uit de cannibalisatie-analyse: links vanaf inhoudelijk
+                verwante pagina's naar de winnaar van een cluster, zodat Google zijn
+                keuze niet meer hoeft te maken. Het is geen volledige linkaudit. */}
             {result.interneLinks && result.interneLinks.length > 0 && (
-              <div className="cannibal-tech">
-                <div className="pcd-docs-head">Interne-link-acties</div>
+              <div className="opr-blok">
+                <div className="opr-kop">Daarna: interne links leggen ({result.interneLinks.length})</div>
+                <p className="muted" style={{ fontSize: 13, margin: "0 0 10px", maxWidth: "70ch" }}>
+                  Omleiden lost op dat twee pagina&rsquo;s om hetzelfde zoekwoord vechten. Deze links maken de winnaar
+                  daarna ook sterker: vanaf pagina&rsquo;s die over hetzelfde onderwerp gaan, met een ankertekst die het
+                  zoekwoord bevat. Dat is een aanvulling op het opruimen, geen volledige interne-linkaudit; daarvoor is
+                  het tabblad <em>Interne links</em>.
+                </p>
                 <div className="res-table-wrap">
                   <table className="res-table">
-                    <thead><tr><th>Vanaf</th><th>Naar</th><th>Ankertekst</th><th>Reden</th></tr></thead>
+                    <thead><tr><th>Zet een link op deze pagina</th><th>Naar</th><th>Met deze tekst</th></tr></thead>
                     <tbody>
                       {result.interneLinks.map((l, i) => (
                         <tr key={i}>
-                          <td>{l.vanaf}</td>
-                          <td>{l.naar}</td>
-                          <td>{l.ankertekst || "—"}</td>
-                          <td className="muted" style={{ fontSize: 12 }}>{l.reden || ""}</td>
+                          <td><a href={siteUrl(l.vanaf)} target="_blank" rel="noreferrer">{padVanUrl(l.vanaf)}</a></td>
+                          <td><a href={siteUrl(l.naar)} target="_blank" rel="noreferrer">{padVanUrl(l.naar)}</a></td>
+                          <td>{l.ankertekst || "\u2014"}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -323,8 +324,40 @@ export default function CannibalPanel({ slug, domain = "", openTarget }: {
                 </div>
               </div>
             )}
+
+            {/* ── Wat we bewust laten staan ──
+                Een klant wil niet alleen zien wat je weghaalt, maar ook waar je
+                vanaf blijft. Deze pagina's kwamen in de analyse voorbij en blijven. */}
+            {blijftStaan.length > 0 && (
+              <div className="opr-blok">
+                <div className="opr-kop">Wat we bewust laten staan ({blijftStaan.length})</div>
+                <p className="muted" style={{ fontSize: 13, margin: "0 0 10px", maxWidth: "70ch" }}>
+                  Deze pagina&rsquo;s kwamen in de analyse langs omdat ze meedoen op een zoekwoord waar meerdere
+                  pagina&rsquo;s op ranken. Ze blijven staan: ze winnen op hun eigen onderwerp, of andere pagina&rsquo;s
+                  gaan er juist in op.
+                </p>
+                <div className="res-table-wrap">
+                  <table className="res-table">
+                    <thead><tr><th>Pagina</th><th>Waarom blijft hij</th></tr></thead>
+                    <tbody>
+                      {blijftStaan.map((b, i) => (
+                        <tr key={i}>
+                          <td><a href={siteUrl(b.pad)} target="_blank" rel="noreferrer">{b.pad}</a></td>
+                          <td className="muted" style={{ fontSize: 13 }}>{b.reden}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </details>
+            )}
+
+            {result.samenvatting && (
+              <details className="opr-details">
+                <summary>Samenvatting van de analyse</summary>
+                <div className="cannibal-summary md" dangerouslySetInnerHTML={{ __html: linkifyHtml(mdToHtml(alsBullets(result.samenvatting)), domain) }} />
+              </details>
+            )}
           </>
         )}
       </div>

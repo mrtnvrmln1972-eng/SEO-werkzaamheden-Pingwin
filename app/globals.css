@@ -3856,6 +3856,16 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
    lees je. Andersom (zoals het eerst was) is zeventig regels onwerkbaar. */
 .opr-blok { margin-bottom: var(--s-6); }
 .opr-chip.verhuis { background: var(--brand-blue-light); color: var(--brand-blue); }
+.opr-uitleg-blok { max-width: 72ch; margin: var(--s-2) 0 var(--s-5); font-size: var(--fs-sm); line-height: 1.6; color: var(--muted); }
+.opr-uitleg-blok p { margin: 0 0 var(--s-2); }
+.opr-uitleg-blok ul { margin: 0 0 var(--s-2); padding-left: var(--s-5); display: flex; flex-direction: column; gap: var(--s-1); }
+.opr-uitleg-blok strong { color: var(--dark); }
+.opr-bewijs { margin-top: var(--s-2); padding-top: var(--s-2); border-top: 1px solid var(--border); }
+.opr-bewijs-kop { font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--muted); margin-bottom: var(--s-1); }
+.opr-bewijs-lijst { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.opr-bewijs-lijst li { display: flex; align-items: baseline; gap: var(--s-2); flex-wrap: wrap; font-size: var(--fs-xs); line-height: var(--lh-xs); }
+.opr-bewijs-lijst li.wint { font-weight: 700; }
+.opr-bewijs-cijfers { color: var(--gray); }
 .opr-groepkop td { background: var(--brand-orange-faint); border-top: 2px solid var(--orange);
   padding: var(--s-2) var(--s-3); }
 .opr-groepkop-label { font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;

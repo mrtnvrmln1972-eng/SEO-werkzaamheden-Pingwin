@@ -15,16 +15,27 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
 export type RedirectRij = { van: string; naar: string; type?: string; mergeContent?: boolean; verhuizen?: boolean; reden?: string };
+// Het bewijs achter een regel: welk zoekwoord, wie wint, en de cijfers. Stond
+// eerder als losse sectie onderaan de pagina, in een andere vorm dan de lijst.
+// Daardoor kreeg je dezelfde beslissing twee keer in twee talen. Nu hangt het
+// onder de regel waar het bij hoort, uit te klappen.
+export type Bewijs = {
+  keyword: string; winnaar: string;
+  urls: { url: string; positie?: number; klikken?: number; impressies?: number }[];
+  onderbouwing?: string; urlFlip?: boolean; flipsIn90d?: number;
+};
 type Regel = { van: string; besluit: "houden" | "redirect" | "genegeerd"; naar: string; notitie: string; doorgevoerd: boolean };
 
 const pad = (u: string) => { try { return new URL(u).pathname; } catch { return (u || "").trim(); } };
 
-export default function OpruimTabel({ slug, domain, rijen, openTarget }: {
+export default function OpruimTabel({ slug, domain, rijen, openTarget, bewijs = {} }: {
   slug: string; domain: string; rijen: RedirectRij[];
   /** Van buiten binnenkomen op één pagina: vult het filterveld met dat pad, zodat
       je alleen de regels ziet die daarover gaan. Hergebruikt het filter dat er al
       is; een aparte "spring hierheen"-machinerie zou hetzelfde nog eens doen. */
   openTarget?: { url: string; n: number } | null;
+  /** Het bewijs per pagina, om onder de opengeklapte regel te tonen. */
+  bewijs?: Record<string, Bewijs>;
 }) {
   const [regels, setRegels] = useState<Record<string, Regel>>({});
   const [filter, setFilter] = useState("");
@@ -199,7 +210,34 @@ export default function OpruimTabel({ slug, domain, rijen, openTarget }: {
                     <button type="button" className="opr-meer" onClick={() => setOpen((o) => ({ ...o, [v]: !o[v] }))}>
                       {open[v] ? "▾" : "▸"} {open[v] ? "minder" : "reden"}
                     </button>
-                    {open[v] && <div className="opr-uitleg">{r.reden || "Geen onderbouwing meegegeven."}</div>}
+                    {open[v] && (
+                      <div className="opr-uitleg">
+                        <div>{r.reden || "Geen onderbouwing meegegeven."}</div>
+                        {/* Het bewijs uit de cannibalisatie-analyse, als het er is:
+                            welk zoekwoord, wie wint, en de cijfers per pagina. */}
+                        {bewijs[v] && (
+                          <div className="opr-bewijs">
+                            <div className="opr-bewijs-kop">
+                              Bewijs: op <strong>&ldquo;{bewijs[v].keyword}&rdquo;</strong> concurreren deze pagina&rsquo;s met elkaar
+                              {bewijs[v].urlFlip ? `, en Google wisselde er ${bewijs[v].flipsIn90d || "meerdere"} keer tussen` : ""}.
+                            </div>
+                            <ul className="opr-bewijs-lijst">
+                              {bewijs[v].urls.map((u, k) => (
+                                <li key={k} className={pad(u.url) === pad(bewijs[v].winnaar) ? "wint" : ""}>
+                                  <a className="opr-pad" href={site(pad(u.url))} target="_blank" rel="noreferrer">{pad(u.url)}</a>
+                                  {pad(u.url) === pad(bewijs[v].winnaar) && <span className="opr-chip keep">wint hier</span>}
+                                  <span className="opr-bewijs-cijfers">
+                                    {u.positie != null ? `positie ${Math.round(u.positie * 10) / 10}` : ""}
+                                    {u.klikken != null ? ` · ${u.klikken} klikken` : ""}
+                                    {u.impressies != null ? ` · ${u.impressies} vertoningen` : ""}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </td>
                 </tr>
               );
