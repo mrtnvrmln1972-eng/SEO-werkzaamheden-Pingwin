@@ -6,6 +6,7 @@ import { herzetAanhef } from "../../../../lib/aanhef";
 import WeekplanCard, { type WpTask, type WpPageInfo } from "./WeekplanCard";
 import { mailUitTekst } from "../../../../lib/mail-uit-gesprek";
 import { type MailKandidaat, type MailLinks } from "../../../../lib/card-info";
+import { nieuweVolgorde, bewaarVolgorde } from "../../../../lib/weekplan-slepen";
 
 type Current = { year: number; week: number };
 
@@ -246,24 +247,14 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailD
   // andere week slepen; binnen de week lag de volgorde vast, terwijl juist daar
   // staat wat je maandag als eerste oppakt. Je sleept nu op een kaart en hij komt
   // daarvóór; laat je onderaan de kolom los, dan gaat hij achteraan.
+  // De som zelf staat in lib/weekplan-slepen.ts, want het weekbord sleept met
+  // dezelfde kaarten en moet exact hetzelfde uitrekenen.
   async function moveVoor(id: number, doelId: number | null, year: number, week: number) {
-    if (id === doelId) return;
-    const huidig = tasks.find((t) => t.id === id);
-    if (!huidig) return;
-    const anders = tasks.filter((t) => t.id !== id);
-    const inKolom = anders
-      .filter((t) => t.weekYear === year && t.weekNo === week)
-      .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id);
-    const plek = doelId == null ? inKolom.length : Math.max(0, inKolom.findIndex((t) => t.id === doelId));
-    const verplaatst = { ...huidig, weekYear: year, weekNo: week };
-    const nieuweVolgorde = [...inKolom.slice(0, plek), verplaatst, ...inKolom.slice(plek)];
-    // Hernummeren met stappen van 10, zodat een latere invoeging er nog tussen past.
-    const genummerd = nieuweVolgorde.map((t, i) => ({ ...t, sortOrder: (i + 1) * 10 }));
+    const genummerd = nieuweVolgorde(tasks, id, doelId, year, week);
+    if (genummerd.length === 0) return;
     const perId = new Map(genummerd.map((t) => [t.id, t]));
     setTasks((ts) => ts.map((t) => perId.get(t.id) || t));
-    await Promise.all(genummerd.map((t) =>
-      fetch("/api/admin/weekplan", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, id: t.id, weekYear: year, weekNo: week, sortOrder: t.sortOrder }) }).catch(() => {})));
+    await bewaarVolgorde(slug, year, week, genummerd);
   }
   async function cycleStatus(t: WpTask) {
     const status = STATUS_NEXT[t.status] || "gepland";

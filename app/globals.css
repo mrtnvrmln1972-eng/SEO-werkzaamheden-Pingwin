@@ -4489,9 +4489,24 @@ details[open] > .opr-kaart-sam::before { content: "▾ "; }
 .wb-nulabel { font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #fff; background: var(--orange); border-radius: var(--r-full); padding: 1px 8px; }
 .wb-weeksom { margin-left: auto; font-size: var(--fs-xs); }
 
+/* Slepen op het bord. De week is een doelgebied (hele week oplichten), en elke
+   regel is dat óók: dan komt de kaart precies boven die regel, met een oranje
+   streep als voorvertoning. Zelfde taal als het tabblad Taken. */
+.wb-week.wb-drop { background: #fdece1; border-radius: var(--r-md); outline: 2px solid var(--orange); outline-offset: var(--s-1); }
+.wb-doel { position: relative; }
+.wb-doel-aan::before {
+  content: ""; position: absolute; left: 0; right: 0; top: calc(var(--s-1) * -1);
+  height: 3px; border-radius: var(--r-full); background: var(--orange);
+  box-shadow: 0 0 0 3px rgba(241, 88, 41, 0.18); z-index: 1;
+}
+
 .wb-rij { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-2) var(--s-2); border-bottom: 1px solid var(--card-border); cursor: pointer; }
 .wb-rij:hover { background: #FFFAF7; }
 .wb-rij-open { background: var(--orange-light); }
+.wb-rij.wb-sleept { opacity: 0.45; }
+.wb-greep { flex: 0 0 auto; cursor: grab; color: #8a8d91; user-select: none; font-weight: 900; letter-spacing: 1px; font-size: 13px; line-height: 1; padding: 3px 2px; border-radius: var(--r-sm); }
+.wb-greep:hover { background: var(--gray-light); color: var(--dark); }
+.wb-greep:active { cursor: grabbing; }
 .wb-wie { flex: 0 0 auto; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px; padding: 2px 7px; border-radius: var(--r-full); }
 .wb-wie.wie-dev { background: #E8F0FE; color: #1A56B0; }
 .wb-wie.wie-seo { background: var(--orange-light); color: var(--orange-dark); }
@@ -4512,7 +4527,7 @@ details[open] > .opr-kaart-sam::before { content: "▾ "; }
 .wb-detail-knoppen { display: flex; gap: var(--s-2); margin-top: var(--s-3); }
 .wb-los { margin-top: var(--s-3); }
 .wb-los-kop { font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray); margin-bottom: var(--s-1); }
-.wb-rij-los { cursor: default; }
+.wb-rij-los { cursor: pointer; }
 .wb-voet { font-size: var(--fs-xs); line-height: var(--lh-sm); margin-top: var(--s-5); }
 /* Fases op het weekbord zijn knopjes: klik om af te vinken of terug te zetten. */
 button.wb-stip { border: none; padding: 0; cursor: pointer; }
@@ -4563,10 +4578,8 @@ button.wb-stip:disabled { cursor: wait; opacity: 0.6; }
    versie naast te bestaan die vanzelf achterloopt. */
 .wb-kaart { padding: 0 var(--s-2) var(--s-3) 34px; border-bottom: 1px solid var(--card-border); background: #FFFDFB; }
 .wb-kaart .wp-card { border: 1px solid var(--card-border); border-radius: var(--r-md); box-shadow: none; margin: 0; padding: var(--s-3); }
-/* Twee dingen zijn op het bord dubbel of dood: het rijtje stipjes staat al in de
-   regel erboven, en slepen gebeurt hier niet (dat blijft op het tabblad Taken).
-   De kop zelf blijft wél staan, want daar zitten de status- en verwijderknop. */
+/* Het rijtje stipjes staat al in de regel erboven, dus in de kaart is het dubbel.
+   Het sleephandvat blijft wél staan: dat werkt hier nu net zo goed als op het
+   tabblad Taken. De kop blijft ook staan, want daar zitten status en verwijderen. */
 .wb-kaart .wp-steps { display: none; }
-.wb-kaart .wp-card-grip { display: none; }
-.wb-kaart .wp-card-grid { grid-template-columns: minmax(0, 1fr); gap: 0; }
 .wb-kaart .wp-fase-rij { padding: 3px 0; }
