@@ -103,7 +103,7 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
   const liveUrl = (pad: string) => (domain ? `https://${domain.replace(/^https?:\/\//, "")}${pad}` : pad);
   const naam = (n: Node) => n.label || n.hoofdzoekterm || (n.url === "/" ? "Homepage" : (n.url.split("/").filter(Boolean).pop() || n.url).replace(/-/g, " "));
   const datum = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" }) : "");
-  const scoreUitleg = (n: Node) => (n.score === null ? "Nog niet gemeten" : `${n.scoreLabel} (${n.score}/100)\n` + n.punten.map((p) => `${p.naam}: ${p.behaald}/${p.max} \u00b7 ${p.uitleg}`).join("\n") + `\n\nGemeten op ${datum(n.gemetenOp)}`);
+  const scoreUitleg = (n: Node) => (n.score === null ? "Nog niet gemeten" : `${n.scoreLabel} (${n.score}/100)\n` + n.punten.map((p) => `${p.naam}: ${p.behaald}/${p.max} \u00b7 ${p.uitleg}`).join("\n") + `\n\nLaatst vastgelegd op ${datum(n.gemetenOp)} (de scan bewaart alleen een nieuwe meting als er iets veranderd is)`);
 
   // Waar hangt deze pagina in het menu? (voor de lijstweergave)
   const takNaam = (n: Node) => {

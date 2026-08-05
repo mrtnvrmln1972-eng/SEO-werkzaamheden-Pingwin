@@ -49,7 +49,15 @@ export type PaginaScore = {
 
 const MIN_PAGINAS_VOOR_CONTEXT = 5;
 const VASTE_DREMPEL = 0.8;         // op 80% of meer van de pagina's = vaste omlijsting
-const TECHNISCHE_SCHEMAS = new Set(["WebSite", "WebPage", "Organization", "BreadcrumbList", "SearchAction", "ImageObject", "SiteNavigationElement", "CollectionPage"]);
+// Bewust een lijst van WAT WEL telt, geen lijst van wat niet telt. Een
+// LocalBusiness-blok sleept een handvol hulptypes mee (GeoCoordinates,
+// EntryPoint, PostalAddress); die zeggen niets over de pagina zelf, en een
+// zwarte lijst is die hulptypes altijd één stap achter.
+const INHOUDELIJKE_SCHEMAS = new Set([
+  "Service", "Product", "Offer", "FAQPage", "Question", "HowTo", "Article", "BlogPosting", "NewsArticle",
+  "LocalBusiness", "HomeAndConstructionBusiness", "ProfessionalService", "Store", "MedicalBusiness", "MedicalClinic",
+  "Review", "AggregateRating", "Event", "Recipe", "JobPosting", "VideoObject", "ItemList", "CreativeWork",
+]);
 
 const linkSleutel = (href: string) => (href || "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/+$/, "");
 const zinnigeAlt = (a: { src: string; alt: string }) => {
@@ -130,9 +138,9 @@ export function scorePagina(s: ScoreInvoer, ctx: KlantContext): PaginaScore {
   punten.push({ naam: "Interne links", behaald: linkPunten, max: 5, uitleg: `${eigenLinks.size} link${eigenLinks.size === 1 ? "" : "s"} vanuit de tekst${ctx.betrouwbaar ? "" : " (menu telt nog mee, te weinig gemeten pagina's)"}` });
 
   // ── Structured data (5) ──
-  const inhoudelijk = s.schemaTypes.filter((t) => !TECHNISCHE_SCHEMAS.has(t));
+  const inhoudelijk = s.schemaTypes.filter((t) => INHOUDELIJKE_SCHEMAS.has(t));
   const schemaPunten = inhoudelijk.length ? 5 : s.schemaTypes.length ? 2 : 0;
-  punten.push({ naam: "Structured data", behaald: schemaPunten, max: 5, uitleg: inhoudelijk.length ? inhoudelijk.slice(0, 3).join(", ") : s.schemaTypes.length ? "alleen technische blokken" : "geen schema" });
+  punten.push({ naam: "Structured data", behaald: schemaPunten, max: 5, uitleg: inhoudelijk.length ? inhoudelijk.slice(0, 3).join(", ") : s.schemaTypes.length ? "alleen algemene blokken, niets over deze pagina" : "geen schema" });
 
   const behaald = punten.reduce((t, p) => t + p.behaald, 0);
   const maxToepasbaar = punten.reduce((t, p) => t + p.max, 0) || 1;
