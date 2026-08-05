@@ -12,8 +12,9 @@
 // stilstaat. De weekindeling blijft, want Maarten denkt in weken ("deze week
 // twee landingpages qua copy af, dat is genoeg").
 //
-// Dit scherm LEEST alleen (GET /api/admin/weekplan). Slepen, afvinken en
-// bewerken blijven op het tabblad Taken, dat onveranderd blijft werken.
+// Compact betekent hier niet "minder kunnen". Klap je een regel open, dan
+// verschijnt de ECHTE projectkaart van het tabblad Taken, dezelfde component,
+// alleen compacter opgemaakt. Alles wat je daar kunt, kun je hier ook.
 
 import { useEffect, useMemo, useState } from "react";
 import { urlKey } from "../../../../../lib/url-key";
@@ -107,6 +108,31 @@ export default function Weekbord({ slug, clientName, domain }: { slug: string; c
     m.setUTCDate(m.getUTCDate() + stappen * 7);
     const iso = isoVan(m);
     void wijzig(t.id, { weekYear: iso.year, weekNo: iso.week });
+  }
+
+  // De ECHTE projectkaart, niet een namaak-samenvatting: alle drie de infoblokken,
+  // de fases met hun knoppen en vinkjes, de chat, de documenten en de mailknoppen.
+  // Zo kan het bord nooit achterlopen op de kaart, want het IS dezelfde kaart.
+  // Compacter maken doen we met opmaak (.wb-kaart), niet door er een tweede
+  // versie naast te bouwen. Een taak zonder pagina krijgt hem ook; die mist
+  // alleen het fase-blok, want dat hoort bij een pagina.
+  function kaart(t: Taak, p?: PageInfo) {
+    return (
+      <div className="wb-kaart">
+        <WeekplanCard
+          slug={slug} t={t as unknown as WpTask} page={p as unknown as WpPageInfo | undefined}
+          open
+          onToggleOpen={() => setOpen(null)}
+          onDragStart={() => {}} onDragEnd={() => {}}
+          onStatus={() => void wijzig(t.id, { status: t.status === "klaar" ? "gepland" : t.status === "bezig" ? "klaar" : "bezig" })}
+          onRemove={() => void wijzig(t.id, { delete: true })}
+          onMail={() => { /* de kaart opent zijn eigen mailvenster via Delen */ }}
+          onGoToPage={(u) => window.open(`/admin/client/${slug}?tab=paginas&page=${encodeURIComponent(u)}`, "_blank")}
+          onGoToTab={(tab) => window.open(`/admin/client/${slug}?tab=${tab}`, "_blank")}
+          refreshBoard={() => void laad()}
+        />
+      </div>
+    );
   }
 
   const infoVan = (t: Taak): PageInfo | undefined => (t.url ? pages[urlKey(t.url)] : undefined);
@@ -251,28 +277,7 @@ export default function Weekbord({ slug, clientName, domain }: { slug: string; c
                       {wacht !== null && <span className={"wb-dagen" + (wacht >= 7 ? " lang" : "")}>{wacht === 0 ? "vandaag" : `${wacht} d`}</span>}
                     </span>
                   </div>
-                  {open === t.id && (
-                    <div className="wb-kaart">
-                      {/* De ECHTE projectkaart, niet een namaak-samenvatting: alle
-                          drie de infoblokken, de fases met hun knoppen en vinkjes,
-                          de chat, de documenten en de mailknoppen. Zo kan het bord
-                          nooit achterlopen op de kaart, want het is dezelfde kaart.
-                          Compacter maken doen we met opmaak (.wb-kaart), niet door
-                          er een tweede versie naast te bouwen. */}
-                      <WeekplanCard
-                        slug={slug} t={t as unknown as WpTask} page={p as unknown as WpPageInfo}
-                        open
-                        onToggleOpen={() => setOpen(null)}
-                        onDragStart={() => {}} onDragEnd={() => {}}
-                        onStatus={() => void wijzig(t.id, { status: t.status === "klaar" ? "gepland" : t.status === "bezig" ? "klaar" : "bezig" })}
-                        onRemove={() => void wijzig(t.id, { delete: true })}
-                        onMail={() => { /* de kaart opent zijn eigen mailvenster via Delen */ }}
-                        onGoToPage={(u) => window.open(`/admin/client/${slug}?tab=paginas&page=${encodeURIComponent(u)}`, "_blank")}
-                        onGoToTab={(tab) => window.open(`/admin/client/${slug}?tab=${tab}`, "_blank")}
-                        refreshBoard={() => void laad()}
-                      />
-                    </div>
-                  )}
+                  {open === t.id && kaart(t, p)}
                 </div>
               );
             })}
@@ -281,10 +286,14 @@ export default function Weekbord({ slug, clientName, domain }: { slug: string; c
               <div className="wb-los">
                 <div className="wb-los-kop">Zonder pagina</div>
                 {w.zonderPagina.map((t) => (
-                  <div key={t.id} className="wb-rij wb-rij-los">
-                    <span className={"wb-wie " + (t.wie === "Dev" ? "wie-dev" : "wie-seo")}>{t.wie}</span>
-                    <span className="wb-wat"><span className="wb-taak-vol">{kaal(t.taak)}</span></span>
-                    <span className="wb-next">{t.status === "klaar" ? "afgerond" : t.status === "bezig" ? "bezig" : "gepland"}</span>
+                  <div key={t.id}>
+                    <div className={"wb-rij wb-rij-los" + (open === t.id ? " wb-rij-open" : "")}
+                      onClick={() => setOpen(open === t.id ? null : t.id)}>
+                      <span className={"wb-wie " + (t.wie === "Dev" ? "wie-dev" : "wie-seo")}>{t.wie}</span>
+                      <span className="wb-wat"><span className="wb-taak-vol">{kaal(t.taak)}</span></span>
+                      <span className="wb-next">{t.status === "klaar" ? "afgerond" : t.status === "bezig" ? "bezig" : "gepland"}</span>
+                    </div>
+                    {open === t.id && kaart(t)}
                   </div>
                 ))}
               </div>
@@ -296,7 +305,8 @@ export default function Weekbord({ slug, clientName, domain }: { slug: string; c
       {!laden && taken.length > 0 && (
         <div className="wb-voet muted">
           Groen is af, oranje is de stap waar hij nu staat, grijs is nog niet begonnen. Wijs een rijtje
-          stipjes aan om te zien welke fase welke is. Klik een regel aan voor de achtergrond.
+          stipjes aan om te zien welke fase welke is. Klik een regel aan en je krijgt de hele
+          kaart: waarom deze pagina, de aanpak, de fases met hun knoppen, de chat en de documenten.
         </div>
       )}
     </div>
