@@ -6,6 +6,7 @@ import { getPages } from "./snapshots";
 import { getStepLinksAll } from "./page-doc-run";
 import { measurePage, type PageMeasurement } from "./page-measure";
 import { metaHardIssues } from "./meta-rules";
+import { saveMetaPageState } from "./meta-ctr";
 import { callClaude, callClaudeImages, beeldGeschikt, LIGHT_MODEL } from "./anthropic";
 import { buildPingwinDoc, type DocSection } from "./pingwin-docx";
 import { uploadDocx } from "./drive";
@@ -46,7 +47,12 @@ export type WorklistAlt = {
 // Waarom staat er geen voorstel? Zonder deze stand vult het scherm een leeg vak
 // met "(zelf beschrijven wat erop staat)", en dat leest als een opdracht terwijl
 // wij er simpelweg niet aan toe zijn gekomen.
-export type MetaStand = "voorstel" | "goed" | "copydoc" | "mislukt";
+// "voorstel" = er ligt een goedgekeurde tekst klaar om te plaatsen.
+// "goed"     = de huidige meta voldoet, hier is niets te doen.
+// "copydoc"  = de nieuwe tekst staat in het copydocument van deze pagina.
+// "wacht"    = de meta deugt niet, maar er is nog niets goedgekeurd in Meta & CTR.
+// "mislukt"  = alleen nog in oude, opgeslagen lijsten; betekende hetzelfde als "wacht".
+export type MetaStand = "voorstel" | "goed" | "copydoc" | "wacht" | "mislukt";
 export type WorklistPage = {
   url: string; path: string;
   curTitle: string; curDesc: string;
@@ -184,23 +190,29 @@ type PageWork = {
   missingAlts: { file: string; src: string; alt: string }[]; // alt = voorstel
 };
 
-// Meta-voorstellen voor een batch pagina's in één AI-aanroep (JSON-patroon).
-async function proposeMetas(slug: string, clientName: string, pages: PageWork[]): Promise<void> {
-  if (!pages.length) return;
-  const { META_RULES_PROMPT } = await import("./meta-rules");
-  const system =
-    `Je bent SEO-copywriter bij bureau Pingwin en schrijft voor ${clientName} kant-en-klare meta's die een sitebouwer zo kan plakken.\n${META_RULES_PROMPT}\n` +
-    `Antwoord met UITSLUITEND geldige JSON: {"paginas":[{"url":"...","title":"...","description":"..."}]} met voor ELKE opgegeven pagina precies één item. Geen tekst eromheen, geen emoji.`;
-  const body = pages.map((p) => `URL: ${p.url}\nHuidige title: ${p.m.metaTitle || "(ontbreekt)"}\nHuidige description: ${p.m.metaDescription || "(ontbreekt)"}\nH1: ${p.m.h1.join(" | ") || "-"}\nH2: ${p.m.h2.slice(0, 8).join(" | ") || "-"}`).join("\n\n");
-  const raw = await callClaude(system, [{ role: "user", content: body.slice(0, 14000) }], 3000, { slug, action: "dev-worklist-meta" });
-  const clean = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
-  const start = clean.indexOf("{"); const end = clean.lastIndexOf("}");
-  const parsed = JSON.parse(start >= 0 && end > start ? clean.slice(start, end + 1) : clean) as { paginas?: { url?: string; title?: string; description?: string }[] };
-  const byKey = new Map((parsed.paginas || []).map((p) => [urlKey(String(p.url || "")), p]));
-  for (const p of pages) {
-    const v = byKey.get(urlKey(p.url));
-    if (v) { p.newTitle = String(v.title || "").trim(); p.newDesc = String(v.description || "").trim(); }
+// De werklijst schrijft zelf GEEN meta's meer.
+//
+// Dat deed hij wel, met een eigen AI-aanroep per acht pagina's. Daardoor kon
+// dezelfde pagina twee verschillende voorstellen hebben: één hier en één in
+// Meta & CTR. En de versie die hier ontstond was de zwakste van de twee (geen
+// klantprofiel, geen zoekwoord, geen nameting op pixelbreedte, geen goedkeuring
+// door een mens), terwijl juist die kant-en-klaar bij de sitebouwer belandde.
+//
+// Nu is Meta & CTR de enige plek waar een meta ontstaat en beoordeeld wordt, en
+// haalt de werklijst op wat daar is goedgekeurd en nog niet live staat. Wat wij
+// zelf via de WordPress-koppeling doorzetten, komt hier dus nooit te staan.
+async function goedgekeurdeMetas(slug: string): Promise<Map<string, { title: string; desc: string }>> {
+  const uit = new Map<string, { title: string; desc: string }>();
+  const { rows } = await sql`
+    SELECT page_url, prop_title, prop_desc, title_status, desc_status
+    FROM meta_proposals
+    WHERE client_slug = ${slug} AND status <> 'doorgevoerd' AND live_at IS NULL`.catch(() => ({ rows: [] as Record<string, unknown>[] }));
+  for (const r of rows) {
+    const title = r.title_status === "goedgekeurd" ? String(r.prop_title || "").trim() : "";
+    const desc = r.desc_status === "goedgekeurd" ? String(r.prop_desc || "").trim() : "";
+    if (title || desc) uit.set(urlKey(String(r.page_url)), { title, desc });
   }
+  return uit;
 }
 
 // ── Alt-teksten, per afbeelding en op basis van de foto zelf ──
@@ -344,7 +356,10 @@ export async function runDevWorklist(slug: string): Promise<{ ok: boolean; docLi
     }
 
     // 2. Problemen bepalen: meta buiten de regels, afbeeldingen zonder alt.
+    //    De gemeten meta gaat meteen naar Meta & CTR: die motor heeft precies
+    //    deze meting nodig om te weten wat er nu staat, en hier is hij gratis.
     for (const p of measured) {
+      await saveMetaPageState(slug, p.url, p.m.metaTitle || "", p.m.metaDescription || "").catch(() => { /* logboek van de meting is aanvulling */ });
       p.titleIssues = p.m.metaTitle ? metaHardIssues("meta_title", p.m.metaTitle) : ["ontbreekt volledig"];
       p.descIssues = p.m.metaDescription ? metaHardIssues("meta_description", p.m.metaDescription) : ["ontbreekt volledig"];
       const seen = new Set<string>();
@@ -383,18 +398,24 @@ export async function runDevWorklist(slug: string): Promise<{ ok: boolean; docLi
     // "Stap 1: maak uniek" bevat voortaan uitsluitend wat écht uniek moet worden.
     const dubbel = [...usage.values()].filter((e) => oordeelVan(e.file).moetUniek).sort((a, b) => b.paths.size - a.paths.size).slice(0, 25);
 
-    const metaProbleem = measured.filter((p) => p.titleIssues.length || p.descIssues.length);
-    const altProbleem = measured.filter((p) => p.missingAlts.length);
-    const probleem = measured.filter((p) => p.titleIssues.length || p.descIssues.length || p.missingAlts.length);
-    if (!probleem.length) {
-      await setState(slug, "done", "", "Alle gemeten pagina's hebben nette meta's en alt-teksten; geen werklijst nodig.", "");
-      return { ok: true };
+    // 4. De goedgekeurde meta's uit Meta & CTR ophalen. Alleen wat daar door een
+    //    mens is goedgekeurd en nog niet live staat, komt op de lijst van de
+    //    bouwer; de rest is geen opdracht maar ruis.
+    const goedgekeurd = await goedgekeurdeMetas(slug).catch(() => new Map<string, { title: string; desc: string }>());
+    for (const p of measured) {
+      const g = goedgekeurd.get(urlKey(p.url));
+      if (g) { p.newTitle = g.title; p.newDesc = g.desc; }
     }
 
-    // 4. Meta's kant-en-klaar schrijven (alleen waar geen copydocument ligt), in batches van 8.
-    const teSchrijven = metaProbleem.filter((p) => !p.copyDoc);
-    for (let i = 0; i < teSchrijven.length; i += 8) {
-      await proposeMetas(slug, client.name, teSchrijven.slice(i, i + 8)).catch(() => { /* pagina's zonder voorstel houden hun issue-tekst */ });
+    // Een pagina hoort op de lijst als er een goedgekeurde meta klaarligt of als
+    // er alt-teksten ontbreken. Een kapotte meta zonder goedgekeurde tekst is
+    // werk voor Meta & CTR, niet voor de bouwer.
+    const altProbleem = measured.filter((p) => p.missingAlts.length);
+    const metaKlaar = measured.filter((p) => p.newTitle || p.newDesc);
+    const probleem = measured.filter((p) => p.newTitle || p.newDesc || p.missingAlts.length);
+    if (!probleem.length) {
+      await setState(slug, "done", "", "Er staat niets klaar voor de bouwer: alle alt-teksten zijn er, en er zijn geen goedgekeurde meta's die nog geplaatst moeten worden.", "");
+      return { ok: true };
     }
     // 5. Alt-teksten schrijven, per AFBEELDING en niet per pagina. WordPress
     //    bewaart één alt-tekst per afbeelding, dus een logo op veertig pagina's
@@ -481,15 +502,14 @@ export async function runDevWorklist(slug: string): Promise<{ ok: boolean; docLi
     }
     for (const p of probleem) {
       const blocks: DocSection["blocks"] = [];
-      if (p.titleIssues.length || p.descIssues.length) {
-        if (p.copyDoc) {
-          blocks.push({ type: "paragraph", text: `De nieuwe meta-title en meta-description staan kant-en-klaar in het copydocument: ${p.copyDoc}` });
-        } else {
-          const rows: string[][] = [];
-          rows.push(["Meta-title", p.newTitle || `(nog schrijven; huidig probleem: ${p.titleIssues.join(", ") || "in orde"})`, p.newTitle ? `${p.newTitle.length} tekens` : ""]);
-          rows.push(["Meta-description", p.newDesc || `(nog schrijven; huidig probleem: ${p.descIssues.join(", ") || "in orde"})`, p.newDesc ? `${p.newDesc.length} tekens` : ""]);
-          blocks.push({ type: "table", headers: ["Element", "Nieuw voorstel", "Lengte"], rows });
-        }
+      // Alleen goedgekeurde teksten komen in het document. Wat nog niet is
+      // goedgekeurd is werk voor Meta & CTR en hoort de bouwer niet te zien.
+      if (p.newTitle || p.newDesc) {
+        const rows: string[][] = [];
+        if (p.newTitle) rows.push(["Meta-title", p.newTitle, `${p.newTitle.length} tekens`]);
+        if (p.newDesc) rows.push(["Meta-description", p.newDesc, `${p.newDesc.length} tekens`]);
+        blocks.push({ type: "table", headers: ["Element", "Nieuwe tekst", "Lengte"], rows });
+        if (p.copyDoc) blocks.push({ type: "paragraph", text: `Deze tekst hoort bij de nieuwe copy van deze pagina: ${p.copyDoc}` });
       }
       // De alt-teksten staan bewust NIET meer per pagina: ze staan in één lijst
       // hierboven, want in WordPress hangen ze aan de afbeelding. Hier alleen
@@ -504,7 +524,7 @@ export async function runDevWorklist(slug: string): Promise<{ ok: boolean; docLi
       klant: client.name,
       rapporttype: "Werklijst sitebouwer",
       titel: "Meta's en alt-teksten, kant-en-klaar",
-      ondertitel: `${probleem.length} pagina's, ${metaProbleem.length} met meta-werk, ${totAlt} afbeeldingen zonder alt-tekst`,
+      ondertitel: `${probleem.length} pagina's, ${metaKlaar.length} met meta-werk, ${totAlt} afbeeldingen zonder alt-tekst`,
       sections,
     });
     // Doelmap: de eerste pagina met een gekoppelde Drive-map (voorkeur: kortste pad).
@@ -533,8 +553,12 @@ export async function runDevWorklist(slug: string): Promise<{ ok: boolean; docLi
       if (t) onderwerpVan.set(i.file, t);
     }
 
+    // Ligt er een goedgekeurde tekst, dan is dat de opdracht, ook als de huidige
+    // meta technisch voldoet (een herschrijving voor meer klikken hoort er ook
+    // op). Anders: voldoet hij, dan niets te doen; ligt er een copydocument, dan
+    // staat de tekst daar; en anders wacht deze pagina nog op Meta & CTR.
     const standVan = (issues: string[], voorstel: string, copyDoc: string): MetaStand =>
-      !issues.length ? "goed" : copyDoc ? "copydoc" : voorstel ? "voorstel" : "mislukt";
+      voorstel ? "voorstel" : !issues.length ? "goed" : copyDoc ? "copydoc" : "wacht";
 
     const pages: WorklistPage[] = probleem.map((p) => {
       // Alleen echte contentfoto's tellen mee; een logo of een icoontje hoort
@@ -582,7 +606,7 @@ export async function runDevWorklist(slug: string): Promise<{ ok: boolean; docLi
     const KAART = "Werklijst sitebouwer: meta's en alt-teksten site-breed";
     const toel = [
       "Achtergrond:",
-      `- ${metaProbleem.length} pagina's met meta-title of meta-description buiten de regels.`,
+      `- ${metaKlaar.length} pagina's met een goedgekeurde meta-title of meta-description die nog geplaatst moet worden.`,
       `- ${totAlt} afbeeldingen zonder alt-tekst, verdeeld over ${altProbleem.length} pagina's.`,
       dubbel.length ? `- ${dubbel.length} contentfoto's moeten eerst uniek gemaakt worden (zelfde alt overal, klopt maar op één plek); vaste onderdelen zoals het logo staan hier bewust niet bij.` : "",
       "Aanpak per fase:",
@@ -599,7 +623,7 @@ export async function runDevWorklist(slug: string): Promise<{ ok: boolean; docLi
         VALUES (${slug}, 'overzicht', ${KAART}, ${toel}, 'Dev', ${null}, 'overig', ${docLink || null}, ${null}, ${w.year}, ${w.week}, 'gepland', 0, now())`;
     }
 
-    const samenvatting = `${probleem.length} pagina's in de werklijst: ${metaProbleem.length} met meta-werk, ${totAlt} afbeeldingen zonder alt-tekst${dubbel.length ? `, ${dubbel.length} afbeeldingen dubbel gebruikt` : ""}.${docLink ? "" : " Geen Drive-map gekoppeld; het document kon niet worden geüpload."}`;
+    const samenvatting = `${probleem.length} pagina's in de werklijst: ${metaKlaar.length} met meta-werk, ${totAlt} afbeeldingen zonder alt-tekst${dubbel.length ? `, ${dubbel.length} afbeeldingen dubbel gebruikt` : ""}.${docLink ? "" : " Geen Drive-map gekoppeld; het document kon niet worden geüpload."}`;
     await setState(slug, "done", docLink, samenvatting, "");
     return { ok: true, docLink };
   } catch (e) {

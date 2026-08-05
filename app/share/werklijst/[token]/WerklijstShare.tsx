@@ -1,15 +1,20 @@
 "use client";
 
-// De pagina voor de sitebouwer. Bewust maar één ding: welke foto's beter een
-// eigen foto konden zijn.
+// De pagina voor de bouwer: het ene adres voor alles wat de site in moet.
 //
-// Hij had hier eerst ook alle meta's en alt-teksten staan, met de helft in het
-// rood geblokkeerd. Dat is weg: die twee voert Pingwin zelf door met een knop,
-// dus het is geen werk voor hem. Wat overblijft is een suggestielijst, geen
-// opdracht: doet hij er niets mee, dan staat de site alsnog goed.
+// Hij is twee keer van vorm veranderd, en dat is leerzaam. Eerst stond hier
+// alles, met de helft in het rood geblokkeerd: onwerkbaar. Daarna bleef alleen
+// een suggestielijst over foto's staan, omdat wij meta's en alt-teksten zelf
+// doorzetten. Maar dat kan alleen bij klanten met een WordPress-koppeling; bij
+// de rest kreeg de bouwer zijn eigenlijke werk per mail, los van deze pagina.
+//
+// Nu staat hier per blok wat er te doen is: de goedgekeurde meta-teksten, de
+// alt-teksten, en de foto's die beter uniek konden zijn. Wat wij zelf doorvoeren
+// verschijnt hier niet, dus wat hij ziet is altijd echt zijn werk.
 //
 // De lijst zelf komt uit app/_werklijst/WerklijstLijst.tsx, hetzelfde component
-// dat de cockpit gebruikt, maar zonder de admin-vlag.
+// dat de cockpit gebruikt, maar zonder de admin-vlag (dus zonder de knoppen om
+// iets rechtstreeks in de site te zetten).
 
 import { useEffect, useState } from "react";
 import WerklijstLijst, { type Pagina, type Alt, type Mark, type DubbelItem } from "../../../_werklijst/WerklijstLijst";
@@ -66,7 +71,7 @@ export default function WerklijstShare({ token }: { token: string }) {
       <div className="wl-kop">
         <div className="wl-logo">Pingwin <span>Online Marketing</span></div>
         <h1>Werklijst website{clientName ? ` ${clientName}` : ""}</h1>
-        <p className="wl-intro">Eén lijstje, en het is geen spoed. De teksten op de site regelen wij zelf; daar hoef je niets voor te doen. Wat hieronder staat zijn foto&rsquo;s die op meerdere pagina&rsquo;s terugkomen. Een eigen foto per pagina werkt beter, voor de bezoeker en voor Google. Pak eruit wat je kunt en vink af; ben je klaar, druk dan op de knop onderaan, dan controleert het dashboard het zelf.</p>
+        <p className="wl-intro">Alles wat er op de site moet gebeuren staat hieronder, per soort werk in een eigen blok. Klap een blok open, kopieer de tekst en vink af wat je gedaan hebt. Het is geen spoed en het hoeft niet in één keer. Ben je klaar met de foto&rsquo;s, druk dan op de knop onderaan; dan controleert het dashboard het zelf.</p>
         <label className="wl-naam">Je naam (voor de vinkjes): <input value={naam} onChange={(e) => setNaam(e.target.value)} placeholder="je voornaam" /></label>
       </div>
 

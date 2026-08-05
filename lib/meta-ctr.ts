@@ -6,10 +6,12 @@
 import { sql, ensureSchema } from "./db";
 import { logActiviteit } from "./activiteit";
 import { getClientBySlug } from "./clients";
+import { getClientUrls } from "./site-urls";
 import { getGscPageOpportunities, getGscDailyForPage } from "./google";
 import { cacheGet, cacheSet, getKeywordsOverview } from "./ahrefs";
 import { measurePage } from "./page-measure";
 import { callClaude, LIGHT_MODEL } from "./anthropic";
+import { getCopydocMetas, type CopydocMeta } from "./copydoc-meta";
 import { META_RULES_PROMPT, metaHardIssues, metaPixelInfo, type MetaKind } from "./meta-rules";
 
 let tablesReady = false;
@@ -38,7 +40,68 @@ async function ensureTables(): Promise<void> {
   // gelijktrekken (eenmalige inhaalslag, raakt alleen oude rijen).
   await sql`UPDATE meta_proposals SET title_status = 'goedgekeurd', desc_status = 'goedgekeurd' WHERE status IN ('goedgekeurd', 'doorgevoerd') AND title_status = 'open' AND desc_status = 'open'`;
   await sql`UPDATE meta_proposals SET title_status = 'afgewezen', desc_status = 'afgewezen' WHERE status = 'afgewezen' AND title_status = 'open' AND desc_status = 'open'`;
+  // Wat staat er NU op elke pagina, en deugt dat?
+  //
+  // De kansenlijst kwam altijd uit Search Console, en die kent alleen pagina's
+  // met genoeg vertoningen. Een pagina zonder meta-description die weinig bezoek
+  // trekt kwam daardoor nergens in beeld; precies die ving de werklijst op met
+  // een eigen, zwakkere generatie. Nu meten we ze hier, één keer per ronde, en
+  // bewaren we het oordeel. Zo is dit scherm de volledige lijst.
+  await sql`
+    CREATE TABLE IF NOT EXISTS meta_page_state (
+      client_slug  TEXT NOT NULL,
+      url          TEXT NOT NULL,
+      cur_title    TEXT,
+      cur_desc     TEXT,
+      title_issues TEXT,
+      desc_issues  TEXT,
+      measured_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (client_slug, url)
+    )`;
   tablesReady = true;
+}
+
+/**
+ * De gemeten stand per pagina bewaren. Wordt door twee plekken gevuld: de knop
+ * "Meet de pagina's" hier, en de werklijst-motor, die toch al elke pagina meet
+ * (dan is het gratis).
+ */
+export async function saveMetaPageState(slug: string, url: string, curTitle: string, curDesc: string): Promise<void> {
+  await ensureTables();
+  const t = curTitle ? metaHardIssues("meta_title", curTitle) : ["ontbreekt volledig"];
+  const d = curDesc ? metaHardIssues("meta_description", curDesc) : ["ontbreekt volledig"];
+  await sql`
+    INSERT INTO meta_page_state (client_slug, url, cur_title, cur_desc, title_issues, desc_issues, measured_at)
+    VALUES (${slug}, ${url}, ${curTitle || ""}, ${curDesc || ""}, ${t.join(" · ")}, ${d.join(" · ")}, now())
+    ON CONFLICT (client_slug, url) DO UPDATE SET
+      cur_title = ${curTitle || ""}, cur_desc = ${curDesc || ""},
+      title_issues = ${t.join(" · ")}, desc_issues = ${d.join(" · ")}, measured_at = now()`;
+}
+
+export type MetaMeetResultaat = { gemeten: number; kapot: number; overgeslagen: number };
+
+/**
+ * Meet de live pagina's van deze klant en bewaart per pagina wat er nu staat en
+ * of dat aan de regels voldoet. Zes tegelijk, hetzelfde ritme als de andere
+ * controles, en begrensd zodat één ronde binnen de tijd blijft.
+ */
+export async function refreshMetaPages(slug: string, max = 60): Promise<MetaMeetResultaat> {
+  await ensureTables();
+  const urls = (await getClientUrls(slug)).filter((u) => u.status === 200);
+  const doen = urls.slice(0, max);
+  let gemeten = 0, kapot = 0;
+  for (let i = 0; i < doen.length; i += 6) {
+    await Promise.all(doen.slice(i, i + 6).map(async (u) => {
+      const m = await measurePage(u.url, { staticOnly: true }).catch(() => null);
+      if (!m?.ok) return;
+      await saveMetaPageState(slug, u.url, m.metaTitle || "", m.metaDescription || "");
+      gemeten++;
+      const stuk = (!m.metaTitle || metaHardIssues("meta_title", m.metaTitle).length)
+        || (!m.metaDescription || metaHardIssues("meta_description", m.metaDescription).length);
+      if (stuk) kapot++;
+    }));
+  }
+  return { gemeten, kapot, overgeslagen: Math.max(0, urls.length - doen.length) };
 }
 
 // Verwachte CTR per Google-positie (organisch, gemiddelde uit CTR-studies;
@@ -63,9 +126,27 @@ export function expectedCtr(position: number): number {
 export type MetaProposalStatus = "open" | "goedgekeurd" | "doorgevoerd" | "afgewezen";
 export type MetaFieldStatus = "open" | "goedgekeurd" | "afgewezen";
 
+/**
+ * Waarom staat deze pagina in de lijst?
+ *  - klikwinst: wordt goed gevonden, maar te weinig aangeklikt voor zijn positie
+ *  - kapot:     de meta ontbreekt of valt buiten de regels
+ *  - goed:      niets aan de hand; staat er zodat je ziet dat hij bekeken is
+ */
+export type MetaReden = "klikwinst" | "kapot" | "goed";
+
 export type MetaKansRow = {
   url: string;
   keyword: string;
+  /** Wat er nu op de pagina staat (uit de laatste meting). */
+  curTitle: string;
+  curDesc: string;
+  reden: MetaReden;
+  /** Gebreken van de HUIDIGE tekst, in gewone taal. Leeg = voldoet. */
+  issues: { title: string[]; desc: string[] };
+  /** Staat er al een meta klaar in het copydocument? Dan is dát de tekst. */
+  copydoc: (CopydocMeta & { live: boolean }) | null;
+  /** Is deze pagina ooit gemeten? Zo niet, dan weten we niets over "kapot". */
+  gemeten: boolean;
   volume: number | null;   // maandelijks zoekvolume van het zoekwoord (Ahrefs, gecached)
   clicks: number;
   impressions: number;
@@ -96,6 +177,20 @@ type DbRow = {
   ctr_before: number | null; position_before: number | null; impressions_before: number | null;
 };
 
+type PageState = { url: string; curTitle: string; curDesc: string };
+
+/** De laatst gemeten stand per pagina, op genormaliseerde URL. */
+async function pageStateFor(slug: string): Promise<Map<string, PageState>> {
+  await ensureTables();
+  const { rows } = await sql`SELECT url, cur_title, cur_desc FROM meta_page_state WHERE client_slug = ${slug}`;
+  const map = new Map<string, PageState>();
+  for (const r of rows) {
+    const url = String(r.url);
+    map.set(norm(url), { url, curTitle: (r.cur_title as string) || "", curDesc: (r.cur_desc as string) || "" });
+  }
+  return map;
+}
+
 async function proposalsFor(slug: string): Promise<Map<string, DbRow>> {
   await ensureTables();
   const { rows } = await sql`SELECT page_url, keyword, cur_title, cur_desc, prop_title, prop_desc, status, title_status, desc_status, live_at, ctr_before, position_before, impressions_before FROM meta_proposals WHERE client_slug = ${slug}`;
@@ -104,37 +199,92 @@ async function proposalsFor(slug: string): Promise<Map<string, DbRow>> {
   return map;
 }
 
-// ── De kansenlijst ──
-// Zelfde GSC-data (en cache) als de Pagina's-tab, maar hier gesorteerd op het
-// CTR-gat: vertoningen x (verwachte CTR - echte CTR) = gemiste klikken.
+// ── De volledige lijst ──
+//
+// Dit scherm is het werkstuk voor meta's, dus staat hier ELKE pagina, niet
+// alleen de dertig grootste kansen. Drie bronnen komen hier samen:
+//
+//   1. Search Console: hoe vaak wordt de pagina vertoond, hoe vaak geklikt, en
+//      hoeveel klikken laat hij liggen voor zijn positie (het CTR-gat).
+//   2. De laatste meting van de pagina zelf: wat staat er nu, en voldoet dat
+//      aan de harde regels. Daarmee komen ook pagina's in beeld die te weinig
+//      vertoningen hebben voor Search Console maar wél een kapotte meta hebben.
+//   3. Het copydocument: staat de meta daar al in, dan is dát de tekst.
+//
+// De reden waarom een pagina in de lijst staat gaat mee naar het scherm, zodat
+// je "laat klikken liggen" en "is stuk" uit elkaar kunt houden.
 export async function getMetaKansen(slug: string): Promise<MetaKansRow[]> {
   const client = await getClientBySlug(slug);
   const domain = client?.domain || "";
   if (!domain) return [];
   type Opps = Awaited<ReturnType<typeof getGscPageOpportunities>>;
-  let rows: Opps | null = await cacheGet<Opps>("gsc_opps", domain, "-", 0.5).catch(() => null);
-  if (!rows) {
-    rows = await getGscPageOpportunities(domain, 90).catch(() => []);
-    if (rows.length) await cacheSet("gsc_opps", domain, "-", rows).catch(() => {});
+  let gsc: Opps | null = await cacheGet<Opps>("gsc_opps", domain, "-", 0.5).catch(() => null);
+  if (!gsc) {
+    gsc = await getGscPageOpportunities(domain, 90).catch(() => []);
+    if (gsc.length) await cacheSet("gsc_opps", domain, "-", gsc).catch(() => {});
   }
   const saved = await proposalsFor(slug);
+  const stand = await pageStateFor(slug);
+  const copydocs = await getCopydocMetas(slug).catch(() => new Map<string, CopydocMeta>());
+  const copyByKey = new Map<string, CopydocMeta>();
+  for (const [u, m] of copydocs) copyByKey.set(norm(u), m);
+
+  // Alle pagina's die we kennen: uit Search Console, uit de meting, en uit de
+  // sitescan. Zo mist er geen pagina omdat één bron hem niet kent.
+  const gscByKey = new Map(gsc.filter((p) => p.url).map((p) => [norm(p.url), p]));
+  const alle = new Set<string>([...gscByKey.keys(), ...stand.keys(), ...saved.keys(), ...copyByKey.keys()]);
+  const urlVan = new Map<string, string>();
+  for (const p of gsc) if (p.url) urlVan.set(norm(p.url), p.url);
+  for (const [k, s] of stand) if (!urlVan.has(k)) urlVan.set(k, s.url);
+  for (const [k, r] of saved) if (!urlVan.has(k)) urlVan.set(k, r.page_url);
+  for (const [u] of copydocs) if (!urlVan.has(norm(u))) urlVan.set(norm(u), u);
+  // Pagina's uit de sitescan die geen van de bronnen kent, zodat de lijst echt
+  // compleet is zodra er een keer gemeten is.
+  for (const u of await getClientUrls(slug).catch(() => [])) {
+    if (u.status !== 200) continue;
+    const k = norm(u.url);
+    if (!urlVan.has(k)) urlVan.set(k, u.url);
+    alle.add(k);
+  }
 
   const out: MetaKansRow[] = [];
-  for (const p of rows) {
-    if (!p.url) continue;
-    const exp = expectedCtr(p.position);
-    const gap = Math.max(0, exp - (p.ctr || 0) / 100);
-    const extraClicks = Math.round(p.impressions * gap);
-    const row = saved.get(norm(p.url));
-    // Voldoende vertoningen en een echt gat, of er is al een voorstel voor de pagina.
-    if (!row && (p.impressions < 100 || extraClicks < 5)) continue;
+  for (const key of alle) {
+    const url = urlVan.get(key) || key;
+    const p = gscByKey.get(key);
+    const st = stand.get(key);
+    const row = saved.get(key);
+    const cd = copyByKey.get(key) || null;
+
+    const position = p?.position || 0;
+    const exp = position ? expectedCtr(position) : 0;
+    const gap = Math.max(0, exp - (p?.ctr || 0) / 100);
+    const impressions = p?.impressions || 0;
+    const extraClicks = Math.round(impressions * gap);
+
+    const curTitle = st?.curTitle ?? row?.cur_title ?? "";
+    const curDesc = st?.curDesc ?? row?.cur_desc ?? "";
+    const gemeten = !!st;
+    const issues = {
+      title: gemeten ? (curTitle ? metaHardIssues("meta_title", curTitle) : ["ontbreekt volledig"]) : [],
+      desc: gemeten ? (curDesc ? metaHardIssues("meta_description", curDesc) : ["ontbreekt volledig"]) : [],
+    };
+    const kapot = issues.title.length > 0 || issues.desc.length > 0;
+    // Klikwinst telt pas als er echt iets te halen valt; anders is het ruis.
+    const klikwinst = impressions >= 100 && extraClicks >= 5;
+    const reden: MetaReden = klikwinst ? "klikwinst" : kapot ? "kapot" : "goed";
+
+    // Staat de meta uit het copydocument al op de pagina? Dan is er niets te doen.
+    const cdLive = !!cd && ((!!cd.title && normText(cd.title) === normText(curTitle)) || (!!cd.desc && normText(cd.desc) === normText(curDesc)));
+
     out.push({
-      url: p.url,
-      keyword: row?.keyword || p.bestKeyword || "",
+      url,
+      keyword: row?.keyword || p?.bestKeyword || "",
+      curTitle, curDesc, reden, issues, gemeten,
+      copydoc: cd ? { ...cd, live: cdLive } : null,
       volume: null,
-      clicks: p.clicks, impressions: p.impressions,
-      ctr: p.ctr, expectedCtr: Math.round(exp * 1000) / 10,
-      position: p.position,
+      clicks: p?.clicks || 0, impressions,
+      ctr: p?.ctr || 0, expectedCtr: Math.round(exp * 1000) / 10,
+      position,
       extraClicks,
       proposal: row ? {
         curTitle: row.cur_title || "", curDesc: row.cur_desc || "",
@@ -147,17 +297,20 @@ export async function getMetaKansen(slug: string): Promise<MetaKansRow[]> {
       } : null,
     });
   }
-  out.sort((a, b) => b.extraClicks - a.extraClicks);
-  const top = out.slice(0, 30);
-  // Pagina's met een voorstel horen altijd in de lijst, ook buiten de top-30.
-  for (const r of out.slice(30)) if (r.proposal) top.push(r);
-  // Maandelijks zoekvolume erbij (Ahrefs, 30 dagen gecached); mag nooit de lijst breken.
+
+  // Op volgorde van opbrengst: eerst de gemiste klikken, daarna de kapotte
+  // meta's (de meest vertoonde eerst), en onderaan wat al goed staat.
+  const bak = (r: MetaKansRow) => r.reden === "klikwinst" ? 0 : r.reden === "kapot" ? 1 : 2;
+  out.sort((a, b) => bak(a) - bak(b) || (b.extraClicks - a.extraClicks) || (b.impressions - a.impressions) || a.url.localeCompare(b.url));
+  // Maandelijks zoekvolume erbij (Ahrefs, 30 dagen gecached); mag nooit de lijst
+  // breken. Alleen voor de bovenste dertig: de lijst is nu compleet, en volume
+  // opvragen voor honderden zoekwoorden kost credits zonder dat je het gebruikt.
   try {
-    const vols = await getKeywordsOverview(top.map((r) => r.keyword).filter(Boolean));
+    const vols = await getKeywordsOverview(out.slice(0, 30).map((r) => r.keyword).filter(Boolean));
     const volMap = new Map(vols.map((v) => [v.keyword, v.volume]));
-    for (const r of top) if (r.keyword) r.volume = volMap.get(r.keyword.trim().toLowerCase()) ?? null;
+    for (const r of out) if (r.keyword) r.volume = volMap.get(r.keyword.trim().toLowerCase()) ?? null;
   } catch { /* volume is aanvulling */ }
-  return top;
+  return out;
 }
 
 // ── Voorstel genereren ──
@@ -221,6 +374,38 @@ export async function generateMetaProposal(
       impressions_before = COALESCE(${base?.impressions ?? null}, meta_proposals.impressions_before),
       approved_at = NULL, live_at = NULL, updated_at = now()`;
   return { curTitle, curDesc, propTitle: title, propDesc: desc };
+}
+
+/**
+ * Neemt de meta uit het copydocument over als voorstel, in plaats van er een
+ * nieuwe te schrijven.
+ *
+ * Waarom: het copydocument schrijft zijn meta's met exact dezelfde regels en
+ * dezelfde pixel-correctie als deze machine. Er nog een derde tekst naast
+ * zetten levert geen betere meta op, alleen de vraag welke van de drie telt.
+ * Deze overname zet hem meteen op goedgekeurd: jij hebt die copy al gezien en
+ * goedgekeurd toen het document opgeleverd werd.
+ */
+export async function importCopydocProposal(slug: string, url: string): Promise<{ propTitle: string; propDesc: string }> {
+  await ensureTables();
+  const metas = await getCopydocMetas(slug);
+  const cd = metas.get(url) || [...metas.entries()].find(([u]) => norm(u) === norm(url))?.[1];
+  if (!cd || (!cd.title && !cd.desc)) throw new Error("In het copydocument van deze pagina staat geen meta-title of meta-description.");
+  const m = await measurePage(url, { staticOnly: true }).catch(() => null);
+  const curTitle = m?.metaTitle || "";
+  const curDesc = m?.metaDescription || "";
+  if (m?.ok) await saveMetaPageState(slug, url, curTitle, curDesc);
+  await sql`
+    INSERT INTO meta_proposals (client_slug, page_url, cur_title, cur_desc, prop_title, prop_desc, status, title_status, desc_status, approved_at)
+    VALUES (${slug}, ${url}, ${curTitle}, ${curDesc}, ${cd.title || ""}, ${cd.desc || ""},
+            'goedgekeurd', ${cd.title ? "goedgekeurd" : "open"}, ${cd.desc ? "goedgekeurd" : "open"}, now())
+    ON CONFLICT (client_slug, page_url)
+    DO UPDATE SET cur_title = ${curTitle}, cur_desc = ${curDesc},
+      prop_title = ${cd.title || ""}, prop_desc = ${cd.desc || ""},
+      status = 'goedgekeurd',
+      title_status = ${cd.title ? "goedgekeurd" : "open"}, desc_status = ${cd.desc ? "goedgekeurd" : "open"},
+      approved_at = now(), live_at = NULL, updated_at = now()`;
+  return { propTitle: cd.title || "", propDesc: cd.desc || "" };
 }
 
 // Pixel-correctielus (zelfde principe als in page-doc): alleen bij harde gebreken
