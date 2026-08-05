@@ -476,13 +476,25 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
                             Zet dit blok in een mail
                           </button>
                         )}
-                        {m.role === "assistant" && m.actions && m.actions.length > 0 && (
-                          <div className="ovc-actions">
-                            {m.actions.map((a) => (
-                              <ActionCard key={a.id} action={a} slug={slug} thread={t.thread} onExecuted={handleExecuted} onGoToPage={onGoToPage} onGoToTask={onGoToTask} onWeekplanChanged={onWeekplanChanged} />
-                            ))}
-                          </div>
-                        )}
+                        {m.role === "assistant" && m.actions && m.actions.length > 0 && (() => {
+                          // Van het blok "Taken → weekplanning" is er maar ÉÉN actueel.
+                          // Vraag je later nog eens welk werk eruit volgt, dan komt er
+                          // een tweede blok met vrijwel dezelfde taken en zie je twee
+                          // overzichten onder elkaar. Alleen het laatste tonen; de
+                          // eerdere blijven bewaard, ze worden niet meer getekend.
+                          const laatsteTaken = messages
+                            .map((x) => ((x.actions || []).some((a) => a.type === "weekplan_taken") ? 1 : 0))
+                            .lastIndexOf(1);
+                          const zichtbaar = m.actions.filter((a) => a.type !== "weekplan_taken" || i === laatsteTaken);
+                          if (!zichtbaar.length) return null;
+                          return (
+                            <div className="ovc-actions">
+                              {zichtbaar.map((a) => (
+                                <ActionCard key={a.id} action={a} slug={slug} thread={t.thread} onExecuted={handleExecuted} onGoToPage={onGoToPage} onGoToTask={onGoToTask} onWeekplanChanged={onWeekplanChanged} />
+                              ))}
+                            </div>
+                          );
+                        })()}
                       </div>
                     );
                     })}
