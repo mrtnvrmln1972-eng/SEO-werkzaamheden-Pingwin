@@ -36,7 +36,7 @@ const keyOf = (year: number, week: number) => year * 100 + week;
 // Het weekplanning-bord: projectkaarten (één per pagina) verdeeld over weekkolommen.
 // De huidige week is gemarkeerd. Slepen verplaatst een kaart naar een andere week.
 // In de open kaart: de 7 fases (starten, status, afvinken), chat en mailen.
-export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailDate, clientName, clientEmail, reloadSignal }: { slug: string; onGoToPage?: (url: string) => void; onGoToTab?: (tab: string) => void; onOpenMailDate?: (datum: string) => void; clientName?: string; clientEmail?: string; reloadSignal?: number }) {
+export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailDate, clientName, clientEmail, reloadSignal, kaal }: { slug: string; kaal?: boolean; onGoToPage?: (url: string) => void; onGoToTab?: (tab: string) => void; onOpenMailDate?: (datum: string) => void; clientName?: string; clientEmail?: string; reloadSignal?: number }) {
   // Datum → link naar de mail, uit de mails van DEZE klant. Zo wordt "mail van 5-7"
   // een echte link, en blijft een mail die we niet kennen gewone tekst in plaats van
   // een oranje woordje dat nergens heen gaat.
@@ -444,11 +444,13 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailD
   );
 
   return (
-    <div className="cockpit-card wp-wrap">
+    <div className={kaal ? "wp-wrap wp-kaal" : "cockpit-card wp-wrap"}>
       {/* De pagina's om uit te kiezen bij een nieuwe taak. Typen mag ook; de lijst
           is een hulpmiddel, geen keurslijf. */}
       <datalist id="wp-paginas">{paginas.slice(0, 600).map((u) => <option key={u} value={u} />)}</datalist>
-      <div className="wp-intro">
+      {/* Zonder eigen kop als dit blok in het Overview-paneel hangt: daar staat de
+          titel "Week Planning" al op de toggle erboven. */}
+      <div className="wp-intro" style={kaal ? { display: "none" } : undefined}>
         <span className="ovc-icontile" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M8 3v4M16 3v4M3 10h18" /><path d="M7 14h2M11 14h2M15 14h2M7 18h2M11 18h2" /></svg>
         </span>

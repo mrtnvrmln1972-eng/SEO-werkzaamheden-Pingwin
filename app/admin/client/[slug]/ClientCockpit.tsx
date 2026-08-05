@@ -103,6 +103,18 @@ export default function ClientCockpit({
   // Teller die de weekplanning laat herladen zodra er vanuit de chat een taak is
   // toegevoegd (of iets in het bord verandert).
   const [weekplanReload, setWeekplanReload] = useState(0);
+  // De drie Overview-blokken beginnen dicht. Wat je openzet onthoudt de browser, zodat
+  // je niet elke keer opnieuw hoeft te klikken op het blok waar je die dag in werkt.
+  const [ovOpen, setOvOpen] = useState<{ prio: boolean; chats: boolean; week: boolean }>({ prio: false, chats: false, week: false });
+  useEffect(() => {
+    try {
+      const r = window.localStorage.getItem(`pingwin-ov-open:${client.slug}`);
+      if (r) setOvOpen({ prio: false, chats: false, week: false, ...JSON.parse(r) });
+    } catch { /* geen opslag: dan gewoon alles dicht */ }
+  }, [client.slug]);
+  useEffect(() => {
+    try { window.localStorage.setItem(`pingwin-ov-open:${client.slug}`, JSON.stringify(ovOpen)); } catch { /* stil */ }
+  }, [ovOpen, client.slug]);
   // Demo-filter voor de klanten-dropdown: alleen klanten met mooie ontwikkeling
   // (28 dagen of 3 maanden), voor schermdelen met potentiële klanten.
   const [demoFilter, setDemoFilter] = useState<null | "28" | "90">(null);
@@ -423,7 +435,7 @@ export default function ClientCockpit({
               blijven ongewijzigd, dus bestaande bookmarks komen nog goed uit. */}
           <nav className="header-tabs">
             {([
-              ["werkzaamheden", "Taken", "De bird's eye-assistent en de weekplanning, jouw werkplek"],
+              ["werkzaamheden", "Taken", "Overview: je prioriteiten, de chats en de weekplanning"],
               ["paginas", "Pagina’s", ""],
             ] as [Tab, string, string][]).map(([id, label, title]) => (
               // Echte link (href) zodat cmd/middel-klik in een nieuw tabblad opent;
@@ -509,12 +521,59 @@ export default function ClientCockpit({
               </div>
             )}
 
-            {/* Twee kolommen: links (2/3) het kloppend hart (bird's eye + weekplanning),
-                rechts (1/3) stand van zaken, zoekwoorden & links, en de laatste mails. */}
+            {/* Twee kolommen: links (2/3) het kloppend hart, rechts (1/3) stand van
+                zaken, zoekwoorden & links, en de laatste mails.
+
+                Links stond alles onder elkaar open: de assistent met al zijn
+                onderwerpen, en daaronder de hele weekplanning. Je scrolde dus altijd
+                langs dingen die je op dat moment niet nodig had. Nu één kop met drie
+                blokken die dicht beginnen, zodat je zelf kiest wat je openzet. */}
             <div className="tk-grid">
             <div className="tk-links">
-            <OverviewChat slug={client.slug} domain={client.domain || ""} configured={chatConfigured !== false} onGoToPage={goToPage} onGoToTask={goToNewTask} onWeekplanChanged={() => setWeekplanReload((n) => n + 1)} clientName={client.name} clientEmail={client.email || ""} />
-            <WeekplanBoard slug={client.slug} onGoToPage={goToPage} onGoToTab={(t) => changeTab(validTab(t))} onOpenMailDate={openMailByDate} clientName={client.name} clientEmail={client.email || ""} reloadSignal={weekplanReload} />
+            <div className="cockpit-card ovc-card">
+              <div className="ovc-head">
+                <span className="ovc-icontile" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="7" /><circle cx="12" cy="12" r="2" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /></svg>
+                </span>
+                <span className="ovc-title">Overview</span>
+              </div>
+
+              <div className="ov-blok">
+                <button type="button" className="strategy-head" onClick={() => setOvOpen((v) => ({ ...v, prio: !v.prio }))}>
+                  <span className="strategy-caret">{ovOpen.prio ? "▾" : "▸"}</span>
+                  <span className="strategy-title">Top Prio&rsquo;s</span>
+                </button>
+                {ovOpen.prio && (
+                  <div className="strategy-body">
+                    <FocusBlock slug={client.slug} soort="prio" titel="Top Prio's" />
+                  </div>
+                )}
+              </div>
+
+              <div className="ov-blok">
+                <button type="button" className="strategy-head" onClick={() => setOvOpen((v) => ({ ...v, chats: !v.chats }))}>
+                  <span className="strategy-caret">{ovOpen.chats ? "▾" : "▸"}</span>
+                  <span className="strategy-title">Chats</span>
+                </button>
+                {ovOpen.chats && (
+                  <div className="strategy-body">
+                    <OverviewChat kaal slug={client.slug} domain={client.domain || ""} configured={chatConfigured !== false} onGoToPage={goToPage} onGoToTask={goToNewTask} onWeekplanChanged={() => setWeekplanReload((n) => n + 1)} clientName={client.name} clientEmail={client.email || ""} />
+                  </div>
+                )}
+              </div>
+
+              <div className="ov-blok">
+                <button type="button" className="strategy-head" onClick={() => setOvOpen((v) => ({ ...v, week: !v.week }))}>
+                  <span className="strategy-caret">{ovOpen.week ? "▾" : "▸"}</span>
+                  <span className="strategy-title">Week Planning</span>
+                </button>
+                {ovOpen.week && (
+                  <div className="strategy-body">
+                    <WeekplanBoard kaal slug={client.slug} onGoToPage={goToPage} onGoToTab={(t) => changeTab(validTab(t))} onOpenMailDate={openMailByDate} clientName={client.name} clientEmail={client.email || ""} reloadSignal={weekplanReload} />
+                  </div>
+                )}
+              </div>
+            </div>
             </div>
             <div className="tk-rechts">
 

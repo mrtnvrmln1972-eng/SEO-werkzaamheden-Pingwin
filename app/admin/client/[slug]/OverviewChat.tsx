@@ -110,7 +110,7 @@ const labelOf = (t: string) => (t === BASE ? "Algemeen" : t.startsWith("overzich
 // standaard dichtgeklapt en toont zijn titel plus een korte samenvatting; je klapt
 // er een open om het gesprek en de actie-kaarten te zien, en je kunt een onderwerp
 // afvinken als "gedaan". Zo zie je in één oogopslag wat er speelt, zonder muur.
-export default function OverviewChat({ slug, domain = "", configured, onGoToPage, onGoToTask, onWeekplanChanged, clientName, clientEmail }: { slug: string; domain?: string; configured: boolean; onGoToPage?: (url: string) => void; onGoToTask?: (taskId: number) => void; onWeekplanChanged?: () => void; clientName?: string; clientEmail?: string }) {
+export default function OverviewChat({ slug, domain = "", configured, onGoToPage, onGoToTask, onWeekplanChanged, clientName, clientEmail, kaal }: { slug: string; kaal?: boolean; domain?: string; configured: boolean; onGoToPage?: (url: string) => void; onGoToTask?: (taskId: number) => void; onWeekplanChanged?: () => void; clientName?: string; clientEmail?: string }) {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [open, setOpen] = useState<string | null>(null);      // welk onderwerp is uitgeklapt (accordion)
   const [messages, setMessages] = useState<Msg[]>([]);        // berichten van het open onderwerp
@@ -308,18 +308,28 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
   }
 
   if (!configured) {
-    return <div className="cockpit-card ovc-card"><div className="phase2-note">De bird&rsquo;s eye-assistent staat klaar, maar mist nog de AI-sleutel (<code>ANTHROPIC_API_KEY</code> in Vercel).</div></div>;
+    return <div className="cockpit-card ovc-card"><div className="phase2-note">Overview staat klaar, maar mist nog de AI-sleutel (<code>ANTHROPIC_API_KEY</code> in Vercel).</div></div>;
   }
 
+  // "kaal" laat de eigen kaart en kop weg: dan hangt dit blok in het Overview-paneel,
+  // waar de kop al boven de drie secties staat. Zonder dat zou je twee koppen en twee
+  // kaders om elkaar heen krijgen.
+  const Omhulsel = kaal ? "div" : "div";
   return (
-    <div className="cockpit-card ovc-card">
+    <Omhulsel className={kaal ? "ovc-kaal" : "cockpit-card ovc-card"}>
+      {kaal ? (
+        <div className="ovc-kaal-acties">
+          <button type="button" className="ghost-btn small" onClick={newTopic}>+ Nieuw onderwerp</button>
+        </div>
+      ) : (
       <div className="ovc-head">
         <span className="ovc-icontile" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="7" /><circle cx="12" cy="12" r="2" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /></svg>
         </span>
-        <span className="ovc-title">Bird&rsquo;s eye-assistent</span>
+        <span className="ovc-title">Overview</span>
         <button type="button" className="ghost-btn small" onClick={newTopic}>+ Nieuw onderwerp</button>
       </div>
+      )}
 
       <div className="ovc-topics">
         {topics.map((t) => {
@@ -487,6 +497,6 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
           );
         })}
       </div>
-    </div>
+    </Omhulsel>
   );
 }
