@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
+import { getClientBySlug } from "../../../../lib/clients";
 import { getOrgData, saveOrgData, setOrgLocked, autofillOrgData, type OrgData } from "../../../../lib/org-data";
 
 export const runtime = "nodejs";
@@ -16,6 +17,11 @@ export async function GET(req: NextRequest) {
   const slug = req.nextUrl.searchParams.get("slug") || "";
   const g = await guardSlug(req, slug); if (!g.ok) return g.res;
   if (!slug) return NextResponse.json({ ok: false, error: "Klant is verplicht." }, { status: 400 });
+  // Onbekende klant: dat zeggen, in plaats van een leeg formulier tonen alsof
+  // er nog van alles ingevuld moet worden.
+  if (!(await getClientBySlug(slug).catch(() => null))) {
+    return NextResponse.json({ ok: false, error: "Deze klant bestaat niet." }, { status: 404 });
+  }
   const rec = await getOrgData(slug);
   return NextResponse.json({ ok: true, ...rec });
 }

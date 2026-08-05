@@ -127,6 +127,13 @@ function rowToRecord(r: any): OrgRecord {
   };
 }
 
+// Bestaat deze klant echt? Zonder deze controle maakte élke typefout in een
+// klantnaam hieronder een lege rij aan die bij niemand hoort.
+async function klantBestaat(slug: string): Promise<boolean> {
+  if (!String(slug || "").trim()) return false;
+  return !!(await getClientBySlug(slug).catch(() => null));
+}
+
 export async function getOrgData(slug: string): Promise<OrgRecord> {
   await ensureSchema();
   await ensureTable();
@@ -139,6 +146,8 @@ export async function getOrgData(slug: string): Promise<OrgRecord> {
     }
     return rec;
   }
+  // Nog geen rij: alleen aanmaken voor een klant die echt bestaat.
+  if (!(await klantBestaat(slug))) return { data: { ...EMPTY_ORG }, locked: false, shareToken: "", updatedAt: null, updatedBy: "" };
   const token = crypto.randomBytes(18).toString("base64url");
   await sql`INSERT INTO client_org_data (client_slug, data, share_token) VALUES (${slug}, ${JSON.stringify(EMPTY_ORG)}, ${token}) ON CONFLICT (client_slug) DO NOTHING`;
   return { data: { ...EMPTY_ORG }, locked: false, shareToken: token, updatedAt: null, updatedBy: "" };
@@ -147,12 +156,42 @@ export async function getOrgData(slug: string): Promise<OrgRecord> {
 export async function saveOrgData(slug: string, data: OrgData, by: "admin" | "klant"): Promise<{ ok: boolean; error?: string }> {
   await ensureSchema();
   await ensureTable();
+  if (!(await klantBestaat(slug))) return { ok: false, error: "Deze klant bestaat niet (meer)." };
   const current = await getOrgData(slug);
   if (current.locked && by === "klant") return { ok: false, error: "Deze gegevens zijn vergrendeld; alleen Pingwin kan ze nog aanpassen." };
   await sql`
     INSERT INTO client_org_data (client_slug, data, updated_by, updated_at) VALUES (${slug}, ${JSON.stringify(normalize(data))}, ${by}, now())
     ON CONFLICT (client_slug) DO UPDATE SET data = ${JSON.stringify(normalize(data))}, updated_by = ${by}, updated_at = now()`;
   return { ok: true };
+}
+
+// Wees-regels opruimen: bedrijfsgegevens die bij geen enkele klant horen én
+// helemaal leeg zijn. Zulke rijen ontstonden door een verkeerd gespelde
+// klantnaam op te vragen. De voorwaarde is bewust dubbel: geen klant met die
+// naam ÉN geen enkel ingevuld veld. Eén gevulde waarde en de rij blijft staan,
+// zodat er nooit iets verdwijnt dat ergens bij hoort.
+export async function opruimWeesOrgData(): Promise<number> {
+  await ensureSchema();
+  await ensureTable();
+  const { rows } = await sql`
+    SELECT o.client_slug, o.data, o.locked
+    FROM client_org_data o
+    LEFT JOIN clients c ON c.slug = o.client_slug
+    WHERE c.slug IS NULL`;
+  let weg = 0;
+  for (const r of rows) {
+    if (r.locked) continue; // vergrendeld is nooit zomaar weg te gooien
+    const d = normalize(typeof r.data === "string" ? JSON.parse(r.data as string) : r.data);
+    const gevuld = Object.entries(d).some(([k, v]) => {
+      if (k === "geenBezoekadres") return v === true;
+      if (Array.isArray(v)) return v.length > 0;
+      return String(v ?? "").trim() !== "";
+    });
+    if (gevuld) continue;
+    await sql`DELETE FROM client_org_data WHERE client_slug = ${r.client_slug as string}`;
+    weg++;
+  }
+  return weg;
 }
 
 export async function setOrgLocked(slug: string, locked: boolean): Promise<void> {

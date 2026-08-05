@@ -3,6 +3,7 @@ import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
 import { uploadDocx, uploadEnConverteer, readDriveDoc } from "../../../../lib/drive";
 import { ensureClientFolder } from "../../../../lib/drive-map";
+import { getClientBySlug } from "../../../../lib/clients";
 import { listKnowledge, getOpenProposals, proposeKnowledge, confirmKnowledge, confirmAllKnowledge, ignoreKnowledge, knowledgeGaps, applyKnowledgeToOrg, opruimenDubbel, deleteKnowledgeEntity } from "../../../../lib/schema-knowledge";
 
 export const runtime = "nodejs";
@@ -18,6 +19,9 @@ export async function GET(req: NextRequest) {
   const slug = req.nextUrl.searchParams.get("slug") || "";
   if (!slug) return NextResponse.json({ ok: false, error: "Geen klant opgegeven." }, { status: 400 });
   const g = await guardSlug(req, slug); if (!g.ok) return g.res;
+  if (!(await getClientBySlug(slug).catch(() => null))) {
+    return NextResponse.json({ ok: false, error: "Deze klant bestaat niet." }, { status: 404 });
+  }
   const [entities, gaps, proposals] = await Promise.all([listKnowledge(slug), knowledgeGaps(slug), getOpenProposals(slug)]);
   return NextResponse.json({ ok: true, entities, gaps, proposals, proposal: proposals[0] || null });
 }

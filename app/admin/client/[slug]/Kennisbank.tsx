@@ -260,6 +260,9 @@ export default function Kennisbank({ slug, onVerwerkt }: { slug: string; onVerwe
                 {g.items.map((e) => (
                   <li key={e.id}>
                     <strong>{e.naam}</strong>
+                    {e.categorie === "locatie" && !(/\d/.test(e.velden.adres || "") || (e.velden.postcode || "").trim()) && (
+                      <span className="kb-geen-vestiging" title="Zonder bezoekadres tellen we dit niet als vestiging; het vraagt dus ook niet om openingstijden.">geen vestiging</span>
+                    )}
                     <span className="muted kb-velden">{Object.entries(e.velden).map(([k, v]) => `${k}: ${v}`).join(" · ") || "(nog geen details)"}</span>
                     <button type="button" className="kb-weg" title="Uit de kennisbank halen" disabled={!!busy}
                       onClick={() => void verwijder(e.id, e.naam)}>&times;</button>

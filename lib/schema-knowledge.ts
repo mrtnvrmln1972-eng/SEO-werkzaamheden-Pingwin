@@ -49,6 +49,7 @@ const VELD_ALIASSEN: Record<string, string> = {
   specialisatie: "specialisatie", specialisme: "specialisatie", specialisaties: "specialisatie",
   specialismen: "specialisatie", aandachtsgebied: "specialisatie", expertise: "specialisatie",
   omschrijving: "omschrijving", beschrijving: "omschrijving", description: "omschrijving", toelichting: "omschrijving",
+  howperformed: "omschrijving", uitvoering: "omschrijving", werkwijze: "omschrijving",
   foto: "foto", fotourl: "foto", afbeelding: "foto", image: "foto", photo: "foto",
   kvk: "kvk", kvknummer: "kvk", btw: "btw", btwnummer: "btw", btwid: "btw",
   logo: "logo", logourl: "logo", oprichtingsjaar: "oprichtingsjaar", opgericht: "oprichtingsjaar",
@@ -95,6 +96,19 @@ function naamKaal(n: string): string {
     .replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+/g, " ");
 }
 const cijfers = (s: string) => String(s || "").replace(/\D/g, "");
+
+// Is dit een échte vestiging? Alleen een locatie met een bezoekadres telt mee.
+// De structured data-lezer haalt namelijk ook plaatsen op die alléén genoemd
+// worden (een testpunt, een stad in een opsomming). Dat zijn geen vestigingen
+// met een balie en openingstijden, dus die horen niet in het formulier en
+// mogen ook niet als "adres ontbreekt" in het rode lijstje verschijnen.
+// De toets: er staat een huisnummer in het adres, of er is een postcode.
+export function isEchteVestiging(velden: Record<string, string>): boolean {
+  const adres = String(velden?.adres || "").trim();
+  const postcode = String(velden?.postcode || "").trim();
+  if (!adres) return false;
+  return /\d/.test(adres) || !!postcode;
+}
 
 export function identiteit(categorie: string, naam: string, velden: Record<string, string>): string {
   const v = velden || {};
@@ -557,7 +571,11 @@ export function kennisNaarOrg(bron: OrgData, entiteiten: KennisEntiteit[]): { da
     if (!eerder) { gezienV.set(k, v); continue; }
     for (const veld of Object.keys(LEGE_VESTIGING) as (keyof OrgVestiging)[]) eerder[veld] = vul(eerder[veld], v[veld]);
   }
-  d.vestigingen = [...gezienV.values()];
+  // Rijen die alleen een naam dragen (een plaats die ooit als "locatie" werd
+  // opgepikt, zoals een testpunt) zijn geen vestiging en verdwijnen uit het
+  // formulier. Alles met een adres, tijden of contactgegevens blijft staan.
+  d.vestigingen = [...gezienV.values()].filter((v) =>
+    [v.straat, v.postcode, v.plaats, v.openingstijden, v.telefoon, v.email, v.mapsUrl].some((x) => String(x || "").trim()));
   const gezienA = new Map<string, OrgData["artsen"][number]>();
   for (const a of d.artsen) {
     const k = identiteit("persoon", a.naam, { big: a.big });
@@ -600,6 +618,7 @@ export function kennisNaarOrg(bron: OrgData, entiteiten: KennisEntiteit[]): { da
 
   // Locaties → vestigingen (elke locatie een eigen rij met adres en tijden).
   for (const l of entiteiten.filter((e) => e.categorie === "locatie")) {
+    if (!isEchteVestiging(l.velden)) continue; // alleen locaties met een echt bezoekadres
     const a = splitsAdres(l.velden.adres || "");
     const kern = identiteit("locatie", l.naam, l.velden);
     const bestaand = d.vestigingen.find((x) => identiteit("locatie", x.naam, { adres: x.straat, postcode: x.postcode, plaats: x.plaats }) === kern);
@@ -660,6 +679,7 @@ export async function knowledgeGaps(slug: string): Promise<string[]> {
   // meenemen: zo verschijnt een aangeleverde locatie meteen in het lijstje met
   // precies wat er van díé locatie nog mist.
   for (const l of entiteiten.filter((e) => e.categorie === "locatie")) {
+    if (!isEchteVestiging(l.velden)) continue; // een genoemde plaats is geen vestiging
     const kern = identiteit("locatie", l.naam, l.velden);
     if (d.vestigingen.some((v) => identiteit("locatie", v.naam, { adres: v.straat, postcode: v.postcode, plaats: v.plaats }) === kern)) continue;
     const a = splitsAdres(l.velden.adres || "");
