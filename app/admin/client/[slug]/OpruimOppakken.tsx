@@ -80,9 +80,9 @@ export default function OpruimOppakken({ slug, domain, rijen, clientName, client
   if (!rijen.length) return null;
 
   return (
-    <div className="opr-blok">
+    <div className="opr-kaart">
       <div className="opr-kop">Oppakken, niet weghalen ({rijen.length})</div>
-      <p className="opr-uitleg-blok" style={{ marginBottom: "var(--s-3)" }}>
+      <p className="opr-kaart-tekst">
         Deze pagina&rsquo;s kwamen als opruimkandidaat uit de analyse: ze scoren op dit moment nergens op.
         Maar de zoekterm die bij ze hoort <strong>heeft wél zoekvolume</strong>, en geen andere pagina van deze site
         bezit hem. Ze omleiden zou dus een kans weggooien in plaats van rommel opruimen. Ze horen niet in de

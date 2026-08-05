@@ -3864,6 +3864,42 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
    De lijst staat bovenaan en het verhaal eronder: een lijst werk je af, proza
    lees je. Andersom (zoals het eerst was) is zeventig regels onwerkbaar. */
 .opr-blok { margin-bottom: var(--s-6); }
+
+/* ── Het opruimscherm als een stapel kaarten ───────────────────────────────
+   Alles stond als losse blokken onder elkaar over de volle breedte, waardoor
+   niet te zien was waar de ene sectie ophield en de volgende begon. Elke sectie
+   is nu een eigen kaart met een kop en een lijn eronder, zodat het scherm ook
+   met een deellink naar een klant kan. */
+.opr-kaart {
+  background: var(--white); border: 1px solid var(--card-border); border-radius: var(--r-lg);
+  padding: var(--s-5); margin-bottom: var(--s-5); box-shadow: var(--shadow-sm); text-align: left;
+}
+.opr-kaart > .opr-kop, .opr-kaart > .opr-kop-rij { padding-bottom: var(--s-3); border-bottom: 1px solid var(--card-border); margin-bottom: var(--s-4); }
+.opr-kaart > .opr-kop-rij > .opr-kop { padding-bottom: 0; border-bottom: none; margin-bottom: 0; }
+.opr-kaart-tekst { max-width: 72ch; font-size: var(--fs-sm); line-height: 1.65; color: var(--muted); margin: 0 0 var(--s-4); }
+.opr-kaart-tekst p { margin: 0 0 var(--s-2); }
+.opr-kaart-tekst p:last-child { margin-bottom: 0; }
+.opr-kaart-tekst ul { margin: 0 0 var(--s-2); padding-left: var(--s-5); display: flex; flex-direction: column; gap: var(--s-1); }
+.opr-kaart-tekst strong { color: var(--dark); }
+/* De knoppenrij van een kaart: netjes rechts, altijd op één hoogte. */
+.opr-kaart-acties { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; margin-left: auto; }
+.opr-kaart-sam { cursor: pointer; font-weight: 800; font-size: var(--fs-md); line-height: var(--lh-md); color: var(--orange); list-style: none; }
+.opr-kaart-sam::-webkit-details-marker { display: none; }
+.opr-kaart-sam::before { content: "▸ "; font-size: var(--fs-sm); }
+details[open] > .opr-kaart-sam::before { content: "▾ "; }
+/* De voetregel onder de werklijst: knop en uitleg op één lijn, met lucht erboven. */
+.opr-voet-balk { align-items: center; }
+.opr-voet-balk .opr-telling { max-width: 60ch; }
+
+/* Uitlijning. In de basis-CSS staat 'tbody td:last-child { text-align: center }'
+   voor het klantdashboard; die won het hier van de tabelregels en centreerde
+   overal de laatste kolom (waarom, voorbeelden, ankertekst). Hier expliciet
+   terug naar links, met genoeg gewicht om te winnen. */
+.cannibal-panel .opr-tabel thead th:last-child,
+.cannibal-panel .opr-tabel tbody td:last-child,
+.cannibal-panel .res-table thead th:last-child,
+.cannibal-panel .res-table tbody td:last-child { text-align: left; }
+.cannibal-panel .opr-tabel .opr-num, .cannibal-panel .opr-tabel .opr-vink { text-align: center; }
 .opr-chip.verhuis { background: var(--brand-blue-light); color: var(--brand-blue); }
 .opr-uitleg-blok { max-width: 72ch; margin: var(--s-2) 0 var(--s-5); font-size: var(--fs-sm); line-height: 1.6; color: var(--muted); }
 .opr-uitleg-blok p { margin: 0 0 var(--s-2); }

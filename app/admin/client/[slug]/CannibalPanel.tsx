@@ -247,7 +247,9 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
             klik-verdeling, false positives). Zelfs een SEO-specialist haakte daarop
             af, laat staan een klant die straks de deellink krijgt. Nu in gewone taal,
             met de echte aantallen erbij. */}
-        <div className="opr-uitleg-blok">
+        <div className="opr-kaart opr-kaart-intro">
+          <div className="opr-kop">Wat deze analyse doet</div>
+          <div className="opr-kaart-tekst">
           <p>
             Deze pagina zoekt uit welke pagina&rsquo;s van de site elkaar in de weg zitten of niets opleveren,
             en wat er per pagina moet gebeuren. Dat gebeurt langs twee wegen.
@@ -269,6 +271,7 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
             waarom. Klap een regel open en je ziet het bewijs erbij. De analyse draait op de achtergrond; je kunt
             wegklikken.
           </p>
+          </div>
         </div>
         {/* Eerst dit, dan pas analyseren. Een Google Ads-landingspagina staat vaak op
             noindex: hij haalt niets uit Google en lijkt daarom dood gewicht, terwijl de
@@ -330,17 +333,32 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
             </div>
 
             {dk && (
-              <div className="cannibal-dk">
-                <span className={"cannibal-dk-pill " + (dk.gsc ? "on" : "off")}>Search Console {dk.gsc ? "✓" : "✗"}</span>
-                <span className={"cannibal-dk-pill " + (dk.gscTijdreeks ? "on" : "off")}>Flip-tijdreeks {dk.gscTijdreeks ? "✓" : "✗"}</span>
-                <span className={"cannibal-dk-pill " + (dk.ahrefsZoekwoorden ? "on" : "off")}>Ahrefs per pagina {dk.ahrefsZoekwoorden ? "✓" : "✗"}</span>
-                <span className={"cannibal-dk-pill " + (dk.ahrefsBacklinks ? "on" : "off")}>Verwijzende domeinen {dk.ahrefsBacklinks ? "✓" : "✗"}</span>
-                <span className={"cannibal-dk-pill " + (dk.crawl ? "on" : "off")}>Crawl {dk.crawl ? "✓" : "✗"}</span>
-                {dk.opmerking && <div className="muted" style={{ fontSize: 12, marginTop: 6, width: "100%" }}>{dk.opmerking}</div>}
-              </div>
+              <details className="opr-kaart opr-kaart-bron">
+                <summary className="opr-kaart-sam">Waarop deze analyse is gebaseerd</summary>
+                <div className="opr-kaart-tekst" style={{ marginTop: "var(--s-3)" }}>
+                  <p>
+                    De conclusies hieronder komen uit de eigen cijfers van de website, niet uit een aanname.
+                    Gebruikt zijn:
+                  </p>
+                  <ul>
+                    <li><strong>Search Console:</strong> op welk zoekwoord welke pagina wordt getoond, hoe vaak, en op welke plek. {dk.gsc ? "Beschikbaar." : "Niet beschikbaar."}</li>
+                    <li><strong>Het verloop door de tijd:</strong> of Google tussen twee pagina&rsquo;s wisselt op hetzelfde zoekwoord. {dk.gscTijdreeks ? "Beschikbaar." : "Niet beschikbaar."}</li>
+                    <li><strong>Ahrefs:</strong> het zoekvolume per zoekwoord en de posities per pagina. {dk.ahrefsZoekwoorden ? "Beschikbaar." : "Niet beschikbaar."}</li>
+                    <li><strong>Verwijzende websites:</strong> hoeveel andere sites naar een pagina linken, als maat voor hoe sterk hij staat. {dk.ahrefsBacklinks ? "Beschikbaar." : "Niet beschikbaar."}</li>
+                  </ul>
+                  {!dk.crawl && (
+                    <p>
+                      <strong>Wat er niet in zit:</strong> een technische scan van de website zelf. Daarmee zou je ook kunnen
+                      nakijken of pagina&rsquo;s onderling correct naar elkaar verwijzen. Voor de keuzes hieronder is dat niet
+                      nodig; het betekent alleen dat we na het doorvoeren van de omleidingen nog één keer nameten of ze
+                      allemaal in één stap aankomen.
+                    </p>
+                  )}
+                </div>
+              </details>
             )}
 
-            <div className="opr-vorm">
+            <div className="opr-kaart opr-vorm">
               <div className="opr-vorm-kop">
                 Gekozen URL-structuur
                 {vormOpgeslagen
@@ -367,9 +385,10 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
             {/* De werklijst eerst. Het verhaal eronder: een lijst is om af te werken,
                 proza is om te begrijpen, en in die volgorde. */}
             {result.redirectMap && result.redirectMap.length > 0 && (
-              <div className="opr-blok">
+              <div className="opr-kaart">
                 <div className="opr-kop-rij">
                 <div className="opr-kop">Werklijst: wat waar naartoe</div>
+                <div className="opr-kaart-acties">
                 {/* Downloaden als CSV: opent met een dubbelklik in Excel en is te
                     importeren in Google Sheets. Platte rijen met duidelijke
                     van/naar-kolommen, zoals Maartens eigen Excel. */}
@@ -383,6 +402,7 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
                   title="Kijkt per pagina op deze lijst of zijn eigen zoekterm zoekvolume heeft. Zo ja, dan gaat hij eraf en komt hij bij Oppakken te staan.">
                   {weegBezig ? "Bezig met controleren…" : "Controleer op waardevolle pagina's"}
                 </button>
+                </div>
               </div>
                 {weegMsg && <div className="opr-melding">{weegMsg}</div>}
                 <OpruimTabel slug={slug} domain={domain} rijen={result.redirectMap} openTarget={openTarget} bewijs={bewijsPerPad} />
@@ -394,9 +414,9 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
                 verwante pagina's naar de winnaar van een cluster, zodat Google zijn
                 keuze niet meer hoeft te maken. Het is geen volledige linkaudit. */}
             {result.interneLinks && result.interneLinks.length > 0 && (
-              <div className="opr-blok">
+              <div className="opr-kaart">
                 <div className="opr-kop">Daarna: interne links leggen ({result.interneLinks.length})</div>
-                <p className="muted" style={{ fontSize: 13, margin: "0 0 10px", maxWidth: "70ch" }}>
+                <p className="opr-kaart-tekst">
                   Omleiden lost op dat twee pagina&rsquo;s om hetzelfde zoekwoord vechten. Deze links maken de winnaar
                   daarna ook sterker: vanaf pagina&rsquo;s die over hetzelfde onderwerp gaan, met een ankertekst die het
                   zoekwoord bevat. Dat is een aanvulling op het opruimen, geen volledige interne-linkaudit; daarvoor is
@@ -423,9 +443,9 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
                 Een klant wil niet alleen zien wat je weghaalt, maar ook waar je
                 vanaf blijft. Deze pagina's kwamen in de analyse voorbij en blijven. */}
             {blijftStaan.length > 0 && (
-              <div className="opr-blok">
+              <div className="opr-kaart">
                 <div className="opr-kop">Wat we bewust laten staan ({blijftStaan.length})</div>
-                <p className="muted" style={{ fontSize: 13, margin: "0 0 10px", maxWidth: "70ch" }}>
+                <p className="opr-kaart-tekst">
                   Deze pagina&rsquo;s kwamen in de analyse langs omdat ze meedoen op een zoekwoord waar meerdere
                   pagina&rsquo;s op ranken. Ze blijven staan: ze winnen op hun eigen onderwerp, of andere pagina&rsquo;s
                   gaan er juist in op.
@@ -446,12 +466,40 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
               </div>
             )}
 
-            {result.samenvatting && (
-              <details className="opr-details">
-                <summary>Samenvatting van de analyse</summary>
-                <div className="cannibal-summary md" dangerouslySetInnerHTML={{ __html: linkifyHtml(mdToHtml(alsBullets(result.samenvatting)), domain) }} />
-              </details>
-            )}
+            {/* De samenvatting stond weggestopt in een uitklapper onderaan, in
+                telegramstijl. Voor een klant is dit juist het verhaal: wat is er
+                onderzocht, wat kwam eruit, en wat gebeurt er nu. */}
+            <div className="opr-kaart">
+              <div className="opr-kop">Samengevat: wat deze analyse heeft opgeleverd</div>
+              <div className="opr-kaart-tekst">
+                <p>
+                  Voor deze website zijn <strong>{result.clusters?.length || 0} {result.clusters?.length === 1 ? "zoekwoord" : "zoekwoorden"}</strong> onderzocht
+                  waarop meerdere pagina&rsquo;s tegelijk in Google verschijnen, plus alle pagina&rsquo;s die op geen enkel
+                  eigen zoekwoord scoren. Dat is gedaan op basis van de vertoningen en posities uit Search Console,
+                  het verloop daarvan door de tijd, en het zoekvolume per zoekwoord uit Ahrefs.
+                </p>
+                <p>
+                  Daar komen drie soorten uitkomsten uit.
+                  Voor <strong>{regels} {regels === 1 ? "pagina" : "pagina&rsquo;s"}</strong> is doorverwijzen de beste zet: die
+                  pagina&rsquo;s vechten met een sterkere pagina om dezelfde bezoeker, en door ze samen te voegen hoeft Google
+                  niet meer te kiezen.
+                  {(result.oppakken?.length || 0) > 0 && <> Voor <strong>{result.oppakken?.length}</strong> pagina&rsquo;s geldt juist het omgekeerde: die zitten op een zoekterm waar wél
+                  op gezocht wordt, dus die worden niet opgeruimd maar opnieuw opgebouwd.</>}
+                  {blijftStaan.length > 0 && <> En <strong>{blijftStaan.length}</strong> pagina&rsquo;s die in de analyse voorbijkwamen blijven bewust
+                  onaangeroerd, omdat ze op hun eigen onderwerp gewoon winnen.</>}
+                </p>
+                <p>
+                  Het doel is steeds hetzelfde: per onderwerp één duidelijke pagina, die daardoor sterker staat dan twee
+                  halve. {result.interneLinks && result.interneLinks.length > 0 ? "Na het doorvoeren worden de interne links bijgewerkt, zodat de overblijvende pagina ook vanuit de site zelf de duidelijkste is." : ""}
+                </p>
+              </div>
+              {result.samenvatting && (
+                <details className="opr-details">
+                  <summary>De uitgebreide bevindingen per zoekwoord</summary>
+                  <div className="cannibal-summary md" dangerouslySetInnerHTML={{ __html: linkifyHtml(mdToHtml(alsBullets(result.samenvatting)), domain) }} />
+                </details>
+              )}
+            </div>
           </>
         )}
       </div>
