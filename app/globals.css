@@ -3668,7 +3668,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .nv-voorstel { display: flex; align-items: center; gap: var(--s-3, 12px); flex-wrap: wrap; border: 1px solid var(--border, #e5ded6); border-left: 3px solid var(--orange, #F15829); border-radius: var(--r-md, 10px); padding: var(--s-3, 12px) var(--s-4, 16px); background: #fff6f1; font-size: var(--fs-sm, 13px); }
 
 /* De navigatie als kolommen: hoofdmenu naast elkaar, submenu eronder. */
-.nv-kolommen { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: var(--s-4, 16px); align-items: start; }
+.nv-kolommen { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: var(--s-4, 16px); align-items: start; }
 .nv-kolom { background: #fff; border: 1px solid var(--border, #e5ded6); border-radius: var(--r-lg, 14px); box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.06)); padding: var(--s-3, 12px) var(--s-3, 12px) var(--s-2, 8px); display: flex; flex-direction: column; gap: var(--s-2, 8px); }
 .nv-kolomkop { display: flex; align-items: center; gap: var(--s-2, 8px); }
 .nv-kolomnaam { color: var(--dark, #2b2b2b); font-weight: 700; font-size: var(--fs-md, 14.5px); text-decoration: none; text-transform: capitalize; }
@@ -3682,7 +3682,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .nv-item:hover { background: var(--gray-light, #f8f5f1); }
 .nv-caret { border: none; background: none; cursor: pointer; color: var(--orange, #F15829); font-size: 11px; width: 16px; padding: 0; flex: 0 0 auto; }
 .nv-caret-leeg { display: inline-block; width: 16px; flex: 0 0 auto; }
-.nv-naam { color: var(--dark, #2b2b2b); font-size: var(--fs-sm, 13px); text-decoration: none; text-transform: capitalize; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nv-naam { color: var(--dark, #2b2b2b); font-size: var(--fs-sm, 13px); text-decoration: none; text-transform: capitalize; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1 1 auto; min-width: 0; }
 .nv-naam:hover { color: var(--orange, #F15829); text-decoration: underline; }
 .nv-term { border: none; background: none; cursor: pointer; font: inherit; font-size: var(--fs-xs, 11.5px); color: var(--muted, #6f645a); padding: 0 6px 2px; border-radius: 6px; text-align: left; }
 .nv-term:hover { background: #fdeee7; color: var(--orange-dark, #c93f16); }
@@ -3698,6 +3698,19 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .nv-mini-del:hover { background: #b3261e; border-color: #b3261e; color: #fff; }
 .nv-addlink { border: none; background: none; cursor: pointer; font: inherit; font-size: var(--fs-xs, 11.5px); color: var(--orange, #F15829); padding: 4px 6px; opacity: 0.7; text-align: left; }
 .nv-addlink:hover { opacity: 1; text-decoration: underline; }
+/* De drie kolommetjes per pagina: woorden, score, fases. */
+.nv-woorden { font-size: var(--fs-xs, 11px); color: var(--muted, #6f645a); width: 40px; text-align: right; font-variant-numeric: tabular-nums; flex: 0 0 auto; }
+.nv-score { font-size: var(--fs-xs, 11px); font-weight: 700; border-radius: var(--r-sm, 8px); padding: 1px 6px; min-width: 30px; text-align: center; flex: 0 0 auto; cursor: help; }
+.nv-score.goed { color: #1c7a3f; background: #e6f6ec; }
+.nv-score.matig { color: #8a5a00; background: #fff3d9; }
+.nv-score.zwak { color: #b3261e; background: #fdf3f2; }
+.nv-score-leeg { background: none; color: #c3b9ae; }
+.nv-leegwaarde { color: #c3b9ae; }
+.nv-lijstkaart { background: #fff; border: 1px solid var(--border, #e5ded6); border-radius: var(--r-lg, 14px); box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.06)); overflow: hidden; }
+.nv-lijst td { vertical-align: middle; }
+.nv-lijst .nv-muted { font-size: var(--fs-xs, 11.5px); }
+.nv-getal { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.nv-lijst .nv-score { display: inline-block; }
 .nv-leeg { background: #fff; border: 1px solid var(--border, #e5ded6); border-radius: var(--r-lg, 14px); padding: var(--s-5, 20px); font-size: var(--fs-sm, 13px); color: var(--muted, #6f645a); }
 .nv-uitleg { font-size: var(--fs-xs, 12px); color: var(--muted, #6f645a); max-width: 100ch; }
 .focus-nav-link { margin-left: auto; font-size: var(--fs-xs, 11.5px); font-weight: 600; color: var(--orange, #F15829); text-decoration: none; }

@@ -7,6 +7,8 @@ import { getGscPageOpportunities } from "./google";
 import { callClaude } from "./anthropic";
 import { urlKey } from "./url-key";
 import { PHASE_KEYS, setPhaseMark } from "./phase-marks";
+import { getLatestSnapshots } from "./content-tracking";
+import { klantContext, scorePagina, type ScoreInvoer, type ScorePunt } from "./page-score";
 
 // ═══════════════════════════════════════════════════════════
 // NAVIGATIE-ROADMAP: de beoogde sitestructuur + voortgang per pagina
@@ -32,6 +34,14 @@ export type RoadmapNode = NavNode & {
   pct: number;            // 0-100 uit de zeven fases
   fasesKlaar: number;
   inPlan: boolean;        // staat in de beoogde structuur
+  // De snelle paginascore uit de laatste content-scan. null = nog niet gemeten.
+  woorden: number | null;
+  woordenGeschat: boolean;
+  score: number | null;
+  scoreNiveau: "goed" | "matig" | "zwak" | null;
+  scoreLabel: string;
+  punten: ScorePunt[];
+  gemetenOp: string | null;
 };
 
 let tableReady: Promise<void> | null = null;
@@ -265,16 +275,28 @@ export async function completeNavPage(slug: string, url: string, domain: string)
 
 // ── De roadmap zelf: plan + live-status + voortgang gecombineerd ──
 
-export async function getRoadmap(slug: string): Promise<{ nodes: RoadmapNode[]; menu: RoadmapNode[]; voorstel: NavNode[]; domain: string }> {
+export async function getRoadmap(slug: string): Promise<{ nodes: RoadmapNode[]; menu: RoadmapNode[]; voorstel: NavNode[]; domain: string; ontbrekend: string[] }> {
   const client = await getClientBySlug(slug);
   const domain = client?.domain || "";
-  const [plan, voorstel, menu, urls, pages] = await Promise.all([
+  const [plan, voorstel, menu, urls, pages, snaps] = await Promise.all([
     leesPlan(slug, "actueel"),
     leesPlan(slug, "voorstel"),
     leesPlan(slug, "menu"),
     getClientUrls(slug),
     getWeekplanPages(slug).catch(() => ({} as Record<string, { [k: string]: unknown }>)),
+    getLatestSnapshots(slug).catch(() => []),
   ]);
+
+  // De snelle paginascore uit de laatste content-scan. De vaste omlijsting
+  // (menu, footer, logo) bepalen we één keer over alle gemeten pagina's van
+  // deze klant, zodat die niet bij elke pagina meetelt.
+  const invoerVan = (s: (typeof snaps)[number]): ScoreInvoer => ({
+    metaTitle: s.metaTitle, metaDescription: s.metaDescription, h1: s.h1, h1Count: s.h1Count,
+    h2s: s.h2s, altTags: s.altTags, internalLinks: s.internalLinks,
+    wordCount: s.wordCount, mainWordCount: s.mainWordCount, schemaTypes: s.schemaTypes,
+  });
+  const ctx = klantContext(snaps.map(invoerVan));
+  const snapByKey = new Map(snaps.map((s) => [urlKey(s.url), s]));
   const liveByPad = new Map<string, boolean>();
   for (const u of urls) { try { liveByPad.set(netPad(new URL(u.url).pathname), u.status === 200); } catch { /* pad onleesbaar */ } }
 
@@ -304,11 +326,23 @@ export async function getRoadmap(slug: string): Promise<{ nodes: RoadmapNode[]; 
     const vol = domain ? `https://${domain}${n.url}` : n.url;
     const live = liveByPad.get(n.url) || false;
     const { pct, klaar } = pctVan(vol);
-    return { ...n, live, pct: live || pct > 0 ? pct : 0, fasesKlaar: klaar, inPlan: inPlanPaden.has(n.url) && plan.length > 0 };
+    const snap = snapByKey.get(urlKey(vol));
+    const sc = snap ? scorePagina(invoerVan(snap), ctx) : null;
+    return {
+      ...n, live, pct: live || pct > 0 ? pct : 0, fasesKlaar: klaar, inPlan: inPlanPaden.has(n.url) && plan.length > 0,
+      woorden: sc ? sc.woorden : null, woordenGeschat: sc ? sc.woordenGeschat : false,
+      score: sc ? sc.score : null, scoreNiveau: sc ? sc.niveau : null, scoreLabel: sc ? sc.label : "",
+      punten: sc ? sc.punten : [], gemetenOp: snap ? snap.capturedAt : null,
+    };
   };
   const nodes: RoadmapNode[] = [...basis, ...extra].map(verrijk);
   // Het uitgelezen menu: pagina's die in het menu staan maar niet in de
   // sitemap-scan zaten, zijn nog steeds live (ze staan immers in het menu).
   const menuNodes: RoadmapNode[] = menu.map((n) => { const r = verrijk(n); return { ...r, live: r.live || liveByPad.size === 0 }; });
-  return { nodes, menu: menuNodes, voorstel, domain };
+  // Pagina's die nog geen meting hebben; de knop in het scherm scant die alsnog.
+  const ontbrekend = [...nodes, ...menuNodes]
+    .filter((n) => n.live && n.score === null && domain)
+    .map((n) => `https://${domain}${n.url}`)
+    .filter((u, i, a) => a.indexOf(u) === i);
+  return { nodes, menu: menuNodes, voorstel, domain, ontbrekend };
 }

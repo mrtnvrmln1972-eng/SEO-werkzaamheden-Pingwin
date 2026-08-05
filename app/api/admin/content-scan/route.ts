@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
 import { getClientUrls } from "../../../../lib/site-urls";
+import { getClientBySlug } from "../../../../lib/clients";
 import { captureAndDetect } from "../../../../lib/content-tracking";
 
 export const runtime = "nodejs";
@@ -22,10 +23,23 @@ export async function POST(req: NextRequest) {
   if (!slug) return NextResponse.json({ ok: false, error: "Klant is verplicht." }, { status: 400 });
   const g = await guardSlug(req, slug); if (!g.ok) return g.res;
 
-  const urls = (await getClientUrls(slug).catch(() => []))
-    .filter((u) => u.status && u.status >= 200 && u.status < 300)
-    .map((u) => u.url)
-    .slice(0, 200);
+  // Een meegegeven lijst wint: zo kan de navigatie-roadmap gericht de pagina's
+  // meten die nog geen score hebben (die staan niet altijd in client_urls).
+  // Altijd hard filteren op het domein van de klant; een lijst uit de browser
+  // mag nooit een andere site laten scannen.
+  const gevraagd = Array.isArray(body.urls) ? body.urls.map((u) => String(u || "").trim()).filter(Boolean) : [];
+  let urls: string[];
+  if (gevraagd.length) {
+    const client = await getClientBySlug(slug);
+    const host = (client?.domain || "").replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "");
+    urls = gevraagd.filter((u) => { try { return !!host && new URL(u).host.replace(/^www\./, "") === host; } catch { return false; } }).slice(0, 50);
+    if (!urls.length) return NextResponse.json({ ok: false, error: "Geen geldige pagina's van deze klant opgegeven." }, { status: 400 });
+  } else {
+    urls = (await getClientUrls(slug).catch(() => []))
+      .filter((u) => u.status && u.status >= 200 && u.status < 300)
+      .map((u) => u.url)
+      .slice(0, 200);
+  }
 
   let scanned = 0, changed = 0;
   const POOL = 5;

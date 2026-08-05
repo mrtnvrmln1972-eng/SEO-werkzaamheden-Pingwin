@@ -8,7 +8,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-type Node = { url: string; parent: string; hoofdzoekterm: string; volume: number | null; volgorde: number; live: boolean; pct: number; fasesKlaar: number; inPlan: boolean; label?: string };
+type Punt = { naam: string; behaald: number; max: number; uitleg: string };
+type Node = {
+  url: string; parent: string; hoofdzoekterm: string; volume: number | null; volgorde: number;
+  live: boolean; pct: number; fasesKlaar: number; inPlan: boolean; label?: string;
+  woorden: number | null; woordenGeschat: boolean; score: number | null;
+  scoreNiveau: "goed" | "matig" | "zwak" | null; scoreLabel: string; punten: Punt[]; gemetenOp: string | null;
+};
 type Voorstel = { url: string; parent: string; hoofdzoekterm: string; volume: number | null };
 type Filter = "alles" | "onvoltooid" | "ontbrekend" | "onder50";
 
@@ -16,6 +22,9 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
   const [nodes, setNodes] = useState<Node[]>([]);
   const [menu, setMenu] = useState<Node[]>([]);
   const [voorstel, setVoorstel] = useState<Voorstel[]>([]);
+  const [ontbrekend, setOntbrekend] = useState<string[]>([]);
+  const [weergave, setWeergave] = useState<"kolommen" | "lijst">("kolommen");
+  const [sorteer, setSorteer] = useState<{ key: "score" | "woorden" | "pct" | "naam"; dir: "op" | "af" }>({ key: "score", dir: "op" });
   const [blik, setBlik] = useState<"beoogd" | "huidig">("huidig");
   const [filter, setFilter] = useState<Filter>("alles");
   const [dicht, setDicht] = useState<Record<string, boolean>>({});
@@ -28,7 +37,7 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
 
   async function laad() {
     const d = await fetch(`/api/admin/nav-plan?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).catch(() => null);
-    if (d?.ok) { setNodes(d.nodes || []); setMenu(d.menu || []); setVoorstel(d.voorstel || []); }
+    if (d?.ok) { setNodes(d.nodes || []); setMenu(d.menu || []); setVoorstel(d.voorstel || []); setOntbrekend(d.ontbrekend || []); }
   }
   useEffect(() => { void laad(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [slug]);
 
@@ -51,6 +60,16 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
     } catch { setMsg("Dat lukte niet; probeer het nog een keer."); }
     finally { setBusy(""); }
     return false;
+  }
+
+  // Meet de pagina's die nog geen score hebben, via de bestaande content-scan.
+  async function meet() {
+    setBusy("meten"); setMsg("");
+    try {
+      const d = await fetch("/api/admin/content-scan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, urls: ontbrekend.slice(0, 50) }) }).then((r) => r.json());
+      if (d?.ok) await laad(); else setMsg(d?.error || "Meten lukte niet; probeer het nog een keer.");
+    } catch { setMsg("Meten lukte niet; probeer het nog een keer."); }
+    finally { setBusy(""); }
   }
 
   // Welke lijst tonen we, en wat blijft er na het filter over?
@@ -83,6 +102,51 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
   const kleur = (n: Node) => (!n.live ? "nv-rood" : n.pct >= 100 ? "nv-groen" : n.pct > 0 ? "nv-oranje" : "nv-grijs");
   const liveUrl = (pad: string) => (domain ? `https://${domain.replace(/^https?:\/\//, "")}${pad}` : pad);
   const naam = (n: Node) => n.label || n.hoofdzoekterm || (n.url === "/" ? "Homepage" : (n.url.split("/").filter(Boolean).pop() || n.url).replace(/-/g, " "));
+  const datum = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" }) : "");
+  const scoreUitleg = (n: Node) => (n.score === null ? "Nog niet gemeten" : `${n.scoreLabel} (${n.score}/100)\n` + n.punten.map((p) => `${p.naam}: ${p.behaald}/${p.max} \u00b7 ${p.uitleg}`).join("\n") + `\n\nGemeten op ${datum(n.gemetenOp)}`);
+
+  // Waar hangt deze pagina in het menu? (voor de lijstweergave)
+  const takNaam = (n: Node) => {
+    const ouder = bron.find((x) => x.url === n.parent);
+    return ouder ? naam(ouder) : "hoofdmenu";
+  };
+
+  // De lijst: dezelfde selectie als de kolommen, maar plat en gesorteerd.
+  // Pagina's zonder meting staan altijd onderaan, anders vult de bovenkant
+  // zich met streepjes in plaats van met werk.
+  function sorteerOp(key: "score" | "woorden" | "pct" | "naam") {
+    setSorteer((v) => (v.key === key ? { key, dir: v.dir === "op" ? "af" : "op" } : { key, dir: key === "naam" ? "op" : "op" }));
+  }
+  const pijl = (key: string) => (sorteer.key === key ? (sorteer.dir === "op" ? " ▲" : " ▼") : "");
+  const lijst = useMemo(() => {
+    const kopie = [...zicht];
+    const richting = sorteer.dir === "op" ? 1 : -1;
+    kopie.sort((a, b) => {
+      if (sorteer.key === "naam") return naam(a).localeCompare(naam(b)) * richting;
+      const va = sorteer.key === "score" ? a.score : sorteer.key === "woorden" ? a.woorden : a.pct;
+      const vb = sorteer.key === "score" ? b.score : sorteer.key === "woorden" ? b.woorden : b.pct;
+      if (va === null && vb === null) return 0;
+      if (va === null) return 1;   // zonder meting altijd onderaan
+      if (vb === null) return -1;
+      return (va - vb) * richting;
+    });
+    return kopie;
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [zicht, sorteer]);
+
+  // De drie kolommetjes: woorden, score, fase-percentage. Overal hetzelfde,
+  // zodat de kolomweergave en de lijst dezelfde taal spreken.
+  const Cijfers = ({ n }: { n: Node }) => (
+    <>
+      <span className="nv-woorden" title={n.woorden === null ? "Nog niet gemeten" : `${n.woorden} woorden eigen tekst${n.woordenGeschat ? " (geschat: menu en footer eraf geschat, nog niet exact gemeten)" : ", zonder menu en footer"}`}>
+        {n.woorden === null ? <span className="nv-leegwaarde">&ndash;</span> : `${n.woorden}${n.woordenGeschat ? "~" : ""}`}
+      </span>
+      {n.score === null
+        ? <span className="nv-score nv-score-leeg" title="Nog niet gemeten">&ndash;</span>
+        : <span className={"nv-score " + n.scoreNiveau} title={scoreUitleg(n)}>{n.score}</span>}
+      <span className="nv-pct" title={`${n.fasesKlaar} van 7 fases klaar`}>{n.pct}%</span>
+    </>
+  );
 
   // Eén regel in een kolom: naam, voortgang en de acties die bij hover verschijnen.
   const Regel = ({ n, diepte, keten = [] }: { n: Node; diepte: number; keten?: string[] }) => {
@@ -98,7 +162,7 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
           <a className="nv-naam" href={liveUrl(n.url)} target="_blank" rel="noreferrer" title={n.url}>{naam(n)}</a>
           <span className="nv-spacer" />
           {!n.live && <span className="nv-badge-mist" title="Deze pagina bestaat nog niet">nieuw</span>}
-          <span className="nv-pct" title={`${n.fasesKlaar} van 7 fases klaar`}>{n.pct}%</span>
+          <Cijfers n={n} />
           <span className="nv-acties">
             {n.pct < 100 && n.live && <button type="button" className="nv-mini" title="Markeer voltooid: vinkt alle zeven fases af" onClick={() => void post({ action: "voltooi", url: n.url }, "voltooi")}>✓</button>}
             {blik === "beoogd" && <button type="button" className="nv-mini nv-mini-del" title="Uit de beoogde structuur halen (de live pagina blijft bestaan)" onClick={() => void post({ action: "del", url: n.url }, "del")}>×</button>}
@@ -136,7 +200,7 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
         <span className="nv-balkje"><span className={"nv-balkvul " + kleur(n)} style={{ width: `${Math.max(takPct, 3)}%` }} /></span>
         {!isDicht && (
           <div className="nv-kolomlijst">
-            {tak.length === 1 && <div className={"nv-item " + kleur(n)} style={{ paddingLeft: 10 }}><span className="nv-caret nv-caret-leeg" /><a className="nv-naam" href={liveUrl(n.url)} target="_blank" rel="noreferrer">{n.url}</a><span className="nv-spacer" /><span className="nv-pct">{n.pct}%</span></div>}
+            {tak.length === 1 && <div className={"nv-item " + kleur(n)} style={{ paddingLeft: 10 }}><span className="nv-caret nv-caret-leeg" /><a className="nv-naam" href={liveUrl(n.url)} target="_blank" rel="noreferrer">{n.url}</a><span className="nv-spacer" /><Cijfers n={n} /></div>}
             {kids.map((k) => <Regel key={k.url} n={k} diepte={0} keten={[n.url]} />)}
             {blik === "beoogd" && (nieuwIn === n.url ? (
               <input className="nv-term-input" autoFocus value={nieuwPad} placeholder="/pad/nieuwe-pagina/"
@@ -176,7 +240,16 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
             <option value="ontbrekend">Alleen ontbrekend</option>
             <option value="onder50">Onder de 50%</option>
           </select>
+          <span className="nv-schakel">
+            <button type="button" className={weergave === "kolommen" ? "aan" : ""} onClick={() => setWeergave("kolommen")}>Als menu</button>
+            <button type="button" className={weergave === "lijst" ? "aan" : ""} onClick={() => setWeergave("lijst")}>Als lijst</button>
+          </span>
           <span className="nv-spacer" />
+          {ontbrekend.length > 0 && (
+            <button type="button" className="wp-fase-btn" disabled={!!busy} title="Meet de tekst, koppen, meta en alt-teksten van deze pagina's, zodat ze een score krijgen." onClick={() => void meet()}>
+              {busy === "meten" ? "Pagina\u2019s meten… (kan een minuut duren)" : `Meet de ${ontbrekend.length} nog niet gemeten pagina\u2019s`}
+            </button>
+          )}
           {blik === "huidig" ? (
             <button type="button" className="wp-fase-btn" disabled={!!busy} title="Leest het menu van de homepage uit, zodat deze weergave precies de navigatie van de site is." onClick={() => void post({ action: "menu" }, "menu")}>{busy === "menu" ? "Menu uitlezen…" : "Menu opnieuw uitlezen"}</button>
           ) : (
@@ -204,10 +277,42 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
         </div>
       )}
 
-      <div className="nv-kolommen">
-        {kolommen.map((n) => <Kolom key={n.url} n={n} />)}
-      </div>
-      {kolommen.length === 0 && (
+      {weergave === "kolommen" ? (
+        <div className="nv-kolommen">
+          {kolommen.map((n) => <Kolom key={n.url} n={n} />)}
+        </div>
+      ) : (
+        <div className="res-table-wrap nv-lijstkaart">
+          <table className="res-table nv-lijst">
+            <thead>
+              <tr>
+                <th className="pg-sort" onClick={() => sorteerOp("naam")}>Pagina{pijl("naam")}</th>
+                <th>Waar in het menu</th>
+                <th className="pg-sort nv-getal" onClick={() => sorteerOp("woorden")} title="Eigen tekst, zonder menu en footer">Woorden{pijl("woorden")}</th>
+                <th className="pg-sort nv-getal" onClick={() => sorteerOp("score")} title="Hoe goed de pagina als landingpagina is ingericht">Score{pijl("score")}</th>
+                <th className="pg-sort nv-getal" onClick={() => sorteerOp("pct")} title="Hoeveel van de zeven fases klaar zijn">Fases{pijl("pct")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lijst.map((n) => (
+                <tr key={n.url}>
+                  <td>
+                    <a href={liveUrl(n.url)} target="_blank" rel="noreferrer">{naam(n)}</a>
+                    {!n.live && <span className="nv-badge-mist" style={{ marginLeft: 8 }}>nieuw</span>}
+                    <div className="nv-muted">{n.url}</div>
+                  </td>
+                  <td className="nv-muted">{takNaam(n)}</td>
+                  <td className="nv-getal">{n.woorden === null ? <span className="nv-leegwaarde">&ndash;</span> : `${n.woorden}${n.woordenGeschat ? "~" : ""}`}</td>
+                  <td className="nv-getal">{n.score === null ? <span className="nv-leegwaarde">&ndash;</span> : <span className={"nv-score " + n.scoreNiveau} title={scoreUitleg(n)}>{n.score}</span>}</td>
+                  <td className="nv-getal">{n.pct}%</td>
+                </tr>
+              ))}
+              {lijst.length === 0 && <tr><td colSpan={5} className="nv-muted">Geen pagina&rsquo;s in deze selectie.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {kolommen.length === 0 && weergave === "kolommen" && (
         <div className="nv-leeg">
           {blik === "huidig"
             ? <>Het menu van de site is nog niet uitgelezen. Klik op <strong>&ldquo;Menu opnieuw uitlezen&rdquo;</strong>, dan staat hier de navigatie van de site precies zoals een bezoeker hem ziet.</>
@@ -216,7 +321,9 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
       )}
       <p className="nv-uitleg">
         Elke kolom is een hoofdmenu-item, eronder staat het submenu. Grijs = nog niets aan gedaan · oranje = onderweg · groen = alle zeven fases klaar · rood = pagina bestaat nog niet.
-        Het percentage komt uit dezelfde zeven fases als op de projectkaarten; afvinken daar telt hier automatisch mee.
+        Per pagina staan drie getallen: het aantal woorden eigen tekst (zonder menu en footer), de score 0-100 voor hoe goed de pagina is ingericht
+        (tekst, koppen, meta, alt-teksten, interne links en structured data) en het percentage van de zeven fases dat klaar is. Zweef over een score voor de onderbouwing.
+        De score komt uit de wekelijkse scan, dus niet uit dit moment; pas je vandaag iets aan, klik dan op de meetknop. Een tilde (~) bij het woordaantal betekent dat het nog een schatting is.
       </p>
     </div>
   );
