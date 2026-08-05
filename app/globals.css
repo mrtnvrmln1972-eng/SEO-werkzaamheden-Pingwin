@@ -4447,3 +4447,15 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .wb-los-kop { font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray); margin-bottom: var(--s-1); }
 .wb-rij-los { cursor: default; }
 .wb-voet { font-size: var(--fs-xs); line-height: var(--lh-sm); margin-top: var(--s-5); }
+/* Fases op het weekbord zijn knopjes: klik om af te vinken of terug te zetten. */
+button.wb-stip { border: none; padding: 0; cursor: pointer; }
+button.wb-stip:hover { outline: 2px solid var(--orange); outline-offset: 1px; }
+button.wb-stip:disabled { cursor: wait; opacity: 0.6; }
+.wb-next { display: inline-flex; align-items: center; justify-content: flex-end; gap: var(--s-2); }
+.wb-dagen { font-size: 10px; font-weight: 700; color: var(--gray); background: var(--gray-light); border-radius: var(--r-full); padding: 1px 6px; }
+.wb-dagen.lang { color: #B03A2E; background: #FBEDEA; }
+.wb-wacht { font-size: var(--fs-xs); }
+.wb-spacer { flex: 1 1 auto; }
+.wb-detail-knoppen { flex-wrap: wrap; align-items: center; }
+.wp-bordlink { margin-left: var(--s-3); font-size: var(--fs-xs); font-weight: 700; color: var(--orange-dark); text-decoration: underline; }
+.wp-bordlink:hover { color: var(--accent); }

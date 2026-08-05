@@ -5,6 +5,7 @@ import { getWeekplan, updateWeekplanTask, deleteWeekplanTask, isoWeek, setWeekpl
 import { getWeekplanPages } from "../../../../lib/overview";
 import { splitsBestaandeKaarten } from "../../../../lib/weekplan-splitsen";
 import { urlKey } from "../../../../lib/url-key";
+import { registreerFases } from "../../../../lib/fase-historie";
 
 export const runtime = "nodejs";
 
@@ -34,7 +35,11 @@ export async function GET(req: NextRequest) {
   const keys = new Set(tasks.filter((t) => t.url).map((t) => urlKey(t.url || "")));
   const pages = Object.fromEntries(Object.entries(allePages).filter(([k]) => keys.has(k)));
   const now = new Date();
-  return NextResponse.json({ ok: true, tasks, current: isoWeek(now), pages });
+  // Sinds wanneer staat elke fase zo? Wordt hier bijgehouden omdat de standen
+  // grotendeels afgeleid zijn (copy live, schema aanwezig): er is geen moment
+  // waarop iemand "klaar" aanklikt. Elke uitlezing vergelijkt met de vorige.
+  const sinds = await registreerFases(slug, pages);
+  return NextResponse.json({ ok: true, tasks, current: isoWeek(now), pages, sinds });
 }
 
 // POST: één taak bijwerken (week/status/volgorde) of verwijderen.

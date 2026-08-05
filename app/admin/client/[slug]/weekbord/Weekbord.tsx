@@ -18,6 +18,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { urlKey } from "../../../../../lib/url-key";
 import { cardInfoHtml } from "../../../../../lib/card-info";
+import { dagenSinds, type FaseSinds } from "../../../../../lib/fase-historie";
 
 type FaseKey = "strategie" | "gelieerde" | "analyse" | "blauwdruk" | "copy" | "bouw" | "structured";
 const FASEN: { key: FaseKey; kort: string }[] = [
@@ -46,6 +47,13 @@ function mondayOfISOWeek(year: number, week: number): Date {
   const monday = new Date(week1Monday); monday.setUTCDate(week1Monday.getUTCDate() + (week - 1) * 7);
   return monday;
 }
+function isoVan(d: Date): Current {
+  const date = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  date.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 6) % 7) + 3);
+  const eersteDo = new Date(Date.UTC(date.getUTCFullYear(), 0, 4));
+  eersteDo.setUTCDate(eersteDo.getUTCDate() - ((eersteDo.getUTCDay() + 6) % 7) + 3);
+  return { year: date.getUTCFullYear(), week: 1 + Math.round((date.getTime() - eersteDo.getTime()) / (7 * 864e5)) };
+}
 const dm = (d: Date) => d.toLocaleDateString("nl-NL", { day: "numeric", month: "short", timeZone: "UTC" });
 const pad = (u?: string | null) => { if (!u) return ""; try { return new URL(u).pathname; } catch { return u; } };
 const kaal = (s: string) => (s || "").replace(/<[^>]*>/g, "").trim();
@@ -54,21 +62,50 @@ export default function Weekbord({ slug, clientName, domain }: { slug: string; c
   const [taken, setTaken] = useState<Taak[]>([]);
   const [pages, setPages] = useState<Record<string, PageInfo>>({});
   const [current, setCurrent] = useState<Current | null>(null);
+  const [sinds, setSinds] = useState<FaseSinds>({});
   const [laden, setLaden] = useState(true);
   const [open, setOpen] = useState<number | null>(null);
+  const [bezig, setBezig] = useState<number | null>(null);
 
-  useEffect(() => {
-    fetch(`/api/admin/weekplan?slug=${encodeURIComponent(slug)}`)
+  function laad() {
+    return fetch(`/api/admin/weekplan?slug=${encodeURIComponent(slug)}`)
       .then((r) => r.json())
       .then((d) => {
         if (!d?.ok) return;
         setTaken(d.tasks || []);
         setPages(d.pages || {});
         setCurrent(d.current || null);
+        setSinds(d.sinds || {});
       })
       .catch(() => { /* leeg scherm met melding */ })
       .finally(() => setLaden(false));
-  }, [slug]);
+  }
+  useEffect(() => { void laad(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [slug]);
+
+  // Werken vanaf het bord: status wijzigen, een week opschuiven, een fase
+  // afvinken. Alles langs de bestaande endpoints, dus precies hetzelfde als wat
+  // het tabblad Taken doet.
+  async function wijzig(id: number, body: Record<string, unknown>) {
+    setBezig(id);
+    try {
+      await fetch("/api/admin/weekplan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, id, ...body }) });
+      await laad();
+    } catch { /* volgende laad herstelt het beeld */ } finally { setBezig(null); }
+  }
+  async function vinkFase(t: Taak, fase: FaseKey, af: boolean) {
+    if (!t.url) return;
+    setBezig(t.id);
+    try {
+      await fetch("/api/admin/weekplan/phase", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: t.url, fase, done: af }) });
+      await laad();
+    } catch { /* stil */ } finally { setBezig(null); }
+  }
+  function weekOp(t: Taak, stappen: number) {
+    const m = mondayOfISOWeek(t.weekYear, t.weekNo);
+    m.setUTCDate(m.getUTCDate() + stappen * 7);
+    const iso = isoVan(m);
+    void wijzig(t.id, { weekYear: iso.year, weekNo: iso.week });
+  }
 
   const infoVan = (t: Taak): PageInfo | undefined => (t.url ? pages[urlKey(t.url)] : undefined);
   const fasesVan = (t: Taak) => {
@@ -84,6 +121,27 @@ export default function Weekbord({ slug, clientName, domain }: { slug: string; c
     const eerste = FASEN.find((f) => !p[f.key]);
     if (!eerste) return "alle fases af";
     return eerste.kort.toLowerCase();
+  }
+  const huidigeFase = (t: Taak): FaseKey | null => {
+    const p = infoVan(t);
+    if (!p) return null;
+    return FASEN.find((f) => !p[f.key])?.key || null;
+  };
+  // Hoeveel dagen staat deze kaart al bij dezelfde stap? Pas gevuld vanaf het
+  // moment dat het dashboard dit is gaan bijhouden, dus in het begin leeg.
+  function dagen(t: Taak): number | null {
+    const f = huidigeFase(t);
+    if (!f || !t.url) return null;
+    return dagenSinds(sinds[urlKey(t.url)]?.[f]);
+  }
+  // Bouw, publicatie en schema zijn dev-werk; de rest is van jou. De kaart zegt
+  // het ook (wie), maar de fase is preciezer: een SEO-kaart die bij bouw staat
+  // wacht wel degelijk op de dev.
+  function wachtOp(t: Taak): string {
+    const f = huidigeFase(t);
+    if (!f) return t.wie === "Dev" ? "de dev" : "jou";
+    if (f === "bouw" || f === "structured") return "de dev";
+    return t.wie === "Dev" ? "de dev" : "jou";
   }
 
   // Per week groeperen, oplopend, en binnen de week paginawerk eerst.
@@ -170,6 +228,7 @@ export default function Weekbord({ slug, clientName, domain }: { slug: string; c
               const p = infoVan(t)!;
               const stippen = fasesVan(t)!;
               const eerstOpen = stippen.indexOf(false);
+              const wacht = dagen(t);
               return (
                 <div key={t.id}>
                   <div className={"wb-rij" + (open === t.id ? " wb-rij-open" : "")} onClick={() => setOpen(open === t.id ? null : t.id)}>
@@ -179,14 +238,18 @@ export default function Weekbord({ slug, clientName, domain }: { slug: string; c
                       {!p.live && <span className="wb-nieuw">nieuw</span>}
                       <span className="wb-taak muted">{kaal(t.taak)}</span>
                     </span>
-                    <span className="wb-rail" title={FASEN.map((f, i) => `${f.kort}: ${stippen[i] ? "af" : "nog niet"}`).join("\n")}>
+                    <span className="wb-rail" onClick={(e) => e.stopPropagation()}>
                       {FASEN.map((f, i) => (
-                        <span key={f.key}
+                        <button key={f.key} type="button" disabled={bezig === t.id}
                           className={"wb-stip" + (stippen[i] ? " af" : i === eerstOpen ? " nu" : "")}
-                          title={f.kort} />
+                          title={`${f.kort}: ${stippen[i] ? "af, klik om terug te zetten" : "nog niet, klik om af te vinken"}`}
+                          onClick={() => void vinkFase(t, f.key, !stippen[i])} />
                       ))}
                     </span>
-                    <span className="wb-next">{volgende(t)}</span>
+                    <span className="wb-next">
+                      {volgende(t)}
+                      {wacht !== null && <span className={"wb-dagen" + (wacht >= 7 ? " lang" : "")}>{wacht === 0 ? "vandaag" : `${wacht} d`}</span>}
+                    </span>
                   </div>
                   {open === t.id && (
                     <div className="wb-detail">
@@ -196,8 +259,20 @@ export default function Weekbord({ slug, clientName, domain }: { slug: string; c
                           muur tekst die dit scherm juist moest wegnemen. */}
                       <div dangerouslySetInnerHTML={{ __html: cardInfoHtml(t.toelichting || "", t.url || undefined, kaal(t.taak)) }} />
                       <div className="wb-detail-knoppen">
+                        <span className="wb-wacht muted">Wacht op {wachtOp(t)}{wacht !== null && wacht > 0 && `, al ${wacht} ${wacht === 1 ? "dag" : "dagen"}`}.</span>
+                        <span className="wb-spacer" />
+                        <button type="button" className="ghost-btn small" disabled={bezig === t.id}
+                          onClick={() => void wijzig(t.id, { status: t.status === "bezig" ? "gepland" : "bezig" })}>
+                          {t.status === "bezig" ? "Niet meer bezig" : "Ik ben hiermee bezig"}
+                        </button>
+                        <button type="button" className="ghost-btn small" disabled={bezig === t.id}
+                          onClick={() => void wijzig(t.id, { status: t.status === "klaar" ? "gepland" : "klaar" })}>
+                          {t.status === "klaar" ? "Terug naar gepland" : "Afgerond"}
+                        </button>
+                        <button type="button" className="ghost-btn small" disabled={bezig === t.id} title="Naar volgende week"
+                          onClick={() => weekOp(t, 1)}>Week later</button>
                         {t.url && <a className="ghost-btn small" href={t.url} target="_blank" rel="noreferrer">Live pagina</a>}
-                        <a className="ghost-btn small" href={`/admin/client/${slug}?tab=werkzaamheden${t.url ? `&page=${encodeURIComponent(t.url)}` : ""}`}>Open de volledige kaart</a>
+                        <a className="ghost-btn small" href={`/admin/client/${slug}?tab=werkzaamheden${t.url ? `&page=${encodeURIComponent(t.url)}` : ""}`}>Volledige kaart</a>
                       </div>
                     </div>
                   )}

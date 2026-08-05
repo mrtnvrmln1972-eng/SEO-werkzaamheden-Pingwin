@@ -467,7 +467,13 @@ export default function WeekplanBoard({ slug, onGoToPage, onGoToTab, onOpenMailD
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M8 3v4M16 3v4M3 10h18" /><path d="M7 14h2M11 14h2M15 14h2M7 18h2M11 18h2" /></svg>
         </span>
         <div>
-          <div className="wp-intro-titel">Weekplanning</div>
+          <div className="wp-intro-titel">
+            Weekplanning
+            {/* Het weekbord is de compacte kijk op ditzelfde werk: één regel per
+                kaart met de fase-stand ernaast. Staat er bewust naast zolang we
+                uitproberen of die vorm beter werkt. */}
+            <a className="wp-bordlink" href={`/admin/client/${slug}/weekbord`}>compact weekbord &rarr;</a>
+          </div>
           <div className="muted">Projectkaarten uit de onderwerpen, verdeeld over de weken. Sleep een kaart naar een andere week; klap hem open om de fases te starten en af te vinken.</div>
         </div>
         <div className="wp-intro-acties">
