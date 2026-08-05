@@ -717,20 +717,26 @@ export async function getSlugByWorklistToken(token: string): Promise<string | nu
   return (rows[0]?.client_slug as string) || null;
 }
 
-export async function setWorklistMark(slug: string, itemKey: string, done: boolean, door: string): Promise<void> {
+export async function setWorklistMark(slug: string, itemKey: string, done: boolean, door: string, url?: string): Promise<void> {
   await ensureSchema();
   await ensureTable();
   await sql`
     INSERT INTO dev_worklist_marks (client_slug, item_key, done, done_by, done_at)
     VALUES (${slug}, ${itemKey}, ${done}, ${door || null}, ${done ? new Date().toISOString() : null})
     ON CONFLICT (client_slug, item_key) DO UPDATE SET done = ${done}, done_by = ${door || null}, done_at = ${done ? new Date().toISOString() : null}`;
-  // Afvinken door de sitebouwer is echt uitgevoerd werk; terugzetten niet.
+  // Afvinken is echt uitgevoerd werk; terugzetten niet. Het komt hiermee in
+  // "Wat we doen", zodat elke doorgevoerde meta of alt-tekst in het klant-
+  // overzicht staat. De pagina-URL gaat mee, want daar volgen we later het
+  // effect op (kliks, CTR) in het tabje Wijzigingen.
   if (done) {
     const isAlt = itemKey.startsWith("a|");
+    const doorPingwin = /^pingwin/i.test(door || "");
+    const wieTekst = doorPingwin ? "vanuit het dashboard doorgevoerd" : `doorgevoerd door de sitebouwer${door ? ` (${door})` : ""}`;
     await logActiviteit({
       slug, soort: isAlt ? "alt" : "meta", bron: "dev_worklist_marks", bronId: itemKey,
-      wie: "Sitebouwer",
-      intern: `${isAlt ? "Alt-tekst" : "Meta-tekst"} doorgevoerd door de sitebouwer${door ? ` (${door})` : ""}`,
+      wie: doorPingwin ? "Pingwin" : "Sitebouwer",
+      url: url || null,
+      intern: `${isAlt ? "Alt-tekst" : "Meta-tekst"} ${wieTekst}`,
     });
   }
 }

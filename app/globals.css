@@ -3334,6 +3334,27 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .act-deel.aan { border-color: #cfe8da; background: #eaf6ef; color: #1e824c; }
 
 /* Bewijs dat het advies echt is uitgegaan, blijvend in beeld onder stap 2. */
+/* Doorgevoerde optimalisaties, onderaan het tabje Wijzigingen. Standaard dicht:
+   het is een naslagblok, geen dagelijkse lijst. */
+.wz-opt { margin-top: var(--s-6); border-top: 1px solid var(--border); padding-top: var(--s-4); }
+.wz-opt-kop {
+  display: flex; align-items: center; gap: var(--s-2); width: 100%;
+  background: none; border: 0; padding: 0; cursor: pointer; font: inherit;
+  font-size: var(--fs-md); line-height: var(--lh-md); font-weight: 700; color: var(--dark); text-align: left;
+}
+.wz-opt-pijl { color: var(--orange); }
+.wz-opt-teller { font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 600; color: var(--gray); }
+.wz-opt-body { margin-top: var(--s-3); display: flex; flex-direction: column; gap: var(--s-2); }
+.wz-opt-rij {
+  display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap;
+  background: #fff; border: 1px solid var(--border); border-radius: var(--r-md);
+  padding: var(--s-2) var(--s-3);
+}
+.wz-opt-datum { font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); white-space: nowrap; }
+.wz-opt-pad { font-size: var(--fs-sm); line-height: var(--lh-sm); font-weight: 600; color: #1a6dd6; text-decoration: none; }
+.wz-opt-pad:hover { text-decoration: underline; }
+.wz-opt-wat { display: inline-flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; margin-right: auto; }
+
 .pch-gelieerd {
   font-size: var(--fs-sm); line-height: var(--lh-sm); color: #1e824c;
   background: #eaf6ef; border-radius: var(--r-sm);

@@ -3,7 +3,7 @@
 // De Pingwin-versie van de afwerkpagina. Zelfde lijst als de sitebouwer ziet
 // (hetzelfde component), maar met drie dingen erbij:
 //   1. de huidige meta boven ons voorstel, zodat je ziet wat er verandert;
-//   2. de knop "Voer door in de site", per regel, per pagina en voor alles;
+//   2. de knop "Voer door in de site", per regel en per pagina;
 //   3. per afbeelding de indeling omzetten (moet wel of niet uniek zijn).
 // Doorvoeren doet Pingwin, niet de sitebouwer; die knoppen staan hier dus wel
 // en op de deelpagina niet.
@@ -58,55 +58,13 @@ export default function WerklijstAdmin({ slug }: { slug: string }) {
     return d?.ok ? (d.melding || "Doorgevoerd.") : (d?.error || "Doorvoeren mislukte.");
   }
 
-  /** Hoeveel staat er klaar om door te voeren? Voor de bevestigingstekst. */
-  function klaarstaand() {
-    const metas = pages.filter((p) => p.newTitle || p.newDesc).length;
-    const alts = images.filter((a) => a.altNodig !== false && a.alt.trim()).length;
-    const zonderTekst = images.filter((a) => a.altNodig !== false && !a.alt.trim()).length;
-    return { metas, alts, zonderTekst };
-  }
-
   async function doorvoer(o: Doorvoer) {
-    // De twee bulkknoppen zitten in de blokken zelf; ze vragen eerst om een
-    // bevestiging, want dit gaat direct de live site van de klant op.
-    if (o.wat === "alle-meta" || o.wat === "alle-alt") {
-      const { metas, alts, zonderTekst } = klaarstaand();
-      const tekst = o.wat === "alle-meta"
-        ? `Hiermee zetten we de meta's van ${metas} pagina's direct op de live site van ${clientName || slug}.\n\nDoorgaan?`
-        : `Hiermee zetten we ${alts} alt-teksten direct op de live site van ${clientName || slug}.`
-          + (zonderTekst ? ` ${zonderTekst} afbeeldingen blijven staan omdat daar nog geen tekst voor geschreven is.` : "")
-          + "\n\nDoorgaan?";
-      if (!window.confirm(tekst)) return;
-      setBezig(o.wat); setMelding("");
-      try {
-        setMelding(await push({ wat: o.wat === "alle-meta" ? "meta" : "alt" }));
-        await laad();
-      } finally { setBezig(""); }
-      return;
-    }
-
     const id = o.wat === "pagina" ? `pagina|${o.url}` : o.wat === "alt" ? aKey(o.file || "") : mKey(o.url || "", o.veld || "title");
     setBezig(id); setMelding("");
     try {
       // "Deze pagina" gaat alleen nog over de meta's: alt-teksten hangen aan de
       // afbeelding, niet aan de pagina, en staan in hun eigen blok.
       setMelding(await push({ wat: o.wat === "pagina" ? "meta" : o.wat, url: o.url, file: o.file, veld: o.veld }));
-      await laad();
-    } finally { setBezig(""); }
-  }
-
-  /** Alles in één keer, met een bevestiging in gewone taal. */
-  async function allesDoorvoeren() {
-    const { metas, alts, zonderTekst } = klaarstaand();
-    const tekst = `Hiermee zetten we ${metas} pagina's met meta's en ${alts} alt-teksten direct op de live site van ${clientName || slug}.`
-      + (zonderTekst ? ` ${zonderTekst} alt-teksten blijven staan omdat daar nog geen tekst voor geschreven is.` : "")
-      + "\n\nDoorgaan?";
-    if (!window.confirm(tekst)) return;
-    setBezig("alles"); setMelding("");
-    try {
-      const m1 = await push({ wat: "meta" });
-      const m2 = await push({ wat: "alt" });
-      setMelding(`${m1} · ${m2}`);
       await laad();
     } finally { setBezig(""); }
   }
@@ -131,13 +89,10 @@ export default function WerklijstAdmin({ slug }: { slug: string }) {
       <div className="wl-kop">
         <div className="wl-logo">Pingwin <span>Online Marketing</span></div>
         <h1>Werklijst website{clientName ? ` ${clientName}` : ""}</h1>
-        <p className="wl-intro">Dit is de Pingwin-versie: je ziet per pagina wat er nu staat én ons voorstel, en je kunt het met één klik doorvoeren in de site. De sitebouwer ziet dezelfde lijst zonder deze knoppen.</p>
+        <p className="wl-intro">Dit is de Pingwin-versie: je ziet per pagina wat er nu staat én ons voorstel, en je voert het per stuk door in de site. Bewust geen knop die alles in één keer doet: je kijkt eerst naar een tekst en zet hem dan pas live. Elk punt dat je doorvoert komt vanzelf in &ldquo;Wat we doen&rdquo; en onderaan het tabje Wijzigingen te staan, zodat je het effect kunt volgen. De sitebouwer ziet dezelfde lijst zonder deze knoppen.</p>
         <div className="wl-adminbalk">
           <Link className="wl-terug" href={`/admin/client/${slug}`}>← terug naar de cockpit</Link>
           {shareToken && <a className="wl-terug" href={`/share/werklijst/${shareToken}`} target="_blank" rel="noreferrer">bekijk de versie van de sitebouwer</a>}
-          <button type="button" className="wl-knop" disabled={!!bezig} onClick={() => void allesDoorvoeren()}>
-            {bezig === "alles" ? "Bezig met doorvoeren…" : "Voer alles door wat kan"}
-          </button>
           <button type="button" className="wl-kopieer" disabled={checkBusy} onClick={() => void controle()}>{checkBusy ? "Controleren…" : "Controleer live"}</button>
         </div>
         <p className="wl-let-op">Let op: doorvoeren zet de tekst meteen op de live site van de klant.</p>

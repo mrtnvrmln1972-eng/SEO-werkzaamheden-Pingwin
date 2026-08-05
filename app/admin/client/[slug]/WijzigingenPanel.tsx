@@ -219,6 +219,44 @@ function Spark({ data, metric, invert, markers, hoverKey, onHover }: { data: Day
   );
 }
 
+// ── Doorgevoerde optimalisaties ──
+// Alles wat we zelf op de site hebben gezet (meta-teksten, alt-teksten, structured
+// data, interne links, redirects, live gezette copy) staat in het logboek "Wat we
+// doen". Hier komt het per pagina terug, standaard dichtgeklapt, met een link naar
+// de pagina zelf en een knop om er een meetmoment van te maken. Vanaf dat moment
+// volgt de KPI-weergave hierboven het effect op kliks, positie en CTR.
+type ActRij = { id: number; gebeurdeOp: string; soort: string; url: string | null; intern: string };
+const OPT_SOORTEN = new Set(["meta", "alt", "structured", "intern-link", "redirect", "copy-live"]);
+const OPT_LABEL: Record<string, string> = {
+  meta: "Meta-teksten", alt: "Alt-teksten", structured: "Structured data",
+  "intern-link": "Interne links", redirect: "Redirect", "copy-live": "Copy live",
+};
+
+type OptPagina = { url: string; laatste: string; tellers: { soort: string; n: number }[]; totaal: number };
+
+function bundelOptimalisaties(rijen: ActRij[]): OptPagina[] {
+  const perUrl = new Map<string, ActRij[]>();
+  for (const r of rijen) {
+    if (!r.url || !OPT_SOORTEN.has(r.soort)) continue;
+    const k = r.url.replace(/\/+$/, "");
+    const arr = perUrl.get(k); if (arr) arr.push(r); else perUrl.set(k, [r]);
+  }
+  const out: OptPagina[] = [];
+  for (const [, arr] of perUrl) {
+    const tel = new Map<string, number>();
+    for (const r of arr) tel.set(r.soort, (tel.get(r.soort) || 0) + 1);
+    const laatste = arr.reduce((a, b) => (a.gebeurdeOp > b.gebeurdeOp ? a : b));
+    out.push({
+      url: laatste.url as string,
+      laatste: laatste.gebeurdeOp,
+      tellers: [...tel.entries()].map(([soort, n]) => ({ soort, n })).sort((a, b) => b.n - a.n),
+      totaal: arr.length,
+    });
+  }
+  out.sort((a, b) => (a.laatste < b.laatste ? 1 : -1));
+  return out;
+}
+
 function KpiBlock({ label, sub, children }: { label: string; sub?: string; children: React.ReactNode }) {
   return (
     <div className="wz-kpi-block">
@@ -297,6 +335,15 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
     setPriority((s) => { const n = new Set(s); if (on) n.add(key); else n.delete(key); return n; });
     fetch("/api/admin/changes/priority", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url, priority: on }) }).catch(() => {});
   }
+  // Doorgevoerde optimalisaties (uit het logboek "Wat we doen"), standaard dicht.
+  const [optOpen, setOptOpen] = useState(false);
+  const [optRijen, setOptRijen] = useState<ActRij[]>([]);
+  const [optBusy, setOptBusy] = useState("");
+  useEffect(() => {
+    fetch(`/api/admin/activiteit?slug=${encodeURIComponent(slug)}`).then((r) => r.json())
+      .then((d) => { if (d.ok) setOptRijen(d.rijen || []); }).catch(() => {});
+  }, [slug]);
+
   // Handmatig een bekende wijziging toevoegen
   const [showAdd, setShowAdd] = useState(false);
   const [urls, setUrls] = useState<string[]>([]);
@@ -378,6 +425,30 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
       if (d.ok) { setMsg(`${d.scanned} pagina's gescand, ${d.changed} wijziging${d.changed === 1 ? "" : "en"} gevonden.`); await load(); }
       else setMsg(d.error || "Scan mislukt.");
     } catch { setMsg("Scan mislukt."); } finally { setScanning(false); }
+  }
+
+  // Maakt (of opent) het meetmoment van een pagina waar we optimalisaties op
+  // hebben doorgevoerd. Bestaat er al een moment voor die pagina, dan openen we
+  // dat; anders leggen we er één vast op de datum van de laatste optimalisatie.
+  async function volgEffect(o: OptPagina) {
+    const bestaand = events.find((e) => prioKey(e.url) === prioKey(o.url));
+    if (bestaand) { setOpen(bestaand); return; }
+    if (optBusy) return;
+    setOptBusy(o.url); setMsg("");
+    try {
+      const wat = o.tellers.map((t) => `${t.n}× ${OPT_LABEL[t.soort] || t.soort}`).join(", ");
+      const r = await fetch("/api/admin/changes", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, url: o.url, date: o.laatste.slice(0, 10), note: `Doorgevoerd vanuit het dashboard: ${wat}` }),
+      });
+      const d = await r.json();
+      if (!d.ok) { setMsg(d.error || "Meetmoment vastleggen mislukt."); return; }
+      const lijst = await fetch(`/api/admin/changes?slug=${encodeURIComponent(slug)}`).then((x) => x.json());
+      const nieuw: ChangeEvent[] = lijst?.ok ? (lijst.events || []) : [];
+      setEvents(nieuw);
+      const ev = nieuw.find((e) => prioKey(e.url) === prioKey(o.url));
+      if (ev) setOpen(ev);
+    } catch { setMsg("Meetmoment vastleggen mislukt."); } finally { setOptBusy(""); }
   }
 
   const [wpBusy, setWpBusy] = useState(false);
@@ -615,6 +686,51 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
           );
         })}
       </div>
+
+      {(() => {
+        const opts = bundelOptimalisaties(optRijen);
+        return (
+          <div className="wz-opt">
+            <button type="button" className="wz-opt-kop" onClick={() => setOptOpen((v) => !v)} aria-expanded={optOpen}>
+              <span className="wz-opt-pijl">{optOpen ? "▾" : "▸"}</span>
+              <span>Doorgevoerde optimalisaties</span>
+              <span className="wz-opt-teller">{opts.length} pagina&rsquo;s</span>
+            </button>
+            {optOpen && (
+              <div className="wz-opt-body">
+                <p className="muted" style={{ fontSize: "var(--fs-xs)", margin: "0 0 var(--s-3)" }}>
+                  Alles wat we zelf op de site hebben gezet (meta-teksten, alt-teksten, structured data, interne links,
+                  redirects, live gezette copy), per pagina en met de nieuwste bovenaan. Klik op &ldquo;effect volgen&rdquo;
+                  om er een meetmoment van te maken; daarna zie je de kliks, positie en CTR vóór en ná die aanpassing.
+                </p>
+                {opts.length === 0 && (
+                  <div className="muted" style={{ fontSize: "var(--fs-sm)" }}>
+                    Nog niets doorgevoerd. Zodra je in de werklijst een meta- of alt-tekst live zet, verschijnt de pagina hier.
+                  </div>
+                )}
+                {opts.map((o) => {
+                  const gevolgd = events.some((e) => prioKey(e.url) === prioKey(o.url));
+                  return (
+                    <div key={o.url} className="wz-opt-rij">
+                      <span className="wz-opt-datum">{dt(o.laatste)}</span>
+                      <a className="wz-opt-pad" href={o.url} target="_blank" rel="noreferrer" title="Open deze pagina op de site">{shortUrl(o.url)}</a>
+                      <span className="wz-opt-wat">
+                        {o.tellers.map((t) => (
+                          <span key={t.soort} className={"act-soort act-soort-" + t.soort}>{t.n}× {OPT_LABEL[t.soort] || t.soort}</span>
+                        ))}
+                      </span>
+                      <button type="button" className="ghost-btn small" disabled={optBusy === o.url} onClick={() => void volgEffect(o)}
+                        title={gevolgd ? "Open het meetmoment van deze pagina" : "Leg een meetmoment vast en volg het effect op kliks, positie en CTR"}>
+                        {optBusy === o.url ? "Bezig…" : gevolgd ? "effect bekijken" : "effect volgen"}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }

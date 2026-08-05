@@ -55,8 +55,8 @@ export async function POST(req: NextRequest) {
         const r = await pushMetaToSite(slug, p.url, { title: doeTitle ? p.newTitle : undefined, desc: doeDesc ? p.newDesc : undefined });
         if (r.ok) {
           gelukt++;
-          if (doeTitle) await setWorklistMark(slug, metaKey(p.url, "title"), true, "Pingwin (automatisch)");
-          if (doeDesc) await setWorklistMark(slug, metaKey(p.url, "desc"), true, "Pingwin (automatisch)");
+          if (doeTitle) await setWorklistMark(slug, metaKey(p.url, "title"), true, "Pingwin (automatisch)", p.url);
+          if (doeDesc) await setWorklistMark(slug, metaKey(p.url, "desc"), true, "Pingwin (automatisch)", p.url);
         } else { mislukt++; noteer(`${p.path}: ${r.detail}`); }
       } catch (e) {
         // Eén pagina die klapt (bijvoorbeeld geen koppeling) mag de rest niet
@@ -80,7 +80,15 @@ export async function POST(req: NextRequest) {
         const r = await pushAltTexts(slug, auth, mag);
         gelukt += r.gezet;
         mislukt += r.mislukt.length;
-        for (const a of mag) if (!r.mislukt.includes(a.file)) await setWorklistMark(slug, altKey(a.file), true, "Pingwin (automatisch)");
+        // Een alt-tekst hangt aan de afbeelding, niet aan één pagina. Voor het
+        // logboek koppelen we hem aan de eerste pagina waar die foto staat, zodat
+        // je het effect op die pagina kunt volgen.
+        for (const a of mag) {
+          if (r.mislukt.includes(a.file)) continue;
+          let paginaUrl = alleenUrl || "";
+          if (!paginaUrl && a.paths?.[0]) { try { paginaUrl = new URL(a.paths[0], data.pages[0]?.url || "").toString(); } catch { paginaUrl = ""; } }
+          await setWorklistMark(slug, altKey(a.file), true, "Pingwin (automatisch)", paginaUrl || undefined);
+        }
         if (r.mislukt.length) noteer(r.detail);
       } catch (e) {
         mislukt += mag.length;

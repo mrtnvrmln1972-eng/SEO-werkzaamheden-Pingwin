@@ -52,7 +52,9 @@ export const mKey = (url: string, veld: "title" | "desc") => `m|${urlKeyOf(url)}
 /** Per bestand, niet per pagina: zo bewaart WordPress de alt-tekst ook. */
 export const aKey = (file: string) => `a|${normFile(file)}`;
 
-export type Doorvoer = { wat: "meta" | "alt" | "pagina" | "alle-meta" | "alle-alt"; url?: string; file?: string; veld?: "title" | "desc" };
+// Bewust géén bulk-opties meer (alles, alle meta's, alle alt-teksten): elk punt
+// gaat per stuk de site op, met een mens die er eerst naar kijkt.
+export type Doorvoer = { wat: "meta" | "alt" | "pagina"; url?: string; file?: string; veld?: "title" | "desc" };
 
 const STAND_LABEL: Record<MetaStand, string> = {
   voorstel: "ons voorstel",
@@ -350,7 +352,7 @@ export default function WerklijstLijst(p: Props) {
         <div className="wl-balk"><div className="wl-balk-vul" style={{ width: `${totaal ? Math.round((gedaanTotaal / totaal) * 100) : 0}%` }} /></div>
         <span>
           <strong>{telling.metaTotaal} meta&rsquo;s</strong> over {pages.length} pagina&rsquo;s en <strong>{telling.altTotaal} alt-teksten</strong> over
-          evenzoveel afbeeldingen. {gedaanTotaal} van {totaal} gedaan. Twee knoppen en je bent klaar.
+          evenzoveel afbeeldingen. {gedaanTotaal} van {totaal} gedaan. Elk punt voer je zelf per stuk door, zodat je er eerst naar kijkt.
         </span>
       </div>
 
@@ -361,11 +363,6 @@ export default function WerklijstLijst(p: Props) {
         gedaan={telling.metaGedaan}
         open={openMeta}
         onToggle={() => setOpenMeta((s) => !s)}
-        knop={doorvoer && telling.metaTotaal > 0 && (
-          <button type="button" className="wl-knop" disabled={!!p.bezig} onClick={() => doorvoer({ wat: "alle-meta" })}>
-            {p.bezig === "alle-meta" ? "Bezig…" : "Voer alle meta's door"}
-          </button>
-        )}
       >
         {pages.map((pg) => {
           const items = (pg.newTitle ? 1 : 0) + (pg.newDesc ? 1 : 0);
@@ -410,11 +407,6 @@ export default function WerklijstLijst(p: Props) {
         gedaan={telling.altGedaan}
         open={openAlt}
         onToggle={() => setOpenAlt((s) => !s)}
-        knop={doorvoer && telling.altTotaal > 0 && (
-          <button type="button" className="wl-knop" disabled={!!p.bezig} onClick={() => doorvoer({ wat: "alle-alt" })}>
-            {p.bezig === "alle-alt" ? "Bezig…" : "Voer alle alt-teksten door"}
-          </button>
-        )}
       >
         <label className="wl-schakel">
           <input type="checkbox" checked={toonAf} onChange={(e) => setToonAf(e.target.checked)} />
@@ -426,8 +418,8 @@ export default function WerklijstLijst(p: Props) {
           <p className="wl-melding">
             Voor {telling.zonderTekst} afbeeldingen is nog geen alt-tekst geschreven. Dat is een grens in ons eigen
             dashboard, geen oordeel over die foto&rsquo;s: we schrijven er een vast aantal per ronde en beginnen bij de
-            pagina&rsquo;s die het meeste bezoek trekken. Wil je de rest ook? Druk eerst op &ldquo;Voer alle alt-teksten
-            door&rdquo; hierboven en maak daarna de werklijst opnieuw aan in de cockpit; de volgende ronde pakt dan
+            pagina&rsquo;s die het meeste bezoek trekken. Wil je de rest ook? Voer eerst de geschreven alt-teksten
+            hierboven door en maak daarna de werklijst opnieuw aan in de cockpit; de volgende ronde pakt dan
             precies deze {telling.zonderTekst} op.
           </p>
         )}
