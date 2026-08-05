@@ -10,11 +10,10 @@
 // ═══════════════════════════════════════════════════════════
 
 import { useEffect, useState } from "react";
-import { mdToHtml } from "../../../../lib/markdown";
-import { linkifyHtml } from "../../../../lib/linkify";
 import OpruimTabel from "../../../admin/client/[slug]/OpruimTabel";
 import OpruimStructuur from "../../../admin/client/[slug]/OpruimStructuur";
 import OpruimOppakken, { type Oppakker } from "../../../admin/client/[slug]/OpruimOppakken";
+import OpruimSamenvatting from "../../../admin/client/[slug]/OpruimSamenvatting";
 
 type ClusterUrl = { url: string; positie?: number; klikken?: number; impressies?: number };
 type Cluster = { keyword: string; winnaar: string; urls: ClusterUrl[]; onderbouwing?: string; signalen?: { urlFlip?: boolean; flipsIn90d?: number } };
@@ -77,14 +76,19 @@ export default function OpruimShare({ token }: { token: string }) {
           <div className="opr-kop">Waar dit rapport over gaat</div>
           <div className="opr-kaart-tekst">
             <p>
-              Op een website kunnen meerdere pagina&rsquo;s over hetzelfde onderwerp gaan. Google moet er dan één kiezen,
-              en die keuze valt vaak wisselend uit. Het gevolg is dat geen van beide pagina&rsquo;s echt sterk wordt:
-              de aandacht is verdeeld over twee halve pagina&rsquo;s in plaats van geconcentreerd in één goede.
+              Op een website kunnen meerdere pagina&rsquo;s over hetzelfde onderwerp gaan. Google moet er dan één van
+              kiezen, en die keuze valt vaak wisselend uit. Het gevolg: <strong>geen van beide pagina&rsquo;s wordt echt
+              sterk</strong>, omdat de aandacht verdeeld raakt over twee halve in plaats van geconcentreerd in één goede.
             </p>
+            <p>Deze analyse zoekt uit om welke pagina&rsquo;s dat gaat. De basis daarvoor:</p>
+            <ul className="opr-punten">
+              <li><strong>Search Console:</strong> hoe vaak elke pagina in Google is getoond, op welke zoekopdracht, en op welke plek.</li>
+              <li><strong>Het verloop door de tijd:</strong> of Google tussen twee pagina&rsquo;s heen en weer wisselt op dezelfde zoekopdracht.</li>
+              <li><strong>Het zoekvolume per zoekwoord:</strong> hoe vaak er maandelijks op een term gezocht wordt, zodat een kansrijke pagina niet per ongeluk verdwijnt.</li>
+            </ul>
             <p>
-              Deze analyse zoekt uit welke pagina&rsquo;s dat betreft, met behulp van de vertoningen en posities uit
-              Search Console, het verloop daarvan door de tijd, en het zoekvolume per zoekwoord. Hieronder staat per
-              pagina wat er gebeurt en waarom. Klap een regel open voor de onderbouwing.
+              Hieronder staat <strong>per pagina wat er gebeurt en waarom</strong>. Klap een regel open voor de volledige
+              onderbouwing, met de cijfers erbij.
             </p>
           </div>
         </div>
@@ -127,12 +131,15 @@ export default function OpruimShare({ token }: { token: string }) {
           </div>
         )}
 
-        {r?.samenvatting && (
-          <div className="opr-kaart">
-            <div className="opr-kop">Samengevat</div>
-            <div className="cannibal-summary md" dangerouslySetInnerHTML={{ __html: linkifyHtml(mdToHtml(r.samenvatting), domain) }} />
-          </div>
-        )}
+        <OpruimSamenvatting
+          domain={domain}
+          samenvatting={r?.samenvatting}
+          clusters={r?.clusters?.length || 0}
+          regels={regels}
+          oppakken={r?.oppakken?.length || 0}
+          blijftStaan={0}
+          interneLinks={r?.interneLinks?.length || 0}
+        />
 
         <p className="opr-deel-voet">Opgesteld door Pingwin Online Marketing. Vragen over dit rapport? Stel ze gerust.</p>
       </div>

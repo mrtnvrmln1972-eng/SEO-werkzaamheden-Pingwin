@@ -6,6 +6,7 @@ import { linkifyHtml } from "../../../../lib/linkify";
 import OpruimTabel from "./OpruimTabel";
 import OpruimStructuur from "./OpruimStructuur";
 import OpruimOppakken, { type Oppakker } from "./OpruimOppakken";
+import OpruimSamenvatting from "./OpruimSamenvatting";
 
 type ClusterUrl = { url: string; rol?: string; positie?: number; klikken?: number; impressies?: number; verwijzendeDomeinen?: number; intentie?: string };
 type Signalen = { urlFlip?: boolean; flipsIn90d?: number; positiePlafond?: boolean; klikVerdeling?: boolean };
@@ -514,40 +515,17 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
               </div>
             )}
 
-            {/* De samenvatting stond weggestopt in een uitklapper onderaan, in
-                telegramstijl. Voor een klant is dit juist het verhaal: wat is er
-                onderzocht, wat kwam eruit, en wat gebeurt er nu. */}
-            <div className="opr-kaart">
-              <div className="opr-kop">Samengevat: wat deze analyse heeft opgeleverd</div>
-              <div className="opr-kaart-tekst">
-                <p>
-                  Voor deze website zijn <strong>{result.clusters?.length || 0} {result.clusters?.length === 1 ? "zoekwoord" : "zoekwoorden"}</strong> onderzocht
-                  waarop meerdere pagina&rsquo;s tegelijk in Google verschijnen, plus alle pagina&rsquo;s die op geen enkel
-                  eigen zoekwoord scoren. Dat is gedaan op basis van de vertoningen en posities uit Search Console,
-                  het verloop daarvan door de tijd, en het zoekvolume per zoekwoord uit Ahrefs.
-                </p>
-                <p>
-                  Daar komen drie soorten uitkomsten uit.
-                  Voor <strong>{regels} {regels === 1 ? "pagina" : "pagina&rsquo;s"}</strong> is doorverwijzen de beste zet: die
-                  pagina&rsquo;s vechten met een sterkere pagina om dezelfde bezoeker, en door ze samen te voegen hoeft Google
-                  niet meer te kiezen.
-                  {(result.oppakken?.length || 0) > 0 && <> Voor <strong>{result.oppakken?.length}</strong> pagina&rsquo;s geldt juist het omgekeerde: die zitten op een zoekterm waar wél
-                  op gezocht wordt, dus die worden niet opgeruimd maar opnieuw opgebouwd.</>}
-                  {blijftStaan.length > 0 && <> En <strong>{blijftStaan.length}</strong> pagina&rsquo;s die in de analyse voorbijkwamen blijven bewust
-                  onaangeroerd, omdat ze op hun eigen onderwerp gewoon winnen.</>}
-                </p>
-                <p>
-                  Het doel is steeds hetzelfde: per onderwerp één duidelijke pagina, die daardoor sterker staat dan twee
-                  halve. {result.interneLinks && result.interneLinks.length > 0 ? "Na het doorvoeren worden de interne links bijgewerkt, zodat de overblijvende pagina ook vanuit de site zelf de duidelijkste is." : ""}
-                </p>
-              </div>
-              {result.samenvatting && (
-                <details className="opr-details">
-                  <summary>De uitgebreide bevindingen per zoekwoord</summary>
-                  <div className="cannibal-summary md" dangerouslySetInnerHTML={{ __html: linkifyHtml(mdToHtml(alsBullets(result.samenvatting)), domain) }} />
-                </details>
-              )}
-            </div>
+            {/* Zelfde component als op de deellink, zodat de klantversie en de
+                cockpit niet uit elkaar kunnen lopen. */}
+            <OpruimSamenvatting
+              domain={domain}
+              samenvatting={result.samenvatting}
+              clusters={result.clusters?.length || 0}
+              regels={regels}
+              oppakken={result.oppakken?.length || 0}
+              blijftStaan={blijftStaan.length}
+              interneLinks={result.interneLinks?.length || 0}
+            />
           </>
         )}
       </div>

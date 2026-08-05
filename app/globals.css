@@ -3902,6 +3902,16 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .opr-kaart-tekst p:last-child { margin-bottom: 0; }
 .opr-kaart-tekst ul { margin: 0 0 var(--s-2); padding-left: var(--s-5); display: flex; flex-direction: column; gap: var(--s-1); }
 .opr-kaart-tekst strong { color: var(--dark); }
+/* Opsommingen in een kaart: lucht tussen de punten en een oranje bolletje,
+   zodat een lijst ook echt als lijst leest en niet als een blok tekst. */
+.opr-punten { list-style: none; margin: 0 0 var(--s-3); padding: 0; display: flex; flex-direction: column; gap: var(--s-2); }
+.opr-punten li { position: relative; padding-left: var(--s-5); }
+.opr-punten li::before { content: ""; position: absolute; left: var(--s-2); top: 0.55em; width: 6px; height: 6px; border-radius: var(--r-full); background: var(--orange); }
+.opr-punten strong { color: var(--dark); }
+/* De uitgebreide bevindingen krijgen hetzelfde ritme als de rest van de kaart. */
+.cannibal-summary.md { font-size: var(--fs-sm); line-height: 1.65; color: var(--muted); max-width: 72ch; margin-top: var(--s-3); }
+.cannibal-summary.md li { margin-bottom: var(--s-2); }
+.cannibal-summary.md strong { color: var(--dark); }
 /* De knoppenrij van een kaart: netjes rechts, altijd op één hoogte. */
 .opr-kaart-acties { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; margin-left: auto; }
 .opr-kaart-sam { cursor: pointer; font-weight: 800; font-size: var(--fs-md); line-height: var(--lh-md); color: var(--orange); list-style: none; }
