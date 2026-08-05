@@ -9,6 +9,7 @@ import { linkifyHtml as linkify } from "../../../../lib/linkify";
 import { vraagHtml } from "../../../../lib/vraag-opmaak";
 import { striptVulzinnen } from "../../../../lib/vulzinnen";
 import { eersteKop } from "../../../../lib/chat-vouw";
+import MailVenster from "./MailVenster";
 
 type Msg = { role: "user" | "assistant"; content: string; actions?: Action[]; soort?: "conclusie" | "oogst"; oogst?: Oogst };
 type Topic = { thread: string; count: number; title: string; summary: string; done: boolean };
@@ -44,6 +45,14 @@ function zonderWeekrecap(md: string, heeftVoorstel: boolean): string {
 function alleAntwoorden(msgs: Msg[]): string {
   return msgs.filter((m) => m.role === "assistant" && m.soort !== "oogst")
     .map((m) => (m.content || "").trim()).filter(Boolean).join("\n\n");
+}
+
+// Het laatste blok: het laatste echte antwoord na jouw laatste vraag. Dat is wat
+// de knop "Zet dit blok in een mail" onderaan meeneemt. Het taken-voorstel
+// ("oogst") telt niet mee; dat is een knoppenlijst, geen tekst.
+function laatsteBlok(msgs: Msg[]): string {
+  const m = [...msgs].reverse().find((x) => x.role === "assistant" && x.soort !== "oogst" && (x.content || "").trim());
+  return (m?.content || "").trim();
 }
 
 function deelTekst(msgs: Msg[]): string {
@@ -119,6 +128,8 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
   const [oogstBusy, setOogstBusy] = useState<"" | "conclusie" | "taken">("");   // welke oogst-knop draait
   // Welke eerdere antwoorden Maarten weer heeft opengeklapt (bericht-index).
   const [openBericht, setOpenBericht] = useState<Record<number, boolean>>({});
+  // Welk blok staat er in het mailvenster? Leeg = venster dicht.
+  const [blokVoorMail, setBlokVoorMail] = useState<string>("");
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const loadSeq = useRef(0);
@@ -438,6 +449,15 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
                               <div className="ovc-bubble ovc-bubble-vraag"
                                 dangerouslySetInnerHTML={{ __html: vraagHtml(m.content || "") }} />
                             )}
+                        {/* Elk antwoord kan los de mail in, niet alleen het laatste.
+                            Stel je na een analyse nog een vervolgvraag, dan is die
+                            analyse ingeklapt; klap hem open en de knop staat er. */}
+                        {m.role === "assistant" && m.soort !== "oogst" && !dicht && (m.content || "").trim() && (
+                          <button type="button" className="ovc-blokmail" title="Zet dit blok in een mail: opgemaakt, met jouw eigen intro erboven."
+                            onClick={() => setBlokVoorMail(m.content || "")}>
+                            Zet dit blok in een mail
+                          </button>
+                        )}
                         {m.role === "assistant" && m.actions && m.actions.length > 0 && (
                           <div className="ovc-actions">
                             {m.actions.map((a) => (
@@ -485,6 +505,8 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
                         titel={titleOf(t)}
                         tekst={deelTekst(messages)}
                         mailBron={alleAntwoorden(messages)}
+                        blokMd={laatsteBlok(messages)}
+                        siteUrl={domain}
                         clientName={clientName}
                         clientEmail={clientEmail}
                       />
@@ -516,6 +538,20 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
           );
         })}
       </div>
+      {blokVoorMail && (
+        <MailVenster
+          slug={slug}
+          titel="Dit blok in een mail"
+          onderwerpVan={clientName || "Analyse"}
+          taak={clientName || "Analyse"}
+          toelichting={blokVoorMail}
+          blokMd={blokVoorMail}
+          siteUrl={domain}
+          clientName={clientName}
+          clientEmail={clientEmail}
+          onClose={() => setBlokVoorMail("")}
+        />
+      )}
     </Omhulsel>
   );
 }

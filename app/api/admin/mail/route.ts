@@ -57,6 +57,10 @@ export async function POST(req: NextRequest) {
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: "Ongeldige aanvraag." }, { status: 400 }); }
   const html = String(body.html || "").trim();
   const to = String(body.to || "").split(/[,;]/).map((s) => s.trim()).filter(Boolean);
+  // Hoort deze gebruiker bij deze klant? Stond alleen op de GET; nu er meer
+  // schermen langs deze route mailen, hoort de controle ook hier.
+  const bodySlug = String(body.slug || "").trim();
+  if (bodySlug) { const g = await guardSlug(req, bodySlug); if (!g.ok) return g.res; }
 
   // Compose-modus: een nieuwe mail versturen (bijv. naar de developer).
   if (body.mode === "compose") {

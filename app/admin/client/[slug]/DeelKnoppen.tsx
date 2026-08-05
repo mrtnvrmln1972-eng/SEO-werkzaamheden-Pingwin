@@ -20,7 +20,7 @@ import MailVenster, { type MailBijlage } from "./MailVenster";
 // ═══════════════════════════════════════════════════════════
 
 export default function DeelKnoppen({
-  slug, titel, tekst, mailBron, url, clientName, clientEmail, compact, toon = "beide", knopClass = "ghost-btn small",
+  slug, titel, tekst, mailBron, blokMd, siteUrl, url, clientName, clientEmail, compact, toon = "beide", knopClass = "ghost-btn small",
 }: {
   slug: string;
   /** Waar het over gaat: de titel van het onderwerp of van de kaart. */
@@ -33,6 +33,10 @@ export default function DeelKnoppen({
    * eerder in het gesprek werd geschreven valt daar dan buiten.
    */
   mailBron?: string;
+  /** Het blok dat opgemaakt in de mail komt (ruwe markdown van één antwoord). */
+  blokMd?: string;
+  /** Domein van de klant, zodat slugs in het blok naar de echte pagina linken. */
+  siteUrl?: string;
   url?: string;
   clientName?: string;
   clientEmail?: string;
@@ -77,8 +81,8 @@ export default function DeelKnoppen({
       </button>
       {toon === "beide" && (
         <button type="button" className={knopClass} disabled={!tekst.trim()} onClick={() => setMailOpen(true)}
-          title="Schrijft hier een mail van in gewone klanttaal, met het document erbij als je dat net gemaakt hebt.">
-          Mail naar de klant
+          title="Opent een mail met dit blok er opgemaakt in; jouw eigen intro typ of dicteer je erboven.">
+          {compact ? "In mail" : "Zet dit blok in een mail"}
         </button>
       )}
       {melding && (
@@ -90,11 +94,13 @@ export default function DeelKnoppen({
       {mailOpen && (
         <MailVenster
           slug={slug}
-          titel="Mail vanuit dit gesprek"
+          titel={blokMd ? "Dit blok in een mail" : "Mail vanuit dit gesprek"}
           onderwerpVan={titel}
           taak={titel}
           toelichting={tekst}
           mailBron={mailBron}
+          blokMd={blokMd}
+          siteUrl={siteUrl}
           url={url}
           bijlagen={bijlagen}
           standaardAangevinkt={docLink ? ["advies"] : []}

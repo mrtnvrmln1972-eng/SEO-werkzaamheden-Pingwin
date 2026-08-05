@@ -800,7 +800,9 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
           <DeelKnoppen slug={slug} titel={t.taak.replace(/<[^>]*>/g, "").trim()}
             tekst={[t.taak.replace(/<[^>]*>/g, "").trim(), t.toelichting.replace(/<[^>]*>/g, "").trim()].filter(Boolean).join("\n\n")}
             mailBron={msgs.filter((m) => m.role === "assistant").map((m) => m.content || "").join("\n\n")}
-            url={t.url || undefined} toon="document" compact knopClass="wp-link wp-link-btn" />
+            blokMd={[...msgs].reverse().find((m) => m.role === "assistant" && (m.content || "").trim())?.content || ""}
+            siteUrl={(() => { try { return new URL(t.url).host; } catch { return ""; } })()}
+            url={t.url || undefined} toon={msgs.some((m) => m.role === "assistant") ? "beide" : "document"} compact knopClass="wp-link wp-link-btn" />
           <button type="button" className="wp-act wp-act-klant" title="Mail over deze kaart; de ontvanger (klant, developer of anders) kies je in het venster." onClick={() => onMail("klant")}>Mail</button>
         </span>
       </div>}

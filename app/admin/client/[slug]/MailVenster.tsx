@@ -3,6 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { herzetAanhef } from "../../../../lib/aanhef";
 import { mailUitTekst } from "../../../../lib/mail-uit-gesprek";
+import { analyseNaarMailHtml } from "../../../../lib/mail-opmaak";
+import { mdToHtml } from "../../../../lib/markdown";
+import { striptVulzinnen } from "../../../../lib/vulzinnen";
 
 // ═══════════════════════════════════════════════════════════
 // HET MAILVENSTER
@@ -19,7 +22,7 @@ import { mailUitTekst } from "../../../../lib/mail-uit-gesprek";
 export type MailBijlage = { key: string; label: string; url: string };
 
 export default function MailVenster({
-  slug, titel, onderwerpVan, taak, toelichting, mailBron, url, bijlagen = [], clientName, clientEmail, standaardAangevinkt = [], onClose,
+  slug, titel, onderwerpVan, taak, toelichting, mailBron, blokMd, siteUrl, url, bijlagen = [], clientName, clientEmail, standaardAangevinkt = [], onClose,
 }: {
   slug: string;
   /** Kop van het venster, bijvoorbeeld "Mail vanuit dit gesprek". */
@@ -42,6 +45,14 @@ export default function MailVenster({
   clientEmail?: string;
   /** Welke bijlagen meteen aangevinkt staan (bijvoorbeeld een net gemaakt document). */
   standaardAangevinkt?: string[];
+  /**
+   * Het blok uit het gesprek (ruwe markdown) dat onder jouw intro in de mail komt,
+   * netjes opgemaakt met oranje kopjes en kaarten. Leeg = gewoon een mail met
+   * alleen jouw eigen tekst, zoals dit venster altijd werkte.
+   */
+  blokMd?: string;
+  /** Domein van de klant, zodat slugs in het blok naar de echte pagina linken. */
+  siteUrl?: string;
   onClose: () => void;
 }) {
   const [aud, setAud] = useState<"klant" | "dev" | "anders">("klant");
@@ -63,14 +74,31 @@ export default function MailVenster({
   // Niet opnieuw geschreven: letterlijk zijn eigen tekst. Herkent hij geen mail
   // (een analyse, een lijstje), dan blijft het vak leeg zoals het was: Maarten
   // dicteert met Wispr Flow en wil geen voorzet die hij eerst moet weggooien.
-  const concept = useMemo(() => mailUitTekst(mailBron || toelichting || ""), [mailBron, toelichting]);
+  const concept = useMemo(() => (blokMd ? null : mailUitTekst(mailBron || toelichting || "")), [blokMd, mailBron, toelichting]);
   const [overgenomen, setOvergenomen] = useState(false);
+
+  // Gaat het blok mee? Met blok is dit venster "zet dit blok in een mail": jouw
+  // intro bovenin, het blok eronder. Je kunt het blok weglaten als je toch alleen
+  // je eigen tekst wilt sturen.
+  const [blokAan, setBlokAan] = useState(!!blokMd);
+  // Het eerste kopje van het blok is het logische onderwerp van de mail.
+  const blokKop = useMemo(() => {
+    for (const raw of (blokMd || "").split("\n")) {
+      const m = /^#{1,3}\s+(.+)$/.exec(raw.trim());
+      if (m) return m[1].replace(/[#*]/g, "").trim().slice(0, 120);
+    }
+    return "";
+  }, [blokMd]);
+  // Voorbeeld van het blok, zodat je ziet wat er meegaat.
+  const blokHtml = useMemo(() => (blokMd ? mdToHtml(striptVulzinnen(blokMd), siteUrl || "") : ""), [blokMd, siteUrl]);
+
   useEffect(() => {
     if (concept && bodyRef.current) {
       bodyRef.current.innerText = concept.body;
       if (concept.onderwerp) setOnderwerp(concept.onderwerp);
       setOvergenomen(true);
     }
+    if (blokKop) setOnderwerp(blokKop);
     bodyRef.current?.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -114,12 +142,37 @@ export default function MailVenster({
 
   async function verstuur() {
     const tekst = (bodyRef.current?.innerText || "").trim();
-    if (!tekst || verzendt) return;
+    const metBlok = !!(blokMd && blokAan);
+    if ((!tekst && !metBlok) || verzendt) return;
     const adres = to.trim();
     if (!adres) { setFout("Vul eerst het e-mailadres van de ontvanger in."); return; }
     if (aud === "dev") { try { localStorage.setItem("pingwin-dev-email", adres); } catch { /* geen opslag */ } }
     const links = bijlagen.filter((b) => gekozen[b.key]).map((b) => ({ label: b.label, url: b.url }));
     setVerzendt(true); setFout("");
+
+    // Met blok gaat de mail langs de opgemaakte weg (oranje kopjes, kaarten,
+    // nette tabellen), met jouw getypte tekst als intro erboven. Zonder blok
+    // blijft alles zoals het was: platte tekst via de bestaande route.
+    if (metBlok) {
+      try {
+        const html = analyseNaarMailHtml(blokMd || "", {
+          intro: tekst || undefined,
+          titel: onderwerp.trim() || onderwerpVan.slice(0, 120),
+          bron: "Opgesteld in het Pingwin SEO-dashboard.",
+          siteUrl: siteUrl || undefined,
+          bijlagen: links,
+        });
+        const d = await fetch("/api/admin/mail", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mode: "compose", slug, to: adres, subject: onderwerp.trim() || onderwerpVan.slice(0, 120), html }),
+        }).then((r) => r.json());
+        if (d?.ok) { setKlaar(`Verstuurd naar ${(d.sentTo || []).join(", ") || adres}.`); setTimeout(() => { onClose(); }, 1600); }
+        else setFout(d?.error || "Versturen mislukte.");
+      } catch { setFout("Versturen mislukte."); }
+      finally { setVerzendt(false); }
+      return;
+    }
+
     try {
       const d = await fetch("/api/admin/task/mail", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -188,7 +241,31 @@ export default function MailVenster({
             <button type="button" className="wp-mail-leeg" onClick={leegmaken}>leegmaken</button>
           </div>
         )}
-        <div className="wp-mail-edit" contentEditable suppressContentEditableWarning ref={bodyRef} data-placeholder="De mail verschijnt hier…" style={{ opacity: busy ? 0.5 : 1 }} />
+        {blokMd && blokAan && <div className="wp-mail-bron muted">Jouw tekst komt bovenaan; het blok hieronder gaat er opgemaakt onder.</div>}
+        <div
+          className="wp-mail-edit"
+          contentEditable
+          suppressContentEditableWarning
+          ref={bodyRef}
+          data-placeholder={blokMd && blokAan ? "Typ of dicteer hier je intro, bijvoorbeeld: Beste Paul, we hebben nog eens goed naar de data gekeken…" : "De mail verschijnt hier…"}
+          style={{ opacity: busy ? 0.5 : 1 }}
+        />
+        {blokMd && (
+          blokAan ? (
+            <div className="wp-mail-blok">
+              <div className="wp-mail-blok-kop">
+                <span>Dit blok gaat mee</span>
+                <button type="button" className="wp-mail-leeg" onClick={() => setBlokAan(false)}>blok weglaten</button>
+              </div>
+              <div className="wp-mail-blok-body md" dangerouslySetInnerHTML={{ __html: blokHtml }} />
+            </div>
+          ) : (
+            <div className="wp-mail-bron muted">
+              Het blok gaat niet mee.
+              <button type="button" className="wp-mail-leeg" onClick={() => setBlokAan(true)}>toch meesturen</button>
+            </div>
+          )
+        )}
         {busy && <div className="muted" style={{ marginTop: 6 }}>Mail aan het schrijven…</div>}
         <div className="wp-mail-foot">
           <button type="button" className="ghost-btn small" onClick={kopieer} disabled={busy}>Kopieer</button>
