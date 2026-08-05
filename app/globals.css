@@ -3941,3 +3941,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 /* Zonder eigen kaart en kop: die staan al op het blok eromheen. */
 .ovc-kaal, .wp-kaal { padding: 0; border: 0; background: transparent; box-shadow: none; }
 .ovc-kaal-acties { display: flex; justify-content: flex-end; margin-bottom: var(--s-2); }
+/* Bevestigen in de rij zelf in plaats van een browser-popup: die valt buiten de
+   huisstijl en leest als een systeemmelding van de browser, niet van het dashboard. */
+.ovc-topic-bevestig { margin-left: auto; display: inline-flex; align-items: center; gap: var(--s-2); font-size: var(--fs-sm); color: var(--gray); white-space: nowrap; }
+.ovc-bev-ja, .ovc-bev-nee { font: inherit; font-size: var(--fs-sm); font-weight: 600; padding: 2px var(--s-3); border-radius: var(--r-sm); cursor: pointer; border: 1px solid var(--border); background: var(--white); }
+.ovc-bev-ja { border-color: #e3b4ae; color: #c0392b; }
+.ovc-bev-ja:hover { background: #fdecec; }
+.ovc-bev-nee:hover { background: var(--gray-light); }
