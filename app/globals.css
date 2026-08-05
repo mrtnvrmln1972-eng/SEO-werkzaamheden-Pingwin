@@ -3061,9 +3061,21 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .wp-chat-leeg { font-size: 12px; padding: 4px 2px; }
 .wp-chat-blok { position: relative; display: flex; flex-direction: column; }
 .wp-chat-blok-vraag { align-items: flex-end; }
-.wp-chat-del { position: absolute; top: 2px; right: 2px; z-index: 2; border: none; background: rgba(255, 255, 255, 0.85); color: var(--gray); border-radius: 999px; width: 18px; height: 18px; line-height: 1; font-size: 12px; cursor: pointer; opacity: 0; transition: opacity 0.12s; }
+/* Het kruisje stond op onzichtbaar tot je er toevallig precies overheen zweefde,
+   dus opruimen lukte niet. Nu altijd zichtbaar (gedimd), zoals elders. */
+.wp-chat-del { position: absolute; top: 2px; right: 2px; z-index: 2; border: none; background: rgba(255, 255, 255, 0.85); color: var(--gray); border-radius: 999px; width: 18px; height: 18px; line-height: 1; font-size: 12px; cursor: pointer; opacity: 0.35; transition: opacity 0.12s; }
 .wp-chat-blok:hover .wp-chat-del { opacity: 1; }
 .wp-chat-del:hover { color: #c0392b; }
+/* Bevestigen in de rij zelf, nooit een browserpopup. */
+.wp-weg-vraag { position: absolute; top: 2px; right: 2px; z-index: 3; display: inline-flex; align-items: center; gap: var(--s-2); font-size: var(--fs-xs); color: var(--gray); background: #fff; border: 1px solid var(--card-border); border-radius: var(--r-sm); padding: 2px var(--s-2); }
+.wp-weg-vraag.wp-weg-naast { position: static; margin-left: var(--s-2); }
+.wp-weg-ja, .wp-weg-nee { border: 1px solid var(--card-border); background: #fff; cursor: pointer; font-size: var(--fs-xs); font-weight: 700; padding: 1px 7px; border-radius: var(--r-sm); }
+.wp-weg-ja { color: #B03A2E; border-color: #E6C3BD; }
+.wp-weg-ja:hover { background: #FBEDEA; }
+.wp-weg-nee { color: var(--gray); }
+.wp-weg-nee:hover { background: var(--orange-light); }
+.wp-chat-wis { margin-left: var(--s-2); border: none; background: none; color: var(--gray); font-size: var(--fs-md); line-height: 1; cursor: pointer; padding: 0 var(--s-1); border-radius: var(--r-sm); }
+.wp-chat-wis:hover { color: #c0392b; background: var(--orange-light); }
 .wp-chat-vraag { align-self: flex-end; max-width: 85%; background: var(--orange-light); border: 1px solid var(--orange); border-radius: 8px; padding: 6px 9px; font-size: 12px; }
 .wp-chat-antwoord { align-self: stretch; background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font-size: 12px; line-height: 1.55; }
 .wp-chat-antwoord ul { margin: 4px 0 4px 16px; padding: 0; }

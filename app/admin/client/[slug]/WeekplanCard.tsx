@@ -12,6 +12,7 @@ import { cardInfoHtml, splitCardInfo, eerdereNotitiesHtml, faseSturing, type Car
 import { linkifyHtml } from "../../../../lib/linkify";
 import { urlKey } from "../../../../lib/url-key";
 import { devLabel } from "../../../../lib/personen";
+import { eersteKop } from "../../../../lib/chat-vouw";
 import AntwoordBlokken from "./AntwoordBlokken";
 import DocVersies from "./DocVersies";
 import PaginaDossier from "./PaginaDossier";
@@ -108,6 +109,14 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
   const [chatOpen, setChatOpen] = useState(false);
   const [msgs, setMsgs] = useState<ChatMsg[]>([]);
   const [chatId, setChatId] = useState<number | null>(null);
+  // Welke eerdere antwoorden je zelf hebt opengeklapt. Standaard staat alleen het
+  // LAATSTE antwoord open; alles daarvoor vouwt samen tot zijn eigen kopje. Zonder
+  // dit stond hier een muur van tekst, want elk antwoord bleef volledig staan.
+  const [openBericht, setOpenBericht] = useState<Record<number, boolean>>({});
+  // Bevestigen gebeurt in de rij zelf: het nummer van het bericht dat weg mag,
+  // of "chat" voor het hele gesprek.
+  const [wegVraag, setWegVraag] = useState<number | "chat" | null>(null);
+  const laatsteAntwoord = msgs.map((m) => m.role).lastIndexOf("assistant");
   const [input, setInput] = useState("");
   const [chatBusy, setChatBusy] = useState(false);
   const [planVoorstel, setPlanVoorstel] = useState<string>("");
@@ -364,12 +373,25 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
   }
 
   // Eén chatbericht weghalen (kruisje); de opgeslagen historie gaat meteen mee.
+  // Bevestigen gebeurt in de rij zelf, niet met een browserpopup.
   async function verwijderChatBericht(i: number) {
+    setWegVraag(null); setOpenBericht({});
     const nieuw = msgs.filter((_, idx) => idx !== i);
     setMsgs(nieuw);
     try {
       if (t.url) await fetch("/api/admin/page-chats", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: t.url, id: chatId, messages: nieuw }) });
       else await fetch("/api/admin/chat", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread: kaartThread, messages: nieuw }) });
+    } catch { /* stil */ }
+  }
+
+  // Het hele gesprek weggooien. Dat kon hier helemaal niet; je kon alleen bericht
+  // voor bericht opruimen. Bij een kaart met pagina gooit dit de opgeslagen
+  // pagina-chat weg, bij een kaart zonder pagina het eigen kaart-gesprek.
+  async function wisChat() {
+    setWegVraag(null); setMsgs([]); setOpenBericht({}); setPlanVoorstel("");
+    try {
+      if (t.url) { if (chatId !== null) await fetch(`/api/admin/page-chats?id=${chatId}`, { method: "DELETE" }); setChatId(null); }
+      else await fetch(`/api/admin/chat?slug=${encodeURIComponent(slug)}&thread=${encodeURIComponent(kaartThread)}`, { method: "DELETE" });
     } catch { /* stil */ }
   }
 
@@ -603,6 +625,15 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
           <button type="button" className={"wp-chat-toggle wp-chat-toggle-groot" + (chatOpen ? " wp-chat-open" : "")} onClick={() => (chatOpen ? setChatOpen(false) : void openChat())}>
             <Icoon d={ICOON.chat} className="wp-sectie-icoon" /> {t.url ? "Chat over deze pagina" : "Chat over deze taak"} {chatOpen ? "▾" : "▸"}
           </button>
+          {chatOpen && msgs.length > 0 && (wegVraag === "chat" ? (
+            <span className="wp-weg-vraag wp-weg-naast">
+              Hele chat weggooien?
+              <button type="button" className="wp-weg-ja" onClick={() => void wisChat()}>ja</button>
+              <button type="button" className="wp-weg-nee" onClick={() => setWegVraag(null)}>nee</button>
+            </span>
+          ) : (
+            <button type="button" className="wp-chat-wis" title="Dit hele gesprek weggooien" onClick={() => setWegVraag("chat")}>&times;</button>
+          ))}
           {chatOpen && (
             <div className="wp-chat-body">
               <div className="wp-chat-msgs" ref={msgsRef}>
@@ -613,10 +644,30 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
                       : "Stel een vraag of zoek dit verder uit; de assistent kent de hele site. Van elk punt in het antwoord kun je direct een kaart maken."}
                   </div>
                 )}
-                {msgs.map((m, i) => (
+                {msgs.map((m, i) => {
+                  // Alleen het laatste antwoord staat open; de antwoorden daarvoor
+                  // vouwen samen tot hun eigen kopje. Je vragen blijven altijd staan.
+                  const inklapbaar = m.role === "assistant" && i < laatsteAntwoord;
+                  const dicht = inklapbaar && !openBericht[i];
+                  return (
                   <div key={i} className={"wp-chat-blok " + (m.role === "user" ? "wp-chat-blok-vraag" : "")}>
-                    <button type="button" className="wp-chat-del" title="Dit bericht verwijderen" onClick={() => void verwijderChatBericht(i)}>×</button>
-                    {m.role === "user"
+                    {wegVraag === i ? (
+                      <span className="wp-weg-vraag">
+                        Weghalen?
+                        <button type="button" className="wp-weg-ja" onClick={() => void verwijderChatBericht(i)}>ja</button>
+                        <button type="button" className="wp-weg-nee" onClick={() => setWegVraag(null)}>nee</button>
+                      </span>
+                    ) : (
+                      <button type="button" className="wp-chat-del" title="Dit bericht weghalen" onClick={() => setWegVraag(i)}>×</button>
+                    )}
+                    {inklapbaar && (
+                      <button type="button" className="ovc-msg-vouw" onClick={() => setOpenBericht((v) => ({ ...v, [i]: !v[i] }))}>
+                        <span className="ovc-msg-vouw-pijl">{dicht ? "▸" : "▾"}</span>
+                        <span className="ovc-msg-vouw-titel">{eersteKop(m.content || "")}</span>
+                        {dicht && <span className="ovc-msg-vouw-meta">eerder antwoord</span>}
+                      </button>
+                    )}
+                    {dicht ? null : m.role === "user"
                       ? <div className="wp-chat-vraag">{m.content}</div>
                       : <div className="wp-chat-antwoord md">
                           <AntwoordBlokken
@@ -629,7 +680,8 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
                           />
                         </div>}
                   </div>
-                ))}
+                  );
+                })}
                 {chatBusy && <div className="muted wp-chat-leeg">Aan het nadenken…</div>}
               </div>
               {planVoorstel && (
