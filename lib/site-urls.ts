@@ -407,3 +407,108 @@ export async function getPageClusterAdvice(slug: string, url: string): Promise<C
     createdAt: r.created_at ? new Date(r.created_at as string).toISOString() : null,
   }));
 }
+
+// ═══════════════════════════════════════════════════════════
+// HET URL-BLOK VOOR DE CHAT: STATUS EN BESTEMMING GAAN MEE
+// ═══════════════════════════════════════════════════════════
+// Waarom dit bestaat: de bird's eye kreeg alleen een kale rij paden mee. De
+// status (200/301/404) en de redirect-bestemming stonden wél in client_urls,
+// maar werden bij het opbouwen van de context weggegooid. Daardoor zag een al
+// opgeruimde pagina er precies zo uit als een levende, en werden vier pagina's
+// die al 301'den naar /soa-klinieken/soa-test-amsterdam/ voorgesteld als "leid
+// deze om naar /soa-klinieken/soa-test-amsterdam/". De informatie was er, hij
+// kwam alleen niet aan.
+//
+// Twee dingen zijn hier hard:
+//   1. Status en bestemming gaan ALTIJD mee. Geen kale paden meer.
+//   2. Er wordt nooit stil afgekapt. Past het niet, dan staat er hoeveel er
+//      niet in past, zodat de chat weet dat hij niet alles ziet.
+// ═══════════════════════════════════════════════════════════
+
+/** De sitemap opnieuw ophalen, alleen de URL-lijst (snel: geen check per pagina). */
+export async function currentSitemapUrls(domain: string, timeoutMs = 8000): Promise<string[] | null> {
+  if (!domain) return null;
+  try {
+    return await Promise.race([
+      fetchSitemapUrls(domain, 3000),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), timeoutMs)),
+    ]);
+  } catch {
+    return null;
+  }
+}
+
+const pathOfUrl = (u: string) => { try { return new URL(u).pathname; } catch { return u; } };
+
+/**
+ * Het contextblok met alle bekende URL's, met status en bestemming.
+ * De verse sitemap (als die op tijd binnen is) bepaalt wat er NU nog wordt
+ * uitgeserveerd; de opgeslagen scan levert de status en de redirect-bestemming.
+ */
+export async function buildUrlContext(slug: string, domain: string, maxChars = 14000): Promise<string> {
+  const opgeslagen = await getClientUrls(slug);
+  if (!opgeslagen.length) return "";
+
+  const vers = await currentSitemapUrls(domain);
+  const inSitemap = vers ? new Set(vers.map((u) => normUrl(u))) : null;
+
+  const nieuwste = opgeslagen.map((u) => u.lastScanned || "").filter(Boolean).sort().pop() || "";
+  const datum = nieuwste ? new Date(nieuwste).toLocaleDateString("nl-NL") : "onbekend";
+  const dagenOud = nieuwste ? Math.floor((Date.now() - new Date(nieuwste).getTime()) / 86400000) : null;
+
+  const live: string[] = [];
+  const omgeleid: string[] = [];
+  const weg: string[] = [];
+  for (const u of opgeslagen) {
+    const pad = pathOfUrl(u.url);
+    const s = u.status;
+    if (s !== null && s >= 300 && s < 400) {
+      omgeleid.push(`${pad} is een ${s} naar ${u.redirectTarget ? pathOfUrl(u.redirectTarget) : "onbekende bestemming"}`);
+    } else if (s !== null && s >= 400) {
+      weg.push(`${pad} geeft ${s}`);
+    } else if (inSitemap && !inSitemap.has(normUrl(u.url))) {
+      // Stond in de vorige scan, staat nu niet meer in de sitemap: waarschijnlijk
+      // verwijderd of omgeleid sinds de laatste scan. Niet als live presenteren.
+      omgeleid.push(`${pad} staat NIET MEER in de actuele sitemap (was ${s ?? "?"} bij de scan van ${datum}); controleer met controleer_url voordat je hier iets over zegt`);
+    } else {
+      live.push(pad);
+    }
+  }
+
+  // Nieuw in de sitemap sinds de laatste scan: die kent de opgeslagen lijst nog niet.
+  const bekend = new Set(opgeslagen.map((u) => normUrl(u.url)));
+  const nieuw = vers ? vers.filter((u) => !bekend.has(normUrl(u))).map(pathOfUrl) : [];
+
+  const kop = vers
+    ? `=== ALLE BEKENDE URL'S VAN DE SITE (sitemap ZOJUIST vers opgehaald: ${vers.length} URL's; status per pagina uit de scan van ${datum}${dagenOud !== null && dagenOud > 7 ? `, dus ${dagenOud} dagen oud` : ""}) ===`
+    : `=== ALLE BEKENDE URL'S VAN DE SITE (sitemap NIET bereikbaar; alles hieronder komt uit de scan van ${datum}${dagenOud !== null && dagenOud > 7 ? `, dus ${dagenOud} dagen oud` : ""}) ===`;
+
+  const regels: string[] = [kop];
+  regels.push(
+    `LEES DIT EERST. Dit is de enige geldige bron voor welke pagina's bestaan. Vorm NOOIT zelf een pad.` +
+    ` Een pagina onder OMGELEID is AL opgeruimd: stel die nooit voor als op te ruimen, en zeg nooit dat hij nog live is.` +
+    (dagenOud !== null && dagenOud > 7 ? ` De statussen zijn ${dagenOud} dagen oud; controleer met controleer_url voordat je een uitspraak doet over de status van een pagina.` : ""),
+  );
+
+  const blok = (titel: string, items: string[], budget: number): void => {
+    if (!items.length) return;
+    const uit: string[] = [];
+    let lengte = 0;
+    for (const i of items) {
+      if (lengte + i.length + 2 > budget) break;
+      uit.push(i); lengte += i.length + 2;
+    }
+    const rest = items.length - uit.length;
+    regels.push(`\n${titel} (${items.length}${rest ? `, hieronder staan er ${uit.length}` : ""}):\n${uit.join(", ")}`);
+    // Nooit stil afkappen: als er iets niet past, staat dat er met zoveel woorden.
+    if (rest) regels.push(`LET OP: ${rest} van deze ${items.length} passen hier niet in. Je ziet dus NIET de hele lijst. Staat een pad hier niet bij, dan betekent dat NIET dat het niet bestaat; controleer het met controleer_url.`);
+  };
+
+  // Omgeleid en weg krijgen ruim budget: juist die twee voorkwamen de grootste fout.
+  blok("LIVE PAGINA'S", live, Math.max(3000, maxChars - 6000));
+  blok("OMGELEID, AL OPGERUIMD, NIET MEER AANRADEN OM OP TE RUIMEN", omgeleid, 4000);
+  blok("NIET BEREIKBAAR (404 of fout)", weg, 1500);
+  if (nieuw.length) blok("NIEUW IN DE SITEMAP sinds de laatste scan (status nog niet gecontroleerd)", nieuw, 1500);
+
+  return regels.join("\n");
+}

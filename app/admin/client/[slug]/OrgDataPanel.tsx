@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import HelpHint from "./HelpHint";
 import Kennisbank from "./Kennisbank";
+import { ontbrekendeSleutels, ontbrekendeVelden, LEGE_VESTIGING, type OrgVestiging } from "../../../../lib/org-vereist";
 
 // ═══════════════════════════════════════════════════════════
 // BEDRIJFSGEGEVENS (fundament voor structured data)
@@ -19,7 +20,7 @@ export type OrgFormData = {
   telefoon: string; email: string; straat: string; postcode: string; plaats: string;
   geenBezoekadres: boolean; openingstijden: string; logoUrl: string; priceRange: string;
   oprichtingsjaar: string; sameAs: string[]; areaServed: string[]; reviewUrl: string;
-  reviewGemiddelde: string; reviewAantal: string; notitie: string;
+  reviewGemiddelde: string; reviewAantal: string; notitie: string; vestigingen: OrgVestiging[];
   artsen: OrgArts[]; merken: string[]; retourUrl: string; retourTermijn: string; verzendInfo: string; diensten: OrgDienst[];
 };
 
@@ -34,94 +35,173 @@ const TYPES: { v: string; label: string }[] = [
 
 export function OrgDataForm({ data, onChange, disabled }: { data: OrgFormData; onChange: (d: OrgFormData) => void; disabled?: boolean }) {
   const set = (patch: Partial<OrgFormData>) => onChange({ ...data, ...patch });
-  const F = ({ label, k, placeholder, hint }: { label: string; k: keyof OrgFormData; placeholder?: string; hint?: string }) => (
-    <label className="org-field">
-      <span className="org-label">{label}{hint && <HelpHint text={hint} />}</span>
-      <input value={String(data[k] ?? "")} placeholder={placeholder || ""} disabled={disabled} onChange={(e) => set({ [k]: e.target.value } as Partial<OrgFormData>)} />
-    </label>
+  // Wat nodig is en nog leeg is, komt in het rood in beeld: het veld blijft dus
+  // gewoon zichtbaar en invulbaar, met de melding dat het nog ontbreekt.
+  const mist = ontbrekendeSleutels({ ...data, vestigingen: data.vestigingen || [] });
+  const zetVestiging = (i: number, patch: Partial<OrgVestiging>) =>
+    set({ vestigingen: (data.vestigingen || []).map((v, j) => (j === i ? { ...v, ...patch } : v)) });
+
+  // Eén veld. Bewust een gewone functie (geen los component): een component dat
+  // binnen de render wordt gemaakt, wordt bij elke toetsaanslag opnieuw gemount
+  // en dan springt de cursor uit het veld.
+  const veld = (label: string, k: keyof OrgFormData, opties?: { placeholder?: string; hint?: string; sleutel?: string }) => {
+    const sleutel = opties?.sleutel || String(k);
+    const leegMaarNodig = mist.has(sleutel);
+    return (
+      <label className={"org-field" + (leegMaarNodig ? " org-mis" : "")} key={sleutel}>
+        <span className="org-label">
+          {label}{opties?.hint && <HelpHint text={opties.hint} />}
+          {leegMaarNodig && <span className="org-mis-vlag">ontbreekt nog</span>}
+        </span>
+        <input value={String(data[k] ?? "")} placeholder={opties?.placeholder || ""} disabled={disabled}
+          onChange={(e) => set({ [k]: e.target.value } as Partial<OrgFormData>)} />
+      </label>
+    );
+  };
+  const rijVeld = (waarde: string, plaatshouder: string, sleutel: string, aan: (v: string) => void) => (
+    <input className={mist.has(sleutel) ? "org-mis-input" : ""} placeholder={mist.has(sleutel) ? `${plaatshouder} (ontbreekt nog)` : plaatshouder}
+      value={waarde} disabled={disabled} onChange={(e) => aan(e.target.value)} />
   );
+  const aantalMist = mist.size;
+
+  // Eén vaste vorm voor elk blok: oranje kopje, dun lijntje, en de velden op een
+  // zacht vlak zodat de witte invoervelden er zichtbaar op liggen.
+  const sectie = (titel: string, inhoud: React.ReactNode, opties?: { aantal?: number; hint?: React.ReactNode }) => (
+    <section className="org-sec">
+      <h4 className="org-sec-kop">
+        <span>{titel}</span>
+        {typeof opties?.aantal === "number" && <span className="org-sec-aantal">{opties.aantal}</span>}
+        {opties?.hint}
+      </h4>
+      {inhoud}
+    </section>
+  );
+
   return (
     <div className="org-form">
-      <div className="org-grid">
-        <F label="Bedrijfsnaam" k="bedrijfsnaam" />
-        <label className="org-field">
-          <span className="org-label">Bedrijfstype<HelpHint text="Bepaalt welk soort structured data we gebruiken: een kliniek krijgt medische schema's, een webshop product-schema's, een dienstverlener service-schema's." /></span>
+      {aantalMist > 0 && (
+        <div className="org-mis-balk">
+          <strong>{aantalMist} {aantalMist === 1 ? "gegeven ontbreekt" : "gegevens ontbreken"} nog.</strong>
+          <span>Ze staan hieronder in het rood. Vul ze aan waar je kunt; de rest vragen we bij de klant op.</span>
+        </div>
+      )}
+      {sectie("Algemene bedrijfsgegevens", <div className="org-grid">
+        {veld("Bedrijfsnaam", "bedrijfsnaam")}
+        <label className={"org-field" + (mist.has("bedrijfstype") ? " org-mis" : "")}>
+          <span className="org-label">Bedrijfstype<HelpHint text="Bepaalt welk soort structured data we gebruiken: een kliniek krijgt medische schema's, een webshop product-schema's, een dienstverlener service-schema's." />{mist.has("bedrijfstype") && <span className="org-mis-vlag">ontbreekt nog</span>}</span>
           <select value={data.bedrijfstype} disabled={disabled} onChange={(e) => set({ bedrijfstype: e.target.value })}>
             {TYPES.map((t) => <option key={t.v} value={t.v}>{t.label}</option>)}
           </select>
         </label>
-        <F label="Rechtsvorm" k="rechtsvorm" placeholder="bijv. B.V." />
-        <F label="KVK-nummer" k="kvk" />
-        <F label="BTW-id" k="btw" />
-        <F label="Telefoon" k="telefoon" placeholder="bijv. 073 123 45 67" />
-        <F label="E-mail" k="email" />
-        <F label="Oprichtingsjaar" k="oprichtingsjaar" />
-        <F label="Straat + huisnummer" k="straat" />
-        <F label="Postcode" k="postcode" />
-        <F label="Plaats" k="plaats" />
+        {veld("Rechtsvorm", "rechtsvorm", { placeholder: "bijv. B.V." })}
+        {veld("KVK-nummer", "kvk")}
+        {veld("BTW-id", "btw")}
+        {veld("Telefoon", "telefoon", { placeholder: "bijv. 073 123 45 67" })}
+        {veld("E-mail", "email")}
+        {veld("Oprichtingsjaar", "oprichtingsjaar")}
+        {veld("Straat + huisnummer", "straat", { hint: "Het hoofdadres. Heeft het bedrijf meerdere locaties, vul die dan in bij Vestigingen hieronder; dit veld mag dan leeg blijven." })}
+        {veld("Postcode", "postcode")}
+        {veld("Plaats", "plaats")}
         <label className="org-field org-check">
           <input type="checkbox" checked={data.geenBezoekadres} disabled={disabled} onChange={(e) => set({ geenBezoekadres: e.target.checked })} />
           <span>Geen bezoekadres (wij komen bij de klant)<HelpHint text="Voor bedrijven zonder bezoeklocatie (bijv. hoveniers) nemen we het adres niet op in de zichtbare bedrijfsvermelding, maar gebruiken we het werkgebied." /></span>
         </label>
-        <F label="Openingstijden" k="openingstijden" placeholder="bijv. ma t/m vr 9:00-17:30" />
-        <F label="Logo-URL" k="logoUrl" placeholder="https://…/logo.png" hint="Volledige link naar het logo-bestand op de website." />
-        <F label="Prijsindicatie" k="priceRange" placeholder="bijv. €€ of vanaf €1.500" />
-        <F label="Reviews-pagina (URL)" k="reviewUrl" hint="Waar de reviews zichtbaar staan (bijv. Google-reviews of een reviewpagina op de site)." />
-        <F label="Reviewgemiddelde" k="reviewGemiddelde" placeholder="bijv. 4,8" hint="Alleen invullen als dit cijfer ook echt zichtbaar is voor bezoekers; verzonnen cijfers zijn tegen de regels van Google." />
-        <F label="Aantal reviews" k="reviewAantal" placeholder="bijv. 127" />
-      </div>
-      <label className="org-field">
-        <span className="org-label">Sociale profielen en vermeldingen (één per regel)<HelpHint text="Volledige links naar Facebook, Instagram, LinkedIn, YouTube, de Google Business-vermelding, KVK-pagina, enz. Deze vertellen Google en AI-systemen dat al die profielen bij hetzelfde bedrijf horen." /></span>
+        {veld("Openingstijden", "openingstijden", { placeholder: "bijv. ma t/m vr 9:00-17:30", hint: "Bij meerdere vestigingen vul je de tijden per vestiging in; dit veld mag dan leeg blijven." })}
+        {veld("Logo-URL", "logoUrl", { placeholder: "https://…/logo.png", hint: "Volledige link naar het logo-bestand op de website." })}
+        {veld("Prijsindicatie", "priceRange", { placeholder: "bijv. €€ of vanaf €1.500" })}
+        {veld("Reviews-pagina (URL)", "reviewUrl", { hint: "Waar de reviews zichtbaar staan (bijv. Google-reviews of een reviewpagina op de site)." })}
+        {veld("Reviewgemiddelde", "reviewGemiddelde", { placeholder: "bijv. 4,8", hint: "Alleen invullen als dit cijfer ook echt zichtbaar is voor bezoekers; verzonnen cijfers zijn tegen de regels van Google." })}
+        {veld("Aantal reviews", "reviewAantal", { placeholder: "bijv. 127" })}
+      </div>)}
+
+      {sectie("Vestigingen", <>
+        {(data.vestigingen || []).map((v, i) => (
+          <div className="org-vest" key={i}>
+            <div className="org-vest-kop">
+              <input className="org-vest-naam" placeholder="Naam van de vestiging (bijv. Utrecht)" value={v.naam} disabled={disabled}
+                onChange={(e) => zetVestiging(i, { naam: e.target.value })} />
+              {/* Zonder huisnummer, postcode of openingstijden is dit een genoemde
+                  plaats en geen vestiging. Dat zeggen we hier, met de knop erbij,
+                  zodat je niet hoeft te zoeken hoe je hem kwijtraakt. */}
+              {!/\d/.test(v.straat || "") && !String(v.postcode || "").trim() && !String(v.openingstijden || "").trim() && (
+                <span className="org-geen-vest">geen bezoekadres, dus geen vestiging</span>
+              )}
+              {!disabled && <button type="button" className="ghost-btn small" title="Deze vestiging verwijderen" onClick={() => set({ vestigingen: (data.vestigingen || []).filter((_, j) => j !== i) })}>&times;</button>}
+            </div>
+            <div className="org-vest-grid">
+              {rijVeld(v.straat, "Straat + huisnummer", `vestiging.${i}.straat`, (x) => zetVestiging(i, { straat: x }))}
+              {rijVeld(v.postcode, "Postcode", `vestiging.${i}.postcode`, (x) => zetVestiging(i, { postcode: x }))}
+              {rijVeld(v.plaats, "Plaats", `vestiging.${i}.plaats`, (x) => zetVestiging(i, { plaats: x }))}
+              {rijVeld(v.telefoon, "Telefoon", `vestiging.${i}.telefoon`, (x) => zetVestiging(i, { telefoon: x }))}
+              {rijVeld(v.email, "E-mail", `vestiging.${i}.email`, (x) => zetVestiging(i, { email: x }))}
+              {rijVeld(v.mapsUrl, "Google Maps-link", `vestiging.${i}.mapsUrl`, (x) => zetVestiging(i, { mapsUrl: x }))}
+            </div>
+            {rijVeld(v.openingstijden, "Openingstijden, bijv. ma t/m vr 8:30-17:00, za gesloten", `vestiging.${i}.openingstijden`, (x) => zetVestiging(i, { openingstijden: x }))}
+          </div>
+        ))}
+        {!disabled && <button type="button" className="ghost-btn small" onClick={() => set({ vestigingen: [...(data.vestigingen || []), { ...LEGE_VESTIGING }] })}>+ Vestiging toevoegen</button>}
+      </>, { aantal: (data.vestigingen || []).length, hint: <HelpHint wide text="Elke locatie waar klanten of patiënten terechtkunnen, met eigen adres, telefoonnummer en openingstijden. Google en AI-assistenten maken hier per vestiging een eigen vermelding van, gekoppeld aan het bedrijf; dat is wat lokale zichtbaarheid ('kliniek Utrecht') mogelijk maakt. Zonder adres én openingstijden kan die vermelding niet worden gemaakt, daarom staan die velden rood zolang ze leeg zijn." /> })}
+      {sectie("Bereikbaarheid en vindbaarheid", <div className="org-kolom">
+      <label className={"org-field" + (mist.has("sameAs") ? " org-mis" : "")}>
+        <span className="org-label">Sociale profielen en vermeldingen (één per regel)<HelpHint text="Volledige links naar Facebook, Instagram, LinkedIn, YouTube, de Google Business-vermelding, KVK-pagina, enz. Deze vertellen Google en AI-systemen dat al die profielen bij hetzelfde bedrijf horen." />{mist.has("sameAs") && <span className="org-mis-vlag">ontbreekt nog</span>}</span>
         <textarea rows={3} value={data.sameAs.join("\n")} disabled={disabled} onChange={(e) => set({ sameAs: e.target.value.split("\n").map((s) => s.trim()).filter(Boolean) })} />
       </label>
-      <label className="org-field">
-        <span className="org-label">Werkgebied (plaatsen/regio&rsquo;s, één per regel)<HelpHint text="De plaatsen of regio's waar jullie werken. Vooral belangrijk voor bedrijven zonder bezoekadres." /></span>
+      <label className={"org-field" + (mist.has("areaServed") ? " org-mis" : "")}>
+        <span className="org-label">Werkgebied (plaatsen/regio&rsquo;s, één per regel)<HelpHint text="De plaatsen of regio's waar jullie werken. Vooral belangrijk voor bedrijven zonder bezoekadres." />{mist.has("areaServed") && <span className="org-mis-vlag">ontbreekt nog</span>}</span>
         <textarea rows={2} value={data.areaServed.join("\n")} disabled={disabled} onChange={(e) => set({ areaServed: e.target.value.split("\n").map((s) => s.trim()).filter(Boolean) })} />
       </label>
-      {data.bedrijfstype === "kliniek" && (
-        <div className="org-typesec">
-          <div className="org-typesec-head">Artsen en behandelaren<HelpHint wide text="De artsen/behandelaren die op de website staan. Naam, functie en specialisatie helpen Google en AI-systemen het vertrouwen in medische informatie te bepalen; het BIG-nummer is daarbij het sterkste bewijs (openbaar register). Deze gegevens koppelen we aan de behandelpagina's." /></div>
+      </div>)}
+      {/* Secties tonen zodra er inhoud is, ook als het bedrijfstype nog leeg is
+          of anders staat: je eigen gegevens horen niet onzichtbaar te worden
+          door een keuzelijstje. Het bedrijfstype bepaalt alleen nog welke sectie
+          we uit onszelf aanbieden om aan te vullen. */}
+      {(data.bedrijfstype === "kliniek" || data.artsen.length > 0) && (
+        sectie("Artsen en behandelaren", <>
           {data.artsen.map((a, i) => (
-            <div className="org-row" key={i}>
-              <input placeholder="Naam" value={a.naam} disabled={disabled} onChange={(e) => set({ artsen: data.artsen.map((x, j) => j === i ? { ...x, naam: e.target.value } : x) })} />
-              <input placeholder="Functie (bijv. oogarts)" value={a.functie} disabled={disabled} onChange={(e) => set({ artsen: data.artsen.map((x, j) => j === i ? { ...x, functie: e.target.value } : x) })} />
-              <input placeholder="Specialisatie" value={a.specialisatie} disabled={disabled} onChange={(e) => set({ artsen: data.artsen.map((x, j) => j === i ? { ...x, specialisatie: e.target.value } : x) })} />
-              <input placeholder="BIG-nummer" value={a.big} disabled={disabled} onChange={(e) => set({ artsen: data.artsen.map((x, j) => j === i ? { ...x, big: e.target.value } : x) })} />
-              <input placeholder="Profielpagina-URL" value={a.profielUrl} disabled={disabled} onChange={(e) => set({ artsen: data.artsen.map((x, j) => j === i ? { ...x, profielUrl: e.target.value } : x) })} />
-              {!disabled && <button type="button" className="ghost-btn small" onClick={() => set({ artsen: data.artsen.filter((_, j) => j !== i) })}>&times;</button>}
+            <div className="org-rij" key={i}>
+              <div className="org-rij-kop">
+                {rijVeld(a.naam, "Naam", `arts.${i}.naam`, (v) => set({ artsen: data.artsen.map((x, j) => j === i ? { ...x, naam: v } : x) }))}
+                {!disabled && <button type="button" className="ghost-btn small" title="Deze persoon verwijderen" onClick={() => set({ artsen: data.artsen.filter((_, j) => j !== i) })}>&times;</button>}
+              </div>
+              <div className="org-rij-grid">
+                {rijVeld(a.functie, "Functie (bijv. oogarts)", `arts.${i}.functie`, (v) => set({ artsen: data.artsen.map((x, j) => j === i ? { ...x, functie: v } : x) }))}
+                {rijVeld(a.specialisatie, "Specialisatie", `arts.${i}.specialisatie`, (v) => set({ artsen: data.artsen.map((x, j) => j === i ? { ...x, specialisatie: v } : x) }))}
+                {rijVeld(a.big, "BIG-nummer", `arts.${i}.big`, (v) => set({ artsen: data.artsen.map((x, j) => j === i ? { ...x, big: v } : x) }))}
+                {rijVeld(a.profielUrl, "Profielpagina of LinkedIn", `arts.${i}.profielUrl`, (v) => set({ artsen: data.artsen.map((x, j) => j === i ? { ...x, profielUrl: v } : x) }))}
+              </div>
             </div>
           ))}
           {!disabled && <button type="button" className="ghost-btn small" onClick={() => set({ artsen: [...data.artsen, { naam: "", functie: "", specialisatie: "", big: "", fotoUrl: "", profielUrl: "" }] })}>+ Arts toevoegen</button>}
-        </div>
+        </>, { aantal: data.artsen.length, hint: <HelpHint wide text="De artsen/behandelaren die op de website staan. Naam, functie en specialisatie helpen Google en AI-systemen het vertrouwen in medische informatie te bepalen; het BIG-nummer is daarbij het sterkste bewijs (openbaar register). Deze gegevens koppelen we aan de behandelpagina's." /> })
       )}
-      {data.bedrijfstype === "webshop" && (
-        <div className="org-typesec">
-          <div className="org-typesec-head">Webshop-gegevens<HelpHint wide text="Retourbeleid en verzendinformatie zijn vereisten van Google om producten met prijs en voorraad in de zoekresultaten te tonen. Vul alleen in wat ook echt op de site staat." /></div>
-          <div className="org-grid">
+      {(data.bedrijfstype === "webshop" || data.merken.length > 0 || data.retourUrl || data.retourTermijn || data.verzendInfo) && (
+        sectie("Webshop-gegevens", <div className="org-grid">
             <label className="org-field"><span className="org-label">Merk(en), kommagescheiden</span><input value={data.merken.join(", ")} disabled={disabled} onChange={(e) => set({ merken: e.target.value.split(",").map((m) => m.trim()).filter(Boolean) })} /></label>
             <label className="org-field"><span className="org-label">Retourbeleid-URL</span><input value={data.retourUrl} disabled={disabled} onChange={(e) => set({ retourUrl: e.target.value })} /></label>
             <label className="org-field"><span className="org-label">Retourtermijn</span><input placeholder="bijv. 30 dagen" value={data.retourTermijn} disabled={disabled} onChange={(e) => set({ retourTermijn: e.target.value })} /></label>
             <label className="org-field"><span className="org-label">Verzendinformatie</span><input placeholder="bijv. gratis vanaf €50, 1-2 werkdagen" value={data.verzendInfo} disabled={disabled} onChange={(e) => set({ verzendInfo: e.target.value })} /></label>
-          </div>
-        </div>
+        </div>, { hint: <HelpHint wide text="Retourbeleid en verzendinformatie zijn vereisten van Google om producten met prijs en voorraad in de zoekresultaten te tonen. Vul alleen in wat ook echt op de site staat." /> })
       )}
-      {data.bedrijfstype === "dienstverlener" && (
-        <div className="org-typesec">
-          <div className="org-typesec-head">Diensten<HelpHint wide text="De hoofddiensten van het bedrijf. Elke dienst wordt in de structured data een eigen vermelding die aan het bedrijf en het werkgebied gekoppeld is." /></div>
+      {(data.bedrijfstype === "dienstverlener" || data.diensten.length > 0) && (
+        sectie("Diensten en behandelingen", <>
           {data.diensten.map((d, i) => (
-            <div className="org-row org-row-2" key={i}>
-              <input placeholder="Dienst (bijv. zwemvijver aanleggen)" value={d.naam} disabled={disabled} onChange={(e) => set({ diensten: data.diensten.map((x, j) => j === i ? { ...x, naam: e.target.value } : x) })} />
-              <input placeholder="Korte omschrijving" value={d.omschrijving} disabled={disabled} onChange={(e) => set({ diensten: data.diensten.map((x, j) => j === i ? { ...x, omschrijving: e.target.value } : x) })} />
-              {!disabled && <button type="button" className="ghost-btn small" onClick={() => set({ diensten: data.diensten.filter((_, j) => j !== i) })}>&times;</button>}
+            <div className="org-rij" key={i}>
+              <div className="org-rij-kop">
+                {rijVeld(d.naam, "Dienst of behandeling", `dienst.${i}.naam`, (v) => set({ diensten: data.diensten.map((x, j) => j === i ? { ...x, naam: v } : x) }))}
+                {!disabled && <button type="button" className="ghost-btn small" title="Deze dienst verwijderen" onClick={() => set({ diensten: data.diensten.filter((_, j) => j !== i) })}>&times;</button>}
+              </div>
+              {rijVeld(d.omschrijving, "Korte omschrijving", `dienst.${i}.omschrijving`, (v) => set({ diensten: data.diensten.map((x, j) => j === i ? { ...x, omschrijving: v } : x) }))}
             </div>
           ))}
           {!disabled && <button type="button" className="ghost-btn small" onClick={() => set({ diensten: [...data.diensten, { naam: "", omschrijving: "" }] })}>+ Dienst toevoegen</button>}
-        </div>
+        </>, { aantal: data.diensten.length, hint: <HelpHint wide text="De hoofddiensten of behandelingen van het bedrijf. Elke dienst wordt in de structured data een eigen vermelding die aan het bedrijf en het werkgebied gekoppeld is." /> })
       )}
-      <label className="org-field">
-        <span className="org-label">Opmerkingen / nog uit te zoeken</span>
-        <textarea rows={2} value={data.notitie} disabled={disabled} onChange={(e) => set({ notitie: e.target.value })} />
-      </label>
+      {sectie("Opmerkingen", (
+        <label className="org-field">
+          <span className="org-label">Wat er nog uitgezocht moet worden</span>
+          <textarea rows={2} value={data.notitie} disabled={disabled} onChange={(e) => set({ notitie: e.target.value })} />
+        </label>
+      ))}
     </div>
   );
 }
@@ -134,33 +214,65 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
   const [msg, setMsg] = useState("");
   const [open, setOpen] = useState(false);
 
-  useEffect(() => {
-    let off = false;
-    fetch(`/api/admin/org-data?slug=${encodeURIComponent(slug)}`)
-      .then((r) => r.json())
-      .then((d) => { if (!off && d.ok) { setData(d.data); setLocked(!!d.locked); setShareToken(d.shareToken || ""); } })
-      .catch(() => {});
-    return () => { off = true; };
-  }, [slug]);
+  // Wat er in het formulier staat en wat er als laatste bewaard is. Zolang die
+  // twee gelijk zijn valt er niets op te slaan; wijkt het af, dan slaan we het
+  // vanzelf op. Zo kan een keuze (zoals het bedrijfstype) niet meer verdwijnen
+  // doordat het formulier tussendoor opnieuw geladen wordt.
+  const bewaard = useRef<string>("");
+  const [bewaarStand, setBewaarStand] = useState<"" | "bezig" | "klaar" | "fout">("");
+
+  async function laadOrg() {
+    const d = await fetch(`/api/admin/org-data?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).catch(() => null);
+    if (d?.ok) { bewaard.current = JSON.stringify(d.data); setData(d.data); setLocked(!!d.locked); setShareToken(d.shareToken || ""); }
+  }
+  useEffect(() => { void laadOrg(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [slug]);
 
   const shareUrl = shareToken && typeof window !== "undefined" ? `${window.location.origin}/share/org/${shareToken}` : "";
 
-  async function save() {
-    if (!data || busy) return;
-    setBusy("save"); setMsg("");
+  async function save(stil = false) {
+    if (!data) return true;
+    const nu = JSON.stringify(data);
+    if (nu === bewaard.current) return true; // niets veranderd
+    if (!stil) { setBusy("save"); setMsg(""); }
+    setBewaarStand("bezig");
     try {
       const d = await fetch("/api/admin/org-data", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, action: "save", data }) }).then((r) => r.json());
-      setMsg(d.ok ? "Opgeslagen." : d.error || "Opslaan mislukt.");
-    } catch { setMsg("Opslaan mislukt."); } finally { setBusy(""); }
+      if (d.ok) { bewaard.current = nu; setBewaarStand("klaar"); if (!stil) setMsg("Opgeslagen."); return true; }
+      setBewaarStand("fout"); setMsg(d.error || "Opslaan mislukt."); return false;
+    } catch { setBewaarStand("fout"); setMsg("Opslaan mislukt."); return false; }
+    finally { if (!stil) setBusy(""); }
   }
+
+  // Automatisch opslaan, kort nadat je stopt met typen of kiezen. Niet tijdens
+  // het automatisch vullen of als de gegevens vergrendeld zijn.
+  useEffect(() => {
+    if (!data || locked || busy === "autofill") return;
+    if (JSON.stringify(data) === bewaard.current) return;
+    const t = setTimeout(() => { void save(true); }, 1200);
+    return () => clearTimeout(t);
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [data, locked, busy]);
   async function autofill() {
     if (busy) return;
+    // Eerst bewaren wat openstaat: anders zou de server met verouderde gegevens
+    // samenvoegen en lijkt een net ingevuld veld alsnog leeg.
+    await save(true);
     setBusy("autofill"); setMsg("");
     try {
       const d = await fetch("/api/admin/org-data", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, action: "autofill" }) }).then((r) => r.json());
-      if (d.ok) { setData(d.data); setMsg("Automatisch gevuld vanaf de website; loop de velden na en vul aan waar nodig."); }
-      else setMsg(d.error || "Automatisch vullen mislukt.");
-    } catch { setMsg("Automatisch vullen mislukt."); } finally { setBusy(""); }
+      if (d.ok) {
+        bewaard.current = JSON.stringify(d.data); setData(d.data);
+        const erbij = [
+          d.nieuweVestigingen ? `${d.nieuweVestigingen} vestiging${d.nieuweVestigingen === 1 ? "" : "en"}` : "",
+          d.nieuweArtsen ? `${d.nieuweArtsen} arts${d.nieuweArtsen === 1 ? "" : "en"}` : "",
+          d.nieuweDiensten ? `${d.nieuweDiensten} dienst${d.nieuweDiensten === 1 ? "" : "en"}` : "",
+        ].filter(Boolean).join(", ");
+        setMsg(d.gevuld
+          ? `${d.gevuld} lege ${d.gevuld === 1 ? "veld" : "velden"} aangevuld${erbij ? `, en erbij gekomen: ${erbij}` : ""}. Bestaande gegevens zijn niet gewijzigd; loop het even na.`
+          : "Niets nieuws gevonden op de website of het web. Bestaande gegevens zijn niet gewijzigd.");
+      }
+      else setMsg(d.error || "Ophalen mislukt.");
+    } catch { setMsg("Ophalen mislukt."); } finally { setBusy(""); }
   }
   async function toggleLock() {
     if (busy) return;
@@ -219,11 +331,26 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
       {open && (
         <div className="strategy-body">
           <div className="org-actions">
-            <button type="button" className="primary-btn small" onClick={autofill} disabled={!!busy}>{busy === "autofill" ? "Website + web doorzoeken… (kan een minuut duren)" : "Automatisch vullen (website + web)"}</button>
-            <button type="button" className="ghost-btn small" onClick={save} disabled={!!busy || !data}>{busy === "save" ? "Opslaan…" : "Opslaan"}</button>
+            {/* Alleen actief zolang er iets te halen valt: zonder gaten hoeft er
+                niets opgehaald te worden, en vergrendeld is de klant akkoord. */}
+            <button type="button" className="primary-btn small" onClick={autofill}
+              disabled={!!busy || locked || !data || ontbrekendeVelden({ ...data, vestigingen: data.vestigingen || [] }).length === 0}
+              title={locked ? "De gegevens zijn vergrendeld; er wordt niets meer aangevuld."
+                : !data || ontbrekendeVelden({ ...data, vestigingen: data.vestigingen || [] }).length === 0
+                ? "Alles wat we nodig hebben staat er al; er valt niets meer op te halen."
+                : "Zoekt de website en het web af naar wat hier nog ontbreekt. Vult alleen lege velden; bestaande gegevens blijven staan."}>
+              {busy === "autofill" ? "Website + web doorzoeken… (kan een minuut duren)" : "Ontbrekende gegevens ophalen"}
+            </button>
+            <button type="button" className="ghost-btn small" onClick={() => void save()} disabled={!!busy || !data}>{busy === "save" ? "Opslaan…" : "Opslaan"}</button>
             <button type="button" className="ghost-btn small" onClick={toggleLock} disabled={!!busy}>{locked ? "Ontgrendelen" : "Vergrendelen"}</button>
             {shareUrl && <button type="button" className="ghost-btn small" onClick={copyLink} title={shareUrl}>Deel-link kopiëren</button>}
             {shareUrl && <button type="button" className="ghost-btn small" onClick={mailLink}>Mail naar klant</button>}
+            {/* Wat er met je wijziging gebeurt, zonder dat je op Opslaan hoeft te letten. */}
+            {bewaarStand && (
+              <span className={"org-bewaar" + (bewaarStand === "fout" ? " org-bewaar-fout" : "")}>
+                {bewaarStand === "bezig" ? "opslaan…" : bewaarStand === "klaar" ? "✓ opgeslagen" : "opslaan mislukt"}
+              </span>
+            )}
           </div>
           {msg && <div className="saved-msg" style={{ margin: "8px 0" }}>{msg}</div>}
           {data ? <OrgDataForm data={data} onChange={setData} disabled={busy === "autofill"} /> : <div className="muted">Laden…</div>}
@@ -238,7 +365,7 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
             {swMsg && <div className="saved-msg" style={{ marginTop: 6 }}>{swMsg}</div>}
             {swJson && <pre className="sch-json-pre" style={{ marginTop: 8 }}>{swJson}</pre>}
           </div>
-          <Kennisbank slug={slug} />
+          <Kennisbank slug={slug} voorActie={() => save(true)} onVerwerkt={() => { void laadOrg(); }} />
         </div>
       )}
     </div>

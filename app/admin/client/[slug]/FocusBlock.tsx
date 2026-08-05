@@ -3,7 +3,21 @@
 import React, { useEffect, useRef, useState } from "react";
 import { cleanPastedHtml, linkifyPlainText } from "../../../../lib/rich-paste";
 
-export default function FocusBlock({ slug, standalone }: { slug: string; standalone?: boolean }) {
+/**
+ * Eén vrij opmaakbaar tekstveld per klant, met knoppenbalk en automatisch opslaan.
+ *
+ * Twee soorten, allebei van dezelfde makelij: "focus" is het blok Zoekwoorden &
+ * links, "prio" is Top Prio's. Bewust hetzelfde component, zodat er geen tweede
+ * half-werkende editor naast komt te staan met een eigen plakgedrag en een eigen
+ * opmaak. Ze delen één rij in de database, elk met een eigen sleutel.
+ */
+export default function FocusBlock({ slug, standalone, soort = "focus", titel }: {
+  slug: string;
+  standalone?: boolean;
+  soort?: "focus" | "prio";
+  titel?: string;
+}) {
+  const veld = soort === "prio" ? "prioHtml" : "html";
   const [initialHtml, setInitialHtml] = useState<string | null>(null);
   const [saving, setSaving] = useState<"idle" | "saving" | "saved">("idle");
   // Standaard dicht; openklappen via de kop.
@@ -17,10 +31,10 @@ export default function FocusBlock({ slug, standalone }: { slug: string; standal
     let off = false;
     fetch(`/api/admin/focus?slug=${encodeURIComponent(slug)}`)
       .then((r) => r.json())
-      .then((d) => { if (!off) setInitialHtml(d.ok ? (d.focus.html || "") : ""); })
+      .then((d) => { if (!off) setInitialHtml(d.ok ? (d.focus?.[veld] || "") : ""); })
       .catch(() => { if (!off) setInitialHtml(""); });
     return () => { off = true; };
-  }, [slug]);
+  }, [slug, veld]);
 
   // Zet de inhoud eenmalig in de editor zodra die gerenderd is. De editor
   // bestaat pas na het openklappen, dus 'open' zit bewust in de dependencies.
@@ -48,7 +62,7 @@ export default function FocusBlock({ slug, standalone }: { slug: string; standal
         const res = await fetch("/api/admin/focus", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ slug, html: content }),
+          body: JSON.stringify({ slug, [veld]: content }),
         });
         const d = await res.json();
         if (d.ok) { setSaving("saved"); setTimeout(() => setSaving("idle"), 2500); }
@@ -160,7 +174,7 @@ export default function FocusBlock({ slug, standalone }: { slug: string; standal
       <>
         <button type="button" className="strategy-head" onClick={() => setOpen((v) => !v)}>
           <span className="strategy-caret">{open ? "▾" : "▸"}</span>
-          <span className="strategy-title">Zoekwoorden &amp; links</span>
+          <span className="strategy-title">{titel || "Zoekwoorden & links"}</span>
         </button>
         {open && (
           <div className="strategy-body">
@@ -177,8 +191,8 @@ export default function FocusBlock({ slug, standalone }: { slug: string; standal
   return (
     <div className="sov-tasks">
       <div className="sov-tasks-head focus-head">
-        <span>Zoekwoorden &amp; links</span>
-        <a className="focus-nav-link" href={`/admin/client/${slug}/navigatie`} target="_blank" rel="noreferrer" title="De hele sitestructuur (huidig én beoogd) met voortgang per pagina">Navigatie-roadmap &rarr;</a>
+        <span>{titel || "Zoekwoorden & links"}</span>
+        {soort === "focus" && <a className="focus-nav-link" href={`/admin/client/${slug}/navigatie`} target="_blank" rel="noreferrer" title="De hele sitestructuur (huidig én beoogd) met voortgang per pagina">Navigatie-roadmap &rarr;</a>}
       </div>
       {toolbar}
       {editor}

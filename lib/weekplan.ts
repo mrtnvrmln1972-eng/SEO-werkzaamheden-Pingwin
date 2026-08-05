@@ -9,7 +9,7 @@
 import { sql, ensureSchema } from "./db";
 
 export type WeekplanTask = {
-  id: number; thread: string; taak: string; toelichting: string; wie: string; url: string;
+  id: number; thread: string; taak: string; toelichting: string; wie: string; url: string; naarDev?: boolean;
   taaktype: string; copyUrl: string; bronMail: string;
   weekYear: number; weekNo: number; status: string; sortOrder: number;
 };
@@ -30,12 +30,13 @@ export function isoWeek(d: Date): { year: number; week: number } {
 export async function getWeekplan(slug: string): Promise<WeekplanTask[]> {
   await ensureSchema();
   const { rows } = await sql`
-    SELECT id, thread, taak, toelichting, wie, url, taaktype, copy_url, bron_mail, week_year, week_no, status, sort_order
+    SELECT id, thread, taak, toelichting, wie, url, taaktype, copy_url, bron_mail, week_year, week_no, status, sort_order, naar_dev
     FROM client_weekplan WHERE client_slug = ${slug}
     ORDER BY week_year, week_no, sort_order, id`;
   return rows.map((r) => ({
     id: r.id as number, thread: (r.thread as string) || "", taak: (r.taak as string) || "",
     toelichting: (r.toelichting as string) || "",
+    naarDev: r.naar_dev === true,
     wie: (r.wie as string) || "SEO", url: (r.url as string) || "",
     taaktype: (r.taaktype as string) || "", copyUrl: (r.copy_url as string) || "", bronMail: (r.bron_mail as string) || "",
     weekYear: r.week_year as number, weekNo: r.week_no as number,
@@ -52,7 +53,7 @@ function lineKey(s: string): string {
 // kaart voor dezelfde pagina (ongeacht week), dan wordt de nieuwe taak daarin
 // gemerged (titel + toelichting als bullets, met regel-dedup) in plaats van een
 // tweede kaart te maken. De kaart houdt zijn week (waar Maarten hem sleepte).
-export async function addWeekplanTasks(slug: string, thread: string, tasks: { taak: string; toelichting?: string; wie?: string; url?: string; taaktype?: string; copyUrl?: string; bronMail?: string; week: { year: number; week: number } }[]): Promise<{ added: number; merged: number }> {
+export async function addWeekplanTasks(slug: string, thread: string, tasks: { taak: string; toelichting?: string; wie?: string; url?: string; taaktype?: string; copyUrl?: string; bronMail?: string; week: { year: number; week: number } }[]): Promise<{ added: number; merged: number; mergedIds: number[] }> {
   await ensureSchema();
   const { urlKey } = await import("./url-key");
   // Bestaande niet-klare pagina-kaarten, op urlKey (JS-matching, niet in SQL te doen).
@@ -67,6 +68,10 @@ export async function addWeekplanTasks(slug: string, thread: string, tasks: { ta
     });
   }
   let added = 0, merged = 0;
+  // Welke bestaande kaarten iets kregen aangeplakt. De aanroeper laat die daarna
+  // opruimen (lib/weekplan-tidy.ts): samenvoegen hoort een denkstap te zijn, niet
+  // een plakstap, anders groeit dezelfde constatering in tien formuleringen aan.
+  const mergedIds = new Set<number>();
   for (const t of tasks) {
     const taak = (t.taak || "").trim();
     if (!taak) continue;
@@ -104,6 +109,7 @@ export async function addWeekplanTasks(slug: string, thread: string, tasks: { ta
             updated_at = now()
           WHERE client_slug = ${slug} AND id = ${bestaand.id}`;
         bestaand.toelichting = toelNieuw;
+        mergedIds.add(bestaand.id);
         merged++;
       }
       continue;
@@ -125,7 +131,7 @@ export async function addWeekplanTasks(slug: string, thread: string, tasks: { ta
     }
     added++;
   }
-  return { added, merged };
+  return { added, merged, mergedIds: [...mergedIds] };
 }
 
 export async function updateWeekplanTask(slug: string, id: number, patch: { weekYear?: number; weekNo?: number; status?: string; sortOrder?: number }): Promise<void> {
@@ -145,9 +151,68 @@ export async function updateWeekplanTask(slug: string, id: number, patch: { week
 }
 
 // Herschreven kaarttekst opslaan (de "Ruim op"-knop; altijd door Maarten getriggerd).
+/**
+ * Zet een kaart op de developerpagina, of haalt hem er weer af.
+ *
+ * Die pagina werd alleen gevoed door de OUDE takentabel (client_tasks met status
+ * "naar dev"). De weekplanning schreef daar niets in, ook niet als een kaart op Dev
+ * stond, dus na de overstap was mailen het enige wat er nog over was. Dit hangt de
+ * draad terug.
+ */
+export async function setWeekplanNaarDev(
+  slug: string,
+  id: number,
+  naarDev: boolean,
+  dev?: { taak?: string; toelichting?: string; docs?: { label: string; url: string }[] },
+): Promise<void> {
+  await ensureSchema();
+  await sql`UPDATE client_weekplan SET naar_dev = ${naarDev}, naar_dev_at = ${naarDev ? new Date().toISOString() : null}, updated_at = now()
+            WHERE client_slug = ${slug} AND id = ${id}`;
+  if (!dev) return;
+  // De doorgeefversie: alleen zetten wat is meegegeven, zodat je later één veld
+  // kunt bijstellen zonder de rest kwijt te raken.
+  const taak = dev.taak === undefined ? null : dev.taak.trim().slice(0, 300);
+  const toel = dev.toelichting === undefined ? null : dev.toelichting.trim().slice(0, 4000);
+  const docs = dev.docs === undefined ? null : JSON.stringify(dev.docs.slice(0, 8));
+  await sql`
+    UPDATE client_weekplan SET
+      dev_taak        = COALESCE(${taak}, dev_taak),
+      dev_toelichting = COALESCE(${toel}, dev_toelichting),
+      dev_docs        = COALESCE(${docs}::jsonb, dev_docs),
+      updated_at = now()
+    WHERE client_slug = ${slug} AND id = ${id}`;
+}
+
+/** Wat er op dit moment naar de developer zou gaan (voor het doorzet-venster). */
+export async function getWeekplanDev(slug: string, id: number): Promise<{ taak: string; toelichting: string; docs: { label: string; url: string }[] } | null> {
+  await ensureSchema();
+  const { rows } = await sql`
+    SELECT taak, toelichting, dev_taak, dev_toelichting, dev_docs
+    FROM client_weekplan WHERE client_slug = ${slug} AND id = ${id} LIMIT 1`;
+  const r = rows[0];
+  if (!r) return null;
+  return {
+    taak: String(r.dev_taak || r.taak || ""),
+    toelichting: String(r.dev_toelichting || ""),
+    docs: Array.isArray(r.dev_docs) ? (r.dev_docs as { label: string; url: string }[]) : [],
+  };
+}
+
 export async function updateWeekplanToelichting(slug: string, id: number, toelichting: string): Promise<void> {
   await ensureSchema();
   await sql`UPDATE client_weekplan SET toelichting = ${toelichting.trim().slice(0, 4000)}, updated_at = now() WHERE client_slug = ${slug} AND id = ${id}`;
+}
+
+// De titel (en de pagina) van een bestaande kaart bijstellen. Gebruikt door de
+// terugwerkende splitsing: een kaart die over twee pagina's ging wordt de kaart
+// van één pagina, met de opdracht ongewijzigd.
+export async function setWeekplanKaart(slug: string, id: number, kaart: { taak: string; url?: string }): Promise<void> {
+  await ensureSchema();
+  const url = (kaart.url || "").trim().slice(0, 400) || null;
+  await sql`
+    UPDATE client_weekplan
+    SET taak = ${kaart.taak.trim().slice(0, 300)}, url = COALESCE(${url}, url), updated_at = now()
+    WHERE client_slug = ${slug} AND id = ${id}`;
 }
 
 export async function deleteWeekplanTask(slug: string, id: number): Promise<void> {

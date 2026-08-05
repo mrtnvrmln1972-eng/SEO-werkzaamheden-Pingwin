@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
 import { sql, ensureSchema } from "../../../../lib/db";
+import { getClientBySlug } from "../../../../lib/clients";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -44,8 +45,12 @@ export async function GET(req: NextRequest) {
     SELECT id, persoon, tekst, status, gedeeld_at, created_at FROM client_discuss_items
     WHERE client_slug = ${slug} AND status <> 'weg'
     ORDER BY (status = 'klaar'), id`;
+  // De naam van de developer van DEZE klant reist mee, zodat de schermen die niet
+  // meer hoeven te raden. Leeg = ze tonen gewoon "Dev".
+  const klant = await getClientBySlug(slug).catch(() => null);
   return NextResponse.json({
     ok: true,
+    devName: klant?.cockpit.devName || null,
     items: rows.map((r) => ({
       id: r.id as number, persoon: (r.persoon as string) || "", tekst: (r.tekst as string) || "",
       klaar: r.status === "klaar",

@@ -1,6 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { urlKey } from "../../../../lib/url-key";
+import { splitCardInfo, cardInfoHtml } from "../../../../lib/card-info";
+import PaginaDossier from "./PaginaDossier";
 
 export type Action = {
   id: string; type: string; reason?: string;
@@ -42,6 +45,67 @@ export default function ActionCard({ action, slug, thread, onExecuted, onGoToPag
   const [addErr, setAddErr] = useState<number | null>(null); // welke taak faalde bij toevoegen
   const editRef = useRef<HTMLDivElement>(null);
   const isWeekplan = action.type === "weekplan_taken";
+
+  // Wat staat er AL in de weekplanning? Bewust afgeleid uit het bord zelf en niet
+  // uit een vinkje in dit scherm: dat vinkje leefde alleen in deze sessie, dus na
+  // een herlaadbeurt zag alles er weer onaangeraakt uit en zette je dingen dubbel
+  // door. Bij Paul Hoevenaars bleven de twee belangrijkste week 1-kaarten zo
+  // ongemerkt liggen terwijl week 3 en 4 er wel in stonden.
+  const [inBord, setInBord] = useState<{ urls: Set<string>; titels: Set<string> } | null>(null);
+
+  // Datum → mail-link, zodat "mail van 22 juli" in de achtergrond een echte link
+  // wordt. Zelfde bron en zelfde sleutels als het weekplan-bord.
+  const [mailLinks, setMailLinks] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!isWeekplan) return;
+    let leeft = true;
+    fetch(`/api/admin/mail?slug=${encodeURIComponent(slug)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (!leeft || !d?.ok) return;
+        const map: Record<string, string> = {};
+        for (const e of (d.emails || []) as { receivedAt?: string; webLink?: string; superhumanLink?: string }[]) {
+          const link = e.superhumanLink || e.webLink || "";
+          if (!link || !e.receivedAt) continue;
+          const dt = new Date(e.receivedAt);
+          if (Number.isNaN(dt.getTime())) continue;
+          const dm = `${dt.getDate()}-${dt.getMonth() + 1}`;
+          if (!map[dm]) map[dm] = link;
+          const dmj = `${dm}-${dt.getFullYear()}`;
+          if (!map[dmj]) map[dmj] = link;
+        }
+        setMailLinks(map);
+      })
+      .catch(() => { /* dan blijft een maildatum gewone tekst, geen dode link */ });
+    return () => { leeft = false; };
+  }, [slug, isWeekplan]);
+
+  useEffect(() => {
+    if (!isWeekplan) return;
+    let leeft = true;
+    fetch(`/api/admin/weekplan?slug=${encodeURIComponent(slug)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (!leeft || !d?.ok) return;
+        const urls = new Set<string>(), titels = new Set<string>();
+        for (const t of (d.tasks || []) as { url?: string; taak?: string }[]) {
+          if (t.url) urls.add(urlKey(t.url));
+          if (t.taak) titels.add(t.taak.trim().toLowerCase());
+        }
+        setInBord({ urls, titels });
+      })
+      .catch(() => {});
+    return () => { leeft = false; };
+  }, [slug, isWeekplan]);
+
+  // Een voorgestelde taak staat er al als er een kaart voor dezelfde pagina is
+  // (kaarten zijn per pagina) of, zonder pagina, met dezelfde titel.
+  function staatErAl(t: NonNullable<Action["taken"]>[number], i: number): boolean {
+    if (addedSet.has(i)) return true;
+    if (!inBord) return false;
+    if (t.url && inBord.urls.has(urlKey(t.url))) return true;
+    return !t.url && !!t.taak && inBord.titels.has(t.taak.trim().toLowerCase());
+  }
 
   // Voeg één voorgestelde taak toe aan de weekplanning (per taak, niet in bulk).
   async function addOne(i: number, t: NonNullable<Action["taken"]>[number]) {
@@ -104,29 +168,78 @@ export default function ActionCard({ action, slug, thread, onExecuted, onGoToPag
           groups.get(w)!.push(i);
         });
         const weeks = Array.from(groups.keys()).sort((a, b) => a - b);
+        const open = action.taken!.map((t, i) => ({ t, i })).filter(({ t, i }) => !staatErAl(t, i));
         return (
           <div className="tvk-weeks">
+            {/* Zonder deze regel is niet te zien dat er nog kaarten klaarstaan: bij
+                Paul Hoevenaars bleven de twee belangrijkste week 1-taken liggen
+                terwijl week 3 en 4 er wel in stonden, en dat zag er hetzelfde uit. */}
+            {inBord && (
+              <div className="tvk-stand">
+                {open.length === 0
+                  ? <span className="tvk-stand-klaar">Alle {action.taken!.length} taken staan in de weekplanning.</span>
+                  : <>
+                      <span>{open.length} van de {action.taken!.length} {open.length === 1 ? "taak staat" : "taken staan"} nog niet in de weekplanning.</span>
+                      <button type="button" className="tvk-pill" disabled={addBusy !== null}
+                        title="Zet in één keer alle taken door die er nog niet in staan"
+                        onClick={async () => { for (const { t, i } of open) await addOne(i, t); }}>
+                        Zet de rest erin
+                      </button>
+                    </>}
+              </div>
+            )}
             {weeks.map((w) => (
               <div key={w} className="tvk-week-group">
                 <div className="tvk-week-head">Week {w}</div>
                 {groups.get(w)!.map((i) => {
                   const t = action.taken![i];
-                  const added = addedSet.has(i);
+                  const added = staatErAl(t, i);
                   const b = addBusy === i;
+
+                  // Staat de taak in de weekplanning, dan hoort hij daar thuis en
+                  // niet nog een keer hier. Eén grijs regeltje met een link is
+                  // genoeg: je ziet dat het besproken is, maar het werk staat maar
+                  // op één plek. Eerder bleef de volledige kaart met dossierblok
+                  // staan, dus alles stond dubbel in beeld.
+                  if (added) {
+                    return (
+                      <div key={i} className="tvk-card tvk-added tvk-ingeklapt">
+                        <span className="st-dot st-ok" />
+                        <span className="tvk-ingeklapt-tekst">{t.taak}</span>
+                        <button type="button" className="tvk-naar-bord"
+                          title="Open deze kaart in de weekplanning"
+                          onClick={() => window.open(`/admin/client/${slug}?tab=werkzaamheden${t.url ? `&page=${encodeURIComponent(t.url)}` : ""}`, "_blank")}>
+                          staat in de weekplanning
+                        </button>
+                      </div>
+                    );
+                  }
+
                   return (
-                    <div key={i} className={"tvk-card" + (added ? " tvk-added" : "")}>
+                    <div key={i} className="tvk-card">
                       <div className="tvk-top">
                         <span className={"tvk-wie " + (t.wie === "Dev" ? "wie-dev" : "wie-seo")}>{t.wie || "SEO"}</span>
                         <span className="tvk-taak">{t.taak}</span>
-                        <button type="button" className={"tvk-pill" + (added ? " tvk-pill-done" : "") + (b ? " busy" : "") + (addErr === i ? " tvk-pill-err" : "")} disabled={b || added} onClick={() => addOne(i, t)} title={addErr === i ? "Toevoegen mislukt, klik om opnieuw te proberen" : "Kopieer deze taak naar de weekplanning"}>
-                          {added ? "✓ Toegevoegd" : b ? "…" : addErr === i ? "Mislukt, opnieuw" : "→ Weekplanning"}
+                        <button type="button" className={"tvk-pill" + (added ? " tvk-pill-done" : "") + (b ? " busy" : "") + (addErr === i ? " tvk-pill-err" : "")} disabled={b || added} onClick={() => addOne(i, t)} title={added ? "Er staat al een kaart voor deze pagina in het bord" : addErr === i ? "Toevoegen mislukt, klik om opnieuw te proberen" : "Kopieer deze taak naar de weekplanning"}>
+                          {added ? "✓ Staat in de weekplanning" : b ? "…" : addErr === i ? "Mislukt, opnieuw" : "→ Weekplanning"}
                         </button>
                       </div>
                       <div className="tvk-links">
                         {t.url && <a className="tvk-url" href={t.url} target="_blank" rel="noreferrer">{shortUrl(t.url)}</a>}
                         {t.bronMail && <a className="tvk-url" href={t.bronMail} target="_blank" rel="noreferrer">✉ bronmail</a>}
                       </div>
-                      {t.toelichting && <div className="tvk-why">{t.toelichting}</div>}
+                      {/* De toelichting werd hier als ruwe tekst in een div gezet.
+                          De regeleindes vallen dan weg in HTML, dus alles plakte aan
+                          elkaar tot één onleesbare regel met puntjes ertussen, terwijl
+                          de assistent hem juist netjes in secties had geschreven.
+                          Nu door dezelfde parser als de kaart zelf: Doel, Afspraken en
+                          per fase. Standaard ingeklapt, want in een voorstel wil je
+                          eerst zien wát er wordt voorgesteld, niet alle achtergrond. */}
+                      {t.toelichting && <VoorstelToelichting tekst={t.toelichting} pageUrl={t.url} taak={t.taak} mailLinks={mailLinks} /> }
+                      {/* Hetzelfde dossierblok als op de kaart in de weekplanning:
+                          de mails, documenten en stand van deze pagina. Zo weet je
+                          al vóór het doorzetten wat er speelt. */}
+                      {t.url && <PaginaDossier slug={slug} url={t.url} compact />}
                     </div>
                   );
                 })}
@@ -174,6 +287,32 @@ export default function ActionCard({ action, slug, thread, onExecuted, onGoToPag
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// De achtergrond bij een voorgestelde taak, in dezelfde opmaak als de kaart waar
+// hij straks terechtkomt. Ingeklapt tot één samenvattende regel: bij een voorstel
+// wil je eerst zien wát er wordt voorgesteld. Eén klik toont het hele verhaal, dus
+// er gaat niets verloren dat je voor een blauwdruk nodig hebt.
+function VoorstelToelichting({ tekst, pageUrl, taak, mailLinks }: { tekst: string; pageUrl?: string; taak?: string; mailLinks?: Record<string, string> }) {
+  const [open, setOpen] = useState(false);
+  const info = splitCardInfo(tekst, taak);
+  const fases = Object.keys(info.perFase).length;
+  const punten = info.achtergrond.length + info.overig.length + info.afspraken.length;
+  const delen: string[] = [];
+  if (punten) delen.push(`${punten} ${punten === 1 ? "punt" : "punten"} achtergrond`);
+  if (fases) delen.push(`${fases} ${fases === 1 ? "fase" : "fases"}`);
+
+  return (
+    <div className="tvk-why">
+      <button type="button" className="tvk-why-toggle" onClick={() => setOpen((o) => !o)}>
+        {open ? "Verberg achtergrond ▴" : `Toon achtergrond ▾${delen.length ? ` (${delen.join(", ")})` : ""}`}
+      </button>
+      {/* De maildatums werden hier NIET klikbaar gemaakt: de kaart in de
+          weekplanning gaf de mail-map wel mee, dit voorstel niet. Daardoor liep
+          "mail van 22 juli" hier altijd dood. Nu gelijkgetrokken. */}
+      {open && <div className="tvk-why-inhoud" dangerouslySetInnerHTML={{ __html: cardInfoHtml(tekst, pageUrl, taak, undefined, mailLinks) }} />}
     </div>
   );
 }

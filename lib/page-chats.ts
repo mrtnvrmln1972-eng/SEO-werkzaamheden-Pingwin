@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { urlKey } from "./url-key";
 
 // Bewaart chats per pagina (of ze nu wel of niet zijn overgenomen), zodat je ze
 // terug kunt lezen en met een kruisje kunt verwijderen.
@@ -38,6 +39,25 @@ export async function listChats(slug: string, url: string): Promise<ChatSummary[
     const derived = firstUser.replace(/\s+/g, " ").trim().slice(0, 400);
     return { id: Number(r.id), title: derived || (r.title as string) || "(chat)", updatedAt: new Date(r.updated_at as string).toISOString(), count: Number(r.n || 0) };
   });
+}
+
+// Zelfde lijst, vergelijkend op de genormaliseerde sleutel (www/trailing slash
+// doen er niet toe). De tabel bewaart de rauwe URL, dus zonder dit mist het
+// paginadossier chats die onder een net andere schrijfwijze zijn opgeslagen.
+export async function listChatsForKey(slug: string, url: string): Promise<ChatSummary[]> {
+  await ensureSchema(); await ensureTable();
+  const k = urlKey(url);
+  const { rows } = await sql`
+    SELECT id, url, title, messages, updated_at, jsonb_array_length(messages) AS n
+    FROM page_chats WHERE client_slug = ${slug} ORDER BY updated_at DESC LIMIT 200`;
+  return rows
+    .filter((r) => urlKey(String(r.url || "")) === k)
+    .map((r) => {
+      const msgs = (r.messages as ChatMsg[]) || [];
+      const firstUser = msgs.find((m) => m.role === "user")?.content || "";
+      const derived = firstUser.replace(/\s+/g, " ").trim().slice(0, 400);
+      return { id: Number(r.id), title: derived || (r.title as string) || "(chat)", updatedAt: new Date(r.updated_at as string).toISOString(), count: Number(r.n || 0) };
+    });
 }
 
 export async function getChat(id: number): Promise<{ id: number; messages: ChatMsg[] } | null> {

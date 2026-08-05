@@ -1,17 +1,27 @@
 "use client";
 
 // Gedeelde weergave van een assistent-antwoord als sectie-kaartjes (per "## "-kop).
-// De Bird's eye is de BRIEVENBUS: elk herkenbaar punt is een taakrijtje met vier
-// knopjes (+ = kaart in de weekplanning, » = bespreeklijst, × = negeren,
+// De Bird's eye is de BRIEVENBUS, maar NIET elk punt is een taak: lib/punt-soort.ts
+// bepaalt per regel of het werk, een constatering of een vraag aan iemand is, en
+// alleen de knopjes die daarbij horen blijven staan. Eerder kreeg elke <li> alle
+// vier de knopjes, waardoor een statusregel ("wat er live is en hoe het presteert")
+// een plusje kreeg; dat maakte de lijst onbruikbaar. De soort wordt in de
+// weergave-laag bepaald, dus het geldt ook voor alle antwoorden die er al staan.
+// Vier knopjes (+ = kaart in de weekplanning, » = bespreeklijst, × = negeren,
 // ✓ = gedaan). Doorzetten is verplaatsen: zodra een punt een bestemming heeft,
 // klapt het in; onderaan de sectie blijft één samenvattingsregeltje ("N
 // afgehandeld: ...") dat je kunt openklappen om keuzes terug te draaien.
 // De keuzes staan centraal in de database (zelfde stand op elk apparaat; een
 // herhaald punt in een later antwoord staat automatisch al ingeklapt).
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { puntSoort, knopjesVoor, isGroepskop, stripMarker, type PuntSoort } from "../../../../lib/punt-soort";
+import { devLabel } from "../../../../lib/personen";
+import { heeftInhoud } from "../../../../lib/vulzinnen";
+import { splitsAntwoord, type Sectie } from "../../../../lib/antwoord-secties";
+import { analyseNaarMailHtml } from "../../../../lib/mail-opmaak";
+import PaginaDossier from "./PaginaDossier";
 
-type Sectie = { kop: string; md: string };
 type Feedback = { key: string; msg: string; ok: boolean };
 type PuntStaat = "taak" | "weg" | "klaar" | "lijst";
 type Teller = { taak: number; lijst: number; weg: number; klaar: number };
@@ -32,11 +42,14 @@ function vervangEmoji(html: string): string {
     .replace(/⚠️|⚠/g, '<span class="st-dot st-warn" title="Let op"></span>');
 }
 
-export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekplanChanged }: {
+export default function AntwoordBlokken({ slug, thread, content, toHtml, siteUrl, onWeekplanChanged }: {
   slug: string;
   thread: string;
   content: string;
   toHtml: (md: string) => string;
+  /** Host van de klantsite, zodat een slug als /prijs-en-kosten/ ook in de mail
+      naar de echte pagina linkt (harde huisregel: nooit een dode slug tonen). */
+  siteUrl?: string;
   onWeekplanChanged?: () => void;
 }) {
   const [busyKey, setBusyKey] = useState("");
@@ -45,6 +58,66 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
   const [toon, setToon] = useState<Record<string, boolean>>({}); // afgehandelde punten tonen per sectie
   const [tellers, setTellers] = useState<Record<string, Teller>>({});
   const rootRef = useRef<HTMLDivElement>(null);
+  // Deze analyse doorsturen met behoud van opmaak.
+  const [stuurOpen, setStuurOpen] = useState(false);
+  const [stuurAan, setStuurAan] = useState("");
+  const [stuurOnderwerp, setStuurOnderwerp] = useState("");
+  const [stuurIntro, setStuurIntro] = useState("");
+  const [stuurBezig, setStuurBezig] = useState(false);
+  const [stuurMsg, setStuurMsg] = useState<{ ok: boolean; tekst: string } | null>(null);
+
+  // Het onderwerp voorinvullen met de eerste kop uit het antwoord, zodat je meestal
+  // alleen nog de ontvanger hoeft te typen.
+  useEffect(() => {
+    if (stuurOnderwerp) return;
+    const kop = /^#{1,3}\s+(.+)$/m.exec(content || "");
+    if (kop) setStuurOnderwerp(kop[1].replace(/[*_`]/g, "").trim().slice(0, 120));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [content]);
+
+  async function stuurAnalyse() {
+    if (stuurBezig || !stuurAan.trim()) return;
+    setStuurBezig(true); setStuurMsg(null);
+    try {
+      // Bewust de RUWE markdown, niet toHtml(): de mail knipt zelf per sectie, want
+      // de "## "-koppen moeten uit de tekst vóór ze een oranje titel boven een kaart
+      // kunnen worden. Gaf je de voorgerenderde HTML mee, dan bleven het grijze
+      // regeltjes en bestonden de kaarten niet.
+      const html = analyseNaarMailHtml(content || "", {
+        siteUrl,
+        titel: stuurOnderwerp.trim() || "Analyse",
+        intro: stuurIntro.trim() || undefined,
+        bron: "Opgesteld in het Pingwin SEO-dashboard.",
+      });
+      const d = await fetch("/api/admin/mail", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "compose", slug, to: stuurAan.trim(), subject: stuurOnderwerp.trim() || "Analyse", html }),
+      }).then((r) => r.json());
+      if (d?.ok) {
+        setStuurMsg({ ok: true, tekst: `Verstuurd aan ${(d.sentTo || []).join(", ") || stuurAan.trim()}.` });
+        setStuurOpen(false);
+      } else setStuurMsg({ ok: false, tekst: d?.error || "Versturen lukte niet." });
+    } catch { setStuurMsg({ ok: false, tekst: "Versturen lukte niet." }); }
+    finally { setStuurBezig(false); }
+  }
+
+  // Over welke pagina's gáát dit antwoord? Van die pagina's tonen we onderaan het
+  // dossierblok: dezelfde alinea en dezelfde linkjes als op de kaart in de
+  // weekplanning. Bewust hooguit twee en in compacte vorm, anders wordt een
+  // antwoord alsnog een muur. Bestaat een genoemd pad niet bij deze klant, dan
+  // komt er niets terug (de server controleert dat).
+  const genoemdePaden = useMemo(() => {
+    const uit: string[] = [];
+    const zien = new Set<string>();
+    for (const m of (content || "").matchAll(/(?<![\w:])\/[a-z0-9][a-z0-9-]*(?:\/[a-z0-9-]+)*\//gi)) {
+      const p = m[0].toLowerCase();
+      if (zien.has(p)) continue;
+      zien.add(p);
+      uit.push(p);
+      if (uit.length >= 2) break;
+    }
+    return uit;
+  }, [content]);
 
   // Centrale markeringen laden; oude browser-opslag eenmalig meenemen.
   useEffect(() => {
@@ -83,19 +156,10 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
     void fetch("/api/admin/answer-marks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread, bulk }) }).catch(() => {});
   };
 
-  // Splits de ruwe markdown per "## "-kop; tekst vóór de eerste kop is een intro-blok.
-  const secties: Sectie[] = [];
-  {
-    let kop = "";
-    let buf: string[] = [];
-    const triviaal = (md: string) => !md.split("\n").some((r) => r.replace(/[-*_#\s]/g, "").length > 0);
-    const push = () => { const md = buf.join("\n").trim(); if (kop || (md && !triviaal(md))) secties.push({ kop, md }); buf = []; };
-    for (const r of (content || "").split("\n")) {
-      const m = /^##\s+(.*)$/.exec(r.trim());
-      if (m) { push(); kop = m[1].replace(/[#*]/g, "").trim(); } else buf.push(r);
-    }
-    push();
-  }
+  // De knip per "## "-kop staat in lib/antwoord-secties.ts, want de mail moet exact
+  // dezelfde indeling gebruiken. Stond die logica alleen hier, dan kregen scherm en
+  // mail na de eerste wijziging een andere indeling.
+  const secties: Sectie[] = splitsAntwoord(content || "");
   const heeftKoppen = secties.some((s) => s.kop);
 
   // Punt-tekst van het element (zonder de knopjes).
@@ -104,19 +168,47 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
     kloon.querySelectorAll(".ovc-acties").forEach((b) => b.remove());
     return (kloon.textContent || "").replace(/\s+/g, " ").trim();
   }
-  const puntKey = (tekst: string) => hash(`${thread}|${norm(tekst)}`);
+  // De sleutel gaat over de KALE tekst (zonder "Doen:"-markering), zodat hij
+  // hetzelfde blijft nadat de markering uit beeld is gehaald. Oude antwoorden
+  // hebben geen markering, dus hun bestaande sleutels blijven precies gelijk.
+  const puntKey = (tekst: string) => hash(`${thread}|${norm(stripMarker(tekst))}`);
+
+  // Bepaalt de soort één keer per regel en onthoudt hem op het element, zodat de
+  // uitkomst niet verandert nadat de markering uit beeld is gehaald.
+  function soortVan(doel: Element, ruw: string): PuntSoort {
+    const bewaard = (doel as HTMLElement).dataset.soort as PuntSoort | undefined;
+    if (bewaard) return bewaard;
+    const s = puntSoort(ruw);
+    (doel as HTMLElement).dataset.soort = s;
+    return s;
+  }
+
+  // Haalt een "Doen: "-achtige markering uit het eerste tekstknooppunt weg; die is
+  // voor de indeling bedoeld en hoort nooit in beeld te komen.
+  function verbergMarkering(doel: Element): void {
+    const loop = document.createTreeWalker(doel, NodeFilter.SHOW_TEXT);
+    let n = loop.nextNode();
+    while (n && !(n.nodeValue || "").trim()) n = loop.nextNode();
+    if (!n) return;
+    const kaal = stripMarker(n.nodeValue || "");
+    if (kaal !== (n.nodeValue || "").trim()) n.nodeValue = kaal;
+  }
   // Sectie-herkenning: ook een hele sectie (bijv. een tabel-sectie) kan als
   // "verwerkt in de weekplanning" gemarkeerd worden en klapt dan in.
   const sectieSleutel = (s: Sectie) => hash(`${thread}|sectie|${norm(`${s.kop}|${s.md.slice(0, 200)}`)}`);
 
-  // Alle punt-sleutels binnen een sectie-blok (groepskopjes tellen niet mee).
+  // Alle WERK-sleutels binnen een sectie-blok. Groepskopjes en constateringen
+  // tellen niet mee: die worden geen kaart, dus ze horen ook niet als "verwerkt"
+  // gemarkeerd te worden als je de hele sectie doorzet.
   function sleutelsVan(blok: Element): string[] {
     const uit: string[] = [];
     blok.querySelectorAll(".ovc-acties").forEach((acties) => {
       const doel = acties.closest("li, p");
       if (!doel) return;
       const t = puntTekst(doel);
-      if (t && !/:\s*$/.test(t)) uit.push(puntKey(t));
+      if (!t || isGroepskop(t)) return;
+      if (soortVan(doel, t) !== "werk") return;
+      uit.push(puntKey(t));
     });
     return uit;
   }
@@ -135,7 +227,17 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
         if (!doel) return;
         const t = puntTekst(doel);
         // Groepskopjes ("Lokale hovenierspagina's ...:") zijn geen taken.
-        if (/:\s*$/.test(t)) { doel.classList.add("ovc-groepkop"); acties.remove(); return; }
+        if (isGroepskop(t)) { doel.classList.add("ovc-groepkop"); acties.remove(); return; }
+        // Alleen de knopjes die bij de soort horen; de rest verdwijnt. Een
+        // constatering houdt dus alleen de bespreeklijst over, geen plusje.
+        const soort = soortVan(doel, t);
+        verbergMarkering(doel);
+        const mag = knopjesVoor(soort);
+        if (!mag.plus) acties.querySelector(".ovc-act-plus")?.remove();
+        if (!mag.lijst) acties.querySelector(".ovc-act-lijst")?.remove();
+        if (!mag.weg) acties.querySelector(".ovc-act-x")?.remove();
+        if (!mag.vink) acties.querySelector(".ovc-act-v")?.remove();
+        doel.classList.toggle("ovc-punt-feit", soort === "feit");
         const staat = marks[puntKey(t)] || "";
         if (staat) teller[staat as PuntStaat]++;
         doel.classList.toggle("ovc-gedaan", staat === "klaar");
@@ -154,7 +256,7 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [content, marks, toon, slug, thread]);
 
-  // De grote knop "Zet de taken in de weekplanning" (buiten dit component) meldt
+  // Een knop buiten dit component die een heel antwoord doorzet, meldt
   // zich via een window-event: heel het antwoord is dan verwerkt → alles inklappen.
   useEffect(() => {
     const handler = (e: Event) => {
@@ -199,6 +301,8 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
   // "Op bespreeklijst": kies de persoon in een menuutje naast de aangeklikte regel.
   const [lijstVoor, setLijstVoor] = useState<{ key: string; tekst: string; sleutel: string; x: number; y: number } | null>(null);
   const [personen, setPersonen] = useState<string[]>(["Klant", "Dev"]);
+  // De developer van DEZE klant; leeg = we tonen gewoon "Dev" en verzinnen niemand.
+  const [devNaam, setDevNaam] = useState<string | null>(null);
   useEffect(() => {
     if (!lijstVoor) return;
     const sluit = (e: MouseEvent) => { if (!(e.target as HTMLElement).closest?.(".ovc-lijstpop")) setLijstVoor(null); };
@@ -207,7 +311,10 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
   }, [lijstVoor]);
   useEffect(() => {
     fetch(`/api/admin/discuss?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).then((d) => {
-      if (d?.ok) setPersonen([...new Set(["Klant", "Dev", ...(d.items || []).map((i: { persoon: string }) => i.persoon)])] as string[]);
+      if (d?.ok) {
+        setPersonen([...new Set(["Klant", "Dev", ...(d.items || []).map((i: { persoon: string }) => i.persoon)])] as string[]);
+        setDevNaam(d.devName || null);
+      }
     }).catch(() => {});
   }, [slug]);
   async function zetOpLijst(persoon: string) {
@@ -216,7 +323,7 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
     setLijstVoor(null);
     try {
       const d = await fetch("/api/admin/discuss", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "add", slug, persoon, tekst }) }).then((r) => r.json());
-      if (d?.ok) { zetStaat(sleutel, "lijst"); setFeedback({ key, msg: `Op de bespreeklijst van ${persoon === "Dev" ? "Sander (Dev)" : persoon} gezet.`, ok: true }); }
+      if (d?.ok) { zetStaat(sleutel, "lijst"); setFeedback({ key, msg: `Op de bespreeklijst van ${persoon === "Dev" ? devLabel(devNaam) : persoon} gezet.`, ok: true }); }
       else setFeedback({ key, msg: d?.error || "Op de lijst zetten mislukte.", ok: false });
     } catch { setFeedback({ key, msg: "Op de lijst zetten mislukte.", ok: false }); }
   }
@@ -250,7 +357,7 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
   // Elk herkenbaar punt wordt een taakrijtje met rechts de vier knopjes.
   const ACTIES = '<span class="ovc-acties">'
     + '<button type="button" class="ovc-act ovc-act-plus" title="Voeg toe als kaart in de weekplanning">+</button>'
-    + '<button type="button" class="ovc-act ovc-act-lijst" title="Zet dit punt op een bespreeklijst (Sander, klant, ...)">&raquo;</button>'
+    + '<button type="button" class="ovc-act ovc-act-lijst" title="Zet dit punt op een bespreeklijst (klant, developer, ...)">&raquo;</button>'
     + '<button type="button" class="ovc-act ovc-act-x" title="Negeer dit voorstel">×</button>'
     + '<button type="button" class="ovc-act ovc-act-v" title="Vink af: dit is gedaan">✓</button>'
     + "</span>";
@@ -282,7 +389,7 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
               <div className="ovc-blok-kop">
                 {s.kop && <span className="ovc-blok-titel">{s.kop}</span>}
                 <span className="ovc-blok-spacer" />
-                {!sectieVerwerkt && (
+                {!sectieVerwerkt && heeftInhoud(s.md) && (
                   <button type="button" className="ovc-blok-taakbtn" disabled={!!busyKey}
                     title="Maak kaarten van deze hele sectie (één per pagina) en klap de sectie in"
                     onClick={(e) => {
@@ -322,11 +429,49 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, onWeekp
           </div>
         );
       })}
+      {genoemdePaden.map((p) => <PaginaDossier key={p} slug={slug} url={p} compact />)}
+
+      {/* Een analyse als deze kon je alleen als platte tekst doorsturen: het gewone
+          mailvenster leest innerText, dus de koppen, tabellen en lijstjes vielen weg.
+          Juist het werk dat je wilt laten zien ging kapot in de laatste stap. Deze
+          knop stuurt het antwoord door zoals het hier staat. */}
+      <div className="ovc-doorstuur">
+        {!stuurOpen ? (
+          <button type="button" className="wp-fase-btn" onClick={() => setStuurOpen(true)}
+            title="Stuur deze analyse door met dezelfde opmaak: koppen, tabellen en lijsten blijven staan">
+            Mail deze analyse
+          </button>
+        ) : (
+          <div className="ovc-doorstuur-venster">
+            <div className="ovc-doorstuur-rij">
+              <label>Aan</label>
+              <input value={stuurAan} onChange={(e) => setStuurAan(e.target.value)}
+                placeholder="naam@bedrijf.nl, tweede@bedrijf.nl" />
+            </div>
+            <div className="ovc-doorstuur-rij">
+              <label>Onderwerp</label>
+              <input value={stuurOnderwerp} onChange={(e) => setStuurOnderwerp(e.target.value)} />
+            </div>
+            <div className="ovc-doorstuur-rij">
+              <label>Vooraf</label>
+              <textarea value={stuurIntro} onChange={(e) => setStuurIntro(e.target.value)} rows={3}
+                placeholder="Korte begeleidende zin (mag leeg)" />
+            </div>
+            <div className="ovc-doorstuur-acties">
+              <button type="button" className="wp-fase-btn wp-fase-btn-primair" disabled={stuurBezig || !stuurAan.trim()}
+                onClick={() => void stuurAnalyse()}>{stuurBezig ? "Versturen…" : "Verstuur"}</button>
+              <button type="button" className="wp-fase-btn" disabled={stuurBezig} onClick={() => { setStuurOpen(false); setStuurMsg(null); }}>Annuleren</button>
+              <span className="muted">De opmaak gaat mee zoals hierboven.</span>
+            </div>
+            {stuurMsg && <div className={stuurMsg.ok ? "wp-doc-ok" : "wp-doc-fout"}>{stuurMsg.tekst}</div>}
+          </div>
+        )}
+      </div>
       {lijstVoor && typeof window !== "undefined" && (
         <div className="ovc-lijstpop" style={{ left: Math.max(8, Math.min(lijstVoor.x, window.innerWidth - 300)), top: lijstVoor.y + 6 }}>
           <span className="ovc-lijstpop-kop">Op welke bespreeklijst?</span>
           {personen.map((p) => (
-            <button key={p} type="button" className="wp-fase-btn" onClick={() => void zetOpLijst(p)}>{p === "Dev" ? "Sander (Dev)" : p}</button>
+            <button key={p} type="button" className="wp-fase-btn" onClick={() => void zetOpLijst(p)}>{p === "Dev" ? devLabel(devNaam) : p}</button>
           ))}
           <button type="button" className="wp-icon wp-del" title="Annuleren" onClick={() => setLijstVoor(null)}>×</button>
         </div>

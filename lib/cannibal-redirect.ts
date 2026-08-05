@@ -1,12 +1,16 @@
 import fs from "fs";
 import path from "path";
 import { sql, ensureSchema } from "./db";
+import { createClient } from "@vercel/postgres";
 import { getClientBySlug } from "./clients";
 import { getClientUrls } from "./site-urls";
 import { getGscForPage, getGscKeywordUrlFlips } from "./google";
 import { getAhrefsTopPages, getUrlOrganicKeywords, ahrefsConfigured } from "./ahrefs";
 import { fetchPageContent } from "./page-content";
 import { callClaude, callClaudeAgentic, type ToolDef, type ToolRunner } from "./anthropic";
+import { regelsAlsInstructie } from "./opruim-regels";
+import { zwakkePaginas, type ZwakkePagina } from "./concurrenten";
+import { getSetting, setSetting, SETTING_OPRUIM_CRON_TIK } from "./settings";
 
 // ═══════════════════════════════════════════════════════════
 // KEYWORD-CANNIBALISATIE-ANALYSE (dashboard-integratie van de skill)
@@ -32,14 +36,49 @@ export type RedirectCluster = {
   keyword: string; volume?: number; score?: string; signalen?: ClusterSignalen; intentie?: string;
   urls: ClusterUrl[]; winnaar: string; actie: string; onderbouwing?: string; verwachteImpact?: string;
 };
-export type RedirectMapItem = { van: string; naar: string; type?: string; mergeContent?: boolean; reden?: string };
+// verhuizen: de content gaat naar de doel-URL en de oude URL wijst daarheen. Dat
+// is iets anders dan een gewone omleiding naar een bestaande, sterkere pagina;
+// bij een verhuizing moet er eerst iets gebouwd worden.
+export type RedirectMapItem = { van: string; naar: string; type?: string; mergeContent?: boolean; verhuizen?: boolean; reden?: string };
 export type InterneLink = { vanaf: string; naar: string; ankertekst?: string; reden?: string };
 export type Datakwaliteit = { gsc?: boolean; gscTijdreeks?: boolean; ahrefsZoekwoorden?: boolean; ahrefsBacklinks?: boolean; crawl?: boolean; opmerking?: string };
 export type CannibalResult = {
   samenvatting: string; datakwaliteit?: Datakwaliteit; clusters: RedirectCluster[];
   redirectMap?: RedirectMapItem[]; interneLinks?: InterneLink[]; generatedAt: string | null;
 };
-export type CannibalState = { status: "idle" | "running" | "done" | "error"; result: CannibalResult | null; error: string; updatedAt: string | null };
+// De analyse draait in hervatbare stappen. Reden: één volledige analyse kost 10 tot
+// 20 minuten (agentisch onderzoek + de grote JSON-synthese + drie doorloop-rondes) en
+// dat past in geen enkel serverless-tijdvenster. Tot 03-08-2026 draaide alles in één
+// keer via waitUntil in een venster van 300s; de run van 05:52 werd daardoor rond 05:57
+// stil afgekapt, bleef eeuwig op 'bezig' staan en leverde nooit iets op. Nu wordt na
+// elke stap opgeslagen waar hij is gebleven, zodat de volgende werker verdergaat waar
+// de vorige stopte in plaats van opnieuw te beginnen.
+export type CannibalFase = "" | "gather" | "synth" | "ronde";
+export type CannibalState = {
+  status: "idle" | "running" | "done" | "error";
+  result: CannibalResult | null; error: string; updatedAt: string | null;
+  fase: CannibalFase; ronde: number; stap: number; stappen: number; stapLabel: string;
+  // Wanneer het cron-vangnet voor het laatst langskwam, en of het stilstaat.
+  cronTik: string | null; cronStil: boolean;
+  // Hoever is hij door de opruimkandidaten? Zichtbaar op het scherm, zodat
+  // "geen lijst" en "lijst helemaal gehad" niet meer op elkaar lijken.
+  kandidaten: number; beoordeeld: number;
+};
+
+// Onderzoek, hoofdanalyse, en daarna de kandidatenlijst blok voor blok aflopen.
+// 8 rondes van 40 = 320 kandidaten. One Day Clinic heeft er 283; met 6 rondes
+// bleven er ruim veertig liggen en dat is precies het werk waar het om begonnen is.
+const MAX_RONDES = 8;
+const BLOK = 40;                 // kandidaten per ronde
+const STAPPEN = 2 + MAX_RONDES;
+function stapVan(fase: CannibalFase, ronde: number): { stap: number; label: string } {
+  if (fase === "gather") return { stap: 1, label: "Data verzamelen en de verdachte pagina's onderzoeken" };
+  if (fase === "synth") return { stap: 2, label: "De hoofdanalyse schrijven" };
+  if (fase === "ronde") { const r = Math.min(Math.max(ronde, 0), MAX_RONDES - 1); return { stap: 3 + r, label: `Ronde ${r + 1} van ${MAX_RONDES}: de opruimkandidaten nalopen` }; }
+  // Geen fase terwijl de run loopt: opstarten, of een oude run uit de opzet van
+  // vóór de stappen. Nooit "Klaar" tonen; dat was precies de leugen op het scherm.
+  return { stap: 1, label: "De analyse wordt opgestart" };
+}
 
 let tableReady: Promise<void> | null = null;
 function ensureTable(): Promise<void> {
@@ -55,6 +94,18 @@ async function doEnsure(): Promise<void> {
       error       TEXT,
       updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
     )`;
+  // Hervatbaarheid: waar is hij gebleven, en de dure tussenproducten zodat een
+  // hervatting niet opnieuw Ahrefs bevraagt of het onderzoek overdoet.
+  await sql`ALTER TABLE client_cannibal_analysis ADD COLUMN IF NOT EXISTS fase TEXT NOT NULL DEFAULT ''`;
+  await sql`ALTER TABLE client_cannibal_analysis ADD COLUMN IF NOT EXISTS ronde INT NOT NULL DEFAULT 0`;
+  await sql`ALTER TABLE client_cannibal_analysis ADD COLUMN IF NOT EXISTS retries INT NOT NULL DEFAULT 0`;
+  await sql`ALTER TABLE client_cannibal_analysis ADD COLUMN IF NOT EXISTS seed TEXT`;
+  await sql`ALTER TABLE client_cannibal_analysis ADD COLUMN IF NOT EXISTS findings TEXT`;
+  // De al berekende opruimkandidaten (zwakkePaginas), zodat de doorloop-rondes ze
+  // blok voor blok kunnen afwerken in plaats van ze zelf te moeten ontdekken.
+  await sql`ALTER TABLE client_cannibal_analysis ADD COLUMN IF NOT EXISTS kandidaten TEXT`;
+  // Welke kandidaten al zijn voorgelegd, inclusief de pagina's die mochten blijven.
+  await sql`ALTER TABLE client_cannibal_analysis ADD COLUMN IF NOT EXISTS behandeld TEXT`;
 }
 
 function pagePath(u: string): string { return (u || "").replace(/^https?:\/\/[^/]+/i, "").trim() || (u || ""); }
@@ -95,36 +146,116 @@ function loadSkillMethodology(): string {
   return skillCache;
 }
 
-export async function getCannibalAnalysis(slug: string): Promise<CannibalState> {
-  await ensureSchema();
-  await ensureTable();
-  const { rows } = await sql`SELECT status, result, error, updated_at FROM client_cannibal_analysis WHERE client_slug = ${slug} LIMIT 1`;
+// ── Welke verbinding de rij-functies gebruiken ─────────────────────────────
+// Standaard de gedeelde (gepoolde) verbinding. De cron-werker zet hier tijdelijk
+// een eigen, niet-gepoolde verbinding neer. Reden: op 11-07-2026 bleek in dit
+// project al eens dat een gepoolde verbinding naar een oude momentopname keek
+// (de documenten-werker zag via de pool 0 wachtende runs en via een eigen
+// verbinding wél de wachtende run). Op 03-08-2026 gebeurde hier hetzelfde: de
+// cron las fase='' terwijl de rij fase='gather' bevatte, en zijn schrijfacties
+// landden niet (retries bleef 0 na duizend claims).
+type SqlTag = (strings: TemplateStringsArray, ...values: unknown[]) => Promise<{ rows: Record<string, unknown>[] }>;
+let actieveSql: SqlTag = sql as unknown as SqlTag;
+const q: SqlTag = (strings, ...values) => actieveSql(strings, ...values);
+
+type CannibalRow = {
+  status: string; result: CannibalResult | null; error: string; updatedAt: string | null;
+  fase: CannibalFase; ronde: number; retries: number; seed: string; findings: string;
+  kandidaten: ZwakkePagina[]; behandeld: string[];
+};
+
+// JSON-kolom die ook leeg of stuk mag zijn: altijd een lijst terug, nooit een fout.
+function lijstVan<T>(v: unknown): T[] {
+  if (!v) return [];
+  try { const j = JSON.parse(String(v)); return Array.isArray(j) ? (j as T[]) : []; } catch { return []; }
+}
+
+async function readRow(slug: string): Promise<CannibalRow | null> {
+  const { rows } = await q`SELECT status, result, error, updated_at, fase, ronde, retries, seed, findings, kandidaten, behandeld FROM client_cannibal_analysis WHERE client_slug = ${slug} LIMIT 1`;
   const r = rows[0];
-  if (!r) return { status: "idle", result: null, error: "", updatedAt: null };
+  if (!r) return null;
   let result: CannibalResult | null = null;
   try { result = r.result ? JSON.parse(r.result as string) : null; } catch { result = null; }
   return {
-    status: (r.status as CannibalState["status"]) || "idle",
+    status: (r.status as string) || "idle",
     result,
     error: (r.error as string) || "",
     updatedAt: r.updated_at ? new Date(r.updated_at as string).toISOString() : null,
+    fase: ((r.fase as string) || "") as CannibalFase,
+    ronde: Number(r.ronde) || 0,
+    retries: Number(r.retries) || 0,
+    seed: (r.seed as string) || "",
+    findings: (r.findings as string) || "",
+    kandidaten: lijstVan<ZwakkePagina>(r.kandidaten),
+    behandeld: lijstVan<string>(r.behandeld),
   };
 }
 
-async function setState(slug: string, status: string, result: CannibalResult | null, error: string): Promise<void> {
-  await sql`
-    INSERT INTO client_cannibal_analysis (client_slug, status, result, error, updated_at)
-    VALUES (${slug}, ${status}, ${result ? JSON.stringify(result) : null}, ${error || null}, now())
-    ON CONFLICT (client_slug) DO UPDATE SET status = ${status}, result = ${result ? JSON.stringify(result) : null}, error = ${error || null}, updated_at = now()`;
-}
-
-// Zet de run op 'running' (aangeroepen door de start-endpoint; het echte werk draait
-// daarna via waitUntil in runCannibalRedirect).
-export async function markCannibalRunning(slug: string): Promise<void> {
+export async function getCannibalAnalysis(slug: string): Promise<CannibalState> {
   await ensureSchema();
   await ensureTable();
-  const cur = await getCannibalAnalysis(slug);
-  await setState(slug, "running", cur.result, ""); // behoud het vorige resultaat tijdens het draaien
+  const r = await readRow(slug);
+  // Vangnet-tik: staat hij langer dan een kwartier stil, dan draait de cron niet
+  // en heeft wachten geen zin (de knop "Nu hervatten" is dan de weg).
+  const cronTik = await getSetting(SETTING_OPRUIM_CRON_TIK).catch(() => null);
+  const cronStil = !cronTik || (Date.now() - new Date(cronTik).getTime()) > 900000;
+  if (!r) return { status: "idle", result: null, error: "", updatedAt: null, fase: "", ronde: 0, stap: 0, stappen: STAPPEN, stapLabel: "", cronTik, cronStil, kandidaten: 0, beoordeeld: 0 };
+  const { stap, label } = stapVan(r.fase, r.ronde);
+  return {
+    cronTik,
+    cronStil,
+    kandidaten: r.kandidaten.length,
+    beoordeeld: r.behandeld.length,
+    status: (r.status as CannibalState["status"]) || "idle",
+    result: r.result,
+    error: r.error,
+    updatedAt: r.updatedAt,
+    fase: r.fase,
+    ronde: r.ronde,
+    stap: r.status === "running" ? stap : STAPPEN,
+    stappen: STAPPEN,
+    stapLabel: r.status === "running" ? label : "",
+  };
+}
+
+// Wanneer is de lijst die je NU ziet gemaakt? Niet `updatedAt`: dat is sinds de
+// stap-opzet ook de hartslag van een lopende werker, dus een oude lijst zou tijdens
+// een nieuwe run vers lijken. De lijst draagt zijn eigen datum in generatedAt.
+export function resultDatum(st: CannibalState): string | null {
+  return st.result?.generatedAt || (st.status === "done" ? st.updatedAt : null);
+}
+
+// Start een nieuwe run: terug naar stap 1, tellers op nul, en de vorige uitkomst
+// blijft staan zodat het scherm niet leeg is terwijl de nieuwe analyse loopt.
+export async function startCannibalRun(slug: string): Promise<void> {
+  await ensureSchema();
+  await ensureTable();
+  await q`
+    INSERT INTO client_cannibal_analysis (client_slug, status, result, error, fase, ronde, retries, seed, findings, updated_at)
+    VALUES (${slug}, 'running', NULL, NULL, 'gather', 0, 0, NULL, NULL, now())
+    ON CONFLICT (client_slug) DO UPDATE SET status = 'running', error = NULL, fase = 'gather', ronde = 0, retries = 0, seed = NULL, findings = NULL, kandidaten = NULL, behandeld = NULL, updated_at = now()`;
+}
+
+async function faal(slug: string, msg: string): Promise<void> {
+  await q`UPDATE client_cannibal_analysis SET status = 'error', error = ${msg}, fase = '', seed = NULL, findings = NULL, updated_at = now() WHERE client_slug = ${slug}`;
+}
+
+async function afronden(slug: string): Promise<void> {
+  await q`UPDATE client_cannibal_analysis SET status = 'done', error = NULL, fase = '', seed = NULL, findings = NULL, updated_at = now() WHERE client_slug = ${slug}`;
+}
+
+// Hartslag: zolang deze werker leeft, bewijst hij dat elke 30s. Stopt de hartslag
+// (afgekapt venster, deploy), dan ziet de cron-werker de run als verlaten en pakt
+// hem op bij de stap waar hij was.
+function startHartslag(slug: string): () => void {
+  const t = setInterval(() => {
+    // Via q, dus via dezelfde verbinding als de rest van de stap. Stond op de
+    // gedeelde verbinding en landde daardoor niet tijdens een cron-tik: de run
+    // leek stil te staan terwijl hij gewoon werkte, met dubbel werk en een valse
+    // "vastgelopen" tot gevolg.
+    void q`UPDATE client_cannibal_analysis SET updated_at = now() WHERE client_slug = ${slug}`.catch(() => { /* stil */ });
+  }, 30000);
+  return () => clearInterval(t);
 }
 
 // De opdracht bovenop de skill-methodiek: draai op deze concrete data en lever
@@ -145,6 +276,7 @@ De data hieronder is al voor je verzameld. Redeneer per plaats/thema; verzin nie
 - Neem ALLEEN echte cannibalisatie op (hard signaal + overlappende intentie). Een informatieve blog naast een transactionele pagina = geen cannibalisatie; laat die eruit.
 - Winnaar-weging: verwijzende domeinen (zwaarst) > organische tractie > businesswaarde. De pagina met de meeste verwijzende domeinen is niet altijd de bestemming; redirect desnoods de link-rijke pagina naar de businesswaardige pagina. Gesloten/verplaatste locaties: 301 naar de dichtstbijzijnde open pagina, niet 410 (behoud de verwijzende domeinen).
 - Vul per cluster "signalen" (urlFlip/flipsIn90d uit de flip-tijdreeks, positiePlafond 5-20, klikVerdeling) en per URL "verwijzendeDomeinen" in. Vul "datakwaliteit" in: gsc=true, gscTijdreeks (kwamen er flips mee?), ahrefsZoekwoorden=true, ahrefsBacklinks=true, crawl=false.
+- Elk item in "redirectMap" mag een veld "verhuizen" (true/false) hebben. true betekent: deze pagina is zelf de sterkste voor zijn onderwerp, maar staat op de verkeerde URL-vorm; de content gaat naar de doel-URL en de oude URL wijst daarheen. false (of weglaten) is een gewone omleiding naar een bestaande, sterkere pagina. Zet true ALLEEN als de doelpagina nu nog niet bestaat of leeg is; anders is het een gewone omleiding.
 - Antwoord met UITSLUITEND geldige JSON volgens het output-schema hierboven. Geen tekst eromheen, geen emoji, geen markdown-codeblok.`;
 }
 
@@ -193,88 +325,342 @@ De KERN-DATA (Ahrefs per pagina + pagina's zonder verkeer + flips) staat in het 
 - Rond af met een LEESBARE bevindingen-tekst (geen JSON, geen tools meer): per plaats/thema-cluster de concurrerende pagina's met top-zoekwoord/positie/verwijzende domeinen, de winnaar met onderbouwing, de voorgestelde actie (301 / de-optimaliseren / interne links / behouden), en of de intentie echt overlapt. Noem ook lege duplicaat-varianten die naar de plaatswinnaar moeten redirecten.`;
 }
 
-// Draait de analyse in twee fasen: agentic onderzoek (tools) -> vaste JSON-synthese.
-// Faalt nooit op een lege loop: fase 2 werkt ook uit de ruwe data. Idempotent qua opslag.
+// Harde klok op het agentische onderzoek van stap 1. Elke stap moet gegarandeerd
+// binnen één venster passen; anders komt hij nooit af, ook niet met hervatten.
+const ONDERZOEK_BUDGET_MS = 360000; // 6 minuten
+
+const padOf = (u: string) => { try { return new URL(u).pathname; } catch { return (u || "").trim(); } };
+
+// Bouwt de kern-data één keer per run en bewaart hem, zodat een hervatting niet
+// opnieuw Ahrefs en Search Console bevraagt (scheelt tijd én verbruik).
+async function bouwSeed(slug: string, clientNaam: string, domain: string): Promise<{ ok: true; seed: string; kandidaten: ZwakkePagina[] } | { ok: false; error: string }> {
+  const [topPages, urls, flips, zwak] = await Promise.all([
+    getAhrefsTopPages(domain, 300).catch(() => [] as Awaited<ReturnType<typeof getAhrefsTopPages>>),
+    getClientUrls(slug).catch(() => []),
+    getGscKeywordUrlFlips(domain, 3).catch(() => [] as { keyword: string; topUrls: string[]; flips: number }[]),
+    // Het dashboard weet zélf al welke pagina's geen eigen zoekterm hebben en met
+    // welke pagina ze dubbelen. Tot 03-08-2026 kreeg de motor die lijst niet en
+    // moest hij alles opnieuw ontdekken uit de Ahrefs-tabel; dat leverde 14 regels
+    // op terwijl er 189 kandidaten klaarlagen. Nu gaat de lijst gewoon mee.
+    zwakkePaginas(slug, domain).catch(() => ({ ok: false as const, tekst: "", kandidaten: [] as ZwakkePagina[] })),
+  ]);
+  if (!topPages.length) return { ok: false, error: "Geen Ahrefs-data terug voor dit domein. Controleer de Ahrefs-koppeling (AHREFS_API_TOKEN) en of het domein klopt." };
+
+  const ahrefsSeen = new Set(topPages.map((t) => pagePath(t.url)));
+  const ahrefsTable = [...topPages].sort((a, b) => (b.traffic || 0) - (a.traffic || 0)).slice(0, 240)
+    .map((t) => `- ${pagePath(t.url)} | top:"${t.topKeyword}" pos ${t.position ?? "?"} | ${t.traffic ?? 0} verkeer | ${t.refDomains ?? "?"} verw.domeinen | ${t.keywords ?? "?"}kw`).join("\n");
+  const zeroTraffic = urls.filter((u) => (u.status ?? 200) === 200 && !ahrefsSeen.has(pagePath(u.url))).slice(0, 150)
+    .map((u) => `- ${pagePath(u.url)} | status ${u.status ?? "?"} | ${u.gscClicks} clicks`).join("\n");
+  const flipLines = flips.slice(0, 60).map((f) => `- "${f.keyword}": ${f.topUrls.join(" -> ")} (${f.flips}x)`).join("\n");
+
+  return { ok: true, kandidaten: zwak.kandidaten || [], seed: [
+    `KLANT: ${clientNaam || slug} (domein: ${domain})`,
+    "",
+    `DATAKWALITEIT (neem over in datakwaliteit): gsc=true, gscTijdreeks=${flips.length > 0}, ahrefsZoekwoorden=true, ahrefsBacklinks=true (verwijzende domeinen per pagina), crawl=false.`,
+    "",
+    "AHREFS PER PAGINA (pagina | top-zoekwoord + positie | organisch verkeer | verwijzende domeinen | aantal zoekwoorden):",
+    ahrefsTable || "- (geen)",
+    "",
+    "PAGINA'S ZONDER Ahrefs-VERKEER (status 200; vaak lege duplicaat-varianten die je per plaats naar de winnaar redirect):",
+    zeroTraffic || "- (geen)",
+    "",
+    "URL-FLIP-TIJDREEKS (top-rankende URL per zoekwoord over 3 vensters van ~30 dagen):",
+    flipLines || "- (geen flips gedetecteerd)",
+    "",
+    zwak.tekst || "",
+  ].join("\n") };
+}
+
+// ── Eén stap van de analyse ────────────────────────────────────────────────
+// Doet precies één ding en slaat het resultaat op. "verder" = er is nog werk,
+// "klaar" = deze run is af (of afgebroken met een fout).
+async function stapCannibal(slug: string): Promise<"verder" | "klaar"> {
+  return (await stapMetReden(slug)).uit;
+}
+
+// Zelfde stap, maar vertelt er ook bij WAAROM hij stopte. Zonder die reden is een
+// werker die instant "klaar" zegt niet te onderscheiden van een werker die zijn
+// werk deed; op 03-08-2026 pakte de cron dezelfde klant duizend keer op zonder dat
+// er iets veranderde, en was van buitenaf niet te zien welke tak dat veroorzaakte.
+async function stapMetReden(slug: string): Promise<{ uit: "verder" | "klaar"; reden: string }> {
+  const row = await readRow(slug);
+  if (!row) return { uit: "klaar", reden: "geen rij gevonden" };
+  if (row.status !== "running") return { uit: "klaar", reden: `status is ${row.status}, niet running` };
+  // Een run zonder fase komt uit de oude opzet (alles in één keer) en is stil
+  // afgekapt; die kan niet hervat worden omdat er niets van bewaard is.
+  if (!row.fase) {
+    await faal(slug, "Deze analyse is halverwege vastgelopen in de oude opzet en kan niet hervat worden. Klik op “Opnieuw analyseren”; hij loopt nu wel door tot het eind.");
+    return { uit: "klaar", reden: "oude run zonder fase, niet hervatbaar" };
+  }
+
+  const client = await getClientBySlug(slug);
+  const domain = client?.domain || "";
+  if (!domain) { await faal(slug, "Deze klant heeft nog geen domein ingevuld."); return { uit: "klaar", reden: "geen domein" }; }
+  if (!ahrefsConfigured()) { await faal(slug, "Hiervoor is een AHREFS_API_TOKEN nodig in Vercel."); return { uit: "klaar", reden: "geen Ahrefs-sleutel" }; }
+
+  const stopHartslag = startHartslag(slug);
+  try {
+    let seed = row.seed;
+    if (!seed) {
+      const s = await bouwSeed(slug, client?.name || "", domain);
+      if (!s.ok) { await faal(slug, s.error); return { uit: "klaar", reden: "kern-data mislukt" }; }
+      seed = s.seed;
+      await q`UPDATE client_cannibal_analysis SET seed = ${seed}, kandidaten = ${JSON.stringify(s.kandidaten)}, updated_at = now() WHERE client_slug = ${slug}`;
+    }
+
+    // STAP 1 — agentic onderzoek: het model zoomt in op verdachte pagina's en schrijft
+    // leesbare bevindingen. Faalt dit (leeg/te kort), dan gaat stap 2 door op de ruwe data.
+    if (row.fase === "gather") {
+      let findings = "";
+      try {
+        findings = await callClaudeAgentic(
+          buildGatherSystem(),
+          [{ role: "user", content: `${seed}\n\nOnderzoek de meest verdachte pagina's met de tools en schrijf daarna je bevindingen (leesbare tekst, geen JSON).`.slice(0, 40000) }],
+          // Zes minuten en vijf rondes. Op 03-08-2026 liep deze stap zonder klok
+          // 13 minuten door en werd toen door het venster afgekapt: alles weg, en
+          // elke hervatting liep tegen dezelfde muur. Een stap die niet gegarandeerd
+          // binnen één venster past komt nooit af, hoe vaak je hem ook hervat.
+          CANNIBAL_TOOLS, makeCannibalRunner(domain), 5, 6000, { slug, action: "cannibal_gather" },
+          Date.now() + ONDERZOEK_BUDGET_MS,
+        );
+      } catch { findings = ""; }
+      const clean = findings.replace(/\(geen antwoord\)/gi, "").trim();
+      await q`UPDATE client_cannibal_analysis SET findings = ${clean}, fase = 'synth', retries = 0, updated_at = now() WHERE client_slug = ${slug}`;
+      return { uit: "verder", reden: `onderzoek klaar (${(await readRow(slug))?.kandidaten.length ?? 0} opruimkandidaten in de lijst)` };
+    }
+
+    // Eerdere besluiten van Maarten gaan mee als harde regels. Zo hoeft hij een
+    // correctie ("Monster hoort bij Den Haag", "deze houden we") maar één keer te
+    // maken en maakt de analyse dezelfde fout nooit meer.
+    const eerdere = await regelsAlsInstructie(slug).catch(() => "");
+    const systeem = eerdere ? `${buildSystemPrompt()}\n\n${eerdere}` : buildSystemPrompt();
+
+    // STAP 2 — vaste synthese naar JSON: altijd een antwoord, werkt ook zonder bevindingen.
+    if (row.fase === "synth") {
+      // Stap 2 schrijft het VERHAAL (clusters, onderbouwing, interne links), niet de
+      // volledige werklijst; die komt uit de rondes, die de kandidatenlijst aflopen.
+      // Zonder deze afbakening probeerde hij beide te doen, werd het antwoord te lang
+      // en werd de JSON afgekapt (03-08-2026, 11:38). Twee keer hetzelfde werk doen
+      // maakte het antwoord bovendien niet beter.
+      const afbakening = `\n\nBELANGRIJK voor de omvang van je antwoord: zet in "redirectMap" ALLEEN de pagina's uit de echte cannibalisatie-clusters hierboven (de gevallen met een hard signaal). De lange lijst opruimkandidaten wordt in een aparte stap pagina voor pagina behandeld; die hoef je hier NIET over te nemen. Houd "onderbouwing" en "verwachteImpact" per cluster bij twee of drie zinnen. Lever compacte, geldige JSON die zeker afkomt.`;
+      const phase2 = row.findings.length > 40
+        ? `${seed}\n\nBEVINDINGEN UIT HET AGENTISCH ONDERZOEK (gebruik deze; ze bevatten diepte-data zoals secundaire merk+geo-rankings en intentie-checks):\n${row.findings}\n\nLever nu de analyse als JSON volgens het output-schema.${afbakening}`
+        : `${seed}\n\nLever nu de analyse als JSON volgens het output-schema.${afbakening}`;
+
+      // Ruimere limiet, en bij een afgekapt antwoord één herkansing met een strakkere
+      // opdracht. Een te lang antwoord is geen reden om de hele analyse weg te gooien.
+      let parsed: { samenvatting?: unknown; datakwaliteit?: unknown; clusters?: unknown; redirectMap?: unknown; interneLinks?: unknown } | null = null;
+      let laatsteTekst = "";
+      for (let poging = 0; poging < 2 && !parsed; poging++) {
+        const extra = poging === 0 ? "" : `\n\nJe vorige antwoord werd afgekapt omdat het te lang was. Geef het nu KORTER: hooguit de acht belangrijkste clusters, onderbouwing van één zin per cluster, en een samenvatting van hooguit tien regels.`;
+        const raw = await callClaude(systeem, [{ role: "user", content: (phase2 + extra).slice(0, 48000) }], 32000, { slug, action: poging === 0 ? "cannibal_redirect" : "cannibal_redirect_herkansing" });
+        const cleaned = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
+        laatsteTekst = cleaned;
+        try { parsed = JSON.parse(extractJsonObject(cleaned)); } catch { parsed = null; }
+      }
+
+      // Nog steeds niets bruikbaars? Dan gaan we tóch door naar de rondes. Het verhaal
+      // is dan leeg, maar de werklijst is wat Maarten nodig heeft en die komt daar
+      // vandaan. Alles weggooien om een mislukte samenvatting is de verkeerde ruil.
+      if (!parsed) {
+        const leeg: CannibalResult = { samenvatting: "", clusters: [], redirectMap: [], interneLinks: [], generatedAt: new Date().toISOString() };
+        await q`UPDATE client_cannibal_analysis SET result = ${JSON.stringify(leeg)}, fase = 'ronde', ronde = 0, retries = 0, updated_at = now() WHERE client_slug = ${slug}`;
+        return { uit: "verder", reden: `hoofdanalyse gaf geen geldige JSON (${laatsteTekst.slice(0, 80).replace(/\s+/g, " ")}), door naar de kandidaten` };
+      }
+
+      const result: CannibalResult = {
+        samenvatting: typeof parsed.samenvatting === "string" ? parsed.samenvatting : "",
+        datakwaliteit: parsed.datakwaliteit && typeof parsed.datakwaliteit === "object" ? (parsed.datakwaliteit as Datakwaliteit) : undefined,
+        clusters: Array.isArray(parsed.clusters) ? (parsed.clusters as RedirectCluster[]) : [],
+        redirectMap: Array.isArray(parsed.redirectMap) ? (parsed.redirectMap as RedirectMapItem[]) : [],
+        interneLinks: Array.isArray(parsed.interneLinks) ? (parsed.interneLinks as InterneLink[]) : [],
+        generatedAt: new Date().toISOString(),
+      };
+      await q`UPDATE client_cannibal_analysis SET result = ${JSON.stringify(result)}, fase = 'ronde', ronde = 0, retries = 0, updated_at = now() WHERE client_slug = ${slug}`;
+      return { uit: "verder", reden: "hoofdanalyse klaar" };
+    }
+
+    // ── DE RONDES: de bekende kandidatenlijst blok voor blok aflopen ────────
+    // Tot 03-08-2026 vroegen we het model hier om zélf de resterende overbodige
+    // pagina's te vinden. Dat leverde 14 regels op, terwijl het dashboard al 189
+    // kandidaten had berekend uit Search Console, mét het voor de hand liggende
+    // doel erbij. We lieten de AI dus zoeken naar iets dat al bekend was. Nu
+    // krijgt hij de lijst en hoeft hij alleen nog per pagina het doel te bepalen,
+    // of te zeggen dat een pagina juist moet blijven.
+    const result = row.result;
+    if (!result) { await faal(slug, "De tussenstand is verdwenen; start de analyse opnieuw."); return { uit: "klaar", reden: "tussenstand weg" }; }
+    if (row.ronde >= MAX_RONDES) { await afronden(slug); return { uit: "klaar", reden: `${MAX_RONDES} rondes gehad` }; }
+
+    const gezien = new Set((result.redirectMap || []).map((m) => padOf(String(m.van || ""))));
+    const behandeld = new Set([...gezien, ...(row.behandeld || [])]);
+
+    // Lijst kwijt? Dan hem opnieuw ophalen in plaats van te doen alsof we klaar
+    // zijn. Op 03-08-2026 stopte de analyse na één ronde omdat de lijst leeg in de
+    // rij stond; "geen kandidaten" en "alle kandidaten gehad" zien er van buiten
+    // hetzelfde uit, en dat verschil moet de motor zelf kunnen herstellen.
+    let kandidaten = row.kandidaten || [];
+    if (!kandidaten.length) {
+      const opnieuw = await zwakkePaginas(slug, domain).catch(() => null);
+      kandidaten = opnieuw?.kandidaten || [];
+      if (kandidaten.length) await q`UPDATE client_cannibal_analysis SET kandidaten = ${JSON.stringify(kandidaten)}, updated_at = now() WHERE client_slug = ${slug}`;
+    }
+
+    const blok = kandidaten.filter((k) => !behandeld.has(padOf(k.pad))).slice(0, BLOK);
+    if (!blok.length) {
+      await afronden(slug);
+      return { uit: "klaar", reden: kandidaten.length ? `alle ${kandidaten.length} kandidaten beoordeeld` : "geen kandidatenlijst beschikbaar" };
+    }
+
+    const lijst = blok.map((k) => {
+      const doel = k.dubbelMet.length === 1 ? `voorstel doel: ${k.dubbelMet[0]}`
+        : k.dubbelMet.length > 1 ? `voorstel doel: ${k.dubbelMet.slice(0, 2).join(" OF ")} (kies de beste)`
+        : "geen doel af te leiden uit de data";
+      const leent = k.geleendeTop ? `leent "${k.geleendeTop.keyword}" (pos ${k.geleendeTop.positie}, ${k.geleendeTop.vertoningen} vert.)` : "krijgt geen vertoningen";
+      return `- ${k.pad} [${k.klikken} klikken, ${k.vertoningen} vertoningen] ${leent}; ${doel}`;
+    }).join("\n");
+
+    let extraRuw = "";
+    try {
+      extraRuw = await callClaude(
+        systeem,
+        [{ role: "user", content: `${seed}
+
+BEOORDEEL NU DEZE ${blok.length} PAGINA'S, en UITSLUITEND deze. Het zijn opruimkandidaten die het dashboard al uit Search Console heeft afgeleid: ze ranken op geen enkele zoekterm die hun eigen onderwerp bevat, dus alles wat ze binnenhalen is geleend van merk- of andere-plaatstermen. Het voorgestelde doel is óók uit de data afgeleid (de pagina die de geleende term wél bezit).
+
+${lijst}
+
+Jouw taak per pagina: bevestig het voorgestelde doel, of corrigeer het als de data een beter doel aanwijst, en geef in één korte zin de reden. Neem een pagina NIET op als hij moet blijven (bijvoorbeeld een functionele pagina zoals contact of afspraak maken, of een pagina met een eigen duidelijke rol); laat hem dan gewoon weg. Verzin geen pagina's die niet in deze lijst staan. Stuur nooit naar een doel dat zelf zwak is.
+
+Lever UITSLUITEND JSON: {"redirectMap":[{"van":"/pad/","naar":"/doel/","type":"301","mergeContent":false,"verhuizen":false,"reden":"..."}]}. Hoort er niets uit deze lijst opgeruimd te worden, geef dan {"redirectMap":[]}.`.slice(0, 48000) }],
+        16000, { slug, action: `cannibal_redirect_ronde${row.ronde + 2}` },
+      );
+    } catch {
+      await slaBlokOver(slug, row, blok);
+      return { uit: "verder", reden: `ronde ${row.ronde + 1} gaf een fout, blok overgeslagen` };
+    }
+
+    let nieuweRijen: RedirectMapItem[] = [];
+    try {
+      const j = JSON.parse(extractJsonObject(extraRuw.replace(/```json/gi, "").replace(/```/g, "").trim())) as { redirectMap?: unknown };
+      nieuweRijen = Array.isArray(j.redirectMap) ? (j.redirectMap as RedirectMapItem[]) : [];
+    } catch {
+      await slaBlokOver(slug, row, blok);
+      return { uit: "verder", reden: `ronde ${row.ronde + 1} gaf geen geldige JSON, blok overgeslagen` };
+    }
+
+    // Alleen pagina's uit dit blok; verzonnen paden vallen af.
+    const inBlok = new Set(blok.map((k) => padOf(k.pad)));
+    const echtNieuw = nieuweRijen.filter((m) => {
+      const v = padOf(String(m.van || ""));
+      if (!v || gezien.has(v) || !inBlok.has(v)) return false;
+      gezien.add(v);
+      return true;
+    });
+
+    // Het hele blok is behandeld, ook de pagina's die mochten blijven. Zonder dat
+    // te onthouden zou de volgende ronde dezelfde pagina's opnieuw voorleggen en
+    // nooit door de lijst heen komen.
+    const nuBehandeld = [...new Set([...(row.behandeld || []), ...blok.map((k) => padOf(k.pad))])];
+    result.redirectMap = [...(result.redirectMap || []), ...echtNieuw];
+    await q`UPDATE client_cannibal_analysis SET result = ${JSON.stringify(result)}, behandeld = ${JSON.stringify(nuBehandeld)}, ronde = ${row.ronde + 1}, retries = 0, updated_at = now() WHERE client_slug = ${slug}`;
+    return { uit: "verder", reden: `ronde ${row.ronde + 1}: ${echtNieuw.length} van ${blok.length} beoordeeld als opruimen` };
+  } finally {
+    stopHartslag();
+  }
+}
+
+// Een blok dat niet te beoordelen was, telt tóch als behandeld en de analyse gaat
+// door met het volgende blok. Eén mislukte ronde mag nooit de hele analyse
+// beëindigen; dat gebeurde op 03-08-2026 en kostte de complete werklijst.
+async function slaBlokOver(slug: string, row: CannibalRow, blok: ZwakkePagina[]): Promise<void> {
+  const nu = [...new Set([...(row.behandeld || []), ...blok.map((k) => padOf(k.pad))])];
+  await q`UPDATE client_cannibal_analysis SET behandeld = ${JSON.stringify(nu)}, ronde = ${row.ronde + 1}, retries = 0, updated_at = now() WHERE client_slug = ${slug}`;
+}
+
+// Tijdsbudget per werker: ruim binnen het venster van 800s, zodat de werker zelf
+// stopt in plaats van midden in een stap afgekapt te worden.
+const WERKER_BUDGET_MS = 660000;
+
+// Draait zoveel stappen als er in dit venster passen. Wat overblijft pakt de
+// cron-werker op; de opgeslagen fase zorgt dat hij verdergaat waar deze stopte.
 export async function runCannibalRedirect(slug: string): Promise<void> {
   try {
     await ensureSchema();
     await ensureTable();
-    const client = await getClientBySlug(slug);
-    const domain = client?.domain || "";
-    if (!domain) { await setState(slug, "error", null, "Deze klant heeft nog geen domein ingevuld."); return; }
-    if (!ahrefsConfigured()) { await setState(slug, "error", null, "Hiervoor is een AHREFS_API_TOKEN nodig in Vercel."); return; }
-
-    const [topPages, urls, flips] = await Promise.all([
-      getAhrefsTopPages(domain, 300).catch(() => [] as Awaited<ReturnType<typeof getAhrefsTopPages>>),
-      getClientUrls(slug).catch(() => []),
-      getGscKeywordUrlFlips(domain, 3).catch(() => [] as { keyword: string; topUrls: string[]; flips: number }[]),
-    ]);
-    if (!topPages.length) { await setState(slug, "error", null, "Geen Ahrefs-data terug voor dit domein. Controleer de Ahrefs-koppeling (AHREFS_API_TOKEN) en of het domein klopt."); return; }
-
-    const ahrefsSeen = new Set(topPages.map((t) => pagePath(t.url)));
-    const ahrefsTable = [...topPages].sort((a, b) => (b.traffic || 0) - (a.traffic || 0)).slice(0, 240)
-      .map((t) => `- ${pagePath(t.url)} | top:"${t.topKeyword}" pos ${t.position ?? "?"} | ${t.traffic ?? 0} verkeer | ${t.refDomains ?? "?"} verw.domeinen | ${t.keywords ?? "?"}kw`).join("\n");
-    const zeroTraffic = urls.filter((u) => (u.status ?? 200) === 200 && !ahrefsSeen.has(pagePath(u.url))).slice(0, 150)
-      .map((u) => `- ${pagePath(u.url)} | status ${u.status ?? "?"} | ${u.gscClicks} clicks`).join("\n");
-    const flipLines = flips.slice(0, 60).map((f) => `- "${f.keyword}": ${f.topUrls.join(" -> ")} (${f.flips}x)`).join("\n");
-    const hasFlips = flips.length > 0;
-
-    const seedData = [
-      `KLANT: ${client?.name || slug} (domein: ${domain})`,
-      "",
-      `DATAKWALITEIT (neem over in datakwaliteit): gsc=true, gscTijdreeks=${hasFlips}, ahrefsZoekwoorden=true, ahrefsBacklinks=true (verwijzende domeinen per pagina), crawl=false.`,
-      "",
-      "AHREFS PER PAGINA (pagina | top-zoekwoord + positie | organisch verkeer | verwijzende domeinen | aantal zoekwoorden):",
-      ahrefsTable || "- (geen)",
-      "",
-      "PAGINA'S ZONDER Ahrefs-VERKEER (status 200; vaak lege duplicaat-varianten die je per plaats naar de winnaar redirect):",
-      zeroTraffic || "- (geen)",
-      "",
-      "URL-FLIP-TIJDREEKS (top-rankende URL per zoekwoord over 3 vensters van ~30 dagen):",
-      flipLines || "- (geen flips gedetecteerd)",
-    ].join("\n");
-
-    // FASE 1 — agentic onderzoek: het model zoomt in op verdachte pagina's en schrijft
-    // leesbare bevindingen. Faalt dit (leeg/te kort), dan gaat fase 2 door op de ruwe data.
-    let findings = "";
-    try {
-      findings = await callClaudeAgentic(
-        buildGatherSystem(),
-        [{ role: "user", content: `${seedData}\n\nOnderzoek de meest verdachte pagina's met de tools en schrijf daarna je bevindingen (leesbare tekst, geen JSON).`.slice(0, 40000) }],
-        CANNIBAL_TOOLS, makeCannibalRunner(domain), 8, 6000, { slug, action: "cannibal_gather" },
-      );
-    } catch { findings = ""; }
-    const clean = findings.replace(/\(geen antwoord\)/gi, "").trim();
-
-    // FASE 2 — vaste synthese naar JSON: altijd een antwoord, werkt ook zonder bevindingen.
-    const phase2 = clean.length > 40
-      ? `${seedData}\n\nBEVINDINGEN UIT HET AGENTISCH ONDERZOEK (gebruik deze; ze bevatten diepte-data zoals secundaire merk+geo-rankings en intentie-checks):\n${clean}\n\nLever nu de volledige analyse als JSON volgens het output-schema.`
-      : `${seedData}\n\nLever nu de volledige analyse als JSON volgens het output-schema.`;
-    const raw = await callClaude(buildSystemPrompt(), [{ role: "user", content: phase2.slice(0, 48000) }], 16000, { slug, action: "cannibal_redirect" });
-
-    const cleaned = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
-    const jsonText = extractJsonObject(cleaned);
-    let parsed: { samenvatting?: unknown; datakwaliteit?: unknown; clusters?: unknown; redirectMap?: unknown; interneLinks?: unknown };
-    try {
-      parsed = JSON.parse(jsonText);
-    } catch {
-      const looksTruncated = jsonText.trim().startsWith("{") && !jsonText.trim().endsWith("}");
-      await setState(slug, "error", null, looksTruncated
-        ? "De analyse werd afgekapt voordat de JSON af was (te lang). Probeer het opnieuw; ik heb de limiet verhoogd."
-        : `De analyse kwam niet als geldige JSON terug. Probeer het opnieuw.${cleaned ? ` (begon met: ${cleaned.slice(0, 120).replace(/\s+/g, " ")})` : ""}`);
-      return;
+    const t0 = Date.now();
+    while (Date.now() - t0 < WERKER_BUDGET_MS) {
+      if (await stapCannibal(slug) === "klaar") return;
     }
-
-    const result: CannibalResult = {
-      samenvatting: typeof parsed.samenvatting === "string" ? parsed.samenvatting : "",
-      datakwaliteit: parsed.datakwaliteit && typeof parsed.datakwaliteit === "object" ? (parsed.datakwaliteit as Datakwaliteit) : undefined,
-      clusters: Array.isArray(parsed.clusters) ? (parsed.clusters as RedirectCluster[]) : [],
-      redirectMap: Array.isArray(parsed.redirectMap) ? (parsed.redirectMap as RedirectMapItem[]) : [],
-      interneLinks: Array.isArray(parsed.interneLinks) ? (parsed.interneLinks as InterneLink[]) : [],
-      generatedAt: new Date().toISOString(),
-    };
-    await setState(slug, "done", result, "");
   } catch (e) {
-    try { await setState(slug, "error", null, `Analyse mislukt: ${e instanceof Error ? e.message : "onbekende fout"}`); } catch { /* stil */ }
+    try { await faal(slug, `Analyse mislukt: ${e instanceof Error ? e.message : "onbekende fout"}`); } catch { /* stil */ }
   }
+}
+
+// ── Cron-werker: hervat verlaten runs ──────────────────────────────────────
+// Een run zonder hartslag van vijf minuten is verlaten (venster afgekapt, deploy).
+// Die wordt hier opgepakt bij de stap waar hij was. Na drie vergeefse pogingen
+// stopt hij definitief: zonder die noodrem blijft een stap die telkens sneuvelt
+// eindeloos opnieuw draaien, en elke poging kost het volle AI-bedrag.
+export async function processCannibalQueue(): Promise<{ opgepakt: string[]; redenen: string[] }> {
+  await ensureSchema();
+  await ensureTable();
+  // Meteen vastleggen dát hij langskwam, vóór al het werk. Zo is op het scherm te
+  // zien of het vangnet draait, ook als er niets op te pakken viel.
+  await setSetting(SETTING_OPRUIM_CRON_TIK, new Date().toISOString()).catch(() => { /* stil */ });
+  const opgepakt: string[] = [];
+
+  // Eigen, niet-gepoolde verbinding voor deze hele tik. Zie de toelichting bij
+  // actieveSql: via de pool las deze werker verouderde waarden en landden zijn
+  // schrijfacties niet.
+  const vers = createClient();
+  await vers.connect();
+  const vorige = actieveSql;
+  actieveSql = vers.sql.bind(vers) as unknown as SqlTag;
+  try {
+    return await werkAf(opgepakt);
+  } finally {
+    actieveSql = vorige;
+    await vers.end().catch(() => { /* opruimen mag nooit breken */ });
+  }
+}
+
+async function werkAf(opgepakt: string[]): Promise<{ opgepakt: string[]; redenen: string[] }> {
+
+  await q`
+    UPDATE client_cannibal_analysis
+    SET status = 'error', fase = '', seed = NULL, findings = NULL, updated_at = now(),
+        error = 'Vastgelopen: de analyse is drie keer opnieuw opgepakt en bleef steken. Klik op “Opnieuw analyseren” om hem opnieuw te starten.'
+    WHERE status = 'running' AND retries >= 3 AND updated_at < now() - interval '3 minutes'`;
+
+  const t0 = Date.now();
+  const redenen: string[] = [];
+  // Elke klant hoogstens één keer per tik. Zonder deze rem draaide de werker op
+  // 03-08-2026 duizend rondjes om dezelfde klant in 661 seconden: de claim zei
+  // telkens "ik heb hem", maar er veranderde niets aan de rij. De documenten-
+  // werker heeft dezelfde rem, met dezelfde reden. Verandert een run niets, dan
+  // is doorgaan zinloos en schadelijk, want elke ronde kost geld.
+  const gezien = new Set<string>();
+  while (Date.now() - t0 < WERKER_BUDGET_MS && gezien.size < 8) {
+    // Claimen en hartslag zetten in één stap, zodat twee cron-tikken nooit
+    // dezelfde run tegelijk oppakken.
+    const { rows } = await q`
+      UPDATE client_cannibal_analysis SET retries = retries + 1, updated_at = now()
+      WHERE client_slug = (
+        SELECT client_slug FROM client_cannibal_analysis
+        WHERE status = 'running' AND updated_at < now() - interval '3 minutes'
+        ORDER BY updated_at ASC LIMIT 1)
+      RETURNING client_slug`;
+    if (!rows.length) break;
+    const slug = String(rows[0].client_slug);
+    if (gezien.has(slug)) { redenen.push(`${slug}: claim blijft dezelfde rij teruggeven, gestopt`); break; }
+    gezien.add(slug);
+    opgepakt.push(slug);
+    // Alle resterende stappen van deze klant afwerken zolang er tijd is.
+    while (Date.now() - t0 < WERKER_BUDGET_MS) {
+      const r = await stapMetReden(slug);
+      redenen.push(`${slug}: ${r.reden}`);
+      if (r.uit === "klaar") break;
+    }
+  }
+  return { opgepakt, redenen };
 }

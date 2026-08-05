@@ -21,10 +21,17 @@ function sign(value: string): string {
 // (een gast, met zijn database-id). De cookie is een ondertekend "<wie>.<HMAC>".
 //  - Env-eigenaar (ADMIN_PASSWORD):  admin.<HMAC over "admin">   (ongewijzigd)
 //  - Teamgebruiker (gast):           u<id>.<HMAC over "u<id>">
-export type AdminPrincipal = { kind: "owner" } | { kind: "user"; userId: number };
+//  - Claude (meekijken):             kijk.<HMAC over "kijk">
+export type AdminPrincipal = { kind: "owner" } | { kind: "user"; userId: number } | { kind: "viewer" };
 
 export function makeAdminSession(): string {
   return `admin.${sign("admin")}`;
+}
+
+// Sessie voor Claude: mag alles zien, niets wijzigen. Bewust een eigen soort en
+// geen teamgebruiker, zodat de rechten van echte teamleden hier los van staan.
+export function makeViewerSession(): string {
+  return `kijk.${sign("kijk")}`;
 }
 
 // Sessie-cookie voor een teamgebruiker (gast), met zijn database-id in de naam.
@@ -47,6 +54,7 @@ export function getAdminPrincipal(value: string | undefined | null): AdminPrinci
   if (a.length !== b.length) return null;
   if (!crypto.timingSafeEqual(a, b)) return null;
   if (who === "admin") return { kind: "owner" };
+  if (who === "kijk") return { kind: "viewer" };
   const m = who.match(/^u(\d+)$/);
   if (m) return { kind: "user", userId: Number(m[1]) };
   return null;

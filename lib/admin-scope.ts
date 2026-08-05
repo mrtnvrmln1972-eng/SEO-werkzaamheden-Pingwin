@@ -41,6 +41,16 @@ export async function getScopeFromCookie(
   const principal = getAdminPrincipal(value);
   if (!principal) return null;
 
+  // Claude die meekijkt: ziet alles wat Maarten ziet, mag niets veranderen.
+  // isOwner false houdt hem uit de eigenaar-only routes (klant aanmaken,
+  // teambeheer). canEdit false plus een LEGE editSlugs is wat hem echt
+  // alleen-lezen maakt: guardSlug weigert dan elk verzoek dat geen GET is.
+  // Let op: editSlugs mag hier niet null zijn, want null betekent juist
+  // "geen beperking" in canEditSlug.
+  if (principal.kind === "viewer") {
+    return { isOwner: false, userId: null, allowedSlugs: null, canSeeMail: true, canEdit: false, editSlugs: [] };
+  }
+
   if (principal.kind === "owner") {
     // Kijk-als-modus: de eigenaar krijgt tijdelijk exact de scope van de gast,
     // zodat hij ziet (en niet meer kan) wat die gast ziet en kan.

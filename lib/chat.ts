@@ -2,7 +2,7 @@ import { sql, ensureSchema } from "./db";
 import { getClientBySlug } from "./clients";
 import { getEmails, getMetrics, getKeywords, getStatus } from "./snapshots";
 import { msStatus, msSearchClientEmails } from "./ms-graph";
-import { getClientUrls } from "./site-urls";
+import { getClientUrls, buildUrlContext } from "./site-urls";
 import { googleStatus, getGscForClient, getGscKeywordTrend, getGscForPage } from "./google";
 import { measurePage } from "./page-measure";
 import { metaVerdictText } from "./meta-rules";
@@ -17,6 +17,15 @@ import { validateAction, executeAction, type ProposedAction } from "./overview-a
 import { dossierIndexText, searchDossier, getDossierItem, addDossierItem } from "./lead-dossier";
 import { listLeadDocs, maakLeadDocument, SJABLONEN } from "./lead-doc";
 import { getSiteAuthority } from "./ahrefs";
+import { controleerAntwoord, herstelOpdracht } from "./antwoord-controle";
+import { overlappendePaginas, overlapAlsTekst, zwakkePaginas } from "./concurrenten";
+import { getPageInternalLinks, runPageInternalLinks } from "./page-internal-links";
+import { getCannibalAnalysis, resultDatum, startCannibalRun, runCannibalRedirect } from "./cannibal-redirect";
+import { getGekoppeldeMails } from "./page-emails";
+import { isRuisMail } from "./mail-tekst";
+import { getPageDossier, dossierToText } from "./page-dossier";
+import { getOpgeslagenTekst } from "./page-dossier-tekst";
+import { getClientFiles, bestandenContext } from "./client-files";
 import type { ClientConfig } from "./clients";
 
 // ═══════════════════════════════════════════════════════════
@@ -39,6 +48,54 @@ function stripHtml(html: string): string {
     .replace(/<\/(p|div|br|li|tr|h[1-6])\s*>/gi, "\n")
     .replace(/<[^>]+>/g, " ")
     .replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&").replace(/&lt;/gi, "<").replace(/&gt;/gi, ">").replace(/&#39;|&apos;/gi, "'").replace(/&quot;/gi, '"');
+}
+
+// ── Welke mails gaan er mee in de context, en hoe volledig ──
+//
+// Het venster was "de laatste tien, elk afgekapt op 700 tekens". Daardoor viel
+// een oudere thread buiten beeld zodra er nieuwere mail binnenkwam, en werd een
+// lange mail met teksten middenin afgekapt. Precies de mail die je nodig hebt
+// als je vraagt wat er met een pagina moet gebeuren.
+//
+// Nu: een mail die aan een pagina is VASTGEPIND gaat altijd mee en krijgt ruimte,
+// hoe oud hij ook is. De rest volgt op datum, binnen een totaalbudget, zodat de
+// context niet alsnog volloopt.
+type ChatMail = {
+  id: string; subject: string | null; fromAddress: string | null; receivedAt: string | null;
+  preview: string | null; bodyHtml: string | null; direction: string | null; webLink?: string | null;
+  superhumanLink?: string | null;
+};
+
+function kiesMails(
+  emails: ChatMail[],
+  gekoppeld: Map<string, { url: string; bron: string; score: number }>,
+  opts: { budget?: number; ruim?: number; kort?: number } = {},
+): string[] {
+  const budget = opts.budget ?? 12000;
+  const ruim = opts.ruim ?? 3000;
+  const kort = opts.kort ?? 1200;
+
+  const vast = emails.filter((e) => gekoppeld.get(e.id)?.bron === "pin");
+  const rest = emails.filter((e) => gekoppeld.get(e.id)?.bron !== "pin");
+  const volgorde = [...vast, ...rest];
+
+  const regels: string[] = [];
+  let op = 0;
+  for (const e of volgorde) {
+    const koppeling = gekoppeld.get(e.id);
+    const isVast = koppeling?.bron === "pin";
+    if (!isVast && op >= budget) break;
+    const ruimte = isVast ? ruim : Math.min(kort, Math.max(0, budget - op));
+    if (ruimte < 200 && !isVast) break;
+    const dir = e.direction === "out" ? "WIJ→klant" : "klant→WIJ";
+    const datum = e.receivedAt ? new Date(e.receivedAt).toLocaleDateString("nl-NL") : "";
+    const body = (stripHtml(e.bodyHtml || "") || e.preview || "").replace(/\s+/g, " ").trim().slice(0, ruimte);
+    const link = (e.superhumanLink || e.webLink || "").trim();
+    const bij = koppeling ? ` [hoort bij ${koppeling.url}${isVast ? ", vastgepind" : ""}]` : "";
+    regels.push(`[${dir}, ${datum}]${bij} ${e.subject || "(geen onderwerp)"}${link ? `\n(mail-link: ${link})` : ""}:\n${body}`);
+    op += body.length;
+  }
+  return regels;
 }
 
 async function sheetTaskLines(client: ClientConfig): Promise<string[]> {
@@ -71,19 +128,19 @@ async function buildContext(client: ClientConfig): Promise<string> {
       if (live) emails = live;
     }
   }
-  emails = emails.filter((e) => !/@ahrefs\.com$/i.test((e.fromAddress || "").trim()));
+  // Automatische meldingen eruit, met hetzelfde filter dat ook bij het koppelen
+  // aan een pagina geldt. Bij One Day Clinic waren negen van de twintig "laatste
+  // mails" meldingen van Ahrefs, Search Console of een agenda-uitnodiging; die
+  // verdrongen de echte correspondentie.
+  emails = emails.filter((e) => !isRuisMail(e));
   if (emails.length > 0) {
-    parts.push("\nRECENTE E-MAILS (nieuwste eerst, met afzender/ontvangers en inhoud):");
-    for (const e of emails.slice(0, 10)) {
-      const dir = e.direction === "out" ? "WIJ→klant" : "klant→WIJ";
-      const date = e.receivedAt ? new Date(e.receivedAt).toLocaleString("nl-NL") : "";
-      const to = (e.toAddresses || []).join(", ");
-      const bodyText = (stripHtml(e.bodyHtml || "") || e.preview || "").replace(/\s+/g, " ").trim().slice(0, 700);
-      parts.push(
-        `--- [${dir}, ${date}] Onderwerp: ${e.subject || "(geen onderwerp)"}\n` +
-        `Van: ${e.fromAddress || "?"}${to ? ` | Aan: ${to}` : ""}\n` +
-        `Inhoud: ${bodyText}`,
-      );
+    // Vastgepinde mail hoort er altijd bij, ook als hij ouder is dan de laatste
+    // tien; de rest volgt op datum binnen een totaalbudget.
+    const gekoppeld = await getGekoppeldeMails(client.slug).catch(() => new Map());
+    const regels = kiesMails(emails as ChatMail[], gekoppeld);
+    if (regels.length) {
+      parts.push("\nRECENTE E-MAILS (nieuwste eerst; mails die bij een pagina horen staan vooraan):");
+      parts.push(regels.join("\n---\n"));
     }
   }
 
@@ -198,17 +255,13 @@ async function buildOverviewContext(client: ClientConfig): Promise<string> {
   // De volledige URL-lijst van de site reist ALTIJD mee, zodat het model paden kan
   // matchen (enkelvoud/meervoud!) en nooit zelf een URL hoeft te vormen. Plus de
   // scandatum, zodat duidelijk is hoe vers de status-informatie is.
+  // De URL-lijst mét status en redirect-bestemming, plus een verse sitemap-check.
+  // Eerder gingen alleen de kale paden mee en werd de status weggegooid; daardoor
+  // zag een al opgeruimde pagina er precies zo uit als een levende. Zie
+  // buildUrlContext in lib/site-urls.ts voor de volledige uitleg.
   try {
-    const urls = await getClientUrls(client.slug);
-    if (urls.length) {
-      const paden = urls.map((u) => { try { return new URL(u.url).pathname; } catch { return u.url; } });
-      const nieuwste = urls.map((u) => u.lastScanned || "").filter(Boolean).sort().pop() || "";
-      const datum = nieuwste ? new Date(nieuwste).toLocaleDateString("nl-NL") : "onbekend";
-      parts.push(
-        `\n=== ALLE BEKENDE URL'S VAN DE SITE (paden uit de sitemap/scan; URL-status laatst gescand: ${datum}) ===\n` +
-        paden.slice(0, 250).join(", ").slice(0, 5000)
-      );
-    }
+    const blok = await buildUrlContext(client.slug, client.domain || "");
+    if (blok) parts.push("\n" + blok);
   } catch { /* aanvulling */ }
   try { parts.push("\n=== SITE-OVERZICHT (werkstatus + laaghangend fruit) ===\n" + overviewToText(await buildOverview(client.slug))); } catch { /* aanvulling */ }
   try { const ws = pageWorkStatusToText(await getPageWorkStatus(client.slug)); if (ws.trim()) parts.push("\n=== WERKSTATUS PER PAGINA (wat is gedaan / loopt / gepland) ===\n" + ws); } catch { /* aanvulling */ }
@@ -245,19 +298,19 @@ async function buildOverviewContext(client: ClientConfig): Promise<string> {
         }
       }
     }
-    emails = emails.filter((e) => !/@ahrefs\.com$/i.test((e.fromAddress || "").trim()));
+    // Automatische meldingen eruit, met hetzelfde filter dat ook bij het koppelen
+  // aan een pagina geldt. Bij One Day Clinic waren negen van de twintig "laatste
+  // mails" meldingen van Ahrefs, Search Console of een agenda-uitnodiging; die
+  // verdrongen de echte correspondentie.
+  emails = emails.filter((e) => !isRuisMail(e));
     if (emails.length) {
       // Ruim meegeven (niet te kort afkappen), zodat de agent volledige mails ziet
-      // en er echte concept-antwoorden op kan maken.
-      const lines = emails.slice(0, 6).map((e) => {
-        const dir = e.direction === "out" ? "WIJ→klant" : "klant→WIJ";
-        const date = e.receivedAt ? new Date(e.receivedAt).toLocaleDateString("nl-NL") : "";
-        const body = (stripHtml(e.bodyHtml || "") || e.preview || "").replace(/\s+/g, " ").trim().slice(0, 3000);
-        // Superhuman-deeplink gaat voor (daar werkt Maarten); Outlook-webLink als terugval.
-        const link = ((e as { superhumanLink?: string | null }).superhumanLink || e.webLink || "").trim();
-        return `[${dir}, ${date}] ${e.subject || "(geen onderwerp)"}${link ? `\n(mail-link: ${link})` : ""}:\n${body}`;
-      });
-      parts.push("\n=== RECENTE E-MAILS (basisinfo; nieuwste eerst; neem relevante punten en herzieningen mee in de strategie) ===\n" + lines.join("\n"));
+      // en er echte concept-antwoorden op kan maken. Mails die aan een pagina zijn
+      // vastgepind gaan altijd mee, ook als ze maanden oud zijn: dat is vaak juist
+      // de mail waarin de klant de teksten heeft teruggestuurd.
+      const gekoppeld = await getGekoppeldeMails(client.slug).catch(() => new Map());
+      const lines = kiesMails(emails as ChatMail[], gekoppeld, { budget: 14000, ruim: 3000, kort: 1500 });
+      parts.push("\n=== RECENTE E-MAILS (basisinfo; mails die bij een pagina horen staan vooraan; neem relevante punten en herzieningen mee in de strategie) ===\n" + lines.join("\n"));
     }
   } catch { /* aanvulling */ }
   try {
@@ -399,7 +452,7 @@ function overviewTools(client: ClientConfig, base: { tools: ToolDef[]; run: Tool
       steps: { type: "array", items: { type: "string", enum: ["analyse", "blauwdruk", "copy"] }, description: "Alleen bij pijplijn_starten: welke documenten (standaard alle drie; bij een niet-live pagina laat je analyse weg)." },
       keyword: { type: "string", description: "Alleen bij meta_verbeteren: het primaire zoekwoord van de pagina." },
       tekst: { type: "string", description: "Bij profiel_bijwerken: de nuance/tekst voor het klantprofiel. Bij strategie_bepalen: de volledige strategie voor de pagina in gewone leesbare tekst met korte kopregels en '-' voor bullets (GEEN Markdown-symbolen zoals #, | of **), met minimaal: primaire + secundaire zoektermen (bewust ANDERS dan een bestaande pillar op dezelfde term), de verhouding tot bestaande pagina's, het cannibalisatie-oordeel (concurreert deze pagina met een bestaande top-pagina? zo ja, hoe voorkomen we dat: afwijkende termen, URL als kind, interne links omhoog naar de pillar), de gewenste URL/plek, en de kern van de H1/koppen. Maarten kan dit op de kaart nog bijstellen vóór goedkeuren." },
-      taken: { type: "array", description: "Alleen bij weekplan_taken: de lijst projectkaarten die uit dit gesprek volgen. VERPLICHT gevuld: roep weekplan_taken NOOIT met een lege of ontbrekende 'taken' aan (dan wordt de actie afgekeurd). Zet in ÉÉN aanroep meteen alles erin, elk met minimaal 'taak', 'week' en 'info'. BUNDEL-REGELS: maak per pagina PRECIES ÉÉN kaart in totaal, over alle weken heen ('week' is de startweek); NOOIT meerdere pagina's of paden in één kaart of kaarttitel (gaat een aanpak over meerdere pagina's, maak dan per pagina een eigen kaart met dezelfde achtergrond); site-brede meta/alt-opruiming over veel pagina's wordt ÉÉN Dev-kaart 'Werklijst sitebouwer: meta's en alt-teksten site-breed' zonder url, geen losse kaartjes per pagina; alle deeltaken voor die pagina (meta, alt-teksten, copy, interne links, structured data, bouwen/publiceren) zet je als '-'-bullets in 'info' van die ene paginakaart, NIET als losse items. Ook opvolg-mails of referenties die bij een pagina horen zijn GEEN eigen item: zet ze als achtergrond-bullet in de paginakaart. Alleen echt werk zonder pagina krijgt een eigen item zonder url (zeldzaam). Streef naar 3 tot 6 kaarten in totaal, maximaal 10. Bouw 'info' op in secties met korte kopjes op een eigen regel eindigend op een dubbele punt: 'Achtergrond:' (korte puntige regels van elk hooguit vijftien woorden: wat is er mis, cijfers, waarom nu), alleen indien relevant 'Afspraken en herkomst:' met '-'-bullets (mail-datum, wie), en 'Aanpak per fase:' met per regel een '-'-bullet die begint met exact een fasenaam plus dubbele punt ('- Analyse: ...', '- Blauwdruk: ...', '- Copy: ...', '- Bouw: ...', '- Structured data: ...'), alleen voor fases die nodig zijn; micro-taken bij de juiste fase-regel (meta bij Copy, alt-teksten/interne links bij Bouw). Herhaal nooit de kaarttitel als bullet.", items: { type: "object", properties: { taak: { type: "string", description: "Korte, concrete taaktitel (één regel). Zet GEEN 'WEEK X' in de titel; de week geef je apart mee in 'week'." }, week: { type: "integer", description: "In welke week deze taak valt: 1 = deze week, 2 = volgende week, enzovoort. Verdeel de taken realistisch over de komende weken." }, info: { type: "string", description: "Alle relevante info/achtergrond bij deze taak: waar komt het vandaan (bijv. de mail van 30 juli), waarom, welke zoektermen/pagina, de aanpak, hoe het zich verhoudt tot andere pagina's, de cannibalisatie-nuance, verwachte impact. Dit is de achtergrond die op de kaart komt, dus volledig. Nette leesbare tekst met korte kopregels en '-'-bullets (geen #, | of **)." }, wie: { type: "string", enum: ["SEO", "Dev"], description: "Wie voert de taak uit." }, url: { type: "string", description: "Optioneel: de pagina waar de taak over gaat." }, taaktype: { type: "string", enum: ["meta", "alt", "copy", "intern", "strategie", "pijplijn", "structured", "overig"], description: "Het type taak, zodat de kaart naar de juiste plek in het dashboard kan deep-linken (meta → Meta & CTR-tab, enz.). meta=meta-title/description, alt=alt-teksten, copy=copy schrijven/controleren, intern=interne links, strategie=strategie bepalen, pijplijn=blauwdruk/copy genereren, structured=structured data, overig=anders." }, bronMail: { type: "string", description: "Optioneel: de webLink van de mail waar deze taak uit voortkomt (die staat bij de RECENTE E-MAILS in de context als 'link: ...'). Zo linkt de kaart direct naar die mail." } }, required: ["taak"] } },
+      taken: { type: "array", description: "Alleen bij weekplan_taken: de lijst projectkaarten die uit dit gesprek volgen. VERPLICHT gevuld: roep weekplan_taken NOOIT met een lege of ontbrekende 'taken' aan (dan wordt de actie afgekeurd). Zet in ÉÉN aanroep meteen alles erin, elk met minimaal 'taak', 'week' en 'info'. BUNDEL-REGELS: maak per pagina PRECIES ÉÉN kaart in totaal, over alle weken heen ('week' is de startweek); NOOIT meerdere pagina's of paden in één kaart of kaarttitel (gaat een aanpak over meerdere pagina's, maak dan per pagina een eigen kaart met dezelfde achtergrond); site-brede meta/alt-opruiming over veel pagina's wordt ÉÉN Dev-kaart 'Werklijst sitebouwer: meta's en alt-teksten site-breed' zonder url, geen losse kaartjes per pagina; alle deeltaken voor die pagina (meta, alt-teksten, copy, interne links, structured data, bouwen/publiceren) zet je als '-'-bullets in 'info' van die ene paginakaart, NIET als losse items. Ook opvolg-mails of referenties die bij een pagina horen zijn GEEN eigen item: zet ze als achtergrond-bullet in de paginakaart. Alleen echt werk zonder pagina krijgt een eigen item zonder url (zeldzaam). Streef naar 3 tot 6 kaarten in totaal, maximaal 10. BEGRENZING (het scherm toont niet meer dan dit, de rest zakt naar 'Eerdere notities'): hooguit VIER regels achtergrond en per fase precies ÉÉN regel. Kies dus de vier regels die iemand echt nodig heeft om deze klus te doen, niet alles wat je over de pagina weet. SJABLOON PER SOORT KLUS: bij een nieuwe of uit te breiden pagina zijn dat het primaire zoekwoord met de huidige stand, waarom juist nu, en hoe de pagina zich verhoudt tot de rest van de site; bij meta/CTR de huidige meta met het probleem en het doelzoekwoord; bij structured data welk schema-type en waarop het gebaseerd is; bij alt-teksten of interne links om welke pagina's het gaat. Herhaal NOOIT een cijfer dat al in een andere regel staat, en noem een meting maar één keer. Bouw 'info' op in secties met korte kopjes op een eigen regel eindigend op een dubbele punt: 'Achtergrond:' (korte puntige regels van elk hooguit vijftien woorden: wat is er mis, cijfers, waarom nu), alleen indien relevant 'Afspraken en herkomst:' met '-'-bullets (mail-datum, wie), en 'Aanpak per fase:' met per regel een '-'-bullet die begint met exact een fasenaam plus dubbele punt ('- Analyse: ...', '- Blauwdruk: ...', '- Copy: ...', '- Bouw: ...', '- Structured data: ...'), alleen voor fases die nodig zijn; micro-taken bij de juiste fase-regel (meta bij Copy, alt-teksten/interne links bij Bouw). Herhaal nooit de kaarttitel als bullet.", items: { type: "object", properties: { taak: { type: "string", description: "Korte, concrete taaktitel (één regel). Zet GEEN 'WEEK X' in de titel; de week geef je apart mee in 'week'." }, week: { type: "integer", description: "In welke week deze taak valt: 1 = deze week, 2 = volgende week, enzovoort. Verdeel de taken realistisch over de komende weken." }, info: { type: "string", description: "Alle relevante info/achtergrond bij deze taak: waar komt het vandaan (bijv. de mail van 30 juli), waarom, welke zoektermen/pagina, de aanpak, hoe het zich verhoudt tot andere pagina's, de cannibalisatie-nuance, verwachte impact. Dit is de achtergrond die op de kaart komt, dus volledig. Nette leesbare tekst met korte kopregels en '-'-bullets (geen #, | of **)." }, wie: { type: "string", enum: ["SEO", "Dev"], description: "Wie voert de taak uit." }, url: { type: "string", description: "Optioneel: de pagina waar de taak over gaat." }, taaktype: { type: "string", enum: ["meta", "alt", "copy", "intern", "strategie", "pijplijn", "structured", "overig"], description: "Het type taak, zodat de kaart naar de juiste plek in het dashboard kan deep-linken (meta → Meta & CTR-tab, enz.). meta=meta-title/description, alt=alt-teksten, copy=copy schrijven/controleren, intern=interne links, strategie=strategie bepalen, pijplijn=blauwdruk/copy genereren, structured=structured data, overig=anders." }, bronMail: { type: "string", description: "Optioneel: de webLink van de mail waar deze taak uit voortkomt (die staat bij de RECENTE E-MAILS in de context als 'link: ...'). Zo linkt de kaart direct naar die mail." } }, required: ["taak"] } },
     }, required: ["type"] } } }, required: ["acties"] } },
   ];
   const run: ToolRunner = async (name, input) => {
@@ -438,9 +491,25 @@ function overviewTools(client: ClientConfig, base: { tools: ToolDef[]; run: Tool
   return { tools: [...base.tools, ...extra], run };
 }
 
+// Eén voorgestelde taak uit de oogst-stap (zie "eerst sparren" onderaan dit bestand).
+// "waarom" is voor het scherm (waarom volgt dit uit het gesprek), "info" is de
+// achtergrond die op de projectkaart belandt.
+export type OogstTaak = {
+  taak: string; waarom: string; info?: string; url?: string; taaktype?: string;
+  week?: number; wie?: string; zekerheid: "hoog" | "middel" | "laag";
+};
+// geenTaak = wat de assistent bewust NIET als werk zag. Dat tonen we grijs, zodat
+// zichtbaar is dat het is meegewogen en er niets stilletjes wegvalt.
+export type OogstResultaat = { taken: OogstTaak[]; geenTaak: string[]; verwerkt?: boolean };
+
 // image/images: optionele afbeeldingen (data-URL's, al verkleind in de browser) bij
 // een user-bericht. "image" blijft bestaan voor oude opgeslagen gesprekken.
-export type ChatMessage = { role: "user" | "assistant"; content: string; image?: string; images?: string[]; actions?: ProposedAction[] };
+// soort/oogst: berichten die uit de knoppen komen (conclusie, takenvoorstel) in
+// plaats van uit een vraag van Maarten.
+export type ChatMessage = {
+  role: "user" | "assistant"; content: string; image?: string; images?: string[];
+  actions?: ProposedAction[]; soort?: "conclusie" | "oogst"; oogst?: OogstResultaat;
+};
 
 const cleanThread = (t?: string) => (t || "algemeen").trim().slice(0, 80) || "algemeen";
 
@@ -540,21 +609,42 @@ function chatTools(client: ClientConfig): { tools: ToolDef[]; run: ToolRunner } 
   };
   const tools: ToolDef[] = [
     { name: "meet_pagina", description: "Leest en meet een pagina live uit: meta-title/description, H1/H2/H3, aantal woorden, interne/externe links, afbeeldingen, FAQ en schema. Gebruik dit ZELF om contentkwaliteit en on-page zaken te beoordelen in plaats van ernaar te vragen.", input_schema: { type: "object", properties: { url: { type: "string", description: "Volledige URL of pad (bijv. /zwemvijvers/)" } }, required: ["url"] } },
+    { name: "controleer_url", description: "Controleert LIVE wat een URL echt doet: bestaat hij (200), is hij al omgeleid (301/302, en waarheen), of is hij weg (404). Volgt de omleiding NIET, dus dit is de enige betrouwbare manier om te weten of een pagina nog leeft. Gebruik dit ALTIJD voordat je zegt dat een pagina live staat, nog gebouwd moet worden, of opgeruimd/omgeleid moet worden. Ook voor een pad dat niet in de bekende URL-lijst staat.", input_schema: { type: "object", properties: { url: { type: "string", description: "Volledige URL of pad" } }, required: ["url"] } },
+    { name: "concurrerende_paginas", description: "DE ENIGE JUISTE MANIER om te bepalen welke pagina's een doelpagina in de weg zitten. Zoekt in Search Console welke andere pagina's van deze klant vertoningen krijgen op DEZELFDE zoekwoorden, en geeft per concurrent de gedeelde zoekwoorden met posities, de live status, en de EIGEN sterkste zoekterm van die pagina (het bestaansrecht). Gebruik dit ALTIJD bij vragen over cannibalisatie, concurrerende pagina's, opruimen, redirects of 'welke pagina's zitten in de weg'. Leid dit NOOIT zelf af uit de URL-lijst: dan mis je pagina's en verzin je pagina's. De uitkomst is compleet; noem er geen andere bij.", input_schema: { type: "object", properties: { url: { type: "string", description: "De doelpagina (volledige URL of pad)" } }, required: ["url"] } },
+    { name: "cannibalisatie_analyse", description: "DE VOLLEDIGE anti-cannibalisatie-analyse van het dashboard, site-breed. Dit is de zwaarste en meest complete analyse die er is: hij detecteert URL-flipping over tijd (Google die wisselt tussen URLs, het sterkste bewijs van echte cannibalisatie), positieplafonds en klikverdeling per cluster, en levert een complete redirectmap (van, naar, reden, wel of niet content samenvoegen), een interne-linkplan met anker­teksten, en een oordeel over de datakwaliteit. Gebruik dit ALTIJD als eerste bij elke vraag over cannibalisatie, opruimen, redirects of concurrerende pagina's; de andere tools zijn snelle hulpjes, dit is de echte analyse. Draait als achtergrondtaak: is hij nog niet klaar, zeg dat dan en doe zelf GEEN uitspraak over wat er opgeruimd moet worden.", input_schema: { type: "object", properties: { opnieuw: { type: "boolean", description: "true = de analyse opnieuw laten draaien met verse data" } } } },
+    { name: "dunne_paginas", description: "Zoekt de pagina's die opgeruimd of samengevoegd kunnen worden: live pagina's die op GEEN ENKELE zoekterm van hun eigen onderwerp ranken. Alles wat ze binnenhalen is geleend van merktermen of andere plaatsen, dus ze versnipperen autoriteit zonder iets op te leveren. Precies de kleine locatiepaginaatjes (denk Mijdrecht, Abcoude, Veldhoven). Geeft per pagina de klikken, vertoningen, de geleende topterm, en welke andere pagina die term wél bezit als voor de hand liggend redirect-doel. Gebruik dit ALTIJD bij 'welke pagina's moeten we opruimen', 'welke dunne pagina's zitten in de weg', 'welke locatiepagina's kunnen weg'. Verschil met concurrerende_paginas: DAT zoekt pagina's die dezelfde zoekwoorden delen (meestal juist de STERKE pagina's, die je wilt houden); DIT zoekt de zwakke pagina's zonder eigen bestaansrecht. Voor opruimen is dit de juiste tool.", input_schema: { type: "object", properties: {} } },
+    { name: "interne_link_kansen", description: "De interne-link-analyse van het dashboard voor één pagina: vanaf welke bestaande pagina's je het beste naar deze pagina kunt linken, gewogen op autoriteit, verkeer en relevantie. Gebruik dit ALTIJD als het gaat over het versterken van een pagina, interne links leggen, linkwaarde sturen of autoriteit doorgeven. Geef nooit zelf een lijst bronpagina's uit je hoofd.", input_schema: { type: "object", properties: { url: { type: "string", description: "De pagina die je wilt versterken (volledige URL of pad)" } }, required: ["url"] } },
     { name: "gsc_pagina", description: "Search Console-zoekwoorden van één pagina (laatste 90 dagen): zoekwoord, klikken, vertoningen, positie.", input_schema: { type: "object", properties: { url: { type: "string", description: "Volledige URL of pad" } }, required: ["url"] } },
     { name: "ahrefs_pagina", description: "Ahrefs-gegevens van één pagina: organische zoekwoorden met positie/volume/verkeer, plus het aantal verwijzende domeinen (externe autoriteit) van die pagina.", input_schema: { type: "object", properties: { url: { type: "string", description: "Volledige URL of pad" } }, required: ["url"] } },
     { name: "serp_top10", description: "De actuele top 10 van Google voor een zoekwoord (NL): positie, URL, titel, domain rating en resultaattype. Gebruik dit ZELF om de concurrentie te beoordelen.", input_schema: { type: "object", properties: { zoekwoord: { type: "string" } }, required: ["zoekwoord"] } },
     { name: "zoek_mail", description: "Zoekt gericht in de mail van deze klant op een naam, e-mailadres, onderwerp of trefwoord (bijv. 'Emre', 'Nicolien' of 'lenzen') en geeft de gevonden mails terug (afzender, datum, onderwerp, volledige inhoud, mail-link). Gebruik dit om de laatste mail van een specifiek persoon of over een onderwerp op te halen.", input_schema: { type: "object", properties: { zoekterm: { type: "string", description: "Naam, e-mailadres, onderwerp of trefwoord" } }, required: ["zoekterm"] } },
+    { name: "pagina_dossier", description: "HET COMPLETE DOSSIER van één pagina: de stand (welke stappen af zijn, of de copy live staat), de mails die aantoonbaar over deze pagina gaan (met datum en afzender), de documenten die we gemaakt hebben, teksten die de klant heeft teruggestuurd en nog verwerkt moeten worden, en wat er met de pagina is gebeurd. Gebruik dit ALTIJD voordat je zegt wat er met een pagina moet gebeuren of wie er aan zet is; dan weet je of er al over gemaild is en of er al teksten liggen. Noem een mail als 'de mail van 22 juli' (dag plus maand), want dat wordt automatisch een klikbare link.", input_schema: { type: "object", properties: { url: { type: "string", description: "Volledige URL of pad van de pagina" } }, required: ["url"] } },
   ];
   const run: ToolRunner = async (name, input) => {
     try {
+      if (name === "pagina_dossier") {
+        const doel = toFull(String(input.url || ""));
+        const d = await getPageDossier(client.slug, doel, { verseMail: true });
+        const alinea = await getOpgeslagenTekst(client.slug, doel).catch(() => "");
+        return dossierToText(d) + (alinea ? `\n\nEERDER VASTGELEGDE SAMENVATTING: ${alinea}` : "");
+      }
       if (name === "meet_pagina") {
-        const m = await measurePage(toFull(String(input.url || "")), { staticOnly: true });
+        const gevraagd = toFull(String(input.url || ""));
+        const m = await measurePage(gevraagd, { staticOnly: true });
         if (!m.ok) return `Pagina niet leesbaar (status ${m.status ?? "?"}).`;
+        // Een omleiding MOET bovenaan staan. Zonder deze regel meet je vier
+        // omgeleide URL's, krijg je vier keer de doelpagina terug (zelfde titel,
+        // zelfde woordaantal) en concludeer je "vier identieke duplicaten",
+        // terwijl ze allang zijn opgeruimd. Dat is precies wat er misging.
+        const padOf = (u: string) => { try { return new URL(u).pathname; } catch { return u; } };
+        const omleiding = m.redirected && padOf(m.finalUrl) !== padOf(gevraagd)
+          ? `LET OP, DIT IS EEN OMLEIDING. ${padOf(gevraagd)} leidt door naar ${padOf(m.finalUrl)}. Alles hieronder is gemeten op ${padOf(m.finalUrl)}, NIET op ${padOf(gevraagd)}. ${padOf(gevraagd)} is dus AL opgeruimd: noem hem geen duplicaat, geen dunne pagina en stel niet voor om hem om te leiden.\n`
+          : "";
         const normImg = (f: string) => f.toLowerCase().replace(/-\d+x\d+(?=\.[a-z0-9]+$)/, "");
         const imgUniek = new Set(m.images.map((i) => normImg(i.file))).size;
         const imgUniekNoAlt = new Set(m.images.filter((i) => !i.hasAlt || !i.alt.trim()).map((i) => normImg(i.file))).size;
         return [
-          `Status ${m.status}. Title (${metaVerdictText("meta_title", m.metaTitle)}): ${m.metaTitle}`,
+          omleiding + `Status ${m.status}. Title (${metaVerdictText("meta_title", m.metaTitle)}): ${m.metaTitle}`,
           `Meta-description (${metaVerdictText("meta_description", m.metaDescription)}): ${m.metaDescription}`,
           `H1: ${m.h1.join(" | ") || "(geen)"}`,
           `H2 (${m.h2.length}): ${m.h2.join(" | ")}`,
@@ -562,6 +652,92 @@ function chatTools(client: ClientConfig): { tools: ToolDef[]; run: ToolRunner } 
           `Woorden: ${m.wordCount}. Interne links: ${m.internalLinkCount}, extern: ${m.externalLinkCount}.`,
           `Afbeeldingen: ${imgUniek} uniek${m.images.length > imgUniek ? ` (${m.images.length} img-tags incl. responsive/lazyload-varianten)` : ""}, zonder alt: ${imgUniekNoAlt} uniek. FAQ: ${m.faqDetected ? `ja (${m.faqCount})` : "nee"}. Schema: ${m.schemaTypes.join(", ") || "geen"}.`,
         ].join("\n");
+      }
+      if (name === "concurrerende_paginas") {
+        const doel = toFull(String(input.url || ""));
+        const doelPad = (() => { try { return new URL(doel).pathname; } catch { return doel; } })();
+        // De site-brede opruimlijst gaat ALTIJD mee, ook als hij er niet om vraagt.
+        // Eerder moest het model daar zelf een tweede tool voor aanroepen, en dat
+        // deed het niet: na zes pagina-analyses waren de beurten op en bleven juist
+        // de dunne locatiepagina's (Mijdrecht, Rijswijk, Houten) buiten beeld.
+        const [r, zwak] = await Promise.all([
+          overlappendePaginas(client.slug, domain, doel),
+          zwakkePaginas(client.slug, domain).catch(() => null),
+        ]);
+        let uit = overlapAlsTekst(r);
+        const bij = (zwak?.kandidaten || []).filter((k) => k.dubbelMet.some((d) => d === doelPad));
+        if (bij.length) {
+          uit += `\n\n=== DUNNE PAGINA'S DIE BIJ ${doelPad} HOREN (${bij.length}) ===\n`
+            + `Deze pagina's verdienen geen eigen zoekterm en wijzen op basis van hun zoekwoorden naar DEZE stadspagina. Ze staan niet in de overlap hierboven omdat ze te weinig vertoningen hebben om zoekwoorden te delen, maar ze versnipperen wel de autoriteit. NEEM ZE OP IN JE ANTWOORD.\n`
+            + bij.map((k) => `- ${k.pad} [${k.klikken} klikken, ${k.vertoningen} vertoningen] -> 301 naar ${doelPad}; leent "${k.geleendeTop?.keyword ?? "?"}"`).join("\n");
+        } else if (zwak?.ok) {
+          uit += `\n\n(Geen dunne pagina's die specifiek naar ${doelPad} wijzen. Gebruik dunne_paginas voor het volledige site-brede beeld.)`;
+        }
+        return uit;
+      }
+      if (name === "cannibalisatie_analyse") {
+        const st = await getCannibalAnalysis(client.slug);
+        if (st.status === "running") return `De volledige cannibalisatie-analyse draait nog: stap ${st.stap} van ${st.stappen} (${st.stapLabel}). Zeg dat tegen Maarten, noem bij welke stap hij is, geef aan dat de hele analyse een kwartier tot twintig minuten kost, en doe zelf GEEN uitspraak over welke pagina's opgeruimd moeten worden.`;
+        // Een maand oude "klaar" is geen klaar. De analyse van One Day Clinic stond
+        // op done met een uitkomst van 6 juli; zonder deze controle zou die als de
+        // huidige stand worden gepresenteerd. Ouder dan een week = opnieuw draaien.
+        const datum = resultDatum(st);
+        const dagenOud = datum ? (Date.now() - new Date(datum).getTime()) / 86400000 : Infinity;
+        if (input.opnieuw === true || st.status === "idle" || st.status === "error" || !st.result || dagenOud > 7) {
+          try { void startCannibalRun(client.slug).then(() => runCannibalRedirect(client.slug)).catch(() => { /* de cron pikt hem op */ }); } catch { /* best effort */ }
+          const oud = st.result && Number.isFinite(dagenOud)
+            ? ` Er ligt nog een uitkomst van ${Math.round(dagenOud)} dagen geleden (${datum ? new Date(datum).toLocaleDateString("nl-NL") : "?"}); die is te oud om op te vertrouwen en gebruik je NIET.`
+            : "";
+          return `Ik heb de volledige cannibalisatie-analyse zojuist gestart; die kost een paar minuten.${oud} Zeg dat tegen Maarten en doe zelf GEEN uitspraak over wat er opgeruimd moet worden. Vraag hem zo opnieuw te vragen, dan is de verse redirectlijst er.`;
+        }
+        const r = st.result;
+        const regels: string[] = [
+          `VOLLEDIGE CANNIBALISATIE-ANALYSE, uitgevoerd op ${st.updatedAt ? new Date(st.updatedAt).toLocaleString("nl-NL") : "onbekend"} (${Math.round(dagenOud)} dagen oud; noem die datum in je antwoord). Dit is de complete uitkomst; NEEM DE REDIRECTMAP HIERONDER LETTERLIJK EN VOLLEDIG OVER, laat geen regel weg en verzin er geen bij.`,
+          r.samenvatting || "",
+        ];
+        if (r.datakwaliteit) regels.push(`Datakwaliteit: ${JSON.stringify(r.datakwaliteit)}`);
+        if (r.redirectMap?.length) {
+          regels.push(`\nREDIRECTMAP (${r.redirectMap.length} regels, volledig overnemen):`);
+          for (const m of r.redirectMap) regels.push(`- ${m.van} -> ${m.naar}${m.type ? ` (${m.type})` : ""}${m.mergeContent ? " [content samenvoegen]" : ""}${m.reden ? `: ${m.reden}` : ""}`);
+        } else regels.push("\nGeen redirectmap in de uitkomst; zeg dat er niets om te leiden is in plaats van zelf iets te bedenken.");
+        if (r.interneLinks?.length) {
+          regels.push(`\nINTERNE LINKS (${r.interneLinks.length} regels, volledig overnemen):`);
+          for (const l of r.interneLinks) regels.push(`- vanaf ${l.vanaf} naar ${l.naar}${l.ankertekst ? ` met ankertekst "${l.ankertekst}"` : ""}${l.reden ? `: ${l.reden}` : ""}`);
+        }
+        if (r.clusters?.length) regels.push(`\nCLUSTERS: ${r.clusters.length}. Signalen per cluster (urlFlip = Google wisselt tussen URLs, het sterkste bewijs) staan in de analyse; benoem ze bij je advies.`);
+        return regels.join("\n");
+      }
+      if (name === "dunne_paginas") {
+        const r = await zwakkePaginas(client.slug, domain);
+        return r.tekst;
+      }
+      if (name === "interne_link_kansen") {
+        const doel = toFull(String(input.url || ""));
+        const st = await getPageInternalLinks(client.slug, doel);
+        if (st.status === "done" && st.result) return `INTERNE-LINK-KANSEN voor ${doel} (analyse van ${st.updatedAt ? new Date(st.updatedAt).toLocaleDateString("nl-NL") : "onbekend"}):\n${st.result}`;
+        if (st.status === "running") return "De interne-link-analyse voor deze pagina draait nog. Zeg dat, en doe zelf geen uitspraak over welke pagina's moeten linken.";
+        // Nog nooit gedraaid: start hem, zodat de volgende vraag hem wel heeft.
+        try { void runPageInternalLinks(client.slug, doel); } catch { /* best effort */ }
+        return "Voor deze pagina is nog geen interne-link-analyse gedraaid; ik ben hem nu gestart. Doe zelf GEEN uitspraak over welke pagina's moeten linken, en zeg dat de analyse eraan komt.";
+      }
+      if (name === "controleer_url") {
+        // redirect: "manual" is hier het hele punt: we willen de ECHTE status van
+        // dit adres zien, niet die van de pagina waar hij eventueel heen wijst.
+        const doel = toFull(String(input.url || ""));
+        const padOf2 = (u: string) => { try { return new URL(u).pathname; } catch { return u; } };
+        try {
+          const ctrl = new AbortController();
+          const t = setTimeout(() => ctrl.abort(), 10000);
+          const res = await fetch(doel, { redirect: "manual", signal: ctrl.signal, headers: { "User-Agent": "Mozilla/5.0 PingwinBot" } }).finally(() => clearTimeout(t));
+          if (res.status >= 300 && res.status < 400) {
+            const naar = res.headers.get("location") || "";
+            return `${padOf2(doel)}: ${res.status} OMGELEID naar ${naar ? padOf2(naar) : "onbekende bestemming"}. Deze pagina is AL opgeruimd. Stel niet voor om hem om te leiden en noem hem geen duplicaat.`;
+          }
+          if (res.status >= 400) return `${padOf2(doel)}: ${res.status}, deze pagina bestaat NIET (meer).`;
+          return `${padOf2(doel)}: ${res.status}, staat echt live.`;
+        } catch (e) {
+          return `${padOf2(doel)}: niet te controleren (${(e as Error).message}). Doe hier GEEN uitspraak over de status.`;
+        }
       }
       if (name === "gsc_pagina") {
         const rows = await getGscForPage(domain, toFull(String(input.url || "")), 90);
@@ -578,7 +754,10 @@ function chatTools(client: ClientConfig): { tools: ToolDef[]; run: ToolRunner } 
         const norm = (u: string) => u.replace(/^https?:\/\/(www\.)?/i, "").replace(/\/$/, "");
         const rd = top.find((t) => norm(t.url) === norm(full))?.refDomains;
         const kwText = kws.length ? kws.map((k) => `${k.keyword}: pos ${k.position ?? "-"}, vol ${k.volume ?? "-"}, verkeer ${k.traffic ?? "-"}`).join("\n") : "Geen organische zoekwoorden gevonden.";
-        return `Verwijzende domeinen naar deze pagina: ${rd ?? "onbekend"}.\n${kwText}`;
+        const rdText = rd === undefined || rd === null
+          ? "Verwijzende domeinen naar deze pagina: NIET OPGEHAALD (deze pagina staat niet in de Ahrefs top-pages). Noem hier GEEN getal; zeg dat het niet gemeten is."
+          : `Verwijzende domeinen naar deze pagina: ${rd} (Ahrefs).`;
+        return `${rdText}\n${kwText}`;
       }
       if (name === "serp_top10") {
         const rows = await getSerpOverview(String(input.zoekwoord || ""), "nl");
@@ -694,6 +873,247 @@ export async function weekplanFromAnswer(slug: string, answer: string, thread = 
   return { ok: result.ok, added, merged, error: result.ok ? undefined : result.message };
 }
 
+// ═══════════════════════════════════════════════════════════
+// EERST SPARREN, DAN CONCLUDEREN, DAN PAS TAKEN
+// ═══════════════════════════════════════════════════════════
+// Waarom dit bestaat: de bird's eye hing vier knopjes aan ELKE bullet, en een
+// regex (lib/punt-soort.ts) moest per regel raden of het werk was. Dat raden gaat
+// mis ("Foto's met locatiecontext versterken dit" is een inzicht, geen taak) en het
+// gebeurt op het verkeerde moment: midden in een gesprek waarin nog gedacht wordt.
+// Nu is het één bewuste denkstap over het HELE gesprek, door Maarten getriggerd:
+// eerst sparren (geen knopjes), dan "Trek de conclusie", dan pas "Welke taken
+// volgen hieruit?". Dat laatste levert een voorstel dat hij aanvinkt; niets gaat
+// automatisch door. Zo is er nog maar één weg naar een taak.
+// ═══════════════════════════════════════════════════════════
+
+// Het hele gesprek als leesbare tekst voor de conclusie- en oogst-stap. Bewust NIET
+// messages.slice(-10) zoals de gewone beurt: juist het complete verloop telt hier.
+// Bij een heel lang gesprek houden we het EINDE vast (daar staat de afweging).
+function gesprekAlsTekst(messages: ChatMessage[], max = 24000): string {
+  const regels = messages
+    .filter((m) => m.soort !== "oogst" && (m.content || "").trim().length > 10)
+    .map((m) => `${m.role === "user" ? "MAARTEN" : "ASSISTENT"}: ${(m.content || "").trim()}`);
+  const tekst = regels.join("\n\n");
+  return tekst.length > max ? "(het begin van het gesprek is ingekort)\n\n" + tekst.slice(-max) : tekst;
+}
+
+/**
+ * Stap 1 van het oogsten: lees het hele gesprek terug en schrijf de conclusie.
+ * Bewust GEEN nieuwe analyse en geen gereedschap: dit vat samen waar het gesprek
+ * op uitkomt, zodat de takenstap daarna iets heeft om zich op te baseren.
+ */
+export async function trekConclusie(slug: string, thread = "overzicht"): Promise<{ ok: boolean; answer?: string; error?: string }> {
+  if (!process.env.ANTHROPIC_API_KEY) return { ok: false, error: "Geen ANTHROPIC_API_KEY ingesteld." };
+  const client = await getClientBySlug(slug);
+  if (!client) return { ok: false, error: "Klant niet gevonden." };
+  const messages = await getChatHistory(slug, thread);
+  const gesprek = gesprekAlsTekst(messages);
+  if (!gesprek.trim()) return { ok: false, error: "Er is nog geen gesprek om een conclusie uit te trekken." };
+
+  const system =
+    `Je bent de bird's eye-strateeg van Pingwin voor de klant ${client.name}. Hieronder staat een volledig gesprek tussen Maarten en jou. Trek daar nu de conclusie uit.\n\n` +
+    `WAT DIT WEL EN NIET IS: dit is een samenvattende conclusie van wat er in dit gesprek is besproken en afgewogen. Geen nieuwe analyse, geen nieuwe feiten, geen takenlijst en geen weekplanning; de taken komen in een aparte stap hierna.\n\n` +
+    `STRUCTUUR, precies deze kopjes (laat een kopje weg als er niets zinnigs onder staat):\n` +
+    `## Waar we op uitkomen\n## Wat we nu weten\n## Wat nog open staat\n\n` +
+    `REGELS:\n` +
+    `- Nederlands, Markdown, geen emoji.\n` +
+    `- Korte bullets (-), één gedachte per bullet. Geen lange alinea's, geen muur.\n` +
+    `- Begin DIRECT met het eerste kopje. Geen aankondigings- of vulzinnen ("Hier is de conclusie", "Nu heb ik het beeld compleet").\n` +
+    `- Onder "Wat nog open staat" horen echte open punten: wat we niet weten, waar we op wachten, of waar Maarten of de klant nog over moet beslissen.\n` +
+    `- **Vet** voor de kernfeiten. Pagina's en paden schrijf je KAAL als pad (/hovenier-oss/); die worden vanzelf klikbaar. Nooit [tekst](/pad/).\n` +
+    `- Verzin niets dat niet in het gesprek staat.`;
+
+  try {
+    const raw = await callClaude(system, [{ role: "user", content: gesprek }], 1600, { slug, action: "overzicht-conclusie" });
+    const answer = (raw || "").trim();
+    if (!answer) return { ok: false, error: "De conclusie kwam leeg terug. Probeer het nog een keer." };
+    const bericht: ChatMessage = { role: "assistant", content: answer, soort: "conclusie" };
+    await saveChatHistory(slug, thread, [...messages, bericht]);
+    return { ok: true, answer };
+  } catch (err) {
+    return { ok: false, error: "AI niet bereikbaar: " + (err as Error).message };
+  }
+}
+
+/**
+ * Stap 2 van het oogsten: bepaal welk werk er uit het HELE gesprek volgt.
+ * Levert een VOORSTEL op (niets wordt automatisch weggezet). "geen_taak" maakt
+ * zichtbaar wat bewust niet als werk is aangemerkt, zodat er niets stilletjes
+ * wegvalt en Maarten kan zien dat het is meegewogen.
+ */
+export async function oogstTaken(slug: string, thread = "overzicht"): Promise<{ ok: boolean; oogst?: OogstResultaat; error?: string }> {
+  if (!process.env.ANTHROPIC_API_KEY) return { ok: false, error: "Geen ANTHROPIC_API_KEY ingesteld." };
+  const client = await getClientBySlug(slug);
+  if (!client) return { ok: false, error: "Klant niet gevonden." };
+  const messages = await getChatHistory(slug, thread);
+  const gesprek = gesprekAlsTekst(messages);
+  if (!gesprek.trim()) return { ok: false, error: "Er is nog geen gesprek om taken uit te halen." };
+
+  // Context is hier alleen hulp voor juiste paden en achtergrond; het gesprek is
+  // leidend. Begrensd op 20 seconden zodat een trage bron de route niet ophoudt.
+  const context = await Promise.race([
+    buildOverviewContext(client).catch(() => ""),
+    new Promise<string>((resolve) => setTimeout(() => resolve(""), 20000)),
+  ]);
+
+  // Gaat het gesprek over opruimen of concurrerende pagina's, dan halen we de
+  // overlap-analyse er ZELF bij voor de pagina's die in het gesprek voorkomen.
+  // Anders vertelt de taak het gesprek na ("stel een redirectlijst op") in plaats
+  // van de lijst mee te leveren, en moet het werk alsnog een keer over.
+  let hardeData = "";
+  if (/redirect|omleid|opruim|cannibal|kannibal|concurre|in de weg|dubbel|duplicaat/i.test(gesprek)) {
+    const paden = [...new Set([...gesprek.matchAll(/(?<![\w:])\/[a-z0-9][a-z0-9-]*(?:\/[a-z0-9][a-z0-9-]*)*\//gi)].map((m) => m[0]))];
+    const bekend = await getClientUrls(slug).catch(() => []);
+    const bekendePaden = new Map(bekend.map((u) => { try { return [new URL(u.url).pathname, u.url] as const; } catch { return [u.url, u.url] as const; } }));
+    // Alleen de pagina's waar het gesprek echt om draait: de vaakst genoemde live paden.
+    const telling = paden
+      .filter((p) => bekendePaden.has(p))
+      .map((p) => ({ p, n: (gesprek.match(new RegExp(p.replace(/[/-]/g, "\\$&"), "g")) || []).length }))
+      .sort((a, b) => b.n - a.n).slice(0, 3);
+    const stukken: string[] = [];
+    for (const { p } of telling) {
+      try { stukken.push(overlapAlsTekst(await overlappendePaginas(slug, client.domain || "", bekendePaden.get(p) as string))); }
+      catch { /* deze pagina overslaan */ }
+    }
+    // Bij een opruimvraag is de lijst zwakke pagina's belangrijker dan de overlap:
+    // dat zijn de pagina's die echt weg kunnen.
+    try { const z = await zwakkePaginas(slug, client.domain || ""); if (z.ok) stukken.unshift(z.tekst); } catch { /* overslaan */ }
+    if (stukken.length) hardeData = "\n\n--- VERSE ANALYSE UIT SEARCH CONSOLE (leidend boven wat er in het gesprek of in een document staat) ---\n" + stukken.join("\n\n");
+  }
+
+  const system =
+    `Je bepaalt welk werk er volgt uit een gesprek tussen Maarten en de bird's eye-strateeg van Pingwin voor de klant ${client.name}.\n` +
+    `Antwoord met UITSLUITEND geldige JSON, niets eromheen, exact dit formaat:\n` +
+    `{"taken":[{"taak":"korte concrete titel in één regel","waarom":"in één zin waarom dit uit dit gesprek volgt","info":"de achtergrond voor op de kaart","url":"/pad/ of leeg","taaktype":"copy","week":1,"wie":"SEO","zekerheid":"hoog"}],"geen_taak":["punt uit het gesprek dat bewust geen taak is"]}\n\n` +
+    `WAT IS EEN TAAK (dit is de kern van je opdracht): alleen werk dat iemand echt moet UITVOEREN en dat nog niet gedaan is. Een constatering, een cijfer, een stand van zaken, een uitleg, een inzicht of een overweging is GEEN taak, ook niet als de zin met een werkwoord begint. "Foto's met locatiecontext versterken de pagina" is een inzicht; "Voeg foto's met locatiecontext toe aan /hovenier-oss/" is een taak. Bij twijfel zet je het in "geen_taak", niet in "taken". Liever drie taken die kloppen dan tien die half kloppen.\n` +
+    `"geen_taak": de belangrijkste punten uit het gesprek die je bewust NIET als taak opvoert, elk in één korte regel in gewone taal. Zo ziet Maarten dat je ze hebt meegewogen. Hooguit acht regels; laat triviale zinnen weg.\n` +
+    `"waarom": één zin die teruggrijpt op wat er in dit gesprek is besproken of besloten. Niet algemeen ("goed voor SEO"), maar specifiek.\n` +
+    `"zekerheid": "hoog" als het gesprek hier duidelijk op uitkomt of Maarten het zelf zegt; "middel" bij een logische maar niet uitgesproken vervolgstap; "laag" bij een suggestie van jezelf die hij makkelijk kan laten vallen.\n\n` +
+    `BUNDEL-REGELS (net als de projectkaarten in het dashboard):\n` +
+    `- Per pagina PRECIES ÉÉN taak, over alle weken heen. Alle deeltaken voor die pagina (meta, alt-teksten, copy, interne links, structured data, bouwen en publiceren) zet je als '-'-bullets in "info", niet als losse taken.\n` +
+    `- NOOIT meerdere pagina's in één taak of in één titel. Gaat een aanpak over drie pagina's, maak dan drie taken met dezelfde achtergrond, elk met de eigen "url".\n` +
+    `- Site-brede meta- of alt-opruiming over veel pagina's is ÉÉN Dev-taak "Werklijst sitebouwer: meta's en alt-teksten site-breed" zonder url, nooit een stapel losse kaartjes.\n` +
+    `- Streef naar 2 tot 6 taken, nooit meer dan 10. Een gesprek dat nergens op uitkomt mag gerust nul taken opleveren; zet dan alles in "geen_taak".\n` +
+    `- "week": 1 = deze week, 2 = volgende, enzovoort; realistisch verdeeld. "wie" is "SEO" of "Dev". "taaktype" is één van: meta, alt, copy, intern, strategie, pijplijn, structured, overig.\n\n` +
+    `"info" bouw je op in secties met een kort kopje op een eigen regel dat eindigt op een dubbele punt. Eerst "Achtergrond:" met korte puntige regels van hooguit vijftien woorden (wat is er mis, welke cijfers, waarom nu), hooguit vier regels. Dan alleen indien relevant "Afspraken en herkomst:" met '-'-bullets (mail-datum, wie). Dan "Aanpak per fase:" met per regel een '-'-bullet die begint met exact een fasenaam en dubbele punt ("- Analyse: ...", "- Copy: ...", "- Bouw: ..."), alleen voor fases die nodig zijn. Herhaal nooit de titel als bullet en noem een cijfer maar één keer.\n\n` +
+    `HET CONCRETE WERK MOET IN DE TAAK ZITTEN, NIET ERNAAR VERWIJZEN (hard, hier ging het mis). Een taak als "stel een redirectlijst op" is waardeloos: dan moet het werk alsnog gedaan worden. Staat de lijst in het gesprek of in de verse overlap-analyse, dan zet je hem VOLUIT in "info" onder het kopje "Redirecttabel:", met per regel exact: "- /bronpad/ -> /doelpad/ (reden; cijfers van die pagina)". Dat is wat de sitebouwer uitvoert zonder na te denken. Hetzelfde geldt voor interne links: onder "Interne links:" per regel "- vanaf /bronpad/ met ankertekst \"...\" naar /doelpad/". Vat NOOIT een tabel samen tot een zin.\n` +
+    `NOOIT EEN OPRUIMADVIES ZONDER DE CIJFERS. Stel je voor om een pagina om te leiden of te verwijderen, dan zet je in diezelfde regel wat die pagina NU presteert (eigen sterkste zoekterm, positie, vertoningen) uit de overlap-analyse. Heeft een pagina een eigen sterke zoekterm die de doelpagina niet bedient, dan is omleiden waarschijnlijk FOUT: die zet je niet in de redirecttabel maar noem je in "geen_taak" met de reden dat hij eigen verkeer heeft. Zonder cijfers geen redirect.\n` +
+    `IS ER EEN VERSE OVERLAP-ANALYSE MEEGELEVERD, DAN IS DIE LEIDEND boven wat er in het gesprek staat. Het gesprek kan pagina's gemist hebben of een pagina noemen die al omgeleid is. Neem alle concurrenten uit die analyse mee, en laat elke pagina die daar als "AL OMGELEID" staat volledig weg.\n` +
+    `VERDER: gebruik alleen paden die letterlijk in het gesprek, de overlap-analyse of de context staan; vorm zelf geen paden. Verzin geen cijfers. Geen emoji, geen Markdown-symbolen (#, | of **) en geen tekst buiten de JSON.`;
+
+  const body = `--- HET GESPREK ---\n${gesprek}${hardeData}\n\n--- EXTRA CONTEXT (alleen voor juiste paden en achtergrond) ---\n${context.slice(0, 6000)}`;
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const extra = attempt === 0 ? "" : "\n\nLET OP: je vorige antwoord was geen geldige JSON. Geef nu UITSLUITEND het JSON-object, zonder tekst eromheen.";
+    try {
+      const raw = await callClaude(system + extra, [{ role: "user", content: body.slice(0, 30000) }], 3500, { slug, action: attempt === 0 ? "overzicht-oogst" : "overzicht-oogst-retry" });
+      const jsonText = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
+      const start = jsonText.indexOf("{");
+      const end = jsonText.lastIndexOf("}");
+      const parsed = JSON.parse(start >= 0 && end > start ? jsonText.slice(start, end + 1) : jsonText) as { taken?: unknown; geen_taak?: unknown };
+
+      const taken: OogstTaak[] = (Array.isArray(parsed.taken) ? parsed.taken : [])
+        .map((t) => {
+          const o = (t || {}) as Record<string, unknown>;
+          const taak = String(o.taak || "").replace(/^\s*week\s*\d+\s*[—:-]+\s*/i, "").slice(0, 400).trim();
+          if (!taak) return null;
+          const zeker = String(o.zekerheid || "").toLowerCase();
+          return {
+            taak,
+            waarom: String(o.waarom || "").slice(0, 400).trim(),
+            info: String(o.info || o.toelichting || "").slice(0, 4000).trim() || undefined,
+            url: String(o.url || "").slice(0, 400).trim() || undefined,
+            taaktype: String(o.taaktype || "").slice(0, 40).trim().toLowerCase() || undefined,
+            week: Math.max(1, Math.min(12, Math.round(Number(o.week) || 1))),
+            wie: /dev/i.test(String(o.wie || "")) ? "Dev" : "SEO",
+            zekerheid: (zeker === "hoog" || zeker === "laag" ? zeker : "middel") as OogstTaak["zekerheid"],
+          } as OogstTaak;
+        })
+        .filter(Boolean)
+        .slice(0, 10) as OogstTaak[];
+
+      const geenTaak = (Array.isArray(parsed.geen_taak) ? parsed.geen_taak : [])
+        .map((r) => String(r || "").slice(0, 300).trim())
+        .filter(Boolean)
+        .slice(0, 8);
+
+      // Nul taken is een geldige uitkomst (een gesprek hoeft nergens op uit te komen),
+      // maar dan moet er wel íets te zien zijn, anders lijkt het op een fout.
+      if (!taken.length && !geenTaak.length) continue;
+
+      // Dezelfde feitencontrole als op een chatantwoord. Die zat er hier nog niet
+      // op, waardoor een taak ongemerkt "433 live locaties" kon bevatten.
+      const bronnen = gesprek + "\n" + hardeData + "\n" + context;
+      const bekendePaden = (await getClientUrls(slug).catch(() => []))
+        .map((u) => { try { return new URL(u.url).pathname; } catch { return u.url; } });
+      const teToetsen = taken.map((t) => `${t.taak}\n${t.waarom}\n${t.info || ""}`).join("\n") + "\n" + geenTaak.join("\n");
+      const controle = controleerAntwoord(teToetsen, bronnen, bekendePaden);
+      if (!controle.ok && attempt === 0) continue;   // één keer opnieuw, dan pas doorlaten
+      if (!controle.ok) {
+        // Tweede poging ook niet rond: benoem het zichtbaar in plaats van te verzwijgen.
+        const punten = [...controle.cijfers, ...controle.paden].slice(0, 8).join("; ");
+        geenTaak.unshift(`Let op: deze punten zijn niet nagetrokken en kunnen fout zijn: ${punten}. Controleer ze voordat je ze uitvoert.`);
+      }
+
+      const oogst: OogstResultaat = { taken, geenTaak };
+      const bericht: ChatMessage = { role: "assistant", content: "Voorstel: dit werk volgt uit dit gesprek.", soort: "oogst", oogst };
+      await saveChatHistory(slug, thread, [...messages, bericht]);
+      return { ok: true, oogst };
+    } catch { /* volgende poging */ }
+  }
+  return { ok: false, error: "Kon geen taken uit dit gesprek halen. Probeer het nog een keer." };
+}
+
+/**
+ * Stap 3: de taken die Maarten heeft AANGEVINKT als projectkaarten wegzetten.
+ * Loopt door dezelfde poort als alle andere kaarten (validateAction/executeAction),
+ * zodat bundelen per pagina, padcorrectie en samenvoegen precies gelijk blijven.
+ */
+export async function zetOogstWeg(slug: string, thread: string, index: number, taken: OogstTaak[]): Promise<{ ok: boolean; added: number; merged: number; error?: string }> {
+  const client = await getClientBySlug(slug);
+  if (!client) return { ok: false, added: 0, merged: 0, error: "Klant niet gevonden." };
+  if (!taken.length) return { ok: false, added: 0, merged: 0, error: "Er is niets aangevinkt." };
+
+  const actie = validateAction(
+    {
+      type: "weekplan_taken",
+      taken: taken.map((t) => ({
+        taak: t.taak,
+        // Zonder eigen achtergrond is het "waarom" nog altijd betere context dan niets.
+        info: (t.info || "").trim() || (t.waarom ? `Achtergrond:\n- ${t.waarom}` : ""),
+        wie: t.wie, url: t.url, week: t.week, taaktype: t.taaktype,
+      })),
+    },
+    client.domain || "",
+    `a${Date.now().toString(36)}_oogst`,
+  );
+  if (!actie || !actie.taken || !actie.taken.length) return { ok: false, added: 0, merged: 0, error: "De aangevinkte taken waren niet compleet genoeg om kaarten van te maken." };
+
+  const result = await executeAction(slug, actie, thread);
+  const mA = /(\d+)\s+nieuwe/.exec(result.message || "");
+  const mM = /(\d+)\s+bestaande/.exec(result.message || "");
+  const merged = result.ok && mM ? Number(mM[1]) : 0;
+  const added = result.ok ? (mA ? Number(mA[1]) : (merged ? 0 : actie.taken.length)) : 0;
+
+  // Het voorstel is verwerkt: markeer het, zodat het na herladen ingeklapt staat
+  // en er niet per ongeluk twee keer dezelfde kaarten uit komen.
+  if (result.ok) {
+    try {
+      const msgs = await getChatHistory(slug, thread);
+      // De plek kan verschoven zijn (Maarten kan een bericht verwijderd hebben);
+      // val dan terug op het laatste voorstel dat nog niet verwerkt is.
+      let plek = msgs[index]?.oogst ? index : -1;
+      if (plek < 0) for (let i = msgs.length - 1; i >= 0; i--) { if (msgs[i].oogst && !msgs[i].oogst?.verwerkt) { plek = i; break; } }
+      const m = plek >= 0 ? msgs[plek] : null;
+      if (m && m.oogst) {
+        msgs[plek] = { ...m, oogst: { ...m.oogst, verwerkt: true } };
+        await saveChatHistory(slug, thread, msgs);
+      }
+    } catch { /* markering is bijzaak, de kaarten staan er */ }
+  }
+  return { ok: result.ok, added, merged, error: result.ok ? undefined : result.message };
+}
+
 export async function answerChat(slug: string, messages: ChatMessage[], thread = "algemeen"): Promise<{ ok: boolean; answer?: string; error?: string; actions?: ProposedAction[]; title?: string; summary?: string }> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return { ok: false, error: "Geen ANTHROPIC_API_KEY ingesteld." };
@@ -708,9 +1128,53 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
   // Thread "lead" = de leadomgeving: eigen lichte context (dossier + plank),
   // los van alles wat voor bestaande klanten gebouwd is.
   const isLead = cleanThread(thread) === "lead";
-  const context = isLead
+  let context = isLead
     ? await buildLeadContext(client)
     : isOverview ? await buildOverviewContext(client) : isAds ? await buildAdsContext(client) : await buildContext(client);
+  // Wat je in dit gesprek naar binnen hebt gesleept, leest de assistent mee: de
+  // teksten die de klant terugstuurde, de screenshot van het zoekresultaat. Zonder
+  // dit blok landde een gedropt bestand wel in het dossier, maar wist het gesprek
+  // waarin je het liet vallen er niets van.
+  try {
+    const bestanden = await getClientFiles(slug, { thread: cleanThread(thread) });
+    const blok = bestandenContext(bestanden);
+    if (blok) context += "\n\n=== " + blok;
+  } catch { /* aanvulling */ }
+  // ── Opruimvraag? Dan start de motor, niet het model ────────────────────────
+  // Vier keer op rij hetzelfde patroon: iets belangrijks afhankelijk maken van de
+  // keuze van het model, en het model kiest het niet. De cannibalisatie-motor bleef
+  // op zijn uitkomst van 6 juli staan omdat de chat de tool simpelweg nooit
+  // aanriep. Dus doen we het hier, in code, vóór het antwoord begint.
+  let opruimBlok = "";
+  if (isOverview) {
+    const laatste = [...messages].reverse().find((m) => m.role === "user")?.content || "";
+    if (/opruim|redirect|omleid|cannibal|kannibal|in de weg|dunne pagina|concurrerende pagina|dubbel/i.test(laatste)) {
+      try {
+        const st = await getCannibalAnalysis(client.slug);
+        const datum = resultDatum(st);
+        const dagen = datum ? (Date.now() - new Date(datum).getTime()) / 86400000 : Infinity;
+        if (st.status === "running") {
+          opruimBlok = `\n\n=== DE VOLLEDIGE CANNIBALISATIE-ANALYSE DRAAIT OP DIT MOMENT (stap ${st.stap} van ${st.stappen}: ${st.stapLabel}) ===\nZeg tegen Maarten dat de analyse loopt, bij welke stap hij is, en dat hij het straks opnieuw moet vragen. Geef GEEN eigen opruimlijst; die zou onvolledig zijn.`;
+        } else if (!st.result || dagen > 7) {
+          try { void startCannibalRun(client.slug).then(() => runCannibalRedirect(client.slug)).catch(() => { /* de cron pikt hem op */ }); } catch { /* best effort */ }
+          opruimBlok = `\n\n=== DE VOLLEDIGE CANNIBALISATIE-ANALYSE IS ZOJUIST GESTART ===\n${st.result && datum ? `De vorige uitkomst is van ${new Date(datum).toLocaleDateString("nl-NL")}, ${Math.round(dagen)} dagen oud, en wordt NIET gebruikt.` : "Er was nog geen analyse."}\nBEGIN JE ANTWOORD HIERMEE: zeg dat de volledige analyse nu draait, dat het een kwartier tot twintig minuten kost, en dat Maarten het daarna opnieuw moet vragen voor de complete redirectlijst. Geef ondertussen GEEN eigen opruimlijst uit de snelle hulpjes; die is aantoonbaar onvolledig gebleken.`;
+        } else {
+          const r = st.result;
+          const regels = [`\n\n=== VOLLEDIGE CANNIBALISATIE-ANALYSE (${datum ? new Date(datum).toLocaleDateString("nl-NL") : "datum onbekend"}) ===`, `Dit is de complete uitkomst van de motor. NEEM DE REDIRECTMAP LETTERLIJK EN VOLLEDIG OVER, laat geen regel weg en verzin er geen bij. Noem de datum van de analyse.`, r.samenvatting || ""];
+          if (r.redirectMap?.length) {
+            regels.push(`REDIRECTMAP (${r.redirectMap.length} regels):`);
+            for (const m of r.redirectMap) regels.push(`- ${m.van} -> ${m.naar}${m.mergeContent ? " [content samenvoegen]" : ""}${m.reden ? `: ${m.reden}` : ""}`);
+          }
+          if (r.interneLinks?.length) {
+            regels.push(`INTERNE LINKS (${r.interneLinks.length} regels):`);
+            for (const l of r.interneLinks) regels.push(`- vanaf ${l.vanaf} naar ${l.naar}${l.ankertekst ? ` met ankertekst "${l.ankertekst}"` : ""}`);
+          }
+          opruimBlok = regels.join("\n");
+        }
+      } catch { /* de motor mag een antwoord nooit blokkeren */ }
+    }
+  }
+
   const system = isLead
     ? `Je bent een ervaren SEO-consultant van bureau Pingwin en je werkt samen met Maarten aan ${client.name}, een bedrijf dat nog geen klant is. Dit is de werkplek waar alles rond deze lead samenkomt: wat we weten, wat we meten en wat we opleveren.\n\n` +
       `HOE MAARTEN MET JE WERKT (belangrijk):\n` +
@@ -751,22 +1215,35 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
       `- Vraagt Maarten "waar waren we / wat hebben we gedaan", vat dan concreet samen uit de werkstatus per pagina: wat is geoptimaliseerd, wat loopt, wat staat gepland.\n` +
       `- Werk als proactieve partner: betrek de recente e-mails. Nieuwe wensen, herzieningen, positioneringsvragen of ingevulde formulieren van de klant wegen mee in de strategie; signaleer zelf als een mail iets raakt dat we moeten oppakken of aanpassen.\n` +
       `- Zie je in de mail blijvende nuance die het klantprofiel raakt (positionering, terminologie, no-go's, beslissingen zoals "beplantingsplan geen aparte pagina"), BENOEM dat kort in je tekst en vraag of je het klantprofiel zult bijwerken. Maak de 'profiel_bijwerken'-kaart pas als Maarten ja zegt (hij kan de tekst dan nog bijstellen).\n` +
+      `- MAILS: NOOIT EEN NAAM OF AFSPRAAK VERZINNEN BIJ DEZE KLANT. Noem je een mail, dan moet die in de RECENTE E-MAILS van DEZE klant staan. Vind je met zoek_mail iets uit een ander gesprek (bijvoorbeeld over een andere klant of een algemene mail aan een leverancier), gebruik dat dan hooguit als achtergrond en schrijf het NIET toe aan deze klant, en noem er geen personen bij alsof die voor deze klant werken. Bij twijfel laat je de naam weg en schrijf je alleen wat er is afgesproken. Zet bij een mailverwijzing altijd de datum in de vorm 'mail van 5-7', want daarmee wordt hij in het dashboard klikbaar.\n` +
+      `- NIET HERHALEN WAT JE AL VERTELD HEBT (hard, dit is de grootste ergernis). Kijk naar je EERDERE antwoorden in dit gesprek. Heb je de paginastand (de tabel met pagina's, posities, vertoningen, klikken, woorden) daar al gegeven, geef die dan NIET opnieuw. Verwijs ernaar in één regel ("de standentabel staat in mijn eerste antwoord") en behandel alleen wat NIEUW is: het antwoord op de gestelde vraag, wat er sindsdien veranderd is, en je oordeel. Een vervolgvraag over één pagina of één zoekwoord verdient een antwoord over díe pagina, niet een compleet nieuw site-overzicht. In een gesprek van vier vragen hoort de complete stand er hooguit ÉÉN keer in te staan.\n` +
       `- GEEF EEN ECHTE, INHOUDELIJKE TERUGKOPPELING (dit wil Maarten zien): je analyse en advies, gegrond in de PAGINA-SIGNALEN, ZOEKWOORDEN MET STAND en de mails. Benoem CONCRETE feiten (welke meta leeg is, welke copy nog niet live bevestigd is, wie welk werk nog open heeft, welke pagina stijgt of daalt, welke mail-opvolging nodig is), niet in vage termen als "strategie + pijplijn". Leesbaar en scanbaar met korte alinea's en kopjes; geen loze zin, maar ook geen eindeloze muur. GEEN DUBBELE LIJST: je tekst-terugkoppeling is de ANALYSE (de stand van zaken). Schrijf de taken en de per-week-planning NIET als tekstlijst (dus geen "Prioriteitsvolgorde"- of "Weekplanning per week"-lijst in de tekst); die komen als kaartjes via 'weekplan_taken'. De redenering/achtergrond per taak (waar komt het vandaan, welke mail, welke links, hoe verhoudt het zich) zet je in het 'info'-veld van die kaart, niet nog eens in de tekst.\n` +
-      `- Bij een OPEN vraag of sparren (dus GEEN planning/taken-verzoek) spar je alleen in gewone tekst: geef een heldere terugkoppeling (netjes opgemaakt, belangrijkste eerst), zonder kaarten aan te maken. Vat bondig samen wat je zou doen (bijvoorbeeld "twee nieuwe URL's aanmaken, één bestaande pagina met een toelichting bijwerken") en vraag of Maarten daar kaarten/taken van wil. Vraagt hij wél om een planning of taken, dan geldt WEEKPLANNING hieronder: dan maak je de kaarten meteen.\n` +
+      `- SPARREN IS DE STANDAARD (belangrijkste gedragsregel). Dit is een gesprek tussen twee vakmensen, geen takenfabriek. Geef je analyse, je afweging en je oordeel in gewone tekst; Maarten leest en praat verder. Maak NIET uit jezelf kaarten of taken, en sluit niet standaard af met "zal ik hier taken van maken?". Er staan twee knoppen onder het gesprek waarmee Maarten zelf de conclusie trekt en daarna laat bepalen welk werk eruit volgt; die stappen wegen het HELE gesprek en doen dat beter dan jij halverwege kunt.\n` +
+      `- ÉÉN WEDERVRAAG MAG, en is vaak beter dan gokken. Hangt je antwoord wezenlijk af van iets dat je niet kunt opzoeken (een keuze van Maarten of de klant, een voorkeur, een budget of prioriteit), stel dan ÉÉN gerichte vraag terug en geef alvast je beste inschatting erbij. Nooit meerdere vragen tegelijk en nooit een vraag die je zelf kunt beantwoorden met je gereedschap; dan meet je het gewoon.\n` +
       `- Gebruik het gereedschap stel_acties_voor ALLEEN als Maarten er EXPLICIET om vraagt ("maak er een kaart/taak van", "pak dit op", "zet dit door", "ja doe maar", "werk dit uit"). Dus NOOIT uit jezelf een reeks acties genereren; eerst sparren, dan pas op verzoek de kaarten, en alleen voor precies wat hij aangeeft. LET OP: een planning-vraag ("kun je een planning maken", "maak een weekplanning", "maak hier taken van", "wat kunnen we oppakken", "geef een werklijstje") IS zo'n expliciet verzoek; dan maak je de kaarten METEEN (zie WEEKPLANNING), zonder eerst nog te vragen of hij dat wil.\n` +
       `- NIEUWE PAGINA = EERST STRATEGIE (verplicht, met cannibalisatie-check). Voor een nieuwe pagina is de eerste stap NOOIT blauwdruk of copy, maar een doordachte strategie. Doe ZELF eerst de cannibalisatie-check: kijk met ahrefs_pagina/gsc_pagina/serp_top10 (en site_overzicht) of de site al rankt op de doeltermen van de nieuwe pagina. Rankt er al een bestaande pagina hoog op die term (een "pillar"), dan mag de nieuwe pagina die term NIET overnemen; hij moet ondersteunen: afwijkende/specifiekere zoektermen, bij voorkeur een URL als kind onder de pillar, en interne links omhoog naar de pillar. Stel de strategie voor als 'strategie_bepalen'-kaart (bewerkbaar; Maarten past aan/keurt goed). Pas NA goedkeuren mag 'pijplijn_starten' met blauwdruk/copy; stel die dus niet eerder voor. Gooit Maarten een URL of screenshot met "kijk hoe deze rankt", neem die pagina dan mee in de strategie.\n` +
-      `- WEEKPLANNING: vraagt Maarten om een planning of taken (bijv. "kun je een planning maken", "maak een weekplanning", "maak hier taken van", "wat kunnen we oppakken", "geef een werklijstje"), geef dan (a) je inhoudelijke terugkoppeling in tekst = ALLEEN de STAND VAN ZAKEN (de analyse), netjes opgemaakt volgens de OPMAAK-regels (blokken met oranje kopjes, streepjes ertussen, bullets, vet, linkjes). GEEN aparte "Prioriteitsvolgorde"- of "Weekplanning per week"-tekstlijst, want dat is de dubbele lijst die Maarten niet wil. EN (b) roep in DEZELFDE beurt 'stel_acties_voor' aan met één 'weekplan_taken': dát is de planning. Per taak: de wie (SEO of Dev), de pagina (url), het taaktype, de week (1 = deze week, 2 = volgende, enzovoort), en in 'info' de VOLLEDIGE achtergrond/redenering (waar komt het vandaan zoals de mail van 30 juli, welke interne links, hoe het zich verhoudt tot andere pagina's, verwachte impact). Elke losse taak is een aparte kaart in de juiste week; de per-week-redenering leeft dus in de kaarten, niet in je tekst. CRUCIAAL: vraag NIET eerst "zal ik dit in de weekplanning zetten?"; de planning-vraag IS het verzoek, maak de kaarten meteen. Kondig het niet aan, maak ze echt. Roep 'weekplan_taken' in ÉÉN keer aan met alle taken er meteen in (nooit leeg, nooit "in twee stappen"). Eindig je beurt NOOIT met alleen een aankondiging als "hier komt de planning" of "ik ga de kaarten aanmaken" zonder de gevulde tool-aanroep: die gevulde aanroep ÍS de planning. Wordt een actie afgekeurd, doe hem dan in dezelfde beurt opnieuw, correct gevuld.\n` +
+      `- WEEKPLANNING: vraagt Maarten om een planning of taken (bijv. "kun je een planning maken", "maak een weekplanning", "maak hier taken van", "wat kunnen we oppakken", "geef een werklijstje"), geef dan (a) je inhoudelijke terugkoppeling in tekst = ALLEEN de STAND VAN ZAKEN (de analyse), netjes opgemaakt volgens de OPMAAK-regels (blokken met oranje kopjes, streepjes ertussen, bullets, vet, linkjes). GEEN aparte "Prioriteitsvolgorde"- of "Weekplanning per week"-tekstlijst, want dat is de dubbele lijst die Maarten niet wil. EN (b) roep in DEZELFDE beurt 'stel_acties_voor' aan met één 'weekplan_taken': dát is de planning. Per taak: de wie (SEO of Dev), de pagina (url), het taaktype, de week (1 = deze week, 2 = volgende, enzovoort), en in 'info' de VOLLEDIGE achtergrond/redenering (waar komt het vandaan zoals de mail van 30 juli, welke interne links, hoe het zich verhoudt tot andere pagina's, verwachte impact). EEN KAART GAAT OVER PRECIES EEN PAGINA: alle deeltaken voor die pagina (meta, alt, copy, interne links, structured data, bouwen) horen als bullets in de info van die ene kaart, en een aanpak die over meerdere pagina's gaat wordt per pagina een eigen kaart met dezelfde achtergrond. Zet dus nooit meerdere pagina's in een titel, ook niet in het meervoud ('de CRP-pagina's'). De per-week-redenering leeft in de kaarten, niet in je tekst. CRUCIAAL: vraag NIET eerst "zal ik dit in de weekplanning zetten?"; de planning-vraag IS het verzoek, maak de kaarten meteen. Kondig het niet aan, maak ze echt. Roep 'weekplan_taken' in ÉÉN keer aan met alle taken er meteen in (nooit leeg, nooit "in twee stappen"). Eindig je beurt NOOIT met alleen een aankondiging als "hier komt de planning" of "ik ga de kaarten aanmaken" zonder de gevulde tool-aanroep: die gevulde aanroep ÍS de planning. Wordt een actie afgekeurd, doe hem dan in dezelfde beurt opnieuw, correct gevuld.\n` +
       `- GEEN MUUR VAN TAKEN (belangrijk): de rijke context is om te WEGEN, niet om alles wat je signaleert als taak uit te spugen. Kies een behapbaar, op prioriteit gesorteerd geheel (richtlijn: een handvol taken per week, niet elk gevonden kansje). Bouw de prioriteit in deze weging: (1) afspraken met de klant (landingspagina's + zoekwoorden), (2) recente mails / open opvolging, (3) belangrijke pagina's die nog opgezet of geoptimaliseerd moeten worden voor de site (autoriteit), (4) laaghangend fruit als aanvulling. Een mooie mix, van hoog naar laag. Een planning mag enkele weken tot ~twee maanden vooruit reiken (week 1 tot 8+), maar gedoseerd en gemotiveerd, niet alles tegelijk.\n` +
-      `- Verzin geen cijfers; noem alleen wat uit de bronnen of het gereedschap komt.\n\n` +
+      `- VERSE DATA WINT ALTIJD VAN CONTEXT (harde volgorde). De blokken hieronder zijn een momentopname en kunnen verouderd of onvolledig zijn. Een tool die je NU aanroept geeft de werkelijkheid. Spreken ze elkaar tegen, dan gebruik je de tool-uitkomst en benoem je het verschil ("de opgeslagen scan zei X, live is het Y"); kies nooit stilzwijgend een van beide. Ontbreekt een cijfer in de context, dan is dat GEEN nul: dat is onbekend, en dan haal je het op.\n` +
+      `- BIJ EEN CANNIBALISATIE- OF OPRUIMVRAAG BEGIN JE MET cannibalisatie_analyse. Dat is de volledige motor van het dashboard, met URL-flipping over tijd, een complete redirectmap en een interne-linkplan. Draait hij nog, dan zeg je dat en wacht je; je gaat NIET zelf een lijst verzinnen uit de snelle hulpjes. Is hij klaar, dan neem je de redirectmap letterlijk en volledig over.\n` +
+      `- BIJ ELKE CANNIBALISATIE- OF OPRUIMVRAAG ROEP JE DAARNAAST DE TOOLS AAN: concurrerende_paginas voor de pagina's in kwestie, EN dunne_paginas voor het site-brede beeld. Dat laatste is vaak waar het antwoord zit: de kleine locatiepaginaatjes zonder eigen zoekterm. Vraagt Maarten "wat zit deze pagina in de weg", dan bedoelt hij bijna altijd ook "wat kan er weg"; geef hem dus beide, met de op te ruimen pagina's BOVENAAN en de pagina's met bestaansrecht kort daaronder.\n` +
+      `- OPRUIMEN? GEBRUIK dunne_paginas, NIET concurrerende_paginas. Vraagt Maarten welke pagina's opgeruimd of samengevoegd moeten worden, dan zoek je de ZWAKKE pagina's: die zonder eigen zoekterm. concurrerende_paginas geeft je juist de pagina's die de meeste zoekwoorden delen, en dat zijn meestal de STERKE pagina's die je wilt houden; die als opruimlijst presenteren is fout. Vuistregel: "wat zit deze pagina in de weg" is concurrerende_paginas, "wat kan er weg" is dunne_paginas.\n` +
+      `- WELKE PAGINA'S ELKAAR IN DE WEG ZITTEN, ZOEK JE OP MET concurrerende_paginas. NOOIT zelf afleiden uit de URL-lijst. Dat is twee keer misgegaan: pagina's gemist die er echt toe deden, en pagina's verzonnen die niet bestaan. De tool leest Search Console en geeft de VOLLEDIGE lijst; die neem je over zoals hij is.\n` +
+      `- GEEN OPRUIMADVIES ZONDER DE CIJFERS VAN DIE PAGINA. Stel je voor een pagina om te leiden of te verwijderen, dan noem je in dezelfde adem wat die pagina nu presteert: zijn eigen sterkste zoekterm, positie en vertoningen. Heeft een pagina een eigen sterke term die de doelpagina niet bedient, dan heeft hij BESTAANSRECHT en leid je hem niet om; zeg dat expliciet. Een pagina wegzetten op basis van "lijkt dun" zonder cijfers doe je nooit.\n` +
+      `- GAAT HET OVER EEN PAGINA VERSTERKEN OF INTERNE LINKS, gebruik dan interne_link_kansen. Verzin nooit zelf welke pagina's zouden moeten linken; die analyse weegt autoriteit en relevantie en die van jou niet.\n` +
+      `- ELK RANKINGCIJFER KOMT UIT EEN VERSE AANROEP, NOOIT UIT JE HOOFD (hard, hier is het eerder grondig misgegaan). Noem je een positie, een Domain Rating of een aantal verwijzende domeinen, dan heb je in DEZE beurt gsc_pagina, ahrefs_pagina of serp_top10 aangeroepen en neem je het cijfer letterlijk over. Zet er de bron bij, bijvoorbeeld "positie 3,6 (Search Console, 90 dagen)" of "positie 7 (Ahrefs)". Search Console en Ahrefs zijn twee verschillende bronnen die verschillende cijfers geven; haal ze nooit door elkaar en presenteer nooit het ene als het andere. Geeft een bron geen data, schrijf dan "Ahrefs: geen positie bekend". Vul NOOIT een getal in dat plausibel lijkt.\n` +
+      `- STATUS VAN EEN PAGINA CONTROLEER JE MET controleer_url, ALTIJD. Voordat je zegt dat een pagina live staat, nog gebouwd moet worden, dun is, een duplicaat is of opgeruimd/omgeleid moet worden: controleer hem. meet_pagina volgt een omleiding en toont dan de inhoud van de DOELpagina; staat er "LET OP, DIT IS EEN OMLEIDING" in de uitvoer, dan is de gevraagde pagina AL opgeruimd en zeg je dat, in plaats van hem als duplicaat op te voeren. Een pagina die in de context onder OMGELEID staat is klaar; die stel je nooit voor om op te ruimen.\n` +
+      `- Verzin geen cijfers; noem alleen wat uit de bronnen of het gereedschap komt. Er draait een automatische feitencontrole op je antwoord: elk pad en elk cijfer wordt naast de context en de tool-uitvoer gelegd. Wat daar niet in staat wordt tegengehouden en moet je overdoen. Schrijf dus liever "niet gemeten" dan een getal te gokken.\n\n` +
       `OPMAAK (heel belangrijk voor Maarten, dit moet er verzorgd en scanbaar uitzien, NOOIT een muur lopende tekst). Nederlands, Markdown, geen emoji (dus ook geen vinkjes of kruisjes als tekens; schrijf gewoon "live", "404" of "let op"). Verplichte structuur, elke terugkoppeling:\n` +
       `  - Begin DIRECT met het eerste kopje. GEEN aankondigings- of vulzinnen zoals "Nu heb ik alles wat ik nodig heb" of "Hier de volledige terugkoppeling"; die kosten Maarten alleen leestijd.\n` +
       `  - Deel je antwoord op in BLOKKEN, elk met een eigen gekleurd kopje (## Kop). Zet een scheidingslijn (--- op een eigen regel, wordt een streepje) TUSSEN de blokken.\n` +
       `  - Binnen een blok: korte BULLETS (-), geen lange alinea's. Eén gedachte per bullet.\n` +
+      `  - GEEN PREFIXEN zoals "Doen:" of "Vraag:" meer voor een bullet. Schrijf gewoon wat je te zeggen hebt. Welk werk er uit een gesprek volgt bepaalt Maarten met de knop "Welke taken volgen hieruit?", die het HELE gesprek weegt; jij hoeft losse regels dus niet als taak te markeren.\n` +
       `  - **Vet** voor de kernfeiten (paginanaam, positie, aantallen, prijs, datum). Pagina's/URL's/slugs schrijf je KAAL als pad (bijv. /lensimplantatie/); die worden automatisch klikbaar. NOOIT markdown-linksyntax [tekst](/pad/) gebruiken voor paden, dat geeft rommelige brackets in beeld.\n` +
       `  - Een 404 op een pagina die juist NIEUW moet komen (aangevraagd, gepland, blauwdruk klaar) is LOGISCH, geen bevinding: noem die status neutraal "nog te bouwen", niet alarmerend "404 — bestaat niet".\n` +
       `  - Voor cijfervergelijkingen (bijv. wat staat live / hoe presteert het, of een lijst producten/prijzen) een net klein tabelletje (| Kop | Kop |). Gebruik GEEN tabel voor de takenlijst (die komt als kaartjes).\n` +
       `  - Doel: het leest als een verzorgd overzicht met oranje kopjes, streepjes ertussen, vet en linkjes, niet als een lap tekst.\n` +
-      `Mens aan het stuur: jij adviseert en stelt voor, Maarten beslist.\n\n--- OVERZICHT-CONTEXT ---\n${context}`
+      `Mens aan het stuur: jij adviseert en stelt voor, Maarten beslist.\n\n--- OVERZICHT-CONTEXT ---\n${context}${opruimBlok}`
     : isAds
     ? `Je bent de Google Ads-specialist van Pingwin voor de klant ${client.name}. ` +
       `Je helpt Maarten beoordelen wat er in het Ads-account gebeurt en wordt geoptimaliseerd, wat er beter kan en welke vragen hij het Ads-bureau moet stellen. ` +
@@ -795,7 +1272,9 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
   try {
     // Agentisch: de assistent kan zelf meten (pagina, GSC, Ahrefs, top-10) vóór hij
     // antwoordt. Vision-berichten (afbeelding) gaan als content-blokken mee.
-    const apiMessages = messages.slice(-10).map((m) => {
+    // Het takenvoorstel is een scherm-element, geen gespreksbeurt: die placeholder
+    // ("Voorstel: dit werk volgt uit dit gesprek.") hoort niet in de context.
+    const apiMessages = messages.filter((m) => m.soort !== "oogst").slice(-10).map((m) => {
       const imgs = [...(m.images || []), ...(m.image ? [m.image] : [])];
       const blocks = imgs
         .map((im) => im.match(/^data:(image\/[a-z+.-]+);base64,(.+)$/i))
@@ -812,7 +1291,16 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
     });
     const base = chatTools(client);
     const collected: ProposedAction[] = [];
-    const { tools, run } = isLead ? leadTools(client, base) : isOverview ? overviewTools(client, base, collected) : base;
+    const { tools, run: rawRun } = isLead ? leadTools(client, base) : isOverview ? overviewTools(client, base, collected) : base;
+    // Alles wat het gereedschap in DEZE beurt teruggaf, bewaren. Dat is samen met
+    // de context het enige bewijsmateriaal; de feitencontrole hieronder toetst het
+    // antwoord daartegen.
+    const toolUitvoer: string[] = [];
+    const run: ToolRunner = async (naam, invoer) => {
+      const uit = await rawRun(naam, invoer);
+      toolUitvoer.push(`[${naam}] ${uit}`);
+      return uit;
+    };
     // De chat geeft gewoon zijn rijke agentische antwoord (dat Maarten goed vindt). De
     // taak-kaarten worden NIET meer hier auto-gegenereerd (te fragiel); dat doet de
     // deterministische knop "Zet de taken in de weekplanning" (weekplanFromAnswer) op verzoek.
@@ -851,6 +1339,43 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
       }
       const rest = regels.slice(i).join("\n").trim();
       if (rest) answer = rest;
+    }
+
+    // ── Feitencontrole: geen cijfer of pad zonder bron ──────────────────────
+    // Dit is de rem die er niet was. De prompt zei al "verzin geen cijfers"; dat
+    // hield niets tegen. Nu wordt het antwoord getoetst aan de context plus wat
+    // de tools echt teruggaven, en moet het over als er iets niet klopt.
+    if (isOverview && answer) {
+      try {
+        const bekendePaden = (await getClientUrls(client.slug).catch(() => []))
+          .map((u) => { try { return new URL(u.url).pathname; } catch { return u.url; } });
+        const bronnen = context + "\n" + toolUitvoer.join("\n");
+        let controle = controleerAntwoord(answer, bronnen, bekendePaden);
+        if (!controle.ok) {
+          const hersteld = await callClaudeAgentic(
+            system,
+            [...(apiMessages as { role: "user" | "assistant"; content: string }[]),
+             { role: "assistant", content: answer },
+             { role: "user", content: herstelOpdracht(controle) }],
+            tools, run, 6, 3200, { slug, action: "overzicht-chat-feitencontrole" },
+          );
+          if (hersteld && hersteld.trim()) {
+            const naControle = controleerAntwoord(hersteld, context + "\n" + toolUitvoer.join("\n"), bekendePaden);
+            answer = hersteld;
+            controle = naControle;
+          }
+          // Nog steeds niet rond? Dan verzwijgen we dat niet, maar zetten we er
+          // met zoveel woorden boven wat er niet is nagetrokken. Liever een
+          // zichtbare waarschuwing dan een cijfer dat betrouwbaar lijkt.
+          if (!controle.ok) {
+            const punten = [
+              ...(controle.cijfers.length ? [`cijfers die niet zijn opgehaald: ${controle.cijfers.join("; ")}`] : []),
+              ...(controle.paden.length ? [`paden die niet in de sitemap staan: ${controle.paden.join(", ")}`] : []),
+            ];
+            answer = `## Let op, niet alles hieronder is nagetrokken\n\nDe feitencontrole kreeg deze punten niet bevestigd uit Search Console, Ahrefs of de sitemap: ${punten.join(", ")}. Behandel die als onbetrouwbaar en vraag om ze na te meten.\n\n---\n\n${answer}`;
+          }
+        }
+      } catch { /* de controle mag een antwoord nooit helemaal blokkeren */ }
     }
 
     const finalAnswer = answer || "(geen antwoord)";

@@ -23,7 +23,10 @@ export type ProfileKind = "profile" | "tov";
 // Sleutel waaronder de gekozen klant-brede Drive-map wordt vastgelegd (los van
 // een specifieke pagina), zodat het klantprofiel- én tone-of-voice-document in
 // dezelfde klantmap landen.
-export const CLIENT_FOLDER_KEY = "__client_profile__";
+// Her-export: de sleutel zelf leeft in lib/constants.ts, zodat hij maar op één
+// plek staat. Bestaande imports vanaf hier blijven gewoon werken.
+export { CLIENT_FOLDER_KEY } from "./constants";
+import { CLIENT_FOLDER_KEY } from "./constants";
 
 // Kernpagina's van de klant ophalen en uitlezen (homepage + drukste pagina's).
 async function gatherSiteContext(slug: string): Promise<{ name: string; domain: string; existing: string; pagesText: string } | { error: string }> {

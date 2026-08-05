@@ -8,7 +8,6 @@ import { getDriveAccessToken } from "./google";
 
 const FOLDER_MIME = "application/vnd.google-apps.folder";
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-const GDOC_MIME = "application/vnd.google-apps.document";
 
 export type DriveFolder = { id: string; name: string };
 
@@ -179,28 +178,19 @@ export async function uploadDocx(folderId: string, filename: string, buffer: Buf
   if (!putRes.ok) throw new Error(await driveErr(putRes, "het uploaden van de inhoud"));
   const file = await putRes.json();
 
-  // Probeer het geuploade .docx om te zetten naar een echte Google Doc (opent
-  // betrouwbaar in de browser). Lukt dat niet (bv. een Gedeelde Drive die het
-  // blokkeert), dan houden we gewoon het Word-bestand aan.
-  let finalId = file.id as string;
-  let isDoc = false;
-  let note = "";
-  try {
-    const copyRes = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}/copy?supportsAllDrives=true&fields=id`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${t}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ name: filename.replace(/\.docx$/i, ""), mimeType: GDOC_MIME, parents: [parent] }),
-    });
-    if (copyRes.ok) {
-      const doc = await copyRes.json();
-      finalId = doc.id;
-      isDoc = true;
-      // Ruim het losse Word-bestand op zodat er niet twee versies in de map staan.
-      await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?supportsAllDrives=true`, { method: "DELETE", headers: { Authorization: `Bearer ${t}` } }).catch(() => { /* niet kritisch */ });
-    } else {
-      note = await driveErr(copyRes, "het omzetten naar Google Doc");
-    }
-  } catch (e) { note = e instanceof Error ? e.message : "omzetten mislukt"; }
+  // Het Word-bestand blijft staan zoals het is.
+  //
+  // Hier werd het .docx eerder omgezet naar een Google Doc. Dat leek handig (opent
+  // in de browser), maar die omzetting plet de opmaak: de omslag, de afgeronde
+  // kaders, de kleurvlakken en de status-pillen overleven het niet. Maarten kreeg
+  // daardoor altijd een kaal document te zien en nooit het echte bestand.
+  //
+  // Drive laat een .docx gewoon zien in de voorvertoning, en de klant of de
+  // sitebouwer kan het openen in Word, de tekst aanpassen en overnemen. Nooit
+  // meer omzetten dus.
+  const finalId = file.id as string;
+  const isDoc = false;
+  const note = "";
 
   const shared = await shareAnyone(t, finalId);
 
@@ -225,9 +215,70 @@ export async function uploadDocx(folderId: string, filename: string, buffer: Buf
   return { id: finalId, link, shared, owner, folder, isDoc, note };
 }
 
+// Upload MÉT omzetting naar een Google Doc, puur om de TEKST eruit te kunnen
+// lezen. Bedoeld voor aangeleverde bestanden waarvan we de inhoud nodig hebben
+// maar de opmaak niet: een pdf van de klant (Drive doet de tekstherkenning) of
+// een .docx. Het origineel gaat hier dus wél door de omzetting, en dat mag,
+// want dit bestand is een LEESKOPIE. Wil je het origineel bewaren zoals het is,
+// gebruik dan uploadDocx; die zet bewust niets om.
+export async function uploadEnConverteer(folderId: string, filename: string, buffer: Buffer, sourceMime: string): Promise<{ id: string; link: string }> {
+  const t = await token();
+  const parent = folderId && folderId !== "root" ? folderId : "root";
+  const bytes = new Uint8Array(buffer);
+  const initRes = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true&fields=id", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${t}`,
+      "Content-Type": "application/json; charset=UTF-8",
+      "X-Upload-Content-Type": sourceMime,
+      "X-Upload-Content-Length": String(bytes.length),
+    },
+    // mimeType op het doelformaat = Drive converteert bij het opslaan.
+    body: JSON.stringify({ name: filename, parents: [parent], mimeType: "application/vnd.google-apps.document" }),
+  });
+  if (!initRes.ok) throw new Error(await driveErr(initRes, "het starten van de upload"));
+  const uploadUrl = initRes.headers.get("location") || initRes.headers.get("Location");
+  if (!uploadUrl) throw new Error("Geen upload-URL van Drive ontvangen.");
+  const putRes = await fetch(uploadUrl, { method: "PUT", headers: { "Content-Type": sourceMime }, body: bytes });
+  if (!putRes.ok) throw new Error(await driveErr(putRes, "het uploaden van de inhoud"));
+  const file = await putRes.json();
+  const id = file.id as string;
+  await shareAnyone(t, id).catch(() => false);
+  return { id, link: `https://docs.google.com/document/d/${id}/edit?usp=sharing` };
+}
+
 // Kale bestands-upload (bijv. een .json met JSON-LD die letterlijk gekopieerd moet
 // kunnen worden): zelfde resumable upload als uploadDocx, maar ZONDER omzetting
 // naar Google-formaat, zodat de inhoud byte-voor-byte intact blijft.
+// Binaire upload van een aangeleverd bestand, ZONDER omzetting: een screenshot,
+// een pdf, een zip, wat er ook in de dropzone valt. uploadDocx zet het mime-type
+// vast op Word en uploadPlainFile werkt alleen op tekst, dus voor "leg dit bestand
+// neer zoals het is" was er nog geen weg.
+export async function uploadBestand(folderId: string, filename: string, buffer: Buffer, mimeType: string): Promise<{ id: string; link: string; shared: boolean }> {
+  const t = await token();
+  const parent = folderId && folderId !== "root" ? folderId : "root";
+  const bytes = new Uint8Array(buffer);
+  const mime = mimeType || "application/octet-stream";
+  const initRes = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true&fields=id", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${t}`,
+      "Content-Type": "application/json; charset=UTF-8",
+      "X-Upload-Content-Type": mime,
+      "X-Upload-Content-Length": String(bytes.length),
+    },
+    body: JSON.stringify({ name: filename, parents: [parent] }),
+  });
+  if (!initRes.ok) throw new Error(await driveErr(initRes, "het starten van de upload"));
+  const uploadUrl = initRes.headers.get("location") || initRes.headers.get("Location");
+  if (!uploadUrl) throw new Error("Geen upload-URL van Drive ontvangen.");
+  const putRes = await fetch(uploadUrl, { method: "PUT", headers: { "Content-Type": mime }, body: bytes });
+  if (!putRes.ok) throw new Error(await driveErr(putRes, "het uploaden van de inhoud"));
+  const file = await putRes.json();
+  const shared = await shareAnyone(t, file.id).catch(() => false);
+  return { id: file.id as string, link: `https://drive.google.com/file/d/${file.id}/view?usp=sharing`, shared };
+}
+
 export async function uploadPlainFile(folderId: string, filename: string, content: string, mimeType = "application/json"): Promise<{ id: string; link: string; shared: boolean }> {
   const t = await token();
   const parent = folderId && folderId !== "root" ? folderId : "root";

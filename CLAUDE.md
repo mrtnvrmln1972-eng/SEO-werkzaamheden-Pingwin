@@ -97,7 +97,59 @@ Eén gedeeld ontwerp, data per klant. Eén vaste URL voor alle klanten; de login
 - **Vercel-project:** `pingwin-seo-dashboard` (account mrtnvrmln1972-9296s-projects). Push naar main = automatische productie-deploy.
 - **Lokale map:** `~/dev/pingwin-seo-dashboard` (bewust uit iCloud/Documents gehaald op 2026-07-04 omdat iCloud " 2"-duplicaten in `.git` maakte en de repo corrumpeerde; nooit terugzetten in een iCloud-gesynchroniseerde map).
 
-**Eerste klant:** One Day Clinic. Klant-login `onedayclinic` / `OneDayClinic2026`. Adminwachtwoord `Pingwin-Admin-569df1`. (Wachtwoorden kunnen via env-vars gewijzigd worden.)
+**Eerste klant:** One Day Clinic, klant-login `onedayclinic`.
+
+**Wachtwoorden en sleutels staan NOOIT in dit bestand.** Deze repo is openbaar; alles wat hier
+staat is wereldwijd leesbaar en blijft ook na verwijderen in de git-geschiedenis staan.
+
+### Hoe Maarten inlogt (en wat hij moet onthouden)
+
+**In de praktijk: niets.** Zijn ingang is een bookmark. Alles hieronder is er voor als die
+bookmark ooit kwijt is.
+
+| Sleutel | Waarvoor | Waar hij leeft | Onthouden? |
+|---|---|---|---|
+| `ADMIN_MAGIC_KEY` | zit in de bookmark `/admin/enter?key=…`, één klik en je bent binnen | Vercel-env | nee, de browser onthoudt de link |
+| `ADMIN_PASSWORD` | reserve-ingang, intypen op `/admin/login` | Vercel-env | ja, in de wachtwoordmanager |
+| Klantlogins | de klant in zijn eigen dashboard | scrypt-hash in de database | kan niemand lezen, ook Maarten niet |
+
+Wijzigen gaat voor alle env-sleutels hetzelfde: Vercel → project `pingwin-seo-dashboard` →
+Settings → Environment Variables → aanpassen → één keer opnieuw deployen. Klantwachtwoord kwijt?
+Genereer een nieuw via het adminscherm; het platte wachtwoord zie je één keer.
+
+### Meekijken: doe dit meteen, zonder eerst rond te zoeken
+
+Vraagt Maarten om mee te kijken, dan is dat één handeling. Niet gaan zoeken, niet eerst de
+code lezen, niet aan hem vragen: dit is het recept.
+
+```bash
+curl -s -c /tmp/kijk.txt "https://pingwin-seo-dashboard.vercel.app/api/kijk?sleutel=$PINGWIN_KIJK_SLEUTEL"
+```
+
+Daarna elke pagina met `-b /tmp/kijk.txt` ophalen. De sleutel staat als `PINGWIN_KIJK_SLEUTEL`
+in de Claude-omgeving (nooit in een bestand). Je krijgt een alleen-lezen sessie: je ziet alles
+wat Maarten ziet, wijzigen wordt geweigerd. Wat het antwoord betekent:
+
+| Antwoord | Wat er aan de hand is |
+|---|---|
+| `ok: true` | binnen, ga verder |
+| `geen-sleutel` | meekijken staat uit; Maarten zet het aan op `/admin` |
+| `andere-sleutel` | jouw sleutel is verouderd; hij staat nog niet in deze omgeving |
+| `leeg` | `PINGWIN_KIJK_SLEUTEL` staat niet in deze omgeving |
+
+Let op: een omgevingsvariabele geldt pas vanaf een **nieuwe** chat. Krijg je `andere-sleutel`
+vlak nadat Maarten hem heeft geplakt, dan is dit nog de oude sessie; dat lost een nieuwe chat op,
+niet een nieuwe sleutel (een nieuwe sleutel maken trekt juist de goede in).
+
+### Waarom `/admin/enter` een sleutel MOET hebben
+
+Die route deelt een volledige adminsessie uit. Het slot stond eerst standaard uit, waardoor
+iedereen die het adres intikte binnen was; het adres staat in deze openbare repo, dus dat was
+te vinden. Live aangetroffen en dichtgezet op 02-08-2026.
+
+De code is daarna omgedraaid: **geen `ADMIN_MAGIC_KEY` ingesteld = de ingang bestaat niet.**
+Nooit terugdraaien naar "standaard open". Beveiliging hoort niet iets te zijn dat je aan moet
+zetten. Dezelfde regel geldt voor elke nieuwe Pingwin-wereld die deze code overneemt.
 
 **Let op:** er is ook nog een oude losse Netlify-versie (`pingwin-seo-one-day-clinic.netlify.app`, gepubliceerd vanaf Maartens Desktop). Die gebruikt de klant nu. Niet weggooien tot we overstappen.
 

@@ -3,10 +3,12 @@ import { waitUntil } from "@vercel/functions";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
 import { anthropicConfigured } from "../../../../lib/anthropic";
-import { getCannibalAnalysis, markCannibalRunning, runCannibalRedirect } from "../../../../lib/cannibal-redirect";
+import { getCannibalAnalysis, startCannibalRun, runCannibalRedirect } from "../../../../lib/cannibal-redirect";
 
 export const runtime = "nodejs";
-export const maxDuration = 300;
+// 800s (Vercel Pro/Fluid), net als de documenten-werker. Eén analyse duurt langer dan
+// dit venster; wat er niet in past hervat de cron-werker /api/cron/opruim-runs.
+export const maxDuration = 800;
 
 function admin(req: NextRequest): boolean {
   return verifyAdminSession(req.cookies.get(ADMIN_COOKIE)?.value);
@@ -21,7 +23,10 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ ok: true, ...(await getCannibalAnalysis(slug)) });
 }
 
-// POST: start de analyse (draait server-side door via waitUntil; wegklikken mag).
+// POST: start de analyse, of hervat een gestrande run ({ hervat: true }) zonder
+// hem opnieuw te beginnen. Dat laatste is de ontsnapping voor als het cron-vangnet
+// wegblijft: één klik en de analyse loopt verder waar hij was, in plaats van
+// afhankelijk zijn van een cron waar we niet in kunnen kijken.
 export async function POST(req: NextRequest) {
   if (!admin(req)) return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
   if (!anthropicConfigured()) return NextResponse.json({ ok: false, error: "Hiervoor is een ANTHROPIC_API_KEY nodig in Vercel." }, { status: 400 });
@@ -30,7 +35,13 @@ export async function POST(req: NextRequest) {
   const slug = String(body.slug || "").trim();
   if (!slug) return NextResponse.json({ ok: false, error: "Geen klant opgegeven." }, { status: 400 });
   const g = await guardSlug(req, slug); if (!g.ok) return g.res;
-  await markCannibalRunning(slug);
+  if (body.hervat === true) {
+    const st = await getCannibalAnalysis(slug);
+    if (st.status !== "running") return NextResponse.json({ ok: false, error: "Er loopt geen analyse om te hervatten. Klik op “Analyse draaien”." }, { status: 400 });
+    waitUntil(runCannibalRedirect(slug));
+    return NextResponse.json({ ok: true, hervat: true });
+  }
+  await startCannibalRun(slug);
   waitUntil(runCannibalRedirect(slug));
   return NextResponse.json({ ok: true, started: true });
 }

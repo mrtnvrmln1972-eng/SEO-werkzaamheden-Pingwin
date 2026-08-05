@@ -2,9 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../../lib/admin-auth";
 import { guardSlug } from "../../../../../lib/admin-scope";
 import { addWeekplanTasks, isoWeek } from "../../../../../lib/weekplan";
+import { tidyCards } from "../../../../../lib/weekplan-tidy";
 import { getStepLinks } from "../../../../../lib/page-doc-run";
+import { getClientUrls } from "../../../../../lib/site-urls";
+import { splitsPerPagina } from "../../../../../lib/overview-actions";
 
 export const runtime = "nodejs";
+// Bij samenvoegen in een bestaande kaart draait er een opruimstap van de assistent;
+// zonder ruimere tijd kapt Vercel dat af halverwege.
+export const maxDuration = 120;
 
 function admin(req: NextRequest): boolean {
   return verifyAdminSession(req.cookies.get(ADMIN_COOKIE)?.value);
@@ -28,19 +34,37 @@ export async function POST(req: NextRequest) {
   const week = isoWeek(d);
 
   const url = body.url ? String(body.url) : undefined;
-  // Copy-link server-side afleiden zodat de bord-kaart direct naar de aangeleverde copy linkt.
-  const copyUrl = url ? await getStepLinks(slug, url).then((s) => s.copy).catch(() => "") : "";
 
-  const r = await addWeekplanTasks(slug, String(body.thread || ""), [{
+  // Eén kaart per pagina, ook langs deze weg. Deze route liep om de splitser
+  // heen: een taak als "Controleer of de CRP-pagina's live staan" ging hier
+  // ongesplitst het bord in, terwijl hij via de andere wegen wél netjes per
+  // pagina werd verdeeld. Dat is precies de knop die in de praktijk gebruikt
+  // wordt, dus daar viel het gat.
+  let bekendeUrls: string[] = [];
+  try { bekendeUrls = (await getClientUrls(slug)).map((u) => u.url); } catch { bekendeUrls = []; }
+  const gesplitst = splitsPerPagina([{
     taak,
     toelichting: body.toelichting ? String(body.toelichting) : undefined,
-    wie: body.wie ? String(body.wie) : undefined,
     url,
+  }], bekendeUrls).slice(0, 10);
+
+  const rijen = await Promise.all(gesplitst.map(async (t) => ({
+    taak: t.taak,
+    toelichting: t.toelichting,
+    wie: body.wie ? String(body.wie) : undefined,
+    url: t.url,
     taaktype: body.taaktype ? String(body.taaktype) : undefined,
     bronMail: body.bronMail ? String(body.bronMail) : undefined,
-    copyUrl,
+    // Copy-link server-side afleiden zodat de bord-kaart direct naar de
+    // aangeleverde copy linkt.
+    copyUrl: t.url ? await getStepLinks(slug, t.url).then((s) => s.copy).catch(() => "") : "",
     week,
-  }]);
+  })));
+
+  const r = await addWeekplanTasks(slug, String(body.thread || ""), rijen);
+  // Is er in een bestaande kaart samengevoegd, ruim die dan meteen op. Anders
+  // groeit dezelfde constatering in steeds andere woorden aan tot een muur.
+  if (r.mergedIds.length) await tidyCards(slug, r.mergedIds).catch(() => 0);
   const n = r.added + r.merged;
   return n ? NextResponse.json({ ok: true, added: n, week }) : NextResponse.json({ ok: false, error: "Toevoegen mislukt." }, { status: 500 });
 }

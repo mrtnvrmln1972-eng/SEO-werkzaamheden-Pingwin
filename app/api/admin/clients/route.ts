@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminScope, canAccessSlug, guardOwner } from "../../../../lib/admin-scope";
-import { listClients, createClient, createLead, setClientFase, deleteClient, updateClientCockpit, updateClientCore, parseSheetUrl, resetClientPassword, setClientBudget, setClientBackendUrl, getOrCreateShareToken, FASES, type Fase } from "../../../../lib/clients";
+import { opruimWeesOrgData } from "../../../../lib/org-data";
+import { listClients, createClient, createLead, setClientFase, deleteClient, updateClientCockpit, updateClientCore, parseSheetUrl, resetClientPassword, setClientBudget, setClientBackendUrl, setClientDevName, getOrCreateShareToken, FASES, type Fase } from "../../../../lib/clients";
 
 export const runtime = "nodejs";
 
@@ -8,6 +9,10 @@ export async function GET(req: NextRequest) {
   const scope = await getAdminScope(req);
   if (!scope) return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
   const all = await listClients();
+  // Meteen opruimen wat bij geen enkele klant hoort en helemaal leeg is (rest
+  // van een verkeerd gespelde klantnaam). Alleen voor de eigenaar, en het mag
+  // het scherm niet ophouden, dus zonder erop te wachten.
+  if (scope.isOwner) void opruimWeesOrgData().catch(() => 0);
   // Gast: alleen de klanten waar hij toegang toe heeft.
   const clients = scope.isOwner ? all : all.filter((c) => canAccessSlug(scope, c.slug));
   return NextResponse.json({ ok: true, clients });
@@ -152,6 +157,12 @@ export async function PATCH(req: NextRequest) {
       uurtarief: Number(body.uurtarief) || 0,
       beschikbareUren: Number(body.beschikbareUren) || 0,
     });
+    if (!ok) return NextResponse.json({ ok: false, error: "Klant niet gevonden." }, { status: 404 });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (body.action === "devName") {
+    const ok = await setClientDevName(slug, String(body.devName || ""));
     if (!ok) return NextResponse.json({ ok: false, error: "Klant niet gevonden." }, { status: 404 });
     return NextResponse.json({ ok: true });
   }

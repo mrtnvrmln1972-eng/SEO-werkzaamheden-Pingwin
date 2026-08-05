@@ -10,11 +10,21 @@
 import { renderHtml } from "./render-page";
 import { metaVerdictText } from "./meta-rules";
 
-export type MeasuredImage = { file: string; alt: string; altLength: number; hasAlt: boolean; format: string; hasDimensions: boolean; loading: string };
+// src = de volledige afbeeldings-URL (absoluut gemaakt), zodat de werklijst een
+// duimnageltje en een klikbare link kan tonen en aan de map kan zien of een
+// afbeelding uit het thema komt (vast onderdeel) of uit de mediabibliotheek.
+export type MeasuredImage = { file: string; src: string; alt: string; altLength: number; hasAlt: boolean; format: string; hasDimensions: boolean; loading: string };
 export type MeasuredLink = { href: string; text: string };
 export type PageMeasurement = {
   ok: boolean;
   status: number | null;
+  // Was dit een omleiding, en waar kwamen we uit? Dit MOET mee naar boven.
+  // Zonder deze twee velden meet je /hiv-testen-amsterdam/ en krijg je zwijgend
+  // de inhoud van /soa-klinieken/soa-test-amsterdam/ terug: status 200, zelfde
+  // titel, zelfde woordaantal. Vier omgeleide URL's leverden zo vier "identieke
+  // duplicaten" op die in werkelijkheid allang waren opgeruimd.
+  redirected: boolean;
+  finalUrl: string;
   rendered: boolean; // via headless browser gerenderd?
   metaTitle: string; titleLength: number;
   // Aantal echte <title>-tags in de code (buiten svg-logo's om); 1 is correct.
@@ -42,6 +52,21 @@ function attr(tag: string, name: string): string {
   const m = tag.match(new RegExp(`${name}\\s*=\\s*["']([^"']*)["']`, "i"));
   return m ? m[1] : "";
 }
+// Lazy-loaders zetten vaak een 1x1-placeholder of een data:-URI in src en de
+// echte afbeelding in data-src/data-lazy-src/srcset. Pak de eerste die er echt
+// uitziet, anders levert de werklijst een duimnageltje van een leeg pixeltje.
+function imgSrc(tag: string): string {
+  const kandidaten = [attr(tag, "src"), attr(tag, "data-src"), attr(tag, "data-lazy-src"), attr(tag, "data-original")];
+  for (const k of kandidaten) if (k && !k.startsWith("data:")) return k;
+  const set = attr(tag, "srcset") || attr(tag, "data-srcset");
+  const eerste = set.split(",")[0]?.trim().split(/\s+/)[0] || "";
+  return eerste && !eerste.startsWith("data:") ? eerste : (kandidaten.find(Boolean) || "");
+}
+// Relatieve src ("/wp-content/...") absoluut maken tegen de pagina-URL.
+function absUrl(src: string, pageUrl: string): string {
+  if (!src || src.startsWith("data:")) return "";
+  try { return new URL(src, pageUrl).toString(); } catch { return ""; }
+}
 function metaContent(html: string, key: string, kind: "name" | "property"): string {
   const re1 = new RegExp(`<meta[^>]+${kind}=["']${key}["'][^>]*content=["']([^"']*)["']`, "i");
   const re2 = new RegExp(`<meta[^>]+content=["']([^"']*)["'][^>]*${kind}=["']${key}["']`, "i");
@@ -50,7 +75,7 @@ function metaContent(html: string, key: string, kind: "name" | "property"): stri
 
 export async function measurePage(url: string, opts?: { staticOnly?: boolean }): Promise<PageMeasurement> {
   const empty: PageMeasurement = {
-    ok: false, status: null, rendered: false, metaTitle: "", titleLength: 0, titleTagCount: 0, metaDescription: "", descriptionLength: 0,
+    ok: false, status: null, redirected: false, finalUrl: "", rendered: false, metaTitle: "", titleLength: 0, titleTagCount: 0, metaDescription: "", descriptionLength: 0,
     canonical: "", robots: "", viewport: "", ogTitle: "", ogDescription: "", ogImage: "",
     h1: [], h2: [], h3: [], wordCount: 0, images: [], imagesWithoutAlt: 0, imagesNonWebp: 0,
     internalLinks: [], internalLinkCount: 0, externalLinkCount: 0, schemaTypes: [], faqDetected: false, faqCount: 0,
@@ -60,17 +85,22 @@ export async function measurePage(url: string, opts?: { staticOnly?: boolean }):
   // staticOnly slaat de browser over (voor concurrent-pagina's: snel, geen latency).
   const r = opts?.staticOnly ? { html: "", status: null as number | null, rendered: false } : await renderHtml(url);
   let html = r.html, status = r.status, rendered = r.rendered;
+  // Een omleiding mag nooit stil blijven. We volgen hem wel (de inhoud van de
+  // doelpagina is bruikbaar), maar leggen vast DAT het gebeurde en waarheen.
+  let redirected = false, finalUrl = url;
   if (!html) {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 12000);
     try {
       const res = await fetch(url, { redirect: "follow", signal: ctrl.signal, headers: { "User-Agent": "Mozilla/5.0 PingwinBot" } });
       status = res.status;
+      redirected = !!res.redirected;
+      finalUrl = res.url || url;
       if (res.ok) html = await res.text();
     } catch { /* laat leeg */ } finally { clearTimeout(t); }
     rendered = false;
   }
-  if (!html) return { ...empty, status };
+  if (!html) return { ...empty, status, redirected, finalUrl };
 
   const metaTitle = decode((html.match(/<title[^>]*>([\s\S]*?)<\/title>/i) || ["", ""])[1]);
   // Echte paginatitels tellen: svg-blokken eerst weghalen (een logo-svg heeft vaak
@@ -81,10 +111,10 @@ export async function measurePage(url: string, opts?: { staticOnly?: boolean }):
 
   // Afbeeldingen: alt, formaat, dimensies, lazy-loading.
   const images: MeasuredImage[] = [...html.matchAll(/<img\b[^>]*>/gi)].map((m) => {
-    const src = attr(m[0], "src"), file = (src.split("?")[0].split("/").pop() || src).slice(0, 120);
+    const src = imgSrc(m[0]), file = (src.split("?")[0].split("/").pop() || src).slice(0, 120);
     const alt = decode(attr(m[0], "alt"));
     const ext = (file.split(".").pop() || "").toLowerCase();
-    return { file, alt, altLength: alt.length, hasAlt: /\balt\s*=/.test(m[0]), format: ext, hasDimensions: /\bwidth\s*=/.test(m[0]) && /\bheight\s*=/.test(m[0]), loading: attr(m[0], "loading") || "default" };
+    return { file, src: absUrl(src, url), alt, altLength: alt.length, hasAlt: /\balt\s*=/.test(m[0]), format: ext, hasDimensions: /\bwidth\s*=/.test(m[0]) && /\bheight\s*=/.test(m[0]), loading: attr(m[0], "loading") || "default" };
   }).filter((i) => i.file).slice(0, 150);
 
   // Interne + externe links.
@@ -126,7 +156,7 @@ export async function measurePage(url: string, opts?: { staticOnly?: boolean }):
   const faqCount = [...h2, ...h3].filter((h) => /\?$/.test(h.trim())).length;
 
   return {
-    ok: true, status, rendered,
+    ok: true, status, redirected, finalUrl, rendered,
     metaTitle, titleLength: metaTitle.length, titleTagCount, metaDescription, descriptionLength: metaDescription.length,
     canonical: attr((html.match(/<link[^>]+rel=["']canonical["'][^>]*>/i) || [""])[0] || "", "href"),
     robots: metaContent(html, "robots", "name") || "default",

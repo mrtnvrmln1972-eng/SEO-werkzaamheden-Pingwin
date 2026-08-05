@@ -22,6 +22,8 @@ export type ClientBudget = {
 export type ClientCockpit = {
   emailDomain: string | null;
   workDocUrl: string | null;
+  // De sitebouwer/developer van DEZE klant. Leeg = het scherm toont gewoon "Dev".
+  devName: string | null;
   resultsUrl: string | null;
   status: string | null;
   lastContact: string | null;
@@ -91,6 +93,7 @@ type ClientRow = {
   ahrefs_key_ref: string | null;
   backend_url: string | null;
   email_domain: string | null;
+  dev_name: string | null;
   work_doc_url: string | null;
   results_url: string | null;
   status: string | null;
@@ -137,6 +140,7 @@ function rowToConfig(r: ClientRow): ClientConfig {
       status: r.status ?? null,
       lastContact: r.last_contact ?? null,
       notes: r.notes ?? null,
+      devName: r.dev_name ?? null,
     },
   };
 }
@@ -300,7 +304,19 @@ export async function setClientBackendUrl(slug: string, url: string | null): Pro
   return !!rowCount && rowCount > 0;
 }
 
-export async function updateClientCockpit(slug: string, c: ClientCockpit): Promise<boolean> {
+// Alleen de naam van de sitebouwer/developer van deze klant. Bewust een eigen
+// functie: de cockpit-PATCH overschrijft alle cockpit-velden tegelijk, en dan zou
+// dit veld gewist worden zodra een ander scherm iets anders opslaat.
+export async function setClientDevName(slug: string, naam: string): Promise<boolean> {
+  await ensureSchema();
+  const { rowCount } = await sql`UPDATE clients SET dev_name = ${naam.trim() || null} WHERE slug = ${slug}`;
+  return !!rowCount && rowCount > 0;
+}
+
+// Let op: dev_name wordt hier bewust NIET bijgewerkt. Deze functie overschrijft
+// alle velden die ze meekrijgt, dus zou een opslag vanuit een ander scherm de
+// naam van de sitebouwer wissen. Daarvoor is setClientDevName.
+export async function updateClientCockpit(slug: string, c: Omit<ClientCockpit, "devName">): Promise<boolean> {
   await ensureSchema();
   const { rowCount } = await sql`
     UPDATE clients SET

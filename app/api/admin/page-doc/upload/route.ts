@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../../lib/admin-auth";
 import { guardSlug } from "../../../../../lib/admin-scope";
-import { getPageDriveFolder } from "../../../../../lib/site-urls";
-import { uploadDocx, readDriveDoc } from "../../../../../lib/drive";
-import { listVersions, proposeVersion, confirmVersion, ignoreVersion } from "../../../../../lib/doc-versions";
+import { readDriveDoc } from "../../../../../lib/drive";
+import { listVersions, proposeVersion, confirmVersion, ignoreVersion, leesAangeleverdDocument } from "../../../../../lib/doc-versions";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -42,29 +41,15 @@ export async function POST(req: NextRequest) {
     const naam = file.name || "aangeleverd-document";
     const buf = Buffer.from(await file.arrayBuffer());
 
-    let tekst = "";
-    let driveLink = "";
-    if (/\.(txt|md|json|csv)$/i.test(naam)) {
-      tekst = buf.toString("utf8");
-    } else if (/\.docx$/i.test(naam)) {
-      // Origineel veilig de pagina-Drivemap in (blijft onaangetast bewaard),
-      // en de omgezette Google Doc uitlezen voor de tekst.
-      const folder = await getPageDriveFolder(slug, url).catch(() => null);
-      if (!folder?.folderId) return NextResponse.json({ ok: false, error: "Deze pagina heeft nog geen Drive-map; koppel die eerst (tab Pagina's)." }, { status: 400 });
-      const datum = new Date().toISOString().slice(0, 10);
-      try {
-        const up = await uploadDocx(folder.folderId, `Aangeleverd-${datum}-${naam}`, buf);
-        driveLink = up.link;
-        const read = await readDriveDoc(up.id, 60000);
-        if (read.ok) tekst = read.text || "";
-      } catch (e) {
-        return NextResponse.json({ ok: false, error: "Uploaden naar Drive mislukte: " + (e as Error).message }, { status: 500 });
-      }
-    } else {
-      return NextResponse.json({ ok: false, error: "Dit bestandstype kan ik nog niet lezen. Sleep een .docx, .txt of .md, of plak een Drive-link." }, { status: 400 });
+    // Eén inleesweg voor élk aangeleverd bestand, gedeeld met de mail-bijlage.
+    // Deze route had zijn eigen docx-logica en weigerde pdf, terwijl het systeem
+    // pdf allang kan lezen. Klanten sturen hun geredigeerde teksten juist vaak
+    // als pdf terug, dus dat was precies het geval dat niet werkte.
+    const lees = await leesAangeleverdDocument(slug, url, naam, buf);
+    if (!lees.ok || !lees.tekst?.trim()) {
+      return NextResponse.json({ ok: false, error: lees.error || "Kon geen leesbare tekst uit het bestand halen." }, { status: 400 });
     }
-    if (!tekst.trim()) return NextResponse.json({ ok: false, error: "Kon geen leesbare tekst uit het bestand halen." }, { status: 400 });
-    const proposal = await proposeVersion(slug, url, naam, tekst, driveLink, kindHint || undefined);
+    const proposal = await proposeVersion(slug, url, naam, lees.tekst, lees.driveLink || "", kindHint || undefined);
     return NextResponse.json({ ok: true, proposal });
   }
 

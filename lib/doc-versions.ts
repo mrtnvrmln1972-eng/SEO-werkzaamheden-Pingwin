@@ -1,9 +1,14 @@
 import { sql, ensureSchema } from "./db";
+import { urlKey } from "./url-key";
+import { logActiviteit } from "./activiteit";
 import { getClientBySlug } from "./clients";
 import { getPageDocOutputs, savePageDocOutput, getPageDriveFolder } from "./site-urls";
+import { ensureFolderFor } from "./drive-map";
 import { callClaude, LIGHT_MODEL } from "./anthropic";
 import { buildPingwinDoc, type DocSection, type DocBlock } from "./pingwin-docx";
-import { uploadDocx } from "./drive";
+import { uploadDocx, uploadEnConverteer, readDriveDoc } from "./drive";
+
+const DOCX_MIME_IN = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 // ═══════════════════════════════════════════════════════════
 // DOCUMENTVERSIES (archief + geldende versie, zonder ooit iets te verliezen)
@@ -61,6 +66,26 @@ function rowToVersion(r: Record<string, unknown>): DocVersion {
   };
 }
 
+// Dezelfde bijlage kon twee keer in het archief belanden: op /crp-waarde-testen/
+// stonden twee rijen "Tekst CRP-waarde 21-07-2026.pdf", allebei ingelezen in
+// dezelfde minuut. Dan lijkt het alsof er twee verschillende versies zijn terwijl
+// het één document is. We houden de nieuwste van elk paar en laten de rest weg uit
+// de lijst; weggooien doen we niet, de rij blijft gewoon in de tabel staan. Werkt
+// hierdoor ook voor de dubbelingen die er nu al in zitten.
+function ontdubbelVersies(lijst: DocVersion[]): DocVersion[] {
+  const gezien = new Set<string>();
+  const uniek: DocVersion[] = [];
+  for (const v of lijst) {           // komt al op id DESC binnen, dus nieuwste eerst
+    const naam = (v.naam || "").trim().toLowerCase();
+    const minuut = String(v.createdAt || "").slice(0, 16);
+    const sleutel = naam ? `${naam}|${v.kind}|${minuut}` : `#${v.id}`;
+    if (gezien.has(sleutel)) continue;
+    gezien.add(sleutel);
+    uniek.push(v);
+  }
+  return uniek;
+}
+
 export async function listVersions(slug: string, url: string): Promise<DocVersion[]> {
   await ensureSchema();
   await ensureTable();
@@ -68,7 +93,22 @@ export async function listVersions(slug: string, url: string): Promise<DocVersio
     SELECT id, kind, source, naam, drive_link, samenvatting, vergelijking, status, created_at
     FROM page_doc_versions WHERE client_slug = ${slug} AND url = ${url} AND status <> 'genegeerd'
     ORDER BY id DESC LIMIT 40`;
-  return rows.map(rowToVersion);
+  return ontdubbelVersies(rows.map(rowToVersion));
+}
+
+// Zelfde lijst, maar vergelijkend op de genormaliseerde sleutel. De tabel bewaart
+// de rauwe URL, dus een versie die onder "https://www.x.nl/pad" is opgeslagen werd
+// niet gevonden bij een kaart met "https://x.nl/pad/". Voor het paginadossier is
+// dat het verschil tussen wel en geen documenten zien.
+export async function listVersionsForKey(slug: string, url: string): Promise<DocVersion[]> {
+  await ensureSchema();
+  await ensureTable();
+  const k = urlKey(url);
+  const { rows } = await sql`
+    SELECT id, url, kind, source, naam, drive_link, samenvatting, vergelijking, status, created_at
+    FROM page_doc_versions WHERE client_slug = ${slug} AND status <> 'genegeerd'
+    ORDER BY id DESC LIMIT 400`;
+  return ontdubbelVersies(rows.filter((r) => urlKey(String(r.url || "")) === k).slice(0, 40).map(rowToVersion));
 }
 
 // Elke generator-run legt zijn resultaat ook als versie in het archief
@@ -79,7 +119,19 @@ export async function registerGeneratedVersion(slug: string, url: string, kind: 
     await ensureTable();
     await sql`
       INSERT INTO page_doc_versions (client_slug, url, kind, source, naam, drive_link, tekst, samenvatting, vergelijking, status)
-      VALUES (${slug}, ${url}, ${kind}, 'pingwin', ${naam || null}, ${driveLink || null}, ${(tekst || "").slice(0, 60000) || null}, ${samenvatting || "Gegenereerd door het dashboard."}, ${null}, 'verwerkt')`;
+      VALUES (${slug}, ${url}, ${kind}, 'pingwin', ${naam || null}, ${driveLink || null}, ${(tekst || "").slice(0, 60000) || null}, ${samenvatting || "Gegenereerd door het dashboard."}, ${null}, 'verwerkt')
+      RETURNING id`;
+    // Een opgeleverd document is werk dat we voor de klant deden; alleen de drie
+    // soorten die daar echt over gaan, niet elk intern bestand.
+    if (kind === "analyse" || kind === "blauwdruk" || kind === "copy") {
+      const { rows } = await sql`SELECT id FROM page_doc_versions WHERE client_slug = ${slug} AND url = ${url} AND kind = ${kind} ORDER BY id DESC LIMIT 1`;
+      if (rows[0]) {
+        await logActiviteit({
+          slug, soort: kind, bron: "page_doc_versions", bronId: Number(rows[0].id),
+          url, bewijs: driveLink || null,
+        });
+      }
+    }
   } catch { /* archief is best effort */ }
 }
 
@@ -88,6 +140,60 @@ export async function registerGeneratedVersion(slug: string, url: string, kind: 
 export type DropProposal = {
   id: number; kind: string; kindLabel: string; naam: string; vergelijking: string; samenvatting: string;
 };
+
+// ── Aangeleverd bestand omzetten naar tekst ──
+// Eén plek voor alle manieren waarop een document binnenkomt: gesleept in het
+// dashboard, of als bijlage bij een mail van de klant. Platte tekst gaat direct;
+// .docx wordt bewaard zoals hij is en apart als leeskopie omgezet; een pdf kan
+// alleen via de omzetting (Drive haalt de tekst eruit).
+//
+// Pdf staat hier bewust bij: klanten sturen hun geredigeerde teksten vaak als
+// pdf terug, en zonder dit kon het dashboard juist dát bestand niet lezen.
+export async function leesAangeleverdDocument(
+  slug: string,
+  url: string,
+  naam: string,
+  buf: Buffer,
+): Promise<{ ok: boolean; tekst?: string; driveLink?: string; error?: string }> {
+  if (/\.(txt|md|json|csv)$/i.test(naam)) {
+    const tekst = buf.toString("utf8");
+    return tekst.trim() ? { ok: true, tekst, driveLink: "" } : { ok: false, error: "Het bestand is leeg." };
+  }
+
+  const isDocx = /\.docx$/i.test(naam);
+  const isPdf = /\.pdf$/i.test(naam);
+  if (!isDocx && !isPdf) {
+    return { ok: false, error: "Dit bestandstype kan ik nog niet lezen. Gebruik .docx, .pdf, .txt of .md." };
+  }
+
+  // Map automatisch aanmaken als hij er nog niet is (pagina-map onder de
+  // klantmap). Eerder moest Maarten die eerst met de hand kiezen, en tot dat
+  // moment weigerde elke drop.
+  const folderId = await ensureFolderFor(slug, url);
+  if (!folderId) {
+    return { ok: false, error: "Geen toegang tot Google Drive; koppel Drive opnieuw in het adminscherm." };
+  }
+  const datum = new Date().toISOString().slice(0, 10);
+
+  try {
+    if (isDocx) {
+      // Origineel onaangetast bewaren, en een omgezette kopie uitlezen.
+      const up = await uploadDocx(folderId, `Aangeleverd-${datum}-${naam}`, buf);
+      const lees = await uploadEnConverteer(folderId, `Leeskopie-${datum}-${naam}`, buf, DOCX_MIME_IN);
+      const read = await readDriveDoc(lees.id, 60000);
+      return read.ok && (read.text || "").trim()
+        ? { ok: true, tekst: read.text || "", driveLink: up.link }
+        : { ok: false, error: "Kon geen leesbare tekst uit het Word-bestand halen." };
+    }
+    const lees = await uploadEnConverteer(folderId, `Aangeleverd-${datum}-${naam}`, buf, "application/pdf");
+    const read = await readDriveDoc(lees.id, 60000);
+    return read.ok && (read.text || "").trim()
+      ? { ok: true, tekst: read.text || "", driveLink: lees.link }
+      : { ok: false, error: "Kon geen leesbare tekst uit de pdf halen (mogelijk een scan zonder tekstlaag)." };
+  } catch (e) {
+    return { ok: false, error: "Inlezen mislukte: " + (e as Error).message };
+  }
+}
 
 export async function proposeVersion(slug: string, url: string, naam: string, tekst: string, driveLink: string, kindHint?: string): Promise<DropProposal> {
   await ensureSchema();

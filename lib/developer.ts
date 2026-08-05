@@ -29,6 +29,13 @@ export type DevTask = {
   position: number | null;
   devDone: boolean;    // door de developer afgevinkt als klaar
   devNote: string;     // terugkoppeling van de developer
+  /**
+   * De documenten die bij deze taak horen: de copy die verwerkt moet worden, de
+   * blauwdruk, en de teksten die de klant terugstuurde. Zonder deze kreeg de
+   * sitebouwer een opdracht als "zet de nieuwe copy live" zonder de copy erbij,
+   * en moest hij die alsnog per mail opvragen.
+   */
+  docs: { label: string; url: string }[];
 };
 
 function stripTags(html: string): string {
@@ -55,6 +62,76 @@ async function ensureDevTable(): Promise<void> {
   await sql`ALTER TABLE developer_overview ADD COLUMN IF NOT EXISTS dev_done BOOLEAN NOT NULL DEFAULT false`;
   await sql`ALTER TABLE developer_overview ADD COLUMN IF NOT EXISTS dev_note TEXT`;
   await sql`ALTER TABLE developer_overview ADD COLUMN IF NOT EXISTS done_at TIMESTAMPTZ`;
+}
+
+/**
+ * De regels uit een kaarttekst die over de bouw gaan.
+ *
+ * De hele toelichting doorzetten leverde een blok van tien regels op met cijfers,
+ * cannibalisatie-nuance en de aanpak van analyse tot copy. Voor de sitebouwer is
+ * dat ruis: die moet weten welke tekst waar moet komen. Vindt hij niets specifieks,
+ * dan valt hij terug op de eerste paar regels, zodat er nooit een lege opdracht staat.
+ */
+export function devSturing(toelichting: string): string {
+  const regels = (toelichting || "").split("\n").map((r) => r.trim()).filter(Boolean);
+  const bouw = regels.filter((r) => /^-?\s*(bouw|publicatie|publiceer|dev|alt[- ]?tekst|interne links?|structured data|schema)\s*:/i.test(r));
+  if (bouw.length) return bouw.map((r) => r.replace(/^-\s*/, "")).join("\n");
+  const zonderKopjes = regels.filter((r) => !/^[A-ZÀ-Ž][^:]{1,40}:$/.test(r));
+  return zonderKopjes.slice(0, 3).map((r) => r.replace(/^-\s*/, "")).join("\n");
+}
+
+/**
+ * De documenten die bij één pagina horen, in de volgorde waarin een sitebouwer
+ * ze nodig heeft: eerst de tekst die verwerkt moet worden, dan de onderbouwing.
+ *
+ * De teruggekregen klantversie staat bewust vóór onze eigen copy: als de klant
+ * de tekst nog heeft geredigeerd, is dát de tekst die de site in moet.
+ */
+export async function docsVoorPagina(slug: string, url: string): Promise<{ label: string; url: string }[]> {
+  if (!url) return [];
+  const uit: { label: string; url: string }[] = [];
+  const gezien = new Set<string>();
+  const voegToe = (label: string, link: string) => {
+    const l = (link || "").trim();
+    if (!l || gezien.has(l)) return;
+    gezien.add(l);
+    uit.push({ label, url: l });
+  };
+
+  // De pagina zelf staat vooraan en is de standaardkeuze: de sitebouwer moet
+  // altijd weten wáár de tekst naartoe moet, en die link stond nergens in de
+  // doorgezette taak.
+  voegToe("De pagina", url);
+
+  try {
+    const { rows } = await sql`
+      SELECT naam, drive_link, status, source FROM page_doc_versions
+      WHERE client_slug = ${slug} AND url = ${url} AND drive_link IS NOT NULL AND drive_link <> ''
+      ORDER BY created_at DESC LIMIT 8`;
+    // Ontdubbeld op BESTANDSNAAM, niet op link. Hetzelfde document komt vaak twee
+    // keer binnen (dezelfde bijlage in twee mails van hetzelfde gesprek), elke
+    // keer met een eigen Drive-link. In de lijst stond hij dan twee keer met
+    // exact dezelfde naam, en dan lijkt het alsof er twee versies zijn.
+    const perNaam = new Set<string>();
+    for (const r of rows) {
+      const naam = String(r.naam || "Document");
+      const sleutel = naam.trim().toLowerCase();
+      if (perNaam.has(sleutel)) continue;
+      perNaam.add(sleutel);
+      const klant = String(r.source || "") === "klant" || String(r.status || "") === "voorstel";
+      voegToe(klant ? `${naam} (van de klant)` : naam, String(r.drive_link));
+    }
+  } catch { /* zonder klantversies verder */ }
+
+  try {
+    const { getStepLinks } = await import("./page-doc-run");
+    const s = await getStepLinks(slug, url);
+    voegToe("Copy", s.copy);
+    voegToe("Blauwdruk", s.blauwdruk);
+    voegToe("Analyse", s.analyse);
+  } catch { /* zonder pijplijn-documenten verder */ }
+
+  return uit.slice(0, 6);
 }
 
 export async function getDeveloperTasks(): Promise<DevTask[]> {
@@ -105,8 +182,54 @@ export async function getDeveloperTasks(): Promise<DevTask[]> {
       position: mm?.position ?? null,
       devDone: mm?.devDone ?? false,
       devNote: mm?.devNote ?? "",
+      docs: [],
     };
   });
+
+  // Kaarten uit de weekplanning die naar de developer zijn doorgezet. Die staan in
+  // een andere tabel dan de oude taken, dus ze moeten er apart bij; anders blijft de
+  // developerpagina hangen op werk van vóór de overstap.
+  const wp = await sql`
+    SELECT w.id, w.client_slug, w.taak, w.toelichting, w.url, w.week_year, w.week_no, w.status,
+           w.dev_taak, w.dev_toelichting, w.dev_docs,
+           c.name AS client_name
+    FROM client_weekplan w
+    LEFT JOIN clients c ON c.slug = w.client_slug
+    WHERE w.naar_dev = true
+    ORDER BY w.week_year, w.week_no, w.sort_order`.then((r) => r.rows).catch(() => [] as Record<string, unknown>[]);
+  for (const r of wp) {
+    const slug = r.client_slug as string;
+    const key = `wp:${Number(r.id)}`;
+    const mm = metaMap.get(slug + "|" + key);
+    list.push({
+      clientSlug: slug,
+      clientName: (r.client_name as string) ?? slug,
+      taskKey: key,
+      // De doorgeefversie wint: die heeft Maarten bij het doorzetten zelf
+      // bijgesteld. Staat die er niet, dan de kaart zelf.
+      taak: (r.dev_taak as string) || (r.taak as string) || "",
+      // Alleen de sturing voor de bouw, niet het hele verhaal. De kaart bevat
+      // achtergrond, cijfers en de aanpak per fase; een sitebouwer heeft daar niets
+      // aan en moet gewoon weten wát hij moet doen.
+      toelichting: (r.dev_toelichting as string) || devSturing((r.toelichting as string) ?? ""),
+      uren: null,
+      // Een doorgezette kaart telt als open dev-werk, tenzij de developer hem afvinkte.
+      status: mm?.devDone ? "klaar" : "naar dev",
+      maand: r.week_no ? `week ${r.week_no}` : "",
+      link: (r.url as string) ?? "",
+      fase: "",
+      execDate: mm?.execDate ?? "",
+      position: mm?.position ?? null,
+      devDone: mm?.devDone ?? false,
+      devNote: mm?.devNote ?? "",
+      // Handmatig gekozen documenten gaan voor: bij een herziene tekst van de
+      // klant moet die de site op, niet onze eigen copy. Is er niets gekozen,
+      // dan alles wat bij de pagina hoort.
+      docs: Array.isArray(r.dev_docs) && (r.dev_docs as unknown[]).length
+        ? (r.dev_docs as { label: string; url: string }[])
+        : await docsVoorPagina(slug, (r.url as string) || ""),
+    });
+  }
 
   // Alleen echt relevante rijen: open ('naar dev') of door de developer afgevinkt.
   // Een 'klaar'-taak die niet dev-afgevinkt is (andere klaar-taak) valt hiermee weg.

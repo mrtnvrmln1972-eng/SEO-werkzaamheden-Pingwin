@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { mdToHtml } from "../../../../lib/markdown";
+import { striptVulzinnen } from "../../../../lib/vulzinnen";
 import HelpHint from "./HelpHint";
 import PageSummaryCard from "./PageSummaryCard";
 
@@ -52,6 +53,9 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   const [clusterMsg, setClusterMsg] = useState("");
   // Aantal pagina's waaraan het advies is doorgegeven (>0 = knop wordt groen "doorgegeven").
   const [clusterDone, setClusterDone] = useState(0);
+  // Welke pagina's advies kregen vanuit deze pagina. De melding na het starten
+  // verdween, waardoor het leek alsof er niets was gebeurd.
+  const [gelieerdeUrls, setGelieerdeUrls] = useState<{ url: string; wanneer: string | null }[]>([]);
   // Het overzichtje met vinkjes: aan welke pagina's is er vanuit deze pagina
   // advies doorgegeven (geladen zodra de kaart openklapt).
   const [outgoing, setOutgoing] = useState<{ url: string; advice: string }[] | null>(null);
@@ -569,8 +573,30 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     try { const n = Number(localStorage.getItem(`pw_clusterdone_${slug}_${url}`) || "0"); clusterN = Number.isFinite(n) ? n : 0; } catch { clusterN = 0; }
     setTaskDone(stratD); setClusterDone(clusterN);
     try { const sd: Record<string, boolean> = {}; (["analyse", "blauwdruk", "copy"] as const).forEach((k) => { if (localStorage.getItem(`pw_stepdone_${slug}_${url}_${k}`) === "1") sd[k] = true; }); setStepsDone(sd); } catch { setStepsDone({}); }
+    // De browser is niet de waarheid. Hierboven staat alleen wat dit apparaat nog
+    // wist; de echte stand komt uit de database, dezelfde bron als de weekplan-kaart.
+    // Zonder dit stond alles op een andere computer weer op nul, ook al was het werk
+    // gedaan, en zei de kaart iets anders dan dit scherm over dezelfde pagina.
+    let leeft = true;
+    fetch(`/api/admin/page-stand?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (!leeft || !d?.ok) return;
+        const st = d.stand as { strategie?: boolean; gelieerde?: boolean; analyse?: boolean; blauwdruk?: boolean; copy?: boolean } | null;
+        if (st) {
+          if (st.strategie) setTaskDone(true);
+          const sd: Record<string, boolean> = {};
+          (["analyse", "blauwdruk", "copy"] as const).forEach((k) => { if (st[k]) sd[k] = true; });
+          if (Object.keys(sd).length) setStepsDone((v) => ({ ...v, ...sd }));
+        }
+        const lijst = (d.gelieerdeUrls || []) as { url: string; wanneer: string | null }[];
+        setGelieerdeUrls(lijst);
+        if (lijst.length) setClusterDone((n) => Math.max(n, lijst.length));
+      })
+      .catch(() => { /* de browser-stand blijft dan staan */ });
     try { setCanniDone(localStorage.getItem(`pw_cannidone_${slug}_${url}`) === "1"); } catch { setCanniDone(false); }
     try { const c = localStorage.getItem(`pw_canniinfo_${slug}_${url}`); if (c) { const p = JSON.parse(c); if (p && typeof p.doc === "boolean" && Array.isArray(p.urls)) setApplyInfo(p); } } catch { /* geen opslag */ }
+    return () => { leeft = false; };
   }, [slug, url]);
   function markStrategieDone() { setTaskDone(true); try { localStorage.setItem(`pw_stratdone_${slug}_${url}`, "1"); } catch { /* geen opslag */ } if (clusterDone > 0) setChatOpen(false); }
 
@@ -610,7 +636,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
         markStrategieDone();
         if (d.started) { setApplied("De analyse wordt op de achtergrond vastgelegd; je kunt wegklikken. Hij verschijnt zo als werkzaamheid in Werkzaamheden, met de link hier zodra hij klaar is."); onApplied(); pollStratLink(); return; }
         if (d.link) setStratLink(d.link);
-        setApplied(`Analyse samengevat en opgeslagen in Google Drive${d.folder ? `, map "${d.folder}"` : ""}${d.owner ? `, account ${d.owner}` : ""} als ${d.isDoc ? "Google Doc" : "Word-bestand"}${!d.isDoc && d.note ? ` (omzetten naar Google Doc lukte niet: ${d.note})` : ""}. <a href="${d.link}" target="_blank" rel="noopener">Open document</a>.${d.shared ? " Iedereen met de link kan het bekijken." : " (Delen lukte niet automatisch.)"} Vastgelegd als één werkzaamheid; je springt nu naar Werkzaamheden om hem in te plannen.`);
+        setApplied(`Analyse samengevat en opgeslagen in Google Drive${d.folder ? `, map "${d.folder}"` : ""}${d.owner ? `, account ${d.owner}` : ""} als Word-bestand in de Pingwin-huisstijl.<a href="${d.link}" target="_blank" rel="noopener">Open document</a>.${d.shared ? " Iedereen met de link kan het bekijken." : " (Delen lukte niet automatisch.)"} Vastgelegd als één werkzaamheid; je springt nu naar Werkzaamheden om hem in te plannen.`);
         onApplied();
         if (typeof d.taskId === "number" && onGoToTask) onGoToTask(d.taskId);
         return;
@@ -822,7 +848,10 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   // Alleen als het ECHT al HTML is (sluittags) én GEEN markdown-syntax bevat, laten we het staan.
   // Anders altijd via mdToHtml, dat '<' escapet — zo verschijnt een genoemde tag als `<h1>`
   // als leestekst i.p.v. dat hij als echte kop wordt gerenderd (en de markdown blijft ruw).
-  function renderMsgHtml(content: string): string {
+  function renderMsgHtml(ruw: string): string {
+    // Aankondigingszinnen eruit, net als in de Bird's eye: dit filter draaide daar
+    // wel en hier niet, dus in de kaart-chat stonden ze er nog gewoon.
+    const content = striptVulzinnen(ruw);
     const hasClosingTag = /<\/[a-z][a-z0-9]*>/i.test(content);
     const looksMarkdown = /(^|\n)#{1,6}\s|\*\*[^*]|(^|\n)\s*[-*]\s|(^|\n)\s*\d+\.\s|\|[^|]*\|/.test(content);
     return hasClosingTag && !looksMarkdown ? content : mdToHtml(content, siteBase);
@@ -1105,7 +1134,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
           )}
         </div>
       )}
-      <div className={"page-chat step-card step-card-2" + (taskDone ? " done" : "")}>
+      <div className={"page-chat step-card step-card-2" + (planDone || taskDone ? " done" : "")}>
         <div className="step-head" onClick={() => setChatOpen((o) => !o)} title={chatOpen ? "Chat inklappen" : "Chat uitklappen"}>
           <span className="step-caret">{chatOpen ? "▾" : "▸"}</span>
           <span className="step-badge">{planDone || taskDone ? "✓" : "1"}</span>
@@ -1168,6 +1197,20 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
           <span className="step-title">Doorgeven aan gelieerde pagina&rsquo;s</span>
           <span onClick={(e) => e.stopPropagation()}><HelpHint xl title="Stap 2 — Doorgeven aan gelieerde pagina's" text={"Een goede strategie voor één pagina raakt bijna altijd andere pagina's: een pagina die dezelfde term kaapt en moet herrichten, een locatiepagina die een eigen term krijgt, een pagina die een interne link moet gaan geven. Deze stap zorgt dat die beslissingen niet verdampen zodra je dit scherm sluit.\n## Hoe het werkt\n- Het systeem leest de volledige conclusie van de strategie-chat en haalt eruit welke **andere, bestaande** pagina's erin genoemd worden; alleen URL's die echt in de paginalijst staan tellen mee (er wordt niets verzonnen).\n- Per geraakte pagina wordt het advies samengevat dat specifiek over die pagina gaat: de bedoelde rol, het primaire zoekwoord, de actie en eventuele interne-link-afspraken.\n- Jij vinkt aan welke pagina's het advies krijgen en klikt doorgeven.\n## Wat de ontvangende pagina's ermee doen\n- Ze krijgen het advies als **vertrekpunt** ('half plan'): open je daar de strategie-stap, dan ligt deze beslissing er al, inclusief de volledige bronconclusie van dit gesprek als context.\n- De chat van die pagina toetst het meegegeven advies vervolgens aan de eigen live feiten (rankings, inhoud) in plaats van blind over te nemen.\n## Waarom dit belangrijk is\nCannibalisatie ontstaat meestal niet door slechte analyses maar door losse beslissingen die elkaar tegenspreken. Door de clusterbeslissing één keer te nemen en expliciet door te geven, blijft de eigenaar-keuze per zoekintentie overal consistent; precies wat Google nodig heeft om één duidelijke pagina per intentie te kunnen belonen."} /></span>
         </div>
+        {/* Wat er is uitgegaan blijft zichtbaar. De melding na het starten verdween,
+            waardoor het leek alsof er niets was gebeurd terwijl het advies er wel lag. */}
+        {gelieerdeUrls.length > 0 && (
+          <div className="pch-gelieerd">
+            Advies doorgegeven aan{" "}
+            {gelieerdeUrls.map((g, i) => (
+              <span key={g.url}>
+                {i > 0 && ", "}
+                <a href={g.url} target="_blank" rel="noreferrer">{(() => { try { return new URL(g.url).pathname; } catch { return g.url; } })()}</a>
+              </span>
+            ))}
+            {gelieerdeUrls[0]?.wanneer && <span className="pch-gelieerd-datum"> · {new Date(gelieerdeUrls[0].wanneer).toLocaleDateString("nl-NL")}</span>}
+          </div>
+        )}
         {doorgevenOpen && (
         <div className="page-chat-cluster step-body">
           {!lastAssistant ? (

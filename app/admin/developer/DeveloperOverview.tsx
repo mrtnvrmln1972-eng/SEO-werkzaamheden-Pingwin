@@ -63,7 +63,8 @@ export default function DeveloperOverview({ initialTasks, embedded }: { initialT
   function mailMaarten(r: Row, note: string) {
     const subject = `Terugkoppeling dev-taak: ${stripText(r.taak).slice(0, 80)} (${r.clientName})`;
     const lines = [`Klant: ${r.clientName}`, `Taak: ${stripText(r.taak)}`];
-    if (r.link && /^https?:/i.test(r.link)) lines.push(`Document: ${r.link}`);
+    if (r.link && /^https?:/i.test(r.link)) lines.push(`Pagina: ${r.link}`);
+    for (const d of r.docs || []) lines.push(`${d.label}: ${d.url}`);
     lines.push("", `Terugkoppeling: ${note || ""}`);
     window.location.href = `mailto:${MAARTEN_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(lines.join("\n"))}`;
   }
@@ -179,8 +180,18 @@ export default function DeveloperOverview({ initialTasks, embedded }: { initialT
       <div className="dev-task-meta">
         {statusBadge(r.status)}
         {r.uren ? <span className="dev-task-uren">{r.uren} min</span> : null}
-        {r.link && /^https?:/i.test(r.link) ? <a href={r.link} target="_blank" rel="noreferrer" className="dev-task-doc" onClick={(e) => e.stopPropagation()}>doc ↗</a> : null}
+        {r.link && /^https?:/i.test(r.link) ? <a href={r.link} target="_blank" rel="noreferrer" className="dev-task-doc" onClick={(e) => e.stopPropagation()}>pagina ↗</a> : null}
       </div>
+      {/* De documenten die bij deze taak horen. Een opdracht als "zet de nieuwe
+          copy live" zonder de copy erbij is geen opdracht; dan moet de
+          sitebouwer alsnog gaan mailen. */}
+      {r.docs && r.docs.length > 0 && (
+        <div className="dev-task-docs" onClick={(e) => e.stopPropagation()}>
+          {r.docs.map((d) => (
+            <a key={d.url} href={d.url} target="_blank" rel="noreferrer" className="dev-doc-link">{d.label}</a>
+          ))}
+        </div>
+      )}
       <div className="dev-task-actions" onClick={(e) => e.stopPropagation()}>
         <label className="dev-check-label"><input type="checkbox" checked={r.devDone} onChange={(e) => toggleDone(idx, e.target.checked)} /> Klaar</label>
         <button type="button" className="ghost-btn small dev-mail-btn" onClick={() => mailMaarten(r, r.devNote)}>✉ Mail Maarten</button>

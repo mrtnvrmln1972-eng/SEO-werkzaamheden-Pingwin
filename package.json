@@ -13,6 +13,7 @@
     "@vercel/functions": "^3.7.5",
     "@vercel/postgres": "^0.10.0",
     "docx": "^9.7.1",
+    "jszip": "^3.10.1",
     "next": "14.2.5",
     "puppeteer-core": "^23.11.1",
     "react": "18.3.1",
@@ -23,6 +24,7 @@
     "@types/node": "20.14.10",
     "@types/react": "18.3.3",
     "@types/react-dom": "18.3.0",
+    "playwright": "^1.49.0",
     "typescript": "5.5.3"
   }
 }

@@ -470,7 +470,13 @@ export async function getGscKeywordsBeforeAfter(domain: string, pageUrl: string,
 // Kans-data per pagina: vertoningen, kliks, CTR, gemiddelde positie en het beste
 // zoekwoord (meeste vertoningen) met zijn positie. Voor het spotten van laaghangend
 // fruit in het pagina-overzicht (veel vraag + net buiten de top 10).
-export type PageOpportunity = { url: string; clicks: number; impressions: number; ctr: number; position: number; bestKeyword: string; bestPosition: number | null; bestVolume: number | null };
+// `impressions` is de hele PAGINA, `bestImpressions` alleen het beste zoekwoord.
+// Dat onderscheid is er niet voor niets: wie de paginatotalen aan één zoekwoord
+// hangt, komt uit op fantasiegetallen (een pagina met 200.000 vertoningen op
+// twintig zoekwoorden werd zo één zoekwoord van 200.000). Meta-werk raakt de hele
+// pagina, dus daar hoort `impressions`; één zoekwoord omhoog duwen hoort bij
+// `bestImpressions`.
+export type PageOpportunity = { url: string; clicks: number; impressions: number; ctr: number; position: number; bestKeyword: string; bestImpressions: number; bestPosition: number | null; bestVolume: number | null };
 export async function getGscPageOpportunities(domain: string, days = 90): Promise<PageOpportunity[]> {
   const token = await accessTokenFor("google");
   if (!token || !domain) return [];
@@ -496,7 +502,8 @@ export async function getGscPageOpportunities(domain: string, days = 90): Promis
       url,
       clicks: Math.round(x.clicks), impressions: Math.round(x.impressions),
       ctr: Math.round(x.ctr * 1000) / 10, position: Math.round(x.position * 10) / 10,
-      bestKeyword: b?.keyword || "", bestPosition: b ? Math.round(b.position * 10) / 10 : null,
+      bestKeyword: b?.keyword || "", bestImpressions: Math.round(b?.impressions || 0),
+      bestPosition: b ? Math.round(b.position * 10) / 10 : null,
       bestVolume: null as number | null,
     };
   });
@@ -1039,3 +1046,45 @@ export async function getAdsComparison(slug: string, domain: string, days: numbe
   return { linked, dates, totals, campaigns };
 }
 
+
+// Alle (zoekwoord, pagina)-combinaties in één keer. Nodig om te bepalen WELKE
+// pagina's elkaar in de weg zitten: dat is geen inschatting maar een overlap in
+// de data. Eén aanroep, want per pagina vragen zou tientallen calls kosten.
+export type GscPaar = { keyword: string; page: string; clicks: number; impressions: number; position: number };
+// Kort geheugen per serverinstantie. Zonder dit haalt één vraag over zes
+// pagina's zes keer dezelfde tienduizenden rijen op; dan loopt de beurt uit de
+// tijd en komt de opruimlijst er helemaal niet meer bij. Vijf minuten is ruim
+// genoeg voor één gesprek en kort genoeg om nooit oude cijfers te tonen.
+const paarCache = new Map<string, { tijd: number; data: GscPaar[] }>();
+const PAAR_TTL = 5 * 60 * 1000;
+
+export async function getGscQueryPagePairs(domain: string, days = 90, maxRijen = 50000): Promise<GscPaar[]> {
+  const sleutel = `${domain}|${days}|${maxRijen}`;
+  const c = paarCache.get(sleutel);
+  if (c && Date.now() - c.tijd < PAAR_TTL) return c.data;
+  const token = await accessTokenFor("google");
+  if (!token || !domain) return [];
+  const site = await gscPickSite(token, domain);
+  if (!site) return [];
+  const r = periodRanges(days);
+  // BLADEREN IS HIER ESSENTIEEL, niet netjes-doen. Google sorteert op klikken van
+  // hoog naar laag, en juist de pagina's die we zoeken (dunne locatiepagina's met
+  // nul klikken) staan helemaal onderaan. Met één ophaal van 5000 rijen vielen
+  // ze buiten de boot en zag de analyse ze nooit, hoe goed de logica ook was.
+  const perKeer = 25000;                                  // maximum van de API
+  const rows: Awaited<ReturnType<typeof gscQuery>> = [];
+  for (let start = 0; start < maxRijen; start += perKeer) {
+    const batch = await gscQuery(token, site, {
+      startDate: r.curStart, endDate: r.curEnd,
+      dimensions: ["query", "page"], rowLimit: Math.min(perKeer, maxRijen - start), startRow: start,
+    });
+    rows.push(...batch);
+    if (batch.length < perKeer) break;                    // laatste bladzijde
+  }
+  const uit = rows.map((x) => ({
+    keyword: x.keys?.[0] || "", page: x.keys?.[1] || "",
+    clicks: Math.round(x.clicks), impressions: Math.round(x.impressions), position: Math.round(x.position * 10) / 10,
+  })).filter((x) => x.keyword && x.page);
+  paarCache.set(sleutel, { tijd: Date.now(), data: uit });
+  return uit;
+}

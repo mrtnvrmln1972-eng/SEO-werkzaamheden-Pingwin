@@ -1,0 +1,118 @@
+{
+  "_uitleg": [
+    "De getallen achter de prioriteitenscan, op EEN plek. Zowel de Python-versie",
+    "(scripts/scoring.py, voor Cowork) als de dashboard-motor (lib/prioriteiten-score.ts)",
+    "lezen dit bestand. Zo kan een drempel niet op twee plekken uit elkaar lopen,",
+    "wat precies de fout is die het brein beschrijft: dezelfde vraag op meerdere",
+    "plekken apart uitgeschreven gaat stil uiteen.",
+    "Wijzig je hier iets, dan verandert het overal mee. Log de reden in het rapport."
+  ],
+
+  "ctr_curve": {
+    "_bron": "Advanced Web Ranking 2024, organic CTR, NL desktop. Niet gekalibreerd op Pingwin-data.",
+    "1": 0.398,
+    "2": 0.187,
+    "3": 0.103,
+    "4": 0.067,
+    "5": 0.049,
+    "6": 0.037,
+    "7": 0.029,
+    "8": 0.024,
+    "9": 0.020,
+    "10": 0.017,
+    "11_tot_20": 0.011,
+    "21_en_verder": 0.005
+  },
+
+  "intentie_multiplier": {
+    "transactional": 1.0,
+    "lokaal-commercial": 0.9,
+    "commercial": 0.7,
+    "navigational": 0.5,
+    "informational": 0.3,
+    "_onbekend": 0.5
+  },
+
+  "impact": {
+    "_formule": "log10(maandvolume) * factor * ctr_uplift * intentie_multiplier * relevance_fit",
+    "factor": 100
+  },
+
+  "relevance_fit": {
+    "_uitleg": [
+      "Schaal 0 tot 1. 0.9-1.0 kern, 0.7-0.9 sterk verwant, 0.5-0.7 aanverwant,",
+      "0.3-0.5 verwarrend voor het merk, 0.0-0.3 off-brand.",
+      "off_brand_budget stond eerder op 0.4, exact gelijk aan de skip-grens.",
+      "De poort test op KLEINER DAN 0.4, dus hij ging nooit dicht en er belandde",
+      "nooit iets in Skip. Nu 0.25, dus een budget-zoekwoord bij een klant die",
+      "zich uitspreekt tegen budget valt er wel echt uit."
+    ],
+    "basis_start": 0.5,
+    "per_overlap": 0.15,
+    "basis_max": 0.9,
+    "premium_bonus": 0.1,
+    "geen_overlap_max": 0.5,
+    "off_brand_budget": 0.25
+  },
+
+  "tiers": {
+    "_uitleg": "Volgorde is hard: eerst de twee skip-regels, dan tier 1 tot 4.",
+    "_skip_roi_uitleg": [
+      "Stond op 0.5. Dat botste met de tier-tabel in SKILL.md, die zegt dat tier 4",
+      "('strategisch') alles opvangt wat groter is dan tier 3 zolang de merk-fit",
+      "0.4 of hoger is. Gemeten gevolg: een content gap moest 50.000 zoekopdrachten",
+      "per maand halen om niet geskipt te worden, want zulke bevindingen hebben per",
+      "definitie lage zekerheid (0.3), veel werk (6+) en een lange doorlooptijd (4).",
+      "Daarmee stonden lens 5 (content gaps) en lens 12 (AI-zichtbaarheid) in de",
+      "praktijk uit: ze konden nooit iets opleveren.",
+      "Nu vangt de drempel alleen bevindingen zonder meetbare winst; de rest zakt",
+      "netjes door naar tier 3 of 4. Off-brand blijft wel gewoon uit de lijst vliegen,",
+      "want die poort staat op de merk-fit en die werkt nu pas echt."
+    ],
+    "skip_relevance_fit_onder": 0.4,
+    "skip_roi_onder": 0.05,
+    "top25_percentiel": 0.75,
+    "_top25_over": "Alleen de niet-geskipte bevindingen tellen mee in het percentiel; anders drukt een berg lage ROI's de drempel voor 'deze week' kunstmatig omlaag.",
+    "tier1": { "naam": "Deze week",    "confidence_min": 0.6, "effort_max": 3, "tte_max": 2, "roi_top25": true },
+    "tier2": { "naam": "Deze maand",   "confidence_min": 0.6, "effort_max": 6, "tte_max": 3, "roi_top25": false },
+    "tier3": { "naam": "Dit kwartaal", "confidence_min": 0.0, "effort_max": 8, "tte_max": 4, "roi_top25": false },
+    "tier4": { "naam": "Strategisch" }
+  },
+
+  "confidence_per_lens": {
+    "_uitleg": "Standaardzekerheid per lens. 0.9 = harde meting, 0.6 = afgeleid, 0.3 = schatting.",
+    "striking_distance": 0.9,
+    "verouderde_topper": 0.9,
+    "site_audit": 0.9,
+    "broken_backlinks": 0.9,
+    "ctr_underperform": 0.6,
+    "cannibalisatie": 0.6,
+    "featured_snippet": 0.6,
+    "schema_gap": 0.6,
+    "interne_links": 0.6,
+    "lost_backlinks": 0.6,
+    "content_gap": 0.3,
+    "aeo": 0.3
+  },
+
+  "effort_schaal": {
+    "1": "title of meta aanpassen",
+    "2": "korte alinea toevoegen",
+    "3": "FAQ-blok of structured data",
+    "4": "pagina deels verversen",
+    "5": "pagina volledig verversen",
+    "6": "nieuwe pagina, 600 tot 1000 woorden",
+    "7": "nieuwe pagina, 1500 woorden of meer",
+    "8": "cluster van drie pagina's",
+    "9": "URL-structuur herzien met redirect-plan",
+    "10": "nieuw contentcluster van vijf of meer pagina's"
+  },
+
+  "time_to_effect_schaal": {
+    "1": "1 tot 2 weken",
+    "2": "2 tot 6 weken",
+    "3": "1 tot 3 maanden",
+    "4": "3 tot 6 maanden",
+    "5": "6 maanden of meer"
+  }
+}

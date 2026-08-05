@@ -5,6 +5,8 @@ import type { ClientUrl } from "../../../../lib/site-urls";
 import { mdToHtml } from "../../../../lib/markdown";
 import ImportAnalysis from "./ImportAnalysis";
 import PageChat from "./PageChat";
+import PaginaDossier from "./PaginaDossier";
+import { CLIENT_FOLDER_KEY } from "../../../../lib/constants";
 import HelpHint from "./HelpHint";
 
 function shortUrl(url: string): string {
@@ -106,9 +108,8 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
   const [made, setMade] = useState<Record<string, { link: string; driveError: string; taskId: number | null }>>({});
 
   // ── Google Drive klantmap (voor het klantprofiel- en tone-of-voice-document) ──
-  // Sleutel gelijk aan CLIENT_FOLDER_KEY in lib/client-profile-gen.ts (klant-breed,
+  // Sleutel komt uit lib/constants.ts (klant-breed,
   // niet per pagina), zodat beide documenten in dezelfde gekozen klantmap landen.
-  const CLIENT_FOLDER_KEY = "__client_profile__";
   type Folder = { id: string; name: string };
   const [driveFolder, setDriveFolder] = useState<{ id: string; name: string; path: string } | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -666,6 +667,11 @@ function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoTo
         <tr className="pages-detail-row">
           <td colSpan={9}>
             <div className="pages-detail">
+              {/* Het paginadossier bovenaan: wat er speelt, met de mails en
+                  documenten erbij. Zelfde blok als op de kaart in de weekplanning
+                  en op de voorgestelde taak in de chat. */}
+              <PaginaDossier slug={slug} url={u.url} />
+
               {(() => {
                 // Een taak hoort bij de pijplijn (blijft staan) als hij een stap-kenmerk
                 // heeft, een gekoppeld document, of een link in de titel (de analyse/

@@ -17,6 +17,7 @@ import { measurePage } from "./page-measure";
 import { callClaude, LIGHT_MODEL } from "./anthropic";
 import { sql, ensureSchema } from "./db";
 import { addWeekplanTasks, isoWeek } from "./weekplan";
+import { tidyCards } from "./weekplan-tidy";
 import { urlKey, nearestKnownUrl } from "./url-key";
 
 export type ActionType = "pagina_toevoegen" | "taak_aanmaken" | "plan_vastleggen" | "strategie_bepalen" | "pijplijn_starten" | "structured_data" | "alt_teksten" | "meta_verbeteren" | "profiel_bijwerken" | "weekplan_taken";
@@ -185,6 +186,106 @@ export function validateAction(raw: Record<string, unknown>, domain: string, id:
   return null;
 }
 
+// ═══════════════════════════════════════════════════════════
+// ÉÉN KAART PER PAGINA
+// ═══════════════════════════════════════════════════════════
+// Harde afspraak: een pagina is een project, dus een kaart gaat over precies één
+// pagina. Gaat een taak over meerdere pagina's, dan wordt hij gesplitst; de
+// upsert voegt elke helft daarna samen met een eventueel bestaande kaart voor
+// die pagina.
+//
+// Dit ving eerder alleen LETTERLIJKE paden in de TITEL af. Een taak als
+// "Controleer of de CRP-pagina's live staan" bevat geen enkel pad, bleef dus één
+// kaart, en daardoor stond bij /crp-waarde-testen/ nergens dat de copy nog live
+// moest. Nu kijkt hij ook in de achtergrondtekst en herkent hij
+// meervoudsverwijzingen ("de CRP-pagina's", "beide lenspagina's").
+export type SplitsbareTaak = { taak: string; toelichting?: string; url?: string; [k: string]: unknown };
+
+const MEERVOUD = /\b(?:([a-zà-ÿ0-9]{2,})[-\s])?pagina'?s\b/gi;
+
+function padVanUrl(u: string): string {
+  try { return new URL(u).pathname; } catch { return ""; }
+}
+
+// Ontdubbelt en laat ouderpaden vallen die alleen voorvoegsel zijn van een
+// specifieker gevonden pad (/diensten/ naast /diensten/tuinontwerp/).
+function zonderOuderpaden(urls: string[]): string[] {
+  const uniek = [...new Map(urls.map((u) => [urlKey(u), u])).values()];
+  const paden = uniek.map(padVanUrl);
+  return uniek.filter((_, i) => !paden.some((p, j) => j !== i && p !== paden[i] && p.startsWith(paden[i])));
+}
+
+export function splitsPerPagina<T extends SplitsbareTaak>(taken: T[], bekendeUrls: string[]): T[] {
+  if (!bekendeUrls.length) return taken;
+  const uit: T[] = [];
+
+  for (const t of taken) {
+    const titel = t.taak || "";
+    const achtergrond = String(t.toelichting || "");
+
+    // 1. Letterlijke paden, eerst in de titel en anders in de achtergrond.
+    let gevonden = bekendeUrls.filter((u) => { const p = padVanUrl(u); return p.length > 1 && titel.includes(p); });
+    // Staat er precies ÉÉN pad in de titel, dan is de kaart al aan één pagina
+    // toegewezen en blijft hij dat. De achtergrondtekst noemt bijna altijd ook de
+    // zusterpagina's, dus zonder deze rem zou een net gesplitste kaart bij elke
+    // volgende ronde opnieuw uiteenvallen.
+    if (gevonden.length === 1) { uit.push(t); continue; }
+    if (gevonden.length < 2) {
+      const inTekst = bekendeUrls.filter((u) => { const p = padVanUrl(u); return p.length > 1 && achtergrond.includes(p); });
+      if (inTekst.length >= 2) gevonden = inTekst;
+    }
+
+    // 2. Meervoud zonder pad: "de CRP-pagina's" wijst naar elke bekende pagina
+    //    met dat woord in het pad. Alleen bij een handvol treffers; slaat het op
+    //    tientallen pagina's, dan is het site-breed werk en hoort het juist NIET
+    //    versnipperd te worden.
+    if (gevonden.length < 2) {
+      for (const m of titel.matchAll(MEERVOUD)) {
+        const kern = (m[1] || "").toLowerCase();
+        if (kern.length < 2) continue;
+        const passend = bekendeUrls.filter((u) => padVanUrl(u).toLowerCase().includes(kern));
+        if (passend.length >= 2 && passend.length <= 6) { gevonden = passend; break; }
+      }
+    }
+
+    const echte = zonderOuderpaden(gevonden);
+    if (echte.length < 2) { uit.push(t); continue; }
+
+    // De opdracht blijft staan; alleen de paginaverwijzing wordt per kaart
+    // concreet. Eerder werd de titel weggegooid en vervangen door "Optimaliseer
+    // /pad/", waardoor je niet meer zag wát er moest gebeuren.
+    for (const u of echte) {
+      uit.push({ ...t, taak: kaartTitel(titel, padVanUrl(u)), url: u });
+    }
+  }
+  return uit;
+}
+
+// "Controleer of de CRP-pagina's live staan" plus /crp-test/ wordt
+// "/crp-test/: controleer of de copy live staat".
+//
+// De meervoudsverwijzing gaat eruit: het pad staat er nu voor, dus "CRP-pagina's"
+// in de titel is niet alleen overbodig maar ronduit misleidend. Je leest dan een
+// kaart over één pagina waarin staat dat het over meerdere pagina's gaat, en dat
+// is precies waarom een gesplitste kaart er ongesplitst uitzag.
+export function kaartTitel(origineel: string, pad: string): string {
+  let schoon = (origineel || "").trim().replace(/^[/\w-]+:\s*/, "");
+  schoon = schoon
+    .replace(new RegExp(MEERVOUD.source, "gi"), "")
+    .replace(/\s*\b(?:de|het|beide|alle|die|deze)\s*$/i, "")
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s+([,.])/g, "$1")
+    .trim();
+  if (!schoon) return `Optimaliseer ${pad}`;
+  const kort = schoon.charAt(0).toLowerCase() + schoon.slice(1);
+  return `${pad}: ${kort}`.slice(0, 200);
+}
+
+/** De opdracht zonder het pad ervoor: "/crp-test/: controleer X" wordt "controleer X". */
+export function opdrachtZonderPad(titel: string): string {
+  return (titel || "").replace(/^\/[^\s:]*:\s*/, "").trim();
+}
+
 export async function executeAction(slug: string, action: ProposedAction, thread = ""): Promise<ActionResult> {
   const client = await getClientBySlug(slug);
   const domain = client?.domain || "";
@@ -219,20 +320,7 @@ export async function executeAction(slug: string, action: ProposedAction, thread
       // dezelfde toelichting/week); de upsert voegt ze daarna netjes samen met
       // eventueel bestaande paginakaarten.
       if (bekendeUrls.length && action.taken?.length) {
-        const pad = (u: string) => { try { return new URL(u).pathname; } catch { return ""; } };
-        const gesplitst: typeof action.taken = [];
-        for (const t of action.taken) {
-          const inTitel = bekendeUrls.filter((u) => { const p = pad(u); return p.length > 1 && t.taak.includes(p); });
-          // Ontdubbel op urlKey en laat ouder-paden vallen die alleen als voorvoegsel
-          // van een specifieker gevonden pad in de titel staan.
-          const uniek = [...new Map(inTitel.map((u) => [urlKey(u), u])).values()];
-          const paden = uniek.map(pad);
-          const echte = uniek.filter((_, i) => !paden.some((p, j) => j !== i && p !== paden[i] && p.startsWith(paden[i])));
-          if (echte.length >= 2) {
-            for (const u of echte) gesplitst.push({ ...t, taak: `Optimaliseer ${pad(u)}`, url: u });
-          } else gesplitst.push(t);
-        }
-        action.taken = gesplitst.slice(0, 20);
+        action.taken = splitsPerPagina(action.taken, bekendeUrls).slice(0, 20);
       }
       for (const t of action.taken || []) {
         if (!t.url || !bekendeUrls.length) continue;
@@ -248,6 +336,9 @@ export async function executeAction(slug: string, action: ProposedAction, thread
         return { taak: t.taak, toelichting: t.toelichting, wie: t.wie, url: t.url, taaktype: t.taaktype, copyUrl, bronMail: t.bronMail, week: isoWeek(d) };
       }));
       const r = await addWeekplanTasks(slug, thread, tasks);
+      // Samengevoegde kaarten meteen laten opruimen: dat is precies het moment
+      // waarop dubbelingen en tegenstrijdige cijfers ontstaan.
+      if (r.mergedIds.length) await tidyCards(slug, r.mergedIds).catch(() => 0);
       const n = r.added + r.merged;
       if (!n) return { ok: false, message: "Geen taken om toe te voegen." };
       const delen: string[] = [];

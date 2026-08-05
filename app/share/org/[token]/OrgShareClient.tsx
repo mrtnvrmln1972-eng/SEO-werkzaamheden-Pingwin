@@ -60,6 +60,9 @@ export default function OrgShareClient({ token }: { token: string }) {
           <p>
             Wij hebben hieronder alvast zoveel mogelijk ingevuld op basis van jullie website en openbare bronnen
             (zoals het KVK-register en jullie Google-vermelding). Sommige dingen kunnen wij niet zelf vinden of controleren. Loop de velden na, corrigeer wat niet klopt en vul aan wat ontbreekt.
+            De velden die wij nog nodig hebben en die nog leeg zijn, staan <strong>in het rood</strong> met de melding
+            &ldquo;ontbreekt nog&rdquo;; die zijn dus het belangrijkst. Hebben jullie meerdere vestigingen, vul dan per
+            vestiging het adres, telefoonnummer en de openingstijden in.
             Klik daarna op <strong>Opslaan</strong>. Wij verwerken het vervolgens in de site: eerst site-breed
             (de vaste bedrijfsinformatie op elke pagina) en daarna per pagina (bijvoorbeeld dienst-, product- of
             behandelinformatie).

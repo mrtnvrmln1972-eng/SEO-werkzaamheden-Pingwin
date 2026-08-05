@@ -101,13 +101,82 @@ export async function callClaude(system: string, messages: ChatMsg[], maxTokens 
   return (j.content || []).filter((c: { type: string }) => c.type === "text").map((c: { text: string }) => c.text).join("");
 }
 
+// ── Variant met afbeeldingen erbij: Claude kíjkt naar de foto ──
+//
+// Aanleiding: de alt-teksten in de werklijst werden geschreven op alleen de
+// bestandsnaam ("wat staat er waarschijnlijk op"). Dat levert per definitie een
+// gok op, en dus vage teksten. Met de foto erbij wordt het een beschrijving.
+//
+// De API haalt de afbeelding zelf op via de URL. Dat kan mislukken (404, te
+// groot, verkeerd formaat) en dan faalt het hele verzoek, niet één afbeelding.
+// De aanroeper moet dus een terugval zonder afbeeldingen hebben.
+
+// Een afbeelding komt binnen als URL (een beeld dat al ergens op het web staat)
+// of als ruwe bytes (een screenshot die net in de dropzone viel en nog nergens
+// publiek staat). Beide gaan naar dezelfde aanroep.
+export type VisionImage = { url: string; label: string; base64?: string; mediaType?: string };
+
+/** Formaten die de API aankan. SVG valt hier bewust buiten (niet ondersteund). */
+const BEELD_OK = /\.(jpe?g|png|gif|webp)(\?|#|$)/i;
+
+/** Filtert de afbeeldingen die we überhaupt mogen meesturen. */
+export function beeldGeschikt(url: string): boolean {
+  return !!url && /^https?:\/\//i.test(url) && BEELD_OK.test(url);
+}
+
+export async function callClaudeImages(system: string, tekst: string, images: VisionImage[], maxTokens = 1500, ctx?: UsageCtx, model = MODEL): Promise<string> {
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) throw new Error("ANTHROPIC_API_KEY ontbreekt (voeg hem toe in Vercel).");
+  const bruikbaar = images.filter((i) => (i.base64 && i.mediaType) || beeldGeschikt(i.url));
+  if (!bruikbaar.length) throw new Error("Geen bruikbare afbeeldingen om te tonen.");
+
+  // Per afbeelding eerst het label (zodat het model weet welke naam erbij hoort),
+  // dan de afbeelding zelf. De opdracht komt achteraan, na alle beelden.
+  const content: Record<string, unknown>[] = [];
+  for (const i of bruikbaar) {
+    content.push({ type: "text", text: i.label });
+    content.push(i.base64 && i.mediaType
+      ? { type: "image", source: { type: "base64", media_type: i.mediaType, data: i.base64 } }
+      : { type: "image", source: { type: "url", url: i.url } });
+  }
+  content.push({ type: "text", text: tekst });
+
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 300000);
+  let res: Response;
+  try {
+    res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+      body: JSON.stringify({ model, max_tokens: maxTokens, system: systemBlocks(system), messages: [{ role: "user", content }] }),
+      signal: ctrl.signal,
+    });
+  } catch (e) {
+    if (e instanceof Error && e.name === "AbortError") throw new Error("Claude reageerde niet binnen de tijdslimiet (time-out).");
+    throw e;
+  } finally { clearTimeout(timer); }
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    throw new Error(`Claude-fout ${res.status}: ${t.slice(0, 300)}`);
+  }
+  const j = await res.json();
+  await logClaudeUsage(ctx, j.usage, model);
+  return (j.content || []).filter((c: { type: string }) => c.type === "text").map((c: { text: string }) => c.text).join("");
+}
+
 // ── Agentische variant: Claude mag tools aanroepen (bv. Ahrefs) ──
 export type ToolDef = { name: string; description: string; input_schema: Record<string, unknown> };
 export type ToolRunner = (name: string, input: Record<string, unknown>) => Promise<string>;
 
 type Block = { type: string; text?: string; id?: string; name?: string; input?: Record<string, unknown> };
 
-export async function callClaudeAgentic(system: string, messages: ChatMsg[], tools: ToolDef[], run: ToolRunner, maxRounds = 6, maxTokens = 2200, ctx?: UsageCtx): Promise<string> {
+// deadlineMs: absoluut tijdstip (Date.now()-schaal) waarna de agent geen nieuwe
+// onderzoeksronde meer begint en afrondt met wat hij heeft. Nodig voor werk dat in
+// een serverless-venster moet passen: zonder klok loopt de agent door tot het
+// venster hem afkapt en is ALLES weg (zo strandde de opruim-analyse op 03-08-2026
+// na 800 seconden, midden in het onderzoek). Halve bevindingen zijn bruikbaar,
+// afgekapte niet. Laat leeg voor een gesprek dat gewoon mag doorlopen.
+export async function callClaudeAgentic(system: string, messages: ChatMsg[], tools: ToolDef[], run: ToolRunner, maxRounds = 6, maxTokens = 2200, ctx?: UsageCtx, deadlineMs?: number): Promise<string> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) throw new Error("ANTHROPIC_API_KEY ontbreekt (voeg hem toe in Vercel).");
   const apiMessages: { role: string; content: unknown }[] = messages.map((m) => ({ role: m.role, content: m.content }));
@@ -150,7 +219,10 @@ export async function callClaudeAgentic(system: string, messages: ChatMsg[], too
   }
 
   const textOf = (j: { content?: Block[] }) => ((j.content || []) as Block[]).filter((c) => c.type === "text").map((c) => c.text || "").join("");
+  let uitTijd = false;
   for (let round = 0; round < maxRounds; round++) {
+    // Tijd op? Niet aan een nieuwe ronde beginnen; hieronder volgt de afronding.
+    if (deadlineMs && Date.now() > deadlineMs) { uitTijd = true; break; }
     const j = await call(true);
     addUsage(j.usage);
     const content: Block[] = j.content || [];
@@ -174,9 +246,13 @@ export async function callClaudeAgentic(system: string, messages: ChatMsg[], too
   // Rondes op (of leeg antwoord): forceer afronding. Eerst ÉÉN ronde MÉT tools, zodat
   // de agent alsnog de actie-kaart kan aanmaken (stel_acties_voor) als Maarten om taken
   // of om iets in de weekplanning vroeg. Daarna een tekst-afronding zonder tools.
-  apiMessages.push({ role: "user", content: "Rond nu af. Vroeg Maarten om taken, om kaarten of om iets in de weekplanning te zetten, roep dan NU het gereedschap aan om die acties écht voor te stellen (beschrijf ze niet alleen). Geef daarna je antwoord in gewone tekst." });
+  apiMessages.push({ role: "user", content: uitTijd
+    ? "De tijd voor onderzoek is op. Rond NU af in gewone tekst met wat je tot nu toe hebt gevonden; roep geen gereedschap meer aan. Een onvolledige bevinding is prima, zeg er dan bij wat je niet meer hebt kunnen nakijken."
+    : "Rond nu af. Vroeg Maarten om taken, om kaarten of om iets in de weekplanning te zetten, roep dan NU het gereedschap aan om die acties écht voor te stellen (beschrijf ze niet alleen). Geef daarna je antwoord in gewone tekst." });
   let text = "";
-  {
+  // Uit de tijd gelopen? Dan geen ronde mét tools meer, want die kan opnieuw
+  // minutenlang gereedschap aanroepen en juist de afronding onmogelijk maken.
+  if (!uitTijd) {
     const j = await call(true);
     addUsage(j.usage);
     const content: Block[] = j.content || [];

@@ -12,6 +12,7 @@ import ChatPanel from "./ChatPanel";
 import OverviewChat from "./OverviewChat";
 import WeekplanBoard from "./WeekplanBoard";
 import ZijPaneel from "./ZijPaneel";
+import HeaderMenu from "./HeaderMenu";
 import OrgDataPanel from "./OrgDataPanel";
 import FocusBlock from "./FocusBlock";
 import ShareLinkBar from "./ShareLinkBar";
@@ -24,12 +25,17 @@ import DeveloperOverview from "../../developer/DeveloperOverview";
 import KpiPanel from "./KpiPanel";
 import PagesPanel from "./PagesPanel";
 import WijzigingenPanel from "./WijzigingenPanel";
+import CannibalPanel from "./CannibalPanel";
+import InternalLinksPanel from "./InternalLinksPanel";
 import MetaCtrPanel from "./MetaCtrPanel";
+import PrioriteitenPanel from "./PrioriteitenPanel";
+import DocumentenPanel from "./DocumentenPanel";
+import ActiviteitPanel from "./ActiviteitPanel";
 import InvoiceAlert from "./InvoiceAlert";
 import SelectionActions from "./SelectionActions";
 import LeadTab from "./LeadTab";
 
-type Tab = "lead" | "werkzaamheden" | "paginas" | "resultaten" | "klant" | "developer" | "wijzigingen" | "cannibalisatie" | "interne-links" | "meta";
+type Tab = "lead" | "werkzaamheden" | "paginas" | "documenten" | "activiteit" | "resultaten" | "klant" | "developer" | "wijzigingen" | "cannibalisatie" | "interne-links" | "meta" | "prioriteiten";
 
 // Jouw Superhuman-account (Microsoft 365 hangt hieronder).
 const SUPERHUMAN_ACCOUNT = "Maarten@pingwin.nl";
@@ -96,11 +102,23 @@ export default function ClientCockpit({
   // Is dit een lead, dan is de leadomgeving het startscherm. Voor klanten
   // verandert er niets: die beginnen zoals altijd op Taken.
   const isLead = client.fase === "lead";
-  const validTab = (t?: string): Tab => (t === "lead" || t === "werkzaamheden" || t === "paginas" || t === "resultaten" || t === "klant" || t === "developer" || t === "wijzigingen" || t === "meta") ? t : (isLead ? "lead" : "werkzaamheden");
+  const validTab = (t?: string): Tab => (t === "lead" || t === "werkzaamheden" || t === "paginas" || t === "documenten" || t === "activiteit" || t === "resultaten" || t === "klant" || t === "developer" || t === "wijzigingen" || t === "meta" || t === "cannibalisatie" || t === "interne-links" || t === "prioriteiten") ? t : (isLead ? "lead" : "werkzaamheden");
   const [tab, setTab] = useState<Tab>(validTab(initialTab));
   // Teller die de weekplanning laat herladen zodra er vanuit de chat een taak is
   // toegevoegd (of iets in het bord verandert).
   const [weekplanReload, setWeekplanReload] = useState(0);
+  // De drie Overview-blokken beginnen dicht. Wat je openzet onthoudt de browser, zodat
+  // je niet elke keer opnieuw hoeft te klikken op het blok waar je die dag in werkt.
+  const [ovOpen, setOvOpen] = useState<{ prio: boolean; chats: boolean; week: boolean }>({ prio: false, chats: false, week: false });
+  useEffect(() => {
+    try {
+      const r = window.localStorage.getItem(`pingwin-ov-open:${client.slug}`);
+      if (r) setOvOpen({ prio: false, chats: false, week: false, ...JSON.parse(r) });
+    } catch { /* geen opslag: dan gewoon alles dicht */ }
+  }, [client.slug]);
+  useEffect(() => {
+    try { window.localStorage.setItem(`pingwin-ov-open:${client.slug}`, JSON.stringify(ovOpen)); } catch { /* stil */ }
+  }, [ovOpen, client.slug]);
   // Demo-filter voor de klanten-dropdown: alleen klanten met mooie ontwikkeling
   // (28 dagen of 3 maanden), voor schermdelen met potentiële klanten.
   const [demoFilter, setDemoFilter] = useState<null | "28" | "90">(null);
@@ -159,6 +177,25 @@ export default function ClientCockpit({
     setTab("werkzaamheden");
     router.replace(`${pathname}?tab=werkzaamheden&highlight=${taskId}`, { scroll: false });
     router.refresh();
+  }
+
+  // Vanuit de prioriteitenscan naar de plek waar het werk gebeurt: wissel van tab
+  // EN geef de pagina door, zodat je daar op de juiste regel landt in plaats van
+  // opnieuw te moeten zoeken. De teller zorgt dat twee keer klikken op dezelfde
+  // pagina ook twee keer werkt.
+  const [metaTarget, setMetaTarget] = useState<{ url: string; n: number } | null>(null);
+  const [opruimTarget, setOpruimTarget] = useState<{ url: string; n: number } | null>(null);
+  const [linkTarget, setLinkTarget] = useState<{ url: string; n: number } | null>(null);
+  function gaNaar(doelTab: string, url: string) {
+    if (doelTab === "paginas" && url) { goToPage(url); return; }
+    const t = validTab(doelTab);
+    if (url) {
+      const bump = (v: { url: string; n: number } | null) => ({ url, n: (v?.n || 0) + 1 });
+      if (t === "meta") setMetaTarget(bump);
+      else if (t === "cannibalisatie") setOpruimTarget(bump);
+      else if (t === "interne-links") setLinkTarget(bump);
+    }
+    changeTab(t);
   }
 
   // Vanuit de KPI's een pagina openen in het Pagina's-tabje: wissel van tab en geef
@@ -396,21 +433,59 @@ export default function ClientCockpit({
               {demoFilter === null ? "Alle klanten" : demoFilter === "28" ? "✓ Mooie ontwikkeling (28 dgn)" : "✓ Mooie ontwikkeling (3 mnd)"}
             </button>
           )}
+          {/* Zes knoppen in plaats van elf tabjes. Wat bij elkaar hoort zit onder een
+              uitklapmenu: "Klant" toont wat we voor deze klant doen, "Site-breed" de
+              gereedschappen die over de hele site kijken. De tab-waarden in de URL
+              blijven ongewijzigd, dus bestaande bookmarks komen nog goed uit. */}
           <nav className="header-tabs">
             {([
               // Het lead-tabje verschijnt alleen bij een lead; bij een klant is
               // de tabbalk exact zoals hij was.
               ...(isLead ? [["lead", "Lead", "De werkplek voor deze lead: gesprek, dossier en documenten"] as [Tab, string, string]] : []),
-              ["werkzaamheden", "Taken", "De bird's eye-assistent en de weekplanning, jouw werkplek"],
+              ["werkzaamheden", "Taken", "Overview: je prioriteiten, de chats en de weekplanning"],
               ["paginas", "Pagina’s", ""],
-              ["meta", "Meta & CTR", "Pagina's met veel vertoningen maar te weinig klikken: betere meta-teksten = direct meer bezoekers"],
-              ["resultaten", "KPI’s", ""],
-              ["wijzigingen", "Wijzigingen", ""],
-              ["klant", "Klant", ""],
-              ["developer", "Developer", "Alle developer-taken over alle klanten"],
             ] as [Tab, string, string][]).map(([id, label, title]) => (
               // Echte link (href) zodat cmd/middel-klik in een nieuw tabblad opent;
               // gewone klik wisselt client-side van tab.
+              <a
+                key={id}
+                href={`${pathname}?tab=${id}`}
+                title={title || undefined}
+                className={"tab" + (tab === id ? " active" : "")}
+                onClick={(e) => { if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return; e.preventDefault(); changeTab(id); }}
+              >{label}</a>
+            ))}
+
+            <HeaderMenu<Tab>
+              label="Site-breed"
+              active={tab}
+              hrefFor={(id) => `${pathname}?tab=${id}`}
+              onPick={changeTab}
+              items={[
+                { id: "prioriteiten", label: "Prioriteitenscan", hint: "Waar zit de snelste winst op deze site: alle kansen op volgorde, van deze week tot strategisch" },
+                { id: "meta", label: "Meta & CTR", hint: "Veel vertoningen, te weinig klikken: betere meta-teksten leveren direct bezoekers op" },
+                { id: "cannibalisatie", label: "Opruimen", hint: "Welke pagina's elkaar in de weg zitten, met de volledige redirectlijst: van, naar en waarom" },
+                { id: "interne-links", label: "Interne links", hint: "Vanaf welke pagina's je het beste naar een doelpagina linkt, gewogen op autoriteit en relevantie" },
+              ]}
+            />
+
+            <HeaderMenu<Tab>
+              label="Klant"
+              active={tab}
+              hrefFor={(id) => `${pathname}?tab=${id}`}
+              onPick={changeTab}
+              items={[
+                { id: "documenten", label: "Documenten", hint: "Alle analyses, blauwdrukken en copy per pagina en per maand, met of het al op de site staat" },
+                { id: "activiteit", label: "Wat we doen", hint: "Alles wat we voor deze klant uitvoerden, per maand: copy, meta, alt-teksten, structured data en redirects" },
+                { id: "wijzigingen", label: "Wijzigingen", hint: "Wat er op de site van de klant veranderd is sinds de vorige controle" },
+                { id: "klant", label: "Klantgegevens", hint: "Profiel, bedrijfsgegevens, kennisbank en de instellingen van deze klant" },
+              ]}
+            />
+
+            {([
+              ["resultaten", "KPI’s", ""],
+              ["developer", "Developer", "Alle developer-taken over alle klanten"],
+            ] as [Tab, string, string][]).map(([id, label, title]) => (
               <a
                 key={id}
                 href={`${pathname}?tab=${id}`}
@@ -457,12 +532,59 @@ export default function ClientCockpit({
               </div>
             )}
 
-            {/* Twee kolommen: links (2/3) het kloppend hart (bird's eye + weekplanning),
-                rechts (1/3) stand van zaken, zoekwoorden & links, en de laatste mails. */}
+            {/* Twee kolommen: links (2/3) het kloppend hart, rechts (1/3) stand van
+                zaken, zoekwoorden & links, en de laatste mails.
+
+                Links stond alles onder elkaar open: de assistent met al zijn
+                onderwerpen, en daaronder de hele weekplanning. Je scrolde dus altijd
+                langs dingen die je op dat moment niet nodig had. Nu één kop met drie
+                blokken die dicht beginnen, zodat je zelf kiest wat je openzet. */}
             <div className="tk-grid">
             <div className="tk-links">
-            <OverviewChat slug={client.slug} domain={client.domain || ""} configured={chatConfigured !== false} onGoToPage={goToPage} onGoToTask={goToNewTask} onWeekplanChanged={() => setWeekplanReload((n) => n + 1)} />
-            <WeekplanBoard slug={client.slug} onGoToPage={goToPage} onGoToTab={(t) => changeTab(validTab(t))} onOpenMailDate={openMailByDate} clientName={client.name} clientEmail={client.email || ""} reloadSignal={weekplanReload} />
+            <div className="cockpit-card ovc-card">
+              <div className="ovc-head">
+                <span className="ovc-icontile" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="7" /><circle cx="12" cy="12" r="2" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /></svg>
+                </span>
+                <span className="ovc-title">Overview</span>
+              </div>
+
+              <div className="ov-blok">
+                <button type="button" className="strategy-head" onClick={() => setOvOpen((v) => ({ ...v, prio: !v.prio }))}>
+                  <span className="strategy-caret">{ovOpen.prio ? "▾" : "▸"}</span>
+                  <span className="strategy-title">Top Prio&rsquo;s</span>
+                </button>
+                {ovOpen.prio && (
+                  <div className="strategy-body">
+                    <FocusBlock slug={client.slug} soort="prio" titel="Top Prio's" />
+                  </div>
+                )}
+              </div>
+
+              <div className="ov-blok">
+                <button type="button" className="strategy-head" onClick={() => setOvOpen((v) => ({ ...v, chats: !v.chats }))}>
+                  <span className="strategy-caret">{ovOpen.chats ? "▾" : "▸"}</span>
+                  <span className="strategy-title">Chats</span>
+                </button>
+                {ovOpen.chats && (
+                  <div className="strategy-body">
+                    <OverviewChat kaal slug={client.slug} domain={client.domain || ""} configured={chatConfigured !== false} onGoToPage={goToPage} onGoToTask={goToNewTask} onWeekplanChanged={() => setWeekplanReload((n) => n + 1)} clientName={client.name} clientEmail={client.email || ""} />
+                  </div>
+                )}
+              </div>
+
+              <div className="ov-blok">
+                <button type="button" className="strategy-head" onClick={() => setOvOpen((v) => ({ ...v, week: !v.week }))}>
+                  <span className="strategy-caret">{ovOpen.week ? "▾" : "▸"}</span>
+                  <span className="strategy-title">Week Planning</span>
+                </button>
+                {ovOpen.week && (
+                  <div className="strategy-body">
+                    <WeekplanBoard kaal slug={client.slug} onGoToPage={goToPage} onGoToTab={(t) => changeTab(validTab(t))} onOpenMailDate={openMailByDate} clientName={client.name} clientEmail={client.email || ""} reloadSignal={weekplanReload} />
+                  </div>
+                )}
+              </div>
+            </div>
             </div>
             <div className="tk-rechts">
 
@@ -690,11 +812,25 @@ export default function ClientCockpit({
           </div>
         )}
 
+        {tab === "documenten" && <DocumentenPanel slug={client.slug} onGoToPage={goToPage} />}
+        {tab === "activiteit" && <ActiviteitPanel slug={client.slug} />}
         {tab === "wijzigingen" && <WijzigingenPanel slug={client.slug} />}
 
-        {tab === "meta" && <MetaCtrPanel slug={client.slug} domain={client.domain || ""} backendUrl={client.backendUrl} onOpenPage={goToPage} />}
+        {tab === "meta" && <MetaCtrPanel slug={client.slug} domain={client.domain || ""} backendUrl={client.backendUrl} onOpenPage={goToPage} openTarget={metaTarget} />}
 
-        {tab === "developer" && <DeveloperOverview embedded />}
+        {/* Deze twee schermen bestonden al maar hingen nergens in de UI, dus niemand
+            kon erbij. Hier hoort de volledige redirectlijst thuis, niet in de chat:
+            een lijst is een scherm, een oordeel is een gesprek. */}
+        {tab === "prioriteiten" && <PrioriteitenPanel slug={client.slug} domain={client.domain || ""} onGaNaar={gaNaar} />}
+        {tab === "cannibalisatie" && <CannibalPanel slug={client.slug} domain={client.domain || ""} openTarget={opruimTarget} />}
+        {tab === "interne-links" && <InternalLinksPanel slug={client.slug} openTarget={linkTarget} />}
+
+        {tab === "developer" && (<>
+          {/* De naam van de sitebouwer hoort bij het developer-werk, niet bovenaan
+              het klantscherm. De naam zelf werkt overal hetzelfde door. */}
+          <SitebouwerVeld slug={client.slug} start={client.cockpit.devName || ""} />
+          <DeveloperOverview embedded />
+        </>)}
       </div>
 
       <div className="footer">Pingwin Online Marketing &middot; Beheer</div>
@@ -829,3 +965,48 @@ function shortUrl(url: string): string {
   }
 }
 
+
+// Wie bouwt de site van DEZE klant. Stond eerder hardgecodeerd als "Sander" in
+// zes schermen, waardoor bij elke klant dezelfde naam in beeld kwam. Leeg laten
+// mag: dan noemt het dashboard hem gewoon "Dev" en verzint het niemand.
+function SitebouwerVeld({ slug, start }: { slug: string; start: string }) {
+  const [naam, setNaam] = useState(start);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const gewijzigd = naam.trim() !== start.trim();
+
+  async function bewaar() {
+    if (busy || !gewijzigd) return;
+    setBusy(true); setMsg("");
+    try {
+      const d = await fetch("/api/admin/clients", {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, action: "devName", devName: naam.trim() }),
+      }).then((r) => r.json());
+      setMsg(d?.ok ? "Bewaard." : (d?.error || "Bewaren mislukte."));
+    } catch { setMsg("Bewaren mislukte."); }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <div className="cockpit-card">
+      <div className="ck-section-head"><span>Sitebouwer</span></div>
+      <div className="dev-veld">
+        <input
+          className="compose-input"
+          value={naam}
+          onChange={(e) => { setNaam(e.target.value); setMsg(""); }}
+          onKeyDown={(e) => { if (e.key === "Enter") void bewaar(); }}
+          placeholder="Naam van de sitebouwer (leeg laten mag)"
+        />
+        <button type="button" className="btn" onClick={() => void bewaar()} disabled={busy || !gewijzigd}>
+          {busy ? "Bezig…" : "Bewaar"}
+        </button>
+        {msg && <span className="dev-veld-msg">{msg}</span>}
+      </div>
+      <div className="muted" style={{ fontSize: "var(--fs-sm)", marginTop: "var(--s-2)" }}>
+        Deze naam komt terug op de bespreeklijsten en bij de werklijst. Vul je niets in, dan staat er gewoon &ldquo;Dev&rdquo;.
+      </div>
+    </div>
+  );
+}

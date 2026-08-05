@@ -3,7 +3,7 @@ import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
 import { anthropicConfigured } from "../../../../lib/anthropic";
 import { generateDocSpec, clientVersionSpec, type DocKind } from "../../../../lib/page-doc";
-import { buildPingwinDoc } from "../../../../lib/pingwin-docx";
+import { buildPingwinDoc, laatsteOmslagGelukt } from "../../../../lib/pingwin-docx";
 import { upsertStepTask } from "../../../../lib/tasks";
 import { getPageDriveFolder, getPageDocOutputs } from "../../../../lib/site-urls";
 import { uploadDocx } from "../../../../lib/drive";
@@ -77,6 +77,15 @@ export async function POST(req: NextRequest) {
 
   const stepTitle = `${STEP_TITLE[kind]}: ${pagePath(url)}`;
 
+  // Zonder Drive-map werd de tekst wél opgeslagen maar kwam er nooit een bestand,
+  // zonder dat iemand dat merkte. Precies zo raakten de documenten van 2 juli zoek.
+  if (!folderId && !wantDownload) {
+    return NextResponse.json({
+      ok: false,
+      error: "Er is voor deze pagina nog geen Drive-map ingesteld, dus er kan geen document worden aangemaakt. Kies eerst een map bij 'Opslaan in'. De tekst is wel bewaard; met de herstelknop op het Documenten-tabblad maak je het bestand daarna alsnog.",
+    }, { status: 400 });
+  }
+
   if (folderId && !wantDownload) {
     // 1. Technische versie naar Drive.
     let link: string, shared: boolean, owner: string, folder: string, isDoc: boolean, note: string;
@@ -104,7 +113,7 @@ export async function POST(req: NextRequest) {
       pageUrl: url, stepKind: STEP_KIND[kind], title: stepTitle, dualVersion: true,
       link, clientLink: clientLink || undefined, klantToelichting: STEP_KLANT[kind], wie: "SEO", fase: "Bouwen", klantZichtbaar: true,
     }).catch(() => null);
-    return NextResponse.json({ ok: true, delivered: "drive", link, clientLink, filename, kind, taskId, shared, owner, folder, isDoc, note });
+    return NextResponse.json({ ok: true, delivered: "drive", link, clientLink, filename, kind, taskId, shared, owner, folder, isDoc, note , omslag: laatsteOmslagGelukt(), omslagMelding: laatsteOmslagGelukt() ? "" : "De omslag kon niet getekend worden; het document heeft nu een sobere tekst-omslag." });
   }
 
   // Geen bestemmingsmap: download; de stap wordt wel als werkzaamheid vastgelegd (zonder link).

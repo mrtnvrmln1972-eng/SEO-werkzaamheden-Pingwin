@@ -8,14 +8,18 @@
 
 import { useEffect, useRef, useState } from "react";
 import { mdToHtml } from "../../../../lib/markdown";
-import { cardInfoHtml, splitCardInfo, faseSturing, type CardFaseKey } from "../../../../lib/card-info";
+import { cardInfoHtml, splitCardInfo, eerdereNotitiesHtml, faseSturing, type CardFaseKey, type MailLinks } from "../../../../lib/card-info";
 import { linkifyHtml } from "../../../../lib/linkify";
 import { urlKey } from "../../../../lib/url-key";
+import { devLabel } from "../../../../lib/personen";
 import AntwoordBlokken from "./AntwoordBlokken";
 import DocVersies from "./DocVersies";
+import PaginaDossier from "./PaginaDossier";
+import DeelKnoppen from "./DeelKnoppen";
+import DevDoorzetten from "./DevDoorzetten";
 
-export type WpTask = { id: number; thread: string; taak: string; toelichting: string; wie: string; url: string; taaktype: string; copyUrl: string; bronMail: string; weekYear: number; weekNo: number; status: string; sortOrder: number };
-export type WpPageInfo = { url: string; live: boolean; strategie: boolean; gelieerde: boolean; analyse: boolean; blauwdruk: boolean; copy: boolean; bouw: boolean; structured: boolean; structuredStatus: string; next: string; links: { analyse: string; blauwdruk: string; copy: string } };
+export type WpTask = { id: number; thread: string; taak: string; toelichting: string; wie: string; url: string; taaktype: string; copyUrl: string; bronMail: string; weekYear: number; weekNo: number; status: string; sortOrder: number; naarDev?: boolean };
+export type WpPageInfo = { url: string; live: boolean; klikken?: number; vertoningen?: number; doorgevoerd?: boolean | null; strategie: boolean; gelieerde: boolean; analyse: boolean; blauwdruk: boolean; copy: boolean; bouw: boolean; structured: boolean; structuredStatus: string; next: string; links: { analyse: string; blauwdruk: string; copy: string } };
 
 // Bij welk taaktype hoort welk dashboard-tabblad (voor de deep-link "doe het hier").
 const TAB_FOR_TYPE: Record<string, { tab: string; label: string }> = {
@@ -31,6 +35,19 @@ const TAB_FOR_TYPE: Record<string, { tab: string; label: string }> = {
 const STATUS_LABEL: Record<string, string> = { gepland: "Gepland", bezig: "Bezig", klaar: "Klaar" };
 
 type FaseKey = "strategie" | "gelieerde" | "analyse" | "blauwdruk" | "copy" | "bouw" | "structured";
+
+// De cijferregel op de kaart, opgebouwd uit de meting. Leeg als er niets gemeten is;
+// dan tonen we liever niets dan een nul die niets betekent.
+function cijferRegel(p?: { vertoningen?: number; klikken?: number; doorgevoerd?: boolean | null; live?: boolean }): string {
+  if (!p) return "";
+  const delen: string[] = [];
+  if (p.vertoningen) delen.push(`${p.vertoningen.toLocaleString("nl-NL")} vertoningen`);
+  if (p.klikken) delen.push(`${p.klikken.toLocaleString("nl-NL")} klikken`);
+  if (p.live === false) delen.push("nog niet live");
+  if (p.doorgevoerd === true) delen.push("copy staat live");
+  else if (p.doorgevoerd === false) delen.push("copy nog niet doorgevoerd");
+  return delen.join(" · ");
+}
 
 // Klein inline SVG-setje in huisstijl-oranje (geen library), stijl van het voorbeeld.
 function Icoon({ d, className = "wp-fase-icoon" }: { d: string; className?: string }) {
@@ -68,12 +85,12 @@ type ChatMsg = { role: "user" | "assistant"; content: string };
 
 function shortUrl(url: string): string { try { const u = new URL(url); return (u.pathname + u.search) || "/"; } catch { return url; } }
 
-export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDragStart, onDragEnd, onStatus, onRemove, onMail, onGoToPage, onGoToTab, onOpenMailDate, refreshBoard }: {
+export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDragStart, onDragEnd, onStatus, onRemove, onMail, onGoToPage, onGoToTab, onOpenMailDate, mailLinks, refreshBoard }: {
   slug: string; t: WpTask; page?: WpPageInfo; open: boolean;
   onToggleOpen: () => void; onDragStart: () => void; onDragEnd: () => void;
   onStatus: () => void; onRemove: () => void; onMail: (aud: "klant" | "dev") => void;
   onGoToPage?: (url: string) => void; onGoToTab?: (tab: string) => void;
-  onOpenMailDate?: (datum: string) => void; refreshBoard: () => void;
+  onOpenMailDate?: (datum: string) => void; mailLinks?: MailLinks; refreshBoard: () => void;
 }) {
   // Dashboard-deeplinks vanuit een kaart openen in een NIEUW browsertabblad,
   // zodat je het bord niet kwijtraakt terwijl je iets uitzoekt.
@@ -151,7 +168,7 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
   }
 
   async function bouwExtra(steps: ("analyse" | "blauwdruk" | "copy")[]): Promise<string> {
-    const parsed = splitCardInfo(t.toelichting);
+    const parsed = splitCardInfo(t.toelichting, t.taak);
     const delen = steps.map((s) => faseSturing(parsed, s)).filter(Boolean);
     const basis = delen[0] || t.toelichting.slice(0, 900);
     const extraFases = delen.slice(1).map((d) => d.split("Sturing voor deze stap:")[1] || "").filter(Boolean).join("; ");
@@ -199,10 +216,59 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
   const [lijstPunt, setLijstPunt] = useState("");
   const [lijstMsg, setLijstMsg] = useState("");
   const [lijstPersonen, setLijstPersonen] = useState<string[]>(["Klant", "Dev"]);
+  // Developer van DEZE klant; leeg = gewoon "Dev" tonen.
+  const [devNaam, setDevNaam] = useState<string | null>(null);
+  // Welke fases hun sturing tonen. Dicht is de standaard: je wilt de instructie
+  // van de stap waar je mee bezig bent, niet die van alle vijf tegelijk.
+  const [faseOpen, setFaseOpen] = useState<Record<string, boolean>>({});
+  // Staat deze kaart op de developerpagina?
+  const [naarDev, setNaarDev] = useState<boolean>(t.naarDev === true);
+  const [devBezig, setDevBezig] = useState(false);
+  const [devVenster, setDevVenster] = useState(false);
+  // De kaarttitel bijstellen. Dit is wat je in het bord leest en wat als opdracht
+  // doorgaat naar de developer, dus je moet hem kunnen herschrijven.
+  const [titelBewerk, setTitelBewerk] = useState(false);
+  const [titelDraft, setTitelDraft] = useState("");
+  const [titelBezig, setTitelBezig] = useState(false);
+
+  async function bewaarTitel() {
+    const nieuw = titelDraft.trim();
+    if (!nieuw || nieuw === t.taak.trim()) { setTitelBewerk(false); return; }
+    setTitelBezig(true);
+    try {
+      const d = await fetch("/api/admin/weekplan", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, id: t.id, taak: nieuw }),
+      }).then((r) => r.json());
+      if (d?.ok) { setTitelBewerk(false); refreshBoard(); }
+      else setFoutje(d?.error || "Titel opslaan mislukte.");
+    } catch { setFoutje("Titel opslaan mislukte."); }
+    finally { setTitelBezig(false); }
+  }
+
+  // Doorzetten opent eerst het venster: welke documenten gaan mee, en hoe luidt
+  // de opdracht. Eraf halen is één klik, want daar valt niets te kiezen.
+  async function zetNaarDev() {
+    if (devBezig) return;
+    if (!naarDev) { setDevVenster(true); return; }
+    setDevBezig(true);
+    try {
+      const d = await fetch("/api/admin/weekplan", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, id: t.id, naarDev: false }),
+      }).then((r) => r.json());
+      if (d?.ok) setNaarDev(false);
+      else setFoutje(d?.error || "Van de developerlijst halen mislukte.");
+    } catch { setFoutje("Van de developerlijst halen mislukte."); }
+    finally { setDevBezig(false); }
+  }
   useEffect(() => {
     if (!open) return;
     fetch(`/api/admin/discuss?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).then((d) => {
-      if (d?.ok) setLijstPersonen([...new Set(["Klant", "Dev", ...(d.items || []).map((i: { persoon: string }) => i.persoon)])] as string[]);
+      if (d?.ok) {
+        setLijstPersonen([...new Set(["Klant", "Dev", ...(d.items || []).map((i: { persoon: string }) => i.persoon)])] as string[]);
+        setDevNaam(d.devName || null);
+      }
     }).catch(() => {});
   }, [open, slug]);
   async function zetOpLijst(persoon: string) {
@@ -210,7 +276,7 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
     setLijstPunt("");
     try {
       const d = await fetch("/api/admin/discuss", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "add", slug, persoon, tekst: `${tekst}${t.url ? ` (${t.url})` : ""}` }) }).then((r) => r.json());
-      setLijstMsg(d?.ok ? `Op de bespreeklijst van ${persoon === "Dev" ? "Sander (Dev)" : persoon} gezet.` : (d?.error || "Op de lijst zetten mislukte."));
+      setLijstMsg(d?.ok ? `Op de bespreeklijst van ${persoon === "Dev" ? devLabel(devNaam) : persoon} gezet.` : (d?.error || "Op de lijst zetten mislukte."));
     } catch { setLijstMsg("Op de lijst zetten mislukte."); }
   }
 
@@ -235,13 +301,6 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
       if (d?.ok) { setOpruimMsg("Kaarttekst herschreven naar het vaste formaat (zelfde inhoud, geen dubbelingen)."); refreshBoard(); }
       else setOpruimMsg(d?.error || "Opruimen mislukt; er is niets gewijzigd.");
     } catch { setOpruimMsg("Opruimen mislukt; er is niets gewijzigd."); } finally { setBusy(""); }
-  }
-
-  async function vink(fase: FaseKey, done: boolean) {
-    try {
-      await fetch("/api/admin/weekplan/phase", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: t.url, fase, done }) });
-      refreshBoard();
-    } catch { /* stil */ }
   }
 
   // Een kaart zonder pagina krijgt een eigen bird's eye-gesprek (volledige
@@ -335,7 +394,14 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
     }
     if (key === "structured" && schemaRunning) return { label: "Bezig…", cls: "wp-fase-bezig" };
     if (page && page[key]) return { label: "✓", cls: "wp-fase-klaar" };
-    return { label: "Nog niet", cls: "" };
+    // Bouw en publicatie bleef rood zolang de tekst niet live stond, ook als Maarten
+    // zijn deel allang gedaan had en het bij de sitebouwer lag. Rood las dan als
+    // "er moet nog iets van jou komen", terwijl er juist gewacht werd. Er zit een
+    // stand tussen: doorgezet naar de developer, nog niet live.
+    if (key === "bouw" && naarDev) return { label: "Bij de developer", cls: "wp-fase-wacht" };
+    // Was grijze tekst "Nog niet". Een kruisje in dezelfde pilvorm leest sneller:
+    // rood is niet af, groen is af, en je hoeft niets te lezen om dat te zien.
+    return { label: "✕", cls: "wp-fase-open" };
   }
 
   function docLink(key: FaseKey): string {
@@ -362,7 +428,19 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
       return <button type="button" className="wp-fase-btn" disabled={geblokkeerd || runActive || !!busy} title={titel} onClick={() => void startDocStep([key])}>{tekst}</button>;
     }
     if (key === "bouw") {
-      return <button type="button" className="wp-fase-btn" title="Mail over de bouw of publicatie (ontvanger kies je in het venster)" onClick={() => onMail("dev")}>Mail</button>;
+      return (
+        <>
+          {/* Hier verlaat het werk jouw handen, dus hier hoort de knop naar de
+              developerlijst. Stond eerder onderaan de kaart, ver van deze stap. */}
+          <button type="button" className={"wp-fase-btn" + (naarDev ? " wp-fase-btn-aan" : "")}
+            disabled={devBezig}
+            title={naarDev ? "Staat op de developerlijst. Klik om hem er weer af te halen." : "Zet deze kaart op de developerlijst, naast de andere taken voor de sitebouwer."}
+            onClick={() => void zetNaarDev()}>
+            {devBezig ? "Bezig…" : naarDev ? "✓ Op developerlijst" : "Naar dev"}
+          </button>
+          <button type="button" className="wp-fase-btn" title="Mail over de bouw of publicatie (ontvanger kies je in het venster)" onClick={() => onMail("dev")}>Mail</button>
+        </>
+      );
     }
     if (key === "structured") {
       return (
@@ -384,7 +462,13 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
   const titel = titelMatch ? titelMatch[1] : t.taak;
   const subtitel = titelMatch ? titelMatch[2] : "";
   // Eén keer parsen: het unieke verhaal voor het bovenblok, de fase-sturing voor de rijen.
-  const info = splitCardInfo(t.toelichting);
+  const info = splitCardInfo(t.toelichting, t.taak);
+  // De oude notities worden apart opgehaald zodat ze onderaan het blok "Over deze
+  // pagina" komen, bij het archief van het dossier, in plaats van als tweede
+  // archief midden op de kaart.
+  const ouder = hasInfo ? eerdereNotitiesHtml(t.toelichting, t.url, t.taak, mailLinks) : null;
+  const eerdereNotities = ouder?.html || "";
+  const eerdereAantal = ouder?.aantal || 0;
 
   // Dichtklappen mag nooit een lopende tekstselectie opeten (kopiëren gaat voor).
   const toggleAlsGeenSelectie = () => {
@@ -401,10 +485,25 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
         <div className="wp-card-main">
           <div className="wp-kop-rij">
             <div className="wp-kop-tekst">
-              <div className="wp-card-taak wp-clickable" onClick={toggleAlsGeenSelectie} title={open ? "Klik om dicht te klappen" : "Klik voor de fases, info en chat"}>
-                <span className="wp-caret">{open ? "▾" : "▸"}</span>
-                {titel}
-              </div>
+              {titelBewerk ? (
+                <div className="wp-titel-bewerk">
+                  <input autoFocus value={titelDraft} disabled={titelBezig}
+                    onChange={(e) => setTitelDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") { e.preventDefault(); void bewaarTitel(); }
+                      if (e.key === "Escape") { e.preventDefault(); setTitelBewerk(false); }
+                    }} />
+                  <button type="button" className="wp-fase-btn" disabled={titelBezig} onClick={() => void bewaarTitel()}>{titelBezig ? "Bezig…" : "Bewaar"}</button>
+                  <button type="button" className="wp-fase-btn wp-fase-btn-licht" disabled={titelBezig} onClick={() => setTitelBewerk(false)}>Annuleer</button>
+                </div>
+              ) : (
+                <div className="wp-card-taak wp-clickable" onClick={toggleAlsGeenSelectie} title={open ? "Klik om dicht te klappen" : "Klik voor de fases, info en chat"}>
+                  <span className="wp-caret">{open ? "▾" : "▸"}</span>
+                  {titel}
+                  <button type="button" className="wp-titel-pen" title="Titel aanpassen"
+                    onClick={(e) => { e.stopPropagation(); setTitelDraft(t.taak.replace(/<[^>]*>/g, "").trim()); setTitelBewerk(true); }}>✎</button>
+                </div>
+              )}
               {subtitel && <div className="wp-card-sub wp-clickable" onClick={toggleAlsGeenSelectie}>{subtitel}</div>}
             </div>
             <span className="wp-kop-acties">
@@ -421,28 +520,62 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
           {opruimMsg && <span className={opruimMsg.startsWith("Kaart") ? "wp-opruim-ok" : "wp-opruim-fout"}>{opruimMsg}</span>}
         </div>
       )}
-      {open && hasInfo && (
-        <div className="wp-card-info wp-info-net"
-          onClick={(e) => {
-            const el = (e.target as HTMLElement).closest?.(".wp-maildatum") as HTMLElement | null;
-            if (el && onOpenMailDate) { e.stopPropagation(); onOpenMailDate(el.dataset.datum || ""); return; }
-            const lb = (e.target as HTMLElement).closest?.(".wp-info-lijstbtn") as HTMLElement | null;
-            if (lb) {
-              e.stopPropagation();
-              const li = lb.closest("li");
-              const kloon = li?.cloneNode(true) as HTMLElement | undefined;
-              kloon?.querySelectorAll(".wp-info-lijstbtn").forEach((b) => b.remove());
-              const tekst = (kloon?.textContent || "").replace(/\s+/g, " ").trim();
-              if (tekst) { setLijstPunt(tekst); setLijstMsg(""); }
-            }
-          }}
-          dangerouslySetInnerHTML={{ __html: cardInfoHtml(t.toelichting, t.url) }} />
+      {/* Alles wat over deze pagina gaat staat in één blok. Het zaten er eerst drie
+          los onder elkaar: "Waarom deze pagina" (het geschreven verhaal), het
+          paginadossier (wat er echt gebeurd is) en de documenten. Ze vertelden
+          hetzelfde verhaal vanuit drie hoeken, met eigen kopjes en eigen archieven,
+          dus je las hetzelfde drie keer en wist niet welke de actuele was. */}
+      {/* Het blok staat er altijd zodra de kaart open is, ook bij een taak die je
+          zelf hebt aangemaakt en die nog geen achtergrond of pagina heeft. Anders
+          krijgt zo'n kaart een kale, andere vorm dan de rest en kun je er geen
+          document bij leggen, terwijl dat juist het eerste is wat je wilt doen. */}
+      {open && (
+        <div className="wp-overdeze">
+          <div className="wp-overdeze-kop">{t.url ? "Over deze pagina" : "Over deze taak"}</div>
+          {hasInfo && (
+            <div className="wp-card-info wp-info-net"
+              onClick={(e) => {
+                const el = (e.target as HTMLElement).closest?.(".wp-maildatum") as HTMLElement | null;
+                if (el && onOpenMailDate) { e.stopPropagation(); onOpenMailDate(el.dataset.datum || ""); return; }
+                const lb = (e.target as HTMLElement).closest?.(".wp-info-lijstbtn") as HTMLElement | null;
+                if (lb) {
+                  e.stopPropagation();
+                  const li = lb.closest("li");
+                  const kloon = li?.cloneNode(true) as HTMLElement | undefined;
+                  kloon?.querySelectorAll(".wp-info-lijstbtn").forEach((b) => b.remove());
+                  const tekst = (kloon?.textContent || "").replace(/\s+/g, " ").trim();
+                  if (tekst) { setLijstPunt(tekst); setLijstMsg(""); }
+                }
+              }}
+              dangerouslySetInnerHTML={{ __html: cardInfoHtml(t.toelichting, t.url, t.taak, cijferRegel(page), mailLinks, undefined, true) }} />
+          )}
+          {t.url && <PaginaDossier slug={slug} url={t.url} kaartTekst={t.toelichting} kaartTitel={t.taak} />}
+          {/* Documenten hangen aan de pagina als die er is, en anders aan de taak
+              zelf. Zo kun je bij élke kaart een document neerleggen, ook bij een
+              klus die niet over één pagina gaat (een rapportage, een werklijst). */}
+          <DocVersies slug={slug} url={t.url || `taak:${t.id}`} />
+          {!hasInfo && !t.url && (
+            <div className="muted wp-overdeze-leeg">
+              Nog geen achtergrond. Leg hier een document neer, of stel een vraag in de chat hieronder; wat daaruit komt kun je als achtergrond vastleggen.
+            </div>
+          )}
+          {/* Eén archief onderaan het blok. Er stonden er twee vlak onder elkaar,
+              "Eerdere notities" en "Tijdlijn en eerdere notities", allebei met een
+              eigen aantal, dus het leek alsof er twee verschillende geschiedenissen
+              waren. Dit is de plek waar de oude notities uit de kaarttekst landen. */}
+          {hasInfo && eerdereNotities && (
+            <details className="wp-info-rest wp-overdeze-archief">
+              <summary>Eerdere notities ({eerdereAantal})</summary>
+              <div dangerouslySetInnerHTML={{ __html: eerdereNotities }} />
+            </details>
+          )}
+        </div>
       )}
       {open && lijstPunt && (
         <div className="ovc-lijstkeuze">
           <span>Op welke bespreeklijst?</span>
           {lijstPersonen.map((p) => (
-            <button key={p} type="button" className="wp-fase-btn" onClick={() => void zetOpLijst(p)}>{p === "Dev" ? "Sander (Dev)" : p}</button>
+            <button key={p} type="button" className="wp-fase-btn" onClick={() => void zetOpLijst(p)}>{p === "Dev" ? devLabel(devNaam) : p}</button>
           ))}
           <button type="button" className="wp-icon wp-del" title="Annuleren" onClick={() => setLijstPunt("")}>×</button>
         </div>
@@ -458,8 +591,6 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
         </div>
       )}
 
-      {/* Documenten: klantversies erin slepen; verwerken is een bewuste klik. */}
-      {open && t.url && <DocVersies slug={slug} url={t.url} />}
 
       {/* Werklijst-sitebouwer-kaart: hier hoort het echte werk te staan, niet
           alleen een omschrijving. Knop, status en het kant-en-klare document. */}
@@ -493,6 +624,7 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
                             thread={t.thread}
                             content={m.content}
                             toHtml={(md) => linkifyHtml(mdToHtml(md), (() => { try { return new URL(t.url).host; } catch { return ""; } })())}
+                            siteUrl={(() => { try { return new URL(t.url).origin; } catch { return ""; } })()}
                             onWeekplanChanged={refreshBoard}
                           />
                         </div>}
@@ -515,71 +647,121 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
         </div>
       )}
 
-      {/* De cyclus verticaal, per fase status + start + vinkje. */}
-      {open && page && <div className="wp-sectie-label">Fases</div>}
+      {/* De cyclus verticaal, per fase status + start + vinkje. "Alles in één keer"
+          hoort bij de eerste drie fases samen, niet bij Copy alleen, dus hij staat
+          hier boven het blok in plaats van in één van de rijen. */}
+      {open && page && (
+        <div className="wp-fases-kop">
+          <span className="wp-sectie-label" style={{ margin: 0 }}>Fases</span>
+          <span className="wp-fase-spacer" />
+          <button type="button" className="wp-fase-btn" disabled={(!page.live && !page.strategie) || runActive || !!busy}
+            title={(!page.live && !page.strategie) ? "Eerst de strategie goedkeuren (nieuwe pagina)" : "Draait analyse, blauwdruk en copy achter elkaar"}
+            onClick={() => void startDocStep(page.live ? ["analyse", "blauwdruk", "copy"] : ["blauwdruk", "copy"])}>
+            {page.live ? "Alles in één keer ▷" : "Blauwdruk + copy ▷"}
+          </button>
+        </div>
+      )}
       {open && page && (
         <div className="wp-fases">
           {FASEN.map((f) => {
             const stand = faseStand(f.key);
             const link = docLink(f.key);
+            // Eén regel sturing per fase, en pas zichtbaar als je die fase opent.
+            // Stonden ze alle vijf tegelijk open, dan las je de instructie voor Copy
+            // terwijl je bij Analyse zat en paste de kaart nergens meer in één blik.
             const sturing = (info.perFase[f.key as CardFaseKey] || []).join(" · ");
+            // Een regel die alleen een document benoemt ("Copy-document: ...docx")
+            // voegt niets toe naast het linkje ernaast. Alleen echte sturing krijgt
+            // een uitleg-knop; de rest is ruis in een rij die rustig moet zijn.
+            const sturingNuttig = !!sturing && !/^\s*[a-zà-ž -]{0,20}document\s*:/i.test(sturing) && !/\.(docx?|pdf|md)\b/i.test(sturing.slice(0, 90));
+            const sturingOpen = !!faseOpen[f.key];
             const rij = (
-              <div key={f.key} className="wp-fase">
+              <div key={f.key} className={"wp-fase" + (f.key === "bouw" ? " wp-fase-scheiding" : "")}>
                 <div className="wp-fase-rij">
-                  <label className="wp-fase-check" title="Handmatig afvinken of terugzetten">
-                    <input type="checkbox" checked={!!page[f.key]} onChange={(e) => void vink(f.key, e.target.checked)} />
-                  </label>
+                  {/* Was een aankruisvakje, maar dat leek op iets dat je moest doen
+                      terwijl het alleen een aantekening maakte. Het dashboard meet
+                      elke fase inmiddels zelf, dus er blijft per rij één ding over dat
+                      iets doet (de knop) en één dat iets zegt (het chipje rechts). */}
+                  <span className={"wp-fase-bullet" + (page[f.key] ? " aan" : "")} aria-hidden="true" />
                   <span className="wp-fase-label">{f.label}</span>
+                  {/* Was een volle "Document"-knop rechts, drie keer in dezelfde
+                      kaart. Een klein linkje achter de naam doet hetzelfde en houdt
+                      de rij rustig. */}
+                  {link && <a className="wp-fase-doclink" href={link} target="_blank" rel="noreferrer" title="Open het document">(link)</a>}
+                  {sturingNuttig && (
+                    <button type="button" className="wp-fase-uitleg"
+                      title={sturingOpen ? "Verberg de sturing voor deze stap" : "Toon de sturing voor deze stap"}
+                      onClick={() => setFaseOpen((v) => ({ ...v, [f.key]: !v[f.key] }))}>
+                      {sturingOpen ? "uitleg ▴" : "uitleg ▾"}
+                    </button>
+                  )}
                   <span className="wp-fase-spacer" />
-                  {/* Alle pillen rechts, in vaste volgorde: Document | In Pagina's | actie | status. */}
-                  {link && <a className="wp-fase-btn wp-fase-doc" href={link} target="_blank" rel="noreferrer" title="Open het document">Document</a>}
-                  <button type="button" className="wp-fase-btn wp-fase-btn-licht" title="Bekijk of doe deze stap in Pagina's (nieuw tabblad)" onClick={openPaginaNieuwTab}>In Pagina&rsquo;s</button>
+                  {/* Alle pillen rechts, in vaste volgorde: Document | In Pagina's | actie | status.
+                      "Alles in één keer" hing hier in de Copy-rij en maakte die rij
+                      hoger dan de andere zes, waardoor de hele kolom uit de pas liep.
+                      Die knop slaat ook niet op Copy alleen maar op drie fases, dus
+                      hij staat nu boven het blok. */}
+                  {/* Bouw en publicatie bestaat niet als stap op de Pagina's-pagina,
+                      dus daar heeft deze knop niets om naartoe te gaan. */}
+                  {f.key !== "bouw" && <button type="button" className="wp-fase-btn wp-fase-btn-licht" title="Bekijk of doe deze stap in Pagina's (nieuw tabblad)" onClick={openPaginaNieuwTab}>In Pagina&rsquo;s</button>}
                   {faseActie(f.key)}
                   <span className={"wp-fase-chip " + stand.cls} title={stand.label === "✓" ? "Klaar" : undefined}>{stand.label}</span>
                 </div>
                 {/* Slugs/URL's in de sturing zijn altijd klikbaar (harde huisregel). */}
-                {sturing && <div className="wp-fase-sturing" dangerouslySetInnerHTML={{ __html: linkifyHtml(sturing.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"), (() => { try { return new URL(t.url).host; } catch { return ""; } })()) }} />}
+                {sturingNuttig && sturingOpen && <div className="wp-fase-sturing" dangerouslySetInnerHTML={{ __html: linkifyHtml(sturing.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"), (() => { try { return new URL(t.url).host; } catch { return ""; } })()) }} />}
               </div>
             );
-            if (f.key !== "copy") return rij;
-            // Na Copy: de alles-in-één-rij (analyse, blauwdruk en copy achter elkaar).
-            const alleStappen: ("analyse" | "blauwdruk" | "copy")[] = page.live ? ["analyse", "blauwdruk", "copy"] : ["blauwdruk", "copy"];
-            const allesGeblokkeerd = !page.live && !page.strategie;
-            return (
-              <div key="copy-en-alles">
-                {rij}
-                <div className="wp-fase wp-fase-alles">
-                  <div className="wp-fase-rij">
-                    <span className="wp-fase-alles-label">{page.live ? "Analyse, blauwdruk en copy in één keer" : "Blauwdruk en copy in één keer"}</span>
-                    <span className="wp-fase-spacer" />
-                    <button type="button" className="wp-fase-btn" disabled={allesGeblokkeerd || runActive || !!busy}
-                      title={allesGeblokkeerd ? "Eerst de strategie goedkeuren (nieuwe pagina)" : "Draait de documenten achter elkaar, met de kaart-achtergrond en chat-conclusie als sturing"}
-                      onClick={() => void startDocStep(alleStappen)}>Start alles ▷</button>
-                  </div>
-                </div>
-              </div>
-            );
+            return rij;
           })}
           {verifyMsg && <div className={verifyMsg.ok ? "wp-doc-ok" : "wp-doc-fout"}>{verifyMsg.tekst}</div>}
-          {page.live && page.copy && !page.bouw && <div className="wp-fase-hint">De copy is klaar en de pagina staat live. Is de nieuwe tekst verwerkt, vink dan Bouw en publicatie af.</div>}
           {foutje && <div className="wp-fase-fouttekst">{foutje}</div>}
           {melding && <div className="wp-fase-melding">{melding}</div>}
         </div>
       )}
 
-      {/* Eén nette onderste regel, alles rechts uitgelijnd: links plus de Mail-knop.
-          Alleen op de open kaart; dichtgeklapt blijft de kaart compact. */}
+      {/* De onderste regel had zes identieke pilletjes naast elkaar: vier die je
+          ergens heen brengen en twee die iets naar buiten sturen. Aan de vorm was
+          dat verschil niet te zien, dus stond "Mail" er even onschuldig bij als een
+          link naar de live pagina. Nu twee groepjes met een scheiding ertussen:
+          links "waar kan ik heen", rechts "wat stuur ik weg". */}
       {open && <div className="wp-card-links wp-onder-regel">
-        {t.url && <a className="wp-link" href={t.url} target="_blank" rel="noreferrer" title="De live pagina">{shortUrl(t.url)}</a>}
-        {t.copyUrl && <a className="wp-link" href={t.copyUrl} target="_blank" rel="noreferrer" title="De aangeleverde copy">Copy</a>}
-        {t.bronMail && <a className="wp-link" href={t.bronMail} target="_blank" rel="noreferrer" title="De mail waar deze taak uit voortkomt">Bronmail</a>}
-        {/* Geen dubbele knop: bij paginakaarten dekt de Pagina's-knop hieronder het al. */}
-        {tab && tab.tab !== "paginas" && <button type="button" className="wp-link wp-link-btn" title="Open dit dashboard-onderdeel in een nieuw tabblad" onClick={() => openTabNieuwTab(tab.tab)}>{tab.label}</button>}
-        {t.url && <button type="button" className="wp-link wp-link-btn" title="Open de pagina in Pagina's (nieuw tabblad)" onClick={openPaginaNieuwTab}>Pagina&rsquo;s</button>}
-        <button type="button" className="wp-act wp-act-klant" title="Mail over deze kaart; de ontvanger (klant, developer of anders) kies je in het venster." onClick={() => onMail("klant")}>Mail</button>
+        <span className="wp-onder-groep">
+          {t.url && <a className="wp-link" href={t.url} target="_blank" rel="noreferrer" title="De live pagina">{shortUrl(t.url)}</a>}
+          {t.copyUrl && <a className="wp-link" href={t.copyUrl} target="_blank" rel="noreferrer" title="De aangeleverde copy">Copy</a>}
+          {t.bronMail && <a className="wp-link" href={t.bronMail} target="_blank" rel="noreferrer" title="De mail waar deze taak uit voortkomt">Bronmail</a>}
+          {/* Geen dubbele knop: bij paginakaarten dekt de Pagina's-knop hieronder het al. */}
+          {tab && tab.tab !== "paginas" && <button type="button" className="wp-link wp-link-btn" title="Open dit dashboard-onderdeel in een nieuw tabblad" onClick={() => openTabNieuwTab(tab.tab)}>{tab.label}</button>}
+          {t.url && <button type="button" className="wp-link wp-link-btn" title="Open de pagina in Pagina's (nieuw tabblad)" onClick={openPaginaNieuwTab}>Pagina&rsquo;s</button>}
+        </span>
+        <span className="wp-onder-scheiding" aria-hidden="true" />
+        <span className="wp-onder-groep wp-onder-delen">
+          <span className="wp-onder-lab">Delen</span>
+          {/* De developerpagina werd alleen gevoed door de oude takentabel, dus met de
+              weekplanning was mailen het enige wat er nog over was. Hiermee staat de
+              kaart weer gewoon op die pagina, waar jij en de sitebouwer hem allebei zien. */}
+          {!page && <button type="button" className={"wp-link wp-link-btn" + (naarDev ? " wp-link-aan" : "")}
+            disabled={devBezig}
+            title={naarDev ? "Staat op de developerpagina. Klik om hem er weer af te halen." : "Zet deze kaart op de developerpagina, naast de andere taken voor de sitebouwer."}
+            onClick={() => void zetNaarDev()}>
+            {devBezig ? "Bezig…" : naarDev ? "✓ Op developerlijst" : "Naar developer"}
+          </button>}
+          <DeelKnoppen slug={slug} titel={t.taak.replace(/<[^>]*>/g, "").trim()}
+            tekst={[t.taak.replace(/<[^>]*>/g, "").trim(), t.toelichting.replace(/<[^>]*>/g, "").trim()].filter(Boolean).join("\n\n")}
+            url={t.url || undefined} toon="document" compact knopClass="wp-link wp-link-btn" />
+          <button type="button" className="wp-act wp-act-klant" title="Mail over deze kaart; de ontvanger (klant, developer of anders) kies je in het venster." onClick={() => onMail("klant")}>Mail</button>
+        </span>
       </div>}
         </div>
       </div>
+
+      {devVenster && (
+        <DevDoorzetten
+          slug={slug} id={t.id}
+          kaartTitel={t.taak.replace(/<[^>]*>/g, "").trim()}
+          onSluit={() => setDevVenster(false)}
+          onKlaar={() => { setDevVenster(false); setNaarDev(true); refreshBoard(); }}
+        />
+      )}
     </div>
   );
 }
@@ -608,15 +790,26 @@ function WerklijstBlok({ slug, refreshBoard }: { slug: string; refreshBoard: () 
     return d?.status || "idle";
   }
 
-  // Live-controle of WordPress-doorvoer vanaf de kaart.
-  async function actie(soort: "verify" | "meta" | "alt") {
+  // Live-controle of doorvoer vanaf de kaart. "Doorvoeren" is bewust één handeling:
+  // meta's en alt-teksten waren twee losse knoppen, maar dat is Maartens onderscheid
+  // niet. Hij denkt "zet het erop"; welk soort veld het is, is techniek. De twee
+  // stappen draaien dus na elkaar en de meldingen worden samengevoegd.
+  async function actie(soort: "verify" | "doorvoeren") {
     if (actieBusy) return;
     setActieBusy(soort); setActieMsg("");
     try {
-      const url = soort === "verify" ? "/api/admin/dev-worklist/verify" : "/api/admin/dev-worklist/push";
-      const body = soort === "verify" ? { slug } : { slug, wat: soort };
-      const d = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((r) => r.json());
-      setActieMsg(d?.ok ? (d.samenvatting || d.melding || "Klaar.") : (d?.error || "Dat lukte niet; probeer het nog een keer."));
+      if (soort === "verify") {
+        const d = await fetch("/api/admin/dev-worklist/verify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }) }).then((r) => r.json());
+        setActieMsg(d?.ok ? (d.samenvatting || d.melding || "Klaar.") : (d?.error || "Dat lukte niet; probeer het nog een keer."));
+      } else {
+        const delen: string[] = [];
+        for (const wat of ["meta", "alt"] as const) {
+          const d = await fetch("/api/admin/dev-worklist/push", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, wat }) }).then((r) => r.json());
+          const tekst = d?.ok ? (d.samenvatting || d.melding || "") : (d?.error || "");
+          if (tekst) delen.push(`${wat === "meta" ? "Meta's" : "Alt-teksten"}: ${tekst}`);
+        }
+        setActieMsg(delen.length ? delen.join(" · ") : "Er was niets meer om door te voeren.");
+      }
       void haal();
     } catch { setActieMsg("Dat lukte niet; probeer het nog een keer."); }
     finally { setActieBusy(""); }
@@ -639,31 +832,45 @@ function WerklijstBlok({ slug, refreshBoard }: { slug: string; refreshBoard: () 
     void volg();
   }
 
+  // Er is pas iets te bekijken of door te voeren als de werklijst een keer gedraaid
+  // heeft. Vroeger verdwenen die knoppen dan gewoon, waardoor de rij van vier naar
+  // zeven sprong en het scherm onder je handen veranderde. Nu staan ze er altijd,
+  // uitgeschakeld, en vertellen ze zelf wat er eerst moet gebeuren.
+  const klaar = !!shareToken;
+  const nogNiet = "Maak eerst de werklijst; dan valt er pas iets te bekijken.";
+
   return (
     <div className="wp-werklijst">
+      {/* Bekijken: veilig, verandert niets aan de site. */}
       <div className="wp-werklijst-rij">
         <span className="wp-sectie-label" style={{ margin: 0 }}>Werklijst voor de sitebouwer</span>
         {teller && <span className="wp-werklijst-teller">{teller.gedaan}/{teller.totaal} gedaan · {teller.geverifieerd} gecontroleerd</span>}
         <span className="wp-fase-spacer" />
-        {shareToken && <a className="wp-fase-btn wp-fase-btn-primair" href={`/share/werklijst/${shareToken}`} target="_blank" rel="noreferrer" title="De klikbare afwerkpagina voor de sitebouwer (deelbare link, geen inlog nodig)">Afwerkpagina</a>}
-        {docLink && <a className="wp-fase-btn wp-fase-doc" href={docLink} target="_blank" rel="noreferrer" title="Hetzelfde overzicht als document">Document</a>}
-        <button type="button" className="wp-fase-btn" disabled={status === "running"} onClick={start}>
-          {status === "running" ? "Bezig… (paar minuten)" : docLink || shareToken ? "Ververs werklijst" : "Maak de werklijst"}
-        </button>
+        <a className={"wp-fase-btn wp-fase-btn-primair" + (klaar ? "" : " wp-fase-btn-uit")} href={klaar ? `/admin/client/${slug}/werklijst` : undefined} target="_blank" rel="noreferrer"
+          title={klaar ? "Onze eigen versie: de huidige meta naast ons voorstel, met de knop Voer door in de site" : nogNiet}>Onze werklijst</a>
+        <a className={"wp-fase-btn" + (klaar ? "" : " wp-fase-btn-uit")} href={klaar ? `/share/werklijst/${shareToken}` : undefined} target="_blank" rel="noreferrer"
+          title={klaar ? "De klikbare afwerkpagina om te delen met de sitebouwer (geen inlog nodig)" : nogNiet}>Voor de sitebouwer</a>
       </div>
-      {shareToken && (
-        <div className="wp-werklijst-rij">
-          <button type="button" className="wp-fase-btn" disabled={!!actieBusy} title="Meet de live pagina's en zet groene gecontroleerd-vinkjes op alles wat er echt goed op staat" onClick={() => void actie("verify")}>{actieBusy === "verify" ? "Controleren…" : "Controleer live"}</button>
-          <button type="button" className="wp-fase-btn" disabled={!!actieBusy} title="Zet alle nieuwe meta-titles en descriptions rechtstreeks in WordPress (site moet gekoppeld zijn via Meta & CTR)" onClick={() => void actie("meta")}>{actieBusy === "meta" ? "Doorvoeren…" : "Zet meta's in WordPress"}</button>
-          <button type="button" className="wp-fase-btn" disabled={!!actieBusy} title="Zet de alt-teksten van unieke afbeeldingen rechtstreeks in WordPress; dubbel gebruikte blijven voor de sitebouwer" onClick={() => void actie("alt")}>{actieBusy === "alt" ? "Doorvoeren…" : "Zet alt-teksten in WordPress"}</button>
-        </div>
-      )}
+      {/* Doen: deze drie veranderen wel iets, of kosten tijd. */}
+      <div className="wp-werklijst-rij wp-werklijst-doen">
+        <span className="wp-werklijst-groep">Doen</span>
+        <button type="button" className="wp-fase-btn" disabled={status === "running" || !!actieBusy}
+          title="Meet alle live pagina's opnieuw en schrijft de nieuwe meta's en alt-teksten; duurt een paar minuten" onClick={start}>
+          {status === "running" ? "Bezig… (paar minuten)" : klaar ? "Ververs werklijst" : "Maak de werklijst"}
+        </button>
+        <button type="button" className="wp-fase-btn" disabled={!klaar || !!actieBusy || status === "running"}
+          title={klaar ? "Zet de nieuwe meta's én alt-teksten rechtstreeks in de site (moet gekoppeld zijn via Meta & CTR). Wat niet automatisch kan, blijft voor de sitebouwer staan." : nogNiet}
+          onClick={() => void actie("doorvoeren")}>{actieBusy === "doorvoeren" ? "Doorvoeren…" : "Voer door in de site"}</button>
+        <button type="button" className="wp-fase-btn" disabled={!klaar || !!actieBusy || status === "running"}
+          title={klaar ? "Meet de live pagina's en zet groene gecontroleerd-vinkjes op alles wat er echt goed op staat" : nogNiet}
+          onClick={() => void actie("verify")}>{actieBusy === "verify" ? "Controleren…" : "Controleer live"}</button>
+      </div>
       {actieMsg && <div className="wp-werklijst-sam">{actieMsg}</div>}
       {status === "running" && <div className="muted">De pagina's worden gemeten en de meta's en alt-teksten geschreven; dit duurt een paar minuten. Je kunt intussen gewoon verder.</div>}
       {resultaat && status === "done" && !actieMsg && <div className="wp-werklijst-sam">{resultaat}</div>}
       {fout && <div className="wp-doc-fout">{fout}</div>}
       {!docLink && !shareToken && status !== "running" && !resultaat && (
-        <div className="muted">Nog geen werklijst gemaakt. De werklijst meet alle live pagina&rsquo;s en zet per pagina de nieuwe meta&rsquo;s en alt-teksten klaar op een klikbare afwerkpagina voor Sander.</div>
+        <div className="muted">Nog geen werklijst gemaakt. De werklijst meet alle live pagina&rsquo;s en zet per pagina de nieuwe meta&rsquo;s en alt-teksten klaar op een klikbare afwerkpagina voor de sitebouwer.</div>
       )}
     </div>
   );
