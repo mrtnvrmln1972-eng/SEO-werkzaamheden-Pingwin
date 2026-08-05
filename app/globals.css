@@ -2074,6 +2074,19 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .pg-kans.mid { color: #8a5a00; background: #fff3d9; }
 .pg-kans.low { color: var(--gray); background: #eef0f2; }
 
+/* Fase-kolom: de zeven pijplijn-stappen als heel kleine streepjes. Zelfde stand en
+   zelfde kleuren als de fase-chips op de kaart in de weekplanning (.wp-step), maar
+   dan zo klein dat een lijst met tientallen rijen rustig blijft. */
+.pg-fases-cell { white-space: nowrap; }
+.pg-fases { display: inline-flex; align-items: center; gap: 3px; cursor: help; }
+.pg-fase { display: inline-block; width: 9px; height: 4px; border-radius: var(--r-full); background: #e4e4e7; border: 1px solid transparent; }
+.pg-fase.done { background: #1e9a4a; }
+.pg-fase.next { background: #fffaf7; border-color: var(--orange); }
+.pg-fases-tel { margin-left: var(--s-2); font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); font-variant-numeric: tabular-nums; }
+.pages-row:hover .pg-fase { background: #d8d8dc; }
+.pages-row:hover .pg-fase.done { background: #16803c; }
+.pages-row:hover .pg-fase.next { background: #fff; }
+
 /* Pagina-chat: mooiere, iets grotere knoppen met dun oranje randje */
 .pcd-btn { position: relative; overflow: hidden; font-size: 13px; font-weight: 600; padding: 9px 16px; border: 1px solid var(--orange); border-radius: 9px; background: #fff; color: var(--dark); cursor: pointer; transition: background .15s; }
 /* Bepaalde voortgang IN de knop (bijv. 'Alles achter elkaar', stap X/3). */

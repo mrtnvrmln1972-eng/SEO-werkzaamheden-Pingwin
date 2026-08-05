@@ -71,12 +71,50 @@ function recombineProfile(profileMd: string, tovMd: string, knowhow: string): st
 // Stabiele DOM-id per pagina-rij, zodat we er vanuit de KPI's naartoe kunnen scrollen.
 const rowDomId = (url: string) => "pgrow-" + (url || "").replace(/[^a-zA-Z0-9]/g, "-");
 
+// ── Fases per pagina (dezelfde zeven als op de kaart in de weekplanning) ──
+// Bewust dezelfde volgorde en labels als in WeekplanCard: één pagina heeft één
+// pijplijn, dus die mag op twee schermen niet anders heten of anders staan.
+type FaseKey = "strategie" | "gelieerde" | "analyse" | "blauwdruk" | "copy" | "bouw" | "structured";
+const PG_FASEN: { key: FaseKey; label: string }[] = [
+  { key: "strategie", label: "Strategie" },
+  { key: "gelieerde", label: "Gelieerde pagina's" },
+  { key: "analyse", label: "Analyse" },
+  { key: "blauwdruk", label: "Blauwdruk" },
+  { key: "copy", label: "Copy" },
+  { key: "bouw", label: "Bouw en publicatie" },
+  { key: "structured", label: "Structured data" },
+];
+// Zelfde sleutel als de server (lib/url-key.ts): protocol, www., slot-slash en
+// hoofdletters doen er niet toe.
+const faseKey = (u: string) => (u || "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/+$/, "");
+
+// De zeven fases als heel kleine streepjes: gedaan is groen, open is grijs, en het
+// eerstvolgende streepje krijgt de oranje rand. Subtiel genoeg voor een lijst met
+// tientallen rijen; de tooltip vertelt het hele verhaal.
+function FaseRail({ f }: { f?: Partial<Record<FaseKey, boolean>> }) {
+  if (!f) return <span className="muted">&mdash;</span>;
+  const volgende = PG_FASEN.find((x) => !f[x.key]);
+  const gedaan = PG_FASEN.filter((x) => f[x.key]).length;
+  const titel = PG_FASEN.map((x) => (f[x.key] ? "✓ " : "· ") + x.label).join("\n")
+    + "\n\n" + (volgende ? `Volgende: ${volgende.label}` : "Alle fases klaar");
+  return (
+    <span className="pg-fases" title={titel} aria-label={`${gedaan} van ${PG_FASEN.length} fases gedaan`}>
+      {PG_FASEN.map((x) => (
+        <i key={x.key} className={"pg-fase" + (f[x.key] ? " done" : volgende && volgende.key === x.key ? " next" : "")} />
+      ))}
+      <span className="pg-fases-tel">{gedaan}/{PG_FASEN.length}</span>
+    </span>
+  );
+}
+
 export default function PagesPanel({ slug, initialProfile, clientEmail, clientName, onGoToTask, domain, openTarget }: { slug: string; initialProfile?: string; clientEmail?: string; clientName?: string; onGoToTask?: (taskId: number) => void; domain?: string; openTarget?: { url: string; n: number } | null }) {
   type Opp = { impressions: number; clicks: number; ctr: number; position: number; bestKeyword: string; bestPosition: number | null; bestVolume: number | null; score: number; label: string; level: string };
   const [opps, setOpps] = useState<Record<string, Opp>>({});
   // Sortering: "prio" (standaard) = sterretjes bovenaan, dan plan, dan kans.
   // Elke andere kolom sorteert PUUR op die kolom, los van de sterretjes.
-  const [sortKey, setSortKey] = useState<"prio" | "status" | "pagina" | "kans" | "vertoningen" | "positie" | "klikken" | "volume" | "plan">("prio");
+  const [sortKey, setSortKey] = useState<"prio" | "status" | "pagina" | "kans" | "vertoningen" | "positie" | "klikken" | "volume" | "fases" | "plan">("prio");
+  // Fase-stand per pagina (zelfde bron als de kaarten in de weekplanning).
+  const [phases, setPhases] = useState<Record<string, Partial<Record<FaseKey, boolean>>>>({});
   const [urls, setUrls] = useState<ClientUrl[]>([]);
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
@@ -305,6 +343,22 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
       }).catch(() => {});
   }, [slug]);
 
+  // Fase-stand per pagina: cache-eerst uit de browser (de streepjes staan er dan
+  // meteen), daarna verse stand op de achtergrond. Zelfde patroon als de kans-data.
+  useEffect(() => {
+    try {
+      const c = localStorage.getItem(`pw_phases_${slug}`);
+      if (c) { const parsed = JSON.parse(c); if (parsed && typeof parsed === "object") setPhases(parsed); }
+    } catch { /* geen cache */ }
+    fetch(`/api/admin/page-phases?slug=${encodeURIComponent(slug)}`)
+      .then((r) => r.json()).then((d) => {
+        if (d.ok) {
+          setPhases(d.pages || {});
+          try { localStorage.setItem(`pw_phases_${slug}`, JSON.stringify(d.pages || {})); } catch { /* cache is extra */ }
+        }
+      }).catch(() => {});
+  }, [slug]);
+
   // Prio-pagina's (sterren): ook cache-eerst, dan verversen.
   useEffect(() => {
     try {
@@ -329,6 +383,8 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
 
   const normUrl = (u: string) => (u || "").trim().replace(/\/+$/, "");
   const oppOf = (u: ClientUrl): Opp | undefined => opps[normUrl(u.url)];
+  const phaseOf = (u: ClientUrl) => phases[faseKey(u.url)];
+  const faseTel = (u: ClientUrl) => { const f = phaseOf(u); return f ? PG_FASEN.filter((x) => f[x.key]).length : -1; };
 
   const filtered = q.trim()
     ? urls.filter((u) => (u.url + " " + u.title).toLowerCase().includes(q.trim().toLowerCase()))
@@ -353,6 +409,8 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
       case "positie": return (oa?.position ?? 999) - (ob?.position ?? 999);
       case "volume": return (ob?.bestVolume ?? -1) - (oa?.bestVolume ?? -1);
       case "kans": return (ob?.score || 0) - (oa?.score || 0);
+      // Pagina's die het verst in de pijplijn staan eerst; bij gelijke stand op kans.
+      case "fases": return (faseTel(b) - faseTel(a)) || ((ob?.score || 0) - (oa?.score || 0));
       case "plan": return rank(b) - rank(a);
     }
   });
@@ -476,11 +534,12 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
                 <th className="pg-sort" onClick={() => setSortKey("positie")}>Positie{sortKey === "positie" ? " ▾" : ""}</th>
                 <th className="pg-sort" onClick={() => setSortKey("volume")} title="Zoekvolume van het hoofdzoekwoord (meeste vertoningen)">Volume{sortKey === "volume" ? " ▾" : ""}</th>
                 <th className="pg-sort" onClick={() => setSortKey("kans")} title="Veel vertoningen + positie net buiten de top 10 = grote kans">Kans{sortKey === "kans" ? " ▾" : ""}</th>
+                <th className="pg-sort" onClick={() => setSortKey("fases")} title={"De zeven fases van deze pagina: strategie, gelieerde pagina's, analyse, blauwdruk, copy, bouw en publicatie, structured data.\nGroen = gedaan, oranje randje = de eerstvolgende stap. Wijs een rijtje aan om te zien welke fase welke is. Klik om te sorteren op hoe ver een pagina is."}>Fases{sortKey === "fases" ? " ▾" : ""}</th>
                 <th className="pg-sort" onClick={() => setSortKey("plan")} title="Sorteer op plan-status: vol plan eerst, dan half plan, dan leeg">Plan{sortKey === "plan" ? " ▾" : ""}</th>
               </tr></thead>
               <tbody>
                 {sorted.map((u) => (
-                  <PageRow key={u.url} slug={slug} u={u} opp={oppOf(u)} open={open === u.url} onToggle={() => setOpen(open === u.url ? null : u.url)} clientEmail={clientEmail || ""} clientName={clientName || ""} onGoToTask={onGoToTask} onDataChanged={() => load(true)} isPrio={priority.has(prioKey(u.url))} onTogglePriority={() => togglePriority(u.url)} />
+                  <PageRow key={u.url} slug={slug} u={u} opp={oppOf(u)} fases={phaseOf(u)} open={open === u.url} onToggle={() => setOpen(open === u.url ? null : u.url)} clientEmail={clientEmail || ""} clientName={clientName || ""} onGoToTask={onGoToTask} onDataChanged={() => load(true)} isPrio={priority.has(prioKey(u.url))} onTogglePriority={() => togglePriority(u.url)} />
                 ))}
               </tbody>
             </table>
@@ -534,7 +593,7 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
 }
 
 type PageOpp = { impressions: number; clicks: number; ctr: number; position: number; bestKeyword: string; bestPosition: number | null; bestVolume: number | null; score: number; label: string; level: string };
-function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoToTask, onDataChanged, isPrio, onTogglePriority }: { slug: string; u: ClientUrl; opp?: PageOpp; open: boolean; onToggle: () => void; clientEmail: string; clientName: string; onGoToTask?: (taskId: number) => void; onDataChanged?: () => void; isPrio?: boolean; onTogglePriority?: () => void }) {
+function PageRow({ slug, u, opp, fases, open, onToggle, clientEmail, clientName, onGoToTask, onDataChanged, isPrio, onTogglePriority }: { slug: string; u: ClientUrl; opp?: PageOpp; fases?: Partial<Record<FaseKey, boolean>>; open: boolean; onToggle: () => void; clientEmail: string; clientName: string; onGoToTask?: (taskId: number) => void; onDataChanged?: () => void; isPrio?: boolean; onTogglePriority?: () => void }) {
   const [plan, setPlan] = useState(u.plan);
   const [saved, setSaved] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -620,6 +679,7 @@ function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoTo
         <td>{opp && opp.position ? opp.position : <span className="muted">&mdash;</span>}</td>
         <td>{opp?.bestVolume != null ? opp.bestVolume.toLocaleString("nl-NL") : <span className="muted">&mdash;</span>}</td>
         <td>{opp?.label ? <span className={"pg-kans " + opp.level}>{opp.label}</span> : <span className="muted">&mdash;</span>}</td>
+        <td className="pg-fases-cell"><FaseRail f={fases} /></td>
         <td>{(plan || "").trim()
           ? <span className="plan-chip has">plan</span>
           : u.hasClusterAdvice
@@ -628,7 +688,7 @@ function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoTo
       </tr>
       {kwOpen && (
         <tr className="pages-detail-row">
-          <td colSpan={9}>
+          <td colSpan={10}>
             <div className="pages-detail" style={{ padding: "10px 14px" }}>
               {kws === null && <div className="muted">Zoekwoorden laden uit Search Console&hellip;</div>}
               {kws !== null && kws.length === 0 && <div className="muted">Geen zoekwoorden gevonden voor deze pagina (of Search Console heeft nog geen data).</div>}
@@ -665,7 +725,7 @@ function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoTo
       )}
       {open && (
         <tr className="pages-detail-row">
-          <td colSpan={9}>
+          <td colSpan={10}>
             <div className="pages-detail">
               {/* Het paginadossier bovenaan: wat er speelt, met de mails en
                   documenten erbij. Zelfde blok als op de kaart in de weekplanning
