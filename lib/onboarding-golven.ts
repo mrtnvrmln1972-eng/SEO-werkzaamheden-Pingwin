@@ -87,7 +87,7 @@ export type BulkStand = {
 
 export type Raming = {
   golf: Golf;
-  klanten: { slug: string; naam: string; nodig: boolean; mist: string[] }[];
+  klanten: { slug: string; naam: string; nodig: boolean; mist: string[]; beheerdDoorAnder: boolean }[];
   aantal: number;
   units: number;
   dollar: number;

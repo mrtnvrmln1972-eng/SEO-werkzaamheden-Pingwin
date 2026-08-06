@@ -43,8 +43,10 @@ export default function BulkOnboarding() {
       const d = await fetch(`/api/admin/onboarding-bulk?golf=${g}`).then((r) => r.json());
       if (!d?.ok) { setFout(d?.error || "Kon de raming niet ophalen."); setRaming(null); return; }
       setRaming(d.raming as Raming);
-      // Standaard staat alles aan wat het nodig heeft; je vinkt af wat je niet wilt.
-      setGekozen(new Set((d.raming as Raming).klanten.filter((k) => k.nodig).map((k) => k.slug)));
+      // Standaard aan: alles wat het nodig heeft en wat je zelf beheert. Klanten
+      // die Multimedia Concepts beheert staan er wel bij (je kunt ze aanvinken),
+      // maar niet voorgevinkt; anders vink je ze elke ronde opnieuw af.
+      setGekozen(new Set((d.raming as Raming).klanten.filter((k) => k.nodig && !k.beheerdDoorAnder).map((k) => k.slug)));
     } catch { setFout("Kon de raming niet ophalen."); }
     finally { setLaden(false); }
   }, []);
@@ -198,6 +200,7 @@ export default function BulkOnboarding() {
                         })}
                       />
                       <strong>{k.naam}</strong>
+                      {k.beheerdDoorAnder && <span className="bulk-chip">Multimedia Concepts</span>}
                       {k.nodig
                         ? <span className="muted">{k.mist.join(", ")}</span>
                         : <span className="muted">deze golf staat al compleet</span>}
@@ -212,6 +215,7 @@ export default function BulkOnboarding() {
                 </button>
                 <span className="muted">
                   Eén klant tegelijk, op de achtergrond. Je kunt dit scherm sluiten; de voortgang staat hierboven.
+                  {raming.klanten.some((k) => k.nodig && k.beheerdDoorAnder) && " Klanten van Multimedia Concepts staan niet voorgevinkt; beheer je die toch zelf, vink ze dan aan."}
                 </span>
               </div>
             </>

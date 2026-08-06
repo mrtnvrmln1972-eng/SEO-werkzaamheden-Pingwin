@@ -71,7 +71,15 @@ export async function raming(golf: Golf, slugs?: string[]): Promise<Raming> {
     // Nodig zolang er in deze golf nog een stap open staat. Wat al staat wordt
     // overgeslagen, dus een klant die vorige week gedraaid heeft kost niets.
     const open = (stand?.stappen || []).filter((s) => (GOLF_STAPPEN[golf] as string[]).includes(s.key) && s.staat !== "af" && s.staat !== "bezig");
-    uit.push({ slug: c.slug, naam: c.name, nodig: open.length > 0, mist: open.map((s) => s.label) });
+    // Klanten die Multimedia Concepts beheert doen we niet zelf; die staan wel
+    // in de lijst (je moet ze kunnen aanvinken als je toch wilt), maar ze staan
+    // niet standaard aan. Anders vink je ze elke ronde opnieuw af.
+    uit.push({
+      slug: c.slug, naam: c.name,
+      nodig: open.length > 0,
+      mist: open.map((s) => s.label),
+      beheerdDoorAnder: (c.grp || "").trim().toLowerCase() === "mmc",
+    });
   }
   const nodig = uit.filter((k) => k.nodig);
   const t = await tegoed();
