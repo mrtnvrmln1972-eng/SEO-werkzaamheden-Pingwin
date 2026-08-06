@@ -696,9 +696,14 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar, clientN
         </>
       )}
 
-      {/* Hetzelfde mailvenster als bij een weekplan-kaart en bij het opruimscherm.
-          De onderbouwing gaat er als blok in, zodat de klant leest waaróm we dit
-          oppakken en niet alleen dát we het doen. */}
+      {/* Hetzelfde mailvenster als bij een weekplan-kaart, maar BEWUST zonder blok.
+          Mét blok gaat de mail langs de opgemaakte weg: oranje kopbalk, vier vaste
+          kaders, en een voetregel die zegt dat het dashboard hem heeft opgesteld.
+          Dat leest als een reclamemail, terwijl dit juist de mail is die moet laten
+          zien dat er iemand naar hun site heeft zitten kijken. Zonder blok is het
+          een gewone, persoonlijke mail: aanhef, korte alinea's, handtekening
+          onderaan. De onderbouwing gaat mee als achtergrond voor de assistent, niet
+          als kant-en-klaar blok in de mail zelf. */}
       {mailVoor && (() => {
         const ond = onderbouwing(mailVoor, { klantnaam: clientName, pad: mailVoor.url || bedoeldPad(mailVoor.zoekwoord, domain) });
         return (
@@ -709,7 +714,8 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar, clientN
             onderwerpVoorstel={ond.mailOnderwerp}
             taak={ond.mailTaak}
             toelichting={ond.blokMd}
-            blokMd={ond.blokMd}
+            stijl="kans"
+            schrijfMeteen
             siteUrl={domain}
             url={mailVoor.url || ""}
             clientName={clientName}

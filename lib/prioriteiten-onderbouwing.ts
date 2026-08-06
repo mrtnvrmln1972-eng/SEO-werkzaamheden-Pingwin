@@ -173,6 +173,47 @@ function mailOnderwerpVan(r: OnderbouwRegel, nieuw: boolean): string {
   }
 }
 
+/**
+ * De VORM van de mail verschilt per soort kans, en dat is met opzet het antwoord
+ * op "gaan al die mails niet hetzelfde klinken". Uit dezelfde scan komen nu
+ * eenmaal telkens dezelfde soorten opdrachten, dus als elke mail dezelfde lengte
+ * en dezelfde opbouw heeft, herkent de klant het patroon binnen drie mails.
+ *
+ * Zinnen laten rouleren uit een voorraadje zou dat niet oplossen maar verergeren:
+ * dan is het een sjabloon met wisselende woorden, en dat voelt nog valser. Echte
+ * variatie komt uit de inhoud (een andere pagina, een ander zoekwoord, een andere
+ * reden) en uit een andere vorm. Een titelaanpassing is vier zinnen zonder opsomming,
+ * een nieuwe pagina mag een kort lijstje hebben.
+ */
+function vormPerSoort(type: string, nieuw: boolean): string {
+  switch (type) {
+    case "ctr_underperform":
+      return `Houd het kort, vier of vijf zinnen, doorlopende tekst zonder opsomming. Dit is een kleine ingreep en de mail mag dat uitstralen.`;
+    case "content_gap":
+      return nieuw
+        ? `Wat langer mag hier. Noem in een kort lijstje van drie punten wat er op die pagina komt te staan, zodat het concreet wordt.`
+        : `Doorlopende tekst. Leg uit waarom dit bij een bestaande pagina hoort en niet op een eigen pagina.`;
+    case "striking_distance":
+    case "verouderde_topper":
+      return `Doorlopende tekst, vijf tot zeven zinnen. Maak duidelijk dat de pagina er al staat en dat dit een zetje is, geen verbouwing.`;
+    case "cannibalisatie":
+      return `Leg in gewone taal uit dat twee pagina's elkaar in de weg zitten, met een vergelijking als dat helpt. Doorlopende tekst.`;
+    case "interne_links":
+      return `Kort en concreet. Leg uit dat we vanaf andere pagina's naar deze gaan verwijzen en dat er geen nieuwe tekst voor nodig is.`;
+    default:
+      return `Doorlopende tekst, kort.`;
+  }
+}
+
+/** Wat de klant krijgt zodra hij akkoord is. Dat is per soort werk iets anders. */
+function vervolgstap(type: string, nieuw: boolean): string {
+  if (type === "content_gap" && nieuw) return "de opzet van de pagina en daarna de teksten";
+  if (type === "ctr_underperform") return "de nieuwe titel en omschrijving";
+  if (type === "cannibalisatie") return "het voorstel welke pagina blijft";
+  if (type === "interne_links") return "het overzicht van de verwijzingen die we leggen";
+  return "de aangepaste tekst";
+}
+
 export function onderbouwing(r: OnderbouwRegel, opties: { klantnaam?: string; pad?: string } = {}): {
   kort: string;
   /** De vier stukken los, zodat het scherm er kolommen van kan maken. */
@@ -217,9 +258,10 @@ export function onderbouwing(r: OnderbouwRegel, opties: { klantnaam?: string; pa
     blokMd: secties.map((s) => `### ${s.kop}\n\n${s.tekst}`).join("\n\n"),
     mailOnderwerp: mailOnderwerpVan(r, nieuw),
     mailTaak: [
-      `Laat ${opties.klantnaam || "de klant"} weten dat we bij het doorlichten van de site een kans hebben gevonden en dat we die oppakken.`,
+      `Signaleer bij ${opties.klantnaam || "de klant"} één kans die je op hun site hebt gevonden, en vraag of ze het ermee eens zijn dat je hem oppakt.`,
       `Het gaat om ${cat.naam.toLowerCase()}${pad ? ` voor ${pad}` : ""} rond het zoekwoord "${r.zoekwoord}".`,
-      `Kort en positief: dit hebben we gezien, dit betekent het, hier gaan we mee aan de slag. Geen vragen stellen, geen actie vragen van de klant.`,
+      vormPerSoort(r.type, nieuw),
+      `Sluit af met de vervolgstap: bij akkoord stuur je ${vervolgstap(r.type, nieuw)} ter controle.`,
     ].join(" "),
   };
 }

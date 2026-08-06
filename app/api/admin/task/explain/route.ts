@@ -38,6 +38,8 @@ export async function POST(req: NextRequest) {
   const audience = ["klant", "dev", "anders"].includes(String(body.audience || "")) ? String(body.audience) : "klant";
   const instructie = stripTags(String(body.instructie || "")).slice(0, 1000);
   const ontvanger = stripTags(String(body.ontvanger || "")).slice(0, 120);
+  // Soort mail. Leeg = precies zoals deze route zich altijd gedroeg.
+  const stijl = String(body.stijl || "").trim();
   const links = (Array.isArray(body.links) ? body.links : [])
     .map((l) => ({ label: stripTags(String((l as Record<string, unknown>)?.label || "")).slice(0, 60), url: String((l as Record<string, unknown>)?.url || "").trim().slice(0, 600) }))
     .filter((l) => l.url).slice(0, 6);
@@ -73,7 +75,11 @@ export async function POST(req: NextRequest) {
     `- Alinea's van hooguit twee zinnen. Geen kopjes, geen tabellen, geen vetgedrukte woorden, geen Markdown-tekens.`,
     `- Gebruik nooit een los liggend streepje als zinsscheiding; gebruik een komma, puntkomma, haakjes of een nieuwe zin.`,
     `- Nederlands. Kort en concreet. Geen loze beloftes.`,
-  ];
+  // Bij een kans-mail gelden drie van deze regels niet; die worden hieronder
+  // vervangen door strengere, eigen regels. Ze hier laten staan zou betekenen dat
+  // het model twee tegenstrijdige instructies krijgt, en dan is het een gok welke
+  // wint.
+  ].filter((r) => stijl !== "kans" || !/MAXIMAAL 120 woorden|vetgedrukte woorden|^- Opbouw: aanhef/.test(r));
   const doelgroep = audience === "dev"
     ? [
         `Je schrijft namens Maarten van Pingwin (SEO-bureau) een korte, directe e-mail aan de developer/sitebouwer van de klant "${naam}".`,
@@ -93,11 +99,42 @@ export async function POST(req: NextRequest) {
         `Doel: in gewone taal uitleggen wat we (gaan) doen, waarom dat goed is voor hun vindbaarheid, en wat het oplevert. Zo ziet de klant de waarde, zonder een urenverantwoording.`,
         `Gewone taal, geen jargon. Vermijd woorden als "meta", "canonical", "cannibalisatie" of leg ze in één simpele zin uit.`,
         ...opmaakRegels,
-        `- Sluit af met "Met vriendelijke groet, Pingwin".`,
+        ...(stijl === "kans" ? [] : [`- Sluit af met "Met vriendelijke groet, Pingwin".`]),
       ];
+
+  /**
+   * De kans-mail: "ik zag dit, dit wil ik oppakken, ben je het ermee eens?"
+   *
+   * Waarom apart. Deze mail ging eerst langs de opgemaakte weg, met een oranje
+   * kopbalk en vier vaste kaders eronder. Dat las als een reclamemail uit een
+   * tool: hetzelfde skelet elke keer, en de afzender leek een knop in plaats van
+   * een mens. Terwijl dit juist de mail is die moet laten zien dat er iemand naar
+   * hun site heeft zitten kijken.
+   *
+   * Het antwoord is niet mooiere opmaak maar minder opmaak, plus inhoud die je
+   * alleen hebt als je echt gekeken hebt. De VORM verschilt daarom per soort
+   * kans: een titel-en-omschrijving-mail is vier zinnen, een nieuwe-pagina-mail
+   * mag een lijstje bevatten. Dat is de echte variatie. Zinnen laten rouleren uit
+   * een voorraadje zou juist nep aanvoelen.
+   */
+  const kansRegels = stijl === "kans" ? [
+    ``,
+    `DIT IS EEN SIGNALEER-MAIL. Maarten heeft de site van deze klant doorgenomen en één ding gevonden dat hij wil oppakken. De mail moet klinken alsof hij hem zelf net heeft getikt, niet alsof een systeem hem heeft gegenereerd.`,
+    `- Schrijf in de IK-vorm namens Maarten. Niet "wij van Pingwin", niet "ons systeem", niet "de analyse".`,
+    `- Vertel WAT je zag en WAAROM je het wilt oppakken. Eén concreet feit is genoeg (waar wordt op gezocht, wat mist er of wat gaat er mis).`,
+    `- Noem waar het kan iets uit hun eigen site, zodat te merken is dat er echt gekeken is (een bestaande pagina, hun plaatsen, hun dienst).`,
+    `- Sluit af met de vraag of de klant het ermee eens is, en met wat er dan volgt: de copy of de opzet van de pagina die je ter controle stuurt. Geen huiswerk, geen vragenlijst.`,
+    `- Eén onderwerp per mail. Ga NIET over andere pagina's of andere kansen beginnen.`,
+    `- Een enkel **vetgedrukt** woord mag, en een kort lijstje ook, als dat de mail leesbaarder maakt. Spaarzaam: hooguit één van de twee per mail, en nooit allebei in dezelfde alinea.`,
+    `- GEEN kopjes, geen kaders, geen afsluitende samenvatting, geen "Met vriendelijke groet, Pingwin" als bedrijfsnaam; dit is een mail van Maarten zelf.`,
+    `- Vertel het proces niet na en noem geen scores, ranglijsten of aantallen kansen. Alleen dít ene ding.`,
+    `- Sluit af met "Groet," en op de volgende regel "Maarten".`,
+    `- MAXIMAAL 160 woorden tussen aanhef en afsluiting, en dat is een plafond en geen doel.`,
+  ] : [];
 
   const system = [
     ...doelgroep,
+    ...kansRegels,
     links.length ? `\nDeze documenten en pagina's gaan mee. Noem ELK van deze namen LETTERLIJK in de tekst; de link wordt automatisch aan die exacte woorden gehangen, dus zet zelf NOOIT de URL in de tekst. Schrijf nooit "de bijgevoegde link", "bijgaand" of "in de bijlage" als omschrijving, want dan is er niets om de link aan te hangen en verdwijnt hij:\n${links.map((l) => `- ${l.label}`).join("\n")}` : ``,
     instructie ? `\nEXTRA WENS VAN DE GEBRUIKER (volg dit):\n${instructie}` : ``,
     profiel && audience === "klant" ? `\nContext over de klant (gebruik subtiel om de toon te raken, niet letterlijk overnemen):\n${profiel}` : ``,

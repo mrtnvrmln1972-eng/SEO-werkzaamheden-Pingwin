@@ -22,7 +22,7 @@ import { striptVulzinnen } from "../../../../lib/vulzinnen";
 export type MailBijlage = { key: string; label: string; url: string };
 
 export default function MailVenster({
-  slug, titel, onderwerpVan, onderwerpVoorstel, taak, toelichting, mailBron, blokMd, siteUrl, url, bijlagen = [], clientName, clientEmail, standaardAangevinkt = [], onClose,
+  slug, titel, onderwerpVan, onderwerpVoorstel, taak, toelichting, mailBron, blokMd, stijl, schrijfMeteen = false, siteUrl, url, bijlagen = [], clientName, clientEmail, standaardAangevinkt = [], onClose,
 }: {
   slug: string;
   /** Kop van het venster, bijvoorbeeld "Mail vanuit dit gesprek". */
@@ -34,6 +34,14 @@ export default function MailVenster({
    * Gebruik dit zodra je iets beters weet dan "Wat we zagen".
    */
   onderwerpVoorstel?: string;
+  /**
+   * Soort mail, gaat mee naar de assistent. "kans" = een signaleer-mail vanuit de
+   * prioriteitenscan: ik-vorm, kort, één onderwerp, eindigend met de vraag of de
+   * klant het ermee eens is. Leeg = de gewone klantmail zoals altijd.
+   */
+  stijl?: string;
+  /** Schrijft meteen bij het openen een concept, in plaats van een leeg vak. */
+  schrijfMeteen?: boolean;
   /** Waar de mail over gaat (gaat als "taak" naar de assistent). */
   taak: string;
   /** De achtergrond waar de assistent uit put (het gesprek, de analyse). */
@@ -114,6 +122,9 @@ export default function MailVenster({
     }
     if (onderwerpVoorstel) setOnderwerp(onderwerpVoorstel);
     else if (blokKop) setOnderwerp(blokKop);
+    // Een leeg vak is prima als Maarten zelf gaat dicteren, maar bij een
+    // signaleer-mail wil je meteen iets hebben om aan te schaven.
+    if (schrijfMeteen) void schrijf(aud, "", gekozen);
     bodyRef.current?.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -136,7 +147,7 @@ export default function MailVenster({
     try {
       const d = await fetch("/api/admin/task/explain", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, taak, toelichting, url, audience: doelgroep, instructie, links, to: adres !== undefined ? adres : to }),
+        body: JSON.stringify({ slug, taak, toelichting, url, audience: doelgroep, instructie, links, stijl, to: adres !== undefined ? adres : to }),
       }).then((r) => r.json());
       if (d?.ok && d.text) {
         // Het onderwerp komt als eerste regel terug; dat hoort in een eigen veld.
