@@ -130,8 +130,56 @@ function bruikbareReden(rationale?: string): string {
  * naar de weekplan-kaart en naar de mail aan de klant, zodat er nooit drie
  * verschillende versies van dezelfde uitleg ontstaan.
  */
+/** Een pagina-adres als leesbare naam: "/hovenier-oss/" wordt "Hovenier Oss". */
+export function paginaNaam(url: string): string {
+  const laatste = (url || "").replace(/^https?:\/\/[^/]+/i, "").replace(/[?#].*$/, "").split("/").filter(Boolean).pop() || "";
+  if (!laatste) return "de homepage";
+  return laatste.replace(/[-_]+/g, " ").replace(/\.\w+$/, "").split(" ").filter(Boolean)
+    .map((w) => (w.length <= 2 ? w : w.charAt(0).toUpperCase() + w.slice(1))).join(" ");
+}
+
+/**
+ * Het mailonderwerp. Bewust wat we gáán doen en niet wat we zagen: dit is de regel
+ * die de klant in zijn inbox ziet staan. Hier stond eerder geen eigen onderwerp,
+ * waardoor het mailvenster het eerste kopje van het blok pakte en er letterlijk
+ * "Wat we zagen" in de onderwerpregel belandde.
+ */
+function mailOnderwerpVan(r: OnderbouwRegel, nieuw: boolean): string {
+  const kw = r.zoekwoord ? `"${r.zoekwoord}"` : "dit onderwerp";
+  const pg = r.url ? paginaNaam(r.url) : "";
+  switch (r.type) {
+    case "content_gap":
+      return nieuw ? `Voorstel: een nieuwe pagina voor ${kw}` : `${kw} toevoegen aan de pagina ${pg}`;
+    case "striking_distance":
+      return `Kans om hoger te komen op ${kw}`;
+    case "verouderde_topper":
+      return `${kw} terugwinnen in Google`;
+    case "ctr_underperform":
+      return `Meer bezoekers uit ${pg || kw}, zonder hoger te hoeven staan`;
+    case "cannibalisatie":
+      return `Pagina's die elkaar in de weg zitten op ${kw}`;
+    case "interne_links":
+      return `${pg || kw} versterken vanuit de rest van de site`;
+    case "schema_gap":
+      return `Achtergrondgegevens toevoegen aan ${pg || "de site"}`;
+    case "backlinks":
+      return `Een verwijzing van buitenaf die nu doodloopt`;
+    case "aeo":
+      return `Beter zichtbaar worden in AI-antwoorden op ${kw}`;
+    case "featured_snippet":
+      return `Kans op het antwoordblok bovenaan voor ${kw}`;
+    default:
+      return `Kans gesignaleerd rond ${kw}`;
+  }
+}
+
 export function onderbouwing(r: OnderbouwRegel, opties: { klantnaam?: string; pad?: string } = {}): {
-  kort: string; blokMd: string; mailOnderwerp: string; mailTaak: string;
+  kort: string;
+  /** De vier stukken los, zodat het scherm er kolommen van kan maken. */
+  secties: { kop: string; tekst: string }[];
+  blokMd: string;
+  mailOnderwerp: string;
+  mailTaak: string;
 } {
   const cat = categorieVan(r.type);
   const nieuw = !r.url;
@@ -140,13 +188,7 @@ export function onderbouwing(r: OnderbouwRegel, opties: { klantnaam?: string; pa
     ? `Als dat lukt, verwachten we hier ongeveer ${getal(r.extraKlikkenPerMaand)} extra bezoekers per maand. Dat is ${zekerheidTekst(r.confidence)} en een verwachting, geen belofte.`
     : "";
 
-  const regels: string[] = [];
-  regels.push(`### Wat we zagen`);
-  regels.push(feitenZin(r));
   const reden = bruikbareReden(r.rationale);
-  if (reden) regels.push(reden);
-
-  regels.push(`### Waarom dit de moeite waard is`);
   const waarom: string[] = [];
   if (r.type === "ctr_underperform") {
     waarom.push(`Het bereik is er al; er valt hier dus winst te halen zonder dat de pagina hoger hoeft te komen. Dat maakt dit een van de goedkoopste verbeteringen die er zijn.`);
@@ -159,22 +201,21 @@ export function onderbouwing(r: OnderbouwRegel, opties: { klantnaam?: string; pa
     ? `${hoofdletter(zoekerTekst(r.intentie))}. Dit bezoek levert dus niet meteen een aanvraag op, maar het brengt ons wel vroeg in beeld.`
     : `${hoofdletter(zoekerTekst(r.intentie))}, dus dit is bezoek dat ergens toe kan leiden.`);
   waarom.push(`Het werk is ${r.effort <= 3 ? "klein" : r.effort <= 6 ? "middelgroot" : "groot"} en het duurt naar verwachting ${doorlooptijd(r.timeToEffect)} voordat er iets van te zien is.`);
-  regels.push(waarom.join(" "));
 
-  regels.push(`### Wat we gaan doen`);
-  regels.push(watWeDoen(r.type, nieuw, pad));
-
-  if (winst) {
-    regels.push(`### Wat het kan opleveren`);
-    regels.push(winst);
-  }
+  // De vier stukken als losse secties. Het scherm zet ze naast elkaar in kolommen,
+  // de mail plakt ze onder elkaar met kopjes. Eén bron, twee vormen.
+  const secties = [
+    { kop: "Wat we zagen", tekst: [feitenZin(r), reden].filter(Boolean).join(" ") },
+    { kop: "Waarom dit de moeite waard is", tekst: waarom.join(" ") },
+    { kop: "Wat we gaan doen", tekst: watWeDoen(r.type, nieuw, pad) },
+    ...(winst ? [{ kop: "Wat het kan opleveren", tekst: winst }] : []),
+  ];
 
   return {
     kort: kortOm(r),
-    blokMd: regels.join("\n\n"),
-    mailOnderwerp: nieuw
-      ? `Kans gesignaleerd: "${r.zoekwoord}"`
-      : `Kans gesignaleerd op ${pad || "een van jullie pagina's"}`,
+    secties,
+    blokMd: secties.map((s) => `### ${s.kop}\n\n${s.tekst}`).join("\n\n"),
+    mailOnderwerp: mailOnderwerpVan(r, nieuw),
     mailTaak: [
       `Laat ${opties.klantnaam || "de klant"} weten dat we bij het doorlichten van de site een kans hebben gevonden en dat we die oppakken.`,
       `Het gaat om ${cat.naam.toLowerCase()}${pad ? ` voor ${pad}` : ""} rond het zoekwoord "${r.zoekwoord}".`,

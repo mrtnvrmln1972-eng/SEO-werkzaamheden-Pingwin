@@ -371,7 +371,16 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "tabjes verschillend, en dat is precies de fout die dit dashboard wil uitsluiten.\n" +
           "2. **De scan draait in hervatbare stappen met een tussenstand na elke stap.** Serverless kapt een lang " +
           "venster af, en dan stond een analyse veertig minuten op 'bezig' zonder ooit iets op te leveren. Nu " +
-          "pakt een achtergrondwerker een run zonder hartslag gewoon weer op.",
+          "pakt een achtergrondwerker een run zonder hartslag gewoon weer op.\n\n" +
+          "**De volgorde op het scherm komt uit de kansrijkheid, niet uit het zoekvolume** (6 augustus 2026). " +
+          "Zoekvolume maal klikkans weet niet of iemand wil kopen en niet of een zoekwoord bij deze klant past; " +
+          "daarmee stond bij een hovenier het landelijke woord 'voortuin' bovenaan. De kolom Kansrijk (1 tot 100) " +
+          "weegt de te winnen bezoekers, de koopgerichtheid, de merk-fit en de hoeveelheid werk samen, en bepaalt " +
+          "nu de volgorde. Honderd is de beste kans van díe scan, dus het is een onderlinge vergelijking en geen " +
+          "rapportcijfer.\n\n" +
+          "**Elke kans heeft een onderbouwing in klanttaal:** wat we zagen, waarom het de moeite waard is, wat we " +
+          "gaan doen en wat het kan opleveren. Die ene tekst voedt drie plekken (het scherm, de kaart in de " +
+          "weekplanning en de mail aan de klant), zodat er geen drie versies van hetzelfde verhaal ontstaan.",
         sub: [
           {
             titel: "Hoe een bevinding gescoord wordt",

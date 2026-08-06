@@ -617,15 +617,27 @@ tbody td:last-child { text-align: center; }
   color: var(--orange); font: inherit; font-size: var(--fs-xs); line-height: var(--lh-xs); cursor: pointer;
 }
 .prio-waarom-knop:hover { color: var(--brand-orange-soft); }
-.prio-waarom {
-  margin-top: var(--s-2); padding: var(--s-3);
-  background: var(--brand-orange-faint); border-radius: var(--r-md);
-  max-width: 60ch; font-size: var(--fs-xs); line-height: var(--lh-sm);
+/* De onderbouwing over de volle tabelbreedte, als kaartjes naast elkaar. Met
+   auto-fit vult hij zelf het aantal kolommen in: drie of vier op een breed
+   scherm, één op een smal. Zo groeit er nooit meer een hoge sliert uit de
+   smalle eerste kolom. */
+.prio-waarom-rij > td { background: var(--brand-orange-faint); padding: var(--s-4) var(--s-3); }
+.prio-waarom-grid {
+  display: grid; gap: var(--s-3);
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  align-items: start;
 }
-.prio-waarom h3 { font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--orange-dark); margin: var(--s-3) 0 var(--s-1); }
-.prio-waarom h3:first-child { margin-top: 0; }
-.prio-waarom p { margin: 0 0 var(--s-2); }
-.prio-waarom p:last-child { margin-bottom: 0; }
+.prio-waarom-kaart {
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: var(--r-md); padding: var(--s-3); box-shadow: var(--shadow-sm);
+}
+.prio-waarom-kaart h4 {
+  margin: 0 0 var(--s-2); color: var(--orange-dark);
+  font-size: var(--fs-xs); line-height: var(--lh-xs); text-transform: uppercase; letter-spacing: .02em;
+}
+.prio-waarom-kaart .md { font-size: var(--fs-xs); line-height: var(--lh-sm); color: var(--gray); }
+.prio-waarom-kaart .md p { margin: 0 0 var(--s-2); }
+.prio-waarom-kaart .md p:last-child { margin-bottom: 0; }
 
 /* De twee extra knoppen op een regel, in dezelfde maat als "In de planning". */
 .prio-mail, .prio-heen {

@@ -22,13 +22,18 @@ import { striptVulzinnen } from "../../../../lib/vulzinnen";
 export type MailBijlage = { key: string; label: string; url: string };
 
 export default function MailVenster({
-  slug, titel, onderwerpVan, taak, toelichting, mailBron, blokMd, siteUrl, url, bijlagen = [], clientName, clientEmail, standaardAangevinkt = [], onClose,
+  slug, titel, onderwerpVan, onderwerpVoorstel, taak, toelichting, mailBron, blokMd, siteUrl, url, bijlagen = [], clientName, clientEmail, standaardAangevinkt = [], onClose,
 }: {
   slug: string;
   /** Kop van het venster, bijvoorbeeld "Mail vanuit dit gesprek". */
   titel: string;
   /** De regel "Over: ..." onder de kop. */
   onderwerpVan: string;
+  /**
+   * Kant-en-klaar onderwerp voor de mail. Wint van het eerste kopje uit het blok.
+   * Gebruik dit zodra je iets beters weet dan "Wat we zagen".
+   */
+  onderwerpVoorstel?: string;
   /** Waar de mail over gaat (gaat als "taak" naar de assistent). */
   taak: string;
   /** De achtergrond waar de assistent uit put (het gesprek, de analyse). */
@@ -81,7 +86,10 @@ export default function MailVenster({
   // intro bovenin, het blok eronder. Je kunt het blok weglaten als je toch alleen
   // je eigen tekst wilt sturen.
   const [blokAan, setBlokAan] = useState(!!blokMd);
-  // Het eerste kopje van het blok is het logische onderwerp van de mail.
+  // Het eerste kopje van het blok als terugval-onderwerp. Dat werkt zolang dat
+  // kopje ergens over gaat, maar bij een blok dat opent met "Wat we zagen" komt
+  // dát in de onderwerpregel van de klant te staan. Vandaar `onderwerpVoorstel`:
+  // een aanroeper die zelf een fatsoenlijk onderwerp kan bedenken, wint.
   const blokKop = useMemo(() => {
     for (const raw of (blokMd || "").split("\n")) {
       const m = /^#{1,3}\s+(.+)$/.exec(raw.trim());
@@ -104,7 +112,8 @@ export default function MailVenster({
       if (concept.onderwerp) setOnderwerp(concept.onderwerp);
       setOvergenomen(true);
     }
-    if (blokKop) setOnderwerp(blokKop);
+    if (onderwerpVoorstel) setOnderwerp(onderwerpVoorstel);
+    else if (blokKop) setOnderwerp(blokKop);
     bodyRef.current?.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -134,7 +143,9 @@ export default function MailVenster({
         const regels = String(d.text).split("\n");
         const m = /^\s*onderwerp\s*:\s*(.+)$/i.exec(regels[0] || "");
         if (m) { setOnderwerp(m[1].trim()); regels.shift(); while (regels[0] !== undefined && !regels[0].trim()) regels.shift(); }
-        else setOnderwerp("");
+        // Geen onderwerp in het antwoord? Dan het voorstel terug in plaats van een
+        // leeg veld; anders ben je je onderwerp kwijt zodra de assistent schrijft.
+        else setOnderwerp(onderwerpVoorstel || "");
         if (bodyRef.current) bodyRef.current.innerText = regels.join("\n").trim();
       } else setFout(d?.error || "Mail schrijven mislukt.");
     } catch { setFout("De assistent is niet bereikbaar."); }

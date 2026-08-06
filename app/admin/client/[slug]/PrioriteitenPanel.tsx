@@ -587,7 +587,8 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar, clientN
                         const cat = categorieVan(r.type);
                         const gepland = staatInPlanning(r);
                         return (
-                          <tr key={r.id} className={"prio-rij" + (gepland ? " prio-gepland" : "")}>
+                          <Fragment key={r.id}>
+                          <tr className={"prio-rij" + (gepland ? " prio-gepland" : "")}>
                             <td>
                               <div className="prio-titel">{r.titel}{r.nieuw && <span className="prio-nieuw">nieuw</span>}</div>
                               <div className="prio-reden">{onderbouwing(r, { klantnaam: clientName }).kort}</div>
@@ -596,10 +597,6 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar, clientN
                                 onClick={() => setOpenWaarom((m) => ({ ...m, [r.id]: !m[r.id] }))}>
                                 {openWaarom[r.id] ? "▾ minder" : "▸ waarom dit de moeite waard is"}
                               </button>
-                              {openWaarom[r.id] && (
-                                <div className="prio-waarom md"
-                                  dangerouslySetInnerHTML={{ __html: mdToHtml(onderbouwing(r, { klantnaam: clientName, pad: r.url || bedoeldPad(r.zoekwoord, domain) }).blokMd) }} />
-                              )}
                               <div className="prio-bron">Bron: {r.bron} · {zekerheid(r.confidence)}</div>
                             </td>
                             <td className="prio-url">{r.url ? <Pad pad={r.url} /> : <span className="muted">nieuwe pagina</span>}</td>
@@ -639,6 +636,26 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar, clientN
                               )}
                             </td>
                           </tr>
+                          {/* De onderbouwing over de volle breedte, als kaartjes naast
+                              elkaar. Stond eerst ín de eerste kolom, en die is smal:
+                              dan groeit er links een hoge sliert uit de tabel terwijl
+                              rechts alles leeg blijft. */}
+                          {openWaarom[r.id] && (
+                            <tr className="prio-waarom-rij">
+                              <td colSpan={9}>
+                                <div className="prio-waarom-grid">
+                                  {onderbouwing(r, { klantnaam: clientName, pad: r.url || bedoeldPad(r.zoekwoord, domain) })
+                                    .secties.map((s) => (
+                                      <section className="prio-waarom-kaart" key={s.kop}>
+                                        <h4>{s.kop}</h4>
+                                        <div className="md" dangerouslySetInnerHTML={{ __html: mdToHtml(s.tekst, domain) }} />
+                                      </section>
+                                    ))}
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
                         );
                       })}
                     </Fragment>
@@ -689,6 +706,7 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar, clientN
             slug={slug}
             titel="Laat de klant weten dat we deze kans oppakken"
             onderwerpVan={ond.mailOnderwerp}
+            onderwerpVoorstel={ond.mailOnderwerp}
             taak={ond.mailTaak}
             toelichting={ond.blokMd}
             blokMd={ond.blokMd}

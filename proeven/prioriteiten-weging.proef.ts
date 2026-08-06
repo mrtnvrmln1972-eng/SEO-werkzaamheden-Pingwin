@@ -150,5 +150,23 @@ const ctr = onderbouwing({ ...basis, type: "ctr_underperform", url: "/hovenier-o
 checkWaar("klikdoor wordt niet als positieprobleem uitgelegd",
   ctr.blokMd.includes("te weinig op geklikt") && !ctr.blokMd.includes("net buiten waar geklikt wordt"), ctr.blokMd.slice(0, 200));
 
+
+// ── 6. Het mailonderwerp ──
+// Het mailvenster pakte het eerste kopje van het blok, en dat is "Wat we zagen".
+// Dat kwam dus in de onderwerpregel bij de klant te staan. Het onderwerp zegt nu
+// wat we gaan doen.
+const onderwerpen = [
+  onderbouwing({ ...basis }).mailOnderwerp,
+  onderbouwing({ ...basis, type: "striking_distance", url: "/hovenier-den-bosch/", huidigePositie: 17 }).mailOnderwerp,
+  onderbouwing({ ...basis, type: "ctr_underperform", url: "/hovenier-oss/", huidigePositie: 20 }).mailOnderwerp,
+];
+for (const o of onderwerpen) {
+  checkWaar(`onderwerp is geen kopje uit het blok: "${o}"`, !/^wat we |^waarom dit /i.test(o), o);
+  checkWaar(`onderwerp is niet leeg: "${o}"`, o.trim().length > 10, o);
+}
+checkWaar("onderwerp noemt de pagina bij naam",
+  onderbouwing({ ...basis, type: "ctr_underperform", url: "/hovenier-oss/", huidigePositie: 20 }).mailOnderwerp.includes("Hovenier Oss"), "");
+checkWaar("de vier stukken komen ook los beschikbaar", onderbouwing({ ...basis }).secties.length === 4, "");
+
 console.log(fouten ? `\n${fouten} proef(en) mislukt.` : "\nAlle proeven geslaagd.");
 process.exit(fouten ? 1 : 0);
