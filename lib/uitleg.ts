@@ -669,6 +669,32 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
               "voor een twijfelende bezoeker is een antwoord het bewijs dat er iemand oplet.",
           },
           {
+            titel: "Van signaal naar taak op de planning",
+            tekst:
+              "Een bevinding die alleen op een scherm staat, gebeurt niet. Daarom kan elk punt op dit scherm " +
+              "met een vinkje een kaart worden in de weekplanning: losse punten, alles van één vestiging, of " +
+              "de hele suggestielijst in één keer.\n\n" +
+              "Zo'n kaart hangt niet aan een pagina van de site, en dat maakt de context extra belangrijk. Er " +
+              "gaat daarom altijd hetzelfde mee: wat je doet (de concrete actie, niet een herhaling van het " +
+              "probleem), wat er gemeten is als bewijs, waarom het uitmaakt, de link naar het profiel zelf, en " +
+              "een link terug naar exact dit punt op dit scherm. Zonder die laatste is er over drie weken geen " +
+              "weg terug naar waar de kaart vandaan kwam.\n\n" +
+              "De uitnodiging om beheerder te worden kan op dezelfde manier op de planning, want dat is bij een " +
+              "nieuwe klant meestal de allereerste stap.",
+          },
+          {
+            titel: "De uitnodigingsmail: één sjabloon, twee instellingen",
+            tekst:
+              "De mail waarmee je de klant om beheertoegang vraagt is vaste tekst, geen AI: het stappenplan " +
+              "moet elke keer kloppen, en variatie voegt daar niets aan toe.\n\n" +
+              "Twee dingen zijn wél instelbaar, één keer voor alle klanten. Het **Google-adres** waarmee we " +
+              "toegang vragen, en dat is bewust niet het Pingwin-mailadres: toegang tot Google-diensten hangt " +
+              "aan het Google-account waarmee je in Chrome zit. Het verkeerde adres levert een uitnodiging op " +
+              "die de klant wél verstuurt en die bij niemand aankomt. En de **tekst zelf**, met plaatshouders " +
+              "voor de klantnaam en dat adres, zodat de praktijk hem kan bijschaven zonder dat er code aan te " +
+              "pas komt.",
+          },
+          {
             titel: "Waarom het dashboard het profiel niet zelf aanpast",
             tekst:
               "Het profiel is de etalage van de klant, en Google kan een profiel schorsen bij wijzigingen die " +

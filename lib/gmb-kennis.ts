@@ -464,33 +464,55 @@ export const STAND_LABEL: Record<Stand, string> = {
 // ═══════════════════════════════════════════════════════════
 // DE UITNODIGING OM BEHEERDER TE WORDEN
 // ═══════════════════════════════════════════════════════════
-// Vaste tekst, geen AI: dit is elke keer hetzelfde verzoek en het moet elke
-// keer exact hetzelfde stappenplan bevatten. Een gegenereerde tekst zou hier
-// alleen maar variatie toevoegen aan iets dat juist voorspelbaar moet zijn.
-// Staat hier omdat het bij de kennis hoort en niet bij het scherm.
+// Vaste opzet, geen AI: dit is elke keer hetzelfde verzoek en het stappenplan
+// moet elke keer kloppen. Een gegenereerde tekst voegt hier alleen variatie toe
+// aan iets dat juist voorspelbaar hoort te zijn.
+//
+// Wel instelbaar, want twee dingen wisselen: de tekst zelf (Maarten past hem aan
+// als de praktijk erom vraagt) en het Google-adres waarmee we toegang krijgen.
+// Dat laatste is NIET zomaar het Pingwin-mailadres: toegang tot Google-diensten
+// hangt aan het Google-account waarmee Maarten in Chrome zit, en dat is een
+// ander adres. Het verkeerde adres hier betekent een uitnodiging die de klant
+// wel verstuurt en die bij niemand aankomt.
+//
+// De aanspreekvorm is je, niet de beleefdheidsvorm. Dat is geen smaak maar de
+// Pingwin-schrijfwijzer: mails uit dit dashboard horen te klinken als Maarten,
+// en zo praat hij niet tegen klanten. Zie lib/schrijfstijl.ts.
 
-export function beheerUitnodiging(bedrijf: string, pingwinEmail: string): { onderwerp: string; tekst: string } {
+/** De plaatshouders die in het sjabloon vervangen worden. */
+export const MAIL_PLAATSHOUDERS = ["{bedrijf}", "{googleAdres}"] as const;
+
+export const STANDAARD_UITNODIGING = [
+  `Hoi,`,
+  ``,
+  `Om {bedrijf} beter vindbaar te maken op Google Maps en in het lokale blok bovenaan de zoekresultaten, willen we het Google-bedrijfsprofiel meenemen in het werk. Daar hebben we toegang voor nodig.`,
+  ``,
+  `Wat het oplevert: we zien dan hoe vaak het profiel gezien wordt, hoe vaak er gebeld wordt en hoeveel mensen de route opvragen. Precies waarmee we kunnen laten zien wat het werk oplevert. En we kunnen het profiel bijhouden zonder dat jij er zelf achteraan hoeft.`,
+  ``,
+  `Zo voeg je ons toe, het kost een minuut:`,
+  ``,
+  `1. Ga naar google.com/business en log in met het account dat het profiel beheert.`,
+  `2. Kies het bedrijf, klik links op "Instellingen" en dan op "Gebruikers" of "Mensen en toegang".`,
+  `3. Klik op "Toevoegen" en vul dit e-mailadres in: {googleAdres}`,
+  `4. Kies de rol "Beheerder" en verstuur de uitnodiging.`,
+  ``,
+  `We passen niets aan zonder overleg. Alles wat we voorstellen krijg je eerst te zien.`,
+  ``,
+  `Groet,`,
+  `Maarten`,
+].join("\n");
+
+/**
+ * Vult het sjabloon. Een leeg sjabloon valt terug op de standaard, zodat een
+ * lege instelling nooit een lege mail oplevert.
+ */
+export function beheerUitnodiging(bedrijf: string, googleAdres: string, sjabloon?: string): { onderwerp: string; tekst: string } {
+  const basis = (sjabloon || "").trim() || STANDAARD_UITNODIGING;
   return {
     onderwerp: `Toegang tot het Google-bedrijfsprofiel van ${bedrijf}`,
-    tekst: [
-      `Beste,`,
-      ``,
-      `Om ${bedrijf} beter vindbaar te maken op Google Maps en in het lokale blok bovenaan de zoekresultaten, willen we het Google-bedrijfsprofiel meenemen in het werk. Daar is toegang voor nodig.`,
-      ``,
-      `Wat het oplevert: we zien dan hoe vaak het profiel gezien wordt, hoe vaak er gebeld wordt en hoeveel mensen de route opvragen. Dat is precies waarmee we kunnen laten zien wat het werk oplevert. En we kunnen het profiel bijhouden zonder dat u er zelf achteraan hoeft.`,
-      ``,
-      `Zo voegt u ons toe (het duurt een minuut):`,
-      ``,
-      `1. Ga naar google.com/business en log in met het account dat het profiel beheert.`,
-      `2. Kies het bedrijf, klik links op "Instellingen" en dan op "Gebruikers" of "Mensen en toegang".`,
-      `3. Klik op "Toevoegen" en vul dit e-mailadres in: ${pingwinEmail}`,
-      `4. Kies de rol "Beheerder" en verstuur de uitnodiging.`,
-      ``,
-      `We passen niets aan zonder overleg. Alles wat we voorstellen krijgt u eerst te zien.`,
-      ``,
-      `Met vriendelijke groet,`,
-      `Pingwin Online Marketing`,
-    ].join("\n"),
+    tekst: basis
+      .split("{bedrijf}").join(bedrijf)
+      .split("{googleAdres}").join(googleAdres || "(nog geen Google-adres ingesteld)"),
   };
 }
 

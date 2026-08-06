@@ -5663,9 +5663,30 @@ a.wb-pad:hover { text-decoration: underline; }
   display: block; margin-top: var(--s-2);
   font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--orange-dark);
 }
-/* Sprong van het groene blok naar het punt zelf, plus wat ruimte onder de
-   sticky kopbalk zodat de kaart niet half achter de balk landt. */
-.rk-punt { scroll-margin-top: 100px; }
-.rk-parallel-acties { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; }
-.rk-parallel-link { font-size: var(--fs-sm); line-height: var(--lh-sm); color: #1a6dd6; text-decoration: underline; }
-.rk-parallel-link:hover { color: var(--orange-dark); }
+
+/* Van signaal naar taak: vinkje per punt, balk met de knop eronder. */
+.gmb-vink {
+  display: inline-flex; align-items: center; gap: var(--s-1);
+  font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); cursor: pointer;
+}
+.gmb-vink input { cursor: pointer; }
+.gmb-taakbalk { margin-top: var(--s-4); padding-top: var(--s-3); border-top: 1px solid var(--card-border); }
+
+/* De instellingen achter de uitnodiging. */
+.gmb-instel {
+  margin-bottom: var(--s-4); padding: var(--s-4);
+  background: var(--white); border: 1px solid var(--card-border); border-radius: var(--r-md);
+}
+.gmb-instel label { display: block; margin-bottom: var(--s-2); }
+.gmb-instel label > span {
+  display: block; margin-bottom: var(--s-1);
+  font-size: var(--fs-sm); line-height: var(--lh-sm); font-weight: 600; color: var(--body-text);
+}
+.gmb-instel code { background: var(--gray-light); border-radius: var(--r-sm); padding: 0 var(--s-1); }
+.gmb-sjabloon {
+  width: 100%; margin-bottom: var(--s-3); padding: var(--s-3);
+  border: 1px solid var(--border); border-radius: var(--r-md);
+  font-family: inherit; font-size: var(--fs-base); line-height: var(--lh-base);
+  color: var(--body-text); background: var(--white); resize: vertical;
+}
+.gmb-sjabloon:focus { outline: none; border-color: var(--orange); }
