@@ -60,6 +60,9 @@
   --r-sm: 6px;     /* kleine knopjes, badges */
   --r-md: 10px;    /* knoppen, invoervelden, sub-kaarten */
   --r-lg: 14px;    /* kaarten en panelen */
+  /* Leesbreedte van een los beheerscherm. Als token, zodat elk scherm dezelfde
+     maat aanhoudt en de opmaakproef geen losse waarden hoeft toe te staan. */
+  --breedte-scherm: 900px;
   --r-full: 999px; /* pillen en ronde chips */
 
   /* Shadow-schaal */
@@ -5411,35 +5414,55 @@ a.wb-pad:hover { text-decoration: underline; }
   border-color: var(--red); background: var(--red-light);
   font-size: var(--fs-base); line-height: 23px; color: var(--red); padding: var(--s-4) var(--s-5);
 }
-/* ── /admin/schrijfstijl ────────────────────────────────────────────────── */
-.stijl-wrap { max-width: 80ch; }
-.stijl-intro { margin: var(--s-2) 0 var(--s-4); max-width: 70ch; }
-.stijl-balk {
+
+
+/* ── Gedeelde opmaak voor een los beheerscherm (pg-) ────────────────────────
+   Elk beheerscherm buiten de klantcockpit gebruikt deze bouwstenen samen met
+   AdminKop. Ze stonden er niet, en daardoor schreef elk scherm zijn eigen
+   marges; het schrijfstijl-scherm kreeg er per ongeluk helemaal geen. Alles op
+   de vaste schaal-tokens, nooit losse waarden. */
+.pg-container { max-width: var(--breedte-scherm); margin: 0 auto; padding: var(--s-6) var(--s-4) var(--s-10); }
+.pg-kop { margin-bottom: var(--s-4); }
+.pg-blok { margin-bottom: var(--s-4); }
+.pg-h1 {
+  margin: 0 0 var(--s-3); color: var(--orange-dark);
+  font-size: var(--fs-lg); line-height: var(--lh-lg); font-weight: 700;
+}
+.pg-h2 {
+  margin: var(--s-5) 0 var(--s-2); color: var(--orange-dark);
+  font-size: var(--fs-sm); line-height: var(--lh-sm); font-weight: 700;
+  text-transform: uppercase; letter-spacing: .04em;
+}
+.pg-uitleg { margin: 0 0 var(--s-3); max-width: 70ch; color: var(--body-text); }
+.pg-lijst { margin: 0; padding-left: var(--s-5); max-width: 70ch; color: var(--gray); }
+.pg-lijst li + li { margin-top: var(--s-2); }
+.pg-balk {
   display: flex; flex-wrap: wrap; gap: var(--s-3); align-items: center;
   justify-content: space-between; padding: var(--s-3);
-  background: var(--brand-orange-faint); border-radius: var(--r-md); margin-bottom: var(--s-4);
-}
-.stijl-veld { display: block; margin-bottom: var(--s-4); }
-.stijl-label {
-  display: block; margin-bottom: var(--s-2); font-weight: 600; color: var(--dark);
-  font-size: var(--fs-xs); line-height: var(--lh-xs);
-}
-.stijl-veld textarea {
-  width: 100%; padding: var(--s-3); border: 1px solid var(--border);
-  border-radius: var(--r-md); font: inherit; font-size: var(--fs-sm); line-height: var(--lh-sm);
-  resize: vertical;
-}
-.stijl-voorbeelden { margin-bottom: var(--s-4); }
-.stijl-voorbeelden ul {
-  margin: 0; padding: var(--s-3) var(--s-3) var(--s-3) var(--s-6);
   background: var(--brand-orange-faint); border-radius: var(--r-md);
-  font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray);
 }
-.stijl-voorbeelden li + li { margin-top: var(--s-2); }
-.stijl-klein { font-size: var(--fs-xs); line-height: var(--lh-xs); margin-top: var(--s-2); }
-.stijl-knoppen { display: flex; gap: var(--s-3); }
-.stijl-fout, .stijl-ok {
-  padding: var(--s-3); border-radius: var(--r-md); margin-bottom: var(--s-3);
+.pg-veld-kop { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); }
+.pg-veld-kop .pg-h2 { margin-bottom: 0; }
+.pg-schakel {
+  background: none; border: 0; padding: 0; cursor: pointer; color: var(--orange);
+  font: inherit; font-size: var(--fs-xs); line-height: var(--lh-xs);
+}
+.pg-schakel:hover { color: var(--brand-orange-soft); }
+.pg-lees, .pg-bewerk {
+  margin-top: var(--s-2); padding: var(--s-4);
+  background: var(--gray-light); border-radius: var(--r-md); max-width: 78ch;
+}
+.pg-bewerk { background: var(--white); border: 1px solid var(--orange); outline: none; }
+.pg-citaten {
+  margin: var(--s-2) 0 0; padding: var(--s-4) var(--s-4) var(--s-4) var(--s-6);
+  background: var(--brand-orange-faint); border-radius: var(--r-md); max-width: 78ch;
+  color: var(--body-text);
+}
+.pg-citaten li + li { margin-top: var(--s-2); }
+.pg-klein { font-size: var(--fs-xs); line-height: var(--lh-xs); margin-top: var(--s-2); max-width: 70ch; }
+.pg-knoppen { display: flex; gap: var(--s-3); margin-top: var(--s-5); }
+.pg-fout, .pg-ok {
+  padding: var(--s-3); border-radius: var(--r-md); margin-top: var(--s-3);
   font-size: var(--fs-sm); line-height: var(--lh-sm);
 }
 .stijl-fout { background: #FDECEA; color: #8B1E13; }
@@ -5529,3 +5552,5 @@ a.wb-pad:hover { text-decoration: underline; }
   font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray);
 }
 @media (max-width: 700px) { .md-label { display: none; } }
+.pg-fout { background: var(--red-light); color: var(--red); }
+.pg-ok { background: var(--brand-orange-faint); color: var(--orange-dark); }

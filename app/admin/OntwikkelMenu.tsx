@@ -33,6 +33,24 @@ type Data = {
   voortgang: { af: number; loopt: number; open: number; totaal: number };
 };
 
+/**
+ * De vaste schermen van dit dashboard, met per stuk waar je het voor gebruikt.
+ * Klantschermen staan er niet in: die bereik je via het klantenoverzicht, en ze
+ * hebben allemaal een slug.
+ *
+ * Dit is de enige lijst; `proeven/opmaak.proef.ts` legt hem naast de mappen onder
+ * `app/admin` en wordt rood zodra er een scherm bijkomt dat hier niet in staat.
+ */
+export const SCHERMEN: { pad: string; naam: string; waarvoor: string }[] = [
+  { pad: "/admin", naam: "Klanten", waarvoor: "Het overzicht: alle klanten en leads, en hier maak je er een aan." },
+  { pad: "/admin/schrijfstijl", naam: "Hoe jij schrijft", waarvoor: "Het schrijfprofiel dat in elke klantmail meegaat, afgeleid uit je eigen mails." },
+  { pad: "/admin/beheer", naam: "Beheer", waarvoor: "Instellingen van het dashboard zelf: koppelingen, team en toegang." },
+  { pad: "/admin/financien", naam: "Financiën", waarvoor: "Facturen en budgetten over alle klanten heen." },
+  { pad: "/admin/developer", naam: "Developer", waarvoor: "Alles wat naar een sitebouwer moet, over alle klanten heen." },
+  { pad: "/admin/usage", naam: "Verbruik", waarvoor: "Wat het dashboard aan denkwerk verbruikt, per soort taak." },
+  { pad: "/admin/routekaart", naam: "Routekaart", waarvoor: "De ontwikkeling van dit dashboard, punt voor punt." },
+];
+
 export default function OntwikkelMenu() {
   const [data, setData] = useState<Data | null>(null);
   const [open, setOpen] = useState(false);
@@ -117,6 +135,21 @@ export default function OntwikkelMenu() {
               Alle {data.voortgang.totaal} punten, met per punt de beschrijving en de startregel.
             </span>
           </a>
+
+          {/*
+            Alle vaste schermen op één plek. Er komen er steeds meer bij en ze waren
+            alleen te vinden als je het adres uit je hoofd wist; een scherm dat je
+            niet terugvindt bestaat in de praktijk niet. Nieuw scherm erbij betekent
+            één regel hier, en `proeven/opmaak.proef.ts` wordt rood als een scherm
+            wel bestaat maar hier niet in staat.
+          */}
+          <div className="om-kop">Schermen</div>
+          {SCHERMEN.map((s) => (
+            <a role="menuitem" className="hm-item" key={s.pad} href={s.pad}>
+              <span className="hm-item-label">{s.naam}</span>
+              <span className="hm-item-hint">{s.waarvoor}</span>
+            </a>
+          ))}
 
           <div className="om-kop">Uitleg en verkoop</div>
           <a role="menuitem" className="hm-item" href="/uitleg">

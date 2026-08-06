@@ -85,6 +85,17 @@ Alles wat Maarten ziet (dashboard, chat, mail, preview, terugkoppeling) moet 100
 - **Elke link/slug automatisch klikbaar.** Elke URL of pad/slug die in beeld komt (bijv. `/hovenier/etten-leur/`) linkt vanzelf naar de live pagina. Nooit een kale, niet-klikbare slug tonen (zie `linkify` in `OverviewChat.tsx` als patroon).
 - Checklist bij elke nieuwe output-plek: (1) via mdToHtml gerenderd? (2) venster groeit mee, klapt niet dicht? (3) prompt dwingt schone opmaak af? (4) links/slugs klikbaar?
 - **Design-fundament (vaste regel, 01-08-2026).** In `app/globals.css` staat naast de kleuren een vast fundament: een spacing-schaal (`--s-1` t/m `--s-12`, veelvouden van 4), een type-schaal (`--fs-xs` t/m `--fs-xl` met bijpassende `--lh-*` regelhoogtes), een radius-schaal (`--r-sm/md/lg/full`) en een shadow-schaal (`--shadow-sm/md/lg`), plus gedeelde bouwstenen `.card`, `.section`, `.row`, `.chip`, `.btn`. **Elke UI-wijziging gebruikt deze schaal-tokens en bouwstenen; nooit hardgecodeerde afstanden, font-sizes, rondingen of schaduwen.** Vóór elke deploy draait de design-checklist uit de proper-design skill (uitlijning, spacing, type-schaal, contrast, consistentie), en het resultaat wordt eerst gecontroleerd op https://pingwin-seo-dashboard.vercel.app. Bestaande schermen migreren batch voor batch naar dit fundament (batch 1: het Bird's eye-blok).
+- **De opmaakregels worden nagerekend, niet onthouden (vaste regel, 06-08-2026).** Bovenstaande
+  regels stonden er al maanden, en tóch kwam er op 6 augustus een scherm live zonder kopbalk,
+  zonder navigatie, met tekst tegen de linkerrand en met AI-tekst in een kaal invulvak. Een regel
+  die alleen in dit document leeft, wordt gebroken zodra iemand haast heeft. Daarom is hij nu een
+  apparaat: **`proeven/opmaak.proef.ts` draait mee met `npm run proef` en wordt rood** als een
+  beheerscherm geen kopbalk heeft, als AI-tekst in een `<textarea>` staat in plaats van gerenderd,
+  als een scherm niet in het Intern-menu staat, of als er losse pixelwaarden in de nieuwe opmaak
+  sluipen. Concreet: een los beheerscherm gebruikt **`app/admin/AdminKop.tsx`** plus de
+  `pg-`bouwstenen uit `app/globals.css`, en elk nieuw scherm krijgt een regel in `SCHERMEN` in
+  `app/admin/OntwikkelMenu.tsx`. Zet die proef nooit uit; breid hem uit zodra er een nieuwe
+  opmaakfout ontstaat, want dat is de enige manier waarop zo'n fout niet terugkomt.
 - **Met terugwerkende kracht (vaste regel, 31-07-2026).** Elke opmaak- of dashboardaanpassing geldt automatisch óók voor bestaande kaarten, taken en chats, in alle werelden (Pingwin én NOC). Bouw zulke aanpassingen daarom in de weergave-laag (renderer/parser, zoals `lib/card-info.ts`), niet alleen in de prompt voor nieuwe data. Maarten hoeft dit niet meer per wijziging te vragen.
 
 ## 0b. DE UITLEGPAGINA BIJWERKEN (vaste stap, 06-08-2026)

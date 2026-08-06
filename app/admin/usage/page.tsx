@@ -6,6 +6,7 @@ import { ADMIN_VIEWAS_COOKIE } from "../../../lib/constants";
 import { getScopeFromCookie } from "../../../lib/admin-scope";
 import { getUsageSummary, getUsageByAction, getUsageByClientAction, type UsageRow, type UsageActionRow, type UsageClientActionRow } from "../../../lib/usage";
 import { getAhrefsSubscriptionUsage } from "../../../lib/ahrefs";
+import AdminKop from "../AdminKop";
 
 // Leesbare namen voor de acties (welke knop/functie kost hoeveel).
 const ACTION_LABEL: Record<string, string> = {
@@ -145,6 +146,10 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
   const blockSub: React.CSSProperties = { fontSize: 13, color: "#5b6472", margin: "4px 0 14px", lineHeight: 1.5 };
 
   return (
+    <>
+    {/* Zonder kopbalk zat je op dit scherm vast aan één terug-linkje, en was
+        het Intern-menu onbereikbaar. Gevonden door de opmaakproef. */}
+    <AdminKop titel="Verbruik" />
     <div style={wrap}>
       {/* Titel, periode-keuze en terug-link op één rij. */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
@@ -350,5 +355,6 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
         </>
       )}
     </div>
+    </>
   );
 }
