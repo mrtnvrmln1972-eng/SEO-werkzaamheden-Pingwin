@@ -80,7 +80,7 @@ export default function OpruimEindstructuur({ slug, domain, data }: {
       <div className="opr-str-kpi">
         <div><b>{d.nu}</b><span>pagina&rsquo;s nu</span></div>
         <div><b>{d.straks}</b><span>pagina&rsquo;s straks</span></div>
-        <div><b>{d.weg}</b><span>gaan op in een andere</span></div>
+        <div><b>{d.weg}</b><span>verdwijnen (opgaan of opgeruimd)</span></div>
         <div><b>{d.erbij}</b><span>komen erbij</span></div>
         <div><b>{d.takken.length}</b><span>duidelijke takken</span></div>
       </div>

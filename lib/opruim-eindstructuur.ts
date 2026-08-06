@@ -112,6 +112,35 @@ export async function bouwEindstructuur(slug: string, result: CannibalResult | n
     opnieuw.set(norm(o.pad), `Blijft staan en wordt opnieuw opgebouwd voor "${o.term}" (${o.volume ?? "?"} per maand).`);
   }
 
+  // Het besluit per plaats. Dit is een aparte analyse (vijf vragen per
+  // plaatspagina, zie opruim-plaatsen.ts) die tot 08-08-2026 hier niet werd
+  // meegelezen: de eindstructuur keek alleen naar de omleidlijst, de gebundelde
+  // onderwerpen en de oppak-lijst. Het gevolg was dat een plaats die daar als
+  // "weg" of "samenvoegen" werd beoordeeld, hier gewoon als "blijft" bleef staan,
+  // want niets in deze berekening wist van dat besluit. Vandaar takken als
+  // "Soa test locaties" die na het doorvoeren nog vol stonden met pagina's die
+  // het eigen advies al had afgekeurd.
+  const verwijderd = new Set<string>();
+  for (const a of result?.plaatsen?.adviezen || []) {
+    if (a.uitkomst === "weg") {
+      for (const p of a.paginas) verwijderd.add(norm(p.pad));
+      continue;
+    }
+    if (!a.blijft) continue;
+    const houder = norm(a.blijft);
+    for (const g of a.gaatWeg) {
+      const pad = norm(g);
+      if (pad !== houder) verdwijnt.set(pad, houder);
+    }
+    if (a.uitkomst === "uitbouwen") {
+      if (!opnieuw.has(houder)) {
+        opnieuw.set(houder, `Blijft staan en wordt opnieuw opgebouwd voor "${a.term}"${a.volume != null ? ` (${a.volume} per maand)` : ""}.`);
+      }
+    } else if (a.uitkomst === "samenvoegen" && !thuisbasis.has(houder)) {
+      thuisbasis.set(houder, `Blijft de vaste pagina voor ${a.naam}; de andere URL-vormen voor deze plaats gaan hierin op.`);
+    }
+  }
+
   // Wat er bij komt: de ontbrekende pagina's die echt nieuw zijn.
   const nieuw = (result?.gaten || [])
     .filter((g) => g.soort === "nieuwe pagina" && g.haalbaarheid?.oordeel !== "buiten bereik")
@@ -126,7 +155,7 @@ export async function bouwEindstructuur(slug: string, result: CannibalResult | n
   }
 
   const blijvers: EindPagina[] = uniekLive
-    .filter((p) => !verdwijnt.has(p))
+    .filter((p) => !verdwijnt.has(p) && !verwijderd.has(p))
     .map((p) => {
       const slokt = (sloktOp.get(p) || []).sort();
       const rol: Rol = thuisbasis.has(p) ? "thuisbasis" : opnieuw.has(p) ? "opnieuw opbouwen" : "blijft";
@@ -280,7 +309,7 @@ export async function bouwEindstructuur(slug: string, result: CannibalResult | n
     losse: echteLosse,
     nu: uniekLive.length,
     straks: blijvers.length + nieuwe.length,
-    weg: verdwijnt.size,
+    weg: verdwijnt.size + verwijderd.size,
     erbij: nieuwe.length,
     vorm,
     volledig: !!result,
