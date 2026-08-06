@@ -994,12 +994,36 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
         titel: "Een nieuwe klant erin zetten",
         kern: "Naam, domein, en de rest bouwt zichzelf op.",
         tekst:
-          "Een klant aanmaken is een naam en een domein. Daarna:\n\n" +
+          "Een klant aanmaken is een naam en een domein. Daarna staat er op het tabblad **Onboarding** één " +
+          "lijst met de vaste volgorde, en één knop die alles doet wat zonder mens kan:\n\n" +
           "- Er wordt een wachtwoord gegenereerd (één keer zichtbaar) als de klant een eigen dashboard krijgt.\n" +
-          "- Het klantprofiel en de bedrijfsgegevens worden vanaf de website gevuld.\n" +
-          "- De bedrijfsgegevens gaan als link naar de klant om na te lopen, en worden daarna vergrendeld.\n" +
-          "- De site wordt gescand: pagina's, meta's, koppen, links, schema, snelheid.\n" +
-          "- De prioriteitenscan draait en zegt waar te beginnen.",
+          "- De pagina's van de site worden ingelezen.\n" +
+          "- Het klantprofiel en de tone of voice worden geschreven op basis van de echte pagina's.\n" +
+          "- De bedrijfsgegevens worden uit de site gehaald, gaan als link naar de klant om na te lopen, en " +
+          "worden daarna vergrendeld.\n" +
+          "- De concurrenten worden opgezocht: wie staat er het vaakst naast deze klant in de top 10.\n" +
+          "- De zoekwoordkansen worden verzameld en de drie site-brede scans starten.\n\n" +
+          "Wat alleen een mens kan (inloggen bij Search Console, de klantwaarde invullen) blijft staan als " +
+          "\"dit is aan jou\", met de reden erbij.",
+      },
+      {
+        titel: "Waarom er niets draait voordat de inventarisatie klopt",
+        kern: "Een scan zonder inventarisatie is een gok met een grafiek eromheen.",
+        tekst:
+          "Elke stap in de onboarding noemt waar hij van afhangt, en dat wordt afgedwongen. Een prioriteitenscan " +
+          "start niet zolang de pagina's niet zijn ingelezen, Search Console niet gekoppeld is, of de " +
+          "concurrenten nog ontbreken. Een analyse, blauwdruk of copy start niet zonder klantprofiel en tone of " +
+          "voice, want anders schrijft de tekst over een willekeurig bedrijf in een willekeurige stem.\n\n" +
+          "Wordt er geweigerd, dan staat er niet \"er ging iets mis\" maar wát er ontbreekt en waar je het " +
+          "regelt.\n\n" +
+          "Twee dingen maken dit bruikbaar in plaats van bureaucratisch:\n\n" +
+          "- **De status wordt afgelezen, niet bijgehouden.** Er zijn geen vinkjes om te zetten; het dashboard " +
+          "kijkt of het profiel er echt staat, of er echt concurrenten zijn, of de scan echt gedraaid heeft. " +
+          "Daardoor toont dezelfde lijst bij een klant die al jaren loopt vanzelf wat er nog ontbreekt, en is " +
+          "er maar één knop nodig in plaats van een aparte voor nieuwe en bestaande klanten.\n" +
+          "- **Onboarding raakt nooit af.** Concurrenten wisselen, een site verandert, een scan veroudert. " +
+          "Stappen krijgen daarom vanzelf het stempel \"loopt achter\", en in de klantenlijst staat per klant " +
+          "hoeveel er staat en wat er mist.",
       },
       {
         titel: "De maandelijkse ronde",

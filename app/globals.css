@@ -4837,6 +4837,7 @@ a.wb-pad:hover { text-decoration: underline; }
   .ut-h-kop { gap: var(--s-3); }
   .ut-nr { font-size: var(--fs-lg); }
   .ut-voet { flex-direction: column; align-items: flex-start; }
+}
 
 /* ═══════════════════════════════════════════════════════════
    ONBOARDING (tabblad Klant → Onboarding)
