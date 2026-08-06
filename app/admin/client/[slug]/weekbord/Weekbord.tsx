@@ -3,24 +3,34 @@
 // ═══════════════════════════════════════════════════════════
 // DE PLANNING
 // ═══════════════════════════════════════════════════════════
-// Eén regel per taak: wie, welke pagina en of die gemaakt of geoptimaliseerd
-// wordt, de zeven fases als gekleurde letters, de volgende stap, en de dag
-// waarop het staat. De weekindeling blijft, want Maarten denkt in weken.
+// Twee schermen boven elkaar, en ze horen bij elkaar:
 //
-// Dit scherm SIGNALEERT; het is geen bedieningspaneel. De bolletjes vertellen
-// waar het werk staat en zijn expres geen knoppen: afvinken hoort in de kaart,
-// en dan kleuren ze hier vanzelf mee. Wat je hier wél doet is plannen, dus een
-// dag kiezen en slepen.
+//  1. Bovenaan het OVERZICHT over alle klanten, op dag gesorteerd: wat moet er
+//     vandaag, wat komt eraan, en wat is te laat. Daar begint een werkdag.
+//  2. Daaronder de PLANNING van deze klant, per week: één regel per taak, met
+//     wie, welke pagina, de zeven fases als gekleurde letters, de volgende stap
+//     en de dag waarop het staat.
+//
+// Dit scherm SIGNALEERT; het is geen bedieningspaneel. De letters vertellen waar
+// het werk staat en zijn expres geen knoppen: afvinken hoort in de kaart, en dan
+// kleuren ze hier vanzelf mee. Wat je hier wél doet is plannen, dus een dag
+// kiezen en slepen.
 //
 // Compact betekent niet "minder kunnen". Klap je een regel open, dan verschijnt
 // de ECHTE projectkaart van het tabblad Taken, dezelfde component, alleen
-// compacter opgemaakt. Alles wat je daar kunt, kun je hier ook.
+// compacter opgemaakt. Alles wat je daar kunt, kun je hier ook, tot en met het
+// mailvenster.
 
 import { useEffect, useMemo, useState, type DragEvent } from "react";
 import { urlKey } from "../../../../../lib/url-key";
 import { volgendeFase, FASE_VOLGORDE } from "../../../../../lib/fase-volgorde";
+import { mondayOfISOWeek, isoVan, weekVanIso, datumNaVerplaatsing } from "../../../../../lib/week-datum";
 import WeekplanCard, { type WpTask, type WpPageInfo } from "../WeekplanCard";
+import MailUitKaart from "../MailUitKaart";
+import { useMailDatumLinks } from "../useMailDatumLinks";
 import { nieuweVolgorde, bewaarVolgorde, opVolgorde } from "../../../../../lib/weekplan-slepen";
+import WeekOverzicht from "./WeekOverzicht";
+import DatumKiezer from "./DatumKiezer";
 
 type FaseKey = "strategie" | "gelieerde" | "analyse" | "blauwdruk" | "copy" | "bouw" | "structured";
 // De namen en de letters komen uit lib/fase-volgorde.ts, de enige plek waar ze staan.
@@ -36,52 +46,20 @@ type PageInfo = {
 } & Record<FaseKey, boolean>;
 type Current = { year: number; week: number };
 
-function mondayOfISOWeek(year: number, week: number): Date {
-  const jan4 = new Date(Date.UTC(year, 0, 4));
-  const jan4Dow = (jan4.getUTCDay() + 6) % 7;
-  const week1Monday = new Date(jan4); week1Monday.setUTCDate(jan4.getUTCDate() - jan4Dow);
-  const monday = new Date(week1Monday); monday.setUTCDate(week1Monday.getUTCDate() + (week - 1) * 7);
-  return monday;
-}
-function isoVan(d: Date): Current {
-  const date = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-  date.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 6) % 7) + 3);
-  const eersteDo = new Date(Date.UTC(date.getUTCFullYear(), 0, 4));
-  eersteDo.setUTCDate(eersteDo.getUTCDate() - ((eersteDo.getUTCDay() + 6) % 7) + 3);
-  return { year: date.getUTCFullYear(), week: 1 + Math.round((date.getTime() - eersteDo.getTime()) / (7 * 864e5)) };
-}
 const dm = (d: Date) => d.toLocaleDateString("nl-NL", { day: "numeric", month: "short", timeZone: "UTC" });
-/** "2026-08-06" naar "6 aug". Leeg blijft leeg. */
-const kortDatum = (iso?: string | null) => {
-  if (!iso) return "";
-  const [j, m, d] = iso.split("-").map(Number);
-  if (!j || !m || !d) return "";
-  return dm(new Date(Date.UTC(j, m - 1, d)));
-};
-/** Dezelfde weekdag, maar dan in de opgegeven week. Zonder datum: niets. */
-function verschovenDatum(iso: string | null | undefined, jaar: number, week: number): string {
-  if (!iso) return "";
-  const d = new Date(`${iso}T00:00:00Z`);
-  if (Number.isNaN(d.getTime())) return "";
-  const dag = (d.getUTCDay() + 6) % 7;                    // maandag = 0
-  const nieuw = mondayOfISOWeek(jaar, week);
-  nieuw.setUTCDate(nieuw.getUTCDate() + dag);
-  return nieuw.toISOString().slice(0, 10);
-}
-/** Vandaag als "2026-08-06", in lokale tijd; de planning denkt in kalenderdagen. */
-function vandaagIso(): string {
-  const n = new Date();
-  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`;
-}
 const pad = (u?: string | null) => { if (!u) return ""; try { return new URL(u).pathname; } catch { return u; } };
 const kaal = (s: string) => (s || "").replace(/<[^>]*>/g, "").trim();
 
-export default function Weekbord({ slug, clientName, domain }: { slug: string; clientName: string; domain: string }) {
+export default function Weekbord({ slug, clientName, clientEmail, domain }: { slug: string; clientName: string; clientEmail?: string; domain: string }) {
   const [taken, setTaken] = useState<Taak[]>([]);
   const [pages, setPages] = useState<Record<string, PageInfo>>({});
   const [current, setCurrent] = useState<Current | null>(null);
   const [laden, setLaden] = useState(true);
   const [open, setOpen] = useState<number | null>(null);
+  const mailDatumLinks = useMailDatumLinks(slug);
+  // Het mailvenster van de kaart. Stond dit er niet omheen, dan deed de Mail-knop
+  // op de kaart hier stil niets, terwijl hij op het tabblad Taken gewoon werkte.
+  const [mailFor, setMailFor] = useState<{ t: Taak; aud: "klant" | "dev" } | null>(null);
   // Slepen: welke kaart heb je vast, boven welke week hang je, en boven welke
   // regel. Dezelfde opzet als het tabblad Taken, zodat beide schermen zich gelijk
   // gedragen.
@@ -89,6 +67,34 @@ export default function Weekbord({ slug, clientName, domain }: { slug: string; c
   const [boven, setBoven] = useState<number | null>(null);
   const [bovenRij, setBovenRij] = useState<number | null>(null);
   const sleepKlaar = () => { setSleep(null); setBoven(null); setBovenRij(null); };
+
+  // Zelf een taak toevoegen, per week. Zonder dit kon een kaart alleen ontstaan
+  // uit een bird's eye-gesprek, en moest je een klus die je even wilt vastleggen
+  // eerst ergens uitpraten.
+  const [nieuwVoor, setNieuwVoor] = useState<number | null>(null);
+  const [nieuwTaak, setNieuwTaak] = useState("");
+  const [nieuwUrl, setNieuwUrl] = useState("");
+  const [nieuwWie, setNieuwWie] = useState("SEO");
+  const [nieuwBezig, setNieuwBezig] = useState(false);
+  const [nieuwFout, setNieuwFout] = useState("");
+  const [paginas, setPaginas] = useState<string[]>([]);
+  useEffect(() => {
+    let leeft = true;
+    fetch(`/api/admin/urls?slug=${encodeURIComponent(slug)}`)
+      .then((r) => r.json())
+      .then((d) => { if (leeft && d?.ok) setPaginas(((d.urls || []) as { url: string }[]).map((u) => u.url).filter(Boolean)); })
+      .catch(() => {});
+    return () => { leeft = false; };
+  }, [slug]);
+
+  // Klant-brede knoppen die hiervoor alleen op het tabblad Taken stonden.
+  const [wlBusy, setWlBusy] = useState(false);
+  const [wlMsg, setWlMsg] = useState("");
+  const [wlLink, setWlLink] = useState("");
+  const [wlFout, setWlFout] = useState(false);
+  const [opruimBusy, setOpruimBusy] = useState(false);
+  const [opruimMsg, setOpruimMsg] = useState("");
+  const [opruimFout, setOpruimFout] = useState(false);
 
   function laad() {
     return fetch(`/api/admin/weekplan?slug=${encodeURIComponent(slug)}`)
@@ -104,8 +110,54 @@ export default function Weekbord({ slug, clientName, domain }: { slug: string; c
   }
   useEffect(() => { void laad(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [slug]);
 
+  // Laatste werklijst-stand tonen (link naar het document als die er is).
+  useEffect(() => {
+    let leeft = true;
+    fetch(`/api/admin/dev-worklist?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).then((d) => {
+      if (!leeft || !d?.ok) return;
+      if (d.status === "running") { setWlBusy(true); setWlMsg(""); void volgWerklijst(); }
+      else if (d.status === "done" && d.docLink) { setWlLink(d.docLink); setWlMsg("Open de werklijst"); }
+    }).catch(() => {});
+    return () => { leeft = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug]);
+
+  async function volgWerklijst() {
+    for (let i = 0; i < 70; i++) {
+      await new Promise((r) => setTimeout(r, 5000));
+      const d = await fetch(`/api/admin/dev-worklist?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).catch(() => null);
+      if (!d?.ok || d.status === "running") continue;
+      setWlBusy(false);
+      if (d.status === "done") { setWlFout(false); setWlLink(d.docLink || ""); setWlMsg(d.docLink ? "Open de werklijst" : (d.result || "Werklijst klaar.")); void laad(); }
+      else { setWlFout(true); setWlLink(""); setWlMsg(d.error || "Werklijst maken mislukt."); }
+      return;
+    }
+    setWlBusy(false); setWlFout(true); setWlMsg("Duurde te lang; probeer het nog een keer.");
+  }
+  function startWerklijst() {
+    if (wlBusy) return;
+    setWlBusy(true); setWlMsg(""); setWlLink(""); setWlFout(false);
+    fetch("/api/admin/dev-worklist", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }) }).catch(() => {});
+    void volgWerklijst();
+  }
+  async function ruimAllesOp() {
+    if (opruimBusy) return;
+    setOpruimBusy(true); setOpruimMsg(""); setOpruimFout(false);
+    try {
+      const d = await fetch("/api/admin/weekplan/tidy", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, all: true }),
+      }).then((r) => r.json());
+      setOpruimFout(!d?.ok);
+      setOpruimMsg(d?.ok ? d.samenvatting : (d?.error || "Opruimen mislukte."));
+      if (d?.ok) await laad();
+    } catch {
+      setOpruimFout(true); setOpruimMsg("Opruimen mislukte.");
+    } finally { setOpruimBusy(false); }
+  }
+
   // Werken vanaf de planning: status wijzigen en een kaart weghalen. Afvinken van
-  // fases gebeurt bewust NIET hier maar in de kaart; de bolletjes op de regel zijn
+  // fases gebeurt bewust NIET hier maar in de kaart; de letters op de regel zijn
   // een signaal, geen knop.
   async function wijzig(id: number, body: Record<string, unknown>) {
     try {
@@ -113,6 +165,26 @@ export default function Weekbord({ slug, clientName, domain }: { slug: string; c
       await laad();
     } catch { /* volgende laad herstelt het beeld */ }
   }
+
+  async function maakTaak(jaar: number, week: number) {
+    const taak = nieuwTaak.trim();
+    if (!taak || nieuwBezig) return;
+    setNieuwBezig(true); setNieuwFout("");
+    try {
+      // De server rekent in "over hoeveel weken", dus dat leiden we af uit de
+      // maandag van deze week ten opzichte van die van de huidige week.
+      const nuMaandag = current ? mondayOfISOWeek(current.year, current.week) : mondayOfISOWeek(jaar, week);
+      const seq = Math.max(1, Math.round((mondayOfISOWeek(jaar, week).getTime() - nuMaandag.getTime()) / (7 * 864e5)) + 1);
+      const d = await fetch("/api/admin/weekplan/add", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, taak, url: nieuwUrl.trim() || undefined, wie: nieuwWie, week: seq }),
+      }).then((r) => r.json());
+      if (d?.ok) { setNieuwTaak(""); setNieuwUrl(""); setNieuwVoor(null); await laad(); }
+      else setNieuwFout(d?.error || "Toevoegen lukte niet.");
+    } catch { setNieuwFout("Toevoegen lukte niet."); }
+    finally { setNieuwBezig(false); }
+  }
+
   // Loslaten. De kaart schuift meteen mee in beeld en gaat pas daarna naar de
   // database; wachten op de server maakt het slepen schokkerig. Loopt de POST
   // mis, dan zet de eerstvolgende laad() het beeld weer recht.
@@ -131,22 +203,23 @@ export default function Weekbord({ slug, clientName, domain }: { slug: string; c
     const perId = new Map(genummerd.map((t) => [t.id, t]));
     setTaken((ts) => ts.map((t) => perId.get(t.id) || t));
     await bewaarVolgorde(slug, jaar, week, genummerd);
-    // Had de kaart een dag, dan verhuist die mee naar dezelfde weekdag in de
-    // nieuwe week. Anders zou de datum een andere week aanwijzen dan waar hij staat.
-    const nieuweDatum = verschovenDatum(taken.find((t) => t.id === id)?.datum, jaar, week);
-    if (nieuweDatum) {
-      setTaken((ts) => ts.map((t) => (t.id === id ? { ...t, datum: nieuweDatum } : t)));
-      await fetch("/api/admin/weekplan", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, id, datum: nieuweDatum }),
-      }).catch(() => {});
-    }
+    // De dag verhuist mee. Had de kaart al een dag, dan houdt hij dezelfde
+    // weekdag; had hij er nog geen, dan wordt het de maandag van die week. Anders
+    // zou een kaart die je bewust in een week neerlegt nergens in de dagplanning
+    // opduiken. De som staat in lib/week-datum.ts, zodat het overzicht en de
+    // planning nooit iets anders kunnen uitrekenen.
+    const nieuweDatum = datumNaVerplaatsing(taken.find((t) => t.id === id)?.datum, jaar, week);
+    setTaken((ts) => ts.map((t) => (t.id === id ? { ...t, datum: nieuweDatum } : t)));
+    await fetch("/api/admin/weekplan", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slug, id, datum: nieuweDatum }),
+    }).catch(() => {});
   }
 
   // Een dag kiezen. De datum ís de planning: de week volgt eruit, zodat de datum
   // en de week nooit iets anders kunnen zeggen. Leeg maken laat de week staan.
   async function zetDatum(t: Taak, iso: string) {
-    const week = iso ? isoVan(new Date(`${iso}T00:00:00Z`)) : null;
+    const week = weekVanIso(iso);
     setTaken((ts) => ts.map((x) => (x.id === t.id
       ? { ...x, datum: iso || null, ...(week ? { weekYear: week.year, weekNo: week.week } : {}) }
       : x)));
@@ -158,7 +231,7 @@ export default function Weekbord({ slug, clientName, domain }: { slug: string; c
 
   // De ECHTE projectkaart, niet een namaak-samenvatting: alle drie de infoblokken,
   // de fases met hun knoppen en vinkjes, de chat, de documenten en de mailknoppen.
-  // Zo kan het bord nooit achterlopen op de kaart, want het IS dezelfde kaart.
+  // Zo kan de planning nooit achterlopen op de kaart, want het IS dezelfde kaart.
   // Compacter maken doen we met opmaak (.wb-kaart), niet door er een tweede
   // versie naast te bouwen. Een taak zonder pagina krijgt hem ook; die mist
   // alleen het fase-blok, want dat hoort bij een pagina.
@@ -172,7 +245,8 @@ export default function Weekbord({ slug, clientName, domain }: { slug: string; c
           onDragStart={() => setSleep(t.id)} onDragEnd={sleepKlaar}
           onStatus={() => void wijzig(t.id, { status: t.status === "klaar" ? "gepland" : t.status === "bezig" ? "klaar" : "bezig" })}
           onRemove={() => void wijzig(t.id, { delete: true })}
-          onMail={() => { /* de kaart opent zijn eigen mailvenster via Delen */ }}
+          onMail={(aud) => setMailFor({ t, aud })}
+          mailLinks={mailDatumLinks}
           onGoToPage={(u) => window.open(`/admin/client/${slug}?tab=paginas&page=${encodeURIComponent(u)}`, "_blank")}
           onGoToTab={(tab) => window.open(`/admin/client/${slug}?tab=${tab}`, "_blank")}
           refreshBoard={() => void laad()}
@@ -250,22 +324,6 @@ export default function Weekbord({ slug, clientName, domain }: { slug: string; c
       onDragEnd={sleepKlaar}>⋮⋮</span>
   );
 
-  // Het datumveldje. Je ziet alleen "6 aug" (of een streepje als er nog niets
-  // staat); de echte datumkiezer ligt er onzichtbaar overheen, zodat de kolom
-  // smal en rustig blijft en je toch gewoon een dag prikt.
-  const datumVeld = (t: Taak) => {
-    const iso = t.datum || "";
-    const vandaag = iso && iso === vandaagIso();
-    return (
-      <label className={"wb-datum" + (vandaag ? " wb-vandaag" : "")}
-        onClick={(e) => e.stopPropagation()}
-        title={iso ? "Klik om de dag te wijzigen" : "Klik om een dag te kiezen"}>
-        <span className="wb-datum-tekst">{iso ? kortDatum(iso) : "–"}</span>
-        <input type="date" value={iso} onChange={(e) => void zetDatum(t, e.target.value)} />
-      </label>
-    );
-  };
-
   // Een regel is zelf ook een doel: laat je daar los, dan komt de kaart erbóven.
   // De stopPropagation is nodig, anders pakt de week eronder de drop ook op en
   // gaat hij achteraan in plaats van op de plek van de streep.
@@ -300,16 +358,35 @@ export default function Weekbord({ slug, clientName, domain }: { slug: string; c
 
   return (
     <div className="wb-wrap">
-      <div className="wb-kop">
+      {/* De pagina's om uit te kiezen bij een nieuwe taak. Typen mag ook; de
+          lijst is een hulpmiddel, geen keurslijf. */}
+      <datalist id="wb-paginas">{paginas.slice(0, 600).map((u) => <option key={u} value={u} />)}</datalist>
+
+      {/* Eerst de vraag waar een werkdag mee begint: wat ligt er, bij wie dan ook. */}
+      <WeekOverzicht huidigeSlug={slug} />
+
+      <div className="wb-kop wb-kop-klant">
         <div>
-          <div className="wb-titel">Planning</div>
+          <div className="wb-titel">Planning per week</div>
           <div className="wb-sub muted">{clientName}</div>
         </div>
-        <a className="ghost-btn small" href={`/admin/client/${slug}?tab=werkzaamheden`}>Naar Taken &rarr;</a>
+        <div className="wb-kop-acties">
+          <button type="button" className="ghost-btn small" disabled={wlBusy}
+            title="Crawlt de live pagina's en maakt één document voor de sitebouwer met kant-en-klare meta's en alt-teksten, plus één Dev-kaart in de planning."
+            onClick={startWerklijst}>{wlBusy ? "Werklijst maken…" : "Werklijst sitebouwer"}</button>
+          {wlMsg && (wlLink
+            ? <a className="wp-link" href={wlLink} target="_blank" rel="noreferrer">{wlMsg}</a>
+            : <span className={"ovc-mk-msg" + (wlFout ? " err" : " ok")}>{wlMsg}</span>)}
+          <button type="button" className="ghost-btn small" disabled={opruimBusy}
+            title="Laat de assistent elke kaart één keer netjes herschrijven: dubbelingen eruit, per fase één regel. Er wordt niets inhoudelijks weggegooid."
+            onClick={() => void ruimAllesOp()}>{opruimBusy ? "Opruimen…" : "Ruim alle kaarten op"}</button>
+          {opruimMsg && <span className={"ovc-mk-msg" + (opruimFout ? " err" : " ok")}>{opruimMsg}</span>}
+          <a className="ghost-btn small" href={`/admin/client/${slug}?tab=werkzaamheden`}>Naar Taken &rarr;</a>
+        </div>
       </div>
 
       {laden && <div className="muted wb-leeg">Bezig met laden…</div>}
-      {!laden && taken.length === 0 && <div className="muted wb-leeg">Er staan nog geen kaarten in de planning.</div>}
+      {!laden && taken.length === 0 && <div className="muted wb-leeg">Er staan nog geen kaarten in de planning. Klik op het plusje in een weekkop om er zelf een toe te voegen.</div>}
 
       {weken.map((w) => {
         return (
@@ -320,7 +397,38 @@ export default function Weekbord({ slug, clientName, domain }: { slug: string; c
               <span className="wb-weeknr">{w.week ? `Week ${w.week}` : "Ongepland"}</span>
               {w.maandag && w.zondag && <span className="wb-weekdatum">{dm(w.maandag)} &ndash; {dm(w.zondag)}</span>}
               {w.nu && <span className="wb-nulabel">nu</span>}
+              {w.week > 0 && (
+                <button type="button" className="wb-plus" title={`Zelf een taak toevoegen aan week ${w.week}`}
+                  onClick={() => { setNieuwVoor(nieuwVoor === w.k ? null : w.k); setNieuwFout(""); }}>+</button>
+              )}
             </div>
+
+            {nieuwVoor === w.k && (
+              <div className="wb-nieuw">
+                <input className="wb-nieuw-taak" value={nieuwTaak} autoFocus
+                  placeholder="Wat moet er gebeuren?"
+                  onChange={(e) => setNieuwTaak(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && nieuwTaak.trim()) void maakTaak(w.jaar, w.week); if (e.key === "Escape") setNieuwVoor(null); }} />
+                <input className="wb-nieuw-url" value={nieuwUrl} list="wb-paginas"
+                  placeholder="Over welke pagina? (mag leeg)"
+                  onChange={(e) => setNieuwUrl(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && nieuwTaak.trim()) void maakTaak(w.jaar, w.week); if (e.key === "Escape") setNieuwVoor(null); }} />
+                <div className="wb-nieuw-rij">
+                  <select value={nieuwWie} onChange={(e) => setNieuwWie(e.target.value)} title="Wie pakt dit op?">
+                    <option value="SEO">SEO</option>
+                    <option value="Dev">Sitebouwer</option>
+                    <option value="Klant">Klant</option>
+                  </select>
+                  <span className="wb-nieuw-spacer" />
+                  <button type="button" className="ghost-btn small" onClick={() => setNieuwVoor(null)}>Annuleren</button>
+                  <button type="button" className="primary-btn small"
+                    disabled={!nieuwTaak.trim() || nieuwBezig} onClick={() => void maakTaak(w.jaar, w.week)}>
+                    {nieuwBezig ? "Bezig…" : "Toevoegen"}
+                  </button>
+                </div>
+                {nieuwFout && <div className="login-error">{nieuwFout}</div>}
+              </div>
+            )}
 
             {w.metPagina.map((t) => {
               const p = infoVan(t)!;
@@ -351,7 +459,7 @@ export default function Weekbord({ slug, clientName, domain }: { slug: string; c
                       ))}
                     </span>
                     <span className="wb-next">{volgende(t)}</span>
-                    {datumVeld(t)}
+                    <DatumKiezer waarde={t.datum} onKies={(iso) => void zetDatum(t, iso)} />
                   </div>
                   {open === t.id && kaart(t, p)}
                 </div>
@@ -372,7 +480,7 @@ export default function Weekbord({ slug, clientName, domain }: { slug: string; c
                       <span className="wb-wat"><span className="wb-taak-vol">{kaal(t.taak)}</span></span>
                       <span className="wb-rail wb-rail-leeg" />
                       <span className="wb-next">{t.status === "klaar" ? "afgerond" : t.status === "bezig" ? "bezig" : "gepland"}</span>
-                      {datumVeld(t)}
+                      <DatumKiezer waarde={t.datum} onKies={(iso) => void zetDatum(t, iso)} />
                     </div>
                     {open === t.id && kaart(t)}
                   </div>
@@ -383,6 +491,12 @@ export default function Weekbord({ slug, clientName, domain }: { slug: string; c
         );
       })}
 
+      {mailFor && (
+        <MailUitKaart
+          slug={slug} t={mailFor.t as unknown as WpTask} page={infoVan(mailFor.t) as unknown as WpPageInfo | undefined}
+          startAud={mailFor.aud} clientName={clientName} clientEmail={clientEmail}
+          onClose={() => setMailFor(null)} />
+      )}
     </div>
   );
 }

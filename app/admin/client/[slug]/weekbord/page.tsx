@@ -17,5 +17,5 @@ export default async function WeekbordPage({ params }: { params: { slug: string 
   if (!canAccessSlug(scope, params.slug)) redirect("/admin");
   const client = await getClientBySlug(params.slug);
   if (!client) redirect("/admin");
-  return <Weekbord slug={params.slug} clientName={client.name} domain={client.domain || ""} />;
+  return <Weekbord slug={params.slug} clientName={client.name} clientEmail={client.email || ""} domain={client.domain || ""} />;
 }

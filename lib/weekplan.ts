@@ -48,6 +48,46 @@ export async function getWeekplan(slug: string): Promise<WeekplanTask[]> {
   }));
 }
 
+/**
+ * Alle weekplanning-taken van meerdere klanten in één keer, met de klantnaam
+ * erbij. Voor het overzicht over alle klanten: dat vraagt niet "wat ligt er bij
+ * deze klant" maar "wat ligt er vandaag en de komende weken", en dat is één
+ * lijst die toevallig over negentien klanten heen loopt.
+ *
+ * Bewust één query in plaats van negentien keer getWeekplan: negentien losse
+ * rondjes naar de database maken het overzicht traag terwijl het altijd dezelfde
+ * tabel is.
+ */
+export async function getWeekplanAlleKlanten(
+  slugs: string[] | null,
+): Promise<(WeekplanTask & { slug: string; klant: string; klantMail: string })[]> {
+  await ensureSchema();
+  // slugs === null betekent "geen beperking" (de eigenaar). Een gast krijgt zijn
+  // eigen lijst mee; een lege lijst hoort dus ook echt niets op te leveren.
+  if (slugs && slugs.length === 0) return [];
+  const mag = slugs ? new Set(slugs.map((s) => s.trim().toLowerCase())) : null;
+  const { rows } = await sql`
+    SELECT w.id, w.client_slug, c.name AS klant, c.email AS klant_mail, w.thread, w.taak, w.toelichting, w.wie, w.url, w.taaktype,
+           w.copy_url, w.bron_mail, w.week_year, w.week_no, w.status, w.sort_order, w.naar_dev,
+           to_char(w.datum, 'YYYY-MM-DD') AS datum
+    FROM client_weekplan w LEFT JOIN clients c ON c.slug = w.client_slug
+    ORDER BY w.datum NULLS LAST, w.week_year, w.week_no, w.sort_order, w.id`;
+  return rows.filter((r) => !mag || mag.has(String(r.client_slug || "").toLowerCase())).map((r) => ({
+    id: r.id as number,
+    slug: (r.client_slug as string) || "",
+    klant: (r.klant as string) || (r.client_slug as string) || "",
+    klantMail: (r.klant_mail as string) || "",
+    thread: (r.thread as string) || "", taak: (r.taak as string) || "",
+    toelichting: (r.toelichting as string) || "",
+    naarDev: r.naar_dev === true,
+    wie: (r.wie as string) || "SEO", url: (r.url as string) || "",
+    taaktype: (r.taaktype as string) || "", copyUrl: (r.copy_url as string) || "", bronMail: (r.bron_mail as string) || "",
+    weekYear: r.week_year as number, weekNo: r.week_no as number,
+    status: (r.status as string) || "gepland", sortOrder: r.sort_order as number,
+    datum: (r.datum as string) || "",
+  }));
+}
+
 // Normaliseert een toelichting-regel voor dedup: trim, lowercase, leidend '- ' weg.
 function lineKey(s: string): string {
   return s.trim().toLowerCase().replace(/^-\s*/, "");
