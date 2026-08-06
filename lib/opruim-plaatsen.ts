@@ -141,12 +141,36 @@ export async function adviesPerPlaats(slug: string, domain: string): Promise<Pla
     perPagina.set(k, e);
   }
 
+  // Welke URL-vormen zijn ECHT locatievormen? Dat is de kern van de herkenning en
+  // hij moet streng, want de woordtelling ziet ook "chlamydia" en "afscheiding"
+  // als plaats: die woorden vullen hetzelfde gat in de URL als een stadsnaam.
+  // Zonder deze zeef kwamen /vaginale-afscheiding/ en /chlamydia-in-de-keel/ als
+  // plaatspagina op de lijst, mét een advies om ze uit te bouwen. Twee eisen:
+  //
+  //  1. Een echte locatievorm heeft VEEL pagina's. Een kliniek heeft tientallen
+  //     steden; een aandoening staat op één of twee pagina's in die vorm.
+  //  2. Er moet iets anders in de vorm staan dan alleen plaatsnamen. /<plaats>/
+  //     en /<plaats>-<plaats>/ zijn geen patroon maar losse woorden; zo belandden
+  //     /algemene-voorwaarden/ en /afspraak-maken/ eerder in de telling.
+  const MIN_PER_VORM = 5;
+  const echteVorm = (v: string) => {
+    const rest = v.replace(/<plaats>/g, "").replace(/[/\-]/g, "").trim();
+    return rest.length >= 3;
+  };
+  const telPerVorm = new Map<string, number>();
+  for (const pad of live) {
+    const v = vormVan(pad);
+    if (!v.includes("<plaats>") || !echteVorm(v)) continue;
+    telPerVorm.set(v, (telPerVorm.get(v) || 0) + 1);
+  }
+  const locatieVormen = new Set([...telPerVorm.entries()].filter(([, n]) => n >= MIN_PER_VORM).map(([v]) => v));
+
   // Alle plaatspagina's, gegroepeerd per plaats.
   const perPlaats = new Map<string, PlaatsPagina[]>();
   const vormen = new Set<string>();
   for (const pad of live) {
     const vorm = vormVan(pad);
-    if (!vorm.includes("<plaats>") || vorm === "/<plaats>/") continue;
+    if (!locatieVormen.has(vorm)) continue;
     const plaats = plaatsIn(pad);
     if (!plaats) continue;
     vormen.add(vorm);
