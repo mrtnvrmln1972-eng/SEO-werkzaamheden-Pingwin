@@ -4003,10 +4003,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 }
 .opr-kaart > .opr-kop, .opr-kaart > .opr-kop-rij { padding-bottom: var(--s-3); border-bottom: 1px solid var(--card-border); margin-bottom: var(--s-4); }
 .opr-kaart > .opr-kop-rij > .opr-kop { padding-bottom: 0; border-bottom: none; margin-bottom: 0; }
-.opr-kaart-tekst { max-width: 72ch; font-size: var(--fs-sm); line-height: 1.65; color: var(--muted); margin: 0 0 var(--s-4); }
-.opr-kaart-tekst p { margin: 0 0 var(--s-2); }
+.opr-kaart-tekst { max-width: 78ch; font-size: var(--fs-md); line-height: var(--lh-md); color: var(--body-text); margin: 0 0 var(--s-5); }
+.opr-kaart-tekst p { margin: 0 0 var(--s-3); }
 .opr-kaart-tekst p:last-child { margin-bottom: 0; }
-.opr-kaart-tekst ul { margin: 0 0 var(--s-2); padding-left: var(--s-5); display: flex; flex-direction: column; gap: var(--s-1); }
+.opr-kaart-tekst ul { margin: 0 0 var(--s-3); padding-left: var(--s-5); display: flex; flex-direction: column; gap: var(--s-2); }
 .opr-kaart-tekst strong { color: var(--dark); }
 /* Opsommingen in een kaart: lucht tussen de punten en een oranje bolletje,
    zodat een lijst ook echt als lijst leest en niet als een blok tekst. */
@@ -4234,8 +4234,8 @@ details[open] > .opr-kaart-sam::before { content: "▾ "; }
 .opr-sectie-kop::before { content: "▸"; color: var(--orange); font-size: var(--fs-xs); }
 .opr-sectie[open] .opr-sectie-kop::before { content: "▾"; }
 .opr-sectie-titel { font-weight: 800; font-size: var(--fs-md); line-height: var(--lh-md); color: var(--orange); }
-.opr-sectie-wat { display: block; margin-top: var(--s-1); font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); max-width: 90ch; }
-.opr-sectie-body { padding: 0 var(--s-4) var(--s-4); }
+.opr-sectie-wat { display: block; margin-top: var(--s-2); font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray); max-width: 90ch; }
+.opr-sectie-body { padding: var(--s-2) var(--s-4) var(--s-5); }
 /* De blokken hebben zelf al een kaart; binnen een sectie zou dat een kader in een
    kader geven. */
 .opr-sectie-body > .opr-kaart { border: none; box-shadow: none; padding: 0; margin: 0; background: transparent; }
@@ -4251,6 +4251,13 @@ details[open] > .opr-kaart-sam::before { content: "▾ "; }
 .ghost-btn.small.actief { background: var(--orange); color: var(--white); border-color: var(--orange); }
 /* Fijndruk onder een blok: de herkomst van de cijfers, geen hoofdzaak. */
 .opr-fijn { font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); }
+/* De tabellen stonden op de kleinste maat, met krappe regels. Op een scherm vol
+   getallen is dat precies waar het onoverzichtelijk wordt: alles even klein,
+   niets springt eruit. Eén maat groter en meer lucht per regel. */
+.opr-tabel { font-size: var(--fs-sm); line-height: var(--lh-sm); }
+.opr-tabel th { font-size: var(--fs-xs); line-height: var(--lh-xs); letter-spacing: .04em; }
+.opr-tabel td { padding-top: var(--s-3); padding-bottom: var(--s-3); vertical-align: top; }
+.opr-intro-grid + .opr-vorm-rij { margin-top: var(--s-5); }
 
 
 /* ── Paginadossier: alles wat over een pagina speelt, in één blok ──────

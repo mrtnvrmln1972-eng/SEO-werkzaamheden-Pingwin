@@ -84,25 +84,60 @@ export default function OpruimPlaatsen({ slug, domain, data, clientName, clientE
 
   return (
     <div className="opr-kaart">
-      <div className="opr-kaart-tekst">
-        <p>
-          Deze site heeft <strong>{d.paginasNu} plaatspagina&rsquo;s</strong>
-          {d.vormen.length > 1 ? <> in <strong>{d.vormen.length} verschillende URL-vormen</strong> voor hetzelfde ({d.vormen.join(", ")})</> : ""}
-          , voor <strong>{d.adviezen.length} plaatsen</strong>. Na dit advies blijven er <strong>{d.paginasStraks}</strong> over:
-          één per plaats die het verdient.
-        </p>
-        <p>
-          Het besluit valt <strong>per plaats</strong>, niet per URL, en langs vijf vragen in deze volgorde:
-          levert hij nu iets op, is er vraag, is het te winnen, klopt de URL-vorm, en pas als laatste: hebben we hier
-          iets te vertellen. <strong>Geen vestiging betekent dus niet automatisch weg.</strong> Een goede pagina voor een
-          plaats zonder vestiging kan prima werken, zolang er vraag is en het te winnen valt; hij moet alleen eerlijk
-          zijn over waar je dan terechtkomt.
-        </p>
-        <p className="opr-fijn">
-          De vestigingen komen uit de bedrijfsgegevens die voor de structured data al zijn ingevuld
-          {d.vestigingen.length > 0 ? <>: <strong>{d.vestigingen.map((v) => v.replace(/-/g, " ")).join(", ")}</strong></> : " (nog niet ingevuld)"}.
-          {d.autoriteit != null ? ` De autoriteit van dit domein is ${d.autoriteit} op 100; daar wordt de moeilijkheid van elke plaatsterm tegen afgezet.` : ""}
-        </p>
+      {/* De cijfers als tegels, de uitleg als kaartjes. Stond eerst als drie
+          dichte alinea's met jargon erin (URL-vormen met haakjes, "62 plaatsen",
+          "31 over"); dat leest niemand, ook Maarten niet, laat staan een klant. */}
+      <div className="opr-str-kpi">
+        <div><b>{d.paginasNu}</b><span>pagina&rsquo;s over een plaats</span></div>
+        <div><b>{d.adviezen.length}</b><span>verschillende plaatsen</span></div>
+        <div><b>{d.paginasStraks}</b><span>blijven er over</span></div>
+        <div><b>{tel("uitbouwen")}</b><span>verdienen echt aandacht</span></div>
+      </div>
+
+      <div className="opr-intro-grid">
+        <div className="opr-intro-kaart">
+          <h4>Wat er aan de hand is</h4>
+          <p>
+            Er staan <strong>{d.paginasNu} pagina&rsquo;s</strong> op de site die over één plaats gaan, samen over{" "}
+            <strong>{d.adviezen.length} plaatsen</strong>. Veel plaatsen staan er dus <strong>meer dan één keer</strong> op,
+            met een net iets ander webadres.
+          </p>
+          <p>
+            Dat is het probleem: Google moet dan kiezen tussen pagina&rsquo;s van dezelfde website die hetzelfde
+            vertellen, en kiest er dan vaak geen enkele.
+          </p>
+        </div>
+        <div className="opr-intro-kaart">
+          <h4>Hoe we per plaats beslissen</h4>
+          <ul>
+            <li>Levert de pagina nu bezoekers op?</li>
+            <li>Wordt er in die plaats gezocht?</li>
+            <li>Kunnen we daar realistisch tussenkomen?</li>
+            <li>Staat de plaats meerdere keren op de site?</li>
+            <li>Zit er een vestiging, of is het bereikbaar vanuit een vestiging?</li>
+          </ul>
+        </div>
+        <div className="opr-intro-kaart">
+          <h4>Geen vestiging is geen doodvonnis</h4>
+          <p>
+            Een goede pagina voor een plaats zonder vestiging kan prima bezoekers opleveren, zolang er daar gezocht
+            wordt en we er tussen kunnen komen.
+          </p>
+          <p>
+            Zo&rsquo;n pagina moet wel eerlijk zijn over waar je dan terechtkomt, met de dichtstbijzijnde vestiging erop.
+          </p>
+        </div>
+        <div className="opr-intro-kaart">
+          <h4>Waar de gegevens vandaan komen</h4>
+          <p>
+            De vestigingen komen uit de bedrijfsgegevens die al zijn ingevuld
+            {d.vestigingen.length > 0 ? <>: <strong>{d.vestigingen.map((v) => v.replace(/-/g, " ")).join(", ")}</strong></> : " (nog niet ingevuld)"}.
+          </p>
+          <p>
+            Bezoekers en posities komen uit Search Console, het zoekvolume uit Ahrefs.
+            {d.autoriteit != null ? ` Hoe zwaar een zoekterm is, wordt afgezet tegen hoe sterk deze website staat (${d.autoriteit} op 100).` : ""}
+          </p>
+        </div>
       </div>
 
       <div className="opr-vorm-rij" style={{ marginBottom: "var(--s-3)" }}>
