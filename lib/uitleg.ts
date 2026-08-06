@@ -1168,6 +1168,30 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "opbrengst en inspanning. Wat er echt eerst gebeurt bepaalt de vraag van klanten.",
       },
 
+      {
+        titel: "Hoe een werksessie begint en eindigt",
+        kern: "Vaste vorm bij start en oplevering, en een link die pas komt als het écht live staat.",
+        tekst:
+          "Er lopen zes tot acht werksessies naast elkaar, elk over een ander onderdeel. Dat werkt, maar het " +
+          "kostte per sessie opstarttijd (waar ging dit ook alweer over?) en per oplevering zoektijd (staat het " +
+          "live, en wat moet ik nu doen?). Sinds 6 augustus 2026 hebben die twee momenten een vaste vorm.\n\n" +
+          "- **Bij de start: drie regels.** Onderwerp, wat er laatst live ging, wat er nu open staat. Gevuld uit " +
+          "een tabel *Lopende sporen* in het overdrachtsbriefje van het brein: één regel per onderwerp, en een " +
+          "sessie werkt bij het afsluiten alleen zijn eigen regel bij.\n" +
+          "- **Onderweg: stil.** Geen lopend commentaar met bestandsnamen en commando's. Alleen een beslissing " +
+          "die genomen moet worden, of een probleem.\n" +
+          "- **Aan het eind: één blok van maximaal tien regels.** Wat er gevraagd was, wat er nu live staat, welke " +
+          "ene handeling er nog is, en de link naar het juiste scherm.\n\n" +
+          "**De link komt pas als het live staat.** Pushen is niet hetzelfde als live, en tot nu toe was er geen " +
+          "manier om dat verschil te zien: je kon de site wel bekijken, maar niet aantonen dat het de nieuwe " +
+          "versie was. Daarom geeft `/api/versie` de commit terug die op dat moment draait, en wacht " +
+          "`scripts/wacht-op-deploy.sh` na een push tot precies die commit live staat (of tot een latere deploy " +
+          "die hem bevat, want er wordt vanuit meerdere sessies en crons naar `main` gepusht). Pas daarna wordt " +
+          "het scherm bekeken en de link gegeven. Loopt de tijdslimiet af, dan wordt de bouwstatus van die commit " +
+          "opgevraagd via GitHub in plaats van te gokken: van buitenaf ziet een mislukte build er hetzelfde uit " +
+          "als een trage.",
+      },
+
       // ── Golf 1 ──
       {
         titel: "Golf 1: de bestaande motoren volwaardig maken",

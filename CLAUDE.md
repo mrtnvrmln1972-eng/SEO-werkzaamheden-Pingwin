@@ -38,6 +38,15 @@ laadt. Wijzigt de werkwijze, houd master en alle kopieën gelijk.
 - **Het heet Pingwin.** Nooit "Penguin" of een andere spelling, ook niet in output.
 - **Bewijs boven beloftes.** Zeg niet "het werkt", laat het zien (test, output, live URL).
   Kondig je een controle aan, voer die dan ook echt uit.
+- **Vaste vorm: "Waar we staan" bovenaan, één opleverblok onderaan, stil ertussenin.** Maarten
+  werkt in zes tot acht chats tegelijk. Je eerste antwoord opent met drie regels (onderwerp,
+  laatst gedaan, nu open) uit de tabel *Lopende sporen* in `pingwin-brein/brein/08-stand-van-zaken.md`;
+  onderweg geen stap-voor-stap met bestandsnamen; je sluit af met maximaal tien regels (Je vroeg,
+  Nu live, Jij doet, Bekijk het, en alleen als het speelt: Nog open). De sjablonen staan in
+  `pingwin-brein/brein/11-claude-werkwijze.md`; hier geen kopie, anders lopen ze uit elkaar.
+- **De link pas als het live staat.** Nooit terugkoppelen op een deploy die nog loopt. Zie
+  "Deploy en test" hieronder: na de push draait `scripts/wacht-op-deploy.sh`, en pas als die
+  klaar is bekijk je het scherm en geef je de link. Maarten hoort nooit zelf in Vercel te kijken.
 - **Mens aan het stuur.** Niets gaat autonoom naar buiten; Maarten keurt goed.
 - **Plannen eerst in gewone taal in de chat, en het planbestand is óók gewone taal.** Eerst de
   volledige uitleg begrijpelijk in de chat, vóór elke goedkeuringsvraag. Het planbestand in het
@@ -253,7 +262,19 @@ Lokaal staan deze in `.env.local` (gitignored). De DB-vars zijn afgeschermd; lok
 
 ```bash
 git add . && git commit -m "[beschrijving]" && git push origin main
+scripts/wacht-op-deploy.sh
 ```
+
+**Die tweede regel hoort er altijd bij.** Pushen is niet hetzelfde als live: zonder die stap
+koppel je terug op een deploy die nog loopt, en opent Maarten een link die hem het oude scherm
+laat zien. `scripts/wacht-op-deploy.sh` pollt `/api/versie` (die geeft de draaiende commit terug)
+tot jouw commit er staat, of tot een latere deploy die hem bevat: er wordt uit meerdere chats en
+crons naar `main` gepusht, dus dat laatste is normaal. Klaar met code 0 betekent live; dán pas het
+scherm bekijken via het meekijk-recept en dán pas terugkoppelen. Code 1 betekent tijdslimiet: niet
+melden als live, maar de bouwstatus van die commit opvragen via de GitHub-tools, want een mislukte
+build ziet er van buitenaf hetzelfde uit als een trage. Knoppen: `WACHT_INTERVAL_S` en
+`WACHT_TIMEOUT_S`.
+
 Pushen naar main is genoeg: de GitHub-koppeling deployt automatisch naar productie (geldt voor Pingwin én de NOC-cockpit, zelfde repo). Draai NIET ook nog `npx vercel --prod --yes` na een push: dat geeft dubbele deployments en elke extra deploy breekt lopende achtergrondtaken (doc-generaties) een keer extra af. Gebruik dat commando alleen om te deployen ZONDER code-wijziging (bijv. een nieuwe env-var activeren). Testen gebeurt op de live URL (DB alleen op de server). Rooktest met curl op de login- en admin-endpoints werkt goed.
 
 ## 8. Huidige stand (juni 2026)
