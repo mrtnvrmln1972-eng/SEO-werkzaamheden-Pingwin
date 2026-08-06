@@ -764,7 +764,19 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "Anders bestaan er twee wegen naar dezelfde stand, en dan lopen ze uiteen.\n\n" +
           "Klap je een regel open, dan verschijnt de échte projectkaart: de fases met hun knoppen, de chat over " +
           "deze pagina, de documenten en het mailvenster. Niet een tweede, magere samenvatting die kan achterlopen, " +
-          "maar dezelfde kaart.",
+          "maar dezelfde kaart.\n\n" +
+          "**De kaart heeft een vaste titel:** het pad plus wat we ermee doen, bijvoorbeeld " +
+          "\"/hovenier/etten-leur/ · herstellen\". Dat is geen opmaak-keuze maar een reparatie: er werd bij elke keer " +
+          "laden een nieuwe opdracht met een plusje achter de titel geplakt, tot 190 tekens, en één kaart stond " +
+          "daardoor op 183 tekens. Losse opdrachten staan nu ín de kaart onder \"Opdrachten\". Schrijf je zelf een " +
+          "titel, dan blijft die staan.\n\n" +
+          "**Elke kaart heeft een archief.** Wat van de kaart af gaat blijft bewaard met datum: een eerdere titel, " +
+          "een kaarttekst voordat hij werd opgeschoond, en regels die niet meer pasten. Daarvóór werd de tekst op " +
+          "vierduizend tekens afgekapt zonder melding, en stonden er kaarten precies op die grens. Er verdween dus " +
+          "informatie die niemand miste. Nu schuift wat niet past naar het archief in plaats van te verdwijnen.\n\n" +
+          "**Alles staat op één plek.** De vinkjes van de fases stonden ook nog als losse chips in het paginablok, " +
+          "opgehaald via een tweede aanvraag, dus ze konden zelfs iets anders zeggen. Doorzetten naar de sitebouwer " +
+          "stond op drie plekken. Dat is teruggebracht tot één.",
       },
       {
         titel: "De werklijst voor de sitebouwer",
