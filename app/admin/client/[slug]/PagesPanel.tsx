@@ -10,6 +10,7 @@ import { CLIENT_FOLDER_KEY } from "../../../../lib/constants";
 import HelpHint from "./HelpHint";
 import { urlKey } from "../../../../lib/url-key";
 import { kaartTekst, faseVoorstel } from "../../../../lib/weekplan-kaarttekst";
+import { FASE_VOLGORDE } from "../../../../lib/fase-volgorde";
 
 function shortUrl(url: string): string {
   try { const u = new URL(url); return (u.pathname + u.search) || "/"; } catch { return url; }
@@ -77,15 +78,9 @@ const rowDomId = (url: string) => "pgrow-" + (url || "").replace(/[^a-zA-Z0-9]/g
 // Bewust dezelfde volgorde en labels als in WeekplanCard: één pagina heeft één
 // pijplijn, dus die mag op twee schermen niet anders heten of anders staan.
 type FaseKey = "strategie" | "gelieerde" | "analyse" | "blauwdruk" | "copy" | "bouw" | "structured";
-const PG_FASEN: { key: FaseKey; label: string }[] = [
-  { key: "strategie", label: "Strategie" },
-  { key: "gelieerde", label: "Gelieerde pagina's" },
-  { key: "analyse", label: "Analyse" },
-  { key: "blauwdruk", label: "Blauwdruk" },
-  { key: "copy", label: "Copy" },
-  { key: "bouw", label: "Bouw en publicatie" },
-  { key: "structured", label: "Structured data" },
-];
+// De namen komen uit lib/fase-volgorde.ts, zodat deze lijst nooit iets anders
+// zegt dan de kaart of de planning.
+const PG_FASEN: { key: FaseKey; label: string }[] = FASE_VOLGORDE.map((f) => ({ key: f.key, label: f.label }));
 // Zelfde sleutel als de server (lib/url-key.ts): protocol, www., slot-slash en
 // hoofdletters doen er niet toe.
 const faseKey = (u: string) => (u || "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/+$/, "");
@@ -548,7 +543,7 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
                 <th className="pg-sort" onClick={() => setSortKey("positie")}>Positie{sortKey === "positie" ? " ▾" : ""}</th>
                 <th className="pg-sort" onClick={() => setSortKey("volume")} title="Zoekvolume van het hoofdzoekwoord (meeste vertoningen)">Volume{sortKey === "volume" ? " ▾" : ""}</th>
                 <th className="pg-sort" onClick={() => setSortKey("kans")} title="Veel vertoningen + positie net buiten de top 10 = grote kans">Kans{sortKey === "kans" ? " ▾" : ""}</th>
-                <th className="pg-sort" onClick={() => setSortKey("fases")} title={"De zeven fases van deze pagina: strategie, gelieerde pagina's, analyse, blauwdruk, copy, bouw en publicatie, structured data.\nGroen = gedaan, oranje randje = de eerstvolgende stap. Wijs een rijtje aan om te zien welke fase welke is. Klik om te sorteren op hoe ver een pagina is."}>Fases{sortKey === "fases" ? " ▾" : ""}</th>
+                <th className="pg-sort" onClick={() => setSortKey("fases")} title={`De zeven fases van deze pagina: ${PG_FASEN.map((f) => f.label.toLowerCase()).join(", ")}.\nGroen = gedaan, oranje randje = de eerstvolgende stap. Wijs een rijtje aan om te zien welke fase welke is. Klik om te sorteren op hoe ver een pagina is.`}>Fases{sortKey === "fases" ? " ▾" : ""}</th>
                 <th className="pg-sort" onClick={() => setSortKey("plan")} title="Sorteer op plan-status: vol plan eerst, dan half plan, dan leeg">Plan{sortKey === "plan" ? " ▾" : ""}</th>
                 <th title="Zet deze pagina als projectkaart in de weekplanning van deze week, met de fases en de pagina-context erin.">Planning</th>
               </tr></thead>

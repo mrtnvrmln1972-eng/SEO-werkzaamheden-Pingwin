@@ -14,14 +14,22 @@
 
 export type FaseKey = "strategie" | "gelieerde" | "analyse" | "blauwdruk" | "copy" | "bouw" | "structured";
 
-export const FASE_VOLGORDE: { key: FaseKey; label: string; kort: string }[] = [
-  { key: "strategie", label: "Strategie", kort: "Strategie" },
-  { key: "gelieerde", label: "Gelieerde pagina's", kort: "Gelieerd" },
-  { key: "analyse", label: "Analyse", kort: "Analyse" },
-  { key: "blauwdruk", label: "Blauwdruk", kort: "Blauwdruk" },
-  { key: "copy", label: "Copy", kort: "Copy" },
-  { key: "bouw", label: "Bouw en publicatie", kort: "Bouw" },
-  { key: "structured", label: "Structured data", kort: "Schema" },
+// De namen stonden op vier plekken los opgeschreven (de kaart, het planningsbord,
+// de pagina's-lijst en hier). Dat gaat vanzelf een keer scheef lopen, dus deze
+// lijst is nu de enige bron; de schermen lezen hier hun labels uit.
+//
+// `letter` is het teken in het bolletje op het planningsbord. Strategie en
+// Structured data beginnen allebei met een S; dat mag, want de plek in het rijtje
+// ligt vast (strategie vooraan, structured data achteraan) en aanwijzen toont de
+// volledige naam.
+export const FASE_VOLGORDE: { key: FaseKey; label: string; kort: string; letter: string }[] = [
+  { key: "strategie", label: "Strategie", kort: "Strategie", letter: "S" },
+  { key: "gelieerde", label: "Gelieerde pagina's", kort: "Gelieerd", letter: "G" },
+  { key: "analyse", label: "Analyse", kort: "Analyse", letter: "A" },
+  { key: "blauwdruk", label: "Blauwdruk", kort: "Blauwdruk", letter: "B" },
+  { key: "copy", label: "Copy", kort: "Copy", letter: "C" },
+  { key: "bouw", label: "Implementatie", kort: "Implementatie", letter: "I" },
+  { key: "structured", label: "Structured data", kort: "Schema", letter: "S" },
 ];
 
 export type FaseStand = Partial<Record<FaseKey, boolean>>;

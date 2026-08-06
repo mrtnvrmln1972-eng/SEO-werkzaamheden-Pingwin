@@ -12,6 +12,8 @@ export type WeekplanTask = {
   id: number; thread: string; taak: string; toelichting: string; wie: string; url: string; naarDev?: boolean;
   taaktype: string; copyUrl: string; bronMail: string;
   weekYear: number; weekNo: number; status: string; sortOrder: number;
+  /** De gekozen dag als "2026-08-06", of "" als er alleen een week bekend is. */
+  datum: string;
 };
 
 // ISO-8601-weeknummer (maandag als eerste dag). Server en client berekenen dit
@@ -30,7 +32,8 @@ export function isoWeek(d: Date): { year: number; week: number } {
 export async function getWeekplan(slug: string): Promise<WeekplanTask[]> {
   await ensureSchema();
   const { rows } = await sql`
-    SELECT id, thread, taak, toelichting, wie, url, taaktype, copy_url, bron_mail, week_year, week_no, status, sort_order, naar_dev
+    SELECT id, thread, taak, toelichting, wie, url, taaktype, copy_url, bron_mail, week_year, week_no, status, sort_order, naar_dev,
+           to_char(datum, 'YYYY-MM-DD') AS datum
     FROM client_weekplan WHERE client_slug = ${slug}
     ORDER BY week_year, week_no, sort_order, id`;
   return rows.map((r) => ({
@@ -41,6 +44,7 @@ export async function getWeekplan(slug: string): Promise<WeekplanTask[]> {
     taaktype: (r.taaktype as string) || "", copyUrl: (r.copy_url as string) || "", bronMail: (r.bron_mail as string) || "",
     weekYear: r.week_year as number, weekNo: r.week_no as number,
     status: (r.status as string) || "gepland", sortOrder: r.sort_order as number,
+    datum: (r.datum as string) || "",
   }));
 }
 
@@ -134,18 +138,23 @@ export async function addWeekplanTasks(slug: string, thread: string, tasks: { ta
   return { added, merged, mergedIds: [...mergedIds] };
 }
 
-export async function updateWeekplanTask(slug: string, id: number, patch: { weekYear?: number; weekNo?: number; status?: string; sortOrder?: number }): Promise<void> {
+export async function updateWeekplanTask(slug: string, id: number, patch: { weekYear?: number; weekNo?: number; status?: string; sortOrder?: number; datum?: string | null }): Promise<void> {
   await ensureSchema();
   const weekYear = patch.weekYear ?? null;
   const weekNo = patch.weekNo ?? null;
   const status = patch.status ?? null;
   const sortOrder = patch.sortOrder ?? null;
+  // De datum kan ook LEEGgemaakt worden, en dat kan COALESCE niet: daar is null
+  // "niet meegestuurd". Vandaar de aparte vlag.
+  const datumZetten = patch.datum !== undefined;
+  const datum = patch.datum ? patch.datum : null;
   await sql`
     UPDATE client_weekplan SET
       week_year  = COALESCE(${weekYear}, week_year),
       week_no    = COALESCE(${weekNo}, week_no),
       status     = COALESCE(${status}, status),
       sort_order = COALESCE(${sortOrder}, sort_order),
+      datum      = CASE WHEN ${datumZetten} THEN ${datum}::date ELSE datum END,
       updated_at = now()
     WHERE client_slug = ${slug} AND id = ${id}`;
 }

@@ -4479,7 +4479,6 @@ details[open] > .opr-kaart-sam::before { content: "▾ "; }
 .wb-titel { font-size: var(--fs-xl); line-height: var(--lh-xl); font-weight: 800; color: var(--dark); }
 .wb-sub { font-size: var(--fs-sm); line-height: var(--lh-sm); }
 .wb-leeg { padding: var(--s-6) 0; font-size: var(--fs-sm); }
-.wb-stand { background: var(--orange-light); border: 1px solid var(--card-border); border-radius: var(--r-md); padding: var(--s-3) var(--s-4); font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--dark); margin-bottom: var(--s-5); }
 
 .wb-week { margin-bottom: var(--s-5); }
 .wb-weekkop { display: flex; align-items: baseline; gap: var(--s-3); padding-bottom: var(--s-2); border-bottom: 2px solid var(--card-border); margin-bottom: var(--s-1); }
@@ -4487,7 +4486,6 @@ details[open] > .opr-kaart-sam::before { content: "▾ "; }
 .wb-weeknr { font-size: var(--fs-md); font-weight: 800; color: var(--dark); }
 .wb-weekdatum { font-size: var(--fs-xs); color: var(--gray); }
 .wb-nulabel { font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #fff; background: var(--orange); border-radius: var(--r-full); padding: 1px 8px; }
-.wb-weeksom { margin-left: auto; font-size: var(--fs-xs); }
 
 /* Slepen op het bord. De week is een doelgebied (hele week oplichten), en elke
    regel is dat óók: dan komt de kaart precies boven die regel, met een oranje
@@ -4500,45 +4498,56 @@ details[open] > .opr-kaart-sam::before { content: "▾ "; }
   box-shadow: 0 0 0 3px rgba(241, 88, 41, 0.18); z-index: 1;
 }
 
-.wb-rij { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-2) var(--s-2); border-bottom: 1px solid var(--card-border); cursor: pointer; }
+/* Eén vast kolomraster voor élke regel, zodat de bolletjes, de volgende stap en
+   de datum van boven naar beneden precies onder elkaar staan. Met flex liep dat
+   per regel uit de pas, want de ene taaknaam is nu eenmaal langer dan de andere. */
+.wb-rij {
+  display: grid;
+  grid-template-columns: 20px 44px minmax(0, 1fr) auto 116px 62px;
+  align-items: center; gap: var(--s-3);
+  padding: var(--s-2); border-bottom: 1px solid var(--card-border); cursor: pointer;
+}
 .wb-rij:hover { background: #FFFAF7; }
 .wb-rij-open { background: var(--orange-light); }
 .wb-rij.wb-sleept { opacity: 0.45; }
-.wb-greep { flex: 0 0 auto; cursor: grab; color: #8a8d91; user-select: none; font-weight: 900; letter-spacing: 1px; font-size: 13px; line-height: 1; padding: 3px 2px; border-radius: var(--r-sm); }
+.wb-greep { cursor: grab; color: #8a8d91; user-select: none; font-weight: 900; letter-spacing: 1px; font-size: 13px; line-height: 1; padding: 3px 2px; border-radius: var(--r-sm); text-align: center; }
 .wb-greep:hover { background: var(--gray-light); color: var(--dark); }
 .wb-greep:active { cursor: grabbing; }
-.wb-wie { flex: 0 0 auto; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px; padding: 2px 7px; border-radius: var(--r-full); }
+.wb-wie { justify-self: start; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px; padding: 2px 7px; border-radius: var(--r-full); }
 .wb-wie.wie-dev { background: #E8F0FE; color: #1A56B0; }
 .wb-wie.wie-seo { background: var(--orange-light); color: var(--orange-dark); }
-.wb-wat { flex: 1 1 auto; min-width: 0; display: flex; align-items: baseline; gap: var(--s-2); overflow: hidden; }
+.wb-wat { min-width: 0; display: flex; align-items: baseline; gap: var(--s-2); overflow: hidden; }
 .wb-pad { font-weight: 700; font-size: var(--fs-sm); color: var(--dark); white-space: nowrap; }
-.wb-taak { font-size: var(--fs-xs); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.wb-taak-vol { font-size: var(--fs-sm); color: var(--dark); }
-.wb-nieuw { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #b3261e; background: #fdf3f2; border-radius: var(--r-full); padding: 1px 6px; }
+a.wb-pad { color: var(--orange-dark); text-decoration: none; }
+a.wb-pad:hover { text-decoration: underline; }
+.wb-doen { font-size: var(--fs-xs); white-space: nowrap; }
+.wb-taak-vol { font-size: var(--fs-sm); color: var(--dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* De fase-balk: zeven stipjes, altijd even breed zodat de kolom naar beneden leesbaar is. */
-.wb-rail { flex: 0 0 auto; display: inline-flex; gap: 4px; }
-.wb-stip { width: 11px; height: 11px; border-radius: 50%; background: #E6DED6; display: inline-block; }
-.wb-stip.af { background: #1c7a3f; }
-.wb-stip.nu { background: var(--orange); box-shadow: 0 0 0 3px var(--orange-light); }
-.wb-next { flex: 0 0 130px; text-align: right; font-size: var(--fs-xs); color: var(--gray); white-space: nowrap; }
+/* De zeven fases als letters: groen is af, oranje is waar hij nu staat, grijs is
+   nog niet begonnen. Signaal, geen knop; afvinken doe je in de kaart. */
+.wb-rail { display: inline-flex; gap: 4px; }
+.wb-rail-leeg { min-height: 16px; }
+.wb-stip {
+  width: 16px; height: 16px; border-radius: 50%; background: #EDE7E1; color: #8a8d91;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 800; line-height: 1; letter-spacing: 0; cursor: default;
+}
+.wb-stip.af { background: #1c7a3f; color: #fff; }
+.wb-stip.nu { background: var(--orange); color: #fff; box-shadow: 0 0 0 2px var(--orange-light); }
+.wb-next { text-align: right; font-size: var(--fs-xs); color: var(--gray); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.wb-detail { padding: var(--s-3) var(--s-4) var(--s-4) 46px; background: #FFFDFB; border-bottom: 1px solid var(--card-border); font-size: var(--fs-sm); line-height: var(--lh-sm); }
-.wb-detail-knoppen { display: flex; gap: var(--s-2); margin-top: var(--s-3); }
+/* Het datumveldje: je ziet alleen "6 aug", de kiezer ligt er onzichtbaar overheen.
+   Staat hij op vandaag, dan krijgt hij een kringetje. */
+.wb-datum { position: relative; justify-self: end; display: inline-flex; align-items: center; justify-content: center; min-width: 54px; height: 22px; padding: 0 var(--s-2); border-radius: var(--r-full); cursor: pointer; }
+.wb-datum:hover { background: var(--gray-light); }
+.wb-datum-tekst { font-size: var(--fs-xs); font-weight: 700; color: var(--gray); white-space: nowrap; }
+.wb-datum.wb-vandaag { box-shadow: inset 0 0 0 2px var(--orange); }
+.wb-datum.wb-vandaag .wb-datum-tekst { color: var(--orange-dark); }
+.wb-datum input[type="date"] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; border: 0; padding: 0; cursor: pointer; }
+
 .wb-los { margin-top: var(--s-3); }
 .wb-los-kop { font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray); margin-bottom: var(--s-1); }
 .wb-rij-los { cursor: pointer; }
-.wb-voet { font-size: var(--fs-xs); line-height: var(--lh-sm); margin-top: var(--s-5); }
-/* Fases op het weekbord zijn knopjes: klik om af te vinken of terug te zetten. */
-button.wb-stip { border: none; padding: 0; cursor: pointer; }
-button.wb-stip:hover { outline: 2px solid var(--orange); outline-offset: 1px; }
-button.wb-stip:disabled { cursor: wait; opacity: 0.6; }
-.wb-next { display: inline-flex; align-items: center; justify-content: flex-end; gap: var(--s-2); }
-.wb-dagen { font-size: 10px; font-weight: 700; color: var(--gray); background: var(--gray-light); border-radius: var(--r-full); padding: 1px 6px; }
-.wb-dagen.lang { color: #B03A2E; background: #FBEDEA; }
-.wb-wacht { font-size: var(--fs-xs); }
-.wb-spacer { flex: 1 1 auto; }
-.wb-detail-knoppen { flex-wrap: wrap; align-items: center; }
 .wp-bordlink { margin-left: var(--s-3); font-size: var(--fs-xs); font-weight: 700; color: var(--orange-dark); text-decoration: underline; }
 .wp-bordlink:hover { color: var(--accent); }
 

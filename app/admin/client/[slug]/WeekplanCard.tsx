@@ -13,7 +13,7 @@ import { linkifyHtml } from "../../../../lib/linkify";
 import { urlKey } from "../../../../lib/url-key";
 import { devLabel } from "../../../../lib/personen";
 import { eersteKop } from "../../../../lib/chat-vouw";
-import { volgendeFase, faseLabel } from "../../../../lib/fase-volgorde";
+import { volgendeFase, faseLabel, FASE_VOLGORDE } from "../../../../lib/fase-volgorde";
 import AntwoordBlokken from "./AntwoordBlokken";
 import DocVersies from "./DocVersies";
 import PaginaDossier from "./PaginaDossier";
@@ -72,15 +72,9 @@ const ICOON = {
   doel: "M12 12m-9 0a9 9 0 1 0 18 0 9 9 0 1 0-18 0|M12 12m-5 0a5 5 0 1 0 10 0 5 5 0 1 0-10 0|M12 12m-1 0a1 1 0 1 0 2 0 1 1 0 1 0-2 0",
 };
 
-const FASEN: { key: FaseKey; label: string; kort: string; icoon: string }[] = [
-  { key: "strategie", label: "Strategie", kort: "Strategie", icoon: ICOON.strategie },
-  { key: "gelieerde", label: "Gelieerde pagina's", kort: "Gelieerd", icoon: ICOON.gelieerde },
-  { key: "analyse", label: "Analyse", kort: "Analyse", icoon: ICOON.analyse },
-  { key: "blauwdruk", label: "Blauwdruk", kort: "Blauwdruk", icoon: ICOON.blauwdruk },
-  { key: "copy", label: "Copy", kort: "Copy", icoon: ICOON.copy },
-  { key: "bouw", label: "Bouw en publicatie", kort: "Bouw", icoon: ICOON.bouw },
-  { key: "structured", label: "Structured data", kort: "Schema", icoon: ICOON.structured },
-];
+// De namen komen uit lib/fase-volgorde.ts; hier plakken we alleen het icoontje erbij.
+const FASEN: { key: FaseKey; label: string; kort: string; icoon: string }[] =
+  FASE_VOLGORDE.map((f) => ({ ...f, icoon: ICOON[f.key] }));
 
 type RunInfo = { status: string; steps: Record<string, string>; links: Record<string, string> } | null;
 type ChatMsg = { role: "user" | "assistant"; content: string };

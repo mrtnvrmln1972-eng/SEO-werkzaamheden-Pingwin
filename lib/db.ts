@@ -292,6 +292,9 @@ async function init(): Promise<void> {
   await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS dev_taak TEXT`;
   await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS dev_toelichting TEXT`;
   await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS dev_docs JSONB`;
+  // De dag waarop een taak staat gepland. De week volgt uit deze datum; leeg
+  // betekent dat er nog geen dag gekozen is en alleen de week bekend is.
+  await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS datum DATE`;
 
   // Handmatige fase-vinkjes per pagina voor de projectkaart in de weekplanning.
   // Een rij hier wint van de afgeleide stand (beide kanten op: afvinken en terugzetten).

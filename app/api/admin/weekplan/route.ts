@@ -71,11 +71,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  const patch: { weekYear?: number; weekNo?: number; status?: string; sortOrder?: number } = {};
+  const patch: { weekYear?: number; weekNo?: number; status?: string; sortOrder?: number; datum?: string | null } = {};
   if (typeof body.weekYear === "number") patch.weekYear = body.weekYear;
   if (typeof body.weekNo === "number") patch.weekNo = body.weekNo;
   if (typeof body.status === "string") patch.status = body.status;
   if (typeof body.sortOrder === "number") patch.sortOrder = body.sortOrder;
+  // De gekozen dag. Een lege string wist hem weer; alles anders moet een echte
+  // datum zijn, anders laat de database de hele update klappen.
+  if (typeof body.datum === "string") {
+    const d = body.datum.trim();
+    if (d && !/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+      return NextResponse.json({ ok: false, error: "Datum moet als jjjj-mm-dd." }, { status: 400 });
+    }
+    patch.datum = d || null;
+  }
   await updateWeekplanTask(slug, id, patch);
   return NextResponse.json({ ok: true });
 }
