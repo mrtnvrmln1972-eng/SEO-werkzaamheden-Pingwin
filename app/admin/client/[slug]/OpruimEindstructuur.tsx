@@ -98,7 +98,10 @@ export default function OpruimEindstructuur({ slug, domain, data }: {
             <div className="opr-eind-takkop">
               <span className="opr-eind-takttl">{t.titel}</span>
               {t.pad && <Link p={t.pad} />}
-              <span className="opr-chip">{t.kinderen.length + 1} pagina&rsquo;s</span>
+              {/* De hoofdpagina telt alleen mee als hij bestaat. Bij een afgeleide
+                  tak is er vaak geen overzichtspagina, en dan zou +1 een pagina
+                  tellen die er niet is. */}
+              <span className="opr-chip">{t.kinderen.length + (t.bestaat ? 1 : 0)} pagina&rsquo;s</span>
               {!t.bestaat && <span className="opr-chip nodig" title="Er is geen overzichtspagina voor deze tak; die zou hem sterker maken.">geen hoofdpagina</span>}
             </div>
             <ul className="opr-eind-kinderen">
