@@ -302,139 +302,193 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
   const regels = result?.redirectMap?.length || 0;
   const stappen = state?.stappen || 5;
 
+  // Eén sectie: ingeklapt, met in de kop al wat erin zit. Zo zie je in één blik
+  // waar je moet zijn in plaats van door zes open blokken te scrollen.
+  const Sectie = ({ titel, aantal, wat, open: standaardOpen = false, children }: {
+    titel: string; aantal?: number; wat: string; open?: boolean; children: React.ReactNode;
+  }) => (
+    <details className="opr-sectie" open={standaardOpen}>
+      <summary>
+        <span className="opr-sectie-kop">
+          <span className="opr-sectie-titel">{titel}</span>
+          {aantal != null && <span className="opr-chip merge">{aantal}</span>}
+        </span>
+        <span className="opr-sectie-wat">{wat}</span>
+      </summary>
+      <div className="opr-sectie-body">{children}</div>
+    </details>
+  );
+
   return (
     <div className="cannibal-panel">
       <div className="cockpit-card acc-orange">
         <div className="ck-section-head">
-          <span>Keyword-cannibalisatie-analyse</span>
+          <span>Opruimen: pagina&rsquo;s die elkaar in de weg zitten</span>
           <button type="button" className={"pcd-btn pcd-btn-primary" + (running ? " busy" : "")} onClick={run} disabled={busy || running || !adsIngevuld}
             title={adsIngevuld ? "" : "Vul eerst de advertentiepagina's in, anders kan de analyse er een voorstellen om op te ruimen."}>
             {running ? "Analyse draait…" : result ? "Opnieuw analyseren" : "Analyse draaien"}
           </button>
         </div>
-        {/* Was een alinea vol vaktaal (URL-flip-detectie, positie-plafond,
-            klik-verdeling, false positives). Zelfs een SEO-specialist haakte daarop
-            af, laat staan een klant die straks de deellink krijgt. Nu in gewone taal,
-            met de echte aantallen erbij. */}
+
+        {/* Wat je één keer instelt, en de deellink. Allebei in een lade: je vult
+            het één keer in en ziet het daarna nooit meer, dus het hoort niet het
+            halve scherm te vullen. */}
+        <div className="opr-laden">
+          <details className="opr-lade" open={!adsIngevuld}>
+            <summary>
+              Instellingen voor deze klant
+              {adsIngevuld
+                ? <span className="opr-chip merge">advertentiepagina&rsquo;s: {adsGeen ? "geen" : adsTekst.split("\n").filter(Boolean).length}</span>
+                : <span className="opr-chip nodig">advertentiepagina&rsquo;s invullen</span>}
+              <span className={"opr-chip" + (euroIngevuld ? " merge" : "")}>{euroIngevuld ? "bedragen aan" : "geen bedragen"}</span>
+              {vormOpgeslagen && <span className="opr-chip merge">URL-vorm vast</span>}
+            </summary>
+            <div className="opr-lade-body">
+              {/* Eerst dit, dan pas analyseren. Een Google Ads-landingspagina staat vaak op
+                  noindex: hij haalt niets uit Google en lijkt daarom dood gewicht, terwijl de
+                  advertenties erheen wijzen. Zo'n pagina opruimen kost meteen geld. */}
+              <div className={"opr-vorm opr-ads" + (adsIngevuld ? "" : " nodig")}>
+                <div className="opr-vorm-kop">Advertentiepagina&rsquo;s (Google Ads)</div>
+                <p className="muted" style={{ fontSize: 12, margin: 0 }}>
+                  Landingspagina&rsquo;s waar je advertenties naartoe stuurt staan meestal op <strong>noindex</strong>. Ze halen dus
+                  niets uit Google en zien er in de data uit als dode pagina&rsquo;s, terwijl ze juist moeten blijven bestaan.
+                  Zet ze hier neer, dan blijven ze buiten de analyse en buiten de werklijst. E&eacute;n pad per regel; een map
+                  zoals <code>/ads/</code> dekt meteen alles daaronder.
+                </p>
+                <textarea className="opr-ads-veld" value={adsTekst} rows={3} spellCheck={false}
+                  onChange={(e) => { setAdsTekst(e.target.value); if (e.target.value.trim()) setAdsGeen(false); }}
+                  placeholder={"/landing-page/\n/ads/\n/actie-soa-test/"} aria-label="Advertentiepagina's" />
+                <div className="opr-vorm-rij">
+                  <button type="button" className="ghost-btn small" onClick={() => void bewaarAds()}>Opslaan</button>
+                  <label className="opr-ads-geen">
+                    <input type="checkbox" checked={adsGeen} disabled={!!adsTekst.trim()}
+                      onChange={(e) => { setAdsGeen(e.target.checked); if (e.target.checked) void bewaarAds(true); }} />
+                    Deze klant heeft geen advertentiepagina&rsquo;s
+                  </label>
+                </div>
+                {adsMsg && <div className="muted" style={{ fontSize: 12 }}>{adsMsg}</div>}
+              </div>
+
+              {/* Wat een klant waard is. Zonder deze twee getallen praten alle lijsten in
+                  zoekvolume, en dat is geen taal waarin je een besluit uitlegt. */}
+              <div className="opr-vorm">
+                <div className="opr-vorm-kop">Wat een klant waard is</div>
+                <p className="muted" style={{ fontSize: 12, margin: 0 }}>
+                  Met deze twee getallen praten alle lijsten hieronder in euro&rsquo;s in plaats van in zoekvolume.
+                  Laat je ze leeg, dan blijft alles op zoekvolume staan; de volgorde van de lijsten is in beide
+                  gevallen dezelfde.
+                </p>
+                <div className="opr-vorm-rij">
+                  <input className="opr-zoek" style={{ maxWidth: 220 }} value={klantwaarde} onChange={(e) => setKlantwaarde(e.target.value)}
+                    placeholder="wat één klant opbrengt, bijv. 350" aria-label="Waarde van één klant in euro's" />
+                  <input className="opr-zoek" style={{ maxWidth: 220 }} value={conversie} onChange={(e) => setConversie(e.target.value)}
+                    placeholder="% dat klant wordt, bijv. 2" aria-label="Conversiepercentage" />
+                  <button type="button" className="ghost-btn small" onClick={() => void bewaarEuro()}>Opslaan</button>
+                </div>
+                <p className="muted" style={{ fontSize: 12, margin: 0 }}>
+                  <strong>Gok gerust bij die conversie.</strong> Niemand weet precies welk deel van de bezoekers klant
+                  wordt; wie na drie bezoeken belt staat nergens geregistreerd. Het hoeft ook niet nauwkeurig, want het is
+                  voor elke regel dezelfde vermenigvuldiging: de volgorde verandert er niet door, alleen de hoogte van de
+                  bedragen. Daarom staat overal ook het aantal extra bezoekers, en dat getal leunt niet op de aanname.
+                </p>
+                {euroMsg && <div className="muted" style={{ fontSize: 12 }}>{euroMsg}</div>}
+              </div>
+
+              <div className="opr-vorm">
+                <div className="opr-vorm-kop">
+                  Gekozen URL-structuur
+                  {vormOpgeslagen
+                    ? <span className="opr-chip merge" style={{ marginLeft: 8 }}>actief: {vormOpgeslagen}</span>
+                    : <span className="opr-chip" style={{ marginLeft: 8 }}>nog niet vastgelegd</span>}
+                </div>
+                <p className="muted" style={{ fontSize: 12, margin: 0 }}>
+                  E&eacute;n vaste vorm voor dit type pagina. De analyse leidt daarna nooit meer om naar een vorm die je
+                  uitfaseert, en markeert een sterke pagina op de verkeerde vorm als <em>verhuizen</em> in plaats van als
+                  omleiding.
+                </p>
+                <div className="opr-vorm-rij">
+                  <input className="opr-zoek" value={vorm} onChange={(e) => setVorm(e.target.value)}
+                    placeholder="bijvoorbeeld: /soa-klinieken/soa-test-&lt;plaats&gt;/" spellCheck={false}
+                    aria-label="Gekozen URL-structuur" />
+                  <button type="button" className="ghost-btn small" onClick={bewaarVorm}>Opslaan</button>
+                </div>
+                {vormMsg && <div className="muted" style={{ fontSize: 12 }}>{vormMsg}</div>}
+              </div>
+            </div>
+          </details>
+
+          <details className="opr-lade">
+            <summary>
+              Deelbare link voor de klant
+              <span className={"opr-chip" + (deelUrl ? " merge" : "")}>{deelUrl ? "staat open" : "staat uit"}</span>
+            </summary>
+            <div className="opr-lade-body">
+              <p className="muted" style={{ fontSize: 12, margin: 0 }}>
+                E&eacute;n adres dat je aan iedereen kunt geven, zonder inloggen: hetzelfde verhaal als hier, maar
+                <strong> alleen kijken</strong>. Geen vinkjes, geen doorvoeren, geen weekplanning en geen mail.
+                Zolang je er geen maakt, is dit rapport nergens publiek te zien.
+              </p>
+              {deelUrl && <p style={{ margin: 0 }}><a className="opr-pad" href={deelUrl} target="_blank" rel="noreferrer">{deelUrl}</a></p>}
+              <div className="opr-vorm-rij">
+                {!deelUrl && <button type="button" className="ghost-btn small" onClick={() => void deellink("maken")}>Maak een deellink</button>}
+                {deelUrl && <button type="button" className="ghost-btn small" onClick={() => { void navigator.clipboard.writeText(deelUrl); setDeelMsg("Gekopieerd."); }}>Kopieer</button>}
+                {deelUrl && <a className="ghost-btn small" href={deelUrl} target="_blank" rel="noreferrer">Bekijk zoals de klant hem ziet</a>}
+                {deelUrl && <button type="button" className="ghost-btn small" onClick={() => void deellink("vernieuwen")} title="Maakt een nieuw adres; de oude link werkt daarna niet meer.">Nieuw adres</button>}
+                {deelUrl && <button type="button" className="ghost-btn small" onClick={() => void deellink("intrekken")}>Intrekken</button>}
+              </div>
+              {deelMsg && <div className="muted" style={{ fontSize: 12 }}><strong>{deelMsg}</strong></div>}
+            </div>
+          </details>
+        </div>
+
+        {/* De uitleg over de volle breedte, in kaartjes. Stond als één lijst in een
+            smalle kolom tegen de linkerrand; dat leest niet en het maakte niet
+            duidelijk waar je moest beginnen. */}
         <div className="opr-kaart opr-kaart-intro">
           <div className="opr-kop">Wat deze analyse doet</div>
           <div className="opr-kaart-tekst">
-          <p>
-            Deze pagina beantwoordt één vraag per pagina van de site: <strong>wat moet hiermee gebeuren</strong>. En
-            daarnaast één vraag over de site als geheel: <strong>wat ontbreekt er</strong>.
-          </p>
-
-          <p><strong>Waar de analyse naar kijkt</strong></p>
-          <ul>
-            <li>
-              <strong>Search Console:</strong> op welk zoekwoord welke pagina wordt getoond, hoe vaak, op welke plek, en
-              of Google door de tijd heen wisselt tussen twee pagina&rsquo;s van deze site. Dat wisselen is het hardste
-              signaal dat er is: dan twijfelt Google en verliezen ze allebei.
-            </li>
-            <li>
-              <strong>Ahrefs:</strong> per zoekterm het maandelijkse zoekvolume, de moeilijkheid, en de
-              <strong> zoekintentie</strong> (wil iemand iets regelen, of eerst iets weten). Plus de autoriteit van het
-              domein zelf.
-            </li>
-            <li>
-              <strong>De live site:</strong> welke pagina&rsquo;s er zijn, welke URL-vormen naast elkaar bestaan, en welke
-              advertentiepagina&rsquo;s buiten schot moeten blijven.
-            </li>
-          </ul>
-
-          <p><strong>Twee remmen, zodat opruimen geen schade doet</strong></p>
-          <ul>
-            <li>
-              <strong>Zoekintentie.</strong> &ldquo;soa test kopen&rdquo; en &ldquo;wat is een soa test&rdquo; delen bijna
-              alle woorden, maar de één wil bestellen en de ander wil het snappen. Die worden nooit samengevoegd: dat
-              zou één van de twee groepen bezoekers kosten. Wat om die reden apart blijft, staat zichtbaar in beeld met
-              de reden erbij.
-            </li>
-            <li>
-              <strong>Haalbaarheid.</strong> De moeilijkheid van een zoekterm gaat af tegen de autoriteit van dit domein.
-              Een term met moeilijkheid 70 bij een domein van 30 is geen kans maar een illusie. Elke regel krijgt
-              daarom <em>kansrijk</em>, <em>pittig</em> of <em>buiten bereik</em>, en de lijsten staan op volgorde van
-              wat kán in plaats van wat groot is. Er verdwijnt niets; buiten bereik gaat onderaan.
-            </li>
-          </ul>
-
-          <p><strong>Wat eruit komt: vier lijsten en een eindbeeld</strong></p>
-          <ul>
-            <li><strong>Onderwerpen bundelen.</strong> Drie of meer pagina&rsquo;s over hetzelfde, geen van alle in de top 10. Eén ervan wordt de thuisbasis, de rest gaat daarin op.</li>
-            <li><strong>Oppakken, niet weghalen.</strong> De pagina scoort nergens op, maar zijn eigen zoekterm heeft wél volume en niemand anders bezit hem. Opruimen zou hier een kans weggooien.</li>
-            <li><strong>Wat er ontbreekt.</strong> Zoektermen met volume waar geen enkele pagina op mikt. Dit is het enige blok dat over groei gaat in plaats van over opruimen.</li>
-            <li><strong>De werklijst.</strong> Per pagina waar hij heen gaat en waarom; klap een regel open voor het bewijs.</li>
-            <li><strong>Klopte het?</strong> Bij het doorvoeren wordt vastgelegd hoe de winnaar er dán voor staat; na 30 en 90 dagen wordt hetzelfde opnieuw gemeten.</li>
-            <li><strong>En onderaan het resultaat:</strong> hoe de site eruitziet als alles is doorgevoerd, gegroepeerd per onderwerp.</li>
-          </ul>
-          <p>
-            Vul je hierboven in wat een klant waard is, dan staan alle lijsten ook in euro&rsquo;s. De analyse draait op de
-            achtergrond; je kunt wegklikken.
-          </p>
+            <p>
+              Per pagina van de site één vraag: <strong>wat moet hiermee gebeuren</strong>. En over de site als geheel
+              één vraag: <strong>wat ontbreekt er</strong>. De analyse draait op de achtergrond; je kunt wegklikken.
+            </p>
           </div>
-        </div>
-        {/* Eerst dit, dan pas analyseren. Een Google Ads-landingspagina staat vaak op
-            noindex: hij haalt niets uit Google en lijkt daarom dood gewicht, terwijl de
-            advertenties erheen wijzen. Zo'n pagina opruimen kost meteen geld. */}
-        <div className={"opr-vorm opr-ads" + (adsIngevuld ? "" : " nodig")}>
-          <div className="opr-vorm-kop">
-            Advertentiepagina&rsquo;s (Google Ads)
-            {adsIngevuld
-              ? <span className="opr-chip merge" style={{ marginLeft: 8 }}>{adsGeen ? "geen" : `${adsTekst.split("\n").filter(Boolean).length} vastgelegd`}</span>
-              : <span className="opr-chip nodig" style={{ marginLeft: 8 }}>invullen vóór de analyse</span>}
+          <div className="opr-intro-grid">
+            <div className="opr-intro-kaart">
+              <h4>Waar we naar kijken</h4>
+              <ul>
+                <li><strong>Search Console:</strong> welke pagina op welk zoekwoord wordt getoond, hoe vaak en op welke plek. En of Google door de tijd heen wisselt tussen twee van jouw pagina&rsquo;s; dat is het hardste signaal dat er is.</li>
+                <li><strong>Ahrefs:</strong> zoekvolume, moeilijkheid en wat iemand met een zoekopdracht bedoelt. Plus hoe sterk het domein zelf staat.</li>
+                <li><strong>De live site:</strong> welke pagina&rsquo;s er zijn en welke URL-vormen naast elkaar bestaan.</li>
+              </ul>
+            </div>
+            <div className="opr-intro-kaart">
+              <h4>Twee controles tegen schade</h4>
+              <ul>
+                <li><strong>Gaat het wel om dezelfde vraag?</strong> &ldquo;soa test kopen&rdquo; en &ldquo;wat is een soa test&rdquo; lijken op elkaar, maar de één wil bestellen en de ander wil het snappen. Die worden nooit samengevoegd.</li>
+                <li><strong>Is het te winnen?</strong> Een zoekterm die veel zwaarder is dan dit domein aankan, is geen kans. Zulke regels blijven staan maar gaan onderaan, met de reden erbij.</li>
+              </ul>
+            </div>
+            <div className="opr-intro-kaart">
+              <h4>Wat eruit komt</h4>
+              <ul>
+                <li><strong>Bundelen:</strong> meerdere pagina&rsquo;s over hetzelfde, geen enkele in de top 10.</li>
+                <li><strong>Oppakken:</strong> scoort nergens op, maar de zoekterm is wél wat waard.</li>
+                <li><strong>Ontbreekt:</strong> zoektermen zonder pagina. Dit deel gaat over groeien.</li>
+                <li><strong>Werklijst:</strong> per pagina waar hij heen gaat en waarom.</li>
+              </ul>
+            </div>
+            <div className="opr-intro-kaart">
+              <h4>En daarna</h4>
+              <p>
+                Van elke doorgevoerde omleiding wordt na 30 en 90 dagen gemeten of de overgebleven pagina er echt
+                sterker van is geworden.
+              </p>
+              <p>
+                Onderaan staat hoe de site eruitziet als alles is doorgevoerd: netjes gegroepeerd per onderwerp. Dat is
+                het blok dat je aan een klant laat zien.
+              </p>
+            </div>
           </div>
-          <p className="muted" style={{ fontSize: 12, margin: 0 }}>
-            Landingspagina&rsquo;s waar je advertenties naartoe sturen staan meestal op <strong>noindex</strong>. Ze halen dus
-            niets uit Google en zien er in de data uit als dode pagina&rsquo;s, terwijl ze juist moeten blijven bestaan.
-            Zet ze hier neer, dan blijven ze buiten de analyse en buiten de werklijst. E&eacute;n pad per regel; een map
-            zoals <code>/ads/</code> dekt meteen alles daaronder.
-          </p>
-          <textarea className="opr-ads-veld" value={adsTekst} rows={3} spellCheck={false}
-            onChange={(e) => { setAdsTekst(e.target.value); if (e.target.value.trim()) setAdsGeen(false); }}
-            placeholder={"/landing-page/\n/ads/\n/actie-soa-test/"} aria-label="Advertentiepagina's" />
-          <div className="opr-vorm-rij">
-            <button type="button" className="ghost-btn small" onClick={() => void bewaarAds()}>Opslaan</button>
-            <label className="opr-ads-geen">
-              <input type="checkbox" checked={adsGeen} disabled={!!adsTekst.trim()}
-                onChange={(e) => { setAdsGeen(e.target.checked); if (e.target.checked) void bewaarAds(true); }} />
-              Deze klant heeft geen advertentiepagina&rsquo;s
-            </label>
-          </div>
-          {adsMsg && <div className="muted" style={{ fontSize: 12 }}>{adsMsg}</div>}
-        </div>
-
-        {/* Wat een klant waard is. Zonder deze twee getallen praten alle lijsten in
-            zoekvolume, en dat is geen taal waarin je een besluit uitlegt. */}
-        <div className="opr-vorm">
-          <div className="opr-vorm-kop">
-            Wat een klant waard is
-            {euroIngevuld
-              ? <span className="opr-chip merge" style={{ marginLeft: 8 }}>actief</span>
-              : <span className="opr-chip" style={{ marginLeft: 8 }}>nog niet ingevuld</span>}
-          </div>
-          <p className="muted" style={{ fontSize: 12, margin: 0 }}>
-            Met deze twee getallen praten alle lijsten hieronder in euro&rsquo;s in plaats van in zoekvolume:
-            zoekvolume, maal de kans dat iemand doorklikt op een hogere plek, maal jullie conversie, maal wat een klant
-            oplevert. &ldquo;Deze pagina is 900 euro per maand waard&rdquo; is uit te leggen aan een klant,
-            &ldquo;500 zoekopdrachten&rdquo; niet. Laat je ze leeg, dan blijft alles op zoekvolume staan.
-          </p>
-          <p className="muted" style={{ fontSize: 12, margin: 0 }}>
-            <strong>Gok gerust bij die conversie.</strong> Niemand weet precies welk deel van de bezoekers klant wordt:
-            wie na drie bezoeken belt staat nergens geregistreerd, en een deel van de aanvragen loopt buiten elke meting
-            om. Dat hoeft ook niet nauwkeurig, want <strong>het is voor elke regel dezelfde vermenigvuldiging</strong>.
-            De <em>volgorde</em> van de lijst verandert er dus niet door, alleen de hoogte van de bedragen. Voor
-            &ldquo;waar beginnen we&rdquo; maakt 1% of 3% niets uit; het maakt alleen uit op het moment dat je het bedrag
-            aan een klant laat zien. Vandaar dat overal ook het aantal <strong>extra bezoekers</strong> staat: dat is het
-            harde deel van de som.
-          </p>
-          <div className="opr-vorm-rij">
-            <input className="opr-zoek" style={{ maxWidth: 220 }} value={klantwaarde} onChange={(e) => setKlantwaarde(e.target.value)}
-              placeholder="wat één klant opbrengt, bijv. 350" aria-label="Waarde van één klant in euro's" />
-            <input className="opr-zoek" style={{ maxWidth: 220 }} value={conversie} onChange={(e) => setConversie(e.target.value)}
-              placeholder="% dat klant wordt, bijv. 2" aria-label="Conversiepercentage" />
-            <button type="button" className="ghost-btn small" onClick={() => void bewaarEuro()}>Opslaan</button>
-          </div>
-          {euroMsg && <div className="muted" style={{ fontSize: 12 }}>{euroMsg}</div>}
         </div>
 
         {err && <div className="login-error" style={{ marginBottom: 8 }}>{err}</div>}
@@ -462,118 +516,49 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
 
         {result && (
           <>
-            {/* De deellink. Bewust een eigen kaart bovenaan: dit is wat je aan
-                een klant geeft, en je wilt in één oogopslag zien of hij aanstaat. */}
-            <div className="opr-kaart opr-deelkaart">
-              <div className="opr-kop-rij">
-                <div className="opr-kop">Deelbare link voor de klant</div>
-                <div className="opr-kaart-acties">
-                  {!deelUrl && <button type="button" className="ghost-btn small" onClick={() => void deellink("maken")}>Maak een deellink</button>}
-                  {deelUrl && <button type="button" className="ghost-btn small" onClick={() => { void navigator.clipboard.writeText(deelUrl); setDeelMsg("Gekopieerd."); }}>Kopieer</button>}
-                  {deelUrl && <a className="ghost-btn small" href={deelUrl} target="_blank" rel="noreferrer">Bekijk zoals de klant hem ziet</a>}
-                  {deelUrl && <button type="button" className="ghost-btn small" onClick={() => void deellink("vernieuwen")} title="Maakt een nieuw adres; de oude link werkt daarna niet meer.">Nieuw adres</button>}
-                  {deelUrl && <button type="button" className="ghost-btn small" onClick={() => void deellink("intrekken")}>Intrekken</button>}
-                </div>
-              </div>
-              <div className="opr-kaart-tekst">
-                <p>
-                  Eén adres dat je aan iedereen kunt geven, zonder inloggen. Daar staat hetzelfde verhaal als hier:
-                  alle kaarten, alle uitklappers, alle onderbouwing. <strong>Alleen kijken</strong>, verder niets:
-                  geen vinkjes, geen houden of negeren, geen doorvoeren, geen weekplanning en geen mail.
-                </p>
-                {deelUrl
-                  ? <p><a className="opr-pad" href={deelUrl} target="_blank" rel="noreferrer">{deelUrl}</a></p>
-                  : <p>Er staat nog geen link open. Zolang je er geen maakt, is dit rapport nergens publiek te zien.</p>}
-                {deelMsg && <p><strong>{deelMsg}</strong></p>}
-              </div>
-            </div>
-
             <div className="ck-updated" style={{ marginBottom: 10 }}>
               {lijstDatum ? `Deze lijst is van ${new Date(lijstDatum).toLocaleString("nl-NL")}` : "Deze lijst heeft geen datum"}
               {running ? " · de nieuwe analyse draait nog, dit is nog de vorige" : ""}
             </div>
 
-            {dk && (
-              <details className="opr-kaart opr-kaart-bron">
-                <summary className="opr-kaart-sam">Waarop deze analyse is gebaseerd</summary>
-                <div className="opr-kaart-tekst" style={{ marginTop: "var(--s-3)" }}>
-                  <p>
-                    De conclusies hieronder komen uit de eigen cijfers van de website, niet uit een aanname.
-                    Gebruikt zijn:
-                  </p>
-                  <ul>
-                    <li><strong>Search Console:</strong> op welk zoekwoord welke pagina wordt getoond, hoe vaak, en op welke plek. {dk.gsc ? "Beschikbaar." : "Niet beschikbaar."}</li>
-                    <li><strong>Het verloop door de tijd:</strong> of Google tussen twee pagina&rsquo;s wisselt op hetzelfde zoekwoord. {dk.gscTijdreeks ? "Beschikbaar." : "Niet beschikbaar."}</li>
-                    <li><strong>Ahrefs:</strong> het zoekvolume per zoekwoord en de posities per pagina. {dk.ahrefsZoekwoorden ? "Beschikbaar." : "Niet beschikbaar."}</li>
-                    <li><strong>Verwijzende websites:</strong> hoeveel andere sites naar een pagina linken, als maat voor hoe sterk hij staat. {dk.ahrefsBacklinks ? "Beschikbaar." : "Niet beschikbaar."}</li>
-                  </ul>
-                  {!dk.crawl && (
-                    <p>
-                      <strong>Wat er niet in zit:</strong> een technische scan van de website zelf. Daarmee zou je ook kunnen
-                      nakijken of pagina&rsquo;s onderling correct naar elkaar verwijzen. Voor de keuzes hieronder is dat niet
-                      nodig; het betekent alleen dat we na het doorvoeren van de omleidingen nog één keer nameten of ze
-                      allemaal in één stap aankomen.
-                    </p>
-                  )}
-                </div>
-              </details>
+            {/* Eerst de gemiste kansen, dan pas het opruimwerk: daar zit de grootste
+                opbrengst, en het is ook het besluit dat het meeste nadenken vraagt. */}
+            {(result.onderwerpen?.length || 0) > 0 && (
+              <Sectie titel="Onderwerpen bundelen" aantal={result.onderwerpen?.length}
+                wat="Drie of meer pagina's over hetzelfde, en geen van alle in de top 10. Eén ervan wordt de vaste pagina, de rest gaat daarin op.">
+                <OpruimOnderwerpen slug={slug} domain={domain} rijen={result.onderwerpen || []} clientName={clientName} clientEmail={clientEmail} />
+              </Sectie>
             )}
 
-            <div className="opr-kaart opr-vorm">
-              <div className="opr-vorm-kop">
-                Gekozen URL-structuur
-                {vormOpgeslagen
-                  ? <span className="opr-chip merge" style={{ marginLeft: 8 }}>actief: {vormOpgeslagen}</span>
-                  : <span className="opr-chip" style={{ marginLeft: 8 }}>nog niet vastgelegd</span>}
-              </div>
-              <p className="muted" style={{ fontSize: 12, margin: 0 }}>
-                E&eacute;n vaste vorm voor dit type pagina. De analyse leidt daarna nooit meer om naar een vorm die je uitfaseert,
-                en markeert een sterke pagina op de verkeerde vorm als <em>verhuizen</em> in plaats van als omleiding.
-              </p>
-              <div className="opr-vorm-rij">
-                <input className="opr-zoek" value={vorm} onChange={(e) => setVorm(e.target.value)}
-                  placeholder="bijvoorbeeld: /soa-klinieken/soa-test-&lt;plaats&gt;/" spellCheck={false}
-                  aria-label="Gekozen URL-structuur" />
-                <button type="button" className="ghost-btn small" onClick={bewaarVorm}>Opslaan</button>
-              </div>
-              {vormMsg && <div className="muted" style={{ fontSize: 12 }}>{vormMsg}</div>}
-            </div>
+            {(result.oppakken?.length || 0) > 0 && (
+              <Sectie titel="Oppakken, niet weghalen" aantal={result.oppakken?.length}
+                wat="Deze pagina's scoren nergens op, maar hun eigen zoekterm heeft wél volume en niemand anders bezit hem. Opruimen zou hier een kans weggooien.">
+                <OpruimOppakken slug={slug} domain={domain} rijen={result.oppakken || []} clientName={clientName} clientEmail={clientEmail} />
+              </Sectie>
+            )}
 
-            <OpruimStructuur slug={slug} />
+            {(result.gaten?.length || 0) > 0 && (
+              <Sectie titel="Wat er ontbreekt" aantal={result.gaten?.length}
+                wat="Zoektermen met volume waar geen enkele pagina op mikt. Het enige deel dat over groeien gaat in plaats van over opruimen.">
+                <OpruimGaten slug={slug} domain={domain} rijen={result.gaten || []} clientName={clientName} clientEmail={clientEmail} />
+              </Sectie>
+            )}
 
-            {/* Eerst de gemiste kansen, dan pas het opruimwerk: hier zit de
-                grootste opbrengst, en het is ook het besluit dat het meeste
-                nadenken vraagt. */}
-            <OpruimOnderwerpen slug={slug} domain={domain} rijen={result.onderwerpen || []} clientName={clientName} clientEmail={clientEmail} />
-
-            <OpruimOppakken slug={slug} domain={domain} rijen={result.oppakken || []} clientName={clientName} clientEmail={clientEmail} />
-
-            {/* De andere helft: wat er helemaal niet is. Opruimen maakt een site
-                schoon, dit laat hem groeien. */}
-            <OpruimGaten slug={slug} domain={domain} rijen={result.gaten || []} clientName={clientName} clientEmail={clientEmail} />
-
-            {/* De werklijst eerst. Het verhaal eronder: een lijst is om af te werken,
-                proza is om te begrijpen, en in die volgorde. */}
             {result.redirectMap && result.redirectMap.length > 0 && (
-              <div className="opr-kaart">
-                <div className="opr-kop-rij">
-                <div className="opr-kop">Werklijst: wat waar naartoe</div>
-                <div className="opr-kaart-acties">
-                {/* Downloaden als CSV: opent met een dubbelklik in Excel en is te
-                    importeren in Google Sheets. Platte rijen met duidelijke
-                    van/naar-kolommen, zoals Maartens eigen Excel. */}
-                <a className="ghost-btn small" href={`/api/admin/opruim-export?slug=${encodeURIComponent(slug)}`}
-                   title="Downloadt de volledige lijst als CSV. Dubbelklikken opent hem in Excel; in Google Sheets via Bestand, Importeren.">
-                  Download voor Excel of Sheets
-                </a>
-                {/* De rem ook over een lijst die er al ligt, zonder een nieuwe
-                    analyse van twintig minuten. */}
-                <button type="button" className="ghost-btn small" onClick={() => void weegOpnieuw()} disabled={weegKlus.bezig}
-                  title="Twee controles in één: pagina's met een waardevolle eigen zoekterm gaan van deze lijst af, en onderwerpen die over meerdere pagina's verspreid liggen komen bovenaan te staan.">
-                  {weegKlus.bezig ? "Bezig met controleren…" : "Controleer op gemiste kansen"}
-                </button>
+              <Sectie titel="Werklijst: wat waar naartoe" aantal={regels}
+                wat="Per pagina waar hij heen gaat en waarom. Klap een regel open voor het bewijs uit de cijfers.">
+                <div className="opr-kaart-acties" style={{ marginBottom: "var(--s-3)" }}>
+                  {/* Downloaden als CSV: opent met een dubbelklik in Excel en is te
+                      importeren in Google Sheets. */}
+                  <a className="ghost-btn small" href={`/api/admin/opruim-export?slug=${encodeURIComponent(slug)}`}
+                     title="Downloadt de volledige lijst als CSV. Dubbelklikken opent hem in Excel; in Google Sheets via Bestand, Importeren.">
+                    Download voor Excel of Sheets
+                  </a>
+                  <button type="button" className="ghost-btn small" onClick={() => void weegOpnieuw()} disabled={weegKlus.bezig}
+                    title="Twee controles in één: pagina's met een waardevolle eigen zoekterm gaan van deze lijst af, en onderwerpen die over meerdere pagina's verspreid liggen komen bovenaan te staan.">
+                    {weegKlus.bezig ? "Bezig met controleren…" : "Controleer op gemiste kansen"}
+                  </button>
                 </div>
-              </div>
                 {weegKlus.bezig && (
                   <div style={{ margin: "var(--s-3) 0" }}>
                     <Voortgang klein titel="De opruimlijst opnieuw wegen" label={weegKlus.klus?.label} sinds={weegKlus.klus?.gestart} />
@@ -581,22 +566,27 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
                 )}
                 {weegMsg && <div className="opr-melding">{weegMsg}</div>}
                 <OpruimTabel slug={slug} domain={domain} rijen={result.redirectMap} openTarget={openTarget} bewijs={bewijsPerPad} />
-              </div>
+              </Sectie>
             )}
 
-            {/* ── Wat er daarna nog moet gebeuren: de interne links ──
-                Deze komen uit de cannibalisatie-analyse: links vanaf inhoudelijk
-                verwante pagina's naar de winnaar van een cluster, zodat Google zijn
-                keuze niet meer hoeft te maken. Het is geen volledige linkaudit. */}
+            {/* Het sluitstuk: niet het werk, maar het resultaat. Standaard open, want
+                dit is het enige blok dat laat zien waar je het allemaal voor doet. */}
+            <Sectie titel="Zo ziet de site eruit na het doorvoeren" open
+              wat="Alle beslissingen hierboven bij elkaar, als boom: per tak de hoofdpagina met de pagina's die daaronder horen.">
+              <OpruimEindstructuur slug={slug} domain={domain} />
+            </Sectie>
+
+            {metingen.length > 0 && (
+              <Sectie titel="Klopte het?" aantal={metingen.length}
+                wat="Van elke doorgevoerde omleiding: hoe stond de overgebleven pagina ervoor, en hoe staat hij er 30 en 90 dagen later voor.">
+                <OpruimNameten rijen={metingen} tekst={metingenTekst} domain={domain} />
+              </Sectie>
+            )}
+
+            {/* ── Wat er daarna nog moet gebeuren: de interne links ── */}
             {result.interneLinks && result.interneLinks.length > 0 && (
-              <div className="opr-kaart">
-                <div className="opr-kop">Daarna: interne links leggen ({result.interneLinks.length})</div>
-                <p className="opr-kaart-tekst">
-                  Omleiden lost op dat twee pagina&rsquo;s om hetzelfde zoekwoord vechten. Deze links maken de winnaar
-                  daarna ook sterker: vanaf pagina&rsquo;s die over hetzelfde onderwerp gaan, met een ankertekst die het
-                  zoekwoord bevat. Dat is een aanvulling op het opruimen, geen volledige interne-linkaudit; daarvoor is
-                  het tabblad <em>Interne links</em>.
-                </p>
+              <Sectie titel="Daarna: interne links leggen" aantal={result.interneLinks.length}
+                wat="Omleiden lost de strijd op; deze links maken de overgebleven pagina daarna ook sterker. Een aanvulling, geen volledige linkaudit.">
                 <div className="res-table-wrap">
                   <table className="res-table">
                     <thead><tr><th>Zet een link op deze pagina</th><th>Naar</th><th>Met deze tekst</th></tr></thead>
@@ -611,20 +601,13 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
                     </tbody>
                   </table>
                 </div>
-              </div>
+              </Sectie>
             )}
 
-            {/* ── Wat we bewust laten staan ──
-                Een klant wil niet alleen zien wat je weghaalt, maar ook waar je
-                vanaf blijft. Deze pagina's kwamen in de analyse voorbij en blijven. */}
+            {/* ── Wat we bewust laten staan ── */}
             {blijftStaan.length > 0 && (
-              <div className="opr-kaart">
-                <div className="opr-kop">Wat we bewust laten staan ({blijftStaan.length})</div>
-                <p className="opr-kaart-tekst">
-                  Deze pagina&rsquo;s kwamen in de analyse langs omdat ze meedoen op een zoekwoord waar meerdere
-                  pagina&rsquo;s op ranken. Ze blijven staan: ze winnen op hun eigen onderwerp, of andere pagina&rsquo;s
-                  gaan er juist in op.
-                </p>
+              <Sectie titel="Wat we bewust laten staan" aantal={blijftStaan.length}
+                wat="Deze pagina's kwamen in de analyse langs en blijven: ze winnen op hun eigen onderwerp, of andere pagina's gaan er juist in op.">
                 <div className="res-table-wrap">
                   <table className="res-table">
                     <thead><tr><th>Pagina</th><th>Waarom blijft hij</th></tr></thead>
@@ -638,15 +621,35 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
                     </tbody>
                   </table>
                 </div>
-              </div>
+              </Sectie>
             )}
 
-            {/* Terugkijken: klopte de voorspelling van de al doorgevoerde omleidingen? */}
-            <OpruimNameten rijen={metingen} tekst={metingenTekst} domain={domain} />
+            <Sectie titel="Structuur van de site nu"
+              wat="Welke soorten pagina's er bestaan, en hoeveel URL-vormen er naast elkaar leven voor hetzelfde onderwerp.">
+              <OpruimStructuur slug={slug} />
+            </Sectie>
 
-            {/* Het sluitstuk: niet het werk, maar het resultaat. Zo ziet de site
-                eruit als alles hierboven is doorgevoerd. */}
-            <OpruimEindstructuur slug={slug} domain={domain} />
+            {dk && (
+              <Sectie titel="Waarop deze analyse is gebaseerd"
+                wat="Welke bronnen zijn gebruikt, en wat er bewust niet in zit.">
+                <div className="opr-kaart-tekst">
+                  <p>De conclusies hierboven komen uit de eigen cijfers van de website, niet uit een aanname. Gebruikt zijn:</p>
+                  <ul>
+                    <li><strong>Search Console:</strong> op welk zoekwoord welke pagina wordt getoond, hoe vaak, en op welke plek. {dk.gsc ? "Beschikbaar." : "Niet beschikbaar."}</li>
+                    <li><strong>Het verloop door de tijd:</strong> of Google tussen twee pagina&rsquo;s wisselt op hetzelfde zoekwoord. {dk.gscTijdreeks ? "Beschikbaar." : "Niet beschikbaar."}</li>
+                    <li><strong>Ahrefs:</strong> het zoekvolume per zoekwoord en de posities per pagina. {dk.ahrefsZoekwoorden ? "Beschikbaar." : "Niet beschikbaar."}</li>
+                    <li><strong>Verwijzende websites:</strong> hoeveel andere sites naar een pagina linken, als maat voor hoe sterk hij staat. {dk.ahrefsBacklinks ? "Beschikbaar." : "Niet beschikbaar."}</li>
+                  </ul>
+                  {!dk.crawl && (
+                    <p>
+                      <strong>Wat er niet in zit:</strong> een technische scan van de website zelf. Voor de keuzes hierboven is
+                      dat niet nodig; het betekent alleen dat we na het doorvoeren van de omleidingen nog één keer nameten of
+                      ze allemaal in één stap aankomen.
+                    </p>
+                  )}
+                </div>
+              </Sectie>
+            )}
 
             {/* Zelfde component als op de deellink, zodat de klantversie en de
                 cockpit niet uit elkaar kunnen lopen. */}

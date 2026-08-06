@@ -4140,6 +4140,59 @@ details[open] > .opr-kaart-sam::before { content: "▾ "; }
 .opr-eind-slokt { font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); }
 .opr-eind-los { margin-top: var(--s-4); padding-top: var(--s-3); border-top: 1px solid var(--card-border); }
 
+/* ── Opruimen: de pagina behapbaar houden ─────────────────────────────
+   Het scherm groeide naar zes grote blokken onder elkaar, allemaal open, met de
+   uitleg in één smalle kolom tegen de linkerrand. Dat leest niet en het maakt
+   niet duidelijk waar je moet beginnen. Drie ingrepen, alle drie op de vaste
+   schaal-tokens:
+   1. wat je één keer instelt (advertentiepagina's, klantwaarde, URL-vorm) en de
+      deellink zitten in een lade bovenaan, dicht tenzij je hem opent;
+   2. de uitleg staat als kaartjes over de volle breedte in plaats van als lijst;
+   3. elke grote sectie is ingeklapt, met in de kop al wat erin zit. */
+.opr-laden { display: flex; gap: var(--s-2); flex-wrap: wrap; margin-bottom: var(--s-4); }
+.opr-lade { flex: 1 1 320px; border: 1px solid var(--card-border); border-radius: var(--r-lg); background: var(--white); }
+.opr-lade > summary {
+  cursor: pointer; list-style: none; padding: var(--s-2) var(--s-3);
+  font-weight: 700; font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--dark);
+  display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap;
+}
+.opr-lade > summary::-webkit-details-marker { display: none; }
+.opr-lade > summary::before { content: "▸"; color: var(--orange); font-size: var(--fs-xs); }
+.opr-lade[open] > summary::before { content: "▾"; }
+.opr-lade[open] > summary { border-bottom: 1px solid var(--card-border); }
+.opr-lade-body { padding: var(--s-3); display: flex; flex-direction: column; gap: var(--s-4); }
+.opr-lade-body .opr-vorm { margin-bottom: 0; }
+
+.opr-intro-grid {
+  display: grid; gap: var(--s-3); margin-top: var(--s-4);
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+.opr-intro-kaart {
+  border: 1px solid var(--card-border); border-radius: var(--r-lg);
+  padding: var(--s-3) var(--s-4); background: var(--white);
+}
+.opr-intro-kaart h4 {
+  margin: 0 0 var(--s-2); color: var(--orange-dark);
+  font-size: var(--fs-sm); line-height: var(--lh-sm); font-weight: 800;
+}
+.opr-intro-kaart p, .opr-intro-kaart li { font-size: var(--fs-sm); line-height: var(--lh-sm); margin: 0 0 var(--s-2); }
+.opr-intro-kaart ul { margin: 0; padding-left: var(--s-4); }
+.opr-intro-kaart li:last-child, .opr-intro-kaart p:last-child { margin-bottom: 0; }
+
+.opr-sectie { border: 1px solid var(--card-border); border-radius: var(--r-lg); background: var(--white); margin-bottom: var(--s-4); box-shadow: var(--shadow-sm); }
+.opr-sectie > summary { cursor: pointer; list-style: none; padding: var(--s-3) var(--s-4); }
+.opr-sectie > summary::-webkit-details-marker { display: none; }
+.opr-sectie-kop { display: flex; align-items: baseline; gap: var(--s-2); flex-wrap: wrap; }
+.opr-sectie-kop::before { content: "▸"; color: var(--orange); font-size: var(--fs-xs); }
+.opr-sectie[open] .opr-sectie-kop::before { content: "▾"; }
+.opr-sectie-titel { font-weight: 800; font-size: var(--fs-md); line-height: var(--lh-md); color: var(--orange-dark); }
+.opr-sectie-wat { display: block; margin-top: var(--s-1); font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); max-width: 90ch; }
+.opr-sectie-body { padding: 0 var(--s-4) var(--s-4); }
+/* De blokken hebben zelf al een kaart; binnen een sectie zou dat een kader in een
+   kader geven. */
+.opr-sectie-body > .opr-kaart { border: none; box-shadow: none; padding: 0; margin: 0; background: transparent; }
+.opr-sectie-body > .opr-kaart > .opr-kop, .opr-sectie-body > .opr-kaart > .opr-kop-rij { border-bottom: none; }
+
 
 /* ── Paginadossier: alles wat over een pagina speelt, in één blok ──────
    Bewust karig: één regel met de conclusie, daaronder de stappen als bullets
