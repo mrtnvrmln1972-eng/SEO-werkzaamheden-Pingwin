@@ -5361,6 +5361,8 @@ a.wb-pad:hover { text-decoration: underline; }
 .gmb-uitnodiging {
   margin-top: var(--s-4); padding: var(--s-4);
   background: var(--gray-light); border-radius: var(--r-md);
+}
+
 /* ── Routekaart: de meting en wat er nu naast kan (6 augustus 2026) ──
    "Af" komt uit een controle op de draaiende versie, niet uit een vinkje. De
    kleuren volgen die uitslag, zodat je zonder klikken ziet of het overzicht
