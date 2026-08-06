@@ -10,7 +10,7 @@ import { fetchPageContent } from "./page-content";
 import { callClaude, callClaudeAgentic, type ToolDef, type ToolRunner } from "./anthropic";
 import { regelsAlsInstructie, getAdsPaginas, isAdsPad, type AdsPaginas } from "./opruim-regels";
 import { zwakkePaginas, type ZwakkePagina } from "./concurrenten";
-import { weegKandidaten, weegPaden, termUitPad, type Oppakker } from "./opruim-waarde";
+import { weegKandidaten, weegPaden, termUitPad, isFunctioneel, type Oppakker } from "./opruim-waarde";
 import { vindOnderwerpen, tweelingenVan, type Onderwerp } from "./opruim-onderwerpen";
 import { feitenPerTerm, magSamenvoegen, intentieUitleg, intentieAlsInstructie } from "./opruim-intentie";
 import { autoriteitVan, haalbaarheidAlsInstructie } from "./opruim-haalbaarheid";
@@ -239,11 +239,18 @@ async function readRow(slug: string): Promise<CannibalRow | null> {
  * noindex-pagina omleiden is verkeer weggooien.
  */
 function zonderAds(result: CannibalResult, ads: AdsPaginas): CannibalResult {
-  if (!ads.paden.length) return result;
-  const weg = (p: string) => isAdsPad(p, ads);
+  // Functionele pagina's gaan er ook bij het uitlezen uit. Ze worden sinds
+  // 7 augustus bij de weging al geweerd, maar een lijst die eerder is berekend
+  // houdt ze anders tot er een nieuwe run overheen gaat, en juist die lijst deel
+  // je met een klant. Zelfde principe als bij de advertentiepagina's: een filter
+  // bij het uitlezen is een garantie, een regel in de motor een verzoek.
+  const weg = (p: string) => isAdsPad(p, ads) || isFunctioneel(p);
+  const wegAds = (p: string) => isAdsPad(p, ads);
   return {
     ...result,
-    redirectMap: (result.redirectMap || []).filter((m) => !weg(String(m.van || "")) && !weg(String(m.naar || ""))),
+    // Een omleiding NAAR een functionele pagina (contact, afspraak maken) kan
+    // prima; alleen een advertentiepagina is daar een verkeerd doel.
+    redirectMap: (result.redirectMap || []).filter((m) => !wegAds(String(m.van || "")) && !wegAds(String(m.naar || ""))),
     oppakken: (result.oppakken || []).filter((o) => !weg(o.pad)),
     gaten: (result.gaten || []).filter((g) => !weg(g.voorstelPad)),
     onderwerpen: (result.onderwerpen || [])
