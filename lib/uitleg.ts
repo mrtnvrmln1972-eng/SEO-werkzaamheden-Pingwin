@@ -1009,6 +1009,11 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "zeggen over een zoekterm waar we nog niets mee doen. Nu haalt het zelf zoekvolume, moeilijkheid en " +
           "zoekintentie op voor een hele kandidatenlijst tegelijk, zoekt het ideeën rond een thema, en meet het de " +
           "autoriteit van de concurrenten die er nu staan.\n" +
+          "- **Concurrenten uit twee bronnen.** De partijen in de top 10 zijn wie er op déze zoekterm staan; " +
+          "de concurrentenlijst op het KPI's-tabje is wie het bureau als de concurrentie ziet. Die lijst voedde " +
+          "eerder alleen de prioriteitenscan en de kansenlijst en bereikte dit gesprek helemaal niet. Nu ligt hij " +
+          "op tafel, en kan het gesprek opzoeken waar een concurrent verkeer haalt dat wij missen. Is de lijst nog " +
+          "leeg, dan zegt het dat in plaats van er stilzwijgend omheen te werken.\n" +
           "- **De opdracht om tegen te spreken.** Krijgt het gesprek een zoekwoordenlijst of een plan voorgelegd, " +
           "dan beoordeelt het eerst of dat de juiste aanpak is en pas daarna de invulling. Volume telt niet als " +
           "kans zolang de moeilijkheid niet tegen de eigen autoriteit is afgezet; bij een lokale zoekterm waar " +

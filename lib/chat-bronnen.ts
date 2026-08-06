@@ -22,6 +22,7 @@ const LABELS: Record<string, { label: string; velden: string[] }> = {
   ahrefs_site_authority: { label: "Ahrefs, autoriteit", velden: ["target"] },
   ahrefs_keyword_volume: { label: "Ahrefs, zoekvolume", velden: ["keywords", "keyword"] },
   ahrefs_keyword_ideas: { label: "Ahrefs, zoekwoord-ideeën", velden: ["seed"] },
+  concurrent_zoekwoorden: { label: "Zoekwoorden van een concurrent", velden: ["domein"] },
   serp_top10: { label: "Top 10 bekeken", velden: ["keyword", "zoekwoord"] },
   ahrefs_serp_top10: { label: "Top 10 bekeken", velden: ["keyword"] },
   zoek_mail: { label: "Mail doorzocht", velden: ["zoekterm"] },

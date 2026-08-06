@@ -6,7 +6,8 @@ import { getClientUrls, buildUrlContext } from "./site-urls";
 import { googleStatus, getGscForClient, getGscKeywordTrend, getGscForPage } from "./google";
 import { measurePage } from "./page-measure";
 import { metaVerdictText } from "./meta-rules";
-import { getUrlOrganicKeywords, getSerpOverview, getAhrefsTopPages, ahrefsConfigured } from "./ahrefs";
+import { getUrlOrganicKeywords, getSerpOverview, getAhrefsTopPages, ahrefsConfigured, getSiteOrganicKeywords, getDomainKeywordsMatching } from "./ahrefs";
+import { getCompetitors } from "./competitors";
 import { callClaudeAgentic, callClaude, LIGHT_MODEL, HEAVY_MODEL, type ToolDef, type ToolRunner } from "./anthropic";
 import { runChatTool } from "./chat-tools";
 import { diepDenkenAan } from "./settings";
@@ -312,6 +313,19 @@ async function buildOverviewContext(client: ClientConfig): Promise<string> {
   } catch { /* aanvulling */ }
   const prof = (client.seoProfile || "").trim();
   if (prof) parts.push("\n=== KLANTPROFIEL (positionering/werkgebied) ===\n" + prof.slice(0, 2500));
+  // De concurrenten die Maarten zelf heeft aangewezen. Die lijst voedde tot nu toe
+  // alleen de prioriteitenscan, de kansenlijst en de Google-profiel-motor, en bereikte
+  // dit gesprek helemaal niet: de bird's eye kende alleen de partijen die toevallig in
+  // een opgevraagde top 10 stonden. Wie Maarten als concurrent ziet, is een oordeel dat
+  // je niet uit een SERP haalt.
+  try {
+    const conc = await getCompetitors(client.slug);
+    parts.push(conc.length
+      ? "\n=== CONCURRENTEN (door Maarten aangewezen; dit is wie hij als de concurrentie ziet, niet wat de SERP toevallig toont) ===\n"
+        + conc.join(", ")
+        + "\nGebruik concurrent_zoekwoorden om te zien waar zij op scoren en wij niet, en ahrefs_site_authority om te wegen of we van ze kunnen winnen."
+      : "\n=== CONCURRENTEN ===\nEr is voor deze klant nog geen concurrentenlijst ingevuld (KPI's-tab, knop Concurrenten, vier plekken). Zeg dat als een strategievraag erom vraagt, en gebruik zolang de partijen uit de top 10 (serp_top10) als concurrentie.");
+  } catch { /* aanvulling */ }
   const nt = await notitiesBlok(client.slug);
   if (nt) parts.push(nt);
   // Recente e-mails als basisinfo: nieuwe wensen, herzieningen, ingevulde formulieren
@@ -664,6 +678,7 @@ function chatTools(client: ClientConfig): { tools: ToolDef[]; run: ToolRunner } 
     // de pagina-chat, zodat de bronnenstrip ze meteen netjes benoemt.
     { name: "ahrefs_keyword_volume", description: "Echt maandelijks zoekvolume, keyword difficulty, CPC én zoekintentie uit Ahrefs voor één of meer zoekwoorden (NL). DE tool voor een zoekwoordstrategie: zet hier in één aanroep de hele kandidatenlijst in (tien tot dertig termen tegelijk mag) en vergelijk daarna pas. Verzin NOOIT een volume of moeilijkheid uit je hoofd; haal ze hiermee op.", input_schema: { type: "object", properties: { keywords: { type: "array", items: { type: "string" } }, country: { type: "string" } }, required: ["keywords"] } },
     { name: "ahrefs_keyword_ideas", description: "Zoekwoord-ideeën rond een zaad-zoekwoord uit Ahrefs, met volume en difficulty (NL). Gebruik dit om termen te vinden waar de klant NOG NIET op mikt, en om te toetsen of er naast de voor de hand liggende termen een rijker of kansrijker cluster bestaat. Gebruik dit vóórdat je een zoekwoordstrategie beoordeelt, anders beoordeel je alleen de lijst die er toevallig al lag.", input_schema: { type: "object", properties: { seed: { type: "string" }, country: { type: "string" } }, required: ["seed"] } },
+    { name: "concurrent_zoekwoorden", description: "De zoekwoorden waarop een CONCURRENT-domein organisch scoort (positie, volume, verkeer), zodat je een echte content-gap kunt doen: waar halen zij verkeer dat wij missen? Geef alleen het domein voor hun sterkste termen, of geef er een term bij (bijvoorbeeld een plaatsnaam of een thema) om alleen dat deel te zien. Gebruik dit bij elke strategievraag waarin de concurrentie meeweegt; leid nooit zelf af waar een concurrent op scoort.", input_schema: { type: "object", properties: { domein: { type: "string", description: "Kaal domein van de concurrent, bijvoorbeeld grasengroen.nl" }, term: { type: "string", description: "Optioneel: alleen zoekwoorden die deze term bevatten" } }, required: ["domein"] } },
     { name: "ahrefs_site_authority", description: "Domain Rating, verwijzende domeinen en backlinks van ELK domein of URL (Ahrefs), dus ook van een concurrent uit de top 10. Gebruik dit voor de haalbaarheidsvraag: kan deze klant met deze autoriteit realistisch winnen van wie er nu staat? Een hoge moeilijkheid bij een laag Domain Rating is geen kans maar een illusie; zeg dat dan ook.", input_schema: { type: "object", properties: { target: { type: "string", description: "Kaal domein (pingwin.nl) of volledige URL" } }, required: ["target"] } },
     { name: "pagina_dossier", description: "HET COMPLETE DOSSIER van één pagina: de stand (welke stappen af zijn, of de copy live staat), de mails die aantoonbaar over deze pagina gaan (met datum en afzender), de documenten die we gemaakt hebben, teksten die de klant heeft teruggestuurd en nog verwerkt moeten worden, en wat er met de pagina is gebeurd. Gebruik dit ALTIJD voordat je zegt wat er met een pagina moet gebeuren of wie er aan zet is; dan weet je of er al over gemaild is en of er al teksten liggen. Noem een mail als 'de mail van 22 juli' (dag plus maand), want dat wordt automatisch een klikbare link.", input_schema: { type: "object", properties: { url: { type: "string", description: "Volledige URL of pad van de pagina" } }, required: ["url"] } },
   ];
@@ -830,6 +845,25 @@ function chatTools(client: ClientConfig): { tools: ToolDef[]; run: ToolRunner } 
           const body = (stripHtml(e.bodyHtml || "") || e.preview || "").replace(/\s+/g, " ").trim().slice(0, 3000);
           return `[${dir}, ${date}] van ${e.fromAddress || "?"} — ${e.subject || "(geen onderwerp)"}${e.link ? `\n(mail-link: ${e.link})` : ""}:\n${body}`;
         }).join("\n\n---\n\n");
+      }
+      if (name === "concurrent_zoekwoorden") {
+        if (!ahrefsConfigured()) return "Ahrefs is niet gekoppeld.";
+        const dom = String(input.domein || "").trim().replace(/^https?:\/\//i, "").replace(/^www\./i, "").replace(/\/.*$/, "");
+        if (!dom) return "Geef het domein van de concurrent.";
+        const term = String(input.term || "").trim();
+        // Credit-bewust: honderd zoekwoorden is ruim genoeg voor een gap-oordeel, en
+        // de volledige domeinlijst (achthonderd) is voor de scan-motoren, niet voor
+        // een gesprek waarin er vaak drie concurrenten achter elkaar langskomen.
+        if (term) {
+          const rijen = await getDomainKeywordsMatching(dom, term, 60);
+          if (!rijen.length) return `Geen zoekwoorden met "${term}" gevonden voor ${dom}.`;
+          return `ZOEKWOORDEN VAN ${dom} MET "${term}" (Ahrefs, ${rijen.length}):\n`
+            + rijen.map((r) => `- ${r.keyword}: positie ${r.position ?? "-"}, volume ${r.volume ?? "-"}, verkeer ${r.traffic ?? "-"} -> ${r.url}`).join("\n");
+        }
+        const rijen = await getSiteOrganicKeywords(dom, "nl", 100);
+        if (!rijen.length) return `Ahrefs kent geen organische zoekwoorden voor ${dom}.`;
+        return `STERKSTE ZOEKWOORDEN VAN ${dom} (Ahrefs, top ${rijen.length} op verkeer):\n`
+          + rijen.map((r) => `- ${r.keyword}: positie ${r.position ?? "-"}, volume ${r.volume ?? "-"}, verkeer ${r.traffic ?? "-"}${r.branded ? " [merknaam]" : ""}${r.url ? ` -> ${r.url}` : ""}`).join("\n");
       }
       // Het zoekwoordonderzoek-gereedschap draait op dezelfde uitvoering als in de
       // pagina-chat, zodat er nooit twee versies van hetzelfde ontstaan.
@@ -1298,6 +1332,7 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
       `- VOLUME IS GEEN KANS. Een zoekterm telt pas als de klant hem kan winnen: weeg volume tegen de moeilijkheid (ahrefs_keyword_volume) én tegen de autoriteit van wie er nu staat (serp_top10 plus ahrefs_site_authority op de eigen site én op een paar concurrenten). Moeilijkheid 70 bij een zwak domein is geen kans maar een illusie; zeg dat dan zo.\n` +
       `- LET OP WAT DE SERP ECHT LAAT ZIEN. Staat er bij een lokale zoekterm vooral een kaartblok of andere niet-organische resultaten (te zien aan het type in serp_top10), dan is de winst daar niet een landingspagina maar het Google-bedrijfsprofiel, de reviews en de vindbaarheid op de kaart. Benoem dat in plaats van een pagina voor te stellen die het bovenste deel van het scherm toch niet haalt.\n` +
       `- WEES BEDUCHT OP DE DIENST-MAAL-PLAATS-MATRIX. Vier diensten maal tien plaatsen is veertig dunne, uitwisselbare pagina's die elkaar in de weg zitten en die niemand kan schrijven met echt materiaal. Kies liever weinig pagina's met bestaansrecht: één sterk anker op de thuisplaats, hooguit een paar regiopagina's waar het volume het rechtvaardigt (tel dan de diensten van diezelfde plaats bij elkaar op), en de rest gedekt met echte projectpagina's of casussen. Die zijn uniek, en de plaatsnaam-relevantie krijg je er gratis bij.\n` +
+      `- WEEG DE CONCURRENTIE UIT TWEE BRONNEN. De partijen in de top 10 (serp_top10) zijn wie er op déze zoekterm staan; de lijst in de context is wie Maarten als de concurrentie ziet. Die twee zijn niet hetzelfde en je hebt ze allebei nodig. Bij een strategievraag kijk je met concurrent_zoekwoorden waar de aangewezen concurrenten verkeer halen dat wij missen, en zeg je het eerlijk als die lijst nog leeg is.\n` +
       `- ZOEK DE ONDERSCHEIDENDE NICHE. Kijk met ahrefs_keyword_ideas verder dan de lijst die je kreeg: is er een specialisme met landelijk volume, weinig concurrentie en hoge orderwaarde, dan is dát vaak de motor, en is het lokale werk de basis eronder. Waar iemand voor rijdt, is geen lokaal spel.\n` +
       `- LEVER EEN GELAAGDE KEUZE MET EEN VOLGORDE, geen waslijst. Zeg wat eerst gebeurt en waarom dat eerst is (opbrengst en haalbaarheid tegen elkaar), en wat je bewust NIET doet, met de reden erbij. Sluit af met één scherpe vraag als het antwoord echt van een keuze van Maarten of van beschikbaar materiaal afhangt.\n\n` +
       `OPMAAK (heel belangrijk voor Maarten, dit moet er verzorgd en scanbaar uitzien, NOOIT een muur lopende tekst). Nederlands, Markdown, geen emoji (dus ook geen vinkjes of kruisjes als tekens; schrijf gewoon "live", "404" of "let op"). Verplichte structuur, elke terugkoppeling:\n` +
