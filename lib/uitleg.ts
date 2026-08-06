@@ -149,7 +149,7 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "mens overziet. Nu zijn het zes ingangen, waarvan twee uitklapmenu's:\n\n" +
           "| Ingang | Wat je er doet |\n" +
           "|---|---|\n" +
-          "| **Taken** | Het startscherm: je prioriteiten, de gesprekken en de weekplanning |\n" +
+          "| **Taken** | Het startscherm: je prioriteiten, de gesprekken en de planning per dag en week |\n" +
           "| **Pagina's** | Elke pagina van de site: hoe hij scoort, wat eraan gedaan is, wat er nog moet |\n" +
           "| **Site-breed** | Prioriteitenscan, Meta en CTR, Opruimen, Interne links |\n" +
           "| **Klant** | Documenten, Wat we doen, Wijzigingen, Klantgegevens |\n" +
@@ -614,15 +614,27 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "pagina die er niet is niet analyseren.",
       },
       {
-        titel: "De planning: taken, weken en het bord",
-        kern: "Plannen door te slepen, afvinken in de kaart.",
+        titel: "De planning: per dag, per week en over alle klanten",
+        kern: "Vandaag bovenaan, plannen door te slepen, afvinken in de kaart.",
         tekst:
-          "Taken hangen aan een week en aan het onderwerp waar ze uit voortkwamen. Slepen naar een andere week " +
-          "is de planning bijwerken.\n\n" +
-          "Het planningsbord is bewust een **signaalscherm** en geen bedieningspaneel: één regel per taak, met " +
-          "wie, welke pagina, de zeven fases als gekleurde letters, de volgende stap en de dag. De bolletjes zijn " +
-          "expres geen knoppen. Afvinken hoort in de kaart waar het werk gebeurt, en dan kleuren ze hier vanzelf " +
-          "mee. Anders bestaan er twee wegen naar dezelfde stand, en dan lopen ze uiteen.",
+          "De planning kijkt op twee manieren naar hetzelfde werk. **Per moment**: kaarten voor Te laat, Vandaag, " +
+          "Morgen, Verder deze week, Volgende week, Later, en wat nog geen dag heeft. **Per week**: een kaart per " +
+          "week, zoals een klassieke weekplanning. Vandaag staat standaard open, de rest klap je zelf open en die " +
+          "keuze blijft staan.\n\n" +
+          "Binnen een kaart staat het werk gegroepeerd per klant, met een kopregel en een streep ernaast, zodat " +
+          "je ziet wat bij elkaar hoort. Op het tabblad Taken zie je alleen deze klant; op de volle-breedte-versie " +
+          "zie je alle klanten door elkaar, want een werkdag begint niet bij een klant maar bij een dag.\n\n" +
+          "**Slepen betekent overal hetzelfde: je verzet de dag.** Laat je een taak op Morgen los, dan staat hij " +
+          "morgen. Laat je hem op een week los, dan houdt hij dezelfde weekdag, of hij krijgt de maandag als hij " +
+          "nog geen dag had. Zo kan de datum nooit iets anders zeggen dan het vak waar de taak in staat. De dag " +
+          "kiezen kan ook rechtstreeks, met een uitklapbare maandkalender op de regel.\n\n" +
+          "De planning is bewust een **signaalscherm** en geen bedieningspaneel: één regel per taak, met wie, " +
+          "welke pagina, de zeven fases als gekleurde letters, de volgende stap en de dag. Die letters zijn expres " +
+          "geen knoppen. Afvinken hoort in de kaart waar het werk gebeurt, en dan kleuren ze hier vanzelf mee. " +
+          "Anders bestaan er twee wegen naar dezelfde stand, en dan lopen ze uiteen.\n\n" +
+          "Klap je een regel open, dan verschijnt de échte projectkaart: de fases met hun knoppen, de chat over " +
+          "deze pagina, de documenten en het mailvenster. Niet een tweede, magere samenvatting die kan achterlopen, " +
+          "maar dezelfde kaart.",
       },
       {
         titel: "De werklijst voor de sitebouwer",

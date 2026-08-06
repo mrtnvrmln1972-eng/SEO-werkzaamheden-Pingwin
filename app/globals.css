@@ -4539,23 +4539,11 @@ details[open] > .opr-kaart-sam::before { content: "▾ "; }
 /* ═══ HET WEEKBORD (voorbeeldscherm) ═══
    Eén regel per taak in plaats van een lompe kaart: wie, wat, de zeven fases als
    stipjes en de volgende stap. Zo zie je in één blik waar het werk hangt. */
-.wb-wrap { max-width: 1100px; margin: 0 auto; padding: var(--s-6) var(--s-4) var(--s-12); }
-.wb-kop { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s-4); margin-bottom: var(--s-4); }
-.wb-titel { font-size: var(--fs-xl); line-height: var(--lh-xl); font-weight: 800; color: var(--dark); }
-.wb-sub { font-size: var(--fs-sm); line-height: var(--lh-sm); }
-.wb-leeg { padding: var(--s-6) 0; font-size: var(--fs-sm); }
 
-.wb-week { margin-bottom: var(--s-5); }
-.wb-weekkop { display: flex; align-items: baseline; gap: var(--s-3); padding-bottom: var(--s-2); border-bottom: 2px solid var(--card-border); margin-bottom: var(--s-1); }
-.wb-nu .wb-weekkop { border-bottom-color: var(--orange); }
-.wb-weeknr { font-size: var(--fs-md); font-weight: 800; color: var(--dark); }
-.wb-weekdatum { font-size: var(--fs-xs); color: var(--gray); }
-.wb-nulabel { font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #fff; background: var(--orange); border-radius: var(--r-full); padding: 1px 8px; }
 
-/* Slepen op het bord. De week is een doelgebied (hele week oplichten), en elke
-   regel is dat óók: dan komt de kaart precies boven die regel, met een oranje
-   streep als voorvertoning. Zelfde taal als het tabblad Taken. */
-.wb-week.wb-drop { background: #fdece1; border-radius: var(--r-md); outline: 2px solid var(--orange); outline-offset: var(--s-1); }
+/* Slepen. Elke regel is een doelgebied: laat je daar los, dan komt de kaart
+   precies boven die regel, met een oranje streep als voorvertoning. De kaart
+   eromheen (een dag of een week) is dat óók. */
 .wb-doel { position: relative; }
 .wb-doel-aan::before {
   content: ""; position: absolute; left: 0; right: 0; top: calc(var(--s-1) * -1);
@@ -4650,53 +4638,79 @@ a.wb-pad:hover { text-decoration: underline; }
 .dk-wis { color: var(--gray); }
 .dk-wis:hover { background: var(--gray-light); color: var(--dark); }
 
-.wb-los { margin-top: var(--s-3); }
-.wb-los-kop { font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray); margin-bottom: var(--s-1); }
-.wb-rij-los { cursor: pointer; }
 
-/* ── Het overzicht over alle klanten ─────────────────────────────────────────
-   Dezelfde regel als de planning eronder, alleen begint hij met de klantnaam in
-   plaats van met een sleephandvat: hier plan je met de dag, niet met slepen. */
-.wb-ov { margin-bottom: var(--s-8); }
-.wb-ov-kop { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s-4); margin-bottom: var(--s-4); }
-.wb-ov-telaat { color: #B3261E; font-weight: 700; }
-.wb-ov-schakel { display: inline-flex; gap: 2px; padding: 2px; background: var(--gray-light); border-radius: var(--r-full); }
-.wb-schakel { border: 0; background: none; padding: 4px 12px; border-radius: var(--r-full); font-size: var(--fs-xs); font-weight: 700; color: var(--gray); cursor: pointer; }
-.wb-schakel:hover { color: var(--dark); }
-.wb-schakel-aan { background: #fff; color: var(--orange-dark); box-shadow: var(--shadow-sm); }
+/* ═══ DE PLANNING ═══════════════════════════════════════════════════════════
+   Kaarten per moment (vandaag, morgen, volgende week) en kaarten per week.
+   Binnen elke kaart het werk gegroepeerd per klant. Dezelfde regel als altijd:
+   wie, welke pagina, de zeven fase-letters, de volgende stap en de dag. */
+.pl-pagina { max-width: 1180px; margin: 0 auto; padding: var(--s-6) var(--s-4) var(--s-12); }
+.pl { display: flex; flex-direction: column; gap: var(--s-6); }
+.pl-kop { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s-4); flex-wrap: wrap; }
+.pl-titel { font-size: var(--fs-xl); line-height: var(--lh-xl); font-weight: 800; color: var(--dark); }
+.pl-sub { font-size: var(--fs-sm); line-height: var(--lh-sm); }
+.pl-telaat { color: #B3261E; font-weight: 700; }
+.pl-kopacties { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; justify-content: flex-end; }
+.pl-leeg { padding: var(--s-6) 0; font-size: var(--fs-sm); }
 
-.wb-vak { margin-bottom: var(--s-5); }
-.wb-vakkop { display: flex; align-items: baseline; gap: var(--s-2); padding-bottom: var(--s-2); border-bottom: 2px solid var(--card-border); margin-bottom: var(--s-1); }
-.wb-vaktitel { font-size: var(--fs-md); font-weight: 800; color: var(--dark); }
-.wb-vakaantal { font-size: var(--fs-xs); font-weight: 800; color: var(--gray); background: var(--gray-light); border-radius: var(--r-full); padding: 1px 8px; }
-.wb-vakuitleg { font-size: var(--fs-xs); }
-.wb-vakleeg { font-size: var(--fs-sm); padding: var(--s-3) var(--s-2); }
-/* Te laat en vandaag springen eruit; de rest blijft rustig. */
-.wb-vak-telaat .wb-vakkop { border-bottom-color: #B3261E; }
-.wb-vak-telaat .wb-vaktitel { color: #B3261E; }
-.wb-vak-telaat .wb-vakaantal { background: #FDECEA; color: #B3261E; }
-.wb-vak-vandaag .wb-vakkop { border-bottom-color: var(--orange); }
-.wb-vak-vandaag .wb-vakaantal { background: var(--orange-light); color: var(--orange-dark); }
+.pl-schakel { display: inline-flex; gap: 2px; padding: 2px; background: var(--gray-light); border-radius: var(--r-full); }
+.pl-schakelknop { border: 0; background: none; padding: 4px 12px; border-radius: var(--r-full); font-size: var(--fs-xs); font-weight: 700; color: var(--gray); cursor: pointer; }
+.pl-schakelknop:hover { color: var(--dark); }
+.pl-schakel-aan { background: var(--white); color: var(--orange-dark); box-shadow: var(--shadow-sm); }
 
-.wb-rij-ov { grid-template-columns: 132px 44px minmax(0, 1fr) auto 116px 96px; }
-.wb-klant {
-  justify-self: start; max-width: 132px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  font-size: var(--fs-xs); font-weight: 800; color: var(--dark); text-decoration: none;
+.pl-blok { display: flex; flex-direction: column; gap: var(--s-3); }
+.pl-bloktitel { font-size: var(--fs-xs); font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--gray); margin-top: var(--s-4); }
+
+/* De kaart zelf. De kop is de knop waarmee je hem in- en uitklapt; de body heeft
+   geen eigen padding links, zodat de regels tegen de kaartrand uitlijnen. */
+.pl-card { padding: 0; overflow: visible; }
+.pl-cardkop {
+  display: flex; align-items: center; gap: var(--s-2); width: 100%;
+  padding: var(--s-3) var(--s-4); border: 0; background: none; cursor: pointer;
+  font-family: inherit; text-align: left; border-radius: var(--r-lg) var(--r-lg) 0 0;
 }
-.wb-klant:hover { color: var(--orange-dark); text-decoration: underline; }
-
-/* ── Zelf een taak toevoegen, per week ──────────────────────────────────────── */
-.wb-kop-klant { border-top: 1px solid var(--card-border); padding-top: var(--s-5); }
-.wb-kop-acties { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; justify-content: flex-end; }
-.wb-plus {
-  margin-left: auto; width: 22px; height: 22px; border: 1px solid var(--card-border); background: #fff;
-  border-radius: var(--r-full); color: var(--gray); font-size: 15px; line-height: 1; cursor: pointer;
+.pl-cardkop:hover { background: #FFFAF7; }
+.pl-caret { color: var(--orange); font-size: 12px; width: 12px; flex: 0 0 auto; }
+.pl-cardtitel { font-size: var(--fs-md); font-weight: 800; color: var(--dark); }
+.pl-aantal { font-size: var(--fs-xs); font-weight: 800; color: var(--gray); background: var(--gray-light); border-radius: var(--r-full); padding: 1px 8px; }
+.pl-datumlabel { font-size: var(--fs-xs); color: var(--gray); }
+.pl-uitleg { font-size: var(--fs-xs); }
+.pl-nulabel { font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--white); background: var(--orange); border-radius: var(--r-full); padding: 1px 8px; }
+/* Verschijnt pas terwijl je sleept: waar je nu loslaat, en wat dat betekent. */
+.pl-sleepdoel { margin-left: auto; font-size: var(--fs-xs); opacity: 0; transition: opacity 0.12s; }
+.pl:has(.wb-sleept) .pl-sleepdoel { opacity: 1; }
+.pl-plus {
+  margin-left: auto; width: 22px; height: 22px; flex: 0 0 auto; border: 1px solid var(--card-border);
+  background: var(--white); border-radius: var(--r-full); color: var(--gray);
+  font-size: 15px; line-height: 20px; text-align: center; cursor: pointer;
 }
-.wb-plus:hover { border-color: var(--orange); color: var(--orange-dark); background: var(--orange-light); }
-.wb-nieuw { display: flex; flex-direction: column; gap: var(--s-2); padding: var(--s-3); margin: var(--s-2) 0; background: #FFFDFB; border: 1px solid var(--card-border); border-radius: var(--r-md); }
-.wb-nieuw input, .wb-nieuw select { font-size: var(--fs-sm); padding: var(--s-2); border: 1px solid var(--card-border); border-radius: var(--r-sm); background: #fff; }
-.wb-nieuw-rij { display: flex; align-items: center; gap: var(--s-2); }
-.wb-nieuw-spacer { flex: 1; }
+.pl-plus:hover { border-color: var(--orange); color: var(--orange-dark); background: var(--orange-light); }
+.pl-sleepdoel + .pl-plus { margin-left: var(--s-2); }
+.pl-cardbody { padding: 0 var(--s-4) var(--s-3); }
+.pl-vakleeg { font-size: var(--fs-sm); padding: var(--s-2) 0 var(--s-3); }
+
+/* Te laat, vandaag en de huidige week springen eruit; de rest blijft rustig. */
+.pl-card-telaat { border-left: 3px solid #B3261E; }
+.pl-card-telaat .pl-cardtitel { color: #B3261E; }
+.pl-card-telaat .pl-aantal { background: #FDECEA; color: #B3261E; }
+.pl-card-vandaag { border-left: 3px solid var(--orange); }
+.pl-card-vandaag .pl-aantal { background: var(--orange-light); color: var(--orange-dark); }
+.pl-card-nu { border-left: 3px solid var(--orange); }
+.pl-card.pl-drop { outline: 2px solid var(--orange); outline-offset: 2px; background: #fdece1; }
+
+/* De klantgroep binnen een kaart: een kopregel met een kleurstreep ernaast, zodat
+   je ziet waar het werk van de ene klant ophoudt en dat van de volgende begint. */
+.pl-groep { border-left: 2px solid var(--card-border); padding-left: var(--s-3); margin: var(--s-2) 0 var(--s-3); }
+.pl-groep:hover { border-left-color: var(--orange-light); }
+.pl-groepkop { display: flex; align-items: baseline; gap: var(--s-2); margin-bottom: 2px; }
+.pl-groepnaam { font-size: var(--fs-xs); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--gray); text-decoration: none; }
+.pl-groepnaam:hover { color: var(--orange-dark); text-decoration: underline; }
+.pl-groepaantal { font-size: 10px; font-weight: 700; color: var(--gray); }
+
+/* Zelf een taak toevoegen, per week. */
+.pl-nieuw { display: flex; flex-direction: column; gap: var(--s-2); padding: var(--s-3) var(--s-4); background: #FFFDFB; border-top: 1px solid var(--card-border); }
+.pl-nieuw input, .pl-nieuw select { font-size: var(--fs-sm); padding: var(--s-2); border: 1px solid var(--card-border); border-radius: var(--r-sm); background: var(--white); }
+.pl-nieuw-rij { display: flex; align-items: center; gap: var(--s-2); }
+.pl-nieuw-spacer { flex: 1; }
 
 .wp-bordlink { margin-left: var(--s-3); font-size: var(--fs-xs); font-weight: 700; color: var(--orange-dark); text-decoration: underline; }
 .wp-bordlink:hover { color: var(--accent); }

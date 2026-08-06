@@ -10,7 +10,7 @@ import type { TaskRow } from "../../../../lib/tasks";
 import type { StrategySession } from "../../../../lib/strategy";
 import ChatPanel from "./ChatPanel";
 import OverviewChat from "./OverviewChat";
-import WeekplanBoard from "./WeekplanBoard";
+import Planning from "./Planning";
 import ZijPaneel from "./ZijPaneel";
 import HeaderMenu from "./HeaderMenu";
 import OrgDataPanel from "./OrgDataPanel";
@@ -592,17 +592,17 @@ export default function ClientCockpit({
               <div className="ov-blok">
                 <button type="button" className="strategy-head" onClick={() => setOvOpen((v) => ({ ...v, week: !v.week }))}>
                   <span className="strategy-caret">{ovOpen.week ? "▾" : "▸"}</span>
-                  <span className="strategy-title">Week Planning</span>
+                  <span className="strategy-title">Planning</span>
                   {/* Naar het compacte weekbord. Stond eerst in de kop van de
                       weekplanning zelf, maar die kop is hier verborgen (de titel
                       staat al op deze toggle), dus daar was hij onbereikbaar. */}
                   <a className="wp-bordlink" href={`/admin/client/${client.slug}/weekbord`}
                      onClick={(e) => e.stopPropagation()}
-                     title="Alle kaarten als één regel per taak, met de fase-stand ernaast">compact weekbord &rarr;</a>
+                     title="Dezelfde planning op volle breedte, over al je klanten heen">alle klanten &rarr;</a>
                 </button>
                 {ovOpen.week && (
                   <div className="strategy-body">
-                    <WeekplanBoard kaal slug={client.slug} onGoToPage={goToPage} onGoToTab={(t) => changeTab(validTab(t))} onOpenMailDate={openMailByDate} clientName={client.name} clientEmail={client.email || ""} reloadSignal={weekplanReload} />
+                    <Planning kaal slug={client.slug} onGoToPage={goToPage} onGoToTab={(t) => changeTab(validTab(t))} onOpenMailDate={openMailByDate} clientName={client.name} clientEmail={client.email || ""} reloadSignal={weekplanReload} />
                   </div>
                 )}
               </div>
