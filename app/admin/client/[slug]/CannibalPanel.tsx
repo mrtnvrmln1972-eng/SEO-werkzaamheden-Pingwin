@@ -324,11 +324,31 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
       <div className="cockpit-card acc-orange">
         <div className="ck-section-head">
           <span>Opruimen: pagina&rsquo;s die elkaar in de weg zitten</span>
-          <button type="button" className={"pcd-btn pcd-btn-primary" + (running ? " busy" : "")} onClick={run} disabled={busy || running || !adsIngevuld}
-            title={adsIngevuld ? "" : "Vul eerst de advertentiepagina's in, anders kan de analyse er een voorstellen om op te ruimen."}>
-            {running ? "Analyse draait…" : result ? "Opnieuw analyseren" : "Analyse draaien"}
-          </button>
+          <span className="opr-kaart-acties">
+            {/* Deze knop stond in de werklijst, en die klapt sinds 7 augustus dicht.
+                Een actie die je nodig hebt hoort niet achter een dichte sectie te
+                zitten; hij gaat bovendien over de hele pagina, niet over die ene
+                lijst. */}
+            {result && (
+              <button type="button" className="ghost-btn small" onClick={() => void weegOpnieuw()} disabled={weegKlus.bezig || running}
+                title="Rekent de lijsten opnieuw door met de actuele cijfers: pagina's met een waardevolle eigen zoekterm gaan van de opruimlijst af, de onderwerpen en de ontbrekende pagina's worden opnieuw bepaald. Duurt een paar minuten, geen twintig.">
+                {weegKlus.bezig ? "Bezig met controleren…" : "Controleer op gemiste kansen"}
+              </button>
+            )}
+            <button type="button" className={"pcd-btn pcd-btn-primary" + (running ? " busy" : "")} onClick={run} disabled={busy || running || !adsIngevuld}
+              title={adsIngevuld ? "" : "Vul eerst de advertentiepagina's in, anders kan de analyse er een voorstellen om op te ruimen."}>
+              {running ? "Analyse draait…" : result ? "Opnieuw analyseren" : "Analyse draaien"}
+            </button>
+          </span>
         </div>
+        {/* De uitkomst van die knop hoort óók bovenaan te staan, niet verstopt in de
+            sectie waar hij vandaan kwam. */}
+        {weegKlus.bezig && (
+          <div style={{ marginBottom: "var(--s-3)" }}>
+            <Voortgang klein titel="De lijsten opnieuw doorrekenen" label={weegKlus.klus?.label} sinds={weegKlus.klus?.gestart} />
+          </div>
+        )}
+        {weegMsg && <div className="opr-melding" style={{ marginBottom: "var(--s-3)" }}>{weegMsg}</div>}
 
         {/* Wat je één keer instelt, en de deellink. Allebei in een lade: je vult
             het één keer in en ziet het daarna nooit meer, dus het hoort niet het
@@ -554,17 +574,7 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
                      title="Downloadt de volledige lijst als CSV. Dubbelklikken opent hem in Excel; in Google Sheets via Bestand, Importeren.">
                     Download voor Excel of Sheets
                   </a>
-                  <button type="button" className="ghost-btn small" onClick={() => void weegOpnieuw()} disabled={weegKlus.bezig}
-                    title="Twee controles in één: pagina's met een waardevolle eigen zoekterm gaan van deze lijst af, en onderwerpen die over meerdere pagina's verspreid liggen komen bovenaan te staan.">
-                    {weegKlus.bezig ? "Bezig met controleren…" : "Controleer op gemiste kansen"}
-                  </button>
                 </div>
-                {weegKlus.bezig && (
-                  <div style={{ margin: "var(--s-3) 0" }}>
-                    <Voortgang klein titel="De opruimlijst opnieuw wegen" label={weegKlus.klus?.label} sinds={weegKlus.klus?.gestart} />
-                  </div>
-                )}
-                {weegMsg && <div className="opr-melding">{weegMsg}</div>}
                 <OpruimTabel slug={slug} domain={domain} rijen={result.redirectMap} openTarget={openTarget} bewijs={bewijsPerPad} />
               </Sectie>
             )}

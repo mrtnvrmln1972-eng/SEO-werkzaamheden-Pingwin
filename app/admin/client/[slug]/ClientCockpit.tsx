@@ -108,7 +108,26 @@ export default function ClientCockpit({
   // Is dit een lead, dan is de leadomgeving het startscherm. Voor klanten
   // verandert er niets: die beginnen zoals altijd op Taken.
   const isLead = client.fase === "lead";
-  const validTab = (t?: string): Tab => (t === "lead" || t === "onboarding" || t === "werkzaamheden" || t === "paginas" || t === "documenten" || t === "activiteit" || t === "resultaten" || t === "klant" || t === "developer" || t === "wijzigingen" || t === "meta" || t === "cannibalisatie" || t === "interne-links" || t === "prioriteiten" || t === "google-profiel") ? t : (isLead ? "lead" : "werkzaamheden");
+  // Het tabblad uit de URL. Een waarde die we niet kennen viel stilzwijgend terug
+  // op Taken, en dat is een val: een link die er goed uitziet (?tab=cannibal, of de
+  // schermnaam ?tab=opruimen) zet je op een heel ander scherm zonder dat iets zegt
+  // dat er iets misging. De namen die iemand logischerwijs intikt wijzen daarom nu
+  // naar het juiste tabblad.
+  const TAB_NAMEN: Record<string, Tab> = {
+    cannibal: "cannibalisatie", opruimen: "cannibalisatie", opruim: "cannibalisatie",
+    taken: "werkzaamheden", "pagina's": "paginas", pages: "paginas",
+    "meta-ctr": "meta", links: "interne-links", "interne links": "interne-links",
+    "prioriteiten scan": "prioriteiten",
+  };
+  const GELDIGE_TABS: Tab[] = ["lead", "onboarding", "werkzaamheden", "paginas", "documenten", "activiteit",
+    "resultaten", "klant", "developer", "wijzigingen", "meta", "cannibalisatie", "interne-links",
+    "prioriteiten", "google-profiel"];
+  const validTab = (t?: string): Tab => {
+    const k = (t || "").trim().toLowerCase();
+    if ((GELDIGE_TABS as string[]).includes(k)) return k as Tab;
+    if (TAB_NAMEN[k]) return TAB_NAMEN[k];
+    return isLead ? "lead" : "werkzaamheden";
+  };
   const [tab, setTab] = useState<Tab>(validTab(initialTab));
   // Teller die de weekplanning laat herladen zodra er vanuit de chat een taak is
   // toegevoegd (of iets in het bord verandert).
