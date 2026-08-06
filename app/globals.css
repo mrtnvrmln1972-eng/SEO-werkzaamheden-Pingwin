@@ -4300,6 +4300,15 @@ details[open] > .opr-kaart-sam::before { content: "▾ "; }
    het blok in een sectie staat, en blijft staan waar het blok los gebruikt wordt
    (de deelpagina voor de klant). */
 .opr-sectie-body > .opr-kaart > .opr-kop { display: none; }
+/* Een subsectie binnen een sectie: zelfde gedrag, rustiger vorm. Zonder dit
+   verschil lijkt een uitklapper in een uitklapper een nieuw hoofdstuk, en dan
+   heb je het aantal blokken niet verkleind maar verplaatst. */
+.opr-sectie-klein { border: none; box-shadow: none; border-radius: 0; margin-bottom: 0;
+  border-top: 1px solid var(--card-border); }
+.opr-sectie-klein:first-of-type { border-top: none; }
+.opr-sectie-klein > summary { padding: var(--s-3) 0; }
+.opr-sectie-klein .opr-sectie-titel { font-size: var(--fs-sm); line-height: var(--lh-sm); }
+.opr-sectie-klein > .opr-sectie-body { padding: 0 0 var(--s-4); }
 /* De filterknoppen boven het plaatsen-advies: de gekozen knop moet te zien zijn,
    anders klik je en verandert er zichtbaar niets. */
 .ghost-btn.small.actief { background: var(--orange); color: var(--white); border-color: var(--orange); }
