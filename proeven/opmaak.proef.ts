@@ -323,5 +323,63 @@ const onleesbaar = kopRegels.filter(([, selector, blok]) => {
 checkWaar("geen donkere tekst op de donkere kolomkop", onleesbaar.length === 0,
   `Deze tabelkoppen zetten een donkere tekstkleur terwijl de globale thead-regel een donkere achtergrond geeft: ${onleesbaar.map(([, sel]) => sel.trim()).join(", ")}. Zet ze op var(--white).`);
 
+// ── 8. Geen scherm verliest zijn opmaak zonder dat iemand het merkt ──
+// Op 6 augustus 2026 verdwenen 174 regels uit het einde van globals.css zonder
+// één foutmelding. Twee chats werkten tegelijk aan dat bestand; de een schreef
+// zijn hele versie weg vanaf een oudere basis en nam het werk van de ander mee.
+// Vijf schermen stonden daarna zonder opmaak live (bulk-onboarding, de
+// klantwaarde-lijst, de klussen in de werklijst, het controleblok op een
+// weekplan-kaart en het Ahrefs-tellertje). De bouw bleef groen, de proeven
+// bleven groen: niets aan een klassenaam vertelt dat zijn stijlregel weg is.
+//
+// Deze controle sluit dat gat. Elke klassenaam met een van de voorvoegsels
+// hieronder die in een scherm gebruikt wordt, moet ook in globals.css staan.
+// Voorvoegsels omdat een dashboard vol losse klassen zit die van elders komen;
+// dit zijn de eigen naamruimtes van de schermen die het al een keer overkomen is.
+// Kort houden en uitbreiden zodra er een nieuwe naamruimte bijkomt.
+const NAAMRUIMTEN = ["at-", "bulk-", "kw-", "wl-", "wp-", "gmb-", "hm-", "om-", "zp-", "prio-"];
+const tsxBestanden: string[] = [];
+(function zoek(map: string) {
+  for (const naam of fs.readdirSync(path.join(WORTEL, map))) {
+    const vol = path.join(map, naam);
+    if (fs.statSync(path.join(WORTEL, vol)).isDirectory()) zoek(vol);
+    else if (naam.endsWith(".tsx")) tsxBestanden.push(vol);
+  }
+})("app");
+
+const gebruikt = new Map<string, string>();
+for (const bestand of tsxBestanden) {
+  const inhoud = fs.readFileSync(path.join(WORTEL, bestand), "utf8");
+  for (const m of inhoud.matchAll(/className=(?:"([^"]*)"|\{`([^`]*)`\})/g)) {
+    for (const klasse of (m[1] || m[2] || "").split(/[\s${}?:'"+()]+/)) {
+      if (klasse && NAAMRUIMTEN.some((p) => klasse.startsWith(p)) && !gebruikt.has(klasse)) {
+        gebruikt.set(klasse, bestand);
+      }
+    }
+  }
+}
+// Klassen die uit een sjabloon komen (`className={`wl-stand-${stand}`}`) zijn hier
+// maar half zichtbaar; wat er overblijft is een stomp als "wl-stand-". Die kunnen
+// we niet nakijken, dus die slaan we over in plaats van er een valse melding van
+// te maken. Een proef die onterecht rood wordt, zet iemand uit.
+//
+// De erfenis-lijst eronder werkt als de andere in dit bestand: één kant op. Deze
+// klassen staan wél in een scherm maar hebben nooit een stijlregel gehad; dat is
+// niet iets dat verdwenen is, maar een los eindje van eerder. Ze zijn niet van
+// deze chat en worden hier dus niet stiekem vormgegeven. De lijst mag korter
+// worden en nooit langer: een nieuwe klasse zonder opmaak wordt meteen rood.
+const NOOIT_OPGEMAAKT = new Set<string>([
+  "wl-blok", "wl-pagina-pijl",
+  "wp-docversies", "wp-controle-bewijs", "wp-onder-delen",
+  "prio-panel",
+]);
+const zonderOpmaak = [...gebruikt]
+  .filter(([k]) => !k.endsWith("-") && !NOOIT_OPGEMAAKT.has(k))
+  .filter(([k]) => !new RegExp(`\\.${k}[\\s,{:.>]`).test(css));
+checkWaar("elk scherm heeft nog de opmaak die het gebruikt", zonderOpmaak.length === 0,
+  `Deze klassen worden gebruikt maar staan niet meer in app/globals.css:\n       ${
+    zonderOpmaak.map(([k, b]) => `${k} (${b})`).join("\n       ")
+  }\n       Waarschijnlijk zijn er regels verdwenen doordat twee chats tegelijk aan globals.css schreven. Haal ze terug met: git log -p -- app/globals.css`);
+
 console.log(fouten ? `\n${fouten} proef(en) mislukt.` : "\nAlle proeven geslaagd.");
 process.exit(fouten ? 1 : 0);

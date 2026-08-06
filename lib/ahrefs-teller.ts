@@ -29,6 +29,18 @@ export type TellerStand = {
   prognose: number | null;
   /** Eén zin in gewone taal: wat betekent dit. Nooit leeg. */
   oordeel: string;
+  /**
+   * Dezelfde boodschap, maar opgeknipt voor een smal paneel. `oordeel` is één
+   * volle zin en leest goed in een tooltip of op een brede pagina; achter elkaar
+   * in een uitklappaneel wordt hij een tekstmuur van vier regels. Daarom staan de
+   * drie delen hier los, zodat het paneel ze onder elkaar kan zetten en het
+   * percentage niet herhaalt (dat staat er al groot boven).
+   */
+  kern: string;
+  /** "Nog 9 dagen tot de reset", of null als Ahrefs geen datum meldt. */
+  resetZin: string | null;
+  /** Alleen gevuld als het tempo écht iets te zeggen heeft; anders ruis. */
+  tempoZin: string | null;
 };
 
 /** Lengte van een abonnementsperiode. Ahrefs rekent per maand af. */
@@ -53,6 +65,7 @@ export function tellerStand(
     used: null, limit: null, deel: null, sein: "onbekend",
     dagenTotReset: null, prognose: null,
     oordeel: "Ahrefs meldt op dit moment geen tegoed.",
+    kern: "Geen tegoed gemeld.", resetZin: null, tempoZin: null,
   };
   if (!ruw || ruw.used === null) return leeg;
 
@@ -90,31 +103,46 @@ export function tellerStand(
     else sein = "rustig";
   }
 
-  return { used, limit, deel, sein, dagenTotReset, prognose, oordeel: oordeelVan({ deel, limit, sein, dagenTotReset, prognose }) };
+  // De drie losse zinnen, en daarna dezelfde inhoud als één doorlopende zin. Zo
+  // is er één bron: het paneel en de tooltip kunnen nooit iets anders beweren.
+  const kern = kernVan(sein, deel, prognose, limit);
+  const resetZin = resetZinVan(dagenTotReset);
+  const tempoZin = tempoZinVan(prognose, limit);
+  const pct = deel === null ? null : Math.round(deel * 100);
+  const oordeel = deel === null || limit === null
+    ? "Ahrefs meldt wel verbruik, maar geen limiet; een percentage is er dus niet."
+    : [`${pct}% van het tegoed is op.`, resetZin ? `${resetZin}.` : "", kern].filter(Boolean).join(" ");
+
+  return { used, limit, deel, sein, dagenTotReset, prognose, oordeel, kern, resetZin, tempoZin };
 }
 
-function oordeelVan(s: { deel: number | null; limit: number | null; sein: Sein; dagenTotReset: number | null; prognose: number | null }): string {
-  if (s.deel === null || s.limit === null) return "Ahrefs meldt wel verbruik, maar geen limiet; een percentage is er dus niet.";
-  const pct = Math.round(s.deel * 100);
-  const rest = s.dagenTotReset === null
-    ? ""
-    : s.dagenTotReset === 0
-      ? " De teller gaat vandaag weer op nul."
-      : s.dagenTotReset === 1
-        ? " Morgen gaat de teller weer op nul."
-        : ` Nog ${s.dagenTotReset} dagen tot de teller weer op nul gaat.`;
-  const teSnel = s.prognose !== null && s.prognose > s.limit;
-  if (s.sein === "krap") {
-    return teSnel
-      ? `${pct}% op, en op dit tempo raakt het tegoed op vóór de reset.${rest} Zware analyses nu even uitstellen.`
-      : `${pct}% van het tegoed is op.${rest} Zware analyses nu even uitstellen.`;
-  }
-  if (s.sein === "let-op") {
-    return teSnel
-      ? `${pct}% op. Op dit tempo kom je tegen de grens aan vóór de reset.${rest}`
-      : `${pct}% van het tegoed is op.${rest} Nog ruimte, maar het loopt.`;
-  }
-  return `${pct}% van het tegoed is op.${rest} Ruim voldoende over.`;
+/** De kwalificatie zonder het percentage; dat staat in het paneel al groot boven. */
+function kernVan(sein: Sein, deel: number | null, prognose: number | null, limit: number | null): string {
+  if (deel === null || limit === null) return "Geen limiet bekend, dus geen percentage.";
+  const teSnel = prognose !== null && prognose > limit;
+  if (sein === "krap") return teSnel ? "Raakt op vóór de reset. Zware analyses even uitstellen." : "Bijna op. Zware analyses even uitstellen.";
+  if (sein === "let-op") return teSnel ? "Op dit tempo kom je tegen de grens aan." : "Nog ruimte, maar het loopt.";
+  return "Ruim voldoende over.";
+}
+
+function resetZinVan(dagen: number | null): string | null {
+  if (dagen === null) return null;
+  if (dagen === 0) return "De teller gaat vandaag op nul";
+  if (dagen === 1) return "Morgen gaat de teller op nul";
+  return `Nog ${dagen} dagen tot de teller op nul gaat`;
+}
+
+/**
+ * Het tempo alleen noemen als het iets betekent. Een prognose die ruim onder de
+ * limiet blijft is een getal zonder boodschap, en juist zulke regels maken van
+ * een paneel een muur. Vanaf viervijfde van de limiet gaat het ergens over.
+ */
+function tempoZinVan(prognose: number | null, limit: number | null): string | null {
+  if (prognose === null || limit === null || prognose < limit * 0.8) return null;
+  const n = prognose.toLocaleString("nl-NL");
+  return prognose > limit
+    ? `Op dit tempo kom je uit op ${n} units, meer dan er in het abonnement zit`
+    : `Op dit tempo eindigt de maand rond ${n} units`;
 }
 
 /** Kleur per sein. Eén plek, zodat kopbalk en paneel nooit uit elkaar lopen. */

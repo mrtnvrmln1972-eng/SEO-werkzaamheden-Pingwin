@@ -36,7 +36,26 @@ const laat = tellerStand({ used: 240000, limit: 400000, resetIso: RESET }, dag(1
 const vroeg = tellerStand({ used: 240000, limit: 400000, resetIso: RESET }, dag(1));
 checkWaar("60% op vlak voor de reset is rustig", laat.sein === "rustig", `sein: ${laat.sein}`);
 checkWaar("60% op halverwege de periode is een waarschuwing", vroeg.sein !== "rustig", `sein: ${vroeg.sein}`);
-checkWaar("de waarschuwing noemt het tempo", vroeg.oordeel.toLowerCase().includes("tempo"), vroeg.oordeel);
+checkWaar("de waarschuwing zegt dat het tegoed op raakt vóór de reset",
+  vroeg.kern.toLowerCase().includes("reset"), vroeg.kern);
+checkWaar("bij een te hoog tempo staat er een tempo-regel", vroeg.tempoZin !== null, `${vroeg.tempoZin}`);
+
+// ── 2b. De losse regels voor het smalle paneel ──
+// Het paneel zet deze onder elkaar; de volle zin blijft voor de tooltip en het
+// verbruikscherm. Ze moeten dus hetzelfde zeggen, en de korte versie mag het
+// percentage niet herhalen, want dat staat er in het paneel al groot boven.
+checkWaar("de korte versie herhaalt het percentage niet", !/\d+%/.test(echt.kern), echt.kern);
+checkWaar("de resetregel staat er los bij", echt.resetZin === "Nog 9 dagen tot de teller op nul gaat",
+  `${echt.resetZin}`);
+checkWaar("de volle zin bevat wel het percentage én de reden",
+  echt.oordeel.includes("63%") && echt.oordeel.includes(echt.kern), echt.oordeel);
+// Een prognose die ruim onder de limiet blijft is een getal zonder boodschap, en
+// juist zulke regels maken van een paneel een muur. Die blijft dus weg.
+const rustig = tellerStand({ used: 60000, limit: 400000, resetIso: RESET }, dag(6));
+checkWaar("een tempo dat ruim binnen de limiet blijft wordt niet genoemd", rustig.tempoZin === null,
+  `${rustig.tempoZin}`);
+checkWaar("een tempo dat tegen de limiet aan komt wordt wél genoemd", echt.tempoZin !== null,
+  `${echt.tempoZin}`);
 
 // ── 3. De harde grenzen ──
 checkWaar("boven de 90% is het altijd krap",

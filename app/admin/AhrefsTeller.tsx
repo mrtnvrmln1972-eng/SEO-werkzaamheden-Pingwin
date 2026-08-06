@@ -94,57 +94,55 @@ export default function AhrefsTeller() {
 
       {open && (
         <div className="hm-paneel at-paneel" role="dialog" aria-label="Ahrefs-tegoed">
+          {/* Blok 1: het hele Ahrefs-account. Eén groot getal, één balk, en de
+              boodschap in korte regels onder elkaar in plaats van als één lange
+              zin: achter elkaar wordt dat in een smal paneel een tekstmuur. */}
           <div className="at-kop">
             <div className="at-label">Ahrefs-tegoed deze maand</div>
             <div className="at-groot" style={{ color: kleur }}>
-              {num(stand.used)}{stand.limit !== null && <span className="at-van"> van {num(stand.limit)} units</span>}
+              {num(stand.used)}
+              {stand.limit !== null && <span className="at-van">van {num(stand.limit)} units</span>}
             </div>
             {stand.deel !== null && (
-              <div className="at-balk" role="img" aria-label={`${pct} procent van het tegoed is op`}>
-                <span className="at-balk-vul" style={{ width: `${Math.max(2, pct ?? 0)}%`, background: kleur }} />
+              <div className="at-meter">
+                <span className="at-balk" role="img" aria-label={`${pct} procent van het tegoed is op`}>
+                  <span className="at-balk-vul" style={{ width: `${Math.max(2, pct ?? 0)}%`, background: kleur }} />
+                </span>
+                <span className="at-pct" style={{ color: kleur }}>{pct}%</span>
               </div>
             )}
-            <div className="at-oordeel">{stand.oordeel}</div>
+            <div className="at-zinnen">
+              <span className="at-kern">{stand.kern}</span>
+              {stand.resetZin && <span className="at-bij">{stand.resetZin}.</span>}
+              {stand.tempoZin && <span className="at-bij">{stand.tempoZin}.</span>}
+            </div>
           </div>
 
-          {/* Wat is óns aandeel. Zonder deze regels is een oplopende teller een
-              raadsel: het dashboard en Maarten in Ahrefs zelf tellen op dezelfde
-              teller, en alleen afremmen helpt als wij de oorzaak zijn. */}
-          <div className="at-regels">
-            {data?.usedKey !== null && data?.usedKey !== undefined && (
-              <div className="at-regel">
-                <span className="at-regel-naam">Via dit dashboard</span>
-                <span className="at-regel-waarde">{num(data.usedKey)} units deze maand</span>
-              </div>
-            )}
-            {data?.eigen && (
-              <div className="at-regel">
-                <span className="at-regel-naam">Laatste 7 dagen</span>
-                <span className="at-regel-waarde">{num(data.eigen.units)} units in {num(data.eigen.calls)} aanroepen</span>
-              </div>
-            )}
-            {data?.eigen?.topKlant?.slug && (
-              <div className="at-regel">
-                <span className="at-regel-naam">Meeste verbruik</span>
-                <span className="at-regel-waarde">{data.eigen.topKlant.slug} ({num(data.eigen.topKlant.units)} units)</span>
-              </div>
-            )}
-            {stand.prognose !== null && (
-              <div className="at-regel">
-                <span className="at-regel-naam">Op dit tempo</span>
-                <span className="at-regel-waarde">{num(stand.prognose)} units aan het eind van de maand</span>
-              </div>
-            )}
-          </div>
+          {/* Blok 2: ons aandeel daarin. Zonder deze twee regels is een oplopende
+              teller een raadsel: het dashboard en het werk dat Maarten zelf in
+              Ahrefs doet tellen op dezelfde teller, en afremmen in het dashboard
+              helpt alleen als wij de oorzaak zijn. */}
+          {(data?.usedKey != null || data?.eigen) && (
+            <div className="at-blok">
+              <div className="at-blok-kop">Waarvan via dit dashboard</div>
+              {data?.usedKey != null && (
+                <div className="at-regel">
+                  <span className="at-regel-naam">Deze maand</span>
+                  <span className="at-regel-waarde">{num(data.usedKey)}</span>
+                </div>
+              )}
+              {data?.eigen && (
+                <div className="at-regel">
+                  <span className="at-regel-naam">Laatste 7 dagen</span>
+                  <span className="at-regel-waarde">{num(data.eigen.units)}</span>
+                </div>
+              )}
+            </div>
+          )}
 
-          <div className="at-voet">
-            Herhaalde vragen komen uit onze eigen cache en kosten niets. Het tegoed hierboven is dat
-            van het hele Ahrefs-account, dus werk je zelf in Ahrefs, dan telt dat mee.
-          </div>
-
-          <a className="hm-item" href="/admin/usage">
+          <a className="hm-item at-link" href="/admin/usage">
             <span className="hm-item-label">Naar het verbruik</span>
-            <span className="hm-item-hint">Uitgesplitst per klant en per functie, samen met de AI-kosten.</span>
+            <span className="hm-item-hint">Per klant en per functie, samen met de AI-kosten.</span>
           </a>
         </div>
       )}
