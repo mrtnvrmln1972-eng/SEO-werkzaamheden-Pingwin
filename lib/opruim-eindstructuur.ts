@@ -179,11 +179,25 @@ export async function bouwEindstructuur(slug: string, result: CannibalResult | n
   // En de keuze zelf: van de woorden die overblijven wint het woord dat de meeste
   // pagina's dekt, want dat is de grootste zinvolle groep. Dat is iets anders dan
   // "het vaakst voorkomende woord": de te brede woorden zijn er dan al uit.
-  const VRAAGWOORDEN = new Set([
-    "wat", "hoe", "waarom", "wanneer", "waar", "welke", "kun", "kan", "moet", "mag",
-    "weten", "jij", "jouw", "jezelf", "zelf", "alles", "zonder", "meer", "beste", "goed",
+  // Woorden die in een URL staan maar geen onderwerp zijn: vraagwoorden,
+  // voorzetsels, hulpwerkwoorden en de vulwoorden van blogtitels. Zonder deze lijst
+  // kreeg One Day Clinic takken als "Wat", "Van", "Voor", "Bij" en "Dat": pagina's
+  // die een schrijfstijl delen, geen thema. Let op: het zijn stammen, dus "gratis"
+  // staat er als "grati" en "vragen" als "vrag"; onderwerpWoorden knipt de uitgang
+  // eraf voordat dit filter draait.
+  const GEEN_ONDERWERP = new Set([
+    "wat", "hoe", "waarom", "wanneer", "waar", "welke", "wie", "dat", "dit", "die", "deze",
+    "kun", "kan", "moet", "mag", "wil", "zijn", "hebben", "heb", "heeft", "word", "doen", "doe",
+    "gaan", "krijg", "laten", "maken", "weten", "zien", "denk", "zeg", "vind",
+    "van", "voor", "bij", "met", "naar", "aan", "uit", "als", "ook", "nog", "wel", "niet", "geen",
+    "jij", "jouw", "jou", "jezelf", "zelf", "mijn", "onze", "ons", "haar", "hun",
+    "alles", "iets", "niets", "zonder", "meer", "minder", "beste", "goed", "echt", "even",
+    "tijden", "tijd", "keer", "manier", "reden", "soort", "vrag", "antwoord", "info", "informatie",
+    "grati", "snel", "makkelijk", "veilig", "belangrijk", "nieuw", "oud",
   ]);
-  const bruikbaar = (pad: string) => onderwerpWoorden(pad).filter((w) => !VRAAGWOORDEN.has(w));
+  // En een ondergrens op de lengte: een stam van drie letters is meestal een
+  // restje van het afknippen, geen woord waar je een tak naar vernoemt.
+  const bruikbaar = (pad: string) => onderwerpWoorden(pad).filter((w) => !GEEN_ONDERWERP.has(w) && w.length >= 4);
 
   const freq = new Map<string, number>();
   // En de nette schrijfwijze erbij. De woordstam is grof (hij knipt "seks" tot
@@ -207,10 +221,14 @@ export async function bouwEindstructuur(slug: string, result: CannibalResult | n
     return [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].length - b[0].length)[0][0];
   };
   const teBreed = Math.max(MIN_TAK + 3, Math.round(plat.length * 0.08));
+  // Een afgeleide tak heeft een hogere drempel dan een tak die al in de URL zit.
+  // Drie blogs die toevallig een woord delen is geen structuur; vijf pagina's over
+  // hetzelfde is dat wel. Wat niet haalt komt eerlijk onder "staat los".
+  const MIN_AFGELEID = 5;
   const losse: EindPagina[] = [];
   for (const p of plat) {
     const woorden = [...new Set(bruikbaar(p.pad))]
-      .filter((w) => { const n = freq.get(w) || 0; return n >= MIN_TAK && n <= teBreed; })
+      .filter((w) => { const n = freq.get(w) || 0; return n >= MIN_AFGELEID && n <= teBreed; })
       .sort((a, b) => (freq.get(b) || 0) - (freq.get(a) || 0));
     const beste = woorden[0];
     if (!beste) { losse.push(p); continue; }
