@@ -1237,13 +1237,18 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "Opengeklapt staan de laatste zeven dagen erbij, de duurste functie, de duurste klant en het " +
           "totaal van vorige maand. Het bedrag is een schatting op basis van tokens tegen de " +
           "standaardtarieven, dus het kan een paar procent van de echte rekening afwijken.\n\n" +
-          "**Er lopen twee AI-meters, en dat staat er ook bij.** Het dashboard werkt met een eigen sleutel; " +
-          "dat is het bedrag hierboven en dat wordt per aanroep gemeten. Chatten en het bouwen in Claude Code " +
-          "lopen daarentegen op een abonnement, met vooruit gekochte usage credits zodra de limiet van dat " +
-          "abonnement op is. Dat saldo kan het dashboard niet ophalen, want daar is buiten team- en " +
-          "bedrijfsaccounts om geen koppeling voor. In plaats van een gefingeerd cijfer staat er dus de uitleg " +
-          "plus een knop naar de plek waar het saldo écht staat. Dat is de eerlijke variant: liever een lege " +
-          "plek met een reden dan een getal dat het niet is.",
+          "**Er lopen drie meters, elk met een eigen ingang in de kopbalk.** Ze heten alle drie ongeveer " +
+          "hetzelfde en tellen niet bij elkaar op, dus ze staan bewust naast elkaar in plaats van samengevoegd:\n\n" +
+          "- **Ahrefs**: het tegoed hierboven.\n" +
+          "- **Claude**: wat het dashboard zelf verstookt, dit tellertje.\n" +
+          "- **Abo**: het eigen Claude-abonnement (chatten en Claude Code). Zonder cijfer, want dat saldo is " +
+          "op een persoonlijk abonnement niet op te halen; buiten team- en bedrijfsaccounts om biedt " +
+          "Anthropic daar geen koppeling voor. In plaats van een gefingeerd getal staat er de uitleg over de " +
+          "vooruit gekochte usage credits, plus twee knoppen naar de plek waar het saldo écht staat.\n\n" +
+          "**Elke teller heeft zijn eigen tips onderin**, want een tip zonder de rekening erbij is een " +
+          "algemeenheid: welke Ahrefs-actie duur is hoort niet bij het Claude-tellertje, en andersom. Dezelfde " +
+          "tips staan ook gebundeld op `/admin/usage`, zodat je ze ook kunt terugvinden zonder eerst een " +
+          "teller te hoeven openklikken.",
       },
       {
         titel: "Teamgebruikers en rechten",

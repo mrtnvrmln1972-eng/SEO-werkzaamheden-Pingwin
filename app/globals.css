@@ -6291,6 +6291,9 @@ a.wb-pad:hover { text-decoration: underline; }
   font-variant-numeric: tabular-nums;
 }
 .at-van { font-size: var(--fs-sm); line-height: var(--lh-sm); font-weight: 400; color: var(--gray); }
+/* Voor de Abo-teller, die bewust geen cijfer heeft: kleiner en grijs, zodat
+   "niet op te halen" niet leest als een fout maar als een bewuste keuze. */
+.at-groot-leeg { font-size: var(--fs-base); line-height: var(--lh-base); font-weight: 600; color: var(--gray); }
 
 /* De balk met het percentage ernaast, zodat het cijfer niet nóg een losse regel
    wordt. Balk dik genoeg om echt te zien; 4px las als een streepje. */
@@ -6352,6 +6355,16 @@ a.wb-pad:hover { text-decoration: underline; }
 .ct-abo-tekst { margin: 0; font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--body-text); }
 .ct-knoppen { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-1); }
 .ct-btn { font-size: var(--fs-sm); line-height: var(--lh-sm); padding: var(--s-1) var(--s-3); text-decoration: none; }
+
+/* Tips-blok binnen een smal kopbalkpaneel (.at-paneel). Dezelfde vorm als de
+   tips op het verbruikscherm (.vm-tip-*), alleen compacter: hier is de breedte
+   maar 320-380px. */
+.at-tips { display: flex; flex-direction: column; gap: var(--s-1); }
+.at-tips-kop { font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--brand-taupe); }
+.at-tip-lijst { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s-2); }
+.at-tip { display: flex; flex-direction: column; gap: 2px; }
+.at-tip-kop { font-size: var(--fs-sm); line-height: var(--lh-sm); font-weight: 700; color: var(--dark); }
+.at-tip-tekst { font-size: var(--fs-xs); line-height: var(--lh-sm); color: var(--body-text); }
 
 /* ── De drie meters op het verbruikscherm ─────────────────────────
    Ahrefs, Claude via het dashboard en het eigen Claude-abonnement naast elkaar,

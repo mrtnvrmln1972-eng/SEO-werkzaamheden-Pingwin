@@ -27,6 +27,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { SEIN_KLEUR, type TellerStand } from "../../lib/ahrefs-teller";
+import { AHREFS_TIPS } from "../../lib/verbruik-tips";
 
 type Data = {
   stand: TellerStand | null;
@@ -140,14 +141,21 @@ export default function AhrefsTeller() {
             </div>
           )}
 
-          {/* Twee ingangen in plaats van één: de cijfers, en de regels om ze omlaag
-              te krijgen. Die tips stonden er wel, maar niemand vond ze omdat er
-              alleen een link naar "het verbruik" hing. */}
-          <a className="hm-item at-link" href="/admin/usage#tips">
-            <span className="hm-item-label">Zo houd je het strak</span>
-            <span className="hm-item-hint">De tips per meter: welke knop duur is en waar afremmen echt helpt.</span>
-          </a>
-          <a className="hm-item" href="/admin/usage">
+          {/* De tips staan er zelf in plaats van achter een link: niemand gaat
+              op zoek naar "hoe hou ik dit strak" op een apart scherm. */}
+          <div className="at-tips">
+            <div className="at-tips-kop">Zo houd je Ahrefs strak</div>
+            <ul className="at-tip-lijst">
+              {AHREFS_TIPS.map((t) => (
+                <li className="at-tip" key={t.kop}>
+                  <span className="at-tip-kop">{t.kop}</span>
+                  <span className="at-tip-tekst">{t.tekst}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <a className="hm-item at-link" href="/admin/usage">
             <span className="hm-item-label">Naar het verbruik</span>
             <span className="hm-item-hint">Per klant en per functie, samen met de AI-kosten.</span>
           </a>

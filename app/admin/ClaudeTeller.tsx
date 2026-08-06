@@ -27,6 +27,7 @@
 import { useEffect, useRef, useState } from "react";
 import { SEIN_KLEUR } from "../../lib/sein";
 import { usd, type ClaudeStand } from "../../lib/claude-teller";
+import { DASHBOARD_TIPS } from "../../lib/verbruik-tips";
 
 type Data = {
   stand: ClaudeStand | null;
@@ -138,43 +139,22 @@ export default function ClaudeTeller() {
             </div>
           )}
 
-          {/* Blok 3: de tweede meter. Zonder dit blok leest het bedrag hierboven
-              als "wat Claude mij kost", en dat is het niet: chatten en bouwen
-              lopen op het abonnement en staan op een andere rekening. */}
-          <div className="ct-abo">
-            <div className="ct-abo-kop">Je abonnement, een aparte meter</div>
-            <p className="ct-abo-tekst">
-              Chatten en het werk in Claude Code lopen op je Claude-abonnement, niet op de sleutel
-              van dit dashboard. Die kosten staan hierboven dus niet in.
-            </p>
-            <p className="ct-abo-tekst">
-              Is de limiet van je abonnement op, dan werkt Claude door op je <strong>usage credits</strong>,
-              tegen de normale API-tarieven. Die koop je vooruit, dus er komt geen losse factuur achteraf:
-              het gaat van het tegoed af dat er al staat. Staat automatisch bijvullen aan, dan wordt er wél
-              opnieuw afgeschreven zodra dat tegoed laag wordt.
-            </p>
-            <p className="ct-abo-tekst">
-              Het saldo zelf kan dit dashboard niet ophalen; op een persoonlijk abonnement is daar geen
-              koppeling voor. Eén klik hieronder brengt je op de plek waar het wél staat.
-            </p>
-            <div className="ct-knoppen">
-              <a className="btn ct-btn" href="https://claude.ai/settings/usage" target="_blank" rel="noreferrer">
-                Bekijk je tegoed
-              </a>
-              <a className="btn ct-btn" href="https://claude.ai/settings/billing" target="_blank" rel="noreferrer">
-                Extra verbruik instellen
-              </a>
-            </div>
+          {/* De uitleg over het abonnement en de usage credits staat nu in een
+              eigen teller ("Abo") ernaast; dit paneel gaat alleen nog over wat
+              het DASHBOARD zelf verstookt. */}
+          <div className="at-tips">
+            <div className="at-tips-kop">Zo houd je dit strak</div>
+            <ul className="at-tip-lijst">
+              {DASHBOARD_TIPS.map((t) => (
+                <li className="at-tip" key={t.kop}>
+                  <span className="at-tip-kop">{t.kop}</span>
+                  <span className="at-tip-tekst">{t.tekst}</span>
+                </li>
+              ))}
+            </ul>
           </div>
 
-          {/* Twee ingangen in plaats van één: de cijfers, en de regels om ze omlaag
-              te krijgen. Die tips stonden er wel, maar niemand vond ze omdat er
-              alleen een link naar "het verbruik" hing. */}
-          <a className="hm-item at-link" href="/admin/usage#tips">
-            <span className="hm-item-label">Zo houd je het strak</span>
-            <span className="hm-item-hint">De tips per meter: welke knop duur is en waar afremmen echt helpt.</span>
-          </a>
-          <a className="hm-item" href="/admin/usage">
+          <a className="hm-item at-link" href="/admin/usage">
             <span className="hm-item-label">Naar het verbruik</span>
             <span className="hm-item-hint">Per klant en per functie, samen met het Ahrefs-verbruik.</span>
           </a>

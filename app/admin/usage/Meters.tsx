@@ -26,36 +26,12 @@ function num(n: number): string {
   return n.toLocaleString("nl-NL");
 }
 
-type Tip = { kop: string; tekst: string };
+import { AHREFS_TIPS, DASHBOARD_TIPS, ABO_TIPS } from "../../../lib/verbruik-tips";
 
-const TIPS: { meter: string; tips: Tip[] }[] = [
-  {
-    meter: "Ahrefs",
-    tips: [
-      { kop: "Dezelfde vraag kost één keer", tekst: "Zoekvolumes en top-10's worden bewaard (een maand, een kwartaal). Een analyse opnieuw openen kost dus niets; een nieuwe scan starten wel." },
-      { kop: "Nieuwe klanten in golven", tekst: "Een hele site in één keer inlezen is de duurste knop die er is. De bulk-onboarding doet het daarom in golven; laat die volgorde staan." },
-      { kop: "Kijk wie de teller laat lopen", tekst: "Werk je zelf in Ahrefs, dan telt dat op dezelfde meter. Staat het dashboard laag en de meter hoog, dan helpt afremmen hier niets." },
-    ],
-  },
-  {
-    meter: "Claude via het dashboard",
-    tips: [
-      { kop: "Diepe documenten doseren", tekst: "Een diepe analyse of blauwdruk is tien tot twintig keer een gewone vraag. Prima voor een pagina die ertoe doet, zonde voor een verkenning." },
-      { kop: "Licht werk gaat al naar een licht model", tekst: "Labels, korte extracties en losse correcties draaien op het goedkope model. Ga daar niet omheen door alles via de chat te vragen." },
-      { kop: "Eén onderwerp per gesprek", tekst: "Een gesprek draagt zijn hele geschiedenis mee bij elke vraag. Een nieuwe chat voor een nieuw onderwerp is goedkoper dan doorgaan in een lange." },
-    ],
-  },
-  {
-    meter: "Je Claude-abonnement",
-    tips: [
-      { kop: "Kijk eerst wélke meter vol is", tekst: "In Claude Code toont /usage twee dingen: je plan-limiet (per vijf uur en per week) en je tegoed. Staat de weeklimiet op 100%, dan betaal je álles tot de reset uit je tegoed, ook werk dat gisteren gratis was. Dat verklaart een bedrag dat plots hard oploopt zonder dat je meer doet." },
-      { kop: "Kies het model naar de klus", tekst: "Het zwaarste model kost een veelvoud van het middelste. Voor bouwen, opmaken, teksten en lijstjes is dat middelste model genoeg; het zware is voor strategie en beoordelen. Dit is de grootste knop die er is, groter dan alle andere tips bij elkaar." },
-      { kop: "Nieuwe klus, nieuwe chat", tekst: "Zodra je op tegoed werkt, wordt het geheugen van een gesprek na vijf minuten stilte niet meer goedkoop hergebruikt (op je abonnement is dat een uur). Elke vraag daarna betaalt de hele geschiedenis opnieuw. Een verse chat met drie regels startprompt begint bij bijna nul." },
-      { kop: "Niet zes chats tegelijk laten sudderen", tekst: "Elke lopende chat draagt zijn eigen geschiedenis mee. Werk je in zes chats door elkaar, dan betaal je zes keer een geschiedenis in plaats van één. Rond af wat af is." },
-      { kop: "Zet een uitgavenlimiet", tekst: "Op claude.ai kun je een grens per maand zetten op het tegoed. Dan kan het niet meer stilletjes doorlopen; je krijgt een melding in plaats van een verrassing." },
-      { kop: "Vraag gericht", tekst: "\"Kijk de hele site na\" laat alles lezen. \"Kijk deze pagina na op deze drie punten\" kost een fractie en geeft een beter antwoord." },
-    ],
-  },
+const TIPS = [
+  { meter: "Ahrefs", tips: AHREFS_TIPS },
+  { meter: "Claude via het dashboard", tips: DASHBOARD_TIPS },
+  { meter: "Je Claude-abonnement", tips: ABO_TIPS },
 ];
 
 export default function Meters({ ahrefs, claude, ahrefsEigenMaand }: {
