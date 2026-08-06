@@ -375,7 +375,7 @@ export async function poort(slug: string, key: StapKey): Promise<PoortUitslag> {
   const lijst = namen.length === 1 ? namen[0] : `${namen.slice(0, -1).join(", ")} en ${namen[namen.length - 1]}`;
   return {
     mag: false,
-    reden: `${def.label} kan nog niet: eerst ${lijst}. Zonder die inventarisatie levert deze analyse een gok op in plaats van een meting. Je regelt het op de Onboarding-pagina.`,
+    reden: `${def.label} kan nog niet: eerst ${lijst}. Zonder die inventarisatie levert deze analyse een gok op in plaats van een meting. Wat er ontbreekt staat hieronder, en anders op de Onboarding-pagina.`,
     ontbreekt,
   };
 }

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { mdToHtml } from "../../../../lib/markdown";
 import { BRIL_LABEL, BRIL_UITLEG, STAND_LABEL, DREMPEL, beheerUitnodiging, type Bril, type Stand } from "../../../../lib/gmb-kennis";
+import { STAP, type StapKey } from "../../../../lib/onboarding-stappen";
 import HelpHint from "./HelpHint";
 
 // ═══════════════════════════════════════════════════════════
@@ -68,6 +69,12 @@ export default function GmbPanel({ slug, clientName, clientEmail, pingwinEmail, 
   const [conceptBusy, setConceptBusy] = useState<string | null>(null);
   const [suggestiesOpen, setSuggestiesOpen] = useState(false);
   const [uitnodigingOpen, setUitnodigingOpen] = useState(false);
+  // Wat de poort tegenhield, plus wat er daarna van geregeld is. Staat hier
+  // zodat je het vanaf dit scherm kunt oplossen in plaats van doorgestuurd te
+  // worden naar een ander tabblad.
+  const [blokkade, setBlokkade] = useState<{ key: StapKey; label: string; door: string; tab?: string }[]>([]);
+  const [regelBusy, setRegelBusy] = useState<string | null>(null);
+  const [regelMelding, setRegelMelding] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     try {
@@ -92,8 +99,10 @@ export default function GmbPanel({ slug, clientName, clientEmail, pingwinEmail, 
       const d = await fetch("/api/admin/gmb", {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }),
       }).then((r) => r.json());
-      if (!d.ok) setErr(d.error || "Starten is niet gelukt.");
-      else await load();
+      if (!d.ok) {
+        setErr(d.error || "Starten is niet gelukt.");
+        setBlokkade(Array.isArray(d.onboarding) ? d.onboarding : []);
+      } else { setBlokkade([]); setRegelMelding({}); await load(); }
     } catch { setErr("Starten is niet gelukt."); } finally { setBusy(false); }
   }
 
@@ -129,6 +138,25 @@ export default function GmbPanel({ slug, clientName, clientEmail, pingwinEmail, 
     } catch { setErr("Het concept schrijven is niet gelukt."); } finally { setConceptBusy(null); }
   }
 
+  // Eén ontbrekende voorwaarde hier ter plekke laten regelen. Lukt het, dan
+  // proberen we meteen opnieuw te meten: dat is waar hij voor kwam.
+  async function regel(stap: StapKey) {
+    setRegelBusy(stap); setErr("");
+    try {
+      const d = await fetch("/api/admin/gmb/regel", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, stap }),
+      }).then((x) => x.json());
+      if (d.ok) {
+        setRegelMelding((m) => ({ ...m, [stap]: d.melding || "Geregeld." }));
+        await start();
+      } else {
+        setRegelMelding((m) => ({ ...m, [stap]: d.error || "Dit lukte niet." }));
+      }
+    } catch {
+      setRegelMelding((m) => ({ ...m, [stap]: "Dit lukte niet." }));
+    } finally { setRegelBusy(null); }
+  }
+
   const r = state?.result || null;
   const draait = state?.status === "running";
 
@@ -153,6 +181,36 @@ export default function GmbPanel({ slug, clientName, clientEmail, pingwinEmail, 
         </div>
 
         {err && <p className="gmb-fout">{err}</p>}
+
+        {blokkade.length > 0 && (
+          <div className="gmb-poort">
+            <span className="gmb-subkop">Dit moet er eerst staan</span>
+            <p className="gmb-bril-uitleg">
+              Je hoeft hier niet voor weg. Wat het dashboard zelf kan regelen, doet het met de knop ernaast;
+              daarna wordt er meteen opnieuw gemeten.
+            </p>
+            {blokkade.map((b) => {
+              const def = STAP.get(b.key);
+              const zelf = def?.door === "dashboard";
+              return (
+                <div className="gmb-poort-regel" key={b.key}>
+                  <div>
+                    <strong>{b.label}</strong>
+                    {def?.waarom && <span className="gmb-treffer-meta">{def.waarom}</span>}
+                    {regelMelding[b.key] && <span className="gmb-poort-melding">{regelMelding[b.key]}</span>}
+                  </div>
+                  {zelf ? (
+                    <button className="btn btn-primary" onClick={() => regel(b.key)} disabled={regelBusy === b.key || busy}>
+                      {regelBusy === b.key ? "Bezig…" : "Regel dit nu"}
+                    </button>
+                  ) : onGaNaar && b.tab ? (
+                    <button className="btn" onClick={() => onGaNaar(b.tab!)}>Dit doe jij, breng me erheen</button>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        )}
         {state?.status === "error" && state.error && <p className="gmb-fout">{state.error}</p>}
 
         {state && !state.meetdeur && (
