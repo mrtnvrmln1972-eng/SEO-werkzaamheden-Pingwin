@@ -20,7 +20,13 @@ import PaginaDossier from "./PaginaDossier";
 import DeelKnoppen from "./DeelKnoppen";
 import DevDoorzetten from "./DevDoorzetten";
 
-export type WpTask = { id: number; thread: string; taak: string; toelichting: string; wie: string; url: string; taaktype: string; copyUrl: string; bronMail: string; weekYear: number; weekNo: number; status: string; sortOrder: number; naarDev?: boolean };
+const ARCHIEF_LABEL: Record<string, string> = {
+  titel: "Eerdere titel",
+  notities: "Eerdere kaarttekst",
+  overloop: "Weggeschoven omdat de kaart vol was",
+};
+
+export type WpTask = { id: number; thread: string; taak: string; toelichting: string; wie: string; url: string; taaktype: string; copyUrl: string; bronMail: string; weekYear: number; weekNo: number; status: string; sortOrder: number; naarDev?: boolean; archiefAantal?: number };
 export type WpPageInfo = { url: string; live: boolean; klikken?: number; vertoningen?: number; doorgevoerd?: boolean | null; strategie: boolean; gelieerde: boolean; analyse: boolean; blauwdruk: boolean; copy: boolean; bouw: boolean; structured: boolean; structuredStatus: string; next: string; links: { analyse: string; blauwdruk: string; copy: string } };
 
 // Bij welk taaktype hoort welk dashboard-tabblad (voor de deep-link "doe het hier").
@@ -81,8 +87,12 @@ type ChatMsg = { role: "user" | "assistant"; content: string };
 
 function shortUrl(url: string): string { try { const u = new URL(url); return (u.pathname + u.search) || "/"; } catch { return url; } }
 
-export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDragStart, onDragEnd, onStatus, onRemove, onMail, onGoToPage, onGoToTab, onOpenMailDate, mailLinks, refreshBoard }: {
+export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen, onDragStart, onDragEnd, onStatus, onRemove, onMail, onGoToPage, onGoToTab, onOpenMailDate, mailLinks, refreshBoard }: {
   slug: string; t: WpTask; page?: WpPageInfo; open: boolean;
+  /** Hangt deze kaart onder een regel in de planning? Dan toont die regel de
+      titel, het pad en de fase-letters al, en wordt de kaartkop één actiebalk.
+      Zonder dit stond alles twee keer in beeld, inclusief het sleephandvat. */
+  inRij?: boolean;
   onToggleOpen: () => void; onDragStart: () => void; onDragEnd: () => void;
   onStatus: () => void; onRemove: () => void; onMail: (aud: "klant" | "dev") => void;
   onGoToPage?: (url: string) => void; onGoToTab?: (tab: string) => void;
@@ -458,14 +468,10 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
     if (key === "bouw") {
       return (
         <>
-          {/* Hier verlaat het werk jouw handen, dus hier hoort de knop naar de
-              developerlijst. Stond eerder onderaan de kaart, ver van deze stap. */}
-          <button type="button" className={"wp-fase-btn" + (naarDev ? " wp-fase-btn-aan" : "")}
-            disabled={devBezig}
-            title={naarDev ? "Staat op de developerlijst. Klik om hem er weer af te halen." : "Zet deze kaart op de developerlijst, naast de andere taken voor de sitebouwer."}
-            onClick={() => void zetNaarDev()}>
-            {devBezig ? "Bezig…" : naarDev ? "✓ Op developerlijst" : "Naar dev"}
-          </button>
+          {/* Doorzetten naar de sitebouwer stond hier én in de actiebalk én onderaan
+              bij Delen. Drie knoppen voor één handeling. Hij staat nu alleen nog
+              bovenaan in de actiebalk; deze rij toont wél de stand ("Bij de
+              developer"), want dat is een signaal en geen knop. */}
           <button type="button" className="wp-fase-btn" title="Mail over de bouw of publicatie (ontvanger kies je in het venster)" onClick={() => onMail("dev")}>Mail</button>
         </>
       );
@@ -497,6 +503,20 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
   const ouder = hasInfo ? eerdereNotitiesHtml(t.toelichting, t.url, t.taak, mailLinks) : null;
   const eerdereNotities = ouder?.html || "";
   const eerdereAantal = ouder?.aantal || 0;
+  // Het archief wordt pas opgehaald als je het openklapt: het staat er om iets
+  // terug te kunnen zoeken, niet om te lezen.
+  const archiefAantal = t.archiefAantal || 0;
+  const [archief, setArchief] = useState<{ op: string; soort: string; tekst: string }[]>([]);
+  const [archiefBezig, setArchiefBezig] = useState(false);
+  async function laadArchief() {
+    if (archief.length || archiefBezig || archiefAantal === 0) return;
+    setArchiefBezig(true);
+    try {
+      const d = await fetch(`/api/admin/weekplan/archief?slug=${encodeURIComponent(slug)}&id=${t.id}`).then((r) => r.json());
+      if (d?.ok && Array.isArray(d.items)) setArchief(d.items);
+    } catch { /* stil; het blok blijft dan leeg */ }
+    finally { setArchiefBezig(false); }
+  }
 
   // Dichtklappen mag nooit een lopende tekstselectie opeten (kopiëren gaat voor).
   const toggleAlsGeenSelectie = () => {
@@ -508,10 +528,11 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
   return (
     <div className={"wp-card wp-" + t.status + (open ? " wp-open" : "")}>
       <div className="wp-card-grid">
-        {/* Alleen dit handvat is sleepbaar; de rest van de kaart blijft selecteerbare tekst. */}
-        <span className="wp-card-grip" draggable onDragStart={onDragStart} onDragEnd={onDragEnd} title="Sleep de kaart naar een andere week">⋮⋮</span>
+        {/* Alleen dit handvat is sleepbaar; de rest van de kaart blijft selecteerbare tekst.
+            Hangt de kaart onder een regel, dan heeft die regel er al een. */}
+        {!inRij && <span className="wp-card-grip" draggable onDragStart={onDragStart} onDragEnd={onDragEnd} title="Sleep de kaart naar een andere week">⋮⋮</span>}
         <div className="wp-card-main">
-          <div className="wp-kop-rij">
+          <div className={"wp-kop-rij" + (inRij ? " wp-kop-balk" : "")}>
             <div className="wp-kop-tekst">
               {titelBewerk ? (
                 <div className="wp-titel-bewerk">
@@ -524,7 +545,7 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
                   <button type="button" className="wp-fase-btn" disabled={titelBezig} onClick={() => void bewaarTitel()}>{titelBezig ? "Bezig…" : "Bewaar"}</button>
                   <button type="button" className="wp-fase-btn wp-fase-btn-licht" disabled={titelBezig} onClick={() => setTitelBewerk(false)}>Annuleer</button>
                 </div>
-              ) : (
+              ) : inRij ? null : (
                 <div className="wp-card-taak wp-clickable" onClick={toggleAlsGeenSelectie} title={open ? "Klik om dicht te klappen" : "Klik voor de fases, info en chat"}>
                   <span className="wp-caret">{open ? "▾" : "▸"}</span>
                   {titel}
@@ -532,22 +553,33 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
                     onClick={(e) => { e.stopPropagation(); setTitelDraft(t.taak.replace(/<[^>]*>/g, "").trim()); setTitelBewerk(true); }}>✎</button>
                 </div>
               )}
-              {subtitel && <div className="wp-card-sub wp-clickable" onClick={toggleAlsGeenSelectie}>{subtitel}</div>}
+              {subtitel && !inRij && <div className="wp-card-sub wp-clickable" onClick={toggleAlsGeenSelectie}>{subtitel}</div>}
             </div>
             <span className="wp-kop-acties">
               <button type="button" className={"wp-status wp-status-" + t.status} onClick={onStatus} title="Klik om de status te wisselen">{STATUS_LABEL[t.status] || t.status}</button>
+              {/* Doorzetten naar de sitebouwer stond op twee plekken: hier onderaan
+                  bij Delen (alleen zonder pagina) en bij de fase Implementatie. Nu
+                  één knop, altijd op dezelfde plek, met of zonder pagina. */}
+              {open && (
+                <button type="button" className={"btn-ghost" + (naarDev ? " btn-ghost-aan" : "")} disabled={devBezig}
+                  title={naarDev ? "Staat op de developerlijst. Klik om hem er weer af te halen." : "Zet deze kaart klaar voor de sitebouwer: de opdracht, de pagina en de documenten."}
+                  onClick={() => void zetNaarDev()}>
+                  {devBezig ? "Bezig…" : naarDev ? "✓ Bij de sitebouwer" : "Naar de sitebouwer"}
+                </button>
+              )}
+              {open && hasInfo && (
+                <button type="button" className="btn-ghost" disabled={busy === "opruimen"}
+                  title="Laat de assistent de kaarttekst één keer herschrijven naar het strakke formaat. Niets verzinnen, niets weggooien; de oude tekst blijft in het archief staan."
+                  onClick={() => void ruimOp()}>{busy === "opruimen" ? "Bezig…" : "Tekst opschonen"}</button>
+              )}
+              {inRij && !titelBewerk && (
+                <button type="button" className="wp-titel-pen" title="Titel aanpassen"
+                  onClick={() => { setTitelDraft(t.taak.replace(/<[^>]*>/g, "").trim()); setTitelBewerk(true); }}>✎</button>
+              )}
               <button type="button" className="wp-icon wp-del" title="Verwijderen" onClick={onRemove}>×</button>
             </span>
           </div>
-
-      {open && hasInfo && (
-        <div className="wp-opruim-rij">
-          <button type="button" className="wp-fase-btn" disabled={busy === "opruimen"}
-            title="Laat de AI de kaarttekst één keer herschrijven naar het strakke formaat (niets verzinnen, niets weggooien)."
-            onClick={() => void ruimOp()}>{busy === "opruimen" ? "Bezig…" : "Ruim op"}</button>
-          {opruimMsg && <span className={opruimMsg.startsWith("Kaart") ? "wp-opruim-ok" : "wp-opruim-fout"}>{opruimMsg}</span>}
-        </div>
-      )}
+      {open && opruimMsg && <div className={opruimMsg.startsWith("Kaart") ? "wp-opruim-ok" : "wp-opruim-fout"}>{opruimMsg}</div>}
       {/* Alles wat over deze pagina gaat staat in één blok. Het zaten er eerst drie
           los onder elkaar: "Waarom deze pagina" (het geschreven verhaal), het
           paginadossier (wat er echt gebeurd is) en de documenten. Ze vertelden
@@ -577,24 +609,46 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
               }}
               dangerouslySetInnerHTML={{ __html: cardInfoHtml(t.toelichting, t.url, t.taak, cijferRegel(page), mailLinks, undefined, true) }} />
           )}
-          {t.url && <PaginaDossier slug={slug} url={t.url} kaartTekst={t.toelichting} kaartTitel={t.taak} />}
+          {t.url && <PaginaDossier slug={slug} url={t.url} zonderStand kaartTekst={t.toelichting} kaartTitel={t.taak} />}
           {/* Documenten hangen aan de pagina als die er is, en anders aan de taak
               zelf. Zo kun je bij élke kaart een document neerleggen, ook bij een
-              klus die niet over één pagina gaat (een rapportage, een werklijst). */}
-          <DocVersies slug={slug} url={t.url || `taak:${t.id}`} />
+              klus die niet over één pagina gaat (een rapportage, een werklijst).
+              Ingeklapt, want het dropveld kostte bij élke kaart drie regels
+              terwijl je er maar af en toe iets neerlegt. */}
+          <details className="wp-inklap">
+            <summary>Documenten toevoegen</summary>
+            <DocVersies slug={slug} url={t.url || `taak:${t.id}`} />
+          </details>
           {!hasInfo && !t.url && (
             <div className="muted wp-overdeze-leeg">
               Nog geen achtergrond. Leg hier een document neer, of stel een vraag in de chat hieronder; wat daaruit komt kun je als achtergrond vastleggen.
             </div>
           )}
-          {/* Eén archief onderaan het blok. Er stonden er twee vlak onder elkaar,
-              "Eerdere notities" en "Tijdlijn en eerdere notities", allebei met een
-              eigen aantal, dus het leek alsof er twee verschillende geschiedenissen
-              waren. Dit is de plek waar de oude notities uit de kaarttekst landen. */}
-          {hasInfo && eerdereNotities && (
-            <details className="wp-info-rest wp-overdeze-archief">
-              <summary>Eerdere notities ({eerdereAantal})</summary>
-              <div dangerouslySetInnerHTML={{ __html: eerdereNotities }} />
+          {/* Het archief. Twee dingen die er bijna hetzelfde uitzagen zijn nu uit
+              elkaar getrokken: "Wat er gebeurd is" (mails, documenten, gesprekken,
+              in het dossierblok hierboven) en dit, de geschreven tekst die van de
+              kaart af is geschoven. Hier landt alles wat wordt weggehaald: een
+              oude titel, een oude kaarttekst voordat hij werd herschreven, en
+              regels die niet meer pasten. Er wordt nooit iets uit verwijderd. */}
+          {(eerdereNotities || archiefAantal > 0) && (
+            <details className="wp-info-rest wp-overdeze-archief wp-card-info wp-info-net"
+              onToggle={(e) => { if ((e.target as HTMLDetailsElement).open) void laadArchief(); }}>
+              <summary>Archief: eerdere notities en titels ({eerdereAantal + archiefAantal})</summary>
+              {eerdereNotities && <div dangerouslySetInnerHTML={{ __html: eerdereNotities }} />}
+              {archief.length > 0 && (
+                <ul className="wp-archief">
+                  {archief.map((a, i) => (
+                    <li key={i}>
+                      <span className="wp-archief-kop">
+                        <span className="wp-archief-datum">{new Date(a.op).toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" })}</span>
+                        <span className="wp-archief-soort">{ARCHIEF_LABEL[a.soort] || a.soort}</span>
+                      </span>
+                      <span className="wp-archief-tekst">{a.tekst}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {archiefBezig && <div className="muted">Archief ophalen…</div>}
             </details>
           )}
         </div>
@@ -810,15 +864,10 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
         <span className="wp-onder-scheiding" aria-hidden="true" />
         <span className="wp-onder-groep wp-onder-delen">
           <span className="wp-onder-lab">Delen</span>
-          {/* De developerpagina werd alleen gevoed door de oude takentabel, dus met de
-              weekplanning was mailen het enige wat er nog over was. Hiermee staat de
-              kaart weer gewoon op die pagina, waar jij en de sitebouwer hem allebei zien. */}
-          {!page && <button type="button" className={"wp-link wp-link-btn" + (naarDev ? " wp-link-aan" : "")}
-            disabled={devBezig}
-            title={naarDev ? "Staat op de developerpagina. Klik om hem er weer af te halen." : "Zet deze kaart op de developerpagina, naast de andere taken voor de sitebouwer."}
-            onClick={() => void zetNaarDev()}>
-            {devBezig ? "Bezig…" : naarDev ? "✓ Op developerlijst" : "Naar developer"}
-          </button>}
+          {/* "Naar de sitebouwer" stond hier ook, maar alleen bij een kaart zónder
+              pagina. Twee knoppen voor hetzelfde, op twee plekken, met een
+              voorwaarde die niemand kan onthouden. Hij staat nu in de actiebalk
+              bovenaan, altijd op dezelfde plek. */}
           <DeelKnoppen slug={slug} titel={t.taak.replace(/<[^>]*>/g, "").trim()}
             tekst={[t.taak.replace(/<[^>]*>/g, "").trim(), t.toelichting.replace(/<[^>]*>/g, "").trim()].filter(Boolean).join("\n\n")}
             mailBron={msgs.filter((m) => m.role === "assistant").map((m) => m.content || "").join("\n\n")}

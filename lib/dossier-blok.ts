@@ -151,7 +151,12 @@ function mailKnopjes(m: PaginaMail): string {
 // naar de sitebouwer, of wachten we nog op iemand? Die staat in de nu-regel van
 // het verhaal, dus lezen we hem daaruit; zo geldt hij ook voor alle kaarten die
 // er al stonden.
-function statusChips(d: PageDossier, tekst = ""): string {
+// `zonderStand`: staat dit blok in een projectkaart, dan staat het fase-blok er
+// vlak onder met exact dezelfde vinkjes. Copy klaar, structured data en live zijn
+// daar dan een tweede weergave van, opgehaald via een tweede aanvraag, dus ze
+// kunnen zelfs iets anders zeggen. Wat hier blijft staan is wat het fase-blok
+// NIET kan tonen: waar we op wachten, en wat er van de klant terugkwam.
+function statusChips(d: PageDossier, tekst = "", zonderStand = false): string {
   const chips: string[] = [];
   const nu = /(^|\n)\s*[-*]?\s*nu\s*:(.*)$/im.exec(tekst || "");
   const nuRegel = (nu?.[2] || "").toLowerCase();
@@ -160,7 +165,10 @@ function statusChips(d: PageDossier, tekst = ""): string {
   } else if (/wachten op antwoord|wacht(en)? op /.test(nuRegel)) {
     chips.push('<span class="pd-stat pd-let" title="Er staat nog een vraag open; eerst antwoord afwachten.">Wachten op antwoord</span>');
   }
-  const s = d.stand;
+  const s = zonderStand ? null : d.stand;
+  if (d.copyLive && d.copyLive.totaal > 0 && !d.copyLive.doorgevoerd && zonderStand) {
+    chips.push(`<span class="pd-stat pd-stop" title="${d.copyLive.gevonden} van ${d.copyLive.totaal} koppen gevonden op de pagina">Nog niet live verwerkt</span>`);
+  }
   if (s) {
     if (s.copy) chips.push('<span class="pd-stat pd-ok">Copy klaar</span>');
     if (d.copyLive && d.copyLive.totaal > 0 && !d.copyLive.doorgevoerd) {
@@ -198,13 +206,17 @@ function tijdlijn(d: PageDossier): string {
   if (d.chats.length) {
     delen.push(`<div class="pd-chats">${d.chats.map((c) => `<span class="pd-chatregel" data-chat="${c.id}">${esc(c.title.slice(0, 90))}</span>`).join("")}</div>`);
   }
-  return `<details class="pd-meer"><summary>Tijdlijn en eerdere notities (${aantal})</summary><div class="pd-meer-body">${delen.join("")}</div></details>`;
+  return `<details class="pd-meer"><summary>Wat er gebeurd is (${aantal})</summary><div class="pd-meer-body">${delen.join("")}</div></details>`;
 }
 
 // Eén nette regel met de documenten en de pagina, als gewone oranje links met
 // een puntje ertussen. Dit stond eerder als een rij grijze blokjes in beeld, en
 // dat vloekte met de rest van het dashboard.
-function linkRegel(d: PageDossier, alGetoond = false): string {
+// `zonderStapdocs`: analyse, blauwdruk en copy staan in een projectkaart al bij
+// hun eigen fase, precies waar je ze nodig hebt. Hier blijft dan over wat die
+// rijen NIET tonen: teruggekregen klantversies, extra documentversies en de
+// live pagina zelf.
+function linkRegel(d: PageDossier, alGetoond = false, zonderStapdocs = false): string {
   const delen: string[] = [];
   // De teruggekregen teksten staan al achter de "nu:"-regel, precies waar het
   // werk begint. Ze hier nóg een keer neerzetten liet dezelfde pdf twee keer in
@@ -214,7 +226,12 @@ function linkRegel(d: PageDossier, alGetoond = false): string {
       ? `<a class="pd-link pd-link-klant" href="${esc(v.link)}" target="_blank" rel="noreferrer" title="Teruggekregen van de klant, nog te verwerken">${esc(v.naam)}</a>`
       : `<span class="pd-link-uit" title="Teruggekregen van de klant, nog te verwerken">${esc(v.naam)}</span>`);
   }
+  // Precies de documenten waar de fase-rijen zelf al naartoe linken, en niets
+  // meer. Op soort filteren zou ook een geüploade copy-versie verbergen, en die
+  // staat juist NIET bij de fases.
+  const bijFase = new Set(Object.values(d.stand?.links || {}).filter(Boolean).map(String));
   for (const x of d.documenten.slice(0, MAX_DOCS)) {
+    if (zonderStapdocs && x.link && bijFase.has(x.link)) continue;
     delen.push(x.link
       ? `<a class="pd-link" href="${esc(x.link)}" target="_blank" rel="noreferrer" title="Open het document">${esc(x.label)}</a>`
       : `<span class="pd-link-uit" title="Deze tekst bestaat, maar er is geen document van">${esc(x.label)}</span>`);
@@ -248,7 +265,7 @@ function nuRegelLinks(d: PageDossier): string {
  * Het volledige blok als HTML. `tekst` is de opgeslagen stand van zaken:
  * één regel conclusie plus de stappen als bullets.
  */
-export function dossierBlokHtml(d: PageDossier, tekst: string, opts: { compact?: boolean } = {}): string {
+export function dossierBlokHtml(d: PageDossier, tekst: string, opts: { compact?: boolean; zonderStand?: boolean } = {}): string {
   const domein = d.domein;
   // Markdown → HTML (de bullets worden een echte lijst), slugs klikbaar, en de
   // datum vooraan elke stap wordt een link naar die mail.
@@ -274,10 +291,12 @@ export function dossierBlokHtml(d: PageDossier, tekst: string, opts: { compact?:
     // verschillende pagina's ging.
     `<div class="pd-kop"><span class="pd-koptekst">Waar ${d.pad ? `${esc(d.pad)} ` : "deze pagina "}staat</span></div>`,
     verhaal ? `<div class="pd-verhaal md">${verhaal}</div>` : "",
-    linkRegel(d, voorstellenGetoond),
+    linkRegel(d, voorstellenGetoond, opts.zonderStand === true),
     // De doorzet-chip is juist op de compacte kaart het nuttigst; de rest van de
     // statusregel blijft daar weg.
-    opts.compact ? statusChips({ ...d, stand: null, klantvoorstellen: [] }, tekst) : statusChips(d, tekst),
+    opts.compact
+      ? statusChips({ ...d, stand: null, klantvoorstellen: [] }, tekst)
+      : statusChips(d, tekst, opts.zonderStand === true),
     opts.compact ? "" : tijdlijn(d),
     "</div>",
   ].filter(Boolean).join("");

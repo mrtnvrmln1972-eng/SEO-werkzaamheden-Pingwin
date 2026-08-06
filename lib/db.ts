@@ -295,6 +295,16 @@ async function init(): Promise<void> {
   // De dag waarop een taak staat gepland. De week volgt uit deze datum; leeg
   // betekent dat er nog geen dag gekozen is en alleen de week bekend is.
   await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS datum DATE`;
+  // Het archief van de kaart: alles wat is weggeschoven, met datum en reden.
+  // Bewust een EIGEN kolom en niet ergens in de toelichting: juist het opruimen
+  // overschrijft die tekst volledig, en de tekst wordt afgekapt. Precies de twee
+  // dingen waar dit archief tegen moet beschermen. Vorm:
+  // [{ op: "2026-08-06T…", soort: "titel"|"notities"|"overloop", tekst: "…" }]
+  await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS archief JSONB`;
+  // Heeft Maarten de titel zelf geschreven? Dan hernoemt de automaat hem nooit
+  // meer. Zonder deze vlag zet de eerstvolgende keer dat de planning geladen
+  // wordt zijn eigen titel weer terug, en dat is het ergst denkbare gedrag.
+  await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS taak_handmatig BOOLEAN NOT NULL DEFAULT false`;
 
   // Handmatige fase-vinkjes per pagina voor de projectkaart in de weekplanning.
   // Een rij hier wint van de afgeleide stand (beide kanten op: afvinken en terugzetten).

@@ -14,6 +14,10 @@ export type WeekplanTask = {
   weekYear: number; weekNo: number; status: string; sortOrder: number;
   /** De gekozen dag als "2026-08-06", of "" als er alleen een week bekend is. */
   datum: string;
+  /** Heeft Maarten deze titel zelf getypt? Dan hernoemt geen enkele automaat hem. */
+  taakHandmatig?: boolean;
+  /** Hoeveel er in het archief van deze kaart staat (voor het label in de kaart). */
+  archiefAantal?: number;
 };
 
 // ISO-8601-weeknummer (maandag als eerste dag). Server en client berekenen dit
@@ -33,6 +37,7 @@ export async function getWeekplan(slug: string): Promise<WeekplanTask[]> {
   await ensureSchema();
   const { rows } = await sql`
     SELECT id, thread, taak, toelichting, wie, url, taaktype, copy_url, bron_mail, week_year, week_no, status, sort_order, naar_dev,
+           taak_handmatig, COALESCE(jsonb_array_length(archief), 0) AS archief_aantal,
            to_char(datum, 'YYYY-MM-DD') AS datum
     FROM client_weekplan WHERE client_slug = ${slug}
     ORDER BY week_year, week_no, sort_order, id`;
@@ -45,6 +50,8 @@ export async function getWeekplan(slug: string): Promise<WeekplanTask[]> {
     weekYear: r.week_year as number, weekNo: r.week_no as number,
     status: (r.status as string) || "gepland", sortOrder: r.sort_order as number,
     datum: (r.datum as string) || "",
+    taakHandmatig: r.taak_handmatig === true,
+    archiefAantal: Number(r.archief_aantal || 0),
   }));
 }
 
@@ -69,6 +76,7 @@ export async function getWeekplanAlleKlanten(
   const { rows } = await sql`
     SELECT w.id, w.client_slug, c.name AS klant, c.email AS klant_mail, w.thread, w.taak, w.toelichting, w.wie, w.url, w.taaktype,
            w.copy_url, w.bron_mail, w.week_year, w.week_no, w.status, w.sort_order, w.naar_dev,
+           w.taak_handmatig, COALESCE(jsonb_array_length(w.archief), 0) AS archief_aantal,
            to_char(w.datum, 'YYYY-MM-DD') AS datum
     FROM client_weekplan w LEFT JOIN clients c ON c.slug = w.client_slug
     ORDER BY w.datum NULLS LAST, w.week_year, w.week_no, w.sort_order, w.id`;
@@ -85,12 +93,72 @@ export async function getWeekplanAlleKlanten(
     weekYear: r.week_year as number, weekNo: r.week_no as number,
     status: (r.status as string) || "gepland", sortOrder: r.sort_order as number,
     datum: (r.datum as string) || "",
+    taakHandmatig: r.taak_handmatig === true,
+    archiefAantal: Number(r.archief_aantal || 0),
   }));
 }
 
 // Normaliseert een toelichting-regel voor dedup: trim, lowercase, leidend '- ' weg.
 function lineKey(s: string): string {
   return s.trim().toLowerCase().replace(/^-\s*/, "");
+}
+
+// ═══════════════════════════════════════════════════════════
+// HET ARCHIEF VAN EEN KAART
+// ═══════════════════════════════════════════════════════════
+// Alles wat van de kaart af gaat, gaat hierheen: een oude titel, een oude
+// kaarttekst voordat hij herschreven wordt, en regels die niet meer pasten.
+// Zo raakt er niets kwijt en blijft de kaart toch leesbaar.
+//
+// Aanleiding (6 augustus 2026): twee van de drie Kamsteeg-kaarten stonden op
+// precies 4000 tekens, de grens die de code zichzelf oplegde. De database kent
+// die grens niet. Er verdween dus al informatie zonder dat iemand het zag, en
+// het opruimen overschreef de tekst zonder terugweg.
+
+export type ArchiefSoort = "titel" | "notities" | "overloop";
+export type ArchiefItem = { op: string; soort: ArchiefSoort; tekst: string };
+
+/** Zo lang mag de leesbare kaarttekst zijn. Het archief kent geen grens. */
+export const TOELICHTING_MAX = 8000;
+const ARCHIEF_MAX = 40;
+
+export async function getArchief(slug: string, id: number): Promise<ArchiefItem[]> {
+  await ensureSchema();
+  const { rows } = await sql`SELECT archief FROM client_weekplan WHERE client_slug = ${slug} AND id = ${id} LIMIT 1`;
+  const a = rows[0]?.archief;
+  return Array.isArray(a) ? (a as ArchiefItem[]) : [];
+}
+
+/** Zet iets in het archief, nieuwste eerst. Lege of identieke tekst slaat over. */
+export async function voegArchief(slug: string, id: number, soort: ArchiefSoort, tekst: string): Promise<void> {
+  const t = (tekst || "").trim();
+  if (!t) return;
+  const huidig = await getArchief(slug, id);
+  if (huidig[0]?.soort === soort && huidig[0]?.tekst === t) return;
+  const nieuw: ArchiefItem[] = [{ op: new Date().toISOString(), soort, tekst: t }, ...huidig].slice(0, ARCHIEF_MAX);
+  await sql`UPDATE client_weekplan SET archief = ${JSON.stringify(nieuw)}::jsonb WHERE client_slug = ${slug} AND id = ${id}`;
+}
+
+/**
+ * De kaarttekst binnen de grens brengen ZONDER stil af te kappen.
+ *
+ * Past hij niet, dan gaan de oudste regels naar het archief en blijven de
+ * nieuwste staan. Eerder kapte `slice(0, 4000)` er gewoon het staartje af, en
+ * dat is precies het soort grens dat geen foutmelding geeft maar wel informatie
+ * kost. Elke plek die de toelichting schrijft gaat via deze functie.
+ */
+export async function pasInToelichting(slug: string, id: number, tekst: string): Promise<string> {
+  const heel = (tekst || "").trim();
+  if (heel.length <= TOELICHTING_MAX) return heel;
+  const regels = heel.split("\n");
+  const weg: string[] = [];
+  let rest = regels;
+  while (rest.join("\n").length > TOELICHTING_MAX && rest.length > 1) {
+    weg.push(rest[0]);
+    rest = rest.slice(1);
+  }
+  if (weg.length) await voegArchief(slug, id, "overloop", weg.join("\n"));
+  return rest.join("\n").trim();
 }
 
 // Voegt taken toe. Eén pagina = één projectkaart: bestaat er al een niet-klare
@@ -120,7 +188,7 @@ export async function addWeekplanTasks(slug: string, thread: string, tasks: { ta
     const taak = (t.taak || "").trim();
     if (!taak) continue;
     const url = (t.url || "").trim().slice(0, 400) || null;
-    const toel = (t.toelichting || "").trim().slice(0, 4000) || null;
+    const toel = (t.toelichting || "").trim().slice(0, TOELICHTING_MAX) || null;
     const taaktype = (t.taaktype || "").trim().slice(0, 40) || null;
     const copyUrl = (t.copyUrl || "").trim().slice(0, 600) || null;
     const bronMail = (t.bronMail || "").trim().slice(0, 600) || null;
@@ -143,7 +211,9 @@ export async function addWeekplanTasks(slug: string, thread: string, tasks: { ta
         had.add(k);
       }
       if (nieuw.length || (!bestaand.taaktype && taaktype) || (!bestaand.copyUrl && copyUrl) || (!bestaand.bronMail && bronMail)) {
-        const toelNieuw = `${bestaand.toelichting}\n${nieuw.join("\n")}`.trim().slice(0, 4000);
+        // Past het niet meer? Dan schuiven de OUDSTE regels naar het archief, niet
+        // stil de nieuwste eraf. Zie pasInToelichting.
+        const toelNieuw = await pasInToelichting(slug, bestaand.id, `${bestaand.toelichting}\n${nieuw.join("\n")}`.trim());
         await sql`
           UPDATE client_weekplan SET
             toelichting = ${toelNieuw},
@@ -247,20 +317,37 @@ export async function getWeekplanDev(slug: string, id: number): Promise<{ taak: 
   };
 }
 
+/**
+ * De kaarttekst vervangen. De vórige tekst gaat eerst naar het archief, want
+ * deze weg wordt ook gebruikt door het opruimen, en dat herschrijft in één keer
+ * alles. Zonder dit vangnet kon een opruimbeurt zesendertig regels vervangen
+ * zonder enige terugweg.
+ */
 export async function updateWeekplanToelichting(slug: string, id: number, toelichting: string): Promise<void> {
   await ensureSchema();
-  await sql`UPDATE client_weekplan SET toelichting = ${toelichting.trim().slice(0, 4000)}, updated_at = now() WHERE client_slug = ${slug} AND id = ${id}`;
+  const { rows } = await sql`SELECT toelichting FROM client_weekplan WHERE client_slug = ${slug} AND id = ${id} LIMIT 1`;
+  const oud = String(rows[0]?.toelichting || "").trim();
+  const nieuw = await pasInToelichting(slug, id, toelichting);
+  if (oud && oud !== nieuw) await voegArchief(slug, id, "notities", oud);
+  await sql`UPDATE client_weekplan SET toelichting = ${nieuw}, updated_at = now() WHERE client_slug = ${slug} AND id = ${id}`;
 }
 
 // De titel (en de pagina) van een bestaande kaart bijstellen. Gebruikt door de
 // terugwerkende splitsing: een kaart die over twee pagina's ging wordt de kaart
 // van één pagina, met de opdracht ongewijzigd.
-export async function setWeekplanKaart(slug: string, id: number, kaart: { taak: string; url?: string }): Promise<void> {
+//
+// `handmatig` betekent: Maarten heeft deze titel zelf getypt. Vanaf dat moment
+// blijft hij staan; geen enkele automaat hernoemt hem nog. Zonder die vlag zou
+// de eerstvolgende keer dat de planning geladen wordt zijn titel overschrijven.
+export async function setWeekplanKaart(slug: string, id: number, kaart: { taak: string; url?: string; handmatig?: boolean }): Promise<void> {
   await ensureSchema();
   const url = (kaart.url || "").trim().slice(0, 400) || null;
   await sql`
     UPDATE client_weekplan
-    SET taak = ${kaart.taak.trim().slice(0, 300)}, url = COALESCE(${url}, url), updated_at = now()
+    SET taak = ${kaart.taak.trim().slice(0, 300)},
+        url = COALESCE(${url}, url),
+        taak_handmatig = ${kaart.handmatig === true} OR taak_handmatig,
+        updated_at = now()
     WHERE client_slug = ${slug} AND id = ${id}`;
 }
 

@@ -4,10 +4,15 @@ import { guardSlug } from "../../../../lib/admin-scope";
 import { getWeekplan, updateWeekplanTask, deleteWeekplanTask, isoWeek, setWeekplanNaarDev, setWeekplanKaart } from "../../../../lib/weekplan";
 import { getWeekplanPages } from "../../../../lib/overview";
 import { splitsBestaandeKaarten } from "../../../../lib/weekplan-splitsen";
+import { verkortTitels } from "../../../../lib/weekplan-titel";
 import { urlKey } from "../../../../lib/url-key";
 import { registreerFases } from "../../../../lib/fase-historie";
 
 export const runtime = "nodejs";
+
+// Staat het automatisch inkorten van volgelopen kaarttitels aan? Zie de uitleg
+// in de GET hieronder.
+const TITELS_AUTOMATISCH = false;
 
 function admin(req: NextRequest): boolean {
   return verifyAdminSession(req.cookies.get(ADMIN_COOKIE)?.value);
@@ -27,6 +32,21 @@ export async function GET(req: NextRequest) {
   // tot nu toe alleen bij het aanmaken en de kaarten die er al stonden bleven
   // dubbel. Doet niets als er niets te splitsen valt.
   await splitsBestaandeKaarten(slug).catch(() => ({ gesplitst: 0, toegevoegd: 0 }));
+  // En daarna de titels die door de oude " + "-plakker zijn volgelopen één keer
+  // inkorten. Doet niets zodra ze in de vaste vorm staan, dus dit is na de
+  // eerste keer gratis. De oude titel gaat naar het archief van de kaart.
+  //
+  // Staat bewust nog UIT: deze stap raakt alle klanten tegelijk, dus hij draait
+  // eerst in de proefstand (?titels=proef hieronder, die verandert niets) zodat
+  // er met eigen ogen te zien is wát hij zou wijzigen.
+  if (TITELS_AUTOMATISCH) await verkortTitels(slug).catch(() => []);
+
+  // De proefstand. Alleen kijken, nooit wijzigen, dus ook veilig voor een
+  // meekijk-sessie die niets mag veranderen.
+  if (req.nextUrl.searchParams.get("titels") === "proef") {
+    const zouden = await verkortTitels(slug, { droog: true }).catch(() => []);
+    return NextResponse.json({ ok: true, proef: true, zouden });
+  }
 
   const [tasks, allePages] = await Promise.all([
     getWeekplan(slug),
@@ -63,11 +83,12 @@ export async function POST(req: NextRequest) {
 
   // Titel bijstellen. De kaarttitel is wat je in het bord leest en wat als
   // opdracht doorgaat; die moet je kunnen herschrijven zonder de kaart opnieuw
-  // te maken.
+  // te maken. Wat je hier zelf typt is vanaf nu de titel: de automaat die te
+  // lange titels inkort laat een handgeschreven titel met rust.
   if (typeof body.taak === "string") {
     const nieuw = body.taak.trim();
     if (!nieuw) return NextResponse.json({ ok: false, error: "Een kaart moet een titel houden." }, { status: 400 });
-    await setWeekplanKaart(slug, id, { taak: nieuw });
+    await setWeekplanKaart(slug, id, { taak: nieuw, handmatig: true });
     return NextResponse.json({ ok: true });
   }
 

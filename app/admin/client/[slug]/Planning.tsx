@@ -462,7 +462,7 @@ export default function Planning({
           <div className="wb-kaart">
             <WeekplanCard
               slug={t.slug} t={t as unknown as WpTask} page={p}
-              open
+              open inRij
               onToggleOpen={() => setOpen(null)}
               onDragStart={() => setSleep(t)} onDragEnd={sleepKlaar}
               onStatus={() => void wijzigStatus(t)}
