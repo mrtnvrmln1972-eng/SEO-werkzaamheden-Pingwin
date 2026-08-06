@@ -54,6 +54,16 @@ rommelig is.
 - [ ] Geen AI-tekst in een kaal tekstvak; koppen, bullets, tabellen netjes gerenderd.
 - [ ] Scanbaar: korte alinea's, bullets, duidelijke kopjes.
 
+## Wat een machine al voor je controleert (Pingwin SEO-dashboard)
+
+In dat project draait `npm run proef` de poort `proeven/opmaak.proef.ts`. Die dekt de punten
+af die mechanisch te controleren zijn: alles komt van één type-schaal, kleuren komen uit de
+tokens, er staat geen ad-hoc variant naast iets dat al bestaat, en er blijft geen ruw
+opmaakteken in beeld. Faalt hij, dan is het geen smaakkwestie maar een fout.
+
+De rest van deze lijst blijft mensenwerk: uitlijning, hiërarchie, contrast en of het geheel
+rustig oogt kan geen script beoordelen.
+
 ## De snelle eindcheck
 Zou een goede designer hiernaar kijken en knikken? Zo niet, wat springt er als eerste
 verkeerd uit? Fix dat, want dat is precies wat de gebruiker anders zou moeten aanwijzen.

@@ -24,6 +24,7 @@
 
 import fs from "fs";
 import path from "path";
+import { mdToHtml } from "../lib/markdown";
 
 let fouten = 0;
 function checkWaar(naam: string, waar: boolean, toelichting = "") {
@@ -380,6 +381,66 @@ checkWaar("elk scherm heeft nog de opmaak die het gebruikt", zonderOpmaak.length
   `Deze klassen worden gebruikt maar staan niet meer in app/globals.css:\n       ${
     zonderOpmaak.map(([k, b]) => `${k} (${b})`).join("\n       ")
   }\n       Waarschijnlijk zijn er regels verdwenen doordat twee chats tegelijk aan globals.css schreven. Haal ze terug met: git log -p -- app/globals.css`);
+
+// ═══════════════════════════════════════════════════════════
+// DE RENDERER ZELF: WAT HIJ NIET KENT, KOMT LETTERLIJK IN BEELD
+// ═══════════════════════════════════════════════════════════
+// De rest van dit bestand controleert of schermen de renderer gebruiken. Dit
+// stuk controleert of die renderer zijn werk doet. Dat was tot 6 augustus 2026
+// het gat eronder: mdToHtml kende geen citaten, geen codeblokken, geen geneste
+// lijsten en geen tabel zonder |---|-regel, terwijl negen los onderhouden
+// prompts de AI vrijelijk om markdown vragen. Ruwe tekens in beeld waren dus
+// geen slordigheid van de bouwer maar een voorspelbaar gevolg van het
+// gereedschap. Een scherm dat netjes mdToHtml aanroept was dan alsnog lelijk.
+
+const citaat = mdToHtml("> Dit is een citaat.\n> Tweede regel.");
+checkWaar("een citaat wordt een blok, geen > in beeld",
+  citaat.includes("<blockquote>") && !citaat.includes("&gt;"), citaat);
+
+const codeblok = mdToHtml("Kijk:\n```js\nconst a = 1;\n```\nKlaar.");
+checkWaar("een codeblok wordt opgemaakt, geen backticks in beeld",
+  codeblok.includes('<pre class="md-code">') && !codeblok.includes("```"), codeblok);
+
+const tabelMet = mdToHtml("| Kop | Twee |\n|---|---|\n| a | b |");
+checkWaar("een tabel met scheidingsregel krijgt een kop en geen pipes",
+  tabelMet.includes("<th>") && !tabelMet.includes("|"), tabelMet);
+
+// Dit ging het vaakst mis: de AI levert een tabel zonder de |---|-regel, en dan
+// werd elke rij een losse alinea met de pipes zichtbaar.
+const tabelZonder = mdToHtml("| a | b |\n| c | d |");
+checkWaar("een tabel zonder scheidingsregel wordt tóch een tabel",
+  tabelZonder.includes("<table") && !tabelZonder.includes("|"), tabelZonder);
+
+const genest = mdToHtml("- Eerste\n  - Onder eerste\n  - Nog een\n- Tweede");
+checkWaar("een lijst in een lijst houdt zijn twee niveaus",
+  (genest.match(/<ul>/g) || []).length === 2 &&
+  (genest.match(/<ul>/g) || []).length === (genest.match(/<\/ul>/g) || []).length, genest);
+
+const koppen = mdToHtml("# Een\n## Twee\n### Drie");
+checkWaar("kopniveaus verschillen van elkaar",
+  koppen.includes("<h3>") && koppen.includes("<h4>") && koppen.includes("<h5>"), koppen);
+
+const streep = mdToHtml("Boven\n\n---\n\nOnder");
+checkWaar("drie streepjes worden een lijn", streep.includes("<hr>") && !streep.includes("---"), streep);
+
+const vet = mdToHtml("Dit is **vet** en dit `code`.");
+checkWaar("vet laat geen sterretjes achter", !vet.includes("**"), vet);
+
+// Een prozaregel met een pipe erin ("kies A | B") mag geen tabel worden.
+const proza = mdToHtml("Dit is proza met een pipe | erin, gewoon een zin.");
+checkWaar("proza met een losse pipe wordt geen tabel", !proza.includes("<table"), proza);
+
+const stiekem = mdToHtml('[klik](https://a.nl/" onmouseover="alert(1))');
+checkWaar("een aanhalingsteken in een URL breekt niet uit het attribuut",
+  !stiekem.includes('" onmouseover="'), stiekem);
+checkWaar("html-tags in de invoer worden ontsmet",
+  !mdToHtml("<script>alert(1)</script>").includes("<script>"));
+
+// De opmaaklaag die dit alles moet waarmaken, houdt zich aan zijn eigen regel.
+checkWaar("chatbubbels krijgen dezelfde typografie als de rest", css.includes(".md p, .chat-md p"),
+  "Zonder dit krijgt een chatbubbel wel gerenderde HTML maar geen opmaak.");
+checkWaar("citaten hebben opmaak", css.includes(".md blockquote"));
+checkWaar("codeblokken hebben opmaak", css.includes(".md pre.md-code"));
 
 console.log(fouten ? `\n${fouten} proef(en) mislukt.` : "\nAlle proeven geslaagd.");
 process.exit(fouten ? 1 : 0);

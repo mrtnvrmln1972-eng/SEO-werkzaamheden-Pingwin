@@ -497,7 +497,7 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
                               // dus ook bij antwoorden die er al stonden.
                               <div className={"ovc-bubble chat-md" + (m.soort === "conclusie" ? " ovc-conclusie" : "")}>
                                 {m.soort === "conclusie" && <div className="ovc-conclusie-label">Conclusie van dit gesprek</div>}
-                                <div dangerouslySetInnerHTML={{ __html: mdToHtml(striptVulzinnen(zonderWeekrecap(m.content || "", (m.actions || []).some((a) => a.type === "weekplan_taken"))), domain) }} />
+                                <div className="md" dangerouslySetInnerHTML={{ __html: mdToHtml(striptVulzinnen(zonderWeekrecap(m.content || "", (m.actions || []).some((a) => a.type === "weekplan_taken"))), domain) }} />
                               </div>
                             )
                           : melding
@@ -527,7 +527,7 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
                               // Jouw eigen vraag compact: alinea's achter elkaar en de
                               // kernwoorden vet, zodat je hem kunt scannen. De witregels
                               // kostten een half scherm per gesprek.
-                              <div className="ovc-bubble ovc-bubble-vraag"
+                              <div className="ovc-bubble ovc-bubble-vraag md"
                                 dangerouslySetInnerHTML={{ __html: vraagHtml(m.content || "") }} />
                             )}
                         {m.role === "assistant" && !dicht && <Bronnenstrip bronnen={m.bronnen} domain={domain} />}

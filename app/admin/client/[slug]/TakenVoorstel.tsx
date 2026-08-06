@@ -164,7 +164,7 @@ export default function TakenVoorstel({ slug, thread, index, oogst, domain = "",
             Besproken, maar bewust geen taak ({oogst.geenTaak.length})
           </button>
           {toonGeen && (
-            <ul className="tv-geen-lijst">
+            <ul className="tv-geen-lijst md">
               {oogst.geenTaak.map((r, i) => <li key={i} dangerouslySetInnerHTML={{ __html: linkify(r, domain) }} />)}
             </ul>
           )}

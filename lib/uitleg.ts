@@ -1592,6 +1592,33 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
       },
 
       {
+        titel: "Waarom de opmaak nu wél overal klopt",
+        kern: "De regel bestond drie keer en werd nul keer gecontroleerd. Nu is er een poort.",
+        tekst:
+          "**Wat er mis was.** Er staat een harde regel dat alles wat je ziet netjes gerenderd moet zijn: geen " +
+          "sterretjes, geen pijpjes, geen ruwe kopjes in beeld. Die regel stond op drie plekken, in drie " +
+          "bewoordingen, en werd door geen enkel systeem gecontroleerd. Voeg een kaal tekstvak toe met " +
+          "AI-tekst erin, en de bouw slaagde, de proeven slaagden, en het ging gewoon naar productie. Vandaar " +
+          "dat er steeds opnieuw stukjes ongeopmaakte tekst opdoken.\n\n" +
+          "**Wat er nu gebeurt.** Er is één poort die meedraait met elke controle, en die drie dingen doet:\n\n" +
+          "1. **De renderer wordt getest op wat er echt misging.** Een citaat, een codeblok, een tabel zonder " +
+          "scheidingsregel, een lijst in een lijst: dat kende de renderer geen van alle, dus kwamen die tekens " +
+          "letterlijk in beeld. Ze zijn nu alle vier opgelost, en de poort faalt zodra er weer een ruw " +
+          "opmaakteken doorheen glipt.\n" +
+          "2. **Nieuwe kale tekstvakken laten de controle falen.** Er is een lijst met plekken waar een kaal " +
+          "veld terecht is (daar typ je zelf), elk met de reden erbij. Komt er een nieuwe bij, dan is dat " +
+          "voortaan een bewuste keuze in plaats van een slordigheid.\n" +
+          "3. **Hardgecodeerde maten en kleuren kunnen alleen nog dalen.** Er staan er nog honderden in de " +
+          "opmaaklaag; die zijn niet in één keer op te ruimen. De poort legt het huidige aantal vast, zodat het " +
+          "nooit meer oploopt en elke opruimronde het getal verlaagt.\n\n" +
+          "**Wat er meteen is rechtgezet.** De uitwerking voor de sitebouwer stond in een monospace blok met de " +
+          "sterretjes erin, en werd zo gekopieerd en gemaild. Het schrijfstijlprofiel stond als kale tekst in " +
+          "een veld. De sturing per fase op een taakkaart werd niet gerenderd. De chatbubbels kregen wel " +
+          "gerenderde tekst maar niet de bijbehorende typografie. Alle vier opgelost.\n\n" +
+          "**Wat een machine niet kan.** Uitlijning, hiërarchie, contrast en of een scherm rustig oogt blijft " +
+          "mensenwerk; daar is de design-checklist voor. De poort dekt af wat te tellen is.",
+      },
+      {
         titel: "Meldingen: wat iemand anders deed",
         kern: "De sitebouwer vinkt af, jij ziet het in je dashboard. Geen mail meer nodig.",
         tekst:

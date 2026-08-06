@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { urlKey } from "../../../../lib/url-key";
 import { splitCardInfo, cardInfoHtml } from "../../../../lib/card-info";
+import { mdToHtml } from "../../../../lib/markdown";
 import PaginaDossier from "./PaginaDossier";
 
 export type Action = {
@@ -285,7 +286,11 @@ export default function ActionCard({ action, slug, thread, onExecuted, onGoToPag
                   <button type="button" className="ghost-btn small" onClick={mailToDev} title="Open je mail met deze uitwerking voorgevuld, gericht aan je sitebouwer/developer.">Mail naar sitebouwer</button>
                 </span>
               </div>
-              <pre className="act-pre">{result.text}</pre>
+              {/* Gerenderd tonen, niet ruw. Dit is de plek waar de uitwerking naar de
+                  sitebouwer wordt gelezen en gekopieerd; hier stonden de sterretjes en
+                  pijpjes in beeld en gingen ze één-op-één de deur uit. Kopiëren en
+                  mailen gebruiken nog steeds result.text, dus die blijven ongewijzigd. */}
+              <div className="act-uitwerking md" dangerouslySetInnerHTML={{ __html: mdToHtml(result.text) }} />
             </div>
           )}
           <div className="act-jump">
