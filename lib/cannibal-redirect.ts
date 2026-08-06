@@ -8,7 +8,7 @@ import { getGscForPage, getGscKeywordUrlFlips } from "./google";
 import { getAhrefsTopPages, getUrlOrganicKeywords, ahrefsConfigured } from "./ahrefs";
 import { fetchPageContent } from "./page-content";
 import { callClaude, callClaudeAgentic, type ToolDef, type ToolRunner } from "./anthropic";
-import { regelsAlsInstructie, getAdsPaginas, isAdsPad } from "./opruim-regels";
+import { regelsAlsInstructie, getAdsPaginas, isAdsPad, type AdsPaginas } from "./opruim-regels";
 import { zwakkePaginas, type ZwakkePagina } from "./concurrenten";
 import { weegKandidaten, weegPaden, termUitPad, type Oppakker } from "./opruim-waarde";
 import { vindOnderwerpen, tweelingenVan, type Onderwerp } from "./opruim-onderwerpen";
@@ -231,6 +231,30 @@ async function readRow(slug: string): Promise<CannibalRow | null> {
  * - onderwerpen: de beste van de bundel is het vertrekpunt;
  * - gaten: er is nog niets, dus vanaf nul.
  */
+/**
+ * Advertentiepagina's uit elke lijst halen, op het moment van uitlezen. Vul je ze
+ * pas ná een analyse in, dan verdwijnen ze meteen uit beeld in plaats van pas na
+ * een nieuwe run. Ze worden ook nergens meer als bestemming voorgesteld: naar een
+ * noindex-pagina omleiden is verkeer weggooien.
+ */
+function zonderAds(result: CannibalResult, ads: AdsPaginas): CannibalResult {
+  if (!ads.paden.length) return result;
+  const weg = (p: string) => isAdsPad(p, ads);
+  return {
+    ...result,
+    redirectMap: (result.redirectMap || []).filter((m) => !weg(String(m.van || "")) && !weg(String(m.naar || ""))),
+    oppakken: (result.oppakken || []).filter((o) => !weg(o.pad)),
+    gaten: (result.gaten || []).filter((g) => !weg(g.voorstelPad)),
+    onderwerpen: (result.onderwerpen || [])
+      .map((o) => ({ ...o, paginas: o.paginas.filter((p) => !weg(p.pad)) }))
+      // Blijft er na het schrappen geen cluster over, dan is het er ook geen meer.
+      .filter((o) => o.paginas.length >= 2 && !weg(o.voorstel)),
+    clusters: (result.clusters || [])
+      .map((c) => ({ ...c, urls: c.urls.filter((u) => !weg(u.url)) }))
+      .filter((c) => c.urls.length > 0),
+  };
+}
+
 function metEuro(result: CannibalResult, inst: EuroInstelling): CannibalResult {
   if (!inst.ingevuld) return result;
   return {
@@ -250,6 +274,12 @@ export async function getCannibalAnalysis(slug: string): Promise<CannibalState> 
   const cronTik = await getSetting(SETTING_OPRUIM_CRON_TIK).catch(() => null);
   const cronStil = !cronTik || (Date.now() - new Date(cronTik).getTime()) > 900000;
   const euroInst = await getEuroInstelling(slug).catch(() => ({ klantwaarde: 0, conversie: 0, ingevuld: false }));
+  // De advertentiepagina's er hier nog een keer uitfilteren, bij het uitlezen.
+  // Ze worden al bij de analyse geweerd, maar wie ze pas ná een analyse invult zou
+  // ze anders in een lijst houden die naar een klant gaat, tot er een nieuwe run
+  // van twintig minuten overheen is gegaan. Een instructie is een verzoek, een
+  // filter bij het uitlezen is een garantie.
+  const adsNu = await getAdsPaginas(slug).catch(() => ({ paden: [], geen: false, ingevuld: false }));
   if (!r) return { status: "idle", result: null, error: "", updatedAt: null, fase: "", ronde: 0, stap: 0, stappen: STAPPEN, stapLabel: "", cronTik, cronStil, kandidaten: 0, beoordeeld: 0 };
   const { stap, label } = stapVan(r.fase, r.ronde);
   return {
@@ -258,7 +288,7 @@ export async function getCannibalAnalysis(slug: string): Promise<CannibalState> 
     kandidaten: r.kandidaten.length,
     beoordeeld: r.behandeld.length,
     status: (r.status as CannibalState["status"]) || "idle",
-    result: r.result ? metEuro({ ...r.result, oppakken: r.oppakken, onderwerpen: r.onderwerpen, gaten: r.gaten }, euroInst) : r.result,
+    result: r.result ? metEuro(zonderAds({ ...r.result, oppakken: r.oppakken, onderwerpen: r.onderwerpen, gaten: r.gaten }, adsNu), euroInst) : r.result,
     error: r.error,
     updatedAt: r.updatedAt,
     fase: r.fase,

@@ -19,7 +19,7 @@ import { KansChip, intentieTekst, bedrag, type Haalbaarheid } from "./OpruimOppa
 
 export type Onderwerp = {
   sleutel: string;
-  paginas: { pad: string; term: string; bestePositie: number | null; vertoningen: number; klikken: number; intentie?: string }[];
+  paginas: { pad: string; term: string; bestePositie: number | null; vertoningen: number; klikken: number; intentie?: string; volume?: number | null; dekking?: number }[];
   termen: { keyword: string; volume: number | null; positie: number | null }[];
   volumeTotaal: number;
   bestePositie: number | null;
@@ -27,6 +27,8 @@ export type Onderwerp = {
   kamp?: "doen" | "weten" | "merk" | "onbekend";
   haalbaarheid?: Haalbaarheid;
   apartGehouden?: { pad: string; term: string; intentie: string; reden: string }[];
+  hoofdterm?: string;
+  geenPassendeThuisbasis?: boolean;
   euro?: { perMaand: number; perJaar: number; extraKlikkenPerMaand: number; doelPositie: number; uitleg: string } | null;
 };
 
@@ -83,6 +85,10 @@ export default function OpruimOnderwerpen({ slug, domain, rijen, clientName, cli
         ? ["", `Wat we er bewust buiten laten: ${o.apartGehouden.map((a) => a.pad).join(", ")}. Die pagina's gaan over dezelfde woorden, maar de bezoeker wil er iets anders (${o.apartGehouden.map((a) => intentieTekst(a.intentie)).filter(Boolean).join(", ") || "een andere zoekintentie"}). Die samenvoegen zou juist bezoekers kosten.`]
         : []),
       "",
+      ...(o.geenPassendeThuisbasis
+        ? ["", `Wat hier opvalt: **geen van deze pagina's gaat echt over "${o.hoofdterm || titel(o)}"**. ${o.voorstel} komt er van dit rijtje het dichtst bij, maar mikt op een smaller onderwerp. Alles daarin laten opgaan zou een pagina opleveren met een naam die niet klopt bij waar mensen op zoeken. We kiezen daarom een inhoudelijk passende pagina als vaste plek en gebruiken deze pagina's als bouwmateriaal.`]
+        : []),
+      "",
       `Ons voorstel: **${o.voorstel}** wordt de vaste pagina voor dit onderwerp. De andere pagina's worden daarin samengevoegd en gaan er vervolgens naartoe verwijzen, zodat alle opgebouwde waarde op één plek terechtkomt.`,
       "",
       "De stappen:",
@@ -131,24 +137,45 @@ export default function OpruimOnderwerpen({ slug, domain, rijen, clientName, cli
 
           <table className="opr-tabel opr-onderwerp-tabel">
             <thead>
-              <tr><th>Pagina</th><th>Mikt op</th><th>Beste plek</th><th>Vertoningen</th><th>Rol</th></tr>
+              <tr><th>Pagina</th><th>Mikt op</th><th>Per maand</th><th>Beste plek</th><th>Vertoningen</th><th>Rol</th></tr>
             </thead>
             <tbody>
               {o.paginas.map((p) => (
                 <tr key={p.pad}>
                   <td><Link p={p.pad} /></td>
                   <td>{p.term || "—"}</td>
+                  {/* Het zoekvolume van de term waar deze pagina op mikt. Zonder dat
+                      getal is niet te zien dat de sterkste pagina van het rijtje soms
+                      over een veel kleiner onderwerp gaat dan het cluster zelf. */}
+                  <td>{p.volume != null ? `${p.volume}x` : <span className="opr-leeg">&mdash;</span>}</td>
                   <td>{p.bestePositie != null ? Math.round(p.bestePositie) : "—"}</td>
                   <td>{p.vertoningen || 0}</td>
                   <td>
                     {p.pad === o.voorstel
-                      ? <span className="opr-chip keep">voorstel: thuisbasis</span>
+                      ? <span className={`opr-chip ${o.geenPassendeThuisbasis ? "nodig" : "keep"}`}>
+                          {o.geenPassendeThuisbasis ? "beste van dit rijtje" : "voorstel: thuisbasis"}
+                        </span>
                       : <span className="opr-leeg">gaat hierin op</span>}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+
+          {/* Past geen van de pagina's bij het onderwerp, dan is "kies de sterkste
+              van dit rijtje" het verkeerde antwoord, en dat hoort er te staan
+              vóórdat iemand het doorvoert. */}
+          {o.geenPassendeThuisbasis && (
+            <div className="opr-uitleg" style={{ marginTop: "var(--s-2)" }}>
+              <p style={{ margin: 0 }}>
+                <strong>Let op: geen van deze pagina&rsquo;s gaat echt over &ldquo;{o.hoofdterm || titel(o)}&rdquo;.</strong>{" "}
+                De pagina hierboven staat er van dit rijtje het beste voor, maar hij mikt op een smaller of ander
+                onderwerp. Alles hierin laten opgaan levert een pagina op met een naam die niet klopt bij waar mensen
+                op zoeken. Kies hier dus een <strong>inhoudelijk passende pagina</strong> als bestemming (een bestaande
+                elders op de site, of een nieuwe), en gebruik deze vijf als bouwmateriaal.
+              </p>
+            </div>
+          )}
 
           {/* De intentie-rem, zichtbaar. Een pagina die stilletjes uit een cluster
               verdwijnt is niet te controleren; hier staat hij, met de reden erbij. */}
@@ -188,9 +215,16 @@ export default function OpruimOnderwerpen({ slug, domain, rijen, clientName, cli
                 )}
                 {o.euro && <p><strong>Wat het waard is:</strong> {o.euro.uitleg}</p>}
                 <p>
-                  <strong>Wat we doen:</strong> één van deze pagina&rsquo;s wordt de vaste pagina voor dit onderwerp, en de
-                  andere gaan daarin op. Het voorstel is <Link p={o.voorstel} />, omdat die er nu het beste voor staat.
-                  Dat is een voorstel, geen besluit: een andere keuze kan prima, zolang het er maar één wordt.
+                  <strong>Wat we doen:</strong> één pagina wordt de vaste pagina voor dit onderwerp, en de andere gaan
+                  daarin op. Het voorstel is <Link p={o.voorstel} />
+                  {o.geenPassendeThuisbasis
+                    ? <>, maar alleen omdat die van dit rijtje het dichtst in de buurt komt. Hij gaat eigenlijk over
+                      iets anders dan &ldquo;{o.hoofdterm || titel(o)}&rdquo;, dus een inhoudelijk passende pagina
+                      elders op de site is hier de betere bestemming.</>
+                    : <>, omdat die het onderwerp het beste dekt én er het beste voor staat. Niet alleen op verkeer
+                      gekozen: de pagina met de meeste vertoningen gaat soms over een veel kleiner onderwerp, en dan
+                      krijg je een pagina met een naam die niet klopt bij waar mensen op zoeken.</>}
+                  {" "}Dat is een voorstel, geen besluit: een andere keuze kan prima, zolang het er maar één wordt.
                 </p>
               </div>
             </div>

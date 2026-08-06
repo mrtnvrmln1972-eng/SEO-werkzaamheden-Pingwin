@@ -65,6 +65,9 @@ export type OnderwerpPagina = {
   vertoningen: number;
   klikken: number;
   intentie?: Intentie;     // wat wil iemand die deze term intypt
+  volume?: number | null;  // zoekvolume van de term waar deze pagina op mikt
+  /** Hoe goed dekt deze pagina het hoofdonderwerp van het cluster (0 tot 1)? */
+  dekking?: number;
 };
 
 export type Onderwerp = {
@@ -84,7 +87,42 @@ export type Onderwerp = {
   apartGehouden?: { pad: string; term: string; intentie: Intentie; reden: string }[];
   /** Wat dit onderwerp waard is per maand; berekend bij het uitlezen. */
   euro?: import("./opruim-euro").Euro | null;
+  /** De term waar dit hele cluster over gaat: de zwaarste van de groep. */
+  hoofdterm?: string;
+  /** Geen van de pagina's dekt die hoofdterm fatsoenlijk. Dan is "kies de sterkste
+      van deze vijf" het verkeerde antwoord en moet er een passende pagina komen. */
+  geenPassendeThuisbasis?: boolean;
 };
+
+/**
+ * Hoe goed past deze pagina bij het onderwerp van het cluster? Twee dingen tellen:
+ * dekt hij de woorden van de hoofdterm, en hoeveel woorden heeft hij die er níet
+ * bij horen.
+ *
+ * Waarom dit erin moest (7 augustus 2026). Het cluster "soa test bestellen" (1310
+ * per maand) kreeg /chlamydia-test-bestellen/ als thuisbasis voorgesteld, puur
+ * omdat die de meeste vertoningen had. Maar "chlamydia test bestellen" is een
+ * eigen, veel kleiner onderwerp (zestig per maand); daar vijf pagina's over "soa
+ * test bestellen" in laten opgaan levert een pagina op met een naam die niet klopt
+ * bij waar mensen op zoeken. Verkeer zegt wie er nu het beste voor staat; het zegt
+ * niet wie er inhoudelijk thuishoort. Dat tweede telt hier zwaarder.
+ */
+export function dekkingVan(hoofdterm: string, term: string): number {
+  const H = new Set(onderwerpWoorden(hoofdterm));
+  const P = new Set(onderwerpWoorden(term));
+  if (!H.size || !P.size) return 0;
+  let gedeeld = 0;
+  for (const w of H) if (P.has(w)) gedeeld++;
+  let vreemd = 0;
+  for (const w of P) if (!H.has(w)) vreemd++;
+  // Woorden die er niet bij horen wegen half: een pagina die het onderwerp dekt
+  // maar er iets aan toevoegt ("online") is bruikbaar, een pagina die over iets
+  // anders gaat ("chlamydia") niet.
+  return Math.max(0, gedeeld / H.size - 0.5 * (vreemd / P.size));
+}
+
+/** Onder deze dekking noemen we een pagina geen passende thuisbasis. */
+const PASSEND_VANAF = 0.6;
 
 const padVan = (u: string) => { try { return new URL(u).pathname; } catch { return (u || "").trim(); } };
 const norm = (u: string) => padVan(u).replace(/\/+$/, "").toLowerCase();
@@ -193,18 +231,30 @@ export async function vindOnderwerpen(slug: string, domain: string): Promise<Ond
       const bestePositie = posities.length ? Math.min(...posities) : null;
       if (bestePositie != null && bestePositie <= BUITEN_BEELD) continue;
 
-      // Welke pagina is de logische thuisbasis? Die met de meeste klikken; bij
-      // gelijke stand die met de beste positie, en anders de eerste. Bewust een
-      // voorstel en geen besluit: Maarten kiest.
-      const voorstel = [...leden].sort((a, b) =>
-        b.klikken - a.klikken ||
-        (a.bestePositie ?? 999) - (b.bestePositie ?? 999) ||
-        b.vertoningen - a.vertoningen)[0]?.pad || leden[0].pad;
-
-      // REM 2. De zwaarste term van het cluster bepaalt of dit te winnen is; dat is
-      // de term waar de thuisbasis straks op moet gaan staan.
+      // De zwaarste term van het cluster is waar dit onderwerp over gáát; dat is de
+      // term waar de thuisbasis straks op moet gaan staan.
       const gesorteerd = termen.sort((a, b) => (b.volume || 0) - (a.volume || 0));
       const hoofdterm = gesorteerd[0]?.keyword || "";
+
+      // Welke pagina is de logische thuisbasis? Eerst inhoud, dan pas verkeer.
+      // Andersom levert het geval van 7 augustus op: /chlamydia-test-bestellen/ als
+      // thuisbasis voor "soa test bestellen", omdat die toevallig de meeste
+      // vertoningen had. Bij gelijke dekking beslissen klikken en positie alsnog.
+      for (const p of leden) {
+        p.volume = feiten.get(p.term)?.volume ?? null;
+        p.dekking = Math.round(dekkingVan(hoofdterm, p.term) * 100) / 100;
+      }
+      const opVolgorde = [...leden].sort((a, b) =>
+        (b.dekking ?? 0) - (a.dekking ?? 0) ||
+        b.klikken - a.klikken ||
+        (a.bestePositie ?? 999) - (b.bestePositie ?? 999) ||
+        b.vertoningen - a.vertoningen);
+      const beste = opVolgorde[0];
+      const voorstel = beste?.pad || leden[0].pad;
+      // Dekt zelfs de beste pagina het onderwerp niet, dan is "kies er een uit deze
+      // vijf" het verkeerde antwoord: dan hoort de content naar een pagina die er
+      // inhoudelijk wél over gaat, bestaand of nieuw.
+      const geenPassendeThuisbasis = (beste?.dekking ?? 0) < PASSEND_VANAF;
       const haalbaarheid = weegHaalbaarheid(feiten.get(hoofdterm)?.moeilijkheid ?? null, autoriteit, bestePositie);
 
       uit.push({
@@ -212,6 +262,7 @@ export async function vindOnderwerpen(slug: string, domain: string): Promise<Ond
         paginas: leden.sort((a, b) => (a.bestePositie ?? 999) - (b.bestePositie ?? 999)),
         termen: gesorteerd,
         volumeTotaal, bestePositie, voorstel,
+        hoofdterm, geenPassendeThuisbasis,
         kamp: groep.kamp,
         haalbaarheid,
         apartGehouden: groep.anderen.map((p) => ({
