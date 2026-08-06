@@ -5481,10 +5481,15 @@ a.wb-pad:hover { text-decoration: underline; }
 
 /* De vergelijkingstabel */
 .gmb-tabel { width: 100%; border-collapse: collapse; font-size: var(--fs-base); line-height: var(--lh-base); }
+/* De donkere achtergrond komt uit de globale `thead th`-regel, dus de tekst
+   MOET wit. Stond op grijs, en grijs op zwart is onleesbaar. Exact dezelfde
+   fout stond hierboven al bij .prio-tabel; proeven/opmaak.proef.ts bewaakt hem
+   nu, zodat hij niet een derde keer kan terugkomen. */
 .gmb-tabel th {
   text-align: left; padding: var(--s-2) var(--s-3); border-bottom: 1px solid var(--border);
-  font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); text-transform: uppercase; letter-spacing: 0.03em;
+  font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--white); text-transform: uppercase; letter-spacing: 0.03em;
 }
+.gmb-tabel thead th:last-child { text-align: left; }
 .gmb-tabel td { padding: var(--s-2) var(--s-3); border-bottom: 1px solid var(--card-border); }
 .gmb-wij td { background: var(--brand-orange-faint); font-weight: 600; }
 .gmb-niet-gevonden td { color: var(--gray); }
@@ -5927,11 +5932,16 @@ a.wb-pad:hover { text-decoration: underline; }
 
 .uk-tabel-wrap { overflow-x: auto; margin-top: var(--s-4); }
 .uk-tabel { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); line-height: var(--lh-sm); }
+/* De globale `thead th`-regel geeft deze kop een donkere achtergrond, dus de
+   tekst moet wit. Stond op muted en was daardoor onleesbaar op élk scherm dat
+   deze gedeelde tabel gebruikt. Gevonden door de contrastproef, niet door een
+   mens; dat is precies waar die proef voor is. */
 .uk-tabel th {
   text-align: left; font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
-  text-transform: uppercase; letter-spacing: 0.4px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.4px; color: var(--white);
   padding: var(--s-2) var(--s-3); border-bottom: 1px solid var(--border); white-space: nowrap;
 }
+.uk-tabel thead th:last-child { text-align: left; }
 .uk-tabel td { padding: var(--s-3); border-bottom: 1px solid var(--card-border); vertical-align: top; }
 .uk-tabel tr:last-child td { border-bottom: none; }
 .uk-tabel tr.uk-rij-aan td { background: #FFF9F5; }
@@ -5953,11 +5963,16 @@ a.wb-pad:hover { text-decoration: underline; }
    Reden: het vinkje en de knop stonden eerst ver uit elkaar, waardoor je aanvinkte
    en dacht dat het geregeld was. Live aangetroffen op 6 augustus 2026. */
 .gmb-balk {
-  position: sticky; top: var(--s-2); z-index: 5;
-  display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap;
-  margin-bottom: var(--s-4); padding: var(--s-3) var(--s-4);
-  background: var(--white); border: 1px solid var(--orange);
-  border-radius: var(--r-md); box-shadow: var(--shadow-md);
+  /* Onderaan het venster vastgezet, niet bovenaan meescrollend: bovenin ging hij
+     schuil achter de vaste kopbalk, en dan vink je aan en zie je nooit dat er
+     nog een knop is (live aangetroffen, 6 augustus 2026). */
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: var(--s-5); z-index: 60;
+  display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; justify-content: center;
+  max-width: min(720px, calc(100vw - var(--s-8)));
+  padding: var(--s-3) var(--s-5);
+  background: var(--white); border: 2px solid var(--orange);
+  border-radius: var(--r-full); box-shadow: var(--shadow-lg);
 }
 .gmb-balk-tel { font-weight: 700; font-size: var(--fs-base); line-height: var(--lh-base); color: var(--orange-dark); }
 .gmb-balk-melding { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--body-text); }
@@ -5973,3 +5988,10 @@ a.wb-pad:hover { text-decoration: underline; }
   font-size: var(--fs-base); line-height: var(--lh-base); color: var(--gray);
   background: var(--gray-light); border-radius: var(--r-md);
 }
+
+/* Ruimte onderaan, zodat de zwevende balk nooit de laatste kaart afdekt. */
+.gmb-scherm { padding-bottom: var(--s-12); }
+
+/* "Voer door": alleen bij bevindingen die het dashboard zelf mag afhandelen. */
+.gmb-voer { margin-top: var(--s-3); padding-top: var(--s-3); border-top: 1px dashed var(--card-border); }
+.gmb-voer-uitleg { font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); }

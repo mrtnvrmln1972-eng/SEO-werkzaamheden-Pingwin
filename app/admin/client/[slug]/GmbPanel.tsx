@@ -38,6 +38,12 @@ type Result = {
 type State = { status: string; result: Result | null; error: string; updatedAt: string | null; koppelingen: Record<string, string>; meetdeur: boolean };
 type Treffer = { placeId: string; naam: string; adres: string; gemiddelde: number | null; aantalReviews: number; mapsUrl: string; categorie: string; website: string };
 
+// Welke bevindingen het dashboard ter plekke kan doorvoeren. Spiegelt de lijst
+// in app/api/admin/gmb/doorvoeren/route.ts; alles daarbuiten wordt een taak.
+// Bewust kort: alleen wat in ónze eigen bedrijfsgegevens staat en waarvan we
+// zeker weten wat er hoort te staan. Nooit iets op het profiel van de klant.
+const DOORVOERBAAR = new Set(["geen-mapslink-vastgelegd", "reviewcijfer-wijkt-af"]);
+
 const BRILLEN: Bril[] = ["compleet", "consistent", "reviews", "beeld", "activiteit", "concurrentie"];
 
 function datum(iso: string | null): string {
@@ -46,6 +52,20 @@ function datum(iso: string | null): string {
 }
 function getal(n: number): string { return n.toLocaleString("nl-NL"); }
 function sterrenTekst(n: number | null): string { return n == null ? "geen cijfer" : n.toFixed(1).replace(".", ","); }
+
+/**
+ * Google plakt zijn eigen herkomst-parameters achter de website-link op een
+ * profiel (?y_source=...). Die horen bij de link, maar niet in beeld: ze maken
+ * er drie regels onleesbare tekens van. We tonen het schone adres en linken naar
+ * wat er echt staat.
+ */
+function nettAdres(url: string): string {
+  try {
+    const u = new URL(url);
+    const pad = u.pathname.replace(/\/+$/, "");
+    return u.hostname.replace(/^www\./, "") + pad;
+  } catch { return url; }
+}
 
 export default function GmbPanel({ slug, clientName, clientEmail, pingwinEmail, onGaNaar }: {
   slug: string;
@@ -91,6 +111,8 @@ export default function GmbPanel({ slug, clientName, clientEmail, pingwinEmail, 
   const [gekozen, setGekozen] = useState<Set<string>>(new Set());
   const [taakBusy, setTaakBusy] = useState(false);
   const [taakMelding, setTaakMelding] = useState("");
+  const [voerBusy, setVoerBusy] = useState<string | null>(null);
+  const [voerMelding, setVoerMelding] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     try {
@@ -264,6 +286,21 @@ export default function GmbPanel({ slug, clientName, clientEmail, pingwinEmail, 
     else setTaakMelding(fouten[0] || "Er is niets aangemaakt.");
   }
 
+  /** Een bevinding die alleen onze eigen administratie raakt, meteen regelen. */
+  async function voerDoor(sleutel: string, key: string) {
+    const id = `${sleutel}:${key}`;
+    setVoerBusy(id);
+    try {
+      const d = await fetch("/api/admin/gmb/doorvoeren", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, sleutel, key }),
+      }).then((x) => x.json());
+      setVoerMelding((m) => ({ ...m, [id]: d.ok ? d.melding || "Doorgevoerd." : (d.error || "Doorvoeren is niet gelukt.") }));
+      if (d.ok) await load();
+    } catch {
+      setVoerMelding((m) => ({ ...m, [id]: "Doorvoeren is niet gelukt." }));
+    } finally { setVoerBusy(null); }
+  }
+
   const vink = (id: string) => setGekozen((s2) => { const n = new Set(s2); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   const r = state?.result || null;
@@ -274,9 +311,10 @@ export default function GmbPanel({ slug, clientName, clientEmail, pingwinEmail, 
   const geladen = state !== null;
 
   return (
-    <div className="section">
-      {/* Zodra er iets aangevinkt staat, staat de knop in beeld. Nooit meer een
-          vinkje waarvan de bijbehorende knop drie schermen lager hangt. */}
+    <div className="section gmb-scherm">
+      {/* Zodra er iets aangevinkt staat zweeft de knop onderaan het venster.
+          Nooit meer een vinkje waarvan de bijbehorende knop buiten beeld hangt,
+          en niet bovenin waar de vaste kopbalk eroverheen valt. */}
       {gekozen.size > 0 && (
         <div className="gmb-balk">
           <span className="gmb-balk-tel">{gekozen.size} {gekozen.size === 1 ? "punt" : "punten"} aangevinkt</span>
@@ -527,7 +565,7 @@ export default function GmbPanel({ slug, clientName, clientEmail, pingwinEmail, 
                       <div>
                         <span>Website</span>
                         <strong>{loc.profiel.website
-                          ? <a className="gmb-link" href={loc.profiel.website} target="_blank" rel="noreferrer">{loc.profiel.website}</a>
+                          ? <a className="gmb-link" href={loc.profiel.website} target="_blank" rel="noreferrer" title={loc.profiel.website}>{nettAdres(loc.profiel.website)}</a>
                           : "niet ingevuld"}</strong>
                       </div>
                       <div>
@@ -584,6 +622,18 @@ export default function GmbPanel({ slug, clientName, clientEmail, pingwinEmail, 
                             <p className="gmb-bewijs">{b.bewijs}</p>
                             <p className="gmb-waarom">{b.waarom}</p>
                             <p className="gmb-actie"><span>Wat je doet:</span> {b.actie}</p>
+                            {DOORVOERBAAR.has(b.key) && (
+                              <div className="row gmb-voer" style={{ flexWrap: "wrap" }}>
+                                <button className="btn btn-primary" disabled={voerBusy === `${loc.sleutel}:${b.key}`}
+                                  onClick={() => voerDoor(loc.sleutel, b.key)}>
+                                  {voerBusy === `${loc.sleutel}:${b.key}` ? "Bezig…" : "Voer door"}
+                                </button>
+                                <span className="gmb-voer-uitleg">Dit raakt alleen de bedrijfsgegevens hier, niet het profiel van de klant.</span>
+                                {voerMelding[`${loc.sleutel}:${b.key}`] && (
+                                  <span className="gmb-poort-melding">{voerMelding[`${loc.sleutel}:${b.key}`]}</span>
+                                )}
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>

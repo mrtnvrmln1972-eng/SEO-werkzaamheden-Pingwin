@@ -303,5 +303,25 @@ checkWaar("de grote stand van het zijpaneel heeft ook opmaak", !grootAan || /\.z
 checkWaar("de sleepgrepen van het zijpaneel zijn zichtbaar", /\.zp-greep::before/.test(css) && /\.zp-formaat\s*\{/.test(css),
   "De greep links en het hoekje rechtsonder moeten zichtbaar zijn; anders kan het paneel wél groter, maar vindt niemand hoe.");
 
+// ── 7. Geen donkere tekst op de donkere kolomkop ──
+// De globale `thead th`-regel geeft élke tabelkop een donkere achtergrond. Zet
+// een tabel daarna zijn eigen `color` op grijs of muted, dan is de kop
+// onleesbaar. Dat is nu twee keer gebeurd (.prio-tabel en .gmb-tabel) en het is
+// beide keren pas op het scherm van Maarten ontdekt. Vandaar deze proef in
+// plaats van nog een opmerking in een comment.
+const kopRegels = [...css.matchAll(/^([^{}\n]*\bth\b[^{}\n]*)\{([^}]*)\}/gm)];
+const onleesbaar = kopRegels.filter(([, selector, blok]) => {
+  if (!/\bth\b/.test(selector)) return false;
+  // Zet de tabel zélf een achtergrond, dan geldt de donkere globale regel niet
+  // meer en mag de tekst donker zijn. Alleen koppen die de globale achtergrond
+  // erven en daarop donkere tekst zetten, zijn onleesbaar.
+  if (/(?:^|[;{\s])background(?:-color)?:/.test(blok)) return false;
+  const kleur = blok.match(/(?:^|[;{\s])color:\s*([^;]+)/);
+  if (!kleur) return false;
+  return /var\(--(gray|muted|body-text|dark|brand-charcoal|brand-taupe)\b/.test(kleur[1].trim());
+});
+checkWaar("geen donkere tekst op de donkere kolomkop", onleesbaar.length === 0,
+  `Deze tabelkoppen zetten een donkere tekstkleur terwijl de globale thead-regel een donkere achtergrond geeft: ${onleesbaar.map(([, sel]) => sel.trim()).join(", ")}. Zet ze op var(--white).`);
+
 console.log(fouten ? `\n${fouten} proef(en) mislukt.` : "\nAlle proeven geslaagd.");
 process.exit(fouten ? 1 : 0);
