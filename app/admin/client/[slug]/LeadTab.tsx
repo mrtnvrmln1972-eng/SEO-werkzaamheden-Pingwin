@@ -159,10 +159,10 @@ export default function LeadTab({ slug, naam, domain }: { slug: string; naam: st
           >
             {bezig === "dossier"
               ? "Bezig met inlezen…"
-              : "Sleep hier een document (pdf, Word, txt, md of csv), of klik om te kiezen"}
+              : "Sleep hier een document (pdf, Word, Excel, csv of tekst), of klik om te kiezen"}
             <input
               ref={bestandRef} type="file" style={{ display: "none" }}
-              accept=".pdf,.docx,.txt,.md,.csv,.tsv,.json"
+              accept=".pdf,.docx,.xlsx,.xlsm,.xls,.csv,.tsv,.txt,.md,.json"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) stuurBestand(f); e.target.value = ""; }}
             />
           </div>

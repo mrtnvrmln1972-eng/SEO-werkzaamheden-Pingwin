@@ -6,7 +6,8 @@ import { getPageDocOutputs, savePageDocOutput, getPageDriveFolder } from "./site
 import { ensureFolderFor } from "./drive-map";
 import { callClaude, LIGHT_MODEL } from "./anthropic";
 import { buildPingwinDoc, type DocSection, type DocBlock } from "./pingwin-docx";
-import { uploadDocx, uploadEnConverteer, readDriveDoc } from "./drive";
+import { uploadDocx, uploadBestand, uploadEnConverteer, readDriveDoc } from "./drive";
+import { kanDirectGelezen, tekstUitLokaalBestand } from "./bestand-tekst";
 
 const DOCX_MIME_IN = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
@@ -155,36 +156,45 @@ export async function leesAangeleverdDocument(
   naam: string,
   buf: Buffer,
 ): Promise<{ ok: boolean; tekst?: string; driveLink?: string; error?: string }> {
-  if (/\.(txt|md|json|csv)$/i.test(naam)) {
-    const tekst = buf.toString("utf8");
-    return tekst.trim() ? { ok: true, tekst, driveLink: "" } : { ok: false, error: "Het bestand is leeg." };
-  }
-
-  const isDocx = /\.docx$/i.test(naam);
-  const isPdf = /\.pdf$/i.test(naam);
-  if (!isDocx && !isPdf) {
-    return { ok: false, error: "Dit bestandstype kan ik nog niet lezen. Gebruik .docx, .pdf, .txt of .md." };
-  }
-
-  // Map automatisch aanmaken als hij er nog niet is (pagina-map onder de
-  // klantmap). Eerder moest Maarten die eerst met de hand kiezen, en tot dat
-  // moment weigerde elke drop.
-  const folderId = await ensureFolderFor(slug, url);
-  if (!folderId) {
-    return { ok: false, error: "Geen toegang tot Google Drive; koppel Drive opnieuw in het adminscherm." };
-  }
   const datum = new Date().toISOString().slice(0, 10);
 
-  try {
-    if (isDocx) {
-      // Origineel onaangetast bewaren, en een omgezette kopie uitlezen.
-      const up = await uploadDocx(folderId, `Aangeleverd-${datum}-${naam}`, buf);
-      const lees = await uploadEnConverteer(folderId, `Leeskopie-${datum}-${naam}`, buf, DOCX_MIME_IN);
-      const read = await readDriveDoc(lees.id, 60000);
-      return read.ok && (read.text || "").trim()
-        ? { ok: true, tekst: read.text || "", driveLink: up.link }
-        : { ok: false, error: "Kon geen leesbare tekst uit het Word-bestand halen." };
+  // ── 1. Kan het hier gelezen worden? Dan hoeft Drive er niet aan te pas ──
+  // Word, Excel, csv en platte tekst zijn hier te lezen (lib/bestand-tekst.ts).
+  // Deze functie had daar zijn eigen, kleinere lijstje naast staan en weigerde
+  // daardoor .xlsx, terwijl die leeslaag Excel allang aankon. Twee leeswegen
+  // naast elkaar betekent altijd dat de kopie achterloopt; daarom nu één weg.
+  if (kanDirectGelezen(naam)) {
+    let tekst = "";
+    try { tekst = await tekstUitLokaalBestand(naam, buf); }
+    catch (e) { return { ok: false, error: "Inlezen mislukte: " + (e as Error).message }; }
+    if (!tekst.trim()) return { ok: false, error: "Kon geen leesbare tekst uit dit bestand halen (het lijkt leeg)." };
+
+    // Het origineel bewaren in Drive is een extra, geen voorwaarde: staat Drive
+    // niet goed, dan is het bestand toch ingelezen in plaats van geweigerd.
+    let driveLink = "";
+    if (/\.(docx|xlsx|xlsm|xls)$/i.test(naam)) {
+      try {
+        const folderId = await ensureFolderFor(slug, url);
+        if (folderId) {
+          const mime = /\.docx$/i.test(naam)
+            ? DOCX_MIME_IN
+            : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+          driveLink = (await uploadBestand(folderId, `Aangeleverd-${datum}-${naam}`, buf, mime)).link;
+        }
+      } catch { /* zonder link verder; de tekst is er al */ }
     }
+    return { ok: true, tekst, driveLink };
+  }
+
+  // ── 2. Pdf en scans: juist hier is de tekstherkenning van Drive het punt ──
+  if (!/\.pdf$/i.test(naam)) {
+    return { ok: false, error: "Dit bestandstype kan ik nog niet lezen. Gebruik pdf, Word, Excel, csv, txt of md." };
+  }
+  const folderId = await ensureFolderFor(slug, url);
+  if (!folderId) {
+    return { ok: false, error: "Een pdf lees ik via Google Drive, en die koppeling werkt nu niet. Koppel Drive opnieuw in het adminscherm, of lever het stuk als Word of tekst aan." };
+  }
+  try {
     const lees = await uploadEnConverteer(folderId, `Aangeleverd-${datum}-${naam}`, buf, "application/pdf");
     const read = await readDriveDoc(lees.id, 60000);
     return read.ok && (read.text || "").trim()
