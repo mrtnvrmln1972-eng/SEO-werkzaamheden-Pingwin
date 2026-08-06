@@ -115,7 +115,7 @@ export default function OpruimOnderwerpen({ slug, domain, rijen, clientName, cli
             <span className="opr-chip">{o.paginas.length} pagina&rsquo;s</span>
             <span className="opr-chip">beste plek {o.bestePositie != null ? Math.round(o.bestePositie) : "geen"}</span>
             <KansChip h={o.haalbaarheid} />
-            {o.euro && <span className="opr-chip merge" title={o.euro.uitleg}>{bedrag(o.euro.perMaand)} per maand</span>}
+            {o.euro && <span className="opr-chip merge" title={o.euro.uitleg}>{bedrag(o.euro.perMaand)} per maand ({o.euro.extraKlikkenPerMaand} bezoekers)</span>}
             {o.kamp && KAMP_TEKST[o.kamp] && <span className="opr-chip">{KAMP_TEKST[o.kamp]}</span>}
             {!alleenLezen && (
               <span className="opr-kaart-acties">

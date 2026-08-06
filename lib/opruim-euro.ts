@@ -18,6 +18,21 @@ import type { Haalbaarheid } from "./opruim-haalbaarheid";
 //   x conversie           welk deel van die bezoekers klant wordt
 //   x klantwaarde         wat één klant opbrengt
 //
+// En de eerlijkheid over die twee getallen, want die is het belangrijkst. Niemand
+// weet precies welk deel van de bezoekers klant wordt: iemand die belt na drie
+// keer terugkomen staat nergens als "conversie", en een deel van de aanvragen
+// wordt handmatig verwerkt zonder dat er een meting achter zit. Elke conversie
+// is dus een schatting.
+//
+// Dat is minder erg dan het lijkt, en dat is precies waarom dit toch gebouwd is:
+// conversie en klantwaarde zijn voor ELKE regel dezelfde vermenigvuldiging. Ze
+// veranderen daarom de VOLGORDE van de lijst niet, alleen de hoogte van de
+// bedragen. Voor de vraag "waar beginnen we" maakt het dus niet uit of het 1% of
+// 3% is; het maakt alleen uit op het moment dat je het bedrag aan een klant laat
+// zien. Daarom staat er overal bij dat het een schatting is, en daarom wordt het
+// aantal extra bezoekers er altijd bij genoemd: dat getal leunt niet op de
+// aanname en is het harde deel van de som.
+//
 // Twee dingen zijn bewust géén aanname:
 // - De klikkans komt uit dezelfde `scoring-config.json` als de prioriteitenscan.
 //   Eén CTR-curve voor het hele dashboard; twee curves die uit elkaar lopen is
@@ -113,7 +128,7 @@ export function berekenEuro(
       nu ? `De pagina staat nu rond plek ${Math.round(nu)}.` : "De pagina doet nu niet mee in de resultaten.",
       `Op plek ${doel} levert dat naar schatting ${Math.round(extraKlikken)} extra bezoekers per maand op.`,
       `Bij ${inst.conversie}% conversie en ${euro(inst.klantwaarde)} per klant is dat ongeveer ${euro(perMaand)} per maand, oftewel ${euro(perMaand * 12)} per jaar.`,
-      "Het is een schatting op basis van gemiddelde klikcijfers, geen belofte.",
+      "Het aantal extra bezoekers is het harde deel van deze som; het bedrag leunt op een geschatte conversie, want niet iedereen die belt of langskomt is te meten. Voor de volgorde van deze lijst maakt dat niets uit (elke regel krijgt dezelfde vermenigvuldiging), voor het bedrag zelf wel.",
     ].join(" "),
   };
 }

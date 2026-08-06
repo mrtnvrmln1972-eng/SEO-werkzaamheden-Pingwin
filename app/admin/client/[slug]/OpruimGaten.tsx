@@ -91,7 +91,7 @@ export default function OpruimGaten({ slug, domain, rijen, clientName, clientEma
         </p>
         <p>
           {kansrijk > 0 ? <>Daarvan {kansrijk === 1 ? "is er 1" : `zijn er ${kansrijk}`} <strong>kansrijk</strong>: de zoekterm is niet zwaarder dan wat deze website aankan. </> : null}
-          {totaal > 0 ? <>Bij elkaar naar schatting <strong>{bedrag(totaal)} per maand</strong> aan gemiste omzet.</> : null}
+          {totaal > 0 ? <>Bij elkaar naar schatting <strong>{bedrag(totaal)} per maand</strong> aan gemiste omzet. Het aantal bezoekers is het harde deel van die som; het bedrag leunt op een geschatte conversie.</> : null}
         </p>
       </div>
 
@@ -121,7 +121,16 @@ export default function OpruimGaten({ slug, domain, rijen, clientName, clientEma
                     ? <>uitbreiden: <Link p={g.dichtbij[0]} /></>
                     : <><span className="opr-chip merge">nieuwe pagina</span> <span className="opr-pad">{g.voorstelPad.split("  (")[0]}</span></>}
                 </td>
-                {totaal > 0 && <td>{g.euro ? <strong>{bedrag(g.euro.perMaand)}</strong> : <span className="opr-leeg">&mdash;</span>}</td>}
+                {totaal > 0 && (
+                  <td>
+                    {g.euro ? (
+                      <span title={g.euro.uitleg}>
+                        <strong>{bedrag(g.euro.perMaand)}</strong>
+                        <span className="opr-eind-slokt" style={{ display: "block" }}>{g.euro.extraKlikkenPerMaand} bezoekers/mnd</span>
+                      </span>
+                    ) : <span className="opr-leeg">&mdash;</span>}
+                  </td>
+                )}
                 {!alleenLezen && (
                   <td>
                     <button type="button" className="opr-btn" disabled={!!bezig} onClick={() => void naarWeekplan(g)}

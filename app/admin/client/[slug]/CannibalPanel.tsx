@@ -316,25 +316,56 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
           <div className="opr-kop">Wat deze analyse doet</div>
           <div className="opr-kaart-tekst">
           <p>
-            Deze pagina zoekt uit welke pagina&rsquo;s van de site elkaar in de weg zitten of niets opleveren,
-            en wat er per pagina moet gebeuren. Dat gebeurt langs twee wegen.
+            Deze pagina beantwoordt één vraag per pagina van de site: <strong>wat moet hiermee gebeuren</strong>. En
+            daarnaast één vraag over de site als geheel: <strong>wat ontbreekt er</strong>.
           </p>
+
+          <p><strong>Waar de analyse naar kijkt</strong></p>
           <ul>
             <li>
-              <strong>Pagina&rsquo;s die om hetzelfde zoekwoord vechten.</strong> Search Console laat zien welke pagina in de
-              loop van de tijd bovenkomt op een zoekwoord. Wisselt dat steeds tussen twee pagina&rsquo;s van deze site, dan
-              twijfelt Google en verliezen ze allebei.
+              <strong>Search Console:</strong> op welk zoekwoord welke pagina wordt getoond, hoe vaak, op welke plek, en
+              of Google door de tijd heen wisselt tussen twee pagina&rsquo;s van deze site. Dat wisselen is het hardste
+              signaal dat er is: dan twijfelt Google en verliezen ze allebei.
             </li>
             <li>
-              <strong>Pagina&rsquo;s die op geen enkel eigen zoekwoord ranken.</strong> Alles wat ze binnenhalen lenen ze van
-              de merknaam of van een grote stad. Ze concurreren met niemand, maar ze versnipperen wel de autoriteit van
-              de site.
+              <strong>Ahrefs:</strong> per zoekterm het maandelijkse zoekvolume, de moeilijkheid, en de
+              <strong> zoekintentie</strong> (wil iemand iets regelen, of eerst iets weten). Plus de autoriteit van het
+              domein zelf.
+            </li>
+            <li>
+              <strong>De live site:</strong> welke pagina&rsquo;s er zijn, welke URL-vormen naast elkaar bestaan, en welke
+              advertentiepagina&rsquo;s buiten schot moeten blijven.
             </li>
           </ul>
+
+          <p><strong>Twee remmen, zodat opruimen geen schade doet</strong></p>
+          <ul>
+            <li>
+              <strong>Zoekintentie.</strong> &ldquo;soa test kopen&rdquo; en &ldquo;wat is een soa test&rdquo; delen bijna
+              alle woorden, maar de één wil bestellen en de ander wil het snappen. Die worden nooit samengevoegd: dat
+              zou één van de twee groepen bezoekers kosten. Wat om die reden apart blijft, staat zichtbaar in beeld met
+              de reden erbij.
+            </li>
+            <li>
+              <strong>Haalbaarheid.</strong> De moeilijkheid van een zoekterm gaat af tegen de autoriteit van dit domein.
+              Een term met moeilijkheid 70 bij een domein van 30 is geen kans maar een illusie. Elke regel krijgt
+              daarom <em>kansrijk</em>, <em>pittig</em> of <em>buiten bereik</em>, en de lijsten staan op volgorde van
+              wat kán in plaats van wat groot is. Er verdwijnt niets; buiten bereik gaat onderaan.
+            </li>
+          </ul>
+
+          <p><strong>Wat eruit komt: vier lijsten en een eindbeeld</strong></p>
+          <ul>
+            <li><strong>Onderwerpen bundelen.</strong> Drie of meer pagina&rsquo;s over hetzelfde, geen van alle in de top 10. Eén ervan wordt de thuisbasis, de rest gaat daarin op.</li>
+            <li><strong>Oppakken, niet weghalen.</strong> De pagina scoort nergens op, maar zijn eigen zoekterm heeft wél volume en niemand anders bezit hem. Opruimen zou hier een kans weggooien.</li>
+            <li><strong>Wat er ontbreekt.</strong> Zoektermen met volume waar geen enkele pagina op mikt. Dit is het enige blok dat over groei gaat in plaats van over opruimen.</li>
+            <li><strong>De werklijst.</strong> Per pagina waar hij heen gaat en waarom; klap een regel open voor het bewijs.</li>
+            <li><strong>Klopte het?</strong> Bij het doorvoeren wordt vastgelegd hoe de winnaar er dán voor staat; na 30 en 90 dagen wordt hetzelfde opnieuw gemeten.</li>
+            <li><strong>En onderaan het resultaat:</strong> hoe de site eruitziet als alles is doorgevoerd, gegroepeerd per onderwerp.</li>
+          </ul>
           <p>
-            Alles komt samen in <strong>&eacute;&eacute;n werklijst</strong> hieronder: per pagina waar hij heen gaat en
-            waarom. Klap een regel open en je ziet het bewijs erbij. De analyse draait op de achtergrond; je kunt
-            wegklikken.
+            Vul je hierboven in wat een klant waard is, dan staan alle lijsten ook in euro&rsquo;s. De analyse draait op de
+            achtergrond; je kunt wegklikken.
           </p>
           </div>
         </div>
@@ -378,11 +409,19 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
               : <span className="opr-chip" style={{ marginLeft: 8 }}>nog niet ingevuld</span>}
           </div>
           <p className="muted" style={{ fontSize: 12, margin: 0 }}>
-            Met deze twee getallen kunnen alle lijsten hieronder in euro&rsquo;s praten in plaats van in zoekvolume:
+            Met deze twee getallen praten alle lijsten hieronder in euro&rsquo;s in plaats van in zoekvolume:
             zoekvolume, maal de kans dat iemand doorklikt op een hogere plek, maal jullie conversie, maal wat een klant
-            oplevert. Het is een schatting en dat staat er ook bij, maar &ldquo;deze pagina is 900 euro per maand waard&rdquo;
-            is wel uit te leggen aan een klant en &ldquo;500 zoekopdrachten&rdquo; niet. Laat je ze leeg, dan blijft alles gewoon
-            op zoekvolume staan.
+            oplevert. &ldquo;Deze pagina is 900 euro per maand waard&rdquo; is uit te leggen aan een klant,
+            &ldquo;500 zoekopdrachten&rdquo; niet. Laat je ze leeg, dan blijft alles op zoekvolume staan.
+          </p>
+          <p className="muted" style={{ fontSize: 12, margin: 0 }}>
+            <strong>Gok gerust bij die conversie.</strong> Niemand weet precies welk deel van de bezoekers klant wordt:
+            wie na drie bezoeken belt staat nergens geregistreerd, en een deel van de aanvragen loopt buiten elke meting
+            om. Dat hoeft ook niet nauwkeurig, want <strong>het is voor elke regel dezelfde vermenigvuldiging</strong>.
+            De <em>volgorde</em> van de lijst verandert er dus niet door, alleen de hoogte van de bedragen. Voor
+            &ldquo;waar beginnen we&rdquo; maakt 1% of 3% niets uit; het maakt alleen uit op het moment dat je het bedrag
+            aan een klant laat zien. Vandaar dat overal ook het aantal <strong>extra bezoekers</strong> staat: dat is het
+            harde deel van de som.
           </p>
           <div className="opr-vorm-rij">
             <input className="opr-zoek" style={{ maxWidth: 220 }} value={klantwaarde} onChange={(e) => setKlantwaarde(e.target.value)}
@@ -607,6 +646,12 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
               clusters={result.clusters?.length || 0}
               regels={regels}
               oppakken={result.oppakken?.length || 0}
+              onderwerpen={result.onderwerpen?.length || 0}
+              gaten={result.gaten?.length || 0}
+              euroPerMaand={
+                [...(result.oppakken || []), ...(result.onderwerpen || []), ...(result.gaten || [])]
+                  .reduce((n, r) => n + ((r as { euro?: { perMaand?: number } }).euro?.perMaand || 0), 0)
+              }
               blijftStaan={blijftStaan.length}
               interneLinks={result.interneLinks?.length || 0}
             />

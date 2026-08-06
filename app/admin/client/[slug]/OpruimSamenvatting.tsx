@@ -38,10 +38,15 @@ export function alsPunten(tekst: string): string {
 
 export default function OpruimSamenvatting({
   domain, samenvatting, clusters, regels, oppakken, blijftStaan, interneLinks,
+  onderwerpen = 0, gaten = 0, euroPerMaand = 0,
 }: {
   domain: string; samenvatting?: string;
   clusters: number; regels: number; oppakken: number; blijftStaan: number; interneLinks: number;
+  /** De lijsten die er later bij kwamen. Standaard 0, zodat een oudere aanroep
+      gewoon blijft werken en er niets stuk kan gaan aan de klantkant. */
+  onderwerpen?: number; gaten?: number; euroPerMaand?: number;
 }) {
+  const bedrag = (n: number) => `\u20ac ${Math.round(n).toLocaleString("nl-NL")}`;
   return (
     <div className="opr-kaart">
       <div className="opr-kop">Samengevat: wat deze analyse heeft opgeleverd</div>
@@ -49,11 +54,19 @@ export default function OpruimSamenvatting({
         <p>
           Onderzocht zijn <strong>{clusters} {clusters === 1 ? "zoekwoord" : "zoekwoorden"}</strong> waarop meerdere
           pagina&rsquo;s van deze website tegelijk in Google verschijnen, plus alle pagina&rsquo;s die op geen enkel
-          eigen zoekwoord scoren. De basis daarvoor zijn de vertoningen en posities uit Search Console, het verloop
-          daarvan door de tijd, en het zoekvolume per zoekwoord.
+          eigen zoekwoord scoren, plus de zoekopdrachten waar deze website nog helemaal geen pagina voor heeft. De basis
+          daarvoor zijn de vertoningen en posities uit Search Console, het verloop daarvan door de tijd, het zoekvolume
+          en de moeilijkheid per zoekwoord, en wat iemand met zo&rsquo;n zoekopdracht bedoelt.
         </p>
-        <p>Dat leidt tot drie soorten uitkomsten:</p>
+        <p>Dat leidt tot deze uitkomsten:</p>
         <ul className="opr-punten">
+          {onderwerpen > 0 && (
+            <li>
+              <strong>{onderwerpen} {onderwerpen === 1 ? "onderwerp wordt gebundeld" : "onderwerpen worden gebundeld"}.</strong>{" "}
+              Daar liggen drie of meer pagina&rsquo;s op hetzelfde onderwerp zonder dat er één van in de top 10 staat.
+              Eén pagina wordt de vaste plek, de rest gaat daarin op.
+            </li>
+          )}
           <li>
             <strong>{regels} {regels === 1 ? "pagina wordt doorverwezen" : "pagina&rsquo;s worden doorverwezen"}.</strong>{" "}
             Die vechten met een sterkere pagina om dezelfde bezoeker. Door ze samen te voegen hoeft Google niet meer te
@@ -66,6 +79,13 @@ export default function OpruimSamenvatting({
               kans weggooien, dus krijgen ze een nieuwe invulling.
             </li>
           )}
+          {gaten > 0 && (
+            <li>
+              <strong>{gaten} {gaten === 1 ? "zoekopdracht heeft" : "zoekopdrachten hebben"} nog geen pagina.</strong>{" "}
+              Daar wordt maandelijks op gezocht in onderwerpen waar deze website al meedoet, terwijl er niets voor
+              bestaat. Dat is het enige deel dat over groeien gaat in plaats van over opruimen.
+            </li>
+          )}
           {blijftStaan > 0 && (
             <li>
               <strong>{blijftStaan} {blijftStaan === 1 ? "pagina blijft" : "pagina&rsquo;s blijven"} onaangeroerd.</strong>{" "}
@@ -75,11 +95,25 @@ export default function OpruimSamenvatting({
           )}
         </ul>
         <p>
+          Wat er <strong>niet</strong> gebeurt is net zo belangrijk. Pagina&rsquo;s die over dezelfde woorden gaan maar
+          over een andere vraag blijven bewust apart staan; die samenvoegen zou bezoekers kosten. En zoektermen die te
+          zwaar zijn voor wat deze website nu aankan, staan wel in de lijst maar onderaan, met de reden erbij.
+        </p>
+        {euroPerMaand > 0 && (
+          <p>
+            Bij elkaar gaat het naar schatting om <strong>{bedrag(euroPerMaand)} per maand</strong> aan omzet die nu
+            blijft liggen. Dat is een berekening op basis van zoekvolume en gemiddelde klikcijfers, geen belofte; de
+            waarde ervan zit vooral in de <strong>volgorde</strong>, dus welk werk het eerst aan de beurt is.
+          </p>
+        )}
+        <p>
           Het doel is steeds hetzelfde: <strong>per onderwerp één duidelijke pagina</strong>, die daardoor sterker staat
           dan twee halve.{" "}
           {interneLinks > 0
             ? "Na het doorvoeren worden de interne links bijgewerkt, zodat die ene pagina ook vanuit de website zelf de duidelijkste is."
-            : ""}
+            : ""}{" "}
+          Van elke doorgevoerde doorverwijzing wordt na 30 en 90 dagen nagemeten of de overgebleven pagina er
+          daadwerkelijk sterker van is geworden.
         </p>
       </div>
       {samenvatting && (

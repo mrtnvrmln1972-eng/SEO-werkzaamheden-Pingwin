@@ -88,10 +88,25 @@ export default function OpruimShare({ token }: { token: string }) {
               <li><strong>Search Console:</strong> hoe vaak elke pagina in Google is getoond, op welke zoekopdracht, en op welke plek.</li>
               <li><strong>Het verloop door de tijd:</strong> of Google tussen twee pagina&rsquo;s heen en weer wisselt op dezelfde zoekopdracht.</li>
               <li><strong>Het zoekvolume per zoekwoord:</strong> hoe vaak er maandelijks op een term gezocht wordt, zodat een kansrijke pagina niet per ongeluk verdwijnt.</li>
+              <li><strong>Wat iemand bedoelt met een zoekopdracht:</strong> wil hij iets regelen, of eerst iets weten. Dat bepaalt of twee pagina&rsquo;s wel of niet bij elkaar horen.</li>
+              <li><strong>Hoe zwaar een zoekterm is</strong> vergeleken met hoe sterk deze website staat, zodat er geen werk wordt voorgesteld dat toch niet gaat lukken.</li>
             </ul>
+
+            <p>
+              <strong>Opruimen betekent niet zoveel mogelijk weghalen.</strong> Twee dingen worden bewust
+              tegengehouden. Pagina&rsquo;s die over dezelfde woorden gaan maar over een andere vraag, blijven apart:
+              iemand die een test wil bestellen heeft een andere pagina nodig dan iemand die eerst wil weten wat een
+              test inhoudt, en die samenvoegen kost bezoekers in plaats van dat het ze oplevert. En een pagina die nu
+              niets oplevert maar wél op een gevraagde zoekterm zit, wordt niet weggehaald maar opnieuw opgebouwd.
+            </p>
+            <p>
+              Er wordt ook gekeken naar wat er <strong>niet</strong> is: zoekopdrachten waar maandelijks op gezocht
+              wordt en waar deze website geen enkele pagina voor heeft. Die bezoekers komen nu bij een ander terecht.
+            </p>
             <p>
               Hieronder staat <strong>per pagina wat er gebeurt en waarom</strong>. Klap een regel open voor de volledige
-              onderbouwing, met de cijfers erbij.
+              onderbouwing, met de cijfers erbij. Helemaal onderaan staat hoe de website eruitziet als alles is
+              doorgevoerd: netjes gegroepeerd per onderwerp.
             </p>
           </div>
         </div>
@@ -151,6 +166,12 @@ export default function OpruimShare({ token }: { token: string }) {
           clusters={r?.clusters?.length || 0}
           regels={regels}
           oppakken={r?.oppakken?.length || 0}
+          onderwerpen={r?.onderwerpen?.length || 0}
+          gaten={r?.gaten?.length || 0}
+          euroPerMaand={
+            [...(r?.oppakken || []), ...(r?.onderwerpen || []), ...(r?.gaten || [])]
+              .reduce((n, x) => n + ((x as { euro?: { perMaand?: number } }).euro?.perMaand || 0), 0)
+          }
           blijftStaan={0}
           interneLinks={r?.interneLinks?.length || 0}
         />

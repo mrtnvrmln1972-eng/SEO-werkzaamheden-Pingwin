@@ -135,7 +135,8 @@ export default function OpruimOppakken({ slug, domain, rijen, clientName, client
         <p className="opr-kaart-tekst">
           Bij elkaar is deze lijst naar schatting <strong>{bedrag(euroTotaal)} per maand</strong> waard, oftewel{" "}
           <strong>{bedrag(euroTotaal * 12)} per jaar</strong>. Dat is zoekvolume maal de klikkans op een realistische
-          plek, maal jullie conversie, maal wat een klant oplevert; een schatting, geen belofte.
+          plek, maal jullie conversie, maal wat een klant oplevert. Het aantal bezoekers is het harde deel; het bedrag
+          leunt op een geschatte conversie, dus lees het als een orde van grootte en niet als een belofte.
         </p>
       )}
       {buitenBereik > 0 && (
@@ -173,7 +174,18 @@ export default function OpruimOppakken({ slug, domain, rijen, clientName, client
                 <td>{o.moeilijkheid != null ? o.moeilijkheid : "—"}</td>
                 <td><KansChip h={o.haalbaarheid} /></td>
                 <td>{intentieTekst(o.intentie) || <span className="opr-leeg">&mdash;</span>}</td>
-                {euroTotaal > 0 && <td>{o.euro ? <strong>{bedrag(o.euro.perMaand)}</strong> : <span className="opr-leeg">&mdash;</span>}</td>}
+                {euroTotaal > 0 && (
+                  <td>
+                    {o.euro ? (
+                      <span title={o.euro.uitleg}>
+                        <strong>{bedrag(o.euro.perMaand)}</strong>
+                        {/* Het aantal bezoekers erbij: dat is het harde deel van de som.
+                            Het bedrag leunt op een geschatte conversie, dit getal niet. */}
+                        <span className="opr-eind-slokt" style={{ display: "block" }}>{o.euro.extraKlikkenPerMaand} bezoekers/mnd</span>
+                      </span>
+                    ) : <span className="opr-leeg">&mdash;</span>}
+                  </td>
+                )}
                 {!alleenLezen && <td>
                   <button type="button" className="opr-btn" disabled={!!bezig} onClick={() => void naarWeekplan(o)}
                     title="Zet deze pagina als taak op de weekplanning. Daar krijgt hij zijn fases: analyse, blauwdruk, copy.">
