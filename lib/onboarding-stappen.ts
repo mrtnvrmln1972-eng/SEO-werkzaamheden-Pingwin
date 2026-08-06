@@ -13,7 +13,8 @@ export type Door = "jij" | "dashboard";
 export type StapKey =
   | "domein" | "searchconsole" | "ahrefs" | "urls" | "beheeromgeving"
   | "profiel" | "tov" | "bedrijfsgegevens" | "werkgebied" | "klantwaarde" | "concurrenten"
-  | "zoekwoorden" | "prioriteiten" | "opruimen" | "internelinks"
+  | "googleprofiel" | "gmbbeheer"
+  | "zoekwoorden" | "prioriteiten" | "opruimen" | "internelinks" | "gmbscan"
   | "strategie";
 
 export type StapDef = {
@@ -90,6 +91,15 @@ export const ONBOARDING: StapDef[] = [
     key: "klantwaarde", label: "Klantwaarde en conversie", blok: "kennen", door: "jij", nodig: [], tab: "cannibalisatie",
     waarom: "Wat één klant opbrengt en welk deel van de bezoekers klant wordt; zonder die twee getallen kan geen enkele lijst in euro's.",
   },
+  {
+    key: "googleprofiel", label: "Google-bedrijfsprofiel gevonden", blok: "kennen", door: "dashboard", nodig: ["bedrijfsgegevens"], tab: "google-profiel",
+    automatisch: true, verouderdNa: 180,
+    waarom: "Welk profiel op de kaart bij deze klant hoort, per vestiging; zonder die koppeling kunnen we niets meten en niets vergelijken.",
+  },
+  {
+    key: "gmbbeheer", label: "Beheerder van het Google-profiel", blok: "kennen", door: "jij", nodig: ["googleprofiel"], tab: "google-profiel",
+    waarom: "Als beheerder zien we de bezoekcijfers (hoe vaak gezien, gebeld, route gevraagd) en kunnen we het profiel bijwerken; zonder beheer meten we alleen de buitenkant.",
+  },
 
   // ── Waar staat de site: de site-brede metingen ──
   {
@@ -111,6 +121,11 @@ export const ONBOARDING: StapDef[] = [
     key: "internelinks", label: "Interne links gedraaid", blok: "meten", door: "dashboard", nodig: ["urls", "searchconsole"], tab: "interne-links",
     automatisch: true, verouderdNa: 180,
     waarom: "Vanaf welke pagina's je het beste naar een doelpagina linkt om hem omhoog te duwen.",
+  },
+  {
+    key: "gmbscan", label: "Google-profiel doorgemeten", blok: "meten", door: "dashboard", nodig: ["googleprofiel", "concurrenten"], tab: "google-profiel",
+    automatisch: true, verouderdNa: 60,
+    waarom: "Hoe het profiel ervoor staat tegenover de concurrenten in de buurt: reviews, foto's, compleetheid en wat er te winnen valt.",
   },
 
   // ── En dan pas: aan het werk ──

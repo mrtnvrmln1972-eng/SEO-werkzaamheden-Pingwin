@@ -18,11 +18,20 @@ import { ahrefsConfigured, getKeywordsOverview } from "./ahrefs";
 // - drive (provider 'google_drive'): documenten-opslag. Per wereld koppelt de
 //   eigenaar hier het Drive-account waar documenten moeten landen. Zo kan de
 //   data-koppeling nooit per ongeluk iemands Drive openzetten.
-export type GooglePurpose = "data" | "drive";
+// - profiel (provider 'google_profiel'): het Google-bedrijfsprofiel van klanten
+//   waar Pingwin beheerder van is. Bewust een derde, losse rij: deze toestemming
+//   geeft schrijfrechten op de etalage van een klant, en die mag nooit meeliften
+//   op de alleen-lezen datakoppeling. Zie lib/gbp.ts.
+export type GooglePurpose = "data" | "drive" | "profiel";
 
 const DATA_SCOPES = [
   "https://www.googleapis.com/auth/webmasters.readonly",
   "https://www.googleapis.com/auth/analytics.readonly",
+  "openid", "email",
+].join(" ");
+
+const PROFIEL_SCOPES = [
+  "https://www.googleapis.com/auth/business.manage",
   "openid", "email",
 ].join(" ");
 
@@ -34,7 +43,15 @@ const DRIVE_SCOPES = [
 ].join(" ");
 
 function providerFor(purpose: GooglePurpose): string {
-  return purpose === "drive" ? "google_drive" : "google";
+  if (purpose === "drive") return "google_drive";
+  if (purpose === "profiel") return "google_profiel";
+  return "google";
+}
+
+function scopesFor(purpose: GooglePurpose): string {
+  if (purpose === "drive") return DRIVE_SCOPES;
+  if (purpose === "profiel") return PROFIEL_SCOPES;
+  return DATA_SCOPES;
 }
 
 export function googleConfigured(): boolean {
@@ -50,7 +67,7 @@ export function googleAuthUrl(origin: string, state: string, purpose: GooglePurp
     client_id: process.env.GOOGLE_CLIENT_ID || "",
     redirect_uri: googleRedirectUri(origin),
     response_type: "code",
-    scope: purpose === "drive" ? DRIVE_SCOPES : DATA_SCOPES,
+    scope: scopesFor(purpose),
     access_type: "offline",
     prompt: "consent",
     include_granted_scopes: "true",
@@ -125,6 +142,13 @@ export async function getGoogleAccessToken(): Promise<string | null> {
 // terugval op de data-rij: de data-koppeling mag nooit Drive-toegang geven.
 export async function getDriveAccessToken(): Promise<string | null> {
   return accessTokenFor("google_drive");
+}
+
+// Bedrijfsprofiel-koppeling: eigen rij, eigen toestemming. Geen terugval op de
+// andere twee; beheerrechten op een klantprofiel mogen nooit per ongeluk
+// ontstaan uit een koppeling die iemand voor Search Console legde.
+export async function getProfielAccessToken(): Promise<string | null> {
+  return accessTokenFor("google_profiel");
 }
 
 async function accessTokenFor(provider: string): Promise<string | null> {

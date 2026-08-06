@@ -38,8 +38,9 @@ import LeadTab from "./LeadTab";
 import MailControlePanel from "./MailControlePanel";
 import OnboardingPanel from "./OnboardingPanel";
 import OntwikkelMenu from "../../OntwikkelMenu";
+import GmbPanel from "./GmbPanel";
 
-type Tab = "lead" | "onboarding" | "werkzaamheden" | "paginas" | "documenten" | "activiteit" | "resultaten" | "klant" | "developer" | "wijzigingen" | "cannibalisatie" | "interne-links" | "meta" | "prioriteiten";
+type Tab = "lead" | "onboarding" | "werkzaamheden" | "paginas" | "documenten" | "activiteit" | "resultaten" | "klant" | "developer" | "wijzigingen" | "cannibalisatie" | "interne-links" | "meta" | "prioriteiten" | "google-profiel";
 
 // Jouw Superhuman-account (Microsoft 365 hangt hieronder).
 const SUPERHUMAN_ACCOUNT = "Maarten@pingwin.nl";
@@ -106,7 +107,7 @@ export default function ClientCockpit({
   // Is dit een lead, dan is de leadomgeving het startscherm. Voor klanten
   // verandert er niets: die beginnen zoals altijd op Taken.
   const isLead = client.fase === "lead";
-  const validTab = (t?: string): Tab => (t === "lead" || t === "onboarding" || t === "werkzaamheden" || t === "paginas" || t === "documenten" || t === "activiteit" || t === "resultaten" || t === "klant" || t === "developer" || t === "wijzigingen" || t === "meta" || t === "cannibalisatie" || t === "interne-links" || t === "prioriteiten") ? t : (isLead ? "lead" : "werkzaamheden");
+  const validTab = (t?: string): Tab => (t === "lead" || t === "onboarding" || t === "werkzaamheden" || t === "paginas" || t === "documenten" || t === "activiteit" || t === "resultaten" || t === "klant" || t === "developer" || t === "wijzigingen" || t === "meta" || t === "cannibalisatie" || t === "interne-links" || t === "prioriteiten" || t === "google-profiel") ? t : (isLead ? "lead" : "werkzaamheden");
   const [tab, setTab] = useState<Tab>(validTab(initialTab));
   // Teller die de weekplanning laat herladen zodra er vanuit de chat een taak is
   // toegevoegd (of iets in het bord verandert).
@@ -482,6 +483,7 @@ export default function ClientCockpit({
                 { id: "meta", label: "Meta & CTR", hint: "Veel vertoningen, te weinig klikken: betere meta-teksten leveren direct bezoekers op" },
                 { id: "cannibalisatie", label: "Opruimen", hint: "Welke pagina's elkaar in de weg zitten, met de volledige redirectlijst: van, naar en waarom" },
                 { id: "interne-links", label: "Interne links", hint: "Vanaf welke pagina's je het beste naar een doelpagina linkt, gewogen op autoriteit en relevantie" },
+                { id: "google-profiel", label: "Google-profiel", hint: "Hoe het Google-bedrijfsprofiel ervoor staat per vestiging, met de concurrenten in de buurt ernaast" },
               ]}
             />
 
@@ -879,6 +881,7 @@ export default function ClientCockpit({
         {tab === "prioriteiten" && <PrioriteitenPanel slug={client.slug} domain={client.domain || ""} onGaNaar={gaNaar} clientName={client.name} clientEmail={client.email || ""} />}
         {tab === "cannibalisatie" && <CannibalPanel slug={client.slug} domain={client.domain || ""} openTarget={opruimTarget} clientName={client.name} clientEmail={client.email || ""} />}
         {tab === "interne-links" && <InternalLinksPanel slug={client.slug} openTarget={linkTarget} />}
+        {tab === "google-profiel" && <GmbPanel slug={client.slug} clientName={client.name} clientEmail={client.email || ""} pingwinEmail={myEmail || SUPERHUMAN_ACCOUNT} onGaNaar={(t) => changeTab(validTab(t))} />}
 
         {/* Hetzelfde overzicht als /admin/developer: ALLE klanten bij elkaar, want
             dit is de lijst die met de developer wordt gedeeld en die werkt over

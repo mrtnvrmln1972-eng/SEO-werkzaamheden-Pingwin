@@ -92,6 +92,39 @@ async function linkRun(slug: string): Promise<RunStand> {
     return runUitRij(rows);
   } catch { return GEEN_RUN; }
 }
+// De Google-profielscan heeft twee stappen die uit dezelfde rij volgen: is er
+// een profiel gekoppeld/gevonden, en is er echt doorgemeten. Bewust rechtstreeks
+// op de tabel, net als de andere runs hierboven.
+type GmbFeiten = { gekoppeld: number; locaties: number; klaar: boolean; bezig: boolean; beheer: boolean; sinds: string | null };
+const GEEN_GMB: GmbFeiten = { gekoppeld: 0, locaties: 0, klaar: false, bezig: false, beheer: false, sinds: null };
+
+async function gmbFeiten(slug: string): Promise<GmbFeiten> {
+  try {
+    const { rows } = await sql`SELECT status, updated_at, result, koppelingen FROM client_gmb WHERE client_slug = ${slug} LIMIT 1`;
+    const r = rows[0];
+    if (!r) return GEEN_GMB;
+    let koppelingen: Record<string, string> = {};
+    try { koppelingen = r.koppelingen ? JSON.parse(r.koppelingen as string) : {}; } catch { /* leeg */ }
+    let locaties = 0, gevonden = 0, beheer = false;
+    try {
+      const res = r.result ? JSON.parse(r.result as string) : null;
+      if (res && Array.isArray(res.locaties)) {
+        locaties = res.locaties.length;
+        gevonden = res.locaties.filter((l: { profiel?: unknown }) => !!l.profiel).length;
+      }
+      beheer = !!res?.beheerdeur?.werkt;
+    } catch { /* een kapot resultaat telt als niet gedraaid */ }
+    return {
+      gekoppeld: Math.max(Object.keys(koppelingen).length, gevonden),
+      locaties,
+      klaar: r.status === "done" && gevonden > 0,
+      bezig: r.status === "running",
+      beheer,
+      sinds: r.updated_at ? new Date(r.updated_at as string).toISOString() : null,
+    };
+  } catch { return GEEN_GMB; }
+}
+
 async function telUrls(slug: string): Promise<{ aantal: number; sinds: string | null }> {
   try {
     const { rows } = await sql`SELECT COUNT(*)::int AS n, MAX(last_scanned) AS laatst FROM client_urls WHERE client_slug = ${slug}`;
@@ -135,7 +168,7 @@ export async function getOnboardingStand(slug: string): Promise<Stand> {
     return { slug, naam: slug, stappen: [], af: 0, totaal: 0, mist: [], aanJou: [], klaar: false };
   }
 
-  const [google, urls, org, euro, comps, kansen, prio, opruim, links, wp, strat] = await Promise.all([
+  const [google, urls, org, euro, comps, kansen, prio, opruim, links, wp, strat, gmb] = await Promise.all([
     googleStatus().catch(() => ({ configured: false, connected: false, account: null })),
     telUrls(slug),
     getOrgData(slug).catch(() => null),
@@ -147,6 +180,7 @@ export async function getOnboardingStand(slug: string): Promise<Stand> {
     linkRun(slug),
     hasWpCreds(slug).catch(() => false),
     telStrategie(slug),
+    gmbFeiten(slug),
   ]);
 
   const domein = (client.domain || "").trim();
@@ -229,6 +263,27 @@ export async function getOnboardingStand(slug: string): Promise<Stand> {
         ? `€ ${Math.round(euro.klantwaarde).toLocaleString("nl-NL")} per klant, ${euro.conversie}% conversie.`
         : "Klantwaarde en conversiepercentage zijn nog niet ingevuld; alle lijsten blijven daardoor zonder bedragen.",
       sinds: null,
+    },
+    googleprofiel: {
+      af: gmb.gekoppeld > 0,
+      bezig: gmb.bezig,
+      detail: gmb.gekoppeld > 0
+        ? `${gmb.gekoppeld} ${gmb.gekoppeld === 1 ? "profiel" : "profielen"} gekoppeld${gmb.locaties > gmb.gekoppeld ? ` van ${gmb.locaties} vestigingen` : ""}.`
+        : "Er is nog geen Google-bedrijfsprofiel gekoppeld; zonder profiel meten we niets op de kaart.",
+      sinds: gmb.sinds,
+    },
+    gmbbeheer: {
+      af: gmb.beheer,
+      detail: gmb.beheer
+        ? "Pingwin is beheerder; de bezoekcijfers van het profiel komen binnen."
+        : "Nog geen beheertoegang. Vraag de klant om Pingwin als beheerder toe te voegen, dan zien we hoe vaak het profiel gezien wordt en wat optimalisaties opleveren.",
+      sinds: null,
+    },
+    gmbscan: {
+      af: gmb.klaar,
+      bezig: gmb.bezig,
+      detail: gmb.klaar ? "Het Google-profiel is doorgemeten." : gmb.bezig ? "De profielscan draait." : "Het Google-profiel is nog niet doorgemeten.",
+      sinds: gmb.sinds,
     },
     zoekwoorden: {
       af: kansen.aantal > 0,

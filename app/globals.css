@@ -5204,3 +5204,161 @@ a.wb-pad:hover { text-decoration: underline; }
   max-width: 52em;
 }
 @media (max-width: 900px) { .rk-punt-botst-nu { margin-left: 0; } }
+
+/* ══════════════════════════════════════════════════════════════
+   GOOGLE-BEDRIJFSPROFIEL (tabblad "Google-profiel")
+   Volledig op de schaal-tokens; geen losse pixelwaardes.
+   ══════════════════════════════════════════════════════════════ */
+
+.gmb-fout {
+  margin: var(--s-3) 0 0; padding: var(--s-3) var(--s-4);
+  background: var(--red-light); border-left: 3px solid var(--red);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-base); line-height: var(--lh-base); color: var(--body-text);
+}
+
+.gmb-blokkade {
+  margin-top: var(--s-4); padding: var(--s-4);
+  background: var(--brand-orange-faint); border: 1px solid var(--brand-orange-soft);
+  border-radius: var(--r-md);
+}
+.gmb-blokkade strong { display: block; font-size: var(--fs-md); line-height: var(--lh-md); color: var(--orange-dark); margin-bottom: var(--s-2); }
+.gmb-blokkade p { margin: 0; font-size: var(--fs-base); line-height: var(--lh-base); color: var(--body-text); max-width: 78ch; }
+.gmb-blokkade code { background: var(--white); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 0 var(--s-1); }
+
+/* Staat de beheerdeur open of niet: altijd zichtbaar, nooit stilzwijgend leeg. */
+.gmb-deur {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3);
+  margin-top: var(--s-4); padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-md); border-left: 3px solid var(--gray);
+  background: var(--gray-light);
+}
+.gmb-deur strong { font-size: var(--fs-base); line-height: var(--lh-base); }
+.gmb-deur span { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray); flex: 1 1 320px; }
+.gmb-deur-aan { border-left-color: #1c7a3f; background: #F1F8F3; }
+.gmb-deur-uit { border-left-color: var(--orange); background: var(--brand-orange-faint); }
+
+.gmb-niet-gemeten {
+  margin-top: var(--s-4); padding: var(--s-3) var(--s-4);
+  background: var(--gray-light); border-radius: var(--r-md);
+}
+.gmb-niet-gemeten strong { display: block; font-size: var(--fs-base); line-height: var(--lh-base); margin-bottom: var(--s-2); }
+.gmb-niet-gemeten ul { margin: 0; padding-left: var(--s-5); }
+.gmb-niet-gemeten li { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray); margin-bottom: var(--s-1); max-width: 78ch; }
+
+/* De regel per vestiging */
+.gmb-kop {
+  display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap;
+  width: 100%; padding: 0; border: 0; background: none; cursor: pointer; text-align: left;
+}
+.gmb-kop-pijl { color: var(--orange); font-weight: 700; }
+.gmb-kop-naam { font-weight: 700; font-size: var(--fs-md); line-height: var(--lh-md); color: var(--body-text); }
+.gmb-kop-cijfers { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray); }
+.gmb-kop-tel { margin-left: auto; font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); }
+
+.gmb-stand {
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
+  padding: var(--s-1) var(--s-3); border-radius: var(--r-full);
+}
+.gmb-stand-goed { background: #E8F5EC; color: #1c7a3f; }
+.gmb-stand-redelijk { background: var(--brand-orange-soft); color: var(--orange-dark); }
+.gmb-stand-zwak { background: var(--red-light); color: var(--red); }
+.gmb-stand-ontbreekt { background: var(--gray-light); color: var(--gray); }
+
+.gmb-body { margin-top: var(--s-5); }
+.gmb-subkop {
+  display: block; font-weight: 700; font-size: var(--fs-base); line-height: var(--lh-base);
+  color: var(--orange-dark); margin: var(--s-5) 0 var(--s-2);
+}
+.gmb-bril-uitleg { margin: 0 0 var(--s-3); font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray); max-width: 78ch; }
+
+/* Wat er nu op het profiel staat */
+.gmb-feiten {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--s-3);
+  padding: var(--s-4); background: var(--gray-light); border-radius: var(--r-md);
+}
+.gmb-feiten > div { display: flex; flex-direction: column; gap: var(--s-1); min-width: 0; }
+.gmb-feiten span { font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); text-transform: uppercase; letter-spacing: 0.03em; }
+.gmb-feiten strong { font-size: var(--fs-base); line-height: var(--lh-base); font-weight: 600; color: var(--body-text); overflow-wrap: anywhere; }
+
+/* De bezoekcijfers */
+.gmb-prestaties { margin-top: var(--s-5); }
+.gmb-cijfers { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--s-3); }
+.gmb-cijfers > div {
+  padding: var(--s-4); background: var(--brand-orange-faint);
+  border: 1px solid var(--brand-orange-soft); border-radius: var(--r-md); text-align: center;
+}
+.gmb-cijfers strong { display: block; font-size: var(--fs-xl); line-height: var(--lh-xl); color: var(--orange-dark); }
+.gmb-cijfers span { display: block; font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray); }
+
+/* Eén bevinding */
+.gmb-bril { margin-bottom: var(--s-5); }
+.gmb-bevinding {
+  padding: var(--s-3) var(--s-4); margin-bottom: var(--s-2);
+  border-left: 3px solid var(--border); border-radius: var(--r-sm); background: var(--white);
+  border-top: 1px solid var(--card-border); border-right: 1px solid var(--card-border); border-bottom: 1px solid var(--card-border);
+}
+.gmb-zwaarte-hoog { border-left-color: var(--red); }
+.gmb-zwaarte-middel { border-left-color: var(--orange); }
+.gmb-zwaarte-laag { border-left-color: var(--brand-taupe); }
+.gmb-bevinding-kop { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; margin-bottom: var(--s-2); }
+.gmb-bevinding-kop strong { font-size: var(--fs-base); line-height: var(--lh-base); color: var(--body-text); }
+.gmb-hard { background: #E8F5EC; color: #1c7a3f; border-color: #C7E5D0; }
+.gmb-zacht { background: var(--brand-orange-soft); color: var(--orange-dark); border-color: var(--brand-orange-soft); }
+.gmb-bewijs { margin: 0 0 var(--s-2); font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--muted); max-width: 78ch; }
+.gmb-waarom { margin: 0 0 var(--s-2); font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray); max-width: 78ch; }
+.gmb-actie { margin: 0; font-size: var(--fs-base); line-height: var(--lh-base); color: var(--body-text); max-width: 78ch; }
+.gmb-actie > span { font-weight: 700; color: var(--orange-dark); }
+
+/* Reviews */
+.gmb-review {
+  padding: var(--s-4); margin-bottom: var(--s-3);
+  border: 1px solid var(--card-border); border-radius: var(--r-md); background: var(--white);
+}
+.gmb-review-kop { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; margin-bottom: var(--s-2); }
+.gmb-review-kop strong { color: var(--orange); font-size: var(--fs-md); line-height: var(--lh-md); letter-spacing: 0.06em; }
+.gmb-review-kop span { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray); }
+.gmb-review-tekst { margin: 0 0 var(--s-3); font-size: var(--fs-base); line-height: var(--lh-base); color: var(--body-text); max-width: 78ch; }
+.gmb-concept { margin-top: var(--s-3); }
+
+/* De vergelijkingstabel */
+.gmb-tabel { width: 100%; border-collapse: collapse; font-size: var(--fs-base); line-height: var(--lh-base); }
+.gmb-tabel th {
+  text-align: left; padding: var(--s-2) var(--s-3); border-bottom: 1px solid var(--border);
+  font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); text-transform: uppercase; letter-spacing: 0.03em;
+}
+.gmb-tabel td { padding: var(--s-2) var(--s-3); border-bottom: 1px solid var(--card-border); }
+.gmb-wij td { background: var(--brand-orange-faint); font-weight: 600; }
+.gmb-niet-gevonden td { color: var(--gray); }
+
+/* Zoeken en koppelen */
+.gmb-geen-profiel { margin-top: var(--s-4); }
+.gmb-geen-profiel p { margin: 0 0 var(--s-3); font-size: var(--fs-base); line-height: var(--lh-base); color: var(--body-text); max-width: 78ch; }
+.gmb-zoek { margin-top: var(--s-4); padding: var(--s-4); background: var(--gray-light); border-radius: var(--r-md); }
+.gmb-zoekveld {
+  flex: 1 1 260px; padding: var(--s-2) var(--s-3);
+  border: 1px solid var(--border); border-radius: var(--r-md);
+  font-size: var(--fs-base); line-height: var(--lh-base); font-family: inherit; color: var(--body-text);
+}
+.gmb-zoekveld:focus { outline: none; border-color: var(--orange); }
+.gmb-treffer {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s-4); flex-wrap: wrap;
+  margin-top: var(--s-3); padding: var(--s-3) var(--s-4);
+  background: var(--white); border: 1px solid var(--card-border); border-radius: var(--r-md);
+}
+.gmb-treffer strong { display: block; font-size: var(--fs-base); line-height: var(--lh-base); }
+.gmb-treffer-meta { display: block; font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray); }
+.gmb-link { color: var(--orange-dark); text-decoration: underline; overflow-wrap: anywhere; }
+.gmb-link:hover { color: var(--orange); }
+
+/* Suggesties */
+.gmb-suggestie {
+  padding: var(--s-4); margin-bottom: var(--s-3);
+  border: 1px solid var(--card-border); border-left: 3px solid var(--brand-teal);
+  border-radius: var(--r-md); background: var(--white);
+}
+
+.gmb-uitnodiging {
+  margin-top: var(--s-4); padding: var(--s-4);
+  background: var(--gray-light); border-radius: var(--r-md);
+}

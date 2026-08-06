@@ -75,6 +75,21 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
       "ook uitvoert en naderhand nameet.",
     uitklappers: [
       {
+        titel: "Het Google-profiel: de beheerdeur staat nog dicht",
+        tekst:
+          "De profielscan draait op de meetdeur (Google Maps), en die werkt zodra er een `GOOGLE_MAPS_API_KEY` " +
+          "in de omgeving staat. De beheerdeur (de Business Profile API) is gebouwd en aangesloten, maar Google " +
+          "geeft daar pas data op na een goedkeuringsaanvraag met een beoordelingstermijn van maximaal twee " +
+          "weken, en het profiel moet minstens zestig dagen geverifieerd zijn.\n\n" +
+          "Zolang die goedkeuring er niet is blijven zes dingen ongemeten: de bezoekcijfers, de " +
+          "bedrijfsomschrijving, de feestdagen, de posts, de vragen en of er op reviews geantwoord is. Het " +
+          "scherm zegt dat met zoveel woorden in plaats van die punten weg te laten, maar het blijft een gat.\n\n" +
+          "Twee dingen zijn ook mét beheertoegang nog niet aangesloten: de attributen van een profiel " +
+          "(rolstoeltoegankelijk, parkeren) worden niet opgehaald, en de reviewteksten van concurrenten worden " +
+          "niet geanalyseerd op waar hun klanten over schrijven. Dat laatste is waarschijnlijk het meest " +
+          "waardevolle dat er nog bij kan.",
+      },
+      {
         titel: "Het probleem waar elk SEO-bureau tegenaan loopt",
         kern: "Veel data, weinig besluit, en niemand die het bijhoudt.",
         tekst:
@@ -151,7 +166,7 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "|---|---|\n" +
           "| **Taken** | Het startscherm: je prioriteiten, de gesprekken en de planning per dag en week |\n" +
           "| **Pagina's** | Elke pagina van de site: hoe hij scoort, wat eraan gedaan is, wat er nog moet |\n" +
-          "| **Site-breed** | Prioriteitenscan, Meta en CTR, Opruimen, Interne links |\n" +
+          "| **Site-breed** | Prioriteitenscan, Meta en CTR, Opruimen, Interne links, Google-profiel |\n" +
           "| **Klant** | Documenten, Wat we doen, Wijzigingen, Klantgegevens |\n" +
           "| **KPI's** | Posities, vertoningen, klikken en de ontwikkeling daarvan |\n" +
           "| **Developer** | Alle developer-taken over alle klanten heen |\n\n" +
@@ -531,6 +546,66 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "niet.\n\n" +
           "Dit is de jongste lens en dus de minst uitgewerkte van de vier, maar hij zit er expliciet in omdat de " +
           "vraag van klanten hier het snelst groeit.",
+      },
+      {
+        titel: "Het Google-bedrijfsprofiel",
+        kern: "Hoe de klant ervoor staat op de kaart, met de concurrenten in de buurt ernaast.",
+        tekst:
+          "Voor een lokaal bedrijf is het Google-bedrijfsprofiel vaak het eerste en soms het enige wat iemand " +
+          "ziet voordat hij belt of de route opvraagt. Het bepaalt of je in het lokale blok bovenaan de " +
+          "zoekresultaten komt, en dat blok wordt niet door de website gewonnen maar door het profiel.\n\n" +
+          "Het dashboard meet per vestiging, want een bedrijf met vijf locaties heeft vijf profielen en die " +
+          "staan er niet allemaal even goed voor. Zes brillen kijken mee: is het profiel compleet, klopt het met " +
+          "wat er op de site en in de bedrijfsgegevens staat, hoe staat het met de reviews, met de foto's, met " +
+          "de activiteit (posts en vragen), en hoe verhoudt dat zich tot de concurrenten.\n\n" +
+          "Die laatste is waar de waarde zit. \"42 reviews\" zegt niets; \"42 tegenover 180, en zij halen er zes " +
+          "per maand bij\" is een gesprek met de klant en een taak in de planning.",
+        sub: [
+          {
+            titel: "Twee deuren, en het verschil staat in beeld",
+            tekst:
+              "De **meetdeur** werkt altijd zodra er een Maps-sleutel in de omgeving staat, en meet ook de " +
+              "profielen van de concurrenten. Die geeft naam, adres, telefoon, website, openingstijden, " +
+              "categorie, reviewaantal, gemiddelde, de laatste reviews en het aantal foto's.\n\n" +
+              "De **beheerdeur** gaat alleen open voor profielen waar Pingwin beheerder van is, en pas nadat " +
+              "Google het project heeft goedgekeurd. Die levert wat de meetdeur nooit kan: de bezoekcijfers " +
+              "(hoe vaak gezien in zoeken en op de kaart, hoe vaak gebeld, hoeveel routes, hoeveel klikken naar " +
+              "de site), de volledige reviewlijst inclusief of er geantwoord is, de posts en de vragen.\n\n" +
+              "Wat er niet gemeten kon worden staat er altijd bij, met de reden erbij. Een lege uitslag mag " +
+              "nooit lezen als \"er is niets aan de hand\".",
+          },
+          {
+            titel: "Bij meerdere vestigingen: de dubbelen",
+            tekst:
+              "De grootste fout bij een bedrijf met meerdere locaties is zelden een zwak profiel. Het is een " +
+              "dubbel of vergeten profiel: een oude vestiging die nog leeft, of twee vermeldingen die om " +
+              "dezelfde plaats vechten. Dat splitst de reviews en de signalen, en Google kan de verkeerde tonen.\n\n" +
+              "De scan zoekt daar actief naar en meldt wat hij vindt als richtinggevend, niet als hard oordeel: " +
+              "alleen een mens kan zien of het echt een dubbel is of gewoon een tweede vestiging.",
+          },
+          {
+            titel: "Reviews: seintje, concept, en een mens die verstuurt",
+            tekst:
+              "Komt er een review van drie sterren of lager binnen, dan verschijnt er een seintje in de " +
+              "tijdlijn van die klant, één keer per review en niet bij elke scan opnieuw. Op het profielscherm " +
+              "staan die reviews bij elkaar met een knop die er een concept-antwoord bij schrijft, in de stem " +
+              "van de klant, uit het klantprofiel dat al in het dashboard staat.\n\n" +
+              "Het dashboard plaatst dat antwoord niet zelf. Reageren op een review is iets wat de klant hoort " +
+              "te doen, en het gaat over álle reviews, ook de goede: Google noemt reageren zelf een factor, en " +
+              "voor een twijfelende bezoeker is een antwoord het bewijs dat er iemand oplet.",
+          },
+          {
+            titel: "Waarom het dashboard het profiel niet zelf aanpast",
+            tekst:
+              "Het profiel is de etalage van de klant, en Google kan een profiel schorsen bij wijzigingen die " +
+              "het niet vertrouwt. Daarom geldt hier dezelfde staande regel als bij het doorvoeren van " +
+              "meta-teksten: het dashboard schrijft voor, een mens keurt per stuk goed.\n\n" +
+              "Naast de gemeten punten staat er een lijst suggesties die losstaat van de metingen: de dingen " +
+              "die je met een profiel kúnt doen, afgestemd op wat voor bedrijf het is (posts, productenblok, " +
+              "dienstenblok, eigen vragen, feestdagen, locatiepagina's). Ook een profiel waar niets mis mee is " +
+              "heeft daar nog werk liggen.",
+          },
+        ],
       },
     ],
   },
