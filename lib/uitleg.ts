@@ -1407,35 +1407,43 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           {
             titel: "R2. Prioriteren op conversies in plaats van op klikken",
             tekst:
-              "**Wat er nu mis is.** De prioriteitenscan rekent de verwachte opbrengst van elke bevinding uit in " +
-              "extra klikken. Klikken zijn niet het doel; klanten binnenhalen is het doel. Twee pagina's met " +
-              "duizend vertoningen kunnen tien keer in waarde verschillen, en dat verschil zit nu niet in de " +
-              "rangorde. De Analytics-koppeling is er al en levert de conversies al site-breed en per kanaal, maar " +
-              "niet per pagina, en de scoring gebruikt ze helemaal niet.\n\n" +
-              "**Wat het oplevert.** Dit is het punt met het grootste effect van de hele lijst, om drie redenen:\n\n" +
-              "- **Betere besluiten.** De rangorde gaat over geld in plaats van over bezoek. Een pagina die " +
-              "converteert klimt, een pagina die alleen leest zakt.\n" +
-              "- **Een ander gesprek met de klant.** \"Deze aanpassing levert naar verwachting zoveel aanvragen " +
-              "op\" is een heel ander gesprek dan \"dit levert klikken op\". Dat rechtvaardigt ook een hoger " +
-              "budget.\n" +
-              "- **Het maakt het nameten scherp.** De wijziging-effect-meting die er al is (Search Console plus " +
-              "gedrag, voor en na) krijgt er de enige uitkomst bij die echt telt.\n\n" +
+              "**Wat er nu mis is.** Als het dashboard uitrekent wat een verbetering oplevert, rekent het in extra " +
+              "bezoekers. Maar bezoekers zijn niet waar de klant voor betaalt; hij betaalt voor aanvragen. Twee " +
+              "pagina's kunnen even vaak in Google verschijnen terwijl de ene tien keer zo veel klanten oplevert " +
+              "als de andere, en dat verschil zie je nu nergens in de volgorde van het werk. De koppeling met " +
+              "Google Analytics ligt er al en weet ook al hoeveel aanvragen de site in totaal binnenhaalt, maar " +
+              "nog niet welke pagina daarvoor zorgde. En bij het bepalen van de volgorde wordt er helemaal niet " +
+              "naar gekeken.\n\n" +
+              "**Wat het oplevert.** Dit is het punt met het grootste effect van de hele lijst, om drie redenen.\n\n" +
+              "- **Je werkt aan de pagina's die geld opleveren.** Nu bepaalt bezoek de volgorde van je werk, " +
+              "straks bepaalt opbrengst hem. Een pagina waar mensen echt contact opnemen schuift naar boven; een " +
+              "pagina die alleen gelezen wordt en niets oplevert zakt naar beneden.\n" +
+              "- **Je hebt een ander gesprek met de klant.** In plaats van \"dit levert extra bezoekers op\" kun " +
+              "je zeggen: \"deze aanpassing levert naar verwachting acht aanvragen per maand op\". Dat is het " +
+              "gesprek waarin een klant makkelijker ja zegt tegen een hoger budget, omdat hij ziet wat hij ervoor " +
+              "terugkrijgt.\n" +
+              "- **Je kunt eerlijk nameten wat het opleverde.** Het dashboard meet nu al per aanpassing hoe een " +
+              "pagina het deed vóór en ná de wijziging. Daar komt dan de enige uitkomst bij die echt telt: kwamen " +
+              "er ook meer aanvragen binnen?\n\n" +
               "**Hoe we het zouden bouwen.**\n\n" +
-              "1. Conversies per pagina uit Analytics halen, met dezelfde voorzichtigheid die er al zit: niet elke " +
-              "property heeft conversies ingericht, dus zonder conversies moet het gewoon werken zoals nu.\n" +
-              "2. Per klant één instelling: welke gebeurtenis is een aanvraag, en wat is die gemiddeld waard? Twee " +
-              "velden, in het bestaande klantgegevens-formulier, met een lege waarde als \"onbekend\".\n" +
-              "3. De verwachte opbrengst in de scoring uitbreiden: extra klikken maal het conversiepercentage van " +
-              "díe pagina maal de waarde. Ontbreekt de waarde, dan blijft de bestaande berekening op klikken " +
-              "staan, en dat wordt zichtbaar gemeld bij de bevinding.\n" +
-              "4. De uitkomst overal in dezelfde eenheid tonen: verwachte aanvragen per maand, en waar bekend het " +
-              "bedrag.\n\n" +
-              "**Waaraan je ziet dat het af is.** Bij een klant met conversies staat de prioriteitenlijst in een " +
-              "andere volgorde dan op klikken alleen, met bij elke bevinding de verwachte aanvragen. Bij een klant " +
-              "zonder conversies is er niets veranderd, met de melding waarom.\n\n" +
-              "**Wat het raakt.** De prioriteitenscan, de scoringslaag, het klantgegevens-formulier, de " +
-              "wijziging-effect-meting en de KPI-tab. Let op de regel: dit cijfer krijgt één plek en wordt door de " +
-              "andere lenzen uitgevraagd, nooit opnieuw berekend.",
+              "1. Per pagina bij Google Analytics ophalen hoeveel aanvragen er binnenkwamen. Niet elke klant heeft " +
+              "dat ingericht, dus zonder die gegevens moet alles gewoon blijven werken zoals het nu werkt.\n" +
+              "2. Per klant twee dingen vastleggen: wat is bij deze klant een aanvraag (een ingevuld formulier, een " +
+              "telefoontje, een bestelling), en wat is zo'n aanvraag gemiddeld waard? Twee velden bij de " +
+              "klantgegevens, en leeg laten mag: dan blijft het onbekend.\n" +
+              "3. De verwachte opbrengst omrekenen naar aanvragen: hoeveel extra bezoekers verwachten we, welk " +
+              "deel daarvan neemt op déze pagina contact op, en wat is dat waard? Weten we de waarde niet, dan " +
+              "blijft de oude rekenwijze staan en zegt het dashboard er zichtbaar bij dat het over bezoekers gaat.\n" +
+              "4. Overal dezelfde eenheid op het scherm: verwachte aanvragen per maand, en als de waarde bekend is " +
+              "ook het bedrag.\n\n" +
+              "**Waaraan je ziet dat het af is.** Bij een klant waar aanvragen gemeten worden, staat de lijst met " +
+              "prioriteiten in een andere volgorde dan wanneer je alleen naar bezoek kijkt, en staat bij elk punt " +
+              "hoeveel aanvragen het naar verwachting oplevert. Bij een klant zonder die gegevens is er niets " +
+              "veranderd, met een regel erbij waarom.\n\n" +
+              "**Wat het raakt.** Dit verandert de lijst met prioriteiten, het formulier met klantgegevens, het " +
+              "scherm met resultaten en de meting van wat een aanpassing opleverde. Belangrijk daarbij: het aantal " +
+              "aanvragen per pagina wordt op één plek berekend, en alle andere schermen halen het daar op. Wordt " +
+              "het op twee plekken gerekend, dan gaan die twee vroeg of laat verschillende getallen tonen.",
           },
           {
             titel: "R3. AI-vindbaarheid op onderwerpniveau",
@@ -1462,8 +1470,9 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
               "**Waaraan je ziet dat het af is.** Er is een lijst vragen per klant met per vraag: genoemd of niet, " +
               "wie er wel genoemd wordt, en de beweging over tijd. En minstens één bevinding uit die lijst is via " +
               "de gewone weg (kaart met knop) een taak of een document geworden.\n\n" +
-              "**Wat het raakt.** De prioriteitenscan (de vierde lens wordt volwassen), de zoekwoordenlijst, het " +
-              "verbruiksscherm en het maandelijkse verhaal naar de klant.",
+              "**Wat het raakt.** Dit verandert de lijst met prioriteiten, waar AI-vindbaarheid dan een volwassen " +
+              "onderdeel wordt naast de andere vier. Verder raakt het de afgesproken zoekwoorden, het scherm met " +
+              "het verbruik, en het verhaal dat je de klant elke maand vertelt.",
           },
           {
             titel: "R4. Verbruik compleet: de Ahrefs-credits erbij",
@@ -1484,8 +1493,8 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
               "verhouding met wat de klant betaalt.\n\n" +
               "**Waaraan je ziet dat het af is.** Op het verbruiksscherm staat per klant per maand een totaal in " +
               "euro's dat AI en Ahrefs samen dekt, en de duurste actie van die maand is met naam te zien.\n\n" +
-              "**Wat het raakt.** Het verbruiksscherm, de financiënpagina (kosten naast omzet per klant) en de " +
-              "Ahrefs-laag.",
+              "**Wat het raakt.** Dit verandert het scherm met het verbruik en het scherm met de financiën, waar de " +
+              "kosten dan naast de omzet per klant staan. Onder water raakt het de koppeling met Ahrefs.",
           },
         ],
       },
@@ -1526,8 +1535,9 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
               "**Waaraan je ziet dat het af is.** Twee mailboxen gekoppeld, en bij een klant staat de " +
               "correspondentie van beide door elkaar in de tijdlijn, met per bericht wie het stuurde. Een gast " +
               "zonder mailrecht ziet nul berichten.\n\n" +
-              "**Wat het raakt.** De mailkoppeling, de tijdlijn, de mailcontroles, de assistent-context en de " +
-              "rechtenlaag.",
+              "**Wat het raakt.** Dit verandert de manier waarop mail binnenkomt, de tijdlijn per klant, de controle op " +
+              "uitgaande mail en wat de assistent weet als je met hem praat. Ook de rechten gaan mee: een gast die " +
+              "geen mail mag zien, blijft niets zien.",
           },
           {
             titel: "R6. Tweede sitekoppeling, en copy doorvoeren",
@@ -1549,8 +1559,8 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
               "zonder koppeling.\n\n" +
               "**Waaraan je ziet dat het af is.** Een goedgekeurd copydocument staat als concept in de site, met " +
               "een voorbeeldlink, zonder dat er iets gekopieerd is. En hetzelfde werkt op een tweede systeem.\n\n" +
-              "**Wat het raakt.** De documentenketen (de laatste fase), de werklijst, de fases per pagina en \"wat " +
-              "we gedaan hebben\".",
+              "**Wat het raakt.** Dit verandert de laatste stap van de documentenketen, het lijstje dat de sitebouwer " +
+              "krijgt, de voortgang per pagina en het overzicht van wat we voor de klant gedaan hebben.",
           },
           {
             titel: "R7. Bronnen-gezondheid: welke bron is vandaag stil?",
@@ -1575,8 +1585,9 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
               "**Waaraan je ziet dat het af is.** Eén koppeling opzettelijk losgetrokken, en dat is binnen een " +
               "minuut te zien op het bronnenscherm én bij het cijfer dat erop leunt, met een knop om het te " +
               "herstellen.\n\n" +
-              "**Wat het raakt.** Alle koppelingen, en de kaarten en scores die erop leunen. Klein per koppeling, " +
-              "maar het moet er wel bij álle tien in.",
+              "**Wat het raakt.** Elke koppeling krijgt hier iets bij, en elke kaart en score die op die koppelingen " +
+              "leunt. Per koppeling is het klein werk, maar het moet er wel bij alle tien in, anders zit er een " +
+              "blinde vlek in het overzicht.",
           },
           {
             titel: "R8. Correcties worden regels, in élke motor",
@@ -1601,8 +1612,9 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
               "eerste wat je wil zien als een collega een account overneemt.\n\n" +
               "**Waaraan je ziet dat het af is.** Een gecorrigeerd meta-voorstel: na de volgende ronde staat de " +
               "correctie erin, en de regel staat met datum en reden in de lijst geleerde regels van die klant.\n\n" +
-              "**Wat het raakt.** De meta-motor, interne links, de prioriteitenscan, de documentenketen en de " +
-              "bestaande opruim-regels (die hierin opgaan, niet ernaast blijven staan).",
+              "**Wat het raakt.** Dit verandert de voorstellen voor meta-teksten, het advies over interne links, de " +
+              "lijst met prioriteiten en de documenten. De regels die het opruimen nu al leert gaan hierin op, " +
+              "zodat er niet twee systemen naast elkaar komen te staan die hetzelfde doen.",
           },
         ],
       },
@@ -1647,8 +1659,9 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
               "**Waaraan je ziet dat het af is.** Een klant ziet in zijn eigen dashboard zonder jouw tussenkomst " +
               "de ontwikkeling van deze maand, in gewone taal, en jij hebt dat vooraf in de voorbeeldweergave " +
               "kunnen nalopen.\n\n" +
-              "**Wat het raakt.** Het klantdashboard, de voorbeeldweergave, de wijziging-effect-meting en de " +
-              "maandelijkse ronde.",
+              "**Wat het raakt.** Dit verandert het dashboard dat de klant zelf ziet en de voorbeeldweergave waarin jij " +
+              "dat vooraf naloopt. Het leunt op de meting van wat een aanpassing opleverde, en het verandert de " +
+              "maandelijkse ronde langs je klanten.",
           },
           {
             titel: "R10. Signaleren in plaats van kijken",
@@ -1671,7 +1684,8 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
               "4. Elk signaal is stil te zetten met een reden, en die reden wordt een regel (zie R8).\n\n" +
               "**Waaraan je ziet dat het af is.** Een pagina zakt echt weg en er komt binnen een dag één bericht " +
               "met een knop naar die pagina. Een pagina die normaal schommelt levert géén bericht op.\n\n" +
-              "**Wat het raakt.** De achtergrondtaken, de wijzigingen-laag, de trends en de prioriteitenscan.",
+              "**Wat het raakt.** Dit verandert wat er 's nachts en 's weekends op de achtergrond draait, het overzicht " +
+              "van veranderingen op de site van de klant, de ontwikkeling over tijd en de lijst met prioriteiten.",
           },
           {
             titel: "R11. Licentie-klaar: sleutels, opzet en quota",
@@ -1697,8 +1711,10 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
               "**Waaraan je ziet dat het af is.** Een nieuwe omgeving is vanaf leeg in gebruik te nemen zonder " +
               "dat jij een omgevingsvariabele aanraakt, en het opzetscherm laat zien welke koppelingen nog " +
               "ontbreken.\n\n" +
-              "**Wat het raakt.** Alle koppelingen, de beheerpagina en de beveiligingslaag. Dit is het zwaarste " +
-              "punt op de lijst, en het heeft R4 en R7 nodig om echt af te zijn.",
+              "**Wat het raakt.** Dit verandert de manier waarop alle koppelingen hun sleutels bewaren, het beheerscherm " +
+              "en de beveiliging. Het is het zwaarste punt van de lijst, en het is pas echt af als R4 en R7 " +
+              "gedaan zijn: zonder de kosten per klant en zonder zicht op stille koppelingen kun je geen omgeving " +
+              "aan iemand anders overdragen.",
           },
           {
             titel: "R12. Een vangnet onder de rekenmotoren",
@@ -1721,8 +1737,8 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
               "achteraf toevoegen gebeurt nooit.\n\n" +
               "**Waaraan je ziet dat het af is.** Eén commando dat alle proeven draait, dat groen is, en dat rood " +
               "wordt als je met opzet een gewicht in de scoring verandert.\n\n" +
-              "**Wat het raakt.** De rekenlagen. Niets van de werking verandert, dus dit is het veiligste punt op " +
-              "de lijst om tussendoor te doen.",
+              "**Wat het raakt.** Alleen het rekenwerk onder de motoren. Aan de buitenkant verandert er niets, dus dit " +
+              "is het veiligste punt van de lijst om tussendoor te doen terwijl er iets anders loopt.",
           },
           {
             titel: "R13. Wie deed wat: een spoor van wijzigingen",
@@ -1744,7 +1760,9 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
               "veranderen.\n\n" +
               "**Waaraan je ziet dat het af is.** Bij een goedgekeurd meta-voorstel staat wie het goedkeurde en " +
               "wanneer, en dat is terug te zien bij de pagina.\n\n" +
-              "**Wat het raakt.** De schrijvende handelingen, de rechtenlaag en de kaarten waar het bij hoort.",
+              "**Wat het raakt.** Elke handeling die iets wijzigt krijgt hier een regel bij, en die regel verschijnt op " +
+              "de kaart waar het over gaat. Verder raakt het de rechten, want dit is wat je nodig hebt om iemand " +
+              "meer te durven toevertrouwen.",
           },
           {
             titel: "R14. Schermafbeeldingen, door het dashboard zelf gemaakt",
@@ -1767,7 +1785,8 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
               "beheerderslogin te staan in plaats van dat het wordt weggelaten.\n\n" +
               "**Waaraan je ziet dat het af is.** Elk hoofdstuk op de uitlegpagina heeft een beeld, er staat geen " +
               "echte klantnaam op een openbaar beeld, en één opdracht maakt ze allemaal opnieuw.\n\n" +
-              "**Wat het raakt.** De uitlegpagina, de verkooppitch en de interne browser.",
+              "**Wat het raakt.** Dit verandert de uitlegpagina en de verkooppitch, en het gebruikt de browser die al in " +
+              "het dashboard zit om pagina's van klanten te meten.",
           },
           {
             titel: "R15. De verkooppitch als eigen pagina",
@@ -1785,7 +1804,8 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
               "4. Eén vervolgstap onderaan, geen keuzemenu.\n\n" +
               "**Waaraan je ziet dat het af is.** Iemand die het dashboard niet kent snapt binnen twee minuten wat " +
               "het is en wat hij ermee opschiet, zonder door te klikken.\n\n" +
-              "**Wat het raakt.** De uitlegpagina (de bron) en een nieuwe pagina.",
+              "**Wat het raakt.** Er komt één nieuwe pagina bij, die zijn tekst uit de uitlegpagina haalt in plaats van " +
+              "een eigen versie te krijgen.",
           },
         ],
       },

@@ -49,6 +49,20 @@ ervan af omdat je in de code iets beters ziet, zeg dat dan in één regel voorda
    niet aangetoond", dan is het niet af: of de controle klopt niet, of het werk staat niet live.
    Los dat op vóór je terugkoppelt; die chip is het bewijs waar Maarten op vertrouwt.
 
+## Hoe je over een punt schrijft
+
+De beschrijvingen op `/admin/routekaart` en `/uitleg` leest Maarten om te besluiten waar hij aan
+werkt. Daar gelden twee regels, want op 6 augustus 2026 stonden ze vol met interne namen en
+telegramstijl, en dat kostte hem leestijd bij elk punt dat hij openklapte:
+
+- **Geen interne namen als er een gewone beschrijving bestaat.** Niet "de scoringslaag", "de
+  wijziging-effect-meting" of "de prioriteitenscan" als opsomming, maar wat het voor hem is: "het
+  rekenwerk achter de volgorde", "de meting van wat een aanpassing opleverde", "de lijst met
+  prioriteiten". Een naam uit de code mag, maar dan in een zin die uitlegt wat het doet.
+- **Volzinnen, geen telegramstijl.** Niet "De rangorde gaat over geld in plaats van over bezoek."
+  maar "Nu bepaalt bezoek de volgorde van je werk, straks bepaalt opbrengst hem." Eén gedachte per
+  zin, en de zin zegt zelf waarom het uitmaakt. Dat mag iets langer zijn; het mag geen muur worden.
+
 ## Wat je terugkoppelt
 
 **De vorm staat in `pingwin-brein/brein/11-claude-werkwijze.md`, onder "Hoe een chat begint en

@@ -73,6 +73,7 @@ function PuntKaart({ p }: { p: PuntWeergave }) {
   const alarm = p.stand === "af" && p.bewijs.stand === "niet-aangetoond";
   return (
     <div
+      id={"punt-" + p.code}
       className={
         "rk-punt rk-punt-" + p.stand +
         (p.parallel ? " rk-punt-kan" : "") +
@@ -278,7 +279,12 @@ export default function RoutekaartClient({
                 <div key={p.code} className="rk-parallel-kaart">
                   <div className="rk-parallel-code">{p.code}</div>
                   <div className="rk-parallel-titel">{p.titel}</div>
-                  <Kopieer tekst={p.prompt} label="Kopieer startregel" />
+                  <div className="rk-parallel-acties">
+                    <Kopieer tekst={p.prompt} label="Kopieer startregel" />
+                    {/* Kleine sprong naar het punt zelf, zodat je eerst kunt lezen
+                        wat er gaat gebeuren zonder de hele pagina af te zoeken. */}
+                    <a className="rk-parallel-link" href={`#punt-${p.code}`}>Wat is dit?</a>
+                  </div>
                 </div>
               ))}
             </div>

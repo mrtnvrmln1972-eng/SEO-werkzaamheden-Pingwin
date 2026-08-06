@@ -5190,6 +5190,17 @@ a.wb-pad:hover { text-decoration: underline; }
   max-width: 52em;
 }
 .rk-volledig > *:last-child { margin-bottom: 0; }
+/* Eén tekstgrootte in de beschrijving. De alinea's kregen de kleine maat van
+   .rk-punt-meer p en de opsommingen de gewone maat van de body, waardoor
+   dezelfde tekst in twee groottes door elkaar liep. Lezen kost dan moeite die
+   niets met de inhoud te maken heeft. */
+.rk-volledig p,
+.rk-volledig li,
+.rk-volledig ul,
+.rk-volledig ol { font-size: var(--fs-base); line-height: 23px; color: var(--muted); }
+.rk-volledig strong { color: var(--brand-charcoal); }
+.rk-volledig ol, .rk-volledig ul { padding-left: var(--s-5); margin: var(--s-2) 0 var(--s-3); }
+.rk-volledig li { margin-bottom: var(--s-2); }
 .rk-geen-tekst { font-style: italic; }
 .om-kop {
   padding: var(--s-2) var(--s-3) 0;
@@ -5652,3 +5663,9 @@ a.wb-pad:hover { text-decoration: underline; }
   display: block; margin-top: var(--s-2);
   font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--orange-dark);
 }
+/* Sprong van het groene blok naar het punt zelf, plus wat ruimte onder de
+   sticky kopbalk zodat de kaart niet half achter de balk landt. */
+.rk-punt { scroll-margin-top: 100px; }
+.rk-parallel-acties { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; }
+.rk-parallel-link { font-size: var(--fs-sm); line-height: var(--lh-sm); color: #1a6dd6; text-decoration: underline; }
+.rk-parallel-link:hover { color: var(--orange-dark); }
