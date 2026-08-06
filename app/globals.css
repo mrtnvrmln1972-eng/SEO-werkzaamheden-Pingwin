@@ -4044,9 +4044,22 @@ details[open] > .opr-kaart-sam::before { content: "▾ "; }
 .opr-uitleg-blok strong { color: var(--dark); }
 /* Het bewijs leest als een verhaaltje, niet als een rij cijfers: lopende zinnen,
    ruime regelhoogte en een begrensde leesbreedte, met de links in de tekst zelf. */
-.opr-bewijs { margin-top: var(--s-2); padding-top: var(--s-2); border-top: 1px solid var(--border); max-width: 68ch; text-align: left; }
-.opr-bewijs-punten { margin: 0 0 var(--s-2); padding-left: var(--s-4); display: flex; flex-direction: column; gap: 2px; font-size: var(--fs-xs); line-height: 1.6; color: var(--muted); }
-.opr-bewijs p { margin: 0 0 var(--s-2); font-size: var(--fs-xs); line-height: 1.65; color: var(--muted); }
+/* De onderbouwing: over de volle breedte en in kolommen, niet als een smalle
+   sliert tegen de linkerrand. Stond op 68ch met de tekst op --fs-xs, en dat is
+   op een breed scherm een strook van een derde die je met een leesbril moet
+   ontcijferen. Nu vult hij de breedte en breekt hij vanzelf in twee of drie
+   kolommen, met een alinea die nooit over een kolomgrens valt. */
+.opr-bewijs { margin-top: var(--s-2); padding-top: var(--s-2); border-top: 1px solid var(--border); text-align: left;
+  columns: 3; column-gap: var(--s-8); }
+/* Drie kolommen op een breed scherm, twee op een laptop, één op een telefoon.
+   Vast ingesteld in plaats van via een kolombreedte, want dan hangt het aantal
+   af van de lettergrootte en zie je op hetzelfde scherm nu eens twee en dan
+   weer drie kolommen. */
+@media (max-width: 1280px) { .opr-bewijs { columns: 2; } }
+@media (max-width: 820px)  { .opr-bewijs { columns: 1; } }
+.opr-bewijs > p, .opr-bewijs > ul, .opr-bewijs > div { break-inside: avoid; }
+.opr-bewijs-punten { margin: 0 0 var(--s-2); padding-left: var(--s-4); display: flex; flex-direction: column; gap: var(--s-1); font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--body-text); }
+.opr-bewijs p { margin: 0 0 var(--s-3); font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--body-text); }
 .opr-bewijs p:last-child { margin-bottom: 0; }
 .opr-bewijs strong { color: var(--dark); }
 .opr-bewijs .opr-pad { white-space: normal; }
@@ -4120,10 +4133,20 @@ details[open] > .opr-kaart-sam::before { content: "▾ "; }
 /* Uitleg leest van links naar rechts, nooit gecentreerd; de tabel erft anders de
    centrering van het kaartje eromheen en dan staat elke zin als een gedicht. */
 .opr-reden { max-width: 380px; text-align: left; }
+/* De reden onder een tabelregel: een eigen rij over alle kolommen, zodat de
+   onderbouwing niet in een kolom van 380 pixels geperst wordt. */
+.opr-redenrij > td { padding: 0 var(--s-4) var(--s-4); border-top: none; }
+/* En als kaart, niet als losse tekst onder een tabel: een rustig vlak met lucht
+   eromheen leest als een toelichting, kale tekst tegen een tabelrand niet. */
+.opr-redenrij .opr-uitleg, .opr-onderwerp > .opr-uitleg {
+  background: var(--sand, #FBF8F5); border: 1px solid var(--card-border);
+  border-radius: var(--r-lg); padding: var(--s-4) var(--s-5);
+}
+.opr-redenrij .opr-bewijs, .opr-onderwerp > .opr-uitleg .opr-bewijs { border-top: none; margin-top: 0; padding-top: 0; }
 .opr-tabel td, .opr-tabel .opr-groepkop td { text-align: left; }
 .opr-meer { border: none; background: none; padding: 0; cursor: pointer; font-family: inherit; font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700; color: var(--gray); }
 .opr-meer:hover { color: var(--dark); }
-.opr-uitleg { margin-top: var(--s-1); font-size: var(--fs-xs); line-height: var(--lh-sm); color: var(--gray); max-width: 60ch; text-align: left; }
+.opr-uitleg { margin-top: var(--s-2); font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray); text-align: left; }
 .opr-uitleg .opr-bewijs { border-top: none; margin-top: 0; padding-top: 0; }
 
 /* Advertentiepagina's: het slot vóór de analyse. Zolang het niet is ingevuld
@@ -4216,7 +4239,13 @@ details[open] > .opr-kaart-sam::before { content: "▾ "; }
 /* De blokken hebben zelf al een kaart; binnen een sectie zou dat een kader in een
    kader geven. */
 .opr-sectie-body > .opr-kaart { border: none; box-shadow: none; padding: 0; margin: 0; background: transparent; }
-.opr-sectie-body > .opr-kaart > .opr-kop, .opr-sectie-body > .opr-kaart > .opr-kop-rij { border-bottom: none; }
+.opr-sectie-body > .opr-kaart > .opr-kop-rij { border-bottom: none; }
+/* De sectiekop zegt al hoe het blok heet, inclusief het aantal. Het blok zelf
+   herhaalde die titel eronder ("Oppakken, niet weghalen" en daaronder nog eens
+   "Oppakken, niet weghalen (56)"). Eén kop is genoeg; de tweede verdwijnt zodra
+   het blok in een sectie staat, en blijft staan waar het blok los gebruikt wordt
+   (de deelpagina voor de klant). */
+.opr-sectie-body > .opr-kaart > .opr-kop { display: none; }
 /* De filterknoppen boven het plaatsen-advies: de gekozen knop moet te zien zijn,
    anders klik je en verandert er zichtbaar niets. */
 .ghost-btn.small.actief { background: var(--orange); color: var(--white); border-color: var(--orange); }

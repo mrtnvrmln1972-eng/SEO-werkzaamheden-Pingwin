@@ -9,7 +9,7 @@
 // samen, en hij stond nergens omdat er niets was om naar te kijken.
 // ═══════════════════════════════════════════════════════════
 
-import { useState } from "react";
+import React, { useState } from "react";
 import MailVenster from "./MailVenster";
 import { KansChip, intentieTekst, type Haalbaarheid } from "./OpruimOppakken";
 
@@ -111,7 +111,8 @@ export default function OpruimGaten({ slug, domain, rijen, clientName, clientEma
           </thead>
           <tbody>
             {rijen.map((g) => (
-              <tr key={g.term}>
+              <React.Fragment key={g.term}>
+              <tr>
                 <td><strong>{g.term}</strong></td>
                 <td>{g.volume}x</td>
                 <td><KansChip h={g.haalbaarheid} /></td>
@@ -145,7 +146,12 @@ export default function OpruimGaten({ slug, domain, rijen, clientName, clientEma
                   <button type="button" className="opr-meer" onClick={() => setOpen((m) => ({ ...m, [g.term]: !m[g.term] }))}>
                     {open[g.term] ? "▾ minder" : "▸ reden"}
                   </button>
-                  {open[g.term] && (
+                </td>
+              </tr>
+              {/* De onderbouwing als eigen rij over alle kolommen. */}
+              {open[g.term] && (
+                <tr className="opr-redenrij">
+                  <td colSpan={9}>
                     <div className="opr-uitleg">
                       <div className="opr-bewijs">
                         <p>
@@ -168,9 +174,10 @@ export default function OpruimGaten({ slug, domain, rijen, clientName, clientEma
                         {g.euro && <p><strong>Wat het waard is:</strong> {g.euro.uitleg}</p>}
                       </div>
                     </div>
-                  )}
-                </td>
-              </tr>
+                  </td>
+                </tr>
+              )}
+              </React.Fragment>
             ))}
           </tbody>
         </table>

@@ -12,7 +12,7 @@
 // cijfers erin. Wie het er niet mee eens is, kan zien wáárop hij het oneens is.
 // ═══════════════════════════════════════════════════════════
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import MailVenster from "./MailVenster";
 import { KansChip, type Haalbaarheid } from "./OpruimOppakken";
 
@@ -130,7 +130,8 @@ export default function OpruimPlaatsen({ slug, domain, data, clientName, clientE
           </thead>
           <tbody>
             {rijen.map((a) => (
-              <tr key={a.plaats}>
+              <React.Fragment key={a.plaats}>
+              <tr>
                 <td><strong>{a.naam}</strong><div className="opr-eind-slokt">{a.term}</div></td>
                 <td><span className={`opr-chip ${CHIP[a.uitkomst]}`}>{LABEL[a.uitkomst]}</span></td>
                 <td>{a.volume != null ? `${a.volume}x` : <span className="opr-leeg">&mdash;</span>}</td>
@@ -150,18 +151,25 @@ export default function OpruimPlaatsen({ slug, domain, data, clientName, clientE
                   <button type="button" className="opr-meer" onClick={() => setOpen((m) => ({ ...m, [a.plaats]: !m[a.plaats] }))}>
                     {open[a.plaats] ? "▾ minder" : "▸ reden"}
                   </button>
-                  {open[a.plaats] && (
+                </td>
+              </tr>
+              {/* De onderbouwing als eigen rij over alle kolommen; in de cel werd
+                  het een strook tegen de linkerrand. */}
+              {open[a.plaats] && (
+                <tr className="opr-redenrij">
+                  <td colSpan={8}>
                     <div className="opr-uitleg">
                       <div className="opr-bewijs">
                         {a.onderbouwing.map((z, i) => <Zin key={i} tekst={z} />)}
-                        {!alleenLezen && (
-                          <button type="button" className="opr-btn" onClick={() => setMailVoor(a)}>Mail naar klant</button>
-                        )}
                       </div>
+                      {!alleenLezen && (
+                        <button type="button" className="opr-btn" style={{ marginTop: "var(--s-3)" }} onClick={() => setMailVoor(a)}>Mail naar klant</button>
+                      )}
                     </div>
-                  )}
-                </td>
-              </tr>
+                  </td>
+                </tr>
+              )}
+              </React.Fragment>
             ))}
           </tbody>
         </table>

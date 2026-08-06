@@ -137,7 +137,7 @@ export default function OpruimOnderwerpen({ slug, domain, rijen, clientName, cli
 
           <table className="opr-tabel opr-onderwerp-tabel">
             <thead>
-              <tr><th>Pagina</th><th>Mikt op</th><th>Per maand</th><th>Beste plek</th><th>Vertoningen</th><th>Rol</th></tr>
+              <tr><th>Pagina</th><th>Mikt op</th><th>Per maand</th><th>Beste plek</th><th>Vertoningen</th><th>Klikken</th><th>Rol</th></tr>
             </thead>
             <tbody>
               {o.paginas.map((p) => (
@@ -150,6 +150,10 @@ export default function OpruimOnderwerpen({ slug, domain, rijen, clientName, cli
                   <td>{p.volume != null ? `${p.volume}x` : <span className="opr-leeg">&mdash;</span>}</td>
                   <td>{p.bestePositie != null ? Math.round(p.bestePositie) : "—"}</td>
                   <td>{p.vertoningen || 0}</td>
+                  {/* Klikken erbij: vertoningen zeggen dat Google hem toont, klikken
+                      zeggen of iemand hem kiest. Dat verschil bepaalt of een pagina
+                      een kansprobleem heeft of een tekstprobleem. */}
+                  <td>{p.klikken ? <strong>{p.klikken}</strong> : <span className="opr-leeg">0</span>}</td>
                   <td>
                     {p.pad === o.voorstel
                       ? <span className={`opr-chip ${o.geenPassendeThuisbasis ? "nodig" : "keep"}`}>

@@ -15,7 +15,7 @@
 // loopt via de gewone pijplijn: analyse, blauwdruk, copy.
 // ═══════════════════════════════════════════════════════════
 
-import { useState } from "react";
+import React, { useState } from "react";
 import MailVenster from "./MailVenster";
 
 export type Haalbaarheid = {
@@ -167,7 +167,8 @@ export default function OpruimOppakken({ slug, domain, rijen, clientName, client
           </thead>
           <tbody>
             {rijen.map((o) => (
-              <tr key={o.pad}>
+              <React.Fragment key={o.pad}>
+              <tr>
                 <td><Link p={o.pad} /></td>
                 <td><strong>{o.term}</strong></td>
                 <td>{o.volume != null ? `${o.volume}x` : "—"}</td>
@@ -201,7 +202,13 @@ export default function OpruimOppakken({ slug, domain, rijen, clientName, client
                   <button type="button" className="opr-meer" onClick={() => setOpen((m) => ({ ...m, [o.pad]: !m[o.pad] }))}>
                     {open[o.pad] ? "▾ minder" : "▸ reden"}
                   </button>
-                  {open[o.pad] && (
+                </td>
+              </tr>
+              {/* De onderbouwing als eigen rij over alle kolommen. In de cel zelf
+                  werd het een strook van 380 pixels tegen de linkerrand. */}
+              {open[o.pad] && (
+                <tr className="opr-redenrij">
+                  <td colSpan={9}>
                     <div className="opr-uitleg">
                       <div className="opr-bewijs">
                         <p>
@@ -235,9 +242,10 @@ export default function OpruimOppakken({ slug, domain, rijen, clientName, client
                         </p>
                       </div>
                     </div>
-                  )}
-                </td>
-              </tr>
+                  </td>
+                </tr>
+              )}
+              </React.Fragment>
             ))}
           </tbody>
         </table>
