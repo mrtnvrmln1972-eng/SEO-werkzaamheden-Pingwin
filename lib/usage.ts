@@ -113,6 +113,35 @@ export async function getUsageByClientAction(fromIso: string): Promise<UsageClie
   return rows as UsageClientActionRow[];
 }
 
+// ── Ahrefs-units die DIT DASHBOARD verbruikte ──
+// De teller in de kopbalk zet twee dingen naast elkaar: wat het hele Ahrefs-account
+// deze abonnementsmaand op heeft (dat komt bij Ahrefs vandaan) en wat het dashboard
+// daar zelf van gebruikte. Zonder die tweede helft weet je bij een oplopende teller
+// niet of het dashboard de oorzaak is of iemand die in Ahrefs zelf zit te werken.
+//
+// Elke echte Ahrefs-aanroep schrijft één regel weg (units in tokens_in); cache-hits
+// niet, dus dit is het echte verbruik en niet het aantal vragen dat gesteld is.
+export type AhrefsEigenVerbruik = { units: number; calls: number; topKlant: { slug: string | null; units: number } | null };
+
+export async function getAhrefsEigenVerbruik(fromIso: string): Promise<AhrefsEigenVerbruik> {
+  await ensureSchema();
+  const { rows } = await sql`
+    SELECT
+      u.client_slug,
+      COUNT(*)::int AS calls,
+      COALESCE(SUM(u.tokens_in), 0)::int AS units
+    FROM service_usage u
+    WHERE u.created_at >= ${fromIso} AND u.service = 'ahrefs'
+    GROUP BY u.client_slug
+    ORDER BY units DESC`;
+  const lijst = rows as { client_slug: string | null; calls: number; units: number }[];
+  return {
+    units: lijst.reduce((s, r) => s + (r.units || 0), 0),
+    calls: lijst.reduce((s, r) => s + (r.calls || 0), 0),
+    topKlant: lijst[0] ? { slug: lijst[0].client_slug, units: lijst[0].units } : null,
+  };
+}
+
 // Optelling per ACTIE (welke knop/functie kost hoeveel), voor de uitsplitsing. Alleen
 // Claude/anthropic; de actie zegt namelijk welke AI-taak het was.
 export async function getUsageByAction(fromIso: string): Promise<UsageActionRow[]> {

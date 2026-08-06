@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { DevTask } from "../../../lib/developer";
 import RijkTekstVeld from "../../_velden/RijkTekstVeld";
 import OntwikkelMenu from "../OntwikkelMenu";
+import AhrefsTeller from "../AhrefsTeller";
 import MeldingenMenu from "../MeldingenMenu";
 
 // Verwijdert scripts/handlers/inline font-kleur uit opgeslagen taak-HTML, houdt
@@ -404,7 +405,8 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
         </div>
         <div className="header-right">
           <MeldingenMenu />
-          <OntwikkelMenu />
+          <AhrefsTeller />
+        <OntwikkelMenu />
           <a className="logout-btn" href="/admin">&larr; Alle klanten</a>
           <button className="logout-btn" onClick={logout} style={{ marginLeft: 8 }}>Uitloggen</button>
         </div>

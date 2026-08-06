@@ -6068,3 +6068,50 @@ a.wb-pad:hover { text-decoration: underline; }
   border-left: 2px solid var(--card-border);
   font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--body-text);
 }
+
+/* ── Het Ahrefs-tellertje in de kopbalk ───────────────────────────
+   Klein genoeg om te negeren zolang er niets aan de hand is, en het
+   kleurt op zodra het tegoed krap wordt. Leunt op de .hm-*-bouwstenen
+   van de andere kopbalkmenu's; alleen wat er echt anders is staat hier.
+   Rechts uitgelijnd, want hij hangt in header-right. */
+.at-wrap { margin-right: var(--s-2); }
+.at-knop { display: inline-flex; align-items: center; gap: var(--s-2); }
+.at-stip {
+  display: inline-block; width: var(--s-2); height: var(--s-2);
+  border-radius: var(--r-full); flex: none;
+}
+.at-cijfer { font-weight: 700; font-variant-numeric: tabular-nums; }
+.at-paneel { left: auto; right: 0; min-width: 300px; max-width: 340px; gap: var(--s-2); }
+.at-kop {
+  display: flex; flex-direction: column; gap: var(--s-2);
+  padding: var(--s-3);
+  border-radius: var(--r-md);
+  background: var(--brand-orange-faint);
+}
+.at-label {
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase; color: var(--orange-dark);
+}
+.at-groot {
+  font-family: 'Montserrat', sans-serif;
+  font-size: var(--fs-lg); line-height: var(--lh-lg); font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.at-van { font-size: var(--fs-sm); line-height: var(--lh-sm); font-weight: 400; color: var(--gray); }
+.at-balk {
+  display: block; height: var(--s-1); width: 100%;
+  border-radius: var(--r-full); background: var(--border); overflow: hidden;
+}
+.at-balk-vul { display: block; height: 100%; border-radius: var(--r-full); }
+.at-oordeel { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--body-text); }
+.at-regels { display: flex; flex-direction: column; gap: var(--s-1); padding: 0 var(--s-3); }
+.at-regel {
+  display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3);
+  font-size: var(--fs-sm); line-height: var(--lh-sm);
+}
+.at-regel-naam { color: var(--gray); }
+.at-regel-waarde { color: var(--body-text); font-weight: 600; text-align: right; }
+.at-voet {
+  padding: 0 var(--s-3);
+  font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray);
+}

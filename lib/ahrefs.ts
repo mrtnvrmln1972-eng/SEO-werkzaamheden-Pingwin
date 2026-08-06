@@ -116,12 +116,28 @@ async function ahrefsFetch(path: string, params: Record<string, string>, body?: 
   }
 }
 
-// ── Abonnement-tegoed (voor de verbruik-pagina) ──
+// ── Abonnement-tegoed (voor de teller in de kopbalk en de verbruik-pagina) ──
 // Vraagt bij Ahrefs op hoeveel API-units er deze abonnementsmaand zijn gebruikt
 // van het totaal. Defensief: velden kunnen per abonnement verschillen, en bij
-// een fout geven we null terug (de pagina verbergt het blokje dan gewoon).
-// Uurcache in het geheugen zodat de verbruik-pagina snel blijft.
-export type AhrefsSubscriptionUsage = { used: number | null; limit: number | null };
+// een fout geven we null terug (de teller verbergt zich dan gewoon).
+// Uurcache in het geheugen zodat de kopbalk snel blijft; deze meta-aanvraag is
+// bij Ahrefs zelf gratis en telt dus niet mee in het verbruik dat hij toont.
+//
+// Let op het verschil tussen de twee tellers die Ahrefs teruggeeft:
+//  - workspace: het hele Ahrefs-account, dus ook wat er buiten dit dashboard om
+//    gebeurt. Dat is de teller die op kan raken, dus die staat in de kopbalk.
+//  - api key: alleen de sleutel waarmee dit dashboard praat. Zegt wat óns aandeel
+//    is; staat in het uitklappaneel als tweede regel.
+export type AhrefsSubscriptionUsage = {
+  used: number | null;
+  limit: number | null;
+  /** Verbruik van alléén de sleutel van dit dashboard (deel van `used`). */
+  usedKey: number | null;
+  /** Wanneer de teller weer op nul gaat (ISO-datum), of null als Ahrefs het niet meldt. */
+  resetIso: string | null;
+  /** Naam van het abonnement, zoals Ahrefs hem noemt. */
+  abonnement: string | null;
+};
 let subUsageCache: { data: AhrefsSubscriptionUsage | null; at: number } | null = null;
 
 export async function getAhrefsSubscriptionUsage(): Promise<AhrefsSubscriptionUsage | null> {
@@ -138,9 +154,16 @@ export async function getAhrefsSubscriptionUsage(): Promise<AhrefsSubscriptionUs
       }
       return null;
     };
+    const tekst = (k: string): string | null => {
+      const v = src?.[k];
+      return typeof v === "string" && v.trim() ? v.trim() : null;
+    };
     data = {
       used: pick("units_usage_workspace", "units_usage_api_key", "units_used", "usage"),
       limit: pick("units_limit_workspace", "units_limit_api_key", "units_limit", "limit"),
+      usedKey: pick("units_usage_api_key"),
+      resetIso: tekst("usage_reset_date"),
+      abonnement: tekst("subscription"),
     };
     if (data.used === null && data.limit === null) data = null;
   } catch {

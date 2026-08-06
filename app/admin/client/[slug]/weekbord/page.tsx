@@ -6,6 +6,7 @@ import { getScopeFromCookie, canAccessSlug } from "../../../../../lib/admin-scop
 import { getClientBySlug } from "../../../../../lib/clients";
 import MeldingenMenu from "../../../MeldingenMenu";
 import OntwikkelMenu from "../../../OntwikkelMenu";
+import AhrefsTeller from "../../../AhrefsTeller";
 import KlussenChip from "../KlussenChip";
 import KlantTabs from "../KlantTabs";
 import Planning from "../Planning";
@@ -45,7 +46,8 @@ export default async function WeekbordPage({ params }: { params: { slug: string 
         </div>
         <div className="header-right">
           <MeldingenMenu />
-          <OntwikkelMenu />
+          <AhrefsTeller />
+        <OntwikkelMenu />
           {/* Wat er op de achtergrond draait, net als in de cockpit: anders is een
               scan die je hier start alleen op dat andere scherm te volgen. */}
           <KlussenChip slug={params.slug} />

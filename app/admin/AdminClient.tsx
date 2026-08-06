@@ -4,6 +4,7 @@ import { Fragment, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ClientConfig } from "../../lib/clients";
 import OntwikkelMenu from "./OntwikkelMenu";
+import AhrefsTeller from "./AhrefsTeller";
 import MeldingenMenu from "./MeldingenMenu";
 import BulkOnboarding from "./BulkOnboarding";
 import KlantwaardeBulk from "./KlantwaardeBulk";
@@ -562,7 +563,8 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
               meteen bij de hand heeft. Twee ingangen naar hetzelfde scherm is een
               keuze die niemand hoeft te maken. */}
           <MeldingenMenu />
-          <OntwikkelMenu />
+          <AhrefsTeller />
+        <OntwikkelMenu />
           {isOwner && (
             <a className="logout-btn" href="/admin/beheer" title="Klanten en teamgebruikers beheren" style={{ marginLeft: 8 }}>Beheer</a>
           )}

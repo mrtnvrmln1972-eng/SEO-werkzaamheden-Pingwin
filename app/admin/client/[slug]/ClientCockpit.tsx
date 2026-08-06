@@ -38,6 +38,7 @@ import LeadTab from "./LeadTab";
 import MailControlePanel from "./MailControlePanel";
 import OnboardingPanel from "./OnboardingPanel";
 import OntwikkelMenu from "../../OntwikkelMenu";
+import AhrefsTeller from "../../AhrefsTeller";
 import GmbPanel from "./GmbPanel";
 import KlussenChip from "./KlussenChip";
 import MeldingenMenu from "../../MeldingenMenu";
@@ -478,7 +479,8 @@ export default function ClientCockpit({
         </div>
         <div className="header-right">
           <MeldingenMenu />
-          <OntwikkelMenu />
+          <AhrefsTeller />
+        <OntwikkelMenu />
           {/* Wat er op de achtergrond draait, zichtbaar op élk tabblad. Zonder dit
               was een scan alleen te volgen op de plek waar je hem startte. */}
           <KlussenChip slug={client.slug} onGaNaar={(t) => changeTab(validTab(t))} />

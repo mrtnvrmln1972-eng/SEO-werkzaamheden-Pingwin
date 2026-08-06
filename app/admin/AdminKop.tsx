@@ -19,6 +19,7 @@
 // ═══════════════════════════════════════════════════════════
 
 import OntwikkelMenu from "./OntwikkelMenu";
+import AhrefsTeller from "./AhrefsTeller";
 
 export default function AdminKop({ titel, terug = "/admin", terugLabel = "Naar de klanten" }: {
   /** Waar je bent, bijvoorbeeld "Routekaart" of "Hoe jij schrijft". */
@@ -40,6 +41,7 @@ export default function AdminKop({ titel, terug = "/admin", terugLabel = "Naar d
         </div>
       </div>
       <div className="header-right">
+        <AhrefsTeller />
         <OntwikkelMenu />
         <a className="logout-btn" href={terug}>{terugLabel}</a>
       </div>

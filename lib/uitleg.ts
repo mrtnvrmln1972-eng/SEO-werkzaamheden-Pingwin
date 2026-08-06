@@ -1165,6 +1165,22 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "komt.",
       },
       {
+        titel: "De Ahrefs-teller in de kopbalk",
+        kern: "Op elk beheerscherm staat hoeveel zoekwoord-tegoed er nog over is.",
+        tekst:
+          "Ahrefs, de bron van vrijwel alle zoekwoord- en concurrentiedata, werkt met een tegoed aan units per " +
+          "abonnementsmaand. Elke analyse eet daarvan. Raakt het op, dan stopt de data en staan de motoren stil. " +
+          "Rechtsboven in elk beheerscherm staat daarom een klein tellertje: een stip, het woord Ahrefs en een " +
+          "percentage. Groen is rustig, oranje is opletten, rood is krap.\n\n" +
+          "Het toont bewust geen kaal percentage maar een oordeel. Zestig procent op is prima als de maand bijna " +
+          "om is, en een waarschuwing als hij net begonnen is. Het tellertje rekent daarom mee hoe ver de " +
+          "abonnementsmaand is, en zegt in gewone taal of het tegoed het tot de reset gaat halen.\n\n" +
+          "Klap je het open, dan staat het hele Ahrefs-account naast wat dit dashboard er zelf van verbruikte, " +
+          "deze maand en de afgelopen zeven dagen, met de klant die het meeste kostte. Dat onderscheid is de kern: " +
+          "loopt de teller vol terwijl het dashboard bijna niets deed, dan zit er iemand in Ahrefs zelf te werken " +
+          "en heeft afremmen in het dashboard geen zin. Herhaalde vragen komen uit onze eigen cache en kosten niets.",
+      },
+      {
         titel: "Teamgebruikers en rechten",
         kern: "Gasten met eigen inlog en beperkte toegang.",
         tekst:
