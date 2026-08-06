@@ -24,7 +24,6 @@ const OMVANG_LABEL: Record<Punt["omvang"], string> = {
 
 function PuntKaart({ p }: { p: PuntWeergave }) {
   const [open, setOpen] = useState(false);
-  const [volledig, setVolledig] = useState(false);
   return (
     <div className={"rk-punt rk-punt-" + p.stand}>
       <div className="rk-punt-kop">
@@ -44,39 +43,37 @@ function PuntKaart({ p }: { p: PuntWeergave }) {
         {p.wacht.length > 0 && (
           <span className="rk-meta-item rk-meta-wacht">Wacht op {p.wacht.join(" en ")}</span>
         )}
+        {/* Eén klik, niet twee. Maarten wil bij "Meer" meteen zien wat er speelt en
+            wat we gaan bouwen; een tweede knop naar dezelfde tekst is een extra stap
+            zonder doel. */}
         <button type="button" className="rk-meer" onClick={() => setOpen((v) => !v)}>
-          {open ? "Minder" : "Meer"}
+          {open ? "Minder" : "Wat gaan we hier bouwen?"}
         </button>
       </div>
 
       {open && (
         <div className="rk-punt-meer">
-          <p><strong>Af als:</strong> {p.af}</p>
-          <p><strong>Raakt:</strong> {p.raakt.join(", ")}</p>
+          {p.beschrijving ? (
+            <div
+              className="md rk-volledig"
+              // De tekst komt uit lib/uitleg.ts, onze eigen code, en gaat door
+              // dezelfde renderer als de uitlegpagina. Geen invoer van buiten.
+              dangerouslySetInnerHTML={{ __html: p.beschrijving }}
+            />
+          ) : (
+            <>
+              <p><strong>Af als:</strong> {p.af}</p>
+              <p><strong>Raakt:</strong> {p.raakt.join(", ")}</p>
+              <p className="rk-geen-tekst">
+                Voor dit punt staat er nog geen uitgeschreven beschrijving. De chat pakt het op met
+                wat hierboven staat.
+              </p>
+            </>
+          )}
           {p.botst.length > 0 && (
             <p className="rk-botst">
               <strong>Let op bij twee chats:</strong> {p.botst.join(", ")} {p.botst.length === 1 ? "raakt" : "raken"} hetzelfde
               scherm. Doe die niet gelijktijdig.
-            </p>
-          )}
-          {p.beschrijving ? (
-            <>
-              <button type="button" className="rk-meer rk-volledig-knop" onClick={() => setVolledig((v) => !v)}>
-                {volledig ? "Verberg de volledige beschrijving" : "De volledige beschrijving van dit punt"}
-              </button>
-              {volledig && (
-                <div
-                  className="md rk-volledig"
-                  // De tekst komt uit lib/uitleg.ts, onze eigen code, en gaat door
-                  // dezelfde renderer als de uitlegpagina. Geen invoer van buiten.
-                  dangerouslySetInnerHTML={{ __html: p.beschrijving }}
-                />
-              )}
-            </>
-          ) : (
-            <p className="rk-geen-tekst">
-              Voor dit punt staat er nog geen uitgeschreven beschrijving. De chat pakt het op met
-              wat hierboven staat.
             </p>
           )}
         </div>
@@ -91,7 +88,9 @@ function PuntKaart({ p }: { p: PuntWeergave }) {
             </>
           ) : (
             <span className="rk-geblokkeerd">
-              Kan nog niet beginnen: {p.wacht.length ? `${p.wacht.join(" en ")} moet eerst af zijn.` : "loopt al."}
+              {p.stand === "loopt"
+                ? "Loopt al in een andere chat."
+                : `Kan nog niet beginnen: ${p.wacht.join(" en ")} moet eerst af zijn.`}
             </span>
           )}
         </div>
