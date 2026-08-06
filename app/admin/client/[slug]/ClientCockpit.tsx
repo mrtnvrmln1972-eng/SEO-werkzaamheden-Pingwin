@@ -40,6 +40,7 @@ import MailControlePanel from "./MailControlePanel";
 import OnboardingPanel from "./OnboardingPanel";
 import OntwikkelMenu from "../../OntwikkelMenu";
 import Tellers from "../../Tellers";
+import KlantKiezer from "./KlantKiezer";
 import GmbPanel from "./GmbPanel";
 import KlussenChip from "./KlussenChip";
 import MeldingenMenu from "../../MeldingenMenu";
@@ -437,45 +438,19 @@ export default function ClientCockpit({
             <img src="https://pingwin.nl/wp-content/uploads/2016/11/pingwin_logo.png" alt="Pingwin" />
           </a>
           <div className="header-divider" />
-          <select
-            className="client-switch"
-            value={client.slug}
-            onChange={(e) => { setSwitchingTo(e.target.options[e.target.selectedIndex]?.text || "…"); router.push(`/admin/client/${e.target.value}`); }}
-            title="Wissel van klant"
-          >
-            {(() => {
-              // Vinkje = mooie ontwikkeling (uit de nachtelijke trend-berekening).
-              // In demo-stand tonen we alleen die klanten (voor schermdelen).
-              const good = (c: typeof allClients[number]) => (demoFilter === "90" ? c.good90 : c.good28);
-              const shown = demoFilter ? allClients.filter((c) => good(c) || c.slug === client.slug) : allClients;
-              const opt = (c: typeof allClients[number]) => (
-                <option key={c.slug} value={c.slug}>{good(c) ? "✓ " : ""}{c.name}</option>
-              );
-              // Leads staan als eigen groepje onderaan, zodat je zonder omweg via
-              // het beheerscherm van een klant naar een lead kunt springen. Ze
-              // horen niet tussen de klanten: een lead heeft geen budget en geen
-              // trend, en de vinkjes en het demo-filter gaan over klanten.
-              const leads = shown.filter((c) => c.fase === "lead");
-              const klanten = shown.filter((c) => c.fase !== "lead");
-              const leadGroep = leads.length ? (
-                <optgroup label={`Leads (${leads.length})`}>
-                  {leads.map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
-                </optgroup>
-              ) : null;
-              return klanten.some((c) => c.grp === "mmc") ? (
-                <>
-                  <optgroup label="Mijn eigen klanten">{klanten.filter((c) => c.grp !== "mmc").map(opt)}</optgroup>
-                  <optgroup label="Multimedia Concepts">{klanten.filter((c) => c.grp === "mmc").map(opt)}</optgroup>
-                  {leadGroep}
-                </>
-              ) : leadGroep ? (
-                <>
-                  <optgroup label={`Klanten (${klanten.length})`}>{klanten.map(opt)}</optgroup>
-                  {leadGroep}
-                </>
-              ) : klanten.map(opt);
-            })()}
-          </select>
+          {(() => {
+            // Vinkje = mooie ontwikkeling (uit de nachtelijke trend-berekening).
+            // In demo-stand tonen we alleen die klanten (voor schermdelen).
+            const good = (c: typeof allClients[number]) => (demoFilter === "90" ? c.good90 : c.good28);
+            const shown = demoFilter ? allClients.filter((c) => good(c) || c.slug === client.slug) : allClients;
+            return (
+              <KlantKiezer
+                klanten={shown.map((c) => ({ slug: c.slug, name: c.name, grp: c.grp, fase: c.fase, goed: !!good(c) }))}
+                huidig={client.slug}
+                onKies={(slug, naam) => { setSwitchingTo(naam); router.push(`/admin/client/${slug}`); }}
+              />
+            );
+          })()}
           {/* Demo-filter (schermdelen): alleen tonen als er trend-data is om op te
               filteren. In een verse wereld zonder nachtelijke trend-berekening zou
               de knop de dropdown ogenschijnlijk leegmaken; dan verbergen we hem. */}

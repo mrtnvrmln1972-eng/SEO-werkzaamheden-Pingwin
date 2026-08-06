@@ -172,7 +172,13 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "| **Developer** | Alle developer-taken over alle klanten heen |\n\n" +
           "Daarnaast zit er aan de rechterrand een inschuifbaar zijpaneel met de zoekwoorden en de landingspagina's " +
           "die met de klant zijn afgesproken. Dat is op elk tabblad bereikbaar, want dat is de afspraak waar al " +
-          "het werk aan getoetst wordt.",
+          "het werk aan getoetst wordt.\n\n" +
+          "**Wisselen van klant gaat via de kiezer linksboven.** Die toont de eigen klanten meteen; de klanten van " +
+          "een aangesloten bureau en de leads staan elk achter één regel die je openklikt, want die heb je meestal " +
+          "niet nodig en ze duwen de rest uit beeld. Zit je zelf in zo'n groep, dan staat die vanzelf open. " +
+          "Bovenin staat een zoekveldje, en zodra je typt gaan alle groepen open, anders zou een treffer in een " +
+          "dichtgeklapte groep onvindbaar zijn. Leads staan bewust niet meer tussen de klanten: dat is een bedrijf " +
+          "waar nog niets voor gedaan wordt.",
       },
       {
         titel: "Technisch: waar het op draait",

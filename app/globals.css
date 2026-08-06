@@ -151,6 +151,61 @@ body {
 .client-switch:hover { background-color: var(--orange-light); }
 .client-switch:focus { outline: none; border-color: var(--orange-dark); box-shadow: 0 0 0 3px rgba(231, 119, 63, 0.15); }
 .header-tabs { display: flex; align-items: center; gap: 4px; }
+
+/* ── De klantenkiezer in de kopbalk van de cockpit ────────────────
+   Vervangt de standaard uitklaplijst, die geen groep kan die je zelf openklapt.
+   Dezelfde vorm als de knop die er stond (oranje rand, Montserrat), dus in de
+   balk verandert er visueel niets; het paneel eronder leunt op .hm-paneel. */
+.kk-wrap { position: relative; display: inline-flex; }
+.kk-knop {
+  display: inline-flex; align-items: center; gap: var(--s-2);
+  font-family: 'Montserrat', sans-serif; font-size: var(--fs-base); line-height: var(--lh-base); font-weight: 700;
+  color: var(--dark); background: var(--white);
+  padding: var(--s-2) var(--s-3); border: 1px solid var(--orange); border-radius: var(--r-md);
+  cursor: pointer; max-width: 240px;
+}
+.kk-knop:hover { background: var(--orange-light); }
+.kk-knop.hm-open { border-color: var(--orange-dark); color: var(--orange-dark); }
+.kk-naam { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.kk-paneel { left: 0; right: auto; min-width: 280px; max-width: 320px; gap: var(--s-2); }
+.kk-zoek {
+  font-family: inherit; font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--body-text);
+  padding: var(--s-2) var(--s-3); border: 1px solid var(--card-border); border-radius: var(--r-md);
+  background: var(--white);
+}
+.kk-zoek:focus { outline: none; border-color: var(--orange); }
+/* Begrensde hoogte: met dertig bedrijven zou het paneel anders van het scherm
+   af lopen en is de onderste groep onbereikbaar. */
+.kk-lijst { display: flex; flex-direction: column; gap: var(--s-1); max-height: 60vh; overflow-y: auto; }
+.kk-groep { display: flex; flex-direction: column; }
+.kk-groep-kop {
+  display: flex; align-items: center; gap: var(--s-2);
+  background: none; border: none; cursor: pointer; text-align: left;
+  padding: var(--s-2) var(--s-3);
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase; color: var(--brand-taupe);
+}
+.kk-groep-kop:hover { color: var(--orange-dark); }
+.kk-groep-label { flex: 1 1 auto; }
+.kk-aantal {
+  flex: none; font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
+  color: var(--gray); background: var(--gray-light); border-radius: var(--r-full); padding: 0 var(--s-2);
+}
+.kk-caret { width: 10px; height: 6px; flex: none; transform: rotate(-90deg); transition: transform 0.15s; }
+.kk-groep-open .kk-caret { transform: rotate(0deg); }
+.kk-item {
+  display: flex; align-items: center; gap: var(--s-2);
+  background: none; border: none; cursor: pointer; text-align: left; width: 100%;
+  padding: var(--s-2) var(--s-3) var(--s-2) var(--s-6);
+  border-radius: var(--r-md); border-left: 3px solid transparent;
+  font-family: inherit; font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--body-text);
+}
+.kk-item:hover { background: var(--orange-light); }
+.kk-item-actief { border-left-color: var(--orange); background: var(--brand-orange-faint); font-weight: 700; color: var(--orange-dark); }
+.kk-item-naam { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kk-vink { flex: none; color: var(--brand-teal); font-weight: 700; }
+.kk-leeg { padding: var(--s-3); font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray); }
 .header-tabs .tab { padding: 8px 14px; font-size: 13px; }
 .header img { height: 38px; }
 .logo-link { display: flex; align-items: center; }
