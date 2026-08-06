@@ -56,6 +56,31 @@ export default function RijkTekstVeld({
     meld();
   }
 
+  // ── Uitklapper (zoals in Notion) ──
+  // Een onderwerp met een driehoekje ervoor, en daaronder alles wat je erbij wilt
+  // plakken. Zonder dit werd dit veld één lange lap: alles stond onder elkaar en
+  // je kon niets wegklappen. Bewust met de <details> van de browser zelf, dus
+  // zonder eigen scriptwerk: dat blijft ook staan in de opgeslagen tekst.
+  function voegUitklapperToe() {
+    editorRef.current?.focus();
+    document.execCommand("insertHTML", false,
+      '<details class="rtv-vouw" open><summary>Onderwerp</summary>'
+      + '<div class="rtv-vouw-body">Zet hier neer wat erbij hoort.</div></details><p><br></p>');
+    // De cursor in het kopje zetten en het woord "Onderwerp" selecteren, zodat je
+    // meteen je eigen titel kunt typen zonder eerst iets weg te halen.
+    setTimeout(() => {
+      const laatste = editorRef.current?.querySelectorAll("summary");
+      const kop = laatste?.[laatste.length - 1];
+      if (!kop) return;
+      const r = document.createRange();
+      r.selectNodeContents(kop);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(r);
+    }, 0);
+    meld();
+  }
+
   function addLink() {
     editorRef.current?.focus();
     const url = window.prompt("Link naar (URL of document):", "https://");
@@ -69,6 +94,19 @@ export default function RijkTekstVeld({
   // Klik op een link opent hem in een nieuw tabblad, ook tijdens het bewerken.
   function onClick(e: React.MouseEvent) {
     const t = e.target as HTMLElement;
+    // In het kopje van een uitklapper: klik je op het driehoekje links, dan klapt
+    // hij open of dicht; klik je op de tekst, dan zet je gewoon je cursor neer.
+    // Zonder dat onderscheid kun je de titel niet bewerken zonder hem dicht te
+    // klappen, en dat maakt de uitklapper onbruikbaar.
+    const kop = (t.tagName === "SUMMARY" ? t : t.closest("summary")) as HTMLElement | null;
+    if (kop) {
+      const opDriehoek = e.clientX - kop.getBoundingClientRect().left < 24;
+      if (!opDriehoek) { e.preventDefault(); return; }
+      // Wel open of dicht: de nieuwe stand moet mee opgeslagen worden, anders
+      // staat hij na herladen weer open.
+      setTimeout(meld, 0);
+      return;
+    }
     const a = (t.tagName === "A" ? t : t.closest("a")) as HTMLAnchorElement | null;
     if (a && a.href && !a.href.startsWith("javascript:")) {
       e.preventDefault();
@@ -78,6 +116,23 @@ export default function RijkTekstVeld({
 
   function onKeyDown(e: React.KeyboardEvent) {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); addLink(); return; }
+    // Enter in het kopje van een uitklapper springt naar de inhoud eronder, in
+    // plaats van een tweede regel in de titel te maken.
+    if (e.key === "Enter") {
+      const knoop = window.getSelection()?.anchorNode as HTMLElement | null;
+      const kop = knoop && (knoop.nodeType === 1 ? knoop : knoop.parentElement)?.closest("summary");
+      const body = kop?.parentElement?.querySelector(".rtv-vouw-body");
+      if (kop && body) {
+        e.preventDefault();
+        const r = document.createRange();
+        r.selectNodeContents(body);
+        r.collapse(true);
+        const sel = window.getSelection();
+        sel?.removeAllRanges();
+        sel?.addRange(r);
+        return;
+      }
+    }
     if (e.key === "Escape" && onKlaar) { e.preventDefault(); onKlaar(); }
   }
 
@@ -108,6 +163,7 @@ export default function RijkTekstVeld({
         <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => cmd("italic")} title="Cursief (Cmd+I)"><em>I</em></button>
         <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => cmd("insertUnorderedList")} title="Bullets">&bull; lijst</button>
         <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => cmd("insertOrderedList")} title="Genummerd">1. lijst</button>
+        <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={voegUitklapperToe} title="Uitklapper: een onderwerp met een driehoekje, en daaronder alles wat erbij hoort">&#9662; uitklapper</button>
         <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={addLink} title="Link toevoegen (Cmd+K)">&#128279; link</button>
         <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => cmd("unlink")} title="Link verwijderen">link weg</button>
         {toolbarExtra}

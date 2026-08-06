@@ -5988,3 +5988,32 @@ a.wb-pad:hover { text-decoration: underline; }
 .wl-klus-docs a { color: var(--orange-dark); }
 .wl-klus-lab { font-weight: 700; color: var(--gray); }
 .wl-klus-punten ul { margin: var(--s-1) 0 0; padding-left: var(--s-5); color: var(--gray); }
+
+/* ── De uitklapper in een opmaakbaar tekstveld ─────────────────────────────
+   Een onderwerp met een driehoekje ervoor en daaronder alles wat erbij hoort,
+   zoals in Notion. Zonder dit werd het veld Zoekwoorden & links één lange lap
+   waarin je niets kon wegklappen. Het is de <details> van de browser zelf, dus
+   het blijft ook staan in de opgeslagen tekst. */
+.focus-rich .rtv-vouw {
+  margin: var(--s-3) 0; padding: var(--s-2) var(--s-3);
+  border: 1px solid var(--card-border); border-radius: var(--r-md); background: #FFFDFB;
+}
+.focus-rich .rtv-vouw > summary {
+  cursor: pointer; list-style: none;
+  font-size: var(--fs-base); line-height: var(--lh-base); font-weight: 700; color: var(--dark);
+  display: flex; align-items: baseline; gap: var(--s-2);
+}
+.focus-rich .rtv-vouw > summary::-webkit-details-marker { display: none; }
+/* Het driehoekje is een eigen vlakje links, want daar klik je om open of dicht
+   te klappen; klik je op de titel, dan zet je gewoon je cursor neer. */
+.focus-rich .rtv-vouw > summary::before {
+  content: "▸"; flex: 0 0 auto; width: 16px;
+  color: var(--orange); font-weight: 800; transition: transform 0.12s ease;
+}
+.focus-rich .rtv-vouw[open] > summary::before { content: "▾"; }
+.focus-rich .rtv-vouw > summary:hover { color: var(--orange-dark); }
+.focus-rich .rtv-vouw-body {
+  margin-top: var(--s-2); padding-left: var(--s-6);
+  border-left: 2px solid var(--card-border);
+  font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--body-text);
+}
