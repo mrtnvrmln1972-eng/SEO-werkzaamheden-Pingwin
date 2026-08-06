@@ -313,17 +313,40 @@ export async function weegOpruimlijstOpnieuw(slug: string, domain: string): Prom
 
   const result = row?.result;
   const rijen = result?.redirectMap || [];
-  if (!result || !rijen.length) return { gered: 0, over: 0, oppakken: row?.oppakken || [], onderwerpen: onderwerpen.length, gaten: gaten.length };
 
-  const oppakken = await weegPaden(domain, rijen.map((r) => ({ pad: padOf(String(r.van || "")) })));
-  const gered = new Set(oppakken.map((o) => padOf(o.pad)));
-  if (!gered.size) return { gered: 0, over: rijen.length, oppakken: row?.oppakken || [], onderwerpen: onderwerpen.length, gaten: gaten.length };
+  // De weging draait over TWEE lijsten tegelijk: de pagina's die nu nog op de
+  // omleidlijst staan, én de pagina's die er eerder al af zijn gehaald. Dat
+  // tweede is er op 6 augustus bij gekomen en het is geen detail: die oudere
+  // regels zijn ooit gewogen zónder zoekintentie en zónder haalbaarheid, en
+  // zonder deze stap zou het scherm oude en nieuwe regels door elkaar tonen
+  // zonder dat je aan een regel kunt zien welke je voor je hebt. Precies het
+  // soort stille verschil waar dit dashboard al twee keer op is misgegaan.
+  const teWegen = [
+    ...rijen.map((r) => ({ pad: padOf(String(r.van || "")) })),
+    ...(row?.oppakken || []).map((o) => ({ pad: padOf(o.pad), vertoningen: o.vertoningen, dubbelMet: o.botstMet })),
+  ].filter((k) => k.pad);
+  if (!teWegen.length) return { gered: 0, over: 0, oppakken: row?.oppakken || [], onderwerpen: onderwerpen.length, gaten: gaten.length };
+
+  const vers = await weegPaden(domain, teWegen);
+  const versPerPad = new Map(vers.map((o) => [padOf(o.pad), o]));
+
+  // Alleen wat NU nog op de omleidlijst staat telt als "gered"; de rest stond er
+  // al af en is alleen bijgewerkt.
+  const opLijst = new Set(rijen.map((r) => padOf(String(r.van || ""))));
+  const gered = new Set([...versPerPad.keys()].filter((p) => opLijst.has(p)));
+
+  // De verse weging wint van de oude. Een oude regel die nu niet meer door de
+  // weging komt blijft wel staan: hij is ooit bewust van de opruimlijst gehaald,
+  // en die stilletjes laten verdwijnen zou erger zijn dan een regel zonder label.
+  const uniek = [...new Map([
+    ...(row?.oppakken || []).map((o) => [padOf(o.pad), o] as const),
+    ...vers.map((o) => [padOf(o.pad), o] as const),
+  ]).values()].sort((a, b) => (b.volume || 0) - (a.volume || 0));
+
+  if (!result) return { gered: 0, over: 0, oppakken: uniek, onderwerpen: onderwerpen.length, gaten: gaten.length };
 
   const over = rijen.filter((r) => !gered.has(padOf(String(r.van || ""))));
   const nieuw: CannibalResult = { ...result, redirectMap: over };
-  // Samenvoegen met wat er al stond, zodat een tweede controle niets kwijtmaakt.
-  const samen = [...(row?.oppakken || []), ...oppakken];
-  const uniek = [...new Map(samen.map((o) => [padOf(o.pad), o])).values()].sort((a, b) => (b.volume || 0) - (a.volume || 0));
   await q`UPDATE client_cannibal_analysis SET result = ${JSON.stringify(nieuw)}, oppakken = ${JSON.stringify(uniek)}, updated_at = now() WHERE client_slug = ${slug}`;
   return { gered: gered.size, over: over.length, oppakken: uniek, onderwerpen: onderwerpen.length, gaten: gaten.length };
 }
