@@ -122,6 +122,13 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar, clientN
   // elkaar, dus je wilt er meerdere tegelijk open kunnen hebben.
   const [openWaarom, setOpenWaarom] = useState<Record<string, boolean>>({});
   const [mailVoor, setMailVoor] = useState<Regel | null>(null);
+  /**
+   * Hoe de vorige mails van dit soort aan deze klant begonnen. Wordt opgehaald op
+   * het moment dat je het mailvenster opent, en bepaalt vanuit welke invalshoek de
+   * volgende mail schrijft en welk stuk werkwijze erin komt. Zonder dit geheugen
+   * openen tien nieuwe-pagina-mails alle tien hetzelfde.
+   */
+  const [eerder, setEerder] = useState<{ invalshoek: string; werkwijze: string }[]>([]);
   const [bronBezig, setBronBezig] = useState<string | null>(null);
   const [bronMsg, setBronMsg] = useState<Record<string, string>>({});
   // De opruimanalyse weigert te starten zolang niet vastligt welke pagina's
@@ -246,6 +253,20 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar, clientN
    * op de kaart als "Waarom deze pagina" verschijnt en dat de mailknop gebruikt,
    * dus je kunt de klant meteen uitleggen waarom we dit oppakken.
    */
+  /**
+   * Opent het mailvenster, maar haalt eerst op wat deze klant al gehad heeft.
+   * Bewust hier en niet in het venster zelf: het venster weet niets van kansen.
+   */
+  async function openMail(r: Regel) {
+    setEerder([]);
+    setMailVoor(r);
+    try {
+      const d = await fetch(`/api/admin/kansmail-log?slug=${encodeURIComponent(slug)}&soort=${encodeURIComponent(r.type)}`)
+        .then((x) => x.json());
+      if (d?.ok && Array.isArray(d.regels)) setEerder(d.regels);
+    } catch { /* zonder geheugen schrijft hij gewoon, alleen minder afwisselend */ }
+  }
+
   async function pakOp(r: Regel) {
     const cat = categorieVan(r.type);
     if (bezigId) return;
@@ -291,7 +312,7 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar, clientN
         // klant wilde laten weten dat je hem oppakt. Nu blijf je staan, opent het
         // mailvenster met de onderbouwing erin, en gaat "Ga erheen" apart mee als
         // knop op de regel.
-        setMailVoor(r);
+        void openMail(r);
         return;
       }
       onGaNaar?.(cat.tab, r.url || "");
@@ -625,7 +646,7 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar, clientN
                                   kaart bij hoort. De klant hoort te zien dát we kansen zoeken. */}
                               <button type="button" className="prio-mail"
                                 title="Laat de klant weten dat we deze kans zagen en oppakken, met de reden erbij"
-                                onClick={() => setMailVoor(r)}>Mail de klant</button>
+                                onClick={() => openMail(r)}>Mail de klant</button>
                               {gepland && (
                                 <>
                                   <span className="prio-gepland-chip" title="Er staat een kaart voor deze pagina in de planning">✓ in de planning</span>
@@ -705,7 +726,12 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar, clientN
           onderaan. De onderbouwing gaat mee als achtergrond voor de assistent, niet
           als kant-en-klaar blok in de mail zelf. */}
       {mailVoor && (() => {
-        const ond = onderbouwing(mailVoor, { klantnaam: clientName, pad: mailVoor.url || bedoeldPad(mailVoor.zoekwoord, domain) });
+        const ond = onderbouwing(mailVoor, {
+          klantnaam: clientName,
+          pad: mailVoor.url || bedoeldPad(mailVoor.zoekwoord, domain),
+          eerdereInvalshoeken: eerder.map((e) => e.invalshoek),
+          heeftConcurrenten: (res?.lenzen || []).some((l) => l.sleutel === "content_gap" && l.gevonden > 0),
+        });
         return (
           <MailVenster
             slug={slug}
@@ -716,6 +742,15 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar, clientN
             toelichting={ond.blokMd}
             stijl="kans"
             schrijfMeteen
+            eerderGebruikt={eerder.map((e) => e.werkwijze).filter(Boolean)}
+            onVerzonden={(tekst, werkwijze) => {
+              // Onthouden waarmee deze mail opende, zodat de volgende van
+              // hetzelfde soort een andere ingang en een ander stuk werkwijze pakt.
+              void fetch("/api/admin/kansmail-log", {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ slug, soort: mailVoor.type, invalshoek: ond.invalshoek, werkwijze, opening: tekst }),
+              }).catch(() => {});
+            }}
             siteUrl={domain}
             url={mailVoor.url || ""}
             clientName={clientName}

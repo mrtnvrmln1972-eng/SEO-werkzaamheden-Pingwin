@@ -5409,3 +5409,36 @@ a.wb-pad:hover { text-decoration: underline; }
   border-color: var(--red); background: var(--red-light);
   font-size: var(--fs-base); line-height: 23px; color: var(--red); padding: var(--s-4) var(--s-5);
 }
+/* ── /admin/schrijfstijl ────────────────────────────────────────────────── */
+.stijl-wrap { max-width: 80ch; }
+.stijl-intro { margin: var(--s-2) 0 var(--s-4); max-width: 70ch; }
+.stijl-balk {
+  display: flex; flex-wrap: wrap; gap: var(--s-3); align-items: center;
+  justify-content: space-between; padding: var(--s-3);
+  background: var(--brand-orange-faint); border-radius: var(--r-md); margin-bottom: var(--s-4);
+}
+.stijl-veld { display: block; margin-bottom: var(--s-4); }
+.stijl-label {
+  display: block; margin-bottom: var(--s-2); font-weight: 600; color: var(--dark);
+  font-size: var(--fs-xs); line-height: var(--lh-xs);
+}
+.stijl-veld textarea {
+  width: 100%; padding: var(--s-3); border: 1px solid var(--border);
+  border-radius: var(--r-md); font: inherit; font-size: var(--fs-sm); line-height: var(--lh-sm);
+  resize: vertical;
+}
+.stijl-voorbeelden { margin-bottom: var(--s-4); }
+.stijl-voorbeelden ul {
+  margin: 0; padding: var(--s-3) var(--s-3) var(--s-3) var(--s-6);
+  background: var(--brand-orange-faint); border-radius: var(--r-md);
+  font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray);
+}
+.stijl-voorbeelden li + li { margin-top: var(--s-2); }
+.stijl-klein { font-size: var(--fs-xs); line-height: var(--lh-xs); margin-top: var(--s-2); }
+.stijl-knoppen { display: flex; gap: var(--s-3); }
+.stijl-fout, .stijl-ok {
+  padding: var(--s-3); border-radius: var(--r-md); margin-bottom: var(--s-3);
+  font-size: var(--fs-sm); line-height: var(--lh-sm);
+}
+.stijl-fout { background: #FDECEA; color: #8B1E13; }
+.stijl-ok { background: var(--brand-orange-faint); color: var(--orange-dark); }

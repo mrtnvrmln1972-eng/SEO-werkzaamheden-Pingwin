@@ -78,6 +78,12 @@ Antwoord in NETTE markdown, exact met deze kop bovenaan en deze structuur, zonde
 **Doelgroep en hun twijfels**
 - <voor wie, en welke bezwaren/twijfels weggenomen moeten worden>
 
+**Soorten projecten en klussen**
+- <wat voor werk ze typisch doen, welke omvang, welke voorbeelden op de site staan>
+
+**Producten, stijlen en merken**
+- <welke stijlen, materialen, productgroepen of merken ze voeren; waar ze zich in specialiseren>
+
 **Overtuigingsprincipes**
 - <proof, autoriteit, geruststelling: reviews, cijfers, USP's die op de site staan>
 

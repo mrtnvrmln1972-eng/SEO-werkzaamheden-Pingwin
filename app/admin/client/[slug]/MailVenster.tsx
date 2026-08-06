@@ -22,7 +22,7 @@ import { striptVulzinnen } from "../../../../lib/vulzinnen";
 export type MailBijlage = { key: string; label: string; url: string };
 
 export default function MailVenster({
-  slug, titel, onderwerpVan, onderwerpVoorstel, taak, toelichting, mailBron, blokMd, stijl, schrijfMeteen = false, siteUrl, url, bijlagen = [], clientName, clientEmail, standaardAangevinkt = [], onClose,
+  slug, titel, onderwerpVan, onderwerpVoorstel, taak, toelichting, mailBron, blokMd, stijl, schrijfMeteen = false, eerderGebruikt, onVerzonden, siteUrl, url, bijlagen = [], clientName, clientEmail, standaardAangevinkt = [], onClose,
 }: {
   slug: string;
   /** Kop van het venster, bijvoorbeeld "Mail vanuit dit gesprek". */
@@ -42,6 +42,16 @@ export default function MailVenster({
   stijl?: string;
   /** Schrijft meteen bij het openen een concept, in plaats van een leeg vak. */
   schrijfMeteen?: boolean;
+  /**
+   * Welke stukken werkwijze deze klant al gehad heeft. Gaat mee naar de assistent,
+   * zodat er niet elke mail dezelfde alinea over de top 10-analyse in staat.
+   */
+  eerderGebruikt?: string[];
+  /**
+   * Krijgt de verstuurde tekst mee plus welk stuk werkwijze erin verwerkt is,
+   * zodat de aanroeper kan onthouden hoe deze mail begon en wat er al genoemd is.
+   */
+  onVerzonden?: (tekst: string, werkwijze: string) => void;
   /** Waar de mail over gaat (gaat als "taak" naar de assistent). */
   taak: string;
   /** De achtergrond waar de assistent uit put (het gesprek, de analyse). */
@@ -81,6 +91,9 @@ export default function MailVenster({
   const [onderwerp, setOnderwerp] = useState("");
   const [verzendt, setVerzendt] = useState(false);
   const [klaar, setKlaar] = useState("");
+  // Welk stuk werkwijze de assistent van de server meekreeg; gaat mee terug bij
+  // het verzenden zodat het niet twee keer achter elkaar gebruikt wordt.
+  const [werkwijze, setWerkwijze] = useState("");
   const bodyRef = useRef<HTMLDivElement>(null);
 
   // Staat er in het gesprek al een geschreven mail, dan begint het venster dáármee.
@@ -147,9 +160,10 @@ export default function MailVenster({
     try {
       const d = await fetch("/api/admin/task/explain", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, taak, toelichting, url, audience: doelgroep, instructie, links, stijl, to: adres !== undefined ? adres : to }),
+        body: JSON.stringify({ slug, taak, toelichting, url, audience: doelgroep, instructie, links, stijl, eerderGebruikt, to: adres !== undefined ? adres : to }),
       }).then((r) => r.json());
       if (d?.ok && d.text) {
+        setWerkwijze(String(d.werkwijze || ""));
         // Het onderwerp komt als eerste regel terug; dat hoort in een eigen veld.
         const regels = String(d.text).split("\n");
         const m = /^\s*onderwerp\s*:\s*(.+)$/i.exec(regels[0] || "");
@@ -199,7 +213,7 @@ export default function MailVenster({
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ mode: "compose", slug, to: adres, subject: onderwerp.trim() || onderwerpVan.slice(0, 120), html }),
         }).then((r) => r.json());
-        if (d?.ok) { setKlaar(`Verstuurd naar ${(d.sentTo || []).join(", ") || adres}.`); setTimeout(() => { onClose(); }, 1600); }
+        if (d?.ok) { onVerzonden?.(tekst, werkwijze); setKlaar(`Verstuurd naar ${(d.sentTo || []).join(", ") || adres}.`); setTimeout(() => { onClose(); }, 1600); }
         else setFout(d?.error || "Versturen mislukte.");
       } catch { setFout("Versturen mislukte."); }
       finally { setVerzendt(false); }
@@ -211,7 +225,7 @@ export default function MailVenster({
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ slug, to: adres, onderwerp: onderwerp.trim() || onderwerpVan.slice(0, 120), tekst, links }),
       }).then((r) => r.json());
-      if (d?.ok) { setKlaar(d.samenvatting || "Verstuurd."); setTimeout(() => { onClose(); }, 1600); }
+      if (d?.ok) { onVerzonden?.(tekst, werkwijze); setKlaar(d.samenvatting || "Verstuurd."); setTimeout(() => { onClose(); }, 1600); }
       else setFout(d?.error || "Versturen mislukte.");
     } catch { setFout("Versturen mislukte."); }
     finally { setVerzendt(false); }

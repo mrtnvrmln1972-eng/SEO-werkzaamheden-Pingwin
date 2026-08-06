@@ -205,6 +205,55 @@ function vormPerSoort(type: string, nieuw: boolean): string {
   }
 }
 
+/**
+ * DE INVALSHOEK: waar begint de mail?
+ *
+ * Dit is het antwoord op "gaan al die mails niet hetzelfde klinken". Bij Paul
+ * Hoevenaars is 36 van de 50 kansen een nieuwe pagina; tien van die mails met
+ * dezelfde opening en de klant heeft het patroon door.
+ *
+ * Bij één kans zijn meerdere dingen tegelijk waar: hoeveel er gezocht wordt, wat
+ * ze wél hebben en wat mist, wie die zoeker is, en dat een concurrent er wel staat.
+ * Elke mail opent vanuit een andere van die feiten. Dat is echte afwisseling, want
+ * het is elke keer een andere waarheid over hun bedrijf en niet dezelfde waarheid
+ * in andere woorden.
+ *
+ * Welke invalshoek er de vorige keer gebruikt is wordt onthouden (zie
+ * lib/kansmail-log.ts), zodat dezelfde ingang niet twee keer achter elkaar komt.
+ */
+export const INVALSHOEKEN: { sleutel: string; opdracht: string; nodig?: "volume" | "positie" | "concurrent" }[] = [
+  { sleutel: "zoekvraag", opdracht: "Open met de zoekvraag zelf: hoeveel mensen hier maandelijks naar zoeken en wat dat betekent.", nodig: "volume" },
+  { sleutel: "eigen-site", opdracht: "Open met wat er al op hun site staat en wat er naast ontbreekt. Noem een bestaande pagina van hen bij naam." },
+  { sleutel: "zoeker", opdracht: "Open met wie die zoeker is en in welke fase hij zit: wil hij kopen, vergelijken of rondkijken? Maak dat concreet." },
+  { sleutel: "concurrent", opdracht: "Open met het feit dat anderen hier wel gevonden worden en zij niet. Noem geen concurrent bij naam, wel dat de plek nu door een ander bezet wordt.", nodig: "concurrent" },
+  { sleutel: "positie", opdracht: "Open met waar ze nu staan en hoe dichtbij het is. Maak voelbaar dat er weinig voor nodig is.", nodig: "positie" },
+  { sleutel: "aanpak", opdracht: "Open met hoe je het wilt aanpakken, en leg pas daarna uit waarom dit onderwerp eruit sprong." },
+];
+
+/**
+ * Kiest een invalshoek die past bij deze kans én die nog niet aan de beurt was.
+ * Deterministisch, dus dezelfde geschiedenis geeft dezelfde keuze en het is te
+ * testen.
+ */
+export function kiesInvalshoek(
+  r: OnderbouwRegel,
+  alGebruikt: string[],
+  opties: { heeftConcurrenten?: boolean } = {},
+): { sleutel: string; opdracht: string } {
+  const kan = INVALSHOEKEN.filter((h) => {
+    if (h.nodig === "volume") return (r.maandvolume || 0) >= 50;
+    if (h.nodig === "positie") return !!r.huidigePositie;
+    if (h.nodig === "concurrent") return !!opties.heeftConcurrenten && !r.url;
+    return true;
+  });
+  const gebruikt = new Set(alGebruikt.filter(Boolean));
+  const vrij = kan.filter((h) => !gebruikt.has(h.sleutel));
+  if (vrij.length) return vrij[0];
+  // Alles een keer gehad: begin opnieuw bij wat het langst geleden is.
+  const oudsteEerst = [...kan].sort((a, b) => alGebruikt.lastIndexOf(a.sleutel) - alGebruikt.lastIndexOf(b.sleutel));
+  return oudsteEerst[0] || INVALSHOEKEN[1];
+}
+
 /** Wat de klant krijgt zodra hij akkoord is. Dat is per soort werk iets anders. */
 function vervolgstap(type: string, nieuw: boolean): string {
   if (type === "content_gap" && nieuw) return "de opzet van de pagina en daarna de teksten";
@@ -214,17 +263,25 @@ function vervolgstap(type: string, nieuw: boolean): string {
   return "de aangepaste tekst";
 }
 
-export function onderbouwing(r: OnderbouwRegel, opties: { klantnaam?: string; pad?: string } = {}): {
+export function onderbouwing(r: OnderbouwRegel, opties: {
+  klantnaam?: string; pad?: string;
+  /** Welke invalshoeken deze klant al gehad heeft bij dit soort kans. */
+  eerdereInvalshoeken?: string[];
+  heeftConcurrenten?: boolean;
+} = {}): {
   kort: string;
   /** De vier stukken los, zodat het scherm er kolommen van kan maken. */
   secties: { kop: string; tekst: string }[];
   blokMd: string;
   mailOnderwerp: string;
   mailTaak: string;
+  /** Waar deze mail mee opent; wordt onthouden zodat de volgende anders begint. */
+  invalshoek: string;
 } {
   const cat = categorieVan(r.type);
   const nieuw = !r.url;
   const pad = opties.pad || r.url || "";
+  const hoek = kiesInvalshoek(r, opties.eerdereInvalshoeken || [], { heeftConcurrenten: opties.heeftConcurrenten });
   const winst = r.extraKlikkenPerMaand && r.extraKlikkenPerMaand >= 1
     ? `Als dat lukt, verwachten we hier ongeveer ${getal(r.extraKlikkenPerMaand)} extra bezoekers per maand. Dat is ${zekerheidTekst(r.confidence)} en een verwachting, geen belofte.`
     : "";
@@ -257,9 +314,11 @@ export function onderbouwing(r: OnderbouwRegel, opties: { klantnaam?: string; pa
     secties,
     blokMd: secties.map((s) => `### ${s.kop}\n\n${s.tekst}`).join("\n\n"),
     mailOnderwerp: mailOnderwerpVan(r, nieuw),
+    invalshoek: hoek.sleutel,
     mailTaak: [
       `Signaleer bij ${opties.klantnaam || "de klant"} één kans die je op hun site hebt gevonden, en vraag of ze het ermee eens zijn dat je hem oppakt.`,
       `Het gaat om ${cat.naam.toLowerCase()}${pad ? ` voor ${pad}` : ""} rond het zoekwoord "${r.zoekwoord}".`,
+      hoek.opdracht,
       vormPerSoort(r.type, nieuw),
       `Sluit af met de vervolgstap: bij akkoord stuur je ${vervolgstap(r.type, nieuw)} ter controle.`,
     ].join(" "),

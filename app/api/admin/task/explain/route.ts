@@ -6,6 +6,8 @@ import { callClaude } from "../../../../../lib/anthropic";
 import { aanhefVoor } from "../../../../../lib/aanhef";
 import { striptToeschrijvingen } from "../../../../../lib/herkomst";
 import { getEmails } from "../../../../../lib/snapshots";
+import { getSchrijfstijl, schrijfstijlBlok } from "../../../../../lib/schrijfstijl";
+import { bouwMailContext, klantBlok, kiesWerkwijze, werkwijzeBlok } from "../../../../../lib/mail-context";
 
 export const runtime = "nodejs";
 
@@ -40,6 +42,10 @@ export async function POST(req: NextRequest) {
   const ontvanger = stripTags(String(body.ontvanger || "")).slice(0, 120);
   // Soort mail. Leeg = precies zoals deze route zich altijd gedroeg.
   const stijl = String(body.stijl || "").trim();
+  // Welke stukken werkwijze deze klant al gehad heeft. Komt van het scherm, dat
+  // het logje van eerdere kansmails leest; zo staat er niet elke keer dezelfde
+  // alinea over de top 10-analyse in.
+  const eerderGebruikt = (Array.isArray(body.eerderGebruikt) ? body.eerderGebruikt : []).map((x) => String(x)).slice(0, 20);
   const links = (Array.isArray(body.links) ? body.links : [])
     .map((l) => ({ label: stripTags(String((l as Record<string, unknown>)?.label || "")).slice(0, 60), url: String((l as Record<string, unknown>)?.url || "").trim().slice(0, 600) }))
     .filter((l) => l.url).slice(0, 6);
@@ -75,11 +81,14 @@ export async function POST(req: NextRequest) {
     `- Alinea's van hooguit twee zinnen. Geen kopjes, geen tabellen, geen vetgedrukte woorden, geen Markdown-tekens.`,
     `- Gebruik nooit een los liggend streepje als zinsscheiding; gebruik een komma, puntkomma, haakjes of een nieuwe zin.`,
     `- Nederlands. Kort en concreet. Geen loze beloftes.`,
-  // Bij een kans-mail gelden drie van deze regels niet; die worden hieronder
+  // Bij een kans-mail gelden vier van deze regels niet; die worden hieronder
   // vervangen door strengere, eigen regels. Ze hier laten staan zou betekenen dat
   // het model twee tegenstrijdige instructies krijgt, en dan is het een gok welke
-  // wint.
-  ].filter((r) => stijl !== "kans" || !/MAXIMAAL 120 woorden|vetgedrukte woorden|^- Opbouw: aanhef/.test(r));
+  // wint. De vierde is "vertel nooit het proces na": bij een kans-mail is één zin
+  // over hoe we het aanpakken juist de bedoeling, want dat laat zien dat er een
+  // vak achter zit. Wat verboden blijft is het navertellen van wat wíj intern
+  // gedaan hebben; dat staat in de kansregels hieronder.
+  ].filter((r) => stijl !== "kans" || !/MAXIMAAL 120 woorden|vetgedrukte woorden|^- Opbouw: aanhef|Vertel NOOIT het proces na/.test(r));
   const doelgroep = audience === "dev"
     ? [
         `Je schrijft namens Maarten van Pingwin (SEO-bureau) een korte, directe e-mail aan de developer/sitebouwer van de klant "${naam}".`,
@@ -127,17 +136,37 @@ export async function POST(req: NextRequest) {
     `- Eén onderwerp per mail. Ga NIET over andere pagina's of andere kansen beginnen.`,
     `- Een enkel **vetgedrukt** woord mag, en een kort lijstje ook, als dat de mail leesbaarder maakt. Spaarzaam: hooguit één van de twee per mail, en nooit allebei in dezelfde alinea.`,
     `- GEEN kopjes, geen kaders, geen afsluitende samenvatting, geen "Met vriendelijke groet, Pingwin" als bedrijfsnaam; dit is een mail van Maarten zelf.`,
-    `- Vertel het proces niet na en noem geen scores, ranglijsten of aantallen kansen. Alleen dít ene ding.`,
+    `- Noem geen scores, ranglijsten of aantallen kansen. Alleen dít ene ding.`,
     `- Sluit af met "Groet," en op de volgende regel "Maarten".`,
-    `- MAXIMAAL 160 woorden tussen aanhef en afsluiting, en dat is een plafond en geen doel.`,
+    `- MAXIMAAL 250 woorden tussen aanhef en afsluiting, en dat is een plafond en geen doel.`,
+    `- Open NIET elke mail op dezelfde manier. Kies de opening die bij déze kans past en varieer.`,
   ] : [];
+
+  // Zo schrijft Maarten zelf, wat we van deze klant weten, en één stuk werkwijze.
+  // Alle drie de blokken zijn leeg zolang er nog niets van bekend is, en dan
+  // gedraagt deze route zich exact zoals daarvoor.
+  const [stijlProfiel, klant] = await Promise.all([
+    audience === "klant" ? getSchrijfstijl().catch(() => null) : Promise.resolve(null),
+    audience === "klant" && slug ? bouwMailContext(slug).catch(() => null) : Promise.resolve(null),
+  ]);
+  const stijlTekst = stijlProfiel ? schrijfstijlBlok(stijlProfiel) : "";
+  const klantTekst = klant ? klantBlok(klant) : "";
+  const gekozenWerkwijze = stijl === "kans" ? kiesWerkwijze(eerderGebruikt) : null;
+  const werkwijze = gekozenWerkwijze ? werkwijzeBlok(gekozenWerkwijze) : "";
 
   const system = [
     ...doelgroep,
     ...kansRegels,
+    // De schrijfstijl staat bewust NA de opdracht en VÓÓR de inhoud: het is de
+    // norm waaraan alles daarna moet voldoen, niet een losse suggestie achteraf.
+    stijlTekst ? `\n${stijlTekst}` : ``,
+    werkwijze ? `\n${werkwijze}` : ``,
     links.length ? `\nDeze documenten en pagina's gaan mee. Noem ELK van deze namen LETTERLIJK in de tekst; de link wordt automatisch aan die exacte woorden gehangen, dus zet zelf NOOIT de URL in de tekst. Schrijf nooit "de bijgevoegde link", "bijgaand" of "in de bijlage" als omschrijving, want dan is er niets om de link aan te hangen en verdwijnt hij:\n${links.map((l) => `- ${l.label}`).join("\n")}` : ``,
     instructie ? `\nEXTRA WENS VAN DE GEBRUIKER (volg dit):\n${instructie}` : ``,
-    profiel && audience === "klant" ? `\nContext over de klant (gebruik subtiel om de toon te raken, niet letterlijk overnemen):\n${profiel}` : ``,
+    // Het klantblok vervangt het oude, op 1500 tekens afgekapte profiel. Juist de
+    // onderste secties (doelgroep, wat hen onderscheidt) vielen door die afkapping
+    // weg, en dat is precies het deel dat een mail persoonlijk maakt.
+    klantTekst ? `\n${klantTekst}` : (profiel && audience === "klant" ? `\nContext over de klant (gebruik subtiel om de toon te raken, niet letterlijk overnemen):\n${profiel}` : ``),
   ].filter(Boolean).join("\n");
 
   const user = [
@@ -150,7 +179,9 @@ export async function POST(req: NextRequest) {
     const text = await callClaude(system, [{ role: "user", content: user }], 700, { slug, action: "taak_uitleg_klant" });
     const clean = (text || "").trim();
     if (!clean) return NextResponse.json({ ok: false, error: "Geen uitleg gegenereerd." }, { status: 502 });
-    return NextResponse.json({ ok: true, text: clean });
+    // De gekozen werkwijze gaat mee terug, zodat het scherm kan onthouden welk stuk
+    // deze klant gehad heeft en de volgende mail een ander stuk pakt.
+    return NextResponse.json({ ok: true, text: clean, werkwijze: gekozenWerkwijze?.sleutel || "" });
   } catch {
     return NextResponse.json({ ok: false, error: "De assistent is niet bereikbaar." }, { status: 502 });
   }
