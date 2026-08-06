@@ -426,6 +426,25 @@ export async function weegOpruimlijstOpnieuw(slug: string, domain: string): Prom
   return { gered: gered.size, over: over.length, oppakken: uniek, onderwerpen: onderwerpen.length, gaten: gaten.length };
 }
 
+/**
+ * Het plaatsadvies, uit de opslag als het er is en anders één keer berekend en
+ * meteen bewaard. Zonder dit zelfherstel toont een scherm na een verbouwing
+ * stilletjes minder: de lijst viel van 162 naar 94 regels omdat de nieuwe kolom
+ * nog leeg was, zonder dat er iets misging of iets zei dat er iets ontbrak. Dat
+ * is precies het soort verschil dat niemand opmerkt.
+ */
+export async function zorgVoorPlaatsen(slug: string, domain: string): Promise<PlaatsenRapport | null> {
+  await ensureSchema();
+  await ensureTable();
+  const row = await readRow(slug);
+  if (row?.plaatsen?.adviezen?.length) return row.plaatsen;
+  const vers = await adviesPerPlaats(slug, domain).catch(() => null);
+  if (vers?.adviezen.length) {
+    await q`UPDATE client_cannibal_analysis SET plaatsen = ${JSON.stringify(vers)}, updated_at = now() WHERE client_slug = ${slug}`;
+  }
+  return vers;
+}
+
 async function faal(slug: string, msg: string): Promise<void> {
   await q`UPDATE client_cannibal_analysis SET status = 'error', error = ${msg}, fase = '', seed = NULL, findings = NULL, updated_at = now() WHERE client_slug = ${slug}`;
 }

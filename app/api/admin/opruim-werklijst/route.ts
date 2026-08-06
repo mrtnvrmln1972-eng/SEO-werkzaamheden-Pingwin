@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
-import { getCannibalAnalysis } from "../../../../lib/cannibal-redirect";
+import { getCannibalAnalysis, zorgVoorPlaatsen } from "../../../../lib/cannibal-redirect";
+import { getClientBySlug } from "../../../../lib/clients";
 import { bouwWerklijst, tellingen } from "../../../../lib/opruim-werklijst";
 
 export const runtime = "nodejs";
@@ -22,8 +23,12 @@ export async function GET(req: NextRequest) {
     // Bewust NIET opnieuw berekenen: het plaatsadvies staat opgeslagen bij de
     // analyse. Het live doen kostte veertien seconden, en dat drie keer per
     // scherm, waardoor het bovenste blok minutenlang "wordt samengesteld" toonde.
-    const st = await getCannibalAnalysis(slug);
-    const regels = bouwWerklijst(st.result, st.result?.plaatsen?.adviezen || []);
+    const domain = (await getClientBySlug(slug).catch(() => null))?.domain || "";
+    const [st, plaatsen] = await Promise.all([
+      getCannibalAnalysis(slug),
+      domain ? zorgVoorPlaatsen(slug, domain).catch(() => null) : Promise.resolve(null),
+    ]);
+    const regels = bouwWerklijst(st.result, plaatsen?.adviezen || []);
     return NextResponse.json({ ok: true, regels, tellingen: tellingen(regels), lijstDatum: st.result?.generatedAt || null });
   } catch (e) {
     return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : "Lijst bouwen mislukt." }, { status: 500 });
