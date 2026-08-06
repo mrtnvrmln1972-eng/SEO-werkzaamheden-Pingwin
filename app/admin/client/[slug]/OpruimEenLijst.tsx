@@ -47,6 +47,17 @@ function Zin({ tekst }: { tekst: string }) {
   return <p>{delen.map((d, i) => (i % 2 ? <strong key={i}>{d}</strong> : <span key={i}>{d}</span>))}</p>;
 }
 
+/** Wat er op de kaart komt te staan. Per besluit een andere klus, want
+    "uitbouwen" en "opruimen" zijn niet hetzelfde werk. */
+function taakVoor(r: Regel): string {
+  const wat = r.term ? ` voor "${r.term}"` : "";
+  if (r.uitkomst === "uitbouwen") return `Bouw ${r.pad} uit${wat}`;
+  if (r.uitkomst === "nieuw") return `Maak een nieuwe pagina${wat}: ${r.pad}`;
+  if (r.uitkomst === "samenvoegen") return r.naar ? `Voeg ${r.pad} samen met ${r.naar}` : `Voeg ${r.pad} samen`;
+  if (r.uitkomst === "opruimen") return `Ruim ${r.pad} op`;
+  return `Beoordeel ${r.pad}`;
+}
+
 export default function OpruimEenLijst({ slug, domain }: { slug: string; domain: string }) {
   const [d, setD] = useState<Data | null>(null);
   const [bezig, setBezig] = useState(true);
@@ -54,6 +65,10 @@ export default function OpruimEenLijst({ slug, domain }: { slug: string; domain:
   const [groep, setGroep] = useState<"uitkomst" | "groep">("uitkomst");
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [uitleg, setUitleg] = useState<Record<string, boolean>>({});
+  // Doorzetten naar de planning, per pagina. De kaart krijgt daar vanzelf zijn
+  // fases; hier hoeven we die dus niet na te bouwen.
+  const [planBezig, setPlanBezig] = useState("");
+  const [klaar, setKlaar] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!slug) return;
@@ -67,6 +82,25 @@ export default function OpruimEenLijst({ slug, domain }: { slug: string; domain:
   }, [slug]);
 
   const site = (p: string) => `https://${(domain || "").replace(/^https?:\/\//, "").replace(/\/$/, "")}${p.startsWith("/") ? p : `/${p}`}`;
+
+  async function naarPlanning(r: Regel) {
+    if (planBezig) return;
+    setPlanBezig(r.pad);
+    try {
+      const d = await fetch("/api/admin/weekplan/add", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slug, week: 1, wie: "SEO", url: site(r.pad),
+          taak: taakVoor(r),
+          // De volledige onderbouwing gaat mee, zodat op de planning ook zonder
+          // dit scherm te zien is waaróp het besluit rust.
+          toelichting: [r.reden, ...r.onderbouwing].filter(Boolean).join(" ").replace(/\*\*/g, ""),
+        }),
+      }).then((x) => x.json());
+      setKlaar((m) => ({ ...m, [r.pad]: d?.ok ? `Staat in week ${d.week}.` : (d?.error || "Toevoegen mislukte.") }));
+    } catch { setKlaar((m) => ({ ...m, [r.pad]: "Toevoegen mislukte." })); }
+    finally { setPlanBezig(""); }
+  }
   const Link = ({ p }: { p: string }) => <a className="opr-pad" href={site(p)} target="_blank" rel="noreferrer">{p}</a>;
 
   if (bezig) return <div className="muted opr-str-laden">De werklijst wordt samengesteld…</div>;
@@ -139,7 +173,7 @@ export default function OpruimEenLijst({ slug, domain }: { slug: string; domain:
             <table className="opr-tabel">
               <thead>
                 <tr>
-                  <th>Pagina</th><th>Besluit</th><th>Waarheen</th><th>Per maand</th><th>Nu</th><th>Waarom</th>
+                  <th>Pagina</th><th>Besluit</th><th>Waarheen</th><th>Per maand</th><th>Nu</th><th>Waarom</th><th>Actie</th>
                 </tr>
               </thead>
               <tbody>
@@ -167,6 +201,13 @@ export default function OpruimEenLijst({ slug, domain }: { slug: string; domain:
                         </div>
                       )}
                     </td>
+                    <td>
+                      <button type="button" className="opr-btn" disabled={!!planBezig} onClick={() => void naarPlanning(r)}
+                        title="Zet deze pagina als taak op de planning. De kaart krijgt daar vanzelf zijn fases, met de onderbouwing erbij.">
+                        {planBezig === r.pad ? "Bezig…" : "Naar planning"}
+                      </button>
+                      {klaar[r.pad] && <div className="opr-melding" style={{ marginTop: "var(--s-1)" }}>{klaar[r.pad]}</div>}
+                    </td>
                   </tr>
                   {/* De volledige onderbouwing als eigen rij over alle kolommen, in
                       dezelfde kaart met drie kolommen als de losse blokken. Stond
@@ -174,7 +215,7 @@ export default function OpruimEenLijst({ slug, domain }: { slug: string; domain:
                       kon zien waarop een besluit rustte. */}
                   {uitleg[r.pad] && r.onderbouwing.length > 0 && (
                     <tr className="opr-redenrij">
-                      <td colSpan={6}>
+                      <td colSpan={7}>
                         <div className="opr-uitleg">
                           <div className="opr-bewijs">
                             {r.onderbouwing.map((z, i) => <Zin key={i} tekst={z} />)}
