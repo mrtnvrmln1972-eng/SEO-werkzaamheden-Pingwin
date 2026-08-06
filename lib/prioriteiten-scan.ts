@@ -8,10 +8,14 @@ import { getCannibalAnalysis } from "./cannibal-redirect";
 import { getInternalLinksState, markInternalLinksRunning, runInternalLinks } from "./internal-links";
 import { anthropicConfigured } from "./anthropic";
 import { getOpportunities } from "./keyword-opportunities";
+import { getOrgData } from "./org-data";
 import {
   scoreBevinding, wijsTiersToe, confidenceVoorLens, verwachteUplift,
   ctrVoorPositie, type Bevinding,
 } from "./prioriteiten-score";
+import {
+  bouwKlantContext, weeg, bepaalIntentie, bepaalFit, type KlantContext,
+} from "./prioriteiten-context";
 import { getSetting, setSetting } from "./settings";
 import { getWeekplan } from "./weekplan";
 import { urlKey } from "./url-key";
@@ -237,67 +241,14 @@ function isMerkterm(kw: string, naam: string, domein: string): boolean {
   return false;
 }
 
-/**
- * Intentie uit het zoekwoord. Bewust dezelfde woordenlijsten als de skill, en op
- * hele woorden gematcht: op losse letters maakte "vs" van "advies" een
- * vergelijkings-zoekwoord en "test" van "protest".
- */
-const INTENT_WOORDEN: [string, string[]][] = [
-  ["transactional", ["kopen", "bestellen", "offerte", "abonnement", "prijzen", "korting", "boeken", "afsluiten"]],
-  ["lokaal-commercial", ["in de buurt", "bij mij", "regio", "amsterdam", "rotterdam", "utrecht", "den haag",
-    "eindhoven", "groningen", "tilburg", "almere", "breda", "nijmegen", "haarlem", "arnhem"]],
-  ["commercial", ["beste", "vergelijken", "review", "test", "alternatief", "vs", "top 10", "tips", "welke", "advies"]],
-  ["navigational", ["login", "inloggen", "contact", "klantenservice"]],
-  ["informational", ["wat is", "hoe werkt", "waarom", "uitleg", "betekenis", "verschil tussen", "soorten", "voorbeelden"]],
-];
-export function bepaalIntentie(keyword: string): string {
-  const k = (keyword || "").toLowerCase();
-  for (const [intent, woorden] of INTENT_WOORDEN) {
-    for (const w of woorden) {
-      if (new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(k)) return intent;
-    }
-  }
-  return "lokaal-commercial";
-}
-
-/**
- * Merk-fit: past dit zoekwoord bij wat de klant wil zijn? Onder de 0,4 vliegt het
- * uit de lijst, hoe hoog het volume ook is. Dat is de hele reden dat de scan om
- * een propositie-zin vraagt.
- */
-const BUDGET_WOORDEN = ["goedkop", "goedkoop", "voordelig", "budget", "lage prijs", "laagste prijs", "discount", "aanbieding", "afgeprijsd", "korting"];
-const TEGEN_BUDGET = ["geen prijsvechter", "niet goedkoop", "niet de goedkoopste", "niet budget", "geen budget", "geen discount"];
-const PREMIUM_PROP = ["premium", "luxe", "exclusief", "topkwaliteit", "hoogwaardig", "specialist"];
-const PREMIUM_WOORDEN = ["premium", "luxe", "exclusief", "high-end", "topkwaliteit", "op maat"];
-
-export function bepaalFit(keyword: string, kernwoorden: string[], propositie: string): number {
-  const k = (keyword || "").toLowerCase();
-  const p = (propositie || "").toLowerCase();
-  let overlap = 0;
-  for (const kw of kernwoorden) if (kw && k.includes(kw.toLowerCase())) overlap++;
-  let base = Math.min(0.5 + 0.15 * overlap, 0.9);
-  if (TEGEN_BUDGET.some((m) => p.includes(m)) && BUDGET_WOORDEN.some((b) => k.includes(b))) {
-    return Math.round(Math.min(base, 0.25) * 100) / 100;
-  }
-  if (PREMIUM_PROP.some((m) => p.includes(m)) && PREMIUM_WOORDEN.some((b) => k.includes(b))) base = Math.min(base + 0.1, 1);
-  if (overlap === 0 && !PREMIUM_PROP.some((m) => p.includes(m))) base = Math.min(base, 0.5);
-  return Math.round(base * 100) / 100;
-}
-
-/** Kernwoorden uit het klantprofiel: waar gaat deze klant eigenlijk over? */
-function kernwoordenUit(profiel: string, naam: string): string[] {
-  const stop = new Set(["de", "het", "een", "en", "van", "voor", "met", "in", "op", "die", "dat", "wij", "we", "onze", "is", "zijn", "bij", "aan", "als", "ook", "naar", "door", "uit", "over", "meer", "worden", "wordt"]);
-  const woorden = (profiel || "").toLowerCase().replace(/[^a-zà-ü0-9\s-]/g, " ").split(/\s+/)
-    .filter((w) => w.length > 4 && !stop.has(w));
-  const telling = new Map<string, number>();
-  for (const w of woorden) telling.set(w, (telling.get(w) || 0) + 1);
-  const top = [...telling.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12).map(([w]) => w);
-  const merk = (naam || "").toLowerCase().split(/\s+/).filter((w) => w.length > 3);
-  return [...new Set([...top, ...merk])];
-}
+// De weging (hoe koopgericht is dit zoekwoord, past het bij deze klant) staat in
+// lib/prioriteiten-context.ts. Hier stonden twee losse functies plus een vaste
+// lijst van veertien grote steden; die lijst kende het werkgebied van geen enkele
+// klant buiten de Randstad. Hier alleen nog doorgegeven voor wie ze importeert.
+export { bepaalIntentie, bepaalFit };
 
 // ── Stap 1: uitlezen wat het dashboard al weet ────────────────────────────
-async function stapEigen(slug: string, propositie: string, kern: string[]): Promise<Bevinding[]> {
+async function stapEigen(slug: string, ctx: KlantContext): Promise<Bevinding[]> {
   const uit: Bevinding[] = [];
   let n = 0;
   const id = (p: string) => `${p}${++n}`;
@@ -323,7 +274,7 @@ async function stapEigen(slug: string, propositie: string, kern: string[]): Prom
       url: pad(m.url), zoekwoord: m.keyword,
       maandvolume: Math.max(m.volume || 0, Math.round(m.impressions / 3)),
       huidigePositie: Math.round(m.position), targetPositie: Math.round(m.position),
-      intentie: bepaalIntentie(m.keyword), relevanceFit: bepaalFit(m.keyword, kern, propositie),
+      ...weeg(m.keyword, ctx),
       effort: 1, timeToEffect: 1, confidence: confidenceVoorLens("ctr_underperform"),
       ctrActueel: huidig, benchmarkCtr: verwacht,
       rationale: `Deze pagina wordt goed getoond op positie ${m.position.toFixed(1)}, maar de CTR is ${m.ctr.toFixed(1)}% terwijl ${m.expectedCtr.toFixed(1)}% normaal is voor die positie. Een betere titel en omschrijving pakken dat direct.`,
@@ -342,7 +293,7 @@ async function stapEigen(slug: string, propositie: string, kern: string[]): Prom
       url: pad(c.winnaar || beste.url || ""), zoekwoord: c.keyword,
       maandvolume: c.volume || 0,
       huidigePositie: Math.round(beste.positie ?? 0), targetPositie: Math.max(1, Math.round((beste.positie ?? 6) / 2)),
-      intentie: bepaalIntentie(c.keyword), relevanceFit: bepaalFit(c.keyword, kern, propositie),
+      ...weeg(c.keyword, ctx),
       effort: 4, timeToEffect: 2, confidence: confidenceVoorLens("cannibalisatie"),
       rationale: c.onderbouwing || `Meerdere pagina's ranken op dit zoekwoord, waardoor ze elkaar verdringen. ${c.actie || "Samenvoegen of omleiden naar de sterkste."}`,
       bron: "de opruimanalyse, via het tabje Opruimen",
@@ -361,7 +312,7 @@ async function stapEigen(slug: string, propositie: string, kern: string[]): Prom
       url: pad(doel.url), zoekwoord: kw,
       maandvolume: doel.impressies || 0,
       huidigePositie: Math.round(doel.huidigePositie || 0), targetPositie: Math.max(1, Math.round((doel.huidigePositie || 10) / 2)),
-      intentie: bepaalIntentie(kw), relevanceFit: bepaalFit(kw, kern, propositie),
+      ...weeg(kw, ctx),
       effort: 3, timeToEffect: 2, confidence: confidenceVoorLens("interne_links"),
       rationale: "Deze pagina krijgt weinig interne links, terwijl hij commercieel belangrijk is. Meer links vanaf sterke pagina's duwt hem omhoog zonder nieuwe content.",
       bron: "de interne-link-analyse, via het tabje Interne links",
@@ -378,7 +329,7 @@ async function stapEigen(slug: string, propositie: string, kern: string[]): Prom
       titel: `Geen pagina voor "${g.keyword}"`,
       url: "", zoekwoord: g.keyword, maandvolume: g.volume || 0,
       huidigePositie: 0, targetPositie: 5,
-      intentie: bepaalIntentie(g.keyword), relevanceFit: bepaalFit(g.keyword, kern, propositie),
+      ...weeg(g.keyword, ctx),
       effort: 6, timeToEffect: 4, confidence: confidenceVoorLens("content_gap"),
       rationale: g.reason || "Er is zoekvraag op dit onderwerp, maar geen eigen pagina die erop mikt.",
       bron: "de kansenlijst (Ahrefs plus concurrenten)",
@@ -388,7 +339,7 @@ async function stapEigen(slug: string, propositie: string, kern: string[]): Prom
 }
 
 // ── Stap 2: verse cijfers voor de lenzen die nog niet als motor bestaan ───
-async function stapVers(slug: string, propositie: string, kern: string[], startId: number): Promise<Bevinding[]> {
+async function stapVers(slug: string, ctx: KlantContext, startId: number): Promise<Bevinding[]> {
   const client = await getClientBySlug(slug);
   const domein = client?.domain || "";
   const uit: Bevinding[] = [];
@@ -437,7 +388,7 @@ async function stapVers(slug: string, propositie: string, kern: string[], startI
       url: pad(m.page), zoekwoord: m.keyword,
       maandvolume: Math.max(volMap.get(m.keyword.toLowerCase()) || 0, Math.round(m.impressions / 3)),
       huidigePositie: Math.round(m.position), targetPositie: 3,
-      intentie: bepaalIntentie(m.keyword), relevanceFit: bepaalFit(m.keyword, kern, propositie),
+      ...weeg(m.keyword, ctx),
       effort: 3, timeToEffect: 2, confidence: confidenceVoorLens("striking_distance"),
       rationale: `Deze pagina staat al op positie ${m.position.toFixed(0)} en werd de afgelopen 90 dagen ${m.impressions} keer getoond op dit zoekwoord. Van pagina 2 naar de top 3 is de kortste weg naar meer bezoekers, want de pagina bestaat al.`,
       bron: "Search Console, laatste 90 dagen",
@@ -468,7 +419,7 @@ async function stapVers(slug: string, propositie: string, kern: string[], startI
           titel: `"${k.keyword}" zakt weg, van ${vorig} naar ${pos}`,
           url: pad(k.url || ""), zoekwoord: k.keyword, maandvolume: vol,
           huidigePositie: Math.round(pos), targetPositie: Math.max(1, Math.round(vorig)),
-          intentie: bepaalIntentie(k.keyword), relevanceFit: bepaalFit(k.keyword, kern, propositie),
+          ...weeg(k.keyword, ctx),
           effort: 4, timeToEffect: 2, confidence: confidenceVoorLens("verouderde_topper"),
           rationale: `Deze pagina stond op positie ${vorig} en is gezakt naar ${pos}. Terugwinnen wat je had is bijna altijd goedkoper dan iets nieuws bouwen; meestal is de content ingehaald door een concurrent.`,
       bron: "Ahrefs, positie nu tegen vorige meting",
@@ -483,7 +434,7 @@ async function stapVers(slug: string, propositie: string, kern: string[], startI
           titel: `"${k.keyword}" staat op ${pos}, net buiten beeld`,
           url: pad(k.url || ""), zoekwoord: k.keyword, maandvolume: vol,
           huidigePositie: Math.round(pos), targetPositie: 3,
-          intentie: bepaalIntentie(k.keyword), relevanceFit: bepaalFit(k.keyword, kern, propositie),
+          ...weeg(k.keyword, ctx),
           effort: 3, timeToEffect: 2, confidence: confidenceVoorLens("striking_distance"),
           rationale: `Positie ${pos} met ${vol} zoekopdrachten per maand. De pagina bestaat al, dus dit is bijwerken in plaats van bouwen.`,
       bron: "Ahrefs, organische zoekwoorden",
@@ -515,7 +466,7 @@ async function stapVers(slug: string, propositie: string, kern: string[], startI
       url: pad(v.page), zoekwoord: v.keyword,
       maandvolume: Math.round(Math.max(v.impressions, v.vertoningenVorig) / 3),
       huidigePositie: Math.round(v.position), targetPositie: Math.max(1, Math.round(v.positieVorig)),
-      intentie: bepaalIntentie(v.keyword), relevanceFit: bepaalFit(v.keyword, kern, propositie),
+      ...weeg(v.keyword, ctx),
       effort: 4, timeToEffect: 2, confidence: confidenceVoorLens("verouderde_topper"),
       rationale: `Deze pagina stond de vorige periode op positie ${v.positieVorig} en staat nu op ${v.position}. Terugwinnen wat je had is bijna altijd goedkoper dan iets nieuws bouwen; meestal is de content ingehaald door een concurrent.`,
       bron: "Search Console, laatste 90 dagen tegen de 90 daarvoor",
@@ -539,7 +490,7 @@ async function stapVers(slug: string, propositie: string, kern: string[], startI
       url: "", zoekwoord: m.keyword,
       maandvolume: Math.round(m.impressions / 3),
       huidigePositie: 0, targetPositie: 5,
-      intentie: bepaalIntentie(m.keyword), relevanceFit: bepaalFit(m.keyword, kern, propositie),
+      ...weeg(m.keyword, ctx),
       effort: 6, timeToEffect: 4, confidence: confidenceVoorLens("content_gap"),
       rationale: `Google toont deze site hier al ${m.impressions} keer op in 90 dagen, maar blijft steken rond positie ${Math.round(m.position)} met ${pad(m.page)}. Dat is een pagina die er niet echt over gaat; een eigen pagina op dit onderwerp pakt die vraag wel.`,
       bron: "Search Console, laatste 90 dagen",
@@ -567,7 +518,7 @@ async function stapVers(slug: string, propositie: string, kern: string[], startI
       url: pad(f.topUrls[0] || ""), zoekwoord: f.keyword,
       maandvolume: Math.round(impr / 3),
       huidigePositie: 0, targetPositie: 3,
-      intentie: bepaalIntentie(f.keyword), relevanceFit: bepaalFit(f.keyword, kern, propositie),
+      ...weeg(f.keyword, ctx),
       effort: 4, timeToEffect: 2, confidence: 0.9,
       rationale: `Over de laatste drie maanden liet Google hier ${f.topUrls.length} verschillende pagina's van deze site voor zien: ${f.topUrls.map((u) => pad(u)).join(", ")}. Wisselen betekent twijfel, en twijfel kost posities. Kies één pagina en laat de andere ernaar wijzen.`,
       bron: "Search Console, wisselende pagina's over drie maanden",
@@ -616,7 +567,7 @@ async function stapVers(slug: string, propositie: string, kern: string[], startI
       url: pad(m.page), zoekwoord: m.keyword,
       maandvolume: Math.round(m.impressions / 3),
       huidigePositie: Math.round(m.position), targetPositie: 1,
-      intentie: bepaalIntentie(m.keyword), relevanceFit: bepaalFit(m.keyword, kern, propositie),
+      ...weeg(m.keyword, ctx),
       effort: 2, timeToEffect: 1, confidence: confidenceVoorLens("featured_snippet"),
       rationale: `Dit is een vraag, en deze pagina staat er al op ${Math.round(m.position)}. Google pakt het blok bovenaan bijna altijd van de eerste pagina. Zet het antwoord in twee of drie zinnen direct onder de kop, en de kans is er.`,
       bron: "Search Console, vraag-zoekwoorden op de eerste pagina",
@@ -776,6 +727,34 @@ function bouwSamenvatting(regels: Bevinding[], uplift: number, delta: PrioResult
   return stukken.join(" ");
 }
 
+/**
+ * De klantcontext voor deze run: waar gaat deze klant over, wat verkoopt hij, en
+ * waar werkt hij? Bewust uit gemeten data (Search Console, de eigen pagina's, de
+ * bedrijfsgegevens) en niet uit een vaste lijst, want een vaste lijst kent geen
+ * enkele klant buiten de vier grote steden.
+ *
+ * De Search Console-aanroep is dezelfde als die stap 2 doet, en die heeft een kort
+ * geheugen; deze regel kost dus geen extra opvraag.
+ */
+async function bouwContextVoor(slug: string, domein: string, profiel: string, naam: string, propositie: string): Promise<KlantContext> {
+  const [matrix, org] = await Promise.all([
+    domein ? getGscQueryPagePairs(domein, 90).catch(() => []) : Promise.resolve([]),
+    getOrgData(slug).catch(() => null),
+  ]);
+  const d = org?.data;
+  const extraPlaatsen = [
+    ...(d?.plaats ? [d.plaats] : []),
+    ...(d?.areaServed || []),
+    ...((d?.vestigingen || []).map((v) => v.plaats).filter(Boolean) as string[]),
+  ];
+  return bouwKlantContext({
+    profiel, naam, propositie,
+    zoekwoorden: [...new Set(matrix.map((m) => m.keyword).filter(Boolean))],
+    urls: [...new Set(matrix.map((m) => m.page).filter(Boolean))],
+    extraPlaatsen,
+  });
+}
+
 // ── De run ────────────────────────────────────────────────────────────────
 export async function runPrioriteitenScan(slug: string): Promise<void> {
   await ensureSchema();
@@ -786,19 +765,19 @@ export async function runPrioriteitenScan(slug: string): Promise<void> {
     if (!client) { await faal(slug, "Klant niet gevonden."); return; }
     const r = await readRow(slug);
     const propositie = r?.propositie || "";
-    const kern = kernwoordenUit(client.seoProfile || "", client.name || "");
+    const ctx = await bouwContextVoor(slug, client.domain || "", client.seoProfile || "", client.name || "", propositie);
 
     // Stap 1
     let bevindingen: Bevinding[] = r?.tussenstand || [];
     if (!r?.tussenstand || r.fase === "eigen") {
-      bevindingen = await stapEigen(slug, propositie, kern);
+      bevindingen = await stapEigen(slug, ctx);
       await sql`UPDATE client_prioriteiten_scan SET fase = 'vers', tussenstand = ${JSON.stringify(bevindingen)}, updated_at = now() WHERE client_slug = ${slug}`;
     }
 
     // Stap 2
     const verseNodig = !r?.tussenstand || r.fase === "eigen" || r.fase === "vers";
     if (verseNodig) {
-      const vers = await stapVers(slug, propositie, kern, bevindingen.length);
+      const vers = await stapVers(slug, ctx, bevindingen.length);
       bevindingen = [...bevindingen, ...vers];
       await sql`UPDATE client_prioriteiten_scan SET fase = 'scoren', tussenstand = ${JSON.stringify(bevindingen)}, updated_at = now() WHERE client_slug = ${slug}`;
     }

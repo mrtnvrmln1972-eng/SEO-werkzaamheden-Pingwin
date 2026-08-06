@@ -587,6 +587,21 @@ tbody td:last-child { text-align: center; }
 .prio-uplift { font-weight: 700; color: var(--orange-dark); }
 .prio-leeg { text-align: center; padding: var(--s-8) var(--s-3); }
 
+/* Kansrijkheid: het cijfer dat de volgorde bepaalt, met een balkje ernaast zodat
+   je in één oogopslag ziet hoe de regels zich tot elkaar verhouden. Rechts
+   uitgelijnd en op vaste breedte, zodat de balkjes onder elkaar één schaal
+   vormen in plaats van te dansen op de tekstlengte. */
+.prio-kans { width: 92px; }
+.prio-kans-balk {
+  display: block; height: var(--s-1); width: 100%;
+  background: var(--brand-orange-faint); border-radius: var(--r-full); overflow: hidden;
+}
+.prio-kans-balk > i { display: block; height: 100%; background: var(--orange); border-radius: var(--r-full); }
+.prio-kans-getal {
+  display: block; margin-top: var(--s-1);
+  font-weight: 700; color: var(--orange-dark); font-size: var(--fs-xs); line-height: var(--lh-xs);
+}
+
 /* De tier-badge (deze week / deze maand) stond hier; die kolom is van het scherm
    verdwenen, dus de opmaak ervan ook. */
 .prio-nieuw {

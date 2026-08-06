@@ -53,11 +53,21 @@ type State = {
 // die hij niet kent. Wat een kans oplevert is wél te meten, dus dat bepaalt de
 // volgorde. De indeling bestaat achter de schermen nog wel, want de scan gebruikt
 // hem om te bepalen wat er in "bewust niet doen" valt.
-type SortVeld = "extra" | "volume" | "positie";
-const SORT_KOP: { veld: SortVeld; label: string }[] = [
-  { veld: "volume", label: "Zoekvolume" },
-  { veld: "positie", label: "Positie" },
-  { veld: "extra", label: "Extra bezoekers" },
+//
+// De standaardvolgorde is "kansrijkheid" en niet "extra bezoekers" (6 augustus
+// 2026). Extra bezoekers is zoekvolume maal klikkans, en verder niets: dat cijfer
+// weet niet of iemand wil kopen of alleen rondkijkt, en niet of het zoekwoord bij
+// deze klant past. Bij Paul Hoevenaars zette het daardoor "voortuin" bovenaan,
+// een landelijk plaatjeswoord van 3.500 zoekopdrachten, boven "tuinontwerp laten
+// maken". Kansrijkheid weegt dat wél mee, en het stond al berekend klaar; het
+// werd alleen niet gebruikt voor de volgorde. Extra bezoekers blijft als kolom
+// staan én blijft aanklikbaar om op te sorteren.
+type SortVeld = "kans" | "extra" | "volume" | "positie";
+const SORT_KOP: { veld: SortVeld; label: string; uitleg: string }[] = [
+  { veld: "volume", label: "Zoekvolume", uitleg: "hoe vaak hier per maand op gezocht wordt" },
+  { veld: "positie", label: "Positie", uitleg: "waar de pagina nu staat en waar hij heen kan" },
+  { veld: "extra", label: "Extra bezoekers", uitleg: "zoekvolume maal de kans dat iemand klikt" },
+  { veld: "kans", label: "Kansrijk", uitleg: "bezoekers, koopgerichtheid, hoe goed het bij deze klant past en hoeveel werk het is, in één cijfer" },
 ];
 
 /**
@@ -100,7 +110,7 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
   const [openSkip, setOpenSkip] = useState(false);
   const [openLenzen, setOpenLenzen] = useState(false);
   const [openGroep, setOpenGroep] = useState<Record<string, boolean>>({});
-  const [sortVeld, setSortVeld] = useState<SortVeld>("extra");
+  const [sortVeld, setSortVeld] = useState<SortVeld>("kans");
   const [sortAf, setSortAf] = useState(true);
   const [bronBezig, setBronBezig] = useState<string | null>(null);
   const [bronMsg, setBronMsg] = useState<Record<string, string>>({});
@@ -278,8 +288,20 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
     return true;
   }), [regels, zoek, zoekt]);
 
+  /**
+   * Kansrijkheid als cijfer van 1 tot 100, waarbij 100 de beste kans van déze scan
+   * is. De onderliggende opbrengstscore is een kommagetal van 0,003 tot 0,4; daar
+   * kun je twee regels niet mee vergelijken zonder te turen. De schaal is bewust
+   * relatief: "de beste kans die deze klant nu heeft" zegt meer dan een absoluut
+   * getal dat per klant iets anders betekent.
+   */
+  const kansIndex = useMemo(() => {
+    const max = Math.max(0, ...regels.filter((r) => r.tier !== "SKIP").map((r) => r.roiScore ?? 0));
+    return (r: Regel) => (max > 0 ? Math.max(1, Math.round(((r.roiScore ?? 0) / max) * 100)) : 0);
+  }, [regels]);
+
   // Zeven dichte balken in plaats van honderd losse regels, en de balk met de
-  // meeste te winnen bezoekers bovenaan. Bij de ene klant is dat meta-werk, bij de
+  // meest kansrijke stapel werk bovenaan. Bij de ene klant is dat meta-werk, bij de
   // andere opruimen; dat wil je zien zonder eerst alles open te klikken.
   const groepen = useMemo(() => {
     const richting = sortAf ? -1 : 1;
@@ -287,7 +309,8 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
       if (sortVeld === "volume") return r.maandvolume || 0;
       // Rankt hier nog niet (0) hoort achteraan, niet vooraan.
       if (sortVeld === "positie") return r.huidigePositie || 999;
-      return r.extraKlikkenPerMaand ?? 0;
+      if (sortVeld === "extra") return r.extraKlikkenPerMaand ?? 0;
+      return r.roiScore ?? 0;
     };
     const per = new Map<string, Regel[]>();
     for (const r of zichtbaar) {
@@ -300,8 +323,11 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
         naam,
         rijen: [...rijen].sort((a, b) => (waarde(a) - waarde(b)) * richting),
         opbrengst: rijen.reduce((s, r) => s + (r.extraKlikkenPerMaand ?? 0), 0),
+        // De balken staan op dezelfde maat als de regels erin: op kansrijkheid.
+        // Anders opent de bovenste balk met de minst kansrijke bovenste regel.
+        kans: rijen.reduce((s, r) => s + (r.roiScore ?? 0), 0),
       }))
-      .sort((a, b) => b.opbrengst - a.opbrengst || b.rijen.length - a.rijen.length || a.naam.localeCompare(b.naam));
+      .sort((a, b) => b.kans - a.kans || b.rijen.length - a.rijen.length || a.naam.localeCompare(b.naam));
   }, [zichtbaar, sortVeld, sortAf]);
 
   // Zoek je iets, dan klapt alles met een treffer vanzelf open; anders zou je na
@@ -496,7 +522,7 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
                   {SORT_KOP.map((k) => (
                     <th key={k.veld} className="num">
                       <button type="button" className={"prio-sorteer" + (sortVeld === k.veld ? " aan" : "")}
-                        title={`Sorteer op ${k.label.toLowerCase()}`} onClick={() => sorteerOp(k.veld)}>
+                        title={`Sorteer op ${k.label.toLowerCase()}: ${k.uitleg}`} onClick={() => sorteerOp(k.veld)}>
                         {k.label}{sortVeld === k.veld ? (sortAf ? " ▾" : " ▴") : ""}
                       </button>
                     </th>
@@ -510,7 +536,7 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
                   return (
                     <Fragment key={g.naam}>
                       <tr className="prio-groepkop">
-                        <td colSpan={8}>
+                        <td colSpan={9}>
                           <button type="button" className="prio-groepknop" aria-expanded={uit}
                             onClick={() => setOpenGroep((m) => ({ ...m, [g.naam]: !groepOpen(g.naam) }))}>
                             <span className="prio-groepkop-pijl">{uit ? "▾" : "▸"}</span>
@@ -537,6 +563,10 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
                             <td className="num">{getal(r.maandvolume)}</td>
                             <td className="num">{r.huidigePositie ? `${r.huidigePositie} → ${r.targetPositie}` : `→ ${r.targetPositie}`}</td>
                             <td className="num prio-uplift">{getal(r.extraKlikkenPerMaand)}</td>
+                            <td className="num prio-kans" title={`Kansrijkheid ${kansIndex(r)} van de 100. Weegt de te winnen bezoekers, hoe koopgericht dit zoekwoord is, hoe goed het bij deze klant past en hoeveel werk het kost. 100 is de beste kans van deze scan.`}>
+                              <span className="prio-kans-balk" aria-hidden="true"><i style={{ width: `${kansIndex(r)}%` }} /></span>
+                              <span className="prio-kans-getal">{kansIndex(r)}</span>
+                            </td>
                             <td>{r.effort <= 3 ? "klein" : r.effort <= 6 ? "middel" : "groot"}</td>
                             <td className="prio-skill">
                               <button
@@ -559,7 +589,7 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
                   );
                 })}
                 {!groepen.length && (
-                  <tr><td colSpan={8} className="muted prio-leeg">Niets gevonden met deze zoekterm.</td></tr>
+                  <tr><td colSpan={9} className="muted prio-leeg">Niets gevonden met deze zoekterm.</td></tr>
                 )}
               </tbody>
             </table>
