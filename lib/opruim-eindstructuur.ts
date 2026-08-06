@@ -166,22 +166,35 @@ export async function bouwEindstructuur(slug: string, result: CannibalResult | n
   // het woord dat het vaakst voorkomt, zodat "soa-test-gouda" en "soa-test-breda"
   // bij elkaar komen; een woord dat maar één of twee pagina's dekt is geen tak.
   //
-  // Met één bovengrens erbij, en die is niet cosmetisch. Bij One Day Clinic staat
-  // "test" in bijna elke URL. Zonder grens werd dát het groepswoord, en dan komen
-  // /allergie-test/ en /bloedgroep-test/ onder één tak die toevallig "Crp test"
-  // gaat heten: een groep die niets betekent, met een misleidende naam. Een woord
-  // dat de halve site dekt is geen onderwerp maar ruis; dezelfde regel als in de
-  // onderwerp-detectie hierboven.
+  // Twee filters erbij, allebei uit wat er live misging bij One Day Clinic.
+  //
+  // 1. Een woord dat op een groot deel van de site staat is geen onderwerp maar
+  //    ruis. "test" staat daar in bijna elke URL; zonder grens werd dát de tak, en
+  //    dan komen /allergie-test/ en /bloedgroep-test/ onder één groep die niets
+  //    betekent. Dezelfde 8%-grens als in de onderwerp-detectie.
+  // 2. Vraagwoorden zijn geen onderwerp. /alles-wat-je-moet-weten-over-soas/ en
+  //    /anale-soa-wat-jij-moet-weten/ delen "wat", en dat leverde een tak "Wat" op.
+  //    Ze delen een schrijfstijl, geen thema.
+  //
+  // En de keuze zelf: van de woorden die overblijven wint het woord dat de meeste
+  // pagina's dekt, want dat is de grootste zinvolle groep. Dat is iets anders dan
+  // "het vaakst voorkomende woord": de te brede woorden zijn er dan al uit.
+  const VRAAGWOORDEN = new Set([
+    "wat", "hoe", "waarom", "wanneer", "waar", "welke", "kun", "kan", "moet", "mag",
+    "weten", "jij", "jouw", "jezelf", "zelf", "alles", "zonder", "meer", "beste", "goed",
+  ]);
+  const bruikbaar = (pad: string) => onderwerpWoorden(pad).filter((w) => !VRAAGWOORDEN.has(w));
+
   const freq = new Map<string, number>();
-  for (const p of plat) for (const w of new Set(onderwerpWoorden(p.pad))) freq.set(w, (freq.get(w) || 0) + 1);
-  const teBreed = Math.max(MIN_TAK * 3, Math.round(plat.length * 0.25));
+  for (const p of plat) for (const w of new Set(bruikbaar(p.pad))) freq.set(w, (freq.get(w) || 0) + 1);
+  const teBreed = Math.max(MIN_TAK + 3, Math.round(plat.length * 0.08));
   const losse: EindPagina[] = [];
   for (const p of plat) {
-    const woorden = [...new Set(onderwerpWoorden(p.pad))]
-      .filter((w) => (freq.get(w) || 0) <= teBreed)
+    const woorden = [...new Set(bruikbaar(p.pad))]
+      .filter((w) => { const n = freq.get(w) || 0; return n >= MIN_TAK && n <= teBreed; })
       .sort((a, b) => (freq.get(b) || 0) - (freq.get(a) || 0));
     const beste = woorden[0];
-    if (!beste || (freq.get(beste) || 0) < MIN_TAK) { losse.push(p); continue; }
+    if (!beste) { losse.push(p); continue; }
     const tak = `#${beste}`;
     if (!takMap.has(tak)) takMap.set(tak, []);
     takMap.get(tak)!.push(p);

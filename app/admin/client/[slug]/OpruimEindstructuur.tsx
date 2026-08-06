@@ -133,9 +133,14 @@ export default function OpruimEindstructuur({ slug, domain, data }: {
         <div className="opr-eind-los">
           <div className="opr-kop" style={{ fontSize: "var(--fs-sm)" }}>Staat los ({d.losse.length})</div>
           <p className="opr-kaart-tekst">
-            Deze pagina&rsquo;s horen bij geen enkele tak: contact, over ons, en alles wat op zichzelf staat. Dat is
-            prima, maar staat er iets tussen dat wél bij een onderwerp hoort, dan is dat een aanwijzing dat die tak nog
-            niet af is.
+            Deze pagina&rsquo;s vallen onder geen enkele tak: er zijn er geen drie die duidelijk hetzelfde onderwerp
+            delen. Bij contact en over ons is dat prima. Bij de rest is het juist het signaal:{" "}
+            <strong>
+              {d.losse.length > d.straks / 4
+                ? "dit is een fors deel van de site, dus hier ontbreekt structuur die er hoort te zijn"
+                : "staat er iets tussen dat wél bij een onderwerp hoort, dan is die tak nog niet af"}
+            </strong>. Dat is de volgende stap na het opruimen: deze pagina&rsquo;s een plek geven in plaats van ze los
+            te laten hangen.
           </p>
           <div className="opr-vb">
             {d.losse.slice(0, 30).map((l, i) => <span key={l.pad}>{i > 0 ? ", " : ""}<Link p={l.pad} /></span>)}
