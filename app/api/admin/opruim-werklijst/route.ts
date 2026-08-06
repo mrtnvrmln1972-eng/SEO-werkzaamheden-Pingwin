@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
-import { getClientBySlug } from "../../../../lib/clients";
 import { getCannibalAnalysis } from "../../../../lib/cannibal-redirect";
-import { adviesPerPlaats } from "../../../../lib/opruim-plaatsen";
 import { bouwWerklijst, tellingen } from "../../../../lib/opruim-werklijst";
 
 export const runtime = "nodejs";
@@ -20,16 +18,12 @@ export async function GET(req: NextRequest) {
   if (!slug) return NextResponse.json({ ok: false, error: "Geen klant opgegeven." }, { status: 400 });
   const g = await guardSlug(req, slug); if (!g.ok) return g.res;
 
-  const client = await getClientBySlug(slug);
-  const domain = (client?.domain || "").trim();
-  if (!domain) return NextResponse.json({ ok: false, error: "Deze klant heeft nog geen domein ingevuld." }, { status: 400 });
-
   try {
-    const [st, plaatsen] = await Promise.all([
-      getCannibalAnalysis(slug),
-      adviesPerPlaats(slug, domain).catch(() => ({ adviezen: [] })),
-    ]);
-    const regels = bouwWerklijst(st.result, plaatsen.adviezen);
+    // Bewust NIET opnieuw berekenen: het plaatsadvies staat opgeslagen bij de
+    // analyse. Het live doen kostte veertien seconden, en dat drie keer per
+    // scherm, waardoor het bovenste blok minutenlang "wordt samengesteld" toonde.
+    const st = await getCannibalAnalysis(slug);
+    const regels = bouwWerklijst(st.result, st.result?.plaatsen?.adviezen || []);
     return NextResponse.json({ ok: true, regels, tellingen: tellingen(regels), lijstDatum: st.result?.generatedAt || null });
   } catch (e) {
     return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : "Lijst bouwen mislukt." }, { status: 500 });

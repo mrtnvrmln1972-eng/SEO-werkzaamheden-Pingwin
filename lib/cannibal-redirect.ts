@@ -15,6 +15,7 @@ import { vindOnderwerpen, tweelingenVan, type Onderwerp } from "./opruim-onderwe
 import { feitenPerTerm, magSamenvoegen, intentieUitleg, intentieAlsInstructie } from "./opruim-intentie";
 import { autoriteitVan, haalbaarheidAlsInstructie } from "./opruim-haalbaarheid";
 import { vindGaten, type Gat } from "./opruim-gaten";
+import { adviesPerPlaats, type PlaatsAdvies, type PlaatsenRapport } from "./opruim-plaatsen";
 import { getEuroInstelling, berekenEuro, type EuroInstelling } from "./opruim-euro";
 import { toetsTermen } from "./opruim-serp";
 import { getSetting, setSetting, SETTING_OPRUIM_CRON_TIK } from "./settings";
@@ -63,6 +64,10 @@ export type CannibalResult = {
       geen enkele pagina op mikt. Opruimen maakt een site schoon, dit laat hem
       groeien. */
   gaten?: Gat[];
+  /** Het besluit per plaats, met de vestigingen en de URL-vormen erbij. Wordt
+      bewaard en niet bij elke paginaweergave opnieuw berekend: dat kostte
+      veertien seconden, en dat drie keer per scherm. */
+  plaatsen?: PlaatsenRapport | null;
 };
 // De analyse draait in hervatbare stappen. Reden: één volledige analyse kost 10 tot
 // 20 minuten (agentisch onderzoek + de grote JSON-synthese + drie doorloop-rondes) en
@@ -132,6 +137,8 @@ async function doEnsure(): Promise<void> {
   await sql`ALTER TABLE client_cannibal_analysis ADD COLUMN IF NOT EXISTS onderwerpen TEXT`;
   // De ontbrekende pagina's: waar de site helemaal niet op mikt.
   await sql`ALTER TABLE client_cannibal_analysis ADD COLUMN IF NOT EXISTS gaten TEXT`;
+  // Het besluit per plaats, bewaard in plaats van bij elke weergave herberekend.
+  await sql`ALTER TABLE client_cannibal_analysis ADD COLUMN IF NOT EXISTS plaatsen TEXT`;
 }
 
 function pagePath(u: string): string { return (u || "").replace(/^https?:\/\/[^/]+/i, "").trim() || (u || ""); }
@@ -188,7 +195,14 @@ type CannibalRow = {
   status: string; result: CannibalResult | null; error: string; updatedAt: string | null;
   fase: CannibalFase; ronde: number; retries: number; seed: string; findings: string;
   kandidaten: ZwakkePagina[]; behandeld: string[]; oppakken: Oppakker[]; onderwerpen: Onderwerp[]; gaten: Gat[];
+  plaatsen: PlaatsenRapport | null;
 };
+
+/** Zelfde als lijstVan, maar voor een kolom met één object erin. */
+function objectVan<T>(v: unknown): T | null {
+  if (!v) return null;
+  try { const j = JSON.parse(String(v)); return j && typeof j === "object" && !Array.isArray(j) ? (j as T) : null; } catch { return null; }
+}
 
 // JSON-kolom die ook leeg of stuk mag zijn: altijd een lijst terug, nooit een fout.
 function lijstVan<T>(v: unknown): T[] {
@@ -197,7 +211,7 @@ function lijstVan<T>(v: unknown): T[] {
 }
 
 async function readRow(slug: string): Promise<CannibalRow | null> {
-  const { rows } = await q`SELECT status, result, error, updated_at, fase, ronde, retries, seed, findings, kandidaten, behandeld, oppakken, onderwerpen, gaten FROM client_cannibal_analysis WHERE client_slug = ${slug} LIMIT 1`;
+  const { rows } = await q`SELECT status, result, error, updated_at, fase, ronde, retries, seed, findings, kandidaten, behandeld, oppakken, onderwerpen, gaten, plaatsen FROM client_cannibal_analysis WHERE client_slug = ${slug} LIMIT 1`;
   const r = rows[0];
   if (!r) return null;
   let result: CannibalResult | null = null;
@@ -217,6 +231,7 @@ async function readRow(slug: string): Promise<CannibalRow | null> {
     oppakken: lijstVan<Oppakker>(r.oppakken),
     onderwerpen: lijstVan<Onderwerp>(r.onderwerpen),
     gaten: lijstVan<Gat>(r.gaten),
+    plaatsen: objectVan<PlaatsenRapport>(r.plaatsen),
   };
 }
 
@@ -260,6 +275,16 @@ function zonderAds(result: CannibalResult, ads: AdsPaginas): CannibalResult {
     clusters: (result.clusters || [])
       .map((c) => ({ ...c, urls: c.urls.filter((u) => !weg(u.url)) }))
       .filter((c) => c.urls.length > 0),
+    // Ook in het plaatsadvies mag geen advertentiepagina blijven staan; dat
+      // advies wordt opgeslagen en kan dus van vóór het invullen dateren.
+    plaatsen: result.plaatsen
+      ? {
+          ...result.plaatsen,
+          adviezen: result.plaatsen.adviezen
+            .map((a) => ({ ...a, paginas: a.paginas.filter((p) => !wegAds(p.pad)) }))
+            .filter((a) => a.paginas.length > 0),
+        }
+      : result.plaatsen,
   };
 }
 
@@ -296,7 +321,7 @@ export async function getCannibalAnalysis(slug: string): Promise<CannibalState> 
     kandidaten: r.kandidaten.length,
     beoordeeld: r.behandeld.length,
     status: (r.status as CannibalState["status"]) || "idle",
-    result: r.result ? metEuro(zonderAds({ ...r.result, oppakken: r.oppakken, onderwerpen: r.onderwerpen, gaten: r.gaten }, adsNu), euroInst) : r.result,
+    result: r.result ? metEuro(zonderAds({ ...r.result, oppakken: r.oppakken, onderwerpen: r.onderwerpen, gaten: r.gaten, plaatsen: r.plaatsen }, adsNu), euroInst) : r.result,
     error: r.error,
     updatedAt: r.updatedAt,
     fase: r.fase,
@@ -338,10 +363,14 @@ export async function weegOpruimlijstOpnieuw(slug: string, domain: string): Prom
 
   // Meteen ook de verspreide onderwerpen en de ontbrekende pagina's bepalen. Eén
   // knop, drie controles: dit hoort bij elkaar en het scheelt Maarten handelingen.
-  const [onderwerpen, gaten] = await Promise.all([
+  const [onderwerpen, gaten, plaatsen] = await Promise.all([
     vindOnderwerpen(slug, domain).catch(() => [] as Onderwerp[]),
     vindGaten(slug, domain).catch(() => [] as Gat[]),
+    adviesPerPlaats(slug, domain).catch(() => null),
   ]);
+  if (plaatsen?.adviezen.length) {
+    await q`UPDATE client_cannibal_analysis SET plaatsen = ${JSON.stringify(plaatsen)}, updated_at = now() WHERE client_slug = ${slug}`;
+  }
   if (onderwerpen.length) {
     await q`UPDATE client_cannibal_analysis SET onderwerpen = ${JSON.stringify(onderwerpen)}, updated_at = now() WHERE client_slug = ${slug}`;
   }
@@ -586,7 +615,8 @@ async function stapMetReden(slug: string): Promise<{ uit: "verder" | "klaar"; re
       // En de andere helft: waar mikt de site helemaal niet op. Opruimen maakt een
       // site schoon, dit laat hem groeien; het hoort in dezelfde lijst thuis.
       const gaten = await vindGaten(slug, domain).catch(() => [] as Gat[]);
-      await q`UPDATE client_cannibal_analysis SET seed = ${seed}, kandidaten = ${JSON.stringify(kandidaten)}, oppakken = ${JSON.stringify(oppakken)}, onderwerpen = ${JSON.stringify(onderwerpen)}, gaten = ${JSON.stringify(gaten)}, updated_at = now() WHERE client_slug = ${slug}`;
+      const plaatsen = await adviesPerPlaats(slug, domain).catch(() => null);
+      await q`UPDATE client_cannibal_analysis SET seed = ${seed}, kandidaten = ${JSON.stringify(kandidaten)}, oppakken = ${JSON.stringify(oppakken)}, onderwerpen = ${JSON.stringify(onderwerpen)}, gaten = ${JSON.stringify(gaten)}, plaatsen = ${JSON.stringify(plaatsen)}, updated_at = now() WHERE client_slug = ${slug}`;
     }
 
     // STAP 1 — agentic onderzoek: het model zoomt in op verdachte pagina's en schrijft

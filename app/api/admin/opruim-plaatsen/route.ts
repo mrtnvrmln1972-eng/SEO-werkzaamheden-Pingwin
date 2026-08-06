@@ -3,6 +3,7 @@ import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
 import { getClientBySlug } from "../../../../lib/clients";
 import { adviesPerPlaats } from "../../../../lib/opruim-plaatsen";
+import { getCannibalAnalysis } from "../../../../lib/cannibal-redirect";
 
 export const runtime = "nodejs";
 // Eén Ahrefs-opvraag voor alle plaatstermen samen, plus Search Console. Ruim
@@ -24,6 +25,13 @@ export async function GET(req: NextRequest) {
   if (!domain) return NextResponse.json({ ok: false, error: "Deze klant heeft nog geen domein ingevuld." }, { status: 400 });
 
   try {
+    // Het opgeslagen rapport eerst: opnieuw uitrekenen duurt veertien seconden en
+    // levert bij een ongewijzigde site hetzelfde op. Met ?vers=1 forceer je het.
+    if (req.nextUrl.searchParams.get("vers") !== "1") {
+      const st = await getCannibalAnalysis(slug).catch(() => null);
+      const bewaard = st?.result?.plaatsen;
+      if (bewaard?.adviezen?.length) return NextResponse.json({ ok: true, ...bewaard });
+    }
     return NextResponse.json({ ok: true, ...(await adviesPerPlaats(slug, domain)) });
   } catch (e) {
     return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : "Advies bepalen mislukt." }, { status: 500 });
