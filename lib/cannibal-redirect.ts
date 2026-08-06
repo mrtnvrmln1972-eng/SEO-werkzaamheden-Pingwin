@@ -16,6 +16,7 @@ import { feitenPerTerm, magSamenvoegen, intentieUitleg, intentieAlsInstructie } 
 import { autoriteitVan, haalbaarheidAlsInstructie } from "./opruim-haalbaarheid";
 import { vindGaten, type Gat } from "./opruim-gaten";
 import { getEuroInstelling, berekenEuro, type EuroInstelling } from "./opruim-euro";
+import { toetsTermen } from "./opruim-serp";
 import { getSetting, setSetting, SETTING_OPRUIM_CRON_TIK } from "./settings";
 
 // ═══════════════════════════════════════════════════════════
@@ -358,6 +359,14 @@ export async function weegOpruimlijstOpnieuw(slug: string, domain: string): Prom
   if (!teWegen.length) return { gered: 0, over: 0, oppakken: row?.oppakken || [], onderwerpen: onderwerpen.length, gaten: gaten.length };
 
   const vers = await weegPaden(domain, teWegen);
+
+  // De top 10-toets erbij: verdient deze zoekterm een eigen pagina, of hoort hij
+  // als hoofdstuk op een bredere pagina? Dit is de vraag die de lijst "oppakken"
+  // nooit stelde, en zonder antwoord bouwt hij drie pagina's waar er één hoort.
+  // Eén opvraag per term, 90 dagen bewaard; alleen voor termen die er toe doen.
+  const toetsbaar = vers.filter((o) => (o.volume || 0) >= 50).map((o) => o.term);
+  const toetsen = await toetsTermen(toetsbaar).catch(() => new Map());
+  for (const o of vers) o.eigenPagina = toetsen.get(o.term) || null;
   const versPerPad = new Map(vers.map((o) => [padOf(o.pad), o]));
 
   // Alleen wat NU nog op de omleidlijst staat telt als "gered"; de rest stond er

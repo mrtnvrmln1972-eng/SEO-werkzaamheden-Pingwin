@@ -29,10 +29,24 @@ export type Oppakker = {
   intentie?: "transactioneel" | "commercieel" | "informatief" | "navigatie" | "";
   haalbaarheid?: Haalbaarheid;
   euro?: { perMaand: number; perJaar: number; extraKlikkenPerMaand: number; doelPositie: number; uitleg: string } | null;
+  eigenPagina?: {
+    oordeel: "eigen pagina" | "hoofdstuk" | "onbekend";
+    eigen: number; breed: number; gemeten: number; hoofdonderwerp: string; uitleg: string;
+    voorbeelden: { url: string; positie: number; eigen: boolean }[];
+  } | null;
 };
 
 /** Bedragen zonder centen: die suggereren een precisie die er niet is. */
 export const bedrag = (n: number) => `€ ${Math.round(n).toLocaleString("nl-NL")}`;
+
+/** Een concurrent-URL leesbaar houden: domein plus het laatste stuk van het pad. */
+function kortUrl(u: string): string {
+  try {
+    const x = new URL(u);
+    const laatste = x.pathname.replace(/\/$/, "").split("/").filter(Boolean).pop() || "";
+    return `${x.hostname.replace(/^www\./, "")}${laatste ? `/${laatste}` : ""}`;
+  } catch { return u; }
+}
 
 // Wat wil iemand die dit intypt? Bepaalt wat voor soort pagina hier hoort.
 export function intentieTekst(i?: string): string {
@@ -118,6 +132,7 @@ export default function OpruimOppakken({ slug, domain, rijen, clientName, client
 
   const buitenBereik = rijen.filter((o) => o.haalbaarheid?.oordeel === "buiten bereik").length;
   const euroTotaal = rijen.reduce((n, o) => n + (o.euro?.perMaand || 0), 0);
+  const hoofdstukken = rijen.filter((o) => o.eigenPagina?.oordeel === "hoofdstuk").length;
   const autoriteit = rijen.find((o) => o.haalbaarheid?.autoriteit != null)?.haalbaarheid?.autoriteit ?? null;
 
   return (
@@ -131,6 +146,14 @@ export default function OpruimOppakken({ slug, domain, rijen, clientName, client
       </p>
       {/* De haalbaarheidsrem, zichtbaar in plaats van stilzwijgend. Volume zegt hoe
           groot de taart is, niet of deze site er een punt van krijgt. */}
+      {hoofdstukken > 0 && (
+        <p className="opr-kaart-tekst">
+          <strong>Let op: {hoofdstukken} van deze {rijen.length} zoektermen verdient geen eigen pagina.</strong> Dat
+          volgt niet uit het zoekvolume maar uit de zoekresultaten zelf: voor die termen bestaat de top 10 vooral uit
+          bredere pagina&rsquo;s. Er los een pagina voor bouwen levert dan geen extra plek op, maar wel een pagina die
+          met je eigen bredere pagina gaat concurreren. Die horen samen te gaan als hoofdstuk, niet apart.
+        </p>
+      )}
       {euroTotaal > 0 && (
         <p className="opr-kaart-tekst">
           Bij elkaar is deze lijst naar schatting <strong>{bedrag(euroTotaal)} per maand</strong> waard, oftewel{" "}
@@ -159,6 +182,7 @@ export default function OpruimOppakken({ slug, domain, rijen, clientName, client
               <th>Per maand</th>
               <th>Moeilijkheid</th>
               <th>Kans</th>
+              <th>Eigen pagina?</th>
               <th>Bezoeker</th>
               {euroTotaal > 0 && <th>Waarde</th>}
               {!alleenLezen && <th>Actie</th>}
@@ -174,6 +198,16 @@ export default function OpruimOppakken({ slug, domain, rijen, clientName, client
                 <td>{o.volume != null ? `${o.volume}x` : "—"}</td>
                 <td>{o.moeilijkheid != null ? o.moeilijkheid : "—"}</td>
                 <td><KansChip h={o.haalbaarheid} /></td>
+                {/* Verdient deze term een eigen pagina? Dat volgt uit de top 10,
+                    niet uit het zoekvolume, en het bepaalt of dit één klus is of
+                    een hoofdstuk in een bestaande pagina. */}
+                <td>
+                  {o.eigenPagina && o.eigenPagina.oordeel !== "onbekend"
+                    ? <span className={`opr-chip ${o.eigenPagina.oordeel === "eigen pagina" ? "keep" : "nodig"}`} title={o.eigenPagina.uitleg}>
+                        {o.eigenPagina.oordeel === "eigen pagina" ? "ja" : "hoofdstuk"}
+                      </span>
+                    : <span className="opr-leeg">&mdash;</span>}
+                </td>
                 <td>{intentieTekst(o.intentie) || <span className="opr-leeg">&mdash;</span>}</td>
                 {euroTotaal > 0 && (
                   <td>
@@ -227,6 +261,19 @@ export default function OpruimOppakken({ slug, domain, rijen, clientName, client
                             ? ` Deze pagina doet er zelf al aan mee, op plek ${o.huidigePositie}, dus de basis ligt er.`
                             : ""}
                         </p>
+                        {o.eigenPagina && o.eigenPagina.oordeel !== "onbekend" && (
+                          <p>
+                            <strong>Verdient dit een eigen pagina?</strong> {o.eigenPagina.uitleg}
+                            {o.eigenPagina.voorbeelden.length > 0 && (
+                              <> Uit de top 10: {o.eigenPagina.voorbeelden.slice(0, 6).map((v, k) => (
+                                <span key={v.url}>{k > 0 ? ", " : ""}
+                                  <a className="opr-pad" href={v.url} target="_blank" rel="noreferrer">{kortUrl(v.url)}</a>
+                                  {v.eigen ? " (eigen pagina)" : " (breder stuk)"}
+                                </span>
+                              ))}.</>
+                            )}
+                          </p>
+                        )}
                         {o.euro && <p><strong>Wat het waard is:</strong> {o.euro.uitleg}</p>}
                         {o.haalbaarheid && o.haalbaarheid.oordeel !== "onbekend" && (
                           <p>

@@ -55,6 +55,9 @@ export type Oppakker = {
   /** Wat het waard is per maand. Wordt bij het uitlezen berekend, niet opgeslagen,
       zodat een nieuwe klantwaarde meteen doorwerkt zonder nieuwe analyse. */
   euro?: import("./opruim-euro").Euro | null;
+  /** Verdient deze zoekterm een eigen pagina, of hoort hij als hoofdstuk op een
+      bredere pagina? Dat volgt uit de top 10, niet uit het zoekvolume. */
+  eigenPagina?: import("./opruim-serp").EigenPaginaToets | null;
 };
 
 const padVan = (u: string) => { try { return new URL(u).pathname; } catch { return (u || "").trim(); } };
