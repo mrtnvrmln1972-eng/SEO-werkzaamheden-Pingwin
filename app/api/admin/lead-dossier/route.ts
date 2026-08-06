@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
 import { addDossierItem, listDossier, getDossierItem, deleteDossierItem } from "../../../../lib/lead-dossier";
-import { readDriveDoc, uploadDocx } from "../../../../lib/drive";
-import { getPageDriveFolder } from "../../../../lib/site-urls";
+import { readDriveDoc } from "../../../../lib/drive";
+import { leesAangeleverdDocument } from "../../../../lib/doc-versions";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -46,33 +46,22 @@ export async function POST(req: NextRequest) {
 
     const naam = file.name || "aangeleverd-document";
     const buf = Buffer.from(await file.arrayBuffer());
-    let tekst = "";
-    let driveLink = "";
 
-    if (/\.(txt|md|json|csv|tsv)$/i.test(naam)) {
-      tekst = buf.toString("utf8");
-    } else if (/\.docx$/i.test(naam)) {
-      // Het origineel gaat veilig naar Drive (blijft onaangetast bewaard) en de
-      // omgezette versie lezen we uit voor de tekst.
-      let dest = "";
-      try { const f = await getPageDriveFolder(slug, "__lead__"); if (f) dest = f.folderId; } catch { /* hoofdmap */ }
-      try {
-        const up = await uploadDocx(dest || "root", `Aangeleverd-${new Date().toISOString().slice(0, 10)}-${naam}`, buf);
-        driveLink = up.link;
-        const read = await readDriveDoc(up.id, 60000);
-        if (read.ok) tekst = read.text || "";
-      } catch (e) {
-        return NextResponse.json({ ok: false, error: "Uploaden naar Drive mislukte: " + (e as Error).message }, { status: 500 });
-      }
-    } else {
-      return NextResponse.json(
-        { ok: false, error: "Dit bestandstype kan ik nog niet lezen. Sleep een .docx, .txt, .md of .csv, of zet het bestand in Drive en plak de link (een PDF wordt door Drive vanzelf leesbaar gemaakt)." },
-        { status: 400 },
-      );
+    // Eén inleesweg voor élk aangeleverd bestand, dezelfde die de pagina-dropzone
+    // en de mail-bijlage gebruiken. Deze route had zijn eigen, beperktere versie
+    // en weigerde daardoor pdf, terwijl het systeem pdf allang kan lezen. Precies
+    // het geval dat je nodig hebt: een Ads-analyse van een collega komt als pdf.
+    // Lege pagina meegeven: een lead heeft geen pagina's, dus het bestand landt
+    // in de map van het bedrijf zelf in plaats van in een verzonnen paginamap.
+    const lees = await leesAangeleverdDocument(slug, "", naam, buf);
+    if (!lees.ok || !lees.tekst?.trim()) {
+      return NextResponse.json({ ok: false, error: lees.error || "Kon geen leesbare tekst uit dit bestand halen." }, { status: 400 });
     }
-    if (!tekst.trim()) return NextResponse.json({ ok: false, error: "Kon geen leesbare tekst uit dit bestand halen." }, { status: 400 });
 
-    const item = await addDossierItem(slug, { inhoud: tekst, titel: "", soort: "document", bron: `Bestand: ${naam}`, driveLink });
+    const item = await addDossierItem(slug, {
+      inhoud: lees.tekst, titel: "", soort: "document",
+      bron: `Bestand: ${naam}`, driveLink: lees.driveLink || "",
+    });
     return NextResponse.json({ ok: true, item });
   }
 

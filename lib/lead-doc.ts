@@ -3,7 +3,7 @@ import { getClientBySlug } from "./clients";
 import { callClaude } from "./anthropic";
 import { buildPingwinDoc, type DocSection, type DocSpec } from "./pingwin-docx";
 import { uploadDocx } from "./drive";
-import { getPageDriveFolder } from "./site-urls";
+import { ensureFolderFor } from "./drive-map";
 import { dossierVolledigText, addDossierItem } from "./lead-dossier";
 import { PINGWIN_WERKWIJZE, PINGWIN_SCHRIJFREGELS, PINGWIN_DATA_VOORBEHOUD } from "./pingwin-methode";
 
@@ -155,9 +155,9 @@ function safeName(s: string): string {
   return (s || "document").replace(/[^\p{L}\p{N} _-]+/gu, "").replace(/\s+/g, "-").slice(0, 60) || "document";
 }
 
-// De vaste Drive-map van dit bedrijf; valt terug op de hoofdmap zodat een
-// document altijd ergens landt in plaats van te mislukken.
-const LEAD_FOLDER_KEY = "__lead__";
+// De Drive-map van dit bedrijf. Die wordt automatisch aangemaakt als hij er nog
+// niet is; valt terug op de hoofdmap zodat een document altijd ergens landt in
+// plaats van te mislukken op een ontbrekende map.
 
 export type MaakDocResultaat = {
   ok: boolean;
@@ -242,7 +242,7 @@ ${dossier || "(het dossier is nog leeg; baseer je op wat in de opdracht staat en
   catch (e) { return { ok: false, error: "Document opmaken mislukte: " + (e as Error).message }; }
 
   let dest = "";
-  try { const f = await getPageDriveFolder(slug, LEAD_FOLDER_KEY); if (f) dest = f.folderId; } catch { /* geen map, dan de hoofdmap */ }
+  try { dest = (await ensureFolderFor(slug, "")) || ""; } catch { /* geen map, dan de hoofdmap */ }
   let driveLink = "", driveError = "";
   try {
     const up = await uploadDocx(dest || "root", `${safeName(client.name)}-${safeName(sjabloon.naam)}.docx`, buffer);
