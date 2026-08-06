@@ -192,9 +192,10 @@ export default function GmbPanel({ slug, clientName, clientEmail, pingwinEmail, 
     if (!keys.length && soort !== "beheer") { setTaakMelding("Vink eerst aan wat er op de planning moet."); return; }
     setTaakBusy(true); setTaakMelding("");
     try {
-      const d = await fetch("/api/admin/gmb/taak", {
+      // De gedeelde ingang, dezelfde voor elk scherm dat iets signaleert.
+      const d = await fetch("/api/admin/signaal-taak", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, soort, sleutel, keys: keys.length ? keys : [soort] }),
+        body: JSON.stringify({ slug, bron: `gmb-${soort}`, keys: keys.length ? keys : [soort], ctx: { sleutel } }),
       }).then((x) => x.json());
       setTaakMelding(d.ok ? d.melding : (d.error || "Taken maken is niet gelukt."));
       if (d.ok) setGekozen(new Set());

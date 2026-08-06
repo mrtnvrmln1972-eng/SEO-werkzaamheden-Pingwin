@@ -702,7 +702,18 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
               "een link terug naar exact dit punt op dit scherm. Zonder die laatste is er over drie weken geen " +
               "weg terug naar waar de kaart vandaan kwam.\n\n" +
               "De uitnodiging om beheerder te worden kan op dezelfde manier op de planning, want dat is bij een " +
-              "nieuwe klant meestal de allereerste stap.",
+              "nieuwe klant meestal de allereerste stap.\n\n" +
+              "**Dit is bewust geen knop van dit ene scherm.** Het dashboard signaleert op steeds meer plekken " +
+              "iets dat gedaan moet worden, en als elk scherm zijn eigen weg naar de planning krijgt, gaan die " +
+              "vijf wegen uit elkaar lopen zonder dat iemand het merkt. Daarom is er één gedeelde laag: een " +
+              "scherm levert alleen wélke punten er op de planning moeten, en wát er dan in de kaart komt te " +
+              "staan (de drie vaste onderdelen, de terugweg-link, het samenvoegen met een bestaande kaart) " +
+              "staat op één plek. Een volgend scherm aansluiten is daarmee een blok van vijftien regels in " +
+              "plaats van een verbouwing.\n\n" +
+              "Aangesloten is nu het Google-bedrijfsprofiel. De prioriteitenscan, Meta en CTR, Opruimen en de " +
+              "interne links hebben nog hun eigen weg naar een taak, uit de tijd dat die laag er niet was; die " +
+              "gaan er per scherm doorheen, zodat er nooit een moment is waarop er twee manieren naast elkaar " +
+              "staan.",
           },
           {
             titel: "De uitnodigingsmail: één sjabloon, twee instellingen",
