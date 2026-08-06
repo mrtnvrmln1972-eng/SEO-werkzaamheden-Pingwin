@@ -168,12 +168,7 @@ export async function adviesPerPlaats(slug: string, domain: string): Promise<Pla
   // Alle plaatspagina's, gegroepeerd per plaats.
   const perPlaats = new Map<string, PlaatsPagina[]>();
   const vormen = new Set<string>();
-  for (const pad of live) {
-    const vorm = vormVan(pad);
-    if (!locatieVormen.has(vorm)) continue;
-    const plaats = plaatsIn(pad);
-    if (!plaats) continue;
-    vormen.add(vorm);
+  const pushPagina = (pad: string, vorm: string, plaats: string) => {
     const g = perPagina.get(norm(pad));
     if (!perPlaats.has(plaats)) perPlaats.set(plaats, []);
     perPlaats.get(plaats)!.push({
@@ -182,9 +177,34 @@ export async function adviesPerPlaats(slug: string, domain: string): Promise<Pla
       vertoningen: g?.vertoningen || 0,
       positie: g?.beste != null ? Math.round(g.beste * 10) / 10 : null,
     });
+  };
+  for (const pad of live) {
+    const vorm = vormVan(pad);
+    if (!locatieVormen.has(vorm)) continue;
+    const plaats = plaatsIn(pad);
+    if (!plaats) continue;
+    vormen.add(vorm);
+    pushPagina(pad, vorm, plaats);
   }
   if (!perPlaats.size) {
     return { adviezen: [], vestigingen: [...vestigingen], vormen: [], gekozenVorm, autoriteit, paginasNu: 0, paginasStraks: 0 };
+  }
+
+  // Losse zwervers: een pagina die zelf niet genoeg lotgenoten heeft om als vorm
+  // te tellen (bijvoorbeeld maar twee pagina's in die vorm), maar wél over een
+  // plaats gaat die via een ANDERE vorm al erkend is. Zo'n pagina hoort bij het
+  // besluit voor die plaats, anders blijft hij onopgemerkt naast de rest staan.
+  // Ontdekt bij One Day Clinic: /soa-klinieken/soa-kliniek-cuijk/ en
+  // -soa-kliniek-nuenen/ zijn de enige twee pagina's in die vorm en haalden de
+  // drempel van vijf dus nooit, terwijl cuijk en nuenen via /soa-poli-<plaats>/
+  // al lang bekende plaatsen waren.
+  for (const pad of live) {
+    const vorm = vormVan(pad);
+    if (locatieVormen.has(vorm)) continue; // al meegenomen in de eerste ronde
+    if (!vorm.includes("<plaats>") || !echteVorm(vorm)) continue;
+    const plaats = plaatsIn(pad);
+    if (!plaats || !perPlaats.has(plaats)) continue; // alleen aanhaken bij een al bekende plaats
+    pushPagina(pad, vorm, plaats);
   }
 
   // De zoekterm per plaats: die van de pagina in de gekozen vorm, anders die van
