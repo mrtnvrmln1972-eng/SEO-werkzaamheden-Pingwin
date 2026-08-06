@@ -18,10 +18,34 @@
 import { useState } from "react";
 import MailVenster from "./MailVenster";
 
+export type Haalbaarheid = {
+  oordeel: "kansrijk" | "pittig" | "buiten bereik" | "onbekend";
+  kloof: number | null; moeilijkheid: number | null; autoriteit: number | null; uitleg: string;
+};
+
 export type Oppakker = {
   pad: string; term: string; volume: number | null; moeilijkheid: number | null;
   huidigePositie: number | null; vertoningen: number; botstMet: string[];
+  intentie?: "transactioneel" | "commercieel" | "informatief" | "navigatie" | "";
+  haalbaarheid?: Haalbaarheid;
 };
+
+// Wat wil iemand die dit intypt? Bepaalt wat voor soort pagina hier hoort.
+export function intentieTekst(i?: string): string {
+  if (i === "transactioneel") return "wil iets regelen";
+  if (i === "commercieel") return "is aan het vergelijken";
+  if (i === "informatief") return "wil eerst iets weten";
+  if (i === "navigatie") return "zoekt het merk";
+  return "";
+}
+
+// De kans-chip. Kleur volgt de bestaande klassen: groen voor houden, oranje voor
+// samenvoegen, grijs voor de rest. Geen nieuwe kleuren erbij verzinnen.
+export function KansChip({ h }: { h?: Haalbaarheid }) {
+  if (!h || h.oordeel === "onbekend") return <span className="opr-leeg">&mdash;</span>;
+  const cls = h.oordeel === "kansrijk" ? "keep" : h.oordeel === "pittig" ? "merge" : "nodig";
+  return <span className={`opr-chip ${cls}`} title={h.uitleg}>{h.oordeel}</span>;
+}
 
 export default function OpruimOppakken({ slug, domain, rijen, clientName, clientEmail, alleenLezen = false }: {
   slug: string; domain: string; rijen: Oppakker[]; clientName?: string; clientEmail?: string;
@@ -50,8 +74,10 @@ export default function OpruimOppakken({ slug, domain, rijen, clientName, client
           toelichting: [
             `Deze pagina haalt nu niets uit Google op zijn eigen onderwerp, maar de zoekterm "${o.term}" is ${o.volume} zoekopdrachten per maand waard${o.moeilijkheid != null ? ` (moeilijkheid ${o.moeilijkheid})` : ""}.`,
             o.huidigePositie != null ? `Hij doet al mee op plek ${o.huidigePositie}, dus er is iets om op voort te bouwen.` : "Hij doet op die term nog niet mee in de resultaten.",
+            o.haalbaarheid && o.haalbaarheid.oordeel !== "onbekend" ? `Haalbaarheid: ${o.haalbaarheid.oordeel}. ${o.haalbaarheid.uitleg}` : "",
+            o.intentie ? `De bezoeker die "${o.term}" intypt ${intentieTekst(o.intentie)}; daar moet de pagina op aansluiten.` : "",
             "Geen omleiding dus, maar de gewone route: analyse van de huidige pagina, blauwdruk op basis van de top 10, en daarna de copy.",
-          ].join(" "),
+          ].filter(Boolean).join(" "),
         }),
       }).then((r) => r.json());
       setKlaar((m) => ({ ...m, [o.pad]: d?.ok ? `Staat in week ${d.week}.` : (d?.error || "Toevoegen mislukte.") }));
@@ -69,6 +95,10 @@ export default function OpruimOppakken({ slug, domain, rijen, clientName, client
       "",
       `Toch halen we hem niet weg. De zoekterm die bij deze pagina hoort is **"${o.term}"**, en daar wordt ${o.volume != null ? `ongeveer ${o.volume} keer per maand` : "regelmatig"} op gezocht${o.moeilijkheid != null ? `, bij een concurrentie van ${o.moeilijkheid} op 100` : ""}. Geen andere pagina van de website richt zich op die term.${o.huidigePositie != null ? ` Deze pagina doet er zelf al aan mee, rond plek ${o.huidigePositie}.` : ""}`,
       "",
+      ...(o.haalbaarheid && o.haalbaarheid.oordeel !== "onbekend"
+        ? ["", `En het is ook realistisch: ${o.haalbaarheid.uitleg.charAt(0).toLowerCase()}${o.haalbaarheid.uitleg.slice(1)}`]
+        : []),
+      "",
       "Dat betekent dat het probleem niet de pagina is, maar de invulling ervan. Daarom pakken we hem op in plaats van op te ruimen:",
       "",
       "- eerst analyseren wat de pagina nu doet en waar hij tekortschiet;",
@@ -81,6 +111,9 @@ export default function OpruimOppakken({ slug, domain, rijen, clientName, client
 
   if (!rijen.length) return null;
 
+  const buitenBereik = rijen.filter((o) => o.haalbaarheid?.oordeel === "buiten bereik").length;
+  const autoriteit = rijen.find((o) => o.haalbaarheid?.autoriteit != null)?.haalbaarheid?.autoriteit ?? null;
+
   return (
     <div className="opr-kaart">
       <div className="opr-kop">Oppakken, niet weghalen ({rijen.length})</div>
@@ -90,6 +123,18 @@ export default function OpruimOppakken({ slug, domain, rijen, clientName, client
         bezit hem. Ze omleiden zou dus een kans weggooien in plaats van rommel opruimen. Ze horen niet in de
         werklijst thuis maar in de planning: <strong>opnieuw opbouwen voor de term die ze verdienen</strong>.
       </p>
+      {/* De haalbaarheidsrem, zichtbaar in plaats van stilzwijgend. Volume zegt hoe
+          groot de taart is, niet of deze site er een punt van krijgt. */}
+      {buitenBereik > 0 && (
+        <p className="opr-kaart-tekst">
+          De lijst staat op volgorde van <strong>wat kan</strong>, niet van wat groot is. De moeilijkheid van elke term
+          is afgezet tegen de autoriteit van dit domein
+          {autoriteit != null ? <> (<strong>{autoriteit}</strong> op 100)</> : ""}.
+          {" "}{buitenBereik === 1 ? "Eén term staat" : `${buitenBereik} termen staan`} daarmee <strong>buiten bereik</strong>:
+          daar komt de site voorlopig niet tussen, dus die pagina&rsquo;s staan onderaan. Ze blijven wel staan;
+          weggooien is iets anders dan even laten liggen.
+        </p>
+      )}
 
       <div className="opr-scroll">
         <table className="opr-tabel">
@@ -99,6 +144,8 @@ export default function OpruimOppakken({ slug, domain, rijen, clientName, client
               <th>Kansrijk op</th>
               <th>Per maand</th>
               <th>Moeilijkheid</th>
+              <th>Kans</th>
+              <th>Bezoeker</th>
               {!alleenLezen && <th>Actie</th>}
               <th>Waarom</th>
             </tr>
@@ -110,6 +157,8 @@ export default function OpruimOppakken({ slug, domain, rijen, clientName, client
                 <td><strong>{o.term}</strong></td>
                 <td>{o.volume != null ? `${o.volume}x` : "—"}</td>
                 <td>{o.moeilijkheid != null ? o.moeilijkheid : "—"}</td>
+                <td><KansChip h={o.haalbaarheid} /></td>
+                <td>{intentieTekst(o.intentie) || <span className="opr-leeg">&mdash;</span>}</td>
                 {!alleenLezen && <td>
                   <button type="button" className="opr-btn" disabled={!!bezig} onClick={() => void naarWeekplan(o)}
                     title="Zet deze pagina als taak op de weekplanning. Daar krijgt hij zijn fases: analyse, blauwdruk, copy.">
@@ -144,6 +193,12 @@ export default function OpruimOppakken({ slug, domain, rijen, clientName, client
                             ? ` Deze pagina doet er zelf al aan mee, op plek ${o.huidigePositie}, dus de basis ligt er.`
                             : ""}
                         </p>
+                        {o.haalbaarheid && o.haalbaarheid.oordeel !== "onbekend" && (
+                          <p>
+                            <strong>Is het te winnen?</strong> {o.haalbaarheid.uitleg}
+                            {o.intentie ? <> De bezoeker die dit intypt {intentieTekst(o.intentie)}, dus dat bepaalt wat voor soort pagina hier hoort.</> : null}
+                          </p>
+                        )}
                         <p>
                           <strong>Wat we doen:</strong> niet omleiden, maar opnieuw opbouwen. De pagina blijft staan en gaat de gewone
                           route in: eerst de huidige pagina analyseren, dan een blauwdruk op basis van de top 10 voor

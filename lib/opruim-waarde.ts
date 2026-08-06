@@ -1,6 +1,7 @@
-import { getKeywordsOverview } from "./ahrefs";
 import { getGscQueryPagePairs } from "./google";
 import type { ZwakkePagina } from "./concurrenten";
+import { feitenPerTerm, type Intentie } from "./opruim-intentie";
+import { weegHaalbaarheid, autoriteitVan, OORDEEL_RANG, type Haalbaarheid } from "./opruim-haalbaarheid";
 
 // ═══════════════════════════════════════════════════════════
 // IS DEZE PAGINA WEL DOOD? DE REM OP DE OPRUIMLIJST
@@ -24,6 +25,13 @@ import type { ZwakkePagina } from "./concurrenten";
 //   volume + niemand anders bezit hem  -> OPPAKKEN (herontwikkelen, niet weghalen)
 //   volume + een ander bezit hem wel   -> omleiden, zoals altijd
 //   geen volume                        -> opruimen, zoals altijd
+//
+// AANVULLING 06-08-2026: volume alleen was te weinig. Er kwamen pagina's op de
+// lijst "oppakken" waarvan de zoekterm weliswaar volume had, maar een moeilijkheid
+// ver boven wat dit domein aankan. Zo'n pagina op de weekplanning zetten is werk
+// dat nooit iets oplevert. Elke regel krijgt daarom een haalbaarheidsoordeel
+// (opruim-haalbaarheid.ts) en de zoekintentie van zijn term (opruim-intentie.ts).
+// Er verdwijnt niets uit de lijst; hij sorteert zichzelf op wat kán.
 // ═══════════════════════════════════════════════════════════
 
 /** Vanaf hoeveel zoekopdrachten per maand is een term het waard om een eigen
@@ -39,6 +47,11 @@ export type Oppakker = {
   huidigePositie: number | null;// waar hij nu staat op die term, als hij meedoet
   vertoningen: number;          // hoe vaak hij al getoond werd in Google
   botstMet: string[];           // pagina's waarmee hij op andere termen overlapt
+  /** Wat wil iemand die deze term intypt: doen, of eerst weten? Bepaalt wat voor
+      soort pagina hier hoort, en of hij ooit met een andere samen mag. */
+  intentie?: Intentie;
+  /** Is deze term voor dit domein te winnen, of is het een illusie? */
+  haalbaarheid?: Haalbaarheid;
 };
 
 const padVan = (u: string) => { try { return new URL(u).pathname; } catch { return (u || "").trim(); } };
@@ -91,8 +104,13 @@ export async function weegPaden(
   }
   if (!termen.size) return [];
 
-  const overzicht = await getKeywordsOverview([...new Set(termen.values())]).catch(() => []);
-  const volumes = new Map(overzicht.map((o) => [o.keyword.toLowerCase(), o]));
+  // Volume, moeilijkheid én intentie in één opvraag, plus de autoriteit van het
+  // domein. Die laatste is één opvraag per week; de rest zit in de cache van 30
+  // dagen die er toch al was.
+  const [feiten, autoriteit] = await Promise.all([
+    feitenPerTerm([...new Set(termen.values())]),
+    autoriteitVan(domain).catch(() => null),
+  ]);
 
   // Wie bezit welke term? Uit Search Console, dus uit eigen data en gratis. Een
   // andere pagina "bezit" de term als hij er zichtbaar op meedoet; dan is dit
@@ -111,7 +129,7 @@ export async function weegPaden(
     const pad = padVan(k.pad);
     const term = termen.get(pad);
     if (!term) continue;
-    const kw = volumes.get(term);
+    const kw = feiten.get(term);
     const volume = kw?.volume ?? null;
     if (volume == null || volume < DREMPEL_VOLUME) continue;
 
@@ -122,15 +140,23 @@ export async function weegPaden(
       .sort((a, b) => b.impressions - a.impressions)[0];
     if (ander && ander.impressions >= Math.max(20, (eigen?.impressions || 0) * 2)) continue;
 
+    const moeilijkheid = kw?.moeilijkheid ?? null;
+    const huidigePositie = eigen ? Math.round(eigen.position * 10) / 10 : null;
+
     oppakken.push({
-      pad, term, volume,
-      moeilijkheid: kw?.difficulty ?? null,
-      huidigePositie: eigen ? Math.round(eigen.position * 10) / 10 : null,
+      pad, term, volume, moeilijkheid, huidigePositie,
       vertoningen: k.vertoningen || 0,
       botstMet: (k.dubbelMet || []).map(padVan).filter(Boolean).slice(0, 4),
+      intentie: kw?.intentie ?? "",
+      haalbaarheid: weegHaalbaarheid(moeilijkheid, autoriteit, huidigePositie),
     });
   }
 
-  oppakken.sort((a, b) => (b.volume || 0) - (a.volume || 0));
+  // Eerst wat kán, dan pas wat groot is. Een term van 2000 per maand die buiten
+  // bereik ligt hoort niet boven een term van 200 die te winnen is; dat is precies
+  // de verkeerde volgorde om een weekplanning mee te vullen.
+  oppakken.sort((a, b) =>
+    OORDEEL_RANG[a.haalbaarheid?.oordeel || "onbekend"] - OORDEEL_RANG[b.haalbaarheid?.oordeel || "onbekend"] ||
+    (b.volume || 0) - (a.volume || 0));
   return oppakken;
 }

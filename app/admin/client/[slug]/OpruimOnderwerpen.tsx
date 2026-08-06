@@ -15,14 +15,23 @@
 
 import { useState } from "react";
 import MailVenster from "./MailVenster";
+import { KansChip, intentieTekst, type Haalbaarheid } from "./OpruimOppakken";
 
 export type Onderwerp = {
   sleutel: string;
-  paginas: { pad: string; term: string; bestePositie: number | null; vertoningen: number; klikken: number }[];
+  paginas: { pad: string; term: string; bestePositie: number | null; vertoningen: number; klikken: number; intentie?: string }[];
   termen: { keyword: string; volume: number | null; positie: number | null }[];
   volumeTotaal: number;
   bestePositie: number | null;
   voorstel: string;
+  kamp?: "doen" | "weten" | "merk" | "onbekend";
+  haalbaarheid?: Haalbaarheid;
+  apartGehouden?: { pad: string; term: string; intentie: string; reden: string }[];
+};
+
+const KAMP_TEKST: Record<string, string> = {
+  doen: "bezoekers die iets willen regelen",
+  weten: "bezoekers die eerst iets willen weten",
 };
 
 export default function OpruimOnderwerpen({ slug, domain, rijen, clientName, clientEmail, alleenLezen = false }: {
@@ -68,6 +77,11 @@ export default function OpruimOnderwerpen({ slug, domain, rijen, clientName, cli
       "",
       "Dat is precies het patroon waar losse pagina's elkaar in de weg zitten: Google ziet drie halve antwoorden op dezelfde vraag en kiest er geen van, terwijl één goede pagina wel zou meedoen.",
       "",
+      ...(o.haalbaarheid && o.haalbaarheid.oordeel !== "onbekend" ? ["", `**Is dit haalbaar?** ${o.haalbaarheid.uitleg}`] : []),
+      ...(o.apartGehouden && o.apartGehouden.length
+        ? ["", `Wat we er bewust buiten laten: ${o.apartGehouden.map((a) => a.pad).join(", ")}. Die pagina's gaan over dezelfde woorden, maar de bezoeker wil er iets anders (${o.apartGehouden.map((a) => intentieTekst(a.intentie)).filter(Boolean).join(", ") || "een andere zoekintentie"}). Die samenvoegen zou juist bezoekers kosten.`]
+        : []),
+      "",
       `Ons voorstel: **${o.voorstel}** wordt de vaste pagina voor dit onderwerp. De andere pagina's worden daarin samengevoegd en gaan er vervolgens naartoe verwijzen, zodat alle opgebouwde waarde op één plek terechtkomt.`,
       "",
       "De stappen:",
@@ -99,6 +113,8 @@ export default function OpruimOnderwerpen({ slug, domain, rijen, clientName, cli
             <span className="opr-chip merge">{o.volumeTotaal}x per maand</span>
             <span className="opr-chip">{o.paginas.length} pagina&rsquo;s</span>
             <span className="opr-chip">beste plek {o.bestePositie != null ? Math.round(o.bestePositie) : "geen"}</span>
+            <KansChip h={o.haalbaarheid} />
+            {o.kamp && KAMP_TEKST[o.kamp] && <span className="opr-chip">{KAMP_TEKST[o.kamp]}</span>}
             {!alleenLezen && (
               <span className="opr-kaart-acties">
                 <button type="button" className="opr-btn" disabled={!!bezig} onClick={() => void naarWeekplan(o)}
@@ -132,6 +148,21 @@ export default function OpruimOnderwerpen({ slug, domain, rijen, clientName, cli
             </tbody>
           </table>
 
+          {/* De intentie-rem, zichtbaar. Een pagina die stilletjes uit een cluster
+              verdwijnt is niet te controleren; hier staat hij, met de reden erbij. */}
+          {o.apartGehouden && o.apartGehouden.length > 0 && (
+            <div className="opr-uitleg" style={{ marginTop: "var(--s-2)" }}>
+              <p style={{ margin: 0 }}>
+                <strong>Blijft er bewust buiten:</strong>{" "}
+                {o.apartGehouden.map((a, k) => (
+                  <span key={a.pad}>{k > 0 ? ", " : ""}<Link p={a.pad} /> ({intentieTekst(a.intentie) || "andere zoekintentie"})</span>
+                ))}
+                . Deze pagina&rsquo;s gaan over dezelfde woorden, maar de bezoeker wil er iets anders.
+                Samenvoegen zou daar één van de twee groepen kosten.
+              </p>
+            </div>
+          )}
+
           <button type="button" className="opr-meer" onClick={() => setOpen((m) => ({ ...m, [o.sleutel]: !m[o.sleutel] }))}>
             {open[o.sleutel] ? "▾ minder" : "▸ waarom dit één pagina moet worden"}
           </button>
@@ -150,6 +181,9 @@ export default function OpruimOnderwerpen({ slug, domain, rijen, clientName, cli
                     ? <>De beste plek die de site hierop haalt is <strong>plek {Math.round(o.bestePositie)}</strong>. Dat is buiten de eerste pagina van Google, dus er komt vrijwel niemand op af. Niet omdat het onderwerp te moeilijk is, maar omdat de aandacht over {o.paginas.length} pagina&rsquo;s verdeeld is: elk daarvan is een half antwoord.</>
                     : <>Geen van deze pagina&rsquo;s komt op dit moment in de resultaten voor. De aandacht is verdeeld over {o.paginas.length} pagina&rsquo;s die geen van alle af zijn.</>}
                 </p>
+                {o.haalbaarheid && o.haalbaarheid.oordeel !== "onbekend" && (
+                  <p><strong>Is dit te winnen?</strong> {o.haalbaarheid.uitleg}</p>
+                )}
                 <p>
                   <strong>Wat we doen:</strong> één van deze pagina&rsquo;s wordt de vaste pagina voor dit onderwerp, en de
                   andere gaan daarin op. Het voorstel is <Link p={o.voorstel} />, omdat die er nu het beste voor staat.

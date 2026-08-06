@@ -1,7 +1,8 @@
-import { getKeywordsOverview } from "./ahrefs";
 import { getGscQueryPagePairs } from "./google";
 import { getClientUrls } from "./site-urls";
 import { termUitPad } from "./opruim-waarde";
+import { feitenPerTerm, kampVan, intentieUitleg, type Intentie, type Kamp } from "./opruim-intentie";
+import { weegHaalbaarheid, autoriteitVan, type Haalbaarheid } from "./opruim-haalbaarheid";
 
 // ═══════════════════════════════════════════════════════════
 // HET ONDERWERP-CLUSTER: EEN THEMA DAT OVER MEERDERE PAGINA'S LIGT
@@ -24,6 +25,15 @@ import { termUitPad } from "./opruim-waarde";
 // pagina's wordt de thuisbasis voor dit onderwerp, en wat doen we met de rest.
 // Dat is een besluit, geen regel, dus het krijgt een eigen blok in plaats van
 // stilletjes een bestemming.
+//
+// AANVULLING 06-08-2026, de twee remmen. Woorden delen is niet hetzelfde als
+// hetzelfde onderwerp zijn. "soa test kopen" en "wat is een soa test" delen bijna
+// alles, maar de één wil bestellen en de ander wil het snappen; die op één hoop
+// gooien kost een van beide bezoekers. Een cluster wordt daarom eerst gesplitst
+// op zoekintentie (opruim-intentie.ts), en pas daarna beoordeeld. En elk cluster
+// krijgt een haalbaarheidsoordeel (opruim-haalbaarheid.ts): drie pagina's bundelen
+// voor een term die ver boven de autoriteit van het domein ligt is werk zonder
+// uitkomst, en dat hoort erbij te staan vóór iemand het op de planning zet.
 // ═══════════════════════════════════════════════════════════
 
 /** Woorden die in bijna elke URL voorkomen en dus niets zeggen over het onderwerp. */
@@ -54,6 +64,7 @@ export type OnderwerpPagina = {
   bestePositie: number | null;
   vertoningen: number;
   klikken: number;
+  intentie?: Intentie;     // wat wil iemand die deze term intypt
 };
 
 export type Onderwerp = {
@@ -63,6 +74,14 @@ export type Onderwerp = {
   volumeTotaal: number;    // zoekopdrachten per maand voor het hele onderwerp
   bestePositie: number | null;
   voorstel: string;        // de pagina die de beste thuisbasis is
+  /** Het kamp waar dit cluster in valt: wil de bezoeker doen of eerst weten. */
+  kamp?: Kamp;
+  /** Kan dit onderwerp gewonnen worden met de autoriteit die deze site heeft? */
+  haalbaarheid?: Haalbaarheid;
+  /** Pagina's die op woorden bij dit cluster hoorden maar er bewust NIET in gaan,
+      omdat de bezoeker daar iets anders wil. Zichtbaar, want een pagina die
+      stilletjes verdwijnt uit een lijst is niet te controleren. */
+  apartGehouden?: { pad: string; term: string; intentie: Intentie; reden: string }[];
 };
 
 const padVan = (u: string) => { try { return new URL(u).pathname; } catch { return (u || "").trim(); } };
@@ -119,47 +138,86 @@ export async function vindOnderwerpen(slug: string, domain: string): Promise<Ond
     const t = termUitPad(p);
     if (t && t.split(" ").length >= 2) alleTermen.add(t);
   }
-  const overzicht = await getKeywordsOverview([...alleTermen]).catch(() => []);
-  const volumes = new Map(overzicht.map((o) => [o.keyword.toLowerCase(), o.volume]));
+  // Volume, moeilijkheid én intentie per term, plus de autoriteit van het domein.
+  const [feiten, autoriteit] = await Promise.all([
+    feitenPerTerm([...alleTermen]),
+    autoriteitVan(domain).catch(() => null),
+  ]);
 
   const uit: Onderwerp[] = [];
   for (const [woord, paden] of kandidaten) {
     const uniek = [...new Set(paden)];
     const paginas: OnderwerpPagina[] = uniek.map((p) => {
       const g = perPagina.get(norm(p));
+      const term = termUitPad(p);
       return {
-        pad: p, term: termUitPad(p),
+        pad: p, term,
         bestePositie: g?.beste != null ? Math.round(g.beste * 10) / 10 : null,
         vertoningen: g?.vertoningen || 0, klikken: g?.klikken || 0,
+        intentie: feiten.get(term)?.intentie ?? "",
       };
     });
 
-    // Alleen interessant als er echt volume in zit en niemand hem pakt. Staat er
-    // al een pagina in de top 10, dan is dit onderwerp gewoon in orde.
-    const termen = paginas
-      .map((p) => ({ keyword: p.term, volume: volumes.get(p.term) ?? null, positie: p.bestePositie }))
-      .filter((t) => t.keyword && (t.volume || 0) > 0);
-    const volumeTotaal = termen.reduce((n, t) => n + (t.volume || 0), 0);
-    if (volumeTotaal < 200) continue;
+    // REM 1. Splitsen op zoekintentie vóór er ook maar iets gebundeld wordt.
+    // Pagina's waar de bezoeker wil DOEN en pagina's waar hij wil WETEN zijn geen
+    // één onderwerp, hoeveel woorden ze ook delen. Merk- en onbekende termen
+    // kiezen geen kant: die sluiten aan bij het grootste kamp, want ze passen
+    // overal bij en mogen een cluster nooit uit elkaar trekken op een aanname.
+    const doen = paginas.filter((p) => kampVan(p.intentie || "") === "doen");
+    const weten = paginas.filter((p) => kampVan(p.intentie || "") === "weten");
+    const rest = paginas.filter((p) => { const k = kampVan(p.intentie || ""); return k !== "doen" && k !== "weten"; });
 
-    const posities = paginas.map((p) => p.bestePositie).filter((p): p is number => p != null);
-    const bestePositie = posities.length ? Math.min(...posities) : null;
-    if (bestePositie != null && bestePositie <= BUITEN_BEELD) continue;
+    const groepen: { kamp: Kamp; leden: OnderwerpPagina[]; anderen: OnderwerpPagina[] }[] =
+      doen.length && weten.length
+        ? [
+            { kamp: "doen" as Kamp, leden: [...doen, ...(doen.length >= weten.length ? rest : [])], anderen: weten },
+            { kamp: "weten" as Kamp, leden: [...weten, ...(weten.length > doen.length ? rest : [])], anderen: doen },
+          ]
+        : [{ kamp: (doen.length ? "doen" : weten.length ? "weten" : "onbekend") as Kamp, leden: paginas, anderen: [] }];
 
-    // Welke pagina is de logische thuisbasis? Die met de meeste klikken; bij
-    // gelijke stand die met de beste positie, en anders de eerste. Bewust een
-    // voorstel en geen besluit: Maarten kiest.
-    const voorstel = [...paginas].sort((a, b) =>
-      b.klikken - a.klikken ||
-      (a.bestePositie ?? 999) - (b.bestePositie ?? 999) ||
-      b.vertoningen - a.vertoningen)[0]?.pad || uniek[0];
+    for (const groep of groepen) {
+      const leden = groep.leden;
+      if (leden.length < MIN_PAGINAS) continue;
 
-    uit.push({
-      sleutel: woord,
-      paginas: paginas.sort((a, b) => (a.bestePositie ?? 999) - (b.bestePositie ?? 999)),
-      termen: termen.sort((a, b) => (b.volume || 0) - (a.volume || 0)),
-      volumeTotaal, bestePositie, voorstel,
-    });
+      // Alleen interessant als er echt volume in zit en niemand hem pakt. Staat er
+      // al een pagina in de top 10, dan is dit onderwerp gewoon in orde.
+      const termen = leden
+        .map((p) => ({ keyword: p.term, volume: feiten.get(p.term)?.volume ?? null, positie: p.bestePositie }))
+        .filter((t) => t.keyword && (t.volume || 0) > 0);
+      const volumeTotaal = termen.reduce((n, t) => n + (t.volume || 0), 0);
+      if (volumeTotaal < 200) continue;
+
+      const posities = leden.map((p) => p.bestePositie).filter((p): p is number => p != null);
+      const bestePositie = posities.length ? Math.min(...posities) : null;
+      if (bestePositie != null && bestePositie <= BUITEN_BEELD) continue;
+
+      // Welke pagina is de logische thuisbasis? Die met de meeste klikken; bij
+      // gelijke stand die met de beste positie, en anders de eerste. Bewust een
+      // voorstel en geen besluit: Maarten kiest.
+      const voorstel = [...leden].sort((a, b) =>
+        b.klikken - a.klikken ||
+        (a.bestePositie ?? 999) - (b.bestePositie ?? 999) ||
+        b.vertoningen - a.vertoningen)[0]?.pad || leden[0].pad;
+
+      // REM 2. De zwaarste term van het cluster bepaalt of dit te winnen is; dat is
+      // de term waar de thuisbasis straks op moet gaan staan.
+      const gesorteerd = termen.sort((a, b) => (b.volume || 0) - (a.volume || 0));
+      const hoofdterm = gesorteerd[0]?.keyword || "";
+      const haalbaarheid = weegHaalbaarheid(feiten.get(hoofdterm)?.moeilijkheid ?? null, autoriteit, bestePositie);
+
+      uit.push({
+        sleutel: groepen.length > 1 ? `${woord}:${groep.kamp}` : woord,
+        paginas: leden.sort((a, b) => (a.bestePositie ?? 999) - (b.bestePositie ?? 999)),
+        termen: gesorteerd,
+        volumeTotaal, bestePositie, voorstel,
+        kamp: groep.kamp,
+        haalbaarheid,
+        apartGehouden: groep.anderen.map((p) => ({
+          pad: p.pad, term: p.term, intentie: p.intentie || "",
+          reden: `Hoort qua woorden bij dit onderwerp, maar iemand die "${p.term}" zoekt ${intentieUitleg(p.intentie || "")}. Die bezoeker heeft een andere pagina nodig, dus deze gaat er bewust niet in op.`,
+        })),
+      });
+    }
   }
 
   return uit.sort((a, b) => b.volumeTotaal - a.volumeTotaal).slice(0, 12);

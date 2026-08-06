@@ -10,8 +10,10 @@ import { fetchPageContent } from "./page-content";
 import { callClaude, callClaudeAgentic, type ToolDef, type ToolRunner } from "./anthropic";
 import { regelsAlsInstructie, getAdsPaginas, isAdsPad } from "./opruim-regels";
 import { zwakkePaginas, type ZwakkePagina } from "./concurrenten";
-import { weegKandidaten, weegPaden, type Oppakker } from "./opruim-waarde";
+import { weegKandidaten, weegPaden, termUitPad, type Oppakker } from "./opruim-waarde";
 import { vindOnderwerpen, tweelingenVan, type Onderwerp } from "./opruim-onderwerpen";
+import { feitenPerTerm, magSamenvoegen, intentieUitleg, intentieAlsInstructie } from "./opruim-intentie";
+import { autoriteitVan, haalbaarheidAlsInstructie } from "./opruim-haalbaarheid";
 import { getSetting, setSetting, SETTING_OPRUIM_CRON_TIK } from "./settings";
 
 // ═══════════════════════════════════════════════════════════
@@ -501,8 +503,13 @@ async function stapMetReden(slug: string): Promise<{ uit: "verder" | "klaar"; re
     // Eerdere besluiten van Maarten gaan mee als harde regels. Zo hoeft hij een
     // correctie ("Monster hoort bij Den Haag", "deze houden we") maar één keer te
     // maken en maakt de analyse dezelfde fout nooit meer.
+    // Daarbij de twee remmen als instructie. De code filtert wat hij kan meten;
+    // deze tekst zorgt dat het model niet alsnog zelf over de intentiegrens heen
+    // samenvoegt of een kansloze term als kans presenteert.
     const eerdere = await regelsAlsInstructie(slug).catch(() => "");
-    const systeem = eerdere ? `${buildSystemPrompt()}\n\n${eerdere}` : buildSystemPrompt();
+    const dr = await autoriteitVan(domain).catch(() => null);
+    const systeem = [buildSystemPrompt(), intentieAlsInstructie(), haalbaarheidAlsInstructie(dr), eerdere]
+      .filter(Boolean).join("\n\n");
 
     // STAP 2 — vaste synthese naar JSON: altijd een antwoord, werkt ook zonder bevindingen.
     if (row.fase === "synth") {
@@ -594,14 +601,42 @@ async function stapMetReden(slug: string): Promise<{ uit: "verder" | "klaar"; re
     // /soa-thuistest/ er letterlijk staat.
     const allePaden = await getClientUrls(slug).then((u) => u.filter((x) => (x.status ?? 200) === 200).map((x) => padOf(x.url))).catch(() => [] as string[]);
 
+    // REM 1 in de praktijk. De tweelingen worden gezocht op woorden, en woorden
+    // zeggen niets over wat de bezoeker wil. Voordat een tweeling als bestemming
+    // wordt voorgesteld, halen we de intentie van beide termen op en gooien we de
+    // botsingen eruit. Zo kan "soa test kopen" nooit meer voorgesteld worden als
+    // bestemming voor "wat is een soa test", en andersom ook niet.
+    const tweelingPer = new Map<string, string[]>();
+    for (const k of blok) tweelingPer.set(padOf(k.pad), tweelingenVan(k.pad, allePaden).filter((t) => padOf(t) !== padOf(k.pad)));
+    const termenNodig: string[] = [];
+    for (const k of blok) {
+      termenNodig.push(termUitPad(k.pad));
+      for (const t of tweelingPer.get(padOf(k.pad)) || []) termenNodig.push(termUitPad(t));
+    }
+    const feiten = await feitenPerTerm(termenNodig.filter((t) => t && t.split(" ").length >= 2)).catch(() => new Map());
+    const intentieVanPad = (p: string) => feiten.get(termUitPad(p))?.intentie ?? "";
+
     const lijst = blok.map((k) => {
-      const tweeling = tweelingenVan(k.pad, allePaden).filter((t) => padOf(t) !== padOf(k.pad));
+      const eigenIntentie = intentieVanPad(k.pad);
+      const alle = tweelingPer.get(padOf(k.pad)) || [];
+      const tweeling: string[] = [];
+      const gescheiden: string[] = [];
+      for (const t of alle) {
+        const oordeel = magSamenvoegen(eigenIntentie, intentieVanPad(t));
+        if (oordeel.mag) tweeling.push(t); else gescheiden.push(t);
+      }
       const zelfdeOnderwerp = tweeling.length ? ` | pagina's over hetzelfde onderwerp: ${tweeling.join(", ")}` : "";
+      // De afgevallen tweelingen gaan wél mee, met het verbod erbij. Stilzwijgend
+      // weglaten zou het model ze zelf laten herontdekken uit de andere data.
+      const botsing = gescheiden.length
+        ? ` | NIET samenvoegen met ${gescheiden.join(", ")}: andere zoekintentie (deze pagina ${intentieUitleg(eigenIntentie)})`
+        : "";
+      const intentie = eigenIntentie ? ` | bezoeker ${intentieUitleg(eigenIntentie)}` : "";
       const doel = k.dubbelMet.length === 1 ? `voorstel doel: ${k.dubbelMet[0]}`
         : k.dubbelMet.length > 1 ? `voorstel doel: ${k.dubbelMet.slice(0, 2).join(" OF ")} (kies de beste)`
         : "geen doel af te leiden uit de data";
       const leent = k.geleendeTop ? `leent "${k.geleendeTop.keyword}" (pos ${k.geleendeTop.positie}, ${k.geleendeTop.vertoningen} vert.)` : "krijgt geen vertoningen";
-      return `- ${k.pad} [${k.klikken} klikken, ${k.vertoningen} vertoningen] ${leent}; ${doel}${zelfdeOnderwerp}`;
+      return `- ${k.pad} [${k.klikken} klikken, ${k.vertoningen} vertoningen] ${leent}; ${doel}${zelfdeOnderwerp}${botsing}${intentie}`;
     }).join("\n");
 
     let extraRuw = "";
