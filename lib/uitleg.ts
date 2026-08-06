@@ -248,7 +248,15 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "staat wat welke knop kost.\n\n" +
           "Waar de informatie buiten de eigen site ligt kan de AI zelf gericht op het web zoeken, en bij " +
           "afbeeldingen kijkt hij naar de foto in plaats van naar de bestandsnaam. Dat laatste is het verschil " +
-          "tussen een alt-tekst die beschrijft wat er staat en een alt-tekst die gokt.",
+          "tussen een alt-tekst die beschrijft wat er staat en een alt-tekst die gokt.\n\n" +
+          "**Onder elk antwoord staat waar het op steunt.** Ingeklapt, als één regeltje: \"Zo ben ik hieraan " +
+          "gekomen\". Klap je het open, dan zie je precies wat er is geraadpleegd voor dít antwoord: welke " +
+          "zoekwoorden in Ahrefs, welke pagina's gelezen, waar in de mail gezocht, welke top 10 bekeken. Dat is " +
+          "geen versiering maar controle: staat er een positie in het antwoord zonder bijbehorende bronregel, " +
+          "dan is dat een reden om door te vragen.\n\n" +
+          "De AI mag per gesprek een flink aantal onderzoeksstappen zetten voordat hij antwoordt, met een klok " +
+          "erop. Loopt de tijd, dan rondt hij af met wat hij heeft in plaats van halverwege afgekapt te worden; " +
+          "halve bevindingen zijn bruikbaar, afgekapte niet.",
       },
       {
         titel: "Microsoft 365 en Superhuman (mail)",

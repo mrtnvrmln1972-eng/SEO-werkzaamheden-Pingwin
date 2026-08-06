@@ -176,9 +176,14 @@ type Block = { type: string; text?: string; id?: string; name?: string; input?: 
 // venster hem afkapt en is ALLES weg (zo strandde de opruim-analyse op 03-08-2026
 // na 800 seconden, midden in het onderzoek). Halve bevindingen zijn bruikbaar,
 // afgekapte niet. Laat leeg voor een gesprek dat gewoon mag doorlopen.
-export async function callClaudeAgentic(system: string, messages: ChatMsg[], tools: ToolDef[], run: ToolRunner, maxRounds = 6, maxTokens = 2200, ctx?: UsageCtx, deadlineMs?: number): Promise<string> {
+//
+// model: laat leeg voor het standaardmodel. Een zwaardere keuze mag hier meegegeven
+// worden voor de strategische gesprekken; kent de API het model niet, dan valt hij
+// automatisch terug op het standaardmodel in plaats van de chat te laten mislukken.
+export async function callClaudeAgentic(system: string, messages: ChatMsg[], tools: ToolDef[], run: ToolRunner, maxRounds = 6, maxTokens = 2200, ctx?: UsageCtx, deadlineMs?: number, model?: string): Promise<string> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) throw new Error("ANTHROPIC_API_KEY ontbreekt (voeg hem toe in Vercel).");
+  let actiefModel = model || MODEL;
   const apiMessages: { role: string; content: unknown }[] = messages.map((m) => ({ role: m.role, content: m.content }));
   const u: Usage = { input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 }; // optellen over alle rondes
 
@@ -202,11 +207,18 @@ export async function callClaudeAgentic(system: string, messages: ChatMsg[], too
 
   async function call(withTools: boolean) {
     markLastMessage();
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
+    const verstuur = async () => fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "x-api-key": key as string, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({ model: MODEL, max_tokens: maxTokens, system: systemBlocks(system), messages: apiMessages, ...(withTools && tools.length ? { tools: cachedTools } : {}) }),
+      body: JSON.stringify({ model: actiefModel, max_tokens: maxTokens, system: systemBlocks(system), messages: apiMessages, ...(withTools && tools.length ? { tools: cachedTools } : {}) }),
     });
+    let res = await verstuur();
+    // Onbekend of niet-vrijgegeven model? Val terug op het standaardmodel in plaats
+    // van de hele chat te laten mislukken. Eén keer, daarna blijft de terugval staan.
+    if (!res.ok && res.status === 404 && actiefModel !== MODEL) {
+      actiefModel = MODEL;
+      res = await verstuur();
+    }
     if (!res.ok) { const t = await res.text().catch(() => ""); throw new Error(`Claude-fout ${res.status}: ${t.slice(0, 300)}`); }
     return res.json();
   }
@@ -229,7 +241,7 @@ export async function callClaudeAgentic(system: string, messages: ChatMsg[], too
     const toolUses = content.filter((c) => c.type === "tool_use");
     if (j.stop_reason !== "tool_use" || toolUses.length === 0) {
       const text = textOf(j);
-      if (text.trim()) { await logClaudeUsage(ctx, u); return text; }
+      if (text.trim()) { await logClaudeUsage(ctx, u, actiefModel); return text; }
       // Klaar maar zonder tekst? Val door naar de geforceerde afronding hieronder.
       apiMessages.push({ role: "assistant", content: content.length ? content : [{ type: "text", text: "…" }] });
       break;
@@ -275,7 +287,7 @@ export async function callClaudeAgentic(system: string, messages: ChatMsg[], too
     addUsage(j.usage);
     text = textOf(j);
   }
-  await logClaudeUsage(ctx, u);
+  await logClaudeUsage(ctx, u, actiefModel);
   return text.trim() || "Ik heb de analyse gedaan, maar kon het antwoord niet netjes afronden (waarschijnlijk was de vraag in één keer te breed). Stel hem iets gerichter, bijvoorbeeld één doel of één set pagina's, dan pak ik het meteen goed op.";
 }
 

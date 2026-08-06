@@ -6,8 +6,9 @@ import { striptVulzinnen } from "../../../../lib/vulzinnen";
 import { eersteKop } from "../../../../lib/chat-vouw";
 import HelpHint from "./HelpHint";
 import PageSummaryCard from "./PageSummaryCard";
+import Bronnenstrip, { type Bron } from "./Bronnenstrip";
 
-type Msg = { role: "user" | "assistant"; content: string };
+type Msg = { role: "user" | "assistant"; content: string; bronnen?: Bron[] };
 type Task = { taak: string; fase?: string; wie?: string };
 type Proposal = { plan?: string; tasks?: Task[] };
 type ChatSummary = { id: number; title: string; updatedAt: string; count: number };
@@ -910,7 +911,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       const r = await fetch("/api/admin/page-chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url, messages: next, volledig }), signal: ctrl.signal });
       const d = await r.json();
       if (!d.ok) { setErr(d.error || "Chat mislukt."); setBusy(false); return null; }
-      const withReply = [...next, { role: "assistant" as const, content: d.reply }];
+      const withReply = [...next, { role: "assistant" as const, content: d.reply, ...(Array.isArray(d.bronnen) && d.bronnen.length ? { bronnen: d.bronnen as Bron[] } : {}) }];
       setMsgs(withReply);
       const p: Proposal | null = d.proposal || null;
       setProposal(p);
@@ -1066,6 +1067,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
                 {!dicht && (m.role === "user"
                   ? <div className="page-chat-msg user">{m.content}</div>
                   : <div className="page-chat-msg assistant md" dangerouslySetInnerHTML={{ __html: renderMsgHtml(m.content) }} />)}
+                {!dicht && m.role === "assistant" && <Bronnenstrip bronnen={m.bronnen} domain={siteBase} />}
                 <div className="pch-msg-ctrl">
                   {wegIdx === i ? (
                     <span className="pch-weg-vraag">
