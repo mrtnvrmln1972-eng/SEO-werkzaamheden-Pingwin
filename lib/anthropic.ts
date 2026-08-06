@@ -10,6 +10,21 @@ const MODEL = "claude-sonnet-4-6";
 // Goedkoop model (± 3x goedkoper) voor aantoonbaar lichte taken: extractie,
 // korte labels, één-regel-correcties. Kernwerk (analyse, copy, chat) blijft op MODEL.
 export const LIGHT_MODEL = "claude-haiku-4-5";
+// Zwaar model voor het échte denkwerk: de bird's eye-strateeg. Daar is de vraag
+// niet "haal dit cijfer op" maar "klopt deze hele opzet wel", en dat is precies
+// waar een zwaarder model het verschil maakt. Alleen daar; alle motoren, de
+// pagina-chat en het extractiewerk blijven op MODEL, anders loopt het verbruik op
+// zonder dat het antwoord er beter van wordt.
+export const HEAVY_MODEL = process.env.ANTHROPIC_HEAVY_MODEL || "claude-opus-5";
+// Terugvalketen. Kent dit account het bovenste model niet (404 op de modelnaam),
+// dan zakt hij een trede in plaats van de chat te laten mislukken. In het
+// verbruik-scherm staat welk model er écht geantwoord heeft, dus een stille
+// terugval blijft zichtbaar.
+const TERUGVAL: Record<string, string> = {
+  "claude-opus-5": "claude-opus-4-6",
+  "claude-opus-4-6": "claude-opus-4-5",
+  "claude-opus-4-5": MODEL,
+};
 
 // Prompt-caching: het (vaak enorme) system-prompt gaat als content-blok met een
 // cache-markering mee. Bij een vervolg-aanroep binnen 5 minuten leest de API dat
@@ -215,8 +230,10 @@ export async function callClaudeAgentic(system: string, messages: ChatMsg[], too
     let res = await verstuur();
     // Onbekend of niet-vrijgegeven model? Val terug op het standaardmodel in plaats
     // van de hele chat te laten mislukken. Eén keer, daarna blijft de terugval staan.
-    if (!res.ok && res.status === 404 && actiefModel !== MODEL) {
-      actiefModel = MODEL;
+    // Meerdere treden: opus-5 → opus-4-6 → opus-4-5 → het standaardmodel.
+    let stappen = 0;
+    while (!res.ok && res.status === 404 && actiefModel !== MODEL && stappen++ < 4) {
+      actiefModel = TERUGVAL[actiefModel] || MODEL;
       res = await verstuur();
     }
     if (!res.ok) { const t = await res.text().catch(() => ""); throw new Error(`Claude-fout ${res.status}: ${t.slice(0, 300)}`); }

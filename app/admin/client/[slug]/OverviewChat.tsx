@@ -15,6 +15,50 @@ import Bronnenstrip, { type Bron } from "./Bronnenstrip";
 type Msg = { role: "user" | "assistant"; content: string; actions?: Action[]; soort?: "conclusie" | "oogst"; oogst?: Oogst; bronnen?: Bron[] };
 type Topic = { thread: string; count: number; title: string; summary: string; done: boolean };
 
+// ── Diep denken ──
+// De bird's eye draait op het zware model, want dit is het gesprek waarin de opzet
+// zelf ter discussie staat. Dat kost meer dan een gewoon antwoord, dus de knop
+// staat hier, waar het gesprek is, en niet ergens in de code. Alleen de eigenaar
+// mag de instelling lezen en zetten; kan hij dat niet, dan blijft de knop weg in
+// plaats van een foutmelding te tonen.
+const DIEP_SLEUTEL = "overview_diep_denken";
+function DiepDenken() {
+  const [aan, setAan] = useState<boolean | null>(null);
+  const [bezig, setBezig] = useState(false);
+  useEffect(() => {
+    let weg = false;
+    void fetch("/api/admin/settings")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (!weg && d?.ok) setAan(d.settings?.[DIEP_SLEUTEL] !== "uit"); })
+      .catch(() => { /* geen toegang: knop blijft weg */ });
+    return () => { weg = true; };
+  }, []);
+  if (aan === null) return null;
+  const zet = async (waarde: boolean) => {
+    setBezig(true);
+    try {
+      const r = await fetch("/api/admin/settings", {
+        method: "PATCH", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ key: DIEP_SLEUTEL, value: waarde ? "aan" : "uit" }),
+      });
+      if (r.ok) setAan(waarde);
+    } catch { /* stand blijft staan */ } finally { setBezig(false); }
+  };
+  return (
+    <button
+      type="button"
+      className={"ghost-btn small" + (aan ? " actief" : "")}
+      disabled={bezig}
+      title={aan
+        ? "Overview denkt diep: het zware model, voor strategie en tegenspraak. Kost meer per antwoord. Klik om uit te zetten."
+        : "Overview draait op het gewone model: sneller en goedkoper, minder diepgang. Klik om diep denken aan te zetten."}
+      onClick={() => void zet(!aan)}
+    >
+      Diep denken: {aan ? "aan" : "uit"}
+    </button>
+  );
+}
+
 // Slugs/URL's klikbaar maken: gedeelde bron in lib/linkify.ts (zelfde gedrag als
 // voorheen, nu herbruikbaar voor de projectkaarten en andere output-plekken).
 
@@ -345,6 +389,7 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
     <Omhulsel className={kaal ? "ovc-kaal" : "cockpit-card ovc-card"}>
       {kaal ? (
         <div className="ovc-kaal-acties">
+          <DiepDenken />
           <button type="button" className="ghost-btn small" onClick={newTopic}>+ Nieuw onderwerp</button>
         </div>
       ) : (
@@ -353,6 +398,7 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="7" /><circle cx="12" cy="12" r="2" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /></svg>
         </span>
         <span className="ovc-title">Overview</span>
+        <DiepDenken />
         <button type="button" className="ghost-btn small" onClick={newTopic}>+ Nieuw onderwerp</button>
       </div>
       )}

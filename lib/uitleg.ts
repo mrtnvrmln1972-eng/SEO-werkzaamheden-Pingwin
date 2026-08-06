@@ -997,6 +997,28 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "verschillende kaarten op, en die botsen daarna.",
       },
       {
+        titel: "Overview denkt diep: strategie in plaats van inventarislijst",
+        kern: "De bird's eye draait op het zware model, met zoekwoordonderzoek in handen, en mag de opzet zelf afkeuren.",
+        tekst:
+          "Overview is het gesprek waarin je niet vraagt hoe een pagina ervoor staat, maar of de hele aanpak wel " +
+          "deugt. Dat vraagt drie dingen, en die staan er nu alle drie in.\n\n" +
+          "- **Het zware model.** Alleen dit gesprek, want alleen hier is de vraag een oordeel. De motoren, de " +
+          "pagina-chat en het extractiewerk blijven op het gewone model. In de kop van Overview staat de knop " +
+          "**Diep denken**; die kost meer per antwoord en is daarom uit te zetten zonder dat er code aan te pas komt.\n" +
+          "- **Zoekwoordonderzoek in eigen hand.** Het gesprek kon alles nameten wat de site al doet, maar niets " +
+          "zeggen over een zoekterm waar we nog niets mee doen. Nu haalt het zelf zoekvolume, moeilijkheid en " +
+          "zoekintentie op voor een hele kandidatenlijst tegelijk, zoekt het ideeën rond een thema, en meet het de " +
+          "autoriteit van de concurrenten die er nu staan.\n" +
+          "- **De opdracht om tegen te spreken.** Krijgt het gesprek een zoekwoordenlijst of een plan voorgelegd, " +
+          "dan beoordeelt het eerst of dat de juiste aanpak is en pas daarna de invulling. Volume telt niet als " +
+          "kans zolang de moeilijkheid niet tegen de eigen autoriteit is afgezet; bij een lokale zoekterm waar " +
+          "vooral het kaartblok staat, ligt de winst bij het Google-bedrijfsprofiel en niet bij een landingspagina; " +
+          "en een matrix van vier diensten maal tien plaatsen is veertig dunne pagina's die elkaar in de weg zitten. " +
+          "Het antwoord is een gelaagde keuze met een volgorde, plus wat we bewust niet doen en waarom.\n\n" +
+          "De remmen blijven onverkort staan: elk cijfer komt uit een verse meting, elk pad uit de echte " +
+          "URL-lijst, en de feitencontrole leest het antwoord na. Tegenspraak is iets anders dan vrijheid om te gokken.",
+      },
+      {
         titel: "Grondigheid boven vlotheid",
         kern: "De assistent mag zeggen dat hij het niet weet.",
         tekst:

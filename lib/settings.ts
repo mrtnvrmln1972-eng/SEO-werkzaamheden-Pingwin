@@ -19,6 +19,15 @@ export async function setSetting(key: string, value: string | null): Promise<voi
 
 // Bekende sleutels.
 export const SETTING_INVOICE_MAIL = "invoice_mail_to";
+// Diep denken in de bird's eye: draait de strategie-chat op het zware model?
+// Staat standaard AAN, want dat is het gesprek waar het oordeel vandaan moet
+// komen. Uitzetten kan in de kop van Overview; het scheelt geld en kost diepgang.
+export const SETTING_OVERVIEW_ZWAAR = "overview_diep_denken";
+
+/** Staat diep denken aan voor de bird's eye? Leeg = aan (bewuste standaard). */
+export async function diepDenkenAan(): Promise<boolean> {
+  try { return (await getSetting(SETTING_OVERVIEW_ZWAAR)) !== "uit"; } catch { return true; }
+}
 // Wanneer de opruim-cron voor het laatst langskwam. Zonder dit moesten we gissen of
 // het vangnet draaide; op 03-08-2026 stond een analyse 73 minuten stil en was van
 // buitenaf niet te zien of de cron wel afvuurde.
