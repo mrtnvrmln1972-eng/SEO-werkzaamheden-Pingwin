@@ -6273,7 +6273,15 @@ a.wb-pad:hover { text-decoration: underline; }
 }
 .at-cijfer { font-weight: 700; font-variant-numeric: tabular-nums; }
 
-.at-paneel { left: auto; right: 0; min-width: 320px; max-width: 360px; gap: var(--s-3); }
+/* Breder dan de andere kopbalkmenu's: dit paneel draagt uitleg-alinea's en een
+   tips-lijst, geen korte labels. En begrensd in hoogte met een eigen scrollbalk
+   in plaats van van het scherm af te lopen: de Abo-teller draagt drie blokken
+   onder elkaar (uitleg, knoppen, zes tips) en dat past niet altijd binnen de
+   viewport, zeker niet op een laag scherm. */
+.at-paneel {
+  left: auto; right: 0; min-width: 360px; max-width: 440px; gap: var(--s-3);
+  max-height: min(78vh, 680px); overflow-y: auto; overscroll-behavior: contain;
+}
 
 /* Blok 1: het hele account. */
 .at-kop {
