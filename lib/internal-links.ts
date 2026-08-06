@@ -49,7 +49,13 @@ export type SuggestedTarget = { url: string; positie: number; primairZoekwoord: 
 export type InternalLinksState = {
   status: "idle" | "running" | "done" | "error"; result: InternalLinksResult | null;
   targets: string[]; error: string; updatedAt: string | null;
+  /** Wat er nu gebeurt, in gewone taal (voor het voortgangsrondje). */
+  fase: string;
 };
+
+// Geen hartslag meer voor een kwartier betekent afgebroken. Zelfde grens als bij
+// de opruim- en prioriteitenmotor, zodat "vastgelopen" overal hetzelfde betekent.
+const STIL_MS = 15 * 60 * 1000;
 
 let tableReady: Promise<void> | null = null;
 function ensureTable(): Promise<void> {
@@ -66,6 +72,9 @@ async function doEnsure(): Promise<void> {
       error       TEXT,
       updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
     )`;
+  // Waar de analyse is, in gewone taal. Zonder dit stond er alleen "draait" en
+  // was een lopende analyse niet te onderscheiden van een afgebroken analyse.
+  await sql`ALTER TABLE client_internal_links ADD COLUMN IF NOT EXISTS fase TEXT`;
 }
 
 // Normaliseert een href of URL naar een schoon pad (zonder domein/query/hash),
@@ -109,19 +118,44 @@ function loadSkillMethodology(): string {
 export async function getInternalLinksState(slug: string): Promise<InternalLinksState> {
   await ensureSchema();
   await ensureTable();
-  const { rows } = await sql`SELECT status, targets, result, error, updated_at FROM client_internal_links WHERE client_slug = ${slug} LIMIT 1`;
+  const { rows } = await sql`SELECT status, targets, result, error, updated_at, fase FROM client_internal_links WHERE client_slug = ${slug} LIMIT 1`;
   const r = rows[0];
-  if (!r) return { status: "idle", result: null, targets: [], error: "", updatedAt: null };
+  if (!r) return { status: "idle", result: null, targets: [], error: "", updatedAt: null, fase: "" };
   let result: InternalLinksResult | null = null;
   let targets: string[] = [];
   try { result = r.result ? JSON.parse(r.result as string) : null; } catch { result = null; }
   try { targets = r.targets ? JSON.parse(r.targets as string) : []; } catch { targets = []; }
+  const updatedAt = r.updated_at ? new Date(r.updated_at as string).toISOString() : null;
+  const status = (r.status as InternalLinksState["status"]) || "idle";
+
+  // Draait hij nog echt? Deze analyse heeft geen cron-vangnet, dus een run zonder
+  // hartslag is afgebroken. Dat eerlijk melden in plaats van eeuwig "draait":
+  // anders blijft de startknop geblokkeerd en kun je niets meer.
+  const stil = status === "running" && updatedAt && Date.now() - new Date(updatedAt).getTime() > STIL_MS;
+  if (stil) {
+    return {
+      status: "error", result, targets, updatedAt, fase: (r.fase as string) || "",
+      error: "De analyse is halverwege afgebroken (het tijdvenster van de server liep af). Klik opnieuw op starten; hij begint dan netjes overnieuw.",
+    };
+  }
+
   return {
-    status: (r.status as InternalLinksState["status"]) || "idle",
-    result, targets,
+    status, result, targets,
     error: (r.error as string) || "",
-    updatedAt: r.updated_at ? new Date(r.updated_at as string).toISOString() : null,
+    updatedAt,
+    fase: (r.fase as string) || "",
   };
+}
+
+/**
+ * De hartslag: legt vast waar de analyse is én dat hij nog leeft. Zonder dit kon
+ * een run die halverwege door het serverless-venster werd afgekapt eeuwig op
+ * "draait" blijven staan, en dan blokkeerde de startknop voorgoed (live
+ * aangetroffen bij One Day Clinic, 6 augustus 2026: 53 minuten "draait" terwijl
+ * het venster van die functie vijf minuten is).
+ */
+async function raak(slug: string, fase: string): Promise<void> {
+  await sql`UPDATE client_internal_links SET fase = ${fase}, updated_at = now() WHERE client_slug = ${slug}`.catch(() => { /* nooit de analyse laten klappen op de hartslag */ });
 }
 
 async function setState(slug: string, status: string, targets: string[], result: InternalLinksResult | null, error: string): Promise<void> {
@@ -314,6 +348,7 @@ export async function runInternalLinks(slug: string, targetsIn: string[]): Promi
     for (const t of targets) crawlSet.add(t);
     for (const u of ranked) { if (crawlSet.size >= CRAWL_LIMIT) break; const p = toPath(u.url, domain); if (p) crawlSet.add(p); }
 
+    await raak(slug, `De ${crawlSet.size} belangrijkste pagina's worden doorgelopen`);
     const graph = await crawlGraph([...crawlSet], domain);
     const depth = clickDepths(graph);
 
@@ -321,6 +356,7 @@ export async function runInternalLinks(slug: string, targetsIn: string[]): Promi
     // 30 dagen gecachet. Valt hij weg, dan draait alles door op de benadering.
     const bare = domain.replace(/^www\./i, "").toLowerCase();
     const alleP = [...new Set([...graph.keys(), ...targets])];
+    await raak(slug, "De autoriteit per pagina wordt opgehaald");
     const ratings = await getUrlRatings(alleP.map((p) => `https://${bare}${p === "/" ? "/" : p}`)).catch(() => new Map<string, UrlAutoriteit>());
     const autoriteit = bouwAutoriteit(alleP, domain, ratings);
     const urGemeten = [...autoriteit.values()].filter((a) => a.gemeten).length;
@@ -398,6 +434,7 @@ export async function runInternalLinks(slug: string, targetsIn: string[]): Promi
       `WEES-PAGINA'S (geen interne inkomende links gevonden): ${orphans.length ? orphans.join(", ") : "(geen)"}`,
     ].join("\n");
 
+    await raak(slug, "De beste bronpagina's en ankerteksten worden bepaald");
     const raw = await callClaude(buildSystemPrompt(), [{ role: "user", content: context.slice(0, 28000) }], 16000, { slug, action: "internal_links" });
     const cleaned = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
     const first = cleaned.indexOf("{"); const last = cleaned.lastIndexOf("}");

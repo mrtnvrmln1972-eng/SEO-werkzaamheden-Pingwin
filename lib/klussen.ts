@@ -260,7 +260,17 @@ export async function lopendeKlussen(slug: string): Promise<Klus[]> {
     }
   }
   if (links) {
-    uit.push({ ...MOTOREN.internelinks, status: "bezig", stap: 0, stappen: 0, label: "De interne links worden doorgemeten", error: "", gestart: null, bijgewerkt: null });
+    // Met de echte tijden erbij: een run zonder hartslag hoort als vastgelopen in
+    // beeld te komen, niet als een eeuwig draaiend rondje.
+    const { getInternalLinksState } = await import("./internal-links");
+    const st = await getInternalLinksState(slug).catch(() => null);
+    if (st?.status === "running") {
+      uit.push({
+        ...MOTOREN.internelinks, status: "bezig", stap: 0, stappen: 0,
+        label: st.fase || "De interne links worden doorgemeten",
+        error: "", gestart: st.updatedAt, bijgewerkt: st.updatedAt,
+      });
+    }
   }
   if (gmb) {
     uit.push({ ...MOTOREN.googleprofiel, status: "bezig", stap: 0, stappen: 0, label: "De Google-bedrijfsprofielen worden opgezocht en gemeten", error: "", gestart: null, bijgewerkt: null });

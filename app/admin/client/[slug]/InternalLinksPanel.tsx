@@ -12,7 +12,7 @@ type Structure = { wezen?: string[]; pillarGaten?: string[]; clusterNotities?: s
 type Datakwaliteit = { crawl?: boolean; gsc?: boolean; ahrefsUrlRating?: boolean; contentMapping?: boolean; opmerking?: string; urDatum?: string; urGemeten?: number };
 type Result = { samenvatting: string; datakwaliteit?: Datakwaliteit; doelpaginas: TargetPage[]; structuur?: Structure; generatedAt: string | null };
 type Suggestion = { url: string; positie: number; primairZoekwoord: string; impressies: number };
-type State = { status: string; result: Result | null; targets: string[]; error: string; updatedAt: string | null };
+type State = { status: string; result: Result | null; targets: string[]; error: string; updatedAt: string | null; fase?: string };
 
 function scoreClass(s?: string): string {
   const v = (s || "").toLowerCase();
@@ -186,7 +186,7 @@ export default function InternalLinksPanel({ slug, openTarget }: {
           <div style={{ marginTop: "var(--s-3)" }}>
             <Voortgang
               titel="Interne links"
-              label="De bronpagina's worden gecrawld en gewogen op autoriteit en relevantie; dit duurt een paar minuten."
+              label={state?.fase || "De bronpagina's worden gecrawld en gewogen op autoriteit en relevantie; dit duurt een paar minuten."}
               sinds={state?.updatedAt}
             />
           </div>

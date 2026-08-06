@@ -89,7 +89,12 @@ async function opruimRun(slug: string): Promise<RunStand> {
 async function linkRun(slug: string): Promise<RunStand> {
   try {
     const { rows } = await sql`SELECT status, updated_at, (result IS NOT NULL) AS heeft FROM client_internal_links WHERE client_slug = ${slug} LIMIT 1`;
-    return runUitRij(rows);
+    const st = runUitRij(rows);
+    // Deze analyse heeft geen cron-vangnet: zonder hartslag is hij afgebroken.
+    // Dan hoort hier "nog te doen" te staan en niet "draait", anders wacht je op
+    // iets wat nooit meer komt (live aangetroffen, 6 augustus 2026).
+    if (st.bezig && st.sinds && Date.now() - new Date(st.sinds).getTime() > 15 * 60 * 1000) return { ...st, bezig: false };
+    return st;
   } catch { return GEEN_RUN; }
 }
 // De Google-profielscan heeft twee stappen die uit dezelfde rij volgen: is er
