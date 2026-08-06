@@ -3045,16 +3045,37 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
 .zp-knop { border: 1px solid var(--card-border); background: #fff; color: var(--orange-dark); font-size: var(--fs-xs); font-weight: 700; padding: 3px var(--s-2); border-radius: var(--r-sm); cursor: pointer; }
 .zp-knop:hover { background: var(--orange-light); border-color: var(--orange); }
 /* Greep aan de linkerrand: breder of smaller slepen. */
-.zp-greep { position: absolute; left: 0; top: 0; bottom: 0; width: 8px; cursor: ew-resize; background: transparent; }
+/* De greep om het paneel breder te slepen. Was een doorzichtige strook van acht
+   pixels: dat wérkte, maar niemand vond het. Nu een zichtbaar handvat met stipjes,
+   breder om te raken, en oranje zodra je erboven hangt. */
+.zp-greep {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 14px;
+  cursor: ew-resize; background: transparent;
+  display: flex; align-items: center; justify-content: center;
+}
+.zp-greep::before {
+  content: ""; position: absolute; left: 5px; top: var(--s-4); bottom: var(--s-4);
+  width: 2px; border-radius: var(--r-full); background: var(--card-border);
+}
+.zp-greep-dots { position: relative; width: 4px; height: 22px; border-radius: var(--r-full); background: var(--card-border); }
 .zp-greep:hover { background: var(--orange-light); }
+.zp-greep:hover::before, .zp-greep:hover .zp-greep-dots { background: var(--orange); }
 /* Losgemaakt: een venster midden op het scherm. */
 .zp-paneel.zp-los { right: auto; border-right: 1px solid var(--card-border); border-radius: var(--r-lg); transform: translateX(0) scale(0.98); opacity: 0; pointer-events: none; transition: opacity 0.18s ease, transform 0.18s ease; max-height: none; display: flex; flex-direction: column; }
 .zp-paneel.zp-los.zp-open { transform: translateX(0) scale(1); opacity: 1; pointer-events: auto; }
 .zp-paneel.zp-los .zp-inhoud { flex: 1; min-height: 0; overflow-y: auto; }
 .zp-kop-sleep { cursor: grab; user-select: none; }
 .zp-kop-sleep:active { cursor: grabbing; }
-.zp-formaat { position: absolute; right: 2px; bottom: 2px; width: 16px; height: 16px; cursor: nwse-resize; border-right: 2px solid var(--orange); border-bottom: 2px solid var(--orange); border-radius: 0 0 var(--r-sm) 0; opacity: 0.6; }
+/* Het hoekje om een losgemaakt venster groter te slepen. Groter en duidelijker
+   dan eerst, om dezelfde reden als de greep hierboven. */
+.zp-formaat { position: absolute; right: 3px; bottom: 3px; width: 22px; height: 22px; cursor: nwse-resize; border-right: 3px solid var(--orange); border-bottom: 3px solid var(--orange); border-radius: 0 0 var(--r-md) 0; opacity: 0.55; }
 .zp-formaat:hover { opacity: 1; }
+
+/* Volle breedte. De maat komt uit vw/vh zodat hij meegroeit als je je
+   browservenster verandert; de eigen maat van het paneel blijft ondertussen
+   bewaard, dus "kleiner" zet hem precies terug. */
+.zp-paneel.zp-vol { width: calc(100vw - var(--s-12)); max-width: none; }
+.zp-paneel.zp-los.zp-vol { left: var(--s-6); top: var(--s-6); width: calc(100vw - var(--s-12)); height: calc(100vh - var(--s-12)); }
 /* Tijdens slepen geen tekstselectie in het hele scherm. */
 body.zp-sleept { user-select: none; cursor: grabbing; }
 .zp-inhoud .sov-tasks { border: none; padding: 0; background: transparent; }

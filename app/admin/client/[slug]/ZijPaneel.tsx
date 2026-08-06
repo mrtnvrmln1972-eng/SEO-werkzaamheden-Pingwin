@@ -11,10 +11,18 @@
 //         maken aan de rechteronderhoek.
 // Stand, plek en formaat worden onthouden per paneel, zodat hij na dichtklappen
 // terugkomt precies zoals je hem achterliet.
+//
+// Daarnaast een knop "groter": in één klik zo groot als het scherm toelaat, en
+// weer terug naar jouw eigen maat. Aanleiding (6 augustus 2026): slepen kón al,
+// maar niemand zag het. De greep was een doorzichtige strook van acht pixels en
+// het hoekje was een vaag streepje. Een functie die je niet kunt vinden bestaat
+// niet. Daarom is de greep nu zichtbaar én is er een knop voor wie niet wil
+// slepen. Je eigen maat blijft bewaard terwijl "groter" aanstaat, dus terugklikken
+// zet hem precies terug.
 
 import { useEffect, useRef, useState } from "react";
 
-type Stand = { los: boolean; breedte: number; hoogte: number; x: number; y: number };
+type Stand = { los: boolean; breedte: number; hoogte: number; x: number; y: number; vol?: boolean };
 
 const START: Stand = { los: false, breedte: 440, hoogte: 0, x: 0, y: 0 };
 const MIN_BREED = 320;
@@ -102,9 +110,14 @@ export default function ZijPaneel({ label, top = 140, children }: { label: strin
     });
   }
 
-  const stijl: React.CSSProperties = stand.los
-    ? { left: stand.x, top: stand.y, width: stand.breedte, height: stand.hoogte || undefined }
-    : { top, width: stand.breedte };
+  // Op volle breedte laten we de maat aan de stijlregels over (calc met vw/vh),
+  // zodat hij meegroeit als je je browservenster verandert. Zou de maat hier als
+  // getal staan, dan klopte hij niet meer zodra je het venster versleept.
+  const stijl: React.CSSProperties = stand.vol
+    ? (stand.los ? {} : { top })
+    : stand.los
+      ? { left: stand.x, top: stand.y, width: stand.breedte, height: stand.hoogte || undefined }
+      : { top, width: stand.breedte };
 
   return (
     <>
@@ -112,19 +125,28 @@ export default function ZijPaneel({ label, top = 140, children }: { label: strin
         {label}
       </button>
       <div
-        className={"zp-paneel" + (open ? " zp-open" : "") + (stand.los ? " zp-los" : "")}
+        className={"zp-paneel" + (open ? " zp-open" : "") + (stand.los ? " zp-los" : "") + (stand.vol ? " zp-vol" : "")}
         style={stijl}
         role="dialog"
         aria-label={label}
         aria-hidden={!open}
       >
-        {!stand.los && <div className="zp-greep" title="Sleep om het paneel breder of smaller te maken" onPointerDown={(e) => startSleep("breedte", e)} />}
+        {!stand.los && !stand.vol && (
+          <div className="zp-greep" title="Sleep om het paneel breder of smaller te maken" onPointerDown={(e) => startSleep("breedte", e)}>
+            <span className="zp-greep-dots" aria-hidden="true" />
+          </div>
+        )}
         <div
           className={"zp-kop" + (stand.los ? " zp-kop-sleep" : "")}
           onPointerDown={(e) => { if (stand.los && !(e.target as HTMLElement).closest("button")) startSleep("verplaats", e); }}
         >
           <span className="zp-titel">{label}</span>
           <span className="zp-kop-knoppen">
+            <button type="button" className="zp-knop"
+              title={stand.vol ? "Terug naar je eigen maat" : "Zo groot als het scherm toelaat. Je eigen maat blijft bewaard."}
+              onClick={() => bewaar({ ...stand, vol: !stand.vol })}>
+              {stand.vol ? "\u21F2 kleiner" : "\u21F1 groter"}
+            </button>
             {stand.los
               ? <button type="button" className="zp-knop" title="Zet het paneel terug tegen de rechterrand" onClick={() => bewaar({ ...stand, los: false })}>&#8677; zijkant</button>
               : <button type="button" className="zp-knop" title="Losmaken: als venster midden op je scherm, te verslepen en te vergroten" onClick={losMaken}>&#10696; losmaken</button>}
@@ -132,7 +154,7 @@ export default function ZijPaneel({ label, top = 140, children }: { label: strin
           </span>
         </div>
         <div className="zp-inhoud">{children}</div>
-        {stand.los && <div className="zp-formaat" title="Sleep om het venster groter of kleiner te maken" onPointerDown={(e) => startSleep("formaat", e)} />}
+        {stand.los && !stand.vol && <div className="zp-formaat" title="Sleep om het venster groter of kleiner te maken" onPointerDown={(e) => startSleep("formaat", e)} />}
       </div>
     </>
   );

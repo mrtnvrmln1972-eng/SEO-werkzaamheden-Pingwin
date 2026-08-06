@@ -290,5 +290,18 @@ const vangnet = /\.wp-card-grid\s*>\s*\.wp-card-main:only-child\s*\{[^}]*grid-co
 checkWaar("de kaart blijft breed als het sleephandvat wegvalt", !handvatSomsWeg || vangnet,
   "Het sleephandvat wordt soms niet getekend, maar er is geen regel die de inhoud dan alle kolommen laat pakken. Voeg toe: .wp-card-grid > .wp-card-main:only-child { grid-column: 1 / -1; }");
 
+// ── 6. Het zijpaneel houdt zijn grepen en zijn grote stand ──
+// Het paneel kon al breder gesleept worden, maar de greep was een doorzichtige
+// strook en het hoekje een vaag streepje: niemand vond het, dus in de praktijk
+// bestond de functie niet. Nu zijn ze zichtbaar en is er een knop "groter".
+// Deze controle houdt die drie bij elkaar: een knop die een stand aanzet zonder
+// stijlregel die er iets mee doet, is een knop die niets doet.
+const zijpaneel = lees("app/admin/client/[slug]/ZijPaneel.tsx");
+const grootAan = /zp-vol/.test(zijpaneel);
+checkWaar("de grote stand van het zijpaneel heeft ook opmaak", !grootAan || /\.zp-paneel\.zp-vol\s*\{/.test(css),
+  "ZijPaneel zet de klasse zp-vol, maar er is geen stijlregel .zp-paneel.zp-vol. De knop 'groter' doet dan niets.");
+checkWaar("de sleepgrepen van het zijpaneel zijn zichtbaar", /\.zp-greep::before/.test(css) && /\.zp-formaat\s*\{/.test(css),
+  "De greep links en het hoekje rechtsonder moeten zichtbaar zijn; anders kan het paneel wél groter, maar vindt niemand hoe.");
+
 console.log(fouten ? `\n${fouten} proef(en) mislukt.` : "\nAlle proeven geslaagd.");
 process.exit(fouten ? 1 : 0);
