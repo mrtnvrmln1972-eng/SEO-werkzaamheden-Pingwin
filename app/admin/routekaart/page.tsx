@@ -5,9 +5,10 @@ import { ADMIN_VIEWAS_COOKIE } from "../../../lib/constants";
 import { getScopeFromCookie } from "../../../lib/admin-scope";
 import {
   PUNTEN, GOLVEN, kanStarten, wachtOp, raaktZelfde, nuDoen, voortgang,
-  startprompt, startpromptTekst, botstMetLopend, geenAdviesReden,
+  startprompt, startpromptTekst, botstMetLopend, geenAdviesReden, parallelNu,
 } from "../../../lib/routekaart";
 import { beschrijvingen } from "../../../lib/routekaart-tekst";
+import { controleerAlles } from "../../../lib/routekaart-bewijs";
 import RoutekaartClient, { type PuntWeergave } from "./RoutekaartClient";
 
 // ═══════════════════════════════════════════════════════════
@@ -36,6 +37,16 @@ export default async function RoutekaartPage() {
   // te lezen zijn in plaats van op een ander scherm. Eén bron, twee vensters.
   const teksten = beschrijvingen(PUNTEN.map((p) => p.code));
 
+  // De stand in de routekaart is een bewering van een chat. Hier wordt hij
+  // getoetst aan de draaiende versie en aan de database, zodat "af" niet op een
+  // vinkje leunt. Deze controle draait ín de live applicatie, dus het antwoord
+  // gaat per definitie over de versie die je op dit moment bekijkt.
+  const bewijs = await controleerAlles(PUNTEN.map((p) => p.code));
+
+  // Welke punten kunnen nú tegelijk in aparte chats? Een set die elkaar niet
+  // raakt, niet een lijst waar je zelf de botsingen uit moet halen.
+  const parallel = parallelNu().map((p) => p.code);
+
   // Alle afgeleide waarden server-side, zodat de client alleen nog tekent.
   const punten: PuntWeergave[] = PUNTEN.map((p) => ({
     ...p,
@@ -46,6 +57,8 @@ export default async function RoutekaartPage() {
     promptTekst: startpromptTekst(p),
     beschrijving: teksten[p.code] ?? null,
     botstLopend: botstMetLopend(p).map((x) => x.code),
+    bewijs: bewijs[p.code],
+    parallel: parallel.includes(p.code),
   }));
 
   const advies = nuDoen();
@@ -57,6 +70,7 @@ export default async function RoutekaartPage() {
       voortgang={voortgang()}
       advies={advies ? { code: advies.code, titel: advies.titel, prompt: startprompt(advies) } : null}
       reden={geenAdviesReden()}
+      parallel={punten.filter((p) => p.parallel).map((p) => ({ code: p.code, titel: p.titel, prompt: p.prompt }))}
     />
   );
 }

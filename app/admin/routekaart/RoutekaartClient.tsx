@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { Punt } from "../../../lib/routekaart";
+import type { Uitslag } from "../../../lib/routekaart-bewijs";
 import Kopieer from "../Kopieer";
 import OntwikkelMenu from "../OntwikkelMenu";
 
@@ -15,19 +16,68 @@ export type PuntWeergave = Punt & {
   beschrijving: string | null;
   /** Punten die nú lopen en hetzelfde scherm raken. Niet tegelijk beginnen. */
   botstLopend: string[];
+  /** De gemeten werkelijkheid, uit de draaiende versie. */
+  bewijs: Uitslag;
+  /** Zit dit punt in de set die nú naast elkaar gestart kan worden? */
+  parallel: boolean;
 };
 
 type Golf = { nummer: 1 | 2 | 3; titel: string; regel: string };
 
-const STAND_LABEL: Record<Punt["stand"], string> = { open: "Open", loopt: "Loopt nu", af: "Af" };
 const OMVANG_LABEL: Record<Punt["omvang"], string> = {
   klein: "Klein werk", middel: "Halve dag tot een dag", groot: "Meerdere sessies",
 };
 
+/**
+ * Wat er op de chip staat volgt uit de MEETUITSLAG, niet uit het vinkje in de
+ * routekaart. "Af" is een bewering van een chat; hier staat wat de draaiende
+ * versie er zelf van zegt. Een punt dat af heet maar niet aangetoond is, zegt
+ * dat gewoon.
+ */
+function chipVoor(p: PuntWeergave): { tekst: string; kleur: string; titel: string } {
+  if (p.stand === "loopt") {
+    return { tekst: "Loopt nu", kleur: "loopt", titel: "Een chat is hier nu mee bezig." };
+  }
+  if (p.stand === "af") {
+    if (p.bewijs.stand === "aangetoond") {
+      return { tekst: "Af, gemeten", kleur: "af", titel: "Gecontroleerd in de versie die nu live staat." };
+    }
+    if (p.bewijs.stand === "half") {
+      return {
+        tekst: "Af, nog niet gezien",
+        kleur: "twijfel",
+        titel: "De code staat live, maar het is nog niet één keer in gebruik gemeten.",
+      };
+    }
+    if (p.bewijs.stand === "niet-aangetoond") {
+      return {
+        tekst: "Zegt af, niet aangetoond",
+        kleur: "alarm",
+        titel: "De routekaart zegt af, maar de controle vindt het niet in de live versie.",
+      };
+    }
+    return { tekst: "Af, niet gemeten", kleur: "ongemeten", titel: "Voor dit punt is nog geen controle vastgelegd." };
+  }
+  if (p.parallel) {
+    return { tekst: "Kan nu starten", kleur: "kan", titel: "Kan nu in een eigen chat, zonder iets anders te raken." };
+  }
+  return { tekst: "Open", kleur: "open", titel: "Staat nog open." };
+}
+
 function PuntKaart({ p }: { p: PuntWeergave }) {
   const [open, setOpen] = useState(false);
+  const chip = chipVoor(p);
+  // Een punt dat af heet maar niet aangetoond is, is de enige situatie die een
+  // rand verdient: dan klopt het overzicht niet en moet je het zien zonder klikken.
+  const alarm = p.stand === "af" && p.bewijs.stand === "niet-aangetoond";
   return (
-    <div className={"rk-punt rk-punt-" + p.stand}>
+    <div
+      className={
+        "rk-punt rk-punt-" + p.stand +
+        (p.parallel ? " rk-punt-kan" : "") +
+        (alarm ? " rk-punt-alarm" : "")
+      }
+    >
       <div className="rk-punt-kop">
         <span className="rk-code">{p.code}</span>
         <div className="rk-punt-tekst">
@@ -35,9 +85,16 @@ function PuntKaart({ p }: { p: PuntWeergave }) {
           <div className="rk-punt-oplevert">{p.oplevert}</div>
         </div>
         <div className="rk-punt-stand">
-          <span className={"chip rk-chip-" + p.stand}>{STAND_LABEL[p.stand]}</span>
+          <span className={"chip rk-chip-" + chip.kleur} title={chip.titel}>{chip.tekst}</span>
         </div>
       </div>
+
+      {alarm && (
+        <div className="rk-punt-alarmregel">
+          Dit punt staat als af in de routekaart, maar de controle vindt het niet terug in de versie die nu live
+          staat. Onder &ldquo;Wat gaan we hier bouwen?&rdquo; staat wat er ontbreekt.
+        </div>
+      )}
 
       <div className="rk-punt-meta">
         <span className="rk-meta-item">{OMVANG_LABEL[p.omvang]}</span>
@@ -78,6 +135,27 @@ function PuntKaart({ p }: { p: PuntWeergave }) {
               scherm. Doe die niet gelijktijdig.
             </p>
           )}
+
+          {/* De meting, niet de bewering. Hier staat waarop "af" rust. */}
+          <div className="rk-bewijs">
+            <div className="rk-bewijs-kop">Wat de live versie er zelf van zegt</div>
+            {p.bewijs.regels.length === 0 ? (
+              <p className="rk-bewijs-geen">
+                Voor dit punt is nog geen controle vastgelegd. Dat gebeurt bij het oppakken: de chat legt dan vast
+                waaraan te meten valt dat het echt werkt.
+              </p>
+            ) : (
+              <ul className="rk-bewijs-lijst">
+                {p.bewijs.regels.map((r) => (
+                  <li key={r.wat} className={r.ok ? "rk-b-ok" : "rk-b-nee"}>
+                    <span className="rk-b-teken" aria-hidden="true">{r.ok ? "✓" : "✗"}</span>
+                    {r.wat}
+                    {r.toelichting && <span className="rk-b-toel"> ({r.toelichting})</span>}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       )}
 
@@ -109,15 +187,19 @@ function PuntKaart({ p }: { p: PuntWeergave }) {
 }
 
 export default function RoutekaartClient({
-  punten, golven, voortgang, advies, reden,
+  punten, golven, voortgang, advies, reden, parallel,
 }: {
   punten: PuntWeergave[];
   golven: Golf[];
   voortgang: { af: number; loopt: number; open: number; totaal: number };
   advies: { code: string; titel: string; prompt: string } | null;
   reden: "leeg" | "botst" | null;
+  parallel: { code: string; titel: string; prompt: string }[];
 }) {
   const lopend = punten.filter((p) => p.stand === "loopt");
+  const twijfel = punten.filter((p) => p.stand === "af" && p.bewijs.stand === "niet-aangetoond");
+  // De rest naast het aangeraden punt: dat kun je er nú bij starten.
+  const erbij = parallel.filter((p) => p.code !== advies?.code);
 
   return (
     <>
@@ -178,6 +260,37 @@ export default function RoutekaartClient({
             </div>
           )}
         </div>
+
+        {/* ── Wat kun je er nú naast zetten? ── */}
+        {erbij.length > 0 && (
+          <div className="card rk-parallel">
+            <div className="rk-parallel-kop">
+              Dit kun je er nu naast starten, in eigen chats
+            </div>
+            <p className="rk-parallel-uitleg">
+              Deze punten raken elkaar niet en raken ook niet wat er nu loopt. Je kunt ze dus tegelijk aanzetten
+              zonder dat twee chats in hetzelfde scherm gaan schrijven.
+            </p>
+            <div className="rk-parallel-rij">
+              {erbij.map((p) => (
+                <div key={p.code} className="rk-parallel-kaart">
+                  <div className="rk-parallel-code">{p.code}</div>
+                  <div className="rk-parallel-titel">{p.titel}</div>
+                  <Kopieer tekst={p.prompt} label="Kopieer startregel" />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Klopt het overzicht nog? ── */}
+        {twijfel.length > 0 && (
+          <div className="card rk-twijfel">
+            <strong>Let op:</strong> {twijfel.map((p) => p.code).join(", ")} {twijfel.length === 1 ? "staat" : "staan"} als
+            af in de routekaart, maar {twijfel.length === 1 ? "is" : "zijn"} niet terug te vinden in de versie die nu
+            live staat. Dat betekent dat de chat het vinkje te vroeg zette, of dat het werk nog niet gedeployd is.
+          </div>
+        )}
 
         {lopend.length > 0 && (
           <div className="card rk-lopend">

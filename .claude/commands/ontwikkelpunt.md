@@ -36,9 +36,18 @@ ervan af omdat je in de code iets beters ziet, zeg dat dan in één regel voorda
 6. **Werk de uitleg bij in dezelfde wijziging** (`lib/uitleg.ts`): het hoofdstuk waar dit punt
    thuishoort krijgt de nieuwe werkelijkheid, en `LAATST_BIJGEWERKT` gaat vooruit. Een
    uitbreiding zonder bijgewerkte uitleg is niet af.
-7. **Sluit het punt af** in de routekaart: stand op `af` met de datum, en de beschrijving in het
+7. **Leg de controle vast in `lib/routekaart-bewijs.ts`.** Dit is geen bijzaak: zonder controle
+   is "af" een bewering, en dat ging op 6 augustus 2026 meteen mis (R1 stond op af terwijl er nog
+   aan gewerkt werd, en Maarten kon dat nergens zien). Voeg voor jouw punt twee soorten bewijs toe:
+   - **staat de code in de draaiende versie** (module inladen, kijken of de functie er is);
+   - **is het ook echt gebruikt** (één telling in de database die groter dan nul moet zijn).
+   Geen bestanden van schijf lezen; broncode staat niet gegarandeerd in een serverless-omgeving.
+8. **Sluit het punt af** in de routekaart: stand op `af` met de datum, en de beschrijving in het
    agenda-hoofdstuk verhuist naar het hoofdstuk waar hij thuishoort (dan is het werkelijkheid),
    met in de routekaart één regel over wanneer het klaar kwam.
+9. **Kijk daarna op `/admin/routekaart` of jouw punt daar "Af, gemeten" zegt.** Staat er "Zegt af,
+   niet aangetoond", dan is het niet af: of de controle klopt niet, of het werk staat niet live.
+   Los dat op vóór je terugkoppelt; die chip is het bewijs waar Maarten op vertrouwt.
 
 ## Wat je terugkoppelt
 

@@ -292,6 +292,32 @@ export function geenAdviesReden(): "leeg" | "botst" | null {
   return PUNTEN.filter(kanStarten).length ? "botst" : "leeg";
 }
 
+/**
+ * Welke punten kun je NU tegelijk in aparte chats starten?
+ *
+ * Niet "alles wat kan beginnen": twee punten die elkaars scherm raken leveren
+ * samen merge-conflicten op, dus die mogen niet in dezelfde set zitten. Daarom
+ * wordt de set opgebouwd in plaats van gefilterd: neem het beste punt, en voeg
+ * alleen punten toe die noch met een lopend punt, noch met een al gekozen punt
+ * botsen.
+ *
+ * Zo is de uitkomst een set die gegarandeerd naast elkaar kan, in plaats van een
+ * lijst waar Maarten zelf de botsingen uit moet halen.
+ */
+export function parallelNu(): Punt[] {
+  const rang: Record<Omvang, number> = { klein: 0, middel: 1, groot: 2 };
+  const kandidaten = PUNTEN.filter(kanStarten)
+    .filter((p) => botstMetLopend(p).length === 0)
+    .sort((a, b) => a.golf - b.golf || rang[a.omvang] - rang[b.omvang]);
+
+  const gekozen: Punt[] = [];
+  for (const p of kandidaten) {
+    if (gekozen.some((g) => g.raakt.some((r) => p.raakt.includes(r)))) continue;
+    gekozen.push(p);
+  }
+  return gekozen;
+}
+
 /** Punten die hetzelfde scherm raken; waarschuwing bij twee chats tegelijk. */
 export function raaktZelfde(p: Punt): Punt[] {
   return PUNTEN.filter(

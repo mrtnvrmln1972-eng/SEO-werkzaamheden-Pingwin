@@ -5361,4 +5361,51 @@ a.wb-pad:hover { text-decoration: underline; }
 .gmb-uitnodiging {
   margin-top: var(--s-4); padding: var(--s-4);
   background: var(--gray-light); border-radius: var(--r-md);
+/* ── Routekaart: de meting en wat er nu naast kan (6 augustus 2026) ──
+   "Af" komt uit een controle op de draaiende versie, niet uit een vinkje. De
+   kleuren volgen die uitslag, zodat je zonder klikken ziet of het overzicht
+   nog klopt. */
+.rk-chip-kan { background: #1c7a3f; color: var(--white); }
+.rk-chip-twijfel { background: var(--brand-orange-soft); color: var(--orange-dark); }
+.rk-chip-alarm { background: var(--red-light); color: var(--red); }
+.rk-chip-ongemeten { background: var(--gray-light); color: var(--brand-taupe); }
+
+.rk-punt-kan { border-color: #1c7a3f; background: #F6FBF7; }
+.rk-punt-alarm { border-color: var(--red); background: var(--red-light); }
+.rk-punt-alarmregel {
+  margin: var(--s-3) 0 0 50px; font-size: var(--fs-sm); line-height: 19px;
+  color: var(--red); max-width: 52em;
+}
+
+.rk-bewijs { margin-top: var(--s-4); padding-top: var(--s-3); border-top: 1px solid var(--card-border); }
+.rk-bewijs-kop {
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 800;
+  letter-spacing: 0.6px; text-transform: uppercase; color: var(--brand-taupe); margin-bottom: var(--s-2);
+}
+.rk-bewijs-lijst { list-style: none; margin: 0; padding: 0; }
+.rk-bewijs-lijst li {
+  display: flex; gap: var(--s-2); align-items: baseline;
+  font-size: var(--fs-sm); line-height: 19px; margin-bottom: var(--s-1); max-width: 52em;
+}
+.rk-b-teken { font-weight: 800; }
+.rk-b-ok { color: var(--muted); }
+.rk-b-ok .rk-b-teken { color: #1c7a3f; }
+.rk-b-nee { color: var(--red); }
+.rk-b-toel { color: var(--gray); }
+.rk-bewijs-geen { font-size: var(--fs-sm); line-height: 19px; color: var(--gray); max-width: 52em; }
+
+.rk-parallel { border-color: #BFE0C8; }
+.rk-parallel-kop { font-size: var(--fs-md); line-height: var(--lh-md); font-weight: 800; color: #1c7a3f; }
+.rk-parallel-uitleg { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray); margin-bottom: var(--s-4); max-width: 52em; }
+.rk-parallel-rij { display: flex; gap: var(--s-3); flex-wrap: wrap; }
+.rk-parallel-kaart {
+  flex: 1 1 200px; border: 1px solid #BFE0C8; border-radius: var(--r-md);
+  background: #F6FBF7; padding: var(--s-4);
+}
+.rk-parallel-code { font-size: var(--fs-md); line-height: var(--lh-md); font-weight: 800; color: #1c7a3f; }
+.rk-parallel-titel { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--brand-charcoal); margin-bottom: var(--s-3); }
+
+.rk-twijfel {
+  border-color: var(--red); background: var(--red-light);
+  font-size: var(--fs-base); line-height: 23px; color: var(--red); padding: var(--s-4) var(--s-5);
 }
