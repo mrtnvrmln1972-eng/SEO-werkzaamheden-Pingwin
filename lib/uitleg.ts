@@ -964,7 +964,12 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "- de bedrijfsgegevens en het klantprofiel;\n" +
           "- wat er in eerdere gesprekken over deze pagina besloten is.\n\n" +
           "Dat is het verschil met een los AI-gesprek: je hoeft de situatie niet uit te leggen voordat je een " +
-          "bruikbaar antwoord krijgt.",
+          "bruikbaar antwoord krijgt.\n\n" +
+          "**Zelf iets erbij leggen kan ook.** Sleep een document of een screenshot in een open gesprek (of plak " +
+          "hem) en hij landt op twee plekken tegelijk: in de klantmap in Drive, en in dit gesprek, zodat de " +
+          "assistent hem meteen meeleest. Hij verschijnt als regeltje onder het gesprek, met de naam als link naar " +
+          "Drive. De assistent maakt er een korte samenvatting van; die staat achter een pijltje bij dat regeltje, " +
+          "dus je ziet hem als je hem wilt zien en niet als muur tekst tussen je vragen in.",
       },
       {
         titel: "Waarom de assistent niet ongevraagd proactief is",

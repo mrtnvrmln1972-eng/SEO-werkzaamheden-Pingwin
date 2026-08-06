@@ -4,11 +4,12 @@ import { useState, useRef, useEffect } from "react";
 import ActionCard, { type Action } from "./ActionCard";
 import TakenVoorstel, { type Oogst } from "./TakenVoorstel";
 import DeelKnoppen from "./DeelKnoppen";
-import ChatBestanden, { type ChatFile } from "./ChatBestanden";
+import ChatBestanden from "./ChatBestanden";
 import { linkifyHtml as linkify } from "../../../../lib/linkify";
 import { vraagHtml } from "../../../../lib/vraag-opmaak";
 import { striptVulzinnen } from "../../../../lib/vulzinnen";
 import { eersteKop } from "../../../../lib/chat-vouw";
+import { bestandMelding } from "../../../../lib/bestand-melding";
 import MailVenster from "./MailVenster";
 import Bronnenstrip, { type Bron } from "./Bronnenstrip";
 
@@ -291,23 +292,11 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
     await fetch(`/api/admin/chat?slug=${encodeURIComponent(slug)}&thread=${encodeURIComponent(thread)}`, { method: "DELETE" }).catch(() => {});
   }
 
-  // Een binnengekomen bestand meldt zich in het gesprek zelf, als bericht met de
-  // link en de kern erbij. Zo zie je terug wanneer je wat hebt neergelegd, en de
-  // assistent heeft het in de geschiedenis staan naast de context die de server
-  // er al bij zet.
-  function meldBestand(thread: string, f: ChatFile) {
-    const wat = f.soort === "afbeelding" ? "Afbeelding" : "Document";
-    const regels = [
-      `${wat} toegevoegd aan het dossier: ${f.link ? `[${f.naam}](${f.link})` : f.naam}`,
-      f.kern ? `\n${f.kern}` : "",
-    ].filter(Boolean).join("\n");
-    setMessages((m) => {
-      const next: Msg[] = [...m, { role: "user", content: regels }];
-      fetch("/api/admin/chat", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread, messages: next }) }).catch(() => {});
-      return next;
-    });
-    setTopics((ts) => ts.map((x) => x.thread === thread ? { ...x, count: x.count + 1 } : x));
-  }
+  // Een binnengekomen bestand meldt zich NIET meer in het gesprek. Dat schreef een
+  // heel blok met de link en de complete samenvatting tussen je vragen in, terwijl
+  // de dropzone eronder al laat zien dat het bestand er is; de samenvatting staat
+  // daar nu uitklapbaar bij. De assistent kende het bestand toch al langs een
+  // andere weg: de server zet de inhoud zelf bij de context.
 
   function handleExecuted(id: string, result: NonNullable<Action["result"]>, executed: boolean) {
     setMessages((prev) => prev.map((m) => m.actions ? { ...m, actions: m.actions.map((a) => a.id === id ? { ...a, executed, result } : a) } : m));
@@ -471,6 +460,10 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
                       const laatsteOogst = messages.map((x) => (x.soort === "oogst" ? 1 : 0)).lastIndexOf(1);
                       if (i !== laatsteOogst) return null;
                     }
+                    // Oude "document toegevoegd aan het dossier"-blokken: die schreven de
+                    // hele samenvatting uit tussen je vragen in. Ze worden hier herkend en
+                    // tot één regel gevouwen, ook in gesprekken die er al stonden.
+                    const melding = m.role === "user" ? bestandMelding(m.content || "") : null;
                     return (
                       <div key={i} className={"ovc-msg " + m.role + (dicht ? " ovc-msg-dicht" : "")}>
                         <button type="button" className="chat-msg-del" title="Dit blok verwijderen" onClick={() => deleteMessage(i)}>&times;</button>
@@ -505,6 +498,29 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
                               <div className={"ovc-bubble chat-md" + (m.soort === "conclusie" ? " ovc-conclusie" : "")}>
                                 {m.soort === "conclusie" && <div className="ovc-conclusie-label">Conclusie van dit gesprek</div>}
                                 <div dangerouslySetInnerHTML={{ __html: mdToHtml(striptVulzinnen(zonderWeekrecap(m.content || "", (m.actions || []).some((a) => a.type === "weekplan_taken"))), domain) }} />
+                              </div>
+                            )
+                          : melding
+                          ? (
+                              // Een oude bestandsmelding: vroeger een blok met de link én
+                              // de complete samenvatting, nu één regel. De tekst is niet
+                              // weg, hij staat één klik verderop.
+                              <div className="ovc-bestand">
+                                <span className="cb-icoon" aria-hidden="true">{melding.wat === "Afbeelding" ? "🖼" : "📄"}</span>
+                                {melding.link
+                                  ? <a className="cb-naam" href={melding.link} target="_blank" rel="noreferrer">{melding.naam}</a>
+                                  : <span className="cb-naam">{melding.naam}</span>}
+                                <span className="ovc-bestand-meta">toegevoegd aan het dossier</span>
+                                {melding.kern && (
+                                  <button type="button" className="ovc-bestand-vouw"
+                                    onClick={() => setOpenBericht((v) => ({ ...v, [i]: !v[i] }))}>
+                                    {openBericht[i] ? "▾ samenvatting" : "▸ samenvatting"}
+                                  </button>
+                                )}
+                                {melding.kern && openBericht[i] && (
+                                  <div className="ovc-bestand-kern chat-md"
+                                    dangerouslySetInnerHTML={{ __html: mdToHtml(melding.kern, domain) }} />
+                                )}
                               </div>
                             )
                           : (
@@ -595,7 +611,7 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
 
                   {/* De dropzone van dit gesprek: wat je hier laat vallen komt in de
                       klantmap in Drive én in de context van dit gesprek. */}
-                  <ChatBestanden slug={slug} thread={t.thread} onToegevoegd={(f) => meldBestand(t.thread, f)} />
+                  <ChatBestanden slug={slug} thread={t.thread} />
 
                   <div className="ovc-input">
                     <textarea

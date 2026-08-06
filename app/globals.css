@@ -2561,6 +2561,13 @@ tbody tr.row-done:hover { background: #E2F1E2; }
   white-space: pre-wrap;
   max-width: 100%;
 }
+/* Een bestand dat ooit als heel blok in het gesprek werd gemeld: nu één regel,
+   met de samenvatting één klik verderop. Bewust geen oranje kaart: dit is geen
+   vraag van Maarten, het is een aantekening. */
+.ovc-bestand { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); }
+.ovc-bestand-meta { color: var(--gray); }
+.ovc-bestand-vouw { border: 0; background: none; padding: 0; color: var(--pingwin); cursor: pointer; font-size: var(--fs-xs); line-height: var(--lh-xs); }
+.ovc-bestand-kern { flex-basis: 100%; padding: var(--s-3); border: 1px solid var(--card-border); border-radius: var(--r-md); background: var(--white); color: var(--dark); font-size: var(--fs-sm); line-height: var(--lh-sm); }
 .ovc-msg.assistant .ovc-bubble { background: #f4f4f5; color: #1f1f1f; border-bottom-left-radius: 4px; }
 .ovc-msg.assistant .ovc-bubble.muted { background: none; color: var(--gray); font-style: italic; }
 /* Lange antwoorden standaard ingeklapt (geen muur van tekst) */
@@ -2658,6 +2665,11 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 a.cb-naam { color: var(--pingwin); text-decoration: underline; }
 .cb-weg { border: 0; background: none; padding: 0 2px; color: var(--gray); cursor: pointer; font-size: var(--fs-sm); line-height: 1; }
 .cb-weg:hover { color: var(--danger, #c0392b); }
+/* De samenvatting van een bestand: een pijltje op de chip, de tekst eronder.
+   Stond vroeger als heel blok in het gesprek zelf. */
+.cb-kern-knop { border: 0; background: none; padding: 0 2px; color: var(--pingwin); cursor: pointer; font-size: var(--fs-xs); line-height: 1; }
+.cb-kern { margin-top: var(--s-2); padding: var(--s-3); border: 1px solid var(--card-border); border-radius: var(--r-md); background: var(--white); font-size: var(--fs-sm); line-height: var(--lh-sm); }
+.cb-kern-kop { margin-bottom: var(--s-1); color: var(--gray); font-size: var(--fs-xs); line-height: var(--lh-xs); }
 .cb-fout { margin-top: var(--s-2); }
 .cb-overlay { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; background: rgba(17, 17, 17, .35); color: #fff; font-size: var(--fs-md); line-height: var(--lh-md); pointer-events: none; }
 
