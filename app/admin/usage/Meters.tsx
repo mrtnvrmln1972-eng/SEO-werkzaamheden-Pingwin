@@ -48,9 +48,11 @@ const TIPS: { meter: string; tips: Tip[] }[] = [
   {
     meter: "Je Claude-abonnement",
     tips: [
-      { kop: "Nieuwe klus, nieuwe chat", tekst: "Zodra je op usage credits werkt, wordt het geheugen van een gesprek na vijf minuten stilte niet meer goedkoop hergebruikt (op je abonnement is dat een uur). Doorwerken in een chat van vanmorgen betekent de hele geschiedenis opnieuw betalen." },
-      { kop: "Laat er niet acht tegelijk openstaan", tekst: "Elke lopende chat draagt zijn eigen geschiedenis mee. Rond af wat af is; dat scheelt meer dan korter typen." },
-      { kop: "Zwaar denkwerk waar het loont", tekst: "Het zware model is voor strategie en beoordelen, niet voor een lijstje ophalen of een tekst netjes maken." },
+      { kop: "Kijk eerst wélke meter vol is", tekst: "In Claude Code toont /usage twee dingen: je plan-limiet (per vijf uur en per week) en je tegoed. Staat de weeklimiet op 100%, dan betaal je álles tot de reset uit je tegoed, ook werk dat gisteren gratis was. Dat verklaart een bedrag dat plots hard oploopt zonder dat je meer doet." },
+      { kop: "Kies het model naar de klus", tekst: "Het zwaarste model kost een veelvoud van het middelste. Voor bouwen, opmaken, teksten en lijstjes is dat middelste model genoeg; het zware is voor strategie en beoordelen. Dit is de grootste knop die er is, groter dan alle andere tips bij elkaar." },
+      { kop: "Nieuwe klus, nieuwe chat", tekst: "Zodra je op tegoed werkt, wordt het geheugen van een gesprek na vijf minuten stilte niet meer goedkoop hergebruikt (op je abonnement is dat een uur). Elke vraag daarna betaalt de hele geschiedenis opnieuw. Een verse chat met drie regels startprompt begint bij bijna nul." },
+      { kop: "Niet zes chats tegelijk laten sudderen", tekst: "Elke lopende chat draagt zijn eigen geschiedenis mee. Werk je in zes chats door elkaar, dan betaal je zes keer een geschiedenis in plaats van één. Rond af wat af is." },
+      { kop: "Zet een uitgavenlimiet", tekst: "Op claude.ai kun je een grens per maand zetten op het tegoed. Dan kan het niet meer stilletjes doorlopen; je krijgt een melding in plaats van een verrassing." },
       { kop: "Vraag gericht", tekst: "\"Kijk de hele site na\" laat alles lezen. \"Kijk deze pagina na op deze drie punten\" kost een fractie en geeft een beter antwoord." },
     ],
   },
