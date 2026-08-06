@@ -11,6 +11,7 @@ import OpruimOnderwerpen, { type Onderwerp } from "./OpruimOnderwerpen";
 import OpruimGaten, { type Gat } from "./OpruimGaten";
 import OpruimEindstructuur from "./OpruimEindstructuur";
 import OpruimNameten, { type Nameting } from "./OpruimNameten";
+import OpruimPlaatsen from "./OpruimPlaatsen";
 import Voortgang from "./Voortgang";
 import { useKlus } from "./useKlus";
 
@@ -556,6 +557,15 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
                 <OpruimOppakken slug={slug} domain={domain} rijen={result.oppakken || []} clientName={clientName} clientEmail={clientEmail} />
               </Sectie>
             )}
+
+            {/* Plaatspagina's: één besluit per plaats, met de vestigingen uit de
+                bedrijfsgegevens als input voor de laatste van vijf vragen. Hoog in
+                de lijst, want bij een site met honderd plaatspagina's is dit het
+                grootste besluit dat er ligt. */}
+            <Sectie titel="Plaatspagina's: wat blijft en wat gaat"
+              wat="Eén besluit per plaats in plaats van per URL, langs vijf vragen: levert hij iets op, is er vraag, is het te winnen, klopt de URL-vorm, en pas als laatste: zit er een vestiging.">
+              <OpruimPlaatsen slug={slug} domain={domain} clientName={clientName} clientEmail={clientEmail} />
+            </Sectie>
 
             {(result.gaten?.length || 0) > 0 && (
               <Sectie titel="Wat er ontbreekt" aantal={result.gaten?.length}

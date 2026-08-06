@@ -19,6 +19,63 @@ import { zwakkePaginas } from "./concurrenten";
 // ═══════════════════════════════════════════════════════════
 
 export type StructuurFamilie = { vorm: string; aantal: number; dood: number; voorbeelden: string[] };
+
+/**
+ * De plaatsherkenning apart, zodat het plaatsen-advies dezelfde herkenning
+ * gebruikt als dit overzicht. Twee keer uitschrijven zou betekenen dat het
+ * overzicht en het advies het over andere pagina's kunnen hebben zonder dat
+ * iemand het merkt; dat is de fout die in dit dashboard al drie keer is
+ * gemaakt.
+ */
+export function plaatsHerkenning(paden: string[]): {
+  isPlaats: (w: string) => boolean;
+  vormVan: (p: string) => string;
+  plaatsIn: (p: string) => string;
+} {
+  const woorden = (p: string) => p.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 2);
+  const freq = new Map<string, number>();
+  for (const p of paden) for (const w of new Set(woorden(p))) freq.set(w, (freq.get(w) || 0) + 1);
+  const grens = Math.max(3, Math.round(paden.length * 0.06));
+
+  const vullers = new Map<string, Set<string>>();
+  for (const ruw of paden) {
+    const pad = ruw.toLowerCase();
+    for (const w of new Set(woorden(pad))) {
+      const gat = pad.split(w).join("*");
+      if (!vullers.has(gat)) vullers.set(gat, new Set());
+      vullers.get(gat)!.add(w);
+    }
+  }
+  const familie = new Map<string, Set<string>>();
+  for (const set of vullers.values()) {
+    if (set.size < 3) continue;
+    for (const w of set) {
+      if (!familie.has(w)) familie.set(w, new Set());
+      for (const b of set) familie.get(w)!.add(b);
+    }
+  }
+  const isPlaats = (w: string) => (familie.get(w)?.size || 0) >= 20 && (freq.get(w) || 0) <= grens;
+  const vormVan = (p: string): string => {
+    const seg = p.replace(/^\/|\/$/g, "").split("/");
+    if (!seg[0]) return "/";
+    return "/" + seg.map((x) => x.split("-").map((d) => (isPlaats(d.toLowerCase()) ? "<plaats>" : d)).join("-")).join("/") + "/";
+  };
+  // Welke plaatsnaam staat er in dit pad? Meerdelige namen (den-haag) staan als
+  // losse delen in de URL, dus aangrenzende plaatsdelen worden weer aan elkaar
+  // geplakt; anders wordt "Den Haag" twee keer half herkend.
+  const plaatsIn = (p: string): string => {
+    const delen = p.toLowerCase().replace(/^\/|\/$/g, "").split(/[/\-]/).filter(Boolean);
+    const uit: string[] = [];
+    let lopend: string[] = [];
+    for (const d of delen) {
+      if (isPlaats(d)) lopend.push(d);
+      else if (lopend.length) { uit.push(lopend.join("-")); lopend = []; }
+    }
+    if (lopend.length) uit.push(lopend.join("-"));
+    return uit.sort((a, b) => b.length - a.length)[0] || "";
+  };
+  return { isPlaats, vormVan, plaatsIn };
+}
 export type Structuur = { families: StructuurFamilie[]; totaalLive: number; totaalVormen: number; dood: number; gemeten: boolean };
 
 const padVan = (u: string) => { try { return new URL(u).pathname; } catch { return u; } };

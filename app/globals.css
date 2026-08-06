@@ -4207,6 +4207,11 @@ details[open] > .opr-kaart-sam::before { content: "▾ "; }
    kader geven. */
 .opr-sectie-body > .opr-kaart { border: none; box-shadow: none; padding: 0; margin: 0; background: transparent; }
 .opr-sectie-body > .opr-kaart > .opr-kop, .opr-sectie-body > .opr-kaart > .opr-kop-rij { border-bottom: none; }
+/* De filterknoppen boven het plaatsen-advies: de gekozen knop moet te zien zijn,
+   anders klik je en verandert er zichtbaar niets. */
+.ghost-btn.small.actief { background: var(--orange); color: var(--white); border-color: var(--orange); }
+/* Fijndruk onder een blok: de herkomst van de cijfers, geen hoofdzaak. */
+.opr-fijn { font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); }
 
 
 /* ── Paginadossier: alles wat over een pagina speelt, in één blok ──────
