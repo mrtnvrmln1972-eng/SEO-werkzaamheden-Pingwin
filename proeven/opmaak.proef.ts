@@ -102,11 +102,19 @@ checkWaar("het klantenoverzicht staat er ook in", paden.includes("/admin"), "");
 // Losse waarden in plaats van de tokens is precies hoe een ontwerp uit elkaar
 // gaat lopen. Alleen de blokken die vandaag zijn toegevoegd worden gecontroleerd;
 // de oudere opmaak migreert stuk voor stuk.
+// Alleen de regels van de gedeelde beheerscherm-bouwstenen (.beheer-). Bewust per
+// regel gezocht en niet "alles vanaf hier tot het eind": er wordt vanuit meerdere
+// chats aan dit bestand geschreven, dus wat er ná mijn blok staat is van iemand
+// anders en hoort hier niet gemeten te worden. Die te ruime greep gaf op
+// 6 augustus meteen een valse melding.
 const css = lees("app/globals.css");
-const blok = css.slice(css.indexOf("/* ── Gedeelde opmaak voor een los beheerscherm"));
-const losseWaarden = [...blok.matchAll(/:\s*(\d+)px/g)].map((m) => m[0]).filter((v) => !/:\s*1px/.test(v));
+const eigenRegels = css.split("\n").filter((r) => /^\.beheer-[\w-]*[\s,{]/.test(r.trim()));
+checkWaar("de bouwstenen bestaan", eigenRegels.length > 5, `gevonden: ${eigenRegels.length} regels`);
+const losseWaarden = eigenRegels
+  .flatMap((r) => [...r.matchAll(/:\s*(\d+)px/g)].map((m) => `${r.trim().slice(0, 30)}… ${m[0]}`))
+  .filter((v) => !/:\s*1px/.test(v));
 checkWaar("de nieuwe opmaak gebruikt de vaste schaal", losseWaarden.length === 0,
-  `Gevonden losse waarden: ${losseWaarden.join(", ")}. Gebruik --s-*, --fs-*, --r-* in plaats van vaste pixels (een randje van 1px mag).`);
+  `Gevonden losse waarden: ${losseWaarden.join(" | ")}. Gebruik --s-*, --fs-*, --r-* in plaats van vaste pixels (een randje van 1px mag).`);
 
 console.log(fouten ? `\n${fouten} proef(en) mislukt.` : "\nAlle proeven geslaagd.");
 process.exit(fouten ? 1 : 0);

@@ -5421,47 +5421,47 @@ a.wb-pad:hover { text-decoration: underline; }
    AdminKop. Ze stonden er niet, en daardoor schreef elk scherm zijn eigen
    marges; het schrijfstijl-scherm kreeg er per ongeluk helemaal geen. Alles op
    de vaste schaal-tokens, nooit losse waarden. */
-.pg-container { max-width: var(--breedte-scherm); margin: 0 auto; padding: var(--s-6) var(--s-4) var(--s-10); }
-.pg-kop { margin-bottom: var(--s-4); }
-.pg-blok { margin-bottom: var(--s-4); }
-.pg-h1 {
+.beheer-container { max-width: var(--breedte-scherm); margin: 0 auto; padding: var(--s-6) var(--s-4) var(--s-10); }
+.beheer-kop { margin-bottom: var(--s-4); }
+.beheer-blok { margin-bottom: var(--s-4); }
+.beheer-h1 {
   margin: 0 0 var(--s-3); color: var(--orange-dark);
   font-size: var(--fs-lg); line-height: var(--lh-lg); font-weight: 700;
 }
-.pg-h2 {
+.beheer-h2 {
   margin: var(--s-5) 0 var(--s-2); color: var(--orange-dark);
   font-size: var(--fs-sm); line-height: var(--lh-sm); font-weight: 700;
   text-transform: uppercase; letter-spacing: .04em;
 }
-.pg-uitleg { margin: 0 0 var(--s-3); max-width: 70ch; color: var(--body-text); }
-.pg-lijst { margin: 0; padding-left: var(--s-5); max-width: 70ch; color: var(--gray); }
-.pg-lijst li + li { margin-top: var(--s-2); }
-.pg-balk {
+.beheer-uitleg { margin: 0 0 var(--s-3); max-width: 70ch; color: var(--body-text); }
+.beheer-lijst { margin: 0; padding-left: var(--s-5); max-width: 70ch; color: var(--gray); }
+.beheer-lijst li + li { margin-top: var(--s-2); }
+.beheer-balk {
   display: flex; flex-wrap: wrap; gap: var(--s-3); align-items: center;
   justify-content: space-between; padding: var(--s-3);
   background: var(--brand-orange-faint); border-radius: var(--r-md);
 }
-.pg-veld-kop { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); }
-.pg-veld-kop .pg-h2 { margin-bottom: 0; }
-.pg-schakel {
+.beheer-veld-kop { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); }
+.beheer-veld-kop .beheer-h2 { margin-bottom: 0; }
+.beheer-schakel {
   background: none; border: 0; padding: 0; cursor: pointer; color: var(--orange);
   font: inherit; font-size: var(--fs-xs); line-height: var(--lh-xs);
 }
-.pg-schakel:hover { color: var(--brand-orange-soft); }
-.pg-lees, .pg-bewerk {
+.beheer-schakel:hover { color: var(--brand-orange-soft); }
+.beheer-lees, .beheer-bewerk {
   margin-top: var(--s-2); padding: var(--s-4);
   background: var(--gray-light); border-radius: var(--r-md); max-width: 78ch;
 }
-.pg-bewerk { background: var(--white); border: 1px solid var(--orange); outline: none; }
-.pg-citaten {
+.beheer-bewerk { background: var(--white); border: 1px solid var(--orange); outline: none; }
+.beheer-citaten {
   margin: var(--s-2) 0 0; padding: var(--s-4) var(--s-4) var(--s-4) var(--s-6);
   background: var(--brand-orange-faint); border-radius: var(--r-md); max-width: 78ch;
   color: var(--body-text);
 }
-.pg-citaten li + li { margin-top: var(--s-2); }
-.pg-klein { font-size: var(--fs-xs); line-height: var(--lh-xs); margin-top: var(--s-2); max-width: 70ch; }
-.pg-knoppen { display: flex; gap: var(--s-3); margin-top: var(--s-5); }
-.pg-fout, .pg-ok {
+.beheer-citaten li + li { margin-top: var(--s-2); }
+.beheer-klein { font-size: var(--fs-xs); line-height: var(--lh-xs); margin-top: var(--s-2); max-width: 70ch; }
+.beheer-knoppen { display: flex; gap: var(--s-3); margin-top: var(--s-5); }
+.beheer-fout, .beheer-ok {
   padding: var(--s-3); border-radius: var(--r-md); margin-top: var(--s-3);
   font-size: var(--fs-sm); line-height: var(--lh-sm);
 }
@@ -5552,5 +5552,5 @@ a.wb-pad:hover { text-decoration: underline; }
   font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray);
 }
 @media (max-width: 700px) { .md-label { display: none; } }
-.pg-fout { background: var(--red-light); color: var(--red); }
-.pg-ok { background: var(--brand-orange-faint); color: var(--orange-dark); }
+.beheer-fout { background: var(--red-light); color: var(--red); }
+.beheer-ok { background: var(--brand-orange-faint); color: var(--orange-dark); }
