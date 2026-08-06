@@ -78,6 +78,24 @@ Alles wat Maarten ziet (dashboard, chat, mail, preview, terugkoppeling) moet 100
 - **Design-fundament (vaste regel, 01-08-2026).** In `app/globals.css` staat naast de kleuren een vast fundament: een spacing-schaal (`--s-1` t/m `--s-12`, veelvouden van 4), een type-schaal (`--fs-xs` t/m `--fs-xl` met bijpassende `--lh-*` regelhoogtes), een radius-schaal (`--r-sm/md/lg/full`) en een shadow-schaal (`--shadow-sm/md/lg`), plus gedeelde bouwstenen `.card`, `.section`, `.row`, `.chip`, `.btn`. **Elke UI-wijziging gebruikt deze schaal-tokens en bouwstenen; nooit hardgecodeerde afstanden, font-sizes, rondingen of schaduwen.** Vóór elke deploy draait de design-checklist uit de proper-design skill (uitlijning, spacing, type-schaal, contrast, consistentie), en het resultaat wordt eerst gecontroleerd op https://pingwin-seo-dashboard.vercel.app. Bestaande schermen migreren batch voor batch naar dit fundament (batch 1: het Bird's eye-blok).
 - **Met terugwerkende kracht (vaste regel, 31-07-2026).** Elke opmaak- of dashboardaanpassing geldt automatisch óók voor bestaande kaarten, taken en chats, in alle werelden (Pingwin én NOC). Bouw zulke aanpassingen daarom in de weergave-laag (renderer/parser, zoals `lib/card-info.ts`), niet alleen in de prompt voor nieuwe data. Maarten hoeft dit niet meer per wijziging te vragen.
 
+## 0b. DE UITLEGPAGINA BIJWERKEN (vaste stap, 06-08-2026)
+
+Er is één plek waar het hele dashboard in gewone taal wordt uitgelegd: **`/uitleg`**
+(https://pingwin-seo-dashboard.vercel.app/uitleg). Openbaar leesbaar, dus deelbaar met klanten,
+leads, collega-bureaus en investeerders. De inhoud staat volledig in `lib/uitleg.ts`; de pagina
+(`app/uitleg/page.tsx`) rendert alleen.
+
+**Vaste stap: bouw je iets noemenswaardigs bij of om, werk dan in dezelfde wijziging de
+betreffende uitklapper in `lib/uitleg.ts` bij en verzet `LAATST_BIJGEWERKT`.** Maarten hoeft dit
+niet te vragen. Een uitbreiding zonder bijgewerkte uitleg is niet af.
+
+Twee regels die dat document eerlijk houden:
+
+- **Niets erin wat niet in de code staat.** Geen roadmap-taal die klinkt als werkelijkheid.
+- **Hoofdstukken met `intern: true` zijn alleen zichtbaar mét admin-sessie.** Daar staan de
+  gaten, de risico's en de verbeterpunten. Zo blijft het één document in plaats van een
+  verkoopversie en een interne versie die uit elkaar lopen.
+
 ## 1. Wat dit is en waarom
 
 **Eigenaar:** Maarten Vermeulen (Pingwin Online Marketing). Geen coding-achtergrond, werkt AI-first: laat Claude bouwen en testen, plakt commando's in de terminal.

@@ -525,8 +525,12 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
           </div>
         </div>
         <div className="header-right">
+          {/* De volledige uitleg van het dashboard: openbaar leesbaar, dus deelbaar
+              met een klant, een lead of een investeerder. Het hoofdstuk met de
+              openstaande punten verschijnt daar alleen mét deze admin-sessie. */}
+          <a className="logout-btn" href="/uitleg" title="Zo werkt het dashboard: de volledige uitleg, deelbaar met klanten en leads">Zo werkt het</a>
           {isOwner && (
-            <a className="logout-btn" href="/admin/beheer" title="Klanten en teamgebruikers beheren">Beheer</a>
+            <a className="logout-btn" href="/admin/beheer" title="Klanten en teamgebruikers beheren" style={{ marginLeft: 8 }}>Beheer</a>
           )}
           {(isOwner || canDev) && (
             <a className="logout-btn" href="/admin/developer" title="Alle developer-taken over alle klanten" style={{ marginLeft: 8 }}>Developer</a>
