@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
 import { getClientBySlug } from "../../../../lib/clients";
-import { adviesPerPlaats } from "../../../../lib/opruim-plaatsen";
 import { zorgVoorPlaatsen } from "../../../../lib/cannibal-redirect";
 
 export const runtime = "nodejs";
@@ -26,12 +25,13 @@ export async function GET(req: NextRequest) {
 
   try {
     // Het opgeslagen rapport eerst: opnieuw uitrekenen duurt veertien seconden en
-    // levert bij een ongewijzigde site hetzelfde op. Met ?vers=1 forceer je het.
-    if (req.nextUrl.searchParams.get("vers") !== "1") {
-      const bewaard = await zorgVoorPlaatsen(slug, domain).catch(() => null);
-      if (bewaard?.adviezen?.length) return NextResponse.json({ ok: true, ...bewaard });
-    }
-    return NextResponse.json({ ok: true, ...(await adviesPerPlaats(slug, domain)) });
+    // levert bij een ongewijzigde site hetzelfde op. Met ?vers=1 forceer je het,
+    // en dan wordt de verse uitkomst ook meteen bewaard: anders blijft alles wat
+    // elders leest (het eindbeeld, de werklijst) op het oude advies draaien.
+    const vers = req.nextUrl.searchParams.get("vers") === "1";
+    const rapport = await zorgVoorPlaatsen(slug, domain, vers).catch(() => null);
+    if (!rapport) return NextResponse.json({ ok: false, error: "Advies bepalen mislukt." }, { status: 500 });
+    return NextResponse.json({ ok: true, ...rapport });
   } catch (e) {
     return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : "Advies bepalen mislukt." }, { status: 500 });
   }

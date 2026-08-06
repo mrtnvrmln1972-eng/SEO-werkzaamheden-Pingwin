@@ -433,11 +433,13 @@ export async function weegOpruimlijstOpnieuw(slug: string, domain: string): Prom
  * nog leeg was, zonder dat er iets misging of iets zei dat er iets ontbrak. Dat
  * is precies het soort verschil dat niemand opmerkt.
  */
-export async function zorgVoorPlaatsen(slug: string, domain: string): Promise<PlaatsenRapport | null> {
+export async function zorgVoorPlaatsen(slug: string, domain: string, forceer = false): Promise<PlaatsenRapport | null> {
   await ensureSchema();
   await ensureTable();
-  const row = await readRow(slug);
-  if (row?.plaatsen?.adviezen?.length) return row.plaatsen;
+  if (!forceer) {
+    const row = await readRow(slug);
+    if (row?.plaatsen?.adviezen?.length) return row.plaatsen;
+  }
   const vers = await adviesPerPlaats(slug, domain).catch(() => null);
   if (vers?.adviezen.length) {
     await q`UPDATE client_cannibal_analysis SET plaatsen = ${JSON.stringify(vers)}, updated_at = now() WHERE client_slug = ${slug}`;
