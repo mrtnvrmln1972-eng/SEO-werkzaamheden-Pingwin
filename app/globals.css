@@ -2041,7 +2041,17 @@ tbody tr.row-done:hover { background: #E2F1E2; }
    alles". Zonder dit duwde een gevuld veld de hele tab weg. */
 /* Het deksel op een lang tekstveld ("toon alles") is weg: het veld zit in een
    zijpaneel dat je zelf groter maakt, en heeft in de kaart al een eigen inklap. */
-.focus-toolbar { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+/* De knoppenbalk blijft staan zodra je door de tekst eronder scrolt. Zonder dit
+   moest je in een lang veld helemaal terug naar boven om iets vet te maken of een
+   uitklapper toe te voegen, precies wanneer je er middenin zit. Het vlak eronder
+   is dicht (eigen achtergrond plus een lijntje), anders scrolt de tekst er
+   zichtbaar doorheen. */
+.focus-toolbar {
+  display: flex; flex-wrap: wrap; gap: 4px;
+  position: sticky; top: 0; z-index: 3;
+  margin-bottom: 8px; padding: var(--s-2) 0;
+  background: var(--white); border-bottom: 1px solid var(--card-border);
+}
 .focus-toolbar button { font-size: 12px; padding: 4px 9px; border: 1px solid var(--border); background: var(--white); border-radius: 6px; cursor: pointer; color: var(--dark); }
 .focus-toolbar button:hover { border-color: var(--orange); color: var(--orange); }
 .focus-save-status { font-size: 11px; color: var(--gray); align-self: center; margin-left: auto; }
