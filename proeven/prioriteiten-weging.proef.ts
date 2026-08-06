@@ -10,6 +10,7 @@
 // overgenomen uit Search Console op 6 augustus 2026.
 
 import { bouwKlantContext, leidWerkgebiedAf, bepaalIntentie, bepaalFit, weeg } from "../lib/prioriteiten-context";
+import { onderbouwing } from "../lib/prioriteiten-onderbouwing";
 
 let fouten = 0;
 function check(naam: string, gekregen: unknown, verwacht: unknown) {
@@ -124,6 +125,30 @@ const scoreA = Math.log10(900) * gewicht[a.intentie] * a.relevanceFit;
 const scoreB = Math.log10(3500) * gewicht[b.intentie] * b.relevanceFit;
 checkWaar("tuinontwerp laten maken verslaat voortuin", scoreA > scoreB,
   `tuinontwerp laten maken ${scoreA.toFixed(2)} (${a.intentie}, fit ${a.relevanceFit}) tegen voortuin ${scoreB.toFixed(2)} (${b.intentie}, fit ${b.relevanceFit})`);
+
+// ── 5. De onderbouwing die de klant te zien krijgt ──
+// Dezelfde tekst gaat naar het scherm, de weekplan-kaart en de mail. Er mag dus
+// niets in staan wat je een klant niet voorlegt.
+const basis = {
+  type: "content_gap", titel: "", url: "", zoekwoord: "tuinontwerp laten maken",
+  maandvolume: 900, huidigePositie: 0, targetPositie: 5, intentie: "transactional",
+  effort: 6, timeToEffect: 4, confidence: 0.3, extraKlikkenPerMaand: 44,
+  bron: "de kansenlijst",
+};
+const metNotitie = onderbouwing({ ...basis, rationale: "Directe koopintentie, past bij totaalconcept Paul" });
+checkWaar("interne steekwoorden gaan niet mee naar de klant",
+  !metNotitie.blokMd.includes("totaalconcept Paul"), metNotitie.blokMd.slice(0, 200));
+const metZin = onderbouwing({ ...basis, rationale: "Er is zoekvraag op dit onderwerp, maar geen eigen pagina die erop mikt en dat kost bezoek." });
+checkWaar("een echte zin gaat wel mee", metZin.blokMd.includes("geen eigen pagina die erop mikt"), "");
+checkWaar("de vier kopjes staan erin",
+  ["Wat we zagen", "Waarom dit de moeite waard is", "Wat we gaan doen", "Wat het kan opleveren"].every((k) => metZin.blokMd.includes(k)), metZin.blokMd);
+checkWaar("een verwachting blijft een verwachting", metZin.blokMd.includes("geen belofte"), "");
+checkWaar("geen jargon in de klanttekst",
+  !/tier|roi|relevance|striking|content gap|intentie:/i.test(metZin.blokMd), metZin.blokMd);
+// Een klikdoor-kans mag niet als "te lage positie" worden uitgelegd.
+const ctr = onderbouwing({ ...basis, type: "ctr_underperform", url: "/hovenier-oss/", huidigePositie: 20, confidence: 0.6 });
+checkWaar("klikdoor wordt niet als positieprobleem uitgelegd",
+  ctr.blokMd.includes("te weinig op geklikt") && !ctr.blokMd.includes("net buiten waar geklikt wordt"), ctr.blokMd.slice(0, 200));
 
 console.log(fouten ? `\n${fouten} proef(en) mislukt.` : "\nAlle proeven geslaagd.");
 process.exit(fouten ? 1 : 0);

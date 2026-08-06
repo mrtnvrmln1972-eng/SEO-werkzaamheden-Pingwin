@@ -10,6 +10,9 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { urlKey } from "../../../../lib/url-key";
 import { categorieVan } from "../../../../lib/prioriteiten-categorie";
 import { kaartTekst, faseVoorstel } from "../../../../lib/weekplan-kaarttekst";
+import { onderbouwing } from "../../../../lib/prioriteiten-onderbouwing";
+import { mdToHtml } from "../../../../lib/markdown";
+import MailVenster from "./MailVenster";
 
 // Het bedoelde adres van een pagina die nog niet bestaat (content gap). De kaart
 // heeft een URL nodig om de fases en de pagina-context te kunnen tonen; zonder
@@ -94,11 +97,13 @@ function zekerheid(c: number): string {
   return c >= 0.9 ? "hard gemeten" : c >= 0.6 ? "afgeleid" : "schatting";
 }
 
-export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
+export default function PrioriteitenPanel({ slug, domain = "", onGaNaar, clientName, clientEmail }: {
   slug: string;
   domain?: string;
   /** Springt naar het juiste tabblad en opent daar meteen de betreffende regel. */
   onGaNaar?: (tab: string, url: string) => void;
+  clientName?: string;
+  clientEmail?: string;
 }) {
   const [st, setSt] = useState<State | null>(null);
   const [busy, setBusy] = useState(false);
@@ -112,6 +117,11 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
   const [openGroep, setOpenGroep] = useState<Record<string, boolean>>({});
   const [sortVeld, setSortVeld] = useState<SortVeld>("kans");
   const [sortAf, setSortAf] = useState(true);
+  // Welke regel staat opengeklapt op "waarom", en voor welke regel staat het
+  // mailvenster open. Bewust per regel en niet globaal: je vergelijkt kansen met
+  // elkaar, dus je wilt er meerdere tegelijk open kunnen hebben.
+  const [openWaarom, setOpenWaarom] = useState<Record<string, boolean>>({});
+  const [mailVoor, setMailVoor] = useState<Regel | null>(null);
   const [bronBezig, setBronBezig] = useState<string | null>(null);
   const [bronMsg, setBronMsg] = useState<Record<string, string>>({});
   // De opruimanalyse weigert te starten zolang niet vastligt welke pagina's
@@ -248,9 +258,14 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
         // wat de assistent ook doet als hij een nieuwe pagina inplant.
         const nieuw = !r.url;
         const pad = r.url || bedoeldPad(r.zoekwoord, domain);
+        // Dezelfde onderbouwing als op het scherm en in de mail. Stond hier eerder
+        // als eigen lijstje losse zinnen; dat is precies hoe drie versies van
+        // hetzelfde verhaal ontstaan.
+        const ond = onderbouwing(r, { klantnaam: clientName, pad });
         const toelichting = kaartTekst({
           achtergrond: [
-            r.rationale,
+            ond.kort,
+            r.rationale || "",
             `Zoekwoord "${r.zoekwoord}", ${getal(r.maandvolume)} zoekopdrachten per maand.`,
             r.huidigePositie
               ? `Staat nu op positie ${r.huidigePositie}, doel is ${r.targetPositie}.`
@@ -271,6 +286,13 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
           }),
         }).then((x) => x.json()).catch(() => null);
         await load();   // het vinkje meteen bijwerken
+        // Bewust NIET meteen wegspringen naar het andere tabblad. Dat deed deze
+        // knop eerst, en daarmee was de regel uit beeld op het moment dat je de
+        // klant wilde laten weten dat je hem oppakt. Nu blijf je staan, opent het
+        // mailvenster met de onderbouwing erin, en gaat "Ga erheen" apart mee als
+        // knop op de regel.
+        setMailVoor(r);
+        return;
       }
       onGaNaar?.(cat.tab, r.url || "");
     } finally { setBezigId(null); }
@@ -514,6 +536,19 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
             {zoekt && <span className="prio-filter-label">{zichtbaar.length} van de {regels.filter((r) => r.tier !== "SKIP").length}</span>}
           </div>
 
+          {/* Wat de kolommen betekenen. Stond nergens, en dan moet je het vragen:
+              "→ 5" en het balkje bij Kansrijk leggen zichzelf niet uit. */}
+          <details className="prio-legenda">
+            <summary>Wat betekenen de kolommen?</summary>
+            <ul>
+              <li><strong>Zoekvolume</strong> is hoe vaak er per maand op dit zoekwoord gezocht wordt.</li>
+              <li><strong>Positie</strong> laat zien waar de pagina nu staat en waar hij heen kan: <em>12 → 3</em> betekent van plek 12 naar plek 3. Staat er alleen <em>→ 5</em>, dan is er nog geen pagina die hierop mikt en is plek 5 het doel waar we op mikken. Dat is een streefgetal, geen voorspelling.</li>
+              <li><strong>Extra bezoekers</strong> is wat die stap aan bezoek kan opleveren: het zoekvolume maal de kans dat iemand op die plek klikt.</li>
+              <li><strong>Kansrijk</strong> is het balkje met een cijfer van 1 tot 100 en bepaalt de volgorde. Het weegt de bezoekers, hoe koopgericht het zoekwoord is, hoe goed het bij deze klant past en hoeveel werk het kost. 100 is de beste kans van deze scan; het is dus een onderlinge vergelijking, geen rapportcijfer.</li>
+              <li><strong>Werk</strong> is de omvang: klein (een titel of alinea), middel (een pagina verversen of nieuw schrijven), groot (meerdere pagina&rsquo;s).</li>
+            </ul>
+          </details>
+
           <div className="prio-tabel-wrap">
             <table className="prio-tabel">
               <thead>
@@ -555,7 +590,16 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
                           <tr key={r.id} className={"prio-rij" + (gepland ? " prio-gepland" : "")}>
                             <td>
                               <div className="prio-titel">{r.titel}{r.nieuw && <span className="prio-nieuw">nieuw</span>}</div>
-                              <div className="prio-reden">{r.rationale}</div>
+                              <div className="prio-reden">{onderbouwing(r, { klantnaam: clientName }).kort}</div>
+                              <button type="button" className="prio-waarom-knop"
+                                aria-expanded={!!openWaarom[r.id]}
+                                onClick={() => setOpenWaarom((m) => ({ ...m, [r.id]: !m[r.id] }))}>
+                                {openWaarom[r.id] ? "▾ minder" : "▸ waarom dit de moeite waard is"}
+                              </button>
+                              {openWaarom[r.id] && (
+                                <div className="prio-waarom md"
+                                  dangerouslySetInnerHTML={{ __html: mdToHtml(onderbouwing(r, { klantnaam: clientName, pad: r.url || bedoeldPad(r.zoekwoord, domain) }).blokMd) }} />
+                              )}
                               <div className="prio-bron">Bron: {r.bron} · {zekerheid(r.confidence)}</div>
                             </td>
                             <td className="prio-url">{r.url ? <Pad pad={r.url} /> : <span className="muted">nieuwe pagina</span>}</td>
@@ -574,13 +618,25 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
                                 className="prio-cat"
                                 disabled={bezigId === r.id}
                                 title={cat.kaart
-                                  ? `Zet dit in de planning van deze week en ga naar ${cat.naam.toLowerCase()}`
+                                  ? "Maakt een kaart in de weekplanning van deze week (nog zonder dag), met deze onderbouwing erin, en opent daarna de mail aan de klant"
                                   : `Ga naar ${cat.naam.toLowerCase()} voor deze pagina`}
                                 onClick={() => pakOp(r)}
                               >
                                 {bezigId === r.id ? "Bezig…" : cat.kaart ? "In de planning" : "Ga erheen"}
                               </button>
-                              {gepland && <span className="prio-gepland-chip" title="Er staat een kaart voor deze pagina in de planning">✓ in de planning</span>}
+                              {/* Mailen kan bij élke kans, ook bij meta-werk en opruimen waar geen
+                                  kaart bij hoort. De klant hoort te zien dát we kansen zoeken. */}
+                              <button type="button" className="prio-mail"
+                                title="Laat de klant weten dat we deze kans zagen en oppakken, met de reden erbij"
+                                onClick={() => setMailVoor(r)}>Mail de klant</button>
+                              {gepland && (
+                                <>
+                                  <span className="prio-gepland-chip" title="Er staat een kaart voor deze pagina in de planning">✓ in de planning</span>
+                                  <button type="button" className="prio-heen" onClick={() => onGaNaar?.(cat.tab, r.url || "")}>
+                                    Ga erheen
+                                  </button>
+                                </>
+                              )}
                             </td>
                           </tr>
                         );
@@ -622,6 +678,28 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
           )}
         </>
       )}
+
+      {/* Hetzelfde mailvenster als bij een weekplan-kaart en bij het opruimscherm.
+          De onderbouwing gaat er als blok in, zodat de klant leest waaróm we dit
+          oppakken en niet alleen dát we het doen. */}
+      {mailVoor && (() => {
+        const ond = onderbouwing(mailVoor, { klantnaam: clientName, pad: mailVoor.url || bedoeldPad(mailVoor.zoekwoord, domain) });
+        return (
+          <MailVenster
+            slug={slug}
+            titel="Laat de klant weten dat we deze kans oppakken"
+            onderwerpVan={ond.mailOnderwerp}
+            taak={ond.mailTaak}
+            toelichting={ond.blokMd}
+            blokMd={ond.blokMd}
+            siteUrl={domain}
+            url={mailVoor.url || ""}
+            clientName={clientName}
+            clientEmail={clientEmail}
+            onClose={() => setMailVoor(null)}
+          />
+        );
+      })()}
     </div>
   );
 }
