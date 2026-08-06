@@ -73,8 +73,21 @@ het. Ongevraagd niet.
 Duurt het werk lang, meld dan halverwege één regel over waar je bent. Niet meer. Stil zijn is
 beter dan een muur tekst.
 
-## Twee chats tegelijk
+## Meerdere chats naast elkaar
 
-Werkt Maarten in twee chats aan twee punten, dan geldt: kleine wijzigingen, meteen pushen, en
-vóór het pushen eerst de laatste stand ophalen. Raken twee punten hetzelfde scherm, zeg dat dan
-en stel voor om het andere punt even te laten wachten.
+Maarten werkt in veel chats. Dat is geen probleem en het hoeft niet beperkt te worden: hij stuurt
+er in de praktijk één tegelijk aan. Wat wél telt is dat er op hetzelfde moment twee chats in
+dezelfde bestanden schrijven. Vandaar drie gewoontes, en dit zijn geen adviezen maar werkregels:
+
+1. **Kleine wijzigingen, meteen wegzetten.** Nooit een half uur werk laten staan voordat je
+   commit en pusht. Hoe langer je wacht, hoe groter de botsing.
+2. **Vóór het pushen eerst de laatste stand ophalen** (`git pull --rebase origin main`). Werkt een
+   andere chat in hetzelfde bestand, dan merk je dat nu in plaats van na een afgewezen push.
+   Wordt je push afgewezen omdat de geschiedenis herschreven is, dan is dat normaal: ophalen,
+   jouw commit eroverheen zetten, opnieuw pushen. Nooit forceren.
+3. **`app/globals.css` is de plek waar het altijd botst**, want elk scherm raakt hem. Voeg nieuwe
+   opmaak toe in één blok met een kop erboven, houd het klein, en push het apart van de rest.
+
+Raakt jouw punt hetzelfde scherm als een punt dat volgens `lib/routekaart.ts` op "loopt" staat,
+zeg dat dan tegen Maarten in één regel en stel voor om te wachten. Zeg niet stil niets en bouw
+door.

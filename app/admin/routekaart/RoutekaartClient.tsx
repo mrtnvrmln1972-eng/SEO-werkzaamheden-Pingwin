@@ -175,8 +175,10 @@ export default function RoutekaartClient({
               Code en plak hem. De chat weet dan zelf waar de beschrijving staat en hoe hij moet terugkoppelen.
             </li>
             <li>
-              <strong>Maximaal twee chats tegelijk.</strong> Bij drie ga je zelf het knelpunt worden, en dan raken
-              twee chats hetzelfde scherm. Onder &ldquo;Meer&rdquo; staat per punt of het met een ander punt botst.
+              <strong>Zoveel chats open als je wilt.</strong> De grens zit niet in het aantal chats maar in hoeveel
+              er op hetzelfde moment aan het bouwen zijn. Twee dingen tellen: laat een chat zijn werk afmaken en
+              wegzetten voordat je de volgende aan het werk zet, en start nooit twee punten die hetzelfde scherm
+              raken. Onder &ldquo;Meer&rdquo; staat per punt met welk ander punt het botst.
             </li>
             <li>
               <strong>Je krijgt per chat vier regels terug:</strong> wat er nu werkt, een link om te kijken, wat er nog
