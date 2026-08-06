@@ -67,12 +67,24 @@ export default function OpruimEenLijst({ slug, domain }: { slug: string; domain:
   const rijen = filter === "alles" ? d.regels : d.regels.filter((r) => r.uitkomst === filter);
 
   // Groeperen op plaats of onderwerp: dezelfde regels, andere indeling.
-  const groepen = new Map<string, Regel[]>();
+  //
+  // Met één correctie die uit het nameten kwam: op besluit groeperen geeft vijf
+  // groepen, op plaats of onderwerp gaf er 123. Dat is geen view maar een
+  // opsomming van 123 tabelletjes van één regel. Een groep van één is geen groep;
+  // die regels gaan samen onderaan, zodat de echte clusters overblijven.
+  const ruw = new Map<string, Regel[]>();
   for (const r of rijen) {
     const k = groep === "uitkomst" ? LABEL[r.uitkomst] : (r.groep || "overig");
-    if (!groepen.has(k)) groepen.set(k, []);
-    groepen.get(k)!.push(r);
+    if (!ruw.has(k)) ruw.set(k, []);
+    ruw.get(k)!.push(r);
   }
+  const groepen = new Map<string, Regel[]>();
+  const los: Regel[] = [];
+  for (const [k, lijst] of ruw) {
+    if (groep === "groep" && lijst.length < 2) los.push(...lijst);
+    else groepen.set(k, lijst);
+  }
+  if (los.length) groepen.set(`Losse pagina's (${los.length})`, los.sort((a, b) => (b.volume || 0) - (a.volume || 0)));
   const volgorde = [...groepen.entries()].sort((a, b) => b[1].length - a[1].length);
 
   return (
