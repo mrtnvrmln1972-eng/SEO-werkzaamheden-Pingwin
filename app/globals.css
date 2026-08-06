@@ -5868,3 +5868,20 @@ a.wb-pad:hover { text-decoration: underline; }
 .bulk-acties .muted { max-width: 48ch; font-size: var(--fs-xs); line-height: var(--lh-xs); }
 .bulk-fout { color: var(--red); font-size: var(--fs-sm); line-height: var(--lh-sm); margin: 0 0 var(--s-3); max-width: 70ch; }
 @media (max-width: 700px) { .bulk-klanten strong { min-width: 0; } }
+
+/* ── Klantwaarde en conversie: negentien regeltjes op één scherm ── */
+.kw-lijst { list-style: none; margin: 0 0 var(--s-4); padding: 0; display: flex; flex-direction: column; gap: var(--s-1); }
+.kw-kop, .kw-rij { display: grid; grid-template-columns: 1fr 140px 120px; gap: var(--s-3); align-items: center; }
+.kw-kop { font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); padding-bottom: var(--s-1); border-bottom: 1px solid var(--border); }
+.kw-rij { padding: var(--s-1) 0; font-size: var(--fs-sm); line-height: var(--lh-sm); }
+.kw-naam { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kw-vol .kw-naam { font-weight: 600; }
+.kw-veld { display: flex; align-items: center; gap: var(--s-1); color: var(--gray); }
+.kw-veld input {
+  width: 100%; min-width: 0; padding: var(--s-1) var(--s-2);
+  border: 1px solid var(--border); border-radius: var(--r-sm);
+  font: inherit; font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--body-text);
+}
+.kw-veld input:focus { outline: none; border-color: var(--accent); }
+.kw-ok { color: #1B7F45; font-size: var(--fs-sm); line-height: var(--lh-sm); margin: 0 0 var(--s-3); }
+@media (max-width: 700px) { .kw-kop, .kw-rij { grid-template-columns: 1fr 100px 90px; gap: var(--s-2); } }

@@ -6,6 +6,7 @@ import type { ClientConfig } from "../../lib/clients";
 import OntwikkelMenu from "./OntwikkelMenu";
 import MeldingenMenu from "./MeldingenMenu";
 import BulkOnboarding from "./BulkOnboarding";
+import KlantwaardeBulk from "./KlantwaardeBulk";
 
 type Created = { name: string; loginId: string; password: string; loginUrl: string; shareUrl?: string };
 
@@ -668,6 +669,8 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
         )}
 
         {isOwner && <BulkOnboarding />}
+
+        {isOwner && <KlantwaardeBulk />}
 
         {isOwner && <KijkSleutel />}
 
