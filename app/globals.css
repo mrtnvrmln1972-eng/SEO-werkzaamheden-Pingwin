@@ -4130,6 +4130,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .opr-kaart-tekst p:last-child { margin-bottom: 0; }
 .opr-kaart-tekst ul { margin: 0 0 var(--s-3); padding-left: var(--s-5); display: flex; flex-direction: column; gap: var(--s-2); }
 .opr-kaart-tekst strong { color: var(--dark); }
+.opr-kaart-tekst h4 { margin: var(--s-5) 0 var(--s-2); font-size: var(--fs-md); font-weight: 700; color: var(--dark); }
+.opr-kaart-tekst h4:first-child { margin-top: 0; }
 /* Opsommingen in een kaart: lucht tussen de punten en een oranje bolletje,
    zodat een lijst ook echt als lijst leest en niet als een blok tekst. */
 .opr-punten { list-style: none; margin: 0 0 var(--s-3); padding: 0; display: flex; flex-direction: column; gap: var(--s-2); }

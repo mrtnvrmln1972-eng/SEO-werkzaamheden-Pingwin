@@ -21,7 +21,7 @@
 // betreffende uitklapper aanvullen en LAATST_BIJGEWERKT verzetten.
 // ═══════════════════════════════════════════════════════════
 
-export const LAATST_BIJGEWERKT = "6 augustus 2026";
+export const LAATST_BIJGEWERKT = "7 augustus 2026";
 
 export type Uitklapper = {
   titel: string;
@@ -562,6 +562,15 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
               "groepeer de rest. Twee keer draaien geeft twee keer hetzelfde beeld. Wat in geen enkele tak past " +
               "blijft zichtbaar als \"staat los\", en dat aantal is zelf een signaal: is het een fors deel van de " +
               "site, dan ontbreekt er structuur die er hoort te zijn.",
+          },
+          {
+            titel: "De deelbare leeslink laat nu hetzelfde zien als de cockpit",
+            tekst:
+              "De werklijst (één regel per pagina, met per regel de volledige onderbouwing uitklapbaar) stond tot " +
+              "7 augustus alleen in de cockpit; de deellink toonde nog de oudere, losse blokken. Beide lezen nu " +
+              "uit dezelfde component, zodat een volgende verbetering automatisch op allebei de plekken landt en " +
+              "de klantversie niet meer een ronde achter kan raken. Alles wat een besluit vastlegt (op de " +
+              "planning zetten, corrigeren) blijft achter de adminroutes; de deellink is en blijft alleen lezen.",
           },
         ],
       },

@@ -13,6 +13,7 @@ import OpruimEindstructuur from "./OpruimEindstructuur";
 import OpruimNameten, { type Nameting } from "./OpruimNameten";
 import OpruimPlaatsen from "./OpruimPlaatsen";
 import OpruimEenLijst from "./OpruimEenLijst";
+import OpruimVergelijking from "./OpruimVergelijking";
 import Voortgang from "./Voortgang";
 import { useKlus } from "./useKlus";
 
@@ -542,6 +543,12 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
               {lijstDatum ? `Deze lijst is van ${new Date(lijstDatum).toLocaleString("nl-NL")}` : "Deze lijst heeft geen datum"}
               {running ? " · de nieuwe analyse draait nog, dit is nog de vorige" : ""}
             </div>
+
+            {/* De concurrentievergelijking is met de hand geschreven voor One Day
+                Clinic tegen Stadskliniek (7 augustus 2026); geen generiek blok, dus
+                alleen tonen bij deze klant. Andere klanten krijgen dit niet totdat er
+                voor hen een eigen vergelijking is uitgezocht. */}
+            {slug === "one-day-clinic" && <OpruimVergelijking />}
 
             {/* Alles bij elkaar, één regel per pagina. Dit is sinds 7 augustus de
                 hoofdmoot; de losse blokken eronder zijn de verdieping. */}

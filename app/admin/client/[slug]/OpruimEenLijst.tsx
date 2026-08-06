@@ -58,7 +58,16 @@ function taakVoor(r: Regel): string {
   return `Beoordeel ${r.pad}`;
 }
 
-export default function OpruimEenLijst({ slug, domain }: { slug: string; domain: string }) {
+/**
+ * Dezelfde lijst dient twee schermen: de cockpit en de deellink voor de klant.
+ * Dat is bewust één component in plaats van twee, want een tweede versie loopt
+ * altijd achter (precies wat er op 7 augustus gebeurde: de klantversie stond nog
+ * op de opzet van vóór deze lijst). Met `token` haalt hij zijn data via de
+ * publieke leesroute, en `alleenLezen` haalt alles weg wat iets vastlegt.
+ */
+export default function OpruimEenLijst({ slug, domain, token, alleenLezen, titel }: {
+  slug: string; domain: string; token?: string; alleenLezen?: boolean; titel?: string;
+}) {
   const [d, setD] = useState<Data | null>(null);
   const [bezig, setBezig] = useState(true);
   const [filter, setFilter] = useState<Uitkomst | "alles">("alles");
@@ -71,15 +80,18 @@ export default function OpruimEenLijst({ slug, domain }: { slug: string; domain:
   const [klaar, setKlaar] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (!slug) return;
+    if (!slug && !token) return;
     let leeft = true;
-    fetch(`/api/admin/opruim-werklijst?slug=${encodeURIComponent(slug)}`)
+    const bron = token
+      ? `/api/share/opruim-werklijst?token=${encodeURIComponent(token)}`
+      : `/api/admin/opruim-werklijst?slug=${encodeURIComponent(slug)}`;
+    fetch(bron)
       .then((r) => r.json())
       .then((j) => { if (leeft && j?.ok) setD(j); })
       .catch(() => { /* stil */ })
       .finally(() => { if (leeft) setBezig(false); });
     return () => { leeft = false; };
-  }, [slug]);
+  }, [slug, token]);
 
   const site = (p: string) => `https://${(domain || "").replace(/^https?:\/\//, "").replace(/\/$/, "")}${p.startsWith("/") ? p : `/${p}`}`;
 
@@ -131,6 +143,7 @@ export default function OpruimEenLijst({ slug, domain }: { slug: string; domain:
 
   return (
     <div className="opr-kaart">
+      {titel && <div className="opr-kop">{titel}</div>}
       <div className="opr-str-kpi">
         <div><b>{d.tellingen.totaal}</b><span>pagina&rsquo;s met een besluit</span></div>
         <div><b>{d.tellingen.uitbouwen}</b><span>uitbouwen</span></div>
@@ -140,11 +153,19 @@ export default function OpruimEenLijst({ slug, domain }: { slug: string; domain:
       </div>
 
       <div className="opr-kaart-tekst">
-        <p>
-          Dit is <strong>alles bij elkaar</strong>: elke pagina staat hier één keer, met één besluit. Waarom een pagina
-          in de lijst staat is een label geworden waar je op kunt filteren; de volledige onderbouwing staat in de
-          blokken hieronder.
-        </p>
+        {alleenLezen ? (
+          <p>
+            Dit is <strong>alles bij elkaar</strong>: elke pagina van de website staat hier één keer, met één besluit.
+            Achter &ldquo;waarom&rdquo; klapt de volledige onderbouwing open, met de cijfers waarop het besluit rust.
+            Met de knoppen hieronder bekijkt u de lijst per soort besluit, of gegroepeerd per plaats of onderwerp.
+          </p>
+        ) : (
+          <p>
+            Dit is <strong>alles bij elkaar</strong>: elke pagina staat hier één keer, met één besluit. Waarom een pagina
+            in de lijst staat is een label geworden waar je op kunt filteren; de volledige onderbouwing staat in de
+            blokken hieronder.
+          </p>
+        )}
       </div>
 
       <div className="opr-vorm-rij">
@@ -173,7 +194,8 @@ export default function OpruimEenLijst({ slug, domain }: { slug: string; domain:
             <table className="opr-tabel">
               <thead>
                 <tr>
-                  <th>Pagina</th><th>Besluit</th><th>Waarheen</th><th>Per maand</th><th>Nu</th><th>Waarom</th><th>Actie</th>
+                  <th>Pagina</th><th>Besluit</th><th>Waarheen</th><th>Per maand</th><th>Nu</th><th>Waarom</th>
+                  {!alleenLezen && <th>Actie</th>}
                 </tr>
               </thead>
               <tbody>
@@ -201,13 +223,15 @@ export default function OpruimEenLijst({ slug, domain }: { slug: string; domain:
                         </div>
                       )}
                     </td>
-                    <td>
-                      <button type="button" className="opr-btn" disabled={!!planBezig} onClick={() => void naarPlanning(r)}
-                        title="Zet deze pagina als taak op de planning. De kaart krijgt daar vanzelf zijn fases, met de onderbouwing erbij.">
-                        {planBezig === r.pad ? "Bezig…" : "Naar planning"}
-                      </button>
-                      {klaar[r.pad] && <div className="opr-melding" style={{ marginTop: "var(--s-1)" }}>{klaar[r.pad]}</div>}
-                    </td>
+                    {!alleenLezen && (
+                      <td>
+                        <button type="button" className="opr-btn" disabled={!!planBezig} onClick={() => void naarPlanning(r)}
+                          title="Zet deze pagina als taak op de planning. De kaart krijgt daar vanzelf zijn fases, met de onderbouwing erbij.">
+                          {planBezig === r.pad ? "Bezig…" : "Naar planning"}
+                        </button>
+                        {klaar[r.pad] && <div className="opr-melding" style={{ marginTop: "var(--s-1)" }}>{klaar[r.pad]}</div>}
+                      </td>
+                    )}
                   </tr>
                   {/* De volledige onderbouwing als eigen rij over alle kolommen, in
                       dezelfde kaart met drie kolommen als de losse blokken. Stond
@@ -215,7 +239,7 @@ export default function OpruimEenLijst({ slug, domain }: { slug: string; domain:
                       kon zien waarop een besluit rustte. */}
                   {uitleg[r.pad] && r.onderbouwing.length > 0 && (
                     <tr className="opr-redenrij">
-                      <td colSpan={7}>
+                      <td colSpan={alleenLezen ? 6 : 7}>
                         <div className="opr-uitleg">
                           <div className="opr-bewijs">
                             {r.onderbouwing.map((z, i) => <Zin key={i} tekst={z} />)}
