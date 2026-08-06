@@ -4,7 +4,9 @@ import { ADMIN_COOKIE } from "../../../../../lib/admin-auth";
 import { ADMIN_VIEWAS_COOKIE } from "../../../../../lib/constants";
 import { getScopeFromCookie, canAccessSlug } from "../../../../../lib/admin-scope";
 import { getClientBySlug } from "../../../../../lib/clients";
+import MeldingenMenu from "../../../MeldingenMenu";
 import OntwikkelMenu from "../../../OntwikkelMenu";
+import KlussenChip from "../KlussenChip";
 import KlantTabs from "../KlantTabs";
 import Planning from "../Planning";
 
@@ -42,7 +44,11 @@ export default async function WeekbordPage({ params }: { params: { slug: string 
           <KlantTabs basisPad={basis} isLead={client.fase === "lead"} />
         </div>
         <div className="header-right">
+          <MeldingenMenu />
           <OntwikkelMenu />
+          {/* Wat er op de achtergrond draait, net als in de cockpit: anders is een
+              scan die je hier start alleen op dat andere scherm te volgen. */}
+          <KlussenChip slug={params.slug} />
         </div>
       </div>
       <div className="pl-pagina">
