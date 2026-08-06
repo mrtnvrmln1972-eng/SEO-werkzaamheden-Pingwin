@@ -8,7 +8,7 @@ import { measurePage } from "./page-measure";
 import { metaVerdictText } from "./meta-rules";
 import { getUrlOrganicKeywords, getSerpOverview, getAhrefsTopPages, ahrefsConfigured, getSiteOrganicKeywords, getDomainKeywordsMatching } from "./ahrefs";
 import { getCompetitors } from "./competitors";
-import { callClaudeAgentic, callClaude, LIGHT_MODEL, HEAVY_MODEL, type ToolDef, type ToolRunner } from "./anthropic";
+import { callClaudeAgentic, callClaude, LIGHT_MODEL, HEAVY_MODEL, GEEN_ANTWOORD, type ToolDef, type ToolRunner } from "./anthropic";
 import { runChatTool } from "./chat-tools";
 import { diepDenkenAan } from "./settings";
 import { sheetCsvUrl, parseCSV, structureData, MAAND_VOLGORDE } from "./sheet";
@@ -1334,6 +1334,7 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
       `- WEES BEDUCHT OP DE DIENST-MAAL-PLAATS-MATRIX. Vier diensten maal tien plaatsen is veertig dunne, uitwisselbare pagina's die elkaar in de weg zitten en die niemand kan schrijven met echt materiaal. Kies liever weinig pagina's met bestaansrecht: één sterk anker op de thuisplaats, hooguit een paar regiopagina's waar het volume het rechtvaardigt (tel dan de diensten van diezelfde plaats bij elkaar op), en de rest gedekt met echte projectpagina's of casussen. Die zijn uniek, en de plaatsnaam-relevantie krijg je er gratis bij.\n` +
       `- WEEG DE CONCURRENTIE UIT TWEE BRONNEN. De partijen in de top 10 (serp_top10) zijn wie er op déze zoekterm staan; de lijst in de context is wie Maarten als de concurrentie ziet. Die twee zijn niet hetzelfde en je hebt ze allebei nodig. Bij een strategievraag kijk je met concurrent_zoekwoorden waar de aangewezen concurrenten verkeer halen dat wij missen, en zeg je het eerlijk als die lijst nog leeg is.\n` +
       `- ZOEK DE ONDERSCHEIDENDE NICHE. Kijk met ahrefs_keyword_ideas verder dan de lijst die je kreeg: is er een specialisme met landelijk volume, weinig concurrentie en hoge orderwaarde, dan is dát vaak de motor, en is het lokale werk de basis eronder. Waar iemand voor rijdt, is geen lokaal spel.\n` +
+      `- ONDERZOEK IS GEEN DOEL. Meten kost tijd, en een antwoord dat er niet komt is niets waard. Haal op wat je nodig hebt voor het oordeel, en begin daarna te schrijven; ga niet door tot je alles van de site weet. Ontbreekt er iets, dan zeg je dat in \u00e9\u00e9n regel en schrijf je verder.\n` +
       `- LEVER EEN GELAAGDE KEUZE MET EEN VOLGORDE, geen waslijst. Zeg wat eerst gebeurt en waarom dat eerst is (opbrengst en haalbaarheid tegen elkaar), en wat je bewust NIET doet, met de reden erbij. Sluit af met één scherpe vraag als het antwoord echt van een keuze van Maarten of van beschikbaar materiaal afhangt.\n\n` +
       `OPMAAK (heel belangrijk voor Maarten, dit moet er verzorgd en scanbaar uitzien, NOOIT een muur lopende tekst). Nederlands, Markdown, geen emoji (dus ook geen vinkjes of kruisjes als tekens; schrijf gewoon "live", "404" of "let op"). Verplichte structuur, elke terugkoppeling:\n` +
       `  - Begin DIRECT met het eerste kopje. GEEN aankondigings- of vulzinnen zoals "Nu heb ik alles wat ik nodig heb" of "Hier de volledige terugkoppeling"; die kosten Maarten alleen leestijd.\n` +
@@ -1430,7 +1431,26 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
     // gesprek waarin de opzet zelf ter discussie staat. Uit te zetten in de kop van
     // Overview; kent het account het model niet, dan zakt hij automatisch een trede.
     const zwaar = isOverview && (await diepDenkenAan()) ? HEAVY_MODEL : undefined;
-    let answer = await callClaudeAgentic(system, apiMessages as { role: "user" | "assistant"; content: string }[], tools, run, rondes, isOverview ? 3200 : isLead ? 3000 : 2000, { slug, action: isOverview ? "overzicht-chat" : isLead ? "lead-chat" : isAds ? "ads-chat" : "projectchat" }, startTijd + 190_000, zwaar);
+    let answer = await callClaudeAgentic(system, apiMessages as { role: "user" | "assistant"; content: string }[], tools, run, rondes, isOverview ? 3200 : isLead ? 3000 : 2000, { slug, action: isOverview ? "overzicht-chat" : isLead ? "lead-chat" : isAds ? "ads-chat" : "projectchat" }, startTijd + (isOverview ? 155_000 : 190_000), zwaar);
+
+    // ── Vangnet: eenentwintig bronnen en dan geen antwoord ──────────────────
+    // Het onderzoek lukte, het opschrijven niet: de rondes of de tijd waren op en
+    // wat overbleef was de melding "kon het niet netjes afronden". Alles wat de
+    // agent had opgehaald werd dan weggegooid. Nu schrijven we het antwoord alsnog
+    // uit dat materiaal, in één ronde zonder gereedschap, dus zonder nieuwe
+    // vertraging en zonder dat er een cijfer bij kan komen dat niemand ophaalde.
+    if (isOverview && answer.trim() === GEEN_ANTWOORD && toolUitvoer.length) {
+      try {
+        const vraag = [...messages].reverse().find((m) => m.role === "user")?.content || "";
+        const materiaal = toolUitvoer.join("\n").slice(-24000);
+        const uit = await callClaude(
+          system,
+          [{ role: "user", content: `De vraag van Maarten was:\n${vraag}\n\nDit is alles wat er in deze beurt is opgezocht (${toolUitvoer.length} keer gereedschap gebruikt):\n${materiaal}\n\nSchrijf NU het antwoord, volledig, volgens de OPMAAK-regels. Gebruik uitsluitend wat hierboven staat; is iets niet opgehaald, zeg dan dat je het niet gemeten hebt. Geen aankondigingszinnen, begin direct met het eerste kopje.` }],
+          3500, { slug, action: "overzicht-chat-uitschrijven" }, zwaar,
+        );
+        if (uit && uit.trim()) answer = uit.trim();
+      } catch { /* dan blijft de melding staan */ }
+    }
 
     // Vangnet: eindigt het antwoord als alleen een aankondiging ("Nu heb ik alles…",
     // "Hier is de volledige analyse…") zonder de echte inhoud, forceer dan één
@@ -1447,7 +1467,7 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
           [...(apiMessages as { role: "user" | "assistant"; content: string }[]), { role: "assistant", content: answer || "(aankondiging zonder inhoud)" }, { role: "user", content: "Je vorige beurt bevatte alleen een aankondiging zonder de inhoud. Geef NU in één keer de volledige terugkoppeling volgens de OPMAAK-regels, beginnend met het eerste kopje. Geen aankondigings- of vulzinnen." }],
           tools, run, 6, 3200, { slug, action: "overzicht-chat-afronding" }, startTijd + 240_000, zwaar,
         );
-        if (vervolg && vervolg.trim().length > (answer || "").trim().length) answer = vervolg;
+        if (vervolg && vervolg.trim() !== GEEN_ANTWOORD && vervolg.trim().length > (answer || "").trim().length) answer = vervolg;
       } catch { /* dan het oorspronkelijke antwoord */ }
     }
 
@@ -1485,7 +1505,11 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
              { role: "user", content: herstelOpdracht(controle) }],
             tools, run, 6, 3200, { slug, action: "overzicht-chat-feitencontrole" }, startTijd + 265_000, zwaar,
           );
-          if (hersteld && hersteld.trim()) {
+          // De herstelronde verving het antwoord ONVOORWAARDELIJK. Kwam die ronde
+          // zelf niet rond (tijd op), dan werd een compleet antwoord vervangen door
+          // de melding "kon het niet netjes afronden". Dat is precies wat Maarten
+          // op 6 augustus in beeld kreeg na eenentwintig geraadpleegde bronnen.
+          if (hersteld && hersteld.trim() && hersteld.trim() !== GEEN_ANTWOORD) {
             const naControle = controleerAntwoord(hersteld, context + "\n" + toolUitvoer.join("\n"), bekendePaden);
             answer = hersteld;
             controle = naControle;

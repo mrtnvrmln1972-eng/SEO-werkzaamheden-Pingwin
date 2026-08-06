@@ -1025,6 +1025,11 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "vooral het kaartblok staat, ligt de winst bij het Google-bedrijfsprofiel en niet bij een landingspagina; " +
           "en een matrix van vier diensten maal tien plaatsen is veertig dunne pagina's die elkaar in de weg zitten. " +
           "Het antwoord is een gelaagde keuze met een volgorde, plus wat we bewust niet doen en waarom.\n\n" +
+          "**Een antwoord raakt niet meer zoek.** Deed het gesprek eenentwintig metingen en lukte alleen het " +
+          "opschrijven niet, dan verscheen er \"ik kon het niet netjes afronden\" en was al dat werk weg. Twee " +
+          "oorzaken, allebei verholpen: de feitencontrole verving het antwoord onvoorwaardelijk door haar eigen " +
+          "uitkomst (ook als die leeg was), en er was geen laatste stap die het antwoord alsnog uitschreef uit wat " +
+          "er al opgehaald was. Die stap is er nu, zonder nieuwe metingen, dus zonder extra wachttijd.\n\n" +
           "De remmen blijven onverkort staan: elk cijfer komt uit een verse meting, elk pad uit de echte " +
           "URL-lijst, en de feitencontrole leest het antwoord na. Tegenspraak is iets anders dan vrijheid om te gokken.",
       },

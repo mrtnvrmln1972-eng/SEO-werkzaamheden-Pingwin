@@ -195,6 +195,12 @@ type Block = { type: string; text?: string; id?: string; name?: string; input?: 
 // model: laat leeg voor het standaardmodel. Een zwaardere keuze mag hier meegegeven
 // worden voor de strategische gesprekken; kent de API het model niet, dan valt hij
 // automatisch terug op het standaardmodel in plaats van de chat te laten mislukken.
+// Wat er terugkomt als er na alle rondes én de afrondingspogingen geen tekst is.
+// Het staat hier als constante zodat de aanroeper hem kan HERKENNEN. Dat is nodig:
+// een vervolgronde die hierop uitkomt mag nooit een goed antwoord overschrijven,
+// en dat gebeurde wel (de feitencontrole verving de tekst onvoorwaardelijk).
+export const GEEN_ANTWOORD = "Ik heb de analyse gedaan, maar kon het antwoord niet netjes afronden (waarschijnlijk was de vraag in \u00e9\u00e9n keer te breed). Stel hem iets gerichter, bijvoorbeeld \u00e9\u00e9n doel of \u00e9\u00e9n set pagina's, dan pak ik het meteen goed op.";
+
 export async function callClaudeAgentic(system: string, messages: ChatMsg[], tools: ToolDef[], run: ToolRunner, maxRounds = 6, maxTokens = 2200, ctx?: UsageCtx, deadlineMs?: number, model?: string): Promise<string> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) throw new Error("ANTHROPIC_API_KEY ontbreekt (voeg hem toe in Vercel).");
@@ -305,7 +311,7 @@ export async function callClaudeAgentic(system: string, messages: ChatMsg[], too
     text = textOf(j);
   }
   await logClaudeUsage(ctx, u, actiefModel);
-  return text.trim() || "Ik heb de analyse gedaan, maar kon het antwoord niet netjes afronden (waarschijnlijk was de vraag in één keer te breed). Stel hem iets gerichter, bijvoorbeeld één doel of één set pagina's, dan pak ik het meteen goed op.";
+  return text.trim() || GEEN_ANTWOORD;
 }
 
 // Forceert ÉÉN specifieke tool-aanroep (tool_choice) en geeft de ruwe input (JSON)

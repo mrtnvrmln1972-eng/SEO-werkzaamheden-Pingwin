@@ -14,6 +14,7 @@ import Planning from "./Planning";
 import ZijPaneel from "./ZijPaneel";
 import KlantTabs, { type Tab } from "./KlantTabs";
 import OrgDataPanel from "./OrgDataPanel";
+import Concurrenten from "./Concurrenten";
 import FocusBlock from "./FocusBlock";
 import ShareLinkBar from "./ShareLinkBar";
 import HelpHint from "./HelpHint";
@@ -821,6 +822,9 @@ export default function ClientCockpit({
 
         {tab === "klant" && (<>
           <OrgDataPanel slug={client.slug} clientEmail={client.email || ""} />
+          {/* Wie de concurrentie is, is klantkennis en hoort hier, niet verstopt
+              achter een knopje in een scan-blok. Zelfde component als daar. */}
+          <Concurrenten slug={client.slug} />
           <div className="cockpit-card client-frame-card">
             <div className="ck-section-head"><span>Klant (zo ziet de klant het)</span>
               <a className="logout-btn" href={`/admin/preview/${client.slug}`} target="_blank" rel="noreferrer">Openen in nieuw tabblad ↗</a>

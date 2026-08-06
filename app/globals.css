@@ -1755,6 +1755,8 @@ button.ck-collapse-head {
 .ghost-btn.active { background: var(--orange-light); border-color: var(--orange); color: var(--orange-dark); }
 .comp-edit { margin: 4px 0 10px; padding: 10px 12px; background: var(--gray-light); border-radius: 10px; }
 .comp-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.comp-uitleg { font-size: var(--fs-xs); line-height: var(--lh-xs); margin-bottom: var(--s-2); }
+.comp-acties { display: flex; align-items: center; gap: var(--s-3); margin-top: var(--s-3); }
 @media (max-width: 700px) { .comp-inputs { grid-template-columns: 1fr; } }
 .res-table { width: 100%; border-collapse: collapse; }
 .res-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--white); background: var(--dark); padding: 8px 12px; border-bottom: 2px solid var(--border); }

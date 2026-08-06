@@ -5,6 +5,7 @@ import type { GscComparison, Ga4Comparison, AdsComparison } from "../../../../li
 import type { AhrefsKeyword } from "../../../../lib/ahrefs-keywords";
 import type { Opportunity } from "../../../../lib/keyword-opportunities";
 import HelpHint from "./HelpHint";
+import Concurrenten from "./Concurrenten";
 import { mdToHtml } from "../../../../lib/markdown";
 import Voortgang from "./Voortgang";
 import { useKlus } from "./useKlus";
@@ -494,24 +495,14 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
     } catch { setOppMsg("Zoeken mislukt."); }
   }
 
-  // Concurrenten (voor de gap-bron van de kansen).
+  // Concurrenten: alleen nog de telling voor het knopje. Het invullen zelf gebeurt
+  // in de gedeelde component, die ook op het Klantgegevens-tabje staat.
   const [competitors, setCompetitors] = useState<string[]>([]);
-  const [compInputs, setCompInputs] = useState<string[]>(["", "", "", ""]);
   const [compOpen, setCompOpen] = useState(false);
-  const [compBusy, setCompBusy] = useState(false);
   useEffect(() => {
     fetch(`/api/admin/competitors?slug=${encodeURIComponent(slug)}`)
-      .then((r) => r.json()).then((d) => { if (d.ok) { setCompetitors(d.competitors || []); setCompInputs([...(d.competitors || []), "", "", "", ""].slice(0, 4)); } }).catch(() => {});
+      .then((r) => r.json()).then((d) => { if (d.ok) setCompetitors(d.competitors || []); }).catch(() => {});
   }, [slug]);
-  async function saveCompetitors() {
-    if (compBusy) return;
-    setCompBusy(true);
-    try {
-      const r = await fetch("/api/admin/competitors", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, domains: compInputs }) });
-      const d = await r.json();
-      if (d.ok) { setCompetitors(d.competitors || []); setCompInputs([...(d.competitors || []), "", "", "", ""].slice(0, 4)); }
-    } catch { /* stil */ } finally { setCompBusy(false); }
-  }
 
   // Sla de gesleepte volgorde op (kort debounce).
   function persistOrder(urls: string[]) {
@@ -913,17 +904,9 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
                 />
               </div>
             )}
-            {compOpen && (
-              <div className="comp-edit">
-                <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>2 tot 4 concurrent-domeinen. Hun zoekwoorden geven de gap (waar zij wel, jij nog niet rankt). Alleen het domein, bijvoorbeeld voorbeeld.nl.</div>
-                <div className="comp-inputs">
-                  {compInputs.map((v, i) => (
-                    <input key={i} className="compose-input" value={v} placeholder={`concurrent ${i + 1} (domein)`} onChange={(e) => setCompInputs((arr) => arr.map((x, j) => (j === i ? e.target.value : x)))} />
-                  ))}
-                </div>
-                <button type="button" className="ghost-btn small" style={{ marginTop: 8 }} onClick={saveCompetitors} disabled={compBusy}>{compBusy ? "Opslaan…" : "Concurrenten opslaan"}</button>
-              </div>
-            )}
+            {/* Zelfde invulveld als op het Klantgegevens-tabje, niet een tweede
+                kopie: twee plekken die hetzelfde bewaren lopen uit elkaar. */}
+            {compOpen && <Concurrenten slug={slug} compact onOpgeslagen={(d) => setCompetitors(d)} />}
             {oppMsg && <div className="saved-msg" style={{ marginBottom: 8 }}>{oppMsg}</div>}
             {opps.length === 0 ? (
               <div className="muted">Nog geen kansen gezocht. Klik &ldquo;Kansen zoeken&rdquo;: rond je sterkste zoekwoorden zoekt Ahrefs verwante termen (kost credits), en Claude houdt alleen de echt relevante over.</div>
