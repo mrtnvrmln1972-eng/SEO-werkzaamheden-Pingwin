@@ -202,15 +202,22 @@ export async function getOnboardingStand(slug: string): Promise<Stand> {
         : "Compleet.",
       sinds: org?.updatedAt || null,
     },
-    werkgebied: {
-      af: !!orgData && (orgData.areaServed?.length > 0 || (!orgData.geenBezoekadres && !!(orgData.plaats || "").trim()) || (orgData.vestigingen || []).some((v) => (v.plaats || "").trim())),
-      detail: orgData?.areaServed?.length
-        ? `Werkgebied: ${orgData.areaServed.slice(0, 4).join(", ")}${orgData.areaServed.length > 4 ? " en meer" : ""}.`
-        : orgData && !orgData.geenBezoekadres && (orgData.plaats || "").trim()
-          ? `Volgt uit het bezoekadres in ${orgData.plaats}.`
-          : "Nog niet bepaald waar de klant zijn klanten vandaan haalt.",
-      sinds: org?.updatedAt || null,
-    },
+    werkgebied: (() => {
+      const plaatsen = (orgData?.vestigingen || []).map((v) => (v.plaats || "").trim()).filter(Boolean);
+      const gebied = orgData?.areaServed || [];
+      const bezoek = !!orgData && !orgData.geenBezoekadres && !!(orgData.plaats || "").trim();
+      return {
+        af: gebied.length > 0 || bezoek || plaatsen.length > 0,
+        detail: gebied.length
+          ? `Werkgebied: ${gebied.slice(0, 4).join(", ")}${gebied.length > 4 ? " en meer" : ""}.`
+          : plaatsen.length
+            ? `Volgt uit de vestigingen: ${[...new Set(plaatsen)].slice(0, 4).join(", ")}${plaatsen.length > 4 ? " en meer" : ""}.`
+            : bezoek
+              ? `Volgt uit het bezoekadres in ${orgData!.plaats}.`
+              : "Nog niet bepaald waar de klant zijn klanten vandaan haalt.",
+        sinds: org?.updatedAt || null,
+      };
+    })(),
     concurrenten: {
       af: comps.length >= 2,
       detail: comps.length ? `${comps.length} ${comps.length === 1 ? "concurrent" : "concurrenten"}: ${comps.join(", ")}.` : "Er zijn nog geen concurrenten bepaald.",
