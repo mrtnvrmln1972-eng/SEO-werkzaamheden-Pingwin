@@ -27,6 +27,8 @@ import Kopieer from "./Kopieer";
 type Advies = { code: string; titel: string; prompt: string };
 type Data = {
   advies: Advies | null;
+  /** Waarom er niets wordt aangeraden: alles wacht, of alles botst met wat er loopt. */
+  reden: "leeg" | "botst" | null;
   lopend: { code: string; titel: string }[];
   voortgang: { af: number; loopt: number; open: number; totaal: number };
 };
@@ -93,8 +95,12 @@ export default function OntwikkelMenu() {
             </div>
           ) : (
             <div className="om-volgende">
-              <div className="om-label">Volgende taak</div>
-              <div className="om-hint">Geen punt dat nu kan beginnen. Kijk op de routekaart wat er wacht.</div>
+              <div className="om-label">Even niets beginnen</div>
+              <div className="om-hint">
+                {data.reden === "botst"
+                  ? "Alles wat nu zou kunnen, raakt een scherm waar al aan gewerkt wordt. Laat die chat eerst afmaken."
+                  : "Er staat niets open dat nu kan beginnen. Kijk op de routekaart wat er nog wacht."}
+              </div>
             </div>
           )}
 

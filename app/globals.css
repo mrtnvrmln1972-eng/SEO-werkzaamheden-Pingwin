@@ -5193,3 +5193,14 @@ a.wb-pad:hover { text-decoration: underline; }
   font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
   letter-spacing: 0.06em; text-transform: uppercase; color: var(--gray);
 }
+.rk-advies-uitleg { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--muted); margin: 0; }
+.rk-punt-botst-nu {
+  margin: var(--s-3) 0 0 50px;
+  padding: var(--s-2) var(--s-3);
+  border-left: 3px solid var(--orange);
+  border-radius: 0 var(--r-md) var(--r-md) 0;
+  background: var(--brand-orange-faint);
+  font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--orange-dark);
+  max-width: 52em;
+}
+@media (max-width: 900px) { .rk-punt-botst-nu { margin-left: 0; } }

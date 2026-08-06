@@ -5,7 +5,7 @@ import { ADMIN_VIEWAS_COOKIE } from "../../../lib/constants";
 import { getScopeFromCookie } from "../../../lib/admin-scope";
 import {
   PUNTEN, GOLVEN, kanStarten, wachtOp, raaktZelfde, nuDoen, voortgang,
-  startprompt, startpromptTekst,
+  startprompt, startpromptTekst, botstMetLopend, geenAdviesReden,
 } from "../../../lib/routekaart";
 import { beschrijvingen } from "../../../lib/routekaart-tekst";
 import RoutekaartClient, { type PuntWeergave } from "./RoutekaartClient";
@@ -45,6 +45,7 @@ export default async function RoutekaartPage() {
     prompt: startprompt(p),
     promptTekst: startpromptTekst(p),
     beschrijving: teksten[p.code] ?? null,
+    botstLopend: botstMetLopend(p).map((x) => x.code),
   }));
 
   const advies = nuDoen();
@@ -55,6 +56,7 @@ export default async function RoutekaartPage() {
       golven={GOLVEN}
       voortgang={voortgang()}
       advies={advies ? { code: advies.code, titel: advies.titel, prompt: startprompt(advies) } : null}
+      reden={geenAdviesReden()}
     />
   );
 }

@@ -13,6 +13,8 @@ export type PuntWeergave = Punt & {
   promptTekst: string;
   /** De volledige beschrijving uit /uitleg, als HTML. null = nog geen tekst. */
   beschrijving: string | null;
+  /** Punten die nú lopen en hetzelfde scherm raken. Niet tegelijk beginnen. */
+  botstLopend: string[];
 };
 
 type Golf = { nummer: 1 | 2 | 3; titel: string; regel: string };
@@ -79,6 +81,13 @@ function PuntKaart({ p }: { p: PuntWeergave }) {
         </div>
       )}
 
+      {p.stand !== "af" && p.botstLopend.length > 0 && (
+        <div className="rk-punt-botst-nu">
+          Nu even niet: {p.botstLopend.join(" en ")} {p.botstLopend.length === 1 ? "loopt" : "lopen"} en {p.botstLopend.length === 1 ? "raakt" : "raken"}{" "}
+          hetzelfde scherm. Wacht tot die chat klaar is.
+        </div>
+      )}
+
       {p.stand !== "af" && (
         <div className="rk-punt-start">
           {p.kan ? (
@@ -100,12 +109,13 @@ function PuntKaart({ p }: { p: PuntWeergave }) {
 }
 
 export default function RoutekaartClient({
-  punten, golven, voortgang, advies,
+  punten, golven, voortgang, advies, reden,
 }: {
   punten: PuntWeergave[];
   golven: Golf[];
   voortgang: { af: number; loopt: number; open: number; totaal: number };
   advies: { code: string; titel: string; prompt: string } | null;
+  reden: "leeg" | "botst" | null;
 }) {
   const lopend = punten.filter((p) => p.stand === "loopt");
 
@@ -150,12 +160,21 @@ export default function RoutekaartClient({
             </div>
           </div>
 
-          {advies && (
+          {advies ? (
             <div className="rk-advies">
               <div className="rk-advies-label">Begin hier</div>
               <div className="rk-advies-code">{advies.code}</div>
               <div className="rk-advies-titel">{advies.titel}</div>
               <Kopieer tekst={advies.prompt} label="Kopieer de startregel" primair />
+            </div>
+          ) : (
+            <div className="rk-advies">
+              <div className="rk-advies-label">Even niets beginnen</div>
+              <p className="rk-advies-uitleg">
+                {reden === "botst"
+                  ? "Alles wat nu zou kunnen beginnen raakt een scherm waar al aan gewerkt wordt. Laat die chat eerst afmaken en pushen; daarna verschijnt hier vanzelf het volgende punt."
+                  : "Er staat niets open dat nu kan beginnen. Hieronder zie je per punt waar het op wacht."}
+              </p>
             </div>
           )}
         </div>

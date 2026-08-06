@@ -1181,7 +1181,12 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "linken naar dit document; je hoeft dus niet meer in een lang verhaal te zoeken naar het punt waar je " +
           "net op klikte. Eén bron, twee vensters. En in de kopbalk van élk beheerscherm zit een menu " +
           "**Intern** met de eerstvolgende taak en zijn startregel, plus de ingangen naar deze uitlegpagina, " +
-          "zodat je daar niet eerst voor terug hoeft naar het klantenoverzicht.",
+          "zodat je daar niet eerst voor terug hoeft naar het klantenoverzicht.\n\n" +
+          "**Het advies rekent mee met wat er loopt.** Een punt dat hetzelfde scherm raakt als een punt dat op dat " +
+          "moment gebouwd wordt, wordt niet aangeraden; bij zo'n punt staat in plaats van de startregel dat je even " +
+          "moet wachten. Kan er niets zonder botsing beginnen, dan zegt het scherm dat ook, in plaats van een leeg " +
+          "vak te tonen. Dat was eerst niet zo: op 6 augustus 2026 liep R1 en werd R4 aangeraden, terwijl die elkaar " +
+          "in de weg zitten. Een advies dat zijn eigen waarschuwing negeert is erger dan geen advies.",
       },
 
       {

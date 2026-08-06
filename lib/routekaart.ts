@@ -247,15 +247,49 @@ export function wachtOp(p: Punt): Punt[] {
     .filter((x): x is Punt => Boolean(x) && x!.stand !== "af");
 }
 
+/** De punten die op dit moment in een andere chat gebouwd worden. */
+export function lopendeP(): Punt[] {
+  return PUNTEN.filter((p) => p.stand === "loopt");
+}
+
+/**
+ * Botst dit punt met iets dat nu al gebouwd wordt? Zo ja, welke.
+ * Twee chats in hetzelfde scherm leveren merge-conflicten en half werk op; dat
+ * is precies wat de waarschuwing per punt bedoelt.
+ */
+export function botstMetLopend(p: Punt): Punt[] {
+  return lopendeP().filter((x) => x.code !== p.code && x.raakt.some((r) => p.raakt.includes(r)));
+}
+
 /**
  * Het punt dat we aanraden om nu te doen: laagste golf, dan kleinste omvang.
  * Bewust één advies en geen top drie; een lijst is geen advies.
+ *
+ * Punten die hetzelfde scherm raken als iets dat nú loopt vallen af. Zonder die
+ * regel adviseerde dit scherm vrolijk een punt waar het er zelf twee regels lager
+ * voor waarschuwde: op 6 augustus stond R1 te lopen (raakt Verbruik) en werd R4
+ * aangeraden (raakt óók Verbruik). Een advies dat je eigen waarschuwing negeert
+ * is erger dan geen advies.
  */
 export function nuDoen(): Punt | null {
   const rang: Record<Omvang, number> = { klein: 0, middel: 1, groot: 2 };
+  const op = (lijst: Punt[]) =>
+    [...lijst].sort((a, b) => a.golf - b.golf || rang[a.omvang] - rang[b.omvang])[0] ?? null;
   const kan = PUNTEN.filter(kanStarten);
   if (!kan.length) return null;
-  return [...kan].sort((a, b) => a.golf - b.golf || rang[a.omvang] - rang[b.omvang])[0];
+  const vrij = kan.filter((p) => botstMetLopend(p).length === 0);
+  return op(vrij);
+}
+
+/**
+ * Waarom er geen advies is. Voor het scherm, zodat "geen advies" geen raadsel is.
+ *  - "leeg":  er staat niets open dat kan beginnen (alles af, of alles wacht).
+ *  - "botst": er kán wel wat, maar alles raakt een scherm waar nu al aan gewerkt
+ *             wordt. Dan is wachten het juiste antwoord, geen tweede chat.
+ */
+export function geenAdviesReden(): "leeg" | "botst" | null {
+  if (nuDoen()) return null;
+  return PUNTEN.filter(kanStarten).length ? "botst" : "leeg";
 }
 
 /** Punten die hetzelfde scherm raken; waarschuwing bij twee chats tegelijk. */

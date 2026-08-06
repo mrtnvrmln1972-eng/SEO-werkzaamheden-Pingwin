@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { guardDev } from "../../../../lib/admin-scope";
-import { PUNTEN, nuDoen, voortgang, startprompt } from "../../../../lib/routekaart";
+import { PUNTEN, nuDoen, voortgang, startprompt, geenAdviesReden } from "../../../../lib/routekaart";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,6 +23,8 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     ok: true,
     advies: advies ? { code: advies.code, titel: advies.titel, prompt: startprompt(advies) } : null,
+    // Waarom er niets wordt aangeraden. Zonder dit is "geen advies" een raadsel.
+    reden: geenAdviesReden(),
     lopend,
     voortgang: voortgang(),
   });
