@@ -462,6 +462,22 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "Wat de motor oplevert is geen waarschuwing maar een besluit: welke pagina blijft, welke gaat weg, waar " +
           "hij naartoe redirect en waarom. Inclusief de volledige redirectlijst en de mogelijkheid die redirects " +
           "door te voeren.\n\n" +
+          "**Twee remmen zorgen dat opruimen geen schade doet.** Ze zijn er allebei gekomen doordat de motor een " +
+          "voorstel deed dat op papier klopte en in de praktijk geld had gekost.\n\n" +
+          "1. **Zoekintentie.** \"soa test kopen\" en \"wat is een soa test\" delen bijna alle woorden, maar de " +
+          "een wil bestellen en de ander wil het begrijpen. Google toont daar ook een ander soort pagina voor. Die " +
+          "twee worden dus nooit samengevoegd: dat kost een van beide groepen bezoekers. Wat om die reden apart " +
+          "blijft staan, staat zichtbaar in beeld met de reden erbij, in plaats van stil weg te vallen.\n" +
+          "2. **Haalbaarheid.** De moeilijkheid van een zoekterm gaat af tegen de autoriteit van het domein. Een " +
+          "term met moeilijkheid 70 bij een domein van 30 is geen kans maar een illusie, en daar een maand werk in " +
+          "steken verdringt werk dat wel kan lukken. Elke regel krijgt daarom kansrijk, pittig of buiten bereik, en " +
+          "de lijsten staan op volgorde van wat kan in plaats van wat groot is. Er verdwijnt niets: buiten bereik " +
+          "gaat onderaan. Eén meting weegt zwaarder dan de schatting: staat de pagina er al mee in de top 20, dan " +
+          "is bewezen dat het kan.\n\n" +
+          "**En er wordt ook gekeken naar wat er niet is.** Zoektermen met volume waar geen enkele pagina op mikt, " +
+          "gezocht rond de onderwerpen waarin de site al meedoet. Ligt er een bestaande pagina dichtbij, dan is het " +
+          "een uitbreiding daarvan en geen nieuwe pagina; anders zou het opruimen zelf nieuwe cannibalisatie " +
+          "aanleggen. Dit is het enige deel dat over groeien gaat in plaats van over opruimen.\n\n" +
           "Er hangt ook een structuurlaag onder: uit de bestaande URL's en zoekwoorden wordt de beoogde " +
           "eindstructuur van de site voorgesteld, met de takken benoemd zoals het woord in de URL staat, en " +
           "vraagwoorden en te brede termen expliciet niet als tak.",
@@ -478,10 +494,50 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
               "zijn niet overdraagbaar naar een concurrerende tool.",
           },
           {
-            titel: "Nameten",
+            titel: "Nameten na 30 en 90 dagen",
             tekst:
               "Na het doorvoeren van een opruimactie wordt er gemeten of het gewerkt heeft: rankt nu de bedoelde " +
-              "pagina, en is het wisselen gestopt? Zonder die stap is opruimen een geloofsartikel.",
+              "pagina, en is het wisselen gestopt? Zonder die stap is opruimen een geloofsartikel.\n\n" +
+              "Dat gebeurt met een vaste nulmeting. Op het moment dat een redirect live gaat wordt vastgelegd hoe " +
+              "de overblijvende pagina er dan voor staat (klikken, vertoningen, beste positie). Na 30 en na 90 " +
+              "dagen wordt hetzelfde opnieuw gemeten, automatisch. Achteraf reconstrueren kan niet, want dan is de " +
+              "data in Search Console al verschoven en meet je iets anders dan je denkt.\n\n" +
+              "Na 30 dagen is een daling nog normaal: Google heeft weken nodig om een redirect te verwerken. Dat " +
+              "staat er ook bij. Pas de meting na 90 dagen is een oordeel.",
+          },
+          {
+            titel: "Wat het waard is, in euro's",
+            tekst:
+              "Zoekvolume is geen taal waarin je een besluit uitlegt. \"Deze pagina is 500 zoekopdrachten waard\" " +
+              "zegt een klant niets; \"ongeveer 900 euro per maand\" wel. De som is zoekvolume, maal de kans dat " +
+              "iemand doorklikt op een realistische positie, maal de conversie, maal wat een klant oplevert. Die " +
+              "klikkans komt uit dezelfde tabel als de prioriteitenscan, zodat er geen tweede versie kan ontstaan " +
+              "die stil uit elkaar loopt.\n\n" +
+              "De conversie en de klantwaarde worden per klant ingevuld. Zonder die twee getallen rekent het " +
+              "dashboard niets uit en blijft alles op zoekvolume staan; een verzonnen standaard zou eruitzien als " +
+              "een meting.\n\n" +
+              "**En dan de eerlijkheid erbij, want die hoort erbij.** Niemand kan precies meten welk deel van de " +
+              "bezoekers klant wordt: wie na drie bezoeken belt staat nergens geregistreerd. Elke conversie is dus " +
+              "een schatting. Dat is minder erg dan het lijkt, want het is voor elke regel dezelfde " +
+              "vermenigvuldiging: het verandert de volgorde van de lijst niet, alleen de hoogte van de bedragen. " +
+              "Voor de vraag waar je begint maakt 1 procent of 3 procent niets uit; het maakt alleen uit op het " +
+              "moment dat je een bedrag aan een klant laat zien. Daarom staat overal waar een bedrag staat ook het " +
+              "aantal extra bezoekers: dat getal leunt niet op de aanname.",
+          },
+          {
+            titel: "Het eindbeeld: hoe de site eruitziet na het doorvoeren",
+            tekst:
+              "Vier lijsten met samen honderd beslissingen laten werk zien, geen resultaat. Onderaan het scherm " +
+              "staat daarom wat er overblijft: de site als boom, per tak de hoofdpagina met de pagina's die " +
+              "daaronder horen, plus vier getallen (nu, straks, gaat op in een andere, komt erbij).\n\n" +
+              "\"We halen 68 pagina's weg\" klinkt als verlies. \"Van 433 losse pagina's naar 386 in twintig " +
+              "duidelijke takken\" is hetzelfde besluit, maar dan als resultaat. Dit blok staat ook op de deelbare " +
+              "leeslink voor de klant, want daar begint het gesprek.\n\n" +
+              "De berekening is bewust simpel en herhaalbaar, zonder AI: neem wat er live staat, haal eraf wat " +
+              "wordt omgeleid, haal eraf wat in een thuisbasis opgaat, tel erbij op wat er nog moet komen, en " +
+              "groepeer de rest. Twee keer draaien geeft twee keer hetzelfde beeld. Wat in geen enkele tak past " +
+              "blijft zichtbaar als \"staat los\", en dat aantal is zelf een signaal: is het een fors deel van de " +
+              "site, dan ontbreekt er structuur die er hoort te zijn.",
           },
         ],
       },
