@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
+import { waitUntil } from "@vercel/functions";
+import { draaiKlus, getKlus } from "../../../../lib/klussen";
 import { poort } from "../../../../lib/onboarding";
 import { getOpportunities, collectOpportunities } from "../../../../lib/keyword-opportunities";
 
@@ -31,7 +33,14 @@ export async function POST(req: NextRequest) {
   const p = await poort(slug, "zoekwoorden");
   if (!p.mag) return NextResponse.json({ ok: false, error: p.reden, onboarding: p.ontbreekt }, { status: 400 });
 
-  const res = await collectOpportunities(slug);
-  if (!res.ok) return NextResponse.json({ ok: false, error: res.error }, { status: 400 });
-  return NextResponse.json({ ok: true, total: res.total ?? 0 });
+  const lopend = await getKlus(slug, "zoekwoordkansen").catch(() => null);
+  if (lopend?.status === "bezig") return NextResponse.json({ ok: true, alBezig: true });
+
+  waitUntil(draaiKlus(slug, "zoekwoordkansen", "Zoekwoordkansen verzamelen", 0, async (stap) => {
+    await stap(0, "De zoekwoorden van de concurrenten vergelijken met die van de klant");
+    const res = await collectOpportunities(slug);
+    if (!res.ok) throw new Error(res.error || "Verzamelen mislukte.");
+    return `${res.total ?? 0} kansen verzameld.`;
+  }));
+  return NextResponse.json({ ok: true, gestart: true });
 }

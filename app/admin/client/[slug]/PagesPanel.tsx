@@ -12,6 +12,8 @@ import { urlKey } from "../../../../lib/url-key";
 import { kaartTekst, faseVoorstel } from "../../../../lib/weekplan-kaarttekst";
 import { FASE_VOLGORDE } from "../../../../lib/fase-volgorde";
 import { PROFILE_HEADER, TOV_HEADER } from "../../../../lib/constants";
+import Voortgang from "./Voortgang";
+import { useKlus } from "./useKlus";
 
 function shortUrl(url: string): string {
   try { const u = new URL(url); return (u.pathname + u.search) || "/"; } catch { return url; }
@@ -115,7 +117,8 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
   const [phases, setPhases] = useState<Record<string, Partial<Record<FaseKey, boolean>>>>({});
   const [urls, setUrls] = useState<ClientUrl[]>([]);
   const [loading, setLoading] = useState(true);
-  const [scanning, setScanning] = useState(false);
+  // De site inlezen is een achtergrondklus geworden: starten, en de stand volgen.
+  const inlezen = useKlus(slug, "site-inlezen", () => { void load(); });
   const [q, setQ] = useState("");
   // Prioriteit-pagina's (ster), gedeeld met de KPI- en Wijzigingen-tab. Aangevinkte
   // pagina's springen naar boven in dit overzicht.
@@ -300,14 +303,17 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
     load(hadCache); /* eslint-disable-next-line */
   }, [slug]);
 
+  // Het inlezen draait op de server; dit scherm volgt alleen de stand. Wegklikken
+  // mag dus, en bij terugkomen staat hij er nog.
   async function scan() {
-    setScanning(true); setMsg("");
+    if (inlezen.bezig) return;
+    setMsg("");
     try {
       const r = await fetch("/api/admin/urls", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, domain: domainInput.trim() || undefined }) });
       const d = await r.json();
-      if (d.ok) { setMsg(`Site ingelezen: ${d.scanned} pagina's.`); await load(); }
+      if (d.ok) { inlezen.zetBezig(); await inlezen.ververs(); }
       else setMsg(d.error || "Inlezen mislukt.");
-    } catch { setMsg("Inlezen mislukt."); } finally { setScanning(false); }
+    } catch { setMsg("Inlezen mislukt."); }
   }
 
   // Nieuwe pagina toevoegen: bouw een volledige URL uit het website-adres + het pad
@@ -440,10 +446,24 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
               onChange={(e) => setDomainInput(e.target.value)}
             />
             <button type="button" className="pcd-btn" onClick={() => setImporting(true)}>Analyse importeren</button>
-            <button type="button" className={"pcd-btn" + (scanning ? " busy" : "")} onClick={scan} disabled={scanning}>{scanning ? "Inlezen…" : "Website inlezen"}</button>
+            <button type="button" className={"pcd-btn" + (inlezen.bezig ? " busy" : "")} onClick={scan} disabled={inlezen.bezig}>{inlezen.bezig ? "Inlezen…" : "Website inlezen"}</button>
             <button type="button" className={"pcd-btn" + (newPageOpen ? " active" : "")} onClick={() => setNewPageOpen((v) => !v)}>+ Nieuwe pagina</button>
           </span>
         </div>
+
+        {(inlezen.bezig || inlezen.klus?.status === "vastgelopen") && (
+          <div style={{ marginBottom: "var(--s-4)" }}>
+            <Voortgang
+              titel={inlezen.klus?.naam || "De site inlezen"}
+              label={inlezen.klus?.label}
+              stap={inlezen.klus?.stap}
+              stappen={inlezen.klus?.stappen}
+              sinds={inlezen.klus?.gestart}
+              stil={inlezen.klus?.status === "vastgelopen"}
+              actie={inlezen.klus?.status === "vastgelopen" ? { label: "Opnieuw proberen", onClick: () => { void scan(); } } : undefined}
+            />
+          </div>
+        )}
 
         {newPageOpen && (
           <div className="new-page-form">

@@ -11,6 +11,8 @@ import OpruimOnderwerpen, { type Onderwerp } from "./OpruimOnderwerpen";
 import OpruimGaten, { type Gat } from "./OpruimGaten";
 import OpruimEindstructuur from "./OpruimEindstructuur";
 import OpruimNameten, { type Nameting } from "./OpruimNameten";
+import Voortgang from "./Voortgang";
+import { useKlus } from "./useKlus";
 
 type ClusterUrl = { url: string; rol?: string; positie?: number; klikken?: number; impressies?: number; verwijzendeDomeinen?: number; intentie?: string };
 type Signalen = { urlFlip?: boolean; flipsIn90d?: number; positiePlafond?: boolean; klikVerdeling?: boolean };
@@ -86,7 +88,6 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
   const [adsMsg, setAdsMsg] = useState("");
   // De waarde-rem over een lijst die er al ligt: pagina's met een waardevolle
   // eigen zoekterm gaan van de omleidlijst af naar "oppakken".
-  const [weegBezig, setWeegBezig] = useState(false);
   const [weegMsg, setWeegMsg] = useState("");
   // Wat een klant waard is, zodat de lijsten in euro's kunnen praten in plaats van
   // in zoekvolume. Zonder deze twee getallen rekent het dashboard niets uit.
@@ -120,23 +121,26 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
     } catch { setDeelMsg("Mislukt."); }
   }
 
+  // Herwegen draait op de server; het scherm volgt de stand en laadt de lijst
+  // opnieuw zodra hij klaar is.
+  const weegKlus = useKlus(slug, "opruim-herwegen", () => {
+    setWeegMsg(weegKlus.klus?.label || "De lijst is opnieuw gewogen.");
+    void load();
+  });
+
   async function weegOpnieuw() {
-    if (weegBezig) return;
-    setWeegBezig(true); setWeegMsg("");
+    if (weegKlus.bezig) return;
+    setWeegMsg("");
     try {
       const d = await fetch("/api/admin/opruim-waarde", {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }),
       }).then((r) => r.json());
       if (!d.ok) { setWeegMsg(d.error || "Controle mislukt."); return; }
-      setWeegMsg(d.gered
-        ? `${d.gered} ${d.gered === 1 ? "pagina" : "pagina's"} van de opruimlijst gehaald: hun eigen zoekterm heeft volume. Ze staan nu onder "Oppakken".`
-        : "Geen pagina's op de opruimlijst met een waardevolle eigen zoekterm; de lijst blijft zoals hij was.");
-      if (d.onderwerpen) setWeegMsg((m) => `${m} Daarnaast ${d.onderwerpen === 1 ? "is 1 onderwerp" : `zijn ${d.onderwerpen} onderwerpen`} gevonden die over meerdere pagina's verspreid ${d.onderwerpen === 1 ? "ligt" : "liggen"}.`);
-      if (d.gaten) setWeegMsg((m) => `${m} En ${d.gaten === 1 ? "1 zoekterm heeft" : `${d.gaten} zoektermen hebben`} volume terwijl geen enkele pagina erop mikt; die ${d.gaten === 1 ? "staat" : "staan"} onder "Wat er ontbreekt".`);
-      await load();
+      weegKlus.zetBezig();
+      await weegKlus.ververs();
     } catch { setWeegMsg("Controle mislukt."); }
-    finally { setWeegBezig(false); }
   }
+
 
   async function load() {
     try {
@@ -439,19 +443,20 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
             vastgelopen. Precies dat gebeurde op 03-08-2026: de run was al dood en
             het scherm bleef "draait…" tonen. */}
         {running && (
-          <div className="opr-voortgang">
-            <span className="opr-voortgang-stap">Stap {state?.stap || 1} van {stappen}</span>
-            <span className="opr-voortgang-label">{state?.stapLabel || "De analyse wordt gestart"}</span>
-            {regels > 0 && <span className="opr-voortgang-tel">{regels} regels tot nu toe</span>}
-            {(state?.kandidaten || 0) > 0 && <span className="opr-voortgang-tel">{state?.beoordeeld || 0} van {state?.kandidaten} kandidaten nagelopen</span>}
-            <button type="button" className="ghost-btn small" onClick={hervat} disabled={busy} title="Draait de eerstvolgende stap meteen, zonder de analyse opnieuw te beginnen.">Nu hervatten</button>
-            <span className="opr-voortgang-tijd">
-              De hele analyse duurt een kwartier tot twintig minuten. Je kunt wegklikken; hij loopt door.
-              {" "}{state?.cronStil
-                ? "Let op: het vangnet dat vastgelopen analyses oppakt, draait nu niet. Blijft de stap hangen, klik dan op Nu hervatten."
-                : `Vangnet draaide voor het laatst om ${new Date(state?.cronTik as string).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })}.`}
-            </span>
-          </div>
+          <Voortgang
+            titel="Opruimanalyse"
+            label={[
+              state?.stapLabel || "De analyse wordt gestart",
+              regels > 0 ? `${regels} regels tot nu toe` : "",
+              (state?.kandidaten || 0) > 0 ? `${state?.beoordeeld || 0} van de ${state?.kandidaten} kandidaten nagelopen` : "",
+              "De hele analyse duurt een kwartier tot twintig minuten.",
+            ].filter(Boolean).join(" · ")}
+            stap={state?.stap || 1}
+            stappen={stappen}
+            sinds={state?.updatedAt}
+            stil={!!state?.cronStil}
+            actie={{ label: "Nu hervatten", onClick: hervat, bezig: busy }}
+          />
         )}
         {!result && !running && state?.status !== "error" && <div className="muted">Nog geen analyse. Klik &ldquo;Analyse draaien&rdquo;.</div>}
 
@@ -563,12 +568,17 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
                 </a>
                 {/* De rem ook over een lijst die er al ligt, zonder een nieuwe
                     analyse van twintig minuten. */}
-                <button type="button" className="ghost-btn small" onClick={() => void weegOpnieuw()} disabled={weegBezig}
+                <button type="button" className="ghost-btn small" onClick={() => void weegOpnieuw()} disabled={weegKlus.bezig}
                   title="Twee controles in één: pagina's met een waardevolle eigen zoekterm gaan van deze lijst af, en onderwerpen die over meerdere pagina's verspreid liggen komen bovenaan te staan.">
-                  {weegBezig ? "Bezig met controleren…" : "Controleer op gemiste kansen"}
+                  {weegKlus.bezig ? "Bezig met controleren…" : "Controleer op gemiste kansen"}
                 </button>
                 </div>
               </div>
+                {weegKlus.bezig && (
+                  <div style={{ margin: "var(--s-3) 0" }}>
+                    <Voortgang klein titel="De opruimlijst opnieuw wegen" label={weegKlus.klus?.label} sinds={weegKlus.klus?.gestart} />
+                  </div>
+                )}
                 {weegMsg && <div className="opr-melding">{weegMsg}</div>}
                 <OpruimTabel slug={slug} domain={domain} rijen={result.redirectMap} openTarget={openTarget} bewijs={bewijsPerPad} />
               </div>

@@ -6,6 +6,8 @@ import type { AhrefsKeyword } from "../../../../lib/ahrefs-keywords";
 import type { Opportunity } from "../../../../lib/keyword-opportunities";
 import HelpHint from "./HelpHint";
 import { mdToHtml } from "../../../../lib/markdown";
+import Voortgang from "./Voortgang";
+import { useKlus } from "./useKlus";
 
 type GscPage = GscComparison["pages"][number];
 
@@ -470,24 +472,26 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
 
   // Zoekwoord-kansen (relevant, waar de site nog niet op rankt).
   const [opps, setOpps] = useState<Opportunity[]>([]);
-  const [oppBusy, setOppBusy] = useState(false);
   const [oppMsg, setOppMsg] = useState("");
   useEffect(() => {
     fetch(`/api/admin/keyword-opportunities?slug=${encodeURIComponent(slug)}`)
       .then((r) => r.json()).then((d) => { if (d.ok) setOpps(d.opportunities || []); }).catch(() => {});
   }, [slug]);
+  // Kansen verzamelen duurt minuten (Ahrefs plus de relevantiefilter), dus het
+  // draait op de server en dit scherm volgt alleen de stand.
+  const kansenKlus = useKlus(slug, "zoekwoordkansen", () => {
+    void fetch(`/api/admin/keyword-opportunities?slug=${encodeURIComponent(slug)}`)
+      .then((x) => x.json()).then((g) => { if (g?.ok) setOpps(g.opportunities || []); }).catch(() => {});
+  });
   async function collectOpps() {
-    if (oppBusy) return;
-    setOppBusy(true); setOppMsg("");
+    if (kansenKlus.bezig) return;
+    setOppMsg("");
     try {
       const r = await fetch("/api/admin/keyword-opportunities", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }) });
       const d = await r.json();
-      if (d.ok) {
-        setOppMsg(`${d.total} relevante kansen gevonden.`);
-        const g = await fetch(`/api/admin/keyword-opportunities?slug=${encodeURIComponent(slug)}`).then((x) => x.json()).catch(() => null);
-        if (g?.ok) setOpps(g.opportunities || []);
-      } else setOppMsg(d.error || "Zoeken mislukt.");
-    } catch { setOppMsg("Zoeken mislukt."); } finally { setOppBusy(false); }
+      if (d.ok) { kansenKlus.zetBezig(); await kansenKlus.ververs(); }
+      else setOppMsg(d.error || "Zoeken mislukt.");
+    } catch { setOppMsg("Zoeken mislukt."); }
   }
 
   // Concurrenten (voor de gap-bron van de kansen).
@@ -893,9 +897,22 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
               <span className="kpi-block-title">Kansen{opps.length ? ` (${opps.length})` : ""} {siteBadge} <HelpHint xl title="Kansen: waar je nog niet rankt maar wel zou moeten" text={"Relevante zoekwoorden met echt volume waar deze site **nog helemaal niet op rankt**; de witte vlekken op de kaart.\n## Hoe de kansen gevonden worden\n- **Keyword-ideeën rond je kernthema's:** Ahrefs genereert termen rond de onderwerpen waar de site al op scoort.\n- **Concurrent-gaten:** termen waar concurrenten wél op ranken en jij niet; dat bewijst dat er in deze markt op gescoord kán worden.\n- **AI-relevantiefilter:** de kandidaten worden daarna door de AI gefilterd op echte relevantie voor dít bedrijf (met het klantprofiel als maatstaf), zodat er geen termen tussen staan die niet bij het aanbod of werkgebied passen.\n## Wat je ermee doet\nElke kans is een potentiële nieuwe pagina of een uitbreiding van een bestaande. Neem hem mee naar de strategie-stap van de best passende pagina, of maak een nieuwe pagina aan op de Pagina's-tab; de drempelregels daar (eigen pagina vanaf zo'n 100 zoekvolume) bewaken dat je geen pagina's bouwt voor lucht."} /></span>
               <span className="kpi-head-actions">
                 <button type="button" className={"ghost-btn small" + (compOpen ? " active" : "")} onClick={() => setCompOpen((v) => !v)}>Concurrenten{competitors.length ? ` (${competitors.length})` : ""}</button>
-                <button type="button" className="primary-btn small" onClick={collectOpps} disabled={oppBusy}>{oppBusy ? "Zoeken…" : (opps.length ? "Opnieuw zoeken" : "Kansen zoeken")}</button>
+                <button type="button" className="primary-btn small" onClick={collectOpps} disabled={kansenKlus.bezig}>{kansenKlus.bezig ? "Zoeken…" : (opps.length ? "Opnieuw zoeken" : "Kansen zoeken")}</button>
               </span>
             </div>
+            {(kansenKlus.bezig || kansenKlus.klus?.status === "vastgelopen") && (
+              <div style={{ marginBottom: "var(--s-4)" }}>
+                <Voortgang
+                  titel={kansenKlus.klus?.naam || "Zoekwoordkansen verzamelen"}
+                  label={kansenKlus.klus?.label}
+                  stap={kansenKlus.klus?.stap}
+                  stappen={kansenKlus.klus?.stappen}
+                  sinds={kansenKlus.klus?.gestart}
+                  stil={kansenKlus.klus?.status === "vastgelopen"}
+                  actie={kansenKlus.klus?.status === "vastgelopen" ? { label: "Opnieuw proberen", onClick: () => { void collectOpps(); } } : undefined}
+                />
+              </div>
+            )}
             {compOpen && (
               <div className="comp-edit">
                 <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>2 tot 4 concurrent-domeinen. Hun zoekwoorden geven de gap (waar zij wel, jij nog niet rankt). Alleen het domein, bijvoorbeeld voorbeeld.nl.</div>

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
+import { waitUntil } from "@vercel/functions";
+import { draaiKlus, getKlus } from "../../../../lib/klussen";
 import { getClientBySlug } from "../../../../lib/clients";
 import { weegOpruimlijstOpnieuw } from "../../../../lib/cannibal-redirect";
 
@@ -27,10 +29,13 @@ export async function POST(req: NextRequest) {
   const domain = (client?.domain || "").trim();
   if (!domain) return NextResponse.json({ ok: false, error: "Deze klant heeft nog geen domein ingevuld." }, { status: 400 });
 
-  try {
-    const r = await weegOpruimlijstOpnieuw(slug, domain);
-    return NextResponse.json({ ok: true, ...r });
-  } catch (e) {
-    return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : "Wegen mislukt." }, { status: 500 });
-  }
+  const lopend = await getKlus(slug, "opruim-herwegen").catch(() => null);
+  if (lopend?.status === "bezig") return NextResponse.json({ ok: true, alBezig: true });
+
+  waitUntil(draaiKlus(slug, "opruim-herwegen", "De opruimlijst opnieuw wegen", 0, async (stap) => {
+    await stap(0, "Volume, haalbaarheid en bedragen opnieuw uitrekenen");
+    await weegOpruimlijstOpnieuw(slug, domain);
+    return "De lijst is opnieuw gewogen.";
+  }));
+  return NextResponse.json({ ok: true, gestart: true });
 }

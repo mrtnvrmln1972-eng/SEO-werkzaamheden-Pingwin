@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
+import { waitUntil } from "@vercel/functions";
+import { draaiKlus, getKlus } from "../../../../lib/klussen";
 import { getClientUrls } from "../../../../lib/site-urls";
 import { getClientBySlug } from "../../../../lib/clients";
 import { captureAndDetect } from "../../../../lib/content-tracking";
@@ -41,13 +43,23 @@ export async function POST(req: NextRequest) {
       .slice(0, 200);
   }
 
-  let scanned = 0, changed = 0;
+  // Tweehonderd pagina's uitlezen duurt minuten. Dat wacht de browser niet meer
+  // af: de klus draait door op de server en de stand is overal zichtbaar.
+  const lopend = await getKlus(slug, "wijzigingen-scan").catch(() => null);
+  if (lopend?.status === "bezig") return NextResponse.json({ ok: true, alBezig: true });
+
   const POOL = 5;
-  for (let i = 0; i < urls.length; i += POOL) {
-    const batch = urls.slice(i, i + POOL);
-    const results = await Promise.all(batch.map((u) => captureAndDetect(slug, u).catch(() => ({ changed: false }))));
-    scanned += batch.length;
-    changed += results.filter((r) => r.changed).length;
-  }
-  return NextResponse.json({ ok: true, scanned, changed });
+  const blokken = Math.ceil(urls.length / POOL);
+  waitUntil(draaiKlus(slug, "wijzigingen-scan", "Wijzigingen op de site zoeken", blokken, async (stap) => {
+    let scanned = 0, changed = 0;
+    for (let i = 0; i < urls.length; i += POOL) {
+      const batch = urls.slice(i, i + POOL);
+      const results = await Promise.all(batch.map((u) => captureAndDetect(slug, u).catch(() => ({ changed: false }))));
+      scanned += batch.length;
+      changed += results.filter((r) => r.changed).length;
+      await stap(Math.floor(i / POOL) + 1, `${scanned} van de ${urls.length} pagina's nagekeken, ${changed} gewijzigd`);
+    }
+    return `${scanned} pagina's nagekeken, ${changed} gewijzigd.`;
+  }));
+  return NextResponse.json({ ok: true, gestart: true, totaal: urls.length });
 }

@@ -12,6 +12,7 @@ import { getGscQueryPagePairs } from "./google";
 import { getSerpOverview, ahrefsConfigured } from "./ahrefs";
 import { anthropicConfigured } from "./anthropic";
 import { getOnboardingStand, ONBOARDING, wisSignaalCache, type StapKey } from "./onboarding";
+import { startKlus, zetStap, klusKlaar, klusFout } from "./klussen";
 
 // ═══════════════════════════════════════════════════════════
 // "START ONBOARDING": ALLES WAT VANZELF KAN, IN VOLGORDE
@@ -61,8 +62,18 @@ export async function getOnboardingRun(slug: string): Promise<RunStand> {
   } catch { return LEEG; }
 }
 
+// Het logboek van de rit, én de hartslag voor het klusje in de kop van de
+// cockpit. Beide bij elkaar, zodat ze niet uit elkaar kunnen lopen.
+const KLUS = "onboarding";
+const AUTO_STAPPEN = 9; // het aantal stappen dat de rit zelf kan doen
+
 async function bewaar(slug: string, st: Omit<RunStand, "updatedAt">): Promise<void> {
   await setSetting(sleutel(slug), JSON.stringify({ ...st, updatedAt: new Date().toISOString() })).catch(() => { /* nooit de run laten klappen op het logboek */ });
+  try {
+    if (st.status === "running") await zetStap(slug, KLUS, st.regels.length, st.bezigMet || "Bezig met de onboarding");
+    else if (st.status === "error") await klusFout(slug, KLUS, st.error || "De onboarding liep vast.");
+    else if (st.status === "done") await klusKlaar(slug, KLUS, `${st.regels.filter((r) => r.uitkomst === "gedaan" || r.uitkomst === "gestart").length} stappen gedaan`);
+  } catch { /* het logboek mag nooit de rit laten klappen */ }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -106,6 +117,7 @@ export async function voorstelConcurrenten(slug: string, domain: string): Promis
 // ═══════════════════════════════════════════════════════════
 
 export async function startOnboardingRun(slug: string): Promise<void> {
+  await startKlus(slug, KLUS, "Onboarding", AUTO_STAPPEN, "Kijken wat er al staat").catch(() => { /* niet blokkerend */ });
   await bewaar(slug, { status: "running", bezigMet: "Kijken wat er al staat", regels: [], error: "" });
 }
 

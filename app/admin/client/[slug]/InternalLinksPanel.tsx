@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { urlKey } from "../../../../lib/url-key";
 import { mdToHtml } from "../../../../lib/markdown";
+import Voortgang from "./Voortgang";
 
 type SuggestedLink = { bronUrl: string; relevantie?: number; autoriteit?: string; verkeer?: number; linkbudget?: string; score?: string; passage?: string; nieuweZin?: boolean; ankertekst?: string; ankertype?: string; positie?: string; verwachteImpact?: string; urlRating?: number | null; urGemeten?: boolean; urDatum?: string };
 type AnchorItem = { anker: string; type?: string; aantal?: number; status?: string };
@@ -181,7 +182,15 @@ export default function InternalLinksPanel({ slug, openTarget }: {
           </div>
         )}
 
-        {running && <div className="muted" style={{ marginTop: 6 }}>Analyse draait op de achtergrond… (crawl + redenering kan een paar minuten duren)</div>}
+        {running && (
+          <div style={{ marginTop: "var(--s-3)" }}>
+            <Voortgang
+              titel="Interne links"
+              label="De bronpagina's worden gecrawld en gewogen op autoriteit en relevantie; dit duurt een paar minuten."
+              sinds={state?.updatedAt}
+            />
+          </div>
+        )}
 
         {result && !showPicker && (
           <>

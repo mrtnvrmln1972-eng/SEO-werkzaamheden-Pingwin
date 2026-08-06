@@ -8,6 +8,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { kaartTekst, faseVoorstel } from "../../../../../lib/weekplan-kaarttekst";
+import { wachtOpKlus } from "../useKlus";
 
 type Punt = { naam: string; behaald: number; max: number; uitleg: string };
 type Node = {
@@ -75,7 +76,11 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
     setBusy("meten"); setMsg("");
     try {
       const d = await fetch("/api/admin/content-scan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, urls: ontbrekend.slice(0, 50) }) }).then((r) => r.json());
-      if (d?.ok) await laad(); else setMsg(d?.error || "Meten lukte niet; probeer het nog een keer.");
+      if (!d?.ok) { setMsg(d?.error || "Meten lukte niet; probeer het nog een keer."); return; }
+      setMsg("De pagina's worden gemeten; dat loopt door op de server, ook als je dit venster sluit.");
+      const klaar = await wachtOpKlus(slug, "wijzigingen-scan");
+      setMsg(klaar?.status === "fout" ? (klaar.error || "Meten liep vast.") : "");
+      await laad();
     } catch { setMsg("Meten lukte niet; probeer het nog een keer."); }
     finally { setBusy(""); }
   }
@@ -87,6 +92,12 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
     try {
       const d = await fetch("/api/admin/urls", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }) }).then((r) => r.json());
       if (!d?.ok) { setMsg(d?.error || "De sitescan lukte niet; probeer het nog een keer."); return; }
+      // Het inlezen draait op de server. Het menu heeft de pagina's nodig, dus
+      // eerst wachten tot dat klaar is; anders bouwt hij het menu op een lege lijst.
+      setMsg("De site wordt ingelezen; daarna wordt het menu opgebouwd. Je kunt dit venster sluiten, het werk loopt door.");
+      const klaar = await wachtOpKlus(slug, "site-inlezen");
+      if (klaar && klaar.status === "fout") { setMsg(klaar.error || "Het inlezen liep vast."); return; }
+      setMsg("");
       await fetch("/api/admin/nav-plan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, action: "menu" }) }).catch(() => null);
       await laad();
     } catch { setMsg("De sitescan lukte niet; probeer het nog een keer."); }

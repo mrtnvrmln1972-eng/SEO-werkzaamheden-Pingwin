@@ -21,7 +21,7 @@
 // betreffende uitklapper aanvullen en LAATST_BIJGEWERKT verzetten.
 // ═══════════════════════════════════════════════════════════
 
-export const LAATST_BIJGEWERKT = "6 augustus 2026";
+export const LAATST_BIJGEWERKT = "7 augustus 2026";
 
 export type Uitklapper = {
   titel: string;
@@ -1163,6 +1163,25 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "Per maand staat vast wat er is uitgevoerd, wat het gekost heeft en wat de ontwikkeling is. Dat is " +
           "tegelijk de verantwoording naar de klant en de input voor de volgende ronde: de prioriteitenscan " +
           "rekent opnieuw door, met de correcties van vorige maand als vaste regels erin.",
+      },
+      {
+        titel: "Wat er op de achtergrond draait, en hoe je dat ziet",
+        kern: "Alles wat lang duurt draait op de server, met een rondje dat volloopt.",
+        tekst:
+          "Zware klussen (de site inlezen, de prioriteitenscan, de opruimanalyse, de interne links, de " +
+          "documenten, de wijzigingen-scan, de zoekwoordkansen) draaien op de server en niet in je browser. " +
+          "Je kunt dus wegklikken, doorklikken of het venster sluiten; het werk loopt door.\n\n" +
+          "Overal waar iets draait staat hetzelfde voortgangsrondje, met daarbij:\n\n" +
+          "- **Bij welke stap hij is**, als het aantal stappen bekend is. Het rondje loopt dan echt vol. Is het " +
+          "aantal stappen niet bekend, dan draait het rondje rond in plaats van een verzonnen percentage te " +
+          "tonen; een balk die op 90% blijft hangen is een leugen.\n" +
+          "- **Wat er nu gebeurt**, in gewone taal. Een molentje zonder tekst is niet te onderscheiden van " +
+          "vastgelopen.\n" +
+          "- **Hoe lang hij al loopt.** Is er een kwartier geen teken van leven, dan zegt hij dat hij " +
+          "waarschijnlijk vastligt, met de knop om te hervatten ernaast. Zwijgen is hier het ergste.\n\n" +
+          "In de kop van de cockpit staat bovendien een klusje dat op **elk tabblad** meegaat: klik het open en " +
+          "je ziet alles wat op dit moment voor deze klant draait, met de weg terug naar de plek waar het " +
+          "hoort. Zo raak je een gestarte scan niet meer uit het oog doordat je ergens anders heen klikte.",
       },
       {
         titel: "Wat je als bureau moet aanleveren",

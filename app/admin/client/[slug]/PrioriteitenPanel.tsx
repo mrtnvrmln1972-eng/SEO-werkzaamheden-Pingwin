@@ -13,6 +13,7 @@ import { kaartTekst, faseVoorstel } from "../../../../lib/weekplan-kaarttekst";
 import { onderbouwing } from "../../../../lib/prioriteiten-onderbouwing";
 import { mdToHtml } from "../../../../lib/markdown";
 import MailVenster from "./MailVenster";
+import Voortgang from "./Voortgang";
 
 // Het bedoelde adres van een pagina die nog niet bestaat (content gap). De kaart
 // heeft een URL nodig om de fases en de pagina-context te kunnen tonen; zonder
@@ -83,7 +84,7 @@ const SORT_KOP: { veld: SortVeld; label: string; uitleg: string }[] = [
 const ONTBREKENDE_BRON: Record<string, { knop: string; url: string; achtergrond: boolean }> = {
   cannibalisatie: { knop: "Opruimanalyse draaien", url: "/api/admin/cannibal-redirect", achtergrond: true },
   interne_links: { knop: "Interne-link-analyse draaien", url: "/api/admin/internal-links", achtergrond: true },
-  content_gap: { knop: "Kansenlijst ophalen", url: "/api/admin/keyword-opportunities", achtergrond: false },
+  content_gap: { knop: "Kansenlijst ophalen", url: "/api/admin/keyword-opportunities", achtergrond: true },
 };
 
 function datum(s?: string | null): string {
@@ -460,12 +461,16 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar, clientN
       </div>
 
       {st?.status === "running" && (
-        <div className="opr-voortgang">
-          <div className="opr-voortgang-label">
-            <span className="opr-voortgang-stap">Stap {st.stap} van {st.stappen}</span>
-            <span>{st.stapLabel}</span>
-          </div>
-          {st.cronStil && <div className="opr-voortgang-tijd">Het vangnet is even stil. Blijft dit hangen, klik dan op “Nu hervatten”.</div>}
+        <div style={{ marginBottom: "var(--s-4)" }}>
+          <Voortgang
+            titel="Prioriteitenscan"
+            label={st.stapLabel}
+            stap={st.stap}
+            stappen={st.stappen}
+            sinds={st.updatedAt}
+            stil={st.cronStil}
+            actie={st.cronStil ? { label: "Nu hervatten", onClick: () => { void start(true); }, bezig: busy } : undefined}
+          />
         </div>
       )}
 

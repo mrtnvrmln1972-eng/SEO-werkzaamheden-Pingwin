@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BLOK_LABEL, BLOK_UITLEG, type Blok, type Stand, type StapStand } from "../../../../lib/onboarding-stappen";
 import type { RunStand, Regel } from "../../../../lib/onboarding-run";
+import Voortgang from "./Voortgang";
 
 // ═══════════════════════════════════════════════════════════
 // ONBOARDING: ÉÉN SCHERM MET DE VASTE VOLGORDE
@@ -106,10 +107,22 @@ export default function OnboardingPanel({ slug, onGaNaar }: { slug: string; onGa
 
         {fout && <p className="ob-fout">{fout}</p>}
 
+        {draait && (
+          <div style={{ marginTop: "var(--s-4)" }}>
+            <Voortgang
+              titel="Onboarding"
+              label={run?.bezigMet || "Aan het werk"}
+              stap={run?.regels.length || 0}
+              stappen={9}
+              sinds={run?.updatedAt}
+            />
+          </div>
+        )}
+
         {run && run.status !== "idle" && (
           <div className="ob-log">
             <div className="ob-log-kop">
-              {run.status === "running" ? `Bezig: ${run.bezigMet || "aan het werk"}…` : run.status === "error" ? "De vorige rit liep vast" : "De vorige rit"}
+              {run.status === "running" ? "Wat er tot nu toe gedaan is" : run.status === "error" ? "De vorige rit liep vast" : "De vorige rit"}
             </div>
             {run.error && <p className="ob-fout">{run.error}</p>}
             <ul className="ob-log-lijst">

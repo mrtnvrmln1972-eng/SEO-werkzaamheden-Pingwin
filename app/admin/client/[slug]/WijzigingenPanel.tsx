@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import HelpHint from "./HelpHint";
 import MetaPixelMeter from "./MetaPixelMeter";
 import type { MetaKind } from "@/lib/meta-rules";
+import Voortgang from "./Voortgang";
+import { useKlus } from "./useKlus";
 
 type ArrayDiff = { added: string[]; removed: string[] };
 type FieldChange = { before: string; after: string };
@@ -303,7 +305,8 @@ function DiffView({ diff }: { diff: ContentDiff }) {
 export default function WijzigingenPanel({ slug }: { slug: string }) {
   const [events, setEvents] = useState<ChangeEvent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [scanning, setScanning] = useState(false);
+  // De wijzigingen-scan is een achtergrondklus: starten en de stand volgen.
+  const klus = useKlus(slug, "wijzigingen-scan", () => { void load(); });
   const [msg, setMsg] = useState("");
   const [open, setOpen] = useState<ChangeEvent | null>(null);
   const [kpi, setKpi] = useState<Kpi | null>(null);
@@ -417,14 +420,17 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
   }
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [slug]);
 
+  // De scan draait op de server; dit scherm volgt alleen de stand, zodat je
+  // ondertussen ergens anders heen kunt.
   async function scan() {
-    setScanning(true); setMsg("");
+    if (klus.bezig) return;
+    setMsg("");
     try {
       const r = await fetch("/api/admin/content-scan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }) });
       const d = await r.json();
-      if (d.ok) { setMsg(`${d.scanned} pagina's gescand, ${d.changed} wijziging${d.changed === 1 ? "" : "en"} gevonden.`); await load(); }
+      if (d.ok) { klus.zetBezig(); await klus.ververs(); }
       else setMsg(d.error || "Scan mislukt.");
-    } catch { setMsg("Scan mislukt."); } finally { setScanning(false); }
+    } catch { setMsg("Scan mislukt."); }
   }
 
   // Maakt (of opent) het meetmoment van een pagina waar we optimalisaties op
@@ -617,9 +623,22 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
           <button type="button" className="ghost-btn small" onClick={() => setShowAdd((v) => !v)}>{showAdd ? "Sluiten" : "Wijziging toevoegen"}</button>
           {!wpSet && <button type="button" className="ghost-btn small" onClick={() => setWpSetupOpen((v) => !v)} title="WordPress-applicatiewachtwoord instellen voor de volledige bewerkingshistorie">WordPress-koppeling</button>}
           <button type="button" className="ghost-btn small" onClick={syncWordpress} disabled={wpBusy} title={wpSet ? "Haalt de volledige bewerkingshistorie (revisies) uit WordPress" : "Haalt per pagina de laatste wijzigingsdatum op (stel een koppeling in voor de volledige historie)"}>{wpBusy ? "Uit WordPress…" : (wpSet ? "Uit WordPress ophalen (historie)" : "Uit WordPress ophalen")}</button>
-          <button type="button" className="ghost-btn small" onClick={scan} disabled={scanning}>{scanning ? "Scannen…" : "Scan op wijzigingen"}</button>
+          <button type="button" className="ghost-btn small" onClick={scan} disabled={klus.bezig}>{klus.bezig ? "Scannen…" : "Scan op wijzigingen"}</button>
         </span>
       </div>
+      {(klus.bezig || klus.klus?.status === "vastgelopen") && (
+        <div style={{ marginBottom: "var(--s-4)" }}>
+          <Voortgang
+            titel={klus.klus?.naam || "Wijzigingen op de site zoeken"}
+            label={klus.klus?.label}
+            stap={klus.klus?.stap}
+            stappen={klus.klus?.stappen}
+            sinds={klus.klus?.gestart}
+            stil={klus.klus?.status === "vastgelopen"}
+            actie={klus.klus?.status === "vastgelopen" ? { label: "Opnieuw proberen", onClick: () => { void scan(); } } : undefined}
+          />
+        </div>
+      )}
       {wpSetupOpen && (
         <div className="wz-add">
           <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>

@@ -7,6 +7,7 @@ import { eersteKop } from "../../../../lib/chat-vouw";
 import HelpHint from "./HelpHint";
 import PageSummaryCard from "./PageSummaryCard";
 import Bronnenstrip, { type Bron } from "./Bronnenstrip";
+import Voortgang from "./Voortgang";
 
 type Msg = { role: "user" | "assistant"; content: string; bronnen?: Bron[] };
 type Task = { taak: string; fase?: string; wie?: string };
@@ -64,7 +65,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   // advies doorgegeven (geladen zodra de kaart openklapt).
   const [outgoing, setOutgoing] = useState<{ url: string; advice: string }[] | null>(null);
   // Achtergrond-run (analyse -> blauwdruk -> copy los van de browser).
-  type DocRun = { id: number; status: string; steps: Record<string, string>; links: Record<string, string>; error: string };
+  type DocRun = { id: number; status: string; steps: Record<string, string>; links: Record<string, string>; error: string; updatedAt?: string | null };
   const [run, setRun] = useState<DocRun | null>(null);
   const [runBusy, setRunBusy] = useState(false);
   // Meest recente documentlink per stap over ALLE runs (zodat een overgeslagen
@@ -1371,6 +1372,25 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
                   );
                 })}
               </div>
+              {run.status === "running" && (() => {
+                // Het rondje loopt mee met de stappen die deze run echt doet;
+                // overgeslagen stappen tellen niet mee, anders blijft hij hangen.
+                const stappen = (["analyse", "blauwdruk", "copy"] as const).filter((k) => run.steps[k] !== "skipped");
+                const klaar = stappen.filter((k) => run.steps[k] === "done").length;
+                const bezig = stappen.find((k) => run.steps[k] === "running");
+                return (
+                  <div style={{ marginTop: "var(--s-3)" }}>
+                    <Voortgang
+                      klein
+                      titel="Documenten schrijven"
+                      label={bezig ? `Bezig met de ${bezig}` : "De volgende stap wordt opgestart"}
+                      stap={klaar + (bezig ? 1 : 0)}
+                      stappen={stappen.length}
+                      sinds={run.updatedAt || null}
+                    />
+                  </div>
+                );
+              })()}
               {run.status === "running" && (
                 <div className="muted" style={{ fontSize: 12, marginTop: 5, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                   <span>Loopt server-side door; wegklikken mag. Verschijnt ook als werkzaamheid.</span>
@@ -1402,7 +1422,11 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
           <button type="button" className={"pcd-btn" + (pcBusy || pc?.status === "running" ? " busy" : "")} disabled={pcBusy || pc?.status === "running"} onClick={runPc} title="Draait op de achtergrond met echte Ahrefs-data; je kunt wegklikken.">{pc?.status === "running" ? "Analyse draait…" : pc?.result ? "Opnieuw analyseren" : "Cannibalisatie oplossen"}</button>
         </div>
         {pc?.status === "error" && pc.error && <div className="login-error" style={{ marginTop: 8 }}>{pc.error}</div>}
-        {pc?.status === "running" && !pc.result && <div className="muted" style={{ marginTop: 8, fontSize: 13 }}>Analyse draait op de achtergrond (verzamelt per pagina de Ahrefs-zoekwoorden + top-10; dit kan een paar minuten duren).</div>}
+        {pc?.status === "running" && !pc.result && (
+          <div style={{ marginTop: "var(--s-3)" }}>
+            <Voortgang klein titel="Cannibalisatie-analyse" label="Per pagina de Ahrefs-zoekwoorden en de top 10 verzamelen; dit duurt een paar minuten." sinds={pc.updatedAt} />
+          </div>
+        )}
         {pc?.result && (
           <div className="pch-canni-doc">
             <button type="button" className="pch-canni-toggle" onClick={() => setPcOpen((o) => !o)}>{pcOpen ? "▾" : "▸"} Cannibalisatie- &amp; content-mapping-analyse{pc.updatedAt ? ` · ${new Date(pc.updatedAt).toLocaleString("nl-NL")}` : ""}{pc.status === "running" ? " · nieuwe analyse draait…" : ""}</button>
@@ -1557,7 +1581,11 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
             <button type="button" className={"pcd-btn" + (ilBusy || il?.status === "running" ? " busy" : "")} disabled={ilBusy || il?.status === "running"} onClick={runIl} title="Draait op de achtergrond; je kunt wegklikken.">{il?.status === "running" ? "Analyse draait…" : il?.result ? "Opnieuw zoeken" : "Interne links zoeken"}</button>
           </div>
           {il?.status === "error" && il.error && <div className="login-error" style={{ marginTop: 8 }}>{il.error}</div>}
-          {il?.status === "running" && !il.result && <div className="muted" style={{ marginTop: 8, fontSize: 13 }}>Analyse draait op de achtergrond (crawlt de kandidaat-bronpagina&rsquo;s en weegt autoriteit + verkeer; dit kan een paar minuten duren).</div>}
+          {il?.status === "running" && !il.result && (
+            <div style={{ marginTop: "var(--s-3)" }}>
+              <Voortgang klein titel="Interne links voor deze pagina" label="De kandidaat-bronpagina's worden gecrawld en gewogen op autoriteit en verkeer." sinds={il.updatedAt} />
+            </div>
+          )}
           {il?.result && (
             <div className="pch-canni-doc">
               <button type="button" className="pch-canni-toggle" onClick={() => setIlDocOpen((o) => !o)}>{ilDocOpen ? "▾" : "▸"} Interne-links-voorstel{il.updatedAt ? ` · ${new Date(il.updatedAt).toLocaleString("nl-NL")}` : ""}{il.status === "running" ? " · nieuwe analyse draait…" : ""}</button>
@@ -1605,7 +1633,11 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
             <div className="sch-warning" style={{ marginTop: 8 }}>⚠ De pagina is gewijzigd ná de laatste structured data-analyse; de markup past mogelijk niet meer bij de zichtbare content. Draai de analyse opnieuw en geef de developer de nieuwe JSON.</div>
           )}
           {sch?.status === "error" && sch.error && <div className="login-error" style={{ marginTop: 8 }}>{sch.error}</div>}
-          {sch?.status === "running" && !sch.result && <div className="muted" style={{ marginTop: 8, fontSize: 13 }}>Analyse draait op de achtergrond (meet de pagina, leest bestaande schema en de bedrijfsgegevens; dit duurt meestal onder een minuut).</div>}
+          {sch?.status === "running" && !sch.result && (
+            <div style={{ marginTop: "var(--s-3)" }}>
+              <Voortgang klein titel="Structured data bekijken" label="De pagina wordt gemeten en het bestaande schema en de bedrijfsgegevens worden gelezen; meestal onder een minuut." sinds={sch.updatedAt} />
+            </div>
+          )}
           {sch?.result && (
             <div className="pch-canni-doc">
               <button type="button" className="pch-canni-toggle" onClick={() => setSchDocOpen((o) => !o)}>{schDocOpen ? "▾" : "▸"} Structured data-advies{sch.updatedAt ? ` · ${new Date(sch.updatedAt).toLocaleString("nl-NL")}` : ""}{sch.status === "running" ? " · nieuwe analyse draait…" : ""}</button>

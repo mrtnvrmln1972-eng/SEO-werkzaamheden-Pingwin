@@ -39,6 +39,7 @@ import MailControlePanel from "./MailControlePanel";
 import OnboardingPanel from "./OnboardingPanel";
 import OntwikkelMenu from "../../OntwikkelMenu";
 import GmbPanel from "./GmbPanel";
+import KlussenChip from "./KlussenChip";
 
 type Tab = "lead" | "onboarding" | "werkzaamheden" | "paginas" | "documenten" | "activiteit" | "resultaten" | "klant" | "developer" | "wijzigingen" | "cannibalisatie" | "interne-links" | "meta" | "prioriteiten" | "google-profiel";
 
@@ -517,6 +518,9 @@ export default function ClientCockpit({
         </div>
         <div className="header-right">
           <OntwikkelMenu />
+          {/* Wat er op de achtergrond draait, zichtbaar op élk tabblad. Zonder dit
+              was een scan alleen te volgen op de plek waar je hem startte. */}
+          <KlussenChip slug={client.slug} onGaNaar={(t) => changeTab(validTab(t))} />
           <span id="werk-month-slot" className="header-month-slot" />
           {lastMailDate && (
             <span className={"contact-chip " + contactColor(lastMailDate)} title={`Laatste contact: ${fmtDate(lastMailDate)}`}>
