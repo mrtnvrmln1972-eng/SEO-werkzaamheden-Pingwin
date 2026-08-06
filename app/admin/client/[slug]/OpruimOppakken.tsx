@@ -28,7 +28,11 @@ export type Oppakker = {
   huidigePositie: number | null; vertoningen: number; botstMet: string[];
   intentie?: "transactioneel" | "commercieel" | "informatief" | "navigatie" | "";
   haalbaarheid?: Haalbaarheid;
+  euro?: { perMaand: number; perJaar: number; extraKlikkenPerMaand: number; doelPositie: number; uitleg: string } | null;
 };
+
+/** Bedragen zonder centen: die suggereren een precisie die er niet is. */
+export const bedrag = (n: number) => `€ ${Math.round(n).toLocaleString("nl-NL")}`;
 
 // Wat wil iemand die dit intypt? Bepaalt wat voor soort pagina hier hoort.
 export function intentieTekst(i?: string): string {
@@ -75,6 +79,7 @@ export default function OpruimOppakken({ slug, domain, rijen, clientName, client
             `Deze pagina haalt nu niets uit Google op zijn eigen onderwerp, maar de zoekterm "${o.term}" is ${o.volume} zoekopdrachten per maand waard${o.moeilijkheid != null ? ` (moeilijkheid ${o.moeilijkheid})` : ""}.`,
             o.huidigePositie != null ? `Hij doet al mee op plek ${o.huidigePositie}, dus er is iets om op voort te bouwen.` : "Hij doet op die term nog niet mee in de resultaten.",
             o.haalbaarheid && o.haalbaarheid.oordeel !== "onbekend" ? `Haalbaarheid: ${o.haalbaarheid.oordeel}. ${o.haalbaarheid.uitleg}` : "",
+            o.euro ? `Geschatte opbrengst: ${bedrag(o.euro.perMaand)} per maand.` : "",
             o.intentie ? `De bezoeker die "${o.term}" intypt ${intentieTekst(o.intentie)}; daar moet de pagina op aansluiten.` : "",
             "Geen omleiding dus, maar de gewone route: analyse van de huidige pagina, blauwdruk op basis van de top 10, en daarna de copy.",
           ].filter(Boolean).join(" "),
@@ -112,6 +117,7 @@ export default function OpruimOppakken({ slug, domain, rijen, clientName, client
   if (!rijen.length) return null;
 
   const buitenBereik = rijen.filter((o) => o.haalbaarheid?.oordeel === "buiten bereik").length;
+  const euroTotaal = rijen.reduce((n, o) => n + (o.euro?.perMaand || 0), 0);
   const autoriteit = rijen.find((o) => o.haalbaarheid?.autoriteit != null)?.haalbaarheid?.autoriteit ?? null;
 
   return (
@@ -125,6 +131,13 @@ export default function OpruimOppakken({ slug, domain, rijen, clientName, client
       </p>
       {/* De haalbaarheidsrem, zichtbaar in plaats van stilzwijgend. Volume zegt hoe
           groot de taart is, niet of deze site er een punt van krijgt. */}
+      {euroTotaal > 0 && (
+        <p className="opr-kaart-tekst">
+          Bij elkaar is deze lijst naar schatting <strong>{bedrag(euroTotaal)} per maand</strong> waard, oftewel{" "}
+          <strong>{bedrag(euroTotaal * 12)} per jaar</strong>. Dat is zoekvolume maal de klikkans op een realistische
+          plek, maal jullie conversie, maal wat een klant oplevert; een schatting, geen belofte.
+        </p>
+      )}
       {buitenBereik > 0 && (
         <p className="opr-kaart-tekst">
           De lijst staat op volgorde van <strong>wat kan</strong>, niet van wat groot is. De moeilijkheid van elke term
@@ -146,6 +159,7 @@ export default function OpruimOppakken({ slug, domain, rijen, clientName, client
               <th>Moeilijkheid</th>
               <th>Kans</th>
               <th>Bezoeker</th>
+              {euroTotaal > 0 && <th>Waarde</th>}
               {!alleenLezen && <th>Actie</th>}
               <th>Waarom</th>
             </tr>
@@ -159,6 +173,7 @@ export default function OpruimOppakken({ slug, domain, rijen, clientName, client
                 <td>{o.moeilijkheid != null ? o.moeilijkheid : "—"}</td>
                 <td><KansChip h={o.haalbaarheid} /></td>
                 <td>{intentieTekst(o.intentie) || <span className="opr-leeg">&mdash;</span>}</td>
+                {euroTotaal > 0 && <td>{o.euro ? <strong>{bedrag(o.euro.perMaand)}</strong> : <span className="opr-leeg">&mdash;</span>}</td>}
                 {!alleenLezen && <td>
                   <button type="button" className="opr-btn" disabled={!!bezig} onClick={() => void naarWeekplan(o)}
                     title="Zet deze pagina als taak op de weekplanning. Daar krijgt hij zijn fases: analyse, blauwdruk, copy.">
@@ -193,6 +208,7 @@ export default function OpruimOppakken({ slug, domain, rijen, clientName, client
                             ? ` Deze pagina doet er zelf al aan mee, op plek ${o.huidigePositie}, dus de basis ligt er.`
                             : ""}
                         </p>
+                        {o.euro && <p><strong>Wat het waard is:</strong> {o.euro.uitleg}</p>}
                         {o.haalbaarheid && o.haalbaarheid.oordeel !== "onbekend" && (
                           <p>
                             <strong>Is het te winnen?</strong> {o.haalbaarheid.uitleg}

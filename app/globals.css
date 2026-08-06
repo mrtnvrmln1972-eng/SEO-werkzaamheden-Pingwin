@@ -4047,6 +4047,18 @@ details[open] > .opr-kaart-sam::before { content: "▾ "; }
 .opr-vb { font-family: ui-monospace, Menlo, monospace; font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); }
 .opr-details-body { margin-top: var(--s-3); }
 
+/* ── De opgeruimde structuur: het resultaat in plaats van het werk ─────
+   Een boom van takken met per tak de hoofdpagina en de pagina's eronder.
+   Alles uit de schaal-tokens; geen eigen afstanden of kleuren. */
+.opr-eind-boom { display: grid; gap: var(--s-3); margin: var(--s-4) 0; }
+.opr-eind-tak { border: 1px solid var(--card-border); border-radius: var(--r-lg); padding: var(--s-3) var(--s-4); }
+.opr-eind-takkop { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; margin-bottom: var(--s-2); }
+.opr-eind-takttl { font-weight: 700; color: var(--orange-dark); font-size: var(--fs-md); line-height: var(--lh-md); }
+.opr-eind-kinderen { list-style: none; margin: 0; padding: 0 0 0 var(--s-4); border-left: 2px solid var(--card-border); display: grid; gap: var(--s-1); }
+.opr-eind-kinderen li { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; font-size: var(--fs-sm); line-height: var(--lh-sm); }
+.opr-eind-slokt { font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); }
+.opr-eind-los { margin-top: var(--s-4); padding-top: var(--s-3); border-top: 1px solid var(--card-border); }
+
 
 /* ── Paginadossier: alles wat over een pagina speelt, in één blok ──────
    Bewust karig: één regel met de conclusie, daaronder de stappen als bullets

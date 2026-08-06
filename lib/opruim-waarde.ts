@@ -52,6 +52,9 @@ export type Oppakker = {
   intentie?: Intentie;
   /** Is deze term voor dit domein te winnen, of is het een illusie? */
   haalbaarheid?: Haalbaarheid;
+  /** Wat het waard is per maand. Wordt bij het uitlezen berekend, niet opgeslagen,
+      zodat een nieuwe klantwaarde meteen doorwerkt zonder nieuwe analyse. */
+  euro?: import("./opruim-euro").Euro | null;
 };
 
 const padVan = (u: string) => { try { return new URL(u).pathname; } catch { return (u || "").trim(); } };

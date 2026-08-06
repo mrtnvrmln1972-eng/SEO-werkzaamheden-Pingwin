@@ -15,7 +15,7 @@
 
 import { useState } from "react";
 import MailVenster from "./MailVenster";
-import { KansChip, intentieTekst, type Haalbaarheid } from "./OpruimOppakken";
+import { KansChip, intentieTekst, bedrag, type Haalbaarheid } from "./OpruimOppakken";
 
 export type Onderwerp = {
   sleutel: string;
@@ -27,6 +27,7 @@ export type Onderwerp = {
   kamp?: "doen" | "weten" | "merk" | "onbekend";
   haalbaarheid?: Haalbaarheid;
   apartGehouden?: { pad: string; term: string; intentie: string; reden: string }[];
+  euro?: { perMaand: number; perJaar: number; extraKlikkenPerMaand: number; doelPositie: number; uitleg: string } | null;
 };
 
 const KAMP_TEKST: Record<string, string> = {
@@ -114,6 +115,7 @@ export default function OpruimOnderwerpen({ slug, domain, rijen, clientName, cli
             <span className="opr-chip">{o.paginas.length} pagina&rsquo;s</span>
             <span className="opr-chip">beste plek {o.bestePositie != null ? Math.round(o.bestePositie) : "geen"}</span>
             <KansChip h={o.haalbaarheid} />
+            {o.euro && <span className="opr-chip merge" title={o.euro.uitleg}>{bedrag(o.euro.perMaand)} per maand</span>}
             {o.kamp && KAMP_TEKST[o.kamp] && <span className="opr-chip">{KAMP_TEKST[o.kamp]}</span>}
             {!alleenLezen && (
               <span className="opr-kaart-acties">
@@ -184,6 +186,7 @@ export default function OpruimOnderwerpen({ slug, domain, rijen, clientName, cli
                 {o.haalbaarheid && o.haalbaarheid.oordeel !== "onbekend" && (
                   <p><strong>Is dit te winnen?</strong> {o.haalbaarheid.uitleg}</p>
                 )}
+                {o.euro && <p><strong>Wat het waard is:</strong> {o.euro.uitleg}</p>}
                 <p>
                   <strong>Wat we doen:</strong> één van deze pagina&rsquo;s wordt de vaste pagina voor dit onderwerp, en de
                   andere gaan daarin op. Het voorstel is <Link p={o.voorstel} />, omdat die er nu het beste voor staat.

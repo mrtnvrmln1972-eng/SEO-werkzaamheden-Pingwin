@@ -82,6 +82,8 @@ export type Onderwerp = {
       omdat de bezoeker daar iets anders wil. Zichtbaar, want een pagina die
       stilletjes verdwijnt uit een lijst is niet te controleren. */
   apartGehouden?: { pad: string; term: string; intentie: Intentie; reden: string }[];
+  /** Wat dit onderwerp waard is per maand; berekend bij het uitlezen. */
+  euro?: import("./opruim-euro").Euro | null;
 };
 
 const padVan = (u: string) => { try { return new URL(u).pathname; } catch { return (u || "").trim(); } };

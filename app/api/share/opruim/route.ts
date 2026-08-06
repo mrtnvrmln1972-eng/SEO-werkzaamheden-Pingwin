@@ -3,6 +3,7 @@ import { getSlugByOpruimToken } from "../../../../lib/opruim-deel";
 import { getCannibalAnalysis } from "../../../../lib/cannibal-redirect";
 import { getClientBySlug } from "../../../../lib/clients";
 import { paginaStructuur } from "../../../../lib/opruim-structuur";
+import { bouwEindstructuur } from "../../../../lib/opruim-eindstructuur";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -17,7 +18,12 @@ export async function GET(req: NextRequest) {
 
   const [analyse, client] = await Promise.all([getCannibalAnalysis(slug), getClientBySlug(slug)]);
   const domain = (client?.domain || "").trim();
-  const structuur = await paginaStructuur(slug, domain).catch(() => null);
+  // De eindstructuur hoort juist WEL in de klantversie: dat is het enige blok dat
+  // een resultaat toont in plaats van werk, en daar begint een klantgesprek.
+  const [structuur, eindstructuur] = await Promise.all([
+    paginaStructuur(slug, domain).catch(() => null),
+    bouwEindstructuur(slug, analyse.result).catch(() => null),
+  ]);
 
   return NextResponse.json({
     ok: true,
@@ -26,5 +32,6 @@ export async function GET(req: NextRequest) {
     result: analyse.result,
     updatedAt: analyse.updatedAt,
     structuur,
+    eindstructuur,
   });
 }

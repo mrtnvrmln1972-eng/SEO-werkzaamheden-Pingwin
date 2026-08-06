@@ -3,6 +3,8 @@ import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
 import { getWpConnForClient, createWpRedirect, verifyRedirect } from "../../../../lib/wp";
 import { zetOpruimRegel } from "../../../../lib/opruim-regels";
+import { legNulmetingVast } from "../../../../lib/opruim-nameten";
+import { getClientBySlug } from "../../../../lib/clients";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -30,6 +32,11 @@ export async function POST(req: NextRequest) {
     }, { status: 400 });
   }
 
+  // Het domein is nodig voor de nulmeting: op het moment dat een omleiding live
+  // gaat, leggen we vast hoe de winnaar er dán voor staat. Achteraf reconstrueren
+  // kan niet, want Search Console-data is dan al verschoven.
+  const domain = (await getClientBySlug(slug).catch(() => null))?.domain || "";
+
   const gelukt: string[] = [];
   const mislukt: { van: string; reden: string }[] = [];
   for (const r of rijen.slice(0, 100)) {
@@ -43,6 +50,8 @@ export async function POST(req: NextRequest) {
       if (check.ok) {
         gelukt.push(van);
         await zetOpruimRegel(slug, van, { besluit: "redirect", naar, doorgevoerd: true });
+        // Nooit de doorvoering laten klappen op een meting; dit is bijvangst.
+        if (domain) await legNulmetingVast(slug, domain, van, naar).catch(() => { /* stil */ });
       } else {
         mislukt.push({ van, reden: `Aangemaakt, maar de controle zag hem nog niet: ${check.detail}` });
       }

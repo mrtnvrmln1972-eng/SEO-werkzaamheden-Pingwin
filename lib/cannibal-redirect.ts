@@ -14,6 +14,8 @@ import { weegKandidaten, weegPaden, termUitPad, type Oppakker } from "./opruim-w
 import { vindOnderwerpen, tweelingenVan, type Onderwerp } from "./opruim-onderwerpen";
 import { feitenPerTerm, magSamenvoegen, intentieUitleg, intentieAlsInstructie } from "./opruim-intentie";
 import { autoriteitVan, haalbaarheidAlsInstructie } from "./opruim-haalbaarheid";
+import { vindGaten, type Gat } from "./opruim-gaten";
+import { getEuroInstelling, berekenEuro, type EuroInstelling } from "./opruim-euro";
 import { getSetting, setSetting, SETTING_OPRUIM_CRON_TIK } from "./settings";
 
 // ═══════════════════════════════════════════════════════════
@@ -56,6 +58,10 @@ export type CannibalResult = {
   /** Onderwerpen die over meerdere pagina's verspreid liggen zonder dat er één
       van in de top 10 staat. Eén omleiding is daar het verkeerde antwoord. */
   onderwerpen?: Onderwerp[];
+  /** De andere helft van het verhaal: zoekwoorden met volume waar deze site op
+      geen enkele pagina op mikt. Opruimen maakt een site schoon, dit laat hem
+      groeien. */
+  gaten?: Gat[];
 };
 // De analyse draait in hervatbare stappen. Reden: één volledige analyse kost 10 tot
 // 20 minuten (agentisch onderzoek + de grote JSON-synthese + drie doorloop-rondes) en
@@ -123,6 +129,8 @@ async function doEnsure(): Promise<void> {
   await sql`ALTER TABLE client_cannibal_analysis ADD COLUMN IF NOT EXISTS oppakken TEXT`;
   // Onderwerpen die over meerdere pagina's verspreid liggen: een keuze, geen regel.
   await sql`ALTER TABLE client_cannibal_analysis ADD COLUMN IF NOT EXISTS onderwerpen TEXT`;
+  // De ontbrekende pagina's: waar de site helemaal niet op mikt.
+  await sql`ALTER TABLE client_cannibal_analysis ADD COLUMN IF NOT EXISTS gaten TEXT`;
 }
 
 function pagePath(u: string): string { return (u || "").replace(/^https?:\/\/[^/]+/i, "").trim() || (u || ""); }
@@ -178,7 +186,7 @@ const q: SqlTag = (strings, ...values) => actieveSql(strings, ...values);
 type CannibalRow = {
   status: string; result: CannibalResult | null; error: string; updatedAt: string | null;
   fase: CannibalFase; ronde: number; retries: number; seed: string; findings: string;
-  kandidaten: ZwakkePagina[]; behandeld: string[]; oppakken: Oppakker[]; onderwerpen: Onderwerp[];
+  kandidaten: ZwakkePagina[]; behandeld: string[]; oppakken: Oppakker[]; onderwerpen: Onderwerp[]; gaten: Gat[];
 };
 
 // JSON-kolom die ook leeg of stuk mag zijn: altijd een lijst terug, nooit een fout.
@@ -188,7 +196,7 @@ function lijstVan<T>(v: unknown): T[] {
 }
 
 async function readRow(slug: string): Promise<CannibalRow | null> {
-  const { rows } = await q`SELECT status, result, error, updated_at, fase, ronde, retries, seed, findings, kandidaten, behandeld, oppakken, onderwerpen FROM client_cannibal_analysis WHERE client_slug = ${slug} LIMIT 1`;
+  const { rows } = await q`SELECT status, result, error, updated_at, fase, ronde, retries, seed, findings, kandidaten, behandeld, oppakken, onderwerpen, gaten FROM client_cannibal_analysis WHERE client_slug = ${slug} LIMIT 1`;
   const r = rows[0];
   if (!r) return null;
   let result: CannibalResult | null = null;
@@ -207,6 +215,29 @@ async function readRow(slug: string): Promise<CannibalRow | null> {
     behandeld: lijstVan<string>(r.behandeld),
     oppakken: lijstVan<Oppakker>(r.oppakken),
     onderwerpen: lijstVan<Onderwerp>(r.onderwerpen),
+    gaten: lijstVan<Gat>(r.gaten),
+  };
+}
+
+/**
+ * De bedragen erbij, op het moment van uitlezen. Bewust niet opgeslagen: past
+ * Maarten de klantwaarde aan, dan hoort de hele lijst mee te veranderen zonder
+ * dat er een analyse van twintig minuten overheen moet. Een opgeslagen bedrag zou
+ * bovendien stilletjes verouderen, en dat is precies het soort fout dat niemand
+ * opmerkt.
+ *
+ * De drie lijsten meten iets anders, dus de doelpositie verschilt:
+ * - oppakken: de pagina bestaat, hij moet van zijn huidige plek omhoog;
+ * - onderwerpen: de beste van de bundel is het vertrekpunt;
+ * - gaten: er is nog niets, dus vanaf nul.
+ */
+function metEuro(result: CannibalResult, inst: EuroInstelling): CannibalResult {
+  if (!inst.ingevuld) return result;
+  return {
+    ...result,
+    oppakken: (result.oppakken || []).map((o) => ({ ...o, euro: berekenEuro(o.volume, o.huidigePositie, o.haalbaarheid, inst) })),
+    onderwerpen: (result.onderwerpen || []).map((o) => ({ ...o, euro: berekenEuro(o.volumeTotaal, o.bestePositie, o.haalbaarheid, inst) })),
+    gaten: (result.gaten || []).map((g) => ({ ...g, euro: berekenEuro(g.volume, null, g.haalbaarheid, inst) })),
   };
 }
 
@@ -218,6 +249,7 @@ export async function getCannibalAnalysis(slug: string): Promise<CannibalState> 
   // en heeft wachten geen zin (de knop "Nu hervatten" is dan de weg).
   const cronTik = await getSetting(SETTING_OPRUIM_CRON_TIK).catch(() => null);
   const cronStil = !cronTik || (Date.now() - new Date(cronTik).getTime()) > 900000;
+  const euroInst = await getEuroInstelling(slug).catch(() => ({ klantwaarde: 0, conversie: 0, ingevuld: false }));
   if (!r) return { status: "idle", result: null, error: "", updatedAt: null, fase: "", ronde: 0, stap: 0, stappen: STAPPEN, stapLabel: "", cronTik, cronStil, kandidaten: 0, beoordeeld: 0 };
   const { stap, label } = stapVan(r.fase, r.ronde);
   return {
@@ -226,7 +258,7 @@ export async function getCannibalAnalysis(slug: string): Promise<CannibalState> 
     kandidaten: r.kandidaten.length,
     beoordeeld: r.behandeld.length,
     status: (r.status as CannibalState["status"]) || "idle",
-    result: r.result ? { ...r.result, oppakken: r.oppakken, onderwerpen: r.onderwerpen } : r.result,
+    result: r.result ? metEuro({ ...r.result, oppakken: r.oppakken, onderwerpen: r.onderwerpen, gaten: r.gaten }, euroInst) : r.result,
     error: r.error,
     updatedAt: r.updatedAt,
     fase: r.fase,
@@ -261,25 +293,31 @@ export async function startCannibalRun(slug: string): Promise<void> {
  * lijst "oppakken". Zo geldt de nieuwe regel meteen voor de uitkomst die er nu
  * is, in plaats van pas na een nieuwe analyse van twintig minuten.
  */
-export async function weegOpruimlijstOpnieuw(slug: string, domain: string): Promise<{ gered: number; over: number; oppakken: Oppakker[]; onderwerpen: number }> {
+export async function weegOpruimlijstOpnieuw(slug: string, domain: string): Promise<{ gered: number; over: number; oppakken: Oppakker[]; onderwerpen: number; gaten: number }> {
   await ensureSchema();
   await ensureTable();
   const row = await readRow(slug);
 
-  // Meteen ook de verspreide onderwerpen bepalen. Eén knop, twee controles: dit
-  // hoort bij elkaar en het scheelt Maarten een tweede handeling.
-  const onderwerpen = await vindOnderwerpen(slug, domain).catch(() => [] as Onderwerp[]);
+  // Meteen ook de verspreide onderwerpen en de ontbrekende pagina's bepalen. Eén
+  // knop, drie controles: dit hoort bij elkaar en het scheelt Maarten handelingen.
+  const [onderwerpen, gaten] = await Promise.all([
+    vindOnderwerpen(slug, domain).catch(() => [] as Onderwerp[]),
+    vindGaten(slug, domain).catch(() => [] as Gat[]),
+  ]);
   if (onderwerpen.length) {
     await q`UPDATE client_cannibal_analysis SET onderwerpen = ${JSON.stringify(onderwerpen)}, updated_at = now() WHERE client_slug = ${slug}`;
+  }
+  if (gaten.length) {
+    await q`UPDATE client_cannibal_analysis SET gaten = ${JSON.stringify(gaten)}, updated_at = now() WHERE client_slug = ${slug}`;
   }
 
   const result = row?.result;
   const rijen = result?.redirectMap || [];
-  if (!result || !rijen.length) return { gered: 0, over: 0, oppakken: row?.oppakken || [], onderwerpen: onderwerpen.length };
+  if (!result || !rijen.length) return { gered: 0, over: 0, oppakken: row?.oppakken || [], onderwerpen: onderwerpen.length, gaten: gaten.length };
 
   const oppakken = await weegPaden(domain, rijen.map((r) => ({ pad: padOf(String(r.van || "")) })));
   const gered = new Set(oppakken.map((o) => padOf(o.pad)));
-  if (!gered.size) return { gered: 0, over: rijen.length, oppakken: row?.oppakken || [], onderwerpen: onderwerpen.length };
+  if (!gered.size) return { gered: 0, over: rijen.length, oppakken: row?.oppakken || [], onderwerpen: onderwerpen.length, gaten: gaten.length };
 
   const over = rijen.filter((r) => !gered.has(padOf(String(r.van || ""))));
   const nieuw: CannibalResult = { ...result, redirectMap: over };
@@ -287,7 +325,7 @@ export async function weegOpruimlijstOpnieuw(slug: string, domain: string): Prom
   const samen = [...(row?.oppakken || []), ...oppakken];
   const uniek = [...new Map(samen.map((o) => [padOf(o.pad), o])).values()].sort((a, b) => (b.volume || 0) - (a.volume || 0));
   await q`UPDATE client_cannibal_analysis SET result = ${JSON.stringify(nieuw)}, oppakken = ${JSON.stringify(uniek)}, updated_at = now() WHERE client_slug = ${slug}`;
-  return { gered: gered.size, over: over.length, oppakken: uniek, onderwerpen: onderwerpen.length };
+  return { gered: gered.size, over: over.length, oppakken: uniek, onderwerpen: onderwerpen.length, gaten: gaten.length };
 }
 
 async function faal(slug: string, msg: string): Promise<void> {
@@ -476,7 +514,10 @@ async function stapMetReden(slug: string): Promise<{ uit: "verder" | "klaar"; re
       // van in de top 10 staat. Dat is geen omleidklusje maar een keuze welke
       // pagina de thuisbasis wordt, dus het krijgt een eigen lijst.
       const onderwerpen = await vindOnderwerpen(slug, domain).catch(() => [] as Onderwerp[]);
-      await q`UPDATE client_cannibal_analysis SET seed = ${seed}, kandidaten = ${JSON.stringify(kandidaten)}, oppakken = ${JSON.stringify(oppakken)}, onderwerpen = ${JSON.stringify(onderwerpen)}, updated_at = now() WHERE client_slug = ${slug}`;
+      // En de andere helft: waar mikt de site helemaal niet op. Opruimen maakt een
+      // site schoon, dit laat hem groeien; het hoort in dezelfde lijst thuis.
+      const gaten = await vindGaten(slug, domain).catch(() => [] as Gat[]);
+      await q`UPDATE client_cannibal_analysis SET seed = ${seed}, kandidaten = ${JSON.stringify(kandidaten)}, oppakken = ${JSON.stringify(oppakken)}, onderwerpen = ${JSON.stringify(onderwerpen)}, gaten = ${JSON.stringify(gaten)}, updated_at = now() WHERE client_slug = ${slug}`;
     }
 
     // STAP 1 — agentic onderzoek: het model zoomt in op verdachte pagina's en schrijft

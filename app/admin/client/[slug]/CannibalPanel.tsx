@@ -8,6 +8,9 @@ import OpruimStructuur from "./OpruimStructuur";
 import OpruimOppakken, { type Oppakker } from "./OpruimOppakken";
 import OpruimSamenvatting from "./OpruimSamenvatting";
 import OpruimOnderwerpen, { type Onderwerp } from "./OpruimOnderwerpen";
+import OpruimGaten, { type Gat } from "./OpruimGaten";
+import OpruimEindstructuur from "./OpruimEindstructuur";
+import OpruimNameten, { type Nameting } from "./OpruimNameten";
 
 type ClusterUrl = { url: string; rol?: string; positie?: number; klikken?: number; impressies?: number; verwijzendeDomeinen?: number; intentie?: string };
 type Signalen = { urlFlip?: boolean; flipsIn90d?: number; positiePlafond?: boolean; klikVerdeling?: boolean };
@@ -15,7 +18,7 @@ type Cluster = { keyword: string; volume?: number; score?: string; signalen?: Si
 type RedirectMapItem = { van: string; naar: string; type?: string; mergeContent?: boolean; verhuizen?: boolean; reden?: string };
 type InterneLink = { vanaf: string; naar: string; ankertekst?: string; reden?: string };
 type Datakwaliteit = { gsc?: boolean; gscTijdreeks?: boolean; ahrefsZoekwoorden?: boolean; ahrefsBacklinks?: boolean; crawl?: boolean; opmerking?: string };
-type Result = { oppakken?: Oppakker[]; onderwerpen?: Onderwerp[]; samenvatting: string; datakwaliteit?: Datakwaliteit; clusters: Cluster[]; redirectMap?: RedirectMapItem[]; interneLinks?: InterneLink[]; generatedAt: string | null };
+type Result = { oppakken?: Oppakker[]; onderwerpen?: Onderwerp[]; gaten?: Gat[]; samenvatting: string; datakwaliteit?: Datakwaliteit; clusters: Cluster[]; redirectMap?: RedirectMapItem[]; interneLinks?: InterneLink[]; generatedAt: string | null };
 type State = { status: string; result: Result | null; error: string; updatedAt: string | null; stap?: number; stappen?: number; stapLabel?: string; cronTik?: string | null; cronStil?: boolean; kandidaten?: number; beoordeeld?: number };
 
 function actionClass(a: string): string {
@@ -85,6 +88,15 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
   // eigen zoekterm gaan van de omleidlijst af naar "oppakken".
   const [weegBezig, setWeegBezig] = useState(false);
   const [weegMsg, setWeegMsg] = useState("");
+  // Wat een klant waard is, zodat de lijsten in euro's kunnen praten in plaats van
+  // in zoekvolume. Zonder deze twee getallen rekent het dashboard niets uit.
+  const [klantwaarde, setKlantwaarde] = useState("");
+  const [conversie, setConversie] = useState("");
+  const [euroIngevuld, setEuroIngevuld] = useState(false);
+  const [euroMsg, setEuroMsg] = useState("");
+  // Wat de al doorgevoerde omleidingen hebben opgeleverd.
+  const [metingen, setMetingen] = useState<Nameting[]>([]);
+  const [metingenTekst, setMetingenTekst] = useState("");
   // De deellink: één adres dat je aan een klant kunt geven. Daar valt alleen te
   // lezen en uit te klappen; alles wat iets vastlegt zit achter de adminroutes.
   const [deelUrl, setDeelUrl] = useState("");
@@ -120,6 +132,7 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
         ? `${d.gered} ${d.gered === 1 ? "pagina" : "pagina's"} van de opruimlijst gehaald: hun eigen zoekterm heeft volume. Ze staan nu onder "Oppakken".`
         : "Geen pagina's op de opruimlijst met een waardevolle eigen zoekterm; de lijst blijft zoals hij was.");
       if (d.onderwerpen) setWeegMsg((m) => `${m} Daarnaast ${d.onderwerpen === 1 ? "is 1 onderwerp" : `zijn ${d.onderwerpen} onderwerpen`} gevonden die over meerdere pagina's verspreid ${d.onderwerpen === 1 ? "ligt" : "liggen"}.`);
+      if (d.gaten) setWeegMsg((m) => `${m} En ${d.gaten === 1 ? "1 zoekterm heeft" : `${d.gaten} zoektermen hebben`} volume terwijl geen enkele pagina erop mikt; die ${d.gaten === 1 ? "staat" : "staan"} onder "Wat er ontbreekt".`);
       await load();
     } catch { setWeegMsg("Controle mislukt."); }
     finally { setWeegBezig(false); }
@@ -134,6 +147,13 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [slug]);
 
   useEffect(() => {
+    fetch(`/api/admin/opruim-eindstructuur?slug=${encodeURIComponent(slug)}`)
+      .then((r) => r.json())
+      .then((j) => { if (j?.ok) { setMetingen(j.metingen || []); setMetingenTekst(j.metingenTekst || ""); } })
+      .catch(() => { /* stil */ });
+  }, [slug]);
+
+  useEffect(() => {
     fetch(`/api/admin/opruim-structuur-regel?slug=${encodeURIComponent(slug)}`)
       .then((r) => r.json())
       .then((d) => {
@@ -143,6 +163,9 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
         setAdsTekst((a?.paden || []).join("\n"));
         setAdsGeen(!!a?.geen);
         setAdsIngevuld(!!a?.ingevuld);
+        const e = d.euro as { klantwaarde?: number; conversie?: number; ingevuld?: boolean } | undefined;
+        if (e?.ingevuld) { setKlantwaarde(String(e.klantwaarde)); setConversie(String(e.conversie)); }
+        setEuroIngevuld(!!e?.ingevuld);
       })
       .catch(() => { /* stil */ });
   }, [slug]);
@@ -164,6 +187,23 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
         ? `Vastgelegd. Deze ${a.paden.length === 1 ? "pagina blijft" : "pagina's blijven"} buiten elke analyse en buiten de werklijst.`
         : "Vastgelegd: deze klant heeft geen advertentiepagina's.");
     } catch { setAdsMsg("Opslaan mislukt."); }
+  }
+
+  async function bewaarEuro() {
+    setEuroMsg("");
+    const k = Number(klantwaarde.replace(/[^0-9,.]/g, "").replace(",", "."));
+    const c = Number(conversie.replace(/[^0-9,.]/g, "").replace(",", "."));
+    if (!k || !c) { setEuroMsg("Vul allebei een getal in: wat één klant gemiddeld opbrengt, en welk deel van de bezoekers klant wordt."); return; }
+    try {
+      const d = await fetch("/api/admin/opruim-structuur-regel", {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, klantwaarde: k, conversie: c }),
+      }).then((r) => r.json());
+      if (!d.ok) { setEuroMsg(d.error || "Opslaan mislukt."); return; }
+      setEuroIngevuld(!!d.euro?.ingevuld);
+      setEuroMsg("Opgeslagen. Alle lijsten hieronder rekenen nu in euro's; dat werkt meteen door, zonder nieuwe analyse.");
+      await load();
+    } catch { setEuroMsg("Opslaan mislukt."); }
   }
 
   async function bewaarVorm() {
@@ -328,6 +368,32 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
           {adsMsg && <div className="muted" style={{ fontSize: 12 }}>{adsMsg}</div>}
         </div>
 
+        {/* Wat een klant waard is. Zonder deze twee getallen praten alle lijsten in
+            zoekvolume, en dat is geen taal waarin je een besluit uitlegt. */}
+        <div className="opr-vorm">
+          <div className="opr-vorm-kop">
+            Wat een klant waard is
+            {euroIngevuld
+              ? <span className="opr-chip merge" style={{ marginLeft: 8 }}>actief</span>
+              : <span className="opr-chip" style={{ marginLeft: 8 }}>nog niet ingevuld</span>}
+          </div>
+          <p className="muted" style={{ fontSize: 12, margin: 0 }}>
+            Met deze twee getallen kunnen alle lijsten hieronder in euro&rsquo;s praten in plaats van in zoekvolume:
+            zoekvolume, maal de kans dat iemand doorklikt op een hogere plek, maal jullie conversie, maal wat een klant
+            oplevert. Het is een schatting en dat staat er ook bij, maar &ldquo;deze pagina is 900 euro per maand waard&rdquo;
+            is wel uit te leggen aan een klant en &ldquo;500 zoekopdrachten&rdquo; niet. Laat je ze leeg, dan blijft alles gewoon
+            op zoekvolume staan.
+          </p>
+          <div className="opr-vorm-rij">
+            <input className="opr-zoek" style={{ maxWidth: 220 }} value={klantwaarde} onChange={(e) => setKlantwaarde(e.target.value)}
+              placeholder="wat één klant opbrengt, bijv. 350" aria-label="Waarde van één klant in euro's" />
+            <input className="opr-zoek" style={{ maxWidth: 220 }} value={conversie} onChange={(e) => setConversie(e.target.value)}
+              placeholder="% dat klant wordt, bijv. 2" aria-label="Conversiepercentage" />
+            <button type="button" className="ghost-btn small" onClick={() => void bewaarEuro()}>Opslaan</button>
+          </div>
+          {euroMsg && <div className="muted" style={{ fontSize: 12 }}>{euroMsg}</div>}
+        </div>
+
         {err && <div className="login-error" style={{ marginBottom: 8 }}>{err}</div>}
         {state?.status === "error" && state.error && <div className="login-error" style={{ marginBottom: 8 }}>{state.error}</div>}
         {/* Voortgang, want een spinner zonder stand is niet te onderscheiden van
@@ -438,6 +504,10 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
 
             <OpruimOppakken slug={slug} domain={domain} rijen={result.oppakken || []} clientName={clientName} clientEmail={clientEmail} />
 
+            {/* De andere helft: wat er helemaal niet is. Opruimen maakt een site
+                schoon, dit laat hem groeien. */}
+            <OpruimGaten slug={slug} domain={domain} rijen={result.gaten || []} clientName={clientName} clientEmail={clientEmail} />
+
             {/* De werklijst eerst. Het verhaal eronder: een lijst is om af te werken,
                 proza is om te begrijpen, en in die volgorde. */}
             {result.redirectMap && result.redirectMap.length > 0 && (
@@ -521,6 +591,13 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
                 </div>
               </div>
             )}
+
+            {/* Terugkijken: klopte de voorspelling van de al doorgevoerde omleidingen? */}
+            <OpruimNameten rijen={metingen} tekst={metingenTekst} domain={domain} />
+
+            {/* Het sluitstuk: niet het werk, maar het resultaat. Zo ziet de site
+                eruit als alles hierboven is doorgevoerd. */}
+            <OpruimEindstructuur slug={slug} domain={domain} />
 
             {/* Zelfde component als op de deellink, zodat de klantversie en de
                 cockpit niet uit elkaar kunnen lopen. */}
