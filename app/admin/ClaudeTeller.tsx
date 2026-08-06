@@ -167,7 +167,14 @@ export default function ClaudeTeller() {
             </div>
           </div>
 
-          <a className="hm-item at-link" href="/admin/usage">
+          {/* Twee ingangen in plaats van één: de cijfers, en de regels om ze omlaag
+              te krijgen. Die tips stonden er wel, maar niemand vond ze omdat er
+              alleen een link naar "het verbruik" hing. */}
+          <a className="hm-item at-link" href="/admin/usage#tips">
+            <span className="hm-item-label">Zo houd je het strak</span>
+            <span className="hm-item-hint">De tips per meter: welke knop duur is en waar afremmen echt helpt.</span>
+          </a>
+          <a className="hm-item" href="/admin/usage">
             <span className="hm-item-label">Naar het verbruik</span>
             <span className="hm-item-hint">Per klant en per functie, samen met het Ahrefs-verbruik.</span>
           </a>

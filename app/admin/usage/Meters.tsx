@@ -132,7 +132,7 @@ export default function Meters({ ahrefs, claude, ahrefsEigenMaand }: {
       </div>
 
       {/* De tips. Per meter, want een tip zonder rekening eronder is een algemeenheid. */}
-      <div className="vm-tips">
+      <div className="vm-tips" id="tips">
         <div className="vm-tips-kop">Zo houd je het strak</div>
         <div className="vm-rij">
           {TIPS.map((groep) => (
