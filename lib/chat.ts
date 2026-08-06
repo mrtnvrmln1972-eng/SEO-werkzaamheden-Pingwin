@@ -1451,6 +1451,16 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
         if (uit && uit.trim()) answer = uit.trim();
       } catch { /* dan blijft de melding staan */ }
     }
+    // Lukte ook dat niet, leg het dan vast in plaats van het te laten verdampen.
+    // Zonder dit spoor kun je achteraf alleen gissen welke stap de tekst opat, en
+    // dat is precies wat er op 6 augustus gebeurde: de melding was het enige wat
+    // er nog was. Nu staat er een regel in het verbruikscherm.
+    if (isOverview && answer.trim() === GEEN_ANTWOORD) {
+      try {
+        const { logUsage } = await import("./usage");
+        await logUsage({ slug, service: "anthropic", action: `overzicht-chat-geen-antwoord (${toolUitvoer.length} keer gereedschap gebruikt)`, model: zwaar || "standaard", tokensIn: 0, tokensOut: 0, cacheRead: 0, cacheWrite: 0 });
+      } catch { /* meten mag de chat niet breken */ }
+    }
 
     // Vangnet: eindigt het antwoord als alleen een aankondiging ("Nu heb ik alles…",
     // "Hier is de volledige analyse…") zonder de echte inhoud, forceer dan één

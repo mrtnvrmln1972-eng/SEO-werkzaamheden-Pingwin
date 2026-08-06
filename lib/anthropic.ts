@@ -199,7 +199,7 @@ type Block = { type: string; text?: string; id?: string; name?: string; input?: 
 // Het staat hier als constante zodat de aanroeper hem kan HERKENNEN. Dat is nodig:
 // een vervolgronde die hierop uitkomt mag nooit een goed antwoord overschrijven,
 // en dat gebeurde wel (de feitencontrole verving de tekst onvoorwaardelijk).
-export const GEEN_ANTWOORD = "Ik heb de analyse gedaan, maar kon het antwoord niet netjes afronden (waarschijnlijk was de vraag in \u00e9\u00e9n keer te breed). Stel hem iets gerichter, bijvoorbeeld \u00e9\u00e9n doel of \u00e9\u00e9n set pagina's, dan pak ik het meteen goed op.";
+export const GEEN_ANTWOORD = "Het opzoekwerk is gelukt, maar het uitschrijven van het antwoord is technisch misgegaan. Dat ligt niet aan je vraag. Stel hem gerust opnieuw; dit is vastgelegd in het verbruikscherm, zodat de oorzaak na te kijken is in plaats van te raden.";
 
 export async function callClaudeAgentic(system: string, messages: ChatMsg[], tools: ToolDef[], run: ToolRunner, maxRounds = 6, maxTokens = 2200, ctx?: UsageCtx, deadlineMs?: number, model?: string): Promise<string> {
   const key = process.env.ANTHROPIC_API_KEY;
