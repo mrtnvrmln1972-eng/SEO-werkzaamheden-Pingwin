@@ -41,6 +41,9 @@ check("en die is kort", korteTitel(ECHT, URL, { live: false }).length <= 40, tru
 check("pad uit een volledige URL", padVan(URL), "/hovenier/etten-leur/");
 check("zonder pagina houdt hij zijn eigen woorden", korteTitel("Werklijst sitebouwer: meta's en alt-teksten", null), "Werklijst sitebouwer: meta's en alt-teksten");
 check("een lange titel zonder pagina wordt afgekapt", korteTitel("a".repeat(120), null).endsWith("…"), true);
+// Dit vond de proefstand op de echte data: een taak zonder pagina waarvan de
+// tekst met een pad-achtig woord begint, kreeg een verzonnen pagina toebedeeld.
+check("een taak zonder pagina krijgt geen verzonnen pad", korteTitel("/en pagina's checken", null), "/en pagina's checken");
 
 console.log("\n── Nooit twee keer ──");
 // Dit is de poort die voorkomt dat de opschoning bij elke keer laden werk doet.

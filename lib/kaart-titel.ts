@@ -57,15 +57,13 @@ export function isKorteTitel(taak: string): boolean {
  * puntjesvorm alleen maar misleidend.
  */
 export function korteTitel(taak: string, url: string | null | undefined, page?: TitelPagina): string {
-  const pad = padVan(url) || padUitTitel(taak);
+  // Alleen het pad van de pagina waar deze kaart écht aan hangt. Een pad uit de
+  // titel zelf plukken ging mis: "/en pagina's checken" is een taak zonder
+  // pagina, en die werd zo "/en · maken". Een kaart zonder pagina houdt gewoon
+  // zijn eigen woorden.
+  const pad = padVan(url);
   if (!pad || pad.length < 2) return eersteOpdracht(taak);
   return `${pad}${TITEL_SCHEIDING}${werkwoordVoor(taak, page)}`;
-}
-
-/** Een pad dat vooraan in de titel staat, zoals "/hovenier/etten-leur/: fix 404". */
-function padUitTitel(taak: string): string {
-  const m = /^(\/[^\s:·]*)/.exec((taak || "").trim());
-  return m ? m[1] : "";
 }
 
 /**
