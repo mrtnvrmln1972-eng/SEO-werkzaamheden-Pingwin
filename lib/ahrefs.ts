@@ -446,10 +446,21 @@ export async function getSiteAuthority(target: string): Promise<SiteAuthority> {
 export type UrlAutoriteit = { url: string; urlRating: number | null; opgehaald: string };
 
 // Sleutel voor cache én terugkoppeling: host + pad, zonder protocol en zonder
-// www, want Ahrefs geeft de URL zelf ook zo terug. De slash aan het eind blijft
-// staan: /tuinaanleg/ en /tuinaanleg zijn voor Ahrefs twee URL's.
+// www, want Ahrefs geeft de URL zelf ook zo terug.
 function urKey(url: string): string {
   return (url || "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "");
+}
+
+// De slash aan het eind is hier geen detail maar het verschil tussen een cijfer
+// en een nul. Ahrefs kent /hovenier-den-bosch/ met autoriteit 6, en
+// /hovenier-den-bosch (zonder slash) helemaal niet: die geeft 0,0 terug, zonder
+// foutmelding. Onze eigen paden staan zonder slash opgeslagen, dus zonder deze
+// stap zou élke pagina van élke klant "geen autoriteit" heten en zou niemand het
+// merken. Daarom vragen we beide vormen op en houden we de hoogste.
+export function varianten(url: string): string[] {
+  const k = urKey(url);
+  if (k.endsWith("/")) return [k, k.replace(/\/+$/, "")].filter((x) => x.includes("/"));
+  return [k, k + "/"];
 }
 
 export async function getUrlRatings(urls: string[], maxAgeDays = 30): Promise<Map<string, UrlAutoriteit>> {
@@ -457,16 +468,30 @@ export async function getUrlRatings(urls: string[], maxAgeDays = 30): Promise<Ma
   const schoon = Array.from(new Set((urls || []).map((u) => (u || "").trim()).filter(Boolean)));
   if (!schoon.length || !ahrefsConfigured()) return out;
 
+  // Per aan te vragen variant onthouden wat we al weten.
+  const perVariant = new Map<string, UrlAutoriteit>();
   const missers: string[] = [];
   for (const u of schoon) {
-    const k = urKey(u);
-    if (out.has(k)) continue;
-    const cached = await cacheGet<UrlAutoriteit>("ur", k, "-", maxAgeDays).catch(() => null);
-    if (cached) out.set(k, cached); else missers.push(u);
+    for (const v of varianten(u)) {
+      if (perVariant.has(v) || missers.includes(v)) continue;
+      const cached = await cacheGet<UrlAutoriteit>("ur", v, "-", maxAgeDays).catch(() => null);
+      if (cached) perVariant.set(v, cached); else missers.push(v);
+    }
   }
 
+  const klaar = () => {
+    for (const u of schoon) {
+      const beste = varianten(u)
+        .map((v) => perVariant.get(v))
+        .filter((x): x is UrlAutoriteit => !!x)
+        .sort((a, b) => (b.urlRating ?? -1) - (a.urlRating ?? -1))[0];
+      if (beste) out.set(urKey(u), { ...beste, url: urKey(u) });
+    }
+    return out;
+  };
+
   for (let i = 0; i < missers.length; i += 100) {
-    const slice = missers.slice(i, i + 100);
+    const slice = missers.slice(i, i + 100).map((v) => `https://${v}`);
     let rijen: { url?: string; url_rating?: number }[] = [];
     try {
       const data = (await ahrefsFetch("/batch-analysis/batch-analysis", {}, {
@@ -477,7 +502,7 @@ export async function getUrlRatings(urls: string[], maxAgeDays = 30): Promise<Ma
     } catch {
       // Autoriteit is een verrijking, geen voorwaarde: valt Ahrefs weg, dan
       // draait de analyse door op de benadering (en zegt dat ook).
-      return out;
+      return klaar();
     }
     const perUrl = new Map(rijen.map((r) => [urKey(String(r.url || "")), r]));
     const nu = new Date().toISOString();
@@ -490,10 +515,10 @@ export async function getUrlRatings(urls: string[], maxAgeDays = 30): Promise<Ma
         opgehaald: nu,
       };
       await cacheSet("ur", k, "-", rij).catch(() => { /* cache is aanvulling */ });
-      out.set(k, rij);
+      perVariant.set(k, rij);
     }
   }
-  return out;
+  return klaar();
 }
 
 /** Zoek de autoriteit van één URL op in het resultaat van getUrlRatings. */

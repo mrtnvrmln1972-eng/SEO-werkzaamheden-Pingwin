@@ -498,7 +498,13 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "van de site en staat dat er zichtbaar bij, in plaats van dat het als harde meting leest. En **het " +
           "cijfer op het scherm komt uit de meting zelf**, niet uit de tekst die de analyse erover schreef. " +
           "Ophalen gebeurt gebundeld (honderd pagina's per aanvraag) en blijft een maand geldig, dus een tweede " +
-          "analyse kost geen nieuwe Ahrefs-credits.",
+          "analyse kost geen nieuwe Ahrefs-credits.\n\n" +
+          "Eén detail dat bijna een stille fout werd, en het staat er omdat het terug kan komen: de schuine " +
+          "streep aan het eind van een adres. Ahrefs kent `/hovenier-den-bosch/` met autoriteit 6 en " +
+          "`/hovenier-den-bosch` (dezelfde pagina, zonder die streep) helemaal niet. Die tweede geeft geen " +
+          "foutmelding maar een nul, en het dashboard bewaart adressen zonder streep. Elke pagina van elke klant " +
+          "zou dus \"geen autoriteit\" hebben geheten zonder dat iemand het merkte. Nu wordt van elk adres " +
+          "allebei de vorm opgevraagd en telt de hoogste, en een proef legt dat vast.",
       },
       {
         titel: "Structured data",
