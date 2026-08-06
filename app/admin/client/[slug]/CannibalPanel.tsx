@@ -12,6 +12,7 @@ import OpruimGaten, { type Gat } from "./OpruimGaten";
 import OpruimEindstructuur from "./OpruimEindstructuur";
 import OpruimNameten, { type Nameting } from "./OpruimNameten";
 import OpruimPlaatsen from "./OpruimPlaatsen";
+import OpruimEenLijst from "./OpruimEenLijst";
 import Voortgang from "./Voortgang";
 import { useKlus } from "./useKlus";
 
@@ -542,8 +543,16 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
               {running ? " · de nieuwe analyse draait nog, dit is nog de vorige" : ""}
             </div>
 
-            {/* Eerst de gemiste kansen, dan pas het opruimwerk: daar zit de grootste
-                opbrengst, en het is ook het besluit dat het meeste nadenken vraagt. */}
+            {/* Alles bij elkaar, één regel per pagina. Dit is sinds 7 augustus de
+                hoofdmoot; de losse blokken eronder zijn de verdieping. */}
+            <Sectie titel="De werklijst: elke pagina één besluit" open
+              wat="Alles bij elkaar in één lijst, te filteren op besluit en te groeperen per plaats of onderwerp. De onderbouwing per pagina staat in de blokken eronder.">
+              <OpruimEenLijst slug={slug} domain={domain} />
+            </Sectie>
+
+            {/* Hieronder de blokken waar die lijst uit is opgebouwd. Ze blijven
+                bestaan omdat daar de volledige onderbouwing staat, maar ze zijn
+                niet meer het eerste wat je ziet. */}
             {(result.onderwerpen?.length || 0) > 0 && (
               <Sectie titel="Onderwerpen bundelen" aantal={result.onderwerpen?.length}
                 wat="Drie of meer pagina's over hetzelfde, en geen van alle in de top 10. Eén ervan wordt de vaste pagina, de rest gaat daarin op.">
@@ -575,8 +584,8 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
             )}
 
             {result.redirectMap && result.redirectMap.length > 0 && (
-              <Sectie titel="Werklijst: wat waar naartoe" aantal={regels}
-                wat="Per pagina waar hij heen gaat en waarom. Klap een regel open voor het bewijs uit de cijfers.">
+              <Sectie titel="Pagina's die elkaar in de weg zitten" aantal={regels}
+                wat="De cannibalisatie-analyse zelf: welke pagina om welk zoekwoord vecht met welke, met het bewijs uit de cijfers. Deze regels zitten ook in de werklijst hierboven.">
                 <div className="opr-kaart-acties" style={{ marginBottom: "var(--s-3)" }}>
                   {/* Downloaden als CSV: opent met een dubbelklik in Excel en is te
                       importeren in Google Sheets. */}
