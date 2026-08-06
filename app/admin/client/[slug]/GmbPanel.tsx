@@ -83,6 +83,11 @@ export default function GmbPanel({ slug, clientName, clientEmail, pingwinEmail, 
   const [instelMelding, setInstelMelding] = useState("");
   const [sjabloonOpen, setSjabloonOpen] = useState(false);
   // Aangevinkte punten per soort, plus de terugkoppeling na het aanmaken.
+  // Bewaard in het tabblad, niet alleen in het geheugen van dit scherm. Reden:
+  // je vinkt iets aan, klikt door naar de planning om te kijken of het er staat,
+  // komt terug, en alles is weg. Dat overkwam Maarten en het is terecht
+  // onbegrijpelijk (6 augustus 2026).
+  const bewaarSleutel = `gmb-gekozen:${slug}`;
   const [gekozen, setGekozen] = useState<Set<string>>(new Set());
   const [taakBusy, setTaakBusy] = useState(false);
   const [taakMelding, setTaakMelding] = useState("");
@@ -95,6 +100,22 @@ export default function GmbPanel({ slug, clientName, clientEmail, pingwinEmail, 
   }, [slug]);
 
   useEffect(() => { load(); }, [load]);
+
+  // De aangevinkte punten terughalen bij het openen, en bewaren bij elke wijziging.
+  useEffect(() => {
+    try {
+      const ruw = sessionStorage.getItem(bewaarSleutel);
+      if (ruw) setGekozen(new Set(JSON.parse(ruw) as string[]));
+    } catch { /* geen opslag beschikbaar: dan gewoon leeg beginnen */ }
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [slug]);
+
+  useEffect(() => {
+    try {
+      if (gekozen.size) sessionStorage.setItem(bewaarSleutel, JSON.stringify([...gekozen]));
+      else sessionStorage.removeItem(bewaarSleutel);
+    } catch { /* geen opslag beschikbaar */ }
+  }, [gekozen, bewaarSleutel]);
 
   useEffect(() => {
     fetch("/api/admin/gmb/instellingen")
@@ -247,6 +268,10 @@ export default function GmbPanel({ slug, clientName, clientEmail, pingwinEmail, 
 
   const r = state?.result || null;
   const draait = state?.status === "running";
+  // Zolang dit null is weten we nog niet óf er al een meting ligt. Een knop die
+  // dan "Meet het profiel" zegt liegt: je drukt erop omdat je denkt dat er niets
+  // is, en je start een nieuwe scan over een meting die er gewoon al stond.
+  const geladen = state !== null;
 
   return (
     <div className="section">
@@ -280,10 +305,14 @@ export default function GmbPanel({ slug, clientName, clientEmail, pingwinEmail, 
         </p>
 
         <div className="row" style={{ flexWrap: "wrap" }}>
-          <button className="btn btn-primary" onClick={start} disabled={busy || draait}>
-            {draait ? "De scan draait…" : r ? "Opnieuw meten" : "Meet het profiel"}
-          </button>
-          {state?.updatedAt && !draait && (
+          {geladen ? (
+            <button className="btn btn-primary" onClick={start} disabled={busy || draait}>
+              {draait ? "De scan draait…" : r ? "Opnieuw meten" : "Meet het profiel"}
+            </button>
+          ) : (
+            <span className="gmb-laden">Even laden, de laatste meting wordt opgehaald…</span>
+          )}
+          {geladen && state?.updatedAt && !draait && (
             <span className="prio-meta" style={{ margin: 0 }}>Laatst gemeten op {datum(state.updatedAt)}</span>
           )}
         </div>
