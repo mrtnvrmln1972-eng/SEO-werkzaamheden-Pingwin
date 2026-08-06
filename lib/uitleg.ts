@@ -1181,7 +1181,8 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "- **Onderweg: stil.** Geen lopend commentaar met bestandsnamen en commando's. Alleen een beslissing " +
           "die genomen moet worden, of een probleem.\n" +
           "- **Aan het eind: één blok van maximaal tien regels.** Wat er gevraagd was, wat er nu live staat, welke " +
-          "ene handeling er nog is, en de link naar het juiste scherm.\n\n" +
+          "ene handeling er nog is, en de link naar het juiste scherm. Dezelfde vorm die de opdracht voor de " +
+          "routekaartpunten al gebruikte, nu op één plek in plaats van twee.\n\n" +
           "**De link komt pas als het live staat.** Pushen is niet hetzelfde als live, en tot nu toe was er geen " +
           "manier om dat verschil te zien: je kon de site wel bekijken, maar niet aantonen dat het de nieuwe " +
           "versie was. Daarom geeft `/api/versie` de commit terug die op dat moment draait, en wacht " +

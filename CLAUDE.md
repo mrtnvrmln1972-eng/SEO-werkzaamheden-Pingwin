@@ -42,7 +42,7 @@ laadt. Wijzigt de werkwijze, houd master en alle kopieën gelijk.
   werkt in zes tot acht chats tegelijk. Je eerste antwoord opent met drie regels (onderwerp,
   laatst gedaan, nu open) uit de tabel *Lopende sporen* in `pingwin-brein/brein/08-stand-van-zaken.md`;
   onderweg geen stap-voor-stap met bestandsnamen; je sluit af met maximaal tien regels (Je vroeg,
-  Nu live, Jij doet, Bekijk het, en alleen als het speelt: Nog open). De sjablonen staan in
+  Klaar, Kijk hier, Jij doet, en alleen als het speelt: Nog open). De sjablonen staan in
   `pingwin-brein/brein/11-claude-werkwijze.md`; hier geen kopie, anders lopen ze uit elkaar.
 - **De link pas als het live staat.** Nooit terugkoppelen op een deploy die nog loopt. Zie
   "Deploy en test" hieronder: na de push draait `scripts/wacht-op-deploy.sh`, en pas als die

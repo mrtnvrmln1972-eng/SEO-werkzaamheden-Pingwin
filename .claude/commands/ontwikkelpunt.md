@@ -40,29 +40,24 @@ ervan af omdat je in de code iets beters ziet, zeg dat dan in één regel voorda
    agenda-hoofdstuk verhuist naar het hoofdstuk waar hij thuishoort (dan is het werkelijkheid),
    met in de routekaart één regel over wanneer het klaar kwam.
 
-## Wat je terugkoppelt (harde vorm, elke keer)
+## Wat je terugkoppelt
 
-Maarten leest nu te veel en te lange terugkoppelingen. Daarom is dit geen voorkeur maar een
-regel. **Maximaal acht regels, gewone taal, en altijd een link om te kijken.** Geen
-bestandsnamen, geen jargon, geen opsomming van wat je hebt geprobeerd.
+**De vorm staat in `pingwin-brein/brein/11-claude-werkwijze.md`, onder "Hoe een chat begint en
+hoe hij afsluit". Volg die, hier geen tweede versie.** Kort samengevat: je opent met "Waar we
+staan", je werkt onderweg stil, en je sluit af met Je vroeg, Klaar, Kijk hier, Jij doet en
+alleen als het speelt Nog open. Maximaal tien regels.
 
-Vaste vorm:
+Deze opdracht had tot 6 augustus 2026 een eigen uitgeschreven vorm, en het brein een andere.
+Twee vormen naast elkaar is precies wat we hier proberen te voorkomen; daarom is dit nu een
+verwijzing.
 
-- **Klaar:** wat er nu werkt, in één of twee regels, in wat Maarten ermee kan.
-- **Kijk hier:** een klikbare link naar het scherm waar hij het ziet. Altijd. Kun je het niet
-  laten zien, zeg dan waarom.
-- **Nog open:** wat er nog niet af is, of "niets".
-- **Nu nodig van jou:** alleen als je echt iets van hem nodig hebt (een besluit, een inlog, een
-  bedrag). Anders deze regel weglaten.
+Twee dingen die specifiek voor dit werk gelden:
 
-Voorbeeld van de goede lengte:
-
-> **Klaar:** de prioriteitenlijst rekent nu in aanvragen in plaats van in klikken. Pagina's die
-> converteren staan bovenaan.
-> **Kijk hier:** https://pingwin-seo-dashboard.vercel.app/admin/client/onedayclinic?tab=prioriteiten
-> **Nog open:** niets.
-> **Nu nodig van jou:** vul bij deze klant de waarde van een aanvraag in, dan verschijnen de
-> bedragen.
+- **"Kijk hier" is niet optioneel bij een ontwikkelpunt.** Dat is het bewijs dat het punt af is.
+  Kun je het niet laten zien, zeg dan waarom.
+- **De link komt pas als het live staat.** Na `git push origin main` draait
+  `scripts/wacht-op-deploy.sh`; pas als die klaar is bekijk je het scherm en koppel je terug.
+  Zie stap 5 hierboven.
 
 Wat er **niet** in hoort: welke bestanden je aanraakte, hoe de berekening technisch werkt, wat
 je onderweg hebt overwogen, hoeveel regels code het werd. Vraagt Maarten daarnaar, dan vertel je
@@ -70,8 +65,8 @@ het. Ongevraagd niet.
 
 ## Tussentijds
 
-Duurt het werk lang, meld dan halverwege één regel over waar je bent. Niet meer. Stil zijn is
-beter dan een muur tekst.
+Stil. Duurt het werk erg lang, dan hooguit één regel over waar je bent. Stil zijn is beter dan
+een muur tekst.
 
 ## Meerdere chats naast elkaar
 
