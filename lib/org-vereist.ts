@@ -34,14 +34,35 @@ export type Ontbrekend = {
   key: string;      // "kvk", "vestiging.2.openingstijden", "arts.0.big"
   label: string;    // korte naam van het veld, voor in het formulier
   regel: string;    // hele zin, voor het lijstje "Nog aan te leveren"
+  hard: boolean;    // true = het bedrijf is zonder dit veld niet te identificeren
 };
 
+// ── Moet en mooi-meegenomen ────────────────────────────────────────────────
+// Dit lijstje is twee dingen tegelijk, en dat ging mis. Voor het formulier is
+// het een perfectielijstje: alles wat de structured data rijker maakt hoort
+// rood te kleuren, tot de LinkedIn-link van de derde arts aan toe. Voor de
+// onboarding is het een startpoort: mag er gemeten worden bij deze klant?
+//
+// Bij One Day Clinic stonden 7 vestigingen, 14 artsen, 13 diensten, KvK, logo en
+// 4 sociale profielen ingevuld, en tóch zei de onboarding "bedrijfsgegevens: nog
+// te doen". Reden: drie ontbrekende profielpagina's van artsen wogen even zwaar
+// als een ontbrekend KvK-nummer. Dat is geen ontbrekende inventarisatie, dat is
+// een aanvulling.
+//
+// Vandaar het onderscheid. HARD = zonder dit veld weet Google (en weten wij) niet
+// wélk bedrijf dit is of waar het zit: naam, type, KvK, telefoon, e-mail, adres
+// of werkgebied, openingstijden. ZACHT = alles wat het verhaal rijker maakt maar
+// niets blokkeert: logo, sociale profielen, credentials per persoon,
+// dienstomschrijvingen, retourbeleid.
+//
+// Het formulier blijft ALLES tonen, precies zoals nu. Alleen de poort voor de
+// scans kijkt naar de harde velden.
 const leeg = (v: unknown) => !String(v ?? "").trim();
 
 // Alles wat nodig is voor de structured data en nu nog niet ingevuld staat.
 export function ontbrekendeVelden(d: OrgVeldenBron): Ontbrekend[] {
   const uit: Ontbrekend[] = [];
-  const mis = (key: string, label: string, regel: string) => uit.push({ key, label, regel });
+  const mis = (key: string, label: string, regel: string, hard = true) => uit.push({ key, label, regel, hard });
 
   // ── Basis: de bouwstenen van het site-brede identiteitsblok ──
   if (leeg(d.bedrijfsnaam)) mis("bedrijfsnaam", "Bedrijfsnaam", "Bedrijfsnaam ontbreekt.");
@@ -49,8 +70,8 @@ export function ontbrekendeVelden(d: OrgVeldenBron): Ontbrekend[] {
   if (leeg(d.kvk)) mis("kvk", "KVK-nummer", "KvK-nummer ontbreekt.");
   if (leeg(d.telefoon)) mis("telefoon", "Telefoon", "Telefoonnummer ontbreekt.");
   if (leeg(d.email)) mis("email", "E-mail", "Algemeen e-mailadres ontbreekt.");
-  if (leeg(d.logoUrl)) mis("logoUrl", "Logo-URL", "Logo-URL ontbreekt.");
-  if (!d.sameAs?.length) mis("sameAs", "Sociale profielen", "Social/profiel-links (sameAs) ontbreken, bijv. LinkedIn of Facebook van het bedrijf.");
+  if (leeg(d.logoUrl)) mis("logoUrl", "Logo-URL", "Logo-URL ontbreekt.", false);
+  if (!d.sameAs?.length) mis("sameAs", "Sociale profielen", "Social/profiel-links (sameAs) ontbreken, bijv. LinkedIn of Facebook van het bedrijf.", false);
 
   const vestigingen = (d.vestigingen || []).filter((v) => !leeg(v?.naam) || !leeg(v?.straat) || !leeg(v?.plaats));
   const heeftVestigingen = vestigingen.length > 0;
@@ -86,28 +107,38 @@ export function ontbrekendeVelden(d: OrgVeldenBron): Ontbrekend[] {
     if (leeg(v.postcode)) mis(`vestiging.${i}.postcode`, "Postcode", `Vestiging ${naam}: postcode ontbreekt.`);
     if (leeg(v.plaats)) mis(`vestiging.${i}.plaats`, "Plaats", `Vestiging ${naam}: plaats ontbreekt.`);
     if (leeg(v.openingstijden)) mis(`vestiging.${i}.openingstijden`, "Openingstijden", `Vestiging ${naam}: openingstijden ontbreken.`);
-    if (leeg(v.telefoon) && leeg(d.telefoon)) mis(`vestiging.${i}.telefoon`, "Telefoon", `Vestiging ${naam}: telefoonnummer ontbreekt.`);
+    if (leeg(v.telefoon) && leeg(d.telefoon)) mis(`vestiging.${i}.telefoon`, "Telefoon", `Vestiging ${naam}: telefoonnummer ontbreekt.`, false);
   });
 
   // ── Artsen en behandelaren (kliniek): credentials dragen het E-E-A-T-verhaal ──
   const artsen = (d.artsen || []).filter((a) => !leeg(a?.naam));
   if (d.bedrijfstype === "kliniek") {
     if (!artsen.length) mis("artsen", "Artsen en behandelaren", "Nog geen artsen of behandelaars aangeleverd (naam, functie, BIG-nummer, profielpagina).");
+    // Per persoon zijn dit aanvullingen, geen blokkades: de kliniek is met veertien
+    // artsen op naam prima geïdentificeerd, ook als er drie LinkedIn-links missen.
     artsen.forEach((a, i) => {
-      if (leeg(a.functie)) mis(`arts.${i}.functie`, "Functie", `${a.naam}: functie ontbreekt.`);
-      if (leeg(a.big)) mis(`arts.${i}.big`, "BIG-nummer", `${a.naam}: BIG-nummer ontbreekt.`);
-      if (leeg(a.profielUrl)) mis(`arts.${i}.profielUrl`, "Profielpagina", `${a.naam}: profielpagina of LinkedIn ontbreekt.`);
+      if (leeg(a.functie)) mis(`arts.${i}.functie`, "Functie", `${a.naam}: functie ontbreekt.`, false);
+      if (leeg(a.big)) mis(`arts.${i}.big`, "BIG-nummer", `${a.naam}: BIG-nummer ontbreekt.`, false);
+      if (leeg(a.profielUrl)) mis(`arts.${i}.profielUrl`, "Profielpagina", `${a.naam}: profielpagina of LinkedIn ontbreekt.`, false);
     });
   }
 
   // ── Diensten en webshop ──
   (d.diensten || []).filter((s) => !leeg(s?.naam)).forEach((s, i) => {
-    if (leeg(s.omschrijving)) mis(`dienst.${i}.omschrijving`, "Omschrijving", `Dienst ${s.naam}: korte omschrijving ontbreekt.`);
+    if (leeg(s.omschrijving)) mis(`dienst.${i}.omschrijving`, "Omschrijving", `Dienst ${s.naam}: korte omschrijving ontbreekt.`, false);
   });
   if (d.bedrijfstype === "webshop" && leeg(d.retourUrl) && leeg(d.retourTermijn)) {
-    mis("retourUrl", "Retourbeleid", "Retourinformatie ontbreekt (nodig voor product-schema).");
+    mis("retourUrl", "Retourbeleid", "Retourinformatie ontbreekt (nodig voor product-schema).", false);
   }
   return uit;
+}
+
+/**
+ * Alleen wat een klant écht onherkenbaar maakt. Dit is wat de onboarding en de
+ * poort voor de scans gebruiken; het formulier gebruikt de volledige lijst.
+ */
+export function ontbrekendeHardeVelden(d: OrgVeldenBron): Ontbrekend[] {
+  return ontbrekendeVelden(d).filter((o) => o.hard);
 }
 
 // Alleen de sleutels, handig om in het formulier snel te toetsen.

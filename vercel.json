@@ -27,6 +27,10 @@
       "schedule": "*/5 * * * *"
     },
     {
+      "path": "/api/cron/onboarding-bulk",
+      "schedule": "*/5 * * * *"
+    },
+    {
       "path": "/api/cron/prioriteiten-runs",
       "schedule": "15 2 * * *"
     },

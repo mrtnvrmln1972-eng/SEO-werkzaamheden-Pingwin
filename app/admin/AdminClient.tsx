@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { ClientConfig } from "../../lib/clients";
 import OntwikkelMenu from "./OntwikkelMenu";
 import MeldingenMenu from "./MeldingenMenu";
+import BulkOnboarding from "./BulkOnboarding";
 
 type Created = { name: string; loginId: string; password: string; loginUrl: string; shareUrl?: string };
 
@@ -665,6 +666,8 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
             {clientTable(klanten, "Nog geen klanten.")}
           </>
         )}
+
+        {isOwner && <BulkOnboarding />}
 
         {isOwner && <KijkSleutel />}
 

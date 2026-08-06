@@ -21,7 +21,7 @@
 // betreffende uitklapper aanvullen en LAATST_BIJGEWERKT verzetten.
 // ═══════════════════════════════════════════════════════════
 
-export const LAATST_BIJGEWERKT = "7 augustus 2026";
+export const LAATST_BIJGEWERKT = "6 augustus 2026";
 
 export type Uitklapper = {
   titel: string;
@@ -1300,7 +1300,38 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "er maar één knop nodig in plaats van een aparte voor nieuwe en bestaande klanten.\n" +
           "- **Onboarding raakt nooit af.** Concurrenten wisselen, een site verandert, een scan veroudert. " +
           "Stappen krijgen daarom vanzelf het stempel \"loopt achter\", en in de klantenlijst staat per klant " +
-          "hoeveel er staat en wat er mist.",
+          "hoeveel er staat en wat er mist.\n" +
+          "- **Een poort is geen perfectielijstje.** Bij de bedrijfsgegevens is onderscheid gemaakt tussen wat " +
+          "moet en wat mooi meegenomen is. Moet: de naam, het type, KvK, telefoon, e-mail en het adres of " +
+          "werkgebied, want zonder die velden weet niemand wélk bedrijf dit is. Mooi meegenomen: het logo, de " +
+          "sociale profielen, de functie en BIG-nummers per behandelaar, de dienstomschrijvingen. Het formulier " +
+          "toont alles rood zoals altijd, maar de poort struikelt niet meer over drie ontbrekende " +
+          "profielpagina's bij een klant waar verder alles staat.",
+      },
+      {
+        titel: "Alle klanten in één keer, met de prijs vooraf",
+        kern: "Bulk-onboarding in golven, met een rem op het Ahrefs-verbruik.",
+        tekst:
+          "Klanten één voor één langslopen is zonde van de tijd, maar ze allemaal tegelijk alles laten doen kan " +
+          "niet. Een volledige onboarding kost ongeveer 80.000 Ahrefs-units per klant; voor achttien klanten is " +
+          "dat 1,4 miljoen, oftewel bijna vier maanden tegoed. Die tarieven zijn niet geschat maar afgelezen uit " +
+          "het echte verbruik-log: een zoekwoordenlijst van een domein kost 29 units per regel, zoekwoord-ideeën " +
+          "21, een zoekwoordoverzicht 32.\n\n" +
+          "Daarom staat op het klantenoverzicht één blok dat de onderdelen op prijs sorteert:\n\n" +
+          "- **Golf 1, de basis (± 650 units per klant).** Pagina's inlezen, klantprofiel, tone of voice, " +
+          "bedrijfsgegevens uit de site, concurrenten opzoeken en de interne linkanalyse. Bijna gratis, en " +
+          "precies de inventarisatie waar alle andere scans op wachten.\n" +
+          "- **Golf 2, de prioriteitenscan (± 15.300 per klant).** De eerste echt dure stap.\n" +
+          "- **Golf 3, opruimen en zoekwoordkansen (± 64.500 per klant).** Voor alle klanten tegelijk meer dan " +
+          "twee maanden tegoed; dit doe je bij de klant waar je op dat moment aan werkt.\n\n" +
+          "Drie dingen houden dat veilig. **De prijs staat er vóór de klik**: je ziet per golf wie het nog nodig " +
+          "heeft, wat het samen kost en hoeveel er daarna overblijft. **De rij werkt één klant tegelijk af**, met " +
+          "een cron als vangnet, dus een afgekapt tijdvenster kost hooguit één klant in plaats van de hele rij. " +
+          "En **er zit een rem in**: vóór elke klant wordt bij Ahrefs opgevraagd hoeveel er nog over is, en zakt " +
+          "dat onder de 50.000, dan stopt de rij zichzelf en zegt waarom. Een bulkrun kan je maand dus niet " +
+          "leegtrekken.\n\n" +
+          "Wat al staat wordt overgeslagen, dus een klant met volledig ingevulde bedrijfsgegevens gaat niet " +
+          "opnieuw op zoek naar structured data.",
       },
       {
         titel: "De maandelijkse ronde",

@@ -191,7 +191,12 @@ export async function getOnboardingStand(slug: string): Promise<Stand> {
   const domein = (client.domain || "").trim();
   const profiel = client.seoProfile || "";
   const orgData = org?.data || null;
-  const ontbreekt = orgData ? ontbrekendeVelden(orgData) : [];
+  // Twee lijstjes, bewust gescheiden. `ontbreekt` blokkeert (zonder die velden
+  // weet niemand wélk bedrijf dit is); `aanvullingen` maakt het rijker maar houdt
+  // niets tegen. Zie de uitleg boven ontbrekendeVelden in lib/org-vereist.ts.
+  const alleVelden = orgData ? ontbrekendeVelden(orgData) : [];
+  const ontbreekt = alleVelden.filter((o) => o.hard);
+  const aanvullingen = alleVelden.filter((o) => !o.hard);
   const orgGevuld = !!orgData && !!(orgData.bedrijfsnaam || "").trim() && !!orgData.bedrijfstype;
 
   // Per stap: is hij af, en wat is het detail dat je op het scherm leest? Eén
@@ -238,6 +243,7 @@ export async function getOnboardingStand(slug: string): Promise<Stand> {
       detail: !orgGevuld
         ? "De bedrijfsgegevens zijn nog niet ingevuld; zonder die gegevens kan er geen structured data op de site."
         : ontbreekt.length ? `Nog ${ontbreekt.length} ${ontbreekt.length === 1 ? "gegeven ontbreekt" : "gegevens ontbreken"}: ${ontbreekt.slice(0, 3).map((o) => o.label.toLowerCase()).join(", ")}${ontbreekt.length > 3 ? " en meer" : ""}.`
+        : aanvullingen.length ? `Compleet. Er staan nog ${aanvullingen.length} aanvullingen open (${aanvullingen.slice(0, 2).map((o) => o.label.toLowerCase()).join(", ")}${aanvullingen.length > 2 ? " en meer" : ""}); die maken de structured data rijker maar houden niets tegen.`
         : "Compleet.",
       sinds: org?.updatedAt || null,
     },

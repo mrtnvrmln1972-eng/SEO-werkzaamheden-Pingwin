@@ -121,7 +121,14 @@ export async function startOnboardingRun(slug: string): Promise<void> {
   await bewaar(slug, { status: "running", bezigMet: "Kijken wat er al staat", regels: [], error: "" });
 }
 
-export async function draaiOnboardingRun(slug: string): Promise<void> {
+/**
+ * `alleen` beperkt de rit tot een deel van de stappen. De knop op het klantscherm
+ * geeft niets mee en doet dus alles, zoals altijd. De bulkrij geeft wél een lijst
+ * mee, omdat de golven daar op prijs gesorteerd zijn: golf 1 mag de dure
+ * site-brede scans juist niet starten.
+ */
+export async function draaiOnboardingRun(slug: string, alleen?: StapKey[]): Promise<void> {
+  const magStap = (k: StapKey) => !alleen || alleen.includes(k);
   const regels: Regel[] = [];
   const noteer = async (r: Regel, volgende = "") => {
     regels.push(r);
@@ -150,7 +157,8 @@ export async function draaiOnboardingRun(slug: string): Promise<void> {
     }
 
     // ── 1. De pagina's van de site inlezen ──
-    if (nodigNog("urls")) {
+    if (!magStap("urls")) { /* niet in deze golf */ }
+    else if (nodigNog("urls")) {
       await bewaar(slug, { status: "running", bezigMet: "De pagina's van de site inlezen", regels, error: "" });
       try {
         const { scanned } = await scanClientUrls(slug, domain);
@@ -162,6 +170,7 @@ export async function draaiOnboardingRun(slug: string): Promise<void> {
 
     // ── 2. Klantprofiel en tone of voice uit de live site ──
     for (const [key, kind] of [["profiel", "profile"], ["tov", "tov"]] as const) {
+      if (!magStap(key)) continue;
       if (!nodigNog(key)) { await noteer({ key, label: label(key), uitkomst: "stond-al", toelichting: "Stond er al." }); continue; }
       if (!anthropicConfigured()) { await noteer({ key, label: label(key), uitkomst: "overgeslagen", toelichting: "Hiervoor is een Claude-sleutel nodig in deze omgeving." }); continue; }
       await bewaar(slug, { status: "running", bezigMet: key === "profiel" ? "Het klantprofiel schrijven uit de live site" : "De tone of voice analyseren", regels, error: "" });
@@ -180,7 +189,8 @@ export async function draaiOnboardingRun(slug: string): Promise<void> {
     // ── 3. Bedrijfsgegevens voorvullen uit de site ──
     // Blijft een stap van Maarten (KvK, openingstijden), maar wat de site zelf
     // prijsgeeft hoeft hij niet over te typen.
-    if (nodigNog("bedrijfsgegevens")) {
+    if (!magStap("bedrijfsgegevens")) { /* niet in deze golf */ }
+    else if (nodigNog("bedrijfsgegevens")) {
       await bewaar(slug, { status: "running", bezigMet: "De bedrijfsgegevens van de site uitlezen", regels, error: "" });
       try {
         const res = await autofillOrgData(slug);
@@ -195,7 +205,8 @@ export async function draaiOnboardingRun(slug: string): Promise<void> {
     } else await noteer({ key: "bedrijfsgegevens", label: label("bedrijfsgegevens"), uitkomst: "stond-al", toelichting: "De bedrijfsgegevens waren al compleet." });
 
     // ── 4. Concurrenten opzoeken in de echte zoekresultaten ──
-    if (nodigNog("concurrenten")) {
+    if (!magStap("concurrenten")) { /* niet in deze golf */ }
+    else if (nodigNog("concurrenten")) {
       await bewaar(slug, { status: "running", bezigMet: "Concurrenten opzoeken in de zoekresultaten", regels, error: "" });
       try {
         const voorstel = await voorstelConcurrenten(slug, domain);
@@ -212,7 +223,8 @@ export async function draaiOnboardingRun(slug: string): Promise<void> {
     } else await noteer({ key: "concurrenten", label: label("concurrenten"), uitkomst: "stond-al", toelichting: "De concurrenten stonden er al." });
 
     // ── 5. Zoekwoordkansen verzamelen (heeft de concurrenten van net nodig) ──
-    if (nodigNog("zoekwoorden")) {
+    if (!magStap("zoekwoorden")) { /* niet in deze golf */ }
+    else if (nodigNog("zoekwoorden")) {
       await bewaar(slug, { status: "running", bezigMet: "Zoekwoordkansen verzamelen", regels, error: "" });
       try {
         const res = await collectOpportunities(slug);
@@ -241,7 +253,7 @@ export async function draaiOnboardingRun(slug: string): Promise<void> {
     };
     const wachtOp = (k: StapKey) => (na.stappen.find((x) => x.key === k)?.wacht || []).map((w) => w.label.toLowerCase()).join(" en ");
 
-    for (const key of ["prioriteiten", "opruimen", "internelinks"] as StapKey[]) {
+    for (const key of (["prioriteiten", "opruimen", "internelinks"] as StapKey[]).filter(magStap)) {
       if (alGedaan(key)) { await noteer({ key, label: label(key), uitkomst: "stond-al", toelichting: "Was al gedraaid of draait nu." }); continue; }
       if (!mag(key)) { await noteer({ key, label: label(key), uitkomst: "overgeslagen", toelichting: `Kan nog niet: eerst ${wachtOp(key)}.` }); continue; }
       try {
@@ -267,6 +279,7 @@ export async function draaiOnboardingRun(slug: string): Promise<void> {
     const eind = await getOnboardingStand(slug);
     for (const s of eind.stappen) {
       if (s.optioneel || s.door !== "jij" || s.staat === "af" || s.staat === "bezig") continue;
+      if (!magStap(s.key)) continue;
       if (regels.some((r) => r.key === s.key)) continue;
       await noteer({ key: s.key, label: s.label, uitkomst: "overgeslagen", toelichting: `Dit kan alleen jij: ${s.detail}` });
     }
