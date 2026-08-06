@@ -226,7 +226,9 @@ function faseVanRegel(regel: string): { fase: CardFaseKey; tekst: string } | nul
     [/^meta[- ]?(title|titel|description|descriptions)?\b/, "copy"],
     [/^strategie\b/, "strategie"],
     [/^(structured data|structured|schema)\b/, "structured"],
-    [/^(bouw|bouwen|publiceer|publicatie)\b/, "bouw"],
+    // "Bouw" heet inmiddels "Implementatie"; oude kaarten schrijven nog "Bouw:",
+    // dus allebei moeten in dezelfde fase landen.
+    [/^(bouw|bouwen|publiceer|publicatie|implementatie|implementeer)\b/, "bouw"],
     [/^dev\b/, "bouw"],
     [/^alt[- ]?tekst/, "bouw"],
     [/^interne links?\b/, "bouw"],
@@ -236,7 +238,7 @@ function faseVanRegel(regel: string): { fase: CardFaseKey; tekst: string } | nul
     if (re.test(prefix)) {
       // Bij een expliciete "Fase: ..." prefix tonen we alleen de sturing; bij een
       // zin die toevallig zo begint ("Dev week 2: ...") houden we de hele regel.
-      const toon = m && /^(analyse|blauwdruk|copy|strategie|structured data|schema|bouw|gelieerde pagina's|gelieerde)$/i.test(m[1].trim()) ? rest : kaal;
+      const toon = m && /^(analyse|blauwdruk|copy|strategie|structured data|schema|bouw|implementatie|gelieerde pagina's|gelieerde)$/i.test(m[1].trim()) ? rest : kaal;
       return { fase, tekst: toon };
     }
   }
