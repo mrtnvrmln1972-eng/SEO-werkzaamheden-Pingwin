@@ -13,12 +13,12 @@
 // onderbouwing; die zijn nu de verdieping, niet de hoofdmoot.
 // ═══════════════════════════════════════════════════════════
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 type Uitkomst = "uitbouwen" | "samenvoegen" | "blijft" | "opruimen" | "nieuw";
 type Herkomst = "plaats" | "onderwerp" | "kans" | "gat" | "cannibalisatie";
 type Regel = {
-  pad: string; uitkomst: Uitkomst; naar: string; herkomst: Herkomst[]; reden: string;
+  pad: string; uitkomst: Uitkomst; naar: string; herkomst: Herkomst[]; reden: string; onderbouwing: string[];
   term: string; volume: number | null; klikken: number; vertoningen: number; positie: number | null; groep: string;
 };
 type Data = { regels: Regel[]; tellingen: Record<Uitkomst, number> & { totaal: number }; lijstDatum: string | null };
@@ -40,12 +40,20 @@ const HERKOMST_LABEL: Record<Herkomst, string> = {
   plaats: "plaatspagina", onderwerp: "onderwerp", kans: "gemiste kans", gat: "ontbreekt", cannibalisatie: "zit elkaar in de weg",
 };
 
+// De onderbouwing komt als losse zinnen binnen, met hooguit **vet** erin. Nooit
+// ruwe sterretjes in beeld; dat is een harde regel.
+function Zin({ tekst }: { tekst: string }) {
+  const delen = tekst.split(/\*\*(.+?)\*\*/g);
+  return <p>{delen.map((d, i) => (i % 2 ? <strong key={i}>{d}</strong> : <span key={i}>{d}</span>))}</p>;
+}
+
 export default function OpruimEenLijst({ slug, domain }: { slug: string; domain: string }) {
   const [d, setD] = useState<Data | null>(null);
   const [bezig, setBezig] = useState(true);
   const [filter, setFilter] = useState<Uitkomst | "alles">("alles");
   const [groep, setGroep] = useState<"uitkomst" | "groep">("uitkomst");
   const [open, setOpen] = useState<Record<string, boolean>>({});
+  const [uitleg, setUitleg] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!slug) return;
@@ -136,7 +144,8 @@ export default function OpruimEenLijst({ slug, domain }: { slug: string; domain:
               </thead>
               <tbody>
                 {lijst.slice(0, open[naam] ? 500 : 15).map((r) => (
-                  <tr key={r.pad}>
+                  <React.Fragment key={r.pad}>
+                  <tr>
                     <td>
                       <Link p={r.pad} />
                       <div className="opr-eind-slokt">{r.herkomst.map((h) => HERKOMST_LABEL[h]).join(" · ")}</div>
@@ -148,8 +157,33 @@ export default function OpruimEenLijst({ slug, domain }: { slug: string; domain:
                       {r.klikken > 0 ? <strong>{r.klikken} bezoekers</strong> : r.vertoningen > 0 ? `${r.vertoningen} vert.` : <span className="opr-leeg">niets</span>}
                       {r.positie != null && <div className="opr-eind-slokt">plek {Math.round(r.positie)}</div>}
                     </td>
-                    <td className="opr-reden">{r.reden}</td>
+                    <td className="opr-reden">
+                      {r.reden}
+                      {r.onderbouwing.length > 0 && (
+                        <div>
+                          <button type="button" className="opr-meer" onClick={() => setUitleg((m) => ({ ...m, [r.pad]: !m[r.pad] }))}>
+                            {uitleg[r.pad] ? "▾ minder" : "▸ volledige onderbouwing"}
+                          </button>
+                        </div>
+                      )}
+                    </td>
                   </tr>
+                  {/* De volledige onderbouwing als eigen rij over alle kolommen, in
+                      dezelfde kaart met drie kolommen als de losse blokken. Stond
+                      alleen in die blokken, waardoor je vanuit de hoofdlijst niet
+                      kon zien waarop een besluit rustte. */}
+                  {uitleg[r.pad] && r.onderbouwing.length > 0 && (
+                    <tr className="opr-redenrij">
+                      <td colSpan={6}>
+                        <div className="opr-uitleg">
+                          <div className="opr-bewijs">
+                            {r.onderbouwing.map((z, i) => <Zin key={i} tekst={z} />)}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
