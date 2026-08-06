@@ -57,7 +57,7 @@ type CockpitData = {
     thisLabel: string;
     nextLabel: string;
   };
-  allClients: { slug: string; name: string; grp?: string | null; good28?: boolean; good90?: boolean }[];
+  allClients: { slug: string; name: string; grp?: string | null; fase?: string | null; good28?: boolean; good90?: boolean }[];
   googleConfigured: boolean;
   googleConnected: boolean;
   chatConfigured: boolean;
@@ -412,12 +412,29 @@ export default function ClientCockpit({
               const opt = (c: typeof allClients[number]) => (
                 <option key={c.slug} value={c.slug}>{good(c) ? "✓ " : ""}{c.name}</option>
               );
-              return shown.some((c) => c.grp === "mmc") ? (
+              // Leads staan als eigen groepje onderaan, zodat je zonder omweg via
+              // het beheerscherm van een klant naar een lead kunt springen. Ze
+              // horen niet tussen de klanten: een lead heeft geen budget en geen
+              // trend, en de vinkjes en het demo-filter gaan over klanten.
+              const leads = shown.filter((c) => c.fase === "lead");
+              const klanten = shown.filter((c) => c.fase !== "lead");
+              const leadGroep = leads.length ? (
+                <optgroup label={`Leads (${leads.length})`}>
+                  {leads.map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
+                </optgroup>
+              ) : null;
+              return klanten.some((c) => c.grp === "mmc") ? (
                 <>
-                  <optgroup label="Mijn eigen klanten">{shown.filter((c) => c.grp !== "mmc").map(opt)}</optgroup>
-                  <optgroup label="Multimedia Concepts">{shown.filter((c) => c.grp === "mmc").map(opt)}</optgroup>
+                  <optgroup label="Mijn eigen klanten">{klanten.filter((c) => c.grp !== "mmc").map(opt)}</optgroup>
+                  <optgroup label="Multimedia Concepts">{klanten.filter((c) => c.grp === "mmc").map(opt)}</optgroup>
+                  {leadGroep}
                 </>
-              ) : shown.map(opt);
+              ) : leadGroep ? (
+                <>
+                  <optgroup label={`Klanten (${klanten.length})`}>{klanten.map(opt)}</optgroup>
+                  {leadGroep}
+                </>
+              ) : klanten.map(opt);
             })()}
           </select>
           {/* Demo-filter (schermdelen): alleen tonen als er trend-data is om op te
