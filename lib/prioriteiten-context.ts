@@ -26,6 +26,8 @@
  * van de rekenkern.
  */
 
+import NL_PLAATSEN from "./data/nl-plaatsen.json";
+
 /** Wat de scan over deze klant weet. Eén keer per run gebouwd, daarna alleen gelezen. */
 export type KlantContext = {
   /** De propositie-zin: wat deze klant wél en niet wil zijn. */
@@ -137,18 +139,55 @@ export function kernwoordenUit(profiel: string, naam: string): string[] {
 const woordenVan = (s: string) => (s || "").toLowerCase().replace(/[^a-zà-ü0-9]+/g, " ").trim().split(/\s+/).filter(Boolean);
 
 /**
+ * De Nederlandse plaatsnamen, één keer ingelezen. Zie het databestand voor de
+ * herkomst; hij hoort alleen gebruikt te worden om kandidaten uit de eigen data
+ * van een klant te controleren, nooit om zelf plaatsen in een zoekwoord te gaan
+ * zoeken. De namen worden ook zonder streepje bewaard, want in een zoekwoord tikt
+ * men "sint oedenrode" en in een URL staat "sint-oedenrode".
+ */
+let plaatsCache: Set<string> | null = null;
+function alleNederlandsePlaatsen(): Set<string> {
+  if (plaatsCache) return plaatsCache;
+  // Namen die ook een gewoon woord zijn gaan eruit. "crp waarde" is geen dorp in
+  // Zeeland en "monster" is bij een kliniek een staal, geen plaats in het
+  // Westland. Werkt een klant er echt, dan komt de plaats binnen via zijn
+  // bedrijfsgegevens; die weg blijft open.
+  const dubbel = new Set(NL_PLAATSEN.dubbelzinnig.map((w) => w.toLowerCase()));
+  const uit = new Set<string>();
+  for (const naam of [...NL_PLAATSEN.plaatsen, ...NL_PLAATSEN.aliassen]) {
+    const n = (naam || "").toLowerCase().trim();
+    if (n.length < 3 || dubbel.has(n)) continue;
+    uit.add(n);
+    const zonder = woordenVan(n).join(" ");
+    if (zonder.length >= 3 && !dubbel.has(zonder)) uit.add(zonder);
+  }
+  plaatsCache = uit;
+  return uit;
+}
+
+/**
  * Het werkgebied en het dienstenaanbod uit gemeten data, niet uit een vaste lijst.
  *
- * Hoe: een dienstwoord is een woord waarmee deze klant meerdere zoekwoorden of
- * pagina's begint (Paul begint er vijf met "hovenier" en drie met "tuinaanleg").
- * Wat er ACHTER een dienstwoord staat is een kandidaat-plaats. Om te voorkomen
- * dat "hovenier prijzen" van "prijzen" een dorp maakt, moet zo'n kandidaat zich
- * bewijzen: hij staat in een eigen pagina-URL (een echte locatiepagina), óf hij
- * staat achter twee verschillende diensten. Zo levert Paul precies zijn eigen
- * werkgebied op: den bosch, eindhoven, oss, uden, veghel.
+ * Twee vragen, twee bronnen:
  *
- * Deze aanpak onderhoudt zichzelf en werkt voor elke klant, ook voor klanten in
- * dorpen die in geen enkele stedenlijst voorkomen.
+ * - **Welke diensten verkoopt deze klant?** Een dienstwoord opent meerdere
+ *   zoekwoorden of pagina's van deze klant: Paul begint er vijf met "hovenier".
+ *   Dat is puur structuur en dat werkt goed.
+ *
+ * - **Waar werkt hij?** Hier is structuur niet genoeg, en dat is met schade
+ *   geleerd. De eerste opzet nam "wat er achter een dienstwoord staat" als
+ *   plaats. Op Paul klopte dat (hovenier-uden, hovenier-oss), maar op One Day
+ *   Clinic werden "pijpen zonder condoom", "in de keel" en "test" plaatsnamen,
+ *   en kregen die de weging van een lokaal koopwoord. Precies de fout die deze
+ *   reparatie moest wegnemen. Zonder te weten wát een plaats is, kun je "uden"
+ *   niet van "symptomen man" onderscheiden.
+ *
+ *   Daarom een echte lijst: `lib/data/nl-plaatsen.json`, 1.466 Nederlandse
+ *   plaatsnamen uit de Ahrefs-API. Die lijst wordt nooit los gebruikt (er staan
+ *   namen in die ook gewone woorden zijn: echt, best, buren, ede, epe), maar
+ *   alleen om te controleren of een woord uit de EIGEN pagina's en zoekwoorden
+ *   van deze klant een plaats is. Werkt de klant er niet, dan komt het woord
+ *   niet in zijn data voor en telt de naam ook niet mee.
  */
 export function leidWerkgebiedAf(zoekwoorden: string[], urls: string[]): { dienstwoorden: string[]; plaatsen: string[] } {
   // Pagina-paden als woordrijtjes: "/hovenier-den-bosch" wordt [hovenier, den, bosch].
@@ -170,26 +209,19 @@ export function leidWerkgebiedAf(zoekwoorden: string[], urls: string[]): { diens
   const dienstwoorden = [...opening.entries()].filter(([, s]) => s.size >= 2).map(([w]) => w);
   const isDienst = new Set(dienstwoorden);
 
-  // Wat achter een dienstwoord staat is een kandidaat-plaats, met wie hem noemde erbij.
-  const kandidaat = new Map<string, Set<string>>();
-  const noteer = (rij: string[], bron: Set<string>) => {
-    if (rij.length < 2 || !isDienst.has(rij[0])) return;
-    const rest = rij.slice(1).join(" ");
-    if (!rest || rest.length < 3) return;
-    if (STOP.has(rest) || KOOP_WOORDEN.includes(rest) || ORIENT_WOORDEN.includes(rest)
-      || VERGELIJK_WOORDEN.includes(rest) || NABIJ_WOORDEN.includes(rest)) return;
-    if (!kandidaat.has(rest)) kandidaat.set(rest, new Set());
-    for (const b of bron) kandidaat.get(rest)!.add(b);
-  };
-  const uitUrl = new Set<string>();
-  for (const r of padRijtjes) { noteer(r, new Set(["url"])); if (r.length >= 2 && isDienst.has(r[0])) uitUrl.add(r.slice(1).join(" ")); }
-  for (const r of kwRijtjes) noteer(r, new Set([r[0]]));
-
-  // Bewijzen: in een eigen pagina-URL, of achter twee verschillende diensten.
-  const plaatsen = [...kandidaat.entries()]
-    .filter(([naam, bronnen]) => uitUrl.has(naam) || [...bronnen].filter((b) => b !== "url").length >= 2)
-    .map(([naam]) => naam);
-  return { dienstwoorden: [...new Set(dienstwoorden)], plaatsen: [...new Set(plaatsen)] };
+  // Elk los woord en elk woordpaar uit de eigen pagina's en zoekwoorden langs de
+  // plaatsenlijst. Woordparen erbij omdat veel plaatsen twee woorden zijn
+  // (den bosch, sint-oedenrode, nieuw-vennep).
+  const plaatsen = new Set<string>();
+  for (const rij of [...kwRijtjes, ...padRijtjes]) {
+    for (let i = 0; i < rij.length; i++) {
+      for (const kandidaat of [rij[i], rij.slice(i, i + 2).join(" ")]) {
+        if (kandidaat.length < 3 || isDienst.has(kandidaat)) continue;
+        if (alleNederlandsePlaatsen().has(kandidaat)) plaatsen.add(kandidaat);
+      }
+    }
+  }
+  return { dienstwoorden: [...new Set(dienstwoorden)], plaatsen: [...plaatsen] };
 }
 
 /**

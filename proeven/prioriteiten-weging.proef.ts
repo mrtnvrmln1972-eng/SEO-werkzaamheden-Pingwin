@@ -46,6 +46,28 @@ for (const plaats of ["uden", "oss", "veghel", "den bosch", "eindhoven"]) {
 // deze grens maakt de scan van elk koopwoord een plaats.
 checkWaar("prijzen is geen plaats", !wg.plaatsen.includes("prijzen"), `gevonden: ${wg.plaatsen.join(", ")}`);
 checkWaar("kosten is geen plaats", !wg.plaatsen.includes("kosten"), `gevonden: ${wg.plaatsen.join(", ")}`);
+
+// De vondst van 6 augustus, op de echte scan van One Day Clinic. Toen een plaats
+// nog uit de ZOEKWOORDEN mocht komen ("staat achter twee verschillende diensten")
+// werden "pijpen zonder condoom" en "in de keel" plaatsnamen, en kregen ze de
+// weging van een lokaal koopwoord. Plaatsen komen daarom alleen nog uit de eigen
+// pagina-URL's. Deze proef houdt dat zo.
+const odc = leidWerkgebiedAf(
+  ["soa test amsterdam", "soa test pijpen zonder condoom", "soa test in de keel",
+   "chlamydia test amsterdam", "chlamydia symptomen man", "soa symptomen man"],
+  ["https://onedayclinic.nl/soa-test", "https://onedayclinic.nl/chlamydia-test", "https://onedayclinic.nl/bloedonderzoek"],
+);
+checkWaar("lange vraagzin wordt geen plaats",
+  !odc.plaatsen.includes("pijpen zonder condoom") && !odc.plaatsen.includes("in de keel"),
+  `gevonden: ${odc.plaatsen.join(", ")}`);
+checkWaar("dienstwoord wordt geen plaats", !odc.plaatsen.includes("test"), `gevonden: ${odc.plaatsen.join(", ")}`);
+// Een echte plaats in hun eigen zoekwoorden hoort er juist wél in te staan.
+checkWaar("amsterdam wordt wel herkend", odc.plaatsen.includes("amsterdam"), `gevonden: ${odc.plaatsen.join(", ")}`);
+check("amsterdam telt als lokaal", bepaalIntentie("soa test amsterdam", { propositie: "", kern: [], dienstwoorden: [], plaatsen: odc.plaatsen }), "lokaal-commercial");
+// Een plaatsnaam die deze klant nergens gebruikt, telt niet mee. De lijst mag
+// nooit los gaan zoeken; anders wordt "echt" (dorp in Limburg) een plaats in
+// "is dit echt nodig".
+checkWaar("ongebruikte plaatsnaam telt niet mee", !odc.plaatsen.includes("echt"), `gevonden: ${odc.plaatsen.join(", ")}`);
 checkWaar("hovenier is herkend als dienst", wg.dienstwoorden.includes("hovenier"), wg.dienstwoorden.join(", "));
 checkWaar("tuinaanleg is herkend als dienst", wg.dienstwoorden.includes("tuinaanleg"), wg.dienstwoorden.join(", "));
 
