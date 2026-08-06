@@ -138,12 +138,23 @@ export async function zetAdsPaginas(slug: string, paden: string[], geen: boolean
   return { paden: schoon, geen: !!geen && !schoon.length, ingevuld: !!geen || schoon.length > 0 };
 }
 
-/** Is een pad een advertentiepagina? Ook alles eronder telt mee, zodat een hele
-    map (bijvoorbeeld /ads/) in één regel afgeschermd is. */
+/**
+ * Is een pad een advertentiepagina? Ook alles eronder telt mee, zodat een hele
+ * map (bijvoorbeeld /ads/) in één regel afgeschermd is.
+ *
+ * Met één uitzondering die op 7 augustus 2026 de hele analyse leegtrok: de
+ * homepage. "/" wordt na het strippen van de slash een lege tekst, en dan is
+ * `p.startsWith("" + "/")` waar voor élk pad van de site. Eén regel in een
+ * invulveld zette daarmee alle 432 pagina's van One Day Clinic buiten schot: de
+ * werklijst, de onderwerpen, de kansen en de gaten kwamen allemaal leeg terug, en
+ * de analyse die eroverheen liep leverde nul regels op. Geen foutmelding, gewoon
+ * niets. De homepage mag hier gewoon staan; hij dekt dan alleen zichzelf.
+ */
 export function isAdsPad(pad: string, ads: AdsPaginas): boolean {
   const p = padVan(pad).replace(/\/$/, "").toLowerCase();
   return ads.paden.some((a) => {
-    const b = a.replace(/\/$/, "").toLowerCase();
+    const b = padVan(a).replace(/\/$/, "").toLowerCase();
+    if (!b) return p === "";              // "/" is alleen de homepage zelf
     return p === b || p.startsWith(b + "/");
   });
 }
