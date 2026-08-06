@@ -3,6 +3,7 @@
 import { Fragment, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ClientConfig } from "../../lib/clients";
+import OntwikkelMenu from "./OntwikkelMenu";
 
 type Created = { name: string; loginId: string; password: string; loginUrl: string; shareUrl?: string };
 
@@ -553,14 +554,14 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
           </div>
         </div>
         <div className="header-right">
+          {/* De losse Routekaart-knop stond hier alleen op dit scherm. Hij zit nu in
+              het ontwikkelmenu, dat op élk adminscherm staat en de eerstvolgende taak
+              meteen bij de hand heeft. Twee ingangen naar hetzelfde scherm is een
+              keuze die niemand hoeft te maken. */}
+          <OntwikkelMenu />
           {/* De volledige uitleg van het dashboard: openbaar leesbaar, dus deelbaar
               met een klant, een lead of een investeerder. Het hoofdstuk met de
               openstaande punten verschijnt daar alleen mét deze admin-sessie. */}
-          {/* Het bedieningspaneel van de ontwikkeling: per punt de startregel voor
-              een verse chat, en wat er nu loopt. */}
-          {isOwner && (
-            <a className="logout-btn" href="/admin/routekaart" title="De ontwikkeling van het dashboard: wat er te doen is en waar je begint">Routekaart</a>
-          )}
           <a className="logout-btn" href="/uitleg" title="Zo werkt het dashboard: de volledige uitleg, deelbaar met klanten en leads" style={{ marginLeft: 8 }}>Zo werkt het</a>
           {isOwner && (
             <a className="logout-btn" href="/admin/beheer" title="Klanten en teamgebruikers beheren" style={{ marginLeft: 8 }}>Beheer</a>

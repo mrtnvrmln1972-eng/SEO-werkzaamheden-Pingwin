@@ -5129,3 +5129,55 @@ a.wb-pad:hover { text-decoration: underline; }
   .rk-top { grid-template-columns: 1fr; }
   .rk-punt-meta, .rk-punt-meer, .rk-punt-start { margin-left: 0; }
 }
+
+/* ── Ontwikkelmenu in de kopbalk (intern) ─────────────────────────
+   Staat op élk adminscherm en heeft de eerstvolgende ontwikkeltaak meteen
+   bij de hand. Leunt op de bestaande .hm-*-bouwstenen; alleen wat er echt
+   anders is staat hier. Rechts uitgelijnd, want hij hangt in header-right. */
+.om-wrap { margin-right: var(--s-2); }
+.om-knop { display: inline-flex; align-items: center; gap: var(--s-2); }
+.om-teller {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 18px; padding: 0 5px;
+  border-radius: var(--r-full);
+  background: var(--orange); color: var(--white);
+  font-size: var(--fs-xs); line-height: 1; font-weight: 700;
+}
+.om-paneel { left: auto; right: 0; min-width: 300px; max-width: 340px; gap: var(--s-2); }
+.om-volgende {
+  display: flex; flex-direction: column; gap: var(--s-2);
+  padding: var(--s-3);
+  border-radius: var(--r-md);
+  background: var(--brand-orange-faint);
+}
+.om-label {
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase; color: var(--orange-dark);
+}
+.om-titel {
+  font-family: 'Montserrat', sans-serif;
+  font-size: var(--fs-base); line-height: var(--lh-base); font-weight: 600;
+  color: var(--body-text);
+}
+.om-code { color: var(--orange-dark); font-weight: 700; }
+.om-hint { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray); }
+.om-lopend {
+  padding: 0 var(--s-3);
+  font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--muted);
+}
+.btn-klein { padding: 6px 12px; font-size: var(--fs-sm); align-self: flex-start; }
+
+/* ── De volledige beschrijving, bij het punt zelf ─────────────────
+   Stond eerst als link naar /uitleg#agenda, en dan zocht je in een lang
+   document naar het punt waar je net op klikte. Nu klapt hij hier open. */
+.rk-volledig-knop { margin-top: var(--s-1); }
+.rk-volledig {
+  margin-top: var(--s-3);
+  padding: var(--s-4);
+  border-left: 3px solid var(--orange);
+  border-radius: 0 var(--r-md) var(--r-md) 0;
+  background: var(--gray-light);
+  max-width: 52em;
+}
+.rk-volledig > *:last-child { margin-bottom: 0; }
+.rk-geen-tekst { font-style: italic; }

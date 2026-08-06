@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { DevTask } from "../../../lib/developer";
 import RijkTekstVeld from "../../_velden/RijkTekstVeld";
+import OntwikkelMenu from "../OntwikkelMenu";
 
 // Verwijdert scripts/handlers/inline font-kleur uit opgeslagen taak-HTML, houdt
 // links en basis-opmaak. De inhoud is bij invoer al geschoond; dit is de vangnet.
@@ -394,6 +395,7 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
           </div>
         </div>
         <div className="header-right">
+          <OntwikkelMenu />
           <a className="logout-btn" href="/admin">&larr; Alle klanten</a>
           <button className="logout-btn" onClick={logout} style={{ marginLeft: 8 }}>Uitloggen</button>
         </div>

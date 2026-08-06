@@ -37,6 +37,7 @@ import SelectionActions from "./SelectionActions";
 import LeadTab from "./LeadTab";
 import MailControlePanel from "./MailControlePanel";
 import OnboardingPanel from "./OnboardingPanel";
+import OntwikkelMenu from "../../OntwikkelMenu";
 
 type Tab = "lead" | "onboarding" | "werkzaamheden" | "paginas" | "documenten" | "activiteit" | "resultaten" | "klant" | "developer" | "wijzigingen" | "cannibalisatie" | "interne-links" | "meta" | "prioriteiten";
 
@@ -513,6 +514,7 @@ export default function ClientCockpit({
           </nav>
         </div>
         <div className="header-right">
+          <OntwikkelMenu />
           <span id="werk-month-slot" className="header-month-slot" />
           {lastMailDate && (
             <span className={"contact-chip " + contactColor(lastMailDate)} title={`Laatste contact: ${fmtDate(lastMailDate)}`}>

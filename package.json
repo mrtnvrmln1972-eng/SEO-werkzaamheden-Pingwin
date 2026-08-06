@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "proef": "npx --yes tsx proeven/site-controle.proef.ts && npx --yes tsx proeven/mail-tekst.proef.ts && npx --yes tsx proeven/prioriteiten-weging.proef.ts && npx --yes tsx proeven/week-datum.proef.ts && npx --yes tsx proeven/chat-bronnen.proef.ts"
+    "proef": "npx --yes tsx proeven/site-controle.proef.ts && npx --yes tsx proeven/mail-tekst.proef.ts && npx --yes tsx proeven/prioriteiten-weging.proef.ts && npx --yes tsx proeven/week-datum.proef.ts && npx --yes tsx proeven/chat-bronnen.proef.ts && npx --yes tsx proeven/routekaart-tekst.proef.ts"
   },
   "dependencies": {
     "@sparticuz/chromium": "^131.0.1",

@@ -1165,7 +1165,14 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "- Dus: het verhaal naar buiten en de agenda naar binnen zijn hetzelfde bestand. Er kan geen " +
           "verkoopversie ontstaan die te mooi is, en geen agenda die niemand meer leest.\n\n" +
           "**Volgorde is een advies, geen wet.** De nummers zijn de aanbevolen volgorde op verhouding tussen " +
-          "opbrengst en inspanning. Wat er echt eerst gebeurt bepaalt de vraag van klanten.",
+          "opbrengst en inspanning. Wat er echt eerst gebeurt bepaalt de vraag van klanten.\n\n" +
+          "**Waar je dit bedient.** Op `/admin/routekaart` staan dezelfde punten als knoppen: per punt de " +
+          "startregel om te kopiëren, wat er loopt, en wat er op elkaar wacht. De volledige beschrijving van een " +
+          "punt (deze teksten) klapt daar sinds 6 augustus 2026 open bij het punt zelf, in plaats van door te " +
+          "linken naar dit document; je hoeft dus niet meer in een lang verhaal te zoeken naar het punt waar je " +
+          "net op klikte. Eén bron, twee vensters. En in de kopbalk van élk beheerscherm zit een menu " +
+          "**Ontwikkeling** met de eerstvolgende taak en zijn startregel, zodat je daar niet eerst voor terug " +
+          "hoeft naar het klantenoverzicht.",
       },
 
       {

@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import type { Punt } from "../../../lib/routekaart";
+import Kopieer from "../Kopieer";
+import OntwikkelMenu from "../OntwikkelMenu";
 
 export type PuntWeergave = Punt & {
   kan: boolean;
@@ -9,6 +11,8 @@ export type PuntWeergave = Punt & {
   botst: string[];
   prompt: string;
   promptTekst: string;
+  /** De volledige beschrijving uit /uitleg, als HTML. null = nog geen tekst. */
+  beschrijving: string | null;
 };
 
 type Golf = { nummer: 1 | 2 | 3; titel: string; regel: string };
@@ -18,28 +22,9 @@ const OMVANG_LABEL: Record<Punt["omvang"], string> = {
   klein: "Klein werk", middel: "Halve dag tot een dag", groot: "Meerdere sessies",
 };
 
-// Kopieerknop met een korte bevestiging. Zonder die bevestiging weet je niet of je
-// geraakt hebt, en dan plak je een lege regel in je nieuwe chat.
-function Kopieer({ tekst, label, primair = false }: { tekst: string; label: string; primair?: boolean }) {
-  const [ok, setOk] = useState(false);
-  return (
-    <button
-      type="button"
-      className={"btn" + (primair ? " btn-primary" : "")}
-      onClick={() => {
-        void navigator.clipboard.writeText(tekst).then(() => {
-          setOk(true);
-          setTimeout(() => setOk(false), 2000);
-        });
-      }}
-    >
-      {ok ? "Gekopieerd ✓" : label}
-    </button>
-  );
-}
-
 function PuntKaart({ p }: { p: PuntWeergave }) {
   const [open, setOpen] = useState(false);
+  const [volledig, setVolledig] = useState(false);
   return (
     <div className={"rk-punt rk-punt-" + p.stand}>
       <div className="rk-punt-kop">
@@ -74,9 +59,26 @@ function PuntKaart({ p }: { p: PuntWeergave }) {
               scherm. Doe die niet gelijktijdig.
             </p>
           )}
-          <p>
-            <a href="/uitleg#agenda" target="_blank" rel="noreferrer">De volledige beschrijving van dit punt</a>
-          </p>
+          {p.beschrijving ? (
+            <>
+              <button type="button" className="rk-meer rk-volledig-knop" onClick={() => setVolledig((v) => !v)}>
+                {volledig ? "Verberg de volledige beschrijving" : "De volledige beschrijving van dit punt"}
+              </button>
+              {volledig && (
+                <div
+                  className="md rk-volledig"
+                  // De tekst komt uit lib/uitleg.ts, onze eigen code, en gaat door
+                  // dezelfde renderer als de uitlegpagina. Geen invoer van buiten.
+                  dangerouslySetInnerHTML={{ __html: p.beschrijving }}
+                />
+              )}
+            </>
+          ) : (
+            <p className="rk-geen-tekst">
+              Voor dit punt staat er nog geen uitgeschreven beschrijving. De chat pakt het op met
+              wat hierboven staat.
+            </p>
+          )}
         </div>
       )}
 
@@ -123,8 +125,9 @@ export default function RoutekaartClient({
           </div>
         </div>
         <div className="header-right">
+          <OntwikkelMenu />
           <a className="logout-btn" href="/uitleg" title="De volledige uitleg van het dashboard">Zo werkt het</a>
-          <a className="logout-btn" href="/admin" style={{ marginLeft: 8 }}>Naar de klanten</a>
+          <a className="logout-btn" href="/admin">Naar de klanten</a>
         </div>
       </div>
 
@@ -181,8 +184,9 @@ export default function RoutekaartClient({
               raken. Onder &ldquo;Meer&rdquo; staat per punt met welk ander punt het botst.
             </li>
             <li>
-              <strong>Je krijgt per chat vier regels terug:</strong> wat er nu werkt, een link om te kijken, wat er nog
-              open is, en of er iets van jou nodig is. Wil je de techniek weten, vraag ernaar; anders komt die niet.
+              <strong>Je krijgt een vast blokje terug:</strong> wat je vroeg, wat er nu werkt, een link om te kijken,
+              en wat jij nog moet doen. De link komt pas als het echt live staat, dus je hoeft niet zelf te wachten.
+              Wil je de techniek weten, vraag ernaar; anders komt die niet.
             </li>
           </ol>
         </details>
@@ -207,8 +211,8 @@ export default function RoutekaartClient({
         })}
 
         <p className="rk-voet">
-          De beschrijvingen, de afwegingen en de lijst met wat we bewust niet doen staan op{" "}
-          <a href="/uitleg#agenda">de uitlegpagina</a>. Dit scherm houdt alleen de stand bij.
+          De volledige beschrijving van een punt staat onder &ldquo;Meer&rdquo; bij het punt zelf. De afwegingen en de
+          lijst met wat we bewust niet doen staan op <a href="/uitleg#agenda">de uitlegpagina</a>.
         </p>
       </div>
     </>
