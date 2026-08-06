@@ -4,10 +4,12 @@ import Link from "next/link";
 import { ADMIN_COOKIE } from "../../../lib/admin-auth";
 import { ADMIN_VIEWAS_COOKIE } from "../../../lib/constants";
 import { getScopeFromCookie } from "../../../lib/admin-scope";
-import { getUsageSummary, getUsageByAction, getUsageByClientAction, type UsageRow, type UsageActionRow, type UsageClientActionRow } from "../../../lib/usage";
+import { getUsageSummary, getUsageByAction, getUsageByClientAction, getClaudeKosten, getAhrefsEigenVerbruik, type UsageRow, type UsageActionRow, type UsageClientActionRow } from "../../../lib/usage";
 import { getAhrefsSubscriptionUsage } from "../../../lib/ahrefs";
 import { tellerStand } from "../../../lib/ahrefs-teller";
 import AdminKop from "../AdminKop";
+import Meters from "./Meters";
+import { claudeStand, budgetUitEnv } from "../../../lib/claude-teller";
 // Leesbare namen voor de acties: één lijst, gedeeld met de Claude-teller in de kopbalk.
 import { ACTION_LABEL } from "../../../lib/usage-labels";
 
@@ -104,6 +106,23 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
   // scherm kunnen nooit een ander verhaal vertellen.
   const ahrefsTeller = tellerStand(ahrefsSub);
 
+  // De drie meters bovenaan staan LOS van de periode-keuze eronder: een tegoed en
+  // een maandrekening lopen per maand, niet per gekozen venster. Anders zou
+  // "Vandaag" aanzetten de indruk wekken dat het tegoed net is bijgevuld.
+  const maandStart = new Date();
+  maandStart.setDate(1); maandStart.setHours(0, 0, 0, 0);
+  const vorigeStart = new Date(maandStart); vorigeStart.setMonth(vorigeStart.getMonth() - 1);
+  const [claudeMaand, claudeVorige, ahrefsEigen] = await Promise.all([
+    getClaudeKosten(maandStart.toISOString()).catch(() => null),
+    getClaudeKosten(vorigeStart.toISOString(), maandStart.toISOString()).catch(() => null),
+    getAhrefsEigenVerbruik(maandStart.toISOString()).catch(() => null),
+  ]);
+  const claudeTeller = claudeStand({
+    maandUsd: claudeMaand?.usd ?? 0,
+    vorigeMaandUsd: claudeVorige ? claudeVorige.usd : null,
+    budgetUsd: budgetUitEnv(process.env.CLAUDE_MAANDBUDGET_USD),
+  });
+
   // Uitsplitsing per klant: welke functies veroorzaken het bedrag. Gegroepeerd op
   // klant-slug (null = "Algemeen"), binnen een klant gesorteerd op kosten aflopend.
   const actionsByClient = new Map<string, UsageClientActionRow[]>();
@@ -170,10 +189,13 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
         </div>
         <Link href="/admin" style={{ color: "#8a6a3e", fontSize: 14, textDecoration: "none" }}>&larr; Terug naar overzicht</Link>
       </div>
+      {/* De drie meters naast elkaar, met de tips. Stond eerst als één alinea
+          uitleg boven dit scherm, maar drie rekeningen die alle drie "Claude" of
+          "tegoed" heten laten zich niet in één alinea uit elkaar houden. */}
+      <Meters ahrefs={ahrefsTeller} claude={claudeTeller} ahrefsEigenMaand={ahrefsEigen ? ahrefsEigen.units : null} />
+
       <p style={{ color: "#5b6472", maxWidth: 900, lineHeight: 1.5, margin: "0 0 22px", fontSize: 13.5 }}>
-        Wat het dashboard verbruikt aan betaalde diensten in de gekozen periode ({periodText}).
-        <strong> Claude</strong> is de AI (chats, documenten, analyses) en kost geld per gebruik;
-        <strong> Ahrefs</strong> levert de zoekwoord-data en verbruikt units binnen het vaste abonnement.
+        Hieronder de uitsplitsing van wat het dashboard zelf verbruikte in de gekozen periode ({periodText}).
       </p>
 
       {loadError ? (

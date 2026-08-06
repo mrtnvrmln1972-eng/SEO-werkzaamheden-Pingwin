@@ -6353,6 +6353,54 @@ a.wb-pad:hover { text-decoration: underline; }
 .ct-knoppen { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-1); }
 .ct-btn { font-size: var(--fs-sm); line-height: var(--lh-sm); padding: var(--s-1) var(--s-3); text-decoration: none; }
 
+/* ── De drie meters op het verbruikscherm ─────────────────────────
+   Ahrefs, Claude via het dashboard en het eigen Claude-abonnement naast elkaar,
+   met per meter twee regels (wat is het, waar komt het vandaan) en de tips
+   eronder. Drie kolommen die op een smal scherm onder elkaar vallen. */
+.vm { display: flex; flex-direction: column; gap: var(--s-5); margin-bottom: var(--s-8); }
+.vm-intro { margin: 0; max-width: 76ch; font-size: var(--fs-base); line-height: var(--lh-base); color: var(--body-text); }
+.vm-rij { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--s-4); align-items: start; }
+.vm-kaart {
+  display: flex; flex-direction: column; gap: var(--s-2);
+  padding: var(--s-4); background: var(--white);
+  border: 1px solid var(--card-border); border-radius: var(--r-lg); box-shadow: var(--shadow-sm);
+}
+.vm-kaart-abo { background: var(--brand-teal-light); border-color: var(--brand-teal); }
+.vm-kaart-tips { background: var(--brand-orange-faint); border-color: var(--brand-orange-soft); }
+.vm-kop {
+  display: flex; align-items: center; gap: var(--s-2);
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase; color: var(--brand-taupe);
+}
+.vm-stip { display: inline-block; width: var(--s-2); height: var(--s-2); border-radius: var(--r-full); flex: none; }
+.vm-stip-leeg { background: var(--brand-teal); }
+.vm-groot {
+  display: flex; align-items: baseline; gap: var(--s-2); flex-wrap: wrap;
+  font-family: 'Montserrat', sans-serif;
+  font-size: var(--fs-lg); line-height: var(--lh-lg); font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.vm-groot-leeg { font-size: var(--fs-base); line-height: var(--lh-base); color: var(--gray); font-weight: 600; }
+.vm-bij { font-size: var(--fs-sm); line-height: var(--lh-sm); font-weight: 400; color: var(--gray); }
+.vm-wat { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--body-text); }
+.vm-regel {
+  display: grid; grid-template-columns: 1fr auto; gap: var(--s-3); align-items: baseline;
+  font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray);
+  padding-top: var(--s-1); border-top: 1px solid var(--card-border);
+}
+.vm-regel > span:last-child { color: var(--dark); font-weight: 700; font-variant-numeric: tabular-nums; }
+.vm-knoppen { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-1); }
+.vm-btn { font-size: var(--fs-sm); line-height: var(--lh-sm); padding: var(--s-1) var(--s-3); text-decoration: none; }
+.vm-voet { font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); }
+.vm-tips { display: flex; flex-direction: column; gap: var(--s-3); }
+.vm-tips-kop {
+  font-family: 'Montserrat', sans-serif;
+  font-size: var(--fs-base); line-height: var(--lh-base); font-weight: 700; color: var(--dark);
+}
+.vm-tip-lijst { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s-3); }
+.vm-tip { display: flex; flex-direction: column; gap: var(--s-1); }
+.vm-tip-kop { font-size: var(--fs-sm); line-height: var(--lh-sm); font-weight: 700; color: var(--dark); }
+.vm-tip-tekst { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--body-text); }
+
 /* Bulk-onboarding: de kop en de live-regel. Ook per ongeluk verdwenen bij een
    eerdere botsing in dit bestand; teruggehaald uit b895591 op 6 augustus 2026.
    De stip is 10 bij 10 en valt daarmee tussen --s-2 en --s-3 in; overgenomen

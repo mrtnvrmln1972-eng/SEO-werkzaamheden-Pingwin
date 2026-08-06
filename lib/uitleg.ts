@@ -1190,7 +1190,19 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "(diep)' in plaats van een technische code.\n\n" +
           "Waarom dat er is: bij een dashboard dat AI en betaalde API's gebruikt is de marge per klant een " +
           "gevolg van hoe vaak welke knop wordt ingedrukt. Zonder deze meting weet je dat pas als de rekening " +
-          "komt.",
+          "komt.\n\n" +
+          "**Bovenaan staan de drie meters naast elkaar**, want ze heten alle drie ongeveer hetzelfde en tellen " +
+          "niet bij elkaar op:\n\n" +
+          "- **Ahrefs**: een tegoed aan units dat elke maand op nul gaat, binnen het vaste abonnement. Raakt het " +
+          "op, dan valt de zoekwoorddata stil.\n" +
+          "- **Claude via het dashboard**: alles wat het dashboard zelf denkt en schrijft, op een eigen sleutel " +
+          "met een eigen rekening. Dit loopt per gebruik en wordt achteraf betaald.\n" +
+          "- **Het eigen Claude-abonnement**: het chatten en het bouwen in Claude Code. Dat is een derde " +
+          "rekening, met vooruit gekochte credits, en die staat hier bewust zonder cijfer: op een persoonlijk " +
+          "abonnement is dat saldo niet op te halen, dus staat er een knop naar de plek waar het wél staat.\n\n" +
+          "Onder de meters staan de tips per meter: welke knop duur is, waarom een lang gesprek meer kost dan " +
+          "een kort, en waar afremmen wél en niet helpt. Die staan in het scherm zelf en niet in een document " +
+          "ernaast, zodat ze meegroeien met wat er echt in het dashboard zit.",
       },
       {
         titel: "De Ahrefs-teller in de kopbalk",
