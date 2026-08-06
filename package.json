@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "proef": "npx --yes tsx proeven/site-controle.proef.ts"
+    "proef": "npx --yes tsx proeven/site-controle.proef.ts",
+    "proef:bronnen": "npx --yes tsx proeven/chat-bronnen.proef.ts"
   },
   "dependencies": {
     "@sparticuz/chromium": "^131.0.1",

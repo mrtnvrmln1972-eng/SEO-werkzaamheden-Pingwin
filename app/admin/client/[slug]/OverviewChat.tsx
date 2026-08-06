@@ -9,8 +9,9 @@ import { linkifyHtml as linkify } from "../../../../lib/linkify";
 import { vraagHtml } from "../../../../lib/vraag-opmaak";
 import { striptVulzinnen } from "../../../../lib/vulzinnen";
 import { eersteKop } from "../../../../lib/chat-vouw";
+import Bronnenstrip, { type Bron } from "./Bronnenstrip";
 
-type Msg = { role: "user" | "assistant"; content: string; actions?: Action[]; soort?: "conclusie" | "oogst"; oogst?: Oogst };
+type Msg = { role: "user" | "assistant"; content: string; actions?: Action[]; soort?: "conclusie" | "oogst"; oogst?: Oogst; bronnen?: Bron[] };
 type Topic = { thread: string; count: number; title: string; summary: string; done: boolean };
 
 // Slugs/URL's klikbaar maken: gedeelde bron in lib/linkify.ts (zelfde gedrag als
@@ -294,7 +295,7 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
       const res = await fetch("/api/admin/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread: t, messages: next }) });
       const data = await res.json();
       if (data.ok) {
-        setMessages((m) => [...m, { role: "assistant", content: data.answer, ...(Array.isArray(data.actions) && data.actions.length ? { actions: data.actions } : {}) }]);
+        setMessages((m) => [...m, { role: "assistant", content: data.answer, ...(Array.isArray(data.actions) && data.actions.length ? { actions: data.actions } : {}), ...(Array.isArray(data.bronnen) && data.bronnen.length ? { bronnen: data.bronnen } : {}) }]);
         const newTitle = typeof data.title === "string" && data.title.trim() ? data.title.trim() : "";
         const newSum = typeof data.summary === "string" && data.summary.trim() ? data.summary.trim() : "";
         setTopics((ts) => ts.map((x) => x.thread === t ? { ...x, count: next.length + 1, ...(newTitle ? { title: newTitle } : {}), ...(newSum ? { summary: newSum } : {}) } : x));
@@ -430,6 +431,7 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
                               <div className="ovc-bubble ovc-bubble-vraag"
                                 dangerouslySetInnerHTML={{ __html: vraagHtml(m.content || "") }} />
                             )}
+                        {m.role === "assistant" && <Bronnenstrip bronnen={m.bronnen} domain={domain} />}
                         {m.role === "assistant" && m.actions && m.actions.length > 0 && (
                           <div className="ovc-actions">
                             {m.actions.map((a) => (

@@ -4274,3 +4274,30 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .dev-doc-upload { display: flex; gap: var(--s-2); align-items: center; flex-wrap: wrap; margin-top: var(--s-3); }
 .dev-doc-upload .muted { font-size: var(--fs-xs); line-height: var(--lh-xs); }
 .dev-doc-hint { margin-top: var(--s-2); font-size: var(--fs-xs); line-height: var(--lh-xs); }
+
+/* ── Bronnenstrip: wat de chat heeft opgezocht ─────────────────────────────
+   Ingeklapt onder een chatantwoord. Rustig en klein: het is bewijsmateriaal
+   dat je erbij kunt pakken, geen deel van het antwoord zelf. */
+.bronnen { margin-top: var(--s-2); }
+.bronnen-kop {
+  cursor: pointer; list-style: none;
+  display: inline-flex; align-items: center; gap: var(--s-1);
+  font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray);
+  padding: var(--s-1) var(--s-2); border-radius: var(--r-sm);
+}
+.bronnen-kop::-webkit-details-marker { display: none; }
+.bronnen-kop::before { content: "▸"; display: inline-block; transition: transform .15s ease; }
+.bronnen[open] .bronnen-kop::before { transform: rotate(90deg); }
+.bronnen-kop:hover { color: var(--accent); background: var(--gray-50, #f6f6f6); }
+.bronnen-lijst {
+  margin: var(--s-1) 0 0; padding: var(--s-2) var(--s-3);
+  list-style: none; border-left: 2px solid var(--border); border-radius: 0 var(--r-sm) var(--r-sm) 0;
+}
+.bronnen-regel {
+  display: flex; gap: var(--s-2); flex-wrap: wrap;
+  font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray);
+  padding: var(--s-1) 0;
+}
+.bronnen-naam { font-weight: 600; color: var(--muted); flex: 0 0 auto; }
+.bronnen-detail { word-break: break-word; min-width: 0; }
+.bronnen-detail a { color: var(--accent); }

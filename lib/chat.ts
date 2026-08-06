@@ -18,6 +18,7 @@ import { dossierIndexText, searchDossier, getDossierItem, addDossierItem } from 
 import { listLeadDocs, maakLeadDocument, SJABLONEN } from "./lead-doc";
 import { getSiteAuthority } from "./ahrefs";
 import { controleerAntwoord, herstelOpdracht } from "./antwoord-controle";
+import { bronVan, ontdubbel, type Bron } from "./chat-bronnen";
 import { overlappendePaginas, overlapAlsTekst, zwakkePaginas } from "./concurrenten";
 import { getPageInternalLinks, runPageInternalLinks } from "./page-internal-links";
 import { getCannibalAnalysis, resultDatum, startCannibalRun, runCannibalRedirect } from "./cannibal-redirect";
@@ -509,6 +510,8 @@ export type OogstResultaat = { taken: OogstTaak[]; geenTaak: string[]; verwerkt?
 export type ChatMessage = {
   role: "user" | "assistant"; content: string; image?: string; images?: string[];
   actions?: ProposedAction[]; soort?: "conclusie" | "oogst"; oogst?: OogstResultaat;
+  // Wat de chat voor dít antwoord heeft opgezocht (ingeklapt onder het antwoord).
+  bronnen?: Bron[];
 };
 
 const cleanThread = (t?: string) => (t || "algemeen").trim().slice(0, 80) || "algemeen";
@@ -1114,7 +1117,7 @@ export async function zetOogstWeg(slug: string, thread: string, index: number, t
   return { ok: result.ok, added, merged, error: result.ok ? undefined : result.message };
 }
 
-export async function answerChat(slug: string, messages: ChatMessage[], thread = "algemeen"): Promise<{ ok: boolean; answer?: string; error?: string; actions?: ProposedAction[]; title?: string; summary?: string }> {
+export async function answerChat(slug: string, messages: ChatMessage[], thread = "algemeen"): Promise<{ ok: boolean; answer?: string; error?: string; actions?: ProposedAction[]; bronnen?: Bron[]; title?: string; summary?: string }> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return { ok: false, error: "Geen ANTHROPIC_API_KEY ingesteld." };
   const client = await getClientBySlug(slug);
@@ -1296,15 +1299,32 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
     // de context het enige bewijsmateriaal; de feitencontrole hieronder toetst het
     // antwoord daartegen.
     const toolUitvoer: string[] = [];
+    // Waar het antwoord op steunt, in gewone taal. Wordt onder het antwoord getoond
+    // (ingeklapt) zodat te zien is of er echt gemeten is, en waar een cijfer vandaan komt.
+    const bronnen: Bron[] = [];
     const run: ToolRunner = async (naam, invoer) => {
       const uit = await rawRun(naam, invoer);
       toolUitvoer.push(`[${naam}] ${uit}`);
+      try {
+        const b = bronVan(naam, invoer as Record<string, unknown>, client.domain || undefined);
+        if (b) bronnen.push(b);
+      } catch { /* de bronnenstrip mag een antwoord nooit blokkeren */ }
       return uit;
     };
     // De chat geeft gewoon zijn rijke agentische antwoord (dat Maarten goed vindt). De
     // taak-kaarten worden NIET meer hier auto-gegenereerd (te fragiel); dat doet de
     // deterministische knop "Zet de taken in de weekplanning" (weekplanFromAnswer) op verzoek.
-    let answer = await callClaudeAgentic(system, apiMessages as { role: "user" | "assistant"; content: string }[], tools, run, isOverview ? 12 : isLead ? 10 : 6, isOverview ? 3200 : isLead ? 3000 : 2000, { slug, action: isOverview ? "overzicht-chat" : isLead ? "lead-chat" : isAds ? "ads-chat" : "projectchat" });
+    // Ruimte om de vraag áf te maken. Het oude plafond (12 rondes voor de bird's eye,
+    // 6 voor de projectchat) was de reden dat goede antwoorden halverwege eindigden met
+    // "zal ik dat nog nakijken?": dat was niet twijfel, dat was "ik zat vol". Een echte
+    // strategievraag over zes landingspagina's kost al gauw dertig stappen.
+    //
+    // De klok eronder is de rem: de route mag 300 seconden duren, dus rondt de agent
+    // vanaf 190 seconden af met wat hij heeft in plaats van te worden afgekapt. Daarna
+    // is er nog tijd over voor de afrondings- en feitencontrole-rondes hieronder.
+    const startTijd = Date.now();
+    const rondes = isOverview ? 26 : isLead ? 18 : 14;
+    let answer = await callClaudeAgentic(system, apiMessages as { role: "user" | "assistant"; content: string }[], tools, run, rondes, isOverview ? 3200 : isLead ? 3000 : 2000, { slug, action: isOverview ? "overzicht-chat" : isLead ? "lead-chat" : isAds ? "ads-chat" : "projectchat" }, startTijd + 190_000);
 
     // Vangnet: eindigt het antwoord als alleen een aankondiging ("Nu heb ik alles…",
     // "Hier is de volledige analyse…") zonder de echte inhoud, forceer dan één
@@ -1319,7 +1339,7 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
         const vervolg = await callClaudeAgentic(
           system,
           [...(apiMessages as { role: "user" | "assistant"; content: string }[]), { role: "assistant", content: answer || "(aankondiging zonder inhoud)" }, { role: "user", content: "Je vorige beurt bevatte alleen een aankondiging zonder de inhoud. Geef NU in één keer de volledige terugkoppeling volgens de OPMAAK-regels, beginnend met het eerste kopje. Geen aankondigings- of vulzinnen." }],
-          tools, run, 6, 3200, { slug, action: "overzicht-chat-afronding" },
+          tools, run, 6, 3200, { slug, action: "overzicht-chat-afronding" }, startTijd + 240_000,
         );
         if (vervolg && vervolg.trim().length > (answer || "").trim().length) answer = vervolg;
       } catch { /* dan het oorspronkelijke antwoord */ }
@@ -1357,7 +1377,7 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
             [...(apiMessages as { role: "user" | "assistant"; content: string }[]),
              { role: "assistant", content: answer },
              { role: "user", content: herstelOpdracht(controle) }],
-            tools, run, 6, 3200, { slug, action: "overzicht-chat-feitencontrole" },
+            tools, run, 6, 3200, { slug, action: "overzicht-chat-feitencontrole" }, startTijd + 265_000,
           );
           if (hersteld && hersteld.trim()) {
             const naControle = controleerAntwoord(hersteld, context + "\n" + toolUitvoer.join("\n"), bekendePaden);
@@ -1379,11 +1399,14 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
     }
 
     const finalAnswer = answer || "(geen antwoord)";
-    const assistantMsg: ChatMessage = collected.length ? { role: "assistant", content: finalAnswer, actions: collected } : { role: "assistant", content: finalAnswer };
+    const gebruikteBronnen = ontdubbel(bronnen);
+    const assistantMsg: ChatMessage = { role: "assistant", content: finalAnswer };
+    if (collected.length) assistantMsg.actions = collected;
+    if (gebruikteBronnen.length) assistantMsg.bronnen = gebruikteBronnen;
     await saveChatHistory(slug, thread, [...messages, assistantMsg]);
     let meta: { title?: string; summary?: string } = {};
     if (isOverview) { try { meta = await autoTopicMeta(slug, thread, [...messages, assistantMsg]); } catch { /* meta optioneel */ } }
-    return { ok: true, answer: finalAnswer, actions: collected.length ? collected : undefined, title: meta.title, summary: meta.summary };
+    return { ok: true, answer: finalAnswer, actions: collected.length ? collected : undefined, bronnen: gebruikteBronnen.length ? gebruikteBronnen : undefined, title: meta.title, summary: meta.summary };
   } catch (err) {
     return { ok: false, error: "AI niet bereikbaar: " + (err as Error).message };
   }

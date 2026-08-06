@@ -5,6 +5,7 @@ import { callClaudeAgentic, anthropicConfigured, type ChatMsg } from "../../../.
 import { buildSystemPrompt, parseProposal, extractProposal } from "../../../../lib/page-chat-ground";
 import { CHAT_TOOLS, runChatTool } from "../../../../lib/chat-tools";
 import { korteGeschiedenis } from "../../../../lib/chat-inkorten";
+import { bronVan, ontdubbel, type Bron } from "../../../../lib/chat-bronnen";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -32,11 +33,20 @@ export async function POST(req: NextRequest) {
     // de AI zijn eigen rapporten niet elke beurt opnieuw uitschrijft.
     const volledig = body.volledig === true;
     const historie = volledig ? messages.slice(-12) : korteGeschiedenis(messages);
-    const raw = await callClaudeAgentic(system, historie, CHAT_TOOLS, runChatTool, 9, 4096, { slug, action: "page_chat" });
+    // Wat de chat opzocht, meegeven zodat het onder het antwoord te zien is.
+    const bronnen: Bron[] = [];
+    const run = async (naam: string, invoer: Record<string, unknown>) => {
+      const uit = await runChatTool(naam, invoer);
+      try { const b = bronVan(naam, invoer); if (b) bronnen.push(b); } catch { /* nooit blokkeren */ }
+      return uit;
+    };
+    // 9 rondes was te krap voor een pagina met veel zoekwoorden; de klok zorgt dat een
+    // lang onderzoek netjes afrondt binnen het venster van 300 seconden.
+    const raw = await callClaudeAgentic(system, historie, CHAT_TOOLS, run, 20, 4096, { slug, action: "page_chat" }, Date.now() + 210_000);
     const { reply } = parseProposal(raw);
     // Aparte extractie voor een altijd-complete accepteer-lijst (nooit afgekapt).
     const proposal = await extractProposal(reply).catch(() => null);
-    return NextResponse.json({ ok: true, reply, proposal });
+    return NextResponse.json({ ok: true, reply, proposal, bronnen: ontdubbel(bronnen) });
   } catch (e) {
     return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 502 });
   }
