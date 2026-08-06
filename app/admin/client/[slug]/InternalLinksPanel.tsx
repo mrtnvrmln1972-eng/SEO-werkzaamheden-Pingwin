@@ -4,11 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import { urlKey } from "../../../../lib/url-key";
 import { mdToHtml } from "../../../../lib/markdown";
 
-type SuggestedLink = { bronUrl: string; relevantie?: number; autoriteit?: string; verkeer?: number; linkbudget?: string; score?: string; passage?: string; nieuweZin?: boolean; ankertekst?: string; ankertype?: string; positie?: string; verwachteImpact?: string };
+type SuggestedLink = { bronUrl: string; relevantie?: number; autoriteit?: string; verkeer?: number; linkbudget?: string; score?: string; passage?: string; nieuweZin?: boolean; ankertekst?: string; ankertype?: string; positie?: string; verwachteImpact?: string; urlRating?: number | null; urGemeten?: boolean; urDatum?: string };
 type AnchorItem = { anker: string; type?: string; aantal?: number; status?: string };
 type TargetPage = { url: string; laag?: string; cluster?: string; primairZoekwoord?: string; huidigePositie?: number; doel?: string; baselineInterneLinks?: number; score?: string; voorgesteldeLinks: SuggestedLink[]; ankerprofiel?: AnchorItem[]; gaten?: string[]; waarschuwingen?: string[] };
 type Structure = { wezen?: string[]; pillarGaten?: string[]; clusterNotities?: string };
-type Datakwaliteit = { crawl?: boolean; gsc?: boolean; ahrefsUrlRating?: boolean; contentMapping?: boolean; opmerking?: string };
+type Datakwaliteit = { crawl?: boolean; gsc?: boolean; ahrefsUrlRating?: boolean; contentMapping?: boolean; opmerking?: string; urDatum?: string; urGemeten?: number };
 type Result = { samenvatting: string; datakwaliteit?: Datakwaliteit; doelpaginas: TargetPage[]; structuur?: Structure; generatedAt: string | null };
 type Suggestion = { url: string; positie: number; primairZoekwoord: string; impressies: number };
 type State = { status: string; result: Result | null; targets: string[]; error: string; updatedAt: string | null };
@@ -20,6 +20,19 @@ function scoreClass(s?: string): string {
   return "laag";
 }
 function num(n?: number): string { return n != null && Number.isFinite(n) ? String(Math.round(n * 10) / 10) : "—"; }
+function dag(iso?: string): string { return iso ? new Date(iso).toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" }) : ""; }
+
+// De autoriteit van een bronpagina, met de datum en of het gemeten of benaderd is.
+// Het cijfer komt uit de meting van het dashboard, niet uit de tekst van het model.
+function Autoriteit({ l }: { l: SuggestedLink }) {
+  if (l.urlRating == null) return l.autoriteit ? <span className="muted il-ur">autoriteit {l.autoriteit}</span> : null;
+  return (
+    <span className={"il-ur " + (l.urGemeten ? "gemeten" : "benaderd")}>
+      autoriteit {String(l.urlRating).replace(".", ",")}
+      <span className="il-ur-bron">{l.urGemeten ? `gemeten ${dag(l.urDatum)}` : "benaderd (Ahrefs kent deze pagina niet)"}</span>
+    </span>
+  );
+}
 
 // Vast herkenningspunt per doelpagina, zodat een ander scherm hierheen kan scrollen.
 const ilBlokId = (url: string) => "ilrow-" + (url || "").replace(/[^a-zA-Z0-9]/g, "-");
@@ -178,7 +191,9 @@ export default function InternalLinksPanel({ slug, openTarget }: {
               <div className="cannibal-dk">
                 <span className={"cannibal-dk-pill " + (dk.crawl ? "on" : "off")}>Crawl/linkgraaf {dk.crawl ? "✓" : "✗"}</span>
                 <span className={"cannibal-dk-pill " + (dk.gsc ? "on" : "off")}>Search Console {dk.gsc ? "✓" : "✗"}</span>
-                <span className={"cannibal-dk-pill " + (dk.ahrefsUrlRating ? "on" : "off")}>URL Rating {dk.ahrefsUrlRating ? "✓" : "✗"}</span>
+                <span className={"cannibal-dk-pill " + (dk.ahrefsUrlRating ? "on" : "off")}>
+                  Autoriteit per pagina {dk.ahrefsUrlRating ? `✓ ${dk.urGemeten ?? ""} gemeten${dk.urDatum ? ` op ${dag(dk.urDatum)}` : ""}` : "✗"}
+                </span>
                 {dk.opmerking && <div className="muted" style={{ fontSize: 12, marginTop: 6, width: "100%" }}>{dk.opmerking}</div>}
               </div>
             )}
@@ -208,7 +223,11 @@ export default function InternalLinksPanel({ slug, openTarget }: {
                       <tbody>
                         {tp.voorgesteldeLinks.map((l, j) => (
                           <tr key={j}>
-                            <td><a href={l.bronUrl} target="_blank" rel="noreferrer">{l.bronUrl}</a>{l.relevantie != null ? <span className="muted" style={{ display: "block", fontSize: 11 }}>relevantie {l.relevantie}</span> : null}</td>
+                            <td>
+                              <a href={l.bronUrl} target="_blank" rel="noreferrer">{l.bronUrl}</a>
+                              <Autoriteit l={l} />
+                              {l.relevantie != null ? <span className="muted" style={{ display: "block", fontSize: 11 }}>relevantie {l.relevantie}</span> : null}
+                            </td>
                             <td><span className={"cannibal-score " + scoreClass(l.score)}>{l.score || "—"}</span></td>
                             <td><strong>{l.ankertekst || "—"}</strong>{l.ankertype ? <span className="il-anktype">{l.ankertype}</span> : null}</td>
                             <td className="muted" style={{ fontSize: 12 }}>{l.positie || "—"}{l.nieuweZin ? " · nieuwe zin" : ""}</td>

@@ -464,7 +464,7 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
         tekst:
           "Deze motor bouwt de interne linkgraaf uit een echte crawl van de belangrijkste pagina's: per pagina de " +
           "uitgaande interne links met hun ankertekst. Daar komt de Search Console-data bij (positie en klikken " +
-          "per pagina) en de zoekvolumes uit Ahrefs.\n\n" +
+          "per pagina), de zoekvolumes uit Ahrefs en de autoriteit van elke losse pagina.\n\n" +
           "Wat er dan berekend wordt:\n\n" +
           "- **Welke bronpagina's het beste naar een doelpagina linken**, gewogen op hoeveel waarde die " +
           "bronpagina kan doorgeven én hoe inhoudelijk relevant hij is. Beide, niet één van de twee.\n" +
@@ -473,8 +473,17 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "is waar interne links het meeste verschil maken.\n" +
           "- **Bewaking van het ankerprofiel**, zodat je niet twintig keer dezelfde ankertekst plaatst en de " +
           "pagina over-optimaliseert.\n\n" +
-          "Wat nog niet is aangesloten (de autoriteitswaarde per losse pagina uit Ahrefs) wordt eerlijk als " +
-          "ontbrekend gemarkeerd in de datakwaliteit, in plaats van stil geschat.",
+          "**Autoriteit per pagina is gemeten, niet geschat** (6 augustus 2026). Van elke pagina wordt bij Ahrefs " +
+          "de kracht van het eigen linkprofiel opgehaald: een cijfer van 0 tot 100 waarin zowel links van buiten " +
+          "als interne links meetellen. Die schaal is logaritmisch, dus 8 is fors sterker dan 5, niet anderhalf " +
+          "keer. Dat cijfer bepaalt nu voor de helft welke bronpagina's bovenaan het advies staan; de rest is het " +
+          "aantal interne links dat er al binnenkomt en het verkeer van die pagina.\n\n" +
+          "Twee dingen houden dat eerlijk. **Bij elke voorgestelde bronpagina staat het cijfer met de datum " +
+          "erbij**, en of het gemeten is of benaderd: kent Ahrefs een pagina niet, dan krijgt hij de middenwaarde " +
+          "van de site en staat dat er zichtbaar bij, in plaats van dat het als harde meting leest. En **het " +
+          "cijfer op het scherm komt uit de meting zelf**, niet uit de tekst die de analyse erover schreef. " +
+          "Ophalen gebeurt gebundeld (honderd pagina's per aanvraag) en blijft een maand geldig, dus een tweede " +
+          "analyse kost geen nieuwe Ahrefs-credits.",
       },
       {
         titel: "Structured data",
@@ -1129,7 +1138,7 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
     intern: true,
     intro:
       "Dit hoofdstuk is alleen zichtbaar met een beheerderssessie, en het is tegelijk de ontwikkelagenda. " +
-      "Dertien punten, genummerd R1 tot R13, in drie golven plus een lijst met wat we bewust níet doen. Elk " +
+      "Vijftien punten, genummerd R1 tot R15, in drie golven plus een lijst met wat we bewust níet doen. Elk " +
       "punt staat er met wat er nu mis is, wat het oplevert, hoe het gebouwd zou worden en waaraan je ziet dat " +
       "het af is. Zo kan één punt in één aparte werksessie opgepakt worden zonder dat het opnieuw bedacht hoeft " +
       "te worden.",
@@ -1209,35 +1218,21 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "leunen. Er hoeft niets nieuws bedacht te worden, alleen aangesloten.\n\n" +
           "| Punt | Wat het is | Verhouding |\n" +
           "|---|---|---|\n" +
-          "| **R1** | Autoriteit per pagina aansluiten | Klein werk, groot effect |\n" +
+          "| **R1** | Autoriteit per pagina aansluiten | ✅ af op 6 augustus 2026 |\n" +
           "| **R2** | Prioriteren op conversies in plaats van klikken | Middel werk, grootst effect |\n" +
           "| **R3** | AI-vindbaarheid op onderwerpniveau | Middel werk, groot verkoopeffect |\n" +
           "| **R4** | Verbruik compleet: de Ahrefs-credits erbij | Klein werk, nodig voor licentie |",
         sub: [
           {
-            titel: "R1. Autoriteit per pagina aansluiten",
+            titel: "R1. Autoriteit per pagina aansluiten — af op 6 augustus 2026",
             tekst:
-              "**Wat er nu mis is.** De interne-links-motor weegt bronpagina's op hoeveel waarde ze kunnen " +
-              "doorgeven, maar de echte autoriteitswaarde per losse pagina is niet aangesloten. Dat wordt nu " +
-              "eerlijk als ontbrekend gemarkeerd in de datakwaliteit, en de weging leunt op een benadering uit de " +
-              "eigen linkgraaf en de Search Console-cijfers.\n\n" +
-              "**Wat het oplevert.** Interne links zijn nu al een van de sterkste onderdelen, en dit is het enige " +
-              "gat erin. Met echte waarde per pagina wordt het advies \"link vanaf deze vijf pagina's\" hard in " +
-              "plaats van aannemelijk. Dat is ook precies het advies dat het snelst resultaat geeft bij pagina's " +
-              "die net buiten de top staan.\n\n" +
-              "**Hoe we het zouden bouwen.**\n\n" +
-              "1. De autoriteitswaarde per URL ophalen bij Ahrefs voor de pagina's die al in de linkgraaf zitten, " +
-              "in gebundelde verzoeken en met dezelfde cachetermijn als de andere Ahrefs-data (credits sparen).\n" +
-              "2. De waarde opslaan bij de pagina, zodat de motor en de prioriteitenscan uit dezelfde bron lezen.\n" +
-              "3. De weging in de motor omzetten van benadering naar echte waarde, met de benadering als terugval " +
-              "voor pagina's waar Ahrefs niets weet.\n" +
-              "4. De datakwaliteit-melding aanpassen: van \"ontbreekt\" naar \"aangesloten, op deze datum " +
-              "opgehaald\".\n\n" +
-              "**Waaraan je ziet dat het af is.** Bij een doelpagina staan de voorgestelde bronpagina's in een " +
-              "andere volgorde dan vóór de wijziging, en bij elke bronpagina staat de waarde met de datum. De " +
-              "datakwaliteit meldt geen ontbrekende autoriteit meer.\n\n" +
-              "**Wat het raakt.** De interne-links-tab, de prioriteitenscan (die deze lens uitvraagt) en het " +
-              "verbruiksscherm (extra Ahrefs-verzoeken).",
+              "**Klaar.** De interne-links-motor weegt bronpagina's niet langer op een benadering uit de eigen " +
+              "linkgraaf, maar op de gemeten autoriteit van elke losse pagina uit Ahrefs. Bij elke voorgestelde " +
+              "bronpagina staat het cijfer met de datum, en of het gemeten is of benaderd.\n\n" +
+              "De volledige beschrijving staat nu in het hoofdstuk **Interne links: autoriteit gericht " +
+              "doorsturen**, want het is werkelijkheid en geen plan meer. Wat hier blijft staan is waarom het " +
+              "erop stond: dit was het enige gat in een motor die verder al af was, en juist het advies \"link " +
+              "vanaf deze vijf pagina's\" geeft het snelst resultaat bij pagina's die net buiten de top staan.",
           },
           {
             titel: "R2. Prioriteren op conversies in plaats van op klikken",

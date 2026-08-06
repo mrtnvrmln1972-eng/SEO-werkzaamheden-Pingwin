@@ -1621,6 +1621,13 @@ button.ck-collapse-head {
 .il-laag.pillar { background: var(--brand-blue-light); color: var(--brand-blue); }
 .il-laag.dochter { background: #f0f1f3; color: #6b7280; }
 .il-anktype { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; color: var(--brand-blue); background: var(--brand-blue-light); padding: 1px 6px; border-radius: 8px; margin-left: 6px; }
+/* Autoriteit per bronpagina (URL Rating), interne-links-tab. Gemeten en benaderd
+   zien er bewust anders uit: een geschat cijfer mag nooit hard lezen. */
+.il-ur { display: block; font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700; margin-top: var(--s-1); }
+.il-ur.gemeten { color: var(--orange-dark); }
+.il-ur.benaderd { color: var(--muted); font-weight: 600; }
+.il-ur-bron { display: block; font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 400; color: var(--muted); }
+
 .il-anchors { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
 .il-anchors-label { font-size: 12px; font-weight: 700; color: var(--dark); }
 .il-anchor-chip { font-size: 11px; padding: 2px 8px; border-radius: 8px; }

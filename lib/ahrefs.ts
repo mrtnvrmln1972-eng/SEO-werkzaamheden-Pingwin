@@ -74,15 +74,27 @@ async function tokenForSlug(slug: string | undefined): Promise<string | undefine
   return process.env[envName] || undefined;
 }
 
-async function ahrefsFetch(path: string, params: Record<string, string>): Promise<unknown> {
+// De meeste endpoints zijn GET met query-parameters. Een enkele (batch-analysis)
+// is POST met een JSON-body, omdat je er honderd doelen tegelijk in stopt; geef
+// dan `body` mee en de parameters gaan de body in in plaats van de URL.
+async function ahrefsFetch(path: string, params: Record<string, string>, body?: unknown): Promise<unknown> {
   const token = (await tokenForSlug(ahrefsAls.getStore()?.slug)) || process.env.AHREFS_API_TOKEN;
   if (!token) throw new Error("AHREFS_API_TOKEN ontbreekt.");
   const url = new URL(BASE + path);
-  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
+  if (!body) for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), 25000);
   try {
-    const res = await fetch(url.toString(), { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" }, signal: ctl.signal });
+    const res = await fetch(url.toString(), {
+      method: body ? "POST" : "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+        ...(body ? { "Content-Type": "application/json" } : {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
+      signal: ctl.signal,
+    });
     if (!res.ok) {
       const body = await res.text().catch(() => "");
       throw new Error(`Ahrefs ${path}: ${res.status} ${body.slice(0, 300)}`);
@@ -418,6 +430,75 @@ export async function getSiteAuthority(target: string): Promise<SiteAuthority> {
   } catch { /* backlinks optioneel */ }
   if (out.domainRating !== null || out.refDomains !== null) await cacheSet("authority", t, "-", out);
   return out;
+}
+
+// ── Autoriteit per PAGINA (URL Rating) ──
+// De interne-link-motor moet weten hoeveel waarde een bronpagina kán doorgeven.
+// Dat is URL Rating: de kracht van het linkprofiel van díe ene pagina, op een
+// logaritmische schaal van 0 tot 100 (interne links tellen mee, niet alleen
+// externe). Tot 6 augustus 2026 leunde de motor op een benadering uit de eigen
+// linkgraaf; dit is de echte waarde.
+//
+// Credit-bewust, en dat is hier geen bijzaak: één call dekt 100 URL's (het
+// maximum van het batch-endpoint) en kost 2 units per regel met een bodem van
+// 50 per call. Daarom bundelen we, en cachen we 30 dagen per URL, net als de
+// andere Ahrefs-data. Een tweede analyse binnen die maand kost dus niets.
+export type UrlAutoriteit = { url: string; urlRating: number | null; opgehaald: string };
+
+// Sleutel voor cache én terugkoppeling: host + pad, zonder protocol en zonder
+// www, want Ahrefs geeft de URL zelf ook zo terug. De slash aan het eind blijft
+// staan: /tuinaanleg/ en /tuinaanleg zijn voor Ahrefs twee URL's.
+function urKey(url: string): string {
+  return (url || "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "");
+}
+
+export async function getUrlRatings(urls: string[], maxAgeDays = 30): Promise<Map<string, UrlAutoriteit>> {
+  const out = new Map<string, UrlAutoriteit>();
+  const schoon = Array.from(new Set((urls || []).map((u) => (u || "").trim()).filter(Boolean)));
+  if (!schoon.length || !ahrefsConfigured()) return out;
+
+  const missers: string[] = [];
+  for (const u of schoon) {
+    const k = urKey(u);
+    if (out.has(k)) continue;
+    const cached = await cacheGet<UrlAutoriteit>("ur", k, "-", maxAgeDays).catch(() => null);
+    if (cached) out.set(k, cached); else missers.push(u);
+  }
+
+  for (let i = 0; i < missers.length; i += 100) {
+    const slice = missers.slice(i, i + 100);
+    let rijen: { url?: string; url_rating?: number }[] = [];
+    try {
+      const data = (await ahrefsFetch("/batch-analysis/batch-analysis", {}, {
+        select: ["url", "url_rating"],
+        targets: slice.map((u) => ({ url: u, mode: "exact", protocol: "both" })),
+      })) as { targets?: { url?: string; url_rating?: number }[] };
+      rijen = data.targets || [];
+    } catch {
+      // Autoriteit is een verrijking, geen voorwaarde: valt Ahrefs weg, dan
+      // draait de analyse door op de benadering (en zegt dat ook).
+      return out;
+    }
+    const perUrl = new Map(rijen.map((r) => [urKey(String(r.url || "")), r]));
+    const nu = new Date().toISOString();
+    for (const u of slice) {
+      const k = urKey(u);
+      const r = perUrl.get(k);
+      const rij: UrlAutoriteit = {
+        url: k,
+        urlRating: r && Number.isFinite(Number(r.url_rating)) ? Number(r.url_rating) : null,
+        opgehaald: nu,
+      };
+      await cacheSet("ur", k, "-", rij).catch(() => { /* cache is aanvulling */ });
+      out.set(k, rij);
+    }
+  }
+  return out;
+}
+
+/** Zoek de autoriteit van één URL op in het resultaat van getUrlRatings. */
+export function autoriteitVan(map: Map<string, UrlAutoriteit>, url: string): UrlAutoriteit | null {
+  return map.get(urKey(url)) || null;
 }
 
 // ── AI-vindbaarheid: citaties van het domein in AI-antwoorden (Ahrefs) ──
