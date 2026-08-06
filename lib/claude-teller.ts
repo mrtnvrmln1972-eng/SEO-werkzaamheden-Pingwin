@@ -36,8 +36,15 @@ export type ClaudeStand = {
   prognose: number | null;
   /** Hele dagen tot de eerste van de volgende maand. */
   dagenTotReset: number;
-  /** Eén zin in gewone taal: wat betekent dit. Nooit leeg. */
+  /** Eén zin in gewone taal: wat betekent dit. Nooit leeg. Voor de tooltip. */
   oordeel: string;
+  /**
+   * Dezelfde boodschap, opgeknipt voor een smal paneel: één korte kernregel plus
+   * losse bijzinnen. Achter elkaar in een uitklappaneel wordt een volzin een
+   * tekstmuur; dit is dezelfde afspraak als bij de Ahrefs-teller ernaast.
+   */
+  kern: string;
+  bij: string[];
 };
 
 /** Dollars leesbaar: kleine bedragen met centen, grote afgerond. */
@@ -95,6 +102,8 @@ export function claudeStand(
     prognose: prognose === null ? null : Math.round(prognose * 100) / 100,
     dagenTotReset,
     oordeel: oordeelVan({ maandUsd, vorigeMaandUsd, budgetUsd, deel, sein, prognose, dagenTotReset }),
+    kern: kernVan(sein, budgetUsd, vorigeMaandUsd, prognose),
+    bij: bijVan({ budgetUsd, vorigeMaandUsd, prognose, dagenTotReset }),
   };
 }
 
@@ -129,6 +138,29 @@ function oordeelVan(s: {
     return `${usd(s.maandUsd)} deze maand, op dit tempo ${usd(s.prognose)}: wat meer dan vorige maand.${vergelijk}${rest}`;
   }
   return `${usd(s.maandUsd)} deze maand, op dit tempo ${usd(s.prognose)}: hetzelfde beeld als vorige maand.${vergelijk}${rest}`;
+}
+
+/** De kwalificatie zonder de bedragen; die staan in het paneel al boven. */
+function kernVan(sein: Sein, budgetUsd: number | null, vorigeMaandUsd: number | null, prognose: number | null): string {
+  if (prognose === null) return "Nog te vroeg in de maand voor een tempo.";
+  if (budgetUsd !== null) {
+    if (sein === "krap") return prognose > budgetUsd ? "Op dit tempo gaat het budget eraan." : "Bijna door het maandbudget heen.";
+    if (sein === "let-op") return prognose > budgetUsd ? "Op dit tempo kom je tegen het budget aan." : "Er is nog ruimte, maar het loopt.";
+    return "Ruim binnen het maandbudget.";
+  }
+  if (vorigeMaandUsd === null) return "Nog geen vorige maand om mee te vergelijken.";
+  if (sein === "krap") return "Fors meer dan vorige maand.";
+  if (sein === "let-op") return "Iets meer dan vorige maand.";
+  return "Hetzelfde beeld als vorige maand.";
+}
+
+/** De cijfers eronder, elk op een eigen regel, en alleen als ze iets toevoegen. */
+function bijVan(s: { budgetUsd: number | null; vorigeMaandUsd: number | null; prognose: number | null; dagenTotReset: number }): string[] {
+  const uit: string[] = [];
+  if (s.prognose !== null) uit.push(`Op dit tempo ${usd(s.prognose)} aan het eind van de maand`);
+  if (s.budgetUsd === null && s.vorigeMaandUsd !== null) uit.push(`Vorige maand werd het ${usd(s.vorigeMaandUsd)}`);
+  uit.push(s.dagenTotReset <= 1 ? "De maand is bijna om" : `Nog ${s.dagenTotReset} dagen in deze maand`);
+  return uit;
 }
 
 /**
