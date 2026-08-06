@@ -671,6 +671,16 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
               "nooit lezen als \"er is niets aan de hand\".",
           },
           {
+            titel: "Zonder beheertoegang is de inventarisatie tóch compleet",
+            tekst:
+              "Een deel van het profiel zit achter de beheertoegang: de bedrijfsomschrijving, de attributen, de " +
+              "feestdagen, de posts en de vragen. Zonder die toegang kunnen we niet zien hóe die ervoor staan.\n\n" +
+              "Ze verdwijnen daarom niet uit beeld, want dan lijkt het profiel af terwijl de halve etalage " +
+              "ongezien is. Ze staan als eigen blok op het scherm, gemarkeerd als niet gemeten, met wat er moet " +
+              "gebeuren erbij. Je kunt ze net zo goed aanvinken en op de planning zetten; het werk is bekend, " +
+              "alleen de stand niet.",
+          },
+          {
             titel: "Bij meerdere vestigingen: de dubbelen",
             tekst:
               "De grootste fout bij een bedrijf met meerdere locaties is zelden een zwak profiel. Het is een " +
@@ -716,16 +726,18 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
               "staan.",
           },
           {
-            titel: "De uitnodigingsmail: één sjabloon, twee instellingen",
+            titel: "De uitnodigingsmail gaat door het gewone mailvenster",
             tekst:
               "De mail waarmee je de klant om beheertoegang vraagt is vaste tekst, geen AI: het stappenplan " +
               "moet elke keer kloppen, en variatie voegt daar niets aan toe.\n\n" +
               "Twee dingen zijn wél instelbaar, één keer voor alle klanten. Het **Google-adres** waarmee we " +
               "toegang vragen, en dat is bewust niet het Pingwin-mailadres: toegang tot Google-diensten hangt " +
               "aan het Google-account waarmee je in Chrome zit. Het verkeerde adres levert een uitnodiging op " +
-              "die de klant wél verstuurt en die bij niemand aankomt. En de **tekst zelf**, met plaatshouders " +
-              "voor de klantnaam en dat adres, zodat de praktijk hem kan bijschaven zonder dat er code aan te " +
-              "pas komt.",
+              "die de klant wél verstuurt en die bij niemand aankomt.\n\n" +
+              "De mail zelf gaat door **hetzelfde mailvenster** als de weekplan-kaarten en de prioriteitenscan. " +
+              "De uitnodiging met het stappenplan staat er als achtergrondtekst in; je schrijft je eigen intro " +
+              "erboven en past aan wat je wilt, precies zoals bij elke andere mail uit het dashboard. Er is dus " +
+              "geen apart sjabloon met plaatshouders om te onderhouden.",
           },
           {
             titel: "Waarom het dashboard het profiel niet zelf aanpast",

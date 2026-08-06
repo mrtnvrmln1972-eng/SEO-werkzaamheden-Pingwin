@@ -6039,6 +6039,19 @@ a.wb-pad:hover { text-decoration: underline; }
 /* "Voer door": alleen bij bevindingen die het dashboard zelf mag afhandelen. */
 .gmb-voer { margin-top: var(--s-3); padding-top: var(--s-3); border-top: 1px dashed var(--card-border); }
 .gmb-voer-uitleg { font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); }
+
+/* Punten die pas met beheertoegang meetbaar zijn: wel in de inventarisatie,
+   maar zichtbaar anders dan een gemeten bevinding. */
+.gmb-nogniet-rij { border-left-color: var(--brand-taupe); background: var(--gray-light); }
+
+/* ══════════════════════════════════════════════════════════════
+   EINDE GOOGLE-BEDRIJFSPROFIEL
+   Deze grens staat er zodat een samenvoeging van dit blok nooit meer
+   regels van een andere chat kan opeten. Er wordt uit meerdere chats
+   tegelijk naar dit bestand geschreven; zonder eindmarkering knipt een
+   merge op goed geluk. Live misgegaan op 6 augustus 2026.
+   ══════════════════════════════════════════════════════════════ */
+
 /* ── Teruggezet op 6 augustus 2026 na een botsing tussen twee chats ──
    Deze 123 regels (bulk-onboarding, klantwaarde-bulk, de klussen in de
    werklijst, het controleblok op een weekplan-kaart en de klantlink in de
