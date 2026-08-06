@@ -5181,3 +5181,8 @@ a.wb-pad:hover { text-decoration: underline; }
 }
 .rk-volledig > *:last-child { margin-bottom: 0; }
 .rk-geen-tekst { font-style: italic; }
+.om-kop {
+  padding: var(--s-2) var(--s-3) 0;
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase; color: var(--gray);
+}

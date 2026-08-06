@@ -559,10 +559,6 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
               meteen bij de hand heeft. Twee ingangen naar hetzelfde scherm is een
               keuze die niemand hoeft te maken. */}
           <OntwikkelMenu />
-          {/* De volledige uitleg van het dashboard: openbaar leesbaar, dus deelbaar
-              met een klant, een lead of een investeerder. Het hoofdstuk met de
-              openstaande punten verschijnt daar alleen mét deze admin-sessie. */}
-          <a className="logout-btn" href="/uitleg" title="Zo werkt het dashboard: de volledige uitleg, deelbaar met klanten en leads" style={{ marginLeft: 8 }}>Zo werkt het</a>
           {isOwner && (
             <a className="logout-btn" href="/admin/beheer" title="Klanten en teamgebruikers beheren" style={{ marginLeft: 8 }}>Beheer</a>
           )}

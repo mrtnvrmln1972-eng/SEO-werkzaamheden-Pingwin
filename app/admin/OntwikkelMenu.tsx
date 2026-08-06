@@ -1,12 +1,16 @@
 "use client";
 
 // ═══════════════════════════════════════════════════════════
-// ONTWIKKELMENU IN DE KOPBALK (intern, alleen voor Maarten)
+// HET MENU "INTERN" IN DE KOPBALK
 // ═══════════════════════════════════════════════════════════
+// Alles wat over het dashboard zelf gaat in plaats van over een klant: de
+// ontwikkeling en de uitleg. Eén ingang op élk beheerscherm, zodat die links niet
+// per scherm los in de balk hoeven te hangen.
+//
 // De routekaart was alleen bereikbaar vanaf het klantenoverzicht. Zat je in een
 // klantcockpit, dan moest je eerst terug om de volgende ontwikkeltaak te pakken.
-// Dit menu staat op élk adminscherm en heeft de eerstvolgende taak meteen bij de
-// hand: één klik en de startregel staat op je klembord, klaar voor een verse chat.
+// Dit menu heeft de eerstvolgende taak meteen bij de hand: één klik en de
+// startregel staat op je klembord, klaar voor een verse chat.
 //
 // Het haalt zijn gegevens zelf op bij /api/admin/ontwikkel-advies. Reden: er is
 // geen gedeelde kopbalk in dit dashboard, elk scherm schrijft zijn eigen. Zou het
@@ -66,10 +70,10 @@ export default function OntwikkelMenu() {
         className={"logout-btn om-knop" + (open ? " hm-open" : "")}
         aria-haspopup="true"
         aria-expanded={open}
-        title="De ontwikkeling van dit dashboard"
+        title="Over het dashboard zelf: de ontwikkeling en de uitleg"
         onClick={() => setOpen((v) => !v)}
       >
-        Ontwikkeling
+        Intern
         {data.voortgang.loopt > 0 && <span className="om-teller">{data.voortgang.loopt}</span>}
         <svg className="hm-pijl" viewBox="0 0 10 6" aria-hidden="true">
           <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
@@ -100,15 +104,32 @@ export default function OntwikkelMenu() {
             </div>
           )}
 
+          <div className="om-kop">Ontwikkeling</div>
           <a role="menuitem" className="hm-item" href="/admin/routekaart">
             <span className="hm-item-label">De hele routekaart</span>
             <span className="hm-item-hint">
               Alle {data.voortgang.totaal} punten, met per punt de beschrijving en de startregel.
             </span>
           </a>
+
+          <div className="om-kop">Uitleg en verkoop</div>
           <a role="menuitem" className="hm-item" href="/uitleg">
             <span className="hm-item-label">Zo werkt het dashboard</span>
-            <span className="hm-item-hint">Het verhaal in gewone taal. Deelbaar met klanten en leads.</span>
+            <span className="hm-item-hint">
+              Het hele verhaal in gewone taal. Openbaar leesbaar, dus deelbaar met een klant of een lead.
+            </span>
+          </a>
+          <a role="menuitem" className="hm-item" href="/uitleg#onderscheid">
+            <span className="hm-item-label">Wat dit onderscheidt</span>
+            <span className="hm-item-hint">
+              Het korte stuk voor een lead of investeerder: waarom dit moeilijk na te maken is.
+            </span>
+          </a>
+          <a role="menuitem" className="hm-item" href="/uitleg#agenda">
+            <span className="hm-item-label">Eerlijke agenda</span>
+            <span className="hm-item-hint">
+              De gaten en de risico&rsquo;s. Alleen zichtbaar met jouw sessie, niet voor een buitenstaander.
+            </span>
           </a>
         </div>
       )}

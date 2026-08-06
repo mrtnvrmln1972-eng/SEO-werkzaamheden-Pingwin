@@ -125,7 +125,6 @@ export default function RoutekaartClient({
         </div>
         <div className="header-right">
           <OntwikkelMenu />
-          <a className="logout-btn" href="/uitleg" title="De volledige uitleg van het dashboard">Zo werkt het</a>
           <a className="logout-btn" href="/admin">Naar de klanten</a>
         </div>
       </div>

@@ -1171,8 +1171,8 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "punt (deze teksten) klapt daar sinds 6 augustus 2026 open bij het punt zelf, in plaats van door te " +
           "linken naar dit document; je hoeft dus niet meer in een lang verhaal te zoeken naar het punt waar je " +
           "net op klikte. Eén bron, twee vensters. En in de kopbalk van élk beheerscherm zit een menu " +
-          "**Ontwikkeling** met de eerstvolgende taak en zijn startregel, zodat je daar niet eerst voor terug " +
-          "hoeft naar het klantenoverzicht.",
+          "**Intern** met de eerstvolgende taak en zijn startregel, plus de ingangen naar deze uitlegpagina, " +
+          "zodat je daar niet eerst voor terug hoeft naar het klantenoverzicht.",
       },
 
       {
