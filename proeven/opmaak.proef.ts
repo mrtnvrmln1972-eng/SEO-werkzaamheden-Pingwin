@@ -275,5 +275,20 @@ const verdwenen = [...ERFENIS].filter((f) => !erfenisGezien.has(f));
 checkWaar("de erfenis-lijst bevat geen bestanden die niet meer bestaan", verdwenen.length === 0,
   `Haal deze eruit: ${verdwenen.join(", ")}`);
 
+// ── 5. Een raster met een smalle eerste kolom houdt zijn inhoud breed ──
+// Tweede fout van 6 augustus 2026, in dezelfde kaart. Het raster van de
+// projectkaart is "18px voor het sleephandvat, de rest voor de inhoud". Toen het
+// handvat wegviel (de kaart hangt onder een planningsregel die er al een heeft),
+// werd de inhoud het enige kind en belandde die in de kolom van 18 pixels: alle
+// tekst geperst in een strook van een paar woorden breed.
+//
+// De regel is: laat je een kind van zo'n raster weg, dan moet het overgebleven
+// kind alle kolommen pakken.
+const kaartTsx = lees("app/admin/client/[slug]/WeekplanCard.tsx");
+const handvatSomsWeg = /\{!?\w+ &&\s*<span className="wp-card-grip"/.test(kaartTsx);
+const vangnet = /\.wp-card-grid\s*>\s*\.wp-card-main:only-child\s*\{[^}]*grid-column/.test(css);
+checkWaar("de kaart blijft breed als het sleephandvat wegvalt", !handvatSomsWeg || vangnet,
+  "Het sleephandvat wordt soms niet getekend, maar er is geen regel die de inhoud dan alle kolommen laat pakken. Voeg toe: .wp-card-grid > .wp-card-main:only-child { grid-column: 1 / -1; }");
+
 console.log(fouten ? `\n${fouten} proef(en) mislukt.` : "\nAlle proeven geslaagd.");
 process.exit(fouten ? 1 : 0);

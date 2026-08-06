@@ -3295,6 +3295,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .wp-board .wp-card.wp-open .wp-kop-rij { border-bottom: 1px solid #f0ebe5; padding-bottom: var(--s-2); margin-bottom: var(--s-2); }
 /* Kaart-grid: puntjes | inhoud op volle breedte (clean, alles uitgelijnd). */
 .wp-card-grid { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 10px; align-items: start; }
+/* Zonder sleephandvat (de kaart hangt dan onder een planningsregel die er al een
+   heeft) is de inhoud het enige kind, en dat belandde in de kolom van 18px: alle
+   tekst werd tot een smalle strook geperst. Is er maar één kind, dan pakt dat
+   allebei de kolommen. Bewust zo geschreven en niet met een extra klasse: dit
+   klopt vanzelf, ook als iemand later opnieuw een kind weglaat. */
+.wp-card-grid > .wp-card-main:only-child { grid-column: 1 / -1; }
 .wp-card-main { min-width: 0; }
 .wp-kop-rij { display: flex; align-items: flex-start; gap: 10px; }
 .wp-kop-tekst { flex: 1; min-width: 0; }
