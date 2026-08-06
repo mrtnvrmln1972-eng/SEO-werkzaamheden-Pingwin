@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { mdToHtml } from "../../../../lib/markdown";
 import { BRIL_LABEL, BRIL_UITLEG, STAND_LABEL, DREMPEL, beheerUitnodiging, STANDAARD_UITNODIGING, type Bril, type Stand } from "../../../../lib/gmb-kennis";
 import { STAP, type StapKey } from "../../../../lib/onboarding-stappen";
+import MailVenster from "./MailVenster";
+import { CHECKS } from "../../../../lib/gmb-kennis";
 import HelpHint from "./HelpHint";
 
 // ═══════════════════════════════════════════════════════════
@@ -101,7 +103,7 @@ export default function GmbPanel({ slug, clientName, clientEmail, pingwinEmail, 
   const [sjabloon, setSjabloon] = useState("");
   const [instelBusy, setInstelBusy] = useState(false);
   const [instelMelding, setInstelMelding] = useState("");
-  const [sjabloonOpen, setSjabloonOpen] = useState(false);
+  const [mailOpen, setMailOpen] = useState(false);
   // Aangevinkte punten per soort, plus de terugkoppeling na het aanmaken.
   // Bewaard in het tabblad, niet alleen in het geheugen van dit scherm. Reden:
   // je vinkt iets aan, klikt door naar de planning om te kijken of het er staat,
@@ -231,7 +233,7 @@ export default function GmbPanel({ slug, clientName, clientEmail, pingwinEmail, 
 
   // Van signaal naar kaart op de planning. Een bevinding die alleen op een
   // scherm staat, gebeurt niet.
-  async function maakTaken(soort: "bevinding" | "suggestie" | "beheer", sleutel: string, keys: string[]) {
+  async function maakTaken(soort: "bevinding" | "suggestie" | "beheer" | "nogniet", sleutel: string, keys: string[]) {
     if (!keys.length && soort !== "beheer") { setTaakMelding("Vink eerst aan wat er op de planning moet."); return; }
     setTaakBusy(true); setTaakMelding("");
     try {
@@ -258,12 +260,17 @@ export default function GmbPanel({ slug, clientName, clientEmail, pingwinEmail, 
     let totaal = 0;
     const fouten: string[] = [];
     // Per vestiging en per soort gebundeld, want de resolver kijkt per locatie.
-    const groepen = new Map<string, { soort: "bevinding" | "suggestie"; sleutel: string; keys: string[] }>();
+    const groepen = new Map<string, { soort: "bevinding" | "suggestie" | "nogniet"; sleutel: string; keys: string[] }>();
     for (const id of ids) {
       if (id.startsWith("b:")) {
         const [, sleutel, key] = id.split(":");
         const g = `b:${sleutel}`;
         if (!groepen.has(g)) groepen.set(g, { soort: "bevinding", sleutel, keys: [] });
+        groepen.get(g)!.keys.push(key);
+      } else if (id.startsWith("n:")) {
+        const [, sleutel, key] = id.split(":");
+        const g = `n:${sleutel}`;
+        if (!groepen.has(g)) groepen.set(g, { soort: "nogniet", sleutel, keys: [] });
         groepen.get(g)!.keys.push(key);
       } else if (id.startsWith("s:")) {
         const g = "s";
@@ -420,75 +427,30 @@ export default function GmbPanel({ slug, clientName, clientEmail, pingwinEmail, 
               </button>
             </div>
 
-            {uitnodigingOpen && (() => {
-              const u = beheerUitnodiging(clientName, googleAdres, sjabloon);
-              return (
-                <div className="gmb-uitnodiging" id="gmb-beheer">
-                  <span className="gmb-subkop">Uitnodiging, klaar om te versturen</span>
-
-                  <div className="gmb-instel">
-                    <label>
-                      <span>Met welk Google-adres vragen we toegang?</span>
-                      <input
-                        className="gmb-zoekveld" value={googleAdres} placeholder="jouw@gmail.com"
-                        onChange={(e) => setGoogleAdres(e.target.value)}
-                      />
-                    </label>
-                    <p className="gmb-bril-uitleg">
-                      Bewust niet je Pingwin-mailadres: toegang tot Google-diensten hangt aan het Google-account
-                      waarmee je in Chrome zit. Het verkeerde adres levert een uitnodiging op die bij niemand aankomt.
-                      Je stelt dit één keer in, voor alle klanten.
-                    </p>
-                    <div className="row" style={{ flexWrap: "wrap" }}>
-                      <button className="btn" onClick={bewaarInstellingen} disabled={instelBusy}>
-                        {instelBusy ? "Opslaan…" : "Bewaar"}
-                      </button>
-                      <button className="btn" onClick={() => setSjabloonOpen((v) => !v)}>
-                        {sjabloonOpen ? "Tekst niet aanpassen" : "Tekst aanpassen"}
-                      </button>
-                      {instelMelding && <span className="gmb-poort-melding">{instelMelding}</span>}
-                    </div>
-                  </div>
-
-                  {sjabloonOpen && (
-                    <div className="gmb-instel">
-                      <span className="gmb-subkop">De vaste tekst</span>
-                      <p className="gmb-bril-uitleg">
-                        Dit is het sjabloon voor élke klant. Gebruik <code>{"{bedrijf}"}</code> voor de klantnaam en{" "}
-                        <code>{"{googleAdres}"}</code> voor het adres hierboven. Leeg laten zet hem terug op de standaardtekst.
-                      </p>
-                      <textarea
-                        className="gmb-sjabloon" value={sjabloon || STANDAARD_UITNODIGING}
-                        onChange={(e) => setSjabloon(e.target.value)} rows={18}
-                      />
-                      <div className="row" style={{ flexWrap: "wrap" }}>
-                        <button className="btn btn-primary" onClick={bewaarInstellingen} disabled={instelBusy}>
-                          {instelBusy ? "Opslaan…" : "Bewaar de tekst"}
-                        </button>
-                        <button className="btn" onClick={() => setSjabloon("")}>Terug naar de standaardtekst</button>
-                      </div>
-                    </div>
-                  )}
-
-                  <span className="gmb-subkop">Zo gaat hij eruitzien</span>
-                  <p className="gmb-bril-uitleg">Pas gerust nog iets aan voordat je verstuurt; dit venster verandert het sjabloon niet.</p>
-                  <div className="mail-edit md" contentEditable suppressContentEditableWarning
-                    dangerouslySetInnerHTML={{ __html: mdToHtml(u.tekst) }} />
-                  <div className="row" style={{ marginTop: "var(--s-3)", flexWrap: "wrap" }}>
-                    {clientEmail && (
-                      <a className="btn btn-primary"
-                        href={`mailto:${encodeURIComponent(clientEmail)}?subject=${encodeURIComponent(u.onderwerp)}&body=${encodeURIComponent(u.tekst)}`}>
-                        Open in de mail
-                      </a>
-                    )}
-                    <button className="btn" onClick={() => maakTaken("beheer", r?.locaties[0]?.sleutel || "", [])} disabled={taakBusy}>
-                      Zet op de planning
+            {uitnodigingOpen && (
+              <div className="gmb-uitnodiging" id="gmb-beheer">
+                <div className="gmb-instel">
+                  <label>
+                    <span>Met welk Google-adres vragen we toegang?</span>
+                    <input
+                      className="gmb-zoekveld" value={googleAdres} placeholder="jouw@gmail.com"
+                      onChange={(e) => setGoogleAdres(e.target.value)}
+                    />
+                  </label>
+                  <p className="gmb-bril-uitleg">
+                    Bewust niet je Pingwin-mailadres: toegang tot Google-diensten hangt aan het Google-account waarmee je
+                    in Chrome zit. Je stelt dit één keer in, voor alle klanten. Het adres komt in de mail terecht.
+                  </p>
+                  <div className="row" style={{ flexWrap: "wrap" }}>
+                    <button className="btn" onClick={bewaarInstellingen} disabled={instelBusy}>
+                      {instelBusy ? "Opslaan…" : "Bewaar het adres"}
                     </button>
-                    {taakMelding && <span className="gmb-poort-melding">{taakMelding}</span>}
+                    <button className="btn btn-primary" onClick={() => setMailOpen(true)}>Schrijf de mail</button>
+                    {instelMelding && <span className="gmb-poort-melding">{instelMelding}</span>}
                   </div>
                 </div>
-              );
-            })()}
+              </div>
+            )}
 
             {r.nietGemeten.length > 0 && (
               <div className="gmb-niet-gemeten">
@@ -638,6 +600,35 @@ export default function GmbPanel({ slug, clientName, clientEmail, pingwinEmail, 
                         ))}
                       </div>
                     ))}
+
+                    {/* Zonder beheertoegang zijn dit geen bevindingen: we weten niet óf
+                        ze misgaan. Maar ze horen wel in de inventarisatie, anders lijkt
+                        het profiel af terwijl de halve etalage ongezien is. */}
+                    {!r.beheerdeur.werkt && (
+                      <div className="gmb-bril" id="gmb-nogniet">
+                        <span className="gmb-subkop">Nog niet te meten, wel te doen</span>
+                        <p className="gmb-bril-uitleg">
+                          Deze onderdelen zitten achter de beheertoegang, dus we kunnen niet zien hoe ze ervoor staan.
+                          Ze verdienen hoe dan ook aandacht, dus je kunt ze nu al op de planning zetten.
+                        </p>
+                        {CHECKS.filter((c) => c.bron === "beheer").map((c) => (
+                          <div className="gmb-bevinding gmb-nogniet-rij" key={c.key} id={`gmb-nogniet-${c.key}`}>
+                            <div className="gmb-bevinding-kop">
+                              <label className="gmb-vink">
+                                <input type="checkbox"
+                                  checked={gekozen.has(`n:${loc.sleutel}:${c.key}`)}
+                                  onChange={() => vink(`n:${loc.sleutel}:${c.key}`)} />
+                                <span>op de planning</span>
+                              </label>
+                              <strong>{c.label}</strong>
+                              <span className="chip gmb-zacht">niet gemeten</span>
+                            </div>
+                            <p className="gmb-waarom">{c.waarom}</p>
+                            <p className="gmb-actie"><span>Wat je doet:</span> {c.actie}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
 
                     {perBril.length > 0 && (
                       <div className="row gmb-taakbalk" style={{ flexWrap: "wrap" }}>
@@ -789,6 +780,25 @@ export default function GmbPanel({ slug, clientName, clientEmail, pingwinEmail, 
             </div>
           )}
         </>
+      )}
+
+      {/* Hetzelfde mailvenster als bij de weekplan-kaarten en de prioriteitenscan:
+          één mailvenster in het dashboard, dus ook hier geen eigen bouwsel. De
+          uitnodiging is de achtergrondtekst; jij schrijft je eigen intro erboven
+          en past aan wat je wilt. */}
+      {mailOpen && (
+        <MailVenster
+          slug={slug}
+          titel="Vraag de klant om beheertoegang"
+          onderwerpVan={`Toegang tot het Google-bedrijfsprofiel van ${clientName}`}
+          onderwerpVoorstel={beheerUitnodiging(clientName, googleAdres).onderwerp}
+          taak={`De klant vragen om Pingwin als beheerder toe te voegen aan het Google-bedrijfsprofiel van ${clientName}.`}
+          toelichting={beheerUitnodiging(clientName, googleAdres).tekst}
+          blokMd={beheerUitnodiging(clientName, googleAdres).tekst}
+          clientName={clientName}
+          clientEmail={clientEmail}
+          onClose={() => setMailOpen(false)}
+        />
       )}
 
       {!r && !draait && state && state.meetdeur && (

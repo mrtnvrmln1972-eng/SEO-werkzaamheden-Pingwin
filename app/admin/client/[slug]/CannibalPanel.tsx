@@ -306,10 +306,10 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
 
   // Eén sectie: ingeklapt, met in de kop al wat erin zit. Zo zie je in één blik
   // waar je moet zijn in plaats van door zes open blokken te scrollen.
-  const Sectie = ({ titel, aantal, wat, open: standaardOpen = false, children }: {
-    titel: string; aantal?: number; wat: string; open?: boolean; children: React.ReactNode;
+  const Sectie = ({ titel, aantal, wat, open: standaardOpen = false, klein = false, children }: {
+    titel: string; aantal?: number; wat: string; open?: boolean; klein?: boolean; children: React.ReactNode;
   }) => (
-    <details className="opr-sectie" open={standaardOpen}>
+    <details className={"opr-sectie" + (klein ? " opr-sectie-klein" : "")} open={standaardOpen}>
       <summary>
         <span className="opr-sectie-kop">
           <span className="opr-sectie-titel">{titel}</span>
@@ -550,18 +550,22 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
               <OpruimEenLijst slug={slug} domain={domain} />
             </Sectie>
 
-            {/* Hieronder de blokken waar die lijst uit is opgebouwd. Ze blijven
-                bestaan omdat daar de volledige onderbouwing staat, maar ze zijn
-                niet meer het eerste wat je ziet. */}
+            {/* De vijf bronlijsten zaten als losse blokken op de pagina, en dat
+                waren er samen met de rest twaalf. Ze zijn niet weg (daar staat de
+                volledige onderbouwing per pagina) maar ze zitten nu in één
+                uitklapper, want ze vertellen alle vijf hetzelfde verhaal vanuit
+                een andere hoek. */}
+            <Sectie titel="Onderbouwing per soort besluit"
+              wat="Dezelfde pagina's als hierboven, maar dan gegroepeerd naar waarom ze in de lijst staan, met per regel het volledige bewijs uit de cijfers.">
             {(result.onderwerpen?.length || 0) > 0 && (
-              <Sectie titel="Onderwerpen bundelen" aantal={result.onderwerpen?.length}
+              <Sectie klein titel="Onderwerpen bundelen" aantal={result.onderwerpen?.length}
                 wat="Drie of meer pagina's over hetzelfde, en geen van alle in de top 10. Eén ervan wordt de vaste pagina, de rest gaat daarin op.">
                 <OpruimOnderwerpen slug={slug} domain={domain} rijen={result.onderwerpen || []} clientName={clientName} clientEmail={clientEmail} />
               </Sectie>
             )}
 
             {(result.oppakken?.length || 0) > 0 && (
-              <Sectie titel="Oppakken, niet weghalen" aantal={result.oppakken?.length}
+              <Sectie klein titel="Oppakken, niet weghalen" aantal={result.oppakken?.length}
                 wat="Deze pagina's scoren nergens op, maar hun eigen zoekterm heeft wél volume en niemand anders bezit hem. Opruimen zou hier een kans weggooien.">
                 <OpruimOppakken slug={slug} domain={domain} rijen={result.oppakken || []} clientName={clientName} clientEmail={clientEmail} />
               </Sectie>
@@ -571,20 +575,20 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
                 bedrijfsgegevens als input voor de laatste van vijf vragen. Hoog in
                 de lijst, want bij een site met honderd plaatspagina's is dit het
                 grootste besluit dat er ligt. */}
-            <Sectie titel="Plaatspagina's: wat blijft en wat gaat"
+            <Sectie klein titel="Plaatspagina's: wat blijft en wat gaat"
               wat="Eén besluit per plaats in plaats van per URL, langs vijf vragen: levert hij iets op, is er vraag, is het te winnen, klopt de URL-vorm, en pas als laatste: zit er een vestiging.">
               <OpruimPlaatsen slug={slug} domain={domain} clientName={clientName} clientEmail={clientEmail} />
             </Sectie>
 
             {(result.gaten?.length || 0) > 0 && (
-              <Sectie titel="Wat er ontbreekt" aantal={result.gaten?.length}
+              <Sectie klein titel="Wat er ontbreekt" aantal={result.gaten?.length}
                 wat="Zoektermen met volume waar geen enkele pagina op mikt. Het enige deel dat over groeien gaat in plaats van over opruimen.">
                 <OpruimGaten slug={slug} domain={domain} rijen={result.gaten || []} clientName={clientName} clientEmail={clientEmail} />
               </Sectie>
             )}
 
             {result.redirectMap && result.redirectMap.length > 0 && (
-              <Sectie titel="Pagina's die elkaar in de weg zitten" aantal={regels}
+              <Sectie klein titel="Pagina's die elkaar in de weg zitten" aantal={regels}
                 wat="De cannibalisatie-analyse zelf: welke pagina om welk zoekwoord vecht met welke, met het bewijs uit de cijfers. Deze regels zitten ook in de werklijst hierboven.">
                 <div className="opr-kaart-acties" style={{ marginBottom: "var(--s-3)" }}>
                   {/* Downloaden als CSV: opent met een dubbelklik in Excel en is te
@@ -597,16 +601,22 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
                 <OpruimTabel slug={slug} domain={domain} rijen={result.redirectMap} openTarget={openTarget} bewijs={bewijsPerPad} />
               </Sectie>
             )}
+            </Sectie>
 
             {/* Het sluitstuk: niet het werk, maar het resultaat. Standaard open, want
                 dit is het enige blok dat laat zien waar je het allemaal voor doet. */}
-            <Sectie titel="Zo ziet de site eruit na het doorvoeren" open
+            <Sectie titel="Zo ziet de site eruit na het doorvoeren"
               wat="Alle beslissingen hierboven bij elkaar, als boom: per tak de hoofdpagina met de pagina's die daaronder horen.">
               <OpruimEindstructuur slug={slug} domain={domain} />
             </Sectie>
 
+            {/* Alles wat verantwoording is en geen werk: wat het opleverde, waar we
+                vanaf blijven, hoe de site er nu uitziet en waar de cijfers vandaan
+                komen. Dat waren vijf losse blokken; het is één onderwerp. */}
+            <Sectie titel="Verantwoording"
+              wat="Wat de doorgevoerde omleidingen opleverden, welke pagina's we bewust laten staan, hoe de site er nu uitziet, en op welke bronnen dit alles is gebaseerd.">
             {metingen.length > 0 && (
-              <Sectie titel="Klopte het?" aantal={metingen.length}
+              <Sectie klein titel="Klopte het?" aantal={metingen.length}
                 wat="Van elke doorgevoerde omleiding: hoe stond de overgebleven pagina ervoor, en hoe staat hij er 30 en 90 dagen later voor.">
                 <OpruimNameten rijen={metingen} tekst={metingenTekst} domain={domain} />
               </Sectie>
@@ -614,7 +624,7 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
 
             {/* ── Wat er daarna nog moet gebeuren: de interne links ── */}
             {result.interneLinks && result.interneLinks.length > 0 && (
-              <Sectie titel="Daarna: interne links leggen" aantal={result.interneLinks.length}
+              <Sectie klein titel="Daarna: interne links leggen" aantal={result.interneLinks.length}
                 wat="Omleiden lost de strijd op; deze links maken de overgebleven pagina daarna ook sterker. Een aanvulling, geen volledige linkaudit.">
                 <div className="res-table-wrap">
                   <table className="res-table">
@@ -635,7 +645,7 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
 
             {/* ── Wat we bewust laten staan ── */}
             {blijftStaan.length > 0 && (
-              <Sectie titel="Wat we bewust laten staan" aantal={blijftStaan.length}
+              <Sectie klein titel="Wat we bewust laten staan" aantal={blijftStaan.length}
                 wat="Deze pagina's kwamen in de analyse langs en blijven: ze winnen op hun eigen onderwerp, of andere pagina's gaan er juist in op.">
                 <div className="res-table-wrap">
                   <table className="res-table">
@@ -653,13 +663,13 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
               </Sectie>
             )}
 
-            <Sectie titel="Structuur van de site nu"
+            <Sectie klein titel="Structuur van de site nu"
               wat="Welke soorten pagina's er bestaan, en hoeveel URL-vormen er naast elkaar leven voor hetzelfde onderwerp.">
               <OpruimStructuur slug={slug} />
             </Sectie>
 
             {dk && (
-              <Sectie titel="Waarop deze analyse is gebaseerd"
+              <Sectie klein titel="Waarop deze analyse is gebaseerd"
                 wat="Welke bronnen zijn gebruikt, en wat er bewust niet in zit.">
                 <div className="opr-kaart-tekst">
                   <p>De conclusies hierboven komen uit de eigen cijfers van de website, niet uit een aanname. Gebruikt zijn:</p>
@@ -679,6 +689,8 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
                 </div>
               </Sectie>
             )}
+
+            </Sectie>
 
             {/* Zelfde component als op de deellink, zodat de klantversie en de
                 cockpit niet uit elkaar kunnen lopen. */}

@@ -1,6 +1,6 @@
 import { registreerBron, type SignaalPunt } from "./signaal-taak";
 import { getGmbStand } from "./gmb";
-import { CHECK, SUGGESTIES } from "./gmb-kennis";
+import { CHECK, CHECKS, SUGGESTIES } from "./gmb-kennis";
 
 // ═══════════════════════════════════════════════════════════
 // WELKE SCHERMEN HUN SIGNALEN OP DE PLANNING KUNNEN ZETTEN
@@ -87,6 +87,36 @@ registreerBron("gmb-suggestie", {
         ritme: s.ritme,
         links: profielLinks(loc?.profiel?.mapsUrl),
         anker: `gmb-suggestie-${k}`,
+      });
+    }
+    return uit;
+  },
+});
+
+// De punten die we pas kúnnen meten met beheertoegang. Zonder die toegang zijn
+// het geen bevindingen (we weten niet of ze misgaan), maar ze horen wél in de
+// inventarisatie: het zijn de knoppen op het profiel die aandacht verdienen
+// zodra we erbij kunnen. Ze mogen dus gewoon op de planning.
+registreerBron("gmb-nogniet", {
+  label: "Google-bedrijfsprofiel",
+  tab: GMB_TAB,
+  thread: "google-profiel",
+  taaktype: "gmb",
+  resolver: async (slug, keys, ctx) => {
+    const loc = await gmbLocatie(slug, ctx.sleutel || "");
+    const waar = loc?.vestiging ? ` (${loc.vestiging})` : "";
+    const uit: SignaalPunt[] = [];
+    for (const k of keys) {
+      const c = CHECKS.find((x) => x.key === k && x.bron === "beheer");
+      if (!c) continue;
+      uit.push({
+        key: k,
+        titel: `Google-profiel${waar}: ${c.label.toLowerCase().replace(/^(er zijn|er staan|de|het) /, "")}`,
+        actie: c.actie,
+        waarom: c.waarom,
+        bewijs: "Nog niet gemeten: dit is alleen te zien met beheertoegang tot het profiel. Het staat hier omdat het hoe dan ook aandacht verdient.",
+        links: profielLinks(loc?.profiel?.mapsUrl),
+        anker: `gmb-nogniet-${k}`,
       });
     }
     return uit;

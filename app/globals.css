@@ -494,41 +494,6 @@ tbody td:last-child { text-align: center; }
 .hm-item-actief .hm-item-label { color: var(--orange-dark); }
 .hm-item-hint { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray); }
 
-/* ── De tellers in de kopbalk (Ahrefs-tegoed, Claude-kosten) ──────
-   Twee knopjes met dezelfde vorm: een stip in de kleur van het sein, de naam van
-   de bron en één cijfer. Opengeklapt hetzelfde paneel als de menu's ernaast, dus
-   .hm-paneel doet het zware werk en hieronder staat alleen wat er ánders is.
-   De opmaak stond er bij de Ahrefs-teller nog niet: die tekende een stip zonder
-   vorm en regels zonder uitlijning. Eén set regels voor beide, zodat een derde
-   teller er vanzelf goed uitziet. */
-.at-wrap { position: relative; display: inline-flex; }
-.at-knop { display: inline-flex; align-items: center; gap: var(--s-2); }
-.at-stip { width: 8px; height: 8px; border-radius: var(--r-full); flex: none; }
-.at-cijfer { font-weight: 700; font-variant-numeric: tabular-nums; }
-/* Het paneel hangt rechts uit: deze knoppen staan aan de rechterkant van de balk,
-   dus links uitlijnen (de stand van .hm-paneel) duwt hem het scherm af. */
-.at-paneel { left: auto; right: 0; min-width: 320px; max-width: 380px; gap: var(--s-3); padding: var(--s-3); }
-.at-kop { display: flex; flex-direction: column; gap: var(--s-1); }
-.at-label { font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700; color: var(--gray); text-transform: uppercase; letter-spacing: 0.4px; }
-.at-groot { font-family: 'Montserrat', sans-serif; font-size: var(--fs-lg); line-height: var(--lh-lg); font-weight: 700; font-variant-numeric: tabular-nums; }
-.at-van { font-size: var(--fs-sm); font-weight: 600; color: var(--gray); }
-.at-balk { height: 6px; border-radius: var(--r-full); background: var(--gray-light); overflow: hidden; }
-.at-balk-vul { display: block; height: 100%; border-radius: var(--r-full); }
-.at-oordeel { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--body-text); }
-.at-regels { display: flex; flex-direction: column; gap: var(--s-1); }
-.at-regel { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); font-size: var(--fs-sm); line-height: var(--lh-sm); }
-.at-regel-naam { color: var(--gray); }
-.at-regel-waarde { color: var(--body-text); font-weight: 600; text-align: right; }
-/* Het tweede blok in het Claude-paneel: de meter die we NIET kunnen meten, met de
-   uitleg en de knop ernaartoe. Eigen achtergrond zodat het leest als een apart
-   onderwerp en niet als nog een regel bij het bedrag erboven. */
-.at-blok { display: flex; flex-direction: column; gap: var(--s-2); padding: var(--s-3); border-radius: var(--r-md); background: var(--brand-teal-light); border: 1px solid var(--brand-teal); }
-.at-blok-kop { font-family: 'Montserrat', sans-serif; font-size: var(--fs-base); line-height: var(--lh-base); font-weight: 700; color: var(--brand-charcoal); }
-.at-blok-tekst { margin: 0; font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--body-text); }
-.at-knoppen { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-1); }
-.at-btn { font-size: var(--fs-sm); padding: var(--s-1) var(--s-3); text-decoration: none; }
-.at-voet { font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); }
-
 /* ── Prioriteitenscan ─────────────────────────────────────────────
    Zelfde vorm als het opruimscherm: knop, voortgang, platte tabel.
    Alles op de schaal-tokens; geen losse pixelwaardes. */
@@ -4300,6 +4265,15 @@ details[open] > .opr-kaart-sam::before { content: "▾ "; }
    het blok in een sectie staat, en blijft staan waar het blok los gebruikt wordt
    (de deelpagina voor de klant). */
 .opr-sectie-body > .opr-kaart > .opr-kop { display: none; }
+/* Een subsectie binnen een sectie: zelfde gedrag, rustiger vorm. Zonder dit
+   verschil lijkt een uitklapper in een uitklapper een nieuw hoofdstuk, en dan
+   heb je het aantal blokken niet verkleind maar verplaatst. */
+.opr-sectie-klein { border: none; box-shadow: none; border-radius: 0; margin-bottom: 0;
+  border-top: 1px solid var(--card-border); }
+.opr-sectie-klein:first-of-type { border-top: none; }
+.opr-sectie-klein > summary { padding: var(--s-3) 0; }
+.opr-sectie-klein .opr-sectie-titel { font-size: var(--fs-sm); line-height: var(--lh-sm); }
+.opr-sectie-klein > .opr-sectie-body { padding: 0 0 var(--s-4); }
 /* De filterknoppen boven het plaatsen-advies: de gekozen knop moet te zien zijn,
    anders klik je en verandert er zichtbaar niets. */
 .ghost-btn.small.actief { background: var(--orange); color: var(--white); border-color: var(--orange); }
@@ -6030,6 +6004,19 @@ a.wb-pad:hover { text-decoration: underline; }
 /* "Voer door": alleen bij bevindingen die het dashboard zelf mag afhandelen. */
 .gmb-voer { margin-top: var(--s-3); padding-top: var(--s-3); border-top: 1px dashed var(--card-border); }
 .gmb-voer-uitleg { font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); }
+
+/* Punten die pas met beheertoegang meetbaar zijn: wel in de inventarisatie,
+   maar zichtbaar anders dan een gemeten bevinding. */
+.gmb-nogniet-rij { border-left-color: var(--brand-taupe); background: var(--gray-light); }
+
+/* ══════════════════════════════════════════════════════════════
+   EINDE GOOGLE-BEDRIJFSPROFIEL
+   Deze grens staat er zodat een samenvoeging van dit blok nooit meer
+   regels van een andere chat kan opeten. Er wordt uit meerdere chats
+   tegelijk naar dit bestand geschreven; zonder eindmarkering knipt een
+   merge op goed geluk. Live misgegaan op 6 augustus 2026.
+   ══════════════════════════════════════════════════════════════ */
+
 /* ── Teruggezet op 6 augustus 2026 na een botsing tussen twee chats ──
    Deze 123 regels (bulk-onboarding, klantwaarde-bulk, de klussen in de
    werklijst, het controleblok op een weekplan-kaart en de klantlink in de
@@ -6241,6 +6228,27 @@ a.wb-pad:hover { text-decoration: underline; }
 .at-regel-naam { color: var(--gray); }
 .at-regel-waarde { color: var(--dark); font-weight: 700; font-variant-numeric: tabular-nums; }
 .at-link { margin-top: var(--s-1); }
+
+/* ── Het Claude-tellertje ernaast ─────────────────────────────────
+   Zelfde vorm als het Ahrefs-tellertje hierboven, dus alle .at-*-bouwstenen
+   worden hergebruikt en hieronder staat alleen het ene blok dat Ahrefs niet
+   heeft: de uitleg over het abonnement, de meter die we juist NIET kunnen
+   meten. Eigen achtergrond zodat het leest als een ander onderwerp en niet als
+   nog een regel bij het bedrag erboven. */
+.ct-abo {
+  display: flex; flex-direction: column; gap: var(--s-2);
+  margin: 0 var(--s-2); padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-md);
+  background: var(--brand-teal-light);
+  border: 1px solid var(--brand-teal);
+}
+.ct-abo-kop {
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase; color: var(--brand-charcoal);
+}
+.ct-abo-tekst { margin: 0; font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--body-text); }
+.ct-knoppen { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-1); }
+.ct-btn { font-size: var(--fs-sm); line-height: var(--lh-sm); padding: var(--s-1) var(--s-3); text-decoration: none; }
 
 /* Bulk-onboarding: de kop en de live-regel. Ook per ongeluk verdwenen bij een
    eerdere botsing in dit bestand; teruggehaald uit b895591 op 6 augustus 2026.

@@ -34,10 +34,6 @@ type Data = {
   week: { usd: number; calls: number } | null;
 };
 
-function num(n: number): string {
-  return n.toLocaleString("nl-NL");
-}
-
 export default function ClaudeTeller() {
   const [data, setData] = useState<Data | null>(null);
   const [open, setOpen] = useState(false);
@@ -93,85 +89,87 @@ export default function ClaudeTeller() {
 
       {open && (
         <div className="hm-paneel at-paneel" role="dialog" aria-label="AI-kosten">
+          {/* Blok 1: wat het dashboard zelf verstookt. Eén groot bedrag, en de
+              boodschap in korte regels onder elkaar in plaats van als één lange
+              zin: achter elkaar wordt dat in een smal paneel een tekstmuur. */}
           <div className="at-kop">
-            <div className="at-label">Wat het dashboard deze maand aan AI uitgaf</div>
+            <div className="at-label">AI-kosten deze maand</div>
             <div className="at-groot" style={{ color: kleur }}>
               {usd(stand.maandUsd)}
-              {stand.budgetUsd !== null && <span className="at-van"> van {usd(stand.budgetUsd)}</span>}
+              {stand.budgetUsd !== null && <span className="at-van">van {usd(stand.budgetUsd)}</span>}
             </div>
             {stand.deel !== null && (
-              <div className="at-balk" role="img" aria-label={`${pct} procent van het maandbudget is op`}>
-                <span className="at-balk-vul" style={{ width: `${Math.max(2, pct ?? 0)}%`, background: kleur }} />
+              <div className="at-meter">
+                <span className="at-balk" role="img" aria-label={`${pct} procent van het maandbudget is op`}>
+                  <span className="at-balk-vul" style={{ width: `${Math.max(2, pct ?? 0)}%`, background: kleur }} />
+                </span>
+                <span className="at-pct" style={{ color: kleur }}>{pct}%</span>
               </div>
             )}
-            <div className="at-oordeel">{stand.oordeel}</div>
+            <div className="at-zinnen">
+              <span className="at-kern">{stand.kern}</span>
+              {stand.bij.map((regel) => <span className="at-bij" key={regel}>{regel}.</span>)}
+            </div>
           </div>
 
-          <div className="at-regels">
-            {data?.week && (
-              <div className="at-regel">
-                <span className="at-regel-naam">Laatste 7 dagen</span>
-                <span className="at-regel-waarde">{usd(data.week.usd)} in {num(data.week.calls)} aanroepen</span>
-              </div>
-            )}
-            {data?.maand?.topActie && (
-              <div className="at-regel">
-                <span className="at-regel-naam">Duurste functie</span>
-                <span className="at-regel-waarde">{data.maand.topActie.label} ({usd(data.maand.topActie.usd)})</span>
-              </div>
-            )}
-            {data?.maand?.topKlant?.slug && (
-              <div className="at-regel">
-                <span className="at-regel-naam">Duurste klant</span>
-                <span className="at-regel-waarde">{data.maand.topKlant.slug} ({usd(data.maand.topKlant.usd)})</span>
-              </div>
-            )}
-            {stand.vorigeMaandUsd !== null && (
-              <div className="at-regel">
-                <span className="at-regel-naam">Vorige maand totaal</span>
-                <span className="at-regel-waarde">{usd(stand.vorigeMaandUsd)}</span>
-              </div>
-            )}
-          </div>
+          {/* Blok 2: waar het bedrag vandaan komt. Een oplopend bedrag zonder
+              deze regels is geen signaal maar een raadsel. */}
+          {(data?.week || data?.maand?.topActie || data?.maand?.topKlant?.slug) && (
+            <div className="at-blok">
+              <div className="at-blok-kop">Waar het aan opgaat</div>
+              {data?.week && (
+                <div className="at-regel">
+                  <span className="at-regel-naam">Laatste 7 dagen</span>
+                  <span className="at-regel-waarde">{usd(data.week.usd)}</span>
+                </div>
+              )}
+              {data?.maand?.topActie && (
+                <div className="at-regel">
+                  <span className="at-regel-naam">{data.maand.topActie.label}</span>
+                  <span className="at-regel-waarde">{usd(data.maand.topActie.usd)}</span>
+                </div>
+              )}
+              {data?.maand?.topKlant?.slug && (
+                <div className="at-regel">
+                  <span className="at-regel-naam">{data.maand.topKlant.slug}</span>
+                  <span className="at-regel-waarde">{usd(data.maand.topKlant.usd)}</span>
+                </div>
+              )}
+            </div>
+          )}
 
-          {/* De tweede meter. Zonder dit blok leest het bedrag hierboven als "wat
-              Claude mij kost", en dat is het niet: het chatten en het bouwen lopen
-              op het abonnement en staan op een andere rekening. */}
-          <div className="at-blok">
-            <div className="at-blok-kop">Je abonnement (chatten en Claude Code)</div>
-            <p className="at-blok-tekst">
-              Dat is een tweede meter en die staat hier niet in: chatten en het werk in Claude Code
-              lopen op je Claude-abonnement, niet op de sleutel van dit dashboard.
+          {/* Blok 3: de tweede meter. Zonder dit blok leest het bedrag hierboven
+              als "wat Claude mij kost", en dat is het niet: chatten en bouwen
+              lopen op het abonnement en staan op een andere rekening. */}
+          <div className="ct-abo">
+            <div className="ct-abo-kop">Je abonnement, een aparte meter</div>
+            <p className="ct-abo-tekst">
+              Chatten en het werk in Claude Code lopen op je Claude-abonnement, niet op de sleutel
+              van dit dashboard. Die kosten staan hierboven dus niet in.
             </p>
-            <p className="at-blok-tekst">
+            <p className="ct-abo-tekst">
               Is de limiet van je abonnement op, dan werkt Claude door op je <strong>usage credits</strong>,
-              afgerekend tegen de normale API-tarieven. Die credits koop je vooruit, dus er komt geen
-              losse factuur achteraf: het gaat van het tegoed af dat er al staat. Staat automatisch
-              bijvullen aan, dan wordt er wél opnieuw afgeschreven zodra dat tegoed laag wordt.
+              tegen de normale API-tarieven. Die koop je vooruit, dus er komt geen losse factuur achteraf:
+              het gaat van het tegoed af dat er al staat. Staat automatisch bijvullen aan, dan wordt er wél
+              opnieuw afgeschreven zodra dat tegoed laag wordt.
             </p>
-            <p className="at-blok-tekst">
-              Het saldo zelf kan dit dashboard niet ophalen; Anthropic biedt daar geen koppeling voor
-              op een persoonlijk abonnement. Eén klik hieronder brengt je op de plek waar het wél staat.
+            <p className="ct-abo-tekst">
+              Het saldo zelf kan dit dashboard niet ophalen; op een persoonlijk abonnement is daar geen
+              koppeling voor. Eén klik hieronder brengt je op de plek waar het wél staat.
             </p>
-            <div className="at-knoppen">
-              <a className="btn at-btn" href="https://claude.ai/settings/usage" target="_blank" rel="noreferrer">
+            <div className="ct-knoppen">
+              <a className="btn ct-btn" href="https://claude.ai/settings/usage" target="_blank" rel="noreferrer">
                 Bekijk je tegoed
               </a>
-              <a className="btn at-btn" href="https://claude.ai/settings/billing" target="_blank" rel="noreferrer">
+              <a className="btn ct-btn" href="https://claude.ai/settings/billing" target="_blank" rel="noreferrer">
                 Extra verbruik instellen
               </a>
             </div>
           </div>
 
-          <div className="at-voet">
-            Het bedrag bovenaan is een schatting op basis van tokens tegen de standaardtarieven, dus
-            het kan een paar procent van de echte rekening afwijken. Herhaalde vragen komen deels uit
-            de cache en kosten een fractie.
-          </div>
-
-          <a className="hm-item" href="/admin/usage">
+          <a className="hm-item at-link" href="/admin/usage">
             <span className="hm-item-label">Naar het verbruik</span>
-            <span className="hm-item-hint">Uitgesplitst per klant en per functie, samen met het Ahrefs-verbruik.</span>
+            <span className="hm-item-hint">Per klant en per functie, samen met het Ahrefs-verbruik.</span>
           </a>
         </div>
       )}
