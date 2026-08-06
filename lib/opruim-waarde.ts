@@ -60,6 +60,30 @@ export type Oppakker = {
   eigenPagina?: import("./opruim-serp").EigenPaginaToets | null;
 };
 
+/**
+ * Pagina's die er zijn omdat een website ze moet hebben, niet om gevonden te
+ * worden. Hun zoekterm heeft vaak fors volume ("algemene voorwaarden" is 2100
+ * per maand, "afspraak maken" 1100), maar dat is taalvolume en geen vraag naar
+ * dít bedrijf: niemand zoekt op "algemene voorwaarden" en hoopt bij een
+ * soa-kliniek uit te komen. Ze kwamen daardoor op 7 augustus 2026 als gemiste
+ * kans in de lijst, met een advies om ze uit te bouwen. Dat is precies het soort
+ * regel dat een rapport ongeloofwaardig maakt zodra een klant meekijkt.
+ */
+const FUNCTIONEEL = [
+  "algemene-voorwaarden", "voorwaarden", "privacy", "privacybeleid", "cookies", "cookiebeleid",
+  "disclaimer", "sitemap", "contact", "over-ons", "vacatures", "vacature", "klachten",
+  "afspraak-maken", "afspraak", "inloggen", "login", "account", "winkelwagen", "checkout",
+  "bedankt", "bevestiging", "aanvragen", "betalen", "betaling", "retour", "verzending",
+  "veelgestelde-vragen", "faq", "nieuwsbrief", "zoeken", "404",
+];
+
+export function isFunctioneel(pad: string): boolean {
+  const p = padVan(pad).replace(/^\/|\/$/g, "").toLowerCase();
+  if (!p) return true;                                  // de homepage zelf
+  const delen = p.split("/");
+  return delen.some((d) => FUNCTIONEEL.includes(d));
+}
+
 const padVan = (u: string) => { try { return new URL(u).pathname; } catch { return (u || "").trim(); } };
 const norm = (u: string) => padVan(u).replace(/\/+$/, "").toLowerCase();
 
@@ -135,6 +159,9 @@ export async function weegPaden(
     const pad = padVan(k.pad);
     const term = termen.get(pad);
     if (!term) continue;
+    // Een functionele pagina is nooit een gemiste kans, hoe groot het zoekvolume
+    // van zijn woorden ook is.
+    if (isFunctioneel(pad)) continue;
     const kw = feiten.get(term);
     const volume = kw?.volume ?? null;
     if (volume == null || volume < DREMPEL_VOLUME) continue;

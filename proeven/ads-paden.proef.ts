@@ -37,5 +37,19 @@ check("maar niet een pagina die er alleen op lijkt", isAdsPad("/adsl-test/", map
 const leeg = maak([]);
 check("zonder advertentiepagina's valt niets af", isAdsPad("/wat-dan-ook/", leeg), false);
 
+// ── Functionele pagina's zijn geen gemiste kans ───────────────────────────
+// Op 7 augustus 2026 stond /algemene-voorwaarden/ in de lijst "oppakken" met
+// het advies om hem uit te bouwen, omdat "algemene voorwaarden" 2100 keer per
+// maand gezocht wordt. Dat is taalvolume, geen vraag naar deze kliniek. Zo'n
+// regel maakt een rapport ongeloofwaardig zodra een klant meekijkt.
+import { isFunctioneel } from "../lib/opruim-waarde";
+
+check("algemene voorwaarden is functioneel", isFunctioneel("/algemene-voorwaarden/"), true);
+check("afspraak maken is functioneel", isFunctioneel("/afspraak-maken/"), true);
+check("ook een niveau dieper", isFunctioneel("/over-ons/vacatures/"), true);
+check("de homepage telt ook mee", isFunctioneel("/"), true);
+check("maar een echte contentpagina niet", isFunctioneel("/soa-test-bestellen/"), false);
+check("en een plaatspagina niet", isFunctioneel("/soa-klinieken/soa-test-gouda/"), false);
+
 console.log(fouten === 0 ? "\nAlle proeven geslaagd." : `\n${fouten} proef/proeven mislukt.`);
 process.exit(fouten === 0 ? 0 : 1);
