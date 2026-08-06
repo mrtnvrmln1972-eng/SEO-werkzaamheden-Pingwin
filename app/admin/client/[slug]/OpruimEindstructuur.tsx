@@ -17,7 +17,7 @@ import { useEffect, useState } from "react";
 
 type Rol = "blijft" | "thuisbasis" | "opnieuw opbouwen" | "nieuw";
 type EindPagina = { pad: string; rol: Rol; toelichting: string; slokt: string[] };
-type Tak = { pad: string; titel: string; bestaat: boolean; kinderen: EindPagina[] };
+type Tak = { sleutel: string; pad: string; titel: string; bestaat: boolean; kinderen: EindPagina[] };
 export type Eindstructuur = {
   takken: Tak[]; losse: EindPagina[];
   nu: number; straks: number; weg: number; erbij: number; vorm: string; volledig: boolean;
@@ -94,7 +94,7 @@ export default function OpruimEindstructuur({ slug, domain, data }: {
 
       <div className="opr-eind-boom">
         {takken.map((t) => (
-          <div key={t.pad} className="opr-eind-tak">
+          <div key={t.sleutel} className="opr-eind-tak">
             <div className="opr-eind-takkop">
               <span className="opr-eind-takttl">{t.titel}</span>
               {t.pad && <Link p={t.pad} />}
@@ -102,7 +102,7 @@ export default function OpruimEindstructuur({ slug, domain, data }: {
               {!t.bestaat && <span className="opr-chip nodig" title="Er is geen overzichtspagina voor deze tak; die zou hem sterker maken.">geen hoofdpagina</span>}
             </div>
             <ul className="opr-eind-kinderen">
-              {(open[t.pad] ? t.kinderen : t.kinderen.slice(0, 8)).map((k) => (
+              {(open[t.sleutel] ? t.kinderen : t.kinderen.slice(0, 8)).map((k) => (
                 <li key={k.pad}>
                   <Link p={k.pad} />
                   {ROL_TEKST[k.rol] && <span className={`opr-chip ${ROL_CHIP[k.rol]}`}>{ROL_TEKST[k.rol]}</span>}
@@ -115,8 +115,8 @@ export default function OpruimEindstructuur({ slug, domain, data }: {
               ))}
             </ul>
             {t.kinderen.length > 8 && (
-              <button type="button" className="opr-meer" onClick={() => setOpen((m) => ({ ...m, [t.pad]: !m[t.pad] }))}>
-                {open[t.pad] ? "▾ minder" : `▸ nog ${t.kinderen.length - 8} pagina's in deze tak`}
+              <button type="button" className="opr-meer" onClick={() => setOpen((m) => ({ ...m, [t.sleutel]: !m[t.sleutel] }))}>
+                {open[t.sleutel] ? "▾ minder" : `▸ nog ${t.kinderen.length - 8} pagina's in deze tak`}
               </button>
             )}
           </div>

@@ -36,7 +36,9 @@ export type EindPagina = {
 };
 
 export type Tak = {
-  /** Het pad van de hoofdpagina, of de naam van de groep als die pagina niet bestaat. */
+  /** Vaste sleutel voor deze tak, ook als er geen hoofdpagina is. */
+  sleutel: string;
+  /** Het pad van de hoofdpagina, leeg als die niet bestaat. */
   pad: string;
   titel: string;
   /** Bestaat de hoofdpagina zelf, of is dit alleen een groepering? */
@@ -163,11 +165,21 @@ export async function bouwEindstructuur(slug: string, result: CannibalResult | n
   // De platte pagina's groeperen op hun sterkste gedeelde woord. Elk pad kiest
   // het woord dat het vaakst voorkomt, zodat "soa-test-gouda" en "soa-test-breda"
   // bij elkaar komen; een woord dat maar één of twee pagina's dekt is geen tak.
+  //
+  // Met één bovengrens erbij, en die is niet cosmetisch. Bij One Day Clinic staat
+  // "test" in bijna elke URL. Zonder grens werd dát het groepswoord, en dan komen
+  // /allergie-test/ en /bloedgroep-test/ onder één tak die toevallig "Crp test"
+  // gaat heten: een groep die niets betekent, met een misleidende naam. Een woord
+  // dat de halve site dekt is geen onderwerp maar ruis; dezelfde regel als in de
+  // onderwerp-detectie hierboven.
   const freq = new Map<string, number>();
   for (const p of plat) for (const w of new Set(onderwerpWoorden(p.pad))) freq.set(w, (freq.get(w) || 0) + 1);
+  const teBreed = Math.max(MIN_TAK * 3, Math.round(plat.length * 0.25));
   const losse: EindPagina[] = [];
   for (const p of plat) {
-    const woorden = [...new Set(onderwerpWoorden(p.pad))].sort((a, b) => (freq.get(b) || 0) - (freq.get(a) || 0));
+    const woorden = [...new Set(onderwerpWoorden(p.pad))]
+      .filter((w) => (freq.get(w) || 0) <= teBreed)
+      .sort((a, b) => (freq.get(b) || 0) - (freq.get(a) || 0));
     const beste = woorden[0];
     if (!beste || (freq.get(beste) || 0) < MIN_TAK) { losse.push(p); continue; }
     const tak = `#${beste}`;
@@ -180,25 +192,35 @@ export async function bouwEindstructuur(slug: string, result: CannibalResult | n
     .filter(([, kinderen]) => kinderen.length >= MIN_TAK)
     .map(([tak, kinderen]) => {
       const echt = !tak.startsWith("#");
-      // De hoofdpagina van een afgeleide tak: de pagina met het kortste pad die
-      // het takwoord bevat. Vaak is dat precies de overzichtspagina.
-      const hoofd = echt
-        ? (paden.has(norm(tak)) ? norm(tak) : "")
-        : [...kinderen].sort((a, b) => a.pad.length - b.pad.length)[0]?.pad || "";
+      if (echt) {
+        return {
+          sleutel: tak,
+          pad: tak,
+          titel: mooi(tak),
+          bestaat: paden.has(norm(tak)),
+          kinderen: kinderen.filter((k) => k.pad !== norm(tak)).sort((a, b) => a.pad.localeCompare(b.pad)),
+        };
+      }
+      // Een afgeleide tak heet naar het gedeelde woord, niet naar de kortste
+      // pagina erin. Anders krijgt een groep tests de naam van de eerste test die
+      // toevallig het kortste pad had, en dat leest als een pagina terwijl het een
+      // groepering is. Bestaat er wél een overzichtspagina met precies dat woord,
+      // dan is dat de hoofdpagina; anders staat er eerlijk dat die ontbreekt.
+      const woord = tak.slice(1);
+      const eigen = kinderen.find((k) => norm(k.pad) === `/${woord}`);
       return {
-        pad: echt ? tak : hoofd,
-        titel: echt ? mooi(tak) : mooi(hoofd),
-        bestaat: echt ? paden.has(norm(tak)) : true,
-        kinderen: kinderen
-          .filter((k) => k.pad !== (echt ? norm(tak) : hoofd))
-          .sort((a, b) => a.pad.localeCompare(b.pad)),
+        sleutel: tak,
+        pad: eigen?.pad || "",
+        titel: woord.charAt(0).toUpperCase() + woord.slice(1),
+        bestaat: !!eigen,
+        kinderen: kinderen.filter((k) => k.pad !== eigen?.pad).sort((a, b) => a.pad.localeCompare(b.pad)),
       };
     })
-    .sort((a, b) => b.kinderen.length - a.kinderen.length || a.pad.localeCompare(b.pad));
+    .sort((a, b) => b.kinderen.length - a.kinderen.length || a.sleutel.localeCompare(b.sleutel));
 
   // Alles wat niet in een tak van drie belandde, blijft los staan. Dat verzwijgen
   // zou het beeld mooier maken dan het is.
-  const inTak = new Set(takken.flatMap((t) => [t.pad, ...t.kinderen.map((k) => k.pad)]));
+  const inTak = new Set(takken.flatMap((t) => [t.pad, ...t.kinderen.map((k) => k.pad)]).filter(Boolean));
   const echteLosse = [...losse, ...alles.filter((p) => !inTak.has(p.pad) && !losse.some((l) => l.pad === p.pad))]
     .filter((p, i, a) => a.findIndex((x) => x.pad === p.pad) === i)
     .sort((a, b) => a.pad.localeCompare(b.pad));
