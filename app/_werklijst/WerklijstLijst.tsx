@@ -155,8 +155,15 @@ function Blok({ titel, uitleg, aantal, gedaan, open, onToggle, knop, children }:
   );
 }
 
+export type PaginaKlus = {
+  id: number; url: string; pad: string; taak: string; toelichting: string;
+  docs: { label: string; url: string }[]; punten: string[];
+};
+
 type Props = {
   pages: Pagina[];
+  /** Doorgezette paginakaarten: het echte paginawerk, naast meta's en alt-teksten. */
+  paginaklussen?: PaginaKlus[];
   images: Alt[];
   dubbel: DubbelItem[];
   marks: Record<string, Mark>;
@@ -177,6 +184,8 @@ type Props = {
 
 export default function WerklijstLijst(p: Props) {
   const { pages, images, dubbel, marks, admin = false, siteUrl = "", overslag } = p;
+  const paginaklussen = p.paginaklussen || [];
+  const [openKlus, setOpenKlus] = useState(true);
   const [kopie, setKopie] = useState("");
   const [openMeta, setOpenMeta] = useState(false);
   const [openAlt, setOpenAlt] = useState(false);
@@ -327,6 +336,42 @@ export default function WerklijstLijst(p: Props) {
           {admin ? " Elk punt voer je zelf per stuk door, zodat je er eerst naar kijkt." : " Werk af wat je kunt en vink af; het hoeft niet in één keer."}
         </span>
       </div>
+
+      {paginaklussen.length > 0 && (
+        <Blok
+          titel="Paginawerk"
+          uitleg="Hele pagina's die live moeten, met de teksten erbij. Dit is het grootste werk op deze lijst; de meta- en alt-teksten hieronder zijn losse velden."
+          aantal={paginaklussen.length}
+          gedaan={paginaklussen.filter((k) => af(`p|${k.id}`)).length}
+          open={openKlus}
+          onToggle={() => setOpenKlus((s) => !s)}
+        >
+        {paginaklussen.map((k) => (
+            <div key={k.id} className={"wl-klus" + (af(`p|${k.id}`) ? " wl-klus-af" : "")}>
+              <label className="wl-klus-kop">
+                <input type="checkbox" checked={af(`p|${k.id}`)} onChange={(e) => p.onVink(`p|${k.id}`, e.target.checked)} />
+                <a href={k.url} target="_blank" rel="noreferrer" className="wl-klus-pad">{k.pad}</a>
+              </label>
+              <div className="wl-klus-taak">{k.taak}</div>
+              {k.toelichting && <div className="wl-klus-toel">{k.toelichting}</div>}
+              {k.docs.length > 0 && (
+                <div className="wl-klus-docs">
+                  <span className="wl-klus-lab">Teksten en documenten:</span>
+                  {k.docs.map((d) => (
+                    <a key={d.url} href={d.url} target="_blank" rel="noreferrer">{d.label}</a>
+                  ))}
+                </div>
+              )}
+              {k.punten.length > 0 && (
+                <div className="wl-klus-punten">
+                  <span className="wl-klus-lab">Klaar als:</span>
+                  <ul>{k.punten.map((t, i) => <li key={i}>{t}</li>)}</ul>
+                </div>
+              )}
+            </div>
+          ))}
+        </Blok>
+      )}
 
       {telling.metaTotaal > 0 && (
         <Blok

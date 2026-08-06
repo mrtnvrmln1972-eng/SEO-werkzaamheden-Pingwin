@@ -29,6 +29,9 @@ export async function GET(req: NextRequest) {
     // Zonder de teksten levert pages alleen de basis-URL om paden klikbaar te maken.
     pages: doenWijZelf ? data.pages.map((p) => ({ url: p.url, path: p.path })) : data.pages,
     images: doenWijZelf ? [] : data.images,
+    // Paginawerk blijft ALTIJD staan, ook met een WordPress-koppeling: een hele
+    // pagina live zetten kunnen wij niet met een knop, dat is echt zijn werk.
+    paginaklussen: data.paginaklussen,
     dubbel: data.dubbel,
     marks: data.marks,
     updatedAt: data.state.updatedAt,

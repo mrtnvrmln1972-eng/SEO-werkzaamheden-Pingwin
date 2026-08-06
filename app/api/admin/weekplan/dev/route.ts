@@ -3,6 +3,7 @@ import { ADMIN_COOKIE, verifyAdminSession } from "../../../../../lib/admin-auth"
 import { guardSlug } from "../../../../../lib/admin-scope";
 import { getWeekplan, getWeekplanDev, setWeekplanNaarDev } from "../../../../../lib/weekplan";
 import { docsVoorPagina } from "../../../../../lib/developer";
+import { ALLE_PUNTEN, voorstelPunten, type PuntId } from "../../../../../lib/dev-punten";
 import { devSturing } from "../../../../../lib/developer";
 
 export const runtime = "nodejs";
@@ -47,6 +48,12 @@ export async function GET(req: NextRequest) {
     voorstelTaak: kaart.taak || "",
     voorstelToelichting: devSturing(kaart.toelichting || ""),
     url: kaart.url || "",
+    // Wat er straks meetbaar af moet zijn. De eerste keer stellen we voor wat we
+    // ook echt kunnen nameten; daarna staat jouw eigen keuze er.
+    puntKeuzes: ALLE_PUNTEN,
+    punten: opgeslagen?.punten?.length
+      ? opgeslagen.punten
+      : (kaart.url ? await voorstelPunten(slug, kaart.url).catch(() => ["live"] as PuntId[]) : []),
   });
 }
 
@@ -71,6 +78,7 @@ export async function POST(req: NextRequest) {
     taak: body.taak === undefined ? undefined : String(body.taak),
     toelichting: body.toelichting === undefined ? undefined : String(body.toelichting),
     docs,
+    punten: Array.isArray(body.punten) ? body.punten.map(String) : undefined,
   });
   return NextResponse.json({ ok: true });
 }

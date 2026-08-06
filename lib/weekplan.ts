@@ -287,7 +287,7 @@ export async function setWeekplanNaarDev(
   slug: string,
   id: number,
   naarDev: boolean,
-  dev?: { taak?: string; toelichting?: string; docs?: { label: string; url: string }[] },
+  dev?: { taak?: string; toelichting?: string; docs?: { label: string; url: string }[]; punten?: string[] },
 ): Promise<void> {
   await ensureSchema();
   await sql`UPDATE client_weekplan SET naar_dev = ${naarDev}, naar_dev_at = ${naarDev ? new Date().toISOString() : null}, updated_at = now()
@@ -298,20 +298,22 @@ export async function setWeekplanNaarDev(
   const taak = dev.taak === undefined ? null : dev.taak.trim().slice(0, 300);
   const toel = dev.toelichting === undefined ? null : dev.toelichting.trim().slice(0, 4000);
   const docs = dev.docs === undefined ? null : JSON.stringify(dev.docs.slice(0, 8));
+  const punten = dev.punten === undefined ? null : JSON.stringify(dev.punten.slice(0, 8));
   await sql`
     UPDATE client_weekplan SET
       dev_taak        = COALESCE(${taak}, dev_taak),
       dev_toelichting = COALESCE(${toel}, dev_toelichting),
       dev_docs        = COALESCE(${docs}::jsonb, dev_docs),
+      dev_punten      = COALESCE(${punten}::jsonb, dev_punten),
       updated_at = now()
     WHERE client_slug = ${slug} AND id = ${id}`;
 }
 
 /** Wat er op dit moment naar de developer zou gaan (voor het doorzet-venster). */
-export async function getWeekplanDev(slug: string, id: number): Promise<{ taak: string; toelichting: string; docs: { label: string; url: string }[] } | null> {
+export async function getWeekplanDev(slug: string, id: number): Promise<{ taak: string; toelichting: string; docs: { label: string; url: string }[]; punten: string[] } | null> {
   await ensureSchema();
   const { rows } = await sql`
-    SELECT taak, toelichting, dev_taak, dev_toelichting, dev_docs
+    SELECT taak, toelichting, dev_taak, dev_toelichting, dev_docs, dev_punten
     FROM client_weekplan WHERE client_slug = ${slug} AND id = ${id} LIMIT 1`;
   const r = rows[0];
   if (!r) return null;
@@ -319,6 +321,7 @@ export async function getWeekplanDev(slug: string, id: number): Promise<{ taak: 
     taak: String(r.dev_taak || r.taak || ""),
     toelichting: String(r.dev_toelichting || ""),
     docs: Array.isArray(r.dev_docs) ? (r.dev_docs as { label: string; url: string }[]) : [],
+    punten: Array.isArray(r.dev_punten) ? (r.dev_punten as string[]) : [],
   };
 }
 

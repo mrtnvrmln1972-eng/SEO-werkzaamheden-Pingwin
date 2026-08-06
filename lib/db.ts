@@ -292,6 +292,10 @@ async function init(): Promise<void> {
   await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS dev_taak TEXT`;
   await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS dev_toelichting TEXT`;
   await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS dev_docs JSONB`;
+  // Wat er meetbaar af moet zijn als de sitebouwer klaar is (["live","koppen",…]).
+  // Zonder zo'n lijstje is "is dit gedaan?" een vraag die je met de hand op de
+  // site beantwoordt, of helemaal niet.
+  await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS dev_punten JSONB`;
   // De dag waarop een taak staat gepland. De week volgt uit deze datum; leeg
   // betekent dat er nog geen dag gekozen is en alleen de week bekend is.
   await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS datum DATE`;

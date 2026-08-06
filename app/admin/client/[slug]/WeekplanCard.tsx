@@ -246,6 +246,27 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
   // Welke fases hun sturing tonen. Dicht is de standaard: je wilt de instructie
   // van de stap waar je mee bezig bent, niet die van alle vijf tegelijk.
   const [faseOpen, setFaseOpen] = useState<Record<string, boolean>>({});
+  // De controle "is dit doorgevoerd?": meet de live pagina op de punten die bij
+  // het doorzetten zijn afgesproken. Het antwoord blijft hier staan tot je de
+  // kaart sluit; de vaste plek ervan is de kaarttekst en de tijdlijn.
+  const [controle, setControle] = useState<{ samenvatting: string; punten: { label: string; uitslag: string; bewijs: string }[]; alles: boolean; meetbaar: boolean } | null>(null);
+  const [controleBezig, setControleBezig] = useState(false);
+
+  async function isDoorgevoerd() {
+    if (controleBezig) return;
+    setControleBezig(true);
+    try {
+      const d = await fetch("/api/admin/weekplan/doorgevoerd", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, id: t.id }),
+      }).then((r) => r.json());
+      if (d?.ok && d.meting) { setControle(d.meting); if (d.gewijzigd) refreshBoard(); }
+      else setControle({ samenvatting: d?.error || "De controle lukte niet.", punten: [], alles: false, meetbaar: false });
+    } catch {
+      setControle({ samenvatting: "De controle lukte niet.", punten: [], alles: false, meetbaar: false });
+    } finally { setControleBezig(false); }
+  }
+
   // Staat deze kaart op de developerpagina?
   const [naarDev, setNaarDev] = useState<boolean>(t.naarDev === true);
   const [devBezig, setDevBezig] = useState(false);
@@ -567,6 +588,15 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
                   {devBezig ? "Bezig…" : naarDev ? "✓ Bij de sitebouwer" : "Naar de sitebouwer"}
                 </button>
               )}
+              {/* Nameten hoort naast doorzetten: dat is dezelfde afspraak, een
+                  paar weken later. Alleen zinvol bij een pagina. */}
+              {open && t.url && (
+                <button type="button" className="btn-ghost" disabled={controleBezig}
+                  title="Meet de live pagina op wat er bij het doorzetten is afgesproken, zet het bewijs in de kaart en vinkt Implementatie af als het klopt."
+                  onClick={() => void isDoorgevoerd()}>
+                  {controleBezig ? "Meten…" : "Is dit doorgevoerd?"}
+                </button>
+              )}
               {open && hasInfo && (
                 <button type="button" className="btn-ghost" disabled={busy === "opruimen"}
                   title="Laat de assistent de kaarttekst één keer herschrijven naar het strakke formaat. Niets verzinnen, niets weggooien; de oude tekst blijft in het archief staan."
@@ -580,6 +610,27 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
             </span>
           </div>
       {open && opruimMsg && <div className={opruimMsg.startsWith("Kaart") ? "wp-opruim-ok" : "wp-opruim-fout"}>{opruimMsg}</div>}
+      {open && controle && (
+        <div className={"wp-controle" + (controle.alles ? " wp-controle-ok" : controle.meetbaar ? " wp-controle-niet" : "")}>
+          <div className="wp-controle-kop">
+            {controle.alles ? "Doorgevoerd: " : controle.meetbaar ? "Nog niet klaar: " : ""}{controle.samenvatting}
+          </div>
+          {controle.punten.length > 0 && (
+            <ul className="wp-controle-lijst">
+              {controle.punten.map((p, i) => (
+                <li key={i} className={"wp-controle-punt wp-cp-" + p.uitslag}>
+                  <span className="wp-controle-label">{p.label}</span>
+                  <span className="wp-controle-bewijs muted">{p.bewijs}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {controle.meetbaar && !controle.alles && (
+            <button type="button" className="btn-ghost" onClick={() => onMail("dev")}
+              title="Schrijf een mail aan de sitebouwer met de gemeten waarde en de pagina erin">Mail de sitebouwer</button>
+          )}
+        </div>
+      )}
       {/* Alles wat over deze pagina gaat staat in één blok. Het zaten er eerst drie
           los onder elkaar: "Waarom deze pagina" (het geschreven verhaal), het
           paginadossier (wat er echt gebeurd is) en de documenten. Ze vertelden

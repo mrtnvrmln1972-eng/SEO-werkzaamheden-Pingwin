@@ -67,9 +67,30 @@ export type WorklistPage = {
 export type WorklistMark = { done: boolean; doneBy: string; verified: boolean };
 // Wat is er buiten de grenzen gevallen? Nooit meer stil overslaan.
 export type WorklistOverslag = { altBeeld: number; paginas: number; perPagina: number };
+/**
+ * Een paginakaart die is doorgezet naar de sitebouwer.
+ *
+ * Waarom die hier staat: doorgezette kaarten belandden op een scherm achter de
+ * adminlogin, terwijl de sitebouwer alleen deze deelbare lijst heeft (zonder
+ * inlog). Zijn paginawerk stond dus op een plek waar hij niet komt, en dan
+ * gebeurt het niet. Eén adres voor alles wat hij moet doen.
+ */
+export type PaginaKlus = {
+  id: number;
+  url: string;
+  pad: string;
+  taak: string;
+  toelichting: string;
+  docs: { label: string; url: string }[];
+  /** Wat er meetbaar af moet zijn, in gewone taal. */
+  punten: string[];
+};
+
 export type WorklistData = {
   state: DevWorklistState;
   pages: WorklistPage[];
+  /** Doorgezette paginakaarten; leeg als er niets openstaat. */
+  paginaklussen: PaginaKlus[];
   /** De alt-teksten, één regel per afbeelding (zo slaat WordPress het ook op). */
   images: WorklistAlt[];
   dubbel: { file: string; src: string; paths: string[] }[];
@@ -721,8 +742,37 @@ export async function getWorklistData(slug: string): Promise<WorklistData> {
     const k = normFile(d.file);
     return pasHandmatigToe(classifyImage({ file: k, src: d.src || "", paginas: d.paths?.length || 2, totaalPaginas: gemeten }), soorten[k] || null).moetUniek;
   });
-  return { state, pages, images, dubbel, gemeten, soorten, shareToken, marks, overslag };
+  return { state, pages, paginaklussen: await paginaKlussen(slug), images, dubbel, gemeten, soorten, shareToken, marks, overslag };
 }
+
+/** De kaarten die naar de sitebouwer zijn doorgezet en nog niet klaar zijn. */
+async function paginaKlussen(slug: string): Promise<PaginaKlus[]> {
+  const { ALLE_PUNTEN } = await import("./dev-punten");
+  const { rows } = await sql`
+    SELECT id, url, taak, dev_taak, dev_toelichting, dev_docs, dev_punten
+    FROM client_weekplan
+    WHERE client_slug = ${slug} AND naar_dev = true AND status <> 'klaar'
+    ORDER BY naar_dev_at DESC NULLS LAST, id DESC`;
+  const kaal = (x: unknown) => String(x || "").replace(/<[^>]*>/g, "").trim();
+  return rows.map((r) => {
+    const url = String(r.url || "");
+    let pad = url;
+    try { pad = new URL(url).pathname; } catch { /* geen geldige url; dan het hele veld */ }
+    const ids = Array.isArray(r.dev_punten) ? (r.dev_punten as string[]) : [];
+    return {
+      id: r.id as number,
+      url,
+      pad,
+      taak: kaal(r.dev_taak) || kaal(r.taak),
+      toelichting: kaal(r.dev_toelichting),
+      docs: Array.isArray(r.dev_docs) ? (r.dev_docs as { label: string; url: string }[]) : [],
+      punten: ids.map((id) => ALLE_PUNTEN.find((p) => p.id === id)?.label || id),
+    };
+  });
+}
+
+/** De vinksleutel van een paginaklus op de werklijst. */
+export const paginaKlusKey = (id: number) => `p|${id}`;
 
 /** Vult een opgeslagen alt-regel aan met de indeling (ook bij oude data). */
 function verrijkAlt(a: WorklistAlt, dubbel: { file: string; src: string; paths: string[] }[], gemeten: number, soorten: Record<string, ImageSoort>): WorklistAlt {

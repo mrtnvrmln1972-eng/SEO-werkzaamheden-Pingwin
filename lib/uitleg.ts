@@ -903,7 +903,14 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "knop om het rechtstreeks in de site te zetten, en de keuze of een afbeelding uniek moet zijn.\n\n" +
           "Waarom die splitsing er is: eerst stond alles per pagina uitgeklapt onder elkaar en was vrijwel elke " +
           "regel geblokkeerd tot iemand een foto verving. Dat werd een muur van tientallen schermen hoog waar " +
-          "niemand aan begon.",
+          "niemand aan begon.\n\n" +
+          "**Sinds 6 augustus 2026 staat het paginawerk er ook op.** Zet je een projectkaart door met de knop " +
+          "\"Zet klaar voor de sitebouwer\", dan kiest een venster wat hij krijgt: de opdracht in jouw woorden, welke " +
+          "teksten meegaan (de herziene versie van de klant of onze eigen copy, dat is een keuze) en wat er straks " +
+          "meetbaar af moet zijn. Dat verschijnt als eigen blok op ditzelfde adres, boven de meta- en alt-teksten.\n\n" +
+          "Dat was een gat: een doorgezette kaart belandde op een scherm achter de inlog, terwijl de deelbare lijst " +
+          "alleen losse velden bevatte. Zijn grootste werk stond dus op een plek waar hij niet komt. Ook met een " +
+          "WordPress-koppeling blijft dit blok staan, want een hele pagina live zetten kan geen knop van ons.",
       },
       {
         titel: "Doorvoeren op de site en nameten",
@@ -914,7 +921,17 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "(klikpercentage voor en na).\n\n" +
           "Alt-teksten hangen in WordPress aan de afbeelding zelf. Dat werkt goed voor unieke afbeeldingen; een " +
           "afbeelding die op meerdere plekken staat zou site-breed dezelfde alt krijgen en gaat daarom niet " +
-          "automatisch, maar wordt in de werklijst voor de sitebouwer gemarkeerd.",
+          "automatisch, maar wordt in de werklijst voor de sitebouwer gemarkeerd.\n\n" +
+          "**En op de projectkaart staat de knop \"Is dit doorgevoerd?\"** Die meet de live pagina op precies de " +
+          "punten die bij het doorzetten zijn afgesproken: staat hij live, staan de geschreven koppen erop, staat " +
+          "de structured data erop. Het antwoord landt op drie plekken: bovenin de kaart met het bewijs per punt, " +
+          "als één regel in de kaarttekst die de vorige controle vervángt, en in de tijdlijn met de pagina als " +
+          "bewijs. Klopt alles, dan gaat het vinkje bij Implementatie om; klopt het niet, dan biedt de kaart een " +
+          "mail aan de sitebouwer aan met de gemeten waarde erin.\n\n" +
+          "Eén regel is belangrijker dan de meting zelf: **een mislukte meting is nooit een oordeel.** Weigert de " +
+          "site ons of laadt de pagina niet, dan is de uitslag \"kon ik niet meten\" en verandert er niets. " +
+          "Beweren dat iets niet gedaan is terwijl je het niet gezien hebt, is erger dan niets weten. De aanleiding " +
+          "is concreet: in januari 2026 kon niemand vaststellen of zes interne links nu wel of niet verdwenen waren.",
       },
       {
         titel: "Wat we gedaan hebben",

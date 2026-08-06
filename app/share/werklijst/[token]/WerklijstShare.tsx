@@ -17,12 +17,13 @@
 // iets rechtstreeks in de site te zetten).
 
 import { useEffect, useState } from "react";
-import WerklijstLijst, { type Pagina, type Alt, type Mark, type DubbelItem } from "../../../_werklijst/WerklijstLijst";
+import WerklijstLijst, { type Pagina, type Alt, type Mark, type DubbelItem, type PaginaKlus } from "../../../_werklijst/WerklijstLijst";
 
 export default function WerklijstShare({ token }: { token: string }) {
   const [pages, setPages] = useState<Pagina[]>([]);
   const [images, setImages] = useState<Alt[]>([]);
   const [dubbel, setDubbel] = useState<DubbelItem[]>([]);
+  const [paginaklussen, setPaginaklussen] = useState<PaginaKlus[]>([]);
   const [marks, setMarks] = useState<Record<string, Mark>>({});
   const [clientName, setClientName] = useState("");
   const [fout, setFout] = useState("");
@@ -34,7 +35,7 @@ export default function WerklijstShare({ token }: { token: string }) {
   async function laad() {
     try {
       const d = await fetch(`/api/share/werklijst?token=${encodeURIComponent(token)}`).then((r) => r.json());
-      if (d?.ok) { setPages(d.pages || []); setImages(d.images || []); setDubbel(d.dubbel || []); setMarks(d.marks || {}); setClientName(d.clientName || ""); }
+      if (d?.ok) { setPages(d.pages || []); setImages(d.images || []); setDubbel(d.dubbel || []); setPaginaklussen(d.paginaklussen || []); setMarks(d.marks || {}); setClientName(d.clientName || ""); }
       else setFout(d?.error || "Kon de werklijst niet laden.");
     } catch { setFout("Kon de werklijst niet laden; ververs de pagina."); }
     finally { setLaden(false); }
@@ -77,6 +78,7 @@ export default function WerklijstShare({ token }: { token: string }) {
 
       <WerklijstLijst
         pages={pages}
+        paginaklussen={paginaklussen}
         images={images}
         dubbel={dubbel}
         marks={marks}
