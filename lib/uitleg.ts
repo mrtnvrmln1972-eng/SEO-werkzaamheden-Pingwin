@@ -1104,69 +1104,479 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
   // ── 15 (intern) ──────────────────────────────────────────
   {
     id: "agenda",
-    titel: "Eerlijke agenda: wat nog niet af is",
+    titel: "Eerlijke agenda en routekaart",
     intern: true,
     intro:
-      "Dit hoofdstuk is alleen zichtbaar met een beheerderssessie. Het staat er zodat dit document ook naar " +
-      "binnen werkt: waar zitten de gaten, de risico's en de dingen die beter kunnen? Wat hier staat is bekend " +
-      "en benoemd, niet verzwegen.",
+      "Dit hoofdstuk is alleen zichtbaar met een beheerderssessie, en het is tegelijk de ontwikkelagenda. " +
+      "Dertien punten, genummerd R1 tot R13, in drie golven plus een lijst met wat we bewust níet doen. Elk " +
+      "punt staat er met wat er nu mis is, wat het oplevert, hoe het gebouwd zou worden en waaraan je ziet dat " +
+      "het af is. Zo kan één punt in één aparte werksessie opgepakt worden zonder dat het opnieuw bedacht hoeft " +
+      "te worden.",
     uitklappers: [
       {
-        titel: "Gaten in de data",
+        titel: "Hoe we dit organiseren",
+        kern: "Eén punt, één sessie, één meetbaar resultaat. En de lus die zichzelf versterkt.",
         tekst:
-          "- **Autoriteit per losse pagina** is niet aangesloten in de interne-links-motor. Dat wordt eerlijk " +
-          "als ontbrekend gemarkeerd, maar het betekent dat de weging op linkwaarde nu op een benadering leunt.\n" +
-          "- **Backlinks per pagina** idem: kapotte backlinks komen wel binnen, het volledige profiel niet.\n" +
-          "- **AI-vindbaarheid** is de jongste lens en nog de dunste: het aantal AI-antwoorden waarin een domein " +
-          "voorkomt, zonder onderwerpniveau erachter.\n" +
-          "- **Verbruiksmeting** dekt de AI-kosten wel en de Ahrefs-credits nog niet volledig. De marge per " +
-          "klant is daarmee nog niet compleet.",
+          "**De werkwijze per punt.** Elk punt hieronder is zo geschreven dat het in een eigen werksessie kan " +
+          "worden opgepakt: \"Pak R2\" is genoeg om te beginnen. Vaste vorm per punt:\n\n" +
+          "1. **Wat er nu mis is.** Het probleem, niet de oplossing.\n" +
+          "2. **Wat het oplevert.** Voor het werk, voor de klant, of voor de verkoop. Levert het niets van die " +
+          "drie op, dan hoort het in de lijst \"niet doen\".\n" +
+          "3. **Hoe we het zouden bouwen.** De route in grote stappen, plus wat er al ligt om op voort te bouwen.\n" +
+          "4. **Waaraan je ziet dat het af is.** Eén controleerbare uitkomst. Geen \"het werkt nu beter\".\n" +
+          "5. **Wat het raakt.** Welke bestaande motoren of schermen meebewegen, zodat er niets stilletjes " +
+          "uiteen gaat lopen.\n\n" +
+          "**De drie golven.** Golf 1 maakt bestaande motoren volwaardig (het meeste effect per uur, want het " +
+          "fundament ligt er al). Golf 2 haalt de remmen weg die het bureau tegenhouden bij groei. Golf 3 maakt " +
+          "er een product van dat een ander bureau kan gebruiken.\n\n" +
+          "**De lus die zichzelf versterkt.** Dit is het punt waar dit document meer wordt dan documentatie:\n\n" +
+          "- Bouwen begint hier: een sessie leest deze routekaart en pakt één punt.\n" +
+          "- Bouwen eindigt hier: hetzelfde punt wordt bijgewerkt in `lib/uitleg.ts`, het bijbehorende hoofdstuk " +
+          "verderop wordt aangevuld, en de datum bovenaan gaat vooruit.\n" +
+          "- Dus: het verhaal naar buiten en de agenda naar binnen zijn hetzelfde bestand. Er kan geen " +
+          "verkoopversie ontstaan die te mooi is, en geen agenda die niemand meer leest.\n\n" +
+          "**Volgorde is een advies, geen wet.** De nummers zijn de aanbevolen volgorde op verhouding tussen " +
+          "opbrengst en inspanning. Wat er echt eerst gebeurt bepaalt de vraag van klanten.",
       },
+
+      // ── Golf 1 ──
       {
-        titel: "Afhankelijkheden die kunnen bijten",
+        titel: "Golf 1: de bestaande motoren volwaardig maken",
+        kern: "Vier punten waar het fundament er al ligt en er één ontbrekend stuk data tussen zit.",
         tekst:
-          "- **Eén mailbox als bron.** De correspondentie hangt aan één gekoppelde mailbox. Voor een bureau met " +
-          "meerdere accountmanagers is dat een echte beperking.\n" +
-          "- **WordPress als enige sitekoppeling.** Doorvoeren op de site werkt voor WordPress. Andere systemen " +
-          "vallen terug op handwerk via de werklijst.\n" +
-          "- **Serverless tijdsvensters.** Dat is opgelost met hervatbare runs, maar elke nieuwe zware analyse " +
-          "moet die vorm bewust aanhouden. Wie dat vergeet bouwt de oude fout opnieuw.\n" +
-          "- **Prijzen van modellen** staan als schatting in de code. Bij een tariefwijziging kloppen historische " +
-          "kosten wel (die zijn vastgelegd) maar moet de prijstabel bij.",
+          "Dit is de goedkoopste winst die er is: vier motoren die al draaien en op één punt op een benadering " +
+          "leunen. Er hoeft niets nieuws bedacht te worden, alleen aangesloten.\n\n" +
+          "| Punt | Wat het is | Verhouding |\n" +
+          "|---|---|---|\n" +
+          "| **R1** | Autoriteit per pagina aansluiten | Klein werk, groot effect |\n" +
+          "| **R2** | Prioriteren op conversies in plaats van klikken | Middel werk, grootst effect |\n" +
+          "| **R3** | AI-vindbaarheid op onderwerpniveau | Middel werk, groot verkoopeffect |\n" +
+          "| **R4** | Verbruik compleet: de Ahrefs-credits erbij | Klein werk, nodig voor licentie |",
+        sub: [
+          {
+            titel: "R1. Autoriteit per pagina aansluiten",
+            tekst:
+              "**Wat er nu mis is.** De interne-links-motor weegt bronpagina's op hoeveel waarde ze kunnen " +
+              "doorgeven, maar de echte autoriteitswaarde per losse pagina is niet aangesloten. Dat wordt nu " +
+              "eerlijk als ontbrekend gemarkeerd in de datakwaliteit, en de weging leunt op een benadering uit de " +
+              "eigen linkgraaf en de Search Console-cijfers.\n\n" +
+              "**Wat het oplevert.** Interne links zijn nu al een van de sterkste onderdelen, en dit is het enige " +
+              "gat erin. Met echte waarde per pagina wordt het advies \"link vanaf deze vijf pagina's\" hard in " +
+              "plaats van aannemelijk. Dat is ook precies het advies dat het snelst resultaat geeft bij pagina's " +
+              "die net buiten de top staan.\n\n" +
+              "**Hoe we het zouden bouwen.**\n\n" +
+              "1. De autoriteitswaarde per URL ophalen bij Ahrefs voor de pagina's die al in de linkgraaf zitten, " +
+              "in gebundelde verzoeken en met dezelfde cachetermijn als de andere Ahrefs-data (credits sparen).\n" +
+              "2. De waarde opslaan bij de pagina, zodat de motor en de prioriteitenscan uit dezelfde bron lezen.\n" +
+              "3. De weging in de motor omzetten van benadering naar echte waarde, met de benadering als terugval " +
+              "voor pagina's waar Ahrefs niets weet.\n" +
+              "4. De datakwaliteit-melding aanpassen: van \"ontbreekt\" naar \"aangesloten, op deze datum " +
+              "opgehaald\".\n\n" +
+              "**Waaraan je ziet dat het af is.** Bij een doelpagina staan de voorgestelde bronpagina's in een " +
+              "andere volgorde dan vóór de wijziging, en bij elke bronpagina staat de waarde met de datum. De " +
+              "datakwaliteit meldt geen ontbrekende autoriteit meer.\n\n" +
+              "**Wat het raakt.** De interne-links-tab, de prioriteitenscan (die deze lens uitvraagt) en het " +
+              "verbruiksscherm (extra Ahrefs-verzoeken).",
+          },
+          {
+            titel: "R2. Prioriteren op conversies in plaats van op klikken",
+            tekst:
+              "**Wat er nu mis is.** De prioriteitenscan rekent de verwachte opbrengst van elke bevinding uit in " +
+              "extra klikken. Klikken zijn niet het doel; klanten binnenhalen is het doel. Twee pagina's met " +
+              "duizend vertoningen kunnen tien keer in waarde verschillen, en dat verschil zit nu niet in de " +
+              "rangorde. De Analytics-koppeling is er al en levert de conversies al site-breed en per kanaal, maar " +
+              "niet per pagina, en de scoring gebruikt ze helemaal niet.\n\n" +
+              "**Wat het oplevert.** Dit is het punt met het grootste effect van de hele lijst, om drie redenen:\n\n" +
+              "- **Betere besluiten.** De rangorde gaat over geld in plaats van over bezoek. Een pagina die " +
+              "converteert klimt, een pagina die alleen leest zakt.\n" +
+              "- **Een ander gesprek met de klant.** \"Deze aanpassing levert naar verwachting zoveel aanvragen " +
+              "op\" is een heel ander gesprek dan \"dit levert klikken op\". Dat rechtvaardigt ook een hoger " +
+              "budget.\n" +
+              "- **Het maakt het nameten scherp.** De wijziging-effect-meting die er al is (Search Console plus " +
+              "gedrag, voor en na) krijgt er de enige uitkomst bij die echt telt.\n\n" +
+              "**Hoe we het zouden bouwen.**\n\n" +
+              "1. Conversies per pagina uit Analytics halen, met dezelfde voorzichtigheid die er al zit: niet elke " +
+              "property heeft conversies ingericht, dus zonder conversies moet het gewoon werken zoals nu.\n" +
+              "2. Per klant één instelling: welke gebeurtenis is een aanvraag, en wat is die gemiddeld waard? Twee " +
+              "velden, in het bestaande klantgegevens-formulier, met een lege waarde als \"onbekend\".\n" +
+              "3. De verwachte opbrengst in de scoring uitbreiden: extra klikken maal het conversiepercentage van " +
+              "díe pagina maal de waarde. Ontbreekt de waarde, dan blijft de bestaande berekening op klikken " +
+              "staan, en dat wordt zichtbaar gemeld bij de bevinding.\n" +
+              "4. De uitkomst overal in dezelfde eenheid tonen: verwachte aanvragen per maand, en waar bekend het " +
+              "bedrag.\n\n" +
+              "**Waaraan je ziet dat het af is.** Bij een klant met conversies staat de prioriteitenlijst in een " +
+              "andere volgorde dan op klikken alleen, met bij elke bevinding de verwachte aanvragen. Bij een klant " +
+              "zonder conversies is er niets veranderd, met de melding waarom.\n\n" +
+              "**Wat het raakt.** De prioriteitenscan, de scoringslaag, het klantgegevens-formulier, de " +
+              "wijziging-effect-meting en de KPI-tab. Let op de regel: dit cijfer krijgt één plek en wordt door de " +
+              "andere lenzen uitgevraagd, nooit opnieuw berekend.",
+          },
+          {
+            titel: "R3. AI-vindbaarheid op onderwerpniveau",
+            tekst:
+              "**Wat er nu mis is.** De AI-lens weet één ding: in hoeveel AI-antwoorden een domein voorkomt. Dat " +
+              "is een thermometer, geen advies. Je kunt er niet uit halen op welke vragen de klant ontbreekt, wie " +
+              "er dan wél genoemd wordt, en welke pagina daarvoor gemaakt of aangepast moet worden.\n\n" +
+              "**Wat het oplevert.** Dit is de vraag die bij klanten het snelst groeit en waar bijna geen bureau " +
+              "een antwoord op heeft. Het is dus zowel de zwakste lens als de sterkste verkoopkans op deze lijst. " +
+              "Met onderwerpniveau erbij wordt het een volwaardige vijfde motor naast meta, opruimen, interne " +
+              "links en zoekwoordkansen.\n\n" +
+              "**Hoe we het zouden bouwen.**\n\n" +
+              "1. Per klant een set vragen vastleggen zoals een klant ze aan een AI zou stellen. Die vragen " +
+              "volgen uit de zoekwoordenlijst die er al is, dus dit kan voorgesteld worden in plaats van " +
+              "uitgevraagd.\n" +
+              "2. Per vraag ophalen: wordt de klant genoemd, welke bronnen worden aangehaald, en welk aandeel " +
+              "heeft de klant in het geheel. Bij Ahrefs zit dit in de AI-rapportage; de koppeling die we al " +
+              "gebruiken voor het aantal antwoorden kan dit ook leveren.\n" +
+              "3. Historie bewaren, want de waarde zit in de beweging: op welke vragen komen we op, waar zakken " +
+              "we weg.\n" +
+              "4. De uitkomst doorzetten naar werk: een vraag waarop de klant ontbreekt terwijl er wel bronnen " +
+              "worden aangehaald is een vragen-en-antwoorden-blok of een nieuwe pagina, en dat is een bevinding in " +
+              "de prioriteitenscan met een knop naar de bestaande documentenketen.\n\n" +
+              "**Waaraan je ziet dat het af is.** Er is een lijst vragen per klant met per vraag: genoemd of niet, " +
+              "wie er wel genoemd wordt, en de beweging over tijd. En minstens één bevinding uit die lijst is via " +
+              "de gewone weg (kaart met knop) een taak of een document geworden.\n\n" +
+              "**Wat het raakt.** De prioriteitenscan (de vierde lens wordt volwassen), de zoekwoordenlijst, het " +
+              "verbruiksscherm en het maandelijkse verhaal naar de klant.",
+          },
+          {
+            titel: "R4. Verbruik compleet: de Ahrefs-credits erbij",
+            tekst:
+              "**Wat er nu mis is.** Het verbruiksscherm meet de AI-kosten per klant en per actie nauwkeurig. De " +
+              "Ahrefs-credits worden per aanroep wel geteld waar de dienst dat teruggeeft, maar niet volledig " +
+              "doorgerekend naar kosten per klant. De marge per klant is daarmee een schatting.\n\n" +
+              "**Wat het oplevert.** Dit is klein werk met één groot gevolg: het cijfer waar een licentiegesprek " +
+              "en een prijsstelling op rusten. Zonder dit kun je niet zeggen wat een klant in dit systeem kost, en " +
+              "dus ook niet wat een bureau ervoor zou moeten betalen. Het is ook het cijfer dat je nodig hebt om " +
+              "te zien welke knop te duur is voor wat hij oplevert.\n\n" +
+              "**Hoe we het zouden bouwen.**\n\n" +
+              "1. De teller die er al is per aanroep wegschrijven met dezelfde velden als de AI-regels, zodat er " +
+              "één verbruikstabel blijft in plaats van twee.\n" +
+              "2. De prijs per eenheid instelbaar maken op één plek, net als de modelprijzen nu, zodat een " +
+              "tariefwijziging één regel is.\n" +
+              "3. Het scherm uitbreiden met een totaal per klant per maand, uitgesplitst naar dienst, en de " +
+              "verhouding met wat de klant betaalt.\n\n" +
+              "**Waaraan je ziet dat het af is.** Op het verbruiksscherm staat per klant per maand een totaal in " +
+              "euro's dat AI en Ahrefs samen dekt, en de duurste actie van die maand is met naam te zien.\n\n" +
+              "**Wat het raakt.** Het verbruiksscherm, de financiënpagina (kosten naast omzet per klant) en de " +
+              "Ahrefs-laag.",
+          },
+        ],
       },
+
+      // ── Golf 2 ──
       {
-        titel: "Wat het meeste zou opleveren",
+        titel: "Golf 2: de remmen weghalen die groei tegenhouden",
+        kern: "Vier punten die nu nog werken omdat het bureau uit één persoon bestaat.",
         tekst:
-          "Op volgorde van verhouding tussen opbrengst en inspanning:\n\n" +
-          "1. **Autoriteit per pagina aansluiten.** Dat maakt de interne-links-motor in één keer volwaardig, en " +
-          "die is nu al een van de sterkste onderdelen.\n" +
-          "2. **Verbruiksmeting compleet maken** (Ahrefs-credits erbij). Zonder dat is de marge per klant een " +
-          "schatting, en dat is precies het cijfer dat bij een licentiemodel telt.\n" +
-          "3. **Meerdere mailboxen.** Dit is de eerste harde blokkade als een tweede bureau dit gaat gebruiken.\n" +
-          "4. **AI-vindbaarheid op onderwerpniveau.** Dit is de vraag die bij klanten het snelst groeit, en de " +
-          "lens waar we nu het minst hard over kunnen zijn.\n" +
-          "5. **Een tweede sitekoppeling** naast WordPress, zodat 'doorvoeren' niet merkafhankelijk is.",
+          "Deze vier zijn vandaag geen probleem en morgen wel. Ze gaan allemaal over hetzelfde: het dashboard is " +
+          "gebouwd voor één mens met één mailbox en klanten op WordPress. Elk punt hier is de eerste blokkade bij " +
+          "een tweede accountmanager, een klant op een ander systeem of een tweede bureau.\n\n" +
+          "| Punt | Wat het is | Wordt urgent zodra |\n" +
+          "|---|---|---|\n" +
+          "| **R5** | Meerdere mailboxen | er iemand naast je meewerkt |\n" +
+          "| **R6** | Tweede sitekoppeling, en copy doorvoeren | er een klant niet op WordPress zit |\n" +
+          "| **R7** | Bronnen-gezondheid: welke bron is stil? | je een conclusie trekt op stille data |\n" +
+          "| **R8** | Correcties worden regels, in élke motor | je dezelfde correctie twee keer maakt |",
+        sub: [
+          {
+            titel: "R5. Meerdere mailboxen",
+            tekst:
+              "**Wat er nu mis is.** De correspondentie hangt aan één gekoppelde mailbox. Alles wat de assistent " +
+              "weet over afspraken komt daaruit. Werkt er iemand anders aan een klant, dan is diens mail " +
+              "onzichtbaar, en dan is de context van de assistent stil incompleet. Dat is erger dan geen context, " +
+              "want het ziet er compleet uit.\n\n" +
+              "**Wat het oplevert.** Dit is de eerste harde blokkade bij groei, en ook bij een tweede bureau. Met " +
+              "meerdere mailboxen wordt de teamgebruiker-laag die er al is (eigen inlog, eigen klanten, wel of " +
+              "geen mail) pas echt bruikbaar.\n\n" +
+              "**Hoe we het zouden bouwen.**\n\n" +
+              "1. De koppeling per gebruiker in plaats van per omgeving: dezelfde eenmalige login, maar de " +
+              "bewaarde toegang hangt aan de teamgebruiker.\n" +
+              "2. Per klant vastleggen welke mailboxen erbij horen, zodat de correspondentie van twee mensen in " +
+              "één tijdlijn komt met de afzender erbij.\n" +
+              "3. Versturen blijft persoonlijk: je stuurt vanuit je eigen mailbox, nooit vanuit die van een " +
+              "collega.\n" +
+              "4. De scheiding respecteren die er al is: een gast die geen mail mag zien, ziet ook hier niets.\n\n" +
+              "**Waaraan je ziet dat het af is.** Twee mailboxen gekoppeld, en bij een klant staat de " +
+              "correspondentie van beide door elkaar in de tijdlijn, met per bericht wie het stuurde. Een gast " +
+              "zonder mailrecht ziet nul berichten.\n\n" +
+              "**Wat het raakt.** De mailkoppeling, de tijdlijn, de mailcontroles, de assistent-context en de " +
+              "rechtenlaag.",
+          },
+          {
+            titel: "R6. Tweede sitekoppeling, en copy doorvoeren",
+            tekst:
+              "**Wat er nu mis is.** Twee dingen tegelijk. Doorvoeren op de site werkt alleen voor WordPress. En " +
+              "binnen WordPress gaan alleen meta-teksten en alt-teksten automatisch; de copy zelf, het grootste " +
+              "werkstuk van de hele keten, gaat nog met de hand.\n\n" +
+              "**Wat het oplevert.** De keten is af tot aan de site en breekt daar. Dit is de plek waar het meeste " +
+              "handwerk overblijft, dus ook waar de meeste uren te winnen zijn. En zolang doorvoeren " +
+              "merkafhankelijk is, kun je een klant op een ander systeem alleen de halve dienst leveren.\n\n" +
+              "**Hoe we het zouden bouwen.**\n\n" +
+              "1. Eerst de vorm goed zetten: de doorvoerlaag scheiden van WordPress, met per systeem een eigen " +
+              "koppelstuk en dezelfde drie regels erboven (versleuteld wachtwoord, altijd terugcontrole, eerlijk " +
+              "melden als het niet lukte).\n" +
+              "2. Copy doorvoeren als concept, nooit direct live: het dashboard zet de nieuwe tekst als " +
+              "conceptversie in de site, met een link om te bekijken. Publiceren blijft een mensenklik.\n" +
+              "3. Daarna het tweede koppelstuk, gekozen op wat de klanten echt gebruiken.\n" +
+              "4. De werklijst voor de sitebouwer blijft bestaan als terugval, want er blijven altijd systemen " +
+              "zonder koppeling.\n\n" +
+              "**Waaraan je ziet dat het af is.** Een goedgekeurd copydocument staat als concept in de site, met " +
+              "een voorbeeldlink, zonder dat er iets gekopieerd is. En hetzelfde werkt op een tweede systeem.\n\n" +
+              "**Wat het raakt.** De documentenketen (de laatste fase), de werklijst, de fases per pagina en \"wat " +
+              "we gedaan hebben\".",
+          },
+          {
+            titel: "R7. Bronnen-gezondheid: welke bron is vandaag stil?",
+            tekst:
+              "**Wat er nu mis is.** Er hangen tien koppelingen aan dit systeem, en elke koppeling kan een dag " +
+              "stil zijn: een verlopen toegang, een limiet, een storing. Per onderdeel wordt dat netjes " +
+              "opgevangen, en bij interne links wordt ontbrekende data zelfs expliciet gemeld. Maar er is geen " +
+              "enkele plek waar staat: dit werkt vandaag, dit niet, en dit cijfer is dus ouder dan het lijkt.\n\n" +
+              "**Wat het oplevert.** Dit is het enige punt op deze lijst dat een fout voorkomt in plaats van iets " +
+              "toevoegt. Het hele dashboard rust op de belofte dat cijfers uit een bron komen en dat ontbrekende " +
+              "data ontbrekend heet. Een stille bron ondermijnt precies die belofte, en je merkt het pas als een " +
+              "advies verkeerd blijkt. Bij een tweede bureau dat zijn eigen sleutels beheert is het onmisbaar.\n\n" +
+              "**Hoe we het zouden bouwen.**\n\n" +
+              "1. Elke koppeling schrijft bij elk gebruik weg: gelukt of niet, wanneer, en bij een fout de reden " +
+              "in gewone taal.\n" +
+              "2. Eén scherm met per bron: werkt hij, wanneer voor het laatst goed gegaan, en wat er aan de hand " +
+              "is als het niet werkt (verlopen toegang, limiet bereikt, storing).\n" +
+              "3. Een stille bron is zichtbaar op de plek waar het uitmaakt: staat een cijfer op oude data, dan " +
+              "zegt de kaart dat erbij in plaats van dat je het moet weten.\n" +
+              "4. Alleen wat handelen vraagt komt naar voren, en dan met de knop erbij (opnieuw koppelen), niet " +
+              "met een instructie.\n\n" +
+              "**Waaraan je ziet dat het af is.** Eén koppeling opzettelijk losgetrokken, en dat is binnen een " +
+              "minuut te zien op het bronnenscherm én bij het cijfer dat erop leunt, met een knop om het te " +
+              "herstellen.\n\n" +
+              "**Wat het raakt.** Alle koppelingen, en de kaarten en scores die erop leunen. Klein per koppeling, " +
+              "maar het moet er wel bij álle tien in.",
+          },
+          {
+            titel: "R8. Correcties worden regels, in élke motor",
+            tekst:
+              "**Wat er nu mis is.** Bij opruimen worden jouw correcties vastgelegd als harde regels, zodat de " +
+              "volgende analyse dezelfde fout niet meer maakt. Dat is een van de beste dingen in het hele " +
+              "dashboard, en het bestaat op precies één plek. Corrigeer je een meta-voorstel, een linksuggestie of " +
+              "een prioriteit, dan is die correctie een eenmalige aanpassing en begint de volgende ronde weer bij " +
+              "nul.\n\n" +
+              "**Wat het oplevert.** Dit is wat het systeem beter maakt door gebruik, en dus ook wat het verhaal " +
+              "naar buiten waarmaakt (\"het wordt beter doordat je het gebruikt\"). Het is opgebouwde waarde die " +
+              "niet naar een andere tool mee te nemen is. Praktisch: minder dezelfde correctie twee keer, en " +
+              "voorstellen die na een paar maanden klinken zoals jij ze zou schrijven.\n\n" +
+              "**Hoe we het zouden bouwen.**\n\n" +
+              "1. De vorm die bij opruimen al werkt uit dat onderdeel halen en algemeen maken: per klant, per " +
+              "motor, een regel met wat er gold en waarom, met datum.\n" +
+              "2. Een correctie wordt niet stil weggeschreven; je ziet dat er een regel bij komt en kunt hem " +
+              "terugdraaien. Een regel die je niet kunt zien is een systeem dat iets van je overneemt.\n" +
+              "3. De motoren die met AI werken krijgen die regels als harde randvoorwaarden mee, niet als " +
+              "suggestie.\n" +
+              "4. Eén plek per klant waar alle geleerde regels op een rij staan, doorzoekbaar. Dat is ook het " +
+              "eerste wat je wil zien als een collega een account overneemt.\n\n" +
+              "**Waaraan je ziet dat het af is.** Een gecorrigeerd meta-voorstel: na de volgende ronde staat de " +
+              "correctie erin, en de regel staat met datum en reden in de lijst geleerde regels van die klant.\n\n" +
+              "**Wat het raakt.** De meta-motor, interne links, de prioriteitenscan, de documentenketen en de " +
+              "bestaande opruim-regels (die hierin opgaan, niet ernaast blijven staan).",
+          },
+        ],
       },
+
+      // ── Golf 3 ──
+      {
+        titel: "Golf 3: van eigen werkplek naar product",
+        kern: "Vijf punten die nodig zijn voordat iemand anders dit kan gebruiken of kopen.",
+        tekst:
+          "Golf 1 en 2 maken het dashboard beter voor Pingwin. Deze golf maakt er iets van dat een ander bureau " +
+          "kan gebruiken, en dat een investeerder kan beoordelen.\n\n" +
+          "| Punt | Wat het is | Waarom het in deze golf zit |\n" +
+          "|---|---|---|\n" +
+          "| **R9** | Klantdashboard op echte data | Grootste verkoopwaarde, raakt de klant direct |\n" +
+          "| **R10** | Signaleren in plaats van kijken | Maakt het systeem proactief zonder waslijst |\n" +
+          "| **R11** | Licentie-klaar: sleutels, opzet, quota | Voorwaarde voor een tweede bureau |\n" +
+          "| **R12** | Vangnet onder de rekenmotoren | Voorwaarde om snel te blijven bouwen |\n" +
+          "| **R13** | Wie deed wat: een spoor van wijzigingen | Nodig zodra er gasten meewerken |",
+        sub: [
+          {
+            titel: "R9. Het klantdashboard op echte data",
+            tekst:
+              "**Wat er nu mis is.** De cockpit weet alles: posities, klikken, wat er is uitgevoerd, wat het " +
+              "opleverde. Het dashboard dat de klant ziet leest een spreadsheet met werkzaamheden, uren en " +
+              "budget. De rijkste data van het hele systeem komt dus niet bij de persoon die betaalt.\n\n" +
+              "**Wat het oplevert.** Dit is het punt met de meeste verkoopwaarde van de hele lijst. Een klant die " +
+              "elke maand ziet wat er gedaan is én wat het deed, vertrekt niet. Het is ook het onderdeel dat je " +
+              "aan een lead kunt laten zien: dit krijg jij erbij.\n\n" +
+              "**Hoe we het zouden bouwen.**\n\n" +
+              "1. De spreadsheet blijft. Die is de bron voor uren en budget, en een bureau dat er al in werkt " +
+              "hoeft niets om te gooien. Er komt alleen iets bij.\n" +
+              "2. Per klant een blok met de ontwikkeling in gewone taal: hoe staan we er nu voor, wat is er " +
+              "veranderd, en wat leverden de aanpassingen van deze maand op. De meting daarvoor bestaat al " +
+              "(wijziging, voor en na); dit is die uitkomst in klanttaal.\n" +
+              "3. Streng filteren op wat een klant moet zien. Geen ruwe tabellen, geen jargon, geen interne " +
+              "afwegingen. Dezelfde regel als bij de documenten: wat de klant leest is niet wat de uitvoerder " +
+              "leest.\n" +
+              "4. Niets gaat automatisch naar de klant. Je ziet eerst de voorbeeldweergave die er al is, en jij " +
+              "besluit dat het klaar is.\n\n" +
+              "**Waaraan je ziet dat het af is.** Een klant ziet in zijn eigen dashboard zonder jouw tussenkomst " +
+              "de ontwikkeling van deze maand, in gewone taal, en jij hebt dat vooraf in de voorbeeldweergave " +
+              "kunnen nalopen.\n\n" +
+              "**Wat het raakt.** Het klantdashboard, de voorbeeldweergave, de wijziging-effect-meting en de " +
+              "maandelijkse ronde.",
+          },
+          {
+            titel: "R10. Signaleren in plaats van kijken",
+            tekst:
+              "**Wat er nu mis is.** Er draait elke nacht en elke week veel op de achtergrond: sites worden " +
+              "gescand, verschillen vastgelegd, trends bijgewerkt. Maar het resultaat wacht tot iemand een klant " +
+              "opent. Zakt een pagina weg, verdwijnt er een schema-blok, of gooit een plugin alle alt-teksten " +
+              "leeg, dan staat dat netjes vastgelegd en ziet niemand het tot het toeval jouw kant op valt.\n\n" +
+              "**Wat het oplevert.** Het verschil tussen een systeem dat je moet bezoeken en een systeem dat je " +
+              "waarschuwt. Bij twintig klanten kun je niet meer rondkijken; dan moet wat stuk is naar jou toe " +
+              "komen. Dit is ook het soort ding waar een klant respect voor heeft: jij belt hem over een probleem " +
+              "dat hij zelf nog niet zag.\n\n" +
+              "**Hoe we het zouden bouwen.** Eén ding is hier belangrijker dan de techniek: dit mag geen waslijst " +
+              "worden. De regel uit de assistent geldt hier net zo hard, dus terughoudend tegen de gebruiker.\n\n" +
+              "1. Een korte, harde lijst van wat een signaal verdient: een pagina die echt wegzakt, een pagina " +
+              "die verdwijnt, een meta of schema die stuk is, een doorgevoerde wijziging die na acht weken niets " +
+              "deed.\n" +
+              "2. Eén bericht per dag per klant, of niets. Nooit een bericht per bevinding.\n" +
+              "3. Het bericht is een knop, geen tekst: je landt op de plek waar het werk gebeurt.\n" +
+              "4. Elk signaal is stil te zetten met een reden, en die reden wordt een regel (zie R8).\n\n" +
+              "**Waaraan je ziet dat het af is.** Een pagina zakt echt weg en er komt binnen een dag één bericht " +
+              "met een knop naar die pagina. Een pagina die normaal schommelt levert géén bericht op.\n\n" +
+              "**Wat het raakt.** De achtergrondtaken, de wijzigingen-laag, de trends en de prioriteitenscan.",
+          },
+          {
+            titel: "R11. Licentie-klaar: sleutels, opzet en quota",
+            tekst:
+              "**Wat er nu mis is.** De code kan al onder meerdere merken draaien, en dat werkt in productie. " +
+              "Maar de sleutels van de koppelingen staan als omgevingsvariabelen bij de hosting, en een eigen " +
+              "Ahrefs-sleutel per klant loopt via een label dat naar zo'n variabele wijst. Dat is netjes en veilig " +
+              "voor één of twee omgevingen, en het schaalt niet naar tien bureaus die zelf willen kunnen " +
+              "koppelen.\n\n" +
+              "**Wat het oplevert.** Dit is het verschil tussen \"ik kan een omgeving voor je opzetten\" en \"je " +
+              "kunt hem zelf in gebruik nemen\". Zonder dit is elke nieuwe licentie handwerk van jou, en dan is " +
+              "groei jouw agenda in plaats van een product.\n\n" +
+              "**Hoe we het zouden bouwen.**\n\n" +
+              "1. Sleutels versleuteld in de database in plaats van bij de hosting, met dezelfde aanpak die al " +
+              "gebruikt wordt voor het sitewachtwoord: versleuteld opgeslagen, nooit terug te lezen. De regel " +
+              "\"nooit een sleutel in een bestand\" blijft dus overeind.\n" +
+              "2. Een opzetscherm dat per koppeling zegt of hij staat en wat er nog mist, in plaats van een " +
+              "handleiding met omgevingsvariabelen.\n" +
+              "3. Een grens per omgeving: hoeveel klanten, hoeveel verbruik per maand, en wat er gebeurt als die " +
+              "grens in zicht komt. Dat is met R4 erbij gewoon af te lezen.\n" +
+              "4. Beveiliging blijft staan zoals hij staat: geen sleutel betekent dat de ingang niet bestaat, ook " +
+              "in een omgeving van iemand anders.\n\n" +
+              "**Waaraan je ziet dat het af is.** Een nieuwe omgeving is vanaf leeg in gebruik te nemen zonder " +
+              "dat jij een omgevingsvariabele aanraakt, en het opzetscherm laat zien welke koppelingen nog " +
+              "ontbreken.\n\n" +
+              "**Wat het raakt.** Alle koppelingen, de beheerpagina en de beveiligingslaag. Dit is het zwaarste " +
+              "punt op de lijst, en het heeft R4 en R7 nodig om echt af te zijn.",
+          },
+          {
+            titel: "R12. Een vangnet onder de rekenmotoren",
+            tekst:
+              "**Wat er nu mis is.** Er staan drie proeven in het project: op de meetlaag, op de mailteksten en " +
+              "op de weging van de prioriteitenscan. Dat zijn precies de goede drie plekken om te beginnen, en " +
+              "het is te weinig voor een systeem van deze grootte. De scores, de verwachte opbrengsten, de " +
+              "klikpercentage-tabellen en de fase-logica zijn puur rekenwerk, en juist daar verandert een fout " +
+              "stil de rangorde van het werk zonder dat er iets kapot lijkt.\n\n" +
+              "**Wat het oplevert.** Snelheid. Niet netheid. Elke keer dat aan de scoring gesleuteld wordt, moet " +
+              "iemand nu met de hand controleren of de rangorde nog klopt, en dat kost meer tijd dan het schrijven " +
+              "van de proef. Het is ook de enige manier om te blijven bouwen in dit tempo zonder dat er " +
+              "onopgemerkt iets scheef gaat.\n\n" +
+              "**Hoe we het zouden bouwen.**\n\n" +
+              "1. Proeven op de rekenlagen zonder koppelingen: de paginascore, de verwachte opbrengst, de " +
+              "fase-logica en de klikpercentage-tabel. Vaste invoer, vaste verwachte uitkomst.\n" +
+              "2. Een vastgelegde momentopname van een uitkomst: verandert de score van een voorbeeldpagina, dan " +
+              "moet dat een bewust besluit zijn en geen verrassing.\n" +
+              "3. Nieuwe motoren krijgen vanaf de start een proef op hun rekenkern. Dat is de vaste stap; " +
+              "achteraf toevoegen gebeurt nooit.\n\n" +
+              "**Waaraan je ziet dat het af is.** Eén commando dat alle proeven draait, dat groen is, en dat rood " +
+              "wordt als je met opzet een gewicht in de scoring verandert.\n\n" +
+              "**Wat het raakt.** De rekenlagen. Niets van de werking verandert, dus dit is het veiligste punt op " +
+              "de lijst om tussendoor te doen.",
+          },
+          {
+            titel: "R13. Wie deed wat: een spoor van wijzigingen",
+            tekst:
+              "**Wat er nu mis is.** Er is een rechtenlaag met teamgebruikers die eigen klanten hebben, en er is " +
+              "een overzicht van wat er voor een klant is uitgevoerd. Wat er niet is: wie welke wijziging in het " +
+              "dashboard deed. Wie keurde die meta goed, wie draaide dat opruimvoorstel terug, wie zette die " +
+              "redirect erin.\n\n" +
+              "**Wat het oplevert.** Zodra er iemand naast je meewerkt is dit het verschil tussen samenwerken en " +
+              "elkaar in de weg zitten. Het is ook wat je nodig hebt als een klant vraagt waarom iets veranderd " +
+              "is, en het is de basis onder een gerust gevoel bij het uitdelen van rechten: je kunt iemand meer " +
+              "toevertrouwen als je kunt terugkijken.\n\n" +
+              "**Hoe we het zouden bouwen.**\n\n" +
+              "1. Bij elke handeling die iets verandert vastleggen: wie, wat, wanneer, en bij welke klant. Niet " +
+              "bij het lezen, want dan wordt het een berg zonder betekenis.\n" +
+              "2. Zichtbaar op de plek waar het over gaat: bij de kaart, bij de pagina, bij de klant. Niet als " +
+              "apart logboek dat niemand opent.\n" +
+              "3. De alleen-lezen meekijk-sessie blijft doen wat hij doet, en die kan per definitie niets " +
+              "veranderen.\n\n" +
+              "**Waaraan je ziet dat het af is.** Bij een goedgekeurd meta-voorstel staat wie het goedkeurde en " +
+              "wanneer, en dat is terug te zien bij de pagina.\n\n" +
+              "**Wat het raakt.** De schrijvende handelingen, de rechtenlaag en de kaarten waar het bij hoort.",
+          },
+        ],
+      },
+
+      // ── Niet doen ──
+      {
+        titel: "Wat we bewust níet doen (en waarom)",
+        kern: "Een routekaart zonder afvallers is een wensenlijst.",
+        tekst:
+          "Dit is de spiegel van het bakje \"niet doen\" in de prioriteitenscan. Deze vijf komen regelmatig " +
+          "langs en zijn met reden afgewezen. Verandert de reden, dan verandert het besluit.\n\n" +
+          "- **Een eigen volwaardige site-audit bouwen** (alle technische controles, foutcodes, " +
+          "duplicaatdetectie). Ahrefs doet dat al beter dan wij het gaan doen, en de koppeling ligt er. Wij " +
+          "voegen waarde toe in het oordeel, niet in het crawlen.\n" +
+          "- **Een eigen zoekwoorddatabase opbouwen** om Ahrefs-credits te sparen. De cache doet dit al waar het " +
+          "nut heeft. Eigen volumes zouden verouderen en dan hebben we twee cijfers die elkaar tegenspreken, " +
+          "precies de fout die we overal uitsluiten.\n" +
+          "- **Een mobiele app.** Het werk in dit dashboard is bureauwerk met twee kolommen en veel tekst. Een " +
+          "app zou een uitgeklede versie zijn en dus een tweede weg naar hetzelfde resultaat.\n" +
+          "- **Meertaligheid.** Alles is Nederlands, en dat past bij de klanten. Dit komt pas in beeld bij een " +
+          "bureau buiten Nederland, en dan is het een echt project en geen vertaalslag.\n" +
+          "- **De assistent zelfstandig laten uitvoeren** zonder goedkeuring. Technisch kan het vandaag al. Het " +
+          "is een ontwerpbesluit dat het niet gebeurt: een systeem dat autonoom naar buiten mag, kun je niet " +
+          "vertrouwen op het moment dat het één keer misgaat.",
+      },
+
+      // ── Risico's ──
       {
         titel: "Risico's om in de gaten te houden",
+        kern: "Niet op te lossen met een punt op de lijst, maar met een gewoonte.",
         tekst:
           "- **Groei van het oppervlak.** Het dashboard is groot. Elke nieuwe motor is ook een nieuwe plek waar " +
           "een cijfer anders kan gaan staan. De regel dat lenzen elkaar uitvragen in plaats van opnieuw ophalen " +
-          "is daarom geen stijlvoorkeur maar een noodzaak.\n" +
+          "is daarom geen stijlvoorkeur maar een noodzaak. Bij elk punt hierboven staat daarom \"wat het raakt\".\n" +
           "- **Twee wegen naar hetzelfde resultaat.** Dit is de fout die telkens terugkomt: twee knoppen die " +
           "allebei een kaart maken. Bij elke uitbreiding is dit de eerste vraag.\n" +
+          "- **Serverless tijdsvensters.** Opgelost met hervatbare runs, maar elke nieuwe zware analyse moet die " +
+          "vorm bewust aanhouden. Wie dat vergeet bouwt de oude fout opnieuw (een analyse die veertig minuten op " +
+          "\"bezig\" staat en niets oplevert).\n" +
+          "- **Prijzen die verouderen.** De modelprijzen staan als schatting in de code. Historische kosten " +
+          "blijven kloppen (die zijn vastgelegd), maar de tabel moet bij na een tariefwijziging. R4 zet die " +
+          "prijzen op één plek.\n" +
           "- **Documentatie die achterloopt op de code.** Deze pagina zelf is daar het risico. Vandaar dat het " +
           "onderhoud eronder een vaste stap is en geen goede bedoeling.",
       },
+
       {
         titel: "Hoe dit document wordt bijgehouden",
         tekst:
           "De uitleg is geen apart document maar een bestand in de code van het dashboard zelf " +
           "(`lib/uitleg.ts`). Dat is bewust: wie het dashboard uitbreidt heeft de uitleg in dezelfde map open " +
           "staan, en een uitbreiding zonder bijgewerkte uitleg valt op in de wijziging.\n\n" +
-          "Vaste stap na een noemenswaardige uitbreiding: de betreffende uitklapper aanvullen, en de datum " +
-          "bovenaan verzetten. Hoofdstukken met de interne markering blijven achter de beheerderslogin, dus de " +
-          "gaten hoeven niet te worden weggeschreven om de pagina deelbaar te houden.",
+          "Vaste stap na een noemenswaardige uitbreiding: het hoofdstuk aanvullen, het bijbehorende punt in deze " +
+          "routekaart afvinken of aanpassen, en de datum bovenaan verzetten. Hoofdstukken met de interne " +
+          "markering blijven achter de beheerderslogin, dus de gaten hoeven niet te worden weggeschreven om de " +
+          "pagina deelbaar te houden.\n\n" +
+          "Een afgerond punt verdwijnt niet uit dit hoofdstuk, het verhuist: de beschrijving gaat naar het " +
+          "hoofdstuk waar het thuishoort (dan is het werkelijkheid), en hier blijft één regel staan met de datum " +
+          "waarop het klaar kwam. Zo blijft zichtbaar wat er in welk tempo gebeurd is, en dat is precies wat je " +
+          "later in een licentie- of investeerdersgesprek nodig hebt.",
       },
     ],
   },
