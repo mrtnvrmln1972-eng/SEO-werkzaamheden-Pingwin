@@ -64,7 +64,7 @@ export const PUNTEN: Punt[] = [
     code: "R1",
     titel: "Autoriteit per pagina aansluiten",
     golf: 1,
-    stand: "open",
+    stand: "loopt",
     nodig: [],
     omvang: "klein",
     oplevert: "Het interne-linkadvies wordt hard in plaats van aannemelijk.",
