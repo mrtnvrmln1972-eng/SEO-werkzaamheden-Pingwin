@@ -127,7 +127,7 @@ export default function Planning({
   const sleepKlaar = () => { setSleep(null); setBovenVak(null); setBovenRij(null); };
 
   // Zelf een taak toevoegen, per week.
-  const [nieuwVoor, setNieuwVoor] = useState<number | null>(null);
+  const [nieuwVoor, setNieuwVoor] = useState<string | null>(null);
   const [nieuwTaak, setNieuwTaak] = useState("");
   const [nieuwUrl, setNieuwUrl] = useState("");
   const [nieuwWie, setNieuwWie] = useState("SEO");
@@ -253,23 +253,75 @@ export default function Planning({
     await stuur(t, { delete: true });
   }
 
-  async function maakTaak(jaar: number, week: number) {
+  /**
+   * Zelf een taak toevoegen. Vanuit een weekkaart geef je de week mee; vanuit een
+   * dagkaart (Vandaag, Morgen) geef je de dag mee en volgt de week daaruit, want
+   * de datum ís de planning.
+   */
+  async function maakTaak(doel: { jaar: number; week: number } | { dag: string }) {
     const taak = nieuwTaak.trim();
     if (!taak || nieuwBezig) return;
+    const dag = "dag" in doel ? doel.dag : "";
+    const w = "dag" in doel ? (weekVanIso(doel.dag) || nu) : { year: doel.jaar, week: doel.week };
     setNieuwBezig(true); setNieuwFout("");
     try {
       // De server rekent in "over hoeveel weken", dus dat leiden we af uit de
       // maandag van deze week ten opzichte van die van de huidige week.
-      const nuMaandag = current ? mondayOfISOWeek(current.year, current.week) : mondayOfISOWeek(jaar, week);
-      const seq = Math.max(1, Math.round((mondayOfISOWeek(jaar, week).getTime() - nuMaandag.getTime()) / (7 * 864e5)) + 1);
+      const nuMaandag = mondayOfISOWeek(nu.year, nu.week);
+      const seq = Math.max(1, Math.round((mondayOfISOWeek(w.year, w.week).getTime() - nuMaandag.getTime()) / (7 * 864e5)) + 1);
       const d = await fetch("/api/admin/weekplan/add", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ slug, taak, url: nieuwUrl.trim() || undefined, wie: nieuwWie, week: seq }),
       }).then((r) => r.json());
-      if (d?.ok) { setNieuwTaak(""); setNieuwUrl(""); setNieuwVoor(null); await laad(); }
-      else setNieuwFout(d?.error || "Toevoegen lukte niet.");
+      if (!d?.ok) { setNieuwFout(d?.error || "Toevoegen lukte niet."); return; }
+      // Toegevoegd vanuit een dagkaart? Dan krijgt hij meteen die dag, anders
+      // zou hij onderaan bij "Nog geen dag gekozen" belanden terwijl je hem net
+      // bewust op vandaag zette.
+      if (dag && Array.isArray(d.ids)) {
+        await Promise.all(d.ids.map((id: number) => fetch("/api/admin/weekplan", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ slug, id, datum: dag, weekYear: w.year, weekNo: w.week }),
+        }).catch(() => {})));
+      }
+      setNieuwTaak(""); setNieuwUrl(""); setNieuwVoor(null);
+      await laad();
     } catch { setNieuwFout("Toevoegen lukte niet."); }
     finally { setNieuwBezig(false); }
+  }
+
+  /** Het invulblokje voor een nieuwe taak. Zelfde formulier, twee plekken. */
+  function nieuwFormulier(doel: { jaar: number; week: number } | { dag: string }) {
+    const verstuur = () => { if (nieuwTaak.trim()) void maakTaak(doel); };
+    return (
+      <div className="pl-nieuw">
+        <input className="pl-nieuw-taak" value={nieuwTaak} autoFocus
+          placeholder="Wat moet er gebeuren?"
+          onChange={(e) => setNieuwTaak(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") verstuur(); if (e.key === "Escape") setNieuwVoor(null); }} />
+        <input className="pl-nieuw-url" value={nieuwUrl} list="pl-paginas"
+          placeholder={`Over welke pagina van ${clientName}? (mag leeg)`}
+          onChange={(e) => setNieuwUrl(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") verstuur(); if (e.key === "Escape") setNieuwVoor(null); }} />
+        <div className="pl-nieuw-rij">
+          <select value={nieuwWie} onChange={(e) => setNieuwWie(e.target.value)} title="Wie pakt dit op?">
+            <option value="SEO">SEO</option>
+            <option value="Dev">Sitebouwer</option>
+            <option value="Klant">Klant</option>
+          </select>
+          <span className="pl-nieuw-info muted">
+            {"dag" in doel ? `komt op ${langDatum(doel.dag)}` : `komt in week ${doel.week}`}
+            {breed ? ` · bij ${clientName}` : ""}
+          </span>
+          <span className="pl-nieuw-spacer" />
+          <button type="button" className="ghost-btn small" onClick={() => setNieuwVoor(null)}>Annuleren</button>
+          <button type="button" className="primary-btn small"
+            disabled={!nieuwTaak.trim() || nieuwBezig} onClick={verstuur}>
+            {nieuwBezig ? "Bezig…" : "Toevoegen"}
+          </button>
+        </div>
+        {nieuwFout && <div className="login-error">{nieuwFout}</div>}
+      </div>
+    );
   }
 
   /**
@@ -574,7 +626,13 @@ export default function Planning({
                   {v.key === "morgen" && <span className="pl-datumlabel">{dagNaam(plus(vandaag, 1))} {dm(new Date(`${plus(vandaag, 1)}T00:00:00Z`))}</span>}
                   {v.uitleg && <span className="pl-uitleg muted">{v.uitleg}</span>}
                   {doel !== null && <span className="pl-sleepdoel muted">{doel === "" ? "hier loslaten haalt de dag eraf" : `hier loslaten zet hem op ${langDatum(doel)}`}</span>}
+                  {/* Zelf een taak toevoegen, meteen op de goede dag. */}
+                  {doel && (
+                    <span className="pl-plus" role="button" title={`Zelf een taak toevoegen op ${langDatum(doel)}`}
+                      onClick={(e) => { e.stopPropagation(); setNieuwVoor(nieuwVoor === sleutel ? null : sleutel); setNieuwFout(""); }}>+</span>
+                  )}
                 </button>
+                {nieuwVoor === sleutel && doel && nieuwFormulier({ dag: doel })}
                 {!dichtNu && (
                   <div className="pl-cardbody">
                     {lijst.length === 0
@@ -615,35 +673,10 @@ export default function Planning({
                   {w.nu && <span className="pl-nulabel">nu</span>}
                   {w.week > 0 && (
                     <span className="pl-plus" role="button" title={`Zelf een taak toevoegen aan week ${w.week}`}
-                      onClick={(e) => { e.stopPropagation(); setNieuwVoor(nieuwVoor === w.k ? null : w.k); setNieuwFout(""); }}>+</span>
+                      onClick={(e) => { e.stopPropagation(); setNieuwVoor(nieuwVoor === sleutel ? null : sleutel); setNieuwFout(""); }}>+</span>
                   )}
                 </button>
-                {nieuwVoor === w.k && (
-                  <div className="pl-nieuw">
-                    <input className="pl-nieuw-taak" value={nieuwTaak} autoFocus
-                      placeholder="Wat moet er gebeuren?"
-                      onChange={(e) => setNieuwTaak(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === "Enter" && nieuwTaak.trim()) void maakTaak(w.jaar, w.week); if (e.key === "Escape") setNieuwVoor(null); }} />
-                    <input className="pl-nieuw-url" value={nieuwUrl} list="pl-paginas"
-                      placeholder={`Over welke pagina van ${clientName}? (mag leeg)`}
-                      onChange={(e) => setNieuwUrl(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === "Enter" && nieuwTaak.trim()) void maakTaak(w.jaar, w.week); if (e.key === "Escape") setNieuwVoor(null); }} />
-                    <div className="pl-nieuw-rij">
-                      <select value={nieuwWie} onChange={(e) => setNieuwWie(e.target.value)} title="Wie pakt dit op?">
-                        <option value="SEO">SEO</option>
-                        <option value="Dev">Sitebouwer</option>
-                        <option value="Klant">Klant</option>
-                      </select>
-                      <span className="pl-nieuw-spacer" />
-                      <button type="button" className="ghost-btn small" onClick={() => setNieuwVoor(null)}>Annuleren</button>
-                      <button type="button" className="primary-btn small"
-                        disabled={!nieuwTaak.trim() || nieuwBezig} onClick={() => void maakTaak(w.jaar, w.week)}>
-                        {nieuwBezig ? "Bezig…" : "Toevoegen"}
-                      </button>
-                    </div>
-                    {nieuwFout && <div className="login-error">{nieuwFout}</div>}
-                  </div>
-                )}
+                {nieuwVoor === sleutel && nieuwFormulier({ jaar: w.jaar, week: w.week })}
                 {!dichtNu && (
                   <div className="pl-cardbody">
                     {w.lijst.length === 0

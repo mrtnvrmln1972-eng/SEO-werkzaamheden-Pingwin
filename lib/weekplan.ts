@@ -165,7 +165,7 @@ export async function pasInToelichting(slug: string, id: number, tekst: string):
 // kaart voor dezelfde pagina (ongeacht week), dan wordt de nieuwe taak daarin
 // gemerged (titel + toelichting als bullets, met regel-dedup) in plaats van een
 // tweede kaart te maken. De kaart houdt zijn week (waar Maarten hem sleepte).
-export async function addWeekplanTasks(slug: string, thread: string, tasks: { taak: string; toelichting?: string; wie?: string; url?: string; taaktype?: string; copyUrl?: string; bronMail?: string; week: { year: number; week: number } }[]): Promise<{ added: number; merged: number; mergedIds: number[] }> {
+export async function addWeekplanTasks(slug: string, thread: string, tasks: { taak: string; toelichting?: string; wie?: string; url?: string; taaktype?: string; copyUrl?: string; bronMail?: string; week: { year: number; week: number } }[]): Promise<{ added: number; merged: number; mergedIds: number[]; nieuweIds: number[] }> {
   await ensureSchema();
   const { urlKey } = await import("./url-key");
   // Bestaande niet-klare pagina-kaarten, op urlKey (JS-matching, niet in SQL te doen).
@@ -184,6 +184,9 @@ export async function addWeekplanTasks(slug: string, thread: string, tasks: { ta
   // opruimen (lib/weekplan-tidy.ts): samenvoegen hoort een denkstap te zijn, niet
   // een plakstap, anders groeit dezelfde constatering in tien formuleringen aan.
   const mergedIds = new Set<number>();
+  // De id's van de kaarten die hier écht nieuw zijn aangemaakt. Nodig om er
+  // meteen een dag aan te kunnen hangen als je hem vanuit "Vandaag" toevoegt.
+  const nieuweIds: number[] = [];
   for (const t of tasks) {
     const taak = (t.taak || "").trim();
     if (!taak) continue;
@@ -236,16 +239,18 @@ export async function addWeekplanTasks(slug: string, thread: string, tasks: { ta
       WHERE client_slug = ${slug} AND week_year = ${t.week.year} AND week_no = ${t.week.week}
         AND lower(taak) = lower(${taak.slice(0, 400)}) LIMIT 1`;
     if (dup.length) continue;
-    await sql`
+    const { rows: verse } = await sql`
       INSERT INTO client_weekplan (client_slug, thread, taak, toelichting, wie, url, taaktype, copy_url, bron_mail, week_year, week_no, status, sort_order, updated_at)
-      VALUES (${slug}, ${thread || null}, ${taak.slice(0, 400)}, ${toel}, ${wie}, ${url}, ${taaktype}, ${copyUrl}, ${bronMail}, ${t.week.year}, ${t.week.week}, 'gepland', ${added}, now())`;
+      VALUES (${slug}, ${thread || null}, ${taak.slice(0, 400)}, ${toel}, ${wie}, ${url}, ${taaktype}, ${copyUrl}, ${bronMail}, ${t.week.year}, ${t.week.week}, 'gepland', ${added}, now())
+      RETURNING id`;
+    if (verse[0]) nieuweIds.push(verse[0].id as number);
     if (url) {
       const { rows: ins } = await sql`SELECT id FROM client_weekplan WHERE client_slug = ${slug} AND url = ${url} AND status <> 'klaar' ORDER BY id DESC LIMIT 1`;
       if (ins[0]) byPage.set(urlKey(url), { id: ins[0].id as number, taak: taak.slice(0, 400), toelichting: toel || "", taaktype: taaktype || "", copyUrl: copyUrl || "", bronMail: bronMail || "" });
     }
     added++;
   }
-  return { added, merged, mergedIds: [...mergedIds] };
+  return { added, merged, mergedIds: [...mergedIds], nieuweIds };
 }
 
 export async function updateWeekplanTask(slug: string, id: number, patch: { weekYear?: number; weekNo?: number; status?: string; sortOrder?: number; datum?: string | null }): Promise<void> {

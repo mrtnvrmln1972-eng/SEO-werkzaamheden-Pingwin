@@ -116,5 +116,33 @@ const losseWaarden = eigenRegels
 checkWaar("de nieuwe opmaak gebruikt de vaste schaal", losseWaarden.length === 0,
   `Gevonden losse waarden: ${losseWaarden.join(" | ")}. Gebruik --s-*, --fs-*, --r-* in plaats van vaste pixels (een randje van 1px mag).`);
 
+// ── 4. Afbreken midden in een woord staat nooit op een heel blok ──
+// Op 6 augustus 2026 kwam er een projectkaart live die duizenden pixels hoog was,
+// met een kolom tekst van één letter breed. De oorzaak was één stijlregel:
+// `overflow-wrap: anywhere` stond op `.wp-card`, dus op de hele kaart. Die
+// eigenschap breekt niet alleen lange woorden af, hij verlaagt ook de kleinst
+// mogelijke breedte van alles eronder; in een raster met `minmax(0, 1fr)` mag een
+// kolom dan tot één letter samenknijpen.
+//
+// De regel is dus: `anywhere` en `break-all` mogen alleen op een element dat één
+// stuk tekst is (een titel, een link, een tabelcel, een tekstregel), nooit op een
+// kaart, een paneel, een rij of een raster. Die woorden staan hieronder.
+// Alleen de LAATSTE klasse van een selector telt: dat is het element dat de regel
+// echt raakt. ".link-preview-card .lp-url" gaat over de url, niet over de kaart.
+// En de naam moet ER OOK OP EINDIGEN: ".wp-card" is een kaart, ".wp-card-url" is
+// een webadres. Zonder die twee nuances vlagt deze proef precies de regels die
+// wél goed staan, en dan zet iemand hem uit.
+const BLOK_EINDE = /(card|kaart|panel|paneel|wrap|grid|rij|row|blok|body|main|kolom)$/i;
+const isBlok = (selector: string) => selector.split(",").some((deel) => {
+  const laatste = deel.trim().split(/\s+/).pop() || "";
+  return laatste.split(/[.:>#]/).filter(Boolean).some((k) => BLOK_EINDE.test(k));
+});
+const breekRegels = css.split("\n")
+  .map((r) => r.trim())
+  .filter((r) => /overflow-wrap:\s*anywhere|word-break:\s*break-all/.test(r) && r.startsWith("."));
+const teBreed = breekRegels.filter((r) => isBlok(r.split("{")[0]));
+checkWaar("afbreken midden in een woord staat alleen op tekst, niet op een heel blok", teBreed.length === 0,
+  `Gevonden: ${teBreed.map((r) => r.slice(0, 70)).join(" | ")}. Zet 'overflow-wrap: anywhere' of 'word-break: break-all' op het tekstelement zelf, of gebruik 'break-word' (die laat de minimale breedte met rust).`);
+
 console.log(fouten ? `\n${fouten} proef(en) mislukt.` : "\nAlle proeven geslaagd.");
 process.exit(fouten ? 1 : 0);

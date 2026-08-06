@@ -76,5 +76,9 @@ export async function POST(req: NextRequest) {
   // groeit dezelfde constatering in steeds andere woorden aan tot een muur.
   if (r.mergedIds.length) await tidyCards(slug, r.mergedIds).catch(() => 0);
   const n = r.added + r.merged;
-  return n ? NextResponse.json({ ok: true, added: n, week }) : NextResponse.json({ ok: false, error: "Toevoegen mislukt." }, { status: 500 });
+  // De id's gaan mee terug, zodat de planning er meteen een dag aan kan hangen
+  // als je de taak vanuit "Vandaag" of "Morgen" hebt toegevoegd.
+  return n
+    ? NextResponse.json({ ok: true, added: n, week, ids: [...r.nieuweIds, ...r.mergedIds] })
+    : NextResponse.json({ ok: false, error: "Toevoegen mislukt." }, { status: 500 });
 }
