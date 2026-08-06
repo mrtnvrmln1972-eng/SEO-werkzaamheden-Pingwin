@@ -12,7 +12,7 @@ export const runtime = "nodejs";
 
 // Staat het automatisch inkorten van volgelopen kaarttitels aan? Zie de uitleg
 // in de GET hieronder.
-const TITELS_AUTOMATISCH = false;
+const TITELS_AUTOMATISCH = true;
 
 function admin(req: NextRequest): boolean {
   return verifyAdminSession(req.cookies.get(ADMIN_COOKIE)?.value);
@@ -36,9 +36,10 @@ export async function GET(req: NextRequest) {
   // inkorten. Doet niets zodra ze in de vaste vorm staan, dus dit is na de
   // eerste keer gratis. De oude titel gaat naar het archief van de kaart.
   //
-  // Staat bewust nog UIT: deze stap raakt alle klanten tegelijk, dus hij draait
-  // eerst in de proefstand (?titels=proef hieronder, die verandert niets) zodat
-  // er met eigen ogen te zien is wát hij zou wijzigen.
+  // Deze stap raakt alle klanten tegelijk, dus hij is eerst in de proefstand
+  // nagekeken (?titels=proef hieronder, die verandert niets). Dat leverde meteen
+  // een fout op: een taak zónder pagina kreeg een pad uit zijn eigen tekst
+  // toebedeeld. Pas daarna is hij aangezet.
   if (TITELS_AUTOMATISCH) await verkortTitels(slug).catch(() => []);
 
   // De proefstand. Alleen kijken, nooit wijzigen, dus ook veilig voor een
