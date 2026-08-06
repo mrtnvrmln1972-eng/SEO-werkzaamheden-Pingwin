@@ -28,6 +28,11 @@
      Accent, de kenmerkende blauw-naar-perzik gradient, warme kaartrand
      en de lichte achtergrond van de site. */
   --accent: #F15829;
+  /* Zeven regels verspreid over dit bestand gebruiken --pingwin voor "de oranje
+     kleur", maar die variabele bestond nooit. Die regels vielen dus stil terug op
+     de tekstkleur: bestandsnamen in de dropzone waren niet oranje, en de rand van
+     het sleepvak kleurde niet op. Eén alias repareert ze allemaal tegelijk. */
+  --pingwin: var(--orange);
   --grad-blauw: #C7E2EB;
   --grad-perzik: #F8DABC;
   --grad-pingwin: linear-gradient(228deg, #C7E2EB 38%, #F8DABC 80%);
