@@ -202,14 +202,74 @@ export default function GmbPanel({ slug, clientName, clientEmail, pingwinEmail, 
     } catch { setTaakMelding("Taken maken is niet gelukt."); } finally { setTaakBusy(false); }
   }
 
+  /**
+   * Alles wat aangevinkt staat op de planning, ongeacht in welk blok het stond.
+   * Bewust één handeling: het vinkje en de knop stonden eerst ver uit elkaar, en
+   * dan vink je aan en denk je dat het geregeld is. Dat is precies wat er
+   * gebeurde.
+   */
+  async function zetAllesGekozen() {
+    const ids = [...gekozen];
+    if (!ids.length) return;
+    setTaakBusy(true); setTaakMelding("");
+    let totaal = 0;
+    const fouten: string[] = [];
+    // Per vestiging en per soort gebundeld, want de resolver kijkt per locatie.
+    const groepen = new Map<string, { soort: "bevinding" | "suggestie"; sleutel: string; keys: string[] }>();
+    for (const id of ids) {
+      if (id.startsWith("b:")) {
+        const [, sleutel, key] = id.split(":");
+        const g = `b:${sleutel}`;
+        if (!groepen.has(g)) groepen.set(g, { soort: "bevinding", sleutel, keys: [] });
+        groepen.get(g)!.keys.push(key);
+      } else if (id.startsWith("s:")) {
+        const g = "s";
+        if (!groepen.has(g)) groepen.set(g, { soort: "suggestie", sleutel: state?.result?.locaties[0]?.sleutel || "", keys: [] });
+        groepen.get(g)!.keys.push(id.slice(2));
+      }
+    }
+    for (const g of groepen.values()) {
+      try {
+        const d = await fetch("/api/admin/signaal-taak", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ slug, bron: `gmb-${g.soort}`, keys: g.keys, ctx: { sleutel: g.sleutel } }),
+        }).then((x) => x.json());
+        if (d.ok) totaal += (d.added || 0) + (d.merged || 0);
+        else fouten.push(d.error || "Er ging iets mis.");
+      } catch { fouten.push("Er ging iets mis."); }
+    }
+    setTaakBusy(false);
+    if (totaal) { setGekozen(new Set()); setTaakMelding(`${totaal} ${totaal === 1 ? "taak staat" : "taken staan"} op de planning.`); }
+    else setTaakMelding(fouten[0] || "Er is niets aangemaakt.");
+  }
+
   const vink = (id: string) => setGekozen((s2) => { const n = new Set(s2); if (n.has(id)) n.delete(id); else n.add(id); return n; });
-  const gekozenVan = (voorvoegsel: string) => [...gekozen].filter((k) => k.startsWith(voorvoegsel)).map((k) => k.slice(voorvoegsel.length));
 
   const r = state?.result || null;
   const draait = state?.status === "running";
 
   return (
     <div className="section">
+      {/* Zodra er iets aangevinkt staat, staat de knop in beeld. Nooit meer een
+          vinkje waarvan de bijbehorende knop drie schermen lager hangt. */}
+      {gekozen.size > 0 && (
+        <div className="gmb-balk">
+          <span className="gmb-balk-tel">{gekozen.size} {gekozen.size === 1 ? "punt" : "punten"} aangevinkt</span>
+          <button className="btn btn-primary" onClick={zetAllesGekozen} disabled={taakBusy}>
+            {taakBusy ? "Bezig…" : "Zet op de planning"}
+          </button>
+          <button className="btn" onClick={() => setGekozen(new Set())} disabled={taakBusy}>Vinkjes wissen</button>
+          {taakMelding && <span className="gmb-balk-melding">{taakMelding}</span>}
+        </div>
+      )}
+      {gekozen.size === 0 && taakMelding && (
+        <div className="gmb-balk gmb-balk-klaar">
+          <span className="gmb-balk-melding">{taakMelding}</span>
+          <a className="btn" href={`/admin/client/${slug}?tab=werkzaamheden`}>Bekijk de planning</a>
+          <button className="btn" onClick={() => setTaakMelding("")}>Sluiten</button>
+        </div>
+      )}
+
       <div className="card">
         <span className="strategy-title">
           Google-bedrijfsprofiel
@@ -502,15 +562,10 @@ export default function GmbPanel({ slug, clientName, clientEmail, pingwinEmail, 
 
                     {perBril.length > 0 && (
                       <div className="row gmb-taakbalk" style={{ flexWrap: "wrap" }}>
-                        <button className="btn btn-primary" disabled={taakBusy}
-                          onClick={() => maakTaken("bevinding", loc.sleutel, gekozenVan(`b:${loc.sleutel}:`))}>
-                          {taakBusy ? "Bezig…" : "Zet het aangevinkte op de planning"}
-                        </button>
                         <button className="btn" disabled={taakBusy}
                           onClick={() => maakTaken("bevinding", loc.sleutel, loc.bevindingen.map((b) => b.key))}>
-                          Alles van deze vestiging
+                          Zet alle punten van deze vestiging op de planning
                         </button>
-                        {taakMelding && <span className="gmb-poort-melding">{taakMelding}</span>}
                       </div>
                     )}
 
@@ -645,15 +700,10 @@ export default function GmbPanel({ slug, clientName, clientEmail, pingwinEmail, 
                     </div>
                   ))}
                   <div className="row gmb-taakbalk" style={{ flexWrap: "wrap" }}>
-                    <button className="btn btn-primary" disabled={taakBusy}
-                      onClick={() => maakTaken("suggestie", r.locaties[0]?.sleutel || "", gekozenVan("s:"))}>
-                      {taakBusy ? "Bezig…" : "Zet het aangevinkte op de planning"}
-                    </button>
                     <button className="btn" disabled={taakBusy}
                       onClick={() => maakTaken("suggestie", r.locaties[0]?.sleutel || "", r.suggesties.map((x) => x.key))}>
-                      Alle suggesties
+                      Zet alle suggesties op de planning
                     </button>
-                    {taakMelding && <span className="gmb-poort-melding">{taakMelding}</span>}
                   </div>
                 </div>
               )}

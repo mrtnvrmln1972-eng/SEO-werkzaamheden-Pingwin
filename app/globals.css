@@ -5864,81 +5864,17 @@ a.wb-pad:hover { text-decoration: underline; }
 }
 .uk-invoer:focus { outline: none; border-color: var(--orange); }
 
-/* ═══════════════════════════════════════════════════════════
-   BULK-ONBOARDING: ALLE KLANTEN IN ÉÉN KEER, MET DE PRIJS ERBIJ
-   ═══════════════════════════════════════════════════════════ */
-.bulk-onb { margin-top: var(--s-10); padding: var(--s-5); }
-.bulk-kop { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--s-4); flex-wrap: wrap; }
-.bulk-kop strong { font-size: var(--fs-lg); line-height: var(--lh-lg); }
-.bulk-kop p { margin: var(--s-1) 0 0; max-width: 62ch; }
-.bulk-knoppen { flex-shrink: 0; }
-
-.bulk-rij { margin-top: var(--s-4); padding-top: var(--s-4); border-top: 1px solid var(--border); }
-.bulk-live { display: flex; align-items: center; gap: var(--s-2); margin: 0 0 var(--s-3); font-weight: 600; }
-.bulk-stip {
-  width: 10px; height: 10px; border-radius: var(--r-full); background: var(--accent); flex-shrink: 0;
-  animation: bulk-klop 1.4s ease-in-out infinite;
+/* De actiebalk: verschijnt zodra er iets aangevinkt staat, en blijft in beeld.
+   Reden: het vinkje en de knop stonden eerst ver uit elkaar, waardoor je aanvinkte
+   en dacht dat het geregeld was. Live aangetroffen op 6 augustus 2026. */
+.gmb-balk {
+  position: sticky; top: var(--s-2); z-index: 5;
+  display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap;
+  margin-bottom: var(--s-4); padding: var(--s-3) var(--s-4);
+  background: var(--white); border: 1px solid var(--orange);
+  border-radius: var(--r-md); box-shadow: var(--shadow-md);
 }
-@keyframes bulk-klop { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
-.bulk-lijst { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s-2); }
-.bulk-item { display: flex; align-items: baseline; gap: var(--s-2); flex-wrap: wrap; font-size: var(--fs-sm); line-height: var(--lh-sm); }
-.bulk-chip {
-  flex-shrink: 0; min-width: 74px; text-align: center;
-  padding: 2px var(--s-2); border-radius: var(--r-full);
-  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 600;
-  background: var(--gray-light); color: var(--gray);
-}
-.bulk-bezig .bulk-chip { background: var(--brand-orange-soft); color: var(--accent); }
-.bulk-klaar .bulk-chip { background: #E7F5EC; color: #1B7F45; }
-.bulk-mislukt .bulk-chip, .bulk-afgebroken .bulk-chip { background: var(--red-light); color: var(--red); }
-
-.bulk-kies { margin-top: var(--s-4); padding-top: var(--s-4); border-top: 1px solid var(--border); }
-.bulk-golven { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--s-2); }
-.bulk-golf {
-  display: flex; flex-direction: column; gap: 2px; text-align: left; cursor: pointer;
-  padding: var(--s-3); border: 1px solid var(--border); border-radius: var(--r-md);
-  background: var(--white); font: inherit; color: inherit;
-}
-.bulk-golf:hover { border-color: var(--accent); }
-.bulk-golf-aan { border-color: var(--accent); background: var(--brand-orange-faint); box-shadow: var(--shadow-sm); }
-.bulk-golf span { font-size: var(--fs-xs); line-height: var(--lh-xs); }
-.bulk-uitleg { margin: var(--s-3) 0 var(--s-4); max-width: 70ch; font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray); }
-
-.bulk-som { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--s-3); margin-bottom: var(--s-4); }
-.bulk-som > div { display: flex; flex-direction: column; gap: 2px; padding: var(--s-3); background: var(--gray-light); border-radius: var(--r-md); }
-.bulk-som span { font-size: var(--fs-xs); line-height: var(--lh-xs); }
-.bulk-som strong { font-size: var(--fs-md); line-height: var(--lh-md); }
-.bulk-krap { background: var(--red-light) !important; }
-.bulk-krap strong { color: var(--red); }
-
-.bulk-klanten { list-style: none; margin: 0 0 var(--s-4); padding: 0; display: flex; flex-direction: column; gap: var(--s-1); }
-.bulk-klanten label { display: flex; align-items: baseline; gap: var(--s-2); cursor: pointer; font-size: var(--fs-sm); line-height: var(--lh-sm); }
-.bulk-klanten input { flex-shrink: 0; }
-.bulk-klanten strong { min-width: 180px; }
-.bulk-nvt label { cursor: default; opacity: .55; }
-
-.bulk-acties { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; }
-.bulk-acties .muted { max-width: 48ch; font-size: var(--fs-xs); line-height: var(--lh-xs); }
-.bulk-fout { color: var(--red); font-size: var(--fs-sm); line-height: var(--lh-sm); margin: 0 0 var(--s-3); max-width: 70ch; }
-@media (max-width: 700px) { .bulk-klanten strong { min-width: 0; } }
-
-/* ── Klantwaarde en conversie: negentien regeltjes op één scherm ── */
-.kw-lijst { list-style: none; margin: 0 0 var(--s-4); padding: 0; display: flex; flex-direction: column; gap: var(--s-1); }
-.kw-kop, .kw-rij { display: grid; grid-template-columns: 1fr 140px 120px; gap: var(--s-3); align-items: center; }
-.kw-kop { font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); padding-bottom: var(--s-1); border-bottom: 1px solid var(--border); }
-.kw-rij { padding: var(--s-1) 0; font-size: var(--fs-sm); line-height: var(--lh-sm); }
-.kw-naam { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.kw-vol .kw-naam { font-weight: 600; }
-.kw-veld { display: flex; align-items: center; gap: var(--s-1); color: var(--gray); }
-.kw-veld input {
-  width: 100%; min-width: 0; padding: var(--s-1) var(--s-2);
-  border: 1px solid var(--border); border-radius: var(--r-sm);
-  font: inherit; font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--body-text);
-}
-.kw-veld input:focus { outline: none; border-color: var(--accent); }
-.kw-ok { color: #1B7F45; font-size: var(--fs-sm); line-height: var(--lh-sm); margin: 0 0 var(--s-3); }
-@media (max-width: 700px) { .kw-kop, .kw-rij { grid-template-columns: 1fr 100px 90px; gap: var(--s-2); } }
-/* De klantnaam in de kopbalk is op een los scherm (de planning) een link terug
-   naar de cockpit; in de cockpit zelf is het een keuzelijst. */
-.header-client-link { text-decoration: none; }
-.header-client-link:hover { color: var(--orange-dark); text-decoration: underline; }
+.gmb-balk-tel { font-weight: 700; font-size: var(--fs-base); line-height: var(--lh-base); color: var(--orange-dark); }
+.gmb-balk-melding { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--body-text); }
+.gmb-balk-klaar { border-color: #1c7a3f; }
+.gmb-balk-klaar .gmb-balk-melding { color: #1c7a3f; font-weight: 600; }
