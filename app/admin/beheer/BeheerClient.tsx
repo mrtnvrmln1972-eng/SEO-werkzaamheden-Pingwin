@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { TeamUser } from "../../../lib/team-users";
 import OntwikkelMenu from "../OntwikkelMenu";
+import MeldingenMenu from "../MeldingenMenu";
 
 type ClientLite = {
   slug: string;
@@ -330,6 +331,7 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
           </div>
         </div>
         <div className="header-right">
+          <MeldingenMenu />
           <OntwikkelMenu />
           <a className="logout-btn" href="/admin" title="Terug naar het klantenoverzicht">Klanten</a>
           <button className="logout-btn" onClick={logout} style={{ marginLeft: 8 }}>Uitloggen</button>

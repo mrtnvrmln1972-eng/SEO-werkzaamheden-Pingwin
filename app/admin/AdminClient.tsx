@@ -4,6 +4,7 @@ import { Fragment, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ClientConfig } from "../../lib/clients";
 import OntwikkelMenu from "./OntwikkelMenu";
+import MeldingenMenu from "./MeldingenMenu";
 
 type Created = { name: string; loginId: string; password: string; loginUrl: string; shareUrl?: string };
 
@@ -558,6 +559,7 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
               het ontwikkelmenu, dat op élk adminscherm staat en de eerstvolgende taak
               meteen bij de hand heeft. Twee ingangen naar hetzelfde scherm is een
               keuze die niemand hoeft te maken. */}
+          <MeldingenMenu />
           <OntwikkelMenu />
           {isOwner && (
             <a className="logout-btn" href="/admin/beheer" title="Klanten en teamgebruikers beheren" style={{ marginLeft: 8 }}>Beheer</a>

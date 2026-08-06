@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { meldingToevoegen, meldingIntrekken } from "./meldingen";
 
 // ═══════════════════════════════════════════════════════════
 // DEVELOPER OVERVIEW (alle dev-taken over alle klanten heen)
@@ -66,6 +67,9 @@ async function ensureDevTable(): Promise<void> {
   await sql`ALTER TABLE developer_overview ADD COLUMN IF NOT EXISTS dev_done BOOLEAN NOT NULL DEFAULT false`;
   await sql`ALTER TABLE developer_overview ADD COLUMN IF NOT EXISTS dev_note TEXT`;
   await sql`ALTER TABLE developer_overview ADD COLUMN IF NOT EXISTS done_at TIMESTAMPTZ`;
+  // Wie afvinkte. De sessie wist dit al, maar het werd niet bewaard; daardoor kon
+  // het dashboard niet melden dat er iets af was en moest de sitebouwer mailen.
+  await sql`ALTER TABLE developer_overview ADD COLUMN IF NOT EXISTS done_by TEXT`;
   // Zelf aangemaakte taken en handmatige aanpassingen. Waarom hier en niet in
   // client_tasks: die tabel wordt bij elke opslag per klant gewist en herschreven,
   // dus alles wat je daar zet is de volgende opslag weer weg. developer_overview
@@ -364,15 +368,41 @@ export async function saveDeveloperOrder(
 // Raakt de volgorde/uitvoerdatum niet aan (aparte kolommen).
 export async function setDeveloperStatus(
   clientSlug: string, taskKey: string, done: boolean, note: string,
+  // Wie het afvinkte. Was er wel (de sessie weet het), maar werd weggegooid,
+  // waardoor de sitebouwer moest mailen dat ze klaar was: het dashboard deed er
+  // niets mee. Ontbreekt het, dan is het Maarten zelf.
+  door?: { naam: string; isOwner: boolean } | null,
 ): Promise<void> {
   await ensureSchema();
   await ensureDevTable();
   if (!clientSlug || !taskKey) return;
+  const wie = (door?.naam || "").trim() || (door?.isOwner ? "Maarten" : "");
   await sql`
-    INSERT INTO developer_overview (client_slug, task_key, dev_done, dev_note, done_at, updated_at)
-    VALUES (${clientSlug}, ${taskKey}, ${done}, ${note || null}, ${done ? new Date().toISOString() : null}, now())
+    INSERT INTO developer_overview (client_slug, task_key, dev_done, dev_note, done_at, done_by, updated_at)
+    VALUES (${clientSlug}, ${taskKey}, ${done}, ${note || null}, ${done ? new Date().toISOString() : null}, ${done ? (wie || null) : null}, now())
     ON CONFLICT (client_slug, task_key)
-    DO UPDATE SET dev_done = ${done}, dev_note = ${note || null}, done_at = ${done ? new Date().toISOString() : null}, updated_at = now()`;
+    DO UPDATE SET dev_done = ${done}, dev_note = ${note || null}, done_at = ${done ? new Date().toISOString() : null},
+                  done_by = ${done ? (wie || null) : null}, updated_at = now()`;
+
+  // Het belletje voor Maarten. Alleen als iemand ánders afvinkt: van zijn eigen
+  // vinkje hoeft hij geen melding. Ontvinken trekt de melding weer in, anders
+  // blijft er een onwaarheid staan.
+  const taakTekst = taskKey.split("|").slice(1).join("|").trim() || taskKey;
+  if (!door?.isOwner) {
+    if (done) {
+      await meldingToevoegen({
+        soort: "dev-af",
+        titel: `${wie || "De sitebouwer"} heeft een taak afgerond`,
+        regel: `${clientSlug}: ${taakTekst}${note ? ` — ${note.trim()}` : ""}`,
+        link: `/admin/developer`,
+        wie: wie || "Sitebouwer",
+        bron: "developer_overview",
+        bronId: `${clientSlug}::${taskKey}`,
+      });
+    } else {
+      await meldingIntrekken("developer_overview", `${clientSlug}::${taskKey}`, "dev-af");
+    }
+  }
 
   // Afvinken verandert ook de ECHTE taakstatus: 'Klaar' (uit de Naar-Dev-lijst en
   // zichtbaar in Werkzaamheden), of terug naar 'Naar Dev' bij ontvinken. We matchen

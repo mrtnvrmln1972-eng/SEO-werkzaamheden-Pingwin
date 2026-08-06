@@ -705,6 +705,25 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
       "wijziging in hetzelfde systeem, met een vaste voortgang per pagina.",
     uitklappers: [
       {
+        titel: "Als de sitebouwer iets afvinkt, weet je het meteen",
+        kern: "Een melding in de kopbalk in plaats van een mailtje.",
+        tekst:
+          "De sitebouwer werkt in haar eigen deel van het dashboard en vinkt daar af wat af is. Tot 6 augustus " +
+          "2026 gebeurde er dan niets zichtbaars: de status ging stil de database in, en zij moest er een mail bij " +
+          "sturen om het te laten weten. Dat mailtje was dus werk dat het dashboard zelf had kunnen doen.\n\n" +
+          "Nu verschijnt het als **melding in de kopbalk**, op elk beheerscherm, met een oranje telletje zolang je " +
+          "het nog niet gezien hebt. In de melding staat welke klant, welke taak, en de terugkoppeling die zij erbij " +
+          "typte. Klik erop en je staat bij de taak.\n\n" +
+          "Drie keuzes die het rustig houden:\n\n" +
+          "- **Openklappen is lezen.** Geen aparte knop \"markeer als gelezen\"; dat is een handeling erbij die " +
+          "niets oplevert. Er wordt één moment onthouden: tot wanneer je gekeken hebt.\n" +
+          "- **Ontvinken haalt de melding weg.** Anders blijft er staan dat iets af is terwijl dat niet meer zo is.\n" +
+          "- **Je eigen vinkje geeft geen melding**, en de sitebouwer ziet deze meldingen niet: het zijn er niet " +
+          "twee van, het is er één, voor de eigenaar.\n\n" +
+          "Wat er nog niet is: een mail of telefoonmelding als je het dashboard een dag niet opent. Dat kan erbij, " +
+          "maar bewust nog niet gedaan; eerst kijken of het belletje volstaat.",
+      },
+      {
         titel: "De zeven fases per pagina",
         kern: "Eén vaste route, dus altijd duidelijk wat de volgende stap is.",
         tekst:
@@ -1301,6 +1320,28 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "in de weg zitten. Een advies dat zijn eigen waarschuwing negeert is erger dan geen advies.",
       },
 
+      {
+        titel: "Meldingen: wat iemand anders deed",
+        kern: "De sitebouwer vinkt af, jij ziet het in je dashboard. Geen mail meer nodig.",
+        tekst:
+          "**Wat er nu mis was.** De sitebouwer vinkt taken af in haar eigen deel van het dashboard. Die status " +
+          "ging stil de database in: het dashboard deed er niets mee, dus moest zij er een mail bij sturen om te " +
+          "laten weten dat ze klaar was. Dat mailtje landde in de inbox in plaats van op de plek waar het werk " +
+          "toch al staat.\n\n" +
+          "**Wat er nu gebeurt.** Vinkt zij een taak af, dan verschijnt dat als melding in de kopbalk van elk " +
+          "beheerscherm: wie het afrondde, bij welke klant, welke taak, met haar terugkoppeling erbij en een link " +
+          "naar de taak zelf. Een oranje telletje laat zien hoeveel er nieuw is sinds de vorige keer. Openklappen " +
+          "telt als lezen; er is geen aparte knop om iets als gelezen te markeren, want dat is een handeling die " +
+          "niets oplevert. Vinkt zij iets weer uit, dan verdwijnt de melding: een melding die niet meer waar is " +
+          "hoort niet te blijven staan.\n\n" +
+          "**Wie het ziet.** Alleen de eigenaar. De sitebouwer werkt in hetzelfde dashboard, dus de meldingen " +
+          "zitten achter dezelfde poort als de rest van het eigenaarswerk; zij krijgt geen belletje over haar " +
+          "eigen taak. Van je eigen vinkje komt trouwens ook geen melding.\n\n" +
+          "**Wat er bewust níet in zit.** Geen mail ernaast, want juist die mail was het probleem. En niet de " +
+          "tweede afvinklijst (meta's en alt-teksten per klant): daar gaan er tientallen per keer doorheen, en " +
+          "dan wordt een melding ruis in plaats van signaal. Komt dat er ooit bij, dan als één samenvatting per " +
+          "dag per klant.",
+      },
       {
         titel: "Hoe een werksessie begint en eindigt",
         kern: "Vaste vorm bij start en oplevering, en een link die pas komt als het écht live staat.",

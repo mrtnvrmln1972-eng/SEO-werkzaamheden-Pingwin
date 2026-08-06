@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { DevTask } from "../../../lib/developer";
 import RijkTekstVeld from "../../_velden/RijkTekstVeld";
 import OntwikkelMenu from "../OntwikkelMenu";
+import MeldingenMenu from "../MeldingenMenu";
 
 // Verwijdert scripts/handlers/inline font-kleur uit opgeslagen taak-HTML, houdt
 // links en basis-opmaak. De inhoud is bij invoer al geschoond; dit is de vangnet.
@@ -365,10 +366,17 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
                 <div className="muted" style={{ marginBottom: 8 }}>{rows[feedbackFor].clientName}: {stripText(rows[feedbackFor].taak)}</div>
                 <label className="compose-label">Opmerkingen of terugkoppeling (optioneel)</label>
                 <textarea className="compose-input" style={{ minHeight: 120, resize: "vertical" }} value={feedbackNote} onChange={(e) => setFeedbackNote(e.target.value)} placeholder="Wat is er gedaan, aandachtspunten, vragen voor Maarten…" />
+                {/* Mailen was hiervoor de enige manier om te laten weten dat iets af
+                    was. Dat hoeft niet meer: opslaan zet meteen een melding in
+                    Maartens dashboard, met deze terugkoppeling erbij. */}
+                <p className="muted" style={{ marginTop: 8, marginBottom: 0 }}>
+                  Maarten krijgt hier vanzelf een melding van in zijn dashboard, met wat je hierboven
+                  schrijft. Mailen hoeft alleen nog als je echt antwoord nodig hebt.
+                </p>
               </div>
               <div className="compose-foot">
                 <button type="button" className="logout-btn" onClick={() => setFeedbackFor(null)}>Annuleren</button>
-                <button type="button" className="ghost-btn small" onClick={() => confirmDone(true)}>Opslaan + Mail Maarten</button>
+                <button type="button" className="ghost-btn small" onClick={() => confirmDone(true)}>Opslaan + ook mailen</button>
                 <button type="button" className="primary-btn small" onClick={() => confirmDone(false)}>Opslaan als klaar</button>
               </div>
             </div>
@@ -395,6 +403,7 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
           </div>
         </div>
         <div className="header-right">
+          <MeldingenMenu />
           <OntwikkelMenu />
           <a className="logout-btn" href="/admin">&larr; Alle klanten</a>
           <button className="logout-btn" onClick={logout} style={{ marginLeft: 8 }}>Uitloggen</button>

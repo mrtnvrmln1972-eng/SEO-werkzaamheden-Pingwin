@@ -5511,3 +5511,21 @@ a.wb-pad:hover { text-decoration: underline; }
 .klus-doos-rij { display: flex; flex-direction: column; gap: var(--s-2); margin-bottom: var(--s-3); }
 .klus-doos-rij .ghost-btn { align-self: flex-start; }
 .klus-doos-voet { margin: 0; font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); }
+/* ── Het belletje in de kopbalk ───────────────────────────────────
+   Meldingen van dingen die iemand anders deed (de sitebouwer vinkt af).
+   Leunt op de .hm-*-bouwstenen en op .om-teller voor het aantal. */
+.md-wrap { margin-right: var(--s-2); }
+.md-knop { display: inline-flex; align-items: center; gap: var(--s-2); }
+.md-bel { width: 15px; height: 15px; flex: none; }
+.md-paneel { left: auto; right: 0; min-width: 320px; max-width: 380px; }
+.md-item .hm-item-label { display: flex; align-items: center; gap: var(--s-2); }
+.md-stip {
+  width: 7px; height: 7px; flex: none;
+  border-radius: var(--r-full); background: var(--orange);
+}
+.md-tijd { font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); }
+.md-leeg {
+  padding: var(--s-3);
+  font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray);
+}
+@media (max-width: 700px) { .md-label { display: none; } }

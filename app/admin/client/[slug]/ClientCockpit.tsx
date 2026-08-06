@@ -40,6 +40,7 @@ import OnboardingPanel from "./OnboardingPanel";
 import OntwikkelMenu from "../../OntwikkelMenu";
 import GmbPanel from "./GmbPanel";
 import KlussenChip from "./KlussenChip";
+import MeldingenMenu from "../../MeldingenMenu";
 
 type Tab = "lead" | "onboarding" | "werkzaamheden" | "paginas" | "documenten" | "activiteit" | "resultaten" | "klant" | "developer" | "wijzigingen" | "cannibalisatie" | "interne-links" | "meta" | "prioriteiten" | "google-profiel";
 
@@ -517,6 +518,7 @@ export default function ClientCockpit({
           </nav>
         </div>
         <div className="header-right">
+          <MeldingenMenu />
           <OntwikkelMenu />
           {/* Wat er op de achtergrond draait, zichtbaar op élk tabblad. Zonder dit
               was een scan alleen te volgen op de plek waar je hem startte. */}

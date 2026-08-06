@@ -7,6 +7,7 @@ import {
 import { sanitizeHtml } from "../../../../lib/veilige-html";
 import { ensureFolderFor } from "../../../../lib/drive-map";
 import { uploadBestand } from "../../../../lib/drive";
+import { getTeamUserById } from "../../../../lib/team-users";
 
 export const runtime = "nodejs";
 // Een bestand naar Drive schrijven duurt langer dan een gewone opslag.
@@ -18,6 +19,13 @@ export async function GET(req: NextRequest) {
   // Cross-client developer-overzicht: de eigenaar en de developer zelf.
   const g = await guardDev(req); if (!g.ok) return g.res;
   return NextResponse.json({ ok: true, tasks: await getDeveloperTasks() });
+}
+
+// De naam bij een gast-id, met een nette terugval. Een melding zonder naam is
+// bruikbaar; een melding die omvalt omdat de naam niet op te halen is niet.
+async function naamVanGast(userId: number | null): Promise<string> {
+  if (userId === null) return "";
+  try { return (await getTeamUserById(userId))?.name || ""; } catch { return ""; }
 }
 
 export async function POST(req: NextRequest) {
@@ -59,7 +67,13 @@ export async function POST(req: NextRequest) {
   // Actie "status": één taak afvinken (klaar/niet klaar) + terugkoppeling opslaan.
   if (body.action === "status") {
     if (!clientSlug || !taskKey) return NextResponse.json({ ok: false, error: "Taak ontbreekt." }, { status: 400 });
-    await setDeveloperStatus(clientSlug, taskKey, !!body.done, String(body.note || ""));
+    // De naam van de gast erbij, zodat de melding "X heeft een taak afgerond"
+    // een naam heeft in plaats van "iemand". Owner = Maarten zelf, dan komt er
+    // geen melding: van je eigen vinkje hoef je geen belletje.
+    const naam = g.scope.isOwner ? "Maarten" : (await naamVanGast(g.scope.userId));
+    await setDeveloperStatus(clientSlug, taskKey, !!body.done, String(body.note || ""), {
+      naam, isOwner: g.scope.isOwner,
+    });
     return NextResponse.json({ ok: true });
   }
 
