@@ -12,7 +12,7 @@ import ChatPanel from "./ChatPanel";
 import OverviewChat from "./OverviewChat";
 import Planning from "./Planning";
 import ZijPaneel from "./ZijPaneel";
-import HeaderMenu from "./HeaderMenu";
+import KlantTabs, { type Tab } from "./KlantTabs";
 import OrgDataPanel from "./OrgDataPanel";
 import FocusBlock from "./FocusBlock";
 import ShareLinkBar from "./ShareLinkBar";
@@ -42,7 +42,6 @@ import GmbPanel from "./GmbPanel";
 import KlussenChip from "./KlussenChip";
 import MeldingenMenu from "../../MeldingenMenu";
 
-type Tab = "lead" | "onboarding" | "werkzaamheden" | "paginas" | "documenten" | "activiteit" | "resultaten" | "klant" | "developer" | "wijzigingen" | "cannibalisatie" | "interne-links" | "meta" | "prioriteiten" | "google-profiel";
 
 // Jouw Superhuman-account (Microsoft 365 hangt hieronder).
 const SUPERHUMAN_ACCOUNT = "Maarten@pingwin.nl";
@@ -456,66 +455,7 @@ export default function ClientCockpit({
               uitklapmenu: "Klant" toont wat we voor deze klant doen, "Site-breed" de
               gereedschappen die over de hele site kijken. De tab-waarden in de URL
               blijven ongewijzigd, dus bestaande bookmarks komen nog goed uit. */}
-          <nav className="header-tabs">
-            {([
-              // Het lead-tabje verschijnt alleen bij een lead; bij een klant is
-              // de tabbalk exact zoals hij was.
-              ...(isLead ? [["lead", "Lead", "De werkplek voor deze lead: gesprek, dossier en documenten"] as [Tab, string, string]] : []),
-              ["werkzaamheden", "Taken", "Overview: je prioriteiten, de chats en de weekplanning"],
-              ["paginas", "Pagina’s", "Elke pagina van deze site: hoe hij scoort, wat eraan gedaan is en wat er nog moet"],
-            ] as [Tab, string, string][]).map(([id, label, title]) => (
-              // Echte link (href) zodat cmd/middel-klik in een nieuw tabblad opent;
-              // gewone klik wisselt client-side van tab.
-              <a
-                key={id}
-                href={`${pathname}?tab=${id}`}
-                title={title || undefined}
-                className={"tab" + (tab === id ? " active" : "")}
-                onClick={(e) => { if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return; e.preventDefault(); changeTab(id); }}
-              >{label}</a>
-            ))}
-
-            <HeaderMenu<Tab>
-              label="Site-breed"
-              active={tab}
-              hrefFor={(id) => `${pathname}?tab=${id}`}
-              onPick={changeTab}
-              items={[
-                { id: "prioriteiten", label: "Prioriteitenscan", hint: "Waar zit de snelste winst op deze site: alle kansen op volgorde, van deze week tot strategisch" },
-                { id: "meta", label: "Meta & CTR", hint: "Veel vertoningen, te weinig klikken: betere meta-teksten leveren direct bezoekers op" },
-                { id: "cannibalisatie", label: "Opruimen", hint: "Welke pagina's elkaar in de weg zitten, met de volledige redirectlijst: van, naar en waarom" },
-                { id: "interne-links", label: "Interne links", hint: "Vanaf welke pagina's je het beste naar een doelpagina linkt, gewogen op autoriteit en relevantie" },
-                { id: "google-profiel", label: "Google-profiel", hint: "Hoe het Google-bedrijfsprofiel ervoor staat per vestiging, met de concurrenten in de buurt ernaast" },
-              ]}
-            />
-
-            <HeaderMenu<Tab>
-              label="Klant"
-              active={tab}
-              hrefFor={(id) => `${pathname}?tab=${id}`}
-              onPick={changeTab}
-              items={[
-                { id: "documenten", label: "Documenten", hint: "Alle analyses, blauwdrukken en copy per pagina en per maand, met of het al op de site staat" },
-                { id: "activiteit", label: "Wat we doen", hint: "Alles wat we voor deze klant uitvoerden, per maand: copy, meta, alt-teksten, structured data en redirects" },
-                { id: "wijzigingen", label: "Wijzigingen", hint: "Wat er op de site van de klant veranderd is sinds de vorige controle" },
-                { id: "onboarding", label: "Onboarding", hint: "De vaste volgorde bij de start: wat er al staat, wat er nog moet en wat er achterloopt" },
-                { id: "klant", label: "Klantgegevens", hint: "Profiel, bedrijfsgegevens, kennisbank en de instellingen van deze klant" },
-              ]}
-            />
-
-            {([
-              ["resultaten", "KPI’s", "Hoe deze klant ervoor staat: posities, vertoningen, klikken en de ontwikkeling daarvan"],
-              ["developer", "Developer", "Alle developer-taken over alle klanten"],
-            ] as [Tab, string, string][]).map(([id, label, title]) => (
-              <a
-                key={id}
-                href={`${pathname}?tab=${id}`}
-                title={title || undefined}
-                className={"tab" + (tab === id ? " active" : "")}
-                onClick={(e) => { if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return; e.preventDefault(); changeTab(id); }}
-              >{label}</a>
-            ))}
-          </nav>
+          <KlantTabs basisPad={pathname} actief={tab} isLead={isLead} onKies={changeTab} />
         </div>
         <div className="header-right">
           <MeldingenMenu />

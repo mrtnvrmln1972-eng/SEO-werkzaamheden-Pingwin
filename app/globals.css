@@ -5938,3 +5938,7 @@ a.wb-pad:hover { text-decoration: underline; }
 .kw-veld input:focus { outline: none; border-color: var(--accent); }
 .kw-ok { color: #1B7F45; font-size: var(--fs-sm); line-height: var(--lh-sm); margin: 0 0 var(--s-3); }
 @media (max-width: 700px) { .kw-kop, .kw-rij { grid-template-columns: 1fr 100px 90px; gap: var(--s-2); } }
+/* De klantnaam in de kopbalk is op een los scherm (de planning) een link terug
+   naar de cockpit; in de cockpit zelf is het een keuzelijst. */
+.header-client-link { text-decoration: none; }
+.header-client-link:hover { color: var(--orange-dark); text-decoration: underline; }
