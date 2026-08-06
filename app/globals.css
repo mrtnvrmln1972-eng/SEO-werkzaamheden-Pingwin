@@ -4837,4 +4837,103 @@ a.wb-pad:hover { text-decoration: underline; }
   .ut-h-kop { gap: var(--s-3); }
   .ut-nr { font-size: var(--fs-lg); }
   .ut-voet { flex-direction: column; align-items: flex-start; }
+
+/* ═══════════════════════════════════════════════════════════
+   ONBOARDING (tabblad Klant → Onboarding)
+   ═══════════════════════════════════════════════════════════
+   De vaste volgorde bij de start van een klant. Volledig op het fundament:
+   spacing-, type-, radius- en kleur-tokens, geen losse waarden. Eén regel per
+   stap, met links de staat, in het midden wat er staat en waarom, en rechts de
+   weg erheen. */
+
+.ob-panel { max-width: 980px; }
+
+.ob-inleiding {
+  font-size: var(--fs-base); line-height: var(--lh-base); color: var(--muted);
+  margin: 0 0 var(--s-5); max-width: 72ch;
+}
+.ob-blok-uitleg {
+  font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray);
+  margin: 0 0 var(--s-4);
+}
+
+/* De voortgang: balk, teller en wat er nog open staat */
+.ob-voortgang {
+  display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-3);
+  margin-bottom: var(--s-5); font-size: var(--fs-base); line-height: var(--lh-base);
+}
+.ob-balk {
+  flex: 1 1 200px; height: var(--s-2); background: var(--gray-light);
+  border-radius: var(--r-full); overflow: hidden; min-width: 160px;
+}
+.ob-balk span { display: block; height: 100%; background: var(--orange); border-radius: var(--r-full); transition: width 0.3s; }
+
+.ob-acties { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-3); }
+.ob-acties .muted { max-width: 52ch; }
+
+.ob-fout { color: var(--red); font-size: var(--fs-sm); line-height: var(--lh-sm); margin: var(--s-3) 0 0; }
+
+/* Het logboek van de laatste rit */
+.ob-log {
+  margin-top: var(--s-5); padding-top: var(--s-4); border-top: 1px solid var(--border);
+}
+.ob-log-kop { font-size: var(--fs-base); line-height: var(--lh-base); font-weight: 700; color: var(--dark); margin-bottom: var(--s-3); }
+.ob-log-lijst { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s-2); }
+.ob-log-lijst li { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--muted); }
+.ob-log-lijst strong { color: var(--dark); }
+
+/* De stappen zelf */
+.ob-lijst { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.ob-stap {
+  display: flex; align-items: flex-start; gap: var(--s-3);
+  padding: var(--s-4) 0; border-top: 1px solid var(--border);
+}
+.ob-stap:first-child { border-top: none; padding-top: 0; }
+.ob-stap-tekst { flex: 1 1 auto; min-width: 0; }
+.ob-stap-kop { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2); margin-bottom: var(--s-1); }
+.ob-stap-kop strong { font-size: var(--fs-base); line-height: var(--lh-base); color: var(--dark); }
+.ob-detail { margin: 0; font-size: var(--fs-base); line-height: var(--lh-base); color: var(--muted); max-width: 72ch; }
+.ob-waarom { margin: var(--s-1) 0 0; font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray); max-width: 72ch; }
+.ob-wacht { margin: var(--s-2) 0 0; font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--red); }
+.ob-stap > .ghost-btn { flex: 0 0 auto; margin-top: 2px; }
+
+/* Het bolletje links: de staat in één oogopslag */
+.ob-bol {
+  flex: 0 0 auto; width: var(--s-5); height: var(--s-5); border-radius: var(--r-full);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: var(--fs-xs); line-height: 1; font-weight: 800;
+  border: 2px solid var(--border); background: var(--white); color: var(--white);
+  margin-top: 2px;
+}
+.ob-bol.ob-af { background: #2E7D32; border-color: #2E7D32; }
+.ob-bol.ob-bezig { background: var(--brand-teal); border-color: var(--brand-teal); }
+.ob-bol.ob-verouderd { background: var(--orange); border-color: var(--orange); }
+.ob-bol.ob-open { background: var(--white); border-color: var(--border); }
+
+/* Chips: staat, wie aan zet is, en de uitkomst per regel in het logboek */
+.ob-chip {
+  display: inline-flex; align-items: center; gap: var(--s-1);
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
+  padding: 2px var(--s-2); border-radius: var(--r-full);
+  background: var(--gray-light); color: var(--gray); white-space: nowrap;
+}
+.ob-chip.ob-af, .ob-chip.ob-gedaan { background: #E8F5E9; color: #2E7D32; }
+.ob-chip.ob-bezig, .ob-chip.ob-gestart { background: var(--brand-teal-light); color: var(--brand-teal); }
+.ob-chip.ob-verouderd { background: var(--orange-light); color: var(--orange-dark); }
+.ob-chip.ob-open, .ob-chip.ob-overgeslagen { background: var(--orange-light); color: var(--orange-dark); }
+.ob-chip.ob-mislukt { background: var(--red-light); color: var(--red); }
+.ob-chip.ob-wie, .ob-chip.ob-optioneel, .ob-chip.ob-stond-al { background: var(--gray-light); color: var(--gray); }
+
+/* Het signaal in de klantenlijst */
+.ob-signaal {
+  display: inline-flex; align-items: center; gap: var(--s-1);
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
+  padding: 2px var(--s-2); border-radius: var(--r-full);
+  background: var(--orange-light); color: var(--orange-dark); white-space: nowrap;
+}
+.ob-signaal.ob-signaal-klaar { background: #E8F5E9; color: #2E7D32; }
+
+@media (max-width: 640px) {
+  .ob-stap { flex-wrap: wrap; }
+  .ob-stap > .ghost-btn { margin-left: calc(var(--s-5) + var(--s-3)); }
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { waitUntil } from "@vercel/functions";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
+import { poort } from "../../../../lib/onboarding";
 import { anthropicConfigured } from "../../../../lib/anthropic";
 import { getInternalLinksState, markInternalLinksRunning, runInternalLinks, suggestTargets } from "../../../../lib/internal-links";
 
@@ -36,6 +37,9 @@ export async function POST(req: NextRequest) {
   if (!slug) return NextResponse.json({ ok: false, error: "Geen klant opgegeven." }, { status: 400 });
   const targets = Array.isArray(body.targets) ? body.targets.map((t) => String(t)).filter(Boolean) : [];
   const g = await guardSlug(req, slug); if (!g.ok) return g.res;
+  const p = await poort(slug, "internelinks");
+  if (!p.mag) return NextResponse.json({ ok: false, error: p.reden, onboarding: p.ontbreekt }, { status: 400 });
+
   await markInternalLinksRunning(slug, targets);
   waitUntil(runInternalLinks(slug, targets));
   return NextResponse.json({ ok: true, started: true });

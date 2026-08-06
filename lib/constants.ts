@@ -12,6 +12,13 @@ export const ADMIN_VIEWAS_COOKIE = "admin_viewas";
 // een keer misgaat.
 export const CLIENT_FOLDER_KEY = "__client_profile__";
 
+// De twee automatisch gegenereerde profielsecties dragen een vaste kop. Alles
+// daarbuiten in het profielveld is de eigen know-how van de strateeg. Deze koppen
+// stonden los in PagesPanel én zaten verweven in de prompts van client-profile-gen;
+// de onboarding leest ze óók, dus staan ze hier als enige bron.
+export const PROFILE_HEADER = "## Klantprofiel (automatisch gegenereerd)";
+export const TOV_HEADER = "## Tone of voice (automatisch gegenereerd)";
+
 // Vanaf deze score mag een mail als feit genoemd worden bij een pagina; daaronder
 // is het een voorstel ("mogelijk relevant"). Staat hier en niet in page-emails.ts
 // omdat het scherm hem ook nodig heeft: de kaart mag geen waarschuwing geven over

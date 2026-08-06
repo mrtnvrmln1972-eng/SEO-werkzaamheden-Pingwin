@@ -36,8 +36,9 @@ import InvoiceAlert from "./InvoiceAlert";
 import SelectionActions from "./SelectionActions";
 import LeadTab from "./LeadTab";
 import MailControlePanel from "./MailControlePanel";
+import OnboardingPanel from "./OnboardingPanel";
 
-type Tab = "lead" | "werkzaamheden" | "paginas" | "documenten" | "activiteit" | "resultaten" | "klant" | "developer" | "wijzigingen" | "cannibalisatie" | "interne-links" | "meta" | "prioriteiten";
+type Tab = "lead" | "onboarding" | "werkzaamheden" | "paginas" | "documenten" | "activiteit" | "resultaten" | "klant" | "developer" | "wijzigingen" | "cannibalisatie" | "interne-links" | "meta" | "prioriteiten";
 
 // Jouw Superhuman-account (Microsoft 365 hangt hieronder).
 const SUPERHUMAN_ACCOUNT = "Maarten@pingwin.nl";
@@ -104,7 +105,7 @@ export default function ClientCockpit({
   // Is dit een lead, dan is de leadomgeving het startscherm. Voor klanten
   // verandert er niets: die beginnen zoals altijd op Taken.
   const isLead = client.fase === "lead";
-  const validTab = (t?: string): Tab => (t === "lead" || t === "werkzaamheden" || t === "paginas" || t === "documenten" || t === "activiteit" || t === "resultaten" || t === "klant" || t === "developer" || t === "wijzigingen" || t === "meta" || t === "cannibalisatie" || t === "interne-links" || t === "prioriteiten") ? t : (isLead ? "lead" : "werkzaamheden");
+  const validTab = (t?: string): Tab => (t === "lead" || t === "onboarding" || t === "werkzaamheden" || t === "paginas" || t === "documenten" || t === "activiteit" || t === "resultaten" || t === "klant" || t === "developer" || t === "wijzigingen" || t === "meta" || t === "cannibalisatie" || t === "interne-links" || t === "prioriteiten") ? t : (isLead ? "lead" : "werkzaamheden");
   const [tab, setTab] = useState<Tab>(validTab(initialTab));
   // Teller die de weekplanning laat herladen zodra er vanuit de chat een taak is
   // toegevoegd (of iets in het bord verandert).
@@ -492,6 +493,7 @@ export default function ClientCockpit({
                 { id: "documenten", label: "Documenten", hint: "Alle analyses, blauwdrukken en copy per pagina en per maand, met of het al op de site staat" },
                 { id: "activiteit", label: "Wat we doen", hint: "Alles wat we voor deze klant uitvoerden, per maand: copy, meta, alt-teksten, structured data en redirects" },
                 { id: "wijzigingen", label: "Wijzigingen", hint: "Wat er op de site van de klant veranderd is sinds de vorige controle" },
+                { id: "onboarding", label: "Onboarding", hint: "De vaste volgorde bij de start: wat er al staat, wat er nog moet en wat er achterloopt" },
                 { id: "klant", label: "Klantgegevens", hint: "Profiel, bedrijfsgegevens, kennisbank en de instellingen van deze klant" },
               ]}
             />
@@ -843,6 +845,8 @@ export default function ClientCockpit({
             <KpiPanel slug={client.slug} domain={client.domain || ""} onOpenPage={goToPage} />
           </>
         )}
+
+        {tab === "onboarding" && <OnboardingPanel slug={client.slug} onGaNaar={(t) => changeTab(validTab(t))} />}
 
         {tab === "klant" && (<>
           <OrgDataPanel slug={client.slug} clientEmail={client.email || ""} />

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
+import { poort } from "../../../../lib/onboarding";
 import { getOpportunities, collectOpportunities } from "../../../../lib/keyword-opportunities";
 
 export const runtime = "nodejs";
@@ -27,6 +28,9 @@ export async function POST(req: NextRequest) {
   const slug = String(body.slug || "").trim();
   if (!slug) return NextResponse.json({ ok: false, error: "Geen klant opgegeven." }, { status: 400 });
   const g2 = await guardSlug(req, slug); if (!g2.ok) return g2.res;
+  const p = await poort(slug, "zoekwoorden");
+  if (!p.mag) return NextResponse.json({ ok: false, error: p.reden, onboarding: p.ontbreekt }, { status: 400 });
+
   const res = await collectOpportunities(slug);
   if (!res.ok) return NextResponse.json({ ok: false, error: res.error }, { status: 400 });
   return NextResponse.json({ ok: true, total: res.total ?? 0 });

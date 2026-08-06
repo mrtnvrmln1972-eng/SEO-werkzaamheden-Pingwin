@@ -11,6 +11,7 @@ import HelpHint from "./HelpHint";
 import { urlKey } from "../../../../lib/url-key";
 import { kaartTekst, faseVoorstel } from "../../../../lib/weekplan-kaarttekst";
 import { FASE_VOLGORDE } from "../../../../lib/fase-volgorde";
+import { PROFILE_HEADER, TOV_HEADER } from "../../../../lib/constants";
 
 function shortUrl(url: string): string {
   try { const u = new URL(url); return (u.pathname + u.search) || "/"; } catch { return url; }
@@ -41,9 +42,9 @@ function mergeSection(current: string, section: string): string {
 }
 
 // De twee automatisch gegenereerde secties dragen een vaste kop; alles daarbuiten
-// is de eigen know-how van de strateeg over de klant.
-const PROFILE_HEADER = "## Klantprofiel (automatisch gegenereerd)";
-const TOV_HEADER = "## Tone of voice (automatisch gegenereerd)";
+// is de eigen know-how van de strateeg over de klant. De koppen zelf staan in
+// lib/constants.ts, want de onboarding leest ze ook: één bron, anders lopen ze
+// een keer uit elkaar en ziet de onboarding een profiel dat er wél staat als leeg.
 
 // Splitst de opgeslagen profieltekst in drie delen: uit klantprofiel, uit
 // tone-of-voice-analyse, en de eigen know-how (de rest). Zo kunnen de eerste twee

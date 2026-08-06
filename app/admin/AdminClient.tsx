@@ -195,6 +195,9 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
   const [editBusy, setEditBusy] = useState(false);
   // Facturen-signaal per klant (uit Moneybird): aantal + bedrag >30 dagen open.
   const [overdue, setOverdue] = useState<Record<string, { count: number; total: number }>>({});
+  // Onboarding-signaal per klant: hoeveel stappen staan er, en wat loopt achter.
+  // Wordt ná het tonen van de lijst opgehaald, dus het scherm wacht er nooit op.
+  const [onb, setOnb] = useState<Record<string, { af: number; totaal: number; mist: string[]; klaar: boolean }>>({});
 
   useEffect(() => {
     if (!isOwner) return;
@@ -214,6 +217,20 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
     })();
     return () => { alive = false; };
   }, [isOwner]);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const d = await fetch("/api/admin/onboarding?alle=1").then((r) => r.json());
+        if (!d?.ok || !alive) return;
+        const map: Record<string, { af: number; totaal: number; mist: string[]; klaar: boolean }> = {};
+        for (const s of d.signalen as { slug: string; af: number; totaal: number; mist: string[]; klaar: boolean }[]) map[s.slug] = s;
+        setOnb(map);
+      } catch { /* stil: geen signaal, volgende paginalading opnieuw */ }
+    })();
+    return () => { alive = false; };
+  }, []);
 
   function openEdit(e: React.MouseEvent, c: ClientConfig) {
     e.stopPropagation();
@@ -459,6 +476,17 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
                       className="invoice-badge"
                       title={`${overdue[c.slug].count} factu${overdue[c.slug].count === 1 ? "ur staat" : "ren staan"} langer dan 30 dagen open (€ ${overdue[c.slug].total.toLocaleString("nl-NL", { minimumFractionDigits: 2 })})`}
                     >!</span>
+                  )}
+                  {onb[c.slug] && onb[c.slug].totaal > 0 && (
+                    <>
+                      {" "}
+                      <span
+                        className={"ob-signaal" + (onb[c.slug].klaar ? " ob-signaal-klaar" : "")}
+                        title={onb[c.slug].klaar
+                          ? "De onboarding is compleet."
+                          : `Nog te doen: ${onb[c.slug].mist.join(", ")}.`}
+                      >{onb[c.slug].klaar ? "onboarding compleet" : `onboarding ${onb[c.slug].af}/${onb[c.slug].totaal}`}</span>
+                    </>
                   )}
                   {" "}<span className="row-arrow">&rarr;</span>
                 </td>
