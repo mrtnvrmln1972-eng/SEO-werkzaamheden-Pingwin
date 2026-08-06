@@ -1129,6 +1129,14 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
         titel: "Hoe we dit organiseren",
         kern: "Eén punt, één sessie, één meetbaar resultaat. En de lus die zichzelf versterkt.",
         tekst:
+          "**Het bedieningspaneel staat in het dashboard zelf.** Op de routekaart-pagina (bereikbaar via de knop " +
+          "\"Routekaart\" in het adminscherm) staat per punt de stand, waar het van afhangt, en de startregel om " +
+          "te kopiëren voor een verse werksessie. Dit hoofdstuk is het verhaal en de onderbouwing; dat scherm is " +
+          "de knop.\n\n" +
+          "**Eén punt per chat, maximaal twee chats tegelijk.** Elke werksessie pakt precies één punt, meldt in " +
+          "de routekaart dat het loopt, en koppelt terug in vier regels: wat er nu werkt, een link om te kijken, " +
+          "wat er nog open is, en of er iets nodig is. Geen bestandsnamen, geen techniek, tenzij erom gevraagd " +
+          "wordt. Die vorm is vastgelegd als opdracht in de repo, dus elke sessie werkt hetzelfde.\n\n" +
           "**De werkwijze per punt.** Elk punt hieronder is zo geschreven dat het in een eigen werksessie kan " +
           "worden opgepakt: \"Pak R2\" is genoeg om te beginnen. Vaste vorm per punt:\n\n" +
           "1. **Wat er nu mis is.** Het probleem, niet de oplossing.\n" +
@@ -1406,7 +1414,9 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "| **R10** | Signaleren in plaats van kijken | Maakt het systeem proactief zonder waslijst |\n" +
           "| **R11** | Licentie-klaar: sleutels, opzet, quota | Voorwaarde voor een tweede bureau |\n" +
           "| **R12** | Vangnet onder de rekenmotoren | Voorwaarde om snel te blijven bouwen |\n" +
-          "| **R13** | Wie deed wat: een spoor van wijzigingen | Nodig zodra er gasten meewerken |",
+          "| **R13** | Wie deed wat: een spoor van wijzigingen | Nodig zodra er gasten meewerken |\n" +
+          "| **R14** | Schermafbeeldingen, door het dashboard zelf gemaakt | Maakt het verhaal zichtbaar |\n" +
+          "| **R15** | De verkooppitch als eigen pagina | Overtuigt in twee minuten |",
         sub: [
           {
             titel: "R9. Het klantdashboard op echte data",
@@ -1529,6 +1539,47 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
               "**Waaraan je ziet dat het af is.** Bij een goedgekeurd meta-voorstel staat wie het goedkeurde en " +
               "wanneer, en dat is terug te zien bij de pagina.\n\n" +
               "**Wat het raakt.** De schrijvende handelingen, de rechtenlaag en de kaarten waar het bij hoort.",
+          },
+          {
+            titel: "R14. Schermafbeeldingen, door het dashboard zelf gemaakt",
+            tekst:
+              "**Wat er nu mis is.** De uitleg is tekst. Wie niet in het dashboard werkt moet zich voorstellen hoe " +
+              "het eruitziet, en dat is precies de groep die het verhaal moet snappen: leads, collega-bureaus, " +
+              "investeerders.\n\n" +
+              "**Wat het oplevert.** Het verhaal wordt zichtbaar in plaats van beschreven. En het is de bouwsteen " +
+              "onder R15 en onder elke handleiding.\n\n" +
+              "**Hoe we het zouden bouwen.** Niet met de hand, want dan verouderen de beelden stil zodra een scherm " +
+              "verandert. Er zit al een echte browser in de app (die meet de pagina's van klanten). Die laten we " +
+              "zijn eigen schermen fotograferen:\n\n" +
+              "1. Eén ingang die een schermafbeelding maakt van een opgegeven scherm, op een vaste breedte, met de " +
+              "eigen sessie.\n" +
+              "2. **Een anonieme stand die verplicht is voor alles wat openbaar komt.** Vóór de foto worden " +
+              "klantnaam, domein en mailadressen vervangen door een neutrale naam. Zonder die stand zou de data van " +
+              "een echte klant op een openbare pagina belanden, en dat kan niet.\n" +
+              "3. Een vaste lijst: welk scherm hoort bij welk hoofdstuk. Eén opdracht vernieuwt ze allemaal.\n" +
+              "4. Waar een scherm niet zonder echte klantdata te tonen is, komt het beeld achter de " +
+              "beheerderslogin te staan in plaats van dat het wordt weggelaten.\n\n" +
+              "**Waaraan je ziet dat het af is.** Elk hoofdstuk op de uitlegpagina heeft een beeld, er staat geen " +
+              "echte klantnaam op een openbaar beeld, en één opdracht maakt ze allemaal opnieuw.\n\n" +
+              "**Wat het raakt.** De uitlegpagina, de verkooppitch en de interne browser.",
+          },
+          {
+            titel: "R15. De verkooppitch als eigen pagina",
+            tekst:
+              "**Wat er nu mis is.** De uitlegpagina legt alles uit, en dat is precies wat hij moet doen. Maar een " +
+              "lead die overtuigd moet worden leest geen zestien hoofdstukken. Er is geen versie die in twee " +
+              "minuten binnenkomt.\n\n" +
+              "**Wat het oplevert.** Iets om te sturen of te laten zien in een gesprek, met één duidelijke " +
+              "vervolgstap. Dit is het onderdeel dat direct omzet raakt.\n\n" +
+              "**Hoe we het zouden bouwen.**\n\n" +
+              "1. Een eigen, korte pagina met de beelden uit R14 als hoofdrol en de tekst als bijrol.\n" +
+              "2. Opgebouwd uit dezelfde bron als de uitleg, niet ernaast geschreven. Anders lopen het verhaal en " +
+              "de pitch binnen een maand uiteen.\n" +
+              "3. Eén boodschap per blok, in wat de klant eraan heeft, niet in wat wij gebouwd hebben.\n" +
+              "4. Eén vervolgstap onderaan, geen keuzemenu.\n\n" +
+              "**Waaraan je ziet dat het af is.** Iemand die het dashboard niet kent snapt binnen twee minuten wat " +
+              "het is en wat hij ermee opschiet, zonder door te klikken.\n\n" +
+              "**Wat het raakt.** De uitlegpagina (de bron) en een nieuwe pagina.",
           },
         ],
       },

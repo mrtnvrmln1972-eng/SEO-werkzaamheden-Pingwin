@@ -96,6 +96,28 @@ Twee regels die dat document eerlijk houden:
   gaten, de risico's en de verbeterpunten. Zo blijft het één document in plaats van een
   verkoopversie en een interne versie die uit elkaar lopen.
 
+## 0c. DE ROUTEKAART EN HOE JE EEN ONTWIKKELPUNT OPPAKT (vaste stap, 06-08-2026)
+
+De ontwikkeling van dit dashboard loopt via **losse chats, één ontwikkelpunt per chat**. Maarten
+begeleidt en stuurt aan; hij is geen programmeur.
+
+- **De punten staan in `lib/routekaart.ts`** (stand: open, loopt, af) en de volledige beschrijving
+  in `lib/uitleg.ts`, hoofdstuk "Eerlijke agenda en routekaart". Vijftien punten, R1 tot R15, in
+  drie golven.
+- **Het bedieningspaneel is `/admin/routekaart`**: per punt de stand, waar het van afhangt, en een
+  knop die de startregel kopieert.
+- **De startregel is `/ontwikkelpunt <code>`.** Die opdracht staat in
+  `.claude/commands/ontwikkelpunt.md` en beschrijft de volledige werkwijze. Noemt Maarten een punt
+  ("pak R2", "verder met autoriteit per pagina"), volg dan die opdracht, ook zonder slash.
+- **Bij de start: stand op `loopt` zetten en meteen pushen.** Dan weet een andere chat dat het
+  punt bezet is. Bij het eind: stand op `af` met de datum, en de beschrijving verhuist naar het
+  hoofdstuk waar hij thuishoort.
+
+**Terugkoppelen in een ontwikkelchat is vastgelegd, geen voorkeur: maximaal vier regels.** Wat er
+nu werkt (in wat Maarten ermee kan), een klikbare link om het te zien, wat er nog open is, en
+alleen indien nodig wat je van hem nodig hebt. Geen bestandsnamen, geen techniek, geen verslag van
+je overwegingen. Vraagt hij ernaar, dan vertel je het.
+
 ## 1. Wat dit is en waarom
 
 **Eigenaar:** Maarten Vermeulen (Pingwin Online Marketing). Geen coding-achtergrond, werkt AI-first: laat Claude bouwen en testen, plakt commando's in de terminal.
