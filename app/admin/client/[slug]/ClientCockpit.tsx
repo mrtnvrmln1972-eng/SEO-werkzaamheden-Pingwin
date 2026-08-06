@@ -886,7 +886,7 @@ export default function ClientCockpit({
             een lijst is een scherm, een oordeel is een gesprek. */}
         {tab === "prioriteiten" && <PrioriteitenPanel slug={client.slug} domain={client.domain || ""} onGaNaar={gaNaar} clientName={client.name} clientEmail={client.email || ""} />}
         {tab === "cannibalisatie" && <CannibalPanel slug={client.slug} domain={client.domain || ""} openTarget={opruimTarget} clientName={client.name} clientEmail={client.email || ""} />}
-        {tab === "interne-links" && <InternalLinksPanel slug={client.slug} openTarget={linkTarget} />}
+        {tab === "interne-links" && <InternalLinksPanel slug={client.slug} domein={client.domain || ""} openTarget={linkTarget} />}
         {tab === "google-profiel" && <GmbPanel slug={client.slug} clientName={client.name} clientEmail={client.email || ""} pingwinEmail={myEmail || SUPERHUMAN_ACCOUNT} onGaNaar={(t) => changeTab(validTab(t))} />}
 
         {/* Hetzelfde overzicht als /admin/developer: ALLE klanten bij elkaar, want

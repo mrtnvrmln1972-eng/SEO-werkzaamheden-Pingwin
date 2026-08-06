@@ -5701,3 +5701,106 @@ a.wb-pad:hover { text-decoration: underline; }
   color: var(--body-text); background: var(--white); resize: vertical;
 }
 .gmb-sjabloon:focus { outline: none; border-color: var(--orange); }
+
+/* ═══════════════════════════════════════════════════════════
+   UITKOMST-BOUWSTENEN (app/_ui/Uitkomst.tsx)
+   ═══════════════════════════════════════════════════════════
+   De enige plek waar staat hoe een uitkomst eruitziet. Alles hier gebruikt de
+   schaal-tokens bovenaan dit bestand; er staat bewust geen los getal in. Wijzig
+   je hier iets, dan verandert het overal mee, en dat is precies de bedoeling.
+   ═══════════════════════════════════════════════════════════ */
+
+.uk-paneel {
+  background: var(--white); border: 1px solid var(--card-border); border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm); padding: var(--s-6); margin-bottom: var(--s-6);
+}
+.uk-paneel-kop {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s-4);
+  flex-wrap: wrap; margin-bottom: var(--s-2);
+}
+.uk-paneel-titel {
+  font-size: var(--fs-lg); line-height: var(--lh-lg); font-weight: 700; color: var(--dark);
+}
+.uk-paneel-uitleg {
+  font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--muted);
+  max-width: 75ch; margin-bottom: var(--s-5);
+}
+.uk-knoppen { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; }
+
+.uk-blok {
+  border: 1px solid var(--card-border); border-radius: var(--r-md);
+  padding: var(--s-5); margin-bottom: var(--s-4);
+}
+.uk-blok:last-child { margin-bottom: 0; }
+.uk-blok-kop {
+  display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3);
+  flex-wrap: wrap; margin-bottom: var(--s-4);
+}
+.uk-blok-titel { font-size: var(--fs-md); line-height: var(--lh-md); font-weight: 700; color: var(--dark); }
+.uk-blok-meta { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; }
+
+/* Losse tekst: altijd gerenderd, altijd op leesbreedte. */
+.uk-tekst { font-size: var(--fs-base); line-height: var(--lh-base); color: var(--dark); max-width: 75ch; }
+.uk-tekst.klein { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--muted); }
+.uk-tekst > * + * { margin-top: var(--s-3); }
+.uk-tekst ul, .uk-tekst ol { padding-left: var(--s-5); }
+.uk-tekst li + li { margin-top: var(--s-1); }
+.uk-link, .uk-pad { color: var(--orange-dark); text-decoration: underline; text-underline-offset: 2px; }
+.uk-link:hover, .uk-pad:hover { color: var(--orange); }
+.uk-pad { font-weight: 700; }
+
+/* Een signaal is een regel met een eigen vorm, nooit een rode zin in een muur. */
+.uk-signalen { display: flex; flex-direction: column; gap: var(--s-2); margin-top: var(--s-4); }
+.uk-signaal {
+  display: flex; align-items: flex-start; gap: var(--s-3);
+  font-size: var(--fs-sm); line-height: var(--lh-sm);
+  padding: var(--s-3) var(--s-4); border-radius: var(--r-md); border: 1px solid transparent;
+  max-width: 85ch;
+}
+.uk-signaal-teken {
+  flex: 0 0 auto; width: 18px; height: 18px; border-radius: var(--r-full);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: var(--fs-xs); line-height: 1; font-weight: 700;
+}
+.uk-signaal.let-op { background: #FDF3F2; border-color: #F3D6D2; color: #8A2A20; }
+.uk-signaal.let-op .uk-signaal-teken { background: #C62828; color: var(--white); }
+.uk-signaal.goed { background: #F1F8F2; border-color: #CFE7D4; color: #1F5C2A; }
+.uk-signaal.goed .uk-signaal-teken { background: #2E7D32; color: var(--white); }
+.uk-signaal.notitie { background: var(--gray-light); border-color: var(--border); color: var(--muted); }
+.uk-signaal.notitie .uk-signaal-teken { background: var(--border); color: var(--dark); }
+
+.uk-chips { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; }
+.uk-chip {
+  display: inline-flex; align-items: center; gap: var(--s-1);
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
+  padding: 3px var(--s-3); border-radius: var(--r-full); white-space: nowrap;
+}
+.uk-chip.neutraal { background: var(--gray-light); color: var(--muted); }
+.uk-chip.accent { background: #FDEFE7; color: var(--orange-dark); }
+.uk-chip.goed { background: #E7F6EA; color: #2E7D32; }
+.uk-chip.let-op { background: #FDECEA; color: #C62828; }
+.uk-chip.uit { background: var(--gray-light); color: #9AA0A6; }
+
+.uk-tabel-wrap { overflow-x: auto; margin-top: var(--s-4); }
+.uk-tabel { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); line-height: var(--lh-sm); }
+.uk-tabel th {
+  text-align: left; font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.4px; color: var(--muted);
+  padding: var(--s-2) var(--s-3); border-bottom: 1px solid var(--border); white-space: nowrap;
+}
+.uk-tabel td { padding: var(--s-3); border-bottom: 1px solid var(--card-border); vertical-align: top; }
+.uk-tabel tr:last-child td { border-bottom: none; }
+.uk-tabel tr.uk-rij-aan td { background: #FFF9F5; }
+
+.uk-leeg {
+  font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--muted);
+  padding: var(--s-5); background: var(--gray-light); border-radius: var(--r-md); max-width: 75ch;
+}
+.uk-knoppen-onder { margin-top: var(--s-4); }
+.uk-boven { margin-top: var(--s-4); margin-bottom: var(--s-2); }
+.uk-invoer {
+  flex: 1; min-width: 240px;
+  font-family: 'Montserrat', sans-serif; font-size: var(--fs-base); line-height: var(--lh-base);
+  padding: var(--s-2) var(--s-3); border: 1px solid var(--border); border-radius: var(--r-md);
+}
+.uk-invoer:focus { outline: none; border-color: var(--orange); }

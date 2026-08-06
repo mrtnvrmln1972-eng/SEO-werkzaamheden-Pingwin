@@ -6,6 +6,7 @@ import { getClientUrls } from "./site-urls";
 import { getGscQueryPageMatrix } from "./google";
 import { getAhrefsKeywords } from "./ahrefs-keywords";
 import { getUrlRatings, autoriteitVan, type UrlAutoriteit } from "./ahrefs";
+import { ctrVoorPositie } from "./prioriteiten-score";
 import { measurePage } from "./page-measure";
 import { callClaude } from "./anthropic";
 
@@ -45,7 +46,14 @@ export type InternalLinksResult = {
   samenvatting: string; datakwaliteit?: IlDatakwaliteit; doelpaginas: TargetPage[];
   structuur?: StructureInfo; generatedAt: string | null;
 };
-export type SuggestedTarget = { url: string; positie: number; primairZoekwoord: string; impressies: number };
+export type SuggestedTarget = {
+  url: string; positie: number; primairZoekwoord: string; impressies: number;
+  /** Wat het ongeveer oplevert als deze pagina naar de doelpositie klimt. */
+  extraBezoekers: number;
+  doelPositie: number;
+  /** Waarom deze pagina in het lijstje staat, in gewone taal. */
+  reden: string;
+};
 export type InternalLinksState = {
   status: "idle" | "running" | "done" | "error"; result: InternalLinksResult | null;
   targets: string[]; error: string; updatedAt: string | null;
@@ -190,8 +198,20 @@ function aggregatePerPage(matrix: { keyword: string; page: string; clicks: numbe
   return map;
 }
 
-// Stelt de doelpagina's voor: striking-distance pagina's (positie 5-15) met genoeg
-// vertoningen, gesorteerd op impressies. Dit voedt de checkboxes in de tab.
+// Welke pagina's zijn het waard om te versterken, en wat levert het op?
+//
+// Dit lijstje was eerst gesorteerd op vertoningen, en dat is de verkeerde vraag.
+// Vertoningen zeggen hoe vaak een pagina te zien is; ze zeggen niet wat je eraan
+// overhoudt als hij stijgt. Nu staat er per pagina hoeveel extra bezoekers per
+// maand hij kan opleveren, en dat is de volgorde.
+//
+// De som gebruikt dezelfde klikkans-curve als de rest van het dashboard
+// (`ctrVoorPositie`), dus dit is geen tweede berekening naast de prioriteitenscan:
+//   vertoningen × (klikkans op de doelpositie − klikkans op de huidige positie)
+//
+// De doelpositie is bewust bescheiden: van positie 8 naar 4, niet naar 1. Interne
+// links maken een paar plekken verschil, geen sprong naar de eerste plaats, en een
+// belofte die niet uitkomt is erger dan een kleiner getal.
 export async function suggestTargets(slug: string): Promise<SuggestedTarget[]> {
   const client = await getClientBySlug(slug);
   const domain = client?.domain || "";
@@ -200,11 +220,33 @@ export async function suggestTargets(slug: string): Promise<SuggestedTarget[]> {
   const per = aggregatePerPage(matrix, domain);
   const out: SuggestedTarget[] = [];
   for (const [p, v] of per) {
-    if (v.position >= 5 && v.position <= 15 && v.impressions >= 30) {
-      out.push({ url: p, positie: Math.round(v.position * 10) / 10, primairZoekwoord: v.primaryKw, impressies: v.impressions });
-    }
+    // Positie 3 tot 20: dichtbij genoeg om te winnen, ver genoeg om te winnen.
+    // Boven de 3 valt er weinig te halen, onder de 20 helpt een interne link niet.
+    if (!(v.position >= 3 && v.position <= 20)) continue;
+    if (v.impressions < 20) continue;
+
+    const doel = Math.max(1, Math.round(v.position <= 6 ? v.position - 2 : v.position / 2));
+    const winst = ctrVoorPositie(doel) - ctrVoorPositie(v.position);
+    const extra = Math.round((v.impressions / 3) * Math.max(0, winst)); // per maand, uit 90 dagen
+    if (extra < 1) continue;
+
+    const reden = v.position <= 6
+      ? `Staat net onder de top 3 op "${v.primaryKw}". Een paar plekken erbij is hier het meeste waard.`
+      : v.position <= 12
+        ? `Staat onderaan pagina 1 op "${v.primaryKw}". Precies het bereik waar interne links het verschil maken.`
+        : `Staat op pagina 2 op "${v.primaryKw}", met genoeg vertoningen om de klim te rechtvaardigen.`;
+
+    out.push({
+      url: p,
+      positie: Math.round(v.position * 10) / 10,
+      primairZoekwoord: v.primaryKw,
+      impressies: v.impressions,
+      extraBezoekers: extra,
+      doelPositie: doel,
+      reden,
+    });
   }
-  return out.sort((a, b) => b.impressies - a.impressies).slice(0, 15);
+  return out.sort((a, b) => b.extraBezoekers - a.extraBezoekers).slice(0, 20);
 }
 
 // Crawlt een set paden (staticOnly = snel, geen headless) in kleine batches en

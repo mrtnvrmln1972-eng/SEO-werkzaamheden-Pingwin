@@ -201,6 +201,24 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "een database en de sleutels van de koppelingen. Niet een migratietraject.",
       },
       {
+        titel: "De opmaak kan niet meer per scherm afwijken",
+        kern: "Eén set bouwstenen, en een poort die de bouw stopt als een scherm zijn eigen gang gaat.",
+        tekst:
+          "Elk scherm dat je hier ziet is opgebouwd uit dezelfde bouwstenen: een paneel, een blok, een stuk " +
+          "tekst, een signaal, een label, een tabel. Wat die eruit laten zien staat op één plek, en niet per " +
+          "scherm opnieuw. Losse tekst gaat altijd door dezelfde renderlaag, dus er komen nooit ruwe " +
+          "opmaaktekens in beeld, en elk pad naar een pagina wordt vanzelf een klikbare link.\n\n" +
+          "Belangrijker is wat er gebeurt als iemand dat tóch omzeilt. **Vóór elke keer dat het dashboard " +
+          "opnieuw gebouwd wordt, draait er een controle** die kijkt of een scherm zijn eigen lettergroottes, " +
+          "afstanden, kleuren of rondingen verzint, of tekst ongerenderd doorlaat. Gebeurt dat, dan mislukt de " +
+          "bouw en komt het niet live. De opmaak hangt dus niet af van wie er die dag oplet.\n\n" +
+          "De schermen van vóór 6 augustus 2026 staan op een lijst met uitzonderingen, want die in één keer " +
+          "verbouwen zou werkende schermen breken. Die lijst mag alleen korter worden: een verbouwd scherm gaat " +
+          "eraf en kan daarna niet meer terugvallen. Het kan dus alleen nog beter worden, nooit slechter. " +
+          "Aanleiding was simpel: de opmaakregel stond al twintig keer opgeschreven en werd toch gemist, omdat " +
+          "een regel in een document op geheugen leunt en een poort niet.",
+      },
+      {
         titel: "Eén codebase, meerdere merken",
         kern: "Het project bepaalt het merk, niet de code.",
         tekst:
@@ -552,8 +570,12 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "- **Welke bronpagina's het beste naar een doelpagina linken**, gewogen op hoeveel waarde die " +
           "bronpagina kan doorgeven én hoe inhoudelijk relevant hij is. Beide, niet één van de twee.\n" +
           "- **Click depth vanaf de homepage.** Hoeveel klikken is een pagina verwijderd van de voordeur?\n" +
-          "- **Doelpagina's op de rand van de winst.** Pagina's op positie 5 tot 15 met genoeg vertoningen: dat " +
-          "is waar interne links het meeste verschil maken.\n" +
+          "- **Welke pagina's het waard zijn om te versterken, met het aantal extra bezoekers erbij.** Je krijgt " +
+          "een lijstje met pagina's die al in de buurt van de top staan, en per pagina hoeveel bezoekers per " +
+          "maand het ongeveer oplevert als hij een paar plekken stijgt. Die schatting gebruikt dezelfde " +
+          "klikkans-curve als de rest van het dashboard, dus het is geen tweede rekensom naast de " +
+          "prioriteitenscan. De doelpositie is bewust bescheiden: van plek 8 naar 4, niet naar 1, want interne " +
+          "links geven een zet en geen sprong.\n" +
           "- **Bewaking van het ankerprofiel**, zodat je niet twintig keer dezelfde ankertekst plaatst en de " +
           "pagina over-optimaliseert.\n\n" +
           "**Autoriteit per pagina is gemeten, niet geschat** (6 augustus 2026). Van elke pagina wordt bij Ahrefs " +
