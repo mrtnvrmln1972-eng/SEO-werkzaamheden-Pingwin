@@ -63,8 +63,7 @@ export function splitsMail(bodyHtml: string): { eigen: string; geciteerd: string
   return { eigen: body.slice(0, knip), geciteerd: body.slice(knip) };
 }
 
-/** Platte tekst uit HTML, met behoud van regelovergangen. */
-export function naarTekst(html: string): string {
+function htmlNaarPlat(html: string): string {
   return String(html || "")
     .replace(/<\s*(script|style)[\s\S]*?<\s*\/\s*\1\s*>/gi, "")
     .replace(/<\/(p|div|br|li|tr|h[1-6])\s*>/gi, "\n")
@@ -75,6 +74,78 @@ export function naarTekst(html: string): string {
     .replace(/[ \t]+/g, " ")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+/** Platte tekst uit HTML, met behoud van regelovergangen. */
+export function naarTekst(html: string): string {
+  return htmlNaarPlat(html);
+}
+
+// ── Tabellen die iets betekenen, versus tabellen die alleen lay-out zijn ──
+//
+// In een mail staat een echte tabel vol informatie ("vanaf déze pagina naar díé
+// pagina, en waarom"). Die kolomindeling is precies wat je nodig hebt en juist wat
+// de gewone omzetting weggooit: cellen worden met een spatie aaneengeplakt, en dan
+// leest een bron-doel-tabel als een rij losse woorden.
+//
+// Maar Outlook en mailtemplates gebruiken tabellen óók voor opmaak: een
+// handtekeningblok, een logo, een knop. Die zonder onderscheid van streepjes
+// voorzien maakt elke handtekening onleesbaar. Daarom de eis van minstens twee
+// rijen én minstens twee cellen in de eerste rij; wat daar niet aan voldoet gaat
+// gewoon door de normale omzetting heen.
+const CEL = /<(t[dh])\b[^>]*>([\s\S]*?)<\/\1\s*>/gi;
+
+function tabelNaarRegels(tabelHtml: string): string | null {
+  const rijen: string[][] = [];
+  for (const rij of tabelHtml.match(/<tr\b[^>]*>[\s\S]*?<\/tr\s*>/gi) || []) {
+    const cellen: string[] = [];
+    CEL.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = CEL.exec(rij))) cellen.push(htmlNaarPlat(m[2]).replace(/\n+/g, " ").trim());
+    if (cellen.length) rijen.push(cellen);
+  }
+  // Geen echte gegevenstabel: laat de gewone omzetting zijn werk doen.
+  if (rijen.length < 2 || rijen[0].length < 2) return null;
+  return rijen.map((r) => r.filter((c) => c !== "").join(" | ")).filter(Boolean).join("\n");
+}
+
+/**
+ * Platte tekst uit HTML, waarbij gegevenstabellen hun kolommen houden.
+ *
+ * Bewust een aparte functie en geen extra parameter op naarTekst: die voedt ook de
+ * mailscoring, en een stille gedragswijziging daar levert andere scores op zonder
+ * dat er ergens een foutmelding verschijnt.
+ */
+export function naarTekstMetTabellen(html: string): string {
+  const bron = String(html || "");
+  if (!bron) return "";
+  let uit = "";
+  let laatst = 0;
+  for (const m of bron.matchAll(/<table\b[^>]*>[\s\S]*?<\/table\s*>/gi)) {
+    const start = m.index ?? 0;
+    const regels = tabelNaarRegels(m[0]);
+    if (regels === null) continue; // lay-outtabel: gewoon meelopen in de rest
+    uit += htmlNaarPlat(bron.slice(laatst, start)) + "\n" + regels + "\n";
+    laatst = start + m[0].length;
+  }
+  if (!laatst) return htmlNaarPlat(bron);
+  uit += htmlNaarPlat(bron.slice(laatst));
+  return uit.replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+/**
+ * Knip af op een alinea-grens in plaats van middenin een zin of een tabel.
+ * Levert een halve tabelrij anders stilletjes een half verzoek op.
+ * Nooit meer dan een vijfde weggooien om die grens te halen; dan is afkappen beter.
+ */
+export function knipOpAlinea(tekst: string, max: number): string {
+  const t = String(tekst || "");
+  if (t.length <= max) return t;
+  const kort = t.slice(0, max);
+  for (const grens of [kort.lastIndexOf("\n\n"), kort.lastIndexOf("\n")]) {
+    if (grens > max * 0.8) return kort.slice(0, grens).trim();
+  }
+  return kort.trim();
 }
 
 // Afsluitingen en handtekeningen dragen niets bij aan de vraag waar een mail
@@ -132,4 +203,18 @@ export function eigenTekst(bodyHtml: string, preview = "", max = 1200): string {
   // want die toont in mailprogramma's ook het bovenste stukje.
   if (t.length < 3) t = naarTekst(preview);
   return t.replace(GROET, "").trim().slice(0, max);
+}
+
+/**
+ * Zelfde als eigenTekst, maar met leesbare tabellen en een nette knip.
+ *
+ * Voor het uitlezen van wat er in een mail gevraagd is. Een verzoek staat daar
+ * vaak in een tabel ("vanaf deze pagina een link naar die pagina"), en dat is
+ * precies de informatie die bij de gewone omzetting sneuvelt.
+ */
+export function eigenTekstRijk(bodyHtml: string, preview = "", max = 12000): string {
+  const { eigen } = splitsMail(bodyHtml);
+  let t = naarTekstMetTabellen(eigen);
+  if (t.length < 3) t = naarTekstMetTabellen(preview);
+  return knipOpAlinea(t.replace(GROET, "").trim(), max);
 }

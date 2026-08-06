@@ -1,5 +1,6 @@
 import { sql, ensureSchema } from "./db";
 import { getClientBySlug } from "./clients";
+import { parseJsonSoepel } from "./json-herstel";
 import { callClaudeWebSearch } from "./anthropic";
 import { LEGE_VESTIGING, identiteit, naamKaal, ontbrekendeVelden, type OrgVestiging } from "./org-vereist";
 import crypto from "crypto";
@@ -297,7 +298,7 @@ function htmlToText(html: string): string {
 }
 
 // Ophalen wat er nog ontbreekt. Vult alleen lege plekken; overschrijft nooit.
-export async function autofillOrgData(slug: string): Promise<{ ok: boolean; data?: OrgData; error?: string; gevuld?: number; nieuweVestigingen?: number; nieuweArtsen?: number; nieuweDiensten?: number }> {
+export async function autofillOrgData(slug: string): Promise<{ ok: boolean; data?: OrgData; error?: string; gevuld?: number; afgekapt?: boolean; nieuweVestigingen?: number; nieuweArtsen?: number; nieuweDiensten?: number }> {
   const client = await getClientBySlug(slug);
   const domain = (client?.domain || "").trim();
   if (!domain) return { ok: false, error: "Deze klant heeft nog geen domein ingevuld." };
@@ -348,18 +349,22 @@ Geef UITSLUITEND geldige JSON met exact deze velden (string tenzij anders vermel
 
   const user = `BESTAANDE JSON-LD OP DE SITE:\n${jsonLd.join("\n---\n") || "(geen aangetroffen)"}\n\n${textParts.join("\n\n")}`;
   try {
-    const raw = await callClaudeWebSearch(system, [{ role: "user", content: user.slice(0, 90000) }], 3000, { slug, action: "org_autofill" }, 8);
-    const cleaned = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
-    const start = cleaned.indexOf("{");
-    const end = cleaned.lastIndexOf("}");
-    const parsed = JSON.parse(start >= 0 && end > start ? cleaned.slice(start, end + 1) : cleaned);
-    const gevonden = normalize(parsed);
+    // Ruimer venster: bij een kliniek met meerdere vestigingen en tien artsen
+    // paste het antwoord niet in 3000 tokens en werd het middenin een array
+    // afgekapt (One Day Clinic, 6 augustus 2026). Dat leverde geen half resultaat
+    // op maar een harde foutmelding, dus helemaal niets.
+    const raw = await callClaudeWebSearch(system, [{ role: "user", content: user.slice(0, 90000) }], 8000, { slug, action: "org_autofill" }, 8);
+    // En mocht hij tóch afgekapt raken: de afgeronde gegevens redden in plaats van
+    // alles weggooien. De halve vestiging aan het eind verdwijnt, de rest blijft.
+    const gelezen = parseJsonSoepel<Record<string, unknown>>(raw);
+    if (!gelezen.ok) return { ok: false, error: `Automatisch vullen mislukt: het antwoord was geen bruikbare JSON (${gelezen.error}).` };
+    const gevonden = normalize(gelezen.data);
     const huidig = await getOrgData(slug);
     if (huidig.locked) return { ok: false, error: "Deze gegevens zijn vergrendeld; er wordt niets meer aangevuld." };
     const uitkomst = voegOrgSamen(huidig.data, gevonden);
     if (uitkomst.gevuld) await saveOrgData(slug, uitkomst.data, "admin");
     return {
-      ok: true, data: uitkomst.data, gevuld: uitkomst.gevuld,
+      ok: true, data: uitkomst.data, gevuld: uitkomst.gevuld, afgekapt: gelezen.afgekapt,
       nieuweVestigingen: uitkomst.nieuweVestigingen, nieuweArtsen: uitkomst.nieuweArtsen, nieuweDiensten: uitkomst.nieuweDiensten,
     };
   } catch (e) {

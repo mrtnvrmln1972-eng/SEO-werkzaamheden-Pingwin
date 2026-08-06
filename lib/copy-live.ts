@@ -119,17 +119,42 @@ export async function meetCopyLive(url: string, copyContent: string): Promise<Om
   // kregen een blokkeerpagina): niet meetbaar, geen oordeel.
   if (!liveKoppen.length) return { ...leeg, status: pagina.status };
 
-  // Een kop telt als gevonden bij een exacte match, of als de ene de andere
-  // bevat. Dat vangt kleine redactionele aanpassingen van de sitebouwer op
-  // zonder dat een compleet andere kop meetelt.
+  const v = vergelijkKoppen(doel, [pagina.h1, ...pagina.headings]);
+  return { url, status: pagina.status, totaal: v.totaal, gevonden: v.gevonden, percentage: v.percentage, doorgevoerd: v.doorgevoerd, meetbaar: true };
+}
+
+/**
+ * Hoeveel van de bedoelde koppen staan er echt op de pagina?
+ *
+ * Losgetrokken zodat de controle vanuit de mail dezelfde rekensom en dezelfde
+ * drempel gebruikt als het werkplan-scherm. Twee plekken die over dezelfde pagina
+ * verschillende dingen beweren is precies het soort verschil dat niemand opmerkt.
+ *
+ * Een kop telt als gevonden bij een exacte match, of als de ene de andere bevat.
+ * Dat vangt kleine redactionele aanpassingen van de sitebouwer op zonder dat een
+ * compleet andere kop meetelt.
+ */
+export function vergelijkKoppen(
+  bedoeld: string[], live: string[],
+): { totaal: number; gevonden: number; percentage: number; doorgevoerd: boolean; ontbreekt: string[] } {
+  const liveN = live.map(norm).filter(Boolean);
+  const ontbreekt: string[] = [];
   let gevonden = 0;
-  for (const k of doel) {
+  let totaal = 0;
+  for (const k of bedoeld) {
     const n = norm(k);
     if (!n) continue;
-    if (liveKoppen.some((l) => l === n || (n.length > 12 && (l.includes(n) || n.includes(l))))) gevonden++;
+    totaal++;
+    if (liveN.some((l) => l === n || (n.length > 12 && (l.includes(n) || n.includes(l))))) gevonden++;
+    else ontbreekt.push(k);
   }
-  const percentage = Math.round((gevonden / doel.length) * 100);
-  return { url, status: pagina.status, totaal: doel.length, gevonden, percentage, doorgevoerd: gevonden > 0 && gevonden / doel.length >= DREMPEL, meetbaar: true };
+  if (!totaal) return { totaal: 0, gevonden: 0, percentage: 0, doorgevoerd: false, ontbreekt: [] };
+  return {
+    totaal, gevonden,
+    percentage: Math.round((gevonden / totaal) * 100),
+    doorgevoerd: gevonden > 0 && gevonden / totaal >= DREMPEL,
+    ontbreekt,
+  };
 }
 
 /**

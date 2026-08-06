@@ -44,6 +44,7 @@ export async function GET(req: NextRequest) {
   const slug = req.nextUrl.searchParams.get("slug") || "";
   const gevraagd = req.nextUrl.searchParams.get("url") || "";
   const compact = req.nextUrl.searchParams.get("compact") === "1";
+  const zonderStand = req.nextUrl.searchParams.get("zonderstand") === "1";
   const focus = leesFocus(req.nextUrl.searchParams.get("taak"), req.nextUrl.searchParams.get("kaart"));
   if (!slug || !gevraagd) return NextResponse.json({ ok: false, error: "Klant en pagina zijn verplicht." }, { status: 400 });
   const g = await guardSlug(req, slug); if (!g.ok) return g.res;
@@ -57,7 +58,7 @@ export async function GET(req: NextRequest) {
       tekst,
       controle,
       bijgewerktTot,
-      html: dossierBlokHtml(dossier, tekst, { compact }),
+      html: dossierBlokHtml(dossier, tekst, { compact, zonderStand }),
       mails: dossier.mails,
       documenten: dossier.documenten,
       klantvoorstellen: dossier.klantvoorstellen,

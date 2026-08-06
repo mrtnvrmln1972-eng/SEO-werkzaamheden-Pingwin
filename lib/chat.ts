@@ -6,10 +6,17 @@ import { getClientUrls, buildUrlContext } from "./site-urls";
 import { googleStatus, getGscForClient, getGscKeywordTrend, getGscForPage } from "./google";
 import { measurePage } from "./page-measure";
 import { metaVerdictText } from "./meta-rules";
-import { getUrlOrganicKeywords, getSerpOverview, getAhrefsTopPages, ahrefsConfigured } from "./ahrefs";
-import { callClaudeAgentic, callClaude, LIGHT_MODEL, type ToolDef, type ToolRunner } from "./anthropic";
+import { getUrlOrganicKeywords, getSerpOverview, getAhrefsTopPages, ahrefsConfigured, getSiteOrganicKeywords, getDomainKeywordsMatching } from "./ahrefs";
+import { getCompetitors } from "./competitors";
+import { callClaudeAgentic, callClaude, LIGHT_MODEL, HEAVY_MODEL, GEEN_ANTWOORD, type ToolDef, type ToolRunner } from "./anthropic";
+import { runChatTool } from "./chat-tools";
+import { diepDenkenAan } from "./settings";
 import { sheetCsvUrl, parseCSV, structureData, MAAND_VOLGORDE } from "./sheet";
 import { getFocus } from "./focus";
+import { notitiesTekst } from "./notities";
+import { korteGeschiedenis } from "./chat-inkorten";
+import type { ChatMsg } from "./anthropic";
+import { htmlNaarTekst } from "./veilige-html";
 import { buildOverview, overviewToText, getPageWorkStatus, pageWorkStatusToText } from "./overview";
 import { buildPageSignalsText, buildKeywordStandText, buildTeBouwenText } from "./page-signals";
 import { readDriveDoc } from "./drive";
@@ -18,6 +25,7 @@ import { dossierIndexText, searchDossier, getDossierItem, addDossierItem } from 
 import { listLeadDocs, maakLeadDocument, SJABLONEN } from "./lead-doc";
 import { getSiteAuthority } from "./ahrefs";
 import { controleerAntwoord, herstelOpdracht } from "./antwoord-controle";
+import { bronVan, ontdubbel, type Bron } from "./chat-bronnen";
 import { overlappendePaginas, overlapAlsTekst, zwakkePaginas } from "./concurrenten";
 import { getPageInternalLinks, runPageInternalLinks } from "./page-internal-links";
 import { getCannibalAnalysis, resultDatum, startCannibalRun, runCannibalRedirect } from "./cannibal-redirect";
@@ -48,6 +56,18 @@ function stripHtml(html: string): string {
     .replace(/<\/(p|div|br|li|tr|h[1-6])\s*>/gi, "\n")
     .replace(/<[^>]+>/g, " ")
     .replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&").replace(/&lt;/gi, "<").replace(/&gt;/gi, ">").replace(/&#39;|&apos;/gi, "'").replace(/&quot;/gi, '"');
+}
+
+// Notities van Maarten over deze klant. Wat hij in een notitie plakt (een
+// telefoontje, een afspraak, iets wat hij zag) hoort de assistent te weten,
+// zonder dat hij het per gesprek opnieuw uitlegt. Geen notities = geen blok.
+async function notitiesBlok(slug: string): Promise<string> {
+  try {
+    const t = await notitiesTekst(slug);
+    return t
+      ? "\n=== NOTITIES VAN MAARTEN OVER DEZE KLANT (eigen aantekeningen: telefoontjes, afspraken, waarnemingen; betrouwbare achtergrond, spreekt de klantwens aan) ===\n" + t
+      : "";
+  } catch { return ""; }
 }
 
 // ── Welke mails gaan er mee in de context, en hoe volledig ──
@@ -213,6 +233,13 @@ async function buildContext(client: ClientConfig): Promise<string> {
     }
   } catch { /* Ads-context is aanvulling */ }
 
+  // Klantprofiel en notities: deze chat had ze allebei niet, terwijl het juist de
+  // achtergrond is waarmee je een antwoord op maat geeft.
+  const prof = (client.seoProfile || "").trim();
+  if (prof) parts.push("\n=== KLANTPROFIEL (positionering/werkgebied) ===\n" + prof.slice(0, 2500));
+  const nt = await notitiesBlok(client.slug);
+  if (nt) parts.push(nt);
+
   return parts.join("\n");
 }
 
@@ -277,8 +304,30 @@ async function buildOverviewContext(client: ClientConfig): Promise<string> {
   if (client.cockpit?.workDocUrl) links.push(`Werkdocument: ${client.cockpit.workDocUrl}`);
   if (client.cockpit?.resultsUrl) links.push(`Resultaten: ${client.cockpit.resultsUrl}`);
   if (links.length) parts.push("\n=== SNELLE LINKS (leesbaar met lees_document) ===\n" + links.join("\n"));
+  // Top Prio's: Maartens eigen prioriteitenlijstje. Dat bereikte tot nu toe geen
+  // enkele prompt, terwijl het juist stuurt waar de aandacht heen moet.
+  try {
+    const f = await getFocus(client.slug);
+    const p = htmlNaarTekst(f.prioHtml).trim();
+    if (p) parts.push("\n=== TOP PRIO'S (wat Maarten zelf bovenaan heeft gezet; laat dit meewegen in wat je voorstelt) ===\n" + p.slice(0, 2000));
+  } catch { /* aanvulling */ }
   const prof = (client.seoProfile || "").trim();
   if (prof) parts.push("\n=== KLANTPROFIEL (positionering/werkgebied) ===\n" + prof.slice(0, 2500));
+  // De concurrenten die Maarten zelf heeft aangewezen. Die lijst voedde tot nu toe
+  // alleen de prioriteitenscan, de kansenlijst en de Google-profiel-motor, en bereikte
+  // dit gesprek helemaal niet: de bird's eye kende alleen de partijen die toevallig in
+  // een opgevraagde top 10 stonden. Wie Maarten als concurrent ziet, is een oordeel dat
+  // je niet uit een SERP haalt.
+  try {
+    const conc = await getCompetitors(client.slug);
+    parts.push(conc.length
+      ? "\n=== CONCURRENTEN (door Maarten aangewezen; dit is wie hij als de concurrentie ziet, niet wat de SERP toevallig toont) ===\n"
+        + conc.join(", ")
+        + "\nGebruik concurrent_zoekwoorden om te zien waar zij op scoren en wij niet, en ahrefs_site_authority om te wegen of we van ze kunnen winnen."
+      : "\n=== CONCURRENTEN ===\nEr is voor deze klant nog geen concurrentenlijst ingevuld (KPI's-tab, knop Concurrenten, vier plekken). Zeg dat als een strategievraag erom vraagt, en gebruik zolang de partijen uit de top 10 (serp_top10) als concurrentie.");
+  } catch { /* aanvulling */ }
+  const nt = await notitiesBlok(client.slug);
+  if (nt) parts.push(nt);
   // Recente e-mails als basisinfo: nieuwe wensen, herzieningen, ingevulde formulieren
   // van de klant horen mee te wegen in de strategie (nieuwste eerst).
   try {
@@ -509,6 +558,8 @@ export type OogstResultaat = { taken: OogstTaak[]; geenTaak: string[]; verwerkt?
 export type ChatMessage = {
   role: "user" | "assistant"; content: string; image?: string; images?: string[];
   actions?: ProposedAction[]; soort?: "conclusie" | "oogst"; oogst?: OogstResultaat;
+  // Wat de chat voor dít antwoord heeft opgezocht (ingeklapt onder het antwoord).
+  bronnen?: Bron[];
 };
 
 const cleanThread = (t?: string) => (t || "algemeen").trim().slice(0, 80) || "algemeen";
@@ -618,6 +669,17 @@ function chatTools(client: ClientConfig): { tools: ToolDef[]; run: ToolRunner } 
     { name: "ahrefs_pagina", description: "Ahrefs-gegevens van één pagina: organische zoekwoorden met positie/volume/verkeer, plus het aantal verwijzende domeinen (externe autoriteit) van die pagina.", input_schema: { type: "object", properties: { url: { type: "string", description: "Volledige URL of pad" } }, required: ["url"] } },
     { name: "serp_top10", description: "De actuele top 10 van Google voor een zoekwoord (NL): positie, URL, titel, domain rating en resultaattype. Gebruik dit ZELF om de concurrentie te beoordelen.", input_schema: { type: "object", properties: { zoekwoord: { type: "string" } }, required: ["zoekwoord"] } },
     { name: "zoek_mail", description: "Zoekt gericht in de mail van deze klant op een naam, e-mailadres, onderwerp of trefwoord (bijv. 'Emre', 'Nicolien' of 'lenzen') en geeft de gevonden mails terug (afzender, datum, onderwerp, volledige inhoud, mail-link). Gebruik dit om de laatste mail van een specifiek persoon of over een onderwerp op te halen.", input_schema: { type: "object", properties: { zoekterm: { type: "string", description: "Naam, e-mailadres, onderwerp of trefwoord" } }, required: ["zoekterm"] } },
+    // ── Zoekwoordonderzoek: de drie tools die hier misten ──
+    // De chat kon alles nameten wat de site AL doet, maar niets zeggen over een
+    // zoekterm waar we nog niets mee doen: geen volume, geen moeilijkheid, geen
+    // intentie. Daarmee was elk gesprek over een nieuwe zoekwoordstrategie
+    // (welke termen kiezen we, en kunnen we die winnen?) gokwerk, en dat is
+    // precies het gesprek waar het oordeel vandaan moet komen. Zelfde namen als in
+    // de pagina-chat, zodat de bronnenstrip ze meteen netjes benoemt.
+    { name: "ahrefs_keyword_volume", description: "Echt maandelijks zoekvolume, keyword difficulty, CPC én zoekintentie uit Ahrefs voor één of meer zoekwoorden (NL). DE tool voor een zoekwoordstrategie: zet hier in één aanroep de hele kandidatenlijst in (tien tot dertig termen tegelijk mag) en vergelijk daarna pas. Verzin NOOIT een volume of moeilijkheid uit je hoofd; haal ze hiermee op.", input_schema: { type: "object", properties: { keywords: { type: "array", items: { type: "string" } }, country: { type: "string" } }, required: ["keywords"] } },
+    { name: "ahrefs_keyword_ideas", description: "Zoekwoord-ideeën rond een zaad-zoekwoord uit Ahrefs, met volume en difficulty (NL). Gebruik dit om termen te vinden waar de klant NOG NIET op mikt, en om te toetsen of er naast de voor de hand liggende termen een rijker of kansrijker cluster bestaat. Gebruik dit vóórdat je een zoekwoordstrategie beoordeelt, anders beoordeel je alleen de lijst die er toevallig al lag.", input_schema: { type: "object", properties: { seed: { type: "string" }, country: { type: "string" } }, required: ["seed"] } },
+    { name: "concurrent_zoekwoorden", description: "De zoekwoorden waarop een CONCURRENT-domein organisch scoort (positie, volume, verkeer), zodat je een echte content-gap kunt doen: waar halen zij verkeer dat wij missen? Geef alleen het domein voor hun sterkste termen, of geef er een term bij (bijvoorbeeld een plaatsnaam of een thema) om alleen dat deel te zien. Gebruik dit bij elke strategievraag waarin de concurrentie meeweegt; leid nooit zelf af waar een concurrent op scoort.", input_schema: { type: "object", properties: { domein: { type: "string", description: "Kaal domein van de concurrent, bijvoorbeeld grasengroen.nl" }, term: { type: "string", description: "Optioneel: alleen zoekwoorden die deze term bevatten" } }, required: ["domein"] } },
+    { name: "ahrefs_site_authority", description: "Domain Rating, verwijzende domeinen en backlinks van ELK domein of URL (Ahrefs), dus ook van een concurrent uit de top 10. Gebruik dit voor de haalbaarheidsvraag: kan deze klant met deze autoriteit realistisch winnen van wie er nu staat? Een hoge moeilijkheid bij een laag Domain Rating is geen kans maar een illusie; zeg dat dan ook.", input_schema: { type: "object", properties: { target: { type: "string", description: "Kaal domein (pingwin.nl) of volledige URL" } }, required: ["target"] } },
     { name: "pagina_dossier", description: "HET COMPLETE DOSSIER van één pagina: de stand (welke stappen af zijn, of de copy live staat), de mails die aantoonbaar over deze pagina gaan (met datum en afzender), de documenten die we gemaakt hebben, teksten die de klant heeft teruggestuurd en nog verwerkt moeten worden, en wat er met de pagina is gebeurd. Gebruik dit ALTIJD voordat je zegt wat er met een pagina moet gebeuren of wie er aan zet is; dan weet je of er al over gemaild is en of er al teksten liggen. Noem een mail als 'de mail van 22 juli' (dag plus maand), want dat wordt automatisch een klikbare link.", input_schema: { type: "object", properties: { url: { type: "string", description: "Volledige URL of pad van de pagina" } }, required: ["url"] } },
   ];
   const run: ToolRunner = async (name, input) => {
@@ -783,6 +845,30 @@ function chatTools(client: ClientConfig): { tools: ToolDef[]; run: ToolRunner } 
           const body = (stripHtml(e.bodyHtml || "") || e.preview || "").replace(/\s+/g, " ").trim().slice(0, 3000);
           return `[${dir}, ${date}] van ${e.fromAddress || "?"} — ${e.subject || "(geen onderwerp)"}${e.link ? `\n(mail-link: ${e.link})` : ""}:\n${body}`;
         }).join("\n\n---\n\n");
+      }
+      if (name === "concurrent_zoekwoorden") {
+        if (!ahrefsConfigured()) return "Ahrefs is niet gekoppeld.";
+        const dom = String(input.domein || "").trim().replace(/^https?:\/\//i, "").replace(/^www\./i, "").replace(/\/.*$/, "");
+        if (!dom) return "Geef het domein van de concurrent.";
+        const term = String(input.term || "").trim();
+        // Credit-bewust: honderd zoekwoorden is ruim genoeg voor een gap-oordeel, en
+        // de volledige domeinlijst (achthonderd) is voor de scan-motoren, niet voor
+        // een gesprek waarin er vaak drie concurrenten achter elkaar langskomen.
+        if (term) {
+          const rijen = await getDomainKeywordsMatching(dom, term, 60);
+          if (!rijen.length) return `Geen zoekwoorden met "${term}" gevonden voor ${dom}.`;
+          return `ZOEKWOORDEN VAN ${dom} MET "${term}" (Ahrefs, ${rijen.length}):\n`
+            + rijen.map((r) => `- ${r.keyword}: positie ${r.position ?? "-"}, volume ${r.volume ?? "-"}, verkeer ${r.traffic ?? "-"} -> ${r.url}`).join("\n");
+        }
+        const rijen = await getSiteOrganicKeywords(dom, "nl", 100);
+        if (!rijen.length) return `Ahrefs kent geen organische zoekwoorden voor ${dom}.`;
+        return `STERKSTE ZOEKWOORDEN VAN ${dom} (Ahrefs, top ${rijen.length} op verkeer):\n`
+          + rijen.map((r) => `- ${r.keyword}: positie ${r.position ?? "-"}, volume ${r.volume ?? "-"}, verkeer ${r.traffic ?? "-"}${r.branded ? " [merknaam]" : ""}${r.url ? ` -> ${r.url}` : ""}`).join("\n");
+      }
+      // Het zoekwoordonderzoek-gereedschap draait op dezelfde uitvoering als in de
+      // pagina-chat, zodat er nooit twee versies van hetzelfde ontstaan.
+      if (name === "ahrefs_keyword_volume" || name === "ahrefs_keyword_ideas" || name === "ahrefs_site_authority") {
+        return await runChatTool(name, input);
       }
       return "Onbekend gereedschap.";
     } catch (e) {
@@ -1114,7 +1200,7 @@ export async function zetOogstWeg(slug: string, thread: string, index: number, t
   return { ok: result.ok, added, merged, error: result.ok ? undefined : result.message };
 }
 
-export async function answerChat(slug: string, messages: ChatMessage[], thread = "algemeen"): Promise<{ ok: boolean; answer?: string; error?: string; actions?: ProposedAction[]; title?: string; summary?: string }> {
+export async function answerChat(slug: string, messages: ChatMessage[], thread = "algemeen"): Promise<{ ok: boolean; answer?: string; error?: string; actions?: ProposedAction[]; bronnen?: Bron[]; title?: string; summary?: string }> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return { ok: false, error: "Geen ANTHROPIC_API_KEY ingesteld." };
   const client = await getClientBySlug(slug);
@@ -1234,6 +1320,22 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
       `- ELK RANKINGCIJFER KOMT UIT EEN VERSE AANROEP, NOOIT UIT JE HOOFD (hard, hier is het eerder grondig misgegaan). Noem je een positie, een Domain Rating of een aantal verwijzende domeinen, dan heb je in DEZE beurt gsc_pagina, ahrefs_pagina of serp_top10 aangeroepen en neem je het cijfer letterlijk over. Zet er de bron bij, bijvoorbeeld "positie 3,6 (Search Console, 90 dagen)" of "positie 7 (Ahrefs)". Search Console en Ahrefs zijn twee verschillende bronnen die verschillende cijfers geven; haal ze nooit door elkaar en presenteer nooit het ene als het andere. Geeft een bron geen data, schrijf dan "Ahrefs: geen positie bekend". Vul NOOIT een getal in dat plausibel lijkt.\n` +
       `- STATUS VAN EEN PAGINA CONTROLEER JE MET controleer_url, ALTIJD. Voordat je zegt dat een pagina live staat, nog gebouwd moet worden, dun is, een duplicaat is of opgeruimd/omgeleid moet worden: controleer hem. meet_pagina volgt een omleiding en toont dan de inhoud van de DOELpagina; staat er "LET OP, DIT IS EEN OMLEIDING" in de uitvoer, dan is de gevraagde pagina AL opgeruimd en zeg je dat, in plaats van hem als duplicaat op te voeren. Een pagina die in de context onder OMGELEID staat is klaar; die stel je nooit voor om op te ruimen.\n` +
       `- Verzin geen cijfers; noem alleen wat uit de bronnen of het gereedschap komt. Er draait een automatische feitencontrole op je antwoord: elk pad en elk cijfer wordt naast de context en de tool-uitvoer gelegd. Wat daar niet in staat wordt tegengehouden en moet je overdoen. Schrijf dus liever "niet gemeten" dan een getal te gokken.\n\n` +
+      // ── Strategisch denken ──
+      // De regels hierboven zijn allemaal remmen: niet gokken, niet verzinnen, niet
+      // zelf taken maken. Nodig, maar samen maken ze een brave uitvoerder die netjes
+      // opsomt wat er is. Wat Maarten mist is het omgekeerde: iemand die zegt dat de
+      // hele opzet niet deugt en met een betere komt. Dat is geen extra vrijheid om
+      // te gokken (de bronregels blijven onverkort gelden), maar de opdracht om het
+      // oordeel er ook echt uit te laten komen.
+      `DENK ALS STRATEEG, NIET ALS INVENTARISLIJST (dit is waarvoor dit gesprek bestaat):\n` +
+      `- STEL DE OPZET ZELF TER DISCUSSIE. Krijg je een zoekwoordenlijst, een plan of een aanpak voorgelegd, beoordeel dan EERST of het de juiste aanpak is, en pas daarna de invulling. Deugt de opzet niet, zeg dat in de eerste regels, met de reden en met een beter alternatief ernaast. Je bent hier de tegenspraak, niet de uitvoerder van een lijstje dat er al lag.\n` +
+      `- VOLUME IS GEEN KANS. Een zoekterm telt pas als de klant hem kan winnen: weeg volume tegen de moeilijkheid (ahrefs_keyword_volume) én tegen de autoriteit van wie er nu staat (serp_top10 plus ahrefs_site_authority op de eigen site én op een paar concurrenten). Moeilijkheid 70 bij een zwak domein is geen kans maar een illusie; zeg dat dan zo.\n` +
+      `- LET OP WAT DE SERP ECHT LAAT ZIEN. Staat er bij een lokale zoekterm vooral een kaartblok of andere niet-organische resultaten (te zien aan het type in serp_top10), dan is de winst daar niet een landingspagina maar het Google-bedrijfsprofiel, de reviews en de vindbaarheid op de kaart. Benoem dat in plaats van een pagina voor te stellen die het bovenste deel van het scherm toch niet haalt.\n` +
+      `- WEES BEDUCHT OP DE DIENST-MAAL-PLAATS-MATRIX. Vier diensten maal tien plaatsen is veertig dunne, uitwisselbare pagina's die elkaar in de weg zitten en die niemand kan schrijven met echt materiaal. Kies liever weinig pagina's met bestaansrecht: één sterk anker op de thuisplaats, hooguit een paar regiopagina's waar het volume het rechtvaardigt (tel dan de diensten van diezelfde plaats bij elkaar op), en de rest gedekt met echte projectpagina's of casussen. Die zijn uniek, en de plaatsnaam-relevantie krijg je er gratis bij.\n` +
+      `- WEEG DE CONCURRENTIE UIT TWEE BRONNEN. De partijen in de top 10 (serp_top10) zijn wie er op déze zoekterm staan; de lijst in de context is wie Maarten als de concurrentie ziet. Die twee zijn niet hetzelfde en je hebt ze allebei nodig. Bij een strategievraag kijk je met concurrent_zoekwoorden waar de aangewezen concurrenten verkeer halen dat wij missen, en zeg je het eerlijk als die lijst nog leeg is.\n` +
+      `- ZOEK DE ONDERSCHEIDENDE NICHE. Kijk met ahrefs_keyword_ideas verder dan de lijst die je kreeg: is er een specialisme met landelijk volume, weinig concurrentie en hoge orderwaarde, dan is dát vaak de motor, en is het lokale werk de basis eronder. Waar iemand voor rijdt, is geen lokaal spel.\n` +
+      `- ONDERZOEK IS GEEN DOEL. Meten kost tijd, en een antwoord dat er niet komt is niets waard. Haal op wat je nodig hebt voor het oordeel, en begin daarna te schrijven; ga niet door tot je alles van de site weet. Ontbreekt er iets, dan zeg je dat in \u00e9\u00e9n regel en schrijf je verder.\n` +
+      `- LEVER EEN GELAAGDE KEUZE MET EEN VOLGORDE, geen waslijst. Zeg wat eerst gebeurt en waarom dat eerst is (opbrengst en haalbaarheid tegen elkaar), en wat je bewust NIET doet, met de reden erbij. Sluit af met één scherpe vraag als het antwoord echt van een keuze van Maarten of van beschikbaar materiaal afhangt.\n\n` +
       `OPMAAK (heel belangrijk voor Maarten, dit moet er verzorgd en scanbaar uitzien, NOOIT een muur lopende tekst). Nederlands, Markdown, geen emoji (dus ook geen vinkjes of kruisjes als tekens; schrijf gewoon "live", "404" of "let op"). Verplichte structuur, elke terugkoppeling:\n` +
       `  - Begin DIRECT met het eerste kopje. GEEN aankondigings- of vulzinnen zoals "Nu heb ik alles wat ik nodig heb" of "Hier de volledige terugkoppeling"; die kosten Maarten alleen leestijd.\n` +
       `  - Deel je antwoord op in BLOKKEN, elk met een eigen gekleurd kopje (## Kop). Zet een scheidingslijn (--- op een eigen regel, wordt een streepje) TUSSEN de blokken.\n` +
@@ -1274,7 +1376,11 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
     // antwoordt. Vision-berichten (afbeelding) gaan als content-blokken mee.
     // Het takenvoorstel is een scherm-element, geen gespreksbeurt: die placeholder
     // ("Voorstel: dit werk volgt uit dit gesprek.") hoort niet in de context.
-    const apiMessages = messages.filter((m) => m.soort !== "oogst").slice(-10).map((m) => {
+    // Oudere antwoorden gaan INGEKORT mee (kopjes plus de eerste regels). Zonder
+    // dat las de assistent bij elke vraag zes eigen rapporten terug en schreef er
+    // een zevende bij dat alles herhaalde; twee opeenvolgende antwoorden vertelden
+    // dan hetzelfde verhaal. Je eigen vragen en het laatste antwoord blijven heel.
+    const apiMessages = korteGeschiedenis(messages.filter((m) => m.soort !== "oogst").slice(-10) as ChatMsg[]).map((m: ChatMsg & { images?: string[]; image?: string }) => {
       const imgs = [...(m.images || []), ...(m.image ? [m.image] : [])];
       const blocks = imgs
         .map((im) => im.match(/^data:(image\/[a-z+.-]+);base64,(.+)$/i))
@@ -1296,15 +1402,65 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
     // de context het enige bewijsmateriaal; de feitencontrole hieronder toetst het
     // antwoord daartegen.
     const toolUitvoer: string[] = [];
+    // Waar het antwoord op steunt, in gewone taal. Wordt onder het antwoord getoond
+    // (ingeklapt) zodat te zien is of er echt gemeten is, en waar een cijfer vandaan komt.
+    const bronnen: Bron[] = [];
     const run: ToolRunner = async (naam, invoer) => {
       const uit = await rawRun(naam, invoer);
       toolUitvoer.push(`[${naam}] ${uit}`);
+      try {
+        const b = bronVan(naam, invoer as Record<string, unknown>, client.domain || undefined);
+        if (b) bronnen.push(b);
+      } catch { /* de bronnenstrip mag een antwoord nooit blokkeren */ }
       return uit;
     };
     // De chat geeft gewoon zijn rijke agentische antwoord (dat Maarten goed vindt). De
     // taak-kaarten worden NIET meer hier auto-gegenereerd (te fragiel); dat doet de
     // deterministische knop "Zet de taken in de weekplanning" (weekplanFromAnswer) op verzoek.
-    let answer = await callClaudeAgentic(system, apiMessages as { role: "user" | "assistant"; content: string }[], tools, run, isOverview ? 12 : isLead ? 10 : 6, isOverview ? 3200 : isLead ? 3000 : 2000, { slug, action: isOverview ? "overzicht-chat" : isLead ? "lead-chat" : isAds ? "ads-chat" : "projectchat" });
+    // Ruimte om de vraag áf te maken. Het oude plafond (12 rondes voor de bird's eye,
+    // 6 voor de projectchat) was de reden dat goede antwoorden halverwege eindigden met
+    // "zal ik dat nog nakijken?": dat was niet twijfel, dat was "ik zat vol". Een echte
+    // strategievraag over zes landingspagina's kost al gauw dertig stappen.
+    //
+    // De klok eronder is de rem: de route mag 300 seconden duren, dus rondt de agent
+    // vanaf 190 seconden af met wat hij heeft in plaats van te worden afgekapt. Daarna
+    // is er nog tijd over voor de afrondings- en feitencontrole-rondes hieronder.
+    const startTijd = Date.now();
+    const rondes = isOverview ? 26 : isLead ? 18 : 14;
+    // Diep denken: alleen de bird's eye draait op het zware model, want dat is het
+    // gesprek waarin de opzet zelf ter discussie staat. Uit te zetten in de kop van
+    // Overview; kent het account het model niet, dan zakt hij automatisch een trede.
+    const zwaar = isOverview && (await diepDenkenAan()) ? HEAVY_MODEL : undefined;
+    let answer = await callClaudeAgentic(system, apiMessages as { role: "user" | "assistant"; content: string }[], tools, run, rondes, isOverview ? 3200 : isLead ? 3000 : 2000, { slug, action: isOverview ? "overzicht-chat" : isLead ? "lead-chat" : isAds ? "ads-chat" : "projectchat" }, startTijd + (isOverview ? 155_000 : 190_000), zwaar);
+
+    // ── Vangnet: eenentwintig bronnen en dan geen antwoord ──────────────────
+    // Het onderzoek lukte, het opschrijven niet: de rondes of de tijd waren op en
+    // wat overbleef was de melding "kon het niet netjes afronden". Alles wat de
+    // agent had opgehaald werd dan weggegooid. Nu schrijven we het antwoord alsnog
+    // uit dat materiaal, in één ronde zonder gereedschap, dus zonder nieuwe
+    // vertraging en zonder dat er een cijfer bij kan komen dat niemand ophaalde.
+    if (isOverview && answer.trim() === GEEN_ANTWOORD && toolUitvoer.length) {
+      try {
+        const vraag = [...messages].reverse().find((m) => m.role === "user")?.content || "";
+        const materiaal = toolUitvoer.join("\n").slice(-24000);
+        const uit = await callClaude(
+          system,
+          [{ role: "user", content: `De vraag van Maarten was:\n${vraag}\n\nDit is alles wat er in deze beurt is opgezocht (${toolUitvoer.length} keer gereedschap gebruikt):\n${materiaal}\n\nSchrijf NU het antwoord, volledig, volgens de OPMAAK-regels. Gebruik uitsluitend wat hierboven staat; is iets niet opgehaald, zeg dan dat je het niet gemeten hebt. Geen aankondigingszinnen, begin direct met het eerste kopje.` }],
+          3500, { slug, action: "overzicht-chat-uitschrijven" }, zwaar,
+        );
+        if (uit && uit.trim()) answer = uit.trim();
+      } catch { /* dan blijft de melding staan */ }
+    }
+    // Lukte ook dat niet, leg het dan vast in plaats van het te laten verdampen.
+    // Zonder dit spoor kun je achteraf alleen gissen welke stap de tekst opat, en
+    // dat is precies wat er op 6 augustus gebeurde: de melding was het enige wat
+    // er nog was. Nu staat er een regel in het verbruikscherm.
+    if (isOverview && answer.trim() === GEEN_ANTWOORD) {
+      try {
+        const { logUsage } = await import("./usage");
+        await logUsage({ slug, service: "anthropic", action: `overzicht-chat-geen-antwoord (${toolUitvoer.length} keer gereedschap gebruikt)`, model: zwaar || "standaard", tokensIn: 0, tokensOut: 0, cacheRead: 0, cacheWrite: 0 });
+      } catch { /* meten mag de chat niet breken */ }
+    }
 
     // Vangnet: eindigt het antwoord als alleen een aankondiging ("Nu heb ik alles…",
     // "Hier is de volledige analyse…") zonder de echte inhoud, forceer dan één
@@ -1319,9 +1475,9 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
         const vervolg = await callClaudeAgentic(
           system,
           [...(apiMessages as { role: "user" | "assistant"; content: string }[]), { role: "assistant", content: answer || "(aankondiging zonder inhoud)" }, { role: "user", content: "Je vorige beurt bevatte alleen een aankondiging zonder de inhoud. Geef NU in één keer de volledige terugkoppeling volgens de OPMAAK-regels, beginnend met het eerste kopje. Geen aankondigings- of vulzinnen." }],
-          tools, run, 6, 3200, { slug, action: "overzicht-chat-afronding" },
+          tools, run, 6, 3200, { slug, action: "overzicht-chat-afronding" }, startTijd + 240_000, zwaar,
         );
-        if (vervolg && vervolg.trim().length > (answer || "").trim().length) answer = vervolg;
+        if (vervolg && vervolg.trim() !== GEEN_ANTWOORD && vervolg.trim().length > (answer || "").trim().length) answer = vervolg;
       } catch { /* dan het oorspronkelijke antwoord */ }
     }
 
@@ -1357,9 +1513,13 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
             [...(apiMessages as { role: "user" | "assistant"; content: string }[]),
              { role: "assistant", content: answer },
              { role: "user", content: herstelOpdracht(controle) }],
-            tools, run, 6, 3200, { slug, action: "overzicht-chat-feitencontrole" },
+            tools, run, 6, 3200, { slug, action: "overzicht-chat-feitencontrole" }, startTijd + 265_000, zwaar,
           );
-          if (hersteld && hersteld.trim()) {
+          // De herstelronde verving het antwoord ONVOORWAARDELIJK. Kwam die ronde
+          // zelf niet rond (tijd op), dan werd een compleet antwoord vervangen door
+          // de melding "kon het niet netjes afronden". Dat is precies wat Maarten
+          // op 6 augustus in beeld kreeg na eenentwintig geraadpleegde bronnen.
+          if (hersteld && hersteld.trim() && hersteld.trim() !== GEEN_ANTWOORD) {
             const naControle = controleerAntwoord(hersteld, context + "\n" + toolUitvoer.join("\n"), bekendePaden);
             answer = hersteld;
             controle = naControle;
@@ -1379,11 +1539,14 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
     }
 
     const finalAnswer = answer || "(geen antwoord)";
-    const assistantMsg: ChatMessage = collected.length ? { role: "assistant", content: finalAnswer, actions: collected } : { role: "assistant", content: finalAnswer };
+    const gebruikteBronnen = ontdubbel(bronnen);
+    const assistantMsg: ChatMessage = { role: "assistant", content: finalAnswer };
+    if (collected.length) assistantMsg.actions = collected;
+    if (gebruikteBronnen.length) assistantMsg.bronnen = gebruikteBronnen;
     await saveChatHistory(slug, thread, [...messages, assistantMsg]);
     let meta: { title?: string; summary?: string } = {};
     if (isOverview) { try { meta = await autoTopicMeta(slug, thread, [...messages, assistantMsg]); } catch { /* meta optioneel */ } }
-    return { ok: true, answer: finalAnswer, actions: collected.length ? collected : undefined, title: meta.title, summary: meta.summary };
+    return { ok: true, answer: finalAnswer, actions: collected.length ? collected : undefined, bronnen: gebruikteBronnen.length ? gebruikteBronnen : undefined, title: meta.title, summary: meta.summary };
   } catch (err) {
     return { ok: false, error: "AI niet bereikbaar: " + (err as Error).message };
   }

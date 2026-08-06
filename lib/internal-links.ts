@@ -5,6 +5,8 @@ import { getClientBySlug } from "./clients";
 import { getClientUrls } from "./site-urls";
 import { getGscQueryPageMatrix } from "./google";
 import { getAhrefsKeywords } from "./ahrefs-keywords";
+import { getUrlRatings, autoriteitVan, type UrlAutoriteit } from "./ahrefs";
+import { ctrVoorPositie } from "./prioriteiten-score";
 import { measurePage } from "./page-measure";
 import { callClaude } from "./anthropic";
 
@@ -16,8 +18,9 @@ import { callClaude } from "./anthropic";
 // bestanden zijn de enige bron van waarheid. Het dashboard levert de data via de
 // eigen connectoren: het bouwt de interne linkgraaf uit een crawl van de top-
 // pagina's (measurePage → interne links + ankers), GSC (positie/klikken per
-// pagina) en Ahrefs-volumes. URL Rating per pagina is nog niet aangesloten en
-// wordt eerlijk gemarkeerd in datakwaliteit (net als bij backlinks).
+// pagina), Ahrefs-volumes en sinds 6 augustus 2026 de autoriteit per pagina
+// (URL Rating) uit Ahrefs. Dat laatste was het enige gat in deze motor: de
+// weging leunde op een benadering uit de eigen linkgraaf.
 // ═══════════════════════════════════════════════════════════
 
 const CRAWL_LIMIT = 80; // hoeveel pagina's we crawlen voor de linkgraaf (top op verkeer)
@@ -27,6 +30,9 @@ export type SuggestedLink = {
   bronUrl: string; relevantie?: number; autoriteit?: string; verkeer?: number; linkbudget?: string;
   score?: string; passage?: string; nieuweZin?: boolean; ankertekst?: string; ankertype?: string;
   positie?: string; verwachteImpact?: string;
+  // Door de code ingevuld ná de analyse, nooit door het model: de gemeten
+  // autoriteit van de bronpagina met de datum erbij. Eén bron voor dit cijfer.
+  urlRating?: number | null; urGemeten?: boolean; urDatum?: string;
 };
 export type AnchorProfileItem = { anker: string; type?: string; aantal?: number; status?: string };
 export type TargetPage = {
@@ -35,16 +41,29 @@ export type TargetPage = {
   ankerprofiel?: AnchorProfileItem[]; gaten?: string[]; waarschuwingen?: string[];
 };
 export type StructureInfo = { wezen?: string[]; pillarGaten?: string[]; clusterNotities?: string };
-export type IlDatakwaliteit = { crawl?: boolean; gsc?: boolean; ahrefsUrlRating?: boolean; contentMapping?: boolean; opmerking?: string };
+export type IlDatakwaliteit = { crawl?: boolean; gsc?: boolean; ahrefsUrlRating?: boolean; contentMapping?: boolean; opmerking?: string; urDatum?: string; urGemeten?: number };
 export type InternalLinksResult = {
   samenvatting: string; datakwaliteit?: IlDatakwaliteit; doelpaginas: TargetPage[];
   structuur?: StructureInfo; generatedAt: string | null;
 };
-export type SuggestedTarget = { url: string; positie: number; primairZoekwoord: string; impressies: number };
+export type SuggestedTarget = {
+  url: string; positie: number; primairZoekwoord: string; impressies: number;
+  /** Wat het ongeveer oplevert als deze pagina naar de doelpositie klimt. */
+  extraBezoekers: number;
+  doelPositie: number;
+  /** Waarom deze pagina in het lijstje staat, in gewone taal. */
+  reden: string;
+};
 export type InternalLinksState = {
   status: "idle" | "running" | "done" | "error"; result: InternalLinksResult | null;
   targets: string[]; error: string; updatedAt: string | null;
+  /** Wat er nu gebeurt, in gewone taal (voor het voortgangsrondje). */
+  fase: string;
 };
+
+// Geen hartslag meer voor een kwartier betekent afgebroken. Zelfde grens als bij
+// de opruim- en prioriteitenmotor, zodat "vastgelopen" overal hetzelfde betekent.
+const STIL_MS = 15 * 60 * 1000;
 
 let tableReady: Promise<void> | null = null;
 function ensureTable(): Promise<void> {
@@ -61,6 +80,9 @@ async function doEnsure(): Promise<void> {
       error       TEXT,
       updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
     )`;
+  // Waar de analyse is, in gewone taal. Zonder dit stond er alleen "draait" en
+  // was een lopende analyse niet te onderscheiden van een afgebroken analyse.
+  await sql`ALTER TABLE client_internal_links ADD COLUMN IF NOT EXISTS fase TEXT`;
 }
 
 // Normaliseert een href of URL naar een schoon pad (zonder domein/query/hash),
@@ -104,19 +126,44 @@ function loadSkillMethodology(): string {
 export async function getInternalLinksState(slug: string): Promise<InternalLinksState> {
   await ensureSchema();
   await ensureTable();
-  const { rows } = await sql`SELECT status, targets, result, error, updated_at FROM client_internal_links WHERE client_slug = ${slug} LIMIT 1`;
+  const { rows } = await sql`SELECT status, targets, result, error, updated_at, fase FROM client_internal_links WHERE client_slug = ${slug} LIMIT 1`;
   const r = rows[0];
-  if (!r) return { status: "idle", result: null, targets: [], error: "", updatedAt: null };
+  if (!r) return { status: "idle", result: null, targets: [], error: "", updatedAt: null, fase: "" };
   let result: InternalLinksResult | null = null;
   let targets: string[] = [];
   try { result = r.result ? JSON.parse(r.result as string) : null; } catch { result = null; }
   try { targets = r.targets ? JSON.parse(r.targets as string) : []; } catch { targets = []; }
+  const updatedAt = r.updated_at ? new Date(r.updated_at as string).toISOString() : null;
+  const status = (r.status as InternalLinksState["status"]) || "idle";
+
+  // Draait hij nog echt? Deze analyse heeft geen cron-vangnet, dus een run zonder
+  // hartslag is afgebroken. Dat eerlijk melden in plaats van eeuwig "draait":
+  // anders blijft de startknop geblokkeerd en kun je niets meer.
+  const stil = status === "running" && updatedAt && Date.now() - new Date(updatedAt).getTime() > STIL_MS;
+  if (stil) {
+    return {
+      status: "error", result, targets, updatedAt, fase: (r.fase as string) || "",
+      error: "De analyse is halverwege afgebroken (het tijdvenster van de server liep af). Klik opnieuw op starten; hij begint dan netjes overnieuw.",
+    };
+  }
+
   return {
-    status: (r.status as InternalLinksState["status"]) || "idle",
-    result, targets,
+    status, result, targets,
     error: (r.error as string) || "",
-    updatedAt: r.updated_at ? new Date(r.updated_at as string).toISOString() : null,
+    updatedAt,
+    fase: (r.fase as string) || "",
   };
+}
+
+/**
+ * De hartslag: legt vast waar de analyse is én dat hij nog leeft. Zonder dit kon
+ * een run die halverwege door het serverless-venster werd afgekapt eeuwig op
+ * "draait" blijven staan, en dan blokkeerde de startknop voorgoed (live
+ * aangetroffen bij One Day Clinic, 6 augustus 2026: 53 minuten "draait" terwijl
+ * het venster van die functie vijf minuten is).
+ */
+async function raak(slug: string, fase: string): Promise<void> {
+  await sql`UPDATE client_internal_links SET fase = ${fase}, updated_at = now() WHERE client_slug = ${slug}`.catch(() => { /* nooit de analyse laten klappen op de hartslag */ });
 }
 
 async function setState(slug: string, status: string, targets: string[], result: InternalLinksResult | null, error: string): Promise<void> {
@@ -151,8 +198,20 @@ function aggregatePerPage(matrix: { keyword: string; page: string; clicks: numbe
   return map;
 }
 
-// Stelt de doelpagina's voor: striking-distance pagina's (positie 5-15) met genoeg
-// vertoningen, gesorteerd op impressies. Dit voedt de checkboxes in de tab.
+// Welke pagina's zijn het waard om te versterken, en wat levert het op?
+//
+// Dit lijstje was eerst gesorteerd op vertoningen, en dat is de verkeerde vraag.
+// Vertoningen zeggen hoe vaak een pagina te zien is; ze zeggen niet wat je eraan
+// overhoudt als hij stijgt. Nu staat er per pagina hoeveel extra bezoekers per
+// maand hij kan opleveren, en dat is de volgorde.
+//
+// De som gebruikt dezelfde klikkans-curve als de rest van het dashboard
+// (`ctrVoorPositie`), dus dit is geen tweede berekening naast de prioriteitenscan:
+//   vertoningen × (klikkans op de doelpositie − klikkans op de huidige positie)
+//
+// De doelpositie is bewust bescheiden: van positie 8 naar 4, niet naar 1. Interne
+// links maken een paar plekken verschil, geen sprong naar de eerste plaats, en een
+// belofte die niet uitkomt is erger dan een kleiner getal.
 export async function suggestTargets(slug: string): Promise<SuggestedTarget[]> {
   const client = await getClientBySlug(slug);
   const domain = client?.domain || "";
@@ -161,11 +220,33 @@ export async function suggestTargets(slug: string): Promise<SuggestedTarget[]> {
   const per = aggregatePerPage(matrix, domain);
   const out: SuggestedTarget[] = [];
   for (const [p, v] of per) {
-    if (v.position >= 5 && v.position <= 15 && v.impressions >= 30) {
-      out.push({ url: p, positie: Math.round(v.position * 10) / 10, primairZoekwoord: v.primaryKw, impressies: v.impressions });
-    }
+    // Positie 3 tot 20: dichtbij genoeg om te winnen, ver genoeg om te winnen.
+    // Boven de 3 valt er weinig te halen, onder de 20 helpt een interne link niet.
+    if (!(v.position >= 3 && v.position <= 20)) continue;
+    if (v.impressions < 20) continue;
+
+    const doel = Math.max(1, Math.round(v.position <= 6 ? v.position - 2 : v.position / 2));
+    const winst = ctrVoorPositie(doel) - ctrVoorPositie(v.position);
+    const extra = Math.round((v.impressions / 3) * Math.max(0, winst)); // per maand, uit 90 dagen
+    if (extra < 1) continue;
+
+    const reden = v.position <= 6
+      ? `Staat net onder de top 3 op "${v.primaryKw}". Een paar plekken erbij is hier het meeste waard.`
+      : v.position <= 12
+        ? `Staat onderaan pagina 1 op "${v.primaryKw}". Precies het bereik waar interne links het verschil maken.`
+        : `Staat op pagina 2 op "${v.primaryKw}", met genoeg vertoningen om de klim te rechtvaardigen.`;
+
+    out.push({
+      url: p,
+      positie: Math.round(v.position * 10) / 10,
+      primairZoekwoord: v.primaryKw,
+      impressies: v.impressions,
+      extraBezoekers: extra,
+      doelPositie: doel,
+      reden,
+    });
   }
-  return out.sort((a, b) => b.impressies - a.impressies).slice(0, 15);
+  return out.sort((a, b) => b.extraBezoekers - a.extraBezoekers).slice(0, 20);
 }
 
 // Crawlt een set paden (staticOnly = snel, geen headless) in kleine batches en
@@ -219,6 +300,46 @@ function clickDepths(graph: Map<string, CrawledPage>): Map<string, number> {
   return depth;
 }
 
+// ── Autoriteit per pagina ───────────────────────────────────────────────────
+// URL Rating is de gemeten kracht van het linkprofiel van één pagina (0-100,
+// logaritmisch). Voor pagina's die Ahrefs niet kent blijft de oude benadering
+// staan: de mediaan van wat we wél weten, en het aantal interne inkomende links
+// en het verkeer breken de gelijkstand. Zo verdwijnt er niets uit de lijst en is
+// altijd zichtbaar wat gemeten is en wat geschat.
+type Autoriteit = { ur: number | null; gemeten: boolean; waarde: number };
+
+function bouwAutoriteit(paden: string[], domain: string, ratings: Map<string, UrlAutoriteit>): Map<string, Autoriteit> {
+  const bare = domain.replace(/^www\./i, "").toLowerCase();
+  const gemeten: number[] = [];
+  const ruw = new Map<string, number | null>();
+  for (const p of paden) {
+    const a = autoriteitVan(ratings, `${bare}${p === "/" ? "/" : p}`);
+    const ur = a?.urlRating ?? null;
+    ruw.set(p, ur);
+    if (ur !== null) gemeten.push(ur);
+  }
+  const gesorteerd = [...gemeten].sort((a, b) => a - b);
+  const mediaan = gesorteerd.length ? gesorteerd[Math.floor(gesorteerd.length / 2)] : 0;
+  const out = new Map<string, Autoriteit>();
+  for (const p of paden) {
+    const ur = ruw.get(p) ?? null;
+    out.set(p, { ur, gemeten: ur !== null, waarde: ur !== null ? ur : mediaan });
+  }
+  return out;
+}
+
+/** 0 tot 1, zodat autoriteit, verkeer en interne links vergelijkbaar wegen. */
+function normaliseer(waarde: number, max: number): number {
+  return max > 0 ? Math.min(1, Math.max(0, waarde / max)) : 0;
+}
+
+function urTekst(a: Autoriteit | undefined): string {
+  if (!a) return "autoriteit ?";
+  const getal = a.ur === null ? a.waarde : a.ur;
+  const cijfer = Math.round(getal * 10) / 10;
+  return `autoriteit(UR) ${String(cijfer).replace(".", ",")}${a.gemeten ? " gemeten" : " benaderd"}`;
+}
+
 function buildSystemPrompt(): string {
   const methodology = loadSkillMethodology();
   const head = methodology
@@ -233,7 +354,8 @@ Je draait binnen het dashboard. De data hieronder is al voor je verzameld via de
 - Beoordeel de semantische relevantie tussen bron en doel uit de titels/onderwerpen die je krijgt (niet uit keyword-overlap alleen).
 - Stel per doelpagina de best passende bronpagina's voor die er nog NIET naar linken, met een gevarieerde ankertekst (bewaak het meegeleverde bestaande ankerprofiel tegen over-optimalisatie).
 - Respecteer de pillar-dochter-regels en benoem structurele gaten (dochter zonder terug-link naar de pillar, pillar die niet naar alle dochters linkt, wees-pagina's).
-- URL Rating per pagina is in deze omgeving nog niet beschikbaar: zet "ahrefsUrlRating": false in "datakwaliteit" en benader autoriteit via het aantal interne inkomende links + GSC-verkeer.
+- Autoriteit per pagina krijg je als URL Rating (UR) uit Ahrefs: de gemeten kracht van het linkprofiel van díe pagina, 0 tot 100 en logaritmisch, dus 8 is fors sterker dan 5. Staat er "gemeten", gebruik het cijfer als hard gegeven; staat er "benaderd", dan kent Ahrefs die pagina niet en is het de mediaan van de site: weeg dan mee op interne inkomende links en verkeer, en zeg dat in je onderbouwing. Vul het veld "autoriteit" per voorgestelde bronpagina met dat cijfer.
+- Zet in "datakwaliteit" de velden die je krijgt in de regel DATAKWALITEIT hieronder over; verzin er zelf niets bij.
 - Antwoord met UITSLUITEND geldige JSON volgens het output-schema hierboven. Geen tekst eromheen, geen emoji, geen markdown-codeblok.`;
 }
 
@@ -268,8 +390,19 @@ export async function runInternalLinks(slug: string, targetsIn: string[]): Promi
     for (const t of targets) crawlSet.add(t);
     for (const u of ranked) { if (crawlSet.size >= CRAWL_LIMIT) break; const p = toPath(u.url, domain); if (p) crawlSet.add(p); }
 
+    await raak(slug, `De ${crawlSet.size} belangrijkste pagina's worden doorgelopen`);
     const graph = await crawlGraph([...crawlSet], domain);
     const depth = clickDepths(graph);
+
+    // Autoriteit per pagina: één gebundelde Ahrefs-aanvraag per honderd pagina's,
+    // 30 dagen gecachet. Valt hij weg, dan draait alles door op de benadering.
+    const bare = domain.replace(/^www\./i, "").toLowerCase();
+    const alleP = [...new Set([...graph.keys(), ...targets])];
+    await raak(slug, "De autoriteit per pagina wordt opgehaald");
+    const ratings = await getUrlRatings(alleP.map((p) => `https://${bare}${p === "/" ? "/" : p}`)).catch(() => new Map<string, UrlAutoriteit>());
+    const autoriteit = bouwAutoriteit(alleP, domain, ratings);
+    const urGemeten = [...autoriteit.values()].filter((a) => a.gemeten).length;
+    const urDatum = [...ratings.values()].map((r) => r.opgehaald).sort().pop() || new Date().toISOString();
 
     // Inkomende links + ankers per pagina (invert de graaf).
     const inbound = new Map<string, { from: string; anchor: string }[]>();
@@ -302,25 +435,37 @@ export async function runInternalLinks(slug: string, targetsIn: string[]): Promi
       return [
         `• DOEL ${t}${titleMap.get(t) ? ` — "${titleMap.get(t)}"` : ""}`,
         `    primair zoekwoord: ${v?.primaryKw || "?"}${vol != null ? ` (vol ${vol})` : ""} | positie ${v ? Math.round(v.position * 10) / 10 : "?"} | ${v?.clicks ?? 0} clicks`,
-        `    interne inkomende links nu: ${inb.length}${anchors.length ? ` | bestaande ankers: ${anchors.map((a) => `"${a}"`).join(", ")}` : ""}`,
+        `    ${urTekst(autoriteit.get(t))} | interne inkomende links nu: ${inb.length}${anchors.length ? ` | bestaande ankers: ${anchors.map((a) => `"${a}"`).join(", ")}` : ""}`,
         `    hiërarchie-hint: ${kids >= 2 ? `PILLAR (${kids} onderliggende pagina's)` : "dochter/standalone"}${d != null ? ` | click depth ${d}` : ""}`,
         `    linkt al vanaf: ${inb.length ? inb.map((x) => x.from).slice(0, 20).join(", ") : "(niets)"}`,
       ].join("\n");
     });
 
-    const candLines = [...graph.values()]
+    // Rangorde van de kandidaat-bronpagina's. Tot 6 augustus 2026 was dit
+    // inkomende links maal vijf plus klikken; nu weegt de gemeten autoriteit het
+    // zwaarst. De drie signalen worden eerst op 0-1 gezet, anders zou het grootste
+    // getal (klikken) altijd winnen van een schaal die bij 100 ophoudt.
+    const kandidaten = [...graph.values()]
       .filter((n) => !targets.includes(n.path))
-      .map((n) => ({ n, inc: (inbound.get(n.path) || []).length, v: per.get(n.path) }))
-      .sort((a, b) => (b.inc * 5 + (b.v?.clicks || 0)) - (a.inc * 5 + (a.v?.clicks || 0)))
+      .map((n) => ({ n, inc: (inbound.get(n.path) || []).length, v: per.get(n.path), a: autoriteit.get(n.path) }));
+    const maxUr = Math.max(1, ...kandidaten.map((k) => k.a?.waarde || 0));
+    const maxInc = Math.max(1, ...kandidaten.map((k) => k.inc));
+    const maxClicks = Math.max(1, ...kandidaten.map((k) => k.v?.clicks || 0));
+    const candLines = kandidaten
+      .map((k) => ({
+        ...k,
+        score: 0.5 * normaliseer(k.a?.waarde || 0, maxUr) + 0.3 * normaliseer(k.inc, maxInc) + 0.2 * normaliseer(k.v?.clicks || 0, maxClicks),
+      }))
+      .sort((a, b) => b.score - a.score)
       .slice(0, 90)
-      .map(({ n, inc, v }) =>
-        `• BRON ${n.path}${n.title ? ` — "${n.title}"` : ""} | ${v?.clicks ?? 0} clicks | autoriteit(inkomend) ${inc} | linkbudget(uitgaand) ${n.outCount}`);
+      .map(({ n, inc, v, a }) =>
+        `• BRON ${n.path}${n.title ? ` — "${n.title}"` : ""} | ${v?.clicks ?? 0} clicks | ${urTekst(a)} | interne inkomende links ${inc} | linkbudget(uitgaand) ${n.outCount}`);
 
     const orphans = [...graph.values()].filter((n) => n.path !== "/" && (inbound.get(n.path) || []).length === 0).map((n) => n.path).slice(0, 30);
 
     const context = [
       `KLANT: ${client?.name || slug} (domein: ${domain})`,
-      `Gecrawlde pagina's voor de linkgraaf: ${graph.size}. DATAKWALITEIT: crawl=true, gsc=${matrix.length > 0}, ahrefsUrlRating=false, contentMapping=benaderd (uit titels/URL-structuur).`,
+      `Gecrawlde pagina's voor de linkgraaf: ${graph.size}. DATAKWALITEIT: crawl=true, gsc=${matrix.length > 0}, ahrefsUrlRating=${urGemeten > 0} (${urGemeten} van ${alleP.length} pagina's gemeten op ${urDatum.slice(0, 10)}), contentMapping=benaderd (uit titels/URL-structuur).`,
       "",
       "DOELPAGINA'S (de te versterken pagina's):",
       targetLines.length ? targetLines.join("\n") : "- (geen doelpagina's)",
@@ -331,6 +476,7 @@ export async function runInternalLinks(slug: string, targetsIn: string[]): Promi
       `WEES-PAGINA'S (geen interne inkomende links gevonden): ${orphans.length ? orphans.join(", ") : "(geen)"}`,
     ].join("\n");
 
+    await raak(slug, "De beste bronpagina's en ankerteksten worden bepaald");
     const raw = await callClaude(buildSystemPrompt(), [{ role: "user", content: context.slice(0, 28000) }], 16000, { slug, action: "internal_links" });
     const cleaned = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
     const first = cleaned.indexOf("{"); const last = cleaned.lastIndexOf("}");
@@ -338,10 +484,31 @@ export async function runInternalLinks(slug: string, targetsIn: string[]): Promi
     let parsed: { samenvatting?: unknown; datakwaliteit?: unknown; doelpaginas?: unknown; structuur?: unknown };
     try { parsed = JSON.parse(jsonText); } catch { await setState(slug, "error", targets, null, "De analyse kwam niet als geldige JSON terug. Probeer het opnieuw."); return; }
 
+    // De autoriteit per bronpagina komt uit onze eigen meting, niet uit wat het
+    // model ervan overtypte. Zelfde reden als bij de fase-namen: één bron, anders
+    // lopen scherm en meting stil uit elkaar.
+    const doelpaginas = (Array.isArray(parsed.doelpaginas) ? (parsed.doelpaginas as TargetPage[]) : []).map((tp) => ({
+      ...tp,
+      voorgesteldeLinks: (tp.voorgesteldeLinks || []).map((l) => {
+        const p = toPath(l.bronUrl || "", domain);
+        const a = p ? autoriteit.get(p) : undefined;
+        if (!a) return l;
+        return { ...l, urlRating: Math.round(a.waarde * 10) / 10, urGemeten: a.gemeten, urDatum };
+      }),
+    }));
+
+    const dkModel = parsed.datakwaliteit && typeof parsed.datakwaliteit === "object" ? (parsed.datakwaliteit as IlDatakwaliteit) : {};
     const result: InternalLinksResult = {
       samenvatting: typeof parsed.samenvatting === "string" ? parsed.samenvatting : "",
-      datakwaliteit: parsed.datakwaliteit && typeof parsed.datakwaliteit === "object" ? (parsed.datakwaliteit as IlDatakwaliteit) : undefined,
-      doelpaginas: Array.isArray(parsed.doelpaginas) ? (parsed.doelpaginas as TargetPage[]) : [],
+      datakwaliteit: {
+        ...dkModel,
+        crawl: graph.size > 0,
+        gsc: matrix.length > 0,
+        ahrefsUrlRating: urGemeten > 0,
+        urGemeten,
+        urDatum,
+      },
+      doelpaginas,
       structuur: parsed.structuur && typeof parsed.structuur === "object" ? (parsed.structuur as StructureInfo) : undefined,
       generatedAt: new Date().toISOString(),
     };

@@ -8,8 +8,16 @@ import { getGscForPage, getGscKeywordUrlFlips } from "./google";
 import { getAhrefsTopPages, getUrlOrganicKeywords, ahrefsConfigured } from "./ahrefs";
 import { fetchPageContent } from "./page-content";
 import { callClaude, callClaudeAgentic, type ToolDef, type ToolRunner } from "./anthropic";
-import { regelsAlsInstructie } from "./opruim-regels";
+import { regelsAlsInstructie, getAdsPaginas, isAdsPad, type AdsPaginas } from "./opruim-regels";
 import { zwakkePaginas, type ZwakkePagina } from "./concurrenten";
+import { weegKandidaten, weegPaden, termUitPad, isFunctioneel, type Oppakker } from "./opruim-waarde";
+import { vindOnderwerpen, tweelingenVan, type Onderwerp } from "./opruim-onderwerpen";
+import { feitenPerTerm, magSamenvoegen, intentieUitleg, intentieAlsInstructie } from "./opruim-intentie";
+import { autoriteitVan, haalbaarheidAlsInstructie } from "./opruim-haalbaarheid";
+import { vindGaten, type Gat } from "./opruim-gaten";
+import { adviesPerPlaats, type PlaatsAdvies, type PlaatsenRapport } from "./opruim-plaatsen";
+import { getEuroInstelling, berekenEuro, type EuroInstelling } from "./opruim-euro";
+import { toetsTermen } from "./opruim-serp";
 import { getSetting, setSetting, SETTING_OPRUIM_CRON_TIK } from "./settings";
 
 // ═══════════════════════════════════════════════════════════
@@ -45,6 +53,21 @@ export type Datakwaliteit = { gsc?: boolean; gscTijdreeks?: boolean; ahrefsZoekw
 export type CannibalResult = {
   samenvatting: string; datakwaliteit?: Datakwaliteit; clusters: RedirectCluster[];
   redirectMap?: RedirectMapItem[]; interneLinks?: InterneLink[]; generatedAt: string | null;
+  /** Pagina's die er in de data uitzien als dood gewicht, maar op een zoekterm
+      met echt volume zitten. Die gaan niet naar de omleidlijst maar naar een
+      eigen lijst: herontwikkelen in plaats van weghalen. */
+  oppakken?: Oppakker[];
+  /** Onderwerpen die over meerdere pagina's verspreid liggen zonder dat er één
+      van in de top 10 staat. Eén omleiding is daar het verkeerde antwoord. */
+  onderwerpen?: Onderwerp[];
+  /** De andere helft van het verhaal: zoekwoorden met volume waar deze site op
+      geen enkele pagina op mikt. Opruimen maakt een site schoon, dit laat hem
+      groeien. */
+  gaten?: Gat[];
+  /** Het besluit per plaats, met de vestigingen en de URL-vormen erbij. Wordt
+      bewaard en niet bij elke paginaweergave opnieuw berekend: dat kostte
+      veertien seconden, en dat drie keer per scherm. */
+  plaatsen?: PlaatsenRapport | null;
 };
 // De analyse draait in hervatbare stappen. Reden: één volledige analyse kost 10 tot
 // 20 minuten (agentisch onderzoek + de grote JSON-synthese + drie doorloop-rondes) en
@@ -106,6 +129,16 @@ async function doEnsure(): Promise<void> {
   await sql`ALTER TABLE client_cannibal_analysis ADD COLUMN IF NOT EXISTS kandidaten TEXT`;
   // Welke kandidaten al zijn voorgelegd, inclusief de pagina's die mochten blijven.
   await sql`ALTER TABLE client_cannibal_analysis ADD COLUMN IF NOT EXISTS behandeld TEXT`;
+  // De pagina's die juist NIET opgeruimd mogen worden omdat hun eigen zoekterm
+  // volume heeft. Aparte kolom, zodat ze ook aan een oudere uitkomst worden
+  // meegegeven zonder de analyse opnieuw te draaien.
+  await sql`ALTER TABLE client_cannibal_analysis ADD COLUMN IF NOT EXISTS oppakken TEXT`;
+  // Onderwerpen die over meerdere pagina's verspreid liggen: een keuze, geen regel.
+  await sql`ALTER TABLE client_cannibal_analysis ADD COLUMN IF NOT EXISTS onderwerpen TEXT`;
+  // De ontbrekende pagina's: waar de site helemaal niet op mikt.
+  await sql`ALTER TABLE client_cannibal_analysis ADD COLUMN IF NOT EXISTS gaten TEXT`;
+  // Het besluit per plaats, bewaard in plaats van bij elke weergave herberekend.
+  await sql`ALTER TABLE client_cannibal_analysis ADD COLUMN IF NOT EXISTS plaatsen TEXT`;
 }
 
 function pagePath(u: string): string { return (u || "").replace(/^https?:\/\/[^/]+/i, "").trim() || (u || ""); }
@@ -161,8 +194,15 @@ const q: SqlTag = (strings, ...values) => actieveSql(strings, ...values);
 type CannibalRow = {
   status: string; result: CannibalResult | null; error: string; updatedAt: string | null;
   fase: CannibalFase; ronde: number; retries: number; seed: string; findings: string;
-  kandidaten: ZwakkePagina[]; behandeld: string[];
+  kandidaten: ZwakkePagina[]; behandeld: string[]; oppakken: Oppakker[]; onderwerpen: Onderwerp[]; gaten: Gat[];
+  plaatsen: PlaatsenRapport | null;
 };
+
+/** Zelfde als lijstVan, maar voor een kolom met één object erin. */
+function objectVan<T>(v: unknown): T | null {
+  if (!v) return null;
+  try { const j = JSON.parse(String(v)); return j && typeof j === "object" && !Array.isArray(j) ? (j as T) : null; } catch { return null; }
+}
 
 // JSON-kolom die ook leeg of stuk mag zijn: altijd een lijst terug, nooit een fout.
 function lijstVan<T>(v: unknown): T[] {
@@ -171,7 +211,7 @@ function lijstVan<T>(v: unknown): T[] {
 }
 
 async function readRow(slug: string): Promise<CannibalRow | null> {
-  const { rows } = await q`SELECT status, result, error, updated_at, fase, ronde, retries, seed, findings, kandidaten, behandeld FROM client_cannibal_analysis WHERE client_slug = ${slug} LIMIT 1`;
+  const { rows } = await q`SELECT status, result, error, updated_at, fase, ronde, retries, seed, findings, kandidaten, behandeld, oppakken, onderwerpen, gaten, plaatsen FROM client_cannibal_analysis WHERE client_slug = ${slug} LIMIT 1`;
   const r = rows[0];
   if (!r) return null;
   let result: CannibalResult | null = null;
@@ -188,6 +228,73 @@ async function readRow(slug: string): Promise<CannibalRow | null> {
     findings: (r.findings as string) || "",
     kandidaten: lijstVan<ZwakkePagina>(r.kandidaten),
     behandeld: lijstVan<string>(r.behandeld),
+    oppakken: lijstVan<Oppakker>(r.oppakken),
+    onderwerpen: lijstVan<Onderwerp>(r.onderwerpen),
+    gaten: lijstVan<Gat>(r.gaten),
+    plaatsen: objectVan<PlaatsenRapport>(r.plaatsen),
+  };
+}
+
+/**
+ * De bedragen erbij, op het moment van uitlezen. Bewust niet opgeslagen: past
+ * Maarten de klantwaarde aan, dan hoort de hele lijst mee te veranderen zonder
+ * dat er een analyse van twintig minuten overheen moet. Een opgeslagen bedrag zou
+ * bovendien stilletjes verouderen, en dat is precies het soort fout dat niemand
+ * opmerkt.
+ *
+ * De drie lijsten meten iets anders, dus de doelpositie verschilt:
+ * - oppakken: de pagina bestaat, hij moet van zijn huidige plek omhoog;
+ * - onderwerpen: de beste van de bundel is het vertrekpunt;
+ * - gaten: er is nog niets, dus vanaf nul.
+ */
+/**
+ * Advertentiepagina's uit elke lijst halen, op het moment van uitlezen. Vul je ze
+ * pas ná een analyse in, dan verdwijnen ze meteen uit beeld in plaats van pas na
+ * een nieuwe run. Ze worden ook nergens meer als bestemming voorgesteld: naar een
+ * noindex-pagina omleiden is verkeer weggooien.
+ */
+function zonderAds(result: CannibalResult, ads: AdsPaginas): CannibalResult {
+  // Functionele pagina's gaan er ook bij het uitlezen uit. Ze worden sinds
+  // 7 augustus bij de weging al geweerd, maar een lijst die eerder is berekend
+  // houdt ze anders tot er een nieuwe run overheen gaat, en juist die lijst deel
+  // je met een klant. Zelfde principe als bij de advertentiepagina's: een filter
+  // bij het uitlezen is een garantie, een regel in de motor een verzoek.
+  const weg = (p: string) => isAdsPad(p, ads) || isFunctioneel(p);
+  const wegAds = (p: string) => isAdsPad(p, ads);
+  return {
+    ...result,
+    // Een omleiding NAAR een functionele pagina (contact, afspraak maken) kan
+    // prima; alleen een advertentiepagina is daar een verkeerd doel.
+    redirectMap: (result.redirectMap || []).filter((m) => !wegAds(String(m.van || "")) && !wegAds(String(m.naar || ""))),
+    oppakken: (result.oppakken || []).filter((o) => !weg(o.pad)),
+    gaten: (result.gaten || []).filter((g) => !weg(g.voorstelPad)),
+    onderwerpen: (result.onderwerpen || [])
+      .map((o) => ({ ...o, paginas: o.paginas.filter((p) => !weg(p.pad)) }))
+      // Blijft er na het schrappen geen cluster over, dan is het er ook geen meer.
+      .filter((o) => o.paginas.length >= 2 && !weg(o.voorstel)),
+    clusters: (result.clusters || [])
+      .map((c) => ({ ...c, urls: c.urls.filter((u) => !weg(u.url)) }))
+      .filter((c) => c.urls.length > 0),
+    // Ook in het plaatsadvies mag geen advertentiepagina blijven staan; dat
+      // advies wordt opgeslagen en kan dus van vóór het invullen dateren.
+    plaatsen: result.plaatsen
+      ? {
+          ...result.plaatsen,
+          adviezen: result.plaatsen.adviezen
+            .map((a) => ({ ...a, paginas: a.paginas.filter((p) => !wegAds(p.pad)) }))
+            .filter((a) => a.paginas.length > 0),
+        }
+      : result.plaatsen,
+  };
+}
+
+function metEuro(result: CannibalResult, inst: EuroInstelling): CannibalResult {
+  if (!inst.ingevuld) return result;
+  return {
+    ...result,
+    oppakken: (result.oppakken || []).map((o) => ({ ...o, euro: berekenEuro(o.volume, o.huidigePositie, o.haalbaarheid, inst) })),
+    onderwerpen: (result.onderwerpen || []).map((o) => ({ ...o, euro: berekenEuro(o.volumeTotaal, o.bestePositie, o.haalbaarheid, inst) })),
+    gaten: (result.gaten || []).map((g) => ({ ...g, euro: berekenEuro(g.volume, null, g.haalbaarheid, inst) })),
   };
 }
 
@@ -199,6 +306,13 @@ export async function getCannibalAnalysis(slug: string): Promise<CannibalState> 
   // en heeft wachten geen zin (de knop "Nu hervatten" is dan de weg).
   const cronTik = await getSetting(SETTING_OPRUIM_CRON_TIK).catch(() => null);
   const cronStil = !cronTik || (Date.now() - new Date(cronTik).getTime()) > 900000;
+  const euroInst = await getEuroInstelling(slug).catch(() => ({ klantwaarde: 0, conversie: 0, ingevuld: false }));
+  // De advertentiepagina's er hier nog een keer uitfilteren, bij het uitlezen.
+  // Ze worden al bij de analyse geweerd, maar wie ze pas ná een analyse invult zou
+  // ze anders in een lijst houden die naar een klant gaat, tot er een nieuwe run
+  // van twintig minuten overheen is gegaan. Een instructie is een verzoek, een
+  // filter bij het uitlezen is een garantie.
+  const adsNu = await getAdsPaginas(slug).catch(() => ({ paden: [], geen: false, ingevuld: false }));
   if (!r) return { status: "idle", result: null, error: "", updatedAt: null, fase: "", ronde: 0, stap: 0, stappen: STAPPEN, stapLabel: "", cronTik, cronStil, kandidaten: 0, beoordeeld: 0 };
   const { stap, label } = stapVan(r.fase, r.ronde);
   return {
@@ -207,7 +321,7 @@ export async function getCannibalAnalysis(slug: string): Promise<CannibalState> 
     kandidaten: r.kandidaten.length,
     beoordeeld: r.behandeld.length,
     status: (r.status as CannibalState["status"]) || "idle",
-    result: r.result,
+    result: r.result ? metEuro(zonderAds({ ...r.result, oppakken: r.oppakken, onderwerpen: r.onderwerpen, gaten: r.gaten, plaatsen: r.plaatsen }, adsNu), euroInst) : r.result,
     error: r.error,
     updatedAt: r.updatedAt,
     fase: r.fase,
@@ -234,6 +348,101 @@ export async function startCannibalRun(slug: string): Promise<void> {
     INSERT INTO client_cannibal_analysis (client_slug, status, result, error, fase, ronde, retries, seed, findings, updated_at)
     VALUES (${slug}, 'running', NULL, NULL, 'gather', 0, 0, NULL, NULL, now())
     ON CONFLICT (client_slug) DO UPDATE SET status = 'running', error = NULL, fase = 'gather', ronde = 0, retries = 0, seed = NULL, findings = NULL, kandidaten = NULL, behandeld = NULL, updated_at = now()`;
+}
+
+/**
+ * De waarde-rem over een werklijst die er al ligt. Elke pagina die op de
+ * omleidlijst staat maar een eigen zoekterm met volume heeft, verhuist naar de
+ * lijst "oppakken". Zo geldt de nieuwe regel meteen voor de uitkomst die er nu
+ * is, in plaats van pas na een nieuwe analyse van twintig minuten.
+ */
+export async function weegOpruimlijstOpnieuw(slug: string, domain: string): Promise<{ gered: number; over: number; oppakken: Oppakker[]; onderwerpen: number; gaten: number }> {
+  await ensureSchema();
+  await ensureTable();
+  const row = await readRow(slug);
+
+  // Meteen ook de verspreide onderwerpen en de ontbrekende pagina's bepalen. Eén
+  // knop, drie controles: dit hoort bij elkaar en het scheelt Maarten handelingen.
+  const [onderwerpen, gaten, plaatsen] = await Promise.all([
+    vindOnderwerpen(slug, domain).catch(() => [] as Onderwerp[]),
+    vindGaten(slug, domain).catch(() => [] as Gat[]),
+    adviesPerPlaats(slug, domain).catch(() => null),
+  ]);
+  if (plaatsen?.adviezen.length) {
+    await q`UPDATE client_cannibal_analysis SET plaatsen = ${JSON.stringify(plaatsen)}, updated_at = now() WHERE client_slug = ${slug}`;
+  }
+  if (onderwerpen.length) {
+    await q`UPDATE client_cannibal_analysis SET onderwerpen = ${JSON.stringify(onderwerpen)}, updated_at = now() WHERE client_slug = ${slug}`;
+  }
+  if (gaten.length) {
+    await q`UPDATE client_cannibal_analysis SET gaten = ${JSON.stringify(gaten)}, updated_at = now() WHERE client_slug = ${slug}`;
+  }
+
+  const result = row?.result;
+  const rijen = result?.redirectMap || [];
+
+  // De weging draait over TWEE lijsten tegelijk: de pagina's die nu nog op de
+  // omleidlijst staan, én de pagina's die er eerder al af zijn gehaald. Dat
+  // tweede is er op 6 augustus bij gekomen en het is geen detail: die oudere
+  // regels zijn ooit gewogen zónder zoekintentie en zónder haalbaarheid, en
+  // zonder deze stap zou het scherm oude en nieuwe regels door elkaar tonen
+  // zonder dat je aan een regel kunt zien welke je voor je hebt. Precies het
+  // soort stille verschil waar dit dashboard al twee keer op is misgegaan.
+  const teWegen = [
+    ...rijen.map((r) => ({ pad: padOf(String(r.van || "")) })),
+    ...(row?.oppakken || []).map((o) => ({ pad: padOf(o.pad), vertoningen: o.vertoningen, dubbelMet: o.botstMet })),
+  ].filter((k) => k.pad);
+  if (!teWegen.length) return { gered: 0, over: 0, oppakken: row?.oppakken || [], onderwerpen: onderwerpen.length, gaten: gaten.length };
+
+  const vers = await weegPaden(domain, teWegen);
+
+  // De top 10-toets erbij: verdient deze zoekterm een eigen pagina, of hoort hij
+  // als hoofdstuk op een bredere pagina? Dit is de vraag die de lijst "oppakken"
+  // nooit stelde, en zonder antwoord bouwt hij drie pagina's waar er één hoort.
+  // Eén opvraag per term, 90 dagen bewaard; alleen voor termen die er toe doen.
+  const toetsbaar = vers.filter((o) => (o.volume || 0) >= 50).map((o) => o.term);
+  const toetsen = await toetsTermen(toetsbaar).catch(() => new Map());
+  for (const o of vers) o.eigenPagina = toetsen.get(o.term) || null;
+  const versPerPad = new Map(vers.map((o) => [padOf(o.pad), o]));
+
+  // Alleen wat NU nog op de omleidlijst staat telt als "gered"; de rest stond er
+  // al af en is alleen bijgewerkt.
+  const opLijst = new Set(rijen.map((r) => padOf(String(r.van || ""))));
+  const gered = new Set([...versPerPad.keys()].filter((p) => opLijst.has(p)));
+
+  // De verse weging wint van de oude. Een oude regel die nu niet meer door de
+  // weging komt blijft wel staan: hij is ooit bewust van de opruimlijst gehaald,
+  // en die stilletjes laten verdwijnen zou erger zijn dan een regel zonder label.
+  const uniek = [...new Map([
+    ...(row?.oppakken || []).map((o) => [padOf(o.pad), o] as const),
+    ...vers.map((o) => [padOf(o.pad), o] as const),
+  ]).values()].sort((a, b) => (b.volume || 0) - (a.volume || 0));
+
+  if (!result) return { gered: 0, over: 0, oppakken: uniek, onderwerpen: onderwerpen.length, gaten: gaten.length };
+
+  const over = rijen.filter((r) => !gered.has(padOf(String(r.van || ""))));
+  const nieuw: CannibalResult = { ...result, redirectMap: over };
+  await q`UPDATE client_cannibal_analysis SET result = ${JSON.stringify(nieuw)}, oppakken = ${JSON.stringify(uniek)}, updated_at = now() WHERE client_slug = ${slug}`;
+  return { gered: gered.size, over: over.length, oppakken: uniek, onderwerpen: onderwerpen.length, gaten: gaten.length };
+}
+
+/**
+ * Het plaatsadvies, uit de opslag als het er is en anders één keer berekend en
+ * meteen bewaard. Zonder dit zelfherstel toont een scherm na een verbouwing
+ * stilletjes minder: de lijst viel van 162 naar 94 regels omdat de nieuwe kolom
+ * nog leeg was, zonder dat er iets misging of iets zei dat er iets ontbrak. Dat
+ * is precies het soort verschil dat niemand opmerkt.
+ */
+export async function zorgVoorPlaatsen(slug: string, domain: string): Promise<PlaatsenRapport | null> {
+  await ensureSchema();
+  await ensureTable();
+  const row = await readRow(slug);
+  if (row?.plaatsen?.adviezen?.length) return row.plaatsen;
+  const vers = await adviesPerPlaats(slug, domain).catch(() => null);
+  if (vers?.adviezen.length) {
+    await q`UPDATE client_cannibal_analysis SET plaatsen = ${JSON.stringify(vers)}, updated_at = now() WHERE client_slug = ${slug}`;
+  }
+  return vers;
 }
 
 async function faal(slug: string, msg: string): Promise<void> {
@@ -346,6 +555,11 @@ async function bouwSeed(slug: string, clientNaam: string, domain: string): Promi
   ]);
   if (!topPages.length) return { ok: false, error: "Geen Ahrefs-data terug voor dit domein. Controleer de Ahrefs-koppeling (AHREFS_API_TOKEN) en of het domein klopt." };
 
+  // Advertentiepagina's gaan er meteen uit. Ze halen niets uit Google omdat ze op
+  // noindex staan, dus ze zouden bovenaan de opruimlijst belanden terwijl de
+  // advertenties erheen wijzen. Opruimen kost dan echt geld.
+  const ads = await getAdsPaginas(slug).catch(() => ({ paden: [], geen: false, ingevuld: false }));
+
   const ahrefsSeen = new Set(topPages.map((t) => pagePath(t.url)));
   const ahrefsTable = [...topPages].sort((a, b) => (b.traffic || 0) - (a.traffic || 0)).slice(0, 240)
     .map((t) => `- ${pagePath(t.url)} | top:"${t.topKeyword}" pos ${t.position ?? "?"} | ${t.traffic ?? 0} verkeer | ${t.refDomains ?? "?"} verw.domeinen | ${t.keywords ?? "?"}kw`).join("\n");
@@ -353,7 +567,7 @@ async function bouwSeed(slug: string, clientNaam: string, domain: string): Promi
     .map((u) => `- ${pagePath(u.url)} | status ${u.status ?? "?"} | ${u.gscClicks} clicks`).join("\n");
   const flipLines = flips.slice(0, 60).map((f) => `- "${f.keyword}": ${f.topUrls.join(" -> ")} (${f.flips}x)`).join("\n");
 
-  return { ok: true, kandidaten: zwak.kandidaten || [], seed: [
+  return { ok: true, kandidaten: (zwak.kandidaten || []).filter((k) => !isAdsPad(k.pad, ads)), seed: [
     `KLANT: ${clientNaam || slug} (domein: ${domain})`,
     "",
     `DATAKWALITEIT (neem over in datakwaliteit): gsc=true, gscTijdreeks=${flips.length > 0}, ahrefsZoekwoorden=true, ahrefsBacklinks=true (verwijzende domeinen per pagina), crawl=false.`,
@@ -405,7 +619,23 @@ async function stapMetReden(slug: string): Promise<{ uit: "verder" | "klaar"; re
       const s = await bouwSeed(slug, client?.name || "", domain);
       if (!s.ok) { await faal(slug, s.error); return { uit: "klaar", reden: "kern-data mislukt" }; }
       seed = s.seed;
-      await q`UPDATE client_cannibal_analysis SET seed = ${seed}, kandidaten = ${JSON.stringify(s.kandidaten)}, updated_at = now() WHERE client_slug = ${slug}`;
+      // De rem vóór de opruimlijst: kandidaten waarvan de eigen zoekterm volume
+      // heeft en die niemand anders bezit, gaan er hier uit. Ze komen op een
+      // eigen lijst ("oppakken") en worden dus nooit aan het model voorgelegd
+      // als opruimkandidaat. Zonder deze stap stelde de analyse voor om
+      // /soa-test-kopen/ (500 zoekopdrachten per maand) op te heffen.
+      const gewogen = await weegKandidaten(domain, s.kandidaten).catch(() => null);
+      const kandidaten = gewogen ? gewogen.rest : s.kandidaten;
+      const oppakken = gewogen ? gewogen.oppakken : [];
+      // Onderwerpen die over meerdere pagina's verspreid liggen zonder dat er één
+      // van in de top 10 staat. Dat is geen omleidklusje maar een keuze welke
+      // pagina de thuisbasis wordt, dus het krijgt een eigen lijst.
+      const onderwerpen = await vindOnderwerpen(slug, domain).catch(() => [] as Onderwerp[]);
+      // En de andere helft: waar mikt de site helemaal niet op. Opruimen maakt een
+      // site schoon, dit laat hem groeien; het hoort in dezelfde lijst thuis.
+      const gaten = await vindGaten(slug, domain).catch(() => [] as Gat[]);
+      const plaatsen = await adviesPerPlaats(slug, domain).catch(() => null);
+      await q`UPDATE client_cannibal_analysis SET seed = ${seed}, kandidaten = ${JSON.stringify(kandidaten)}, oppakken = ${JSON.stringify(oppakken)}, onderwerpen = ${JSON.stringify(onderwerpen)}, gaten = ${JSON.stringify(gaten)}, plaatsen = ${JSON.stringify(plaatsen)}, updated_at = now() WHERE client_slug = ${slug}`;
     }
 
     // STAP 1 — agentic onderzoek: het model zoomt in op verdachte pagina's en schrijft
@@ -432,8 +662,13 @@ async function stapMetReden(slug: string): Promise<{ uit: "verder" | "klaar"; re
     // Eerdere besluiten van Maarten gaan mee als harde regels. Zo hoeft hij een
     // correctie ("Monster hoort bij Den Haag", "deze houden we") maar één keer te
     // maken en maakt de analyse dezelfde fout nooit meer.
+    // Daarbij de twee remmen als instructie. De code filtert wat hij kan meten;
+    // deze tekst zorgt dat het model niet alsnog zelf over de intentiegrens heen
+    // samenvoegt of een kansloze term als kans presenteert.
     const eerdere = await regelsAlsInstructie(slug).catch(() => "");
-    const systeem = eerdere ? `${buildSystemPrompt()}\n\n${eerdere}` : buildSystemPrompt();
+    const dr = await autoriteitVan(domain).catch(() => null);
+    const systeem = [buildSystemPrompt(), intentieAlsInstructie(), haalbaarheidAlsInstructie(dr), eerdere]
+      .filter(Boolean).join("\n\n");
 
     // STAP 2 — vaste synthese naar JSON: altijd een antwoord, werkt ook zonder bevindingen.
     if (row.fase === "synth") {
@@ -468,11 +703,14 @@ async function stapMetReden(slug: string): Promise<{ uit: "verder" | "klaar"; re
         return { uit: "verder", reden: `hoofdanalyse gaf geen geldige JSON (${laatsteTekst.slice(0, 80).replace(/\s+/g, " ")}), door naar de kandidaten` };
       }
 
+      const adsNu = await getAdsPaginas(slug).catch(() => ({ paden: [], geen: false, ingevuld: false }));
       const result: CannibalResult = {
         samenvatting: typeof parsed.samenvatting === "string" ? parsed.samenvatting : "",
         datakwaliteit: parsed.datakwaliteit && typeof parsed.datakwaliteit === "object" ? (parsed.datakwaliteit as Datakwaliteit) : undefined,
         clusters: Array.isArray(parsed.clusters) ? (parsed.clusters as RedirectCluster[]) : [],
-        redirectMap: Array.isArray(parsed.redirectMap) ? (parsed.redirectMap as RedirectMapItem[]) : [],
+        // Ook hier het Ads-slot dicht: een instructie is een verzoek, dit is een garantie.
+        redirectMap: (Array.isArray(parsed.redirectMap) ? (parsed.redirectMap as RedirectMapItem[]) : [])
+          .filter((m) => !isAdsPad(String(m.van || ""), adsNu)),
         interneLinks: Array.isArray(parsed.interneLinks) ? (parsed.interneLinks as InterneLink[]) : [],
         generatedAt: new Date().toISOString(),
       };
@@ -498,10 +736,15 @@ async function stapMetReden(slug: string): Promise<{ uit: "verder" | "klaar"; re
     // zijn. Op 03-08-2026 stopte de analyse na één ronde omdat de lijst leeg in de
     // rij stond; "geen kandidaten" en "alle kandidaten gehad" zien er van buiten
     // hetzelfde uit, en dat verschil moet de motor zelf kunnen herstellen.
-    let kandidaten = row.kandidaten || [];
+    const ads = await getAdsPaginas(slug).catch(() => ({ paden: [], geen: false, ingevuld: false }));
+    // Pagina's met een waardevolle eigen zoekterm blijven buiten de opruimlijst,
+    // ook als de kandidatenlijst onderweg opnieuw wordt opgehaald.
+    const beschermd = new Set((row.oppakken || []).map((o) => padOf(o.pad)));
+    const mag = (k: ZwakkePagina) => !isAdsPad(k.pad, ads) && !beschermd.has(padOf(k.pad));
+    let kandidaten = (row.kandidaten || []).filter(mag);
     if (!kandidaten.length) {
       const opnieuw = await zwakkePaginas(slug, domain).catch(() => null);
-      kandidaten = opnieuw?.kandidaten || [];
+      kandidaten = (opnieuw?.kandidaten || []).filter(mag);
       if (kandidaten.length) await q`UPDATE client_cannibal_analysis SET kandidaten = ${JSON.stringify(kandidaten)}, updated_at = now() WHERE client_slug = ${slug}`;
     }
 
@@ -511,12 +754,48 @@ async function stapMetReden(slug: string): Promise<{ uit: "verder" | "klaar"; re
       return { uit: "klaar", reden: kandidaten.length ? `alle ${kandidaten.length} kandidaten beoordeeld` : "geen kandidatenlijst beschikbaar" };
     }
 
+    // De inhoudelijke tweeling erbij: een bestaande pagina die over hetzelfde
+    // gaat. Zonder dat koos de motor het doel puur op "wie bezit de geleende
+    // term", en dan gaat /soa-test-thuis/ naar /anonieme-soa-test/ terwijl
+    // /soa-thuistest/ er letterlijk staat.
+    const allePaden = await getClientUrls(slug).then((u) => u.filter((x) => (x.status ?? 200) === 200).map((x) => padOf(x.url))).catch(() => [] as string[]);
+
+    // REM 1 in de praktijk. De tweelingen worden gezocht op woorden, en woorden
+    // zeggen niets over wat de bezoeker wil. Voordat een tweeling als bestemming
+    // wordt voorgesteld, halen we de intentie van beide termen op en gooien we de
+    // botsingen eruit. Zo kan "soa test kopen" nooit meer voorgesteld worden als
+    // bestemming voor "wat is een soa test", en andersom ook niet.
+    const tweelingPer = new Map<string, string[]>();
+    for (const k of blok) tweelingPer.set(padOf(k.pad), tweelingenVan(k.pad, allePaden).filter((t) => padOf(t) !== padOf(k.pad)));
+    const termenNodig: string[] = [];
+    for (const k of blok) {
+      termenNodig.push(termUitPad(k.pad));
+      for (const t of tweelingPer.get(padOf(k.pad)) || []) termenNodig.push(termUitPad(t));
+    }
+    const feiten = await feitenPerTerm(termenNodig.filter((t) => t && t.split(" ").length >= 2)).catch(() => new Map());
+    const intentieVanPad = (p: string) => feiten.get(termUitPad(p))?.intentie ?? "";
+
     const lijst = blok.map((k) => {
+      const eigenIntentie = intentieVanPad(k.pad);
+      const alle = tweelingPer.get(padOf(k.pad)) || [];
+      const tweeling: string[] = [];
+      const gescheiden: string[] = [];
+      for (const t of alle) {
+        const oordeel = magSamenvoegen(eigenIntentie, intentieVanPad(t));
+        if (oordeel.mag) tweeling.push(t); else gescheiden.push(t);
+      }
+      const zelfdeOnderwerp = tweeling.length ? ` | pagina's over hetzelfde onderwerp: ${tweeling.join(", ")}` : "";
+      // De afgevallen tweelingen gaan wél mee, met het verbod erbij. Stilzwijgend
+      // weglaten zou het model ze zelf laten herontdekken uit de andere data.
+      const botsing = gescheiden.length
+        ? ` | NIET samenvoegen met ${gescheiden.join(", ")}: andere zoekintentie (deze pagina ${intentieUitleg(eigenIntentie)})`
+        : "";
+      const intentie = eigenIntentie ? ` | bezoeker ${intentieUitleg(eigenIntentie)}` : "";
       const doel = k.dubbelMet.length === 1 ? `voorstel doel: ${k.dubbelMet[0]}`
         : k.dubbelMet.length > 1 ? `voorstel doel: ${k.dubbelMet.slice(0, 2).join(" OF ")} (kies de beste)`
         : "geen doel af te leiden uit de data";
       const leent = k.geleendeTop ? `leent "${k.geleendeTop.keyword}" (pos ${k.geleendeTop.positie}, ${k.geleendeTop.vertoningen} vert.)` : "krijgt geen vertoningen";
-      return `- ${k.pad} [${k.klikken} klikken, ${k.vertoningen} vertoningen] ${leent}; ${doel}`;
+      return `- ${k.pad} [${k.klikken} klikken, ${k.vertoningen} vertoningen] ${leent}; ${doel}${zelfdeOnderwerp}${botsing}${intentie}`;
     }).join("\n");
 
     let extraRuw = "";
@@ -528,6 +807,8 @@ async function stapMetReden(slug: string): Promise<{ uit: "verder" | "klaar"; re
 BEOORDEEL NU DEZE ${blok.length} PAGINA'S, en UITSLUITEND deze. Het zijn opruimkandidaten die het dashboard al uit Search Console heeft afgeleid: ze ranken op geen enkele zoekterm die hun eigen onderwerp bevat, dus alles wat ze binnenhalen is geleend van merk- of andere-plaatstermen. Het voorgestelde doel is óók uit de data afgeleid (de pagina die de geleende term wél bezit).
 
 ${lijst}
+
+Let op de twee soorten kandidaat-bestemmingen. Het "voorstel doel" is de pagina die de GELEENDE zoekterm bezit; dat is een aanwijzing, geen bewijs. Staat er ook een pagina bij "pagina's over hetzelfde onderwerp", dan gaat die vaak vóór: een bezoeker die op deze pagina zou landen, hoort thuis bij de pagina over hetzelfde onderwerp, niet bij de pagina die toevallig de meeste vertoningen had. Kies de bestemming waar de bezoeker het antwoord vindt dat hij zocht, en zeg in de reden waarom je die kiest.
 
 Jouw taak per pagina: bevestig het voorgestelde doel, of corrigeer het als de data een beter doel aanwijst, en geef in één korte zin de reden. Neem een pagina NIET op als hij moet blijven (bijvoorbeeld een functionele pagina zoals contact of afspraak maken, of een pagina met een eigen duidelijke rol); laat hem dan gewoon weg. Verzin geen pagina's die niet in deze lijst staan. Stuur nooit naar een doel dat zelf zwak is.
 
@@ -552,7 +833,7 @@ Lever UITSLUITEND JSON: {"redirectMap":[{"van":"/pad/","naar":"/doel/","type":"3
     const inBlok = new Set(blok.map((k) => padOf(k.pad)));
     const echtNieuw = nieuweRijen.filter((m) => {
       const v = padOf(String(m.van || ""));
-      if (!v || gezien.has(v) || !inBlok.has(v)) return false;
+      if (!v || gezien.has(v) || !inBlok.has(v) || beschermd.has(v)) return false;
       gezien.add(v);
       return true;
     });

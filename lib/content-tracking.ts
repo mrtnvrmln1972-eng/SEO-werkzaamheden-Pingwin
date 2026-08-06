@@ -13,7 +13,11 @@ import { fetchWordpressModified, fetchWordpressPages, fetchWordpressRevisions, f
 // (client_slug), multi-tenant.
 // ═══════════════════════════════════════════════════════════
 
-export type Snapshot = SnapshotForDiff & { url: string; contentHash: string; status: number | null };
+// main_word_count/h1_count staan BEWUST buiten SnapshotForDiff: ze worden wel
+// gemeten en bewaard, maar ze tellen niet mee in de diff. Zo levert de eerste
+// scan na deze uitbreiding wél een verse rij (de hash verandert) zonder een
+// stortvloed aan valse "pagina gewijzigd"-meldingen.
+export type Snapshot = SnapshotForDiff & { url: string; contentHash: string; status: number | null; main_word_count: number; h1_count: number };
 
 let tablesReady: Promise<void> | null = null;
 async function ensureTables(): Promise<void> {
@@ -39,6 +43,10 @@ async function doEnsure(): Promise<void> {
       content_hash     TEXT NOT NULL
     )`;
   await sql`CREATE INDEX IF NOT EXISTS idx_pcs_slug_url ON page_content_snapshots(client_slug, url)`;
+  // Voor de paginascore: alleen de eigen tekst (zonder menu/footer) en het
+  // aantal H1's. Leeg bij snapshots van vóór deze uitbreiding.
+  await sql`ALTER TABLE page_content_snapshots ADD COLUMN IF NOT EXISTS main_word_count INTEGER`;
+  await sql`ALTER TABLE page_content_snapshots ADD COLUMN IF NOT EXISTS h1_count INTEGER`;
   await sql`
     CREATE TABLE IF NOT EXISTS page_change_events (
       id                   SERIAL PRIMARY KEY,
@@ -73,6 +81,24 @@ function tagTexts(html: string, tag: string, limit: number): string[] {
 function attr(imgTag: string, name: string): string {
   const m = imgTag.match(new RegExp(`${name}\\s*=\\s*["']([^"']*)["']`, "i"));
   return m ? m[1] : "";
+}
+
+// Alleen de eigen tekst tellen: menu, header, footer en zijbalk eruit knippen.
+// Staat er een <main> of <article>, dan is dat per definitie de eigen inhoud.
+// Bewust grof en zonder browser; het gaat om een bruikbare orde van grootte,
+// niet om de laatste tien woorden.
+const OMLIJSTING = /<(nav|footer|aside)\b[\s\S]*?<\/\1>/gi;
+const PAGINAKOP = /<header\b[\s\S]*?<\/header>/gi;
+const OMLIJSTING_CLASS = /<(div|section|ul)\b[^>]*(?:class|id)\s*=\s*["'][^"']*(menu|navigatie|navbar|topbar|breadcrumb|footer|sidebar|cookie|widget)[^"']*["'][\s\S]*?<\/\1>/gi;
+function eigenWoorden(body: string): number {
+  const kern = body.match(/<main\b[\s\S]*?<\/main>/i) || body.match(/<article\b[\s\S]*?<\/article>/i);
+  // Zonder <main> of <article> knippen we ook de <header> weg (dat is dan de
+  // sitekop). Mét: laten staan, want in veel thema's is dat de entry-header met
+  // de H1 en de intro, en die hoort juist wél bij de eigen tekst.
+  let zonder = (kern ? kern[0] : body.replace(PAGINAKOP, " "));
+  zonder = zonder.replace(OMLIJSTING, " ").replace(OMLIJSTING_CLASS, " ");
+  const tekst = decode(zonder);
+  return tekst ? tekst.split(/\s+/).filter(Boolean).length : 0;
 }
 
 export async function extractSnapshot(url: string): Promise<Snapshot | null> {
@@ -112,9 +138,12 @@ export async function extractSnapshot(url: string): Promise<Snapshot | null> {
     })
     .slice(0, 200);
 
-  const bodyText = decode((html.match(/<body[\s\S]*?>([\s\S]*)<\/body>/i) || ["", html])[1]
-    .replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<style[\s\S]*?<\/style>/gi, " "));
+  const body = (html.match(/<body[\s\S]*?>([\s\S]*)<\/body>/i) || ["", html])[1]
+    .replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<style[\s\S]*?<\/style>/gi, " ");
+  const bodyText = decode(body);
   const word_count = bodyText ? bodyText.split(/\s+/).filter(Boolean).length : 0;
+  const main_word_count = eigenWoorden(body);
+  const h1_count = (body.match(/<h1\b/gi) || []).length;
 
   // Schema.org @type uit JSON-LD blokken.
   const schemaSet = new Set<string>();
@@ -135,7 +164,7 @@ export async function extractSnapshot(url: string): Promise<Snapshot | null> {
   }
   const schema_types = [...schemaSet].sort();
 
-  const snap: Omit<Snapshot, "contentHash"> = { url, status, meta_title, meta_description, h1, h2s, h3s, alt_tags, internal_links, word_count, schema_types };
+  const snap: Omit<Snapshot, "contentHash"> = { url, status, meta_title, meta_description, h1, h2s, h3s, alt_tags, internal_links, word_count, schema_types, main_word_count, h1_count };
   const contentHash = hashSnapshot(snap);
   return { ...snap, contentHash };
 }
@@ -145,7 +174,7 @@ function hashSnapshot(s: Omit<Snapshot, "contentHash" | "status">): string {
     s.meta_title, s.meta_description, s.h1, s.h2s, s.h3s,
     s.alt_tags.map((a) => `${a.src}|${a.alt}`).sort(),
     s.internal_links.map((l) => `${l.href}|${l.text}`).sort(),
-    s.word_count, s.schema_types,
+    s.word_count, s.schema_types, s.main_word_count, s.h1_count,
   ]);
   return crypto.createHash("sha256").update(payload).digest("hex");
 }
@@ -181,10 +210,10 @@ export async function captureAndDetect(slug: string, url: string): Promise<{ cha
 
   const { rows: ins } = await sql`
     INSERT INTO page_content_snapshots
-      (client_slug, url, meta_title, meta_description, h1, h2s, h3s, alt_tags, internal_links, word_count, schema_types, content_hash)
+      (client_slug, url, meta_title, meta_description, h1, h2s, h3s, alt_tags, internal_links, word_count, schema_types, content_hash, main_word_count, h1_count)
     VALUES (${slug}, ${url}, ${snap.meta_title}, ${snap.meta_description}, ${snap.h1},
             ${JSON.stringify(snap.h2s)}, ${JSON.stringify(snap.h3s)}, ${JSON.stringify(snap.alt_tags)},
-            ${JSON.stringify(snap.internal_links)}, ${snap.word_count}, ${JSON.stringify(snap.schema_types)}, ${snap.contentHash})
+            ${JSON.stringify(snap.internal_links)}, ${snap.word_count}, ${JSON.stringify(snap.schema_types)}, ${snap.contentHash}, ${snap.main_word_count}, ${snap.h1_count})
     RETURNING id`;
   const currentId = Number(ins[0].id);
 
@@ -211,10 +240,10 @@ export async function addManualChange(slug: string, url: string, date: string, n
   if (snap) {
     const { rows } = await sql`
       INSERT INTO page_content_snapshots
-        (client_slug, url, meta_title, meta_description, h1, h2s, h3s, alt_tags, internal_links, word_count, schema_types, content_hash)
+        (client_slug, url, meta_title, meta_description, h1, h2s, h3s, alt_tags, internal_links, word_count, schema_types, content_hash, main_word_count, h1_count)
       VALUES (${slug}, ${url}, ${snap.meta_title}, ${snap.meta_description}, ${snap.h1},
               ${JSON.stringify(snap.h2s)}, ${JSON.stringify(snap.h3s)}, ${JSON.stringify(snap.alt_tags)},
-              ${JSON.stringify(snap.internal_links)}, ${snap.word_count}, ${JSON.stringify(snap.schema_types)}, ${snap.contentHash})
+              ${JSON.stringify(snap.internal_links)}, ${snap.word_count}, ${JSON.stringify(snap.schema_types)}, ${snap.contentHash}, ${snap.main_word_count}, ${snap.h1_count})
       RETURNING id`;
     snapId = Number(rows[0].id);
   }
@@ -279,10 +308,10 @@ async function snapshotDiffAndStore(slug: string, url: string): Promise<{ diff: 
   if (!previous || previous.content_hash !== snap.contentHash) {
     await sql`
       INSERT INTO page_content_snapshots
-        (client_slug, url, meta_title, meta_description, h1, h2s, h3s, alt_tags, internal_links, word_count, schema_types, content_hash)
+        (client_slug, url, meta_title, meta_description, h1, h2s, h3s, alt_tags, internal_links, word_count, schema_types, content_hash, main_word_count, h1_count)
       VALUES (${slug}, ${url}, ${snap.meta_title}, ${snap.meta_description}, ${snap.h1},
               ${JSON.stringify(snap.h2s)}, ${JSON.stringify(snap.h3s)}, ${JSON.stringify(snap.alt_tags)},
-              ${JSON.stringify(snap.internal_links)}, ${snap.word_count}, ${JSON.stringify(snap.schema_types)}, ${snap.contentHash})`;
+              ${JSON.stringify(snap.internal_links)}, ${snap.word_count}, ${JSON.stringify(snap.schema_types)}, ${snap.contentHash}, ${snap.main_word_count}, ${snap.h1_count})`;
   }
   if (!previous) return { diff: {}, hadPrevious: false, snap };
   return { diff: diffSnapshots(toForDiff(previous), toForDiff(snap)), hadPrevious: true, snap };
@@ -393,9 +422,12 @@ export type LatestSnapshot = {
   metaTitle: string;
   metaDescription: string;
   h1: string;
+  h1Count: number | null;
+  h2s: string[];
   altTags: { src: string; alt: string }[];
   internalLinks: { href: string; text: string }[];
   wordCount: number;
+  mainWordCount: number | null;
   schemaTypes: string[];
   capturedAt: string;
 };
@@ -404,8 +436,8 @@ export async function getLatestSnapshots(slug: string): Promise<LatestSnapshot[]
   await ensureSchema();
   await ensureTables();
   const { rows } = await sql`
-    SELECT DISTINCT ON (url) url, meta_title, meta_description, h1, alt_tags, internal_links,
-           word_count, schema_types, captured_at
+    SELECT DISTINCT ON (url) url, meta_title, meta_description, h1, h1_count, h2s, alt_tags, internal_links,
+           word_count, main_word_count, schema_types, captured_at
     FROM page_content_snapshots WHERE client_slug = ${slug}
     ORDER BY url, captured_at DESC`;
   return rows.map((r) => ({
@@ -413,9 +445,12 @@ export async function getLatestSnapshots(slug: string): Promise<LatestSnapshot[]
     metaTitle: (r.meta_title as string) || "",
     metaDescription: (r.meta_description as string) || "",
     h1: (r.h1 as string) || "",
+    h1Count: r.h1_count == null ? null : Number(r.h1_count),
+    h2s: (r.h2s as string[]) || [],
     altTags: (r.alt_tags as { src: string; alt: string }[]) || [],
     internalLinks: (r.internal_links as { href: string; text: string }[]) || [],
     wordCount: Number(r.word_count) || 0,
+    mainWordCount: r.main_word_count == null ? null : Number(r.main_word_count),
     schemaTypes: (r.schema_types as string[]) || [],
     capturedAt: new Date(r.captured_at as string).toISOString(),
   }));

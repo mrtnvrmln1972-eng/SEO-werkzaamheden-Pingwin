@@ -6,6 +6,7 @@ import { ADMIN_VIEWAS_COOKIE } from "../../../lib/constants";
 import { getScopeFromCookie } from "../../../lib/admin-scope";
 import { moneybirdConfigured, getProfitLoss, getLedgerAccounts, type ProfitLoss, type LedgerAccount } from "../../../lib/moneybird";
 import FinancienClient from "./FinancienClient";
+import AdminKop from "../AdminKop";
 
 export const dynamic = "force-dynamic";
 
@@ -76,6 +77,10 @@ export default async function FinancienPage({ searchParams }: { searchParams: { 
   const td: React.CSSProperties = { padding: "8px 10px", borderBottom: "1px solid #f1e9db", fontSize: 14, textAlign: "right", fontVariantNumeric: "tabular-nums" };
 
   return (
+    <>
+    {/* Dit scherm had geen kopbalk en dus geen Intern-menu: je kwam er binnen en
+        zat vast op één terug-linkje. De opmaakproef ving dat op 6 augustus 2026. */}
+    <AdminKop titel="Financiën" />
     <div style={wrap}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <h1 style={{ fontSize: 24, margin: 0, color: "#d97316" }}>Financi&euml;n</h1>
@@ -178,5 +183,6 @@ export default async function FinancienPage({ searchParams }: { searchParams: { 
         </>
       )}
     </div>
+    </>
   );
 }

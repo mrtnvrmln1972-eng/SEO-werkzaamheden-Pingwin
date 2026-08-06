@@ -32,6 +32,10 @@ export default function DevDoorzetten({ slug, id, kaartTitel, onKlaar, onSluit }
   const [hintTaak, setHintTaak] = useState("");
   const [docs, setDocs] = useState<Doc[]>([]);
   const [gekozen, setGekozen] = useState<Record<string, boolean>>({});
+  // Wat er straks meetbaar af moet zijn. Dit is het verschil tussen een afspraak
+  // en een belofte: hierna kun je met één knop nameten of het gebeurd is.
+  const [puntKeuzes, setPuntKeuzes] = useState<{ id: string; label: string }[]>([]);
+  const [punten, setPunten] = useState<Record<string, boolean>>({});
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState("");
 
@@ -48,6 +52,10 @@ export default function DevDoorzetten({ slug, id, kaartTitel, onKlaar, onSluit }
         setToelichting(String(d.toelichting || ""));
         setHintTaak(String(d.voorstelTaak || "").replace(/<[^>]*>/g, "").trim());
         setDocs(Array.isArray(d.docs) ? d.docs : []);
+        setPuntKeuzes(Array.isArray(d.puntKeuzes) ? d.puntKeuzes : []);
+        const p: Record<string, boolean> = {};
+        for (const id of (d.punten || []) as string[]) p[id] = true;
+        setPunten(p);
         // De pagina staat standaard aan (daar moet het gebeuren); welke tekst
         // meegaat kies je zelf, want dat is precies de keuze waar dit venster voor is.
         const v: Record<string, boolean> = {};
@@ -68,6 +76,7 @@ export default function DevDoorzetten({ slug, id, kaartTitel, onKlaar, onSluit }
         body: JSON.stringify({
           slug, id, naarDev: true, taak, toelichting,
           docs: docs.filter((x) => gekozen[x.url]),
+          punten: puntKeuzes.filter((p) => punten[p.id]).map((p) => p.id),
         }),
       }).then((r) => r.json());
       if (d?.ok) onKlaar();
@@ -82,7 +91,7 @@ export default function DevDoorzetten({ slug, id, kaartTitel, onKlaar, onSluit }
     <div className="wp-mail-overlay" onClick={(e) => { if (e.target === e.currentTarget) onSluit(); }}>
       <div className="wp-mail-modal dev-doorzet">
         <div className="wp-mail-head">
-          <span className="wp-mail-title">Naar de developer</span>
+          <span className="wp-mail-title">Zet klaar voor de sitebouwer</span>
           <button type="button" className="wp-icon wp-del" title="Sluiten" onClick={onSluit}>×</button>
         </div>
         <div className="wp-mail-sub muted">Over: {kaartTitel}</div>
@@ -99,6 +108,23 @@ export default function DevDoorzetten({ slug, id, kaartTitel, onKlaar, onSluit }
               <textarea rows={4} value={toelichting} onChange={(e) => setToelichting(e.target.value)}
                 placeholder="Bijvoorbeeld: gebruik de herziene tekst van de klant, niet de copy uit de blauwdruk." />
             </label>
+
+            {puntKeuzes.length > 0 && (
+              <div className="dev-veld">
+                <span className="dev-veld-label">
+                  Wat moet er straks meetbaar af zijn <span className="muted">(hier meet de knop &ldquo;Is dit doorgevoerd?&rdquo; later op)</span>
+                </span>
+                <div className="dev-doc-keuze">
+                  {puntKeuzes.map((p) => (
+                    <label key={p.id} className="dev-doc-optie">
+                      <input type="checkbox" checked={!!punten[p.id]}
+                        onChange={(e) => setPunten((v) => ({ ...v, [p.id]: e.target.checked }))} />
+                      <span className="dev-doc-naam">{p.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="dev-veld">
               <span className="dev-veld-label">

@@ -7,6 +7,8 @@ import { getGscPageOpportunities } from "./google";
 import { callClaude } from "./anthropic";
 import { urlKey } from "./url-key";
 import { PHASE_KEYS, setPhaseMark } from "./phase-marks";
+import { getLatestSnapshots } from "./content-tracking";
+import { klantContext, scorePagina, type ScoreInvoer, type ScorePunt } from "./page-score";
 
 // ═══════════════════════════════════════════════════════════
 // NAVIGATIE-ROADMAP: de beoogde sitestructuur + voortgang per pagina
@@ -25,12 +27,22 @@ export type NavNode = {
   hoofdzoekterm: string;
   volume: number | null;
   volgorde: number;
+  label?: string;         // de menutekst zoals hij op de site staat ("Tuinontwerp")
 };
 export type RoadmapNode = NavNode & {
   live: boolean;
   pct: number;            // 0-100 uit de zeven fases
   fasesKlaar: number;
   inPlan: boolean;        // staat in de beoogde structuur
+  // De snelle paginascore uit de laatste content-scan. null = nog niet gemeten.
+  woorden: number | null;
+  woordenGeschat: boolean;
+  score: number | null;
+  scoreNiveau: "goed" | "matig" | "zwak" | null;
+  scoreLabel: string;
+  punten: ScorePunt[];
+  gemetenOp: string | null;
+  bucket?: boolean;       // de verzamelkolom "Niet in het menu", zelf geen pagina
 };
 
 let tableReady: Promise<void> | null = null;
@@ -51,31 +63,141 @@ async function doEnsure(): Promise<void> {
       updated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
       PRIMARY KEY (client_slug, url, staat)
     )`;
+  // De menutekst zoals hij op de site staat, voor de weergave "Huidige site".
+  await sql`ALTER TABLE client_nav_plan ADD COLUMN IF NOT EXISTS label TEXT`;
 }
 
 const netPad = (p: string) => {
   let x = (p || "").trim();
   try { if (/^https?:\/\//i.test(x)) x = new URL(x).pathname; } catch { /* pad houden */ }
   if (!x.startsWith("/")) x = "/" + x;
-  return x.replace(/\/+$/, "") + (x === "/" ? "" : "/");
+  // De homepage moet "/" blijven; een leeg pad zou zichzelf als ouder krijgen
+  // (parent is óók "") en dan loopt de boom in de roadmap oneindig rond.
+  const kaal = x.replace(/\/+$/, "");
+  return kaal ? kaal + "/" : "/";
 };
 
-async function leesPlan(slug: string, staat: "actueel" | "voorstel"): Promise<NavNode[]> {
+type Staat = "actueel" | "voorstel" | "menu";
+
+async function leesPlan(slug: string, staat: Staat): Promise<NavNode[]> {
   await ensureSchema();
   await ensureTable();
-  const { rows } = await sql`SELECT url, parent, hoofdzoekterm, volume, volgorde FROM client_nav_plan WHERE client_slug = ${slug} AND staat = ${staat} ORDER BY volgorde, url`;
-  return rows.map((r) => ({ url: r.url as string, parent: (r.parent as string) || "", hoofdzoekterm: (r.hoofdzoekterm as string) || "", volume: (r.volume as number) ?? null, volgorde: (r.volgorde as number) || 0 }));
+  const { rows } = await sql`SELECT url, parent, hoofdzoekterm, volume, volgorde, label FROM client_nav_plan WHERE client_slug = ${slug} AND staat = ${staat} ORDER BY volgorde, url`;
+  return rows.map((r) => ({ url: r.url as string, parent: (r.parent as string) || "", hoofdzoekterm: (r.hoofdzoekterm as string) || "", volume: (r.volume as number) ?? null, volgorde: (r.volgorde as number) || 0, label: (r.label as string) || "" }));
 }
 
-async function schrijfPlan(slug: string, staat: "actueel" | "voorstel", nodes: NavNode[]): Promise<void> {
+async function schrijfPlan(slug: string, staat: Staat, nodes: NavNode[]): Promise<void> {
   await sql`DELETE FROM client_nav_plan WHERE client_slug = ${slug} AND staat = ${staat}`;
   let i = 0;
   for (const n of nodes.slice(0, 300)) {
     await sql`
-      INSERT INTO client_nav_plan (client_slug, url, parent, hoofdzoekterm, volume, volgorde, staat)
-      VALUES (${slug}, ${netPad(n.url)}, ${n.parent ? netPad(n.parent) : ""}, ${n.hoofdzoekterm || null}, ${n.volume ?? null}, ${i++}, ${staat})
+      INSERT INTO client_nav_plan (client_slug, url, parent, hoofdzoekterm, volume, volgorde, staat, label)
+      VALUES (${slug}, ${netPad(n.url)}, ${n.parent ? netPad(n.parent) : ""}, ${n.hoofdzoekterm || null}, ${n.volume ?? null}, ${i++}, ${staat}, ${n.label || null})
       ON CONFLICT (client_slug, url, staat) DO NOTHING`;
   }
+}
+
+// ── Het échte menu van de site uitlezen ──────────────────────────────
+// De URL-lijst uit de sitescan is de hele sitemap (dus ook projecten,
+// categorieën, vacatures en juridische pagina's) en zegt niets over het menu.
+// "Huidige site" hoort te tonen wat een bezoeker in de navigatie ziet, in
+// dezelfde volgorde en met dezelfde teksten. Daarom lezen we de homepage uit
+// en halen we het hoofdmenu er letterlijk uit.
+
+/** Pakt het <ul>-blok dat op `start` begint, inclusief de geneste ul's. */
+function heelUlBlok(html: string, start: number): string {
+  const re = /<\/?ul\b/gi;
+  re.lastIndex = start;
+  let diepte = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html))) {
+    if (m[0][1] === "/") { diepte--; if (diepte === 0) return html.slice(start, m.index + 5); }
+    else diepte++;
+    if (diepte > 30) break;
+  }
+  return html.slice(start, start + 200000);
+}
+
+/** Zet één menu-<ul> om in een lijst items met ouder-kind-verband. */
+function menuUitUl(blok: string, host: string): NavNode[] {
+  const out: NavNode[] = [];
+  const laatstOpNiveau: string[] = [];
+  const gezien = new Set<string>();
+  let diepte = 0;
+  let liGevuld = true;
+  let volgorde = 0;
+  const re = /<ul\b[^>]*>|<\/ul>|<li\b[^>]*>|<a\b[^>]*href=["']([^"'#]*)["'][^>]*>([\s\S]*?)<\/a>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(blok))) {
+    const tag = m[0].slice(0, 3).toLowerCase();
+    if (tag === "<ul") { diepte++; continue; }
+    if (tag === "</u") { laatstOpNiveau[diepte] = ""; diepte--; continue; }
+    if (tag === "<li") { liGevuld = false; continue; }
+    // Een link: alleen de eerste link binnen een <li> is het menu-item zelf.
+    if (liGevuld || diepte < 1) continue;
+    const href = (m[1] || "").trim();
+    if (!href) continue;
+    let pad = "";
+    try {
+      const u = new URL(href, `https://${host}/`);
+      if (u.hostname.replace(/^www\./, "") !== host.replace(/^www\./, "")) continue;
+      pad = netPad(u.pathname);
+    } catch { continue; }
+    const label = m[2].replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
+    liGevuld = true;
+    laatstOpNiveau[diepte] = pad;
+    if (gezien.has(pad)) continue;
+    gezien.add(pad);
+    out.push({ url: pad, parent: diepte > 1 ? laatstOpNiveau[diepte - 1] || "" : "", hoofdzoekterm: "", volume: null, volgorde: volgorde++, label });
+  }
+  return out;
+}
+
+/** Leest het hoofdmenu van de homepage, zonder iets op te slaan. */
+export async function leesSiteMenu(slug: string): Promise<{ ok: boolean; items?: NavNode[]; error?: string }> {
+  const client = await getClientBySlug(slug);
+  const domain = (client?.domain || "").replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+  if (!domain) return { ok: false, error: "Deze klant heeft nog geen domein ingevuld." };
+  await ensureSchema(); await ensureTable();
+  let html = "";
+  for (const adres of [`https://${domain}/`, `https://www.${domain.replace(/^www\./, "")}/`]) {
+    try {
+      const ctl = new AbortController();
+      const t = setTimeout(() => ctl.abort(), 20000);
+      const res = await fetch(adres, { redirect: "follow", signal: ctl.signal, cache: "no-store", headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36", "Accept-Language": "nl-NL,nl;q=0.9" } }).finally(() => clearTimeout(t));
+      if (res.ok) { html = await res.text(); break; }
+    } catch { /* volgende adres proberen */ }
+  }
+  if (!html) return { ok: false, error: "De site liet zich niet uitlezen (geen antwoord op de homepage)." };
+
+  const schoon = html.replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<style[\s\S]*?<\/style>/gi, "");
+  // Alle kandidaat-menu's: elk <ul> waarvan de tag naar een menu of navigatie
+  // verwijst. Het blok met de meeste eigen links én submenu's wint.
+  const kandidaten: NavNode[][] = [];
+  const ulRe = /<ul\b[^>]*>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = ulRe.exec(schoon))) {
+    if (!/(menu|nav)/i.test(m[0])) continue;
+    const blok = heelUlBlok(schoon, m.index);
+    const items = menuUitUl(blok, domain);
+    if (items.length >= 3) kandidaten.push(items);
+    if (kandidaten.length > 40) break;
+  }
+  const beste = kandidaten.sort((a, b) => (b.length + b.filter((x) => x.parent).length) - (a.length + a.filter((x) => x.parent).length))[0];
+  if (!beste || beste.length < 3) return { ok: false, error: "Geen hoofdmenu gevonden op de homepage." };
+
+  // De homepage staat zelden in het menu (het logo linkt ernaar) maar hoort er
+  // wel bij; hij komt vooraan te staan.
+  const compleet = beste.some((n) => n.url === "/") ? beste : [{ url: "/", parent: "", hoofdzoekterm: "", volume: null, volgorde: -1, label: "Homepage" }, ...beste];
+  return { ok: true, items: compleet };
+}
+
+/** Hetzelfde, maar dan bewaard als de weergave "Huidige site". */
+export async function scanSiteMenu(slug: string): Promise<{ ok: boolean; aantal?: number; error?: string }> {
+  const r = await leesSiteMenu(slug);
+  if (!r.ok || !r.items) return { ok: false, error: r.error };
+  await schrijfPlan(slug, "menu", r.items);
+  return { ok: true, aantal: r.items.length };
 }
 
 // ── AI-voorstel voor de beoogde structuur (Maarten bevestigt) ──
@@ -152,17 +274,70 @@ export async function completeNavPage(slug: string, url: string, domain: string)
   for (const f of PHASE_KEYS) await setPhaseMark(slug, vol, f, true);
 }
 
+// ── "Huidige site": het menu als ruggengraat, alle pagina's erin ──────
+// Het menu bepaalt de kolommen en de volgorde, maar élke live pagina hoort in
+// beeld. Een pagina die niet in het menu staat hangt onder het menu-item (of de
+// eerder geplaatste pagina) waar zijn adres onder valt; past hij nergens onder,
+// dan komt hij in de verzamelkolom. Dat laatste is geen restbak maar een
+// bevinding: die pagina's zijn vanuit de navigatie niet te bereiken.
+
+export const BUITEN_MENU = "#buiten-menu";
+const MAX_LOS = 400;                       // anders wordt die ene kolom onleesbaar
+const PAGINERING = /\/(page|pagina)\/\d+\/$/i;
+
+/** Zoekt de ouder van een pad: van diep naar ondiep, de eerste die al bestaat. */
+function ouderVan(pad: string, geplaatst: Set<string>): string {
+  const stukken = pad.split("/").filter(Boolean);
+  // i >= 1 laat "/" structureel buiten beschouwing: de homepage is een
+  // voorvoegsel van álles, en zonder deze grens belandt de hele site eronder.
+  // Meteen ook de garantie dat een ouder altijd korter is, dus geen kringetje.
+  for (let i = stukken.length - 1; i >= 1; i--) {
+    const kandidaat = "/" + stukken.slice(0, i).join("/") + "/";
+    if (geplaatst.has(kandidaat)) return kandidaat;
+  }
+  return BUITEN_MENU;
+}
+
+export function bouwHuidigeSite(menu: NavNode[], livePaden: string[]): { nodes: NavNode[]; losTeveel: number } {
+  const geplaatst = new Set(menu.map((n) => n.url));
+  const uit: NavNode[] = [...menu];
+  const kandidaten = [...new Set(livePaden.map(netPad))]
+    .filter((p) => !geplaatst.has(p) && !PAGINERING.test(p))
+    // Ondiep eerst, zodat een ouder altijd geplaatst is voor zijn kind aan de beurt komt.
+    .sort((a, b) => (a.split("/").filter(Boolean).length - b.split("/").filter(Boolean).length) || a.localeCompare(b, "nl"));
+  const losTeveel = Math.max(kandidaten.length - MAX_LOS, 0);
+  kandidaten.slice(0, MAX_LOS).forEach((pad, i) => {
+    const ouder = ouderVan(pad, geplaatst);
+    geplaatst.add(pad);
+    uit.push({ url: pad, parent: ouder === pad ? BUITEN_MENU : ouder, hoofdzoekterm: "", volume: null, volgorde: 1000 + i, label: "" });
+  });
+  return { nodes: uit, losTeveel };
+}
+
 // ── De roadmap zelf: plan + live-status + voortgang gecombineerd ──
 
-export async function getRoadmap(slug: string): Promise<{ nodes: RoadmapNode[]; voorstel: NavNode[]; domain: string }> {
+export async function getRoadmap(slug: string): Promise<{ nodes: RoadmapNode[]; menu: RoadmapNode[]; huidig: RoadmapNode[]; voorstel: NavNode[]; domain: string; ontbrekend: string[]; laatstGescand: string | null; aantalGescand: number; losTeveel: number }> {
   const client = await getClientBySlug(slug);
   const domain = client?.domain || "";
-  const [plan, voorstel, urls, pages] = await Promise.all([
+  const [plan, voorstel, menu, urls, pages, snaps] = await Promise.all([
     leesPlan(slug, "actueel"),
     leesPlan(slug, "voorstel"),
+    leesPlan(slug, "menu"),
     getClientUrls(slug),
     getWeekplanPages(slug).catch(() => ({} as Record<string, { [k: string]: unknown }>)),
+    getLatestSnapshots(slug).catch(() => []),
   ]);
+
+  // De snelle paginascore uit de laatste content-scan. De vaste omlijsting
+  // (menu, footer, logo) bepalen we één keer over alle gemeten pagina's van
+  // deze klant, zodat die niet bij elke pagina meetelt.
+  const invoerVan = (s: (typeof snaps)[number]): ScoreInvoer => ({
+    metaTitle: s.metaTitle, metaDescription: s.metaDescription, h1: s.h1, h1Count: s.h1Count,
+    h2s: s.h2s, altTags: s.altTags, internalLinks: s.internalLinks,
+    wordCount: s.wordCount, mainWordCount: s.mainWordCount, schemaTypes: s.schemaTypes,
+  });
+  const ctx = klantContext(snaps.map(invoerVan));
+  const snapByKey = new Map(snaps.map((s) => [urlKey(s.url), s]));
   const liveByPad = new Map<string, boolean>();
   for (const u of urls) { try { liveByPad.set(netPad(new URL(u.url).pathname), u.status === 200); } catch { /* pad onleesbaar */ } }
 
@@ -188,11 +363,48 @@ export async function getRoadmap(slug: string): Promise<{ nodes: RoadmapNode[]; 
     return { url: pad, parent, hoofdzoekterm: "", volume: null, volgorde: 900 + i };
   }) : [];
 
-  const nodes: RoadmapNode[] = [...basis, ...extra].map((n) => {
+  const verrijk = (n: NavNode): RoadmapNode => {
     const vol = domain ? `https://${domain}${n.url}` : n.url;
     const live = liveByPad.get(n.url) || false;
     const { pct, klaar } = pctVan(vol);
-    return { ...n, live, pct: live || pct > 0 ? pct : 0, fasesKlaar: klaar, inPlan: inPlanPaden.has(n.url) && plan.length > 0 };
+    const snap = snapByKey.get(urlKey(vol));
+    const sc = snap ? scorePagina(invoerVan(snap), ctx) : null;
+    return {
+      ...n, live, pct: live || pct > 0 ? pct : 0, fasesKlaar: klaar, inPlan: inPlanPaden.has(n.url) && plan.length > 0,
+      woorden: sc ? sc.woorden : null, woordenGeschat: sc ? sc.woordenGeschat : false,
+      score: sc ? sc.score : null, scoreNiveau: sc ? sc.niveau : null, scoreLabel: sc ? sc.label : "",
+      punten: sc ? sc.punten : [], gemetenOp: snap ? snap.capturedAt : null,
+    };
+  };
+  const nodes: RoadmapNode[] = [...basis, ...extra].map(verrijk);
+  // Een pagina die in het live menu staat, bestaat. Kent de sitemap-scan hem
+  // niet (bijvoorbeeld omdat die scan ouder is dan de pagina), dan is dat geen
+  // reden om "bestaat nog niet" te roepen. Kent de scan hem wél maar als kapot,
+  // dan blijft hij rood; anders zou een gebroken menulink onzichtbaar worden.
+  const menuLive = (pad: string) => (liveByPad.has(pad) ? !!liveByPad.get(pad) : true);
+
+  // "Huidige site": het menu als ruggengraat met alle live pagina's erin.
+  const livePaden = urls.filter((u) => u.status === 200).map((u) => { try { return netPad(new URL(u.url).pathname); } catch { return ""; } }).filter(Boolean);
+  const { nodes: huidigRuw, losTeveel } = bouwHuidigeSite(menu, livePaden);
+  const huidig: RoadmapNode[] = huidigRuw.map((n) => {
+    const r = verrijk(n);
+    return { ...r, live: menu.some((m) => m.url === n.url) ? menuLive(n.url) : r.live };
   });
-  return { nodes, voorstel, domain };
+  if (huidig.some((n) => n.parent === BUITEN_MENU)) {
+    huidig.push({
+      url: BUITEN_MENU, parent: "", hoofdzoekterm: "", volume: null, volgorde: 9999, label: "Niet in het menu",
+      live: true, pct: 0, fasesKlaar: 0, inPlan: false,
+      woorden: null, woordenGeschat: false, score: null, scoreNiveau: null, scoreLabel: "", punten: [], gemetenOp: null, bucket: true,
+    });
+  }
+  const menuNodes: RoadmapNode[] = menu.map((n) => { const r = verrijk(n); return { ...r, live: menuLive(n.url) }; });
+  // Pagina's die een (nieuwe) meting nodig hebben: nog nooit gemeten, of nog
+  // met een geschat woordaantal (snapshot van vóór het meten van de eigen
+  // tekst). De knop in het scherm scant die alsnog.
+  const ontbrekend = [...nodes, ...huidig]
+    .filter((n) => !n.bucket && n.live && domain && (n.score === null || n.woordenGeschat))
+    .map((n) => `https://${domain}${n.url}`)
+    .filter((u, i, a) => a.indexOf(u) === i);
+  const laatstGescand = urls.map((u) => u.lastScanned || "").filter(Boolean).sort().pop() || null;
+  return { nodes, menu: menuNodes, huidig, voorstel, domain, ontbrekend, laatstGescand, aantalGescand: urls.length, losTeveel };
 }

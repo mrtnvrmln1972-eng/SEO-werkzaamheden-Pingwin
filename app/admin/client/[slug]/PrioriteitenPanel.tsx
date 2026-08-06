@@ -9,6 +9,26 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { urlKey } from "../../../../lib/url-key";
 import { categorieVan } from "../../../../lib/prioriteiten-categorie";
+import { kaartTekst, faseVoorstel } from "../../../../lib/weekplan-kaarttekst";
+import { onderbouwing } from "../../../../lib/prioriteiten-onderbouwing";
+import { mdToHtml } from "../../../../lib/markdown";
+import MailVenster from "./MailVenster";
+import Voortgang from "./Voortgang";
+
+// Het bedoelde adres van een pagina die nog niet bestaat (content gap). De kaart
+// heeft een URL nodig om de fases en de pagina-context te kunnen tonen; zonder
+// URL opent hij half leeg. Dit is een voorstel, geen bewering: het pad staat ook
+// in de kaarttekst zodat je het kunt wijzigen voor je gaat bouwen.
+function bedoeldPad(zoekwoord: string, domain: string): string {
+  const slugje = (zoekwoord || "")
+    .toLowerCase().trim()
+    .replace(/['"]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  if (!slugje) return "";
+  const host = (domain || "").replace(/^https?:\/\//i, "").replace(/\/+$/, "");
+  return host ? `https://${host}/${slugje}/` : `/${slugje}/`;
+}
 
 type Lens = { sleutel: string; naam: string; status: string; toelichting: string; gevonden: number };
 type Regel = {
@@ -37,12 +57,35 @@ type State = {
 // die hij niet kent. Wat een kans oplevert is wél te meten, dus dat bepaalt de
 // volgorde. De indeling bestaat achter de schermen nog wel, want de scan gebruikt
 // hem om te bepalen wat er in "bewust niet doen" valt.
-type SortVeld = "extra" | "volume" | "positie";
-const SORT_KOP: { veld: SortVeld; label: string }[] = [
-  { veld: "volume", label: "Zoekvolume" },
-  { veld: "positie", label: "Positie" },
-  { veld: "extra", label: "Extra bezoekers" },
+//
+// De standaardvolgorde is "kansrijkheid" en niet "extra bezoekers" (6 augustus
+// 2026). Extra bezoekers is zoekvolume maal klikkans, en verder niets: dat cijfer
+// weet niet of iemand wil kopen of alleen rondkijkt, en niet of het zoekwoord bij
+// deze klant past. Bij Paul Hoevenaars zette het daardoor "voortuin" bovenaan,
+// een landelijk plaatjeswoord van 3.500 zoekopdrachten, boven "tuinontwerp laten
+// maken". Kansrijkheid weegt dat wél mee, en het stond al berekend klaar; het
+// werd alleen niet gebruikt voor de volgorde. Extra bezoekers blijft als kolom
+// staan én blijft aanklikbaar om op te sorteren.
+type SortVeld = "kans" | "extra" | "volume" | "positie";
+const SORT_KOP: { veld: SortVeld; label: string; uitleg: string }[] = [
+  { veld: "volume", label: "Zoekvolume", uitleg: "hoe vaak hier per maand op gezocht wordt" },
+  { veld: "positie", label: "Positie", uitleg: "waar de pagina nu staat en waar hij heen kan" },
+  { veld: "extra", label: "Extra bezoekers", uitleg: "zoekvolume maal de kans dat iemand klikt" },
+  { veld: "kans", label: "Kansrijk", uitleg: "bezoekers, koopgerichtheid, hoe goed het bij deze klant past en hoeveel werk het is, in één cijfer" },
 ];
+
+/**
+ * De brillen die hun punten uit een andere analyse halen, met de knop om die
+ * analyse hier meteen te starten. Zonder dit moet je zelf bedenken welk tabje je
+ * nodig hebt, ernaartoe klikken, daar de analyse starten en weer terugkomen; en
+ * de melding dát er iets ontbreekt zat tot nu toe weggeklapt, dus in de praktijk
+ * zag je alleen een korte lijst en geen reden.
+ */
+const ONTBREKENDE_BRON: Record<string, { knop: string; url: string; achtergrond: boolean }> = {
+  cannibalisatie: { knop: "Opruimanalyse draaien", url: "/api/admin/cannibal-redirect", achtergrond: true },
+  interne_links: { knop: "Interne-link-analyse draaien", url: "/api/admin/internal-links", achtergrond: true },
+  content_gap: { knop: "Kansenlijst ophalen", url: "/api/admin/keyword-opportunities", achtergrond: true },
+};
 
 function datum(s?: string | null): string {
   if (!s) return "";
@@ -55,11 +98,13 @@ function zekerheid(c: number): string {
   return c >= 0.9 ? "hard gemeten" : c >= 0.6 ? "afgeleid" : "schatting";
 }
 
-export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
+export default function PrioriteitenPanel({ slug, domain = "", onGaNaar, clientName, clientEmail }: {
   slug: string;
   domain?: string;
   /** Springt naar het juiste tabblad en opent daar meteen de betreffende regel. */
   onGaNaar?: (tab: string, url: string) => void;
+  clientName?: string;
+  clientEmail?: string;
 }) {
   const [st, setSt] = useState<State | null>(null);
   const [busy, setBusy] = useState(false);
@@ -71,8 +116,30 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
   const [openSkip, setOpenSkip] = useState(false);
   const [openLenzen, setOpenLenzen] = useState(false);
   const [openGroep, setOpenGroep] = useState<Record<string, boolean>>({});
-  const [sortVeld, setSortVeld] = useState<SortVeld>("extra");
+  const [sortVeld, setSortVeld] = useState<SortVeld>("kans");
   const [sortAf, setSortAf] = useState(true);
+  // Welke regel staat opengeklapt op "waarom", en voor welke regel staat het
+  // mailvenster open. Bewust per regel en niet globaal: je vergelijkt kansen met
+  // elkaar, dus je wilt er meerdere tegelijk open kunnen hebben.
+  const [openWaarom, setOpenWaarom] = useState<Record<string, boolean>>({});
+  const [mailVoor, setMailVoor] = useState<Regel | null>(null);
+  /**
+   * Hoe de vorige mails van dit soort aan deze klant begonnen. Wordt opgehaald op
+   * het moment dat je het mailvenster opent, en bepaalt vanuit welke invalshoek de
+   * volgende mail schrijft en welk stuk werkwijze erin komt. Zonder dit geheugen
+   * openen tien nieuwe-pagina-mails alle tien hetzelfde.
+   */
+  const [eerder, setEerder] = useState<{ invalshoek: string; werkwijze: string }[]>([]);
+  const [bronBezig, setBronBezig] = useState<string | null>(null);
+  const [bronMsg, setBronMsg] = useState<Record<string, string>>({});
+  // De opruimanalyse weigert te starten zolang niet vastligt welke pagina's
+  // advertentiepagina's zijn (die staan op noindex en zien er in de data uit als
+  // dood gewicht, terwijl ze juist moeten blijven). Dat invulveld stond alleen op
+  // het Opruimen-tabje, dus je werd hier weggestuurd. Nu kan het hier meteen.
+  const [adsTekst, setAdsTekst] = useState("");
+  const [adsBezig, setAdsBezig] = useState(false);
+  const [adsMsg, setAdsMsg] = useState("");
+  const adsNodig = /advertentie|landingspagina/i.test(bronMsg.cannibalisatie || "");
 
   async function load() {
     try {
@@ -116,6 +183,54 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
     } catch { setPropMsg("Bewaren lukte niet."); }
   }
 
+  /** Start de ontbrekende analyse hier, zonder eerst naar het andere tabje te gaan. */
+  async function draaiBron(sleutel: string) {
+    const b = ONTBREKENDE_BRON[sleutel];
+    if (!b || bronBezig) return;
+    setBronBezig(sleutel);
+    setBronMsg((m) => ({ ...m, [sleutel]: "" }));
+    try {
+      const d = await fetch(b.url, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug }),
+      }).then((r) => r.json());
+      setBronMsg((m) => ({
+        ...m,
+        [sleutel]: d?.ok
+          ? (b.achtergrond
+            ? "Draait nu, dat duurt een paar minuten. Klik daarna bovenaan op “Opnieuw scannen”."
+            : `Klaar, ${d.total ?? 0} kansen opgehaald. Klik nu bovenaan op “Opnieuw scannen”.`)
+          : (d?.error || "Starten lukte niet."),
+      }));
+    } catch {
+      setBronMsg((m) => ({ ...m, [sleutel]: "Starten lukte niet." }));
+    } finally { setBronBezig(null); }
+  }
+
+  /**
+   * Advertentiepagina's vastleggen en de opruimanalyse meteen daarna starten, zodat
+   * het bij één handeling blijft in plaats van opslaan, terugklikken en opnieuw
+   * beginnen. `geen` legt vast dat deze klant er geen heeft; dat is net zo goed een
+   * antwoord en de analyse heeft er genoeg aan.
+   */
+  async function bewaarAds(geen: boolean) {
+    if (adsBezig) return;
+    const paden = adsTekst.split(/[\n,]/).map((p) => p.trim()).filter(Boolean);
+    if (!paden.length && !geen) { setAdsMsg("Vul de pagina's in, of kies “deze klant heeft er geen”."); return; }
+    setAdsBezig(true); setAdsMsg("");
+    try {
+      const d = await fetch("/api/admin/opruim-structuur-regel", {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, ads: paden, geenAds: geen && !paden.length }),
+      }).then((r) => r.json());
+      if (!d.ok) { setAdsMsg(d.error || "Opslaan lukte niet."); return; }
+      setAdsMsg(paden.length
+        ? `Vastgelegd, ${paden.length === 1 ? "die pagina blijft" : "die pagina's blijven"} buiten de analyse. Ik start de opruimanalyse nu.`
+        : "Vastgelegd: geen advertentiepagina's. Ik start de opruimanalyse nu.");
+      await draaiBron("cannibalisatie");
+    } catch { setAdsMsg("Opslaan lukte niet."); } finally { setAdsBezig(false); }
+  }
+
   // Elk pad wordt een klikbare link naar de live pagina (vaste huisregel: nooit
   // een kale, niet-klikbare slug in beeld). Zelfde patroon als het opruimscherm.
   const site = (p: string) => `https://${(domain || "").replace(/^https?:\/\//, "").replace(/\/$/, "")}${p.startsWith("/") ? p : `/${p}`}`;
@@ -139,23 +254,50 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
    * op de kaart als "Waarom deze pagina" verschijnt en dat de mailknop gebruikt,
    * dus je kunt de klant meteen uitleggen waarom we dit oppakken.
    */
+  /**
+   * Opent het mailvenster, maar haalt eerst op wat deze klant al gehad heeft.
+   * Bewust hier en niet in het venster zelf: het venster weet niets van kansen.
+   */
+  async function openMail(r: Regel) {
+    setEerder([]);
+    setMailVoor(r);
+    try {
+      const d = await fetch(`/api/admin/kansmail-log?slug=${encodeURIComponent(slug)}&soort=${encodeURIComponent(r.type)}`)
+        .then((x) => x.json());
+      if (d?.ok && Array.isArray(d.regels)) setEerder(d.regels);
+    } catch { /* zonder geheugen schrijft hij gewoon, alleen minder afwisselend */ }
+  }
+
   async function pakOp(r: Regel) {
     const cat = categorieVan(r.type);
     if (bezigId) return;
     setBezigId(r.id);
     try {
       if (cat.kaart) {
-        const pad = r.url || "";
-        const toelichting = [
-          "Achtergrond:",
-          `- ${r.rationale}`,
-          `- Zoekwoord "${r.zoekwoord}", ${getal(r.maandvolume)} zoekopdrachten per maand.`,
-          r.huidigePositie
-            ? `- Staat nu op positie ${r.huidigePositie}, doel is ${r.targetPositie}.`
-            : `- Rankt hier nog niet; doel is positie ${r.targetPositie}.`,
-          `- Naar schatting ${getal(r.extraKlikkenPerMaand)} extra bezoekers per maand (${zekerheid(r.confidence)}).`,
-          "- Bron: uit de vindbaarheidsscan van deze site.",
-        ].join("\n");
+        // Een content gap heeft nog geen pagina, dus ook geen URL. Zonder URL
+        // blijft het fase-blok op de kaart leeg (de kaart zoekt de pagina op).
+        // Daarom leiden we het bedoelde pad af uit het zoekwoord; dat is precies
+        // wat de assistent ook doet als hij een nieuwe pagina inplant.
+        const nieuw = !r.url;
+        const pad = r.url || bedoeldPad(r.zoekwoord, domain);
+        // Dezelfde onderbouwing als op het scherm en in de mail. Stond hier eerder
+        // als eigen lijstje losse zinnen; dat is precies hoe drie versies van
+        // hetzelfde verhaal ontstaan.
+        const ond = onderbouwing(r, { klantnaam: clientName, pad });
+        const toelichting = kaartTekst({
+          achtergrond: [
+            ond.kort,
+            r.rationale || "",
+            `Zoekwoord "${r.zoekwoord}", ${getal(r.maandvolume)} zoekopdrachten per maand.`,
+            r.huidigePositie
+              ? `Staat nu op positie ${r.huidigePositie}, doel is ${r.targetPositie}.`
+              : `Rankt hier nog niet; doel is positie ${r.targetPositie}.`,
+            `Naar schatting ${getal(r.extraKlikkenPerMaand)} extra bezoekers per maand (${zekerheid(r.confidence)}).`,
+            nieuw ? `Deze pagina bestaat nog niet; ${pad} is het voorgestelde adres.` : "",
+          ].filter(Boolean),
+          afspraken: ["Bron: uit de vindbaarheidsscan van deze site."],
+          fases: faseVoorstel({ nieuw, zoekwoord: r.zoekwoord, positie: r.huidigePositie || null, doel: r.targetPositie || null, pad }),
+        });
         await fetch("/api/admin/weekplan/add", {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -166,6 +308,13 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
           }),
         }).then((x) => x.json()).catch(() => null);
         await load();   // het vinkje meteen bijwerken
+        // Bewust NIET meteen wegspringen naar het andere tabblad. Dat deed deze
+        // knop eerst, en daarmee was de regel uit beeld op het moment dat je de
+        // klant wilde laten weten dat je hem oppakt. Nu blijf je staan, opent het
+        // mailvenster met de onderbouwing erin, en gaat "Ga erheen" apart mee als
+        // knop op de regel.
+        void openMail(r);
+        return;
       }
       onGaNaar?.(cat.tab, r.url || "");
     } finally { setBezigId(null); }
@@ -183,8 +332,20 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
     return true;
   }), [regels, zoek, zoekt]);
 
+  /**
+   * Kansrijkheid als cijfer van 1 tot 100, waarbij 100 de beste kans van déze scan
+   * is. De onderliggende opbrengstscore is een kommagetal van 0,003 tot 0,4; daar
+   * kun je twee regels niet mee vergelijken zonder te turen. De schaal is bewust
+   * relatief: "de beste kans die deze klant nu heeft" zegt meer dan een absoluut
+   * getal dat per klant iets anders betekent.
+   */
+  const kansIndex = useMemo(() => {
+    const max = Math.max(0, ...regels.filter((r) => r.tier !== "SKIP").map((r) => r.roiScore ?? 0));
+    return (r: Regel) => (max > 0 ? Math.max(1, Math.round(((r.roiScore ?? 0) / max) * 100)) : 0);
+  }, [regels]);
+
   // Zeven dichte balken in plaats van honderd losse regels, en de balk met de
-  // meeste te winnen bezoekers bovenaan. Bij de ene klant is dat meta-werk, bij de
+  // meest kansrijke stapel werk bovenaan. Bij de ene klant is dat meta-werk, bij de
   // andere opruimen; dat wil je zien zonder eerst alles open te klikken.
   const groepen = useMemo(() => {
     const richting = sortAf ? -1 : 1;
@@ -192,7 +353,8 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
       if (sortVeld === "volume") return r.maandvolume || 0;
       // Rankt hier nog niet (0) hoort achteraan, niet vooraan.
       if (sortVeld === "positie") return r.huidigePositie || 999;
-      return r.extraKlikkenPerMaand ?? 0;
+      if (sortVeld === "extra") return r.extraKlikkenPerMaand ?? 0;
+      return r.roiScore ?? 0;
     };
     const per = new Map<string, Regel[]>();
     for (const r of zichtbaar) {
@@ -205,8 +367,11 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
         naam,
         rijen: [...rijen].sort((a, b) => (waarde(a) - waarde(b)) * richting),
         opbrengst: rijen.reduce((s, r) => s + (r.extraKlikkenPerMaand ?? 0), 0),
+        // De balken staan op dezelfde maat als de regels erin: op kansrijkheid.
+        // Anders opent de bovenste balk met de minst kansrijke bovenste regel.
+        kans: rijen.reduce((s, r) => s + (r.roiScore ?? 0), 0),
       }))
-      .sort((a, b) => b.opbrengst - a.opbrengst || b.rijen.length - a.rijen.length || a.naam.localeCompare(b.naam));
+      .sort((a, b) => b.kans - a.kans || b.rijen.length - a.rijen.length || a.naam.localeCompare(b.naam));
   }, [zichtbaar, sortVeld, sortAf]);
 
   // Zoek je iets, dan klapt alles met een treffer vanzelf open; anders zou je na
@@ -217,6 +382,7 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
     else { setSortVeld(veld); setSortAf(true); }
   }
 
+  const ontbrekend = (res?.lenzen || []).filter((l) => l.status === "niet-gedraaid" && ONTBREKENDE_BRON[l.sleutel]);
   const skips = regels.filter((r) => r.tier === "SKIP");
   const propositieLeeg = !(st?.propositie?.zin || "").trim();
 
@@ -295,12 +461,16 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
       </div>
 
       {st?.status === "running" && (
-        <div className="opr-voortgang">
-          <div className="opr-voortgang-label">
-            <span className="opr-voortgang-stap">Stap {st.stap} van {st.stappen}</span>
-            <span>{st.stapLabel}</span>
-          </div>
-          {st.cronStil && <div className="opr-voortgang-tijd">Het vangnet is even stil. Blijft dit hangen, klik dan op “Nu hervatten”.</div>}
+        <div style={{ marginBottom: "var(--s-4)" }}>
+          <Voortgang
+            titel="Prioriteitenscan"
+            label={st.stapLabel}
+            stap={st.stap}
+            stappen={st.stappen}
+            sinds={st.updatedAt}
+            stil={st.cronStil}
+            actie={st.cronStil ? { label: "Nu hervatten", onClick: () => { void start(true); }, bezig: busy } : undefined}
+          />
         </div>
       )}
 
@@ -317,9 +487,64 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
             {st?.laatsteAutoRonde && <> · draait vanzelf eens per maand</>}
           </div>
 
+          {/* Wat er níet is gekeken hoort niet weggeklapt te staan: dat is precies
+              de reden dat de lijst kort is. Dus in het zicht, met de startknop erbij. */}
+          {ontbrekend.length > 0 && (
+            <div className="prio-ontbreekt">
+              <div className="prio-ontbreekt-kop">
+                {ontbrekend.length === 1
+                  ? "Eén onderdeel heeft niet meegekeken"
+                  : `${ontbrekend.length} onderdelen hebben niet meegekeken`}
+              </div>
+              <p className="muted prio-hint">
+                Deze halen hun punten uit een analyse die voor deze klant nog niet gedraaid is.
+                Er is dus niets gevonden omdat er niet gekeken is, niet omdat er niets te halen valt.
+                Start ze hier en scan daarna opnieuw.
+              </p>
+              {ontbrekend.map((l) => (
+                <div key={l.sleutel} className="prio-ontbreekt-rij">
+                  <span className="prio-ontbreekt-naam">{l.naam}</span>
+                  <button type="button" className="ghost-btn small"
+                    disabled={bronBezig === l.sleutel}
+                    onClick={() => draaiBron(l.sleutel)}>
+                    {bronBezig === l.sleutel ? "Starten…" : ONTBREKENDE_BRON[l.sleutel].knop}
+                  </button>
+                  {bronMsg[l.sleutel] && <span className="prio-ontbreekt-msg">{bronMsg[l.sleutel]}</span>}
+                  {l.sleutel === "cannibalisatie" && adsNodig && (
+                    <div className="prio-ads">
+                      <p className="muted prio-hint">
+                        Pagina&rsquo;s waar je advertenties naartoe sturen staan meestal op noindex. Ze halen dus niets
+                        uit Google en zien er in de data uit als dode pagina&rsquo;s, terwijl ze juist moeten blijven.
+                        Zet ze hier neer, dan blijven ze buiten de analyse. E&eacute;n pad per regel; een map zoals{" "}
+                        <code>/ads/</code> dekt alles daaronder.
+                      </p>
+                      <textarea className="prio-ads-veld" rows={3} spellCheck={false} value={adsTekst}
+                        placeholder={"/landing-page/\n/ads/\n/actie-voorjaar/"} aria-label="Advertentiepagina's"
+                        onChange={(e) => setAdsTekst(e.target.value)} />
+                      <div className="prio-ads-rij">
+                        <button type="button" className="ghost-btn small" disabled={adsBezig}
+                          onClick={() => void bewaarAds(false)}>
+                          {adsBezig ? "Bezig…" : "Opslaan en analyse starten"}
+                        </button>
+                        <button type="button" className="ghost-btn small" disabled={adsBezig || !!adsTekst.trim()}
+                          onClick={() => void bewaarAds(true)}>
+                          Deze klant heeft er geen
+                        </button>
+                      </div>
+                      {adsMsg && <div className="prio-ontbreekt-msg">{adsMsg}</div>}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Scorecard: welke brillen keken mee, en welke nog niet. */}
           <button type="button" className="prio-klap" onClick={() => setOpenLenzen((v) => !v)}>
-            {openLenzen ? "▾" : "▸"} Waar is naar gekeken ({res.lenzen.filter((l) => l.status !== "niet-aangesloten").length} van de {res.lenzen.length} brillen aangesloten)
+            {/* Bewust "keken mee" en niet "aangesloten": een bril waarvan de
+                analyse nooit gedraaid is, is wél aangesloten maar heeft niet
+                gekeken. Dat als aangesloten tellen leest als "gecontroleerd". */}
+            {openLenzen ? "▾" : "▸"} Waar is naar gekeken ({res.lenzen.filter((l) => l.status !== "niet-aangesloten" && l.status !== "niet-gedraaid").length} van de {res.lenzen.length} brillen keken mee)
           </button>
           {openLenzen && (
             <div className="prio-lenzen">
@@ -337,6 +562,19 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
             {zoekt && <span className="prio-filter-label">{zichtbaar.length} van de {regels.filter((r) => r.tier !== "SKIP").length}</span>}
           </div>
 
+          {/* Wat de kolommen betekenen. Stond nergens, en dan moet je het vragen:
+              "→ 5" en het balkje bij Kansrijk leggen zichzelf niet uit. */}
+          <details className="prio-legenda">
+            <summary>Wat betekenen de kolommen?</summary>
+            <ul>
+              <li><strong>Zoekvolume</strong> is hoe vaak er per maand op dit zoekwoord gezocht wordt.</li>
+              <li><strong>Positie</strong> laat zien waar de pagina nu staat en waar hij heen kan: <em>12 → 3</em> betekent van plek 12 naar plek 3. Staat er alleen <em>→ 5</em>, dan is er nog geen pagina die hierop mikt en is plek 5 het doel waar we op mikken. Dat is een streefgetal, geen voorspelling.</li>
+              <li><strong>Extra bezoekers</strong> is wat die stap aan bezoek kan opleveren: het zoekvolume maal de kans dat iemand op die plek klikt.</li>
+              <li><strong>Kansrijk</strong> is het balkje met een cijfer van 1 tot 100 en bepaalt de volgorde. Het weegt de bezoekers, hoe koopgericht het zoekwoord is, hoe goed het bij deze klant past en hoeveel werk het kost. 100 is de beste kans van deze scan; het is dus een onderlinge vergelijking, geen rapportcijfer.</li>
+              <li><strong>Werk</strong> is de omvang: klein (een titel of alinea), middel (een pagina verversen of nieuw schrijven), groot (meerdere pagina&rsquo;s).</li>
+            </ul>
+          </details>
+
           <div className="prio-tabel-wrap">
             <table className="prio-tabel">
               <thead>
@@ -345,7 +583,7 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
                   {SORT_KOP.map((k) => (
                     <th key={k.veld} className="num">
                       <button type="button" className={"prio-sorteer" + (sortVeld === k.veld ? " aan" : "")}
-                        title={`Sorteer op ${k.label.toLowerCase()}`} onClick={() => sorteerOp(k.veld)}>
+                        title={`Sorteer op ${k.label.toLowerCase()}: ${k.uitleg}`} onClick={() => sorteerOp(k.veld)}>
                         {k.label}{sortVeld === k.veld ? (sortAf ? " ▾" : " ▴") : ""}
                       </button>
                     </th>
@@ -359,7 +597,7 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
                   return (
                     <Fragment key={g.naam}>
                       <tr className="prio-groepkop">
-                        <td colSpan={8}>
+                        <td colSpan={9}>
                           <button type="button" className="prio-groepknop" aria-expanded={uit}
                             onClick={() => setOpenGroep((m) => ({ ...m, [g.naam]: !groepOpen(g.naam) }))}>
                             <span className="prio-groepkop-pijl">{uit ? "▾" : "▸"}</span>
@@ -375,10 +613,16 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
                         const cat = categorieVan(r.type);
                         const gepland = staatInPlanning(r);
                         return (
-                          <tr key={r.id} className={"prio-rij" + (gepland ? " prio-gepland" : "")}>
+                          <Fragment key={r.id}>
+                          <tr className={"prio-rij" + (gepland ? " prio-gepland" : "")}>
                             <td>
                               <div className="prio-titel">{r.titel}{r.nieuw && <span className="prio-nieuw">nieuw</span>}</div>
-                              <div className="prio-reden">{r.rationale}</div>
+                              <div className="prio-reden">{onderbouwing(r, { klantnaam: clientName }).kort}</div>
+                              <button type="button" className="prio-waarom-knop"
+                                aria-expanded={!!openWaarom[r.id]}
+                                onClick={() => setOpenWaarom((m) => ({ ...m, [r.id]: !m[r.id] }))}>
+                                {openWaarom[r.id] ? "▾ minder" : "▸ waarom dit de moeite waard is"}
+                              </button>
                               <div className="prio-bron">Bron: {r.bron} · {zekerheid(r.confidence)}</div>
                             </td>
                             <td className="prio-url">{r.url ? <Pad pad={r.url} /> : <span className="muted">nieuwe pagina</span>}</td>
@@ -386,6 +630,10 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
                             <td className="num">{getal(r.maandvolume)}</td>
                             <td className="num">{r.huidigePositie ? `${r.huidigePositie} → ${r.targetPositie}` : `→ ${r.targetPositie}`}</td>
                             <td className="num prio-uplift">{getal(r.extraKlikkenPerMaand)}</td>
+                            <td className="num prio-kans" title={`Kansrijkheid ${kansIndex(r)} van de 100. Weegt de te winnen bezoekers, hoe koopgericht dit zoekwoord is, hoe goed het bij deze klant past en hoeveel werk het kost. 100 is de beste kans van deze scan.`}>
+                              <span className="prio-kans-balk" aria-hidden="true"><i style={{ width: `${kansIndex(r)}%` }} /></span>
+                              <span className="prio-kans-getal">{kansIndex(r)}</span>
+                            </td>
                             <td>{r.effort <= 3 ? "klein" : r.effort <= 6 ? "middel" : "groot"}</td>
                             <td className="prio-skill">
                               <button
@@ -393,22 +641,54 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
                                 className="prio-cat"
                                 disabled={bezigId === r.id}
                                 title={cat.kaart
-                                  ? `Zet dit in de planning van deze week en ga naar ${cat.naam.toLowerCase()}`
+                                  ? "Maakt een kaart in de weekplanning van deze week (nog zonder dag), met deze onderbouwing erin, en opent daarna de mail aan de klant"
                                   : `Ga naar ${cat.naam.toLowerCase()} voor deze pagina`}
                                 onClick={() => pakOp(r)}
                               >
                                 {bezigId === r.id ? "Bezig…" : cat.kaart ? "In de planning" : "Ga erheen"}
                               </button>
-                              {gepland && <span className="prio-gepland-chip" title="Er staat een kaart voor deze pagina in de planning">✓ in de planning</span>}
+                              {/* Mailen kan bij élke kans, ook bij meta-werk en opruimen waar geen
+                                  kaart bij hoort. De klant hoort te zien dát we kansen zoeken. */}
+                              <button type="button" className="prio-mail"
+                                title="Laat de klant weten dat we deze kans zagen en oppakken, met de reden erbij"
+                                onClick={() => openMail(r)}>Mail de klant</button>
+                              {gepland && (
+                                <>
+                                  <span className="prio-gepland-chip" title="Er staat een kaart voor deze pagina in de planning">✓ in de planning</span>
+                                  <button type="button" className="prio-heen" onClick={() => onGaNaar?.(cat.tab, r.url || "")}>
+                                    Ga erheen
+                                  </button>
+                                </>
+                              )}
                             </td>
                           </tr>
+                          {/* De onderbouwing over de volle breedte, als kaartjes naast
+                              elkaar. Stond eerst ín de eerste kolom, en die is smal:
+                              dan groeit er links een hoge sliert uit de tabel terwijl
+                              rechts alles leeg blijft. */}
+                          {openWaarom[r.id] && (
+                            <tr className="prio-waarom-rij">
+                              <td colSpan={9}>
+                                <div className="prio-waarom-grid">
+                                  {onderbouwing(r, { klantnaam: clientName, pad: r.url || bedoeldPad(r.zoekwoord, domain) })
+                                    .secties.map((s) => (
+                                      <section className="prio-waarom-kaart" key={s.kop}>
+                                        <h4>{s.kop}</h4>
+                                        <div className="md" dangerouslySetInnerHTML={{ __html: mdToHtml(s.tekst, domain) }} />
+                                      </section>
+                                    ))}
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
                         );
                       })}
                     </Fragment>
                   );
                 })}
                 {!groepen.length && (
-                  <tr><td colSpan={8} className="muted prio-leeg">Niets gevonden met deze zoekterm.</td></tr>
+                  <tr><td colSpan={9} className="muted prio-leeg">Niets gevonden met deze zoekterm.</td></tr>
                 )}
               </tbody>
             </table>
@@ -441,6 +721,49 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar }: {
           )}
         </>
       )}
+
+      {/* Hetzelfde mailvenster als bij een weekplan-kaart, maar BEWUST zonder blok.
+          Mét blok gaat de mail langs de opgemaakte weg: oranje kopbalk, vier vaste
+          kaders, en een voetregel die zegt dat het dashboard hem heeft opgesteld.
+          Dat leest als een reclamemail, terwijl dit juist de mail is die moet laten
+          zien dat er iemand naar hun site heeft zitten kijken. Zonder blok is het
+          een gewone, persoonlijke mail: aanhef, korte alinea's, handtekening
+          onderaan. De onderbouwing gaat mee als achtergrond voor de assistent, niet
+          als kant-en-klaar blok in de mail zelf. */}
+      {mailVoor && (() => {
+        const ond = onderbouwing(mailVoor, {
+          klantnaam: clientName,
+          pad: mailVoor.url || bedoeldPad(mailVoor.zoekwoord, domain),
+          eerdereInvalshoeken: eerder.map((e) => e.invalshoek),
+          heeftConcurrenten: (res?.lenzen || []).some((l) => l.sleutel === "content_gap" && l.gevonden > 0),
+        });
+        return (
+          <MailVenster
+            slug={slug}
+            titel="Laat de klant weten dat we deze kans oppakken"
+            onderwerpVan={ond.mailOnderwerp}
+            onderwerpVoorstel={ond.mailOnderwerp}
+            taak={ond.mailTaak}
+            toelichting={ond.blokMd}
+            stijl="kans"
+            schrijfMeteen
+            eerderGebruikt={eerder.map((e) => e.werkwijze).filter(Boolean)}
+            onVerzonden={(tekst, werkwijze) => {
+              // Onthouden waarmee deze mail opende, zodat de volgende van
+              // hetzelfde soort een andere ingang en een ander stuk werkwijze pakt.
+              void fetch("/api/admin/kansmail-log", {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ slug, soort: mailVoor.type, invalshoek: ond.invalshoek, werkwijze, opening: tekst }),
+              }).catch(() => {});
+            }}
+            siteUrl={domain}
+            url={mailVoor.url || ""}
+            clientName={clientName}
+            clientEmail={clientEmail}
+            onClose={() => setMailVoor(null)}
+          />
+        );
+      })()}
     </div>
   );
 }

@@ -12,11 +12,17 @@ import { useEffect, useState } from "react";
 type Familie = { vorm: string; aantal: number; dood: number; voorbeelden: string[] };
 type Data = { families: Familie[]; totaalLive: number; totaalVormen: number; dood: number; gemeten: boolean };
 
-export default function OpruimStructuur({ slug }: { slug: string }) {
-  const [d, setD] = useState<Data | null>(null);
-  const [bezig, setBezig] = useState(true);
+export default function OpruimStructuur({ slug, data }: {
+  slug: string;
+  /** Al opgehaalde structuur (de publieke deelpagina krijgt hem meegeleverd en
+      mag de adminroute niet aanroepen). Leeg = zelf ophalen, zoals altijd. */
+  data?: Data | null;
+}) {
+  const [d, setD] = useState<Data | null>(data || null);
+  const [bezig, setBezig] = useState(!data);
 
   useEffect(() => {
+    if (data) { setD(data); setBezig(false); return; }
     let leeft = true;
     fetch(`/api/admin/opruim-structuur?slug=${encodeURIComponent(slug)}`)
       .then((r) => r.json())
@@ -24,13 +30,13 @@ export default function OpruimStructuur({ slug }: { slug: string }) {
       .catch(() => {})
       .finally(() => { if (leeft) setBezig(false); });
     return () => { leeft = false; };
-  }, [slug]);
+  }, [slug, data]);
 
   if (bezig) return <div className="muted opr-str-laden">Structuur van de site wordt bepaald…</div>;
   if (!d || !d.families.length) return null;
 
   return (
-    <div className="opr-str">
+    <div className="opr-kaart opr-str">
       <div className="opr-kop">Structuur: welke soorten pagina&rsquo;s deze site heeft</div>
       <div className="opr-str-kpi">
         <div><b>{d.totaalVormen}</b><span>pagina&rsquo;s in een locatievorm</span></div>
@@ -61,7 +67,7 @@ export default function OpruimStructuur({ slug }: { slug: string }) {
         </table>
       </div>
       {d.families.length > 2 && (
-        <p className="opr-voet">
+        <p className="opr-kaart-tekst" style={{ marginTop: "var(--s-3)", marginBottom: 0 }}>
           Er zijn <strong>{d.families.length} verschillende vormen</strong> voor wat vaak hetzelfde onderwerp is. Zolang die naast elkaar bestaan blijf je redirecten. Kies er één die je aanhoudt en laat de rest daarheen wijzen; dat besluit maakt het grootste deel van de lijst hieronder eenmalig in plaats van terugkerend.
         </p>
       )}

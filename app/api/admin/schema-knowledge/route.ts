@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
-import { uploadDocx, uploadEnConverteer, readDriveDoc } from "../../../../lib/drive";
+import { uploadEnConverteer, readDriveDoc } from "../../../../lib/drive";
+import { kanDirectGelezen, tekstUitLokaalBestand } from "../../../../lib/bestand-tekst";
 import { ensureClientFolder } from "../../../../lib/drive-map";
 import { getClientBySlug } from "../../../../lib/clients";
 import { listKnowledge, getOpenProposals, proposeKnowledge, confirmKnowledge, confirmAllKnowledge, ignoreKnowledge, knowledgeGaps, applyKnowledgeToOrg, opruimenDubbel, deleteKnowledgeEntity } from "../../../../lib/schema-knowledge";
@@ -43,11 +44,12 @@ async function tekstUitBestand(slug: string, file: File): Promise<{ naam: string
   const buf = Buffer.from(await file.arrayBuffer());
   const datum = new Date().toISOString().slice(0, 10);
   try {
-    if (/\.(txt|md|json|csv)$/i.test(naam)) return { naam, tekst: buf.toString("utf8") };
-    if (/\.docx$/i.test(naam)) {
-      const up = await uploadDocx(await clientFolderId(slug), `Kennisbank-${datum}-${naam}`, buf);
-      const read = await readDriveDoc(up.id, 60000);
-      return { naam, tekst: read.ok ? read.text || "" : "", fout: read.ok ? undefined : read.error };
+    // Word, Excel en platte tekst lezen we hier, zonder omweg via Drive. Een
+    // .docx ging eerder wél naar Drive maar zonder omzetting naar een Google Doc,
+    // en kwam dan terug als "kan ik niet als tekst lezen".
+    if (kanDirectGelezen(naam)) {
+      const tekst = await tekstUitLokaalBestand(naam, buf);
+      return { naam, tekst, fout: tekst.trim() ? undefined : "het bestand lijkt leeg of bevat geen tekst" };
     }
     if (/\.(pdf|doc|rtf|odt|png|jpe?g|webp|gif|tiff?)$/i.test(naam)) {
       const mime = /\.pdf$/i.test(naam) ? "application/pdf"
@@ -62,7 +64,7 @@ async function tekstUitBestand(slug: string, file: File): Promise<{ naam: string
       const read = await readDriveDoc(up.id, 60000);
       return { naam, tekst: read.ok ? read.text || "" : "", fout: read.ok ? undefined : read.error };
     }
-    return { naam, tekst: "", fout: "dit bestandstype kan ik niet lezen (wel: pdf, docx, txt, md, json, csv, scan of foto)" };
+    return { naam, tekst: "", fout: "dit bestandstype kan ik niet lezen. Wel: Word (.docx), Excel (.xlsx), pdf, tekst (.txt, .md, .json, .csv), en scans of foto's" };
   } catch (e) { return { naam, tekst: "", fout: (e as Error).message }; }
 }
 

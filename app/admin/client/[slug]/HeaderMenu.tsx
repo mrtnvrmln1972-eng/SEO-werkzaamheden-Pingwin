@@ -28,10 +28,13 @@ export default function HeaderMenu<T extends string>({
 }: {
   label: string;
   items: MenuItem<T>[];
-  /** De tab die nu open staat (kan ook buiten dit menu vallen). */
-  active: T;
+  /** De tab die nu open staat (kan ook buiten dit menu vallen, of nergens: op een
+      los scherm zoals de planning staat er geen tabblad open). */
+  active?: T;
   hrefFor: (id: T) => string;
-  onPick: (id: T) => void;
+  /** Alleen in de cockpit: wisselen zonder de pagina te herladen. Ontbreekt hij,
+      dan blijft het een gewone link naar dat tabblad. */
+  onPick?: (id: T) => void;
 }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -79,8 +82,11 @@ export default function HeaderMenu<T extends string>({
               className={"hm-item" + (it.id === active ? " hm-item-actief" : "")}
               onClick={(e) => {
                 if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
-                e.preventDefault();
                 setOpen(false);
+                // Zonder onPick is dit een gewone link: niets tegenhouden, anders
+                // klik je op een menu-item en gebeurt er helemaal niets.
+                if (!onPick) return;
+                e.preventDefault();
                 onPick(it.id);
               }}
             >

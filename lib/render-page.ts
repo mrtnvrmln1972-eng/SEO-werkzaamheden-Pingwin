@@ -17,10 +17,19 @@ import { metBrowser } from "./browser";
 
 export type RenderResult = { html: string; status: number | null; rendered: boolean };
 
-export async function renderHtml(url: string): Promise<RenderResult> {
+// Onze eigen bot maakt zich normaal netjes bekend. Sommige klantsites (of hun
+// firewall) weigeren elke user-agent die naar een bot ruikt met een 403, en dan
+// meet je niets meer terwijl er niets mis is met de pagina. Voor die gevallen kan
+// de aanroeper zich als een gewone bezoeker voordoen; het blijft lezen, we
+// veranderen niets aan de site.
+export const BOT_UA = "Mozilla/5.0 (compatible; PingwinBot/1.0; +https://pingwin.nl)";
+export const BEZOEKER_UA =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
+
+export async function renderHtml(url: string, opts?: { userAgent?: string }): Promise<RenderResult> {
   const uit = await metBrowser(async (page) => {
     await page.setViewport({ width: 1366, height: 900 });
-    await page.setUserAgent("Mozilla/5.0 (compatible; PingwinBot/1.0; +https://pingwin.nl)");
+    await page.setUserAgent(opts?.userAgent || BOT_UA);
     const resp = await page.goto(url, { waitUntil: "networkidle2", timeout: 25000 });
     const status = resp ? resp.status() : null;
     // Even wachten op eventueel na-ingeladen content.

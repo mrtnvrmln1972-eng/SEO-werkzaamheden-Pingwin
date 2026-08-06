@@ -28,6 +28,8 @@ export function tidySystemPrompt(taak: string, url?: string | null): string {
     `- korte puntige regels met alleen KENNIS: cijfers, herkomst, positionering, cannibalisatie-nuance, stand van zaken (elk punt hooguit vijftien woorden)`,
     `Afspraken en herkomst:`,
     `- '-'-bullets met mails (datum, wie), referenties, en instructies die over een ANDERE pagina gaan (met het pad erbij); deze sectie weglaten als hij leeg is`,
+    `Opdrachten:`,
+    `- '-'-bullets met de losse opdrachten die in deze kaart zijn samengevoegd, elk in één zin; deze sectie weglaten als hij leeg is, en NOOIT zelf verzinnen: neem alleen over wat er al onder dit kopje stond`,
     `Aanpak per fase:`,
     `- '-'-bullets die beginnen met exact een fasenaam en dubbele punt: Analyse:, Blauwdruk:, Copy:, Bouw:, Structured data: (alleen fases die nodig zijn; meta-title/description hoort bij Copy, alt-teksten en interne links bij Bouw)`,
     `Regels: verzin NIETS en gooi NIETS inhoudelijks weg; alleen dubbelingen en herhaling van de kaarttitel mogen vervallen.`,

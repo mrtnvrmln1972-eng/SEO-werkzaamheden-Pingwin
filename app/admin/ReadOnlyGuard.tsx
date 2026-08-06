@@ -40,7 +40,12 @@ function slugFromPath(pathname: string): string | null {
 // editSlugs: klanten waarop deze gast WEL mag schrijven (per-klant recht).
 // Op die klanten doet de onderschepper niets; overal anders blokkeert hij zoals
 // voorheen. De server (guardSlug) blijft altijd de echte poort.
-export default function ReadOnlyGuard({ editSlugs = [] }: { editSlugs?: string[] }) {
+//
+// devOk: deze gast is de developer. Dan is het developer-overzicht zijn eigen
+// werkscherm: daar moet afvinken, een terugkoppeling typen en een datum zetten
+// gewoon werken, ook al mag hij verder nergens iets wijzigen. Zonder deze
+// uitzondering stond zijn eigen takenlijst voor hem op slot.
+export default function ReadOnlyGuard({ editSlugs = [], devOk = false }: { editSlugs?: string[]; devOk?: boolean }) {
   const [show, setShow] = useState(false);
   const lastPopupRef = useRef(0);
 
@@ -66,7 +71,8 @@ export default function ReadOnlyGuard({ editSlugs = [] }: { editSlugs?: string[]
       const method = (init?.method || (input instanceof Request ? input.method : "GET")).toUpperCase();
       const isWrite = method !== "GET" && method !== "HEAD";
       const isAdminApi = url.startsWith("/api/admin");
-      const isAllowed = ALLOWED_PATHS.some((p) => url.startsWith(p));
+      const isAllowed = ALLOWED_PATHS.some((p) => url.startsWith(p))
+        || (devOk && url.startsWith("/api/admin/developer"));
       if (isWrite && isAdminApi && !isAllowed && !canEditFetch(url)) {
         const silent = SILENT_PATHS.some((p) => url.startsWith(p));
         // Maximaal één popup per poging: meerdere geblokkeerde aanroepen vlak na
@@ -88,7 +94,7 @@ export default function ReadOnlyGuard({ editSlugs = [] }: { editSlugs?: string[]
       window.fetch = original;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editSlugs.join(",")]);
+  }, [editSlugs.join(","), devOk]);
 
   // Bewerken op slot: contentEditable uit en invoervelden alleen-lezen, behalve
   // de kijk-functies (periodekiezer, chat-vragen). Draait ook op nieuw
@@ -98,6 +104,7 @@ export default function ReadOnlyGuard({ editSlugs = [] }: { editSlugs?: string[]
       // Op een klant waar deze gast mag bewerken gaat er niets op slot. De check
       // zit bewust ín lock(): bij navigeren naar een andere klant beoordeelt de
       // MutationObserver de verse pagina meteen opnieuw.
+      if (devOk && window.location.pathname.startsWith("/admin/developer")) return;
       const pageSlug = slugFromPath(window.location.pathname);
       if (pageSlug !== null && editSlugs.includes(pageSlug)) return;
       document.querySelectorAll<HTMLElement>('[contenteditable="true"], [contenteditable=""]').forEach((el) => {
@@ -117,7 +124,7 @@ export default function ReadOnlyGuard({ editSlugs = [] }: { editSlugs?: string[]
     mo.observe(document.body, { subtree: true, childList: true });
     return () => mo.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editSlugs.join(",")]);
+  }, [editSlugs.join(","), devOk]);
 
   if (!show) return null;
   return (

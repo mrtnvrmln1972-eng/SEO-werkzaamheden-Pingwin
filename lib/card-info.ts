@@ -15,6 +15,10 @@ export type CardInfo = {
   achtergrond: string[];   // het unieke verhaal: wat is er mis, cijfers, waarom nu
   afspraken: string[];     // mail-datums, wie, referenties
   overig: string[];        // punten die nergens anders passen
+  // De losse opdrachten die in deze kaart zijn samengevoegd. Stonden vroeger met
+  // " + " aan elkaar geplakt in de TITEL; daar horen ze niet, want een titel zegt
+  // waar het over gaat en de kaart zegt wat er moet gebeuren.
+  opdrachten: string[];
   perFase: Partial<Record<CardFaseKey, string[]>>;
   // Wat er niet in de begrensde kaart past. Gaat NIET verloren: het staat ingeklapt
   // onderaan onder "Eerdere notities", voor als je het voor een blauwdruk nodig hebt.
@@ -27,6 +31,7 @@ export type CardInfo = {
 // dingen over te zeggen zijn.
 const MAX_WAAROM = 4;
 const MAX_AFSPRAKEN = 4;
+const MAX_OPDRACHTEN = 6;
 
 function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -226,7 +231,9 @@ function faseVanRegel(regel: string): { fase: CardFaseKey; tekst: string } | nul
     [/^meta[- ]?(title|titel|description|descriptions)?\b/, "copy"],
     [/^strategie\b/, "strategie"],
     [/^(structured data|structured|schema)\b/, "structured"],
-    [/^(bouw|bouwen|publiceer|publicatie)\b/, "bouw"],
+    // "Bouw" heet inmiddels "Implementatie"; oude kaarten schrijven nog "Bouw:",
+    // dus allebei moeten in dezelfde fase landen.
+    [/^(bouw|bouwen|publiceer|publicatie|implementatie|implementeer)\b/, "bouw"],
     [/^dev\b/, "bouw"],
     [/^alt[- ]?tekst/, "bouw"],
     [/^interne links?\b/, "bouw"],
@@ -236,7 +243,7 @@ function faseVanRegel(regel: string): { fase: CardFaseKey; tekst: string } | nul
     if (re.test(prefix)) {
       // Bij een expliciete "Fase: ..." prefix tonen we alleen de sturing; bij een
       // zin die toevallig zo begint ("Dev week 2: ...") houden we de hele regel.
-      const toon = m && /^(analyse|blauwdruk|copy|strategie|structured data|schema|bouw|gelieerde pagina's|gelieerde)$/i.test(m[1].trim()) ? rest : kaal;
+      const toon = m && /^(analyse|blauwdruk|copy|strategie|structured data|schema|bouw|implementatie|gelieerde pagina's|gelieerde)$/i.test(m[1].trim()) ? rest : kaal;
       return { fase, tekst: toon };
     }
   }
@@ -313,13 +320,13 @@ export function splitCardInfo(toelichting: string, taak?: string, herkomst?: Her
   // elke kaart die er al staat, en komt zo'n naam ook niet meer in een mail
   // terecht die uit deze tekst wordt gemaakt. Zie lib/herkomst.ts voor het waarom.
   toelichting = striptToeschrijvingen(toelichting || "", herkomst || {});
-  const info: CardInfo = { achtergrond: [], afspraken: [], overig: [], perFase: {}, rest: [] };
+  const info: CardInfo = { achtergrond: [], afspraken: [], overig: [], opdrachten: [], perFase: {}, rest: [] };
   const seen = new Set<string>();
   // De titel van de kaart hoort niet als bullet IN de kaart. Bij het samenvoegen
   // werd de titel van het nieuwe punt er telkens bij geplakt, dus stond hij er
   // soms twee keer in, licht anders geformuleerd.
   const titelWoorden = taak ? inhoudswoorden(taak) : null;
-  let sectie: "achtergrond" | "afspraken" | "aanpak" = "achtergrond";
+  let sectie: "achtergrond" | "afspraken" | "aanpak" | "opdrachten" = "achtergrond";
   for (const raw of (toelichting || "").split("\n")) {
     const regel = raw.trim();
     if (!regel) continue;
@@ -340,6 +347,7 @@ export function splitCardInfo(toelichting: string, taak?: string, herkomst?: Her
     if (isKopje(regel)) {
       const kop = regel.replace(/:$/, "").toLowerCase();
       if (/afspraken|herkomst|bron/.test(kop)) sectie = "afspraken";
+      else if (/opdracht/.test(kop)) sectie = "opdrachten";
       else if (/aanpak|deeltaken|taken|stappen/.test(kop)) sectie = "aanpak";
       else sectie = "achtergrond";
       continue; // het kopje zelf niet dubbel tonen; de render zet eigen kopjes
@@ -355,6 +363,7 @@ export function splitCardInfo(toelichting: string, taak?: string, herkomst?: Her
     }
     const kaal = regel.replace(/^-\s*/, "").trim();
     if (sectie === "afspraken") info.afspraken.push(kaal);
+    else if (sectie === "opdrachten") info.opdrachten.push(kaal);
     else if (sectie === "aanpak") info.overig.push(kaal);
     else info.achtergrond.push(kaal);
   }
@@ -388,6 +397,7 @@ export function splitCardInfo(toelichting: string, taak?: string, herkomst?: Her
   info.achtergrond = ontdubbel(info.achtergrond);
   info.afspraken = ontdubbel(info.afspraken);
   info.overig = ontdubbel(info.overig);
+  info.opdrachten = ontdubbel(info.opdrachten);
   for (const f of Object.keys(info.perFase) as CardFaseKey[]) {
     info.perFase[f] = ontdubbel(info.perFase[f] || []);
   }
@@ -401,6 +411,10 @@ export function splitCardInfo(toelichting: string, taak?: string, herkomst?: Her
   if (info.afspraken.length > MAX_AFSPRAKEN) {
     info.rest.push(...info.afspraken.slice(MAX_AFSPRAKEN));
     info.afspraken = info.afspraken.slice(0, MAX_AFSPRAKEN);
+  }
+  if (info.opdrachten.length > MAX_OPDRACHTEN) {
+    info.rest.push(...info.opdrachten.slice(MAX_OPDRACHTEN));
+    info.opdrachten = info.opdrachten.slice(0, MAX_OPDRACHTEN);
   }
   // Per fase één regel; de rest is bijna altijd een andere formulering van dezelfde
   // instructie en hoort niet naast de stap te staan waar je mee bezig bent.
@@ -459,6 +473,11 @@ export function cardInfoHtml(toelichting: string, pageUrl?: string, taak?: strin
   const aanpak = ontdubbel([...info.overig, ...info.afspraken]);
   if (aanpak.length) {
     kaarten.push(infoKaart(ICO_KLEMBORD, "Aanpak en afspraken", lijst(aanpak, "wp-punt-lijst", mails)));
+  }
+  // De losse opdrachten die in deze kaart zijn samengevoegd. Hier staan ze op één
+  // plek in plaats van aan de titel geplakt.
+  if (info.opdrachten.length) {
+    kaarten.push(infoKaart(ICO_KLEMBORD, "Opdrachten in deze kaart", lijst(info.opdrachten, "wp-punt-lijst", mails)));
   }
   const kolommen = kaarten.length ? `<div class="wp-info-doel${kaarten.length === 1 ? " wp-info-een" : ""}">${kaarten.join("")}</div>` : "";
 

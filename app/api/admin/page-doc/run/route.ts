@@ -4,6 +4,7 @@ import { guardSlug } from "../../../../../lib/admin-scope";
 import { anthropicConfigured } from "../../../../../lib/anthropic";
 import { waitUntil } from "@vercel/functions";
 import { createDocRun, getLatestDocRun, getStepsEverDone, getStepLinks, runNow, stopDocRun } from "../../../../../lib/page-doc-run";
+import { poortDocumenten } from "../../../../../lib/onboarding";
 
 export const runtime = "nodejs";
 // De waitUntil-worker die de generatie direct doorloopt draait binnen deze functie;
@@ -31,6 +32,11 @@ export async function POST(req: NextRequest) {
   const steps = reqSteps.length ? reqSteps : [...allowed];
   const audience: "intern" | "klant" = body.audience === "intern" ? "intern" : "klant";
   if (!slug || !url) return NextResponse.json({ ok: false, error: "Klant en URL zijn verplicht." }, { status: 400 });
+
+  // De poort: geen analyse, blauwdruk of copy zonder klantprofiel en tone of voice.
+  // De volledige regel staat in lib/onboarding.ts, niet hier.
+  const p = await poortDocumenten(slug);
+  if (!p.mag) return NextResponse.json({ ok: false, error: p.reden, onboarding: p.ontbreekt }, { status: 400 });
 
   try {
     const runId = await createDocRun(slug, url, extra, folderId, steps, audience);

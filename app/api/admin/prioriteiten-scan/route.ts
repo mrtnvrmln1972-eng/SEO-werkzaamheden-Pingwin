@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { waitUntil } from "@vercel/functions";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
+import { poort } from "../../../../lib/onboarding";
 import {
   getPrioriteitenScan, startPrioRun, runPrioriteitenScan,
   getPropositie, setPropositie,
@@ -48,6 +49,11 @@ export async function POST(req: NextRequest) {
     waitUntil(runPrioriteitenScan(slug));
     return NextResponse.json({ ok: true, hervat: true });
   }
+
+  // De poort: een scan zonder inventarisatie levert een gok op in plaats van een
+  // meting. Wat er precies mist staat in lib/onboarding.ts, niet hier.
+  const p = await poort(slug, "prioriteiten");
+  if (!p.mag) return NextResponse.json({ ok: false, error: p.reden, onboarding: p.ontbreekt }, { status: 400 });
 
   // De propositie is niet verplicht om te kunnen starten, maar zonder die zin
   // drijft de scan af naar veel volume dat niet bij de klant past. Het scherm

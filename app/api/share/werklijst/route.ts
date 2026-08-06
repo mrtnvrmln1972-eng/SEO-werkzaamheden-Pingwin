@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSlugByWorklistToken, getWorklistData, setWorklistMark, verifyDevWorklist } from "../../../../lib/dev-worklist";
 import { getClientBySlug } from "../../../../lib/clients";
+import { getWpStatus } from "../../../../lib/wp-push";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -13,15 +14,24 @@ export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get("token") || "";
   const slug = await getSlugByWorklistToken(token);
   if (!slug) return NextResponse.json({ ok: false, error: "Deze link is niet (meer) geldig." }, { status: 404 });
-  const [data, client] = await Promise.all([getWorklistData(slug), getClientBySlug(slug)]);
+  const [data, client, wp] = await Promise.all([getWorklistData(slug), getClientBySlug(slug), getWpStatus(slug).catch(() => ({ connected: false, username: null }))]);
+  // Wat wij zélf kunnen doorzetten, is geen werk voor de bouwer.
+  //
+  // Is er een WordPress-koppeling, dan zetten wij de meta's en alt-teksten met
+  // een knop op de site; die blokken blijven hier dan leeg, zodat hij geen lijst
+  // ziet waar hij niets mee hoeft. Zonder koppeling is het wél zijn werk en
+  // staat alles er gewoon. Foto's vervangen kunnen wij nooit zelf, dus die
+  // suggesties staan er altijd.
+  const doenWijZelf = wp.connected;
   return NextResponse.json({
     ok: true,
     clientName: client?.name || "",
-    // Alleen wat de sitebouwer nodig heeft. De meta's en alt-teksten voert
-    // Pingwin zelf door, dus die staan hier bewust niet meer bij; pages levert
-    // alleen nog de basis-URL om paden klikbaar te maken.
-    pages: data.pages.map((p) => ({ url: p.url, path: p.path })),
-    images: [],
+    // Zonder de teksten levert pages alleen de basis-URL om paden klikbaar te maken.
+    pages: doenWijZelf ? data.pages.map((p) => ({ url: p.url, path: p.path })) : data.pages,
+    images: doenWijZelf ? [] : data.images,
+    // Paginawerk blijft ALTIJD staan, ook met een WordPress-koppeling: een hele
+    // pagina live zetten kunnen wij niet met een knop, dat is echt zijn werk.
+    paginaklussen: data.paginaklussen,
     dubbel: data.dubbel,
     marks: data.marks,
     updatedAt: data.state.updatedAt,

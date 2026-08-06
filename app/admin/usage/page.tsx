@@ -6,19 +6,11 @@ import { ADMIN_VIEWAS_COOKIE } from "../../../lib/constants";
 import { getScopeFromCookie } from "../../../lib/admin-scope";
 import { getUsageSummary, getUsageByAction, getUsageByClientAction, type UsageRow, type UsageActionRow, type UsageClientActionRow } from "../../../lib/usage";
 import { getAhrefsSubscriptionUsage } from "../../../lib/ahrefs";
+import { tellerStand } from "../../../lib/ahrefs-teller";
+import AdminKop from "../AdminKop";
+// Leesbare namen voor de acties: één lijst, gedeeld met de Claude-teller in de kopbalk.
+import { ACTION_LABEL } from "../../../lib/usage-labels";
 
-// Leesbare namen voor de acties (welke knop/functie kost hoeveel).
-const ACTION_LABEL: Record<string, string> = {
-  doc_analyse: "Analyse-document", doc_analyse_diep: "Analyse-document (diep)",
-  doc_blauwdruk: "Blauwdruk-document", doc_blauwdruk_diep: "Blauwdruk-document (diep)",
-  doc_copy: "Copy-document", copy_koplabels: "Copy-koplabels",
-  klantversie: "Klantversie (los)", strategie: "Strategie vastleggen", strategie_grounding: "Strategie (grounding)",
-  strategie_uitleg: "Strategie-uitleg", projectchat: "Projectchat", page_chat: "Pagina-chat",
-  voorstel: "Plan-voorstel", cluster_advies: "Cluster-advies", kansen: "Zoekwoord-kansen",
-  klantprofiel: "Klantprofiel", page_cannibal: "Cannibalisatie", page_cannibal_apply: "Cannibalisatie overnemen",
-  cannibal_redirect: "Cannibalisatie (site)", internal_links: "Interne links",
-  org_autofill: "Organisatiegegevens invullen", kpi_toelichting: "KPI-toelichting",
-};
 
 export const dynamic = "force-dynamic";
 
@@ -95,7 +87,7 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
   let actionRows: UsageActionRow[] = [];
   let clientActionRows: UsageClientActionRow[] = [];
   let loadError = "";
-  let ahrefsSub: { used: number | null; limit: number | null } | null = null;
+  let ahrefsSub: Awaited<ReturnType<typeof getAhrefsSubscriptionUsage>> = null;
   try {
     [rows, actionRows, clientActionRows, ahrefsSub] = await Promise.all([
       getUsageSummary(from.toISOString()),
@@ -106,6 +98,11 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
   } catch (e) {
     loadError = (e as Error).message;
   }
+
+  // Dezelfde rekenregel als het tellertje in de kopbalk: hoe ver de teller staat
+  // tegenover hoe ver de abonnementsmaand is. Eén bron, dus de kopbalk en dit
+  // scherm kunnen nooit een ander verhaal vertellen.
+  const ahrefsTeller = tellerStand(ahrefsSub);
 
   // Uitsplitsing per klant: welke functies veroorzaken het bedrag. Gegroepeerd op
   // klant-slug (null = "Algemeen"), binnen een klant gesorteerd op kosten aflopend.
@@ -145,6 +142,10 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
   const blockSub: React.CSSProperties = { fontSize: 13, color: "#5b6472", margin: "4px 0 14px", lineHeight: 1.5 };
 
   return (
+    <>
+    {/* Zonder kopbalk zat je op dit scherm vast aan één terug-linkje, en was
+        het Intern-menu onbereikbaar. Gevonden door de opmaakproef. */}
+    <AdminKop titel="Verbruik" />
     <div style={wrap}>
       {/* Titel, periode-keuze en terug-link op één rij. */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
@@ -213,9 +214,12 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
                 {ahrefsTotals ? `${num(ahrefsTotals.calls)} aanroepen in deze periode` : "in deze periode"}
               </div>
               {ahrefsSub && ahrefsSub.used !== null && (
-                <div style={{ fontSize: 12.5, color: "#5b6472", marginTop: 6, borderTop: "1px solid #f1e9db", paddingTop: 6, display: "flex", alignItems: "center" }}>
+                <div style={{ fontSize: 12.5, color: "#5b6472", marginTop: 6, borderTop: "1px solid #f1e9db", paddingTop: 6, display: "flex", alignItems: "center", flexWrap: "wrap" }}>
                   Abonnement: {num(ahrefsSub.used)}{ahrefsSub.limit !== null ? ` van ${num(ahrefsSub.limit)}` : ""} units gebruikt
-                  <Hint text="Rechtstreeks bij Ahrefs opgevraagd: het totale unit-verbruik van je Ahrefs-account in de huidige abonnementsmaand (alles meegeteld, ook gebruik buiten dit dashboard om)." />
+                  {ahrefsTeller.dagenTotReset !== null && (
+                    <>&nbsp;&middot;&nbsp;{ahrefsTeller.dagenTotReset === 0 ? "gaat vandaag op nul" : `nog ${ahrefsTeller.dagenTotReset} dagen`}</>
+                  )}
+                  <Hint text={`Rechtstreeks bij Ahrefs opgevraagd: het totale unit-verbruik van je Ahrefs-account in de huidige abonnementsmaand (alles meegeteld, ook gebruik buiten dit dashboard om). ${ahrefsTeller.oordeel}`} />
                 </div>
               )}
             </div>
@@ -350,5 +354,6 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
         </>
       )}
     </div>
+    </>
   );
 }

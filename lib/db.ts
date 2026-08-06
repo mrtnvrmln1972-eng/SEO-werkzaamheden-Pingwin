@@ -126,6 +126,12 @@ async function init(): Promise<void> {
   // Per-klant schrijfrecht: gast mag schrijven op een klant als can_edit aanstaat
   // (alles) OF de slug in edit_slugs staat. Leeg = gedrag exact als voorheen.
   await sql`ALTER TABLE team_users ADD COLUMN IF NOT EXISTS edit_slugs TEXT[] NOT NULL DEFAULT '{}'`;
+  // Mag deze gast het developer-overzicht (alle klanten, alleen de dev-taken)?
+  // Standaard false: niemand krijgt er iets bij tenzij het hier wordt aangezet.
+  // Dit is bewust een eigen recht en geen klant-recht: de sitebouwer werkt over
+  // alle klanten heen, maar hoeft de rest van de cockpit (mail, KPI's, chat,
+  // financiën) niet te zien.
+  await sql`ALTER TABLE team_users ADD COLUMN IF NOT EXISTS can_dev BOOLEAN NOT NULL DEFAULT false`;
 
   // Klantgroep: leeg/null = eigen Pingwin-klant, 'mmc' = Multimedia Concepts
   // (tweede lijst in het Pingwin-dashboard; cockpit-only, geen login/sheet).
@@ -196,6 +202,17 @@ async function init(): Promise<void> {
   await sql`CREATE INDEX IF NOT EXISTS idx_emails_slug_date ON client_emails (client_slug, received_at DESC)`;
   await sql`ALTER TABLE client_emails ADD COLUMN IF NOT EXISTS superhuman_link TEXT`;
   await sql`ALTER TABLE client_emails ADD COLUMN IF NOT EXISTS body_html TEXT`;
+
+  // Weggegooide mails: de lijst "Laatste mails" komt live uit de mailbox, dus
+  // wegklikken kan alleen door te onthouden wát er weg moest. Dit raakt de
+  // mailbox zelf niet; het bericht blijft gewoon in Outlook/Superhuman staan.
+  await sql`
+    CREATE TABLE IF NOT EXISTS client_mail_hidden (
+      client_slug TEXT NOT NULL,
+      message_id  TEXT NOT NULL,
+      hidden_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (client_slug, message_id)
+    )`;
 
   // Actuele stand van zaken per klant: een set kaartjes (titel/kleur/bullets),
   // opgeslagen als JSON-tekst. Wordt via de brug bijgewerkt op basis van de mails.
@@ -275,6 +292,23 @@ async function init(): Promise<void> {
   await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS dev_taak TEXT`;
   await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS dev_toelichting TEXT`;
   await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS dev_docs JSONB`;
+  // Wat er meetbaar af moet zijn als de sitebouwer klaar is (["live","koppen",…]).
+  // Zonder zo'n lijstje is "is dit gedaan?" een vraag die je met de hand op de
+  // site beantwoordt, of helemaal niet.
+  await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS dev_punten JSONB`;
+  // De dag waarop een taak staat gepland. De week volgt uit deze datum; leeg
+  // betekent dat er nog geen dag gekozen is en alleen de week bekend is.
+  await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS datum DATE`;
+  // Het archief van de kaart: alles wat is weggeschoven, met datum en reden.
+  // Bewust een EIGEN kolom en niet ergens in de toelichting: juist het opruimen
+  // overschrijft die tekst volledig, en de tekst wordt afgekapt. Precies de twee
+  // dingen waar dit archief tegen moet beschermen. Vorm:
+  // [{ op: "2026-08-06T…", soort: "titel"|"notities"|"overloop", tekst: "…" }]
+  await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS archief JSONB`;
+  // Heeft Maarten de titel zelf geschreven? Dan hernoemt de automaat hem nooit
+  // meer. Zonder deze vlag zet de eerstvolgende keer dat de planning geladen
+  // wordt zijn eigen titel weer terug, en dat is het ergst denkbare gedrag.
+  await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS taak_handmatig BOOLEAN NOT NULL DEFAULT false`;
 
   // Handmatige fase-vinkjes per pagina voor de projectkaart in de weekplanning.
   // Een rij hier wint van de afgeleide stand (beide kanten op: afvinken en terugzetten).

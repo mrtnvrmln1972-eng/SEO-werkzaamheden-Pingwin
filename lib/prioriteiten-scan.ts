@@ -1,15 +1,21 @@
 import { sql, ensureSchema } from "./db";
 import { getClientBySlug } from "./clients";
-import { getGscPageOpportunities } from "./google";
-import { getSiteOrganicKeywords, getAiResponsesCount, ahrefsConfigured } from "./ahrefs";
+import { getGscQueryPagePairs, getGscQueryPagePairsCompare, getGscKeywordUrlFlips } from "./google";
+import { getPageSchemaStatusAll } from "./page-schema";
+import { getSiteOrganicKeywords, getAiResponsesCount, ahrefsConfigured, getKeywordsOverview, getBrokenBacklinks } from "./ahrefs";
 import { getMetaKansen } from "./meta-ctr";
 import { getCannibalAnalysis } from "./cannibal-redirect";
-import { getInternalLinksState } from "./internal-links";
+import { getInternalLinksState, markInternalLinksRunning, runInternalLinks } from "./internal-links";
+import { anthropicConfigured } from "./anthropic";
 import { getOpportunities } from "./keyword-opportunities";
+import { getOrgData } from "./org-data";
 import {
   scoreBevinding, wijsTiersToe, confidenceVoorLens, verwachteUplift,
   ctrVoorPositie, type Bevinding,
 } from "./prioriteiten-score";
+import {
+  bouwKlantContext, weeg, bepaalIntentie, bepaalFit, type KlantContext,
+} from "./prioriteiten-context";
 import { getSetting, setSetting } from "./settings";
 import { getWeekplan } from "./weekplan";
 import { urlKey } from "./url-key";
@@ -38,7 +44,11 @@ export const SETTING_PRIO_CRON_TIK = "prio_cron_laatste_tik";
 export type Lens = {
   sleutel: string;
   naam: string;
-  status: "pass" | "aandacht" | "kritiek" | "niet-aangesloten";
+  // "pass" betekent: gekeken, niets gevonden. "niet-gedraaid" betekent: de
+  // onderliggende analyse bestaat wel, maar is voor deze klant nog nooit gedraaid,
+  // dus er is niet gekeken. Dat verschil moet zichtbaar zijn, anders leest een
+  // lege lijst als "hier is niets te halen" terwijl niemand heeft gekeken.
+  status: "pass" | "aandacht" | "kritiek" | "niet-aangesloten" | "niet-gedraaid";
   toelichting: string;
   gevonden: number;
 };
@@ -231,67 +241,14 @@ function isMerkterm(kw: string, naam: string, domein: string): boolean {
   return false;
 }
 
-/**
- * Intentie uit het zoekwoord. Bewust dezelfde woordenlijsten als de skill, en op
- * hele woorden gematcht: op losse letters maakte "vs" van "advies" een
- * vergelijkings-zoekwoord en "test" van "protest".
- */
-const INTENT_WOORDEN: [string, string[]][] = [
-  ["transactional", ["kopen", "bestellen", "offerte", "abonnement", "prijzen", "korting", "boeken", "afsluiten"]],
-  ["lokaal-commercial", ["in de buurt", "bij mij", "regio", "amsterdam", "rotterdam", "utrecht", "den haag",
-    "eindhoven", "groningen", "tilburg", "almere", "breda", "nijmegen", "haarlem", "arnhem"]],
-  ["commercial", ["beste", "vergelijken", "review", "test", "alternatief", "vs", "top 10", "tips", "welke", "advies"]],
-  ["navigational", ["login", "inloggen", "contact", "klantenservice"]],
-  ["informational", ["wat is", "hoe werkt", "waarom", "uitleg", "betekenis", "verschil tussen", "soorten", "voorbeelden"]],
-];
-export function bepaalIntentie(keyword: string): string {
-  const k = (keyword || "").toLowerCase();
-  for (const [intent, woorden] of INTENT_WOORDEN) {
-    for (const w of woorden) {
-      if (new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(k)) return intent;
-    }
-  }
-  return "lokaal-commercial";
-}
-
-/**
- * Merk-fit: past dit zoekwoord bij wat de klant wil zijn? Onder de 0,4 vliegt het
- * uit de lijst, hoe hoog het volume ook is. Dat is de hele reden dat de scan om
- * een propositie-zin vraagt.
- */
-const BUDGET_WOORDEN = ["goedkop", "goedkoop", "voordelig", "budget", "lage prijs", "laagste prijs", "discount", "aanbieding", "afgeprijsd", "korting"];
-const TEGEN_BUDGET = ["geen prijsvechter", "niet goedkoop", "niet de goedkoopste", "niet budget", "geen budget", "geen discount"];
-const PREMIUM_PROP = ["premium", "luxe", "exclusief", "topkwaliteit", "hoogwaardig", "specialist"];
-const PREMIUM_WOORDEN = ["premium", "luxe", "exclusief", "high-end", "topkwaliteit", "op maat"];
-
-export function bepaalFit(keyword: string, kernwoorden: string[], propositie: string): number {
-  const k = (keyword || "").toLowerCase();
-  const p = (propositie || "").toLowerCase();
-  let overlap = 0;
-  for (const kw of kernwoorden) if (kw && k.includes(kw.toLowerCase())) overlap++;
-  let base = Math.min(0.5 + 0.15 * overlap, 0.9);
-  if (TEGEN_BUDGET.some((m) => p.includes(m)) && BUDGET_WOORDEN.some((b) => k.includes(b))) {
-    return Math.round(Math.min(base, 0.25) * 100) / 100;
-  }
-  if (PREMIUM_PROP.some((m) => p.includes(m)) && PREMIUM_WOORDEN.some((b) => k.includes(b))) base = Math.min(base + 0.1, 1);
-  if (overlap === 0 && !PREMIUM_PROP.some((m) => p.includes(m))) base = Math.min(base, 0.5);
-  return Math.round(base * 100) / 100;
-}
-
-/** Kernwoorden uit het klantprofiel: waar gaat deze klant eigenlijk over? */
-function kernwoordenUit(profiel: string, naam: string): string[] {
-  const stop = new Set(["de", "het", "een", "en", "van", "voor", "met", "in", "op", "die", "dat", "wij", "we", "onze", "is", "zijn", "bij", "aan", "als", "ook", "naar", "door", "uit", "over", "meer", "worden", "wordt"]);
-  const woorden = (profiel || "").toLowerCase().replace(/[^a-zà-ü0-9\s-]/g, " ").split(/\s+/)
-    .filter((w) => w.length > 4 && !stop.has(w));
-  const telling = new Map<string, number>();
-  for (const w of woorden) telling.set(w, (telling.get(w) || 0) + 1);
-  const top = [...telling.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12).map(([w]) => w);
-  const merk = (naam || "").toLowerCase().split(/\s+/).filter((w) => w.length > 3);
-  return [...new Set([...top, ...merk])];
-}
+// De weging (hoe koopgericht is dit zoekwoord, past het bij deze klant) staat in
+// lib/prioriteiten-context.ts. Hier stonden twee losse functies plus een vaste
+// lijst van veertien grote steden; die lijst kende het werkgebied van geen enkele
+// klant buiten de Randstad. Hier alleen nog doorgegeven voor wie ze importeert.
+export { bepaalIntentie, bepaalFit };
 
 // ── Stap 1: uitlezen wat het dashboard al weet ────────────────────────────
-async function stapEigen(slug: string, propositie: string, kern: string[]): Promise<Bevinding[]> {
+async function stapEigen(slug: string, ctx: KlantContext): Promise<Bevinding[]> {
   const uit: Bevinding[] = [];
   let n = 0;
   const id = (p: string) => `${p}${++n}`;
@@ -317,7 +274,7 @@ async function stapEigen(slug: string, propositie: string, kern: string[]): Prom
       url: pad(m.url), zoekwoord: m.keyword,
       maandvolume: Math.max(m.volume || 0, Math.round(m.impressions / 3)),
       huidigePositie: Math.round(m.position), targetPositie: Math.round(m.position),
-      intentie: bepaalIntentie(m.keyword), relevanceFit: bepaalFit(m.keyword, kern, propositie),
+      ...weeg(m.keyword, ctx),
       effort: 1, timeToEffect: 1, confidence: confidenceVoorLens("ctr_underperform"),
       ctrActueel: huidig, benchmarkCtr: verwacht,
       rationale: `Deze pagina wordt goed getoond op positie ${m.position.toFixed(1)}, maar de CTR is ${m.ctr.toFixed(1)}% terwijl ${m.expectedCtr.toFixed(1)}% normaal is voor die positie. Een betere titel en omschrijving pakken dat direct.`,
@@ -336,7 +293,7 @@ async function stapEigen(slug: string, propositie: string, kern: string[]): Prom
       url: pad(c.winnaar || beste.url || ""), zoekwoord: c.keyword,
       maandvolume: c.volume || 0,
       huidigePositie: Math.round(beste.positie ?? 0), targetPositie: Math.max(1, Math.round((beste.positie ?? 6) / 2)),
-      intentie: bepaalIntentie(c.keyword), relevanceFit: bepaalFit(c.keyword, kern, propositie),
+      ...weeg(c.keyword, ctx),
       effort: 4, timeToEffect: 2, confidence: confidenceVoorLens("cannibalisatie"),
       rationale: c.onderbouwing || `Meerdere pagina's ranken op dit zoekwoord, waardoor ze elkaar verdringen. ${c.actie || "Samenvoegen of omleiden naar de sterkste."}`,
       bron: "de opruimanalyse, via het tabje Opruimen",
@@ -355,7 +312,7 @@ async function stapEigen(slug: string, propositie: string, kern: string[]): Prom
       url: pad(doel.url), zoekwoord: kw,
       maandvolume: doel.impressies || 0,
       huidigePositie: Math.round(doel.huidigePositie || 0), targetPositie: Math.max(1, Math.round((doel.huidigePositie || 10) / 2)),
-      intentie: bepaalIntentie(kw), relevanceFit: bepaalFit(kw, kern, propositie),
+      ...weeg(kw, ctx),
       effort: 3, timeToEffect: 2, confidence: confidenceVoorLens("interne_links"),
       rationale: "Deze pagina krijgt weinig interne links, terwijl hij commercieel belangrijk is. Meer links vanaf sterke pagina's duwt hem omhoog zonder nieuwe content.",
       bron: "de interne-link-analyse, via het tabje Interne links",
@@ -372,7 +329,7 @@ async function stapEigen(slug: string, propositie: string, kern: string[]): Prom
       titel: `Geen pagina voor "${g.keyword}"`,
       url: "", zoekwoord: g.keyword, maandvolume: g.volume || 0,
       huidigePositie: 0, targetPositie: 5,
-      intentie: bepaalIntentie(g.keyword), relevanceFit: bepaalFit(g.keyword, kern, propositie),
+      ...weeg(g.keyword, ctx),
       effort: 6, timeToEffect: 4, confidence: confidenceVoorLens("content_gap"),
       rationale: g.reason || "Er is zoekvraag op dit onderwerp, maar geen eigen pagina die erop mikt.",
       bron: "de kansenlijst (Ahrefs plus concurrenten)",
@@ -382,7 +339,7 @@ async function stapEigen(slug: string, propositie: string, kern: string[]): Prom
 }
 
 // ── Stap 2: verse cijfers voor de lenzen die nog niet als motor bestaan ───
-async function stapVers(slug: string, propositie: string, kern: string[], startId: number): Promise<Bevinding[]> {
+async function stapVers(slug: string, ctx: KlantContext, startId: number): Promise<Bevinding[]> {
   const client = await getClientBySlug(slug);
   const domein = client?.domain || "";
   const uit: Bevinding[] = [];
@@ -393,36 +350,60 @@ async function stapVers(slug: string, propositie: string, kern: string[], startI
   // Lens 1, striking distance: positie 5 tot 20 met serieuze vertoningen. De twee
   // bronnen worden ontdubbeld op zoekwoord plus pagina, zoals de skill voorschrijft.
   const gezien = new Set<string>();
-  const gsc = await getGscPageOpportunities(domein, 90).catch(() => []);
-  for (const p of gsc) {
-    const kw = p.bestKeyword || "";
-    const pos = p.bestPosition ?? p.position;
-    if (!kw || !pos || pos < 5 || pos > 20) continue;
-    // Vertoningen van het ZOEKWOORD, niet van de pagina. Stond hier eerst wel: een
-    // pagina die op twintig zoekwoorden samen 200.000 keer verschijnt werd zo één
-    // zoekwoord van 200.000, en dat schoof onzin naar de top van de lijst.
-    const kwVertoningen = p.bestImpressions || 0;
-    if (kwVertoningen < 300) continue;              // 100/maand over 90 dagen
-    if (isMerkterm(kw, client?.name || "", domein)) continue;
-    const sleutel = `${kw}|${pad(p.url)}`;
+  // ELK zoekwoord per pagina, niet alleen het grootste. Hier stond eerst
+  // getGscPageOpportunities, en dat houdt per pagina één zoekwoord over (dat met
+  // de meeste vertoningen) en gooit de rest weg. Daarmee kon deze bril nooit meer
+  // dan één kans per pagina vinden: bij een site van 22 pagina's dus hooguit 22
+  // kandidaten, en na de positiefilter bleven er twee over. Terwijl juist het
+  // tweede en derde zoekwoord van een pagina vaak net buiten de top 10 hangen.
+  // Bewust getGscQueryPagePairs en niet de kleine variant: die haalt één keer
+  // 5000 rijen op, en Google sorteert op klikken. De rijen die we zoeken (weinig
+  // klikken, wel vertoningen) staan juist onderaan en vielen daar buiten. Deze
+  // bladert door tot 50.000 rijen en heeft een kort geheugen, dus hij is ook niet
+  // duurder als een ander scherm hem net ophaalde.
+  const matrix = await getGscQueryPagePairs(domein, 90).catch(() => []);
+  const kandidaten = matrix
+    .filter((m) => m.keyword && m.page && m.position >= 5 && m.position <= 20
+      && m.impressions >= 100                      // ruim 30 vertoningen per maand
+      && !isMerkterm(m.keyword, client?.name || "", domein))
+    .sort((a, b) => b.impressions - a.impressions)
+    .slice(0, 150);                                // grote sites niet laten ontploffen
+
+  // Zoekvolume erbij waar Ahrefs het weet, in één call. Weet hij het niet, dan
+  // blijven de vertoningen de basis; dat is een meting, geen schatting.
+  const volMap = new Map<string, number>();
+  if (ahrefsConfigured() && kandidaten.length) {
+    const uniek = [...new Set(kandidaten.map((m) => m.keyword))].slice(0, 100);
+    const ov = await getKeywordsOverview(uniek, "nl").catch(() => []);
+    for (const o of ov) if (o.volume != null) volMap.set(o.keyword.toLowerCase(), o.volume);
+  }
+
+  for (const m of kandidaten) {
+    const sleutel = `${m.keyword}|${pad(m.page)}`;
     if (gezien.has(sleutel)) continue;
     gezien.add(sleutel);
     uit.push({
       id: id("SD"), type: "striking_distance",
-      titel: `"${kw}" staat op ${pos.toFixed(0)}, net buiten beeld`,
-      url: pad(p.url), zoekwoord: kw,
-      maandvolume: Math.max(p.bestVolume || 0, Math.round(kwVertoningen / 3)),
-      huidigePositie: Math.round(pos), targetPositie: 3,
-      intentie: bepaalIntentie(kw), relevanceFit: bepaalFit(kw, kern, propositie),
+      titel: `"${m.keyword}" staat op ${m.position.toFixed(0)}, net buiten beeld`,
+      url: pad(m.page), zoekwoord: m.keyword,
+      maandvolume: Math.max(volMap.get(m.keyword.toLowerCase()) || 0, Math.round(m.impressions / 3)),
+      huidigePositie: Math.round(m.position), targetPositie: 3,
+      ...weeg(m.keyword, ctx),
       effort: 3, timeToEffect: 2, confidence: confidenceVoorLens("striking_distance"),
-      rationale: `Deze pagina staat al op positie ${pos.toFixed(0)} en wordt goed getoond. Van pagina 2 naar de top 3 is de kortste weg naar meer bezoekers, want de pagina bestaat al.`,
+      rationale: `Deze pagina staat al op positie ${m.position.toFixed(0)} en werd de afgelopen 90 dagen ${m.impressions} keer getoond op dit zoekwoord. Van pagina 2 naar de top 3 is de kortste weg naar meer bezoekers, want de pagina bestaat al.`,
       bron: "Search Console, laatste 90 dagen",
     });
   }
 
   // Lens 1 en 4 uit Ahrefs: striking distance die GSC mist, plus wegzakkers.
   if (ahrefsConfigured()) {
-    const kws = await getSiteOrganicKeywords(domein, "nl", 400).catch(() => []);
+    // Het vergelijkmoment MOET mee, anders vraagt Ahrefs de vorige positie niet
+    // op en is `positionPrev` altijd leeg. De wegzakker-toets hieronder begint met
+    // `if (vorig && ...)` en was daardoor sinds de bouw dood: die bril meldde bij
+    // elke klant "niets gevonden dat aandacht vraagt" zonder ooit te kunnen
+    // vinden. Negentig dagen terug, zelfde venster als de rest van de scan.
+    const toen = new Date(); toen.setDate(toen.getDate() - 90);
+    const kws = await getSiteOrganicKeywords(domein, "nl", 400, toen.toISOString().slice(0, 10)).catch(() => []);
     for (const k of kws) {
       if (!k.keyword || k.branded) continue;
       if (isMerkterm(k.keyword, client?.name || "", domein)) continue;
@@ -438,7 +419,7 @@ async function stapVers(slug: string, propositie: string, kern: string[], startI
           titel: `"${k.keyword}" zakt weg, van ${vorig} naar ${pos}`,
           url: pad(k.url || ""), zoekwoord: k.keyword, maandvolume: vol,
           huidigePositie: Math.round(pos), targetPositie: Math.max(1, Math.round(vorig)),
-          intentie: bepaalIntentie(k.keyword), relevanceFit: bepaalFit(k.keyword, kern, propositie),
+          ...weeg(k.keyword, ctx),
           effort: 4, timeToEffect: 2, confidence: confidenceVoorLens("verouderde_topper"),
           rationale: `Deze pagina stond op positie ${vorig} en is gezakt naar ${pos}. Terugwinnen wat je had is bijna altijd goedkoper dan iets nieuws bouwen; meestal is de content ingehaald door een concurrent.`,
       bron: "Ahrefs, positie nu tegen vorige meting",
@@ -453,12 +434,170 @@ async function stapVers(slug: string, propositie: string, kern: string[], startI
           titel: `"${k.keyword}" staat op ${pos}, net buiten beeld`,
           url: pad(k.url || ""), zoekwoord: k.keyword, maandvolume: vol,
           huidigePositie: Math.round(pos), targetPositie: 3,
-          intentie: bepaalIntentie(k.keyword), relevanceFit: bepaalFit(k.keyword, kern, propositie),
+          ...weeg(k.keyword, ctx),
           effort: 3, timeToEffect: 2, confidence: confidenceVoorLens("striking_distance"),
           rationale: `Positie ${pos} met ${vol} zoekopdrachten per maand. De pagina bestaat al, dus dit is bijwerken in plaats van bouwen.`,
       bron: "Ahrefs, organische zoekwoorden",
         });
       }
+    }
+
+  }
+
+  // ── Dezelfde brillen, maar op Search Console ─────────────────────────────
+  // Ahrefs is blind voor kleine lokale sites: van een hovenier kent hij vier
+  // zoekwoorden terwijl Search Console er honderden ziet. Alles hieronder werkt
+  // dus voor élke klant, groot of klein, en kost geen Ahrefs-credits.
+
+  // Wegzakkers: stond in de top 5, staat nu lager. Zelfde vraag als de
+  // Ahrefs-variant hierboven, maar dan op cijfers die er voor elke klant zijn.
+  const vergelijk = await getGscQueryPagePairsCompare(domein, 90).catch(() => []);
+  for (const v of vergelijk) {
+    if (v.positieVorig == null || v.positieVorig > 5) continue;
+    if (v.position <= 5 || v.position > 25) continue;
+    if (v.impressions < 100 && v.vertoningenVorig < 100) continue;
+    if (isMerkterm(v.keyword, client?.name || "", domein)) continue;
+    const sleutel = `${v.keyword}|${pad(v.page)}`;
+    if (gezien.has(sleutel)) continue;
+    gezien.add(sleutel);
+    uit.push({
+      id: id("OUD"), type: "verouderde_topper",
+      titel: `"${v.keyword}" zakt weg, van ${v.positieVorig} naar ${v.position}`,
+      url: pad(v.page), zoekwoord: v.keyword,
+      maandvolume: Math.round(Math.max(v.impressions, v.vertoningenVorig) / 3),
+      huidigePositie: Math.round(v.position), targetPositie: Math.max(1, Math.round(v.positieVorig)),
+      ...weeg(v.keyword, ctx),
+      effort: 4, timeToEffect: 2, confidence: confidenceVoorLens("verouderde_topper"),
+      rationale: `Deze pagina stond de vorige periode op positie ${v.positieVorig} en staat nu op ${v.position}. Terugwinnen wat je had is bijna altijd goedkoper dan iets nieuws bouwen; meestal is de content ingehaald door een concurrent.`,
+      bron: "Search Console, laatste 90 dagen tegen de 90 daarvoor",
+    });
+  }
+
+  // Content-gaten: er is aantoonbaar vraag (vertoningen), maar geen pagina die er
+  // goed op mikt. De Ahrefs-variant hiervan valt stil zonder concurrentenlijst;
+  // deze niet, want hij leest wat Google al over deze site laat zien.
+  for (const m of matrix) {
+    if (!m.keyword || !m.page) continue;
+    if (m.position <= 20 || m.position > 60) continue;
+    if (m.impressions < 200) continue;
+    if (isMerkterm(m.keyword, client?.name || "", domein)) continue;
+    const sleutel = `gap|${m.keyword}`;
+    if (gezien.has(sleutel)) continue;
+    gezien.add(sleutel);
+    uit.push({
+      id: id("GAP"), type: "content_gap",
+      titel: `Vraag naar "${m.keyword}", maar geen pagina die erop mikt`,
+      url: "", zoekwoord: m.keyword,
+      maandvolume: Math.round(m.impressions / 3),
+      huidigePositie: 0, targetPositie: 5,
+      ...weeg(m.keyword, ctx),
+      effort: 6, timeToEffect: 4, confidence: confidenceVoorLens("content_gap"),
+      rationale: `Google toont deze site hier al ${m.impressions} keer op in 90 dagen, maar blijft steken rond positie ${Math.round(m.position)} met ${pad(m.page)}. Dat is een pagina die er niet echt over gaat; een eigen pagina op dit onderwerp pakt die vraag wel.`,
+      bron: "Search Console, laatste 90 dagen",
+    });
+  }
+
+  // Cannibalisatie op het enige harde signaal: wisselt Google over de maanden van
+  // URL op hetzelfde zoekwoord? Dat betekent dat hij niet weet welke pagina moet
+  // ranken. Deze functie lag al in de code maar werd door de scan niet gebruikt;
+  // de bril leunde op een AI-analyse die iemand apart moest starten.
+  const flips = await getGscKeywordUrlFlips(domein, 3).catch(() => []);
+  const vertoningenPer = new Map<string, number>();
+  for (const m of matrix) vertoningenPer.set(m.keyword, (vertoningenPer.get(m.keyword) || 0) + m.impressions);
+  for (const f of flips) {
+    if (f.flips < 2 || f.topUrls.length < 2) continue;
+    if (isMerkterm(f.keyword, client?.name || "", domein)) continue;
+    const impr = vertoningenPer.get(f.keyword) || 0;
+    if (impr < 100) continue;
+    const sleutel = `flip|${f.keyword}`;
+    if (gezien.has(sleutel)) continue;
+    gezien.add(sleutel);
+    uit.push({
+      id: id("CAN"), type: "cannibalisatie",
+      titel: `Google wisselt van pagina op "${f.keyword}"`,
+      url: pad(f.topUrls[0] || ""), zoekwoord: f.keyword,
+      maandvolume: Math.round(impr / 3),
+      huidigePositie: 0, targetPositie: 3,
+      ...weeg(f.keyword, ctx),
+      effort: 4, timeToEffect: 2, confidence: 0.9,
+      rationale: `Over de laatste drie maanden liet Google hier ${f.topUrls.length} verschillende pagina's van deze site voor zien: ${f.topUrls.map((u) => pad(u)).join(", ")}. Wisselen betekent twijfel, en twijfel kost posities. Kies één pagina en laat de andere ernaar wijzen.`,
+      bron: "Search Console, wisselende pagina's over drie maanden",
+    });
+  }
+
+  // Structured data: pagina's die vertoningen krijgen maar waarvoor nog nooit een
+  // schema-advies is gemaakt. De motor hiervoor staat al in het dashboard; deze
+  // bril stond als "niet aangesloten" terwijl de data er gewoon was.
+  const schemaStatus = await getPageSchemaStatusAll(slug).catch(() => ({} as Record<string, string>));
+  const perPagina = new Map<string, number>();
+  for (const m of matrix) perPagina.set(m.page, (perPagina.get(m.page) || 0) + m.impressions);
+  const zonderSchema = [...perPagina.entries()]
+    .filter(([u, impr]) => impr >= 300 && (schemaStatus[urlKey(u)] || "idle") !== "done")
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 15);
+  for (const [u, impr] of zonderSchema) {
+    uit.push({
+      id: id("SCH"), type: "schema_gap",
+      titel: `Nog geen structured data op ${pad(u)}`,
+      url: pad(u), zoekwoord: "",
+      maandvolume: Math.round(impr / 3),
+      huidigePositie: 0, targetPositie: 0,
+      intentie: "commercial", relevanceFit: 0.7,
+      effort: 2, timeToEffect: 2, confidence: 0.9,
+      rationale: `Deze pagina werd in 90 dagen ${impr} keer getoond, maar heeft nog geen structured data. Daarmee mist Google de kans om er een rijker zoekresultaat van te maken, en AI-antwoorden pakken de feiten er minder makkelijk uit.`,
+      bron: "het schema-tabje, plus Search Console voor het belang",
+    });
+  }
+
+  // Antwoordblok: vraag-zoekwoorden waar de site al op de eerste pagina staat.
+  // Dat is precies de plek waar het blok bovenaan te pakken is; verder weg dan
+  // positie 10 wordt het een gok, en een gok hoort niet in deze lijst.
+  const VRAAGWOORD = /^(hoe|wat|waarom|wanneer|welke|wie|waar|kan|mag|moet|hoeveel|is het|zijn er)\b/i;
+  for (const m of matrix) {
+    if (!VRAAGWOORD.test(m.keyword)) continue;
+    if (m.position < 2 || m.position > 10) continue;
+    if (m.impressions < 150) continue;
+    if (isMerkterm(m.keyword, client?.name || "", domein)) continue;
+    const sleutel = `fs|${m.keyword}|${pad(m.page)}`;
+    if (gezien.has(sleutel)) continue;
+    gezien.add(sleutel);
+    uit.push({
+      id: id("FS"), type: "featured_snippet",
+      titel: `Kans op het antwoordblok bij "${m.keyword}"`,
+      url: pad(m.page), zoekwoord: m.keyword,
+      maandvolume: Math.round(m.impressions / 3),
+      huidigePositie: Math.round(m.position), targetPositie: 1,
+      ...weeg(m.keyword, ctx),
+      effort: 2, timeToEffect: 1, confidence: confidenceVoorLens("featured_snippet"),
+      rationale: `Dit is een vraag, en deze pagina staat er al op ${Math.round(m.position)}. Google pakt het blok bovenaan bijna altijd van de eerste pagina. Zet het antwoord in twee of drie zinnen direct onder de kop, en de kans is er.`,
+      bron: "Search Console, vraag-zoekwoorden op de eerste pagina",
+    });
+  }
+
+  if (ahrefsConfigured()) {
+    // Kapotte backlinks: verdiende autoriteit die in een 404 valt. Eén omleiding
+    // en je hebt hem terug; goedkoper dan welke linkbuilding ook.
+    const kapot = await getBrokenBacklinks(domein, 100).catch(() => []);
+    const perDoel = new Map<string, { n: number; beste: number; van: string }>();
+    for (const b of kapot) {
+      const p = pad(b.naar);
+      const cur = perDoel.get(p) || { n: 0, beste: 0, van: b.van };
+      cur.n += 1;
+      if ((b.domainRating || 0) > cur.beste) { cur.beste = b.domainRating || 0; cur.van = b.van; }
+      perDoel.set(p, cur);
+    }
+    for (const [doel, info] of [...perDoel.entries()].sort((a, b) => b[1].beste - a[1].beste).slice(0, 10)) {
+      uit.push({
+        id: id("BL"), type: "backlinks",
+        titel: `${info.n} ${info.n === 1 ? "kapotte link wijst" : "kapotte links wijzen"} naar ${doel}`,
+        url: doel, zoekwoord: "",
+        maandvolume: Math.max(50, info.n * 50),
+        huidigePositie: 0, targetPositie: 0,
+        intentie: "commercial", relevanceFit: 0.7,
+        effort: 1, timeToEffect: 1, confidence: 0.9,
+        rationale: `Andere sites linken hier naartoe, maar de pagina bestaat niet meer. De sterkste verwijzing komt van ${info.van}${info.beste ? ` (domeinsterkte ${Math.round(info.beste)})` : ""}. Eén omleiding naar de juiste pagina en die waarde staat weer aan; dat is goedkoper dan welke linkbuilding ook.`,
+        bron: "Ahrefs, kapotte backlinks",
+      });
     }
 
     // Lens 12, AI-zichtbaarheid. Draait al bij de KPI's; hier als kans geduid.
@@ -489,18 +628,70 @@ const LENS_NAMEN: [string, string][] = [
   ["content_gap", "Content-gaten"],
   ["interne_links", "Pagina's met te weinig interne links"],
   ["aeo", "Zichtbaarheid in AI-antwoorden"],
-];
-const NIET_AANGESLOTEN: [string, string][] = [
-  ["featured_snippet", "Kans op het antwoordblok bovenaan"],
-  ["site_audit", "Technische fouten"],
   ["schema_gap", "Ontbrekende structured data"],
   ["backlinks", "Kapotte en verdwenen backlinks"],
+  ["featured_snippet", "Kans op het antwoordblok bovenaan"],
+];
+const NIET_AANGESLOTEN: [string, string][] = [
+  ["site_audit", "Technische fouten"],
 ];
 
-function bouwLenzen(regels: Bevinding[]): Lens[] {
+/**
+ * Drie lenzen lezen niet zelf, maar halen hun bevindingen uit een analyse die
+ * elders in het dashboard draait. Is die voor deze klant nooit gedraaid, dan komt
+ * er niets uit, en dat is iets ánders dan "niets gevonden". Zonder dit onderscheid
+ * meldt de scan "pass, niets dat aandacht vraagt" over een bril die dicht zat.
+ */
+// Alleen interne links staat hier nog. Opruimen en content-gaten hadden ook zo'n
+// afhankelijkheid, maar die hebben nu een eigen Search Console-bron en vinden dus
+// altijd iets als er iets te vinden is.
+const LENS_BRON: Record<string, string> = {
+  interne_links: "de interne-link-analyse, op het tabje Interne links",
+};
+async function bronnenGedraaid(slug: string): Promise<Set<string>> {
+  const [canni, links, gaps] = await Promise.all([
+    getCannibalAnalysis(slug).catch(() => null),
+    getInternalLinksState(slug).catch(() => null),
+    getOpportunities(slug).catch(() => []),
+  ]);
+  const uit = new Set<string>();
+  if (canni?.result?.clusters?.length) uit.add("cannibalisatie");
+  if (links?.result?.doelpaginas?.length) uit.add("interne_links");
+  if (gaps.length) uit.add("content_gap");
+  return uit;
+}
+
+/**
+ * Ontbreekt de interne-link-analyse, start hem dan zelf in plaats van Maarten een
+ * knop te laten zoeken. Bewust fire-and-forget en bewust alleen als er niets
+ * loopt: de analyse zet zichzelf meteen op "running", dus een tweede scan start
+ * hem niet opnieuw. Hij telt mee vanaf de volgende scan, en dat staat ook zo in
+ * de toelichting van die bril.
+ */
+async function startOntbrekendeAnalyses(slug: string, gedraaid: Set<string>): Promise<boolean> {
+  if (gedraaid.has("interne_links")) return false;
+  if (!anthropicConfigured()) return false;
+  const st = await getInternalLinksState(slug).catch(() => null);
+  if (st?.status === "running") return true;
+  try {
+    await markInternalLinksRunning(slug, []);
+    void runInternalLinks(slug, []).catch(() => { /* de bril meldt het vanzelf */ });
+    return true;
+  } catch { return false; }
+}
+
+function bouwLenzen(regels: Bevinding[], gedraaid: Set<string>, gestart: boolean): Lens[] {
   const lenzen: Lens[] = LENS_NAMEN.map(([sleutel, naam]) => {
     const eigen = regels.filter((r) => r.type === sleutel && r.tier !== "SKIP");
     const urgent = eigen.filter((r) => r.tier === "1").length;
+    if (!eigen.length && LENS_BRON[sleutel] && !gedraaid.has(sleutel)) {
+      return {
+        sleutel, naam, status: "niet-gedraaid" as const, gevonden: 0,
+        toelichting: gestart
+          ? `Hier is nog niet gekeken, maar ik heb ${LENS_BRON[sleutel]} zojuist voor je gestart. Die draait nu; bij de volgende scan telt deze bril mee.`
+          : `Hier is niet gekeken: ${LENS_BRON[sleutel]} is voor deze klant nog niet gedraaid. Draai die eerst, dan telt deze bril mee.`,
+      };
+    }
     const status: Lens["status"] = urgent > 0 ? "kritiek" : eigen.length > 0 ? "aandacht" : "pass";
     return {
       sleutel, naam, status, gevonden: eigen.length,
@@ -536,6 +727,34 @@ function bouwSamenvatting(regels: Bevinding[], uplift: number, delta: PrioResult
   return stukken.join(" ");
 }
 
+/**
+ * De klantcontext voor deze run: waar gaat deze klant over, wat verkoopt hij, en
+ * waar werkt hij? Bewust uit gemeten data (Search Console, de eigen pagina's, de
+ * bedrijfsgegevens) en niet uit een vaste lijst, want een vaste lijst kent geen
+ * enkele klant buiten de vier grote steden.
+ *
+ * De Search Console-aanroep is dezelfde als die stap 2 doet, en die heeft een kort
+ * geheugen; deze regel kost dus geen extra opvraag.
+ */
+async function bouwContextVoor(slug: string, domein: string, profiel: string, naam: string, propositie: string): Promise<KlantContext> {
+  const [matrix, org] = await Promise.all([
+    domein ? getGscQueryPagePairs(domein, 90).catch(() => []) : Promise.resolve([]),
+    getOrgData(slug).catch(() => null),
+  ]);
+  const d = org?.data;
+  const extraPlaatsen = [
+    ...(d?.plaats ? [d.plaats] : []),
+    ...(d?.areaServed || []),
+    ...((d?.vestigingen || []).map((v) => v.plaats).filter(Boolean) as string[]),
+  ];
+  return bouwKlantContext({
+    profiel, naam, propositie,
+    zoekwoorden: [...new Set(matrix.map((m) => m.keyword).filter(Boolean))],
+    urls: [...new Set(matrix.map((m) => m.page).filter(Boolean))],
+    extraPlaatsen,
+  });
+}
+
 // ── De run ────────────────────────────────────────────────────────────────
 export async function runPrioriteitenScan(slug: string): Promise<void> {
   await ensureSchema();
@@ -546,19 +765,19 @@ export async function runPrioriteitenScan(slug: string): Promise<void> {
     if (!client) { await faal(slug, "Klant niet gevonden."); return; }
     const r = await readRow(slug);
     const propositie = r?.propositie || "";
-    const kern = kernwoordenUit(client.seoProfile || "", client.name || "");
+    const ctx = await bouwContextVoor(slug, client.domain || "", client.seoProfile || "", client.name || "", propositie);
 
     // Stap 1
     let bevindingen: Bevinding[] = r?.tussenstand || [];
     if (!r?.tussenstand || r.fase === "eigen") {
-      bevindingen = await stapEigen(slug, propositie, kern);
+      bevindingen = await stapEigen(slug, ctx);
       await sql`UPDATE client_prioriteiten_scan SET fase = 'vers', tussenstand = ${JSON.stringify(bevindingen)}, updated_at = now() WHERE client_slug = ${slug}`;
     }
 
     // Stap 2
     const verseNodig = !r?.tussenstand || r.fase === "eigen" || r.fase === "vers";
     if (verseNodig) {
-      const vers = await stapVers(slug, propositie, kern, bevindingen.length);
+      const vers = await stapVers(slug, ctx, bevindingen.length);
       bevindingen = [...bevindingen, ...vers];
       await sql`UPDATE client_prioriteiten_scan SET fase = 'scoren', tussenstand = ${JSON.stringify(bevindingen)}, updated_at = now() WHERE client_slug = ${slug}`;
     }
@@ -584,12 +803,16 @@ export async function runPrioriteitenScan(slug: string): Promise<void> {
       ? { nieuw: regels.filter((x) => x.nieuw && x.tier !== "SKIP").length, opgelost, vorigeDatum: vorige.generatedAt }
       : null;
 
+    // Ontbrekende analyse meteen zelf starten, zodat de volgende scan compleet is.
+    const gedraaid = await bronnenGedraaid(slug);
+    const gestart = await startOntbrekendeAnalyses(slug, gedraaid);
+
     const uplift = verwachteUplift(bevindingen);
     const result: PrioResult = {
       samenvatting: bouwSamenvatting(bevindingen, uplift, delta),
       propositie,
       verwachteKlikkenPerMaand: uplift,
-      lenzen: bouwLenzen(bevindingen),
+      lenzen: bouwLenzen(bevindingen, gedraaid, gestart),
       regels,
       delta,
       generatedAt: new Date().toISOString(),

@@ -3,6 +3,7 @@ import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
 import { sql, ensureSchema } from "../../../../lib/db";
 import { getClientBySlug } from "../../../../lib/clients";
+import { sanitizeHtml } from "../../../../lib/veilige-html";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -70,12 +71,24 @@ export async function POST(req: NextRequest) {
   await ensureSchema(); await ensureTable();
   const action = String(body.action || "").trim();
 
+  // Een punt mag opgemaakte tekst zijn (vet, bullets, links). Vandaar de ruimere
+  // limiet dan de oude 600 tekens: opmaak-tags tellen mee, en een punt met een
+  // rijtje URL's paste er anders niet in.
   if (action === "add") {
     const persoon = String(body.persoon || "").trim().slice(0, 60);
-    const tekst = String(body.tekst || "").trim().slice(0, 600);
+    const tekst = sanitizeHtml(String(body.tekst || "").trim()).slice(0, 6000);
     if (!persoon || !tekst) return NextResponse.json({ ok: false, error: "Persoon en tekst zijn verplicht." }, { status: 400 });
     const { rows } = await sql`INSERT INTO client_discuss_items (client_slug, persoon, tekst) VALUES (${slug}, ${persoon}, ${tekst}) RETURNING id`;
     return NextResponse.json({ ok: true, id: rows[0].id });
+  }
+  // Een punt aanpassen. Kon eerst niet: een typefout betekende weggooien en
+  // opnieuw intypen.
+  if (action === "edit") {
+    const id = Number(body.id || 0);
+    const tekst = sanitizeHtml(String(body.tekst || "").trim()).slice(0, 6000);
+    if (!id || !tekst) return NextResponse.json({ ok: false, error: "Punt en tekst zijn verplicht." }, { status: 400 });
+    await sql`UPDATE client_discuss_items SET tekst = ${tekst} WHERE client_slug = ${slug} AND id = ${id}`;
+    return NextResponse.json({ ok: true });
   }
   if (action === "vink") {
     const id = Number(body.id || 0);

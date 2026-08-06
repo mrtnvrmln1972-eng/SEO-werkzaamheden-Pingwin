@@ -1,47 +1,51 @@
 "use client";
 
+// Het scherm Interne links. Alles wat je hier ziet komt uit de gedeelde
+// bouwstenen in app/_ui/Uitkomst.tsx; dit bestand bepaalt wélke informatie er
+// staat, niet hoe die eruitziet. Daarom staat er geen enkele afstand, kleur of
+// lettergrootte in, en bewaakt proeven/opmaak.proef.ts dat het zo blijft.
+
 import { useEffect, useRef, useState } from "react";
 import { urlKey } from "../../../../lib/url-key";
-import { mdToHtml } from "../../../../lib/markdown";
+import { Paneel, Blok, Tekst, Signalen, Chip, Chips, Pad, Tabel, Leeg } from "../../../_ui/Uitkomst";
 
-type SuggestedLink = { bronUrl: string; relevantie?: number; autoriteit?: string; verkeer?: number; linkbudget?: string; score?: string; passage?: string; nieuweZin?: boolean; ankertekst?: string; ankertype?: string; positie?: string; verwachteImpact?: string };
+type SuggestedLink = { bronUrl: string; relevantie?: number; autoriteit?: string; verkeer?: number; linkbudget?: string; score?: string; passage?: string; nieuweZin?: boolean; ankertekst?: string; ankertype?: string; positie?: string; verwachteImpact?: string; urlRating?: number | null; urGemeten?: boolean; urDatum?: string };
 type AnchorItem = { anker: string; type?: string; aantal?: number; status?: string };
 type TargetPage = { url: string; laag?: string; cluster?: string; primairZoekwoord?: string; huidigePositie?: number; doel?: string; baselineInterneLinks?: number; score?: string; voorgesteldeLinks: SuggestedLink[]; ankerprofiel?: AnchorItem[]; gaten?: string[]; waarschuwingen?: string[] };
 type Structure = { wezen?: string[]; pillarGaten?: string[]; clusterNotities?: string };
-type Datakwaliteit = { crawl?: boolean; gsc?: boolean; ahrefsUrlRating?: boolean; contentMapping?: boolean; opmerking?: string };
+type Datakwaliteit = { crawl?: boolean; gsc?: boolean; ahrefsUrlRating?: boolean; contentMapping?: boolean; opmerking?: string; urDatum?: string; urGemeten?: number };
 type Result = { samenvatting: string; datakwaliteit?: Datakwaliteit; doelpaginas: TargetPage[]; structuur?: Structure; generatedAt: string | null };
-type Suggestion = { url: string; positie: number; primairZoekwoord: string; impressies: number };
+type Suggestion = { url: string; positie: number; primairZoekwoord: string; impressies: number; extraBezoekers?: number; doelPositie?: number; reden?: string };
 type State = { status: string; result: Result | null; targets: string[]; error: string; updatedAt: string | null };
 
-function scoreClass(s?: string): string {
+function toon(s?: string): "goed" | "accent" | "neutraal" {
   const v = (s || "").toLowerCase();
-  if (v.includes("hoog")) return "hoog";
-  if (v.includes("midden")) return "midden";
-  return "laag";
+  if (v.includes("hoog")) return "goed";
+  if (v.includes("midden")) return "accent";
+  return "neutraal";
 }
-function num(n?: number): string { return n != null && Number.isFinite(n) ? String(Math.round(n * 10) / 10) : "—"; }
+function getal(n?: number): string { return n != null && Number.isFinite(n) ? String(Math.round(n * 10) / 10).replace(".", ",") : "—"; }
+function dag(iso?: string): string { return iso ? new Date(iso).toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" }) : ""; }
 
 // Vast herkenningspunt per doelpagina, zodat een ander scherm hierheen kan scrollen.
 const ilBlokId = (url: string) => "ilrow-" + (url || "").replace(/[^a-zA-Z0-9]/g, "-");
 
-export default function InternalLinksPanel({ slug, openTarget }: {
+export default function InternalLinksPanel({ slug, domein, openTarget }: {
   slug: string;
+  domein?: string;
   /** Van buiten meteen op het blok van één doelpagina landen. */
   openTarget?: { url: string; n: number } | null;
 }) {
   const [state, setState] = useState<State | null>(null);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [rows, setRows] = useState<{ url: string; positie?: number; primairZoekwoord?: string }[]>([]);
+  const [rows, setRows] = useState<Suggestion[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [custom, setCustom] = useState("");
   const [loadingSug, setLoadingSug] = useState(true);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
-  const [configuring, setConfiguring] = useState(false);
+  const [kiezen, setKiezen] = useState(false);
 
-  // Binnenkomen vanuit de prioriteitenscan: scrol naar het blok van die doelpagina.
-  // Matchen met de gedeelde urlKey, want deze lijst draagt volledige URL's en de
-  // scan werkt met paden.
   const openHandledRef = useRef(0);
   useEffect(() => {
     const doelen = state?.result?.doelpaginas;
@@ -71,14 +75,13 @@ export default function InternalLinksPanel({ slug, openTarget }: {
   }
   useEffect(() => { load(); loadSuggestions(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [slug]);
 
-  // Vul de kieslijst zodra suggesties + vorige doelen binnen zijn (voorstel is standaard aangevinkt).
   useEffect(() => {
-    const map = new Map<string, { url: string; positie?: number; primairZoekwoord?: string }>();
-    for (const s of suggestions) map.set(s.url, { url: s.url, positie: s.positie, primairZoekwoord: s.primairZoekwoord });
-    for (const t of state?.targets || []) if (!map.has(t)) map.set(t, { url: t });
+    const map = new Map<string, Suggestion>();
+    for (const s of suggestions) map.set(s.url, s);
+    for (const t of state?.targets || []) if (!map.has(t)) map.set(t, { url: t, positie: 0, primairZoekwoord: "", impressies: 0 });
     setRows([...map.values()]);
     if (selected.size === 0) {
-      const init = new Set<string>(suggestions.map((s) => s.url));
+      const init = new Set<string>(suggestions.slice(0, 5).map((s) => s.url));
       for (const t of state?.targets || []) init.add(t);
       setSelected(init);
     }
@@ -99,162 +102,191 @@ export default function InternalLinksPanel({ slug, openTarget }: {
     try { if (/^https?:\/\//i.test(u)) u = new URL(u).pathname; } catch { /* laat staan */ }
     if (!u.startsWith("/")) u = "/" + u;
     if (u.length > 1) u = u.replace(/\/+$/, "");
-    setRows((prev) => prev.some((r) => r.url === u) ? prev : [...prev, { url: u }]);
+    setRows((prev) => prev.some((r) => r.url === u) ? prev : [...prev, { url: u, positie: 0, primairZoekwoord: "", impressies: 0 }]);
     setSelected((prev) => new Set(prev).add(u));
     setCustom("");
   }
 
-  async function run() {
-    const targets = [...selected];
+  async function run(doelen?: string[]) {
+    const targets = doelen ?? [...selected];
     if (busy || state?.status === "running") return;
-    if (!targets.length) { setErr("Kies minstens één doelpagina."); return; }
+    if (!targets.length) { setErr("Kies minstens één pagina om te versterken."); return; }
     setBusy(true); setErr("");
     try {
       const d = await fetch("/api/admin/internal-links", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, targets }) }).then((r) => r.json());
       if (!d.ok) { setErr(d.error || "Starten mislukt."); return; }
-      setConfiguring(false);
+      setKiezen(false);
       await load();
     } catch { setErr("Starten mislukt."); } finally { setBusy(false); }
   }
 
-  const running = state?.status === "running";
+  const draait = state?.status === "running";
   const result = state?.result;
   const dk = result?.datakwaliteit;
-  const showPicker = !running && (configuring || !result);
+  const toonKiezer = !draait && (kiezen || !result);
+  const totaalWinst = rows.filter((r) => selected.has(r.url)).reduce((n, r) => n + (r.extraBezoekers || 0), 0);
 
   return (
-    <div className="cannibal-panel">
-      <div className="cockpit-card acc-orange">
-        <div className="ck-section-head">
-          <span>Interne-links-optimalisatie</span>
-          {result && !running && !configuring && (
-            <button type="button" className="pcd-btn" onClick={() => setConfiguring(true)}>Doelpagina&rsquo;s aanpassen</button>
-          )}
-        </div>
-        <p className="muted" style={{ fontSize: 12, margin: "2px 0 12px" }}>
-          Draait de agentic skill <em>interne-links-optimalisatie</em> (dezelfde methodiek als in Cowork): vindt per doelpagina de best passende interne links op relevantie, autoriteit, verkeer en linkbudget, met een gevarieerd ankerprofiel, de pillar-dochter-structuur bewaakt, en nooit een link naar een te-redirecten pagina. Je kunt wegklikken; het draait op de achtergrond.
-        </p>
-        {err && <div className="login-error" style={{ marginBottom: 8 }}>{err}</div>}
-        {state?.status === "error" && state.error && <div className="login-error" style={{ marginBottom: 8 }}>{state.error}</div>}
-
-        {showPicker && (
-          <div className="il-picker">
-            <div className="pcd-docs-head">Doelpagina&rsquo;s (de te versterken pagina&rsquo;s)</div>
-            <p className="muted" style={{ fontSize: 12, margin: "0 0 10px" }}>
-              Voorstel: striking-distance pagina&rsquo;s (positie 5-15). Vink af/aan of voeg een eigen URL toe.
-            </p>
-            {loadingSug && <div className="muted">Voorstel laden…</div>}
-            {!loadingSug && rows.length === 0 && <div className="muted" style={{ marginBottom: 8 }}>Geen striking-distance pagina&rsquo;s gevonden. Voeg hieronder zelf een doelpagina toe.</div>}
-            <div className="il-target-list">
-              {rows.map((r) => (
-                <label key={r.url} className={"il-target-row" + (selected.has(r.url) ? " on" : "")}>
-                  <input type="checkbox" checked={selected.has(r.url)} onChange={() => toggle(r.url)} />
-                  <span className="il-target-url">{r.url}</span>
-                  {r.positie != null && <span className="il-target-meta">positie {num(r.positie)}</span>}
-                  {r.primairZoekwoord && <span className="muted il-target-kw">{r.primairZoekwoord}</span>}
-                </label>
-              ))}
-            </div>
-            <div className="il-add">
-              <input type="text" value={custom} placeholder="/eigen-url/ toevoegen…" onChange={(e) => setCustom(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustom(); } }} />
-              <button type="button" className="pcd-btn" onClick={addCustom}>Toevoegen</button>
-            </div>
-            <div className="il-run-row">
-              <button type="button" className={"pcd-btn pcd-btn-primary" + (busy ? " busy" : "")} onClick={run} disabled={busy}>
-                {busy ? "Starten…" : `Analyse draaien (${selected.size})`}
-              </button>
-              {result && <button type="button" className="pcd-btn" onClick={() => setConfiguring(false)}>Annuleren</button>}
-            </div>
-          </div>
-        )}
-
-        {running && <div className="muted" style={{ marginTop: 6 }}>Analyse draait op de achtergrond… (crawl + redenering kan een paar minuten duren)</div>}
-
-        {result && !showPicker && (
+    <Paneel
+      titel="Interne links"
+      uitleg="Zoekt per pagina die je wilt versterken de beste plekken op je eigen site om vandaan te linken: sterke pagina's die er inhoudelijk bij passen, met een ankertekst die past en zonder je linkprofiel te over-optimaliseren."
+      knoppen={
+        result && !draait && !kiezen ? (
           <>
-            {state?.updatedAt && <div className="ck-updated" style={{ marginBottom: 10 }}>bijgewerkt {new Date(state.updatedAt).toLocaleString("nl-NL")}{running ? " · nieuwe analyse draait…" : ""}</div>}
+            <button type="button" className="btn btn-primary" onClick={() => run(state?.targets || [])} disabled={busy}>
+              {busy ? "Starten…" : "Opnieuw draaien"}
+            </button>
+            <button type="button" className="btn" onClick={() => setKiezen(true)}>Andere pagina&rsquo;s kiezen</button>
+          </>
+        ) : null
+      }
+    >
+      {err && <Signalen regels={[err]} />}
+      {state?.status === "error" && state.error && <Signalen regels={[state.error]} />}
 
-            {dk && (
-              <div className="cannibal-dk">
-                <span className={"cannibal-dk-pill " + (dk.crawl ? "on" : "off")}>Crawl/linkgraaf {dk.crawl ? "✓" : "✗"}</span>
-                <span className={"cannibal-dk-pill " + (dk.gsc ? "on" : "off")}>Search Console {dk.gsc ? "✓" : "✗"}</span>
-                <span className={"cannibal-dk-pill " + (dk.ahrefsUrlRating ? "on" : "off")}>URL Rating {dk.ahrefsUrlRating ? "✓" : "✗"}</span>
-                {dk.opmerking && <div className="muted" style={{ fontSize: 12, marginTop: 6, width: "100%" }}>{dk.opmerking}</div>}
-              </div>
-            )}
+      {toonKiezer && (
+        <Blok titel="Welke pagina's wil je versterken?" meta={
+          selected.size > 0 && totaalWinst > 0
+            ? <Chip toon="goed">samen ongeveer {totaalWinst} extra bezoekers per maand</Chip>
+            : undefined
+        }>
+          <Tekst klein>
+            {"Dit zijn de pagina's die het meest te winnen hebben: ze staan al in de buurt van de top, maar net niet hoog genoeg. Het aantal bezoekers is een schatting op basis van hoe vaak ze nu in Google verschijnen en hoe vaak er op die plek geklikt wordt."}
+          </Tekst>
 
-            {result.samenvatting && <div className="cannibal-summary md" dangerouslySetInnerHTML={{ __html: mdToHtml(result.samenvatting) }} />}
+          {loadingSug && <Leeg>Kansen ophalen uit Search Console…</Leeg>}
+          {!loadingSug && rows.length === 0 && (
+            <Leeg>Geen kansen gevonden. Dat kan kloppen als deze klant nog weinig posities heeft, of als Search Console nog niet gekoppeld is. Voeg hieronder zelf een pagina toe.</Leeg>
+          )}
 
-            {result.doelpaginas.length === 0 && <div className="muted" style={{ marginTop: 8 }}>Geen link-adviezen gegenereerd.</div>}
+          {rows.length > 0 && (
+            <Tabel kolommen={["", "Pagina", "Staat nu", "Kan opleveren", "Waarom deze"]}>
+              {rows.map((r) => (
+                <tr key={r.url} className={selected.has(r.url) ? "uk-rij-aan" : ""}>
+                  <td><input type="checkbox" checked={selected.has(r.url)} onChange={() => toggle(r.url)} aria-label={`${r.url} meenemen`} /></td>
+                  <td><Pad pad={r.url} domein={domein} />{r.primairZoekwoord ? <div className="uk-tekst klein">{r.primairZoekwoord}</div> : null}</td>
+                  <td>{r.positie ? <Chip toon="neutraal">plek {getal(r.positie)}</Chip> : <Chip toon="uit">zelf toegevoegd</Chip>}</td>
+                  <td>{r.extraBezoekers ? <Chip toon="goed">+{r.extraBezoekers} per maand</Chip> : <Chip toon="uit">niet geschat</Chip>}</td>
+                  <td>{r.reden || ""}</td>
+                </tr>
+              ))}
+            </Tabel>
+          )}
 
-            {result.doelpaginas.map((tp, i) => (
-              <div className="cannibal-cluster" key={i} id={ilBlokId(tp.url)}>
-                <div className="cannibal-cluster-head">
-                  <strong><a href={tp.url} target="_blank" rel="noreferrer">{tp.url}</a></strong>
-                  {tp.laag && <span className={"il-laag " + (tp.laag.toLowerCase().includes("pillar") ? "pillar" : "dochter")}>{tp.laag}</span>}
-                  {tp.huidigePositie != null && <span className="muted">positie {num(tp.huidigePositie)}{tp.doel ? ` → ${tp.doel}` : ""}</span>}
-                  {tp.score && <span className={"cannibal-score " + scoreClass(tp.score)}>{tp.score}</span>}
-                </div>
-                {(tp.primairZoekwoord || tp.baselineInterneLinks != null) && (
-                  <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>
-                    {tp.primairZoekwoord ? `zoekwoord: ${tp.primairZoekwoord}` : ""}{tp.primairZoekwoord && tp.baselineInterneLinks != null ? " · " : ""}{tp.baselineInterneLinks != null ? `interne inkomende links nu: ${tp.baselineInterneLinks}` : ""}
-                  </div>
-                )}
+          <div className="uk-knoppen uk-knoppen-onder">
+            <input
+              className="uk-invoer" type="text" value={custom} placeholder="Of typ zelf een pagina, bijvoorbeeld /hovenier-oss"
+              onChange={(e) => setCustom(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustom(); } }}
+            />
+            <button type="button" className="btn" onClick={addCustom}>Toevoegen</button>
+          </div>
+          <div className="uk-knoppen uk-knoppen-onder">
+            <button type="button" className="btn btn-primary" onClick={() => run()} disabled={busy}>
+              {busy ? "Starten…" : `Analyse draaien voor ${selected.size} pagina${selected.size === 1 ? "" : "'s"}`}
+            </button>
+            {result && <button type="button" className="btn" onClick={() => setKiezen(false)}>Annuleren</button>}
+          </div>
+        </Blok>
+      )}
 
+      {draait && <Leeg>De analyse draait op de achtergrond. Hij crawlt de site en denkt daarna per pagina na, dus dit duurt een paar minuten. Je kunt gerust wegklikken.</Leeg>}
+
+      {result && !toonKiezer && (
+        <>
+          <Blok
+            titel="Wat de analyse ziet"
+            meta={
+              <Chips>
+                <Chip toon={dk?.crawl ? "goed" : "uit"}>Site gecrawld</Chip>
+                <Chip toon={dk?.gsc ? "goed" : "uit"}>Search Console</Chip>
+                <Chip toon={dk?.ahrefsUrlRating ? "goed" : "uit"} titel="De gemeten kracht van het linkprofiel per pagina">
+                  {dk?.ahrefsUrlRating ? `Autoriteit per pagina · ${dk.urGemeten ?? 0} gemeten${dk.urDatum ? ` op ${dag(dk.urDatum)}` : ""}` : "Autoriteit per pagina nog niet gemeten"}
+                </Chip>
+                {state?.updatedAt && <Chip toon="neutraal">bijgewerkt {dag(state.updatedAt)}</Chip>}
+              </Chips>
+            }
+          >
+            <Tekst>{result.samenvatting}</Tekst>
+            {dk?.opmerking && <Signalen regels={[dk.opmerking]} soort="notitie" domein={domein} />}
+          </Blok>
+
+          {result.doelpaginas.length === 0 && <Leeg>Er zijn geen link-adviezen uitgekomen. Draai de analyse opnieuw, of kies andere pagina&rsquo;s.</Leeg>}
+
+          {result.doelpaginas.map((tp, i) => (
+            <div key={i} id={ilBlokId(tp.url)}>
+              <Blok
+                titel={<Pad pad={tp.url} domein={domein} />}
+                meta={
+                  <Chips>
+                    {tp.laag && <Chip toon="neutraal">{tp.laag}</Chip>}
+                    {tp.huidigePositie != null && <Chip toon="accent">plek {getal(tp.huidigePositie)}{tp.doel ? ` → ${tp.doel}` : ""}</Chip>}
+                    {tp.primairZoekwoord && <Chip toon="neutraal">{tp.primairZoekwoord}</Chip>}
+                    {tp.baselineInterneLinks != null && <Chip toon="neutraal">{tp.baselineInterneLinks} interne links nu</Chip>}
+                    {tp.score && <Chip toon={toon(tp.score)}>{tp.score}</Chip>}
+                  </Chips>
+                }
+              >
                 {tp.voorgesteldeLinks?.length > 0 && (
-                  <div className="res-table-wrap">
-                    <table className="res-table">
-                      <thead><tr><th>Bronpagina</th><th>Score</th><th>Ankertekst</th><th>Positie</th><th>Waarom / passage</th></tr></thead>
-                      <tbody>
-                        {tp.voorgesteldeLinks.map((l, j) => (
-                          <tr key={j}>
-                            <td><a href={l.bronUrl} target="_blank" rel="noreferrer">{l.bronUrl}</a>{l.relevantie != null ? <span className="muted" style={{ display: "block", fontSize: 11 }}>relevantie {l.relevantie}</span> : null}</td>
-                            <td><span className={"cannibal-score " + scoreClass(l.score)}>{l.score || "—"}</span></td>
-                            <td><strong>{l.ankertekst || "—"}</strong>{l.ankertype ? <span className="il-anktype">{l.ankertype}</span> : null}</td>
-                            <td className="muted" style={{ fontSize: 12 }}>{l.positie || "—"}{l.nieuweZin ? " · nieuwe zin" : ""}</td>
-                            <td className="muted" style={{ fontSize: 12 }}>{l.passage || l.verwachteImpact || ""}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  <Tabel kolommen={["Link vanaf", "Autoriteit", "Kans", "Ankertekst", "Waarom"]}>
+                    {tp.voorgesteldeLinks.map((l, j) => (
+                      <tr key={j}>
+                        <td>
+                          <Pad pad={l.bronUrl} domein={domein} />
+                          {l.relevantie != null && <div className="uk-tekst klein">relevantie {l.relevantie} van 100</div>}
+                        </td>
+                        <td>
+                          {l.urlRating != null ? (
+                            <>
+                              <Chip toon={l.urGemeten ? "accent" : "uit"}>{getal(l.urlRating)}</Chip>
+                              <div className="uk-tekst klein">{l.urGemeten ? `gemeten ${dag(l.urDatum)}` : "geschat"}</div>
+                            </>
+                          ) : l.autoriteit ? <Chip toon="uit">{l.autoriteit}</Chip> : "—"}
+                        </td>
+                        <td><Chip toon={toon(l.score)}>{l.score || "—"}</Chip></td>
+                        <td>
+                          <strong>{l.ankertekst || "—"}</strong>
+                          <div className="uk-tekst klein">{[l.ankertype, l.positie, l.nieuweZin ? "nieuwe zin" : ""].filter(Boolean).join(" · ")}</div>
+                        </td>
+                        <td>{l.passage || l.verwachteImpact || ""}</td>
+                      </tr>
+                    ))}
+                  </Tabel>
                 )}
 
                 {tp.ankerprofiel && tp.ankerprofiel.length > 0 && (
-                  <div className="il-anchors">
-                    <span className="il-anchors-label">Ankerprofiel:</span>
-                    {tp.ankerprofiel.map((a, k) => (
-                      <span key={k} className={"il-anchor-chip " + (a.status === "voorgesteld" ? "new" : "old")}>
-                        {a.anker}{a.type ? ` · ${a.type}` : ""}{a.aantal ? ` ×${a.aantal}` : ""}
-                      </span>
-                    ))}
-                  </div>
+                  <>
+                    <div className="uk-tekst klein uk-boven">Ankerteksten die nu al naar deze pagina wijzen, plus wat we voorstellen:</div>
+                    <Chips>
+                      {tp.ankerprofiel.map((a, k) => (
+                        <Chip key={k} toon={a.status === "voorgesteld" ? "goed" : "neutraal"}>
+                          {a.anker}{a.type ? ` · ${a.type}` : ""}{a.aantal ? ` ×${a.aantal}` : ""}
+                        </Chip>
+                      ))}
+                    </Chips>
+                  </>
                 )}
 
-                {tp.gaten && tp.gaten.length > 0 && (
-                  <div className="il-gaps">{tp.gaten.map((g, k) => <div key={k} className="il-gap">⚠ {g}</div>)}</div>
-                )}
-                {tp.waarschuwingen && tp.waarschuwingen.length > 0 && (
-                  <div className="il-warns">{tp.waarschuwingen.map((w, k) => <div key={k} className="muted il-warn">{w}</div>)}</div>
-                )}
-              </div>
-            ))}
+                <Signalen regels={tp.gaten} domein={domein} />
+                <Signalen regels={tp.waarschuwingen} soort="notitie" domein={domein} />
+              </Blok>
+            </div>
+          ))}
 
-            {result.structuur && (result.structuur.wezen?.length || result.structuur.pillarGaten?.length || result.structuur.clusterNotities) && (
-              <div className="cannibal-tech">
-                <div className="pcd-docs-head">Structuur</div>
-                {result.structuur.clusterNotities && <div style={{ fontSize: 13, marginBottom: 8 }}>{result.structuur.clusterNotities}</div>}
-                {result.structuur.pillarGaten && result.structuur.pillarGaten.length > 0 && (
-                  <div className="il-gaps">{result.structuur.pillarGaten.map((g, k) => <div key={k} className="il-gap">⚠ {g}</div>)}</div>
-                )}
-                {result.structuur.wezen && result.structuur.wezen.length > 0 && (
-                  <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>Wees-pagina&rsquo;s (geen interne inkomende links): {result.structuur.wezen.join(", ")}</div>
-                )}
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    </div>
+          {result.structuur && (result.structuur.wezen?.length || result.structuur.pillarGaten?.length || result.structuur.clusterNotities) && (
+            <Blok titel="Structuur van de site">
+              <Tekst>{result.structuur.clusterNotities}</Tekst>
+              <Signalen regels={result.structuur.pillarGaten} domein={domein} />
+              {result.structuur.wezen && result.structuur.wezen.length > 0 && (
+                <>
+                  <div className="uk-tekst klein uk-boven">Pagina&rsquo;s waar geen enkele andere pagina naartoe linkt:</div>
+                  <Chips>{result.structuur.wezen.map((w, k) => <Chip key={k} toon="let-op"><Pad pad={w} domein={domein} /></Chip>)}</Chips>
+                </>
+              )}
+            </Blok>
+          )}
+        </>
+      )}
+    </Paneel>
   );
 }

@@ -4,13 +4,61 @@ import { useState, useRef, useEffect } from "react";
 import ActionCard, { type Action } from "./ActionCard";
 import TakenVoorstel, { type Oogst } from "./TakenVoorstel";
 import DeelKnoppen from "./DeelKnoppen";
-import ChatBestanden, { type ChatFile } from "./ChatBestanden";
+import ChatBestanden from "./ChatBestanden";
 import { linkifyHtml as linkify } from "../../../../lib/linkify";
 import { vraagHtml } from "../../../../lib/vraag-opmaak";
 import { striptVulzinnen } from "../../../../lib/vulzinnen";
+import { eersteKop } from "../../../../lib/chat-vouw";
+import { bestandMelding } from "../../../../lib/bestand-melding";
+import MailVenster from "./MailVenster";
+import Bronnenstrip, { type Bron } from "./Bronnenstrip";
 
-type Msg = { role: "user" | "assistant"; content: string; actions?: Action[]; soort?: "conclusie" | "oogst"; oogst?: Oogst };
+type Msg = { role: "user" | "assistant"; content: string; actions?: Action[]; soort?: "conclusie" | "oogst"; oogst?: Oogst; bronnen?: Bron[] };
 type Topic = { thread: string; count: number; title: string; summary: string; done: boolean };
+
+// ── Diep denken ──
+// De bird's eye draait op het zware model, want dit is het gesprek waarin de opzet
+// zelf ter discussie staat. Dat kost meer dan een gewoon antwoord, dus de knop
+// staat hier, waar het gesprek is, en niet ergens in de code. Alleen de eigenaar
+// mag de instelling lezen en zetten; kan hij dat niet, dan blijft de knop weg in
+// plaats van een foutmelding te tonen.
+const DIEP_SLEUTEL = "overview_diep_denken";
+function DiepDenken() {
+  const [aan, setAan] = useState<boolean | null>(null);
+  const [bezig, setBezig] = useState(false);
+  useEffect(() => {
+    let weg = false;
+    void fetch("/api/admin/settings")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (!weg && d?.ok) setAan(d.settings?.[DIEP_SLEUTEL] !== "uit"); })
+      .catch(() => { /* geen toegang: knop blijft weg */ });
+    return () => { weg = true; };
+  }, []);
+  if (aan === null) return null;
+  const zet = async (waarde: boolean) => {
+    setBezig(true);
+    try {
+      const r = await fetch("/api/admin/settings", {
+        method: "PATCH", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ key: DIEP_SLEUTEL, value: waarde ? "aan" : "uit" }),
+      });
+      if (r.ok) setAan(waarde);
+    } catch { /* stand blijft staan */ } finally { setBezig(false); }
+  };
+  return (
+    <button
+      type="button"
+      className={"ghost-btn small" + (aan ? " actief" : "")}
+      disabled={bezig}
+      title={aan
+        ? "Overview denkt diep: het zware model, voor strategie en tegenspraak. Kost meer per antwoord. Klik om uit te zetten."
+        : "Overview draait op het gewone model: sneller en goedkoper, minder diepgang. Klik om diep denken aan te zetten."}
+      onClick={() => void zet(!aan)}
+    >
+      Diep denken: {aan ? "aan" : "uit"}
+    </button>
+  );
+}
 
 // Slugs/URL's klikbaar maken: gedeelde bron in lib/linkify.ts (zelfde gedrag als
 // voorheen, nu herbruikbaar voor de projectkaarten en andere output-plekken).
@@ -37,22 +85,26 @@ function zonderWeekrecap(md: string, heeftVoorstel: boolean): string {
 // conclusie getrokken, dan is dát het stuk: dat is de gewogen samenvatting van het
 // hele gesprek. Anders alle antwoorden achter elkaar, want één los antwoord mist
 // vaak de helft van de redenering.
+// Alle antwoorden achter elkaar. Het mailvenster kijkt hierin of er al een
+// geschreven mail in het gesprek staat; `deelTekst` hieronder knijpt terug tot de
+// laatste conclusie (goed voor een document), en juist dan viel zo'n mail eruit.
+function alleAntwoorden(msgs: Msg[]): string {
+  return msgs.filter((m) => m.role === "assistant" && m.soort !== "oogst")
+    .map((m) => (m.content || "").trim()).filter(Boolean).join("\n\n");
+}
+
+// Het laatste blok: het laatste echte antwoord na jouw laatste vraag. Dat is wat
+// de knop "Zet dit blok in een mail" onderaan meeneemt. Het taken-voorstel
+// ("oogst") telt niet mee; dat is een knoppenlijst, geen tekst.
+function laatsteBlok(msgs: Msg[]): string {
+  const m = [...msgs].reverse().find((x) => x.role === "assistant" && x.soort !== "oogst" && (x.content || "").trim());
+  return (m?.content || "").trim();
+}
+
 function deelTekst(msgs: Msg[]): string {
   const conclusie = msgs.filter((m) => m.soort === "conclusie").map((m) => m.content || "").filter(Boolean);
   if (conclusie.length) return conclusie[conclusie.length - 1];
   return msgs.filter((m) => m.role === "assistant" && m.soort !== "oogst").map((m) => (m.content || "").trim()).filter(Boolean).join("\n\n");
-}
-
-// Het eerste kopje van een antwoord, als samenvatting op de ingeklapte balk.
-// Zonder kopje de eerste zin, zodat je altijd ziet waar het antwoord over ging.
-function eersteKop(md: string): string {
-  for (const raw of (md || "").split("\n")) {
-    const r = raw.trim();
-    const kop = /^#{1,3}\s+(.*)$/.exec(r);
-    if (kop) return kop[1].replace(/[#*]/g, "").trim().slice(0, 90);
-  }
-  const tekst = (md || "").replace(/^[-*#>\s]+/, "").replace(/\*\*/g, "").trim();
-  return (tekst.split(/(?<=[.!?])\s/)[0] || tekst).slice(0, 90) || "Eerder antwoord";
 }
 
 // Lichte Markdown → HTML (kopjes, bullets, vet, links, tabellen). Zelfde regels
@@ -122,6 +174,8 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
   const [oogstBusy, setOogstBusy] = useState<"" | "conclusie" | "taken">("");   // welke oogst-knop draait
   // Welke eerdere antwoorden Maarten weer heeft opengeklapt (bericht-index).
   const [openBericht, setOpenBericht] = useState<Record<number, boolean>>({});
+  // Welk blok staat er in het mailvenster? Leeg = venster dicht.
+  const [blokVoorMail, setBlokVoorMail] = useState<string>("");
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const loadSeq = useRef(0);
@@ -238,23 +292,11 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
     await fetch(`/api/admin/chat?slug=${encodeURIComponent(slug)}&thread=${encodeURIComponent(thread)}`, { method: "DELETE" }).catch(() => {});
   }
 
-  // Een binnengekomen bestand meldt zich in het gesprek zelf, als bericht met de
-  // link en de kern erbij. Zo zie je terug wanneer je wat hebt neergelegd, en de
-  // assistent heeft het in de geschiedenis staan naast de context die de server
-  // er al bij zet.
-  function meldBestand(thread: string, f: ChatFile) {
-    const wat = f.soort === "afbeelding" ? "Afbeelding" : "Document";
-    const regels = [
-      `${wat} toegevoegd aan het dossier: ${f.link ? `[${f.naam}](${f.link})` : f.naam}`,
-      f.kern ? `\n${f.kern}` : "",
-    ].filter(Boolean).join("\n");
-    setMessages((m) => {
-      const next: Msg[] = [...m, { role: "user", content: regels }];
-      fetch("/api/admin/chat", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread, messages: next }) }).catch(() => {});
-      return next;
-    });
-    setTopics((ts) => ts.map((x) => x.thread === thread ? { ...x, count: x.count + 1 } : x));
-  }
+  // Een binnengekomen bestand meldt zich NIET meer in het gesprek. Dat schreef een
+  // heel blok met de link en de complete samenvatting tussen je vragen in, terwijl
+  // de dropzone eronder al laat zien dat het bestand er is; de samenvatting staat
+  // daar nu uitklapbaar bij. De assistent kende het bestand toch al langs een
+  // andere weg: de server zet de inhoud zelf bij de context.
 
   function handleExecuted(id: string, result: NonNullable<Action["result"]>, executed: boolean) {
     setMessages((prev) => prev.map((m) => m.actions ? { ...m, actions: m.actions.map((a) => a.id === id ? { ...a, executed, result } : a) } : m));
@@ -272,7 +314,17 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
       if (openRef.current !== t) return;                 // Maarten is intussen naar een ander onderwerp
       if (d?.ok) {
         if (stap === "conclusie") setMessages((m) => [...m, { role: "assistant", content: d.answer, soort: "conclusie" }]);
-        else setMessages((m) => [...m, { role: "assistant", content: "Voorstel: dit werk volgt uit dit gesprek.", soort: "oogst", oogst: d.oogst }]);
+        else setMessages((m) => {
+          // Nog een keer op "Welke taken volgen hieruit?" drukken gaf een tweede,
+          // bijna identiek voorstel-blok eronder. Een nog niet verwerkt voorstel
+          // wordt daarom vervángen: er is er altijd maar één actueel.
+          const nieuw: Msg = { role: "assistant", content: "Voorstel: dit werk volgt uit dit gesprek.", soort: "oogst", oogst: d.oogst };
+          const idx = m.map((x) => (x.soort === "oogst" && !x.oogst?.verwerkt ? 1 : 0)).lastIndexOf(1);
+          if (idx < 0) return [...m, nieuw];
+          const kopie = [...m];
+          kopie[idx] = nieuw;
+          return kopie;
+        });
       } else setError(d?.error || `Er ging iets mis (server gaf status ${r.status}).`);
     } catch { setError("De assistent is niet bereikbaar."); }
     finally { setOogstBusy(""); }
@@ -305,7 +357,7 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
       const res = await fetch("/api/admin/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread: t, messages: next }) });
       const data = await res.json();
       if (data.ok) {
-        setMessages((m) => [...m, { role: "assistant", content: data.answer, ...(Array.isArray(data.actions) && data.actions.length ? { actions: data.actions } : {}) }]);
+        setMessages((m) => [...m, { role: "assistant", content: data.answer, ...(Array.isArray(data.actions) && data.actions.length ? { actions: data.actions } : {}), ...(Array.isArray(data.bronnen) && data.bronnen.length ? { bronnen: data.bronnen } : {}) }]);
         const newTitle = typeof data.title === "string" && data.title.trim() ? data.title.trim() : "";
         const newSum = typeof data.summary === "string" && data.summary.trim() ? data.summary.trim() : "";
         setTopics((ts) => ts.map((x) => x.thread === t ? { ...x, count: next.length + 1, ...(newTitle ? { title: newTitle } : {}), ...(newSum ? { summary: newSum } : {}) } : x));
@@ -326,6 +378,7 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
     <Omhulsel className={kaal ? "ovc-kaal" : "cockpit-card ovc-card"}>
       {kaal ? (
         <div className="ovc-kaal-acties">
+          <DiepDenken />
           <button type="button" className="ghost-btn small" onClick={newTopic}>+ Nieuw onderwerp</button>
         </div>
       ) : (
@@ -334,6 +387,7 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="7" /><circle cx="12" cy="12" r="2" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /></svg>
         </span>
         <span className="ovc-title">Overview</span>
+        <DiepDenken />
         <button type="button" className="ghost-btn small" onClick={newTopic}>+ Nieuw onderwerp</button>
       </div>
       )}
@@ -398,6 +452,18 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
                     const laatsteAntwoord = messages.map((x) => x.role).lastIndexOf("assistant");
                     const inklapbaar = m.role === "assistant" && i < laatsteAntwoord;
                     const dicht = inklapbaar && !openBericht[i];
+                    // Er is maar ÉÉN actueel takenvoorstel. Twee keer op "Welke taken
+                    // volgen hieruit?" drukken zette er vroeger een tweede blok onder;
+                    // die staan nu nog in bestaande gesprekken. Alleen het laatste
+                    // voorstel tonen, dus ook met terugwerkende kracht opgeruimd.
+                    if (m.soort === "oogst") {
+                      const laatsteOogst = messages.map((x) => (x.soort === "oogst" ? 1 : 0)).lastIndexOf(1);
+                      if (i !== laatsteOogst) return null;
+                    }
+                    // Oude "document toegevoegd aan het dossier"-blokken: die schreven de
+                    // hele samenvatting uit tussen je vragen in. Ze worden hier herkend en
+                    // tot één regel gevouwen, ook in gesprekken die er al stonden.
+                    const melding = m.role === "user" ? bestandMelding(m.content || "") : null;
                     return (
                       <div key={i} className={"ovc-msg " + m.role + (dicht ? " ovc-msg-dicht" : "")}>
                         <button type="button" className="chat-msg-del" title="Dit blok verwijderen" onClick={() => deleteMessage(i)}>&times;</button>
@@ -434,6 +500,29 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
                                 <div dangerouslySetInnerHTML={{ __html: mdToHtml(striptVulzinnen(zonderWeekrecap(m.content || "", (m.actions || []).some((a) => a.type === "weekplan_taken"))), domain) }} />
                               </div>
                             )
+                          : melding
+                          ? (
+                              // Een oude bestandsmelding: vroeger een blok met de link én
+                              // de complete samenvatting, nu één regel. De tekst is niet
+                              // weg, hij staat één klik verderop.
+                              <div className="ovc-bestand">
+                                <span className="cb-icoon" aria-hidden="true">{melding.wat === "Afbeelding" ? "🖼" : "📄"}</span>
+                                {melding.link
+                                  ? <a className="cb-naam" href={melding.link} target="_blank" rel="noreferrer">{melding.naam}</a>
+                                  : <span className="cb-naam">{melding.naam}</span>}
+                                <span className="ovc-bestand-meta">toegevoegd aan het dossier</span>
+                                {melding.kern && (
+                                  <button type="button" className="ovc-bestand-vouw"
+                                    onClick={() => setOpenBericht((v) => ({ ...v, [i]: !v[i] }))}>
+                                    {openBericht[i] ? "▾ samenvatting" : "▸ samenvatting"}
+                                  </button>
+                                )}
+                                {melding.kern && openBericht[i] && (
+                                  <div className="ovc-bestand-kern chat-md"
+                                    dangerouslySetInnerHTML={{ __html: mdToHtml(melding.kern, domain) }} />
+                                )}
+                              </div>
+                            )
                           : (
                               // Jouw eigen vraag compact: alinea's achter elkaar en de
                               // kernwoorden vet, zodat je hem kunt scannen. De witregels
@@ -441,13 +530,35 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
                               <div className="ovc-bubble ovc-bubble-vraag"
                                 dangerouslySetInnerHTML={{ __html: vraagHtml(m.content || "") }} />
                             )}
-                        {m.role === "assistant" && m.actions && m.actions.length > 0 && (
-                          <div className="ovc-actions">
-                            {m.actions.map((a) => (
-                              <ActionCard key={a.id} action={a} slug={slug} thread={t.thread} onExecuted={handleExecuted} onGoToPage={onGoToPage} onGoToTask={onGoToTask} onWeekplanChanged={onWeekplanChanged} />
-                            ))}
-                          </div>
+                        {m.role === "assistant" && !dicht && <Bronnenstrip bronnen={m.bronnen} domain={domain} />}
+                        {/* Elk antwoord kan los de mail in, niet alleen het laatste.
+                            Stel je na een analyse nog een vervolgvraag, dan is die
+                            analyse ingeklapt; klap hem open en de knop staat er. */}
+                        {m.role === "assistant" && m.soort !== "oogst" && !dicht && (m.content || "").trim() && (
+                          <button type="button" className="ovc-blokmail" title="Zet dit blok in een mail: opgemaakt, met jouw eigen intro erboven."
+                            onClick={() => setBlokVoorMail(m.content || "")}>
+                            Zet dit blok in een mail
+                          </button>
                         )}
+                        {m.role === "assistant" && m.actions && m.actions.length > 0 && (() => {
+                          // Van het blok "Taken → weekplanning" is er maar ÉÉN actueel.
+                          // Vraag je later nog eens welk werk eruit volgt, dan komt er
+                          // een tweede blok met vrijwel dezelfde taken en zie je twee
+                          // overzichten onder elkaar. Alleen het laatste tonen; de
+                          // eerdere blijven bewaard, ze worden niet meer getekend.
+                          const laatsteTaken = messages
+                            .map((x) => ((x.actions || []).some((a) => a.type === "weekplan_taken") ? 1 : 0))
+                            .lastIndexOf(1);
+                          const zichtbaar = m.actions.filter((a) => a.type !== "weekplan_taken" || i === laatsteTaken);
+                          if (!zichtbaar.length) return null;
+                          return (
+                            <div className="ovc-actions">
+                              {zichtbaar.map((a) => (
+                                <ActionCard key={a.id} action={a} slug={slug} thread={t.thread} onExecuted={handleExecuted} onGoToPage={onGoToPage} onGoToTask={onGoToTask} onWeekplanChanged={onWeekplanChanged} />
+                              ))}
+                            </div>
+                          );
+                        })()}
                       </div>
                     );
                     })}
@@ -487,6 +598,9 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
                         slug={slug}
                         titel={titleOf(t)}
                         tekst={deelTekst(messages)}
+                        mailBron={alleAntwoorden(messages)}
+                        blokMd={laatsteBlok(messages)}
+                        siteUrl={domain}
                         clientName={clientName}
                         clientEmail={clientEmail}
                       />
@@ -497,7 +611,7 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
 
                   {/* De dropzone van dit gesprek: wat je hier laat vallen komt in de
                       klantmap in Drive én in de context van dit gesprek. */}
-                  <ChatBestanden slug={slug} thread={t.thread} onToegevoegd={(f) => meldBestand(t.thread, f)} />
+                  <ChatBestanden slug={slug} thread={t.thread} />
 
                   <div className="ovc-input">
                     <textarea
@@ -518,6 +632,20 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
           );
         })}
       </div>
+      {blokVoorMail && (
+        <MailVenster
+          slug={slug}
+          titel="Dit blok in een mail"
+          onderwerpVan={clientName || "Analyse"}
+          taak={clientName || "Analyse"}
+          toelichting={blokVoorMail}
+          blokMd={blokVoorMail}
+          siteUrl={domain}
+          clientName={clientName}
+          clientEmail={clientEmail}
+          onClose={() => setBlokVoorMail("")}
+        />
+      )}
     </Omhulsel>
   );
 }

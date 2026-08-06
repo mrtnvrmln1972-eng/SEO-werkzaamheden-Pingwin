@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { mdToHtml } from "../../../../lib/markdown";
 
 // ═══════════════════════════════════════════════════════════
 // DE DROPZONE VAN HET GESPREK
@@ -23,16 +24,12 @@ export type ChatFile = {
   toegevoegdOp: string;
 };
 
-export default function ChatBestanden({ slug, thread, onToegevoegd }: {
-  slug: string;
-  thread: string;
-  /** Zodat het gesprek kan melden wat er binnenkwam (als bericht in de chat). */
-  onToegevoegd?: (f: ChatFile) => void;
-}) {
+export default function ChatBestanden({ slug, thread }: { slug: string; thread: string }) {
   const [files, setFiles] = useState<ChatFile[]>([]);
   const [bezig, setBezig] = useState<string[]>([]);      // namen die nu uploaden
   const [fout, setFout] = useState("");
   const [sleep, setSleep] = useState(false);
+  const [openKern, setOpenKern] = useState<number | null>(null);
   const kiesRef = useRef<HTMLInputElement>(null);
   const threadRef = useRef(thread);
   threadRef.current = thread;
@@ -60,12 +57,11 @@ export default function ChatBestanden({ slug, thread, onToegevoegd }: {
         const d = await fetch("/api/admin/chat-bestand", { method: "POST", body: fd }).then((r) => r.json());
         if (d?.ok && d.file) {
           setFiles((v) => [d.file as ChatFile, ...v]);
-          onToegevoegd?.(d.file as ChatFile);
         } else setFout(d?.error || `"${naam}" kon niet worden opgeslagen.`);
       } catch { setFout(`"${naam}" kon niet worden opgeslagen.`); }
       finally { setBezig((b) => b.filter((n) => n !== naam)); }
     }
-  }, [slug, onToegevoegd]);
+  }, [slug]);
 
   // Slepen over het hele scherm en plakken uit het klembord. Alleen actief zolang
   // dit gesprek openstaat, zodat een screenshot nooit in het verkeerde dossier
@@ -108,10 +104,12 @@ export default function ChatBestanden({ slug, thread, onToegevoegd }: {
 
   async function verwijder(id: number) {
     setFiles((v) => v.filter((f) => f.id !== id));
+    setOpenKern((v) => (v === id ? null : v));
     await fetch(`/api/admin/chat-bestand?slug=${encodeURIComponent(slug)}&id=${id}`, { method: "DELETE" }).catch(() => {});
   }
 
   const icoon = (s: ChatFile["soort"]) => (s === "afbeelding" ? "🖼" : "📄");
+  const kernVan = files.find((f) => f.id === openKern && f.kern);
 
   return (
     <div className={"cb-zone" + (sleep ? " cb-sleep" : "")}>
@@ -128,15 +126,33 @@ export default function ChatBestanden({ slug, thread, onToegevoegd }: {
         <div className="cb-lijst">
           {bezig.map((n) => <span key={"b" + n} className="cb-chip cb-bezig">{n} wordt ingelezen…</span>)}
           {files.map((f) => (
-            <span key={f.id} className="cb-chip" title={f.kern || "Nog geen leesbare inhoud"}>
+            <span key={f.id} className="cb-chip">
               <span className="cb-icoon" aria-hidden="true">{icoon(f.soort)}</span>
               {f.link
                 ? <a className="cb-naam" href={f.link} target="_blank" rel="noreferrer">{f.naam}</a>
                 : <span className="cb-naam">{f.naam}</span>}
+              {/* De korte samenvatting die de assistent van dit bestand maakte. Die
+                  stond eerder als heel blok in het gesprek zelf; hier hoort hij,
+                  en alleen als je erom vraagt. */}
+              {f.kern && (
+                <button type="button" className="cb-kern-knop"
+                  title={openKern === f.id ? "Samenvatting dichtklappen" : "Samenvatting van dit bestand"}
+                  aria-expanded={openKern === f.id}
+                  onClick={() => setOpenKern((v) => (v === f.id ? null : f.id))}>
+                  {openKern === f.id ? "▾" : "▸"}
+                </button>
+              )}
               <button type="button" className="cb-weg" title="Uit dit gesprek halen (het bestand blijft in Drive staan)"
                 onClick={() => void verwijder(f.id)}>×</button>
             </span>
           ))}
+        </div>
+      )}
+
+      {kernVan && (
+        <div className="cb-kern">
+          <div className="cb-kern-kop">{kernVan.naam}</div>
+          <div className="chat-md" dangerouslySetInnerHTML={{ __html: mdToHtml(kernVan.kern) }} />
         </div>
       )}
 

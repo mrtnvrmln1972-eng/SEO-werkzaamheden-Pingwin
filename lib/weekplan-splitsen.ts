@@ -1,6 +1,6 @@
-import { getWeekplan, addWeekplanTasks, setWeekplanKaart, type WeekplanTask } from "./weekplan";
+import { getWeekplan, addWeekplanTasks, setWeekplanKaart, updateWeekplanToelichting } from "./weekplan";
 import { getClientUrls } from "./site-urls";
-import { splitsPerPagina, opdrachtZonderPad, kaartTitel } from "./overview-actions";
+import { splitsPerPagina, opdrachtZonderPad } from "./overview-actions";
 import { urlKey } from "./url-key";
 
 // ═══════════════════════════════════════════════════════════
@@ -30,10 +30,6 @@ export async function splitsBestaandeKaarten(slug: string): Promise<{ gesplitst:
 
   for (const k of kaarten) {
     if (k.status === "klaar") continue;
-
-    // Twee opschoningen op de kaart zoals hij nu is, vóór er iets gesplitst wordt.
-    await schoonTitel(slug, k, bekendeUrls);
-    await titelUitAchtergrond(slug, k);
 
     // Bewust ZONDER de achtergrondtekst bij een kaart die al een pagina heeft.
     // Die achtergrond noemt bijna altijd ook de zusterpagina's ("dit hoort bij de
@@ -69,56 +65,52 @@ export async function splitsBestaandeKaarten(slug: string): Promise<{ gesplitst:
         week: { year: k.weekYear, week: k.weekNo },
       }]);
       toegevoegd += r.added + r.merged;
-      // Belandde het werk in een bestaande kaart, dan hoort het ook in de TITEL
-      // van die kaart te staan. Anders zie je in het bord niets veranderen: het
-      // extra werk zit dan alleen in de achtergrondtekst, die dichtgeklapt is.
-      for (const id of r.mergedIds) await vulTitelAan(slug, id, opdrachtZonderPad(String(d.taak)));
+      // Belandde het werk in een bestaande kaart, dan komt het er als opdracht bij.
+      for (const id of r.mergedIds) await vulOpdrachtAan(slug, id, opdrachtZonderPad(String(d.taak)));
     }
   }
 
   return { gesplitst, toegevoegd };
 }
 
-// Een al gesplitste kaart die in zijn titel nog "de CRP-pagina's" zegt, leest als
-// een kaart die NIET gesplitst is. Het pad staat er inmiddels voor, dus die
-// meervoudsverwijzing kan weg.
-async function schoonTitel(slug: string, k: WeekplanTask, bekendeUrls: string[]): Promise<void> {
-  const titel = (k.taak || "").trim();
-  if (!/^\/[^\s:]*:/.test(titel)) return;                 // nog geen pad-prefix
-  if (!/\bpagina'?s\b/i.test(titel)) return;              // niets misleidends
-  const pad = titel.slice(0, titel.indexOf(":"));
-  if (!bekendeUrls.some((u) => { try { return new URL(u).pathname === pad; } catch { return false; } })) return;
-  const nieuw = kaartTitel(titel, pad);
-  if (nieuw && nieuw !== titel) { await setWeekplanKaart(slug, k.id, { taak: nieuw }); k.taak = nieuw; }
-}
+// ═══════════════════════════════════════════════════════════
+// EXTRA WERK KOMT IN DE KAART, NIET IN DE TITEL
+// ═══════════════════════════════════════════════════════════
+// Dit heette `vulTitelAan` en plakte de opdracht met " + " achter de kaarttitel.
+// Dat leek logisch ("anders zie je in het bord niets veranderen"), maar het liet
+// titels vanzelf volgroeien tot 190 tekens: de kaart van /hovenier/etten-leur/
+// stond op 6 augustus 2026 op 183 tekens en las als een alinea. En omdat deze
+// stap bij élke keer laden draait, kwam elke opgeschoonde titel vanzelf terug.
+//
+// De opdracht landt nu onder het kopje "Opdrachten:" in de kaart zelf. Dat is
+// ook waar hij hoort: een titel zegt wáár het over gaat, de kaart zegt wat er
+// moet gebeuren. Het bord toont het aantal, dus je ziet nog steeds dat er iets
+// bij is gekomen.
+const KOP = "Opdrachten:";
 
-// Werk dat bij het samenvoegen als "- /eigen-pad/: doe dit" in de achtergrond
-// belandde, hoort in de titel te staan. Anders zie je in het bord niets van het
-// extra werk: de achtergrond is dichtgeklapt.
-async function titelUitAchtergrond(slug: string, k: WeekplanTask): Promise<void> {
-  if (!k.url || !k.toelichting) return;
-  let pad = ""; try { pad = new URL(k.url).pathname; } catch { return; }
-  if (pad.length < 2) return;
-  for (const raw of k.toelichting.split("\n")) {
-    const m = new RegExp(`^\\s*[-*]?\\s*${pad.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*:\\s*(.+)$`, "i").exec(raw.trim());
-    if (!m) continue;
-    const opdracht = opdrachtZonderPad(kaartTitel(m[1].trim(), pad));
-    if (opdracht) await vulTitelAan(slug, k.id, opdracht);
-  }
-}
-
-// Plakt het samengevoegde werk achter de bestaande kaarttitel, maar alleen als
-// het er nog niet in staat en de titel er niet onleesbaar lang van wordt.
-async function vulTitelAan(slug: string, id: number, opdracht: string): Promise<void> {
+async function vulOpdrachtAan(slug: string, id: number, opdracht: string): Promise<void> {
   const kort = (opdracht || "").trim();
   if (!kort) return;
   const kaarten = await getWeekplan(slug);
   const kaart = kaarten.find((k) => k.id === id);
   if (!kaart) return;
-  const huidig = (kaart.taak || "").trim();
+
+  // Dezelfde rem als voorheen: staat de kern er al, in de titel of in de tekst,
+  // dan komt hij er niet nog een keer bij.
   const kern = kort.toLowerCase().split(/\s+/).slice(0, 4).join(" ");
-  if (!kern || huidig.toLowerCase().includes(kern)) return;
-  const nieuw = `${huidig} + ${kort.charAt(0).toLowerCase() + kort.slice(1)}`;
-  if (nieuw.length > 190) return;
-  await setWeekplanKaart(slug, id, { taak: nieuw });
+  if (!kern) return;
+  const heel = (kaart.toelichting || "").trim();
+  if ((kaart.taak || "").toLowerCase().includes(kern) || heel.toLowerCase().includes(kern)) return;
+
+  const zin = kort.charAt(0).toUpperCase() + kort.slice(1);
+  const regels = heel ? heel.split("\n") : [];
+  const kopIndex = regels.findIndex((r) => r.trim().toLowerCase() === KOP.toLowerCase());
+  if (kopIndex >= 0) {
+    let eind = kopIndex + 1;
+    while (eind < regels.length && regels[eind].trim()) eind++;
+    regels.splice(eind, 0, `- ${zin}`);
+  } else {
+    regels.push("", KOP, `- ${zin}`);
+  }
+  await updateWeekplanToelichting(slug, id, regels.join("\n"));
 }

@@ -79,21 +79,29 @@ function linkifyPaden(html: string, domein: string): string {
 function naarHtml(tekst: string, links: { label: string; url: string }[]): { html: string; ongeplaatst: { label: string; url: string }[] } {
   const veilig = (tekst || "")
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  // Een enkel vet woord en een genummerd lijstje mogen wel. Dat doet Maarten in
+  // zijn eigen mails ook en het leest prettiger; het is iets anders dan een mail
+  // volplempen met kopjes en kaders. Sterretjes die niets omsluiten blijven staan
+  // zoals ze staan, zodat "5 * 3" geen opmaak wordt.
+  const vet = (s: string) => s.replace(/\*\*(?=\S)([\s\S]*?\S)\*\*/g, "<strong>$1</strong>");
   const regels = veilig.split("\n").map((r) => r.trimEnd());
   const uit: string[] = [];
-  let inLijst = false;
+  let inLijst: "ul" | "ol" | null = null;
+  const sluit = () => { if (inLijst) { uit.push(`</${inLijst}>`); inLijst = null; } };
   for (const r of regels) {
     const bullet = /^\s*[-*]\s+(.*)$/.exec(r);
-    if (bullet) {
-      if (!inLijst) { uit.push("<ul>"); inLijst = true; }
-      uit.push(`<li>${bullet[1]}</li>`);
+    const genummerd = /^\s*\d+[.)]\s+(.*)$/.exec(r);
+    if (bullet || genummerd) {
+      const soort = bullet ? "ul" : "ol";
+      if (inLijst !== soort) { sluit(); uit.push(`<${soort}>`); inLijst = soort; }
+      uit.push(`<li>${vet((bullet || genummerd)![1])}</li>`);
       continue;
     }
-    if (inLijst) { uit.push("</ul>"); inLijst = false; }
+    sluit();
     if (!r.trim()) { uit.push(""); continue; }
-    uit.push(`<p>${r}</p>`);
+    uit.push(`<p>${vet(r)}</p>`);
   }
-  if (inLijst) uit.push("</ul>");
+  sluit();
   return linkify(uit.filter((x) => x !== "").join("\n"), links);
 }
 

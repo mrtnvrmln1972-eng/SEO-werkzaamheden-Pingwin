@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { waitUntil } from "@vercel/functions";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
+import { poort } from "../../../../lib/onboarding";
 import { anthropicConfigured } from "../../../../lib/anthropic";
 import { getCannibalAnalysis, startCannibalRun, runCannibalRedirect } from "../../../../lib/cannibal-redirect";
+import { getAdsPaginas } from "../../../../lib/opruim-regels";
 
 export const runtime = "nodejs";
 // 800s (Vercel Pro/Fluid), net als de documenten-werker. Eén analyse duurt langer dan
@@ -41,6 +43,16 @@ export async function POST(req: NextRequest) {
     waitUntil(runCannibalRedirect(slug));
     return NextResponse.json({ ok: true, hervat: true });
   }
+  // Eerst de advertentiepagina's, dan pas analyseren. Zonder dat antwoord loopt de
+  // analyse het risico een Ads-landingspagina op te ruimen: die staat op noindex,
+  // haalt dus niets uit Google, en ziet er in de data uit als dood gewicht.
+  const ads = await getAdsPaginas(slug).catch(() => ({ paden: [], geen: false, ingevuld: false }));
+  if (!ads.ingevuld) {
+    return NextResponse.json({ ok: false, error: "Vul eerst in welke pagina's landingspagina's voor Google Ads zijn, of vink aan dat deze klant er geen heeft. Anders kan de analyse zo'n pagina voorstellen om op te ruimen." }, { status: 400 });
+  }
+  const p = await poort(slug, "opruimen");
+  if (!p.mag) return NextResponse.json({ ok: false, error: p.reden, onboarding: p.ontbreekt }, { status: 400 });
+
   await startCannibalRun(slug);
   waitUntil(runCannibalRedirect(slug));
   return NextResponse.json({ ok: true, started: true });

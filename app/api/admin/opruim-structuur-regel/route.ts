@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
-import { getUrlStructuur, zetUrlStructuur } from "../../../../lib/opruim-regels";
+import { getUrlStructuur, zetUrlStructuur, getAdsPaginas, zetAdsPaginas } from "../../../../lib/opruim-regels";
+import { getEuroInstelling, zetEuroInstelling } from "../../../../lib/opruim-euro";
 
 export const runtime = "nodejs";
 
@@ -18,7 +19,8 @@ export async function GET(req: NextRequest) {
   const slug = req.nextUrl.searchParams.get("slug") || "";
   if (!slug) return NextResponse.json({ ok: false, error: "Geen klant opgegeven." }, { status: 400 });
   const g = await guardSlug(req, slug); if (!g.ok) return g.res;
-  return NextResponse.json({ ok: true, vorm: await getUrlStructuur(slug) });
+  const [vorm, ads, euro] = await Promise.all([getUrlStructuur(slug), getAdsPaginas(slug), getEuroInstelling(slug)]);
+  return NextResponse.json({ ok: true, vorm, ads, euro });
 }
 
 export async function PUT(req: NextRequest) {
@@ -28,6 +30,31 @@ export async function PUT(req: NextRequest) {
   const slug = String(body.slug || "").trim();
   if (!slug) return NextResponse.json({ ok: false, error: "Geen klant opgegeven." }, { status: 400 });
   const g = await guardSlug(req, slug); if (!g.ok) return g.res;
+
+  // Twee dingen op één route: de gekozen URL-vorm en de advertentiepagina's. Beide
+  // zijn "wat de analyse moet weten voordat hij mag draaien", dus ze horen bij elkaar.
+  if (body.ads !== undefined || body.geenAds !== undefined) {
+    const ruw = Array.isArray(body.ads) ? body.ads.map(String) : String(body.ads || "").split(/[\n,]/);
+    const paden = ruw.map((p) => p.trim()).filter(Boolean);
+    const fout = paden.find((p) => !p.startsWith("/") && !p.startsWith("http"));
+    if (fout) return NextResponse.json({ ok: false, error: `"${fout}" is geen pad. Zet er een schuine streep voor, bijvoorbeeld /landing-page/.` }, { status: 400 });
+    const ads = await zetAdsPaginas(slug, paden, body.geenAds === true);
+    return NextResponse.json({ ok: true, ads });
+  }
+
+  // Wat een klant waard is, zodat de lijsten in euro's kunnen praten in plaats van
+  // in zoekvolume. Zonder deze twee getallen rekent het dashboard niets uit; een
+  // verzonnen standaard zou eruitzien als een meting.
+  if (body.klantwaarde !== undefined || body.conversie !== undefined) {
+    const k = Number(body.klantwaarde);
+    const c = Number(body.conversie);
+    if (!Number.isFinite(k) || !Number.isFinite(c) || k < 0 || c < 0) {
+      return NextResponse.json({ ok: false, error: "Vul allebei een getal in: wat één klant gemiddeld opbrengt, en welk deel van de bezoekers klant wordt." }, { status: 400 });
+    }
+    if (c > 100) return NextResponse.json({ ok: false, error: "Een conversie hoger dan 100% kan niet; vul het percentage in, niet het aantal." }, { status: 400 });
+    const euro = await zetEuroInstelling(slug, k, c);
+    return NextResponse.json({ ok: true, euro });
+  }
 
   const vorm = String(body.vorm || "").trim();
   if (vorm && !vorm.startsWith("/")) {

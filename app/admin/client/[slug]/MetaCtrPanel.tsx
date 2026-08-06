@@ -44,7 +44,24 @@ function MetaChecklist({ kind, text, keyword, other }: { kind: "title" | "desc";
 type Effect = { ctrBefore: number; ctrAfter: number; clicksBefore: number; clicksAfter: number; daysAfter: number };
 type FieldStatus = "open" | "goedgekeurd" | "afgewezen";
 type Proposal = { curTitle: string; curDesc: string; propTitle: string; propDesc: string; status: "open" | "goedgekeurd" | "doorgevoerd" | "afgewezen"; titleStatus: FieldStatus; descStatus: FieldStatus; liveAt: string | null; effect: Effect | null };
-type KansRow = { url: string; keyword: string; volume: number | null; clicks: number; impressions: number; ctr: number; expectedCtr: number; position: number; extraClicks: number; proposal: Proposal | null };
+type Reden = "klikwinst" | "kapot" | "goed" | "onbekend";
+type KansRow = {
+  url: string; keyword: string; volume: number | null; clicks: number; impressions: number;
+  ctr: number; expectedCtr: number; position: number; extraClicks: number;
+  curTitle: string; curDesc: string; reden: Reden; gemeten: boolean;
+  issues: { title: string[]; desc: string[] };
+  copydoc: { title: string; desc: string; live: boolean } | null;
+  proposal: Proposal | null;
+};
+
+// Waarom staat deze pagina in de lijst? Het verschil telt: "laat klikken liggen"
+// is een kans, "is stuk" is een gebrek, en dat vraagt een ander gesprek.
+const REDEN_LABEL: Record<Reden, { txt: string; bg: string; fg: string; uitleg: string }> = {
+  klikwinst: { txt: "klikwinst", bg: "#fff3e6", fg: "#b25a00", uitleg: "Wordt goed gevonden, maar krijgt te weinig klikken voor zijn positie." },
+  kapot: { txt: "meta niet in orde", bg: "#fdeaea", fg: "#c62828", uitleg: "De meta ontbreekt of valt buiten de regels (lengte, pijp, vierkante haken)." },
+  goed: { txt: "staat al goed", bg: "#eef6ef", fg: "#2e7d32", uitleg: "Niets aan de hand; staat hier zodat je ziet dat de pagina bekeken is." },
+  onbekend: { txt: "nog niet gemeten", bg: "#f2f2f2", fg: "#777", uitleg: "Deze pagina is nog niet gelezen, dus we weten niet of zijn meta deugt. Druk op \u201cMeet de pagina\u2019s\u201d." },
+};
 
 function pad(url: string): string {
   try { const u = new URL(url); return (u.pathname + u.search) || "/"; } catch { return url; }
@@ -75,6 +92,10 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
 }) {
   const [rows, setRows] = useState<KansRow[] | null>(null);
   const [error, setError] = useState("");
+  // Filter op de reden; standaard alles wat aandacht vraagt (dus zonder "staat al goed").
+  const [filter, setFilter] = useState<"werk" | "klikwinst" | "kapot" | "onbekend" | "goed" | "alles">("werk");
+  const [meetBusy, setMeetBusy] = useState(false);
+  const [meetMsg, setMeetMsg] = useState("");
   const [verify, setVerify] = useState<Record<string, { title: string; description: string; url: string }>>({});
   const [openUrl, setOpenUrl] = useState<string | null>(null);
 
@@ -184,6 +205,9 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
       const d = await res.json();
       if (!d.ok) throw new Error(d.error || "Laden mislukte.");
       setRows(d.rows as KansRow[]);
+      // De koppeling bepaalt of je hier kunt doorvoeren of dat het werk van de
+      // bouwer is; die stand komt met de lijst mee zodat hij nooit uiteenloopt.
+      if (typeof d.wpConnected === "boolean") setWp((w) => ({ connected: d.wpConnected, username: w?.username ?? null }));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Laden mislukte.");
       setRows([]);
@@ -195,6 +219,37 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
   // Onderbreken van een lopende schrijf-actie: het resultaat wordt genegeerd.
   const abortRef = useRef<AbortController | null>(null);
   function cancelBusy() { abortRef.current?.abort(); }
+
+  // Alle pagina's opnieuw meten: wat staat er nu, en voldoet dat aan de regels.
+  // Hierdoor komen ook pagina's zonder Search Console-cijfers in de lijst.
+  async function meetPaginas() {
+    if (meetBusy) return;
+    setMeetBusy(true); setMeetMsg("");
+    try {
+      const d = await fetch("/api/admin/meta-ctr", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, actie: "meten" }),
+      }).then((r) => r.json());
+      setMeetMsg(d?.ok ? (d.samenvatting || "Klaar.") : (d?.error || "Meten mislukte."));
+      if (d?.ok) await load();
+    } catch { setMeetMsg("Meten mislukte; probeer het nog een keer."); }
+    finally { setMeetBusy(false); }
+  }
+
+  // De meta uit het copydocument overnemen in plaats van een nieuwe schrijven.
+  async function neemCopydoc(r: KansRow) {
+    setBusy(`${r.url}|copydoc`); setError("");
+    try {
+      const d = await fetch("/api/admin/meta-ctr", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, url: r.url, actie: "copydoc" }),
+      }).then((res) => res.json());
+      if (!d.ok) throw new Error(d.error || "Overnemen mislukte.");
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Overnemen mislukte.");
+    } finally { setBusy(null); }
+  }
 
   async function generate(r: KansRow) {
     setBusy(r.url);
@@ -290,13 +345,19 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
         <HelpHint xl title="De CTR-machine: meer klikken zonder hoger te staan" text={"De paginatitel en meta-beschrijving zijn de advertentie van elke pagina in Google: zij bepalen of de zoeker op jouw klant klikt of op de concurrent eronder. Deze machine zoekt de pagina's waar dat mis gaat (**veel vertoond, te weinig geklikt**) en schrijft daar een bewezen betere invulling voor. Dat is de goedkoopste verkeersgroei die er bestaat: de positie hoeft niet te stijgen, alleen de klikkans. En juist nu AI-antwoorden bovenin steeds meer klikken afsnoepen, telt elke resterende vertoning zwaarder; je snippet moet iets bieden dat zo'n samenvatting niet geeft (een prijs, een plaatsnaam, bewijs, actualiteit).\n## Hoe de kansenlijst rekent\n- De basis is **Search Console over 90 dagen**: per pagina de vertoningen, klikken, klikkans (CTR) en gemiddelde positie, plus het beste zoekwoord.\n- Voor elke positie is uit grote klikstudies bekend welke CTR **normaal** is (positie 1 rond 25%, positie 5 rond 5%, positie 10 rond 2%, daarbuiten rap minder). Wij rekenen bewust conservatief, zodat er geen kansen worden verzonnen.\n- **Gemiste klikken** = vertoningen x het gat tussen die verwachte klikkans en de echte. Een pagina met 100.000 vertoningen die 0,4% haalt waar 4% normaal is, laat duizenden bezoekers per kwartaal liggen; die staat dus bovenaan.\n- Pagina's met te weinig vertoningen of een verwaarloosbaar gat blijven buiten de lijst: daar valt niets te winnen.\n## Waarom we pixels meten en geen tekens tellen\nGoogle kapt titels en beschrijvingen niet af op een aantal tekens maar op **beeldbreedte**: een 'W' is ruim vier keer zo breed als een 'i'. Twee titels van precies 60 tekens kunnen dus verschillend afbreken. Daarom rekent het dashboard de breedte exact na in het lettertype van de zoekresultaten (Arial) en toetst tegen de echte grenzen: titel maximaal ~580 pixels, beschrijving maximaal ~920. De metertjes onder elk veld laten dat live zien terwijl je typt: __groen is passend, oranje is krap of onbenut, rood wordt afgekapt__. Mobiel is strenger: daar overleeft van de beschrijving grofweg alleen de eerste 120 tekens, dus daar moet de kern staan.\n## Wat er in een perfecte titel zit (en wat het onderzoek zegt)\n- **Het zoekwoord vooraan**, in de eerste drie à vier woorden. Zo blijft het zichtbaar bij afkappen en herkent de zoeker in één oogopslag dat dit zijn antwoord is.\n- **40 tot 60 tekens.** Titels in die lengte krijgen gemiddeld 8,9% meer klikken (Backlinko, 4 miljoen zoekresultaten) en worden het minst vaak door Google herschreven; boven de 70 tekens wordt vrijwel elke titel (99,9%) aangepast.\n- **Herschrijven is het echte gevaar:** Google herschrijft 62% van alle titels (Zyppy, 81.000 titels). Alles hieronder verkleint die kans, zodat jouw zorgvuldig gekozen tekst ook echt getoond wordt.\n- **Koppelteken in plaats van pijp.** Titels met een pijp (|) worden twee keer zo vaak herschreven als titels met een koppelteken (41% tegenover 19,7%). Daarom eindigen onze titels op '... - Merknaam'.\n- **Aansluiten op de paginakop (H1).** Dit is de sterkste enkele factor tegen herschrijven: als titel en kop dezelfde kernwoorden delen, vertrouwt Google de titel. Woordelijk identiek hoeft niet; de kop mag voluit, de titel compact.\n- **Nooit vierkante haken:** [zo'n toevoeging] wordt in 78% van de gevallen door Google verwijderd of herschreven. (Gewone haakjes) mogen wel, bijvoorbeeld (2026).\n- **Cijfers en jaartallen werken**, mits eerlijk: koppen met een getal halen tot 36% meer klikken, en oneven getallen doen het zo'n 20% beter dan even (HubSpot/Outbrain, 3,3 miljoen koppen). Een jaartal alleen als de inhoud echt actueel wordt gehouden.\n- **Schreeuwwoorden kosten juist klikken:** titels vol termen als 'ultiem' of 'beste ooit' scoren 13,9% sléchter; lezers herkennen clickbait. Een rustige, positieve toon levert daarentegen ~4% extra op ten opzichte van neutraal.\n- **De merknaam achteraan**, en weglaten mag zodra hij niet meer past: Google toont de sitenaam tegenwoordig toch al boven elke titel, dus die pixels kun je beter aan de boodschap besteden.\n## Wat er in een perfecte beschrijving zit\n- Een goed geschreven meta-beschrijving levert gemiddeld **5,8% meer klikken** op dan geen of een slechte; met een duidelijke uitnodiging kan het verschil oplopen tot 20%.\n- **Het zoekwoord er één keer letterlijk in**: Google drukt de zoekterm vet in de beschrijving, en die vetgedrukte woorden trekken het oog. Twee keer mag nog; drie keer leest als spam.\n- **De kern in de eerste 120 tekens**, want daar kapt mobiel af; de meeste zoekers zien de rest nooit.\n- **Eén actieve uitnodiging** (Ontdek, Bekijk, Vergelijk, Plan, Bereken, Vraag aan) plus **minstens één concreet feit**: een getal, prijs, termijn of garantie. 'Binnen 24 uur geregeld' verslaat 'snelle service' elke dag.\n- **Een echte samenvatting van de pagina.** Google vervangt zo'n 63% van de beschrijvingen door eigen fragmenten; hoe beter de tekst de daadwerkelijke inhoud en de zoekvraag dekt, hoe vaker jouw versie blijft staan.\n- Geen letterlijke herhaling van de titel: dat is dubbel vertoonde ruimte die niets toevoegt.\n## Hoe het voorstel tot stand komt\n- De AI leest de **echte pagina** (kop, onderwerpen, huidige meta's) en schrijft het voorstel met alle bovenstaande regels als harde instructie, in de **tone of voice uit het klantprofiel**; het klinkt dus als dit bedrijf, niet als een tekstrobot.\n- Omdat een taalmodel zelf geen pixels kan meten, wordt elk voorstel **na het schrijven nagemeten**. Is het te breed, of staat er toch een pijp of vierkante haak in, dan wordt precies die ene regel gericht herschreven tot hij past; de beste versie wint.\n- Jij houdt de regie: pas de tekst gewoon aan in het veld, de metertjes rekenen live mee, en elke wijziging wordt bewaard.\n## Van goedkeuring tot zwart-op-wit bewijs\n- **Goedkeuren** zet de tekst klaar; met de kopieerknop bovenaan pak je alle goedgekeurde teksten in één keer als nette lijst voor de sitebouwer of de klant.\n- **Live-detectie:** het dashboard leest de pagina's met goedgekeurde teksten periodiek na en ziet vanzelf wanneer de nieuwe tekst op de site staat; de status springt dan op 'live', met datum.\n- **Effectmeting:** vanaf dat moment vergelijkt het dashboard de klikkans in Search Console vóór en ná (de 28 dagen voor de wijziging tegenover alles erna, met een paar dagen marge rond het omzetmoment). Na een week of twee staat er bij de pagina bijvoorbeeld 'klikkans van 0,4% naar 1,1%': hetzelfde aantal vertoningen, bijna drie keer zoveel bezoekers, zonder één positie te stijgen."} />
       </div>
       <p className="wz-item-sub" style={{ maxWidth: 720 }}>
-        Pagina&rsquo;s met veel vertoningen maar te weinig klikken voor hun positie (laatste 90 dagen). Betere meta-teksten = direct meer bezoekers.
+        Elke pagina van deze klant, op volgorde van wat het meeste oplevert. Een pagina staat hier omdat hij klikken laat
+        liggen (veel vertoond, te weinig geklikt) of omdat zijn meta niet in orde is. Dit is de enige plek waar een
+        meta ontstaat en beoordeeld wordt; wat je goedkeurt gaat vanzelf naar de site of naar de werklijst van de bouwer.
       </p>
       <div className="org-actions" style={{ margin: "10px 0" }}>
         <button type="button" className="primary-btn small" onClick={copyApproved} disabled={!approvedCount}>
           {copied ? "Gekopieerd!" : `Kopieer goedgekeurde meta's (${approvedCount})`}
         </button>
         <button type="button" className="ghost-btn small" onClick={() => { setRows(null); void load(); }}>Vernieuwen</button>
+        <button type="button" className="ghost-btn small" onClick={() => void meetPaginas()} disabled={meetBusy}
+          title="Leest alle live pagina's opnieuw en kijkt wat er nu op staat en of dat aan de regels voldoet. Hierdoor komen ook pagina's zonder Search Console-cijfers in de lijst. Duurt een paar minuten.">
+          {meetBusy ? "Pagina's meten… (paar minuten)" : "Meet de pagina's"}
+        </button>
         {beheerEdit ? (
           <input
             autoFocus
@@ -330,11 +391,30 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
           {wpMsg && <span className="wz-item-sub" style={{ color: "#c62828" }}>{wpMsg}</span>}
         </div>
       )}
+      {meetMsg && <p className="wz-item-sub" style={{ color: /mislukt/i.test(meetMsg) ? "#c62828" : "var(--dark)" }}>{meetMsg}</p>}
       {error && <p className="wz-item-sub" style={{ color: "#c62828" }}>{error}</p>}
-      {rows === null && <p className="wz-item-sub">Kansen berekenen uit Search Console&hellip;</p>}
-      {rows !== null && rows.length === 0 && !error && <p className="wz-item-sub">Geen duidelijke CTR-kansen gevonden (of Search Console heeft nog geen data voor deze klant).</p>}
+      {rows === null && <p className="wz-item-sub">Lijst opbouwen uit Search Console en de laatste meting&hellip;</p>}
+      {rows !== null && rows.length === 0 && !error && <p className="wz-item-sub">Nog geen pagina&rsquo;s bekend. Druk op &ldquo;Meet de pagina&rsquo;s&rdquo;, dan verschijnt hier de volledige lijst.</p>}
+      {!!(rows || []).length && (() => {
+        const n = (f: Reden) => (rows || []).filter((x) => x.reden === f).length;
+        const knoppen: { id: typeof filter; label: string }[] = [
+          { id: "werk", label: `Vraagt aandacht (${n("klikwinst") + n("kapot")})` },
+          { id: "klikwinst", label: `Klikwinst (${n("klikwinst")})` },
+          { id: "kapot", label: `Meta niet in orde (${n("kapot")})` },
+          { id: "onbekend", label: `Nog niet gemeten (${n("onbekend")})` },
+          { id: "goed", label: `Staat al goed (${n("goed")})` },
+          { id: "alles", label: `Alles (${(rows || []).length})` },
+        ];
+        return (
+          <div className="org-actions" style={{ margin: "0 0 10px" }}>
+            {knoppen.map((k) => (
+              <button key={k.id} type="button" className={filter === k.id ? "primary-btn small" : "ghost-btn small"} onClick={() => setFilter(k.id)}>{k.label}</button>
+            ))}
+          </div>
+        );
+      })()}
       <div className="wz-list">
-        {(rows || []).map((r) => {
+        {(rows || []).filter((r) => filter === "alles" ? true : filter === "werk" ? (r.reden === "klikwinst" || r.reden === "kapot") : r.reden === filter).map((r) => {
           const open = openUrl === r.url;
           const st = r.proposal ? STATUS_LABEL[r.proposal.status] : null;
           return (
@@ -347,10 +427,21 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
                     onClick={(e) => e.stopPropagation()} style={{ color: "var(--orange)", textDecoration: "underline" }}>{pad(r.url)}</a>
                   <span className="wz-item-sub" style={{ display: "block" }}>
                     {r.keyword ? <>zoekwoord &ldquo;{r.keyword}&rdquo;{r.volume !== null ? <> ({r.volume.toLocaleString("nl-NL")} zoekopdrachten p/mnd)</> : null} &middot; </> : null}
-                    positie {r.position} &middot; {r.impressions.toLocaleString("nl-NL")} vertoningen &middot; CTR {r.ctr}% (verwacht {r.expectedCtr}%)
+                    {r.impressions > 0
+                      ? <>positie {r.position} &middot; {r.impressions.toLocaleString("nl-NL")} vertoningen &middot; CTR {r.ctr}% (verwacht {r.expectedCtr}%)</>
+                      : <>nog geen Search Console-cijfers voor deze pagina</>}
+                    {r.reden === "kapot" && (r.issues.title.length || r.issues.desc.length)
+                      ? <> &middot; <span style={{ color: "#c62828" }}>{[...(r.issues.title.length ? [`titel: ${r.issues.title.join(", ")}`] : []), ...(r.issues.desc.length ? [`beschrijving: ${r.issues.desc.join(", ")}`] : [])].join(" &middot; ")}</span></>
+                      : null}
                   </span>
                 </span>
                 <span className="wz-item-date" style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  {!st && (
+                    <span title={REDEN_LABEL[r.reden].uitleg}
+                      style={{ background: REDEN_LABEL[r.reden].bg, color: REDEN_LABEL[r.reden].fg, borderRadius: 20, padding: "2px 10px", fontSize: 11.5, fontWeight: 600 }}>
+                      {REDEN_LABEL[r.reden].txt}
+                    </span>
+                  )}
                   {st && <span style={{ background: st.bg, color: st.fg, borderRadius: 20, padding: "2px 10px", fontSize: 11.5, fontWeight: 600 }}>{st.txt}</span>}
                   {r.extraClicks > 0 && <span title="Geschatte extra klikken per 90 dagen bij een normale klikkans">+{r.extraClicks} klikken mogelijk</span>}
                   {onOpenPage && (
@@ -369,14 +460,43 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
               {open && (
                 <div style={{ border: "1px solid var(--border)", borderTop: "none", borderRadius: "0 0 10px 10px", padding: "14px", background: "#fff" }}>
                   {!r.proposal && (
-                    <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
-                      <button type="button" className="primary-btn small" onClick={() => void generate(r)} disabled={busy === r.url}>
-                        {busy === r.url ? "Voorstel schrijven…" : "Genereer voorstel (AI)"}
-                      </button>
-                      {busy === r.url && (
-                        <button type="button" className="ghost-btn small" onClick={cancelBusy} title="Onderbreek het schrijven; het resultaat wordt genegeerd.">&times; Onderbreken</button>
+                    <div style={{ display: "grid", gap: 12 }}>
+                      {r.gemeten && (
+                        <div>
+                          <div className="wz-block-head">Nu op de site</div>
+                          <div className="wz-line">
+                            <span className="wz-line-label">Meta-titel:</span> {r.curTitle || "(geen paginatitel gevonden)"}
+                            <MetaPixelMeter kind="meta_title" text={r.curTitle} />
+                          </div>
+                          <div className="wz-line">
+                            <span className="wz-line-label">Meta-beschrijving:</span> {r.curDesc || "(geen meta-beschrijving gevonden)"}
+                            <MetaPixelMeter kind="meta_description" text={r.curDesc} />
+                          </div>
+                        </div>
                       )}
-                    </span>
+                      {/* Staat de meta uit het copydocument al op de pagina, dan is er niets
+                          te doen: die is met dezelfde regels geschreven als hier. */}
+                      {r.copydoc?.live && (
+                        <p className="wz-item-sub" style={{ color: "var(--dark)" }}>
+                          Deze meta komt uit het copydocument van deze pagina en staat al live. Hij is met dezelfde regels
+                          geschreven als hier, dus er is geen nieuw voorstel nodig.
+                        </p>
+                      )}
+                      <span style={{ display: "inline-flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                        {r.copydoc && !r.copydoc.live && (
+                          <button type="button" className="primary-btn small" onClick={() => void neemCopydoc(r)} disabled={busy === `${r.url}|copydoc`}
+                            title="Er staat al een meta in het copydocument van deze pagina, geschreven met dezelfde regels. Neem die over in plaats van een nieuwe te schrijven.">
+                            {busy === `${r.url}|copydoc` ? "Overnemen…" : "Neem de meta uit het copydocument over"}
+                          </button>
+                        )}
+                        <button type="button" className={r.copydoc && !r.copydoc.live ? "ghost-btn small" : "primary-btn small"} onClick={() => void generate(r)} disabled={busy === r.url}>
+                          {busy === r.url ? "Voorstel schrijven…" : "Genereer voorstel (AI)"}
+                        </button>
+                        {busy === r.url && (
+                          <button type="button" className="ghost-btn small" onClick={cancelBusy} title="Onderbreek het schrijven; het resultaat wordt genegeerd.">&times; Onderbreken</button>
+                        )}
+                      </span>
+                    </div>
                   )}
                   {r.proposal && (
                     <div style={{ display: "grid", gap: 16 }}>
@@ -393,6 +513,20 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
                           <MetaChecklist kind="desc" text={r.proposal.curDesc} keyword={r.keyword} other={r.proposal.curTitle} />
                         </div>
                       </div>
+                      {/* Ook als er al een voorstel ligt: staat er een meta in het
+                          copydocument, dan is dat de tekst die bij de nieuwe pagina hoort.
+                          Eén tekst per zoekresultaat, niet twee die om voorrang strijden. */}
+                      {r.copydoc && !r.copydoc.live && (
+                        <div className="org-actions" style={{ alignItems: "center", flexWrap: "wrap" }}>
+                          <span className="wz-item-sub" style={{ color: "var(--dark)" }}>
+                            Er staat ook een meta in het copydocument van deze pagina, met dezelfde regels geschreven.
+                          </span>
+                          <button type="button" className="ghost-btn small" onClick={() => void neemCopydoc(r)} disabled={busy === `${r.url}|copydoc`}
+                            title="Vervang dit voorstel door de tekst uit het copydocument en keur hem meteen goed.">
+                            {busy === `${r.url}|copydoc` ? "Overnemen…" : "Neem die over"}
+                          </button>
+                        </div>
+                      )}
                       <div>
                         <div className="wz-block-head">Voorstel (aanpasbaar)</div>
                         <div className="wz-line added">
@@ -467,17 +601,28 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
                           </div>
                         )}
                       </div>
+                      {/* Goedkeuren en doorvoeren zijn twee dingen. Met een koppeling zetten
+                          wij de tekst zelf op de site. Zonder koppeling doet de bouwer het, en
+                          verschijnt de goedgekeurde tekst vanzelf op zijn werklijst. */}
                       {r.proposal.status !== "doorgevoerd" && (fieldOk(r.proposal, "title") || fieldOk(r.proposal, "desc")) && (
                         <div className="org-actions" style={{ alignItems: "center" }}>
-                          <button type="button" className="primary-btn small" onClick={() => void pushToSite(r)} disabled={busy === `${r.url}|push`}
-                            title={wp?.connected
-                              ? "Zet de goedgekeurde meta-titel en/of -beschrijving in één keer op de site (via de WordPress-koppeling). De effectmeting start daarna vanzelf."
-                              : "Koppel eerst de site (knop 'Site koppelen' bovenaan) om goedgekeurde meta's met één klik door te voeren."}>
-                            {busy === `${r.url}|push` ? "Doorvoeren…" : "Doorvoeren op de site"}
-                          </button>
-                          <span className="wz-item-sub">
-                            {fieldOk(r.proposal, "title") && fieldOk(r.proposal, "desc") ? "titel + beschrijving" : fieldOk(r.proposal, "title") ? "alleen de goedgekeurde titel" : "alleen de goedgekeurde beschrijving"} wordt doorgevoerd
-                          </span>
+                          {wp?.connected ? (
+                            <>
+                              <button type="button" className="primary-btn small" onClick={() => void pushToSite(r)} disabled={busy === `${r.url}|push`}
+                                title="Zet de goedgekeurde meta-titel en/of -beschrijving in één keer op de site (via de WordPress-koppeling). De effectmeting start daarna vanzelf.">
+                                {busy === `${r.url}|push` ? "Doorvoeren…" : "Doorvoeren op de site"}
+                              </button>
+                              <span className="wz-item-sub">
+                                {fieldOk(r.proposal, "title") && fieldOk(r.proposal, "desc") ? "titel + beschrijving" : fieldOk(r.proposal, "title") ? "alleen de goedgekeurde titel" : "alleen de goedgekeurde beschrijving"} wordt doorgevoerd
+                              </span>
+                            </>
+                          ) : (
+                            <span className="wz-item-sub">
+                              Goedgekeurd. Deze site is niet gekoppeld, dus wij kunnen hem niet zelf doorvoeren; de tekst staat
+                              vanaf de volgende ronde van de werklijst klaar voor de bouwer. Wil je het toch zelf doen, gebruik
+                              dan &ldquo;Site koppelen&rdquo; bovenaan.
+                            </span>
+                          )}
                         </div>
                       )}
                       {r.proposal.status === "doorgevoerd" && (

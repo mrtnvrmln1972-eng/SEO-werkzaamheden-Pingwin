@@ -5,6 +5,16 @@ import { mdToHtml } from "../../../../lib/markdown";
 import { linkifyHtml } from "../../../../lib/linkify";
 import OpruimTabel from "./OpruimTabel";
 import OpruimStructuur from "./OpruimStructuur";
+import OpruimOppakken, { type Oppakker } from "./OpruimOppakken";
+import OpruimSamenvatting from "./OpruimSamenvatting";
+import OpruimOnderwerpen, { type Onderwerp } from "./OpruimOnderwerpen";
+import OpruimGaten, { type Gat } from "./OpruimGaten";
+import OpruimEindstructuur from "./OpruimEindstructuur";
+import OpruimNameten, { type Nameting } from "./OpruimNameten";
+import OpruimPlaatsen from "./OpruimPlaatsen";
+import OpruimEenLijst from "./OpruimEenLijst";
+import Voortgang from "./Voortgang";
+import { useKlus } from "./useKlus";
 
 type ClusterUrl = { url: string; rol?: string; positie?: number; klikken?: number; impressies?: number; verwijzendeDomeinen?: number; intentie?: string };
 type Signalen = { urlFlip?: boolean; flipsIn90d?: number; positiePlafond?: boolean; klikVerdeling?: boolean };
@@ -12,7 +22,7 @@ type Cluster = { keyword: string; volume?: number; score?: string; signalen?: Si
 type RedirectMapItem = { van: string; naar: string; type?: string; mergeContent?: boolean; verhuizen?: boolean; reden?: string };
 type InterneLink = { vanaf: string; naar: string; ankertekst?: string; reden?: string };
 type Datakwaliteit = { gsc?: boolean; gscTijdreeks?: boolean; ahrefsZoekwoorden?: boolean; ahrefsBacklinks?: boolean; crawl?: boolean; opmerking?: string };
-type Result = { samenvatting: string; datakwaliteit?: Datakwaliteit; clusters: Cluster[]; redirectMap?: RedirectMapItem[]; interneLinks?: InterneLink[]; generatedAt: string | null };
+type Result = { oppakken?: Oppakker[]; onderwerpen?: Onderwerp[]; gaten?: Gat[]; samenvatting: string; datakwaliteit?: Datakwaliteit; clusters: Cluster[]; redirectMap?: RedirectMapItem[]; interneLinks?: InterneLink[]; generatedAt: string | null };
 type State = { status: string; result: Result | null; error: string; updatedAt: string | null; stap?: number; stappen?: number; stapLabel?: string; cronTik?: string | null; cronStil?: boolean; kandidaten?: number; beoordeeld?: number };
 
 function actionClass(a: string): string {
@@ -58,8 +68,8 @@ function uitkomstVoor(url: string, winnaar: string, rijen: RedirectMapItem[]): U
   return { tekst: "blijft staan, geen actie", cls: "keep" };
 }
 
-export default function CannibalPanel({ slug, domain = "", openTarget }: {
-  slug: string; domain?: string;
+export default function CannibalPanel({ slug, domain = "", openTarget, clientName, clientEmail }: {
+  slug: string; domain?: string; clientName?: string; clientEmail?: string;
   /** Doorgegeven aan de werklijst, zodat je vanuit een ander scherm meteen op de
       juiste pagina landt in plaats van zelf te moeten filteren. */
   openTarget?: { url: string; n: number } | null;
@@ -71,6 +81,68 @@ export default function CannibalPanel({ slug, domain = "", openTarget }: {
   const [vorm, setVorm] = useState("");
   const [vormOpgeslagen, setVormOpgeslagen] = useState("");
   const [vormMsg, setVormMsg] = useState("");
+  // De advertentiepagina's. Die moeten bekend zijn vóór de analyse: een Ads-pagina
+  // staat meestal op noindex, haalt dus niets uit Google, en ziet er in de data uit
+  // als dood gewicht terwijl de advertenties erheen wijzen.
+  const [adsTekst, setAdsTekst] = useState("");
+  const [adsGeen, setAdsGeen] = useState(false);
+  const [adsIngevuld, setAdsIngevuld] = useState(true);
+  const [adsMsg, setAdsMsg] = useState("");
+  // De waarde-rem over een lijst die er al ligt: pagina's met een waardevolle
+  // eigen zoekterm gaan van de omleidlijst af naar "oppakken".
+  const [weegMsg, setWeegMsg] = useState("");
+  // Wat een klant waard is, zodat de lijsten in euro's kunnen praten in plaats van
+  // in zoekvolume. Zonder deze twee getallen rekent het dashboard niets uit.
+  const [klantwaarde, setKlantwaarde] = useState("");
+  const [conversie, setConversie] = useState("");
+  const [euroIngevuld, setEuroIngevuld] = useState(false);
+  const [euroMsg, setEuroMsg] = useState("");
+  // Wat de al doorgevoerde omleidingen hebben opgeleverd.
+  const [metingen, setMetingen] = useState<Nameting[]>([]);
+  const [metingenTekst, setMetingenTekst] = useState("");
+  // De deellink: één adres dat je aan een klant kunt geven. Daar valt alleen te
+  // lezen en uit te klappen; alles wat iets vastlegt zit achter de adminroutes.
+  const [deelUrl, setDeelUrl] = useState("");
+  const [deelMsg, setDeelMsg] = useState("");
+
+  useEffect(() => {
+    fetch(`/api/admin/opruim-deellink?slug=${encodeURIComponent(slug)}`)
+      .then((r) => r.json()).then((d) => { if (d?.ok) setDeelUrl(d.url || ""); }).catch(() => { /* stil */ });
+  }, [slug]);
+
+  async function deellink(actie: "maken" | "vernieuwen" | "intrekken") {
+    setDeelMsg("");
+    try {
+      const d = await fetch("/api/admin/opruim-deellink", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, actie }),
+      }).then((r) => r.json());
+      if (!d?.ok) { setDeelMsg(d?.error || "Mislukt."); return; }
+      setDeelUrl(d.url || "");
+      setDeelMsg(actie === "intrekken" ? "De link is ingetrokken en werkt niet meer."
+        : actie === "vernieuwen" ? "Nieuwe link gemaakt; de vorige werkt niet meer." : "Link klaar om te delen.");
+    } catch { setDeelMsg("Mislukt."); }
+  }
+
+  // Herwegen draait op de server; het scherm volgt de stand en laadt de lijst
+  // opnieuw zodra hij klaar is.
+  const weegKlus = useKlus(slug, "opruim-herwegen", () => {
+    setWeegMsg(weegKlus.klus?.label || "De lijst is opnieuw gewogen.");
+    void load();
+  });
+
+  async function weegOpnieuw() {
+    if (weegKlus.bezig) return;
+    setWeegMsg("");
+    try {
+      const d = await fetch("/api/admin/opruim-waarde", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }),
+      }).then((r) => r.json());
+      if (!d.ok) { setWeegMsg(d.error || "Controle mislukt."); return; }
+      weegKlus.zetBezig();
+      await weegKlus.ververs();
+    } catch { setWeegMsg("Controle mislukt."); }
+  }
+
 
   async function load() {
     try {
@@ -81,11 +153,64 @@ export default function CannibalPanel({ slug, domain = "", openTarget }: {
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [slug]);
 
   useEffect(() => {
-    fetch(`/api/admin/opruim-structuur-regel?slug=${encodeURIComponent(slug)}`)
+    fetch(`/api/admin/opruim-eindstructuur?slug=${encodeURIComponent(slug)}`)
       .then((r) => r.json())
-      .then((d) => { if (d.ok) { setVorm(d.vorm || ""); setVormOpgeslagen(d.vorm || ""); } })
+      .then((j) => { if (j?.ok) { setMetingen(j.metingen || []); setMetingenTekst(j.metingenTekst || ""); } })
       .catch(() => { /* stil */ });
   }, [slug]);
+
+  useEffect(() => {
+    fetch(`/api/admin/opruim-structuur-regel?slug=${encodeURIComponent(slug)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (!d.ok) return;
+        setVorm(d.vorm || ""); setVormOpgeslagen(d.vorm || "");
+        const a = d.ads as { paden?: string[]; geen?: boolean; ingevuld?: boolean } | undefined;
+        setAdsTekst((a?.paden || []).join("\n"));
+        setAdsGeen(!!a?.geen);
+        setAdsIngevuld(!!a?.ingevuld);
+        const e = d.euro as { klantwaarde?: number; conversie?: number; ingevuld?: boolean } | undefined;
+        if (e?.ingevuld) { setKlantwaarde(String(e.klantwaarde)); setConversie(String(e.conversie)); }
+        setEuroIngevuld(!!e?.ingevuld);
+      })
+      .catch(() => { /* stil */ });
+  }, [slug]);
+
+  async function bewaarAds(geen?: boolean) {
+    setAdsMsg("");
+    const wilGeen = geen === undefined ? adsGeen : geen;
+    const paden = adsTekst.split(/[\n,]/).map((p) => p.trim()).filter(Boolean);
+    if (!paden.length && !wilGeen) { setAdsMsg("Vul de pagina's in, of vink aan dat deze klant geen advertentiepagina's heeft."); return; }
+    try {
+      const d = await fetch("/api/admin/opruim-structuur-regel", {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, ads: paden, geenAds: wilGeen && !paden.length }),
+      }).then((r) => r.json());
+      if (!d.ok) { setAdsMsg(d.error || "Opslaan mislukt."); return; }
+      const a = d.ads as { paden: string[]; geen: boolean; ingevuld: boolean };
+      setAdsTekst(a.paden.join("\n")); setAdsGeen(a.geen); setAdsIngevuld(a.ingevuld);
+      setAdsMsg(a.paden.length
+        ? `Vastgelegd. Deze ${a.paden.length === 1 ? "pagina blijft" : "pagina's blijven"} buiten elke analyse en buiten de werklijst.`
+        : "Vastgelegd: deze klant heeft geen advertentiepagina's.");
+    } catch { setAdsMsg("Opslaan mislukt."); }
+  }
+
+  async function bewaarEuro() {
+    setEuroMsg("");
+    const k = Number(klantwaarde.replace(/[^0-9,.]/g, "").replace(",", "."));
+    const c = Number(conversie.replace(/[^0-9,.]/g, "").replace(",", "."));
+    if (!k || !c) { setEuroMsg("Vul allebei een getal in: wat één klant gemiddeld opbrengt, en welk deel van de bezoekers klant wordt."); return; }
+    try {
+      const d = await fetch("/api/admin/opruim-structuur-regel", {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, klantwaarde: k, conversie: c }),
+      }).then((r) => r.json());
+      if (!d.ok) { setEuroMsg(d.error || "Opslaan mislukt."); return; }
+      setEuroIngevuld(!!d.euro?.ingevuld);
+      setEuroMsg("Opgeslagen. Alle lijsten hieronder rekenen nu in euro's; dat werkt meteen door, zonder nieuwe analyse.");
+      await load();
+    } catch { setEuroMsg("Opslaan mislukt."); }
+  }
 
   async function bewaarVorm() {
     setVormMsg("");
@@ -130,6 +255,46 @@ export default function CannibalPanel({ slug, domain = "", openTarget }: {
     } catch { setErr("Hervatten mislukt."); await load(); } finally { setBusy(false); }
   }
 
+  // Per pagina het bewijs uit de clusters opzoeken, zodat het onder de juiste regel
+  // van de werklijst komt in plaats van in een aparte sectie met eigen vormgeving.
+  const bewijsPerPad: Record<string, import("./OpruimTabel").Bewijs> = {};
+  for (const c of state?.result?.clusters || []) {
+    for (const u of c.urls) {
+      const p = padVanUrl(u.url);
+      if (bewijsPerPad[p]) continue;
+      bewijsPerPad[p] = {
+        keyword: c.keyword, winnaar: c.winnaar, urls: c.urls,
+        onderbouwing: c.onderbouwing, urlFlip: c.signalen?.urlFlip, flipsIn90d: c.signalen?.flipsIn90d,
+      };
+    }
+  }
+
+  const siteUrl = (p: string) => {
+    const pad = padVanUrl(p);
+    return pad.startsWith("http") ? pad : `https://${(domain || "").replace(/^https?:\/\//, "").replace(/\/$/, "")}${pad}`;
+  };
+
+  // Wat blijft er bewust staan? Alle pagina's die in een cluster meedoen maar niet
+  // in de werklijst voorkomen. Een klant wil niet alleen zien wat je weghaalt.
+  const blijftStaan: { pad: string; reden: string }[] = (() => {
+    const rijen = state?.result?.redirectMap || [];
+    const weg = new Set(rijen.map((r) => padVanUrl(r.van)));
+    const doelen = new Set(rijen.map((r) => padVanUrl(r.naar)));
+    const uit = new Map<string, string>();
+    for (const c of state?.result?.clusters || []) {
+      for (const u of c.urls) {
+        const p = padVanUrl(u.url);
+        if (weg.has(p) || uit.has(p)) continue;
+        uit.set(p, doelen.has(p)
+          ? `Andere pagina's gaan hierin op; dit is de pagina die blijft winnen op "${c.keyword}".`
+          : padVanUrl(c.winnaar) === p
+            ? `Wint op "${c.keyword}" en blijft de pagina voor dat onderwerp.`
+            : `Doet mee op "${c.keyword}" maar wint op zijn eigen onderwerp; er is geen reden om hem op te ruimen.`);
+      }
+    }
+    return [...uit.entries()].map(([pad, reden]) => ({ pad, reden })).sort((a, b) => a.pad.localeCompare(b.pad));
+  })();
+
   const running = state?.status === "running";
   const result = state?.result;
   const dk = result?.datakwaliteit;
@@ -139,37 +304,235 @@ export default function CannibalPanel({ slug, domain = "", openTarget }: {
   const regels = result?.redirectMap?.length || 0;
   const stappen = state?.stappen || 5;
 
+  // Eén sectie: ingeklapt, met in de kop al wat erin zit. Zo zie je in één blik
+  // waar je moet zijn in plaats van door zes open blokken te scrollen.
+  const Sectie = ({ titel, aantal, wat, open: standaardOpen = false, children }: {
+    titel: string; aantal?: number; wat: string; open?: boolean; children: React.ReactNode;
+  }) => (
+    <details className="opr-sectie" open={standaardOpen}>
+      <summary>
+        <span className="opr-sectie-kop">
+          <span className="opr-sectie-titel">{titel}</span>
+          {aantal != null && <span className="opr-chip merge">{aantal}</span>}
+        </span>
+        <span className="opr-sectie-wat">{wat}</span>
+      </summary>
+      <div className="opr-sectie-body">{children}</div>
+    </details>
+  );
+
   return (
     <div className="cannibal-panel">
       <div className="cockpit-card acc-orange">
         <div className="ck-section-head">
-          <span>Keyword-cannibalisatie-analyse</span>
-          <button type="button" className={"pcd-btn pcd-btn-primary" + (running ? " busy" : "")} onClick={run} disabled={busy || running}>
-            {running ? "Analyse draait…" : result ? "Opnieuw analyseren" : "Analyse draaien"}
-          </button>
+          <span>Opruimen: pagina&rsquo;s die elkaar in de weg zitten</span>
+          <span className="opr-kaart-acties">
+            {/* Deze knop stond in de werklijst, en die klapt sinds 7 augustus dicht.
+                Een actie die je nodig hebt hoort niet achter een dichte sectie te
+                zitten; hij gaat bovendien over de hele pagina, niet over die ene
+                lijst. */}
+            {result && (
+              <button type="button" className="ghost-btn small" onClick={() => void weegOpnieuw()} disabled={weegKlus.bezig || running}
+                title="Rekent de lijsten opnieuw door met de actuele cijfers: pagina's met een waardevolle eigen zoekterm gaan van de opruimlijst af, de onderwerpen en de ontbrekende pagina's worden opnieuw bepaald. Duurt een paar minuten, geen twintig.">
+                {weegKlus.bezig ? "Bezig met controleren…" : "Controleer op gemiste kansen"}
+              </button>
+            )}
+            <button type="button" className={"pcd-btn pcd-btn-primary" + (running ? " busy" : "")} onClick={run} disabled={busy || running || !adsIngevuld}
+              title={adsIngevuld ? "" : "Vul eerst de advertentiepagina's in, anders kan de analyse er een voorstellen om op te ruimen."}>
+              {running ? "Analyse draait…" : result ? "Opnieuw analyseren" : "Analyse draaien"}
+            </button>
+          </span>
         </div>
-        <p className="muted" style={{ fontSize: 12, margin: "2px 0 12px" }}>
-          Draait de agentic skill <em>keyword-cannibalisatie-analyse</em> (dezelfde methodiek als in Cowork): onderscheidt echte cannibalisatie van false positives via URL-flip-detectie over tijd, positie-plafond, klik-verdeling en intentie-check, en geeft per cluster een winnaar met de lichtste effectieve actie. Je kunt wegklikken; het draait op de achtergrond.
-        </p>
+        {/* De uitkomst van die knop hoort óók bovenaan te staan, niet verstopt in de
+            sectie waar hij vandaan kwam. */}
+        {weegKlus.bezig && (
+          <div style={{ marginBottom: "var(--s-3)" }}>
+            <Voortgang klein titel="De lijsten opnieuw doorrekenen" label={weegKlus.klus?.label} sinds={weegKlus.klus?.gestart} />
+          </div>
+        )}
+        {weegMsg && <div className="opr-melding" style={{ marginBottom: "var(--s-3)" }}>{weegMsg}</div>}
+
+        {/* Wat je één keer instelt, en de deellink. Allebei in een lade: je vult
+            het één keer in en ziet het daarna nooit meer, dus het hoort niet het
+            halve scherm te vullen. */}
+        <div className="opr-laden">
+          <details className="opr-lade" open={!adsIngevuld}>
+            <summary>
+              Instellingen voor deze klant
+              {adsIngevuld
+                ? <span className="opr-chip merge">advertentiepagina&rsquo;s: {adsGeen ? "geen" : adsTekst.split("\n").filter(Boolean).length}</span>
+                : <span className="opr-chip nodig">advertentiepagina&rsquo;s invullen</span>}
+              <span className={"opr-chip" + (euroIngevuld ? " merge" : "")}>{euroIngevuld ? "bedragen aan" : "geen bedragen"}</span>
+              {vormOpgeslagen && <span className="opr-chip merge">URL-vorm vast</span>}
+            </summary>
+            <div className="opr-lade-body">
+              {/* Eerst dit, dan pas analyseren. Een Google Ads-landingspagina staat vaak op
+                  noindex: hij haalt niets uit Google en lijkt daarom dood gewicht, terwijl de
+                  advertenties erheen wijzen. Zo'n pagina opruimen kost meteen geld. */}
+              <div className={"opr-vorm opr-ads" + (adsIngevuld ? "" : " nodig")}>
+                <div className="opr-vorm-kop">Advertentiepagina&rsquo;s (Google Ads)</div>
+                <p className="muted" style={{ fontSize: 12, margin: 0 }}>
+                  Landingspagina&rsquo;s waar je advertenties naartoe stuurt staan meestal op <strong>noindex</strong>. Ze halen dus
+                  niets uit Google en zien er in de data uit als dode pagina&rsquo;s, terwijl ze juist moeten blijven bestaan.
+                  Zet ze hier neer, dan blijven ze buiten de analyse en buiten de werklijst. E&eacute;n pad per regel; een map
+                  zoals <code>/ads/</code> dekt meteen alles daaronder.
+                </p>
+                <textarea className="opr-ads-veld" value={adsTekst} rows={3} spellCheck={false}
+                  onChange={(e) => { setAdsTekst(e.target.value); if (e.target.value.trim()) setAdsGeen(false); }}
+                  placeholder={"/landing-page/\n/ads/\n/actie-soa-test/"} aria-label="Advertentiepagina's" />
+                <div className="opr-vorm-rij">
+                  <button type="button" className="ghost-btn small" onClick={() => void bewaarAds()}>Opslaan</button>
+                  <label className="opr-ads-geen">
+                    <input type="checkbox" checked={adsGeen} disabled={!!adsTekst.trim()}
+                      onChange={(e) => { setAdsGeen(e.target.checked); if (e.target.checked) void bewaarAds(true); }} />
+                    Deze klant heeft geen advertentiepagina&rsquo;s
+                  </label>
+                </div>
+                {adsMsg && <div className="muted" style={{ fontSize: 12 }}>{adsMsg}</div>}
+              </div>
+
+              {/* Wat een klant waard is. Zonder deze twee getallen praten alle lijsten in
+                  zoekvolume, en dat is geen taal waarin je een besluit uitlegt. */}
+              <div className="opr-vorm">
+                <div className="opr-vorm-kop">Wat een klant waard is</div>
+                <p className="muted" style={{ fontSize: 12, margin: 0 }}>
+                  Met deze twee getallen praten alle lijsten hieronder in euro&rsquo;s in plaats van in zoekvolume.
+                  Laat je ze leeg, dan blijft alles op zoekvolume staan; de volgorde van de lijsten is in beide
+                  gevallen dezelfde.
+                </p>
+                <div className="opr-vorm-rij">
+                  <input className="opr-zoek" style={{ maxWidth: 220 }} value={klantwaarde} onChange={(e) => setKlantwaarde(e.target.value)}
+                    placeholder="wat één klant opbrengt, bijv. 350" aria-label="Waarde van één klant in euro's" />
+                  <input className="opr-zoek" style={{ maxWidth: 220 }} value={conversie} onChange={(e) => setConversie(e.target.value)}
+                    placeholder="% dat klant wordt, bijv. 2" aria-label="Conversiepercentage" />
+                  <button type="button" className="ghost-btn small" onClick={() => void bewaarEuro()}>Opslaan</button>
+                </div>
+                <p className="muted" style={{ fontSize: 12, margin: 0 }}>
+                  <strong>Gok gerust bij die conversie.</strong> Niemand weet precies welk deel van de bezoekers klant
+                  wordt; wie na drie bezoeken belt staat nergens geregistreerd. Het hoeft ook niet nauwkeurig, want het is
+                  voor elke regel dezelfde vermenigvuldiging: de volgorde verandert er niet door, alleen de hoogte van de
+                  bedragen. Daarom staat overal ook het aantal extra bezoekers, en dat getal leunt niet op de aanname.
+                </p>
+                {euroMsg && <div className="muted" style={{ fontSize: 12 }}>{euroMsg}</div>}
+              </div>
+
+              <div className="opr-vorm">
+                <div className="opr-vorm-kop">
+                  Gekozen URL-structuur
+                  {vormOpgeslagen
+                    ? <span className="opr-chip merge" style={{ marginLeft: 8 }}>actief: {vormOpgeslagen}</span>
+                    : <span className="opr-chip" style={{ marginLeft: 8 }}>nog niet vastgelegd</span>}
+                </div>
+                <p className="muted" style={{ fontSize: 12, margin: 0 }}>
+                  E&eacute;n vaste vorm voor dit type pagina. De analyse leidt daarna nooit meer om naar een vorm die je
+                  uitfaseert, en markeert een sterke pagina op de verkeerde vorm als <em>verhuizen</em> in plaats van als
+                  omleiding.
+                </p>
+                <div className="opr-vorm-rij">
+                  <input className="opr-zoek" value={vorm} onChange={(e) => setVorm(e.target.value)}
+                    placeholder="bijvoorbeeld: /soa-klinieken/soa-test-&lt;plaats&gt;/" spellCheck={false}
+                    aria-label="Gekozen URL-structuur" />
+                  <button type="button" className="ghost-btn small" onClick={bewaarVorm}>Opslaan</button>
+                </div>
+                {vormMsg && <div className="muted" style={{ fontSize: 12 }}>{vormMsg}</div>}
+              </div>
+            </div>
+          </details>
+
+          <details className="opr-lade">
+            <summary>
+              Deelbare link voor de klant
+              <span className={"opr-chip" + (deelUrl ? " merge" : "")}>{deelUrl ? "staat open" : "staat uit"}</span>
+            </summary>
+            <div className="opr-lade-body">
+              <p className="muted" style={{ fontSize: 12, margin: 0 }}>
+                E&eacute;n adres dat je aan iedereen kunt geven, zonder inloggen: hetzelfde verhaal als hier, maar
+                <strong> alleen kijken</strong>. Geen vinkjes, geen doorvoeren, geen weekplanning en geen mail.
+                Zolang je er geen maakt, is dit rapport nergens publiek te zien.
+              </p>
+              {deelUrl && <p style={{ margin: 0 }}><a className="opr-pad" href={deelUrl} target="_blank" rel="noreferrer">{deelUrl}</a></p>}
+              <div className="opr-vorm-rij">
+                {!deelUrl && <button type="button" className="ghost-btn small" onClick={() => void deellink("maken")}>Maak een deellink</button>}
+                {deelUrl && <button type="button" className="ghost-btn small" onClick={() => { void navigator.clipboard.writeText(deelUrl); setDeelMsg("Gekopieerd."); }}>Kopieer</button>}
+                {deelUrl && <a className="ghost-btn small" href={deelUrl} target="_blank" rel="noreferrer">Bekijk zoals de klant hem ziet</a>}
+                {deelUrl && <button type="button" className="ghost-btn small" onClick={() => void deellink("vernieuwen")} title="Maakt een nieuw adres; de oude link werkt daarna niet meer.">Nieuw adres</button>}
+                {deelUrl && <button type="button" className="ghost-btn small" onClick={() => void deellink("intrekken")}>Intrekken</button>}
+              </div>
+              {deelMsg && <div className="muted" style={{ fontSize: 12 }}><strong>{deelMsg}</strong></div>}
+            </div>
+          </details>
+        </div>
+
+        {/* De uitleg over de volle breedte, in kaartjes. Stond als één lijst in een
+            smalle kolom tegen de linkerrand; dat leest niet en het maakte niet
+            duidelijk waar je moest beginnen. */}
+        <div className="opr-kaart opr-kaart-intro">
+          <div className="opr-kop">Wat deze analyse doet</div>
+          <div className="opr-kaart-tekst">
+            <p>
+              Per pagina van de site één vraag: <strong>wat moet hiermee gebeuren</strong>. En over de site als geheel
+              één vraag: <strong>wat ontbreekt er</strong>. De analyse draait op de achtergrond; je kunt wegklikken.
+            </p>
+          </div>
+          <div className="opr-intro-grid">
+            <div className="opr-intro-kaart">
+              <h4>Waar we naar kijken</h4>
+              <ul>
+                <li><strong>Search Console:</strong> welke pagina op welk zoekwoord wordt getoond, hoe vaak en op welke plek. En of Google door de tijd heen wisselt tussen twee van jouw pagina&rsquo;s; dat is het hardste signaal dat er is.</li>
+                <li><strong>Ahrefs:</strong> zoekvolume, moeilijkheid en wat iemand met een zoekopdracht bedoelt. Plus hoe sterk het domein zelf staat.</li>
+                <li><strong>De live site:</strong> welke pagina&rsquo;s er zijn en welke URL-vormen naast elkaar bestaan.</li>
+              </ul>
+            </div>
+            <div className="opr-intro-kaart">
+              <h4>Twee controles tegen schade</h4>
+              <ul>
+                <li><strong>Gaat het wel om dezelfde vraag?</strong> &ldquo;soa test kopen&rdquo; en &ldquo;wat is een soa test&rdquo; lijken op elkaar, maar de één wil bestellen en de ander wil het snappen. Die worden nooit samengevoegd.</li>
+                <li><strong>Is het te winnen?</strong> Een zoekterm die veel zwaarder is dan dit domein aankan, is geen kans. Zulke regels blijven staan maar gaan onderaan, met de reden erbij.</li>
+              </ul>
+            </div>
+            <div className="opr-intro-kaart">
+              <h4>Wat eruit komt</h4>
+              <ul>
+                <li><strong>Bundelen:</strong> meerdere pagina&rsquo;s over hetzelfde, geen enkele in de top 10.</li>
+                <li><strong>Oppakken:</strong> scoort nergens op, maar de zoekterm is wél wat waard.</li>
+                <li><strong>Ontbreekt:</strong> zoektermen zonder pagina. Dit deel gaat over groeien.</li>
+                <li><strong>Werklijst:</strong> per pagina waar hij heen gaat en waarom.</li>
+              </ul>
+            </div>
+            <div className="opr-intro-kaart">
+              <h4>En daarna</h4>
+              <p>
+                Van elke doorgevoerde omleiding wordt na 30 en 90 dagen gemeten of de overgebleven pagina er echt
+                sterker van is geworden.
+              </p>
+              <p>
+                Onderaan staat hoe de site eruitziet als alles is doorgevoerd: netjes gegroepeerd per onderwerp. Dat is
+                het blok dat je aan een klant laat zien.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {err && <div className="login-error" style={{ marginBottom: 8 }}>{err}</div>}
         {state?.status === "error" && state.error && <div className="login-error" style={{ marginBottom: 8 }}>{state.error}</div>}
         {/* Voortgang, want een spinner zonder stand is niet te onderscheiden van
             vastgelopen. Precies dat gebeurde op 03-08-2026: de run was al dood en
             het scherm bleef "draait…" tonen. */}
         {running && (
-          <div className="opr-voortgang">
-            <span className="opr-voortgang-stap">Stap {state?.stap || 1} van {stappen}</span>
-            <span className="opr-voortgang-label">{state?.stapLabel || "De analyse wordt gestart"}</span>
-            {regels > 0 && <span className="opr-voortgang-tel">{regels} regels tot nu toe</span>}
-            {(state?.kandidaten || 0) > 0 && <span className="opr-voortgang-tel">{state?.beoordeeld || 0} van {state?.kandidaten} kandidaten nagelopen</span>}
-            <button type="button" className="ghost-btn small" onClick={hervat} disabled={busy} title="Draait de eerstvolgende stap meteen, zonder de analyse opnieuw te beginnen.">Nu hervatten</button>
-            <span className="opr-voortgang-tijd">
-              De hele analyse duurt een kwartier tot twintig minuten. Je kunt wegklikken; hij loopt door.
-              {" "}{state?.cronStil
-                ? "Let op: het vangnet dat vastgelopen analyses oppakt, draait nu niet. Blijft de stap hangen, klik dan op Nu hervatten."
-                : `Vangnet draaide voor het laatst om ${new Date(state?.cronTik as string).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })}.`}
-            </span>
-          </div>
+          <Voortgang
+            titel="Opruimanalyse"
+            label={[
+              state?.stapLabel || "De analyse wordt gestart",
+              regels > 0 ? `${regels} regels tot nu toe` : "",
+              (state?.kandidaten || 0) > 0 ? `${state?.beoordeeld || 0} van de ${state?.kandidaten} kandidaten nagelopen` : "",
+              "De hele analyse duurt een kwartier tot twintig minuten.",
+            ].filter(Boolean).join(" · ")}
+            stap={state?.stap || 1}
+            stappen={stappen}
+            sinds={state?.updatedAt}
+            stil={!!state?.cronStil}
+            actie={{ label: "Nu hervatten", onClick: hervat, bezig: busy }}
+          />
         )}
         {!result && !running && state?.status !== "error" && <div className="muted">Nog geen analyse. Klik &ldquo;Analyse draaien&rdquo;.</div>}
 
@@ -180,151 +543,160 @@ export default function CannibalPanel({ slug, domain = "", openTarget }: {
               {running ? " · de nieuwe analyse draait nog, dit is nog de vorige" : ""}
             </div>
 
-            {dk && (
-              <div className="cannibal-dk">
-                <span className={"cannibal-dk-pill " + (dk.gsc ? "on" : "off")}>Search Console {dk.gsc ? "✓" : "✗"}</span>
-                <span className={"cannibal-dk-pill " + (dk.gscTijdreeks ? "on" : "off")}>Flip-tijdreeks {dk.gscTijdreeks ? "✓" : "✗"}</span>
-                <span className={"cannibal-dk-pill " + (dk.ahrefsZoekwoorden ? "on" : "off")}>Ahrefs per pagina {dk.ahrefsZoekwoorden ? "✓" : "✗"}</span>
-                <span className={"cannibal-dk-pill " + (dk.ahrefsBacklinks ? "on" : "off")}>Verwijzende domeinen {dk.ahrefsBacklinks ? "✓" : "✗"}</span>
-                <span className={"cannibal-dk-pill " + (dk.crawl ? "on" : "off")}>Crawl {dk.crawl ? "✓" : "✗"}</span>
-                {dk.opmerking && <div className="muted" style={{ fontSize: 12, marginTop: 6, width: "100%" }}>{dk.opmerking}</div>}
-              </div>
+            {/* Alles bij elkaar, één regel per pagina. Dit is sinds 7 augustus de
+                hoofdmoot; de losse blokken eronder zijn de verdieping. */}
+            <Sectie titel="De werklijst: elke pagina één besluit" open
+              wat="Alles bij elkaar in één lijst, te filteren op besluit en te groeperen per plaats of onderwerp. De onderbouwing per pagina staat in de blokken eronder.">
+              <OpruimEenLijst slug={slug} domain={domain} />
+            </Sectie>
+
+            {/* Hieronder de blokken waar die lijst uit is opgebouwd. Ze blijven
+                bestaan omdat daar de volledige onderbouwing staat, maar ze zijn
+                niet meer het eerste wat je ziet. */}
+            {(result.onderwerpen?.length || 0) > 0 && (
+              <Sectie titel="Onderwerpen bundelen" aantal={result.onderwerpen?.length}
+                wat="Drie of meer pagina's over hetzelfde, en geen van alle in de top 10. Eén ervan wordt de vaste pagina, de rest gaat daarin op.">
+                <OpruimOnderwerpen slug={slug} domain={domain} rijen={result.onderwerpen || []} clientName={clientName} clientEmail={clientEmail} />
+              </Sectie>
             )}
 
-            <div className="opr-vorm">
-              <div className="opr-vorm-kop">
-                Gekozen URL-structuur
-                {vormOpgeslagen
-                  ? <span className="opr-chip merge" style={{ marginLeft: 8 }}>actief: {vormOpgeslagen}</span>
-                  : <span className="opr-chip" style={{ marginLeft: 8 }}>nog niet vastgelegd</span>}
-              </div>
-              <p className="muted" style={{ fontSize: 12, margin: 0 }}>
-                E&eacute;n vaste vorm voor dit type pagina. De analyse leidt daarna nooit meer om naar een vorm die je uitfaseert,
-                en markeert een sterke pagina op de verkeerde vorm als <em>verhuizen</em> in plaats van als omleiding.
-              </p>
-              <div className="opr-vorm-rij">
-                <input className="opr-zoek" value={vorm} onChange={(e) => setVorm(e.target.value)}
-                  placeholder="bijvoorbeeld: /soa-klinieken/soa-test-&lt;plaats&gt;/" spellCheck={false}
-                  aria-label="Gekozen URL-structuur" />
-                <button type="button" className="ghost-btn small" onClick={bewaarVorm}>Opslaan</button>
-              </div>
-              {vormMsg && <div className="muted" style={{ fontSize: 12 }}>{vormMsg}</div>}
-            </div>
+            {(result.oppakken?.length || 0) > 0 && (
+              <Sectie titel="Oppakken, niet weghalen" aantal={result.oppakken?.length}
+                wat="Deze pagina's scoren nergens op, maar hun eigen zoekterm heeft wél volume en niemand anders bezit hem. Opruimen zou hier een kans weggooien.">
+                <OpruimOppakken slug={slug} domain={domain} rijen={result.oppakken || []} clientName={clientName} clientEmail={clientEmail} />
+              </Sectie>
+            )}
 
-            <OpruimStructuur slug={slug} />
+            {/* Plaatspagina's: één besluit per plaats, met de vestigingen uit de
+                bedrijfsgegevens als input voor de laatste van vijf vragen. Hoog in
+                de lijst, want bij een site met honderd plaatspagina's is dit het
+                grootste besluit dat er ligt. */}
+            <Sectie titel="Plaatspagina's: wat blijft en wat gaat"
+              wat="Eén besluit per plaats in plaats van per URL, langs vijf vragen: levert hij iets op, is er vraag, is het te winnen, klopt de URL-vorm, en pas als laatste: zit er een vestiging.">
+              <OpruimPlaatsen slug={slug} domain={domain} clientName={clientName} clientEmail={clientEmail} />
+            </Sectie>
 
-            {/* De werklijst eerst. Het verhaal eronder: een lijst is om af te werken,
-                proza is om te begrijpen, en in die volgorde. */}
+            {(result.gaten?.length || 0) > 0 && (
+              <Sectie titel="Wat er ontbreekt" aantal={result.gaten?.length}
+                wat="Zoektermen met volume waar geen enkele pagina op mikt. Het enige deel dat over groeien gaat in plaats van over opruimen.">
+                <OpruimGaten slug={slug} domain={domain} rijen={result.gaten || []} clientName={clientName} clientEmail={clientEmail} />
+              </Sectie>
+            )}
+
             {result.redirectMap && result.redirectMap.length > 0 && (
-              <div className="opr-blok">
-                <div className="opr-kop-rij">
-                <div className="opr-kop">Werklijst: wat waar naartoe</div>
-                {/* Downloaden als CSV: opent met een dubbelklik in Excel en is te
-                    importeren in Google Sheets. Platte rijen met duidelijke
-                    van/naar-kolommen, zoals Maartens eigen Excel. */}
-                <a className="ghost-btn small" href={`/api/admin/opruim-export?slug=${encodeURIComponent(slug)}`}
-                   title="Downloadt de volledige lijst als CSV. Dubbelklikken opent hem in Excel; in Google Sheets via Bestand, Importeren.">
-                  Download voor Excel of Sheets
-                </a>
-              </div>
-                <OpruimTabel slug={slug} domain={domain} rijen={result.redirectMap} openTarget={openTarget} />
-              </div>
-            )}
-
-            {result.samenvatting && (
-              <details className="opr-details">
-                <summary>Samenvatting en onderbouwing per cluster</summary>
-                <div className="cannibal-summary md" dangerouslySetInnerHTML={{ __html: mdToHtml(result.samenvatting) }} />
-              </details>
-            )}
-
-            {/* Alle onderbouwing bij elkaar en dichtgeklapt. Stond eerst als zeven
-                lappen proza vóór de tabel; dat is om te begrijpen, niet om af te
-                werken. Openklappen kan altijd, het gaat nergens heen. */}
-            <details className="opr-details">
-              <summary>Onderbouwing per cluster ({result.clusters.length}) en interne-link-acties</summary>
-              <div className="opr-details-body">
-            {result.clusters.length === 0 && <div className="muted" style={{ marginTop: 8 }}>Geen echte cannibalisatie-clusters gevonden.</div>}
-
-            {result.clusters.map((c, i) => {
-              const sig = c.signalen || {};
-              return (
-                <div className="cannibal-cluster" key={i}>
-                  <div className="cannibal-cluster-head">
-                    <strong>{c.keyword}</strong>
-                    {c.volume != null && <span className="muted">vol {c.volume}</span>}
-                    {c.score && <span className={"cannibal-score " + scoreClass(c.score)}>{c.score}</span>}
-                    {c.intentie && <span className="cannibal-ptype">intentie: {c.intentie}</span>}
-                  </div>
-                  <div className="cannibal-signals">
-                    {sig.urlFlip && <span className="cannibal-sig flip">URL-flip{sig.flipsIn90d ? ` ×${sig.flipsIn90d}` : ""}</span>}
-                    {sig.positiePlafond && <span className="cannibal-sig">positie-plafond 5-20</span>}
-                    {sig.klikVerdeling && <span className="cannibal-sig">klikken verdeeld</span>}
-                    <span className="muted" style={{ fontSize: 12 }}>winnaar: <strong>{c.winnaar}</strong></span>
-                    <span className={"cannibal-act " + actionClass(c.actie)}>{c.actie}</span>
-                  </div>
-                  <div className="res-table-wrap">
-                    <table className="res-table">
-                      <thead><tr><th>Pagina</th><th>Wat gebeurt ermee</th><th>Positie</th><th>Clicks</th><th>Vert.</th></tr></thead>
-                      <tbody>
-                        {c.urls.map((u, j) => {
-                          const uit = uitkomstVoor(u.url, c.winnaar, result.redirectMap || []);
-                          return (
-                            <tr key={j} className={"cannibal-row " + (u.url === c.winnaar ? "redir" : "")}>
-                              <td><a href={u.url} target="_blank" rel="noreferrer">{padVanUrl(u.url)}</a></td>
-                              <td>
-                                <span className={"opr-chip " + uit.cls}>{uit.tekst}</span>
-                                {uit.doel && <> <a href={uit.doel.startsWith("http") ? uit.doel : `https://${(domain || "").replace(/^https?:\/\//, "")}${uit.doel}`} target="_blank" rel="noreferrer">{padVanUrl(uit.doel)}</a></>}
-                              </td>
-                              <td>{num(u.positie)}</td>
-                              <td>{u.klikken != null ? u.klikken : "—"}</td>
-                              <td>{u.impressies != null ? u.impressies : "—"}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                  {c.onderbouwing && (
-                    <div className="cannibal-reason">
-                      <strong>Onderbouwing</strong>
-                      {/* Was één lap platte tekst met kale paden erin. Nu gerenderd met
-                          bullets en elke slug klikbaar, zoals overal in het dashboard. */}
-                      <div className="md" dangerouslySetInnerHTML={{ __html: linkifyHtml(mdToHtml(alsBullets(c.onderbouwing)), domain) }} />
-                    </div>
-                  )}
-                  {c.verwachteImpact && (
-                    <div className="cannibal-reason muted">
-                      <strong>Verwachte impact</strong>
-                      <div className="md" dangerouslySetInnerHTML={{ __html: linkifyHtml(mdToHtml(c.verwachteImpact), domain) }} />
-                    </div>
-                  )}
+              <Sectie titel="Pagina's die elkaar in de weg zitten" aantal={regels}
+                wat="De cannibalisatie-analyse zelf: welke pagina om welk zoekwoord vecht met welke, met het bewijs uit de cijfers. Deze regels zitten ook in de werklijst hierboven.">
+                <div className="opr-kaart-acties" style={{ marginBottom: "var(--s-3)" }}>
+                  {/* Downloaden als CSV: opent met een dubbelklik in Excel en is te
+                      importeren in Google Sheets. */}
+                  <a className="ghost-btn small" href={`/api/admin/opruim-export?slug=${encodeURIComponent(slug)}`}
+                     title="Downloadt de volledige lijst als CSV. Dubbelklikken opent hem in Excel; in Google Sheets via Bestand, Importeren.">
+                    Download voor Excel of Sheets
+                  </a>
                 </div>
-              );
-            })}
+                <OpruimTabel slug={slug} domain={domain} rijen={result.redirectMap} openTarget={openTarget} bewijs={bewijsPerPad} />
+              </Sectie>
+            )}
 
+            {/* Het sluitstuk: niet het werk, maar het resultaat. Standaard open, want
+                dit is het enige blok dat laat zien waar je het allemaal voor doet. */}
+            <Sectie titel="Zo ziet de site eruit na het doorvoeren" open
+              wat="Alle beslissingen hierboven bij elkaar, als boom: per tak de hoofdpagina met de pagina's die daaronder horen.">
+              <OpruimEindstructuur slug={slug} domain={domain} />
+            </Sectie>
+
+            {metingen.length > 0 && (
+              <Sectie titel="Klopte het?" aantal={metingen.length}
+                wat="Van elke doorgevoerde omleiding: hoe stond de overgebleven pagina ervoor, en hoe staat hij er 30 en 90 dagen later voor.">
+                <OpruimNameten rijen={metingen} tekst={metingenTekst} domain={domain} />
+              </Sectie>
+            )}
+
+            {/* ── Wat er daarna nog moet gebeuren: de interne links ── */}
             {result.interneLinks && result.interneLinks.length > 0 && (
-              <div className="cannibal-tech">
-                <div className="pcd-docs-head">Interne-link-acties</div>
+              <Sectie titel="Daarna: interne links leggen" aantal={result.interneLinks.length}
+                wat="Omleiden lost de strijd op; deze links maken de overgebleven pagina daarna ook sterker. Een aanvulling, geen volledige linkaudit.">
                 <div className="res-table-wrap">
                   <table className="res-table">
-                    <thead><tr><th>Vanaf</th><th>Naar</th><th>Ankertekst</th><th>Reden</th></tr></thead>
+                    <thead><tr><th>Zet een link op deze pagina</th><th>Naar</th><th>Met deze tekst</th></tr></thead>
                     <tbody>
                       {result.interneLinks.map((l, i) => (
                         <tr key={i}>
-                          <td>{l.vanaf}</td>
-                          <td>{l.naar}</td>
-                          <td>{l.ankertekst || "—"}</td>
-                          <td className="muted" style={{ fontSize: 12 }}>{l.reden || ""}</td>
+                          <td><a href={siteUrl(l.vanaf)} target="_blank" rel="noreferrer">{padVanUrl(l.vanaf)}</a></td>
+                          <td><a href={siteUrl(l.naar)} target="_blank" rel="noreferrer">{padVanUrl(l.naar)}</a></td>
+                          <td>{l.ankertekst || "\u2014"}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
-              </div>
+              </Sectie>
             )}
-              </div>
-            </details>
+
+            {/* ── Wat we bewust laten staan ── */}
+            {blijftStaan.length > 0 && (
+              <Sectie titel="Wat we bewust laten staan" aantal={blijftStaan.length}
+                wat="Deze pagina's kwamen in de analyse langs en blijven: ze winnen op hun eigen onderwerp, of andere pagina's gaan er juist in op.">
+                <div className="res-table-wrap">
+                  <table className="res-table">
+                    <thead><tr><th>Pagina</th><th>Waarom blijft hij</th></tr></thead>
+                    <tbody>
+                      {blijftStaan.map((b, i) => (
+                        <tr key={i}>
+                          <td><a href={siteUrl(b.pad)} target="_blank" rel="noreferrer">{b.pad}</a></td>
+                          <td className="muted" style={{ fontSize: 13 }}>{b.reden}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Sectie>
+            )}
+
+            <Sectie titel="Structuur van de site nu"
+              wat="Welke soorten pagina's er bestaan, en hoeveel URL-vormen er naast elkaar leven voor hetzelfde onderwerp.">
+              <OpruimStructuur slug={slug} />
+            </Sectie>
+
+            {dk && (
+              <Sectie titel="Waarop deze analyse is gebaseerd"
+                wat="Welke bronnen zijn gebruikt, en wat er bewust niet in zit.">
+                <div className="opr-kaart-tekst">
+                  <p>De conclusies hierboven komen uit de eigen cijfers van de website, niet uit een aanname. Gebruikt zijn:</p>
+                  <ul>
+                    <li><strong>Search Console:</strong> op welk zoekwoord welke pagina wordt getoond, hoe vaak, en op welke plek. {dk.gsc ? "Beschikbaar." : "Niet beschikbaar."}</li>
+                    <li><strong>Het verloop door de tijd:</strong> of Google tussen twee pagina&rsquo;s wisselt op hetzelfde zoekwoord. {dk.gscTijdreeks ? "Beschikbaar." : "Niet beschikbaar."}</li>
+                    <li><strong>Ahrefs:</strong> het zoekvolume per zoekwoord en de posities per pagina. {dk.ahrefsZoekwoorden ? "Beschikbaar." : "Niet beschikbaar."}</li>
+                    <li><strong>Verwijzende websites:</strong> hoeveel andere sites naar een pagina linken, als maat voor hoe sterk hij staat. {dk.ahrefsBacklinks ? "Beschikbaar." : "Niet beschikbaar."}</li>
+                  </ul>
+                  {!dk.crawl && (
+                    <p>
+                      <strong>Wat er niet in zit:</strong> een technische scan van de website zelf. Voor de keuzes hierboven is
+                      dat niet nodig; het betekent alleen dat we na het doorvoeren van de omleidingen nog één keer nameten of
+                      ze allemaal in één stap aankomen.
+                    </p>
+                  )}
+                </div>
+              </Sectie>
+            )}
+
+            {/* Zelfde component als op de deellink, zodat de klantversie en de
+                cockpit niet uit elkaar kunnen lopen. */}
+            <OpruimSamenvatting
+              domain={domain}
+              samenvatting={result.samenvatting}
+              clusters={result.clusters?.length || 0}
+              regels={regels}
+              oppakken={result.oppakken?.length || 0}
+              onderwerpen={result.onderwerpen?.length || 0}
+              gaten={result.gaten?.length || 0}
+              euroPerMaand={
+                [...(result.oppakken || []), ...(result.onderwerpen || []), ...(result.gaten || [])]
+                  .reduce((n, r) => n + ((r as { euro?: { perMaand?: number } }).euro?.perMaand || 0), 0)
+              }
+              blijftStaan={blijftStaan.length}
+              interneLinks={result.interneLinks?.length || 0}
+            />
           </>
         )}
       </div>

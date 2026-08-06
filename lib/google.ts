@@ -18,11 +18,20 @@ import { ahrefsConfigured, getKeywordsOverview } from "./ahrefs";
 // - drive (provider 'google_drive'): documenten-opslag. Per wereld koppelt de
 //   eigenaar hier het Drive-account waar documenten moeten landen. Zo kan de
 //   data-koppeling nooit per ongeluk iemands Drive openzetten.
-export type GooglePurpose = "data" | "drive";
+// - profiel (provider 'google_profiel'): het Google-bedrijfsprofiel van klanten
+//   waar Pingwin beheerder van is. Bewust een derde, losse rij: deze toestemming
+//   geeft schrijfrechten op de etalage van een klant, en die mag nooit meeliften
+//   op de alleen-lezen datakoppeling. Zie lib/gbp.ts.
+export type GooglePurpose = "data" | "drive" | "profiel";
 
 const DATA_SCOPES = [
   "https://www.googleapis.com/auth/webmasters.readonly",
   "https://www.googleapis.com/auth/analytics.readonly",
+  "openid", "email",
+].join(" ");
+
+const PROFIEL_SCOPES = [
+  "https://www.googleapis.com/auth/business.manage",
   "openid", "email",
 ].join(" ");
 
@@ -34,7 +43,15 @@ const DRIVE_SCOPES = [
 ].join(" ");
 
 function providerFor(purpose: GooglePurpose): string {
-  return purpose === "drive" ? "google_drive" : "google";
+  if (purpose === "drive") return "google_drive";
+  if (purpose === "profiel") return "google_profiel";
+  return "google";
+}
+
+function scopesFor(purpose: GooglePurpose): string {
+  if (purpose === "drive") return DRIVE_SCOPES;
+  if (purpose === "profiel") return PROFIEL_SCOPES;
+  return DATA_SCOPES;
 }
 
 export function googleConfigured(): boolean {
@@ -50,7 +67,7 @@ export function googleAuthUrl(origin: string, state: string, purpose: GooglePurp
     client_id: process.env.GOOGLE_CLIENT_ID || "",
     redirect_uri: googleRedirectUri(origin),
     response_type: "code",
-    scope: purpose === "drive" ? DRIVE_SCOPES : DATA_SCOPES,
+    scope: scopesFor(purpose),
     access_type: "offline",
     prompt: "consent",
     include_granted_scopes: "true",
@@ -125,6 +142,13 @@ export async function getGoogleAccessToken(): Promise<string | null> {
 // terugval op de data-rij: de data-koppeling mag nooit Drive-toegang geven.
 export async function getDriveAccessToken(): Promise<string | null> {
   return accessTokenFor("google_drive");
+}
+
+// Bedrijfsprofiel-koppeling: eigen rij, eigen toestemming. Geen terugval op de
+// andere twee; beheerrechten op een klantprofiel mogen nooit per ongeluk
+// ontstaan uit een koppeling die iemand voor Search Console legde.
+export async function getProfielAccessToken(): Promise<string | null> {
+  return accessTokenFor("google_profiel");
 }
 
 async function accessTokenFor(provider: string): Promise<string | null> {
@@ -1057,6 +1081,42 @@ export type GscPaar = { keyword: string; page: string; clicks: number; impressio
 // genoeg voor één gesprek en kort genoeg om nooit oude cijfers te tonen.
 const paarCache = new Map<string, { tijd: number; data: GscPaar[] }>();
 const PAAR_TTL = 5 * 60 * 1000;
+
+/**
+ * Zelfde paren, maar met de positie van de vórige even lange periode ernaast.
+ * Hiermee kun je wegzakkers vinden zonder Ahrefs, en dat is precies waar het
+ * misging: Ahrefs kent van een kleine lokale site soms maar een handvol
+ * zoekwoorden, terwijl Search Console de volledige werkelijkheid heeft.
+ * `positieVorig` is null als het zoekwoord er toen nog niet was.
+ */
+export type GscPaarVergelijk = GscPaar & { positieVorig: number | null; vertoningenVorig: number };
+export async function getGscQueryPagePairsCompare(domain: string, days = 90, limit = 25000): Promise<GscPaarVergelijk[]> {
+  const token = await accessTokenFor("google");
+  if (!token || !domain) return [];
+  const site = await gscPickSite(token, domain);
+  if (!site) return [];
+  const r = periodRanges(days);
+  const [nu, toen] = await Promise.all([
+    gscQuery(token, site, { startDate: r.curStart, endDate: r.curEnd, dimensions: ["query", "page"], rowLimit: limit }),
+    gscQuery(token, site, { startDate: r.prevStart, endDate: r.prevEnd, dimensions: ["query", "page"], rowLimit: limit }),
+  ]);
+  const vorig = new Map<string, { position: number; impressions: number }>();
+  for (const x of toen) {
+    const k = `${x.keys?.[0] || ""}|${x.keys?.[1] || ""}`;
+    vorig.set(k, { position: x.position, impressions: Math.round(x.impressions) });
+  }
+  return nu.map((x) => {
+    const keyword = x.keys?.[0] || "", page = x.keys?.[1] || "";
+    const v = vorig.get(`${keyword}|${page}`);
+    return {
+      keyword, page,
+      clicks: Math.round(x.clicks), impressions: Math.round(x.impressions),
+      position: Math.round(x.position * 10) / 10,
+      positieVorig: v ? Math.round(v.position * 10) / 10 : null,
+      vertoningenVorig: v ? v.impressions : 0,
+    };
+  }).filter((x) => x.keyword && x.page);
+}
 
 export async function getGscQueryPagePairs(domain: string, days = 90, maxRijen = 50000): Promise<GscPaar[]> {
   const sleutel = `${domain}|${days}|${maxRijen}`;

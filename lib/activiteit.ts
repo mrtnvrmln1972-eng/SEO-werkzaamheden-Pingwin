@@ -18,7 +18,8 @@ import { sql, ensureSchema } from "./db";
 
 export type ActiviteitSoort =
   | "analyse" | "blauwdruk" | "copy" | "copy-live"
-  | "meta" | "alt" | "intern-link" | "structured" | "redirect" | "paginawijziging";
+  | "meta" | "alt" | "intern-link" | "structured" | "redirect" | "paginawijziging"
+  | "gmb-profiel" | "gmb-review";
 
 export type Uitvoerder = "Pingwin" | "Sitebouwer";
 
@@ -49,6 +50,8 @@ const KLANTTAAL: Record<ActiviteitSoort, string> = {
   structured: "Extra informatie voor Google toegevoegd (structured data)",
   redirect: "Oud webadres doorgestuurd naar het nieuwe, zodat er geen bezoekers verloren gaan",
   paginawijziging: "Pagina aangepast op de site",
+  "gmb-profiel": "Google-bedrijfsprofiel bijgewerkt, zodat u beter gevonden wordt op de kaart",
+  "gmb-review": "Nieuwe review op Google",
 };
 
 // Labels voor jouw eigen scherm.
@@ -56,6 +59,7 @@ export const SOORT_LABEL: Record<ActiviteitSoort, string> = {
   analyse: "Analyse", blauwdruk: "Blauwdruk", copy: "Copy", "copy-live": "Copy live",
   meta: "Meta-teksten", alt: "Alt-teksten", "intern-link": "Interne links",
   structured: "Structured data", redirect: "Redirect", paginawijziging: "Paginawijziging",
+  "gmb-profiel": "Google-profiel", "gmb-review": "Google-review",
 };
 
 // Wat je standaard met een klant zou delen. Een gedetecteerde paginawijziging is
@@ -64,6 +68,9 @@ const STANDAARD_ZICHTBAAR: Record<ActiviteitSoort, boolean> = {
   analyse: true, blauwdruk: false, copy: true, "copy-live": true,
   meta: true, alt: true, "intern-link": true, structured: true,
   redirect: true, paginawijziging: false,
+  // Een profielwijziging is werk dat de klant mag zien. Een binnengekomen review
+  // is een seintje voor ons, geen werk van ons: die blijft intern.
+  "gmb-profiel": true, "gmb-review": false,
 };
 
 let tableReady: Promise<void> | null = null;

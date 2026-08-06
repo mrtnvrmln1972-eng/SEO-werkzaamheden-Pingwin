@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
-import { getMetaKansen, generateMetaProposal, regenerateMetaField, updateMetaProposal, checkLiveProposals, addCtrEffects, type MetaProposalStatus, type MetaFieldStatus } from "../../../../lib/meta-ctr";
+import { getMetaKansen, generateMetaProposal, regenerateMetaField, updateMetaProposal, checkLiveProposals, addCtrEffects, refreshMetaPages, importCopydocProposal, type MetaProposalStatus, type MetaFieldStatus } from "../../../../lib/meta-ctr";
+import { getWpStatus } from "../../../../lib/wp-push";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+// Het meten van alle pagina's kan een paar minuten duren (zes tegelijk, tot 60 stuks).
+export const maxDuration = 300;
 
 function admin(req: NextRequest): boolean {
   return verifyAdminSession(req.cookies.get(ADMIN_COOKIE)?.value);
@@ -21,18 +23,43 @@ export async function GET(req: NextRequest) {
   const rows = await getMetaKansen(slug);
   await checkLiveProposals(slug, rows).catch(() => { /* live-check is aanvulling */ });
   await addCtrEffects(slug, rows).catch(() => { /* effect is aanvulling */ });
-  return NextResponse.json({ ok: true, rows });
+  // Kunnen wij zelf op de site schrijven? Zonder koppeling kun je wel goedkeuren
+  // maar niet doorvoeren; de tekst gaat dan via de deelpagina naar de bouwer.
+  const wp = await getWpStatus(slug).catch(() => ({ connected: false, username: null }));
+  return NextResponse.json({ ok: true, rows, wpConnected: wp.connected });
 }
 
-// POST {slug, url, keyword?, base?, field?} : genereer (of vernieuw) het AI-voorstel
-// voor één pagina; met field ("title"|"desc") wordt alleen dat ene veld herschreven.
+// POST {slug, url, keyword?, base?, field?, actie?} : genereer (of vernieuw) het
+// AI-voorstel voor één pagina; met field ("title"|"desc") wordt alleen dat ene
+// veld herschreven. actie "meten" meet alle pagina's opnieuw (wat staat er nu, en
+// deugt dat), actie "copydoc" neemt de meta uit het copydocument over.
 export async function POST(req: NextRequest) {
   if (!admin(req)) return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
-  const body = await req.json().catch(() => ({})) as { slug?: string; url?: string; keyword?: string; field?: string; base?: { ctr?: number; position?: number; impressions?: number } };
+  const body = await req.json().catch(() => ({})) as { slug?: string; url?: string; keyword?: string; field?: string; actie?: string; base?: { ctr?: number; position?: number; impressions?: number } };
   const slug = (body.slug || "").trim(), url = (body.url || "").trim();
-  if (!slug || !url) return NextResponse.json({ ok: false, error: "Klant en pagina verplicht." }, { status: 400 });
-  const g = await guardSlug(req, slug); if (!g.ok) return g.res;
+  if (!slug) return NextResponse.json({ ok: false, error: "Klant verplicht." }, { status: 400 });
+  const g0 = await guardSlug(req, slug); if (!g0.ok) return g0.res;
+
+  // De pagina's opnieuw meten: hiermee komen ook pagina's zonder Search
+  // Console-cijfers in beeld, met het oordeel of hun meta aan de regels voldoet.
+  if (body.actie === "meten") {
+    try {
+      const r = await refreshMetaPages(slug);
+      return NextResponse.json({
+        ok: true, ...r,
+        samenvatting: `${r.gemeten} pagina's gemeten, ${r.kapot} met een meta die niet voldoet${r.overgeslagen ? `. ${r.overgeslagen} pagina's niet meegenomen (maximaal 60 per ronde)` : ""}.`,
+      });
+    } catch (e) {
+      return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : "Meten mislukte." }, { status: 500 });
+    }
+  }
+
+  if (!url) return NextResponse.json({ ok: false, error: "Pagina verplicht." }, { status: 400 });
   try {
+    if (body.actie === "copydoc") {
+      const result = await importCopydocProposal(slug, url);
+      return NextResponse.json({ ok: true, ...result });
+    }
     if (body.field === "title" || body.field === "desc") {
       const result = await regenerateMetaField(slug, url, body.field);
       return NextResponse.json({ ok: true, ...result });

@@ -138,7 +138,16 @@ function stijlen(html: string): string {
 
 /** Eén sectie van het antwoord als witte kaart met oranje titel. */
 function sectieKaart(kop: string, md: string, siteUrl?: string): string {
-  let inhoud = mdToHtml(md, siteUrl).replace(WEG, "");
+  return sectieKaartHtml(kop, mdToHtml(md, siteUrl));
+}
+
+/**
+ * Zelfde kaart, maar dan met al gerenderde HTML. Nodig omdat je het blok in het
+ * mailvenster kunt bijschaven: wat je daar ziet is HTML, en dát moet de mail in,
+ * niet de oorspronkelijke markdown.
+ */
+function sectieKaartHtml(kop: string, html: string): string {
+  let inhoud = html.replace(WEG, "");
   inhoud = inhoud.replace(/\sclass="[^"]*"/gi, "").replace(/\sdata-[a-z-]+="[^"]*"/gi, "").replace(/\scontenteditable="[^"]*"/gi, "");
   inhoud = tabellen(inhoud);
   inhoud = punten(inhoud);
@@ -158,9 +167,30 @@ function sectieKaart(kop: string, md: string, siteUrl?: string): string {
  * markdown en geen voorgerenderde HTML, want de sectie-knip moet vóór het renderen
  * gebeuren (anders bestaan de kaarten niet).
  */
-export function analyseNaarMailHtml(markdown: string, opties?: { intro?: string; titel?: string; bron?: string; siteUrl?: string }): string {
+export function analyseNaarMailHtml(markdown: string, opties?: MailOpties): string {
   const secties = splitsAntwoord(markdown || "");
-  const kaarten = secties.map((s) => sectieKaart(s.kop, s.md, opties?.siteUrl)).join("");
+  return bouwMail(secties.map((s) => sectieKaart(s.kop, s.md, opties?.siteUrl)).join(""), opties);
+}
+
+export type MailOpties = { intro?: string; titel?: string; bron?: string; siteUrl?: string; bijlagen?: { label: string; url: string }[] };
+
+/**
+ * Zelfde mail, maar uit HTML die je zelf hebt bijgeschaafd in het mailvenster.
+ * Knipt op de kopjes die `mdToHtml` maakt (h3 t/m h6), zodat je dezelfde witte
+ * kaarten met oranje titels krijgt als bij de markdown-weg.
+ */
+export function htmlNaarMailHtml(html: string, opties?: MailOpties): string {
+  const stukken = (html || "").split(/(?=<h[3-6]\b)/i).filter((s) => s.trim());
+  const kaarten = stukken.map((stuk) => {
+    const m = /^<h[3-6][^>]*>([\s\S]*?)<\/h[3-6]>/i.exec(stuk.trim());
+    const kop = m ? m[1].replace(/<[^>]*>/g, "").trim() : "";
+    const rest = m ? stuk.trim().slice(m[0].length) : stuk;
+    return sectieKaartHtml(kop, rest);
+  }).join("");
+  return bouwMail(kaarten, opties);
+}
+
+function bouwMail(kaarten: string, opties?: MailOpties): string {
 
   // Kopbalk: hiermee leest het als een rapport van Pingwin en niet als een
   // doorgestuurd mailtje.
@@ -175,6 +205,18 @@ export function analyseNaarMailHtml(markdown: string, opties?: { intro?: string;
     ? `<tr><td style="padding:0 4px 14px;font-family:${FONT};font-size:14.5px;line-height:1.62;color:${INKT}">${esc(opties.intro).replace(/\n/g, "<br>")}</td></tr>`
     : "";
 
+  // Meegestuurde documenten als nette linkregels onder de kaarten. Een bijlage
+  // is hier altijd een link (Drive), niet een echt aangehecht bestand.
+  const bij = (opties?.bijlagen || []).filter((b) => b.url);
+  const bijlagenBlok = bij.length
+    ? `<tr><td style="padding:0 0 14px">`
+      + doos(
+        `<div style="font-family:${FONT};font-size:13px;font-weight:700;color:${INKT};margin-bottom:6px">Bijlagen</div>`
+        + bij.map((b) => `<div style="font-family:${FONT};font-size:14px;line-height:1.6"><a href="${esc(b.url)}" style="color:${ACCENT};text-decoration:underline">${esc(b.label || b.url)}</a></div>`).join(""),
+        `background:#ffffff;border:1px solid ${RAND};border-radius:12px;padding:14px 18px`)
+      + `</td></tr>`
+    : "";
+
   const voet = opties?.bron
     ? `<tr><td style="padding:6px 4px 0;border-top:1px solid ${RAND};font-family:${FONT};font-size:12px;line-height:1.5;color:${GRIJS}">${esc(opties.bron)}</td></tr>`
     : "";
@@ -182,6 +224,6 @@ export function analyseNaarMailHtml(markdown: string, opties?: { intro?: string;
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;background:${PAPIER};margin:0;padding:0">`
     + `<tr><td align="center" style="padding:16px 12px">`
     + `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="660" style="width:100%;max-width:660px;border-collapse:collapse">`
-    + kopbalk + intro + kaarten + voet
+    + kopbalk + intro + kaarten + bijlagenBlok + voet
     + `</table></td></tr></table>`;
 }

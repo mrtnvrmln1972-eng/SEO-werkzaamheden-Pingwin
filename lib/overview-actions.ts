@@ -215,6 +215,37 @@ function zonderOuderpaden(urls: string[]): string[] {
   return uniek.filter((_, i) => !paden.some((p, j) => j !== i && p !== paden[i] && p.startsWith(paden[i])));
 }
 
+// ── Een taak over een pagina die nog NIET bestaat ──
+// "Bouw /hovenier/ als overkoepelende parent-pagina" ging hiervoor mis: /hovenier/
+// staat niet in de site-scan (die pagina moet immers nog gemaakt worden), dus de
+// splitser zag alleen de zusterpagina's die in de tekst genoemd worden en smeerde
+// de taak daarover uit. Er kwamen twee kaarten "bouw /hovenier/…", op
+// /hovenier-den-bosch/ en /hovenier-oss/, en geen kaart voor /hovenier/ zelf.
+//
+// Zo'n bouwtaak hoort één kaart te zijn, op het pad dat er moet komen. Herkennen
+// doen we aan de combinatie: een bouw-werkwoord én een pad in de titel dat de
+// site niet kent.
+const BOUWWOORD = /\b(bouw|bouwen|maak|maken|aanmaken|opzetten|opzet|creëer|creeer|lanceer|nieuwe pagina|los ?maken|losmaken)\b/i;
+const PAD_IN_TEKST = /(^|[\s("'>])(\/[a-z][a-z0-9-]*(?:\/[a-z0-9-]+)*\/)/gi;
+
+export function nieuwPaginaPad(taak: string, bekendeUrls: string[]): string | null {
+  const titel = taak || "";
+  if (!BOUWWOORD.test(titel)) return null;
+  const bekend = new Set(bekendeUrls.map((u) => padVanUrl(u).replace(/\/+$/, "")));
+  for (const m of titel.matchAll(PAD_IN_TEKST)) {
+    const pad = m[2];
+    if (pad.length < 3) continue;
+    if (!bekend.has(pad.replace(/\/+$/, ""))) return pad;
+  }
+  return null;
+}
+
+// Het pad omzetten naar een volledige URL op het domein van deze klant, zodat de
+// kaart net als elke andere kaart een echte URL heeft.
+function padNaarUrl(pad: string, bekendeUrls: string[]): string {
+  try { const u = new URL(bekendeUrls[0]); return `${u.origin}${pad}`; } catch { return pad; }
+}
+
 export function splitsPerPagina<T extends SplitsbareTaak>(taken: T[], bekendeUrls: string[]): T[] {
   if (!bekendeUrls.length) return taken;
   const uit: T[] = [];
@@ -222,6 +253,11 @@ export function splitsPerPagina<T extends SplitsbareTaak>(taken: T[], bekendeUrl
   for (const t of taken) {
     const titel = t.taak || "";
     const achtergrond = String(t.toelichting || "");
+
+    // Bouwtaak voor een pagina die nog niet bestaat: één kaart, op het bedoelde
+    // pad. Niet opknippen over de pagina's die er alleen in genoemd worden.
+    const nieuwPad = nieuwPaginaPad(titel, bekendeUrls);
+    if (nieuwPad) { uit.push({ ...t, url: padNaarUrl(nieuwPad, bekendeUrls) }); continue; }
 
     // 1. Letterlijke paden, eerst in de titel en anders in de achtergrond.
     let gevonden = bekendeUrls.filter((u) => { const p = padVanUrl(u); return p.length > 1 && titel.includes(p); });
@@ -324,6 +360,18 @@ export async function executeAction(slug: string, action: ProposedAction, thread
       }
       for (const t of action.taken || []) {
         if (!t.url || !bekendeUrls.length) continue;
+        // Een taak die juist een NIEUWE pagina bouwt niet ombuigen naar de
+        // dichtstbijzijnde bestaande pagina: dan verdwijnt de kaart in een
+        // bestaande pagina en bestaat de nieuwe pagina nergens.
+        if (nieuwPaginaPad(t.taak || "", bekendeUrls)) {
+          // Zet hem meteen als geplande pagina in de paginalijst. Zonder dat kent
+          // het bord de pagina niet en blijft het fase-blok op de kaart leeg,
+          // terwijl je juist bij een nieuwe pagina alle zeven fases wilt kunnen
+          // starten. Dezelfde weg als "Voeg een pagina toe" op het tabblad
+          // Pagina's, dus hij verschijnt daar en in de navigatie-roadmap ook.
+          await addManualPage(slug, t.url, (t.taak || "").slice(0, 200)).catch(() => null);
+          continue;
+        }
         const beter = nearestKnownUrl(t.url, bekendeUrls);
         if (beter) t.url = beter;
       }

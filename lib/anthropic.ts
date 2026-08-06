@@ -10,6 +10,21 @@ const MODEL = "claude-sonnet-4-6";
 // Goedkoop model (± 3x goedkoper) voor aantoonbaar lichte taken: extractie,
 // korte labels, één-regel-correcties. Kernwerk (analyse, copy, chat) blijft op MODEL.
 export const LIGHT_MODEL = "claude-haiku-4-5";
+// Zwaar model voor het échte denkwerk: de bird's eye-strateeg. Daar is de vraag
+// niet "haal dit cijfer op" maar "klopt deze hele opzet wel", en dat is precies
+// waar een zwaarder model het verschil maakt. Alleen daar; alle motoren, de
+// pagina-chat en het extractiewerk blijven op MODEL, anders loopt het verbruik op
+// zonder dat het antwoord er beter van wordt.
+export const HEAVY_MODEL = process.env.ANTHROPIC_HEAVY_MODEL || "claude-opus-5";
+// Terugvalketen. Kent dit account het bovenste model niet (404 op de modelnaam),
+// dan zakt hij een trede in plaats van de chat te laten mislukken. In het
+// verbruik-scherm staat welk model er écht geantwoord heeft, dus een stille
+// terugval blijft zichtbaar.
+const TERUGVAL: Record<string, string> = {
+  "claude-opus-5": "claude-opus-4-6",
+  "claude-opus-4-6": "claude-opus-4-5",
+  "claude-opus-4-5": MODEL,
+};
 
 // Prompt-caching: het (vaak enorme) system-prompt gaat als content-blok met een
 // cache-markering mee. Bij een vervolg-aanroep binnen 5 minuten leest de API dat
@@ -176,9 +191,20 @@ type Block = { type: string; text?: string; id?: string; name?: string; input?: 
 // venster hem afkapt en is ALLES weg (zo strandde de opruim-analyse op 03-08-2026
 // na 800 seconden, midden in het onderzoek). Halve bevindingen zijn bruikbaar,
 // afgekapte niet. Laat leeg voor een gesprek dat gewoon mag doorlopen.
-export async function callClaudeAgentic(system: string, messages: ChatMsg[], tools: ToolDef[], run: ToolRunner, maxRounds = 6, maxTokens = 2200, ctx?: UsageCtx, deadlineMs?: number): Promise<string> {
+//
+// model: laat leeg voor het standaardmodel. Een zwaardere keuze mag hier meegegeven
+// worden voor de strategische gesprekken; kent de API het model niet, dan valt hij
+// automatisch terug op het standaardmodel in plaats van de chat te laten mislukken.
+// Wat er terugkomt als er na alle rondes én de afrondingspogingen geen tekst is.
+// Het staat hier als constante zodat de aanroeper hem kan HERKENNEN. Dat is nodig:
+// een vervolgronde die hierop uitkomt mag nooit een goed antwoord overschrijven,
+// en dat gebeurde wel (de feitencontrole verving de tekst onvoorwaardelijk).
+export const GEEN_ANTWOORD = "Het opzoekwerk is gelukt, maar het uitschrijven van het antwoord is technisch misgegaan. Dat ligt niet aan je vraag. Stel hem gerust opnieuw; dit is vastgelegd in het verbruikscherm, zodat de oorzaak na te kijken is in plaats van te raden.";
+
+export async function callClaudeAgentic(system: string, messages: ChatMsg[], tools: ToolDef[], run: ToolRunner, maxRounds = 6, maxTokens = 2200, ctx?: UsageCtx, deadlineMs?: number, model?: string): Promise<string> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) throw new Error("ANTHROPIC_API_KEY ontbreekt (voeg hem toe in Vercel).");
+  let actiefModel = model || MODEL;
   const apiMessages: { role: string; content: unknown }[] = messages.map((m) => ({ role: m.role, content: m.content }));
   const u: Usage = { input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 }; // optellen over alle rondes
 
@@ -202,11 +228,20 @@ export async function callClaudeAgentic(system: string, messages: ChatMsg[], too
 
   async function call(withTools: boolean) {
     markLastMessage();
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
+    const verstuur = async () => fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "x-api-key": key as string, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({ model: MODEL, max_tokens: maxTokens, system: systemBlocks(system), messages: apiMessages, ...(withTools && tools.length ? { tools: cachedTools } : {}) }),
+      body: JSON.stringify({ model: actiefModel, max_tokens: maxTokens, system: systemBlocks(system), messages: apiMessages, ...(withTools && tools.length ? { tools: cachedTools } : {}) }),
     });
+    let res = await verstuur();
+    // Onbekend of niet-vrijgegeven model? Val terug op het standaardmodel in plaats
+    // van de hele chat te laten mislukken. Eén keer, daarna blijft de terugval staan.
+    // Meerdere treden: opus-5 → opus-4-6 → opus-4-5 → het standaardmodel.
+    let stappen = 0;
+    while (!res.ok && res.status === 404 && actiefModel !== MODEL && stappen++ < 4) {
+      actiefModel = TERUGVAL[actiefModel] || MODEL;
+      res = await verstuur();
+    }
     if (!res.ok) { const t = await res.text().catch(() => ""); throw new Error(`Claude-fout ${res.status}: ${t.slice(0, 300)}`); }
     return res.json();
   }
@@ -229,7 +264,7 @@ export async function callClaudeAgentic(system: string, messages: ChatMsg[], too
     const toolUses = content.filter((c) => c.type === "tool_use");
     if (j.stop_reason !== "tool_use" || toolUses.length === 0) {
       const text = textOf(j);
-      if (text.trim()) { await logClaudeUsage(ctx, u); return text; }
+      if (text.trim()) { await logClaudeUsage(ctx, u, actiefModel); return text; }
       // Klaar maar zonder tekst? Val door naar de geforceerde afronding hieronder.
       apiMessages.push({ role: "assistant", content: content.length ? content : [{ type: "text", text: "…" }] });
       break;
@@ -275,8 +310,8 @@ export async function callClaudeAgentic(system: string, messages: ChatMsg[], too
     addUsage(j.usage);
     text = textOf(j);
   }
-  await logClaudeUsage(ctx, u);
-  return text.trim() || "Ik heb de analyse gedaan, maar kon het antwoord niet netjes afronden (waarschijnlijk was de vraag in één keer te breed). Stel hem iets gerichter, bijvoorbeeld één doel of één set pagina's, dan pak ik het meteen goed op.";
+  await logClaudeUsage(ctx, u, actiefModel);
+  return text.trim() || GEEN_ANTWOORD;
 }
 
 // Forceert ÉÉN specifieke tool-aanroep (tool_choice) en geeft de ruwe input (JSON)

@@ -38,6 +38,15 @@ laadt. Wijzigt de werkwijze, houd master en alle kopieën gelijk.
 - **Het heet Pingwin.** Nooit "Penguin" of een andere spelling, ook niet in output.
 - **Bewijs boven beloftes.** Zeg niet "het werkt", laat het zien (test, output, live URL).
   Kondig je een controle aan, voer die dan ook echt uit.
+- **Vaste vorm: "Waar we staan" bovenaan, één opleverblok onderaan, stil ertussenin.** Maarten
+  werkt in zes tot acht chats tegelijk. Je eerste antwoord opent met drie regels (onderwerp,
+  laatst gedaan, nu open) uit de tabel *Lopende sporen* in `pingwin-brein/brein/08-stand-van-zaken.md`;
+  onderweg geen stap-voor-stap met bestandsnamen; je sluit af met maximaal tien regels (Je vroeg,
+  Klaar, Kijk hier, Jij doet, en alleen als het speelt: Nog open). De sjablonen staan in
+  `pingwin-brein/brein/11-claude-werkwijze.md`; hier geen kopie, anders lopen ze uit elkaar.
+- **De link pas als het live staat.** Nooit terugkoppelen op een deploy die nog loopt. Zie
+  "Deploy en test" hieronder: na de push draait `scripts/wacht-op-deploy.sh`, en pas als die
+  klaar is bekijk je het scherm en geef je de link. Maarten hoort nooit zelf in Vercel te kijken.
 - **Mens aan het stuur.** Niets gaat autonoom naar buiten; Maarten keurt goed.
 - **Plannen eerst in gewone taal in de chat, en het planbestand is óók gewone taal.** Eerst de
   volledige uitleg begrijpelijk in de chat, vóór elke goedkeuringsvraag. Het planbestand in het
@@ -76,7 +85,69 @@ Alles wat Maarten ziet (dashboard, chat, mail, preview, terugkoppeling) moet 100
 - **Elke link/slug automatisch klikbaar.** Elke URL of pad/slug die in beeld komt (bijv. `/hovenier/etten-leur/`) linkt vanzelf naar de live pagina. Nooit een kale, niet-klikbare slug tonen (zie `linkify` in `OverviewChat.tsx` als patroon).
 - Checklist bij elke nieuwe output-plek: (1) via mdToHtml gerenderd? (2) venster groeit mee, klapt niet dicht? (3) prompt dwingt schone opmaak af? (4) links/slugs klikbaar?
 - **Design-fundament (vaste regel, 01-08-2026).** In `app/globals.css` staat naast de kleuren een vast fundament: een spacing-schaal (`--s-1` t/m `--s-12`, veelvouden van 4), een type-schaal (`--fs-xs` t/m `--fs-xl` met bijpassende `--lh-*` regelhoogtes), een radius-schaal (`--r-sm/md/lg/full`) en een shadow-schaal (`--shadow-sm/md/lg`), plus gedeelde bouwstenen `.card`, `.section`, `.row`, `.chip`, `.btn`. **Elke UI-wijziging gebruikt deze schaal-tokens en bouwstenen; nooit hardgecodeerde afstanden, font-sizes, rondingen of schaduwen.** Vóór elke deploy draait de design-checklist uit de proper-design skill (uitlijning, spacing, type-schaal, contrast, consistentie), en het resultaat wordt eerst gecontroleerd op https://pingwin-seo-dashboard.vercel.app. Bestaande schermen migreren batch voor batch naar dit fundament (batch 1: het Bird's eye-blok).
+- **De opmaakregels worden nagerekend, niet onthouden (vaste regel, 06-08-2026). Dit is een poort, geen afspraak.**
+  Bovenstaande regels stonden er al maanden, en tóch kwamen er op 6 augustus twee schermen langs
+  die ze braken: één zonder kopbalk met AI-tekst in een kaal invulvak, en één met tekstmuren, losse
+  rode regels en een samenvatting in een smalle kolom. Een regel die alleen in dit document leeft,
+  wordt gebroken zodra iemand haast heeft. Daarom nu twee dingen die geheugen vervangen:
+  - **Bouw met de gedeelde bouwstenen, nooit met eigen `<div>`s en eigen afstanden.**
+    Voor een uitkomst op het scherm: `app/_ui/Uitkomst.tsx` (`Paneel`, `Blok`, `Tekst`,
+    `Signaal`/`Signalen`, `Chip`/`Chips`, `Pad`, `Tabel`, `Leeg`). Losse tekst gaat altijd door
+    `Tekst`, dus door `mdToHtml`, dus nooit ruwe markdown in beeld; elk pad wordt vanzelf klikbaar;
+    een waarschuwing krijgt een eigen vorm in plaats van een rode zin in een muur. Voor een los
+    beheerscherm: `app/admin/AdminKop.tsx` plus de `pg-`bouwstenen uit `app/globals.css`, en een
+    regel in `SCHERMEN` in `app/admin/OntwikkelMenu.tsx`.
+  - **`proeven/opmaak.proef.ts` bewaakt het en draait vóór élke bouw** (`prebuild`, dus ook op
+    Vercel). Hij wordt rood als een beheerscherm geen kopbalk heeft, als AI-tekst in een
+    `<textarea>` staat in plaats van gerenderd, als een scherm niet in het Intern-menu staat, als
+    er losse pixelwaarden in de opmaak sluipen, of als een scherm zijn eigen lettergroottes,
+    afstanden, kleuren, rondingen of schaduwen verzint. Dan mislukt de bouw en komt het niet live.
+    De 48 schermen van vóór deze datum staan op een erfenis-lijst in dat bestand. **Die lijst mag
+    alleen korter worden:** verbouw je een scherm naar de bouwstenen, haal het eraf, en daarna kan
+    het niet meer terugvallen. Een nieuw scherm staat er per definitie niet op en moet dus meteen
+    goed zijn. Zet die proef nooit uit; breid hem uit zodra er een nieuwe opmaakfout ontstaat, want
+    dat is de enige manier waarop zo'n fout niet terugkomt.
 - **Met terugwerkende kracht (vaste regel, 31-07-2026).** Elke opmaak- of dashboardaanpassing geldt automatisch óók voor bestaande kaarten, taken en chats, in alle werelden (Pingwin én NOC). Bouw zulke aanpassingen daarom in de weergave-laag (renderer/parser, zoals `lib/card-info.ts`), niet alleen in de prompt voor nieuwe data. Maarten hoeft dit niet meer per wijziging te vragen.
+
+## 0b. DE UITLEGPAGINA BIJWERKEN (vaste stap, 06-08-2026)
+
+Er is één plek waar het hele dashboard in gewone taal wordt uitgelegd: **`/uitleg`**
+(https://pingwin-seo-dashboard.vercel.app/uitleg). Openbaar leesbaar, dus deelbaar met klanten,
+leads, collega-bureaus en investeerders. De inhoud staat volledig in `lib/uitleg.ts`; de pagina
+(`app/uitleg/page.tsx`) rendert alleen.
+
+**Vaste stap: bouw je iets noemenswaardigs bij of om, werk dan in dezelfde wijziging de
+betreffende uitklapper in `lib/uitleg.ts` bij en verzet `LAATST_BIJGEWERKT`.** Maarten hoeft dit
+niet te vragen. Een uitbreiding zonder bijgewerkte uitleg is niet af.
+
+Twee regels die dat document eerlijk houden:
+
+- **Niets erin wat niet in de code staat.** Geen roadmap-taal die klinkt als werkelijkheid.
+- **Hoofdstukken met `intern: true` zijn alleen zichtbaar mét admin-sessie.** Daar staan de
+  gaten, de risico's en de verbeterpunten. Zo blijft het één document in plaats van een
+  verkoopversie en een interne versie die uit elkaar lopen.
+
+## 0c. DE ROUTEKAART EN HOE JE EEN ONTWIKKELPUNT OPPAKT (vaste stap, 06-08-2026)
+
+De ontwikkeling van dit dashboard loopt via **losse chats, één ontwikkelpunt per chat**. Maarten
+begeleidt en stuurt aan; hij is geen programmeur.
+
+- **De punten staan in `lib/routekaart.ts`** (stand: open, loopt, af) en de volledige beschrijving
+  in `lib/uitleg.ts`, hoofdstuk "Eerlijke agenda en routekaart". Vijftien punten, R1 tot R15, in
+  drie golven.
+- **Het bedieningspaneel is `/admin/routekaart`**: per punt de stand, waar het van afhangt, en een
+  knop die de startregel kopieert.
+- **De startregel is `/ontwikkelpunt <code>`.** Die opdracht staat in
+  `.claude/commands/ontwikkelpunt.md` en beschrijft de volledige werkwijze. Noemt Maarten een punt
+  ("pak R2", "verder met autoriteit per pagina"), volg dan die opdracht, ook zonder slash.
+- **Bij de start: stand op `loopt` zetten en meteen pushen.** Dan weet een andere chat dat het
+  punt bezet is. Bij het eind: stand op `af` met de datum, en de beschrijving verhuist naar het
+  hoofdstuk waar hij thuishoort.
+
+**Terugkoppelen in een ontwikkelchat is vastgelegd, geen voorkeur: maximaal vier regels.** Wat er
+nu werkt (in wat Maarten ermee kan), een klikbare link om het te zien, wat er nog open is, en
+alleen indien nodig wat je van hem nodig hebt. Geen bestandsnamen, geen techniek, geen verslag van
+je overwegingen. Vraagt hij ernaar, dan vertel je het.
 
 ## 1. Wat dit is en waarom
 
@@ -213,7 +284,19 @@ Lokaal staan deze in `.env.local` (gitignored). De DB-vars zijn afgeschermd; lok
 
 ```bash
 git add . && git commit -m "[beschrijving]" && git push origin main
+scripts/wacht-op-deploy.sh
 ```
+
+**Die tweede regel hoort er altijd bij.** Pushen is niet hetzelfde als live: zonder die stap
+koppel je terug op een deploy die nog loopt, en opent Maarten een link die hem het oude scherm
+laat zien. `scripts/wacht-op-deploy.sh` pollt `/api/versie` (die geeft de draaiende commit terug)
+tot jouw commit er staat, of tot een latere deploy die hem bevat: er wordt uit meerdere chats en
+crons naar `main` gepusht, dus dat laatste is normaal. Klaar met code 0 betekent live; dán pas het
+scherm bekijken via het meekijk-recept en dán pas terugkoppelen. Code 1 betekent tijdslimiet: niet
+melden als live, maar de bouwstatus van die commit opvragen via de GitHub-tools, want een mislukte
+build ziet er van buitenaf hetzelfde uit als een trage. Knoppen: `WACHT_INTERVAL_S` en
+`WACHT_TIMEOUT_S`.
+
 Pushen naar main is genoeg: de GitHub-koppeling deployt automatisch naar productie (geldt voor Pingwin én de NOC-cockpit, zelfde repo). Draai NIET ook nog `npx vercel --prod --yes` na een push: dat geeft dubbele deployments en elke extra deploy breekt lopende achtergrondtaken (doc-generaties) een keer extra af. Gebruik dat commando alleen om te deployen ZONDER code-wijziging (bijv. een nieuwe env-var activeren). Testen gebeurt op de live URL (DB alleen op de server). Rooktest met curl op de login- en admin-endpoints werkt goed.
 
 ## 8. Huidige stand (juni 2026)

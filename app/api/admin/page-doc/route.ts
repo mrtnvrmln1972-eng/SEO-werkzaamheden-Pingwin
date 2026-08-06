@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
+import { poortDocumenten } from "../../../../lib/onboarding";
 import { anthropicConfigured } from "../../../../lib/anthropic";
 import { generateDocSpec, clientVersionSpec, type DocKind } from "../../../../lib/page-doc";
 import { buildPingwinDoc, laatsteOmslagGelukt } from "../../../../lib/pingwin-docx";
@@ -47,6 +48,10 @@ export async function POST(req: NextRequest) {
   const kind: DocKind = kindRaw === "copy" ? "copy" : kindRaw === "analyse" ? "analyse" : "blauwdruk";
   const extra = String(body.extra || "").trim().slice(0, 1500);
   if (!slug || !url) return NextResponse.json({ ok: false, error: "Klant en URL zijn verplicht." }, { status: 400 });
+
+  // De poort: geen document zonder klantprofiel en tone of voice.
+  const p = await poortDocumenten(slug);
+  if (!p.mag) return NextResponse.json({ ok: false, error: p.reden, onboarding: p.ontbreekt }, { status: 400 });
 
   let spec, title;
   try {

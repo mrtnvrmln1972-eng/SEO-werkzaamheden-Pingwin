@@ -1,7 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { herzetAanhef } from "../../../../lib/aanhef";
+import { mailUitTekst, zonderControleblok } from "../../../../lib/mail-uit-gesprek";
+import { analyseNaarMailHtml, htmlNaarMailHtml } from "../../../../lib/mail-opmaak";
+import { mdToHtml } from "../../../../lib/markdown";
+import { striptVulzinnen } from "../../../../lib/vulzinnen";
 
 // ═══════════════════════════════════════════════════════════
 // HET MAILVENSTER
@@ -18,23 +22,60 @@ import { herzetAanhef } from "../../../../lib/aanhef";
 export type MailBijlage = { key: string; label: string; url: string };
 
 export default function MailVenster({
-  slug, titel, onderwerpVan, taak, toelichting, url, bijlagen = [], clientName, clientEmail, standaardAangevinkt = [], onClose,
+  slug, titel, onderwerpVan, onderwerpVoorstel, taak, toelichting, mailBron, blokMd, stijl, schrijfMeteen = false, eerderGebruikt, onVerzonden, siteUrl, url, bijlagen = [], clientName, clientEmail, standaardAangevinkt = [], onClose,
 }: {
   slug: string;
   /** Kop van het venster, bijvoorbeeld "Mail vanuit dit gesprek". */
   titel: string;
   /** De regel "Over: ..." onder de kop. */
   onderwerpVan: string;
+  /**
+   * Kant-en-klaar onderwerp voor de mail. Wint van het eerste kopje uit het blok.
+   * Gebruik dit zodra je iets beters weet dan "Wat we zagen".
+   */
+  onderwerpVoorstel?: string;
+  /**
+   * Soort mail, gaat mee naar de assistent. "kans" = een signaleer-mail vanuit de
+   * prioriteitenscan: ik-vorm, kort, één onderwerp, eindigend met de vraag of de
+   * klant het ermee eens is. Leeg = de gewone klantmail zoals altijd.
+   */
+  stijl?: string;
+  /** Schrijft meteen bij het openen een concept, in plaats van een leeg vak. */
+  schrijfMeteen?: boolean;
+  /**
+   * Welke stukken werkwijze deze klant al gehad heeft. Gaat mee naar de assistent,
+   * zodat er niet elke mail dezelfde alinea over de top 10-analyse in staat.
+   */
+  eerderGebruikt?: string[];
+  /**
+   * Krijgt de verstuurde tekst mee plus welk stuk werkwijze erin verwerkt is,
+   * zodat de aanroeper kan onthouden hoe deze mail begon en wat er al genoemd is.
+   */
+  onVerzonden?: (tekst: string, werkwijze: string) => void;
   /** Waar de mail over gaat (gaat als "taak" naar de assistent). */
   taak: string;
   /** De achtergrond waar de assistent uit put (het gesprek, de analyse). */
   toelichting: string;
+  /**
+   * De volledige gesprekstekst waarin een al geschreven mail kan staan. Los van
+   * `toelichting`, want die is soms ingekort tot alleen de conclusie en juist dan
+   * valt de geschreven mail eruit. Leeg = we kijken in `toelichting`.
+   */
+  mailBron?: string;
   url?: string;
   bijlagen?: MailBijlage[];
   clientName?: string;
   clientEmail?: string;
   /** Welke bijlagen meteen aangevinkt staan (bijvoorbeeld een net gemaakt document). */
   standaardAangevinkt?: string[];
+  /**
+   * Het blok uit het gesprek (ruwe markdown) dat onder jouw intro in de mail komt,
+   * netjes opgemaakt met oranje kopjes en kaarten. Leeg = gewoon een mail met
+   * alleen jouw eigen tekst, zoals dit venster altijd werkte.
+   */
+  blokMd?: string;
+  /** Domein van de klant, zodat slugs in het blok naar de echte pagina linken. */
+  siteUrl?: string;
   onClose: () => void;
 }) {
   const [aud, setAud] = useState<"klant" | "dev" | "anders">("klant");
@@ -50,16 +91,62 @@ export default function MailVenster({
   const [onderwerp, setOnderwerp] = useState("");
   const [verzendt, setVerzendt] = useState(false);
   const [klaar, setKlaar] = useState("");
+  // Welk stuk werkwijze de assistent van de server meekreeg; gaat mee terug bij
+  // het verzenden zodat het niet twee keer achter elkaar gebruikt wordt.
+  const [werkwijze, setWerkwijze] = useState("");
   const bodyRef = useRef<HTMLDivElement>(null);
 
-  // Eén keer bij openen een concept schrijven.
-  // Leeg beginnen. Maarten dicteert zijn mails met Wispr Flow en typt dus meteen;
-  // een automatisch geschreven standaardtekst moet hij dan eerst weggooien. Wil hij
-  // wél een voorzet, dan is daar de knop "Laat Claude schrijven".
+  // Staat er in het gesprek al een geschreven mail, dan begint het venster dáármee.
+  // Niet opnieuw geschreven: letterlijk zijn eigen tekst. Herkent hij geen mail
+  // (een analyse, een lijstje), dan blijft het vak leeg zoals het was: Maarten
+  // dicteert met Wispr Flow en wil geen voorzet die hij eerst moet weggooien.
+  const concept = useMemo(() => (blokMd ? null : mailUitTekst(mailBron || toelichting || "")), [blokMd, mailBron, toelichting]);
+  const [overgenomen, setOvergenomen] = useState(false);
+
+  // Gaat het blok mee? Met blok is dit venster "zet dit blok in een mail": jouw
+  // intro bovenin, het blok eronder. Je kunt het blok weglaten als je toch alleen
+  // je eigen tekst wilt sturen.
+  const [blokAan, setBlokAan] = useState(!!blokMd);
+  // Het eerste kopje van het blok als terugval-onderwerp. Dat werkt zolang dat
+  // kopje ergens over gaat, maar bij een blok dat opent met "Wat we zagen" komt
+  // dát in de onderwerpregel van de klant te staan. Vandaar `onderwerpVoorstel`:
+  // een aanroeper die zelf een fatsoenlijk onderwerp kan bedenken, wint.
+  const blokKop = useMemo(() => {
+    for (const raw of (blokMd || "").split("\n")) {
+      const m = /^#{1,3}\s+(.+)$/.exec(raw.trim());
+      if (m) return m[1].replace(/[#*]/g, "").trim().slice(0, 120);
+    }
+    return "";
+  }, [blokMd]);
+  // Het blok zoals het in de mail komt: bewerkbaar, want de eerste regels van een
+  // antwoord zijn vaak intern gepraat dat een klant niet hoeft te lezen. De
+  // waarschuwing van de feitencontrole gaat er sowieso af; die is voor Maarten.
+  const blokHtml = useMemo(
+    () => (blokMd ? mdToHtml(striptVulzinnen(zonderControleblok(blokMd)), siteUrl || "") : ""),
+    [blokMd, siteUrl],
+  );
+  const blokRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
+    if (concept && bodyRef.current) {
+      bodyRef.current.innerText = concept.body;
+      if (concept.onderwerp) setOnderwerp(concept.onderwerp);
+      setOvergenomen(true);
+    }
+    if (onderwerpVoorstel) setOnderwerp(onderwerpVoorstel);
+    else if (blokKop) setOnderwerp(blokKop);
+    // Een leeg vak is prima als Maarten zelf gaat dicteren, maar bij een
+    // signaleer-mail wil je meteen iets hebben om aan te schaven.
+    if (schrijfMeteen) void schrijf(aud, "", gekozen);
     bodyRef.current?.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function leegmaken() {
+    if (bodyRef.current) bodyRef.current.innerText = "";
+    setOvergenomen(false);
+    bodyRef.current?.focus();
+  }
 
   async function schrijf(
     doelgroep: "klant" | "dev" | "anders",
@@ -67,20 +154,23 @@ export default function MailVenster({
     keuze: Record<string, boolean>,
     adres?: string,
   ) {
-    setBusy(true); setFout("");
+    setBusy(true); setFout(""); setOvergenomen(false);
     if (bodyRef.current) bodyRef.current.innerText = "";
     const links = bijlagen.filter((b) => keuze[b.key]).map((b) => ({ label: b.label, url: b.url }));
     try {
       const d = await fetch("/api/admin/task/explain", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, taak, toelichting, url, audience: doelgroep, instructie, links, to: adres !== undefined ? adres : to }),
+        body: JSON.stringify({ slug, taak, toelichting, url, audience: doelgroep, instructie, links, stijl, eerderGebruikt, to: adres !== undefined ? adres : to }),
       }).then((r) => r.json());
       if (d?.ok && d.text) {
+        setWerkwijze(String(d.werkwijze || ""));
         // Het onderwerp komt als eerste regel terug; dat hoort in een eigen veld.
         const regels = String(d.text).split("\n");
         const m = /^\s*onderwerp\s*:\s*(.+)$/i.exec(regels[0] || "");
         if (m) { setOnderwerp(m[1].trim()); regels.shift(); while (regels[0] !== undefined && !regels[0].trim()) regels.shift(); }
-        else setOnderwerp("");
+        // Geen onderwerp in het antwoord? Dan het voorstel terug in plaats van een
+        // leeg veld; anders ben je je onderwerp kwijt zodra de assistent schrijft.
+        else setOnderwerp(onderwerpVoorstel || "");
         if (bodyRef.current) bodyRef.current.innerText = regels.join("\n").trim();
       } else setFout(d?.error || "Mail schrijven mislukt.");
     } catch { setFout("De assistent is niet bereikbaar."); }
@@ -94,18 +184,48 @@ export default function MailVenster({
 
   async function verstuur() {
     const tekst = (bodyRef.current?.innerText || "").trim();
-    if (!tekst || verzendt) return;
+    const metBlok = !!(blokMd && blokAan);
+    if ((!tekst && !metBlok) || verzendt) return;
     const adres = to.trim();
     if (!adres) { setFout("Vul eerst het e-mailadres van de ontvanger in."); return; }
     if (aud === "dev") { try { localStorage.setItem("pingwin-dev-email", adres); } catch { /* geen opslag */ } }
     const links = bijlagen.filter((b) => gekozen[b.key]).map((b) => ({ label: b.label, url: b.url }));
     setVerzendt(true); setFout("");
+
+    // Met blok gaat de mail langs de opgemaakte weg (oranje kopjes, kaarten,
+    // nette tabellen), met jouw getypte tekst als intro erboven. Zonder blok
+    // blijft alles zoals het was: platte tekst via de bestaande route.
+    if (metBlok) {
+      try {
+        // Wat je in het voorbeeld hebt bijgeschaafd is wat er weggaat.
+        const bewerkt = (blokRef.current?.innerHTML || "").trim();
+        const opties = {
+          intro: tekst || undefined,
+          titel: onderwerp.trim() || onderwerpVan.slice(0, 120),
+          bron: "Opgesteld in het Pingwin SEO-dashboard.",
+          siteUrl: siteUrl || undefined,
+          bijlagen: links,
+        };
+        const html = bewerkt
+          ? htmlNaarMailHtml(bewerkt, opties)
+          : analyseNaarMailHtml(zonderControleblok(blokMd || ""), opties);
+        const d = await fetch("/api/admin/mail", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mode: "compose", slug, to: adres, subject: onderwerp.trim() || onderwerpVan.slice(0, 120), html }),
+        }).then((r) => r.json());
+        if (d?.ok) { onVerzonden?.(tekst, werkwijze); setKlaar(`Verstuurd naar ${(d.sentTo || []).join(", ") || adres}.`); setTimeout(() => { onClose(); }, 1600); }
+        else setFout(d?.error || "Versturen mislukte.");
+      } catch { setFout("Versturen mislukte."); }
+      finally { setVerzendt(false); }
+      return;
+    }
+
     try {
       const d = await fetch("/api/admin/task/mail", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ slug, to: adres, onderwerp: onderwerp.trim() || onderwerpVan.slice(0, 120), tekst, links }),
       }).then((r) => r.json());
-      if (d?.ok) { setKlaar(d.samenvatting || "Verstuurd."); setTimeout(() => { onClose(); }, 1600); }
+      if (d?.ok) { onVerzonden?.(tekst, werkwijze); setKlaar(d.samenvatting || "Verstuurd."); setTimeout(() => { onClose(); }, 1600); }
       else setFout(d?.error || "Versturen mislukte.");
     } catch { setFout("Versturen mislukte."); }
     finally { setVerzendt(false); }
@@ -162,7 +282,43 @@ export default function MailVenster({
           <span className="wp-mail-onderwerp-label">Onderwerp</span>
           <input value={onderwerp} onChange={(e) => setOnderwerp(e.target.value)} placeholder="Onderwerp van de mail" />
         </label>
-        <div className="wp-mail-edit" contentEditable suppressContentEditableWarning ref={bodyRef} data-placeholder="De mail verschijnt hier…" style={{ opacity: busy ? 0.5 : 1 }} />
+        {overgenomen && (
+          <div className="wp-mail-bron muted">
+            Overgenomen uit het gesprek
+            <button type="button" className="wp-mail-leeg" onClick={leegmaken}>leegmaken</button>
+          </div>
+        )}
+        {blokMd && blokAan && <div className="wp-mail-bron muted">Jouw tekst komt bovenaan; het blok hieronder gaat er opgemaakt onder.</div>}
+        <div
+          className="wp-mail-edit"
+          contentEditable
+          suppressContentEditableWarning
+          ref={bodyRef}
+          data-placeholder={blokMd && blokAan ? "Typ of dicteer hier je intro, bijvoorbeeld: Beste Paul, we hebben nog eens goed naar de data gekeken…" : "De mail verschijnt hier…"}
+          style={{ opacity: busy ? 0.5 : 1 }}
+        />
+        {blokMd && (
+          blokAan ? (
+            <div className="wp-mail-blok">
+              <div className="wp-mail-blok-kop">
+                <span>Dit blok gaat mee &middot; je kunt erin typen en schrappen</span>
+                <button type="button" className="wp-mail-leeg" onClick={() => setBlokAan(false)}>blok weglaten</button>
+              </div>
+              <div
+                className="wp-mail-blok-body md"
+                contentEditable
+                suppressContentEditableWarning
+                ref={blokRef}
+                dangerouslySetInnerHTML={{ __html: blokHtml }}
+              />
+            </div>
+          ) : (
+            <div className="wp-mail-bron muted">
+              Het blok gaat niet mee.
+              <button type="button" className="wp-mail-leeg" onClick={() => setBlokAan(true)}>toch meesturen</button>
+            </div>
+          )
+        )}
         {busy && <div className="muted" style={{ marginTop: 6 }}>Mail aan het schrijven…</div>}
         <div className="wp-mail-foot">
           <button type="button" className="ghost-btn small" onClick={kopieer} disabled={busy}>Kopieer</button>

@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { sanitizeHtml as sanitize, escapeHtml as esc } from "./veilige-html";
 
 // ═══════════════════════════════════════════════════════════
 // FOCUS-BLOK PER KLANT
@@ -14,20 +15,6 @@ import { sql, ensureSchema } from "./db";
 export type FocusKeyword = { kw: string; url: string };
 export type FocusLink = { label: string; url: string };
 export type ClientFocus = { html: string; prioHtml: string };
-
-function esc(s: string): string {
-  return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
-
-// Verwijdert scripts/handlers; laat opmaak- en link-tags staan. De inhoud wordt
-// alleen door de beheerder geschreven en getoond, dit is een extra vangnet.
-function sanitize(html: string): string {
-  return (html || "")
-    .replace(/<\s*script[\s\S]*?<\s*\/\s*script\s*>/gi, "")
-    .replace(/\son\w+\s*=\s*"[^"]*"/gi, "")
-    .replace(/\son\w+\s*=\s*'[^']*'/gi, "")
-    .replace(/javascript:/gi, "");
-}
 
 function legacyToHtml(d: { keywords?: FocusKeyword[]; links?: FocusLink[] }): string {
   let h = "";

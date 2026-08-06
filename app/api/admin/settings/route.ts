@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { guardOwner } from "../../../../lib/admin-scope";
-import { getSetting, setSetting, SETTING_INVOICE_MAIL } from "../../../../lib/settings";
+import { getSetting, setSetting, SETTING_INVOICE_MAIL, SETTING_OVERVIEW_ZWAAR } from "../../../../lib/settings";
 
 export const runtime = "nodejs";
 
 // App-instellingen (eigenaar-only). Alleen bekende sleutels zijn toegestaan.
-const KNOWN_KEYS = [SETTING_INVOICE_MAIL];
+const KNOWN_KEYS = [SETTING_INVOICE_MAIL, SETTING_OVERVIEW_ZWAAR];
 
 export async function GET(req: NextRequest) {
   const g = await guardOwner(req); if (!g.ok) return g.res;

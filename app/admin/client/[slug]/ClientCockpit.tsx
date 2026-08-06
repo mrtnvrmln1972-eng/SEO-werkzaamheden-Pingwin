@@ -10,10 +10,11 @@ import type { TaskRow } from "../../../../lib/tasks";
 import type { StrategySession } from "../../../../lib/strategy";
 import ChatPanel from "./ChatPanel";
 import OverviewChat from "./OverviewChat";
-import WeekplanBoard from "./WeekplanBoard";
+import Planning from "./Planning";
 import ZijPaneel from "./ZijPaneel";
-import HeaderMenu from "./HeaderMenu";
+import KlantTabs, { type Tab } from "./KlantTabs";
 import OrgDataPanel from "./OrgDataPanel";
+import Concurrenten from "./Concurrenten";
 import FocusBlock from "./FocusBlock";
 import ShareLinkBar from "./ShareLinkBar";
 import HelpHint from "./HelpHint";
@@ -21,6 +22,7 @@ import MailAllowlist from "./MailAllowlist";
 import LinkPreview from "./LinkPreview";
 import { mdToHtml } from "../../../../lib/markdown";
 import BespreekLijsten from "./BespreekLijsten";
+import Notities from "./Notities";
 import DeveloperOverview from "../../developer/DeveloperOverview";
 import KpiPanel from "./KpiPanel";
 import PagesPanel from "./PagesPanel";
@@ -34,8 +36,14 @@ import ActiviteitPanel from "./ActiviteitPanel";
 import InvoiceAlert from "./InvoiceAlert";
 import SelectionActions from "./SelectionActions";
 import LeadTab from "./LeadTab";
+import MailControlePanel from "./MailControlePanel";
+import OnboardingPanel from "./OnboardingPanel";
+import OntwikkelMenu from "../../OntwikkelMenu";
+import Tellers from "../../Tellers";
+import GmbPanel from "./GmbPanel";
+import KlussenChip from "./KlussenChip";
+import MeldingenMenu from "../../MeldingenMenu";
 
-type Tab = "lead" | "werkzaamheden" | "paginas" | "documenten" | "activiteit" | "resultaten" | "klant" | "developer" | "wijzigingen" | "cannibalisatie" | "interne-links" | "meta" | "prioriteiten";
 
 // Jouw Superhuman-account (Microsoft 365 hangt hieronder).
 const SUPERHUMAN_ACCOUNT = "Maarten@pingwin.nl";
@@ -102,7 +110,26 @@ export default function ClientCockpit({
   // Is dit een lead, dan is de leadomgeving het startscherm. Voor klanten
   // verandert er niets: die beginnen zoals altijd op Taken.
   const isLead = client.fase === "lead";
-  const validTab = (t?: string): Tab => (t === "lead" || t === "werkzaamheden" || t === "paginas" || t === "documenten" || t === "activiteit" || t === "resultaten" || t === "klant" || t === "developer" || t === "wijzigingen" || t === "meta" || t === "cannibalisatie" || t === "interne-links" || t === "prioriteiten") ? t : (isLead ? "lead" : "werkzaamheden");
+  // Het tabblad uit de URL. Een waarde die we niet kennen viel stilzwijgend terug
+  // op Taken, en dat is een val: een link die er goed uitziet (?tab=cannibal, of de
+  // schermnaam ?tab=opruimen) zet je op een heel ander scherm zonder dat iets zegt
+  // dat er iets misging. De namen die iemand logischerwijs intikt wijzen daarom nu
+  // naar het juiste tabblad.
+  const TAB_NAMEN: Record<string, Tab> = {
+    cannibal: "cannibalisatie", opruimen: "cannibalisatie", opruim: "cannibalisatie",
+    taken: "werkzaamheden", "pagina's": "paginas", pages: "paginas",
+    "meta-ctr": "meta", links: "interne-links", "interne links": "interne-links",
+    "prioriteiten scan": "prioriteiten",
+  };
+  const GELDIGE_TABS: Tab[] = ["lead", "onboarding", "werkzaamheden", "paginas", "documenten", "activiteit",
+    "resultaten", "klant", "developer", "wijzigingen", "meta", "cannibalisatie", "interne-links",
+    "prioriteiten", "google-profiel"];
+  const validTab = (t?: string): Tab => {
+    const k = (t || "").trim().toLowerCase();
+    if ((GELDIGE_TABS as string[]).includes(k)) return k as Tab;
+    if (TAB_NAMEN[k]) return TAB_NAMEN[k];
+    return isLead ? "lead" : "werkzaamheden";
+  };
   const [tab, setTab] = useState<Tab>(validTab(initialTab));
   // Teller die de weekplanning laat herladen zodra er vanuit de chat een taak is
   // toegevoegd (of iets in het bord verandert).
@@ -375,6 +402,18 @@ export default function ClientCockpit({
     } catch { setVraagFout("Zoeken mislukte; probeer het nog een keer."); }
     finally { setVraagBusy(false); }
   }
+  // Een mail uit dit overzicht weghalen. Bevestigen gebeurt in de rij zelf
+  // (geen browser-popup), en de rij verdwijnt meteen: hij komt ook na verversen
+  // niet terug. De mail zelf blijft gewoon in de mailbox staan.
+  const [mailWeg, setMailWeg] = useState<string | null>(null);
+  async function verwijderMail(id: string) {
+    setMailWeg(null);
+    setEmails((lijst) => lijst.filter((m) => m.id !== id));
+    try {
+      await fetch(`/api/admin/mail?slug=${encodeURIComponent(client.slug)}&id=${encodeURIComponent(id)}`, { method: "DELETE" });
+    } catch { /* de rij is al weg; bij verversen komt hij hooguit terug */ }
+  }
+
   const getoondeEmails = vraagIds.length
     ? [...emails].sort((a, b) => {
         const ra = vraagIds.indexOf(a.id), rb = vraagIds.indexOf(b.id);
@@ -454,66 +493,15 @@ export default function ClientCockpit({
               uitklapmenu: "Klant" toont wat we voor deze klant doen, "Site-breed" de
               gereedschappen die over de hele site kijken. De tab-waarden in de URL
               blijven ongewijzigd, dus bestaande bookmarks komen nog goed uit. */}
-          <nav className="header-tabs">
-            {([
-              // Het lead-tabje verschijnt alleen bij een lead; bij een klant is
-              // de tabbalk exact zoals hij was.
-              ...(isLead ? [["lead", "Lead", "De werkplek voor deze lead: gesprek, dossier en documenten"] as [Tab, string, string]] : []),
-              ["werkzaamheden", "Taken", "Overview: je prioriteiten, de chats en de weekplanning"],
-              ["paginas", "Pagina’s", ""],
-            ] as [Tab, string, string][]).map(([id, label, title]) => (
-              // Echte link (href) zodat cmd/middel-klik in een nieuw tabblad opent;
-              // gewone klik wisselt client-side van tab.
-              <a
-                key={id}
-                href={`${pathname}?tab=${id}`}
-                title={title || undefined}
-                className={"tab" + (tab === id ? " active" : "")}
-                onClick={(e) => { if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return; e.preventDefault(); changeTab(id); }}
-              >{label}</a>
-            ))}
-
-            <HeaderMenu<Tab>
-              label="Site-breed"
-              active={tab}
-              hrefFor={(id) => `${pathname}?tab=${id}`}
-              onPick={changeTab}
-              items={[
-                { id: "prioriteiten", label: "Prioriteitenscan", hint: "Waar zit de snelste winst op deze site: alle kansen op volgorde, van deze week tot strategisch" },
-                { id: "meta", label: "Meta & CTR", hint: "Veel vertoningen, te weinig klikken: betere meta-teksten leveren direct bezoekers op" },
-                { id: "cannibalisatie", label: "Opruimen", hint: "Welke pagina's elkaar in de weg zitten, met de volledige redirectlijst: van, naar en waarom" },
-                { id: "interne-links", label: "Interne links", hint: "Vanaf welke pagina's je het beste naar een doelpagina linkt, gewogen op autoriteit en relevantie" },
-              ]}
-            />
-
-            <HeaderMenu<Tab>
-              label="Klant"
-              active={tab}
-              hrefFor={(id) => `${pathname}?tab=${id}`}
-              onPick={changeTab}
-              items={[
-                { id: "documenten", label: "Documenten", hint: "Alle analyses, blauwdrukken en copy per pagina en per maand, met of het al op de site staat" },
-                { id: "activiteit", label: "Wat we doen", hint: "Alles wat we voor deze klant uitvoerden, per maand: copy, meta, alt-teksten, structured data en redirects" },
-                { id: "wijzigingen", label: "Wijzigingen", hint: "Wat er op de site van de klant veranderd is sinds de vorige controle" },
-                { id: "klant", label: "Klantgegevens", hint: "Profiel, bedrijfsgegevens, kennisbank en de instellingen van deze klant" },
-              ]}
-            />
-
-            {([
-              ["resultaten", "KPI’s", ""],
-              ["developer", "Developer", "Alle developer-taken over alle klanten"],
-            ] as [Tab, string, string][]).map(([id, label, title]) => (
-              <a
-                key={id}
-                href={`${pathname}?tab=${id}`}
-                title={title || undefined}
-                className={"tab" + (tab === id ? " active" : "")}
-                onClick={(e) => { if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return; e.preventDefault(); changeTab(id); }}
-              >{label}</a>
-            ))}
-          </nav>
+          <KlantTabs basisPad={pathname} actief={tab} isLead={isLead} onKies={changeTab} />
         </div>
         <div className="header-right">
+          <MeldingenMenu />
+          <Tellers />
+        <OntwikkelMenu />
+          {/* Wat er op de achtergrond draait, zichtbaar op élk tabblad. Zonder dit
+              was een scan alleen te volgen op de plek waar je hem startte. */}
+          <KlussenChip slug={client.slug} onGaNaar={(t) => changeTab(validTab(t))} />
           <span id="werk-month-slot" className="header-month-slot" />
           {lastMailDate && (
             <span className={"contact-chip " + contactColor(lastMailDate)} title={`Laatste contact: ${fmtDate(lastMailDate)}`}>
@@ -593,11 +581,17 @@ export default function ClientCockpit({
               <div className="ov-blok">
                 <button type="button" className="strategy-head" onClick={() => setOvOpen((v) => ({ ...v, week: !v.week }))}>
                   <span className="strategy-caret">{ovOpen.week ? "▾" : "▸"}</span>
-                  <span className="strategy-title">Week Planning</span>
+                  <span className="strategy-title">Planning</span>
+                  {/* Naar het compacte weekbord. Stond eerst in de kop van de
+                      weekplanning zelf, maar die kop is hier verborgen (de titel
+                      staat al op deze toggle), dus daar was hij onbereikbaar. */}
+                  <a className="wp-bordlink" href={`/admin/client/${client.slug}/weekbord`}
+                     onClick={(e) => e.stopPropagation()}
+                     title="Dezelfde planning op volle breedte, over al je klanten heen">alle klanten &rarr;</a>
                 </button>
                 {ovOpen.week && (
                   <div className="strategy-body">
-                    <WeekplanBoard kaal slug={client.slug} onGoToPage={goToPage} onGoToTab={(t) => changeTab(validTab(t))} onOpenMailDate={openMailByDate} clientName={client.name} clientEmail={client.email || ""} reloadSignal={weekplanReload} />
+                    <Planning kaal slug={client.slug} onGoToPage={goToPage} onGoToTab={(t) => changeTab(validTab(t))} onOpenMailDate={openMailByDate} clientName={client.name} clientEmail={client.email || ""} reloadSignal={weekplanReload} />
                   </div>
                 )}
               </div>
@@ -659,7 +653,10 @@ export default function ClientCockpit({
               </div>
 
             {/* Bespreeklijsten per persoon, direct onder de actuele stand. */}
-            <BespreekLijsten slug={client.slug} clientName={client.name} clientEmail={client.email || clientMailQuery} />
+            <BespreekLijsten slug={client.slug} clientName={client.name} clientEmail={client.email || clientMailQuery} domain={client.domain} />
+
+            {/* Kladblok per klant; wat hier staat gaat mee als klantkennis. */}
+            <Notities slug={client.slug} domain={client.domain} />
 
             <div className="cockpit-card strategy-card">
               <button type="button" className="strategy-head" onClick={() => setShowMailsBox((v) => !v)}>
@@ -739,6 +736,20 @@ export default function ClientCockpit({
                             {shLink && (
                               <a className="ql ql-mini" href={shLink} target="_blank" rel="noreferrer" onClick={(ev) => ev.stopPropagation()}>Superhuman</a>
                             )}
+                            {mailWeg === e.id ? (
+                              <span className="email-weg-vraag" onClick={(ev) => ev.stopPropagation()}>
+                                Weghalen?
+                                <button type="button" className="email-weg-ja" onClick={() => void verwijderMail(e.id)}>ja</button>
+                                <button type="button" className="email-weg-nee" onClick={() => setMailWeg(null)}>nee</button>
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                className="email-del"
+                                title="Haal deze mail uit dit overzicht (blijft in je mailbox staan)"
+                                onClick={(ev) => { ev.stopPropagation(); setMailWeg(e.id); }}
+                              >×</button>
+                            )}
                             <span className="email-caret">{open ? "▲" : "▼"}</span>
                           </div>
                         </div>
@@ -789,6 +800,18 @@ export default function ClientCockpit({
                                 </div>
                               </div>
                             )}
+                            {/* Controleren of de verzoeken uit deze thread ook echt
+                                in de site verwerkt zijn. Staat hier omdat Maarten
+                                hier toch al is als hij de mail leest. */}
+                            {mailLive && e.conversationId && (
+                              <MailControlePanel
+                                slug={client.slug}
+                                domein={client.domain || ""}
+                                conversationId={e.conversationId}
+                                messageId={e.id}
+                                onderwerp={e.subject || ""}
+                              />
+                            )}
                           </div>
                         )}
                       </div>
@@ -812,8 +835,13 @@ export default function ClientCockpit({
           </>
         )}
 
+        {tab === "onboarding" && <OnboardingPanel slug={client.slug} onGaNaar={(t) => changeTab(validTab(t))} />}
+
         {tab === "klant" && (<>
           <OrgDataPanel slug={client.slug} clientEmail={client.email || ""} />
+          {/* Wie de concurrentie is, is klantkennis en hoort hier, niet verstopt
+              achter een knopje in een scan-blok. Zelfde component als daar. */}
+          <Concurrenten slug={client.slug} />
           <div className="cockpit-card client-frame-card">
             <div className="ck-section-head"><span>Klant (zo ziet de klant het)</span>
               <a className="logout-btn" href={`/admin/preview/${client.slug}`} target="_blank" rel="noreferrer">Openen in nieuw tabblad ↗</a>
@@ -838,16 +866,16 @@ export default function ClientCockpit({
         {/* Deze twee schermen bestonden al maar hingen nergens in de UI, dus niemand
             kon erbij. Hier hoort de volledige redirectlijst thuis, niet in de chat:
             een lijst is een scherm, een oordeel is een gesprek. */}
-        {tab === "prioriteiten" && <PrioriteitenPanel slug={client.slug} domain={client.domain || ""} onGaNaar={gaNaar} />}
-        {tab === "cannibalisatie" && <CannibalPanel slug={client.slug} domain={client.domain || ""} openTarget={opruimTarget} />}
-        {tab === "interne-links" && <InternalLinksPanel slug={client.slug} openTarget={linkTarget} />}
+        {tab === "prioriteiten" && <PrioriteitenPanel slug={client.slug} domain={client.domain || ""} onGaNaar={gaNaar} clientName={client.name} clientEmail={client.email || ""} />}
+        {tab === "cannibalisatie" && <CannibalPanel slug={client.slug} domain={client.domain || ""} openTarget={opruimTarget} clientName={client.name} clientEmail={client.email || ""} />}
+        {tab === "interne-links" && <InternalLinksPanel slug={client.slug} domein={client.domain || ""} openTarget={linkTarget} />}
+        {tab === "google-profiel" && <GmbPanel slug={client.slug} clientName={client.name} clientEmail={client.email || ""} pingwinEmail={myEmail || SUPERHUMAN_ACCOUNT} onGaNaar={(t) => changeTab(validTab(t))} />}
 
-        {tab === "developer" && (<>
-          {/* De naam van de sitebouwer hoort bij het developer-werk, niet bovenaan
-              het klantscherm. De naam zelf werkt overal hetzelfde door. */}
-          <SitebouwerVeld slug={client.slug} start={client.cockpit.devName || ""} />
-          <DeveloperOverview embedded />
-        </>)}
+        {/* Hetzelfde overzicht als /admin/developer: ALLE klanten bij elkaar, want
+            dit is de lijst die met de developer wordt gedeeld en die werkt over
+            klanten heen. Deze klant staat wel bovenaan, en een nieuwe taak die je
+            hier aanmaakt landt vanzelf bij hem. */}
+        {tab === "developer" && <DeveloperOverview embedded slug={client.slug} clientName={client.name} />}
       </div>
 
       <div className="footer">Pingwin Online Marketing &middot; Beheer</div>
@@ -983,47 +1011,3 @@ function shortUrl(url: string): string {
 }
 
 
-// Wie bouwt de site van DEZE klant. Stond eerder hardgecodeerd als "Sander" in
-// zes schermen, waardoor bij elke klant dezelfde naam in beeld kwam. Leeg laten
-// mag: dan noemt het dashboard hem gewoon "Dev" en verzint het niemand.
-function SitebouwerVeld({ slug, start }: { slug: string; start: string }) {
-  const [naam, setNaam] = useState(start);
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState("");
-  const gewijzigd = naam.trim() !== start.trim();
-
-  async function bewaar() {
-    if (busy || !gewijzigd) return;
-    setBusy(true); setMsg("");
-    try {
-      const d = await fetch("/api/admin/clients", {
-        method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, action: "devName", devName: naam.trim() }),
-      }).then((r) => r.json());
-      setMsg(d?.ok ? "Bewaard." : (d?.error || "Bewaren mislukte."));
-    } catch { setMsg("Bewaren mislukte."); }
-    finally { setBusy(false); }
-  }
-
-  return (
-    <div className="cockpit-card">
-      <div className="ck-section-head"><span>Sitebouwer</span></div>
-      <div className="dev-veld">
-        <input
-          className="compose-input"
-          value={naam}
-          onChange={(e) => { setNaam(e.target.value); setMsg(""); }}
-          onKeyDown={(e) => { if (e.key === "Enter") void bewaar(); }}
-          placeholder="Naam van de sitebouwer (leeg laten mag)"
-        />
-        <button type="button" className="btn" onClick={() => void bewaar()} disabled={busy || !gewijzigd}>
-          {busy ? "Bezig…" : "Bewaar"}
-        </button>
-        {msg && <span className="dev-veld-msg">{msg}</span>}
-      </div>
-      <div className="muted" style={{ fontSize: "var(--fs-sm)", marginTop: "var(--s-2)" }}>
-        Deze naam komt terug op de bespreeklijsten en bij de werklijst. Vul je niets in, dan staat er gewoon &ldquo;Dev&rdquo;.
-      </div>
-    </div>
-  );
-}

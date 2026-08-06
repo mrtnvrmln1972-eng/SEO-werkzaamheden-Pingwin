@@ -12,13 +12,21 @@ import { cardInfoHtml, splitCardInfo, eerdereNotitiesHtml, faseSturing, type Car
 import { linkifyHtml } from "../../../../lib/linkify";
 import { urlKey } from "../../../../lib/url-key";
 import { devLabel } from "../../../../lib/personen";
+import { eersteKop } from "../../../../lib/chat-vouw";
+import { volgendeFase, faseLabel, FASE_VOLGORDE } from "../../../../lib/fase-volgorde";
 import AntwoordBlokken from "./AntwoordBlokken";
 import DocVersies from "./DocVersies";
 import PaginaDossier from "./PaginaDossier";
 import DeelKnoppen from "./DeelKnoppen";
 import DevDoorzetten from "./DevDoorzetten";
 
-export type WpTask = { id: number; thread: string; taak: string; toelichting: string; wie: string; url: string; taaktype: string; copyUrl: string; bronMail: string; weekYear: number; weekNo: number; status: string; sortOrder: number; naarDev?: boolean };
+const ARCHIEF_LABEL: Record<string, string> = {
+  titel: "Eerdere titel",
+  notities: "Eerdere kaarttekst",
+  overloop: "Weggeschoven omdat de kaart vol was",
+};
+
+export type WpTask = { id: number; thread: string; taak: string; toelichting: string; wie: string; url: string; taaktype: string; copyUrl: string; bronMail: string; weekYear: number; weekNo: number; status: string; sortOrder: number; naarDev?: boolean; archiefAantal?: number };
 export type WpPageInfo = { url: string; live: boolean; klikken?: number; vertoningen?: number; doorgevoerd?: boolean | null; strategie: boolean; gelieerde: boolean; analyse: boolean; blauwdruk: boolean; copy: boolean; bouw: boolean; structured: boolean; structuredStatus: string; next: string; links: { analyse: string; blauwdruk: string; copy: string } };
 
 // Bij welk taaktype hoort welk dashboard-tabblad (voor de deep-link "doe het hier").
@@ -70,23 +78,21 @@ const ICOON = {
   doel: "M12 12m-9 0a9 9 0 1 0 18 0 9 9 0 1 0-18 0|M12 12m-5 0a5 5 0 1 0 10 0 5 5 0 1 0-10 0|M12 12m-1 0a1 1 0 1 0 2 0 1 1 0 1 0-2 0",
 };
 
-const FASEN: { key: FaseKey; label: string; kort: string; icoon: string }[] = [
-  { key: "strategie", label: "Strategie", kort: "Strategie", icoon: ICOON.strategie },
-  { key: "gelieerde", label: "Gelieerde pagina's", kort: "Gelieerd", icoon: ICOON.gelieerde },
-  { key: "analyse", label: "Analyse", kort: "Analyse", icoon: ICOON.analyse },
-  { key: "blauwdruk", label: "Blauwdruk", kort: "Blauwdruk", icoon: ICOON.blauwdruk },
-  { key: "copy", label: "Copy", kort: "Copy", icoon: ICOON.copy },
-  { key: "bouw", label: "Bouw en publicatie", kort: "Bouw", icoon: ICOON.bouw },
-  { key: "structured", label: "Structured data", kort: "Schema", icoon: ICOON.structured },
-];
+// De namen komen uit lib/fase-volgorde.ts; hier plakken we alleen het icoontje erbij.
+const FASEN: { key: FaseKey; label: string; kort: string; icoon: string }[] =
+  FASE_VOLGORDE.map((f) => ({ ...f, icoon: ICOON[f.key] }));
 
 type RunInfo = { status: string; steps: Record<string, string>; links: Record<string, string> } | null;
 type ChatMsg = { role: "user" | "assistant"; content: string };
 
 function shortUrl(url: string): string { try { const u = new URL(url); return (u.pathname + u.search) || "/"; } catch { return url; } }
 
-export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDragStart, onDragEnd, onStatus, onRemove, onMail, onGoToPage, onGoToTab, onOpenMailDate, mailLinks, refreshBoard }: {
+export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen, onDragStart, onDragEnd, onStatus, onRemove, onMail, onGoToPage, onGoToTab, onOpenMailDate, mailLinks, refreshBoard }: {
   slug: string; t: WpTask; page?: WpPageInfo; open: boolean;
+  /** Hangt deze kaart onder een regel in de planning? Dan toont die regel de
+      titel, het pad en de fase-letters al, en wordt de kaartkop één actiebalk.
+      Zonder dit stond alles twee keer in beeld, inclusief het sleephandvat. */
+  inRij?: boolean;
   onToggleOpen: () => void; onDragStart: () => void; onDragEnd: () => void;
   onStatus: () => void; onRemove: () => void; onMail: (aud: "klant" | "dev") => void;
   onGoToPage?: (url: string) => void; onGoToTab?: (tab: string) => void;
@@ -108,6 +114,25 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
   const [chatOpen, setChatOpen] = useState(false);
   const [msgs, setMsgs] = useState<ChatMsg[]>([]);
   const [chatId, setChatId] = useState<number | null>(null);
+  // Welke eerdere antwoorden je zelf hebt opengeklapt. Standaard staat alleen het
+  // LAATSTE antwoord open; alles daarvoor vouwt samen tot zijn eigen kopje. Zonder
+  // dit stond hier een muur van tekst, want elk antwoord bleef volledig staan.
+  const [openBericht, setOpenBericht] = useState<Record<number, boolean>>({});
+  // Bevestigen gebeurt in de rij zelf: het nummer van het bericht dat weg mag,
+  // of "chat" voor het hele gesprek.
+  const [wegVraag, setWegVraag] = useState<number | "chat" | null>(null);
+  // Een fase met de hand op klaar zetten (of terugzetten). Zelfde weg als het
+  // vinkje op het weekbord, dus beide schermen blijven gelijk lopen.
+  const [vinkBezig, setVinkBezig] = useState<string>("");
+  async function zetFase(fase: string, af: boolean) {
+    if (!t.url || vinkBezig) return;
+    setVinkBezig(fase);
+    try {
+      await fetch("/api/admin/weekplan/phase", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: t.url, fase, done: af }) });
+      refreshBoard();
+    } catch { /* stil; het bord herlaadt zo toch */ } finally { setVinkBezig(""); }
+  }
+  const laatsteAntwoord = msgs.map((m) => m.role).lastIndexOf("assistant");
   const [input, setInput] = useState("");
   const [chatBusy, setChatBusy] = useState(false);
   const [planVoorstel, setPlanVoorstel] = useState<string>("");
@@ -221,6 +246,27 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
   // Welke fases hun sturing tonen. Dicht is de standaard: je wilt de instructie
   // van de stap waar je mee bezig bent, niet die van alle vijf tegelijk.
   const [faseOpen, setFaseOpen] = useState<Record<string, boolean>>({});
+  // De controle "is dit doorgevoerd?": meet de live pagina op de punten die bij
+  // het doorzetten zijn afgesproken. Het antwoord blijft hier staan tot je de
+  // kaart sluit; de vaste plek ervan is de kaarttekst en de tijdlijn.
+  const [controle, setControle] = useState<{ samenvatting: string; punten: { label: string; uitslag: string; bewijs: string }[]; alles: boolean; meetbaar: boolean } | null>(null);
+  const [controleBezig, setControleBezig] = useState(false);
+
+  async function isDoorgevoerd() {
+    if (controleBezig) return;
+    setControleBezig(true);
+    try {
+      const d = await fetch("/api/admin/weekplan/doorgevoerd", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, id: t.id }),
+      }).then((r) => r.json());
+      if (d?.ok && d.meting) { setControle(d.meting); if (d.gewijzigd) refreshBoard(); }
+      else setControle({ samenvatting: d?.error || "De controle lukte niet.", punten: [], alles: false, meetbaar: false });
+    } catch {
+      setControle({ samenvatting: "De controle lukte niet.", punten: [], alles: false, meetbaar: false });
+    } finally { setControleBezig(false); }
+  }
+
   // Staat deze kaart op de developerpagina?
   const [naarDev, setNaarDev] = useState<boolean>(t.naarDev === true);
   const [devBezig, setDevBezig] = useState(false);
@@ -364,12 +410,25 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
   }
 
   // Eén chatbericht weghalen (kruisje); de opgeslagen historie gaat meteen mee.
+  // Bevestigen gebeurt in de rij zelf, niet met een browserpopup.
   async function verwijderChatBericht(i: number) {
+    setWegVraag(null); setOpenBericht({});
     const nieuw = msgs.filter((_, idx) => idx !== i);
     setMsgs(nieuw);
     try {
       if (t.url) await fetch("/api/admin/page-chats", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: t.url, id: chatId, messages: nieuw }) });
       else await fetch("/api/admin/chat", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread: kaartThread, messages: nieuw }) });
+    } catch { /* stil */ }
+  }
+
+  // Het hele gesprek weggooien. Dat kon hier helemaal niet; je kon alleen bericht
+  // voor bericht opruimen. Bij een kaart met pagina gooit dit de opgeslagen
+  // pagina-chat weg, bij een kaart zonder pagina het eigen kaart-gesprek.
+  async function wisChat() {
+    setWegVraag(null); setMsgs([]); setOpenBericht({}); setPlanVoorstel("");
+    try {
+      if (t.url) { if (chatId !== null) await fetch(`/api/admin/page-chats?id=${chatId}`, { method: "DELETE" }); setChatId(null); }
+      else await fetch(`/api/admin/chat?slug=${encodeURIComponent(slug)}&thread=${encodeURIComponent(kaartThread)}`, { method: "DELETE" });
     } catch { /* stil */ }
   }
 
@@ -430,14 +489,10 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
     if (key === "bouw") {
       return (
         <>
-          {/* Hier verlaat het werk jouw handen, dus hier hoort de knop naar de
-              developerlijst. Stond eerder onderaan de kaart, ver van deze stap. */}
-          <button type="button" className={"wp-fase-btn" + (naarDev ? " wp-fase-btn-aan" : "")}
-            disabled={devBezig}
-            title={naarDev ? "Staat op de developerlijst. Klik om hem er weer af te halen." : "Zet deze kaart op de developerlijst, naast de andere taken voor de sitebouwer."}
-            onClick={() => void zetNaarDev()}>
-            {devBezig ? "Bezig…" : naarDev ? "✓ Op developerlijst" : "Naar dev"}
-          </button>
+          {/* Doorzetten naar de sitebouwer stond hier én in de actiebalk én onderaan
+              bij Delen. Drie knoppen voor één handeling. Hij staat nu alleen nog
+              bovenaan in de actiebalk; deze rij toont wél de stand ("Bij de
+              developer"), want dat is een signaal en geen knop. */}
           <button type="button" className="wp-fase-btn" title="Mail over de bouw of publicatie (ontvanger kies je in het venster)" onClick={() => onMail("dev")}>Mail</button>
         </>
       );
@@ -469,6 +524,20 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
   const ouder = hasInfo ? eerdereNotitiesHtml(t.toelichting, t.url, t.taak, mailLinks) : null;
   const eerdereNotities = ouder?.html || "";
   const eerdereAantal = ouder?.aantal || 0;
+  // Het archief wordt pas opgehaald als je het openklapt: het staat er om iets
+  // terug te kunnen zoeken, niet om te lezen.
+  const archiefAantal = t.archiefAantal || 0;
+  const [archief, setArchief] = useState<{ op: string; soort: string; tekst: string }[]>([]);
+  const [archiefBezig, setArchiefBezig] = useState(false);
+  async function laadArchief() {
+    if (archief.length || archiefBezig || archiefAantal === 0) return;
+    setArchiefBezig(true);
+    try {
+      const d = await fetch(`/api/admin/weekplan/archief?slug=${encodeURIComponent(slug)}&id=${t.id}`).then((r) => r.json());
+      if (d?.ok && Array.isArray(d.items)) setArchief(d.items);
+    } catch { /* stil; het blok blijft dan leeg */ }
+    finally { setArchiefBezig(false); }
+  }
 
   // Dichtklappen mag nooit een lopende tekstselectie opeten (kopiëren gaat voor).
   const toggleAlsGeenSelectie = () => {
@@ -480,10 +549,11 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
   return (
     <div className={"wp-card wp-" + t.status + (open ? " wp-open" : "")}>
       <div className="wp-card-grid">
-        {/* Alleen dit handvat is sleepbaar; de rest van de kaart blijft selecteerbare tekst. */}
-        <span className="wp-card-grip" draggable onDragStart={onDragStart} onDragEnd={onDragEnd} title="Sleep de kaart naar een andere week">⋮⋮</span>
+        {/* Alleen dit handvat is sleepbaar; de rest van de kaart blijft selecteerbare tekst.
+            Hangt de kaart onder een regel, dan heeft die regel er al een. */}
+        {!inRij && <span className="wp-card-grip" draggable onDragStart={onDragStart} onDragEnd={onDragEnd} title="Sleep de kaart naar een andere week">⋮⋮</span>}
         <div className="wp-card-main">
-          <div className="wp-kop-rij">
+          <div className={"wp-kop-rij" + (inRij ? " wp-kop-balk" : "")}>
             <div className="wp-kop-tekst">
               {titelBewerk ? (
                 <div className="wp-titel-bewerk">
@@ -496,7 +566,7 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
                   <button type="button" className="wp-fase-btn" disabled={titelBezig} onClick={() => void bewaarTitel()}>{titelBezig ? "Bezig…" : "Bewaar"}</button>
                   <button type="button" className="wp-fase-btn wp-fase-btn-licht" disabled={titelBezig} onClick={() => setTitelBewerk(false)}>Annuleer</button>
                 </div>
-              ) : (
+              ) : inRij ? null : (
                 <div className="wp-card-taak wp-clickable" onClick={toggleAlsGeenSelectie} title={open ? "Klik om dicht te klappen" : "Klik voor de fases, info en chat"}>
                   <span className="wp-caret">{open ? "▾" : "▸"}</span>
                   {titel}
@@ -504,20 +574,61 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
                     onClick={(e) => { e.stopPropagation(); setTitelDraft(t.taak.replace(/<[^>]*>/g, "").trim()); setTitelBewerk(true); }}>✎</button>
                 </div>
               )}
-              {subtitel && <div className="wp-card-sub wp-clickable" onClick={toggleAlsGeenSelectie}>{subtitel}</div>}
+              {subtitel && !inRij && <div className="wp-card-sub wp-clickable" onClick={toggleAlsGeenSelectie}>{subtitel}</div>}
             </div>
             <span className="wp-kop-acties">
               <button type="button" className={"wp-status wp-status-" + t.status} onClick={onStatus} title="Klik om de status te wisselen">{STATUS_LABEL[t.status] || t.status}</button>
+              {/* Doorzetten naar de sitebouwer stond op twee plekken: hier onderaan
+                  bij Delen (alleen zonder pagina) en bij de fase Implementatie. Nu
+                  één knop, altijd op dezelfde plek, met of zonder pagina. */}
+              {open && (
+                <button type="button" className={"btn-ghost" + (naarDev ? " btn-ghost-aan" : "")} disabled={devBezig}
+                  title={naarDev ? "Staat op de developerlijst. Klik om hem er weer af te halen." : "Zet deze kaart klaar voor de sitebouwer: de opdracht, de pagina en de documenten."}
+                  onClick={() => void zetNaarDev()}>
+                  {devBezig ? "Bezig…" : naarDev ? "✓ Bij de sitebouwer" : "Naar de sitebouwer"}
+                </button>
+              )}
+              {/* Nameten hoort naast doorzetten: dat is dezelfde afspraak, een
+                  paar weken later. Alleen zinvol bij een pagina. */}
+              {open && t.url && (
+                <button type="button" className="btn-ghost" disabled={controleBezig}
+                  title="Meet de live pagina op wat er bij het doorzetten is afgesproken, zet het bewijs in de kaart en vinkt Implementatie af als het klopt."
+                  onClick={() => void isDoorgevoerd()}>
+                  {controleBezig ? "Meten…" : "Is dit doorgevoerd?"}
+                </button>
+              )}
+              {open && hasInfo && (
+                <button type="button" className="btn-ghost" disabled={busy === "opruimen"}
+                  title="Laat de assistent de kaarttekst één keer herschrijven naar het strakke formaat. Niets verzinnen, niets weggooien; de oude tekst blijft in het archief staan."
+                  onClick={() => void ruimOp()}>{busy === "opruimen" ? "Bezig…" : "Tekst opschonen"}</button>
+              )}
+              {inRij && !titelBewerk && (
+                <button type="button" className="wp-titel-pen" title="Titel aanpassen"
+                  onClick={() => { setTitelDraft(t.taak.replace(/<[^>]*>/g, "").trim()); setTitelBewerk(true); }}>✎</button>
+              )}
               <button type="button" className="wp-icon wp-del" title="Verwijderen" onClick={onRemove}>×</button>
             </span>
           </div>
-
-      {open && hasInfo && (
-        <div className="wp-opruim-rij">
-          <button type="button" className="wp-fase-btn" disabled={busy === "opruimen"}
-            title="Laat de AI de kaarttekst één keer herschrijven naar het strakke formaat (niets verzinnen, niets weggooien)."
-            onClick={() => void ruimOp()}>{busy === "opruimen" ? "Bezig…" : "Ruim op"}</button>
-          {opruimMsg && <span className={opruimMsg.startsWith("Kaart") ? "wp-opruim-ok" : "wp-opruim-fout"}>{opruimMsg}</span>}
+      {open && opruimMsg && <div className={opruimMsg.startsWith("Kaart") ? "wp-opruim-ok" : "wp-opruim-fout"}>{opruimMsg}</div>}
+      {open && controle && (
+        <div className={"wp-controle" + (controle.alles ? " wp-controle-ok" : controle.meetbaar ? " wp-controle-niet" : "")}>
+          <div className="wp-controle-kop">
+            {controle.alles ? "Doorgevoerd: " : controle.meetbaar ? "Nog niet klaar: " : ""}{controle.samenvatting}
+          </div>
+          {controle.punten.length > 0 && (
+            <ul className="wp-controle-lijst">
+              {controle.punten.map((p, i) => (
+                <li key={i} className={"wp-controle-punt wp-cp-" + p.uitslag}>
+                  <span className="wp-controle-label">{p.label}</span>
+                  <span className="wp-controle-bewijs muted">{p.bewijs}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {controle.meetbaar && !controle.alles && (
+            <button type="button" className="btn-ghost" onClick={() => onMail("dev")}
+              title="Schrijf een mail aan de sitebouwer met de gemeten waarde en de pagina erin">Mail de sitebouwer</button>
+          )}
         </div>
       )}
       {/* Alles wat over deze pagina gaat staat in één blok. Het zaten er eerst drie
@@ -549,24 +660,46 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
               }}
               dangerouslySetInnerHTML={{ __html: cardInfoHtml(t.toelichting, t.url, t.taak, cijferRegel(page), mailLinks, undefined, true) }} />
           )}
-          {t.url && <PaginaDossier slug={slug} url={t.url} kaartTekst={t.toelichting} kaartTitel={t.taak} />}
+          {t.url && <PaginaDossier slug={slug} url={t.url} zonderStand kaartTekst={t.toelichting} kaartTitel={t.taak} />}
           {/* Documenten hangen aan de pagina als die er is, en anders aan de taak
               zelf. Zo kun je bij élke kaart een document neerleggen, ook bij een
-              klus die niet over één pagina gaat (een rapportage, een werklijst). */}
-          <DocVersies slug={slug} url={t.url || `taak:${t.id}`} />
+              klus die niet over één pagina gaat (een rapportage, een werklijst).
+              Ingeklapt, want het dropveld kostte bij élke kaart drie regels
+              terwijl je er maar af en toe iets neerlegt. */}
+          <details className="wp-inklap">
+            <summary>Documenten toevoegen</summary>
+            <DocVersies slug={slug} url={t.url || `taak:${t.id}`} />
+          </details>
           {!hasInfo && !t.url && (
             <div className="muted wp-overdeze-leeg">
               Nog geen achtergrond. Leg hier een document neer, of stel een vraag in de chat hieronder; wat daaruit komt kun je als achtergrond vastleggen.
             </div>
           )}
-          {/* Eén archief onderaan het blok. Er stonden er twee vlak onder elkaar,
-              "Eerdere notities" en "Tijdlijn en eerdere notities", allebei met een
-              eigen aantal, dus het leek alsof er twee verschillende geschiedenissen
-              waren. Dit is de plek waar de oude notities uit de kaarttekst landen. */}
-          {hasInfo && eerdereNotities && (
-            <details className="wp-info-rest wp-overdeze-archief">
-              <summary>Eerdere notities ({eerdereAantal})</summary>
-              <div dangerouslySetInnerHTML={{ __html: eerdereNotities }} />
+          {/* Het archief. Twee dingen die er bijna hetzelfde uitzagen zijn nu uit
+              elkaar getrokken: "Wat er gebeurd is" (mails, documenten, gesprekken,
+              in het dossierblok hierboven) en dit, de geschreven tekst die van de
+              kaart af is geschoven. Hier landt alles wat wordt weggehaald: een
+              oude titel, een oude kaarttekst voordat hij werd herschreven, en
+              regels die niet meer pasten. Er wordt nooit iets uit verwijderd. */}
+          {(eerdereNotities || archiefAantal > 0) && (
+            <details className="wp-info-rest wp-overdeze-archief wp-card-info wp-info-net"
+              onToggle={(e) => { if ((e.target as HTMLDetailsElement).open) void laadArchief(); }}>
+              <summary>Archief: eerdere notities en titels ({eerdereAantal + archiefAantal})</summary>
+              {eerdereNotities && <div dangerouslySetInnerHTML={{ __html: eerdereNotities }} />}
+              {archief.length > 0 && (
+                <ul className="wp-archief">
+                  {archief.map((a, i) => (
+                    <li key={i}>
+                      <span className="wp-archief-kop">
+                        <span className="wp-archief-datum">{new Date(a.op).toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" })}</span>
+                        <span className="wp-archief-soort">{ARCHIEF_LABEL[a.soort] || a.soort}</span>
+                      </span>
+                      <span className="wp-archief-tekst">{a.tekst}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {archiefBezig && <div className="muted">Archief ophalen…</div>}
             </details>
           )}
         </div>
@@ -584,10 +717,14 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
 
       {/* Dichtgeklapt: compacte fase-chips. Klik = naar de pagina in Pagina's. */}
       {!open && page && (
-        <div className="wp-steps" title="Waar deze pagina staat in de pijplijn. Klik open voor starten en afvinken."
+        <div className="wp-steps" title="De stand van deze pagina. Klik om de kaart te openen; daar kun je fases starten en afvinken."
           role="button" onClick={onToggleOpen}>
           {FASEN.map((f) => <span key={f.key} className={"wp-step" + (page[f.key] ? " wp-step-done" : "")}>{page[f.key] ? "✓ " : ""}{f.kort}</span>)}
-          {(() => { const eerste = FASEN.find((f) => !page[f.key]); return eerste ? <span className="wp-step wp-step-next">Volgende: {eerste.label}</span> : <span className="wp-step wp-step-done">Alles klaar</span>; })()}
+          {/* Dezelfde berekening als de knop in het fase-blok: bestaat de pagina
+              nog niet, dan wordt analyse overgeslagen. Eerder rekende de chip het
+              zelf uit en zei hij "Volgende: Strategie" terwijl de knop ernaast
+              "Blauwdruk + copy" startte. */}
+          {(() => { const f = volgendeFase(page, page.live); return f ? <span className="wp-step wp-step-next">Volgende: {faseLabel(f)}</span> : <span className="wp-step wp-step-done">Alles klaar</span>; })()}
         </div>
       )}
 
@@ -596,57 +733,10 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
           alleen een omschrijving. Knop, status en het kant-en-klare document. */}
       {open && !t.url && /werklijst sitebouwer|site-?breed/i.test(t.taak) && <WerklijstBlok slug={slug} refreshBoard={refreshBoard} />}
 
-      {/* Chat direct onder het Doel-blok: de uitkomst hiervan voedt de fases eronder.
-          Ook op kaarten zonder pagina, dan met een eigen bird's eye-gesprek. */}
-      {open && (
-        <div className="wp-chat">
-          <button type="button" className={"wp-chat-toggle wp-chat-toggle-groot" + (chatOpen ? " wp-chat-open" : "")} onClick={() => (chatOpen ? setChatOpen(false) : void openChat())}>
-            <Icoon d={ICOON.chat} className="wp-sectie-icoon" /> {t.url ? "Chat over deze pagina" : "Chat over deze taak"} {chatOpen ? "▾" : "▸"}
-          </button>
-          {chatOpen && (
-            <div className="wp-chat-body">
-              <div className="wp-chat-msgs" ref={msgsRef}>
-                {msgs.length === 0 && !chatBusy && (
-                  <div className="muted wp-chat-leeg">
-                    {t.url
-                      ? "Stel een vraag of spar over deze pagina. De kaart-achtergrond gaat automatisch mee als context."
-                      : "Stel een vraag of zoek dit verder uit; de assistent kent de hele site. Van elk punt in het antwoord kun je direct een kaart maken."}
-                  </div>
-                )}
-                {msgs.map((m, i) => (
-                  <div key={i} className={"wp-chat-blok " + (m.role === "user" ? "wp-chat-blok-vraag" : "")}>
-                    <button type="button" className="wp-chat-del" title="Dit bericht verwijderen" onClick={() => void verwijderChatBericht(i)}>×</button>
-                    {m.role === "user"
-                      ? <div className="wp-chat-vraag">{m.content}</div>
-                      : <div className="wp-chat-antwoord md">
-                          <AntwoordBlokken
-                            slug={slug}
-                            thread={t.thread}
-                            content={m.content}
-                            toHtml={(md) => linkifyHtml(mdToHtml(md), (() => { try { return new URL(t.url).host; } catch { return ""; } })())}
-                            siteUrl={(() => { try { return new URL(t.url).origin; } catch { return ""; } })()}
-                            onWeekplanChanged={refreshBoard}
-                          />
-                        </div>}
-                  </div>
-                ))}
-                {chatBusy && <div className="muted wp-chat-leeg">Aan het nadenken…</div>}
-              </div>
-              {planVoorstel && (
-                <div className="wp-chat-acties">
-                  <button type="button" className="primary-btn small" disabled={busy === "strategie"} onClick={() => void legStrategieVast()}>Strategie vastleggen</button>
-                </div>
-              )}
-              <div className="wp-chat-input">
-                <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Vraag of instructie…"
-                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void sendChat(); } }} />
-                <button type="button" className="primary-btn small" disabled={chatBusy || !input.trim()} onClick={() => void sendChat()}>Vraag</button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
+      {/* De fases staan hier, direct onder "Over deze pagina" en boven de chat.
+          Ze stonden onderaan, ónder het hele gesprek, dus je scrolde er straal
+          langs: eerst zien waarom deze pagina, dan de stand en wat je kunt
+          starten, en pas daarna praten. */}
       {/* De cyclus verticaal, per fase status + start + vinkje. "Alles in één keer"
           hoort bij de eerste drie fases samen, niet bij Copy alleen, dus hij staat
           hier boven het blok in plaats van in één van de rijen. */}
@@ -682,7 +772,15 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
                       terwijl het alleen een aantekening maakte. Het dashboard meet
                       elke fase inmiddels zelf, dus er blijft per rij één ding over dat
                       iets doet (de knop) en één dat iets zegt (het chipje rechts). */}
-                  <span className={"wp-fase-bullet" + (page[f.key] ? " aan" : "")} aria-hidden="true" />
+                  {/* Het vinkje is terug. Het dashboard meet de meeste fases zelf,
+                      maar niet alles gebeurt in het dashboard: heb je de strategie
+                      in een gesprek bepaald of de dev het live gezet, dan zet je het
+                      hier zelf om. Handmatig wint van de gemeten stand, beide kanten
+                      op, en het weekbord toont hetzelfde vinkje. */}
+                  <label className="wp-fase-vink" title={page[f.key] ? "Afgerond, klik om terug te zetten" : "Markeer deze fase als afgerond"}>
+                    <input type="checkbox" checked={!!page[f.key]} disabled={vinkBezig === f.key}
+                      onChange={(e) => void zetFase(f.key, e.target.checked)} />
+                  </label>
                   <span className="wp-fase-label">{f.label}</span>
                   {/* Was een volle "Document"-knop rechts, drie keer in dezelfde
                       kaart. Een klein linkje achter de naam doet hetzelfde en houdt
@@ -718,6 +816,87 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
           {melding && <div className="wp-fase-melding">{melding}</div>}
         </div>
       )}
+      {/* Chat direct onder het Doel-blok: de uitkomst hiervan voedt de fases eronder.
+          Ook op kaarten zonder pagina, dan met een eigen bird's eye-gesprek. */}
+      {open && (
+        <div className="wp-chat">
+          <button type="button" className={"wp-chat-toggle wp-chat-toggle-groot" + (chatOpen ? " wp-chat-open" : "")} onClick={() => (chatOpen ? setChatOpen(false) : void openChat())}>
+            <Icoon d={ICOON.chat} className="wp-sectie-icoon" /> {t.url ? "Chat over deze pagina" : "Chat over deze taak"} {chatOpen ? "▾" : "▸"}
+          </button>
+          {chatOpen && msgs.length > 0 && (wegVraag === "chat" ? (
+            <span className="wp-weg-vraag wp-weg-naast">
+              Hele chat weggooien?
+              <button type="button" className="wp-weg-ja" onClick={() => void wisChat()}>ja</button>
+              <button type="button" className="wp-weg-nee" onClick={() => setWegVraag(null)}>nee</button>
+            </span>
+          ) : (
+            <button type="button" className="wp-chat-wis" title="Dit hele gesprek weggooien" onClick={() => setWegVraag("chat")}>&times;</button>
+          ))}
+          {chatOpen && (
+            <div className="wp-chat-body">
+              <div className="wp-chat-msgs" ref={msgsRef}>
+                {msgs.length === 0 && !chatBusy && (
+                  <div className="muted wp-chat-leeg">
+                    {t.url
+                      ? "Stel een vraag of spar over deze pagina. De kaart-achtergrond gaat automatisch mee als context."
+                      : "Stel een vraag of zoek dit verder uit; de assistent kent de hele site. Van elk punt in het antwoord kun je direct een kaart maken."}
+                  </div>
+                )}
+                {msgs.map((m, i) => {
+                  // Alleen het laatste antwoord staat open; de antwoorden daarvoor
+                  // vouwen samen tot hun eigen kopje. Je vragen blijven altijd staan.
+                  const inklapbaar = m.role === "assistant" && i < laatsteAntwoord;
+                  const dicht = inklapbaar && !openBericht[i];
+                  return (
+                  <div key={i} className={"wp-chat-blok " + (m.role === "user" ? "wp-chat-blok-vraag" : "")}>
+                    {wegVraag === i ? (
+                      <span className="wp-weg-vraag">
+                        Weghalen?
+                        <button type="button" className="wp-weg-ja" onClick={() => void verwijderChatBericht(i)}>ja</button>
+                        <button type="button" className="wp-weg-nee" onClick={() => setWegVraag(null)}>nee</button>
+                      </span>
+                    ) : (
+                      <button type="button" className="wp-chat-del" title="Dit bericht weghalen" onClick={() => setWegVraag(i)}>×</button>
+                    )}
+                    {inklapbaar && (
+                      <button type="button" className="ovc-msg-vouw" onClick={() => setOpenBericht((v) => ({ ...v, [i]: !v[i] }))}>
+                        <span className="ovc-msg-vouw-pijl">{dicht ? "▸" : "▾"}</span>
+                        <span className="ovc-msg-vouw-titel">{eersteKop(m.content || "")}</span>
+                        {dicht && <span className="ovc-msg-vouw-meta">eerder antwoord</span>}
+                      </button>
+                    )}
+                    {dicht ? null : m.role === "user"
+                      ? <div className="wp-chat-vraag">{m.content}</div>
+                      : <div className="wp-chat-antwoord md">
+                          <AntwoordBlokken
+                            slug={slug}
+                            thread={t.thread}
+                            content={m.content}
+                            toHtml={(md) => linkifyHtml(mdToHtml(md), (() => { try { return new URL(t.url).host; } catch { return ""; } })())}
+                            siteUrl={(() => { try { return new URL(t.url).origin; } catch { return ""; } })()}
+                            onWeekplanChanged={refreshBoard}
+                          />
+                        </div>}
+                  </div>
+                  );
+                })}
+                {chatBusy && <div className="muted wp-chat-leeg">Aan het nadenken…</div>}
+              </div>
+              {planVoorstel && (
+                <div className="wp-chat-acties">
+                  <button type="button" className="primary-btn small" disabled={busy === "strategie"} onClick={() => void legStrategieVast()}>Strategie vastleggen</button>
+                </div>
+              )}
+              <div className="wp-chat-input">
+                <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Vraag of instructie…"
+                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void sendChat(); } }} />
+                <button type="button" className="primary-btn small" disabled={chatBusy || !input.trim()} onClick={() => void sendChat()}>Vraag</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
 
       {/* De onderste regel had zes identieke pilletjes naast elkaar: vier die je
           ergens heen brengen en twee die iets naar buiten sturen. Aan de vorm was
@@ -736,18 +915,16 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
         <span className="wp-onder-scheiding" aria-hidden="true" />
         <span className="wp-onder-groep wp-onder-delen">
           <span className="wp-onder-lab">Delen</span>
-          {/* De developerpagina werd alleen gevoed door de oude takentabel, dus met de
-              weekplanning was mailen het enige wat er nog over was. Hiermee staat de
-              kaart weer gewoon op die pagina, waar jij en de sitebouwer hem allebei zien. */}
-          {!page && <button type="button" className={"wp-link wp-link-btn" + (naarDev ? " wp-link-aan" : "")}
-            disabled={devBezig}
-            title={naarDev ? "Staat op de developerpagina. Klik om hem er weer af te halen." : "Zet deze kaart op de developerpagina, naast de andere taken voor de sitebouwer."}
-            onClick={() => void zetNaarDev()}>
-            {devBezig ? "Bezig…" : naarDev ? "✓ Op developerlijst" : "Naar developer"}
-          </button>}
+          {/* "Naar de sitebouwer" stond hier ook, maar alleen bij een kaart zónder
+              pagina. Twee knoppen voor hetzelfde, op twee plekken, met een
+              voorwaarde die niemand kan onthouden. Hij staat nu in de actiebalk
+              bovenaan, altijd op dezelfde plek. */}
           <DeelKnoppen slug={slug} titel={t.taak.replace(/<[^>]*>/g, "").trim()}
             tekst={[t.taak.replace(/<[^>]*>/g, "").trim(), t.toelichting.replace(/<[^>]*>/g, "").trim()].filter(Boolean).join("\n\n")}
-            url={t.url || undefined} toon="document" compact knopClass="wp-link wp-link-btn" />
+            mailBron={msgs.filter((m) => m.role === "assistant").map((m) => m.content || "").join("\n\n")}
+            blokMd={[...msgs].reverse().find((m) => m.role === "assistant" && (m.content || "").trim())?.content || ""}
+            siteUrl={(() => { try { return new URL(t.url).host; } catch { return ""; } })()}
+            url={t.url || undefined} toon={msgs.some((m) => m.role === "assistant") ? "beide" : "document"} compact knopClass="wp-link wp-link-btn" />
           <button type="button" className="wp-act wp-act-klant" title="Mail over deze kaart; de ontvanger (klant, developer of anders) kies je in het venster." onClick={() => onMail("klant")}>Mail</button>
         </span>
       </div>}
@@ -767,7 +944,7 @@ export default function WeekplanCard({ slug, t, page, open, onToggleOpen, onDrag
 }
 
 // Blok op de werklijst-sitebouwer-kaart: maak of ververs de site-brede werklijst
-// (meta's en alt-teksten kant-en-klaar) en toon de status, samenvatting en het
+// (alt-teksten kant-en-klaar plus de goedgekeurde meta's) en toon de status en het
 // document. De motor zet na afloop zelf de doc-link en samenvatting op de kaart.
 function WerklijstBlok({ slug, refreshBoard }: { slug: string; refreshBoard: () => void }) {
   const [status, setStatus] = useState<string>("idle");
@@ -790,26 +967,17 @@ function WerklijstBlok({ slug, refreshBoard }: { slug: string; refreshBoard: () 
     return d?.status || "idle";
   }
 
-  // Live-controle of doorvoer vanaf de kaart. "Doorvoeren" is bewust één handeling:
-  // meta's en alt-teksten waren twee losse knoppen, maar dat is Maartens onderscheid
-  // niet. Hij denkt "zet het erop"; welk soort veld het is, is techniek. De twee
-  // stappen draaien dus na elkaar en de meldingen worden samengevoegd.
-  async function actie(soort: "verify" | "doorvoeren") {
+  // Alleen nog de live-controle vanaf de kaart. De knop "Voer door in de site"
+  // stond hier ook, en die zette alle meta's en alt-teksten in één klik op de
+  // site. Dat is precies de bulkactie die we van de werklijst zelf hebben
+  // gehaald: doorvoeren gaat per stuk, met een mens die er eerst naar kijkt.
+  // Een controle verandert niets aan de site, dus die mag hier blijven.
+  async function actie(soort: "verify") {
     if (actieBusy) return;
     setActieBusy(soort); setActieMsg("");
     try {
-      if (soort === "verify") {
-        const d = await fetch("/api/admin/dev-worklist/verify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }) }).then((r) => r.json());
-        setActieMsg(d?.ok ? (d.samenvatting || d.melding || "Klaar.") : (d?.error || "Dat lukte niet; probeer het nog een keer."));
-      } else {
-        const delen: string[] = [];
-        for (const wat of ["meta", "alt"] as const) {
-          const d = await fetch("/api/admin/dev-worklist/push", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, wat }) }).then((r) => r.json());
-          const tekst = d?.ok ? (d.samenvatting || d.melding || "") : (d?.error || "");
-          if (tekst) delen.push(`${wat === "meta" ? "Meta's" : "Alt-teksten"}: ${tekst}`);
-        }
-        setActieMsg(delen.length ? delen.join(" · ") : "Er was niets meer om door te voeren.");
-      }
+      const d = await fetch("/api/admin/dev-worklist/verify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }) }).then((r) => r.json());
+      setActieMsg(d?.ok ? (d.samenvatting || d.melding || "Klaar.") : (d?.error || "Dat lukte niet; probeer het nog een keer."));
       void haal();
     } catch { setActieMsg("Dat lukte niet; probeer het nog een keer."); }
     finally { setActieBusy(""); }
@@ -847,7 +1015,7 @@ function WerklijstBlok({ slug, refreshBoard }: { slug: string; refreshBoard: () 
         {teller && <span className="wp-werklijst-teller">{teller.gedaan}/{teller.totaal} gedaan · {teller.geverifieerd} gecontroleerd</span>}
         <span className="wp-fase-spacer" />
         <a className={"wp-fase-btn wp-fase-btn-primair" + (klaar ? "" : " wp-fase-btn-uit")} href={klaar ? `/admin/client/${slug}/werklijst` : undefined} target="_blank" rel="noreferrer"
-          title={klaar ? "Onze eigen versie: de huidige meta naast ons voorstel, met de knop Voer door in de site" : nogNiet}>Onze werklijst</a>
+          title={klaar ? "Onze eigen versie: de huidige meta naast de goedgekeurde tekst, met de knop Voer door in de site" : nogNiet}>Onze werklijst</a>
         <a className={"wp-fase-btn" + (klaar ? "" : " wp-fase-btn-uit")} href={klaar ? `/share/werklijst/${shareToken}` : undefined} target="_blank" rel="noreferrer"
           title={klaar ? "De klikbare afwerkpagina om te delen met de sitebouwer (geen inlog nodig)" : nogNiet}>Voor de sitebouwer</a>
       </div>
@@ -855,18 +1023,15 @@ function WerklijstBlok({ slug, refreshBoard }: { slug: string; refreshBoard: () 
       <div className="wp-werklijst-rij wp-werklijst-doen">
         <span className="wp-werklijst-groep">Doen</span>
         <button type="button" className="wp-fase-btn" disabled={status === "running" || !!actieBusy}
-          title="Meet alle live pagina's opnieuw en schrijft de nieuwe meta's en alt-teksten; duurt een paar minuten" onClick={start}>
+          title="Meet alle live pagina's opnieuw, schrijft de alt-teksten en haalt de goedgekeurde meta's uit Meta & CTR op; duurt een paar minuten" onClick={start}>
           {status === "running" ? "Bezig… (paar minuten)" : klaar ? "Ververs werklijst" : "Maak de werklijst"}
         </button>
-        <button type="button" className="wp-fase-btn" disabled={!klaar || !!actieBusy || status === "running"}
-          title={klaar ? "Zet de nieuwe meta's én alt-teksten rechtstreeks in de site (moet gekoppeld zijn via Meta & CTR). Wat niet automatisch kan, blijft voor de sitebouwer staan." : nogNiet}
-          onClick={() => void actie("doorvoeren")}>{actieBusy === "doorvoeren" ? "Doorvoeren…" : "Voer door in de site"}</button>
         <button type="button" className="wp-fase-btn" disabled={!klaar || !!actieBusy || status === "running"}
           title={klaar ? "Meet de live pagina's en zet groene gecontroleerd-vinkjes op alles wat er echt goed op staat" : nogNiet}
           onClick={() => void actie("verify")}>{actieBusy === "verify" ? "Controleren…" : "Controleer live"}</button>
       </div>
       {actieMsg && <div className="wp-werklijst-sam">{actieMsg}</div>}
-      {status === "running" && <div className="muted">De pagina's worden gemeten en de meta's en alt-teksten geschreven; dit duurt een paar minuten. Je kunt intussen gewoon verder.</div>}
+      {status === "running" && <div className="muted">De pagina's worden gemeten en de alt-teksten geschreven; dit duurt een paar minuten. Je kunt intussen gewoon verder.</div>}
       {resultaat && status === "done" && !actieMsg && <div className="wp-werklijst-sam">{resultaat}</div>}
       {fout && <div className="wp-doc-fout">{fout}</div>}
       {!docLink && !shareToken && status !== "running" && !resultaat && (

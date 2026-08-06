@@ -50,10 +50,13 @@ function telAchterstand(d: { mails?: unknown; bijgewerktTot?: string | null } | 
   return { aantal: na.length, van: Array.from(new Set(na.map((m) => (m.vanNaam || "").split(" ")[0]).filter(Boolean))) };
 }
 
-export default function PaginaDossier({ slug, url, compact = false, kaartTekst, kaartTitel }: {
+export default function PaginaDossier({ slug, url, compact = false, zonderStand = false, kaartTekst, kaartTitel }: {
   slug: string;
   url: string;
   compact?: boolean;
+  /** Staat dit blok in een projectkaart? Dan toont het fase-blok eronder dezelfde
+      vinkjes en dezelfde documenten, en blijven die hier weg. */
+  zonderStand?: boolean;
   /** De geschreven kaarttekst, om te zien of die achterloopt op de mailbox. */
   kaartTekst?: string;
   /**
@@ -111,12 +114,12 @@ export default function PaginaDossier({ slug, url, compact = false, kaartTekst, 
   const laad = useCallback(async () => {
     if (!url) { setStaat("leeg"); return; }
     try {
-      const d = await fetch(`/api/admin/page-dossier?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}${compact ? "&compact=1" : ""}${focusQuery}`).then((r) => r.json());
+      const d = await fetch(`/api/admin/page-dossier?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}${compact ? "&compact=1" : ""}${zonderStand ? "&zonderstand=1" : ""}${focusQuery}`).then((r) => r.json());
       if (d?.ok && d.html) { setHtml(d.html); setStaat("klaar"); }
       else setStaat(d?.ok ? "leeg" : "fout");
       setNieuwer(telAchterstand(d, kaartTekst));
     } catch { setStaat("fout"); }
-  }, [slug, url, compact, kaartTekst, focusQuery]);
+  }, [slug, url, compact, zonderStand, kaartTekst, focusQuery]);
 
   useEffect(() => { void laad(); }, [laad]);
 

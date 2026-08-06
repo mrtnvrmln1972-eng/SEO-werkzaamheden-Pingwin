@@ -3,6 +3,7 @@ import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
 import { getClientBySlug } from "../../../../lib/clients";
 import { msStatus, msSearchClientEmails, msReplyHtml, msSendMail } from "../../../../lib/ms-graph";
+import { getVerborgenMails, verbergMail } from "../../../../lib/snapshots";
 
 export const runtime = "nodejs";
 
@@ -32,7 +33,21 @@ export async function GET(req: NextRequest) {
 
   const emails = await msSearchClientEmails(query, status.account || "", 15);
   if (emails === null) return NextResponse.json({ ok: false, error: "Ophalen mislukt. Mogelijk opnieuw koppelen." }, { status: 502 });
-  return NextResponse.json({ ok: true, connected: true, emails });
+  // Wat Maarten hier heeft weggegooid, blijft weg (de mail zelf blijft in de mailbox staan).
+  const weg = new Set(await getVerborgenMails(slug));
+  return NextResponse.json({ ok: true, connected: true, emails: emails.filter((e) => !weg.has(e.id)) });
+}
+
+// Een mail uit dit overzicht weghalen. Raakt de mailbox niet: we onthouden
+// alleen dat dit bericht niet meer bij deze klant getoond hoeft te worden.
+export async function DELETE(req: NextRequest) {
+  if (!admin(req)) return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
+  const slug = req.nextUrl.searchParams.get("slug") || "";
+  const g = await guardSlug(req, slug); if (!g.ok) return g.res;
+  const id = (req.nextUrl.searchParams.get("id") || "").trim();
+  if (!id) return NextResponse.json({ ok: false, error: "Geen mail opgegeven." }, { status: 400 });
+  await verbergMail(slug, id);
+  return NextResponse.json({ ok: true });
 }
 
 // Een mail beantwoorden vanuit het dashboard.
@@ -42,6 +57,10 @@ export async function POST(req: NextRequest) {
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: "Ongeldige aanvraag." }, { status: 400 }); }
   const html = String(body.html || "").trim();
   const to = String(body.to || "").split(/[,;]/).map((s) => s.trim()).filter(Boolean);
+  // Hoort deze gebruiker bij deze klant? Stond alleen op de GET; nu er meer
+  // schermen langs deze route mailen, hoort de controle ook hier.
+  const bodySlug = String(body.slug || "").trim();
+  if (bodySlug) { const g = await guardSlug(req, bodySlug); if (!g.ok) return g.res; }
 
   // Compose-modus: een nieuwe mail versturen (bijv. naar de developer).
   if (body.mode === "compose") {

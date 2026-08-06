@@ -8,6 +8,12 @@ import PageChat from "./PageChat";
 import PaginaDossier from "./PaginaDossier";
 import { CLIENT_FOLDER_KEY } from "../../../../lib/constants";
 import HelpHint from "./HelpHint";
+import { urlKey } from "../../../../lib/url-key";
+import { kaartTekst, faseVoorstel } from "../../../../lib/weekplan-kaarttekst";
+import { FASE_VOLGORDE } from "../../../../lib/fase-volgorde";
+import { PROFILE_HEADER, TOV_HEADER } from "../../../../lib/constants";
+import Voortgang from "./Voortgang";
+import { useKlus } from "./useKlus";
 
 function shortUrl(url: string): string {
   try { const u = new URL(url); return (u.pathname + u.search) || "/"; } catch { return url; }
@@ -38,9 +44,9 @@ function mergeSection(current: string, section: string): string {
 }
 
 // De twee automatisch gegenereerde secties dragen een vaste kop; alles daarbuiten
-// is de eigen know-how van de strateeg over de klant.
-const PROFILE_HEADER = "## Klantprofiel (automatisch gegenereerd)";
-const TOV_HEADER = "## Tone of voice (automatisch gegenereerd)";
+// is de eigen know-how van de strateeg over de klant. De koppen zelf staan in
+// lib/constants.ts, want de onboarding leest ze ook: één bron, anders lopen ze
+// een keer uit elkaar en ziet de onboarding een profiel dat er wél staat als leeg.
 
 // Splitst de opgeslagen profieltekst in drie delen: uit klantprofiel, uit
 // tone-of-voice-analyse, en de eigen know-how (de rest). Zo kunnen de eerste twee
@@ -71,20 +77,65 @@ function recombineProfile(profileMd: string, tovMd: string, knowhow: string): st
 // Stabiele DOM-id per pagina-rij, zodat we er vanuit de KPI's naartoe kunnen scrollen.
 const rowDomId = (url: string) => "pgrow-" + (url || "").replace(/[^a-zA-Z0-9]/g, "-");
 
+// ── Fases per pagina (dezelfde zeven als op de kaart in de weekplanning) ──
+// Bewust dezelfde volgorde en labels als in WeekplanCard: één pagina heeft één
+// pijplijn, dus die mag op twee schermen niet anders heten of anders staan.
+type FaseKey = "strategie" | "gelieerde" | "analyse" | "blauwdruk" | "copy" | "bouw" | "structured";
+// De namen komen uit lib/fase-volgorde.ts, zodat deze lijst nooit iets anders
+// zegt dan de kaart of de planning.
+const PG_FASEN: { key: FaseKey; label: string }[] = FASE_VOLGORDE.map((f) => ({ key: f.key, label: f.label }));
+// Zelfde sleutel als de server (lib/url-key.ts): protocol, www., slot-slash en
+// hoofdletters doen er niet toe.
+const faseKey = (u: string) => (u || "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/+$/, "");
+
+// De zeven fases als heel kleine streepjes: gedaan is groen, open is grijs, en het
+// eerstvolgende streepje krijgt de oranje rand. Subtiel genoeg voor een lijst met
+// tientallen rijen; de tooltip vertelt het hele verhaal.
+function FaseRail({ f }: { f?: Partial<Record<FaseKey, boolean>> }) {
+  if (!f) return <span className="muted">&mdash;</span>;
+  const volgende = PG_FASEN.find((x) => !f[x.key]);
+  const gedaan = PG_FASEN.filter((x) => f[x.key]).length;
+  const titel = PG_FASEN.map((x) => (f[x.key] ? "✓ " : "· ") + x.label).join("\n")
+    + "\n\n" + (volgende ? `Volgende: ${volgende.label}` : "Alle fases klaar");
+  return (
+    <span className="pg-fases" title={titel} aria-label={`${gedaan} van ${PG_FASEN.length} fases gedaan`}>
+      {PG_FASEN.map((x) => (
+        <i key={x.key} className={"pg-fase" + (f[x.key] ? " done" : volgende && volgende.key === x.key ? " next" : "")} />
+      ))}
+      <span className="pg-fases-tel">{gedaan}/{PG_FASEN.length}</span>
+    </span>
+  );
+}
+
 export default function PagesPanel({ slug, initialProfile, clientEmail, clientName, onGoToTask, domain, openTarget }: { slug: string; initialProfile?: string; clientEmail?: string; clientName?: string; onGoToTask?: (taskId: number) => void; domain?: string; openTarget?: { url: string; n: number } | null }) {
   type Opp = { impressions: number; clicks: number; ctr: number; position: number; bestKeyword: string; bestPosition: number | null; bestVolume: number | null; score: number; label: string; level: string };
   const [opps, setOpps] = useState<Record<string, Opp>>({});
   // Sortering: "prio" (standaard) = sterretjes bovenaan, dan plan, dan kans.
   // Elke andere kolom sorteert PUUR op die kolom, los van de sterretjes.
-  const [sortKey, setSortKey] = useState<"prio" | "status" | "pagina" | "kans" | "vertoningen" | "positie" | "klikken" | "volume" | "plan">("prio");
+  const [sortKey, setSortKey] = useState<"prio" | "status" | "pagina" | "kans" | "vertoningen" | "positie" | "klikken" | "volume" | "fases" | "plan">("prio");
+  // Fase-stand per pagina (zelfde bron als de kaarten in de weekplanning).
+  const [phases, setPhases] = useState<Record<string, Partial<Record<FaseKey, boolean>>>>({});
   const [urls, setUrls] = useState<ClientUrl[]>([]);
   const [loading, setLoading] = useState(true);
-  const [scanning, setScanning] = useState(false);
+  // De site inlezen is een achtergrondklus geworden: starten, en de stand volgen.
+  const inlezen = useKlus(slug, "site-inlezen", () => { void load(); });
   const [q, setQ] = useState("");
   // Prioriteit-pagina's (ster), gedeeld met de KPI- en Wijzigingen-tab. Aangevinkte
   // pagina's springen naar boven in dit overzicht.
   const [priority, setPriority] = useState<Set<string>>(new Set());
   const prioKey = (u: string) => (u || "").replace(/\/+$/, "");
+  // Welke pagina's staan al als kaart in de weekplanning? Afgelezen uit de
+  // planning zelf (niet apart bijgehouden), zodat de knop vanzelf omslaat naar
+  // "in planning" en je niet per ongeluk een tweede kaart maakt.
+  const [gepland, setGepland] = useState<Set<string>>(new Set());
+  async function laadPlanning() {
+    try {
+      const d = await fetch(`/api/admin/weekplan?slug=${encodeURIComponent(slug)}`).then((r) => r.json());
+      const open = (d?.tasks || []).filter((t: { url?: string; status?: string }) => t.url && t.status !== "klaar");
+      setGepland(new Set(open.map((t: { url: string }) => urlKey(t.url))));
+    } catch { /* zonder deze lijst toont de knop gewoon "+ planning" */ }
+  }
+  useEffect(() => { void laadPlanning(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [slug]);
   // Nieuwe (nog niet bestaande) pagina handmatig toevoegen.
   const [newPageOpen, setNewPageOpen] = useState(false);
   const [newPath, setNewPath] = useState("");
@@ -252,14 +303,17 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
     load(hadCache); /* eslint-disable-next-line */
   }, [slug]);
 
+  // Het inlezen draait op de server; dit scherm volgt alleen de stand. Wegklikken
+  // mag dus, en bij terugkomen staat hij er nog.
   async function scan() {
-    setScanning(true); setMsg("");
+    if (inlezen.bezig) return;
+    setMsg("");
     try {
       const r = await fetch("/api/admin/urls", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, domain: domainInput.trim() || undefined }) });
       const d = await r.json();
-      if (d.ok) { setMsg(`Site ingelezen: ${d.scanned} pagina's.`); await load(); }
+      if (d.ok) { inlezen.zetBezig(); await inlezen.ververs(); }
       else setMsg(d.error || "Inlezen mislukt.");
-    } catch { setMsg("Inlezen mislukt."); } finally { setScanning(false); }
+    } catch { setMsg("Inlezen mislukt."); }
   }
 
   // Nieuwe pagina toevoegen: bouw een volledige URL uit het website-adres + het pad
@@ -305,6 +359,22 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
       }).catch(() => {});
   }, [slug]);
 
+  // Fase-stand per pagina: cache-eerst uit de browser (de streepjes staan er dan
+  // meteen), daarna verse stand op de achtergrond. Zelfde patroon als de kans-data.
+  useEffect(() => {
+    try {
+      const c = localStorage.getItem(`pw_phases_${slug}`);
+      if (c) { const parsed = JSON.parse(c); if (parsed && typeof parsed === "object") setPhases(parsed); }
+    } catch { /* geen cache */ }
+    fetch(`/api/admin/page-phases?slug=${encodeURIComponent(slug)}`)
+      .then((r) => r.json()).then((d) => {
+        if (d.ok) {
+          setPhases(d.pages || {});
+          try { localStorage.setItem(`pw_phases_${slug}`, JSON.stringify(d.pages || {})); } catch { /* cache is extra */ }
+        }
+      }).catch(() => {});
+  }, [slug]);
+
   // Prio-pagina's (sterren): ook cache-eerst, dan verversen.
   useEffect(() => {
     try {
@@ -329,6 +399,8 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
 
   const normUrl = (u: string) => (u || "").trim().replace(/\/+$/, "");
   const oppOf = (u: ClientUrl): Opp | undefined => opps[normUrl(u.url)];
+  const phaseOf = (u: ClientUrl) => phases[faseKey(u.url)];
+  const faseTel = (u: ClientUrl) => { const f = phaseOf(u); return f ? PG_FASEN.filter((x) => f[x.key]).length : -1; };
 
   const filtered = q.trim()
     ? urls.filter((u) => (u.url + " " + u.title).toLowerCase().includes(q.trim().toLowerCase()))
@@ -353,6 +425,8 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
       case "positie": return (oa?.position ?? 999) - (ob?.position ?? 999);
       case "volume": return (ob?.bestVolume ?? -1) - (oa?.bestVolume ?? -1);
       case "kans": return (ob?.score || 0) - (oa?.score || 0);
+      // Pagina's die het verst in de pijplijn staan eerst; bij gelijke stand op kans.
+      case "fases": return (faseTel(b) - faseTel(a)) || ((ob?.score || 0) - (oa?.score || 0));
       case "plan": return rank(b) - rank(a);
     }
   });
@@ -372,10 +446,24 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
               onChange={(e) => setDomainInput(e.target.value)}
             />
             <button type="button" className="pcd-btn" onClick={() => setImporting(true)}>Analyse importeren</button>
-            <button type="button" className={"pcd-btn" + (scanning ? " busy" : "")} onClick={scan} disabled={scanning}>{scanning ? "Inlezen…" : "Website inlezen"}</button>
+            <button type="button" className={"pcd-btn" + (inlezen.bezig ? " busy" : "")} onClick={scan} disabled={inlezen.bezig}>{inlezen.bezig ? "Inlezen…" : "Website inlezen"}</button>
             <button type="button" className={"pcd-btn" + (newPageOpen ? " active" : "")} onClick={() => setNewPageOpen((v) => !v)}>+ Nieuwe pagina</button>
           </span>
         </div>
+
+        {(inlezen.bezig || inlezen.klus?.status === "vastgelopen") && (
+          <div style={{ marginBottom: "var(--s-4)" }}>
+            <Voortgang
+              titel={inlezen.klus?.naam || "De site inlezen"}
+              label={inlezen.klus?.label}
+              stap={inlezen.klus?.stap}
+              stappen={inlezen.klus?.stappen}
+              sinds={inlezen.klus?.gestart}
+              stil={inlezen.klus?.status === "vastgelopen"}
+              actie={inlezen.klus?.status === "vastgelopen" ? { label: "Opnieuw proberen", onClick: () => { void scan(); } } : undefined}
+            />
+          </div>
+        )}
 
         {newPageOpen && (
           <div className="new-page-form">
@@ -476,11 +564,13 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
                 <th className="pg-sort" onClick={() => setSortKey("positie")}>Positie{sortKey === "positie" ? " ▾" : ""}</th>
                 <th className="pg-sort" onClick={() => setSortKey("volume")} title="Zoekvolume van het hoofdzoekwoord (meeste vertoningen)">Volume{sortKey === "volume" ? " ▾" : ""}</th>
                 <th className="pg-sort" onClick={() => setSortKey("kans")} title="Veel vertoningen + positie net buiten de top 10 = grote kans">Kans{sortKey === "kans" ? " ▾" : ""}</th>
+                <th className="pg-sort" onClick={() => setSortKey("fases")} title={`De zeven fases van deze pagina: ${PG_FASEN.map((f) => f.label.toLowerCase()).join(", ")}.\nGroen = gedaan, oranje randje = de eerstvolgende stap. Wijs een rijtje aan om te zien welke fase welke is. Klik om te sorteren op hoe ver een pagina is.`}>Fases{sortKey === "fases" ? " ▾" : ""}</th>
                 <th className="pg-sort" onClick={() => setSortKey("plan")} title="Sorteer op plan-status: vol plan eerst, dan half plan, dan leeg">Plan{sortKey === "plan" ? " ▾" : ""}</th>
+                <th title="Zet deze pagina als projectkaart in de weekplanning van deze week, met de fases en de pagina-context erin.">Planning</th>
               </tr></thead>
               <tbody>
                 {sorted.map((u) => (
-                  <PageRow key={u.url} slug={slug} u={u} opp={oppOf(u)} open={open === u.url} onToggle={() => setOpen(open === u.url ? null : u.url)} clientEmail={clientEmail || ""} clientName={clientName || ""} onGoToTask={onGoToTask} onDataChanged={() => load(true)} isPrio={priority.has(prioKey(u.url))} onTogglePriority={() => togglePriority(u.url)} />
+                  <PageRow key={u.url} slug={slug} u={u} opp={oppOf(u)} fases={phaseOf(u)} open={open === u.url} onToggle={() => setOpen(open === u.url ? null : u.url)} clientEmail={clientEmail || ""} clientName={clientName || ""} onGoToTask={onGoToTask} onDataChanged={() => load(true)} isPrio={priority.has(prioKey(u.url))} onTogglePriority={() => togglePriority(u.url)} inPlanning={gepland.has(urlKey(u.url))} onGepland={() => laadPlanning()} />
                 ))}
               </tbody>
             </table>
@@ -534,7 +624,7 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
 }
 
 type PageOpp = { impressions: number; clicks: number; ctr: number; position: number; bestKeyword: string; bestPosition: number | null; bestVolume: number | null; score: number; label: string; level: string };
-function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoToTask, onDataChanged, isPrio, onTogglePriority }: { slug: string; u: ClientUrl; opp?: PageOpp; open: boolean; onToggle: () => void; clientEmail: string; clientName: string; onGoToTask?: (taskId: number) => void; onDataChanged?: () => void; isPrio?: boolean; onTogglePriority?: () => void }) {
+function PageRow({ slug, u, opp, fases, open, onToggle, clientEmail, clientName, onGoToTask, onDataChanged, isPrio, onTogglePriority, inPlanning, onGepland }: { slug: string; u: ClientUrl; opp?: PageOpp; fases?: Partial<Record<FaseKey, boolean>>; open: boolean; onToggle: () => void; clientEmail: string; clientName: string; onGoToTask?: (taskId: number) => void; onDataChanged?: () => void; isPrio?: boolean; onTogglePriority?: () => void; inPlanning?: boolean; onGepland?: () => void }) {
   const [plan, setPlan] = useState(u.plan);
   const [saved, setSaved] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -546,6 +636,36 @@ function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoTo
   const [kws, setKws] = useState<{ keyword: string; clicks: number; impressions: number; position: number; volume: number | null }[] | null>(null);
   // Sortering van de zoekwoorden-uitklap; positie sorteert oplopend (laag = goed).
   const [kwSort, setKwSort] = useState<"klikken" | "vertoningen" | "positie" | "volume">("klikken");
+  const [planBusy, setPlanBusy] = useState(false);
+
+  // Deze pagina als volwaardige projectkaart in de weekplanning van deze week.
+  // De kaarttekst gaat door dezelfde bouwer als de kaarten uit een gesprek
+  // (lib/weekplan-kaarttekst.ts), zodat "Waarom deze pagina", "Aanpak en
+  // afspraken" en de fase-sturing gevuld zijn in plaats van leeg.
+  async function naarPlanning() {
+    if (planBusy) return;
+    setPlanBusy(true);
+    try {
+      const pad = (() => { try { return new URL(u.url).pathname; } catch { return u.url; } })();
+      const kw = opp?.bestKeyword || "";
+      const pos = opp?.bestPosition ?? (opp?.position ? Math.round(opp.position) : null);
+      const achtergrond: string[] = [];
+      if (opp?.label) achtergrond.push(`${opp.label}${kw ? ` op "${kw}"` : ""}${pos ? `, nu positie ${pos}` : ""}.`);
+      if (opp && opp.impressions > 0) achtergrond.push(`${opp.impressions.toLocaleString("nl-NL")} vertoningen en ${opp.clicks.toLocaleString("nl-NL")} klikken in de laatste periode${opp.bestVolume != null ? `; zoekvolume ${opp.bestVolume.toLocaleString("nl-NL")} per maand` : ""}.`);
+      if (!achtergrond.length) achtergrond.push(`Opgepakt vanuit het pagina-overzicht; nog geen Search Console-data voor deze pagina.`);
+      achtergrond.push((plan || "").trim() ? "Er ligt al een vastgelegde strategie voor deze pagina; die is het vertrekpunt." : "Er ligt nog geen vastgelegde strategie voor deze pagina.");
+      const toelichting = kaartTekst({
+        achtergrond,
+        fases: faseVoorstel({ zoekwoord: kw, positie: pos, doel: pos && pos > 3 ? 3 : null, pad }),
+      });
+      await fetch("/api/admin/weekplan/add", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, taak: `Pagina oppakken: ${pad}`, url: u.url, week: 1, wie: "SEO", taaktype: "pijplijn", thread: "paginas", toelichting }),
+      });
+      onGepland?.();
+    } catch { /* stil; de knop kan opnieuw */ }
+    finally { setPlanBusy(false); }
+  }
 
   async function toggleKeywords() {
     const next = !kwOpen;
@@ -620,15 +740,21 @@ function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoTo
         <td>{opp && opp.position ? opp.position : <span className="muted">&mdash;</span>}</td>
         <td>{opp?.bestVolume != null ? opp.bestVolume.toLocaleString("nl-NL") : <span className="muted">&mdash;</span>}</td>
         <td>{opp?.label ? <span className={"pg-kans " + opp.level}>{opp.label}</span> : <span className="muted">&mdash;</span>}</td>
+        <td className="pg-fases-cell"><FaseRail f={fases} /></td>
         <td>{(plan || "").trim()
           ? <span className="plan-chip has">plan</span>
           : u.hasClusterAdvice
             ? <span className="plan-chip half" title="Half plan: al meegewogen in de strategie van een andere pagina, nog niet zelf afgerond.">half plan</span>
             : <span className="plan-chip">leeg</span>}</td>
+        <td className="pg-plan-cell" onClick={(e) => e.stopPropagation()}>
+          {inPlanning
+            ? <span className="plan-chip has" title="Deze pagina staat al als kaart in de weekplanning.">in planning</span>
+            : <button type="button" className="pg-planknop" disabled={planBusy} title="Zet deze pagina als projectkaart in de weekplanning van deze week, met de fases en de pagina-context erin." onClick={() => void naarPlanning()}>{planBusy ? "…" : "+ planning"}</button>}
+        </td>
       </tr>
       {kwOpen && (
         <tr className="pages-detail-row">
-          <td colSpan={9}>
+          <td colSpan={11}>
             <div className="pages-detail" style={{ padding: "10px 14px" }}>
               {kws === null && <div className="muted">Zoekwoorden laden uit Search Console&hellip;</div>}
               {kws !== null && kws.length === 0 && <div className="muted">Geen zoekwoorden gevonden voor deze pagina (of Search Console heeft nog geen data).</div>}
@@ -665,7 +791,7 @@ function PageRow({ slug, u, opp, open, onToggle, clientEmail, clientName, onGoTo
       )}
       {open && (
         <tr className="pages-detail-row">
-          <td colSpan={9}>
+          <td colSpan={11}>
             <div className="pages-detail">
               {/* Het paginadossier bovenaan: wat er speelt, met de mails en
                   documenten erbij. Zelfde blok als op de kaart in de weekplanning

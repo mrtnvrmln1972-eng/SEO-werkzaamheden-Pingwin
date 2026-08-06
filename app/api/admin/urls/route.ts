@@ -4,6 +4,8 @@ import { guardSlug } from "../../../../lib/admin-scope";
 import { getClientBySlug } from "../../../../lib/clients";
 import { getClientUrls, scanClientUrls } from "../../../../lib/site-urls";
 import { sql } from "../../../../lib/db";
+import { waitUntil } from "@vercel/functions";
+import { draaiKlus, getKlus } from "../../../../lib/klussen";
 
 export const runtime = "nodejs";
 export const maxDuration = 800;
@@ -41,6 +43,18 @@ export async function POST(req: NextRequest) {
     await sql`UPDATE clients SET domain = ${domain} WHERE slug = ${slug}`;
   }
   if (!domain) return NextResponse.json({ ok: false, error: "Deze klant heeft nog geen domein ingesteld." }, { status: 400 });
-  const res = await scanClientUrls(slug, domain);
-  return NextResponse.json({ ok: true, ...res });
+  // Vroeger wachtte de browser hier tot 445 pagina's ingelezen waren. Klikte je
+  // weg, dan was het molentje weg en kon je nergens meer zien of hij nog liep.
+  // Nu start de klus en komt het antwoord meteen terug; de voortgang staat in de
+  // database en is op elk tabblad zichtbaar.
+  const lopend = await getKlus(slug, "site-inlezen").catch(() => null);
+  if (lopend?.status === "bezig") return NextResponse.json({ ok: true, alBezig: true });
+
+  waitUntil(draaiKlus(slug, "site-inlezen", "De site inlezen", 2, async (stap) => {
+    await stap(1, "De sitemap van de site ophalen en de pagina's nalopen");
+    const res = await scanClientUrls(slug, domain);
+    await stap(2, `${res.scanned} pagina's ingelezen`);
+    return `${res.scanned} pagina's ingelezen.`;
+  }));
+  return NextResponse.json({ ok: true, gestart: true });
 }
