@@ -1191,6 +1191,31 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "en heeft afremmen in het dashboard geen zin. Herhaalde vragen komen uit onze eigen cache en kosten niets.",
       },
       {
+        titel: "De Claude-teller in de kopbalk",
+        kern: "Wat het denkwerk deze maand kost, en of dat uit de pas loopt.",
+        tekst:
+          "Naast het Ahrefs-tegoed hangt er een tweede tellertje: wat het dashboard deze maand aan AI " +
+          "uitgaf. Het verschil met Ahrefs is belangrijk. Bij Ahrefs is er een tegoed dat op kan raken, bij " +
+          "de AI loopt de rekening gewoon door. De vraag is hier dus niet hoeveel er nog is, maar of het uit " +
+          "de pas loopt.\n\n" +
+          "Het ijkpunt is de vorige maand: uitkomen op hetzelfde bedrag is rustig, op het dubbele is een " +
+          "signaal, ook zonder dat er een grens bestaat. Staat er een maandbudget ingesteld, dan werkt de " +
+          "teller net als die van Ahrefs, met een percentage. Het tempo telt in beide gevallen mee, want " +
+          "veertig dollar op de derde van de maand is iets anders dan veertig dollar op de achtentwintigste. " +
+          "In de eerste twee dagen van een maand rekent hij geen tempo uit; één zwaar analysedocument zou " +
+          "daar anders een alarm van maken.\n\n" +
+          "Opengeklapt staan de laatste zeven dagen erbij, de duurste functie, de duurste klant en het " +
+          "totaal van vorige maand. Het bedrag is een schatting op basis van tokens tegen de " +
+          "standaardtarieven, dus het kan een paar procent van de echte rekening afwijken.\n\n" +
+          "**Er lopen twee AI-meters, en dat staat er ook bij.** Het dashboard werkt met een eigen sleutel; " +
+          "dat is het bedrag hierboven en dat wordt per aanroep gemeten. Chatten en het bouwen in Claude Code " +
+          "lopen daarentegen op een abonnement, met vooruit gekochte usage credits zodra de limiet van dat " +
+          "abonnement op is. Dat saldo kan het dashboard niet ophalen, want daar is buiten team- en " +
+          "bedrijfsaccounts om geen koppeling voor. In plaats van een gefingeerd cijfer staat er dus de uitleg " +
+          "plus een knop naar de plek waar het saldo écht staat. Dat is de eerlijke variant: liever een lege " +
+          "plek met een reden dan een getal dat het niet is.",
+      },
+      {
         titel: "Teamgebruikers en rechten",
         kern: "Gasten met eigen inlog en beperkte toegang.",
         tekst:

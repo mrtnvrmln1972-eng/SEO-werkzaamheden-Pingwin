@@ -5,7 +5,7 @@ import type { Punt } from "../../../lib/routekaart";
 import type { Uitslag } from "../../../lib/routekaart-bewijs";
 import Kopieer from "../Kopieer";
 import OntwikkelMenu from "../OntwikkelMenu";
-import AhrefsTeller from "../AhrefsTeller";
+import Tellers from "../Tellers";
 import MeldingenMenu from "../MeldingenMenu";
 
 export type PuntWeergave = Punt & {
@@ -220,7 +220,7 @@ export default function RoutekaartClient({
         </div>
         <div className="header-right">
           <MeldingenMenu />
-          <AhrefsTeller />
+          <Tellers />
         <OntwikkelMenu />
           <a className="logout-btn" href="/admin">Naar de klanten</a>
         </div>

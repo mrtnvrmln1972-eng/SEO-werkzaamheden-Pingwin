@@ -14,8 +14,12 @@
 // het echt te moeten afwachten tot een teller een keer vol loopt.
 // ═══════════════════════════════════════════════════════════
 
-/** Hoe de teller ervoor staat. Bepaalt de kleur in de kopbalk. */
-export type Sein = "rustig" | "let-op" | "krap" | "onbekend";
+// Het sein en zijn kleuren staan in lib/sein.ts: er hangt meer dan één teller in
+// de kopbalk, en die moeten dezelfde kleurtaal spreken. Hier blijven ze bereikbaar
+// zodat bestaande schermen niets hoeven te wijzigen.
+import type { Sein } from "./sein";
+export { SEIN_KLEUR } from "./sein";
+export type { Sein };
 
 export type TellerStand = {
   used: number | null;
@@ -144,11 +148,3 @@ function tempoZinVan(prognose: number | null, limit: number | null): string | nu
     ? `Op dit tempo kom je uit op ${n} units, meer dan er in het abonnement zit`
     : `Op dit tempo eindigt de maand rond ${n} units`;
 }
-
-/** Kleur per sein. Eén plek, zodat kopbalk en paneel nooit uit elkaar lopen. */
-export const SEIN_KLEUR: Record<Sein, string> = {
-  rustig: "var(--brand-teal)",
-  "let-op": "var(--orange)",
-  krap: "var(--red)",
-  onbekend: "var(--gray)",
-};

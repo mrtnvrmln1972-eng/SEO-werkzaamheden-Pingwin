@@ -8,19 +8,9 @@ import { getUsageSummary, getUsageByAction, getUsageByClientAction, type UsageRo
 import { getAhrefsSubscriptionUsage } from "../../../lib/ahrefs";
 import { tellerStand } from "../../../lib/ahrefs-teller";
 import AdminKop from "../AdminKop";
+// Leesbare namen voor de acties: één lijst, gedeeld met de Claude-teller in de kopbalk.
+import { ACTION_LABEL } from "../../../lib/usage-labels";
 
-// Leesbare namen voor de acties (welke knop/functie kost hoeveel).
-const ACTION_LABEL: Record<string, string> = {
-  doc_analyse: "Analyse-document", doc_analyse_diep: "Analyse-document (diep)",
-  doc_blauwdruk: "Blauwdruk-document", doc_blauwdruk_diep: "Blauwdruk-document (diep)",
-  doc_copy: "Copy-document", copy_koplabels: "Copy-koplabels",
-  klantversie: "Klantversie (los)", strategie: "Strategie vastleggen", strategie_grounding: "Strategie (grounding)",
-  strategie_uitleg: "Strategie-uitleg", projectchat: "Projectchat", page_chat: "Pagina-chat",
-  voorstel: "Plan-voorstel", cluster_advies: "Cluster-advies", kansen: "Zoekwoord-kansen",
-  klantprofiel: "Klantprofiel", page_cannibal: "Cannibalisatie", page_cannibal_apply: "Cannibalisatie overnemen",
-  cannibal_redirect: "Cannibalisatie (site)", internal_links: "Interne links",
-  org_autofill: "Organisatiegegevens invullen", kpi_toelichting: "KPI-toelichting",
-};
 
 export const dynamic = "force-dynamic";
 
