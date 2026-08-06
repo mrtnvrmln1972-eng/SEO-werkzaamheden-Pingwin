@@ -186,7 +186,26 @@ export async function bouwEindstructuur(slug: string, result: CannibalResult | n
   const bruikbaar = (pad: string) => onderwerpWoorden(pad).filter((w) => !VRAAGWOORDEN.has(w));
 
   const freq = new Map<string, number>();
-  for (const p of plat) for (const w of new Set(bruikbaar(p.pad))) freq.set(w, (freq.get(w) || 0) + 1);
+  // En de nette schrijfwijze erbij. De woordstam is grof (hij knipt "seks" tot
+  // "sek"), en dat is prima om mee te groeperen maar niet om als kop te tonen:
+  // "Sek" leest als een typefout, zeker op een pagina die een klant te zien
+  // krijgt. Daarom onthouden we per stam het woord zoals het echt in de URL staat.
+  const schrijfwijze = new Map<string, Map<string, number>>();
+  for (const p of plat) {
+    const ruw = p.pad.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+    for (const w of new Set(bruikbaar(p.pad))) {
+      freq.set(w, (freq.get(w) || 0) + 1);
+      const origineel = ruw.find((r) => r.startsWith(w)) || w;
+      if (!schrijfwijze.has(w)) schrijfwijze.set(w, new Map());
+      const m = schrijfwijze.get(w)!;
+      m.set(origineel, (m.get(origineel) || 0) + 1);
+    }
+  }
+  const netjes = (stam: string) => {
+    const m = schrijfwijze.get(stam);
+    if (!m) return stam;
+    return [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].length - b[0].length)[0][0];
+  };
   const teBreed = Math.max(MIN_TAK + 3, Math.round(plat.length * 0.08));
   const losse: EindPagina[] = [];
   for (const p of plat) {
@@ -219,7 +238,7 @@ export async function bouwEindstructuur(slug: string, result: CannibalResult | n
       // toevallig het kortste pad had, en dat leest als een pagina terwijl het een
       // groepering is. Bestaat er wél een overzichtspagina met precies dat woord,
       // dan is dat de hoofdpagina; anders staat er eerlijk dat die ontbreekt.
-      const woord = tak.slice(1);
+      const woord = netjes(tak.slice(1));
       const eigen = kinderen.find((k) => norm(k.pad) === `/${woord}`);
       return {
         sleutel: tak,
