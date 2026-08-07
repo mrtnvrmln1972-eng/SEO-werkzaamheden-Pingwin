@@ -2451,18 +2451,7 @@ button.org-sec-kop:hover { color: var(--orange); }
 /* Knop + "?"-uitlegbolletje naast elkaar, voor de actieknoppenrij. */
 .org-action-hint { display: inline-flex; align-items: center; gap: var(--s-1); }
 
-/* Deel-paneel (sitebouwer/developer): link kopiëren of mailen, met onthouden e-mailadres. */
-.org-devshare-panel {
-  background: var(--brand-orange-faint); border: 1px solid var(--card-border); border-radius: var(--r-lg);
-  padding: var(--s-3) var(--s-4); margin: var(--s-2) 0; display: flex; flex-direction: column; gap: var(--s-2);
-}
-.org-devshare-head { display: flex; align-items: center; gap: var(--s-2); color: var(--orange-dark); font-weight: 700; }
-.org-devshare-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
-.org-devshare-mail {
-  flex: 1; min-width: 220px; font-family: inherit; font-size: var(--fs-base); line-height: var(--lh-base);
-  padding: var(--s-2) var(--s-3); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--white);
-}
-.org-devshare-mail:focus { outline: none; border-color: var(--orange); }
+/* Sitebouwer-deelpagina (/share/org-dev): ruimte boven de site-brede JSON. */
 .org-devshare-sitewide { margin-top: var(--s-5); }
 .org-devshare-json { margin-top: var(--s-2); }
 .org-devshare-note { margin-top: var(--s-3); }
@@ -3046,8 +3035,6 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
   padding: 0 var(--s-2); white-space: nowrap;
 }
 
-.kb-lijst { display: flex; flex-direction: column; gap: var(--s-2); }
-.kb-groep { border: 1px solid var(--card-border); border-radius: var(--r-md); background: var(--white); overflow: hidden; }
 .kb-groep-kop {
   width: 100%; display: flex; align-items: center; gap: var(--s-2); cursor: pointer;
   background: none; border: 0; text-align: left; padding: var(--s-2) var(--s-3); font-family: inherit;
@@ -3063,8 +3050,45 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
   background: var(--white); border: 1px solid var(--card-border);
   border-radius: var(--r-full); padding: 0 var(--s-2); min-width: 22px; text-align: center;
 }
-.kb-groep-sub { font-size: var(--fs-xs); color: var(--gray); margin-left: auto; }
 .kb-groep-kop-klein .kb-groep-titel { color: var(--gray); font-weight: 600; }
+
+/* Kop van de kennisbank: titel/uitleg links, dropzone + knoppen rechtsboven. */
+.kb-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--s-3); flex-wrap: wrap; }
+.kb-head-left { display: flex; flex-direction: column; gap: var(--s-1); flex: 1; min-width: 240px; }
+.kb-head-right { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; }
+/* Heel kleine dropzone: alleen het woord, maar nog steeds een echt drop-doel
+   én een knop om de volledige dropzone (bladeren/plakken) open te klappen. */
+.kb-dropzone-mini {
+  border: 1.5px dashed var(--card-border); border-radius: var(--r-sm); padding: var(--s-1) var(--s-3);
+  font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--muted, #8a7a6c); background: #fffdfb;
+  cursor: pointer; white-space: nowrap; transition: border-color 0.12s, background 0.12s;
+}
+.kb-dropzone-mini:hover { border-color: var(--orange); }
+.kb-dropzone-mini-actief { border-color: var(--orange); background: #fff6f1; color: var(--orange-dark); }
+.kb-dropzone-pop { position: relative; }
+.kb-dropzone-sluit {
+  position: absolute; top: var(--s-2); right: var(--s-2); border: none; background: none;
+  color: var(--gray); font-size: var(--fs-lg); line-height: 1; cursor: pointer; padding: 0 var(--s-1);
+}
+.kb-dropzone-sluit:hover { color: var(--dark); }
+
+/* Kennisbank-overzicht als tabjes per categorie i.p.v. gestapelde accordions. */
+.kb-tabs-wrap { display: flex; flex-direction: column; gap: var(--s-2); }
+.kb-tabs { display: flex; flex-wrap: wrap; gap: var(--s-1); border-bottom: 1px solid var(--card-border); }
+.kb-tab {
+  display: inline-flex; align-items: center; gap: var(--s-1); background: none; cursor: pointer;
+  border: none; border-bottom: 2px solid transparent; padding: var(--s-2) var(--s-3); font-family: inherit;
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700; color: var(--gray);
+}
+.kb-tab:hover { color: var(--orange-dark); }
+.kb-tab-actief { color: var(--orange-dark); border-bottom-color: var(--orange); }
+.kb-tab-aantal {
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700; color: var(--gray);
+  background: var(--white); border: 1px solid var(--card-border);
+  border-radius: var(--r-full); padding: 0 var(--s-2); min-width: 20px; text-align: center;
+}
+.kb-tab-actief .kb-tab-aantal { color: var(--orange-dark); }
+.kb-tab-body { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--s-2); }
 .kb-groep-body {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: var(--s-2); padding: 0 var(--s-3) var(--s-3);

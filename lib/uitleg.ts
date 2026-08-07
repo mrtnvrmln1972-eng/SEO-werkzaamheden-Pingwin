@@ -637,13 +637,20 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "(vestigingen, reviewcijfer, KVK/BTW, social-profielen). Zo hoeft de plugin niet aangepast te " +
           "worden en overleeft de aanvulling een plugin-update. Is er geen bestaand schema gevonden, dan " +
           "levert het dashboard het volledige, zelfstandige blok.\n\n" +
-          "**Doorzetten naar de developer** kan op drie manieren: als Dev-taak in Werkzaamheden (met het " +
-          ".json-bestand en de sitebouwer-link in de toelichting, in één keer af te vinken), met een " +
-          "kant-en-klare mail die naar het Developer Overview wijst, of via de losse deel-link. Na het " +
-          "doorzetten of mailen klapt de zwarte JSON-preview vanzelf weer dicht. Naast de deel-link voor de " +
-          "klant is er een aparte, alleen-lezen deel-link voor de sitebouwer/developer: die toont de " +
-          "bedrijfsgegevens plus de kant-en-klare site-brede JSON-LD, kopieerbaar of rechtstreeks te mailen " +
-          "(het e-mailadres wordt onthouden, hetzelfde adres als bij de developer-mail in Werkzaamheden).",
+          "**Genereren en delen staan bovenaan de kaart.** 'Genereer site-brede schema' toont de JSON en het " +
+          "plugin-berichtje; 'Deel JSON' doet in één klik alles tegelijk (ook zonder eerst zelf te genereren): " +
+          ".json-bestand naar Drive, Dev-taak in Werkzaamheden, en een kant-en-klare mail met een eigen " +
+          "introductie naar de developer (inclusief de alleen-lezen sitebouwer-link). Onderin de kaart kan de " +
+          "JSON nog los gekopieerd of stil (zonder mail) als Dev-taak doorgezet worden; na delen of doorzetten " +
+          "klapt de zwarte JSON-preview vanzelf weer dicht.\n\n" +
+          "**Kennisbank versus het formulier hierboven.** De kennisbank is de intake: een kleine 'dropzone' " +
+          "(rechtsboven bij het formulier) waar documenten, foto's, tekst of een Drive-link in gaan; de AI " +
+          "haalt er kandidaat-gegevens uit, per bron, en die wachten eerst op een akkoord voordat ze meetellen. " +
+          "Pas de knop 'In velden zetten' brengt bevestigde kennisbank-gegevens over naar de echte velden " +
+          "hierboven ('Verzamelde structured data'), met 'Ontdubbelen' om dubbele aanleveringen samen te " +
+          "voegen. Het overzicht daaronder staat als tabjes (per categorie: organisaties, vestigingen, " +
+          "artsen, diensten). Kortom: de kennisbank is het ruwe-materiaal-archief mét herkomst per gegeven, " +
+          "het formulier erboven is de schone, bevestigde bron waar de structured data zelf uit gebouwd wordt.",
       },
       {
         titel: "Zoekwoordkansen en de gaten in de site",
