@@ -309,6 +309,12 @@ async function init(): Promise<void> {
   // meer. Zonder deze vlag zet de eerstvolgende keer dat de planning geladen
   // wordt zijn eigen titel weer terug, en dat is het ergst denkbare gedrag.
   await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS taak_handmatig BOOLEAN NOT NULL DEFAULT false`;
+  // Kant-en-klare inhoud (bijv. een contentagenda, al af, bestemd voor een klant):
+  // toelichting gaat dan ONGEWIJZIGD als markdown in beeld (tabellen incluis), in
+  // plaats van door de Achtergrond/Aanpak-per-fase-indeling die voor SEO-werk is
+  // gebouwd. Die indeling knipt per regel, dus een tabel zou uiteenvallen in kale
+  // pipe-regels. Zie lib/card-info.ts cardInfoHtml().
+  await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS ruw BOOLEAN NOT NULL DEFAULT false`;
 
   // Handmatige fase-vinkjes per pagina voor de projectkaart in de weekplanning.
   // Een rij hier wint van de afgeleide stand (beide kanten op: afvinken en terugzetten).

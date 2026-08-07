@@ -43,7 +43,7 @@ type Taak = {
   id: number; slug: string; klant: string; klantMail: string;
   taak: string; toelichting: string; url: string | null; wie: string;
   weekYear: number; weekNo: number; status: string; sortOrder: number; datum?: string | null;
-  taaktype?: string | null; naarDev?: boolean;
+  taaktype?: string | null; naarDev?: boolean; ruw?: boolean;
 };
 type Pages = Record<string, Record<string, WpPageInfo>>;   // slug → urlKey → pagina
 type Current = { year: number; week: number };
@@ -97,6 +97,27 @@ export default function Planning({
   const [fout, setFout] = useState("");
   const [open, setOpen] = useState<string | null>(null);            // "slug:id"
   const [mailFor, setMailFor] = useState<{ t: Taak; aud: "klant" | "dev" } | null>(null);
+  // Titel aanpassen direct vanuit het rijtje, zonder eerst de kaart te hoeven
+  // openklappen. "sleutel" van de regel die op dit moment bewerkt wordt.
+  const [titelBewerk, setTitelBewerk] = useState<string | null>(null);
+  const [titelDraft, setTitelDraft] = useState("");
+  const [titelBezig, setTitelBezig] = useState(false);
+  async function bewaarTitel(t: Taak) {
+    const nieuw = titelDraft.trim();
+    if (!nieuw || nieuw === t.taak.trim()) { setTitelBewerk(null); return; }
+    setTitelBezig(true);
+    try {
+      const d = await fetch("/api/admin/weekplan", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: t.slug, id: t.id, taak: nieuw }),
+      }).then((r) => r.json());
+      if (d?.ok) {
+        setTaken((ts) => ts.map((x) => (zelfde(x, t) ? { ...x, taak: nieuw } : x)));
+        setTitelBewerk(null);
+      } else setFout(d?.error || "Titel opslaan mislukte.");
+    } catch { setFout("Titel opslaan mislukte."); }
+    finally { setTitelBezig(false); }
+  }
   const mailDatumLinks = useMailDatumLinks(slug);
   // In de alle-klanten-modus: kijk je naar alles of alleen naar deze klant.
   const [alleen, setAlleen] = useState(false);
@@ -497,19 +518,38 @@ export default function Planning({
               (wp-titel-pen in de kaart), dan toont dit rijtje voortaan gewoon die
               eigen titel: een aanpassing die hier onzichtbaar bleef, leek niet
               opgeslagen te zijn. */}
-          <span className="wb-wat">
-            {t.url && isKorteTitel(t.taak)
-              ? (p?.live
-                ? <a className="wb-pad" href={t.url} target="_blank" rel="noreferrer"
-                    onClick={(e) => e.stopPropagation()} title="Open de pagina">{pad(t.url)}</a>
-                : <span className="wb-pad">{pad(t.url)}</span>)
-              : <span className="wb-taak-vol">{zonderHtml(t.taak)}</span>}
-            {p && isKorteTitel(t.taak) && <span className="wb-doen muted">{werkwoordVoor(t.taak, p)}</span>}
-            {t.url && !isKorteTitel(t.taak) && (
-              <a className="wb-pad-mini" href={t.url} target="_blank" rel="noreferrer"
-                onClick={(e) => e.stopPropagation()} title="Open de pagina">&#8599;</a>
-            )}
-          </span>
+          {titelBewerk === sleutel ? (
+            <span className="wb-wat wb-wat-bewerk" onClick={(e) => e.stopPropagation()}>
+              <input autoFocus value={titelDraft} disabled={titelBezig}
+                onChange={(e) => setTitelDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") { e.preventDefault(); void bewaarTitel(t); }
+                  if (e.key === "Escape") { e.preventDefault(); setTitelBewerk(null); }
+                }} />
+              <button type="button" className="wp-fase-btn" disabled={titelBezig} onClick={() => void bewaarTitel(t)}>{titelBezig ? "Bezig…" : "Bewaar"}</button>
+              <button type="button" className="wp-fase-btn wp-fase-btn-licht" disabled={titelBezig} onClick={() => setTitelBewerk(null)}>Annuleer</button>
+            </span>
+          ) : (
+            <span className="wb-wat">
+              {t.url && isKorteTitel(t.taak)
+                ? (p?.live
+                  ? <a className="wb-pad" href={t.url} target="_blank" rel="noreferrer"
+                      onClick={(e) => e.stopPropagation()} title="Open de pagina">{pad(t.url)}</a>
+                  : <span className="wb-pad">{pad(t.url)}</span>)
+                : <span className="wb-taak-vol">{zonderHtml(t.taak)}</span>}
+              {p && isKorteTitel(t.taak) && <span className="wb-doen muted">{werkwoordVoor(t.taak, p)}</span>}
+              {t.url && !isKorteTitel(t.taak) && (
+                <a className="wb-pad-mini" href={t.url} target="_blank" rel="noreferrer"
+                  onClick={(e) => e.stopPropagation()} title="Open de pagina">&#8599;</a>
+              )}
+              <button type="button" className="wp-titel-pen wb-titel-pen" title="Titel aanpassen"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setTitelDraft(zonderHtml(t.taak));
+                  setTitelBewerk(sleutel);
+                }}>✎</button>
+            </span>
+          )}
           {/* Signaal, geen knop: afvinken doe je in de kaart. */}
           <span className={"wb-rail" + (stippen ? "" : " wb-rail-leeg")}>
             {stippen && FASE_VOLGORDE.map((f, i) => (
