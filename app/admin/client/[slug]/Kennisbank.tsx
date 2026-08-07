@@ -25,6 +25,7 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie }: { slug: stri
   const [okMsg, setOkMsg] = useState("");
   const [plakVeld, setPlakVeld] = useState("");
   const [bezigMet, setBezigMet] = useState("");
+  const [dropOpen, setDropOpen] = useState(false);
   const kiesRef = useRef<HTMLInputElement | null>(null);
 
   async function laad() {
@@ -50,6 +51,7 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie }: { slug: stri
   // bovenste bestand verwerkt en verdwenen de rest zonder melding.
   async function drop(files: File[]) {
     if (!files.length) return;
+    setDropOpen(true); // ook bij slepen op de kleine dropzone blijft de voortgang zichtbaar
     setBusy("lezen"); setFout(""); setOkMsg("");
     const mislukt: string[] = [];
     for (let i = 0; i < files.length; i += 3) {
@@ -181,8 +183,9 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie }: { slug: stri
 
   const perCat = CAT_VOLGORDE.map((c) => ({ cat: c, items: entiteiten.filter((e) => e.categorie === c) })).filter((g) => g.items.length);
 
-  // ── Het overzicht: nette kaartjes in plaats van een muur tekst ──
-  const [openCat, setOpenCat] = useState<Record<string, boolean>>({});
+  // ── Het overzicht: tabjes per categorie, nette kaartjes in plaats van een muur tekst ──
+  const [actieveTab, setActieveTab] = useState("");
+  const tabCat = perCat.some((g) => g.cat === actieveTab) ? actieveTab : (perCat[0]?.cat || "");
   const [openRest, setOpenRest] = useState(false);
   // Alleen een locatie met huisnummer of postcode is een vestiging.
   const isVestiging = (e: Entiteit) => /\d/.test(e.velden.adres || "") || !!(e.velden.postcode || "").trim();
@@ -224,39 +227,56 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie }: { slug: stri
 
   return (
     <div className="kb-wrap">
-      <div className="org-sitewide-head" style={{ marginTop: "var(--s-5)" }}>
-        <strong>Kennisbank structured data</strong>
-        <span className="muted">Gooi hier alles in: documenten, artsen-gegevens, schema-code. Verwerken gebeurt pas na jouw akkoord; daarna vult het de velden hierboven vanzelf.</span>
-        <button type="button" className="wp-fase-btn" onClick={() => void zetInVelden()}
-          disabled={!!busy || entiteiten.length === 0}
-          title={entiteiten.length === 0
-            ? (voorstellen.length ? "De kennisbank is nog leeg; verwerk eerst de aanlevering hieronder." : "De kennisbank is nog leeg; sleep er eerst materiaal in.")
-            : "Zet alles wat in de kennisbank staat in de velden hierboven. Bestaande waarden blijven staan."}>
-          {busy === "velden" ? "Bezig…" : "Kennisbank in de velden zetten"}
-        </button>
-        <button type="button" className="wp-fase-btn" disabled={!!busy} onClick={() => void ruimOp()}>{busy === "opruimen" ? "Bezig…" : "Dubbelen samenvoegen"}</button>
+      <div className="kb-head" style={{ marginTop: "var(--s-5)" }}>
+        <div className="kb-head-left">
+          <strong>Kennisbank structured data</strong>
+          <span className="muted">Gooi hier alles in: documenten, artsen-gegevens, schema-code. Verwerken gebeurt pas na jouw akkoord; daarna vult het de velden hierboven vanzelf.</span>
+        </div>
+        <div className="kb-head-right">
+          <div className={"kb-dropzone-mini" + (drag ? " kb-dropzone-mini-actief" : "")}
+            onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+            onDragLeave={() => setDrag(false)}
+            onDrop={(e) => { e.preventDefault(); setDrag(false); void drop(Array.from(e.dataTransfer.files || [])); }}
+            onClick={() => setDropOpen((v) => !v)}
+            title="Sleep hier bestanden op, of klik om te bladeren of tekst/een link te plakken">
+            dropzone
+          </div>
+          <button type="button" className="wp-fase-btn" onClick={() => void zetInVelden()}
+            disabled={!!busy || entiteiten.length === 0}
+            title={entiteiten.length === 0
+              ? (voorstellen.length ? "De kennisbank is nog leeg; verwerk eerst de aanlevering hieronder." : "De kennisbank is nog leeg; sleep er eerst materiaal in.")
+              : "Zet alles wat in de kennisbank staat in de velden hierboven. Bestaande waarden blijven staan."}>
+            {busy === "velden" ? "Bezig…" : "In velden zetten"}
+          </button>
+          <button type="button" className="wp-fase-btn" disabled={!!busy} onClick={() => void ruimOp()}>{busy === "opruimen" ? "Bezig…" : "Ontdubbelen"}</button>
+        </div>
       </div>
-      <div className={"wp-docdrop" + (drag ? " wp-docdrop-actief" : "")}
-        onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
-        onDragLeave={() => setDrag(false)}
-        onDrop={(e) => { e.preventDefault(); setDrag(false); void drop(Array.from(e.dataTransfer.files || [])); }}>
-        {busy === "lezen" ? <span className="muted">Materiaal lezen en structureren… {bezigMet}</span> : (
-          <>
-            <input ref={kiesRef} type="file" multiple style={{ display: "none" }}
-              onChange={(e) => { void drop(Array.from(e.target.files || [])); e.target.value = ""; }} />
-            <span className="wp-docdrop-tekst">
-              Sleep hier je bestanden naartoe, meerdere tegelijk mag (pdf, docx, txt, md, json, csv, ook scans en foto&rsquo;s)
-              {" "}of <button type="button" className="wp-chat-toggle" onClick={() => kiesRef.current?.click()}>kies ze uit een map</button>
-            </span>
-            <span className="wp-docdrop-of">of plak tekst of een Drive-link:</span>
-            <span className="wp-docdrop-linkrij">
-              <input className="wp-docdrop-input" value={plakVeld} placeholder="Tekst of https://docs.google.com/…"
-                onChange={(e) => setPlakVeld(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") plak(); }} />
-              <button type="button" className="wp-fase-btn" disabled={!plakVeld.trim() || !!busy} onClick={plak}>Lees</button>
-            </span>
-          </>
-        )}
-      </div>
+      {dropOpen && (
+        <div className="kb-dropzone-pop">
+          <div className={"wp-docdrop" + (drag ? " wp-docdrop-actief" : "")}
+            onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+            onDragLeave={() => setDrag(false)}
+            onDrop={(e) => { e.preventDefault(); setDrag(false); void drop(Array.from(e.dataTransfer.files || [])); }}>
+            {busy === "lezen" ? <span className="muted">Materiaal lezen en structureren… {bezigMet}</span> : (
+              <>
+                <input ref={kiesRef} type="file" multiple style={{ display: "none" }}
+                  onChange={(e) => { void drop(Array.from(e.target.files || [])); e.target.value = ""; }} />
+                <span className="wp-docdrop-tekst">
+                  Sleep hier je bestanden naartoe, meerdere tegelijk mag (pdf, docx, txt, md, json, csv, ook scans en foto&rsquo;s)
+                  {" "}of <button type="button" className="wp-chat-toggle" onClick={() => kiesRef.current?.click()}>kies ze uit een map</button>
+                </span>
+                <span className="wp-docdrop-of">of plak tekst of een Drive-link:</span>
+                <span className="wp-docdrop-linkrij">
+                  <input className="wp-docdrop-input" value={plakVeld} placeholder="Tekst of https://docs.google.com/…"
+                    onChange={(e) => setPlakVeld(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") plak(); }} />
+                  <button type="button" className="wp-fase-btn" disabled={!plakVeld.trim() || !!busy} onClick={plak}>Lees</button>
+                </span>
+                <button type="button" className="kb-dropzone-sluit" onClick={() => setDropOpen(false)} title="Dropzone weer klein maken">&times;</button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
       {/* Ook bij één aanlevering: zonder deze stap belandt er niets in de velden,
           en dan lijkt het alsof de knop hierboven stuk is. */}
       {voorstellen.length > 0 && (
@@ -311,32 +331,29 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie }: { slug: stri
         {!stand && <div className="muted">Nog geen onderzoek gedaan; klik op &ldquo;Onderzoek nu&rdquo; voor de actuele richtlijnen (Google en AI) en hoe wij ze toepassen.</div>}
       </div>
       {perCat.length > 0 && (
-        <div className="kb-lijst">
-          {perCat.map((g) => {
-            const open = !!openCat[g.cat];
+        <div className="kb-tabs-wrap">
+          <div className="kb-tabs" role="tablist">
+            {perCat.map((g) => (
+              <button type="button" key={g.cat} role="tab" aria-selected={g.cat === tabCat}
+                className={"kb-tab" + (g.cat === tabCat ? " kb-tab-actief" : "")} onClick={() => setActieveTab(g.cat)}>
+                {CAT_LABEL[g.cat] || g.cat}<span className="kb-tab-aantal">{g.items.length}</span>
+              </button>
+            ))}
+          </div>
+          {perCat.filter((g) => g.cat === tabCat).map((g) => {
             const echt = g.cat === "locatie" ? g.items.filter((e) => isVestiging(e)) : g.items;
             const rest = g.cat === "locatie" ? g.items.filter((e) => !isVestiging(e)) : [];
             return (
-              <div key={g.cat} className="kb-groep">
-                <button type="button" className="kb-groep-kop" onClick={() => setOpenCat({ ...openCat, [g.cat]: !open })}>
-                  <span className="kb-groep-caret">{open ? "▾" : "▸"}</span>
-                  <span className="kb-groep-titel">{CAT_LABEL[g.cat] || g.cat}</span>
-                  <span className="kb-groep-aantal">{g.items.length}</span>
-                  {rest.length > 0 && <span className="kb-groep-sub">{echt.length} met bezoekadres</span>}
-                </button>
-                {open && (
-                  <div className="kb-groep-body">
-                    {echt.map((e) => kaart(e))}
-                    {rest.length > 0 && (
-                      <div className="kb-subgroep">
-                        <button type="button" className="kb-groep-kop kb-groep-kop-klein" onClick={() => setOpenRest(!openRest)}>
-                          <span className="kb-groep-caret">{openRest ? "▾" : "▸"}</span>
-                          <span className="kb-groep-titel">Zonder bezoekadres, geen vestiging</span>
-                          <span className="kb-groep-aantal">{rest.length}</span>
-                        </button>
-                        {openRest && <div className="kb-groep-body">{rest.map((e) => kaart(e))}</div>}
-                      </div>
-                    )}
+              <div key={g.cat} className="kb-tab-body">
+                {echt.map((e) => kaart(e))}
+                {rest.length > 0 && (
+                  <div className="kb-subgroep">
+                    <button type="button" className="kb-groep-kop kb-groep-kop-klein" onClick={() => setOpenRest(!openRest)}>
+                      <span className="kb-groep-caret">{openRest ? "▾" : "▸"}</span>
+                      <span className="kb-groep-titel">Zonder bezoekadres, geen vestiging</span>
+                      <span className="kb-groep-aantal">{rest.length}</span>
+                    </button>
+                    {openRest && <div className="kb-groep-body">{rest.map((e) => kaart(e))}</div>}
                   </div>
                 )}
               </div>
