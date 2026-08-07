@@ -136,13 +136,13 @@ export default function ClientCockpit({
   // Teller die de weekplanning laat herladen zodra er vanuit de chat een taak is
   // toegevoegd (of iets in het bord verandert).
   const [weekplanReload, setWeekplanReload] = useState(0);
-  // De drie Overview-blokken beginnen dicht. Wat je openzet onthoudt de browser, zodat
+  // De Overview-blokken beginnen dicht. Wat je openzet onthoudt de browser, zodat
   // je niet elke keer opnieuw hoeft te klikken op het blok waar je die dag in werkt.
-  const [ovOpen, setOvOpen] = useState<{ prio: boolean; chats: boolean; week: boolean }>({ prio: false, chats: false, week: false });
+  const [ovOpen, setOvOpen] = useState<{ chats: boolean; week: boolean }>({ chats: false, week: false });
   useEffect(() => {
     try {
       const r = window.localStorage.getItem(`pingwin-ov-open:${client.slug}`);
-      if (r) setOvOpen({ prio: false, chats: false, week: false, ...JSON.parse(r) });
+      if (r) setOvOpen({ chats: false, week: false, ...JSON.parse(r) });
     } catch { /* geen opslag: dan gewoon alles dicht */ }
   }, [client.slug]);
   useEffect(() => {
@@ -510,18 +510,6 @@ export default function ClientCockpit({
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="7" /><circle cx="12" cy="12" r="2" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /></svg>
                 </span>
                 <span className="ovc-title">Overview</span>
-              </div>
-
-              <div className="ov-blok">
-                <button type="button" className="strategy-head" onClick={() => setOvOpen((v) => ({ ...v, prio: !v.prio }))}>
-                  <span className="strategy-caret">{ovOpen.prio ? "▾" : "▸"}</span>
-                  <span className="strategy-title">Top Prio&rsquo;s</span>
-                </button>
-                {ovOpen.prio && (
-                  <div className="strategy-body">
-                    <FocusBlock slug={client.slug} soort="prio" titel="Top Prio's" />
-                  </div>
-                )}
               </div>
 
               <div className="ov-blok">

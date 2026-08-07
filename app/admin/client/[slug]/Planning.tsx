@@ -563,15 +563,20 @@ export default function Planning({
       <div className="pl-kop">
         <div>
           {!kaal && <div className="pl-titel">Planning</div>}
-          <div className="muted pl-sub">
-            {laden ? "Bezig met laden…" : (
-              <>
-                {totaal} {totaal === 1 ? "taak" : "taken"} open{breed ? " over alle klanten" : ` bij ${clientName}`},
-                {" "}{vandaagAantal} voor vandaag ({langDatum(vandaag)})
-                {teLaat > 0 && <span className="pl-telaat"> · {teLaat} te laat</span>}
-              </>
-            )}
-          </div>
+          {/* Deze telregel staat al in de kop van de toggle op de Taken-pagina
+              (de titel "Planning"); daar is hij dubbelop en gaat hij weg. Op het
+              volle weekbord (niet kaal) blijft hij staan. */}
+          {!kaal && (
+            <div className="muted pl-sub">
+              {laden ? "Bezig met laden…" : (
+                <>
+                  {totaal} {totaal === 1 ? "taak" : "taken"} open{breed ? " over alle klanten" : ` bij ${clientName}`},
+                  {" "}{vandaagAantal} voor vandaag ({langDatum(vandaag)})
+                  {teLaat > 0 && <span className="pl-telaat"> · {teLaat} te laat</span>}
+                </>
+              )}
+            </div>
+          )}
         </div>
         <div className="pl-kopacties">
           {alleKlanten && (
@@ -652,9 +657,9 @@ export default function Planning({
           <div className="pl-bloktitel">Per week</div>
           {weken.map((w) => {
             const sleutel = `week:${w.jaar}:${w.week}`;
-            // Voorbije weken staan standaard dicht; wat daar nog in staat zie je
-            // toch al bij "Te laat".
-            const dichtNu = dicht[sleutel] ?? w.verleden;
+            // Alle weken staan standaard dicht, ook de huidige; wat vandaag/deze
+            // week speelt zie je al in de vakken hierboven ("Vandaag", "Te laat").
+            const dichtNu = dicht[sleutel] ?? true;
             return (
               <div key={w.k}
                 className={"card pl-card" + (w.nu ? " pl-card-nu" : "") + (bovenVak === sleutel && !bovenRij ? " pl-drop" : "")}
