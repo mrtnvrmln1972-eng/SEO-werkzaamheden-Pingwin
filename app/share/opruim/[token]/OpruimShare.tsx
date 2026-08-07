@@ -18,7 +18,6 @@ import OpruimOnderwerpen, { type Onderwerp } from "../../../admin/client/[slug]/
 import OpruimGaten, { type Gat } from "../../../admin/client/[slug]/OpruimGaten";
 import OpruimEindstructuur, { type Eindstructuur } from "../../../admin/client/[slug]/OpruimEindstructuur";
 import OpruimEenLijst from "../../../admin/client/[slug]/OpruimEenLijst";
-import OpruimVergelijking from "../../../admin/client/[slug]/OpruimVergelijking";
 
 type ClusterUrl = { url: string; positie?: number; klikken?: number; impressies?: number };
 type Cluster = { keyword: string; winnaar: string; urls: ClusterUrl[]; onderbouwing?: string; signalen?: { urlFlip?: boolean; flipsIn90d?: number } };
@@ -112,10 +111,6 @@ export default function OpruimShare({ token }: { token: string }) {
             </p>
           </div>
         </div>
-
-        {/* Met de hand geschreven voor One Day Clinic tegen Stadskliniek (7
-            augustus 2026), dus alleen tonen bij dit domein. */}
-        {domain === "onedayclinic.nl" && <OpruimVergelijking />}
 
         {/* De hoofdmoot, exact zoals in de cockpit: één regel per pagina, één
             besluit, met de onderbouwing eronder. De losse blokken die hierna
