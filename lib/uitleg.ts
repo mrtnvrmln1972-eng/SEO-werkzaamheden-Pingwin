@@ -170,9 +170,12 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "| **Klant** | Documenten, Wat we doen, Wijzigingen, Klantgegevens |\n" +
           "| **KPI's** | Posities, vertoningen, klikken en de ontwikkeling daarvan |\n" +
           "| **Developer** | Alle developer-taken over alle klanten heen |\n\n" +
-          "Daarnaast zit er aan de rechterrand een inschuifbaar zijpaneel met de zoekwoorden en de landingspagina's " +
-          "die met de klant zijn afgesproken. Dat is op elk tabblad bereikbaar, want dat is de afspraak waar al " +
-          "het werk aan getoetst wordt.\n\n" +
+          "Daarnaast zitten er aan de rechterrand twee inschuifbare zijpanelen, op elk tabblad bereikbaar. " +
+          "'Zoekwoorden & links' heeft de afgesproken strategie links in een vrij tekstveld en rechts een kolom " +
+          "met snel aan te klikken landingspagina's. 'Links' bundelt de bronnen die het overzicht voeden of zouden " +
+          "moeten voeden (Search Console, Analytics, Ads, Google-profiel, klantprofiel, tone of voice, " +
+          "concurrentieanalyse, structured data, documenten): elke regel springt naar het scherm waar je hem " +
+          "beheert en laat pas na openklikken zien of hij gevuld of gekoppeld is.\n\n" +
           "**Wisselen van klant gaat via de kiezer linksboven.** Die toont de eigen klanten meteen; de klanten van " +
           "een aangesloten bureau en de leads staan elk achter één regel die je openklikt, want die heb je meestal " +
           "niet nodig en ze duwen de rest uit beeld. Zit je zelf in zo'n groep, dan staat die vanzelf open. " +
@@ -1400,8 +1403,9 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
         tekst:
           "1. Open een klant. Je landt op Taken, met je prioriteiten, de lopende gesprekken en de weekplanning " +
           "in drie blokken die dicht beginnen. Je kiest zelf wat je openzet.\n" +
-          "2. Rechts staat de stand van zaken uit de mail, de afgesproken zoekwoorden en landingspagina's, en de " +
-          "laatste correspondentie.\n" +
+          "2. Rechts staat een lijstje bespreekpunten per persoon en de laatste correspondentie, allebei dicht " +
+          "tot je ze openklikt; de mails zet je desgewenst los en groot in beeld. De afgesproken zoekwoorden en " +
+          "landingspagina's, en de bronnen die het overzicht voeden, zitten in de twee zijpanelen aan de rechterrand.\n" +
           "3. Pak het bovenste punt. Is het een pagina, dan ga je naar die pagina en zie je meteen wat er is en " +
           "wat de volgende fase is.\n" +
           "4. Laat het dashboard het zware werk doen: het document, het voorstel, de meting. Jij keurt goed.",
