@@ -176,6 +176,12 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie, actiesSlot }: 
   const tabCat = perCat.some((g) => g.cat === actieveTab) ? actieveTab : (perCat[0]?.cat || "");
   const [openRest, setOpenRest] = useState(false);
   const [openKaart, setOpenKaart] = useState<Record<number, boolean>>({});
+  // Het hele tabjes-blok (organisatie, locaties, diensten, ...) staat default
+  // dicht: de kennisbank is ruwe aanlevering met bron per gegeven, de bevestigde
+  // bedrijfsgegevens erboven zijn het formulier dat daaruit gevuld wordt. Wie dat
+  // detail niet nodig heeft, ziet alleen de dropzone en wat er nog ontbreekt.
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [gapsOpen, setGapsOpen] = useState(false);
   // Alleen een locatie met huisnummer of postcode is een vestiging.
   const isVestiging = (e: Entiteit) => /\d/.test(e.velden.adres || "") || !!(e.velden.postcode || "").trim();
   // Velden die over onze eigen administratie gaan horen niet in beeld.
@@ -313,41 +319,58 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie, actiesSlot }: 
       {fout && <div className="wp-doc-fout">{fout}</div>}
       {gaps.length > 0 && (
         <div className="kb-gaps">
-          <div className="kb-gaps-kop">Nog aan te leveren ({gaps.length}) &mdash; dit zijn dezelfde velden die hierboven rood staan</div>
-          <ul>{gaps.map((r, i) => <li key={i}>{r}</li>)}</ul>
-          <button type="button" className="wp-fase-btn" disabled={!!busy} onClick={() => void maakTaak()}>{busy === "taak" ? "Bezig…" : "Zet als kaart in de weekplanning"}</button>
+          <button type="button" className="kb-gaps-kop kb-gaps-kop-btn" onClick={() => setGapsOpen((v) => !v)}>
+            <span className="kb-groep-caret">{gapsOpen ? "▾" : "▸"}</span>
+            <span>Nog aan te leveren ({gaps.length})</span>
+          </button>
+          {gapsOpen && (
+            <>
+              <div className="muted" style={{ fontSize: "var(--fs-xs)", marginBottom: "var(--s-1)" }}>Dit zijn dezelfde velden die hierboven rood staan.</div>
+              <ul>{gaps.map((r, i) => <li key={i}>{r}</li>)}</ul>
+              <button type="button" className="wp-fase-btn" disabled={!!busy} onClick={() => void maakTaak()}>{busy === "taak" ? "Bezig…" : "Zet als kaart in de weekplanning"}</button>
+            </>
+          )}
         </div>
       )}
       {perCat.length > 0 && (
-        <div className="kb-tabs-wrap">
-          <div className="kb-tabs" role="tablist">
-            {perCat.map((g) => (
-              <button type="button" key={g.cat} role="tab" aria-selected={g.cat === tabCat}
-                className={"kb-tab" + (g.cat === tabCat ? " kb-tab-actief" : "")} onClick={() => setActieveTab(g.cat)}>
-                {CAT_LABEL[g.cat] || g.cat}<span className="kb-tab-aantal">{g.items.length}</span>
-              </button>
-            ))}
-          </div>
-          {perCat.filter((g) => g.cat === tabCat).map((g) => {
-            const echt = g.cat === "locatie" ? g.items.filter((e) => isVestiging(e)) : g.items;
-            const rest = g.cat === "locatie" ? g.items.filter((e) => !isVestiging(e)) : [];
-            return (
-              <div key={g.cat} className="kb-tab-body">
-                {echt.map((e) => kaart(e))}
-                {rest.length > 0 && (
-                  <div className="kb-subgroep">
-                    <button type="button" className="kb-groep-kop kb-groep-kop-klein" onClick={() => setOpenRest(!openRest)}>
-                      <span className="kb-groep-caret">{openRest ? "▾" : "▸"}</span>
-                      <span className="kb-groep-titel">Zonder bezoekadres, geen vestiging</span>
-                      <span className="kb-groep-aantal">{rest.length}</span>
-                    </button>
-                    {openRest && <div className="kb-groep-body">{rest.map((e) => kaart(e))}</div>}
-                  </div>
-                )}
+        <section className="org-sec kb-detail-sec">
+          <button type="button" className="org-sec-kop" onClick={() => setDetailOpen((v) => !v)}>
+            <span className="org-sec-caret">{detailOpen ? "▾" : "▸"}</span>
+            <span>Kennisbank per categorie</span>
+            <span className="org-sec-aantal">{entiteiten.length}</span>
+          </button>
+          {detailOpen && (
+            <div className="kb-tabs-wrap">
+              <div className="kb-tabs" role="tablist">
+                {perCat.map((g) => (
+                  <button type="button" key={g.cat} role="tab" aria-selected={g.cat === tabCat}
+                    className={"kb-tab" + (g.cat === tabCat ? " kb-tab-actief" : "")} onClick={() => setActieveTab(g.cat)}>
+                    {CAT_LABEL[g.cat] || g.cat}<span className="kb-tab-aantal">{g.items.length}</span>
+                  </button>
+                ))}
               </div>
-            );
-          })}
-        </div>
+              {perCat.filter((g) => g.cat === tabCat).map((g) => {
+                const echt = g.cat === "locatie" ? g.items.filter((e) => isVestiging(e)) : g.items;
+                const rest = g.cat === "locatie" ? g.items.filter((e) => !isVestiging(e)) : [];
+                return (
+                  <div key={g.cat} className="kb-tab-body">
+                    {echt.map((e) => kaart(e))}
+                    {rest.length > 0 && (
+                      <div className="kb-subgroep">
+                        <button type="button" className="kb-groep-kop kb-groep-kop-klein" onClick={() => setOpenRest(!openRest)}>
+                          <span className="kb-groep-caret">{openRest ? "▾" : "▸"}</span>
+                          <span className="kb-groep-titel">Zonder bezoekadres, geen vestiging</span>
+                          <span className="kb-groep-aantal">{rest.length}</span>
+                        </button>
+                        {openRest && <div className="kb-groep-body">{rest.map((e) => kaart(e))}</div>}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
       )}
     </div>
   );

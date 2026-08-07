@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import HelpHint from "./HelpHint";
 import Kennisbank from "./Kennisbank";
+import MailPopup from "./MailPopup";
 import { ontbrekendeSleutels, ontbrekendeVelden, LEGE_VESTIGING, type OrgVestiging } from "../../../../lib/org-vereist";
 import { mdToHtml } from "../../../../lib/markdown";
 
@@ -378,81 +379,66 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
       if (d.ok) { setLocked(next); setMsg(next ? "Vergrendeld: dit is nu de vaste bron voor de structured data." : "Ontgrendeld: de klant kan weer aanvullen."); }
     } catch { setMsg("Vergrendelen mislukt."); } finally { setBusy(""); }
   }
-  const [swJson, setSwJson] = useState("");
-  const [swMsg, setSwMsg] = useState("");
-  const [swCopied, setSwCopied] = useState(false);
-  async function generateSitewide() {
+  // "Delen met developer": één knop die genereren (aanvullend op een eventuele
+  // SEO-plugin), opslaan in Drive + een Werkzaamheden-taak, én een kant-en-klare
+  // mail met introductie combineert. De ruwe JSON-code is in het mailvenster
+  // zelf te bekijken/kopiëren (onder "Bekijk de JSON-code"), zodat daar geen
+  // aparte knop meer voor nodig is.
+  const [devPopOpen, setDevPopOpen] = useState(false);
+  const [devPopHtml, setDevPopHtml] = useState("");
+  const [devPopSubject, setDevPopSubject] = useState("");
+  const [devLink, setDevLink] = useState("");
+  const [devJson, setDevJson] = useState("");
+  const [devJsonOpen, setDevJsonOpen] = useState(false);
+  const [devJsonBusy, setDevJsonBusy] = useState(false);
+  const [devJsonCopied, setDevJsonCopied] = useState(false);
+  async function openDevDeel() {
     if (busy) return;
-    setBusy("sitewide"); setSwMsg("");
+    setBusy("dev"); setMsg("");
+    try {
+      const d = await fetch("/api/admin/org-data/sitewide", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }) }).then((r) => r.json());
+      if (!d.ok) { setMsg(d.error || "Voorbereiden mislukt."); return; }
+      setDevLink(d.jsonLink); setDevJson(""); setDevJsonOpen(false);
+      const devDashUrl = typeof window !== "undefined" ? `${window.location.origin}/admin/developer` : "";
+      const naam = data?.bedrijfsnaam || "";
+      setDevPopSubject(`Structured data klaar${naam ? ` – ${naam}` : ""}`);
+      const linkjes = [
+        `<li>JSON-bestand (plakken in de &lt;head&gt;, als los blok naast wat er al staat; niets aan bestaande plugin-code wijzigen): <a href="${d.jsonLink}">${d.jsonLink}</a></li>`,
+        devShareUrl ? `<li>Volledig overzicht met alle bedrijfsgegevens erachter: <a href="${devShareUrl}">${devShareUrl}</a></li>` : "",
+        devDashUrl ? `<li>Ook terug te vinden in het Developer Overview: <a href="${devDashUrl}">${devDashUrl}</a></li>` : "",
+      ].filter(Boolean).join("");
+      setDevPopHtml(`<p>Hoi,</p><p>Voor${naam ? ` ${naam}` : " deze klant"} staat de structured data klaar: onzichtbare code (schema.org) die Google en AI-zoekmachines vertelt wie dit bedrijf is en wat het doet.</p><ul>${linkjes}</ul><p>Alvast bedankt!</p><p>Groet,<br>Maarten</p>`);
+      setDevPopOpen(true);
+    } catch { setMsg("Voorbereiden mislukt."); } finally { setBusy(""); }
+  }
+  async function bekijkJson() {
+    if (devJson) { setDevJsonOpen((v) => !v); return; }
+    setDevJsonBusy(true);
     try {
       const d = await fetch(`/api/admin/org-data/sitewide?slug=${encodeURIComponent(slug)}`).then((r) => r.json());
-      if (d.ok) {
-        setSwJson(d.jsonld);
-        const meldingen = [
-          !d.locked ? "Let op: de gegevens zijn nog niet vergrendeld; controleer ze eerst met de klant." : "",
-          d.gekoppeld ? `Aanvullend op ${d.plugin}: dit blok knoopt aan hun bestaande organisatie-code vast (zelfde @id), in plaats van die te verdubbelen.`
-            : d.plugin ? `${d.plugin} staat al op de site, maar we konden zijn organisatie-ID niet vinden; dit is daarom een zelfstandig blok. Laat de developer controleren op dubbele info.`
-              : "Geen bestaand organisatie-schema gevonden op de homepage; dit is het volledige blok.",
-        ].filter(Boolean);
-        setSwMsg(meldingen.join(" "));
-      }
-      else setSwMsg(d.error || "Genereren mislukt.");
-    } catch { setSwMsg("Genereren mislukt."); } finally { setBusy(""); }
+      if (d.ok) { setDevJson(d.jsonld); setDevJsonOpen(true); }
+    } catch { /* de link in de mail werkt ook zonder deze preview */ }
+    finally { setDevJsonBusy(false); }
   }
-  async function copySitewide() {
-    if (!swJson) return;
-    try { await navigator.clipboard.writeText(swJson); setSwCopied(true); setTimeout(() => setSwCopied(false), 2000); } catch { /* handmatig */ }
+  async function copyJson() {
+    if (!devJson) return;
+    try { await navigator.clipboard.writeText(devJson); setDevJsonCopied(true); setTimeout(() => setDevJsonCopied(false), 2000); } catch { /* handmatig */ }
   }
-  async function sitewideTask() {
-    if (busy) return;
-    setBusy("swtask"); setSwMsg("");
-    try {
-      const d = await fetch("/api/admin/org-data/sitewide", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }) }).then((r) => r.json());
-      // Eenmaal doorgezet staat de code veilig in de taak en in Drive; het
-      // zwarte JSON-scherm hoeft dan niet in beeld te blijven staan.
-      if (d.ok) setSwJson("");
-      setSwMsg(d.ok ? "Dev-taak aangemaakt in Werkzaamheden, met het .json-bestand in Drive." : d.error || "Doorzetten mislukt.");
-    } catch { setSwMsg("Doorzetten mislukt."); } finally { setBusy(""); }
-  }
-  // "Deel JSON": in één klik het site-brede blok opslaan (Drive + Werkzaamheden-
-  // taak, zoals sitewideTask hierboven) én een kant-en-klare mail met een
-  // eigen introductie openen, ongeacht of er al eerst op "Genereer" is geklikt.
-  async function deelJsonMetDeveloper() {
-    if (busy) return;
-    setBusy("deeljson"); setSwMsg("");
-    try {
-      const d = await fetch("/api/admin/org-data/sitewide", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }) }).then((r) => r.json());
-      if (!d.ok) { setSwMsg(d.error || "Delen mislukt."); return; }
-      setSwJson("");
-      const to = devTo.trim();
-      if (to) {
-        try { localStorage.setItem("pingwin-dev-email", to); } catch { /* geen opslag */ }
-        const devDashUrl = typeof window !== "undefined" ? `${window.location.origin}/admin/developer` : "";
-        const naam = data?.bedrijfsnaam || "";
-        const subject = encodeURIComponent(`Structured data klaar${naam ? ` – ${naam}` : ""}`);
-        const inleiding = `Hoi,\n\nVoor${naam ? ` ${naam}` : " deze klant"} staat de structured data klaar: onzichtbare code (schema.org) die Google en AI-zoekmachines vertelt wie dit bedrijf is en wat het doet.`;
-        const links = [
-          `JSON-bestand (plakken in de <head>, als los blok naast wat er al staat; niets aan bestaande plugin-code wijzigen): ${d.jsonLink}`,
-          devShareUrl ? `Volledig overzicht met alle bedrijfsgegevens erachter: ${devShareUrl}` : "",
-          `Ook terug te vinden in het Developer Overview: ${devDashUrl}`,
-        ].filter(Boolean).join("\n");
-        const body = encodeURIComponent(`${inleiding}\n\n${links}\n\nAlvast bedankt!\n\nGroet,\nMaarten`);
-        window.open(`mailto:${to}?subject=${subject}&body=${body}`, "_blank");
-      }
-      setSwMsg(`Gedeeld: .json-bestand in Drive, taak in Werkzaamheden${to ? ", mail geopend." : "."}`);
-    } catch { setSwMsg("Delen mislukt."); } finally { setBusy(""); }
-  }
-  async function copyLink() {
+  // "Delen met klant": vervangt de losse knoppen "Link kopiëren" en "Mail naar
+  // klant", die hetzelfde deden met een overlappende knop. Het mailvenster
+  // bevat de link met een eigen kopieerknop, dus beide functies blijven
+  // beschikbaar zonder twee knoppen in de rij.
+  const [klantPopOpen, setKlantPopOpen] = useState(false);
+  const [klantPopHtml, setKlantPopHtml] = useState("");
+  const [linkCopied, setLinkCopied] = useState(false);
+  function openKlantDeel() {
     if (!shareUrl) return;
-    try { await navigator.clipboard.writeText(shareUrl); setMsg("Deel-link gekopieerd."); } catch { setMsg("Kopiëren mislukt; selecteer de link zelf."); }
+    setKlantPopHtml(`<p>Beste,</p><p>Voor de vindbaarheid van jullie website (in Google en in AI-zoekmachines) voeren we structured data door: onzichtbare, gestructureerde bedrijfsinformatie die zoekmachines laat zien wie jullie zijn.</p><p>Wij hebben alvast zoveel mogelijk ingevuld vanaf jullie website. Willen jullie de gegevens op deze pagina nalopen, corrigeren en aanvullen waar nodig?</p><p><a href="${shareUrl}">${shareUrl}</a></p><p>Alvast bedankt!</p><p>Met vriendelijke groet,<br>Maarten Vermeulen<br>Pingwin Online Marketing</p>`);
+    setKlantPopOpen(true);
   }
-  function mailLink() {
-    const to = (clientEmail || "").trim();
-    const subject = encodeURIComponent("Bedrijfsgegevens controleren voor jullie vindbaarheid");
-    const body = encodeURIComponent(
-      `Beste,\n\nVoor de vindbaarheid van jullie website (in Google en in AI-zoekmachines) voeren we structured data door: onzichtbare, gestructureerde bedrijfsinformatie die zoekmachines laat zien wie jullie zijn.\n\nWij hebben alvast zoveel mogelijk ingevuld vanaf jullie website. Willen jullie de gegevens op deze pagina nalopen, corrigeren en aanvullen waar nodig?\n\n${shareUrl}\n\nAlvast bedankt!\n\nMet vriendelijke groet,\nMaarten Vermeulen\nPingwin Online Marketing`,
-    );
-    window.open(`mailto:${to}?subject=${subject}&body=${body}`, "_blank");
+  async function copyShareLink() {
+    if (!shareUrl) return;
+    try { await navigator.clipboard.writeText(shareUrl); setLinkCopied(true); setTimeout(() => setLinkCopied(false), 2000); } catch { /* handmatig */ }
   }
   return (
     <div className="cockpit-card strategy-card">
@@ -483,23 +469,13 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
               <HelpHint text="Zet de gegevens vast als de bevestigde bron voor alle structured data. De klant kan ze dan niet meer wijzigen via de deel-link. Ontgrendel je later, dan kan de klant weer aanvullen." />
             </span>
             <span className="org-action-hint">
-              <button type="button" className="ghost-btn small" onClick={generateSitewide} disabled={!!busy || !data?.bedrijfsnaam}>{busy === "sitewide" ? "Genereren…" : "Genereer site-brede schema"}</button>
-              <HelpHint xl title="Site-brede structured data: het identiteitsblok" text={"Het **identiteitsblok** van de site: één blok JSON-LD met de organisatie (of LocalBusiness/MedicalClinic, afhankelijk van het bedrijfstype) en de website, met vaste @id's.\n## Hoe het zich verhoudt tot de per-pagina schema's\nDit blok hoort op de homepage en is het anker van de hele entity graph: de per-pagina schema's uit de structured-data-stap verwijzen er met hun @id's naartoe in plaats van de bedrijfsgegevens overal te herhalen. Eén bron, overal consistent; precies wat zoekmachines en AI-assistenten nodig hebben om het bedrijf als één entiteit te herkennen.\n## Aanvullend op de plugin\nStaat er al organisatie-schema van een SEO-plugin (Yoast, Rank Math, AIOSEO) op de homepage, dan knoopt dit blok daaraan vast in plaats van het te verdubbelen: naam, adres, telefoon en openingstijden blijven van de plugin (die past ze vanzelf aan bij een wijziging), dit blok voegt alleen toe wat de plugin niet levert, zoals vestigingen, reviewcijfer en social-profielen. Zo hoeft de plugin niet aangepast te worden en overleeft de aanvulling een plugin-update.\n## Belangrijk om te weten\nDit blok wordt **deterministisch** gebouwd, zonder AI: rechtstreeks uit de bevestigde gegevens, dus er kan niets bij verzonnen worden.\n## Wat je ermee doet\nNa het genereren verschijnt de JSON hieronder in de kaart, met 'Kopieer JSON' en 'Als Dev-taak doorzetten' (zonder mail). Wil je het meteen delen mét een introductie voor de developer, gebruik dan 'Deel JSON' hiernaast; dat werkt ook zonder eerst zelf te genereren."} />
-            </span>
-            <span className="org-action-hint">
-              <button type="button" className="ghost-btn small" onClick={deelJsonMetDeveloper} disabled={!!busy || !data?.bedrijfsnaam}>{busy === "deeljson" ? "Bezig…" : "Deel JSON"}</button>
-              <HelpHint text="Zet het site-brede schema in één keer klaar voor de developer: .json-bestand in Drive, taak in Werkzaamheden, en een kant-en-klare mail met een introductie erbij. Werkt ook zonder eerst zelf te genereren." />
+              <button type="button" className="ghost-btn small" onClick={() => void openDevDeel()} disabled={!!busy || !data?.bedrijfsnaam}>{busy === "dev" ? "Bezig…" : "Delen met developer"}</button>
+              <HelpHint xl title="Wat betekenen 'genereren', 'site-breed' en 'schema'?" text={"**Schema** (ook wel structured data of JSON-LD genoemd) is onzichtbare code in de website die Google en AI-zoekmachines vertelt wie dit bedrijf is en wat een pagina behandelt.\n## Twee lagen\n__Site-breed__ is het ene basisblok met de bedrijfsidentiteit: naam, adres, telefoon, openingstijden, social profielen. Dat hoort op elke pagina, als fundering. Een losse pagina (een behandeling, dienst, artikel) krijgt daarbovenop een eigen, kleiner blok via de structured data-stap in het Pagina's-tabblad; dat blok verwijst terug naar dit fundament in plaats van alles te herhalen.\n## Wat 'genereren' doet\nDeze knop bouwt dat site-brede blok automatisch uit de bevestigde bedrijfsgegevens hierboven, **aanvullend** op wat een SEO-plugin (Yoast, Rank Math, AIOSEO) eventueel al op de site zet: geen dubbele info, de plugin blijft zelf verantwoordelijk voor wat hij al levert en past dat vanzelf aan bij een wijziging.\n## Wat 'Delen met developer' in één klik doet\n- Het bestand komt in Drive te staan.\n- Er komt een taak voor de developer in Werkzaamheden.\n- Er opent een mailvenster met een kant-en-klare introductie; meteen versturen of eerst aanpassen.\n- Wil je eerst de ruwe code bekijken of los kopiëren, dat kan in dat mailvenster onder 'Bekijk de JSON-code'."} />
             </span>
             {shareUrl && (
               <span className="org-action-hint">
-                <button type="button" className="ghost-btn small" onClick={copyLink} title={shareUrl}>Link kopiëren</button>
-                <HelpHint text="Kopieert de link waarmee de klant zelf deze bedrijfsgegevens kan bekijken en aanvullen." />
-              </span>
-            )}
-            {shareUrl && (
-              <span className="org-action-hint">
-                <button type="button" className="ghost-btn small" onClick={mailLink}>Mail naar klant</button>
-                <HelpHint text="Opent een kant-en-klare mail naar de klant met de deel-link erin, zodat die de gegevens kan nalopen en aanvullen." />
+                <button type="button" className="ghost-btn small" onClick={openKlantDeel}>Delen met klant</button>
+                <HelpHint text="Opent een mailvenster naar de klant met de deel-link erin, zodat die de bedrijfsgegevens kan bekijken, corrigeren en aanvullen. In dat venster staat de link ook los te kopiëren, zonder te hoeven mailen." />
               </span>
             )}
             <LaatsteStandKnop />
@@ -522,21 +498,46 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
             </button>
             {dataOpen && (data ? <OrgDataForm data={data} onChange={setData} disabled={busy === "autofill"} /> : <div className="muted">Laden…</div>)}
           </section>
-          {(swJson || swMsg) && (
-            <div className="org-sitewide">
-              {swJson && (
-                <div className="org-sitewide-head">
-                  <button type="button" className="ghost-btn small" onClick={copySitewide}>{swCopied ? "✓ gekopieerd" : "Kopieer JSON"}</button>
-                  <button type="button" className="ghost-btn small" onClick={sitewideTask} disabled={!!busy}>{busy === "swtask" ? "Bezig…" : "Als Dev-taak doorzetten"}</button>
-                </div>
-              )}
-              {swMsg && <div className="saved-msg" style={{ marginTop: swJson ? "var(--s-2)" : "0" }}>{swMsg}</div>}
-              {swJson && <pre className="sch-json-pre" style={{ marginTop: "var(--s-2)" }}>{swJson}</pre>}
-            </div>
-          )}
           <Kennisbank slug={slug} voorActie={() => save(true)} onVerwerkt={() => { void laadOrg(); }} actiesSlot={kbSlot} />
         </div>
       )}
+      <MailPopup
+        open={devPopOpen}
+        onClose={() => setDevPopOpen(false)}
+        titel="Delen met developer"
+        aanTo={devTo}
+        onderwerp={devPopSubject}
+        berichtHtml={devPopHtml}
+        onthoudAls="pingwin-dev-email"
+        extra={
+          <div>
+            <div className="muted" style={{ wordBreak: "break-word" }}>JSON-bestand: <a href={devLink} target="_blank" rel="noreferrer">{devLink}</a></div>
+            <button type="button" className="ghost-btn small" style={{ marginTop: "var(--s-2)" }} onClick={() => void bekijkJson()}>
+              {devJsonBusy ? "Laden…" : devJsonOpen ? "Verberg de JSON-code" : "Bekijk de JSON-code"}
+            </button>
+            {devJsonOpen && devJson && (
+              <>
+                <button type="button" className="ghost-btn small" style={{ marginLeft: "var(--s-2)" }} onClick={() => void copyJson()}>{devJsonCopied ? "✓ gekopieerd" : "Kopieer JSON"}</button>
+                <pre className="sch-json-pre" style={{ marginTop: "var(--s-2)" }}>{devJson}</pre>
+              </>
+            )}
+          </div>
+        }
+      />
+      <MailPopup
+        open={klantPopOpen}
+        onClose={() => setKlantPopOpen(false)}
+        titel="Delen met klant"
+        aanTo={clientEmail || ""}
+        onderwerp="Bedrijfsgegevens controleren voor jullie vindbaarheid"
+        berichtHtml={klantPopHtml}
+        extra={
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--s-2)", flexWrap: "wrap" }}>
+            <span className="muted" style={{ wordBreak: "break-word" }}>{shareUrl}</span>
+            <button type="button" className="ghost-btn small" onClick={() => void copyShareLink()}>{linkCopied ? "✓ gekopieerd" : "Kopieer link"}</button>
+          </div>
+        }
+      />
     </div>
   );
 }

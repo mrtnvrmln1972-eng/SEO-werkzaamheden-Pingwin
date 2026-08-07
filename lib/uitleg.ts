@@ -21,7 +21,7 @@
 // betreffende uitklapper aanvullen en LAATST_BIJGEWERKT verzetten.
 // ═══════════════════════════════════════════════════════════
 
-export const LAATST_BIJGEWERKT = "7 augustus 2026";
+export const LAATST_BIJGEWERKT = "8 augustus 2026";
 
 export type Uitklapper = {
   titel: string;
@@ -637,25 +637,31 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "(vestigingen, reviewcijfer, KVK/BTW, social-profielen). Zo hoeft de plugin niet aangepast te " +
           "worden en overleeft de aanvulling een plugin-update. Is er geen bestaand schema gevonden, dan " +
           "levert het dashboard het volledige, zelfstandige blok.\n\n" +
-          "**Eén knoppenrij bovenaan de kaart** bundelt alles: ontbrekende gegevens ophalen, opslaan, " +
-          "vergrendelen, het site-brede schema genereren of meteen delen, de deel-links voor klant en " +
-          "sitebouwer, de laatste stand van de schema.org-richtlijnen (achter een 'vraagteken'-knop), en de " +
-          "kennisbank-bediening (dropzone, in velden zetten, ontdubbelen). 'Genereer site-brede schema' toont " +
-          "de JSON en het plugin-berichtje in de kaart; 'Deel JSON' doet in één klik alles tegelijk (ook zonder " +
-          "eerst zelf te genereren): .json-bestand naar Drive, Dev-taak in Werkzaamheden, en een kant-en-klare " +
-          "mail met een eigen introductie naar de developer (inclusief de alleen-lezen sitebouwer-link). Die " +
-          "JSON kan ook los gekopieerd of stil (zonder mail) als Dev-taak doorgezet worden; na delen of " +
-          "doorzetten klapt de zwarte JSON-preview vanzelf weer dicht, en zonder iets gegenereerd staat er " +
-          "niets in de kaart.\n\n" +
+          "**Eén compacte knoppenrij bovenaan de kaart**, bewust tot zes knoppen teruggebracht: ontbrekende " +
+          "gegevens ophalen, opslaan, vergrendelen, 'Delen met developer', 'Delen met klant', en de laatste " +
+          "stand van de schema.org-richtlijnen (achter een 'vraagteken'-knop). 'Genereer site-brede schema' en " +
+          "'Deel JSON' waren twee knoppen voor dezelfde stap en zijn samengevoegd tot 'Delen met developer': in " +
+          "één klik het site-brede blok bouwen (aanvullend op een eventuele plugin), als .json-bestand naar " +
+          "Drive zetten, een Dev-taak aanmaken in Werkzaamheden, en een mailvenster openen met een kant-en-klare " +
+          "introductie. De ruwe JSON-code bekijken of los kopiëren kan in dat mailvenster, onder 'Bekijk de " +
+          "JSON-code'; die staat standaard dicht. Zo ook 'Link kopiëren' en 'Mail naar klant': dat waren twee " +
+          "knoppen voor bijna hetzelfde, nu is dat 'Delen met klant', één mailvenster met de deel-link erin én " +
+          "een eigen kopieerknop voor die link.\n\n" +
+          "**Geen mailto meer.** Beide mailvensters versturen, als er een Microsoft 365-koppeling is, de mail " +
+          "rechtstreeks vanuit het dashboard (zelfde route als de mail-knoppen in Werkzaamheden); zonder " +
+          "koppeling opent een knop het eigen mailprogramma via een onzichtbare link (niet via `window.open`, " +
+          "dat gaf een leeg tabblad met de kale mailto-URL erin) of kopieert de mailtekst. Beide vensters zijn " +
+          "hetzelfde opgemaakte compose-venster als in Werkzaamheden, geen los, onopgemaakt scherm meer.\n\n" +
           "**Kennisbank versus het formulier hierboven.** De kennisbank is de intake: een kleine 'dropzone' " +
           "(in de knoppenrij) waar documenten, foto's, tekst of een Drive-link in gaan; de AI haalt er " +
           "kandidaat-gegevens uit, per bron, en die wachten eerst op een akkoord voordat ze meetellen. Pas de " +
           "knop 'In velden zetten' brengt bevestigde kennisbank-gegevens over naar de echte velden hierboven " +
           "('Verzamelde structured data'), met 'Ontdubbelen' om dubbele aanleveringen samen te voegen. Het " +
-          "overzicht daaronder staat als tabjes per categorie, met elke gevonden entiteit standaard dicht " +
-          "(klikken toont de velden). Kortom: de kennisbank is het ruwe-materiaal-archief mét herkomst per " +
-          "gegeven, het formulier erboven is de schone, bevestigde bron waar de structured data zelf uit " +
-          "gebouwd wordt.",
+          "detailoverzicht ('Kennisbank per categorie', tabjes met elke entiteit als kaartje) en het lijstje " +
+          "'Nog aan te leveren' staan allebei standaard dicht onder een klein pijltje, zodat de kaart compact " +
+          "blijft en alleen de dropzone en de knoppen meteen in beeld staan. Kortom: de kennisbank is het " +
+          "ruwe-materiaal-archief mét herkomst per gegeven, het formulier erboven is de schone, bevestigde bron " +
+          "waar de structured data zelf uit gebouwd wordt.",
       },
       {
         titel: "Zoekwoordkansen en de gaten in de site",
