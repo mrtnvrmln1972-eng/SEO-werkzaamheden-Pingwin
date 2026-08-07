@@ -31,6 +31,13 @@ export type DevTask = {
   devDone: boolean;    // door de developer afgevinkt als klaar
   devNote: string;     // terugkoppeling van de developer
   /**
+   * Maartens eigen vinkje, los van devDone. De developer kan een taak al op
+   * "Klaar" hebben gezet (groen), maar dat is niet hetzelfde als dat Maarten
+   * hem gecontroleerd en afgesloten heeft. Staat dit aan, dan verhuist de taak
+   * naar het dichtgeklapte "Afgerond"-blok van die klant.
+   */
+  ownerDone: boolean;
+  /**
    * De documenten die bij deze taak horen: de copy die verwerkt moet worden, de
    * blauwdruk, en de teksten die de klant terugstuurde. Zonder deze kreeg de
    * sitebouwer een opdracht als "zet de nieuwe copy live" zonder de copy erbij,
@@ -67,6 +74,9 @@ async function ensureDevTable(): Promise<void> {
   await sql`ALTER TABLE developer_overview ADD COLUMN IF NOT EXISTS dev_done BOOLEAN NOT NULL DEFAULT false`;
   await sql`ALTER TABLE developer_overview ADD COLUMN IF NOT EXISTS dev_note TEXT`;
   await sql`ALTER TABLE developer_overview ADD COLUMN IF NOT EXISTS done_at TIMESTAMPTZ`;
+  // Maartens eigen "Afgerond"-vinkje, los van het vinkje van de developer.
+  await sql`ALTER TABLE developer_overview ADD COLUMN IF NOT EXISTS owner_done BOOLEAN NOT NULL DEFAULT false`;
+  await sql`ALTER TABLE developer_overview ADD COLUMN IF NOT EXISTS owner_done_at TIMESTAMPTZ`;
   // Wie afvinkte. De sessie wist dit al, maar het werd niet bewaard; daardoor kon
   // het dashboard niet melden dat er iets af was en moest de sitebouwer mailen.
   await sql`ALTER TABLE developer_overview ADD COLUMN IF NOT EXISTS done_by TEXT`;
@@ -171,15 +181,15 @@ export async function getDeveloperTasks(): Promise<DevTask[]> {
     LEFT JOIN clients c ON c.slug = t.client_slug
     WHERE lower(coalesce(t.status, '')) = 'naar dev'
        OR (lower(coalesce(t.status, '')) = 'klaar'
-           AND t.client_slug IN (SELECT client_slug FROM developer_overview WHERE dev_done = true))
+           AND t.client_slug IN (SELECT client_slug FROM developer_overview WHERE dev_done = true OR owner_done = true))
     ORDER BY t.sort_order ASC, t.id ASC`;
 
   const meta = await sql`
-    SELECT client_slug, task_key, position, exec_date, dev_done, dev_note,
+    SELECT client_slug, task_key, position, exec_date, dev_done, dev_note, owner_done,
            eigen, taak_edit, toel_edit, link_edit, extra_docs
     FROM developer_overview`;
   type Meta = {
-    position: number | null; execDate: string; devDone: boolean; devNote: string;
+    position: number | null; execDate: string; devDone: boolean; devNote: string; ownerDone: boolean;
     eigen: boolean; taakEdit: string; toelEdit: string; linkEdit: string;
     extraDocs: { label: string; url: string }[];
   };
@@ -190,6 +200,7 @@ export async function getDeveloperTasks(): Promise<DevTask[]> {
       execDate: (m.exec_date as string) || "",
       devDone: !!m.dev_done,
       devNote: (m.dev_note as string) || "",
+      ownerDone: !!m.owner_done,
       eigen: !!m.eigen,
       taakEdit: (m.taak_edit as string) || "",
       toelEdit: (m.toel_edit as string) || "",
@@ -218,6 +229,7 @@ export async function getDeveloperTasks(): Promise<DevTask[]> {
       position: mm?.position ?? null,
       devDone: mm?.devDone ?? false,
       devNote: mm?.devNote ?? "",
+      ownerDone: mm?.ownerDone ?? false,
       docs: [],
     };
   });
@@ -258,6 +270,7 @@ export async function getDeveloperTasks(): Promise<DevTask[]> {
       position: mm?.position ?? null,
       devDone: mm?.devDone ?? false,
       devNote: mm?.devNote ?? "",
+      ownerDone: mm?.ownerDone ?? false,
       // Handmatig gekozen documenten gaan voor: bij een herziene tekst van de
       // klant moet die de site op, niet onze eigen copy. Is er niets gekozen,
       // dan alles wat bij de pagina hoort.
@@ -293,6 +306,7 @@ export async function getDeveloperTasks(): Promise<DevTask[]> {
         position: mm.position,
         devDone: mm.devDone,
         devNote: mm.devNote,
+        ownerDone: mm.ownerDone,
         docs: [],
         eigen: true,
       });
@@ -317,9 +331,11 @@ export async function getDeveloperTasks(): Promise<DevTask[]> {
     for (const d of extra) if (d && d.url && !gezien.has(d.url)) { gezien.add(d.url); t.docs.push(d); }
   }
 
-  // Alleen echt relevante rijen: open ('naar dev') of door de developer afgevinkt.
+  // Alleen echt relevante rijen: open ('naar dev'), door de developer afgevinkt,
+  // of door Maarten zelf afgerond (die laatste blijft zichtbaar in het
+  // "Afgerond"-blok, ook als de onderliggende status intussen weer wijzigt).
   // Een 'klaar'-taak die niet dev-afgevinkt is (andere klaar-taak) valt hiermee weg.
-  const relevant = list.filter((t) => t.status.toLowerCase() === "naar dev" || t.devDone);
+  const relevant = list.filter((t) => t.status.toLowerCase() === "naar dev" || t.devDone || t.ownerDone);
 
   // Ontdubbel op (klant, taaknaam): identieke dev-taken één keer tonen.
   const seen = new Set<string>();
@@ -413,6 +429,22 @@ export async function setDeveloperStatus(
   for (const id of ids) {
     await sql`UPDATE client_tasks SET status = ${target}, updated_at = now() WHERE id = ${id}`;
   }
+}
+
+// Maartens eigen "Afgerond"-vinkje, los van het vinkje van de developer. Dat
+// vinkje betekent "de developer is klaar" en zet de echte taakstatus om; dit
+// vinkje betekent "ik heb het gecontroleerd en gesloten" en verplaatst de taak
+// naar het dichtgeklapte Afgerond-blok van die klant. Raakt de echte
+// taakstatus niet aan en levert geen melding op: het is Maartens eigen actie.
+export async function setOwnerDone(clientSlug: string, taskKey: string, done: boolean): Promise<void> {
+  await ensureSchema();
+  await ensureDevTable();
+  if (!clientSlug || !taskKey) return;
+  await sql`
+    INSERT INTO developer_overview (client_slug, task_key, owner_done, owner_done_at, updated_at)
+    VALUES (${clientSlug}, ${taskKey}, ${done}, ${done ? new Date().toISOString() : null}, now())
+    ON CONFLICT (client_slug, task_key)
+    DO UPDATE SET owner_done = ${done}, owner_done_at = ${done ? new Date().toISOString() : null}, updated_at = now()`;
 }
 
 // ═══════════════════════════════════════════════════════════

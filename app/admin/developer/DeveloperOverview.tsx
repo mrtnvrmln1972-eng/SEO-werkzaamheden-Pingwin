@@ -75,6 +75,9 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
   // Het taakvenster: een bestaande taak bewerken, of een nieuwe taak aanmaken
   // bij een klant (dan staat er geen taak in, alleen de klant).
   const [venster, setVenster] = useState<{ taak: Row | null; clientSlug: string; clientName: string } | null>(null);
+  // Welke klanten hun "Afgerond"-blok hebben opengeklapt. Standaard dicht: dat
+  // is nou juist het archief, dat hoeft niet standaard in beeld te staan.
+  const [afgerondOpen, setAfgerondOpen] = useState<Record<string, boolean>>({});
 
   // Na aanmaken, bewerken of weggooien komt de hele lijst terug van de server.
   function zetLijst(list: DevTask[]) {
@@ -114,6 +117,17 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
     applyStatus(idx, true, feedbackNote);
     if (alsoMail && r) mailMaarten(r, feedbackNote);
     setFeedbackFor(null); setFeedbackNote("");
+  }
+
+  // Maartens eigen vinkje: los van wat de developer al deed, bevestigt hij
+  // hiermee dat een taak echt klaar is. De taak verhuist dan naar het
+  // dichtgeklapte "Afgerond"-blok van die klant; ontvinken zet hem weer terug.
+  function toggleAfgerond(idx: number, checked: boolean) {
+    const r = rowsRef.current[idx];
+    if (!r) return;
+    const next = rowsRef.current.map((x, i) => (i === idx ? { ...x, ownerDone: checked } : x));
+    rowsRef.current = next; setRows(next);
+    fetch("/api/admin/developer", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "afgerond", clientSlug: r.clientSlug, taskKey: r.taskKey, done: checked }) }).catch(() => {});
   }
 
   // Ingebed in de cockpit: laad de dev-taken zelf (geen server-props).
@@ -172,12 +186,17 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
 
   const saveLabel = saving === "saving" ? "Opslaan..." : saving === "saved" ? "✓ Opgeslagen" : "";
 
-  // Groepeer de taken per klant (de array is al per klant gesorteerd).
-  const groups: { clientSlug: string; clientName: string; items: { r: Row; idx: number }[] }[] = [];
+  // Taken die Maarten zelf al heeft afgerond tellen niet meer mee als openstaand
+  // werk; ze staan alleen nog in het Afgerond-blok van hun klant.
+  const activeRows = rows.filter((r) => !r.ownerDone);
+
+  // Groepeer de taken per klant (de array is al per klant gesorteerd), open en
+  // afgerond apart: open staat in de gewone tabel, afgerond in het archiefje.
+  const groups: { clientSlug: string; clientName: string; items: { r: Row; idx: number }[]; afgerond: { r: Row; idx: number }[] }[] = [];
   rows.forEach((r, idx) => {
     let g = groups.find((g) => g.clientSlug === r.clientSlug);
-    if (!g) { g = { clientSlug: r.clientSlug, clientName: r.clientName, items: [] }; groups.push(g); }
-    g.items.push({ r, idx });
+    if (!g) { g = { clientSlug: r.clientSlug, clientName: r.clientName, items: [], afgerond: [] }; groups.push(g); }
+    (r.ownerDone ? g.afgerond : g.items).push({ r, idx });
   });
   // Afgevinkte (klaar) taken onderaan per klant; de rest houdt zijn volgorde.
   groups.forEach((g) => g.items.sort((a, b) => (a.r.devDone ? 1 : 0) - (b.r.devDone ? 1 : 0)));
@@ -185,13 +204,14 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
   // gewoon staan: dit is en blijft het overzicht over alle klanten heen.
   if (slug) groups.sort((a, b) => (a.clientSlug === slug ? -1 : 0) - (b.clientSlug === slug ? -1 : 0));
 
-  // Weekplanning: taken per uitvoerdatum + de nog niet ingeplande taken.
+  // Weekplanning: taken per uitvoerdatum + de nog niet ingeplande taken. Zelf
+  // afgeronde taken horen niet meer op het bord.
   const weekStart = mondayOf(weekOffset);
   const weekDays = Array.from({ length: 7 }, (_, i) => { const d = new Date(weekStart); d.setDate(d.getDate() + i); return d; });
   const todayIso = isoOf(new Date());
   const tasksByDay = new Map<string, { r: Row; idx: number }[]>();
-  rows.forEach((r, idx) => { if (r.execDate) { if (!tasksByDay.has(r.execDate)) tasksByDay.set(r.execDate, []); tasksByDay.get(r.execDate)!.push({ r, idx }); } });
-  const undated = rows.map((r, idx) => ({ r, idx })).filter((x) => !x.r.execDate);
+  rows.forEach((r, idx) => { if (r.ownerDone) return; if (r.execDate) { if (!tasksByDay.has(r.execDate)) tasksByDay.set(r.execDate, []); tasksByDay.get(r.execDate)!.push({ r, idx }); } });
+  const undated = rows.map((r, idx) => ({ r, idx })).filter((x) => !x.r.ownerDone && !x.r.execDate);
 
   const taskCard = (r: Row, idx: number) => (
     <div key={r.clientSlug + "|" + r.taskKey} className={"dev-task-card " + (r.devDone ? "dev-done" : "dev-todo")}>
@@ -220,16 +240,76 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
       )}
       <div className="dev-task-actions" onClick={(e) => e.stopPropagation()}>
         <label className="dev-check-label"><input type="checkbox" checked={r.devDone} onChange={(e) => toggleDone(idx, e.target.checked)} /> Klaar</label>
+        <label className="dev-check-label dev-check-afgerond"><input type="checkbox" checked={r.ownerDone} onChange={(e) => toggleAfgerond(idx, e.target.checked)} /> Afgerond</label>
         <button type="button" className="ghost-btn small" onClick={() => setVenster({ taak: r, clientSlug: r.clientSlug, clientName: r.clientName })} title="Taak, opmerking en documenten aanpassen">✎ Bewerk</button>
         <button type="button" className="ghost-btn small dev-mail-btn" onClick={() => mailMaarten(r, r.devNote)}>✉ Mail Maarten</button>
       </div>
     </div>
   );
 
+  // Kop + kolombreedtes van de taaktabel; open en Afgerond-tabel delen dezelfde vorm.
+  const devTableHead = (
+    <>
+      <colgroup>
+        <col style={{ width: "22px" }} />
+        <col />
+        <col />
+        <col style={{ width: "150px" }} />
+        <col style={{ width: "72px" }} />
+        <col style={{ width: "80px" }} />
+        <col style={{ width: "150px" }} />
+        <col style={{ width: "190px" }} />
+      </colgroup>
+      <thead>
+        <tr>
+          <th></th>
+          <th>Taak</th>
+          <th>Opm. developer</th>
+          <th>Documenten</th>
+          <th className="col-center">Klaar</th>
+          <th className="col-center">Afgerond</th>
+          <th>Uitvoerdatum</th>
+          <th></th>
+        </tr>
+      </thead>
+    </>
+  );
+
+  // Eén rij van de taaktabel. Slepen (prioriteit wijzigen) kan alleen in de
+  // open lijst; het Afgerond-archief staat vast, daar hoeft niets herordend.
+  const devRow = (r: Row, idx: number, sleepbaar: boolean) => (
+    <tr
+      key={r.clientSlug + "|" + r.taskKey}
+      className={(dragIdx === idx ? "dragging " : "") + (r.devDone ? "dev-done" : "dev-todo")}
+      onDragOver={sleepbaar ? (e) => e.preventDefault() : undefined}
+      onDrop={sleepbaar ? (e) => { e.stopPropagation(); moveTo(idx); } : undefined}
+    >
+      <td className="drag-handle" draggable={sleepbaar} onDragStart={sleepbaar ? () => setDragIdx(idx) : undefined} onDragEnd={sleepbaar ? () => setDragIdx(null) : undefined} title={sleepbaar ? "Sleep om de prioriteit te wijzigen" : undefined}>{sleepbaar ? "⠿" : ""}</td>
+      <td><span className="dev-cell" dangerouslySetInnerHTML={{ __html: safeHtml(r.taak) }} /></td>
+      <td><span className="dev-cell dev-muted" dangerouslySetInnerHTML={{ __html: safeHtml(r.toelichting) }} /></td>
+      <td>
+        {r.docs && r.docs.length > 0 ? (
+          <span className="dev-task-docs">
+            {r.docs.map((d) => (
+              <a key={d.url} href={d.url} target="_blank" rel="noreferrer" className="dev-doc-link" onClick={(e) => e.stopPropagation()}>{d.label}</a>
+            ))}
+          </span>
+        ) : <span className="muted">&mdash;</span>}
+      </td>
+      <td className="col-center"><button type="button" className={"dev-done-toggle" + (r.devDone ? " on" : "")} onClick={(e) => { e.stopPropagation(); toggleDone(idx, !r.devDone); }} title={r.devDone ? "Gereed (klik om terug te zetten)" : "Afvinken als klaar"}>{r.devDone ? "☑" : "☐"}</button></td>
+      <td className="col-center"><button type="button" className={"dev-done-toggle dev-afgerond-toggle-cell" + (r.ownerDone ? " on" : "")} onClick={(e) => { e.stopPropagation(); toggleAfgerond(idx, !r.ownerDone); }} title={r.ownerDone ? "Afgerond (klik om terug naar open te zetten)" : "Zelf afronden"}>{r.ownerDone ? "☑" : "☐"}</button></td>
+      <td><input type="date" className="dev-date" value={r.execDate || ""} onChange={(e) => setDate(idx, e.target.value)} /></td>
+      <td className="dev-rij-acties">
+        <button type="button" className="ghost-btn small" onClick={(e) => { e.stopPropagation(); setVenster({ taak: r, clientSlug: r.clientSlug, clientName: r.clientName }); }} title="Taak, opmerking en documenten aanpassen">✎ Bewerk</button>
+        <button type="button" className="ghost-btn small dev-mail-btn" onClick={(e) => { e.stopPropagation(); mailMaarten(r, r.devNote); }}>✉ Mail</button>
+      </td>
+    </tr>
+  );
+
   const content = (
     <>
         <div className="section-title">
-          Taken voor de developer ({rows.length})
+          Taken voor de developer ({activeRows.length})
           {saveLabel && <span className="focus-save-status" style={{ marginLeft: 12 }}>{saveLabel}</span>}
           <span className="dev-view-toggle">
             {slug && (
@@ -241,7 +321,7 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
         </div>
         <p className="dev-intro">
           {view === "list"
-            ? "Alle klanten bij elkaar: de taken die op status “Naar Dev” staan, plus de taken die je zelf aanmaakt. Sleep een taak binnen een klant om de prioriteit te bepalen, zet een uitvoerdatum, en open “Bewerk” om de opdracht, de opmerking en de documenten (ook een zip) bij te werken."
+            ? "Alle klanten bij elkaar: de taken die op status “Naar Dev” staan, plus de taken die je zelf aanmaakt. Sleep een taak binnen een klant om de prioriteit te bepalen, zet een uitvoerdatum, en open “Bewerk” om de opdracht, de opmerking en de documenten (ook een zip) bij te werken. Vink zelf “Afgerond” aan om een taak naar het archief van die klant te verplaatsen, los van het vinkje van de developer."
             : "Sleep taken naar een dag om ze in te plannen. De datum blijft bewaard (dezelfde als de uitvoerdatum in de lijst)."}
         </p>
         {loading && <p className="muted">Taken laden…</p>}
@@ -251,8 +331,11 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
             {slug ? " met de knop “Nieuwe taak” hierboven." : " met de knop “Taak” bij een klant."}
           </p>
         )}
+        {!loading && rows.length > 0 && activeRows.length === 0 && (
+          <p className="muted">Alle taken zijn afgerond. Klap “Afgerond” open bij een klant hieronder om ze terug te zien.</p>
+        )}
 
-        {view === "week" && rows.length > 0 && (
+        {view === "week" && activeRows.length > 0 && (
           <div className="cockpit-card dev-week">
             <div className="dev-week-nav">
               <button type="button" onClick={() => setWeekOffset((w) => w - 1)}>&larr; Vorige</button>
@@ -291,61 +374,36 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
               {g.clientName} <span className="dev-client-count">({g.items.length})</span>
               <button type="button" className="dev-nieuw-btn" onClick={() => setVenster({ taak: null, clientSlug: g.clientSlug, clientName: g.clientName })}>+ Taak</button>
             </div>
-            <div className="task-table-wrap">
-              <table className="task-table dev-table">
-                <colgroup>
-                  <col style={{ width: "22px" }} />
-                  <col />
-                  <col />
-                  <col style={{ width: "150px" }} />
-                  <col style={{ width: "72px" }} />
-                  <col style={{ width: "150px" }} />
-                  <col style={{ width: "190px" }} />
-                </colgroup>
-                <thead>
-                  <tr>
-                    <th></th>
-                    <th>Taak</th>
-                    <th>Opm. developer</th>
-                    <th>Documenten</th>
-                    <th className="col-center">Klaar</th>
-                    <th>Uitvoerdatum</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {g.items.map(({ r, idx }) => {
-                    return (
-                      <tr
-                        key={r.clientSlug + "|" + r.taskKey}
-                        className={(dragIdx === idx ? "dragging " : "") + (r.devDone ? "dev-done" : "dev-todo")}
-                        onDragOver={(e) => e.preventDefault()}
-                        onDrop={(e) => { e.stopPropagation(); moveTo(idx); }}
-                      >
-                        <td className="drag-handle" draggable onDragStart={() => setDragIdx(idx)} onDragEnd={() => setDragIdx(null)} title="Sleep om de prioriteit te wijzigen">⠿</td>
-                        <td><span className="dev-cell" dangerouslySetInnerHTML={{ __html: safeHtml(r.taak) }} /></td>
-                        <td><span className="dev-cell dev-muted" dangerouslySetInnerHTML={{ __html: safeHtml(r.toelichting) }} /></td>
-                        <td>
-                          {r.docs && r.docs.length > 0 ? (
-                            <span className="dev-task-docs">
-                              {r.docs.map((d) => (
-                                <a key={d.url} href={d.url} target="_blank" rel="noreferrer" className="dev-doc-link" onClick={(e) => e.stopPropagation()}>{d.label}</a>
-                              ))}
-                            </span>
-                          ) : <span className="muted">&mdash;</span>}
-                        </td>
-                        <td className="col-center"><button type="button" className={"dev-done-toggle" + (r.devDone ? " on" : "")} onClick={(e) => { e.stopPropagation(); toggleDone(idx, !r.devDone); }} title={r.devDone ? "Gereed (klik om terug te zetten)" : "Afvinken als klaar"}>{r.devDone ? "☑" : "☐"}</button></td>
-                        <td><input type="date" className="dev-date" value={r.execDate || ""} onChange={(e) => setDate(idx, e.target.value)} /></td>
-                        <td className="dev-rij-acties">
-                          <button type="button" className="ghost-btn small" onClick={(e) => { e.stopPropagation(); setVenster({ taak: r, clientSlug: r.clientSlug, clientName: r.clientName }); }} title="Taak, opmerking en documenten aanpassen">✎ Bewerk</button>
-                          <button type="button" className="ghost-btn small dev-mail-btn" onClick={(e) => { e.stopPropagation(); mailMaarten(r, r.devNote); }}>✉ Mail</button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            {g.items.length > 0 ? (
+              <div className="task-table-wrap">
+                <table className="task-table dev-table">
+                  {devTableHead}
+                  <tbody>{g.items.map(({ r, idx }) => devRow(r, idx, true))}</tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="muted dev-niets-open">Niets open voor deze klant.</p>
+            )}
+            {g.afgerond.length > 0 && (
+              <div className="dev-afgerond-blok">
+                <button
+                  type="button"
+                  className="dev-afgerond-knop"
+                  onClick={() => setAfgerondOpen((o) => ({ ...o, [g.clientSlug]: !o[g.clientSlug] }))}
+                >
+                  <span className={"dev-afgerond-pijl" + (afgerondOpen[g.clientSlug] ? " open" : "")}>▸</span>
+                  Afgerond ({g.afgerond.length})
+                </button>
+                {afgerondOpen[g.clientSlug] && (
+                  <div className="task-table-wrap dev-afgerond-tabel">
+                    <table className="task-table dev-table">
+                      {devTableHead}
+                      <tbody>{g.afgerond.map(({ r, idx }) => devRow(r, idx, false))}</tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ))}
 

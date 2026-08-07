@@ -1372,6 +1372,18 @@ tbody td:last-child { text-align: center; }
 .dev-task-actions { display: flex; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; cursor: default; }
 .dev-check-label { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; color: var(--dark); cursor: pointer; }
 .dev-check-label input { width: 15px; height: 15px; accent-color: #2E7D32; cursor: pointer; }
+/* Maartens eigen "Afgerond"-vinkje: eigen kleur (blauw) zodat het los blijft
+   staan van het groene "Klaar"-vinkje van de developer. */
+.dev-check-afgerond input { accent-color: #1565C0; }
+.dev-afgerond-toggle-cell.on { color: #1565C0; }
+.dev-niets-open { margin: 4px 0 0; }
+.dev-afgerond-blok { margin-top: var(--s-3); }
+.dev-afgerond-knop { display: inline-flex; align-items: center; gap: var(--s-1); background: none; border: none; padding: var(--s-1) 0; font-size: var(--fs-xs); font-weight: 700; color: var(--gray); cursor: pointer; }
+.dev-afgerond-knop:hover { color: var(--orange-dark); }
+.dev-afgerond-pijl { display: inline-block; font-size: 10px; transition: transform .15s ease; }
+.dev-afgerond-pijl.open { transform: rotate(90deg); }
+.dev-afgerond-tabel { margin-top: var(--s-2); }
+.dev-afgerond-tabel .dev-cell, .dev-afgerond-tabel .dev-cell.dev-muted { opacity: .7; }
 .dev-client { font-weight: 700; color: var(--dark); font-size: 13px; }
 .dev-cell { font-size: 13px; color: var(--dark); line-height: 1.4; word-break: break-word; }
 .dev-cell.dev-muted { color: var(--gray); }

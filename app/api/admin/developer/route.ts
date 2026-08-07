@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { guardDev } from "../../../../lib/admin-scope";
 import {
-  getDeveloperTasks, saveDeveloperOrder, setDeveloperStatus,
+  getDeveloperTasks, saveDeveloperOrder, setDeveloperStatus, setOwnerDone,
   nieuweDevTaak, bewerkDevTaak, voegDevDocToe, verwijderDevDoc, verwijderDevTaak,
 } from "../../../../lib/developer";
 import { sanitizeHtml } from "../../../../lib/veilige-html";
@@ -74,6 +74,15 @@ export async function POST(req: NextRequest) {
     await setDeveloperStatus(clientSlug, taskKey, !!body.done, String(body.note || ""), {
       naam, isOwner: g.scope.isOwner,
     });
+    return NextResponse.json({ ok: true });
+  }
+
+  // Actie "afgerond": Maartens eigen vinkje, los van het vinkje van de developer.
+  // Alleen hijzelf mag dit zetten; het is zijn eigen controle, niet die van een gast.
+  if (body.action === "afgerond") {
+    if (!clientSlug || !taskKey) return NextResponse.json({ ok: false, error: "Taak ontbreekt." }, { status: 400 });
+    if (!g.scope.isOwner) return NextResponse.json({ ok: false, error: "Alleen Maarten kan een taak zelf afronden." }, { status: 403 });
+    await setOwnerDone(clientSlug, taskKey, !!body.done);
     return NextResponse.json({ ok: true });
   }
 
