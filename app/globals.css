@@ -3609,6 +3609,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .wp-mail-herinner input[type="number"] { width: 3.5rem; padding: var(--s-1) var(--s-2);
   border: 1px solid var(--border); border-radius: var(--r-sm); font: inherit; text-align: center; }
 .wp-mail-herinner input[type="number"]:disabled { opacity: .5; }
+/* Staan er twee van deze checkboxen in dezelfde voet (zoals bij het doorzetten
+   naar de developer: "mail erachteraan" én "herinner me"), dan hoort alleen de
+   eerste de rest naar rechts te duwen; anders spatiëren ze los van elkaar. */
+.wp-mail-herinner + .wp-mail-herinner { margin-right: 0; }
 
 /* Meta doorgevoerd-status: groene "is doorgevoerd" + live-controle */
 .meta-done-row { gap: 8px; }

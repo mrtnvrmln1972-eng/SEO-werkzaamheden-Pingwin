@@ -36,8 +36,14 @@ export default function DevDoorzetten({ slug, id, kaartTitel, onKlaar, onSluit }
   // en een belofte: hierna kun je met één knop nameten of het gebeurd is.
   const [puntKeuzes, setPuntKeuzes] = useState<{ id: string; label: string }[]>([]);
   const [punten, setPunten] = useState<Record<string, boolean>>({});
+  const [url, setUrl] = useState("");
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState("");
+  // Ook zónder dat er meteen een mail achteraan gaat wil je soms na een paar
+  // dagen zelf checken of de sitebouwer de taak heeft opgepakt. Uit tenzij je
+  // hem aanzet; zeven dagen is de gebruikelijke termijn.
+  const [herinner, setHerinner] = useState(false);
+  const [herinnerDagen, setHerinnerDagen] = useState(7);
 
   useEffect(() => {
     let off = false;
@@ -52,6 +58,7 @@ export default function DevDoorzetten({ slug, id, kaartTitel, onKlaar, onSluit }
         setToelichting(String(d.toelichting || ""));
         setHintTaak(String(d.voorstelTaak || "").replace(/<[^>]*>/g, "").trim());
         setDocs(Array.isArray(d.docs) ? d.docs : []);
+        setUrl(String(d.url || ""));
         setPuntKeuzes(Array.isArray(d.puntKeuzes) ? d.puntKeuzes : []);
         const p: Record<string, boolean> = {};
         for (const id of (d.punten || []) as string[]) p[id] = true;
@@ -78,9 +85,10 @@ export default function DevDoorzetten({ slug, id, kaartTitel, onKlaar, onSluit }
       const d = await fetch("/api/admin/weekplan/dev", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          slug, id, naarDev: true, taak, toelichting,
+          slug, id, naarDev: true, taak, toelichting, kaartTitel, url,
           docs: docs.filter((x) => gekozen[x.url]),
           punten: puntKeuzes.filter((p) => punten[p.id]).map((p) => p.id),
+          herinnerDagen: herinner ? herinnerDagen : 0,
         }),
       }).then((r) => r.json());
       if (d?.ok) onKlaar(mailErachteraan);
@@ -156,6 +164,13 @@ export default function DevDoorzetten({ slug, id, kaartTitel, onKlaar, onSluit }
               <label className="wp-mail-herinner" title="Opent meteen de mail aan de sitebouwer, met deze kaart als onderwerp">
                 <input type="checkbox" checked={mailErachteraan} onChange={(e) => setMailErachteraan(e.target.checked)} />
                 <span>Daarna meteen de sitebouwer mailen</span>
+              </label>
+              <label className="wp-mail-herinner" title="Op die dag verschijnt er een melding bij het belletje in de kopbalk">
+                <input type="checkbox" checked={herinner} onChange={(e) => setHerinner(e.target.checked)} />
+                <span>Herinner me over</span>
+                <input type="number" min={1} max={90} value={herinnerDagen} disabled={!herinner}
+                  onChange={(e) => setHerinnerDagen(Math.min(90, Math.max(1, Number(e.target.value) || 1)))} />
+                <span>dagen om te checken</span>
               </label>
               <button type="button" className="ghost-btn small" onClick={onSluit}>Annuleren</button>
               <button type="button" className="primary-btn small" disabled={bezig} onClick={() => void doorzetten()}>
