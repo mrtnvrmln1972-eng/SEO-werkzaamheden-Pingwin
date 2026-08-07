@@ -59,7 +59,7 @@ export const EMPTY_ORG: OrgData = {
   artsen: [], merken: [], retourUrl: "", retourTermijn: "", verzendInfo: "", diensten: [],
 };
 
-export type OrgRecord = { data: OrgData; locked: boolean; shareToken: string; updatedAt: string | null; updatedBy: string };
+export type OrgRecord = { data: OrgData; locked: boolean; shareToken: string; devShareToken: string; updatedAt: string | null; updatedBy: string };
 
 let tableReady: Promise<void> | null = null;
 function ensureTable(): Promise<void> {
@@ -76,6 +76,10 @@ async function doEnsure(): Promise<void> {
       updated_by  TEXT,
       updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
     )`;
+  // Losse, alleen-lezen deel-link voor de sitebouwer/developer (naast de
+  // bewerkbare klant-link hierboven): eigen token, zodat de twee doelgroepen
+  // nooit per ongeluk elkaars link (en rechten) in handen krijgen.
+  await sql`ALTER TABLE client_org_data ADD COLUMN IF NOT EXISTS dev_share_token TEXT`;
 }
 
 function normalize(raw: unknown): OrgData {
@@ -123,6 +127,7 @@ function rowToRecord(r: any): OrgRecord {
     data: normalize(typeof r.data === "string" ? JSON.parse(r.data) : r.data),
     locked: !!r.locked,
     shareToken: (r.share_token as string) || "",
+    devShareToken: (r.dev_share_token as string) || "",
     updatedAt: r.updated_at ? new Date(r.updated_at as string).toISOString() : null,
     updatedBy: (r.updated_by as string) || "",
   };
@@ -145,13 +150,18 @@ export async function getOrgData(slug: string): Promise<OrgRecord> {
       rec.shareToken = crypto.randomBytes(18).toString("base64url");
       await sql`UPDATE client_org_data SET share_token = ${rec.shareToken} WHERE client_slug = ${slug}`;
     }
+    if (!rec.devShareToken) {
+      rec.devShareToken = crypto.randomBytes(18).toString("base64url");
+      await sql`UPDATE client_org_data SET dev_share_token = ${rec.devShareToken} WHERE client_slug = ${slug}`;
+    }
     return rec;
   }
   // Nog geen rij: alleen aanmaken voor een klant die echt bestaat.
-  if (!(await klantBestaat(slug))) return { data: { ...EMPTY_ORG }, locked: false, shareToken: "", updatedAt: null, updatedBy: "" };
+  if (!(await klantBestaat(slug))) return { data: { ...EMPTY_ORG }, locked: false, shareToken: "", devShareToken: "", updatedAt: null, updatedBy: "" };
   const token = crypto.randomBytes(18).toString("base64url");
-  await sql`INSERT INTO client_org_data (client_slug, data, share_token) VALUES (${slug}, ${JSON.stringify(EMPTY_ORG)}, ${token}) ON CONFLICT (client_slug) DO NOTHING`;
-  return { data: { ...EMPTY_ORG }, locked: false, shareToken: token, updatedAt: null, updatedBy: "" };
+  const devToken = crypto.randomBytes(18).toString("base64url");
+  await sql`INSERT INTO client_org_data (client_slug, data, share_token, dev_share_token) VALUES (${slug}, ${JSON.stringify(EMPTY_ORG)}, ${token}, ${devToken}) ON CONFLICT (client_slug) DO NOTHING`;
+  return { data: { ...EMPTY_ORG }, locked: false, shareToken: token, devShareToken: devToken, updatedAt: null, updatedBy: "" };
 }
 
 export async function saveOrgData(slug: string, data: OrgData, by: "admin" | "klant"): Promise<{ ok: boolean; error?: string }> {
@@ -208,6 +218,16 @@ export async function getSlugByOrgToken(token: string): Promise<string | null> {
   await ensureSchema();
   await ensureTable();
   const { rows } = await sql`SELECT client_slug FROM client_org_data WHERE share_token = ${token} LIMIT 1`;
+  return rows[0] ? (rows[0].client_slug as string) : null;
+}
+
+// Slug opzoeken bij het (losse) sitebouwer-token: alleen-lezen overzicht,
+// nooit hetzelfde token als de bewerkbare klantpagina hierboven.
+export async function getSlugByOrgDevToken(token: string): Promise<string | null> {
+  if (!token) return null;
+  await ensureSchema();
+  await ensureTable();
+  const { rows } = await sql`SELECT client_slug FROM client_org_data WHERE dev_share_token = ${token} LIMIT 1`;
   return rows[0] ? (rows[0].client_slug as string) : null;
 }
 

@@ -2431,6 +2431,35 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 }
 .org-kolom { display: flex; flex-direction: column; gap: var(--s-3); }
 
+/* Inklapbare org-secties (vestigingen/artsen/webshop/diensten): het kopje is
+   dan een knop i.p.v. een h4, met UA-knopstijl gereset zodat hij er precies
+   zo uitziet als de niet-inklapbare kopjes. */
+button.org-sec-kop {
+  appearance: none; border: none; background: none; margin: 0; width: 100%;
+  font: inherit; text-align: left; cursor: pointer; color: var(--orange-dark);
+}
+button.org-sec-kop:hover { color: var(--orange); }
+.org-sec-caret { font-size: 12px; color: var(--orange); flex-shrink: 0; }
+
+/* Knop + "?"-uitlegbolletje naast elkaar, voor de actieknoppenrij. */
+.org-action-hint { display: inline-flex; align-items: center; gap: var(--s-1); }
+
+/* Deel-paneel (sitebouwer/developer): link kopiëren of mailen, met onthouden e-mailadres. */
+.org-devshare-panel {
+  background: var(--brand-orange-faint); border: 1px solid var(--card-border); border-radius: var(--r-lg);
+  padding: var(--s-3) var(--s-4); margin: var(--s-2) 0; display: flex; flex-direction: column; gap: var(--s-2);
+}
+.org-devshare-head { display: flex; align-items: center; gap: var(--s-2); color: var(--orange-dark); font-weight: 700; }
+.org-devshare-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
+.org-devshare-mail {
+  flex: 1; min-width: 220px; font-family: inherit; font-size: var(--fs-base); line-height: var(--lh-base);
+  padding: var(--s-2) var(--s-3); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--white);
+}
+.org-devshare-mail:focus { outline: none; border-color: var(--orange); }
+.org-devshare-sitewide { margin-top: var(--s-5); }
+.org-devshare-json { margin-top: var(--s-2); }
+.org-devshare-note { margin-top: var(--s-3); }
+
 /* Een rij binnen een blok (vestiging, arts, dienst): wit kaartje, naam boven,
    details eronder. Op smal scherm klappen de details onder elkaar. */
 .org-rij, .org-vest {

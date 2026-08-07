@@ -625,7 +625,13 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "site-brede blok én het blok per pagina. Zo staat het adres van de klant op één plek en niet in dertig " +
           "losse stukjes code die uit elkaar gaan lopen.\n\n" +
           "Van elke pagina wordt ook gemeten welke schema-types er nú op staan, waarbij bewust een lijst wordt " +
-          "bijgehouden van wat wél meetelt. Een zwarte lijst van hulptypes loopt altijd één stap achter.",
+          "bijgehouden van wat wél meetelt. Een zwarte lijst van hulptypes loopt altijd één stap achter.\n\n" +
+          "De lange, herhaalde onderdelen van het formulier (vestigingen, artsen, webshop-gegevens, diensten) " +
+          "staan standaard dicht onder een klapkopje met het aantal en wat er nog ontbreekt; zo blijft het " +
+          "overzicht compact ook bij tientallen vestigingen of artsen. Naast de deel-link voor de klant is er " +
+          "ook een aparte, alleen-lezen deel-link voor de sitebouwer/developer: die toont de bedrijfsgegevens " +
+          "plus de kant-en-klare site-brede JSON-LD, kopieerbaar of rechtstreeks te mailen (het e-mailadres " +
+          "wordt onthouden, hetzelfde adres als bij de developer-mail in Werkzaamheden).",
       },
       {
         titel: "Zoekwoordkansen en de gaten in de site",

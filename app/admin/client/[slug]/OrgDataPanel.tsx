@@ -38,6 +38,13 @@ export function OrgDataForm({ data, onChange, disabled }: { data: OrgFormData; o
   // Wat nodig is en nog leeg is, komt in het rood in beeld: het veld blijft dus
   // gewoon zichtbaar en invulbaar, met de melding dat het nog ontbreekt.
   const mist = ontbrekendeSleutels({ ...data, vestigingen: data.vestigingen || [] });
+  // De lange, herhaalde secties (vestigingen, artsen, webshop, diensten) staan
+  // standaard dicht: dat houdt het overzicht compact, ook als je de kaart zelf
+  // openklapt. Het kopje blijft altijd zichtbaar met het aantal en wat er nog
+  // ontbreekt, zodat je meteen ziet of er iets te doen is zonder open te klikken.
+  const [secOpen, setSecOpen] = useState<Record<string, boolean>>({});
+  const misAantal = (prefix?: string, extraSleutel?: string) =>
+    (prefix ? [...mist].filter((k) => k.startsWith(prefix)).length : 0) + (extraSleutel && mist.has(extraSleutel) ? 1 : 0);
   const zetVestiging = (i: number, patch: Partial<OrgVestiging>) =>
     set({ vestigingen: (data.vestigingen || []).map((v, j) => (j === i ? { ...v, ...patch } : v)) });
 
@@ -65,17 +72,34 @@ export function OrgDataForm({ data, onChange, disabled }: { data: OrgFormData; o
   const aantalMist = mist.size;
 
   // Eén vaste vorm voor elk blok: oranje kopje, dun lijntje, en de velden op een
-  // zacht vlak zodat de witte invoervelden er zichtbaar op liggen.
-  const sectie = (titel: string, inhoud: React.ReactNode, opties?: { aantal?: number; hint?: React.ReactNode }) => (
-    <section className="org-sec">
-      <h4 className="org-sec-kop">
+  // zacht vlak zodat de witte invoervelden er zichtbaar op liggen. Met een
+  // `inklapKey` wordt het kopje een knop die de inhoud in/uit klapt (standaard
+  // dicht); zonder die key blijft het blok gewoon altijd open, zoals nu.
+  const sectie = (titel: string, inhoud: React.ReactNode, opties?: { aantal?: number; hint?: React.ReactNode; inklapKey?: string; misAantal?: number }) => {
+    const key = opties?.inklapKey;
+    const open = !key || !!secOpen[key];
+    const kopInhoud = (
+      <>
+        {key && <span className="org-sec-caret">{open ? "▾" : "▸"}</span>}
         <span>{titel}</span>
         {typeof opties?.aantal === "number" && <span className="org-sec-aantal">{opties.aantal}</span>}
+        {!!opties?.misAantal && <span className="org-mis-vlag">{opties.misAantal} {opties.misAantal === 1 ? "ontbreekt" : "ontbreken"}</span>}
         {opties?.hint}
-      </h4>
-      {inhoud}
-    </section>
-  );
+      </>
+    );
+    return (
+      <section className="org-sec">
+        {key ? (
+          <button type="button" className="org-sec-kop" onClick={() => setSecOpen((s) => ({ ...s, [key]: !s[key] }))}>
+            {kopInhoud}
+          </button>
+        ) : (
+          <h4 className="org-sec-kop">{kopInhoud}</h4>
+        )}
+        {open && inhoud}
+      </section>
+    );
+  };
 
   return (
     <div className="org-form">
@@ -140,7 +164,7 @@ export function OrgDataForm({ data, onChange, disabled }: { data: OrgFormData; o
           </div>
         ))}
         {!disabled && <button type="button" className="ghost-btn small" onClick={() => set({ vestigingen: [...(data.vestigingen || []), { ...LEGE_VESTIGING }] })}>+ Vestiging toevoegen</button>}
-      </>, { aantal: (data.vestigingen || []).length, hint: <HelpHint wide text="Elke locatie waar klanten of patiënten terechtkunnen, met eigen adres, telefoonnummer en openingstijden. Google en AI-assistenten maken hier per vestiging een eigen vermelding van, gekoppeld aan het bedrijf; dat is wat lokale zichtbaarheid ('kliniek Utrecht') mogelijk maakt. Zonder adres én openingstijden kan die vermelding niet worden gemaakt, daarom staan die velden rood zolang ze leeg zijn." /> })}
+      </>, { aantal: (data.vestigingen || []).length, inklapKey: "vestigingen", misAantal: misAantal("vestiging."), hint: <HelpHint wide text="Elke locatie waar klanten of patiënten terechtkunnen, met eigen adres, telefoonnummer en openingstijden. Google en AI-assistenten maken hier per vestiging een eigen vermelding van, gekoppeld aan het bedrijf; dat is wat lokale zichtbaarheid ('kliniek Utrecht') mogelijk maakt. Zonder adres én openingstijden kan die vermelding niet worden gemaakt, daarom staan die velden rood zolang ze leeg zijn." /> })}
       {sectie("Bereikbaarheid en vindbaarheid", <div className="org-kolom">
       <label className={"org-field" + (mist.has("sameAs") ? " org-mis" : "")}>
         <span className="org-label">Sociale profielen en vermeldingen (één per regel)<HelpHint text="Volledige links naar Facebook, Instagram, LinkedIn, YouTube, de Google Business-vermelding, KVK-pagina, enz. Deze vertellen Google en AI-systemen dat al die profielen bij hetzelfde bedrijf horen." />{mist.has("sameAs") && <span className="org-mis-vlag">ontbreekt nog</span>}</span>
@@ -172,7 +196,7 @@ export function OrgDataForm({ data, onChange, disabled }: { data: OrgFormData; o
             </div>
           ))}
           {!disabled && <button type="button" className="ghost-btn small" onClick={() => set({ artsen: [...data.artsen, { naam: "", functie: "", specialisatie: "", big: "", fotoUrl: "", profielUrl: "" }] })}>+ Arts toevoegen</button>}
-        </>, { aantal: data.artsen.length, hint: <HelpHint wide text="De artsen/behandelaren die op de website staan. Naam, functie en specialisatie helpen Google en AI-systemen het vertrouwen in medische informatie te bepalen; het BIG-nummer is daarbij het sterkste bewijs (openbaar register). Deze gegevens koppelen we aan de behandelpagina's." /> })
+        </>, { aantal: data.artsen.length, inklapKey: "artsen", misAantal: misAantal("arts.", "artsen"), hint: <HelpHint wide text="De artsen/behandelaren die op de website staan. Naam, functie en specialisatie helpen Google en AI-systemen het vertrouwen in medische informatie te bepalen; het BIG-nummer is daarbij het sterkste bewijs (openbaar register). Deze gegevens koppelen we aan de behandelpagina's." /> })
       )}
       {(data.bedrijfstype === "webshop" || data.merken.length > 0 || data.retourUrl || data.retourTermijn || data.verzendInfo) && (
         sectie("Webshop-gegevens", <div className="org-grid">
@@ -180,7 +204,7 @@ export function OrgDataForm({ data, onChange, disabled }: { data: OrgFormData; o
             <label className="org-field"><span className="org-label">Retourbeleid-URL</span><input value={data.retourUrl} disabled={disabled} onChange={(e) => set({ retourUrl: e.target.value })} /></label>
             <label className="org-field"><span className="org-label">Retourtermijn</span><input placeholder="bijv. 30 dagen" value={data.retourTermijn} disabled={disabled} onChange={(e) => set({ retourTermijn: e.target.value })} /></label>
             <label className="org-field"><span className="org-label">Verzendinformatie</span><input placeholder="bijv. gratis vanaf €50, 1-2 werkdagen" value={data.verzendInfo} disabled={disabled} onChange={(e) => set({ verzendInfo: e.target.value })} /></label>
-        </div>, { hint: <HelpHint wide text="Retourbeleid en verzendinformatie zijn vereisten van Google om producten met prijs en voorraad in de zoekresultaten te tonen. Vul alleen in wat ook echt op de site staat." /> })
+        </div>, { aantal: data.merken.length, inklapKey: "webshop", misAantal: misAantal(undefined, "retourUrl"), hint: <HelpHint wide text="Retourbeleid en verzendinformatie zijn vereisten van Google om producten met prijs en voorraad in de zoekresultaten te tonen. Vul alleen in wat ook echt op de site staat." /> })
       )}
       {(data.bedrijfstype === "dienstverlener" || data.diensten.length > 0) && (
         sectie("Diensten en behandelingen", <>
@@ -194,7 +218,7 @@ export function OrgDataForm({ data, onChange, disabled }: { data: OrgFormData; o
             </div>
           ))}
           {!disabled && <button type="button" className="ghost-btn small" onClick={() => set({ diensten: [...data.diensten, { naam: "", omschrijving: "" }] })}>+ Dienst toevoegen</button>}
-        </>, { aantal: data.diensten.length, hint: <HelpHint wide text="De hoofddiensten of behandelingen van het bedrijf. Elke dienst wordt in de structured data een eigen vermelding die aan het bedrijf en het werkgebied gekoppeld is." /> })
+        </>, { aantal: data.diensten.length, inklapKey: "diensten", misAantal: misAantal("dienst."), hint: <HelpHint wide text="De hoofddiensten of behandelingen van het bedrijf. Elke dienst wordt in de structured data een eigen vermelding die aan het bedrijf en het werkgebied gekoppeld is." /> })
       )}
       {sectie("Opmerkingen", (
         <label className="org-field">
@@ -210,9 +234,13 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
   const [data, setData] = useState<OrgFormData | null>(null);
   const [locked, setLocked] = useState(false);
   const [shareToken, setShareToken] = useState("");
+  const [devShareToken, setDevShareToken] = useState("");
   const [busy, setBusy] = useState("");
   const [msg, setMsg] = useState("");
   const [open, setOpen] = useState(false);
+  const [deelOpen, setDeelOpen] = useState(false);
+  const [devTo, setDevTo] = useState("");
+  const [devCopied, setDevCopied] = useState(false);
 
   // Wat er in het formulier staat en wat er als laatste bewaard is. Zolang die
   // twee gelijk zijn valt er niets op te slaan; wijkt het af, dan slaan we het
@@ -223,11 +251,18 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
 
   async function laadOrg() {
     const d = await fetch(`/api/admin/org-data?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).catch(() => null);
-    if (d?.ok) { bewaard.current = JSON.stringify(d.data); setData(d.data); setLocked(!!d.locked); setShareToken(d.shareToken || ""); }
+    if (d?.ok) { bewaard.current = JSON.stringify(d.data); setData(d.data); setLocked(!!d.locked); setShareToken(d.shareToken || ""); setDevShareToken(d.devShareToken || ""); }
   }
   useEffect(() => { void laadOrg(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [slug]);
+  // De sitebouwer/developer die je hier mailt is dezelfde als in het
+  // Werkzaamheden-tabblad: één plek waar het dashboard dat e-mailadres
+  // onthoudt (localStorage), zodat je het maar één keer hoeft te typen.
+  useEffect(() => {
+    try { setDevTo(localStorage.getItem("pingwin-dev-email") || "tony@pingwin.nl"); } catch { setDevTo("tony@pingwin.nl"); }
+  }, []);
 
   const shareUrl = shareToken && typeof window !== "undefined" ? `${window.location.origin}/share/org/${shareToken}` : "";
+  const devShareUrl = devShareToken && typeof window !== "undefined" ? `${window.location.origin}/share/org-dev/${devShareToken}` : "";
 
   async function save(stil = false) {
     if (!data) return true;
@@ -320,6 +355,20 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
     );
     window.open(`mailto:${to}?subject=${subject}&body=${body}`, "_blank");
   }
+  async function copyDevLink() {
+    if (!devShareUrl) return;
+    try { await navigator.clipboard.writeText(devShareUrl); setDevCopied(true); setTimeout(() => setDevCopied(false), 2000); } catch { /* handmatig */ }
+  }
+  function mailDevLink() {
+    const to = devTo.trim();
+    if (!to || !devShareUrl) return;
+    try { localStorage.setItem("pingwin-dev-email", to); } catch { /* geen opslag */ }
+    const subject = encodeURIComponent(`Structured data ${data?.bedrijfsnaam ? `${data.bedrijfsnaam} ` : ""}doorvoeren`);
+    const body = encodeURIComponent(
+      `Hoi,\n\nHierbij een overzicht (alleen-lezen) met de bedrijfsgegevens en de site-brede structured-data-code voor deze klant:\n\n${devShareUrl}\n\nDe pagina legt uit hoe het in elkaar zit; per pagina (behandeling, dienst, product) volgt de aanvullende structured data apart.\n\nGroet,\nMaarten`,
+    );
+    window.open(`mailto:${to}?subject=${subject}&body=${body}`, "_blank");
+  }
 
   return (
     <div className="cockpit-card strategy-card">
@@ -341,10 +390,32 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
                 : "Zoekt de website en het web af naar wat hier nog ontbreekt. Vult alleen lege velden; bestaande gegevens blijven staan."}>
               {busy === "autofill" ? "Website + web doorzoeken… (kan een minuut duren)" : "Ontbrekende gegevens ophalen"}
             </button>
-            <button type="button" className="ghost-btn small" onClick={() => void save()} disabled={!!busy || !data}>{busy === "save" ? "Opslaan…" : "Opslaan"}</button>
-            <button type="button" className="ghost-btn small" onClick={toggleLock} disabled={!!busy}>{locked ? "Ontgrendelen" : "Vergrendelen"}</button>
-            {shareUrl && <button type="button" className="ghost-btn small" onClick={copyLink} title={shareUrl}>Deel-link kopiëren</button>}
-            {shareUrl && <button type="button" className="ghost-btn small" onClick={mailLink}>Mail naar klant</button>}
+            <span className="org-action-hint">
+              <button type="button" className="ghost-btn small" onClick={() => void save()} disabled={!!busy || !data}>{busy === "save" ? "Opslaan…" : "Opslaan"}</button>
+              <HelpHint text="Slaat de ingevulde bedrijfsgegevens meteen op. Dit gebeurt ook automatisch, een paar seconden nadat je stopt met typen; deze knop is er voor als je dat niet wilt afwachten." />
+            </span>
+            <span className="org-action-hint">
+              <button type="button" className="ghost-btn small" onClick={toggleLock} disabled={!!busy}>{locked ? "Ontgrendelen" : "Vergrendelen"}</button>
+              <HelpHint text="Zet de gegevens vast als de bevestigde bron voor alle structured data. De klant kan ze dan niet meer wijzigen via de deel-link. Ontgrendel je later, dan kan de klant weer aanvullen." />
+            </span>
+            {devShareUrl && (
+              <span className="org-action-hint">
+                <button type="button" className="ghost-btn small" onClick={() => setDeelOpen((v) => !v)}>Deel</button>
+                <HelpHint text="Maakt een alleen-lezen link met deze bedrijfsgegevens en de site-brede schema-code, klaar om naar je sitebouwer of developer te sturen. Die kan er niets in wijzigen." />
+              </span>
+            )}
+            {shareUrl && (
+              <span className="org-action-hint">
+                <button type="button" className="ghost-btn small" onClick={copyLink} title={shareUrl}>Link kopiëren</button>
+                <HelpHint text="Kopieert de link waarmee de klant zelf deze bedrijfsgegevens kan bekijken en aanvullen." />
+              </span>
+            )}
+            {shareUrl && (
+              <span className="org-action-hint">
+                <button type="button" className="ghost-btn small" onClick={mailLink}>Mail naar klant</button>
+                <HelpHint text="Opent een kant-en-klare mail naar de klant met de deel-link erin, zodat die de gegevens kan nalopen en aanvullen." />
+              </span>
+            )}
             {/* Wat er met je wijziging gebeurt, zonder dat je op Opslaan hoeft te letten. */}
             {bewaarStand && (
               <span className={"org-bewaar" + (bewaarStand === "fout" ? " org-bewaar-fout" : "")}>
@@ -352,6 +423,19 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
               </span>
             )}
           </div>
+          {deelOpen && devShareUrl && (
+            <div className="org-devshare-panel">
+              <div className="org-devshare-head">
+                <strong>Delen met je sitebouwer</strong>
+                <HelpHint text="Deze link toont de bedrijfsgegevens en (als die al gegenereerd is) de site-brede schema-code, alleen-lezen. Handig om in één keer naar de developer te sturen die de structured data gaat verwerken." />
+              </div>
+              <div className="org-devshare-row">
+                <button type="button" className="ghost-btn small" onClick={copyDevLink}>{devCopied ? "✓ gekopieerd" : "Kopieer link"}</button>
+                <input className="org-devshare-mail" value={devTo} onChange={(e) => setDevTo(e.target.value)} placeholder="e-mail van de sitebouwer" />
+                <button type="button" className="ghost-btn small" onClick={mailDevLink} disabled={!devTo.trim()}>Mail naar sitebouwer</button>
+              </div>
+            </div>
+          )}
           {msg && <div className="saved-msg" style={{ margin: "8px 0" }}>{msg}</div>}
           {data ? <OrgDataForm data={data} onChange={setData} disabled={busy === "autofill"} /> : <div className="muted">Laden…</div>}
           <div className="org-sitewide">
