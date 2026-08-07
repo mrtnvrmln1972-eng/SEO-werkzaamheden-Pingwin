@@ -37,6 +37,26 @@ function typesOf(n: Node): string[] {
   return (Array.isArray(t) ? t : [t]).map((x) => String(x || "")).filter(Boolean);
 }
 
+// De organisatie-achtige node die de plugin (of handmatige code) al op de
+// homepage zet, met zijn eigen @id: zodat het site-brede blok daaraan kan
+// vastknopen (aanvullen) in plaats van een tweede, losse organisatie te
+// verzinnen. Zonder @id op die node is er niets om aan vast te knopen; dan
+// geeft deze functie null en blijft het site-brede blok zelfstandig.
+const ORG_ACHTIGE_TYPES = ["Organization", "LocalBusiness", "MedicalClinic", "MedicalOrganization", "MedicalBusiness", "Corporation", "Store", "Restaurant", "ProfessionalService", "HomeAndConstructionBusiness"];
+export function findOrganizationAnchor(rawLd: string[]): { id: string; type: string } | null {
+  const nodes: Node[] = [];
+  for (const raw of rawLd || []) {
+    try { flatten(JSON.parse(raw), nodes); } catch { /* kapot blok telt niet mee */ }
+  }
+  for (const n of nodes) {
+    const id = String(n["@id"] || "");
+    if (!id) continue;
+    const type = typesOf(n).find((t) => ORG_ACHTIGE_TYPES.includes(t));
+    if (type) return { id, type };
+  }
+  return null;
+}
+
 export function analyzeExistingSchema(rawLd: string[]): SchemaInventory {
   const nodes: Node[] = [];
   let blokken = 0;

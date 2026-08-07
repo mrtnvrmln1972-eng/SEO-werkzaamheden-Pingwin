@@ -242,6 +242,7 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
   const [deelOpen, setDeelOpen] = useState(false);
   const [devTo, setDevTo] = useState("");
   const [devCopied, setDevCopied] = useState(false);
+  const [dataOpen, setDataOpen] = useState(false);
 
   // Wat er in het formulier staat en wat er als laatste bewaard is. Zolang die
   // twee gelijk zijn valt er niets op te slaan; wijkt het af, dan slaan we het
@@ -328,7 +329,16 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
     setBusy("sitewide"); setSwMsg("");
     try {
       const d = await fetch(`/api/admin/org-data/sitewide?slug=${encodeURIComponent(slug)}`).then((r) => r.json());
-      if (d.ok) { setSwJson(d.jsonld); if (!d.locked) setSwMsg("Let op: de gegevens zijn nog niet vergrendeld; controleer ze eerst met de klant."); }
+      if (d.ok) {
+        setSwJson(d.jsonld);
+        const meldingen = [
+          !d.locked ? "Let op: de gegevens zijn nog niet vergrendeld; controleer ze eerst met de klant." : "",
+          d.gekoppeld ? `Aanvullend op ${d.plugin}: dit blok knoopt aan hun bestaande organisatie-code vast (zelfde @id), in plaats van die te verdubbelen.`
+            : d.plugin ? `${d.plugin} staat al op de site, maar we konden zijn organisatie-ID niet vinden; dit is daarom een zelfstandig blok. Laat de developer controleren op dubbele info.`
+              : "Geen bestaand organisatie-schema gevonden op de homepage; dit is het volledige blok.",
+        ].filter(Boolean);
+        setSwMsg(meldingen.join(" "));
+      }
       else setSwMsg(d.error || "Genereren mislukt.");
     } catch { setSwMsg("Genereren mislukt."); } finally { setBusy(""); }
   }
@@ -341,8 +351,24 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
     setBusy("swtask"); setSwMsg("");
     try {
       const d = await fetch("/api/admin/org-data/sitewide", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }) }).then((r) => r.json());
+      // Eenmaal doorgezet staat de code veilig in de taak en in Drive; het
+      // zwarte JSON-scherm hoeft dan niet in beeld te blijven staan.
+      if (d.ok) setSwJson("");
       setSwMsg(d.ok ? "Dev-taak aangemaakt in Werkzaamheden, met het .json-bestand in Drive." : d.error || "Doorzetten mislukt.");
     } catch { setSwMsg("Doorzetten mislukt."); } finally { setBusy(""); }
+  }
+  function mailDevTaskNotice() {
+    const to = devTo.trim();
+    if (!to) return;
+    try { localStorage.setItem("pingwin-dev-email", to); } catch { /* geen opslag */ }
+    const devDashUrl = typeof window !== "undefined" ? `${window.location.origin}/admin/developer` : "";
+    const naam = data?.bedrijfsnaam ? ` (${data.bedrijfsnaam})` : "";
+    const subject = encodeURIComponent(`Taak klaar: structured data${naam}`);
+    const body = encodeURIComponent(
+      `Hoi,\n\nEr staat een taak voor je klaar in het Developer Overview: structured data doorvoeren${naam}.\n\n${devDashUrl}\n\nGroet,\nMaarten`,
+    );
+    window.open(`mailto:${to}?subject=${subject}&body=${body}`, "_blank");
+    setSwJson(""); // de mail is onderweg; het zwarte JSON-scherm mag weer dicht
   }
   async function copyLink() {
     if (!shareUrl) return;
@@ -438,14 +464,24 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
             </div>
           )}
           {msg && <div className="saved-msg" style={{ margin: "8px 0" }}>{msg}</div>}
-          {data ? <OrgDataForm data={data} onChange={setData} disabled={busy === "autofill"} /> : <div className="muted">Laden…</div>}
+          <section className="org-sec org-verzameld">
+            <button type="button" className="org-sec-kop" onClick={() => setDataOpen((v) => !v)}>
+              <span className="org-sec-caret">{dataOpen ? "▾" : "▸"}</span>
+              <span>Verzamelde structured data</span>
+              {!!data && ontbrekendeVelden({ ...data, vestigingen: data.vestigingen || [] }).length > 0 && (
+                <span className="org-mis-vlag">{ontbrekendeVelden({ ...data, vestigingen: data.vestigingen || [] }).length} ontbreken</span>
+              )}
+            </button>
+            {dataOpen && (data ? <OrgDataForm data={data} onChange={setData} disabled={busy === "autofill"} /> : <div className="muted">Laden…</div>)}
+          </section>
           <div className="org-sitewide">
             <div className="org-sitewide-head">
               <strong>Site-brede structured data</strong>
-              <HelpHint xl title="Site-brede structured data: het identiteitsblok" text={"Het **identiteitsblok** van de site: één blok JSON-LD met de organisatie (of LocalBusiness/MedicalClinic, afhankelijk van het bedrijfstype hierboven) en de website, met vaste @id's.\n## Hoe het zich verhoudt tot de per-pagina schema's\nDit blok hoort op de homepage en is het anker van de hele entity graph: de per-pagina schema's uit de structured-data-stap verwijzen er met hun @id's naartoe in plaats van de bedrijfsgegevens overal te herhalen. Eén bron, overal consistent; precies wat zoekmachines en AI-assistenten nodig hebben om het bedrijf als één entiteit te herkennen.\n## Belangrijk om te weten\nDit blok wordt **deterministisch** gebouwd, zonder AI: rechtstreeks uit de bevestigde gegevens hierboven, dus er kan niets bij verzonnen worden.\n## Wat je ermee doet\nGenereer, controleer en kopieer de JSON, of maak er direct een Dev-taak van met het .json-bestand in Drive; de developer plakt hem één keer in de site."} />
+              <HelpHint xl title="Site-brede structured data: het identiteitsblok" text={"Het **identiteitsblok** van de site: één blok JSON-LD met de organisatie (of LocalBusiness/MedicalClinic, afhankelijk van het bedrijfstype hierboven) en de website, met vaste @id's.\n## Hoe het zich verhoudt tot de per-pagina schema's\nDit blok hoort op de homepage en is het anker van de hele entity graph: de per-pagina schema's uit de structured-data-stap verwijzen er met hun @id's naartoe in plaats van de bedrijfsgegevens overal te herhalen. Eén bron, overal consistent; precies wat zoekmachines en AI-assistenten nodig hebben om het bedrijf als één entiteit te herkennen.\n## Aanvullend op de plugin\nStaat er al organisatie-schema van een SEO-plugin (Yoast, Rank Math, AIOSEO) op de homepage, dan knoopt dit blok daaraan vast in plaats van het te verdubbelen: naam, adres, telefoon en openingstijden blijven van de plugin (die past ze vanzelf aan bij een wijziging), dit blok voegt alleen toe wat de plugin niet levert, zoals vestigingen, reviewcijfer en social-profielen. Zo hoeft de plugin niet aangepast te worden en overleeft de aanvulling een plugin-update.\n## Belangrijk om te weten\nDit blok wordt **deterministisch** gebouwd, zonder AI: rechtstreeks uit de bevestigde gegevens hierboven, dus er kan niets bij verzonnen worden.\n## Wat je ermee doet\nGenereer, controleer en kopieer de JSON, of maak er direct een Dev-taak van met het .json-bestand in Drive; de developer plakt hem één keer in de site. Wil je de developer ook meteen laten weten dat de taak klaarstaat, gebruik dan de mail-knop ernaast."} />
               <button type="button" className="ghost-btn small" onClick={generateSitewide} disabled={!!busy}>{busy === "sitewide" ? "Genereren…" : "Genereer site-brede schema"}</button>
               {swJson && <button type="button" className="ghost-btn small" onClick={copySitewide}>{swCopied ? "✓ gekopieerd" : "Kopieer JSON"}</button>}
               {swJson && <button type="button" className="ghost-btn small" onClick={sitewideTask} disabled={!!busy}>{busy === "swtask" ? "Bezig…" : "Als Dev-taak doorzetten"}</button>}
+              {swJson && <button type="button" className="ghost-btn small" onClick={mailDevTaskNotice} disabled={!devTo.trim()} title={devTo ? `Mailt naar ${devTo}` : ""}>Mail developer: taak staat klaar</button>}
             </div>
             {swMsg && <div className="saved-msg" style={{ marginTop: 6 }}>{swMsg}</div>}
             {swJson && <pre className="sch-json-pre" style={{ marginTop: 8 }}>{swJson}</pre>}

@@ -360,44 +360,72 @@ export function openingstijdenNaarSchema(tekst: string): string[] {
   return uit;
 }
 
-export function buildSitewideJsonLd(org: OrgData, siteUrl: string): string {
+// Bestaat er op de homepage al een organisatie-achtige node (van een SEO-plugin
+// zoals Yoast/RankMath/AIOSEO, of handmatig)? Dan bouwt het site-brede blok
+// AANVULLEND: het knoopt aan diezelfde @id vast in plaats van een eigen,
+// concurrerende organisatie te verzinnen. Reden: die plugins houden naam,
+// adres, telefoon en openingstijden vaak al automatisch actueel (en passen ze
+// aan bij een wijziging in de site of een update); dat overschrijven we liever
+// niet met een statische kopie die na verloop van tijd uit de pas gaat lopen.
+// Vindt de code geen @id (plugin zonder @id, of iets stuk in hun code), dan
+// valt het terug op een eigen, zelfstandig blok, met een waarschuwing erbij.
+export async function detectSitewideAnchor(site: string): Promise<{ pluginLabel: string; gekoppeld: boolean; anchor: { id: string; type: string } | null }> {
+  const { analyzeExistingSchema, findOrganizationAnchor } = await import("./schema-check");
+  const rawLd = await fetchRawJsonLd(`${site}/`);
+  const inventory = analyzeExistingSchema(rawLd);
+  const anchor = findOrganizationAnchor(rawLd);
+  return { pluginLabel: inventory.pluginLabel, gekoppeld: inventory.plugin !== "geen", anchor };
+}
+
+export function buildSitewideJsonLd(org: OrgData, siteUrl: string, bestaand?: { id: string; type: string } | null): string {
   const site = (siteUrl || "").replace(/\/+$/, "");
   const orgType = org.bedrijfstype === "kliniek" ? "MedicalClinic" : org.bedrijfstype === "lokaal" ? "LocalBusiness" : "Organization";
+  // Aangeknoopt: dezelfde @id als de plugin al gebruikt, dus dit blok vult
+  // aan (schema.org-conventie: properties op dezelfde @id horen bij elkaar);
+  // zelfstandig: onze eigen, nieuwe @id, met de volledige identiteit erin.
+  const aangeknoopt = !!bestaand;
+  const orgId = bestaand?.id || `${site}/#organization`;
   const node: Record<string, unknown> = {
-    "@type": orgType,
-    "@id": `${site}/#organization`,
-    name: org.bedrijfsnaam || undefined,
-    url: `${site}/`,
+    "@type": bestaand?.type || orgType,
+    "@id": orgId,
   };
-  if (org.logoUrl) node.logo = { "@type": "ImageObject", "@id": `${site}/#logo`, url: org.logoUrl };
-  if (org.telefoon) node.telephone = org.telefoon;
-  if (org.email) node.email = org.email;
-  if (!org.geenBezoekadres && (org.straat || org.plaats)) {
-    node.address = { "@type": "PostalAddress", streetAddress: org.straat || undefined, postalCode: org.postcode || undefined, addressLocality: org.plaats || undefined, addressCountry: "NL" };
+  // Identiteit en contactgegevens: alleen zelf zetten als er nog geen bron
+  // voor is. Staan ze al bij de plugin, dan blijft die leidend (en actueel).
+  if (!aangeknoopt) {
+    node.name = org.bedrijfsnaam || undefined;
+    node.url = `${site}/`;
+    if (org.logoUrl) node.logo = { "@type": "ImageObject", "@id": `${site}/#logo`, url: org.logoUrl };
+    if (org.telefoon) node.telephone = org.telefoon;
+    if (org.email) node.email = org.email;
+    if (!org.geenBezoekadres && (org.straat || org.plaats)) {
+      node.address = { "@type": "PostalAddress", streetAddress: org.straat || undefined, postalCode: org.postcode || undefined, addressLocality: org.plaats || undefined, addressCountry: "NL" };
+    }
+    if (org.priceRange && (orgType === "LocalBusiness" || orgType === "MedicalClinic")) node.priceRange = org.priceRange;
+    // Openingstijden alleen als ze eenduidig te lezen zijn; een tijd die we niet
+    // zeker weten hoort niet in de markup (Google rekent dat aan als foute data).
+    const uren = openingstijdenNaarSchema(org.openingstijden);
+    if (uren.length) node.openingHours = uren;
   }
+  // Dit levert een plugin zelden of nooit: altijd aanvullen, aangeknoopt of niet.
   if (org.sameAs.length) node.sameAs = org.sameAs;
   if (org.areaServed.length) node.areaServed = org.areaServed.map((a) => ({ "@type": "Place", name: a }));
-  if (org.priceRange && (orgType === "LocalBusiness" || orgType === "MedicalClinic")) node.priceRange = org.priceRange;
   if (org.oprichtingsjaar) node.foundingDate = org.oprichtingsjaar;
   if (org.kvk) node.identifier = [{ "@type": "PropertyValue", name: "KVK", value: org.kvk }];
   if (org.btw) node.vatID = org.btw;
-  // Openingstijden alleen als ze eenduidig te lezen zijn; een tijd die we niet
-  // zeker weten hoort niet in de markup (Google rekent dat aan als foute data).
-  const uren = openingstijdenNaarSchema(org.openingstijden);
-  if (uren.length) node.openingHours = uren;
   if (org.reviewGemiddelde && org.reviewAantal) {
     node.aggregateRating = { "@type": "AggregateRating", ratingValue: org.reviewGemiddelde.replace(",", "."), reviewCount: org.reviewAantal, url: org.reviewUrl || undefined };
   }
-  const website = {
+  const website = aangeknoopt ? null : {
     "@type": "WebSite",
     "@id": `${site}/#website`,
     url: `${site}/`,
     name: org.bedrijfsnaam || undefined,
-    publisher: { "@id": `${site}/#organization` },
+    publisher: { "@id": orgId },
     inLanguage: "nl-NL",
   };
   // Elke vestiging een eigen locatie-node, gekoppeld aan het bedrijf. Dit is wat
   // Google en AI-assistenten nodig hebben om per plaats een vermelding te maken.
+  // Dit levert geen enkele plugin, dus altijd toevoegen, aangeknoopt of niet.
   const vestigingType = org.bedrijfstype === "kliniek" ? "MedicalClinic" : "LocalBusiness";
   const vestigingen = (org.vestigingen || [])
     .filter((v) => v.straat || v.plaats)
@@ -408,7 +436,7 @@ export function buildSitewideJsonLd(org: OrgData, siteUrl: string): string {
         "@type": vestigingType,
         "@id": `${site}/#vestiging-${slug}`,
         name: [org.bedrijfsnaam, v.naam].filter(Boolean).join(" ") || undefined,
-        parentOrganization: { "@id": `${site}/#organization` },
+        parentOrganization: { "@id": orgId },
         address: { "@type": "PostalAddress", streetAddress: v.straat || undefined, postalCode: v.postcode || undefined, addressLocality: v.plaats || undefined, addressCountry: "NL" },
         telephone: v.telefoon || org.telefoon || undefined,
         email: v.email || undefined,
@@ -429,5 +457,6 @@ export function buildSitewideJsonLd(org: OrgData, siteUrl: string): string {
     }
     return o;
   };
-  return JSON.stringify(clean({ "@context": "https://schema.org", "@graph": [node, ...vestigingen, website] }), null, 2);
+  const graph = [node, ...vestigingen, ...(website ? [website] : [])];
+  return JSON.stringify(clean({ "@context": "https://schema.org", "@graph": graph }), null, 2);
 }

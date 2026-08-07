@@ -12,6 +12,8 @@ export default function OrgDevShareClient({ token }: { token: string }) {
   const [locked, setLocked] = useState(false);
   const [clientName, setClientName] = useState("");
   const [sitewideJsonld, setSitewideJsonld] = useState("");
+  const [plugin, setPlugin] = useState("");
+  const [gekoppeld, setGekoppeld] = useState(false);
   const [err, setErr] = useState("");
   const [copied, setCopied] = useState(false);
 
@@ -21,7 +23,10 @@ export default function OrgDevShareClient({ token }: { token: string }) {
       .then((r) => r.json())
       .then((d) => {
         if (off) return;
-        if (d.ok) { setData(d.data); setLocked(!!d.locked); setClientName(d.clientName || ""); setSitewideJsonld(d.sitewideJsonld || ""); }
+        if (d.ok) {
+          setData(d.data); setLocked(!!d.locked); setClientName(d.clientName || "");
+          setSitewideJsonld(d.sitewideJsonld || ""); setPlugin(d.plugin || ""); setGekoppeld(!!d.gekoppeld);
+        }
         else setErr(d.error || "Deze link is niet (meer) geldig.");
       })
       .catch(() => { if (!off) setErr("De pagina kon niet geladen worden."); });
@@ -69,8 +74,12 @@ export default function OrgDevShareClient({ token }: { token: string }) {
                   <button type="button" className="ghost-btn small" onClick={copyJsonld}>{copied ? "✓ gekopieerd" : "Kopieer JSON"}</button>
                   <pre className="sch-json-pre org-devshare-json">{sitewideJsonld}</pre>
                   <p className="org-share-note org-devshare-note">
-                    Dit blok hoort op de homepage (bijv. in de head, of via de SEO-plugin). Voor
-                    behandel-, dienst- of productpagina's komt er per pagina nog een aanvullend blok;
+                    {gekoppeld
+                      ? `Aanvullend op ${plugin}: dit blok knoopt aan de organisatie-code van de plugin vast (zelfde @id) en voegt alleen toe wat die niet levert. Naast de bestaande plugin-code plaatsen, niets aan de plugin zelf aanpassen.`
+                      : plugin
+                        ? `${plugin} staat al op de site, maar we konden zijn organisatie-ID niet vinden; dit is daarom een zelfstandig blok. Controleer even op dubbele info met wat de plugin al toont.`
+                        : "Er is geen bestaand organisatie-schema op de homepage gevonden; dit is het volledige blok."}
+                    {" "}Voor behandel-, dienst- of productpagina's komt er per pagina nog een aanvullend blok;
                     dat levert Pingwin apart aan zodra die pagina klaar is.
                   </p>
                 </>
