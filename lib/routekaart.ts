@@ -76,7 +76,7 @@ export const PUNTEN: Punt[] = [
     code: "R2",
     titel: "Prioriteren op conversies in plaats van klikken",
     golf: 1,
-    stand: "open",
+    stand: "loopt",
     nodig: [],
     omvang: "middel",
     oplevert: "De rangorde gaat over aanvragen en geld in plaats van over bezoek.",
