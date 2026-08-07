@@ -35,6 +35,7 @@ export type Ontbrekend = {
   label: string;    // korte naam van het veld, voor in het formulier
   regel: string;    // hele zin, voor het lijstje "Nog aan te leveren"
   hard: boolean;    // true = het bedrijf is zonder dit veld niet te identificeren
+  naam?: string;    // bij wie (vestiging/arts/dienst), voor het groeperen per veldtype
 };
 
 // ── Moet en mooi-meegenomen ────────────────────────────────────────────────
@@ -62,7 +63,7 @@ const leeg = (v: unknown) => !String(v ?? "").trim();
 // Alles wat nodig is voor de structured data en nu nog niet ingevuld staat.
 export function ontbrekendeVelden(d: OrgVeldenBron): Ontbrekend[] {
   const uit: Ontbrekend[] = [];
-  const mis = (key: string, label: string, regel: string, hard = true) => uit.push({ key, label, regel, hard });
+  const mis = (key: string, label: string, regel: string, hard = true, naam?: string) => uit.push({ key, label, regel, hard, naam });
 
   // ── Basis: de bouwstenen van het site-brede identiteitsblok ──
   if (leeg(d.bedrijfsnaam)) mis("bedrijfsnaam", "Bedrijfsnaam", "Bedrijfsnaam ontbreekt.");
@@ -100,14 +101,14 @@ export function ontbrekendeVelden(d: OrgVeldenBron): Ontbrekend[] {
     // van vier; anders verzuipt het lijstje in dezelfde melding per veld.
     const heeftBezoekadres = /\d/.test(v.straat || "") || !leeg(v.postcode);
     if (!heeftBezoekadres && leeg(v.openingstijden)) {
-      mis(`vestiging.${i}.straat`, "Adres en openingstijden", `Vestiging ${naam}: hiervan is alleen de naam bekend, adres en openingstijden ontbreken nog.`);
+      mis(`vestiging.${i}.straat`, "Adres en openingstijden", `Vestiging ${naam}: hiervan is alleen de naam bekend, adres en openingstijden ontbreken nog.`, true, naam);
       return;
     }
-    if (leeg(v.straat)) mis(`vestiging.${i}.straat`, "Straat + huisnummer", `Vestiging ${naam}: straat en huisnummer ontbreken.`);
-    if (leeg(v.postcode)) mis(`vestiging.${i}.postcode`, "Postcode", `Vestiging ${naam}: postcode ontbreekt.`);
-    if (leeg(v.plaats)) mis(`vestiging.${i}.plaats`, "Plaats", `Vestiging ${naam}: plaats ontbreekt.`);
-    if (leeg(v.openingstijden)) mis(`vestiging.${i}.openingstijden`, "Openingstijden", `Vestiging ${naam}: openingstijden ontbreken.`);
-    if (leeg(v.telefoon) && leeg(d.telefoon)) mis(`vestiging.${i}.telefoon`, "Telefoon", `Vestiging ${naam}: telefoonnummer ontbreekt.`, false);
+    if (leeg(v.straat)) mis(`vestiging.${i}.straat`, "Straat + huisnummer", `Vestiging ${naam}: straat en huisnummer ontbreken.`, true, naam);
+    if (leeg(v.postcode)) mis(`vestiging.${i}.postcode`, "Postcode", `Vestiging ${naam}: postcode ontbreekt.`, true, naam);
+    if (leeg(v.plaats)) mis(`vestiging.${i}.plaats`, "Plaats", `Vestiging ${naam}: plaats ontbreekt.`, true, naam);
+    if (leeg(v.openingstijden)) mis(`vestiging.${i}.openingstijden`, "Openingstijden", `Vestiging ${naam}: openingstijden ontbreken.`, true, naam);
+    if (leeg(v.telefoon) && leeg(d.telefoon)) mis(`vestiging.${i}.telefoon`, "Telefoon", `Vestiging ${naam}: telefoonnummer ontbreekt.`, false, naam);
   });
 
   // ── Artsen en behandelaren (kliniek): credentials dragen het E-E-A-T-verhaal ──
@@ -117,15 +118,15 @@ export function ontbrekendeVelden(d: OrgVeldenBron): Ontbrekend[] {
     // Per persoon zijn dit aanvullingen, geen blokkades: de kliniek is met veertien
     // artsen op naam prima geïdentificeerd, ook als er drie LinkedIn-links missen.
     artsen.forEach((a, i) => {
-      if (leeg(a.functie)) mis(`arts.${i}.functie`, "Functie", `${a.naam}: functie ontbreekt.`, false);
-      if (leeg(a.big)) mis(`arts.${i}.big`, "BIG-nummer", `${a.naam}: BIG-nummer ontbreekt.`, false);
-      if (leeg(a.profielUrl)) mis(`arts.${i}.profielUrl`, "Profielpagina", `${a.naam}: profielpagina of LinkedIn ontbreekt.`, false);
+      if (leeg(a.functie)) mis(`arts.${i}.functie`, "Functie", `${a.naam}: functie ontbreekt.`, false, a.naam);
+      if (leeg(a.big)) mis(`arts.${i}.big`, "BIG-nummer", `${a.naam}: BIG-nummer ontbreekt.`, false, a.naam);
+      if (leeg(a.profielUrl)) mis(`arts.${i}.profielUrl`, "Profielpagina", `${a.naam}: profielpagina of LinkedIn ontbreekt.`, false, a.naam);
     });
   }
 
   // ── Diensten en webshop ──
   (d.diensten || []).filter((s) => !leeg(s?.naam)).forEach((s, i) => {
-    if (leeg(s.omschrijving)) mis(`dienst.${i}.omschrijving`, "Omschrijving", `Dienst ${s.naam}: korte omschrijving ontbreekt.`, false);
+    if (leeg(s.omschrijving)) mis(`dienst.${i}.omschrijving`, "Omschrijving", `Dienst ${s.naam}: korte omschrijving ontbreekt.`, false, s.naam);
   });
   if (d.bedrijfstype === "webshop" && leeg(d.retourUrl) && leeg(d.retourTermijn)) {
     mis("retourUrl", "Retourbeleid", "Retourinformatie ontbreekt (nodig voor product-schema).", false);

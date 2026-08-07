@@ -5,6 +5,7 @@ import { getWeekplan, getWeekplanDev, setWeekplanNaarDev } from "../../../../../
 import { docsVoorPagina } from "../../../../../lib/developer";
 import { ALLE_PUNTEN, voorstelPunten, type PuntId } from "../../../../../lib/dev-punten";
 import { devSturing } from "../../../../../lib/developer";
+import { planOpvolging } from "../../../../../lib/mail-opvolg";
 
 export const runtime = "nodejs";
 
@@ -74,11 +75,24 @@ export async function POST(req: NextRequest) {
     }))
     .filter((d) => d.url);
 
-  await setWeekplanNaarDev(slug, id, body.naarDev !== false, {
+  const naarDev = body.naarDev !== false;
+  await setWeekplanNaarDev(slug, id, naarDev, {
     taak: body.taak === undefined ? undefined : String(body.taak),
     toelichting: body.toelichting === undefined ? undefined : String(body.toelichting),
     docs,
     punten: Array.isArray(body.punten) ? body.punten.map(String) : undefined,
   });
+
+  // Wil je hier zelf over een paar dagen aan herinnerd worden (ook als er geen
+  // mail bij deze keer achteraan gaat), dan komt die check-up op dezelfde manier
+  // terug als bij een verstuurde mail: als melding bij het belletje.
+  const herinnerDagen = Number(body.herinnerDagen || 0);
+  if (naarDev && herinnerDagen > 0) {
+    const onderwerp = String(body.taak || body.kaartTitel || "").replace(/<[^>]*>/g, "").trim();
+    await planOpvolging({
+      clientSlug: slug, taak: onderwerp, onderwerp,
+      url: docs[0]?.url || String(body.url || ""), dagen: herinnerDagen, soort: "developer",
+    }).catch(() => { /* de taak staat al op de lijst; een mislukte herinnering mag dat niet ongedaan maken */ });
+  }
   return NextResponse.json({ ok: true });
 }

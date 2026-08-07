@@ -3606,6 +3606,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .wp-mail-herinner input[type="number"] { width: 3.5rem; padding: var(--s-1) var(--s-2);
   border: 1px solid var(--border); border-radius: var(--r-sm); font: inherit; text-align: center; }
 .wp-mail-herinner input[type="number"]:disabled { opacity: .5; }
+/* Staan er twee van deze checkboxen in dezelfde voet (zoals bij het doorzetten
+   naar de developer: "mail erachteraan" én "herinner me"), dan hoort alleen de
+   eerste de rest naar rechts te duwen; anders spatiëren ze los van elkaar. */
+.wp-mail-herinner + .wp-mail-herinner { margin-right: 0; }
 
 /* Meta doorgevoerd-status: groene "is doorgevoerd" + live-controle */
 .meta-done-row { gap: 8px; }
@@ -4955,6 +4959,8 @@ a.wb-pad { color: var(--orange-dark); text-decoration: none; }
 a.wb-pad:hover { text-decoration: underline; }
 .wb-doen { font-size: var(--fs-xs); white-space: nowrap; }
 .wb-taak-vol { font-size: var(--fs-sm); color: var(--dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wb-pad-mini { color: var(--orange-dark); text-decoration: none; font-size: var(--fs-xs); }
+.wb-pad-mini:hover { text-decoration: underline; }
 
 /* De zeven fases als letters: groen is af, oranje is waar hij nu staat, grijs is
    nog niet begonnen. Signaal, geen knop; afvinken doe je in de kaart. */

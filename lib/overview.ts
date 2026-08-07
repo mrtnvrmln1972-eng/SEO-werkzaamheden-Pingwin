@@ -171,21 +171,30 @@ export type PageWork = {
   doorgevoerd: boolean | null;
 };
 
-export async function getPageWorkStatus(slug: string): Promise<PageWork[]> {
-  const [urls, copyLive] = await Promise.all([
+// Twee losse try/awaits na elkaar duurden twee rondjes naar de database in
+// plaats van één; deze haalt de rijen op en valt bij een fout terug op leeg,
+// zonder de rest van Promise.all hieronder op te houden.
+async function rowsOf<T>(query: Promise<{ rows: T[] }>): Promise<T[]> {
+  try { return (await query).rows; } catch { return []; }
+}
+
+// preCopyLive: als de aanroeper de copy-live-stand al heeft opgehaald (zoals
+// getWeekplanPages hieronder), hergebruik die dan in plaats van dezelfde tabel
+// een tweede keer te bevragen. Scheelt één rondje naar de database per aanroep.
+export async function getPageWorkStatus(
+  slug: string,
+  preCopyLive?: Promise<Record<string, { doorgevoerd: boolean; meetbaar: boolean }>>,
+): Promise<PageWork[]> {
+  const [urls, copyLive, docsRows, sumRows] = await Promise.all([
     getClientUrls(slug).catch(() => []),
-    getCopyLiveAll(slug).catch(() => ({} as Record<string, { doorgevoerd: boolean; meetbaar: boolean }>)),
+    preCopyLive ?? getCopyLiveAll(slug).catch(() => ({} as Record<string, { doorgevoerd: boolean; meetbaar: boolean }>)),
+    rowsOf<{ url: string; kinds: string[] }>(sql`SELECT url, array_agg(DISTINCT kind) AS kinds FROM page_doc_outputs WHERE client_slug = ${slug} GROUP BY url`),
+    rowsOf<{ url: string; nu: string; doel: string; zet: string }>(sql`SELECT url, nu, doel, zet FROM page_summaries WHERE client_slug = ${slug}`),
   ]);
-  let docsByUrl: Record<string, string[]> = {};
-  let sumByUrl: Record<string, { nu: string; doel: string; zet: string }> = {};
-  try {
-    const { rows } = await sql`SELECT url, array_agg(DISTINCT kind) AS kinds FROM page_doc_outputs WHERE client_slug = ${slug} GROUP BY url`;
-    docsByUrl = Object.fromEntries(rows.map((r) => [norm(String(r.url)), ((r.kinds as string[]) || []).filter(Boolean)]));
-  } catch { docsByUrl = {}; }
-  try {
-    const { rows } = await sql`SELECT url, nu, doel, zet FROM page_summaries WHERE client_slug = ${slug}`;
-    sumByUrl = Object.fromEntries(rows.map((r) => [norm(String(r.url)), { nu: (r.nu as string) || "", doel: (r.doel as string) || "", zet: (r.zet as string) || "" }]));
-  } catch { sumByUrl = {}; }
+  const docsByUrl: Record<string, string[]> = Object.fromEntries(
+    docsRows.map((r) => [norm(String(r.url)), ((r.kinds as string[]) || []).filter(Boolean)]));
+  const sumByUrl: Record<string, { nu: string; doel: string; zet: string }> = Object.fromEntries(
+    sumRows.map((r) => [norm(String(r.url)), { nu: (r.nu as string) || "", doel: (r.doel as string) || "", zet: (r.zet as string) || "" }]));
   return urls.map((u) => {
     const k = norm(u.url);
     const sum = sumByUrl[k] || { nu: "", doel: "", zet: "" };
@@ -279,14 +288,18 @@ export type WeekplanPageInfo = {
 };
 
 export async function getWeekplanPages(slug: string, onlyKeys?: Set<string>): Promise<Record<string, WeekplanPageInfo>> {
+  // copyLive wordt hier gebruikt (fase "bouw") én binnen getPageWorkStatus (het
+  // "doorgevoerd"-oordeel per pagina). Eén gedeelde belofte in plaats van twee
+  // aparte aanroepen: dezelfde tabel werd voorheen twee keer per klant bevraagd.
+  const copyLivePromise = getCopyLiveAll(slug).catch(() => ({} as Record<string, { doorgevoerd: boolean; percentage: number; gemeten: string | null; meetbaar: boolean }>));
   const [pages, everDone, links, schemaStatus, marks, uitgaand, copyLive] = await Promise.all([
-    getPageWorkStatus(slug),
+    getPageWorkStatus(slug, copyLivePromise),
     getStepsEverDoneAll(slug).catch(() => ({} as Record<string, { analyse: boolean; blauwdruk: boolean; copy: boolean }>)),
     getStepLinksAll(slug).catch(() => ({} as Record<string, { analyse: string; blauwdruk: string; copy: string }>)),
     getPageSchemaStatusAll(slug).catch(() => ({} as Record<string, string>)),
     getPhaseMarksAll(slug).catch(() => ({} as Record<string, Partial<Record<string, boolean>>>)),
     getOutgoingClusterCountAll(slug).catch(() => ({} as Record<string, number>)),
-    getCopyLiveAll(slug).catch(() => ({} as Record<string, { doorgevoerd: boolean; percentage: number; gemeten: string | null }>)),
+    copyLivePromise,
   ]);
   const out: Record<string, WeekplanPageInfo> = {};
   for (const p of pages) {

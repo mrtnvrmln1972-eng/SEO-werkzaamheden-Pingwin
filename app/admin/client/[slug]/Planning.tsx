@@ -33,6 +33,7 @@ import {
   mondayOfISOWeek, isoVan, weekVanIso, datumNaVerplaatsing, dagenTussen, isoVanDatum,
 } from "../../../../lib/week-datum";
 import { nieuweVolgorde, bewaarVolgorde, opVolgorde } from "../../../../lib/weekplan-slepen";
+import { isKorteTitel, werkwoordVoor } from "../../../../lib/kaart-titel";
 import WeekplanCard, { type WpTask, type WpPageInfo } from "./WeekplanCard";
 import MailUitKaart from "./MailUitKaart";
 import { useMailDatumLinks } from "./useMailDatumLinks";
@@ -490,14 +491,24 @@ export default function Planning({
             }}
             onDragEnd={sleepKlaar}>⋮⋮</span>
           <span className={"wb-wie " + (t.wie === "Dev" ? "wie-dev" : "wie-seo")}>{t.wie}</span>
+          {/* Staat de titel nog in de automatische vorm ("/pad/ · optimaliseren"),
+              dan bouwen we het pad als losse link plus het werkwoord ernaast op,
+              zodat het pad klikbaar is. Heeft Maarten de titel zelf aangepast
+              (wp-titel-pen in de kaart), dan toont dit rijtje voortaan gewoon die
+              eigen titel: een aanpassing die hier onzichtbaar bleef, leek niet
+              opgeslagen te zijn. */}
           <span className="wb-wat">
-            {t.url
+            {t.url && isKorteTitel(t.taak)
               ? (p?.live
                 ? <a className="wb-pad" href={t.url} target="_blank" rel="noreferrer"
                     onClick={(e) => e.stopPropagation()} title="Open de pagina">{pad(t.url)}</a>
                 : <span className="wb-pad">{pad(t.url)}</span>)
               : <span className="wb-taak-vol">{zonderHtml(t.taak)}</span>}
-            {p && <span className="wb-doen muted">{p.live ? "optimaliseren" : "maken"}</span>}
+            {p && isKorteTitel(t.taak) && <span className="wb-doen muted">{werkwoordVoor(t.taak, p)}</span>}
+            {t.url && !isKorteTitel(t.taak) && (
+              <a className="wb-pad-mini" href={t.url} target="_blank" rel="noreferrer"
+                onClick={(e) => e.stopPropagation()} title="Open de pagina">&#8599;</a>
+            )}
           </span>
           {/* Signaal, geen knop: afvinken doe je in de kaart. */}
           <span className={"wb-rail" + (stippen ? "" : " wb-rail-leeg")}>
