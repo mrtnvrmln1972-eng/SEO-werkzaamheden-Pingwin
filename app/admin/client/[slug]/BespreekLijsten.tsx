@@ -20,6 +20,9 @@ import RijkTekstVeld from "../../../_velden/RijkTekstVeld";
 type Item = { id: number; persoon: string; tekst: string; klaar: boolean; gedeeldAt: string | null; createdAt: string | null };
 
 export default function BespreekLijsten({ slug, clientName, clientEmail, domain }: { slug: string; clientName?: string; clientEmail?: string; domain?: string | null }) {
+  // Standaard dicht, net als "Laatste mails": de hele kaart achter één toggle,
+  // in plaats van de koppen van alle lijstjes altijd in beeld.
+  const [kaartOpen, setKaartOpen] = useState(false);
   const [items, setItems] = useState<Item[]>([]);
   const [openLijst, setOpenLijst] = useState<string>("");
   const [invoer, setInvoer] = useState<Record<string, string>>({});
@@ -147,11 +150,18 @@ export default function BespreekLijsten({ slug, clientName, clientEmail, domain 
 
   const dd = (d: string | null) => { try { return d ? new Date(d).toLocaleDateString("nl-NL", { day: "numeric", month: "short" }) : ""; } catch { return ""; } };
 
+  const totaalOpen = items.filter((i) => !i.klaar).length;
+
   return (
     <div className="cockpit-card strategy-card">
+      <button type="button" className="strategy-head" onClick={() => setKaartOpen((v) => !v)}>
+        <span className="strategy-caret">{kaartOpen ? "▾" : "▸"}</span>
+        <span className="strategy-title">Bespreeklijsten</span>
+        {totaalOpen > 0 && <span className="wp-count">{totaalOpen}</span>}
+      </button>
+      <div className="strategy-body" style={{ display: kaartOpen ? undefined : "none" }}>
       <div className="bl-kop">
         <div className="bl-kop-tekst">
-          <span className="strategy-title">Bespreeklijsten</span>
           <span className="bl-sub muted">Per persoon: bijhouden, afvinken en in één klik mailen.</span>
         </div>
         <span className="wp-fase-spacer" />
@@ -243,6 +253,7 @@ export default function BespreekLijsten({ slug, clientName, clientEmail, domain 
           </div>
         );
       })}
+      </div>
     </div>
   );
 }
