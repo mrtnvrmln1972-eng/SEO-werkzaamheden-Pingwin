@@ -6279,8 +6279,8 @@ a.wb-pad:hover { text-decoration: underline; }
    onder elkaar (uitleg, knoppen, zes tips) en dat past niet altijd binnen de
    viewport, zeker niet op een laag scherm. */
 .at-paneel {
-  left: auto; right: 0; min-width: 360px; max-width: 440px; gap: var(--s-3);
-  max-height: min(78vh, 680px); overflow-y: auto; overscroll-behavior: contain;
+  left: auto; right: 0; min-width: 380px; max-width: 500px; gap: var(--s-3);
+  max-height: min(84vh, 780px); overflow-y: auto; overscroll-behavior: contain;
 }
 
 /* Blok 1: het hele account. */
