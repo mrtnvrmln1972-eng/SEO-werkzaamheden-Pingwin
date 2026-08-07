@@ -422,24 +422,14 @@ export default function AntwoordBlokken({ slug, thread, content, mdToHtml, siteU
                 {s.kop && <span className="ovc-blok-titel">{s.kop}</span>}
                 <span className="ovc-blok-spacer" />
                 {!sectieVerwerkt && heeftInhoud(s.md) && (
-                  <>
-                    <button type="button" className="ovc-blok-taakbtn ovc-blok-taakbtn-licht" disabled={!!busyKey}
-                      title="Zet deze sectie ONGEWIJZIGD als één taak neer: geen AI, geen splitsing. Voor kant-en-klare inhoud die al af is."
-                      onClick={(e) => {
-                        const blok = (e.currentTarget as HTMLElement).closest(".ovc-blok");
-                        void kopieerAlsTaak(key, s, [...(blok ? sleutelsVan(blok) : []), sHash]);
-                      }}>
-                      {busyKey === key ? "Bezig…" : "Kopieer als taak"}
-                    </button>
-                    <button type="button" className="ovc-blok-taakbtn" disabled={!!busyKey}
-                      title="Maak kaarten van deze hele sectie (één per pagina) en klap de sectie in"
-                      onClick={(e) => {
-                        const blok = (e.currentTarget as HTMLElement).closest(".ovc-blok");
-                        void maakTaak(key, `${s.kop ? `Sectie: ${s.kop}\n` : ""}${s.md}`, undefined, [...(blok ? sleutelsVan(blok) : []), sHash]);
-                      }}>
-                      {busyKey === key ? "Bezig…" : "+ Taak"}
-                    </button>
-                  </>
+                  <button type="button" className="ovc-blok-taakbtn" disabled={!!busyKey}
+                    title="Zet deze sectie ongewijzigd als één taak in de weekplanning"
+                    onClick={(e) => {
+                      const blok = (e.currentTarget as HTMLElement).closest(".ovc-blok");
+                      void kopieerAlsTaak(key, s, [...(blok ? sleutelsVan(blok) : []), sHash]);
+                    }}>
+                    {busyKey === key ? "Bezig…" : "+ Taak"}
+                  </button>
                 )}
               </div>
             )}

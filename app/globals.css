@@ -2898,8 +2898,6 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
 .ovc-blok-taakbtn { font-size: 11px; font-weight: 600; border: 1px solid var(--orange); background: #fff; color: var(--orange); border-radius: 6px; padding: 2px 9px; cursor: pointer; white-space: nowrap; margin-left: var(--s-2); }
 .ovc-blok-taakbtn:hover { background: var(--orange); color: #fff; }
 .ovc-blok-taakbtn:disabled { opacity: 0.55; cursor: default; }
-.ovc-blok-taakbtn-licht { border-color: var(--border); color: var(--gray); }
-.ovc-blok-taakbtn-licht:hover { background: var(--gray-light); color: var(--dark); }
 .ovc-blok-inhoud h2, .ovc-blok-inhoud h3 { margin-top: 8px; }
 /* Elk herkenbaar punt is een echt taakrijtje: omkaderd en uitgelijnd, met
    rechts drie knopjes: groen plusje (taak), rood kruisje (negeer), groen
