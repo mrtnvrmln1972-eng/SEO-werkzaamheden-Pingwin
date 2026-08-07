@@ -1,4 +1,4 @@
-import { getWeekplan, setWeekplanKaart, voegArchief, updateWeekplanToelichting } from "./weekplan";
+import { getWeekplan, setWeekplanKaart, voegArchief, updateWeekplanToelichting, type WeekplanTask } from "./weekplan";
 import { getWeekplanPages } from "./overview";
 import { urlKey } from "./url-key";
 import { isKorteTitel, korteTitel, opdrachtenUitTitel } from "./kaart-titel";
@@ -26,20 +26,23 @@ const KOP = "Opdrachten:";
 
 export async function verkortTitels(
   slug: string,
-  opties?: { droog?: boolean },
+  opties?: { droog?: boolean; preKaarten?: WeekplanTask[]; prePages?: Record<string, { live: boolean }> },
 ): Promise<TitelWijziging[]> {
   const droog = opties?.droog === true;
-  const kaarten = await getWeekplan(slug);
+  const kaarten = opties?.preKaarten || await getWeekplan(slug);
   const teDoen = kaarten.filter((k) =>
     k.status !== "klaar" && !k.taakHandmatig && !isKorteTitel(k.taak) && (k.taak || "").length > 0);
   if (teDoen.length === 0) return [];
 
   // De paginastand alleen ophalen als er echt werk is; hij bepaalt of het
-  // werkwoord "maken" of "optimaliseren" wordt.
-  let pages: Record<string, { live: boolean }> = {};
-  try {
-    pages = await getWeekplanPages(slug) as unknown as Record<string, { live: boolean }>;
-  } catch { pages = {}; }
+  // werkwoord "maken" of "optimaliseren" wordt. Heeft de aanroeper hem al
+  // (de GET-route haalt hem toch al op voor het bord zelf), gebruik die dan.
+  let pages: Record<string, { live: boolean }> = opties?.prePages || {};
+  if (!opties?.prePages) {
+    try {
+      pages = await getWeekplanPages(slug) as unknown as Record<string, { live: boolean }>;
+    } catch { pages = {}; }
+  }
 
   const uit: TitelWijziging[] = [];
   for (const k of teDoen) {

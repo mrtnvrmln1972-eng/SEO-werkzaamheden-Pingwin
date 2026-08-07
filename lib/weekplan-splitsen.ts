@@ -1,4 +1,4 @@
-import { getWeekplan, addWeekplanTasks, setWeekplanKaart, updateWeekplanToelichting } from "./weekplan";
+import { getWeekplan, addWeekplanTasks, setWeekplanKaart, updateWeekplanToelichting, type WeekplanTask } from "./weekplan";
 import { getClientUrls } from "./site-urls";
 import { splitsPerPagina, opdrachtZonderPad } from "./overview-actions";
 import { urlKey } from "./url-key";
@@ -20,12 +20,24 @@ import { urlKey } from "./url-key";
 // met rust, dus een tweede ronde verandert niets meer.
 // ═══════════════════════════════════════════════════════════
 
-export async function splitsBestaandeKaarten(slug: string): Promise<{ gesplitst: number; toegevoegd: number }> {
-  let bekendeUrls: string[] = [];
-  try { bekendeUrls = (await getClientUrls(slug)).map((u) => u.url); } catch { return { gesplitst: 0, toegevoegd: 0 }; }
+/**
+ * preKaarten/preBekendeUrls: heeft de aanroeper (de GET-route) de taken en de
+ * paginalijst al opgehaald, geef ze dan mee. Scheelt twee rondjes naar de
+ * database die anders bij élke keer laden van het bord opnieuw gebeuren,
+ * terwijl deze stap in de praktijk meestal niets te doen vindt.
+ */
+export async function splitsBestaandeKaarten(
+  slug: string,
+  preKaarten?: WeekplanTask[],
+  preBekendeUrls?: string[],
+): Promise<{ gesplitst: number; toegevoegd: number }> {
+  let bekendeUrls: string[] = preBekendeUrls || [];
+  if (!preBekendeUrls) {
+    try { bekendeUrls = (await getClientUrls(slug)).map((u) => u.url); } catch { return { gesplitst: 0, toegevoegd: 0 }; }
+  }
   if (bekendeUrls.length < 2) return { gesplitst: 0, toegevoegd: 0 };
 
-  const kaarten = await getWeekplan(slug);
+  const kaarten = preKaarten || await getWeekplan(slug);
   let gesplitst = 0, toegevoegd = 0;
 
   for (const k of kaarten) {

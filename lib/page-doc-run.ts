@@ -172,32 +172,35 @@ export async function getStepsEverDoneAll(slug: string): Promise<Record<string, 
 export async function getStepLinksAll(slug: string): Promise<Record<string, { analyse: string; blauwdruk: string; copy: string }>> {
   await ensureSchema();
   await ensureRunTable();
-  const { rows } = await sql`
-    SELECT url,
-      (array_agg(analyse_link   ORDER BY id DESC) FILTER (WHERE analyse_link   IS NOT NULL))[1] AS analyse,
-      (array_agg(blauwdruk_link ORDER BY id DESC) FILTER (WHERE blauwdruk_link IS NOT NULL))[1] AS blauwdruk,
-      (array_agg(copy_link      ORDER BY id DESC) FILTER (WHERE copy_link      IS NOT NULL))[1] AS copy
-    FROM page_doc_runs WHERE client_slug = ${slug} GROUP BY url`;
-  const out: Record<string, { analyse: string; blauwdruk: string; copy: string }> = {};
-  for (const r of rows) out[urlKey(String(r.url))] = { analyse: (r.analyse as string) || "", blauwdruk: (r.blauwdruk as string) || "", copy: (r.copy as string) || "" };
-
-  // Terugval op het versie-archief. Documenten die buiten een pijplijn-run om in
-  // Drive zijn beland (of achteraf zijn hersteld) hebben hier geen run-rij, en dan
-  // bleef de Document-knop op de kaart leeg terwijl het bestand wél bestaat.
-  try {
-    const { rows: v } = await sql`
+  // De hoofdquery en de terugval-query zijn onafhankelijk van elkaar (de tweede
+  // vult alleen aan wat de eerste mist); ze hoefden dus nooit na elkaar te
+  // wachten. Eén rondje naar de database in plaats van twee.
+  const [{ rows }, v] = await Promise.all([
+    sql`
+      SELECT url,
+        (array_agg(analyse_link   ORDER BY id DESC) FILTER (WHERE analyse_link   IS NOT NULL))[1] AS analyse,
+        (array_agg(blauwdruk_link ORDER BY id DESC) FILTER (WHERE blauwdruk_link IS NOT NULL))[1] AS blauwdruk,
+        (array_agg(copy_link      ORDER BY id DESC) FILTER (WHERE copy_link      IS NOT NULL))[1] AS copy
+      FROM page_doc_runs WHERE client_slug = ${slug} GROUP BY url`,
+    // Terugval op het versie-archief. Documenten die buiten een pijplijn-run om in
+    // Drive zijn beland (of achteraf zijn hersteld) hebben hier geen run-rij, en dan
+    // bleef de Document-knop op de kaart leeg terwijl het bestand wél bestaat.
+    sql`
       SELECT DISTINCT ON (url, kind) url, kind, drive_link
       FROM page_doc_versions
       WHERE client_slug = ${slug} AND drive_link IS NOT NULL AND drive_link <> ''
         AND kind IN ('analyse','blauwdruk','copy')
-      ORDER BY url, kind, created_at DESC`;
-    for (const r of v) {
-      const k = urlKey(String(r.url));
-      const kind = String(r.kind) as "analyse" | "blauwdruk" | "copy";
-      if (!out[k]) out[k] = { analyse: "", blauwdruk: "", copy: "" };
-      if (!out[k][kind]) out[k][kind] = (r.drive_link as string) || "";
-    }
-  } catch { /* zonder archief blijft de pijplijn-link leidend */ }
+      ORDER BY url, kind, created_at DESC`
+      .then((r) => r.rows).catch(() => [] as { url: string; kind: string; drive_link: string }[]),
+  ]);
+  const out: Record<string, { analyse: string; blauwdruk: string; copy: string }> = {};
+  for (const r of rows) out[urlKey(String(r.url))] = { analyse: (r.analyse as string) || "", blauwdruk: (r.blauwdruk as string) || "", copy: (r.copy as string) || "" };
+  for (const r of v) {
+    const k = urlKey(String(r.url));
+    const kind = String(r.kind) as "analyse" | "blauwdruk" | "copy";
+    if (!out[k]) out[k] = { analyse: "", blauwdruk: "", copy: "" };
+    if (!out[k][kind]) out[k][kind] = (r.drive_link as string) || "";
+  }
   return out;
 }
 
