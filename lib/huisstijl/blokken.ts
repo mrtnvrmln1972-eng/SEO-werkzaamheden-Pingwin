@@ -90,8 +90,10 @@ export function sectiekop(nr: number, label: string, kop: string): any[] {
 export function copyKop(niveau: string, kop: string): any[] {
   const maat = niveau === "H1" ? 30 : niveau === "H2" ? 25 : 22;
   return [
-    P(niveau.toUpperCase(), { bold: true, size: 16, color: T.oranje, spacing: 28, voor: 200, na: 60 }),
-    P(kop, { bold: true, size: maat, color: T.inkt, na: 120 }),
+    // Zonder niveau (een werkdocument) alleen de kop, anders zou er een leeg
+    // oranje labeltje boven staan.
+    ...(niveau ? [P(niveau.toUpperCase(), { bold: true, size: 16, color: T.oranje, spacing: 28, voor: 200, na: 60 })] : []),
+    P(kop, { bold: true, size: maat, color: T.inkt, voor: niveau ? 0 : 220, na: 120 }),
   ];
 }
 

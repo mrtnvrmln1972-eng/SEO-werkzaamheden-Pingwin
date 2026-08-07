@@ -838,6 +838,10 @@ tbody td:last-child { text-align: center; }
 .dev-task-doc:hover { text-decoration: underline; }
 /* De documenten bij een dev-taak: de copy, de blauwdruk, de teksten van de klant. */
 .dev-task-docs { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-2); }
+/* In de taaktabel blijft het bij korte chips op één regel: de rij moet één regel
+   hoog blijven, ook met twee of drie documenten erbij. */
+td .dev-task-docs { margin-top: 0; flex-wrap: nowrap; overflow: hidden; }
+td .dev-doc-link { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dev-doc-link { font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--pingwin); text-decoration: underline; }
 .dev-doc-link:hover { text-decoration: none; }
 

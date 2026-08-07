@@ -120,6 +120,20 @@ export function devSturing(toelichting: string): string {
  * De teruggekregen klantversie staat bewust vóór onze eigen copy: als de klant
  * de tekst nog heeft geredigeerd, is dát de tekst die de site in moet.
  */
+/**
+ * Een kort linklabel. De opgeslagen namen zijn zinnen ("Geldende versie na
+ * verwerken van \"Bogard Klantenservice.docx\""), en die liepen in de
+ * developerlijst over drie regels. De volledige naam blijft als tooltip staan.
+ */
+function kortLabel(naam: string, vanKlant: boolean): string {
+  let n = naam.trim();
+  // "Geldende versie na verwerken van X" is voor de sitebouwer gewoon: de tekst.
+  if (/^geldende versie/i.test(n)) return "Geldende versie";
+  n = n.replace(/\.(docx?|pdf|txt|md)$/i, "").replace(/\s{2,}/g, " ").trim();
+  if (n.length > 28) n = n.slice(0, 27).replace(/[\s,;:-]+$/, "") + "\u2026";
+  return vanKlant ? `${n} (klant)` : n;
+}
+
 export async function docsVoorPagina(slug: string, url: string): Promise<{ label: string; url: string }[]> {
   if (!url) return [];
   const uit: { label: string; url: string }[] = [];
@@ -156,7 +170,7 @@ export async function docsVoorPagina(slug: string, url: string): Promise<{ label
       if (perNaam.has(sleutel)) continue;
       perNaam.add(sleutel);
       const klant = String(r.source || "") === "klant" || String(r.status || "") === "voorstel";
-      voegToe(klant ? `${naam} (van de klant)` : naam, String(r.drive_link));
+      voegToe(kortLabel(naam, klant), String(r.drive_link));
     }
   } catch { /* zonder klantversies verder */ }
 

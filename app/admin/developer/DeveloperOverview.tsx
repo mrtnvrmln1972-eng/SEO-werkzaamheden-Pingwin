@@ -234,7 +234,7 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
       {r.docs && r.docs.length > 0 && (
         <div className="dev-task-docs" onClick={(e) => e.stopPropagation()}>
           {r.docs.map((d) => (
-            <a key={d.url} href={d.url} target="_blank" rel="noreferrer" className="dev-doc-link">{d.label}</a>
+            <a key={d.url} href={d.url} target="_blank" rel="noreferrer" className="dev-doc-link" title={d.label}>{d.label}</a>
           ))}
         </div>
       )}
@@ -291,7 +291,7 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
         {r.docs && r.docs.length > 0 ? (
           <span className="dev-task-docs">
             {r.docs.map((d) => (
-              <a key={d.url} href={d.url} target="_blank" rel="noreferrer" className="dev-doc-link" onClick={(e) => e.stopPropagation()}>{d.label}</a>
+              <a key={d.url} href={d.url} target="_blank" rel="noreferrer" className="dev-doc-link" title={d.label} onClick={(e) => e.stopPropagation()}>{d.label}</a>
             ))}
           </span>
         ) : <span className="muted">&mdash;</span>}
@@ -624,7 +624,7 @@ function TaakVenster({ taak, clientSlug, clientName, onLijst, onSluiten }: {
                   <ul className="dev-docs-lijst">
                     {docs.map((d) => (
                       <li key={d.url}>
-                        <a href={d.url} target="_blank" rel="noreferrer" className="dev-doc-link">{d.label}</a>
+                        <a href={d.url} target="_blank" rel="noreferrer" className="dev-doc-link" title={d.label}>{d.label}</a>
                         <button type="button" className="dev-doc-weg" onClick={() => void docWeg(d.url)} title="Van deze taak afhalen">&times;</button>
                       </li>
                     ))}
