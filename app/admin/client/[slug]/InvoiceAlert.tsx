@@ -126,7 +126,7 @@ export default function InvoiceAlert({ slug, clientName }: { slug: string; clien
                   </div>
                 ))}
               </div>
-              {msg && <div className={msg.startsWith("Verstuurd") ? "saved-msg" : "login-error"} style={{ marginTop: 8 }}>{msg}</div>}
+              {msg && <div className={msg.startsWith("Verstuurd") ? "saved-msg" : "login-error"} style={{ marginTop: "var(--s-2)" }}>{msg}</div>}
             </div>
             <div className="compose-foot">
               <button type="button" className="logout-btn" onClick={() => setShowCompose(false)}>Annuleren</button>

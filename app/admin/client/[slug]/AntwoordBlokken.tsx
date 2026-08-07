@@ -42,11 +42,11 @@ function vervangEmoji(html: string): string {
     .replace(/⚠️|⚠/g, '<span class="st-dot st-warn" title="Let op"></span>');
 }
 
-export default function AntwoordBlokken({ slug, thread, content, toHtml, siteUrl, onWeekplanChanged }: {
+export default function AntwoordBlokken({ slug, thread, content, mdToHtml, siteUrl, onWeekplanChanged }: {
   slug: string;
   thread: string;
   content: string;
-  toHtml: (md: string) => string;
+  mdToHtml: (md: string) => string;
   /** Host van de klantsite, zodat een slug als /prijs-en-kosten/ ook in de mail
       naar de echte pagina linkt (harde huisregel: nooit een dode slug tonen). */
   siteUrl?: string;
@@ -79,7 +79,7 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, siteUrl
     if (stuurBezig || !stuurAan.trim()) return;
     setStuurBezig(true); setStuurMsg(null);
     try {
-      // Bewust de RUWE markdown, niet toHtml(): de mail knipt zelf per sectie, want
+      // Bewust de RUWE markdown, niet mdToHtml(): de mail knipt zelf per sectie, want
       // de "## "-koppen moeten uit de tekst vóór ze een oranje titel boven een kaart
       // kunnen worden. Gaf je de voorgerenderde HTML mee, dan bleven het grijze
       // regeltjes en bestonden de kaarten niet.
@@ -413,7 +413,7 @@ export default function AntwoordBlokken({ slug, thread, content, toHtml, siteUrl
             )}
             {(!sectieVerwerkt || toon[key]) && (
               <div className={"chat-md ovc-blok-inhoud" + (sectieVerwerkt ? " ovc-sectie-gedempt" : "")} onClick={(e) => klikOpPunt(e, s, klikKey)}
-                dangerouslySetInnerHTML={{ __html: metKnopjes(toHtml(s.md)) }} />
+                dangerouslySetInnerHTML={{ __html: metKnopjes(mdToHtml(s.md)) }} />
             )}
             {!sectieVerwerkt && afgehandeld > 0 && (
               <button type="button" className="ovc-afgerond-rij" onClick={() => setToon((v) => ({ ...v, [key]: !v[key] }))}>

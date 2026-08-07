@@ -139,7 +139,7 @@ export default function OpruimGaten({ slug, domain, rijen, clientName, clientEma
                       {bezig === g.term ? "Bezig…" : "Zet op de weekplanning"}
                     </button>
                     <button type="button" className="opr-btn" onClick={() => setMailVoor(g)}>Mail naar klant</button>
-                    {klaar[g.term] && <div className="opr-melding" style={{ marginTop: 4 }}>{klaar[g.term]}</div>}
+                    {klaar[g.term] && <div className="opr-melding" style={{ marginTop: "var(--s-1)" }}>{klaar[g.term]}</div>}
                   </td>
                 )}
                 <td className="opr-reden">

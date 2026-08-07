@@ -46,6 +46,7 @@
      uit deze schalen. Nooit meer losse pixelwaardes in nieuwe UI. */
 
   /* Spacing-schaal (veelvouden van 4) */
+  --s-0: 0px;
   --s-1: 4px;
   --s-2: 8px;
   --s-3: 12px;

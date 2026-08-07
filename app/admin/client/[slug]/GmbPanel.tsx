@@ -358,7 +358,7 @@ export default function GmbPanel({ slug, clientName, clientEmail, pingwinEmail, 
             <span className="gmb-laden">Even laden, de laatste meting wordt opgehaald…</span>
           )}
           {geladen && state?.updatedAt && !draait && (
-            <span className="prio-meta" style={{ margin: 0 }}>Laatst gemeten op {datum(state.updatedAt)}</span>
+            <span className="prio-meta" style={{ margin: "var(--s-0)" }}>Laatst gemeten op {datum(state.updatedAt)}</span>
           )}
         </div>
 

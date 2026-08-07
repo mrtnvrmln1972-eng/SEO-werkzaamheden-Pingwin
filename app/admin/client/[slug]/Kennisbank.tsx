@@ -224,7 +224,7 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie }: { slug: stri
 
   return (
     <div className="kb-wrap">
-      <div className="org-sitewide-head" style={{ marginTop: 18 }}>
+      <div className="org-sitewide-head" style={{ marginTop: "var(--s-5)" }}>
         <strong>Kennisbank structured data</strong>
         <span className="muted">Gooi hier alles in: documenten, artsen-gegevens, schema-code. Verwerken gebeurt pas na jouw akkoord; daarna vult het de velden hierboven vanzelf.</span>
         <button type="button" className="wp-fase-btn" onClick={() => void zetInVelden()}

@@ -22,12 +22,12 @@ export default function MetaPixelMeter({ kind, text }: { kind: MetaKind; text: s
       aria-valuemin={0}
       aria-valuemax={info.max}
       aria-label={kind === "meta_title" ? "Breedte paginatitel" : "Breedte meta-beschrijving"}
-      style={{ marginTop: 4, marginBottom: 6 }}
+      style={{ marginTop: "var(--s-1)", marginBottom: "var(--s-2)" }}
     >
-      <div style={{ height: 4, borderRadius: 2, background: "#eee4da", overflow: "hidden", maxWidth: 340 }}>
-        <div style={{ height: "100%", width: `${pct}%`, background: s.bar, borderRadius: 2 }} />
+      <div style={{ height: 4, borderRadius: "var(--r-full)", background: "var(--card-border)", overflow: "hidden", maxWidth: 340 }}>
+        <div style={{ height: "100%", width: `${pct}%`, background: s.bar, borderRadius: "var(--r-full)" }} />
       </div>
-      <div style={{ fontSize: 11, marginTop: 3, color: s.text }}>
+      <div style={{ fontSize: "var(--fs-xs)", marginTop: "var(--s-1)", color: s.text }}>
         {info.px} px / max {info.max} px · {s.woord} · {info.chars} tekens
       </div>
     </div>

@@ -223,7 +223,7 @@ export default function MailUitKaart({
         </label>
         <div className="wp-mail-edit" contentEditable suppressContentEditableWarning ref={ref}
           data-placeholder="De mail verschijnt hier…" style={{ opacity: busy ? 0.5 : 1 }} onBlur={bewaarConcept} />
-        {busy && <div className="muted" style={{ marginTop: 6 }}>Mail aan het schrijven…</div>}
+        {busy && <div className="muted" style={{ marginTop: "var(--s-2)" }}>Mail aan het schrijven…</div>}
         <div className="wp-mail-foot">
           <button type="button" className="ghost-btn small" onClick={kopieer} disabled={busy}>Kopieer</button>
           <button type="button" className="primary-btn small" onClick={() => void verstuur()} disabled={busy || verzendt}

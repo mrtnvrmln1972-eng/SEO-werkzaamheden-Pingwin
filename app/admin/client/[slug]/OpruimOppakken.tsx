@@ -230,7 +230,7 @@ export default function OpruimOppakken({ slug, domain, rijen, clientName, client
                     title="Mail de klant wat we met deze pagina gaan doen, met de onderbouwing erbij.">
                     Mail naar klant
                   </button>
-                  {klaar[o.pad] && <div className="opr-melding" style={{ marginTop: 4 }}>{klaar[o.pad]}</div>}
+                  {klaar[o.pad] && <div className="opr-melding" style={{ marginTop: "var(--s-1)" }}>{klaar[o.pad]}</div>}
                 </td>}
                 <td className="opr-reden">
                   <button type="button" className="opr-meer" onClick={() => setOpen((m) => ({ ...m, [o.pad]: !m[o.pad] }))}>

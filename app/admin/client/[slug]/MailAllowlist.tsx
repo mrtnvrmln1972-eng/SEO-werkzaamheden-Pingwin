@@ -37,11 +37,11 @@ export default function MailAllowlist({ slug }: { slug: string }) {
       </button>
       {open && (
         <div className="mail-allow-body">
-          <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>
+          <div className="muted" style={{ fontSize: "var(--fs-sm)", marginBottom: "var(--s-2)" }}>
             Eén per regel: een mailadres (bijv. jan@voorbeeld.nl) of een heel domein (bijv. voorbeeld.nl). Alleen mail van deze afzenders verschijnt bij Laatste mails; jouw eigen verzonden mail blijft altijd staan. Voeg ook je eigen verzenddomein toe (bijv. pingwin.nl). Leeg = alles tonen.
           </div>
           <textarea className="mail-allow-area" value={text} onChange={(e) => setText(e.target.value)} placeholder={"voorbeeld.nl\npingwin.nl\njan@voorbeeld.nl"} disabled={!loaded} />
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--s-3)", marginTop: "var(--s-2)" }}>
             <button type="button" className="primary-btn small" onClick={save} disabled={saving || !loaded}>{saving ? "Opslaan…" : "Opslaan"}</button>
             {saved && <span className="focus-save-status">✓ opgeslagen</span>}
           </div>

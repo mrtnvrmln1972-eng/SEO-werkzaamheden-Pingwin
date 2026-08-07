@@ -171,7 +171,7 @@ export default function OpruimOnderwerpen({ slug, domain, rijen, clientName, cli
               vóórdat iemand het doorvoert. */}
           {o.geenPassendeThuisbasis && (
             <div className="opr-uitleg" style={{ marginTop: "var(--s-2)" }}>
-              <p style={{ margin: 0 }}>
+              <p style={{ margin: "var(--s-0)" }}>
                 <strong>Let op: geen van deze pagina&rsquo;s gaat echt over &ldquo;{o.hoofdterm || titel(o)}&rdquo;.</strong>{" "}
                 De pagina hierboven staat er van dit rijtje het beste voor, maar hij mikt op een smaller of ander
                 onderwerp. Alles hierin laten opgaan levert een pagina op met een naam die niet klopt bij waar mensen
@@ -185,7 +185,7 @@ export default function OpruimOnderwerpen({ slug, domain, rijen, clientName, cli
               verdwijnt is niet te controleren; hier staat hij, met de reden erbij. */}
           {o.apartGehouden && o.apartGehouden.length > 0 && (
             <div className="opr-uitleg" style={{ marginTop: "var(--s-2)" }}>
-              <p style={{ margin: 0 }}>
+              <p style={{ margin: "var(--s-0)" }}>
                 <strong>Blijft er bewust buiten:</strong>{" "}
                 {o.apartGehouden.map((a, k) => (
                   <span key={a.pad}>{k > 0 ? ", " : ""}<Link p={a.pad} /> ({intentieTekst(a.intentie) || "andere zoekintentie"})</span>

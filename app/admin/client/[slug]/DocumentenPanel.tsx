@@ -76,7 +76,7 @@ export default function DocumentenPanel({ slug, onGoToPage }: { slug: string; on
     return (
       <div className="cockpit-card">
         <div className="ck-section-head"><span>Documenten</span></div>
-        <div className="muted" style={{ fontSize: 13 }}>Voor deze klant is nog geen analyse, blauwdruk of copy gemaakt.</div>
+        <div className="muted" style={{ fontSize: "var(--fs-sm)" }}>Voor deze klant is nog geen analyse, blauwdruk of copy gemaakt.</div>
       </div>
     );
   }

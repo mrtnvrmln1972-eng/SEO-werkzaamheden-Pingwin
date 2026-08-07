@@ -176,7 +176,7 @@ export default function WerkplanPanel({ slug, onGoToPage, onGoToMeta }: { slug: 
         </button>
       </div>
       {checkMsg && <div className="wp-check-msg">{checkMsg}</div>}
-      {empty && <div className="muted" style={{ fontSize: 13 }}>Nog geen werkplan. Vraag de bird&rsquo;s eye hiernaast bijvoorbeeld: &ldquo;Vul het werkplan vanuit onze afgesproken navigatie.&rdquo;</div>}
+      {empty && <div className="muted" style={{ fontSize: "var(--fs-sm)" }}>Nog geen werkplan. Vraag de bird&rsquo;s eye hiernaast bijvoorbeeld: &ldquo;Vul het werkplan vanuit onze afgesproken navigatie.&rdquo;</div>}
 
       {bezig.length > 0 && (
         <div className="wp-group">

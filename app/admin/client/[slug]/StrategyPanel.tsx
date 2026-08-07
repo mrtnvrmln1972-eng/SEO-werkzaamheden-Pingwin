@@ -100,7 +100,7 @@ export default function StrategyPanel({ slug, initialSessions, openSessionId, on
       </button>
       {open && (
         <div className="strategy-body">
-          {msg && <div className="saved-msg" style={{ marginBottom: 8 }}>{msg}</div>}
+          {msg && <div className="saved-msg" style={{ marginBottom: "var(--s-2)" }}>{msg}</div>}
           {sessions.map((s) => {
             const isOpen = openIds.has(s.id);
             return (
@@ -132,7 +132,7 @@ export default function StrategyPanel({ slug, initialSessions, openSessionId, on
                         ))}
                       </div>
                     )}
-                    <button type="button" className="ghost-btn small" style={{ marginTop: 8 }} onClick={() => toggleId(s.id, openTranscript, setOpenTranscript)}>
+                    <button type="button" className="ghost-btn small" style={{ marginTop: "var(--s-2)" }} onClick={() => toggleId(s.id, openTranscript, setOpenTranscript)}>
                       {openTranscript.has(s.id) ? "Volledig gesprek verbergen" : "Volledig gesprek tonen"}
                     </button>
                     {openTranscript.has(s.id) && <div className="md strategy-transcript" dangerouslySetInnerHTML={{ __html: mdToHtml(s.transcript) }} />}

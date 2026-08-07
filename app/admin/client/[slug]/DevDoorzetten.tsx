@@ -96,7 +96,7 @@ export default function DevDoorzetten({ slug, id, kaartTitel, onKlaar, onSluit }
         </div>
         <div className="wp-mail-sub muted">Over: {kaartTitel}</div>
 
-        {laden ? <div className="muted" style={{ padding: "12px 0" }}>Bezig met ophalen…</div> : (
+        {laden ? <div className="muted" style={{ padding: "var(--s-3) 0" }}>Bezig met ophalen…</div> : (
           <>
             <label className="dev-veld">
               <span className="dev-veld-label">Wat moet er gebeuren <span className="muted">(leeg laten = de kaarttekst gaat mee)</span></span>

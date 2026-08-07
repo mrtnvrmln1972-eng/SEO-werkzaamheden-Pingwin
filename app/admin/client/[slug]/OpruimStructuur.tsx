@@ -67,7 +67,7 @@ export default function OpruimStructuur({ slug, data }: {
         </table>
       </div>
       {d.families.length > 2 && (
-        <p className="opr-kaart-tekst" style={{ marginTop: "var(--s-3)", marginBottom: 0 }}>
+        <p className="opr-kaart-tekst" style={{ marginTop: "var(--s-3)", marginBottom: "var(--s-0)" }}>
           Er zijn <strong>{d.families.length} verschillende vormen</strong> voor wat vaak hetzelfde onderwerp is. Zolang die naast elkaar bestaan blijf je redirecten. Kies er één die je aanhoudt en laat de rest daarheen wijzen; dat besluit maakt het grootste deel van de lijst hieronder eenmalig in plaats van terugkerend.
         </p>
       )}

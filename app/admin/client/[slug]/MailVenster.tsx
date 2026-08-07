@@ -319,7 +319,7 @@ export default function MailVenster({
             </div>
           )
         )}
-        {busy && <div className="muted" style={{ marginTop: 6 }}>Mail aan het schrijven…</div>}
+        {busy && <div className="muted" style={{ marginTop: "var(--s-2)" }}>Mail aan het schrijven…</div>}
         <div className="wp-mail-foot">
           <button type="button" className="ghost-btn small" onClick={kopieer} disabled={busy}>Kopieer</button>
           <button type="button" className="primary-btn small" onClick={() => void verstuur()} disabled={busy || verzendt}

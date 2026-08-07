@@ -295,7 +295,7 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
           <div className="chat-resize" onMouseDown={onResizeStart} title="Sleep deze hoek om het venster groter of kleiner te maken" />
           <div className="chat-float-head" onMouseDown={onDragStart} style={{ cursor: "move" }} title="Sleep om te verplaatsen">
             <span>SEO-assistent</span>
-            <span style={{ display: "inline-flex", gap: 10, alignItems: "center" }}>
+            <span style={{ display: "inline-flex", gap: "var(--s-3)", alignItems: "center" }}>
               {messages.length > 0 && <button type="button" className="chat-float-clear" onClick={clearChat}>Wissen</button>}
               <button type="button" className="chat-float-close" onClick={() => setCollapsed(true)} aria-label="Sluiten">&times;</button>
             </span>
@@ -322,7 +322,7 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
                     </button>
                   )}
                 </div>
-                {strategyMsg && <div className="saved-msg" style={{ margin: "6px 0" }}>{strategyMsg}</div>}
+                {strategyMsg && <div className="saved-msg" style={{ margin: "var(--s-2) 0" }}>{strategyMsg}</div>}
                 <div className="chat-log">
                   {messages.map((m, i) => (
                     <div key={i} className={"chat-msg " + m.role}>
@@ -342,7 +342,7 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
                   <div ref={endRef} />
                 </div>
 
-                {error && <div className="login-error" style={{ marginTop: 8 }}>{error}</div>}
+                {error && <div className="login-error" style={{ marginTop: "var(--s-2)" }}>{error}</div>}
 
                 {pendingImages.length > 0 && (
                   <div className="chat-img-preview">

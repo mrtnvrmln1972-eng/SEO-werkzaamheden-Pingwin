@@ -75,7 +75,7 @@ export default function PageSummaryCard({ slug, url, planDone, autoGenSignal }: 
         {has && !editing && <button type="button" className={"ghost-btn small" + (busy ? " busy" : "")} onClick={generate} disabled={busy} title="Maak de samenvatting opnieuw uit de vastgelegde strategie.">{busy ? "Vernieuwen…" : "Vernieuw uit strategie"}</button>}
       </div>
 
-      {err && <div className="login-error" style={{ marginTop: 6 }}>{err}</div>}
+      {err && <div className="login-error" style={{ marginTop: "var(--s-2)" }}>{err}</div>}
 
       {editing ? (
         <div className="psc-edit">
