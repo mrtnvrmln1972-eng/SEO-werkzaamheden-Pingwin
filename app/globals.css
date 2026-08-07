@@ -4990,6 +4990,9 @@ a.wb-pad:hover { text-decoration: underline; }
 
 .pl-blok { display: flex; flex-direction: column; gap: var(--s-3); }
 .pl-bloktitel { font-size: var(--fs-xs); font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--gray); margin-top: var(--s-4); }
+.pl-bloktitel-btn { display: flex; align-items: center; gap: var(--s-2); width: 100%; border: 0; background: none; padding: 0; margin-top: var(--s-4); cursor: pointer; font-family: inherit; text-align: left; }
+.pl-bloktitel-btn .pl-bloktitel { margin-top: 0; }
+.pl-bloktitel-btn:hover .pl-bloktitel { color: var(--orange-dark); }
 
 /* De kaart zelf. De kop is de knop waarmee je hem in- en uitklapt; de body heeft
    geen eigen padding links, zodat de regels tegen de kaartrand uitlijnen. */
