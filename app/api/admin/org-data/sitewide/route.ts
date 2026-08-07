@@ -51,10 +51,14 @@ export async function POST(req: NextRequest) {
     const existing = await getTasks(slug).catch(() => []);
     const dupes = existing.filter((t) => t.stepKind === "structured_data_sitewide" && typeof t.id === "number").map((t) => t.id as number);
     if (dupes.length) await deleteTasksByIds(slug, dupes).catch(() => { /* dedupe is hulp */ });
+    // De leeslink voor de sitebouwer (bedrijfsgegevens + dit JSON-LD, in context)
+    // gaat mee in de taak, zodat afvinken in Werkzaamheden en delen met de
+    // developer via dezelfde taak lopen in plaats van los van elkaar.
+    const devUrl = rec.devShareToken ? `${req.nextUrl.origin}/share/org-dev/${rec.devShareToken}` : "";
     const ids = await appendTasks(slug, [{
       categorie: "Structured data",
       taak: "Site-brede structured data doorvoeren (alle pagina's)",
-      toelichting: `JSON-LD (copy-paste, plaatsen in de head van elke pagina of via de SEO-plugin): ${json.link}\nDit is het identiteitsblok (bedrijf + website) waar de per-pagina schema's naar verwijzen. Na plaatsing controleren met search.google.com/test/rich-results.`,
+      toelichting: `JSON-LD (copy-paste, plaatsen in de head van elke pagina of via de SEO-plugin): ${json.link}${devUrl ? `\nLeesbaar overzicht voor de sitebouwer (bedrijfsgegevens + deze code, alleen-lezen): ${devUrl}` : ""}\nDit is het identiteitsblok (bedrijf + website) waar de per-pagina schema's naar verwijzen. Staat er al organisatie-schema van de SEO-plugin (Yoast/RankMath/AIOSEO) op de site, laat de developer dat dan vervangen door dit blok in plaats van ernaast te zetten: twee Organization-nodes verwarren Google eerder dan dat ze helpen. Na plaatsing controleren met search.google.com/test/rich-results.`,
       klantToelichting: "We voegen de vaste bedrijfsinformatie (naam, contact, profielen) als onzichtbare structured data toe aan de hele site, zodat Google en AI-zoekmachines het bedrijf herkennen.",
       status: "Gepland",
       wie: "Dev",

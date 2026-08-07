@@ -45,6 +45,7 @@ export function OrgDataForm({ data, onChange, disabled }: { data: OrgFormData; o
   const [secOpen, setSecOpen] = useState<Record<string, boolean>>({});
   const misAantal = (prefix?: string, extraSleutel?: string) =>
     (prefix ? [...mist].filter((k) => k.startsWith(prefix)).length : 0) + (extraSleutel && mist.has(extraSleutel) ? 1 : 0);
+  const misAantalKeys = (keys: string[]) => keys.filter((k) => mist.has(k)).length;
   const zetVestiging = (i: number, patch: Partial<OrgVestiging>) =>
     set({ vestigingen: (data.vestigingen || []).map((v, j) => (j === i ? { ...v, ...patch } : v)) });
 
@@ -136,7 +137,7 @@ export function OrgDataForm({ data, onChange, disabled }: { data: OrgFormData; o
         {veld("Reviews-pagina (URL)", "reviewUrl", { hint: "Waar de reviews zichtbaar staan (bijv. Google-reviews of een reviewpagina op de site)." })}
         {veld("Reviewgemiddelde", "reviewGemiddelde", { placeholder: "bijv. 4,8", hint: "Alleen invullen als dit cijfer ook echt zichtbaar is voor bezoekers; verzonnen cijfers zijn tegen de regels van Google." })}
         {veld("Aantal reviews", "reviewAantal", { placeholder: "bijv. 127" })}
-      </div>)}
+      </div>, { inklapKey: "algemeen", misAantal: misAantalKeys(["bedrijfsnaam", "bedrijfstype", "kvk", "telefoon", "email", "logoUrl", "straat", "postcode", "plaats", "openingstijden"]) })}
 
       {sectie("Vestigingen", <>
         {(data.vestigingen || []).map((v, i) => (
@@ -174,7 +175,7 @@ export function OrgDataForm({ data, onChange, disabled }: { data: OrgFormData; o
         <span className="org-label">Werkgebied (plaatsen/regio&rsquo;s, één per regel)<HelpHint text="De plaatsen of regio's waar jullie werken. Vooral belangrijk voor bedrijven zonder bezoekadres." />{mist.has("areaServed") && <span className="org-mis-vlag">ontbreekt nog</span>}</span>
         <textarea rows={2} value={data.areaServed.join("\n")} disabled={disabled} onChange={(e) => set({ areaServed: e.target.value.split("\n").map((s) => s.trim()).filter(Boolean) })} />
       </label>
-      </div>)}
+      </div>, { inklapKey: "bereikbaarheid", misAantal: misAantalKeys(["sameAs", "areaServed"]) })}
       {/* Secties tonen zodra er inhoud is, ook als het bedrijfstype nog leeg is
           of anders staat: je eigen gegevens horen niet onzichtbaar te worden
           door een keuzelijstje. Het bedrijfstype bepaalt alleen nog welke sectie
@@ -225,7 +226,7 @@ export function OrgDataForm({ data, onChange, disabled }: { data: OrgFormData; o
           <span className="org-label">Wat er nog uitgezocht moet worden</span>
           <textarea rows={2} value={data.notitie} disabled={disabled} onChange={(e) => set({ notitie: e.target.value })} />
         </label>
-      ))}
+      ), { inklapKey: "opmerkingen" })}
     </div>
   );
 }
