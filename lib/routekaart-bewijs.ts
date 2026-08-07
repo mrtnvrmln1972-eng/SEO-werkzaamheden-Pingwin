@@ -93,6 +93,33 @@ const BEWIJZEN: Record<string, BewijsRegel[]> = {
       },
     },
   ],
+
+  R2: [
+    {
+      soort: "gedeployd",
+      wat: "Conversies per pagina worden bij GA4 opgehaald",
+      laad: () => import("./google") as Promise<Record<string, unknown>>,
+      functie: "getGa4ConversionsByPage",
+    },
+    {
+      soort: "gedeployd",
+      wat: "Verwacht bezoek wordt omgerekend naar verwachte aanvragen",
+      laad: () => import("./aanvragen") as Promise<Record<string, unknown>>,
+      functie: "berekenAanvragen",
+    },
+    {
+      soort: "data",
+      wat: "Er staat een prioriteitenscan met gemeten aanvragen in",
+      telling: async () => {
+        await ensureSchema();
+        const { rows } = await sql`
+          SELECT COUNT(*)::int AS n FROM client_prioriteiten_scan
+          WHERE result::text LIKE '%verwachteAanvragenPerMaand%'
+        `;
+        return Number(rows[0]?.n || 0);
+      },
+    },
+  ],
 };
 
 async function toetsRegel(r: BewijsRegel): Promise<RegelUitslag> {

@@ -454,6 +454,23 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
               "pas een advies als er ook iets afvalt. Wat afvalt komt met reden in beeld, zodat het een besluit " +
               "is en geen vergissing.",
           },
+          {
+            titel: "Aanvragen in plaats van bezoek, waar dat gemeten kan worden (7 augustus 2026)",
+            tekst:
+              "Bezoekers zijn niet waar een klant voor betaalt; hij betaalt voor aanvragen. Twee pagina's kunnen " +
+              "even vaak in Google verschijnen terwijl de ene tien keer zo veel klanten oplevert als de andere, " +
+              "en dat verschil zag de volgorde tot nu toe nergens.\n\n" +
+              "Meet Google Analytics voor een klant al hoeveel bezoekers op een pagina daadwerkelijk een aanvraag " +
+              "doen (een ingevuld formulier, een telefoontje, een bestelling, ingericht als GA4-conversie), dan " +
+              "gebruikt de scan dat gemeten cijfer per pagina in plaats van een schatting. Een pagina die beter " +
+              "converteert dan het gemiddelde van de site schuift dan omhoog in de kansrijkheid, een pagina die " +
+              "slechter converteert zakt; bij de meeste kansen staat het aantal verwachte aanvragen per maand " +
+              "erbij in plaats van het aantal bezoekers. Is er een geldbedrag per aanvraag bekend (hetzelfde " +
+              "getal dat ook de opruimlijst in euro's zet), dan telt dat bedrag automatisch mee.\n\n" +
+              "Heeft een klant geen GA4-conversies ingericht, of is er voor een pagina te weinig verkeer gemeten " +
+              "om op te vertrouwen, dan verandert er niets: de scan blijft gewoon in bezoekers rekenen, met een " +
+              "zin in de samenvatting die dat zegt.",
+          },
         ],
       },
       {
@@ -1701,7 +1718,7 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "| Punt | Wat het is | Verhouding |\n" +
           "|---|---|---|\n" +
           "| **R1** | Autoriteit per pagina aansluiten | ✅ af op 6 augustus 2026 |\n" +
-          "| **R2** | Prioriteren op conversies in plaats van klikken | Middel werk, grootst effect |\n" +
+          "| **R2** | Prioriteren op conversies in plaats van klikken | ✅ af op 7 augustus 2026 |\n" +
           "| **R3** | AI-vindbaarheid op onderwerpniveau | Middel werk, groot verkoopeffect |\n" +
           "| **R4** | Verbruik compleet: de Ahrefs-credits erbij | Klein werk, nodig voor licentie |",
         sub: [

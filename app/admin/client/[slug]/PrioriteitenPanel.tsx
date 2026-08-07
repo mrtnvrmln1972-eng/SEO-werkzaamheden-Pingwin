@@ -37,6 +37,8 @@ type Regel = {
   effort: number; timeToEffect: number; confidence: number; relevanceFit: number;
   roiScore?: number; extraKlikkenPerMaand?: number; tier?: string; skipReden?: string;
   rationale: string; vervolgSkill: string; bron: string; nieuw?: boolean;
+  // R2: verwachte aanvragen in plaats van bezoek, waar GA4 dit per pagina meet.
+  verwachteAanvragenPerMaand?: number; verwachtBedragPerMaand?: number | null; aanvraagBron?: "gemeten" | "onbekend";
 };
 type Result = {
   samenvatting: string; propositie: string; verwachteKlikkenPerMaand: number;
@@ -367,6 +369,7 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar, clientN
         naam,
         rijen: [...rijen].sort((a, b) => (waarde(a) - waarde(b)) * richting),
         opbrengst: rijen.reduce((s, r) => s + (r.extraKlikkenPerMaand ?? 0), 0),
+        aanvragen: rijen.reduce((s, r) => s + (r.verwachteAanvragenPerMaand ?? 0), 0),
         // De balken staan op dezelfde maat als de regels erin: op kansrijkheid.
         // Anders opent de bovenste balk met de minst kansrijke bovenste regel.
         kans: rijen.reduce((s, r) => s + (r.roiScore ?? 0), 0),
@@ -395,11 +398,20 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar, clientN
     const punten = regels.filter((r) => r.tier !== "SKIP");
     if (!punten.length) return "Geen openstaande kansen gevonden bij deze scan.";
     const uplift = Math.round(punten.reduce((s, r) => s + (r.extraKlikkenPerMaand ?? 0) * r.confidence, 0));
+    // R2: aanvragen wegen naar dezelfde zekerheid als de bezoek-uplift hierboven.
+    const aanvragen = Math.round(punten.reduce((s, r) => s + (r.verwachteAanvragenPerMaand ?? 0) * r.confidence, 0));
     // Bewust geteld over álle punten, niet over wat het zoekveld overlaat: de
     // samenvatting hoort de scan samen te vatten, niet je zoekopdracht.
     const soorten = new Set(punten.map((r) => categorieVan(r.type).naam)).size;
     const stukken = [`${punten.length} ${punten.length === 1 ? "kans" : "kansen"} gevonden, verdeeld over ${soorten} ${soorten === 1 ? "soort werk" : "soorten werk"}.`];
-    if (uplift > 0) stukken.push(`Alles bij elkaar naar schatting ${getal(uplift)} extra bezoekers per maand, gewogen naar hoe zeker we het weten. Dat is een verwachting, geen belofte.`);
+    if (aanvragen > 0) {
+      stukken.push(`Alles bij elkaar naar schatting ${getal(aanvragen)} aanvragen per maand, gewogen naar hoe zeker we het weten. Dat is een verwachting, geen belofte.`);
+    } else if (uplift > 0) {
+      stukken.push(`Alles bij elkaar naar schatting ${getal(uplift)} extra bezoekers per maand, gewogen naar hoe zeker we het weten. Dat is een verwachting, geen belofte.`);
+      if (!punten.some((r) => r.aanvraagBron === "gemeten")) {
+        stukken.push("Er is nog geen gemeten conversiedata per pagina bij deze klant, dus dit blijft in bezoekers staan.");
+      }
+    }
     if (skips.length) stukken.push(`${skips.length} ${skips.length === 1 ? "kans is" : "kansen zijn"} bewust afgevallen, met de reden erbij.`);
     if (res?.delta?.vorigeDatum) {
       stukken.push(res.delta.nieuw || res.delta.opgelost
@@ -569,7 +581,7 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar, clientN
             <ul>
               <li><strong>Zoekvolume</strong> is hoe vaak er per maand op dit zoekwoord gezocht wordt.</li>
               <li><strong>Positie</strong> laat zien waar de pagina nu staat en waar hij heen kan: <em>12 → 3</em> betekent van plek 12 naar plek 3. Staat er alleen <em>→ 5</em>, dan is er nog geen pagina die hierop mikt en is plek 5 het doel waar we op mikken. Dat is een streefgetal, geen voorspelling.</li>
-              <li><strong>Extra bezoekers</strong> is wat die stap aan bezoek kan opleveren: het zoekvolume maal de kans dat iemand op die plek klikt.</li>
+              <li><strong>Extra bezoekers</strong> is wat die stap aan bezoek kan opleveren: het zoekvolume maal de kans dat iemand op die plek klikt. Meet Google Analytics voor deze pagina al hoeveel van dat bezoek een aanvraag wordt, dan staat hier in plaats daarvan het aantal <strong>aanvragen</strong>, met het bezoek erachter tussen haakjes.</li>
               <li><strong>Kansrijk</strong> is het balkje met een cijfer van 1 tot 100 en bepaalt de volgorde. Het weegt de bezoekers, hoe koopgericht het zoekwoord is, hoe goed het bij deze klant past en hoeveel werk het kost. 100 is de beste kans van deze scan; het is dus een onderlinge vergelijking, geen rapportcijfer.</li>
               <li><strong>Werk</strong> is de omvang: klein (een titel of alinea), middel (een pagina verversen of nieuw schrijven), groot (meerdere pagina&rsquo;s).</li>
             </ul>
@@ -603,7 +615,9 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar, clientN
                             <span className="prio-groepkop-pijl">{uit ? "▾" : "▸"}</span>
                             <span className="prio-groepkop-naam">{g.naam}</span>
                             <span className="prio-groepkop-tel">{g.rijen.length} {g.rijen.length === 1 ? "punt" : "punten"}</span>
-                            {g.opbrengst > 0 && (
+                            {g.aanvragen > 0 ? (
+                              <span className="prio-groepkop-winst">samen ongeveer {getal(g.aanvragen)} aanvragen per maand</span>
+                            ) : g.opbrengst > 0 && (
                               <span className="prio-groepkop-winst">samen ongeveer {getal(g.opbrengst)} extra bezoekers per maand</span>
                             )}
                           </button>
@@ -629,7 +643,11 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar, clientN
                             <td>{r.zoekwoord || "—"}</td>
                             <td className="num">{getal(r.maandvolume)}</td>
                             <td className="num">{r.huidigePositie ? `${r.huidigePositie} → ${r.targetPositie}` : `→ ${r.targetPositie}`}</td>
-                            <td className="num prio-uplift">{getal(r.extraKlikkenPerMaand)}</td>
+                            <td className="num prio-uplift">
+                              {r.verwachteAanvragenPerMaand != null
+                                ? <>{getal(r.verwachteAanvragenPerMaand)} aanvr. <span className="muted">({getal(r.extraKlikkenPerMaand)} bez.)</span></>
+                                : getal(r.extraKlikkenPerMaand)}
+                            </td>
                             <td className="num prio-kans" title={`Kansrijkheid ${kansIndex(r)} van de 100. Weegt de te winnen bezoekers, hoe koopgericht dit zoekwoord is, hoe goed het bij deze klant past en hoeveel werk het kost. 100 is de beste kans van deze scan.`}>
                               <span className="prio-kans-balk" aria-hidden="true"><i style={{ width: `${kansIndex(r)}%` }} /></span>
                               <span className="prio-kans-getal">{kansIndex(r)}</span>

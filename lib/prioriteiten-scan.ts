@@ -1,6 +1,8 @@
 import { sql, ensureSchema } from "./db";
 import { getClientBySlug } from "./clients";
-import { getGscQueryPagePairs, getGscQueryPagePairsCompare, getGscKeywordUrlFlips } from "./google";
+import { getGscQueryPagePairs, getGscQueryPagePairsCompare, getGscKeywordUrlFlips, getGa4ConversionsByPage } from "./google";
+import { getEuroInstelling } from "./opruim-euro";
+import { ratioVoorPad, gemiddeldeRatio, berekenAanvragen } from "./aanvragen";
 import { getPageSchemaStatusAll } from "./page-schema";
 import { getSiteOrganicKeywords, getAiResponsesCount, ahrefsConfigured, getKeywordsOverview, getBrokenBacklinks } from "./ahrefs";
 import { getMetaKansen } from "./meta-ctr";
@@ -717,7 +719,17 @@ function bouwSamenvatting(regels: Bevinding[], uplift: number, delta: PrioResult
   stukken.push(t1
     ? `${t1} ${t1 === 1 ? "ding" : "dingen"} kun je deze week oppakken, ${t2} deze maand.`
     : `Niets dat deze week moet; ${t2} ${t2 === 1 ? "punt" : "punten"} voor deze maand.`);
-  if (uplift > 0) stukken.push(`Samen goed voor naar schatting ${uplift} extra bezoekers per maand, gewogen naar hoe zeker we het weten. Dat is een verwachting, geen belofte.`);
+  // R2: aanvragen wegen naar zekerheid, net als de bezoek-uplift hierboven.
+  const punten = regels.filter((r) => r.tier === "1" || r.tier === "2");
+  const aanvragen = Math.round(punten.reduce((s, r) => s + (r.verwachteAanvragenPerMaand ?? 0) * r.confidence, 0));
+  if (aanvragen > 0) {
+    stukken.push(`Samen goed voor naar schatting ${aanvragen} aanvragen per maand, gewogen naar hoe zeker we het weten. Dat is een verwachting, geen belofte.`);
+  } else if (uplift > 0) {
+    stukken.push(`Samen goed voor naar schatting ${uplift} extra bezoekers per maand, gewogen naar hoe zeker we het weten. Dat is een verwachting, geen belofte.`);
+    if (!punten.some((r) => r.aanvraagBron === "gemeten")) {
+      stukken.push("Er is nog geen gemeten conversiedata per pagina bij deze klant, dus dit blijft in bezoekers staan.");
+    }
+  }
   if (skip) stukken.push(`${skip} ${skip === 1 ? "kans is" : "kansen zijn"} bewust afgevallen, met de reden erbij.`);
   if (delta && delta.vorigeDatum) {
     stukken.push(delta.nieuw || delta.opgelost
@@ -784,6 +796,30 @@ export async function runPrioriteitenScan(slug: string): Promise<void> {
 
     // Stap 3, rekenen. Geen model: een som hoort niet geschat te worden.
     for (const b of bevindingen) scoreBevinding(b);
+
+    // R2: verwacht bezoek ombouwen naar verwachte aanvragen, op basis van
+    // gemeten GA4-conversies per pagina. Geen conversiedata voor deze klant of
+    // deze pagina? Dan blijft de bezoek-gebaseerde rekenwijze ongewijzigd staan.
+    const conversies = client.domain ? await getGa4ConversionsByPage(slug, client.domain, 90).catch(() => null) : null;
+    const euroInst = await getEuroInstelling(slug).catch(() => ({ klantwaarde: 0, conversie: 0, ingevuld: false }));
+    const gemiddelde = gemiddeldeRatio(conversies);
+    for (const b of bevindingen) {
+      const ratio = ratioVoorPad(conversies, b.url);
+      const aanvraag = berekenAanvragen(b.extraKlikkenPerMaand ?? 0, ratio, gemiddelde, euroInst);
+      if (aanvraag) {
+        b.verwachteAanvragenPerMaand = aanvraag.aanvragenPerMaand;
+        b.verwachtBedragPerMaand = aanvraag.bedragPerMaand;
+        b.aanvraagBron = "gemeten";
+        // De volgorde verschuift mee: een pagina die beter converteert dan het
+        // klantgemiddelde krijgt een hogere kansrijkheid, een pagina die slechter
+        // converteert een lagere. Bij een klant zonder data (weging altijd 1)
+        // verandert de volgorde dus niet.
+        b.roiScore = Math.round((b.roiScore ?? 0) * aanvraag.weging * 1000) / 1000;
+      } else {
+        b.aanvraagBron = "onbekend";
+      }
+    }
+
     wijsTiersToe(bevindingen);
     bevindingen.sort((a, b) => {
       const rang = (t?: string) => (t === "SKIP" ? 9 : Number(t || 9));
