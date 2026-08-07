@@ -863,6 +863,7 @@ td .dev-doc-link { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; 
 /* De kaarttitel bijstellen: potloodje in de kop, invulveld als je klikt. */
 .wp-titel-pen { border: 0; background: none; padding: 0 var(--s-1); margin-left: var(--s-1); color: var(--gray); cursor: pointer; font-size: var(--fs-xs); opacity: 0; transition: opacity .12s ease; }
 .wp-card-taak:hover .wp-titel-pen { opacity: 1; }
+.wb-wat:hover .wp-titel-pen { opacity: 1; }
 .wp-titel-pen:hover { color: var(--pingwin); }
 .wp-titel-bewerk { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; }
 .wp-titel-bewerk input {
@@ -2894,9 +2895,11 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
 .ovc-blok-kop { display: flex; align-items: center; gap: var(--s-2); margin-bottom: var(--s-2); padding-bottom: var(--s-2); border-bottom: 1px solid #F3E9E1; }
 .ovc-blok-titel { font-weight: 700; color: var(--orange); font-size: var(--fs-base); line-height: var(--lh-base); }
 .ovc-blok-spacer { flex: 1; }
-.ovc-blok-taakbtn { font-size: 11px; font-weight: 600; border: 1px solid var(--orange); background: #fff; color: var(--orange); border-radius: 6px; padding: 2px 9px; cursor: pointer; white-space: nowrap; }
+.ovc-blok-taakbtn { font-size: 11px; font-weight: 600; border: 1px solid var(--orange); background: #fff; color: var(--orange); border-radius: 6px; padding: 2px 9px; cursor: pointer; white-space: nowrap; margin-left: var(--s-2); }
 .ovc-blok-taakbtn:hover { background: var(--orange); color: #fff; }
 .ovc-blok-taakbtn:disabled { opacity: 0.55; cursor: default; }
+.ovc-blok-taakbtn-licht { border-color: var(--border); color: var(--gray); }
+.ovc-blok-taakbtn-licht:hover { background: var(--gray-light); color: var(--dark); }
 .ovc-blok-inhoud h2, .ovc-blok-inhoud h3 { margin-top: 8px; }
 /* Elk herkenbaar punt is een echt taakrijtje: omkaderd en uitgelijnd, met
    rechts drie knopjes: groen plusje (taak), rood kruisje (negeer), groen
@@ -3337,6 +3340,8 @@ body.zp-sleept { user-select: none; cursor: grabbing; }
 .wp-info-doel.wp-info-een { grid-template-columns: 1fr; }
 @media (max-width: 760px) { .wp-info-doel { grid-template-columns: 1fr; } }
 .wp-info-kaart { background: #fff; border: 1px solid var(--card-border); border-radius: var(--r-md); padding: var(--s-3) var(--s-4); }
+.wp-info-ruw { overflow-x: auto; }
+.wp-info-ruw .md-table { width: 100%; }
 .wp-info-kaarthead { display: flex; align-items: center; gap: var(--s-2); margin-bottom: var(--s-2); }
 .wp-info-icoon { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 10px; color: var(--orange); background: linear-gradient(145deg, #fff2e9, #fff8f3); border: 1px solid #f6d8c8; }
 .wp-info-icoon svg { width: 16px; height: 16px; }
@@ -4961,6 +4966,11 @@ a.wb-pad:hover { text-decoration: underline; }
 .wb-taak-vol { font-size: var(--fs-sm); color: var(--dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .wb-pad-mini { color: var(--orange-dark); text-decoration: none; font-size: var(--fs-xs); }
 .wb-pad-mini:hover { text-decoration: underline; }
+.wb-wat-bewerk { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; min-width: 0; overflow: visible; }
+.wb-wat-bewerk input {
+  flex: 1 1 220px; min-width: 140px; padding: var(--s-1) var(--s-2); border: 1px solid var(--border); border-radius: var(--r-sm);
+  font: inherit; font-size: var(--fs-sm); line-height: var(--lh-sm); background: var(--bg); color: inherit;
+}
 
 /* De zeven fases als letters: groen is af, oranje is waar hij nu staat, grijs is
    nog niet begonnen. Signaal, geen knop; afvinken doe je in de kaart. */

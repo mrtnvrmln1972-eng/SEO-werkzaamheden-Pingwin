@@ -18,6 +18,9 @@ export type WeekplanTask = {
   taakHandmatig?: boolean;
   /** Hoeveel er in het archief van deze kaart staat (voor het label in de kaart). */
   archiefAantal?: number;
+  /** Kant-en-klare inhoud (bijv. een contentagenda): toelichting toont ongewijzigd
+      als markdown, niet via de Achtergrond/Aanpak-per-fase-indeling. */
+  ruw?: boolean;
 };
 
 // ISO-8601-weeknummer (maandag als eerste dag). Server en client berekenen dit
@@ -37,7 +40,7 @@ export async function getWeekplan(slug: string): Promise<WeekplanTask[]> {
   await ensureSchema();
   const { rows } = await sql`
     SELECT id, thread, taak, toelichting, wie, url, taaktype, copy_url, bron_mail, week_year, week_no, status, sort_order, naar_dev,
-           taak_handmatig, COALESCE(jsonb_array_length(archief), 0) AS archief_aantal,
+           taak_handmatig, ruw, COALESCE(jsonb_array_length(archief), 0) AS archief_aantal,
            to_char(datum, 'YYYY-MM-DD') AS datum
     FROM client_weekplan WHERE client_slug = ${slug}
     ORDER BY week_year, week_no, sort_order, id`;
@@ -52,6 +55,7 @@ export async function getWeekplan(slug: string): Promise<WeekplanTask[]> {
     datum: (r.datum as string) || "",
     taakHandmatig: r.taak_handmatig === true,
     archiefAantal: Number(r.archief_aantal || 0),
+    ruw: r.ruw === true,
   }));
 }
 
@@ -76,7 +80,7 @@ export async function getWeekplanAlleKlanten(
   const { rows } = await sql`
     SELECT w.id, w.client_slug, c.name AS klant, c.email AS klant_mail, w.thread, w.taak, w.toelichting, w.wie, w.url, w.taaktype,
            w.copy_url, w.bron_mail, w.week_year, w.week_no, w.status, w.sort_order, w.naar_dev,
-           w.taak_handmatig, COALESCE(jsonb_array_length(w.archief), 0) AS archief_aantal,
+           w.taak_handmatig, w.ruw, COALESCE(jsonb_array_length(w.archief), 0) AS archief_aantal,
            to_char(w.datum, 'YYYY-MM-DD') AS datum
     FROM client_weekplan w LEFT JOIN clients c ON c.slug = w.client_slug
     ORDER BY w.datum NULLS LAST, w.week_year, w.week_no, w.sort_order, w.id`;
@@ -95,6 +99,7 @@ export async function getWeekplanAlleKlanten(
     datum: (r.datum as string) || "",
     taakHandmatig: r.taak_handmatig === true,
     archiefAantal: Number(r.archief_aantal || 0),
+    ruw: r.ruw === true,
   }));
 }
 
@@ -165,7 +170,7 @@ export async function pasInToelichting(slug: string, id: number, tekst: string):
 // kaart voor dezelfde pagina (ongeacht week), dan wordt de nieuwe taak daarin
 // gemerged (titel + toelichting als bullets, met regel-dedup) in plaats van een
 // tweede kaart te maken. De kaart houdt zijn week (waar Maarten hem sleepte).
-export async function addWeekplanTasks(slug: string, thread: string, tasks: { taak: string; toelichting?: string; wie?: string; url?: string; taaktype?: string; copyUrl?: string; bronMail?: string; week: { year: number; week: number } }[]): Promise<{ added: number; merged: number; mergedIds: number[]; nieuweIds: number[] }> {
+export async function addWeekplanTasks(slug: string, thread: string, tasks: { taak: string; toelichting?: string; wie?: string; url?: string; taaktype?: string; copyUrl?: string; bronMail?: string; ruw?: boolean; week: { year: number; week: number } }[]): Promise<{ added: number; merged: number; mergedIds: number[]; nieuweIds: number[] }> {
   await ensureSchema();
   const { urlKey } = await import("./url-key");
   // Bestaande niet-klare pagina-kaarten, op urlKey (JS-matching, niet in SQL te doen).
@@ -240,8 +245,8 @@ export async function addWeekplanTasks(slug: string, thread: string, tasks: { ta
         AND lower(taak) = lower(${taak.slice(0, 400)}) LIMIT 1`;
     if (dup.length) continue;
     const { rows: verse } = await sql`
-      INSERT INTO client_weekplan (client_slug, thread, taak, toelichting, wie, url, taaktype, copy_url, bron_mail, week_year, week_no, status, sort_order, updated_at)
-      VALUES (${slug}, ${thread || null}, ${taak.slice(0, 400)}, ${toel}, ${wie}, ${url}, ${taaktype}, ${copyUrl}, ${bronMail}, ${t.week.year}, ${t.week.week}, 'gepland', ${added}, now())
+      INSERT INTO client_weekplan (client_slug, thread, taak, toelichting, wie, url, taaktype, copy_url, bron_mail, week_year, week_no, status, sort_order, ruw, updated_at)
+      VALUES (${slug}, ${thread || null}, ${taak.slice(0, 400)}, ${toel}, ${wie}, ${url}, ${taaktype}, ${copyUrl}, ${bronMail}, ${t.week.year}, ${t.week.week}, 'gepland', ${added}, ${!!t.ruw}, now())
       RETURNING id`;
     if (verse[0]) nieuweIds.push(verse[0].id as number);
     if (url) {

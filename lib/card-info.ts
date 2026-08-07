@@ -8,6 +8,7 @@
 import { linkifyHtml } from "./linkify";
 import { puntSoort } from "./punt-soort";
 import { striptToeschrijvingen, type HerkomstContext } from "./herkomst";
+import { mdToHtml } from "./markdown";
 
 export type CardFaseKey = "strategie" | "gelieerde" | "analyse" | "blauwdruk" | "copy" | "bouw" | "structured";
 
@@ -463,8 +464,16 @@ export function eerdereNotitiesHtml(toelichting: string, pageUrl?: string, taak?
   return { html: linkifyHtml(lijst(info.rest, "wp-punt-lijst", mails), domain), aantal: info.rest.length };
 }
 
-export function cardInfoHtml(toelichting: string, pageUrl?: string, taak?: string, cijfers?: string, mails?: MailLinks, herkomst?: HerkomstContext, zonderNotities?: boolean): string {
+export function cardInfoHtml(toelichting: string, pageUrl?: string, taak?: string, cijfers?: string, mails?: MailLinks, herkomst?: HerkomstContext, zonderNotities?: boolean, ruw?: boolean): string {
   const domain = (() => { try { return pageUrl ? new URL(pageUrl).host : ""; } catch { return ""; } })();
+  // Kant-en-klare inhoud (bijv. een contentagenda): de Achtergrond/Aanpak-per-fase-
+  // indeling hieronder knipt per regel en zou een tabel in losse pipe-regels breken.
+  // Toon de tekst dan ongewijzigd als markdown, in dezelfde kaartvorm als de rest.
+  if (ruw) {
+    const html = mdToHtml((toelichting || "").trim());
+    if (!html) return "";
+    return `<div class="wp-info-doel wp-info-een">${infoKaart(ICO_KLEMBORD, "Inhoud", `<div class="md wp-info-ruw">${html}</div>`)}</div>`;
+  }
   const info = splitCardInfo(toelichting, taak, herkomst);
   const kaarten: string[] = [];
   if (info.achtergrond.length) {

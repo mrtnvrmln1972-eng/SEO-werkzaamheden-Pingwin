@@ -26,6 +26,16 @@ type Feedback = { key: string; msg: string; ok: boolean };
 type PuntStaat = "taak" | "weg" | "klaar" | "lijst";
 type Teller = { taak: number; lijst: number; weg: number; klaar: number };
 
+// Titel-terugval voor "Kopieer als taak" op een sectie zonder eigen kop: de
+// eerste inhoudelijke regel, ontdaan van markdown-tekens.
+function eersteZinVan(md: string): string {
+  for (const raw of (md || "").split("\n")) {
+    const regel = raw.replace(/^[-*]\s+/, "").replace(/^#{1,6}\s+/, "").replace(/[*_`]/g, "").trim();
+    if (regel) return regel;
+  }
+  return "";
+}
+
 // Klein en stabiel: hash om een punt te herkennen over herlaadbeurten heen.
 function hash(s: string): string {
   let h = 5381;
@@ -298,6 +308,28 @@ export default function AntwoordBlokken({ slug, thread, content, mdToHtml, siteU
     } finally { clearTimeout(timer); setBusyKey(""); }
   }
 
+  // Voor kant-en-klare inhoud (een contentagenda, een uitgewerkt voorstel): geen
+  // AI, geen context, geen splitsing. Precies deze sectie wordt letterlijk één
+  // taak, zodat hij meteen als kaart klaarstaat om naar de klant te sturen.
+  async function kopieerAlsTaak(key: string, s: Sectie, sectieKeys?: string[]) {
+    if (busyKey) return;
+    setBusyKey(key); setFeedback(null);
+    try {
+      const titel = (s.kop || eersteZinVan(s.md) || "Kopie uit het gesprek").slice(0, 200);
+      const r = await fetch("/api/admin/weekplan/quick-task", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, thread, taak: titel, toelichting: s.md }),
+      });
+      const d = await r.json();
+      if (d?.ok) {
+        setFeedback({ key, msg: "Kaart toegevoegd, ongewijzigd overgenomen.", ok: true });
+        if (sectieKeys?.length) zetStaatBulk(sectieKeys.filter((k) => !marks[k]), "taak");
+        onWeekplanChanged?.();
+      } else setFeedback({ key, msg: d?.error || "Kopiëren mislukte. Probeer het nog een keer.", ok: false });
+    } catch { setFeedback({ key, msg: "Kopiëren mislukte. Probeer het nog een keer.", ok: false }); }
+    finally { setBusyKey(""); }
+  }
+
   // "Op bespreeklijst": kies de persoon in een menuutje naast de aangeklikte regel.
   const [lijstVoor, setLijstVoor] = useState<{ key: string; tekst: string; sleutel: string; x: number; y: number } | null>(null);
   const [personen, setPersonen] = useState<string[]>(["Klant", "Dev"]);
@@ -390,14 +422,24 @@ export default function AntwoordBlokken({ slug, thread, content, mdToHtml, siteU
                 {s.kop && <span className="ovc-blok-titel">{s.kop}</span>}
                 <span className="ovc-blok-spacer" />
                 {!sectieVerwerkt && heeftInhoud(s.md) && (
-                  <button type="button" className="ovc-blok-taakbtn" disabled={!!busyKey}
-                    title="Maak kaarten van deze hele sectie (één per pagina) en klap de sectie in"
-                    onClick={(e) => {
-                      const blok = (e.currentTarget as HTMLElement).closest(".ovc-blok");
-                      void maakTaak(key, `${s.kop ? `Sectie: ${s.kop}\n` : ""}${s.md}`, undefined, [...(blok ? sleutelsVan(blok) : []), sHash]);
-                    }}>
-                    {busyKey === key ? "Bezig…" : "+ Taak"}
-                  </button>
+                  <>
+                    <button type="button" className="ovc-blok-taakbtn ovc-blok-taakbtn-licht" disabled={!!busyKey}
+                      title="Zet deze sectie ONGEWIJZIGD als één taak neer: geen AI, geen splitsing. Voor kant-en-klare inhoud die al af is."
+                      onClick={(e) => {
+                        const blok = (e.currentTarget as HTMLElement).closest(".ovc-blok");
+                        void kopieerAlsTaak(key, s, [...(blok ? sleutelsVan(blok) : []), sHash]);
+                      }}>
+                      {busyKey === key ? "Bezig…" : "Kopieer als taak"}
+                    </button>
+                    <button type="button" className="ovc-blok-taakbtn" disabled={!!busyKey}
+                      title="Maak kaarten van deze hele sectie (één per pagina) en klap de sectie in"
+                      onClick={(e) => {
+                        const blok = (e.currentTarget as HTMLElement).closest(".ovc-blok");
+                        void maakTaak(key, `${s.kop ? `Sectie: ${s.kop}\n` : ""}${s.md}`, undefined, [...(blok ? sleutelsVan(blok) : []), sHash]);
+                      }}>
+                      {busyKey === key ? "Bezig…" : "+ Taak"}
+                    </button>
+                  </>
                 )}
               </div>
             )}
