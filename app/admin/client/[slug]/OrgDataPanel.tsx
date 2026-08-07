@@ -1,9 +1,64 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import HelpHint from "./HelpHint";
 import Kennisbank from "./Kennisbank";
 import { ontbrekendeSleutels, ontbrekendeVelden, LEGE_VESTIGING, type OrgVestiging } from "../../../../lib/org-vereist";
+import { mdToHtml } from "../../../../lib/markdown";
+
+// ── "Laatste stand structured data": één knop + "?", geen eigen balk meer ──
+// Maandelijks web-onderzoek naar de actuele schema.org/Google-richtlijnen
+// (app-breed, niet per klant). Los van de kennisbank: eigen fetch, geen
+// afhankelijkheid van de entiteiten hieronder.
+function LaatsteStandKnop() {
+  const [stand, setStand] = useState<{ datum: string; tekst: string; verouderd: boolean } | null>(null);
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [fout, setFout] = useState("");
+  useEffect(() => {
+    fetch("/api/admin/schema-actueel").then((r) => r.json()).then((d) => { if (d?.ok) setStand(d.stand || null); }).catch(() => {});
+  }, []);
+  async function ververs() {
+    setBusy(true); setFout("");
+    try {
+      const d = await fetch("/api/admin/schema-actueel", { method: "POST" }).then((r) => r.json());
+      if (d?.ok) setStand(d.stand); else setFout(d?.error || "Onderzoek mislukte.");
+    } catch { setFout("Onderzoek mislukte; probeer het nog een keer."); } finally { setBusy(false); }
+  }
+  const datum = stand ? new Date(stand.datum).toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" }) : "";
+  return (
+    <span className="org-action-hint">
+      <button type="button" className="ghost-btn small" onClick={() => setOpen(true)}>
+        Laatste stand structured data{stand?.verouderd ? " ⚠" : ""}
+      </button>
+      <HelpHint text="Maandelijks onderzoekt het dashboard via het web de actuele schema.org- en Google-richtlijnen (bijvoorbeeld welke rich results nog gelden en welke niet meer) en past die toe bij het genereren van structured data. Klik de knop om te lezen wat er nu geldt, of om het onderzoek te verversen als het ouder dan een maand is." />
+      {open && typeof document !== "undefined" && createPortal(
+        <div className="hh-overlay" onClick={() => setOpen(false)} role="dialog" aria-modal="true">
+          <div className="hh-modal" style={{ maxWidth: 680 }} onClick={(e) => e.stopPropagation()}>
+            <div className="hh-modal-top">
+              <span className="hh-label"><span className="hh-label-dot">?</span> Laatste stand structured data{datum ? ` · ${datum}` : ""}</span>
+              <button type="button" className="hh-modal-close" aria-label="Sluiten" onClick={() => setOpen(false)}>&times;</button>
+            </div>
+            <div className="hh-modal-body">
+              {stand
+                ? <div className="md" dangerouslySetInnerHTML={{ __html: mdToHtml(stand.tekst) }} />
+                : <p className="muted">Nog geen onderzoek gedaan; klik hieronder om de actuele richtlijnen op te halen.</p>}
+              {stand?.verouderd && <p className="muted">Dit onderzoek is ouder dan een maand; ververs het voor de laatste stand.</p>}
+              {fout && <p style={{ color: "var(--red)" }}>{fout}</p>}
+            </div>
+            <div style={{ marginTop: "var(--s-3)" }}>
+              <button type="button" className="ghost-btn small" disabled={busy} onClick={() => void ververs()}>
+                {busy ? "Onderzoeken… (kan een minuut duren)" : stand ? "Ververs" : "Onderzoek nu"}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
+    </span>
+  );
+}
 
 // ═══════════════════════════════════════════════════════════
 // BEDRIJFSGEGEVENS (fundament voor structured data)
@@ -241,6 +296,10 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
   const [open, setOpen] = useState(false);
   const [devTo, setDevTo] = useState("");
   const [dataOpen, setDataOpen] = useState(false);
+  // Portaal-plek in de knoppenrij waar Kennisbank zijn dropzone en knoppen
+  // ("In velden zetten", "Ontdubbelen") in rendert; zo blijft de logica in
+  // Kennisbank zelf staan, maar staan de knoppen fysiek in deze rij.
+  const [kbSlot, setKbSlot] = useState<HTMLSpanElement | null>(null);
 
   // Wat er in het formulier staat en wat er als laatste bewaard is. Zolang die
   // twee gelijk zijn valt er niets op te slaan; wijkt het af, dan slaan we het
@@ -425,7 +484,7 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
             </span>
             <span className="org-action-hint">
               <button type="button" className="ghost-btn small" onClick={generateSitewide} disabled={!!busy || !data?.bedrijfsnaam}>{busy === "sitewide" ? "Genereren…" : "Genereer site-brede schema"}</button>
-              <HelpHint text="Bouwt het site-brede schema.org-blok (bedrijf + website) uit de gegevens hieronder. Staat er al organisatie-schema van een SEO-plugin op de site, dan vult dit blok aan in plaats van te verdubbelen." />
+              <HelpHint xl title="Site-brede structured data: het identiteitsblok" text={"Het **identiteitsblok** van de site: één blok JSON-LD met de organisatie (of LocalBusiness/MedicalClinic, afhankelijk van het bedrijfstype) en de website, met vaste @id's.\n## Hoe het zich verhoudt tot de per-pagina schema's\nDit blok hoort op de homepage en is het anker van de hele entity graph: de per-pagina schema's uit de structured-data-stap verwijzen er met hun @id's naartoe in plaats van de bedrijfsgegevens overal te herhalen. Eén bron, overal consistent; precies wat zoekmachines en AI-assistenten nodig hebben om het bedrijf als één entiteit te herkennen.\n## Aanvullend op de plugin\nStaat er al organisatie-schema van een SEO-plugin (Yoast, Rank Math, AIOSEO) op de homepage, dan knoopt dit blok daaraan vast in plaats van het te verdubbelen: naam, adres, telefoon en openingstijden blijven van de plugin (die past ze vanzelf aan bij een wijziging), dit blok voegt alleen toe wat de plugin niet levert, zoals vestigingen, reviewcijfer en social-profielen. Zo hoeft de plugin niet aangepast te worden en overleeft de aanvulling een plugin-update.\n## Belangrijk om te weten\nDit blok wordt **deterministisch** gebouwd, zonder AI: rechtstreeks uit de bevestigde gegevens, dus er kan niets bij verzonnen worden.\n## Wat je ermee doet\nNa het genereren verschijnt de JSON hieronder in de kaart, met 'Kopieer JSON' en 'Als Dev-taak doorzetten' (zonder mail). Wil je het meteen delen mét een introductie voor de developer, gebruik dan 'Deel JSON' hiernaast; dat werkt ook zonder eerst zelf te genereren."} />
             </span>
             <span className="org-action-hint">
               <button type="button" className="ghost-btn small" onClick={deelJsonMetDeveloper} disabled={!!busy || !data?.bedrijfsnaam}>{busy === "deeljson" ? "Bezig…" : "Deel JSON"}</button>
@@ -443,6 +502,8 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
                 <HelpHint text="Opent een kant-en-klare mail naar de klant met de deel-link erin, zodat die de gegevens kan nalopen en aanvullen." />
               </span>
             )}
+            <LaatsteStandKnop />
+            <span className="org-action-hint-group" ref={setKbSlot} />
             {/* Wat er met je wijziging gebeurt, zonder dat je op Opslaan hoeft te letten. */}
             {bewaarStand && (
               <span className={"org-bewaar" + (bewaarStand === "fout" ? " org-bewaar-fout" : "")}>
@@ -461,18 +522,19 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
             </button>
             {dataOpen && (data ? <OrgDataForm data={data} onChange={setData} disabled={busy === "autofill"} /> : <div className="muted">Laden…</div>)}
           </section>
-          <div className="org-sitewide">
-            <div className="org-sitewide-head">
-              <strong>Site-brede structured data</strong>
-              <HelpHint xl title="Site-brede structured data: het identiteitsblok" text={"Het **identiteitsblok** van de site: één blok JSON-LD met de organisatie (of LocalBusiness/MedicalClinic, afhankelijk van het bedrijfstype hierboven) en de website, met vaste @id's.\n## Hoe het zich verhoudt tot de per-pagina schema's\nDit blok hoort op de homepage en is het anker van de hele entity graph: de per-pagina schema's uit de structured-data-stap verwijzen er met hun @id's naartoe in plaats van de bedrijfsgegevens overal te herhalen. Eén bron, overal consistent; precies wat zoekmachines en AI-assistenten nodig hebben om het bedrijf als één entiteit te herkennen.\n## Aanvullend op de plugin\nStaat er al organisatie-schema van een SEO-plugin (Yoast, Rank Math, AIOSEO) op de homepage, dan knoopt dit blok daaraan vast in plaats van het te verdubbelen: naam, adres, telefoon en openingstijden blijven van de plugin (die past ze vanzelf aan bij een wijziging), dit blok voegt alleen toe wat de plugin niet levert, zoals vestigingen, reviewcijfer en social-profielen. Zo hoeft de plugin niet aangepast te worden en overleeft de aanvulling een plugin-update.\n## Belangrijk om te weten\nDit blok wordt **deterministisch** gebouwd, zonder AI: rechtstreeks uit de bevestigde gegevens hierboven, dus er kan niets bij verzonnen worden.\n## Wat je ermee doet\nGenereer en controleer eerst met de knop bovenaan de kaart; hier kun je de JSON kopiëren of, zonder meteen te mailen, alvast als Dev-taak doorzetten. Wil je het meteen delen mét een introductie voor de developer, gebruik dan 'Deel JSON' bovenaan."} />
-              {swJson && <button type="button" className="ghost-btn small" onClick={copySitewide}>{swCopied ? "✓ gekopieerd" : "Kopieer JSON"}</button>}
-              {swJson && <button type="button" className="ghost-btn small" onClick={sitewideTask} disabled={!!busy}>{busy === "swtask" ? "Bezig…" : "Als Dev-taak doorzetten"}</button>}
+          {(swJson || swMsg) && (
+            <div className="org-sitewide">
+              {swJson && (
+                <div className="org-sitewide-head">
+                  <button type="button" className="ghost-btn small" onClick={copySitewide}>{swCopied ? "✓ gekopieerd" : "Kopieer JSON"}</button>
+                  <button type="button" className="ghost-btn small" onClick={sitewideTask} disabled={!!busy}>{busy === "swtask" ? "Bezig…" : "Als Dev-taak doorzetten"}</button>
+                </div>
+              )}
+              {swMsg && <div className="saved-msg" style={{ marginTop: swJson ? "var(--s-2)" : "0" }}>{swMsg}</div>}
+              {swJson && <pre className="sch-json-pre" style={{ marginTop: "var(--s-2)" }}>{swJson}</pre>}
             </div>
-            {swMsg && <div className="saved-msg" style={{ marginTop: "var(--s-2)" }}>{swMsg}</div>}
-            {!swJson && !swMsg && <div className="muted" style={{ marginTop: "var(--s-1)" }}>Klik hierboven op &ldquo;Genereer site-brede schema&rdquo; om de code te bekijken, of meteen op &ldquo;Deel JSON&rdquo;.</div>}
-            {swJson && <pre className="sch-json-pre" style={{ marginTop: "var(--s-2)" }}>{swJson}</pre>}
-          </div>
-          <Kennisbank slug={slug} voorActie={() => save(true)} onVerwerkt={() => { void laadOrg(); }} />
+          )}
+          <Kennisbank slug={slug} voorActie={() => save(true)} onVerwerkt={() => { void laadOrg(); }} actiesSlot={kbSlot} />
         </div>
       )}
     </div>

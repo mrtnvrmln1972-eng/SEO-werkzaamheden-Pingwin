@@ -637,20 +637,25 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "(vestigingen, reviewcijfer, KVK/BTW, social-profielen). Zo hoeft de plugin niet aangepast te " +
           "worden en overleeft de aanvulling een plugin-update. Is er geen bestaand schema gevonden, dan " +
           "levert het dashboard het volledige, zelfstandige blok.\n\n" +
-          "**Genereren en delen staan bovenaan de kaart.** 'Genereer site-brede schema' toont de JSON en het " +
-          "plugin-berichtje; 'Deel JSON' doet in één klik alles tegelijk (ook zonder eerst zelf te genereren): " +
-          ".json-bestand naar Drive, Dev-taak in Werkzaamheden, en een kant-en-klare mail met een eigen " +
-          "introductie naar de developer (inclusief de alleen-lezen sitebouwer-link). Onderin de kaart kan de " +
-          "JSON nog los gekopieerd of stil (zonder mail) als Dev-taak doorgezet worden; na delen of doorzetten " +
-          "klapt de zwarte JSON-preview vanzelf weer dicht.\n\n" +
+          "**Eén knoppenrij bovenaan de kaart** bundelt alles: ontbrekende gegevens ophalen, opslaan, " +
+          "vergrendelen, het site-brede schema genereren of meteen delen, de deel-links voor klant en " +
+          "sitebouwer, de laatste stand van de schema.org-richtlijnen (achter een 'vraagteken'-knop), en de " +
+          "kennisbank-bediening (dropzone, in velden zetten, ontdubbelen). 'Genereer site-brede schema' toont " +
+          "de JSON en het plugin-berichtje in de kaart; 'Deel JSON' doet in één klik alles tegelijk (ook zonder " +
+          "eerst zelf te genereren): .json-bestand naar Drive, Dev-taak in Werkzaamheden, en een kant-en-klare " +
+          "mail met een eigen introductie naar de developer (inclusief de alleen-lezen sitebouwer-link). Die " +
+          "JSON kan ook los gekopieerd of stil (zonder mail) als Dev-taak doorgezet worden; na delen of " +
+          "doorzetten klapt de zwarte JSON-preview vanzelf weer dicht, en zonder iets gegenereerd staat er " +
+          "niets in de kaart.\n\n" +
           "**Kennisbank versus het formulier hierboven.** De kennisbank is de intake: een kleine 'dropzone' " +
-          "(rechtsboven bij het formulier) waar documenten, foto's, tekst of een Drive-link in gaan; de AI " +
-          "haalt er kandidaat-gegevens uit, per bron, en die wachten eerst op een akkoord voordat ze meetellen. " +
-          "Pas de knop 'In velden zetten' brengt bevestigde kennisbank-gegevens over naar de echte velden " +
-          "hierboven ('Verzamelde structured data'), met 'Ontdubbelen' om dubbele aanleveringen samen te " +
-          "voegen. Het overzicht daaronder staat als tabjes (per categorie: organisaties, vestigingen, " +
-          "artsen, diensten). Kortom: de kennisbank is het ruwe-materiaal-archief mét herkomst per gegeven, " +
-          "het formulier erboven is de schone, bevestigde bron waar de structured data zelf uit gebouwd wordt.",
+          "(in de knoppenrij) waar documenten, foto's, tekst of een Drive-link in gaan; de AI haalt er " +
+          "kandidaat-gegevens uit, per bron, en die wachten eerst op een akkoord voordat ze meetellen. Pas de " +
+          "knop 'In velden zetten' brengt bevestigde kennisbank-gegevens over naar de echte velden hierboven " +
+          "('Verzamelde structured data'), met 'Ontdubbelen' om dubbele aanleveringen samen te voegen. Het " +
+          "overzicht daaronder staat als tabjes per categorie, met elke gevonden entiteit standaard dicht " +
+          "(klikken toont de velden). Kortom: de kennisbank is het ruwe-materiaal-archief mét herkomst per " +
+          "gegeven, het formulier erboven is de schone, bevestigde bron waar de structured data zelf uit " +
+          "gebouwd wordt.",
       },
       {
         titel: "Zoekwoordkansen en de gaten in de site",

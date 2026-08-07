@@ -6,7 +6,8 @@
 // bevestigt. Het rode lijstje toont wat er voor dit soort bedrijf nog mist.
 
 import { useEffect, useRef, useState } from "react";
-import { mdToHtml } from "../../../../lib/markdown";
+import { createPortal } from "react-dom";
+import HelpHint from "./HelpHint";
 
 type Entiteit = { id: number; categorie: string; naam: string; velden: Record<string, string>; bron: string; updatedAt: string };
 type Voorstel = { id: number; bron: string; samenvatting: string; entiteiten: { categorie: string; naam: string; velden: Record<string, string>; oordeel: string }[] };
@@ -15,7 +16,11 @@ const CAT_LABEL: Record<string, string> = { organisatie: "Organisatie", persoon:
 const CAT_VOLGORDE = ["organisatie", "persoon", "locatie", "dienst", "overig"];
 const OORDEEL: Record<string, string> = { nieuw: "nieuw", aanvulling: "aanvulling", ouder: "let op: ouder" };
 
-export default function Kennisbank({ slug, onVerwerkt, voorActie }: { slug: string; onVerwerkt?: () => void; voorActie?: () => Promise<boolean | void> }) {
+// `actiesSlot`: DOM-knoop uit de knoppenrij van OrgDataPanel (een lege span
+// met een ref). De dropzone en de twee knoppen worden daar via een portal in
+// gerenderd, zodat ze fysiek in die rij staan terwijl de logica (state, drop-
+// afhandeling) hier in Kennisbank blijft, waar hij hoort.
+export default function Kennisbank({ slug, onVerwerkt, voorActie, actiesSlot }: { slug: string; onVerwerkt?: () => void; voorActie?: () => Promise<boolean | void>; actiesSlot?: HTMLElement | null }) {
   const [entiteiten, setEntiteiten] = useState<Entiteit[]>([]);
   const [gaps, setGaps] = useState<string[]>([]);
   const [voorstellen, setVoorstellen] = useState<Voorstel[]>([]);
@@ -164,29 +169,13 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie }: { slug: stri
     finally { setBusy(""); }
   }
 
-  // Laatste stand structured data (app-breed, via websearch; maandelijks verversen).
-  const [stand, setStand] = useState<{ datum: string; tekst: string; verouderd: boolean } | null>(null);
-  const [standOpen, setStandOpen] = useState(false);
-  useEffect(() => {
-    fetch("/api/admin/schema-actueel").then((r) => r.json()).then((d) => { if (d?.ok) setStand(d.stand || null); }).catch(() => {});
-  }, []);
-  async function ververStand() {
-    setBusy("stand"); setFout("");
-    try {
-      const d = await fetch("/api/admin/schema-actueel", { method: "POST" }).then((r) => r.json());
-      if (d?.ok) { setStand(d.stand); setStandOpen(true); }
-      else setFout(d?.error || "Onderzoek mislukte.");
-    } catch { setFout("Onderzoek mislukte; probeer het nog een keer."); }
-    finally { setBusy(""); }
-  }
-  const standDatum = stand ? new Date(stand.datum).toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" }) : "";
-
   const perCat = CAT_VOLGORDE.map((c) => ({ cat: c, items: entiteiten.filter((e) => e.categorie === c) })).filter((g) => g.items.length);
 
   // ── Het overzicht: tabjes per categorie, nette kaartjes in plaats van een muur tekst ──
   const [actieveTab, setActieveTab] = useState("");
   const tabCat = perCat.some((g) => g.cat === actieveTab) ? actieveTab : (perCat[0]?.cat || "");
   const [openRest, setOpenRest] = useState(false);
+  const [openKaart, setOpenKaart] = useState<Record<number, boolean>>({});
   // Alleen een locatie met huisnummer of postcode is een vestiging.
   const isVestiging = (e: Entiteit) => /\d/.test(e.velden.adres || "") || !!(e.velden.postcode || "").trim();
   // Velden die over onze eigen administratie gaan horen niet in beeld.
@@ -201,17 +190,20 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie }: { slug: stri
   const isLink = (v: string) => /^https?:\/\//i.test(v.trim());
   const kaart = (e: Entiteit) => {
     const velden = Object.entries(e.velden).filter(([k, v]) => !INTERN.test(k) && String(v || "").trim());
+    const open = !!openKaart[e.id];
     return (
       <div className="kb-kaart" key={e.id}>
-        <div className="kb-kaart-kop">
+        <button type="button" className="kb-kaart-kop" onClick={() => setOpenKaart({ ...openKaart, [e.id]: !open })}>
+          <span className="kb-groep-caret">{open ? "▾" : "▸"}</span>
           <strong className="kb-kaart-naam">{e.naam}</strong>
           {e.categorie === "locatie" && !isVestiging(e) && (
             <span className="kb-geen-vestiging" title="Zonder bezoekadres tellen we dit niet als vestiging; het vraagt dus ook niet om openingstijden.">geen vestiging</span>
           )}
-          <button type="button" className="kb-weg" title="Uit de kennisbank halen" disabled={!!busy}
-            onClick={() => void verwijder(e.id, e.naam)}>&times;</button>
-        </div>
-        {velden.length ? (
+          {velden.length > 0 && <span className="kb-groep-aantal">{velden.length}</span>}
+          <span className="kb-weg" title="Uit de kennisbank halen"
+            onClick={(ev) => { ev.stopPropagation(); if (!busy) void verwijder(e.id, e.naam); }}>&times;</span>
+        </button>
+        {open && (velden.length ? (
           <dl className="kb-kaart-velden">
             {velden.map(([k, v]) => (
               <div className="kb-veld" key={k}>
@@ -220,37 +212,44 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie }: { slug: stri
               </div>
             ))}
           </dl>
-        ) : <div className="muted">Nog geen details bekend.</div>}
+        ) : <div className="muted">Nog geen details bekend.</div>)}
       </div>
     );
   };
 
+  // De dropzone + de twee knoppen: fysiek in de knoppenrij van OrgDataPanel
+  // via een portal, zolang die rij al gemount is; anders (heel even, of als
+  // deze component ergens los gebruikt wordt) gewoon hier inline.
+  const acties = (
+    <>
+      <div className={"kb-dropzone-mini" + (drag ? " kb-dropzone-mini-actief" : "")}
+        onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+        onDragLeave={() => setDrag(false)}
+        onDrop={(e) => { e.preventDefault(); setDrag(false); void drop(Array.from(e.dataTransfer.files || [])); }}
+        onClick={() => setDropOpen((v) => !v)}
+        title="Sleep hier bestanden op, of klik om te bladeren of tekst/een link te plakken">
+        dropzone
+      </div>
+      <span className="org-action-hint">
+        <button type="button" className="wp-fase-btn" onClick={() => void zetInVelden()}
+          disabled={!!busy || entiteiten.length === 0}
+          title={entiteiten.length === 0
+            ? (voorstellen.length ? "De kennisbank is nog leeg; verwerk eerst de aanlevering hieronder." : "De kennisbank is nog leeg; sleep er eerst materiaal in.")
+            : "Zet alles wat in de kennisbank staat in de velden hierboven. Bestaande waarden blijven staan."}>
+          {busy === "velden" ? "Bezig…" : "In velden zetten"}
+        </button>
+        <HelpHint text="Zet alles wat bevestigd in de kennisbank staat (rechts) over naar de bedrijfsgegevens hierboven. Bestaande waarden blijven staan; alleen lege velden worden aangevuld." />
+      </span>
+      <span className="org-action-hint">
+        <button type="button" className="wp-fase-btn" disabled={!!busy} onClick={() => void ruimOp()}>{busy === "opruimen" ? "Bezig…" : "Ontdubbelen"}</button>
+        <HelpHint text="Voegt dubbele of overlappende regels in de kennisbank samen, bijvoorbeeld dezelfde vestiging die uit twee documenten kwam." />
+      </span>
+    </>
+  );
+
   return (
     <div className="kb-wrap">
-      <div className="kb-head" style={{ marginTop: "var(--s-5)" }}>
-        <div className="kb-head-left">
-          <strong>Kennisbank structured data</strong>
-          <span className="muted">Gooi hier alles in: documenten, artsen-gegevens, schema-code. Verwerken gebeurt pas na jouw akkoord; daarna vult het de velden hierboven vanzelf.</span>
-        </div>
-        <div className="kb-head-right">
-          <div className={"kb-dropzone-mini" + (drag ? " kb-dropzone-mini-actief" : "")}
-            onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
-            onDragLeave={() => setDrag(false)}
-            onDrop={(e) => { e.preventDefault(); setDrag(false); void drop(Array.from(e.dataTransfer.files || [])); }}
-            onClick={() => setDropOpen((v) => !v)}
-            title="Sleep hier bestanden op, of klik om te bladeren of tekst/een link te plakken">
-            dropzone
-          </div>
-          <button type="button" className="wp-fase-btn" onClick={() => void zetInVelden()}
-            disabled={!!busy || entiteiten.length === 0}
-            title={entiteiten.length === 0
-              ? (voorstellen.length ? "De kennisbank is nog leeg; verwerk eerst de aanlevering hieronder." : "De kennisbank is nog leeg; sleep er eerst materiaal in.")
-              : "Zet alles wat in de kennisbank staat in de velden hierboven. Bestaande waarden blijven staan."}>
-            {busy === "velden" ? "Bezig…" : "In velden zetten"}
-          </button>
-          <button type="button" className="wp-fase-btn" disabled={!!busy} onClick={() => void ruimOp()}>{busy === "opruimen" ? "Bezig…" : "Ontdubbelen"}</button>
-        </div>
-      </div>
+      {actiesSlot ? createPortal(acties, actiesSlot) : <div className="kb-head-right">{acties}</div>}
       {dropOpen && (
         <div className="kb-dropzone-pop">
           <div className={"wp-docdrop" + (drag ? " wp-docdrop-actief" : "")}
@@ -319,17 +318,6 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie }: { slug: stri
           <button type="button" className="wp-fase-btn" disabled={!!busy} onClick={() => void maakTaak()}>{busy === "taak" ? "Bezig…" : "Zet als kaart in de weekplanning"}</button>
         </div>
       )}
-      <div className="kb-stand">
-        <div className="kb-stand-kop">
-          <button type="button" className="wp-chat-toggle" onClick={() => setStandOpen(!standOpen)}>
-            Laatste stand structured data {stand ? `(${standDatum})` : ""} {standOpen ? "▾" : "▸"}
-          </button>
-          {stand?.verouderd && <span className="kb-stand-oud">ouder dan een maand</span>}
-          <button type="button" className="wp-fase-btn" disabled={!!busy} onClick={() => void ververStand()}>{busy === "stand" ? "Onderzoeken… (kan een minuut duren)" : stand ? "Ververs" : "Onderzoek nu"}</button>
-        </div>
-        {standOpen && stand && <div className="md kb-stand-tekst" dangerouslySetInnerHTML={{ __html: mdToHtml(stand.tekst) }} />}
-        {!stand && <div className="muted">Nog geen onderzoek gedaan; klik op &ldquo;Onderzoek nu&rdquo; voor de actuele richtlijnen (Google en AI) en hoe wij ze toepassen.</div>}
-      </div>
       {perCat.length > 0 && (
         <div className="kb-tabs-wrap">
           <div className="kb-tabs" role="tablist">
