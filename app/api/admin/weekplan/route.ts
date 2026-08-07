@@ -3,6 +3,7 @@ import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
 import { getWeekplan, updateWeekplanTask, deleteWeekplanTask, isoWeek, setWeekplanNaarDev, setWeekplanKaart } from "../../../../lib/weekplan";
 import { getWeekplanPages } from "../../../../lib/overview";
+import { getClientUrls } from "../../../../lib/site-urls";
 import { splitsBestaandeKaarten } from "../../../../lib/weekplan-splitsen";
 import { verkortTitels } from "../../../../lib/weekplan-titel";
 import { urlKey } from "../../../../lib/url-key";
@@ -24,14 +25,27 @@ export async function GET(req: NextRequest) {
   const slug = req.nextUrl.searchParams.get("slug") || "";
   if (!slug) return NextResponse.json({ ok: false, error: "Geen klant opgegeven." }, { status: 400 });
   const g = await guardSlug(req, slug); if (!g.ok) return g.res;
-  // De pijplijn-stand per pagina reist mee, zodat elke projectkaart in het bord
-  // live de fases en de volgende stap toont. Taken en paginastand laden PARALLEL
-  // (sneller bord); daarna filteren op de pagina's die echt in het bord staan.
+
+  // Taken, bekende paginalijst en de pijplijn-stand per pagina worden hier ÉÉN
+  // keer opgehaald en daarna hergebruikt door de opruimstappen hieronder. Dat
+  // was eerder niet zo: de splitser en de titel-inkorter haalden de taken (en
+  // soms de paginastand) allebei opnieuw op, en dat gebeurt bij élke keer laden
+  // van het bord, ook als er niets te doen valt. Drie tot vier rondjes naar de
+  // database werden zo één tot twee.
+  let [tasks, bekendeUrls, allePages] = await Promise.all([
+    getWeekplan(slug),
+    getClientUrls(slug).then((r) => r.map((u) => u.url)).catch(() => [] as string[]),
+    getWeekplanPages(slug).catch(() => ({} as Awaited<ReturnType<typeof getWeekplanPages>>)),
+  ]);
+
   // Eerst de opruimstap: kaarten die over meerdere pagina's gaan alsnog per
   // pagina zetten. Dit geldt met terugwerkende kracht, want de splitser draaide
   // tot nu toe alleen bij het aanmaken en de kaarten die er al stonden bleven
-  // dubbel. Doet niets als er niets te splitsen valt.
-  await splitsBestaandeKaarten(slug).catch(() => ({ gesplitst: 0, toegevoegd: 0 }));
+  // dubbel. Doet niets als er niets te splitsen valt; alleen dán is een verse
+  // takenlijst nodig.
+  const split = await splitsBestaandeKaarten(slug, tasks, bekendeUrls).catch(() => ({ gesplitst: 0, toegevoegd: 0 }));
+  if (split.gesplitst > 0) tasks = await getWeekplan(slug);
+
   // En daarna de titels die door de oude " + "-plakker zijn volgelopen één keer
   // inkorten. Doet niets zodra ze in de vaste vorm staan, dus dit is na de
   // eerste keer gratis. De oude titel gaat naar het archief van de kaart.
@@ -40,19 +54,18 @@ export async function GET(req: NextRequest) {
   // nagekeken (?titels=proef hieronder, die verandert niets). Dat leverde meteen
   // een fout op: een taak zónder pagina kreeg een pad uit zijn eigen tekst
   // toebedeeld. Pas daarna is hij aangezet.
-  if (TITELS_AUTOMATISCH) await verkortTitels(slug).catch(() => []);
+  if (TITELS_AUTOMATISCH) {
+    const wijzigingen = await verkortTitels(slug, { preKaarten: tasks, prePages: allePages }).catch(() => []);
+    if (wijzigingen.length > 0) tasks = await getWeekplan(slug);
+  }
 
   // De proefstand. Alleen kijken, nooit wijzigen, dus ook veilig voor een
   // meekijk-sessie die niets mag veranderen.
   if (req.nextUrl.searchParams.get("titels") === "proef") {
-    const zouden = await verkortTitels(slug, { droog: true }).catch(() => []);
+    const zouden = await verkortTitels(slug, { droog: true, preKaarten: tasks, prePages: allePages }).catch(() => []);
     return NextResponse.json({ ok: true, proef: true, zouden });
   }
 
-  const [tasks, allePages] = await Promise.all([
-    getWeekplan(slug),
-    getWeekplanPages(slug).catch(() => ({} as Awaited<ReturnType<typeof getWeekplanPages>>)),
-  ]);
   const keys = new Set(tasks.filter((t) => t.url).map((t) => urlKey(t.url || "")));
   const pages = Object.fromEntries(Object.entries(allePages).filter(([k]) => keys.has(k)));
   const now = new Date();
