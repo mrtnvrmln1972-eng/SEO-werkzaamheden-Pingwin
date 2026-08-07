@@ -29,6 +29,9 @@ export default function FocusBlock({ slug, standalone, soort = "focus", titel }:
   // De rechterkolom met snelle links (alleen bij "focus"): een eigen lijstje in
   // dezelfde database-rij, apart van het vrije tekstveld ernaast.
   const [links, setLinks] = useState<FocusLink[]>([]);
+  // Welke link je aan het bewerken bent (twee invulvelden); alle andere links
+  // staan als schone, klikbare regel, net als in het tekstveld links.
+  const [bewerkIdx, setBewerkIdx] = useState<number | null>(null);
   const linksSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Laad de opgeslagen inhoud.
@@ -56,11 +59,61 @@ export default function FocusBlock({ slug, standalone, soort = "focus", titel }:
       });
     }, 700);
   }
-  function linkToevoegen() { bewaarLinks([...links, { label: "", url: "" }]); }
   function linkWijzig(i: number, patch: Partial<FocusLink>) {
     bewaarLinks(links.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
   }
-  function linkVerwijder(i: number) { bewaarLinks(links.filter((_, idx) => idx !== i)); }
+  function linkVerwijder(i: number) {
+    bewaarLinks(links.filter((_, idx) => idx !== i));
+    setBewerkIdx(null);
+  }
+  function linkHandmatigToevoegen() {
+    setBewerkIdx(links.length);
+    bewaarLinks([...links, { label: "", url: "" }]);
+  }
+
+  // Een link die je uit het tekstveld links (of van een andere pagina)
+  // hierheen sleept of plakt, wordt automatisch een schone link: geen
+  // handmatig knippen en plakken van een lange, soms gecodeerde URL nodig.
+  // text/html eerst (heeft de naam van de link), anders de kale URL met de
+  // domeinnaam als naam.
+  function linkUitTransfer(dt: DataTransfer | null): FocusLink | null {
+    if (!dt) return null;
+    const html = dt.getData("text/html");
+    if (html) {
+      const m = /<a\b[^>]*href\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/i.exec(html);
+      if (m) {
+        const url = m[1].trim();
+        const label = m[2].replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+        if (url) return { label: label.slice(0, 120), url: url.slice(0, 500) };
+      }
+    }
+    const raw = (dt.getData("text/uri-list") || dt.getData("text/plain") || "")
+      .split("\n").map((s) => s.trim()).find((s) => s && !s.startsWith("#"));
+    if (raw && /^https?:\/\//i.test(raw)) {
+      let label = raw;
+      try { const u = new URL(raw); label = u.hostname.replace(/^www\./, "") + (u.pathname !== "/" ? u.pathname : ""); } catch { /* url zelf blijft dan het label */ }
+      return { label: label.slice(0, 120), url: raw.slice(0, 500) };
+    }
+    return null;
+  }
+  const [slepenBoven, setSlepenBoven] = useState(false);
+  function linkDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setSlepenBoven(false);
+    const l = linkUitTransfer(e.dataTransfer);
+    if (l) bewaarLinks([...links, l]);
+  }
+  function linkPlak(e: React.ClipboardEvent) {
+    const l = linkUitTransfer(e.clipboardData);
+    if (l) { e.preventDefault(); bewaarLinks([...links, l]); }
+  }
+  function hrefVan(url: string): string {
+    return /^https?:\/\//i.test(url) ? url : `https://${url}`;
+  }
+  function korteUrl(url: string): string {
+    try { const u = new URL(hrefVan(url)); return u.hostname.replace(/^www\./, "") + (u.pathname !== "/" ? u.pathname : ""); }
+    catch { return url; }
+  }
 
   function triggerSave(html: string) {
     laatsteHtmlRef.current = html;
@@ -123,28 +176,50 @@ export default function FocusBlock({ slug, standalone, soort = "focus", titel }:
   const linkenBlok = (
     <div className="focus-linkcol">
       <div className="focus-linkcol-kop">Snelle links</div>
-      {links.length === 0 && <div className="muted focus-linkcol-leeg">Nog geen links; voeg de belangrijkste landingpagina&rsquo;s of hulpbronnen toe.</div>}
+      {links.length === 0 && <div className="muted focus-linkcol-leeg">Nog geen links; sleep of plak er een vanuit het veld hiernaast.</div>}
       {links.map((l, i) => (
         <div className="focus-linkrij" key={i}>
-          <input
-            className="wp-docdrop-input focus-linkveld"
-            placeholder="naam"
-            value={l.label}
-            onChange={(e) => linkWijzig(i, { label: e.target.value })}
-          />
-          <input
-            className="wp-docdrop-input focus-linkveld"
-            placeholder="https://..."
-            value={l.url}
-            onChange={(e) => linkWijzig(i, { url: e.target.value })}
-          />
-          {l.url.trim() && (
-            <a className="ql ql-mini" href={/^https?:\/\//i.test(l.url) ? l.url : `https://${l.url}`} target="_blank" rel="noreferrer" title="Openen">&rarr;</a>
+          {bewerkIdx === i ? (
+            <>
+              <input
+                className="wp-docdrop-input focus-linkveld"
+                placeholder="naam"
+                value={l.label}
+                autoFocus
+                onChange={(e) => linkWijzig(i, { label: e.target.value })}
+                onKeyDown={(e) => { if (e.key === "Enter") setBewerkIdx(null); }}
+              />
+              <input
+                className="wp-docdrop-input focus-linkveld"
+                placeholder="https://..."
+                value={l.url}
+                onChange={(e) => linkWijzig(i, { url: e.target.value })}
+                onKeyDown={(e) => { if (e.key === "Enter") setBewerkIdx(null); }}
+              />
+              <button type="button" className="wp-icon" title="Klaar" onClick={() => setBewerkIdx(null)}>&#10003;</button>
+            </>
+          ) : (
+            <>
+              {l.url.trim()
+                ? <a className="focus-linkclean" href={hrefVan(l.url)} target="_blank" rel="noreferrer" title={l.url}>{l.label.trim() || korteUrl(l.url)}</a>
+                : <span className="muted focus-linkclean-leeg" onClick={() => setBewerkIdx(i)}>(nog geen link, klik om in te vullen)</span>}
+              <button type="button" className="wp-icon" title="Naam of link aanpassen" onClick={() => setBewerkIdx(i)}>&#9998;</button>
+            </>
           )}
           <button type="button" className="wp-icon wp-del" title="Link verwijderen" onClick={() => linkVerwijder(i)}>×</button>
         </div>
       ))}
-      <button type="button" className="ghost-btn small" onClick={linkToevoegen}>+ link</button>
+      <div
+        className={"focus-linkdrop" + (slepenBoven ? " focus-linkdrop-boven" : "")}
+        tabIndex={0}
+        onDragOver={(e) => { e.preventDefault(); setSlepenBoven(true); }}
+        onDragLeave={() => setSlepenBoven(false)}
+        onDrop={linkDrop}
+        onPaste={linkPlak}
+      >
+        Sleep hier een link uit het veld hiernaast, of klik en plak (Cmd/Ctrl+V)
+      </div>
+      <button type="button" className="ghost-btn small" onClick={linkHandmatigToevoegen}>+ handmatig</button>
     </div>
   );
 
