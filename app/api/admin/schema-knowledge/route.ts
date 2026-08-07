@@ -158,13 +158,27 @@ export async function POST(req: NextRequest) {
       // ook bruikbaarder als tekst voor de mail naar de klant.
       const gaps = await knowledgeGapsPerVeld(slug);
       if (!gaps.length) return NextResponse.json({ ok: false, error: "Er staat niets meer open." }, { status: 400 });
+      const TAAK_TITEL = "Structured data: ontbrekende gegevens opvragen bij de klant";
+      const toelichting = `Achtergrond:\n- De structured data-kennisbank mist nog gegevens.\nAanpak per fase:\n${gaps.map((r) => `- ${r}`).join("\n")}`;
+      // addWeekplanTasks slaat een tweede keer aanmaken in dezelfde week geruisloos
+      // over (dedup op titel): de knop meldde dan toch "aangemaakt", terwijl er niets
+      // gebeurde en de lijst met ontbrekende gegevens verouderd bleef staan. Staat er
+      // al een open kaart met deze vaste titel, dan werken we die nu bij in plaats
+      // van niets te doen.
+      const { sql } = await import("../../../../lib/db");
+      const { rows: bestaand } = await sql`
+        SELECT id FROM client_weekplan
+        WHERE client_slug = ${slug} AND status <> 'klaar' AND lower(taak) = lower(${TAAK_TITEL})
+        ORDER BY id DESC LIMIT 1`;
+      if (bestaand[0]) {
+        await sql`UPDATE client_weekplan SET toelichting = ${toelichting}, updated_at = now() WHERE id = ${bestaand[0].id}`;
+        return NextResponse.json({ ok: true, bijgewerkt: true });
+      }
       const { addWeekplanTasks, isoWeek } = await import("../../../../lib/weekplan");
       await addWeekplanTasks(slug, "overzicht", [{
-        taak: "Structured data: ontbrekende gegevens opvragen bij de klant",
-        toelichting: `Achtergrond:\n- De structured data-kennisbank mist nog gegevens.\nAanpak per fase:\n${gaps.map((r) => `- ${r}`).join("\n")}`,
-        wie: "SEO", taaktype: "overig", week: isoWeek(new Date()),
+        taak: TAAK_TITEL, toelichting, wie: "SEO", taaktype: "overig", week: isoWeek(new Date()),
       }]);
-      return NextResponse.json({ ok: true });
+      return NextResponse.json({ ok: true, bijgewerkt: false });
     }
   } catch (e) { return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 500 }); }
   return NextResponse.json({ ok: false, error: "Onbekende actie." }, { status: 400 });

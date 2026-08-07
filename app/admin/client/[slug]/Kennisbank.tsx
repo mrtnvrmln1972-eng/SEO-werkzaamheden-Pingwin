@@ -163,7 +163,7 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie, actiesSlot }: 
     setBusy("taak"); setFout("");
     try {
       const d = await fetch("/api/admin/schema-knowledge", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "taak", slug }) }).then((r) => r.json());
-      if (d?.ok) setOkMsg("Kaart aangemaakt in de weekplanning met het uitvraaglijstje.");
+      if (d?.ok) setOkMsg(d.bijgewerkt ? "De bestaande kaart in de weekplanning is bijgewerkt met de actuele lijst." : "Kaart aangemaakt in de weekplanning met het uitvraaglijstje.");
       else setFout(d?.error || "Kon geen kaart maken.");
     } catch { setFout("Kon geen kaart maken."); }
     finally { setBusy(""); }
