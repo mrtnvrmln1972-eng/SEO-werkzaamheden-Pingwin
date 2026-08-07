@@ -45,6 +45,10 @@ export default function MailUitKaart({
   const [onderwerp, setOnderwerp] = useState("");
   const [verzendt, setVerzendt] = useState(false);
   const [klaar, setKlaar] = useState("");
+  // Herinnering om zelf achter een reactie aan te gaan. Uit tenzij je hem aanzet;
+  // zeven dagen is de gebruikelijke termijn en blijft aanpasbaar.
+  const [herinner, setHerinner] = useState(false);
+  const [herinnerDagen, setHerinnerDagen] = useState(7);
   const ref = useRef<HTMLDivElement>(null);
   // Alle documenten die bij de pagina van deze kaart horen, inclusief de teksten
   // die de klant terugstuurde. De kaart zelf kent alleen analyse, blauwdruk en
@@ -158,7 +162,8 @@ export default function MailUitKaart({
     try {
       const d = await fetch("/api/admin/task/mail", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, to: adres, onderwerp: ond, tekst, links: mee }),
+        body: JSON.stringify({ slug, to: adres, onderwerp: ond, tekst, links: mee, taak: t.taak, url: t.url,
+          herinnerDagen: herinner ? herinnerDagen : 0 }),
       }).then((r) => r.json());
       if (d?.ok) { wisConcept(); setKlaar(d.samenvatting || "Verstuurd."); setTimeout(onClose, 1600); }
       else setErr(d?.error || "Versturen mislukte.");
@@ -225,6 +230,15 @@ export default function MailUitKaart({
           data-placeholder="De mail verschijnt hier…" style={{ opacity: busy ? 0.5 : 1 }} onBlur={bewaarConcept} />
         {busy && <div className="muted" style={{ marginTop: "var(--s-2)" }}>Mail aan het schrijven…</div>}
         <div className="wp-mail-foot">
+          {/* Na het versturen is het stil: kwam er antwoord, en is het ook echt
+              gedaan? Dat onthouden is handwerk, en handwerk wordt vergeten. */}
+          <label className="wp-mail-herinner" title="Op die dag verschijnt er een melding bij het belletje in de kopbalk">
+            <input type="checkbox" checked={herinner} onChange={(e) => setHerinner(e.target.checked)} />
+            <span>Herinner me over</span>
+            <input type="number" min={1} max={90} value={herinnerDagen} disabled={!herinner}
+              onChange={(e) => setHerinnerDagen(Math.min(90, Math.max(1, Number(e.target.value) || 1)))} />
+            <span>dagen om te checken</span>
+          </label>
           <button type="button" className="ghost-btn small" onClick={kopieer} disabled={busy}>Kopieer</button>
           <button type="button" className="primary-btn small" onClick={() => void verstuur()} disabled={busy || verzendt}
             title={to ? `Verstuurt de mail nu naar ${to}` : "Vul eerst het e-mailadres van de ontvanger in"}>

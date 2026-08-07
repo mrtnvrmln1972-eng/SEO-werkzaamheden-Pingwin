@@ -17,7 +17,7 @@ import { sql, ensureSchema } from "./db";
 // developer_overview en client_tasks; dit is alleen het belletje.
 // ═══════════════════════════════════════════════════════════
 
-export type MeldingSoort = "dev-af" | "dev-terug";
+export type MeldingSoort = "dev-af" | "dev-terug" | "mail-opvolg";
 
 export type Melding = {
   id: number;

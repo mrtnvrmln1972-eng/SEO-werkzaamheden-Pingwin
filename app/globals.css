@@ -3573,7 +3573,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .wp-mail-edit { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; font-size: 14px; line-height: 1.55; white-space: pre-wrap; background: #fffdfb; outline: none; }
 .wp-mail-edit:focus { border-color: var(--orange); }
 .wp-mail-edit:empty::before { content: attr(data-placeholder); color: var(--gray); }
-.wp-mail-foot { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.wp-mail-foot { display: flex; align-items: center; justify-content: flex-end; gap: var(--s-2); margin-top: var(--s-3); flex-wrap: wrap; }
+/* Herinnering om achter een reactie aan te gaan: links in de voet, zodat de
+   verstuurknop rechts blijft staan waar hij altijd stond. */
+.wp-mail-herinner { display: flex; align-items: center; gap: var(--s-2); margin-right: auto;
+  font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--muted); }
+.wp-mail-herinner input[type="number"] { width: 3.5rem; padding: var(--s-1) var(--s-2);
+  border: 1px solid var(--border); border-radius: var(--r-sm); font: inherit; text-align: center; }
+.wp-mail-herinner input[type="number"]:disabled { opacity: .5; }
 
 /* Meta doorgevoerd-status: groene "is doorgevoerd" + live-controle */
 .meta-done-row { gap: 8px; }

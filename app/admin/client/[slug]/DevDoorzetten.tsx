@@ -23,7 +23,7 @@ export default function DevDoorzetten({ slug, id, kaartTitel, onKlaar, onSluit }
   slug: string;
   id: number;
   kaartTitel: string;
-  onKlaar: () => void;
+  onKlaar: (mailen: boolean) => void;
   onSluit: () => void;
 }) {
   const [laden, setLaden] = useState(true);
@@ -67,6 +67,10 @@ export default function DevDoorzetten({ slug, id, kaartTitel, onKlaar, onSluit }
     return () => { off = true; };
   }, [slug, id]);
 
+  // Op een lijst zetten is niet hetzelfde als iemand op de hoogte brengen. Daarom
+  // standaard meteen de mail erachteraan; uitzetten kan als je hem later stuurt.
+  const [mailErachteraan, setMailErachteraan] = useState(true);
+
   async function doorzetten() {
     if (bezig) return;
     setBezig(true); setFout("");
@@ -79,7 +83,7 @@ export default function DevDoorzetten({ slug, id, kaartTitel, onKlaar, onSluit }
           punten: puntKeuzes.filter((p) => punten[p.id]).map((p) => p.id),
         }),
       }).then((r) => r.json());
-      if (d?.ok) onKlaar();
+      if (d?.ok) onKlaar(mailErachteraan);
       else setFout(d?.error || "Doorzetten mislukte.");
     } catch { setFout("Doorzetten mislukte."); }
     finally { setBezig(false); }
@@ -149,6 +153,10 @@ export default function DevDoorzetten({ slug, id, kaartTitel, onKlaar, onSluit }
             {fout && <div className="login-error wp-mail-fout">{fout}</div>}
 
             <div className="wp-mail-foot">
+              <label className="wp-mail-herinner" title="Opent meteen de mail aan de sitebouwer, met deze kaart als onderwerp">
+                <input type="checkbox" checked={mailErachteraan} onChange={(e) => setMailErachteraan(e.target.checked)} />
+                <span>Daarna meteen de sitebouwer mailen</span>
+              </label>
               <button type="button" className="ghost-btn small" onClick={onSluit}>Annuleren</button>
               <button type="button" className="primary-btn small" disabled={bezig} onClick={() => void doorzetten()}>
                 {bezig ? "Bezig…" : "Zet op de developerlijst"}

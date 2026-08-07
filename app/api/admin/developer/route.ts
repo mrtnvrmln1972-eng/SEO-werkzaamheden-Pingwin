@@ -128,11 +128,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, tasks: await getDeveloperTasks() });
   }
 
-  // Een zelf aangemaakte taak weggooien.
+  // Een taak van de lijst halen: zelf aangemaakt gaat echt weg, een doorgezette
+  // kaart wordt alleen van de developerlijst afgehaald.
   if (body.action === "verwijder") {
     if (!clientSlug || !taskKey) return NextResponse.json({ ok: false, error: "Taak ontbreekt." }, { status: 400 });
     const weg = await verwijderDevTaak(clientSlug, taskKey);
-    if (!weg) return NextResponse.json({ ok: false, error: "Deze taak komt uit de weekplanning of Werkzaamheden; haal hem daar weg." }, { status: 400 });
+    if (!weg) return NextResponse.json({ ok: false, error: "Deze taak staat niet (meer) op de developerlijst." }, { status: 400 });
     return NextResponse.json({ ok: true, tasks: await getDeveloperTasks() });
   }
 

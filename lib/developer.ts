@@ -134,7 +134,11 @@ export async function docsVoorPagina(slug: string, url: string): Promise<{ label
   // De pagina zelf staat vooraan en is de standaardkeuze: de sitebouwer moet
   // altijd weten wáár de tekst naartoe moet, en die link stond nergens in de
   // doorgezette taak.
-  voegToe("De pagina", url);
+  //
+  // Alleen als het écht een pagina is. Een taak zonder pagina bewaart zijn
+  // documenten onder de sleutel "taak:<id>"; dat is geen adres waar je heen kunt
+  // klikken, dus dat hoort niet als "De pagina" in de lijst.
+  if (/^https?:\/\//i.test(url)) voegToe("De pagina", url);
 
   try {
     const { rows } = await sql`
@@ -276,7 +280,11 @@ export async function getDeveloperTasks(): Promise<DevTask[]> {
       // dan alles wat bij de pagina hoort.
       docs: Array.isArray(r.dev_docs) && (r.dev_docs as unknown[]).length
         ? (r.dev_docs as { label: string; url: string }[])
-        : await docsVoorPagina(slug, (r.url as string) || ""),
+        // Dezelfde sleutel als de kaart gebruikt om documenten te bewaren
+        // (WeekplanCard: `t.url || "taak:" + t.id`). Zonder die terugval zag de
+        // developer niets bij een taak die niet aan een pagina hangt, terwijl er
+        // wél documenten aan waren gehangen: de kolom bleef leeg op een streepje.
+        : await docsVoorPagina(slug, (r.url as string) || `taak:${Number(r.id)}`),
     });
   }
 
@@ -554,15 +562,43 @@ export async function verwijderDevDoc(
 }
 
 /**
- * Verwijdert een zelf aangemaakte taak. Taken die uit de weekplanning of
- * Werkzaamheden komen worden hier NIET verwijderd: die horen thuis in hun eigen
- * scherm, anders zou je hier iets weggooien dat daar gewoon blijft staan.
+ * Haalt een taak van de developerlijst af.
+ *
+ * Drie soorten, drie manieren, en dat is bewust:
+ *  - Zelf hier aangemaakt: die bestaat alleen hier, dus die gaat echt weg.
+ *  - Doorgezet vanuit de weekplanning ("wp:<id>"): de kaart blijft gewoon staan
+ *    in de weekplanning, alleen het vinkje "naar dev" gaat eraf. Anders zou je
+ *    hier werk weggooien dat daar nog loopt.
+ *  - Een oude taak uit Werkzaamheden: die krijgt zijn status terug op "gepland",
+ *    zodat hij daar zichtbaar blijft maar niet meer bij de developer staat.
+ *
+ * Eerder deed dit alleen het eerste geval en gaf het bij de rest stil "niets
+ * gedaan" terug: je klikte weggooien en er gebeurde niets.
  */
 export async function verwijderDevTaak(clientSlug: string, taskKey: string): Promise<boolean> {
   await ensureSchema();
   await ensureDevTable();
+
   const { rowCount } = await sql`
     DELETE FROM developer_overview
     WHERE client_slug = ${clientSlug} AND task_key = ${taskKey} AND eigen = true`;
-  return (rowCount || 0) > 0;
+  if ((rowCount || 0) > 0) return true;
+
+  const wp = /^wp:(\d+)$/.exec(taskKey);
+  if (wp) {
+    const r = await sql`
+      UPDATE client_weekplan SET naar_dev = false, naar_dev_at = NULL, updated_at = now()
+      WHERE client_slug = ${clientSlug} AND id = ${Number(wp[1])}`;
+    // De volgorde en de uitvoerdatum horen bij de doorzetting; die ruimen we mee op.
+    await sql`DELETE FROM developer_overview WHERE client_slug = ${clientSlug} AND task_key = ${taskKey}`;
+    return (r.rowCount || 0) > 0;
+  }
+
+  // Een taak uit Werkzaamheden: terug naar gepland, dus weg bij de developer.
+  const t = await sql`
+    UPDATE client_tasks SET status = 'gepland'
+    WHERE client_slug = ${clientSlug} AND lower(coalesce(status, '')) = 'naar dev'
+      AND lower(regexp_replace(coalesce(regexp_replace(taak, '<[^>]*>', '', 'g'), ''), '\\s+', ' ', 'g')) = ${taskKey.split("::").slice(1).join("::")}`;
+  await sql`DELETE FROM developer_overview WHERE client_slug = ${clientSlug} AND task_key = ${taskKey}`;
+  return (t.rowCount || 0) > 0;
 }

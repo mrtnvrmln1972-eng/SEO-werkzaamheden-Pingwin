@@ -937,7 +937,13 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
           slug={slug} id={t.id}
           kaartTitel={t.taak.replace(/<[^>]*>/g, "").trim()}
           onSluit={() => setDevVenster(false)}
-          onKlaar={() => { setDevVenster(false); setNaarDev(true); refreshBoard(); }}
+          // Doorzetten alleen zet hem op een lijst; de sitebouwer weet dat pas als
+          // je het hem laat weten. Daarom meteen de mail erachteraan, met dezelfde
+          // kaart als onderwerp, in plaats van dat je hem later moet opzoeken.
+          onKlaar={(mailen) => {
+            setDevVenster(false); setNaarDev(true); refreshBoard();
+            if (mailen) onMail?.("dev");
+          }}
         />
       )}
     </div>
