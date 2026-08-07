@@ -22,7 +22,8 @@ import MailAllowlist from "./MailAllowlist";
 import LinkPreview from "./LinkPreview";
 import { mdToHtml } from "../../../../lib/markdown";
 import BespreekLijsten from "./BespreekLijsten";
-import Notities from "./Notities";
+import LinksPaneel from "./LinksPaneel";
+import FloatVenster from "./FloatVenster";
 import DeveloperOverview from "../../developer/DeveloperOverview";
 import KpiPanel from "./KpiPanel";
 import PagesPanel from "./PagesPanel";
@@ -151,8 +152,9 @@ export default function ClientCockpit({
   // (28 dagen of 3 maanden), voor schermdelen met potentiële klanten.
   const [demoFilter, setDemoFilter] = useState<null | "28" | "90">(null);
   // Toggles bovenaan de (samengevoegde) Werkzaamheden-pagina, standaard gesloten.
-  const [showStatusBox, setShowStatusBox] = useState(false);
   const [showMailsBox, setShowMailsBox] = useState(false);
+  // Laatste mails los en groot in beeld, in plaats van in de smalle kolom.
+  const [mailsFloating, setMailsFloating] = useState(false);
 
   // Afzender-filter als klein popovertje in de Laatste mails-kop.
   const [showAfzenders, setShowAfzenders] = useState(false);
@@ -252,21 +254,6 @@ export default function ClientCockpit({
     if (url) document.execCommand("createLink", false, url);
   }
 
-  // Optimistische override: het vinkje verschijnt meteen, de server volgt op de achtergrond.
-  const [statusOverride, setStatusOverride] = useState<Record<number, boolean>>({});
-
-  async function toggleStatus(index: number, done: boolean) {
-    setStatusOverride((o) => ({ ...o, [index]: done }));
-    try {
-      await fetch("/api/admin/status", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug: client.slug, index, status: done ? "done" : "open" }),
-      });
-      router.refresh();
-    } catch { /* de optimistische stand blijft staan */ }
-  }
-
   // Naar wie het antwoord gaat: deelnemers van de mail (afzender + to) minus jezelf.
   const myLow = (myEmail || "").toLowerCase();
   function recipientsFor(e: EmailSnapshot): string[] {
@@ -336,16 +323,6 @@ export default function ClientCockpit({
   const resultsUrl = client.cockpit.resultsUrl || "";
   const clientMailQuery = (client.email || client.domain || "").trim();
   const lastMailDate = emails.find((e) => e.receivedAt)?.receivedAt || null;
-
-  // Map onderwerp → de exacte mail in de lijst (voor zowel de Superhuman-link
-  // als "hier openen" binnen het dashboard).
-  const emailMatch = new Map<string, { id: string; idx: number; superhumanLink: string | null }>();
-  emails.forEach((e, idx) => {
-    if (e.subject) {
-      const k = normSubject(e.subject);
-      if (!emailMatch.has(k)) emailMatch.set(k, { id: e.id, idx, superhumanLink: e.superhumanLink });
-    }
-  });
 
   // Een mail-verwijzing in een projectkaart ("Mail 9-7-2026") opent die mail in
   // het venster Laatste mails: datum parsen en de eerste mail van die dag openen.
@@ -496,6 +473,12 @@ export default function ClientCockpit({
         <ZijPaneel label="Zoekwoorden & links">
           <FocusBlock slug={client.slug} />
         </ZijPaneel>
+        {/* Eén blik op alle bronnen die het overzicht voeden of zouden moeten
+            voeden (Search Console, GMB, klantprofiel, structured data, ...),
+            met een directe link naar het scherm waar je hem beheert. */}
+        <ZijPaneel label="Links" top={420}>
+          <LinksPaneel slug={client.slug} seoProfile={client.seoProfile || ""} googleConnected={googleConnected} onGaNaar={(t) => changeTab(validTab(t))} />
+        </ZijPaneel>
 
         {tab === "lead" && (
           <LeadTab slug={client.slug} naam={client.name} domain={client.domain || ""} />
@@ -575,85 +558,12 @@ export default function ClientCockpit({
             <div className="tk-rechts">
 
             {showMailSections && (<>
-            <div className="cockpit-card strategy-card">
-              <button type="button" className="strategy-head" onClick={() => setShowStatusBox((v) => !v)}>
-                <span className="strategy-caret">{showStatusBox ? "▾" : "▸"}</span>
-                <span className="strategy-title">Actuele stand van zaken <HelpHint xl title="Actuele stand van zaken" text={"Het lopende gesprek met de klant in één oogopslag, zodat je vóór elk contactmoment in tien seconden weet waar jullie staan.\n## Waar de data vandaan komt\nDe tijdlijn wordt **automatisch samengevat uit de echte mailwisseling** met deze klant (uit de gekoppelde mailbox). Elke ballon is een punt uit de correspondentie: links de klant, rechts Pingwin, met datum en de status open of afgehandeld.\n## Wat je ermee doet\n- **Afvinken:** handel een punt af met het vinkje 'afgerond'; zo blijft alleen het openstaande werk rood.\n- **Terug naar de bron:** 'mail openen' springt naar de originele mail, zodat je nooit hoeft te zoeken.\n- **Vaste kennis rechts:** het blok Zoekwoorden & links is jouw eigen spiekbriefje per klant (afspraken, focus-zoekwoorden, handige links); dat vult zichzelf niet, dat is bewust jouw plek."} /></span>
-                <span className="strategy-meta-right">
-                  {statusUpdatedAt && <>bijgewerkt {fmtDate(statusUpdatedAt)} · </>}
-                  <span role="button" className="sov-refresh" title="Vat de recente mails opnieuw samen tot de actuele stand van zaken"
-                    onClick={(e) => { e.stopPropagation(); void refreshStatus(); }}>{statusBusy ? "Bezig…" : "Vernieuwen"}</span>
-                </span>
-              </button>
-              <div className="strategy-body" style={{ display: showStatusBox ? undefined : "none" }}>
-                  <div className="sov-thread">
-                    <div className="sov-legend">
-                      <span><span className="sov-dot client" /> Klant</span>
-                      <span><span className="sov-dot us" /> Wij</span>
-                      <span className="sov-legend-status"><span className="sov-pill open">open</span><span className="sov-pill done">afgehandeld</span></span>
-                    </div>
-                    {status.exchanges
-                      .map((ex, i) => ({ ex, i }))
-                      .sort((a, b) => (b.ex.date || "").localeCompare(a.ex.date || ""))
-                      .map(({ ex, i }) => {
-                      const isClient = ex.side === "client";
-                      const done = statusOverride[i] !== undefined ? statusOverride[i] : ex.status === "done";
-                      const cls = "sov-row " + (isClient ? "left" : "right") + " " + (done ? "done" : "open");
-                      const m = ex.subject ? emailMatch.get(normSubject(ex.subject)) : undefined;
-                      const exLink = m?.superhumanLink || ex.mailLink || null;
-                      return (
-                        <div className={cls} key={i}>
-                          <div className="sov-bubble">
-                            <div className="sov-bubble-top">
-                              <span className="sov-who">{isClient ? (client.name || "Klant") : "Pingwin"}</span>
-                              {ex.date && <span className="sov-date">{fmtDate(ex.date)}</span>}
-                              <label className="sov-check" title="Markeer als afgehandeld">
-                                <input type="checkbox" checked={done} onChange={(e) => toggleStatus(i, e.target.checked)} />
-                                afgerond
-                              </label>
-                            </div>
-                            <div className="sov-text">{ex.text}</div>
-                            <div className="sov-links">
-                              {m
-                                ? <button type="button" className="sov-maillink as-btn" onClick={() => openInDashboard(m.id, m.idx)}>mail openen &darr;</button>
-                                : exLink && <a className="sov-maillink" href={exLink} target="_blank" rel="noreferrer">mail openen (Superhuman) &rarr;</a>}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {status.exchanges.length === 0 && <div className="muted">Nog geen correspondentie samengevat.</div>}
-                  </div>
-                </div>
-              </div>
-
-            {/* Bespreeklijsten per persoon, direct onder de actuele stand. */}
+            {/* Bespreeklijsten per persoon. */}
             <BespreekLijsten slug={client.slug} clientName={client.name} clientEmail={client.email || clientMailQuery} domain={client.domain} />
 
-            {/* Kladblok per klant; wat hier staat gaat mee als klantkennis. */}
-            <Notities slug={client.slug} domain={client.domain} />
-
-            <div className="cockpit-card strategy-card">
-              <button type="button" className="strategy-head" onClick={() => setShowMailsBox((v) => !v)}>
-                <span className="strategy-caret">{showMailsBox ? "▾" : "▸"}</span>
-                <span className="strategy-title">Laatste mails <HelpHint xl title="Laatste mails" text={"De recentste e-mails met deze klant, **live uit de gekoppelde mailbox** (Microsoft 365); je hoeft dus niet te wisselen tussen dashboard en mailprogramma om de context te zien.\n## Wat je ermee kunt\n- **Lezen:** klik een mail aan om hem volledig in het dashboard te lezen.\n- **Zoeken:** doorzoek de correspondentie via het zoekveld, of open dezelfde zoekopdracht direct in Superhuman voor het volledige archief.\n- **Filteren:** via de filterlijst bepaal je welke afzenders hier meetellen, zodat nieuwsbrieven en automatische mails de tijdlijn niet vervuilen.\n## Goed om te weten\nGasten zonder mail-recht zien dit blok nooit (privacy is hard afgedwongen op de server), en de 'Actuele stand van zaken' hierboven wordt uit deze zelfde mailstroom samengevat."} /></span>
-                <span className="mails-kop-mini">
-                  <span className="afz-link" role="button" title="Welke afzenders horen bij deze klant? Klik om ze te bekijken of aan te passen."
-                    onClick={(e) => { e.stopPropagation(); setShowAfzenders((v) => !v); }}>afzenders ?</span>
-                  {mailLive
-                    ? <span className="ms-dot" title="Live gekoppeld met Microsoft 365" />
-                    : msConfigured && <a className="afz-link" href="/api/ms/auth/start" onClick={(e) => e.stopPropagation()} title="Koppel Microsoft 365 om live mail te zien">koppelen</a>}
-                </span>
-              </button>
-              {showAfzenders && (
-                <div className="afz-popover">
-                  <MailAllowlist slug={client.slug} />
-                  <div className="afz-voet muted">
-                    Loopt de live mail achter of is de koppeling verlopen, dan helpt <a className="afz-link" href="/api/ms/auth/start">opnieuw koppelen</a>.
-                  </div>
-                </div>
-              )}
-              <div className="strategy-body" style={{ display: showMailsBox ? undefined : "none" }}>
+            {(() => {
+              const mailsInner = (
+                <>
               <div className="sh-search" style={{ marginBottom: 12 }}>
                 <input
                   value={shQuery}
@@ -794,8 +704,54 @@ export default function ClientCockpit({
                   })}
                 </div>
               )}
-              </div>
-            </div>
+                </>
+              );
+              return (
+                <>
+                  {!mailsFloating ? (
+                    <div className="cockpit-card strategy-card">
+                      <button type="button" className="strategy-head" onClick={() => setShowMailsBox((v) => !v)}>
+                        <span className="strategy-caret">{showMailsBox ? "▾" : "▸"}</span>
+                        <span className="strategy-title">Laatste mails <HelpHint xl title="Laatste mails" text={"De recentste e-mails met deze klant, **live uit de gekoppelde mailbox** (Microsoft 365); je hoeft dus niet te wisselen tussen dashboard en mailprogramma om de context te zien.\n## Wat je ermee kunt\n- **Lezen:** klik een mail aan om hem volledig in het dashboard te lezen.\n- **Zoeken:** doorzoek de correspondentie via het zoekveld, of open dezelfde zoekopdracht direct in Superhuman voor het volledige archief.\n- **Filteren:** via de filterlijst bepaal je welke afzenders hier meetellen, zodat nieuwsbrieven en automatische mails de tijdlijn niet vervuilen.\n- **Los zetten:** met het knopje 'los' zwaait dit venster groot en centraal open, los van de smalle kolom."} /></span>
+                        <span className="mails-kop-mini">
+                          <span className="afz-link" role="button" title="Los en groot in beeld zetten"
+                            onClick={(e) => { e.stopPropagation(); setShowMailsBox(true); setMailsFloating(true); }}>&#10696; los</span>
+                          <span className="afz-link" role="button" title="Welke afzenders horen bij deze klant? Klik om ze te bekijken of aan te passen."
+                            onClick={(e) => { e.stopPropagation(); setShowAfzenders((v) => !v); }}>afzenders ?</span>
+                          {mailLive
+                            ? <span className="ms-dot" title="Live gekoppeld met Microsoft 365" />
+                            : msConfigured && <a className="afz-link" href="/api/ms/auth/start" onClick={(e) => e.stopPropagation()} title="Koppel Microsoft 365 om live mail te zien">koppelen</a>}
+                        </span>
+                      </button>
+                      {showAfzenders && (
+                        <div className="afz-popover">
+                          <MailAllowlist slug={client.slug} />
+                          <div className="afz-voet muted">
+                            Loopt de live mail achter of is de koppeling verlopen, dan helpt <a className="afz-link" href="/api/ms/auth/start">opnieuw koppelen</a>.
+                          </div>
+                        </div>
+                      )}
+                      <div className="strategy-body" style={{ display: showMailsBox ? undefined : "none" }}>
+                        {mailsInner}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="cockpit-card strategy-card">
+                      <button type="button" className="strategy-head" onClick={() => setMailsFloating(false)}>
+                        <span className="strategy-caret">&#10696;</span>
+                        <span className="strategy-title">Laatste mails</span>
+                        <span className="strategy-meta-right">losgemaakt &middot; klik om terug te zetten</span>
+                      </button>
+                    </div>
+                  )}
+                  {mailsFloating && (
+                    <FloatVenster titel="Laatste mails" onClose={() => setMailsFloating(false)}>
+                      {mailsInner}
+                    </FloatVenster>
+                  )}
+                </>
+              );
+            })()}
             </>)}
 
             </div>
@@ -914,10 +870,6 @@ function sanitizeEmail(html: string): string {
     .replace(/\son\w+\s*=\s*'[^']*'/gi, "")
     .replace(/javascript:/gi, "")
     .replace(/<a\s/gi, '<a target="_blank" rel="noreferrer" ');
-}
-
-function normSubject(s: string): string {
-  return s.replace(/^((re|fw|fwd):\s*)+/i, "").trim().toLowerCase();
 }
 
 // Schoont de HTML uit de editor op: paragrafen/divs naar gewone regels (zonder

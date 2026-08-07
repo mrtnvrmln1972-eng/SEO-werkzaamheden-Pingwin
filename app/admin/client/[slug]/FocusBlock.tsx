@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import RijkTekstVeld from "../../../_velden/RijkTekstVeld";
+import type { FocusLink } from "../../../../lib/focus";
 
 /**
  * Eén vrij opmaakbaar tekstveld per klant, met knoppenbalk en automatisch opslaan.
@@ -25,15 +26,41 @@ export default function FocusBlock({ slug, standalone, soort = "focus", titel }:
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const laatsteHtmlRef = useRef("");
 
+  // De rechterkolom met snelle links (alleen bij "focus"): een eigen lijstje in
+  // dezelfde database-rij, apart van het vrije tekstveld ernaast.
+  const [links, setLinks] = useState<FocusLink[]>([]);
+  const linksSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Laad de opgeslagen inhoud.
   useEffect(() => {
     let off = false;
     fetch(`/api/admin/focus?slug=${encodeURIComponent(slug)}`)
       .then((r) => r.json())
-      .then((d) => { if (!off) setInitialHtml(d.ok ? (d.focus?.[veld] || "") : ""); })
+      .then((d) => {
+        if (off) return;
+        setInitialHtml(d.ok ? (d.focus?.[veld] || "") : "");
+        if (soort === "focus") setLinks(d.ok && Array.isArray(d.focus?.links) ? d.focus.links : []);
+      })
       .catch(() => { if (!off) setInitialHtml(""); });
     return () => { off = true; };
-  }, [slug, veld]);
+  }, [slug, veld, soort]);
+
+  function bewaarLinks(volgende: FocusLink[]) {
+    setLinks(volgende);
+    if (linksSaveTimer.current) clearTimeout(linksSaveTimer.current);
+    linksSaveTimer.current = setTimeout(() => {
+      void fetch("/api/admin/focus", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, links: volgende }),
+      });
+    }, 700);
+  }
+  function linkToevoegen() { bewaarLinks([...links, { label: "", url: "" }]); }
+  function linkWijzig(i: number, patch: Partial<FocusLink>) {
+    bewaarLinks(links.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
+  }
+  function linkVerwijder(i: number) { bewaarLinks(links.filter((_, idx) => idx !== i)); }
 
   function triggerSave(html: string) {
     laatsteHtmlRef.current = html;
@@ -93,15 +120,53 @@ export default function FocusBlock({ slug, standalone, soort = "focus", titel }:
     );
   }
 
+  const linkenBlok = (
+    <div className="focus-linkcol">
+      <div className="focus-linkcol-kop">Snelle links</div>
+      {links.length === 0 && <div className="muted focus-linkcol-leeg">Nog geen links; voeg de belangrijkste landingpagina&rsquo;s of hulpbronnen toe.</div>}
+      {links.map((l, i) => (
+        <div className="focus-linkrij" key={i}>
+          <input
+            className="wp-docdrop-input focus-linkveld"
+            placeholder="naam"
+            value={l.label}
+            onChange={(e) => linkWijzig(i, { label: e.target.value })}
+          />
+          <input
+            className="wp-docdrop-input focus-linkveld"
+            placeholder="https://..."
+            value={l.url}
+            onChange={(e) => linkWijzig(i, { url: e.target.value })}
+          />
+          {l.url.trim() && (
+            <a className="ql ql-mini" href={/^https?:\/\//i.test(l.url) ? l.url : `https://${l.url}`} target="_blank" rel="noreferrer" title="Openen">&rarr;</a>
+          )}
+          <button type="button" className="wp-icon wp-del" title="Link verwijderen" onClick={() => linkVerwijder(i)}>×</button>
+        </div>
+      ))}
+      <button type="button" className="ghost-btn small" onClick={linkToevoegen}>+ link</button>
+    </div>
+  );
+
   // In de rechterkolom van de stand van zaken: gewoon altijd open (zoals in de
   // Pingwin-wereld); de toggle is alleen voor het losse blok (standalone).
-  return (
+  const inhoud = (
     <div className="sov-tasks">
       <div className="sov-tasks-head focus-head">
         <span>{titel || "Zoekwoorden & links"}</span>
         {soort === "focus" && <a className="focus-nav-link" href={`/admin/client/${slug}/navigatie`} target="_blank" rel="noreferrer" title="De hele sitestructuur (huidig én beoogd) met voortgang per pagina">Navigatie-roadmap &rarr;</a>}
       </div>
       {veldBlok}
+    </div>
+  );
+
+  // Alleen het blok "Zoekwoorden & links" krijgt de rechterkolom met snelle
+  // links; "Top Prio's" gebruikt hetzelfde component maar blijft één kolom.
+  if (soort !== "focus") return inhoud;
+  return (
+    <div className="focus-2col">
+      {inhoud}
+      {linkenBlok}
     </div>
   );
 }

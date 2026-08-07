@@ -4088,6 +4088,15 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .focus-nav-link:hover { text-decoration: underline; }
 @media (max-width: 700px) { .nv-kolommen { grid-template-columns: 1fr; } }
 
+/* Zoekwoorden & links: het vrije tekstveld links, de snelle links rechts. */
+.focus-2col { display: grid; grid-template-columns: 2fr 1fr; gap: var(--s-4); align-items: start; }
+.focus-linkcol { min-width: 0; border-left: 1px solid var(--border); padding-left: var(--s-4); }
+.focus-linkcol-kop { font-weight: 700; font-size: var(--fs-sm); color: var(--dark); margin-bottom: var(--s-2); }
+.focus-linkcol-leeg { margin-bottom: var(--s-2); }
+.focus-linkrij { display: flex; align-items: center; gap: var(--s-1); margin-bottom: var(--s-2); }
+.focus-linkveld { flex: 1 1 auto; min-width: 0; }
+@media (max-width: 900px) { .focus-2col { grid-template-columns: 1fr; } .focus-linkcol { border-left: none; border-top: 1px solid var(--border); padding-left: 0; padding-top: var(--s-3); } }
+
 /* ── Opruimlijst als werkbare tabel ───────────────────────────────────────────
    De lijst staat bovenaan en het verhaal eronder: een lijst werk je af, proza
    lees je. Andersom (zoals het eerst was) is zeventig regels onwerkbaar. */
