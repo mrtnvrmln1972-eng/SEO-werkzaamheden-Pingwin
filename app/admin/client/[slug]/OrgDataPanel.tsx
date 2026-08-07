@@ -437,7 +437,7 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
               </div>
             </div>
           )}
-          {msg && <div className="saved-msg" style={{ margin: "8px 0" }}>{msg}</div>}
+          {msg && <div className="saved-msg" style={{ margin: "var(--s-2) 0" }}>{msg}</div>}
           {data ? <OrgDataForm data={data} onChange={setData} disabled={busy === "autofill"} /> : <div className="muted">Laden…</div>}
           <div className="org-sitewide">
             <div className="org-sitewide-head">
@@ -447,8 +447,8 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
               {swJson && <button type="button" className="ghost-btn small" onClick={copySitewide}>{swCopied ? "✓ gekopieerd" : "Kopieer JSON"}</button>}
               {swJson && <button type="button" className="ghost-btn small" onClick={sitewideTask} disabled={!!busy}>{busy === "swtask" ? "Bezig…" : "Als Dev-taak doorzetten"}</button>}
             </div>
-            {swMsg && <div className="saved-msg" style={{ marginTop: 6 }}>{swMsg}</div>}
-            {swJson && <pre className="sch-json-pre" style={{ marginTop: 8 }}>{swJson}</pre>}
+            {swMsg && <div className="saved-msg" style={{ marginTop: "var(--s-2)" }}>{swMsg}</div>}
+            {swJson && <pre className="sch-json-pre" style={{ marginTop: "var(--s-2)" }}>{swJson}</pre>}
           </div>
           <Kennisbank slug={slug} voorActie={() => save(true)} onVerwerkt={() => { void laadOrg(); }} />
         </div>

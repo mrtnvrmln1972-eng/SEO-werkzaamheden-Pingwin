@@ -274,9 +274,9 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
         {!n.bucket && <span className="nv-balkje"><span className={"nv-balkvul " + kleur(n)} style={{ width: `${Math.max(takPct, 3)}%` }} /></span>}
         {!isDicht && (
           <div className="nv-kolomlijst">
-            {tak.length === 1 && !n.bucket && <div className={"nv-item " + kleur(n)} style={{ paddingLeft: 10 }}><span className="nv-caret nv-caret-leeg" /><a className="nv-naam" href={liveUrl(n.url)} target="_blank" rel="noreferrer">{n.url}</a><span className="nv-spacer" /><Cijfers n={n} /></div>}
+            {tak.length === 1 && !n.bucket && <div className={"nv-item " + kleur(n)} style={{ paddingLeft: "var(--s-3)" }}><span className="nv-caret nv-caret-leeg" /><a className="nv-naam" href={liveUrl(n.url)} target="_blank" rel="noreferrer">{n.url}</a><span className="nv-spacer" /><Cijfers n={n} /></div>}
             {kids.map((k) => <Regel key={k.url} n={k} diepte={0} keten={[n.url]} />)}
-            {gescand.teveel > 0 && n.bucket && <div className="nv-muted" style={{ padding: "4px 6px" }}>+ {gescand.teveel} pagina&rsquo;s niet getoond</div>}
+            {gescand.teveel > 0 && n.bucket && <div className="nv-muted" style={{ padding: "var(--s-1) var(--s-2)" }}>+ {gescand.teveel} pagina&rsquo;s niet getoond</div>}
             {blik === "beoogd" && !n.bucket && (nieuwIn === n.url ? (
               <input className="nv-term-input" autoFocus value={nieuwPad} placeholder="/pad/nieuwe-pagina/"
                 onChange={(e) => setNieuwPad(e.target.value)}
@@ -384,7 +384,7 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
                 <tr key={n.url}>
                   <td>
                     <a href={liveUrl(n.url)} target="_blank" rel="noreferrer">{naam(n)}</a>
-                    {!n.live && <span className="nv-badge-mist" style={{ marginLeft: 8 }}>nieuw</span>}
+                    {!n.live && <span className="nv-badge-mist" style={{ marginLeft: "var(--s-2)" }}>nieuw</span>}
                     <div className="nv-muted">{n.url}</div>
                   </td>
                   <td className="nv-muted">{takNaam(n)}</td>

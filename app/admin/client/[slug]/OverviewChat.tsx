@@ -607,7 +607,7 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
                     </div>
                   )}
 
-                  {error && <div className="login-error" style={{ margin: "6px 0" }}>{error}</div>}
+                  {error && <div className="login-error" style={{ margin: "var(--s-2) 0" }}>{error}</div>}
 
                   {/* De dropzone van dit gesprek: wat je hier laat vallen komt in de
                       klantmap in Drive én in de context van dit gesprek. */}

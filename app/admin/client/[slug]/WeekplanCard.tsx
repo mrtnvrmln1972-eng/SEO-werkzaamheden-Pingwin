@@ -686,6 +686,7 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
               onToggle={(e) => { if ((e.target as HTMLDetailsElement).open) void laadArchief(); }}>
               <summary>Archief: eerdere notities en titels ({eerdereAantal + archiefAantal})</summary>
               {eerdereNotities && <div dangerouslySetInnerHTML={{ __html: eerdereNotities }} />}
+              {/* eerdereNotities komt uit eerdereNotitiesHtml() in lib/card-info.ts, dat linkifyHtml gebruikt. */}
               {archief.length > 0 && (
                 <ul className="wp-archief">
                   {archief.map((a, i) => (
@@ -742,7 +743,7 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
           hier boven het blok in plaats van in één van de rijen. */}
       {open && page && (
         <div className="wp-fases-kop">
-          <span className="wp-sectie-label" style={{ margin: 0 }}>Fases</span>
+          <span className="wp-sectie-label" style={{ margin: "var(--s-0)" }}>Fases</span>
           <span className="wp-fase-spacer" />
           <button type="button" className="wp-fase-btn" disabled={(!page.live && !page.strategie) || runActive || !!busy}
             title={(!page.live && !page.strategie) ? "Eerst de strategie goedkeuren (nieuwe pagina)" : "Draait analyse, blauwdruk en copy achter elkaar"}
@@ -1011,7 +1012,7 @@ function WerklijstBlok({ slug, refreshBoard }: { slug: string; refreshBoard: () 
     <div className="wp-werklijst">
       {/* Bekijken: veilig, verandert niets aan de site. */}
       <div className="wp-werklijst-rij">
-        <span className="wp-sectie-label" style={{ margin: 0 }}>Werklijst voor de sitebouwer</span>
+        <span className="wp-sectie-label" style={{ margin: "var(--s-0)" }}>Werklijst voor de sitebouwer</span>
         {teller && <span className="wp-werklijst-teller">{teller.gedaan}/{teller.totaal} gedaan · {teller.geverifieerd} gecontroleerd</span>}
         <span className="wp-fase-spacer" />
         <a className={"wp-fase-btn wp-fase-btn-primair" + (klaar ? "" : " wp-fase-btn-uit")} href={klaar ? `/admin/client/${slug}/werklijst` : undefined} target="_blank" rel="noreferrer"

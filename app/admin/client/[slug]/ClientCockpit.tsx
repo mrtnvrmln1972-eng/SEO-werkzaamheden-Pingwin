@@ -403,7 +403,7 @@ export default function ClientCockpit({
   return (
     <>
       {switchingTo && (
-        <div style={{ position: "fixed", top: 14, left: "50%", transform: "translateX(-50%)", zIndex: 10001, background: "var(--dark, #33302e)", color: "#fff", borderRadius: 999, padding: "8px 18px", fontSize: 13, fontWeight: 600, boxShadow: "0 6px 24px rgba(0,0,0,0.25)", display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ position: "fixed", top: 14, left: "50%", transform: "translateX(-50%)", zIndex: 10001, background: "var(--dark, #33302e)", color: "var(--white)", borderRadius: "var(--r-full)", padding: "var(--s-2) var(--s-5)", fontSize: "var(--fs-sm)", fontWeight: 600, boxShadow: "var(--shadow-lg)", display: "flex", alignItems: "center", gap: "var(--s-2)" }}>
           <span style={{ width: 12, height: 12, border: "2px solid rgba(255,255,255,0.35)", borderTopColor: "#fff", borderRadius: "50%", display: "inline-block", animation: "spin 0.8s linear infinite" }} />
           {switchingTo} laden…
         </div>
@@ -552,7 +552,7 @@ export default function ClientCockpit({
             {(() => {
               const mailsInner = (
                 <>
-              <div className="sh-search" style={{ marginBottom: 12 }}>
+              <div className="sh-search" style={{ marginBottom: "var(--s-3)" }}>
                 <input
                   value={shQuery}
                   onChange={(e) => setShQuery(e.target.value)}
@@ -566,14 +566,14 @@ export default function ClientCockpit({
                   Zoek in Superhuman
                 </button>
               </div>
-              {vraagFout && <div className="wp-doc-fout" style={{ marginBottom: 10 }}>{vraagFout}</div>}
+              {vraagFout && <div className="wp-doc-fout" style={{ marginBottom: "var(--s-3)" }}>{vraagFout}</div>}
               {vraagAntwoord && (
                 <div className="mail-vraag-antwoord">
                   <div className="md" dangerouslySetInnerHTML={{ __html: mdToHtml(vraagAntwoord) }} />
                   <button type="button" className="ghost-btn small" onClick={() => { setVraagAntwoord(""); setVraagIds([]); }}>Wis</button>
                 </div>
               )}
-              {lastIngest && <div className="ck-updated" style={{ marginBottom: 12 }}>bijgewerkt {fmtDate(lastIngest)}</div>}
+              {lastIngest && <div className="ck-updated" style={{ marginBottom: "var(--s-3)" }}>bijgewerkt {fmtDate(lastIngest)}</div>}
               {msConfigured && !msConnected && (
                 <div className="mail-connect">
                   Koppel Microsoft 365 om de volledige mails te zien en vanuit het dashboard te beantwoorden.{" "}
@@ -635,7 +635,7 @@ export default function ClientCockpit({
                             ) : (
                               <div className="email-preview-full">
                                 {e.preview}
-                                <div className="muted" style={{ marginTop: 8 }}>Volledige tekst nog niet ingeladen, open de mail in Superhuman.</div>
+                                <div className="muted" style={{ marginTop: "var(--s-2)" }}>Volledige tekst nog niet ingeladen, open de mail in Superhuman.</div>
                               </div>
                             )}
                             {mailLive && (
