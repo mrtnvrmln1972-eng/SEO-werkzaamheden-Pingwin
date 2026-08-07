@@ -42,6 +42,16 @@ export type DocSpec = {
   sfeerbeeldUrl?: string;
   /** Optioneel: het citaat onder aan het document. Leeg = geen citaatblok. */
   slotcitaat?: string;
+  /**
+   * "rapport" (standaard) is de volle huisstijl: omslag met kleurverloop en
+   * sfeerbeeld, sectiekoppen met nummer-bolletje. Voor alles wat de klant ziet.
+   *
+   * "werkdocument" is de sobere variant: dezelfde typografie en kleuren, maar
+   * zonder omslag en zonder nummers. Voor stukken die alleen intern of tussendoor
+   * gebruikt worden, zoals een samengevoegde geldende versie. Daar is een
+   * rapportomslag misplaatst, en het scheelt ook nog een browserstart.
+   */
+  stijl?: "rapport" | "werkdocument";
 };
 
 const logoBuffer = () => Buffer.from(PINGWIN_LOGO_BASE64, "base64");
@@ -107,13 +117,16 @@ export async function buildPingwinDoc(spec: DocSpec): Promise<Buffer> {
   const kids: any[] = [];
 
   // ── omslag ──────────────────────────────────────────────────
-  const png = await omslagPng({
+  // Een werkdocument krijgt geen rapportomslag: dat is een tussenstuk, geen
+  // oplevering. Scheelt ook een browserstart.
+  const werkdocument = spec.stijl === "werkdocument";
+  const png = werkdocument ? null : await omslagPng({
     kicker: spec.rapporttype || "Pingwin rapportage",
     titel: spec.titel,
     ondertitel: spec.ondertitel,
     meta: { Klant: spec.klant, ...(spec.meta || {}) },
   }, spec.sfeerbeeldUrl).catch(() => null);
-  omslagGelukt = !!png;
+  omslagGelukt = werkdocument || !!png;
   if (png) {
     kids.push(new Paragraph({ spacing: { after: 340 }, children: [new ImageRun({
       type: "png", data: png, transformation: { width: OMSLAG_BREEDTE, height: OMSLAG_HOOGTE },
@@ -131,6 +144,7 @@ export async function buildPingwinDoc(spec: DocSpec): Promise<Buffer> {
     if (sec.heading) {
       const m = KOP_NIVEAU.exec(sec.heading);
       if (m) kids.push(...copyKop(m[1], m[2]));
+      else if (werkdocument) kids.push(...copyKop("", sec.heading));
       else kids.push(...sectiekop(++secNr, "", sec.heading));
     }
     for (const b of sec.blocks || []) {

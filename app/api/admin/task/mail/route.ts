@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { guardSlug } from "../../../../../lib/admin-scope";
 import { msSendMail, msStatus } from "../../../../../lib/ms-graph";
 import { getClientBySlug } from "../../../../../lib/clients";
+import { planOpvolging } from "../../../../../lib/mail-opvolg";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -106,7 +107,8 @@ function naarHtml(tekst: string, links: { label: string; url: string }[]): { htm
 }
 
 export async function POST(req: NextRequest) {
-  let body: { slug?: string; to?: string; onderwerp?: string; tekst?: string; links?: { label: string; url: string }[] };
+  let body: { slug?: string; to?: string; onderwerp?: string; tekst?: string; links?: { label: string; url: string }[];
+               herinnerDagen?: number; taak?: string; url?: string };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: "Ongeldige aanvraag." }, { status: 400 }); }
   const slug = String(body.slug || "").trim();
   if (!slug) return NextResponse.json({ ok: false, error: "Klant verplicht." }, { status: 400 });
@@ -140,5 +142,17 @@ export async function POST(req: NextRequest) {
   const html = linkifyPaden(plakOnderaan(metLinks, ongeplaatst), klant?.domain || "");
   const r = await msSendMail(ontvangers, onderwerp || "Bericht van Pingwin", html);
   if (!r.ok) return NextResponse.json({ ok: false, error: r.error || "Versturen mislukte." }, { status: 502 });
-  return NextResponse.json({ ok: true, sentTo: r.sentTo, samenvatting: `Verstuurd naar ${to}.` });
+
+  // Om een reactie moet je vaak zelf achteraan. Vroeg je om een herinnering, dan
+  // verschijnt die op de afgesproken dag bij het belletje in de kopbalk.
+  const dagen = Number(body.herinnerDagen || 0);
+  let herinnering = "";
+  if (dagen > 0) {
+    await planOpvolging({
+      clientSlug: slug, taak: String(body.taak || ""), onderwerp, naar: to,
+      url: String(body.url || ""), dagen,
+    }).catch(() => { /* de mail is weg; een mislukte herinnering mag dat niet ongedaan maken */ });
+    herinnering = ` Je krijgt over ${Math.round(dagen)} ${Math.round(dagen) === 1 ? "dag" : "dagen"} een herinnering om te checken of er antwoord is.`;
+  }
+  return NextResponse.json({ ok: true, sentTo: r.sentTo, samenvatting: `Verstuurd naar ${to}.${herinnering}` });
 }

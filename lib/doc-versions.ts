@@ -310,6 +310,9 @@ Sluit af met een aparte laatste regel die begint met "VERSLAG:" gevolgd door 1-3
         titel: `${KIND_LABEL[kind] || kind}, geldende versie ${datum}`,
         ondertitel: mergeVerslag,
         sections: mdToSections(nieuweMaster),
+        // Dit is een werkstuk, geen oplevering: de tekst van de klant met onze
+        // wijzigingen erin. Een rapportomslag met kleurverloop hoort daar niet bij.
+        stijl: "werkdocument",
       });
       ({ link: docLink } = await uploadDocx(folder.folderId, `${KIND_LABEL[kind] || kind}-geldende-versie-${datum}.docx`, buffer));
     }

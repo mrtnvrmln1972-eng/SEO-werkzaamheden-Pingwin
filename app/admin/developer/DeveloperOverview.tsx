@@ -234,7 +234,7 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
       {r.docs && r.docs.length > 0 && (
         <div className="dev-task-docs" onClick={(e) => e.stopPropagation()}>
           {r.docs.map((d) => (
-            <a key={d.url} href={d.url} target="_blank" rel="noreferrer" className="dev-doc-link">{d.label}</a>
+            <a key={d.url} href={d.url} target="_blank" rel="noreferrer" className="dev-doc-link" title={d.label}>{d.label}</a>
           ))}
         </div>
       )}
@@ -291,7 +291,7 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
         {r.docs && r.docs.length > 0 ? (
           <span className="dev-task-docs">
             {r.docs.map((d) => (
-              <a key={d.url} href={d.url} target="_blank" rel="noreferrer" className="dev-doc-link" onClick={(e) => e.stopPropagation()}>{d.label}</a>
+              <a key={d.url} href={d.url} target="_blank" rel="noreferrer" className="dev-doc-link" title={d.label} onClick={(e) => e.stopPropagation()}>{d.label}</a>
             ))}
           </span>
         ) : <span className="muted">&mdash;</span>}
@@ -588,7 +588,9 @@ function TaakVenster({ taak, clientSlug, clientName, onLijst, onSluiten }: {
 
   async function taakWeg() {
     if (busy || !taskKey) return;
-    if (!window.confirm("Deze taak weggooien?")) return;
+    if (!window.confirm(eigen
+      ? "Deze taak weggooien? Hij bestaat alleen hier, dus hij is daarna weg."
+      : "Deze taak van de developerlijst halen? De kaart zelf blijft in de weekplanning staan.")) return;
     setBusy("weg");
     try {
       const r = await stuur({ action: "verwijder" });
@@ -622,7 +624,7 @@ function TaakVenster({ taak, clientSlug, clientName, onLijst, onSluiten }: {
                   <ul className="dev-docs-lijst">
                     {docs.map((d) => (
                       <li key={d.url}>
-                        <a href={d.url} target="_blank" rel="noreferrer" className="dev-doc-link">{d.label}</a>
+                        <a href={d.url} target="_blank" rel="noreferrer" className="dev-doc-link" title={d.label}>{d.label}</a>
                         <button type="button" className="dev-doc-weg" onClick={() => void docWeg(d.url)} title="Van deze taak afhalen">&times;</button>
                       </li>
                     ))}
@@ -649,8 +651,14 @@ function TaakVenster({ taak, clientSlug, clientName, onLijst, onSluiten }: {
           {msg && <p className="dev-venster-msg">{msg}</p>}
         </div>
         <div className="compose-foot">
-          {eigen && taskKey && (
-            <button type="button" className="logout-btn dev-weg-btn" onClick={() => void taakWeg()} disabled={!!busy}>Taak weggooien</button>
+          {/* Ook voor taken die hier niet zelf zijn aangemaakt. Een doorgezette
+              kaart gaat alleen van de developerlijst af en blijft gewoon in de
+              weekplanning staan; daarom staat dat ook op de knop. */}
+          {taskKey && (
+            <button type="button" className="logout-btn dev-weg-btn" onClick={() => void taakWeg()} disabled={!!busy}
+              title={eigen ? "Deze taak bestaat alleen hier en wordt echt weggegooid." : "Haalt de taak van de developerlijst af. De kaart zelf blijft in de weekplanning staan."}>
+              {eigen ? "Taak weggooien" : "Van de lijst halen"}
+            </button>
           )}
           <button type="button" className="logout-btn" onClick={onSluiten}>Sluiten</button>
           <button type="button" className="ghost-btn small" onClick={() => void bewaar(false)} disabled={!!busy}>Bewaren</button>
