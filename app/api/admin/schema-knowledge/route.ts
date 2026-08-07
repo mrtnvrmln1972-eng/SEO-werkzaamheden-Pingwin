@@ -5,7 +5,7 @@ import { uploadEnConverteer, readDriveDoc } from "../../../../lib/drive";
 import { kanDirectGelezen, tekstUitLokaalBestand } from "../../../../lib/bestand-tekst";
 import { ensureClientFolder } from "../../../../lib/drive-map";
 import { getClientBySlug } from "../../../../lib/clients";
-import { listKnowledge, getOpenProposals, proposeKnowledge, confirmKnowledge, confirmAllKnowledge, ignoreKnowledge, knowledgeGaps, applyKnowledgeToOrg, opruimenDubbel, deleteKnowledgeEntity } from "../../../../lib/schema-knowledge";
+import { listKnowledge, getOpenProposals, proposeKnowledge, confirmKnowledge, confirmAllKnowledge, ignoreKnowledge, knowledgeGaps, knowledgeGapsPerVeld, applyKnowledgeToOrg, opruimenDubbel, deleteKnowledgeEntity } from "../../../../lib/schema-knowledge";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -151,7 +151,12 @@ export async function POST(req: NextRequest) {
     }
     if (action === "taak") {
       // Het rode lijstje als kaart in de weekplanning, zodat het uitvraagwerk niet blijft liggen.
-      const gaps = await knowledgeGaps(slug);
+      // Gegroepeerd per veldtype (knowledgeGapsPerVeld), niet los per vestiging: de
+      // kaarttekst wordt verderop herkend op bijna-identieke regels als "hetzelfde
+      // punt" en liet dan de meeste namen uit een rijtje gelijksoortige vestigingen
+      // vallen. Eén samengevoegde regel per veldtype voorkomt dat, en is meteen
+      // ook bruikbaarder als tekst voor de mail naar de klant.
+      const gaps = await knowledgeGapsPerVeld(slug);
       if (!gaps.length) return NextResponse.json({ ok: false, error: "Er staat niets meer open." }, { status: 400 });
       const { addWeekplanTasks, isoWeek } = await import("../../../../lib/weekplan");
       await addWeekplanTasks(slug, "overzicht", [{

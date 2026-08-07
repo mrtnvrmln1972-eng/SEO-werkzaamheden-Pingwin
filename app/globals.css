@@ -4962,6 +4962,8 @@ a.wb-pad { color: var(--orange-dark); text-decoration: none; }
 a.wb-pad:hover { text-decoration: underline; }
 .wb-doen { font-size: var(--fs-xs); white-space: nowrap; }
 .wb-taak-vol { font-size: var(--fs-sm); color: var(--dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wb-pad-mini { color: var(--orange-dark); text-decoration: none; font-size: var(--fs-xs); }
+.wb-pad-mini:hover { text-decoration: underline; }
 
 /* De zeven fases als letters: groen is af, oranje is waar hij nu staat, grijs is
    nog niet begonnen. Signaal, geen knop; afvinken doe je in de kaart. */

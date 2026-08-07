@@ -654,7 +654,10 @@ export function kennisNaarOrg(bron: OrgData, entiteiten: KennisEntiteit[], eigen
 // (lib/org-vereist.ts), zodat scherm en lijstje nooit uiteenlopen. Wat alleen in
 // de kennisbank staat en nog niet in het formulier, telt gewoon mee.
 
-export async function knowledgeGaps(slug: string): Promise<string[]> {
+// Bouwt dezelfde samengevoegde bedrijfsgegevens op die het rode lijstje en de
+// weekplan-kaart allebei gebruiken: het formulier plus wat er los in de
+// kennisbank staat maar nog geen rij in het formulier heeft.
+async function gapsBron(slug: string): Promise<OrgData> {
   const [org, entiteiten] = await Promise.all([getOrgData(slug), listKnowledge(slug)]);
   const d: OrgData = JSON.parse(JSON.stringify(org.data));
 
@@ -684,7 +687,40 @@ export async function knowledgeGaps(slug: string): Promise<string[]> {
   for (const s of entiteiten.filter((e) => e.categorie === "dienst")) {
     if (!d.diensten.some((x) => naamKaal(x.naam) === naamKaal(s.naam))) d.diensten.push({ naam: s.naam, omschrijving: s.velden.omschrijving || "" });
   }
+  return d;
+}
+
+export async function knowledgeGaps(slug: string): Promise<string[]> {
+  const d = await gapsBron(slug);
   return ontbrekendeVelden(d).map((o) => o.regel).slice(0, 40);
+}
+
+// Dezelfde ontbrekende velden, maar gegroepeerd per veldtype ("Openingstijden
+// ontbreken bij: A, B, C") in plaats van één losse regel per vestiging of arts.
+// Voor de weekplan-kaart en de mail: die tonen de kaarttekst via de gedeelde
+// weergave-laag (lib/card-info.ts), die bijna-identieke regels ("Vestiging X:
+// openingstijden ontbreken.", "Vestiging Y: openingstijden ontbreken.", ...) als
+// hetzelfde punt herkent en dan alle-op-één-na laat vallen. Bij één rijtje
+// vestigingen met dezelfde ontbrekende gegevens verdwenen zo ongemerkt de
+// meeste namen. Eén samengevoegde regel per veldtype heeft dat probleem niet en
+// is bovendien korter en beter leesbaar in een mail aan de klant.
+export async function knowledgeGapsPerVeld(slug: string): Promise<string[]> {
+  const d = await gapsBron(slug);
+  const ontbrekend = ontbrekendeVelden(d).slice(0, 40);
+  const perLabel = new Map<string, string[]>();
+  const los: string[] = [];
+  for (const o of ontbrekend) {
+    if (o.naam) {
+      const lijst = perLabel.get(o.label) || [];
+      if (!lijst.includes(o.naam)) lijst.push(o.naam);
+      perLabel.set(o.label, lijst);
+    } else {
+      los.push(o.regel);
+    }
+  }
+  const gegroepeerd = [...perLabel.entries()].map(([label, namen]) =>
+    namen.length > 1 ? `${label} ontbreekt bij: ${namen.join(", ")}.` : `${label} ontbreekt bij ${namen[0]}.`);
+  return [...los, ...gegroepeerd];
 }
 
 // Platte tekst van de kennisbank voor de schema-prompt (per pagina-run).
