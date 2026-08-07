@@ -310,7 +310,7 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
     <>
         <div className="section-title">
           Taken voor de developer ({activeRows.length})
-          {saveLabel && <span className="focus-save-status" style={{ marginLeft: 12 }}>{saveLabel}</span>}
+          {saveLabel && <span className="focus-save-status" style={{ marginLeft: "var(--s-3)" }}>{saveLabel}</span>}
           <span className="dev-view-toggle">
             {slug && (
               <button type="button" className="dev-nieuw-btn" onClick={() => setVenster({ taak: null, clientSlug: slug, clientName: clientName || slug })}>+ Nieuwe taak</button>
@@ -422,13 +422,13 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
             <div className="compose-modal">
               <div className="compose-head"><span>Taak afronden</span><button type="button" className="chat-float-close" onClick={() => setFeedbackFor(null)}>&times;</button></div>
               <div className="compose-body">
-                <div className="muted" style={{ marginBottom: 8 }}>{rows[feedbackFor].clientName}: {stripText(rows[feedbackFor].taak)}</div>
+                <div className="muted" style={{ marginBottom: "var(--s-2)" }}>{rows[feedbackFor].clientName}: {stripText(rows[feedbackFor].taak)}</div>
                 <label className="compose-label">Opmerkingen of terugkoppeling (optioneel)</label>
                 <textarea className="compose-input" style={{ minHeight: 120, resize: "vertical" }} value={feedbackNote} onChange={(e) => setFeedbackNote(e.target.value)} placeholder="Wat is er gedaan, aandachtspunten, vragen voor Maarten…" />
                 {/* Mailen was hiervoor de enige manier om te laten weten dat iets af
                     was. Dat hoeft niet meer: opslaan zet meteen een melding in
                     Maartens dashboard, met deze terugkoppeling erbij. */}
-                <p className="muted" style={{ marginTop: 8, marginBottom: 0 }}>
+                <p className="muted" style={{ marginTop: "var(--s-2)", marginBottom: "var(--s-0)" }}>
                   Maarten krijgt hier vanzelf een melding van in zijn dashboard, met wat je hierboven
                   schrijft. Mailen hoeft alleen nog als je echt antwoord nodig hebt.
                 </p>
@@ -466,7 +466,7 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
           <Tellers />
         <OntwikkelMenu />
           <a className="logout-btn" href="/admin">&larr; Alle klanten</a>
-          <button className="logout-btn" onClick={logout} style={{ marginLeft: 8 }}>Uitloggen</button>
+          <button className="logout-btn" onClick={logout} style={{ marginLeft: "var(--s-2)" }}>Uitloggen</button>
         </div>
       </div>
 

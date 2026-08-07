@@ -118,9 +118,11 @@ function PuntKaart({ p }: { p: PuntWeergave }) {
           {p.beschrijving ? (
             <div
               className="md rk-volledig"
-              // De tekst komt uit lib/uitleg.ts, onze eigen code, en gaat door
-              // dezelfde renderer als de uitlegpagina. Geen invoer van buiten.
+              // De brontekst staat in lib/uitleg.ts; beschrijvingVoor() in
+              // lib/routekaart-tekst.ts zet 'm om, dezelfde renderer als de
+              // uitlegpagina. Geen invoer van buiten.
               dangerouslySetInnerHTML={{ __html: p.beschrijving }}
+              /* mdToHtml (lib/routekaart-tekst.ts) rendert dit al */
             />
           ) : (
             <>

@@ -363,7 +363,7 @@ export default function Dashboard({ name, sheetId, gid, budget, adminPreview, in
                 <tbody>
                   {view.monthTasks.length === 0 && (
                     <tr>
-                      <td colSpan={3} style={{ textAlign: "center", padding: 40, color: "var(--gray)" }}>
+                      <td colSpan={3} style={{ textAlign: "center", padding: "var(--s-10)", color: "var(--gray)" }}>
                         Geen werkzaamheden gevonden voor deze maand.
                       </td>
                     </tr>
@@ -427,6 +427,7 @@ function renderRows(monthTasks: DashboardData["tasks"]) {
         <td>
           <span className="task-name">
             <span className="task-name-text" dangerouslySetInnerHTML={{ __html: clientTaskTitle(task) }} />
+            {/* clientTaskTitle ontsnapt eerst via safeHtml en bouwt daarna zelf de link. */}
             {done && <span className="task-check-dash" title="Klaar">✓</span>}
             {hasUitleg && <TaskHelp html={safeHtml(uitleg)} />}
           </span>

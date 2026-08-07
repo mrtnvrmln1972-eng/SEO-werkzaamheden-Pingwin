@@ -166,30 +166,17 @@ checkWaar("afbreken midden in een woord staat alleen op tekst, niet op een heel 
 // De lijst mag dus alleen korter worden.
 const ERFENIS = new Set<string>([
   "app/admin/AdminClient.tsx",
-  "app/admin/ReadOnlyGuard.tsx",
   "app/admin/beheer/BeheerClient.tsx",
-  "app/admin/client/[slug]/ActionCard.tsx",
   "app/admin/client/[slug]/CannibalPanel.tsx",
-  "app/admin/client/[slug]/ClientCockpit.tsx",
-  "app/admin/client/[slug]/ImportAnalysis.tsx",
   "app/admin/client/[slug]/KpiPanel.tsx",
   "app/admin/client/[slug]/MailControlePanel.tsx",
   "app/admin/client/[slug]/MetaCtrPanel.tsx",
-  "app/admin/client/[slug]/OrgDataPanel.tsx",
-  "app/admin/client/[slug]/OverviewChat.tsx",
   "app/admin/client/[slug]/PageChat.tsx",
   "app/admin/client/[slug]/PagesPanel.tsx",
-  "app/admin/client/[slug]/SelectionActions.tsx",
-  "app/admin/client/[slug]/TasksEditor.tsx",
-  "app/admin/client/[slug]/WeekplanCard.tsx",
   "app/admin/client/[slug]/WijzigingenPanel.tsx",
-  "app/admin/client/[slug]/navigatie/NavigatieRoadmap.tsx",
-  "app/admin/developer/DeveloperOverview.tsx",
   "app/admin/financien/FinancienClient.tsx",
   "app/admin/financien/page.tsx",
-  "app/admin/routekaart/RoutekaartClient.tsx",
   "app/admin/usage/page.tsx",
-  "app/dashboard/Dashboard.tsx",
 ]);
 
 // Eigen opmaak = een VASTE waarde voor iets waar een schaal voor bestaat. Een
@@ -211,8 +198,12 @@ function vasteWaarden(styleInhoud: string): string[] {
   }
   return uit;
 }
-// Manieren waarop tekst netjes door de opmaaklaag gaat.
-const GERENDERD = /(mdToHtml|veiligeHtml|linkify|__html:\s*\w*[Hh]tml)/;
+// Manieren waarop tekst netjes door de opmaaklaag gaat. safeHtml en
+// sanitizeEmail staan er ook in sinds 8 augustus: geen markdown, maar wél
+// een echte ontsmetting (scripts, handlers en inline stijl eruit) vóór
+// dangerouslySetInnerHTML, in Dashboard.tsx, DeveloperOverview.tsx en
+// ClientCockpit.tsx.
+const GERENDERD = /(mdToHtml|veiligeHtml|linkify|safeHtml|sanitizeEmail|__html:\s*\w*[Hh]tml)/;
 
 function alleSchermen(map: string): string[] {
   const uit: string[] = [];

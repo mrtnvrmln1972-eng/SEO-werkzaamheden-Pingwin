@@ -130,10 +130,10 @@ export default function SelectionActions({ slug, clientName }: { slug: string; c
           <div className="compose-modal">
             <div className="compose-head">
               <div className="compose-title">Geselecteerde tekst mailen</div>
-              <button type="button" className="pch-msg-btn" aria-label="Sluiten" onClick={() => setComposeOpen(false)} style={{ fontSize: 18 }}>×</button>
+              <button type="button" className="pch-msg-btn" aria-label="Sluiten" onClick={() => setComposeOpen(false)} style={{ fontSize: "var(--fs-lg)" }}>×</button>
             </div>
-            <div className="compose-body" style={{ padding: 16, overflowY: "auto" }}>
-              <div className="field" style={{ marginBottom: 10, position: "relative" }}>
+            <div className="compose-body" style={{ padding: "var(--s-4)", overflowY: "auto" }}>
+              <div className="field" style={{ marginBottom: "var(--s-3)", position: "relative" }}>
                 <label>Aan</label>
                 <input className="compose-input" value={to} onChange={(e) => onToChange(e.target.value)} onFocus={() => { if (sug.length) setSugOpen(true); }} onBlur={() => setTimeout(() => setSugOpen(false), 150)} placeholder="naam@bedrijf.nl" autoComplete="off" />
                 {sugOpen && sug.length > 0 && (
@@ -146,7 +146,7 @@ export default function SelectionActions({ slug, clientName }: { slug: string; c
                   </div>
                 )}
               </div>
-              <div className="field" style={{ marginBottom: 10 }}>
+              <div className="field" style={{ marginBottom: "var(--s-3)" }}>
                 <label>Onderwerp</label>
                 <input className="compose-input" value={subject} onChange={(e) => setSubject(e.target.value)} />
               </div>
@@ -154,9 +154,9 @@ export default function SelectionActions({ slug, clientName }: { slug: string; c
                 <label>Bericht (bewerkbaar)</label>
                 <div ref={bodyRef} className="md selection-body" contentEditable suppressContentEditableWarning />
               </div>
-              {msg && <div className="login-error" style={{ marginTop: 10 }}>{msg}</div>}
+              {msg && <div className="login-error" style={{ marginTop: "var(--s-3)" }}>{msg}</div>}
             </div>
-            <div className="compose-foot" style={{ display: "flex", justifyContent: "flex-end", gap: 8, padding: "12px 16px", borderTop: "1px solid var(--border)" }}>
+            <div className="compose-foot" style={{ display: "flex", justifyContent: "flex-end", gap: "var(--s-2)", padding: "var(--s-3) var(--s-4)", borderTop: "1px solid var(--border)" }}>
               <button type="button" className="ghost-btn" onClick={() => setComposeOpen(false)}>Annuleren</button>
               <button type="button" className="primary-btn" onClick={send} disabled={busy}>{busy ? "Versturen…" : "Verstuur per mail"}</button>
             </div>

@@ -128,41 +128,13 @@ export default function ReadOnlyGuard({ editSlugs = [], devOk = false }: { editS
 
   if (!show) return null;
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(15, 23, 42, 0.35)",
-        zIndex: 9999,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 20,
-      }}
-    >
-      <div
-        style={{
-          background: "#fff",
-          borderRadius: 12,
-          boxShadow: "0 12px 40px rgba(0,0,0,0.2)",
-          padding: "22px 26px",
-          maxWidth: 380,
-          width: "100%",
-          textAlign: "left",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-          <div style={{ fontWeight: 700, fontSize: 15 }}>Geen rechten</div>
-          <button
-            type="button"
-            onClick={() => setShow(false)}
-            aria-label="Sluiten"
-            style={{ border: "none", background: "none", fontSize: 18, cursor: "pointer", color: "#64748b", lineHeight: 1 }}
-          >
-            ×
-          </button>
+    <div className="rog-overlay">
+      <div className="rog-modal">
+        <div className="rog-kop">
+          <div className="rog-titel">Geen rechten</div>
+          <button type="button" className="rog-sluit" onClick={() => setShow(false)} aria-label="Sluiten">×</button>
         </div>
-        <p style={{ margin: "0 0 16px", fontSize: 14, color: "#334155", lineHeight: 1.5 }}>
+        <p className="rog-tekst">
           Je hebt nog geen rechten om deze actie uit te voeren. Je kunt wel overal
           rondkijken. Vraag de beheerder om wijzig-rechten als je dit nodig hebt.
         </p>

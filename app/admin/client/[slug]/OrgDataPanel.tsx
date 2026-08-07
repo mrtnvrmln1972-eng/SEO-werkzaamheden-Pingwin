@@ -463,7 +463,7 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
               </div>
             </div>
           )}
-          {msg && <div className="saved-msg" style={{ margin: "8px 0" }}>{msg}</div>}
+          {msg && <div className="saved-msg" style={{ margin: "var(--s-2) 0" }}>{msg}</div>}
           <section className="org-sec org-verzameld">
             <button type="button" className="org-sec-kop" onClick={() => setDataOpen((v) => !v)}>
               <span className="org-sec-caret">{dataOpen ? "▾" : "▸"}</span>
@@ -483,8 +483,8 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
               {swJson && <button type="button" className="ghost-btn small" onClick={sitewideTask} disabled={!!busy}>{busy === "swtask" ? "Bezig…" : "Als Dev-taak doorzetten"}</button>}
               {swJson && <button type="button" className="ghost-btn small" onClick={mailDevTaskNotice} disabled={!devTo.trim()} title={devTo ? `Mailt naar ${devTo}` : ""}>Mail developer: taak staat klaar</button>}
             </div>
-            {swMsg && <div className="saved-msg" style={{ marginTop: 6 }}>{swMsg}</div>}
-            {swJson && <pre className="sch-json-pre" style={{ marginTop: 8 }}>{swJson}</pre>}
+            {swMsg && <div className="saved-msg" style={{ marginTop: "var(--s-2)" }}>{swMsg}</div>}
+            {swJson && <pre className="sch-json-pre" style={{ marginTop: "var(--s-2)" }}>{swJson}</pre>}
           </div>
           <Kennisbank slug={slug} voorActie={() => save(true)} onVerwerkt={() => { void laadOrg(); }} />
         </div>

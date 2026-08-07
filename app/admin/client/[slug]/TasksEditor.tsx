@@ -566,7 +566,7 @@ export default function TasksEditor({ slug, initialTasks, initialStrategySession
           <thead><tr><th></th><th>Taak</th><th>Opm. developer</th><th>Uren</th><th>Status</th><th>Wie</th><th>Maand</th><th className="col-center"><button type="button" className="mail-col-btn" onClick={() => openComposeFor(undefined, "klant")} title="Vink taken aan en klik hier om ze te mailen">Mail</button></th><th></th></tr></thead>
           <tbody>
             {open.map((x) => taskRow(x, maand))}
-            {secRows.length === 0 && <tr><td colSpan={9} className="muted" style={{ padding: 8 }}>Nog geen taken deze maand. Sleep er een hierheen of voeg toe.</td></tr>}
+            {secRows.length === 0 && <tr><td colSpan={9} className="muted" style={{ padding: "var(--s-2)" }}>Nog geen taken deze maand. Sleep er een hierheen of voeg toe.</td></tr>}
           </tbody>
         </table>
         <button type="button" className="add-task-btn" onClick={() => addRow(maand, "SEO")}>+ taak</button>
@@ -737,11 +737,11 @@ export default function TasksEditor({ slug, initialTasks, initialStrategySession
                 </label>
               )}
               {mailConnected === false && (
-                <div className="muted" style={{ marginTop: 8, fontSize: 12 }}>
+                <div className="muted" style={{ marginTop: "var(--s-2)", fontSize: "var(--fs-sm)" }}>
                   In deze omgeving is geen mailkoppeling; de knop opent je eigen mailprogramma met alles voorgevuld (taken en document-links gaan mee als gewone links, opmaak wordt platte tekst).
                 </div>
               )}
-              {devMsg && <div className={devMsg.startsWith("Verstuurd") || devMsg.startsWith("Geopend") || devMsg.startsWith("Mailtekst") ? "saved-msg" : "login-error"} style={{ marginTop: 8 }}>{devMsg}</div>}
+              {devMsg && <div className={devMsg.startsWith("Verstuurd") || devMsg.startsWith("Geopend") || devMsg.startsWith("Mailtekst") ? "saved-msg" : "login-error"} style={{ marginTop: "var(--s-2)" }}>{devMsg}</div>}
             </div>
             <div className="compose-foot">
               <button type="button" className="logout-btn" onClick={() => setShowCompose(false)}>Annuleren</button>

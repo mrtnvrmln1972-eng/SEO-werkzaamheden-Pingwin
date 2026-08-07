@@ -61,13 +61,13 @@ export default function ImportAnalysis({ slug, onClose, onDone }: { slug: string
 
         {step === "upload" && (
           <div className="compose-body">
-            <p className="muted" style={{ marginTop: 0 }}>Upload de analyse (xlsx of csv). Het dashboard maakt er voorstellen van: een plan-alinea plus een taak per rij, met een live-vlag. Niks wordt opgeslagen tot je accepteert.</p>
+            <p className="muted" style={{ marginTop: "var(--s-0)" }}>Upload de analyse (xlsx of csv). Het dashboard maakt er voorstellen van: een plan-alinea plus een taak per rij, met een live-vlag. Niks wordt opgeslagen tot je accepteert.</p>
             <label className="compose-label">Bestand</label>
             <input type="file" accept=".xlsx,.xls,.csv" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-            <label className="compose-label" style={{ marginTop: 12 }}>Cluster-naam (label op de taken)</label>
+            <label className="compose-label" style={{ marginTop: "var(--s-3)" }}>Cluster-naam (label op de taken)</label>
             <input className="compose-input" value={cluster} onChange={(e) => setCluster(e.target.value)} placeholder="Bv. SOA-test cluster" />
-            {msg && <div className="login-error" style={{ marginTop: 10 }}>{msg}</div>}
-            <div className="compose-foot" style={{ marginTop: 14 }}>
+            {msg && <div className="login-error" style={{ marginTop: "var(--s-3)" }}>{msg}</div>}
+            <div className="compose-foot" style={{ marginTop: "var(--s-4)" }}>
               <button type="button" className="logout-btn" onClick={onClose}>Annuleren</button>
               <button type="button" className="primary-btn small" onClick={() => parse()} disabled={busy || !file}>{busy ? "Inlezen..." : "Inlezen"}</button>
             </div>
@@ -85,7 +85,7 @@ export default function ImportAnalysis({ slug, onClose, onDone }: { slug: string
                     </select>
                   </label>
                 )}
-                <span className="muted" style={{ marginLeft: 10 }}>{items.length} rijen, {chosen} aangevinkt</span>
+                <span className="muted" style={{ marginLeft: "var(--s-3)" }}>{items.length} rijen, {chosen} aangevinkt</span>
               </div>
               <div className="import-bulk">
                 <button type="button" className="ghost-btn small" onClick={() => setAll(true)}>Alles aan</button>
@@ -111,8 +111,8 @@ export default function ImportAnalysis({ slug, onClose, onDone }: { slug: string
               </table>
             </div>
 
-            {msg && <div className="login-error" style={{ marginTop: 10 }}>{msg}</div>}
-            <div className="compose-foot" style={{ marginTop: 12 }}>
+            {msg && <div className="login-error" style={{ marginTop: "var(--s-3)" }}>{msg}</div>}
+            <div className="compose-foot" style={{ marginTop: "var(--s-3)" }}>
               <button type="button" className="logout-btn" onClick={() => setStep("upload")}>&larr; Terug</button>
               <button type="button" className="primary-btn small" onClick={accept} disabled={busy || chosen === 0}>{busy ? "Overnemen..." : `Neem ${chosen} over`}</button>
             </div>

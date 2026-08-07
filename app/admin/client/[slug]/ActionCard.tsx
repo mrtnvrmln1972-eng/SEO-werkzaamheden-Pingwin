@@ -280,8 +280,8 @@ export default function ActionCard({ action, slug, thread, onExecuted, onGoToPag
           {result.text && (
             <div className="act-copybox">
               <div className="act-copybox-head">
-                <span className="muted" style={{ fontSize: 11 }}>Voor de sitebouwer</span>
-                <span style={{ display: "inline-flex", gap: 6 }}>
+                <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>Voor de sitebouwer</span>
+                <span style={{ display: "inline-flex", gap: "var(--s-2)" }}>
                   <button type="button" className="ghost-btn small" onClick={copyText}>{copied ? "Gekopieerd ✓" : "Kopieer"}</button>
                   <button type="button" className="ghost-btn small" onClick={mailToDev} title="Open je mail met deze uitwerking voorgevuld, gericht aan je sitebouwer/developer.">Mail naar sitebouwer</button>
                 </span>

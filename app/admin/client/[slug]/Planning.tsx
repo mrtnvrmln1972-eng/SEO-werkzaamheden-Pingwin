@@ -555,6 +555,9 @@ export default function Planning({
   const totaal = zichtbaar.length;
   const teLaat = vakken.get("telaat")!.length;
   const vandaagAantal = vakken.get("vandaag")!.length;
+  // "Per week" staat standaard dicht: wat vandaag of te laat is, staat al in de
+  // vakken hierboven; dit blok is er voor als je verder vooruit wilt kijken.
+  const weekBlokDicht = dicht["blok:week"] ?? true;
 
   return (
     <div className="pl">
@@ -654,8 +657,12 @@ export default function Planning({
       {/* ── Welke week: een kaart per week ── */}
       {!laden && (
         <div className="pl-blok">
-          <div className="pl-bloktitel">Per week</div>
-          {weken.map((w) => {
+          <button type="button" className="pl-bloktitel-btn" onClick={() => klap("blok:week")}>
+            <span className="pl-caret">{weekBlokDicht ? "▸" : "▾"}</span>
+            <span className="pl-bloktitel">Per week</span>
+            <span className="pl-aantal">{weken.reduce((n, w) => n + w.lijst.length, 0)}</span>
+          </button>
+          {!weekBlokDicht && weken.map((w) => {
             const sleutel = `week:${w.jaar}:${w.week}`;
             // Alle weken staan standaard dicht, ook de huidige; wat vandaag/deze
             // week speelt zie je al in de vakken hierboven ("Vandaag", "Te laat").
