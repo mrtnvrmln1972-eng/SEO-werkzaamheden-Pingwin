@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminScope, canAccessSlug, guardOwner } from "../../../../lib/admin-scope";
 import { opruimWeesOrgData } from "../../../../lib/org-data";
-import { listClients, createClient, createLead, setClientFase, deleteClient, updateClientCockpit, updateClientCore, parseSheetUrl, resetClientPassword, setClientBudget, setClientBackendUrl, setClientDevName, getOrCreateShareToken, FASES, type Fase } from "../../../../lib/clients";
+import { listClients, createClient, createLead, setClientFase, deleteClient, updateClientCockpit, updateClientCore, parseSheetUrl, resetClientPassword, setClientBudget, setClientBackendUrl, setClientDevName, setPositioneringUrl, getOrCreateShareToken, FASES, type Fase } from "../../../../lib/clients";
 
 export const runtime = "nodejs";
 
@@ -163,6 +163,13 @@ export async function PATCH(req: NextRequest) {
 
   if (body.action === "devName") {
     const ok = await setClientDevName(slug, String(body.devName || ""));
+    if (!ok) return NextResponse.json({ ok: false, error: "Klant niet gevonden." }, { status: 404 });
+    return NextResponse.json({ ok: true });
+  }
+
+  // Drive-link naar het positioneringsadvies (fundament-status op de klant-tab).
+  if (body.action === "positioneringUrl") {
+    const ok = await setPositioneringUrl(slug, String(body.positioneringUrl || ""));
     if (!ok) return NextResponse.json({ ok: false, error: "Klant niet gevonden." }, { status: 404 });
     return NextResponse.json({ ok: true });
   }

@@ -48,6 +48,7 @@ export const SCHERMEN: { pad: string; naam: string; waarvoor: string }[] = [
   { pad: "/admin/financien", naam: "Financiën", waarvoor: "Facturen en budgetten over alle klanten heen." },
   { pad: "/admin/developer", naam: "Developer", waarvoor: "Alles wat naar een sitebouwer moet, over alle klanten heen." },
   { pad: "/admin/usage", naam: "Verbruik", waarvoor: "Wat het dashboard aan denkwerk verbruikt, per soort taak." },
+  { pad: "/admin/fundament", naam: "Fundament", waarvoor: "Per klant in één oogopslag: tone of voice, structured data, concurrenten, bedrijfsprofiel en positionering." },
   { pad: "/admin/routekaart", naam: "Routekaart", waarvoor: "De ontwikkeling van dit dashboard, punt voor punt." },
 ];
 
