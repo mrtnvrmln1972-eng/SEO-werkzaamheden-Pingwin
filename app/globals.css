@@ -2,8 +2,11 @@
   --orange: #E7773F;
   --orange-dark: #C95E28;
   /* Linkblauw. Stond 23 keer los als var(--link) in dit bestand; nu één token,
-     zodat een linkkleur wijzigen niet betekent dat je er zeventien vergeet. */
-  --link: var(--link);
+     zodat een linkkleur wijzigen niet betekent dat je er zeventien vergeet.
+     Was hier per ongeluk zelfverwijzend (var(--link): var(--link)) blijven
+     staan, dus ongeldig; hersteld op de waarde die al los in FinancienClient
+     stond, dezelfde die bij de hover ook al donkerder werd (#0b4ea8). */
+  --link: #1a6dd6;
   --orange-light: #FFF4EE;
   --dark: #222222;
   --body-text: #181818;
@@ -26,6 +29,18 @@
   --border: #E0E0E0;
   --red: #D32F2F;
   --red-light: #FFEBEE;
+  /* Extra kleuren uit de opmaakpoort-opruiming (8 augustus): stonden al los
+     hardgecodeerd op tientallen plekken (financiën, usage, scorecards), hier
+     nu benoemd zodat nieuwe schermen ze via de schaal kunnen hergebruiken.
+     Bewust exact dezelfde waarden, geen nieuwe kleuren gekozen. */
+  --good: #2E7D32;
+  --bad: #C62828;
+  --bad-deep: #a13d3d;
+  --warn-dark: #b25a00;
+  --danger: #c0392b;
+  --accent-warm: #d97316;
+  --label-muted: #8a6a3e;
+  --text-secondary: #5b6472;
 
   /* ── Pingwin-huisstijl (live gemeten op pingwin.nl, aug 2026) ────
      Accent, de kenmerkende blauw-naar-perzik gradient, warme kaartrand

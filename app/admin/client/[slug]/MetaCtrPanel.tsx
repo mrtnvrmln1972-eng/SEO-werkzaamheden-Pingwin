@@ -16,17 +16,17 @@ function MetaChecklist({ kind, text, keyword, other }: { kind: "title" | "desc";
   const passed = checks.filter((c) => c.pass).length;
   const allOk = passed === checks.length;
   return (
-    <div style={{ marginTop: 4 }}>
+    <div style={{ marginTop: "var(--s-1)" }}>
       <button type="button" onClick={() => setOpen((v) => !v)}
-        style={{ border: "none", background: "transparent", cursor: "pointer", padding: 0, font: "inherit", fontSize: 12, color: allOk ? "#2e7d32" : "#b25a00", fontWeight: 600 }}
+        style={{ border: "none", background: "transparent", cursor: "pointer", padding: "var(--s-0)", font: "inherit", fontSize: "var(--fs-sm)", color: allOk ? "var(--good)" : "var(--warn-dark)", fontWeight: 600 }}
         title="Bekijk per criterium of deze tekst voldoet (dezelfde regels waarmee de AI schrijft)">
         {open ? "▾" : "▸"} voldoet aan {passed} van {checks.length} criteria
       </button>
       {open && (
-        <ul style={{ listStyle: "none", margin: "6px 0 0", padding: 0, display: "grid", gap: 3 }}>
+        <ul style={{ listStyle: "none", margin: "var(--s-2) var(--s-0) var(--s-0)", padding: "var(--s-0)", display: "grid", gap: "var(--s-1)" }}>
           {checks.map((c) => (
-            <li key={c.id} style={{ fontSize: 12.5, display: "flex", gap: 7, alignItems: "baseline" }}>
-              <span style={{ color: c.pass ? "#2e7d32" : "#c62828", fontWeight: 700, flex: "0 0 auto" }}>{c.pass ? "✓" : "✗"}</span>
+            <li key={c.id} style={{ fontSize: "var(--fs-sm)", display: "flex", gap: "var(--s-2)", alignItems: "baseline" }}>
+              <span style={{ color: c.pass ? "var(--good)" : "var(--bad)", fontWeight: 700, flex: "0 0 auto" }}>{c.pass ? "✓" : "✗"}</span>
               <span style={{ color: "var(--dark)" }}>{c.label} <span style={{ color: "var(--gray)" }}>({c.waarde})</span></span>
             </li>
           ))}
@@ -349,7 +349,7 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
         liggen (veel vertoond, te weinig geklikt) of omdat zijn meta niet in orde is. Dit is de enige plek waar een
         meta ontstaat en beoordeeld wordt; wat je goedkeurt gaat vanzelf naar de site of naar de werklijst van de bouwer.
       </p>
-      <div className="org-actions" style={{ margin: "10px 0" }}>
+      <div className="org-actions" style={{ margin: "var(--s-3) 0" }}>
         <button type="button" className="primary-btn small" onClick={copyApproved} disabled={!approvedCount}>
           {copied ? "Gekopieerd!" : `Kopieer goedgekeurde meta's (${approvedCount})`}
         </button>
@@ -365,7 +365,7 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
             placeholder="https://voorbeeld.nl/wp-admin/"
             onBlur={(e) => void saveBeheerUrl(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") void saveBeheerUrl((e.target as HTMLInputElement).value); if (e.key === "Escape") setBeheerEdit(false); }}
-            style={{ minWidth: 320, padding: "5px 10px", border: "1px solid var(--border)", borderRadius: 8, font: "inherit", fontSize: 12.5 }}
+            style={{ minWidth: 320, padding: "var(--s-1) var(--s-3)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", font: "inherit", fontSize: "var(--fs-sm)" }}
             aria-label="Inlogpagina van de website-beheeromgeving"
           />
         ) : (
@@ -380,19 +380,19 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
         </button>
       </div>
       {wpEdit && (
-        <div className="org-actions" style={{ margin: "0 0 10px", alignItems: "center", flexWrap: "wrap" }}>
+        <div className="org-actions" style={{ margin: "0 0 var(--s-3)", alignItems: "center", flexWrap: "wrap" }}>
           <input value={wpUser} onChange={(e) => setWpUser(e.target.value)} placeholder="WordPress-gebruikersnaam"
-            style={{ padding: "5px 10px", border: "1px solid var(--border)", borderRadius: 8, font: "inherit", fontSize: 12.5 }}
+            style={{ padding: "var(--s-1) var(--s-3)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", font: "inherit", fontSize: "var(--fs-sm)" }}
             aria-label="WordPress-gebruikersnaam" />
           <input value={wpPass} onChange={(e) => setWpPass(e.target.value)} placeholder="Applicatie-wachtwoord (xxxx xxxx xxxx ...)" type="password"
-            style={{ minWidth: 260, padding: "5px 10px", border: "1px solid var(--border)", borderRadius: 8, font: "inherit", fontSize: 12.5 }}
+            style={{ minWidth: 260, padding: "var(--s-1) var(--s-3)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", font: "inherit", fontSize: "var(--fs-sm)" }}
             aria-label="WordPress applicatie-wachtwoord" />
           <button type="button" className="primary-btn small" onClick={() => void saveWp()} disabled={!wpUser.trim() || !wpPass.trim()}>Koppeling opslaan</button>
-          {wpMsg && <span className="wz-item-sub" style={{ color: "#c62828" }}>{wpMsg}</span>}
+          {wpMsg && <span className="wz-item-sub" style={{ color: "var(--bad)" }}>{wpMsg}</span>}
         </div>
       )}
-      {meetMsg && <p className="wz-item-sub" style={{ color: /mislukt/i.test(meetMsg) ? "#c62828" : "var(--dark)" }}>{meetMsg}</p>}
-      {error && <p className="wz-item-sub" style={{ color: "#c62828" }}>{error}</p>}
+      {meetMsg && <p className="wz-item-sub" style={{ color: /mislukt/i.test(meetMsg) ? "var(--bad)" : "var(--dark)" }}>{meetMsg}</p>}
+      {error && <p className="wz-item-sub" style={{ color: "var(--bad)" }}>{error}</p>}
       {rows === null && <p className="wz-item-sub">Lijst opbouwen uit Search Console en de laatste meting&hellip;</p>}
       {rows !== null && rows.length === 0 && !error && <p className="wz-item-sub">Nog geen pagina&rsquo;s bekend. Druk op &ldquo;Meet de pagina&rsquo;s&rdquo;, dan verschijnt hier de volledige lijst.</p>}
       {!!(rows || []).length && (() => {
@@ -406,7 +406,7 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
           { id: "alles", label: `Alles (${(rows || []).length})` },
         ];
         return (
-          <div className="org-actions" style={{ margin: "0 0 10px" }}>
+          <div className="org-actions" style={{ margin: "0 0 var(--s-3)" }}>
             {knoppen.map((k) => (
               <button key={k.id} type="button" className={filter === k.id ? "primary-btn small" : "ghost-btn small"} onClick={() => setFilter(k.id)}>{k.label}</button>
             ))}
@@ -431,18 +431,18 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
                       ? <>positie {r.position} &middot; {r.impressions.toLocaleString("nl-NL")} vertoningen &middot; CTR {r.ctr}% (verwacht {r.expectedCtr}%)</>
                       : <>nog geen Search Console-cijfers voor deze pagina</>}
                     {r.reden === "kapot" && (r.issues.title.length || r.issues.desc.length)
-                      ? <> &middot; <span style={{ color: "#c62828" }}>{[...(r.issues.title.length ? [`titel: ${r.issues.title.join(", ")}`] : []), ...(r.issues.desc.length ? [`beschrijving: ${r.issues.desc.join(", ")}`] : [])].join(" &middot; ")}</span></>
+                      ? <> &middot; <span style={{ color: "var(--bad)" }}>{[...(r.issues.title.length ? [`titel: ${r.issues.title.join(", ")}`] : []), ...(r.issues.desc.length ? [`beschrijving: ${r.issues.desc.join(", ")}`] : [])].join(" &middot; ")}</span></>
                       : null}
                   </span>
                 </span>
-                <span className="wz-item-date" style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <span className="wz-item-date" style={{ display: "flex", gap: "var(--s-2)", alignItems: "center" }}>
                   {!st && (
                     <span title={REDEN_LABEL[r.reden].uitleg}
-                      style={{ background: REDEN_LABEL[r.reden].bg, color: REDEN_LABEL[r.reden].fg, borderRadius: 20, padding: "2px 10px", fontSize: 11.5, fontWeight: 600 }}>
+                      style={{ background: REDEN_LABEL[r.reden].bg, color: REDEN_LABEL[r.reden].fg, borderRadius: "var(--r-full)", padding: "var(--s-0) var(--s-3)", fontSize: "var(--fs-xs)", fontWeight: 600 }}>
                       {REDEN_LABEL[r.reden].txt}
                     </span>
                   )}
-                  {st && <span style={{ background: st.bg, color: st.fg, borderRadius: 20, padding: "2px 10px", fontSize: 11.5, fontWeight: 600 }}>{st.txt}</span>}
+                  {st && <span style={{ background: st.bg, color: st.fg, borderRadius: "var(--r-full)", padding: "var(--s-0) var(--s-3)", fontSize: "var(--fs-xs)", fontWeight: 600 }}>{st.txt}</span>}
                   {r.extraClicks > 0 && <span title="Geschatte extra klikken per 90 dagen bij een normale klikkans">+{r.extraClicks} klikken mogelijk</span>}
                   {onOpenPage && (
                     <button type="button" className="ghost-btn small"
@@ -458,9 +458,9 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
                 </span>
               </div>
               {open && (
-                <div style={{ border: "1px solid var(--border)", borderTop: "none", borderRadius: "0 0 10px 10px", padding: "14px", background: "#fff" }}>
+                <div style={{ border: "1px solid var(--border)", borderTop: "none", borderRadius: "0 0 var(--r-md) var(--r-md)", padding: "var(--s-4)", background: "var(--white)" }}>
                   {!r.proposal && (
-                    <div style={{ display: "grid", gap: 12 }}>
+                    <div style={{ display: "grid", gap: "var(--s-3)" }}>
                       {r.gemeten && (
                         <div>
                           <div className="wz-block-head">Nu op de site</div>
@@ -482,7 +482,7 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
                           geschreven als hier, dus er is geen nieuw voorstel nodig.
                         </p>
                       )}
-                      <span style={{ display: "inline-flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                      <span style={{ display: "inline-flex", gap: "var(--s-2)", alignItems: "center", flexWrap: "wrap" }}>
                         {r.copydoc && !r.copydoc.live && (
                           <button type="button" className="primary-btn small" onClick={() => void neemCopydoc(r)} disabled={busy === `${r.url}|copydoc`}
                             title="Er staat al een meta in het copydocument van deze pagina, geschreven met dezelfde regels. Neem die over in plaats van een nieuwe te schrijven.">
@@ -499,7 +499,7 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
                     </div>
                   )}
                   {r.proposal && (
-                    <div style={{ display: "grid", gap: 16 }}>
+                    <div style={{ display: "grid", gap: "var(--s-4)" }}>
                       <div>
                         <div className="wz-block-head">Huidig op de site</div>
                         <div className="wz-line removed">
@@ -530,11 +530,11 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
                       <div>
                         <div className="wz-block-head">Voorstel (aanpasbaar)</div>
                         <div className="wz-line added">
-                          <div style={{ display: "flex", gap: 6, alignItems: "baseline" }}>
+                          <div style={{ display: "flex", gap: "var(--s-2)", alignItems: "baseline" }}>
                             <span className="wz-line-label">
                               Meta-titel:
                               {r.proposal.titleStatus !== "open" && r.proposal.status !== "doorgevoerd" && (
-                                <span style={{ marginLeft: 6, background: STATUS_LABEL[r.proposal.titleStatus].bg, color: STATUS_LABEL[r.proposal.titleStatus].fg, borderRadius: 20, padding: "1px 8px", fontSize: 11, fontWeight: 600 }}>{r.proposal.titleStatus}</span>
+                                <span style={{ marginLeft: "var(--s-2)", background: STATUS_LABEL[r.proposal.titleStatus].bg, color: STATUS_LABEL[r.proposal.titleStatus].fg, borderRadius: "var(--r-full)", padding: "var(--s-1) var(--s-2)", fontSize: "var(--fs-xs)", fontWeight: 600 }}>{r.proposal.titleStatus}</span>
                               )}
                             </span>
                             <input
@@ -549,7 +549,7 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
                           <MetaChecklist kind="title" text={r.proposal.propTitle} keyword={r.keyword} other={r.proposal.propDesc} />
                         </div>
                         {r.proposal.status !== "doorgevoerd" && (
-                          <div className="org-actions" style={{ margin: "6px 0 12px" }}>
+                          <div className="org-actions" style={{ margin: "var(--s-2) 0 var(--s-3)" }}>
                             {r.proposal.titleStatus !== "goedgekeurd" ? (
                               <button type="button" className="primary-btn small" onClick={() => { setLocal(r.url, (p) => ({ ...p, titleStatus: "goedgekeurd" })); void patch(r.url, { titleStatus: "goedgekeurd" }); }}>Goedkeuren</button>
                             ) : (
@@ -565,11 +565,11 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
                           </div>
                         )}
                         <div className="wz-line added">
-                          <div style={{ display: "flex", gap: 6, alignItems: "baseline" }}>
+                          <div style={{ display: "flex", gap: "var(--s-2)", alignItems: "baseline" }}>
                             <span className="wz-line-label">
                               Meta-beschrijving:
                               {r.proposal.descStatus !== "open" && r.proposal.status !== "doorgevoerd" && (
-                                <span style={{ marginLeft: 6, background: STATUS_LABEL[r.proposal.descStatus].bg, color: STATUS_LABEL[r.proposal.descStatus].fg, borderRadius: 20, padding: "1px 8px", fontSize: 11, fontWeight: 600 }}>{r.proposal.descStatus}</span>
+                                <span style={{ marginLeft: "var(--s-2)", background: STATUS_LABEL[r.proposal.descStatus].bg, color: STATUS_LABEL[r.proposal.descStatus].fg, borderRadius: "var(--r-full)", padding: "var(--s-1) var(--s-2)", fontSize: "var(--fs-xs)", fontWeight: 600 }}>{r.proposal.descStatus}</span>
                               )}
                             </span>
                             <textarea
@@ -585,7 +585,7 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
                           <MetaChecklist kind="desc" text={r.proposal.propDesc} keyword={r.keyword} other={r.proposal.propTitle} />
                         </div>
                         {r.proposal.status !== "doorgevoerd" && (
-                          <div className="org-actions" style={{ margin: "6px 0 0" }}>
+                          <div className="org-actions" style={{ margin: "var(--s-2) 0 var(--s-0)" }}>
                             {r.proposal.descStatus !== "goedgekeurd" ? (
                               <button type="button" className="primary-btn small" onClick={() => { setLocal(r.url, (p) => ({ ...p, descStatus: "goedgekeurd" })); void patch(r.url, { descStatus: "goedgekeurd" }); }}>Goedkeuren</button>
                             ) : (
@@ -627,7 +627,7 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
                       )}
                       {r.proposal.status === "doorgevoerd" && (
                         <div>
-                          <div className="org-actions meta-done-row" style={{ alignItems: "center", margin: "2px 0 10px" }}>
+                          <div className="org-actions meta-done-row" style={{ alignItems: "center", margin: "var(--s-1) 0 var(--s-3)" }}>
                             <span className="meta-live-badge">✓ Is doorgevoerd op de site</span>
                             <button type="button" className="ghost-btn small" onClick={() => void verifyLive(r)} disabled={busy === `${r.url}|verify`}>{busy === `${r.url}|verify` ? "Controleren…" : "Controleer live"}</button>
                             <a className="ghost-btn small" href={fullUrl(r.url)} target="_blank" rel="noreferrer">Open pagina</a>

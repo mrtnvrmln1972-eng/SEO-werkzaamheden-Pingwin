@@ -179,7 +179,7 @@ export default function MailControlePanel({
         alleen op de mail af te gaan.
       </div>
 
-      {fout && <div className="wp-doc-fout" style={{ marginTop: 10 }}>{fout}</div>}
+      {fout && <div className="wp-doc-fout" style={{ marginTop: "var(--s-3)" }}>{fout}</div>}
 
       {open && controle && (
         <div className="mc-uitslag">
@@ -261,6 +261,7 @@ export default function MailControlePanel({
                 suppressContentEditableWarning
                 ref={conceptRef}
                 dangerouslySetInnerHTML={{ __html: controle.conceptHtml }}
+                /* concept_html komt uit mdToHtml() in lib/mail-controle.ts, al gerenderd bewaard */
               />
               <div className="mc-knoppen">
                 <button type="button" className="primary-btn small" onClick={() => void verstuur()} disabled={verstuurBezig || controle.status === "verstuurd"}>

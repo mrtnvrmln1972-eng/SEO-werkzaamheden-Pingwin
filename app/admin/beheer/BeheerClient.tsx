@@ -336,20 +336,20 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
           <Tellers />
         <OntwikkelMenu />
           <a className="logout-btn" href="/admin" title="Terug naar het klantenoverzicht">Klanten</a>
-          <button className="logout-btn" onClick={logout} style={{ marginLeft: 8 }}>Uitloggen</button>
+          <button className="logout-btn" onClick={logout} style={{ marginLeft: "var(--s-2)" }}>Uitloggen</button>
         </div>
       </div>
 
       <div className="container">
         {notice && (
-          <div id="beheer-melding" className={notice.ok ? "saved-msg" : "login-error"} style={{ marginBottom: 16 }}>
+          <div id="beheer-melding" className={notice.ok ? "saved-msg" : "login-error"} style={{ marginBottom: "var(--s-4)" }}>
             {notice.text}
           </div>
         )}
 
         {/* ─────────────── KLANTEN ─────────────── */}
-        <h2 style={{ fontSize: 20, fontWeight: 700, margin: "8px 0 6px" }}>Klanten</h2>
-        <p className="muted" style={{ marginBottom: 16 }}>
+        <h2 style={{ fontSize: "var(--fs-lg)", fontWeight: 700, margin: "var(--s-2) 0 var(--s-2)" }}>Klanten</h2>
+        <p className="muted" style={{ marginBottom: "var(--s-4)" }}>
           Naam, website, e-mail en of de klant-login openstaat. Budget en Google Sheet blijven in de cockpit.
         </p>
 
@@ -370,7 +370,7 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
                   <td style={{ fontWeight: 600 }}>{c.name}</td>
                   <td>{c.domain || <span className="muted">&mdash;</span>}</td>
                   <td>{c.email || <span className="muted">&mdash;</span>}</td>
-                  <td>{c.loginEnabled ? "Aan" : <span style={{ color: "#c0392b" }}>Uit</span>}</td>
+                  <td>{c.loginEnabled ? "Aan" : <span style={{ color: "var(--danger)" }}>Uit</span>}</td>
                   <td style={{ whiteSpace: "nowrap" }}>
                     <button className="mini-btn" onClick={() => openClient(c)}>Bewerken</button>
                   </td>
@@ -384,8 +384,8 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
           const c = clients.find((x) => x.slug === editSlug);
           if (!c) return null;
           return (
-            <form className="admin-form" style={{ marginTop: 20 }} onSubmit={(e) => { e.preventDefault(); saveClient(c.slug); }}>
-              <div className="created-title" style={{ marginBottom: 12, fontWeight: 700 }}>Klant bewerken: {c.name}</div>
+            <form className="admin-form" style={{ marginTop: "var(--s-5)" }} onSubmit={(e) => { e.preventDefault(); saveClient(c.slug); }}>
+              <div className="created-title" style={{ marginBottom: "var(--s-3)", fontWeight: 700 }}>Klant bewerken: {c.name}</div>
               <div className="form-grid">
                 <div className="field">
                   <label>Bedrijfsnaam</label>
@@ -408,12 +408,12 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
                     autoCapitalize="characters"
                     spellCheck={false}
                   />
-                  <span className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+                  <span className="muted" style={{ fontSize: "var(--fs-sm)", marginTop: "var(--s-1)" }}>
                     De sleutel zelf zet je in Vercel als env-var AHREFS_API_TOKEN_&lt;LABEL&gt;; hier staat alleen het label.
                   </span>
                 </div>
                 <div className="field" style={{ justifyContent: "flex-end" }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: "var(--s-2)", cursor: "pointer" }}>
                     <input
                       type="checkbox"
                       checked={cForm.loginEnabled}
@@ -424,13 +424,13 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
                   </label>
                 </div>
               </div>
-              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <div style={{ display: "flex", gap: "var(--s-2)", alignItems: "center", flexWrap: "wrap" }}>
                 <button type="submit" className="primary-btn" disabled={busy}>{busy ? "Opslaan…" : "Opslaan"}</button>
                 <button type="button" className="logout-btn" onClick={() => setEditSlug(null)}>Sluiten</button>
                 <button type="button" className="mini-btn" onClick={() => resetClientPw(c.slug)} disabled={busy}>Nieuw klant-wachtwoord</button>
               </div>
               {newPassword && newPassword.slug === c.slug && (
-                <div className="created-box" style={{ marginTop: 16 }}>
+                <div className="created-box" style={{ marginTop: "var(--s-4)" }}>
                   <div className="created-title">Nieuw wachtwoord voor {c.name}</div>
                   <p>Geef dit aan de klant. Je ziet het maar één keer.</p>
                   <div className="cred-row"><span>Wachtwoord</span><code>{newPassword.password}</code>
@@ -442,13 +442,13 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
         })()}
 
         {/* ─────────────── TEAM ─────────────── */}
-        <h2 style={{ fontSize: 20, fontWeight: 700, margin: "44px 0 6px" }}>Team</h2>
-        <p className="muted" style={{ marginBottom: 16 }}>
+        <h2 style={{ fontSize: "var(--fs-lg)", fontWeight: 700, margin: "var(--s-12) 0 var(--s-2)" }}>Team</h2>
+        <p className="muted" style={{ marginBottom: "var(--s-4)" }}>
           Gasten kunnen inloggen op dit adminscherm en zien alleen de klanten die je aanvinkt. Standaard is een gast alleen-lezen: rondkijken en openklappen mag, maar geen stappen draaien of iets opslaan. Vink &ldquo;mag wijzigen en uitvoeren&rdquo; aan om dat wel toe te staan.
         </p>
 
         {created && (
-          <div className="created-box" style={{ marginBottom: 20 }}>
+          <div className="created-box" style={{ marginBottom: "var(--s-5)" }}>
             <div className="created-title">Inloggegevens voor {created.name}</div>
             <p>Geef deze gegevens aan de gast. Het wachtwoord zie je maar één keer. Inloggen via het adminscherm met deze inlognaam.</p>
             <div className="cred-row"><span>Inlognaam</span><code>{created.loginId}</code>
@@ -480,7 +480,7 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
                   <td>{u.role === "owner" ? "alles (eigenaar)" : slugsLabel(u.allowedSlugs)}</td>
                   <td>
                     {u.role === "owner" ? "alles" : u.canEdit ? "Mag overal wijzigen" : (u.editSlugs || []).length > 0 ? `Bewerken: ${(u.editSlugs || []).length} van ${u.allowedSlugs.length} klanten` : "Alleen lezen"}
-                    {u.canDev && <div className="muted" style={{ fontSize: 12 }}>+ developer-taken</div>}
+                    {u.canDev && <div className="muted" style={{ fontSize: "var(--fs-sm)" }}>+ developer-taken</div>}
                   </td>
                   <td style={{ whiteSpace: "nowrap" }}>
                     <button className="mini-btn" onClick={() => openUser(u)}>Bewerken</button>{" "}
@@ -498,7 +498,7 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
         {userPassword && (() => {
           const u = team.find((x) => x.id === userPassword.id);
           return (
-            <div className="created-box" style={{ marginTop: 16 }}>
+            <div className="created-box" style={{ marginTop: "var(--s-4)" }}>
               <div className="created-title">Nieuw wachtwoord voor {u?.name || u?.loginId || "gast"}</div>
               <p>Geef dit aan de gast. Je ziet het maar één keer.</p>
               <div className="cred-row"><span>Wachtwoord</span><code>{userPassword.password}</code>
@@ -511,9 +511,9 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
           const u = team.find((x) => x.id === editUserId);
           if (!u) return null;
           return (
-            <form className="admin-form" style={{ marginTop: 20 }} onSubmit={(e) => { e.preventDefault(); saveUser(u.id); }}>
-              <div className="created-title" style={{ marginBottom: 12, fontWeight: 700 }}>Gast bewerken: {u.loginId}</div>
-              <div className="form-grid" style={{ marginBottom: 16 }}>
+            <form className="admin-form" style={{ marginTop: "var(--s-5)" }} onSubmit={(e) => { e.preventDefault(); saveUser(u.id); }}>
+              <div className="created-title" style={{ marginBottom: "var(--s-3)", fontWeight: 700 }}>Gast bewerken: {u.loginId}</div>
+              <div className="form-grid" style={{ marginBottom: "var(--s-4)" }}>
                 <div className="field">
                   <label>Naam</label>
                   <input value={uForm.name} onChange={(e) => setUForm({ ...uForm, name: e.target.value })} placeholder="Naam van de gast" />
@@ -536,8 +536,8 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
                 onToggleEdit={(slug) => setUForm({ ...uForm, editSlugs: toggleSlug(uForm.editSlugs, slug) })}
                 editAll={uForm.canEdit}
               />
-              <div className="field" style={{ marginTop: 16 }}>
-                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+              <div className="field" style={{ marginTop: "var(--s-4)" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: "var(--s-2)", cursor: "pointer" }}>
                   <input
                     type="checkbox"
                     checked={uForm.canEdit}
@@ -547,8 +547,8 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
                   Mag overal bewerken en uitvoeren (uit = per klant instellen met de knopjes hierboven)
                 </label>
               </div>
-              <div className="field" style={{ marginTop: 12 }}>
-                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+              <div className="field" style={{ marginTop: "var(--s-3)" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: "var(--s-2)", cursor: "pointer" }}>
                   <input
                     type="checkbox"
                     checked={uForm.canDev}
@@ -558,7 +558,7 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
                   Developer-taken (alle klanten): eigen scherm met de taken die naar Dev staan, afvinken en terugkoppelen
                 </label>
               </div>
-              <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+              <div style={{ display: "flex", gap: "var(--s-2)", marginTop: "var(--s-4)" }}>
                 <button type="submit" className="primary-btn" disabled={busy}>{busy ? "Opslaan…" : "Opslaan"}</button>
                 <button type="button" className="logout-btn" onClick={() => setEditUserId(null)}>Sluiten</button>
               </div>
@@ -566,14 +566,14 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
           );
         })()}
 
-        <div style={{ marginTop: 24 }}>
+        <div style={{ marginTop: "var(--s-6)" }}>
           <button type="button" className="logout-btn" onClick={() => { setShowTeamForm((v) => !v); setCreated(null); }}>
             {showTeamForm ? "− Formulier sluiten" : "+ Gast toevoegen"}
           </button>
         </div>
 
         {showTeamForm && (
-          <form className="admin-form" style={{ marginTop: 20 }} onSubmit={createGuest}>
+          <form className="admin-form" style={{ marginTop: "var(--s-5)" }} onSubmit={createGuest}>
             <div className="form-grid">
               <div className="field">
                 <label>Naam</label>
@@ -607,8 +607,8 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
               onToggleEdit={(slug) => setTForm({ ...tForm, editSlugs: toggleSlug(tForm.editSlugs, slug) })}
               editAll={tForm.canEdit}
             />
-            <div className="field" style={{ marginTop: 16 }}>
-              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+            <div className="field" style={{ marginTop: "var(--s-4)" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: "var(--s-2)", cursor: "pointer" }}>
                 <input
                   type="checkbox"
                   checked={tForm.canEdit}
@@ -618,8 +618,8 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
                 Mag overal bewerken en uitvoeren (uit = per klant instellen met de knopjes hierboven)
               </label>
             </div>
-              <div className="field" style={{ marginTop: 12 }}>
-              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+              <div className="field" style={{ marginTop: "var(--s-3)" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: "var(--s-2)", cursor: "pointer" }}>
                 <input
                   type="checkbox"
                   checked={tForm.canDev}
@@ -629,9 +629,9 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
                 Developer-taken (alle klanten): eigen scherm met de taken die naar Dev staan, afvinken en terugkoppelen
               </label>
             </div>
-            <button type="submit" className="primary-btn" style={{ marginTop: 16 }} disabled={busy}>{busy ? "Bezig…" : "Gast aanmaken"}</button>
+            <button type="submit" className="primary-btn" style={{ marginTop: "var(--s-4)" }} disabled={busy}>{busy ? "Bezig…" : "Gast aanmaken"}</button>
             {notice && !notice.ok && (
-              <div className="login-error" style={{ marginTop: 12 }}>{notice.text}</div>
+              <div className="login-error" style={{ marginTop: "var(--s-3)" }}>{notice.text}</div>
             )}
           </form>
         )}
@@ -639,8 +639,8 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
         {/* ─────────────── INSTELLINGEN (alleen met Moneybird-koppeling) ─────────────── */}
         {showFinance && (
           <>
-            <h2 style={{ fontSize: 20, fontWeight: 700, margin: "44px 0 6px" }}>Instellingen</h2>
-            <p className="muted" style={{ marginBottom: 16 }}>
+            <h2 style={{ fontSize: "var(--fs-lg)", fontWeight: 700, margin: "var(--s-12) 0 var(--s-2)" }}>Instellingen</h2>
+            <p className="muted" style={{ marginBottom: "var(--s-4)" }}>
               Het e-mailadres van degene die de administratie bijhoudt. De knop &ldquo;Mail naar administratie&rdquo; bij een openstaande-factuursignaal stuurt de factuurlinks naar dit adres.
             </p>
             <form className="admin-form" onSubmit={(e) => { e.preventDefault(); saveInvoiceMail(); }}>
@@ -658,8 +658,8 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
         )}
 
         {/* ─────────────── GOOGLE-KOPPELINGEN ─────────────── */}
-        <h2 style={{ fontSize: 20, fontWeight: 700, margin: "44px 0 6px" }}>Google-koppelingen</h2>
-        <p className="muted" style={{ marginBottom: 16 }}>
+        <h2 style={{ fontSize: "var(--fs-lg)", fontWeight: 700, margin: "var(--s-12) 0 var(--s-2)" }}>Google-koppelingen</h2>
+        <p className="muted" style={{ marginBottom: "var(--s-4)" }}>
           Twee losse koppelingen, bewust gescheiden: de <strong>data-koppeling</strong> bepaalt wiens Google-account de
           Search Console- en Analytics-cijfers levert; de <strong>Drive-koppeling</strong> bepaalt in wiens Google Drive
           de documenten landen. Data koppelen geeft dus nooit toegang tot iemands Drive.
@@ -676,14 +676,14 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
             <tbody>
               <tr>
                 <td style={{ fontWeight: 600 }}>Search Console + Analytics (data)</td>
-                <td>{!gLinks ? "…" : gLinks.data.connected ? `Gekoppeld${gLinks.data.account ? ` als ${gLinks.data.account}` : ""}` : <span style={{ color: "#c0392b" }}>Niet gekoppeld</span>}</td>
+                <td>{!gLinks ? "…" : gLinks.data.connected ? `Gekoppeld${gLinks.data.account ? ` als ${gLinks.data.account}` : ""}` : <span style={{ color: "var(--danger)" }}>Niet gekoppeld</span>}</td>
                 <td style={{ whiteSpace: "nowrap" }}>
                   <a className="mini-btn" href="/api/google/auth/start">{gLinks?.data.connected ? "Opnieuw koppelen" : "Koppelen"}</a>
                 </td>
               </tr>
               <tr>
                 <td style={{ fontWeight: 600 }}>Google Drive (documenten-opslag)</td>
-                <td>{!gLinks ? "…" : gLinks.drive.connected ? `Gekoppeld${gLinks.drive.account ? ` als ${gLinks.drive.account}` : ""}` : <span style={{ color: "#c0392b" }}>Niet gekoppeld (documenten komen als download)</span>}</td>
+                <td>{!gLinks ? "…" : gLinks.drive.connected ? `Gekoppeld${gLinks.drive.account ? ` als ${gLinks.drive.account}` : ""}` : <span style={{ color: "var(--danger)" }}>Niet gekoppeld (documenten komen als download)</span>}</td>
                 <td style={{ whiteSpace: "nowrap" }}>
                   <a className="mini-btn" href="/api/google/auth/start?purpose=drive">{gLinks?.drive.connected ? "Opnieuw koppelen" : "Drive koppelen"}</a>{" "}
                   {gLinks?.drive.connected && <button className="mini-btn" onClick={disconnectDrive}>Ontkoppelen</button>}
@@ -693,7 +693,7 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
           </table>
         </div>
 
-        <div className="admin-footer" style={{ marginTop: 40, color: "var(--gray)", fontSize: 12 }}>
+        <div className="admin-footer" style={{ marginTop: "var(--s-10)", color: "var(--gray)", fontSize: "var(--fs-sm)" }}>
           Pingwin Online Marketing &middot; Beheer
         </div>
       </div>
@@ -720,20 +720,20 @@ function ClientPicker({
 }) {
   return (
     <div className="field-wide">
-      <label style={{ fontWeight: 600, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--gray)", marginBottom: 8, display: "block" }}>
+      <label style={{ fontWeight: 600, fontSize: "var(--fs-sm)", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--gray)", marginBottom: "var(--s-2)", display: "block" }}>
         Toegang tot klanten
       </label>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--s-2)" }}>
         {clients.map((c) => {
           const on = selected.includes(c.slug);
           const editOn = editAll || editSelected.includes(c.slug);
           return (
-            <span key={c.slug} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+            <span key={c.slug} style={{ display: "inline-flex", alignItems: "center", gap: "var(--s-1)" }}>
               <button
                 type="button"
                 onClick={() => onToggle(c.slug)}
                 className={on ? "primary-btn small" : "mini-btn"}
-                style={{ padding: "6px 12px" }}
+                style={{ padding: "var(--s-2) var(--s-3)" }}
               >
                 {on ? "✓ " : ""}{c.name}
               </button>
@@ -743,7 +743,7 @@ function ClientPicker({
                   onClick={() => onToggleEdit(c.slug)}
                   disabled={editAll}
                   className={editOn ? "primary-btn small" : "mini-btn"}
-                  style={{ padding: "6px 10px", opacity: editAll ? 0.6 : 1 }}
+                  style={{ padding: "var(--s-2) var(--s-3)", opacity: editAll ? 0.6 : 1 }}
                   title={editAll ? "Mag al overal bewerken (globaal vinkje staat aan)" : editOn ? "Mag deze klant bewerken; klik om alleen-lezen te maken" : "Alleen lezen; klik om bewerken toe te staan"}
                 >
                   {editOn ? "✎ bewerken" : "alleen lezen"}
@@ -754,7 +754,7 @@ function ClientPicker({
         })}
         {clients.length === 0 && <span className="muted">Nog geen klanten.</span>}
       </div>
-      <p className="muted" style={{ marginTop: 6, fontSize: 12 }}>
+      <p className="muted" style={{ marginTop: "var(--s-2)", fontSize: "var(--fs-sm)" }}>
         Per aangevinkte klant kies je of de gast er ook mag bewerken en uitvoeren, of alleen mag lezen.
       </p>
     </div>

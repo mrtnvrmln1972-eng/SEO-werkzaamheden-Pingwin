@@ -425,7 +425,7 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
         </thead>
         <tbody>
           {leads.length === 0 && (
-            <tr><td colSpan={4} style={{ textAlign: "center", padding: 40, color: "var(--gray)" }}>
+            <tr><td colSpan={4} style={{ textAlign: "center", padding: "var(--s-10)", color: "var(--gray)" }}>
               Nog geen leads. Maak er een aan met alleen een naam en een website.
             </td></tr>
           )}
@@ -469,7 +469,7 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
         </thead>
         <tbody>
           {list.length === 0 && (
-            <tr><td colSpan={6} style={{ textAlign: "center", padding: 40, color: "var(--gray)" }}>{emptyText}</td></tr>
+            <tr><td colSpan={6} style={{ textAlign: "center", padding: "var(--s-10)", color: "var(--gray)" }}>{emptyText}</td></tr>
           )}
           {list.map((c) => (
             <Fragment key={c.slug}>
@@ -527,7 +527,7 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
                           <input type="number" value={editForm.uurtarief} onChange={(e) => editSet("uurtarief", e.target.value)} />
                         </label>
                       </div>
-                      <div className="hint" style={{ marginTop: 8 }}>De beschikbare uren worden per maand berekend uit (maandfee &minus; linkbuilding) / uurtarief. Wil je de linkbuilding voor één specifieke maand afwijkend zetten, doe dat in de Werkzaamheden-tab bij die maand; dan passen alleen de uren van die maand zich aan.</div>
+                      <div className="hint" style={{ marginTop: "var(--s-2)" }}>De beschikbare uren worden per maand berekend uit (maandfee &minus; linkbuilding) / uurtarief. Wil je de linkbuilding voor één specifieke maand afwijkend zetten, doe dat in de Werkzaamheden-tab bij die maand; dan passen alleen de uren van die maand zich aan.</div>
                       <div className="budget-edit-actions">
                         <button className="primary-btn small" onClick={(e) => saveBudget(e, c)} disabled={editBusy}>{editBusy ? "Opslaan…" : "Opslaan"}</button>
                         <button className="ghost-btn small" onClick={(e) => { e.stopPropagation(); setEditSlug(null); }}>Annuleren</button>
@@ -566,26 +566,26 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
           <Tellers />
         <OntwikkelMenu />
           {isOwner && (
-            <a className="logout-btn" href="/admin/beheer" title="Klanten en teamgebruikers beheren" style={{ marginLeft: 8 }}>Beheer</a>
+            <a className="logout-btn" href="/admin/beheer" title="Klanten en teamgebruikers beheren" style={{ marginLeft: "var(--s-2)" }}>Beheer</a>
           )}
           {(isOwner || canDev) && (
-            <a className="logout-btn" href="/admin/developer" title="Alle developer-taken over alle klanten" style={{ marginLeft: 8 }}>Developer</a>
+            <a className="logout-btn" href="/admin/developer" title="Alle developer-taken over alle klanten" style={{ marginLeft: "var(--s-2)" }}>Developer</a>
           )}
           {isOwner && (
-            <a className="logout-btn" href="/admin/usage" title="AI-verbruik en kosten per actie en per klant" style={{ marginLeft: 8 }}>Verbruik</a>
+            <a className="logout-btn" href="/admin/usage" title="AI-verbruik en kosten per actie en per klant" style={{ marginLeft: "var(--s-2)" }}>Verbruik</a>
           )}
           {/* Financiën is Maartens privé-administratie: alleen tonen in de wereld
               waar Moneybird gekoppeld is (Pingwin), nooit in MMC/NOC. */}
           {isOwner && showFinance && (
-            <a className="logout-btn" href="/admin/financien" title="Opbrengsten en kosten uit Moneybird, met openstaande facturen" style={{ marginLeft: 8 }}>Financi&euml;n</a>
+            <a className="logout-btn" href="/admin/financien" title="Opbrengsten en kosten uit Moneybird, met openstaande facturen" style={{ marginLeft: "var(--s-2)" }}>Financi&euml;n</a>
           )}
-          <button className="logout-btn" onClick={logout} style={{ marginLeft: 8 }}>Uitloggen</button>
+          <button className="logout-btn" onClick={logout} style={{ marginLeft: "var(--s-2)" }}>Uitloggen</button>
         </div>
       </div>
 
       <div className="container">
         {notice && (
-          <div className={notice.ok ? "saved-msg" : "login-error"} style={{ marginBottom: 16 }}>
+          <div className={notice.ok ? "saved-msg" : "login-error"} style={{ marginBottom: "var(--s-4)" }}>
             {notice.text}
           </div>
         )}
@@ -598,7 +598,7 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
                 <p>Stuur de klant deze deelbare link: die opent het dashboard direct, zonder inloggen. Dit is de standaard werkwijze.</p>
                 <div className="cred-row"><span>Deelbare link</span><code>{created.shareUrl}</code>
                   <button className="mini-btn" onClick={() => copy(created.shareUrl!)}>Kopieer</button></div>
-                <p className="created-hint" style={{ marginTop: 14 }}>
+                <p className="created-hint" style={{ marginTop: "var(--s-4)" }}>
                   Wil de klant tóch met een eigen login werken? Deze gegevens zie je maar één keer:
                 </p>
               </>
@@ -622,14 +622,14 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
         <div className="section-title">Leads ({leads.length})</div>
         {leadTable}
         {isOwner && (
-          <div style={{ marginTop: 12 }}>
+          <div style={{ marginTop: "var(--s-3)" }}>
             <button type="button" className="logout-btn" onClick={() => setShowLeadForm((v) => !v)}>
               {showLeadForm ? "− Formulier sluiten" : "+ Nieuwe lead"}
             </button>
           </div>
         )}
         {isOwner && showLeadForm && (
-          <form className="admin-form" style={{ marginTop: 16 }} onSubmit={onSubmitLead}>
+          <form className="admin-form" style={{ marginTop: "var(--s-4)" }} onSubmit={onSubmitLead}>
             <div className="form-grid">
               <div className="field">
                 <label>Bedrijfsnaam</label>
@@ -644,7 +644,7 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
                 <input type="email" value={leadForm.email} onChange={(e) => setLeadForm((f) => ({ ...f, email: e.target.value }))} placeholder="contact@bedrijf.nl" />
               </div>
             </div>
-            <div className="hint" style={{ marginBottom: 12 }}>
+            <div className="hint" style={{ marginBottom: "var(--s-3)" }}>
               Meer is niet nodig. Een lead krijgt geen inlog, geen Google Sheet en geen budget; dat komt pas als hij klant wordt.
             </div>
             {error && <div className="login-error">{error}</div>}
@@ -654,13 +654,13 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
           </form>
         )}
 
-        <div style={{ marginTop: 36 }} />
+        <div style={{ marginTop: "var(--s-10)" }} />
 
         {showGroups && mmcClients.length > 0 ? (
           <>
             <div className="section-title">Mijn eigen klanten ({ownClients.length})</div>
             {clientTable(ownClients, "Nog geen klanten.")}
-            <div className="section-title" style={{ marginTop: 36 }}>Multimedia Concepts ({mmcClients.length})</div>
+            <div className="section-title" style={{ marginTop: "var(--s-10)" }}>Multimedia Concepts ({mmcClients.length})</div>
             <div className="mmc-list">{clientTable(mmcClients, "Nog geen Multimedia Concepts-klanten.")}</div>
           </>
         ) : (
@@ -677,7 +677,7 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
         {isOwner && <KijkSleutel />}
 
         {isOwner && (
-        <div style={{ marginTop: 40 }}>
+        <div style={{ marginTop: "var(--s-10)" }}>
           <button type="button" className="logout-btn" onClick={() => setShowForm((v) => !v)}>
             {showForm ? "− Formulier sluiten" : "+ Nieuwe klant aanmaken"}
           </button>
@@ -685,7 +685,7 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
         )}
 
         {isOwner && showForm && (
-        <form className="admin-form" style={{ marginTop: 20 }} onSubmit={onSubmit}>
+        <form className="admin-form" style={{ marginTop: "var(--s-5)" }} onSubmit={onSubmit}>
           <div className="form-grid">
             <div className="field">
               <label>Bedrijfsnaam</label>

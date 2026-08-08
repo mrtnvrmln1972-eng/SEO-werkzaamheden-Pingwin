@@ -156,12 +156,12 @@ function CardTrend({ label, values, dates, prev, cur, fmt, invert, isPos, period
             <div className="ktr-axis"><span>{dShort(pts[0].date)}</span><span>{dShort(pts[mid].date)}</span><span>{dShort(pts[pts.length - 1].date)}</span></div>
           </div>
         </div>
-      ) : <div className="muted" style={{ fontSize: 11, padding: "10px 0" }}>Nog te weinig data voor een grafiek.</div>}
+      ) : <div className="muted" style={{ fontSize: "var(--fs-xs)", padding: "var(--s-3) 0" }}>Nog te weinig data voor een grafiek.</div>}
       {onExplain && metricKey && (
         <div className="ktr-explain">
           <button type="button" className="ktr-explain-btn" onClick={toggleExplain} disabled={expLoading}>{expLoading ? "Analyseren…" : expOpen ? "▾ Toelichting verbergen" : "▸ Toelichting"}</button>
-          {expOpen && expErr && <div className="login-error" style={{ marginTop: 6, fontSize: 12 }}>{expErr}</div>}
-          {expOpen && expLoading && <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>Even de cijfers scannen…</div>}
+          {expOpen && expErr && <div className="login-error" style={{ marginTop: "var(--s-2)", fontSize: "var(--fs-sm)" }}>{expErr}</div>}
+          {expOpen && expLoading && <div className="muted" style={{ marginTop: "var(--s-2)", fontSize: "var(--fs-sm)" }}>Even de cijfers scannen…</div>}
           {expOpen && expHtml && <div className="md ktr-explain-body" dangerouslySetInnerHTML={{ __html: expHtml }} />}
         </div>
       )}
@@ -559,7 +559,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
   // ververst op de gekozen periode; een spinnertje toont dat die sectie laadt.
   const periodPicker = (sec?: SectionKey) => (
     <span className="kpi-period-inline" onClick={(e) => e.stopPropagation()}>
-      {sec && secLoading[sec] && <span className="muted" style={{ fontSize: 12 }}>verversen…</span>}
+      {sec && secLoading[sec] && <span className="muted" style={{ fontSize: "var(--fs-sm)" }}>verversen…</span>}
       <select className="kpi-period-select" value={effDays(sec)} onChange={(e) => (sec ? setSectionPeriod(sec, Number(e.target.value), undefined) : setDays(Number(e.target.value)))}>
         {PERIODS.map((p) => <option key={p.days} value={p.days}>{p.label}</option>)}
       </select>
@@ -752,11 +752,11 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
                           <tr className="kpi-page-kw-row">
                             <td colSpan={colCount}>
                               {kwData === "laden" || kwData === undefined ? (
-                                <div className="muted" style={{ padding: "6px 8px" }}>Zoekwoorden laden…</div>
+                                <div className="muted" style={{ padding: "var(--s-2) var(--s-2)" }}>Zoekwoorden laden…</div>
                               ) : kwData === "fout" ? (
-                                <div className="muted" style={{ padding: "6px 8px" }}>Kon de zoekwoorden niet ophalen.</div>
+                                <div className="muted" style={{ padding: "var(--s-2) var(--s-2)" }}>Kon de zoekwoorden niet ophalen.</div>
                               ) : kwData.length === 0 ? (
-                                <div className="muted" style={{ padding: "6px 8px" }}>Geen zoekwoorden met vertoningen in deze periode.</div>
+                                <div className="muted" style={{ padding: "var(--s-2) var(--s-2)" }}>Geen zoekwoorden met vertoningen in deze periode.</div>
                               ) : (
                                 <table className="res-table kpi-table kpi-page-kw-table">
                                   <thead><tr>
@@ -828,7 +828,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
                 <button type="button" className="primary-btn small" onClick={syncAhrefs} disabled={ahrefsBusy}>{ahrefsBusy ? "Ophalen…" : (ahrefsKw.length ? "Verversen" : "Ahrefs-zoekwoorden ophalen")}</button>
               </span>
             </div>
-            {ahrefsMsg && <div className="saved-msg" style={{ marginBottom: 8 }}>{ahrefsMsg}</div>}
+            {ahrefsMsg && <div className="saved-msg" style={{ marginBottom: "var(--s-2)" }}>{ahrefsMsg}</div>}
             {ahrefsKw.length === 0 ? (
               <div className="muted">Nog geen Ahrefs-zoekwoorden opgehaald. Klik &ldquo;Ahrefs-zoekwoorden ophalen&rdquo;: dat haalt in één keer het hele domein op (kost Ahrefs-credits) en slaat het op, zodat de scan er daarna zonder credits op draait.</div>
             ) : (
@@ -858,11 +858,11 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
               <span className="kpi-block-title">AI-vindbaarheid {siteBadge} <HelpHint xl title="AI-vindbaarheid: word je geciteerd?" text={"Steeds meer zoekgedrag verschuift naar AI-assistenten. Dit blok meet per platform hoe vaak deze site wordt **aangehaald als bron** in AI-antwoorden (citaties) en hoeveel verschillende pagina's er geciteerd worden; voor ChatGPT, Perplexity, Gemini, Copilot, Grok en Google's AI-antwoorden.\n## Waarom dit belangrijk is\nEen citatie in een AI-antwoord is de nieuwe positie 1: de assistent presenteert jouw pagina als hét antwoord. Sites met sterke, goed gestructureerde content (en een kloppende entity graph, zie de structured-data-stap) worden aantoonbaar vaker geciteerd.\n## Hoe het gemeten wordt\nDoor Ahrefs, dat AI-antwoorden op grote schaal analyseert. De pijltjes tonen de ontwikkeling ten opzichte van ongeveer 30 dagen geleden, zodat je ziet of de site terrein wint of verliest. Nog geen citaties is bij kleinere sites normaal; dit groeit mee met de autoriteit en kwaliteit van de content."} /></span>
             </div>
             {aiPlat === null && !aiPlatErr ? (
-              <div className="muted" style={{ fontSize: 12.5 }}>AI-vindbaarheid laden…</div>
+              <div className="muted" style={{ fontSize: "var(--fs-sm)" }}>AI-vindbaarheid laden…</div>
             ) : aiPlatErr ? (
-              <div className="muted" style={{ fontSize: 12.5 }}>{aiPlatErr}</div>
+              <div className="muted" style={{ fontSize: "var(--fs-sm)" }}>{aiPlatErr}</div>
             ) : aiPlat && aiPlat.every((pl) => pl.citations === 0) ? (
-              <div className="muted" style={{ fontSize: 12.5 }}>Nog geen citaties gevonden: AI-platforms halen deze site nog niet aan als bron in hun antwoorden. Dit groeit meestal mee met sterke, goed vindbare content.</div>
+              <div className="muted" style={{ fontSize: "var(--fs-sm)" }}>Nog geen citaties gevonden: AI-platforms halen deze site nog niet aan als bron in hun antwoorden. Dit groeit meestal mee met sterke, goed vindbare content.</div>
             ) : (
               <div className="res-table-wrap">
                 <table className="res-table kpi-table">
@@ -907,7 +907,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
             {/* Zelfde invulveld als op het Klantgegevens-tabje, niet een tweede
                 kopie: twee plekken die hetzelfde bewaren lopen uit elkaar. */}
             {compOpen && <Concurrenten slug={slug} compact onOpgeslagen={(d) => setCompetitors(d)} />}
-            {oppMsg && <div className="saved-msg" style={{ marginBottom: 8 }}>{oppMsg}</div>}
+            {oppMsg && <div className="saved-msg" style={{ marginBottom: "var(--s-2)" }}>{oppMsg}</div>}
             {opps.length === 0 ? (
               <div className="muted">Nog geen kansen gezocht. Klik &ldquo;Kansen zoeken&rdquo;: rond je sterkste zoekwoorden zoekt Ahrefs verwante termen (kost credits), en Claude houdt alleen de echt relevante over.</div>
             ) : (
@@ -929,7 +929,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
                         <td>{o.volume != null ? nl(o.volume) : <span className="muted">&mdash;</span>}</td>
                         <td>{o.difficulty != null ? o.difficulty : <span className="muted">&mdash;</span>}</td>
                         <td>{o.source === "concurrent" ? <span className="kw-intent commercieel">concurrent</span> : <span className="kw-intent informatief">idee</span>}</td>
-                        <td className="muted" style={{ fontSize: 12 }}>{o.reason || "—"}</td>
+                        <td className="muted" style={{ fontSize: "var(--fs-sm)" }}>{o.reason || "—"}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -967,12 +967,12 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
               );
             })}
           </div>
-          <div className="kpi-block" style={{ marginTop: 14 }}>
+          <div className="kpi-block" style={{ marginTop: "var(--s-4)" }}>
             <div className="kpi-block-head">
               <span className="kpi-block-title">AI-verkeer (LLM&rsquo;s en AI-zoek) {siteBadge} <HelpHint xl title="AI-verkeer: bezoekers uit assistenten" text={"Bezoekers die via een **AI-assistent of AI-zoekmachine** op de site kwamen: ChatGPT, Perplexity, Google Gemini, Microsoft Copilot, Claude, DeepSeek, Grok en meer.\n## Hoe het gemeten wordt\nHerkend op de verwijzende bron van de sessie in **Google Analytics**: klikt iemand in een AI-antwoord door naar de site, dan draagt die sessie de AI-bron mee. Vergeleken met de gekozen vergelijkingsperiode, per bron.\n## Waarom je dit wilt volgen\nDit verkeer groeit hard en converteert vaak bovengemiddeld: wie via een AI-antwoord binnenkomt, heeft zijn vraag al gesteld en jouw site als antwoord gekregen. Samen met het AI-vindbaarheid-blok (word je geciteerd?) zie je hier of citaties ook echt bezoekers worden. Let op: assistenten die zonder verwijzing openen (kopieerde links, apps) zijn niet altijd herkenbaar; het echte AI-verkeer ligt dus eerder hoger dan lager."} /></span>
             </div>
             {ga4.aiSources.length === 0 ? (
-              <div className="muted" style={{ fontSize: 12.5 }}>Nog geen meetbaar AI-verkeer in deze periode. Zodra bezoekers via ChatGPT, Perplexity, Gemini of een andere AI-bron binnenkomen, verschijnen ze hier automatisch.</div>
+              <div className="muted" style={{ fontSize: "var(--fs-sm)" }}>Nog geen meetbaar AI-verkeer in deze periode. Zodra bezoekers via ChatGPT, Perplexity, Gemini of een andere AI-bron binnenkomen, verschijnen ze hier automatisch.</div>
             ) : (
               <div className="res-table-wrap">
                 <table className="res-table kpi-table">
@@ -1003,7 +1003,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
             )}
           </div>
           {ga4.channels.length > 0 && (
-            <div className="kpi-block" style={{ marginTop: 14 }}>
+            <div className="kpi-block" style={{ marginTop: "var(--s-4)" }}>
               <div className="kpi-block-head">
                 <span className="kpi-block-title">Waar de bezoekers vandaan komen {siteBadge} <HelpHint xl title="Waar de bezoekers vandaan komen" text={"De standaard kanaalgroepen van **Google Analytics**: via welke weg bezoekers op de site kwamen; organisch zoeken, direct, social, verwijzende sites en betaald verkeer, vergeleken met de gekozen vergelijkingsperiode.\n## Hoe je dit leest als SEO-specialist\n- **Organic Search** is het kanaal waar al het SEO-werk op stuurt; groeit dit terwijl betaald gelijk blijft, dan doet de organische strategie zijn werk.\n- **Direct** bevat vaak ook merkzoekers en terugkerende klanten; een stijging na een campagne of PR-moment is normaal.\n- **Referral** laat zien welke sites verkeer sturen; interessant naast het linkprofiel uit Ahrefs.\nSessies, gebruikers en conversies per kanaal komen live uit de gekoppelde GA4-property; de verschil-kolommen tonen de ontwikkeling ten opzichte van de vergelijkingsperiode."} /></span>
               </div>
@@ -1031,7 +1031,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
       {!loading && ads && (
         <Collapse title={<>Google Ads {siteBadge}</>} meta={ads.linked ? `laatste ${secPeriodLabel("ads")} \u00b7 ${effCompare("ads") === "yoy" ? "vs. vorig jaar" : "vs. vorige periode"} \u00b7 via de GA4-koppeling` : ""} open={isOpen("ads", true)} onToggle={() => toggle("ads", true)} actions={<><button type="button" className="ghost-btn small" onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("pw-open-chat", { detail: { thread: "ads" } })); }} title="Opent de Ads-assistent: vraag wat er wordt geoptimaliseerd, wat beter kan en welke vragen je het Ads-bureau moet stellen">Vraag de Ads-assistent</button>{periodPicker("ads")}</>}>
           {!ads.linked ? (
-            <div className="muted" style={{ fontSize: 12.5 }}>Geen Google Ads-data gevonden in deze periode (geen actieve campagnes, of Google Ads is niet aan GA4 gekoppeld).</div>
+            <div className="muted" style={{ fontSize: "var(--fs-sm)" }}>Geen Google Ads-data gevonden in deze periode (geen actieve campagnes, of Google Ads is niet aan GA4 gekoppeld).</div>
           ) : (
             <>
               <div className="kpi-grid kpi-grid-4">
@@ -1052,7 +1052,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
                   ));
                 })()}
               </div>
-              <div className="kpi-block" style={{ marginTop: 14 }}>
+              <div className="kpi-block" style={{ marginTop: "var(--s-4)" }}>
                 <div className="kpi-block-head">
                   <span className="kpi-block-title">Campagnes {siteBadge} <HelpHint xl title="Campagnes: wat er betaald naast loopt" text={"Alle **Google Ads-campagnes** met verkeer in de gekozen periode, zoals GA4 ze binnenkrijgt; inclusief sessies en conversies per campagne.\n## Waarom dit in een SEO-dashboard staat\nBetaald en organisch beïnvloeden elkaar: een gestopte campagne verklaart een dip in totaalverkeer die niets met SEO te maken heeft, en een nieuwe campagne op een term waar je organisch al top-3 staat is weggegooid budget. Dit blok voorkomt dat je organische conclusies trekt uit betaalde bewegingen.\n## De labels\n**Nieuw** = draaide in de vergelijkingsperiode nog niet; **Gestopt/stil** = had toen wel kosten en nu niet meer. Zo zie je in één oogopslag of er actief aan het advertentie-account gewerkt wordt."} /></span>
                 </div>

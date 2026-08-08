@@ -165,12 +165,6 @@ checkWaar("afbreken midden in een woord staat alleen op tekst, niet op een heel 
 //   - een verbouwd scherm haal je eraf, en dan kan het nooit meer terugvallen.
 // De lijst mag dus alleen korter worden.
 const ERFENIS = new Set<string>([
-  "app/admin/AdminClient.tsx",
-  "app/admin/beheer/BeheerClient.tsx",
-  "app/admin/client/[slug]/CannibalPanel.tsx",
-  "app/admin/client/[slug]/KpiPanel.tsx",
-  "app/admin/client/[slug]/MailControlePanel.tsx",
-  "app/admin/client/[slug]/MetaCtrPanel.tsx",
   "app/admin/client/[slug]/PageChat.tsx",
   "app/admin/client/[slug]/PagesPanel.tsx",
   "app/admin/client/[slug]/WijzigingenPanel.tsx",

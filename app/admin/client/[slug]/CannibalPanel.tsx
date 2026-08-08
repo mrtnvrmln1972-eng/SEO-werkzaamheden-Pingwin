@@ -371,7 +371,7 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
                   advertenties erheen wijzen. Zo'n pagina opruimen kost meteen geld. */}
               <div className={"opr-vorm opr-ads" + (adsIngevuld ? "" : " nodig")}>
                 <div className="opr-vorm-kop">Advertentiepagina&rsquo;s (Google Ads)</div>
-                <p className="muted" style={{ fontSize: 12, margin: 0 }}>
+                <p className="muted" style={{ fontSize: "var(--fs-sm)", margin: "var(--s-0)" }}>
                   Landingspagina&rsquo;s waar je advertenties naartoe stuurt staan meestal op <strong>noindex</strong>. Ze halen dus
                   niets uit Google en zien er in de data uit als dode pagina&rsquo;s, terwijl ze juist moeten blijven bestaan.
                   Zet ze hier neer, dan blijven ze buiten de analyse en buiten de werklijst. E&eacute;n pad per regel; een map
@@ -388,14 +388,14 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
                     Deze klant heeft geen advertentiepagina&rsquo;s
                   </label>
                 </div>
-                {adsMsg && <div className="muted" style={{ fontSize: 12 }}>{adsMsg}</div>}
+                {adsMsg && <div className="muted" style={{ fontSize: "var(--fs-sm)" }}>{adsMsg}</div>}
               </div>
 
               {/* Wat een klant waard is. Zonder deze twee getallen praten alle lijsten in
                   zoekvolume, en dat is geen taal waarin je een besluit uitlegt. */}
               <div className="opr-vorm">
                 <div className="opr-vorm-kop">Wat een klant waard is</div>
-                <p className="muted" style={{ fontSize: 12, margin: 0 }}>
+                <p className="muted" style={{ fontSize: "var(--fs-sm)", margin: "var(--s-0)" }}>
                   Met deze twee getallen praten alle lijsten hieronder in euro&rsquo;s in plaats van in zoekvolume.
                   Laat je ze leeg, dan blijft alles op zoekvolume staan; de volgorde van de lijsten is in beide
                   gevallen dezelfde.
@@ -407,23 +407,23 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
                     placeholder="% dat klant wordt, bijv. 2" aria-label="Conversiepercentage" />
                   <button type="button" className="ghost-btn small" onClick={() => void bewaarEuro()}>Opslaan</button>
                 </div>
-                <p className="muted" style={{ fontSize: 12, margin: 0 }}>
+                <p className="muted" style={{ fontSize: "var(--fs-sm)", margin: "var(--s-0)" }}>
                   <strong>Gok gerust bij die conversie.</strong> Niemand weet precies welk deel van de bezoekers klant
                   wordt; wie na drie bezoeken belt staat nergens geregistreerd. Het hoeft ook niet nauwkeurig, want het is
                   voor elke regel dezelfde vermenigvuldiging: de volgorde verandert er niet door, alleen de hoogte van de
                   bedragen. Daarom staat overal ook het aantal extra bezoekers, en dat getal leunt niet op de aanname.
                 </p>
-                {euroMsg && <div className="muted" style={{ fontSize: 12 }}>{euroMsg}</div>}
+                {euroMsg && <div className="muted" style={{ fontSize: "var(--fs-sm)" }}>{euroMsg}</div>}
               </div>
 
               <div className="opr-vorm">
                 <div className="opr-vorm-kop">
                   Gekozen URL-structuur
                   {vormOpgeslagen
-                    ? <span className="opr-chip merge" style={{ marginLeft: 8 }}>actief: {vormOpgeslagen}</span>
-                    : <span className="opr-chip" style={{ marginLeft: 8 }}>nog niet vastgelegd</span>}
+                    ? <span className="opr-chip merge" style={{ marginLeft: "var(--s-2)" }}>actief: {vormOpgeslagen}</span>
+                    : <span className="opr-chip" style={{ marginLeft: "var(--s-2)" }}>nog niet vastgelegd</span>}
                 </div>
-                <p className="muted" style={{ fontSize: 12, margin: 0 }}>
+                <p className="muted" style={{ fontSize: "var(--fs-sm)", margin: "var(--s-0)" }}>
                   E&eacute;n vaste vorm voor dit type pagina. De analyse leidt daarna nooit meer om naar een vorm die je
                   uitfaseert, en markeert een sterke pagina op de verkeerde vorm als <em>verhuizen</em> in plaats van als
                   omleiding.
@@ -434,7 +434,7 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
                     aria-label="Gekozen URL-structuur" />
                   <button type="button" className="ghost-btn small" onClick={bewaarVorm}>Opslaan</button>
                 </div>
-                {vormMsg && <div className="muted" style={{ fontSize: 12 }}>{vormMsg}</div>}
+                {vormMsg && <div className="muted" style={{ fontSize: "var(--fs-sm)" }}>{vormMsg}</div>}
               </div>
             </div>
           </details>
@@ -445,12 +445,12 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
               <span className={"opr-chip" + (deelUrl ? " merge" : "")}>{deelUrl ? "staat open" : "staat uit"}</span>
             </summary>
             <div className="opr-lade-body">
-              <p className="muted" style={{ fontSize: 12, margin: 0 }}>
+              <p className="muted" style={{ fontSize: "var(--fs-sm)", margin: "var(--s-0)" }}>
                 E&eacute;n adres dat je aan iedereen kunt geven, zonder inloggen: hetzelfde verhaal als hier, maar
                 <strong> alleen kijken</strong>. Geen vinkjes, geen doorvoeren, geen weekplanning en geen mail.
                 Zolang je er geen maakt, is dit rapport nergens publiek te zien.
               </p>
-              {deelUrl && <p style={{ margin: 0 }}><a className="opr-pad" href={deelUrl} target="_blank" rel="noreferrer">{deelUrl}</a></p>}
+              {deelUrl && <p style={{ margin: "var(--s-0)" }}><a className="opr-pad" href={deelUrl} target="_blank" rel="noreferrer">{deelUrl}</a></p>}
               <div className="opr-vorm-rij">
                 {!deelUrl && <button type="button" className="ghost-btn small" onClick={() => void deellink("maken")}>Maak een deellink</button>}
                 {deelUrl && <button type="button" className="ghost-btn small" onClick={() => { void navigator.clipboard.writeText(deelUrl); setDeelMsg("Gekopieerd."); }}>Kopieer</button>}
@@ -458,7 +458,7 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
                 {deelUrl && <button type="button" className="ghost-btn small" onClick={() => void deellink("vernieuwen")} title="Maakt een nieuw adres; de oude link werkt daarna niet meer.">Nieuw adres</button>}
                 {deelUrl && <button type="button" className="ghost-btn small" onClick={() => void deellink("intrekken")}>Intrekken</button>}
               </div>
-              {deelMsg && <div className="muted" style={{ fontSize: 12 }}><strong>{deelMsg}</strong></div>}
+              {deelMsg && <div className="muted" style={{ fontSize: "var(--fs-sm)" }}><strong>{deelMsg}</strong></div>}
             </div>
           </details>
         </div>
@@ -513,8 +513,8 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
           </div>
         </div>
 
-        {err && <div className="login-error" style={{ marginBottom: 8 }}>{err}</div>}
-        {state?.status === "error" && state.error && <div className="login-error" style={{ marginBottom: 8 }}>{state.error}</div>}
+        {err && <div className="login-error" style={{ marginBottom: "var(--s-2)" }}>{err}</div>}
+        {state?.status === "error" && state.error && <div className="login-error" style={{ marginBottom: "var(--s-2)" }}>{state.error}</div>}
         {/* Voortgang, want een spinner zonder stand is niet te onderscheiden van
             vastgelopen. Precies dat gebeurde op 03-08-2026: de run was al dood en
             het scherm bleef "draait…" tonen. */}
@@ -538,7 +538,7 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
 
         {result && (
           <>
-            <div className="ck-updated" style={{ marginBottom: 10 }}>
+            <div className="ck-updated" style={{ marginBottom: "var(--s-3)" }}>
               {lijstDatum ? `Deze lijst is van ${new Date(lijstDatum).toLocaleString("nl-NL")}` : "Deze lijst heeft geen datum"}
               {running ? " · de nieuwe analyse draait nog, dit is nog de vorige" : ""}
             </div>
@@ -654,7 +654,7 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
                       {blijftStaan.map((b, i) => (
                         <tr key={i}>
                           <td><a href={siteUrl(b.pad)} target="_blank" rel="noreferrer">{b.pad}</a></td>
-                          <td className="muted" style={{ fontSize: 13 }}>{b.reden}</td>
+                          <td className="muted" style={{ fontSize: "var(--fs-sm)" }}>{b.reden}</td>
                         </tr>
                       ))}
                     </tbody>
