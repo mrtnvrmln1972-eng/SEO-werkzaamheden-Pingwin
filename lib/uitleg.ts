@@ -1970,29 +1970,37 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           {
             titel: "R8. Correcties worden regels, in élke motor",
             tekst:
-              "**Wat er nu mis is.** Bij opruimen worden jouw correcties vastgelegd als harde regels, zodat de " +
-              "volgende analyse dezelfde fout niet meer maakt. Dat is een van de beste dingen in het hele " +
-              "dashboard, en het bestaat op precies één plek. Corrigeer je een meta-voorstel, een linksuggestie of " +
-              "een prioriteit, dan is die correctie een eenmalige aanpassing en begint de volgende ronde weer bij " +
+              "**Wat er nu mis is (deels opgelost, 8 augustus 2026).** Bij opruimen worden jouw correcties " +
+              "vastgelegd als harde regels, zodat de volgende analyse dezelfde fout niet meer maakt. Dat bestond " +
+              "tot nu op precies één plek. Er is nu een gedeelde tabel met geleerde regels die elke motor kan " +
+              "gebruiken, en de eerste motor die hem echt gebruikt is de meta-machine: keur je een meta-titel of " +
+              "-beschrijving goed of af, dan komt daar een regel bij, en de eerstvolgende keer dat er voor die " +
+              "pagina een nieuwe meta geschreven wordt, krijgt de AI die correctie als harde regel mee (te zien " +
+              "onder “Geleerde regels” boven de paginalijst, met een knop om hem terug te draaien). " +
+              "Interne links en de prioriteitenscan kunnen dezelfde tabel gebruiken zodra zij zelf een " +
+              "goed/afkeur-knop krijgen; dat bestaat daar nog niet, dus daar begint de volgende ronde nog bij " +
               "nul.\n\n" +
               "**Wat het oplevert.** Dit is wat het systeem beter maakt door gebruik, en dus ook wat het verhaal " +
               "naar buiten waarmaakt (\"het wordt beter doordat je het gebruikt\"). Het is opgebouwde waarde die " +
               "niet naar een andere tool mee te nemen is. Praktisch: minder dezelfde correctie twee keer, en " +
               "voorstellen die na een paar maanden klinken zoals jij ze zou schrijven.\n\n" +
-              "**Hoe we het zouden bouwen.**\n\n" +
-              "1. De vorm die bij opruimen al werkt uit dat onderdeel halen en algemeen maken: per klant, per " +
-              "motor, een regel met wat er gold en waarom, met datum.\n" +
-              "2. Een correctie wordt niet stil weggeschreven; je ziet dat er een regel bij komt en kunt hem " +
-              "terugdraaien. Een regel die je niet kunt zien is een systeem dat iets van je overneemt.\n" +
-              "3. De motoren die met AI werken krijgen die regels als harde randvoorwaarden mee, niet als " +
-              "suggestie.\n" +
-              "4. Eén plek per klant waar alle geleerde regels op een rij staan, doorzoekbaar. Dat is ook het " +
-              "eerste wat je wil zien als een collega een account overneemt.\n\n" +
+              "**Hoe we het gebouwd hebben.**\n\n" +
+              "1. De vorm die bij opruimen al werkte algemeen gemaakt: per klant, per motor, een regel met wat er " +
+              "gold en waarom, met datum (`lib/geleerde-regels.ts`). Opruimen gebruikt voorlopig zijn eigen, " +
+              "bewezen tabel; die twee samenvoegen is later werk.\n" +
+              "2. Een correctie wordt niet stil weggeschreven: bij de meta-machine zie je de regel meteen " +
+              "verschijnen en kun je hem met één knop terugdraaien.\n" +
+              "3. De meta-machine krijgt die regels als harde randvoorwaarde mee bij het schrijven en het " +
+              "herschrijven van een titel of beschrijving, niet als suggestie.\n" +
+              "4. Eén plek per klant waar alle geleerde regels op een rij staan is er nog niet (nu alleen zichtbaar " +
+              "per motor, boven de meta-lijst); dat komt zodra er meer dan één motor regels heeft om te tonen.\n\n" +
               "**Waaraan je ziet dat het af is.** Een gecorrigeerd meta-voorstel: na de volgende ronde staat de " +
-              "correctie erin, en de regel staat met datum en reden in de lijst geleerde regels van die klant.\n\n" +
-              "**Wat het raakt.** Dit verandert de voorstellen voor meta-teksten, het advies over interne links, de " +
-              "lijst met prioriteiten en de documenten. De regels die het opruimen nu al leert gaan hierin op, " +
-              "zodat er niet twee systemen naast elkaar komen te staan die hetzelfde doen.",
+              "correctie erin, en de regel staat met datum en reden in de lijst geleerde regels van die klant. Dit " +
+              "onderdeel is af zodra dat op de live site is gezien; het punt blijft “loopt” totdat dat " +
+              "bewijs er staat.\n\n" +
+              "**Wat het raakt.** Dit verandert vandaag de voorstellen voor meta-teksten. Het advies over interne " +
+              "links, de lijst met prioriteiten en de documenten volgen zodra die motoren zelf een " +
+              "goed/afkeur-actie krijgen.",
           },
         ],
       },

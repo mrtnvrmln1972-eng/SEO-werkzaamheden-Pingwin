@@ -120,6 +120,32 @@ const BEWIJZEN: Record<string, BewijsRegel[]> = {
       },
     },
   ],
+
+  R8: [
+    {
+      soort: "gedeployd",
+      wat: "De gedeelde tabel voor geleerde regels bestaat, voor élke motor",
+      laad: () => import("./geleerde-regels") as Promise<Record<string, unknown>>,
+      functie: "geleerdeRegelsAlsInstructie",
+    },
+    {
+      soort: "kolom",
+      wat: "De tabel kent per regel bij welke motor hij hoort",
+      tabel: "client_geleerde_regels",
+      kolom: "motor",
+    },
+    {
+      soort: "data",
+      wat: "Er is minstens één correctie op een meta-voorstel als regel vastgelegd",
+      telling: async () => {
+        await ensureSchema();
+        const { rows } = await sql`
+          SELECT COUNT(*)::int AS n FROM client_geleerde_regels WHERE motor = 'meta'
+        `;
+        return Number(rows[0]?.n || 0);
+      },
+    },
+  ],
 };
 
 async function toetsRegel(r: BewijsRegel): Promise<RegelUitslag> {

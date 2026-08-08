@@ -13,6 +13,7 @@ import { measurePage } from "./page-measure";
 import { callClaude, LIGHT_MODEL } from "./anthropic";
 import { getCopydocMetas, type CopydocMeta } from "./copydoc-meta";
 import { META_RULES_PROMPT, metaHardIssues, metaPixelInfo, type MetaKind } from "./meta-rules";
+import { voegGeleerdeRegelToe, geleerdeRegelsAlsInstructie } from "./geleerde-regels";
 
 let tablesReady = false;
 async function ensureTables(): Promise<void> {
@@ -173,6 +174,7 @@ export type MetaKansRow = {
 
 const norm = (u: string) => (u || "").trim().replace(/\/+$/, "");
 const normText = (s: string) => (s || "").replace(/\s+/g, " ").trim().toLowerCase();
+const padVan = (u: string) => { try { return new URL(u).pathname; } catch { return (u || "").trim(); } };
 
 type DbRow = {
   page_url: string; keyword: string | null;
@@ -334,11 +336,13 @@ export async function generateMetaProposal(
   const curDesc = m?.metaDescription || "";
   const h1 = m?.h1?.[0] || "";
   const profiel = (client?.seoProfile || "").slice(0, 3500);
+  const geleerd = await geleerdeRegelsAlsInstructie(slug, "meta").catch(() => "");
 
   const system = [
     `Je bent de senior SEO-copywriter van bureau Pingwin voor de klant ${client?.name || slug}. Schrijf in het Nederlands, passend bij het bedrijf.`,
     profiel ? `PROFIEL VAN DEZE KLANT (toon en inhoud hierop afstemmen):\n${profiel}` : "",
     META_RULES_PROMPT,
+    geleerd,
   ].filter(Boolean).join("\n\n");
 
   const user = [
@@ -439,13 +443,38 @@ async function fixHardIssues(kind: MetaKind, text: string, keyword: string, slug
   return best;
 }
 
+// ── Correcties worden regels ──
+// Keurt Maarten een titel of beschrijving goed of af, dan is dat een besluit
+// over deze pagina dat niet stilzwijgend vergeten mag worden. Hij komt hier bij
+// in de gedeelde tabel (lib/geleerde-regels.ts) en gaat de eerstvolgende keer
+// dat er voor deze pagina een nieuwe meta geschreven wordt mee als harde regel,
+// zodat dezelfde correctie niet twee keer nodig is.
+async function leerVanVeldCorrectie(slug: string, url: string, veld: "title" | "desc", status: MetaFieldStatus): Promise<void> {
+  if (status !== "goedgekeurd" && status !== "afgewezen") return; // 'open' is geen besluit
+  const { rows } = await sql`SELECT prop_title, prop_desc FROM meta_proposals WHERE client_slug = ${slug} AND page_url = ${url} LIMIT 1`;
+  const row = rows[0];
+  const tekst = ((veld === "title" ? row?.prop_title : row?.prop_desc) as string) || "";
+  if (!tekst) return;
+  const veldLabel = veld === "title" ? "meta-title" : "meta-description";
+  const watGold = status === "goedgekeurd"
+    ? `Goedgekeurd, blijf dicht bij deze richting: "${tekst}"`
+    : `Afgewezen, schrijf niet opnieuw zoiets: "${tekst}"`;
+  await voegGeleerdeRegelToe(slug, "meta", `${url}::${veld}`, `${padVan(url)} — ${veldLabel}`, watGold).catch(() => {});
+}
+
 // ── Bewerken en status ──
 export async function updateMetaProposal(slug: string, url: string, fields: { propTitle?: string; propDesc?: string; status?: MetaProposalStatus; titleStatus?: MetaFieldStatus; descStatus?: MetaFieldStatus }): Promise<void> {
   await ensureTables();
   if (fields.propTitle !== undefined) await sql`UPDATE meta_proposals SET prop_title = ${fields.propTitle}, title_status = 'open', updated_at = now() WHERE client_slug = ${slug} AND page_url = ${url}`;
   if (fields.propDesc !== undefined) await sql`UPDATE meta_proposals SET prop_desc = ${fields.propDesc}, desc_status = 'open', updated_at = now() WHERE client_slug = ${slug} AND page_url = ${url}`;
-  if (fields.titleStatus) await sql`UPDATE meta_proposals SET title_status = ${fields.titleStatus}, updated_at = now() WHERE client_slug = ${slug} AND page_url = ${url}`;
-  if (fields.descStatus) await sql`UPDATE meta_proposals SET desc_status = ${fields.descStatus}, updated_at = now() WHERE client_slug = ${slug} AND page_url = ${url}`;
+  if (fields.titleStatus) {
+    await sql`UPDATE meta_proposals SET title_status = ${fields.titleStatus}, updated_at = now() WHERE client_slug = ${slug} AND page_url = ${url}`;
+    await leerVanVeldCorrectie(slug, url, "title", fields.titleStatus);
+  }
+  if (fields.descStatus) {
+    await sql`UPDATE meta_proposals SET desc_status = ${fields.descStatus}, updated_at = now() WHERE client_slug = ${slug} AND page_url = ${url}`;
+    await leerVanVeldCorrectie(slug, url, "desc", fields.descStatus);
+  }
   if (fields.titleStatus || fields.descStatus || fields.propTitle !== undefined || fields.propDesc !== undefined) await recomputeStatus(slug, url);
   if (fields.status) {
     await sql`UPDATE meta_proposals SET status = ${fields.status},
@@ -506,11 +535,13 @@ export async function regenerateMetaField(slug: string, url: string, field: "tit
   const label = field === "title" ? "meta-title" : "meta-description";
   const other = field === "title" ? (row.prop_desc as string) : (row.prop_title as string);
   const current = field === "title" ? (row.prop_title as string) : (row.prop_desc as string);
+  const geleerd = await geleerdeRegelsAlsInstructie(slug, "meta").catch(() => "");
 
   const system = [
     `Je bent de senior SEO-copywriter van bureau Pingwin voor de klant ${client?.name || slug}. Schrijf in het Nederlands, passend bij het bedrijf.`,
     profiel ? `PROFIEL VAN DEZE KLANT (toon en inhoud hierop afstemmen):\n${profiel}` : "",
     META_RULES_PROMPT,
+    geleerd,
   ].filter(Boolean).join("\n\n");
   const user = [
     `Schrijf een NIEUWE, betere ${label} voor deze pagina (een duidelijk ander, sterker alternatief dan de vorige versie).`,

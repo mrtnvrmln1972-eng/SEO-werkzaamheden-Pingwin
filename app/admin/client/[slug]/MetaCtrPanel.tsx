@@ -45,6 +45,7 @@ type Effect = { ctrBefore: number; ctrAfter: number; clicksBefore: number; click
 type FieldStatus = "open" | "goedgekeurd" | "afgewezen";
 type Proposal = { curTitle: string; curDesc: string; propTitle: string; propDesc: string; status: "open" | "goedgekeurd" | "doorgevoerd" | "afgewezen"; titleStatus: FieldStatus; descStatus: FieldStatus; liveAt: string | null; effect: Effect | null };
 type Reden = "klikwinst" | "kapot" | "goed" | "onbekend";
+type GeleerdeRegel = { motor: string; sleutel: string; label: string; watGold: string; waarom: string; actief: boolean; updatedAt: string };
 type KansRow = {
   url: string; keyword: string; volume: number | null; clicks: number; impressions: number;
   ctr: number; expectedCtr: number; position: number; extraClicks: number;
@@ -98,6 +99,27 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
   const [meetMsg, setMeetMsg] = useState("");
   const [verify, setVerify] = useState<Record<string, { title: string; description: string; url: string }>>({});
   const [openUrl, setOpenUrl] = useState<string | null>(null);
+  // Geleerde regels: correcties (goedgekeurd/afgewezen) die als harde regel
+  // meegaan naar de volgende keer dat er voor een pagina een meta geschreven
+  // wordt. Zie lib/geleerde-regels.ts.
+  const [geleerd, setGeleerd] = useState<GeleerdeRegel[]>([]);
+  const [geleerdOpen, setGeleerdOpen] = useState(false);
+
+  const loadGeleerd = useCallback(async () => {
+    try {
+      const d = await fetch(`/api/admin/geleerde-regels?slug=${encodeURIComponent(slug)}&motor=meta`).then((r) => r.json());
+      if (d.ok) setGeleerd(d.regels as GeleerdeRegel[]);
+    } catch { /* geleerde regels zijn een aanvulling, geen blokkade */ }
+  }, [slug]);
+  useEffect(() => { void loadGeleerd(); }, [loadGeleerd]);
+
+  async function toggleGeleerd(r: GeleerdeRegel) {
+    setGeleerd((cur) => cur.map((x) => x.sleutel === r.sleutel ? { ...x, actief: !r.actief } : x));
+    await fetch("/api/admin/geleerde-regels", {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slug, motor: "meta", sleutel: r.sleutel, actief: !r.actief }),
+    }).catch(() => {});
+  }
 
   // Binnenkomen vanuit een ander scherm: klap die ene pagina open en scrol hem in
   // beeld, zodat je hier niet opnieuw hoeft te zoeken. Zelfde recept als het
@@ -303,6 +325,9 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ slug, url, ...fields }),
     }).catch(() => {});
+    // Goed- of afkeuren van een veld kan een geleerde regel opleveren; ververs
+    // de lijst zodat hij meteen zichtbaar is (spec: nooit stil weggeschreven).
+    if (fields.titleStatus || fields.descStatus) void loadGeleerd();
   }
 
   // Totaalstatus afleiden uit de twee veld-statussen (zelfde regel als de server):
@@ -349,6 +374,27 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
         liggen (veel vertoond, te weinig geklikt) of omdat zijn meta niet in orde is. Dit is de enige plek waar een
         meta ontstaat en beoordeeld wordt; wat je goedkeurt gaat vanzelf naar de site of naar de werklijst van de bouwer.
       </p>
+      {!!geleerd.length && (
+        <div style={{ margin: "0 0 var(--s-3)" }}>
+          <button type="button" onClick={() => setGeleerdOpen((v) => !v)}
+            style={{ border: "none", background: "transparent", cursor: "pointer", padding: "var(--s-0)", font: "inherit", fontSize: "var(--fs-sm)", color: "var(--dark)", fontWeight: 600 }}
+            title="Elke keuring (goedgekeurd of afgewezen) die je hier maakt, blijft gelden bij de volgende meta voor diezelfde pagina.">
+            {geleerdOpen ? "▾" : "▸"} Geleerde regels ({geleerd.filter((r) => r.actief).length})
+          </button>
+          {geleerdOpen && (
+            <ul style={{ listStyle: "none", margin: "var(--s-2) var(--s-0) var(--s-0)", padding: "var(--s-0)", display: "grid", gap: "var(--s-2)" }}>
+              {geleerd.map((r) => (
+                <li key={r.sleutel} className="wz-item-sub" style={{ opacity: r.actief ? 1 : 0.5, display: "flex", gap: "var(--s-3)", alignItems: "baseline", flexWrap: "wrap" }}>
+                  <span><strong>{r.label}:</strong> {r.watGold}</span>
+                  <button type="button" className="ghost-btn small" onClick={() => void toggleGeleerd(r)}>
+                    {r.actief ? "Zet uit" : "Zet weer aan"}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
       <div className="org-actions" style={{ margin: "var(--s-3) 0" }}>
         <button type="button" className="primary-btn small" onClick={copyApproved} disabled={!approvedCount}>
           {copied ? "Gekopieerd!" : `Kopieer goedgekeurde meta's (${approvedCount})`}
