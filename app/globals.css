@@ -3485,7 +3485,12 @@ body.zp-sleept { user-select: none; cursor: grabbing; }
 .wp-card-info.md li { margin: 2px 0; }
 /* Net gestructureerd info-blok op de projectkaart: oranje sectiekopjes, rustige
    lijsten, klikbare links. Werkt met terugwerkende kracht op oude kaarten. */
-.wp-card-info.wp-info-net { white-space: normal; max-width: 960px; background: transparent; padding: 0; }
+/* Eigen font-size i.p.v. de 12px die .wp-card-info hierboven zet: dat was de
+   enige plek op de kaart waar de lopende tekst nog een niet-getokende maat
+   had, een fractie kleiner dan de --fs-base die het dossierblok ernaast al
+   gebruikt (pd-verhaal). Daardoor oogden "Waarom deze pagina"/"Opdrachten" en
+   "Waar ... staat" als twee verschillende lettergroottes op dezelfde kaart. */
+.wp-card-info.wp-info-net { white-space: normal; max-width: 960px; background: transparent; padding: 0; font-size: var(--fs-base); line-height: var(--lh-base); }
 .wp-card-info.wp-info-net .wp-info-kop { color: var(--orange-dark); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; margin: 10px 0 4px; }
 .wp-card-info.wp-info-net .wp-info-kop:first-child { margin-top: 0; }
 .wp-card-info.wp-info-net p { margin: 0 0 6px; }
@@ -4687,10 +4692,15 @@ details[open] > .opr-kaart-sam::before { content: "▾ "; }
   background: var(--white); border: 1px solid #f6d8c8;
 }
 .pd-icoon svg { width: 16px; height: 16px; }
+/* Zelfde letter-spacing en kleur als .wp-info-kop (de andere twee titels op
+   deze kaart): --accent (#F15829) is een net iets fellere oranje dan
+   --orange-dark (#C95E28), en .07em spatiëring valt bij 11px net iets ruimer
+   uit dan de 0.4px van de andere twee. Klein verschil, maar wel zichtbaar
+   naast elkaar op dezelfde kaart. */
 .pd-koptekst {
   font-size: var(--fs-xs); line-height: var(--lh-xs);
-  letter-spacing: .07em; text-transform: uppercase;
-  font-weight: 700; color: var(--accent);
+  letter-spacing: 0.4px; text-transform: uppercase;
+  font-weight: 700; color: var(--orange-dark);
 }
 
 /* Het verhaal: eerste regel de conclusie, daaronder de stappen als bullets. */
