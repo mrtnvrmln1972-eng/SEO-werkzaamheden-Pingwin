@@ -29,8 +29,8 @@ function LaatsteStandKnop() {
   }
   const datum = stand ? new Date(stand.datum).toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" }) : "";
   return (
-    <span className="org-action-hint">
-      <button type="button" className="ghost-btn small" onClick={() => setOpen(true)}>
+    <span className="org-action-hint pnl-acties-info" style={{ marginLeft: "auto" }}>
+      <button type="button" className="btn btn-quiet btn-klein" onClick={() => setOpen(true)}>
         Laatste stand structured data{stand?.verouderd ? " ⚠" : ""}
       </button>
       <HelpHint text="Maandelijks onderzoekt het dashboard via het web de actuele schema.org- en Google-richtlijnen (bijvoorbeeld welke rich results nog gelden en welke niet meer) en past die toe bij het genereren van structured data. Klik de knop om te lezen wat er nu geldt, of om het onderzoek te verversen als het ouder dan een maand is." />
@@ -49,7 +49,7 @@ function LaatsteStandKnop() {
               {fout && <p style={{ color: "var(--red)" }}>{fout}</p>}
             </div>
             <div style={{ marginTop: "var(--s-3)" }}>
-              <button type="button" className="ghost-btn small" disabled={busy} onClick={() => void ververs()}>
+              <button type="button" className="btn btn-ghost btn-klein" disabled={busy} onClick={() => void ververs()}>
                 {busy ? "Onderzoeken… (kan een minuut duren)" : stand ? "Ververs" : "Onderzoek nu"}
               </button>
             </div>
@@ -452,7 +452,7 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
           <div className="org-actions">
             {/* Alleen actief zolang er iets te halen valt: zonder gaten hoeft er
                 niets opgehaald te worden, en vergrendeld is de klant akkoord. */}
-            <button type="button" className="primary-btn small" onClick={autofill}
+            <button type="button" className="btn btn-primary btn-klein" onClick={autofill}
               disabled={!!busy || locked || !data || ontbrekendeVelden({ ...data, vestigingen: data.vestigingen || [] }).length === 0}
               title={locked ? "De gegevens zijn vergrendeld; er wordt niets meer aangevuld."
                 : !data || ontbrekendeVelden({ ...data, vestigingen: data.vestigingen || [] }).length === 0
@@ -460,26 +460,33 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
                 : "Zoekt de website en het web af naar wat hier nog ontbreekt. Vult alleen lege velden; bestaande gegevens blijven staan."}>
               {busy === "autofill" ? "Website + web doorzoeken… (kan een minuut duren)" : "Ontbrekende gegevens ophalen"}
             </button>
-            <span className="org-action-hint">
-              <button type="button" className="ghost-btn small" onClick={() => void save()} disabled={!!busy || !data}>{busy === "save" ? "Opslaan…" : "Opslaan"}</button>
-              <HelpHint text="Slaat de ingevulde bedrijfsgegevens meteen op. Dit gebeurt ook automatisch, een paar seconden nadat je stopt met typen; deze knop is er voor als je dat niet wilt afwachten." />
-            </span>
-            <span className="org-action-hint">
-              <button type="button" className="ghost-btn small" onClick={toggleLock} disabled={!!busy}>{locked ? "Ontgrendelen" : "Vergrendelen"}</button>
-              <HelpHint text="Zet de gegevens vast als de bevestigde bron voor alle structured data. De klant kan ze dan niet meer wijzigen via de deel-link. Ontgrendel je later, dan kan de klant weer aanvullen." />
-            </span>
-            <span className="org-action-hint">
-              <button type="button" className="ghost-btn small" onClick={() => void openDevDeel()} disabled={!!busy || !data?.bedrijfsnaam}>{busy === "dev" ? "Bezig…" : "Delen met developer"}</button>
-              <HelpHint xl title="Wat betekenen 'genereren', 'site-breed' en 'schema'?" text={"**Schema** (ook wel structured data of JSON-LD genoemd) is onzichtbare code in de website die Google en AI-zoekmachines vertelt wie dit bedrijf is en wat een pagina behandelt.\n## Twee lagen\n__Site-breed__ is het ene basisblok met de bedrijfsidentiteit: naam, adres, telefoon, openingstijden, social profielen. Dat hoort op elke pagina, als fundering. Een losse pagina (een behandeling, dienst, artikel) krijgt daarbovenop een eigen, kleiner blok via de structured data-stap in het Pagina's-tabblad; dat blok verwijst terug naar dit fundament in plaats van alles te herhalen.\n## Wat 'genereren' doet\nDeze knop bouwt dat site-brede blok automatisch uit de bevestigde bedrijfsgegevens hierboven, **aanvullend** op wat een SEO-plugin (Yoast, Rank Math, AIOSEO) eventueel al op de site zet: geen dubbele info, de plugin blijft zelf verantwoordelijk voor wat hij al levert en past dat vanzelf aan bij een wijziging.\n## Wat 'Delen met developer' in één klik doet\n- Het bestand komt in Drive te staan.\n- Er komt een taak voor de developer in Werkzaamheden.\n- Er opent een mailvenster met een kant-en-klare introductie; meteen versturen of eerst aanpassen.\n- Wil je eerst de ruwe code bekijken of los kopiëren, dat kan in dat mailvenster onder 'Bekijk de JSON-code'."} />
-            </span>
-            {shareUrl && (
+            <span className="pnl-acties-scheiding" aria-hidden="true" />
+            <div className="pnl-acties-groep" role="group" aria-label="Gegevens beheren">
               <span className="org-action-hint">
-                <button type="button" className="ghost-btn small" onClick={openKlantDeel}>Delen met klant</button>
-                <HelpHint text="Opent een mailvenster naar de klant met de deel-link erin, zodat die de bedrijfsgegevens kan bekijken, corrigeren en aanvullen. In dat venster staat de link ook los te kopiëren, zonder te hoeven mailen." />
+                <button type="button" className="btn btn-ghost btn-klein" onClick={() => void save()} disabled={!!busy || !data}>{busy === "save" ? "Opslaan…" : "Opslaan"}</button>
+                <HelpHint text="Slaat de ingevulde bedrijfsgegevens meteen op. Dit gebeurt ook automatisch, een paar seconden nadat je stopt met typen; deze knop is er voor als je dat niet wilt afwachten." />
               </span>
-            )}
+              <span className="org-action-hint">
+                <button type="button" className={"btn btn-ghost btn-klein" + (locked ? " btn-ghost-aan" : "")} onClick={toggleLock} disabled={!!busy}>{locked ? "Ontgrendelen" : "Vergrendelen"}</button>
+                <HelpHint text="Zet de gegevens vast als de bevestigde bron voor alle structured data. De klant kan ze dan niet meer wijzigen via de deel-link. Ontgrendel je later, dan kan de klant weer aanvullen." />
+              </span>
+            </div>
+            <span className="pnl-acties-scheiding" aria-hidden="true" />
+            <div className="pnl-acties-groep" role="group" aria-label="Delen">
+              <span className="org-action-hint">
+                <button type="button" className="btn btn-ghost btn-klein" onClick={() => void openDevDeel()} disabled={!!busy || !data?.bedrijfsnaam}>{busy === "dev" ? "Bezig…" : "Delen met developer"}</button>
+                <HelpHint xl title="Wat betekenen 'genereren', 'site-breed' en 'schema'?" text={"**Schema** (ook wel structured data of JSON-LD genoemd) is onzichtbare code in de website die Google en AI-zoekmachines vertelt wie dit bedrijf is en wat een pagina behandelt.\n## Twee lagen\n__Site-breed__ is het ene basisblok met de bedrijfsidentiteit: naam, adres, telefoon, openingstijden, social profielen. Dat hoort op elke pagina, als fundering. Een losse pagina (een behandeling, dienst, artikel) krijgt daarbovenop een eigen, kleiner blok via de structured data-stap in het Pagina's-tabblad; dat blok verwijst terug naar dit fundament in plaats van alles te herhalen.\n## Wat 'genereren' doet\nDeze knop bouwt dat site-brede blok automatisch uit de bevestigde bedrijfsgegevens hierboven, **aanvullend** op wat een SEO-plugin (Yoast, Rank Math, AIOSEO) eventueel al op de site zet: geen dubbele info, de plugin blijft zelf verantwoordelijk voor wat hij al levert en past dat vanzelf aan bij een wijziging.\n## Wat 'Delen met developer' in één klik doet\n- Het bestand komt in Drive te staan.\n- Er komt een taak voor de developer in Werkzaamheden.\n- Er opent een mailvenster met een kant-en-klare introductie; meteen versturen of eerst aanpassen.\n- Wil je eerst de ruwe code bekijken of los kopiëren, dat kan in dat mailvenster onder 'Bekijk de JSON-code'."} />
+              </span>
+              {shareUrl && (
+                <span className="org-action-hint">
+                  <button type="button" className="btn btn-ghost btn-klein" onClick={openKlantDeel}>Delen met klant</button>
+                  <HelpHint text="Opent een mailvenster naar de klant met de deel-link erin, zodat die de bedrijfsgegevens kan bekijken, corrigeren en aanvullen. In dat venster staat de link ook los te kopiëren, zonder te hoeven mailen." />
+                </span>
+              )}
+            </div>
+            <span className="pnl-acties-scheiding" aria-hidden="true" />
+            <span className="org-kb-workflow" ref={setKbSlot} />
             <LaatsteStandKnop />
-            <span className="org-action-hint-group" ref={setKbSlot} />
             {/* Wat er met je wijziging gebeurt, zonder dat je op Opslaan hoeft te letten. */}
             {bewaarStand && (
               <span className={"org-bewaar" + (bewaarStand === "fout" ? " org-bewaar-fout" : "")}>
@@ -512,12 +519,12 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
         extra={
           <div>
             <div className="muted" style={{ wordBreak: "break-word" }}>JSON-bestand: <a href={devLink} target="_blank" rel="noreferrer">{devLink}</a></div>
-            <button type="button" className="ghost-btn small" style={{ marginTop: "var(--s-2)" }} onClick={() => void bekijkJson()}>
+            <button type="button" className="btn btn-ghost btn-klein" style={{ marginTop: "var(--s-2)" }} onClick={() => void bekijkJson()}>
               {devJsonBusy ? "Laden…" : devJsonOpen ? "Verberg de JSON-code" : "Bekijk de JSON-code"}
             </button>
             {devJsonOpen && devJson && (
               <>
-                <button type="button" className="ghost-btn small" style={{ marginLeft: "var(--s-2)" }} onClick={() => void copyJson()}>{devJsonCopied ? "✓ gekopieerd" : "Kopieer JSON"}</button>
+                <button type="button" className="btn btn-ghost btn-klein" style={{ marginLeft: "var(--s-2)" }} onClick={() => void copyJson()}>{devJsonCopied ? "✓ gekopieerd" : "Kopieer JSON"}</button>
                 <pre className="sch-json-pre" style={{ marginTop: "var(--s-2)" }}>{devJson}</pre>
               </>
             )}
@@ -534,7 +541,7 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
         extra={
           <div style={{ display: "flex", alignItems: "center", gap: "var(--s-2)", flexWrap: "wrap" }}>
             <span className="muted" style={{ wordBreak: "break-word" }}>{shareUrl}</span>
-            <button type="button" className="ghost-btn small" onClick={() => void copyShareLink()}>{linkCopied ? "✓ gekopieerd" : "Kopieer link"}</button>
+            <button type="button" className="btn btn-ghost btn-klein" onClick={() => void copyShareLink()}>{linkCopied ? "✓ gekopieerd" : "Kopieer link"}</button>
           </div>
         }
       />

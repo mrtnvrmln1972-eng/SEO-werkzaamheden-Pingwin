@@ -234,10 +234,11 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie, actiesSlot }: 
         onDrop={(e) => { e.preventDefault(); setDrag(false); void drop(Array.from(e.dataTransfer.files || [])); }}
         onClick={() => setDropOpen((v) => !v)}
         title="Sleep hier bestanden op, of klik om te bladeren of tekst/een link te plakken">
-        dropzone
+        + document
       </div>
+      <span className="org-kb-workflow-pijl" aria-hidden="true">→</span>
       <span className="org-action-hint">
-        <button type="button" className="wp-fase-btn" onClick={() => void zetInVelden()}
+        <button type="button" className="btn btn-ghost btn-klein" onClick={() => void zetInVelden()}
           disabled={!!busy || entiteiten.length === 0}
           title={entiteiten.length === 0
             ? (voorstellen.length ? "De kennisbank is nog leeg; verwerk eerst de aanlevering hieronder." : "De kennisbank is nog leeg; sleep er eerst materiaal in.")
@@ -247,7 +248,7 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie, actiesSlot }: 
         <HelpHint text="Zet alles wat bevestigd in de kennisbank staat (rechts) over naar de bedrijfsgegevens hierboven. Bestaande waarden blijven staan; alleen lege velden worden aangevuld." />
       </span>
       <span className="org-action-hint">
-        <button type="button" className="wp-fase-btn" disabled={!!busy} onClick={() => void ruimOp()}>{busy === "opruimen" ? "Bezig…" : "Ontdubbelen"}</button>
+        <button type="button" className="btn btn-ghost btn-klein" disabled={!!busy} onClick={() => void ruimOp()}>{busy === "opruimen" ? "Bezig…" : "Ontdubbelen"}</button>
         <HelpHint text="Voegt dubbele of overlappende regels in de kennisbank samen, bijvoorbeeld dezelfde vestiging die uit twee documenten kwam." />
       </span>
     </>

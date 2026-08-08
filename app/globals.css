@@ -137,6 +137,14 @@
 .btn:disabled { opacity: 0.6; cursor: default; }
 .btn-primary { background: var(--orange); border-color: var(--orange); color: var(--white); }
 .btn-primary:hover { background: var(--orange-dark); border-color: var(--orange-dark); color: var(--white); }
+/* .btn-ghost (secundaire knop) staat verderop in dit bestand, bij "DOORZICHTIGE KNOPPEN". */
+/* Stil: voor een knop die geen actie op de data is maar informatief/verwijzend
+   (bijv. "laatste stand van iets"), zodat hij niet met een echte actieknop verward wordt. */
+.btn-quiet { background: transparent; border-color: transparent; color: var(--gray); }
+.btn-quiet:hover:not(:disabled) { background: var(--gray-light); border-color: var(--gray-light); color: var(--gray); }
+/* Destructief: voor een knop die iets onomkeerbaars doet (verwijderen, loskoppelen). */
+.btn-danger { background: transparent; border-color: var(--red); color: var(--red); }
+.btn-danger:hover:not(:disabled) { background: var(--red-light); border-color: var(--red); color: var(--red); }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -2471,9 +2479,26 @@ button.org-sec-kop:hover { color: var(--orange); }
 
 /* Knop + "?"-uitlegbolletje naast elkaar, voor de actieknoppenrij. */
 .org-action-hint { display: inline-flex; align-items: center; gap: var(--s-1); }
-/* Lege plek in de knoppenrij waar Kennisbank zijn dropzone en knoppen via
-   een portal in rendert; leeg (geen kinderen) neemt hij geen ruimte in. */
-.org-action-hint-group { display: inline-flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; }
+
+/* ── Knoppenrij-conventie (paneel-neutraal, herbruikbaar in elk cockpit-paneel) ──
+   .pnl-acties-groep bundelt knoppen die bij elkaar horen (bijv. "opslaan +
+   vergrendelen"); .pnl-acties-scheiding is het dunne lijntje tussen twee
+   niet-verwante groepen; .pnl-acties-info is voor een knop die geen actie op
+   de paneeldata is maar informatief/verwijzend (samen met .btn-quiet). */
+.pnl-acties-groep { display: inline-flex; align-items: center; gap: var(--s-2); }
+.pnl-acties-scheiding { align-self: stretch; width: 1px; min-height: 20px; background: var(--card-border); }
+.pnl-acties-info { display: inline-flex; align-items: center; gap: var(--s-1); }
+
+/* Kennisbank-werkstroom (aanleveren → verwerken) als één samenhangend blokje in
+   de knoppenrij, in plaats van drie losse knoppen: dropzone en knoppen komen via
+   een portal in deze plek terecht; leeg (nog niet gemount) neemt hij geen ruimte in. */
+.org-kb-workflow {
+  display: inline-flex; align-items: center; gap: var(--s-2);
+  padding: var(--s-1) var(--s-2); border-radius: var(--r-md);
+  background: var(--brand-orange-faint);
+}
+.org-kb-workflow:empty { display: none; }
+.org-kb-workflow-pijl { color: var(--muted, #8a7a6c); font-size: var(--fs-sm); }
 
 /* Sitebouwer-deelpagina (/share/org-dev): ruimte boven de site-brede JSON. */
 .org-devshare-sitewide { margin-top: var(--s-5); }
@@ -3137,10 +3162,10 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
    én een knop om de volledige dropzone (bladeren/plakken) open te klappen. */
 .kb-dropzone-mini {
   border: 1.5px dashed var(--card-border); border-radius: var(--r-sm); padding: var(--s-1) var(--s-3);
-  font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--muted, #8a7a6c); background: #fffdfb;
+  font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--muted, #8a7a6c); background: transparent;
   cursor: pointer; white-space: nowrap; transition: border-color 0.12s, background 0.12s;
 }
-.kb-dropzone-mini:hover { border-color: var(--orange); }
+.kb-dropzone-mini:hover { border-color: var(--orange); background: var(--white); }
 .kb-dropzone-mini-actief { border-color: var(--orange); background: #fff6f1; color: var(--orange-dark); }
 .kb-dropzone-pop { position: relative; }
 .kb-dropzone-sluit {
