@@ -22,6 +22,12 @@ function esc(s: string): string {
   return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
+// Zelfde icoon-vorm (30px, afgeronde hoek, oranje verloop) als de kaartjes
+// "Waarom deze pagina" en "Opdrachten in deze kaart" (lib/card-info.ts): dit
+// blok stond er zonder icoon bij, terwijl het qua opzet (icoon + titel) exact
+// hetzelfde soort blokje is. Een locatiepin past bij "waar de pagina staat".
+const ICO_PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-6.1 7-11a7 7 0 1 0-14 0c0 4.9 7 11 7 11Z"></path><path d="M12 10.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"></path></svg>';
+
 const MAAND = ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"];
 
 function mailLink(m: PaginaMail): string {
@@ -289,7 +295,7 @@ export function dossierBlokHtml(d: PageDossier, tekst: string, opts: { compact?:
     // onder elkaar staan (voor twee pagina's die het antwoord noemt), en met alleen
     // "Waar deze pagina staat" boven allebei leek dat dubbelop terwijl het over
     // verschillende pagina's ging.
-    `<div class="pd-kop"><span class="pd-koptekst">Waar ${d.pad ? `${esc(d.pad)} ` : "deze pagina "}staat</span></div>`,
+    `<div class="pd-kop"><span class="pd-icoon">${ICO_PIN}</span><span class="pd-koptekst">Waar ${d.pad ? `${esc(d.pad)} ` : "deze pagina "}staat</span></div>`,
     verhaal ? `<div class="pd-verhaal md">${verhaal}</div>` : "",
     linkRegel(d, voorstellenGetoond, opts.zonderStand === true),
     // De doorzet-chip is juist op de compacte kaart het nuttigst; de rest van de
