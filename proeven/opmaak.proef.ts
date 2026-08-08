@@ -344,6 +344,62 @@ checkWaar("elk scherm heeft nog de opmaak die het gebruikt", zonderOpmaak.length
     zonderOpmaak.map(([k, b]) => `${k} (${b})`).join("\n       ")
   }\n       Waarschijnlijk zijn er regels verdwenen doordat twee chats tegelijk aan globals.css schreven. Haal ze terug met: git log -p -- app/globals.css`);
 
+// ── 9. Cockpit-panelen krijgen geen nieuwe oude knopklassen erbij ──
+// Op 08-08-2026 stond in CLAUDE.md al zwart-op-wit: "Nooit meer primary-btn/
+// ghost-btn/wp-fase-btn in nieuwe code." Diezelfde dag stond er in Kennisbank.tsx
+// alsnog een nieuwe wp-fase-btn, naast de twee bestaande knoppen die al wél
+// .btn.btn-ghost.btn-klein gebruikten: dezelfde rij, twee knoppenfamilies. Een
+// regel die alleen in een document leeft, wordt gebroken zodra iemand haast
+// heeft (zelfde les als bovenaan dit bestand). Vandaar deze poort.
+//
+// Scope is bewust alleen de cockpit-panelen (app/admin/client/[slug]/*.tsx),
+// want daar geldt de knopconventie voor. Zelfde ratel als de erfenis-lijst
+// hierboven: bestanden die de oude klassen al hadden vóór deze proef, staan
+// op de lijst en blijven werken; een NIEUW bestand met een oude knopklasse
+// wordt meteen rood. De lijst mag alleen korter worden, verbouw je een
+// bestand naar de knopconventie, haal het er dan af.
+const KNOPCONVENTIE_ERFENIS = new Set<string>([
+  "app/admin/client/[slug]/ActionCard.tsx", "app/admin/client/[slug]/AntwoordBlokken.tsx",
+  "app/admin/client/[slug]/BespreekLijsten.tsx", "app/admin/client/[slug]/CannibalPanel.tsx",
+  "app/admin/client/[slug]/ChatBestanden.tsx", "app/admin/client/[slug]/ChatPanel.tsx",
+  "app/admin/client/[slug]/ClientCockpit.tsx", "app/admin/client/[slug]/Concurrenten.tsx",
+  "app/admin/client/[slug]/DeelKnoppen.tsx", "app/admin/client/[slug]/DevDoorzetten.tsx",
+  "app/admin/client/[slug]/DocVersies.tsx", "app/admin/client/[slug]/FocusBlock.tsx",
+  "app/admin/client/[slug]/FundamentPanel.tsx", "app/admin/client/[slug]/ImportAnalysis.tsx",
+  "app/admin/client/[slug]/InvoiceAlert.tsx", "app/admin/client/[slug]/Kennisbank.tsx",
+  "app/admin/client/[slug]/KlussenChip.tsx", "app/admin/client/[slug]/KpiPanel.tsx",
+  "app/admin/client/[slug]/LeadChat.tsx", "app/admin/client/[slug]/LeadTab.tsx",
+  "app/admin/client/[slug]/LinksPaneel.tsx", "app/admin/client/[slug]/MailAllowlist.tsx",
+  "app/admin/client/[slug]/MailControlePanel.tsx", "app/admin/client/[slug]/MailPopup.tsx",
+  "app/admin/client/[slug]/MailUitKaart.tsx", "app/admin/client/[slug]/MailVenster.tsx",
+  "app/admin/client/[slug]/MetaCtrPanel.tsx", "app/admin/client/[slug]/Notities.tsx",
+  "app/admin/client/[slug]/OnboardingPanel.tsx", "app/admin/client/[slug]/OpruimEenLijst.tsx",
+  "app/admin/client/[slug]/OpruimEindstructuur.tsx", "app/admin/client/[slug]/OpruimPlaatsen.tsx",
+  "app/admin/client/[slug]/OpruimTabel.tsx", "app/admin/client/[slug]/OverviewChat.tsx",
+  "app/admin/client/[slug]/PageChat.tsx", "app/admin/client/[slug]/PageSummaryCard.tsx",
+  "app/admin/client/[slug]/PagesPanel.tsx", "app/admin/client/[slug]/Planning.tsx",
+  "app/admin/client/[slug]/PrioriteitenPanel.tsx", "app/admin/client/[slug]/SelectionActions.tsx",
+  "app/admin/client/[slug]/ShareLinkBar.tsx", "app/admin/client/[slug]/StrategyPanel.tsx",
+  "app/admin/client/[slug]/TakenVoorstel.tsx", "app/admin/client/[slug]/TasksEditor.tsx",
+  "app/admin/client/[slug]/Voortgang.tsx", "app/admin/client/[slug]/WeekplanCard.tsx",
+  "app/admin/client/[slug]/WijzigingenPanel.tsx",
+]);
+const OUDE_KNOPKLASSEN = /\b(ghost-btn|wp-fase-btn|primary-btn)\b/;
+const knopMap = path.join(WORTEL, "app/admin/client/[slug]");
+const nieuweOudeKnoppen = fs.readdirSync(knopMap)
+  .filter((b) => b.endsWith(".tsx"))
+  .map((b) => `app/admin/client/[slug]/${b}`)
+  .filter((rel) => !KNOPCONVENTIE_ERFENIS.has(rel))
+  .filter((rel) => OUDE_KNOPKLASSEN.test(fs.readFileSync(path.join(WORTEL, rel), "utf8")));
+checkWaar("cockpit-panelen krijgen geen nieuwe oude knopklassen (ghost-btn/wp-fase-btn/primary-btn) erbij",
+  nieuweOudeKnoppen.length === 0,
+  `Gebruik .btn met precies één van .btn-primary/.btn-ghost/.btn-quiet/.btn-danger, plus .btn-klein voor de compacte maat (zie CLAUDE.md, "Knopconventie in cockpit-panelen").\n       ${nieuweOudeKnoppen.join("\n       ")}`);
+const knopErfenisVerdwenen = [...KNOPCONVENTIE_ERFENIS]
+  .filter((rel) => !fs.existsSync(path.join(WORTEL, rel)) || !OUDE_KNOPKLASSEN.test(fs.readFileSync(path.join(WORTEL, rel), "utf8")));
+checkWaar("de knopconventie-erfenislijst bevat geen schone of verwijderde bestanden meer",
+  knopErfenisVerdwenen.length === 0,
+  `Haal deze eruit, ze zijn al schoon of bestaan niet meer: ${knopErfenisVerdwenen.join(", ")}`);
+
 // ═══════════════════════════════════════════════════════════
 // DE RENDERER ZELF: WAT HIJ NIET KENT, KOMT LETTERLIJK IN BEELD
 // ═══════════════════════════════════════════════════════════
