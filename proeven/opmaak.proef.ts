@@ -164,11 +164,7 @@ checkWaar("afbreken midden in een woord staat alleen op tekst, niet op een heel 
 //   - een NIEUW scherm staat er per definitie niet in en moet dus meteen goed;
 //   - een verbouwd scherm haal je eraf, en dan kan het nooit meer terugvallen.
 // De lijst mag dus alleen korter worden.
-const ERFENIS = new Set<string>([
-  "app/admin/financien/FinancienClient.tsx",
-  "app/admin/financien/page.tsx",
-  "app/admin/usage/page.tsx",
-]);
+const ERFENIS = new Set<string>([]);
 
 // Eigen opmaak = een VASTE waarde voor iets waar een schaal voor bestaat. Een
 // scherm dat `var(--s-4)` gebruikt doet het juist goed; alleen losse pixels,

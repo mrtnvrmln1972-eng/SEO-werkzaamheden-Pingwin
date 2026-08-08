@@ -82,36 +82,36 @@ export default async function FinancienPage({ searchParams }: { searchParams: { 
         zat vast op één terug-linkje. De opmaakproef ving dat op 6 augustus 2026. */}
     <AdminKop titel="Financiën" />
     <div style={wrap}>
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-        <h1 style={{ fontSize: 24, margin: 0, color: "#d97316" }}>Financi&euml;n</h1>
-        <Link href="/admin" style={{ color: "#8a6a3e", fontSize: 14, textDecoration: "none" }}>&larr; Terug naar overzicht</Link>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "var(--s-3)", flexWrap: "wrap" }}>
+        <h1 style={{ fontSize: "var(--fs-xl)", margin: "var(--s-0)", color: "var(--accent-warm)" }}>Financi&euml;n</h1>
+        <Link href="/admin" style={{ color: "var(--label-muted)", fontSize: "var(--fs-base)", textDecoration: "none" }}>&larr; Terug naar overzicht</Link>
       </div>
-      <p style={{ color: "#5b6472", maxWidth: 640, lineHeight: 1.5, marginTop: 8 }}>
+      <p style={{ color: "var(--text-secondary)", maxWidth: 640, lineHeight: "var(--lh-base)", marginTop: "var(--s-2)" }}>
         Alle opbrengsten en kosten, live uit Moneybird. Klik een post open om te zien waar het
         geld vandaan komt of naartoe gaat, tot en met de losse facturen. Alles is alleen-lezen:
         er verandert hier nooit iets in de boekhouding.
       </p>
 
       {!configured ? (
-        <div style={{ ...card, borderColor: "#f0c8c8", background: "#fdf4f4", color: "#a13d3d" }}>
+        <div style={{ ...card, borderColor: "#f0c8c8", background: "var(--red-light)", color: "var(--bad-deep)" }}>
           Moneybird is nog niet gekoppeld (MONEYBIRD_API_TOKEN / MONEYBIRD_ADMINISTRATION_ID ontbreken).
         </div>
       ) : loadError ? (
-        <div style={{ ...card, borderColor: "#f0c8c8", background: "#fdf4f4", color: "#a13d3d" }}>
+        <div style={{ ...card, borderColor: "#f0c8c8", background: "var(--red-light)", color: "var(--bad-deep)" }}>
           Kon de cijfers niet laden: {loadError}
         </div>
       ) : (
         <>
           {/* Periode-schakelaar: jaar + losse maanden */}
-          <div style={{ display: "flex", gap: 8, margin: "14px 0 8px", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: "var(--s-2)", margin: "var(--s-4) 0 var(--s-2)", flexWrap: "wrap" }}>
             <Link href="/admin/financien?periode=jaar" style={pill(!isMonth && p !== "vorigjaar")}>Dit jaar ({thisYear})</Link>
             <Link href="/admin/financien?periode=vorigjaar" style={pill(p === "vorigjaar")}>Vorig jaar ({thisYear - 1})</Link>
           </div>
-          <div style={{ display: "flex", gap: 6, margin: "0 0 20px", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: "var(--s-2)", margin: "0 0 var(--s-5)", flexWrap: "wrap" }}>
             {Array.from({ length: lastMonth }, (_, i) => {
               const key = `${year}${String(i + 1).padStart(2, "0")}`;
               return (
-                <Link key={key} href={`/admin/financien?periode=${key}`} style={{ ...pill(p === key), padding: "4px 10px", fontSize: 13 }}>
+                <Link key={key} href={`/admin/financien?periode=${key}`} style={{ ...pill(p === key), padding: "var(--s-1) var(--s-3)", fontSize: "var(--fs-sm)" }}>
                   {MONTH_NAMES[i]}
                 </Link>
               );
@@ -119,31 +119,31 @@ export default async function FinancienPage({ searchParams }: { searchParams: { 
           </div>
 
           {/* Helikopterview: drie kaarten voor de gekozen periode */}
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 18 }}>
+          <div style={{ display: "flex", gap: "var(--s-3)", flexWrap: "wrap", marginBottom: "var(--s-5)" }}>
             <div style={{ ...card, minWidth: 200, flex: "1 1 200px" }}>
-              <div style={{ fontSize: 12, color: "#8a6a3e" }}>Opbrengsten ({periodLabel})</div>
-              <div style={{ fontSize: 28, fontWeight: 700, color: "#2E7D32" }}>{euro(totals.revenue)}</div>
+              <div style={{ fontSize: "var(--fs-sm)", color: "var(--label-muted)" }}>Opbrengsten ({periodLabel})</div>
+              <div style={{ fontSize: "var(--fs-xl)", fontWeight: 700, color: "var(--good)" }}>{euro(totals.revenue)}</div>
             </div>
             <div style={{ ...card, minWidth: 200, flex: "1 1 200px" }}>
-              <div style={{ fontSize: 12, color: "#8a6a3e" }}>Kosten ({periodLabel})</div>
-              <div style={{ fontSize: 28, fontWeight: 700, color: "#C62828" }}>{euro(totals.expenses)}</div>
+              <div style={{ fontSize: "var(--fs-sm)", color: "var(--label-muted)" }}>Kosten ({periodLabel})</div>
+              <div style={{ fontSize: "var(--fs-xl)", fontWeight: 700, color: "var(--bad)" }}>{euro(totals.expenses)}</div>
             </div>
             <div style={{ ...card, minWidth: 200, flex: "1 1 200px" }}>
-              <div style={{ fontSize: 12, color: "#8a6a3e" }}>Resultaat ({periodLabel})</div>
-              <div style={{ fontSize: 28, fontWeight: 700, color: totals.net >= 0 ? "#d97316" : "#C62828" }}>{euro(totals.net)}</div>
+              <div style={{ fontSize: "var(--fs-sm)", color: "var(--label-muted)" }}>Resultaat ({periodLabel})</div>
+              <div style={{ fontSize: "var(--fs-xl)", fontWeight: 700, color: totals.net >= 0 ? "var(--accent-warm)" : "var(--bad)" }}>{euro(totals.net)}</div>
             </div>
           </div>
 
           {/* Ontwikkeling per maand */}
-          <div style={{ ...card, marginBottom: 18, overflowX: "auto" }}>
-            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 10, color: "#8a6a3e" }}>Ontwikkeling per maand ({year})</div>
+          <div style={{ ...card, marginBottom: "var(--s-5)", overflowX: "auto" }}>
+            <div style={{ fontSize: "var(--fs-md)", fontWeight: 700, marginBottom: "var(--s-3)", color: "var(--label-muted)" }}>Ontwikkeling per maand ({year})</div>
             <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 640 }}>
               <thead>
                 <tr>
                   <th style={{ ...th, textAlign: "left" }}></th>
                   {months.map((_, i) => (
                     <th key={i} style={th}>
-                      <Link href={`/admin/financien?periode=${year}${String(i + 1).padStart(2, "0")}`} style={{ color: "#8a6a3e", textDecoration: "none" }}>
+                      <Link href={`/admin/financien?periode=${year}${String(i + 1).padStart(2, "0")}`} style={{ color: "var(--label-muted)", textDecoration: "none" }}>
                         {MONTH_NAMES[i]}
                       </Link>
                     </th>
@@ -165,9 +165,9 @@ export default async function FinancienPage({ searchParams }: { searchParams: { 
                 <tr>
                   <td style={{ ...td, textAlign: "left", fontWeight: 600 }}>Resultaat</td>
                   {months.map((m, i) => (
-                    <td key={i} style={{ ...td, color: m.netProfit >= 0 ? "#2E7D32" : "#C62828", fontWeight: 600 }}>{euro(m.netProfit)}</td>
+                    <td key={i} style={{ ...td, color: m.netProfit >= 0 ? "var(--good)" : "var(--bad)", fontWeight: 600 }}>{euro(m.netProfit)}</td>
                   ))}
-                  <td style={{ ...td, fontWeight: 700, borderLeft: "2px solid #eadfce", color: sum((m) => m.netProfit) >= 0 ? "#2E7D32" : "#C62828" }}>{euro(sum((m) => m.netProfit))}</td>
+                  <td style={{ ...td, fontWeight: 700, borderLeft: "2px solid #eadfce", color: sum((m) => m.netProfit) >= 0 ? "var(--good)" : "var(--bad)" }}>{euro(sum((m) => m.netProfit))}</td>
                 </tr>
               </tbody>
             </table>

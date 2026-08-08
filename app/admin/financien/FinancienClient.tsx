@@ -56,11 +56,11 @@ export default function FinancienClient({ months, ledger, year, selectedMonth }:
 
   return (
     <>
-      <PostSection title="Opbrengsten per post" type="revenue" posts={revenuePosts} period={period} color="#2E7D32" />
-      <PostSection title="Kosten per post" type="cost" posts={costPosts} period={period} color="#C62828" />
+      <PostSection title="Opbrengsten per post" type="revenue" posts={revenuePosts} period={period} color="var(--good)" />
+      <PostSection title="Kosten per post" type="cost" posts={costPosts} period={period} color="var(--bad)" />
       <Abonnementen />
       <FinanceChat />
-      <p style={{ color: "#8a6a3e", fontSize: 12, lineHeight: 1.5 }}>
+      <p style={{ color: "var(--label-muted)", fontSize: "var(--fs-sm)", lineHeight: "var(--lh-sm)" }}>
         De posten komen rechtstreeks uit het winst&amp;verlies-rapport van Moneybird. Bij het openklappen
         zie je de facturen achter een post; boekingen die buiten facturen om lopen (bijvoorbeeld
         rechtstreeks vanaf de bank) kunnen een klein verschil geven met het posttotaal.
@@ -81,11 +81,11 @@ function PostSection({ title, type, posts, period, color }: {
 
   return (
     <div style={card}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 6 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: "#8a6a3e" }}>{title}</div>
+      <div style={{ display: "flex", alignItems: "baseline", gap: "var(--s-3)", marginBottom: "var(--s-2)" }}>
+        <div style={{ fontSize: "var(--fs-md)", fontWeight: 700, color: "var(--label-muted)" }}>{title}</div>
         <div style={{ marginLeft: "auto", fontWeight: 700, color, fontVariantNumeric: "tabular-nums" }}>{euro(total)}</div>
       </div>
-      {posts.length === 0 && <div style={{ color: "#5b6472", fontSize: 14, padding: "6px 4px" }}>Niets geboekt in deze periode.</div>}
+      {posts.length === 0 && <div style={{ color: "var(--text-secondary)", fontSize: "var(--fs-base)", padding: "var(--s-2) var(--s-1)" }}>Niets geboekt in deze periode.</div>}
       {posts.map((p) => (
         <div key={p.id}>
           <button type="button" style={rowBtn} onClick={() => setOpen((o) => ({ ...o, [p.id]: !o[p.id] }))}>
@@ -122,30 +122,30 @@ function PostDetail({ type, ledgerId, period }: { type: "revenue" | "cost"; ledg
     return () => { alive = false; };
   }, [type, ledgerId, period]);
 
-  if (error) return <div style={{ color: "#a13d3d", fontSize: 13, padding: "8px 26px" }}>{error}</div>;
-  if (!contacts) return <div style={{ color: "#8a6a3e", fontSize: 13, padding: "8px 26px" }}>Facturen laden&hellip;</div>;
-  if (contacts.length === 0) return <div style={{ color: "#5b6472", fontSize: 13, padding: "8px 26px" }}>Geen facturen op deze post gevonden (mogelijk rechtstreeks geboekt).</div>;
+  if (error) return <div style={{ color: "var(--bad-deep)", fontSize: "var(--fs-sm)", padding: "var(--s-2) var(--s-6)" }}>{error}</div>;
+  if (!contacts) return <div style={{ color: "var(--label-muted)", fontSize: "var(--fs-sm)", padding: "var(--s-2) var(--s-6)" }}>Facturen laden&hellip;</div>;
+  if (contacts.length === 0) return <div style={{ color: "var(--text-secondary)", fontSize: "var(--fs-sm)", padding: "var(--s-2) var(--s-6)" }}>Geen facturen op deze post gevonden (mogelijk rechtstreeks geboekt).</div>;
 
   return (
-    <div style={{ padding: "2px 0 8px 26px" }}>
+    <div style={{ padding: "var(--s-1) 0 var(--s-2) var(--s-6)" }}>
       {contacts.map((c) => {
         const key = c.contactId || c.contactName;
         return (
           <div key={key}>
-            <button type="button" style={{ ...rowBtn, fontSize: 13 }} onClick={() => setOpen((o) => ({ ...o, [key]: !o[key] }))}>
+            <button type="button" style={{ ...rowBtn, fontSize: "var(--fs-sm)" }} onClick={() => setOpen((o) => ({ ...o, [key]: !o[key] }))}>
               <span style={caret}>{open[key] ? "▾" : "▸"}</span>
               <span>{c.contactName}</span>
-              <span style={{ ...amountRight, color: "#5b6472" }}>{euro(c.total)}</span>
+              <span style={{ ...amountRight, color: "var(--text-secondary)" }}>{euro(c.total)}</span>
             </button>
             {open[key] && (
-              <div style={{ padding: "2px 0 6px 26px" }}>
+              <div style={{ padding: "var(--s-1) 0 var(--s-2) var(--s-6)" }}>
                 {c.invoices.map((inv) => (
-                  <div key={inv.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 4px", fontSize: 13, borderBottom: "1px dashed #f1e9db" }}>
-                    <a href={inv.url} target="_blank" rel="noreferrer" style={{ color: "#1a6dd6", textDecoration: "underline", textUnderlineOffset: 2 }}>
+                  <div key={inv.id} style={{ display: "flex", alignItems: "center", gap: "var(--s-3)", padding: "var(--s-2) var(--s-1)", fontSize: "var(--fs-sm)", borderBottom: "1px dashed #f1e9db" }}>
+                    <a href={inv.url} target="_blank" rel="noreferrer" style={{ color: "var(--link)", textDecoration: "underline", textUnderlineOffset: 2 }}>
                       {inv.label}
                     </a>
-                    <span style={{ color: "#8a6a3e" }}>{fmtDate(inv.date)}</span>
-                    <span style={{ color: "#8a6a3e" }}>{STATE_LABEL[inv.state] || inv.state}</span>
+                    <span style={{ color: "var(--label-muted)" }}>{fmtDate(inv.date)}</span>
+                    <span style={{ color: "var(--label-muted)" }}>{STATE_LABEL[inv.state] || inv.state}</span>
                     <span style={{ ...amountRight, fontWeight: 500 }}>{euro(inv.amount)}</span>
                   </div>
                 ))}
@@ -198,24 +198,24 @@ function FinanceChat() {
 
   return (
     <div style={card}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 6 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: "#8a6a3e" }}>Vraag het de cijfers</div>
-        <span style={{ color: "#5b6472", fontSize: 13 }}>besparingen, winstpotentieel, prognose einde jaar</span>
+      <div style={{ display: "flex", alignItems: "baseline", gap: "var(--s-3)", marginBottom: "var(--s-2)" }}>
+        <div style={{ fontSize: "var(--fs-md)", fontWeight: 700, color: "var(--label-muted)" }}>Vraag het de cijfers</div>
+        <span style={{ color: "var(--text-secondary)", fontSize: "var(--fs-sm)" }}>besparingen, winstpotentieel, prognose einde jaar</span>
         {messages.length > 0 && <button type="button" className="ghost-btn small" style={{ marginLeft: "auto" }} onClick={wis}>Gesprek wissen</button>}
       </div>
       {messages.length > 0 && (
-        <div style={{ maxHeight: 420, overflowY: "auto", padding: "4px 2px", marginBottom: 10 }}>
+        <div style={{ maxHeight: 420, overflowY: "auto", padding: "var(--s-1) var(--s-1)", marginBottom: "var(--s-3)" }}>
           {messages.map((m, i) => (
             m.role === "user"
-              ? <div key={i} style={{ background: "#FFF4EE", border: "1px solid #f0d9c8", borderRadius: 10, padding: "8px 12px", margin: "8px 0 8px 15%", fontSize: 14 }}>{m.content}</div>
-              : <div key={i} className="md" style={{ border: "1px solid #f1e9db", borderRadius: 10, padding: "10px 14px", margin: "8px 15% 8px 0", fontSize: 14 }} dangerouslySetInnerHTML={{ __html: mdToHtml(m.content) }} />
+              ? <div key={i} style={{ background: "var(--orange-light)", border: "1px solid #f0d9c8", borderRadius: "var(--r-md)", padding: "var(--s-2) var(--s-3)", margin: "var(--s-2) 0 var(--s-2) 15%", fontSize: "var(--fs-base)" }}>{m.content}</div>
+              : <div key={i} className="md" style={{ border: "1px solid #f1e9db", borderRadius: "var(--r-md)", padding: "var(--s-3) var(--s-4)", margin: "var(--s-2) 15% var(--s-2) 0", fontSize: "var(--fs-base)" }} dangerouslySetInnerHTML={{ __html: mdToHtml(m.content) }} />
           ))}
-          {busy && <div style={{ color: "#8a6a3e", fontSize: 13, padding: "6px 2px" }}>Aan het rekenen…</div>}
+          {busy && <div style={{ color: "var(--label-muted)", fontSize: "var(--fs-sm)", padding: "var(--s-2) var(--s-1)" }}>Aan het rekenen…</div>}
           <div ref={endRef} />
         </div>
       )}
-      {error && <div className="login-error" style={{ marginBottom: 10 }}>{error}</div>}
-      <div style={{ display: "flex", gap: 8 }}>
+      {error && <div className="login-error" style={{ marginBottom: "var(--s-3)" }}>{error}</div>}
+      <div style={{ display: "flex", gap: "var(--s-2)" }}>
         <input
           className="compose-input"
           style={{ flex: 1 }}
@@ -294,32 +294,32 @@ function Abonnementen() {
 
   return (
     <div style={card}>
-      <button type="button" style={{ ...rowBtn, borderBottom: "none", padding: "0 0 4px" }} onClick={() => setOpenSection((v) => !v)}>
+      <button type="button" style={{ ...rowBtn, borderBottom: "none", padding: "0 0 var(--s-1)" }} onClick={() => setOpenSection((v) => !v)}>
         <span style={caret}>{openSection ? "▾" : "▸"}</span>
-        <span style={{ fontSize: 15, fontWeight: 700, color: "#8a6a3e" }}>Terugkerende kosten / abonnementen</span>
+        <span style={{ fontSize: "var(--fs-md)", fontWeight: 700, color: "var(--label-muted)" }}>Terugkerende kosten / abonnementen</span>
       </button>
-      <div style={{ color: "#5b6472", fontSize: 13, margin: "0 0 6px 22px" }}>
+      <div style={{ color: "var(--text-secondary)", fontSize: "var(--fs-sm)", margin: "0 0 var(--s-2) var(--s-5)" }}>
         Leveranciers waar in minstens 3 opeenvolgende maanden (van de laatste 6) kosten aan zijn geboekt.
         Handig om dubbele of vergeten abonnementen op te sporen.
       </div>
       {openSection && (
-        <div style={{ paddingLeft: 22 }}>
-          {error && <div style={{ color: "#a13d3d", fontSize: 13, padding: "6px 0" }}>{error}</div>}
-          {!error && rows === null && <div style={{ color: "#8a6a3e", fontSize: 13, padding: "6px 0" }}>Laden&hellip;</div>}
-          {rows !== null && rows.length === 0 && <div style={{ color: "#5b6472", fontSize: 13, padding: "6px 0" }}>Geen terugkerende leveranciers gevonden in de laatste 6 maanden.</div>}
+        <div style={{ paddingLeft: "var(--s-5)" }}>
+          {error && <div style={{ color: "var(--bad-deep)", fontSize: "var(--fs-sm)", padding: "var(--s-2) 0" }}>{error}</div>}
+          {!error && rows === null && <div style={{ color: "var(--label-muted)", fontSize: "var(--fs-sm)", padding: "var(--s-2) 0" }}>Laden&hellip;</div>}
+          {rows !== null && rows.length === 0 && <div style={{ color: "var(--text-secondary)", fontSize: "var(--fs-sm)", padding: "var(--s-2) 0" }}>Geen terugkerende leveranciers gevonden in de laatste 6 maanden.</div>}
           {rows !== null && rows.map((r) => (
             <div key={r.contactName}>
-              <button type="button" style={{ ...rowBtn, fontSize: 13 }} onClick={() => setOpenRow((o) => ({ ...o, [r.contactName]: !o[r.contactName] }))}>
+              <button type="button" style={{ ...rowBtn, fontSize: "var(--fs-sm)" }} onClick={() => setOpenRow((o) => ({ ...o, [r.contactName]: !o[r.contactName] }))}>
                 <span style={caret}>{openRow[r.contactName] ? "▾" : "▸"}</span>
                 <span>{r.contactName}</span>
-                <span style={{ color: "#8a6a3e", marginLeft: 8 }}>{r.monthsPresent} van 6 maanden</span>
-                <span style={{ ...amountRight, color: "#C62828" }}>{euro(r.avgPerMonth)}/mnd &nbsp;(&plusmn; {euro(r.perYear)}/jaar)</span>
+                <span style={{ color: "var(--label-muted)", marginLeft: "var(--s-2)" }}>{r.monthsPresent} van 6 maanden</span>
+                <span style={{ ...amountRight, color: "var(--bad)" }}>{euro(r.avgPerMonth)}/mnd &nbsp;(&plusmn; {euro(r.perYear)}/jaar)</span>
               </button>
               {openRow[r.contactName] && (
-                <div style={{ padding: "2px 0 6px 26px", fontSize: 13 }}>
+                <div style={{ padding: "var(--s-1) 0 var(--s-2) var(--s-6)", fontSize: "var(--fs-sm)" }}>
                   {r.history.map((h) => (
-                    <div key={h.month} style={{ display: "flex", gap: 10, padding: "4px 4px", borderBottom: "1px dashed #f1e9db" }}>
-                      <span style={{ color: "#8a6a3e" }}>{MONTH_NAMES[Number(h.month.slice(4, 6)) - 1]} {h.month.slice(0, 4)}</span>
+                    <div key={h.month} style={{ display: "flex", gap: "var(--s-3)", padding: "var(--s-1) var(--s-1)", borderBottom: "1px dashed #f1e9db" }}>
+                      <span style={{ color: "var(--label-muted)" }}>{MONTH_NAMES[Number(h.month.slice(4, 6)) - 1]} {h.month.slice(0, 4)}</span>
                       <span style={{ ...amountRight, fontWeight: 500 }}>{euro(h.value)}</span>
                     </div>
                   ))}

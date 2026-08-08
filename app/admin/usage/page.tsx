@@ -167,19 +167,19 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
     <AdminKop titel="Verbruik" />
     <div style={wrap}>
       {/* Titel, periode-keuze en terug-link op één rij. */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
-          <h1 style={{ fontSize: 22, margin: 0, color: "#d97316" }}>Verbruik</h1>
-          <div style={{ display: "flex", gap: 6 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--s-3)", flexWrap: "wrap", marginBottom: "var(--s-3)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--s-4)", flexWrap: "wrap" }}>
+          <h1 style={{ fontSize: "var(--fs-lg)", margin: "var(--s-0)", color: "var(--accent-warm)" }}>Verbruik</h1>
+          <div style={{ display: "flex", gap: "var(--s-2)" }}>
             {PERIODS.map((p) => (
               <Link
                 key={p.key}
                 href={`/admin/usage?period=${p.key}`}
                 style={{
-                  padding: "5px 13px", borderRadius: 999, fontSize: 13, textDecoration: "none",
+                  padding: "var(--s-1) var(--s-3)", borderRadius: "var(--r-full)", fontSize: "var(--fs-sm)", textDecoration: "none",
                   border: "1px solid " + (p.key === period ? "#d97316" : "#eadfce"),
-                  background: p.key === period ? "#d97316" : "#fff",
-                  color: p.key === period ? "#fff" : "#5b6472",
+                  background: p.key === period ? "var(--accent-warm)" : "var(--white)",
+                  color: p.key === period ? "var(--white)" : "var(--text-secondary)",
                 }}
               >
                 {p.label}
@@ -187,56 +187,56 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
             ))}
           </div>
         </div>
-        <Link href="/admin" style={{ color: "#8a6a3e", fontSize: 14, textDecoration: "none" }}>&larr; Terug naar overzicht</Link>
+        <Link href="/admin" style={{ color: "var(--label-muted)", fontSize: "var(--fs-base)", textDecoration: "none" }}>&larr; Terug naar overzicht</Link>
       </div>
       {/* De drie meters naast elkaar, met de tips. Stond eerst als één alinea
           uitleg boven dit scherm, maar drie rekeningen die alle drie "Claude" of
           "tegoed" heten laten zich niet in één alinea uit elkaar houden. */}
       <Meters ahrefs={ahrefsTeller} claude={claudeTeller} ahrefsEigenMaand={ahrefsEigen ? ahrefsEigen.units : null} />
 
-      <p style={{ color: "#5b6472", maxWidth: 900, lineHeight: 1.5, margin: "0 0 22px", fontSize: 13.5 }}>
+      <p style={{ color: "var(--text-secondary)", maxWidth: 900, lineHeight: "var(--lh-base)", margin: "0 0 var(--s-6)", fontSize: "var(--fs-base)" }}>
         Hieronder de uitsplitsing van wat het dashboard zelf verbruikte in de gekozen periode ({periodText}).
       </p>
 
       {loadError ? (
-        <div style={{ ...card, borderColor: "#f0c8c8", background: "#fdf4f4", color: "#a13d3d" }}>
+        <div style={{ ...card, borderColor: "#f0c8c8", background: "var(--red-light)", color: "var(--bad-deep)" }}>
           Kon het verbruik niet laden: {loadError}
         </div>
       ) : (
         <>
           {/* Bovenaan: de totalen in één rij tegels */}
-          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 22 }}>
-            <div style={{ ...card, minWidth: 230, padding: "14px 20px" }}>
+          <div style={{ display: "flex", gap: "var(--s-4)", flexWrap: "wrap", marginBottom: "var(--s-6)" }}>
+            <div style={{ ...card, minWidth: 230, padding: "var(--s-4) var(--s-5)" }}>
               <div style={tileLabel}>
                 Totale kosten
                 <Hint text={`De opgetelde Claude-kosten over de gekozen periode: ${periodText}. Ahrefs telt hier niet mee, want dat valt binnen het vaste abonnement.`} />
               </div>
-              <div style={{ fontSize: 26, fontWeight: 700, color: "#d97316", lineHeight: 1.35 }}>{euros(totalCost)}</div>
-              <div style={{ fontSize: 12.5, color: "#5b6472" }}>{periodText} &middot; {num(totalCalls)} aanroepen</div>
+              <div style={{ fontSize: "var(--fs-xl)", fontWeight: 700, color: "var(--accent-warm)", lineHeight: "var(--lh-xl)" }}>{euros(totalCost)}</div>
+              <div style={{ fontSize: "var(--fs-sm)", color: "var(--text-secondary)" }}>{periodText} &middot; {num(totalCalls)} aanroepen</div>
             </div>
             {[...byService.entries()].filter(([svc]) => svc !== "ahrefs").map(([svc, v]) => (
-              <div key={svc} style={{ ...card, minWidth: 200, padding: "14px 20px" }}>
+              <div key={svc} style={{ ...card, minWidth: 200, padding: "var(--s-4) var(--s-5)" }}>
                 <div style={tileLabel}>
                   {SERVICE_LABEL[svc] || svc}
                   {svc === "anthropic" && <Hint text="Alles wat de AI in het dashboard doet: chats, documenten, analyses. Gemeten in tokens (stukjes tekst); de kosten zijn echte dollars op basis van de tokenprijs." />}
                 </div>
-                <div style={{ fontSize: 22, fontWeight: 700, lineHeight: 1.35 }}>{euros(v.cost)}</div>
-                <div style={{ fontSize: 12.5, color: "#5b6472" }}>{num(v.calls)} aanroepen</div>
+                <div style={{ fontSize: "var(--fs-lg)", fontWeight: 700, lineHeight: "var(--lh-lg)" }}>{euros(v.cost)}</div>
+                <div style={{ fontSize: "var(--fs-sm)", color: "var(--text-secondary)" }}>{num(v.calls)} aanroepen</div>
               </div>
             ))}
-            <div style={{ ...card, minWidth: 260, padding: "14px 20px" }}>
+            <div style={{ ...card, minWidth: 260, padding: "var(--s-4) var(--s-5)" }}>
               <div style={tileLabel}>
                 Ahrefs
                 <Hint text="Zoekwoord-data. Gemeten in units (Ahrefs' eigen tegoed-eenheid) en aanroepen. Er staat geen bedrag bij: het verbruik valt binnen het vaste Ahrefs-abonnement. Herhaalvragen komen uit de cache en verbruiken niets." />
               </div>
-              <div style={{ fontSize: 22, fontWeight: 700, lineHeight: 1.35 }}>
+              <div style={{ fontSize: "var(--fs-lg)", fontWeight: 700, lineHeight: "var(--lh-lg)" }}>
                 {ahrefsTotals ? `${num(ahrefsTotals.units)} units` : "geen verbruik"}
               </div>
-              <div style={{ fontSize: 12.5, color: "#5b6472" }}>
+              <div style={{ fontSize: "var(--fs-sm)", color: "var(--text-secondary)" }}>
                 {ahrefsTotals ? `${num(ahrefsTotals.calls)} aanroepen in deze periode` : "in deze periode"}
               </div>
               {ahrefsSub && ahrefsSub.used !== null && (
-                <div style={{ fontSize: 12.5, color: "#5b6472", marginTop: 6, borderTop: "1px solid #f1e9db", paddingTop: 6, display: "flex", alignItems: "center", flexWrap: "wrap" }}>
+                <div style={{ fontSize: "var(--fs-sm)", color: "var(--text-secondary)", marginTop: "var(--s-2)", borderTop: "1px solid #f1e9db", paddingTop: "var(--s-2)", display: "flex", alignItems: "center", flexWrap: "wrap" }}>
                   Abonnement: {num(ahrefsSub.used)}{ahrefsSub.limit !== null ? ` van ${num(ahrefsSub.limit)}` : ""} units gebruikt
                   {ahrefsTeller.dagenTotReset !== null && (
                     <>&nbsp;&middot;&nbsp;{ahrefsTeller.dagenTotReset === 0 ? "gaat vandaag op nul" : `nog ${ahrefsTeller.dagenTotReset} dagen`}</>
@@ -248,7 +248,7 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
           </div>
 
           {/* Daaronder de twee overzichten naast elkaar: links per klant, rechts per functie. */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(480px, 1fr))", gap: 18, alignItems: "start" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(480px, 1fr))", gap: "var(--s-5)", alignItems: "start" }}>
             {/* Blok 1: per klant. Claude-regels zijn uitklapbaar (details/summary,
                 werkt zonder JavaScript): open = de functies waar het bedrag uit
                 bestaat. Ahrefs-regels blijven gewone regels. */}
@@ -265,7 +265,7 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
               </h2>
               <p style={blockSub}>Wat elke klant deze periode heeft verbruikt, per dienst. Klik op een Claude-regel voor de uitsplitsing per functie.</p>
               {rows.length === 0 ? (
-                <div style={{ color: "#5b6472", padding: "8px 4px", fontSize: 13.5 }}>
+                <div style={{ color: "var(--text-secondary)", padding: "var(--s-2) var(--s-1)", fontSize: "var(--fs-base)" }}>
                   Nog geen verbruik in deze periode.
                 </div>
               ) : (() => {
@@ -276,7 +276,7 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
                 return (
                   <div>
                     {/* Kopregel in dezelfde stijl als de tabelkoppen elders. */}
-                    <div style={{ ...rowGrid, background: "var(--dark, #33302e)", borderRadius: "8px 8px 0 0" }}>
+                    <div style={{ ...rowGrid, background: "var(--dark, #33302e)", borderRadius: "var(--r-md) var(--r-md) 0 0" }}>
                       <div style={th}>Klant</div>
                       <div style={th}>Dienst</div>
                       <div style={thNum}>Aanroepen</div>
@@ -285,7 +285,7 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
                     </div>
                     {rows.map((r, i) => {
                       const nameCell = cName(r) || (
-                        <span style={{ color: "#5b6472", display: "inline-flex", alignItems: "center" }}>
+                        <span style={{ color: "var(--text-secondary)", display: "inline-flex", alignItems: "center" }}>
                           Algemeen (geen klant)
                           <Hint text="Verbruik dat niet aan één klant te koppelen was, bijvoorbeeld algemene functies of oudere metingen van voordat de klant-koppeling bestond. Nieuw verbruik krijgt vrijwel altijd gewoon de klantnaam." />
                         </span>
@@ -304,7 +304,7 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
                       if (breakdown.length === 0) {
                         return (
                           <div key={i} style={rowGrid}>
-                            <div style={{ ...td, paddingLeft: 26 }}>{nameCell}</div>
+                            <div style={{ ...td, paddingLeft: "var(--s-6)" }}>{nameCell}</div>
                             {cells}
                           </div>
                         );
@@ -312,17 +312,17 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
                       return (
                         <details key={i}>
                           <summary style={rowGrid}>
-                            <div style={{ ...td, display: "flex", alignItems: "center", gap: 8 }}>
-                              <span className="usage-car" style={{ display: "inline-block", transition: "transform 0.15s", color: "#d97316", fontSize: 11, flex: "0 0 auto" }}>&#9654;</span>
+                            <div style={{ ...td, display: "flex", alignItems: "center", gap: "var(--s-2)" }}>
+                              <span className="usage-car" style={{ display: "inline-block", transition: "transform 0.15s", color: "var(--accent-warm)", fontSize: "var(--fs-xs)", flex: "0 0 auto" }}>&#9654;</span>
                               {nameCell}
                             </div>
                             {cells}
                           </summary>
                           {/* Uitsplitsing: welke functies veroorzaken dit bedrag. */}
-                          <div style={{ background: "#fbf7f0", borderBottom: "1px solid #f1e9db", padding: "4px 0 8px" }}>
+                          <div style={{ background: "var(--orange-light)", borderBottom: "1px solid #f1e9db", padding: "var(--s-1) 0 var(--s-2)" }}>
                             {breakdown.map((b, j) => (
                               <div key={j} style={rowGrid}>
-                                <div style={{ ...td, borderBottom: "none", paddingLeft: 34, color: "#5b6472" }}>{b.action ? (ACTION_LABEL[b.action] || b.action) : "onbekend"}</div>
+                                <div style={{ ...td, borderBottom: "none", paddingLeft: "var(--s-8)", color: "var(--text-secondary)" }}>{b.action ? (ACTION_LABEL[b.action] || b.action) : "onbekend"}</div>
                                 <div style={{ ...tdNowrap, borderBottom: "none" }} />
                                 <div style={{ ...numTd, borderBottom: "none" }}>{num(b.calls)}</div>
                                 <div style={{ ...numTd, borderBottom: "none" }}>{num(b.tokens_in + b.tokens_out)} tokens</div>
@@ -346,7 +346,7 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
               </h2>
               <p style={blockSub}>Welke knop of functie in het dashboard kost het geld.</p>
               {actionRows.length === 0 ? (
-                <div style={{ color: "#5b6472", padding: "8px 4px", fontSize: 13.5 }}>
+                <div style={{ color: "var(--text-secondary)", padding: "var(--s-2) var(--s-1)", fontSize: "var(--fs-base)" }}>
                   Nog geen Claude-verbruik in deze periode.
                 </div>
               ) : (
