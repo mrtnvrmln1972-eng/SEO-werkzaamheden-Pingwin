@@ -871,6 +871,49 @@ export async function getGa4Comparison(slug: string, domain: string, days: numbe
   return { connected: true, propertyId, dates, totals, channels, aiSources };
 }
 
+// Conversies per pagina (R2: prioriteren op aanvragen in plaats van op klikken).
+// Basis om "verwacht extra bezoek" om te rekenen naar "verwachte aanvragen": per
+// pad hoeveel sessies er waren en hoeveel daarvan een GA4-conversie deden. Geen
+// voor/na-vergelijking (dat doet getGa4PageSignalsBeforeAfter al), maar een
+// site-brede momentopname voor de rekenkern in lib/aanvragen.ts.
+export type Ga4PageConversion = { path: string; sessions: number; conversions: number; ratio: number };
+
+export async function getGa4ConversionsByPage(slug: string, domain: string, days = 90): Promise<Ga4PageConversion[] | null> {
+  const token = await accessTokenFor("google");
+  if (!token) return null;
+  await ensureSchema();
+  const { rows } = await sql`SELECT ga4_property_id FROM clients WHERE slug = ${slug} LIMIT 1`;
+  let propertyId = (rows[0]?.ga4_property_id as string) || "";
+  if (!propertyId && domain) {
+    const found = await ga4DiscoverProperty(token, domain);
+    if (found) { propertyId = found; await sql`UPDATE clients SET ga4_property_id = ${found} WHERE slug = ${slug}`; }
+  }
+  if (!propertyId) return null;
+
+  const end = new Date();
+  const start = new Date();
+  start.setDate(start.getDate() - days);
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const res = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`, {
+    method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      dateRanges: [{ startDate: iso(start), endDate: iso(end) }],
+      dimensions: [{ name: "pagePath" }],
+      metrics: [{ name: "sessions" }, { name: "conversions" }],
+      limit: 1000,
+      orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
+    }),
+  });
+  if (!res.ok) return null;
+  const j = await res.json();
+  type ApiRow = { dimensionValues?: { value: string }[]; metricValues?: { value: string }[] };
+  return ((j.rows || []) as ApiRow[]).map((r) => {
+    const sessions = Number(r.metricValues?.[0]?.value || 0);
+    const conversions = Number(r.metricValues?.[1]?.value || 0);
+    return { path: r.dimensionValues?.[0]?.value || "", sessions, conversions, ratio: sessions > 0 ? conversions / sessions : 0 };
+  });
+}
+
 // Gemiddelde positie van de top-zoekwoorden per maand over de laatste 4 maanden.
 export type GscTrend = { months: string[]; rows: { keyword: string; positions: (number | null)[] }[] };
 

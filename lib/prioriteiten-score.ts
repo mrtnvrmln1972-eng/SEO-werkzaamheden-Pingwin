@@ -85,6 +85,10 @@ export type Bevinding = {
   extraKlikkenPerMaand?: number;
   tier?: string;
   skipReden?: string;
+  // R2: verwachte aanvragen in plaats van bezoek, waar GA4 het per pagina meet.
+  verwachteAanvragenPerMaand?: number;
+  verwachtBedragPerMaand?: number | null;
+  aanvraagBron?: "gemeten" | "onbekend";
 };
 
 function ctrUpliftVan(b: Bevinding): number {
