@@ -497,10 +497,7 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
                 <HelpHint xl title="Wat betekenen 'genereren', 'site-breed' en 'schema'?" text={"**Schema** (ook wel structured data of JSON-LD genoemd) is onzichtbare code in de website die Google en AI-zoekmachines vertelt wie dit bedrijf is en wat een pagina behandelt.\n## Twee lagen\n__Site-breed__ is het ene basisblok met de bedrijfsidentiteit: naam, adres, telefoon, openingstijden, social profielen. Dat hoort op elke pagina, als fundering. Een losse pagina (een behandeling, dienst, artikel) krijgt daarbovenop een eigen, kleiner blok via de structured data-stap in het Pagina's-tabblad; dat blok verwijst terug naar dit fundament in plaats van alles te herhalen.\n## Wat 'genereren' doet\nDeze knop bouwt dat site-brede blok automatisch uit de bevestigde bedrijfsgegevens hierboven, **aanvullend** op wat een SEO-plugin (Yoast, Rank Math, AIOSEO) eventueel al op de site zet: geen dubbele info, de plugin blijft zelf verantwoordelijk voor wat hij al levert en past dat vanzelf aan bij een wijziging.\n## Wat 'Delen met developer' in één klik doet\n- Het bestand komt in Drive te staan.\n- Er komt een taak voor de developer in Werkzaamheden.\n- Er opent een mailvenster met een kant-en-klare introductie; meteen versturen of eerst aanpassen.\n- Wil je eerst de ruwe code bekijken of los kopiëren, dat kan in dat mailvenster onder 'Bekijk de JSON-code'."} />
               </span>
               {shareUrl && (
-                <span className="org-action-hint">
-                  <button type="button" className="btn btn-ghost btn-klein" onClick={openKlantDeel}>Delen met klant</button>
-                  <HelpHint text="Opent een mailvenster naar de klant met de deel-link erin, zodat die de bedrijfsgegevens kan bekijken, corrigeren en aanvullen. In dat venster staat de link ook los te kopiëren, zonder te hoeven mailen." />
-                </span>
+                <button type="button" className="btn btn-ghost btn-klein" onClick={openKlantDeel} title="Opent een mailvenster naar de klant met de deel-link erin; die kan de bedrijfsgegevens dan bekijken, corrigeren en aanvullen.">Delen met klant</button>
               )}
             </div>
             <span className="pnl-acties-scheiding" aria-hidden="true" />
@@ -520,7 +517,7 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
               structureren), dus een eigen rij in plaats van een vijfde groep in
               dezelfde knoppenrij. */}
           <div className="org-actions org-actions-kb">
-            <span className="org-actions-kb-label">Materiaal verwerken</span>
+            <span className="kb-groep-titel">Materiaal verwerken</span>
             <span className="org-kb-workflow" ref={setKbSlot} />
           </div>
           {msg && <div className="saved-msg" style={{ margin: "var(--s-2) 0" }}>{msg}</div>}
