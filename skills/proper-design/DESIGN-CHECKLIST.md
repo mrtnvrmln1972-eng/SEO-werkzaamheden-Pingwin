@@ -39,6 +39,26 @@ rommelig is.
 - [ ] Geen ad-hoc variant van iets dat al bestaat.
 - [ ] Wat klikbaar is, ziet er klikbaar uit en heeft hover- én focus-toestand.
 
+## Interactie en werkstroom
+- [ ] Elke status of telling ("N ontbreken", voortgang) staat op precies één plek; geen twee
+      elementen die onafhankelijk van elkaar hetzelfde melden.
+- [ ] Acties met een vaste volgorde tonen de eerstvolgende stap nadrukkelijk, niet als rij
+      gelijkwaardige knoppen waaruit de gebruiker zelf de volgorde moet afleiden.
+- [ ] Geen knop die alleen bestaat om een trage automatische stap te compenseren (bijv. een
+      "Opslaan"-knop naast autosave); is de vertraging zelf op te lossen, doe dat eerst.
+- [ ] Knoppen zijn gegroepeerd naar de taak die ze dienen, niet naar het object waar ze
+      toevallig bij staan.
+- [ ] Nooit meer dan circa vier tot vijf gelijkwaardige acties in één rij zonder duidelijke
+      groepering (wet van Hick: meer keuzes tegelijk kost meetbaar meer beslistijd).
+- [ ] Een risicovolle, onomkeerbare actie staat kleiner of verder van de andere knoppen af dan
+      een veelgebruikte actie, niet even prominent (wet van Fitts).
+- [ ] Een actie die niet kan, is uitgeschakeld mét uitleg waarom, niet pas een foutmelding
+      achteraf (foutpreventie).
+- [ ] Zoveel losse hulpicoontjes nodig dat bijna elke knop er een heeft? Dat is een signaal om
+      de interface zelf te vereenvoudigen, niet om er nog een hulpicoon bij te zetten.
+
+Uitgewerkt met de onderbouwing en herkomst per punt in `INTERACTIE-PRINCIPES.md`.
+
 ## Toegankelijkheid
 - [ ] Zichtbare focus-toestand voor toetsenbord.
 - [ ] Klik-/tikdoelen groot genoeg (circa 44px).
