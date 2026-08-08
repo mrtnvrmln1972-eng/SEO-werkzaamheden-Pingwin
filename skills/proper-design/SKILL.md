@@ -2,15 +2,18 @@
 name: proper-design
 description: >-
   Algemene, merk-neutrale designprincipes plus een pre-oplever kwaliteitschecklist voor proper
-  design. Gebruik deze skill ALTIJD wanneer je iets vormgeeft of bouwt dat een mens te zien
-  krijgt: een dashboard, webpagina, landingspagina, rapport, e-mail, formulier, UI-component,
-  grafiek, tabel, slide, of welke visuele output dan ook, ook als de gebruiker niet expliciet
-  om "design" vraagt. Triggert op: dashboard bouwen, pagina of component maken, layout,
-  opmaak, "maak dit mooier", vormgeving, UI, data visualiseren, "het staat rommelig",
-  uitlijning, spacing, lettertypes. De skill borgt uitlijning, consistente afstanden, een
-  vaste type-schaal, leesbare hiërarchie en voldoende contrast, zodat vormgeving proper is
-  zonder dat de gebruiker het per keer hoeft uit te leggen. Merk-neutraal: past bovenop een
-  bestaande huisstijl of tokens, en vervangt die nooit.
+  design, én interactie-/werkstroomprincipes voor hoe een scherm zich gedraagt (knopvolgorde,
+  één bron van waarheid per status, groepering naar taak). Gebruik deze skill ALTIJD wanneer je
+  iets vormgeeft of bouwt dat een mens te zien krijgt of mee werkt: een dashboard, webpagina,
+  landingspagina, rapport, e-mail, formulier, UI-component, grafiek, tabel, slide, of welke
+  visuele of interactieve output dan ook, ook als de gebruiker niet expliciet om "design" of
+  "usability" vraagt. Triggert op: dashboard bouwen, pagina of component maken, layout, opmaak,
+  "maak dit mooier", vormgeving, UI, data visualiseren, "het staat rommelig", "het voelt niet
+  intuïtief", te veel knoppen, uitlijning, spacing, lettertypes. De skill borgt uitlijning,
+  consistente afstanden, een vaste type-schaal, leesbare hiërarchie, voldoende contrast én
+  duidelijke, niet-overlappende interactiepatronen, zodat het proper is zonder dat de gebruiker
+  het per keer hoeft uit te leggen. Merk-neutraal: past bovenop een bestaande huisstijl of
+  tokens, en vervangt die nooit.
 ---
 
 # Proper design
@@ -22,13 +25,17 @@ moeten zijn, of dat er niet drie lettertypes door elkaar mogen lopen. Dat borg j
 
 ## Wanneer en hoe je deze skill gebruikt
 
-Zodra je iets bouwt of vormgeeft dat iemand ziet, werk je in drie stappen:
+Zodra je iets bouwt of vormgeeft dat iemand ziet of mee werkt, werk je in vier stappen:
 
 1. **Lees `DESIGN-PRINCIPES.md`** voordat je de eerste regel opmaak of layout schrijft. Dat
    zijn de fundamentals: uitlijning, ritme, typografie, kleur, hiërarchie, consistentie.
-2. **Bouw volgens die principes.** Kies bewust, gok niet. Elke afstand komt van één schaal,
-   elke tekstgrootte van één type-schaal.
-3. **Loop vóór oplevering `DESIGN-CHECKLIST.md` af.** Lever pas op als die slaagt. Faalt een
+2. **Lees `INTERACTIE-PRINCIPES.md`** zodra er meer dan één actie, status of knop op het scherm
+   staat. Dat gaat over gedrag en organisatie: één bron van waarheid per status, volgtijdelijke
+   acties als fase in plaats van gelijkwaardige knoppenrij, geen knop als een compensatie voor
+   een trage automatische stap, groepering naar taak in plaats van naar objecttype.
+3. **Bouw volgens die principes.** Kies bewust, gok niet. Elke afstand komt van één schaal,
+   elke tekstgrootte van één type-schaal, elke knoppenrij is een bewuste indeling.
+4. **Loop vóór oplevering `DESIGN-CHECKLIST.md` af.** Lever pas op als die slaagt. Faalt een
    punt, herstel het eerst. Dit is de motor: kwaliteit wordt afgedwongen, niet alleen
    geadviseerd. Toon de gebruiker kort dat je de checklist hebt gedraaid.
 
