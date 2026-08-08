@@ -165,9 +165,6 @@ checkWaar("afbreken midden in een woord staat alleen op tekst, niet op een heel 
 //   - een verbouwd scherm haal je eraf, en dan kan het nooit meer terugvallen.
 // De lijst mag dus alleen korter worden.
 const ERFENIS = new Set<string>([
-  "app/admin/client/[slug]/PageChat.tsx",
-  "app/admin/client/[slug]/PagesPanel.tsx",
-  "app/admin/client/[slug]/WijzigingenPanel.tsx",
   "app/admin/financien/FinancienClient.tsx",
   "app/admin/financien/page.tsx",
   "app/admin/usage/page.tsx",
@@ -196,8 +193,15 @@ function vasteWaarden(styleInhoud: string): string[] {
 // sanitizeEmail staan er ook in sinds 8 augustus: geen markdown, maar wél
 // een echte ontsmetting (scripts, handlers en inline stijl eruit) vóór
 // dangerouslySetInnerHTML, in Dashboard.tsx, DeveloperOverview.tsx en
-// ClientCockpit.tsx.
-const GERENDERD = /(mdToHtml|veiligeHtml|linkify|safeHtml|sanitizeEmail|__html:\s*\w*[Hh]tml)/;
+// ClientCockpit.tsx. eigenHtml (PageChat.tsx) is geen renderer of ontsmetter,
+// maar een naam die zegt "dit is zelf opgebouwde HTML uit onze eigen tekst en
+// server-velden, geen AI- of gebruikerstekst": niets om te renderen of te
+// ontsmetten, dus bewust een functie die niets doet.
+// "veiligeHtml" stond hier al vanaf het begin, maar de echte functie in
+// lib/veilige-html.ts heet sanitizeHtml; die naam stond dus nooit op de lijst
+// die hij zelf beschreef. Toegevoegd naast de oude naam, niet in de plaats,
+// voor het geval iets er ooit al op vertrouwde.
+const GERENDERD = /(mdToHtml|veiligeHtml|sanitizeHtml|linkify|safeHtml|sanitizeEmail|eigenHtml|__html:\s*\w*[Hh]tml)/;
 
 function alleSchermen(map: string): string[] {
   const uit: string[] = [];

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ClientUrl } from "../../../../lib/site-urls";
 import { mdToHtml } from "../../../../lib/markdown";
+import { sanitizeHtml } from "../../../../lib/veilige-html";
 import ImportAnalysis from "./ImportAnalysis";
 import PageChat from "./PageChat";
 import PaginaDossier from "./PaginaDossier";
@@ -436,7 +437,7 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
       <div className="cockpit-card acc-orange">
         <div className="ck-section-head">
           <span>Pagina&rsquo;s ({urls.length}) <HelpHint xl title="Pagina's: de spiegel van de live site" text={"Dit is de complete werkomgeving per pagina: elke rij is een echte, live pagina van de klant, en openklikken geeft de zes stappen (strategie tot en met structured data) voor precies die pagina.\n## Waar de lijst vandaan komt\n'**Website inlezen**' leest de sitemap van de site en controleert elke pagina live op status en titel (automatische tag- en filterpagina's van webshopsystemen worden overgeslagen). Daarnaast worden per pagina de Search Console-cijfers (klikken, vertoningen, positie) en het beste zoekwoord met Ahrefs-volume erbij gezet.\n## De kolommen die het werk sturen\n- **Kans** rekent per pagina uit waar het meeste te winnen valt: veel vertoningen met een positie net buiten de top (11-20) is een grote kans, positie 4-10 een quick win. Sorteer hierop en werk van boven naar beneden.\n- **Ster** = prioriteit; gedeeld met de KPI's- en Wijzigingen-tab.\n- **Plan** toont of er al een vastgelegde strategie ligt (leeg, half plan uit een doorgegeven advies, of plan).\n## Eén principe om te onthouden\nDeze lijst is de **werkelijkheid van nu**. Het toekomstige adres van een pagina (een redirect of een nieuwe pagina) leeft in het plan en in de taken, niet in deze lijst; pas als het live staat, verschijnt het hier bij de volgende scan."} /></span>
-          <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
+          <span style={{ display: "inline-flex", gap: "var(--s-2)", alignItems: "center" }}>
             <input
               className="pages-search"
               style={{ width: 240 }}
@@ -467,8 +468,8 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
 
         {newPageOpen && (
           <div className="new-page-form">
-            <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>Voeg een pagina toe die nog niet bestaat (bijvoorbeeld een nieuwe dienst of locatie). Er is nog geen Search Console-data, maar je kunt er wel meteen een plan, blauwdruk en copywriting voor maken.</div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <div className="muted" style={{ fontSize: "var(--fs-sm)", marginBottom: "var(--s-2)" }}>Voeg een pagina toe die nog niet bestaat (bijvoorbeeld een nieuwe dienst of locatie). Er is nog geen Search Console-data, maar je kunt er wel meteen een plan, blauwdruk en copywriting voor maken.</div>
+            <div style={{ display: "flex", gap: "var(--s-2)", flexWrap: "wrap", alignItems: "center" }}>
               <input className="pages-search" style={{ flex: "1 1 280px", minWidth: 220 }} placeholder="Pad of volledige URL, bijv. /nieuwe-dienst/" value={newPath} onChange={(e) => setNewPath(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addPage(); }} />
               <input className="pages-search" style={{ flex: "1 1 220px", minWidth: 180 }} placeholder="Titel (optioneel)" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addPage(); }} />
               <button type="button" className={"pcd-btn" + (addingPage ? " busy" : "")} onClick={addPage} disabled={addingPage}>{addingPage ? "Toevoegen…" : "Toevoegen"}</button>
@@ -476,15 +477,15 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
             </div>
           </div>
         )}
-        {msg && <div className="saved-msg" style={{ marginBottom: 10 }}>{msg}</div>}
+        {msg && <div className="saved-msg" style={{ marginBottom: "var(--s-3)" }}>{msg}</div>}
 
         <div className="profile-search-row">
           <button type="button" className="client-profile-toggle" onClick={() => setProfileOpen((v) => !v)}>
             {profileOpen ? "▾" : "▸"} Klantprofiel {(profile || "").trim() ? <span className="plan-chip has">ingevuld</span> : <span className="plan-chip">leeg</span>}
-            {profileSaved && <span className="focus-save-status" style={{ marginLeft: 8 }}>✓ opgeslagen</span>}
+            {profileSaved && <span className="focus-save-status" style={{ marginLeft: "var(--s-2)" }}>✓ opgeslagen</span>}
           </button>
           <span onClick={(e) => e.stopPropagation()}><HelpHint xl title="Wat is het klantprofiel en waar wordt het gebruikt?" text={"Het klantprofiel is de vaste briefing over deze klant: wie het bedrijf is, wat het aanbiedt, voor wie (doelgroep en hun twijfels), het werkgebied (lokaal, regionaal of landelijk), de positionering (prijs, kwaliteit, exclusief, duurzaam) en de tone of voice. Het is het geheugen dat de AI bij ELKE actie voor deze klant meekrijgt.\nHet profiel wordt automatisch gebruikt door:\n- De strategie-chat per pagina (stap 1): het advies houdt rekening met positionering en werkgebied; is het profiel leeg, dan gaat de chat er eerst naar vragen.\n- De documenten (analyse, blauwdruk en copy): de teksten klinken naar dit bedrijf in plaats van als generieke AI-tekst.\n- Strategie- en clusterbepaling: welke zoekwoorden en pagina's passen bij wat dit bedrijf wil zijn.\nHoe beter dit profiel, hoe scherper alle adviezen en teksten. Vul het één keer goed in (of laat het opstellen met de knoppen hieronder) en werk het bij wanneer de klant zijn koers wijzigt. Het profiel bestaat uit drie delen: het klantprofiel en de tone-of-voice kun je automatisch laten genereren; het derde deel is jullie eigen kennis over de klant (afspraken, voorkeuren, no-go's), die vul je zelf aan."} /></span>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: "var(--s-2)" }}>
             {q.trim() && <span className="sov-sub" style={{ whiteSpace: "nowrap" }}>{filtered.length} van {urls.length}</span>}
             <input className="pages-search" placeholder="Zoek in URL of titel…" value={q} onChange={(e) => setQ(e.target.value)} />
           </span>
@@ -496,17 +497,17 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
               <span onClick={(e) => e.stopPropagation()}><HelpHint xl title="Wat gebeurt er bij 'Klantprofiel opstellen'?" text={"Deze knop laat de AI de LIVE website van de klant lezen (homepage plus de belangrijkste pagina's) en daaruit een compleet klantprofiel opstellen. Dat gaat in vier stappen:\n- De AI leest de site en destilleert daaruit: wie het bedrijf is, het aanbod en de diensten, de doelgroep en hun vragen of twijfels, het werkgebied en de positionering (waarin onderscheidt dit bedrijf zich).\n- Het resultaat komt als concept in het veld 'Uit klantprofiel' hieronder te staan. Je kunt het daar gewoon nalezen en aanpassen; het is een vertrekpunt, geen eindstation.\n- Er wordt een net opgemaakt Pingwin-document van gemaakt, dat in de gekozen Drive-klantmap komt (of als download als er geen map of Drive-koppeling is).\n- Het verschijnt als afgeronde werkzaamheid in de takenlijst én op het klantdashboard, zodat de klant ziet dat dit werk gedaan is.\nHet profiel wordt daarna automatisch gebruikt door alle chats, analyses en documenten voor deze klant (zie het vraagteken bij 'Klantprofiel' hierboven). Draait op de achtergrond en kost een klein beetje Claude-tegoed; je kunt hem later gewoon opnieuw draaien als de site wezenlijk verandert."} /></span>
               <button type="button" className={"pcd-btn" + (genBusy === "tov" ? " busy" : "")} onClick={() => generateProfile("tov")} disabled={!!genBusy}>{genBusy === "tov" ? "Tone-of-voice analyseren…" : made.tov ? "Tone-of-voice gemaakt ✓" : "Tone-of-voice analyse"}</button>
               <span onClick={(e) => e.stopPropagation()}><HelpHint xl title="Wat gebeurt er bij 'Tone-of-voice analyse'?" text={"Deze knop laat de AI de bestaande teksten op de live website analyseren op schrijfstijl: hoe klinkt dit bedrijf?\n- De AI kijkt naar aanspreekvorm (je/u), toon (zakelijk, warm, nuchter, speels), zinslengte en woordkeuze, hoe claims worden onderbouwd, en wat het bedrijf juist NIET zegt.\n- Het resultaat komt als apart tone-of-voice-blok in het klantprofiel-veld te staan (onder de kop 'Tone of voice'), naast het inhoudelijke profiel; je kunt het nalezen en bijstellen.\n- Er wordt een Pingwin-document van gemaakt in de Drive-klantmap (of als download) en een afgeronde werkzaamheid in de takenlijst en het klantdashboard.\nWaarom dit belangrijk is: de copy-stap (stap 3) en alle andere teksten die de AI voor deze klant schrijft, volgen deze tone-of-voice. Zo klinken nieuwe teksten als de klant zelf en niet als een willekeurige tekstrobot, en blijft de site consistent als meerdere mensen eraan werken. Draait op de achtergrond; opnieuw draaien mag altijd."} /></span>
-              <span className="muted" style={{ fontSize: 11 }}>Leest de live site, zet een concept in het veld en maakt er een Pingwin-document + taak van.</span>
+              <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>Leest de live site, zet een concept in het veld en maakt er een Pingwin-document + taak van.</span>
             </div>
-            <div className="page-chat-drive" style={{ marginBottom: 8 }}>
+            <div className="page-chat-drive" style={{ marginBottom: "var(--s-2)" }}>
               <span className="pcd-label">Documenten opslaan in:</span>
               {driveFolder
                 ? <span className="pcd-folder">{driveFolder.path || driveFolder.name}</span>
                 : <span className="pcd-folder muted">nog geen Drive-map (zonder map worden ze in je hoofdmap gezet)</span>}
               <button type="button" className="ghost-btn small" onClick={openPicker}>{driveFolder ? "Klantmap wijzigen" : "Kies klantmap"}</button>
             </div>
-            {genErr && <div className="login-error" style={{ marginBottom: 8 }}>{genErr}</div>}
-            {genMsg && <div className="saved-msg" style={{ marginBottom: 8 }}>{genMsg}</div>}
+            {genErr && <div className="login-error" style={{ marginBottom: "var(--s-2)" }}>{genErr}</div>}
+            {genMsg && <div className="saved-msg" style={{ marginBottom: "var(--s-2)" }}>{genMsg}</div>}
             {(["profile", "tov"] as const).map((k) => made[k] && (
               <div key={k} className="profile-made-note">
                 {k === "profile" ? "Klantprofiel-document" : "Tone-of-voice-document"} gemaakt en als taak toegevoegd (zichtbaar in Werkzaamheden en de klantdash).
@@ -516,23 +517,23 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
 
             {/* De twee gegenereerde delen als toggle, standaard dicht. */}
             <div className="profile-part acc-teal">
-              <button type="button" className="profile-part-head" style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }} onClick={() => setGenPartOpen((o) => ({ ...o, profile: !o.profile }))}>
+              <button type="button" className="profile-part-head" style={{ display: "flex", alignItems: "center", gap: "var(--s-2)", width: "100%", background: "none", border: "none", padding: "var(--s-0)", cursor: "pointer", textAlign: "left" }} onClick={() => setGenPartOpen((o) => ({ ...o, profile: !o.profile }))}>
                 <span>{genPartOpen.profile ? "▾" : "▸"}</span> Klantprofiel (automatisch gegenereerd)
-                {!parts.profileMd && <span className="plan-chip" style={{ marginLeft: 8 }}>leeg</span>}
+                {!parts.profileMd && <span className="plan-chip" style={{ marginLeft: "var(--s-2)" }}>leeg</span>}
               </button>
               {genPartOpen.profile && (parts.profileMd
                 ? <div className="md profile-part-body" dangerouslySetInnerHTML={{ __html: mdToHtml(parts.profileMd.replace(/^##[^\n]*\n?/, ""), domain) }} />
-                : <div className="muted" style={{ fontSize: 12 }}>Nog niet opgesteld. Klik &ldquo;Klantprofiel opstellen&rdquo; hierboven.</div>)}
+                : <div className="muted" style={{ fontSize: "var(--fs-sm)" }}>Nog niet opgesteld. Klik &ldquo;Klantprofiel opstellen&rdquo; hierboven.</div>)}
             </div>
 
             <div className="profile-part acc-blue">
-              <button type="button" className="profile-part-head" style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }} onClick={() => setGenPartOpen((o) => ({ ...o, tov: !o.tov }))}>
+              <button type="button" className="profile-part-head" style={{ display: "flex", alignItems: "center", gap: "var(--s-2)", width: "100%", background: "none", border: "none", padding: "var(--s-0)", cursor: "pointer", textAlign: "left" }} onClick={() => setGenPartOpen((o) => ({ ...o, tov: !o.tov }))}>
                 <span>{genPartOpen.tov ? "▾" : "▸"}</span> Tone of voice (automatisch gegenereerd)
-                {!parts.tovMd && <span className="plan-chip" style={{ marginLeft: 8 }}>leeg</span>}
+                {!parts.tovMd && <span className="plan-chip" style={{ marginLeft: "var(--s-2)" }}>leeg</span>}
               </button>
               {genPartOpen.tov && (parts.tovMd
                 ? <div className="md profile-part-body" dangerouslySetInnerHTML={{ __html: mdToHtml(parts.tovMd.replace(/^##[^\n]*\n?/, ""), domain) }} />
-                : <div className="muted" style={{ fontSize: 12 }}>Nog niet opgesteld. Klik &ldquo;Tone-of-voice analyse&rdquo; hierboven.</div>)}
+                : <div className="muted" style={{ fontSize: "var(--fs-sm)" }}>Nog niet opgesteld. Klik &ldquo;Tone-of-voice analyse&rdquo; hierboven.</div>)}
             </div>
 
             <div className="profile-part acc-taupe">
@@ -547,13 +548,13 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
           </div>
         )}
 
-        {loading && <div className="muted" style={{ marginTop: 10 }}>Pagina&rsquo;s laden…</div>}
+        {loading && <div className="muted" style={{ marginTop: "var(--s-3)" }}>Pagina&rsquo;s laden…</div>}
         {!loading && urls.length === 0 && (
-          <div className="muted" style={{ marginTop: 10 }}>Nog geen pagina&rsquo;s ingelezen. Klik &ldquo;Website inlezen&rdquo; (de klant moet een domein hebben).</div>
+          <div className="muted" style={{ marginTop: "var(--s-3)" }}>Nog geen pagina&rsquo;s ingelezen. Klik &ldquo;Website inlezen&rdquo; (de klant moet een domein hebben).</div>
         )}
 
         {!loading && filtered.length > 0 && (
-          <div className="res-table-wrap pages-table-wrap" style={{ marginTop: 12 }}>
+          <div className="res-table-wrap pages-table-wrap" style={{ marginTop: "var(--s-3)" }}>
             <table className="res-table pages-table">
               <thead><tr>
                 <th className="pg-sort" onClick={() => setSortKey("prio")} title="Sorteer op prioriteit: sterretjes bovenaan, dan pagina's met een plan, dan op kans">★{sortKey === "prio" ? " ▾" : ""}</th>
@@ -599,10 +600,10 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
                   </span>
                 ))}
               </div>
-              {pickErr && <div className="login-error" style={{ marginTop: 6 }}>{pickErr}</div>}
+              {pickErr && <div className="login-error" style={{ marginTop: "var(--s-2)" }}>{pickErr}</div>}
               <div className="drive-list">
-                {pickBusy && <div className="muted" style={{ padding: 8 }}>Laden…</div>}
-                {!pickBusy && folders.length === 0 && <div className="muted" style={{ padding: 8 }}>Geen submappen hier. Kies deze map, of maak een nieuwe submap.</div>}
+                {pickBusy && <div className="muted" style={{ padding: "var(--s-2)" }}>Laden…</div>}
+                {!pickBusy && folders.length === 0 && <div className="muted" style={{ padding: "var(--s-2)" }}>Geen submappen hier. Kies deze map, of maak een nieuwe submap.</div>}
                 {!pickBusy && folders.map((f) => (
                   <button key={f.id} type="button" className="drive-row" onClick={() => enterFolder(f)}>{f.name} <span className="muted">openen ›</span></button>
                 ))}
@@ -727,10 +728,10 @@ function PageRow({ slug, u, opp, fases, open, onToggle, clientEmail, clientName,
           {opp?.bestKeyword && <div className="pg-kw" title="Beste zoekwoord (meeste vertoningen), met zoekvolume en huidige positie">{opp.bestKeyword}{opp.bestVolume != null ? ` · vol ${opp.bestVolume.toLocaleString("nl-NL")}` : ""}{opp.bestPosition != null ? ` / pos ${opp.bestPosition}` : ""}</div>}
         </td>
         <td>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--s-2)" }}>
             <button type="button" onClick={(e) => { e.stopPropagation(); void toggleKeywords(); }}
               title="Alle zoekwoorden en posities waar deze pagina nu op scoort (Search Console, 90 dagen)"
-              style={{ border: "1px solid var(--border)", background: kwOpen ? "var(--orange-light)" : "#fff", borderRadius: 6, cursor: "pointer", padding: "1px 7px", fontSize: 11, color: "var(--gray)", flex: "0 0 auto" }}>
+              style={{ border: "1px solid var(--border)", background: kwOpen ? "var(--orange-light)" : "var(--white)", borderRadius: "var(--r-sm)", cursor: "pointer", padding: "var(--s-1) var(--s-2)", fontSize: "var(--fs-xs)", color: "var(--gray)", flex: "0 0 auto" }}>
               {kwOpen ? "▾" : "▸"} zw
             </button>
             {opp && opp.clicks > 0 ? opp.clicks.toLocaleString("nl-NL") : (u.gscClicks > 0 ? u.gscClicks.toLocaleString("nl-NL") : <span className="muted">&mdash;</span>)}
@@ -755,7 +756,7 @@ function PageRow({ slug, u, opp, fases, open, onToggle, clientEmail, clientName,
       {kwOpen && (
         <tr className="pages-detail-row">
           <td colSpan={11}>
-            <div className="pages-detail" style={{ padding: "10px 14px" }}>
+            <div className="pages-detail" style={{ padding: "var(--s-3) var(--s-4)" }}>
               {kws === null && <div className="muted">Zoekwoorden laden uit Search Console&hellip;</div>}
               {kws !== null && kws.length === 0 && <div className="muted">Geen zoekwoorden gevonden voor deze pagina (of Search Console heeft nog geen data).</div>}
               {kws !== null && kws.length > 0 && (
@@ -811,16 +812,16 @@ function PageRow({ slug, u, opp, fases, open, onToggle, clientEmail, clientName,
                     {loose.length > 0 && (
                       <div className="page-tasks-cleanup">
                         Er staan nog {loose.length} losse taken van de oude werkwijze bij deze pagina. Die horen nu in het plan, niet als aparte werkzaamheden. Kijk hieronder wat erin staat, zet over wat je wilt bewaren in het plan, en ruim dan op.
-                        <ul className="page-tasks-list" style={{ marginTop: 8 }}>
+                        <ul className="page-tasks-list" style={{ marginTop: "var(--s-2)" }}>
                           {loose.map((t, i) => (
                             <li key={t.id ?? i} className="page-task">
                               {t.wie && <span className={"pt-wie" + (t.wie === "Dev" ? " dev" : "")}>{t.wie}</span>}
-                              <span className="pt-taak" dangerouslySetInnerHTML={{ __html: t.taak }} />
+                              <span className="pt-taak" dangerouslySetInnerHTML={{ __html: sanitizeHtml(t.taak) }} />
                               {t.status && <span className="pt-status">{t.status}</span>}
                             </li>
                           ))}
                         </ul>
-                        <button type="button" className="ghost-btn small" style={{ marginTop: 8 }} onClick={cleanupLoose} disabled={cleaning}>{cleaning ? "Opruimen…" : `Opruimen (${loose.length})`}</button>
+                        <button type="button" className="ghost-btn small" style={{ marginTop: "var(--s-2)" }} onClick={cleanupLoose} disabled={cleaning}>{cleaning ? "Opruimen…" : `Opruimen (${loose.length})`}</button>
                       </div>
                     )}
                   </>
@@ -835,9 +836,9 @@ function PageRow({ slug, u, opp, fases, open, onToggle, clientEmail, clientName,
                 planSlot={
                   // De vastgelegde strategie (het plan) hoort bij stap 1 en staat
                   // bovenin het strategie-blok; de chat eronder werkt ernaartoe.
-                  <div className={"pages-plan-inline" + ((plan || "").trim() ? " done" : "")} style={{ border: "1px solid var(--border)", borderLeft: "3px solid var(--orange)", borderRadius: 10, padding: "10px 14px", marginBottom: 12, background: "#fff" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 6 }}>
-                      <strong style={{ fontSize: 13 }}>Vastgelegde strategie (de conclusie van deze stap)</strong>
+                  <div className={"pages-plan-inline" + ((plan || "").trim() ? " done" : "")} style={{ border: "1px solid var(--border)", borderLeft: "3px solid var(--orange)", borderRadius: "var(--r-md)", padding: "var(--s-3) var(--s-4)", marginBottom: "var(--s-3)", background: "var(--white)" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "var(--s-2)", flexWrap: "wrap", marginBottom: "var(--s-2)" }}>
+                      <strong style={{ fontSize: "var(--fs-sm)" }}>Vastgelegde strategie (de conclusie van deze stap)</strong>
                       {!(plan || "").trim() && <span className="plan-chip">nog geen strategie</span>}
                       {saved && <span className="focus-save-status">opgeslagen</span>}
                       <span style={{ marginLeft: "auto" }}><button type="button" className="ghost-btn small" onClick={() => { if (editing) savePlan(); else setEditing(true); }}>{editing ? "Klaar" : "Bewerken"}</button></span>
@@ -849,7 +850,7 @@ function PageRow({ slug, u, opp, fases, open, onToggle, clientEmail, clientName,
                         ? <div className="pages-plan-view md" dangerouslySetInnerHTML={{ __html: renderPlanHtml(plan) }} />
                         : <div className="pages-plan-view muted">Nog geen strategie vastgelegd. Werk hem uit in de chat hieronder en klik &ldquo;Vat samen &amp; leg strategie vast&rdquo;, of klik Bewerken om hem zelf te typen.</div>
                     )}
-                    {u.redirectTarget && <div className="muted" style={{ marginTop: 6 }}>Live redirect: → <a href={u.redirectTarget} target="_blank" rel="noreferrer">{u.redirectTarget}</a></div>}
+                    {u.redirectTarget && <div className="muted" style={{ marginTop: "var(--s-2)" }}>Live redirect: → <a href={u.redirectTarget} target="_blank" rel="noreferrer">{u.redirectTarget}</a></div>}
                   </div>
                 }
               />

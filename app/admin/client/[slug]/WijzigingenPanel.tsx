@@ -143,7 +143,7 @@ function Spark({ data, metric, invert, markers, hoverKey, onHover }: { data: Day
   const [hover, setHover] = useState<number | null>(null);
   const w = 360, h = 84, pad = 8;
   const pts = data.filter((d) => d.date);
-  if (pts.length < 2) return <div className="muted" style={{ fontSize: 12, padding: "18px 0" }}>Nog te weinig GSC-data voor deze periode.</div>;
+  if (pts.length < 2) return <div className="muted" style={{ fontSize: "var(--fs-sm)", padding: "var(--s-5) 0" }}>Nog te weinig GSC-data voor deze periode.</div>;
   const vals = pts.map((d) => Number(d[metric]) || 0);
   const min = Math.min(...vals), max = Math.max(...vals), range = max - min || 1;
   const x = (i: number) => pad + (i / (pts.length - 1)) * (w - 2 * pad);
@@ -480,7 +480,7 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
       <div className="cockpit-card">
         <button type="button" className="ghost-btn small" onClick={() => setOpen(null)}>← Alle wijzigingen</button>
         <h2 className="wz-title">{open.diff.meta_title?.after || open.diff.h1?.after || shortUrl(open.url)}</h2>
-        <div className="muted" style={{ marginBottom: 14 }}>{shortUrl(open.url)} · {momentsAsc.length} verandermoment{momentsAsc.length === 1 ? "" : "en"}</div>
+        <div className="muted" style={{ marginBottom: "var(--s-4)" }}>{shortUrl(open.url)} · {momentsAsc.length} verandermoment{momentsAsc.length === 1 ? "" : "en"}</div>
         <div className="wz-detail-grid">
           <div className="wz-detail-card acc-taupe">
             <div className="wz-detail-card-title">Wat veranderde</div>
@@ -492,14 +492,14 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
                 <div key={key} className={"wz-moment" + (hoverMoment === key ? " active" : "")}
                   onMouseEnter={() => setHoverMoment(key)} onMouseLeave={() => setHoverMoment(null)}>
                   <div className="wz-moment-head">Wat veranderde op {dLong(m.date)}</div>
-                  {ev.isManual && ev.summary && <div className="wz-line" style={{ background: "#fff6e5", marginBottom: 6 }}>{ev.summary}</div>}
-                  {hasDiff ? <DiffView diff={ev.diff} /> : <div className="muted" style={{ fontSize: 12 }}>Geen inhoudelijke verschillen gedetecteerd.</div>}
+                  {ev.isManual && ev.summary && <div className="wz-line" style={{ background: "var(--highlight-manual)", marginBottom: "var(--s-2)" }}>{ev.summary}</div>}
+                  {hasDiff ? <DiffView diff={ev.diff} /> : <div className="muted" style={{ fontSize: "var(--fs-sm)" }}>Geen inhoudelijke verschillen gedetecteerd.</div>}
                 </div>
               );
             })}
           </div>
           <div className="wz-detail-card acc-teal">
-            <div className="wz-detail-card-title" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+            <div className="wz-detail-card-title" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--s-3)" }}>
               <span>KPI-impact</span>
               <select className="kpi-period-select" value={kpiDays} onChange={(e) => setKpiDays(Number(e.target.value))} title="Hoeveel dagen vóór én ná het moment je wilt zien en vergelijken">
                 <option value={14}>14 dagen vóór/ná</option>
@@ -508,8 +508,8 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
                 <option value={90}>90 dagen vóór/ná</option>
               </select>
             </div>
-            <p className="muted" style={{ fontSize: 12, margin: "2px 0 10px" }}>Elke gedateerde stippellijn is een verandermoment. Eronder staat de waarde óp dat moment → de waarde nu (of tot het volgende moment) (groen = beter, rood = slechter). Beweeg over een stippellijn (of een sectie links) om dat moment op te lichten. Met de keuze rechtsboven stel je in hoeveel dagen vóór en ná je toont en vergelijkt.</p>
-            {kpiLoading && <div className="muted" style={{ padding: 12 }}>KPI's laden…</div>}
+            <p className="muted" style={{ fontSize: "var(--fs-sm)", margin: "var(--s-1) 0 var(--s-3)" }}>Elke gedateerde stippellijn is een verandermoment. Eronder staat de waarde óp dat moment → de waarde nu (of tot het volgende moment) (groen = beter, rood = slechter). Beweeg over een stippellijn (of een sectie links) om dat moment op te lichten. Met de keuze rechtsboven stel je in hoeveel dagen vóór en ná je toont en vergelijkt.</p>
+            {kpiLoading && <div className="muted" style={{ padding: "var(--s-3)" }}>KPI's laden…</div>}
             {!kpiLoading && kpi && (
               <div className="wz-kpi">
                 <KpiBlock label="Kliks per dag" sub={shortUrl(open.url)}><Spark data={kpi.daily} markers={markers} hoverKey={hoverMoment} onHover={setHoverMoment} metric="clicks" /></KpiBlock>
@@ -523,7 +523,7 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
                 )}
                 {kpi.keywords.length > 0 && (
                   <div className="wz-kw">
-                    <div className="wz-kpi-label" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                    <div className="wz-kpi-label" style={{ display: "flex", alignItems: "center", gap: "var(--s-3)", flexWrap: "wrap" }}>
                       <span>Keyword-rankings (voor → na) <span className="sov-sub">vink de belangrijkste aan, die komen bovenaan (gedeeld met de KPI-tab)</span></span>
                       <input className="pages-search" style={{ marginLeft: "auto", width: 200 }} placeholder="Filter op zoekwoord…" value={kwFilter} onChange={(e) => setKwFilter(e.target.value)} />
                     </div>
@@ -603,7 +603,7 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
                 {kpi.gscConnected === false ? (
                   <div className="phase2-note">De Google-koppeling is verlopen; daarom tonen de grafieken geen data. <a href="/api/google/auth/start">Koppel Google opnieuw</a>, dan laden ze direct weer.</div>
                 ) : kpi.daily.length < 2 && kpi.keywords.length === 0 && !(kpi.ga4 && kpi.ga4.available) && (
-                  <div className="muted" style={{ fontSize: 12 }}>Nog geen GSC-data voor deze periode (Search Console loopt 1-3 dagen achter, en na een verse wijziging is er nog weinig data ná het moment).</div>
+                  <div className="muted" style={{ fontSize: "var(--fs-sm)" }}>Nog geen GSC-data voor deze periode (Search Console loopt 1-3 dagen achter, en na een verse wijziging is er nog weinig data ná het moment).</div>
                 )}
               </div>
             )}
@@ -619,7 +619,7 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
     <div className="cockpit-card acc-teal">
       <div className="ck-section-head">
         <span>Wijzigingen ({clusters.length}) <HelpHint xl title="Wijzigingen: wat is er veranderd, en werkte het?" text={"SEO-werk bewijst zich pas als je de aanpassing én het effect naast elkaar ziet. Dit tabblad legt beide vast: **wat er op elke pagina veranderd is, wanneer, door wie; en wat de rankings daarna deden.**\n## Waar de wijzigingen vandaan komen\n- **Uit WordPress** (met de koppeling): de complete bewerkingshistorie per pagina, tot zo'n 8 maanden terug, inclusief aanpassingen door de klant of hun eigen developer; wie het deed staat erbij. Zonder koppeling wordt per pagina de laatste wijzigingsdatum opgehaald.\n- **Uit de scan:** 'Scan op wijzigingen' legt een basislijn vast van elke pagina (titel, koppen, alt-teksten, interne links, woordenaantal, schema) en detecteert daarna elk verschil; ook op sites zonder WordPress.\n- **Handmatig:** een bekende aanpassing uit het verleden kun je zelf toevoegen om het effect alsnog te volgen.\n## Hoe je het effect leest\nAanpassingen aan dezelfde pagina binnen 2 dagen worden gebundeld tot één moment (Google indexeert de pagina dan toch opnieuw als één geheel). Klik het moment open en je ziet de KPI-ontwikkeling eromheen: posities, klikken en vertoningen vóór en ná de wijziging. Dat is het eerlijkste antwoord op de vraag 'heeft die aanpassing gewerkt?'.\n## Handig\nDe ster zet een pagina op prioriteit (gedeeld met de andere tabs); geprioriteerde pagina's staan hier altijd bovenaan."} /></span>
-        <span style={{ display: "inline-flex", gap: 8 }}>
+        <span style={{ display: "inline-flex", gap: "var(--s-2)" }}>
           <button type="button" className="ghost-btn small" onClick={() => setShowAdd((v) => !v)}>{showAdd ? "Sluiten" : "Wijziging toevoegen"}</button>
           {!wpSet && <button type="button" className="ghost-btn small" onClick={() => setWpSetupOpen((v) => !v)} title="WordPress-applicatiewachtwoord instellen voor de volledige bewerkingshistorie">WordPress-koppeling</button>}
           <button type="button" className="ghost-btn small" onClick={syncWordpress} disabled={wpBusy} title={wpSet ? "Haalt de volledige bewerkingshistorie (revisies) uit WordPress" : "Haalt per pagina de laatste wijzigingsdatum op (stel een koppeling in voor de volledige historie)"}>{wpBusy ? "Uit WordPress…" : (wpSet ? "Uit WordPress ophalen (historie)" : "Uit WordPress ophalen")}</button>
@@ -641,7 +641,7 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
       )}
       {wpSetupOpen && (
         <div className="wz-add">
-          <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>
+          <div className="muted" style={{ fontSize: "var(--fs-sm)", marginBottom: "var(--s-2)" }}>
             Voor de volledige bewerkingshistorie (wat is wanneer veranderd) heeft het dashboard een WordPress-applicatiewachtwoord nodig. Maak dat in WordPress-beheer aan: <strong>Gebruikers → Profiel → Wachtwoorden voor applicaties</strong>, geef het een naam (bijv. &ldquo;Pingwin dashboard&rdquo;), en plak de getoonde code hieronder. Zonder koppeling haalt de knop alleen de laatste wijzigingsdatum per pagina op.
           </div>
           <div className="wz-add-row">
@@ -658,17 +658,17 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
               <div className="hint">De code uit WordPress-beheer → Gebruikers → Profiel → Wachtwoorden voor applicaties. Niet je gewone wachtwoord.</div>
             </div>
           </div>
-          <div style={{ marginTop: 8, display: "inline-flex", gap: 8, alignItems: "center" }}>
+          <div style={{ marginTop: "var(--s-2)", display: "inline-flex", gap: "var(--s-2)", alignItems: "center" }}>
             <button type="button" className="primary-btn small" onClick={saveWpCreds} disabled={wpSaveBusy || !wpUser.trim() || !wpPass.trim()}>{wpSaveBusy ? "Testen…" : "Opslaan en testen"}</button>
             {wpSet && <button type="button" className="ghost-btn small" onClick={removeWpCreds} disabled={wpSaveBusy}>Koppeling verwijderen</button>}
-            {wpSet && <span className="muted" style={{ fontSize: 12 }}>Ingesteld{wpUser ? ` (${wpUser})` : ""}.</span>}
+            {wpSet && <span className="muted" style={{ fontSize: "var(--fs-sm)" }}>Ingesteld{wpUser ? ` (${wpUser})` : ""}.</span>}
           </div>
-          {wpSaveMsg && <div className={wpSaveOk ? "saved-msg" : "login-error"} style={{ marginTop: 8 }}>{wpSaveMsg}</div>}
+          {wpSaveMsg && <div className={wpSaveOk ? "saved-msg" : "login-error"} style={{ marginTop: "var(--s-2)" }}>{wpSaveMsg}</div>}
         </div>
       )}
       {showAdd && (
         <div className="wz-add">
-          <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>Een bekende aanpassing uit het verleden vastleggen (bijv. Hovenier Den Bosch, 2 weken terug), zodat je de KPI-ontwikkeling eromheen kunt volgen.</div>
+          <div className="muted" style={{ fontSize: "var(--fs-sm)", marginBottom: "var(--s-2)" }}>Een bekende aanpassing uit het verleden vastleggen (bijv. Hovenier Den Bosch, 2 weken terug), zodat je de KPI-ontwikkeling eromheen kunt volgen.</div>
           <div className="wz-add-row">
             <select className="compose-input" value={addUrl} onChange={(e) => setAddUrl(e.target.value)}>
               <option value="">Kies een pagina…</option>
@@ -676,18 +676,18 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
             </select>
             <input className="compose-input" type="date" value={addDate} onChange={(e) => setAddDate(e.target.value)} />
           </div>
-          <input className="compose-input" style={{ marginTop: 8 }} value={addNote} onChange={(e) => setAddNote(e.target.value)} placeholder="Wat is er aangepast? (bijv. nieuwe H1 + intro herschreven)" />
-          <div style={{ marginTop: 8 }}>
+          <input className="compose-input" style={{ marginTop: "var(--s-2)" }} value={addNote} onChange={(e) => setAddNote(e.target.value)} placeholder="Wat is er aangepast? (bijv. nieuwe H1 + intro herschreven)" />
+          <div style={{ marginTop: "var(--s-2)" }}>
             <button type="button" className="primary-btn small" onClick={addManual} disabled={!addUrl || !addDate || addBusy}>{addBusy ? "Toevoegen…" : "Toevoegen"}</button>
           </div>
         </div>
       )}
-      <p className="muted" style={{ marginTop: 4 }}>Detecteert automatisch wat er op de live pagina's verandert (titel, koppen, alt-teksten, interne links, woordenaantal, schema). De eerste scan legt de basislijn vast; daarna zie je hier elke wijziging.
+      <p className="muted" style={{ marginTop: "var(--s-1)" }}>Detecteert automatisch wat er op de live pagina's verandert (titel, koppen, alt-teksten, interne links, woordenaantal, schema). De eerste scan legt de basislijn vast; daarna zie je hier elke wijziging.
         {wpSet && <> WordPress is gekoppeld. <button type="button" className="link-inline" onClick={() => setWpSetupOpen((v) => !v)}>koppeling beheren</button>.</>}
       </p>
-      {msg && <div className={/mislukt|fout|niet /i.test(msg) ? "login-error" : "saved-msg"} style={{ marginTop: 8 }}>{msg}</div>}
-      {loading && <div className="muted" style={{ padding: 12 }}>Laden…</div>}
-      {!loading && events.length === 0 && <div className="muted" style={{ padding: 12 }}>Nog geen wijzigingen. Draai een scan (basislijn), en na een volgende scan verschijnen hier de veranderingen.</div>}
+      {msg && <div className={/mislukt|fout|niet /i.test(msg) ? "login-error" : "saved-msg"} style={{ marginTop: "var(--s-2)" }}>{msg}</div>}
+      {loading && <div className="muted" style={{ padding: "var(--s-3)" }}>Laden…</div>}
+      {!loading && events.length === 0 && <div className="muted" style={{ padding: "var(--s-3)" }}>Nog geen wijzigingen. Draai een scan (basislijn), en na een volgende scan verschijnen hier de veranderingen.</div>}
       <div className="wz-list">
         {clusters.map(({ rep: e, count }) => {
           const isPrio = priority.has(prioKey(e.url));

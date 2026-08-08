@@ -9,6 +9,12 @@ import PageSummaryCard from "./PageSummaryCard";
 import Bronnenstrip, { type Bron } from "./Bronnenstrip";
 import Voortgang from "./Voortgang";
 
+// Markeert een HTML-string als vertrouwd: zelf opgebouwd uit onze eigen tekst en
+// server-velden (Drive-map, documentlink), nooit AI- of gebruikerstekst. Geen
+// markdown om te renderen en niets om te ontsmetten; deze functie doet dus
+// bewust niets, ze zegt alleen "dit is geen invoer van buiten".
+function eigenHtml(html: string): string { return html; }
+
 type Msg = { role: "user" | "assistant"; content: string; bronnen?: Bron[] };
 type Task = { taak: string; fase?: string; wie?: string };
 type Proposal = { plan?: string; tasks?: Task[] };
@@ -1052,10 +1058,10 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
           return (
             <div key={i}>
               {i === 0 && m.role === "user" && (
-                <div className="muted" style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 }}>Oorspronkelijke vraag</div>
+                <div className="muted" style={{ fontSize: "var(--fs-xs)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "var(--s-1)" }}>Oorspronkelijke vraag</div>
               )}
               {lastAIdx > 1 && i === lastAIdx && (
-                <div className="muted" style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", margin: "10px 0 4px" }}>Eindconclusie</div>
+                <div className="muted" style={{ fontSize: "var(--fs-xs)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", margin: "var(--s-3) 0 var(--s-1)" }}>Eindconclusie</div>
               )}
               <div className={"pch-msg-wrap " + m.role}>
                 {inklapbaar && (
@@ -1067,7 +1073,8 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
                 )}
                 {!dicht && (m.role === "user"
                   ? <div className="page-chat-msg user">{m.content}</div>
-                  : <div className="page-chat-msg assistant md" dangerouslySetInnerHTML={{ __html: renderMsgHtml(m.content) }} />)}
+                  : <div className="page-chat-msg assistant md" dangerouslySetInnerHTML={{ __html: renderMsgHtml(m.content) }}
+                      /* renderMsgHtml gebruikt mdToHtml, zie hierboven */ />)}
                 {!dicht && m.role === "assistant" && <Bronnenstrip bronnen={m.bronnen} domain={siteBase} />}
                 <div className="pch-msg-ctrl">
                   {wegIdx === i ? (
@@ -1088,7 +1095,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
           );
         })}
         {busy && (
-          <div className="page-chat-msg assistant muted" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div className="page-chat-msg assistant muted" style={{ display: "flex", alignItems: "center", gap: "var(--s-3)" }}>
             <span>Aan het denken…</span>
             <button type="button" className="ghost-btn small" onClick={cancelSend}
               title="Onderbreek dit antwoord. Het wordt weggegooid (niets bewaard); je vraag komt terug in het invoerveld zodat je hem kunt aanvullen.">&times; Onderbreken</button>
@@ -1109,7 +1116,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
             <button type="button" className={"pcd-btn " + (taskDone ? "pcd-btn-done" : "pcd-btn-primary") + (taskGen ? " busy" : "")} onClick={() => void makeWorkItem()} disabled={taskGen}>{taskGen ? "Vastleggen…" : taskDone ? "✓ Strategie vastgelegd." : "Strategie vastleggen"}</button>
             {stratLink
               ? <a href={stratLink} target="_blank" rel="noreferrer" className="pcd-doclink">Document openen ↗</a>
-              : taskDone && <span className="muted" style={{ fontSize: 12 }}>het document wordt gemaakt; de link verschijnt hier vanzelf</span>}
+              : taskDone && <span className="muted" style={{ fontSize: "var(--fs-sm)" }}>het document wordt gemaakt; de link verschijnt hier vanzelf</span>}
             {taskDone && !planDone && lastAssistant && (
               <button type="button" className="ghost-btn small" onClick={() => void acceptPlan(lastAssistant)}
                 title="De conclusie van dit gesprek staat nog niet als vastgelegde strategie bovenaan (dat kon in de oude werkwijze gebeuren). Deze knop zet hem er alsnog neer, zonder opnieuw samen te vatten.">
@@ -1119,13 +1126,13 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
             <HelpHint wide title="Strategie vastleggen (alleen het document)" text={"Herkansing voor alleen de documentstap: maakt van de laatste conclusie het nette **Pingwin-document** (in de Drive-map van de pagina, of als download) en legt hem vast als afgeronde werkzaamheid met de documentlink ernaast.\nNormaal hoef je deze knop niet te gebruiken: 'Vat samen & leg strategie vast' doet dit al automatisch. Gebruik hem als de documentstap toen mislukte (bijvoorbeeld zonder Drive-koppeling) of als je alleen een vers document wilt zonder de strategie opnieuw samen te vatten."} />
           </div>
           <div className="page-chat-followup">
-            <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Verder sparren?</div>
+            <div style={{ fontWeight: 700, fontSize: "var(--fs-base)", marginBottom: "var(--s-1)" }}>Verder sparren?</div>
             <div className="pchf-lead">Stel je vragen hier, bijvoorbeeld over de invulling of de zoekwoorden. Ben je klaar met bespreken, klik dan op &ldquo;Vat samen &amp; leg strategie vast&rdquo;: de conclusie wordt de vastgelegde strategie bovenaan én het nette document in de Drive-map.</div>
             <div className="pchf-row">
               <input className="pchf-input" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(input); }} placeholder="Vervolgvraag over deze pagina…" disabled={busy} />
               <button type="button" className="primary-btn small" onClick={() => send(input)} disabled={busy || !input.trim()}>Vraag</button>
             </div>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "var(--s-2)" }}>
               <button type="button" className="pcd-btn pcd-btn-primary" onClick={() => void summarizeAndFinalize()} disabled={busy || taskGen || !!finalizePhase}
                 title="Vat het hele gesprek samen tot de definitieve conclusie, zet die als vastgelegde strategie bovenaan en maakt er het Pingwin-document van in de Drive-map (of als download).">
                 {finalizePhase === "samenvatten" ? "Samenvatten…" : finalizePhase === "vastleggen" ? "Strategie vastleggen…" : finalizePhase === "document" ? "Document maken…" : (planDone || taskDone) ? "Vat opnieuw samen & leg strategie vast" : "Vat samen & leg strategie vast"}
@@ -1148,11 +1155,11 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
           {incoming.map((it, i) => (
             <div key={i} className="pchi-item">
               <div className="pchi-advice md" dangerouslySetInnerHTML={{ __html: mdToHtml(it.advice, siteBase) }} />
-              {it.sourceUrl && <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Uit de analyse van <a href={it.sourceUrl} target="_blank" rel="noreferrer">{it.sourceUrl}</a></div>}
+              {it.sourceUrl && <div className="muted" style={{ fontSize: "var(--fs-sm)", marginTop: "var(--s-1)" }}>Uit de analyse van <a href={it.sourceUrl} target="_blank" rel="noreferrer">{it.sourceUrl}</a></div>}
             </div>
           ))}
           {incoming.some((it) => it.sourceAnalysis) && (
-            <div style={{ marginTop: 8 }}>
+            <div style={{ marginTop: "var(--s-2)" }}>
               <button type="button" className="ghost-btn small" onClick={() => setIncomingOpen((o) => !o)}>{incomingOpen ? "Verberg de volledige clusteranalyse" : "Toon de volledige clusteranalyse"}</button>
               {incomingOpen && incoming.filter((it) => it.sourceAnalysis).map((it, i) => (
                 <div key={i} className="pchi-full md" dangerouslySetInnerHTML={{ __html: mdToHtml(it.sourceAnalysis, siteBase) }} />
@@ -1219,10 +1226,10 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
           })}
 
           {chats.length === 0 && msgs.length === 0 && (
-            <div className="muted" style={{ fontSize: 12 }}>Nog geen chats. Stel hieronder een vraag over deze pagina.</div>
+            <div className="muted" style={{ fontSize: "var(--fs-sm)" }}>Nog geen chats. Stel hieronder een vraag over deze pagina.</div>
           )}
           {!convoShown && (
-            <div className="page-chat-input" style={{ marginTop: 10 }}>
+            <div className="page-chat-input" style={{ marginTop: "var(--s-3)" }}>
               <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(input); }} placeholder="Stel een vraag over deze pagina…" disabled={busy} />
               <button type="button" className="primary-btn small" onClick={() => send(input)} disabled={busy || !input.trim()}>Vraag</button>
             </div>
@@ -1231,8 +1238,8 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
         )}
       </div>
 
-      {applied && <div className="saved-msg" style={{ marginTop: 8 }} dangerouslySetInnerHTML={{ __html: applied }} />}
-      {err && <div className="login-error" style={{ marginTop: 8 }}>{err}</div>}
+      {applied && <div className="saved-msg" style={{ marginTop: "var(--s-2)" }} dangerouslySetInnerHTML={{ __html: eigenHtml(applied) }} />}
+      {err && <div className="login-error" style={{ marginTop: "var(--s-2)" }}>{err}</div>}
 
       <div className={"page-chat-cluster-card step-card step-card-3" + (clusterDone > 0 ? " done" : "")}>
         <div className="step-head" onClick={() => setDoorgevenOpen((o) => !o)}>
@@ -1258,20 +1265,20 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
         {doorgevenOpen && (
         <div className="page-chat-cluster step-body">
           {!lastAssistant ? (
-            <div className="muted" style={{ fontSize: 13 }}>Werk eerst de strategie uit in de chat (stap 2); daarna kun je het advies doorgeven aan gelieerde pagina&rsquo;s.</div>
+            <div className="muted" style={{ fontSize: "var(--fs-sm)" }}>Werk eerst de strategie uit in de chat (stap 2); daarna kun je het advies doorgeven aan gelieerde pagina&rsquo;s.</div>
           ) : (<>
             <div className="pchf-lead">Raakt deze analyse ook andere pagina&rsquo;s in het cluster? Geef hun advies alvast door.</div>
             {clusterDone > 0 ? (
               <>
                 <button type="button" className="pcd-btn pcd-btn-done" disabled>&#10003; Doorgegeven aan {clusterDone} pagina&rsquo;s</button>
                 {outgoing === null ? (
-                  <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>Overzicht laden…</div>
+                  <div className="muted" style={{ fontSize: "var(--fs-sm)", marginTop: "var(--s-2)" }}>Overzicht laden…</div>
                 ) : outgoing.length === 0 ? null : (
-                  <ul className="pch-cluster-list" style={{ marginTop: 10 }}>
+                  <ul className="pch-cluster-list" style={{ marginTop: "var(--s-3)" }}>
                     {outgoing.map((it) => (
                       <li key={it.url} className="pch-cluster-item">
                         <div className="pch-cluster-head">
-                          <span style={{ color: "#1e8e3e", fontWeight: 700 }}>&#10003;</span>
+                          <span style={{ color: "var(--good)", fontWeight: 700 }}>&#10003;</span>
                           <span className="pch-cluster-url">{it.url}</span>
                         </div>
                         <div className="pch-cluster-advice md" dangerouslySetInnerHTML={{ __html: mdToHtml(it.advice, siteBase) }} />
@@ -1281,7 +1288,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
                 )}
               </>
             ) : clusterItems === null ? (
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: "var(--s-2)" }}>
                 <button type="button" className="pcd-btn" onClick={findClusterAdvice} disabled={clusterBusy}>{clusterBusy ? "Betrokken pagina's zoeken…" : "Advies doorgeven aan betrokken pagina's"}</button>
                 {clusterBusy && (
                   <button type="button" className="ghost-btn small" onClick={() => clusterAbortRef.current?.abort()}
@@ -1289,7 +1296,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
                 )}
               </span>
             ) : clusterItems.length === 0 ? (
-              <div className="muted" style={{ fontSize: 12 }}>Geen andere pagina&rsquo;s gevonden waarover deze analyse concreet advies geeft.</div>
+              <div className="muted" style={{ fontSize: "var(--fs-sm)" }}>Geen andere pagina&rsquo;s gevonden waarover deze analyse concreet advies geeft.</div>
             ) : (
               <>
                 <ul className="pch-cluster-list">
@@ -1303,13 +1310,13 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
                     </li>
                   ))}
                 </ul>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: "var(--s-2)" }}>
                   <button type="button" className="pcd-btn pcd-btn-primary" onClick={applyClusterAdvice} disabled={clusterBusy || clusterSel.length === 0}>{clusterBusy ? "Doorgeven…" : `Doorgeven aan ${clusterSel.length} pagina('s)`}</button>
                   <HelpHint wide title="Doorgeven aan de aangevinkte pagina's" text={"Stuurt het advies uit deze analyse naar de aangevinkte pagina's. Elke ontvangende pagina krijgt het als **vertrekpunt ('half plan')**: het staat daar klaar in de strategie-stap en in het pagina-overzicht, mét de volledige conclusie van dit gesprek als context.\nZo hoef je de clusterbeslissing maar één keer te nemen en spreekt geen enkele pagina hem later per ongeluk tegen."} />
                 </span>
               </>
             )}
-            {clusterMsg && <div className="saved-msg" style={{ marginTop: 8 }}>{clusterMsg}</div>}
+            {clusterMsg && <div className="saved-msg" style={{ marginTop: "var(--s-2)" }}>{clusterMsg}</div>}
           </>)}
           </div>
           )}
@@ -1323,8 +1330,8 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
             <span onClick={(e) => e.stopPropagation()}><HelpHint xl title="Stap 3 — Documenten (analyse, blauwdruk, copy)" text={"De vastgelegde strategie wordt hier uitgewerkt tot drie documenten die bewust op elkaar voortbouwen: eerst vaststellen waar de pagina staat (**analyse**), dan bepalen hoe hij eruit moet komen te zien (**blauwdruk**), en pas daarna de tekst schrijven (**copy**). Elke stap leest het resultaat van de vorige, dus de copy staat nooit los van de analyse die eraan voorafging. Alles draait op de achtergrond, landt als net Pingwin-document in de Drive-klantmap en wordt automatisch een afgeronde werkzaamheid.\n## De SEO-analyse: eerst eerlijk meten waar de pagina staat\nDe analyse verzamelt eerst alle feiten, uit vier bronnen:\n- **De pagina zelf**, echt uitgelezen en doorgemeten: koppen, meta-title en -description, woordenaantal, zoekwoorddichtheid, FAQ en aanwezige structured data.\n- **Search Console** (90 dagen): op welke zoekwoorden de pagina rankt, met klikken en vertoningen.\n- **PageSpeed**: de laadsnelheid en Core Web Vitals.\n- **Ahrefs**: de top-10 van het primaire zoekwoord, met de autoriteit van elke concurrent; de drie best scorende concurrenten worden individueel uitgemeten.\nDaarmee wordt de pagina beoordeeld tegen een vaste set meetbare criteria, van zoekintentie tot koppenstructuur en E-E-A-T. De pagina krijgt een **hard eindoordeel**: geslaagd bij nul kritieke gebreken, hooguit twee grote, en een score van minimaal 85.\n__Behoud is het uitgangspunt:__ de analyse benoemt expliciet wat er goed is en moet blijven staan. Bestaande rankings zijn opgebouwde waarde; die bescherm je door alleen te veranderen wat aantoonbaar tekortschiet.\n## De blauwdruk: de bouwtekening, gebaseerd op wie er nu wint\nDe blauwdruk vertaalt de analyse naar een concrete paginastructuur, gebaseerd op de **top-10 van het gekozen zoekwoord**. Omdat de winnaars echt zijn uitgemeten, is bekend welke invalshoeken zij behandelen, hoe lang hun pagina's zijn en welke vragen zij beantwoorden. De blauwdruk schrijft voor:\n- **Welke koppen en secties** de pagina nodig heeft om de dekking van de winnaars te evenaren.\n- __Wat de pagina uniek maakt:__ de invalshoek die de concurrenten laten liggen; de reden waarom Google jóu in die top-10 zet in plaats van een kopie van nummer drie.\n- **Meetbare normen:** het zoekwoord in 60-80% van de koppen (doel 70%; daarboven telt het als stuffing), een plaatsnaam in hooguit 2 à 3 koppen, meta-title 50-60 tekens met het zoekwoord vooraan, en een FAQ van 4-6 vragen op de echte zoekintentie.\n- **Een variantenlijst** van 10-15 semantische termen die de copy moet verwerken.\n## De copy: de volledige tekst, met behoud van wat al goed is\nDe copy-stap schrijft de daadwerkelijke, complete paginatekst uit; geen samenvatting of advies, maar tekst die zo de site op kan.\n__Het principe dat het verschil maakt met een tekstrobot:__ de bestaande tekst van de pagina gaat als bron mee, en alles wat voldoet aan de criteria wordt **zoveel mogelijk behouden of hergebruikt**. Goede zinnen, kloppende alinea's en werkende koppen blijven staan; er wordt alleen geschreven wat ontbreekt of aantoonbaar beter moet. Zo wordt een pagina die al deels rankt nooit platgewalst door een volledig nieuwe tekst.\nDe nieuwe tekst volgt de blauwdruk sectie voor sectie:\n- **6 tot 9 inhoudelijke secties** met volle alinea's van 80-150 woorden.\n- Het **primaire zoekwoord in de eerste 100 woorden**, een natuurlijke dichtheid van 0,5-2%, en minstens 60% van de varianten verwerkt.\n- Een **uitgebreide FAQ** van 6-8 vragen met echte antwoorden van 40-80 woorden, gericht op long-tail-zoekers.\n- De **tone of voice uit het klantprofiel**, zodat de tekst klinkt als dit bedrijf.\n- Een **automatische nacontrole** op de koppen, die te veel herhaling van een naam of plaatsnaam detecteert en herschrijft.\n## Waarom deze volgorde werkt\nElke stap dwingt de kwaliteit van de volgende af: zonder analyse zou de blauwdruk gokken wat er mis is, en zonder blauwdruk zou de copy structuurloos worden geschreven. Doordat alles teruggrijpt op de vastgelegde strategie uit stap 1, bewaakt de keten dat de pagina precies de rol vervult die is afgesproken. Standaard krijg je de korte **klantversie**; onder elke stap kun je ook de uitgebreide **interne versie** laten maken, met de volledige scorecard en onderbouwing."} /></span>
           </div>
           {vervolgOpen && (
-          !lastAssistant ? <div className="step-body muted" style={{ fontSize: 13 }}>Werk eerst de strategie uit in de chat (stap 2) en leg hem vast; daarna maak je hier de analyse, blauwdruk en copy.</div> : (<div className="step-body">
-          <div className="page-chat-drive" style={{ margin: "4px 0 14px" }}>
+          !lastAssistant ? <div className="step-body muted" style={{ fontSize: "var(--fs-sm)" }}>Werk eerst de strategie uit in de chat (stap 2) en leg hem vast; daarna maak je hier de analyse, blauwdruk en copy.</div> : (<div className="step-body">
+          <div className="page-chat-drive" style={{ margin: "var(--s-1) 0 var(--s-4)" }}>
             <span className="pcd-label">Opslaan in:</span>
             {driveFolder
               ? <span className="pcd-folder">{driveFolder.path || driveFolder.name}</span>
@@ -1392,7 +1399,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
                 );
               })()}
               {run.status === "running" && (
-                <div className="muted" style={{ fontSize: 12, marginTop: 5, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <div className="muted" style={{ fontSize: "var(--fs-sm)", marginTop: "var(--s-1)", display: "flex", alignItems: "center", gap: "var(--s-3)", flexWrap: "wrap" }}>
                   <span>Loopt server-side door; wegklikken mag. Verschijnt ook als werkzaamheid.</span>
                   <button type="button" className="ghost-btn small"
                     title="Stop deze run direct. Alles wat nog niet af is wordt weggegooid: er wordt niets opgeslagen en er belandt geen half document in Drive."
@@ -1403,7 +1410,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
                     }}>&times; Stoppen (niets opslaan)</button>
                 </div>
               )}
-              {run.status === "error" && run.error && <div className="login-error" style={{ marginTop: 6 }}>{run.error}</div>}
+              {run.status === "error" && run.error && <div className="login-error" style={{ marginTop: "var(--s-2)" }}>{run.error}</div>}
             </div>
           )}
           </div>))}
@@ -1421,7 +1428,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
           <span className="pch-canni-lead">Brengt per zoekwoord in kaart (top-10 + volume) of het een eigen pagina verdient of naar deze pagina geclusterd wordt, en welke pagina&rsquo;s deze pagina kapen, met de actie per pagina.</span>
           <button type="button" className={"pcd-btn" + (pcBusy || pc?.status === "running" ? " busy" : "")} disabled={pcBusy || pc?.status === "running"} onClick={runPc} title="Draait op de achtergrond met echte Ahrefs-data; je kunt wegklikken.">{pc?.status === "running" ? "Analyse draait…" : pc?.result ? "Opnieuw analyseren" : "Cannibalisatie oplossen"}</button>
         </div>
-        {pc?.status === "error" && pc.error && <div className="login-error" style={{ marginTop: 8 }}>{pc.error}</div>}
+        {pc?.status === "error" && pc.error && <div className="login-error" style={{ marginTop: "var(--s-2)" }}>{pc.error}</div>}
         {pc?.status === "running" && !pc.result && (
           <div style={{ marginTop: "var(--s-3)" }}>
             <Voortgang klein titel="Cannibalisatie-analyse" label="Per pagina de Ahrefs-zoekwoorden en de top 10 verzamelen; dit duurt een paar minuten." sinds={pc.updatedAt} />
@@ -1434,7 +1441,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
               <div className="md pch-canni-md" onClick={onCanniClick} dangerouslySetInnerHTML={{ __html: canniHtml }} />
               {wpRedirects.length > 0 && (!wpConf?.configured || wpFormOpen || wpMsg) && (
                 <div className="pch-wp-foot">
-                  {!wpConf?.configured && !wpFormOpen && <span className="muted" style={{ fontSize: 12.5 }}>Redirects uitvoeren vereist de WordPress-koppeling. <button type="button" className="ghost-btn small" onClick={() => setWpFormOpen(true)}>WordPress koppelen</button></span>}
+                  {!wpConf?.configured && !wpFormOpen && <span className="muted" style={{ fontSize: "var(--fs-sm)" }}>Redirects uitvoeren vereist de WordPress-koppeling. <button type="button" className="ghost-btn small" onClick={() => setWpFormOpen(true)}>WordPress koppelen</button></span>}
                   {wpFormOpen && (
                     <div className="pch-wp-form">
                       <input type="text" placeholder="WordPress-gebruikersnaam" value={wpForm.user} onChange={(e) => setWpForm((f) => ({ ...f, user: e.target.value }))} autoComplete="off" />
@@ -1442,12 +1449,12 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
                       <button type="button" className="pcd-btn" disabled={wpSaving} onClick={saveWpConn}>{wpSaving ? "Opslaan…" : "Koppeling opslaan"}</button>
                     </div>
                   )}
-                  {wpMsg && <div className="login-error" style={{ marginTop: 6 }}>{wpMsg}</div>}
+                  {wpMsg && <div className="login-error" style={{ marginTop: "var(--s-2)" }}>{wpMsg}</div>}
                 </div>
               )}
             </>)}
             {/* Map + overnemen blijven ook zichtbaar als de analyse is ingeklapt. */}
-            <div className="page-chat-drive" style={{ margin: "12px 0 8px" }}>
+            <div className="page-chat-drive" style={{ margin: "var(--s-3) 0 var(--s-2)" }}>
               <span className="pcd-label">Opslaan in:</span>
               {driveFolder
                 ? <span className="pcd-folder">{driveFolder.path || driveFolder.name}</span>
@@ -1486,7 +1493,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
                 </div>
               )}
             </div>
-            {applyMsg && <div className="login-error" style={{ marginTop: 8 }}>{applyMsg}</div>}
+            {applyMsg && <div className="login-error" style={{ marginTop: "var(--s-2)" }}>{applyMsg}</div>}
           </div>
         )}
         </div>)}
@@ -1500,13 +1507,13 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
               <code className="ccp-path">{rejectPath}</code>
               <button type="button" className="ghost-btn small ccp-close" onClick={() => { setRejectPath(""); setRejectReason(""); }} title="Annuleren">✕</button>
             </div>
-            <p className="muted" style={{ fontSize: 13, margin: "4px 0 10px" }}>Leg kort vast waarom dit voorstel niet wordt doorgevoerd. Deze reden komt als onderbouwing in het klantdocument.</p>
+            <p className="muted" style={{ fontSize: "var(--fs-sm)", margin: "var(--s-1) 0 var(--s-3)" }}>Leg kort vast waarom dit voorstel niet wordt doorgevoerd. Deze reden komt als onderbouwing in het klantdocument.</p>
             <input
               type="text" autoFocus value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") confirmReject(); }}
               placeholder="Bijvoorbeeld: deze pagina moet blijven bestaan voor de Amstelveen-campagne"
-              style={{ width: "100%", padding: "9px 12px", border: "1px solid var(--border)", borderRadius: 8, fontSize: 13.5, fontFamily: "inherit" }}
+              style={{ width: "100%", padding: "var(--s-2) var(--s-3)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", fontSize: "var(--fs-base)", fontFamily: "inherit" }}
             />
             <div className="ccp-actions">
               <button type="button" className="pcd-btn small pcd-warn" onClick={confirmReject}>Afwijzen</button>
@@ -1525,7 +1532,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
               {checkData && <a href={checkData.fullUrl} target="_blank" rel="noreferrer" className="ccp-live">bekijk live ↗</a>}
               <button type="button" className="ghost-btn small ccp-close" onClick={() => setCheckPath("")} title="Sluiten">✕</button>
             </div>
-            {checkBusy && <div className="muted" style={{ padding: "14px 0" }}>Gegevens ophalen (GSC en Ahrefs)…</div>}
+            {checkBusy && <div className="muted" style={{ padding: "var(--s-4) 0" }}>Gegevens ophalen (GSC en Ahrefs)…</div>}
             {checkErr && <div className="login-error">{checkErr}</div>}
             {checkData && (
               <div className="ccp-body md">
@@ -1542,7 +1549,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
                 ) : <p className="muted">Geen Ahrefs-rankings voor deze pagina.</p>}
                 {duidingMd
                   ? (<><p className="ccp-sub">Diepere duiding (op basis van de GSC-data van beide pagina&rsquo;s):</p><div className="md ccp-duiding" dangerouslySetInnerHTML={{ __html: mdToHtml(duidingMd, siteBase) }} /></>)
-                  : <button type="button" className="ghost-btn small" style={{ marginTop: 10 }} disabled={duidingBusy} onClick={loadDuiding} title="AI legt de zoektermen van deze pagina naast die van de winnaar: echte splitsing of niet, en klopt de voorgestelde actie. Duurt 15-30 seconden.">{duidingBusy ? "Duiding maken…" : "Diepere duiding"}</button>}
+                  : <button type="button" className="ghost-btn small" style={{ marginTop: "var(--s-3)" }} disabled={duidingBusy} onClick={loadDuiding} title="AI legt de zoektermen van deze pagina naast die van de winnaar: echte splitsing of niet, en klopt de voorgestelde actie. Duurt 15-30 seconden.">{duidingBusy ? "Duiding maken…" : "Diepere duiding"}</button>}
                 <div className="ccp-actions">
                   {(() => {
                     const to = rowRedirectRef.current[checkPath] || wpRedirects.find((x) => x.from === checkPath)?.to || "";
@@ -1561,7 +1568,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
                     </>);
                   })()}
                 </div>
-                {wpMsg && <div className="login-error" style={{ marginTop: 8 }}>{wpMsg}</div>}
+                {wpMsg && <div className="login-error" style={{ marginTop: "var(--s-2)" }}>{wpMsg}</div>}
               </div>
             )}
           </div>
@@ -1580,7 +1587,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
             <span className="pch-canni-lead">Vindt per pagina de beste interne links hiernaartoe, gerangschikt op relevantie, autoriteit (verwijzende domeinen) en verkeer, met ankertekst en een bewerk-link naar de bronpagina.</span>
             <button type="button" className={"pcd-btn" + (ilBusy || il?.status === "running" ? " busy" : "")} disabled={ilBusy || il?.status === "running"} onClick={runIl} title="Draait op de achtergrond; je kunt wegklikken.">{il?.status === "running" ? "Analyse draait…" : il?.result ? "Opnieuw zoeken" : "Interne links zoeken"}</button>
           </div>
-          {il?.status === "error" && il.error && <div className="login-error" style={{ marginTop: 8 }}>{il.error}</div>}
+          {il?.status === "error" && il.error && <div className="login-error" style={{ marginTop: "var(--s-2)" }}>{il.error}</div>}
           {il?.status === "running" && !il.result && (
             <div style={{ marginTop: "var(--s-3)" }}>
               <Voortgang klein titel="Interne links voor deze pagina" label="De kandidaat-bronpagina's worden gecrawld en gewogen op autoriteit en verkeer." sinds={il.updatedAt} />
@@ -1591,7 +1598,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
               <button type="button" className="pch-canni-toggle" onClick={() => setIlDocOpen((o) => !o)}>{ilDocOpen ? "▾" : "▸"} Interne-links-voorstel{il.updatedAt ? ` · ${new Date(il.updatedAt).toLocaleString("nl-NL")}` : ""}{il.status === "running" ? " · nieuwe analyse draait…" : ""}</button>
               {ilDocOpen && <div className="md pch-canni-md pch-il-md" dangerouslySetInnerHTML={{ __html: ilHtml }} />}
               {/* Map + overnemen blijven ook zichtbaar als het voorstel is ingeklapt. */}
-              <div className="page-chat-drive" style={{ margin: "12px 0 8px" }}>
+              <div className="page-chat-drive" style={{ margin: "var(--s-3) 0 var(--s-2)" }}>
                 <span className="pcd-label">Opslaan in:</span>
                 {driveFolder
                   ? <span className="pcd-folder">{driveFolder.path || driveFolder.name}</span>
@@ -1611,7 +1618,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
                   </div>
                 )}
               </div>
-              {ilApplyMsg && <div className="login-error" style={{ marginTop: 8 }}>{ilApplyMsg}</div>}
+              {ilApplyMsg && <div className="login-error" style={{ marginTop: "var(--s-2)" }}>{ilApplyMsg}</div>}
             </div>
           )}
         </div>)}
@@ -1630,9 +1637,9 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
             <button type="button" className={"pcd-btn" + (schBusy || sch?.status === "running" ? " busy" : "")} disabled={schBusy || sch?.status === "running"} onClick={runSch} title="Draait op de achtergrond; je kunt wegklikken.">{sch?.status === "running" ? "Analyse draait…" : sch?.result ? "Opnieuw analyseren" : "Analyseer structured data"}</button>
           </div>
           {sch?.stale && (
-            <div className="sch-warning" style={{ marginTop: 8 }}>⚠ De pagina is gewijzigd ná de laatste structured data-analyse; de markup past mogelijk niet meer bij de zichtbare content. Draai de analyse opnieuw en geef de developer de nieuwe JSON.</div>
+            <div className="sch-warning" style={{ marginTop: "var(--s-2)" }}>⚠ De pagina is gewijzigd ná de laatste structured data-analyse; de markup past mogelijk niet meer bij de zichtbare content. Draai de analyse opnieuw en geef de developer de nieuwe JSON.</div>
           )}
-          {sch?.status === "error" && sch.error && <div className="login-error" style={{ marginTop: 8 }}>{sch.error}</div>}
+          {sch?.status === "error" && sch.error && <div className="login-error" style={{ marginTop: "var(--s-2)" }}>{sch.error}</div>}
           {sch?.status === "running" && !sch.result && (
             <div style={{ marginTop: "var(--s-3)" }}>
               <Voortgang klein titel="Structured data bekijken" label="De pagina wordt gemeten en het bestaande schema en de bedrijfsgegevens worden gelezen; meestal onder een minuut." sinds={sch.updatedAt} />
@@ -1660,7 +1667,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
                   )}
                 </>
               )}
-              <div className="page-chat-drive" style={{ margin: "12px 0 8px" }}>
+              <div className="page-chat-drive" style={{ margin: "var(--s-3) 0 var(--s-2)" }}>
                 <span className="pcd-label">Opslaan in:</span>
                 {driveFolder
                   ? <span className="pcd-folder">{driveFolder.path || driveFolder.name}</span>
@@ -1678,7 +1685,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
                   </div>
                 )}
               </div>
-              {schApplyMsg && <div className="login-error" style={{ marginTop: 8 }}>{schApplyMsg}</div>}
+              {schApplyMsg && <div className="login-error" style={{ marginTop: "var(--s-2)" }}>{schApplyMsg}</div>}
             </div>
           )}
         </div>)}
@@ -1698,10 +1705,10 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
                   </span>
                 ))}
               </div>
-              {pickErr && <div className="login-error" style={{ marginTop: 6 }}>{pickErr}</div>}
+              {pickErr && <div className="login-error" style={{ marginTop: "var(--s-2)" }}>{pickErr}</div>}
               <div className="drive-list">
-                {pickBusy && <div className="muted" style={{ padding: 8 }}>Laden…</div>}
-                {!pickBusy && folders.length === 0 && <div className="muted" style={{ padding: 8 }}>Geen submappen hier. Kies deze map, of maak een nieuwe submap.</div>}
+                {pickBusy && <div className="muted" style={{ padding: "var(--s-2)" }}>Laden…</div>}
+                {!pickBusy && folders.length === 0 && <div className="muted" style={{ padding: "var(--s-2)" }}>Geen submappen hier. Kies deze map, of maak een nieuwe submap.</div>}
                 {!pickBusy && folders.map((f) => (
                   <button key={f.id} type="button" className="drive-row" onClick={() => enterFolder(f)}>{f.name} <span className="muted">openen ›</span></button>
                 ))}
