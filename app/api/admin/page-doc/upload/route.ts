@@ -4,7 +4,6 @@ import { guardSlug } from "../../../../../lib/admin-scope";
 import { readDriveDoc } from "../../../../../lib/drive";
 import { listVersions, voegVersieToe, ignoreVersion, leesAangeleverdDocument,
          hernoemVersie, keurVersieGoed } from "../../../../../lib/doc-versions";
-import { toetsVersie } from "../../../../../lib/criteria-toets";
 import { msGetAttachment } from "../../../../../lib/ms-graph";
 
 export const runtime = "nodejs";
@@ -108,14 +107,6 @@ export async function POST(req: NextRequest) {
     const r = await keurVersieGoed(slug, id, body.aan !== false);
     if (!r.ok) return NextResponse.json({ ok: false, error: r.error }, { status: 400 });
     return NextResponse.json({ ok: true, versions: await listVersions(slug, String(body.url || "")) });
-  }
-  // Toetsen of een teruggekregen versie nog aan de SEO-criteria voldoet. Levert
-  // een oordeel in beeld, geen document en geen samenvoeging.
-  if (action === "toets") {
-    const id = Number(body.id || 0);
-    if (!id) return NextResponse.json({ ok: false, error: "Geen versie opgegeven." }, { status: 400 });
-    const r = await toetsVersie(slug, id);
-    return r.ok ? NextResponse.json({ ok: true, toets: r.toets }) : NextResponse.json({ ok: false, error: r.error }, { status: 400 });
   }
   if (action === "negeer") {
     const id = Number(body.id || 0);

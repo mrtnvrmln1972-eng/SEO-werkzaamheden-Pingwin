@@ -3113,26 +3113,20 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
   background: var(--white); font-size: var(--fs-sm); line-height: var(--lh-sm); cursor: default; }
 .wp-docrij:focus { outline: none; }
 .wp-docrij-aan { border-color: var(--orange); box-shadow: 0 0 0 2px rgba(241, 88, 41, .12); }
-.wp-docrij-geldt { background: #fffaf6; }
 .wp-docrij-datum { color: var(--muted); min-width: 3.5rem; }
 .wp-docrij-kind { color: var(--muted); }
-.wp-docrij-naam { border: 0; background: none; padding: 0; font: inherit; color: var(--body-text);
-  font-weight: 600; text-align: left; cursor: text; flex: 1 1 8rem; min-width: 0;
+.wp-docrij-naam { border: 0; background: none; padding: 0; font: inherit; color: var(--orange-dark);
+  font-weight: 600; text-align: left; text-decoration: none; cursor: pointer; flex: 1 1 8rem; min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.wp-docrij-naam:hover { text-decoration: underline dotted; }
+.wp-docrij-naam:hover { text-decoration: underline; }
+.wp-docrij-naam-leeg { color: var(--body-text); cursor: default; }
+.wp-docrij-naam-leeg:hover { text-decoration: none; }
+.wp-docrij-naam-pen { border: 0; background: none; padding: 0 var(--s-1); color: var(--gray);
+  cursor: pointer; font-size: var(--fs-xs); flex: 0 0 auto; }
+.wp-docrij-naam-pen:hover { color: var(--pingwin); }
 .wp-docrij-naaminvoer { flex: 1 1 8rem; min-width: 0; font: inherit; padding: var(--s-1) var(--s-2);
   border: 1px solid var(--orange); border-radius: var(--r-sm); }
 .wp-docrij-acties { display: flex; align-items: center; gap: var(--s-2); margin-left: auto; }
-.wp-docrij-geldt-vink { display: flex; align-items: center; gap: var(--s-1); color: var(--muted); white-space: nowrap; }
-.wp-docrij-geldt .wp-docrij-geldt-vink { color: var(--orange); font-weight: 600; }
-
-/* De uitkomst van de criteria-toets, onder de regel waar hij bij hoort. */
-.wp-toets { flex-basis: 100%; margin-top: var(--s-2); padding: var(--s-3);
-  border-radius: var(--r-md); border-left: 3px solid var(--card-border); background: #faf9f8; }
-.wp-toets ul { margin: var(--s-2) 0; padding-left: var(--s-4); }
-.wp-toets-goed { border-left-color: #3E9E4C; }
-.wp-toets-letop { border-left-color: var(--orange); }
-.wp-toets-fout { border-left-color: #C8442C; }
 
 /* Voorvertoning van een document (spatiebalk). */
 .wp-preview { width: min(56rem, 92vw); }

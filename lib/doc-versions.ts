@@ -269,7 +269,6 @@ export async function ignoreVersion(slug: string, id: number): Promise<void> {
  * Wat ervoor in de plaats komt: een aangeleverd document landt gewoon als versie
  * in de lijst, en jij zet met keurVersieGoed() welke versie geldt. Die functie
  * schrijft ook de geldende tekst, dus de rest van het dashboard blijft kloppen.
- * Toetsen of een klantversie nog aan de SEO-criteria voldoet doet lib/criteria-toets.ts.
  */
 // ─── Zelf beheren: hernoemen en goedkeuren ───
 

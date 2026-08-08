@@ -4,9 +4,8 @@
 //
 // Zelf beheren in plaats van automatisch samenvoegen. Elk document dat je hier
 // neerlegt, plakt of vanuit een mail naartoe sleept wordt gewoon een versie in de
-// lijst: nieuwste bovenaan, met de datum en van wie het komt. Jij bepaalt met één
-// vinkje welke versie geldt; die gaat standaard mee in een mail en naar de
-// sitebouwer, en is de tekst waar de rest van het dashboard mee rekent.
+// lijst: nieuwste bovenaan, met de datum en van wie het komt. De naam van een
+// document is meteen een link ernaartoe.
 //
 // Wat hier vroeger stond: elke klantversie werd een voorstel met een AI-vergelijking,
 // en na "Verwerk" werd er een samengevoegd document gemaakt. Dat leverde per ronde
@@ -15,17 +14,14 @@
 // Spatiebalk opent de voorvertoning van de geselecteerde regel, zoals in Finder.
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { mdToHtml } from "../../../../lib/markdown";
 import { driveIdFromUrl } from "../../../../lib/drive-id";
 
-type Toets = { oordeel: "goed" | "let-op" | "niet-goed"; kop: string; behouden: string[]; verdwenen: string[]; advies: string };
 type Versie = {
   id: number; kind: string; source: "pingwin" | "klant"; naam: string; driveLink: string;
   samenvatting: string; vergelijking: string; status: string; createdAt: string; goedgekeurd: boolean;
 };
 
 const KIND_LABEL: Record<string, string> = { analyse: "Analyse", blauwdruk: "Blauwdruk", copy: "Copy", structured: "Structured data", overig: "Overig" };
-const OORDEEL_KLEUR: Record<Toets["oordeel"], string> = { "goed": "wp-toets-goed", "let-op": "wp-toets-letop", "niet-goed": "wp-toets-fout" };
 
 export default function DocVersies({ slug, url, taakId }: { slug: string; url: string; taakId?: number }) {
   const [versies, setVersies] = useState<Versie[]>([]);
@@ -37,7 +33,6 @@ export default function DocVersies({ slug, url, taakId }: { slug: string; url: s
   const [gekozen, setGekozen] = useState<number | null>(null);
   const [preview, setPreview] = useState<Versie | null>(null);
   const [hernoem, setHernoem] = useState<{ id: number; naam: string } | null>(null);
-  const [toets, setToets] = useState<{ id: number; uitkomst: Toets } | null>(null);
 
   const laad = useCallback(async () => {
     const d = await fetch(`/api/admin/page-doc/upload?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}`)
@@ -154,7 +149,7 @@ export default function DocVersies({ slug, url, taakId }: { slug: string; url: s
         <ul className="wp-doclijst">
           {versies.map((v) => (
             <li key={v.id}
-              className={"wp-docrij" + (gekozen === v.id ? " wp-docrij-aan" : "") + (v.goedgekeurd ? " wp-docrij-geldt" : "")}
+              className={"wp-docrij" + (gekozen === v.id ? " wp-docrij-aan" : "")}
               tabIndex={0}
               onClick={() => setGekozen(gekozen === v.id ? null : v.id)}
               onDoubleClick={() => setPreview(v)}
@@ -174,40 +169,21 @@ export default function DocVersies({ slug, url, taakId }: { slug: string; url: s
                     if (e.key === "Enter") { void stuur({ action: "hernoem", id: v.id, naam: hernoem.naam }, "hernoem"); setHernoem(null); }
                     if (e.key === "Escape") setHernoem(null);
                   }} />
+              ) : v.driveLink ? (
+                <a className="wp-docrij-naam" href={v.driveLink} target="_blank" rel="noreferrer"
+                  onClick={(e) => e.stopPropagation()} title="Open dit document">{v.naam || "document"}</a>
               ) : (
-                <button type="button" className="wp-docrij-naam"
-                  onClick={(e) => { e.stopPropagation(); setHernoem({ id: v.id, naam: v.naam || "" }); }}
-                  title="Klik om de naam aan te passen">{v.naam || "document"}</button>
+                <span className="wp-docrij-naam wp-docrij-naam-leeg" title="Voor dit document is geen link bewaard">{v.naam || "document"}</span>
+              )}
+              {hernoem?.id !== v.id && (
+                <button type="button" className="wp-docrij-naam-pen" title="Naam aanpassen"
+                  onClick={(e) => { e.stopPropagation(); setHernoem({ id: v.id, naam: v.naam || "" }); }}>&#9998;</button>
               )}
 
               <span className="wp-docrij-acties" onClick={(e) => e.stopPropagation()}>
-                <label className="wp-docrij-geldt-vink" title="Deze versie geldt: hij gaat standaard mee in een mail en naar de sitebouwer, en is de tekst waar de rest mee rekent.">
-                  <input type="checkbox" checked={v.goedgekeurd} disabled={!!busy}
-                    onChange={(e) => void stuur({ action: "goedkeur", id: v.id, aan: e.target.checked }, "goedkeur")} />
-                  <span>geldt</span>
-                </label>
-                {v.source === "klant" && (
-                  <button type="button" className="wp-fase-btn" disabled={!!busy}
-                    title="Kijk of deze teruggekregen versie nog aan de SEO-criteria voldoet"
-                    onClick={async () => {
-                      const d = await stuur({ action: "toets", id: v.id }, "toets");
-                      if (d?.toets) setToets({ id: v.id, uitkomst: d.toets as Toets });
-                    }}>{busy === "toets" ? "Toetsen…" : "Toets aan de criteria"}</button>
-                )}
-                {v.driveLink && <a className="wp-link" href={v.driveLink} target="_blank" rel="noreferrer">openen</a>}
                 <button type="button" className="wp-icon wp-del" title="Van de lijst halen (het bestand blijft in Drive)"
                   onClick={() => void stuur({ action: "negeer", id: v.id }, "weg")}>×</button>
               </span>
-
-              {toets?.id === v.id && (
-                <div className={"wp-toets " + OORDEEL_KLEUR[toets.uitkomst.oordeel]}>
-                  <strong>{toets.uitkomst.kop}</strong>
-                  {toets.uitkomst.verdwenen.length > 0 && (
-                    <ul>{toets.uitkomst.verdwenen.map((r, i) => <li key={i}>{r}</li>)}</ul>
-                  )}
-                  <div className="md" dangerouslySetInnerHTML={{ __html: mdToHtml(toets.uitkomst.advies) }} />
-                </div>
-              )}
             </li>
           ))}
         </ul>
