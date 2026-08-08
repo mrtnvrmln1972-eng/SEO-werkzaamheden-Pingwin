@@ -552,6 +552,11 @@ tbody td:last-child { text-align: center; }
   border: 1px solid var(--card-border);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-lg);
+  /* Groeit het lijstje schermen (elk nieuw scherm krijgt hier een regel), dan
+     mag het paneel nooit onder de rand van het venster verdwijnen zonder dat
+     je erbij kunt: eigen scroll in plaats van de pagina laten meegroeien. */
+  max-height: calc(100vh - var(--s-12));
+  overflow-y: auto;
 }
 .hm-item {
   display: flex; flex-direction: column; gap: var(--s-1);
