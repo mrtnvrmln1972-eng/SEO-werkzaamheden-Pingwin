@@ -68,7 +68,7 @@ export default function Concurrenten({ slug, compact = false, onOpgeslagen }: { 
   if (compact) return <div className="comp-edit">{invoer}</div>;
 
   return (
-    <div className="cockpit-card">
+    <div className="cockpit-card" id="fund-concurrenten">
       <div className="ck-section-head">
         <span>
           Concurrenten{" "}
