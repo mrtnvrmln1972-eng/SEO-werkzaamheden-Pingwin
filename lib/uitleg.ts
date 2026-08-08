@@ -21,7 +21,7 @@
 // betreffende uitklapper aanvullen en LAATST_BIJGEWERKT verzetten.
 // ═══════════════════════════════════════════════════════════
 
-export const LAATST_BIJGEWERKT = "8 augustus 2026";
+export const LAATST_BIJGEWERKT = "8 augustus 2026 (R7: bronnen-gezondheid)";
 
 export type Uitklapper = {
   titel: string;
@@ -360,6 +360,19 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "Het maandoverzicht dat de klant ziet (werkzaamheden, uren, budget) kan uit een gepubliceerde Google " +
           "Sheet per klant komen. Dat is bewust zo gebleven: het bureau dat al in een sheet werkt hoeft zijn " +
           "manier van werken niet te veranderen om een dashboard te kunnen geven.",
+      },
+      {
+        titel: "Bronnen-gezondheid: houdt zichzelf in de gaten",
+        kern: "Elke koppeling hierboven schrijft bij elk gebruik weg of het lukte; een storing is dus meteen te zien.",
+        tekst:
+          "Negen koppelingen hangen aan dit dashboard, en elke koppeling kan een dag stil zijn: een verlopen " +
+          "toegang, een limiet, een storing. Er is nu één scherm waar dat per koppeling staat: werkt hij, " +
+          "wanneer ging het voor het laatst goed, en wat is er precies mis als het niet werkt.\n\n" +
+          "Elke keer dat dat scherm opent, wordt elke koppeling meteen opnieuw en écht getest, niet uit een " +
+          "oud cijfer voorgelezen. Een koppeling die je bewust losmaakt is dus binnen een minuut op het scherm " +
+          "te zien, met een knop om hem meteen opnieuw te leggen waar dat kan (Google en Microsoft rechtstreeks; " +
+          "Ahrefs en Moneybird via hun sleutel in Vercel). WordPress hangt per klant, dus die koppelingen staan " +
+          "los onder elkaar, met een link naar de klant zelf.",
       },
     ],
   },
@@ -1889,7 +1902,7 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "|---|---|---|\n" +
           "| **R5** | Meerdere mailboxen | er iemand naast je meewerkt |\n" +
           "| **R6** | Tweede sitekoppeling, en copy doorvoeren | er een klant niet op WordPress zit |\n" +
-          "| **R7** | Bronnen-gezondheid: welke bron is stil? | je een conclusie trekt op stille data |\n" +
+          "| **R7** | Bronnen-gezondheid: welke bron is stil? | ✅ af op 8 augustus 2026 |\n" +
           "| **R8** | Correcties worden regels, in élke motor | je dezelfde correctie twee keer maakt |",
         sub: [
           {
@@ -1941,31 +1954,18 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
               "krijgt, de voortgang per pagina en het overzicht van wat we voor de klant gedaan hebben.",
           },
           {
-            titel: "R7. Bronnen-gezondheid: welke bron is vandaag stil?",
+            titel: "R7. Bronnen-gezondheid: welke bron is vandaag stil? — af op 8 augustus 2026",
             tekst:
-              "**Wat er nu mis is.** Er hangen tien koppelingen aan dit systeem, en elke koppeling kan een dag " +
-              "stil zijn: een verlopen toegang, een limiet, een storing. Per onderdeel wordt dat netjes " +
-              "opgevangen, en bij interne links wordt ontbrekende data zelfs expliciet gemeld. Maar er is geen " +
-              "enkele plek waar staat: dit werkt vandaag, dit niet, en dit cijfer is dus ouder dan het lijkt.\n\n" +
-              "**Wat het oplevert.** Dit is het enige punt op deze lijst dat een fout voorkomt in plaats van iets " +
-              "toevoegt. Het hele dashboard rust op de belofte dat cijfers uit een bron komen en dat ontbrekende " +
-              "data ontbrekend heet. Een stille bron ondermijnt precies die belofte, en je merkt het pas als een " +
-              "advies verkeerd blijkt. Bij een tweede bureau dat zijn eigen sleutels beheert is het onmisbaar.\n\n" +
-              "**Hoe we het zouden bouwen.**\n\n" +
-              "1. Elke koppeling schrijft bij elk gebruik weg: gelukt of niet, wanneer, en bij een fout de reden " +
-              "in gewone taal.\n" +
-              "2. Eén scherm met per bron: werkt hij, wanneer voor het laatst goed gegaan, en wat er aan de hand " +
-              "is als het niet werkt (verlopen toegang, limiet bereikt, storing).\n" +
-              "3. Een stille bron is zichtbaar op de plek waar het uitmaakt: staat een cijfer op oude data, dan " +
-              "zegt de kaart dat erbij in plaats van dat je het moet weten.\n" +
-              "4. Alleen wat handelen vraagt komt naar voren, en dan met de knop erbij (opnieuw koppelen), niet " +
-              "met een instructie.\n\n" +
-              "**Waaraan je ziet dat het af is.** Eén koppeling opzettelijk losgetrokken, en dat is binnen een " +
-              "minuut te zien op het bronnenscherm én bij het cijfer dat erop leunt, met een knop om het te " +
-              "herstellen.\n\n" +
-              "**Wat het raakt.** Elke koppeling krijgt hier iets bij, en elke kaart en score die op die koppelingen " +
-              "leunt. Per koppeling is het klein werk, maar het moet er wel bij alle tien in, anders zit er een " +
-              "blinde vlek in het overzicht.",
+              "**Klaar.** Elke koppeling (Ahrefs, Google, Microsoft 365, Moneybird, WordPress per klant) schrijft " +
+              "nu bij elk gebruik weg of het lukte, en bij een fout waarom. Er is één scherm, " +
+              "`/admin/bronnen-gezondheid`, dat elke koppeling bij het openen meteen vers test en per bron laat " +
+              "zien: werkt hij, wanneer ging het voor het laatst goed, en wat er precies mis is, met een knop om " +
+              "hem opnieuw te koppelen waar dat kan.\n\n" +
+              "De volledige beschrijving staat nu in het hoofdstuk **Waar het mee gekoppeld is**, bij " +
+              "\"Bronnen-gezondheid: houdt zichzelf in de gaten\", want het is werkelijkheid en geen plan meer. " +
+              "Wat hier blijft staan is waarom het erop stond: het hele dashboard rust op de belofte dat een " +
+              "cijfer uit een bron komt en dat ontbrekende data ontbrekend heet, en een stille bron ondermijnde " +
+              "die belofte zonder dat iemand het zag.",
           },
           {
             titel: "R8. Correcties worden regels, in élke motor",

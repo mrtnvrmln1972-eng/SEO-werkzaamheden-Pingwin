@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { sql, ensureSchema } from "./db";
 import { logUsage } from "./usage";
+import { logBronGebeurtenis } from "./bron-gezondheid";
 
 // ═══════════════════════════════════════════════════════════
 // AHREFS API v3 (REST) — zoekvolume + top-10 SERP
@@ -78,8 +79,12 @@ async function tokenForSlug(slug: string | undefined): Promise<string | undefine
 // is POST met een JSON-body, omdat je er honderd doelen tegelijk in stopt; geef
 // dan `body` mee en de parameters gaan de body in in plaats van de URL.
 async function ahrefsFetch(path: string, params: Record<string, string>, body?: unknown): Promise<unknown> {
-  const token = (await tokenForSlug(ahrefsAls.getStore()?.slug)) || process.env.AHREFS_API_TOKEN;
-  if (!token) throw new Error("AHREFS_API_TOKEN ontbreekt.");
+  const slug = ahrefsAls.getStore()?.slug ?? null;
+  const token = (await tokenForSlug(slug ?? undefined)) || process.env.AHREFS_API_TOKEN;
+  if (!token) {
+    logBronGebeurtenis("ahrefs", false, "Geen API-sleutel ingesteld (AHREFS_API_TOKEN ontbreekt).", slug).catch(() => {});
+    throw new Error("AHREFS_API_TOKEN ontbreekt.");
+  }
   const url = new URL(BASE + path);
   if (!body) for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
   const ctl = new AbortController();
@@ -96,23 +101,42 @@ async function ahrefsFetch(path: string, params: Record<string, string>, body?: 
       signal: ctl.signal,
     });
     if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      throw new Error(`Ahrefs ${path}: ${res.status} ${body.slice(0, 300)}`);
+      const errText = await res.text().catch(() => "");
+      throw new Error(`Ahrefs ${path}: ${res.status} ${errText.slice(0, 300)}`);
     }
     // Verbruik-meting: één regel per echte API-call (cache-hits komen hier nooit).
     // tokens_in hergebruiken we als "units"; mag de echte taak nooit breken.
     // Meta-aanvragen (abonnement-tegoed opvragen) tellen zelf niet als verbruik.
     if (!path.startsWith("/subscription-info")) {
       logUsage({
-        slug: ahrefsAls.getStore()?.slug ?? null,
+        slug,
         service: "ahrefs",
         action: path,
         tokensIn: readUnitsHeader(res.headers) ?? 0,
       }).catch(() => {});
     }
+    logBronGebeurtenis("ahrefs", true, "", slug).catch(() => {});
     return await res.json();
+  } catch (e) {
+    logBronGebeurtenis("ahrefs", false, (e as Error).message?.slice(0, 400) || "Onbekende fout.", slug).catch(() => {});
+    throw e;
   } finally {
     clearTimeout(timer);
+  }
+}
+
+/**
+ * Verse controle voor het bronnen-gezondheidsscherm, buiten de uurcache van
+ * getAhrefsSubscriptionUsage() om: die mag daar best oud zijn, hier moet hij
+ * vers zijn zodat een losgetrokken koppeling meteen zichtbaar is.
+ */
+export async function ahrefsHealthCheck(): Promise<{ ok: boolean; melding: string }> {
+  if (!ahrefsConfigured()) return { ok: false, melding: "Geen API-sleutel ingesteld." };
+  try {
+    await ahrefsFetch("/subscription-info/limits-and-usage", {});
+    return { ok: true, melding: "Werkt." };
+  } catch (e) {
+    return { ok: false, melding: (e as Error).message || "Onbekende fout." };
   }
 }
 

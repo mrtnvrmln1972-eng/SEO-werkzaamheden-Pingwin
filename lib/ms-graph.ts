@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { logBronGebeurtenis } from "./bron-gezondheid";
 
 // ═══════════════════════════════════════════════════════════
 // MICROSOFT 365 / GRAPH-KOPPELING
@@ -121,12 +122,25 @@ async function msAccessToken(): Promise<string | null> {
     refresh_token: refresh,
     scope: SCOPES,
   });
-  if (!data.access_token) return null;
+  if (!data.access_token) {
+    logBronGebeurtenis("microsoft", false, data.error_description || data.error || "Token vernieuwen mislukt.").catch(() => {});
+    return null;
+  }
   // Microsoft rouleert de refresh-token: bewaar de nieuwe als die er is.
   if (data.refresh_token && data.refresh_token !== refresh) {
     await sql`UPDATE oauth_tokens SET refresh_token = ${data.refresh_token}, updated_at = now() WHERE provider = 'microsoft'`;
   }
+  logBronGebeurtenis("microsoft", true).catch(() => {});
   return data.access_token;
+}
+
+/** Verse controle voor het bronnen-gezondheidsscherm: probeert echt een toegangsbewijs op te halen. */
+export async function msHealthCheck(): Promise<{ ok: boolean; melding: string }> {
+  if (!msConfigured()) return { ok: false, melding: "Niet ingesteld in deze omgeving." };
+  const token = await msAccessToken();
+  return token
+    ? { ok: true, melding: "Werkt." }
+    : { ok: false, melding: "Kon geen geldig toegangsbewijs ophalen. Waarschijnlijk is de koppeling verlopen of ingetrokken." };
 }
 
 type GraphMessage = {

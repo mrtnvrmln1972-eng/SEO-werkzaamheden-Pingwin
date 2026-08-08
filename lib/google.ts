@@ -1,5 +1,6 @@
 import { sql, ensureSchema } from "./db";
 import { ahrefsConfigured, getKeywordsOverview } from "./ahrefs";
+import { logBronGebeurtenis, type BronId } from "./bron-gezondheid";
 
 // ═══════════════════════════════════════════════════════════
 // GOOGLE-KOPPELING (Search Console + Analytics, read-only)
@@ -151,11 +152,20 @@ export async function getProfielAccessToken(): Promise<string | null> {
   return accessTokenFor("google_profiel");
 }
 
+// provider ("google"/"google_drive"/"google_profiel") -> bron-id voor R7.
+function bronVoorProvider(provider: string): BronId {
+  if (provider === "google_drive") return "google_drive";
+  if (provider === "google_profiel") return "google_profiel";
+  return "google_data";
+}
+
 async function accessTokenFor(provider: string): Promise<string | null> {
   if (!googleConfigured()) return null;
   await ensureSchema();
   const { rows } = await sql`SELECT refresh_token FROM oauth_tokens WHERE provider = ${provider} LIMIT 1`;
   const refresh = rows[0]?.refresh_token as string | undefined;
+  // Nog niet gekoppeld is geen storing (dat zie je al aan "connected": false);
+  // hier loggen we dus alleen een echte poging, niet de afwezigheid ervan.
   if (!refresh) return null;
   const data = await tokenRequest({
     client_id: process.env.GOOGLE_CLIENT_ID || "",
@@ -163,7 +173,13 @@ async function accessTokenFor(provider: string): Promise<string | null> {
     grant_type: "refresh_token",
     refresh_token: refresh,
   });
-  return data.access_token || null;
+  const bron = bronVoorProvider(provider);
+  if (!data.access_token) {
+    logBronGebeurtenis(bron, false, data.error_description || data.error || "Token vernieuwen mislukt.").catch(() => {});
+    return null;
+  }
+  logBronGebeurtenis(bron, true).catch(() => {});
+  return data.access_token;
 }
 
 // ── Search Console ──────────────────────────────────────────

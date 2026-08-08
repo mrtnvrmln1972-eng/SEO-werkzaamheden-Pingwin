@@ -132,6 +132,29 @@ const BEWIJZEN: Record<string, BewijsRegel[]> = {
       },
     },
   ],
+
+  R7: [
+    {
+      soort: "gedeployd",
+      wat: "Elke koppeling kan wegschrijven of een aanroep lukte",
+      laad: () => import("./bron-gezondheid") as Promise<Record<string, unknown>>,
+      functie: "logBronGebeurtenis",
+    },
+    {
+      soort: "gedeployd",
+      wat: "Alle bronnen worden vers gecontroleerd voor het scherm",
+      laad: () => import("./bron-gezondheid-controle") as Promise<Record<string, unknown>>,
+      functie: "controleerAlleBronnen",
+    },
+    {
+      soort: "data",
+      wat: "Er staat minstens één gemeten koppel-uitkomst",
+      telling: async () => {
+        const { aantalGebeurtenissen } = await import("./bron-gezondheid");
+        return aantalGebeurtenissen();
+      },
+    },
+  ],
 };
 
 async function toetsRegel(r: BewijsRegel): Promise<RegelUitslag> {
