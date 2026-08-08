@@ -107,6 +107,21 @@ Alles wat Maarten ziet (dashboard, chat, mail, preview, terugkoppeling) moet 100
     het niet meer terugvallen. Een nieuw scherm staat er per definitie niet op en moet dus meteen
     goed zijn. Zet die proef nooit uit; breid hem uit zodra er een nieuwe opmaakfout ontstaat, want
     dat is de enige manier waarop zo'n fout niet terugkomt.
+- **Knopconventie in cockpit-panelen (vaste regel, 08-08-2026).** Losse `<button className="...">`
+  krijgen niet langer een eigen, ad-hoc naam; ze gaan op het bestaande knopsysteem uit het
+  design-fundament: `.btn` altijd als basis, plus precies één van `.btn-primary` (hoofdactie,
+  hooguit één per rij), `.btn-ghost` (gewone secundaire actie), `.btn-quiet` (géén actie op de
+  data, maar informatief/verwijzend, zoals een "laatste stand"-knopje), of `.btn-danger`
+  (onomkeerbaar, zoals verwijderen); `.btn-klein` erbij voor een compacte maat. Nooit meer
+  `primary-btn`/`ghost-btn`/`wp-fase-btn` in nieuwe code, dat zijn oudere namen die naar dezelfde
+  stijl leiden maar het systeem versplinteren. Knoppen die bij elkaar horen staan in een
+  `.pnl-acties-groep`, met een `.pnl-acties-scheiding`-lijntje tussen twee niet-verwante groepen;
+  een informatief knopje krijgt `.pnl-acties-info` en staat losgekoppeld (meestal uiterst rechts).
+  Bij een `.strategy-card`-paneel (het gangbare inklapbare cockpit-paneel) staat de knoppenrij als
+  volle-breedte, links uitgelijnde, omslaande rij direct onder de kop. Referentie-implementatie:
+  `app/admin/client/[slug]/OrgDataPanel.tsx` (de "Bedrijfsgegevens"-toolbar). Dit is nu een pilot
+  op één paneel; nog niet bewaakt door `proeven/opmaak.proef.ts` (volgt zodra er 2-3 panelen op
+  deze manier zijn omgebouwd).
 - **Met terugwerkende kracht (vaste regel, 31-07-2026).** Elke opmaak- of dashboardaanpassing geldt automatisch óók voor bestaande kaarten, taken en chats, in alle werelden (Pingwin én NOC). Bouw zulke aanpassingen daarom in de weergave-laag (renderer/parser, zoals `lib/card-info.ts`), niet alleen in de prompt voor nieuwe data. Maarten hoeft dit niet meer per wijziging te vragen.
 
 ## 0b. DE UITLEGPAGINA BIJWERKEN (vaste stap, 06-08-2026)
