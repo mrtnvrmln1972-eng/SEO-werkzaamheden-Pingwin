@@ -275,7 +275,7 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie, actiesSlot }: 
                 <span className="wp-docdrop-linkrij">
                   <input className="wp-docdrop-input" value={plakVeld} placeholder="Tekst of https://docs.google.com/…"
                     onChange={(e) => setPlakVeld(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") plak(); }} />
-                  <button type="button" className="wp-fase-btn" disabled={!plakVeld.trim() || !!busy} onClick={plak}>Lees</button>
+                  <button type="button" className="btn btn-ghost btn-klein" disabled={!plakVeld.trim() || !!busy} onClick={plak}>Lees</button>
                 </span>
                 <button type="button" className="kb-dropzone-sluit" onClick={() => setDropOpen(false)} title="Dropzone weer klein maken">&times;</button>
               </>
@@ -326,7 +326,7 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie, actiesSlot }: 
           </button>
           {gapsOpen && (
             <>
-              <div className="muted" style={{ fontSize: "var(--fs-xs)", marginBottom: "var(--s-1)" }}>Dit zijn dezelfde velden die hierboven rood staan.</div>
+              <div className="muted" style={{ fontSize: "var(--fs-xs)", marginBottom: "var(--s-1)" }}>Dit is wat er ná het verwerken van al het materiaal hierboven nog steeds ontbreekt; overlapt met wat er nu al rood staat in het formulier, maar is niet exact hetzelfde lijstje.</div>
               <ul>{gaps.map((r, i) => <li key={i}>{r}</li>)}</ul>
               <button type="button" className="wp-fase-btn" disabled={!!busy} onClick={() => void maakTaak()}>{busy === "taak" ? "Bezig…" : "Zet als kaart in de weekplanning"}</button>
             </>
