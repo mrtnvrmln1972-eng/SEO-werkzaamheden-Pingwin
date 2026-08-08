@@ -1257,9 +1257,9 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
       },
       {
         titel: "Verbruik en kosten per actie",
-        kern: "Wat kost welke knop, per klant en per periode.",
+        kern: "Wat kost welke knop, per klant en per periode, met AI en Ahrefs samengeteld.",
         tekst:
-          "Elke betaalde aanroep schrijft een regel weg: welke klant, welke actie, hoeveel tokens in en uit, en " +
+          "Elke betaalde aanroep schrijft een regel weg: welke klant, welke actie, hoeveel tokens of units, en " +
           "de geschatte kosten. Op het verbruiksscherm staan de acties met leesbare namen, dus 'analyse-document " +
           "(diep)' in plaats van een technische code.\n\n" +
           "Waarom dat er is: bij een dashboard dat AI en betaalde API's gebruikt is de marge per klant een " +
@@ -1276,7 +1276,18 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "abonnement is dat saldo niet op te halen, dus staat er een knop naar de plek waar het wél staat.\n\n" +
           "Onder de meters staan de tips per meter: welke knop duur is, waarom een lang gesprek meer kost dan " +
           "een kort, en waar afremmen wél en niet helpt. Die staan in het scherm zelf en niet in een document " +
-          "ernaast, zodat ze meegroeien met wat er echt in het dashboard zit.",
+          "ernaast, zodat ze meegroeien met wat er echt in het dashboard zit.\n\n" +
+          "**Daaronder staat het echte totaal per klant, deze maand**: AI en Ahrefs samen in één bedrag, met " +
+          "erbij welke actie dat bedrag die maand het meest opstuwde en hoe het zich verhoudt tot het " +
+          "maandbudget van de klant. Dat laatste is een ruwe vergelijking (dollarkosten tegenover het " +
+          "eurobudget, zonder wisselkoers), maar wel genoeg om in één oogopslag te zien welke klant krap zit op " +
+          "marge.\n\n" +
+          "Ahrefs zelf rekent per maand af, niet per unit; er bestaat dus geen officiële prijs per unit om hard " +
+          "te coderen. Daarom is dat één instelbare knop (de omgevingsvariabele " +
+          "`AHREFS_PRIJS_PER_UNIT_USD`): je maandbedrag gedeeld door de units in je abonnement, en elke Ahrefs-" +
+          "regel krijgt vanaf dat moment een echt bedrag in plaats van 0. Zonder die instelling blijft Ahrefs " +
+          "zichtbaar in units en aanroepen, maar telt het nog met €0 mee in de marge, en het scherm zegt dat " +
+          "er expliciet bij in plaats van een onvolledig totaal als compleet te tonen.",
       },
       {
         titel: "De Ahrefs-teller in de kopbalk",
@@ -1769,7 +1780,7 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "| **R1** | Autoriteit per pagina aansluiten | ✅ af op 6 augustus 2026 |\n" +
           "| **R2** | Prioriteren op conversies in plaats van klikken | ✅ af op 7 augustus 2026 |\n" +
           "| **R3** | AI-vindbaarheid op onderwerpniveau | Middel werk, groot verkoopeffect |\n" +
-          "| **R4** | Verbruik compleet: de Ahrefs-credits erbij | Klein werk, nodig voor licentie |",
+          "| **R4** | Verbruik compleet: de Ahrefs-credits erbij | ✅ af op 8 augustus 2026 |",
         sub: [
           {
             titel: "R1. Autoriteit per pagina aansluiten — af op 6 augustus 2026",
@@ -1853,26 +1864,15 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
               "het verbruik, en het verhaal dat je de klant elke maand vertelt.",
           },
           {
-            titel: "R4. Verbruik compleet: de Ahrefs-credits erbij",
+            titel: "R4. Verbruik compleet: de Ahrefs-credits erbij — af op 8 augustus 2026",
             tekst:
-              "**Wat er nu mis is.** Het verbruiksscherm meet de AI-kosten per klant en per actie nauwkeurig. De " +
-              "Ahrefs-credits worden per aanroep wel geteld waar de dienst dat teruggeeft, maar niet volledig " +
-              "doorgerekend naar kosten per klant. De marge per klant is daarmee een schatting.\n\n" +
-              "**Wat het oplevert.** Dit is klein werk met één groot gevolg: het cijfer waar een licentiegesprek " +
-              "en een prijsstelling op rusten. Zonder dit kun je niet zeggen wat een klant in dit systeem kost, en " +
-              "dus ook niet wat een bureau ervoor zou moeten betalen. Het is ook het cijfer dat je nodig hebt om " +
-              "te zien welke knop te duur is voor wat hij oplevert.\n\n" +
-              "**Hoe we het zouden bouwen.**\n\n" +
-              "1. De teller die er al is per aanroep wegschrijven met dezelfde velden als de AI-regels, zodat er " +
-              "één verbruikstabel blijft in plaats van twee.\n" +
-              "2. De prijs per eenheid instelbaar maken op één plek, net als de modelprijzen nu, zodat een " +
-              "tariefwijziging één regel is.\n" +
-              "3. Het scherm uitbreiden met een totaal per klant per maand, uitgesplitst naar dienst, en de " +
-              "verhouding met wat de klant betaalt.\n\n" +
-              "**Waaraan je ziet dat het af is.** Op het verbruiksscherm staat per klant per maand een totaal in " +
-              "euro's dat AI en Ahrefs samen dekt, en de duurste actie van die maand is met naam te zien.\n\n" +
-              "**Wat het raakt.** Dit verandert het scherm met het verbruik en het scherm met de financiën, waar de " +
-              "kosten dan naast de omzet per klant staan. Onder water raakt het de koppeling met Ahrefs.",
+              "**Klaar.** Ahrefs-verbruik krijgt nu een echt bedrag zodra er een prijs per unit is ingesteld, en " +
+              "het verbruiksscherm laat per klant per maand één totaal zien dat AI en Ahrefs samen dekt, met de " +
+              "duurste actie van die maand erbij en de verhouding tot het maandbudget van de klant.\n\n" +
+              "De volledige beschrijving staat nu in het hoofdstuk **Bedrijfsvoering: geld, verbruik en team**, " +
+              "bij **Verbruik en kosten per actie**, want het is werkelijkheid en geen plan meer. Wat hier blijft " +
+              "staan is waarom het erop stond: zonder dit cijfer kon je niet zeggen wat een klant in dit systeem " +
+              "kost, en dus ook niet wat een bureau ervoor zou moeten betalen.",
           },
         ],
       },

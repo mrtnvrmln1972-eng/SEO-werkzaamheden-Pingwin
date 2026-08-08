@@ -36,6 +36,19 @@ export type UsageEntry = {
   cacheWrite?: number; // tokens naar de prompt-cache geschreven (125% tarief)
 };
 
+// ── Ahrefs-prijs per unit (USD) ──
+// Ahrefs rekent het abonnement per maand af, niet per unit; er is dus geen
+// officiële "prijs per unit" om hier hard te coderen (dat zou gokken zijn).
+// In plaats daarvan is dit één instelbare knop, net als het Claude-maandbudget:
+// zet AHREFS_PRIJS_PER_UNIT_USD in Vercel op (je maandbedrag) / (units in je
+// abonnement) en elke Ahrefs-regel krijgt vanaf dat moment een echt bedrag.
+// Niet ingesteld = 0, precies het gedrag van vóór dit punt: liever een leeg
+// cijfer dan een verzonnen bedrag.
+export function ahrefsPrijsPerUnit(): number | null {
+  const n = Number(process.env.AHREFS_PRIJS_PER_UNIT_USD);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 // Schrijft één verbruik-regel. Mag NOOIT de aanroeper laten crashen: als de
 // meting faalt, gaat de chat/analyse gewoon door. Daarom alles in try/catch.
 export async function logUsage(e: UsageEntry): Promise<void> {
@@ -44,9 +57,13 @@ export async function logUsage(e: UsageEntry): Promise<void> {
     const tokensOut = e.tokensOut || 0;
     const cacheRead = e.cacheRead || 0;
     const cacheWrite = e.cacheWrite || 0;
-    // Alleen Claude heeft een tokenprijs. Bij andere diensten (ahrefs: units in
-    // tokens_in) zou de standaardprijs een onzin-bedrag opleveren; dus 0.
-    const cost = e.service === "anthropic" ? estimateCostUsd(e.model || undefined, tokensIn, tokensOut, cacheRead, cacheWrite) : 0;
+    // Claude heeft een tokenprijs; Ahrefs (units in tokens_in) krijgt een prijs
+    // zodra die is ingesteld, anders 0 (zie ahrefsPrijsPerUnit hierboven).
+    const cost = e.service === "anthropic"
+      ? estimateCostUsd(e.model || undefined, tokensIn, tokensOut, cacheRead, cacheWrite)
+      : e.service === "ahrefs"
+        ? tokensIn * (ahrefsPrijsPerUnit() ?? 0)
+        : 0;
     await ensureSchema();
     // tokens_in blijft het totale input-beeld (vers + cache), zodat het overzicht
     // dezelfde aantallen toont; de korting zit in cost_usd.
@@ -204,4 +221,48 @@ export async function getUsageByAction(fromIso: string): Promise<UsageActionRow[
     GROUP BY u.action
     ORDER BY cost_usd DESC`;
   return rows as UsageActionRow[];
+}
+
+// ── Het echte totaal per klant: AI en Ahrefs samen ──
+// Dit is het cijfer waar een licentiegesprek en een prijsstelling op rusten: wat
+// kost een klant écht in dit systeem, opgeteld over beide diensten. Losse
+// Claude- en Ahrefs-tellingen bestonden al; dit voegt ze per klant samen en
+// bewaart welke actie (van beide diensten) dat totaal het meest opstuwde.
+export type VerbruikKlantMaand = {
+  slug: string | null;
+  naam: string | null;
+  aiUsd: number;
+  ahrefsUsd: number;
+  totaalUsd: number;
+  duursteActie: { service: string; action: string | null; usd: number } | null;
+};
+
+export async function getVerbruikPerKlantPerMaand(fromIso: string): Promise<VerbruikKlantMaand[]> {
+  await ensureSchema();
+  const { rows } = await sql`
+    SELECT
+      u.client_slug, c.name AS client_name, u.service, u.action,
+      COALESCE(SUM(u.cost_usd), 0)::float AS cost_usd
+    FROM service_usage u
+    LEFT JOIN clients c ON c.slug = u.client_slug
+    WHERE u.created_at >= ${fromIso}
+    GROUP BY u.client_slug, c.name, u.service, u.action`;
+
+  const per = new Map<string, VerbruikKlantMaand>();
+  for (const r of rows as { client_slug: string | null; client_name: string | null; service: string; action: string | null; cost_usd: number }[]) {
+    const sleutel = r.client_slug || "";
+    let v = per.get(sleutel);
+    if (!v) {
+      v = { slug: r.client_slug, naam: r.client_name, aiUsd: 0, ahrefsUsd: 0, totaalUsd: 0, duursteActie: null };
+      per.set(sleutel, v);
+    }
+    const bedrag = r.cost_usd || 0;
+    if (r.service === "anthropic") v.aiUsd += bedrag;
+    else if (r.service === "ahrefs") v.ahrefsUsd += bedrag;
+    v.totaalUsd += bedrag;
+    if (bedrag > 0 && (!v.duursteActie || bedrag > v.duursteActie.usd)) {
+      v.duursteActie = { service: r.service, action: r.action, usd: bedrag };
+    }
+  }
+  return [...per.values()].sort((a, b) => b.totaalUsd - a.totaalUsd);
 }

@@ -19,3 +19,16 @@ export function actieLabel(action: string | null | undefined): string {
   if (!action) return "Overig";
   return ACTION_LABEL[action] || action;
 }
+
+/**
+ * Naam van een actie ongeacht de dienst: Claude-acties via ACTION_LABEL, Ahrefs-
+ * acties zijn een API-pad (bijv. "/site-explorer/organic-keywords") en worden
+ * hier leesbaar gemaakt. Voor de "duurste actie" van een klant, die uit beide
+ * diensten kan komen.
+ */
+export function actieLabelMetDienst(service: string, action: string | null | undefined): string {
+  if (service === "anthropic") return actieLabel(action);
+  if (!action) return "Ahrefs (onbekend)";
+  const naam = action.replace(/^\//, "").split("/").join(" › ").replace(/-/g, " ");
+  return `Ahrefs: ${naam}`;
+}

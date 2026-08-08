@@ -4,14 +4,15 @@ import Link from "next/link";
 import { ADMIN_COOKIE } from "../../../lib/admin-auth";
 import { ADMIN_VIEWAS_COOKIE } from "../../../lib/constants";
 import { getScopeFromCookie } from "../../../lib/admin-scope";
-import { getUsageSummary, getUsageByAction, getUsageByClientAction, getClaudeKosten, getAhrefsEigenVerbruik, type UsageRow, type UsageActionRow, type UsageClientActionRow } from "../../../lib/usage";
+import { getUsageSummary, getUsageByAction, getUsageByClientAction, getClaudeKosten, getAhrefsEigenVerbruik, getVerbruikPerKlantPerMaand, ahrefsPrijsPerUnit, type UsageRow, type UsageActionRow, type UsageClientActionRow } from "../../../lib/usage";
 import { getAhrefsSubscriptionUsage } from "../../../lib/ahrefs";
 import { tellerStand } from "../../../lib/ahrefs-teller";
+import { listClients } from "../../../lib/clients";
 import AdminKop from "../AdminKop";
 import Meters from "./Meters";
 import { claudeStand, budgetUitEnv } from "../../../lib/claude-teller";
 // Leesbare namen voor de acties: één lijst, gedeeld met de Claude-teller in de kopbalk.
-import { ACTION_LABEL } from "../../../lib/usage-labels";
+import { ACTION_LABEL, actieLabelMetDienst } from "../../../lib/usage-labels";
 
 
 export const dynamic = "force-dynamic";
@@ -112,11 +113,18 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
   const maandStart = new Date();
   maandStart.setDate(1); maandStart.setHours(0, 0, 0, 0);
   const vorigeStart = new Date(maandStart); vorigeStart.setMonth(vorigeStart.getMonth() - 1);
-  const [claudeMaand, claudeVorige, ahrefsEigen] = await Promise.all([
+  const [claudeMaand, claudeVorige, ahrefsEigen, verbruikPerKlant, clients] = await Promise.all([
     getClaudeKosten(maandStart.toISOString()).catch(() => null),
     getClaudeKosten(vorigeStart.toISOString(), maandStart.toISOString()).catch(() => null),
     getAhrefsEigenVerbruik(maandStart.toISOString()).catch(() => null),
+    getVerbruikPerKlantPerMaand(maandStart.toISOString()).catch(() => []),
+    listClients().catch(() => []),
   ]);
+  // Prijs per Ahrefs-unit: pas ingesteld (zie lib/usage.ts), dus pas dan heeft de
+  // marge per klant echt de Ahrefs-kosten erbij. Zonder prijs blijven Ahrefs-
+  // bedragen 0, en dat mag dit scherm niet verbergen alsof het al compleet is.
+  const ahrefsPrijsIngesteld = ahrefsPrijsPerUnit() !== null;
+  const maandbudgetPerSlug = new Map(clients.map((c) => [c.slug, c.budget.maandbudget]));
   const claudeTeller = claudeStand({
     maandUsd: claudeMaand?.usd ?? 0,
     vorigeMaandUsd: claudeVorige ? claudeVorige.usd : null,
@@ -209,7 +217,7 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
             <div style={{ ...card, minWidth: 230, padding: "var(--s-4) var(--s-5)" }}>
               <div style={tileLabel}>
                 Totale kosten
-                <Hint text={`De opgetelde Claude-kosten over de gekozen periode: ${periodText}. Ahrefs telt hier niet mee, want dat valt binnen het vaste abonnement.`} />
+                <Hint text={`De opgetelde kosten over de gekozen periode: ${periodText}. ${ahrefsPrijsIngesteld ? "Claude en Ahrefs samen, tegen de ingestelde prijs per Ahrefs-unit." : "Alleen Claude: voor Ahrefs is nog geen prijs per unit ingesteld, dus dat verbruik telt hier nog met €0 mee."}`} />
               </div>
               <div style={{ fontSize: "var(--fs-xl)", fontWeight: 700, color: "var(--accent-warm)", lineHeight: "var(--lh-xl)" }}>{euros(totalCost)}</div>
               <div style={{ fontSize: "var(--fs-sm)", color: "var(--text-secondary)" }}>{periodText} &middot; {num(totalCalls)} aanroepen</div>
@@ -227,10 +235,15 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
             <div style={{ ...card, minWidth: 260, padding: "var(--s-4) var(--s-5)" }}>
               <div style={tileLabel}>
                 Ahrefs
-                <Hint text="Zoekwoord-data. Gemeten in units (Ahrefs' eigen tegoed-eenheid) en aanroepen. Er staat geen bedrag bij: het verbruik valt binnen het vaste Ahrefs-abonnement. Herhaalvragen komen uit de cache en verbruiken niets." />
+                <Hint text={ahrefsPrijsIngesteld
+                  ? "Zoekwoord-data. Gemeten in units (Ahrefs' eigen tegoed-eenheid) en aanroepen, met een bedrag op basis van de ingestelde prijs per unit. Dat verdeelt het vaste maandabonnement over het echte verbruik; herhaalvragen komen uit de cache en verbruiken niets."
+                  : "Zoekwoord-data. Gemeten in units (Ahrefs' eigen tegoed-eenheid) en aanroepen. Er staat geen bedrag bij: er is nog geen prijs per unit ingesteld (env AHREFS_PRIJS_PER_UNIT_USD). Herhaalvragen komen uit de cache en verbruiken niets."} />
               </div>
               <div style={{ fontSize: "var(--fs-lg)", fontWeight: 700, lineHeight: "var(--lh-lg)" }}>
                 {ahrefsTotals ? `${num(ahrefsTotals.units)} units` : "geen verbruik"}
+                {ahrefsPrijsIngesteld && ahrefsTotals && ahrefsTotals.cost > 0 && (
+                  <span style={{ fontSize: "var(--fs-sm)", fontWeight: 600, color: "var(--text-secondary)" }}> &middot; {euros(ahrefsTotals.cost)}</span>
+                )}
               </div>
               <div style={{ fontSize: "var(--fs-sm)", color: "var(--text-secondary)" }}>
                 {ahrefsTotals ? `${num(ahrefsTotals.calls)} aanroepen in deze periode` : "in deze periode"}
@@ -245,6 +258,61 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Het echte totaal per klant: AI en Ahrefs samen, altijd deze kalendermaand
+              (los van de periode-keuze hierboven, want een marge is een maandcijfer). */}
+          <div style={{ ...card, marginBottom: "var(--s-5)" }}>
+            <h2 style={blockTitle}>
+              Totaal per klant, deze maand
+              <Hint text={`Claude en Ahrefs samen, sinds ${dateNl(maandStart)}. ${ahrefsPrijsIngesteld ? "Ahrefs telt mee tegen de ingestelde prijs per unit." : "Ahrefs telt nog met €0 mee: zet AHREFS_PRIJS_PER_UNIT_USD om de echte marge te zien."} Dit is het cijfer waar een licentieprijs op rust.`} />
+            </h2>
+            <p style={blockSub}>
+              De echte kosten per klant deze maand, met de duurste actie erbij. {!ahrefsPrijsIngesteld && "Nog zonder Ahrefs-bedrag: er is geen prijs per unit ingesteld."}
+            </p>
+            {verbruikPerKlant.length === 0 ? (
+              <div style={{ color: "var(--text-secondary)", padding: "var(--s-2) var(--s-1)", fontSize: "var(--fs-base)" }}>
+                Nog geen verbruik deze maand.
+              </div>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
+                  <thead>
+                    <tr style={{ background: "var(--dark, #33302e)" }}>
+                      <th style={th}>Klant</th>
+                      <th style={thNum}>AI</th>
+                      <th style={thNum}>Ahrefs</th>
+                      <th style={thNum}>Totaal</th>
+                      <th style={th}>Duurste actie</th>
+                      <th style={thNum}>T.o.v. maandbudget</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {verbruikPerKlant.map((v, i) => {
+                      const budget = v.slug ? maandbudgetPerSlug.get(v.slug) : undefined;
+                      return (
+                        <tr key={i}>
+                          <td style={tdNowrap}>{v.naam || v.slug || "Algemeen (geen klant)"}</td>
+                          <td style={numTd}>{euros(v.aiUsd)}</td>
+                          <td style={numTd}>{ahrefsPrijsIngesteld ? euros(v.ahrefsUsd) : "—"}</td>
+                          <td style={{ ...numTd, fontWeight: 600 }}>{euros(v.totaalUsd)}</td>
+                          <td style={td}>
+                            {v.duursteActie ? `${actieLabelMetDienst(v.duursteActie.service, v.duursteActie.action)} (${euros(v.duursteActie.usd)})` : "—"}
+                          </td>
+                          <td style={numTd}>
+                            {budget ? (
+                              <span title="Ruwe vergelijking: kosten in dollar tegenover maandbudget in euro, zonder wisselkoers.">
+                                {Math.round((v.totaalUsd / budget) * 100)}% van {"€"}{num(budget)}
+                              </span>
+                            ) : "—"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
           {/* Daaronder de twee overzichten naast elkaar: links per klant, rechts per functie. */}
@@ -296,7 +364,7 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
                           <div style={numTd}>{num(r.calls)}</div>
                           {/* Claude: tokens in+uit samengevat; Ahrefs: units. */}
                           <div style={numTd}>{r.service === "ahrefs" ? `${num(r.tokens_in)} units` : `${num(r.tokens_in + r.tokens_out)} tokens`}</div>
-                          <div style={{ ...numTd, fontWeight: 600 }}>{r.service === "ahrefs" ? "—" : euros(r.cost_usd)}</div>
+                          <div style={{ ...numTd, fontWeight: 600 }}>{r.service === "ahrefs" && !ahrefsPrijsIngesteld ? "—" : euros(r.cost_usd)}</div>
                         </>
                       );
                       // Ahrefs (of Claude zonder uitsplitsing): gewone regel.

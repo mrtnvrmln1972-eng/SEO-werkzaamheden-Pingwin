@@ -82,6 +82,18 @@ const BEWIJZEN: Record<string, BewijsRegel[]> = {
 
   R4: [
     {
+      soort: "gedeployd",
+      wat: "Ahrefs-verbruik krijgt een prijs zodra die is ingesteld",
+      laad: () => import("./usage") as Promise<Record<string, unknown>>,
+      functie: "ahrefsPrijsPerUnit",
+    },
+    {
+      soort: "gedeployd",
+      wat: "Het scherm rekent AI en Ahrefs per klant samen tot één totaal",
+      laad: () => import("./usage") as Promise<Record<string, unknown>>,
+      functie: "getVerbruikPerKlantPerMaand",
+    },
+    {
       soort: "data",
       wat: "Er staat Ahrefs-verbruik in de verbruiksmeting",
       telling: async () => {
