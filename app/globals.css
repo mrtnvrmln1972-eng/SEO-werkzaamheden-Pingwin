@@ -2545,6 +2545,15 @@ button.org-sec-kop:hover { color: var(--orange-dark); }
 .org-kb-workflow:empty { display: none; }
 .org-kb-workflow-pijl { color: var(--muted, #8a7a6c); font-size: var(--fs-sm); }
 
+/* Materiaal verwerken (aanleveren → structureren) is een andere taak dan de
+   knoppenrij van de bevestigde gegevens erboven; een eigen, gelabelde rij in
+   plaats van een vijfde groep in dezelfde rij maakt dat verschil zichtbaar. */
+.org-actions-kb { margin-top: var(--s-2); }
+.org-actions-kb-label {
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 600;
+  color: var(--muted, #8a7a6c); text-transform: uppercase; letter-spacing: 0.4px;
+}
+
 /* Sitebouwer-deelpagina (/share/org-dev): ruimte boven de site-brede JSON. */
 .org-devshare-sitewide { margin-top: var(--s-5); }
 .org-devshare-json { margin-top: var(--s-2); }

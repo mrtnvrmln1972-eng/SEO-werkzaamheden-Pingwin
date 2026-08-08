@@ -89,7 +89,7 @@ const TYPES: { v: string; label: string }[] = [
   { v: "informatief", label: "Informatieve site / anders" },
 ];
 
-export function OrgDataForm({ data, onChange, disabled }: { data: OrgFormData; onChange: (d: OrgFormData) => void; disabled?: boolean }) {
+export function OrgDataForm({ data, onChange, disabled, toonTotaalbalk = true }: { data: OrgFormData; onChange: (d: OrgFormData) => void; disabled?: boolean; toonTotaalbalk?: boolean }) {
   const set = (patch: Partial<OrgFormData>) => onChange({ ...data, ...patch });
   // Wat nodig is en nog leeg is, komt in het rood in beeld: het veld blijft dus
   // gewoon zichtbaar en invulbaar, met de melding dat het nog ontbreekt.
@@ -160,7 +160,11 @@ export function OrgDataForm({ data, onChange, disabled }: { data: OrgFormData; o
 
   return (
     <div className="org-form">
-      {aantalMist > 0 && (
+      {/* Eén bron van waarheid voor deze telling: op de klant-/developer-deelpagina
+          (geen omringende kop) is dit de enige plek die het laat zien, dus daar blijft
+          hij staan. In de cockpit staat dezelfde telling al op de kop van "Verzamelde
+          structured data" vóórdat je hem openklapt; die twee zouden hier verdubbelen. */}
+      {toonTotaalbalk && aantalMist > 0 && (
         <div className="org-mis-balk">
           <strong>{aantalMist} {aantalMist === 1 ? "gegeven ontbreekt" : "gegevens ontbreken"} nog.</strong>
           <span>Ze staan hieronder in het rood. Vul ze aan waar je kunt; de rest vragen we bij de klant op.</span>
@@ -207,7 +211,7 @@ export function OrgDataForm({ data, onChange, disabled }: { data: OrgFormData; o
               {!/\d/.test(v.straat || "") && !String(v.postcode || "").trim() && !String(v.openingstijden || "").trim() && (
                 <span className="org-geen-vest">geen bezoekadres, dus geen vestiging</span>
               )}
-              {!disabled && <button type="button" className="ghost-btn small" title="Deze vestiging verwijderen" onClick={() => set({ vestigingen: (data.vestigingen || []).filter((_, j) => j !== i) })}>&times;</button>}
+              {!disabled && <button type="button" className="btn btn-danger btn-klein" title="Deze vestiging verwijderen" onClick={() => set({ vestigingen: (data.vestigingen || []).filter((_, j) => j !== i) })}>&times;</button>}
             </div>
             <div className="org-vest-grid">
               {rijVeld(v.straat, "Straat + huisnummer", `vestiging.${i}.straat`, (x) => zetVestiging(i, { straat: x }))}
@@ -220,7 +224,7 @@ export function OrgDataForm({ data, onChange, disabled }: { data: OrgFormData; o
             {rijVeld(v.openingstijden, "Openingstijden, bijv. ma t/m vr 8:30-17:00, za gesloten", `vestiging.${i}.openingstijden`, (x) => zetVestiging(i, { openingstijden: x }))}
           </div>
         ))}
-        {!disabled && <button type="button" className="ghost-btn small" onClick={() => set({ vestigingen: [...(data.vestigingen || []), { ...LEGE_VESTIGING }] })}>+ Vestiging toevoegen</button>}
+        {!disabled && <button type="button" className="btn btn-ghost btn-klein" onClick={() => set({ vestigingen: [...(data.vestigingen || []), { ...LEGE_VESTIGING }] })}>+ Vestiging toevoegen</button>}
       </>, { aantal: (data.vestigingen || []).length, inklapKey: "vestigingen", misAantal: misAantal("vestiging."), hint: <HelpHint wide text="Elke locatie waar klanten of patiënten terechtkunnen, met eigen adres, telefoonnummer en openingstijden. Google en AI-assistenten maken hier per vestiging een eigen vermelding van, gekoppeld aan het bedrijf; dat is wat lokale zichtbaarheid ('kliniek Utrecht') mogelijk maakt. Zonder adres én openingstijden kan die vermelding niet worden gemaakt, daarom staan die velden rood zolang ze leeg zijn." /> })}
       {sectie("Bereikbaarheid en vindbaarheid", <div className="org-kolom">
       <label className={"org-field" + (mist.has("sameAs") ? " org-mis" : "")}>
@@ -242,7 +246,7 @@ export function OrgDataForm({ data, onChange, disabled }: { data: OrgFormData; o
             <div className="org-rij" key={i}>
               <div className="org-rij-kop">
                 {rijVeld(a.naam, "Naam", `arts.${i}.naam`, (v) => set({ artsen: data.artsen.map((x, j) => j === i ? { ...x, naam: v } : x) }))}
-                {!disabled && <button type="button" className="ghost-btn small" title="Deze persoon verwijderen" onClick={() => set({ artsen: data.artsen.filter((_, j) => j !== i) })}>&times;</button>}
+                {!disabled && <button type="button" className="btn btn-danger btn-klein" title="Deze persoon verwijderen" onClick={() => set({ artsen: data.artsen.filter((_, j) => j !== i) })}>&times;</button>}
               </div>
               <div className="org-rij-grid">
                 {rijVeld(a.functie, "Functie (bijv. oogarts)", `arts.${i}.functie`, (v) => set({ artsen: data.artsen.map((x, j) => j === i ? { ...x, functie: v } : x) }))}
@@ -252,7 +256,7 @@ export function OrgDataForm({ data, onChange, disabled }: { data: OrgFormData; o
               </div>
             </div>
           ))}
-          {!disabled && <button type="button" className="ghost-btn small" onClick={() => set({ artsen: [...data.artsen, { naam: "", functie: "", specialisatie: "", big: "", fotoUrl: "", profielUrl: "" }] })}>+ Arts toevoegen</button>}
+          {!disabled && <button type="button" className="btn btn-ghost btn-klein" onClick={() => set({ artsen: [...data.artsen, { naam: "", functie: "", specialisatie: "", big: "", fotoUrl: "", profielUrl: "" }] })}>+ Arts toevoegen</button>}
         </>, { aantal: data.artsen.length, inklapKey: "artsen", misAantal: misAantal("arts.", "artsen"), hint: <HelpHint wide text="De artsen/behandelaren die op de website staan. Naam, functie en specialisatie helpen Google en AI-systemen het vertrouwen in medische informatie te bepalen; het BIG-nummer is daarbij het sterkste bewijs (openbaar register). Deze gegevens koppelen we aan de behandelpagina's." /> })
       )}
       {(data.bedrijfstype === "webshop" || data.merken.length > 0 || data.retourUrl || data.retourTermijn || data.verzendInfo) && (
@@ -269,12 +273,12 @@ export function OrgDataForm({ data, onChange, disabled }: { data: OrgFormData; o
             <div className="org-rij" key={i}>
               <div className="org-rij-kop">
                 {rijVeld(d.naam, "Dienst of behandeling", `dienst.${i}.naam`, (v) => set({ diensten: data.diensten.map((x, j) => j === i ? { ...x, naam: v } : x) }))}
-                {!disabled && <button type="button" className="ghost-btn small" title="Deze dienst verwijderen" onClick={() => set({ diensten: data.diensten.filter((_, j) => j !== i) })}>&times;</button>}
+                {!disabled && <button type="button" className="btn btn-danger btn-klein" title="Deze dienst verwijderen" onClick={() => set({ diensten: data.diensten.filter((_, j) => j !== i) })}>&times;</button>}
               </div>
               {rijVeld(d.omschrijving, "Korte omschrijving", `dienst.${i}.omschrijving`, (v) => set({ diensten: data.diensten.map((x, j) => j === i ? { ...x, omschrijving: v } : x) }))}
             </div>
           ))}
-          {!disabled && <button type="button" className="ghost-btn small" onClick={() => set({ diensten: [...data.diensten, { naam: "", omschrijving: "" }] })}>+ Dienst toevoegen</button>}
+          {!disabled && <button type="button" className="btn btn-ghost btn-klein" onClick={() => set({ diensten: [...data.diensten, { naam: "", omschrijving: "" }] })}>+ Dienst toevoegen</button>}
         </>, { aantal: data.diensten.length, inklapKey: "diensten", misAantal: misAantal("dienst."), hint: <HelpHint wide text="De hoofddiensten of behandelingen van het bedrijf. Elke dienst wordt in de structured data een eigen vermelding die aan het bedrijf en het werkgebied gekoppeld is." /> })
       )}
       {sectie("Opmerkingen", (
@@ -448,6 +452,17 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
     if (!shareUrl) return;
     try { await navigator.clipboard.writeText(shareUrl); setLinkCopied(true); setTimeout(() => setLinkCopied(false), 2000); } catch { /* handmatig */ }
   }
+  // Vier acties met een min-of-meer vaste volgorde (ophalen, delen met klant,
+  // vergrendelen, delen met developer) stonden als vier gelijkwaardige knoppen
+  // naast elkaar; dat liet de gebruiker zelf de volgorde uitzoeken. In plaats
+  // van een strikte wizard (delen met de klant is een keuze, geen verplichte
+  // tussenstap) krijgt steeds precies één knop het gewicht van "volgende
+  // logische stap"; de rest blijft gewoon klikbaar, niets wordt geblokkeerd.
+  const missingCount = data ? ontbrekendeVelden({ ...data, vestigingen: data.vestigingen || [] }).length : 0;
+  const volgendeStap: "ophalen" | "vergrendelen" | "developer" | null = !data ? null
+    : locked ? "developer"
+    : missingCount > 0 ? "ophalen"
+    : "vergrendelen";
   return (
     <div className="cockpit-card strategy-card" id="fund-structured-data">
       <button type="button" className="strategy-head" onClick={() => setOpen((v) => !v)}>
@@ -460,10 +475,10 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
           <div className="org-actions">
             {/* Alleen actief zolang er iets te halen valt: zonder gaten hoeft er
                 niets opgehaald te worden, en vergrendeld is de klant akkoord. */}
-            <button type="button" className="btn btn-primary btn-klein" onClick={autofill}
-              disabled={!!busy || locked || !data || ontbrekendeVelden({ ...data, vestigingen: data.vestigingen || [] }).length === 0}
+            <button type="button" className={"btn btn-klein " + (volgendeStap === "ophalen" ? "btn-primary" : "btn-ghost")} onClick={autofill}
+              disabled={!!busy || locked || !data || missingCount === 0}
               title={locked ? "De gegevens zijn vergrendeld; er wordt niets meer aangevuld."
-                : !data || ontbrekendeVelden({ ...data, vestigingen: data.vestigingen || [] }).length === 0
+                : !data || missingCount === 0
                 ? "Alles wat we nodig hebben staat er al; er valt niets meer op te halen."
                 : "Zoekt de website en het web af naar wat hier nog ontbreekt. Vult alleen lege velden; bestaande gegevens blijven staan."}>
               {busy === "autofill" ? "Website + web doorzoeken… (kan een minuut duren)" : "Ontbrekende gegevens ophalen"}
@@ -471,18 +486,14 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
             <span className="pnl-acties-scheiding" aria-hidden="true" />
             <div className="pnl-acties-groep" role="group" aria-label="Gegevens beheren">
               <span className="org-action-hint">
-                <button type="button" className="btn btn-ghost btn-klein" onClick={() => void save()} disabled={!!busy || !data}>{busy === "save" ? "Opslaan…" : "Opslaan"}</button>
-                <HelpHint text="Slaat de ingevulde bedrijfsgegevens meteen op. Dit gebeurt ook automatisch, een paar seconden nadat je stopt met typen; deze knop is er voor als je dat niet wilt afwachten." />
-              </span>
-              <span className="org-action-hint">
-                <button type="button" className={"btn btn-ghost btn-klein" + (locked ? " btn-ghost-aan" : "")} onClick={toggleLock} disabled={!!busy}>{locked ? "Ontgrendelen" : "Vergrendelen"}</button>
+                <button type="button" className={"btn btn-klein " + (locked ? "btn-ghost btn-ghost-aan" : volgendeStap === "vergrendelen" ? "btn-primary" : "btn-ghost")} onClick={toggleLock} disabled={!!busy}>{locked ? "Ontgrendelen" : "Vergrendelen"}</button>
                 <HelpHint text="Zet de gegevens vast als de bevestigde bron voor alle structured data. De klant kan ze dan niet meer wijzigen via de deel-link. Ontgrendel je later, dan kan de klant weer aanvullen." />
               </span>
             </div>
             <span className="pnl-acties-scheiding" aria-hidden="true" />
             <div className="pnl-acties-groep" role="group" aria-label="Delen">
               <span className="org-action-hint">
-                <button type="button" className="btn btn-ghost btn-klein" onClick={() => void openDevDeel()} disabled={!!busy || !data?.bedrijfsnaam}>{busy === "dev" ? "Bezig…" : "Delen met developer"}</button>
+                <button type="button" className={"btn btn-klein " + (volgendeStap === "developer" ? "btn-primary" : "btn-ghost")} onClick={() => void openDevDeel()} disabled={!!busy || !data?.bedrijfsnaam}>{busy === "dev" ? "Bezig…" : "Delen met developer"}</button>
                 <HelpHint xl title="Wat betekenen 'genereren', 'site-breed' en 'schema'?" text={"**Schema** (ook wel structured data of JSON-LD genoemd) is onzichtbare code in de website die Google en AI-zoekmachines vertelt wie dit bedrijf is en wat een pagina behandelt.\n## Twee lagen\n__Site-breed__ is het ene basisblok met de bedrijfsidentiteit: naam, adres, telefoon, openingstijden, social profielen. Dat hoort op elke pagina, als fundering. Een losse pagina (een behandeling, dienst, artikel) krijgt daarbovenop een eigen, kleiner blok via de structured data-stap in het Pagina's-tabblad; dat blok verwijst terug naar dit fundament in plaats van alles te herhalen.\n## Wat 'genereren' doet\nDeze knop bouwt dat site-brede blok automatisch uit de bevestigde bedrijfsgegevens hierboven, **aanvullend** op wat een SEO-plugin (Yoast, Rank Math, AIOSEO) eventueel al op de site zet: geen dubbele info, de plugin blijft zelf verantwoordelijk voor wat hij al levert en past dat vanzelf aan bij een wijziging.\n## Wat 'Delen met developer' in één klik doet\n- Het bestand komt in Drive te staan.\n- Er komt een taak voor de developer in Werkzaamheden.\n- Er opent een mailvenster met een kant-en-klare introductie; meteen versturen of eerst aanpassen.\n- Wil je eerst de ruwe code bekijken of los kopiëren, dat kan in dat mailvenster onder 'Bekijk de JSON-code'."} />
               </span>
               {shareUrl && (
@@ -493,25 +504,40 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
               )}
             </div>
             <span className="pnl-acties-scheiding" aria-hidden="true" />
-            <span className="org-kb-workflow" ref={setKbSlot} />
             <LaatsteStandKnop />
-            {/* Wat er met je wijziging gebeurt, zonder dat je op Opslaan hoeft te letten. */}
+            {/* Wat er met je wijziging gebeurt: autosave slaat direct op zodra je een
+                veld verlaat (zie onBlur bij het formulier hieronder) én een paar
+                seconden na de laatste toets. Een losse "Opslaan"-knop voegde daar
+                niets meer aan toe dan een pleister voor die paar seconden wachttijd. */}
             {bewaarStand && (
               <span className={"org-bewaar" + (bewaarStand === "fout" ? " org-bewaar-fout" : "")}>
                 {bewaarStand === "bezig" ? "opslaan…" : bewaarStand === "klaar" ? "✓ opgeslagen" : "opslaan mislukt"}
               </span>
             )}
           </div>
+          {/* Materiaal verwerken is een andere taak dan de rij hierboven (die gaat
+              over de bevestigde gegevens zelf, dit gaat over ruwe aanlevering
+              structureren), dus een eigen rij in plaats van een vijfde groep in
+              dezelfde knoppenrij. */}
+          <div className="org-actions org-actions-kb">
+            <span className="org-actions-kb-label">Materiaal verwerken</span>
+            <span className="org-kb-workflow" ref={setKbSlot} />
+          </div>
           {msg && <div className="saved-msg" style={{ margin: "var(--s-2) 0" }}>{msg}</div>}
           <section className="org-sec org-verzameld">
             <button type="button" className="org-sec-kop" onClick={() => setDataOpen((v) => !v)}>
               <span className="org-sec-caret">{dataOpen ? "▾" : "▸"}</span>
               <span>Verzamelde structured data</span>
-              {!!data && ontbrekendeVelden({ ...data, vestigingen: data.vestigingen || [] }).length > 0 && (
-                <span className="org-mis-vlag">{ontbrekendeVelden({ ...data, vestigingen: data.vestigingen || [] }).length} ontbreken</span>
-              )}
+              {missingCount > 0 && <span className="org-mis-vlag">{missingCount} ontbreken</span>}
             </button>
-            {dataOpen && (data ? <OrgDataForm data={data} onChange={setData} disabled={busy === "autofill"} /> : <div className="muted">Laden…</div>)}
+            {dataOpen && (data ? (
+              // onBlur i.p.v. te wachten op de losse "Opslaan"-knop (die is vervallen):
+              // verlaat je een veld, dan slaat dit meteen op, in plaats van pas na de
+              // korte stilte die de gewone autosave hieronder nog aanhoudt.
+              <div onBlur={() => { void save(true); }}>
+                <OrgDataForm data={data} onChange={setData} disabled={busy === "autofill"} toonTotaalbalk={false} />
+              </div>
+            ) : <div className="muted">Laden…</div>)}
           </section>
           <Kennisbank slug={slug} voorActie={() => save(true)} onVerwerkt={() => { void laadOrg(); }} actiesSlot={kbSlot} />
         </div>
