@@ -6,8 +6,9 @@ import { canAccessSlug, getScopeFromCookie } from "../../../lib/admin-scope";
 import { listClients } from "../../../lib/clients";
 import { getOrgData } from "../../../lib/org-data";
 import { getCompetitors } from "../../../lib/competitors";
-import { berekenFundament, FUNDAMENT_KOLOMMEN, PUNT_LABEL, fundamentVoortgang, type FundamentStatus } from "../../../lib/fundament";
+import { berekenFundament, FUNDAMENT_KOLOMMEN } from "../../../lib/fundament";
 import AdminKop from "../AdminKop";
+import FundamentClient, { type FundamentRij } from "./FundamentClient";
 
 // ═══════════════════════════════════════════════════════════
 // FUNDAMENT: ALLE KLANTEN IN ÉÉN OOGOPSLAG
@@ -19,29 +20,13 @@ import AdminKop from "../AdminKop";
 // detail per klant (met de knoppen om het af te maken) staat in de
 // cockpit-tab "Klantgegevens" via FundamentPanel.tsx, met dezelfde
 // rekenregels uit lib/fundament.ts.
+//
+// De data komt hier vandaan (server, één keer per bezoek); de indeling in
+// groepen, het open/dichtklappen en de actieknoppen zijn interactie en staan
+// daarom in FundamentClient.tsx.
 // ═══════════════════════════════════════════════════════════
 
 export const dynamic = "force-dynamic";
-
-const KLEUR: Record<string, { bg: string; fg: string }> = {
-  klaar: { bg: "var(--good)", fg: "var(--white)" },
-  vergrendeld: { bg: "var(--good)", fg: "var(--white)" },
-  bezig: { bg: "var(--accent-warm)", fg: "var(--white)" },
-  nietbegonnen: { bg: "var(--gray-light)", fg: "var(--text-secondary)" },
-};
-
-function Pil({ status }: { status: FundamentStatus[keyof FundamentStatus] & string }) {
-  const k = KLEUR[status] || KLEUR.nietbegonnen;
-  return (
-    <span style={{
-      display: "inline-block", fontSize: "var(--fs-xs)", lineHeight: "var(--lh-xs)", fontWeight: 700,
-      padding: "var(--s-1) var(--s-2)", borderRadius: "var(--r-full)",
-      background: k.bg, color: k.fg, whiteSpace: "nowrap",
-    }}>
-      {PUNT_LABEL[status]}
-    </span>
-  );
-}
 
 export default async function FundamentPage() {
   const scope = await getScopeFromCookie(cookies().get(ADMIN_COOKIE)?.value, cookies().get(ADMIN_VIEWAS_COOKIE)?.value);
@@ -53,7 +38,7 @@ export default async function FundamentPage() {
   // Per klant de twee losse bronnen erbij halen: org-data (structured data) en
   // de concurrentenlijst. seoProfile en de positioneringslink staan al op de
   // klant zelf. Eén rekenregel (berekenFundament) zet dat om in de zes statussen.
-  const rijen = await Promise.all(clients.map(async (c) => {
+  const rijen: FundamentRij[] = await Promise.all(clients.map(async (c) => {
     const [org, competitors] = await Promise.all([
       getOrgData(c.slug).catch(() => null),
       getCompetitors(c.slug).catch(() => [] as string[]),
@@ -65,7 +50,7 @@ export default async function FundamentPage() {
       competitorCount: competitors.length,
       positioneringUrl: c.cockpit.positioneringUrl,
     });
-    return { client: c, status };
+    return { slug: c.slug, name: c.name, fase: c.fase, domain: c.domain, grp: c.grp, status };
   }));
 
   const totaal = rijen.length;
@@ -76,8 +61,6 @@ export default async function FundamentPage() {
 
   const wrap: React.CSSProperties = { maxWidth: 1320, margin: "0 auto", padding: "var(--s-6) var(--s-5) var(--s-12)" };
   const card: React.CSSProperties = { border: "1px solid var(--card-border)", borderRadius: "var(--r-lg)", background: "var(--white)", boxShadow: "var(--shadow-sm)" };
-  const th: React.CSSProperties = { textAlign: "left", padding: "var(--s-2) var(--s-3)", fontSize: "var(--fs-xs)", color: "var(--white)", fontWeight: 700, whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: "0.03em" };
-  const td: React.CSSProperties = { padding: "var(--s-2) var(--s-3)", borderBottom: "1px solid var(--gray-light)", fontSize: "var(--fs-sm)", verticalAlign: "top" };
 
   return (
     <>
@@ -90,7 +73,8 @@ export default async function FundamentPage() {
           Wat er per klant al staat en wat nog gemaakt moet worden: tone of voice, bedrijfsprofiel,
           structured data, concurrenten en positionering. Concurrentieanalyse heeft geen eigen kolom
           met een los document: die zit altijd al in het positioneringsadvies, dus die status volgt
-          daaruit.
+          daaruit. Staat een punt nog op &ldquo;nog niet&rdquo;, dan staat er een knopje bij om het
+          meteen te starten.
         </p>
 
         {/* Zes tegels: per punt hoeveel van de klanten al iets hebben staan. */}
@@ -105,43 +89,7 @@ export default async function FundamentPage() {
           ))}
         </div>
 
-        <div style={{ ...card, overflow: "hidden" }}>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 960 }}>
-              <thead>
-                <tr style={{ background: "var(--dark)" }}>
-                  <th style={{ ...th, position: "sticky", left: 0, background: "var(--dark)" }}>Klant</th>
-                  {FUNDAMENT_KOLOMMEN.map((k) => <th key={k.key} style={th} title={k.hint}>{k.label}</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {rijen.map(({ client: c, status: s }) => {
-                  const voortgang = fundamentVoortgang(s);
-                  return (
-                    <tr key={c.slug}>
-                      <td style={{ ...td, position: "sticky", left: 0, background: "var(--white)", borderRight: "1px solid var(--gray-light)" }}>
-                        <a href={`/admin/client/${c.slug}?tab=klant`} style={{ color: "var(--dark)", fontWeight: 700, textDecoration: "none", fontSize: "var(--fs-base)" }}>{c.name}</a>
-                        <div style={{ fontSize: "var(--fs-xs)", color: "var(--text-secondary)", marginTop: "var(--s-1)" }}>
-                          {c.fase === "lead" && <span style={{ color: "var(--accent-warm)", fontWeight: 700, textTransform: "uppercase", marginRight: "var(--s-2)" }}>Lead</span>}
-                          {c.domain || "geen domein"} &middot; {voortgang.af}/{voortgang.totaal}
-                        </div>
-                      </td>
-                      <td style={td}><Pil status={s.toneOfVoice} /></td>
-                      <td style={td}><Pil status={s.bedrijfsprofiel} /></td>
-                      <td style={td}><Pil status={s.structuredData} /></td>
-                      <td style={td}>
-                        <Pil status={s.concurrenten} />
-                        {s.concurrentenAantal > 0 && <span style={{ marginLeft: "var(--s-2)", fontSize: "var(--fs-xs)", color: "var(--text-secondary)" }}>{s.concurrentenAantal} domeinen</span>}
-                      </td>
-                      <td style={td}><Pil status={s.concurrentieanalyse} /></td>
-                      <td style={td}><Pil status={s.positionering} /></td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <FundamentClient rijen={rijen} />
       </div>
     </>
   );

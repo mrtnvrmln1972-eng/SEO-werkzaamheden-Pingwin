@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import HelpHint from "./HelpHint";
+import FundamentActieKnop, { type FundamentActieKind } from "./FundamentActieKnop";
 import { berekenFundament, FUNDAMENT_KOLOMMEN, type FundamentPunt, type FundamentStatus } from "../../../../lib/fundament";
 
 // ═══════════════════════════════════════════════════════════
@@ -30,6 +31,17 @@ const CHIP_LABEL: Record<FundamentPunt, string> = {
   klaar: "klaar", vergrendeld: "vergrendeld", bezig: "bezig", nietbegonnen: "nog niet",
 };
 
+// Welke actieknop bij welk punt hoort, en of hij nog zin heeft bij de huidige
+// stand. Structured data blijft nuttig zolang hij niet vergrendeld is (de
+// knop vult alleen lege velden aan, ook als er al gedeeltelijk iets staat).
+const ACTIE_VOOR: Partial<Record<keyof FundamentStatus, FundamentActieKind>> = {
+  toneOfVoice: "tov", bedrijfsprofiel: "profile", structuredData: "structured",
+};
+function magActie(key: keyof FundamentStatus, status: FundamentPunt): boolean {
+  if (key === "structuredData") return status !== "vergrendeld";
+  return status === "nietbegonnen";
+}
+
 export default function FundamentPanel({ slug, seoProfile, positioneringUrl, onGaNaar }: {
   slug: string;
   seoProfile: string;
@@ -39,21 +51,27 @@ export default function FundamentPanel({ slug, seoProfile, positioneringUrl, onG
 }) {
   const [org, setOrg] = useState<OrgSlice | null>(null);
   const [competitorCount, setCompetitorCount] = useState<number | null>(null);
+  const [profielTekst, setProfielTekst] = useState(seoProfile);
   const [urlVeld, setUrlVeld] = useState(positioneringUrl || "");
   const [bezig, setBezig] = useState(false);
   const [gemeld, setGemeld] = useState("");
 
-  useEffect(() => {
+  function laadOrg() {
     fetch(`/api/admin/org-data?slug=${encodeURIComponent(slug)}`)
       .then((r) => r.json()).then((d) => { if (d.ok) setOrg(d); }).catch(() => {});
+  }
+  useEffect(() => {
+    laadOrg();
     fetch(`/api/admin/competitors?slug=${encodeURIComponent(slug)}`)
       .then((r) => r.json()).then((d) => { if (d.ok) setCompetitorCount((d.competitors || []).length); }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
 
   useEffect(() => { setUrlVeld(positioneringUrl || ""); }, [positioneringUrl]);
+  useEffect(() => { setProfielTekst(seoProfile); }, [seoProfile]);
 
   const status: FundamentStatus = berekenFundament({
-    seoProfile,
+    seoProfile: profielTekst,
     orgFilled: !!org?.data?.bedrijfsnaam?.trim(),
     orgLocked: !!org?.locked,
     competitorCount: competitorCount ?? 0,
@@ -87,12 +105,27 @@ export default function FundamentPanel({ slug, seoProfile, positioneringUrl, onG
       </div>
 
       <div className="fund-rij">
-        {FUNDAMENT_KOLOMMEN.map((k) => (
-          <div key={k.key} className="fund-punt" title={k.hint}>
-            <span className={CHIP_KLASSE[status[k.key]]}>{CHIP_LABEL[status[k.key]]}</span>
-            <span className="fund-punt-label">{k.label}</span>
-          </div>
-        ))}
+        {FUNDAMENT_KOLOMMEN.map((k) => {
+          const actieKind = ACTIE_VOOR[k.key];
+          const puntStatus = status[k.key] as FundamentPunt;
+          return (
+            <div key={k.key} className="fund-punt" title={k.hint}>
+              <span className={CHIP_KLASSE[puntStatus]}>{CHIP_LABEL[puntStatus]}</span>
+              <span className="fund-punt-label">{k.label}</span>
+              {actieKind && magActie(k.key, puntStatus) && (
+                <FundamentActieKnop
+                  slug={slug}
+                  kind={actieKind}
+                  live
+                  onKlaar={(verseTekst) => {
+                    if (actieKind === "structured") laadOrg();
+                    else if (verseTekst) setProfielTekst(verseTekst);
+                  }}
+                />
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {laden && <div className="muted" style={{ fontSize: "var(--fs-xs)", marginTop: "var(--s-2)" }}>Structured data en concurrenten worden geladen…</div>}
