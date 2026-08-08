@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { logBronGebeurtenis } from "./bron-gezondheid";
 
 // ═══════════════════════════════════════════════════════════
 // MONEYBIRD API v2 — boekhouding (alleen-lezen)
@@ -32,7 +33,10 @@ export function mbContactUrl(contactId: string): string {
 async function mbFetch(path: string, params: Record<string, string> = {}): Promise<unknown> {
   const token = process.env.MONEYBIRD_API_TOKEN;
   const adm = administrationId();
-  if (!token || !adm) throw new Error("MONEYBIRD_API_TOKEN of MONEYBIRD_ADMINISTRATION_ID ontbreekt.");
+  if (!token || !adm) {
+    logBronGebeurtenis("moneybird", false, "MONEYBIRD_API_TOKEN of MONEYBIRD_ADMINISTRATION_ID ontbreekt.").catch(() => {});
+    throw new Error("MONEYBIRD_API_TOKEN of MONEYBIRD_ADMINISTRATION_ID ontbreekt.");
+  }
   const url = new URL(`${BASE}/${adm}${path}`);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
   const ctl = new AbortController();
@@ -51,9 +55,24 @@ async function mbFetch(path: string, params: Record<string, string> = {}): Promi
       const body = await res.text().catch(() => "");
       throw new Error(`Moneybird ${path}: ${res.status} ${body.slice(0, 300)}`);
     }
+    logBronGebeurtenis("moneybird", true).catch(() => {});
     return await res.json();
+  } catch (e) {
+    logBronGebeurtenis("moneybird", false, (e as Error).message?.slice(0, 400) || "Onbekende fout.").catch(() => {});
+    throw e;
   } finally {
     clearTimeout(timer);
+  }
+}
+
+/** Verse controle voor het bronnen-gezondheidsscherm. */
+export async function moneybirdHealthCheck(): Promise<{ ok: boolean; melding: string }> {
+  if (!moneybirdConfigured()) return { ok: false, melding: "Niet ingesteld in deze omgeving." };
+  try {
+    await mbFetch("/ledger_accounts");
+    return { ok: true, melding: "Werkt." };
+  } catch (e) {
+    return { ok: false, melding: (e as Error).message || "Onbekende fout." };
   }
 }
 

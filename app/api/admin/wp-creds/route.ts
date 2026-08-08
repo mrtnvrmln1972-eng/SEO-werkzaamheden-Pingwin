@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
   const client = await getClientBySlug(slug);
   if (!client?.domain) return NextResponse.json({ ok: false, error: "Deze klant heeft nog geen domein ingevuld." }, { status: 400 });
 
-  const test = await testWordpressAuth(client.domain, { user, appPassword });
+  const test = await testWordpressAuth(client.domain, { user, appPassword }, slug);
   if (!test.ok) return NextResponse.json({ ok: false, error: test.error || "Inloggegevens werken niet." }, { status: 400 });
   await saveWpCreds(slug, user, appPassword);
   return NextResponse.json({ ok: true, set: true });

@@ -12,6 +12,8 @@
 // profiel → Wachtwoorden voor applicaties). We sturen het alleen server-side mee.
 // ═══════════════════════════════════════════════════════════
 
+import { logBronGebeurtenis } from "./bron-gezondheid";
+
 export type WpAuth = { user: string; appPassword: string } | null;
 export type WpPage = { id: number; type: string; url: string; modified: string; title: string };
 export type WpModified = { url: string; modified: string; title: string };
@@ -169,8 +171,12 @@ export async function fetchWordpressUsers(domain: string, auth: WpAuth): Promise
   return out;
 }
 
-// Test of de opgegeven inloggegevens werken (haalt 1 pagina op met auth).
-export async function testWordpressAuth(domain: string, auth: WpAuth): Promise<{ ok: boolean; error?: string }> {
+// Test of de opgegeven inloggegevens werken (haalt 1 pagina op met auth). Dit is
+// ook de controle die het bronnen-gezondheidsscherm (R7) per klant gebruikt;
+// clientSlug is dan bekend en de uitkomst wordt gelogd. Bij het los testen van
+// nieuwe inloggegevens (nog geen klant bekend) blijft clientSlug leeg.
+export async function testWordpressAuth(domain: string, auth: WpAuth, clientSlug?: string): Promise<{ ok: boolean; error?: string }> {
+  const slug = clientSlug ?? null;
   const base = baseFromDomain(domain);
   if (!base) return { ok: false, error: "Geen domein." };
   if (!auth) return { ok: false, error: "Geen inloggegevens." };
@@ -182,16 +188,24 @@ export async function testWordpressAuth(domain: string, auth: WpAuth): Promise<{
     // plugin geeft vaak een kale HTML-foutpagina van de webserver (Apache/nginx).
     // Dan liggen de inloggegevens niet aan de gebruiker en zeggen we dat eerlijk.
     const isJson = (res.headers.get("content-type") || "").includes("json");
-    if (res.ok && isJson) return { ok: true };
-    if (!isJson) {
-      return {
-        ok: false,
-        error: `De webserver van de site blokkeert de WordPress-API van buitenaf (status ${res.status}, antwoord komt van de server, niet van WordPress). Je inloggegevens zijn dus niet het probleem. Vraag de website-beheerder of hoster om /wp-json/ toe te staan (meestal een beveiligingsplugin of firewall-regel).`,
-      };
+    if (res.ok && isJson) {
+      logBronGebeurtenis("wordpress", true, "", slug).catch(() => {});
+      return { ok: true };
     }
-    if (res.status === 401 || res.status === 403) return { ok: false, error: "Inloggegevens afgewezen. Let op: gebruik de INLOGNAAM van WordPress (waarmee je op wp-login inlogt), niet de weergavenaam; en het applicatiewachtwoord, niet het gewone wachtwoord." };
-    return { ok: false, error: `WordPress gaf status ${res.status}.` };
-  } catch { return { ok: false, error: "WordPress niet bereikbaar." }; } finally { clearTimeout(t); }
+    let error: string;
+    if (!isJson) {
+      error = `De webserver van de site blokkeert de WordPress-API van buitenaf (status ${res.status}, antwoord komt van de server, niet van WordPress). Je inloggegevens zijn dus niet het probleem. Vraag de website-beheerder of hoster om /wp-json/ toe te staan (meestal een beveiligingsplugin of firewall-regel).`;
+    } else if (res.status === 401 || res.status === 403) {
+      error = "Inloggegevens afgewezen. Let op: gebruik de INLOGNAAM van WordPress (waarmee je op wp-login inlogt), niet de weergavenaam; en het applicatiewachtwoord, niet het gewone wachtwoord.";
+    } else {
+      error = `WordPress gaf status ${res.status}.`;
+    }
+    logBronGebeurtenis("wordpress", false, error, slug).catch(() => {});
+    return { ok: false, error };
+  } catch {
+    logBronGebeurtenis("wordpress", false, "WordPress niet bereikbaar.", slug).catch(() => {});
+    return { ok: false, error: "WordPress niet bereikbaar." };
+  } finally { clearTimeout(t); }
 }
 
 // Licht verschil tussen twee revisie-versies (voor "wat veranderde").
