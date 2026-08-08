@@ -3212,7 +3212,10 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
    (dit is een drop-doel), geen losse stijl-keuze. */
 .kb-dropzone-mini {
   font-family: 'Montserrat', sans-serif; font-weight: 700;
-  border: 1.5px dashed var(--card-border); border-radius: var(--r-md); padding: var(--s-2) var(--s-3);
+  /* Padding letterlijk gelijk aan .btn-klein (6px 12px, ook daar niet
+     tokenized) i.p.v. de losse s-2/s-3-schaal: anders wijkt de hoogte een
+     fractie af en oogt dit toch als een ander soort knop dan zijn buren. */
+  border: 1.5px dashed var(--card-border); border-radius: var(--r-md); padding: 6px var(--s-3);
   font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--muted, #8a7a6c); background: transparent;
   cursor: pointer; white-space: nowrap; transition: border-color 0.12s, background 0.12s;
 }
