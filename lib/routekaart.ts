@@ -134,7 +134,7 @@ export const PUNTEN: Punt[] = [
     code: "R7",
     titel: "Bronnen-gezondheid: welke bron is vandaag stil?",
     golf: 2,
-    stand: "open",
+    stand: "loopt",
     nodig: [],
     omvang: "middel",
     oplevert: "Voorkomt de ergste fout: een conclusie trekken op data die stil verouderd is.",
