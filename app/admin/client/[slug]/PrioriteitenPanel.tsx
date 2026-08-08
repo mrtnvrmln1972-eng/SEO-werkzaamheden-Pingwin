@@ -645,7 +645,12 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar, clientN
                                   : `Ga naar ${cat.naam.toLowerCase()} voor deze pagina`}
                                 onClick={() => pakOp(r)}
                               >
-                                {bezigId === r.id ? "Bezig…" : cat.kaart ? "In de planning" : "Ga erheen"}
+                                {/* Bewust een werkwoord, geen statuszin: "In de planning" las als
+                                    "staat al gepland" terwijl de klik het pas ging aanmaken. Zo
+                                    kon je door de lijst klikken zonder te merken dat elke klik een
+                                    taak achterliet; de scan is een leeslijst, geen automatische
+                                    taakmaker. Ís hij al gepland, dan zegt de chip ernaast dat. */}
+                                {bezigId === r.id ? "Bezig…" : cat.kaart ? "Zet in de planning" : "Ga erheen"}
                               </button>
                               {/* Mailen kan bij élke kans, ook bij meta-werk en opruimen waar geen
                                   kaart bij hoort. De klant hoort te zien dát we kansen zoeken. */}

@@ -573,6 +573,8 @@ export default function Planning({
           </span>
           <span className="wb-next">{volgende(t)}</span>
           <DatumKiezer waarde={t.datum} onKies={(iso) => void zetDatum(t, iso)} />
+          <button type="button" className="wp-icon wp-del" title="Verwijderen"
+            onClick={(e) => { e.stopPropagation(); void verwijder(t); }}>×</button>
         </div>
         {open === sleutel && (
           <div className="wb-kaart">
