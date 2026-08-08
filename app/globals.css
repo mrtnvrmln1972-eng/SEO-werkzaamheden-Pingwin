@@ -954,6 +954,20 @@ td .dev-doc-link { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; 
 .fund-positionering-label { display: block; font-size: var(--fs-xs); font-weight: 700; color: var(--label-muted); text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: var(--s-1); }
 .fund-positionering-row { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; }
 .fund-positionering-row .compose-input { flex: 1 1 320px; }
+.fund-actie { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; }
+.fund-actie-melding { font-size: var(--fs-xs); color: var(--text-secondary); }
+/* Klantengroepen op /admin/fundament: elk een eigen kop die je open- en
+   dichtklikt, met Multimedia Concepts standaard dicht (zie FundamentClient.tsx). */
+.fund-groep { margin-bottom: var(--s-5); }
+.fund-groep:last-child { margin-bottom: 0; }
+.fund-groep-kop {
+  display: flex; align-items: center; gap: var(--s-2); width: 100%;
+  background: none; border: none; padding: var(--s-2) var(--s-1); cursor: pointer; text-align: left;
+}
+.fund-groep-titel { font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: var(--fs-md); color: var(--dark); }
+.fund-groep-aantal { font-size: var(--fs-xs); color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.fund-groep-caret { transition: transform 0.15s; color: var(--label-muted); }
+.fund-groep-kop[aria-expanded="true"] .fund-groep-caret { transform: rotate(90deg); }
 /* De detail-cel is de laatste (en enige) td, dus de globale regel
    'tbody td:last-child { text-align:center }' sloeg toe. Sterker links forceren. */
 /* De hele detail-kaart deelt de groepskleur, met een oranje linker-bracket en een
