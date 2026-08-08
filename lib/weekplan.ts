@@ -9,6 +9,8 @@
 import { sql, ensureSchema } from "./db";
 
 export type WeekplanTask = {
+  /** Maartens eigen aantekeningen; geen automatische stap raakt dit veld aan. */
+  notitie: string;
   id: number; thread: string; taak: string; toelichting: string; wie: string; url: string; naarDev?: boolean;
   taaktype: string; copyUrl: string; bronMail: string;
   weekYear: number; weekNo: number; status: string; sortOrder: number;
@@ -39,7 +41,7 @@ export function isoWeek(d: Date): { year: number; week: number } {
 export async function getWeekplan(slug: string): Promise<WeekplanTask[]> {
   await ensureSchema();
   const { rows } = await sql`
-    SELECT id, thread, taak, toelichting, wie, url, taaktype, copy_url, bron_mail, week_year, week_no, status, sort_order, naar_dev,
+    SELECT id, thread, taak, toelichting, notitie, wie, url, taaktype, copy_url, bron_mail, week_year, week_no, status, sort_order, naar_dev,
            taak_handmatig, ruw, COALESCE(jsonb_array_length(archief), 0) AS archief_aantal,
            to_char(datum, 'YYYY-MM-DD') AS datum
     FROM client_weekplan WHERE client_slug = ${slug}
@@ -47,6 +49,7 @@ export async function getWeekplan(slug: string): Promise<WeekplanTask[]> {
   return rows.map((r) => ({
     id: r.id as number, thread: (r.thread as string) || "", taak: (r.taak as string) || "",
     toelichting: (r.toelichting as string) || "",
+    notitie: (r.notitie as string) || "",
     naarDev: r.naar_dev === true,
     wie: (r.wie as string) || "SEO", url: (r.url as string) || "",
     taaktype: (r.taaktype as string) || "", copyUrl: (r.copy_url as string) || "", bronMail: (r.bron_mail as string) || "",
@@ -91,6 +94,7 @@ export async function getWeekplanAlleKlanten(
     klantMail: (r.klant_mail as string) || "",
     thread: (r.thread as string) || "", taak: (r.taak as string) || "",
     toelichting: (r.toelichting as string) || "",
+    notitie: (r.notitie as string) || "",
     naarDev: r.naar_dev === true,
     wie: (r.wie as string) || "SEO", url: (r.url as string) || "",
     taaktype: (r.taaktype as string) || "", copyUrl: (r.copy_url as string) || "", bronMail: (r.bron_mail as string) || "",
@@ -367,4 +371,11 @@ export async function setWeekplanKaart(slug: string, id: number, kaart: { taak: 
 export async function deleteWeekplanTask(slug: string, id: number): Promise<void> {
   await ensureSchema();
   await sql`DELETE FROM client_weekplan WHERE client_slug = ${slug} AND id = ${id}`;
+}
+
+/** Maartens eigen aantekeningen bij een kaart opslaan. */
+export async function setWeekplanNotitie(slug: string, id: number, notitie: string): Promise<void> {
+  await ensureSchema();
+  await sql`UPDATE client_weekplan SET notitie = ${(notitie || "").slice(0, 20000)}, updated_at = now()
+            WHERE client_slug = ${slug} AND id = ${id}`;
 }

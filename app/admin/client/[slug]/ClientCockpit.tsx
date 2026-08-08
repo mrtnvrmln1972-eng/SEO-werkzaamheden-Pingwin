@@ -38,6 +38,7 @@ import InvoiceAlert from "./InvoiceAlert";
 import SelectionActions from "./SelectionActions";
 import LeadTab from "./LeadTab";
 import MailControlePanel from "./MailControlePanel";
+import MailBijlagen from "./MailBijlagen";
 import OnboardingPanel from "./OnboardingPanel";
 import OntwikkelMenu from "../../OntwikkelMenu";
 import Tellers from "../../Tellers";
@@ -676,6 +677,10 @@ export default function ClientCockpit({
                             {/* Controleren of de verzoeken uit deze thread ook echt
                                 in de site verwerkt zijn. Staat hier omdat Maarten
                                 hier toch al is als hij de mail leest. */}
+                            {/* De bijlagen van deze mail, sleepbaar naar een taak.
+                                Een teruggestuurd copy-document hoeft zo niet meer
+                                gedownload en opnieuw geüpload te worden. */}
+                            {mailLive && <MailBijlagen slug={client.slug} messageId={e.id} />}
                             {mailLive && e.conversationId && (
                               <MailControlePanel
                                 slug={client.slug}

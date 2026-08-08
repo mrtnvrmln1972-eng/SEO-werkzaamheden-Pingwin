@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
 import { getClientBySlug } from "../../../../lib/clients";
-import { msStatus, msSearchClientEmails, msReplyHtml, msSendMail } from "../../../../lib/ms-graph";
+import { msStatus, msSearchClientEmails, msReplyHtml, msSendMail, msListAttachments } from "../../../../lib/ms-graph";
 import { getVerborgenMails, verbergMail } from "../../../../lib/snapshots";
 
 export const runtime = "nodejs";
@@ -20,6 +20,19 @@ export async function GET(req: NextRequest) {
     const s = await msStatus();
     return NextResponse.json({ ok: true, connected: s.connected });
   }
+  // De bijlagen van één mail, zodat je ze in het paneel naar een taak kunt slepen.
+  // Alleen de lijst (naam en id); het bestand zelf wordt pas opgehaald als je hem
+  // ergens neerlegt.
+  const bijlagenVan = req.nextUrl.searchParams.get("bijlagen") || "";
+  if (bijlagenVan) {
+    const g0 = await guardSlug(req, req.nextUrl.searchParams.get("slug") || ""); if (!g0.ok) return g0.res;
+    const lijst = await msListAttachments(bijlagenVan).catch(() => null);
+    // Inline-plaatjes worden al weggefilterd; logo's en handtekeningen die er toch
+    // als losse bijlage in zitten zijn geen documenten.
+    const bijlagen = (lijst || []).filter((a) => !/^image\//i.test(a.type || ""));
+    return NextResponse.json({ ok: true, bijlagen });
+  }
+
   const slug = req.nextUrl.searchParams.get("slug") || "";
   const g = await guardSlug(req, slug); if (!g.ok) return g.res;
   const client = await getClientBySlug(slug);

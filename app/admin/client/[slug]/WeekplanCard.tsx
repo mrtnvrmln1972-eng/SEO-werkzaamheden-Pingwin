@@ -16,6 +16,7 @@ import { eersteKop } from "../../../../lib/chat-vouw";
 import { volgendeFase, faseLabel, FASE_VOLGORDE } from "../../../../lib/fase-volgorde";
 import AntwoordBlokken from "./AntwoordBlokken";
 import DocVersies from "./DocVersies";
+import KaartNotitie from "./KaartNotitie";
 import PaginaDossier from "./PaginaDossier";
 import DeelKnoppen from "./DeelKnoppen";
 import DevDoorzetten from "./DevDoorzetten";
@@ -26,7 +27,7 @@ const ARCHIEF_LABEL: Record<string, string> = {
   overloop: "Weggeschoven omdat de kaart vol was",
 };
 
-export type WpTask = { id: number; thread: string; taak: string; toelichting: string; wie: string; url: string; taaktype: string; copyUrl: string; bronMail: string; weekYear: number; weekNo: number; status: string; sortOrder: number; naarDev?: boolean; archiefAantal?: number; ruw?: boolean };
+export type WpTask = { id: number; thread: string; taak: string; toelichting: string; wie: string; url: string; taaktype: string; copyUrl: string; bronMail: string; weekYear: number; weekNo: number; status: string; sortOrder: number; naarDev?: boolean; archiefAantal?: number; ruw?: boolean; notitie?: string };
 export type WpPageInfo = { url: string; live: boolean; klikken?: number; vertoningen?: number; doorgevoerd?: boolean | null; strategie: boolean; gelieerde: boolean; analyse: boolean; blauwdruk: boolean; copy: boolean; bouw: boolean; structured: boolean; structuredStatus: string; next: string; links: { analyse: string; blauwdruk: string; copy: string } };
 
 // Bij welk taaktype hoort welk dashboard-tabblad (voor de deep-link "doe het hier").
@@ -666,10 +667,12 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
               klus die niet over één pagina gaat (een rapportage, een werklijst).
               Ingeklapt, want het dropveld kostte bij élke kaart drie regels
               terwijl je er maar af en toe iets neerlegt. */}
-          <details className="wp-inklap">
-            <summary>Documenten toevoegen</summary>
-            <DocVersies slug={slug} url={t.url || `taak:${t.id}`} />
-          </details>
+          {/* Je eigen aantekeningen. Los van de kaarttekst die de assistent
+              schreef: geen automatische stap raakt dit veld aan. */}
+          <KaartNotitie slug={slug} id={t.id} start={t.notitie || ""} />
+          {/* Documenten hangen aan de pagina als die er is, en anders aan de taak
+              zelf. Zo kun je bij élke kaart een document neerleggen. */}
+          <DocVersies slug={slug} url={t.url || `taak:${t.id}`} taakId={t.id} />
           {!hasInfo && !t.url && (
             <div className="muted wp-overdeze-leeg">
               Nog geen achtergrond. Leg hier een document neer, of stel een vraag in de chat hieronder; wat daaruit komt kun je als achtergrond vastleggen.

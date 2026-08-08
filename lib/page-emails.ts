@@ -7,7 +7,7 @@ import { getStepLinks } from "./page-doc-run";
 import { msStatus, msSearchMail, msGetThread, msListAttachments, msGetAttachment, type LiveEmail } from "./ms-graph";
 import { eigenTekst, isRuisMail } from "./mail-tekst";
 import { callClaude, anthropicConfigured, LIGHT_MODEL } from "./anthropic";
-import { leesAangeleverdDocument, proposeVersion } from "./doc-versions";
+import { leesAangeleverdDocument, voegVersieToe } from "./doc-versions";
 import { logActiviteit } from "./activiteit";
 
 // ═══════════════════════════════════════════════════════════
@@ -778,7 +778,7 @@ export async function haalBijlagenBinnen(slug: string, url: string): Promise<{ k
       if (!bin) continue;
       const lees = await leesAangeleverdDocument(slug, url, bin.naam, bin.buffer).catch(() => null);
       if (!lees?.ok || !lees.tekst) continue;
-      await proposeVersion(slug, url, bin.naam, lees.tekst, lees.driveLink || "").catch(() => null);
+      await voegVersieToe(slug, url, bin.naam, lees.tekst, lees.driveLink || "").catch(() => null);
       alBinnen.add(a.naam.toLowerCase());
       klaar.push(a.naam);
       await logActiviteit({

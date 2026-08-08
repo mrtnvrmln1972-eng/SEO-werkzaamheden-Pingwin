@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
-import { getWeekplan, updateWeekplanTask, deleteWeekplanTask, isoWeek, setWeekplanNaarDev, setWeekplanKaart } from "../../../../lib/weekplan";
+import { getWeekplan, updateWeekplanTask, deleteWeekplanTask, isoWeek, setWeekplanNaarDev, setWeekplanKaart, setWeekplanNotitie } from "../../../../lib/weekplan";
 import { getWeekplanPages } from "../../../../lib/overview";
 import { getClientUrls } from "../../../../lib/site-urls";
 import { splitsBestaandeKaarten } from "../../../../lib/weekplan-splitsen";
@@ -92,6 +92,14 @@ export async function POST(req: NextRequest) {
   // het is gewoon een eigenschap van de kaart, net als de week of de status.
   if (typeof body.naarDev === "boolean") {
     await setWeekplanNaarDev(slug, id, body.naarDev);
+    return NextResponse.json({ ok: true });
+  }
+
+  // Maartens eigen aantekeningen. Een apart veld, los van de kaarttekst die de
+  // assistent schreef: wat hij hier typt wordt door geen enkele automatische stap
+  // aangeraakt.
+  if (typeof body.notitie === "string") {
+    await setWeekplanNotitie(slug, id, body.notitie);
     return NextResponse.json({ ok: true });
   }
 

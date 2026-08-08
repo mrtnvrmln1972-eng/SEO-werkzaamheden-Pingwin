@@ -1,4 +1,5 @@
 import { getDriveAccessToken } from "./google";
+import { driveIdFromUrl } from "./drive-id";
 
 // Google Drive-laag: mappenboom uitlezen, submap maken, een .docx uploaden en
 // publiek deelbaar maken (iedereen met de link = lezer). Gebruikt de LOSSE
@@ -68,15 +69,7 @@ export async function folderName(folderId: string): Promise<string> {
 // ── Documentinhoud lezen (Google Doc/Sheet/Slides) ──
 // Haalt een Drive-file-id uit een geplakte URL of losse id. Ondersteunt de
 // gangbare Google-linkvormen (/d/<id>/, ?id=<id>) plus een kale id.
-export function driveIdFromUrl(input: string): string {
-  const s = (input || "").trim();
-  const byPath = s.match(/\/d\/([a-zA-Z0-9_-]{20,})/);
-  if (byPath) return byPath[1];
-  const byQuery = s.match(/[?&]id=([a-zA-Z0-9_-]{20,})/);
-  if (byQuery) return byQuery[1];
-  if (/^[a-zA-Z0-9_-]{20,}$/.test(s)) return s;
-  return "";
-}
+export { driveIdFromUrl } from "./drive-id";
 
 // Leest de tekstinhoud van een gekoppeld Google-document (Doc/Sheet/Slides) uit,
 // zodat de bird's eye-agent de afgesproken strategie (navigatie, zoekwoorden,

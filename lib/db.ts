@@ -316,6 +316,11 @@ async function init(): Promise<void> {
   // pipe-regels. Zie lib/card-info.ts cardInfoHtml().
   await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS ruw BOOLEAN NOT NULL DEFAULT false`;
 
+  // Maartens eigen aantekeningen bij een taak, los van de tekst die de assistent
+  // schreef. Geen enkele automatische stap raakt dit veld aan: wat hij hier typt
+  // blijft van hem.
+  await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS notitie TEXT`;
+
   // Handmatige fase-vinkjes per pagina voor de projectkaart in de weekplanning.
   // Een rij hier wint van de afgeleide stand (beide kanten op: afvinken en terugzetten).
   // Fase: strategie | gelieerde | analyse | blauwdruk | copy | bouw | structured.

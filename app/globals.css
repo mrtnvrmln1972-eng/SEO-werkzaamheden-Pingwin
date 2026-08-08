@@ -3027,6 +3027,60 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
 .wp-fase-btn-primair { background: var(--orange); color: #fff; border-color: var(--orange); }
 .wp-doc-ok { font-size: 12.5px; color: #1c7a3f; }
 .wp-doc-fout { font-size: 12.5px; color: #b3261e; }
+/* ── Documenten bij een taak: één regel per versie, nieuwste bovenaan ──
+   Vervangt de uitklapper met voorstellen. Klik kiest een regel, spatiebalk opent
+   de voorvertoning; daarom heeft een gekozen regel een duidelijke rand. */
+.wp-doclijst { list-style: none; margin: var(--s-3) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--s-2); }
+.wp-docrij { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2);
+  padding: var(--s-2) var(--s-3); border: 1px solid var(--card-border); border-radius: var(--r-md);
+  background: var(--white); font-size: var(--fs-sm); line-height: var(--lh-sm); cursor: default; }
+.wp-docrij:focus { outline: none; }
+.wp-docrij-aan { border-color: var(--orange); box-shadow: 0 0 0 2px rgba(241, 88, 41, .12); }
+.wp-docrij-geldt { background: #fffaf6; }
+.wp-docrij-datum { color: var(--muted); min-width: 3.5rem; }
+.wp-docrij-kind { color: var(--muted); }
+.wp-docrij-naam { border: 0; background: none; padding: 0; font: inherit; color: var(--body-text);
+  font-weight: 600; text-align: left; cursor: text; flex: 1 1 8rem; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wp-docrij-naam:hover { text-decoration: underline dotted; }
+.wp-docrij-naaminvoer { flex: 1 1 8rem; min-width: 0; font: inherit; padding: var(--s-1) var(--s-2);
+  border: 1px solid var(--orange); border-radius: var(--r-sm); }
+.wp-docrij-acties { display: flex; align-items: center; gap: var(--s-2); margin-left: auto; }
+.wp-docrij-geldt-vink { display: flex; align-items: center; gap: var(--s-1); color: var(--muted); white-space: nowrap; }
+.wp-docrij-geldt .wp-docrij-geldt-vink { color: var(--orange); font-weight: 600; }
+
+/* De uitkomst van de criteria-toets, onder de regel waar hij bij hoort. */
+.wp-toets { flex-basis: 100%; margin-top: var(--s-2); padding: var(--s-3);
+  border-radius: var(--r-md); border-left: 3px solid var(--card-border); background: #faf9f8; }
+.wp-toets ul { margin: var(--s-2) 0; padding-left: var(--s-4); }
+.wp-toets-goed { border-left-color: #3E9E4C; }
+.wp-toets-letop { border-left-color: var(--orange); }
+.wp-toets-fout { border-left-color: #C8442C; }
+
+/* Voorvertoning van een document (spatiebalk). */
+.wp-preview { width: min(56rem, 92vw); }
+.wp-preview-frame { width: 100%; height: min(70vh, 42rem); border: 1px solid var(--card-border);
+  border-radius: var(--r-md); background: var(--white); }
+.wp-preview-leeg { padding: var(--s-6) var(--s-4); text-align: center; }
+
+/* Sleepbare bijlagen bij een mail. */
+.mail-bijlagen { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2);
+  margin-top: var(--s-3); font-size: var(--fs-sm); line-height: var(--lh-sm); }
+.mail-bijlage-chip { display: inline-flex; align-items: center; gap: var(--s-2);
+  padding: var(--s-1) var(--s-3); border: 1px solid var(--card-border); border-radius: var(--r-full);
+  background: var(--white); cursor: grab; }
+.mail-bijlage-chip:active { cursor: grabbing; }
+.mail-bijlage-naam { max-width: 14rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Je eigen aantekeningen bij een taak. */
+.wp-notitie { margin-top: var(--s-4); }
+.wp-notitie-kop { display: flex; align-items: center; gap: var(--s-2); margin-bottom: var(--s-2);
+  font-size: var(--fs-xs); line-height: var(--lh-xs); text-transform: uppercase;
+  letter-spacing: .08em; font-weight: 700; color: var(--muted); }
+.wp-notitie-ok { color: #3E9E4C; text-transform: none; letter-spacing: 0; font-weight: 600; }
+.wp-notitie-fout { color: #C8442C; text-transform: none; letter-spacing: 0; font-weight: 600; }
+.wp-notitie-veld { min-height: 4.5rem; }
+
 .wp-docversie-lijst { list-style: none; padding: 6px 2px 0; margin: 0; display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; }
 .wp-docversie-lijst li { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .wp-docversie-bron { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 1px 7px; border-radius: 9px; }

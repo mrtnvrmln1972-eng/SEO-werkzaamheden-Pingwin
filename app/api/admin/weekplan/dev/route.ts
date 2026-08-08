@@ -3,6 +3,7 @@ import { ADMIN_COOKIE, verifyAdminSession } from "../../../../../lib/admin-auth"
 import { guardSlug } from "../../../../../lib/admin-scope";
 import { getWeekplan, getWeekplanDev, setWeekplanNaarDev } from "../../../../../lib/weekplan";
 import { docsVoorPagina } from "../../../../../lib/developer";
+import { goedgekeurdeVersies } from "../../../../../lib/doc-versions";
 import { ALLE_PUNTEN, voorstelPunten, type PuntId } from "../../../../../lib/dev-punten";
 import { devSturing } from "../../../../../lib/developer";
 import { planOpvolging } from "../../../../../lib/mail-opvolg";
@@ -32,8 +33,16 @@ export async function GET(req: NextRequest) {
   if (!kaart) return NextResponse.json({ ok: false, error: "Kaart niet gevonden." }, { status: 404 });
 
   const opgeslagen = await getWeekplanDev(slug, id);
-  const beschikbaar = await docsVoorPagina(slug, kaart.url || "").catch(() => []);
+  // Documenten hangen aan de pagina als die er is, en anders aan de taak zelf
+  // (dezelfde sleutel als de kaart gebruikt). Zonder die terugval kreeg je bij een
+  // taak zonder pagina een lege lijst, terwijl er wél documenten aan hingen.
+  const docSleutel = kaart.url || `taak:${id}`;
+  const beschikbaar = await docsVoorPagina(slug, docSleutel).catch(() => []);
   const gekozen = opgeslagen?.docs || [];
+  // De versie die jij hebt aangemerkt als geldend staat standaard aan: dat is
+  // immers de tekst die de sitebouwer op de site moet zetten.
+  const geldend = (await goedgekeurdeVersies(slug, docSleutel).catch(() => []))
+    .map((v) => v.driveLink).filter(Boolean);
 
   return NextResponse.json({
     ok: true,
@@ -45,7 +54,7 @@ export async function GET(req: NextRequest) {
     toelichting: opgeslagen?.toelichting || "",
     docs: beschikbaar,
     // De pagina staat standaard aan; de rest kies je zelf.
-    gekozen: gekozen.length ? gekozen.map((d) => d.url) : (kaart.url ? [kaart.url] : []),
+    gekozen: gekozen.length ? gekozen.map((d) => d.url) : [...(kaart.url ? [kaart.url] : []), ...geldend],
     voorstelTaak: kaart.taak || "",
     voorstelToelichting: devSturing(kaart.toelichting || ""),
     url: kaart.url || "",

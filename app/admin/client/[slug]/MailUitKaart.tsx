@@ -72,12 +72,21 @@ export default function MailUitKaart({
   // leeg. Geen automatische tekst: Maarten dicteert zijn mails en moest een
   // standaardtekst eerst weggooien.
   useEffect(() => {
-    if (t.url) {
-      fetch(`/api/admin/weekplan/dev?slug=${encodeURIComponent(slug)}&id=${t.id}`)
-        .then((r) => r.json())
-        .then((d) => { if (d?.ok && Array.isArray(d.docs)) setDocs(d.docs); })
-        .catch(() => {});
-    }
+    // Ook bij een taak zónder pagina: documenten hangen dan aan de taak zelf.
+    // Stond hier eerder achter "if (t.url)", waardoor je bij zo'n taak niets kon
+    // meesturen terwijl er wél documenten aan hingen.
+    fetch(`/api/admin/weekplan/dev?slug=${encodeURIComponent(slug)}&id=${t.id}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (!d?.ok) return;
+        if (Array.isArray(d.docs)) setDocs(d.docs);
+        // De versie die geldt staat standaard aangevinkt; die hoort in de mail.
+        if (Array.isArray(d.gekozen) && d.gekozen.length) {
+          setLinks((oud) => (Object.keys(oud).length ? oud
+            : Object.fromEntries((d.gekozen as string[]).map((u) => [u, true]))));
+        }
+      })
+      .catch(() => {});
     let c: Concept | null = null;
     try { const s = localStorage.getItem(conceptSleutel); c = s ? JSON.parse(s) as Concept : null; } catch { c = null; }
     if (c) {

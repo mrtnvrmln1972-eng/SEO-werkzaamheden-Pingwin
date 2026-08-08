@@ -40,6 +40,7 @@ import { useMailDatumLinks } from "./useMailDatumLinks";
 import DatumKiezer, { vandaagIso, langDatum } from "./DatumKiezer";
 
 type Taak = {
+  notitie?: string;
   id: number; slug: string; klant: string; klantMail: string;
   taak: string; toelichting: string; url: string | null; wie: string;
   weekYear: number; weekNo: number; status: string; sortOrder: number; datum?: string | null;

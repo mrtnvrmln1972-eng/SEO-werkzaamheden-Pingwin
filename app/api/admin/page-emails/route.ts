@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { guardSlug } from "../../../../lib/admin-scope";
 import { getPaginaMails, getPaginaMail, zoekMailsVoorPagina, koppelMail, pinMail, losMail, wegMail } from "../../../../lib/page-emails";
 import { msListAttachments, msGetAttachment } from "../../../../lib/ms-graph";
-import { leesAangeleverdDocument, proposeVersion } from "../../../../lib/doc-versions";
+import { leesAangeleverdDocument, voegVersieToe } from "../../../../lib/doc-versions";
 import { logActiviteit } from "../../../../lib/activiteit";
 
 export const runtime = "nodejs";
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
         if (!bin) { mislukt.push(a.naam); continue; }
         const lees = await leesAangeleverdDocument(slug, m.url, bin.naam, bin.buffer);
         if (!lees.ok || !lees.tekst) { mislukt.push(`${a.naam} (${lees.error || "onleesbaar"})`); continue; }
-        await proposeVersion(slug, m.url, bin.naam, lees.tekst, lees.driveLink || "");
+        await voegVersieToe(slug, m.url, bin.naam, lees.tekst, lees.driveLink || "");
         klaar.push(a.naam);
         await logActiviteit({
           slug, soort: "copy", bron: "mail-bijlage", bronId: `${m.messageId}:${a.id}`,
