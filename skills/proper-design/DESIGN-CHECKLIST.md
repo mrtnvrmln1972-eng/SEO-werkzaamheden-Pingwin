@@ -40,24 +40,43 @@ rommelig is.
 - [ ] Wat klikbaar is, ziet er klikbaar uit en heeft hover- én focus-toestand.
 
 ## Interactie en werkstroom
-- [ ] Elke status of telling ("N ontbreken", voortgang) staat op precies één plek; geen twee
-      elementen die onafhankelijk van elkaar hetzelfde melden.
-- [ ] Acties met een vaste volgorde tonen de eerstvolgende stap nadrukkelijk, niet als rij
-      gelijkwaardige knoppen waaruit de gebruiker zelf de volgorde moet afleiden.
-- [ ] Geen knop die alleen bestaat om een trage automatische stap te compenseren (bijv. een
-      "Opslaan"-knop naast autosave); is de vertraging zelf op te lossen, doe dat eerst.
-- [ ] Knoppen zijn gegroepeerd naar de taak die ze dienen, niet naar het object waar ze
-      toevallig bij staan.
-- [ ] Nooit meer dan circa vier tot vijf gelijkwaardige acties in één rij zonder duidelijke
-      groepering (wet van Hick: meer keuzes tegelijk kost meetbaar meer beslistijd).
-- [ ] Een risicovolle, onomkeerbare actie staat kleiner of verder van de andere knoppen af dan
-      een veelgebruikte actie, niet even prominent (wet van Fitts).
-- [ ] Een actie die niet kan, is uitgeschakeld mét uitleg waarom, niet pas een foutmelding
-      achteraf (foutpreventie).
-- [ ] Zoveel losse hulpicoontjes nodig dat bijna elke knop er een heeft? Dat is een signaal om
-      de interface zelf te vereenvoudigen, niet om er nog een hulpicoon bij te zetten.
+Eén punt per heuristiek/wet uit `INTERACTIE-PRINCIPES.md` (deel A en B), zodat elk van de twaalf
+principes daar ook echt getoetst wordt, niet alleen gelezen. Overlapt een punt met een sectie
+hierboven, dan wordt er verwezen in plaats van verdubbeld (zie regel 1, "één bron van waarheid").
 
-Uitgewerkt met de onderbouwing en herkomst per punt in `INTERACTIE-PRINCIPES.md`.
+1. **Zichtbaarheid van status.** Elke actie geeft binnen redelijke tijd merkbare feedback
+   (bezig/gelukt/mislukt); geen stille acties. Toon dit op precies één plek per status of
+   telling, niet op meerdere plekken tegelijk (zelfde principe als "Consistentie" hierboven).
+2. **Aansluiting bij de werkelijkheid van de gebruiker.** Labels, volgorde en concepten
+   gebruiken de taal van de gebruiker, geen technische systeemterm.
+3. **Gebruikerscontrole en vrijheid.** Een actie is terug te draaien of af te breken; niemand
+   zit vast in een stap die per ongeluk gestart is.
+4. **Consistentie en standaarden.** Dezelfde actie werkt en oogt overal hetzelfde (zie ook de
+   sectie "Consistentie" hierboven, geldt hier net zo hard voor gedrag als voor uiterlijk).
+5. **Foutpreventie.** Een actie die niet kan of niet zou moeten, is uitgeschakeld mét uitleg
+   waarom, niet pas een foutmelding achteraf.
+6. **Herkenning boven onthouden.** Beschikbare acties en opties zijn zichtbaar; niets hoeft de
+   gebruiker te onthouden of te raden. Acties met een vaste volgorde tonen de eerstvolgende stap
+   nadrukkelijk, niet als rij gelijkwaardige knoppen waaruit de gebruiker zelf de volgorde moet
+   afleiden.
+7. **Flexibiliteit en efficiëntie.** Een gevorderde gebruiker mag een snellere weg hebben
+   (sneltoets, commandobalk), zonder dat een beginner daar last van heeft.
+8. **Esthetisch en minimalistisch ontwerp.** Geen knop die alleen bestaat om een trage
+   automatische stap te compenseren (bijv. "Opslaan" naast autosave); los de vertraging zelf op
+   vóór je de knop laat staan. Knoppen zijn gegroepeerd naar de taak die ze dienen, niet naar het
+   object waar ze toevallig bij staan.
+9. **Help bij het herkennen, verklaren en herstellen van fouten.** Een foutmelding staat in
+   gewone taal, zegt wat er misging én wat je eraan doet, nooit een kale foutcode.
+10. **Hulp en documentatie, alleen waar echt nodig.** Zoveel losse hulpicoontjes nodig dat bijna
+    elke knop er een heeft? Vereenvoudig eerst de interface zelf, voeg niet nog een hulpicoon toe.
+11. **Wet van Fitts.** Een risicovolle, onomkeerbare actie staat kleiner of verder van de andere
+    knoppen af dan een veelgebruikte actie, niet even prominent.
+12. **Wet van Hick.** Nooit meer dan circa vier tot vijf gelijkwaardige acties in één rij zonder
+    duidelijke groepering; meer keuzes tegelijk kost meetbaar meer beslistijd.
+
+De vier toegepaste gevallen in `INTERACTIE-PRINCIPES.md` deel C (één bron van waarheid,
+fase-acties, geen pleister-knop, taakgroepering) zijn uitgewerkte voorbeelden van de punten
+hierboven, geen aparte, extra criteria: dat zou zelf punt 1 en punt 4 breken.
 
 ## Toegankelijkheid
 - [ ] Zichtbare focus-toestand voor toetsenbord.

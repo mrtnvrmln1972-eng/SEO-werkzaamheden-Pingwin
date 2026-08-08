@@ -90,6 +90,7 @@ hierboven in plaats van er een losse ad-hoc regel bij te verzinnen.
 Zelfde plek in de workflow als `DESIGN-PRINCIPES.md`: lezen vóór je een scherm met meerdere
 acties of statussen bouwt of herindeelt, niet pas als iemand letterlijk "usability" zegt. Een
 signaal dat je hier moet kijken: meer dan drie tot vier knoppen in één rij, of meer dan één plek
-die "iets ontbreekt/moet nog" meldt. De bijbehorende controlepunten staan in
-`DESIGN-CHECKLIST.md`, sectie "Interactie en werkstroom", zodat dit net zo hard afgedwongen wordt
-als de visuele punten.
+die "iets ontbreekt/moet nog" meldt. De twaalf heuristieken en wetten uit deel A en B staan,
+elk als los toetsbaar punt, in `DESIGN-CHECKLIST.md`, sectie "Interactie en werkstroom", zodat
+dit net zo hard afgedwongen wordt als de visuele punten. Deel C hierboven zijn uitgewerkte
+voorbeelden van die twaalf punten, geen extra, losse criteria.
