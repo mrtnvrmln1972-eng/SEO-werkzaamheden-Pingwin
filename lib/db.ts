@@ -69,6 +69,10 @@ async function init(): Promise<void> {
   // Inlogpagina van de website-beheeromgeving (bv. een verborgen WordPress-login);
   // leeg = standaard /wp-admin/ achter het domein.
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS backend_url TEXT`;
+  // Drive-link naar het afgeronde positioneringsadvies. Geen los veld voor
+  // concurrentieanalyse: die skill benchmarkt altijd al tegen concurrenten
+  // binnen ditzelfde document (zie lib/fundament.ts).
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS positionering_url TEXT`;
 
   // Doorgevoerde 301-redirects per pagina (uit de cannibalisatie-analyse): welke
   // redirect is wanneer in de website gezet en is hij live geverifieerd (echte 301

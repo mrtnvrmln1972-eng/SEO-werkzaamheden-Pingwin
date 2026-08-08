@@ -15,6 +15,7 @@ import ZijPaneel from "./ZijPaneel";
 import KlantTabs, { type Tab } from "./KlantTabs";
 import OrgDataPanel from "./OrgDataPanel";
 import Concurrenten from "./Concurrenten";
+import FundamentPanel from "./FundamentPanel";
 import FocusBlock from "./FocusBlock";
 import ShareLinkBar from "./ShareLinkBar";
 import HelpHint from "./HelpHint";
@@ -762,6 +763,7 @@ export default function ClientCockpit({
         {tab === "onboarding" && <OnboardingPanel slug={client.slug} onGaNaar={(t) => changeTab(validTab(t))} />}
 
         {tab === "klant" && (<>
+          <FundamentPanel slug={client.slug} seoProfile={client.seoProfile || ""} positioneringUrl={client.cockpit.positioneringUrl || ""} onGaNaar={(t) => changeTab(validTab(t))} />
           <OrgDataPanel slug={client.slug} clientEmail={client.email || ""} />
           {/* Wie de concurrentie is, is klantkennis en hoort hier, niet verstopt
               achter een knopje in een scan-blok. Zelfde component als daar. */}

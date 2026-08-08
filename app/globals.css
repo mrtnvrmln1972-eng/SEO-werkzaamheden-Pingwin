@@ -569,6 +569,11 @@ tbody td:last-child { text-align: center; }
   border: 1px solid var(--card-border);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-lg);
+  /* Groeit het lijstje schermen (elk nieuw scherm krijgt hier een regel), dan
+     mag het paneel nooit onder de rand van het venster verdwijnen zonder dat
+     je erbij kunt: eigen scroll in plaats van de pagina laten meegroeien. */
+  max-height: calc(100vh - var(--s-12));
+  overflow-y: auto;
 }
 .hm-item {
   display: flex; flex-direction: column; gap: var(--s-1);
@@ -937,6 +942,18 @@ td .dev-doc-link { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; 
 .plan-chip { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; padding: 2px 8px; border-radius: 10px; background: var(--gray-light); color: var(--gray); }
 .plan-chip.has { background: var(--orange); color: #fff; }
 .plan-chip.half { background: var(--brand-orange-soft); color: var(--orange-dark); }
+
+/* Fundament-paneel (FundamentPanel.tsx): de zes statuspunten per klant,
+   gedeeld door de cockpit-tab "Klantgegevens" en /admin/fundament. */
+.fund-rij { display: flex; flex-wrap: wrap; gap: var(--s-4); margin-top: var(--s-3); }
+.fund-punt { display: flex; flex-direction: column; gap: var(--s-1); align-items: flex-start; cursor: help; }
+.fund-punt-label { font-size: var(--fs-xs); color: var(--text-secondary); }
+.fund-uitleg { display: flex; flex-direction: column; gap: var(--s-1); margin-top: var(--s-3); font-size: var(--fs-sm); }
+.fund-link { background: none; border: none; padding: 0; margin: 0; color: var(--link); text-decoration: underline; font: inherit; cursor: pointer; }
+.fund-positionering { margin-top: var(--s-4); padding-top: var(--s-3); border-top: 1px solid var(--gray-light); }
+.fund-positionering-label { display: block; font-size: var(--fs-xs); font-weight: 700; color: var(--label-muted); text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: var(--s-1); }
+.fund-positionering-row { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; }
+.fund-positionering-row .compose-input { flex: 1 1 320px; }
 /* De detail-cel is de laatste (en enige) td, dus de globale regel
    'tbody td:last-child { text-align:center }' sloeg toe. Sterker links forceren. */
 /* De hele detail-kaart deelt de groepskleur, met een oranje linker-bracket en een

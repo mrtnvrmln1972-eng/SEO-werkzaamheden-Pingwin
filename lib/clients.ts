@@ -25,6 +25,8 @@ export type ClientCockpit = {
   // De sitebouwer/developer van DEZE klant. Leeg = het scherm toont gewoon "Dev".
   devName: string | null;
   resultsUrl: string | null;
+  // Drive-link naar het afgeronde positioneringsadvies (fundament-status).
+  positioneringUrl: string | null;
   status: string | null;
   lastContact: string | null;
   notes: string | null;
@@ -96,6 +98,7 @@ type ClientRow = {
   dev_name: string | null;
   work_doc_url: string | null;
   results_url: string | null;
+  positionering_url: string | null;
   status: string | null;
   last_contact: string | null;
   notes: string | null;
@@ -137,6 +140,7 @@ function rowToConfig(r: ClientRow): ClientConfig {
       emailDomain: r.email_domain ?? null,
       workDocUrl: r.work_doc_url ?? null,
       resultsUrl: r.results_url ?? null,
+      positioneringUrl: r.positionering_url ?? null,
       status: r.status ?? null,
       lastContact: r.last_contact ?? null,
       notes: r.notes ?? null,
@@ -313,10 +317,20 @@ export async function setClientDevName(slug: string, naam: string): Promise<bool
   return !!rowCount && rowCount > 0;
 }
 
-// Let op: dev_name wordt hier bewust NIET bijgewerkt. Deze functie overschrijft
-// alle velden die ze meekrijgt, dus zou een opslag vanuit een ander scherm de
-// naam van de sitebouwer wissen. Daarvoor is setClientDevName.
-export async function updateClientCockpit(slug: string, c: Omit<ClientCockpit, "devName">): Promise<boolean> {
+// Drive-link naar het positioneringsadvies, los van de cockpit-PATCH om
+// dezelfde reden als devName hierboven: die overschrijft alle cockpit-velden
+// tegelijk en zou dit veld dus wissen zodra een ander scherm iets opslaat.
+export async function setPositioneringUrl(slug: string, url: string): Promise<boolean> {
+  await ensureSchema();
+  const { rowCount } = await sql`UPDATE clients SET positionering_url = ${url.trim() || null} WHERE slug = ${slug}`;
+  return !!rowCount && rowCount > 0;
+}
+
+// Let op: dev_name en positioneringUrl worden hier bewust NIET bijgewerkt. Deze
+// functie overschrijft alle velden die ze meekrijgt, dus zou een opslag vanuit
+// een ander scherm die twee anders wissen. Daarvoor zijn setClientDevName en
+// setPositioneringUrl.
+export async function updateClientCockpit(slug: string, c: Omit<ClientCockpit, "devName" | "positioneringUrl">): Promise<boolean> {
   await ensureSchema();
   const { rowCount } = await sql`
     UPDATE clients SET

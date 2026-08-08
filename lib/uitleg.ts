@@ -184,6 +184,27 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "waar nog niets voor gedaan wordt.",
       },
       {
+        titel: "Fundament: wat er per klant al staat en wat nog moet",
+        kern: "Tone of voice, structured data, concurrenten, concurrentieanalyse, bedrijfsprofiel en positionering, in één oogopslag.",
+        tekst:
+          "Twee schermen, dezelfde rekenregel. **/admin/fundament** toont alle klanten naast elkaar: per klant " +
+          "zes statuspunten, en bovenaan hoeveel klanten elk punt al hebben staan. Op de klant-tab " +
+          "**Klantgegevens** staat hetzelfde overzicht voor die ene klant, met de knoppen om het af te maken " +
+          "erbij.\n\n" +
+          "De zes punten:\n\n" +
+          "| Punt | Bron |\n" +
+          "|---|---|\n" +
+          "| Tone of voice | de tone of voice-sectie in het klantprofiel (Pagina's-tab) |\n" +
+          "| Bedrijfsprofiel | de klantprofiel-sectie in datzelfde veld |\n" +
+          "| Structured data | de bedrijfsgegevens: leeg, ingevuld, of vergrendeld |\n" +
+          "| Concurrenten | de gap-analyse-lijst: 2 tot 4 domeinen |\n" +
+          "| Concurrentieanalyse | geen los document: volgt automatisch uit positionering |\n" +
+          "| Positionering | het afgeronde positioneringsadvies, als Drive-link |\n\n" +
+          "Concurrentieanalyse heeft bewust geen eigen invoerveld. De positionering-skill benchmarkt altijd al " +
+          "tegen de concurrenten, dus een los document ervoor uitvragen zou vragen om iets dat nooit apart " +
+          "bestaat.",
+      },
+      {
         titel: "Technisch: waar het op draait",
         kern: "Next.js op Vercel, Postgres, geen UI-library.",
         tekst:
