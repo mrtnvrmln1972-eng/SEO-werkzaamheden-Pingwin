@@ -96,6 +96,19 @@ export default function Planning({
   const [laden, setLaden] = useState(true);
   const [fout, setFout] = useState("");
   const [open, setOpen] = useState<string | null>(null);            // "slug:id"
+  // Vanuit de developerlijst kun je terugspringen naar de kaart waar een taak
+  // vandaan komt: /admin/client/<slug>?tab=werkzaamheden&kaart=<slug>:<id>.
+  // Zonder dit moest je hem zelf terugzoeken tussen alle weken.
+  useEffect(() => {
+    const uit = new URLSearchParams(window.location.search).get("kaart");
+    if (!uit) return;
+    setOpen(uit);
+    // Even wachten tot de kaarten geladen en getekend zijn.
+    const t = window.setTimeout(() => {
+      document.getElementById(`kaart-${uit}`)?.scrollIntoView({ block: "center", behavior: "smooth" });
+    }, 700);
+    return () => window.clearTimeout(t);
+  }, []);
   const [mailFor, setMailFor] = useState<{ t: Taak; aud: "klant" | "dev" } | null>(null);
   // Titel aanpassen direct vanuit het rijtje, zonder eerst de kaart te hoeven
   // openklappen. "sleutel" van de regel die op dit moment bewerkt wordt.
@@ -494,7 +507,7 @@ export default function Planning({
       },
     } : {};
     return (
-      <div key={sleutel}
+      <div key={sleutel} id={`kaart-${sleutel}`}
         className={"wb-doel" + (bovenRij === sleutel && sleep && !zelfde(sleep, t) ? " wb-doel-aan" : "")}
         {...rijDoel}>
         <div className={"wb-rij" + (open === sleutel ? " wb-rij-open" : "") + (sleep && zelfde(sleep, t) ? " wb-sleept" : "")}

@@ -300,6 +300,13 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
       <td className="col-center"><button type="button" className={"dev-done-toggle dev-afgerond-toggle-cell" + (r.ownerDone ? " on" : "")} onClick={(e) => { e.stopPropagation(); toggleAfgerond(idx, !r.ownerDone); }} title={r.ownerDone ? "Afgerond (klik om terug naar open te zetten)" : "Zelf afronden"}>{r.ownerDone ? "☑" : "☐"}</button></td>
       <td><input type="date" className="dev-date" value={r.execDate || ""} onChange={(e) => setDate(idx, e.target.value)} /></td>
       <td className="dev-rij-acties">
+        {/* Terug naar de kaart waar deze taak vandaan komt. Heen kon al, terug
+            niet: je moest hem zelf opzoeken tussen alle weken. */}
+        {/^wp:\d+$/.test(r.taskKey) && (
+          <a className="ghost-btn small" onClick={(e) => e.stopPropagation()}
+            href={`/admin/client/${r.clientSlug}?tab=werkzaamheden&kaart=${encodeURIComponent(`${r.clientSlug}:${r.taskKey.slice(3)}`)}`}
+            title="Open de kaart in de planning van deze klant">↩ Kaart</a>
+        )}
         <button type="button" className="ghost-btn small" onClick={(e) => { e.stopPropagation(); setVenster({ taak: r, clientSlug: r.clientSlug, clientName: r.clientName }); }} title="Taak, opmerking en documenten aanpassen">✎ Bewerk</button>
         <button type="button" className="ghost-btn small dev-mail-btn" onClick={(e) => { e.stopPropagation(); mailMaarten(r, r.devNote); }}>✉ Mail</button>
       </td>
