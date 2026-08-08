@@ -947,7 +947,16 @@ td .dev-doc-link { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; 
    gedeeld door de cockpit-tab "Klantgegevens" en /admin/fundament. */
 .fund-rij { display: flex; flex-wrap: wrap; gap: var(--s-4); margin-top: var(--s-3); }
 .fund-punt { display: flex; flex-direction: column; gap: var(--s-1); align-items: flex-start; cursor: help; }
-.fund-punt-label { font-size: var(--fs-xs); color: var(--text-secondary); }
+.fund-punt-label {
+  font-size: var(--fs-xs); color: var(--text-secondary);
+  background: none; border: none; padding: 0; margin: 0; font-family: inherit;
+  text-decoration: none; cursor: pointer; text-align: left;
+}
+.fund-punt-label:hover { color: var(--accent-warm); text-decoration: underline; }
+.fund-punt-label:disabled { cursor: default; color: var(--text-secondary); text-decoration: none; }
+/* De koppen waar de fundament-woorden naartoe springen: niet klem onder de
+   vaste kopbalk van de cockpit laten landen. */
+#fund-structured-data, #fund-concurrenten, .fund-positionering { scroll-margin-top: 96px; }
 .fund-uitleg { display: flex; flex-direction: column; gap: var(--s-1); margin-top: var(--s-3); font-size: var(--fs-sm); }
 .fund-link { background: none; border: none; padding: 0; margin: 0; color: var(--link); text-decoration: underline; font: inherit; cursor: pointer; }
 .fund-positionering { margin-top: var(--s-4); padding-top: var(--s-3); border-top: 1px solid var(--gray-light); }

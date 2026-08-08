@@ -42,6 +42,20 @@ function magActie(key: keyof FundamentStatus, status: FundamentPunt): boolean {
   return status === "nietbegonnen";
 }
 
+// Waar het woord onder een statuspil naartoe springt. Tone of voice en
+// bedrijfsprofiel zitten op de Pagina's-tab (het klantprofiel); structured
+// data en concurrenten staan verderop op dit tabblad zelf, dus een anker
+// volstaat; positionering en de daaruit afgeleide concurrentieanalyse springen
+// naar het invulveld hieronder in dit paneel.
+function ankerVoor(key: keyof FundamentStatus, slug: string): string | null {
+  switch (key) {
+    case "structuredData": return "#fund-structured-data";
+    case "concurrenten": return "#fund-concurrenten";
+    case "positionering": case "concurrentieanalyse": return `#fund-positionering-${slug}`;
+    default: return null; // toneOfVoice, bedrijfsprofiel: tabwissel, geen anker
+  }
+}
+
 export default function FundamentPanel({ slug, seoProfile, positioneringUrl, onGaNaar }: {
   slug: string;
   seoProfile: string;
@@ -111,7 +125,11 @@ export default function FundamentPanel({ slug, seoProfile, positioneringUrl, onG
           return (
             <div key={k.key} className="fund-punt" title={k.hint}>
               <span className={CHIP_KLASSE[puntStatus]}>{CHIP_LABEL[puntStatus]}</span>
-              <span className="fund-punt-label">{k.label}</span>
+              {ankerVoor(k.key, slug) ? (
+                <a className="fund-punt-label" href={ankerVoor(k.key, slug)!}>{k.label}</a>
+              ) : (
+                <button type="button" className="fund-punt-label" onClick={() => onGaNaar?.("paginas")} disabled={!onGaNaar}>{k.label}</button>
+              )}
               {actieKind && magActie(k.key, puntStatus) && (
                 <FundamentActieKnop
                   slug={slug}
@@ -143,7 +161,7 @@ export default function FundamentPanel({ slug, seoProfile, positioneringUrl, onG
         )}
       </div>
 
-      <div className="fund-positionering">
+      <div className="fund-positionering" id={`fund-positionering-${slug}`}>
         <label className="fund-positionering-label" htmlFor={`fund-pos-${slug}`}>Positioneringsadvies (Drive-link)</label>
         <div className="fund-positionering-row">
           <input
