@@ -2546,13 +2546,11 @@ button.org-sec-kop:hover { color: var(--orange-dark); }
 .org-kb-workflow-pijl { color: var(--muted, #8a7a6c); font-size: var(--fs-sm); }
 
 /* Materiaal verwerken (aanleveren → structureren) is een andere taak dan de
-   knoppenrij van de bevestigde gegevens erboven; een eigen, gelabelde rij in
-   plaats van een vijfde groep in dezelfde rij maakt dat verschil zichtbaar. */
-.org-actions-kb { margin-top: var(--s-2); }
-.org-actions-kb-label {
-  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 600;
-  color: var(--muted, #8a7a6c); text-transform: uppercase; letter-spacing: 0.4px;
-}
+   knoppenrij van de bevestigde gegevens erboven; een eigen rij maakt dat
+   verschil zichtbaar. Het label hergebruikt bewust .kb-groep-titel (de
+   bestaande labelstijl van Kennisbank zelf) in plaats van een nieuwe
+   letterstijl te verzinnen. */
+.org-actions-kb { margin-top: var(--s-1); }
 
 /* Sitebouwer-deelpagina (/share/org-dev): ruimte boven de site-brede JSON. */
 .org-devshare-sitewide { margin-top: var(--s-5); }
@@ -3209,9 +3207,13 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
 .kb-head-right { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; margin-bottom: var(--s-2); }
 /* Heel kleine dropzone: alleen het woord, maar nog steeds een echt drop-doel
    én een knop om de volledige dropzone (bladeren/plakken) open te klappen. */
+/* Zelfde lettertype, gewicht, ronding en maat als de knoppen ernaast (.btn.btn-klein);
+   alleen de gestippelde rand blijft anders, want die betekent hier iets specifieks
+   (dit is een drop-doel), geen losse stijl-keuze. */
 .kb-dropzone-mini {
-  border: 1.5px dashed var(--card-border); border-radius: var(--r-sm); padding: var(--s-1) var(--s-3);
-  font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--muted, #8a7a6c); background: transparent;
+  font-family: 'Montserrat', sans-serif; font-weight: 700;
+  border: 1.5px dashed var(--card-border); border-radius: var(--r-md); padding: var(--s-2) var(--s-3);
+  font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--muted, #8a7a6c); background: transparent;
   cursor: pointer; white-space: nowrap; transition: border-color 0.12s, background 0.12s;
 }
 .kb-dropzone-mini:hover { border-color: var(--orange); background: var(--white); }
