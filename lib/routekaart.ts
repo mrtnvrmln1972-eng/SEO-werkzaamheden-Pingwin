@@ -145,7 +145,7 @@ export const PUNTEN: Punt[] = [
     code: "R8",
     titel: "Correcties worden regels, in élke motor",
     golf: 2,
-    stand: "open",
+    stand: "loopt",
     nodig: [],
     omvang: "middel",
     oplevert: "Het systeem wordt beter doordat je het gebruikt, niet alleen bij opruimen.",
