@@ -113,6 +113,7 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar, clientN
   const [err, setErr] = useState("");
   const [prop, setProp] = useState("");
   const [propMsg, setPropMsg] = useState("");
+  const [voorstelBezig, setVoorstelBezig] = useState(false);
   const [bezigId, setBezigId] = useState<string | null>(null);
   const [zoek, setZoek] = useState("");
   const [openSkip, setOpenSkip] = useState(false);
@@ -183,6 +184,18 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar, clientN
       }).then((r) => r.json());
       setPropMsg(d.ok ? "Bewaard. Vanaf de volgende scan telt deze zin mee." : (d.error || "Bewaren lukte niet."));
     } catch { setPropMsg("Bewaren lukte niet."); }
+  }
+
+  async function stelPropositieVoor() {
+    setVoorstelBezig(true); setPropMsg("");
+    try {
+      const d = await fetch("/api/admin/prioriteiten-scan", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, stelVoor: true }),
+      }).then((r) => r.json());
+      if (d.ok) { setProp(d.voorstel); setPropMsg("Voorstel ingevuld. Klopt het? Klik dan op “Bewaren”."); }
+      else setPropMsg(d.error || "Het voorstel lukte niet.");
+    } catch { setPropMsg("Het voorstel lukte niet."); } finally { setVoorstelBezig(false); }
   }
 
   /** Start de ontbrekende analyse hier, zonder eerst naar het andere tabje te gaan. */
@@ -462,6 +475,9 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar, clientN
             placeholder={st?.propositie?.voorstel || "Bijvoorbeeld: specialistische kliniek voor sporters, geen algemene fysio"}
             onChange={(e) => setProp(e.target.value)}
           />
+          <button type="button" className="ghost-btn small" disabled={voorstelBezig} onClick={stelPropositieVoor} title="Vult het veld met een voorstel op basis van het klantprofiel en de bedrijfsgegevens die al bekend zijn.">
+            {voorstelBezig ? "Bezig…" : "Stel een zin voor"}
+          </button>
           <button type="button" className="ghost-btn small" onClick={bewaarPropositie}>Bewaren</button>
         </div>
         {propMsg && <div className="prio-prop-msg">{propMsg}</div>}

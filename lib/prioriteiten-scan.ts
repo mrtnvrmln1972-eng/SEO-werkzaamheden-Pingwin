@@ -8,7 +8,7 @@ import { getSiteOrganicKeywords, getAiResponsesCount, ahrefsConfigured, getKeywo
 import { getMetaKansen } from "./meta-ctr";
 import { getCannibalAnalysis } from "./cannibal-redirect";
 import { getInternalLinksState, markInternalLinksRunning, runInternalLinks } from "./internal-links";
-import { anthropicConfigured } from "./anthropic";
+import { anthropicConfigured, callClaude, LIGHT_MODEL } from "./anthropic";
 import { getOpportunities } from "./keyword-opportunities";
 import { getOrgData } from "./org-data";
 import {
@@ -198,6 +198,40 @@ export async function getPropositie(slug: string): Promise<{ zin: string; voorst
   const profiel = (client?.seoProfile || "").trim();
   const eersteZin = profiel.split(/\n|\. /).map((s) => s.trim()).filter(Boolean)[0] || "";
   return { zin: "", voorstel: eersteZin.slice(0, 240) };
+}
+
+/**
+ * Stelt de propositie-zin voor met wat er al over de klant bekend is: het
+ * klantprofiel en de bedrijfsgegevens. Geen nieuwe site-analyse; die levert het
+ * klantprofiel al op (tabblad Klant), dit hergebruikt dat werk in plaats van
+ * het over te doen.
+ */
+export async function genereerPropositieVoorstel(slug: string): Promise<{ voorstel: string } | { fout: string }> {
+  if (!anthropicConfigured()) return { fout: "Hiervoor is een ANTHROPIC_API_KEY nodig in Vercel." };
+  const client = await getClientBySlug(slug);
+  if (!client) return { fout: "Klant niet gevonden." };
+  const org = await getOrgData(slug).catch(() => null);
+  const d = org?.data;
+  const profiel = (client.seoProfile || "").trim();
+  const diensten = (d?.diensten || []).map((x) => x.naam).filter(Boolean).join(", ");
+  const stukken = [
+    `Bedrijfsnaam: ${client.name}`,
+    d?.bedrijfstype ? `Type bedrijf: ${d.bedrijfstype}` : "",
+    diensten ? `Diensten: ${diensten}` : "",
+    d?.areaServed?.length ? `Werkgebied: ${d.areaServed.join(", ")}` : "",
+    profiel ? `Klantprofiel:\n${profiel.slice(0, 3000)}` : "",
+  ].filter(Boolean).join("\n");
+  if (!profiel && !diensten) {
+    return { fout: "Er is nog te weinig over deze klant bekend. Vul eerst het klantprofiel of de bedrijfsgegevens aan (tabblad Klant)." };
+  }
+  const system = "Je schrijft één positioneringszin voor een SEO-prioriteitenscan: wat dit bedrijf wél is en wat het niet is, in maximaal twintig woorden. Nederlands, gewone taal, geen aanhalingstekens, geen opsomming, geen slotpunt met uitleg. Voorbeeld van de vorm: luxe kozijnenmaker met dunne profielen, geen prijsvechter. Baseer je uitsluitend op de gegeven informatie; verzin niets. Antwoord met alleen de zin.";
+  let antwoord = "";
+  try {
+    antwoord = await callClaude(system, [{ role: "user", content: stukken }], 200, { slug, action: "propositie-voorstel" }, LIGHT_MODEL);
+  } catch { return { fout: "Het voorstel lukte niet. Probeer het nog eens." }; }
+  const zin = antwoord.trim().replace(/^["'“„]+|["'”]+$/g, "").slice(0, 240);
+  if (!zin) return { fout: "Het voorstel lukte niet. Probeer het nog eens." };
+  return { voorstel: zin };
 }
 
 export async function setPropositie(slug: string, zin: string): Promise<void> {

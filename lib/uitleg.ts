@@ -451,6 +451,15 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
               "gehaald, niet gevraagd.",
           },
           {
+            titel: "Die zin hoeft niet zelf bedacht te worden (7 augustus 2026)",
+            tekst:
+              "Naast het invulveld staat een knop **'Stel een zin voor'**. Die vult het veld met een voorstel op " +
+              "basis van wat er al over de klant bekend is: het klantprofiel en de bedrijfsgegevens. Geen nieuwe " +
+              "analyse van de site, want die twee leveren dat al op; dit hergebruikt dat werk. Is er nog geen " +
+              "klantprofiel en geen dienst ingevuld, dan zegt de knop dat en blijft het veld leeg. Het voorstel " +
+              "wordt nooit vanzelf opgeslagen; dat gebeurt pas na een klik op 'Bewaren'.",
+          },
+          {
             titel: "Waarom er ook een bakje 'niet doen' is",
             tekst:
               "Elke tool die alleen kansen opsomt maakt de gebruiker onzekerder, niet zekerder. Een advies is " +

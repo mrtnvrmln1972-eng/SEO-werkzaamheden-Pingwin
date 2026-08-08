@@ -5,7 +5,7 @@ import { guardSlug } from "../../../../lib/admin-scope";
 import { poort } from "../../../../lib/onboarding";
 import {
   getPrioriteitenScan, startPrioRun, runPrioriteitenScan,
-  getPropositie, setPropositie,
+  getPropositie, setPropositie, genereerPropositieVoorstel,
 } from "../../../../lib/prioriteiten-scan";
 
 export const runtime = "nodejs";
@@ -39,6 +39,12 @@ export async function POST(req: NextRequest) {
   if (typeof body.propositie === "string") {
     await setPropositie(slug, body.propositie.trim());
     return NextResponse.json({ ok: true, bewaard: true });
+  }
+
+  if (body.stelVoor === true) {
+    const res = await genereerPropositieVoorstel(slug);
+    if ("fout" in res) return NextResponse.json({ ok: false, error: res.fout }, { status: 400 });
+    return NextResponse.json({ ok: true, voorstel: res.voorstel });
   }
 
   if (body.hervat === true) {
