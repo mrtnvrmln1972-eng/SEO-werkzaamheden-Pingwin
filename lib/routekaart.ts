@@ -99,7 +99,7 @@ export const PUNTEN: Punt[] = [
     code: "R4",
     titel: "Verbruik compleet: de Ahrefs-credits erbij",
     golf: 1,
-    stand: "open",
+    stand: "loopt",
     nodig: [],
     omvang: "klein",
     oplevert: "De echte kosten per klant, en dus de marge. Het cijfer waar een licentieprijs op rust.",
