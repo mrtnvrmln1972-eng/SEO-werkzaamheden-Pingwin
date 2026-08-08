@@ -3084,7 +3084,7 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
 .ovc-lijstkeuze { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; font-size: 12.5px; border: 1px solid var(--card-border); border-left: 3px solid var(--orange); border-radius: 9px; padding: 7px 10px; background: #fffdfb; }
 /* Vast rechts per regel (geen float, dus nooit zwevend in het midden van de kaart). */
 .wp-card-info.wp-info-net li { position: relative; padding-right: 30px; }
-.wp-info-lijstbtn { font-family: inherit; position: absolute; right: 0; top: 1px; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--orange); color: var(--orange); background: #fff; font-size: 12px; line-height: 16px; text-align: center; cursor: pointer; padding: 0; opacity: 0.6; }
+.wp-info-lijstbtn { font-family: inherit; position: absolute; right: 0; top: 1px; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--orange); color: var(--orange); background: #fff; font-size: var(--fs-sm); line-height: 16px; text-align: center; cursor: pointer; padding: 0; opacity: 0.6; }
 .wp-info-lijstbtn:hover { background: var(--orange); color: #fff; opacity: 1; }
 /* Status-stipjes in plaats van emoji's (retroactief op oude antwoorden). */
 .st-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin: 0 2px; vertical-align: baseline; }
@@ -3172,9 +3172,9 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
 .wp-notitie-fout { color: #C8442C; text-transform: none; letter-spacing: 0; font-weight: 600; }
 .wp-notitie-veld { min-height: 4.5rem; }
 
-.wp-docversie-lijst { list-style: none; padding: 6px 2px 0; margin: 0; display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; }
+.wp-docversie-lijst { list-style: none; padding: 6px 2px 0; margin: 0; display: flex; flex-direction: column; gap: 6px; font-size: var(--fs-sm); }
 .wp-docversie-lijst li { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-.wp-docversie-bron { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 1px 7px; border-radius: 9px; }
+.wp-docversie-bron { font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 1px 7px; border-radius: 9px; }
 .wp-bron-klant { background: #eaf5ee; color: #1c7a3f; }
 .wp-bron-pingwin { background: #fdeee7; color: var(--orange); }
 .wp-docversie-kind { font-weight: 600; }
@@ -3509,7 +3509,7 @@ body.zp-sleept { user-select: none; cursor: grabbing; }
 .wp-check-lijst, .wp-punt-lijst { margin: 0; padding: 0; list-style: none; }
 .wp-check-lijst li, .wp-punt-lijst li { position: relative; padding-left: var(--s-6); margin: var(--s-2) 0; }
 .wp-check-lijst li:first-child, .wp-punt-lijst li:first-child { margin-top: 0; }
-.wp-check-lijst li::before { content: "✓"; position: absolute; left: 0; top: 1px; width: 16px; height: 16px; border-radius: var(--r-full); background: #ffe9dc; color: var(--orange-dark); font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+.wp-check-lijst li::before { content: "✓"; position: absolute; left: 0; top: 1px; width: 16px; height: 16px; border-radius: var(--r-full); background: #ffe9dc; color: var(--orange-dark); font-size: var(--fs-xs); font-weight: 800; display: flex; align-items: center; justify-content: center; }
 .wp-punt-lijst li::before { content: ""; position: absolute; left: 5px; top: 6px; width: 6px; height: 6px; border-radius: var(--r-full); background: var(--orange); }
 .wp-info-banner { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 7px 11px; border-radius: 10px; background: #fff3ec; color: var(--orange-dark); font-size: 11.5px; }
 .wp-info-banner svg { width: 15px; height: 15px; flex: 0 0 auto; }
@@ -3605,8 +3605,8 @@ body.zp-sleept { user-select: none; cursor: grabbing; }
 .wp-fase-check { display: flex; align-items: center; }
 .wp-fase-check input { accent-color: var(--orange); cursor: pointer; }
 .wp-fase-hint { padding: 6px 9px; font-size: 11px; color: var(--orange-dark); background: var(--orange-light); border-top: 1px solid var(--border); border-radius: 0 0 8px 8px; }
-.wp-fase-fouttekst { padding: 6px 9px; font-size: 11px; color: #a12622; }
-.wp-fase-melding { padding: 6px 9px; font-size: 11px; font-weight: 600; color: #1b7f3b; background: #e7f6ec; border-top: 1px solid var(--border); }
+.wp-fase-fouttekst { padding: 6px 9px; font-size: var(--fs-xs); color: #a12622; }
+.wp-fase-melding { padding: 6px 9px; font-size: var(--fs-xs); font-weight: 600; color: #1b7f3b; background: #e7f6ec; border-top: 1px solid var(--border); }
 /* Alles-in-één-rij: label op dezelfde linkerlijn als de fase-labels (naast de
    checkbox-kolom), de startknop in dezelfde knoppenkolom als de fase-acties. */
 .wp-fase-alles { background: #fbfbfa; }
@@ -3617,15 +3617,15 @@ body.zp-sleept { user-select: none; cursor: grabbing; }
 .wp-opruim-rij { display: flex; align-items: center; justify-content: flex-end; gap: var(--s-2); margin: 0 0 var(--s-2); }
 .wp-opruim-rij .wp-fase-btn { padding: 3px 10px; font-size: 11px; opacity: 0.75; }
 .wp-opruim-rij .wp-fase-btn:hover { opacity: 1; }
-.wp-opruim-ok { font-size: 11px; font-weight: 600; color: #1b7f3b; }
-.wp-opruim-fout { font-size: 11px; color: #a12622; }
+.wp-opruim-ok { font-size: var(--fs-xs); font-weight: 600; color: #1b7f3b; }
+.wp-opruim-fout { font-size: var(--fs-xs); color: #a12622; }
 /* Verwijder-kruisje per onderwerp in de Bird's eye-lijst. */
 /* Het kruisje was zo licht dat je het moest zoeken, ook op een gewone rij. */
 .ovc-topic-del { margin-left: auto; flex: 0 0 auto; font-size: 17px; color: var(--muted); opacity: 0.75; }
 .ovc-topic-del:hover { opacity: 1; color: #c0392b; background: var(--gray-light); }
 /* Kaart-chat (zelfde geheugen als de pagina-chat in Pagina's). */
 .wp-chat { margin: 6px 0 4px; }
-.wp-chat-toggle { font-size: 12px; font-weight: 600; color: var(--orange-dark); background: none; border: none; cursor: pointer; padding: 4px 0; }
+.wp-chat-toggle { font-size: var(--fs-sm); font-weight: 600; color: var(--orange-dark); background: none; border: none; cursor: pointer; padding: 4px 0; }
 .wp-chat-toggle:hover { text-decoration: underline; text-underline-offset: 3px; }
 /* Zichtbare focus voor toetsenbord, overal hetzelfde (toegankelijkheid). */
 button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; border-radius: 4px; }
@@ -3635,7 +3635,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .wp-chat-body { border: 1px solid var(--border); border-radius: 8px; background: var(--gray-light); padding: 8px; }
 /* De chat groeit gewoon mee met het gesprek; geen mini-scrollvenster. */
 .wp-chat-msgs { display: flex; flex-direction: column; gap: 6px; }
-.wp-chat-leeg { font-size: 12px; padding: 4px 2px; }
+.wp-chat-leeg { font-size: var(--fs-sm); padding: 4px 2px; }
 .wp-chat-blok { position: relative; display: flex; flex-direction: column; }
 .wp-chat-blok-vraag { align-items: flex-end; }
 /* Het kruisje stond op onzichtbaar tot je er toevallig precies overheen zweefde,
@@ -3653,12 +3653,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .wp-weg-nee:hover { background: var(--orange-light); }
 .wp-chat-wis { margin-left: var(--s-2); border: none; background: none; color: var(--gray); font-size: var(--fs-md); line-height: 1; cursor: pointer; padding: 0 var(--s-1); border-radius: var(--r-sm); }
 .wp-chat-wis:hover { color: #c0392b; background: var(--orange-light); }
-.wp-chat-vraag { align-self: flex-end; max-width: 85%; background: var(--orange-light); border: 1px solid var(--orange); border-radius: 8px; padding: 6px 9px; font-size: 12px; }
-.wp-chat-antwoord { align-self: stretch; background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font-size: 12px; line-height: 1.55; }
+.wp-chat-vraag { align-self: flex-end; max-width: 85%; background: var(--orange-light); border: 1px solid var(--orange); border-radius: 8px; padding: 6px 9px; font-size: var(--fs-sm); }
+.wp-chat-antwoord { align-self: stretch; background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font-size: var(--fs-sm); line-height: 1.55; }
 .wp-chat-antwoord ul { margin: 4px 0 4px 16px; padding: 0; }
 .wp-chat-acties { margin-top: 6px; }
 .wp-chat-input { display: flex; gap: 6px; margin-top: 8px; }
-.wp-chat-input input { flex: 1; border: 1px solid var(--border); border-radius: 7px; padding: 6px 9px; font-size: 12px; font-family: inherit; }
+.wp-chat-input input { flex: 1; border: 1px solid var(--border); border-radius: 7px; padding: 6px 9px; font-size: var(--fs-sm); font-family: inherit; }
 .wp-chat-input input:focus { outline: none; border-color: var(--orange); }
 /* Mail-modal v2: ontvanger-pills, e-mailveld, instructie en document-links. */
 .wp-mail-aud { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0 4px; }
@@ -4677,6 +4677,16 @@ details[open] > .opr-kaart-sam::before { content: "▾ "; }
   display: flex; flex-direction: column; gap: var(--s-3);
 }
 .pd-kop { display: flex; align-items: center; gap: var(--s-2); }
+/* Zelfde icoon-vorm als .wp-info-icoon (de "Waarom deze pagina"/"Opdrachten"-
+   kaartjes hierboven), zodat dit blok als familie oogt en niet als een derde,
+   los format. Op het oranje vlak van .pd-blok krijgt hij een witte cirkel
+   i.p.v. het lichte verloop, anders verdwijnt hij tegen de achtergrond. */
+.pd-icoon {
+  display: inline-flex; align-items: center; justify-content: center; flex: none;
+  width: 30px; height: 30px; border-radius: 10px; color: var(--orange);
+  background: var(--white); border: 1px solid #f6d8c8;
+}
+.pd-icoon svg { width: 16px; height: 16px; }
 .pd-koptekst {
   font-size: var(--fs-xs); line-height: var(--lh-xs);
   letter-spacing: .07em; text-transform: uppercase;
