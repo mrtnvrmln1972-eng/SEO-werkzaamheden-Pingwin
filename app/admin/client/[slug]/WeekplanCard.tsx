@@ -798,14 +798,15 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
                     </button>
                   )}
                   <span className="wp-fase-spacer" />
-                  {/* Alle pillen rechts, in vaste volgorde: Document | In Pagina's | actie | status.
+                  {/* Alle pillen rechts, in vaste volgorde: Document | actie | status.
                       "Alles in één keer" hing hier in de Copy-rij en maakte die rij
                       hoger dan de andere zes, waardoor de hele kolom uit de pas liep.
                       Die knop slaat ook niet op Copy alleen maar op drie fases, dus
                       hij staat nu boven het blok. */}
-                  {/* Bouw en publicatie bestaat niet als stap op de Pagina's-pagina,
-                      dus daar heeft deze knop niets om naartoe te gaan. */}
-                  {f.key !== "bouw" && <button type="button" className="btn btn-ghost btn-klein" title="Bekijk of doe deze stap in Pagina's (nieuw tabblad)" onClick={openPaginaNieuwTab}>In Pagina&rsquo;s</button>}
+                  {/* "In Pagina's" stond hier op elke rij nog een keer, terwijl de
+                      kaart onderaan al één "Pagina's"-link heeft die naar dezelfde
+                      pagina gaat. Zeven keer dezelfde link is geen zeven keer
+                      handiger, alleen zeven keer meer knop om langs te lezen. */}
                   {faseActie(f.key)}
                   <span className={"wp-fase-chip " + stand.cls} title={stand.label === "✓" ? "Klaar" : undefined}>{stand.label}</span>
                 </div>
