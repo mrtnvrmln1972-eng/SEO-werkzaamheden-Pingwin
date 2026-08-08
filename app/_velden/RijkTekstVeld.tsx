@@ -16,7 +16,7 @@ import { cleanPastedHtml, linkifyPlainText } from "../../lib/rich-paste";
  * HTML terug via onChange.
  */
 export default function RijkTekstVeld({
-  waarde, onChange, klasse, autoFocus, placeholder, onKlaar, toolbarExtra, compact,
+  waarde, onChange, klasse, autoFocus, placeholder, onKlaar, toolbarExtra, toolbarLabel, compact,
 }: {
   waarde: string;
   onChange: (html: string) => void;
@@ -26,6 +26,10 @@ export default function RijkTekstVeld({
   /** Escape of klikken buiten het veld: bijvoorbeeld het bewerken sluiten. */
   onKlaar?: () => void;
   toolbarExtra?: React.ReactNode;
+  /** Vooraan in de knoppenbalk, links, met de rest van de balk erna naar rechts
+      geduwd (bijv. het woord "Aantekeningen" of een bewaar-status): zo hoeft een
+      veld geen eigen kopregel meer boven de balk te tekenen. Optioneel. */
+  toolbarLabel?: React.ReactNode;
   /** Rechts uitgelijnd en zonder eigen vlak: voor een kort veld waar een volle
       knoppenbalk te zwaar oogt (bijv. de kaartaantekeningen). Optioneel, dus
       andere velden die dit component gebruiken zien geen verschil. */
@@ -163,6 +167,7 @@ export default function RijkTekstVeld({
   return (
     <div className="rtv">
       <div className={"focus-toolbar" + (compact ? " focus-toolbar-compact" : "")}>
+        {toolbarLabel && <span className="focus-toolbar-label">{toolbarLabel}</span>}
         <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => cmd("bold")} title="Vet (Cmd+B)"><strong>B</strong></button>
         <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => cmd("italic")} title="Cursief (Cmd+I)"><em>I</em></button>
         <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => cmd("insertUnorderedList")} title="Bullets">&bull; lijst</button>

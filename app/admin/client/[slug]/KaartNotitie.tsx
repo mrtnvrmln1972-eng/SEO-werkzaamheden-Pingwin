@@ -42,12 +42,6 @@ export default function KaartNotitie({ slug, id, start, toolbarExtra }: { slug: 
 
   return (
     <div className="wp-notitie">
-      <div className="wp-notitie-kop">
-        <span>Aantekeningen</span>
-        {stand === "bezig" && <span className="muted">bewaren…</span>}
-        {stand === "bewaard" && <span className="wp-notitie-ok">bewaard</span>}
-        {stand === "fout" && <span className="wp-notitie-fout">bewaren mislukte</span>}
-      </div>
       <RijkTekstVeld
         waarde={waarde}
         onChange={bewaarStraks}
@@ -56,6 +50,14 @@ export default function KaartNotitie({ slug, id, start, toolbarExtra }: { slug: 
         placeholder="Wat je zelf wilt onthouden bij deze taak: afspraken, aandachtspunten, wat de klant zei."
         compact
         toolbarExtra={toolbarExtra}
+        toolbarLabel={
+          <>
+            Aantekeningen
+            {stand === "bezig" && <span className="muted">bewaren…</span>}
+            {stand === "bewaard" && <span className="wp-notitie-ok">bewaard</span>}
+            {stand === "fout" && <span className="wp-notitie-fout">bewaren mislukte</span>}
+          </>
+        }
       />
     </div>
   );
