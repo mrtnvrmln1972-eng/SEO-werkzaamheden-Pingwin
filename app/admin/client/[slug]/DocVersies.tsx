@@ -15,6 +15,7 @@
 // Spatiebalk opent de voorvertoning van de geselecteerde regel, zoals in Finder.
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { mdToHtml } from "../../../../lib/markdown";
 import { driveIdFromUrl } from "../../../../lib/drive-id";
 
@@ -27,9 +28,18 @@ type Versie = {
 const KIND_LABEL: Record<string, string> = { analyse: "Analyse", blauwdruk: "Blauwdruk", copy: "Copy", structured: "Structured data", overig: "Overig" };
 const OORDEEL_KLEUR: Record<Toets["oordeel"], string> = { "goed": "wp-toets-goed", "let-op": "wp-toets-letop", "niet-goed": "wp-toets-fout" };
 
-export default function DocVersies({ slug, url, taakId }: { slug: string; url: string; taakId?: number }) {
+export default function DocVersies({ slug, url, taakId, triggerSlot }: { slug: string; url: string; taakId?: number;
+  /** DOM-knoop uit de knoppenbalk van de aantekeningen (via een portal), zodat
+      het "document toevoegen"-chipje daar fysiek in staat i.p.v. als eigen,
+      altijd-open blok. Geen knoop (nog niet gemount) = gewoon hier inline. */
+  triggerSlot?: HTMLElement | null }) {
   const [versies, setVersies] = useState<Versie[]>([]);
   const [drag, setDrag] = useState(false);
+  // Het "voeg een document toe"-blok stond hier altijd volledig open, ook als er
+  // niets te doen was: drie regels uitleg en een invoerveld voor iets dat je maar
+  // af en toe gebruikt. Nu een klein, gekleurd chipje (net als in de kennisbank)
+  // dat pas opengaat als je erop klikt; slepen werkt ook al op het dichte chipje.
+  const [dropOpen, setDropOpen] = useState(false);
   const bestandRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState("");
   const [fout, setFout] = useState("");
@@ -113,40 +123,62 @@ export default function DocVersies({ slug, url, taakId }: { slug: string; url: s
     return id ? `https://drive.google.com/file/d/${id}/preview` : "";
   };
 
+  // Dit chipje mag ook een bestand rechtstreeks aannemen (slepen zonder eerst te
+  // klikken); klikken opent daarnaast het volledige blok voor bladeren of een link.
+  const chip = (
+    <button type="button" className={"wp-docchip" + (drag ? " wp-docchip-actief" : "")}
+      disabled={busy === "lezen"}
+      onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+      onDragLeave={() => setDrag(false)}
+      onDrop={(e) => {
+        e.preventDefault(); setDrag(false);
+        const bijlage = e.dataTransfer.getData("application/pingwin-bijlage");
+        if (bijlage) { try { void uitMail(JSON.parse(bijlage)); } catch { /* geen geldige bijlage */ } return; }
+        const f = e.dataTransfer.files?.[0]; if (f) void drop(f);
+      }}
+      onClick={() => setDropOpen((v) => !v)}
+      title="Document toevoegen: klik, sleep een bestand hierheen, of sleep een bijlage uit een mail">
+      {busy === "lezen" ? "Bezig…" : "+ document"}
+    </button>
+  );
+
   return (
     <div className="wp-docs">
-      <div className={"wp-docdrop" + (drag ? " wp-docdrop-actief" : "")}
-        onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
-        onDragLeave={() => setDrag(false)}
-        onDrop={(e) => {
-          e.preventDefault(); setDrag(false);
-          const bijlage = e.dataTransfer.getData("application/pingwin-bijlage");
-          if (bijlage) { try { void uitMail(JSON.parse(bijlage)); } catch { /* geen geldige bijlage */ } return; }
-          const f = e.dataTransfer.files?.[0]; if (f) void drop(f);
-        }}>
-        {busy === "lezen" ? (
-          <span className="muted">Document inlezen…</span>
-        ) : (
-          <>
-            <span className="wp-docdrop-tekst">
-              <strong>Voeg een document toe.</strong>{" "}
-              <button type="button" className="wp-docdrop-kies" disabled={!!busy}
-                onClick={() => bestandRef.current?.click()}>kies een bestand</button>{" "}
-              sleep een bijlage uit een mail hierheen, of plak een Drive-link:
-            </span>
-            <input ref={bestandRef} type="file" className="wp-docdrop-verborgen"
-              accept=".docx,.pdf,.txt,.md,.json,.csv,.xlsx"
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) void drop(f); e.target.value = ""; }} />
-            <span className="wp-docdrop-linkrij">
-              <input className="wp-docdrop-input" value={linkVeld} placeholder="https://docs.google.com/…"
-                onChange={(e) => setLinkVeld(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter" && linkVeld.trim()) { void stuur({ action: "link", driveLink: linkVeld.trim() }, "lezen"); setLinkVeld(""); } }} />
-              <button type="button" className="wp-fase-btn" disabled={!linkVeld.trim() || !!busy}
-                onClick={() => { void stuur({ action: "link", driveLink: linkVeld.trim() }, "lezen"); setLinkVeld(""); }}>Lees</button>
-            </span>
-          </>
-        )}
-      </div>
+      {triggerSlot ? createPortal(chip, triggerSlot) : chip}
+      {dropOpen && (
+        <div className={"wp-docdrop" + (drag ? " wp-docdrop-actief" : "")}
+          onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+          onDragLeave={() => setDrag(false)}
+          onDrop={(e) => {
+            e.preventDefault(); setDrag(false);
+            const bijlage = e.dataTransfer.getData("application/pingwin-bijlage");
+            if (bijlage) { try { void uitMail(JSON.parse(bijlage)); } catch { /* geen geldige bijlage */ } return; }
+            const f = e.dataTransfer.files?.[0]; if (f) void drop(f);
+          }}>
+          {busy === "lezen" ? (
+            <span className="muted">Document inlezen…</span>
+          ) : (
+            <>
+              <span className="wp-docdrop-tekst">
+                <button type="button" className="wp-docdrop-kies" disabled={!!busy}
+                  onClick={() => bestandRef.current?.click()}>kies een bestand</button>{" "}
+                sleep een bijlage uit een mail hierheen, of plak een Drive-link:
+              </span>
+              <input ref={bestandRef} type="file" className="wp-docdrop-verborgen"
+                accept=".docx,.pdf,.txt,.md,.json,.csv,.xlsx"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) void drop(f); e.target.value = ""; }} />
+              <span className="wp-docdrop-linkrij">
+                <input className="wp-docdrop-input" value={linkVeld} placeholder="https://docs.google.com/…"
+                  onChange={(e) => setLinkVeld(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && linkVeld.trim()) { void stuur({ action: "link", driveLink: linkVeld.trim() }, "lezen"); setLinkVeld(""); } }} />
+                <button type="button" className="btn btn-ghost btn-klein" disabled={!linkVeld.trim() || !!busy}
+                  onClick={() => { void stuur({ action: "link", driveLink: linkVeld.trim() }, "lezen"); setLinkVeld(""); }}>Lees</button>
+              </span>
+              <button type="button" className="wp-icon wp-del" title="Sluiten" onClick={() => setDropOpen(false)}>×</button>
+            </>
+          )}
+        </div>
+      )}
 
       {fout && <div className="wp-doc-fout">{fout}</div>}
 
@@ -187,7 +219,7 @@ export default function DocVersies({ slug, url, taakId }: { slug: string; url: s
                   <span>geldt</span>
                 </label>
                 {v.source === "klant" && (
-                  <button type="button" className="wp-fase-btn" disabled={!!busy}
+                  <button type="button" className="btn btn-ghost btn-klein" disabled={!!busy}
                     title="Kijk of deze teruggekregen versie nog aan de SEO-criteria voldoet"
                     onClick={async () => {
                       const d = await stuur({ action: "toets", id: v.id }, "toets");

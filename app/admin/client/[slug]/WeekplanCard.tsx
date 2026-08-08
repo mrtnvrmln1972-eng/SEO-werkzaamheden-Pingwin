@@ -18,7 +18,6 @@ import AntwoordBlokken from "./AntwoordBlokken";
 import DocVersies from "./DocVersies";
 import KaartNotitie from "./KaartNotitie";
 import PaginaDossier from "./PaginaDossier";
-import DeelKnoppen from "./DeelKnoppen";
 import DevDoorzetten from "./DevDoorzetten";
 
 const ARCHIEF_LABEL: Record<string, string> = {
@@ -41,7 +40,6 @@ const TAB_FOR_TYPE: Record<string, { tab: string; label: string }> = {
   pijplijn: { tab: "paginas", label: "Pagina's" },
   overig: { tab: "paginas", label: "Pagina's" },
 };
-const STATUS_LABEL: Record<string, string> = { gepland: "Gepland", bezig: "Bezig", klaar: "Klaar" };
 
 type FaseKey = "strategie" | "gelieerde" | "analyse" | "blauwdruk" | "copy" | "bouw" | "structured";
 
@@ -104,6 +102,10 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
   const openPaginaNieuwTab = () => window.open(`/admin/client/${slug}?tab=paginas&page=${encodeURIComponent(t.url)}`, "_blank");
   const openTabNieuwTab = (tabNaam: string) => window.open(`/admin/client/${slug}?tab=${tabNaam}${tabNaam === "paginas" && t.url ? `&page=${encodeURIComponent(t.url)}` : ""}`, "_blank");
   const hasInfo = !!t.toelichting.trim();
+  // Plek in de knoppenbalk van de aantekeningen waar het "document toevoegen"-
+  // chipje van DocVersies via een portal in terechtkomt, zodat het daar fysiek
+  // in die strip staat i.p.v. als eigen, altijd-open blok verderop.
+  const [notitieDocSlot, setNotitieDocSlot] = useState<HTMLSpanElement | null>(null);
   const [run, setRun] = useState<RunInfo>(null);
   const [everLinks, setEverLinks] = useState<Record<string, string>>({});
   const [schemaStatus, setSchemaStatus] = useState<string>(page?.structuredStatus || "idle");
@@ -473,11 +475,11 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
     const p = page;
     if (!p) return null;
     if (key === "strategie") {
-      return <button type="button" className="wp-fase-btn" title={p.strategie ? "Bespreek of stel de strategie bij in de kaart-chat" : "Stel in de kaart-chat een strategie voor deze pagina op"} onClick={() => void openChat("Stel een strategie voor deze pagina voor. Houd rekening met de achtergrond van deze kaart.")}>Bespreek</button>;
+      return <button type="button" className="btn btn-ghost btn-klein" title={p.strategie ? "Bespreek of stel de strategie bij in de kaart-chat" : "Stel in de kaart-chat een strategie voor deze pagina op"} onClick={() => void openChat("Stel een strategie voor deze pagina voor. Houd rekening met de achtergrond van deze kaart.")}>Bespreek</button>;
     }
     if (key === "gelieerde") {
       const kan = p.strategie;
-      return <button type="button" className="wp-fase-btn" disabled={!kan || busy === "gelieerde"} title={kan ? "Haal advies voor gelieerde pagina's uit de vastgelegde strategie en zet het bij die pagina's klaar" : "Leg eerst de strategie vast; die is de bron voor het advies"} onClick={() => void startGelieerde()}>{busy === "gelieerde" ? "Bezig…" : p.gelieerde ? "Opnieuw ↻" : "Start ▷"}</button>;
+      return <button type="button" className="btn btn-ghost btn-klein" disabled={!kan || busy === "gelieerde"} title={kan ? "Haal advies voor gelieerde pagina's uit de vastgelegde strategie en zet het bij die pagina's klaar" : "Leg eerst de strategie vast; die is de bron voor het advies"} onClick={() => void startGelieerde()}>{busy === "gelieerde" ? "Bezig…" : p.gelieerde ? "Opnieuw ↻" : "Start ▷"}</button>;
     }
     if (key === "analyse" || key === "blauwdruk" || key === "copy") {
       const geblokkeerd = key === "analyse" ? !p.live : (!p.live && !p.strategie);
@@ -485,7 +487,7 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
         ? (p.live ? "Analyseer de huidige live pagina (met de kaart-achtergrond als sturing)" : "De pagina is nog niet live; een analyse kan pas daarna")
         : (geblokkeerd ? "Eerst de strategie goedkeuren (nieuwe pagina)" : "Start dit document (met de kaart-achtergrond en chat-conclusie als sturing)");
       const tekst = key === "analyse" && !p.live ? "Na livegang" : p[key] ? "Opnieuw ↻" : "Start ▷";
-      return <button type="button" className="wp-fase-btn" disabled={geblokkeerd || runActive || !!busy} title={titel} onClick={() => void startDocStep([key])}>{tekst}</button>;
+      return <button type="button" className="btn btn-ghost btn-klein" disabled={geblokkeerd || runActive || !!busy} title={titel} onClick={() => void startDocStep([key])}>{tekst}</button>;
     }
     if (key === "bouw") {
       return (
@@ -494,15 +496,15 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
               bij Delen. Drie knoppen voor één handeling. Hij staat nu alleen nog
               bovenaan in de actiebalk; deze rij toont wél de stand ("Bij de
               developer"), want dat is een signaal en geen knop. */}
-          <button type="button" className="wp-fase-btn" title="Mail over de bouw of publicatie (ontvanger kies je in het venster)" onClick={() => onMail("dev")}>Mail</button>
+          <button type="button" className="btn btn-ghost btn-klein" title="Mail over de bouw of publicatie (ontvanger kies je in het venster)" onClick={() => onMail("dev")}>Mail</button>
         </>
       );
     }
     if (key === "structured") {
       return (
         <>
-          <button type="button" className="wp-fase-btn" disabled={schemaRunning || !!busy} title={!p.bouw && p.copy ? "Let op: staat de nieuwe copy al live? Anders is de analyse te vroeg." : "Start de structured-data-analyse"} onClick={() => void startSchema()}>{p.structured ? "Opnieuw ↻" : "Start ▷"}</button>
-          <button type="button" className="wp-fase-btn wp-fase-btn-licht" disabled={!!busy || schemaRunning} title="Her-fetcht de live pagina en checkt of het geadviseerde schema er nu echt staat (en niet dubbel)." onClick={() => void controleerLive()}>{busy === "verify" ? "Checken…" : "Controleer live"}</button>
+          <button type="button" className="btn btn-ghost btn-klein" disabled={schemaRunning || !!busy} title={!p.bouw && p.copy ? "Let op: staat de nieuwe copy al live? Anders is de analyse te vroeg." : "Start de structured-data-analyse"} onClick={() => void startSchema()}>{p.structured ? "Opnieuw ↻" : "Start ▷"}</button>
+          <button type="button" className="btn btn-ghost btn-klein" disabled={!!busy || schemaRunning} title="Her-fetcht de live pagina en checkt of het geadviseerde schema er nu echt staat (en niet dubbel)." onClick={() => void controleerLive()}>{busy === "verify" ? "Checken…" : "Controleer live"}</button>
         </>
       );
     }
@@ -564,8 +566,8 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
                       if (e.key === "Enter") { e.preventDefault(); void bewaarTitel(); }
                       if (e.key === "Escape") { e.preventDefault(); setTitelBewerk(false); }
                     }} />
-                  <button type="button" className="wp-fase-btn" disabled={titelBezig} onClick={() => void bewaarTitel()}>{titelBezig ? "Bezig…" : "Bewaar"}</button>
-                  <button type="button" className="wp-fase-btn wp-fase-btn-licht" disabled={titelBezig} onClick={() => setTitelBewerk(false)}>Annuleer</button>
+                  <button type="button" className="btn btn-ghost btn-klein" disabled={titelBezig} onClick={() => void bewaarTitel()}>{titelBezig ? "Bezig…" : "Bewaar"}</button>
+                  <button type="button" className="btn btn-ghost btn-klein" disabled={titelBezig} onClick={() => setTitelBewerk(false)}>Annuleer</button>
                 </div>
               ) : inRij ? null : (
                 <div className="wp-card-taak wp-clickable" onClick={toggleAlsGeenSelectie} title={open ? "Klik om dicht te klappen" : "Klik voor de fases, info en chat"}>
@@ -578,12 +580,11 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
               {subtitel && !inRij && <div className="wp-card-sub wp-clickable" onClick={toggleAlsGeenSelectie}>{subtitel}</div>}
             </div>
             <span className="wp-kop-acties">
-              <button type="button" className={"wp-status wp-status-" + t.status} onClick={onStatus} title="Klik om de status te wisselen">{STATUS_LABEL[t.status] || t.status}</button>
               {/* Doorzetten naar de sitebouwer stond op twee plekken: hier onderaan
                   bij Delen (alleen zonder pagina) en bij de fase Implementatie. Nu
                   één knop, altijd op dezelfde plek, met of zonder pagina. */}
               {open && (
-                <button type="button" className={"btn-ghost" + (naarDev ? " btn-ghost-aan" : "")} disabled={devBezig}
+                <button type="button" className={"btn btn-ghost btn-klein" + (naarDev ? " btn-ghost-aan" : "")} disabled={devBezig}
                   title={naarDev ? "Staat op de developerlijst. Klik om hem er weer af te halen." : "Zet deze kaart klaar voor de sitebouwer: de opdracht, de pagina en de documenten."}
                   onClick={() => void zetNaarDev()}>
                   {devBezig ? "Bezig…" : naarDev ? "✓ Bij de sitebouwer" : "Naar de sitebouwer"}
@@ -592,14 +593,14 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
               {/* Nameten hoort naast doorzetten: dat is dezelfde afspraak, een
                   paar weken later. Alleen zinvol bij een pagina. */}
               {open && t.url && (
-                <button type="button" className="btn-ghost" disabled={controleBezig}
+                <button type="button" className="btn btn-ghost btn-klein" disabled={controleBezig}
                   title="Meet de live pagina op wat er bij het doorzetten is afgesproken, zet het bewijs in de kaart en vinkt Implementatie af als het klopt."
                   onClick={() => void isDoorgevoerd()}>
                   {controleBezig ? "Meten…" : "Is dit doorgevoerd?"}
                 </button>
               )}
               {open && hasInfo && (
-                <button type="button" className="btn-ghost" disabled={busy === "opruimen"}
+                <button type="button" className="btn btn-ghost btn-klein" disabled={busy === "opruimen"}
                   title="Laat de assistent de kaarttekst één keer herschrijven naar het strakke formaat. Niets verzinnen, niets weggooien; de oude tekst blijft in het archief staan."
                   onClick={() => void ruimOp()}>{busy === "opruimen" ? "Bezig…" : "Tekst opschonen"}</button>
               )}
@@ -627,7 +628,7 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
             </ul>
           )}
           {controle.meetbaar && !controle.alles && (
-            <button type="button" className="btn-ghost" onClick={() => onMail("dev")}
+            <button type="button" className="btn btn-ghost btn-klein" onClick={() => onMail("dev")}
               title="Schrijf een mail aan de sitebouwer met de gemeten waarde en de pagina erin">Mail de sitebouwer</button>
           )}
         </div>
@@ -669,15 +670,14 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
               terwijl je er maar af en toe iets neerlegt. */}
           {/* Je eigen aantekeningen. Los van de kaarttekst die de assistent
               schreef: geen automatische stap raakt dit veld aan. */}
-          <KaartNotitie slug={slug} id={t.id} start={t.notitie || ""} />
+          <KaartNotitie slug={slug} id={t.id} start={t.notitie || ""}
+            toolbarExtra={<span ref={setNotitieDocSlot} />} />
           {/* Documenten hangen aan de pagina als die er is, en anders aan de taak
-              zelf. Zo kun je bij élke kaart een document neerleggen. */}
-          <DocVersies slug={slug} url={t.url || `taak:${t.id}`} taakId={t.id} />
-          {!hasInfo && !t.url && (
-            <div className="muted wp-overdeze-leeg">
-              Nog geen achtergrond. Leg hier een document neer, of stel een vraag in de chat hieronder; wat daaruit komt kun je als achtergrond vastleggen.
-            </div>
-          )}
+              zelf. Zo kun je bij élke kaart een document neerleggen. Het
+              chipje zelf staat via de portal in de knoppenbalk hierboven; hier
+              staat alleen nog het openklapbare blok (als je erop klikt) en de
+              lijst met eerder toegevoegde documenten. */}
+          <DocVersies slug={slug} url={t.url || `taak:${t.id}`} taakId={t.id} triggerSlot={notitieDocSlot} />
           {/* Het archief. Twee dingen die er bijna hetzelfde uitzagen zijn nu uit
               elkaar getrokken: "Wat er gebeurd is" (mails, documenten, gesprekken,
               in het dossierblok hierboven) en dit, de geschreven tekst die van de
@@ -712,7 +712,7 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
         <div className="ovc-lijstkeuze">
           <span>Op welke bespreeklijst?</span>
           {lijstPersonen.map((p) => (
-            <button key={p} type="button" className="wp-fase-btn" onClick={() => void zetOpLijst(p)}>{p === "Dev" ? devLabel(devNaam) : p}</button>
+            <button key={p} type="button" className="btn btn-ghost btn-klein" onClick={() => void zetOpLijst(p)}>{p === "Dev" ? devLabel(devNaam) : p}</button>
           ))}
           <button type="button" className="wp-icon wp-del" title="Annuleren" onClick={() => setLijstPunt("")}>×</button>
         </div>
@@ -748,7 +748,7 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
         <div className="wp-fases-kop">
           <span className="wp-sectie-label" style={{ margin: "var(--s-0)" }}>Fases</span>
           <span className="wp-fase-spacer" />
-          <button type="button" className="wp-fase-btn" disabled={(!page.live && !page.strategie) || runActive || !!busy}
+          <button type="button" className="btn btn-ghost btn-klein" disabled={(!page.live && !page.strategie) || runActive || !!busy}
             title={(!page.live && !page.strategie) ? "Eerst de strategie goedkeuren (nieuwe pagina)" : "Draait analyse, blauwdruk en copy achter elkaar"}
             onClick={() => void startDocStep(page.live ? ["analyse", "blauwdruk", "copy"] : ["blauwdruk", "copy"])}>
             {page.live ? "Alles in één keer ▷" : "Blauwdruk + copy ▷"}
@@ -805,7 +805,7 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
                       hij staat nu boven het blok. */}
                   {/* Bouw en publicatie bestaat niet als stap op de Pagina's-pagina,
                       dus daar heeft deze knop niets om naartoe te gaan. */}
-                  {f.key !== "bouw" && <button type="button" className="wp-fase-btn wp-fase-btn-licht" title="Bekijk of doe deze stap in Pagina's (nieuw tabblad)" onClick={openPaginaNieuwTab}>In Pagina&rsquo;s</button>}
+                  {f.key !== "bouw" && <button type="button" className="btn btn-ghost btn-klein" title="Bekijk of doe deze stap in Pagina's (nieuw tabblad)" onClick={openPaginaNieuwTab}>In Pagina&rsquo;s</button>}
                   {faseActie(f.key)}
                   <span className={"wp-fase-chip " + stand.cls} title={stand.label === "✓" ? "Klaar" : undefined}>{stand.label}</span>
                 </div>
@@ -888,13 +888,13 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
               </div>
               {planVoorstel && (
                 <div className="wp-chat-acties">
-                  <button type="button" className="primary-btn small" disabled={busy === "strategie"} onClick={() => void legStrategieVast()}>Strategie vastleggen</button>
+                  <button type="button" className="btn btn-primary btn-klein" disabled={busy === "strategie"} onClick={() => void legStrategieVast()}>Strategie vastleggen</button>
                 </div>
               )}
               <div className="wp-chat-input">
                 <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Vraag of instructie…"
                   onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void sendChat(); } }} />
-                <button type="button" className="primary-btn small" disabled={chatBusy || !input.trim()} onClick={() => void sendChat()}>Vraag</button>
+                <button type="button" className="btn btn-primary btn-klein" disabled={chatBusy || !input.trim()} onClick={() => void sendChat()}>Vraag</button>
               </div>
             </div>
           )}
@@ -918,17 +918,6 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
         </span>
         <span className="wp-onder-scheiding" aria-hidden="true" />
         <span className="wp-onder-groep wp-onder-delen">
-          <span className="wp-onder-lab">Delen</span>
-          {/* "Naar de sitebouwer" stond hier ook, maar alleen bij een kaart zónder
-              pagina. Twee knoppen voor hetzelfde, op twee plekken, met een
-              voorwaarde die niemand kan onthouden. Hij staat nu in de actiebalk
-              bovenaan, altijd op dezelfde plek. */}
-          <DeelKnoppen slug={slug} titel={t.taak.replace(/<[^>]*>/g, "").trim()}
-            tekst={[t.taak.replace(/<[^>]*>/g, "").trim(), t.toelichting.replace(/<[^>]*>/g, "").trim()].filter(Boolean).join("\n\n")}
-            mailBron={msgs.filter((m) => m.role === "assistant").map((m) => m.content || "").join("\n\n")}
-            blokMd={[...msgs].reverse().find((m) => m.role === "assistant" && (m.content || "").trim())?.content || ""}
-            siteUrl={(() => { try { return new URL(t.url).host; } catch { return ""; } })()}
-            url={t.url || undefined} toon={msgs.some((m) => m.role === "assistant") ? "beide" : "document"} compact knopClass="wp-link wp-link-btn" />
           <button type="button" className="wp-act wp-act-klant" title="Mail over deze kaart; de ontvanger (klant, developer of anders) kies je in het venster." onClick={() => onMail("klant")}>Mail</button>
         </span>
       </div>}
@@ -1024,19 +1013,19 @@ function WerklijstBlok({ slug, refreshBoard }: { slug: string; refreshBoard: () 
         <span className="wp-sectie-label" style={{ margin: "var(--s-0)" }}>Werklijst voor de sitebouwer</span>
         {teller && <span className="wp-werklijst-teller">{teller.gedaan}/{teller.totaal} gedaan · {teller.geverifieerd} gecontroleerd</span>}
         <span className="wp-fase-spacer" />
-        <a className={"wp-fase-btn wp-fase-btn-primair" + (klaar ? "" : " wp-fase-btn-uit")} href={klaar ? `/admin/client/${slug}/werklijst` : undefined} target="_blank" rel="noreferrer"
+        <a className={"btn btn-primary btn-klein" + (klaar ? "" : " btn-uit")} href={klaar ? `/admin/client/${slug}/werklijst` : undefined} target="_blank" rel="noreferrer"
           title={klaar ? "Onze eigen versie: de huidige meta naast de goedgekeurde tekst, met de knop Voer door in de site" : nogNiet}>Onze werklijst</a>
-        <a className={"wp-fase-btn" + (klaar ? "" : " wp-fase-btn-uit")} href={klaar ? `/share/werklijst/${shareToken}` : undefined} target="_blank" rel="noreferrer"
+        <a className={"btn btn-ghost btn-klein" + (klaar ? "" : " btn-uit")} href={klaar ? `/share/werklijst/${shareToken}` : undefined} target="_blank" rel="noreferrer"
           title={klaar ? "De klikbare afwerkpagina om te delen met de sitebouwer (geen inlog nodig)" : nogNiet}>Voor de sitebouwer</a>
       </div>
       {/* Doen: deze drie veranderen wel iets, of kosten tijd. */}
       <div className="wp-werklijst-rij wp-werklijst-doen">
         <span className="wp-werklijst-groep">Doen</span>
-        <button type="button" className="wp-fase-btn" disabled={status === "running" || !!actieBusy}
+        <button type="button" className="btn btn-ghost btn-klein" disabled={status === "running" || !!actieBusy}
           title="Meet alle live pagina's opnieuw, schrijft de alt-teksten en haalt de goedgekeurde meta's uit Meta & CTR op; duurt een paar minuten" onClick={start}>
           {status === "running" ? "Bezig… (paar minuten)" : klaar ? "Ververs werklijst" : "Maak de werklijst"}
         </button>
-        <button type="button" className="wp-fase-btn" disabled={!klaar || !!actieBusy || status === "running"}
+        <button type="button" className="btn btn-ghost btn-klein" disabled={!klaar || !!actieBusy || status === "running"}
           title={klaar ? "Meet de live pagina's en zet groene gecontroleerd-vinkjes op alles wat er echt goed op staat" : nogNiet}
           onClick={() => void actie("verify")}>{actieBusy === "verify" ? "Controleren…" : "Controleer live"}</button>
       </div>
