@@ -189,7 +189,7 @@ export async function testWordpressAuth(domain: string, auth: WpAuth, clientSlug
     // Dan liggen de inloggegevens niet aan de gebruiker en zeggen we dat eerlijk.
     const isJson = (res.headers.get("content-type") || "").includes("json");
     if (res.ok && isJson) {
-      logBronGebeurtenis("wordpress", true, "", slug).catch(() => {});
+      await logBronGebeurtenis("wordpress", true, "", slug);
       return { ok: true };
     }
     let error: string;
@@ -200,10 +200,10 @@ export async function testWordpressAuth(domain: string, auth: WpAuth, clientSlug
     } else {
       error = `WordPress gaf status ${res.status}.`;
     }
-    logBronGebeurtenis("wordpress", false, error, slug).catch(() => {});
+    await logBronGebeurtenis("wordpress", false, error, slug);
     return { ok: false, error };
   } catch {
-    logBronGebeurtenis("wordpress", false, "WordPress niet bereikbaar.", slug).catch(() => {});
+    await logBronGebeurtenis("wordpress", false, "WordPress niet bereikbaar.", slug);
     return { ok: false, error: "WordPress niet bereikbaar." };
   } finally { clearTimeout(t); }
 }

@@ -175,10 +175,10 @@ async function accessTokenFor(provider: string): Promise<string | null> {
   });
   const bron = bronVoorProvider(provider);
   if (!data.access_token) {
-    logBronGebeurtenis(bron, false, data.error_description || data.error || "Token vernieuwen mislukt.").catch(() => {});
+    await logBronGebeurtenis(bron, false, data.error_description || data.error || "Token vernieuwen mislukt.");
     return null;
   }
-  logBronGebeurtenis(bron, true).catch(() => {});
+  await logBronGebeurtenis(bron, true);
   return data.access_token;
 }
 

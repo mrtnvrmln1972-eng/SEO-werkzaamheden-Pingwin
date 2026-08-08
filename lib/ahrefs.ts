@@ -82,7 +82,7 @@ async function ahrefsFetch(path: string, params: Record<string, string>, body?: 
   const slug = ahrefsAls.getStore()?.slug ?? null;
   const token = (await tokenForSlug(slug ?? undefined)) || process.env.AHREFS_API_TOKEN;
   if (!token) {
-    logBronGebeurtenis("ahrefs", false, "Geen API-sleutel ingesteld (AHREFS_API_TOKEN ontbreekt).", slug).catch(() => {});
+    await logBronGebeurtenis("ahrefs", false, "Geen API-sleutel ingesteld (AHREFS_API_TOKEN ontbreekt).", slug);
     throw new Error("AHREFS_API_TOKEN ontbreekt.");
   }
   const url = new URL(BASE + path);
@@ -115,10 +115,10 @@ async function ahrefsFetch(path: string, params: Record<string, string>, body?: 
         tokensIn: readUnitsHeader(res.headers) ?? 0,
       }).catch(() => {});
     }
-    logBronGebeurtenis("ahrefs", true, "", slug).catch(() => {});
+    await logBronGebeurtenis("ahrefs", true, "", slug);
     return await res.json();
   } catch (e) {
-    logBronGebeurtenis("ahrefs", false, (e as Error).message?.slice(0, 400) || "Onbekende fout.", slug).catch(() => {});
+    await logBronGebeurtenis("ahrefs", false, (e as Error).message?.slice(0, 400) || "Onbekende fout.", slug);
     throw e;
   } finally {
     clearTimeout(timer);
