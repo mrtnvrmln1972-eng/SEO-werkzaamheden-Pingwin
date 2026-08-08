@@ -34,7 +34,7 @@ async function mbFetch(path: string, params: Record<string, string> = {}): Promi
   const token = process.env.MONEYBIRD_API_TOKEN;
   const adm = administrationId();
   if (!token || !adm) {
-    logBronGebeurtenis("moneybird", false, "MONEYBIRD_API_TOKEN of MONEYBIRD_ADMINISTRATION_ID ontbreekt.").catch(() => {});
+    await logBronGebeurtenis("moneybird", false, "MONEYBIRD_API_TOKEN of MONEYBIRD_ADMINISTRATION_ID ontbreekt.");
     throw new Error("MONEYBIRD_API_TOKEN of MONEYBIRD_ADMINISTRATION_ID ontbreekt.");
   }
   const url = new URL(`${BASE}/${adm}${path}`);
@@ -55,10 +55,10 @@ async function mbFetch(path: string, params: Record<string, string> = {}): Promi
       const body = await res.text().catch(() => "");
       throw new Error(`Moneybird ${path}: ${res.status} ${body.slice(0, 300)}`);
     }
-    logBronGebeurtenis("moneybird", true).catch(() => {});
+    await logBronGebeurtenis("moneybird", true);
     return await res.json();
   } catch (e) {
-    logBronGebeurtenis("moneybird", false, (e as Error).message?.slice(0, 400) || "Onbekende fout.").catch(() => {});
+    await logBronGebeurtenis("moneybird", false, (e as Error).message?.slice(0, 400) || "Onbekende fout.");
     throw e;
   } finally {
     clearTimeout(timer);

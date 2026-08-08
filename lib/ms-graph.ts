@@ -123,14 +123,14 @@ async function msAccessToken(): Promise<string | null> {
     scope: SCOPES,
   });
   if (!data.access_token) {
-    logBronGebeurtenis("microsoft", false, data.error_description || data.error || "Token vernieuwen mislukt.").catch(() => {});
+    await logBronGebeurtenis("microsoft", false, data.error_description || data.error || "Token vernieuwen mislukt.");
     return null;
   }
   // Microsoft rouleert de refresh-token: bewaar de nieuwe als die er is.
   if (data.refresh_token && data.refresh_token !== refresh) {
     await sql`UPDATE oauth_tokens SET refresh_token = ${data.refresh_token}, updated_at = now() WHERE provider = 'microsoft'`;
   }
-  logBronGebeurtenis("microsoft", true).catch(() => {});
+  await logBronGebeurtenis("microsoft", true);
   return data.access_token;
 }
 
