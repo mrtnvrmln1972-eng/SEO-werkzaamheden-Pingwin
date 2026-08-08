@@ -123,6 +123,15 @@
   padding: 2px var(--s-2); border-radius: var(--r-full);
   background: var(--gray-light); color: var(--gray);
 }
+/* AANTAL-BADGES: ÉÉN REGEL, OVERAL — org-sec-aantal, kb-groep-aantal en
+   kb-tab-aantal waren drie keer bijna dezelfde regel; nu delen ze .chip's
+   vorm. Zelfde idioom als "DOORZICHTIGE KNOPPEN" verderop in dit bestand. */
+.org-sec-aantal, .kb-groep-aantal, .kb-tab-aantal {
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
+  padding: 2px var(--s-2); border-radius: var(--r-full);
+  background: var(--gray-light); color: var(--gray);
+}
 
 /* Knop: standaard actieknop op de tokens; .btn-primary is de oranje variant. */
 .btn {
@@ -2443,27 +2452,23 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .org-form { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
 /* ── Bedrijfsgegevens: één vaste vorm per blok ──────────────────────────
    Elk onderdeel (algemeen, vestigingen, bereikbaarheid, artsen, diensten,
-   opmerkingen) is een blok op een zacht warm vlak, met een oranje kopje en
-   een dun lijntje. De invoervelden blijven wit en liggen daardoor zichtbaar
-   op het blok; zonder dat verschil oogde het scherm één groot wit vlak. */
+   opmerkingen) is een lichte, dun omrande kaart met een rustig kopje: geen
+   getint vlak en geen dik kopje meer (08-08-2026), want de buitenste
+   panelen in deze cockpit hebben zelf bewust géén rand, en een subsectie
+   die zwaarder oogt dan zijn eigen paneel keert de hiërarchie om. */
 .org-form { display: flex; flex-direction: column; gap: var(--s-4); }
 .org-sec {
-  background: var(--brand-orange-faint);
-  border: 1px solid var(--card-border);
-  border-radius: var(--r-lg);
-  padding: var(--s-3) var(--s-4) var(--s-4);
-  display: flex; flex-direction: column; gap: var(--s-3);
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--s-2) var(--s-3) var(--s-3);
+  display: flex; flex-direction: column; gap: var(--s-2);
 }
 .org-sec-kop {
   margin: 0; display: flex; align-items: center; gap: var(--s-2);
-  font-size: var(--fs-base); line-height: var(--lh-base); font-weight: 800;
-  color: var(--orange-dark); letter-spacing: 0.01em;
-  padding-bottom: var(--s-2); border-bottom: 1px solid var(--card-border);
-}
-.org-sec-aantal {
-  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700; color: var(--gray);
-  background: var(--white); border: 1px solid var(--card-border);
-  border-radius: var(--r-full); padding: 0 var(--s-2); min-width: 22px; text-align: center;
+  font-size: var(--fs-sm); line-height: var(--lh-sm); font-weight: 600;
+  color: var(--dark); letter-spacing: normal;
+  padding-bottom: var(--s-1); border-bottom: 1px solid var(--border);
 }
 .org-kolom { display: flex; flex-direction: column; gap: var(--s-3); }
 
@@ -2472,9 +2477,9 @@ tbody tr.row-done:hover { background: #E2F1E2; }
    zo uitziet als de niet-inklapbare kopjes. */
 button.org-sec-kop {
   appearance: none; border: none; background: none; margin: 0; width: 100%;
-  font: inherit; text-align: left; cursor: pointer; color: var(--orange-dark);
+  font: inherit; text-align: left; cursor: pointer; color: var(--dark);
 }
-button.org-sec-kop:hover { color: var(--orange); }
+button.org-sec-kop:hover { color: var(--orange-dark); }
 .org-sec-caret { font-size: 12px; color: var(--orange); flex-shrink: 0; }
 
 /* Knop + "?"-uitlegbolletje naast elkaar, voor de actieknoppenrij. */
@@ -2609,7 +2614,7 @@ button.org-sec-kop:hover { color: var(--orange); }
 .org-mis input::placeholder, .org-mis-input::placeholder { color: var(--red); opacity: 0.75; }
 .org-mis-vlag {
   margin-left: var(--s-2); font-size: var(--fs-xs); font-weight: 700; color: var(--red);
-  background: var(--white); border: 1px solid #f0c7c3; border-radius: var(--r-full); padding: 0 var(--s-2);
+  background: var(--red-light); border: none; border-radius: var(--r-full); padding: 0 var(--s-2);
 }
 
 /* Vestigingen: per locatie een blokje met adres, contact en openingstijden. */
@@ -3148,11 +3153,6 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
 .kb-groep-body { border-top: 1px solid var(--card-border); padding-top: var(--s-3); }
 .kb-groep-caret { color: var(--gray); font-size: var(--fs-xs); }
 .kb-groep-titel { font-weight: 800; color: var(--orange-dark); font-size: var(--fs-sm); line-height: var(--lh-sm); letter-spacing: 0.02em; }
-.kb-groep-aantal {
-  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700; color: var(--gray);
-  background: var(--white); border: 1px solid var(--card-border);
-  border-radius: var(--r-full); padding: 0 var(--s-2); min-width: 22px; text-align: center;
-}
 .kb-groep-kop-klein .kb-groep-titel { color: var(--gray); font-weight: 600; }
 
 /* Terugval als de knoppenrij van OrgDataPanel (nog) niet gemount is: de
@@ -3184,11 +3184,6 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
 }
 .kb-tab:hover { color: var(--orange-dark); }
 .kb-tab-actief { color: var(--orange-dark); border-bottom-color: var(--orange); }
-.kb-tab-aantal {
-  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700; color: var(--gray);
-  background: var(--white); border: 1px solid var(--card-border);
-  border-radius: var(--r-full); padding: 0 var(--s-2); min-width: 20px; text-align: center;
-}
 .kb-tab-actief .kb-tab-aantal { color: var(--orange-dark); }
 .kb-tab-body { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--s-2); }
 .kb-groep-body {
@@ -3213,8 +3208,8 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
   background: var(--white); padding: var(--s-2) var(--s-3); margin-bottom: var(--s-2);
   font-size: var(--fs-xs); line-height: var(--lh-xs);
 }
-.kb-gaps { border: 1px solid #f0c7c3; border-left: 3px solid #b3261e; border-radius: 10px; background: #fdf3f2; padding: 10px 14px; }
-.kb-gaps-kop { font-weight: 700; color: #b3261e; font-size: 13px; margin-bottom: 6px; }
+.kb-gaps { border: none; border-left: 3px solid var(--red); border-radius: var(--r-sm); background: var(--red-light); padding: var(--s-2) var(--s-3); }
+.kb-gaps-kop { font-weight: 700; color: var(--red); font-size: var(--fs-sm); line-height: var(--lh-sm); margin-bottom: var(--s-1); }
 .kb-gaps-kop-btn { display: flex; align-items: center; gap: var(--s-1); background: none; border: none; padding: 0; cursor: pointer; font: inherit; color: inherit; width: 100%; text-align: left; }
 .kb-detail-sec { margin-top: var(--s-3); }
 .kb-gaps ul { margin: 0 0 8px; padding-left: 18px; font-size: 12.5px; display: flex; flex-direction: column; gap: 3px; }
