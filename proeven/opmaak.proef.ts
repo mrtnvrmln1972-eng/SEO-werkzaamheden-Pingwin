@@ -364,7 +364,7 @@ const KNOPCONVENTIE_ERFENIS = new Set<string>([
   "app/admin/client/[slug]/ChatBestanden.tsx", "app/admin/client/[slug]/ChatPanel.tsx",
   "app/admin/client/[slug]/ClientCockpit.tsx", "app/admin/client/[slug]/Concurrenten.tsx",
   "app/admin/client/[slug]/DeelKnoppen.tsx", "app/admin/client/[slug]/DevDoorzetten.tsx",
-  "app/admin/client/[slug]/DocVersies.tsx", "app/admin/client/[slug]/FocusBlock.tsx",
+  "app/admin/client/[slug]/FocusBlock.tsx",
   "app/admin/client/[slug]/FundamentPanel.tsx", "app/admin/client/[slug]/ImportAnalysis.tsx",
   "app/admin/client/[slug]/InvoiceAlert.tsx", "app/admin/client/[slug]/Kennisbank.tsx",
   "app/admin/client/[slug]/KlussenChip.tsx", "app/admin/client/[slug]/KpiPanel.tsx",
@@ -381,7 +381,7 @@ const KNOPCONVENTIE_ERFENIS = new Set<string>([
   "app/admin/client/[slug]/PrioriteitenPanel.tsx", "app/admin/client/[slug]/SelectionActions.tsx",
   "app/admin/client/[slug]/ShareLinkBar.tsx", "app/admin/client/[slug]/StrategyPanel.tsx",
   "app/admin/client/[slug]/TakenVoorstel.tsx", "app/admin/client/[slug]/TasksEditor.tsx",
-  "app/admin/client/[slug]/Voortgang.tsx", "app/admin/client/[slug]/WeekplanCard.tsx",
+  "app/admin/client/[slug]/Voortgang.tsx",
   "app/admin/client/[slug]/WijzigingenPanel.tsx",
 ]);
 const OUDE_KNOPKLASSEN = /\b(ghost-btn|wp-fase-btn|primary-btn)\b/;

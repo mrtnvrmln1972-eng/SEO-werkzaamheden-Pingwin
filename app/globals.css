@@ -2262,6 +2262,12 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 }
 .focus-toolbar button { font-size: 12px; padding: 4px 9px; border: 1px solid var(--border); background: var(--white); border-radius: 6px; cursor: pointer; color: var(--dark); }
 .focus-toolbar button:hover { border-color: var(--orange); color: var(--orange); }
+/* Compacte, rechtsboven-variant (opt-in via `compact` op RijkTekstVeld): voor een
+   kort veld als de kaartaantekeningen is een volle, plakkende knoppenbalk te
+   zwaar. Rechts uitgelijnd, geen eigen vlak/rand, pas zichtbaar op hover. */
+.focus-toolbar-compact { justify-content: flex-end; background: transparent; border-bottom: none; padding: 0 0 var(--s-1); }
+.focus-toolbar-compact button { border-color: transparent; background: transparent; color: var(--gray); padding: 2px 6px; }
+.focus-toolbar-compact button:hover { border-color: var(--orange); color: var(--orange); background: var(--white); }
 .focus-save-status { font-size: 11px; color: var(--gray); align-self: center; margin-left: auto; }
 .focus-loading { background: var(--light) !important; border-color: var(--border) !important; animation: pulse 1.2s ease-in-out infinite; }
 @keyframes pulse { 0%,100% { opacity:0.5 } 50% { opacity:1 } }
@@ -4764,6 +4770,19 @@ details[open] > .opr-kaart-sam::before { content: "▾ "; }
 
 /* Bestandskiezer naast het slepen: niet iedereen sleept, en een verborgen
    file-input met een tekstknop houdt de dropzone rustig. */
+/* Compacte documentchip: gaat in de knoppenbalk van de aantekeningen staan i.p.v.
+   het grote, altijd-open "Voeg een document toe"-blok. Een kleurtje (het zachte
+   oranje uit de kennisbank-chip) maakt in één oogopslag duidelijk dat dit een
+   drop-doel is, ook al is hij klein. Klik opent het volledige blok eronder. */
+.wp-docchip {
+  display: inline-flex; align-items: center; gap: var(--s-1);
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 600;
+  padding: 2px var(--s-2); border-radius: var(--r-sm);
+  border: 1px dashed var(--orange); background: var(--brand-orange-faint); color: var(--orange-dark);
+  cursor: pointer; white-space: nowrap; transition: background 0.12s, border-color 0.12s;
+}
+.wp-docchip:hover:not(:disabled), .wp-docchip-actief { background: var(--orange-light); border-color: var(--orange-dark); }
+.wp-docchip:disabled { opacity: 0.6; cursor: default; }
 .wp-docdrop-verborgen { display: none; }
 .wp-docdrop-kies {
   border: 0; background: transparent; padding: 0; cursor: pointer;
@@ -6142,6 +6161,9 @@ a.wb-pad:hover { text-decoration: underline; }
 .wp-icon.wp-del:hover:not(:disabled) { background: #FDECEA; border-color: #B3261E; color: #B3261E; }
 /* Een pictogramknop blijft vierkant genoeg om als icoon te lezen. */
 .wp-icon, .wp-titel-pen { padding: 0 var(--s-2); min-width: 22px; height: 22px; }
+/* Een <a> kent geen `disabled`; deze klasse doet er hetzelfde mee (gedimd, niet
+   klikbaar) als .btn:disabled voor een echte knop. */
+.btn-uit { opacity: 0.45; pointer-events: none; cursor: default; }
 
 /* ═══ DE PROJECTKAART IN DE PLANNING ═══════════════════════════════════════ */
 /* Hangt de kaart onder een regel, dan zegt die regel de titel, het pad en de

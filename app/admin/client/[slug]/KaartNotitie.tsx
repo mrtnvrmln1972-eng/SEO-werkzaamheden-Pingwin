@@ -10,10 +10,10 @@
 // Zelfde veld als bij Zoekwoorden & links, zodat vet, bullets en plakken overal
 // hetzelfde werken (app/_velden/RijkTekstVeld.tsx).
 
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import RijkTekstVeld from "../../../_velden/RijkTekstVeld";
 
-export default function KaartNotitie({ slug, id, start }: { slug: string; id: number; start: string }) {
+export default function KaartNotitie({ slug, id, start, toolbarExtra }: { slug: string; id: number; start: string; toolbarExtra?: ReactNode }) {
   const [waarde, setWaarde] = useState(start);
   const [stand, setStand] = useState<"" | "bezig" | "bewaard" | "fout">("");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -43,7 +43,7 @@ export default function KaartNotitie({ slug, id, start }: { slug: string; id: nu
   return (
     <div className="wp-notitie">
       <div className="wp-notitie-kop">
-        <span>Mijn aantekeningen</span>
+        <span>Aantekeningen</span>
         {stand === "bezig" && <span className="muted">bewaren…</span>}
         {stand === "bewaard" && <span className="wp-notitie-ok">bewaard</span>}
         {stand === "fout" && <span className="wp-notitie-fout">bewaren mislukte</span>}
@@ -54,6 +54,8 @@ export default function KaartNotitie({ slug, id, start }: { slug: string; id: nu
         onKlaar={() => void bewaar(waarde)}
         klasse="wp-notitie-veld"
         placeholder="Wat je zelf wilt onthouden bij deze taak: afspraken, aandachtspunten, wat de klant zei."
+        compact
+        toolbarExtra={toolbarExtra}
       />
     </div>
   );
