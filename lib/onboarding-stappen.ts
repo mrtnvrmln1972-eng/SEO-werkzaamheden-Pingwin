@@ -11,9 +11,9 @@ export type Blok = "aansluiten" | "kennen" | "meten" | "werken";
 export type Door = "jij" | "dashboard";
 
 export type StapKey =
-  | "domein" | "searchconsole" | "ahrefs" | "urls" | "beheeromgeving"
+  | "domein" | "searchconsole" | "ahrefs" | "urls" | "beheeromgeving" | "adsaccount"
   | "profiel" | "tov" | "bedrijfsgegevens" | "werkgebied" | "klantwaarde" | "concurrenten"
-  | "googleprofiel" | "gmbbeheer"
+  | "googleprofiel" | "gmbbeheer" | "positionering" | "huisstijl" | "documenten"
   | "zoekwoorden" | "prioriteiten" | "opruimen" | "internelinks" | "gmbscan"
   | "strategie";
 
@@ -61,6 +61,11 @@ export const ONBOARDING: StapDef[] = [
     optioneel: true,
     waarom: "Met een koppeling naar WordPress kunnen teksten en meta-gegevens direct doorgezet worden.",
   },
+  {
+    key: "adsaccount", label: "Ads-account", blok: "aansluiten", door: "jij", nodig: [], tab: "klant",
+    optioneel: true,
+    waarom: "Een link naar het Google Ads-account, zodat je er in één klik bent. Er is geen API-koppeling; dit is alleen een bewaarde link, geen meting.",
+  },
 
   // ── Wie is de klant: dit moet vastliggen vóór er iets geschreven of gescand wordt ──
   {
@@ -99,6 +104,21 @@ export const ONBOARDING: StapDef[] = [
   {
     key: "gmbbeheer", label: "Beheerder van het Google-profiel", blok: "kennen", door: "jij", nodig: ["googleprofiel"], tab: "google-profiel",
     waarom: "Als beheerder zien we de bezoekcijfers (hoe vaak gezien, gebeld, route gevraagd) en kunnen we het profiel bijwerken; zonder beheer meten we alleen de buitenkant.",
+  },
+  {
+    key: "positionering", label: "Positioneringsadvies", blok: "kennen", door: "jij", nodig: [], tab: "klant",
+    optioneel: true,
+    waarom: "De scherpe positionering en concurrentievergelijking, als afgerond adviesdocument (Drive-link).",
+  },
+  {
+    key: "huisstijl", label: "Huisstijl vastgelegd", blok: "kennen", door: "jij", nodig: [], tab: "klant",
+    optioneel: true,
+    waarom: "De visuele stijl van de klant (kleuren, typografie, knoppen), zodat nieuwe pagina's er precies zo uitzien als de rest van de site.",
+  },
+  {
+    key: "documenten", label: "Documenten in de kennisdatabase", blok: "kennen", door: "dashboard", nodig: [], tab: "documenten",
+    optioneel: true,
+    waarom: "De analyses, blauwdrukken en copy die er al voor deze klant liggen.",
   },
 
   // ── Waar staat de site: de site-brede metingen ──

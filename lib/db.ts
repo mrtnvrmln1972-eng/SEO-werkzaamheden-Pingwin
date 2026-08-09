@@ -73,6 +73,12 @@ async function init(): Promise<void> {
   // concurrentieanalyse: die skill benchmarkt altijd al tegen concurrenten
   // binnen ditzelfde document (zie lib/fundament.ts).
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS positionering_url TEXT`;
+  // Link naar de vastgelegde huisstijl (design-tokens/referentiedocument) en
+  // naar het Google Ads-account. Allebei een los bewaard linkje, geen live
+  // koppeling: er is geen API-toegang, dus dit is bewust alleen "staat de link
+  // hier" en nooit "we hebben het geverifieerd".
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS huisstijl_url TEXT`;
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS ads_account_url TEXT`;
 
   // Doorgevoerde 301-redirects per pagina (uit de cannibalisatie-analyse): welke
   // redirect is wanneer in de website gezet en is hij live geverifieerd (echte 301
@@ -163,6 +169,10 @@ async function init(): Promise<void> {
   // als "Sander" in zes schermen, waardoor bij elke klant Sander in beeld kwam
   // terwijl hij alleen voor Kamsteeg bouwt. Leeg = gewoon "Dev" tonen.
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS dev_name TEXT`;
+  // R9: schakelt het blok "Ontwikkeling deze maand" op het KLANTdashboard aan.
+  // Standaard uit: niets gaat automatisch naar de klant, ook al bestaat het
+  // blok al in de voorbeeldweergave. Maarten zet hem per klant zelf aan.
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS toon_ontwikkeling BOOLEAN NOT NULL DEFAULT false`;
 
   // ── KPI-trend per klant (gevuld door de nachtelijke cron client-trends) ──
   // Voor de "mooie ontwikkeling"-selectie in de klanten-dropdown: per klant en

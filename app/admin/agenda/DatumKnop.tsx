@@ -7,13 +7,15 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 // zonder eigen logica, zelfde patroon als AgendaPopup: de aanroeper levert
 // de inhoud, dit component regelt alleen positie/open-dicht.
 export default function DatumKnop({
-  label, datumSlot, duurSlot, reminderSlot, herhaalSlot,
+  label, datumSlot, duurSlot, reminderSlot, herhaalSlot, subtiel,
 }: {
   label: string;
   datumSlot: React.ReactNode;
   duurSlot?: React.ReactNode;
   reminderSlot: React.ReactNode;
   herhaalSlot?: React.ReactNode;
+  /** Naast een titel in plaats van als eigen rij: kleiner en minder nadrukkelijk. */
+  subtiel?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<"datum" | "duur">("datum");
@@ -58,8 +60,8 @@ export default function DatumKnop({
   }, [open]);
 
   return (
-    <div className="ag-datumknop-wrap">
-      <button ref={btnRef} type="button" className="ag-datumknop" onClick={() => setOpen((o) => !o)}>
+    <div className={`ag-datumknop-wrap${subtiel ? " ag-datumknop-wrap-subtiel" : ""}`}>
+      <button ref={btnRef} type="button" className={`ag-datumknop${subtiel ? " ag-datumknop-subtiel" : ""}`} onClick={() => setOpen((o) => !o)}>
         📅 {label}
       </button>
       {open && (

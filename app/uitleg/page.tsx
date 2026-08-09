@@ -6,6 +6,7 @@ import {
   LAATST_BIJGEWERKT, LEESROUTES, zichtbareHoofdstukken,
   type Uitklapper, type Hoofdstuk,
 } from "../../lib/uitleg";
+import { alleSchermen } from "../../lib/schermbeeld";
 
 // ═══════════════════════════════════════════════════════════
 // /uitleg — HET VERHAAL VAN HET DASHBOARD
@@ -53,7 +54,7 @@ function Blok({ u, diep = 0 }: { u: Uitklapper; diep?: number }) {
   );
 }
 
-function HoofdstukKaart({ h, nr }: { h: Hoofdstuk; nr: number }) {
+function HoofdstukKaart({ h, nr, beeld }: { h: Hoofdstuk; nr: number; beeld?: { label: string; dataUrl: string } }) {
   return (
     <section id={h.id} className="card ut-hoofdstuk">
       <div className="ut-h-kop">
@@ -66,6 +67,12 @@ function HoofdstukKaart({ h, nr }: { h: Hoofdstuk; nr: number }) {
           <p className="ut-h-intro">{h.intro}</p>
         </div>
       </div>
+      {beeld && (
+        <div className="uitleg-hoofdstuk-beeld">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={beeld.dataUrl} alt={beeld.label} loading="lazy" />
+        </div>
+      )}
       <div className="ut-blokken">
         {h.uitklappers.map((u) => <Blok key={u.titel} u={u} />)}
       </div>
@@ -73,9 +80,11 @@ function HoofdstukKaart({ h, nr }: { h: Hoofdstuk; nr: number }) {
   );
 }
 
-export default function UitlegPage() {
+export default async function UitlegPage() {
   const isBeheerder = verifyAdminSession(cookies().get(ADMIN_COOKIE)?.value);
   const hoofdstukken = zichtbareHoofdstukken(isBeheerder);
+  const schermen = await alleSchermen();
+  const beelden = new Map(schermen.map((s) => [s.hoofdstuk, { label: s.label, dataUrl: s.dataUrl }]));
 
   return (
     <div className="ut-page">
@@ -159,7 +168,7 @@ export default function UitlegPage() {
         </nav>
 
         {/* ── De hoofdstukken ── */}
-        {hoofdstukken.map((h, i) => <HoofdstukKaart key={h.id} h={h} nr={i + 1} />)}
+        {hoofdstukken.map((h, i) => <HoofdstukKaart key={h.id} h={h} nr={i + 1} beeld={beelden.get(h.id)} />)}
 
         <footer className="ut-voet">
           <p>

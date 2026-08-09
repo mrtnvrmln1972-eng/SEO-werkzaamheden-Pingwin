@@ -1,183 +1,199 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import HelpHint from "./HelpHint";
 import FundamentActieKnop, { type FundamentActieKind } from "./FundamentActieKnop";
-import { berekenFundament, FUNDAMENT_KOLOMMEN, type FundamentPunt, type FundamentStatus } from "../../../../lib/fundament";
+import { BLOK_LABEL, type Blok, type Stand, type StapStand } from "../../../../lib/onboarding-stappen";
 
 // ═══════════════════════════════════════════════════════════
-// FUNDAMENT VAN DEZE KLANT: IN ÉÉN OOGOPSLAG WAT ER STAAT EN WAT NOG MOET
+// FUNDAMENT: ALLES WAT GEKOPPELD EN INGEVULD MOET ZIJN, ÉÉN OVERZICHT
 // ═══════════════════════════════════════════════════════════
-// Bovenaan de klant-tab, vóór de bedrijfsgegevens en de concurrentenlijst die
-// hieronder al staan: tone of voice en bedrijfsprofiel komen uit het
-// klantprofiel (Pagina's-tab), structured data en concurrenten uit de panelen
-// hieronder, positionering is de enige echt nieuwe invoer hier (een
-// Drive-link). Concurrentieanalyse heeft geen eigen knop: die status volgt uit
-// of het positioneringsadvies er is, want die skill benchmarkt daar al in mee.
+// Dit stond eerder op twee plekken (deze kaart met zes chips, en een los
+// "Links"-zijpaneel met een accordeon) die elk een eigen, soms afwijkend
+// verhaal vertelden over dezelfde koppeling. Nu is er één bron: dezelfde
+// live berekening als de Onboarding-tab (lib/onboarding.ts), hier getoond
+// als tegels in plaats van een lange lijst met een startknop. Wat hier staat
+// is dus nooit anders dan wat Onboarding zegt; alleen de vorm verschilt.
 //
-// Dezelfde rekenregel (lib/fundament.ts) als het klantenoverzicht op
-// /admin/fundament, zodat die twee schermen nooit een ander verhaal vertellen.
+// Bewust alleen de blokken "aansluiten" en "kennen": dat is precies "is
+// alles gekoppeld en ingevuld". De site-brede scans en de strategie hebben
+// al hun eigen tabblad en staan (met dezelfde cijfers) op Onboarding; ze hier
+// nog een keer tonen zou dubbelop zijn.
 // ═══════════════════════════════════════════════════════════
 
-type OrgSlice = { data?: { bedrijfsnaam?: string }; locked?: boolean };
-
-const CHIP_KLASSE: Record<FundamentPunt, string> = {
-  klaar: "plan-chip has",
-  vergrendeld: "plan-chip has",
-  bezig: "plan-chip half",
-  nietbegonnen: "plan-chip",
-};
-const CHIP_LABEL: Record<FundamentPunt, string> = {
-  klaar: "klaar", vergrendeld: "vergrendeld", bezig: "bezig", nietbegonnen: "nog niet",
+const STAAT_TEKST: Record<StapStand["staat"], string> = {
+  af: "Staat", bezig: "Draait", verouderd: "Loopt achter", open: "Nog te doen",
 };
 
-// Welke actieknop bij welk punt hoort, en of hij nog zin heeft bij de huidige
-// stand. Structured data blijft nuttig zolang hij niet vergrendeld is (de
-// knop vult alleen lege velden aan, ook als er al gedeeltelijk iets staat).
-const ACTIE_VOOR: Partial<Record<keyof FundamentStatus, FundamentActieKind>> = {
-  toneOfVoice: "tov", bedrijfsprofiel: "profile", structuredData: "structured",
+const BLOKKEN: Blok[] = ["aansluiten", "kennen"];
+const BLOK_TITEL: Record<Blok, string> = {
+  aansluiten: "Fundament: aansluiten", kennen: "Fundament: wie is de klant",
+  meten: "", werken: "",
 };
-function magActie(key: keyof FundamentStatus, status: FundamentPunt): boolean {
-  if (key === "structuredData") return status !== "vergrendeld";
-  return status === "nietbegonnen";
-}
 
-// Waar het woord onder een statuspil naartoe springt. Tone of voice en
-// bedrijfsprofiel zitten op de Pagina's-tab (het klantprofiel); structured
-// data en concurrenten staan verderop op dit tabblad zelf, dus een anker
-// volstaat; positionering en de daaruit afgeleide concurrentieanalyse springen
-// naar het invulveld hieronder in dit paneel.
-function ankerVoor(key: keyof FundamentStatus, slug: string): string | null {
-  switch (key) {
-    case "structuredData": return "#fund-structured-data";
-    case "concurrenten": return "#fund-concurrenten";
-    case "positionering": case "concurrentieanalyse": return `#fund-positionering-${slug}`;
-    default: return null; // toneOfVoice, bedrijfsprofiel: tabwissel, geen anker
-  }
-}
+// Stappen die het dashboard zelf op gang kan trekken, met dezelfde knop als
+// voorheen (de motor achter de "Ontbrekende gegevens ophalen"-knop e.d.).
+const ACTIE_VOOR: Partial<Record<string, FundamentActieKind>> = {
+  tov: "tov", profiel: "profile", bedrijfsgegevens: "structured",
+};
+// Deze twee staan zelf verderop op dit tabblad; een anker in plaats van een
+// tabwissel die toch niets doet (we zitten al op "klant").
+const ANKER_VOOR: Partial<Record<string, string>> = {
+  bedrijfsgegevens: "#fund-structured-data", concurrenten: "#fund-concurrenten",
+};
+// Geen koppeling om naartoe te springen, maar een linkje dat hier zelf
+// bewaard wordt (net als het positioneringsadvies altijd al deed).
+const LINK_VELDEN = new Set(["positionering", "huisstijl", "adsaccount"]);
+const LINK_ACTIE: Record<string, string> = {
+  positionering: "positioneringUrl", huisstijl: "huisstijlUrl", adsaccount: "adsAccountUrl",
+};
+const LINK_PLACEHOLDER: Record<string, string> = {
+  positionering: "https://docs.google.com/document/d/...",
+  huisstijl: "https://docs.google.com/document/d/... (of de huisstijl-tokens)",
+  adsaccount: "https://ads.google.com/aw/overview?ocid=...",
+};
 
-export default function FundamentPanel({ slug, seoProfile, positioneringUrl, onGaNaar }: {
-  slug: string;
-  seoProfile: string;
-  positioneringUrl: string;
-  /** Naar de Pagina's-tab springen voor het klantprofiel/tone of voice. */
-  onGaNaar?: (tab: string) => void;
+function Tegel({ s, onGaNaar, extra, ankerHref }: {
+  s: StapStand;
+  onGaNaar: (tab: string) => void;
+  extra?: React.ReactNode;
+  ankerHref?: string;
 }) {
-  const [org, setOrg] = useState<OrgSlice | null>(null);
-  const [competitorCount, setCompetitorCount] = useState<number | null>(null);
-  const [profielTekst, setProfielTekst] = useState(seoProfile);
-  const [urlVeld, setUrlVeld] = useState(positioneringUrl || "");
+  return (
+    <div className={`fnd-tegel fnd-staat-${s.staat}`} title={s.waarom}>
+      <div className="fnd-tegel-kop">
+        <strong>{s.label}</strong>
+        <span className={`ob-chip ob-${s.staat}`}>{STAAT_TEKST[s.staat]}</span>
+      </div>
+      <p className="fnd-tegel-detail">{s.detail}</p>
+      {(extra || s.tab) && (
+        <div className="fnd-tegel-acties">
+          {extra}
+          {ankerHref ? (
+            <a className="btn btn-ghost btn-klein" href={ankerHref}>{s.staat === "af" ? "Bekijken" : "Openen"} →</a>
+          ) : s.tab ? (
+            <button type="button" className="btn btn-ghost btn-klein" onClick={() => onGaNaar(s.tab!)}>
+              {s.staat === "af" ? "Bekijken" : "Openen"} →
+            </button>
+          ) : null}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LinkTegel({ slug, s, waarde, onOpgeslagen }: {
+  slug: string;
+  s: StapStand;
+  waarde: string;
+  onOpgeslagen: () => void;
+}) {
+  const [veld, setVeld] = useState(waarde);
   const [bezig, setBezig] = useState(false);
   const [gemeld, setGemeld] = useState("");
+  useEffect(() => setVeld(waarde), [waarde]);
 
-  function laadOrg() {
-    fetch(`/api/admin/org-data?slug=${encodeURIComponent(slug)}`)
-      .then((r) => r.json()).then((d) => { if (d.ok) setOrg(d); }).catch(() => {});
-  }
-  useEffect(() => {
-    laadOrg();
-    fetch(`/api/admin/competitors?slug=${encodeURIComponent(slug)}`)
-      .then((r) => r.json()).then((d) => { if (d.ok) setCompetitorCount((d.competitors || []).length); }).catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slug]);
-
-  useEffect(() => { setUrlVeld(positioneringUrl || ""); }, [positioneringUrl]);
-  useEffect(() => { setProfielTekst(seoProfile); }, [seoProfile]);
-
-  const status: FundamentStatus = berekenFundament({
-    seoProfile: profielTekst,
-    orgFilled: !!org?.data?.bedrijfsnaam?.trim(),
-    orgLocked: !!org?.locked,
-    competitorCount: competitorCount ?? 0,
-    positioneringUrl: positioneringUrl || null,
-  });
-
-  const bewaarUrl = async () => {
+  async function bewaar() {
     setBezig(true); setGemeld("");
+    const actie = LINK_ACTIE[s.key];
     try {
       const r = await fetch("/api/admin/clients", {
         method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, action: "positioneringUrl", positioneringUrl: urlVeld }),
+        body: JSON.stringify({ slug, action: actie, [actie]: veld }),
       });
       const d = await r.json();
       setGemeld(d.ok ? "Bewaard." : (d.error || "Opslaan mislukt."));
+      if (d.ok) onOpgeslagen();
     } catch { setGemeld("Opslaan mislukt."); } finally { setBezig(false); }
-  };
-
-  const laden = org === null || competitorCount === null;
+  }
 
   return (
-    <div className="cockpit-card acc-orange">
-      <div className="ck-section-head">
-        <span>
-          Fundament{" "}
-          <HelpHint
-            title="Het fundament van deze klant"
-            text={"Wat er al staat en wat nog moet, voordat copy en structured data écht op maat kunnen. Zes punten:\n- **Tone of voice** en **bedrijfsprofiel**: het klantprofiel op de Pagina's-tab, boven aan het scherm.\n- **Structured data**: de bedrijfsgegevens hieronder, tot en met vergrendelen.\n- **Concurrenten**: de lijst hieronder.\n- **Concurrentieanalyse**: geen los document. De positionering-skill benchmarkt altijd al tegen de concurrenten, dus deze status volgt uit positionering.\n- **Positionering**: het afgeronde positioneringsadvies, als Drive-link hieronder."}
-          />
-        </span>
+    <div className={`fnd-tegel fnd-staat-${s.staat}`} title={s.waarom}>
+      <div className="fnd-tegel-kop">
+        <strong>{s.label}</strong>
+        <span className={`ob-chip ob-${s.staat}`}>{STAAT_TEKST[s.staat]}</span>
       </div>
-
-      <div className="fund-rij">
-        {FUNDAMENT_KOLOMMEN.map((k) => {
-          const actieKind = ACTIE_VOOR[k.key];
-          const puntStatus = status[k.key] as FundamentPunt;
-          return (
-            <div key={k.key} className="fund-punt" title={k.hint}>
-              <span className={CHIP_KLASSE[puntStatus]}>{CHIP_LABEL[puntStatus]}</span>
-              {ankerVoor(k.key, slug) ? (
-                <a className="fund-punt-label" href={ankerVoor(k.key, slug)!}>{k.label}</a>
-              ) : (
-                <button type="button" className="fund-punt-label" onClick={() => onGaNaar?.("paginas")} disabled={!onGaNaar}>{k.label}</button>
-              )}
-              {actieKind && magActie(k.key, puntStatus) && (
-                <FundamentActieKnop
-                  slug={slug}
-                  kind={actieKind}
-                  live
-                  onKlaar={(verseTekst) => {
-                    if (actieKind === "structured") laadOrg();
-                    else if (verseTekst) setProfielTekst(verseTekst);
-                  }}
-                />
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {laden && <div className="muted" style={{ fontSize: "var(--fs-xs)", marginTop: "var(--s-2)" }}>Structured data en concurrenten worden geladen…</div>}
-
-      <div className="fund-uitleg">
-        {status.toneOfVoice === "nietbegonnen" || status.bedrijfsprofiel === "nietbegonnen" ? (
-          <div className="muted">
-            Tone of voice en bedrijfsprofiel: nog niet opgesteld. Ga naar{" "}
-            {onGaNaar ? <button type="button" className="fund-link" onClick={() => onGaNaar("paginas")}>Pagina&rsquo;s</button> : "Pagina's"}
-            {" "}en open bovenaan &ldquo;Klantprofiel&rdquo;.
-          </div>
-        ) : null}
-        {status.positionering === "nietbegonnen" && (
-          <div className="muted">Positioneringsadvies: nog niet afgerond. Plak de Drive-link hieronder zodra hij er is.</div>
-        )}
-      </div>
-
-      <div className="fund-positionering" id={`fund-positionering-${slug}`}>
-        <label className="fund-positionering-label" htmlFor={`fund-pos-${slug}`}>Positioneringsadvies (Drive-link)</label>
-        <div className="fund-positionering-row">
-          <input
-            id={`fund-pos-${slug}`}
-            className="compose-input"
-            value={urlVeld}
-            placeholder="https://docs.google.com/document/d/..."
-            onChange={(e) => setUrlVeld(e.target.value)}
-          />
-          {urlVeld.trim() && <a className="ghost-btn small" href={urlVeld.trim()} target="_blank" rel="noreferrer">Open</a>}
-          <button type="button" className="ghost-btn small" onClick={() => void bewaarUrl()} disabled={bezig}>
-            {bezig ? "Opslaan…" : "Bewaren"}
-          </button>
-          {gemeld && <span className="saved-msg">{gemeld}</span>}
-        </div>
+      <div className="fnd-link-row">
+        <input
+          className="compose-input"
+          value={veld}
+          placeholder={LINK_PLACEHOLDER[s.key]}
+          onChange={(e) => setVeld(e.target.value)}
+        />
+        {veld.trim() && <a className="btn btn-quiet btn-klein" href={veld.trim()} target="_blank" rel="noreferrer">Open</a>}
+        <button type="button" className="btn btn-ghost btn-klein" onClick={() => void bewaar()} disabled={bezig}>
+          {bezig ? "Opslaan…" : "Bewaren"}
+        </button>
+        {gemeld && <span className="saved-msg">{gemeld}</span>}
       </div>
     </div>
+  );
+}
+
+export default function FundamentPanel({ slug, positioneringUrl, huisstijlUrl, adsAccountUrl, onGaNaar }: {
+  slug: string;
+  positioneringUrl: string;
+  huisstijlUrl: string;
+  adsAccountUrl: string;
+  onGaNaar?: (tab: string) => void;
+}) {
+  const [stand, setStand] = useState<Stand | null>(null);
+  const [fout, setFout] = useState("");
+
+  const haal = useCallback(() => {
+    fetch(`/api/admin/onboarding?slug=${encodeURIComponent(slug)}`)
+      .then((r) => r.json())
+      .then((d) => { if (d.ok) { setStand(d.stand); setFout(""); } else setFout(d.error || "Kon de stand niet ophalen."); })
+      .catch(() => setFout("Kon de stand niet ophalen."));
+  }, [slug]);
+
+  useEffect(() => { haal(); }, [haal]);
+
+  const gaNaar = (tab: string) => onGaNaar?.(tab);
+  const waardeVoor = (key: string) => (key === "positionering" ? positioneringUrl : key === "huisstijl" ? huisstijlUrl : adsAccountUrl) || "";
+
+  if (!stand) {
+    return (
+      <div className="cockpit-card acc-orange">
+        <div className="ck-section-head"><span>Fundament</span></div>
+        <p className="muted">{fout || "Bezig met kijken wat er al staat…"}</p>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {BLOKKEN.map((blok) => {
+        const stappen = stand.stappen.filter((s) => s.blok === blok);
+        if (!stappen.length) return null;
+        return (
+          <div className="cockpit-card acc-orange" key={blok}>
+            <div className="ck-section-head">
+              <span>
+                {BLOK_TITEL[blok]}{" "}
+                {blok === "aansluiten" && (
+                  <HelpHint
+                    title="Het fundament van deze klant"
+                    text={"In één oogopslag wat er staat en wat nog moet, live afgelezen uit de echte gegevens: er wordt niets apart bijgehouden, dus dit kan nooit een ander verhaal vertellen dan de rest van het dashboard.\n\n**Aansluiten** zijn de koppelingen waar alle data vandaan komt. **" + BLOK_LABEL.kennen + "** is wie de klant is: profiel, tone of voice, bedrijfsgegevens, concurrenten, positionering en huisstijl.\n\nDe volledige checklist (ook de site-brede scans en de strategie) staat op het tabblad Onboarding, met dezelfde cijfers."}
+                  />
+                )}
+              </span>
+            </div>
+            <div className="fnd-grid">
+              {stappen.map((s) => {
+                if (LINK_VELDEN.has(s.key)) {
+                  return <LinkTegel key={s.key} slug={slug} s={s} waarde={waardeVoor(s.key)} onOpgeslagen={haal} />;
+                }
+                const actieKind = ACTIE_VOOR[s.key];
+                const extra = actieKind && s.staat !== "af"
+                  ? <FundamentActieKnop slug={slug} kind={actieKind} live onKlaar={() => haal()} />
+                  : undefined;
+                return <Tegel key={s.key} s={s} onGaNaar={gaNaar} extra={extra} ankerHref={ANKER_VOOR[s.key]} />;
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </>
   );
 }

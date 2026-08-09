@@ -664,18 +664,14 @@ export default function AgendaClient() {
       </p>
 
       {draft && popupAnchor && (
-        <AgendaPopup x={popupAnchor.x} y={popupAnchor.y} onClose={closeDraft}>
+        <AgendaPopup x={popupAnchor.x} y={popupAnchor.y} onClose={closeDraft} onEnter={saveDraft}>
           <div className="ag-modal-head">
-            <h2>{draft.id ? "Blok bewerken" : "Nieuw blok"}</h2>
-            <button className="ag-delete-btn" onClick={closeDraft} aria-label="Sluiten">✕</button>
-          </div>
-          <label className="ag-field">
-            <span>Titel</span>
-            <input autoFocus type="text" value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} placeholder="Bijv. Facturen bijwerken" />
-          </label>
-          <DatumKnop
-            label={fmtBlokBadge(draft, todayKey)}
-            datumSlot={
+            <div className="ag-modal-head-titel">
+              <h2>{draft.id ? "Blok bewerken" : "Nieuw blok"}</h2>
+              <DatumKnop
+                subtiel
+                label={fmtBlokBadge(draft, todayKey)}
+                datumSlot={
               <>
                 <div className="ag-field">
                   <span>Herhalen</span>
@@ -751,6 +747,13 @@ export default function AgendaClient() {
               </div>
             }
           />
+            </div>
+            <button className="ag-delete-btn" onClick={closeDraft} aria-label="Sluiten">✕</button>
+          </div>
+          <label className="ag-field">
+            <span>Titel</span>
+            <input autoFocus type="text" value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} placeholder="Bijv. Facturen bijwerken" />
+          </label>
           <label className="ag-field">
             <span>Notities</span>
             <textarea rows={4} value={draft.notities} placeholder={"Bijv.\n- **Mail beantwoorden**\n- https://mail.superhuman.com/…"} onChange={(e) => setDraft({ ...draft, notities: e.target.value })} />

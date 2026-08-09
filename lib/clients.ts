@@ -27,6 +27,10 @@ export type ClientCockpit = {
   resultsUrl: string | null;
   // Drive-link naar het afgeronde positioneringsadvies (fundament-status).
   positioneringUrl: string | null;
+  // Link naar de vastgelegde huisstijl en naar het Google Ads-account. Allebei
+  // een los bewaard linkje (net als positioneringUrl), geen live koppeling.
+  huisstijlUrl: string | null;
+  adsAccountUrl: string | null;
   status: string | null;
   lastContact: string | null;
   notes: string | null;
@@ -66,6 +70,9 @@ export type ClientConfig = {
   ahrefsKeyRef: string | null;
   // Inlogpagina van de website-beheeromgeving (leeg = /wp-admin/ achter het domein).
   backendUrl: string | null;
+  // Toont het blok "Ontwikkeling deze maand" op het klantdashboard. Standaard
+  // uit; Maarten zet hem aan vanuit de voorbeeldweergave zodra hij hem goedkeurt.
+  toonOntwikkeling: boolean;
   budget: ClientBudget;
   cockpit: ClientCockpit;
 };
@@ -94,11 +101,14 @@ type ClientRow = {
   grp: string | null;
   ahrefs_key_ref: string | null;
   backend_url: string | null;
+  toon_ontwikkeling: boolean | null;
   email_domain: string | null;
   dev_name: string | null;
   work_doc_url: string | null;
   results_url: string | null;
   positionering_url: string | null;
+  huisstijl_url: string | null;
+  ads_account_url: string | null;
   status: string | null;
   last_contact: string | null;
   notes: string | null;
@@ -129,6 +139,7 @@ function rowToConfig(r: ClientRow): ClientConfig {
     grp: r.grp || null,
     ahrefsKeyRef: r.ahrefs_key_ref || null,
     backendUrl: r.backend_url || null,
+    toonOntwikkeling: !!r.toon_ontwikkeling,
     budget: {
       maandbudget: Number(r.maandbudget),
       linkbuilding: Number(r.linkbuilding),
@@ -141,6 +152,8 @@ function rowToConfig(r: ClientRow): ClientConfig {
       workDocUrl: r.work_doc_url ?? null,
       resultsUrl: r.results_url ?? null,
       positioneringUrl: r.positionering_url ?? null,
+      huisstijlUrl: r.huisstijl_url ?? null,
+      adsAccountUrl: r.ads_account_url ?? null,
       status: r.status ?? null,
       lastContact: r.last_contact ?? null,
       notes: r.notes ?? null,
@@ -326,11 +339,36 @@ export async function setPositioneringUrl(slug: string, url: string): Promise<bo
   return !!rowCount && rowCount > 0;
 }
 
-// Let op: dev_name en positioneringUrl worden hier bewust NIET bijgewerkt. Deze
-// functie overschrijft alle velden die ze meekrijgt, dus zou een opslag vanuit
-// een ander scherm die twee anders wissen. Daarvoor zijn setClientDevName en
-// setPositioneringUrl.
-export async function updateClientCockpit(slug: string, c: Omit<ClientCockpit, "devName" | "positioneringUrl">): Promise<boolean> {
+// R9: zet het blok "Ontwikkeling deze maand" op het klantdashboard aan of uit.
+// Losse functie, zelfde reden als devName/positioneringUrl hierboven: de
+// cockpit-PATCH overschrijft niet al haar velden tegelijk, maar dit veld wordt
+// vanuit de voorbeeldweergave gezet, dus verdient een eigen smalle actie.
+export async function setToonOntwikkeling(slug: string, aan: boolean): Promise<boolean> {
+  await ensureSchema();
+  const { rowCount } = await sql`UPDATE clients SET toon_ontwikkeling = ${aan} WHERE slug = ${slug}`;
+  return !!rowCount && rowCount > 0;
+}
+
+// Dezelfde reden als setPositioneringUrl hierboven: een los veldje in het
+// Fundament-overzicht, geen onderdeel van de cockpit-PATCH die alle velden
+// tegelijk overschrijft.
+export async function setHuisstijlUrl(slug: string, url: string): Promise<boolean> {
+  await ensureSchema();
+  const { rowCount } = await sql`UPDATE clients SET huisstijl_url = ${url.trim() || null} WHERE slug = ${slug}`;
+  return !!rowCount && rowCount > 0;
+}
+export async function setAdsAccountUrl(slug: string, url: string): Promise<boolean> {
+  await ensureSchema();
+  const { rowCount } = await sql`UPDATE clients SET ads_account_url = ${url.trim() || null} WHERE slug = ${slug}`;
+  return !!rowCount && rowCount > 0;
+}
+
+// Let op: dev_name, positioneringUrl, huisstijlUrl en adsAccountUrl worden hier
+// bewust NIET bijgewerkt. Deze functie overschrijft alle velden die ze
+// meekrijgt, dus zou een opslag vanuit een ander scherm die vier anders wissen.
+// Daarvoor zijn setClientDevName, setPositioneringUrl, setHuisstijlUrl en
+// setAdsAccountUrl.
+export async function updateClientCockpit(slug: string, c: Omit<ClientCockpit, "devName" | "positioneringUrl" | "huisstijlUrl" | "adsAccountUrl">): Promise<boolean> {
   await ensureSchema();
   const { rowCount } = await sql`
     UPDATE clients SET

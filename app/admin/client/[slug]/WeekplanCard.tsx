@@ -580,16 +580,6 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
               {subtitel && !inRij && <div className="wp-card-sub wp-clickable" onClick={toggleAlsGeenSelectie}>{subtitel}</div>}
             </div>
             <span className="wp-kop-acties">
-              {/* Doorzetten naar de sitebouwer stond op twee plekken: hier onderaan
-                  bij Delen (alleen zonder pagina) en bij de fase Implementatie. Nu
-                  één knop, altijd op dezelfde plek, met of zonder pagina. */}
-              {open && (
-                <button type="button" className={"btn btn-ghost btn-klein" + (naarDev ? " btn-ghost-aan" : "")} disabled={devBezig}
-                  title={naarDev ? "Staat op de developerlijst. Klik om hem er weer af te halen." : "Zet deze kaart klaar voor de sitebouwer: de opdracht, de pagina en de documenten."}
-                  onClick={() => void zetNaarDev()}>
-                  {devBezig ? "Bezig…" : naarDev ? "✓ Bij de sitebouwer" : "Naar de sitebouwer"}
-                </button>
-              )}
               {/* Nameten hoort naast doorzetten: dat is dezelfde afspraak, een
                   paar weken later. Alleen zinvol bij een pagina. */}
               {open && t.url && (
@@ -602,7 +592,7 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
               {open && hasInfo && (
                 <button type="button" className="btn btn-ghost btn-klein" disabled={busy === "opruimen"}
                   title="Laat de assistent de kaarttekst één keer herschrijven naar het strakke formaat. Niets verzinnen, niets weggooien; de oude tekst blijft in het archief staan."
-                  onClick={() => void ruimOp()}>{busy === "opruimen" ? "Bezig…" : "Tekst opschonen"}</button>
+                  onClick={() => void ruimOp()}>{busy === "opruimen" ? "Bezig…" : "Opschonen"}</button>
               )}
               {inRij && !titelBewerk && (
                 <button type="button" className="wp-titel-pen" title="Titel aanpassen"
@@ -770,7 +760,7 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
             const sturingNuttig = !!sturing && !/^\s*[a-zà-ž -]{0,20}document\s*:/i.test(sturing) && !/\.(docx?|pdf|md)\b/i.test(sturing.slice(0, 90));
             const sturingOpen = !!faseOpen[f.key];
             const rij = (
-              <div key={f.key} className={"wp-fase" + (f.key === "bouw" ? " wp-fase-scheiding" : "")}>
+              <div key={f.key} className="wp-fase">
                 <div className="wp-fase-rij">
                   {/* Was een aankruisvakje, maar dat leek op iets dat je moest doen
                       terwijl het alleen een aantekening maakte. Het dashboard meet
@@ -919,6 +909,16 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
         </span>
         <span className="wp-onder-scheiding" aria-hidden="true" />
         <span className="wp-onder-groep wp-onder-delen">
+          {/* Doorzetten naar de developer stond bovenin de kaart, naast Opschonen
+              en Is dit doorgevoerd?. Dat is geen meting of controle, maar iets
+              wegsturen, dus hij hoort bij Mail in dit groepje rechtsonder. */}
+          {open && (
+            <button type="button" className={"wp-act" + (naarDev ? " wp-act-aan" : "")} disabled={devBezig}
+              title={naarDev ? "Staat op de developerlijst. Klik om hem er weer af te halen." : "Zet deze kaart klaar voor de developer: de opdracht, de pagina en de documenten."}
+              onClick={() => void zetNaarDev()}>
+              {devBezig ? "Bezig…" : naarDev ? "✓ Bij de developer" : "Developer"}
+            </button>
+          )}
           <button type="button" className="wp-act wp-act-klant" title="Mail over deze kaart; de ontvanger (klant, developer of anders) kies je in het venster." onClick={() => onMail("klant")}>Mail</button>
         </span>
       </div>}

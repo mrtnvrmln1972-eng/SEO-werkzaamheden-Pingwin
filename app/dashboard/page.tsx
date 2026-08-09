@@ -4,6 +4,7 @@ import { SESSION_COOKIE, verifySessionValue } from "../../lib/auth";
 import { getClientBySlug } from "../../lib/clients";
 import { getTasks } from "../../lib/tasks";
 import { tasksToDashboardData } from "../../lib/sheet";
+import { getOntwikkelingDezeMaand } from "../../lib/ontwikkeling";
 import Dashboard from "./Dashboard";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +21,8 @@ export default async function DashboardPage() {
   // dan tonen we die; anders valt het dashboard terug op de Google Sheet.
   const tasks = await getTasks(slug);
   const initialData = tasks.length ? tasksToDashboardData(tasks, client.budget) : undefined;
+  // R9: alleen ophalen als het blok ook echt aan staat voor deze klant.
+  const ontwikkeling = client.toonOntwikkeling ? await getOntwikkelingDezeMaand(slug) : null;
 
   return (
     <Dashboard
@@ -28,6 +31,8 @@ export default async function DashboardPage() {
       gid={client.gid}
       budget={client.budget}
       initialData={initialData}
+      ontwikkeling={ontwikkeling}
+      toonOntwikkeling={client.toonOntwikkeling}
     />
   );
 }

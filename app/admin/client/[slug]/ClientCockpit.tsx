@@ -23,7 +23,6 @@ import MailAllowlist from "./MailAllowlist";
 import LinkPreview from "./LinkPreview";
 import { mdToHtml } from "../../../../lib/markdown";
 import BespreekLijsten from "./BespreekLijsten";
-import LinksPaneel from "./LinksPaneel";
 import FloatVenster from "./FloatVenster";
 import DeveloperOverview from "../../developer/DeveloperOverview";
 import KpiPanel from "./KpiPanel";
@@ -150,9 +149,6 @@ export default function ClientCockpit({
   useEffect(() => {
     try { window.localStorage.setItem(`pingwin-ov-open:${client.slug}`, JSON.stringify(ovOpen)); } catch { /* stil */ }
   }, [ovOpen, client.slug]);
-  // Demo-filter voor de klanten-dropdown: alleen klanten met mooie ontwikkeling
-  // (28 dagen of 3 maanden), voor schermdelen met potentiële klanten.
-  const [demoFilter, setDemoFilter] = useState<null | "28" | "90">(null);
   // Toggles bovenaan de (samengevoegde) Werkzaamheden-pagina, standaard gesloten.
   const [showMailsBox, setShowMailsBox] = useState(false);
   // Laatste mails los en groot in beeld, in plaats van in de smalle kolom.
@@ -417,32 +413,13 @@ export default function ClientCockpit({
             <img src="https://pingwin.nl/wp-content/uploads/2016/11/pingwin_logo.png" alt="Pingwin" />
           </a>
           <div className="header-divider" />
-          {(() => {
-            // Vinkje = mooie ontwikkeling (uit de nachtelijke trend-berekening).
-            // In demo-stand tonen we alleen die klanten (voor schermdelen).
-            const good = (c: typeof allClients[number]) => (demoFilter === "90" ? c.good90 : c.good28);
-            const shown = demoFilter ? allClients.filter((c) => good(c) || c.slug === client.slug) : allClients;
-            return (
-              <KlantKiezer
-                klanten={shown.map((c) => ({ slug: c.slug, name: c.name, grp: c.grp, fase: c.fase, goed: !!good(c) }))}
-                huidig={client.slug}
-                onKies={(slug, naam) => { setSwitchingTo(naam); router.push(`/admin/client/${slug}`); }}
-              />
-            );
-          })()}
-          {/* Demo-filter (schermdelen): alleen tonen als er trend-data is om op te
-              filteren. In een verse wereld zonder nachtelijke trend-berekening zou
-              de knop de dropdown ogenschijnlijk leegmaken; dan verbergen we hem. */}
-          {allClients.some((c) => c.good28 || c.good90) && (
-            <button
-              type="button"
-              className="ghost-btn small"
-              onClick={() => setDemoFilter(demoFilter === null ? "28" : demoFilter === "28" ? "90" : null)}
-              title="Filtert de klanten-dropdown op klanten met een mooie ontwikkeling (voor schermdelen met potentiële klanten). Klik om te wisselen tussen alle klanten, mooie ontwikkeling laatste 28 dagen en laatste 3 maanden."
-            >
-              {demoFilter === null ? "Alle klanten" : demoFilter === "28" ? "✓ Mooie ontwikkeling (28 dgn)" : "✓ Mooie ontwikkeling (3 mnd)"}
-            </button>
-          )}
+          {/* Vinkje = mooie ontwikkeling (uit de nachtelijke trend-berekening,
+              laatste 28 dagen). */}
+          <KlantKiezer
+            klanten={allClients.map((c) => ({ slug: c.slug, name: c.name, grp: c.grp, fase: c.fase, goed: !!c.good28 }))}
+            huidig={client.slug}
+            onKies={(slug, naam) => { setSwitchingTo(naam); router.push(`/admin/client/${slug}`); }}
+          />
           {/* Zes knoppen in plaats van elf tabjes. Wat bij elkaar hoort zit onder een
               uitklapmenu: "Klant" toont wat we voor deze klant doen, "Site-breed" de
               gereedschappen die over de hele site kijken. De tab-waarden in de URL
@@ -474,12 +451,6 @@ export default function ClientCockpit({
             via het tabje aan de rechterrand, op elk tabblad van de cockpit. */}
         <ZijPaneel label="Zoekwoorden & links">
           <FocusBlock slug={client.slug} />
-        </ZijPaneel>
-        {/* Eén blik op alle bronnen die het overzicht voeden of zouden moeten
-            voeden (Search Console, GMB, klantprofiel, structured data, ...),
-            met een directe link naar het scherm waar je hem beheert. */}
-        <ZijPaneel label="Links" top={420}>
-          <LinksPaneel slug={client.slug} seoProfile={client.seoProfile || ""} googleConnected={googleConnected} onGaNaar={(t) => changeTab(validTab(t))} />
         </ZijPaneel>
 
         {tab === "lead" && (
@@ -763,7 +734,13 @@ export default function ClientCockpit({
         {tab === "onboarding" && <OnboardingPanel slug={client.slug} onGaNaar={(t) => changeTab(validTab(t))} />}
 
         {tab === "klant" && (<>
-          <FundamentPanel slug={client.slug} seoProfile={client.seoProfile || ""} positioneringUrl={client.cockpit.positioneringUrl || ""} onGaNaar={(t) => changeTab(validTab(t))} />
+          <FundamentPanel
+            slug={client.slug}
+            positioneringUrl={client.cockpit.positioneringUrl || ""}
+            huisstijlUrl={client.cockpit.huisstijlUrl || ""}
+            adsAccountUrl={client.cockpit.adsAccountUrl || ""}
+            onGaNaar={(t) => changeTab(validTab(t))}
+          />
           <OrgDataPanel slug={client.slug} clientEmail={client.email || ""} />
           {/* Wie de concurrentie is, is klantkennis en hoort hier, niet verstopt
               achter een knopje in een scan-blok. Zelfde component als daar. */}
@@ -898,8 +875,8 @@ function daysAgoLabel(iso: string): string {
   const n = daysSince(iso);
   if (n == null) return "";
   if (n <= 0) return "vandaag";
-  if (n === 1) return "1 dag geleden";
-  return `${n} dagen geleden`;
+  if (n === 1) return "1 dag";
+  return `${n} dagen`;
 }
 
 function contactColor(iso: string): string {

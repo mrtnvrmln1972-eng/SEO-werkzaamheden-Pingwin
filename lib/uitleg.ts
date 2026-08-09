@@ -21,7 +21,7 @@
 // betreffende uitklapper aanvullen en LAATST_BIJGEWERKT verzetten.
 // ═══════════════════════════════════════════════════════════
 
-export const LAATST_BIJGEWERKT = "8 augustus 2026 (R7: bronnen-gezondheid)";
+export const LAATST_BIJGEWERKT = "9 augustus 2026 (Fundament: koppelingen en klantkennis samengevoegd tot één tegel-dashboard; R6: copy als concept naar WordPress; R9: ontwikkeling deze maand op het klantdashboard, gebouwd; R14: schermafbeeldingen)";
 
 export type Uitklapper = {
   titel: string;
@@ -151,7 +151,10 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "**De cockpit** is de werkplek van het bureau. Per klant een eigen commandocentrum met alles erin: " +
           "taken, pagina's, analyses, documenten, mail, resultaten en de site-brede gereedschappen.\n\n" +
           "**Het klantdashboard** is wat de klant ziet na inloggen: het maandoverzicht van de werkzaamheden, de " +
-          "uren en het budget, en de documenten die voor hem klaargezet zijn.\n\n" +
+          "uren en het budget, en de documenten die voor hem klaargezet zijn. Er kan ook een blok " +
+          "\"Ontwikkeling deze maand\" bij staan, in gewone taal: hoe de klikken en vertoningen vanuit Google " +
+          "zich ontwikkelden en welke aanpassingen er op de site zijn doorgevoerd. Dat blok staat standaard uit " +
+          "en gaat pas aan als het bureau het per klant heeft aangezet, vanuit de voorbeeldweergave.\n\n" +
           "Er is één URL voor alles. Wie inlogt bepaalt wat er verschijnt. Een klant kan niet bij een andere " +
           "klant komen, en het bureau kan bij iedereen, inclusief een voorbeeldweergave van hoe het dashboard " +
           "van die klant er voor de klant zelf uitziet.",
@@ -170,12 +173,11 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "| **Klant** | Documenten, Wat we doen, Wijzigingen, Klantgegevens |\n" +
           "| **KPI's** | Posities, vertoningen, klikken en de ontwikkeling daarvan |\n" +
           "| **Developer** | Alle developer-taken over alle klanten heen |\n\n" +
-          "Daarnaast zitten er aan de rechterrand twee inschuifbare zijpanelen, op elk tabblad bereikbaar. " +
+          "Daarnaast zit er aan de rechterrand één inschuifbaar zijpaneel, op elk tabblad bereikbaar: " +
           "'Zoekwoorden & links' heeft de afgesproken strategie links in een vrij tekstveld en rechts een kolom " +
-          "met snel aan te klikken landingspagina's. 'Links' bundelt de bronnen die het overzicht voeden of zouden " +
-          "moeten voeden (Search Console, Analytics, Ads, Google-profiel, klantprofiel, tone of voice, " +
-          "concurrentieanalyse, structured data, documenten): elke regel springt naar het scherm waar je hem " +
-          "beheert en laat pas na openklikken zien of hij gevuld of gekoppeld is.\n\n" +
+          "met snel aan te klikken landingspagina's. Het losse 'Links'-zijpaneel (de koppelingen als " +
+          "uitklaplijstje) is vervallen; die koppelingen staan nu als tegels bovenaan de tab Klantgegevens, zie " +
+          "hieronder.\n\n" +
           "**Wisselen van klant gaat via de kiezer linksboven.** Die toont de eigen klanten meteen; de klanten van " +
           "een aangesloten bureau en de leads staan elk achter één regel die je openklikt, want die heb je meestal " +
           "niet nodig en ze duwen de rest uit beeld. Zit je zelf in zo'n groep, dan staat die vanzelf open. " +
@@ -184,25 +186,27 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "waar nog niets voor gedaan wordt.",
       },
       {
-        titel: "Fundament: wat er per klant al staat en wat nog moet",
-        kern: "Tone of voice, structured data, concurrenten, concurrentieanalyse, bedrijfsprofiel en positionering, in één oogopslag.",
+        titel: "Fundament: wat er per klant gekoppeld en ingevuld is, in één oogopslag",
+        kern: "Tegels in plaats van een lijst, live afgelezen uit dezelfde stand als de Onboarding-tab.",
         tekst:
-          "Twee schermen, dezelfde rekenregel. **/admin/fundament** toont alle klanten naast elkaar: per klant " +
-          "zes statuspunten, en bovenaan hoeveel klanten elk punt al hebben staan. Op de klant-tab " +
-          "**Klantgegevens** staat hetzelfde overzicht voor die ene klant, met de knoppen om het af te maken " +
-          "erbij.\n\n" +
-          "De zes punten:\n\n" +
-          "| Punt | Bron |\n" +
-          "|---|---|\n" +
-          "| Tone of voice | de tone of voice-sectie in het klantprofiel (Pagina's-tab) |\n" +
-          "| Bedrijfsprofiel | de klantprofiel-sectie in datzelfde veld |\n" +
-          "| Structured data | de bedrijfsgegevens: leeg, ingevuld, of vergrendeld |\n" +
-          "| Concurrenten | de gap-analyse-lijst: 2 tot 4 domeinen |\n" +
-          "| Concurrentieanalyse | geen los document: volgt automatisch uit positionering |\n" +
-          "| Positionering | het afgeronde positioneringsadvies, als Drive-link |\n\n" +
-          "Concurrentieanalyse heeft bewust geen eigen invoerveld. De positionering-skill benchmarkt altijd al " +
-          "tegen de concurrenten, dus een los document ervoor uitvragen zou vragen om iets dat nooit apart " +
-          "bestaat.",
+          "Bovenaan de klant-tab **Klantgegevens** staat het Fundament: alle koppelingen en klantkennis als " +
+          "tegels, gegroepeerd in 'Aansluiten' en 'Wie is de klant'. Dit stond eerder op twee plekken (deze " +
+          "kaart met zes punten, en een los 'Links'-zijpaneel met een uitklaplijstje) die soms een ander " +
+          "verhaal vertelden over dezelfde koppeling. Nu is er één bron: dezelfde live berekening als de " +
+          "Onboarding-tab (`lib/onboarding.ts`), hier als tegels getoond in plaats van als afvinklijst. Wat hier " +
+          "staat kan dus nooit meer afwijken van wat Onboarding zegt.\n\n" +
+          "**Aansluiten:** website-adres, Search Console, Ahrefs-project, pagina's ingelezen, beheeromgeving van " +
+          "de site, Ads-account.\n\n" +
+          "**Wie is de klant:** klantprofiel, tone of voice, bedrijfsgegevens (structured data), werkgebied, " +
+          "klantwaarde en conversie, concurrenten, Google-bedrijfsprofiel, beheerder van dat profiel, " +
+          "positioneringsadvies, huisstijl, documenten in de kennisdatabase.\n\n" +
+          "Elke tegel toont de status, één zin wat erin staat, en een knop die er direct naartoe brengt. " +
+          "Positionering, huisstijl en het Ads-account zijn losse linkjes (Drive-document of accountpagina): " +
+          "er is geen API-koppeling, dus dat is bewust alleen 'de link staat hier', nooit een geverifieerde " +
+          "meting. De site-brede scans en de strategie staan hier niet nog eens (die hebben al hun eigen " +
+          "tabblad en staan met dezelfde cijfers op de Onboarding-tab).\n\n" +
+          "**/admin/fundament** (alle klanten naast elkaar) is een apart scherm en gebruikt nog zijn eigen, " +
+          "oudere rekenregel met zes punten (`lib/fundament.ts`); dat is nog niet meegetrokken in deze slag.",
       },
       {
         titel: "Technisch: waar het op draait",
@@ -1922,7 +1926,7 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "| Punt | Wat het is | Wordt urgent zodra |\n" +
           "|---|---|---|\n" +
           "| **R5** | Meerdere mailboxen | er iemand naast je meewerkt |\n" +
-          "| **R6** | Tweede sitekoppeling, en copy doorvoeren | er een klant niet op WordPress zit |\n" +
+          "| **R6** | Tweede sitekoppeling, en copy doorvoeren | WordPress-deel ✅ af op 9 augustus 2026; tweede systeem: zodra er een klant niet op WordPress zit |\n" +
           "| **R7** | Bronnen-gezondheid: welke bron is stil? | ✅ af op 8 augustus 2026 |\n" +
           "| **R8** | Correcties worden regels, in élke motor | je dezelfde correctie twee keer maakt |",
         sub: [
@@ -1952,22 +1956,23 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
               "geen mail mag zien, blijft niets zien.",
           },
           {
-            titel: "R6. Tweede sitekoppeling, en copy doorvoeren",
+            titel: "R6. Tweede sitekoppeling, en copy doorvoeren — WordPress-deel klaar op 9 augustus 2026",
             tekst:
-              "**Wat er nu mis is.** Twee dingen tegelijk. Doorvoeren op de site werkt alleen voor WordPress. En " +
-              "binnen WordPress gaan alleen meta-teksten en alt-teksten automatisch; de copy zelf, het grootste " +
-              "werkstuk van de hele keten, gaat nog met de hand.\n\n" +
-              "**Wat het oplevert.** De keten is af tot aan de site en breekt daar. Dit is de plek waar het meeste " +
-              "handwerk overblijft, dus ook waar de meeste uren te winnen zijn. En zolang doorvoeren " +
-              "merkafhankelijk is, kun je een klant op een ander systeem alleen de halve dienst leveren.\n\n" +
-              "**Hoe we het zouden bouwen.**\n\n" +
-              "1. Eerst de vorm goed zetten: de doorvoerlaag scheiden van WordPress, met per systeem een eigen " +
-              "koppelstuk en dezelfde drie regels erboven (versleuteld wachtwoord, altijd terugcontrole, eerlijk " +
-              "melden als het niet lukte).\n" +
-              "2. Copy doorvoeren als concept, nooit direct live: het dashboard zet de nieuwe tekst als " +
-              "conceptversie in de site, met een link om te bekijken. Publiceren blijft een mensenklik.\n" +
-              "3. Daarna het tweede koppelstuk, gekozen op wat de klanten echt gebruiken.\n" +
-              "4. De werklijst voor de sitebouwer blijft bestaan als terugval, want er blijven altijd systemen " +
+              "**Wat er klaar is.** De copy, het grootste werkstuk van de hele keten, ging tot nu toe altijd met de " +
+              "hand van het copydocument naar de site. Vanaf nu kun je bij een pagina met een goedgekeurde copy op " +
+              "“Zet copy als concept in de site” drukken: het dashboard zet de volledige, goedgekeurde tekst " +
+              "als NIEUW concept (nog niet zichtbaar voor bezoekers) in WordPress, met een link naar het bewerkscherm " +
+              "waar je het meteen kunt zien. De bestaande, live pagina van de klant wordt hierbij niet aangeraakt; " +
+              "publiceren, of de tekst overzetten naar de bestaande pagina, doe je zelf met die link, in je eigen " +
+              "WordPress-inlog. Er wordt altijd teruggecontroleerd of het concept er ook echt (en nog als concept, " +
+              "niet per ongeluk meteen live) staat, en een mislukte poging meldt eerlijk waarom, net als bij de meta- " +
+              "en alt-teksten hiernaast.\n\n" +
+              "Onder deze knop zit nu ook de vorm die volgende systemen straks kunnen hergebruiken: één klein " +
+              "koppelvlak per sitesysteem (versleuteld wachtwoord, altijd terugcontrole, eerlijk melden als het niet " +
+              "lukte), waar WordPress het eerste koppelstuk van is.\n\n" +
+              "**Wat nog open staat.** Er is nog geen klant bekend die niet op WordPress zit, dus het tweede " +
+              "koppelstuk (voor dat andere systeem) is er nog niet; zodra dat zich aandient, komt het naast het " +
+              "WordPress-koppelstuk. Tot die tijd blijft de werklijst voor de sitebouwer de terugval voor elke site " +
               "zonder koppeling.\n\n" +
               "**Waaraan je ziet dat het af is.** Een goedgekeurd copydocument staat als concept in de site, met " +
               "een voorbeeldlink, zonder dat er iets gekopieerd is. En hetzelfde werkt op een tweede systeem.\n\n" +
@@ -2036,31 +2041,30 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "| **R15** | De verkooppitch als eigen pagina | Overtuigt in twee minuten |",
         sub: [
           {
-            titel: "R9. Het klantdashboard op echte data",
+            titel: "R9. Het klantdashboard op echte data — gebouwd, wacht op jouw eerste klikje",
             tekst:
-              "**Wat er nu mis is.** De cockpit weet alles: posities, klikken, wat er is uitgevoerd, wat het " +
-              "opleverde. Het dashboard dat de klant ziet leest een spreadsheet met werkzaamheden, uren en " +
-              "budget. De rijkste data van het hele systeem komt dus niet bij de persoon die betaalt.\n\n" +
+              "**Waar het nu staat.** De cockpit wist al alles: klikken, vertoningen, wat er is uitgevoerd. Het " +
+              "dashboard dat de klant ziet, las tot nu toe alleen een spreadsheet met werkzaamheden, uren en " +
+              "budget. Dat is nu aangevuld: elke klant heeft een blok **\"Ontwikkeling deze maand\"** " +
+              "klaarstaan, dat in gewone taal vertelt hoe de klikken en vertoningen vanuit Google zich " +
+              "ontwikkelden ten opzichte van de periode ervoor, en welke aanpassingen er de afgelopen maand op " +
+              "de site zijn doorgevoerd, met wanneer. Geen nieuwe meting: het leunt op de nachtelijke " +
+              "klik-vergelijking (dezelfde die de klanten-kiezer al gebruikt) en op het wijzigingenlogboek dat er " +
+              "al was.\n\n" +
               "**Wat het oplevert.** Dit is het punt met de meeste verkoopwaarde van de hele lijst. Een klant die " +
               "elke maand ziet wat er gedaan is én wat het deed, vertrekt niet. Het is ook het onderdeel dat je " +
               "aan een lead kunt laten zien: dit krijg jij erbij.\n\n" +
-              "**Hoe we het zouden bouwen.**\n\n" +
-              "1. De spreadsheet blijft. Die is de bron voor uren en budget, en een bureau dat er al in werkt " +
-              "hoeft niets om te gooien. Er komt alleen iets bij.\n" +
-              "2. Per klant een blok met de ontwikkeling in gewone taal: hoe staan we er nu voor, wat is er " +
-              "veranderd, en wat leverden de aanpassingen van deze maand op. De meting daarvoor bestaat al " +
-              "(wijziging, voor en na); dit is die uitkomst in klanttaal.\n" +
-              "3. Streng filteren op wat een klant moet zien. Geen ruwe tabellen, geen jargon, geen interne " +
-              "afwegingen. Dezelfde regel als bij de documenten: wat de klant leest is niet wat de uitvoerder " +
-              "leest.\n" +
-              "4. Niets gaat automatisch naar de klant. Je ziet eerst de voorbeeldweergave die er al is, en jij " +
-              "besluit dat het klaar is.\n\n" +
-              "**Waaraan je ziet dat het af is.** Een klant ziet in zijn eigen dashboard zonder jouw tussenkomst " +
-              "de ontwikkeling van deze maand, in gewone taal, en jij hebt dat vooraf in de voorbeeldweergave " +
-              "kunnen nalopen.\n\n" +
-              "**Wat het raakt.** Dit verandert het dashboard dat de klant zelf ziet en de voorbeeldweergave waarin jij " +
-              "dat vooraf naloopt. Het leunt op de meting van wat een aanpassing opleverde, en het verandert de " +
-              "maandelijkse ronde langs je klanten.",
+              "**Wat je nog moet doen.** Het blok staat per klant standaard uit; er gaat dus nog niets " +
+              "automatisch naar iemand toe. Open bij een klant de voorbeeldweergave (Klant-tab, knop " +
+              "\"Voorbeeld\") en je ziet het blok bovenaan het dashboard staan, met een knop erboven: " +
+              "\"Verborgen voor de klant – zet aan\". Klopt de tekst, klik hem aan; vanaf dat moment ziet de " +
+              "klant het zelf, zonder dat jij er iets voor stuurt.\n\n" +
+              "**Waaraan je ziet dat het af is.** Bij minstens één klant staat het blok aangezet, en die klant " +
+              "ziet zonder jouw tussenkomst de ontwikkeling van deze maand in gewone taal. Tot dat moment blijft " +
+              "dit punt op \"loopt\" staan, ook al is de code klaar: gebouwd is nog geen gebruikt.\n\n" +
+              "**Wat het raakt.** Dit verandert het dashboard dat de klant zelf ziet en de voorbeeldweergave " +
+              "waarin jij dat vooraf naloopt. Het leunt op de klik-trend en het wijzigingenlogboek, en het " +
+              "verandert de maandelijkse ronde langs je klanten.",
           },
           {
             titel: "R10. Signaleren in plaats van kijken",
@@ -2166,25 +2170,20 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           {
             titel: "R14. Schermafbeeldingen, door het dashboard zelf gemaakt",
             tekst:
-              "**Wat er nu mis is.** De uitleg is tekst. Wie niet in het dashboard werkt moet zich voorstellen hoe " +
-              "het eruitziet, en dat is precies de groep die het verhaal moet snappen: leads, collega-bureaus, " +
-              "investeerders.\n\n" +
-              "**Wat het oplevert.** Het verhaal wordt zichtbaar in plaats van beschreven. En het is de bouwsteen " +
-              "onder R15 en onder elke handleiding.\n\n" +
-              "**Hoe we het zouden bouwen.** Niet met de hand, want dan verouderen de beelden stil zodra een scherm " +
-              "verandert. Er zit al een echte browser in de app (die meet de pagina's van klanten). Die laten we " +
-              "zijn eigen schermen fotograferen:\n\n" +
-              "1. Eén ingang die een schermafbeelding maakt van een opgegeven scherm, op een vaste breedte, met de " +
-              "eigen sessie.\n" +
-              "2. **Een anonieme stand die verplicht is voor alles wat openbaar komt.** Vóór de foto worden " +
-              "klantnaam, domein en mailadressen vervangen door een neutrale naam. Zonder die stand zou de data van " +
-              "een echte klant op een openbare pagina belanden, en dat kan niet.\n" +
-              "3. Een vaste lijst: welk scherm hoort bij welk hoofdstuk. Eén opdracht vernieuwt ze allemaal.\n" +
-              "4. Waar een scherm niet zonder echte klantdata te tonen is, komt het beeld achter de " +
-              "beheerderslogin te staan in plaats van dat het wordt weggelaten.\n\n" +
-              "**Waaraan je ziet dat het af is.** Elk hoofdstuk op de uitlegpagina heeft een beeld, er staat geen " +
-              "echte klantnaam op een openbaar beeld, en één opdracht maakt ze allemaal opnieuw.\n\n" +
-              "**Wat het raakt.** Dit verandert de uitlegpagina en de verkooppitch, en het gebruikt de browser die al in " +
+              "**Wat er nu gebeurt.** Het dashboard fotografeert zichzelf. Er is een vaste lijst van eigen " +
+              "schermen; bij elk scherm logt de app met een echte adminsessie in, opent het scherm op een vaste " +
+              "breedte, en maakt er een opname van. Vóór die opname wordt elke echte klantnaam, elk domein en elk " +
+              "mailadres op de pagina vervangen door een neutrale naam (\"Voorbeeldklant\"). Zo mag elk beeld " +
+              "veilig openbaar op deze pagina staan, ook al is de onderliggende data echt (van de meest gevulde " +
+              "klant, One Day Clinic), zodat een beeld ook echt iets laat zien in plaats van een lege demo-omgeving.\n\n" +
+              "Het bedieningspaneel staat op `/admin/schermafbeeldingen`: één knop (\"Alles vernieuwen\") maakt de " +
+              "hele lijst opnieuw, en toont per scherm wanneer het voor het laatst is opgenomen. Elk hoofdstuk " +
+              "hieronder met een beeld toont dat beeld automatisch boven zijn tekst.\n\n" +
+              "**Wat er nog open staat.** Nu heeft een eerste set hoofdstukken een beeld (waarom, koppelingen, " +
+              "motoren, documenten, werk, bedrijfsvoering, gebruik en deze agenda). De rest krijgt er een zodra er " +
+              "een regel voor bijkomt in de vaste lijst (`lib/schermbeeld.ts`, geen nieuwe code nodig) en \"Alles " +
+              "vernieuwen\" opnieuw draait.\n\n" +
+              "**Wat het raakt.** Deze pagina en de verkooppitch (R15), en het gebruikt dezelfde browser die al in " +
               "het dashboard zit om pagina's van klanten te meten.",
           },
           {

@@ -48,6 +48,11 @@ export default function DocVersies({ slug, url, taakId, triggerSlot }: { slug: s
   const [preview, setPreview] = useState<Versie | null>(null);
   const [hernoem, setHernoem] = useState<{ id: number; naam: string } | null>(null);
   const [toets, setToets] = useState<{ id: number; uitkomst: Toets } | null>(null);
+  // Copy als concept naar de site (R6): zet de geldende copy als concept-pagina
+  // in WordPress, nooit de bestaande live pagina. Eén knop voor de hele pagina,
+  // niet per versie: de API leest toch altijd de geldende ("goedgekeurd") tekst.
+  const [conceptBusy, setConceptBusy] = useState(false);
+  const [conceptResult, setConceptResult] = useState<{ ok: boolean; detail: string; previewUrl?: string | null } | null>(null);
 
   const laad = useCallback(async () => {
     const d = await fetch(`/api/admin/page-doc/upload?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}`)
@@ -113,6 +118,18 @@ export default function DocVersies({ slug, url, taakId, triggerSlot }: { slug: s
       else setFout(d?.error || "Kon de bijlage niet ophalen.");
     } catch { setFout("Ophalen mislukte; probeer het nog een keer."); }
     finally { setBusy(""); }
+  }
+
+  async function zetAlsConcept() {
+    setConceptBusy(true); setConceptResult(null);
+    try {
+      const d = await fetch("/api/admin/copy-doorvoeren", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, url }),
+      }).then((r) => r.json());
+      setConceptResult({ ok: !!d.ok, detail: d.ok ? d.detail : (d.error || "Dat lukte niet; probeer het nog een keer."), previewUrl: d.previewUrl || null });
+    } catch { setConceptResult({ ok: false, detail: "Dat lukte niet; probeer het nog een keer." }); }
+    finally { setConceptBusy(false); }
   }
 
   const dd = (d: string) => {
@@ -243,6 +260,24 @@ export default function DocVersies({ slug, url, taakId, triggerSlot }: { slug: s
             </li>
           ))}
         </ul>
+      )}
+
+      {versies.some((v) => v.kind === "copy" && v.goedgekeurd) && (
+        <div className="wp-doc-concept">
+          <button type="button" className="btn btn-primary btn-klein" disabled={conceptBusy}
+            onClick={() => void zetAlsConcept()}
+            title="Zet de geldende copy als concept (nog niet live) in de site. De bestaande, live pagina blijft ongewijzigd; publiceren doe je zelf in WordPress.">
+            {conceptBusy ? "Concept plaatsen…" : "Zet copy als concept in de site"}
+          </button>
+          {conceptResult && (
+            <span className={conceptResult.ok ? "wp-doc-ok" : "wp-doc-fout"}>
+              {conceptResult.detail}
+              {conceptResult.previewUrl && (
+                <> <a href={conceptResult.previewUrl} target="_blank" rel="noreferrer">Bekijk het concept</a></>
+              )}
+            </span>
+          )}
+        </div>
       )}
 
       {preview && (

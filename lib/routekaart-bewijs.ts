@@ -133,6 +133,62 @@ const BEWIJZEN: Record<string, BewijsRegel[]> = {
     },
   ],
 
+  R6: [
+    {
+      soort: "gedeployd",
+      wat: "Elk sitesysteem heeft één koppelvlak (vandaag alleen WordPress)",
+      laad: () => import("./site-connector") as Promise<Record<string, unknown>>,
+      functie: "connectorFor",
+    },
+    {
+      soort: "gedeployd",
+      wat: "Copy kan als concept (niet live) in WordPress gezet worden",
+      laad: () => import("./wp-push") as Promise<Record<string, unknown>>,
+      functie: "pushCopyDraft",
+    },
+    {
+      soort: "data",
+      wat: "Er is minstens één keer copy als concept in een site gezet",
+      telling: async () => {
+        await ensureSchema();
+        const { rows } = await sql`
+          SELECT COUNT(*)::int AS n FROM client_activiteit WHERE soort = 'copy-concept'
+        `;
+        return Number(rows[0]?.n || 0);
+      },
+    },
+  ],
+
+  R9: [
+    {
+      soort: "gedeployd",
+      wat: "De ontwikkeling van deze maand wordt uit de bestaande metingen opgebouwd",
+      laad: () => import("./ontwikkeling") as Promise<Record<string, unknown>>,
+      functie: "getOntwikkelingDezeMaand",
+    },
+    {
+      soort: "gedeployd",
+      wat: "Maarten kan het blok per klant aan of uit zetten",
+      laad: () => import("./clients") as Promise<Record<string, unknown>>,
+      functie: "setToonOntwikkeling",
+    },
+    {
+      soort: "kolom",
+      wat: "De database weet per klant of het blok aan staat",
+      tabel: "clients",
+      kolom: "toon_ontwikkeling",
+    },
+    {
+      soort: "data",
+      wat: "Minstens één klant ziet dit blok ook echt (Maarten heeft hem aangezet)",
+      telling: async () => {
+        await ensureSchema();
+        const { rows } = await sql`SELECT COUNT(*)::int AS n FROM clients WHERE toon_ontwikkeling = true`;
+        return Number(rows[0]?.n || 0);
+      },
+    },
+  ],
+
   R7: [
     {
       soort: "gedeployd",
@@ -152,6 +208,32 @@ const BEWIJZEN: Record<string, BewijsRegel[]> = {
       telling: async () => {
         const { aantalGebeurtenissen } = await import("./bron-gezondheid");
         return aantalGebeurtenissen();
+      },
+    },
+  ],
+
+  R14: [
+    {
+      soort: "gedeployd",
+      wat: "Het dashboard kan een eigen scherm fotograferen en anonimiseren",
+      laad: () => import("./schermbeeld") as Promise<Record<string, unknown>>,
+      functie: "maakSchermafbeelding",
+    },
+    {
+      soort: "gedeployd",
+      wat: "Eén opdracht vernieuwt de hele vaste lijst schermen",
+      laad: () => import("./schermbeeld") as Promise<Record<string, unknown>>,
+      functie: "vernieuwAlleSchermen",
+    },
+    {
+      soort: "data",
+      wat: "Er staat minstens één opgeslagen schermafbeelding",
+      telling: async () => {
+        await ensureSchema();
+        const { rows } = await sql`
+          SELECT COUNT(*)::int AS n FROM schermafbeeldingen
+        `.catch(() => ({ rows: [{ n: 0 }] }));
+        return Number(rows[0]?.n || 0);
       },
     },
   ],

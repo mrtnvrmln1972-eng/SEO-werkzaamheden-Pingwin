@@ -6,6 +6,7 @@ import { getScopeFromCookie, canAccessSlug } from "../../../../lib/admin-scope";
 import { getClientBySlug } from "../../../../lib/clients";
 import { getTasks } from "../../../../lib/tasks";
 import { tasksToDashboardData } from "../../../../lib/sheet";
+import { getOntwikkelingDezeMaand } from "../../../../lib/ontwikkeling";
 import Dashboard from "../../../dashboard/Dashboard";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +24,9 @@ export default async function PreviewPage({ params }: { params: { slug: string }
   // dan tonen we die; anders valt het dashboard terug op de Google Sheet.
   const tasks = await getTasks(params.slug);
   const initialData = tasks.length ? tasksToDashboardData(tasks, client.budget) : undefined;
+  // R9: in de voorbeeldweergave altijd berekenen, ook als het nog uit staat,
+  // zodat Maarten kan nalopen hoe het blok eruitziet vóór hij het aanzet.
+  const ontwikkeling = await getOntwikkelingDezeMaand(params.slug);
 
   return (
     <Dashboard
@@ -31,6 +35,9 @@ export default async function PreviewPage({ params }: { params: { slug: string }
       gid={client.gid}
       budget={client.budget}
       initialData={initialData}
+      slug={params.slug}
+      ontwikkeling={ontwikkeling}
+      toonOntwikkeling={client.toonOntwikkeling}
       adminPreview
     />
   );

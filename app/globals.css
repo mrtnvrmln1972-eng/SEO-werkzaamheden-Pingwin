@@ -255,16 +255,16 @@ body {
   text-transform: uppercase; letter-spacing: 1.5px;
 }
 .header-client { font-size: 14px; font-weight: 500; color: var(--gray); }
-.header-right { display: flex; align-items: center; gap: 16px; }
+.header-right { display: flex; align-items: center; gap: var(--s-2); }
 .header-contact { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--gray); }
 .header-contact-label { font-weight: 700; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
 .header-contact-date { font-weight: 500; }
 .header-updated { font-size: 12px; color: var(--gray); font-weight: 400; }
 .logout-btn {
   font-family: 'Montserrat', sans-serif;
-  font-size: 12px; font-weight: 600; color: var(--gray);
+  font-size: var(--fs-xs); font-weight: 600; color: var(--gray);
   background: none; border: 1px solid var(--border);
-  padding: 6px 14px; border-radius: 6px; cursor: pointer;
+  padding: var(--s-1) var(--s-2); border-radius: 6px; cursor: pointer;
   transition: all 0.2s;
 }
 .logout-btn:hover { border-color: var(--orange); color: var(--orange); }
@@ -944,26 +944,28 @@ td .dev-doc-link { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; 
 .plan-chip.has { background: var(--orange); color: #fff; }
 .plan-chip.half { background: var(--brand-orange-soft); color: var(--orange-dark); }
 
-/* Fundament-paneel (FundamentPanel.tsx): de zes statuspunten per klant,
-   gedeeld door de cockpit-tab "Klantgegevens" en /admin/fundament. */
-.fund-rij { display: flex; flex-wrap: wrap; gap: var(--s-4); margin-top: var(--s-3); }
-.fund-punt { display: flex; flex-direction: column; gap: var(--s-1); align-items: flex-start; cursor: help; }
-.fund-punt-label {
-  font-size: var(--fs-xs); color: var(--text-secondary);
-  background: none; border: none; padding: 0; margin: 0; font-family: inherit;
-  text-decoration: none; cursor: pointer; text-align: left;
+/* Fundament-paneel (FundamentPanel.tsx): tegel-dashboard voor "aansluiten" en
+   "wie is de klant" (blok "aansluiten"/"kennen" uit lib/onboarding-stappen.ts),
+   dezelfde stand als de Onboarding-tab, hier als tegels in plaats van een lijst.
+   /admin/fundament (kruis-klant-overzicht) gebruikt alleen .fund-groep hieronder. */
+.fnd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--s-3); margin-top: var(--s-3); }
+.fnd-tegel {
+  display: flex; flex-direction: column; gap: var(--s-2);
+  padding: var(--s-3); border: 1px solid var(--gray-light); border-left: 3px solid var(--border);
+  border-radius: var(--r-md); background: var(--white);
 }
-.fund-punt-label:hover { color: var(--accent-warm); text-decoration: underline; }
-.fund-punt-label:disabled { cursor: default; color: var(--text-secondary); text-decoration: none; }
-/* De koppen waar de fundament-woorden naartoe springen: niet klem onder de
+.fnd-tegel.fnd-staat-af { border-left-color: #2E7D32; }
+.fnd-tegel.fnd-staat-bezig { border-left-color: var(--brand-teal); }
+.fnd-tegel.fnd-staat-verouderd { border-left-color: var(--orange); }
+.fnd-tegel-kop { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); }
+.fnd-tegel-kop strong { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--dark); }
+.fnd-tegel-detail { flex: 1 1 auto; margin: 0; font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--text-secondary); }
+.fnd-tegel-acties { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2); margin-top: auto; }
+.fnd-link-row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2); }
+.fnd-link-row .compose-input { flex: 1 1 200px; }
+/* De koppen waar de fundament-tegels naartoe springen: niet klem onder de
    vaste kopbalk van de cockpit laten landen. */
-#fund-structured-data, #fund-concurrenten, .fund-positionering { scroll-margin-top: 96px; }
-.fund-uitleg { display: flex; flex-direction: column; gap: var(--s-1); margin-top: var(--s-3); font-size: var(--fs-sm); }
-.fund-link { background: none; border: none; padding: 0; margin: 0; color: var(--link); text-decoration: underline; font: inherit; cursor: pointer; }
-.fund-positionering { margin-top: var(--s-4); padding-top: var(--s-3); border-top: 1px solid var(--gray-light); }
-.fund-positionering-label { display: block; font-size: var(--fs-xs); font-weight: 700; color: var(--label-muted); text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: var(--s-1); }
-.fund-positionering-row { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; }
-.fund-positionering-row .compose-input { flex: 1 1 320px; }
+#fund-structured-data, #fund-concurrenten { scroll-margin-top: 96px; }
 .fund-actie { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; }
 .fund-actie-melding { font-size: var(--fs-xs); color: var(--text-secondary); }
 /* Klantengroepen op /admin/fundament: elk een eigen kop die je open- en
@@ -3146,6 +3148,9 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
 .wp-fase-btn-primair { background: var(--orange); color: #fff; border-color: var(--orange); }
 .wp-doc-ok { font-size: 12.5px; color: #1c7a3f; }
 .wp-doc-fout { font-size: 12.5px; color: #b3261e; }
+/* Copy als concept naar de site (R6): knop + terugmelding, los van de doclijst
+   erboven zodat hij ook zonder document-rijen (Word ontbreekt) blijft werken. */
+.wp-doc-concept { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; margin: var(--s-3) 0 0; }
 /* ── Documenten bij een taak: één regel per versie, nieuwste bovenaan ──
    Vervangt de uitklapper met voorstellen. Klik kiest een regel, spatiebalk opent
    de voorvertoning; daarom heeft een gekozen regel een duidelijke rand. */
@@ -3565,13 +3570,23 @@ body.zp-sleept { user-select: none; cursor: grabbing; }
 .wp-sectie-label { font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: #5e6063; margin: 10px 0 5px; }
 /* Projectkaart: de 7 fases verticaal, met status, startknop en handmatig vinkje. */
 .wp-fases { margin: var(--s-2) 0 var(--s-1); border: 1px solid var(--card-border); border-radius: var(--r-md); background: #fff; }
-.wp-fase { padding: var(--s-2) var(--s-3); border-bottom: 1px solid var(--border); }
+.wp-fase { padding: var(--s-1) var(--s-3); border-bottom: 1px solid var(--border); }
 .wp-fase:last-of-type { border-bottom: none; }
 .wp-fase-rij { display: flex; align-items: center; gap: var(--s-2); }
 /* Vaste kolommen in de fase-rijen: labels, chips en knoppen recht onder elkaar. */
 .wp-fase-rij .wp-fase-label { flex: 0 0 148px; }
 .wp-fase-chip { min-width: 72px; display: inline-flex; justify-content: center; }
-.wp-fase-rij .wp-fase-btn { min-width: 112px; text-align: center; justify-content: center; }
+/* Subtieler dan de standaard .wp-fase-btn/.btn-ghost-pil (die overal in de app
+   een dikke oranje rand en vet lettertype hebben): in deze lijst van zeven
+   rijen naast elkaar is dat te zwaar. Hier alleen kleur bij hover, dunner en
+   zonder de opgelegde 112px-breedte die "Start" onnodig breed pompte. */
+.wp-fase-rij .wp-fase-btn {
+  min-width: 0; text-align: center; justify-content: center;
+  padding: 3px var(--s-2); font-weight: 600; border-color: var(--border); color: var(--muted);
+}
+.wp-fase-rij .wp-fase-btn:hover:not(:disabled) { border-color: var(--orange); color: var(--orange-dark); background: var(--orange-light); }
+.wp-fase-rij .wp-fase-chip { min-width: 44px; }
+.wp-fase-rij .wp-fase-chip.wp-fase-klaar, .wp-fase-rij .wp-fase-chip.wp-fase-open { min-width: 30px; font-size: var(--fs-xs); }
 .wp-fase-sturing { margin: 3px 0 1px 24px; font-size: var(--fs-xs); color: var(--muted); line-height: 1.5; }
 .wp-fase-btn-licht { color: var(--gray); border-color: #e3e3e3; }
 .wp-fase-label { font-size: var(--fs-sm); font-weight: 600; color: var(--dark); }
@@ -3582,9 +3597,6 @@ body.zp-sleept { user-select: none; cursor: grabbing; }
 /* Nog niet af: rood kruisje in dezelfde pilvorm als het groene vinkje. Zo hoef je
    niets te lezen om te zien wat er staat. */
 .wp-fase-chip.wp-fase-open { color: #a12622; background: #fdecec; border-color: #f2c4c2; min-width: 34px; font-size: var(--fs-sm); }
-/* Bouw en publicatie is het moment dat het werk naar de sitebouwer gaat; dat mag
-   je zien, dus een lijn boven die stap. */
-.wp-fase.wp-fase-scheiding { border-top: 1px solid var(--card-border); margin-top: var(--s-2); padding-top: var(--s-2); }
 .wp-fase-btn.wp-fase-btn-aan { border-color: #1e824c; color: #1e824c; background: #eaf6ef; }
 /* Klein linkje naar het document, achter de fasenaam. Vervangt drie volle
    "Document"-knoppen die de rij onrustig maakten. */
@@ -3663,7 +3675,7 @@ body.zp-sleept { user-select: none; cursor: grabbing; }
 /* Zichtbare focus voor toetsenbord, overal hetzelfde (toegankelijkheid). */
 button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; border-radius: 4px; }
 /* Prominente chat-knop boven de fases (de chat voedt de fases eronder). */
-.wp-chat-toggle-groot { display: inline-flex; align-items: center; gap: var(--s-2); border: 1.5px solid var(--orange); border-radius: var(--r-full); padding: var(--s-2) var(--s-4); background: #fffaf7; font-size: var(--fs-sm); line-height: var(--lh-sm); margin: var(--s-1) 0 var(--s-2); }
+.wp-chat-toggle-groot { display: inline-flex; align-items: center; gap: var(--s-1); border: 1px solid var(--border); border-radius: var(--r-full); padding: var(--s-1) var(--s-3); background: #fffaf7; font-size: var(--fs-xs); line-height: var(--lh-xs); margin: var(--s-1) 0 var(--s-2); }
 .wp-chat-toggle-groot:hover, .wp-chat-toggle-groot.wp-chat-open { background: var(--orange-light); }
 .wp-chat-body { border: 1px solid var(--border); border-radius: 8px; background: var(--gray-light); padding: 8px; }
 /* De chat groeit gewoon mee met het gesprek; geen mini-scrollvenster. */
@@ -3722,6 +3734,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .wp-kop-rij { display: flex; align-items: flex-start; gap: 10px; }
 .wp-kop-tekst { flex: 1; min-width: 0; }
 .wp-kop-acties { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+/* De knopjes bovenin een kaart (Is dit doorgevoerd?, Opschonen) mogen kleiner
+   dan de gewone .btn-klein elders: hier staan ze naast elkaar in een smalle
+   kopbalk, niet los in een paneel. */
+.wp-kop-acties .btn.btn-ghost.btn-klein { padding: var(--s-1) var(--s-2); font-size: var(--fs-xs); }
 .wp-onder-regel { align-items: center; justify-content: flex-end; margin-top: var(--s-3); padding-top: var(--s-3); border-top: 1px solid #ececec; }
 /* Twee groepjes op de onderste regel: links "waar kan ik heen", rechts "wat stuur
    ik weg". Stonden eerder als zes gelijke pilletjes naast elkaar, waardoor Mail er
@@ -3783,6 +3799,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .wp-act:hover { background: var(--gray-light); color: var(--dark); }
 .wp-act-klant { color: var(--orange); border-color: #f2c9b0; }
 .wp-act-klant:hover { background: var(--orange-light); color: var(--orange-dark); }
+.wp-act-aan { background: #e7f6ea; border-color: #1c7a3f; color: #1c7a3f; }
+.wp-act-aan:hover { background: #e7f6ea; color: #1c7a3f; }
 
 /* "Mail naar klant"-composer (overlay met bewerkbare preview) */
 .wp-mail-overlay { position: fixed; inset: 0; z-index: 10002; background: rgba(0,0,0,0.28); display: flex; align-items: flex-start; justify-content: center; padding: 6vh 16px; overflow-y: auto; }
@@ -4127,7 +4145,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 
 /* "Alles in één keer" hoort bij de eerste drie fases samen, niet in de Copy-rij:
    daar maakte hij die ene rij hoger dan de andere zes. */
-.wp-fases-kop { display: flex; align-items: center; gap: var(--s-2, 8px); margin: var(--s-3, 12px) 0 var(--s-1, 4px); flex-wrap: wrap; }
+.wp-fases-kop { display: flex; align-items: center; gap: var(--s-2, 8px); margin: var(--s-2, 8px) 0 var(--s-1, 4px); flex-wrap: wrap; }
+.wp-fases-kop .btn.btn-ghost.btn-klein { padding: var(--s-1) var(--s-2); font-size: var(--fs-xs); }
 
 /* ── Afwerkpagina werklijst (publiek, /share/werklijst/…) ── */
 .wp-werklijst-teller { font-size: var(--fs-xs, 11.5px); font-weight: 700; color: #1c7a3f; background: #eaf5ee; border-radius: var(--r-full, 99px); padding: 2px 10px; margin-left: var(--s-2, 8px); }
@@ -6876,8 +6895,9 @@ a.wb-pad:hover { text-decoration: underline; }
 /* Zwevende pop-up (blok/taak bewerken) */
 .ag-popup { position: fixed; z-index: 200; width: min(400px, calc(100vw - 16px)); max-height: min(560px, calc(100vh - 16px)); overflow-y: auto; background: var(--white); border-radius: var(--r-lg); padding: var(--s-4); box-shadow: var(--shadow-lg); }
 .ag-popup-meten { visibility: hidden; }
-.ag-modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--s-3); }
+.ag-modal-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); margin-bottom: var(--s-3); }
 .ag-modal-head h2 { font-size: var(--fs-md); line-height: var(--lh-md); color: var(--gray); }
+.ag-modal-head-titel { display: flex; align-items: center; gap: var(--s-2); min-width: 0; }
 .ag-modal-actions { display: flex; align-items: center; gap: var(--s-2); margin-top: var(--s-4); }
 .ag-modal-actions-spacer { flex: 1; }
 
@@ -6925,6 +6945,15 @@ a.wb-pad:hover { text-decoration: underline; }
   background: var(--gray-light); color: var(--dark); cursor: pointer;
 }
 .ag-datumknop:hover { border-color: var(--orange); }
+/* Subtiel: naast een titel in de kopregel, geen eigen rij, minder nadrukkelijk
+   dan de zelfstandige pil hierboven (geen vlak, kleiner, gedempte kleur). */
+.ag-datumknop-wrap-subtiel { margin-bottom: 0; }
+.ag-datumknop-subtiel {
+  font-weight: 600; font-size: var(--fs-xs); line-height: var(--lh-xs);
+  padding: 2px var(--s-2); border-color: transparent; border-radius: var(--r-sm);
+  background: var(--gray-light); color: var(--gray);
+}
+.ag-datumknop-subtiel:hover { background: var(--orange-light); border-color: transparent; color: var(--orange-dark); }
 .ag-datumknop-panel { position: fixed; z-index: 210; width: min(300px, calc(100vw - 16px)); padding: var(--s-3); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--white); box-shadow: var(--shadow-lg); }
 .ag-datumknop-panel-meten { visibility: hidden; left: -9999px; top: -9999px; }
 .ag-datumknop-tabs { margin-bottom: var(--s-2); }
@@ -6932,3 +6961,14 @@ a.wb-pad:hover { text-decoration: underline; }
 .ag-datumknop-section { margin-top: var(--s-3); }
 .ag-datumknop-section-kop { display: block; font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700; color: var(--gray); margin-bottom: var(--s-1); }
 .ag-datumknop-close-row { display: flex; justify-content: flex-end; margin-top: var(--s-3); }
+
+/* R14: schermafbeeldingen-galerij (/admin/schermafbeeldingen), en dezelfde
+   kaartvorm voor het beeld bij een hoofdstuk op /uitleg. */
+.sb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--s-5); margin-top: var(--s-4); }
+.sb-kaart { border: 1px solid var(--border); border-radius: var(--r-md); overflow: hidden; background: var(--white); box-shadow: var(--shadow-sm); }
+.sb-kaart img { display: block; width: 100%; height: auto; border-bottom: 1px solid var(--border); }
+.sb-kaart-body { padding: var(--s-3) var(--s-4); }
+.sb-kaart-titel { font-weight: 700; font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--dark); }
+.sb-kaart-meta { font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); margin-top: var(--s-1); }
+.uitleg-hoofdstuk-beeld { border: 1px solid var(--border); border-radius: var(--r-md); overflow: hidden; box-shadow: var(--shadow-sm); margin: var(--s-4) 0; }
+.uitleg-hoofdstuk-beeld img { display: block; width: 100%; height: auto; }
