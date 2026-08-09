@@ -21,7 +21,7 @@
 // betreffende uitklapper aanvullen en LAATST_BIJGEWERKT verzetten.
 // ═══════════════════════════════════════════════════════════
 
-export const LAATST_BIJGEWERKT = "8 augustus 2026 (R7: bronnen-gezondheid)";
+export const LAATST_BIJGEWERKT = "9 augustus 2026 (R9: ontwikkeling deze maand op het klantdashboard, gebouwd)";
 
 export type Uitklapper = {
   titel: string;
@@ -151,7 +151,10 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "**De cockpit** is de werkplek van het bureau. Per klant een eigen commandocentrum met alles erin: " +
           "taken, pagina's, analyses, documenten, mail, resultaten en de site-brede gereedschappen.\n\n" +
           "**Het klantdashboard** is wat de klant ziet na inloggen: het maandoverzicht van de werkzaamheden, de " +
-          "uren en het budget, en de documenten die voor hem klaargezet zijn.\n\n" +
+          "uren en het budget, en de documenten die voor hem klaargezet zijn. Er kan ook een blok " +
+          "\"Ontwikkeling deze maand\" bij staan, in gewone taal: hoe de klikken en vertoningen vanuit Google " +
+          "zich ontwikkelden en welke aanpassingen er op de site zijn doorgevoerd. Dat blok staat standaard uit " +
+          "en gaat pas aan als het bureau het per klant heeft aangezet, vanuit de voorbeeldweergave.\n\n" +
           "Er is één URL voor alles. Wie inlogt bepaalt wat er verschijnt. Een klant kan niet bij een andere " +
           "klant komen, en het bureau kan bij iedereen, inclusief een voorbeeldweergave van hoe het dashboard " +
           "van die klant er voor de klant zelf uitziet.",
@@ -2036,31 +2039,30 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "| **R15** | De verkooppitch als eigen pagina | Overtuigt in twee minuten |",
         sub: [
           {
-            titel: "R9. Het klantdashboard op echte data",
+            titel: "R9. Het klantdashboard op echte data — gebouwd, wacht op jouw eerste klikje",
             tekst:
-              "**Wat er nu mis is.** De cockpit weet alles: posities, klikken, wat er is uitgevoerd, wat het " +
-              "opleverde. Het dashboard dat de klant ziet leest een spreadsheet met werkzaamheden, uren en " +
-              "budget. De rijkste data van het hele systeem komt dus niet bij de persoon die betaalt.\n\n" +
+              "**Waar het nu staat.** De cockpit wist al alles: klikken, vertoningen, wat er is uitgevoerd. Het " +
+              "dashboard dat de klant ziet, las tot nu toe alleen een spreadsheet met werkzaamheden, uren en " +
+              "budget. Dat is nu aangevuld: elke klant heeft een blok **\"Ontwikkeling deze maand\"** " +
+              "klaarstaan, dat in gewone taal vertelt hoe de klikken en vertoningen vanuit Google zich " +
+              "ontwikkelden ten opzichte van de periode ervoor, en welke aanpassingen er de afgelopen maand op " +
+              "de site zijn doorgevoerd, met wanneer. Geen nieuwe meting: het leunt op de nachtelijke " +
+              "klik-vergelijking (dezelfde die de klanten-kiezer al gebruikt) en op het wijzigingenlogboek dat er " +
+              "al was.\n\n" +
               "**Wat het oplevert.** Dit is het punt met de meeste verkoopwaarde van de hele lijst. Een klant die " +
               "elke maand ziet wat er gedaan is én wat het deed, vertrekt niet. Het is ook het onderdeel dat je " +
               "aan een lead kunt laten zien: dit krijg jij erbij.\n\n" +
-              "**Hoe we het zouden bouwen.**\n\n" +
-              "1. De spreadsheet blijft. Die is de bron voor uren en budget, en een bureau dat er al in werkt " +
-              "hoeft niets om te gooien. Er komt alleen iets bij.\n" +
-              "2. Per klant een blok met de ontwikkeling in gewone taal: hoe staan we er nu voor, wat is er " +
-              "veranderd, en wat leverden de aanpassingen van deze maand op. De meting daarvoor bestaat al " +
-              "(wijziging, voor en na); dit is die uitkomst in klanttaal.\n" +
-              "3. Streng filteren op wat een klant moet zien. Geen ruwe tabellen, geen jargon, geen interne " +
-              "afwegingen. Dezelfde regel als bij de documenten: wat de klant leest is niet wat de uitvoerder " +
-              "leest.\n" +
-              "4. Niets gaat automatisch naar de klant. Je ziet eerst de voorbeeldweergave die er al is, en jij " +
-              "besluit dat het klaar is.\n\n" +
-              "**Waaraan je ziet dat het af is.** Een klant ziet in zijn eigen dashboard zonder jouw tussenkomst " +
-              "de ontwikkeling van deze maand, in gewone taal, en jij hebt dat vooraf in de voorbeeldweergave " +
-              "kunnen nalopen.\n\n" +
-              "**Wat het raakt.** Dit verandert het dashboard dat de klant zelf ziet en de voorbeeldweergave waarin jij " +
-              "dat vooraf naloopt. Het leunt op de meting van wat een aanpassing opleverde, en het verandert de " +
-              "maandelijkse ronde langs je klanten.",
+              "**Wat je nog moet doen.** Het blok staat per klant standaard uit; er gaat dus nog niets " +
+              "automatisch naar iemand toe. Open bij een klant de voorbeeldweergave (Klant-tab, knop " +
+              "\"Voorbeeld\") en je ziet het blok bovenaan het dashboard staan, met een knop erboven: " +
+              "\"Verborgen voor de klant – zet aan\". Klopt de tekst, klik hem aan; vanaf dat moment ziet de " +
+              "klant het zelf, zonder dat jij er iets voor stuurt.\n\n" +
+              "**Waaraan je ziet dat het af is.** Bij minstens één klant staat het blok aangezet, en die klant " +
+              "ziet zonder jouw tussenkomst de ontwikkeling van deze maand in gewone taal. Tot dat moment blijft " +
+              "dit punt op \"loopt\" staan, ook al is de code klaar: gebouwd is nog geen gebruikt.\n\n" +
+              "**Wat het raakt.** Dit verandert het dashboard dat de klant zelf ziet en de voorbeeldweergave " +
+              "waarin jij dat vooraf naloopt. Het leunt op de klik-trend en het wijzigingenlogboek, en het " +
+              "verandert de maandelijkse ronde langs je klanten.",
           },
           {
             titel: "R10. Signaleren in plaats van kijken",

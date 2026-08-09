@@ -133,6 +133,36 @@ const BEWIJZEN: Record<string, BewijsRegel[]> = {
     },
   ],
 
+  R9: [
+    {
+      soort: "gedeployd",
+      wat: "De ontwikkeling van deze maand wordt uit de bestaande metingen opgebouwd",
+      laad: () => import("./ontwikkeling") as Promise<Record<string, unknown>>,
+      functie: "getOntwikkelingDezeMaand",
+    },
+    {
+      soort: "gedeployd",
+      wat: "Maarten kan het blok per klant aan of uit zetten",
+      laad: () => import("./clients") as Promise<Record<string, unknown>>,
+      functie: "setToonOntwikkeling",
+    },
+    {
+      soort: "kolom",
+      wat: "De database weet per klant of het blok aan staat",
+      tabel: "clients",
+      kolom: "toon_ontwikkeling",
+    },
+    {
+      soort: "data",
+      wat: "Minstens één klant ziet dit blok ook echt (Maarten heeft hem aangezet)",
+      telling: async () => {
+        await ensureSchema();
+        const { rows } = await sql`SELECT COUNT(*)::int AS n FROM clients WHERE toon_ontwikkeling = true`;
+        return Number(rows[0]?.n || 0);
+      },
+    },
+  ],
+
   R7: [
     {
       soort: "gedeployd",

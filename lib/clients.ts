@@ -66,6 +66,9 @@ export type ClientConfig = {
   ahrefsKeyRef: string | null;
   // Inlogpagina van de website-beheeromgeving (leeg = /wp-admin/ achter het domein).
   backendUrl: string | null;
+  // Toont het blok "Ontwikkeling deze maand" op het klantdashboard. Standaard
+  // uit; Maarten zet hem aan vanuit de voorbeeldweergave zodra hij hem goedkeurt.
+  toonOntwikkeling: boolean;
   budget: ClientBudget;
   cockpit: ClientCockpit;
 };
@@ -94,6 +97,7 @@ type ClientRow = {
   grp: string | null;
   ahrefs_key_ref: string | null;
   backend_url: string | null;
+  toon_ontwikkeling: boolean | null;
   email_domain: string | null;
   dev_name: string | null;
   work_doc_url: string | null;
@@ -129,6 +133,7 @@ function rowToConfig(r: ClientRow): ClientConfig {
     grp: r.grp || null,
     ahrefsKeyRef: r.ahrefs_key_ref || null,
     backendUrl: r.backend_url || null,
+    toonOntwikkeling: !!r.toon_ontwikkeling,
     budget: {
       maandbudget: Number(r.maandbudget),
       linkbuilding: Number(r.linkbuilding),
@@ -323,6 +328,16 @@ export async function setClientDevName(slug: string, naam: string): Promise<bool
 export async function setPositioneringUrl(slug: string, url: string): Promise<boolean> {
   await ensureSchema();
   const { rowCount } = await sql`UPDATE clients SET positionering_url = ${url.trim() || null} WHERE slug = ${slug}`;
+  return !!rowCount && rowCount > 0;
+}
+
+// R9: zet het blok "Ontwikkeling deze maand" op het klantdashboard aan of uit.
+// Losse functie, zelfde reden als devName/positioneringUrl hierboven: de
+// cockpit-PATCH overschrijft niet al haar velden tegelijk, maar dit veld wordt
+// vanuit de voorbeeldweergave gezet, dus verdient een eigen smalle actie.
+export async function setToonOntwikkeling(slug: string, aan: boolean): Promise<boolean> {
+  await ensureSchema();
+  const { rowCount } = await sql`UPDATE clients SET toon_ontwikkeling = ${aan} WHERE slug = ${slug}`;
   return !!rowCount && rowCount > 0;
 }
 

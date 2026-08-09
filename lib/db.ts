@@ -163,6 +163,10 @@ async function init(): Promise<void> {
   // als "Sander" in zes schermen, waardoor bij elke klant Sander in beeld kwam
   // terwijl hij alleen voor Kamsteeg bouwt. Leeg = gewoon "Dev" tonen.
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS dev_name TEXT`;
+  // R9: schakelt het blok "Ontwikkeling deze maand" op het KLANTdashboard aan.
+  // Standaard uit: niets gaat automatisch naar de klant, ook al bestaat het
+  // blok al in de voorbeeldweergave. Maarten zet hem per klant zelf aan.
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS toon_ontwikkeling BOOLEAN NOT NULL DEFAULT false`;
 
   // ── KPI-trend per klant (gevuld door de nachtelijke cron client-trends) ──
   // Voor de "mooie ontwikkeling"-selectie in de klanten-dropdown: per klant en

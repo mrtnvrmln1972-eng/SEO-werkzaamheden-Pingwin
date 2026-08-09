@@ -11,6 +11,8 @@ import {
   type DashboardData,
 } from "../../lib/sheet";
 import LinkPreview from "../admin/client/[slug]/LinkPreview";
+import { Paneel, Blok, Tekst, Signalen, Chip } from "../_ui/Uitkomst";
+import type { OntwikkelingDezeMaand } from "../../lib/ontwikkeling";
 
 // "?"-uitleg bij een taak: klik opent een nette gecentreerde popup (zelfde
 // opmaak als de uitleg-popups in de cockpit), sluiten via kruisje/buiten/Escape.
@@ -52,7 +54,85 @@ type Props = {
   budget: ClientBudget;
   adminPreview?: boolean;
   initialData?: DashboardData | null;
+  // R9: het blok "Ontwikkeling deze maand". slug/toonOntwikkeling zijn alleen
+  // nodig zodat de voorbeeldweergave het blok kan aan/uitzetten voor de klant.
+  slug?: string;
+  ontwikkeling?: OntwikkelingDezeMaand | null;
+  toonOntwikkeling?: boolean;
 };
+
+// Eén regel over hoe lang geleden een wijziging is doorgevoerd, in klanttaal.
+function geledenTekst(iso: string): string {
+  const dagen = Math.round((Date.now() - new Date(iso).getTime()) / 86400000);
+  if (dagen <= 0) return "vandaag";
+  if (dagen === 1) return "gisteren";
+  if (dagen < 14) return `${dagen} dagen geleden`;
+  const weken = Math.round(dagen / 7);
+  return `${weken} weken geleden`;
+}
+
+// Het narratieve blok "Ontwikkeling deze maand" (R9): hoe staat de klant er nu
+// voor, wat veranderde er, en wat leverde dat op. In de voorbeeldweergave altijd
+// zichtbaar (met de aan/uit-knop erbij); op het echte klantdashboard alleen als
+// Maarten hem heeft aangezet.
+function OntwikkelingBlok({ data, adminPreview, slug, toonOntwikkeling }: {
+  data: OntwikkelingDezeMaand; adminPreview?: boolean; slug?: string; toonOntwikkeling?: boolean;
+}) {
+  const [aan, setAan] = useState(!!toonOntwikkeling);
+  const [busy, setBusy] = useState(false);
+
+  if (!adminPreview && !toonOntwikkeling) return null;
+
+  async function zetAan(nieuw: boolean) {
+    if (!slug || busy) return;
+    setBusy(true);
+    try {
+      const res = await fetch("/api/admin/clients", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, action: "toonOntwikkeling", aan: nieuw }),
+      });
+      if ((await res.json()).ok) setAan(nieuw);
+    } catch { /* de knop blijft dan gewoon op de oude stand staan */ }
+    setBusy(false);
+  }
+
+  return (
+    <Paneel
+      titel="Ontwikkeling deze maand"
+      knoppen={adminPreview ? (
+        <button
+          type="button"
+          className={"btn btn-klein " + (aan ? "btn-primary" : "btn-ghost")}
+          disabled={busy}
+          onClick={() => zetAan(!aan)}
+        >
+          {aan ? "Zichtbaar voor de klant – zet uit" : "Verborgen voor de klant – zet aan"}
+        </button>
+      ) : undefined}
+    >
+      {adminPreview && !aan && (
+        <Tekst klein>
+          Dit blok staat nu nog uit. Alleen jij ziet het hier in de voorbeeldweergave; de klant ziet
+          het pas zodra je hem aanzet.
+        </Tekst>
+      )}
+      <Blok titel={data.kop} meta={data.isGoed ? <Chip toon="goed">Mooie ontwikkeling</Chip> : undefined}>
+        <Signalen regels={data.regels} soort="notitie" />
+      </Blok>
+      {data.laatsteWijzigingen.length > 0 && (
+        <Blok titel="Wat er is aangepast">
+          <Signalen
+            soort="goed"
+            regels={data.laatsteWijzigingen.map(
+              (w) => `${w.url} – ${w.samenvatting} (${geledenTekst(w.datum)})`,
+            )}
+          />
+        </Blok>
+      )}
+    </Paneel>
+  );
+}
 
 // Laat opmaak/links staan, verwijdert scripts, handlers en inline font/kleur-stijlen
 // zodat het klant-dashboard altijd dezelfde typografie toont als de rest van de pagina.
@@ -105,7 +185,7 @@ function formatTime(minutes: number): string {
   return `${minutes}m`;
 }
 
-export default function Dashboard({ name, sheetId, gid, budget, adminPreview, initialData }: Props) {
+export default function Dashboard({ name, sheetId, gid, budget, adminPreview, initialData, slug, ontwikkeling, toonOntwikkeling }: Props) {
   const [data, setData] = useState<DashboardData | null>(initialData ?? null);
   const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -296,6 +376,15 @@ export default function Dashboard({ name, sheetId, gid, budget, adminPreview, in
                 </button>
               ))}
             </div>
+
+            {ontwikkeling && (
+              <OntwikkelingBlok
+                data={ontwikkeling}
+                adminPreview={adminPreview}
+                slug={slug}
+                toonOntwikkeling={toonOntwikkeling}
+              />
+            )}
 
             <div className="stats-grid">
               <div className="stat-card">

@@ -20,6 +20,29 @@ export async function saveClientTrend(
       is_good = EXCLUDED.is_good, computed_at = now()`;
 }
 
+export type ClientTrend = {
+  clicksNow: number; clicksPrev: number;
+  impressionsNow: number; impressionsPrev: number;
+  isGood: boolean; computedAt: string;
+};
+
+// De ruwe cijfers van één klant, voor het klantdashboard (R9: "ontwikkeling
+// deze maand"). Geeft null als er voor deze klant nog nooit gerekend is
+// (nieuwe klant, of de nachtelijke cron is er nog niet aan toegekomen).
+export async function getClientTrend(slug: string, period: "28d" | "90d"): Promise<ClientTrend | null> {
+  await ensureSchema();
+  const { rows } = await sql`
+    SELECT clicks_now, clicks_prev, impressions_now, impressions_prev, is_good, computed_at
+    FROM client_trends WHERE client_slug = ${slug} AND period = ${period} LIMIT 1`;
+  const r = rows[0];
+  if (!r) return null;
+  return {
+    clicksNow: Number(r.clicks_now), clicksPrev: Number(r.clicks_prev),
+    impressionsNow: Number(r.impressions_now), impressionsPrev: Number(r.impressions_prev),
+    isGood: !!r.is_good, computedAt: new Date(r.computed_at as string).toISOString(),
+  };
+}
+
 // Per klant de vlaggen good28/good90 (alleen klanten die ooit berekend zijn).
 export async function getTrendFlags(): Promise<Record<string, TrendFlags>> {
   await ensureSchema();
