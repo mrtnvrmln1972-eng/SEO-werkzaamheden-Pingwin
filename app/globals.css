@@ -6761,3 +6761,131 @@ a.wb-pad:hover { text-decoration: underline; }
   padding: var(--s-3) var(--s-4); background: var(--white);
   max-height: 46vh; overflow-y: auto;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   AGENDA (/admin/agenda) — Maartens persoonlijke weekagenda.
+   Poort van LifeMax' Weekplanner (zie pingwin-brein voor de achtergrond).
+   Alle .ag-*-klassen zijn eigen aan dit scherm; volledig op de schaal-tokens.
+   ═══════════════════════════════════════════════════════════ */
+
+.ag-wrap { user-select: none; }
+.ag-toolbar { margin-bottom: var(--s-4); }
+.ag-weekbar { display: flex; align-items: center; gap: var(--s-3); }
+.ag-weekbar-label { font-size: var(--fs-md); line-height: var(--lh-md); font-weight: 700; min-width: 220px; }
+
+.ag-note { margin-top: var(--s-4); color: var(--gray); font-size: var(--fs-sm); line-height: var(--lh-sm); }
+
+/* Dagkiezer (mobiel) */
+.ag-day-selector { display: flex; gap: var(--s-1); margin-bottom: var(--s-3); overflow-x: auto; }
+.ag-day-selector-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: var(--s-1) var(--s-3); border: 1px solid var(--border); border-radius: var(--r-md);
+  background: var(--white); color: var(--gray); font-family: 'Montserrat', sans-serif;
+}
+.ag-day-selector-name { font-size: var(--fs-xs); line-height: var(--lh-xs); text-transform: uppercase; }
+.ag-day-selector-num { font-size: var(--fs-base); line-height: var(--lh-base); font-weight: 700; }
+.ag-day-selector-btn.today .ag-day-selector-num { color: var(--orange-dark); }
+.ag-day-selector-btn.active { background: var(--orange); border-color: var(--orange); color: var(--white); }
+.ag-day-selector-btn.active .ag-day-selector-name, .ag-day-selector-btn.active .ag-day-selector-num { color: var(--white); }
+
+/* Weekrooster */
+.ag-week-grid { padding: 0; overflow: hidden; }
+.ag-week-grid.day-view { overflow-x: auto; }
+.ag-week-header { display: flex; border-bottom: 1px solid var(--border); background: var(--white); border-radius: var(--r-lg) var(--r-lg) 0 0; }
+.ag-time-gutter { width: 52px; flex-shrink: 0; position: relative; }
+.ag-day-head { flex: 1; text-align: center; padding: var(--s-2) var(--s-1); font-weight: 700; border-left: 1px solid var(--border); }
+.ag-day-head.today .ag-day-num { background: var(--orange); color: var(--white); border-radius: var(--r-full); padding: 2px var(--s-2); }
+.ag-day-name { color: var(--gray); font-size: var(--fs-xs); line-height: var(--lh-xs); text-transform: uppercase; }
+.ag-day-num { font-size: var(--fs-base); line-height: var(--lh-base); }
+
+.ag-week-alldag { display: flex; border-bottom: 1px solid var(--border); background: var(--white); }
+.ag-alldag-col { flex: 1; display: flex; flex-direction: column; gap: var(--s-1); padding: var(--s-1); min-height: 8px; border-left: 1px solid var(--border); cursor: cell; }
+.ag-alldag-col.today { background: var(--orange-light); }
+.ag-alldag-col-target { background: var(--orange-light); outline: 2px dashed var(--orange); outline-offset: -2px; }
+.ag-alldag-taak { display: flex; align-items: center; gap: var(--s-1); border-radius: var(--r-sm); padding: 3px var(--s-2); font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--white); cursor: grab; }
+.ag-alldag-taak.done { opacity: 0.5; }
+.ag-alldag-taak.done .ag-alldag-taak-titel { text-decoration: line-through; }
+.ag-alldag-taak.dragging { opacity: 0.75; cursor: grabbing; z-index: 5; }
+.ag-alldag-taak-start { border-radius: var(--r-sm) 0 0 var(--r-sm); margin-right: -6px; padding-right: var(--s-3); }
+.ag-alldag-taak-midden { border-radius: 0; margin-left: -6px; margin-right: -6px; padding-left: var(--s-3); padding-right: var(--s-3); }
+.ag-alldag-taak-eind { border-radius: 0 var(--r-sm) var(--r-sm) 0; margin-left: -6px; padding-left: var(--s-3); }
+.ag-alldag-check { flex-shrink: 0; width: 16px; height: 16px; border: none; background: rgba(255, 255, 255, 0.25); border-radius: 5px; color: var(--white); font-size: var(--fs-xs); line-height: 1; padding: 0; }
+.ag-alldag-check:hover { background: rgba(255, 255, 255, 0.45); }
+.ag-alldag-taak-titel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.ag-week-body { display: flex; position: relative; }
+.ag-hour-label { position: absolute; right: var(--s-2); transform: translateY(-50%); font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); font-variant-numeric: tabular-nums; }
+.ag-day-col { flex: 1; position: relative; border-left: 1px solid var(--border); cursor: cell; }
+.ag-day-col.today { background: var(--orange-light); }
+.ag-hour-line { position: absolute; left: 0; right: 0; border-top: 1px solid var(--border); opacity: 0.6; pointer-events: none; }
+
+.ag-block { position: absolute; left: 3px; right: 3px; border-radius: var(--r-sm); padding: 3px var(--s-2) 3px 22px; font-size: var(--fs-xs); line-height: 1.25; overflow: hidden; cursor: grab; border: none; box-shadow: var(--shadow-sm); color: var(--white); }
+.ag-block.dragging { opacity: 0.75; cursor: grabbing; z-index: 10; }
+.ag-block-ghost { background: var(--orange); opacity: 0.55; border: 2px dashed rgba(255, 255, 255, 0.7); pointer-events: none; z-index: 11; display: flex; align-items: center; }
+.ag-block.done { opacity: 0.45; }
+.ag-block.done .ag-block-title { text-decoration: line-through; }
+.ag-block-title { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ag-block-time { font-size: 10px; opacity: 0.85; font-variant-numeric: tabular-nums; }
+.ag-block-check { position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; border: none; background: rgba(255, 255, 255, 0.25); border-radius: 5px; color: var(--white); font-size: var(--fs-xs); line-height: 1; padding: 0; }
+.ag-block-check:hover { background: rgba(255, 255, 255, 0.45); }
+.ag-block-resize { position: absolute; left: 0; right: 0; bottom: 0; height: 7px; cursor: ns-resize; }
+
+/* Zwevende pop-up (blok/taak bewerken) */
+.ag-popup { position: fixed; z-index: 200; width: min(400px, calc(100vw - 16px)); max-height: min(560px, calc(100vh - 16px)); overflow-y: auto; background: var(--white); border-radius: var(--r-lg); padding: var(--s-4); box-shadow: var(--shadow-lg); }
+.ag-popup-meten { visibility: hidden; }
+.ag-modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--s-3); }
+.ag-modal-head h2 { font-size: var(--fs-md); line-height: var(--lh-md); color: var(--gray); }
+.ag-modal-actions { display: flex; align-items: center; gap: var(--s-2); margin-top: var(--s-4); }
+.ag-modal-actions-spacer { flex: 1; }
+
+.ag-field { display: flex; flex-direction: column; gap: var(--s-1); margin-bottom: var(--s-3); flex: 1; }
+.ag-field > span { font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700; color: var(--gray); }
+.ag-field input, .ag-field textarea {
+  font-family: 'Montserrat', sans-serif; font-size: var(--fs-sm); line-height: var(--lh-sm);
+  padding: var(--s-1) var(--s-2); border: 1px solid var(--border); border-radius: var(--r-sm);
+  background: var(--white); color: var(--dark);
+}
+.ag-field input:focus, .ag-field textarea:focus { outline: 2px solid var(--orange-light); border-color: var(--orange); }
+.ag-field-row { display: flex; gap: var(--s-3); }
+.ag-checkbox-field { flex-direction: row; align-items: center; gap: var(--s-2); }
+.ag-checkbox-field input { width: 16px; height: 16px; accent-color: var(--orange); }
+
+.ag-checklist-item { margin-bottom: var(--s-1); }
+.ag-checklist-item span:not(.ag-delete-btn) { flex: 1; font-size: var(--fs-sm); line-height: var(--lh-sm); }
+.ag-checklist-item span.ag-done { text-decoration: line-through; opacity: 0.55; }
+
+.ag-color-row { display: flex; gap: var(--s-2); flex-wrap: wrap; }
+.ag-color-dot { width: 22px; height: 22px; border-radius: var(--r-full); border: 2px solid transparent; padding: 0; }
+.ag-color-dot.selected { border-color: var(--dark); }
+
+/* Toggle-pil: dagkeuze, prioriteit, herinnering, kleine filters. Eigen vorm
+   (geen .btn): dit is een selectiestaat, geen actie. */
+.ag-weekday-row { display: flex; gap: var(--s-1); flex-wrap: wrap; }
+.ag-toggle {
+  font-family: 'Montserrat', sans-serif; font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 600;
+  padding: var(--s-1) var(--s-2); border: 1px solid var(--border); border-radius: var(--r-sm);
+  background: var(--white); color: var(--gray); cursor: pointer;
+}
+.ag-toggle:hover { border-color: var(--orange); color: var(--orange-dark); }
+.ag-toggle.on { background: var(--orange); border-color: var(--orange); color: var(--white); }
+
+.ag-delete-btn { background: none; border: none; color: var(--gray); font-size: var(--fs-base); padding: 2px var(--s-1); border-radius: var(--r-sm); cursor: pointer; }
+.ag-delete-btn:hover { color: var(--red); background: var(--gray-light); }
+
+.ag-md-preview { border: 1px solid var(--border); border-radius: var(--r-sm); padding: var(--s-2) var(--s-3); font-size: var(--fs-sm); line-height: var(--lh-sm); background: var(--gray-light); }
+
+/* Datumknop: compacte badge die een klein paneel openklapt */
+.ag-datumknop-wrap { margin-bottom: var(--s-3); position: relative; }
+.ag-datumknop {
+  font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: var(--fs-sm); line-height: var(--lh-sm);
+  padding: var(--s-1) var(--s-3); border: 1px solid var(--border); border-radius: var(--r-full);
+  background: var(--gray-light); color: var(--dark); cursor: pointer;
+}
+.ag-datumknop:hover { border-color: var(--orange); }
+.ag-datumknop-panel { position: fixed; z-index: 210; width: min(300px, calc(100vw - 16px)); padding: var(--s-3); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--white); box-shadow: var(--shadow-lg); }
+.ag-datumknop-panel-meten { visibility: hidden; left: -9999px; top: -9999px; }
+.ag-datumknop-tabs { margin-bottom: var(--s-2); }
+.ag-datumknop-tabcontent .ag-field { margin-bottom: 0; }
+.ag-datumknop-section { margin-top: var(--s-3); }
+.ag-datumknop-section-kop { display: block; font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700; color: var(--gray); margin-bottom: var(--s-1); }
+.ag-datumknop-close-row { display: flex; justify-content: flex-end; margin-top: var(--s-3); }
