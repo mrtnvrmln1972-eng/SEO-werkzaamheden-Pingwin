@@ -144,6 +144,7 @@
 }
 .btn:hover { border-color: var(--orange); color: var(--orange-dark); }
 .btn:disabled { opacity: 0.6; cursor: default; }
+.btn:focus-visible { outline: 2px solid var(--orange-dark); outline-offset: 2px; }
 .btn-primary { background: var(--orange); border-color: var(--orange); color: var(--white); }
 .btn-primary:hover { background: var(--orange-dark); border-color: var(--orange-dark); color: var(--white); }
 /* .btn-ghost (secundaire knop) staat verderop in dit bestand, bij "DOORZICHTIGE KNOPPEN". */
@@ -2458,9 +2459,9 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .strategy-card { padding: 0; overflow: hidden; position: relative; }
 .strategy-head { display: flex; align-items: baseline; gap: var(--s-2); width: 100%; background: linear-gradient(228deg, rgba(199, 226, 235, 0.25) 20%, rgba(248, 218, 188, 0.35) 85%); border: none; padding: var(--s-3) var(--s-4); font-family: inherit; font-weight: 700; font-size: var(--fs-base); line-height: var(--lh-base); color: var(--dark); text-align: left; cursor: pointer; }
 .strategy-head:hover .strategy-title { color: var(--orange-dark); }
-.strategy-sub { font-weight: 400; font-size: 12px; color: var(--gray); }
+.strategy-sub { font-weight: 400; font-size: var(--fs-sm); color: var(--gray); }
 .strategy-head .strategy-meta-right { margin-left: auto; font-weight: 400; font-size: var(--fs-sm); color: var(--gray); }
-.strategy-caret { color: var(--orange); font-size: 12px; }
+.strategy-caret { color: var(--orange); font-size: var(--fs-sm); }
 .strategy-body { padding: var(--s-3) var(--s-4) var(--s-4); display: flex; flex-direction: column; gap: var(--s-2); }
 .strategy-session { border: 1px solid var(--border); border-radius: 10px; background: var(--white); }
 .strategy-session-head { display: flex; align-items: center; gap: 8px; padding: 4px 10px 4px 4px; }
@@ -2502,8 +2503,8 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .chat-img-thumb-del:hover { color: #C62828; border-color: #C62828; }
 
 /* Bedrijfsgegevens-formulier (structured data-bron): net grid, ook op de deelpagina. */
-.org-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.org-form { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
+.org-actions { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; }
+.org-form { display: flex; flex-direction: column; gap: var(--s-3); margin-top: var(--s-3); }
 /* ── Bedrijfsgegevens: één vaste vorm per blok ──────────────────────────
    Elk onderdeel (algemeen, vestigingen, bereikbaarheid, artsen, diensten,
    opmerkingen) is een lichte, dun omrande kaart met een rustig kopje: geen
@@ -3182,9 +3183,9 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
 
 /* Kennisbank structured data (Klant-tab). */
 .kb-wrap { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
-.kb-voorstel-lijst { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; }
+.kb-voorstel-lijst { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: var(--fs-sm); }
 .kb-voorstel-lijst li { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-.kb-velden { flex-basis: 100%; padding-left: 2px; font-size: 12px; }
+.kb-velden { flex-basis: 100%; padding-left: 2px; font-size: var(--fs-sm); }
 .kb-geen-vestiging {
   font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray);
   border: 1px solid var(--border); border-radius: var(--r-full); padding: 0 var(--s-2); white-space: nowrap;
@@ -5743,7 +5744,7 @@ a.wb-pad:hover { text-decoration: underline; }
   padding: 0 var(--s-3);
   font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--muted);
 }
-.btn-klein { padding: 6px 12px; font-size: var(--fs-sm); align-self: flex-start; }
+.btn-klein { padding: var(--s-2) var(--s-3); font-size: var(--fs-sm); align-self: flex-start; }
 
 /* ── De volledige beschrijving, bij het punt zelf ─────────────────
    Stond eerst als link naar /uitleg#agenda, en dan zocht je in een lang
@@ -6182,6 +6183,21 @@ a.wb-pad:hover { text-decoration: underline; }
 .wp-icon:focus-visible,
 .pd-ververs:focus-visible,
 .ghost-btn:focus-visible { outline: 2px solid var(--orange-dark); outline-offset: 2px; }
+
+/* .btn-ghost is dubbelop gebruikt: als volledig zelfstandige knopstijl voor de
+   oudere klassen hierboven (wp-fase-btn, wp-act, …), én als kleurmodifier bovenop
+   `.btn` in de knopconventie (`className="btn btn-ghost btn-klein"`). In die tweede
+   rol botste hij steeds: .btn-ghost en .btn-klein hebben gelijke specificiteit, dus
+   won wie toevallig later in dit bestand staat (.btn-ghost) van tekstgrootte,
+   padding én ronding, ook al hoorde .btn-ghost hier alleen kleur te leveren, zoals
+   .btn-primary/.btn-quiet/.btn-danger dat wel netjes doen. Gevolg: een knop met
+   `btn btn-ghost btn-klein` ("Delen met developer") kreeg 11px tekst en een volle
+   pil-ronding, terwijl `btn btn-primary btn-klein` ernaast ("Vergrendelen") 12,5px
+   en een normale afronding hield. Deze twee samengestelde selectors winnen altijd
+   (hogere specificiteit dan de losse .btn-ghost hierboven), dus .btn-ghost gedraagt
+   zich voortaan ook echt als kleurmodifier zodra hij samen met .btn staat. */
+.btn.btn-ghost { font-size: var(--fs-base); line-height: var(--lh-base); padding: var(--s-2) var(--s-4); border-radius: var(--r-md); }
+.btn.btn-ghost.btn-klein { font-size: var(--fs-sm); padding: var(--s-2) var(--s-3); }
 
 /* De uitzonderingen die moeten blijven winnen. */
 .wp-fase-btn.wp-fase-btn-primair { background: var(--orange); border-color: var(--orange); color: var(--white); }
