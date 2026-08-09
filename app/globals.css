@@ -255,16 +255,16 @@ body {
   text-transform: uppercase; letter-spacing: 1.5px;
 }
 .header-client { font-size: 14px; font-weight: 500; color: var(--gray); }
-.header-right { display: flex; align-items: center; gap: 16px; }
+.header-right { display: flex; align-items: center; gap: var(--s-2); }
 .header-contact { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--gray); }
 .header-contact-label { font-weight: 700; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
 .header-contact-date { font-weight: 500; }
 .header-updated { font-size: 12px; color: var(--gray); font-weight: 400; }
 .logout-btn {
   font-family: 'Montserrat', sans-serif;
-  font-size: 12px; font-weight: 600; color: var(--gray);
+  font-size: var(--fs-xs); font-weight: 600; color: var(--gray);
   background: none; border: 1px solid var(--border);
-  padding: 6px 14px; border-radius: 6px; cursor: pointer;
+  padding: var(--s-1) var(--s-2); border-radius: 6px; cursor: pointer;
   transition: all 0.2s;
 }
 .logout-btn:hover { border-color: var(--orange); color: var(--orange); }
@@ -3541,7 +3541,7 @@ body.zp-sleept { user-select: none; cursor: grabbing; }
 .wp-sectie-label { font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: #5e6063; margin: 10px 0 5px; }
 /* Projectkaart: de 7 fases verticaal, met status, startknop en handmatig vinkje. */
 .wp-fases { margin: var(--s-2) 0 var(--s-1); border: 1px solid var(--card-border); border-radius: var(--r-md); background: #fff; }
-.wp-fase { padding: var(--s-2) var(--s-3); border-bottom: 1px solid var(--border); }
+.wp-fase { padding: var(--s-1) var(--s-3); border-bottom: 1px solid var(--border); }
 .wp-fase:last-of-type { border-bottom: none; }
 .wp-fase-rij { display: flex; align-items: center; gap: var(--s-2); }
 /* Vaste kolommen in de fase-rijen: labels, chips en knoppen recht onder elkaar. */
@@ -3558,9 +3558,6 @@ body.zp-sleept { user-select: none; cursor: grabbing; }
 /* Nog niet af: rood kruisje in dezelfde pilvorm als het groene vinkje. Zo hoef je
    niets te lezen om te zien wat er staat. */
 .wp-fase-chip.wp-fase-open { color: #a12622; background: #fdecec; border-color: #f2c4c2; min-width: 34px; font-size: var(--fs-sm); }
-/* Bouw en publicatie is het moment dat het werk naar de sitebouwer gaat; dat mag
-   je zien, dus een lijn boven die stap. */
-.wp-fase.wp-fase-scheiding { border-top: 1px solid var(--card-border); margin-top: var(--s-2); padding-top: var(--s-2); }
 .wp-fase-btn.wp-fase-btn-aan { border-color: #1e824c; color: #1e824c; background: #eaf6ef; }
 /* Klein linkje naar het document, achter de fasenaam. Vervangt drie volle
    "Document"-knoppen die de rij onrustig maakten. */
@@ -3698,6 +3695,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .wp-kop-rij { display: flex; align-items: flex-start; gap: 10px; }
 .wp-kop-tekst { flex: 1; min-width: 0; }
 .wp-kop-acties { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+/* De knopjes bovenin een kaart (Is dit doorgevoerd?, Opschonen) mogen kleiner
+   dan de gewone .btn-klein elders: hier staan ze naast elkaar in een smalle
+   kopbalk, niet los in een paneel. */
+.wp-kop-acties .btn.btn-ghost.btn-klein { padding: var(--s-1) var(--s-2); font-size: var(--fs-xs); }
 .wp-onder-regel { align-items: center; justify-content: flex-end; margin-top: var(--s-3); padding-top: var(--s-3); border-top: 1px solid #ececec; }
 /* Twee groepjes op de onderste regel: links "waar kan ik heen", rechts "wat stuur
    ik weg". Stonden eerder als zes gelijke pilletjes naast elkaar, waardoor Mail er
@@ -3759,6 +3760,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .wp-act:hover { background: var(--gray-light); color: var(--dark); }
 .wp-act-klant { color: var(--orange); border-color: #f2c9b0; }
 .wp-act-klant:hover { background: var(--orange-light); color: var(--orange-dark); }
+.wp-act-aan { background: #e7f6ea; border-color: #1c7a3f; color: #1c7a3f; }
+.wp-act-aan:hover { background: #e7f6ea; color: #1c7a3f; }
 
 /* "Mail naar klant"-composer (overlay met bewerkbare preview) */
 .wp-mail-overlay { position: fixed; inset: 0; z-index: 10002; background: rgba(0,0,0,0.28); display: flex; align-items: flex-start; justify-content: center; padding: 6vh 16px; overflow-y: auto; }
@@ -4103,7 +4106,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 
 /* "Alles in één keer" hoort bij de eerste drie fases samen, niet in de Copy-rij:
    daar maakte hij die ene rij hoger dan de andere zes. */
-.wp-fases-kop { display: flex; align-items: center; gap: var(--s-2, 8px); margin: var(--s-3, 12px) 0 var(--s-1, 4px); flex-wrap: wrap; }
+.wp-fases-kop { display: flex; align-items: center; gap: var(--s-2, 8px); margin: var(--s-2, 8px) 0 var(--s-1, 4px); flex-wrap: wrap; }
 
 /* ── Afwerkpagina werklijst (publiek, /share/werklijst/…) ── */
 .wp-werklijst-teller { font-size: var(--fs-xs, 11.5px); font-weight: 700; color: #1c7a3f; background: #eaf5ee; border-radius: var(--r-full, 99px); padding: 2px 10px; margin-left: var(--s-2, 8px); }

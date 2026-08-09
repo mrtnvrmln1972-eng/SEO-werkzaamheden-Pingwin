@@ -898,8 +898,8 @@ function daysAgoLabel(iso: string): string {
   const n = daysSince(iso);
   if (n == null) return "";
   if (n <= 0) return "vandaag";
-  if (n === 1) return "1 dag geleden";
-  return `${n} dagen geleden`;
+  if (n === 1) return "1 dag";
+  return `${n} dagen`;
 }
 
 function contactColor(iso: string): string {
