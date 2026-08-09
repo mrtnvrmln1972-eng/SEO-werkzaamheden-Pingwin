@@ -73,6 +73,12 @@ async function init(): Promise<void> {
   // concurrentieanalyse: die skill benchmarkt altijd al tegen concurrenten
   // binnen ditzelfde document (zie lib/fundament.ts).
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS positionering_url TEXT`;
+  // Link naar de vastgelegde huisstijl (design-tokens/referentiedocument) en
+  // naar het Google Ads-account. Allebei een los bewaard linkje, geen live
+  // koppeling: er is geen API-toegang, dus dit is bewust alleen "staat de link
+  // hier" en nooit "we hebben het geverifieerd".
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS huisstijl_url TEXT`;
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS ads_account_url TEXT`;
 
   // Doorgevoerde 301-redirects per pagina (uit de cannibalisatie-analyse): welke
   // redirect is wanneer in de website gezet en is hij live geverifieerd (echte 301

@@ -23,7 +23,6 @@ import MailAllowlist from "./MailAllowlist";
 import LinkPreview from "./LinkPreview";
 import { mdToHtml } from "../../../../lib/markdown";
 import BespreekLijsten from "./BespreekLijsten";
-import LinksPaneel from "./LinksPaneel";
 import FloatVenster from "./FloatVenster";
 import DeveloperOverview from "../../developer/DeveloperOverview";
 import KpiPanel from "./KpiPanel";
@@ -475,12 +474,6 @@ export default function ClientCockpit({
         <ZijPaneel label="Zoekwoorden & links">
           <FocusBlock slug={client.slug} />
         </ZijPaneel>
-        {/* Eén blik op alle bronnen die het overzicht voeden of zouden moeten
-            voeden (Search Console, GMB, klantprofiel, structured data, ...),
-            met een directe link naar het scherm waar je hem beheert. */}
-        <ZijPaneel label="Links" top={420}>
-          <LinksPaneel slug={client.slug} seoProfile={client.seoProfile || ""} googleConnected={googleConnected} onGaNaar={(t) => changeTab(validTab(t))} />
-        </ZijPaneel>
 
         {tab === "lead" && (
           <LeadTab slug={client.slug} naam={client.name} domain={client.domain || ""} />
@@ -763,7 +756,13 @@ export default function ClientCockpit({
         {tab === "onboarding" && <OnboardingPanel slug={client.slug} onGaNaar={(t) => changeTab(validTab(t))} />}
 
         {tab === "klant" && (<>
-          <FundamentPanel slug={client.slug} seoProfile={client.seoProfile || ""} positioneringUrl={client.cockpit.positioneringUrl || ""} onGaNaar={(t) => changeTab(validTab(t))} />
+          <FundamentPanel
+            slug={client.slug}
+            positioneringUrl={client.cockpit.positioneringUrl || ""}
+            huisstijlUrl={client.cockpit.huisstijlUrl || ""}
+            adsAccountUrl={client.cockpit.adsAccountUrl || ""}
+            onGaNaar={(t) => changeTab(validTab(t))}
+          />
           <OrgDataPanel slug={client.slug} clientEmail={client.email || ""} />
           {/* Wie de concurrentie is, is klantkennis en hoort hier, niet verstopt
               achter een knopje in een scan-blok. Zelfde component als daar. */}

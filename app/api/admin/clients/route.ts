@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminScope, canAccessSlug, guardOwner } from "../../../../lib/admin-scope";
 import { opruimWeesOrgData } from "../../../../lib/org-data";
-import { listClients, createClient, createLead, setClientFase, deleteClient, updateClientCockpit, updateClientCore, parseSheetUrl, resetClientPassword, setClientBudget, setClientBackendUrl, setClientDevName, setPositioneringUrl, setToonOntwikkeling, getOrCreateShareToken, FASES, type Fase } from "../../../../lib/clients";
+import { listClients, createClient, createLead, setClientFase, deleteClient, updateClientCockpit, updateClientCore, parseSheetUrl, resetClientPassword, setClientBudget, setClientBackendUrl, setClientDevName, setPositioneringUrl, setToonOntwikkeling, setHuisstijlUrl, setAdsAccountUrl, getOrCreateShareToken, FASES, type Fase } from "../../../../lib/clients";
 
 export const runtime = "nodejs";
 
@@ -178,6 +178,20 @@ export async function PATCH(req: NextRequest) {
   // de voorbeeldweergave, nadat Maarten het daar heeft nagelopen.
   if (body.action === "toonOntwikkeling") {
     const ok = await setToonOntwikkeling(slug, !!body.aan);
+    if (!ok) return NextResponse.json({ ok: false, error: "Klant niet gevonden." }, { status: 404 });
+    return NextResponse.json({ ok: true });
+  }
+
+  // Link naar de vastgelegde huisstijl (fundament-status op de klant-tab).
+  if (body.action === "huisstijlUrl") {
+    const ok = await setHuisstijlUrl(slug, String(body.huisstijlUrl || ""));
+    if (!ok) return NextResponse.json({ ok: false, error: "Klant niet gevonden." }, { status: 404 });
+    return NextResponse.json({ ok: true });
+  }
+
+  // Link naar het Google Ads-account (fundament-status op de klant-tab).
+  if (body.action === "adsAccountUrl") {
+    const ok = await setAdsAccountUrl(slug, String(body.adsAccountUrl || ""));
     if (!ok) return NextResponse.json({ ok: false, error: "Klant niet gevonden." }, { status: 404 });
     return NextResponse.json({ ok: true });
   }

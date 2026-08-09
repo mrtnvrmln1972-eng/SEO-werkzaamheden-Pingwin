@@ -21,7 +21,7 @@
 // betreffende uitklapper aanvullen en LAATST_BIJGEWERKT verzetten.
 // ═══════════════════════════════════════════════════════════
 
-export const LAATST_BIJGEWERKT = "9 augustus 2026 (R6: copy als concept naar WordPress; R9: ontwikkeling deze maand op het klantdashboard, gebouwd; R14: schermafbeeldingen)";
+export const LAATST_BIJGEWERKT = "9 augustus 2026 (Fundament: koppelingen en klantkennis samengevoegd tot één tegel-dashboard; R6: copy als concept naar WordPress; R9: ontwikkeling deze maand op het klantdashboard, gebouwd; R14: schermafbeeldingen)";
 
 export type Uitklapper = {
   titel: string;
@@ -173,12 +173,11 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "| **Klant** | Documenten, Wat we doen, Wijzigingen, Klantgegevens |\n" +
           "| **KPI's** | Posities, vertoningen, klikken en de ontwikkeling daarvan |\n" +
           "| **Developer** | Alle developer-taken over alle klanten heen |\n\n" +
-          "Daarnaast zitten er aan de rechterrand twee inschuifbare zijpanelen, op elk tabblad bereikbaar. " +
+          "Daarnaast zit er aan de rechterrand één inschuifbaar zijpaneel, op elk tabblad bereikbaar: " +
           "'Zoekwoorden & links' heeft de afgesproken strategie links in een vrij tekstveld en rechts een kolom " +
-          "met snel aan te klikken landingspagina's. 'Links' bundelt de bronnen die het overzicht voeden of zouden " +
-          "moeten voeden (Search Console, Analytics, Ads, Google-profiel, klantprofiel, tone of voice, " +
-          "concurrentieanalyse, structured data, documenten): elke regel springt naar het scherm waar je hem " +
-          "beheert en laat pas na openklikken zien of hij gevuld of gekoppeld is.\n\n" +
+          "met snel aan te klikken landingspagina's. Het losse 'Links'-zijpaneel (de koppelingen als " +
+          "uitklaplijstje) is vervallen; die koppelingen staan nu als tegels bovenaan de tab Klantgegevens, zie " +
+          "hieronder.\n\n" +
           "**Wisselen van klant gaat via de kiezer linksboven.** Die toont de eigen klanten meteen; de klanten van " +
           "een aangesloten bureau en de leads staan elk achter één regel die je openklikt, want die heb je meestal " +
           "niet nodig en ze duwen de rest uit beeld. Zit je zelf in zo'n groep, dan staat die vanzelf open. " +
@@ -187,25 +186,27 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "waar nog niets voor gedaan wordt.",
       },
       {
-        titel: "Fundament: wat er per klant al staat en wat nog moet",
-        kern: "Tone of voice, structured data, concurrenten, concurrentieanalyse, bedrijfsprofiel en positionering, in één oogopslag.",
+        titel: "Fundament: wat er per klant gekoppeld en ingevuld is, in één oogopslag",
+        kern: "Tegels in plaats van een lijst, live afgelezen uit dezelfde stand als de Onboarding-tab.",
         tekst:
-          "Twee schermen, dezelfde rekenregel. **/admin/fundament** toont alle klanten naast elkaar: per klant " +
-          "zes statuspunten, en bovenaan hoeveel klanten elk punt al hebben staan. Op de klant-tab " +
-          "**Klantgegevens** staat hetzelfde overzicht voor die ene klant, met de knoppen om het af te maken " +
-          "erbij.\n\n" +
-          "De zes punten:\n\n" +
-          "| Punt | Bron |\n" +
-          "|---|---|\n" +
-          "| Tone of voice | de tone of voice-sectie in het klantprofiel (Pagina's-tab) |\n" +
-          "| Bedrijfsprofiel | de klantprofiel-sectie in datzelfde veld |\n" +
-          "| Structured data | de bedrijfsgegevens: leeg, ingevuld, of vergrendeld |\n" +
-          "| Concurrenten | de gap-analyse-lijst: 2 tot 4 domeinen |\n" +
-          "| Concurrentieanalyse | geen los document: volgt automatisch uit positionering |\n" +
-          "| Positionering | het afgeronde positioneringsadvies, als Drive-link |\n\n" +
-          "Concurrentieanalyse heeft bewust geen eigen invoerveld. De positionering-skill benchmarkt altijd al " +
-          "tegen de concurrenten, dus een los document ervoor uitvragen zou vragen om iets dat nooit apart " +
-          "bestaat.",
+          "Bovenaan de klant-tab **Klantgegevens** staat het Fundament: alle koppelingen en klantkennis als " +
+          "tegels, gegroepeerd in 'Aansluiten' en 'Wie is de klant'. Dit stond eerder op twee plekken (deze " +
+          "kaart met zes punten, en een los 'Links'-zijpaneel met een uitklaplijstje) die soms een ander " +
+          "verhaal vertelden over dezelfde koppeling. Nu is er één bron: dezelfde live berekening als de " +
+          "Onboarding-tab (`lib/onboarding.ts`), hier als tegels getoond in plaats van als afvinklijst. Wat hier " +
+          "staat kan dus nooit meer afwijken van wat Onboarding zegt.\n\n" +
+          "**Aansluiten:** website-adres, Search Console, Ahrefs-project, pagina's ingelezen, beheeromgeving van " +
+          "de site, Ads-account.\n\n" +
+          "**Wie is de klant:** klantprofiel, tone of voice, bedrijfsgegevens (structured data), werkgebied, " +
+          "klantwaarde en conversie, concurrenten, Google-bedrijfsprofiel, beheerder van dat profiel, " +
+          "positioneringsadvies, huisstijl, documenten in de kennisdatabase.\n\n" +
+          "Elke tegel toont de status, één zin wat erin staat, en een knop die er direct naartoe brengt. " +
+          "Positionering, huisstijl en het Ads-account zijn losse linkjes (Drive-document of accountpagina): " +
+          "er is geen API-koppeling, dus dat is bewust alleen 'de link staat hier', nooit een geverifieerde " +
+          "meting. De site-brede scans en de strategie staan hier niet nog eens (die hebben al hun eigen " +
+          "tabblad en staan met dezelfde cijfers op de Onboarding-tab).\n\n" +
+          "**/admin/fundament** (alle klanten naast elkaar) is een apart scherm en gebruikt nog zijn eigen, " +
+          "oudere rekenregel met zes punten (`lib/fundament.ts`); dat is nog niet meegetrokken in deze slag.",
       },
       {
         titel: "Technisch: waar het op draait",

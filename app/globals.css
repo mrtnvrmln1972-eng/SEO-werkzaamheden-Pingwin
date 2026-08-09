@@ -944,26 +944,28 @@ td .dev-doc-link { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; 
 .plan-chip.has { background: var(--orange); color: #fff; }
 .plan-chip.half { background: var(--brand-orange-soft); color: var(--orange-dark); }
 
-/* Fundament-paneel (FundamentPanel.tsx): de zes statuspunten per klant,
-   gedeeld door de cockpit-tab "Klantgegevens" en /admin/fundament. */
-.fund-rij { display: flex; flex-wrap: wrap; gap: var(--s-4); margin-top: var(--s-3); }
-.fund-punt { display: flex; flex-direction: column; gap: var(--s-1); align-items: flex-start; cursor: help; }
-.fund-punt-label {
-  font-size: var(--fs-xs); color: var(--text-secondary);
-  background: none; border: none; padding: 0; margin: 0; font-family: inherit;
-  text-decoration: none; cursor: pointer; text-align: left;
+/* Fundament-paneel (FundamentPanel.tsx): tegel-dashboard voor "aansluiten" en
+   "wie is de klant" (blok "aansluiten"/"kennen" uit lib/onboarding-stappen.ts),
+   dezelfde stand als de Onboarding-tab, hier als tegels in plaats van een lijst.
+   /admin/fundament (kruis-klant-overzicht) gebruikt alleen .fund-groep hieronder. */
+.fnd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--s-3); margin-top: var(--s-3); }
+.fnd-tegel {
+  display: flex; flex-direction: column; gap: var(--s-2);
+  padding: var(--s-3); border: 1px solid var(--gray-light); border-left: 3px solid var(--border);
+  border-radius: var(--r-md); background: var(--white);
 }
-.fund-punt-label:hover { color: var(--accent-warm); text-decoration: underline; }
-.fund-punt-label:disabled { cursor: default; color: var(--text-secondary); text-decoration: none; }
-/* De koppen waar de fundament-woorden naartoe springen: niet klem onder de
+.fnd-tegel.fnd-staat-af { border-left-color: #2E7D32; }
+.fnd-tegel.fnd-staat-bezig { border-left-color: var(--brand-teal); }
+.fnd-tegel.fnd-staat-verouderd { border-left-color: var(--orange); }
+.fnd-tegel-kop { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); }
+.fnd-tegel-kop strong { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--dark); }
+.fnd-tegel-detail { flex: 1 1 auto; margin: 0; font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--text-secondary); }
+.fnd-tegel-acties { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2); margin-top: auto; }
+.fnd-link-row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2); }
+.fnd-link-row .compose-input { flex: 1 1 200px; }
+/* De koppen waar de fundament-tegels naartoe springen: niet klem onder de
    vaste kopbalk van de cockpit laten landen. */
-#fund-structured-data, #fund-concurrenten, .fund-positionering { scroll-margin-top: 96px; }
-.fund-uitleg { display: flex; flex-direction: column; gap: var(--s-1); margin-top: var(--s-3); font-size: var(--fs-sm); }
-.fund-link { background: none; border: none; padding: 0; margin: 0; color: var(--link); text-decoration: underline; font: inherit; cursor: pointer; }
-.fund-positionering { margin-top: var(--s-4); padding-top: var(--s-3); border-top: 1px solid var(--gray-light); }
-.fund-positionering-label { display: block; font-size: var(--fs-xs); font-weight: 700; color: var(--label-muted); text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: var(--s-1); }
-.fund-positionering-row { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; }
-.fund-positionering-row .compose-input { flex: 1 1 320px; }
+#fund-structured-data, #fund-concurrenten { scroll-margin-top: 96px; }
 .fund-actie { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; }
 .fund-actie-melding { font-size: var(--fs-xs); color: var(--text-secondary); }
 /* Klantengroepen op /admin/fundament: elk een eigen kop die je open- en

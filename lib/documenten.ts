@@ -122,3 +122,13 @@ export async function getDocumentenOverzicht(slug: string): Promise<DocPagina[]>
   // Jongste werk bovenaan; pagina's zonder datum onderaan.
   return uit.sort((a, b) => (b.laatste || "").localeCompare(a.laatste || ""));
 }
+
+/** Kort voor de Fundament-tegel en de onboarding-stand: alleen het aantal en de jongste datum. */
+export async function telDocumenten(slug: string): Promise<{ aantal: number; sinds: string | null }> {
+  try {
+    const paginas = await getDocumentenOverzicht(slug);
+    const aantal = paginas.reduce((n, p) => n + p.docs.length, 0);
+    const sinds = paginas.reduce((s, p) => (p.laatste && (!s || p.laatste > s) ? p.laatste : s), null as string | null);
+    return { aantal, sinds };
+  } catch { return { aantal: 0, sinds: null }; }
+}

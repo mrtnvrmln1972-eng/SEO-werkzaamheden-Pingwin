@@ -7,6 +7,7 @@ import { getCompetitors } from "./competitors";
 import { getEuroInstelling } from "./opruim-euro";
 import { hasWpCreds } from "./wp-creds";
 import { ahrefsConfigured } from "./ahrefs";
+import { telDocumenten } from "./documenten";
 import { PROFILE_HEADER, TOV_HEADER } from "./constants";
 
 // ═══════════════════════════════════════════════════════════
@@ -173,7 +174,7 @@ export async function getOnboardingStand(slug: string): Promise<Stand> {
     return { slug, naam: slug, stappen: [], af: 0, totaal: 0, mist: [], aanJou: [], klaar: false };
   }
 
-  const [google, urls, org, euro, comps, kansen, prio, opruim, links, wp, strat, gmb] = await Promise.all([
+  const [google, urls, org, euro, comps, kansen, prio, opruim, links, wp, strat, gmb, docs] = await Promise.all([
     googleStatus().catch(() => ({ configured: false, connected: false, account: null })),
     telUrls(slug),
     getOrgData(slug).catch(() => null),
@@ -186,6 +187,7 @@ export async function getOnboardingStand(slug: string): Promise<Stand> {
     hasWpCreds(slug).catch(() => false),
     telStrategie(slug),
     gmbFeiten(slug),
+    telDocumenten(slug).catch(() => ({ aantal: 0, sinds: null })),
   ]);
 
   const domein = (client.domain || "").trim();
@@ -226,6 +228,12 @@ export async function getOnboardingStand(slug: string): Promise<Stand> {
       af: wp || !!(client.backendUrl || "").trim(),
       detail: wp ? "WordPress is gekoppeld; teksten kunnen direct doorgezet worden."
         : (client.backendUrl || "").trim() ? "Er staat een inlogadres voor de beheeromgeving." : "Nog geen koppeling met de beheeromgeving van de site.",
+      sinds: null,
+    },
+    adsaccount: {
+      af: !!(client.cockpit.adsAccountUrl || "").trim(),
+      detail: (client.cockpit.adsAccountUrl || "").trim()
+        ? "Er staat een link naar het Ads-account." : "Nog geen link naar het Google Ads-account opgeslagen.",
       sinds: null,
     },
     profiel: {
@@ -289,6 +297,23 @@ export async function getOnboardingStand(slug: string): Promise<Stand> {
         ? "Pingwin is beheerder; de bezoekcijfers van het profiel komen binnen."
         : "Nog geen beheertoegang. Vraag de klant om Pingwin als beheerder toe te voegen, dan zien we hoe vaak het profiel gezien wordt en wat optimalisaties opleveren.",
       sinds: null,
+    },
+    positionering: {
+      af: !!(client.cockpit.positioneringUrl || "").trim(),
+      detail: (client.cockpit.positioneringUrl || "").trim()
+        ? "Het positioneringsadvies staat gekoppeld." : "Het positioneringsadvies is nog niet afgerond of gekoppeld.",
+      sinds: null,
+    },
+    huisstijl: {
+      af: !!(client.cockpit.huisstijlUrl || "").trim(),
+      detail: (client.cockpit.huisstijlUrl || "").trim()
+        ? "De huisstijl staat vastgelegd." : "De huisstijl (kleuren, typografie, knoppen) is nog niet vastgelegd.",
+      sinds: null,
+    },
+    documenten: {
+      af: docs.aantal > 0,
+      detail: docs.aantal > 0 ? `${docs.aantal} ${docs.aantal === 1 ? "document" : "documenten"} in de kennisdatabase.` : "Er zijn nog geen documenten voor deze klant.",
+      sinds: docs.sinds,
     },
     gmbscan: {
       af: gmb.klaar,
