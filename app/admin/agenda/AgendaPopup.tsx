@@ -8,11 +8,13 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 // hem met zijn eigen inhoud (vergelijkbaar met het portal-patroon elders in
 // deze cockpit, maar hier positie-gestuurd in plaats van slot-gestuurd).
 export default function AgendaPopup({
-  x, y, onClose, children,
+  x, y, onClose, onEnter, children,
 }: {
   x: number;
   y: number;
   onClose: () => void;
+  /** Enter in een gewoon invulveld slaat op; niet in een meerregelig tekstvak (daar is Enter een nieuwe regel). */
+  onEnter?: () => void;
   children: React.ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -54,6 +56,12 @@ export default function AgendaPopup({
       style={pos ? { left: pos.left, top: pos.top } : { left: x, top: y }}
       onPointerDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => {
+        if (e.key !== "Enter" || !onEnter) return;
+        if ((e.target as HTMLElement).tagName === "TEXTAREA") return;
+        e.preventDefault();
+        onEnter();
+      }}
     >
       {children}
     </div>

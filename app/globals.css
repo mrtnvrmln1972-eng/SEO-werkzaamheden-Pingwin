@@ -6855,8 +6855,9 @@ a.wb-pad:hover { text-decoration: underline; }
 /* Zwevende pop-up (blok/taak bewerken) */
 .ag-popup { position: fixed; z-index: 200; width: min(400px, calc(100vw - 16px)); max-height: min(560px, calc(100vh - 16px)); overflow-y: auto; background: var(--white); border-radius: var(--r-lg); padding: var(--s-4); box-shadow: var(--shadow-lg); }
 .ag-popup-meten { visibility: hidden; }
-.ag-modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--s-3); }
+.ag-modal-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); margin-bottom: var(--s-3); }
 .ag-modal-head h2 { font-size: var(--fs-md); line-height: var(--lh-md); color: var(--gray); }
+.ag-modal-head-titel { display: flex; align-items: center; gap: var(--s-2); min-width: 0; }
 .ag-modal-actions { display: flex; align-items: center; gap: var(--s-2); margin-top: var(--s-4); }
 .ag-modal-actions-spacer { flex: 1; }
 
@@ -6904,6 +6905,15 @@ a.wb-pad:hover { text-decoration: underline; }
   background: var(--gray-light); color: var(--dark); cursor: pointer;
 }
 .ag-datumknop:hover { border-color: var(--orange); }
+/* Subtiel: naast een titel in de kopregel, geen eigen rij, minder nadrukkelijk
+   dan de zelfstandige pil hierboven (geen vlak, kleiner, gedempte kleur). */
+.ag-datumknop-wrap-subtiel { margin-bottom: 0; }
+.ag-datumknop-subtiel {
+  font-weight: 600; font-size: var(--fs-xs); line-height: var(--lh-xs);
+  padding: 2px var(--s-2); border-color: transparent; border-radius: var(--r-sm);
+  background: var(--gray-light); color: var(--gray);
+}
+.ag-datumknop-subtiel:hover { background: var(--orange-light); border-color: transparent; color: var(--orange-dark); }
 .ag-datumknop-panel { position: fixed; z-index: 210; width: min(300px, calc(100vw - 16px)); padding: var(--s-3); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--white); box-shadow: var(--shadow-lg); }
 .ag-datumknop-panel-meten { visibility: hidden; left: -9999px; top: -9999px; }
 .ag-datumknop-tabs { margin-bottom: var(--s-2); }
