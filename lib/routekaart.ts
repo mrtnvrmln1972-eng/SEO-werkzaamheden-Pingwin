@@ -124,7 +124,7 @@ export const PUNTEN: Punt[] = [
     code: "R6",
     titel: "Tweede sitekoppeling, en copy doorvoeren",
     golf: 2,
-    stand: "open",
+    stand: "loopt",
     nodig: [],
     omvang: "groot",
     oplevert: "De keten breekt niet meer bij de site. Hier zit het meeste overgebleven handwerk.",
