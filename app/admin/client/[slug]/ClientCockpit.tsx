@@ -149,9 +149,6 @@ export default function ClientCockpit({
   useEffect(() => {
     try { window.localStorage.setItem(`pingwin-ov-open:${client.slug}`, JSON.stringify(ovOpen)); } catch { /* stil */ }
   }, [ovOpen, client.slug]);
-  // Demo-filter voor de klanten-dropdown: alleen klanten met mooie ontwikkeling
-  // (28 dagen of 3 maanden), voor schermdelen met potentiële klanten.
-  const [demoFilter, setDemoFilter] = useState<null | "28" | "90">(null);
   // Toggles bovenaan de (samengevoegde) Werkzaamheden-pagina, standaard gesloten.
   const [showMailsBox, setShowMailsBox] = useState(false);
   // Laatste mails los en groot in beeld, in plaats van in de smalle kolom.
@@ -416,32 +413,13 @@ export default function ClientCockpit({
             <img src="https://pingwin.nl/wp-content/uploads/2016/11/pingwin_logo.png" alt="Pingwin" />
           </a>
           <div className="header-divider" />
-          {(() => {
-            // Vinkje = mooie ontwikkeling (uit de nachtelijke trend-berekening).
-            // In demo-stand tonen we alleen die klanten (voor schermdelen).
-            const good = (c: typeof allClients[number]) => (demoFilter === "90" ? c.good90 : c.good28);
-            const shown = demoFilter ? allClients.filter((c) => good(c) || c.slug === client.slug) : allClients;
-            return (
-              <KlantKiezer
-                klanten={shown.map((c) => ({ slug: c.slug, name: c.name, grp: c.grp, fase: c.fase, goed: !!good(c) }))}
-                huidig={client.slug}
-                onKies={(slug, naam) => { setSwitchingTo(naam); router.push(`/admin/client/${slug}`); }}
-              />
-            );
-          })()}
-          {/* Demo-filter (schermdelen): alleen tonen als er trend-data is om op te
-              filteren. In een verse wereld zonder nachtelijke trend-berekening zou
-              de knop de dropdown ogenschijnlijk leegmaken; dan verbergen we hem. */}
-          {allClients.some((c) => c.good28 || c.good90) && (
-            <button
-              type="button"
-              className="ghost-btn small"
-              onClick={() => setDemoFilter(demoFilter === null ? "28" : demoFilter === "28" ? "90" : null)}
-              title="Filtert de klanten-dropdown op klanten met een mooie ontwikkeling (voor schermdelen met potentiële klanten). Klik om te wisselen tussen alle klanten, mooie ontwikkeling laatste 28 dagen en laatste 3 maanden."
-            >
-              {demoFilter === null ? "Alle klanten" : demoFilter === "28" ? "✓ Mooie ontwikkeling (28 dgn)" : "✓ Mooie ontwikkeling (3 mnd)"}
-            </button>
-          )}
+          {/* Vinkje = mooie ontwikkeling (uit de nachtelijke trend-berekening,
+              laatste 28 dagen). */}
+          <KlantKiezer
+            klanten={allClients.map((c) => ({ slug: c.slug, name: c.name, grp: c.grp, fase: c.fase, goed: !!c.good28 }))}
+            huidig={client.slug}
+            onKies={(slug, naam) => { setSwitchingTo(naam); router.push(`/admin/client/${slug}`); }}
+          />
           {/* Zes knoppen in plaats van elf tabjes. Wat bij elkaar hoort zit onder een
               uitklapmenu: "Klant" toont wat we voor deze klant doen, "Site-breed" de
               gereedschappen die over de hele site kijken. De tab-waarden in de URL
