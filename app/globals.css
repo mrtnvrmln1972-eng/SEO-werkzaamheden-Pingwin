@@ -2502,20 +2502,43 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .chat-img-thumb-del { position: absolute; top: -7px; right: -7px; width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--border); background: var(--white); color: var(--gray); font-size: 12px; line-height: 1; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
 .chat-img-thumb-del:hover { color: #C62828; border-color: #C62828; }
 
+/* ── Compact-proef (09-08-2026), alleen op dit paneel ────────────────────
+   Maarten wil kleinere teksten/knoppen/schermen, éérst hier uitproberen
+   voordat het (als het bevalt) naar de rest van het dashboard gaat. Geen
+   nieuwe losse maten: dezelfde tokennamen (--fs-*, --s-*, --r-*) krijgen
+   hier een kleinere waarde, dus elke bestaande regel die al `var(--fs-base)`
+   e.d. gebruikt (org-*, kb-*, hh-*, .btn, .strategy-*) wordt hierbinnen
+   vanzelf compacter, zonder dat er ergens een aparte "compacte variant"
+   van een component hoeft te komen. Bevalt het: deze waarden verhuizen naar
+   :root, en `.org-compact` mag weer weg. */
+.org-compact {
+  --fs-xs: 10px;   --lh-xs: 14px;
+  --fs-sm: 11px;   --lh-sm: 15px;
+  --fs-base: 12.5px; --lh-base: 18px;
+  --fs-md: 14px;   --lh-md: 20px;
+  --fs-lg: 17px;   --lh-lg: 23px;
+  --fs-xl: 21px;   --lh-xl: 27px;
+  --s-1: 3px; --s-2: 6px; --s-3: 9px; --s-4: 12px; --s-5: 15px; --s-6: 18px;
+  --s-8: 24px; --s-10: 30px; --s-12: 36px;
+  --r-sm: 5px; --r-md: 8px; --r-lg: 11px;
+}
+
 /* Bedrijfsgegevens-formulier (structured data-bron): net grid, ook op de deelpagina. */
 .org-actions { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; }
 .org-form { display: flex; flex-direction: column; gap: var(--s-3); margin-top: var(--s-3); }
 /* ── Bedrijfsgegevens: één vaste vorm per blok ──────────────────────────
    Elk onderdeel (algemeen, vestigingen, bereikbaarheid, artsen, diensten,
-   opmerkingen) is een lichte, dun omrande kaart met een rustig kopje: geen
-   getint vlak en geen dik kopje meer (08-08-2026), want de buitenste
-   panelen in deze cockpit hebben zelf bewust géén rand, en een subsectie
-   die zwaarder oogt dan zijn eigen paneel keert de hiërarchie om. */
+   opmerkingen) krijgt een licht oranje getint vlak (09-08-2026, op verzoek:
+   meer diepte/contrast tussen de secties, met behoud van de bestaande regel
+   van één accentkleur, dus geen nieuwe kleur per sectie, alleen een tint van
+   het bestaande oranje). Daardoor staan de witte invoervelden er zichtbaar
+   op, en is in één oogopslag te zien welke velden bij elkaar horen. */
 .org-form { display: flex; flex-direction: column; gap: var(--s-4); }
 .org-sec {
-  background: var(--white);
-  border: 1px solid var(--border);
+  background: var(--brand-orange-faint);
+  border: 1px solid var(--card-border);
   border-radius: var(--r-md);
+  box-shadow: var(--shadow-sm);
   padding: var(--s-2) var(--s-3) var(--s-3);
   display: flex; flex-direction: column; gap: var(--s-2);
 }
@@ -2523,9 +2546,13 @@ tbody tr.row-done:hover { background: #E2F1E2; }
   margin: 0; display: flex; align-items: center; gap: var(--s-2);
   font-size: var(--fs-sm); line-height: var(--lh-sm); font-weight: 600;
   color: var(--dark); letter-spacing: normal;
-  padding-bottom: var(--s-1); border-bottom: 1px solid var(--border);
+  padding-bottom: var(--s-1); border-bottom: 1px solid var(--card-border);
 }
 .org-kolom { display: flex; flex-direction: column; gap: var(--s-3); }
+/* De buitenste toggle ("Verzamelde structured data") is de container, geen
+   inhoudelijke categorie: die blijft neutraal wit, anders zit er straks een
+   getinte kaart in een even getinte kaart en verdwijnt het contrast juist. */
+.org-verzameld { background: var(--white); box-shadow: none; }
 
 /* Inklapbare org-secties (vestigingen/artsen/webshop/diensten): het kopje is
    dan een knop i.p.v. een h4, met UA-knopstijl gereset zodat hij er precies
