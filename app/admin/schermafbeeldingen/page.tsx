@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
 export default async function SchermafbeeldingenPage() {
   const scope = await getScopeFromCookie(cookies().get(ADMIN_COOKIE)?.value, cookies().get(ADMIN_VIEWAS_COOKIE)?.value);
   if (!scope) redirect("/admin/login");
-  if (!scope.isOwner) redirect("/admin");
+  if (!scope.isOwner && !scope.canDev) redirect("/admin");
 
   const schermen = await alleSchermen();
   return <SchermafbeeldingenClient schermen={schermen} verwacht={SCHERMEN.length} />;
