@@ -133,6 +133,30 @@ const BEWIJZEN: Record<string, BewijsRegel[]> = {
     },
   ],
 
+  R5: [
+    {
+      soort: "gedeployd",
+      wat: "Meerdere mailboxen kunnen los van elkaar gekoppeld worden",
+      laad: () => import("./ms-graph") as Promise<Record<string, unknown>>,
+      functie: "msListAccounts",
+    },
+    {
+      soort: "gedeployd",
+      wat: "Een klant-tijdlijn voegt alle gekoppelde mailboxen tot één geheel samen",
+      laad: () => import("./ms-graph") as Promise<Record<string, unknown>>,
+      functie: "msSearchClientEmailsAlleMailboxen",
+    },
+    {
+      soort: "data",
+      wat: "Er staat minstens één gekoppelde mailbox",
+      telling: async () => {
+        await ensureSchema();
+        const { rows } = await sql`SELECT COUNT(*)::int AS n FROM mail_accounts`;
+        return Number(rows[0]?.n || 0);
+      },
+    },
+  ],
+
   R7: [
     {
       soort: "gedeployd",

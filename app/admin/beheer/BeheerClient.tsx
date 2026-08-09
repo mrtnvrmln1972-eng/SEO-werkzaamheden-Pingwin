@@ -17,7 +17,9 @@ type ClientLite = {
   ahrefsKeyRef: string | null;
 };
 
-export default function BeheerClient({ clients, team, showFinance = false }: { clients: ClientLite[]; team: TeamUser[]; showFinance?: boolean }) {
+type MailAccountLite = { id: number; label: string | null; account: string | null; connectedAt: string | null };
+
+export default function BeheerClient({ clients, team, showFinance = false, mailAccounts: initialMailAccounts = [], msConfigured = false }: { clients: ClientLite[]; team: TeamUser[]; showFinance?: boolean; mailAccounts?: MailAccountLite[]; msConfigured?: boolean }) {
   const router = useRouter();
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -34,6 +36,21 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
       .then((d) => { if (d.ok) setGLinks({ data: d.data, drive: d.drive }); })
       .catch(() => { /* stil */ });
   }, []);
+  // ── Microsoft-mailboxen (R5, meerdere mailboxen) ──
+  const [mailAccounts, setMailAccounts] = useState<MailAccountLite[]>(initialMailAccounts);
+  const [nieuweMailboxLabel, setNieuweMailboxLabel] = useState("");
+  async function ontkoppelMailbox(id: number, label: string | null) {
+    if (!confirm(`Mailbox ${label || "zonder naam"} loskoppelen? De correspondentie eruit verdwijnt dan uit de tijdlijnen.`)) return;
+    try {
+      const res = await fetch(`/api/admin/mail-accounts?id=${id}`, { method: "DELETE" });
+      const d = await res.json();
+      if (d.ok) {
+        setMailAccounts((lijst) => lijst.filter((m) => m.id !== id));
+        flash(true, "Mailbox losgekoppeld.");
+      } else flash(false, d.error || "Loskoppelen mislukt.");
+    } catch { flash(false, "Loskoppelen mislukt."); }
+  }
+
   async function disconnectDrive() {
     if (!confirm("Google Drive ontkoppelen? Documenten komen daarna als download tot er opnieuw een Drive is gekoppeld.")) return;
     try {
@@ -654,6 +671,61 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
                 </div>
               </div>
             </form>
+          </>
+        )}
+
+        {/* ─────────────── MICROSOFT-MAILBOXEN (R5) ─────────────── */}
+        <h2 style={{ fontSize: "var(--fs-lg)", fontWeight: 700, margin: "var(--s-12) 0 var(--s-2)" }}>Gekoppelde mailboxen</h2>
+        <p className="muted" style={{ marginBottom: "var(--s-4)" }}>
+          Elke gekoppelde mailbox levert zijn eigen correspondentie. Bij een klant staan al die mailboxen door elkaar
+          in één tijdlijn, met per bericht welke mailbox het ophaalde. Werkt er iemand naast je mee, koppel dan hier
+          diens mailbox erbij.
+        </p>
+        {!msConfigured ? (
+          <p className="muted">Microsoft is in deze omgeving nog niet ingesteld (env-variabelen ontbreken).</p>
+        ) : (
+          <>
+            <div className="task-table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Naam</th>
+                    <th>Mailbox</th>
+                    <th>Gekoppeld sinds</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {mailAccounts.length === 0 ? (
+                    <tr><td colSpan={4} className="muted">Nog geen mailbox gekoppeld.</td></tr>
+                  ) : mailAccounts.map((m) => (
+                    <tr key={m.id}>
+                      <td style={{ fontWeight: 600 }}>{m.label || "—"}</td>
+                      <td>{m.account || "—"}</td>
+                      <td>{m.connectedAt ? new Date(m.connectedAt).toLocaleDateString("nl-NL") : "—"}</td>
+                      <td style={{ whiteSpace: "nowrap" }}>
+                        <button className="mini-btn" onClick={() => void ontkoppelMailbox(m.id, m.label)}>Ontkoppelen</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="row" style={{ marginTop: "var(--s-3)", gap: "var(--s-2)", alignItems: "center" }}>
+              <input
+                type="text"
+                placeholder="Naam van de nieuwe mailbox (bijv. een collega)"
+                value={nieuweMailboxLabel}
+                onChange={(e) => setNieuweMailboxLabel(e.target.value)}
+                style={{ maxWidth: 320 }}
+              />
+              <a
+                className="mini-btn"
+                href={`/api/ms/auth/start${nieuweMailboxLabel.trim() ? `?label=${encodeURIComponent(nieuweMailboxLabel.trim())}` : ""}`}
+              >
+                {mailAccounts.length === 0 ? "Mailbox koppelen" : "Nog een mailbox koppelen"}
+              </a>
+            </div>
           </>
         )}
 

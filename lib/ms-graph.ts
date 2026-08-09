@@ -60,8 +60,32 @@ async function tokenRequest(body: Record<string, string>): Promise<TokenResponse
   return (await res.json()) as TokenResponse;
 }
 
-// Stap na de login: code inwisselen voor tokens en de refresh-token bewaren.
-export async function msExchangeCode(origin: string, code: string): Promise<{ ok: boolean; account?: string; error?: string }> {
+// ── Meerdere mailboxen (R5) ──
+// oauth_tokens had voor 'microsoft' maar één rij: één mailbox voor de hele
+// omgeving. mail_accounts vervangt dat door meerdere losse, genoemde
+// koppelingen, elk met een eigen refresh-token. De EERST gekoppelde mailbox
+// (laagste id) blijft de "primaire" mailbox: alles wat vóór R5 al werkte
+// (versturen, chat-context, mail-controle, factuur-signalen) gebruikt die
+// mailbox verder ongewijzigd. Nieuw is dat een klant-tijdlijn de mails van
+// ALLE gekoppelde mailboxen door elkaar toont (zie msSearchClientEmailsAlleMailboxen).
+export type MailAccount = { id: number; label: string | null; account: string | null; connectedAt: string | null };
+
+export async function msListAccounts(): Promise<MailAccount[]> {
+  await ensureSchema();
+  const { rows } = await sql`SELECT id, label, account, connected_at FROM mail_accounts ORDER BY connected_at ASC, id ASC`;
+  return rows.map((r) => ({ id: Number(r.id), label: (r.label as string) || null, account: (r.account as string) || null, connectedAt: (r.connected_at as string) || null }));
+}
+
+async function primaryAccountId(): Promise<number | null> {
+  await ensureSchema();
+  const { rows } = await sql`SELECT id FROM mail_accounts ORDER BY connected_at ASC, id ASC LIMIT 1`;
+  return rows[0] ? Number(rows[0].id) : null;
+}
+
+// Stap na de login: code inwisselen voor tokens en de refresh-token bewaren
+// als een NIEUWE mailbox (nooit overschrijven: dat is precies wat een tweede
+// mailbox onmogelijk maakte).
+export async function msExchangeCode(origin: string, code: string, label?: string): Promise<{ ok: boolean; account?: string; error?: string }> {
   const data = await tokenRequest({
     client_id: process.env.MS_CLIENT_ID || "",
     client_secret: process.env.MS_CLIENT_SECRET || "",
@@ -82,37 +106,53 @@ export async function msExchangeCode(origin: string, code: string): Promise<{ ok
       account = j.mail || j.userPrincipalName || "";
     } catch { /* account-naam is optioneel */ }
   }
-  await saveRefreshToken("microsoft", data.refresh_token, account);
+  await ensureSchema();
+  // Dezelfde mailbox opnieuw koppelen (bijv. na een verlopen token via "opnieuw
+  // koppelen" op de klantpagina) mag geen tweede rij opleveren: dat zou een
+  // dode duplicaat achterlaten die telkens meedoet in de zoekopdracht maar nooit
+  // meer werkt. Alleen een echt ANDER account-adres wordt een nieuwe mailbox.
+  const existing = account
+    ? await sql`SELECT id FROM mail_accounts WHERE lower(account) = ${account.toLowerCase()} LIMIT 1`
+    : { rows: [] as { id: number }[] };
+  if (existing.rows[0]) {
+    await sql`
+      UPDATE mail_accounts
+      SET refresh_token = ${data.refresh_token}, connected_at = now(), label = COALESCE(${label?.trim() || null}, label)
+      WHERE id = ${existing.rows[0].id}`;
+  } else {
+    await sql`
+      INSERT INTO mail_accounts (label, account, refresh_token, connected_at)
+      VALUES (${(label || "").trim() || account || "Mailbox"}, ${account || null}, ${data.refresh_token}, now())`;
+  }
   return { ok: true, account };
 }
 
-async function saveRefreshToken(provider: string, token: string, account: string): Promise<void> {
-  await ensureSchema();
-  await sql`
-    INSERT INTO oauth_tokens (provider, refresh_token, account, updated_at)
-    VALUES (${provider}, ${token}, ${account || null}, now())
-    ON CONFLICT (provider) DO UPDATE SET refresh_token = EXCLUDED.refresh_token, account = EXCLUDED.account, updated_at = now()`;
-}
-
+// Status van de PRIMAIRE mailbox; dit is de functie die alle bestaande
+// aanroepers (versturen, chat, mail-controle, facturen-signaal) al gebruikten
+// en die blijft daarom exact hetzelfde teruggeven als vóór R5.
 export async function msStatus(): Promise<{ configured: boolean; connected: boolean; account: string | null }> {
   const configured = msConfigured();
   if (!configured) return { configured, connected: false, account: null };
   await ensureSchema();
-  const { rows } = await sql`SELECT account, refresh_token FROM oauth_tokens WHERE provider = 'microsoft' LIMIT 1`;
+  const { rows } = await sql`SELECT account, refresh_token FROM mail_accounts ORDER BY connected_at ASC, id ASC LIMIT 1`;
   const connected = !!rows[0]?.refresh_token;
   return { configured, connected, account: (rows[0]?.account as string) || null };
 }
 
-export async function msDisconnect(): Promise<void> {
+export async function msDisconnectAccount(id: number): Promise<void> {
   await ensureSchema();
-  await sql`DELETE FROM oauth_tokens WHERE provider = 'microsoft'`;
+  await sql`DELETE FROM mail_accounts WHERE id = ${id}`;
 }
 
-// Geeft een geldige access-token (vernieuwt via de bewaarde refresh-token).
-async function msAccessToken(): Promise<string | null> {
+// Geeft een geldige access-token voor één mailbox (vernieuwt via de bewaarde
+// refresh-token). Zonder accountId de primaire mailbox, zodat alle bestaande
+// aanroepers ongewijzigd blijven werken.
+async function msAccessToken(accountId?: number): Promise<string | null> {
   if (!msConfigured()) return null;
   await ensureSchema();
-  const { rows } = await sql`SELECT refresh_token FROM oauth_tokens WHERE provider = 'microsoft' LIMIT 1`;
+  const id = accountId ?? (await primaryAccountId());
+  if (id === null) return null;
+  const { rows } = await sql`SELECT refresh_token FROM mail_accounts WHERE id = ${id} LIMIT 1`;
   const refresh = rows[0]?.refresh_token as string | undefined;
   if (!refresh) return null;
   const data = await tokenRequest({
@@ -128,7 +168,7 @@ async function msAccessToken(): Promise<string | null> {
   }
   // Microsoft rouleert de refresh-token: bewaar de nieuwe als die er is.
   if (data.refresh_token && data.refresh_token !== refresh) {
-    await sql`UPDATE oauth_tokens SET refresh_token = ${data.refresh_token}, updated_at = now() WHERE provider = 'microsoft'`;
+    await sql`UPDATE mail_accounts SET refresh_token = ${data.refresh_token} WHERE id = ${id}`;
   }
   await logBronGebeurtenis("microsoft", true);
   return data.access_token;
@@ -173,6 +213,11 @@ export type LiveEmail = {
   // velden niet kennen blijven gewoon werken.
   conversationId?: string | null;
   hasAttachments?: boolean;
+  // Alleen gevuld door msSearchClientEmailsAlleMailboxen: uit welke gekoppelde
+  // mailbox dit bericht kwam, zodat een samengevoegde tijdlijn per bericht kan
+  // tonen wie hem ophaalde.
+  mailboxId?: number;
+  mailboxLabel?: string | null;
 };
 
 const SUPERHUMAN_ACCOUNT_FALLBACK = "Maarten@pingwin.nl";
@@ -221,8 +266,8 @@ export async function msSearchPeople(query: string, limit = 8): Promise<Person[]
 // onderwerp leek dus te werken maar leverde nooit iets op.
 // superhumanQuery = wat in de Superhuman-zoeklink terechtkomt (blijft het
 // klantdomein, anders opent Superhuman een zoekopdracht die daar niets oplevert).
-export async function msSearchMail(searchQuery: string, account: string, limit = 15, superhumanQuery?: string): Promise<LiveEmail[] | null> {
-  const token = await msAccessToken();
+export async function msSearchMail(searchQuery: string, account: string, limit = 15, superhumanQuery?: string, accountId?: number): Promise<LiveEmail[] | null> {
+  const token = await msAccessToken(accountId);
   if (!token) return null;
   const url =
     `https://graph.microsoft.com/v1.0/me/messages?$search=${encodeURIComponent(searchQuery)}` +
@@ -269,9 +314,30 @@ function graphNaarMail(m: GraphMessage, account: string, superhumanQuery: string
   };
 }
 
-// Haalt de recente mails met een klant op (zoekt op het e-maildomein/-adres).
-export async function msSearchClientEmails(query: string, account: string, limit = 15): Promise<LiveEmail[] | null> {
-  return msSearchMail(`"${query}"`, account, limit, query);
+// Haalt de recente mails met een klant op (zoekt op het e-maildomein/-adres),
+// in de PRIMAIRE mailbox (of, met accountId, een specifieke mailbox).
+export async function msSearchClientEmails(query: string, account: string, limit = 15, accountId?: number): Promise<LiveEmail[] | null> {
+  return msSearchMail(`"${query}"`, account, limit, query, accountId);
+}
+
+// Doorzoekt ALLE gekoppelde mailboxen voor deze klant en voegt de tijdlijn
+// samen tot één geheel, gesorteerd op datum, met per bericht welke mailbox
+// het ophaalde (mailboxId/mailboxLabel). Met precies één gekoppelde mailbox
+// (de situatie van vóór R5) is de uitkomst gelijk aan msSearchClientEmails.
+// Faalt één mailbox (token verlopen, ingetrokken), dan draait de rest gewoon
+// door; dat mailbox levert dan simpelweg niets voor deze klant.
+export async function msSearchClientEmailsAlleMailboxen(query: string, limit = 15): Promise<LiveEmail[] | null> {
+  const accounts = await msListAccounts();
+  if (accounts.length === 0) return null;
+  const perMailbox = await Promise.all(
+    accounts.map(async (acc) => {
+      const mails = await msSearchClientEmails(query, acc.account || "", limit, acc.id).catch(() => null);
+      return (mails || []).map((m) => ({ ...m, mailboxId: acc.id, mailboxLabel: acc.label }));
+    }),
+  );
+  const merged = perMailbox.flat();
+  merged.sort((a, b) => (b.receivedAt || "").localeCompare(a.receivedAt || ""));
+  return merged.slice(0, Math.max(limit, limit * Math.max(accounts.length, 1)));
 }
 
 // Alle berichten van één gesprek, exact opgehaald op conversationId.

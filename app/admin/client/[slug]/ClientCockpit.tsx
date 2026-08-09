@@ -400,6 +400,10 @@ export default function ClientCockpit({
         return (ra < 0 ? 99 : ra) - (rb < 0 ? 99 : rb);
       })
     : emails;
+  // Alleen tonen bij wie de mail ophaalde als er ook echt meer dan één
+  // gekoppelde mailbox meedoet; bij één mailbox (de gangbare situatie) voegt
+  // dat label niets toe en is het alleen ruis in de tijdlijn.
+  const meerdereMailboxen = new Set(emails.map((e) => e.mailboxId).filter((v) => v !== undefined)).size > 1;
 
 
   return (
@@ -602,6 +606,9 @@ export default function ClientCockpit({
                                 {e.direction === "out" ? "verzonden" : "ontvangen"}
                               </span>
                               <span className="email-from">{e.fromName || e.fromAddress || "—"}</span>
+                              {meerdereMailboxen && e.mailboxLabel && (
+                                <span className="email-mailbox" title="Mailbox die dit bericht ophaalde">{e.mailboxLabel}</span>
+                              )}
                               <span className="email-date">{e.receivedAt ? fmtDateTime(e.receivedAt) : ""}</span>
                             </div>
                             <div className="email-subject">{e.subject || "(geen onderwerp)"}</div>

@@ -6,6 +6,7 @@ import { getScopeFromCookie } from "../../../lib/admin-scope";
 import { listClients } from "../../../lib/clients";
 import { listTeamUsers } from "../../../lib/team-users";
 import { moneybirdConfigured } from "../../../lib/moneybird";
+import { msConfigured, msListAccounts } from "../../../lib/ms-graph";
 import BeheerClient from "./BeheerClient";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +17,7 @@ export default async function BeheerPage() {
   // Beheer is uitsluitend voor de eigenaar. Een gast belandt terug op het overzicht.
   if (!scope.isOwner) redirect("/admin");
 
-  const [clients, team] = await Promise.all([listClients(), listTeamUsers()]);
+  const [clients, team, mailAccounts] = await Promise.all([listClients(), listTeamUsers(), msConfigured() ? msListAccounts() : Promise.resolve([])]);
 
   return (
     <BeheerClient
@@ -30,6 +31,8 @@ export default async function BeheerPage() {
       }))}
       team={team}
       showFinance={moneybirdConfigured()}
+      mailAccounts={mailAccounts}
+      msConfigured={msConfigured()}
     />
   );
 }

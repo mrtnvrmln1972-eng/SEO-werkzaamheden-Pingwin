@@ -24,6 +24,10 @@ export type EmailSnapshot = {
   // Microsoft 365; de controleknop heeft dit nodig om de héle thread op te halen
   // in plaats van alleen het bericht dat toevallig openstaat.
   conversationId?: string | null;
+  // Uit welke gekoppelde mailbox dit bericht kwam (R5, meerdere mailboxen).
+  // Alleen gevuld bij live mail; bij één gekoppelde mailbox blijft dit onzichtbaar.
+  mailboxId?: number;
+  mailboxLabel?: string | null;
 };
 
 // Actuele stand van zaken = een gesprek klant ↔ wij, plus losse taken.

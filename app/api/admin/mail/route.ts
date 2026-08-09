@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
 import { getClientBySlug } from "../../../../lib/clients";
-import { msStatus, msSearchClientEmails, msReplyHtml, msSendMail, msListAttachments } from "../../../../lib/ms-graph";
+import { msStatus, msSearchClientEmailsAlleMailboxen, msReplyHtml, msSendMail, msListAttachments } from "../../../../lib/ms-graph";
 import { getVerborgenMails, verbergMail } from "../../../../lib/snapshots";
 
 export const runtime = "nodejs";
@@ -44,7 +44,9 @@ export async function GET(req: NextRequest) {
   const query = (client.email || client.domain || "").trim();
   if (!query) return NextResponse.json({ ok: true, connected: true, emails: [] });
 
-  const emails = await msSearchClientEmails(query, status.account || "", 15);
+  // Alle gekoppelde mailboxen door elkaar, één tijdlijn (R5). Met precies één
+  // gekoppelde mailbox is dit gedrag ongewijzigd t.o.v. vóór R5.
+  const emails = await msSearchClientEmailsAlleMailboxen(query, 15);
   if (emails === null) return NextResponse.json({ ok: false, error: "Ophalen mislukt. Mogelijk opnieuw koppelen." }, { status: 502 });
   // Wat Maarten hier heeft weggegooid, blijft weg (de mail zelf blijft in de mailbox staan).
   const weg = new Set(await getVerborgenMails(slug));

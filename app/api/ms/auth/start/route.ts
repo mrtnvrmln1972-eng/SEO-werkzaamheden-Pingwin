@@ -13,6 +13,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL("/admin?ms=notconfigured", req.url));
   }
   const origin = req.nextUrl.origin;
-  const state = crypto.randomUUID();
+  // Een label ("Maarten", een collega-naam) reist mee in de state en komt bij
+  // de callback terug; zo weet msExchangeCode onder welke naam deze mailbox
+  // moet verschijnen in de lijst gekoppelde mailboxen (R5, meerdere mailboxen).
+  const label = (req.nextUrl.searchParams.get("label") || "").trim().slice(0, 60);
+  const state = label ? `lbl:${encodeURIComponent(label)}:${crypto.randomUUID()}` : crypto.randomUUID();
   return NextResponse.redirect(msAuthUrl(origin, state));
 }

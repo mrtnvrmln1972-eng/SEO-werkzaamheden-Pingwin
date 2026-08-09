@@ -1692,6 +1692,7 @@ button.ck-collapse-head {
 .email-dir.in { background: #E8F0FE; color: #1A56B0; }
 .email-dir.out { background: var(--orange-light); color: var(--orange-dark); }
 .email-from { font-weight: 600; color: var(--dark); }
+.email-mailbox { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 10px; background: #F1F1F1; color: var(--gray); }
 .email-date { margin-left: auto; }
 .email-subject { font-weight: 600; color: var(--dark); font-size: 14px; }
 .email-preview { font-size: 12px; color: var(--gray); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; line-height: 1.45; }

@@ -21,7 +21,7 @@
 // betreffende uitklapper aanvullen en LAATST_BIJGEWERKT verzetten.
 // ═══════════════════════════════════════════════════════════
 
-export const LAATST_BIJGEWERKT = "8 augustus 2026 (R7: bronnen-gezondheid)";
+export const LAATST_BIJGEWERKT = "9 augustus 2026 (R5: meerdere mailboxen, leestijdlijn)";
 
 export type Uitklapper = {
   titel: string;
@@ -1927,29 +1927,27 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "| **R8** | Correcties worden regels, in élke motor | je dezelfde correctie twee keer maakt |",
         sub: [
           {
-            titel: "R5. Meerdere mailboxen",
+            titel: "R5. Meerdere mailboxen — leestijdlijn klaar op 9 augustus 2026, versturen nog open",
             tekst:
-              "**Wat er nu mis is.** De correspondentie hangt aan één gekoppelde mailbox. Alles wat de assistent " +
-              "weet over afspraken komt daaruit. Werkt er iemand anders aan een klant, dan is diens mail " +
-              "onzichtbaar, en dan is de context van de assistent stil incompleet. Dat is erger dan geen context, " +
-              "want het ziet er compleet uit.\n\n" +
-              "**Wat het oplevert.** Dit is de eerste harde blokkade bij groei, en ook bij een tweede bureau. Met " +
-              "meerdere mailboxen wordt de teamgebruiker-laag die er al is (eigen inlog, eigen klanten, wel of " +
-              "geen mail) pas echt bruikbaar.\n\n" +
-              "**Hoe we het zouden bouwen.**\n\n" +
-              "1. De koppeling per gebruiker in plaats van per omgeving: dezelfde eenmalige login, maar de " +
-              "bewaarde toegang hangt aan de teamgebruiker.\n" +
-              "2. Per klant vastleggen welke mailboxen erbij horen, zodat de correspondentie van twee mensen in " +
-              "één tijdlijn komt met de afzender erbij.\n" +
-              "3. Versturen blijft persoonlijk: je stuurt vanuit je eigen mailbox, nooit vanuit die van een " +
-              "collega.\n" +
-              "4. De scheiding respecteren die er al is: een gast die geen mail mag zien, ziet ook hier niets.\n\n" +
-              "**Waaraan je ziet dat het af is.** Twee mailboxen gekoppeld, en bij een klant staat de " +
-              "correspondentie van beide door elkaar in de tijdlijn, met per bericht wie het stuurde. Een gast " +
-              "zonder mailrecht ziet nul berichten.\n\n" +
-              "**Wat het raakt.** Dit verandert de manier waarop mail binnenkomt, de tijdlijn per klant, de controle op " +
-              "uitgaande mail en wat de assistent weet als je met hem praat. Ook de rechten gaan mee: een gast die " +
-              "geen mail mag zien, blijft niets zien.",
+              "**Wat er al werkt.** Er kunnen nu meerdere Microsoft-mailboxen gekoppeld worden (Beheer → Gekoppelde " +
+              "mailboxen), elk met een eigen naam. Bij een klant staat de correspondentie uit ÁLLE gekoppelde " +
+              "mailboxen door elkaar in de tijdlijn, gesorteerd op datum; zodra er meer dan één mailbox meedoet " +
+              "staat er bij elk bericht bij welke mailbox het ophaalde. Ook de assistent (de chat, en 'zoek mail') " +
+              "kijkt naar alle gekoppelde mailboxen, niet meer naar maar één. Een tweede mailbox eraan hangen is " +
+              "één klik, met een naam ernaast; opnieuw koppelen van een bestaande mailbox (na een verlopen token) " +
+              "vervangt gewoon die ene rij, dus dat levert geen dubbele mailbox op.\n\n" +
+              "**Wat nog openstaat.** Versturen en beantwoorden gaat nog altijd vanuit de eerst gekoppelde mailbox, " +
+              "ongeacht via welke mailbox een binnengekomen bericht gelezen werd. \"Versturen blijft persoonlijk: je " +
+              "stuurt vanuit je eigen mailbox\" is dus nog niet gebouwd; dat vraagt dat het antwoordvenster weet uit " +
+              "welke mailbox het bericht kwam waarop je reageert, en dat raakt de meeste mail-schermen in de " +
+              "cockpit. Ook is er nog geen koppeling met de teamgebruikers-tabel (welke mailbox hoort bij wie); een " +
+              "gekoppelde mailbox heeft nu alleen een vrije naam.\n\n" +
+              "**Waaraan je ziet dat het geheel af is.** Twee echte mailboxen gekoppeld, en bij een klant staat de " +
+              "correspondentie van beide door elkaar in de tijdlijn mét afzender, én een antwoord gaat automatisch " +
+              "vanuit de mailbox waar het origineel in binnenkwam. Een gast zonder mailrecht blijft nul berichten " +
+              "zien (dat gold al, en is ongewijzigd).\n\n" +
+              "**Wat het raakt.** De manier waarop mail binnenkomt, de tijdlijn per klant, en wat de assistent weet " +
+              "als je met hem praat. Versturen en de rechten-koppeling volgen in een vervolgstap.",
           },
           {
             titel: "R6. Tweede sitekoppeling, en copy doorvoeren",

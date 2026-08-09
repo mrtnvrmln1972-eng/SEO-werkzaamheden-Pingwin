@@ -1,7 +1,7 @@
 import { sql, ensureSchema } from "./db";
 import { getClientBySlug } from "./clients";
 import { getEmails, getMetrics, getKeywords, getStatus } from "./snapshots";
-import { msStatus, msSearchClientEmails } from "./ms-graph";
+import { msStatus, msSearchClientEmailsAlleMailboxen } from "./ms-graph";
 import { getClientUrls, buildUrlContext } from "./site-urls";
 import { googleStatus, getGscForClient, getGscKeywordTrend, getGscForPage } from "./google";
 import { measurePage } from "./page-measure";
@@ -144,7 +144,7 @@ async function buildContext(client: ClientConfig): Promise<string> {
   if (ms.connected) {
     const q = (client.email || client.domain || "").trim();
     if (q) {
-      const live = await msSearchClientEmails(q, ms.account || "", 15);
+      const live = await msSearchClientEmailsAlleMailboxen(q, 15);
       if (live) emails = live;
     }
   }
@@ -339,7 +339,7 @@ async function buildOverviewContext(client: ClientConfig): Promise<string> {
     if (ms.connected) {
       const q = (client.email || client.domain || "").trim();
       if (q) {
-        const live = await msSearchClientEmails(q, ms.account || "", 12).catch(() => null);
+        const live = await msSearchClientEmailsAlleMailboxen(q, 12).catch(() => null);
         if (live && live.length) {
           const seen = new Set(live.map((e) => e.id));
           emails = [...live, ...emails.filter((e) => !seen.has(e.id))]
@@ -832,7 +832,7 @@ function chatTools(client: ClientConfig): { tools: ToolDef[]; run: ToolRunner } 
         type M = { fromAddress: string | null; subject: string | null; receivedAt: string | null; bodyHtml: string | null; preview: string | null; direction: string | null; link: string | null };
         const normM = (e: { fromAddress?: string | null; subject?: string | null; receivedAt?: string | null; bodyHtml?: string | null; preview?: string | null; direction?: string | null; superhumanLink?: string | null; webLink?: string | null }): M => ({ fromAddress: e.fromAddress ?? null, subject: e.subject ?? null, receivedAt: e.receivedAt ?? null, bodyHtml: e.bodyHtml ?? null, preview: e.preview ?? null, direction: e.direction ?? null, link: e.superhumanLink || e.webLink || null });
         let mails: M[] = [];
-        try { const ms = await msStatus(); if (ms.connected) { const live = await msSearchClientEmails(q, ms.account || "", 8); if (live) mails = live.map(normM); } } catch { /* val terug op opgeslagen */ }
+        try { const ms = await msStatus(); if (ms.connected) { const live = await msSearchClientEmailsAlleMailboxen(q, 8); if (live) mails = live.map(normM); } } catch { /* val terug op opgeslagen */ }
         if (!mails.length) {
           const stored = await getEmails(client.slug, 80).catch(() => []);
           const ql = q.toLowerCase();

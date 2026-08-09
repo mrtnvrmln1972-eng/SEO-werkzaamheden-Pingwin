@@ -16,7 +16,13 @@ export async function GET(req: NextRequest) {
   if (!code) {
     return NextResponse.redirect(new URL("/admin?ms=error&msg=geen+code", req.url));
   }
-  const result = await msExchangeCode(req.nextUrl.origin, code);
+  // Label (indien meegegeven bij het koppelen) staat vóórin de state, zie
+  // /api/ms/auth/start. Zonder herkenbaar voorvoegsel: geen label, dan valt
+  // msExchangeCode terug op de mailboxnaam van het account zelf.
+  const state = req.nextUrl.searchParams.get("state") || "";
+  const labelMatch = /^lbl:([^:]*):/.exec(state);
+  const label = labelMatch ? decodeURIComponent(labelMatch[1]) : undefined;
+  const result = await msExchangeCode(req.nextUrl.origin, code, label);
   if (!result.ok) {
     return NextResponse.redirect(new URL(`/admin?ms=error&msg=${encodeURIComponent(result.error || "mislukt")}`, req.url));
   }
