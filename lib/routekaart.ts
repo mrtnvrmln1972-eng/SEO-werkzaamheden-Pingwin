@@ -160,7 +160,7 @@ export const PUNTEN: Punt[] = [
     code: "R9",
     titel: "Het klantdashboard op echte data",
     golf: 3,
-    stand: "open",
+    stand: "loopt",
     nodig: [],
     omvang: "middel",
     oplevert: "De rijkste data komt eindelijk bij degene die betaalt. Grootste verkoopwaarde.",
