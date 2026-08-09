@@ -21,7 +21,7 @@
 // betreffende uitklapper aanvullen en LAATST_BIJGEWERKT verzetten.
 // ═══════════════════════════════════════════════════════════
 
-export const LAATST_BIJGEWERKT = "9 augustus 2026 (R9: ontwikkeling deze maand op het klantdashboard, gebouwd)";
+export const LAATST_BIJGEWERKT = "9 augustus 2026 (R6: copy als concept naar WordPress; R9: ontwikkeling deze maand op het klantdashboard, gebouwd)";
 
 export type Uitklapper = {
   titel: string;
@@ -1925,7 +1925,7 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "| Punt | Wat het is | Wordt urgent zodra |\n" +
           "|---|---|---|\n" +
           "| **R5** | Meerdere mailboxen | er iemand naast je meewerkt |\n" +
-          "| **R6** | Tweede sitekoppeling, en copy doorvoeren | er een klant niet op WordPress zit |\n" +
+          "| **R6** | Tweede sitekoppeling, en copy doorvoeren | WordPress-deel ✅ af op 9 augustus 2026; tweede systeem: zodra er een klant niet op WordPress zit |\n" +
           "| **R7** | Bronnen-gezondheid: welke bron is stil? | ✅ af op 8 augustus 2026 |\n" +
           "| **R8** | Correcties worden regels, in élke motor | je dezelfde correctie twee keer maakt |",
         sub: [
@@ -1955,22 +1955,23 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
               "geen mail mag zien, blijft niets zien.",
           },
           {
-            titel: "R6. Tweede sitekoppeling, en copy doorvoeren",
+            titel: "R6. Tweede sitekoppeling, en copy doorvoeren — WordPress-deel klaar op 9 augustus 2026",
             tekst:
-              "**Wat er nu mis is.** Twee dingen tegelijk. Doorvoeren op de site werkt alleen voor WordPress. En " +
-              "binnen WordPress gaan alleen meta-teksten en alt-teksten automatisch; de copy zelf, het grootste " +
-              "werkstuk van de hele keten, gaat nog met de hand.\n\n" +
-              "**Wat het oplevert.** De keten is af tot aan de site en breekt daar. Dit is de plek waar het meeste " +
-              "handwerk overblijft, dus ook waar de meeste uren te winnen zijn. En zolang doorvoeren " +
-              "merkafhankelijk is, kun je een klant op een ander systeem alleen de halve dienst leveren.\n\n" +
-              "**Hoe we het zouden bouwen.**\n\n" +
-              "1. Eerst de vorm goed zetten: de doorvoerlaag scheiden van WordPress, met per systeem een eigen " +
-              "koppelstuk en dezelfde drie regels erboven (versleuteld wachtwoord, altijd terugcontrole, eerlijk " +
-              "melden als het niet lukte).\n" +
-              "2. Copy doorvoeren als concept, nooit direct live: het dashboard zet de nieuwe tekst als " +
-              "conceptversie in de site, met een link om te bekijken. Publiceren blijft een mensenklik.\n" +
-              "3. Daarna het tweede koppelstuk, gekozen op wat de klanten echt gebruiken.\n" +
-              "4. De werklijst voor de sitebouwer blijft bestaan als terugval, want er blijven altijd systemen " +
+              "**Wat er klaar is.** De copy, het grootste werkstuk van de hele keten, ging tot nu toe altijd met de " +
+              "hand van het copydocument naar de site. Vanaf nu kun je bij een pagina met een goedgekeurde copy op " +
+              "“Zet copy als concept in de site” drukken: het dashboard zet de volledige, goedgekeurde tekst " +
+              "als NIEUW concept (nog niet zichtbaar voor bezoekers) in WordPress, met een link naar het bewerkscherm " +
+              "waar je het meteen kunt zien. De bestaande, live pagina van de klant wordt hierbij niet aangeraakt; " +
+              "publiceren, of de tekst overzetten naar de bestaande pagina, doe je zelf met die link, in je eigen " +
+              "WordPress-inlog. Er wordt altijd teruggecontroleerd of het concept er ook echt (en nog als concept, " +
+              "niet per ongeluk meteen live) staat, en een mislukte poging meldt eerlijk waarom, net als bij de meta- " +
+              "en alt-teksten hiernaast.\n\n" +
+              "Onder deze knop zit nu ook de vorm die volgende systemen straks kunnen hergebruiken: één klein " +
+              "koppelvlak per sitesysteem (versleuteld wachtwoord, altijd terugcontrole, eerlijk melden als het niet " +
+              "lukte), waar WordPress het eerste koppelstuk van is.\n\n" +
+              "**Wat nog open staat.** Er is nog geen klant bekend die niet op WordPress zit, dus het tweede " +
+              "koppelstuk (voor dat andere systeem) is er nog niet; zodra dat zich aandient, komt het naast het " +
+              "WordPress-koppelstuk. Tot die tijd blijft de werklijst voor de sitebouwer de terugval voor elke site " +
               "zonder koppeling.\n\n" +
               "**Waaraan je ziet dat het af is.** Een goedgekeurd copydocument staat als concept in de site, met " +
               "een voorbeeldlink, zonder dat er iets gekopieerd is. En hetzelfde werkt op een tweede systeem.\n\n" +

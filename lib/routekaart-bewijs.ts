@@ -133,6 +133,32 @@ const BEWIJZEN: Record<string, BewijsRegel[]> = {
     },
   ],
 
+  R6: [
+    {
+      soort: "gedeployd",
+      wat: "Elk sitesysteem heeft één koppelvlak (vandaag alleen WordPress)",
+      laad: () => import("./site-connector") as Promise<Record<string, unknown>>,
+      functie: "connectorFor",
+    },
+    {
+      soort: "gedeployd",
+      wat: "Copy kan als concept (niet live) in WordPress gezet worden",
+      laad: () => import("./wp-push") as Promise<Record<string, unknown>>,
+      functie: "pushCopyDraft",
+    },
+    {
+      soort: "data",
+      wat: "Er is minstens één keer copy als concept in een site gezet",
+      telling: async () => {
+        await ensureSchema();
+        const { rows } = await sql`
+          SELECT COUNT(*)::int AS n FROM client_activiteit WHERE soort = 'copy-concept'
+        `;
+        return Number(rows[0]?.n || 0);
+      },
+    },
+  ],
+
   R9: [
     {
       soort: "gedeployd",

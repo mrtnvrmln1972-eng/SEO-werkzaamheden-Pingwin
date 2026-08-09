@@ -21,7 +21,7 @@ type Rij = {
 
 const MAANDEN = ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"];
 const SOORT_LABEL: Record<string, string> = {
-  analyse: "Analyse", blauwdruk: "Blauwdruk", copy: "Copy", "copy-live": "Copy live",
+  analyse: "Analyse", blauwdruk: "Blauwdruk", copy: "Copy", "copy-concept": "Copy als concept", "copy-live": "Copy live",
   meta: "Meta-teksten", alt: "Alt-teksten", "intern-link": "Interne links",
   structured: "Structured data", redirect: "Redirect", paginawijziging: "Paginawijziging",
 };

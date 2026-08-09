@@ -1,12 +1,19 @@
-// WordPress-koppeling per klant: meta title/description rechtstreeks doorvoeren
-// op de site via de WordPress REST API met een applicatie-wachtwoord.
+// WordPress-koppeling per klant: meta title/description en (sinds R6) de
+// volledige copy rechtstreeks doorvoeren op de site via de WordPress REST API
+// met een applicatie-wachtwoord.
 //
 // - Het applicatie-wachtwoord wordt versleuteld opgeslagen (AES-256-GCM met een
 //   sleutel afgeleid van SESSION_SECRET); nooit leesbaar terug te geven.
-// - Doorvoeren schrijft de Yoast-velden (_yoast_wpseo_title/_yoast_wpseo_metadesc)
+// - Meta doorvoeren schrijft de Yoast-velden (_yoast_wpseo_title/_yoast_wpseo_metadesc)
 //   en leest ze daarna terug ter controle. Stelt de site die velden niet open
 //   voor de REST API (dat vergt een klein snippet op de site), dan melden we dat
 //   eerlijk in plaats van te doen alsof het gelukt is.
+// - Copy doorvoeren zet NOOIT de bestaande, live pagina om naar concept (dat zou
+//   de pagina van de klant offline halen). In plaats daarvan maakt pushCopyDraft
+//   een NIEUWE pagina/bericht aan met status "draft", met dezelfde titel plus
+//   "— concept (Pingwin)". Dat concept staat nergens publiek, en publiceren (of
+//   overzetten naar de bestaande pagina) blijft een bewuste mensenklik in
+//   WordPress zelf. Dit is het WordPress-koppelstuk achter lib/site-connector.ts.
 
 import crypto from "crypto";
 import { sql, ensureSchema } from "./db";
@@ -190,3 +197,129 @@ export async function pushAltTexts(slug: string, pageUrl: string, alts: { file: 
     : `${gezet} alt-teksten gezet en gecontroleerd.`;
   return { ok: gezet > 0 || mislukt.length === 0, gezet, mislukt, redenen, detail };
 }
+
+export type WpAltPushResult = Awaited<ReturnType<typeof pushAltTexts>>;
+
+// ── Copy als concept doorvoeren (R6) ─────────────────────────
+// Het opgeslagen copydocument is platte tekst met een vaste sectie "Volledige
+// copy" (zie specToText/COPY_SYSTEM in lib/page-doc.ts): daarin staat de H1
+// (het label "H1 — ..."), elke H2/H3 met hetzelfde label, en de lopende tekst/
+// bullets eronder. De andere secties (scorecard, meta-tabel, behoud-overzicht)
+// zijn werkdocumentatie voor Pingwin zelf en horen niet op de site.
+
+function copyEscHtml(s: string): string {
+  return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function copyInlineHtml(s: string): string {
+  return copyEscHtml(s).replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+}
+
+/** Pakt alleen de tekst tussen "## Volledige copy" en de volgende "## "-kop. */
+export function volledigeCopyTekst(content: string): string {
+  const lines = (content || "").split("\n");
+  let start = -1;
+  let end = lines.length;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (start === -1) { if (/^##\s+Volledige copy\s*$/i.test(line)) start = i + 1; continue; }
+    if (/^##\s+/.test(line)) { end = i; break; }
+  }
+  return start === -1 ? "" : lines.slice(start, end).join("\n").trim();
+}
+
+/**
+ * Zet de "Volledige copy"-tekst om in nette HTML voor het WordPress content-veld.
+ * De H1-regel wordt bewust NIET meegenomen: dat is de bestaande paginatitel, en
+ * die opnieuw als kop in de inhoud zetten geeft een dubbele H1 op de pagina.
+ */
+export function copyContentToHtml(tekst: string): string {
+  const lines = tekst.split("\n");
+  const out: string[] = [];
+  let inList = false;
+  const sluitLijst = () => { if (inList) { out.push("</ul>"); inList = false; } };
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) { sluitLijst(); continue; }
+    const kop = /^#{1,3}\s+(.*)$/.exec(line);
+    if (kop) {
+      sluitLijst();
+      const label = /^H([123])\s*[—–-]\s*(.+)$/i.exec(kop[1].trim());
+      if (label) {
+        if (label[1] !== "1") out.push(`<h${label[1]}>${copyInlineHtml(label[2].trim())}</h${label[1]}>`);
+      } else {
+        out.push(`<h2>${copyInlineHtml(kop[1].trim())}</h2>`);
+      }
+      continue;
+    }
+    const bullet = /^[-*]\s+(.*)$/.exec(line);
+    if (bullet) {
+      if (!inList) { out.push("<ul>"); inList = true; }
+      out.push(`<li>${copyInlineHtml(bullet[1])}</li>`);
+      continue;
+    }
+    sluitLijst();
+    out.push(`<p>${copyInlineHtml(line)}</p>`);
+  }
+  sluitLijst();
+  return out.join("\n");
+}
+
+export type CopyPushResult = { ok: boolean; detail: string; previewUrl?: string | null };
+
+/**
+ * Zet het goedgekeurde copydocument als CONCEPT in WordPress: een nieuwe
+ * pagina/bericht (status "draft"), nooit een wijziging van de bestaande, live
+ * pagina. Geeft de wp-admin-bewerklink terug als voorbeeldlink; publiceren (of
+ * de tekst overzetten naar de bestaande pagina) is en blijft een mensenklik.
+ */
+export async function pushCopyDraft(slug: string, pageUrl: string, copyContent: string): Promise<CopyPushResult> {
+  const tekst = volledigeCopyTekst(copyContent);
+  if (!tekst) return { ok: false, detail: "Dit copydocument heeft geen sectie 'Volledige copy' om door te voeren; genereer eerst de copy voor deze pagina." };
+  const html = copyContentToHtml(tekst);
+  if (!html.trim()) return { ok: false, detail: "Er is geen copytekst gevonden om als concept te plaatsen." };
+
+  const auth = await authFor(slug, pageUrl);
+  const post = await findPost(auth, pageUrl);
+
+  const orig = await wpFetch(auth, `/${post.type}/${post.id}?context=edit&_fields=id,title,slug`);
+  if (!orig.ok) return { ok: false, detail: `Kon de bestaande pagina niet uitlezen (${orig.status}).` };
+  const origData = (await orig.json().catch(() => ({}))) as { title?: { raw?: string; rendered?: string }; slug?: string };
+  const titel = (origData.title?.raw || origData.title?.rendered || "").replace(/<[^>]+>/g, "").trim() || "Concept";
+  const conceptSlug = `${(origData.slug || "concept").slice(0, 60)}-concept-pingwin-${Date.now().toString(36)}`;
+
+  const maak = await wpFetch(auth, `/${post.type}`, {
+    method: "POST",
+    body: JSON.stringify({ title: `${titel} — concept (Pingwin)`, slug: conceptSlug, status: "draft", content: html }),
+  });
+  if (maak.status === 401 || maak.status === 403) return { ok: false, detail: "De site weigert de wijziging: controleer gebruikersnaam en applicatie-wachtwoord (en of die gebruiker nieuwe pagina's mag aanmaken)." };
+  if (!maak.ok) {
+    const t = (await maak.text().catch(() => "")).slice(0, 200);
+    return { ok: false, detail: `De site gaf een fout terug (${maak.status}). ${t}` };
+  }
+  const created = (await maak.json().catch(() => ({}))) as { id?: number };
+  if (!created.id) return { ok: false, detail: "De site gaf geen bevestiging terug; controleer handmatig of het concept is aangemaakt." };
+
+  // Terug-controle: staat het concept er echt, en nog steeds als concept (niet
+  // per ongeluk meteen gepubliceerd)?
+  const check = await wpFetch(auth, `/${post.type}/${created.id}?context=edit&_fields=id,status`);
+  const checkData = (await check.json().catch(() => ({}))) as { status?: string };
+  const editUrl = `${auth.origin}/wp-admin/post.php?post=${created.id}&action=edit`;
+  if (checkData.status !== "draft") {
+    return { ok: false, detail: "Het concept is aangemaakt maar de status kon niet bevestigd worden als 'concept'; controleer het handmatig in WordPress voordat je verdergaat.", previewUrl: editUrl };
+  }
+  return {
+    ok: true,
+    detail: "De copy staat als concept (nog niet live) in WordPress. Open de link, bekijk het en publiceer het pas als je tevreden bent.",
+    previewUrl: editUrl,
+  };
+}
+
+// ── Het WordPress-koppelstuk achter de generieke doorvoerlaag (lib/site-connector.ts) ──
+export const wordpressConnector = {
+  id: "wordpress" as const,
+  naam: "WordPress",
+  pushMeta: pushMetaToSite,
+  pushAltTexts,
+  pushCopyDraft,
+};

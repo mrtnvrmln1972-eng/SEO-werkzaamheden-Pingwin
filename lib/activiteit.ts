@@ -17,7 +17,7 @@
 import { sql, ensureSchema } from "./db";
 
 export type ActiviteitSoort =
-  | "analyse" | "blauwdruk" | "copy" | "copy-live"
+  | "analyse" | "blauwdruk" | "copy" | "copy-live" | "copy-concept"
   | "meta" | "alt" | "intern-link" | "structured" | "redirect" | "paginawijziging"
   | "gmb-profiel" | "gmb-review";
 
@@ -43,6 +43,7 @@ const KLANTTAAL: Record<ActiviteitSoort, string> = {
   analyse: "Pagina geanalyseerd: gekeken waarop hij gevonden wordt en wat er beter kan",
   blauwdruk: "Opzet gemaakt voor de nieuwe pagina-indeling",
   copy: "Nieuwe paginatekst geschreven",
+  "copy-concept": "Nieuwe paginatekst als concept in de site gezet, klaar om te publiceren",
   "copy-live": "Nieuwe paginatekst staat live op de site",
   meta: "Zoekresultaat-tekst verbeterd, zodat meer mensen erop klikken",
   alt: "Afbeeldingen voorzien van een beschrijving, goed voor vindbaarheid en toegankelijkheid",
@@ -56,7 +57,7 @@ const KLANTTAAL: Record<ActiviteitSoort, string> = {
 
 // Labels voor jouw eigen scherm.
 export const SOORT_LABEL: Record<ActiviteitSoort, string> = {
-  analyse: "Analyse", blauwdruk: "Blauwdruk", copy: "Copy", "copy-live": "Copy live",
+  analyse: "Analyse", blauwdruk: "Blauwdruk", copy: "Copy", "copy-concept": "Copy als concept", "copy-live": "Copy live",
   meta: "Meta-teksten", alt: "Alt-teksten", "intern-link": "Interne links",
   structured: "Structured data", redirect: "Redirect", paginawijziging: "Paginawijziging",
   "gmb-profiel": "Google-profiel", "gmb-review": "Google-review",
@@ -65,7 +66,9 @@ export const SOORT_LABEL: Record<ActiviteitSoort, string> = {
 // Wat je standaard met een klant zou delen. Een gedetecteerde paginawijziging is
 // vaak ruis (de klant paste zelf iets aan), dus die staat standaard uit.
 const STANDAARD_ZICHTBAAR: Record<ActiviteitSoort, boolean> = {
-  analyse: true, blauwdruk: false, copy: true, "copy-live": true,
+  // Een concept is nog geen opgeleverd werk (de klant kan het nog niet zien op de
+  // site); pas "copy-live" is dat. Intern zichtbaar, niet standaard gedeeld.
+  analyse: true, blauwdruk: false, copy: true, "copy-concept": false, "copy-live": true,
   meta: true, alt: true, "intern-link": true, structured: true,
   redirect: true, paginawijziging: false,
   // Een profielwijziging is werk dat de klant mag zien. Een binnengekomen review
