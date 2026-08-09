@@ -113,7 +113,7 @@ export const PUNTEN: Punt[] = [
     code: "R5",
     titel: "Meerdere mailboxen",
     golf: 2,
-    stand: "open",
+    stand: "loopt",
     nodig: [],
     omvang: "middel",
     oplevert: "Samenwerken kan pas echt: de mail van een collega is niet langer onzichtbaar.",

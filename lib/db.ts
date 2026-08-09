@@ -400,6 +400,32 @@ async function init(): Promise<void> {
       updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
     )`;
 
+  // ── Meerdere Microsoft-mailboxen (R5, 9 augustus 2026) ──
+  // oauth_tokens had voor 'microsoft' maar één rij: één mailbox voor de hele
+  // omgeving. Werkt er iemand naast Maarten mee, dan was diens mail onzichtbaar
+  // en zag de assistent maar de helft van het gesprek. mail_accounts vervangt dat
+  // voor Microsoft door meerdere losse, genoemde koppelingen; elke koppeling
+  // bewaart zijn eigen refresh-token, dus elke mailbox vernieuwt zijn eigen
+  // toegang. oauth_tokens blijft ongewijzigd bestaan voor de Google-koppelingen.
+  await sql`
+    CREATE TABLE IF NOT EXISTS mail_accounts (
+      id            SERIAL PRIMARY KEY,
+      label         TEXT,
+      account       TEXT,
+      refresh_token TEXT NOT NULL,
+      connected_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    )`;
+  // Eenmalige overzet: de bestaande 'microsoft'-rij in oauth_tokens wordt de
+  // eerste rij hier, zodat de al gekoppelde mailbox meteen blijft werken.
+  // ON CONFLICT bestaat niet nodig te zijn (geen unique constraint op account),
+  // dus de WHERE NOT EXISTS voorkomt dat dit bij elke serverstart dubbel gebeurt.
+  await sql`
+    INSERT INTO mail_accounts (label, account, refresh_token, connected_at)
+    SELECT 'Maarten', o.account, o.refresh_token, o.updated_at
+    FROM oauth_tokens o
+    WHERE o.provider = 'microsoft' AND o.refresh_token IS NOT NULL
+      AND NOT EXISTS (SELECT 1 FROM mail_accounts)`;
+
   await sql`
     CREATE TABLE IF NOT EXISTS client_metrics (
       client_slug TEXT NOT NULL,
