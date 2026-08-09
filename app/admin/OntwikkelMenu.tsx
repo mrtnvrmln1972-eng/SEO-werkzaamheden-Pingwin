@@ -51,6 +51,7 @@ export const SCHERMEN: { pad: string; naam: string; waarvoor: string }[] = [
   { pad: "/admin/fundament", naam: "Fundament", waarvoor: "Per klant in één oogopslag: tone of voice, structured data, concurrenten, bedrijfsprofiel en positionering." },
   { pad: "/admin/routekaart", naam: "Routekaart", waarvoor: "De ontwikkeling van dit dashboard, punt voor punt." },
   { pad: "/admin/bronnen-gezondheid", naam: "Bronnen-gezondheid", waarvoor: "Per koppeling (Ahrefs, Google, Microsoft, Moneybird, WordPress): werkt hij, en sinds wanneer niet meer." },
+  { pad: "/admin/agenda", naam: "Agenda", waarvoor: "Maartens eigen weekagenda: tijdblokken en taken, los van klantwerk." },
 ];
 
 export default function OntwikkelMenu() {

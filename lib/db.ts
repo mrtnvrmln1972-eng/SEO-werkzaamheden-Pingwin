@@ -453,6 +453,59 @@ async function init(): Promise<void> {
   await sql`CREATE INDEX IF NOT EXISTS idx_service_usage_date ON service_usage (created_at DESC)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_service_usage_slug ON service_usage (client_slug, created_at DESC)`;
 
+  // ── Agenda (Maartens persoonlijke dagplanning, los van klantwerk) ──
+  // Zelfde vorm als LifeMax' Weekplanner (agenda_blocks = tijdblokken, eenmalig
+  // of herhalend; agenda_marks = afvink-/skip-status per losse dag van een
+  // herhalend blok; agenda_taken = hele-dag-taken zonder tijd). Puur Maartens
+  // eigen data, geen klant-koppeling, alleen bereikbaar voor de eigenaar
+  // (guardOwner in de API-routes).
+  await sql`
+    CREATE TABLE IF NOT EXISTS agenda_blocks (
+      id                  SERIAL PRIMARY KEY,
+      title               TEXT NOT NULL,
+      color               TEXT NOT NULL DEFAULT '#1d78af',
+      start_min           INTEGER NOT NULL,
+      end_min             INTEGER NOT NULL,
+      date                DATE,
+      weekdays            INTEGER[],
+      eind_datum          DATE,
+      notities            TEXT NOT NULL DEFAULT '',
+      checklist           JSONB NOT NULL DEFAULT '[]',
+      subtaken            JSONB NOT NULL DEFAULT '[]',
+      prioriteit          INTEGER NOT NULL DEFAULT 0,
+      lijst               TEXT NOT NULL DEFAULT '',
+      tags                JSONB NOT NULL DEFAULT '[]',
+      herinneringen_min   INTEGER[] NOT NULL DEFAULT '{10,0}',
+      herhaal_interval    INTEGER NOT NULL DEFAULT 1,
+      herhaal_anker_datum DATE,
+      created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+    )`;
+  await sql`
+    CREATE TABLE IF NOT EXISTS agenda_marks (
+      block_id INTEGER REFERENCES agenda_blocks(id) ON DELETE CASCADE,
+      date     DATE NOT NULL,
+      status   TEXT NOT NULL,
+      PRIMARY KEY (block_id, date)
+    )`;
+  await sql`
+    CREATE TABLE IF NOT EXISTS agenda_taken (
+      id                   SERIAL PRIMARY KEY,
+      titel                TEXT NOT NULL,
+      kleur                TEXT NOT NULL DEFAULT '#1d78af',
+      datum                DATE NOT NULL,
+      eind_datum           DATE,
+      done                 BOOLEAN NOT NULL DEFAULT false,
+      notities             TEXT NOT NULL DEFAULT '',
+      volgorde             INTEGER NOT NULL DEFAULT 0,
+      checklist            JSONB NOT NULL DEFAULT '[]',
+      subtaken             JSONB NOT NULL DEFAULT '[]',
+      prioriteit           INTEGER NOT NULL DEFAULT 0,
+      lijst                TEXT NOT NULL DEFAULT '',
+      tags                 JSONB NOT NULL DEFAULT '[]',
+      herinneringen_dagen  INTEGER[] NOT NULL DEFAULT '{}',
+      created_at           TIMESTAMPTZ NOT NULL DEFAULT now()
+    )`;
+
   // Demo-klanten (One Day Clinic e.a.) alleen seeden als dat expliciet aan staat
   // via de env-var SEED_DEMO_CLIENTS=true. Zo start een NIEUWE wereld (bijv. een
   // eigen omgeving voor NOC) met een lege klantenlijst. Bestaande omgevingen
