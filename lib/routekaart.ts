@@ -217,7 +217,7 @@ export const PUNTEN: Punt[] = [
     code: "R14",
     titel: "Schermafbeeldingen per hoofdstuk, door het dashboard zelf gemaakt",
     golf: 3,
-    stand: "open",
+    stand: "loopt",
     nodig: [],
     omvang: "middel",
     oplevert: "De uitleg wordt zichtbaar in plaats van beschreven, en de beelden verouderen niet stil.",
