@@ -28,6 +28,7 @@ const BROWSER_ROUTES = [
   "/api/admin/page-schema/apply",
   "/api/admin/page-schema/verify",
   "/api/admin/weekplan/add",
+  "/api/admin/schermafbeeldingen",
   "/api/cron/doc-runs",
 ];
 const CHROMIUM_BESTANDEN = ["./node_modules/@sparticuz/chromium/bin/**"];

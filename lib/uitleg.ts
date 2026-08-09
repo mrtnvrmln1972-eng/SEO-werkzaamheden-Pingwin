@@ -21,7 +21,7 @@
 // betreffende uitklapper aanvullen en LAATST_BIJGEWERKT verzetten.
 // ═══════════════════════════════════════════════════════════
 
-export const LAATST_BIJGEWERKT = "9 augustus 2026 (R6: copy als concept naar WordPress; R9: ontwikkeling deze maand op het klantdashboard, gebouwd)";
+export const LAATST_BIJGEWERKT = "9 augustus 2026 (R6: copy als concept naar WordPress; R9: ontwikkeling deze maand op het klantdashboard, gebouwd; R14: schermafbeeldingen)";
 
 export type Uitklapper = {
   titel: string;
@@ -2169,25 +2169,20 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           {
             titel: "R14. Schermafbeeldingen, door het dashboard zelf gemaakt",
             tekst:
-              "**Wat er nu mis is.** De uitleg is tekst. Wie niet in het dashboard werkt moet zich voorstellen hoe " +
-              "het eruitziet, en dat is precies de groep die het verhaal moet snappen: leads, collega-bureaus, " +
-              "investeerders.\n\n" +
-              "**Wat het oplevert.** Het verhaal wordt zichtbaar in plaats van beschreven. En het is de bouwsteen " +
-              "onder R15 en onder elke handleiding.\n\n" +
-              "**Hoe we het zouden bouwen.** Niet met de hand, want dan verouderen de beelden stil zodra een scherm " +
-              "verandert. Er zit al een echte browser in de app (die meet de pagina's van klanten). Die laten we " +
-              "zijn eigen schermen fotograferen:\n\n" +
-              "1. Eén ingang die een schermafbeelding maakt van een opgegeven scherm, op een vaste breedte, met de " +
-              "eigen sessie.\n" +
-              "2. **Een anonieme stand die verplicht is voor alles wat openbaar komt.** Vóór de foto worden " +
-              "klantnaam, domein en mailadressen vervangen door een neutrale naam. Zonder die stand zou de data van " +
-              "een echte klant op een openbare pagina belanden, en dat kan niet.\n" +
-              "3. Een vaste lijst: welk scherm hoort bij welk hoofdstuk. Eén opdracht vernieuwt ze allemaal.\n" +
-              "4. Waar een scherm niet zonder echte klantdata te tonen is, komt het beeld achter de " +
-              "beheerderslogin te staan in plaats van dat het wordt weggelaten.\n\n" +
-              "**Waaraan je ziet dat het af is.** Elk hoofdstuk op de uitlegpagina heeft een beeld, er staat geen " +
-              "echte klantnaam op een openbaar beeld, en één opdracht maakt ze allemaal opnieuw.\n\n" +
-              "**Wat het raakt.** Dit verandert de uitlegpagina en de verkooppitch, en het gebruikt de browser die al in " +
+              "**Wat er nu gebeurt.** Het dashboard fotografeert zichzelf. Er is een vaste lijst van eigen " +
+              "schermen; bij elk scherm logt de app met een echte adminsessie in, opent het scherm op een vaste " +
+              "breedte, en maakt er een opname van. Vóór die opname wordt elke echte klantnaam, elk domein en elk " +
+              "mailadres op de pagina vervangen door een neutrale naam (\"Voorbeeldklant\"). Zo mag elk beeld " +
+              "veilig openbaar op deze pagina staan, ook al is de onderliggende data echt (van de meest gevulde " +
+              "klant, One Day Clinic), zodat een beeld ook echt iets laat zien in plaats van een lege demo-omgeving.\n\n" +
+              "Het bedieningspaneel staat op `/admin/schermafbeeldingen`: één knop (\"Alles vernieuwen\") maakt de " +
+              "hele lijst opnieuw, en toont per scherm wanneer het voor het laatst is opgenomen. Elk hoofdstuk " +
+              "hieronder met een beeld toont dat beeld automatisch boven zijn tekst.\n\n" +
+              "**Wat er nog open staat.** Nu heeft een eerste set hoofdstukken een beeld (waarom, koppelingen, " +
+              "motoren, documenten, werk, bedrijfsvoering, gebruik en deze agenda). De rest krijgt er een zodra er " +
+              "een regel voor bijkomt in de vaste lijst (`lib/schermbeeld.ts`, geen nieuwe code nodig) en \"Alles " +
+              "vernieuwen\" opnieuw draait.\n\n" +
+              "**Wat het raakt.** Deze pagina en de verkooppitch (R15), en het gebruikt dezelfde browser die al in " +
               "het dashboard zit om pagina's van klanten te meten.",
           },
           {

@@ -211,6 +211,32 @@ const BEWIJZEN: Record<string, BewijsRegel[]> = {
       },
     },
   ],
+
+  R14: [
+    {
+      soort: "gedeployd",
+      wat: "Het dashboard kan een eigen scherm fotograferen en anonimiseren",
+      laad: () => import("./schermbeeld") as Promise<Record<string, unknown>>,
+      functie: "maakSchermafbeelding",
+    },
+    {
+      soort: "gedeployd",
+      wat: "Eén opdracht vernieuwt de hele vaste lijst schermen",
+      laad: () => import("./schermbeeld") as Promise<Record<string, unknown>>,
+      functie: "vernieuwAlleSchermen",
+    },
+    {
+      soort: "data",
+      wat: "Er staat minstens één opgeslagen schermafbeelding",
+      telling: async () => {
+        await ensureSchema();
+        const { rows } = await sql`
+          SELECT COUNT(*)::int AS n FROM schermafbeeldingen
+        `.catch(() => ({ rows: [{ n: 0 }] }));
+        return Number(rows[0]?.n || 0);
+      },
+    },
+  ],
 };
 
 async function toetsRegel(r: BewijsRegel): Promise<RegelUitslag> {

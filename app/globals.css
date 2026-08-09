@@ -6908,3 +6908,14 @@ a.wb-pad:hover { text-decoration: underline; }
 .ag-datumknop-section { margin-top: var(--s-3); }
 .ag-datumknop-section-kop { display: block; font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700; color: var(--gray); margin-bottom: var(--s-1); }
 .ag-datumknop-close-row { display: flex; justify-content: flex-end; margin-top: var(--s-3); }
+
+/* R14: schermafbeeldingen-galerij (/admin/schermafbeeldingen), en dezelfde
+   kaartvorm voor het beeld bij een hoofdstuk op /uitleg. */
+.sb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--s-5); margin-top: var(--s-4); }
+.sb-kaart { border: 1px solid var(--border); border-radius: var(--r-md); overflow: hidden; background: var(--white); box-shadow: var(--shadow-sm); }
+.sb-kaart img { display: block; width: 100%; height: auto; border-bottom: 1px solid var(--border); }
+.sb-kaart-body { padding: var(--s-3) var(--s-4); }
+.sb-kaart-titel { font-weight: 700; font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--dark); }
+.sb-kaart-meta { font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); margin-top: var(--s-1); }
+.uitleg-hoofdstuk-beeld { border: 1px solid var(--border); border-radius: var(--r-md); overflow: hidden; box-shadow: var(--shadow-sm); margin: var(--s-4) 0; }
+.uitleg-hoofdstuk-beeld img { display: block; width: 100%; height: auto; }
