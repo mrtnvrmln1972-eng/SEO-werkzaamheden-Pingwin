@@ -3574,11 +3574,11 @@ body.zp-sleept { user-select: none; cursor: grabbing; }
 .wp-sectie-label { font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: #5e6063; margin: 10px 0 5px; }
 /* Projectkaart: de 7 fases verticaal, met status, startknop en handmatig vinkje. */
 .wp-fases { margin: var(--s-2) 0 var(--s-1); border: 1px solid var(--card-border); border-radius: var(--r-md); background: #fff; }
-.wp-fase { padding: var(--s-1) var(--s-3); border-bottom: 1px solid var(--border); }
+.wp-fase { padding: 2px var(--s-3); border-bottom: 1px solid var(--border); }
 .wp-fase:last-of-type { border-bottom: none; }
-.wp-fase-rij { display: flex; align-items: center; gap: var(--s-2); }
+.wp-fase-rij { display: flex; align-items: center; gap: var(--s-1); min-height: 22px; }
 /* Vaste kolommen in de fase-rijen: labels, chips en knoppen recht onder elkaar. */
-.wp-fase-rij .wp-fase-label { flex: 0 0 148px; }
+.wp-fase-rij .wp-fase-label { flex: 0 0 130px; font-size: var(--fs-xs); }
 .wp-fase-chip { min-width: 72px; display: inline-flex; justify-content: center; }
 /* De rij-knoppen (Start, Bespreek, Mail, ...) zijn `.btn.btn-ghost.btn-klein`,
    niet `.wp-fase-btn` (die klasse hoort hier niet bij, zie de knopconventie in
@@ -3587,14 +3587,14 @@ body.zp-sleept { user-select: none; cursor: grabbing; }
    elkaar. Hier alleen kleur bij hover, en verder klein en rustig. */
 .wp-fases-kop .btn.btn-ghost.btn-klein,
 .wp-fase-rij .btn.btn-ghost.btn-klein {
-  padding: 2px var(--s-2); font-size: var(--fs-xs); font-weight: 600;
-  border-radius: var(--r-sm); border-color: var(--border); color: var(--muted);
+  padding: 1px var(--s-1); font-size: var(--fs-xs); font-weight: 600; line-height: 14px;
+  border-radius: var(--r-sm); border-color: var(--border); color: var(--muted); gap: 2px;
 }
 .wp-fases-kop .btn.btn-ghost.btn-klein:hover:not(:disabled),
 .wp-fase-rij .btn.btn-ghost.btn-klein:hover:not(:disabled) {
   border-color: var(--orange); color: var(--orange-dark); background: var(--orange-light);
 }
-.wp-fase-rij .wp-fase-chip { min-width: 44px; }
+.wp-fase-rij .wp-fase-chip { min-width: 40px; padding: 0 var(--s-1); }
 .wp-fase-rij .wp-fase-chip.wp-fase-klaar, .wp-fase-rij .wp-fase-chip.wp-fase-open { min-width: 30px; font-size: var(--fs-xs); }
 .wp-fase-sturing { margin: 3px 0 1px 24px; font-size: var(--fs-xs); color: var(--muted); line-height: 1.5; }
 .wp-fase-btn-licht { color: var(--gray); border-color: #e3e3e3; }
@@ -5388,7 +5388,7 @@ a.wb-pad:hover { text-decoration: underline; }
 .opr-onderwerp .opr-chip.keep { background: #e7f6ea; color: #2E7D32; }
 /* Het vinkje per fase op de projectkaart: klein, vóór de fasenaam. */
 .wp-fase-vink { display: inline-flex; align-items: center; flex: 0 0 auto; }
-.wp-fase-vink input { width: 15px; height: 15px; accent-color: #1c7a3f; cursor: pointer; margin: 0; }
+.wp-fase-vink input { width: 13px; height: 13px; accent-color: #1c7a3f; cursor: pointer; margin: 0; }
 .wp-fase-vink input:disabled { cursor: wait; opacity: 0.6; }
 
 /* ── De volledige projectkaart binnen het weekbord ──
