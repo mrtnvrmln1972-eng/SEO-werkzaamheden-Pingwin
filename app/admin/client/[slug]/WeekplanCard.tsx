@@ -113,6 +113,11 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
   const [foutje, setFoutje] = useState<string>("");
   const [melding, setMelding] = useState<string>("");
   const [opruimMsg, setOpruimMsg] = useState<string>("");
+  // Heeft het levende maildossier (het blok "Waar deze pagina staat") echt iets
+  // te vertellen? Zo ja, dan hoeven "Waarom deze pagina" en "Aanpak en
+  // afspraken" niet meer: dat is dan hetzelfde verhaal, alleen bevroren. Null
+  // zolang het dossier nog laadt; dan blijft de geschreven tekst gewoon staan.
+  const [dossierHeeftInhoud, setDossierHeeftInhoud] = useState<boolean | null>(null);
   // Chat (zelfde geheugen als de pagina-chat in Pagina's).
   const [chatOpen, setChatOpen] = useState(false);
   const [msgs, setMsgs] = useState<ChatMsg[]>([]);
@@ -650,9 +655,9 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
                   if (tekst) { setLijstPunt(tekst); setLijstMsg(""); }
                 }
               }}
-              dangerouslySetInnerHTML={{ __html: cardInfoHtml(t.toelichting, t.url, t.taak, cijferRegel(page), mailLinks, undefined, true, t.ruw) }} />
+              dangerouslySetInnerHTML={{ __html: cardInfoHtml(t.toelichting, t.url, t.taak, cijferRegel(page), mailLinks, undefined, true, t.ruw, dossierHeeftInhoud === true) }} />
           )}
-          {t.url && <PaginaDossier slug={slug} url={t.url} zonderStand kaartTekst={t.toelichting} kaartTitel={t.taak} />}
+          {t.url && <PaginaDossier slug={slug} url={t.url} zonderStand kaartTekst={t.toelichting} kaartTitel={t.taak} onHeeftInhoud={setDossierHeeftInhoud} />}
           {/* Documenten hangen aan de pagina als die er is, en anders aan de taak
               zelf. Zo kun je bij élke kaart een document neerleggen, ook bij een
               klus die niet over één pagina gaat (een rapportage, een werklijst).

@@ -464,7 +464,7 @@ export function eerdereNotitiesHtml(toelichting: string, pageUrl?: string, taak?
   return { html: linkifyHtml(lijst(info.rest, "wp-punt-lijst", mails), domain), aantal: info.rest.length };
 }
 
-export function cardInfoHtml(toelichting: string, pageUrl?: string, taak?: string, cijfers?: string, mails?: MailLinks, herkomst?: HerkomstContext, zonderNotities?: boolean, ruw?: boolean): string {
+export function cardInfoHtml(toelichting: string, pageUrl?: string, taak?: string, cijfers?: string, mails?: MailLinks, herkomst?: HerkomstContext, zonderNotities?: boolean, ruw?: boolean, verbergVerhaal?: boolean): string {
   const domain = (() => { try { return pageUrl ? new URL(pageUrl).host : ""; } catch { return ""; } })();
   // Kant-en-klare inhoud (bijv. een contentagenda): de Achtergrond/Aanpak-per-fase-
   // indeling hieronder knipt per regel en zou een tabel in losse pipe-regels breken.
@@ -476,11 +476,17 @@ export function cardInfoHtml(toelichting: string, pageUrl?: string, taak?: strin
   }
   const info = splitCardInfo(toelichting, taak, herkomst);
   const kaarten: string[] = [];
-  if (info.achtergrond.length) {
+  // "Waarom deze pagina" en "Aanpak en afspraken" zijn de bevroren, met de hand
+  // geschreven kant van hetzelfde verhaal dat het levende maildossier (het blok
+  // "Waar deze pagina staat") ook vertelt, maar dan actueel. Heeft die pagina een
+  // dossier met echte inhoud, dan wint dat: twee kaartjes die hetzelfde punt op
+  // een ander moment beschrijven is dubbelop, niet extra informatie. Zonder
+  // dossier (een verse kaart, of een taak zonder pagina) blijft dit de enige bron.
+  if (info.achtergrond.length && !verbergVerhaal) {
     kaarten.push(infoKaart(ICO_VLAG, "Waarom deze pagina", lijst(info.achtergrond, "wp-check-lijst", mails)));
   }
   const aanpak = ontdubbel([...info.overig, ...info.afspraken]);
-  if (aanpak.length) {
+  if (aanpak.length && !verbergVerhaal) {
     kaarten.push(infoKaart(ICO_KLEMBORD, "Aanpak en afspraken", lijst(aanpak, "wp-punt-lijst", mails)));
   }
   // De losse opdrachten die in deze kaart zijn samengevoegd. Hier staan ze op één

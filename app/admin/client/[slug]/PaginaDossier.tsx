@@ -50,7 +50,7 @@ function telAchterstand(d: { mails?: unknown; bijgewerktTot?: string | null } | 
   return { aantal: na.length, van: Array.from(new Set(na.map((m) => (m.vanNaam || "").split(" ")[0]).filter(Boolean))) };
 }
 
-export default function PaginaDossier({ slug, url, compact = false, zonderStand = false, kaartTekst, kaartTitel }: {
+export default function PaginaDossier({ slug, url, compact = false, zonderStand = false, kaartTekst, kaartTitel, onHeeftInhoud }: {
   slug: string;
   url: string;
   compact?: boolean;
@@ -66,6 +66,13 @@ export default function PaginaDossier({ slug, url, compact = false, zonderStand 
    * is, ook als de kaart over iets heel anders gaat.
    */
   kaartTitel?: string;
+  /**
+   * Meldt de aanroeper of dit dossier echt iets te vertellen heeft (mail
+   * gevonden) of leeg/fout blijft. De kaart erboven gebruikt dat om de
+   * geschreven "Waarom deze pagina"/"Aanpak en afspraken" te laten staan zolang
+   * er geen levend verhaal is, en die weg te laten zodra dat er wél is.
+   */
+  onHeeftInhoud?: (heeft: boolean) => void;
 }) {
   const [html, setHtml] = useState("");
   const [staat, setStaat] = useState<"laden" | "klaar" | "leeg" | "fout">("laden");
@@ -122,6 +129,14 @@ export default function PaginaDossier({ slug, url, compact = false, zonderStand 
   }, [slug, url, compact, zonderStand, kaartTekst, focusQuery]);
 
   useEffect(() => { void laad(); }, [laad]);
+  // Zodra bekend is of dit dossier iets te vertellen heeft, gaat dat naar de
+  // aanroeper. Bewust niet tijdens "laden": dan is het nog onbekend, en moet de
+  // kaart erboven zijn eigen tekst laten staan totdat dit zich uitspreekt.
+  useEffect(() => {
+    if (staat === "klaar") onHeeftInhoud?.(true);
+    else if (staat === "leeg" || staat === "fout") onHeeftInhoud?.(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [staat]);
 
   // Een mail vastpinnen, losmaken, wegklikken, of de bijlagen eruit halen. De
   // knopjes zitten in de HTML die de server maakt, dus we vangen de klik hier op

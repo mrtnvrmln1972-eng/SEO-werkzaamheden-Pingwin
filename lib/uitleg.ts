@@ -21,7 +21,7 @@
 // betreffende uitklapper aanvullen en LAATST_BIJGEWERKT verzetten.
 // ═══════════════════════════════════════════════════════════
 
-export const LAATST_BIJGEWERKT = "9 augustus 2026 (Fundament: koppelingen en klantkennis samengevoegd tot één tegel-dashboard; R6: copy als concept naar WordPress; R9: ontwikkeling deze maand op het klantdashboard, gebouwd; R14: schermafbeeldingen)";
+export const LAATST_BIJGEWERKT = "10 augustus 2026 (Weekplanning: \"Waarom deze pagina\" en \"Aanpak en afspraken\" wijken voor het levende maildossier zodra dat iets te vertellen heeft; fase-blok compacter)";
 
 export type Uitklapper = {
   titel: string;
@@ -1021,7 +1021,12 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "informatie die niemand miste. Nu schuift wat niet past naar het archief in plaats van te verdwijnen.\n\n" +
           "**Alles staat op één plek.** De vinkjes van de fases stonden ook nog als losse chips in het paginablok, " +
           "opgehaald via een tweede aanvraag, dus ze konden zelfs iets anders zeggen. Doorzetten naar de sitebouwer " +
-          "stond op drie plekken. Dat is teruggebracht tot één.",
+          "stond op drie plekken. Dat is teruggebracht tot één.\n\n" +
+          "**Het verhaal komt niet meer dubbel te staan.** \"Waarom deze pagina\" en \"Aanpak en afspraken\" zijn de " +
+          "geschreven kant van een kaart; \"Waar deze pagina staat\" leest live mee met de mailbox. Zodra dat laatste " +
+          "blok echt iets gevonden heeft, is dat actueler dan de geschreven tekst, dus verdwijnen de eerste twee: " +
+          "hetzelfde verhaal twee keer, op een ander moment opgeschreven, is geen extra informatie. Bij een verse " +
+          "kaart zonder mailgeschiedenis, of een taak zonder pagina, blijft de geschreven tekst gewoon de enige bron.",
       },
       {
         titel: "De werklijst voor de sitebouwer",
