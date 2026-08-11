@@ -465,9 +465,13 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
 
         {/* De uitleg over de volle breedte, in kaartjes. Stond als één lijst in een
             smalle kolom tegen de linkerrand; dat leest niet en het maakte niet
-            duidelijk waar je moest beginnen. */}
-        <div className="opr-kaart opr-kaart-intro">
-          <div className="opr-kop">Wat deze analyse doet</div>
+            duidelijk waar je moest beginnen.
+
+            Standaard dicht: je leest dit één keer, daarna duwt het elke volgende
+            keer de werklijst een half scherm naar beneden. Openklappen kan
+            altijd, dus de uitleg is er nog wel voor wie hem nodig heeft. */}
+        <details className="opr-kaart opr-kaart-intro">
+          <summary className="opr-kop opr-kaart-sam">Wat deze analyse doet</summary>
           <div className="opr-kaart-tekst">
             <p>
               Per pagina van de site één vraag: <strong>wat moet hiermee gebeuren</strong>. En over de site als geheel
@@ -511,7 +515,7 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
               </p>
             </div>
           </div>
-        </div>
+        </details>
 
         {err && <div className="login-error" style={{ marginBottom: "var(--s-2)" }}>{err}</div>}
         {state?.status === "error" && state.error && <div className="login-error" style={{ marginBottom: "var(--s-2)" }}>{state.error}</div>}

@@ -4482,6 +4482,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .opr-kaart-sam::-webkit-details-marker { display: none; }
 .opr-kaart-sam::before { content: "▸ "; font-size: var(--fs-sm); }
 details[open] > .opr-kaart-sam::before { content: "▾ "; }
+/* De uitleg-kaart staat standaard dicht. Dicht is er niets onder de kop, dus ook
+   geen scheidingslijn en geen witruimte eronder; anders houd je een streep over
+   die nergens naartoe leidt. Open valt hij terug op de gewone kaartkop. */
+details.opr-kaart-intro:not([open]) > .opr-kop {
+  padding-bottom: 0; border-bottom: none; margin-bottom: 0;
+}
 /* De voetregel onder de werklijst: knop en uitleg op één lijn, met lucht erboven. */
 .opr-voet-balk { align-items: center; }
 .opr-voet-balk .opr-telling { max-width: 60ch; }
