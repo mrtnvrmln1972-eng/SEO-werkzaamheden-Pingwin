@@ -6650,6 +6650,30 @@ a.wb-pad:hover { text-decoration: underline; }
 .focus-rich .rtv-check-tekst { flex: 1 1 auto; }
 .focus-rich .rtv-check-item.rtv-check-af .rtv-check-tekst { text-decoration: line-through; color: var(--gray); }
 
+/* ── Onderdelen slepen in een opmaakbaar tekstveld ─────────────────────────
+   Een uitklapper, een vinkpunt, een bullet: elk onderdeel is te verslepen naar
+   een andere plek in dezelfde regelgroep. Het grijpvlekje en de landingsstreep
+   staan los van de tekst (in de wrapper eromheen), dus ze komen nooit mee in
+   de opgeslagen HTML. */
+.rtv { position: relative; }
+.rtv-drag-handle {
+  display: none; position: absolute; width: 16px; z-index: 5;
+  grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(3, 1fr);
+  place-items: center; padding: var(--s-1) 0; border-radius: var(--r-sm);
+  cursor: grab;
+}
+.rtv-drag-handle-actief { display: grid; }
+.rtv-drag-handle:hover { background: var(--card-border); }
+.rtv-drag-handle:active { cursor: grabbing; }
+.rtv-drag-handle span { width: 3px; height: 3px; border-radius: var(--r-full); background: var(--gray); }
+.rtv-drag-handle:hover span { background: var(--dark); }
+.rtv-drop-indicator {
+  display: none; position: absolute; height: 2px; background: var(--orange);
+  border-radius: var(--r-full); z-index: 5; pointer-events: none;
+}
+.rtv-drop-indicator-actief { display: block; }
+.focus-rich .rtv-blok-sleept { opacity: 0.35; }
+
 /* ── Het Ahrefs-tellertje in de kopbalk ───────────────────────────
    Klein genoeg om te negeren zolang er niets aan de hand is, en het
    kleurt op zodra het tegoed krap wordt. Leunt op de .hm-*-bouwstenen
