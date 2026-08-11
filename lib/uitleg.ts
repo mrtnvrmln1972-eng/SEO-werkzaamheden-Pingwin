@@ -21,7 +21,7 @@
 // betreffende uitklapper aanvullen en LAATST_BIJGEWERKT verzetten.
 // ═══════════════════════════════════════════════════════════
 
-export const LAATST_BIJGEWERKT = "11 augustus 2026 (in de kaart-chat staan de knoppen \"Mail deze analyse\" en \"Vat samen & leg strategie vast\" nu direct onder het antwoord; de dossierkaartjes van pagina's die in het antwoord genoemd worden staan erónder en standaard ingeklapt, zodat een dossier van een interne-linkbestemming niet meer als \"verkeerde pagina\" tussen het antwoord en de knoppen springt. Het samenvatten leest bovendien het hele gesprek ruim terug, dus ook een lange analyse gaat volledig mee. Eerder die dag: aantekeningen bij een taak bewaren zichzelf, ook als je de taak meteen dichtklapt of wegklikt; een opengeklapte taak wordt zichtbaar uit de lijst gelicht; een nieuwe taak is nog één regel typen, waarbij de pagina uit je eigen zin gelezen wordt. Daarvóór die dag: de strategie vastleggen kan ook rechtstreeks op de projectkaart in de planning, met dezelfde knop \"Vat samen & leg strategie vast\" en een eigen Drive-map-keuze als in Pagina's; de verwarrende losse knop \"Strategie vastleggen\" is vervangen door een eerlijk benoemde herkansing \"Document opnieuw maken\"; de vrije tekstvelden houden een geschiedenis bij en zijn met één klik terug te zetten via Veld terugzetten; en paginascores bleven op een oude meting hangen, dus \"Hele site opnieuw scannen\" meet nu ook echt de inhoud van elke pagina, waarbij de wekelijkse scan begint bij de klant die het langst niet aan de beurt is geweest)";
+export const LAATST_BIJGEWERKT = "11 augustus 2026 (de controle \"Is dit doorgevoerd?\" zoekt het copydocument nu op alle plekken waar het kan liggen, inclusief het gekoppelde document in Drive, dus hij meldt niet langer \"er is geen copydocument\" terwijl het document in dezelfde kaart staat; kan de tekst er echt niet uit, dan zegt de melding waarom. Eerder die dag: in de kaart-chat staan de knoppen \"Mail deze analyse\" en \"Vat samen & leg strategie vast\" nu direct onder het antwoord; de dossierkaartjes van pagina's die in het antwoord genoemd worden staan erónder en standaard ingeklapt, zodat een dossier van een interne-linkbestemming niet meer als \"verkeerde pagina\" tussen het antwoord en de knoppen springt. Het samenvatten leest bovendien het hele gesprek ruim terug, dus ook een lange analyse gaat volledig mee. Eerder die dag: aantekeningen bij een taak bewaren zichzelf, ook als je de taak meteen dichtklapt of wegklikt; een opengeklapte taak wordt zichtbaar uit de lijst gelicht; een nieuwe taak is nog één regel typen, waarbij de pagina uit je eigen zin gelezen wordt. Daarvóór die dag: de strategie vastleggen kan ook rechtstreeks op de projectkaart in de planning, met dezelfde knop \"Vat samen & leg strategie vast\" en een eigen Drive-map-keuze als in Pagina's; de verwarrende losse knop \"Strategie vastleggen\" is vervangen door een eerlijk benoemde herkansing \"Document opnieuw maken\"; de vrije tekstvelden houden een geschiedenis bij en zijn met één klik terug te zetten via Veld terugzetten; en paginascores bleven op een oude meting hangen, dus \"Hele site opnieuw scannen\" meet nu ook echt de inhoud van elke pagina, waarbij de wekelijkse scan begint bij de klant die het langst niet aan de beurt is geweest)";
 
 export type Uitklapper = {
   titel: string;
@@ -1119,7 +1119,18 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "\"in orde\" terwijl de sitebrede stand nog \"nog niet doorgevoerd\" beweerde. Nu meet de knop altijd óók " +
           "de copy zodra er een document is, en het resultaat landt in dezelfde gedeelde stand die de rest van het " +
           "dashboard raadpleegt. Een bevroren tekstregel op een oudere kaart die nog \"nog geen wijziging " +
-          "gedetecteerd\" zegt, wordt op het scherm automatisch vervangen zodra de meting het tegendeel bevestigt.",
+          "gedetecteerd\" zegt, wordt op het scherm automatisch vervangen zodra de meting het tegendeel bevestigt.\n\n" +
+          "**Diezelfde dag nog een scheve uitkomst rechtgezet: de controle zei \"er is geen copydocument om tegen " +
+          "te vergelijken\" terwijl het copydocument één regel lager in dezelfde kaart als link stond.** Dat kwam " +
+          "doordat de controle de tekst maar op één plek zocht, en de pagina-URL daarbij letterlijk vergeleek: één " +
+          "schuine streep of een www ervoor, en het werk bestond volgens het dashboard niet. Nu wordt de copy " +
+          "gezocht op alle plekken waar hij kan liggen (de geldende tekst in het dashboard, het versie-archief, en " +
+          "anders het gekoppelde document zelf, dat gewoon uit Drive wordt uitgelezen, ook als het een Word-bestand " +
+          "is), en telt een pagina-adres als hetzelfde zodra het over dezelfde pagina gaat. In het bewijs staat er " +
+          "voortaan bij wélk document er vergeleken is. Valt er echt niets te lezen, dan zegt de melding welk van " +
+          "de twee het is: er ligt geen copydocument, of hij ligt er wél maar de tekst kwam er niet uit. Dat eerste " +
+          "is werk dat nog moet gebeuren, het tweede is een leesprobleem aan onze kant, en dat vraagt om iets " +
+          "anders.",
       },
       {
         titel: "Wat we gedaan hebben",

@@ -1,0 +1,172 @@
+import { sql, ensureSchema } from "./db";
+import { urlKey } from "./url-key";
+import { readDriveDoc } from "./drive";
+
+// ═══════════════════════════════════════════════════════════
+// WAAR LIGT DE GESCHREVEN COPY VAN DEZE PAGINA?
+// ═══════════════════════════════════════════════════════════
+// Eén antwoord op één vraag, voor iedereen die iets met de bedoelde tekst wil
+// doen (nameten of de pagina de koppen heeft, een mail aan de sitebouwer, een
+// vergelijking met de live tekst).
+//
+// Waarom dit bestaat: de controle "staan de aangeleverde koppen op de pagina?"
+// zocht de tekst op precies één plek, met een letterlijke vergelijking van de
+// URL. Vond hij daar niets, dan meldde hij "er is geen copydocument om tegen te
+// vergelijken", terwijl het copydocument één regel lager in dezelfde kaart
+// gewoon als link stond. Dat is het ergste soort onwaarheid: een scherm dat
+// zichzelf tegenspreekt. Aangetroffen op /tuinontwerp/strandtuin/ (Kamsteeg),
+// 11 augustus 2026.
+//
+// Daarom kijken we nu op alle plekken waar de copy kan liggen, in volgorde van
+// hoe hard de bron is:
+//
+//  1. de geldende tekst in het dashboard (page_doc_outputs);
+//  2. het versie-archief (page_doc_versions), de nieuwste met tekst;
+//  3. het gekoppelde document zelf (Drive/Google Docs), uitgelezen als tekst.
+//
+// De URL wordt daarbij vergeleken op zijn genormaliseerde vorm (urlKey), niet
+// letterlijk: een schuine streep of een www ervoor mag nooit het verschil maken
+// tussen "gevonden" en "bestaat niet".
+//
+// En als er niets te lezen valt, is het antwoord preciezer dan vroeger: er is
+// verschil tussen "er ligt geen copydocument" en "het ligt er wel, maar ik kon
+// de tekst er niet uit halen". Het eerste is werk dat nog moet gebeuren, het
+// tweede is een leesprobleem aan onze kant.
+// ═══════════════════════════════════════════════════════════
+
+export type CopyTekstBron = {
+  /** De gevonden tekst; leeg als er niets leesbaars was. */
+  tekst: string;
+  /** Waar hij vandaan komt, in gewone taal, voor in het bewijs. */
+  herkomst: string;
+  /** De link naar het document, als die er is. */
+  link: string;
+  /** Alleen gevuld als tekst leeg is: waarom er niets te vergelijken viel. */
+  reden: string;
+};
+
+/** Het pad van een URL of van een kaal pad, zonder slot-streep, in kleine letters. */
+function padVan(u: string): string {
+  const s = String(u || "").trim();
+  try {
+    const x = new URL(/^https?:\/\//i.test(s) ? s : `https://x${s.startsWith("/") ? "" : "/"}${s}`);
+    return x.pathname.replace(/\/+$/, "").toLowerCase();
+  } catch {
+    return s.replace(/\/+$/, "").toLowerCase();
+  }
+}
+
+/**
+ * Gaat een opgeslagen rij over dezelfde pagina als waar we naar vragen? Zowel de
+ * hele URL als alleen het pad telt, want de vraag komt van beide kanten binnen
+ * (een kaart kent de volledige URL, een mailcontrole vaak alleen het pad). Binnen
+ * één klant is het pad genoeg om te weten welke pagina bedoeld wordt.
+ */
+export function zelfdePagina(opgeslagen: string, doel: string): boolean {
+  if (urlKey(opgeslagen) === urlKey(doel)) return true;
+  const a = padVan(opgeslagen);
+  return !!a && a === padVan(doel);
+}
+
+/** Alle bekende documentlinks van de copy van deze pagina, nieuwste eerst. */
+async function copyLinks(slug: string, url: string): Promise<string[]> {
+  const uit: string[] = [];
+  const voegToe = (l: unknown) => {
+    const s = String(l || "").trim();
+    if (s && !uit.includes(s)) uit.push(s);
+  };
+  const [runs, versies, kaarten] = await Promise.all([
+    sql`SELECT url, copy_link FROM page_doc_runs
+        WHERE client_slug = ${slug} AND copy_link IS NOT NULL AND copy_link <> '' ORDER BY id DESC`
+      .then((r) => r.rows).catch(() => [] as Record<string, unknown>[]),
+    sql`SELECT url, drive_link FROM page_doc_versions
+        WHERE client_slug = ${slug} AND kind = 'copy' AND status = 'verwerkt'
+          AND drive_link IS NOT NULL AND drive_link <> ''
+        ORDER BY goedgekeurd DESC, id DESC`
+      .then((r) => r.rows).catch(() => [] as Record<string, unknown>[]),
+    sql`SELECT url, copy_url FROM client_weekplan
+        WHERE client_slug = ${slug} AND copy_url IS NOT NULL AND copy_url <> '' ORDER BY id DESC`
+      .then((r) => r.rows).catch(() => [] as Record<string, unknown>[]),
+  ]);
+  for (const r of versies) if (zelfdePagina(String(r.url || ""), url)) voegToe(r.drive_link);
+  for (const r of runs) if (zelfdePagina(String(r.url || ""), url)) voegToe(r.copy_link);
+  for (const r of kaarten) if (zelfdePagina(String(r.url || ""), url)) voegToe(r.copy_url);
+  return uit;
+}
+
+/**
+ * Ligt er überhaupt een copydocument voor deze pagina? Het goedkope antwoord:
+ * alleen de database, geen netwerk. Hiermee bepaalt het dashboard of "staan de
+ * koppen erop" een afspraak is die je kunt nameten.
+ */
+export async function heeftCopyDocument(slug: string, url: string): Promise<boolean> {
+  await ensureSchema();
+  const [outputs, versies] = await Promise.all([
+    sql`SELECT url FROM page_doc_outputs
+        WHERE client_slug = ${slug} AND kind = 'copy' AND content IS NOT NULL AND content <> ''`
+      .then((r) => r.rows).catch(() => [] as Record<string, unknown>[]),
+    sql`SELECT url FROM page_doc_versions
+        WHERE client_slug = ${slug} AND kind = 'copy' AND status = 'verwerkt'
+          AND ((tekst IS NOT NULL AND tekst <> '') OR (drive_link IS NOT NULL AND drive_link <> ''))`
+      .then((r) => r.rows).catch(() => [] as Record<string, unknown>[]),
+  ]);
+  if ([...outputs, ...versies].some((r) => zelfdePagina(String(r.url || ""), url))) return true;
+  return (await copyLinks(slug, url).catch(() => [])).length > 0;
+}
+
+/**
+ * De geschreven copy van deze pagina, waar hij ook ligt. Leest desnoods het
+ * gekoppelde document uit Drive. Vindt hij niets, dan zegt `reden` precies
+ * waarom; die zin is bedoeld om ongewijzigd in beeld te komen.
+ */
+export async function haalCopyTekst(slug: string, url: string): Promise<CopyTekstBron> {
+  await ensureSchema();
+  const leeg = { tekst: "", herkomst: "", link: "", reden: "" };
+
+  // 1. De geldende tekst in het dashboard.
+  const outputs = await sql`
+    SELECT url, content FROM page_doc_outputs
+    WHERE client_slug = ${slug} AND kind = 'copy' AND content IS NOT NULL AND content <> ''
+    ORDER BY updated_at DESC NULLS LAST`.then((r) => r.rows).catch(() => [] as Record<string, unknown>[]);
+  for (const r of outputs) {
+    if (!zelfdePagina(String(r.url || ""), url)) continue;
+    const tekst = String(r.content || "");
+    if (tekst.trim()) return { ...leeg, tekst, herkomst: "het copydocument in het dashboard" };
+  }
+
+  // 2. Het versie-archief: de goedgekeurde versie eerst, anders de nieuwste.
+  const versies = await sql`
+    SELECT url, naam, tekst, drive_link FROM page_doc_versions
+    WHERE client_slug = ${slug} AND kind = 'copy' AND status = 'verwerkt'
+      AND tekst IS NOT NULL AND tekst <> ''
+    ORDER BY goedgekeurd DESC, id DESC`.then((r) => r.rows).catch(() => [] as Record<string, unknown>[]);
+  for (const r of versies) {
+    if (!zelfdePagina(String(r.url || ""), url)) continue;
+    const tekst = String(r.tekst || "");
+    if (tekst.trim()) {
+      return { ...leeg, tekst, link: String(r.drive_link || ""), herkomst: `de bewaarde versie ${String(r.naam || "van de copy")}` };
+    }
+  }
+
+  // 3. Het gekoppelde document zelf. Hooguit twee proberen: is de nieuwste niet
+  // te lezen, dan is de kans klein dat de rest dat wel is, en een controle mag
+  // geen minuut aan Drive-verzoeken worden.
+  const links = await copyLinks(slug, url).catch(() => [] as string[]);
+  let fout = "";
+  for (const link of links.slice(0, 2)) {
+    const gelezen = await readDriveDoc(link, 60000).catch((e) => ({ ok: false as const, error: (e as Error).message }));
+    if (gelezen.ok && String(gelezen.text || "").trim()) {
+      return { tekst: String(gelezen.text || ""), herkomst: "het gekoppelde copydocument", link, reden: "" };
+    }
+    if (!fout) fout = ("error" in gelezen && gelezen.error) || "er kwam geen tekst uit";
+  }
+
+  if (links.length) {
+    return {
+      ...leeg,
+      link: links[0],
+      reden: `er hangt wel een copydocument aan deze pagina, maar ik kon de tekst er niet uit lezen (${fout || "onbekende reden"})`,
+    };
+  }
+  return { ...leeg, reden: "er is geen copydocument om tegen te vergelijken" };
+}

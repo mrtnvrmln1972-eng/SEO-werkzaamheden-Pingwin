@@ -17,12 +17,12 @@
 // mening met een percentage erbij.
 // ═══════════════════════════════════════════════════════════
 
-import { sql, ensureSchema } from "./db";
+import { ensureSchema } from "./db";
 import { msListAttachments, msGetAttachment, type LiveEmail } from "./ms-graph";
 import { kanDirectGelezen, tekstUitLokaalBestand } from "./bestand-tekst";
 import { koppenUitCopy } from "./copy-live";
-import { topicTokens, tokenHits, pagePath } from "./page-internal-links";
-import { urlKey } from "./url-key";
+import { haalCopyTekst } from "./copy-tekst";
+import { topicTokens, tokenHits } from "./page-internal-links";
 
 export type CopyBron = {
   tekst: string;
@@ -38,22 +38,20 @@ export type CopyBron = {
 const MAX_MAILS_MET_BIJLAGE = 5;
 const MAX_BIJLAGE_BYTES = 8 * 1024 * 1024;
 
-/** Ons eigen copy-document voor deze pagina, als dat er is. */
-async function uitCopyDoc(slug: string, doelPad: string): Promise<CopyBron | null> {
+/**
+ * Ons eigen copy-document voor deze pagina, als dat er is.
+ *
+ * Het zoeken zelf staat in copy-tekst.ts, want de knop "Is dit doorgevoerd?" op
+ * het weekbord stelt precies dezelfde vraag. Eén zoekweg voor beide: anders zegt
+ * de ene plek "geen copydocument" terwijl de andere hem gewoon vindt.
+ */
+async function uitCopyDoc(slug: string, doelUrl: string): Promise<CopyBron | null> {
   await ensureSchema();
-  const { rows } = await sql`
-    SELECT url, content FROM page_doc_outputs
-    WHERE client_slug = ${slug} AND kind = 'copy' AND content IS NOT NULL AND content <> ''`;
-  const sleutel = urlKey(`https://x${doelPad}`);
-  for (const r of rows) {
-    const u = String(r.url || "");
-    if (pagePath(u) !== doelPad && urlKey(u) !== sleutel) continue;
-    const tekst = String(r.content || "");
-    const koppen = koppenUitCopy(tekst);
-    if (!koppen.length) continue;
-    return { tekst, koppen, herkomst: "copydoc", naam: "het copy-document uit het dashboard", datum: "", reden: "" };
-  }
-  return null;
+  const bron = await haalCopyTekst(slug, doelUrl).catch(() => null);
+  if (!bron?.tekst) return null;
+  const koppen = koppenUitCopy(bron.tekst);
+  if (!koppen.length) return null;
+  return { tekst: bron.tekst, koppen, herkomst: "copydoc", naam: bron.herkomst, datum: "", reden: "" };
 }
 
 /**

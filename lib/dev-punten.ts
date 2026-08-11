@@ -1,6 +1,7 @@
-import { sql, ensureSchema } from "./db";
+import { ensureSchema } from "./db";
 import { bestaatPagina } from "./site-controle";
 import { meetCopyLive } from "./copy-live";
+import { haalCopyTekst, heeftCopyDocument } from "./copy-tekst";
 import { fetchRawJsonLd } from "./page-schema";
 
 // ═══════════════════════════════════════════════════════════
@@ -61,25 +62,16 @@ export type Doorgevoerd = {
  * Welke punten stellen we standaard voor bij deze pagina? Alleen wat we ook echt
  * kunnen nameten: is er geen copydocument, dan is "de koppen staan erop" geen
  * afspraak maar een belofte die niemand kan controleren.
+ *
+ * "Is er een copydocument" is bewust de brede vraag (zie copy-tekst.ts): ook een
+ * document dat alleen als link bekend is telt mee. Anders stelt het dashboard een
+ * controle niet voor terwijl het document in dezelfde kaart staat.
  */
 export async function voorstelPunten(slug: string, url: string): Promise<PuntId[]> {
   await ensureSchema();
   const uit: PuntId[] = ["live"];
-  const { rows } = await sql`
-    SELECT 1 FROM page_doc_outputs
-    WHERE client_slug = ${slug} AND url = ${url} AND kind = 'copy' AND content IS NOT NULL AND content <> ''
-    LIMIT 1`;
-  if (rows.length) uit.push("koppen");
+  if (await heeftCopyDocument(slug, url).catch(() => false)) uit.push("koppen");
   return uit;
-}
-
-/** De copytekst van deze pagina, als die er is. */
-async function copyTekst(slug: string, url: string): Promise<string> {
-  const { rows } = await sql`
-    SELECT content FROM page_doc_outputs
-    WHERE client_slug = ${slug} AND url = ${url} AND kind = 'copy' AND content IS NOT NULL AND content <> ''
-    ORDER BY id DESC LIMIT 1`;
-  return String(rows[0]?.content || "");
 }
 
 /**
@@ -114,21 +106,32 @@ export async function meetDoorgevoerd(slug: string, url: string, punten: PuntId[
   // zichzelf blijft staan (zie het commentaar bij Doorgevoerd.copyLive).
   let copyLive: Doorgevoerd["copyLive"];
   if (lijst.includes("koppen")) {
-    const tekst = await copyTekst(slug, url).catch(() => "");
-    if (!tekst) {
-      uit.push({ id: "koppen", label: labelVan("koppen"), uitslag: "onmeetbaar", bewijs: "er is geen copydocument om tegen te vergelijken" });
+    const bron = await haalCopyTekst(slug, url).catch(() => ({ tekst: "", herkomst: "", link: "", reden: "ik kon niet nagaan of er een copydocument is" }));
+    if (!bron.tekst) {
+      // De reden komt uit copy-tekst.ts en is bewust specifiek: "er is er geen"
+      // is iets anders dan "hij is er wel, maar onleesbaar".
+      uit.push({ id: "koppen", label: labelVan("koppen"), uitslag: "onmeetbaar", bewijs: bron.reden });
     } else if (!leesbaar) {
       uit.push({ id: "koppen", label: labelVan("koppen"), uitslag: "onmeetbaar", bewijs: "de pagina laadt niet, dus er valt niets te vergelijken" });
     } else {
-      const m = await meetCopyLive(url, tekst).catch(() => null);
+      const m = await meetCopyLive(url, bron.tekst).catch(() => null);
       if (!m || !m.meetbaar) {
-        uit.push({ id: "koppen", label: labelVan("koppen"), uitslag: "onmeetbaar", bewijs: "kon de koppen van de pagina niet uitlezen" });
+        // Geen koppen in het document is iets anders dan een pagina die we niet
+        // konden lezen; zonder dat onderscheid ga je de site zitten controleren
+        // terwijl het aan het document ligt.
+        const geenKoppen = !!m && m.totaal === 0;
+        uit.push({
+          id: "koppen", label: labelVan("koppen"), uitslag: "onmeetbaar",
+          bewijs: geenKoppen
+            ? `in ${bron.herkomst} staan geen herkenbare koppen om tegen te vergelijken`
+            : "kon de koppen van de pagina niet uitlezen",
+        });
       } else {
         copyLive = m;
         uit.push({
           id: "koppen", label: labelVan("koppen"),
           uitslag: m.doorgevoerd ? "goed" : "niet",
-          bewijs: `${m.gevonden} van de ${m.totaal} koppen gevonden`,
+          bewijs: `${m.gevonden} van de ${m.totaal} koppen uit ${bron.herkomst} gevonden`,
         });
       }
     }

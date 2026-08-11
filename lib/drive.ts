@@ -1,5 +1,6 @@
 import { getDriveAccessToken } from "./google";
 import { driveIdFromUrl } from "./drive-id";
+import { kanDirectGelezen, tekstUitLokaalBestand } from "./bestand-tekst";
 
 // Google Drive-laag: mappenboom uitlezen, submap maken, een .docx uploaden en
 // publiek deelbaar maken (iedereen met de link = lezer). Gebruikt de LOSSE
@@ -9,6 +10,7 @@ import { driveIdFromUrl } from "./drive-id";
 
 const FOLDER_MIME = "application/vnd.google-apps.folder";
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
 export type DriveFolder = { id: string; name: string };
 
@@ -101,6 +103,17 @@ export async function readDriveDoc(idOrUrl: string, maxChars = 12000): Promise<{
     const dl = await fetch(`https://www.googleapis.com/drive/v3/files/${id}?alt=media&supportsAllDrives=true`, { headers: auth });
     if (!dl.ok) return { ok: false, error: await driveErr(dl, "het downloaden van het document") };
     text = await dl.text();
+  } else if (kanDirectGelezen(name) || mime === DOCX_MIME || mime === XLSX_MIME) {
+    // Een Word- of Excel-bestand in Drive is gewoon een zipbestand: we halen hem
+    // op en lezen hem hier uit. Dat was eerder niet zo, en dan kreeg je "dit
+    // bestandstype kan ik niet als tekst lezen" terwijl het document er wél was;
+    // precies de situatie waarin het dashboard beweert dat er niets ligt.
+    const dl = await fetch(`https://www.googleapis.com/drive/v3/files/${id}?alt=media&supportsAllDrives=true`, { headers: auth });
+    if (!dl.ok) return { ok: false, error: await driveErr(dl, "het downloaden van het document") };
+    const buffer = Buffer.from(await dl.arrayBuffer());
+    const naam = kanDirectGelezen(name) ? name : mime === DOCX_MIME ? `${name || "document"}.docx` : `${name || "document"}.xlsx`;
+    text = await tekstUitLokaalBestand(naam, buffer).catch(() => "");
+    if (!text.trim()) return { ok: false, error: "Het bestand kon opgehaald worden, maar er kwam geen leesbare tekst uit." };
   } else {
     return { ok: false, error: `Dit bestandstype (${mime || "onbekend"}) kan ik niet als tekst lezen. Alleen Google Docs, Sheets en Slides.` };
   }
