@@ -1365,6 +1365,26 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "er iets komt kosten leestijd en ruimte, en werden op een gegeven moment zelfs als taak aangeboden.",
       },
       {
+        titel: "Als een vraag niet lukt, zie je waarom",
+        kern: "Geen stilte meer: de reden staat onder je vraag en je vraag komt terug in het invulveld.",
+        tekst:
+          "Een zware vraag laat de assistent soms tientallen dingen opzoeken voor hij antwoordt, en heel af en toe " +
+          "past dat niet binnen de vijf minuten die de server mag rekenen. Dat is niet erg; erg is dat je het niet " +
+          "zag. De vraag verdween uit het invulveld, er kwam niets terug, en het leek alsof je genegeerd werd. " +
+          "Wie dan opnieuw plakt, heeft twee identieke vragen in beeld staan zonder één antwoord eronder.\n\n" +
+          "Drie dingen zorgen dat dat niet meer kan:\n\n" +
+          "- **De reden staat waar de vraag stond.** Onder het gesprek zelf, niet ergens anders op de kaart. " +
+          "In gewone taal, met wat je eraan kunt doen (meestal: splits hem in twee kleinere vragen).\n" +
+          "- **Je vraag blijft van jou.** Lukt het niet, dan staat je tekst weer in het invulveld en verdwijnt de " +
+          "losse vraag uit het gesprek. Ernaast staat een knop **Probeer opnieuw**, dus overtypen of opnieuw " +
+          "plakken hoeft nooit meer.\n" +
+          "- **Het dashboard kapt zelf af, net vóór de server dat doet.** Daarmee komt er altijd een leesbaar " +
+          "antwoord terug in plaats van een lege pagina waar de browser niets mee kan.\n\n" +
+          "Daaronder zit nog een stille verbetering: de extra denkrondes die een antwoord afmaken, uitschrijven en " +
+          "narekenen beginnen alleen nog als er ook echt tijd voor is. Anders werd een compleet antwoord soms " +
+          "ingeruild voor een ronde die er niet meer bij paste, en dan hield je niets over.",
+      },
+      {
         titel: "Kaarten met knoppen: de mens blijft aan het stuur",
         kern: "De assistent stelt voor, de gebruiker keurt goed, het dashboard voert uit.",
         tekst:

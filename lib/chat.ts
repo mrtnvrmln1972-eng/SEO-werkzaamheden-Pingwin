@@ -1426,6 +1426,14 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
     // vanaf 190 seconden af met wat hij heeft in plaats van te worden afgekapt. Daarna
     // is er nog tijd over voor de afrondings- en feitencontrole-rondes hieronder.
     const startTijd = Date.now();
+    // Elke extra ronde hieronder (afronden, uitschrijven, feitencontrole) is een
+    // model-aanroep van tientallen seconden. Die klokken stonden los van elkaar op
+    // 240 en 265 seconden, en werden gestart zonder te kijken hoe laat het al was.
+    // Samen liepen ze zo over de 300 seconden die de route mag duren; dan hakt het
+    // platform de functie om en krijgt de browser geen antwoord meer, ook geen
+    // foutmelding. Dus: een ronde begint alleen nog als er ook echt tijd voor is.
+    // Een compleet antwoord met een ongecontroleerd cijfer is beter dan niets.
+    const ruimteVoorRonde = (nodigMs: number) => Date.now() + nodigMs < startTijd + 270_000;
     const rondes = isOverview ? 26 : isLead ? 18 : 14;
     // Diep denken: alleen de bird's eye draait op het zware model, want dat is het
     // gesprek waarin de opzet zelf ter discussie staat. Uit te zetten in de kop van
@@ -1439,7 +1447,7 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
     // agent had opgehaald werd dan weggegooid. Nu schrijven we het antwoord alsnog
     // uit dat materiaal, in één ronde zonder gereedschap, dus zonder nieuwe
     // vertraging en zonder dat er een cijfer bij kan komen dat niemand ophaalde.
-    if (isOverview && answer.trim() === GEEN_ANTWOORD && toolUitvoer.length) {
+    if (isOverview && answer.trim() === GEEN_ANTWOORD && toolUitvoer.length && ruimteVoorRonde(45_000)) {
       try {
         const vraag = [...messages].reverse().find((m) => m.role === "user")?.content || "";
         const materiaal = toolUitvoer.join("\n").slice(-24000);
@@ -1470,7 +1478,7 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
       if (!t) return true;
       return t.length < 400 && !/(^|\n)##\s/.test(t) && /(nu heb ik|hier (is|komt|volgt)|hieronder (volgt|staat)|ik ga (nu )?)/i.test(t);
     };
-    if (isOverview && alleenAankondiging(answer)) {
+    if (isOverview && alleenAankondiging(answer) && ruimteVoorRonde(60_000)) {
       try {
         const vervolg = await callClaudeAgentic(
           system,
@@ -1507,28 +1515,35 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
           .map((u) => { try { return new URL(u.url).pathname; } catch { return u.url; } });
         const bronnen = context + "\n" + toolUitvoer.join("\n");
         let controle = controleerAntwoord(answer, bronnen, bekendePaden);
+        // De controle zelf is rekenwerk en kost geen tijd; alleen de HERSTELronde
+        // is een model-aanroep. Is de tijd op, dan slaan we die over en blijft de
+        // waarschuwingsregel hieronder over: dan zie je wél dat een cijfer niet
+        // nagetrokken is, in plaats van dat je helemaal geen antwoord krijgt.
         if (!controle.ok) {
-          const hersteld = await callClaudeAgentic(
-            system,
-            [...(apiMessages as { role: "user" | "assistant"; content: string }[]),
-             { role: "assistant", content: answer },
-             { role: "user", content: herstelOpdracht(controle) }],
-            tools, run, 6, 3200, { slug, action: "overzicht-chat-feitencontrole" }, startTijd + 265_000, zwaar,
-          );
-          // De herstelronde verving het antwoord ONVOORWAARDELIJK. Kwam die ronde
-          // zelf niet rond (tijd op), dan werd een compleet antwoord vervangen door
-          // de melding "kon het niet netjes afronden". Dat is precies wat Maarten
-          // op 6 augustus in beeld kreeg na eenentwintig geraadpleegde bronnen.
-          if (hersteld && hersteld.trim() && hersteld.trim() !== GEEN_ANTWOORD) {
-            const naControle = controleerAntwoord(hersteld, context + "\n" + toolUitvoer.join("\n"), bekendePaden);
-            answer = hersteld;
-            controle = naControle;
+          if (ruimteVoorRonde(60_000)) {
+            const hersteld = await callClaudeAgentic(
+              system,
+              [...(apiMessages as { role: "user" | "assistant"; content: string }[]),
+               { role: "assistant", content: answer },
+               { role: "user", content: herstelOpdracht(controle) }],
+              tools, run, 6, 3200, { slug, action: "overzicht-chat-feitencontrole" }, startTijd + 265_000, zwaar,
+            );
+            // De herstelronde verving het antwoord ONVOORWAARDELIJK. Kwam die ronde
+            // zelf niet rond (tijd op), dan werd een compleet antwoord vervangen door
+            // de melding "kon het niet netjes afronden". Dat is precies wat Maarten
+            // op 6 augustus in beeld kreeg na eenentwintig geraadpleegde bronnen.
+            if (hersteld && hersteld.trim() && hersteld.trim() !== GEEN_ANTWOORD) {
+              const naControle = controleerAntwoord(hersteld, context + "\n" + toolUitvoer.join("\n"), bekendePaden);
+              answer = hersteld;
+              controle = naControle;
+            }
           }
-          // Nog steeds niet rond? Dan verzwijgen we dat niet, maar zetten we er
-          // één korte regel boven wat er niet is nagetrokken. Liever een
-          // zichtbare waarschuwing dan een cijfer dat betrouwbaar lijkt. Per
-          // cijfer de ECHTE bron noemen (niet steeds alle drie opsommen), zodat
-          // dit geen lap generieke tekst wordt die je iedere keer weg moet lezen.
+          // Nog steeds niet rond (of geen tijd meer om het over te doen)? Dan
+          // verzwijgen we dat niet, maar zetten we er één korte regel boven wat er
+          // niet is nagetrokken. Liever een zichtbare waarschuwing dan een cijfer
+          // dat betrouwbaar lijkt. Per cijfer de ECHTE bron noemen (niet steeds
+          // alle drie opsommen), zodat dit geen lap generieke tekst wordt die je
+          // iedere keer weg moet lezen.
           if (!controle.ok) {
             const cijferDelen = controle.cijfers.map((c) => {
               const label = Object.keys(CIJFER_BRON).find((l) => c.startsWith(l + " "));

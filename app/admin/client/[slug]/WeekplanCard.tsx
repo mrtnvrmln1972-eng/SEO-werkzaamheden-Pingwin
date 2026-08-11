@@ -125,6 +125,12 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
   const [chatOpen, setChatOpen] = useState(false);
   const [msgs, setMsgs] = useState<ChatMsg[]>([]);
   const [chatId, setChatId] = useState<number | null>(null);
+  // Een mislukte vraag krijgt zijn eigen melding, IN de chat. Dat was het echte
+  // probleem op 11 augustus: de foutmelding van de chat ging naar `foutje`, en
+  // dat blok staat in de fase-lijst. Een kaart zonder pagina heeft geen fase-lijst,
+  // dus die melding werd nergens getekend: de vraag verdween en er kwam niets,
+  // ook geen uitleg. Dan lijkt het alsof de assistent je vraag negeert.
+  const [chatFout, setChatFout] = useState<string>("");
   // Welke eerdere antwoorden je zelf hebt opengeklapt. Standaard staat alleen het
   // LAATSTE antwoord open; alles daarvoor vouwt samen tot zijn eigen kopje. Zonder
   // dit stond hier een muur van tekst, want elk antwoord bleef volledig staan.
@@ -403,34 +409,63 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
     } catch { /* stil */ }
   }
 
+  // Eén vraag versturen en het antwoord terugkrijgen, met een begrijpelijke reden
+  // als het misgaat. Waarom apart: `r.json()` klapte eruit zodra de server géén
+  // JSON teruggaf, en dat is precies wat er gebeurt als een zware vraag over de
+  // tijdslimiet van vijf minuten loopt (dan komt er een foutpagina terug). Die
+  // uitzondering werd stil opgevangen, dus was er geen antwoord én geen uitleg.
+  async function vraagAssistent(pad: string, payload: Record<string, unknown>): Promise<{ ok: true; data: Record<string, unknown> } | { ok: false; fout: string }> {
+    let res: Response;
+    try {
+      res = await fetch(pad, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    } catch {
+      return { ok: false, fout: "Geen verbinding met het dashboard. Je vraag staat weer in het invulveld; probeer het zo nog een keer." };
+    }
+    let data: Record<string, unknown> | null = null;
+    try { data = await res.json() as Record<string, unknown>; } catch { data = null; }
+    if (!data) {
+      return { ok: false, fout: res.status === 504 || res.status === 408 || res.status === 502
+        ? "Deze vraag duurde te lang en is na vijf minuten afgebroken; er kwam dus geen antwoord terug. Splits hem in twee kleinere vragen, of stel hem gerichter (één pagina of één keuze tegelijk)."
+        : `De assistent gaf geen leesbaar antwoord terug (foutcode ${res.status}). Probeer het opnieuw.` };
+    }
+    if (!data.ok) return { ok: false, fout: String(data.error || "De assistent is niet bereikbaar.") };
+    return { ok: true, data };
+  }
+
   async function sendChat() {
     const tekst = input.trim();
     if (!tekst || chatBusy) return;
-    setInput(""); setChatBusy(true); setFoutje("");
+    setInput(""); setChatBusy(true); setChatFout("");
+    const voorheen = msgs;
     const next: ChatMsg[] = [...msgs, { role: "user", content: tekst }];
     setMsgs(next);
+    // Mislukt het, dan gaat de vraag terug naar het invulveld en verdwijnt de
+    // losse vraagballon weer. Anders bleef er een vraag zonder antwoord hangen en
+    // moest je hem opnieuw intypen of plakken; dat is hoe dezelfde vraag twee keer
+    // onder elkaar kwam te staan zonder dat er ooit een antwoord onder kwam.
+    const mislukt = (fout: string) => { setMsgs(voorheen); setInput(tekst); setChatFout(fout); };
     try {
       // De kaart-achtergrond reist als los context-bericht mee (niet opgeslagen,
       // dus de chat-titel blijft de echte vraag en de context is altijd actueel).
       const seed: ChatMsg | null = hasInfo ? { role: "user", content: `Achtergrond van deze projectkaart "${t.taak}" (context, hoeft geen apart antwoord):\n${t.toelichting.slice(0, 2000)}` } : null;
       const outgoing = seed ? [seed, ...next.slice(-11)] : next.slice(-12);
       if (t.url) {
-        const d = await fetch("/api/admin/page-chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: t.url, messages: outgoing }) }).then((r) => r.json());
-        if (!d?.ok) { setFoutje(d?.error || "De assistent is niet bereikbaar."); setChatBusy(false); return; }
-        const withReply: ChatMsg[] = [...next, { role: "assistant", content: String(d.reply || "") }];
+        const r = await vraagAssistent("/api/admin/page-chat", { slug, url: t.url, messages: outgoing });
+        if (!r.ok) { mislukt(r.fout); return; }
+        const withReply: ChatMsg[] = [...next, { role: "assistant", content: String(r.data.reply || "") }];
         setMsgs(withReply);
-        const s = await fetch("/api/admin/page-chats", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: t.url, id: chatId, messages: withReply }) }).then((r) => r.json()).catch(() => null);
+        const s = await fetch("/api/admin/page-chats", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: t.url, id: chatId, messages: withReply }) }).then((res) => res.json()).catch(() => null);
         if (s?.ok && s.id) setChatId(s.id);
       } else {
-        const d = await fetch("/api/admin/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread: kaartThread, messages: outgoing }) }).then((r) => r.json());
-        if (!d?.ok) { setFoutje(d?.error || "De assistent is niet bereikbaar."); setChatBusy(false); return; }
-        const withReply: ChatMsg[] = [...next, { role: "assistant", content: String(d.answer || "") }];
+        const r = await vraagAssistent("/api/admin/chat", { slug, thread: kaartThread, messages: outgoing });
+        if (!r.ok) { mislukt(r.fout); return; }
+        const withReply: ChatMsg[] = [...next, { role: "assistant", content: String(r.data.answer || "") }];
         setMsgs(withReply);
         // De server slaat inclusief het context-bericht op; vervang de historie
         // meteen door de schone lijst zodat de seed nooit in beeld komt.
         await fetch("/api/admin/chat", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread: kaartThread, messages: withReply }) }).catch(() => {});
       }
-    } catch { setFoutje("De assistent is niet bereikbaar."); } finally { setChatBusy(false); }
+    } catch { mislukt("De assistent is niet bereikbaar. Je vraag staat weer in het invulveld."); } finally { setChatBusy(false); }
   }
 
   // Eén chatbericht weghalen (kruisje); de opgeslagen historie gaat meteen mee.
@@ -975,6 +1010,17 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
                 })}
                 {chatBusy && <div className="muted wp-chat-leeg">Aan het nadenken…</div>}
               </div>
+              {/* De melding hoort hier, onder de vraag die niet lukte, en niet in
+                  de fase-lijst hierboven (die er op een kaart zonder pagina niet
+                  eens is). Met de vraag terug in het invulveld is opnieuw proberen
+                  één klik, zonder overtypen of plakken. */}
+              {chatFout && (
+                <div className="wp-chat-fout" role="alert">
+                  <span className="wp-chat-fout-tekst">{chatFout}</span>
+                  <button type="button" className="btn btn-ghost btn-klein" disabled={chatBusy || !input.trim()}
+                    title="Stuur dezelfde vraag opnieuw" onClick={() => void sendChat()}>Probeer opnieuw</button>
+                </div>
+              )}
               {t.url && msgs.some((m) => m.role === "assistant") && (
                 <div className="wp-chat-acties">
                   <button type="button" className="btn btn-primary btn-klein" disabled={chatBusy || !!vatFase}

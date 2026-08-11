@@ -6,6 +6,7 @@ import { buildSystemPrompt, parseProposal, extractProposal } from "../../../../l
 import { CHAT_TOOLS, runChatTool } from "../../../../lib/chat-tools";
 import { korteGeschiedenis } from "../../../../lib/chat-inkorten";
 import { bronVan, ontdubbel, type Bron } from "../../../../lib/chat-bronnen";
+import { metAfkap, CHAT_AFKAP_MS, CHAT_AFKAP_TEKST } from "../../../../lib/afkap";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -45,7 +46,14 @@ export async function POST(req: NextRequest) {
     };
     // 9 rondes was te krap voor een pagina met veel zoekwoorden; de klok zorgt dat een
     // lang onderzoek netjes afrondt binnen het venster van 300 seconden.
-    const raw = await callClaudeAgentic(system, historie, CHAT_TOOLS, run, 20, 4096, { slug, action: "page_chat" }, Date.now() + 210_000);
+    // Zelf afkappen vlak vóór de tijdslimiet van het platform, zodat de browser
+    // altijd JSON terugkrijgt en nooit een foutpagina waar hij niets mee kan.
+    const raw = await metAfkap(
+      callClaudeAgentic(system, historie, CHAT_TOOLS, run, 20, 4096, { slug, action: "page_chat" }, Date.now() + 210_000),
+      CHAT_AFKAP_MS,
+      "",
+    );
+    if (!raw) return NextResponse.json({ ok: false, error: CHAT_AFKAP_TEKST }, { status: 502 });
     const { reply } = parseProposal(raw);
     // Aparte extractie voor een altijd-complete accepteer-lijst (nooit afgekapt).
     const proposal = await extractProposal(reply).catch(() => null);

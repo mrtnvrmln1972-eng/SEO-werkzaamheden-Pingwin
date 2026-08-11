@@ -3,6 +3,7 @@ import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
 import { answerChat, clearChatHistory, getChatHistory, listChatThreads, replaceChatHistory } from "../../../../lib/chat";
 import { applyActionStatuses } from "../../../../lib/overview-actions";
+import { metAfkap, CHAT_AFKAP_MS, CHAT_AFKAP_TEKST } from "../../../../lib/afkap";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -42,7 +43,14 @@ export async function POST(req: NextRequest) {
   if (!slug || messages.length === 0) {
     return NextResponse.json({ ok: false, error: "Klant en vraag zijn verplicht." }, { status: 400 });
   }
-  const result = await answerChat(slug, messages as { role: "user" | "assistant"; content: string }[], thread);
+  // Zelf afkappen vlak vóór de tijdslimiet van het platform. Anders krijgt de
+  // browser een foutpagina in plaats van JSON, en dan ziet Maarten helemaal
+  // niets: geen antwoord én geen reden. Zie lib/afkap.ts.
+  const result = await metAfkap(
+    answerChat(slug, messages as { role: "user" | "assistant"; content: string }[], thread),
+    CHAT_AFKAP_MS,
+    { ok: false as const, error: CHAT_AFKAP_TEKST },
+  );
   if (!result.ok) return NextResponse.json({ ok: false, error: result.error }, { status: 502 });
   return NextResponse.json({ ok: true, answer: result.answer, actions: result.actions, bronnen: result.bronnen, title: result.title, summary: result.summary });
 }

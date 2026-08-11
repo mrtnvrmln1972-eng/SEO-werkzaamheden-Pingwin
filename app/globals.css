@@ -3716,6 +3716,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .wp-chat-vraag { align-self: flex-end; max-width: 85%; background: var(--orange-light); border: 1px solid var(--orange); border-radius: 8px; padding: 6px 9px; font-size: var(--fs-sm); }
 .wp-chat-antwoord { align-self: stretch; background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font-size: var(--fs-sm); line-height: 1.55; }
 .wp-chat-antwoord ul { margin: 4px 0 4px 16px; padding: 0; }
+/* Een mislukte vraag, gemeld op de plek waar je hem stelde. */
+.wp-chat-fout { margin-top: var(--s-2); display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); flex-wrap: wrap; background: #FBEDEA; border: 1px solid #E6C3BD; border-radius: var(--r-sm); padding: var(--s-2) var(--s-3); }
+.wp-chat-fout-tekst { font-size: var(--fs-xs); line-height: var(--lh-xs); color: #A12622; flex: 1 1 12rem; }
 .wp-chat-acties { margin-top: 6px; display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; }
 .wp-chat-input { display: flex; gap: 6px; margin-top: 8px; }
 .wp-chat-input input { flex: 1; border: 1px solid var(--border); border-radius: 7px; padding: 6px 9px; font-size: var(--fs-sm); font-family: inherit; }
