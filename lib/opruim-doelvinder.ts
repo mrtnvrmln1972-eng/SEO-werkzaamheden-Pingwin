@@ -107,7 +107,10 @@ function woorden(pad: string, titel = ""): string[] {
   return [...new Set(
     ruw.normalize("NFD").replace(/[̀-ͯ]/g, "")
       .split(/[^a-z0-9]+/)
-      .filter((w) => w.length >= 4 && !VULWOORDEN.has(w) && !/^\d+$/.test(w)),
+      // Drie letters is bewust de ondergrens en niet vier: vakwoorden als soa,
+      // hiv en crp zijn juist hét onderwerp van een site, en die vielen er
+      // anders uit. De vulwoordenlijst hierboven vangt de korte stopwoorden af.
+      .filter((w) => w.length >= 3 && !VULWOORDEN.has(w) && !/^\d+$/.test(w)),
   )];
 }
 
@@ -346,19 +349,37 @@ const slugVan = (t: string) =>
 export function kiesBestemmingen(
   bak: Bak, regels: WerkRegel[], gaatWeg: Map<string, string>, vestigingen: string[],
 ): Map<string, string> {
+  // Het onderwerp dat álle bronnen delen. Zonder deze eis is "de pagina van deze
+  // stad" niet genoeg: bij One Day Clinic leverde dat /hiv-test-den-haag/,
+  // /bloedonderzoek-utrecht/ en zelfs /artikel-ad-odc-rotterdam/ op. Dat zijn
+  // pagina's óver die stad, maar niet over waar de bezoeker voor kwam.
+  // Alleen de woorden die álle bronnen delen én die over de hele site breed
+  // voorkomen. Die tweede eis is nodig omdat een handvol bronnen ook een
+  // vórmwoord kan delen ("poli"), en dat is geen onderwerp: dan zou de
+  // bestemming ook een poli-pagina moeten zijn en houd je niets over.
+  let gedeeld: Set<string> | null = null;
+  for (const [pad] of gaatWeg) {
+    const w = new Set(padWoorden(pad));
+    gedeeld = gedeeld ? new Set([...gedeeld].filter((x) => w.has(x))) : w;
+  }
+  const kern = [...(gedeeld || [])].filter((w) => bak.ruis.has(w));
+
   const uitbouw = new Set(regels.filter((r) => r.uitkomst === "uitbouwen").map((r) => norm(r.pad)));
   const uit = new Map<string, string>();
   for (const naam of [...new Set(vestigingen.map((v) => (v || "").trim()).filter(Boolean))]) {
     const sl = slugVan(naam);
     if (!sl) continue;
-    // Van meerdere kandidaten wint de pagina die de analyse al als thuisbasis
-    // aanwees, daarna die met de meeste bezoekers; een pagina die zelf weggaat
-    // telt niet mee, want dan bouw je een keten.
+    // Bezoekers eerst, en dat is een correctie op een eerdere versie: die zette
+    // "aangewezen om uit te bouwen" bovenaan, waardoor een bijzaakpagina van de
+    // stad won van de stadspagina die 231 bezoekers per maand haalt. Uitbouwen
+    // zegt "hier valt iets te halen", niet "dit is de hoofdpagina van deze stad".
     const beste = bak.kandidaten
       .filter((k) => !gaatWeg.has(k.pad) && !uit.has(k.pad) && k.pad.includes(sl))
+      .filter((k) => kern.every((w) => k.padWoorden.has(w)))
       .sort((a, b) =>
-        Number(uitbouw.has(b.pad)) - Number(uitbouw.has(a.pad)) ||
         b.klikken - a.klikken ||
+        b.vertoningen - a.vertoningen ||
+        Number(uitbouw.has(b.pad)) - Number(uitbouw.has(a.pad)) ||
         a.pad.length - b.pad.length)[0];
     if (beste) uit.set(beste.pad, naam);
   }

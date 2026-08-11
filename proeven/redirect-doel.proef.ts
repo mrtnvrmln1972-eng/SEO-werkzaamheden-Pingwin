@@ -258,17 +258,25 @@ const doelVan = (bak: Bak, regels: WerkRegel[], pad: string) => {
   const urls = [
     url("/"), url("/soa-klinieken/"),
     url("/soa-klinieken/soa-test-den-haag/", { gscClicks: 231, gscImpressions: 10461 }),
+    url("/hiv-test-den-haag/"),                         // over die stad, ander onderwerp
+    url("/bloedonderzoek-nijmegen/"),                   // idem
     url("/soa-test-locaties/soa-test-delft/"),          // bestaat, geen vestiging
     url("/soa-klinieken/soa-test-nijmegen/"),           // vestiging, maar haalt niets
     url("/soa-klinieken-nijmegen/"),                    // vestiging, en aangewezen thuisbasis
-    url("/soa-poli-naaldwijk/"),
+    url("/soa-poli-naaldwijk/"), url("/soa-poli-schipluiden/"),
+    // Genoeg soa-pagina's zodat "soa" ook echt als thema van de site telt; op
+    // een site van zeven pagina's zegt "dit woord komt vaak voor" niets.
+    ...["test", "zelftest", "thuistest", "kliniek", "poli", "uitslag", "kosten", "anoniem", "spoed", "chlamydia"]
+      .map((x) => url(`/soa-${x}/`)),
   ];
   const regels: WerkRegel[] = [
     regel("/soa-klinieken-nijmegen/", "uitbouwen"),
+    regel("/hiv-test-den-haag/", "uitbouwen"),          // wel aangewezen, tóch geen bestemming
+    regel("/bloedonderzoek-nijmegen/", "uitbouwen"),
     regel("/soa-poli-naaldwijk/", "opruimen", { herkomst: ["plaats"], groep: "Naaldwijk" }),
   ];
   const bak = bouw(urls, regels);
-  const gaatWeg = new Map([["/soa-poli-naaldwijk", "Naaldwijk"]]);
+  const gaatWeg = new Map([["/soa-poli-naaldwijk", "Naaldwijk"], ["/soa-poli-schipluiden", "Schipluiden"]]);
   const gekozen = kiesBestemmingen(bak, regels, gaatWeg, ["Den Haag", "Nijmegen"]);
   check("een vestigingsplaats levert precies één bestemming", gekozen.size, 2);
   checkWaar("een plaats zonder vestiging wordt nooit een bestemming",
@@ -276,6 +284,12 @@ const doelVan = (bak: Bak, regels: WerkRegel[], pad: string) => {
     `Kreeg: ${JSON.stringify([...gekozen.keys()])}`);
   checkWaar("bij meerdere pagina's voor dezelfde vestiging wint de aangewezen thuisbasis",
     gekozen.has("/soa-klinieken-nijmegen") && !gekozen.has("/soa-klinieken/soa-test-nijmegen"),
+    `Kreeg: ${JSON.stringify([...gekozen.keys()])}`);
+  checkWaar("een pagina over die stad maar over een ander onderwerp valt af",
+    ![...gekozen.keys()].some((p) => p.includes("hiv-test") || p.includes("bloedonderzoek")),
+    `Kreeg: ${JSON.stringify([...gekozen.keys()])}. Een bestemming moet het onderwerp delen dat alle bronnen gemeen hebben.`);
+  checkWaar("de stadspagina met bezoekers wint van een aangewezen bijzaakpagina",
+    gekozen.has("/soa-klinieken/soa-test-den-haag"),
     `Kreeg: ${JSON.stringify([...gekozen.keys()])}`);
   checkWaar("de plaatsnaam met een spatie erin wordt gevonden",
     [...gekozen.keys()].some((p) => p.includes("den-haag")),
