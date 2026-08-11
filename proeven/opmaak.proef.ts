@@ -223,7 +223,11 @@ for (const vol of alleSchermen(path.join(WORTEL, "app"))) {
       const vast = vasteWaarden(style[1]);
       if (vast.length) raak.push(`${rel}:${i + 1} eigen opmaak (${vast.join(", ")}) — ${regel.trim().slice(0, 60)}`);
     }
-    if (regel.includes("dangerouslySetInnerHTML") && !GERENDERD.test(regel) && !GERENDERD.test(regels[i + 1] || "")) {
+    // Een <script> zet niets op het scherm, dus de opmaakregel gaat er niet
+    // over. Alleen deze vorm is vrijgesteld; elke andere dangerouslySetInnerHTML
+    // is nog steeds tekst in beeld en moet door mdToHtml.
+    const isScript = /<script\b/.test(regel);
+    if (regel.includes("dangerouslySetInnerHTML") && !isScript && !GERENDERD.test(regel) && !GERENDERD.test(regels[i + 1] || "")) {
       raak.push(`${rel}:${i + 1} tekst niet gerenderd — ${regel.trim().slice(0, 80)}`);
     }
   });

@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { eenmalig } from "./schema-stand";
 import { logActiviteit } from "./activiteit";
 import { getClientBySlug } from "./clients";
 import { getClientUrls, getPageDriveFolder } from "./site-urls";
@@ -125,10 +126,12 @@ const ALT_IMAGE_LIMIT = 120; // voor zoveel afbeeldingen schrijven we een alt-te
 const ALT_PER_PAGE = 40;   // maximaal zoveel afbeeldingen per pagina
 const BEELD_PER_CALL = 6;  // zoveel foto's tegelijk aan het model laten zien
 
-let tableReady: Promise<void> | null = null;
+// Hooguit één keer per database opbouwen, niet bij elke koude server. Zie
+// lib/schema-stand.ts; het versienummer wordt bewaakt door
+// proeven/schema-versie.proef.ts.
+export const DEV_WORKLIST_SCHEMA_VERSIE = "dw1-98958699";
 function ensureTable(): Promise<void> {
-  if (!tableReady) tableReady = doEnsure().catch((e) => { tableReady = null; throw e; });
-  return tableReady;
+  return eenmalig("dev-worklist", DEV_WORKLIST_SCHEMA_VERSIE, doEnsure);
 }
 async function doEnsure(): Promise<void> {
   await sql`

@@ -8,14 +8,40 @@ import type {
 } from "../../../../lib/snapshots";
 import type { TaskRow } from "../../../../lib/tasks";
 import type { StrategySession } from "../../../../lib/strategy";
+import dynamic from "next/dynamic";
+
+// ── Per tabblad nabezorgd, niet vooraf ──────────────────────────────
+// Deze panelen horen elk bij één tabblad, maar ze zaten allemaal in de eerste
+// download van de cockpit. Dat was op 11-08-2026 goed voor 721 KB JavaScript
+// (ingepakt) voordat er ook maar iets in beeld kwam: je wachtte op de
+// Prioriteitenscan, de Opruimtabellen en het Google-profiel terwijl je naar de
+// Taken keek. Ze worden nu pas opgehaald zodra je hun tabblad opent.
+//
+// Nieuw paneel dat bij precies één tabblad hoort? Zet hem hieronder, niet
+// bovenaan bij de gewone imports.
+const Wacht = () => <div className="muted pl-leeg">Bezig met laden…</div>;
+const DeveloperOverview = dynamic(() => import("../../developer/DeveloperOverview"), { ssr: false, loading: Wacht });
+const KpiPanel = dynamic(() => import("./KpiPanel"), { ssr: false, loading: Wacht });
+const PagesPanel = dynamic(() => import("./PagesPanel"), { ssr: false, loading: Wacht });
+const WijzigingenPanel = dynamic(() => import("./WijzigingenPanel"), { ssr: false, loading: Wacht });
+const CannibalPanel = dynamic(() => import("./CannibalPanel"), { ssr: false, loading: Wacht });
+const InternalLinksPanel = dynamic(() => import("./InternalLinksPanel"), { ssr: false, loading: Wacht });
+const MetaCtrPanel = dynamic(() => import("./MetaCtrPanel"), { ssr: false, loading: Wacht });
+const PrioriteitenPanel = dynamic(() => import("./PrioriteitenPanel"), { ssr: false, loading: Wacht });
+const DocumentenPanel = dynamic(() => import("./DocumentenPanel"), { ssr: false, loading: Wacht });
+const ActiviteitPanel = dynamic(() => import("./ActiviteitPanel"), { ssr: false, loading: Wacht });
+const LeadTab = dynamic(() => import("./LeadTab"), { ssr: false, loading: Wacht });
+const OnboardingPanel = dynamic(() => import("./OnboardingPanel"), { ssr: false, loading: Wacht });
+const GmbPanel = dynamic(() => import("./GmbPanel"), { ssr: false, loading: Wacht });
+const OrgDataPanel = dynamic(() => import("./OrgDataPanel"), { ssr: false, loading: Wacht });
+const Concurrenten = dynamic(() => import("./Concurrenten"), { ssr: false, loading: Wacht });
+const FundamentPanel = dynamic(() => import("./FundamentPanel"), { ssr: false, loading: Wacht });
+
 import ChatPanel from "./ChatPanel";
 import OverviewChat from "./OverviewChat";
 import Planning from "./Planning";
 import ZijPaneel from "./ZijPaneel";
 import KlantTabs, { type Tab } from "./KlantTabs";
-import OrgDataPanel from "./OrgDataPanel";
-import Concurrenten from "./Concurrenten";
-import FundamentPanel from "./FundamentPanel";
 import FocusBlock from "./FocusBlock";
 import ShareLinkBar from "./ShareLinkBar";
 import HelpHint from "./HelpHint";
@@ -24,26 +50,13 @@ import LinkPreview from "./LinkPreview";
 import { mdToHtml } from "../../../../lib/markdown";
 import BespreekLijsten from "./BespreekLijsten";
 import FloatVenster from "./FloatVenster";
-import DeveloperOverview from "../../developer/DeveloperOverview";
-import KpiPanel from "./KpiPanel";
-import PagesPanel from "./PagesPanel";
-import WijzigingenPanel from "./WijzigingenPanel";
-import CannibalPanel from "./CannibalPanel";
-import InternalLinksPanel from "./InternalLinksPanel";
-import MetaCtrPanel from "./MetaCtrPanel";
-import PrioriteitenPanel from "./PrioriteitenPanel";
-import DocumentenPanel from "./DocumentenPanel";
-import ActiviteitPanel from "./ActiviteitPanel";
 import InvoiceAlert from "./InvoiceAlert";
 import SelectionActions from "./SelectionActions";
-import LeadTab from "./LeadTab";
 import MailControlePanel from "./MailControlePanel";
 import MailBijlagen from "./MailBijlagen";
-import OnboardingPanel from "./OnboardingPanel";
 import OntwikkelMenu from "../../OntwikkelMenu";
 import Tellers from "../../Tellers";
 import KlantKiezer from "./KlantKiezer";
-import GmbPanel from "./GmbPanel";
 import KlussenChip from "./KlussenChip";
 import MeldingenMenu from "../../MeldingenMenu";
 

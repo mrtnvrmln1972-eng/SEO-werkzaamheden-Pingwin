@@ -1,4 +1,6 @@
+import { waitUntil } from "@vercel/functions";
 import { sql, ensureSchema } from "./db";
+import { eenmalig } from "./schema-stand";
 import { urlKey } from "./url-key";
 
 // ═══════════════════════════════════════════════════════════
@@ -21,10 +23,11 @@ import { urlKey } from "./url-key";
 export const FASE_SLEUTELS = ["strategie", "gelieerde", "analyse", "blauwdruk", "copy", "bouw", "structured"] as const;
 export type FaseSleutel = (typeof FASE_SLEUTELS)[number];
 
-let klaar: Promise<void> | null = null;
+// Hooguit één keer per database opbouwen, niet bij elke koude server. Zie
+// lib/schema-stand.ts; bewaakt door proeven/schema-versie.proef.ts.
+export const FASE_HISTORIE_SCHEMA_VERSIE = "fh1-e78e3ebd";
 function ensureTabel(): Promise<void> {
-  if (!klaar) klaar = doeHet().catch((e) => { klaar = null; throw e; });
-  return klaar;
+  return eenmalig("fase-historie", FASE_HISTORIE_SCHEMA_VERSIE, doeHet);
 }
 async function doeHet(): Promise<void> {
   await sql`
@@ -76,7 +79,14 @@ export async function registreerFases(
           ON CONFLICT (client_slug, url_key, fase) DO UPDATE SET af = EXCLUDED.af, sinds = now()`);
       }
     }
-    if (schrijf.length) await Promise.all(schrijf);
+    // Het antwoord hangt NIET op deze schrijfacties: de datums die we
+    // teruggeven zijn hierboven al bepaald. Ze afwachten liet het bord dus
+    // wachten op werk dat niemand ziet, elke keer opnieuw. `waitUntil` houdt de
+    // server in leven tot ze klaar zijn, maar stuurt het antwoord meteen.
+    if (schrijf.length) {
+      const alles = Promise.all(schrijf).then(() => {}, () => {});
+      try { waitUntil(alles); } catch { await alles; } // buiten Vercel: gewoon afwachten
+    }
   } catch {
     return {};
   }

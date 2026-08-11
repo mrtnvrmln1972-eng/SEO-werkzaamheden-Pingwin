@@ -39,6 +39,7 @@ import MailUitKaart from "./MailUitKaart";
 import { useMailDatumLinks } from "./useMailDatumLinks";
 import DatumKiezer, { vandaagIso, langDatum } from "./DatumKiezer";
 import HerinnerKnop from "./HerinnerKnop";
+import { haalVooraf } from "../../../../lib/vooraf";
 
 type Taak = {
   notitie?: string;
@@ -187,18 +188,28 @@ export default function Planning({
     const bron = alleKlanten
       ? "/api/admin/weekplan/alles"
       : `/api/admin/weekplan?slug=${encodeURIComponent(slug)}`;
-    return fetch(bron)
-      .then((r) => r.json())
+    // Bij één klant heeft de pagina dit verzoek al gestart terwijl de browser
+    // nog aan het laden was; dan pikken we die uitkomst op in plaats van
+    // opnieuw te vragen. Is er niets voorgestart, dan haalt hij het gewoon zelf.
+    type Antwoord = {
+      ok?: boolean; error?: string; current?: Current | null;
+      tasks?: Taak[] | Omit<Taak, "slug" | "klant" | "klantMail">[];
+      pages?: Pages | Record<string, WpPageInfo>;
+    };
+    const bezorging: Promise<Antwoord> = alleKlanten
+      ? fetch(bron).then((r) => r.json())
+      : haalVooraf<Antwoord>(`weekplan:${slug}`, bron);
+    return bezorging
       .then((d) => {
         if (!d?.ok) { setFout(d?.error || "De planning kon niet geladen worden."); return; }
         setFout("");
         if (alleKlanten) {
-          setTaken(d.tasks || []);
-          setPages(d.pages || {});
+          setTaken((d.tasks || []) as Taak[]);
+          setPages((d.pages || {}) as Pages);
         } else {
           setTaken(((d.tasks || []) as Omit<Taak, "slug" | "klant" | "klantMail">[])
             .map((t) => ({ ...t, slug, klant: clientName, klantMail: clientEmail || "" })));
-          setPages({ [slug]: d.pages || {} });
+          setPages({ [slug]: (d.pages || {}) as Record<string, WpPageInfo> });
         }
         setCurrent(d.current || null);
       })

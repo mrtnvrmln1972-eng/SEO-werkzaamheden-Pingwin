@@ -1,5 +1,6 @@
 import { sql } from "@vercel/postgres";
 import { hashPassword, generatePassword } from "./password";
+import { eenmalig } from "./schema-stand";
 
 // ═══════════════════════════════════════════════════════════
 // DATABASE-INITIALISATIE (zelfhelend)
@@ -7,11 +8,19 @@ import { hashPassword, generatePassword } from "./password";
 // De Neon-verbindingsgegevens zijn afgeschermde integratie-variabelen
 // die alleen tijdens runtime op Vercel beschikbaar zijn (niet lokaal op
 // te halen). Daarom maakt de app de tabel zelf aan bij de eerste query.
-// Idempotent (CREATE TABLE IF NOT EXISTS / ON CONFLICT DO NOTHING) en het
-// draait maximaal één keer per serverinstantie.
+// Idempotent (CREATE TABLE IF NOT EXISTS / ON CONFLICT DO NOTHING).
+//
+// Sinds 11-08-2026 draait dit blok niet meer bij élke koude server, maar
+// hooguit één keer per database per versie. Zie `lib/schema-stand.ts` voor het
+// waarom (het kostte honderd rondjes naar de database, goed voor ongeveer tien
+// seconden wachten, bij vrijwel elk bezoek).
 // ═══════════════════════════════════════════════════════════
 
-let ready: Promise<void> | null = null;
+// Vingerafdruk van `init()` hieronder. Verander je ook maar één opdracht in dat
+// blok, dan hoort dit getal mee te veranderen; `proeven/schema-versie.proef.ts`
+// rekent dat na en laat de bouw mislukken als het niet klopt. De proef noemt
+// zelf de waarde die je moet invullen, dus je hoeft niets uit te rekenen.
+export const KERN_SCHEMA_VERSIE = "k1-42448837";
 
 async function init(): Promise<void> {
   await sql`
@@ -581,13 +590,7 @@ async function init(): Promise<void> {
 }
 
 export function ensureSchema(): Promise<void> {
-  if (!ready) {
-    ready = init().catch((err) => {
-      ready = null; // bij fout opnieuw proberen bij volgende request
-      throw err;
-    });
-  }
-  return ready;
+  return eenmalig("kern", KERN_SCHEMA_VERSIE, init);
 }
 
 export { sql };

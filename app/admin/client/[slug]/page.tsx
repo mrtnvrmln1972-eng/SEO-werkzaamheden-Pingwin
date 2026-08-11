@@ -11,6 +11,7 @@ import { googleStatus } from "../../../../lib/google";
 import { MAAND_VOLGORDE } from "../../../../lib/sheet";
 import { chatConfigured } from "../../../../lib/chat";
 import { getTasks, type TaskRow } from "../../../../lib/tasks";
+import { voorafScript } from "../../../../lib/vooraf";
 import ClientCockpit from "./ClientCockpit";
 
 export const dynamic = "force-dynamic";
@@ -89,7 +90,15 @@ export default async function ClientCockpitPage({ params, searchParams }: { para
   // zelf op de achtergrond (geen seconden wachten meer vóór de eerste weergave).
   const emails = storedEmails.filter((e) => !/@ahrefs\.com$/i.test((e.fromAddress || "").trim()));
 
+  // De planning start haar verzoek nu al, terwijl de browser de rest van de
+  // pagina nog binnenhaalt. Zonder dit begon dat verzoek pas nadat álle
+  // JavaScript geladen en uitgevoerd was, en stond er ondertussen "Bezig met
+  // laden…". Zie lib/vooraf.ts.
+  const weekplanUrl = `/api/admin/weekplan?slug=${encodeURIComponent(params.slug)}`;
+
   return (
+    <>
+    <script dangerouslySetInnerHTML={{ __html: voorafScript(`weekplan:${params.slug}`, weekplanUrl) }} />
     <ClientCockpit
       // key op de slug: bij wisselen van klant remount de hele cockpit, zodat
       // geen enkele interne staat (tab, geopende mail, panelen) van de vorige
@@ -118,5 +127,6 @@ export default async function ClientCockpitPage({ params, searchParams }: { para
       highlight={searchParams.highlight}
       showMailSections={mailSections}
     />
+    </>
   );
 }

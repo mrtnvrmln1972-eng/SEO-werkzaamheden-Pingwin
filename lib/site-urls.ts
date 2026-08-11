@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { eenmalig } from "./schema-stand";
 import { getGscForClient } from "./google";
 
 // ═══════════════════════════════════════════════════════════
@@ -25,12 +26,12 @@ export type ClientUrl = {
   lastScanned: string | null;
 };
 
-// Draait de tabel-voorbereiding maar één keer per serverinstantie (gecachet),
-// zodat elk verzoek niet opnieuw CREATE TABLE-rondjes naar de database doet.
-let tablesReady: Promise<void> | null = null;
+// Draait de tabel-voorbereiding hooguit één keer per database, niet meer bij
+// elke koude server. Zie lib/schema-stand.ts; het versienummer wordt bewaakt
+// door proeven/schema-versie.proef.ts.
+export const SITE_URLS_SCHEMA_VERSIE = "su1-ed2733d8";
 async function ensureTables(): Promise<void> {
-  if (!tablesReady) tablesReady = doEnsureTables().catch((e) => { tablesReady = null; throw e; });
-  return tablesReady;
+  return eenmalig("site-urls", SITE_URLS_SCHEMA_VERSIE, doEnsureTables);
 }
 async function doEnsureTables(): Promise<void> {
   await sql`
