@@ -844,7 +844,7 @@ function specSamenvatting(spec: DocSpec): { h1: string; context: string } {
   return { h1, context: regels.join("\n") };
 }
 
-async function enforceMetaInSpec(spec: DocSpec, slug: string, primary: string): Promise<void> {
+async function enforceMetaInSpec(spec: DocSpec, slug: string, primary: string, merk = ""): Promise<void> {
   const spots = findMetaSpots(spec);
   if (!spots.length) return;
   const { h1, context } = specSamenvatting(spec);
@@ -860,6 +860,9 @@ async function enforceMetaInSpec(spec: DocSpec, slug: string, primary: string): 
       // De description wordt tegen de (dan al gecorrigeerde) titel getoetst.
       title: spot.kind === "meta_description" ? titleSpot?.get().trim() : undefined,
       context,
+      // Eigen woorden voor de laatste slag: de naam van het bedrijf is altijd
+      // waar, dus daar mag mee aangevuld worden als de tekst te kort blijft.
+      bouwstenen: [merk].filter(Boolean),
     });
     if (r.gewijzigd) {
       console.warn(`[page-doc] meta gecorrigeerd (${spot.kind}): ${metaVerdictText(spot.kind, r.tekst)}`);
@@ -932,7 +935,7 @@ Geen emoji. ${DOCSPEC_FORMAT}`;
     await ensureHeadingLabels(spec, slug).catch(() => { /* vangnet is aanvulling */ });
     await selfCheckCopyHeadings(spec, slug).catch(() => { /* controle is aanvulling */ });
     // Pixel-correctielus: te brede of regel-brekende meta-title/description gericht herschrijven.
-    await enforceMetaInSpec(spec, slug, context.primary).catch(() => { /* correctie is aanvulling */ });
+    await enforceMetaInSpec(spec, slug, context.primary, clientName).catch(() => { /* correctie is aanvulling */ });
   }
   // Bewaar de tekst-uitkomst zodat de volgende stap in de keten erop voortbouwt.
   await savePageDocOutput(slug, url, kind, specToText(spec)).catch(() => { /* keten is aanvulling, niet kritisch */ });

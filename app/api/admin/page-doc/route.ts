@@ -5,6 +5,7 @@ import { poortDocumenten } from "../../../../lib/onboarding";
 import { anthropicConfigured } from "../../../../lib/anthropic";
 import { generateDocSpec, clientVersionSpec, type DocKind } from "../../../../lib/page-doc";
 import { buildPingwinDoc, laatsteOmslagGelukt } from "../../../../lib/pingwin-docx";
+import { laatsteMetaMelding } from "../../../../lib/copy-doc-klant";
 import { upsertStepTask } from "../../../../lib/tasks";
 import { getPageDriveFolder, getPageDocOutputs } from "../../../../lib/site-urls";
 import { uploadDocx } from "../../../../lib/drive";
@@ -118,7 +119,7 @@ export async function POST(req: NextRequest) {
       pageUrl: url, stepKind: STEP_KIND[kind], title: stepTitle, dualVersion: true,
       link, clientLink: clientLink || undefined, klantToelichting: STEP_KLANT[kind], wie: "SEO", fase: "Bouwen", klantZichtbaar: true,
     }).catch(() => null);
-    return NextResponse.json({ ok: true, delivered: "drive", link, clientLink, filename, kind, taskId, shared, owner, folder, isDoc, note , omslag: laatsteOmslagGelukt(), omslagMelding: laatsteOmslagGelukt() ? "" : "De omslag kon niet getekend worden; het document heeft nu een sobere tekst-omslag." });
+    return NextResponse.json({ ok: true, delivered: "drive", link, clientLink, filename, kind, taskId, shared, owner, folder, isDoc, note , omslag: laatsteOmslagGelukt(), omslagMelding: laatsteOmslagGelukt() ? "" : "De omslag kon niet getekend worden; het document heeft nu een sobere tekst-omslag.", metaMelding: laatsteMetaMelding() });
   }
 
   // Geen bestemmingsmap: download; de stap wordt wel als werkzaamheid vastgelegd (zonder link).

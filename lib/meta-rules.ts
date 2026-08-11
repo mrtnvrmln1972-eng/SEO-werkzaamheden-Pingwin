@@ -71,6 +71,57 @@ export function measureTextPx(text: string, fontSizePx: number): number {
   return (units / 1000) * fontSizePx;
 }
 
+/* ------------------------------------------------------------------
+ * Van pixels naar tekens.
+ *
+ * Het model kan geen pixels tellen, alleen tekens. Daarom kreeg het jarenlang
+ * een tekenbereik te horen ("120 tot 155 tekens") terwijl het daarna op
+ * pixelbreedte werd afgerekend. Die twee lopen niet gelijk: een description van
+ * 129 tekens haalde het tekencriterium wél en het pixelvenster níét. Het model
+ * schreef dus keurig naar de regel die het kon uitvoeren, en werd afgekeurd op
+ * een regel die het niet kon zien. Dát is waarom er te korte meta's bleven
+ * komen.
+ *
+ * Vanaf nu is er één waarheid, de pixel, en wordt het tekenbereik daaruit
+ * afgeleid: gemeten aan de tekst zelf, want een zin vol hoofdletters is per
+ * teken breder dan een zin vol i's en l's.
+ * ------------------------------------------------------------------ */
+
+/** Doorsnee Nederlandse zin, om aan te meten als er nog geen tekst is. */
+const REFERENTIEZIN = "Hovenier Oosterhout nodig? Kamsteeg Tuinen ontwerpt, legt aan en onderhoudt uw tuin met een eigen vast team.";
+
+/** Gemiddelde letterbreedte in px, gemeten aan deze tekst (of aan de referentie). */
+function pxPerTeken(kind: MetaKind, text: string): number {
+  const cfg = kind === "meta_title" ? META_TITLE_PX : META_DESC_PX;
+  const t = (text || "").trim();
+  const n = [...t].length;
+  // Onder de twintig tekens is het gemiddelde te grillig om op te sturen.
+  if (n >= 20) return measureTextPx(t, cfg.font) / n;
+  return measureTextPx(REFERENTIEZIN, cfg.font) / [...REFERENTIEZIN].length;
+}
+
+/**
+ * Het tekenbereik dat bij het pixelvenster hoort, gemeten aan deze tekst. Dit is
+ * wat we het model vertellen: een doel dat het kan uitvoeren én waarop het
+ * daarna wordt beoordeeld.
+ */
+export function tekenDoel(kind: MetaKind, text = ""): { min: number; max: number } {
+  const cfg = kind === "meta_title" ? META_TITLE_PX : META_DESC_PX;
+  const per = pxPerTeken(kind, text);
+  return { min: Math.ceil(cfg.min / per), max: Math.floor(cfg.max / per) };
+}
+
+/**
+ * Ruime redelijkheidsgrenzen in tekens. Ze vangen alleen het absurde af (een
+ * titel van vier woorden die toevallig heel breed is); de pixel is de echte
+ * grens. Bewust wijd genoeg om het pixelvenster helemaal te omvatten, zodat een
+ * tekst nooit het ene criterium haalt en het andere niet.
+ */
+const TEKEN_GRENZEN: Record<MetaKind, { min: number; max: number }> = {
+  meta_title: { min: 35, max: 65 },
+  meta_description: { min: 105, max: 170 },
+};
+
 export type PixelStatus = "kort" | "ok" | "bijna" | "over";
 
 export type MetaPixelInfo = {
@@ -176,11 +227,15 @@ export function checkMetaTitle(title: string, keyword?: string, h1?: string): Me
   const info = metaPixelInfo("meta_title", t);
   const checks: MetaCheck[] = [];
 
+  // De pixelbreedte is de norm; het tekenaantal vangt alleen het absurde af.
+  // Eerder stond hier "40-60 tekens en binnen 580 px": een titel van 40 tekens
+  // haalde dat, maar bleef met 380 px ver onder het venster van Google.
+  const grens = TEKEN_GRENZEN.meta_title;
   checks.push({
     id: "META-02",
-    label: "Lengte 40-60 tekens en binnen 580 px",
-    pass: chars >= 40 && chars <= 60 && info.px <= info.max,
-    waarde: `${chars} tekens, ${info.px} px (max ${info.max})`,
+    label: `Vult het venster van Google (${META_TITLE_PX.min} tot ${META_TITLE_PX.max} px)`,
+    pass: info.ok && chars >= grens.min && chars <= grens.max,
+    waarde: `${chars} tekens, ${info.px} px (venster ${info.min} tot ${info.max} px)`,
   });
 
   if (keyword) {
@@ -251,11 +306,14 @@ export function checkMetaDescription(desc: string, keyword?: string, title?: str
   const info = metaPixelInfo("meta_description", d);
   const checks: MetaCheck[] = [];
 
+  // Zie META-02: de pixel is de norm. Een description van 129 tekens haalde het
+  // oude tekencriterium (120-155) en bleef met 780 px onder het venster.
+  const grens = TEKEN_GRENZEN.meta_description;
   checks.push({
     id: "META-07",
-    label: "Lengte 120-155 tekens en binnen 920 px",
-    pass: chars >= 120 && chars <= 155 && info.px <= info.max,
-    waarde: `${chars} tekens, ${info.px} px (max ${info.max})`,
+    label: `Vult het venster van Google (${META_DESC_PX.min} tot ${META_DESC_PX.max} px)`,
+    pass: info.ok && chars >= grens.min && chars <= grens.max,
+    waarde: `${chars} tekens, ${info.px} px (venster ${info.min} tot ${info.max} px)`,
   });
 
   if (keyword) {
@@ -384,6 +442,26 @@ export function metaOpleverIssues(kind: MetaKind, text: string, ctx: MetaContext
   return issues;
 }
 
+/**
+ * De bijstuurregel voor het model: waar staat deze tekst nu, en hoeveel tekens
+ * moeten er precies bij of af? Zonder dit hoorde het model alleen dát het niet
+ * goed was, niet hoeveel het scheelde, en bleef het rond hetzelfde punt hangen.
+ */
+export function metaBijstuurRegel(kind: MetaKind, text: string): string {
+  const info = metaPixelInfo(kind, text);
+  const doel = tekenDoel(kind, text);
+  const meting = `Nu: ${info.chars} tekens, ${info.px} px. Het venster van Google is ${info.min} tot ${info.max} px, en dat komt bij tekst als deze neer op ${doel.min} tot ${doel.max} tekens.`;
+  if (info.px < info.min) {
+    const bij = Math.max(1, doel.min - info.chars);
+    return `${meting} Je komt ${info.min - info.px} px tekort: schrijf er ongeveer ${bij} tot ${Math.max(bij, doel.max - info.chars)} tekens bij met een concreet voordeel, bewijs of aanbod. Niet met stopwoorden.`;
+  }
+  if (info.px > info.max) {
+    const af = Math.max(1, info.chars - doel.max);
+    return `${meting} Je zit ${info.px - info.max} px over de grens: haal er ongeveer ${af} tot ${Math.max(af, info.chars - doel.min)} tekens af zonder het zoekwoord te verliezen.`;
+  }
+  return `${meting} De breedte klopt; houd die zo.`;
+}
+
 /** Voldoet deze meta aan alles wat wij van onszelf eisen? */
 export function metaVoldoet(kind: MetaKind, text: string, ctx: MetaContext = {}): boolean {
   return metaOpleverIssues(kind, text, ctx).length === 0;
@@ -394,8 +472,16 @@ export function metaVoldoet(kind: MetaKind, text: string, ctx: MetaContext = {})
  * elke systeemprompt die een meta title of description genereert of toetst.
  * ------------------------------------------------------------------ */
 export const META_RULES_PROMPT = `META-REGELS (hard, altijd toepassen bij meta title en meta description):
+
+DE LENGTE IS ÉÉN REGEL, GEMETEN IN PIXELS. Google kapt af op breedte, niet op
+tekens: een W is breed, een i smal. Wij meten die breedte na en rekenen je daarop
+af. Het tekenaantal hieronder is de vertaling daarvan voor doorsnee Nederlandse
+tekst; wijkt jouw tekst af (veel hoofdletters, lange woorden), dan telt de
+breedte, niet het aantal. Te kort is net zo fout als te lang: onbenutte ruimte is
+ruimte waarin een concurrent zijn argument kwijt kan.
+
 Titel:
-- 40-60 tekens (doel 50-58) en 430 tot 580 px in Arial. Boven 580 px kapt Google af; ONDER 430 px laat je ruimte liggen die een concurrent wél gebruikt, dus vul het venster op met een concreet voordeel, bewijs of aanbod in plaats van het kort te houden.
+- 430 tot 580 px in Arial, oftewel ongeveer 45 tot 60 tekens. Mik op de bovenkant van dat venster (ongeveer 52 tot 58 tekens) en vul de ruimte met een concreet voordeel, bewijs of aanbod in plaats van het kort te houden.
 - Primair zoekwoord (of natuurlijke variant) in de eerste 3-4 woorden, vóór het scheidingsteken.
 - Merknaam achteraan met " - " (koppelteken). NOOIT een pijp (|): die wordt 2x zo vaak door Google herschreven. Laat de merknaam weg als de titel anders te lang wordt (Google toont de sitenaam toch al).
 - Sluit qua kernwoorden nauw aan op de H1 (grootste middel tegen herschrijven door Google), maar hoeft niet woordelijk identiek te zijn.
@@ -403,7 +489,7 @@ Titel:
 - Een concreet cijfer of jaartal alleen als het eerlijk bij de pagina past; geen hype-woorden ("ultiem", "beste ooit"): die kosten aantoonbaar kliks.
 - Nederlandse zinsopbouw: alleen het eerste woord en eigennamen met hoofdletter.
 Description:
-- 120-155 tekens (doel 140-155) en 800 tot 920 px; korter dan 800 px laat ruimte onbenut, boven 920 px kapt Google af. De kernboodschap MET het zoekwoord in de eerste 120 tekens (mobiel kapt daar af).
+- 800 tot 920 px, oftewel ongeveer 135 tot 152 tekens voor doorsnee tekst. Mik op ongeveer 142 tot 150 tekens. Korter dan 800 px laat ruimte onbenut, boven 920 px kapt Google af. Let op: 120 tekens is te KORT, dat haalt het venster niet. De kernboodschap MET het zoekwoord in de eerste 120 tekens (mobiel kapt daar af).
 - Zoekwoord 1x letterlijk (wordt vetgedrukt in Google), maximaal 2x.
 - Actieve zin met één CTA-werkwoord (Ontdek, Bekijk, Vergelijk, Plan, Bereken, Vraag aan) en minstens één concreet feit (getal, prijs, termijn, garantie, USP).
 - Vat de echte pagina-inhoud samen (verlaagt de kans dat Google de tekst vervangt), herhaal de titel niet letterlijk, uniek per pagina.

@@ -137,21 +137,24 @@ async function metaUitCopy(slug: string, copyTekst: string): Promise<CopydocMeta
  * de opgeslagen copy in, zodat het document, de site-doorvoer en de CTR-machine
  * dezelfde tekst gebruiken.
  */
-export async function metaSectie(slug: string, url: string, copyTekst: string, keyword?: string): Promise<{ sectie: DocSection; nieuweCopy?: string } | null> {
+export async function metaSectie(slug: string, url: string, copyTekst: string, keyword?: string, merk = ""): Promise<{ sectie: DocSection; nieuweCopy?: string } | null> {
   const gevonden = await metaUitCopy(slug, copyTekst);
   if (!gevonden.title && !gevonden.desc) return null;
 
   const h1 = (/^#\s+(.+)$/m.exec(copyTekst)?.[1] || "").replace(/^H1\s*[—–-]\s*/i, "").trim();
   const context = copyTekst.slice(0, 1500);
 
+  // Eigen woorden voor de laatste slag: de naam van het bedrijf is altijd waar,
+  // dus daar mag de vijl mee aanvullen als de tekst te kort blijft.
+  const bouwstenen = [merk].filter(Boolean);
   // Vier pogingen in plaats van drie: dit is de laatste plek waar een meta nog
   // bijgeschaafd kan worden voordat de klant hem ziet.
   const t = gevonden.title
-    ? await perfectioneerMeta({ kind: "meta_title", tekst: gevonden.title, slug, keyword, h1: h1 || undefined, context, maxPogingen: 4 })
+    ? await perfectioneerMeta({ kind: "meta_title", tekst: gevonden.title, slug, keyword, h1: h1 || undefined, context, maxPogingen: 4, bouwstenen })
     : null;
   const titel = t?.tekst || "";
   const d = gevonden.desc
-    ? await perfectioneerMeta({ kind: "meta_description", tekst: gevonden.desc, slug, keyword, title: titel || undefined, context, maxPogingen: 4 })
+    ? await perfectioneerMeta({ kind: "meta_description", tekst: gevonden.desc, slug, keyword, title: titel || undefined, context, maxPogingen: 4, bouwstenen })
     : null;
   const omschrijving = d?.tekst || "";
 
@@ -164,12 +167,18 @@ export async function metaSectie(slug: string, url: string, copyTekst: string, k
     if (tekst !== copyTekst) nieuweCopy = tekst;
   }
 
-  // Komt een tekst ondanks de correctielus niet door de eigen poort, dan is dat
-  // een signaal voor ons, niet voor de klant: in het document staat alleen de
-  // opgeleverde tekst en de meting, nooit een afkeuring van eigen werk.
-  for (const [kind, tekst] of [["meta_title", titel], ["meta_description", omschrijving]] as const) {
-    if (tekst && (kind === "meta_title" ? t : d)?.ok === false) {
+  // Komt een tekst ondanks de correctielus én de vijl niet door de eigen poort,
+  // dan is dat een signaal voor ONS, niet voor de klant: in het document staat
+  // alleen de opgeleverde tekst en de meting, nooit een afkeuring van eigen
+  // werk. Maar stil blijven is ook fout, want dan levert het dashboard zonder
+  // een kik iets af dat niet aan onze eigen lat voldoet. Daarom onthouden we het
+  // hier, en zeggen de routes het erbij (zie laatsteMetaMelding).
+  metaMelding = "";
+  for (const [kind, tekst, r] of [["meta_title", titel, t], ["meta_description", omschrijving, d]] as const) {
+    if (tekst && r && !r.ok) {
       console.warn(`[copy-doc-klant] ${kind} haalt de opleverpoort niet: ${metaVerdictText(kind, tekst)}`);
+      const naam = kind === "meta_title" ? "paginatitel" : "omschrijving";
+      metaMelding = [metaMelding, `De ${naam} haalt onze eigen lat nog niet: ${r.issues[0] || metaVerdictText(kind, tekst)}.`].filter(Boolean).join(" ");
     }
   }
 
@@ -184,6 +193,15 @@ export async function metaSectie(slug: string, url: string, copyTekst: string, k
     nieuweCopy,
   };
 }
+
+/**
+ * Haalde de meta van het laatst gebouwde klantdocument onze eigen lat niet, dan
+ * staat dat hier. Leeg betekent: alles door de poort. Dezelfde opzet als
+ * laatsteOmslagGelukt, zodat de routes het aan Maarten kunnen melden in plaats
+ * van het alleen in een serverlog te zetten.
+ */
+let metaMelding = "";
+export function laatsteMetaMelding(): string { return metaMelding; }
 
 // De opgeslagen copy-tekst (markdown-achtig) → nette document-secties, met de
 // H1/H2/H3-labels zichtbaar bij elke kop.
@@ -225,7 +243,7 @@ export async function buildCopyKlantSpec(slug: string, url: string): Promise<{ o
   const keyword = await primairZoekwoord(slug, url, client.domain || "");
   const [maatwerk, meta] = await Promise.all([
     maatwerkSecties(slug, url, copy, outputs["analyse"] || ""),
-    metaSectie(slug, url, copy, keyword),
+    metaSectie(slug, url, copy, keyword, client.name),
   ]);
   // Heeft de correctielus de meta bijgeschaafd, dan gaat die tekst ook terug de
   // opgeslagen copy in: één tekst voor het document, de site en de CTR-machine.

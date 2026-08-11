@@ -38,15 +38,33 @@ export default async function DocumentPage({ params, searchParams }: {
           <div className="ut-h-tekst">
             <h2 className="ut-h-titel">{KIND_LABEL[kind]} voor {pad}</h2>
             <p className="ut-h-intro">
-              De vastgelegde tekst van deze stap, direct uit het dashboard.{" "}
+              Dit is de <strong>ruwe vastgelegde tekst</strong> van deze stap, zoals hij in het dashboard staat.
+              Het opgemaakte stuk dat naar de klant gaat, haal je met de knop hieronder.{" "}
               <a href={url} target="_blank" rel="noreferrer">Bekijk de live pagina</a>{" · "}
               <a href={`/admin/client/${params.slug}?tab=paginas&page=${encodeURIComponent(url)}`}>Naar de cockpit</a>
             </p>
           </div>
         </div>
-        {content
-          ? <div className="md" dangerouslySetInnerHTML={{ __html: mdToHtml(content, siteBase) }} />
-          : <p className="muted">Er is nog geen vastgelegde {KIND_LABEL[kind].toLowerCase()}-tekst voor deze pagina. Start de stap vanuit de projectkaart of de Pagina&rsquo;s-tab.</p>}
+        {content ? (
+          <>
+            {/* Deze weergave was het vangnet voor pagina's zonder Drive-map, maar
+                een klik op een copy-link gaf zo ruwe tekst in plaats van het
+                opgemaakte document. Het document wordt nu gewoon gemaakt, met of
+                zonder Drive-map. */}
+            <p className="row">
+              <a className="btn btn-primary" href={`/api/admin/document-docx?slug=${encodeURIComponent(params.slug)}&kind=${encodeURIComponent(kind)}&url=${encodeURIComponent(url)}`}>
+                Open als Word-document in de huisstijl
+              </a>
+            </p>
+            <p className="muted">
+              Het document wordt op dit moment opgebouwd, dus het downloaden duurt even.
+              {kind === "copy" ? " Bij copy krijg je de volledige klant-briefing: omslag, uitleg, de zoekwoorden en de webteksten." : ""}
+            </p>
+            <div className="md" dangerouslySetInnerHTML={{ __html: mdToHtml(content, siteBase) }} />
+          </>
+        ) : (
+          <p className="muted">Er is nog geen vastgelegde {KIND_LABEL[kind].toLowerCase()}-tekst voor deze pagina. Start de stap vanuit de projectkaart of de Pagina&rsquo;s-tab.</p>
+        )}
       </section>
     </div>
   );
