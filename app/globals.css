@@ -6345,6 +6345,8 @@ a.wb-pad:hover { text-decoration: underline; }
 .wp-archief-datum { font-size: var(--fs-xs); font-weight: 800; color: var(--gray); }
 .wp-archief-soort { font-size: var(--fs-xs); color: var(--gray); }
 .wp-archief-tekst { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--dark); white-space: pre-wrap; }
+/* De waarschuwing boven het archief: dit is oude tekst, geen geldende afspraak. */
+.wp-archief-uitleg { font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); margin: var(--s-2) 0 0; }
 /* Een lange mail-link is één woord zonder spaties en duwde de kaart uit beeld.
    LET OP, dit ging op 6 augustus 2026 mis: hier stond `overflow-wrap: anywhere`
    op de héle kaart (.wp-card). Die eigenschap breekt niet alleen lange woorden

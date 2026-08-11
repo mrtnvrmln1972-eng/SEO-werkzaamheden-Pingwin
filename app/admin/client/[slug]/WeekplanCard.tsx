@@ -8,7 +8,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { mdToHtml } from "../../../../lib/markdown";
-import { cardInfoHtml, splitCardInfo, eerdereNotitiesHtml, faseSturing, verseCopySturing, type CardFaseKey, type MailLinks } from "../../../../lib/card-info";
+import { cardInfoHtml, splitCardInfo, eerdereNotitiesHtml, faseSturing, verseCopySturing, isSjabloonSturing, type CardFaseKey, type MailLinks } from "../../../../lib/card-info";
 import { linkifyHtml } from "../../../../lib/linkify";
 import { urlKey } from "../../../../lib/url-key";
 import { devLabel } from "../../../../lib/personen";
@@ -727,7 +727,11 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
           {(eerdereNotities || archiefAantal > 0) && (
             <details className="wp-info-rest wp-overdeze-archief wp-card-info wp-info-net"
               onToggle={(e) => { if ((e.target as HTMLDetailsElement).open) void laadArchief(); }}>
-              <summary>Archief: eerdere notities en titels ({eerdereAantal + archiefAantal})</summary>
+              <summary>Oude versies van deze kaart ({eerdereAantal + archiefAantal})</summary>
+              {/* Zonder deze regel las het als aantekeningen die nog gelden. Het is
+                  het tegenovergestelde: dit is precies de tekst die van de kaart af
+                  is gehaald omdat hij niet meer klopte. */}
+              <p className="wp-archief-uitleg">Tekst zoals hij eerder op deze kaart stond, bewaard om iets te kunnen terugzoeken. <strong>Niet actueel:</strong> wat er nu geldt staat hierboven en in de fases.</p>
               {eerdereNotities && <div dangerouslySetInnerHTML={{ __html: eerdereNotities }} />}
               {/* eerdereNotities komt uit eerdereNotitiesHtml() in lib/card-info.ts, dat linkifyHtml gebruikt. */}
               {archief.length > 0 && (
@@ -787,6 +791,20 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
       {open && page && (
         <div className="wp-fases-kop">
           <span className="wp-sectie-label" style={{ margin: "var(--s-0)" }}>Fases</span>
+          {/* De Drive-bestemmingsmap hoort hier. Elke fase in dit blok maakt een
+              document (strategie, analyse, blauwdruk, copy) en die gaan alle vier
+              naar deze ene map. De knop stond alleen onderin de chat, en dan ook
+              nog pas nadat de assistent één keer geantwoord had, dus in de praktijk
+              was hij onvindbaar op het moment dat je hem nodig had: vóór de eerste
+              fase, niet erna. */}
+          {t.url && (
+            <button type="button" className="btn btn-quiet btn-klein" onClick={() => setKiezerOpen(true)}
+              title={driveMap
+                ? `Alle documenten van deze pagina komen in "${driveMap.path || driveMap.name}". Klik om een andere map te kiezen.`
+                : "Kies de Google Drive-map waar strategie, analyse, blauwdruk en copy van deze pagina in worden gezet."}>
+              {driveMap ? `Drive: ${driveMap.path || driveMap.name}` : "Kies Drive-map"}
+            </button>
+          )}
           <span className="wp-fase-spacer" />
           <button type="button" className="btn btn-ghost btn-klein" disabled={(!page.live && !page.strategie) || runActive || !!busy}
             title={(!page.live && !page.strategie) ? "Eerst de strategie goedkeuren (nieuwe pagina)" : "Draait analyse, blauwdruk en copy achter elkaar"}
@@ -810,9 +828,15 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
             // zichzelf tegen met het chipje rechts, dat wél "✓" toont.
             const sturing = f.key === "copy" ? verseCopySturing(sturingRuw, page?.doorgevoerd) : sturingRuw;
             // Een regel die alleen een document benoemt ("Copy-document: ...docx")
-            // voegt niets toe naast het linkje ernaast. Alleen echte sturing krijgt
-            // een uitleg-knop; de rest is ruis in een rij die rustig moet zijn.
-            const sturingNuttig = !!sturing && !/^\s*[a-zà-ž -]{0,20}document\s*:/i.test(sturing) && !/\.(docx?|pdf|md)\b/i.test(sturing.slice(0, 90));
+            // voegt niets toe naast het linkje ernaast. En een standaardzin die bij
+            // het aanmaken van de kaart is meegegeven ("tekst aanscherpen") herhaalt
+            // alleen de fasenaam en klopt na verloop van tijd niet eens meer. Alleen
+            // echte, voor deze pagina geschreven sturing krijgt een uitleg-knop; de
+            // rest is ruis in een rij die rustig moet zijn.
+            const sturingNuttig = !!sturing
+              && !/^\s*[a-zà-ž -]{0,20}document\s*:/i.test(sturing)
+              && !/\.(docx?|pdf|md)\b/i.test(sturing.slice(0, 90))
+              && !isSjabloonSturing(sturing);
             const sturingOpen = !!faseOpen[f.key];
             const rij = (
               <div key={f.key} className="wp-fase">
@@ -939,8 +963,16 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
                     onClick={() => void vatSamenEnLegVast()}>
                     {vatFase === "samenvatten" ? "Samenvatten…" : vatFase === "vastleggen" ? "Strategie vastleggen…" : vatFase === "document" ? "Document maken…" : page?.strategie ? "Vat opnieuw samen & leg strategie vast" : "Vat samen & leg strategie vast"}
                   </button>
-                  <span className="muted">{driveMap ? `alle documenten van deze pagina naar "${driveMap.path || driveMap.name}"` : "nog geen Drive-map voor deze pagina gekozen"}</span>
-                  <button type="button" className="btn btn-quiet btn-klein" onClick={() => setKiezerOpen(true)}>{driveMap ? "Map wijzigen" : "Kies Drive-map"}</button>
+                  {/* Eén plek voor de mapkeuze: die staat nu in de kop van het
+                      fase-blok, waar ook de documenten gemaakt worden. Alleen op een
+                      kaart zonder fase-blok (een pagina die de sitescan nog niet
+                      kent) staat hij hier, anders is hij nergens te vinden. */}
+                  {!page && (
+                    <button type="button" className="btn btn-quiet btn-klein" onClick={() => setKiezerOpen(true)}
+                      title="Kies de Google Drive-map waar de documenten van deze pagina in worden gezet.">
+                      {driveMap ? `Drive: ${driveMap.path || driveMap.name}` : "Kies Drive-map"}
+                    </button>
+                  )}
                 </div>
               )}
               <div className="wp-chat-input">

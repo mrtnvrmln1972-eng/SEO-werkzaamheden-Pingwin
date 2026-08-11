@@ -439,6 +439,44 @@ export function faseSturing(info: CardInfo, fase: CardFaseKey, max = 1500): stri
 }
 
 // ═══════════════════════════════════════════════════════════
+// EEN SJABLOONZIN PER FASE ZEGT NIETS WAT DE FASENAAM NIET AL ZEGT
+// ═══════════════════════════════════════════════════════════
+// Ontstond een kaart uit het pagina-overzicht of de prioriteitenscan, dan kreeg
+// elke fase een standaardzin mee (faseVoorstel in lib/weekplan-kaarttekst.ts):
+// "Analyse: toets deze pagina en op overlap met andere eigen pagina's",
+// "Copy: tekst aanscherpen". Dat is de omschrijving van de fase, geen sturing.
+// Erger: die zin wordt nooit herschreven, dus op een kaart waar de copy al
+// geschreven en goedgekeurd is staat er nog steeds "tekst aanscherpen", en dat
+// spreekt het vinkje ernaast tegen.
+//
+// Zulke regels verdienen dus geen uitleg-knop op de kaart. Dit is de
+// weergave-laag, dus het geldt met terugwerkende kracht voor elke kaart die er
+// al staat. De opgeslagen tekst blijft ongemoeid: hij stuurt de documentmotor
+// nog steeds (faseSturing hierboven), waar zo'n zin wél zijn nut heeft omdat de
+// motor de fasenaam niet als context heeft.
+const SJABLOON_STURING: RegExp[] = [
+  // bestaande pagina verbeteren
+  /^toets deze pagina\b.*\bop overlap met andere eigen pagina'?s/i,
+  /^vergelijk de koppenstructuur met de top-?10\b.*\bwat er mist/i,
+  /^tekst aanscherpen\b/i,
+  /^wijzigingen doorvoeren, publiceren en de interne links nalopen/i,
+  // nieuwe pagina bouwen
+  /^bepaal de rol van deze pagina\b.*\bermee overlappen/i,
+  /^check de top-?10\b.*\brealistisch tussen/i,
+  /^koppenstructuur en secties op basis van de top-?10/i,
+  /^tekst schrijven vanuit de blauwdruk/i,
+  /^pagina bouwen, publiceren en\b.*\bintern aanlinken/i,
+  /^schema toevoegen dat bij dit paginatype past/i,
+];
+
+/** Is dit de standaardzin die bij het aanmaken van de kaart is meegegeven? */
+export function isSjabloonSturing(tekst: string): boolean {
+  const t = (tekst || "").replace(/\s+/g, " ").trim();
+  if (!t) return true;
+  return SJABLOON_STURING.some((re) => re.test(t));
+}
+
+// ═══════════════════════════════════════════════════════════
 // EEN BEVROREN "COPY NOG NIET BEVESTIGD LIVE"-REGEL IS NIET WAAR ZODRA DE METING
 // HET TEGENDEEL AANTOONT
 // ═══════════════════════════════════════════════════════════
