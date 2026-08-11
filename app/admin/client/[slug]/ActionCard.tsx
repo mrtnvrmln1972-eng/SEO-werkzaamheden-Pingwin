@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { urlKey } from "../../../../lib/url-key";
 import { splitCardInfo, cardInfoHtml } from "../../../../lib/card-info";
 import { mdToHtml } from "../../../../lib/markdown";
+import { openMailProgramma } from "../../../../lib/mailto-openen";
 import PaginaDossier from "./PaginaDossier";
 
 export type Action = {
@@ -148,7 +149,14 @@ export default function ActionCard({ action, slug, thread, onExecuted, onGoToPag
     try { to = localStorage.getItem("pingwin-dev-email") || ""; } catch { /* geen opslag */ }
     const subject = `${LABEL[action.type] || "SEO"}${action.url ? ` — ${shortUrl(action.url)}` : ""}`;
     const body = `Hoi,\n\nKun je dit doorvoeren op ${action.url || "de pagina"}?\n\n${result.text}\n\nDank!`;
-    window.location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    // Staat er geen adres van de sitebouwer, dan opent er niets en zou de knop
+    // stilzwijgend niets doen. Dan liever de tekst op het klembord, met dezelfde
+    // "Gekopieerd"-terugkoppeling als de knop ernaast.
+    if (!openMailProgramma({ aan: to, onderwerp: subject, tekst: body })) {
+      navigator.clipboard?.writeText(`Onderwerp: ${subject}\n\n${body}`)
+        .then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); })
+        .catch(() => {});
+    }
   }
 
   return (

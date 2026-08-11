@@ -7,6 +7,7 @@ import RijkTekstVeld from "../../_velden/RijkTekstVeld";
 import OntwikkelMenu from "../OntwikkelMenu";
 import Tellers from "../Tellers";
 import MeldingenMenu from "../MeldingenMenu";
+import MailPopup from "../client/[slug]/MailPopup";
 
 // Verwijdert scripts/handlers/inline font-kleur uit opgeslagen taak-HTML, houdt
 // links en basis-opmaak. De inhoud is bij invoer al geschoond; dit is de vangnet.
@@ -33,6 +34,12 @@ type Row = DevTask;
 const WEEKDAYS = ["Maandag", "Dinsdag", "Woensdag", "Donderdag", "Vrijdag", "Zaterdag", "Zondag"];
 const MONTHS_SHORT = ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
 const MAARTEN_EMAIL = "maarten@pingwin.nl";
+/** Het laatst gebruikte "aan"-adres van deze lijst; MailPopup onthoudt het na versturen. */
+const MAIL_AAN_SLEUTEL = "pingwin-devlijst-mail-aan";
+
+function esc(s: string): string {
+  return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
 
 // Maandag van de week met de gegeven week-offset (0 = deze week).
 function mondayOf(offsetWeeks: number): Date {
@@ -78,6 +85,15 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
   // Welke klanten hun "Afgerond"-blok hebben opengeklapt. Standaard dicht: dat
   // is nou juist het archief, dat hoeft niet standaard in beeld te staan.
   const [afgerondOpen, setAfgerondOpen] = useState<Record<string, boolean>>({});
+  // De taak waarover gemaild wordt; niet-leeg betekent: mailvenster staat open.
+  const [mailVoor, setMailVoor] = useState<{ r: Row; note: string } | null>(null);
+  // Het adres waar de mail standaard heen gaat. Maarten mailt hiermee zijn
+  // sitebouwer, de sitebouwer mailt hiermee Maarten terug, dus het adres staat
+  // niet vast: het onthoudt wat je de vorige keer gebruikte.
+  const [mailAan, setMailAan] = useState(MAARTEN_EMAIL);
+  useEffect(() => {
+    try { setMailAan(localStorage.getItem(MAIL_AAN_SLEUTEL) || MAARTEN_EMAIL); } catch { /* geen opslag */ }
+  }, []);
 
   // Na aanmaken, bewerken of weggooien komt de hele lijst terug van de server.
   function zetLijst(list: DevTask[]) {
@@ -85,14 +101,37 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
     setRows(list);
   }
 
-  // Opent de mailclient met een kant-en-klare terugkoppeling aan Maarten.
-  function mailMaarten(r: Row, note: string) {
-    const subject = `Terugkoppeling dev-taak: ${stripText(r.taak).slice(0, 80)} (${r.clientName})`;
-    const lines = [`Klant: ${r.clientName}`, `Taak: ${stripText(r.taak)}`];
-    if (r.link && /^https?:/i.test(r.link)) lines.push(`Pagina: ${r.link}`);
-    for (const d of r.docs || []) lines.push(`${d.label}: ${d.url}`);
-    lines.push("", `Terugkoppeling: ${note || ""}`);
-    window.location.href = `mailto:${MAARTEN_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(lines.join("\n"))}`;
+  // Opent het mailvenster van het dashboard met een kant-en-klare terugkoppeling.
+  //
+  // Hiervoor gooide deze knop de browser rechtstreeks naar een `mailto:`-adres.
+  // Dat werkt alleen zolang er in díe browser een mailprogramma aan `mailto:`
+  // hangt; is dat er niet (of is het weggevallen), dan gebeurt er letterlijk
+  // niets en zegt het scherm ook niets. Precies dat overkwam de knop. Elk ander
+  // mailknopje in het dashboard was al eerder omgezet naar dit venster; deze was
+  // de laatste die nog van het mailprogramma afhing. Nu verstuurt het dashboard
+  // zelf via de mailkoppeling, met het eigen mailprogramma en "kopieer
+  // mailtekst" als terugval als die koppeling er niet is.
+  function mailVenster(r: Row, note: string) {
+    setMailVoor({ r, note });
+  }
+
+  // De inhoud van die mail: aanhef, waar het over gaat, de documenten als
+  // klikbare links, en de terugkoppeling. Bewust simpel (geen tabellen, geen
+  // koppen); het is een mail, geen rapport.
+  function mailHtml(r: Row, note: string): string {
+    const punten = [`<li>Klant: ${esc(r.clientName)}</li>`, `<li>Taak: ${esc(stripText(r.taak))}</li>`];
+    if (r.link && /^https?:/i.test(r.link)) punten.push(`<li>Pagina: <a href="${esc(r.link)}">${esc(r.link)}</a></li>`);
+    for (const d of r.docs || []) punten.push(`<li>${esc(d.label)}: <a href="${esc(d.url)}">${esc(d.url)}</a></li>`);
+    // De terugkoppeling komt uit een gewoon tekstvak; escapen en de regelovergangen
+    // behouden is genoeg (stripText zou juist de regelovergangen platslaan).
+    const schoon = (note || "").trim();
+    return [
+      "<p>Hoi,</p>",
+      "<p>Over deze taak uit de developerlijst:</p>",
+      `<ul>${punten.join("")}</ul>`,
+      schoon ? `<p>${esc(schoon).replace(/\n/g, "<br>")}</p>` : "",
+      "<p>Groet</p>",
+    ].filter(Boolean).join("");
   }
 
   // Slaat de developer-status (klaar + terugkoppeling) van één taak op. Raakt de
@@ -115,7 +154,7 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
     const idx = feedbackFor; const r = rows[idx];
     // Status op 'Klaar' + afgevinkt; de taak blijft groen zichtbaar in het overzicht.
     applyStatus(idx, true, feedbackNote);
-    if (alsoMail && r) mailMaarten(r, feedbackNote);
+    if (alsoMail && r) mailVenster(r, feedbackNote);
     setFeedbackFor(null); setFeedbackNote("");
   }
 
@@ -242,7 +281,7 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
         <label className="dev-check-label"><input type="checkbox" checked={r.devDone} onChange={(e) => toggleDone(idx, e.target.checked)} /> Klaar</label>
         <label className="dev-check-label dev-check-afgerond"><input type="checkbox" checked={r.ownerDone} onChange={(e) => toggleAfgerond(idx, e.target.checked)} /> Afgerond</label>
         <button type="button" className="ghost-btn small" onClick={() => setVenster({ taak: r, clientSlug: r.clientSlug, clientName: r.clientName })} title="Taak, opmerking en documenten aanpassen">✎ Bewerk</button>
-        <button type="button" className="ghost-btn small dev-mail-btn" onClick={() => mailMaarten(r, r.devNote)}>✉ Mail Maarten</button>
+        <button type="button" className="ghost-btn small dev-mail-btn" onClick={() => mailVenster(r, r.devNote)} title="Mail deze taak, met de pagina en de documenten er al in">✉ Mail</button>
       </div>
     </div>
   );
@@ -308,7 +347,7 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
             title="Open de kaart in de planning van deze klant">↩ Kaart</a>
         )}
         <button type="button" className="ghost-btn small" onClick={(e) => { e.stopPropagation(); setVenster({ taak: r, clientSlug: r.clientSlug, clientName: r.clientName }); }} title="Taak, opmerking en documenten aanpassen">✎ Bewerk</button>
-        <button type="button" className="ghost-btn small dev-mail-btn" onClick={(e) => { e.stopPropagation(); mailMaarten(r, r.devNote); }}>✉ Mail</button>
+        <button type="button" className="ghost-btn small dev-mail-btn" onClick={(e) => { e.stopPropagation(); mailVenster(r, r.devNote); }} title="Mail deze taak, met de pagina en de documenten er al in">✉ Mail</button>
       </td>
     </tr>
   );
@@ -421,6 +460,19 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
             clientName={venster.clientName}
             onLijst={zetLijst}
             onSluiten={() => setVenster(null)}
+          />
+        )}
+
+        {mailVoor && (
+          <MailPopup
+            open
+            onClose={() => setMailVoor(null)}
+            titel={`Mail over deze taak · ${mailVoor.r.clientName}`}
+            aanTo={mailAan}
+            onderwerp={`Dev-taak: ${stripText(mailVoor.r.taak).slice(0, 80)} (${mailVoor.r.clientName})`}
+            berichtHtml={mailHtml(mailVoor.r, mailVoor.note)}
+            onthoudAls={MAIL_AAN_SLEUTEL}
+            onVerstuurd={() => { try { setMailAan(localStorage.getItem(MAIL_AAN_SLEUTEL) || mailAan); } catch { /* geen opslag */ } }}
           />
         )}
 

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import type { TaskRow } from "../../../../lib/tasks";
 import { cleanPastedHtml, linkifyPlainText } from "../../../../lib/rich-paste";
+import { openMailProgramma } from "../../../../lib/mailto-openen";
 import StrategyPanel, { type StrategySessionData } from "./StrategyPanel";
 import HelpHint from "./HelpHint";
 
@@ -441,12 +442,7 @@ export default function TasksEditor({ slug, initialTasks, initialStrategySession
   function openMailto() {
     const m = buildMailtoText();
     if (!m) return;
-    // Via een echt anchor-element in dezelfde pagina: dan pakt de browser de
-    // standaard-mailapp. window.open zou een leeg tabblad geven (of niets als
-    // er geen mailprogramma is ingesteld); daarvoor is de kopieer-knop ernaast.
-    const a = document.createElement("a");
-    a.href = `mailto:${devTo.trim()}?subject=${encodeURIComponent(m.subject)}&body=${encodeURIComponent(m.text)}`;
-    document.body.appendChild(a); a.click(); a.remove();
+    if (!openMailProgramma({ aan: devTo, onderwerp: m.subject, tekst: m.text })) { setDevMsg("Vul een ontvanger in."); return; }
     setDevMsg("Geopend in je mailprogramma; verstuur hem daar. Gebeurt er niets? Gebruik dan 'Kopieer mailtekst' hiernaast.");
   }
   async function copyMailText() {

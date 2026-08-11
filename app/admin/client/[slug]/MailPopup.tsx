@@ -10,6 +10,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { openMailProgramma } from "../../../../lib/mailto-openen";
 
 function stripHtml(html: string): string {
   return (html || "").replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").trim();
@@ -71,12 +72,7 @@ export default function MailPopup({
   }
 
   function openMailto() {
-    if (!to.trim()) { setMsg("Vul een ontvanger in."); return; }
-    // Een echt anchor-element, geen window.open: dat laat anders een leeg
-    // tabblad achter zodra de browser de mailapp erbij haalt.
-    const a = document.createElement("a");
-    a.href = `mailto:${to.trim()}?subject=${encodeURIComponent(onderwerp)}&body=${encodeURIComponent(stripHtml(tekst()))}`;
-    document.body.appendChild(a); a.click(); a.remove();
+    if (!openMailProgramma({ aan: to, onderwerp, tekst: stripHtml(tekst()) })) { setMsg("Vul een ontvanger in."); return; }
     if (onthoudAls) { try { localStorage.setItem(onthoudAls, to.trim()); } catch { /* geen opslag */ } }
     setMsg("Geopend in je mailprogramma; verstuur hem daar. Gebeurt er niets? Gebruik dan ‘Kopieer mailtekst’.");
   }

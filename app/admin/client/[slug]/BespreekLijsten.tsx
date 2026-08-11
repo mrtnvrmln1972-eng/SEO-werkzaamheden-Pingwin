@@ -15,6 +15,7 @@ import { useEffect, useRef, useState } from "react";
 import { persoonLabel, devVoornaam } from "../../../../lib/personen";
 import { linkifyHtml } from "../../../../lib/linkify";
 import { escapeHtml, isHtml, htmlNaarTekst } from "../../../../lib/veilige-html";
+import { openMailProgramma } from "../../../../lib/mailto-openen";
 import RijkTekstVeld from "../../../_velden/RijkTekstVeld";
 
 type Item = { id: number; persoon: string; tekst: string; klaar: boolean; gedeeldAt: string | null; createdAt: string | null };
@@ -140,10 +141,12 @@ export default function BespreekLijsten({ slug, clientName, clientEmail, domain 
   function mailProgramma(p: string) {
     const { onderwerp, aanhef, punten } = mailTekst(p);
     if (!punten.length) return;
-    const body = encodeURIComponent(
-      `${aanhef}\n\nHierbij de openstaande punten op een rij:\n\n${punten.map((i) => `- ${htmlNaarTekst(i.tekst)}`).join("\n")}\n\nWil je ze oppakken en even laten weten als iets klaar is of vragen oproept?\n\nMet vriendelijke groet,\nMaarten Vermeulen\nPingwin Online Marketing`,
-    );
-    window.open(`mailto:${mailAan.trim()}?subject=${encodeURIComponent(onderwerp)}&body=${body}`, "_blank");
+    const body = `${aanhef}\n\nHierbij de openstaande punten op een rij:\n\n${punten.map((i) => `- ${htmlNaarTekst(i.tekst)}`).join("\n")}\n\nWil je ze oppakken en even laten weten als iets klaar is of vragen oproept?\n\nMet vriendelijke groet,\nMaarten Vermeulen\nPingwin Online Marketing`;
+    // Zonder ontvanger opent er niets; dan niet stilzwijgend "gedeeld" stempelen.
+    if (!openMailProgramma({ aan: mailAan, onderwerp, tekst: body })) {
+      setMailMsg("Vul eerst een ontvanger in.");
+      return;
+    }
     setMailVoor(null);
     void post({ action: "gedeeld", persoon: p });
   }
