@@ -51,11 +51,16 @@ export async function GET(req: NextRequest) {
   // staan. Dat is de vraag achter de vraag: hangt er een document aan de pagina
   // waar de teksten helemaal niet in staan, dan is dát het probleem, en dat zie
   // je alleen door de bronnen naast elkaar te zetten.
+  // Met &tekst=1 komt het begin van elk document mee. Zonder dat is een uitkomst
+  // als "geen koppen gevonden" niet na te rekenen: dan weet je niet of het
+  // document anders in elkaar zit dan we denken.
+  const metTekst = req.nextUrl.searchParams.get("tekst") === "1";
   const bronnen = (await alleCopyBronnen(slug, kaart.url).catch(() => []))
     .map((b) => ({
       herkomst: b.herkomst, link: b.link, reden: b.reden,
       tekens: b.tekst.length,
       koppen: koppenUitCopy(b.tekst),
+      ...(metTekst ? { begin: b.tekst.slice(0, 4000) } : {}),
     }));
   return NextResponse.json({ ok: true, proef: true, meting, bronnen, gewijzigd: false });
 }
