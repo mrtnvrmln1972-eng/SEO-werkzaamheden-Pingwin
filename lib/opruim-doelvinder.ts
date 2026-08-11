@@ -357,12 +357,12 @@ export function kiesBestemmingen(
   // voorkomen. Die tweede eis is nodig omdat een handvol bronnen ook een
   // vórmwoord kan delen ("poli"), en dat is geen onderwerp: dan zou de
   // bestemming ook een poli-pagina moeten zijn en houd je niets over.
-  let gedeeld: Set<string> | null = null;
+  let gedeeld: string[] | null = null;
   for (const [pad] of gaatWeg) {
-    const w = new Set(padWoorden(pad));
-    gedeeld = gedeeld ? new Set([...gedeeld].filter((x) => w.has(x))) : w;
+    const w = padWoorden(pad);
+    gedeeld = gedeeld === null ? w : gedeeld.filter((x) => w.includes(x));
   }
-  const kern = [...(gedeeld || [])].filter((w) => bak.ruis.has(w));
+  const kern = (gedeeld || []).filter((w) => bak.ruis.has(w));
 
   const uitbouw = new Set(regels.filter((r) => r.uitkomst === "uitbouwen").map((r) => norm(r.pad)));
   const uit = new Map<string, string>();
