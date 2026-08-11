@@ -11,6 +11,7 @@ import { mdToHtml } from "../../../../lib/markdown";
 import { cardInfoHtml, splitCardInfo, eerdereNotitiesHtml, faseSturing, verseCopySturing, isSjabloonSturing, type CardFaseKey, type MailLinks } from "../../../../lib/card-info";
 import { linkifyHtml } from "../../../../lib/linkify";
 import { urlKey } from "../../../../lib/url-key";
+import { docsBewerkLink } from "../../../../lib/drive-id";
 import { devLabel } from "../../../../lib/personen";
 import { eersteKop } from "../../../../lib/chat-vouw";
 import { volgendeFase, faseLabel, FASE_VOLGORDE } from "../../../../lib/fase-volgorde";
@@ -512,7 +513,10 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
   function docLink(key: FaseKey): string {
     if (key === "analyse" || key === "blauwdruk" || key === "copy") {
       const extern = everLinks[key] || page?.links?.[key] || (key === "copy" ? t.copyUrl : "") || "";
-      if (extern) return extern;
+      // Een Pingwin-document is altijd een Word-bestand, dus rechtstreeks in Docs
+      // openen in plaats van in het kijkscherm van Drive. Geldt ook voor de links
+      // die al lang in de database staan.
+      if (extern) return docsBewerkLink(extern);
       // Wel gegenereerd maar geen Drive-bestand (geen map gekozen destijds): de
       // tekst staat in de database; link dan naar de interne documentweergave,
       // zodat een afgeronde stap nooit zonder link staat.

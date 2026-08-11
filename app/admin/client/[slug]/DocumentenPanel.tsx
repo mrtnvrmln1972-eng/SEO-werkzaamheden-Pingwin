@@ -10,6 +10,7 @@
 // over de maanden te verdelen.
 
 import { useEffect, useState } from "react";
+import { docsBewerkLink } from "../../../../lib/drive-id";
 
 type DocRij = { kind: string; label: string; naam: string; link: string; datum: string | null };
 type DocPagina = { url: string; pad: string; doorgevoerd: boolean | null; docs: DocRij[]; laatste: string | null };
@@ -124,7 +125,7 @@ export default function DocumentenPanel({ slug, onGoToPage }: { slug: string; on
               <div className="doc-rij-docs">
                 {p.docs.map((d) => (
                   d.link
-                    ? <a key={d.kind} className="wp-doc-chip" href={d.link} target="_blank" rel="noreferrer" title={d.naam}>{d.label}{korteDatum(d.datum) && <span className="doc-datum"> {korteDatum(d.datum)}</span>}</a>
+                    ? <a key={d.kind} className="wp-doc-chip" href={/\.(docx?|)$/i.test(d.naam || "") ? docsBewerkLink(d.link) : d.link} target="_blank" rel="noreferrer" title={d.naam}>{d.label}{korteDatum(d.datum) && <span className="doc-datum"> {korteDatum(d.datum)}</span>}</a>
                     : <span key={d.kind} className="wp-doc-chip wp-doc-chip-leeg" title="Dit document bestaat, maar er is geen link bewaard">{d.label}{korteDatum(d.datum) && <span className="doc-datum"> {korteDatum(d.datum)}</span>}</span>
                 ))}
                 {onGoToPage && <button type="button" className="wp-btn wp-btn-ghost doc-open" onClick={() => onGoToPage(p.url)} title="Open deze pagina in de Pagina&rsquo;s-tab">Open pagina</button>}

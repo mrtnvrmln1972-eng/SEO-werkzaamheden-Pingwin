@@ -241,9 +241,13 @@ export async function uploadDocx(folderId: string, filename: string, buffer: Buf
 
   // Schone deel-link ZONDER ouid/rtpof: die parameters forceren het eigenaar-account
   // en breken "Kan bestand niet openen" als je met een ander account bent ingelogd.
-  const link = isDoc
-    ? `https://docs.google.com/document/d/${finalId}/edit?usp=sharing`
-    : `https://drive.google.com/file/d/${finalId}/view?usp=sharing`;
+  //
+  // Altijd de Docs-link, ook voor een .docx. Google Docs opent een Word-bestand
+  // rechtstreeks in de bewerkmodus, met de huisstijl-opmaak erin; de oude
+  // drive.google.com/file/.../view-link gaf alleen een kijkscherm waar je nog een
+  // keer op "Openen met" moest klikken voor je iets kon nalezen of aanpassen.
+  // Het bestand blijft een .docx; Docs converteert het niet, hij opent het.
+  const link = `https://docs.google.com/document/d/${finalId}/edit?usp=sharing`;
 
   // Verifieer waar het bestand echt staat: eigenaar (welk Google-account) + map.
   let owner = "", folder = "";

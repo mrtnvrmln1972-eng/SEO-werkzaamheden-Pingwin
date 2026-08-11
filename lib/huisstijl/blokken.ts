@@ -64,7 +64,11 @@ export class Kaders {
     const id = ++this.n;
     this.opties[id] = o;
     return [
-      new Paragraph({ children: [new TextRun({ text: START(id), size: 2 })] }),
+      // De startmarkering is een onzichtbare alinea van 2 punten. Zonder keepNext
+      // gold de "houd bij de volgende"-belofte van een kop erboven alléén voor dit
+      // streepje: de kop bleef dan met een lege regel achter en de kaart zelf ging
+      // toch naar de volgende bladzijde.
+      new Paragraph({ keepNext: true, children: [new TextRun({ text: START(id), size: 2 })] }),
       ...kinderen,
       new Paragraph({ children: [new TextRun({ text: EIND(id), size: 2 })] }),
     ];
@@ -180,7 +184,7 @@ export type KpiRegel = { label: string; waarde: string; verschil?: string; statu
 export function kpiblok(k: Kaders, regels: KpiRegel[]): any[] {
   const pilVan = (s?: string): [string, string, string] => s === "goed" ? ["GOED", T.groen, T.groenSoft]
     : s === "actie" ? ["ACTIE", T.rood, T.roodSoft] : ["NEUTRAAL", "6B6157", T.neutraal];
-  const kop = new TableRow({ tableHeader: true, children: ["", "waarde", "verschil", "status"].map((h) => cel(
+  const kop = new TableRow({ tableHeader: true, cantSplit: true, children: ["", "waarde", "verschil", "status"].map((h) => cel(
     [P(h.toUpperCase(), { bold: true, size: 15, color: T.grijs, spacing: 24, na: 0 })],
     { pt: 100, pb: 90, borders: { bottom: lijnRand() } })) });
   const rijen = regels.map((r, i) => {
@@ -205,7 +209,7 @@ export function kpiblok(k: Kaders, regels: KpiRegel[]): any[] {
 
 export function datatabel(headers: string[], rijen: string[][], breedtes?: number[]): any[] {
   const cols = breedtes || headers.map(() => Math.floor(9000 / headers.length));
-  const kop = new TableRow({ tableHeader: true, children: headers.map((h) => cel(
+  const kop = new TableRow({ tableHeader: true, cantSplit: true, children: headers.map((h) => cel(
     [P(String(h).toUpperCase(), { bold: true, size: 16, color: T.inkt, spacing: 24, na: 0 })],
     { fill: T.peachLicht, pt: 140, pb: 120, borders: { bottom: lijnRand() } })) });
   const body = rijen.map((r, ri) => new TableRow({ children: headers.map((_, ci) => cel(

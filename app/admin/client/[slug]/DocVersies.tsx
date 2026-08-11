@@ -17,7 +17,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { mdToHtml } from "../../../../lib/markdown";
-import { driveIdFromUrl } from "../../../../lib/drive-id";
+import { driveIdFromUrl, docsBewerkLink } from "../../../../lib/drive-id";
 
 type Toets = { oordeel: "goed" | "let-op" | "niet-goed"; kop: string; behouden: string[]; verdwenen: string[]; advies: string };
 type Versie = {
@@ -266,7 +266,10 @@ export default function DocVersies({ slug, url, taakId, triggerSlot }: { slug: s
                       if (d?.toets) setToets({ id: v.id, uitkomst: d.toets as Toets });
                     }}>{busy === "toets" ? "Toetsen…" : "Toets aan de criteria"}</button>
                 )}
-                {v.driveLink && <a className="wp-link" href={v.driveLink} target="_blank" rel="noreferrer">openen</a>}
+                {/* Een Word-document opent rechtstreeks in Docs; een pdf, plaatje
+                    of ander bestand houdt de gewone Drive-link, want die kan Docs
+                    niet openen. Vandaar de bestandsnaam als scheidsrechter. */}
+                {v.driveLink && <a className="wp-link" href={/\.(docx?|)$/i.test(v.naam || "") ? docsBewerkLink(v.driveLink) : v.driveLink} target="_blank" rel="noreferrer">openen</a>}
                 <button type="button" className="wp-icon wp-del" title="Van de lijst halen (het bestand blijft in Drive)"
                   onClick={() => void stuur({ action: "negeer", id: v.id }, "weg")}>×</button>
               </span>
