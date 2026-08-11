@@ -4,6 +4,7 @@ import { getGscForPage } from "./google";
 import { callClaude, LIGHT_MODEL } from "./anthropic";
 import { metaVerdictText } from "./meta-rules";
 import { perfectioneerMeta } from "./meta-machine";
+import { metaRegels, webtekstSecties } from "./copy-briefing";
 import { metaUitCopydoc, type CopydocMeta } from "./copydoc-meta";
 import { buildPingwinDoc, type DocSpec, type DocSection, type DocBlock } from "./pingwin-docx";
 import { uploadDocx } from "./drive";
@@ -15,8 +16,13 @@ import { uploadDocx } from "./drive";
 // voorafging, zonder technische informatie:
 // 1. "Hoe deze nieuwe tekst tot stand kwam" (vaste uitleg in vier stappen)
 // 2. "Over deze pagina" (maatwerk: zoekintentie, huidige ranking, waarom belangrijk)
-// 3. SEO-metadata uit de pixel-motor (met tekens en pixel-oordeel)
+// 3. De paginatitel en omschrijving zoals Google ze toont
 // 4. De volledige nieuwe copy met H1/H2/H3-labels
+//
+// De uitleg in 2 en 3 wordt hier verser opgebouwd uit de echte cijfers. Het
+// opgeslagen copy-document bevat diezelfde uitleg ook (het is één document dat
+// zowel briefing als copy is), en die oude versie valt er hier dus uit; alleen
+// de webteksten blijven over. Zie webtekstSecties in lib/copy-briefing.ts.
 // ═══════════════════════════════════════════════════════════
 
 // De vaste uitleg (door Maarten goedgekeurde tekst).
@@ -50,12 +56,12 @@ Geef UITSLUITEND geldige JSON met exact deze velden:
  "vindbaarheid":"één of twee zinnen die de kern samenvatten: waar de pagina nu staat en wat er verandert.",
  "vindbaarheidPunten":["3 tot 5 losse punten, elk één korte regel. Eerst wat er misging, dan wat de nieuwe tekst oplost. Gebruik de echte cijfers."],
  "kpi":[{"label":"korte naam van de meetwaarde","waarde":"het getal","verschil":"eventueel de vorige waarde, anders leeg","status":"goed of actie of neutraal"}]}
-Regels: 4 tot 7 zoekwoorden, het hoofdzoekwoord eerst; verzin geen cijfers, gebruik alleen wat in de data staat.
+Regels: noem ALLE zoekwoorden die daadwerkelijk in de nieuwe tekst verwerkt zijn (minimaal 4, maximaal 14), het hoofdzoekwoord eerst; staat er in het bronstuk al een zoekwoordenlijst, neem die dan volledig over. Verzin geen cijfers, gebruik alleen wat in de data staat.
 Voor "kpi": 2 tot 4 regels, uitsluitend uit de meegegeven Search Console-cijfers (positie, klikken, vertoningen van het hoofdzoekwoord). Zijn er geen cijfers, geef dan een lege lijst.
 Status: "actie" als het slecht staat, "goed" als het goed staat of duidelijk verbetert, anders "neutraal".`;
   const user = `Pagina: ${url}\nBedrijf: ${client?.name || ""}\n\nHUIDIGE POSITIES (Search Console, 90 dagen):\n${data}\n\nDE NIEUWE TEKST:\n${copyTekst.slice(0, 9000)}\n\n${analyseTekst ? `UIT DE ANALYSE VAN DE HUIDIGE PAGINA:\n${analyseTekst.slice(0, 3000)}` : ""}`;
   try {
-    const raw = await callClaude(sys, [{ role: "user", content: user }], 2000, { slug, action: "copy-doc-maatwerk" });
+    const raw = await callClaude(sys, [{ role: "user", content: user }], 2600, { slug, action: "copy-doc-maatwerk" });
     const clean = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
     const p = JSON.parse(clean.slice(clean.indexOf("{"), clean.lastIndexOf("}") + 1)) as {
       waarover?: string; zoekwoorden?: { kw: string; reden: string }[]; vindbaarheid?: string;
@@ -63,7 +69,7 @@ Status: "actie" als het slecht staat, "goed" als het goed staat of duidelijk ver
     };
     const uit: DocSection[] = [];
     if (p.waarover) uit.push({ heading: "Waar de nieuwe teksten over gaan", blocks: [{ type: "paragraph", text: p.waarover }] });
-    const kws = (p.zoekwoorden || []).filter((k) => k?.kw).slice(0, 8);
+    const kws = (p.zoekwoorden || []).filter((k) => k?.kw).slice(0, 14);
     if (kws.length) uit.push({ heading: "Welke zoekwoorden erin verwerkt zijn", blocks: [{ type: "table", headers: ["Zoekwoord", "Waarom dit erin zit"], rows: kws.map((k) => [k.kw, k.reden || ""]) }] });
     // De stand in cijfers, dan de kern in één zin, dan de punten los. Een lap tekst
     // met getallen erdoorheen leest niemand; dit wel.
@@ -138,12 +144,14 @@ export async function metaSectie(slug: string, url: string, copyTekst: string, k
   const h1 = (/^#\s+(.+)$/m.exec(copyTekst)?.[1] || "").replace(/^H1\s*[—–-]\s*/i, "").trim();
   const context = copyTekst.slice(0, 1500);
 
+  // Vier pogingen in plaats van drie: dit is de laatste plek waar een meta nog
+  // bijgeschaafd kan worden voordat de klant hem ziet.
   const t = gevonden.title
-    ? await perfectioneerMeta({ kind: "meta_title", tekst: gevonden.title, slug, keyword, h1: h1 || undefined, context })
+    ? await perfectioneerMeta({ kind: "meta_title", tekst: gevonden.title, slug, keyword, h1: h1 || undefined, context, maxPogingen: 4 })
     : null;
   const titel = t?.tekst || "";
   const d = gevonden.desc
-    ? await perfectioneerMeta({ kind: "meta_description", tekst: gevonden.desc, slug, keyword, title: titel || undefined, context })
+    ? await perfectioneerMeta({ kind: "meta_description", tekst: gevonden.desc, slug, keyword, title: titel || undefined, context, maxPogingen: 4 })
     : null;
   const omschrijving = d?.tekst || "";
 
@@ -156,16 +164,21 @@ export async function metaSectie(slug: string, url: string, copyTekst: string, k
     if (tekst !== copyTekst) nieuweCopy = tekst;
   }
 
-  const rows: string[][] = [];
-  if (titel) rows.push(["Meta-title", titel, `${[...titel].length} tekens`, metaVerdictText("meta_title", titel)]);
-  if (omschrijving) rows.push(["Meta-description", omschrijving, `${[...omschrijving].length} tekens`, metaVerdictText("meta_description", omschrijving)]);
+  // Komt een tekst ondanks de correctielus niet door de eigen poort, dan is dat
+  // een signaal voor ons, niet voor de klant: in het document staat alleen de
+  // opgeleverde tekst en de meting, nooit een afkeuring van eigen werk.
+  for (const [kind, tekst] of [["meta_title", titel], ["meta_description", omschrijving]] as const) {
+    if (tekst && (kind === "meta_title" ? t : d)?.ok === false) {
+      console.warn(`[copy-doc-klant] ${kind} haalt de opleverpoort niet: ${metaVerdictText(kind, tekst)}`);
+    }
+  }
 
   return {
     sectie: {
-      heading: "SEO-metadata (gemeten met de Pingwin pixel-motor)",
+      heading: "De paginatitel en omschrijving in Google",
       blocks: [
-        { type: "table", headers: ["Element", "Tekst", "Lengte", "Oordeel"], rows },
-        { type: "paragraph", text: "Google meet titels en beschrijvingen niet in tekens maar in pixels: een W is breed, een i smal. Onze motor meet de exacte breedte in het lettertype van de zoekresultaten en schrijft net zo lang bij of in tot de tekst het venster van Google precies vult. Zo wordt er niets afgekapt en blijft er geen ruimte onbenut waarin een concurrent wél zijn argument kwijt kan." },
+        { type: "table", headers: ["Element", "Tekst", "Lengte"], rows: metaRegels(titel, omschrijving) },
+        { type: "paragraph", text: "Dit is wat iemand in Google ziet voordat hij klikt. Google meet die twee regels niet in tekens maar in pixels: een W is breed, een i smal. Onze motor meet de exacte breedte in het lettertype van de zoekresultaten en schrijft net zo lang bij of in tot de tekst het venster van Google precies vult. Zo wordt er niets afgekapt en blijft er geen ruimte onbenut waarin een concurrent wél zijn argument kwijt kan." },
       ],
     },
     nieuweCopy,
@@ -217,7 +230,10 @@ export async function buildCopyKlantSpec(slug: string, url: string): Promise<{ o
   // Heeft de correctielus de meta bijgeschaafd, dan gaat die tekst ook terug de
   // opgeslagen copy in: één tekst voor het document, de site en de CTR-machine.
   if (meta?.nieuweCopy) await savePageDocOutput(slug, url, "copy", meta.nieuweCopy).catch(() => { /* terugschrijven is aanvulling */ });
-  const copySecties = copyNaarSecties(copy).filter((s) => !/seo-metadata|scorecard|behoud/i.test(s.heading || ""));
+  // Alleen de daadwerkelijke webteksten uit het opgeslagen document. De uitleg
+  // die daar ook in staat, bouwt dit document hierboven verser op; twee keer
+  // dezelfde uitleg naast elkaar leest niemand.
+  const copySecties = webtekstSecties(copyNaarSecties(copy));
   const spec: DocSpec = {
     klant: client.name,
     rapporttype: "Copy-briefing",

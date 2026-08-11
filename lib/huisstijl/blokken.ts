@@ -32,8 +32,13 @@ export const run = (text: string, o: any = {}) => new TextRun({
 });
 export const runs = (text: string, o: any = {}) => String(text ?? "").split(/(\*\*[^*]+\*\*)/g).filter(Boolean)
   .map((s) => /^\*\*[^*]+\*\*$/.test(s) ? run(s.slice(2, -2), { ...o, bold: true }) : run(s, o));
+// `bijElkaar` = deze alinea blijft bij wat erna komt (Word schuift ze samen naar
+// de volgende pagina). `heelHouden` = deze alinea wordt zelf niet over twee
+// pagina's gebroken. Samen zorgen ze dat een kop nooit onderaan een pagina
+// achterblijft terwijl zijn tekst op de volgende begint.
 export const P = (text: string, o: any = {}) => new Paragraph({
   children: runs(text, o), alignment: o.midden ? AlignmentType.CENTER : undefined,
+  keepNext: !!o.bijElkaar, keepLines: !!o.heelHouden,
   spacing: { before: o.voor ?? 0, after: o.na ?? 140, line: o.regel ?? 320 },
 });
 export const cel = (children: any[], o: any = {}) => new TableCell({
@@ -44,7 +49,9 @@ export const cel = (children: any[], o: any = {}) => new TableCell({
 export const tabel = (rows: any[], o: any = {}) => new Table({
   rows, width: { size: 100, type: WidthType.PERCENTAGE }, borders: o.borders || GEEN_RAND, columnWidths: o.cols,
 });
-const leeg = (na: number) => new Paragraph({ spacing: { after: na }, children: [] });
+const leeg = (na: number, bijElkaar = false) => new Paragraph({
+  spacing: { after: na, line: 120 }, keepNext: bijElkaar, children: [],
+});
 
 // ── kaders ────────────────────────────────────────────────────
 // Elk kader registreert zijn vormgeving; na het bouwen zet verwerkVormen() ze om
@@ -72,17 +79,27 @@ const bolletje = (soort: "sec" | "stap", nr: number) => new Paragraph({
   })],
 });
 
-/** Sectiekop met oranje nummer-bolletje en klein labeltje erboven. */
+/**
+ * Sectiekop met oranje nummer-bolletje en klein labeltje erboven.
+ *
+ * Twee dingen die geen opmaakdetail zijn maar leesbaarheid:
+ * lucht bóven de kop, zodat hij niet tegen de vorige alinea aan plakt, en
+ * `bijElkaar` op de regel in de tabel plus op de witregel eronder. Dat laatste
+ * bindt de kop aan de eerste alinea die volgt: past het niet meer op de pagina,
+ * dan verhuist de kop mee naar de volgende in plaats van als losse regel onder
+ * aan de pagina achter te blijven.
+ */
 export function sectiekop(nr: number, label: string, kop: string): any[] {
   return [
-    tabel([new TableRow({ children: [
+    leeg(300, true),
+    tabel([new TableRow({ cantSplit: true, children: [
       cel([bolletje("sec", nr)], { pl: 0, pt: 60 }),
       cel([
-        ...(label ? [P(label.toUpperCase(), { bold: true, size: 16, color: T.oranje, spacing: 28, na: 40 })] : []),
-        P(kop, { bold: true, size: 30, color: T.inkt, regel: 300, na: 0 }),
+        ...(label ? [P(label.toUpperCase(), { bold: true, size: 16, color: T.oranje, spacing: 28, na: 40, bijElkaar: true })] : []),
+        P(kop, { bold: true, size: 30, color: T.inkt, regel: 300, na: 0, bijElkaar: true, heelHouden: true }),
       ], { pl: 0, pt: 0 }),
     ] })], { cols: [700, 8300] }),
-    leeg(180),
+    leeg(220, true),
   ];
 }
 
@@ -92,14 +109,18 @@ export function copyKop(niveau: string, kop: string): any[] {
   return [
     // Zonder niveau (een werkdocument) alleen de kop, anders zou er een leeg
     // oranje labeltje boven staan.
-    ...(niveau ? [P(niveau.toUpperCase(), { bold: true, size: 16, color: T.oranje, spacing: 28, voor: 200, na: 60 })] : []),
-    P(kop, { bold: true, size: maat, color: T.inkt, voor: niveau ? 0 : 220, na: 120 }),
+    ...(niveau ? [P(niveau.toUpperCase(), { bold: true, size: 16, color: T.oranje, spacing: 28, voor: 300, na: 60, bijElkaar: true })] : []),
+    P(kop, { bold: true, size: maat, color: T.inkt, voor: niveau ? 0 : 320, na: 120, bijElkaar: true, heelHouden: true }),
   ];
 }
 
 export function callout(k: Kaders, kop: string, tekst: string): any[] {
   return k.wikkel({
-    naam: "Callout", radius: 6500, breedte: 650, hoogte: hoogteVan(tekst, 600, 17, kop ? 62 : 40),
+    // 650 breed min 22 marge links en rechts; tekst 10,5 pt (14 px) op een
+    // regelhoogte van 16 pt (21,5 px); extra = de marges boven en onder, plus de
+    // kopregel als die er is.
+    naam: "Callout", radius: 6500, breedte: 650,
+    hoogte: hoogteVan(tekst, { breedte: 606, font: 14, regel: 21.5, extra: kop ? 64 : 38 }),
     vulling: { kleur: T.peachLicht }, rand: T.oranje, randDikte: 1.5,
     marges: { links: 22, rechts: 22, boven: 16, onder: 16 }, na: 260,
   }, [
@@ -110,7 +131,10 @@ export function callout(k: Kaders, kop: string, tekst: string): any[] {
 
 export function stapkaart(k: Kaders, nr: number, titel: string, tekst: string): any[] {
   return k.wikkel({
-    naam: `Stap ${nr}`, radius: 8000, breedte: 650, hoogte: hoogteVan(tekst, 600, 17, 74),
+    // 650 min 20 marge links en rechts; tekst 10 pt (13,3 px) op 15 pt (20 px);
+    // extra = de marges plus de titelregel met het nummer-bolletje.
+    naam: `Stap ${nr}`, radius: 8000, breedte: 650,
+    hoogte: hoogteVan(tekst, { breedte: 610, font: 13.3, regel: 20, extra: 78 }),
     vulling: { kleur: "FFFFFF" }, rand: T.lijn, randDikte: 1,
     marges: { links: 20, rechts: 20, boven: 16, onder: 16 }, na: 180,
   }, [
@@ -124,7 +148,10 @@ export function stapkaart(k: Kaders, nr: number, titel: string, tekst: string): 
 
 export function citaat(k: Kaders, tekst: string, wie = "Maarten van Pingwin"): any[] {
   return k.wikkel({
-    naam: "Citaat", radius: 7000, breedte: 650, hoogte: hoogteVan(tekst, 590, 19, 78),
+    // 650 min 26 marge links en rechts; tekst 12 pt (16 px) op 16 pt (21,5 px);
+    // extra = de marges plus de naamregel eronder.
+    naam: "Citaat", radius: 7000, breedte: 650,
+    hoogte: hoogteVan(tekst, { breedte: 598, font: 16, regel: 21.5, extra: 74 }),
     vulling: { verloop: [T.gradBlauw, T.gradPeach], hoek: 228, alpha: 40000, alpha2: 62000 },
     schaduw: { blur: 20, dist: 7, alpha: 13000 },
     marges: { links: 26, rechts: 26, boven: 20, onder: 20 }, na: 260,
@@ -187,7 +214,7 @@ export function datatabel(headers: string[], rijen: string[][], breedtes?: numbe
   return [tabel([kop, ...body], { cols }), leeg(220)];
 }
 
-export const subkop = (t: string) => P(t, { bold: true, size: 23, color: T.inkt, voor: 160, na: 80 });
+export const subkop = (t: string) => P(t, { bold: true, size: 23, color: T.inkt, voor: 260, na: 80, bijElkaar: true, heelHouden: true });
 export const bullet = (t: string) => new Paragraph({
   bullet: { level: 0 }, spacing: { after: 80, line: 300 }, children: runs(t),
 });

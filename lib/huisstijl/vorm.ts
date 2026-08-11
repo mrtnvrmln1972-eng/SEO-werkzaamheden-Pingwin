@@ -21,6 +21,10 @@
 // pagina). Zet dus nooit een pil of een ander kader binnen een kader-vorm.
 // ═══════════════════════════════════════════════════════════
 
+// De letterbreedte-meting uit de meta-motor is een pure functie zonder DOM; die
+// gebruiken we hier opnieuw in plaats van een tweede breedtetabel bij te houden.
+import { measureTextPx } from "../meta-rules";
+
 const EMU = 9525; // 1 px
 
 export type Vulling = { kleur: string } | { verloop: [string, string]; hoek?: number; alpha?: number; alpha2?: number };
@@ -123,7 +127,63 @@ export async function verwerkVormen(buffer: Buffer, opties: Record<number, VormO
   return zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" });
 }
 
-/** Ruwe schatting van de kaderhoogte, zodat het al klopt vóór Word zelf herrekent. */
-export function hoogteVan(tekst: string, breedte = 600, regelhoogte = 17, extra = 34): number {
-  return Math.max(46, Math.ceil(String(tekst).length / (breedte / 6.4)) * regelhoogte + extra);
+/* ------------------------------------------------------------------
+ * Hoe hoog moet een kader zijn?
+ *
+ * Een vorm krijgt een vaste hoogte mee. Word groeit hem bij het bewerken zelf
+ * mee (spAutoFit), maar bij het openen, in een voorvertoning en in Google Docs
+ * telt de hoogte die wij hebben opgeschreven. Zat die te laag, dan liep de tekst
+ * onder het kader uit; dat gebeurde op 11 augustus 2026 bij de openingstekst van
+ * de copy-briefing.
+ *
+ * De oude schatting deelde het aantal tekens door een vast getal. Dat ging op
+ * twee punten mis: er werd gerekend met te veel tekens per regel (Montserrat is
+ * breder dan de aanname) en met een te lage regelhoogte. Nu wordt de tekst echt
+ * afgebroken zoals hij op het scherm afbreekt: woord voor woord, met de gemeten
+ * breedte per woord.
+ * ------------------------------------------------------------------ */
+
+// De letterbreedtes uit de meta-motor zijn die van Arial. Montserrat is
+// systematisch breder; deze factor overbrugt dat verschil. Liever iets te ruim
+// dan te krap: te ruim kost wat witruimte in het kader, te krap kost tekst.
+const MONTSERRAT_TOV_ARIAL = 1.14;
+
+export type HoogteOpties = {
+  /** Beschikbare tekstbreedte ín het kader (kaderbreedte min de zijmarges), px. */
+  breedte: number;
+  /** Lettergrootte van de tekst, px. */
+  font: number;
+  /** Regelhoogte, px. */
+  regel: number;
+  /** Vaste ruimte eromheen: marges boven en onder plus wat er verder in staat. */
+  extra: number;
+};
+
+/** Hoeveel regels beslaat deze alinea bij deze breedte? */
+function regelsVan(alinea: string, breedte: number, font: number): number {
+  const woorden = alinea.split(/\s+/).filter(Boolean);
+  if (!woorden.length) return 1;
+  const breed = (s: string) => measureTextPx(s, font) * MONTSERRAT_TOV_ARIAL;
+  let regels = 1;
+  let regel = "";
+  for (const w of woorden) {
+    const kandidaat = regel ? `${regel} ${w}` : w;
+    // Past het niet meer, dan begint hier een nieuwe regel. Een woord dat op
+    // zichzelf al te breed is, zetten we toch neer; dat kan de tekst zelf niet.
+    if (!regel || breed(kandidaat) <= breedte) { regel = kandidaat; continue; }
+    regels++;
+    regel = w;
+  }
+  return regels;
+}
+
+// Een paar pixels speling, zodat een tekst die net één regel langer uitvalt dan
+// hier berekend nog binnen het kader blijft. Wat ruimte onderin valt niemand op;
+// een zin die onder het kader uit loopt wel.
+const SPELING = 8;
+
+/** De hoogte van een kader, berekend op de tekst die erin komt. */
+export function hoogteVan(tekst: string, o: HoogteOpties): number {
+  const regels = String(tekst ?? "").split("\n").reduce((n, alinea) => n + regelsVan(alinea, o.breedte, o.font), 0);
+  return Math.max(46, Math.ceil(regels * o.regel + o.extra + SPELING));
 }

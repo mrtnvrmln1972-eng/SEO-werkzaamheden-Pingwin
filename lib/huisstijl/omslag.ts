@@ -84,14 +84,25 @@ h1{font-size:37px;line-height:1.16;font-weight:800;margin-bottom:12px;letter-spa
 /**
  * Ziet deze pagina eruit als een foutpagina, ondanks een nette statuscode?
  * Veel sites geven een 200 terug met een "Oeps, 404"-scherm erin.
+ *
+ * Er wordt bewust op twee dingen tegelijk gekeken. De titel en de koppen zijn
+ * het duidelijkste signaal, maar lang niet elk thema zet "404" in een echte
+ * <h1>: bij Kamsteeg staat het getal in een gewone opmaakregel, en dan zag de
+ * oude controle niets en belandde de foutpagina als hoofdbeeld op de omslag van
+ * een klantdocument. Daarom kijken we ook naar het begin van de zichtbare
+ * tekst; een echte dienstenpagina begint niet met "404".
  */
+const FOUT_WOORDEN = /(^|\D)404(\D|$)|niet gevonden|not found|bestaat niet|oeps|oops|page unavailable|pagina niet beschikbaar|error/i;
+
 async function lijktOp404(page: any): Promise<boolean> {
   try {
-    const tekst = await page.evaluate(() => {
-      const h = document.querySelector("h1");
-      return `${document.title || ""} ${h ? h.textContent || "" : ""}`;
+    const { koppen, begin } = await page.evaluate(() => {
+      const koppen = Array.from(document.querySelectorAll("h1, h2, [class*='404'], [class*='error']"))
+        .slice(0, 5).map((e) => e.textContent || "").join(" ");
+      return { koppen: `${document.title || ""} ${koppen}`, begin: (document.body?.innerText || "").slice(0, 500) };
     });
-    return /(^|\D)404(\D|$)|niet gevonden|not found|bestaat niet|oeps|oops|page unavailable/i.test(String(tekst || ""));
+    if (FOUT_WOORDEN.test(String(koppen || ""))) return true;
+    return /(^|\D)404(\D|$)/.test(String(begin || ""));
   } catch { return false; }
 }
 

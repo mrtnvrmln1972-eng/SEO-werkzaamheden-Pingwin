@@ -21,7 +21,7 @@
 // betreffende uitklapper aanvullen en LAATST_BIJGEWERKT verzetten.
 // ═══════════════════════════════════════════════════════════
 
-export const LAATST_BIJGEWERKT = "11 augustus 2026 (de Drive-map van een pagina kies of maak je nu bovenaan de fases, waar de documenten ook gemaakt worden. Bestaat die map nog niet (bij een nieuwe pagina is dat de regel), dan maak je hem in hetzelfde venster, met een voorgestelde naam uit het pad van de pagina, en sta je er meteen in zodat hij ook echt vastgelegd wordt; eerder werd de map wel gemaakt maar niet gekozen, en landden de documenten een niveau hoger. Het vinkje “geldt” bij een document verschijnt alleen nog als er meer dan één versie van dat soort ligt; is er maar één, dan geldt die vanzelf, ook op de kaarten die er al stonden. De standaardzinnetjes per fase (“tekst aanscherpen”, “toets deze pagina op overlap”) zijn uit beeld: die herhaalden alleen de naam van de fase en bleven staan als de fase allang af was. En het archief onderaan de kaart heet nu “Oude versies van deze kaart” met de waarschuwing erbij dat het niet actueel is. Ook vandaag: documentlinks openen overal in een nieuw tabblad in plaats van een los venster; documenten staan overal in proces-volgorde (analyse, blauwdruk, copy) in plaats van nieuwste eerst; en een gegenereerde tekst zonder Drive-bestand heeft nu altijd een link, naar de interne documentweergave. Ook vandaag: de cockpit opent een stuk sneller, doordat de app niet meer bij elke koude server honderd keer controleert of de database klopt, elk tabblad pas gedownload wordt als je het opent, en de planning haar gegevens meteen ophaalt in plaats van te wachten tot alle code binnen is. Ook vandaag: de controle “Is dit doorgevoerd?” zoekt het copydocument op alle plekken waar het kan liggen, inclusief het gekoppelde document in Drive. Eerder die dag: in de kaart-chat staan de knoppen “Mail deze analyse” en “Vat samen & leg strategie vast” direct onder het antwoord; de dossierkaartjes van pagina's die in het antwoord genoemd worden staan erónder en standaard ingeklapt. Het samenvatten leest bovendien het hele gesprek ruim terug, dus ook een lange analyse gaat volledig mee. Eerder die dag: aantekeningen bij een taak bewaren zichzelf, ook als je de taak meteen dichtklapt of wegklikt; een opengeklapte taak wordt zichtbaar uit de lijst gelicht; een nieuwe taak is nog één regel typen, waarbij de pagina uit je eigen zin gelezen wordt. Daarvóór die dag: de strategie vastleggen kan ook rechtstreeks op de projectkaart in de planning; de verwarrende losse knop “Strategie vastleggen” is vervangen door een eerlijk benoemde herkansing “Document opnieuw maken”; de vrije tekstvelden houden een geschiedenis bij en zijn met één klik terug te zetten via Veld terugzetten; en “Hele site opnieuw scannen” meet nu ook echt de inhoud van elke pagina, waarbij de wekelijkse scan begint bij de klant die het langst niet aan de beurt is geweest. Ook vandaag: de koppencontrole vergeleek de hoofdstukken van ons eigen copydocument met de pagina en meldde daardoor \"0 van de 5 koppen gevonden\" terwijl de teksten er gewoon op stonden; hij vergelijkt nu de echte webteksten, kiest het document dat die teksten bevat, en laat in een uitklapper zien welke koppen hij zocht en welke hij vond)";
+export const LAATST_BIJGEWERKT = "11 augustus 2026 (de copy-briefing voor de klant is opgeschoond: de uitleg stond er twee keer in (een keer vers opgebouwd, een keer uit het opgeslagen copy-document) en de paginatitel en omschrijving ook; nu wordt uit dat opgeslagen document alleen het deel overgenomen dat er nog niet staat, de webteksten. De niveau-aanduidingen H1/H2/H3 staan daardoor weer alleen bij tekst die echt op de site komt, niet boven de hoofdstukken van de briefing. Het blok met de paginatitel en de omschrijving heeft geen oordeelkolom meer: alleen de opgeleverde tekst plus de meting. De kaders in een document berekenen hun hoogte nu door de tekst echt af te breken zoals hij op het scherm afbreekt, dus de openingstekst loopt niet meer onder zijn kader uit. Een hoofdstuktitel krijgt lucht boven zich en blijft aan zijn eerste alinea vastgeplakt, dus hij blijft niet meer als losse regel onderaan een pagina achter. En de 404-controle op het omslagbeeld kijkt ook naar het begin van de zichtbare tekst, want niet elk thema zet \"404\" in een echte kop. Eerder die dag: de Drive-map van een pagina kies of maak je nu bovenaan de fases, waar de documenten ook gemaakt worden. Bestaat die map nog niet (bij een nieuwe pagina is dat de regel), dan maak je hem in hetzelfde venster, met een voorgestelde naam uit het pad van de pagina, en sta je er meteen in zodat hij ook echt vastgelegd wordt; eerder werd de map wel gemaakt maar niet gekozen, en landden de documenten een niveau hoger. Het vinkje “geldt” bij een document verschijnt alleen nog als er meer dan één versie van dat soort ligt; is er maar één, dan geldt die vanzelf, ook op de kaarten die er al stonden. De standaardzinnetjes per fase (“tekst aanscherpen”, “toets deze pagina op overlap”) zijn uit beeld: die herhaalden alleen de naam van de fase en bleven staan als de fase allang af was. En het archief onderaan de kaart heet nu “Oude versies van deze kaart” met de waarschuwing erbij dat het niet actueel is. Ook vandaag: documentlinks openen overal in een nieuw tabblad in plaats van een los venster; documenten staan overal in proces-volgorde (analyse, blauwdruk, copy) in plaats van nieuwste eerst; en een gegenereerde tekst zonder Drive-bestand heeft nu altijd een link, naar de interne documentweergave. Ook vandaag: de cockpit opent een stuk sneller, doordat de app niet meer bij elke koude server honderd keer controleert of de database klopt, elk tabblad pas gedownload wordt als je het opent, en de planning haar gegevens meteen ophaalt in plaats van te wachten tot alle code binnen is. Ook vandaag: de controle “Is dit doorgevoerd?” zoekt het copydocument op alle plekken waar het kan liggen, inclusief het gekoppelde document in Drive. Eerder die dag: in de kaart-chat staan de knoppen “Mail deze analyse” en “Vat samen & leg strategie vast” direct onder het antwoord; de dossierkaartjes van pagina's die in het antwoord genoemd worden staan erónder en standaard ingeklapt. Het samenvatten leest bovendien het hele gesprek ruim terug, dus ook een lange analyse gaat volledig mee. Eerder die dag: aantekeningen bij een taak bewaren zichzelf, ook als je de taak meteen dichtklapt of wegklikt; een opengeklapte taak wordt zichtbaar uit de lijst gelicht; een nieuwe taak is nog één regel typen, waarbij de pagina uit je eigen zin gelezen wordt. Daarvóór die dag: de strategie vastleggen kan ook rechtstreeks op de projectkaart in de planning; de verwarrende losse knop “Strategie vastleggen” is vervangen door een eerlijk benoemde herkansing “Document opnieuw maken”; de vrije tekstvelden houden een geschiedenis bij en zijn met één klik terug te zetten via Veld terugzetten; en “Hele site opnieuw scannen” meet nu ook echt de inhoud van elke pagina, waarbij de wekelijkse scan begint bij de klant die het langst niet aan de beurt is geweest. Ook vandaag: de koppencontrole vergeleek de hoofdstukken van ons eigen copydocument met de pagina en meldde daardoor \"0 van de 5 koppen gevonden\" terwijl de teksten er gewoon op stonden; hij vergelijkt nu de echte webteksten, kiest het document dat die teksten bevat, en laat in een uitklapper zien welke koppen hij zocht en welke hij vond)";
 
 export type Uitklapper = {
   titel: string;
@@ -960,10 +960,12 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
         titel: "Wat de klant krijgt is al perfect gemaakt, niet alleen beoordeeld",
         kern: "Een oplevering bevat geen oordeel meer over ons eigen werk.",
         tekst:
-          "In de copy-briefing staat een blok **SEO-metadata**: de paginatitel en de omschrijving zoals die in " +
-          "Google komen te staan, gemeten met de pixel-motor. Google kapt namelijk niet af op tekens maar op " +
-          "breedte: een W is breed, een i smal. De motor meet die breedte in het lettertype van de " +
-          "zoekresultaten.\n\n" +
+          "In de copy-briefing staat een blok **De paginatitel en omschrijving in Google**: de twee regels " +
+          "zoals iemand ze in Google ziet voordat hij klikt, gemeten met de pixel-motor. Google kapt namelijk " +
+          "niet af op tekens maar op breedte: een W is breed, een i smal. De motor meet die breedte in het " +
+          "lettertype van de zoekresultaten.\n\n" +
+          "In dat blok staat nu alleen wat er opgeleverd wordt: de tekst plus de meting als feit. Geen " +
+          "oordeelkolom meer, want daar stond precies het probleem hieronder in.\n\n" +
           "Er zat een gat in die keten. De motor mat goed, maar de poort waar onze eigen teksten doorheen " +
           "moesten keek alleen naar wat écht kapot is: te breed, een pijp, vierkante haken. Een titel die " +
           "alleen te kort was kwam er zo doorheen, en verscheen daarna in het klantdocument mét het oordeel " +
@@ -980,7 +982,35 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "**En het omslagbeeld liegt niet meer.** De omslag fotografeert de pagina waar het document over " +
           "gaat. Bij een pagina die nog gebouwd moet worden bestaat die nog niet, dus stond er een 404-scherm " +
           "als hoofdbeeld op een klantdocument. Nu wordt eerst gekeken of de pagina echt bestaat (ook als de " +
-          "site netjes een foutpagina teruggeeft), en anders komt de site van de klant zelf op de omslag.",
+          "site netjes een foutpagina teruggeeft), en anders komt de site van de klant zelf op de omslag. Die " +
+          "controle kijkt niet meer alleen naar de titel en de eerste kop, maar ook naar het begin van de " +
+          "zichtbare tekst: lang niet elk thema zet '404' in een echte kop, en dan glipte de foutpagina er " +
+          "alsnog doorheen.",
+      },
+      {
+        titel: "Eén uitleg per briefing, en de webteksten daaronder",
+        kern: "De copy-briefing zei alles twee keer; nu één keer, en vers.",
+        tekst:
+          "Het copy-document dat de motor opslaat is zelf al een briefing: het opent met hoofdstukken over " +
+          "waar de teksten over gaan, welke zoekwoorden erin zitten en wat dat voor de vindbaarheid betekent, " +
+          "en daarónder staan pas de echte webteksten. Het klantdocument bouwt diezelfde uitleg opnieuw op, " +
+          "maar dan vers: met de zoekwoorden en de posities zoals ze vandaag in Search Console staan.\n\n" +
+          "Die twee stonden achter elkaar in hetzelfde document. De klant las de uitleg dus twee keer, met de " +
+          "verse en de opgeslagen versie door elkaar, en ook de paginatitel en de omschrijving stonden er twee " +
+          "keer in. Nu wordt uit het opgeslagen document alleen het deel overgenomen dat er nog niet staat: de " +
+          "webteksten. Staat een hoofdstuk niet op de lijst van bekende briefing-koppen, dan blijft het gewoon " +
+          "staan; er verdwijnt niets stilzwijgend.\n\n" +
+          "Daarmee klopt ook de niveau-aanduiding weer. De labels **H1**, **H2** en **H3** zijn een instructie " +
+          "aan de sitebouwer over het kopniveau op de site. Ze stonden ook boven de hoofdstukken van de " +
+          "briefing zelf, die nooit op de site komen. Nu staan ze alleen nog bij de daadwerkelijke " +
+          "paginatekst.\n\n" +
+          "Verder: de kaders in een document (de openingstekst, de stappenkaarten, het citaat) rekenen hun " +
+          "hoogte nu uit door de tekst echt af te breken zoals hij op het scherm afbreekt, in plaats van het " +
+          "aantal tekens te delen door een vast getal. Dat vaste getal rekende met te veel tekens per regel en " +
+          "een te lage regelhoogte, waardoor de laatste zin onder het kader uit liep. En een hoofdstuktitel " +
+          "krijgt lucht boven zich en blijft aan zijn eerste alinea vastgeplakt: past dat niet meer op de " +
+          "pagina, dan begint het hoofdstuk op de volgende in plaats van als losse regel onderaan achter te " +
+          "blijven.",
       },
       {
         titel: "Generaties draaien op de achtergrond",
