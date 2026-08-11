@@ -7,6 +7,7 @@ import {
   type Uitklapper, type Hoofdstuk,
 } from "../../lib/uitleg";
 import { alleSchermen } from "../../lib/schermbeeld";
+import { nieuwtjes, leesbareDatum } from "../../lib/wat-is-nieuw";
 
 // ═══════════════════════════════════════════════════════════
 // /uitleg — HET VERHAAL VAN HET DASHBOARD
@@ -83,6 +84,7 @@ function HoofdstukKaart({ h, nr, beeld }: { h: Hoofdstuk; nr: number; beeld?: { 
 export default async function UitlegPage() {
   const isBeheerder = verifyAdminSession(cookies().get(ADMIN_COOKIE)?.value);
   const hoofdstukken = zichtbareHoofdstukken(isBeheerder);
+  const nieuws = nieuwtjes();
   const schermen = await alleSchermen();
   const beelden = new Map(schermen.map((s) => [s.hoofdstuk, { label: s.label, dataUrl: s.dataUrl }]));
 
@@ -166,6 +168,24 @@ export default async function UitlegPage() {
             </p>
           )}
         </nav>
+
+        {/* ── Wat is er nieuw ──
+            Stond hier niet: de hele opsomming zat als één zin van vijfduizend
+            tekens in de kopbalk geplakt, achter het woord "Bijgewerkt". Nu een
+            eigen, ingeklapt blok met een regel per oplevering, nieuwste eerst. */}
+        <details className="ut-nieuw">
+          <summary className="ut-nieuw-kop">
+            Wat is er nieuw <span className="ut-nieuw-aantal">{nieuws.length}</span>
+          </summary>
+          <ul className="ut-nieuw-lijst">
+            {nieuws.map((n, i) => (
+              <li key={i} className="ut-nieuw-item">
+                <span className="ut-nieuw-datum">{leesbareDatum(n.datum)}</span>
+                <span className="ut-nieuw-tekst">{n.tekst}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
 
         {/* ── De hoofdstukken ── */}
         {hoofdstukken.map((h, i) => <HoofdstukKaart key={h.id} h={h} nr={i + 1} beeld={beelden.get(h.id)} />)}

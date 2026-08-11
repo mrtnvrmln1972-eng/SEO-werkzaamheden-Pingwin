@@ -1,0 +1,59 @@
+// ═══════════════════════════════════════════════════════════
+// WAT IS ER NIEUW: ÉÉN REGEL PER WIJZIGING, NOOIT EEN REGEL HERSCHRIJVEN
+// ═══════════════════════════════════════════════════════════
+// Hier stond ooit één zin, `LAATST_BIJGEWERKT`, waar elke chat zijn nieuws
+// vóórin plakte. Die zin groeide naar vijfduizend tekens op één regel, en
+// iedere chat die iets opleverde herschreef precies díe regel. Twee chats op
+// dezelfde dag botsten dus gegarandeerd, en op 11 augustus 2026 zijn de
+// conflictmarkeringen twee keer meegecommit. Gevolg: de bouw mislukte, de site
+// bleef twee opleveringen lang op oude code staan, en niemand zag het.
+//
+// Daarom nu twee afspraken die samen het botsen onmogelijk maken:
+//
+//  1. ÉÉN WIJZIGING IS ÉÉN REGEL, EN JE VOEGT HEM BOVENAAN TOE. Je past nooit
+//     een bestaande regel aan. Twee chats die allebei iets toevoegen maken dan
+//     twee losse regels, geen twee versies van dezelfde regel.
+//  2. `.gitattributes` ZET DIT BESTAND OP `merge=union`. Botsen twee chats
+//     toch op dezelfde plek, dan houdt git ze allebei in plaats van er een
+//     conflict van te maken. Er kunnen hier dus nooit conflictmarkeringen in
+//     belanden, en dat is precies wat de bouw sloopte.
+//
+// Voorwaarde voor punt 2: elke regel moet op zichzelf kloppen. Vandaar de
+// vaste, eenregelige vorm hieronder. Verdeel een lange tekst nooit over
+// meerdere regels; dan kan een union-merge er wél iets kapots van maken.
+// `proeven/wat-is-nieuw.proef.ts` bewaakt die vorm bij elke bouw.
+// ═══════════════════════════════════════════════════════════
+
+export type Nieuwtje = { datum: string; tekst: string };
+
+/** Nieuwste bovenaan. Datum als JJJJ-MM-DD, tekst in gewone taal, één regel. */
+export const WAT_IS_NIEUW: Nieuwtje[] = [
+  { datum: "2026-08-11", tekst: "Het nieuws op deze pagina stond als één zin van vijfduizend tekens op één regel, en elke chat die iets opleverde herschreef precies die regel; twee chats op dezelfde dag botsten dus altijd, en vandaag zijn de conflictmarkeringen twee keer meegecommit, waardoor de bouw mislukte en de site twee opleveringen lang op oude code bleef staan zonder dat iemand het zag. Nu is één oplevering één regel die je erbij zet in plaats van een regel die je herschrijft, houdt git bij een botsing beide regels in plaats van er een conflict van te maken, en mislukt de bouw met een leesbare melding zodra er ergens toch een half samengevoegd bestand in de code staat. Zichtbaar gevolg: de kopbalk toont weer gewoon een datum, en het nieuws staat in een eigen uitklapper met een regel per oplevering." },
+  { datum: "2026-08-11", tekst: "Elke pagina die opgeruimd wordt krijgt nu ook een voorgestelde bestemming, gekozen langs een vaste keuzeladder: de inhoudelijke opvolger, anders de dichtstbijzijnde zuster, anders de categorie erboven, anders 410, en alleen bij externe links de homepage. Bij het voorstel staat welke trede het werd, waarom de hogere treden afvielen, en hoe zwaar de keuze weegt (externe links en resterend verkeer). Ernaast twee knoppen: de redirect plaatsen (die meet zichzelf daarna na) en de redirect testen (status, aantal tussenstappen, eindpunt, en of dat eindpunt 200 geeft en indexeerbaar is). Bij plaatspagina's wordt de zusterstad bewust overgeslagen en 410 is een volwaardige uitkomst in plaats van een fout." },
+  { datum: "2026-08-11", tekst: "Een documentlink opent nu meteen in Google Docs in bewerkmodus in plaats van in het kijkscherm van Drive, ook bij documenten die er al maanden staan; een pdf of afbeelding houdt zijn gewone Drive-link. En een kop staat nooit meer alleen onderaan een bladzijde met zijn tekst op de volgende: koppen, tabelkopregels en de witregel eronder schuiven mee. Dat zit in de bouwstenen, dus het geldt voor elk Pingwin-document, en een proef controleert het bij elke bouw in het echte Word-bestand." },
+  { datum: "2026-08-11", tekst: "Uitgezocht waarom de paginatitel en de omschrijving niet altijd aan de criteria voldeden: we gaven het model een regel in tekens en rekenden het af in pixels, en die twee liepen niet gelijk. Een omschrijving van 129 tekens haalde onze eigen tekenregel en bleef 20 pixels onder het venster van Google. De pixel is nu de enige norm, het tekenbereik wordt daaruit afgeleid en aan de tekst zelf gemeten. Daarbovenop: het model hoort hoeveel het scheelt in plaats van alleen dat het mis is, het levert drie varianten per ronde in plaats van een, en er is een vijl die met puur rekenwerk inkort op een natuurlijke grens of aanvult met eigen woorden van de klant, en die niets doet als het resultaat niet echt klopt. Haalt een tekst het dan nog niet, dan meldt het dashboard dat bij de oplevering in plaats van te zwijgen." },
+  { datum: "2026-08-11", tekst: "Klik je op een copy- of analyselink zonder Drive-bestand, dan krijg je nu het opgemaakte Word-document in de huisstijl in plaats van ruwe tekst." },
+  { datum: "2026-08-11", tekst: "De copy-briefing voor de klant is opgeschoond: de uitleg stond er twee keer in (een keer vers opgebouwd, een keer uit het opgeslagen copy-document) en de paginatitel en omschrijving ook; nu wordt uit dat opgeslagen document alleen het deel overgenomen dat er nog niet staat, de webteksten. De niveau-aanduidingen H1/H2/H3 staan daardoor weer alleen bij tekst die echt op de site komt, niet boven de hoofdstukken van de briefing. Het blok met de paginatitel en de omschrijving heeft geen oordeelkolom meer: alleen de opgeleverde tekst plus de meting. De kaders in een document berekenen hun hoogte nu door de tekst echt af te breken zoals hij op het scherm afbreekt, dus de openingstekst loopt niet meer onder zijn kader uit. Een hoofdstuktitel krijgt lucht boven zich en blijft aan zijn eerste alinea vastgeplakt, dus hij blijft niet meer als losse regel onderaan een pagina achter. En de 404-controle op het omslagbeeld kijkt ook naar het begin van de zichtbare tekst, want niet elk thema zet \"404\" in een echte kop." },
+  { datum: "2026-08-11", tekst: "De Drive-map van een pagina kies of maak je nu bovenaan de fases, waar de documenten ook gemaakt worden. Bestaat die map nog niet (bij een nieuwe pagina is dat de regel), dan maak je hem in hetzelfde venster, met een voorgestelde naam uit het pad van de pagina, en sta je er meteen in zodat hij ook echt vastgelegd wordt; eerder werd de map wel gemaakt maar niet gekozen, en landden de documenten een niveau hoger. Het vinkje “geldt” bij een document verschijnt alleen nog als er meer dan één versie van dat soort ligt; is er maar één, dan geldt die vanzelf, ook op de kaarten die er al stonden. De standaardzinnetjes per fase (“tekst aanscherpen”, “toets deze pagina op overlap”) zijn uit beeld: die herhaalden alleen de naam van de fase en bleven staan als de fase allang af was. En het archief onderaan de kaart heet nu “Oude versies van deze kaart” met de waarschuwing erbij dat het niet actueel is." },
+  { datum: "2026-08-11", tekst: "Documentlinks openen overal in een nieuw tabblad in plaats van een los venster; documenten staan overal in proces-volgorde (analyse, blauwdruk, copy) in plaats van nieuwste eerst; en een gegenereerde tekst zonder Drive-bestand heeft nu altijd een link, naar de interne documentweergave." },
+  { datum: "2026-08-11", tekst: "De cockpit opent een stuk sneller, doordat de app niet meer bij elke koude server honderd keer controleert of de database klopt, elk tabblad pas gedownload wordt als je het opent, en de planning haar gegevens meteen ophaalt in plaats van te wachten tot alle code binnen is." },
+  { datum: "2026-08-11", tekst: "De controle “Is dit doorgevoerd?” zoekt het copydocument op alle plekken waar het kan liggen, inclusief het gekoppelde document in Drive." },
+  { datum: "2026-08-11", tekst: "In de kaart-chat staan de knoppen “Mail deze analyse” en “Vat samen & leg strategie vast” direct onder het antwoord; de dossierkaartjes van pagina's die in het antwoord genoemd worden staan erónder en standaard ingeklapt. Het samenvatten leest bovendien het hele gesprek ruim terug, dus ook een lange analyse gaat volledig mee." },
+  { datum: "2026-08-11", tekst: "Aantekeningen bij een taak bewaren zichzelf, ook als je de taak meteen dichtklapt of wegklikt; een opengeklapte taak wordt zichtbaar uit de lijst gelicht; een nieuwe taak is nog één regel typen, waarbij de pagina uit je eigen zin gelezen wordt." },
+  { datum: "2026-08-11", tekst: "De strategie vastleggen kan ook rechtstreeks op de projectkaart in de planning; de verwarrende losse knop “Strategie vastleggen” is vervangen door een eerlijk benoemde herkansing “Document opnieuw maken”; de vrije tekstvelden houden een geschiedenis bij en zijn met één klik terug te zetten via Veld terugzetten; en “Hele site opnieuw scannen” meet nu ook echt de inhoud van elke pagina, waarbij de wekelijkse scan begint bij de klant die het langst niet aan de beurt is geweest." },
+  { datum: "2026-08-11", tekst: "De koppencontrole vergeleek de hoofdstukken van ons eigen copydocument met de pagina en meldde daardoor \"0 van de 5 koppen gevonden\" terwijl de teksten er gewoon op stonden; hij vergelijkt nu de echte webteksten, kiest het document dat die teksten bevat, en laat in een uitklapper zien welke koppen hij zocht en welke hij vond." },
+];
+
+const MAAND = ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"];
+
+/** "11 augustus 2026". Leeg als de datum niet klopt. */
+export function leesbareDatum(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec((iso || "").trim());
+  if (!m) return "";
+  return `${Number(m[3])} ${MAAND[Number(m[2]) - 1]} ${m[1]}`;
+}
+
+/** Nieuwste eerst. Een union-merge kan de volgorde door elkaar gooien; dit zet hem recht. */
+export function nieuwtjes(): Nieuwtje[] {
+  return [...WAT_IS_NIEUW].filter((n) => leesbareDatum(n.datum)).sort((a, b) => (a.datum < b.datum ? 1 : a.datum > b.datum ? -1 : 0));
+}

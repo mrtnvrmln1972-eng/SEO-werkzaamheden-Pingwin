@@ -7133,3 +7133,14 @@ a.wb-pad:hover { text-decoration: underline; }
   font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--muted); }
 .opr-doel-balk-tekst strong { color: var(--dark); }
 .opr-doel-balk-stand { font-size: var(--fs-xs); color: var(--muted); }
+
+/* ── /uitleg: wat is er nieuw ──
+   Eén regel per oplevering, nieuwste eerst. Ingeklapt, want het is naslag en
+   geen onderdeel van het verhaal; de datum ernaast maakt het scanbaar. */
+.ut-nieuw { border: 1px solid var(--card-border); border-radius: var(--r-md); background: var(--white); margin: var(--s-6) 0; }
+.ut-nieuw-kop { cursor: pointer; display: flex; align-items: center; gap: var(--s-2); padding: var(--s-4) var(--s-5); font-size: var(--fs-md); line-height: var(--lh-md); font-weight: 700; color: var(--dark); }
+.ut-nieuw-aantal { font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700; color: var(--orange); background: var(--orange-light); border-radius: var(--r-full); padding: 0 var(--s-2); }
+.ut-nieuw-lijst { list-style: none; margin: 0; padding: 0 var(--s-5) var(--s-5); display: flex; flex-direction: column; gap: var(--s-4); }
+.ut-nieuw-item { display: flex; flex-direction: column; gap: var(--s-1); padding-left: var(--s-4); border-left: 2px solid var(--card-border); }
+.ut-nieuw-datum { font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 800; color: var(--gray); }
+.ut-nieuw-tekst { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--dark); }

@@ -132,8 +132,29 @@ leads, collega-bureaus en investeerders. De inhoud staat volledig in `lib/uitleg
 (`app/uitleg/page.tsx`) rendert alleen.
 
 **Vaste stap: bouw je iets noemenswaardigs bij of om, werk dan in dezelfde wijziging de
-betreffende uitklapper in `lib/uitleg.ts` bij en verzet `LAATST_BIJGEWERKT`.** Maarten hoeft dit
-niet te vragen. Een uitbreiding zonder bijgewerkte uitleg is niet af.
+betreffende uitklapper in `lib/uitleg.ts` bij én zet ÉÉN regel bovenaan `WAT_IS_NIEUW` in
+`lib/wat-is-nieuw.ts`.** Maarten hoeft dit niet te vragen. Een uitbreiding zonder bijgewerkte
+uitleg is niet af.
+
+**Botsen tussen chats is opgelost door de vorm, niet door afspraken (vaste regel, 11-08-2026).**
+Het nieuws stond als één zin van vijfduizend tekens op één regel (`LAATST_BIJGEWERKT`), en elke
+chat die iets opleverde herschreef precies díe regel. Twee chats op één dag botsten dus altijd, en
+die dag zijn de conflictmarkeringen twee keer meegecommit: de bouw mislukte, de site bleef twee
+opleveringen lang op oude code staan, en niemand zag het. Wat er nu ligt:
+
+- **Eén oplevering is één regel, en je zet hem erbij.** Nooit een bestaande regel herschrijven.
+  De vorm is vast: `{ datum: "JJJJ-MM-DD", tekst: "..." },` op één regel, nieuwste bovenaan.
+- **`.gitattributes` zet `lib/wat-is-nieuw.ts` op `merge=union`.** Schrijven twee chats toch op
+  dezelfde plek, dan houdt git ze allebei in plaats van er een conflict van te maken. Dat kán
+  alleen doordat elke regel op zichzelf klopt; `proeven/wat-is-nieuw.proef.ts` bewaakt die vorm.
+- **`proeven/geen-conflict.proef.ts` is het vangnet voor élk ander bestand.** Staat er ergens nog
+  een `<<<<<<<` of `>>>>>>>`, dan mislukt de bouw met een leesbare melding (bestand plus regel) in
+  plaats van een onbegrijpelijke TypeScript-fout.
+- **`LAATST_BIJGEWERKT` is afgeleid** (de datum van de bovenste regel) en wordt niet meer met de
+  hand gezet. Zet er nooit weer een geschreven zin in.
+
+Zet `merge=union` alleen op een bestand dat uitsluitend groeit en waarvan elke regel losstaat.
+Op gewone code is het gevaarlijk, want git kijkt daarbij niet naar de inhoud.
 
 Twee regels die dat document eerlijk houden:
 

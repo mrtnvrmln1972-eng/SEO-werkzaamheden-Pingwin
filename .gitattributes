@@ -1,0 +1,15 @@
+# ═══════════════════════════════════════════════════════════
+# BESTANDEN WAAR MEERDERE CHATS TEGELIJK IN SCHRIJVEN
+# ═══════════════════════════════════════════════════════════
+# Maarten werkt in zes tot acht chats naast elkaar. Een bestand waar élke chat
+# iets aan toevoegt botst daardoor structureel, en op 11 augustus 2026 zijn de
+# conflictmarkeringen twee keer meegecommit: de bouw mislukte en de site bleef
+# twee opleveringen lang op oude code staan.
+#
+# `merge=union` lost dat op voor bestanden die alleen maar GROEIEN: botsen twee
+# chats op dezelfde plek, dan houdt git beide regels in plaats van er een
+# conflict van te maken. Dat mag alléén bij een bestand waar elke regel op
+# zichzelf klopt (dus: één wijziging = één regel), want union kijkt niet naar
+# de inhoud. Zet hier dus nooit een bestand bij waar regels bij elkaar horen,
+# zoals gewone code.
+lib/wat-is-nieuw.ts merge=union
