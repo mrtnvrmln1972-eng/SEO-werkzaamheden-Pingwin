@@ -399,6 +399,23 @@ async function init(): Promise<void> {
       updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
     )`;
 
+  // Eerdere versies van datzelfde focus-blok. Toegevoegd op 11 augustus 2026,
+  // nadat een fout in het slepen inhoud buiten het tekstvak zette en het
+  // opslaan die daarna wegschreef: het veld had geen enkele geschiedenis, dus
+  // dat verlies was meteen definitief. Elke opslag bewaart nu eerst de vorige
+  // inhoud. Zo is een ongeluk (van een bug, of van een verkeerde muisbeweging)
+  // altijd één klik terug te draaien in plaats van voorgoed weg.
+  await sql`
+    CREATE TABLE IF NOT EXISTS client_focus_historie (
+      id          SERIAL PRIMARY KEY,
+      client_slug TEXT NOT NULL,
+      veld        TEXT NOT NULL,
+      html        TEXT NOT NULL,
+      bewaard_op  TIMESTAMPTZ NOT NULL DEFAULT now()
+    )`;
+  await sql`CREATE INDEX IF NOT EXISTS client_focus_historie_idx
+    ON client_focus_historie (client_slug, veld, bewaard_op DESC)`;
+
   // OAuth-tokens voor externe koppelingen (Microsoft Graph, Google).
   // Eén rij per provider; bewaart de refresh-token waarmee de app zelf
   // access-tokens vernieuwt. Alleen via het admin-beveiligde koppel-pad gevuld.

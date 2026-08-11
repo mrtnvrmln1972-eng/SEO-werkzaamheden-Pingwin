@@ -21,7 +21,7 @@
 // betreffende uitklapper aanvullen en LAATST_BIJGEWERKT verzetten.
 // ═══════════════════════════════════════════════════════════
 
-export const LAATST_BIJGEWERKT = "11 augustus 2026 (de strategie vastleggen kan nu ook rechtstreeks op de projectkaart in de planning, met dezelfde knop \"Vat samen & leg strategie vast\" en een eigen Drive-map-keuze als in Pagina's; de verwarrende losse knop \"Strategie vastleggen\", die alleen een document maakte en de strategie níet vulde, is vervangen door een eerlijk benoemde herkansing \"Document opnieuw maken\")";
+export const LAATST_BIJGEWERKT = "11 augustus 2026 (de strategie vastleggen kan nu ook rechtstreeks op de projectkaart in de planning, met dezelfde knop \"Vat samen & leg strategie vast\" en een eigen Drive-map-keuze als in Pagina's; de verwarrende losse knop \"Strategie vastleggen\", die alleen een document maakte en de strategie níet vulde, is vervangen door een eerlijk benoemde herkansing \"Document opnieuw maken\". Daarnaast houden de vrije tekstvelden nu een geschiedenis bij en zijn ze met één klik terug te zetten via Veld terugzetten; onderdelen in zo'n veld zijn te verslepen, met een afvinklijstje erbij)";
 
 export type Uitklapper = {
   titel: string;
@@ -178,6 +178,15 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "met snel aan te klikken landingspagina's. Het losse 'Links'-zijpaneel (de koppelingen als " +
           "uitklaplijstje) is vervallen; die koppelingen staan nu als tegels bovenaan de tab Klantgegevens, zie " +
           "hieronder.\n\n" +
+          "In dat tekstveld kun je naast vet, bullets en links ook een **afvinklijstje** maken (selecteer een " +
+          "rijtje regels en klik 'vinklijst', dan wordt elke regel een eigen vinkpunt) en een **uitklapper** " +
+          "(een onderwerp met een driehoekje, met alles wat erbij hoort eronder). Elk onderdeel is te " +
+          "**verslepen**: zweef erover, pak het grijpvlekje aan de linkerkant en zet het boven of onder een " +
+          "andere regel neer.\n\n" +
+          "Het veld slaat tijdens het typen vanzelf op, en **bewaart bij elke wijziging de vorige versie**. Ging " +
+          "er iets mis, dan zet je die met één klik terug via het scherm 'Veld terugzetten' in het Intern-menu. " +
+          "Dat vangnet is er gekomen na 11 augustus 2026, toen een fout in het slepen inhoud buiten het tekstvak " +
+          "zette en de automatische opslag die daarna wegschreef: er was toen geen enkele weg terug.\n\n" +
           "**Wisselen van klant gaat via de kiezer linksboven.** Die toont de eigen klanten meteen; de klanten van " +
           "een aangesloten bureau en de leads staan elk achter één regel die je openklikt, want die heb je meestal " +
           "niet nodig en ze duwen de rest uit beeld. Zit je zelf in zo'n groep, dan staat die vanzelf open. " +

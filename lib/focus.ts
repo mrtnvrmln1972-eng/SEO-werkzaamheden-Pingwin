@@ -51,6 +51,47 @@ export async function getFocus(slug: string): Promise<ClientFocus> {
   return { html: sanitize(html), prioHtml: sanitize(typeof d.prioHtml === "string" ? d.prioHtml : ""), links };
 }
 
+// ── Vangnet: de vorige inhoud bewaren vóór elke overschrijving ──
+// Dit veld had geen geschiedenis. Toen op 11 augustus 2026 een sleepfout
+// inhoud buiten het tekstvak zette, schreef de automatische opslag een
+// half leeg veld weg en was de rest voorgoed kwijt. Nu schuift elke opslag de
+// vorige versie in de geschiedenis, zodat terugzetten altijd kan.
+const HISTORIE_PER_VELD = 20;
+
+export type FocusVersie = { id: number; veld: string; html: string; bewaardOp: string };
+
+async function bewaarVorige(slug: string, veld: "html" | "prioHtml", vorige: string): Promise<void> {
+  // Een lege of ongewijzigde inhoud levert geen bruikbaar herstelpunt op.
+  if (!vorige.trim()) return;
+  try {
+    await sql`
+      INSERT INTO client_focus_historie (client_slug, veld, html)
+      VALUES (${slug}, ${veld}, ${vorige})`;
+    // Alleen de laatste versies aanhouden; dit veld wordt tijdens het typen
+    // automatisch opgeslagen, dus zonder opschonen groeit dit hard.
+    await sql`
+      DELETE FROM client_focus_historie
+      WHERE client_slug = ${slug} AND veld = ${veld} AND id NOT IN (
+        SELECT id FROM client_focus_historie
+        WHERE client_slug = ${slug} AND veld = ${veld}
+        ORDER BY bewaard_op DESC LIMIT ${HISTORIE_PER_VELD}
+      )`;
+  } catch {
+    // Het vangnet mag het opslaan zelf nooit tegenhouden.
+  }
+}
+
+export async function getFocusHistorie(slug: string): Promise<FocusVersie[]> {
+  await ensureSchema();
+  const { rows } = await sql`
+    SELECT id, veld, html, bewaard_op FROM client_focus_historie
+    WHERE client_slug = ${slug} ORDER BY bewaard_op DESC LIMIT 40`;
+  return rows.map((r) => ({
+    id: Number(r.id), veld: String(r.veld), html: String(r.html),
+    bewaardOp: new Date(r.bewaard_op as string).toISOString(),
+  }));
+}
+
 export async function saveFocus(slug: string, focus: Partial<ClientFocus>): Promise<ClientFocus> {
   await ensureSchema();
   // Alleen bijwerken wat er meegestuurd wordt. Drie blokken delen deze rij (de
@@ -61,6 +102,9 @@ export async function saveFocus(slug: string, focus: Partial<ClientFocus>): Prom
   const html = sanitize(typeof focus.html === "string" ? focus.html : huidig.html);
   const prioHtml = sanitize(typeof focus.prioHtml === "string" ? focus.prioHtml : huidig.prioHtml);
   const links = Array.isArray(focus.links) ? schoneLinks(focus.links) : huidig.links;
+  // Verandert een tekstveld écht, bewaar dan eerst wat er stond.
+  if (html !== huidig.html) await bewaarVorige(slug, "html", huidig.html);
+  if (prioHtml !== huidig.prioHtml) await bewaarVorige(slug, "prioHtml", huidig.prioHtml);
   const json = JSON.stringify({ html, prioHtml, links });
   await sql`
     INSERT INTO client_focus (client_slug, data, updated_at)

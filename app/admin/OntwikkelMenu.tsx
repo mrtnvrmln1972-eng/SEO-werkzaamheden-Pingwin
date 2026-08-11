@@ -53,6 +53,7 @@ export const SCHERMEN: { pad: string; naam: string; waarvoor: string }[] = [
   { pad: "/admin/bronnen-gezondheid", naam: "Bronnen-gezondheid", waarvoor: "Per koppeling (Ahrefs, Google, Microsoft, Moneybird, WordPress): werkt hij, en sinds wanneer niet meer." },
   { pad: "/admin/agenda", naam: "Agenda", waarvoor: "Maartens eigen weekagenda: tijdblokken en taken, los van klantwerk." },
   { pad: "/admin/schermafbeeldingen", naam: "Schermafbeeldingen", waarvoor: "De beelden die /uitleg gebruikt: het dashboard fotografeert zichzelf, anoniem." },
+  { pad: "/admin/veld-herstel", naam: "Veld terugzetten", waarvoor: "Eerdere versies van 'Zoekwoorden & links' en 'Top Prio's', met één klik terug te zetten." },
 ];
 
 export default function OntwikkelMenu() {
