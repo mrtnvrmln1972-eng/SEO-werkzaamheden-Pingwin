@@ -20,6 +20,9 @@ type Herkomst = "plaats" | "onderwerp" | "kans" | "gat" | "cannibalisatie";
 type Regel = {
   pad: string; uitkomst: Uitkomst; naar: string; herkomst: Herkomst[]; reden: string; onderbouwing: string[];
   term: string; volume: number | null; klikken: number; vertoningen: number; positie: number | null; groep: string;
+  /** Staat de omleiding al op de site? Komt uit de vaste regels, dus ook uit een
+      eerdere sessie of uit de oude tabel. */
+  doorgevoerd?: boolean;
 };
 type Data = { regels: Regel[]; tellingen: Record<Uitkomst, number> & { totaal: number }; lijstDatum: string | null; voorstellen?: Voorstel[] };
 
@@ -114,6 +117,10 @@ export default function OpruimEenLijst({ slug, domain, token, alleenLezen, titel
   const [doelen, setDoelen] = useState<Record<string, Voorstel>>({});
   const [doelBezig, setDoelBezig] = useState("");
   const [uitslag, setUitslag] = useState<Record<string, TestUitslag>>({});
+  // Wat je in dit scherm net hebt doorgevoerd. De lijst zelf komt van de server en
+  // wordt niet opnieuw opgehaald na elke redirect; zonder dit zou de teller pas na
+  // een herlaadbeurt meelopen, en dan lijkt doorvoeren niets te doen.
+  const [netGedaan, setNetGedaan] = useState<Record<string, boolean>>({});
   const [fout, setFout] = useState<Record<string, string>>({});
   const [bulk, setBulk] = useState("");
   // Eén actie tegelijk. Via een ref en niet via state, want in de lus hieronder
@@ -152,6 +159,10 @@ export default function OpruimEenLijst({ slug, domain, token, alleenLezen, titel
   }, [slug, token]);
 
   const site = (p: string) => `https://${(domain || "").replace(/^https?:\/\//, "").replace(/\/$/, "")}${p.startsWith("/") ? p : `/${p}`}`;
+
+  /** Staat de omleiding van deze pagina al op de site? Uit de bewaarde stand, of
+      uit wat je zojuist in dit scherm hebt doorgevoerd. */
+  const gedaan = (pad: string, uitBestand?: boolean) => !!uitBestand || !!netGedaan[padSleutel(pad)];
 
   async function naarPlanning(r: Regel) {
     if (planBezig) return;
@@ -200,6 +211,9 @@ export default function OpruimEenLijst({ slug, domain, token, alleenLezen, titel
         body: JSON.stringify({ slug, actie: "plaats", van: v.van, naar: v.doel, gone: v.trede === "410" }),
       }).then((x) => x.json());
       if (j?.test) setUitslag((m) => ({ ...m, [v.van]: j.test }));
+      // Alleen als de server hem ook echt live heeft nagemeten telt hij mee; een
+      // mislukte poging hoort de voortgang niet op te hogen.
+      if (j?.ok) setNetGedaan((m) => ({ ...m, [padSleutel(v.van)]: true }));
       if (!j?.ok && j?.error) setFout((m) => ({ ...m, [v.van]: j.error }));
     } catch { setFout((m) => ({ ...m, [v.van]: "Doorvoeren lukte niet." })); }
     finally { bezigRef.current = false; setDoelBezig(""); }
@@ -224,6 +238,7 @@ export default function OpruimEenLijst({ slug, domain, token, alleenLezen, titel
     if (!v) return <span className="opr-leeg">&mdash;</span>;
     const u = uitslag[v.van];
     const gone = v.trede === "410";
+    const klaar = gedaan(r.pad, r.doorgevoerd);
     return (
       <div className="opr-doel">
         {gone ? <span className="opr-chip nodig">410, bewust weg</span> : <Link p={v.doel} />}
@@ -231,12 +246,15 @@ export default function OpruimEenLijst({ slug, domain, token, alleenLezen, titel
           {TREDE_LABEL[v.trede]}
           {v.vast ? " · door jou vastgelegd" : v.zeker === "hoog" ? "" : ` · ${v.zeker} zeker`}
         </div>
+        {klaar && <div className="opr-doel-trede"><span className="opr-chip keep">staat op de site</span></div>}
         {!alleenLezen && (
           <div className="opr-doel-acties">
-            <button type="button" className="btn btn-primary btn-klein" disabled={!!doelBezig || !!bulk}
+            {/* Al doorgevoerd? Dan is de hoofdactie niet meer "plaats", maar hooguit
+                nog een keer plaatsen als de test laat zien dat er iets mis is. */}
+            <button type="button" className={klaar ? "btn btn-ghost btn-klein" : "btn btn-primary btn-klein"} disabled={!!doelBezig || !!bulk}
               onClick={() => void plaats(v)}
               title={gone ? "Zet deze pagina op 410 in de website: bewust weg, geen omleiding." : `Zet de 301 van ${v.van} naar ${v.doel} in de website en meet daarna na of hij er echt staat.`}>
-              {doelBezig === v.van ? "Bezig…" : gone ? "Zet op 410" : "Plaats redirect"}
+              {doelBezig === v.van ? "Bezig…" : klaar ? "Opnieuw plaatsen" : gone ? "Zet op 410" : "Plaats redirect"}
             </button>
             <button type="button" className="btn btn-ghost btn-klein" disabled={!!doelBezig || !!bulk}
               onClick={() => void test(v)}
@@ -267,13 +285,26 @@ export default function OpruimEenLijst({ slug, domain, token, alleenLezen, titel
 
   const rijen = filter === "alles" ? d.regels : d.regels.filter((r) => r.uitkomst === filter);
 
+  // ── Hoever zijn we? ──
+  // De kaarten telden alleen werk: "38 opruimen", ook als er al dertig van live
+  // stonden. Dat leest als een lijst die nooit korter wordt. Hier tellen we per
+  // besluit mee hoeveel er al op de site staan.
+  const telGedaan = (lijst: Regel[]) => lijst.filter((r) => gedaan(r.pad, r.doorgevoerd)).length;
+  const gedaanIn = (u: Uitkomst) => telGedaan(d.regels.filter((r) => r.uitkomst === u));
+  const voortgang = (klaar: number, totaal: number) =>
+    totaal === 0 ? "" : klaar === 0 ? "nog niets doorgevoerd"
+      : klaar >= totaal ? "alles doorgevoerd"
+        : `${klaar} doorgevoerd, nog ${totaal - klaar} te gaan`;
+
   // De voorstellen die bij de zichtbare rijen horen: waar je nu naar kijkt, is
   // ook waar "voer alles door" over gaat. Anders zet één klik iets recht dat je
-  // niet op je scherm had staan.
+  // niet op je scherm had staan. Wat al op de site staat valt eraf, zodat de knop
+  // niet dertig omleidingen opnieuw plaatst die er allang zijn.
   const zichtbareVoorstellen = rijen
-    .filter((r) => !r.naar)
+    .filter((r) => !r.naar && !gedaan(r.pad, r.doorgevoerd))
     .map((r) => doelen[padSleutel(r.pad)])
     .filter((v): v is Voorstel => !!v);
+  const alGedaanZichtbaar = telGedaan(rijen.filter((r) => !r.naar));
   const telTrede = (t: Trede) => zichtbareVoorstellen.filter((v) => v.trede === t).length;
 
   // Groeperen op plaats of onderwerp: dezelfde regels, andere indeling.
@@ -303,8 +334,14 @@ export default function OpruimEenLijst({ slug, domain, token, alleenLezen, titel
       <div className="opr-str-kpi">
         <div><b>{d.tellingen.totaal}</b><span>pagina&rsquo;s met een besluit</span></div>
         <div><b>{d.tellingen.uitbouwen}</b><span>uitbouwen</span></div>
-        <div><b>{d.tellingen.samenvoegen}</b><span>samenvoegen</span></div>
-        <div><b>{d.tellingen.opruimen}</b><span>opruimen</span></div>
+        <div>
+          <b>{d.tellingen.samenvoegen}</b><span>samenvoegen</span>
+          <span className="opr-kpi-sub">{voortgang(gedaanIn("samenvoegen"), d.tellingen.samenvoegen)}</span>
+        </div>
+        <div>
+          <b>{d.tellingen.opruimen}</b><span>opruimen</span>
+          <span className="opr-kpi-sub">{voortgang(gedaanIn("opruimen"), d.tellingen.opruimen)}</span>
+        </div>
         <div><b>{d.tellingen.nieuw}</b><span>nieuw maken</span></div>
       </div>
 
@@ -343,10 +380,13 @@ export default function OpruimEenLijst({ slug, domain, token, alleenLezen, titel
       {!alleenLezen && zichtbareVoorstellen.length > 0 && (
         <div className="opr-doel-balk">
           <div className="opr-doel-balk-tekst">
-            <strong>{zichtbareVoorstellen.length} van deze pagina&rsquo;s {zichtbareVoorstellen.length === 1 ? "heeft" : "hebben"} een voorgestelde bestemming.</strong>
+            <strong>
+              {zichtbareVoorstellen.length} van deze pagina&rsquo;s {zichtbareVoorstellen.length === 1 ? "wacht" : "wachten"} nog op zijn bestemming.
+              {alGedaanZichtbaar > 0 && ` ${alGedaanZichtbaar} ${alGedaanZichtbaar === 1 ? "staat" : "staan"} er al op.`}
+            </strong>
             <span>
               {telTrede("410") > 0 && `${telTrede("410")} krijgt geen omleiding maar een 410 (bewust weg): er is geen doel dat de bezoeker echt helpt, en een omleiding naar iets dat er net niet over gaat draagt niets over. `}
-              Test eerst, voer daarna door. Doorvoeren meet zichzelf na.
+              Test eerst, voer daarna door. Doorvoeren meet zichzelf na, en wat al doorgevoerd is blijft buiten deze knoppen.
             </span>
           </div>
           <div className="opr-doel-acties">
@@ -363,12 +403,18 @@ export default function OpruimEenLijst({ slug, domain, token, alleenLezen, titel
         </div>
       )}
 
+      {/* Elke groep is een uitklapper en staat standaard dicht. Eén groep telde bij
+          One Day Clinic 38 pagina's; opengeklapt duwt dat de andere vier besluiten
+          van het scherm af. Dicht zie je in vijf regels waar het werk zit, en klap
+          je open wat je gaat doen. Is er maar één groep (je hebt gefilterd), dan
+          staat hij open: dan is die groep juist waar je voor kwam. */}
       {volgorde.map(([naam, lijst]) => (
-        <div key={naam} className="opr-onderwerp">
-          <div className="opr-onderwerp-kop">
+        <details key={naam} className="opr-onderwerp" open={volgorde.length === 1}>
+          <summary className="opr-onderwerp-kop">
             <span className="opr-onderwerp-titel">{naam}</span>
             <span className="opr-chip">{lijst.length} pagina&rsquo;s</span>
-          </div>
+            {telGedaan(lijst) > 0 && <span className="opr-chip keep">{telGedaan(lijst)} doorgevoerd</span>}
+          </summary>
           <div className="opr-scroll">
             <table className="opr-tabel">
               <thead>
@@ -386,7 +432,10 @@ export default function OpruimEenLijst({ slug, domain, token, alleenLezen, titel
                       <div className="opr-eind-slokt">{r.herkomst.map((h) => HERKOMST_LABEL[h]).join(" · ")}</div>
                     </td>
                     <td><span className={`opr-chip ${CHIP[r.uitkomst]}`} title={WAT[r.uitkomst]}>{LABEL[r.uitkomst]}</span></td>
-                    <td>{r.naar ? <Link p={r.naar} /> : <Doelcel r={r} />}</td>
+                    <td>
+                      {r.naar ? <Link p={r.naar} /> : <Doelcel r={r} />}
+                      {r.naar && gedaan(r.pad, r.doorgevoerd) && <div><span className="opr-chip keep">staat op de site</span></div>}
+                    </td>
                     <td>{r.volume != null ? `${r.volume}x` : <span className="opr-leeg">&mdash;</span>}</td>
                     <td>
                       {r.klikken > 0 ? <strong>{r.klikken} bezoekers</strong> : r.vertoningen > 0 ? `${r.vertoningen} vert.` : <span className="opr-leeg">niets</span>}
@@ -450,7 +499,7 @@ export default function OpruimEenLijst({ slug, domain, token, alleenLezen, titel
               {open[naam] ? "▾ minder" : `▸ nog ${lijst.length - 15} pagina's`}
             </button>
           )}
-        </div>
+        </details>
       ))}
     </div>
   );

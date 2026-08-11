@@ -74,6 +74,23 @@ export const BLOKKEN: Uitklapper[] = [
           "afzonderlijk nagemeten.",
       },
       {
+        titel: "De werklijst telt ook mee wat er al doorgevoerd is",
+        tekst:
+          "Boven de werklijst staan vijf kaarten met de aantallen per besluit. Die telden alleen werk: " +
+          "\"38 opruimen\" bleef 38, ook nadat de eerste omleidingen live stonden. Zo'n lijst wordt nooit " +
+          "korter en geeft dus geen enkel gevoel van voortgang.\n\n" +
+          "Onder de kaarten *opruimen* en *samenvoegen* staat nu hoeveel er al op de site staan en hoeveel er " +
+          "nog te gaan zijn. Dat komt niet uit een aparte telling maar uit dezelfde vastgelegde besluiten " +
+          "waarin de doorvoerknop zijn vinkje zet, dus ook een redirect die je vorige maand of via de oude " +
+          "tabel plaatste telt gewoon mee. Bij de regel zelf staat het als **staat op de site**, en de knop " +
+          "\"Voer alles door\" slaat die regels over in plaats van ze nog een keer te plaatsen.\n\n" +
+          "De groepen in de lijst zijn uitklappers geworden en staan **standaard dicht**. Eén groep telde bij " +
+          "One Day Clinic 38 pagina's; opengeklapt duwde dat de andere vier besluiten van het scherm af. " +
+          "Dicht zie je in vijf regels waar het werk zit, met per regel het aantal pagina's en hoeveel " +
+          "daarvan al doorgevoerd zijn. Filter je op één besluit, dan staat die ene groep wél open: dan is " +
+          "dat precies waarvoor je kwam.",
+      },
+      {
         titel: "De zelflerende laag: correcties worden vaste regels",
         tekst:
           "Dit is de meest onderschatte functie van het hele dashboard, en hij is simpeler dan hij klinkt. " +

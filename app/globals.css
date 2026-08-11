@@ -5426,6 +5426,22 @@ a.wb-pad:hover { text-decoration: underline; }
 .opr-onderwerp .opr-chip { background: var(--gray-light); color: var(--gray); }
 .opr-onderwerp .opr-chip.merge { background: rgba(231, 119, 63, 0.14); color: var(--orange-dark); }
 .opr-onderwerp .opr-chip.keep { background: #e7f6ea; color: #2E7D32; }
+
+/* Is het onderwerp-blokje een uitklapper (de werklijst), dan is de kop de
+   samenvouwrand: zelfde vorm als de secties erboven, dus een driehoekje ervoor
+   en geen browser-eigen markertje. Dicht mag de kop geen onderruimte houden,
+   anders staat er witruimte onder een blok dat niets toont. */
+details.opr-onderwerp > summary.opr-onderwerp-kop { cursor: pointer; list-style: none; margin-bottom: 0; }
+details.opr-onderwerp[open] > summary.opr-onderwerp-kop { margin-bottom: var(--s-3); }
+details.opr-onderwerp > summary::-webkit-details-marker { display: none; }
+details.opr-onderwerp > summary.opr-onderwerp-kop::before { content: "▸"; color: var(--orange); font-size: var(--fs-xs); line-height: var(--lh-xs); }
+details.opr-onderwerp[open] > summary.opr-onderwerp-kop::before { content: "▾"; }
+
+/* De voortgangsregel onder een cijfer op een KPI-kaart: hoeveel er van dit
+   besluit al op de site staan. Eigen regel, want naast de labeltekst zou het een
+   tweede zin op één regel worden. */
+.opr-str-kpi .opr-kpi-sub { display: block; margin-top: var(--s-1); font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700; color: var(--orange-dark); }
+
 /* Het vinkje per fase op de projectkaart: klein, vóór de fasenaam. */
 .wp-fase-vink { display: inline-flex; align-items: center; flex: 0 0 auto; }
 .wp-fase-vink input { width: 13px; height: 13px; accent-color: #1c7a3f; cursor: pointer; margin: 0; }

@@ -46,6 +46,10 @@ export type WerkRegel = {
   positie: number | null;
   /** Waar deze regel bij hoort, voor het groeperen: een plaats of een onderwerp. */
   groep: string;
+  /** Staat de omleiding (of de 410) al op de site? Komt uit de vaste regels; daar
+      zet elke doorvoerknop zijn vinkje zodra hij live is nagemeten. Zonder dit
+      veld telt de lijst alleen werk en nooit voortgang. */
+  doorgevoerd?: boolean;
 };
 
 const getal = (n: number | null | undefined) => (n == null ? "onbekend" : String(n));
@@ -233,4 +237,15 @@ export function tellingen(regels: WerkRegel[]): Record<Uitkomst, number> & { tot
   const t = { uitbouwen: 0, samenvoegen: 0, blijft: 0, opruimen: 0, nieuw: 0, totaal: regels.length };
   for (const r of regels) t[r.uitkomst]++;
   return t;
+}
+
+/**
+ * Zet het vinkje "staat al op de site" op de regels waarvan de omleiding is
+ * doorgevoerd. De paden komen uit `client_opruim_regels` (lib/opruim-regels.ts),
+ * waar zowel de werklijst als de oude tabel hun doorvoer in wegschrijven, dus
+ * beide routes lezen dezelfde bron in plaats van elk hun eigen telling te doen.
+ */
+export function markeerDoorgevoerd(regels: WerkRegel[], doorgevoerdePaden: string[]): WerkRegel[] {
+  const gedaan = new Set(doorgevoerdePaden.map(norm));
+  return regels.map((r) => (gedaan.has(norm(r.pad)) ? { ...r, doorgevoerd: true } : r));
 }

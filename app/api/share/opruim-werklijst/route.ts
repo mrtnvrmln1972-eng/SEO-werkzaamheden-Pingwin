@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSlugByOpruimToken } from "../../../../lib/opruim-deel";
 import { getCannibalAnalysis, zorgVoorPlaatsen } from "../../../../lib/cannibal-redirect";
 import { getClientBySlug } from "../../../../lib/clients";
-import { bouwWerklijst, tellingen } from "../../../../lib/opruim-werklijst";
+import { bouwWerklijst, markeerDoorgevoerd, tellingen } from "../../../../lib/opruim-werklijst";
+import { getOpruimRegels } from "../../../../lib/opruim-regels";
 import { getSetting } from "../../../../lib/settings";
 import type { DoelenRapport } from "../../../../lib/opruim-doelvinder";
 
@@ -23,11 +24,17 @@ export async function GET(req: NextRequest) {
 
   try {
     const domain = (await getClientBySlug(slug).catch(() => null))?.domain || "";
-    const [st, plaatsen] = await Promise.all([
+    const [st, plaatsen, vaste] = await Promise.all([
       getCannibalAnalysis(slug),
       domain ? zorgVoorPlaatsen(slug, domain).catch(() => null) : Promise.resolve(null),
+      getOpruimRegels(slug).catch(() => []),
     ]);
-    const regels = bouwWerklijst(st.result, plaatsen?.adviezen || []);
+    // Wat er al doorgevoerd is, ziet de klant ook: dat is het enige deel van deze
+    // lijst dat over voortgang gaat in plaats van over werk.
+    const regels = markeerDoorgevoerd(
+      bouwWerklijst(st.result, plaatsen?.adviezen || []),
+      vaste.filter((r) => r.doorgevoerd).map((r) => r.van),
+    );
     // De voorgestelde redirect-doelen komen alleen uit de bewaarde stand, nooit
     // vers berekend: dit is een publieke leesroute en die hoort geen zware
     // berekening (en geen Ahrefs-opvraag) te kunnen aanzetten. Staat er nog
