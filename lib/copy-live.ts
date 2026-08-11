@@ -74,7 +74,7 @@ async function doEnsure(): Promise<void> {
 // Ook het "H2 — "-label eraf, want dat staat in ons document en niet op de site.
 function norm(s: string): string {
   return (s || "")
-    .replace(/^\s*h[1-3]\s*[—–-]\s*/i, "")
+    .replace(/^\s*h[1-3]\s*[:.)—–-]\s*/i, "")
     .toLowerCase()
     .replace(/[’'"“”„]/g, "")
     .replace(/[^a-z0-9à-ÿ]+/gi, " ")
@@ -107,7 +107,13 @@ export function koppenUitCopy(content: string): string[] {
   for (const raw of (content || "").split("\n")) {
     const r = raw.trim();
     if (WEBTEKST_MARKERING.test(r)) { webtekstBegonnen = true; continue; }
-    const label = /^\*{0,2}H[12]\s*[—–-]\s*(.+?)\*{0,2}$/i.exec(r.replace(/^#{1,3}\s+/, ""));
+    // De aanduiding kan er op meerdere manieren staan, en dat is geen detail: hij
+    // stond als "### H1: Strandtuin laten aanleggen" in het copydocument van
+    // Kamsteeg, terwijl hier alleen op "H1 — " met één of twee hekjes werd
+    // gekeken. Daardoor bleven precies de echte paginakoppen onzichtbaar en
+    // hielden we de hoofdstukken van de briefing over.
+    const kaal = r.replace(/^#{1,6}\s+/, "").replace(/^\*{1,2}|\*{1,2}$/g, "").trim();
+    const label = /^H[1-3]\s*[:.)—–-]\s*(.+)$/i.exec(kaal);
     if (label) { regels.push({ kop: label[1], gelabeld: true, na: webtekstBegonnen }); continue; }
     const md = /^(#{1,2})\s+(.+)$/.exec(r);
     if (md) regels.push({ kop: md[2], gelabeld: false, na: webtekstBegonnen });
