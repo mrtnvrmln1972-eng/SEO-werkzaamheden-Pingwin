@@ -62,6 +62,18 @@ async function doEnsure(): Promise<void> {
   // een beslissing opleverde, ook als er niets veranderd was.
   await sql`ALTER TABLE page_doc_versions ADD COLUMN IF NOT EXISTS goedgekeurd BOOLEAN NOT NULL DEFAULT false`;
   await sql`ALTER TABLE page_doc_versions ADD COLUMN IF NOT EXISTS goedgekeurd_op TIMESTAMPTZ`;
+  // Met terugwerkende kracht: staat er van een soort maar één document, dan geldt
+  // hij vanzelf (zie geldtAlsEnige hieronder voor het waarom). Zonder deze regel
+  // gold de nieuwe afspraak alleen voor documenten van na vandaag, en bleven de
+  // bestaande kaarten met een leeg vinkje staan waar niets te kiezen valt.
+  // Idempotent: een tweede keer draaien vindt niets meer om te zetten.
+  await sql`
+    UPDATE page_doc_versions v SET goedgekeurd = true, goedgekeurd_op = now()
+    WHERE v.goedgekeurd = false AND v.status <> 'genegeerd'
+      AND NOT EXISTS (
+        SELECT 1 FROM page_doc_versions a
+        WHERE a.client_slug = v.client_slug AND a.url = v.url AND a.kind = v.kind
+          AND a.status <> 'genegeerd' AND a.id <> v.id)`;
 }
 
 function rowToVersion(r: Record<string, unknown>): DocVersion {
@@ -130,6 +142,8 @@ export async function registerGeneratedVersion(slug: string, url: string, kind: 
       INSERT INTO page_doc_versions (client_slug, url, kind, source, naam, drive_link, tekst, samenvatting, vergelijking, status)
       VALUES (${slug}, ${url}, ${kind}, 'pingwin', ${naam || null}, ${driveLink || null}, ${(tekst || "").slice(0, 60000) || null}, ${samenvatting || "Gegenereerd door het dashboard."}, ${null}, 'verwerkt')
       RETURNING id`;
+    const nieuw = await sql`SELECT id FROM page_doc_versions WHERE client_slug = ${slug} AND url = ${url} AND kind = ${kind} ORDER BY id DESC LIMIT 1`;
+    if (nieuw.rows[0]) await geldtAlsEnige(slug, url, kind, Number(nieuw.rows[0].id));
     // Een opgeleverd document is werk dat we voor de klant deden; alleen de drie
     // soorten die daar echt over gaan, niet elk intern bestand.
     if (kind === "analyse" || kind === "blauwdruk" || kind === "copy") {
@@ -247,7 +261,30 @@ Antwoord met UITSLUITEND geldige JSON: {"kind":"...","vergelijking":"...","samen
     INSERT INTO page_doc_versions (client_slug, url, kind, source, naam, drive_link, tekst, samenvatting, vergelijking, status)
     VALUES (${slug}, ${url}, ${kind}, 'klant', ${naam || null}, ${driveLink || null}, ${(tekst || "").slice(0, 60000) || null}, ${samenvatting}, ${vergelijking}, 'verwerkt')
     RETURNING id`;
+  await geldtAlsEnige(slug, url, kind, Number(rows[0].id));
   return { id: rows[0].id as number, kind, kindLabel: KIND_LABEL[kind] || kind, naam, vergelijking, samenvatting };
+}
+
+// ─── Eén document van een soort is vanzelf het geldende document ───
+//
+// Het vinkje "geldt" beantwoordt de vraag: welke van deze copy-versies is DE
+// copy? Dat is een echte vraag zodra de klant een versie terugstuurt, maar bij
+// één enkel document is er niets te kiezen en was het puur een klusje dat je
+// moest onthouden. Vergat je het, dan viel de rest stil: mail, de werklijst voor
+// de sitebouwer en "Zet copy als concept in de site" lezen allemaal de geldende
+// versie, en die was er dan niet.
+//
+// Dus: is dit het eerste document van zijn soort voor deze pagina, dan geldt hij
+// meteen. Komt er later een tweede bij, dan blijft die van jou en verschijnt het
+// vinkje pas op dat moment, wanneer de vraag er echt is.
+async function geldtAlsEnige(slug: string, url: string, kind: string, id: number): Promise<void> {
+  try {
+    const { rows } = await sql`
+      SELECT COUNT(*)::int AS n FROM page_doc_versions
+      WHERE client_slug = ${slug} AND url = ${url} AND kind = ${kind} AND status <> 'genegeerd' AND id <> ${id}`;
+    if (Number(rows[0]?.n || 0) > 0) return;
+    await keurVersieGoed(slug, id, true);
+  } catch { /* het vinkje mag nooit een upload laten mislukken */ }
 }
 
 export async function ignoreVersion(slug: string, id: number): Promise<void> {

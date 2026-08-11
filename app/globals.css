@@ -1414,6 +1414,9 @@ td .dev-doc-link { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; 
 .pcd-folder { font-weight: 600; }
 .pcd-folder.muted { font-weight: 400; color: var(--muted); }
 .drive-modal { width: 620px; max-width: 96vw; max-height: 88vh; }
+/* Eén regel bovenaan het mapvenster: wat er nu staat, en dat je hier ook een
+   nieuwe map maakt. Zonder die regel las het venster als een mededeling. */
+.drive-uitleg { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray); margin: 0 0 var(--s-3); }
 .drive-crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; margin-bottom: 8px; }
 .drive-crumb { background: none; border: none; color: var(--orange, #F6712C); cursor: pointer; padding: 2px 4px; font: inherit; }
 .drive-crumb:hover { text-decoration: underline; }
@@ -3176,6 +3179,9 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
 .wp-docrij-acties { display: flex; align-items: center; gap: var(--s-2); margin-left: auto; }
 .wp-docrij-geldt-vink { display: flex; align-items: center; gap: var(--s-1); color: var(--muted); white-space: nowrap; }
 .wp-docrij-geldt .wp-docrij-geldt-vink { color: var(--orange); font-weight: 600; }
+/* Is er maar één document van een soort, dan is "geldt" geen keuze maar een feit:
+   hetzelfde woord, zonder aankruisvakje dat suggereert dat je nog iets moet doen. */
+.wp-docrij-geldt-vast { color: var(--orange); font-weight: 600; white-space: nowrap; }
 
 /* De uitkomst van de criteria-toets, onder de regel waar hij bij hoort. */
 .wp-toets { flex-basis: 100%; margin-top: var(--s-2); padding: var(--s-3);

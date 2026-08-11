@@ -10,6 +10,26 @@ import { useEffect, useState } from "react";
 
 export type DriveMap = { id: string; name: string; path: string };
 
+// ── Een leesbare mapnaam uit het pad van de pagina ──
+// Het naamveld stond leeg, dus werd de map met de hand genoemd, en dan ontstaat
+// er een map die letterlijk "/hovenier/oosterhout" heet terwijl zijn buren
+// "Hovenier Etten-Leur" en "Tuinontwerp Landingpage" heten. Een voorstel in de
+// stijl van die buren houdt de Drive leesbaar; je kunt hem gewoon overtypen.
+export function mapVoorstel(url: string): string {
+  let pad = "";
+  try { pad = new URL(url).pathname; } catch { pad = url || ""; }
+  const delen = pad.split("/").map((d) => d.trim()).filter(Boolean);
+  if (!delen.length) return "";
+  return delen
+    .slice(-2)
+    .join(" ")
+    .replace(/[-_]+/g, " ")
+    .replace(/\.(html?|php|aspx?)$/i, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^./, (c) => c.toUpperCase());
+}
+
 export default function DriveMapKiezer({ slug, url, open, onClose, onChosen }: {
   slug: string; url: string; open: boolean;
   /** Kruisje of Annuleren: sluiten zonder keuze. */
@@ -23,6 +43,9 @@ export default function DriveMapKiezer({ slug, url, open, onClose, onChosen }: {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [newFolder, setNewFolder] = useState("");
+  // De map die nu vastligt voor deze pagina, zodat je ziet wat je aan het
+  // wijzigen bent in plaats van blind een nieuwe keuze te maken.
+  const [huidig, setHuidig] = useState<DriveMap | null>(null);
 
   async function loadFolders(parentId: string) {
     setBusy(true); setErr("");
@@ -35,7 +58,10 @@ export default function DriveMapKiezer({ slug, url, open, onClose, onChosen }: {
   }
 
   // Bij openen: start waar je vorige keer was (per klant onthouden), zodat je
-  // niet elke keer vanaf Mijn Drive naar de klantmap hoeft te klikken.
+  // niet elke keer vanaf Mijn Drive naar de klantmap hoeft te klikken. En het
+  // naamveld staat meteen ingevuld met een voorstel uit het pad van de pagina,
+  // want in de praktijk is "de map bestaat nog niet" de normale situatie: een
+  // nieuwe pagina heeft er per definitie nog geen.
   useEffect(() => {
     if (!open) return;
     let s: Folder[] = [{ id: "root", name: "Mijn Drive" }];
@@ -43,10 +69,14 @@ export default function DriveMapKiezer({ slug, url, open, onClose, onChosen }: {
       const c = localStorage.getItem(`pw_drivestack_${slug}`);
       if (c) { const p = JSON.parse(c); if (Array.isArray(p) && p.length && p[0]?.id === "root") s = p; }
     } catch { /* geen geheugen */ }
-    setStack(s); setNewFolder(""); setErr("");
+    setStack(s); setNewFolder(mapVoorstel(url)); setErr("");
     void loadFolders(s[s.length - 1].id);
+    fetch(`/api/admin/drive/folders?chosenOnly=1&slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}`)
+      .then((r) => r.json())
+      .then((d) => { setHuidig(d?.ok && d.chosen ? { id: d.chosen.folderId, name: d.chosen.folderName, path: d.chosen.folderPath } : null); })
+      .catch(() => setHuidig(null));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, slug]);
+  }, [open, slug, url]);
 
   function enterFolder(f: Folder) { const s = [...stack, f]; setStack(s); void loadFolders(f.id); }
   function jumpTo(i: number) { const s = stack.slice(0, i + 1); setStack(s); void loadFolders(s[s.length - 1].id); }
@@ -59,7 +89,13 @@ export default function DriveMapKiezer({ slug, url, open, onClose, onChosen }: {
       const r = await fetch("/api/admin/drive/folders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "create", parent, name }) });
       const d = await r.json();
       if (!d.ok) { setErr(d.error || "Map maken mislukt."); return; }
-      setNewFolder(""); await loadFolders(parent);
+      setNewFolder("");
+      // Meteen de nieuwe map in. Anders maakte je hem aan, kwam je terug in de
+      // lijst van de bovenliggende map en moest je hem daar zelf terugvinden om
+      // hem te kunnen kiezen; precies de stap die vergeten werd, waardoor de
+      // documenten in de bovenliggende map bleven landen.
+      if (d.folder?.id) { const f = { id: String(d.folder.id), name: String(d.folder.name || name) }; setStack([...stack, f]); await loadFolders(f.id); }
+      else await loadFolders(parent);
     } catch { setErr("Map maken mislukt."); } finally { setBusy(false); }
   }
 
@@ -81,8 +117,13 @@ export default function DriveMapKiezer({ slug, url, open, onClose, onChosen }: {
   return (
     <div className="compose-overlay">
       <div className="compose-modal drive-modal">
-        <div className="compose-head"><span>Kies de Google Drive-map voor deze pagina</span><button type="button" className="chat-float-close" onClick={onClose}>&times;</button></div>
+        <div className="compose-head"><span>Waar komen de documenten van deze pagina?</span><button type="button" className="chat-float-close" onClick={onClose}>&times;</button></div>
         <div className="compose-body">
+          <p className="drive-uitleg">
+            {huidig
+              ? <>Nu ingesteld: <strong>{huidig.path || huidig.name}</strong>. Blader naar een andere map, of maak er hieronder een.</>
+              : <>Er is nog geen map gekozen; de documenten blijven dan in het dashboard staan. Blader naar de map waar ze in moeten, of maak hem hieronder aan.</>}
+          </p>
           <div className="drive-crumbs">
             {stack.map((f, i) => (
               <span key={f.id}>
@@ -100,13 +141,17 @@ export default function DriveMapKiezer({ slug, url, open, onClose, onChosen }: {
             ))}
           </div>
           <div className="drive-newfolder">
-            <input className="compose-input" value={newFolder} onChange={(e) => setNewFolder(e.target.value)} placeholder="Nieuwe submap maken (naam)…" />
-            <button type="button" className="btn btn-ghost btn-klein" onClick={makeSubfolder} disabled={busy || !newFolder.trim()}>Map maken</button>
+            <input className="compose-input" value={newFolder} onChange={(e) => setNewFolder(e.target.value)}
+              placeholder="Naam van de nieuwe map…"
+              onKeyDown={(e) => { if (e.key === "Enter" && newFolder.trim() && !busy) { e.preventDefault(); void makeSubfolder(); } }} />
+            <button type="button" className="btn btn-ghost btn-klein" onClick={makeSubfolder} disabled={busy || !newFolder.trim()}>
+              Maak map in “{stack[stack.length - 1].name}”
+            </button>
           </div>
         </div>
         <div className="compose-foot">
           <button type="button" className="btn btn-ghost" onClick={onClose}>Annuleren</button>
-          <button type="button" className="btn btn-primary btn-klein" onClick={chooseCurrent} disabled={busy}>Kies “{stack[stack.length - 1].name}”</button>
+          <button type="button" className="btn btn-primary btn-klein" onClick={chooseCurrent} disabled={busy}>Hierin: “{stack[stack.length - 1].name}”</button>
         </div>
       </div>
     </div>

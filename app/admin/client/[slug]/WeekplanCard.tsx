@@ -815,9 +815,9 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
           {t.url && (
             <button type="button" className="btn btn-quiet btn-klein" onClick={() => setKiezerOpen(true)}
               title={driveMap
-                ? `Alle documenten van deze pagina komen in "${driveMap.path || driveMap.name}". Klik om een andere map te kiezen.`
-                : "Kies de Google Drive-map waar strategie, analyse, blauwdruk en copy van deze pagina in worden gezet."}>
-              {driveMap ? `Drive: ${driveMap.path || driveMap.name}` : "Kies Drive-map"}
+                ? `Alle documenten van deze pagina komen in "${driveMap.path || driveMap.name}". Klik om een andere map te kiezen of een nieuwe te maken.`
+                : "Er is nog geen map: de documenten blijven in het dashboard staan. Klik om de Drive-map te kiezen of aan te maken."}>
+              {driveMap ? `Drive: ${driveMap.path || driveMap.name}` : "Drive-map kiezen of maken"}
             </button>
           )}
           <span className="wp-fase-spacer" />

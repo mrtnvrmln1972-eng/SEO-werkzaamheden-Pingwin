@@ -54,6 +54,11 @@ export default function DocVersies({ slug, url, taakId, triggerSlot }: { slug: s
   const [conceptBusy, setConceptBusy] = useState(false);
   const [conceptResult, setConceptResult] = useState<{ ok: boolean; detail: string; previewUrl?: string | null } | null>(null);
 
+  // Aantal versies per soort. Eén copy betekent: die geldt, punt. Twee betekent:
+  // jij moet kiezen, en dan pas verschijnt het vinkje.
+  const aantalPerSoort: Record<string, number> = {};
+  for (const v of versies) aantalPerSoort[v.kind] = (aantalPerSoort[v.kind] || 0) + 1;
+
   const laad = useCallback(async () => {
     const d = await fetch(`/api/admin/page-doc/upload?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}`)
       .then((r) => r.json()).catch(() => null);
@@ -204,6 +209,8 @@ export default function DocVersies({ slug, url, taakId, triggerSlot }: { slug: s
           {/* Leesvolgorde = proces-volgorde (analyse, blauwdruk, copy), binnen een
               stap nieuwste eerst. Puur op datum stond copy bovenaan en las de
               lijst als een omgekeerd proces. */}
+          {/* Hoeveel versies liggen er per soort? Bepaalt of het vinkje "geldt" een
+              echte keuze is of alleen een klusje (zie de rij hieronder). */}
           {[...versies].sort((a, b) => {
             const rang: Record<string, number> = { analyse: 1, blauwdruk: 2, copy: 3, structured: 4 };
             const va = rang[a.kind] || 9, vb = rang[b.kind] || 9;
@@ -237,11 +244,20 @@ export default function DocVersies({ slug, url, taakId, triggerSlot }: { slug: s
               )}
 
               <span className="wp-docrij-acties" onClick={(e) => e.stopPropagation()}>
-                <label className="wp-docrij-geldt-vink" title="Deze versie geldt: hij gaat standaard mee in een mail en naar de sitebouwer, en is de tekst waar de rest mee rekent.">
-                  <input type="checkbox" checked={v.goedgekeurd} disabled={!!busy}
-                    onChange={(e) => void stuur({ action: "goedkeur", id: v.id, aan: e.target.checked }, "goedkeur")} />
-                  <span>geldt</span>
-                </label>
+                {/* Het vinkje beantwoordt één vraag: welke van deze copy-versies is
+                    DE copy? Dat is pas een vraag als er meer dan één ligt (bijvoorbeeld
+                    nadat de klant een versie terugstuurde). Ligt er maar één, dan geldt
+                    hij vanzelf en zou het vinkje alleen een klusje zijn dat je kunt
+                    vergeten, met een stilgevallen mail en werklijst als gevolg. */}
+                {aantalPerSoort[v.kind] > 1 ? (
+                  <label className="wp-docrij-geldt-vink" title={`Er liggen ${aantalPerSoort[v.kind]} versies van dit soort. Vink aan welke er geldt: die gaat mee in een mail en naar de sitebouwer, en is de tekst waar de rest mee rekent.`}>
+                    <input type="checkbox" checked={v.goedgekeurd} disabled={!!busy}
+                      onChange={(e) => void stuur({ action: "goedkeur", id: v.id, aan: e.target.checked }, "goedkeur")} />
+                    <span>geldt</span>
+                  </label>
+                ) : v.goedgekeurd ? (
+                  <span className="wp-docrij-geldt-vast" title="Het enige document van dit soort, dus dit is de versie waar de mail, de sitebouwer en de rest van het dashboard mee rekenen.">geldt</span>
+                ) : null}
                 {v.source === "klant" && (
                   <button type="button" className="btn btn-ghost btn-klein" disabled={!!busy}
                     title="Kijk of deze teruggekregen versie nog aan de SEO-criteria voldoet"
