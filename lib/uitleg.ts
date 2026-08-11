@@ -21,7 +21,7 @@
 // betreffende uitklapper aanvullen en LAATST_BIJGEWERKT verzetten.
 // ═══════════════════════════════════════════════════════════
 
-export const LAATST_BIJGEWERKT = "11 augustus 2026 (de strategie vastleggen kan nu ook rechtstreeks op de projectkaart in de planning, met dezelfde knop \"Vat samen & leg strategie vast\" en een eigen Drive-map-keuze als in Pagina's; de verwarrende losse knop \"Strategie vastleggen\", die alleen een document maakte en de strategie níet vulde, is vervangen door een eerlijk benoemde herkansing \"Document opnieuw maken\". Daarnaast houden de vrije tekstvelden nu een geschiedenis bij en zijn ze met één klik terug te zetten via Veld terugzetten; onderdelen in zo'n veld zijn te verslepen, met een afvinklijstje erbij. En: paginascores bleven op een oude meting hangen, dus \"Hele site opnieuw scannen\" meet nu ook echt de inhoud van elke pagina, en de wekelijkse scan begint bij de klant die het langst niet aan de beurt is geweest in plaats van altijd bij dezelfde)";
+export const LAATST_BIJGEWERKT = "11 augustus 2026 (aantekeningen bij een taak bewaren zichzelf, ook als je de taak meteen dichtklapt of wegklikt; een opengeklapte taak wordt zichtbaar uit de lijst gelicht; een nieuwe taak is nog één regel typen, waarbij de pagina uit je eigen zin gelezen wordt. Daarvóór die dag: de strategie vastleggen kan ook rechtstreeks op de projectkaart in de planning, met dezelfde knop \"Vat samen & leg strategie vast\" en een eigen Drive-map-keuze als in Pagina's; de verwarrende losse knop \"Strategie vastleggen\" is vervangen door een eerlijk benoemde herkansing \"Document opnieuw maken\"; de vrije tekstvelden houden een geschiedenis bij en zijn met één klik terug te zetten via Veld terugzetten; en paginascores bleven op een oude meting hangen, dus \"Hele site opnieuw scannen\" meet nu ook echt de inhoud van elke pagina, waarbij de wekelijkse scan begint bij de klant die het langst niet aan de beurt is geweest)";
 
 export type Uitklapper = {
   titel: string;
@@ -1031,13 +1031,28 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "morgen. Laat je hem op een week los, dan houdt hij dezelfde weekdag, of hij krijgt de maandag als hij " +
           "nog geen dag had. Zo kan de datum nooit iets anders zeggen dan het vak waar de taak in staat. De dag " +
           "kiezen kan ook rechtstreeks, met een uitklapbare maandkalender op de regel.\n\n" +
-          "De planning is bewust een **signaalscherm** en geen bedieningspaneel: één regel per taak, met wie, " +
+          "De planning is bewust een **signaalscherm** en geen bedieningspaneel: één regel per taak, met " +
           "welke pagina, de zeven fases als gekleurde letters, de volgende stap en de dag. Die letters zijn expres " +
           "geen knoppen. Afvinken hoort in de kaart waar het werk gebeurt, en dan kleuren ze hier vanzelf mee. " +
           "Anders bestaan er twee wegen naar dezelfde stand, en dan lopen ze uiteen.\n\n" +
           "Klap je een regel open, dan verschijnt de échte projectkaart: de fases met hun knoppen, de chat over " +
           "deze pagina, de documenten en het mailvenster. Niet een tweede, magere samenvatting die kan achterlopen, " +
-          "maar dezelfde kaart.\n\n" +
+          "maar dezelfde kaart. **De opengeklapte taak wordt daarbij uit de lijst gelicht**: een eigen blok met een " +
+          "rand, een oranje streep ernaast en lucht eromheen, terwijl de andere regels in dezelfde kaart zolang op " +
+          "de achtergrond stappen. Zonder dat onderscheid liep de open kaart visueel door in de taak eronder, en " +
+          "leek die er nog bij te horen.\n\n" +
+          "**Aantekeningen bewaren zichzelf, ook als je meteen wegklikt.** Er stond al een wachtklok tijdens het " +
+          "typen, maar die dekte maar één geval. Klapte je de taak dicht voordat die klok afliep, dan was je tekst " +
+          "weg, en datzelfde gold voor doorklikken naar een ander scherm of het tabblad sluiten. Nu wordt er " +
+          "weggeschreven na een korte stilte tijdens het typen, zodra je buiten het veld klikt, op het moment dat " +
+          "de taak dichtklapt, en als het tabblad naar de achtergrond gaat. De laatste twee gaan mee met een " +
+          "verzoek dat de browser afmaakt ook als het scherm al weg is; anders sneuvelt het precies dán.\n\n" +
+          "**Zelf een taak toevoegen is één regel typen.** Er stonden eerder drie dingen bij: een apart veld voor " +
+          "de pagina, een keuze SEO / sitebouwer / klant, en een regel die herhaalde op welke dag hij zou komen. " +
+          "Alle drie eruit. De dag zet je zelf met de datumknop op de regel, het werk komt hoe dan ook langs " +
+          "Maarten, en over welke pagina het gaat wordt uit je eigen zin gelezen: typ je een pad of een link " +
+          "(\"/hovenier/oosterhout/ ontwikkelen\"), dan hangt de taak meteen aan die pagina, met de zeven fases " +
+          "erbij. Om dezelfde reden is de badge SEO/DEV vóór elke taaknaam verdwenen.\n\n" +
           "**De kaart heeft een vaste titel:** het pad plus wat we ermee doen, bijvoorbeeld " +
           "\"/hovenier/etten-leur/ · herstellen\". Dat is geen opmaak-keuze maar een reparatie: er werd bij elke keer " +
           "laden een nieuwe opdracht met een plusje achter de titel geplakt, tot 190 tekens, en één kaart stond " +

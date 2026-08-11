@@ -5192,7 +5192,7 @@ details[open] > .opr-kaart-sam::before { content: "▾ "; }
    per regel uit de pas, want de ene taaknaam is nu eenmaal langer dan de andere. */
 .wb-rij {
   display: grid;
-  grid-template-columns: 20px 44px minmax(0, 1fr) auto 116px 22px 96px 22px;
+  grid-template-columns: 20px minmax(0, 1fr) auto 116px 22px 96px 22px;
   align-items: center; gap: var(--s-3);
   padding: var(--s-2); border-bottom: 1px solid var(--card-border); cursor: pointer;
 }
@@ -5202,9 +5202,8 @@ details[open] > .opr-kaart-sam::before { content: "▾ "; }
 .wb-greep { cursor: grab; color: #8a8d91; user-select: none; font-weight: 900; letter-spacing: 1px; font-size: 13px; line-height: 1; padding: 3px 2px; border-radius: var(--r-sm); text-align: center; }
 .wb-greep:hover { background: var(--gray-light); color: var(--dark); }
 .wb-greep:active { cursor: grabbing; }
-.wb-wie { justify-self: start; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px; padding: 2px 7px; border-radius: var(--r-full); }
-.wb-wie.wie-dev { background: #E8F0FE; color: #1A56B0; }
-.wb-wie.wie-seo { background: var(--orange-light); color: var(--orange-dark); }
+/* (De badge SEO/DEV vóór de taaknaam is er per 11-08-2026 uit; alles komt langs
+   Maarten, dus die kolom zei niets. Zie .wb-rij hierboven voor het raster.) */
 .wb-wat { min-width: 0; display: flex; align-items: baseline; gap: var(--s-2); overflow: hidden; }
 .wb-pad { font-weight: 700; font-size: var(--fs-sm); color: var(--dark); white-space: nowrap; }
 a.wb-pad { color: var(--orange-dark); text-decoration: none; }
@@ -5420,6 +5419,44 @@ a.wb-pad:hover { text-decoration: underline; }
    versie naast te bestaan die vanzelf achterloopt. */
 .wb-kaart { padding: 0 var(--s-2) var(--s-3) 34px; border-bottom: 1px solid var(--card-border); background: #FFFDFB; }
 .wb-kaart .wp-card { border: 1px solid var(--card-border); border-radius: var(--r-md); box-shadow: none; margin: 0; padding: var(--s-3); }
+
+/* ── De opengeklapte taak staat los van de rij eronder ──────────────────────
+   Klap je een taak open, dan liep hij visueel door in de volgende regel: de taak
+   eronder leek nog bij deze kaart te horen. Nu is de open taak één blok met een
+   eigen rand, een oranje streep links, lucht eromheen en een lichte schaduw. De
+   regel en de kaart erin horen zichtbaar bij elkaar; wat erboven en eronder
+   staat, staat er zichtbaar buiten.
+
+   Bewust GEEN overflow: hidden op dit blok: de maandkalender en het klokje
+   klappen buiten de regel uit, en die zouden dan afgeknipt worden. Vandaar de
+   rondingen per onderdeel. */
+.wb-doel-open {
+  margin: var(--s-4) 0;
+  background: var(--white);
+  border: 1px solid var(--orange);
+  border-left-width: 3px;
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-md);
+  z-index: 1;
+}
+.wb-doel-open .wb-rij {
+  padding: var(--s-3);
+  border-bottom: 1px solid var(--orange-light);
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+}
+.wb-doel-open .wb-kaart {
+  padding: var(--s-3);
+  border-bottom: 0;
+  background: transparent;
+  border-radius: 0 0 var(--r-lg) var(--r-lg);
+}
+.wb-doel-open .wb-kaart .wp-card { background: #FFFDFB; }
+
+/* De overige regels in dezelfde kaart stappen zolang op de achtergrond, zodat
+   in één oogopslag duidelijk is welke taak je openhebt. Zweef je erover, dan
+   komen ze meteen weer op volle sterkte terug. */
+.pl-cardbody:has(.wb-doel-open) .wb-doel:not(.wb-doel-open) { opacity: 0.45; transition: opacity 0.15s; }
+.pl-cardbody:has(.wb-doel-open) .wb-doel:not(.wb-doel-open):hover { opacity: 1; }
 /* Het rijtje stipjes staat al in de regel erboven, dus in de kaart is het dubbel.
    Het sleephandvat blijft wél staan: dat werkt hier nu net zo goed als op het
    tabblad Taken. De kop blijft ook staan, want daar zitten status en verwijderen. */

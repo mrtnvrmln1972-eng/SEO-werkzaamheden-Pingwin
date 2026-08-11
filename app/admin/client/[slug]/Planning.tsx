@@ -166,8 +166,6 @@ export default function Planning({
   // Zelf een taak toevoegen, per week.
   const [nieuwVoor, setNieuwVoor] = useState<string | null>(null);
   const [nieuwTaak, setNieuwTaak] = useState("");
-  const [nieuwUrl, setNieuwUrl] = useState("");
-  const [nieuwWie, setNieuwWie] = useState("SEO");
   const [nieuwBezig, setNieuwBezig] = useState(false);
   const [nieuwFout, setNieuwFout] = useState("");
   const [paginas, setPaginas] = useState<string[]>([]);
@@ -295,6 +293,25 @@ export default function Planning({
    * dagkaart (Vandaag, Morgen) geef je de dag mee en volgt de week daaruit, want
    * de datum ís de planning.
    */
+  /**
+   * Over welke pagina gaat deze taak? Dat leiden we af uit wat je typt, in
+   * plaats van er een tweede invulveld voor te vragen: een volledige link, of
+   * een pad dat overeenkomt met een bekende pagina van de klant. Typ je
+   * "/hovenier/oosterhout/ ontwikkelen", dan hangt de taak dus gewoon aan die
+   * pagina, met de zeven fases erbij.
+   *
+   * Langste pad eerst, anders wint /hovenier/ van /hovenier/oosterhout/.
+   */
+  function paginaUitTekst(tekst: string): string | undefined {
+    const link = tekst.match(/https?:\/\/\S+/i);
+    if (link) return link[0].replace(/[).,;:]+$/, "");
+    const kandidaten = paginas
+      .map((u) => ({ url: u, p: pad(u) }))
+      .filter((x) => x.p.length > 1)
+      .sort((a, b) => b.p.length - a.p.length);
+    return kandidaten.find((x) => tekst.includes(x.p))?.url;
+  }
+
   async function maakTaak(doel: { jaar: number; week: number } | { dag: string }) {
     const taak = nieuwTaak.trim();
     if (!taak || nieuwBezig) return;
@@ -308,7 +325,7 @@ export default function Planning({
       const seq = Math.max(1, Math.round((mondayOfISOWeek(w.year, w.week).getTime() - nuMaandag.getTime()) / (7 * 864e5)) + 1);
       const d = await fetch("/api/admin/weekplan/add", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, taak, url: nieuwUrl.trim() || undefined, wie: nieuwWie, week: seq }),
+        body: JSON.stringify({ slug, taak, url: paginaUitTekst(taak), week: seq }),
       }).then((r) => r.json());
       if (!d?.ok) { setNieuwFout(d?.error || "Toevoegen lukte niet."); return; }
       // Toegevoegd vanuit een dagkaart? Dan krijgt hij meteen die dag, anders
@@ -320,35 +337,30 @@ export default function Planning({
           body: JSON.stringify({ slug, id, datum: dag, weekYear: w.year, weekNo: w.week }),
         }).catch(() => {})));
       }
-      setNieuwTaak(""); setNieuwUrl(""); setNieuwVoor(null);
+      setNieuwTaak(""); setNieuwVoor(null);
       await laad();
     } catch { setNieuwFout("Toevoegen lukte niet."); }
     finally { setNieuwBezig(false); }
   }
 
-  /** Het invulblokje voor een nieuwe taak. Zelfde formulier, twee plekken. */
+  /**
+   * Het invulblokje voor een nieuwe taak. Zelfde formulier, twee plekken.
+   *
+   * Eén regel typen en klaar. Er stond hier eerder ook een apart pagina-veld,
+   * een keuze SEO/sitebouwer/klant en een regel "komt op dinsdag 11 augustus".
+   * Alle drie weg (11 augustus 2026): de dag zet je zelf op de regel met de
+   * datumknop, het werk komt sowieso langs Maarten, en over welke pagina het
+   * gaat leest `paginaUitTekst` gewoon uit wat je typt.
+   */
   function nieuwFormulier(doel: { jaar: number; week: number } | { dag: string }) {
     const verstuur = () => { if (nieuwTaak.trim()) void maakTaak(doel); };
     return (
       <div className="pl-nieuw">
         <input className="pl-nieuw-taak" value={nieuwTaak} autoFocus
-          placeholder="Wat moet er gebeuren?"
+          placeholder="Wat moet er gebeuren? (een pad zoals /hovenier/oosterhout/ hangt hem meteen aan die pagina)"
           onChange={(e) => setNieuwTaak(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") verstuur(); if (e.key === "Escape") setNieuwVoor(null); }} />
-        <input className="pl-nieuw-url" value={nieuwUrl} list="pl-paginas"
-          placeholder={`Over welke pagina van ${clientName}? (mag leeg)`}
-          onChange={(e) => setNieuwUrl(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") verstuur(); if (e.key === "Escape") setNieuwVoor(null); }} />
         <div className="pl-nieuw-rij">
-          <select value={nieuwWie} onChange={(e) => setNieuwWie(e.target.value)} title="Wie pakt dit op?">
-            <option value="SEO">SEO</option>
-            <option value="Dev">Sitebouwer</option>
-            <option value="Klant">Klant</option>
-          </select>
-          <span className="pl-nieuw-info muted">
-            {"dag" in doel ? `komt op ${langDatum(doel.dag)}` : `komt in week ${doel.week}`}
-            {breed ? ` · bij ${clientName}` : ""}
-          </span>
           <span className="pl-nieuw-spacer" />
           <button type="button" className="ghost-btn small" onClick={() => setNieuwVoor(null)}>Annuleren</button>
           <button type="button" className="primary-btn small"
@@ -510,7 +522,9 @@ export default function Planning({
     } : {};
     return (
       <div key={sleutel} id={`kaart-${sleutel}`}
-        className={"wb-doel" + (bovenRij === sleutel && sleep && !zelfde(sleep, t) ? " wb-doel-aan" : "")}
+        className={"wb-doel"
+          + (open === sleutel ? " wb-doel-open" : "")
+          + (bovenRij === sleutel && sleep && !zelfde(sleep, t) ? " wb-doel-aan" : "")}
         {...rijDoel}>
         <div className={"wb-rij" + (open === sleutel ? " wb-rij-open" : "") + (sleep && zelfde(sleep, t) ? " wb-sleept" : "")}
           onClick={() => setOpen(open === sleutel ? null : sleutel)}>
@@ -526,7 +540,9 @@ export default function Planning({
               setSleep(t);
             }}
             onDragEnd={sleepKlaar}>⋮⋮</span>
-          <span className={"wb-wie " + (t.wie === "Dev" ? "wie-dev" : "wie-seo")}>{t.wie}</span>
+          {/* Hier stond een badge SEO/DEV. Weg op 11 augustus 2026: al het werk
+              komt langs Maarten, dus "voor wie" zei niets en kostte wel een
+              kolom in elke regel. De kolommaat in .wb-rij is meeveranderd. */}
           {/* Staat de titel nog in de automatische vorm ("/pad/ · optimaliseren"),
               dan bouwen we het pad als losse link plus het werkwoord ernaast op,
               zodat het pad klikbaar is. Heeft Maarten de titel zelf aangepast
@@ -637,8 +653,6 @@ export default function Planning({
 
   return (
     <div className="pl">
-      <datalist id="pl-paginas">{paginas.slice(0, 600).map((u) => <option key={u} value={u} />)}</datalist>
-
       <div className="pl-kop">
         <div>
           {!kaal && <div className="pl-titel">Planning</div>}
