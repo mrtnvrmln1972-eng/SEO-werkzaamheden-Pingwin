@@ -13,11 +13,12 @@
 //   - een andere taalversie wordt nooit een doel;
 //   - zonder externe links en zonder verkeer is 410 het antwoord, niet de
 //     homepage: dat is de enige plek in de ladder waar "niets doen" beter is;
-//   - bij plaatspagina's wordt de zusterstad bewust overgeslagen.
+//   - bij plaatspagina's wint de dichtstbijzijnde vestiging, maar alleen als de
+//     afstand echt gemeten is; zonder die meting valt hij terug op de hub.
 //
 // De ladder rekent hier op verzonnen sites, zonder database en zonder Ahrefs.
 
-import { maakBak, ladder, type Bak, type Intenties } from "../lib/opruim-doelvinder";
+import { maakBak, ladder, type Bak, type Intenties, type Nabijheid } from "../lib/opruim-doelvinder";
 import type { WerkRegel } from "../lib/opruim-werklijst";
 import type { ClientUrl } from "../lib/site-urls";
 
@@ -52,11 +53,12 @@ const doelVan = (bak: Bak, regels: WerkRegel[], pad: string) => {
   return v ? { trede: v.trede, doel: v.doel, waarschuwingen: v.waarschuwingen } : null;
 };
 
-// ── 1. Plaatspagina's: de hub, niet de zusterstad ─────────────────────────
-// Achttien plaatspagina's, één locatie-overzicht erboven, en twee plaatsen die
-// blijven. De ladder mag "soa test veldhoven" niet naar de pagina van Breda
-// sturen: dat iemand die naar Veldhoven zocht daar geholpen is, kunnen we niet
-// aantonen. De hub kan dat wel, want daar kiest de bezoeker zelf.
+// ── 1. Plaatspagina's zonder afstandsgegevens: de hub ─────────────────────
+// Weten we niet hoe ver de ene plaats van de andere ligt, dan mag de ladder
+// "soa test veldhoven" niet naar de pagina van Breda sturen: dat iemand die naar
+// Veldhoven zocht daar geholpen is, is dan een gok. De hub kan dat wel opvangen,
+// want daar kiest de bezoeker zelf. Mét gemeten afstand ligt het anders; dat
+// staat in proef 9.
 {
   const plaatsen = ["veldhoven", "mierlo", "baarn", "zeist", "woerden", "vianen", "harmelen", "grave", "malden"];
   const urls = [
@@ -73,9 +75,9 @@ const doelVan = (bak: Bak, regels: WerkRegel[], pad: string) => {
   const v = doelVan(bak, regels, "/soa-klinieken/soa-test-veldhoven/");
   check("plaatspagina zonder vraag gaat naar de categorie erboven", v?.doel, "/soa-klinieken/");
   check("en dat is trede 3, niet trede 2", v?.trede, "hub");
-  checkWaar("de zusterstad wordt nooit het doel",
+  checkWaar("zonder gemeten afstand wordt de zusterstad nooit het doel",
     !ladder(bak, regels).voorstellen.some((x) => x.doel.includes("breda")),
-    "Een andere stad als bestemming is een aanname over afstand die we niet kunnen aantonen.");
+    "Een andere stad als bestemming is zonder afstand een aanname, en die hoort de ladder niet te doen.");
   checkWaar("veel-naar-één van hetzelfde type geeft geen waarschuwing maar een bevestiging",
     (v?.waarschuwingen || []).some((w) => /hetzelfde type/.test(w)));
 }
@@ -191,6 +193,58 @@ const doelVan = (bak: Bak, regels: WerkRegel[], pad: string) => {
   check("een botsende intentie zet de hub niet opzij", v?.trede, "hub");
   checkWaar("maar hij wordt wel gemeld", (v?.waarschuwingen || []).some((w) => /zoekintentie/.test(w)),
     `Kreeg: ${JSON.stringify(v?.waarschuwingen)}`);
+}
+
+// ── 9. Mét gemeten afstand wint de dichtstbijzijnde vestiging ────────────
+// Dit is de trede die het meeste oplevert, en tegelijk de gevaarlijkste: hij
+// stuurt bezoekers naar een andere stad. Daarom drie dingen vastgelegd: dichtbij
+// wint van de hub, te ver valt terug op de hub, en een bestemming die zelf niets
+// voorstelt telt niet mee (anders voed je de zwakste pagina van de familie).
+{
+  const plaatsen = ["veldhoven", "nuenen", "mierlo", "koudekerke", "baarn", "zeist", "vianen", "grave", "malden"];
+  const urls = [
+    url("/"), url("/soa-klinieken/", { title: "SOA klinieken | Kies je locatie" }),
+    url("/soa-klinieken/soa-test-eindhoven/", { gscClicks: 253, gscImpressions: 7158 }),
+    url("/soa-klinieken/soa-test-rotterdam/", { gscClicks: 396, gscImpressions: 18739 }),
+    url("/soa-klinieken/soa-test-leiden/"),   // bestaat, maar haalt niets: geen bestemming
+    ...plaatsen.map((p) => url(`/soa-klinieken/soa-test-${p}/`)),
+  ];
+  const regels: WerkRegel[] = plaatsen.map((p) =>
+    regel(`/soa-klinieken/soa-test-${p}/`, "opruimen", { herkomst: ["plaats"], groep: p, term: `soa test ${p}` }));
+  const bak = bouw(urls, regels);
+  // Coördinaten zoals de plaatsendienst ze geeft. Veldhoven ligt naast
+  // Eindhoven; Koudekerke ligt in Zeeland, ver van elke vestiging.
+  const co = (lat: number, lon: number, naam: string) => ({ lat, lon, naam });
+  const nabij: Nabijheid = {
+    plaatsVan: new Map([
+      ["/soa-klinieken/soa-test-veldhoven", "veldhoven"],
+      ["/soa-klinieken/soa-test-koudekerke", "koudekerke"],
+      ["/soa-klinieken/soa-test-eindhoven", "eindhoven"],
+      ["/soa-klinieken/soa-test-rotterdam", "rotterdam"],
+      ["/soa-klinieken/soa-test-leiden", "leiden"],
+    ]),
+    coord: new Map([
+      ["veldhoven", co(51.4181, 5.4039, "Veldhoven")],
+      ["koudekerke", co(51.4869, 3.5636, "Koudekerke")],
+      ["eindhoven", co(51.4416, 5.4697, "Eindhoven")],
+      ["rotterdam", co(51.9225, 4.4792, "Rotterdam")],
+      ["leiden", co(52.1601, 4.4970, "Leiden")],
+    ]),
+    doelen: new Set(["/soa-klinieken/soa-test-eindhoven", "/soa-klinieken/soa-test-rotterdam"]),
+  };
+  const uit = ladder(bak, regels, new Map(), nabij);
+  const veld = uit.voorstellen.find((v) => v.van === "/soa-klinieken/soa-test-veldhoven/");
+  check("dichtbij wint van de hub", veld?.doel, "/soa-klinieken/soa-test-eindhoven/");
+  check("en dat is trede 2", veld?.trede, "zuster");
+  const koud = uit.voorstellen.find((v) => v.van === "/soa-klinieken/soa-test-koudekerke/");
+  check("te ver valt terug op de hub", koud?.doel, "/soa-klinieken/");
+  checkWaar("en dan staat erbij hoe ver het was",
+    (koud?.waarom || []).some((w) => /te ver/.test(w)), `Kreeg: ${JSON.stringify(koud?.waarom)}`);
+  checkWaar("een stadspagina die zelf niets haalt wordt nooit een bestemming",
+    !uit.voorstellen.some((v) => v.doel.includes("leiden")),
+    "Naar een lege stadspagina omleiden voedt precies de verkeerde pagina.");
+  const zonderPlaats = uit.voorstellen.find((v) => v.van === "/soa-klinieken/soa-test-baarn/");
+  check("een plaats zonder ligging valt netjes terug op de hub", zonderPlaats?.doel, "/soa-klinieken/");
 }
 
 console.log(fouten === 0 ? "\nAlle proeven geslaagd." : `\n${fouten} proef/proeven mislukt.`);

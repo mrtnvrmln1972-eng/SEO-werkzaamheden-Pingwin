@@ -2,6 +2,7 @@ import { getClientUrls, type ClientUrl } from "./site-urls";
 import { getAhrefsTopPages } from "./ahrefs";
 import { getAdsPaginas, isAdsPad, getOpruimRegels } from "./opruim-regels";
 import { feitenPerTerm, magSamenvoegen, type Intentie } from "./opruim-intentie";
+import { coordenVan, afstandKm, MAX_KM, type Coord } from "./plaats-afstand";
 import type { WerkRegel } from "./opruim-werklijst";
 
 // ═══════════════════════════════════════════════════════════
@@ -24,7 +25,9 @@ import type { WerkRegel } from "./opruim-werklijst";
 //                                waarin de inhoud opgaat.
 //   2. De dichtstbijzijnde zuster  zelfde niveau, zelfde type, net een andere
 //                                invulling. Alleen als de bezoeker daar echt
-//                                geholpen wordt.
+//                                geholpen wordt. Bij plaatspagina's is dat een
+//                                gemeten afstand, geen aanname: zie
+//                                lib/plaats-afstand.ts.
 //   3. De categorie of hub erboven  geen zinnige zuster, maar het onderwerp
 //                                bestaat wel op de site. De bezoeker kiest
 //                                zelf verder.
@@ -280,6 +283,21 @@ function familieHub(familie: string[], bak: Bak): string {
 /** De zoekintentie van een term, voor zover Ahrefs die kent. */
 export type Intenties = Map<string, Intentie>;
 
+/**
+ * Wat er over plaatsen bekend is: welke plaats hoort bij welk pad, en waar ligt
+ * die plaats. Zonder dit blijft trede 2 dicht en gaat alles naar de hub.
+ */
+export type Nabijheid = {
+  /** Pad (genormaliseerd) naar plaatsnaam. */
+  plaatsVan: Map<string, string>;
+  /** Plaatsnaam in kleine letters naar coördinaat. */
+  coord: Map<string, Coord>;
+  /** De paden die als bestemming in aanmerking komen: plaatspagina's die blijven
+      én die zelf iets voorstellen. Naar een lege stadspagina omleiden voedt de
+      verkeerde pagina. */
+  doelen: Set<string>;
+};
+
 async function intentiesVoor(termen: string[]): Promise<Intenties> {
   const schoon = [...new Set(termen.map((t) => (t || "").trim().toLowerCase()).filter(Boolean))].slice(0, 200);
   const uit: Intenties = new Map();
@@ -303,15 +321,76 @@ export async function bepaalDoelen(slug: string, domain: string, regels: WerkReg
   // termen van de bronnen én de best scorende term van elke kandidaat; titels
   // gebruiken we bewust niet, want een paginatitel is geen zoekopdracht.
   const open = regels.filter((r) => (r.uitkomst === "opruimen" || r.uitkomst === "samenvoegen") && !r.naar);
-  const intenties = await intentiesVoor([...open.map((r) => r.term), ...bak.kandidaten.map((k) => k.term)]);
-  return ladder(bak, regels, intenties);
+  const [intenties, nabij] = await Promise.all([
+    intentiesVoor([...open.map((r) => r.term), ...bak.kandidaten.map((k) => k.term)]),
+    bouwNabijheid(bak, regels, open).catch(() => undefined),
+  ]);
+  return ladder(bak, regels, intenties, nabij);
+}
+
+/** Het woord dat deze pagina onderscheidt van zijn familie: bij een plaatspagina
+    is dat de plaatsnaam. Het zeldzaamste woord uit het pad wint, want dat is per
+    definitie het woord dat deze pagina zijn eigen betekenis geeft. */
+function onderscheidendWoord(pad: string, bak: Bak): string {
+  const w = padWoorden(pad).filter((x) => !bak.ruis.has(x));
+  if (!w.length) return "";
+  return w.slice().sort((a, b) => bak.idf(b) - bak.idf(a))[0];
+}
+
+/**
+ * Welke plaats hoort bij welke pagina, waar ligt die plaats, en welke
+ * plaatspagina's komen als bestemming in aanmerking.
+ *
+ * Dat laatste is een oordeel dat de rest stuurt: een bestemming moet een pagina
+ * zijn die blijft én die zelf iets voorstelt (bezoekers haalt, of expliciet is
+ * aangewezen om uit te bouwen). Naar een lege stadspagina omleiden verplaatst
+ * het probleem alleen maar.
+ */
+async function bouwNabijheid(bak: Bak, regels: WerkRegel[], open: WerkRegel[]): Promise<Nabijheid> {
+  const plaatsVan = new Map<string, string>();
+  const bronnen = open.filter((r) => r.herkomst.includes("plaats"));
+  for (const r of bronnen) {
+    const naam = (r.groep || "").trim() || onderscheidendWoord(norm(r.pad), bak);
+    if (naam) plaatsVan.set(norm(r.pad), naam);
+  }
+  if (!bronnen.length) return { plaatsVan, coord: new Map(), doelen: new Set() };
+
+  // De familie waar de bronnen toe horen: de brede woorden die ze delen. Alleen
+  // kandidaten uit diezelfde familie kunnen een vestigingspagina zijn, en dat
+  // filter voorkomt dat we de halve site bij de plaatsendienst opzoeken.
+  const familie = new Set<string>();
+  for (const r of bronnen) for (const w of padWoorden(norm(r.pad))) {
+    if (bak.ruis.has(w) || bak.idf(w) < Math.log(bak.urls.length / 20)) familie.add(w);
+  }
+  const uitbouw = new Set(regels.filter((r) => r.uitkomst === "uitbouwen").map((r) => norm(r.pad)));
+
+  const doelen = new Set<string>();
+  for (const k of bak.kandidaten) {
+    if (plaatsVan.has(k.pad)) continue;                     // gaat zelf weg
+    if (![...familie].some((w) => k.padWoorden.has(w))) continue;
+    // Alleen een bestemming die zelf iets voorstelt.
+    if (!(k.klikken > 0 || uitbouw.has(k.pad))) continue;
+    const naam = onderscheidendWoord(k.pad, bak);
+    if (!naam) continue;
+    plaatsVan.set(k.pad, naam);
+    doelen.add(k.pad);
+  }
+
+  const coord = await coordenVan([...plaatsVan.values()]);
+  // Een pad waarvan de plaats niet bestaat volgens de plaatsendienst, is geen
+  // plaatspagina. Dat is meteen de controle op het onderscheidende woord.
+  for (const p of [...doelen]) {
+    const naam = plaatsVan.get(p) || "";
+    if (!coord.has(naam.toLowerCase())) doelen.delete(p);
+  }
+  return { plaatsVan, coord, doelen };
 }
 
 /**
  * De ladder zelf: geen database, geen Ahrefs, alleen rekenen. Zo is hij na te
  * rekenen in een proef, en geeft twee keer draaien twee keer hetzelfde antwoord.
  */
-export function ladder(bak: Bak, regels: WerkRegel[], intenties: Intenties = new Map()): DoelenRapport {
+export function ladder(bak: Bak, regels: WerkRegel[], intenties: Intenties = new Map(), nabij?: Nabijheid): DoelenRapport {
   const gaten: string[] = [];
   if (!bak.urls.length) gaten.push("De pagina's van deze site zijn nog niet ingelezen, dus er valt geen doel te kiezen. Draai eerst een sitescan.");
   if (!bak.links.size) gaten.push("Er zijn geen backlink-gegevens per pagina beschikbaar. De weging op externe links staat daarmee uit; het voorstel leunt dan alleen op onderwerp en bezoekers.");
@@ -406,15 +485,66 @@ export function ladder(bak: Bak, regels: WerkRegel[], intenties: Intenties = new
     // afstandsgegevens is dat een aanname, geen bevinding. De hub eronder doet
     // hetzelfde werk zonder die gok: daar kiest de bezoeker zelf zijn locatie.
     const isPlaats = plaatsSet.has(bron);
-    if (!isPlaats) {
+    if (isPlaats) {
+      // Bij een plaatspagina is "dichtstbijzijnde" letterlijk te nemen, en dus
+      // te meten. De vestiging waar de bezoeker het snelst terechtkan is een
+      // betere vervanging dan een overzicht waarop hij zelf nog moet kiezen:
+      // hij zocht een soa-test in zijn buurt en krijgt er een.
+      //
+      // Even belangrijk is wélke pagina daarvan profiteert. Bij One Day Clinic
+      // haalt het locatie-overzicht nul klikken en nul vertoningen, terwijl de
+      // vijf stadspagina's samen ruim 1.500 bezoekers per maand halen. Alles
+      // naar de hub sturen voedt dan precies de zwakste pagina van de familie.
+      const bronPlaats = nabij?.plaatsVan.get(bron) || "";
+      const bronCoord = bronPlaats ? nabij?.coord.get(bronPlaats.toLowerCase()) : null;
+      const opties = bronCoord
+        ? (nabij ? [...nabij.doelen] : [])
+            .filter((p) => p !== bron && taalVan(p) === taal)
+            .map((p) => {
+              const naam = nabij!.plaatsVan.get(p) || "";
+              const c = naam ? nabij!.coord.get(naam.toLowerCase()) : null;
+              return c ? { pad: p, naam, km: afstandKm(bronCoord, c) } : null;
+            })
+            .filter((x): x is { pad: string; naam: string; km: number } => !!x)
+            .sort((a, b) => a.km - b.km)
+        : [];
+      const dichtst = opties[0];
+      if (dichtst && dichtst.km <= MAX_KM) {
+        const kand = bak.kandidaten.find((k) => k.pad === dichtst.pad);
+        const botst = kand ? intentieBotst(kand) : "";
+        if (!botst) {
+          voorstellen.push({
+            van: r.pad, doel: kand?.origineel || dichtst.pad, trede: "zuster",
+            zeker: dichtst.km <= 20 ? "hoog" : "middel", vast: false,
+            kort: `Dichtstbijzijnde vestiging: ${kand?.origineel || dichtst.pad}`,
+            waarom: [
+              `**Trede 2 van de ladder: de dichtstbijzijnde zusterpagina.** ${bronPlaats} ligt ${dichtst.km} km van ${dichtst.naam}, en daar zit wél een pagina die blijft. Iemand die een soa-test in ${bronPlaats} zocht, is in ${dichtst.naam} realistisch geholpen; op een overzichtspagina moet hij zelf nog kiezen.`,
+              `De afstand is opgezocht bij de plaatsendienst van de overheid (PDOK), dus dit is een meting en geen aanname. Boven ${MAX_KM} km houdt het op: dan is een andere stad geen vervanging meer maar een verwijzing, en gaat de pagina alsnog naar het locatie-overzicht.`,
+              ...(opties[1] ? [`Op afstand twee staat ${opties[1].naam} (${opties[1].km} km).`] : []),
+              `Trede 1 viel af: er is geen andere pagina die ${bronPlaats} zelf overneemt.`,
+              ...weegZin(gewicht, heeftLinks, heeftRest),
+            ],
+            waarschuwingen, gewicht,
+          });
+          continue;
+        }
+        afgevallen.push(`De dichtstbijzijnde vestiging valt af op zoekintentie: ${botst}`);
+      } else if (dichtst) {
+        afgevallen.push(`De dichtstbijzijnde vestiging is ${dichtst.naam}, en die ligt op ${dichtst.km} km. Dat is te ver om nog een vervanging te zijn (de grens ligt op ${MAX_KM} km), dus trede 2 valt af.`);
+      } else if (!nabij || !bronCoord) {
+        afgevallen.push(`De ligging van ${bronPlaats || "deze plaats"} was niet op te zoeken, dus de afstand tot een andere vestiging is onbekend. Trede 2 blijft daarom dicht: een bestemming kiezen zonder te weten hoe ver het is, zou een gok zijn.`);
+      } else {
+        afgevallen.push("Er is geen enkele plaatspagina die blijft staan én zelf iets voorstelt, dus er is niets om naartoe te wijzen op trede 2.");
+      }
+    } else {
       const zuster = gescoord.find(({ k, score }) =>
         score >= 0.6 && ouder(k.pad) === ouder(bron) && !intentieBotst(k));
       if (zuster) {
         voorstellen.push({
-          van: r.pad, doel: zuster.k.pad, trede: "zuster", zeker: "middel", vast: false,
-          kort: `Dichtstbijzijnde zuster: ${zuster.k.pad}`,
+          van: r.pad, doel: zuster.k.origineel, trede: "zuster", zeker: "middel", vast: false,
+          kort: `Dichtstbijzijnde zuster: ${zuster.k.origineel}`,
           waarom: [
-            `**Trede 2 van de ladder: de dichtstbijzijnde zusterpagina.** ${zuster.k.pad} staat op hetzelfde niveau, is hetzelfde type pagina en heeft net een andere invulling. De bezoeker landt op iets dat hij herkent.`,
+            `**Trede 2 van de ladder: de dichtstbijzijnde zusterpagina.** ${zuster.k.origineel} staat op hetzelfde niveau, is hetzelfde type pagina en heeft net een andere invulling. De bezoeker landt op iets dat hij herkent.`,
             `Trede 1 viel af: geen enkele pagina neemt dit onderwerp één op één over.`,
             ...weegZin(gewicht, heeftLinks, heeftRest),
           ],
@@ -423,8 +553,6 @@ export function ladder(bak: Bak, regels: WerkRegel[], intenties: Intenties = new
         continue;
       }
       afgevallen.push("Er is geen zusterpagina op hetzelfde niveau die dicht genoeg bij dit onderwerp ligt, dus trede 2 valt af.");
-    } else {
-      afgevallen.push("Trede 2 (een andere plaats) slaan we bewust over: dat iemand die naar déze plaats zocht geholpen is op de pagina van een andere stad, kunnen we niet aantonen.");
     }
 
     // ── Trede 3: de categorie of hub erboven ──

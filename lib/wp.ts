@@ -59,17 +59,24 @@ async function pingwinGroupId(conn: WpConn): Promise<number> {
 // Zet één 301-redirect in de Redirection-plugin. Geeft het redirect-id terug.
 export async function createWpRedirect(conn: WpConn, fromPath: string, toPath: string): Promise<number | null> {
   const groupId = await pingwinGroupId(conn);
-  const res = await redirectionFetch(conn, "/redirect", {
-    method: "POST",
-    body: JSON.stringify({
-      url: fromPath,
-      match_type: "url",
-      action_type: "url",
-      action_code: 301,
-      action_data: { url: toPath },
-      group_id: groupId,
-    }),
-  });
+  const lichaam = {
+    url: fromPath,
+    match_type: "url",
+    action_type: "url",
+    action_code: 301,
+    action_data: { url: toPath },
+    group_id: groupId,
+  };
+  // Staat er al een regel voor dit pad, dan die bijwerken. Anders komt een
+  // gecorrigeerd doel er nooit in en blijft de oude omleiding staan.
+  const bestaand = await bestaandeRegel(conn, fromPath).catch(() => null);
+  if (bestaand) {
+    if (normPath(bestaand.naar) === normPath(toPath)) return bestaand.id;
+    const bij = await redirectionFetch(conn, `/redirect/${bestaand.id}`, { method: "POST", body: JSON.stringify(lichaam) });
+    if (!bij.ok) throw new Error(`De bestaande omleiding voor ${fromPath} bijwerken mislukte (${bij.status}).`);
+    return bestaand.id;
+  }
+  const res = await redirectionFetch(conn, "/redirect", { method: "POST", body: JSON.stringify(lichaam) });
   const d = await res.json().catch(() => null) as { id?: number; item?: { id?: number }; message?: string; error_description?: string } | null;
   if (!res.ok) {
     // "Duplicate" betekent: hij staat er al; dat is voor ons geen fout.
@@ -80,22 +87,35 @@ export async function createWpRedirect(conn: WpConn, fromPath: string, toPath: s
   return d?.id ?? d?.item?.id ?? null;
 }
 
+// Bestaat er al een regel voor dit bronpad? Dan moet die worden bijgewerkt en
+// niet nog een keer aangemaakt: de plugin weigert een duplicaat, en dan zou een
+// gecorrigeerd doel er stilzwijgend niet in komen. Precies dat gebeurde toen het
+// doel van het locatie-overzicht naar de dichtstbijzijnde vestiging verschoof.
+async function bestaandeRegel(conn: WpConn, fromPath: string): Promise<{ id: number; naar: string } | null> {
+  const p = normPath(fromPath);
+  const res = await redirectionFetch(conn, `/redirect?filterBy[url]=${encodeURIComponent(p)}&per_page=25`);
+  if (!res.ok) return null;
+  const d = await res.json().catch(() => null) as { items?: { id: number; url: string; action_data?: { url?: string } | string }[] } | null;
+  const hit = (d?.items || []).find((it) => normPath(String(it.url || "")) === p);
+  if (!hit) return null;
+  const naar = typeof hit.action_data === "string" ? hit.action_data : (hit.action_data?.url || "");
+  return { id: hit.id, naar };
+}
+
 // Zet een pad op 410 ("bewust weg") in de Redirection-plugin. Dat is geen
 // omleiding maar een antwoord: deze pagina komt niet terug. De keuzeladder zet
 // dit bewust vóór een omleiding naar de homepage, want massaal naar de homepage
 // omleiden doet functioneel hetzelfde zonder het duidelijke signaal aan Google.
 export async function createWpGone(conn: WpConn, fromPath: string): Promise<number | null> {
   const groupId = await pingwinGroupId(conn);
-  const res = await redirectionFetch(conn, "/redirect", {
-    method: "POST",
-    body: JSON.stringify({
-      url: fromPath,
-      match_type: "url",
-      action_type: "error",
-      action_code: 410,
-      group_id: groupId,
-    }),
-  });
+  const lichaam = { url: fromPath, match_type: "url", action_type: "error", action_code: 410, group_id: groupId };
+  const bestaand = await bestaandeRegel(conn, fromPath).catch(() => null);
+  if (bestaand) {
+    const bij = await redirectionFetch(conn, `/redirect/${bestaand.id}`, { method: "POST", body: JSON.stringify(lichaam) });
+    if (!bij.ok) throw new Error(`De bestaande regel voor ${fromPath} op 410 zetten mislukte (${bij.status}).`);
+    return bestaand.id;
+  }
+  const res = await redirectionFetch(conn, "/redirect", { method: "POST", body: JSON.stringify(lichaam) });
   const d = await res.json().catch(() => null) as { id?: number; item?: { id?: number }; message?: string; error_description?: string } | null;
   if (!res.ok) {
     const msg = String(d?.message || d?.error_description || "");
