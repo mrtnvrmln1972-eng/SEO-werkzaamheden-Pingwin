@@ -201,7 +201,14 @@ export default function DocVersies({ slug, url, taakId, triggerSlot }: { slug: s
 
       {versies.length > 0 && (
         <ul className="wp-doclijst">
-          {versies.map((v) => (
+          {/* Leesvolgorde = proces-volgorde (analyse, blauwdruk, copy), binnen een
+              stap nieuwste eerst. Puur op datum stond copy bovenaan en las de
+              lijst als een omgekeerd proces. */}
+          {[...versies].sort((a, b) => {
+            const rang: Record<string, number> = { analyse: 1, blauwdruk: 2, copy: 3, structured: 4 };
+            const va = rang[a.kind] || 9, vb = rang[b.kind] || 9;
+            return va !== vb ? va - vb : (a.createdAt < b.createdAt ? 1 : -1);
+          }).map((v) => (
             <li key={v.id}
               className={"wp-docrij" + (gekozen === v.id ? " wp-docrij-aan" : "") + (v.goedgekeurd ? " wp-docrij-geldt" : "")}
               tabIndex={0}

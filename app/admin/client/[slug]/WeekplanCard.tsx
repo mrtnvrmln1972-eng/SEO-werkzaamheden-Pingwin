@@ -510,7 +510,14 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
   }
 
   function docLink(key: FaseKey): string {
-    if (key === "analyse" || key === "blauwdruk" || key === "copy") return everLinks[key] || page?.links?.[key] || (key === "copy" ? t.copyUrl : "") || "";
+    if (key === "analyse" || key === "blauwdruk" || key === "copy") {
+      const extern = everLinks[key] || page?.links?.[key] || (key === "copy" ? t.copyUrl : "") || "";
+      if (extern) return extern;
+      // Wel gegenereerd maar geen Drive-bestand (geen map gekozen destijds): de
+      // tekst staat in de database; link dan naar de interne documentweergave,
+      // zodat een afgeronde stap nooit zonder link staat.
+      if (page?.[key] && t.url) return `/admin/client/${slug}/document?kind=${key}&url=${encodeURIComponent(t.url)}`;
+    }
     return "";
   }
 

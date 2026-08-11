@@ -114,12 +114,19 @@ export async function getPageDossier(slug: string, url: string, opts: { verseMai
     if (v.status === "voorstel") continue;   // die staan apart, als klantvoorstel
     push(versieToDoc(v));
   }
-  // Een geldende tekst zonder eigen document is er wel, maar heeft geen link.
+  // Een geldende tekst zonder eigen Drive-document is er wel; die krijgt de
+  // interne documentweergave als link, zodat er nooit een tekst bestaat waar
+  // je niet bij kunt (dat gebeurde bij pagina's zonder gekozen Drive-map).
   for (const kind of Object.keys(outputs)) {
     if (!docs.some((d) => d.kind === kind)) {
-      push({ kind, label: KIND_LABEL[kind] || kind, naam: KIND_LABEL[kind] || kind, link: "", datum: "", bron: "pingwin", status: "verwerkt" });
+      const kijkLink = `/admin/client/${slug}/document?kind=${encodeURIComponent(kind)}&url=${encodeURIComponent(url)}`;
+      push({ kind, label: KIND_LABEL[kind] || kind, naam: KIND_LABEL[kind] || kind, link: kijkLink, datum: "", bron: "pingwin", status: "verwerkt" });
     }
   }
+  // Vaste leesvolgorde: de stappen in proces-volgorde (analyse, blauwdruk, copy),
+  // daarna de rest. "Copy · Blauwdruk · Analyse" las als een omgekeerd proces.
+  const FASE_RANG: Record<string, number> = { analyse: 1, blauwdruk: 2, copy: 3, structured: 4 };
+  docs.sort((a, b) => (FASE_RANG[a.kind] || 9) - (FASE_RANG[b.kind] || 9));
 
   // Ontdubbeld op bestandsnaam: dezelfde teruggekregen pdf komt vaak twee keer
   // binnen (bijlage in twee mails van hetzelfde gesprek, of nog eens met de hand

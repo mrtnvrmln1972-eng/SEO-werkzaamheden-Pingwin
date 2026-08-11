@@ -385,7 +385,10 @@ export default function RijkTekstVeld({
     const a = (t.tagName === "A" ? t : t.closest("a")) as HTMLAnchorElement | null;
     if (a && a.href && !a.href.startsWith("javascript:")) {
       e.preventDefault();
-      window.open(a.href, "_blank", "noreferrer");
+      // Zonder features-argument: met een derde argument opent Chrome een LOS
+      // popup-venster in plaats van een nieuw tabblad. Opener null voor veiligheid.
+      const w = window.open(a.href, "_blank");
+      if (w) w.opener = null;
     }
   }
 
