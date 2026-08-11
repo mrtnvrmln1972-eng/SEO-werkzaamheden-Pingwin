@@ -116,6 +116,18 @@ export function metaVerdictText(kind: MetaKind, text: string): string {
 }
 
 /**
+ * Hoeveel pixels zit deze tekst buiten het venster dat Google toont? 0 = binnen.
+ * Gebruikt als tie-break in de correctielus: bij evenveel gebreken wint de
+ * kandidaat die dichter bij het venster zit, of hij nu te breed of te kort was.
+ */
+export function pixelAfstand(kind: MetaKind, text: string): number {
+  const info = metaPixelInfo(kind, text);
+  if (info.px > info.max) return info.px - info.max;
+  if (info.px < info.min) return info.min - info.px;
+  return 0;
+}
+
+/**
  * Harde gebreken die een herschrijving rechtvaardigen (te breed voor Google,
  * pijp, vierkante haken). Te kort is geen hard gebrek: dat kost geen afkapping.
  * Gedeeld door de correctielus in page-doc en de CTR-machine.
@@ -318,12 +330,72 @@ export function validateMeta(
 }
 
 /* ------------------------------------------------------------------
+ * De opleverpoort: wat MOET kloppen voordat wij een meta uitleveren.
+ * ------------------------------------------------------------------ */
+
+export type MetaContext = {
+  /** Primair zoekwoord: title vooraan, description 1x letterlijk in de kern. */
+  keyword?: string;
+  /** H1 van de pagina; de titel moet daar qua kernwoorden op aansluiten. */
+  h1?: string;
+  /** Bij een description: de bijbehorende title (mag niet letterlijk herhaald). */
+  title?: string;
+};
+
+/**
+ * Twee soorten oordeel, bewust uit elkaar gehouden:
+ *
+ *   metaHardIssues   — over wat er LIVE staat (vaak niet door ons geschreven):
+ *                      alleen wat echt kapot is, want een klant hoeft geen
+ *                      alarm te zien bij een titel die alleen wat kort is.
+ *   metaOpleverIssues — over wat WIJ opleveren: alles uit de criterialijst,
+ *                      inclusief "te kort, ruimte onbenut".
+ *
+ * Waarom dat tweede er is: de copy-pijplijn corrigeerde alleen harde gebreken,
+ * dus kon er een titel van 380 px het klantdocument in, waarna datzelfde
+ * document hem met de pixel-motor afkeurde als "te kort, ruimte onbenut". Wij
+ * leverden dus zelf werk op dat wij zelf afkeurden. Een meta die niet door deze
+ * poort komt, gaat terug de correctielus in (zie lib/meta-machine.ts) en
+ * bereikt de klant niet in die staat.
+ */
+export function metaOpleverIssues(kind: MetaKind, text: string, ctx: MetaContext = {}): string[] {
+  const t = (text || "").trim();
+  if (!t) return ["ontbreekt volledig"];
+  const info = metaPixelInfo(kind, t);
+  const issues: string[] = [];
+
+  if (info.px > info.max) {
+    issues.push(`te breed: ${info.px} px, harde grens ${info.max} px (${info.chars} tekens); kort in zonder het zoekwoord te verliezen`);
+  } else if (info.px < info.min) {
+    issues.push(`te kort: ${info.px} px van de ${info.min} tot ${info.max} px die Google toont (${info.chars} tekens); vul de ruimte met een concreet voordeel of bewijs, geen stopwoorden`);
+  }
+
+  const checks = kind === "meta_title"
+    ? checkMetaTitle(t, ctx.keyword, ctx.h1)
+    : checkMetaDescription(t, ctx.keyword, ctx.title);
+  for (const c of checks) {
+    if (c.pass) continue;
+    // De lengte-checks (META-02/07) zijn in tekens; staat de pixelbreedte al
+    // buiten het venster, dan is dat hierboven al gemeld. Anders wél melden:
+    // dan gaat het om het tekenaantal, niet om afkappen.
+    if ((c.id === "META-02" || c.id === "META-07") && !info.ok) continue;
+    issues.push(`${c.label}: ${c.waarde}`);
+  }
+  return issues;
+}
+
+/** Voldoet deze meta aan alles wat wij van onszelf eisen? */
+export function metaVoldoet(kind: MetaKind, text: string, ctx: MetaContext = {}): boolean {
+  return metaOpleverIssues(kind, text, ctx).length === 0;
+}
+
+/* ------------------------------------------------------------------
  * Promptblok: dezelfde regels in schrijfinstructie-vorm, ter injectie in
  * elke systeemprompt die een meta title of description genereert of toetst.
  * ------------------------------------------------------------------ */
 export const META_RULES_PROMPT = `META-REGELS (hard, altijd toepassen bij meta title en meta description):
 Titel:
-- 40-60 tekens (doel 50-58) en maximaal ~580 px in Arial; wordt anders door Google afgekapt.
+- 40-60 tekens (doel 50-58) en 430 tot 580 px in Arial. Boven 580 px kapt Google af; ONDER 430 px laat je ruimte liggen die een concurrent wél gebruikt, dus vul het venster op met een concreet voordeel, bewijs of aanbod in plaats van het kort te houden.
 - Primair zoekwoord (of natuurlijke variant) in de eerste 3-4 woorden, vóór het scheidingsteken.
 - Merknaam achteraan met " - " (koppelteken). NOOIT een pijp (|): die wordt 2x zo vaak door Google herschreven. Laat de merknaam weg als de titel anders te lang wordt (Google toont de sitenaam toch al).
 - Sluit qua kernwoorden nauw aan op de H1 (grootste middel tegen herschrijven door Google), maar hoeft niet woordelijk identiek te zijn.
@@ -331,7 +403,7 @@ Titel:
 - Een concreet cijfer of jaartal alleen als het eerlijk bij de pagina past; geen hype-woorden ("ultiem", "beste ooit"): die kosten aantoonbaar kliks.
 - Nederlandse zinsopbouw: alleen het eerste woord en eigennamen met hoofdletter.
 Description:
-- 120-155 tekens en maximaal ~920 px; de kernboodschap MET het zoekwoord in de eerste 120 tekens (mobiel kapt daar af).
+- 120-155 tekens (doel 140-155) en 800 tot 920 px; korter dan 800 px laat ruimte onbenut, boven 920 px kapt Google af. De kernboodschap MET het zoekwoord in de eerste 120 tekens (mobiel kapt daar af).
 - Zoekwoord 1x letterlijk (wordt vetgedrukt in Google), maximaal 2x.
 - Actieve zin met één CTA-werkwoord (Ontdek, Bekijk, Vergelijk, Plan, Bereken, Vraag aan) en minstens één concreet feit (getal, prijs, termijn, garantie, USP).
 - Vat de echte pagina-inhoud samen (verlaagt de kans dat Google de tekst vervangt), herhaal de titel niet letterlijk, uniek per pagina.

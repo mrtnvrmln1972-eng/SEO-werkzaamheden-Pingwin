@@ -21,7 +21,7 @@
 // betreffende uitklapper aanvullen en LAATST_BIJGEWERKT verzetten.
 // ═══════════════════════════════════════════════════════════
 
-export const LAATST_BIJGEWERKT = "11 augustus 2026 (op de projectkaart in de planning staat de Google Drive-map nu bovenaan de fases, waar de documenten ook gemaakt worden; hij zat verstopt onderin de chat en verscheen daar pas nadat de assistent \u00e9\u00e9n keer geantwoord had. De standaardzinnetjes per fase (\"tekst aanscherpen\", \"toets deze pagina op overlap\") zijn weg: die herhaalden alleen de naam van de fase en bleven staan als de fase allang af was. En het archief onderaan de kaart heet nu \"Oude versies van deze kaart\" met de waarschuwing erbij dat het niet actueel is. Ook vandaag: documentlinks openen overal in een nieuw tabblad in plaats van een los venster; documenten staan overal in proces-volgorde (analyse, blauwdruk, copy) in plaats van nieuwste eerst; en een gegenereerde tekst zonder Drive-bestand heeft nu altijd een link, naar de interne documentweergave. Ook vandaag: de cockpit opent een stuk sneller, doordat de app niet meer bij elke koude server honderd keer controleert of de database klopt, elk tabblad pas gedownload wordt als je het opent, en de planning haar gegevens meteen ophaalt in plaats van te wachten tot alle code binnen is. Ook vandaag: de controle \"Is dit doorgevoerd?\" zoekt het copydocument op alle plekken waar het kan liggen, inclusief het gekoppelde document in Drive, dus hij meldt niet langer \"er is geen copydocument\" terwijl het document in dezelfde kaart staat. Eerder die dag: in de kaart-chat staan de knoppen \"Mail deze analyse\" en \"Vat samen & leg strategie vast\" direct onder het antwoord; de dossierkaartjes van pagina's die in het antwoord genoemd worden staan er\u00f3nder en standaard ingeklapt. Het samenvatten leest bovendien het hele gesprek ruim terug, dus ook een lange analyse gaat volledig mee. Eerder die dag: aantekeningen bij een taak bewaren zichzelf, ook als je de taak meteen dichtklapt of wegklikt; een opengeklapte taak wordt zichtbaar uit de lijst gelicht; een nieuwe taak is nog \u00e9\u00e9n regel typen, waarbij de pagina uit je eigen zin gelezen wordt. Daarv\u00f3\u00f3r die dag: de strategie vastleggen kan ook rechtstreeks op de projectkaart in de planning; de verwarrende losse knop \"Strategie vastleggen\" is vervangen door een eerlijk benoemde herkansing \"Document opnieuw maken\"; de vrije tekstvelden houden een geschiedenis bij en zijn met \u00e9\u00e9n klik terug te zetten via Veld terugzetten; en \"Hele site opnieuw scannen\" meet nu ook echt de inhoud van elke pagina, waarbij de wekelijkse scan begint bij de klant die het langst niet aan de beurt is geweest)";
+export const LAATST_BIJGEWERKT = "11 augustus 2026 (een copy-briefing bevat geen oordeel meer over ons eigen werk: de paginatitel en de omschrijving worden eerst perfect gemaakt en dan pas getoond. De poort waar onze eigen teksten doorheen moeten keek alleen naar wat echt kapot is, dus kon een titel die alleen te kort was het klantdocument in, met ons eigen oordeel \"te kort, ruimte onbenut\" ernaast; nu telt de volledige criterialijst mee (onbenutte ruimte, zoekwoord vooraan, een concreet feit, een actieve uitnodiging) en gaat zo'n tekst terug de correctielus in tot hij het venster van Google netjes vult. Die lus staat nu op één plek in plaats van drie, en een correctie gaat ook terug de opgeslagen copy in. Ook: de omslag van een klantdocument fotografeert geen 404-scherm meer bij een pagina die nog gebouwd moet worden, maar valt terug op de site van de klant zelf. Eerder die dag: op de projectkaart in de planning staat de Google Drive-map nu bovenaan de fases, waar de documenten ook gemaakt worden; hij zat verstopt onderin de chat en verscheen daar pas nadat de assistent \u00e9\u00e9n keer geantwoord had. De standaardzinnetjes per fase (\"tekst aanscherpen\", \"toets deze pagina op overlap\") zijn weg: die herhaalden alleen de naam van de fase en bleven staan als de fase allang af was. En het archief onderaan de kaart heet nu \"Oude versies van deze kaart\" met de waarschuwing erbij dat het niet actueel is. Ook vandaag: documentlinks openen overal in een nieuw tabblad in plaats van een los venster; documenten staan overal in proces-volgorde (analyse, blauwdruk, copy) in plaats van nieuwste eerst; en een gegenereerde tekst zonder Drive-bestand heeft nu altijd een link, naar de interne documentweergave. Ook vandaag: de cockpit opent een stuk sneller, doordat de app niet meer bij elke koude server honderd keer controleert of de database klopt, elk tabblad pas gedownload wordt als je het opent, en de planning haar gegevens meteen ophaalt in plaats van te wachten tot alle code binnen is. Ook vandaag: de controle \"Is dit doorgevoerd?\" zoekt het copydocument op alle plekken waar het kan liggen, inclusief het gekoppelde document in Drive, dus hij meldt niet langer \"er is geen copydocument\" terwijl het document in dezelfde kaart staat. Eerder die dag: in de kaart-chat staan de knoppen \"Mail deze analyse\" en \"Vat samen & leg strategie vast\" direct onder het antwoord; de dossierkaartjes van pagina's die in het antwoord genoemd worden staan er\u00f3nder en standaard ingeklapt. Het samenvatten leest bovendien het hele gesprek ruim terug, dus ook een lange analyse gaat volledig mee. Eerder die dag: aantekeningen bij een taak bewaren zichzelf, ook als je de taak meteen dichtklapt of wegklikt; een opengeklapte taak wordt zichtbaar uit de lijst gelicht; een nieuwe taak is nog \u00e9\u00e9n regel typen, waarbij de pagina uit je eigen zin gelezen wordt. Daarv\u00f3\u00f3r die dag: de strategie vastleggen kan ook rechtstreeks op de projectkaart in de planning; de verwarrende losse knop \"Strategie vastleggen\" is vervangen door een eerlijk benoemde herkansing \"Document opnieuw maken\"; de vrije tekstvelden houden een geschiedenis bij en zijn met \u00e9\u00e9n klik terug te zetten via Veld terugzetten; en \"Hele site opnieuw scannen\" meet nu ook echt de inhoud van elke pagina, waarbij de wekelijkse scan begint bij de klant die het langst niet aan de beurt is geweest)";
 
 export type Uitklapper = {
   titel: string;
@@ -566,7 +566,10 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "'is stuk' niet door elkaar lopen. Op dit tabblad staat bewust élke pagina, niet alleen de dertig " +
           "grootste kansen, want dit is het werkstuk voor meta's.\n\n" +
           "De keten is af: voorstel, goedkeuren, doorvoeren op de site, terugcontroleren, en daarna het effect " +
-          "nameten in Search Console (klikpercentage voor en na).",
+          "nameten in Search Console (klikpercentage voor en na).\n\n" +
+          "Elk voorstel gaat door dezelfde opleverpoort als de documenten: pixelbreedte, zoekwoord vooraan, een " +
+          "concreet feit, een actieve uitnodiging. Wat wij aanleveren voldoet dus aan de hele criterialijst, " +
+          "niet alleen aan 'het wordt niet afgekapt'.",
       },
       {
         titel: "Opruimen: pagina's die elkaar in de weg zitten",
@@ -945,6 +948,32 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "generatie is een versie, dus een eerdere versie is nooit weg.\n\n" +
           "Er is ook een klantversie van een documenttype: dezelfde inhoud, maar zonder het interne " +
           "gereedschapsjargon. Wat de klant leest is niet wat de uitvoerder leest.",
+      },
+      {
+        titel: "Wat de klant krijgt is al perfect gemaakt, niet alleen beoordeeld",
+        kern: "Een oplevering bevat geen oordeel meer over ons eigen werk.",
+        tekst:
+          "In de copy-briefing staat een blok **SEO-metadata**: de paginatitel en de omschrijving zoals die in " +
+          "Google komen te staan, gemeten met de pixel-motor. Google kapt namelijk niet af op tekens maar op " +
+          "breedte: een W is breed, een i smal. De motor meet die breedte in het lettertype van de " +
+          "zoekresultaten.\n\n" +
+          "Er zat een gat in die keten. De motor mat goed, maar de poort waar onze eigen teksten doorheen " +
+          "moesten keek alleen naar wat écht kapot is: te breed, een pijp, vierkante haken. Een titel die " +
+          "alleen te kort was kwam er zo doorheen, en verscheen daarna in het klantdocument mét het oordeel " +
+          "'te kort, ruimte onbenut'. De klant las dus in onze oplevering dat ons eigen werk niet voldeed.\n\n" +
+          "Dat is nu omgedraaid. Er zijn twee oordelen, en ze staan los van elkaar:\n\n" +
+          "1. **Over wat er live staat** (vaak niet door ons geschreven): alleen wat echt kapot is, zodat een " +
+          "signaallijst geen alarm slaat bij een titel die alleen wat kort is.\n" +
+          "2. **Over wat wij opleveren:** de volledige criterialijst, inclusief onbenutte ruimte, het zoekwoord " +
+          "vooraan, een concreet feit en een actieve uitnodiging. Komt een tekst daar niet doorheen, dan gaat " +
+          "hij terug de correctielus in, met de meting erbij, tot hij het venster van Google netjes vult.\n\n" +
+          "Die lus staat op één plek, dus de documenten, de meta-voorstellen en de klantversie leveren dezelfde " +
+          "kwaliteit. Verbetert de lus een tekst in het klantdocument, dan gaat die verbetering ook terug de " +
+          "opgeslagen copy in: één tekst voor het document, voor de site en voor het nameten.\n\n" +
+          "**En het omslagbeeld liegt niet meer.** De omslag fotografeert de pagina waar het document over " +
+          "gaat. Bij een pagina die nog gebouwd moet worden bestaat die nog niet, dus stond er een 404-scherm " +
+          "als hoofdbeeld op een klantdocument. Nu wordt eerst gekeken of de pagina echt bestaat (ook als de " +
+          "site netjes een foutpagina teruggeeft), en anders komt de site van de klant zelf op de omslag.",
       },
       {
         titel: "Generaties draaien op de achtergrond",

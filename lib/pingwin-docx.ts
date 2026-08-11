@@ -38,7 +38,12 @@ export type DocSpec = {
   ondertitel?: string;
   meta?: Record<string, string>;
   sections: DocSection[];
-  /** Optioneel: de klantpagina waarvan een sfeerbeeld op de omslag komt. */
+  /**
+   * Optioneel: de klantpagina waarvan een sfeerbeeld op de omslag komt. Bestaat
+   * die pagina nog niet (een nieuw te bouwen pagina geeft een 404), dan valt de
+   * omslag vanzelf terug op de homepage van dezelfde site; nooit een foutpagina
+   * als hoofdbeeld.
+   */
   sfeerbeeldUrl?: string;
   /** Optioneel: het citaat onder aan het document. Leeg = geen citaatblok. */
   slotcitaat?: string;
@@ -112,6 +117,19 @@ function tekstOmslag(spec: DocSpec): any[] {
 
 const KOP_NIVEAU = /^\s*(H[123])\s*[—–-]\s*(.*)$/;
 
+/**
+ * De pagina zelf, en als terugval de homepage van dezelfde site. Een copy-doc
+ * gaat vaak over een pagina die nog gebouwd moet worden; die URL geeft dan een
+ * 404-scherm, en dat hoort niet als hoofdbeeld op een klantdocument.
+ */
+function sfeerbeeldKandidaten(url?: string): string[] {
+  if (!url) return [];
+  try {
+    const u = new URL(url);
+    return u.pathname === "/" ? [u.href] : [u.href, `${u.origin}/`];
+  } catch { return [url]; }
+}
+
 export async function buildPingwinDoc(spec: DocSpec): Promise<Buffer> {
   const kaders = new Kaders();
   const kids: any[] = [];
@@ -125,7 +143,7 @@ export async function buildPingwinDoc(spec: DocSpec): Promise<Buffer> {
     titel: spec.titel,
     ondertitel: spec.ondertitel,
     meta: { Klant: spec.klant, ...(spec.meta || {}) },
-  }, spec.sfeerbeeldUrl).catch(() => null);
+  }, sfeerbeeldKandidaten(spec.sfeerbeeldUrl)).catch(() => null);
   omslagGelukt = werkdocument || !!png;
   if (png) {
     kids.push(new Paragraph({ spacing: { after: 340 }, children: [new ImageRun({

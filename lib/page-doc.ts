@@ -7,7 +7,8 @@ import { measurePage, measureToText, measureCompetitors, competitorsToText } fro
 import { callClaude, callClaudeAgentic, LIGHT_MODEL, type ToolDef, type ToolRunner } from "./anthropic";
 import type { DocSpec } from "./pingwin-docx";
 import { SEO_CRITERIA_MD } from "./seo-criteria";
-import { META_RULES_PROMPT, metaPixelInfo, metaVerdictText, metaHardIssues, type MetaKind } from "./meta-rules";
+import { META_RULES_PROMPT, metaVerdictText, type MetaKind } from "./meta-rules";
+import { perfectioneerMeta } from "./meta-machine";
 import { getPageSpeed, pageSpeedToText } from "./pagespeed";
 import { ahrefsConfigured, getUrlOrganicKeywords, getSerpOverview, getKeywordsOverview, getKeywordIdeas } from "./ahrefs";
 
@@ -825,33 +826,46 @@ function findMetaSpots(spec: DocSpec): MetaSpot[] {
   return spots;
 }
 
-async function enforceMetaInSpec(spec: DocSpec, slug: string, primary: string): Promise<void> {
-  const labels: Record<MetaKind, string> = { meta_title: "meta-title", meta_description: "meta-description" };
-  for (const spot of findMetaSpots(spec)) {
-    let best = spot.get().trim();
-    let issues = metaHardIssues(spot.kind, best);
-    for (let attempt = 0; issues.length && attempt < 2; attempt++) {
-      const user = [
-        `Herschrijf deze ${labels[spot.kind]} zodat hij aan de regels voldoet. Gebreken nu: ${issues.join("; ")}.`,
-        primary ? `Primair zoekwoord (moet ${spot.kind === "meta_title" ? "vooraan blijven" : "erin blijven"}): ${primary}` : "",
-        `Huidige tekst: ${best}`,
-        `Geef ALLEEN de nieuwe tekst terug, exact zoals hij in Google moet komen. Geen uitleg, geen aanhalingstekens, één regel.`,
-      ].filter(Boolean).join("\n");
-      const raw = await callClaude(META_RULES_PROMPT, [{ role: "user", content: user }], 300, { slug, action: "meta_correctie" }, LIGHT_MODEL).catch(() => "");
-      const cand = (raw || "").trim().split("\n")[0].replace(/^["']|["']$/g, "").trim();
-      if (!cand) break;
-      // Houd de beste kandidaat: alleen overnemen als hij minder gebreken heeft of smaller is.
-      const candIssues = metaHardIssues(spot.kind, cand);
-      const smaller = metaPixelInfo(spot.kind, cand).px < metaPixelInfo(spot.kind, best).px;
-      if (candIssues.length < issues.length || (candIssues.length === issues.length && smaller)) {
-        best = cand;
-        issues = candIssues;
+/** De H1 en een korte samenvatting van de pagina, als stof voor de correctielus. */
+function specSamenvatting(spec: DocSpec): { h1: string; context: string } {
+  let h1 = "";
+  const regels: string[] = [];
+  for (const sec of spec.sections || []) {
+    for (const b of sec.blocks || []) {
+      if (b.type === "subheading" && b.text) {
+        const kop = b.text.replace(/^\s*H[123]\s*[—–-]\s*/i, "").trim();
+        if (!h1 && /^\s*H1\b/i.test(b.text)) h1 = kop;
+        if (regels.length < 10) regels.push(kop);
+      } else if (b.type === "paragraph" && b.text && regels.length < 10) {
+        regels.push(b.text.slice(0, 220));
       }
     }
-    if (best !== spot.get().trim()) {
-      console.warn(`[page-doc] meta gecorrigeerd (${spot.kind}): ${metaVerdictText(spot.kind, best)}`);
-      spot.set(best);
+  }
+  return { h1, context: regels.join("\n") };
+}
+
+async function enforceMetaInSpec(spec: DocSpec, slug: string, primary: string): Promise<void> {
+  const spots = findMetaSpots(spec);
+  if (!spots.length) return;
+  const { h1, context } = specSamenvatting(spec);
+  const titleSpot = spots.find((s) => s.kind === "meta_title");
+  for (const spot of spots) {
+    const huidig = spot.get().trim();
+    const r = await perfectioneerMeta({
+      kind: spot.kind,
+      tekst: huidig,
+      slug,
+      keyword: primary,
+      h1: h1 || undefined,
+      // De description wordt tegen de (dan al gecorrigeerde) titel getoetst.
+      title: spot.kind === "meta_description" ? titleSpot?.get().trim() : undefined,
+      context,
+    });
+    if (r.gewijzigd) {
+      console.warn(`[page-doc] meta gecorrigeerd (${spot.kind}): ${metaVerdictText(spot.kind, r.tekst)}`);
+      spot.set(r.tekst);
     }
+    if (!r.ok) console.warn(`[page-doc] meta voldoet nog niet (${spot.kind}): ${r.issues.join("; ")}`);
   }
 }
 

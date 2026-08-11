@@ -1,8 +1,10 @@
 import { getClientBySlug } from "./clients";
-import { getPageDocOutputs, getPageDriveFolder } from "./site-urls";
+import { getPageDocOutputs, getPageDriveFolder, getPagePlan, savePageDocOutput } from "./site-urls";
 import { getGscForPage } from "./google";
 import { callClaude, LIGHT_MODEL } from "./anthropic";
 import { metaVerdictText } from "./meta-rules";
+import { perfectioneerMeta } from "./meta-machine";
+import { metaUitCopydoc, type CopydocMeta } from "./copydoc-meta";
 import { buildPingwinDoc, type DocSpec, type DocSection, type DocBlock } from "./pingwin-docx";
 import { uploadDocx } from "./drive";
 
@@ -81,27 +83,93 @@ Status: "actie" als het slecht staat, "goed" als het goed staat of duidelijk ver
   } catch { return []; }
 }
 
-// Meta-titel en description uit de copy, getoetst met de pixel-motor.
-export async function metaSectie(slug: string, copyTekst: string): Promise<DocSection | null> {
+/**
+ * Het primaire zoekwoord van deze pagina: eerst wat er in het plan gekozen is
+ * ("Primair: ..."), anders het zoekwoord waarop de pagina nu het meeste bezoek
+ * haalt. Zonder zoekwoord kan de meta-poort niet toetsen of het zoekwoord
+ * vooraan staat; met een verkeerd zoekwoord zou hij verkeerd toetsen. Leeg mag
+ * dus: dan vervallen alleen die twee checks.
+ */
+async function primairZoekwoord(slug: string, url: string, domain: string): Promise<string> {
+  const plan = await getPagePlan(slug, url).catch(() => "");
+  const plat = (plan || "").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ");
+  const m = plat.match(/primair\s*[:：]\s*([^\n<]+)/i);
+  if (m) return m[1].replace(/\*+/g, "").trim();
+  if (!domain) return "";
+  const kw = await getGscForPage(domain, url, 90).catch(() => []);
+  const beste = [...kw].sort((a, b) => (b.clicks - a.clicks) || (b.impressions - a.impressions))[0];
+  return beste?.keyword || "";
+}
+
+// De meta uit de copy halen. Eerst deterministisch (dezelfde herkenning die de
+// rest van het dashboard gebruikt), en alleen als dat niets oplevert een kleine
+// AI-aanroep als vangnet. Scheelt een aanroep per document en, belangrijker,
+// het houdt het document en de meta-machine op exact dezelfde tekst.
+async function metaUitCopy(slug: string, copyTekst: string): Promise<CopydocMeta> {
+  const direct = metaUitCopydoc(copyTekst);
+  if (direct.title || direct.desc) return direct;
   const sys = `Haal uit dit document de definitieve meta-title en meta-description van de pagina (de eerste/beste variant als er meerdere staan). Antwoord met UITSLUITEND geldige JSON: {"title":"...","description":"..."}. Staat er geen meta in, geef dan lege strings.`;
   try {
     const raw = await callClaude(sys, [{ role: "user", content: copyTekst.slice(0, 8000) }], 400, { slug, action: "copy-doc-meta" }, LIGHT_MODEL);
     const clean = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
     const p = JSON.parse(clean.slice(clean.indexOf("{"), clean.lastIndexOf("}") + 1)) as { title?: string; description?: string };
-    const title = (p.title || "").trim();
-    const desc = (p.description || "").trim();
-    if (!title && !desc) return null;
-    const rows: string[][] = [];
-    if (title) rows.push(["Meta-title", title, `${title.length} tekens`, metaVerdictText("meta_title", title)]);
-    if (desc) rows.push(["Meta-description", desc, `${desc.length} tekens`, metaVerdictText("meta_description", desc)]);
-    return {
+    return { title: (p.title || "").trim(), desc: (p.description || "").trim() };
+  } catch { return { title: "", desc: "" }; }
+}
+
+/**
+ * Meta-titel en description voor het klantdocument: eerst perfect maken, dan pas
+ * tonen.
+ *
+ * Waarom die volgorde: dit document toonde het oordeel van de pixel-motor bij
+ * een tekst die het zelf had geschreven. Stond die tekst dan net buiten het
+ * venster van Google, dan las de klant in ónze oplevering dat onze eigen titel
+ * "te kort, ruimte onbenut" was. Een oordeel over eigen werk hoort niet in een
+ * oplevering; een perfecte meta wel. De correctielus (lib/meta-machine.ts)
+ * draait dus vóór het document gebouwd wordt, en wat er dan staat, is de tekst
+ * die de klant krijgt. Verbetert de lus iets, dan gaat die correctie ook terug
+ * de opgeslagen copy in, zodat het document, de site-doorvoer en de CTR-machine
+ * dezelfde tekst gebruiken.
+ */
+export async function metaSectie(slug: string, url: string, copyTekst: string, keyword?: string): Promise<{ sectie: DocSection; nieuweCopy?: string } | null> {
+  const gevonden = await metaUitCopy(slug, copyTekst);
+  if (!gevonden.title && !gevonden.desc) return null;
+
+  const h1 = (/^#\s+(.+)$/m.exec(copyTekst)?.[1] || "").replace(/^H1\s*[—–-]\s*/i, "").trim();
+  const context = copyTekst.slice(0, 1500);
+
+  const t = gevonden.title
+    ? await perfectioneerMeta({ kind: "meta_title", tekst: gevonden.title, slug, keyword, h1: h1 || undefined, context })
+    : null;
+  const titel = t?.tekst || "";
+  const d = gevonden.desc
+    ? await perfectioneerMeta({ kind: "meta_description", tekst: gevonden.desc, slug, keyword, title: titel || undefined, context })
+    : null;
+  const omschrijving = d?.tekst || "";
+
+  // Correcties terugschrijven in de opgeslagen copy, zodat er één tekst blijft.
+  let nieuweCopy: string | undefined;
+  if (t?.gewijzigd || d?.gewijzigd) {
+    let tekst = copyTekst;
+    if (t?.gewijzigd) tekst = tekst.split(gevonden.title).join(titel);
+    if (d?.gewijzigd) tekst = tekst.split(gevonden.desc).join(omschrijving);
+    if (tekst !== copyTekst) nieuweCopy = tekst;
+  }
+
+  const rows: string[][] = [];
+  if (titel) rows.push(["Meta-title", titel, `${[...titel].length} tekens`, metaVerdictText("meta_title", titel)]);
+  if (omschrijving) rows.push(["Meta-description", omschrijving, `${[...omschrijving].length} tekens`, metaVerdictText("meta_description", omschrijving)]);
+
+  return {
+    sectie: {
       heading: "SEO-metadata (gemeten met de Pingwin pixel-motor)",
       blocks: [
         { type: "table", headers: ["Element", "Tekst", "Lengte", "Oordeel"], rows },
-        { type: "paragraph", text: "Google meet titels en beschrijvingen niet in tekens maar in pixels; onze motor meet de exacte breedte en toetst aan de vaste criterialijst, zodat niets wordt afgekapt in de zoekresultaten." },
+        { type: "paragraph", text: "Google meet titels en beschrijvingen niet in tekens maar in pixels: een W is breed, een i smal. Onze motor meet de exacte breedte in het lettertype van de zoekresultaten en schrijft net zo lang bij of in tot de tekst het venster van Google precies vult. Zo wordt er niets afgekapt en blijft er geen ruimte onbenut waarin een concurrent wél zijn argument kwijt kan." },
       ],
-    };
-  } catch { return null; }
+    },
+    nieuweCopy,
+  };
 }
 
 // De opgeslagen copy-tekst (markdown-achtig) → nette document-secties, met de
@@ -141,10 +209,14 @@ export async function buildCopyKlantSpec(slug: string, url: string): Promise<{ o
   const copy = outputs["copy"] || "";
   if (!copy.trim()) return { ok: false, error: "Voor deze pagina is nog geen copy gegenereerd; draai eerst de copy-stap." };
   const pad = (() => { try { return new URL(url).pathname; } catch { return url; } })();
+  const keyword = await primairZoekwoord(slug, url, client.domain || "");
   const [maatwerk, meta] = await Promise.all([
     maatwerkSecties(slug, url, copy, outputs["analyse"] || ""),
-    metaSectie(slug, copy),
+    metaSectie(slug, url, copy, keyword),
   ]);
+  // Heeft de correctielus de meta bijgeschaafd, dan gaat die tekst ook terug de
+  // opgeslagen copy in: één tekst voor het document, de site en de CTR-machine.
+  if (meta?.nieuweCopy) await savePageDocOutput(slug, url, "copy", meta.nieuweCopy).catch(() => { /* terugschrijven is aanvulling */ });
   const copySecties = copyNaarSecties(copy).filter((s) => !/seo-metadata|scorecard|behoud/i.test(s.heading || ""));
   const spec: DocSpec = {
     klant: client.name,
@@ -159,7 +231,7 @@ export async function buildCopyKlantSpec(slug: string, url: string): Promise<{ o
       COPY_INTRO_SECTIE,
       COPY_UITLEG_SECTIE,
       ...maatwerk,
-      ...(meta ? [meta] : []),
+      ...(meta ? [meta.sectie] : []),
       { heading: "De volledige webteksten (lees na en corrigeer)", blocks: [{ type: "paragraph", text: "Hieronder de volledige teksten voor de pagina. Lees ze door, pas aan waar nodig en geef je correcties terug aan Pingwin. Bij elke kop staat de aanduiding (H1, H2, H3), zodat de sitebouwer precies weet welk kopniveau hij moet gebruiken." }] },
       ...copySecties,
     ],

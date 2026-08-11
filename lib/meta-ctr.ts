@@ -10,9 +10,10 @@ import { getClientUrls } from "./site-urls";
 import { getGscPageOpportunities, getGscDailyForPage } from "./google";
 import { cacheGet, cacheSet, getKeywordsOverview } from "./ahrefs";
 import { measurePage } from "./page-measure";
-import { callClaude, LIGHT_MODEL } from "./anthropic";
+import { callClaude } from "./anthropic";
 import { getCopydocMetas, type CopydocMeta } from "./copydoc-meta";
-import { META_RULES_PROMPT, metaHardIssues, metaPixelInfo, type MetaKind } from "./meta-rules";
+import { META_RULES_PROMPT, metaHardIssues, type MetaKind } from "./meta-rules";
+import { perfectioneerMeta } from "./meta-machine";
 
 let tablesReady = false;
 async function ensureTables(): Promise<void> {
@@ -365,8 +366,10 @@ export async function generateMetaProposal(
   }
   if (!title || !desc) throw new Error("Het voorstel kwam leeg terug. Probeer het opnieuw.");
 
-  title = await fixHardIssues("meta_title", title, keyword, slug);
-  desc = await fixHardIssues("meta_description", desc, keyword, slug);
+  // Door dezelfde opleverpoort als de documenten: pixels, zoekwoord, CTA, feit.
+  const paginaContext = [h1 ? `H1: ${h1}` : "", m?.h2?.length ? `H2's: ${m.h2.slice(0, 8).join(" | ")}` : ""].filter(Boolean).join("\n");
+  title = (await perfectioneerMeta({ kind: "meta_title", tekst: title, slug, keyword, h1, context: paginaContext })).tekst;
+  desc = (await perfectioneerMeta({ kind: "meta_description", tekst: desc, slug, keyword, title, context: paginaContext })).tekst;
 
   await sql`
     INSERT INTO meta_proposals (client_slug, page_url, keyword, cur_title, cur_desc, prop_title, prop_desc, status, ctr_before, position_before, impressions_before)
@@ -411,32 +414,6 @@ export async function importCopydocProposal(slug: string, url: string): Promise<
       title_status = ${cd.title ? "goedgekeurd" : "open"}, desc_status = ${cd.desc ? "goedgekeurd" : "open"},
       approved_at = now(), live_at = NULL, updated_at = now()`;
   return { propTitle: cd.title || "", propDesc: cd.desc || "" };
-}
-
-// Pixel-correctielus (zelfde principe als in page-doc): alleen bij harde gebreken
-// gericht laten herschrijven, maximaal 2 pogingen, de beste kandidaat wint.
-async function fixHardIssues(kind: MetaKind, text: string, keyword: string, slug: string): Promise<string> {
-  let best = text;
-  let issues = metaHardIssues(kind, best);
-  const label = kind === "meta_title" ? "meta-title" : "meta-description";
-  for (let attempt = 0; issues.length && attempt < 2; attempt++) {
-    const user = [
-      `Herschrijf deze ${label} zodat hij aan de regels voldoet. Gebreken nu: ${issues.join("; ")}.`,
-      keyword ? `Primair zoekwoord (moet ${kind === "meta_title" ? "vooraan blijven" : "erin blijven"}): ${keyword}` : "",
-      `Huidige tekst: ${best}`,
-      `Geef ALLEEN de nieuwe tekst terug, één regel, geen uitleg of aanhalingstekens.`,
-    ].filter(Boolean).join("\n");
-    const raw = await callClaude(META_RULES_PROMPT, [{ role: "user", content: user }], 300, { slug, action: "meta_correctie" }, LIGHT_MODEL).catch(() => "");
-    const cand = (raw || "").trim().split("\n")[0].replace(/^["']|["']$/g, "").trim();
-    if (!cand) break;
-    const candIssues = metaHardIssues(kind, cand);
-    const smaller = metaPixelInfo(kind, cand).px < metaPixelInfo(kind, best).px;
-    if (candIssues.length < issues.length || (candIssues.length === issues.length && smaller)) {
-      best = cand;
-      issues = candIssues;
-    }
-  }
-  return best;
 }
 
 // ── Bewerken en status ──
@@ -525,7 +502,12 @@ export async function regenerateMetaField(slug: string, url: string, field: "tit
   const raw = await callClaude(system, [{ role: "user", content: user }], 300, { slug, action: "meta_ctr_voorstel" });
   let text = (raw || "").trim().split("\n")[0].replace(/^["']|["']$/g, "").trim();
   if (!text) throw new Error("Het voorstel kwam leeg terug. Probeer het opnieuw.");
-  text = await fixHardIssues(kind, text, keyword, slug);
+  text = (await perfectioneerMeta({
+    kind, tekst: text, slug, keyword,
+    h1: field === "title" ? h1 : undefined,
+    title: field === "desc" ? other || undefined : undefined,
+    context: [h1 ? `H1: ${h1}` : "", m?.h2?.length ? `H2's: ${m.h2.slice(0, 8).join(" | ")}` : ""].filter(Boolean).join("\n"),
+  })).tekst;
 
   if (field === "title") await sql`UPDATE meta_proposals SET prop_title = ${text}, title_status = 'open', updated_at = now() WHERE client_slug = ${slug} AND page_url = ${url}`;
   else await sql`UPDATE meta_proposals SET prop_desc = ${text}, desc_status = 'open', updated_at = now() WHERE client_slug = ${slug} AND page_url = ${url}`;

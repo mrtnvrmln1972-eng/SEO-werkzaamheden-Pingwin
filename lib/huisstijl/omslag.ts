@@ -82,26 +82,59 @@ h1{font-size:37px;line-height:1.16;font-weight:800;margin-bottom:12px;letter-spa
 }
 
 /**
- * De omslag als PNG, inclusief het sfeerbeeld van de klantpagina.
+ * Ziet deze pagina eruit als een foutpagina, ondanks een nette statuscode?
+ * Veel sites geven een 200 terug met een "Oeps, 404"-scherm erin.
+ */
+async function lijktOp404(page: any): Promise<boolean> {
+  try {
+    const tekst = await page.evaluate(() => {
+      const h = document.querySelector("h1");
+      return `${document.title || ""} ${h ? h.textContent || "" : ""}`;
+    });
+    return /(^|\D)404(\D|$)|niet gevonden|not found|bestaat niet|oeps|oops|page unavailable/i.test(String(tekst || ""));
+  } catch { return false; }
+}
+
+/**
+ * Het sfeerbeeld: de eerste kandidaat die een échte pagina oplevert.
+ *
+ * Waarom er kandidaten zijn: bij een nieuwe pagina bestaat de URL nog niet, dus
+ * fotografeerde de omslag de 404-pagina van de klant. Die belandde dan als
+ * hoofdbeeld in het klantdocument, boven de tekst die de pagina juist moet gaan
+ * vullen. Bestaat de pagina niet, dan pakken we de site zelf; een mooi beeld van
+ * de klant is altijd beter dan een foutmelding.
+ */
+async function sfeerbeeldVan(page: any, urls: string[]): Promise<string | null> {
+  await page.setViewport({ width: 1280, height: 860, deviceScaleFactor: 1 });
+  await page.setUserAgent("Mozilla/5.0 (compatible; PingwinBot/1.0; +https://pingwin.nl)");
+  for (const u of urls) {
+    if (!u) continue;
+    try {
+      const resp = await page.goto(u, { waitUntil: "networkidle2", timeout: 20000 });
+      const status = typeof resp?.status === "function" ? resp.status() : 200;
+      if (status >= 400) continue;
+      if (await lijktOp404(page)) continue;
+      await new Promise((r) => setTimeout(r, 700));
+      const shot = await page.screenshot({ type: "jpeg", quality: 72 });
+      return `data:image/jpeg;base64,${Buffer.from(shot).toString("base64")}`;
+    } catch { /* deze kandidaat lukte niet; probeer de volgende */ }
+  }
+  return null;
+}
+
+/**
+ * De omslag als PNG, inclusief het sfeerbeeld van de klantsite.
  * Null betekent: gebruik de tekst-omslag.
  *
  * Het sfeerbeeld en de omslag gaan bewust door één browserstart. Twee keer
  * opstarten kost op Vercel een paar seconden extra per document, en er worden er
  * drie per pagina gemaakt (analyse, blauwdruk, copy).
  */
-export async function omslagPng(g: OmslagGegevens, paginaUrl?: string): Promise<Buffer | null> {
+export async function omslagPng(g: OmslagGegevens, paginaUrl?: string | string[]): Promise<Buffer | null> {
+  const kandidaten = (Array.isArray(paginaUrl) ? paginaUrl : [paginaUrl]).filter(Boolean) as string[];
   return metBrowser(async (page) => {
-    let beeld: string | null = null;
-    if (paginaUrl) {
-      try {
-        await page.setViewport({ width: 1280, height: 860, deviceScaleFactor: 1 });
-        await page.setUserAgent("Mozilla/5.0 (compatible; PingwinBot/1.0; +https://pingwin.nl)");
-        await page.goto(paginaUrl, { waitUntil: "networkidle2", timeout: 20000 });
-        await new Promise((r) => setTimeout(r, 700));
-        const shot = await page.screenshot({ type: "jpeg", quality: 72 });
-        beeld = `data:image/jpeg;base64,${Buffer.from(shot).toString("base64")}`;
-      } catch { beeld = null; }   // geen sfeerbeeld is geen reden om de omslag te laten vallen
-    }
+    // Geen sfeerbeeld is geen reden om de omslag te laten vallen.
+    const beeld = kandidaten.length ? await sfeerbeeldVan(page, kandidaten).catch(() => null) : null;
     await page.setViewport({ width: 1000, height: 700, deviceScaleFactor: 2.4 });
     await page.setContent(omslagHtml({ ...g, sfeerbeeld: beeld }), { waitUntil: "networkidle0", timeout: 20000 });
     const el = await page.$(".cover");
