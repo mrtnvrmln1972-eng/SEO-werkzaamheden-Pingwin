@@ -80,6 +80,31 @@ export async function createWpRedirect(conn: WpConn, fromPath: string, toPath: s
   return d?.id ?? d?.item?.id ?? null;
 }
 
+// Zet een pad op 410 ("bewust weg") in de Redirection-plugin. Dat is geen
+// omleiding maar een antwoord: deze pagina komt niet terug. De keuzeladder zet
+// dit bewust vóór een omleiding naar de homepage, want massaal naar de homepage
+// omleiden doet functioneel hetzelfde zonder het duidelijke signaal aan Google.
+export async function createWpGone(conn: WpConn, fromPath: string): Promise<number | null> {
+  const groupId = await pingwinGroupId(conn);
+  const res = await redirectionFetch(conn, "/redirect", {
+    method: "POST",
+    body: JSON.stringify({
+      url: fromPath,
+      match_type: "url",
+      action_type: "error",
+      action_code: 410,
+      group_id: groupId,
+    }),
+  });
+  const d = await res.json().catch(() => null) as { id?: number; item?: { id?: number }; message?: string; error_description?: string } | null;
+  if (!res.ok) {
+    const msg = String(d?.message || d?.error_description || "");
+    if (/duplicate|already exists|bestaat al/i.test(msg)) return null;
+    throw new Error(msg || `410 instellen mislukte (${res.status}).`);
+  }
+  return d?.id ?? d?.item?.id ?? null;
+}
+
 // ── Live verificatie: is het van-pad echt een 301 naar het juiste doel? ──
 function normPath(p: string): string {
   return ("/" + (p || "").replace(/^https?:\/\/[^/]+/i, "").replace(/^\/+/, "")).replace(/\/+$/, "") || "/";

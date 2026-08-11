@@ -3,6 +3,8 @@ import { getSlugByOpruimToken } from "../../../../lib/opruim-deel";
 import { getCannibalAnalysis, zorgVoorPlaatsen } from "../../../../lib/cannibal-redirect";
 import { getClientBySlug } from "../../../../lib/clients";
 import { bouwWerklijst, tellingen } from "../../../../lib/opruim-werklijst";
+import { getSetting } from "../../../../lib/settings";
+import type { DoelenRapport } from "../../../../lib/opruim-doelvinder";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -26,7 +28,19 @@ export async function GET(req: NextRequest) {
       domain ? zorgVoorPlaatsen(slug, domain).catch(() => null) : Promise.resolve(null),
     ]);
     const regels = bouwWerklijst(st.result, plaatsen?.adviezen || []);
-    return NextResponse.json({ ok: true, regels, tellingen: tellingen(regels), lijstDatum: st.result?.generatedAt || null });
+    // De voorgestelde redirect-doelen komen alleen uit de bewaarde stand, nooit
+    // vers berekend: dit is een publieke leesroute en die hoort geen zware
+    // berekening (en geen Ahrefs-opvraag) te kunnen aanzetten. Staat er nog
+    // niets, dan toont de klantversie gewoon geen doel.
+    let voorstellen: DoelenRapport["voorstellen"] = [];
+    try {
+      const ruw = await getSetting(`opruim_doelen:${slug}`);
+      if (ruw) {
+        const d = JSON.parse(ruw) as DoelenRapport & { lijstDatum: string | null };
+        if ((d.lijstDatum ?? null) === (st.result?.generatedAt || null)) voorstellen = d.voorstellen || [];
+      }
+    } catch { /* geen doelen is geen fout */ }
+    return NextResponse.json({ ok: true, regels, tellingen: tellingen(regels), voorstellen, lijstDatum: st.result?.generatedAt || null });
   } catch (e) {
     return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : "Lijst bouwen mislukt." }, { status: 500 });
   }

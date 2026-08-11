@@ -13,7 +13,7 @@
 // onderbouwing; die zijn nu de verdieping, niet de hoofdmoot.
 // ═══════════════════════════════════════════════════════════
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 type Uitkomst = "uitbouwen" | "samenvoegen" | "blijft" | "opruimen" | "nieuw";
 type Herkomst = "plaats" | "onderwerp" | "kans" | "gat" | "cannibalisatie";
@@ -21,7 +21,31 @@ type Regel = {
   pad: string; uitkomst: Uitkomst; naar: string; herkomst: Herkomst[]; reden: string; onderbouwing: string[];
   term: string; volume: number | null; klikken: number; vertoningen: number; positie: number | null; groep: string;
 };
-type Data = { regels: Regel[]; tellingen: Record<Uitkomst, number> & { totaal: number }; lijstDatum: string | null };
+type Data = { regels: Regel[]; tellingen: Record<Uitkomst, number> & { totaal: number }; lijstDatum: string | null; voorstellen?: Voorstel[] };
+
+// ── Waar moet een pagina die weggaat heen? ──
+// Een 301 draagt alleen iets over als de doelpagina een redelijke vervanging is,
+// gezien vanuit de bezoeker. De ladder erachter staat in lib/opruim-doelvinder.ts;
+// hier tonen we per pagina welke trede het geworden is, waarom, en wat er nodig
+// is om het door te voeren.
+type Trede = "opvolger" | "zuster" | "hub" | "410" | "homepage";
+type Voorstel = {
+  van: string; doel: string; trede: Trede; zeker: "hoog" | "middel" | "laag";
+  kort: string; waarom: string[]; waarschuwingen: string[]; vast: boolean;
+  gewicht: { refDomains: number | null; klikken: number; vertoningen: number };
+};
+type TestUitslag = {
+  goed: boolean; oordeel: "goed" | "let-op" | "fout"; meldingen: string[];
+  hops: { url: string; status: number }[]; eind: string; eindStatus: number | null;
+};
+
+const TREDE_LABEL: Record<Trede, string> = {
+  opvolger: "trede 1 · inhoudelijke opvolger",
+  zuster: "trede 2 · dichtstbijzijnde zuster",
+  hub: "trede 3 · categorie erboven",
+  "410": "trede 4 · 410, bewust weg",
+  homepage: "trede 5 · homepage, laatste redmiddel",
+};
 
 const CHIP: Record<Uitkomst, string> = {
   uitbouwen: "keep", nieuw: "merge", samenvoegen: "merge", blijft: "", opruimen: "nodig",
@@ -58,6 +82,14 @@ function taakVoor(r: Regel): string {
   return `Beoordeel ${r.pad}`;
 }
 
+const padSleutel = (u: string) => (u || "").replace(/^https?:\/\/[^/]+/i, "").replace(/\/+$/, "").toLowerCase() || "/";
+
+function perPad(lijst: Voorstel[]): Record<string, Voorstel> {
+  const uit: Record<string, Voorstel> = {};
+  for (const v of lijst) uit[padSleutel(v.van)] = v;
+  return uit;
+}
+
 /**
  * Dezelfde lijst dient twee schermen: de cockpit en de deellink voor de klant.
  * Dat is bewust één component in plaats van twee, want een tweede versie loopt
@@ -78,6 +110,15 @@ export default function OpruimEenLijst({ slug, domain, token, alleenLezen, titel
   // fases; hier hoeven we die dus niet na te bouwen.
   const [planBezig, setPlanBezig] = useState("");
   const [klaar, setKlaar] = useState<Record<string, string>>({});
+  // De voorgestelde bestemmingen, plus wat de knoppen ermee deden.
+  const [doelen, setDoelen] = useState<Record<string, Voorstel>>({});
+  const [doelBezig, setDoelBezig] = useState("");
+  const [uitslag, setUitslag] = useState<Record<string, TestUitslag>>({});
+  const [fout, setFout] = useState<Record<string, string>>({});
+  const [bulk, setBulk] = useState("");
+  // Eén actie tegelijk. Via een ref en niet via state, want in de lus hieronder
+  // is de state uit de render altijd een slag achter.
+  const bezigRef = useRef(false);
 
   useEffect(() => {
     if (!slug && !token) return;
@@ -87,9 +128,26 @@ export default function OpruimEenLijst({ slug, domain, token, alleenLezen, titel
       : `/api/admin/opruim-werklijst?slug=${encodeURIComponent(slug)}`;
     fetch(bron)
       .then((r) => r.json())
-      .then((j) => { if (leeft && j?.ok) setD(j); })
+      .then((j) => {
+        if (!leeft || !j?.ok) return;
+        setD(j);
+        // De klantversie krijgt de voorstellen mee in dezelfde opvraag (alleen
+        // uit de bewaarde stand); de cockpit haalt ze apart op, want daar mogen
+        // ze ook vers berekend worden.
+        if (Array.isArray(j.voorstellen)) setDoelen(perPad(j.voorstellen));
+      })
       .catch(() => { /* stil */ })
       .finally(() => { if (leeft) setBezig(false); });
+    return () => { leeft = false; };
+  }, [slug, token]);
+
+  useEffect(() => {
+    if (token || !slug) return;
+    let leeft = true;
+    fetch(`/api/admin/opruim-doelen?slug=${encodeURIComponent(slug)}`)
+      .then((r) => r.json())
+      .then((j) => { if (leeft && j?.ok && Array.isArray(j.voorstellen)) setDoelen(perPad(j.voorstellen)); })
+      .catch(() => { /* een ontbrekend voorstel is geen kapot scherm */ });
     return () => { leeft = false; };
   }, [slug, token]);
 
@@ -115,10 +173,102 @@ export default function OpruimEenLijst({ slug, domain, token, alleenLezen, titel
   }
   const Link = ({ p }: { p: string }) => <a className="opr-pad" href={site(p)} target="_blank" rel="noreferrer">{p}</a>;
 
+  // ── De twee knoppen bij een voorgesteld doel ──
+  // Testen leest alleen (en mag dus ook in een meekijk-sessie); plaatsen zet de
+  // omleiding in de site en meet daarna zelf na of hij er echt staat. Wat er
+  // uitkomt is wat je ziet: er wordt niets "gelukt" gemeld dat niet gemeten is.
+  async function test(v: Voorstel) {
+    if (bezigRef.current) return;
+    bezigRef.current = true;
+    setDoelBezig(v.van); setFout((m) => ({ ...m, [v.van]: "" }));
+    try {
+      const q = new URLSearchParams({ slug, actie: "test", van: v.van, naar: v.doel, gone: v.trede === "410" ? "1" : "0" });
+      const j = await fetch(`/api/admin/opruim-doelen?${q}`).then((x) => x.json());
+      if (j?.ok) setUitslag((m) => ({ ...m, [v.van]: j.test }));
+      else setFout((m) => ({ ...m, [v.van]: j?.error || "De test lukte niet." }));
+    } catch { setFout((m) => ({ ...m, [v.van]: "De test lukte niet." })); }
+    finally { bezigRef.current = false; setDoelBezig(""); }
+  }
+
+  async function plaats(v: Voorstel) {
+    if (bezigRef.current) return;
+    bezigRef.current = true;
+    setDoelBezig(v.van); setFout((m) => ({ ...m, [v.van]: "" }));
+    try {
+      const j = await fetch("/api/admin/opruim-doelen", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, actie: "plaats", van: v.van, naar: v.doel, gone: v.trede === "410" }),
+      }).then((x) => x.json());
+      if (j?.test) setUitslag((m) => ({ ...m, [v.van]: j.test }));
+      if (!j?.ok && j?.error) setFout((m) => ({ ...m, [v.van]: j.error }));
+    } catch { setFout((m) => ({ ...m, [v.van]: "Doorvoeren lukte niet." })); }
+    finally { bezigRef.current = false; setDoelBezig(""); }
+  }
+
+  /** Alles in één keer: rij voor rij, zodat je onderweg ziet hoe ver het is en
+      een fout op één pagina de rest niet tegenhoudt. */
+  async function allemaal(lijst: Voorstel[], wat: "test" | "plaats") {
+    if (bezigRef.current || !lijst.length) return;
+    for (let i = 0; i < lijst.length; i++) {
+      setBulk(`${wat === "test" ? "Testen" : "Doorvoeren"}: ${i + 1} van ${lijst.length}…`);
+      // eslint-disable-next-line no-await-in-loop
+      await (wat === "test" ? test(lijst[i]) : plaats(lijst[i]));
+    }
+    setBulk("");
+  }
+
+  /** De cel "Waarheen" voor een pagina die nog geen bestemming had: het voorstel
+      uit de keuzeladder, met de knoppen om het door te voeren en na te meten. */
+  function Doelcel({ r }: { r: Regel }) {
+    const v = doelen[padSleutel(r.pad)];
+    if (!v) return <span className="opr-leeg">&mdash;</span>;
+    const u = uitslag[v.van];
+    const gone = v.trede === "410";
+    return (
+      <div className="opr-doel">
+        {gone ? <span className="opr-chip nodig">410, bewust weg</span> : <Link p={v.doel} />}
+        <div className="opr-doel-trede">
+          {TREDE_LABEL[v.trede]}
+          {v.vast ? " · door jou vastgelegd" : v.zeker === "hoog" ? "" : ` · ${v.zeker} zeker`}
+        </div>
+        {!alleenLezen && (
+          <div className="opr-doel-acties">
+            <button type="button" className="btn btn-primary btn-klein" disabled={!!doelBezig || !!bulk}
+              onClick={() => void plaats(v)}
+              title={gone ? "Zet deze pagina op 410 in de website: bewust weg, geen omleiding." : `Zet de 301 van ${v.van} naar ${v.doel} in de website en meet daarna na of hij er echt staat.`}>
+              {doelBezig === v.van ? "Bezig…" : gone ? "Zet op 410" : "Plaats redirect"}
+            </button>
+            <button type="button" className="btn btn-ghost btn-klein" disabled={!!doelBezig || !!bulk}
+              onClick={() => void test(v)}
+              title="Open het oude adres en kijk wat er echt gebeurt: welke status, hoeveel tussenstappen, en of het eindpunt bestaat en indexeerbaar is.">
+              Test redirect
+            </button>
+          </div>
+        )}
+        {u && (
+          <div className={`opr-doel-uitslag ${u.oordeel}`}>
+            <strong>{u.oordeel === "goed" ? "Werkt" : u.oordeel === "let-op" ? "Werkt, met een kanttekening" : "Werkt niet"}</strong>
+            {u.meldingen.map((m, i) => <span key={i}>{m}</span>)}
+          </div>
+        )}
+        {fout[v.van] && <div className="opr-doel-uitslag fout"><span>{fout[v.van]}</span></div>}
+      </div>
+    );
+  }
+
   if (bezig) return <div className="muted opr-str-laden">De werklijst wordt samengesteld…</div>;
   if (!d || !d.regels.length) return null;
 
   const rijen = filter === "alles" ? d.regels : d.regels.filter((r) => r.uitkomst === filter);
+
+  // De voorstellen die bij de zichtbare rijen horen: waar je nu naar kijkt, is
+  // ook waar "voer alles door" over gaat. Anders zet één klik iets recht dat je
+  // niet op je scherm had staan.
+  const zichtbareVoorstellen = rijen
+    .filter((r) => !r.naar)
+    .map((r) => doelen[padSleutel(r.pad)])
+    .filter((v): v is Voorstel => !!v);
+  const telTrede = (t: Trede) => zichtbareVoorstellen.filter((v) => v.trede === t).length;
 
   // Groeperen op plaats of onderwerp: dezelfde regels, andere indeling.
   //
@@ -184,6 +334,29 @@ export default function OpruimEenLijst({ slug, domain, token, alleenLezen, titel
         </span>
       </div>
 
+      {!alleenLezen && zichtbareVoorstellen.length > 0 && (
+        <div className="opr-doel-balk">
+          <div className="opr-doel-balk-tekst">
+            <strong>{zichtbareVoorstellen.length} van deze pagina&rsquo;s {zichtbareVoorstellen.length === 1 ? "heeft" : "hebben"} een voorgestelde bestemming.</strong>
+            <span>
+              {telTrede("410") > 0 && `${telTrede("410")} krijgt geen omleiding maar een 410 (bewust weg): er is geen doel dat de bezoeker echt helpt, en een omleiding naar iets dat er net niet over gaat draagt niets over. `}
+              Test eerst, voer daarna door. Doorvoeren meet zichzelf na.
+            </span>
+          </div>
+          <div className="opr-doel-acties">
+            <button type="button" className="btn btn-ghost btn-klein" disabled={!!bulk || !!doelBezig}
+              onClick={() => void allemaal(zichtbareVoorstellen, "test")}>
+              Test alle voorstellen
+            </button>
+            <button type="button" className="btn btn-primary btn-klein" disabled={!!bulk || !!doelBezig}
+              onClick={() => { if (window.confirm(`${zichtbareVoorstellen.length} bestemmingen doorvoeren op de website. Elke regel wordt daarna nagemeten. Doorgaan?`)) void allemaal(zichtbareVoorstellen, "plaats"); }}>
+              Voer alles door
+            </button>
+            {bulk && <span className="opr-doel-balk-stand">{bulk}</span>}
+          </div>
+        </div>
+      )}
+
       {volgorde.map(([naam, lijst]) => (
         <div key={naam} className="opr-onderwerp">
           <div className="opr-onderwerp-kop">
@@ -207,7 +380,7 @@ export default function OpruimEenLijst({ slug, domain, token, alleenLezen, titel
                       <div className="opr-eind-slokt">{r.herkomst.map((h) => HERKOMST_LABEL[h]).join(" · ")}</div>
                     </td>
                     <td><span className={`opr-chip ${CHIP[r.uitkomst]}`} title={WAT[r.uitkomst]}>{LABEL[r.uitkomst]}</span></td>
-                    <td>{r.naar ? <Link p={r.naar} /> : <span className="opr-leeg">&mdash;</span>}</td>
+                    <td>{r.naar ? <Link p={r.naar} /> : <Doelcel r={r} />}</td>
                     <td>{r.volume != null ? `${r.volume}x` : <span className="opr-leeg">&mdash;</span>}</td>
                     <td>
                       {r.klikken > 0 ? <strong>{r.klikken} bezoekers</strong> : r.vertoningen > 0 ? `${r.vertoningen} vert.` : <span className="opr-leeg">niets</span>}
@@ -243,6 +416,19 @@ export default function OpruimEenLijst({ slug, domain, token, alleenLezen, titel
                         <div className="opr-uitleg">
                           <div className="opr-bewijs">
                             {r.onderbouwing.map((z, i) => <Zin key={i} tekst={z} />)}
+                            {(() => {
+                              const v = doelen[padSleutel(r.pad)];
+                              if (!v || r.naar) return null;
+                              return (
+                                <div className="opr-doel-waarom">
+                                  <Zin tekst={`**Waar deze pagina heen gaat:** ${v.kort}`} />
+                                  {v.waarom.map((z, i) => <Zin key={i} tekst={z} />)}
+                                  {v.waarschuwingen.map((w, i) => (
+                                    <div key={i} className="opr-doel-waarschuw"><Zin tekst={w} /></div>
+                                  ))}
+                                </div>
+                              );
+                            })()}
                           </div>
                         </div>
                       </td>

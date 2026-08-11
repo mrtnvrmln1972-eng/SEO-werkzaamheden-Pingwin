@@ -7105,3 +7105,31 @@ a.wb-pad:hover { text-decoration: underline; }
 .sb-kaart-meta { font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); margin-top: var(--s-1); }
 .uitleg-hoofdstuk-beeld { border: 1px solid var(--border); border-radius: var(--r-md); overflow: hidden; box-shadow: var(--shadow-sm); margin: var(--s-4) 0; }
 .uitleg-hoofdstuk-beeld img { display: block; width: 100%; height: auto; }
+
+/* ── Voorgestelde redirect-bestemming in de werklijst ──────────────────────
+   Een pagina die weggaat heeft een doel nodig, en dat doel is een besluit met
+   een onderbouwing: de trede van de keuzeladder staat er klein onder, de twee
+   knoppen staan direct bij het doel (doorvoeren en nameten horen bij die kolom,
+   niet bij de planningkolom ernaast) en de uitslag van de test krijgt zijn eigen
+   vorm in plaats van een losse rode regel in de tabel. */
+.opr-doel { display: flex; flex-direction: column; gap: var(--s-1); align-items: flex-start; }
+.opr-doel-trede { font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--muted); }
+.opr-doel-acties { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; }
+.opr-doel-uitslag { display: flex; flex-direction: column; gap: var(--s-1); max-width: 44ch;
+  padding: var(--s-2); border-radius: var(--r-sm); border-left: 3px solid var(--border);
+  background: var(--gray-light); font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--body-text); }
+.opr-doel-uitslag strong { color: var(--dark); }
+.opr-doel-uitslag.goed { background: #e7f6ea; border-left-color: #2E7D32; }
+.opr-doel-uitslag.let-op { background: rgba(231, 119, 63, 0.12); border-left-color: var(--orange-dark); }
+.opr-doel-uitslag.fout { background: var(--red-light); border-left-color: var(--red); }
+.opr-doel-waarom { margin-top: var(--s-3); padding-top: var(--s-2); border-top: 1px dashed var(--border); break-inside: avoid; }
+.opr-doel-waarschuw { margin-top: var(--s-2); padding: var(--s-2); border-radius: var(--r-sm);
+  background: rgba(231, 119, 63, 0.10); border-left: 3px solid var(--orange-dark); break-inside: avoid; }
+.opr-doel-waarschuw p:last-child { margin-bottom: 0; }
+.opr-doel-balk { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: var(--s-3); margin: var(--s-3) 0; padding: var(--s-3); border: 1px solid var(--card-border);
+  border-radius: var(--r-md); background: var(--white); }
+.opr-doel-balk-tekst { display: flex; flex-direction: column; gap: var(--s-1); max-width: 78ch;
+  font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--muted); }
+.opr-doel-balk-tekst strong { color: var(--dark); }
+.opr-doel-balk-stand { font-size: var(--fs-xs); color: var(--muted); }
