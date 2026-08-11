@@ -47,6 +47,14 @@ export type Doorgevoerd = {
   /** Kon er überhaupt iets gemeten worden? */
   meetbaar: boolean;
   samenvatting: string;
+  /**
+   * De ruwe koppen-meting, als die punt is gemeten. Zodat de aanroeper hem kan
+   * doorzetten naar de gedeelde stand (persistCopyLive in copy-live.ts): zonder
+   * dat blijft deze meting op zichzelf staan en weet de rest van het dashboard
+   * (fase "Bouw en publicatie", het bordoverzicht) niet dat de copy net bevestigd
+   * live bleek.
+   */
+  copyLive?: Awaited<ReturnType<typeof meetCopyLive>>;
 };
 
 /**
@@ -101,6 +109,10 @@ export async function meetDoorgevoerd(slug: string, url: string, punten: PuntId[
         : { id: "live", label: labelVan("live"), uitslag: "niet", bewijs: `pagina geeft ${status ?? "geen antwoord"}` });
   }
 
+  // De ruwe koppen-meting, als die punt gemeten wordt: de aanroeper zet hem door
+  // naar de gedeelde stand (persistCopyLive), zodat een meting hier niet op
+  // zichzelf blijft staan (zie het commentaar bij Doorgevoerd.copyLive).
+  let copyLive: Doorgevoerd["copyLive"];
   if (lijst.includes("koppen")) {
     const tekst = await copyTekst(slug, url).catch(() => "");
     if (!tekst) {
@@ -112,6 +124,7 @@ export async function meetDoorgevoerd(slug: string, url: string, punten: PuntId[
       if (!m || !m.meetbaar) {
         uit.push({ id: "koppen", label: labelVan("koppen"), uitslag: "onmeetbaar", bewijs: "kon de koppen van de pagina niet uitlezen" });
       } else {
+        copyLive = m;
         uit.push({
           id: "koppen", label: labelVan("koppen"),
           uitslag: m.doorgevoerd ? "goed" : "niet",
@@ -140,7 +153,7 @@ export async function meetDoorgevoerd(slug: string, url: string, punten: PuntId[
     ? "kon niets meten"
     : `${goed} van de ${gemeten.length} punten in orde${uit.length > gemeten.length ? `, ${uit.length - gemeten.length} niet te meten` : ""}`;
 
-  return { url, gemeten: wanneer, punten: uit, alles, meetbaar: gemeten.length > 0, samenvatting };
+  return { url, gemeten: wanneer, punten: uit, alles, meetbaar: gemeten.length > 0, samenvatting, copyLive };
 }
 
 /**

@@ -33,7 +33,7 @@ import {
   mondayOfISOWeek, isoVan, weekVanIso, datumNaVerplaatsing, dagenTussen, isoVanDatum,
 } from "../../../../lib/week-datum";
 import { nieuweVolgorde, bewaarVolgorde, opVolgorde } from "../../../../lib/weekplan-slepen";
-import { isKorteTitel, werkwoordVoor } from "../../../../lib/kaart-titel";
+import { isKorteTitel } from "../../../../lib/kaart-titel";
 import WeekplanCard, { type WpTask, type WpPageInfo } from "./WeekplanCard";
 import MailUitKaart from "./MailUitKaart";
 import { useMailDatumLinks } from "./useMailDatumLinks";
@@ -552,7 +552,6 @@ export default function Planning({
                       onClick={(e) => e.stopPropagation()} title="Open de pagina">{pad(t.url)}</a>
                   : <span className="wb-pad">{pad(t.url)}</span>)
                 : <span className="wb-taak-vol">{zonderHtml(t.taak)}</span>}
-              {p && isKorteTitel(t.taak) && <span className="wb-doen muted">{werkwoordVoor(t.taak, p)}</span>}
               {t.url && !isKorteTitel(t.taak) && (
                 <a className="wb-pad-mini" href={t.url} target="_blank" rel="noreferrer"
                   onClick={(e) => e.stopPropagation()} title="Open de pagina">&#8599;</a>

@@ -6,6 +6,8 @@ import { metaPixelInfo } from "./meta-rules";
 import { buildWerkplan } from "./overview";
 import { getOpportunities } from "./keyword-opportunities";
 import { getFocus } from "./focus";
+import { getCopyLiveAll } from "./copy-live";
+import { urlKey } from "./url-key";
 
 // ═══════════════════════════════════════════════════════════
 // PAGINA-SIGNALEN: harde live-feiten als grond voor de bird's eye
@@ -49,13 +51,14 @@ function keywordDevByUrl(keywords: Awaited<ReturnType<typeof getKeywords>>): Rec
 
 // Het PAGINA-SIGNALEN-blok: één regel per pagina met een signaal.
 export async function buildPageSignalsText(slug: string): Promise<string> {
-  const [urls, snaps, copyMap, lastChange, keywords, pages] = await Promise.all([
+  const [urls, snaps, copyMap, lastChange, keywords, pages, copyLive] = await Promise.all([
     getClientUrls(slug).catch(() => []),
     getLatestSnapshots(slug).catch(() => []),
     copyDeliveredMap(slug),
     getLastChangePerUrl(slug).catch(() => ({} as Record<string, string>)),
     getKeywords(slug).catch(() => []),
     getPages(slug).catch(() => []),
+    getCopyLiveAll(slug).catch(() => ({} as Record<string, { doorgevoerd: boolean; meetbaar: boolean }>)),
   ]);
   if (!snaps.length && !Object.keys(copyMap).length) return "";
 
@@ -87,9 +90,16 @@ export async function buildPageSignalsText(slug: string): Promise<string> {
     }
 
     // Copy aangeleverd vs live: is er een copy-doc en (nog) geen wijziging gedetecteerd
-    // sinds die aanlevering, dan is het onzeker of het live staat.
+    // sinds die aanlevering, dan is het onzeker of het live staat. Heeft de
+    // koppen-meting (copy-live.ts) intussen WEL bevestigd dat de copy op de
+    // pagina staat, dan is dat de sterkere, directe meting en negeert dit signaal
+    // de gok op basis van de content-scan. Zonder dit onderscheid bleef dit
+    // signaal "nog niet live" beweren nadat "Is dit doorgevoerd?" of "Controleer
+    // de site" het al aantoonbaar tegendeel had vastgesteld, en schreef de
+    // assistent die onwaarheid vervolgens in de kaarttekst.
     const copyAt = copyMap[key];
-    if (copyAt) {
+    const bevestigdLive = copyLive[urlKey(u.url)]?.doorgevoerd === true;
+    if (copyAt && !bevestigdLive) {
       const changedAt = lastChange[key];
       if (!changedAt || changedAt < copyAt) {
         const dt = new Date(copyAt).toLocaleDateString("nl-NL");

@@ -4,6 +4,7 @@ import { getWeekplan, getWeekplanDev, updateWeekplanToelichting } from "../../..
 import { meetDoorgevoerd, controleRegel, vervangControleRegel, voorstelPunten, type PuntId } from "../../../../../lib/dev-punten";
 import { setPhaseMark } from "../../../../../lib/phase-marks";
 import { logActiviteit } from "../../../../../lib/activiteit";
+import { persistCopyLive } from "../../../../../lib/copy-live";
 
 export const runtime = "nodejs";
 // Drie metingen op een externe site; met de standaardtijd kapt Vercel dat af.
@@ -37,16 +38,27 @@ export async function POST(req: NextRequest) {
 
   const dev = await getWeekplanDev(slug, id);
   const afgesproken = (dev?.punten?.length ? dev.punten : ["live"]) as PuntId[];
-  // Wat er bij het doorzetten is afgesproken, plus wat er inmiddels ook echt te
-  // meten is: is er later alsnog een copydocument bijgekomen, dan hoort de
-  // koppen-check er nu automatisch bij, ook al stond die er destijds niet in.
-  const nuMeetbaar = await voorstelPunten(slug, kaart.url).catch(() => ["live"] as PuntId[]);
-  const punten = Array.from(new Set([...afgesproken, ...nuMeetbaar])) as PuntId[];
+  // Is er inmiddels een copydocument, dan hoort "staan de koppen erop" er altijd
+  // bij, ook als dat niet expliciet is afgesproken toen de kaart naar de
+  // developer ging (dat kan vóór de copy geschreven was zijn geweest). Zonder dit
+  // controleert deze knop alleen of de pagina laadt, en blijft de vraag "staat de
+  // copy er ook echt op" onbeantwoord terwijl er wel een document ligt.
+  const voorstel = await voorstelPunten(slug, kaart.url).catch(() => ["live"] as PuntId[]);
+  const punten = Array.from(new Set([...afgesproken, ...voorstel])) as PuntId[];
   const meting = await meetDoorgevoerd(slug, kaart.url, punten);
 
   // Niets kunnen meten is geen oordeel: dan blijft de kaart zoals hij is.
   if (!meting.meetbaar) {
     return NextResponse.json({ ok: true, meting, gewijzigd: false });
+  }
+
+  // De koppen-meting (indien gedaan) door naar de gedeelde stand (page_copy_live):
+  // anders weet de rest van het dashboard (fase "Bouw en publicatie", het
+  // bordoverzicht, de paginasignalen) niets van wat deze knop net vaststelde, en
+  // blijft de copy daar "nog niet doorgevoerd" heten terwijl dit scherm al "goed"
+  // toont.
+  if (meting.copyLive) {
+    await persistCopyLive(slug, meting.copyLive).catch(() => {});
   }
 
   const regel = controleRegel(meting);

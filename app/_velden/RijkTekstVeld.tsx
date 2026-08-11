@@ -39,6 +39,151 @@ export default function RijkTekstVeld({
   const editorRef = useRef<HTMLDivElement | null>(null);
   const gevuldRef = useRef(false);
 
+  // ── Onderdelen slepen ──
+  // handleRef: het grijpvlekje (zes puntjes) dat meebeweegt naar het onderdeel
+  // waar de muis net boven zweeft. hoverBlokRef onthoudt welk onderdeel dat is,
+  // sleepBlokRef welk onderdeel je op dit moment sleept, doelRef waar het zou
+  // landen. Allemaal buiten React-state gehouden: dit veld bestuurt zijn eigen
+  // DOM (zie de uitleg bovenaan), dus een sleepactie werkt direct op de knopen
+  // zelf in plaats van via een re-render.
+  const handleRef = useRef<HTMLDivElement | null>(null);
+  const indicatorRef = useRef<HTMLDivElement | null>(null);
+  const hoverBlokRef = useRef<HTMLElement | null>(null);
+  const sleepBlokRef = useRef<HTMLElement | null>(null);
+  const doelRef = useRef<{ blok: HTMLElement; boven: boolean } | null>(null);
+
+  const PLACEHOLDER_ONDERWERP = "Onderwerp";
+  const PLACEHOLDER_VOUW_BODY = "Zet hier neer wat erbij hoort.";
+
+  // Staat er nog precies de voorbeeldtekst in (van een verse uitklapper die
+  // nooit is aangepast), dan selecteert een klik meteen alles: typen overschrijft
+  // hem dan meteen, in plaats van dat je hem eerst zelf moet wegselecteren.
+  function selecteerAlsPlaceholder(el: HTMLElement, verwacht: string): boolean {
+    if ((el.textContent || "").trim() !== verwacht) return false;
+    const r = document.createRange();
+    r.selectNodeContents(el);
+    const s = window.getSelection();
+    s?.removeAllRanges();
+    s?.addRange(r);
+    return true;
+  }
+
+  // Een "onderdeel" om te slepen is een regel op het niveau waar hij staat:
+  // een rechtstreeks kind van het veld zelf, van de inhoud van een uitklapper,
+  // of van een lijst (dan is het één bullet/nummer). Zo kun je een uitklapper
+  // tussen andere tekst zetten, of één bullet binnen zijn eigen lijstje.
+  function isSleepBak(el: Element | null): boolean {
+    if (!el) return false;
+    return el === editorRef.current || el.classList.contains("rtv-vouw-body")
+      || el.tagName === "UL" || el.tagName === "OL";
+  }
+  function blokVoorSlepen(node: Node | null): HTMLElement | null {
+    let n: Element | null = node ? (node.nodeType === 1 ? (node as Element) : node.parentElement) : null;
+    while (n && n.parentElement) {
+      if (isSleepBak(n.parentElement)) return n as HTMLElement;
+      n = n.parentElement;
+    }
+    return null;
+  }
+
+  function toonHandleBij(blok: HTMLElement | null) {
+    hoverBlokRef.current = blok;
+    const handle = handleRef.current;
+    const wrap = editorRef.current?.parentElement;
+    if (!handle || !wrap) return;
+    if (!blok) { handle.classList.remove("rtv-drag-handle-actief"); return; }
+    const blokRect = blok.getBoundingClientRect();
+    const wrapRect = wrap.getBoundingClientRect();
+    // Vaste hoogte, uitgelijnd op de eerste regel van het onderdeel: bij een
+    // hoog blok (een open uitklapper) zou meestrekken met de volle hoogte het
+    // vlekje ver van de titel af zetten, in het midden van de hele kaart.
+    handle.style.top = `${blokRect.top - wrapRect.top + Math.max(0, (Math.min(blokRect.height, 22) - 20) / 2)}px`;
+    handle.style.left = `${Math.max(2, blokRect.left - wrapRect.left - 18)}px`;
+    handle.classList.add("rtv-drag-handle-actief");
+  }
+
+  // Deze twee zitten op de WRAPPER eromheen (niet op het bewerkbare vlak
+  // zelf), want het grijpvlekje is een sibling die er soms net buiten steekt.
+  // Zaten ze op het bewerkbare vlak, dan gaf het verlaten daarvan om het
+  // vlekje te bereiken een mouseleave, en verdween het vlekje precies op het
+  // moment dat je hem probeerde te pakken (knipperen).
+  function onWrapMouseMove(e: React.MouseEvent) {
+    if (sleepBlokRef.current) return;
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    // Op het vlekje zelf: gewoon laten staan waar het al staat.
+    if (!el || el === handleRef.current || handleRef.current?.contains(el)) return;
+    if (!editorRef.current?.contains(el)) { toonHandleBij(null); return; }
+    toonHandleBij(blokVoorSlepen(el));
+  }
+  function onWrapMouseLeave() {
+    if (!sleepBlokRef.current) toonHandleBij(null);
+  }
+
+  function onHandleDragStart(e: React.DragEvent) {
+    const blok = hoverBlokRef.current;
+    if (!blok) { e.preventDefault(); return; }
+    sleepBlokRef.current = blok;
+    blok.classList.add("rtv-blok-sleept");
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", "");
+    e.dataTransfer.setDragImage(blok, 12, 12);
+  }
+
+  function verbergIndicator() {
+    indicatorRef.current?.classList.remove("rtv-drop-indicator-actief");
+    doelRef.current = null;
+  }
+
+  function opruimenNaSlepen() {
+    const blok = sleepBlokRef.current;
+    if (blok) {
+      blok.classList.remove("rtv-blok-sleept");
+      if (!blok.className) blok.removeAttribute("class");
+    }
+    sleepBlokRef.current = null;
+    verbergIndicator();
+    toonHandleBij(null);
+  }
+
+  function onWrapDragOver(e: React.DragEvent) {
+    const sleepBlok = sleepBlokRef.current;
+    if (!sleepBlok) return;
+    e.preventDefault();
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const blok = el ? blokVoorSlepen(el) : null;
+    // Alleen laten landen bij een ander onderdeel op hetzelfde niveau; anders
+    // zou je een bullet zomaar tussen een heel andere lijst kunnen droppen.
+    if (!blok || blok === sleepBlok || blok.parentElement !== sleepBlok.parentElement) {
+      verbergIndicator();
+      return;
+    }
+    const rect = blok.getBoundingClientRect();
+    const boven = e.clientY < rect.top + rect.height / 2;
+    doelRef.current = { blok, boven };
+    const indicator = indicatorRef.current;
+    const wrap = editorRef.current?.parentElement;
+    if (!indicator || !wrap) return;
+    const wrapRect = wrap.getBoundingClientRect();
+    indicator.style.top = `${(boven ? rect.top : rect.bottom) - wrapRect.top}px`;
+    indicator.style.left = `${rect.left - wrapRect.left}px`;
+    indicator.style.width = `${rect.width}px`;
+    indicator.classList.add("rtv-drop-indicator-actief");
+  }
+
+  function onWrapDrop(e: React.DragEvent) {
+    e.preventDefault();
+    const sleepBlok = sleepBlokRef.current;
+    const doel = doelRef.current;
+    if (sleepBlok && doel && doel.blok !== sleepBlok) {
+      if (doel.boven) doel.blok.before(sleepBlok);
+      else doel.blok.after(sleepBlok);
+      opruimenNaSlepen();
+      meld();
+      return;
+    }
+    opruimenNaSlepen();
+  }
+
   useEffect(() => {
     if (!gevuldRef.current && editorRef.current) {
       editorRef.current.innerHTML = waarde || "";
@@ -90,8 +235,8 @@ export default function RijkTekstVeld({
   function voegUitklapperToe() {
     editorRef.current?.focus();
     document.execCommand("insertHTML", false,
-      '<details class="rtv-vouw" open><summary>Onderwerp</summary>'
-      + '<div class="rtv-vouw-body">Zet hier neer wat erbij hoort.</div></details><p><br></p>');
+      `<details class="rtv-vouw" open><summary>${PLACEHOLDER_ONDERWERP}</summary>`
+      + `<div class="rtv-vouw-body">${PLACEHOLDER_VOUW_BODY}</div></details><p><br></p>`);
     // De cursor in het kopje zetten en het woord "Onderwerp" selecteren, zodat je
     // meteen je eigen titel kunt typen zonder eerst iets weg te halen.
     setTimeout(() => {
@@ -194,12 +339,20 @@ export default function RijkTekstVeld({
     const kop = (t.tagName === "SUMMARY" ? t : t.closest("summary")) as HTMLElement | null;
     if (kop) {
       const opDriehoek = e.clientX - kop.getBoundingClientRect().left < 24;
-      if (!opDriehoek) { e.preventDefault(); return; }
+      if (!opDriehoek) {
+        e.preventDefault();
+        selecteerAlsPlaceholder(kop, PLACEHOLDER_ONDERWERP);
+        return;
+      }
       // Wel open of dicht: de nieuwe stand moet mee opgeslagen worden, anders
       // staat hij na herladen weer open.
       setTimeout(meld, 0);
       return;
     }
+    // Zelfde voor de inhoud van een verse uitklapper: klik je erin terwijl er
+    // nog "Zet hier neer wat erbij hoort." staat, dan gaat die meteen weg.
+    const vouwBody = (t.classList?.contains("rtv-vouw-body") ? t : t.closest(".rtv-vouw-body")) as HTMLElement | null;
+    if (vouwBody && selecteerAlsPlaceholder(vouwBody, PLACEHOLDER_VOUW_BODY)) return;
     const a = (t.tagName === "A" ? t : t.closest("a")) as HTMLAnchorElement | null;
     if (a && a.href && !a.href.startsWith("javascript:")) {
       e.preventDefault();
@@ -284,7 +437,7 @@ export default function RijkTekstVeld({
   }
 
   return (
-    <div className="rtv">
+    <div className="rtv" onMouseMove={onWrapMouseMove} onMouseLeave={onWrapMouseLeave} onDragOver={onWrapDragOver} onDrop={onWrapDrop}>
       <div className={"focus-toolbar" + (compact ? " focus-toolbar-compact" : "")}>
         {toolbarLabel && <span className="focus-toolbar-label">{toolbarLabel}</span>}
         <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => cmd("bold")} title="Vet (Cmd+B)"><strong>B</strong></button>
@@ -308,6 +461,20 @@ export default function RijkTekstVeld({
         onKeyDown={onKeyDown}
         onPaste={onPaste}
       />
+      {/* Los van de tekst zelf (staat dus nooit mee in de opgeslagen HTML): het
+          grijpvlekje bij het onderdeel waar de muis boven zweeft, en de streep
+          die laat zien waar het zou landen. */}
+      <div
+        ref={handleRef}
+        className="rtv-drag-handle"
+        draggable
+        title="Sleep dit onderdeel naar een andere plek"
+        onDragStart={onHandleDragStart}
+        onDragEnd={opruimenNaSlepen}
+      >
+        <span /><span /><span /><span /><span /><span />
+      </div>
+      <div ref={indicatorRef} className="rtv-drop-indicator" />
     </div>
   );
 }

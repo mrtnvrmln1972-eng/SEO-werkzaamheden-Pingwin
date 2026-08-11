@@ -438,6 +438,24 @@ export function faseSturing(info: CardInfo, fase: CardFaseKey, max = 1500): stri
   return delen.join("\n\n").slice(0, max);
 }
 
+// ═══════════════════════════════════════════════════════════
+// EEN BEVROREN "COPY NOG NIET BEVESTIGD LIVE"-REGEL IS NIET WAAR ZODRA DE METING
+// HET TEGENDEEL AANTOONT
+// ═══════════════════════════════════════════════════════════
+// De Copy-fase op een kaart toont vaak een geschreven regel als "Copy aangeleverd
+// 7 juli; nog geen wijziging gedetecteerd" (geschreven toen dat klopte). Meet het
+// dashboard nadien (via "Is dit doorgevoerd?" of "Controleer de site") dat de
+// copy wél op de pagina staat, dan blijft die regel het tegenovergestelde
+// beweren: hij staat vast in de opgeslagen kaarttekst en wordt nooit herschreven.
+// Dit is de weergave-laag, dus de correctie werkt met terugwerkende kracht op
+// elke kaart die zo'n regel al bevat, zonder de opgeslagen tekst aan te raken.
+const STALE_COPY_NOG_NIET = /nog\s+(niet|geen)\s+(doorgevoerd|wijziging\s+gedetecteerd|live|bevestigd)|controleer\s+of\s+(het|de\s+copy)\s+live\s+staat/i;
+
+export function verseCopySturing(sturing: string, doorgevoerd: boolean | null | undefined): string {
+  if (doorgevoerd !== true || !sturing || !STALE_COPY_NOG_NIET.test(sturing)) return sturing;
+  return "Copy staat aantoonbaar live op de pagina (bevestigd bij de laatste controle).";
+}
+
 // Inline SVG-iconen (huisstijl-oranje via currentColor), stijl van het voorbeeld.
 const SVG = (paden: string, cls = "") => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paden.split("|").map((d) => `<path d="${d}"></path>`).join("")}</svg>`;
 const ICO_VLAG = SVG("M4 21V4|M4 4h12l-2 4 2 4H4");

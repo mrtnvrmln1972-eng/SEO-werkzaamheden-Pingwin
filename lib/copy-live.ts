@@ -158,6 +158,32 @@ export function vergelijkKoppen(
 }
 
 /**
+ * Slaat één gemeten pagina op in de gedeelde stand (page_copy_live). Losgetrokken
+ * van runCopyLiveCheck zodat ook een losse meting elders (zoals "Is dit
+ * doorgevoerd?" op het weekbord, in dev-punten.ts) in dezelfde tabel landt. Zonder
+ * dit blijft zo'n losse meting op zichzelf staan: de fase "Bouw en publicatie" en
+ * elk ander scherm dat copyLive raadpleegt weten er dan niets van, en een pagina
+ * die net bevestigd live bleek, blijft overal elders "nog niet doorgevoerd" heten.
+ */
+export async function persistCopyLive(slug: string, m: Omit<CopyLiveRij, "gemeten">): Promise<void> {
+  await ensureSchema();
+  await ensureTable();
+  await sql`
+    INSERT INTO page_copy_live (client_slug, url, checked_at, status, total, found, live, measured)
+    VALUES (${slug}, ${m.url}, now(), ${m.status}, ${m.totaal}, ${m.gevonden}, ${m.doorgevoerd}, ${m.meetbaar})
+    ON CONFLICT (client_slug, url) DO UPDATE
+      SET checked_at = now(), status = ${m.status}, total = ${m.totaal}, found = ${m.gevonden}, live = ${m.doorgevoerd}, measured = ${m.meetbaar}`;
+  // Staat de copy aantoonbaar live, dan is dat een mijlpaal voor deze pagina.
+  // Eén regel per pagina: de herkomst is de URL, dus een volgende controle
+  // levert geen tweede regel op.
+  if (m.doorgevoerd) {
+    await logActiviteit({
+      slug, soort: "copy-live", bron: "page_copy_live", bronId: m.url, url: m.url,
+    });
+  }
+}
+
+/**
  * Meet alle pagina's van deze klant waarvoor een copy-document bestaat en bewaart
  * de uitkomst. Dit is wat de knop "Controleer de site" doet.
  */
@@ -174,19 +200,7 @@ export async function runCopyLiveCheck(slug: string): Promise<{ gemeten: number;
     const deel = await Promise.all(werk.slice(i, i + 6).map((w) => meetCopyLive(w.url, w.content).catch(() => null)));
     for (const m of deel) {
       if (!m) continue;
-      await sql`
-        INSERT INTO page_copy_live (client_slug, url, checked_at, status, total, found, live, measured)
-        VALUES (${slug}, ${m.url}, now(), ${m.status}, ${m.totaal}, ${m.gevonden}, ${m.doorgevoerd}, ${m.meetbaar})
-        ON CONFLICT (client_slug, url) DO UPDATE
-          SET checked_at = now(), status = ${m.status}, total = ${m.totaal}, found = ${m.gevonden}, live = ${m.doorgevoerd}, measured = ${m.meetbaar}`;
-      // Staat de copy aantoonbaar live, dan is dat een mijlpaal voor deze pagina.
-      // Eén regel per pagina: de herkomst is de URL, dus een volgende controle
-      // levert geen tweede regel op.
-      if (m.doorgevoerd) {
-        await logActiviteit({
-          slug, soort: "copy-live", bron: "page_copy_live", bronId: m.url, url: m.url,
-        });
-      }
+      await persistCopyLive(slug, m);
       uit.push({ ...m, gemeten: gemetenOp });
     }
   }
