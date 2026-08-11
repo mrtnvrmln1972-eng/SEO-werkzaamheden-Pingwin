@@ -42,10 +42,27 @@ export default function RijkTekstVeld({
   useEffect(() => {
     if (!gevuldRef.current && editorRef.current) {
       editorRef.current.innerHTML = waarde || "";
+      zorgVoorRegelBoven();
       gevuldRef.current = true;
       if (autoFocus) editorRef.current.focus();
     }
   }, [waarde, autoFocus]);
+
+  // Begint de inhoud meteen met een uitklapper of een vinkpunt, dan is er geen
+  // gewone regel om de cursor bovenaan neer te zetten: klikken in de ruimte
+  // erboven springt dan in het kopje van dat blok, en je kunt er niets meer
+  // vóór typen. Daarom staat er altijd een gewone (evt. lege) regel boven zo'n
+  // blok als het toevallig het allereerste is.
+  function zorgVoorRegelBoven() {
+    const el = editorRef.current;
+    if (!el) return;
+    const eerste = el.firstElementChild;
+    if (eerste && (eerste.tagName === "DETAILS" || eerste.classList.contains("rtv-check-item"))) {
+      const p = document.createElement("p");
+      p.innerHTML = "<br>";
+      el.insertBefore(p, eerste);
+    }
+  }
 
   function fixLinks() {
     editorRef.current?.querySelectorAll("a[href]").forEach((a) => {
@@ -87,6 +104,7 @@ export default function RijkTekstVeld({
       sel?.removeAllRanges();
       sel?.addRange(r);
     }, 0);
+    zorgVoorRegelBoven();
     meld();
   }
 
@@ -101,18 +119,33 @@ export default function RijkTekstVeld({
     return `<div class="rtv-check-item"><label contenteditable="false" class="rtv-check-box"><input type="checkbox"></label><span class="rtv-check-tekst">${escapeHtml(tekst) || "<br>"}</span></div>`;
   }
 
+  // Geselecteerde tekst kan van alles zijn: losse regels als aparte <div>'s
+  // (zo typt de browser ze), of één blok met <br>'s ertussen (zo komt een
+  // plakactie er meestal uit). Door de selectie in een onzichtbaar bakje te
+  // kopiëren en `innerText` te lezen, levert de browser zelf de juiste
+  // regelindeling op, ongeacht welke van de twee het is.
+  function regelsUitSelectie(range: Range): string[] {
+    const bakje = document.createElement("div");
+    bakje.style.position = "fixed";
+    bakje.style.left = "-9999px";
+    bakje.style.whiteSpace = "pre-wrap";
+    bakje.appendChild(range.cloneContents());
+    document.body.appendChild(bakje);
+    const tekst = bakje.innerText || bakje.textContent || "";
+    document.body.removeChild(bakje);
+    return tekst.split("\n").map((r) => r.trim()).filter(Boolean);
+  }
+
   function voegChecklistToe() {
     editorRef.current?.focus();
     const sel = window.getSelection();
-    const geselecteerd = sel && !sel.isCollapsed ? sel.toString() : "";
-    const regels = geselecteerd
-      ? geselecteerd.split("\n").map((r) => r.trim()).filter(Boolean)
-      : [""];
-    const html = regels.map(checklistItemHtml).join("") + "<p><br></p>";
+    const heeftSelectie = !!(sel && !sel.isCollapsed && sel.rangeCount > 0);
+    const regels = heeftSelectie ? regelsUitSelectie(sel!.getRangeAt(0)) : [];
+    const html = (regels.length ? regels : [""]).map(checklistItemHtml).join("");
     document.execCommand("insertHTML", false, html);
-    // Zonder selectie: cursor meteen in het nieuwe (lege) punt zetten, zodat je
-    // meteen kunt typen zonder eerst iets weg te halen.
-    if (!geselecteerd) {
+    // Zonder (bruikbare) selectie: cursor meteen in het nieuwe lege punt
+    // zetten, zodat je meteen kunt typen zonder eerst iets weg te halen.
+    if (!regels.length) {
       setTimeout(() => {
         const items = editorRef.current?.querySelectorAll(".rtv-check-tekst");
         const laatste = items?.[items.length - 1] as HTMLElement | undefined;
@@ -124,6 +157,7 @@ export default function RijkTekstVeld({
         s?.addRange(r);
       }, 0);
     }
+    zorgVoorRegelBoven();
     meld();
   }
 

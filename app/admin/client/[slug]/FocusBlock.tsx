@@ -20,7 +20,7 @@ export default function FocusBlock({ slug, standalone, soort = "focus", titel }:
 }) {
   const veld = soort === "prio" ? "prioHtml" : "html";
   const [initialHtml, setInitialHtml] = useState<string | null>(null);
-  const [saving, setSaving] = useState<"idle" | "saving" | "saved">("idle");
+  const [, setSaving] = useState<"idle" | "saving" | "saved">("idle");
   // Standaard dicht; openklappen via de kop.
   const [open, setOpen] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -135,8 +135,6 @@ export default function FocusBlock({ slug, standalone, soort = "focus", titel }:
     }, 1000);
   }
 
-  const saveLabel = saving === "saving" ? "Opslaan..." : saving === "saved" ? "✓ Opgeslagen" : "";
-
   // Het veld zelf (knoppenbalk + bewerkbaar vlak) is gedeeld met de
   // bespreekpunten; hier blijft alleen het laden en opslaan over.
   //
@@ -147,13 +145,14 @@ export default function FocusBlock({ slug, standalone, soort = "focus", titel }:
   // maken, en in de kaart heeft het al een eigen inklap via de kop. Twee dingen
   // die hetzelfde probleem oplossen betekent dat je altijd de verkeerde te pakken
   // hebt. Je ziet nu gewoon alles wat er staat.
+  //
+  // Het "Opslaan..."/"Opgeslagen"-label stond in de knoppenbalk; zodra het
+  // verscheen of wegviel, brak de balk om naar een tweede regel en sprong al
+  // het eronder een regel op en neer. Niet meer tonen: opslaan gebeurt gewoon
+  // automatisch op de achtergrond, `saving` blijft alleen intern bijgehouden.
   const veldBlok = initialHtml === null
     ? <div className="focus-rich focus-loading" />
-    : <RijkTekstVeld
-        waarde={initialHtml}
-        onChange={triggerSave}
-        toolbarExtra={saveLabel ? <span className="focus-save-status">{saveLabel}</span> : null}
-      />;
+    : <RijkTekstVeld waarde={initialHtml} onChange={triggerSave} />;
 
   if (standalone) {
     // Zelfde huisstijl als de andere inklapbare kaarten (Actuele stand van
