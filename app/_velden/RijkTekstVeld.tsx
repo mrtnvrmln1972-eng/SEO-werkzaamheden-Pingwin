@@ -79,8 +79,19 @@ export default function RijkTekstVeld({
   // een eigen, zelfstandig blok gevonden is, ongeacht wat daar nog omheen staat.
   const BLOK_TAGS = new Set(["P", "DIV", "DETAILS", "UL", "OL", "H1", "H2", "H3", "H4", "H5", "H6", "BLOCKQUOTE", "TABLE"]);
   function blokVoorSlepen(node: Node | null): HTMLElement | null {
-    let n: Element | null = node ? (node.nodeType === 1 ? (node as Element) : node.parentElement) : null;
-    while (n && n !== editorRef.current) {
+    const veld = editorRef.current;
+    if (!veld || !node) return null;
+    let n: Element | null = node.nodeType === 1 ? (node as Element) : node.parentElement;
+    // KRITIEK: alleen knopen die écht ín het tekstvak zitten. Dit punt komt van
+    // `elementFromPoint`, en dat kan net zo goed de knoppenbalk, het
+    // grijpvlekje of de kolom ernaast teruggeven. Zonder deze poort liep het
+    // omhoogklimmen door tot buiten het veld, kwam er een blok van de PAGINA
+    // uit, en verhuisde een drop de gesleepte inhoud dus de pagina in, buiten
+    // het tekstvak. Wat dan volgde was erger dan een schoonheidsfoutje: het
+    // opslaan bewaart alleen wat ín het veld staat, dus die inhoud was weg.
+    // Op 11 augustus 2026 is zo een deel van het veld bij Kamsteeg gewist.
+    if (!n || n === veld || !veld.contains(n)) return null;
+    while (n && n !== veld) {
       if (n.classList.contains("rtv-check-item")) return n as HTMLElement;
       if (n.tagName === "LI" && n.parentElement && (n.parentElement.tagName === "UL" || n.parentElement.tagName === "OL")) {
         return n as HTMLElement;
@@ -183,13 +194,20 @@ export default function RijkTekstVeld({
 
   function onWrapDrop(e: React.DragEvent) {
     e.preventDefault();
+    const veld = editorRef.current;
     const sleepBlok = sleepBlokRef.current;
     const doel = doelRef.current;
-    if (sleepBlok && doel && doel.blok !== sleepBlok) {
+    // Tweede slot, los van de poort in blokVoorSlepen: verplaatsen mag alleen
+    // als béide onderdelen nu nog in het tekstvak zitten. Eén verdwaalde drop
+    // die inhoud buiten het veld zet, kost bij het opslaan echte gegevens; dat
+    // risico is het niet waard om op één controle te laten rusten.
+    if (veld && sleepBlok && doel && doel.blok !== sleepBlok
+      && veld.contains(sleepBlok) && veld.contains(doel.blok)) {
       if (doel.boven) doel.blok.before(sleepBlok);
       else doel.blok.after(sleepBlok);
       opruimenNaSlepen();
-      meld();
+      // Alleen opslaan als het onderdeel ook echt binnen het veld geland is.
+      if (veld.contains(sleepBlok)) meld();
       return;
     }
     opruimenNaSlepen();
