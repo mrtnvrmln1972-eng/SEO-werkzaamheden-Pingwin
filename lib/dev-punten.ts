@@ -1,6 +1,6 @@
 import { ensureSchema } from "./db";
 import { bestaatPagina } from "./site-controle";
-import { meetCopyLive } from "./copy-live";
+import { meetCopyLive, koppenUitCopy } from "./copy-live";
 import { haalCopyTekst, heeftCopyDocument } from "./copy-tekst";
 import { fetchRawJsonLd } from "./page-schema";
 
@@ -119,7 +119,11 @@ export async function meetDoorgevoerd(slug: string, url: string, punten: PuntId[
   // zichzelf blijft staan (zie het commentaar bij Doorgevoerd.copyLive).
   let copyLive: Doorgevoerd["copyLive"];
   if (lijst.includes("koppen")) {
-    const bron = await haalCopyTekst(slug, url).catch(() => ({ tekst: "", herkomst: "", link: "", reden: "ik kon niet nagaan of er een copydocument is" }));
+    // De eis: een bron telt pas als hij webtekst-koppen bevat. Het copydocument
+    // dat de klant krijgt is een briefing; die hoofdstuktitels naast de pagina
+    // leggen levert altijd nul treffers op, en dus een onterecht "niet gedaan".
+    const bron = await haalCopyTekst(slug, url, (t) => koppenUitCopy(t).length > 0)
+      .catch(() => ({ tekst: "", herkomst: "", link: "", reden: "ik kon niet nagaan of er een copydocument is" }));
     if (!bron.tekst) {
       // De reden komt uit copy-tekst.ts en is bewust specifiek: "er is er geen"
       // is iets anders dan "hij is er wel, maar onleesbaar".

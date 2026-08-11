@@ -82,6 +82,16 @@ function norm(s: string): string {
     .replace(/\s+/g, " ");
 }
 
+// Vanaf hier beginnen in een copy-briefing de echte webteksten. Alles daarvoor is
+// uitleg voor de klant en hoort dus nooit op de pagina te staan.
+const WEBTEKST_MARKERING = /^#{0,3}\s*(de )?volledige webteksten\b/i;
+
+// Koppen die bij de briefing horen en niet bij de pagina. Hierop is een pagina
+// nooit te beoordelen: "1. Waar de nieuwe teksten over gaan" is een hoofdstuk van
+// ons eigen document. Werden ze wél meegeteld, dan meldde de controle "0 van de 5
+// koppen gevonden" op een pagina waar de teksten gewoon op stonden.
+const BRIEFING_KOP = /^\s*(\d+[.)]\s|copy-briefing|briefing\b|seo-metadata|metadata\b|meta'?s\b|scorecard|behoud\b|inleiding\b|toelichting\b|over dit document|wat we gaan doen|leeswijzer)/i;
+
 /**
  * De koppen uit een copy-document: de H1 en alle H2's. Het document is markdown
  * (# / ## / ###), maar soms staat het niveau al als label in de kop zelf
@@ -89,17 +99,35 @@ function norm(s: string): string {
  * Beide vormen komen hier binnen, dus beide worden herkend.
  */
 export function koppenUitCopy(content: string): string[] {
-  const uit: string[] = [];
+  type Regel = { kop: string; gelabeld: boolean; na: boolean };
+  const regels: Regel[] = [];
+  // Vanaf welk punt begint de eigenlijke webtekst? In het briefingdocument dat de
+  // klant krijgt staat eerst uitleg en pas daarna de teksten zelf.
+  let webtekstBegonnen = false;
   for (const raw of (content || "").split("\n")) {
     const r = raw.trim();
+    if (WEBTEKST_MARKERING.test(r)) { webtekstBegonnen = true; continue; }
+    const label = /^\*{0,2}H[12]\s*[—–-]\s*(.+?)\*{0,2}$/i.exec(r.replace(/^#{1,3}\s+/, ""));
+    if (label) { regels.push({ kop: label[1], gelabeld: true, na: webtekstBegonnen }); continue; }
     const md = /^(#{1,2})\s+(.+)$/.exec(r);
-    if (md) { uit.push(md[2]); continue; }
-    const label = /^\*{0,2}H[12]\s*[—–-]\s*(.+?)\*{0,2}$/i.exec(r);
-    if (label) uit.push(label[1]);
+    if (md) regels.push({ kop: md[2], gelabeld: false, na: webtekstBegonnen });
   }
+
+  // Wat telt als kop van de webtekst? In volgorde van zekerheid:
+  //  1. Koppen met een H1/H2-aanduiding. Die schrijven we er zelf bij, juist zodat
+  //     de sitebouwer weet wat een kop is; dan is er niets te raden.
+  //  2. Anders: alles ná "de volledige webteksten", want daarvóór staat de uitleg.
+  //  3. Anders: alle koppen, minus wat herkenbaar bij een briefing hoort.
+  const gelabeld = regels.filter((r) => r.gelabeld);
+  const gekozen = gelabeld.length
+    ? gelabeld
+    : regels.some((r) => r.na)
+      ? regels.filter((r) => r.na)
+      : regels.filter((r) => !BRIEFING_KOP.test(r.kop));
+
   // Dedupliceren op de genormaliseerde vorm; lege koppen vallen af.
   const gezien = new Set<string>();
-  return uit.filter((k) => {
+  return gekozen.map((r) => r.kop).filter((k) => {
     const n = norm(k);
     if (!n || gezien.has(n)) return false;
     gezien.add(n);

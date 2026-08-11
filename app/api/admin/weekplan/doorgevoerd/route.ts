@@ -4,7 +4,8 @@ import { getWeekplan, getWeekplanDev, updateWeekplanToelichting } from "../../..
 import { meetDoorgevoerd, controleRegel, vervangControleRegel, voorstelPunten, type PuntId } from "../../../../../lib/dev-punten";
 import { setPhaseMark } from "../../../../../lib/phase-marks";
 import { logActiviteit } from "../../../../../lib/activiteit";
-import { persistCopyLive } from "../../../../../lib/copy-live";
+import { persistCopyLive, koppenUitCopy } from "../../../../../lib/copy-live";
+import { alleCopyBronnen } from "../../../../../lib/copy-tekst";
 
 export const runtime = "nodejs";
 // Drie metingen op een externe site; met de standaardtijd kapt Vercel dat af.
@@ -46,7 +47,17 @@ export async function GET(req: NextRequest) {
   const voorstel = await voorstelPunten(slug, kaart.url).catch(() => ["live"] as PuntId[]);
   const punten = Array.from(new Set([...afgesproken, ...voorstel])) as PuntId[];
   const meting = await meetDoorgevoerd(slug, kaart.url, punten);
-  return NextResponse.json({ ok: true, proef: true, meting, gewijzigd: false });
+  // Ook welke documenten er voor deze pagina liggen en welke koppen daar in
+  // staan. Dat is de vraag achter de vraag: hangt er een document aan de pagina
+  // waar de teksten helemaal niet in staan, dan is dát het probleem, en dat zie
+  // je alleen door de bronnen naast elkaar te zetten.
+  const bronnen = (await alleCopyBronnen(slug, kaart.url).catch(() => []))
+    .map((b) => ({
+      herkomst: b.herkomst, link: b.link, reden: b.reden,
+      tekens: b.tekst.length,
+      koppen: koppenUitCopy(b.tekst),
+    }));
+  return NextResponse.json({ ok: true, proef: true, meting, bronnen, gewijzigd: false });
 }
 
 export async function POST(req: NextRequest) {

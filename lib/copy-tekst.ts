@@ -115,13 +115,15 @@ export async function heeftCopyDocument(slug: string, url: string): Promise<bool
 }
 
 /**
- * De geschreven copy van deze pagina, waar hij ook ligt. Leest desnoods het
- * gekoppelde document uit Drive. Vindt hij niets, dan zegt `reden` precies
- * waarom; die zin is bedoeld om ongewijzigd in beeld te komen.
+ * Alle plekken waar de copy van deze pagina ligt, met hun tekst, in volgorde van
+ * hoe hard de bron is. Losgetrokken van de keuze eronder, want twee vragen die
+ * door elkaar liepen: "waar ligt het" en "welke gebruik ik". Zonder deze lijst
+ * kon niemand zien dat er drie documenten aan een pagina hingen waarvan er maar
+ * één de webteksten bevatte.
  */
-export async function haalCopyTekst(slug: string, url: string): Promise<CopyTekstBron> {
+export async function alleCopyBronnen(slug: string, url: string): Promise<CopyTekstBron[]> {
   await ensureSchema();
-  const leeg = { tekst: "", herkomst: "", link: "", reden: "" };
+  const uit: CopyTekstBron[] = [];
 
   // 1. De geldende tekst in het dashboard.
   const outputs = await sql`
@@ -131,7 +133,7 @@ export async function haalCopyTekst(slug: string, url: string): Promise<CopyTeks
   for (const r of outputs) {
     if (!zelfdePagina(String(r.url || ""), url)) continue;
     const tekst = String(r.content || "");
-    if (tekst.trim()) return { ...leeg, tekst, herkomst: "het copydocument in het dashboard" };
+    if (tekst.trim()) uit.push({ tekst, herkomst: "het copydocument in het dashboard", link: "", reden: "" });
   }
 
   // 2. Het versie-archief: de goedgekeurde versie eerst, anders de nieuwste.
@@ -144,29 +146,60 @@ export async function haalCopyTekst(slug: string, url: string): Promise<CopyTeks
     if (!zelfdePagina(String(r.url || ""), url)) continue;
     const tekst = String(r.tekst || "");
     if (tekst.trim()) {
-      return { ...leeg, tekst, link: String(r.drive_link || ""), herkomst: `de bewaarde versie ${String(r.naam || "van de copy")}` };
+      uit.push({ tekst, herkomst: `de bewaarde versie ${String(r.naam || "van de copy")}`, link: String(r.drive_link || ""), reden: "" });
     }
   }
 
-  // 3. Het gekoppelde document zelf. Hooguit twee proberen: is de nieuwste niet
-  // te lezen, dan is de kans klein dat de rest dat wel is, en een controle mag
-  // geen minuut aan Drive-verzoeken worden.
+  // 3. De gekoppelde documenten zelf. Hooguit twee ophalen: een controle mag geen
+  // minuut aan Drive-verzoeken worden.
   const links = await copyLinks(slug, url).catch(() => [] as string[]);
-  let fout = "";
   for (const link of links.slice(0, 2)) {
     const gelezen = await readDriveDoc(link, 60000).catch((e) => ({ ok: false as const, error: (e as Error).message }));
     if (gelezen.ok && String(gelezen.text || "").trim()) {
-      return { tekst: String(gelezen.text || ""), herkomst: "het gekoppelde copydocument", link, reden: "" };
+      uit.push({ tekst: String(gelezen.text || ""), herkomst: `het gekoppelde document${gelezen.name ? ` ${gelezen.name}` : ""}`, link, reden: "" });
+    } else {
+      uit.push({ tekst: "", herkomst: "het gekoppelde copydocument", link, reden: ("error" in gelezen && gelezen.error) || "er kwam geen tekst uit" });
     }
-    if (!fout) fout = ("error" in gelezen && gelezen.error) || "er kwam geen tekst uit";
   }
 
-  if (links.length) {
+  return uit;
+}
+
+/**
+ * De geschreven copy van deze pagina: de eerste bron die bruikbaar is.
+ *
+ * `bruikbaar` bepaalt wat dat betekent. De koppencontrole geeft hier de eis mee
+ * dat er webtekst-koppen in moeten staan, en dat is niet vanzelfsprekend: het
+ * copydocument dat de klant krijgt is een briefing, met hoofdstukken als "1. Waar
+ * de nieuwe teksten over gaan". Zonder die eis legde de controle die
+ * hoofdstuktitels naast de pagina, vond er nul terug, en concludeerde dat de
+ * sitebouwer niets gedaan had, terwijl de teksten er gewoon op stonden.
+ * Aangetroffen op /tuinontwerp/strandtuin/, 11 augustus 2026.
+ */
+export async function haalCopyTekst(
+  slug: string, url: string, bruikbaar?: (tekst: string) => boolean,
+): Promise<CopyTekstBron> {
+  const bronnen = await alleCopyBronnen(slug, url).catch(() => [] as CopyTekstBron[]);
+  const metTekst = bronnen.filter((b) => b.tekst.trim());
+  const goed = bruikbaar ? metTekst.find((b) => bruikbaar(b.tekst)) : metTekst[0];
+  if (goed) return goed;
+
+  // Niets bruikbaars. Zeg dan precies welk van de drie gevallen het is, want er
+  // hoort iets anders te gebeuren: werk maken, een leesprobleem oplossen, of het
+  // juiste document koppelen.
+  if (metTekst.length) {
+    const namen = metTekst.map((b) => b.herkomst).join(" en ");
     return {
-      ...leeg,
-      link: links[0],
-      reden: `er hangt wel een copydocument aan deze pagina, maar ik kon de tekst er niet uit lezen (${fout || "onbekende reden"})`,
+      tekst: "", herkomst: "", link: metTekst[0].link,
+      reden: `ik vond ${namen}, maar daar staan geen webtekst-koppen in om mee te vergelijken (het lijkt de begeleidende uitleg, niet de teksten zelf)`,
     };
   }
-  return { ...leeg, reden: "er is geen copydocument om tegen te vergelijken" };
+  const onleesbaar = bronnen.find((b) => b.link);
+  if (onleesbaar) {
+    return {
+      tekst: "", herkomst: "", link: onleesbaar.link,
+      reden: `er hangt wel een copydocument aan deze pagina, maar ik kon de tekst er niet uit lezen (${onleesbaar.reden || "onbekende reden"})`,
+    };
+  }
+  return { tekst: "", herkomst: "", link: "", reden: "er is geen copydocument om tegen te vergelijken" };
 }
