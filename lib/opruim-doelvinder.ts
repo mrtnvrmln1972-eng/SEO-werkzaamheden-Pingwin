@@ -144,6 +144,9 @@ type Kandidaat = {
   term: string;
   /** Wat er volgens de werklijst met deze pagina gebeurt. */
   uitkomst: string;
+  /** Staat deze pagina ook als advertentiepagina ingevuld? Dan hoort dat bij het
+      voorstel te staan, want het is een keuze die uitleg verdient. */
+  isAds: boolean;
 };
 
 /**
@@ -207,7 +210,17 @@ export function maakBak(inv: {
   const kandidaten: Kandidaat[] = [];
   for (const u of urls) {
     const p = norm(u.url);
-    if (isAdsPad(p, ads)) continue;
+    // Advertentiepagina's blijven buiten de opruimlijst (die bescherming is
+    // hard en blijft), maar mogen wél een bestemming zijn zodra ze zelf
+    // organisch verkeer halen. Bij One Day Clinic stonden juist de vijf
+    // sterkste locatiepagina's als advertentiepagina ingevuld (samen ruim 1.500
+    // bezoekers per maand), en die uitsluiten liet als bestemming alleen
+    // blogpagina's over: /wat-kost-een-soa-test-in-amsterdam/ voor zestien
+    // plaatspagina's. De regel is bedoeld voor een Ads-pagina op noindex die
+    // organisch niets doet en dus ten onrechte als dood gewicht oogt; een
+    // pagina met vierhonderd bezoekers is dat aantoonbaar niet.
+    const isAds = isAdsPad(p, ads);
+    if (isAds && !(u.gscClicks > 0)) continue;
     // Een doel moet zelf 200 geven. Weten we de status niet, dan is dat geen
     // bewijs van het tegendeel; onbekend telt mee, 404/301 niet.
     if (u.status != null && u.status !== 200) continue;
@@ -223,6 +236,7 @@ export function maakBak(inv: {
       refDomains: links.has(p) ? links.get(p)! : null,
       term: topTerm.get(p) || "",
       uitkomst: uit,
+      isAds,
     });
   }
   const bestaat = new Set(urls.filter((u) => u.status == null || u.status === 200).map((u) => norm(u.url)));
@@ -567,7 +581,10 @@ export function ladder(bak: Bak, regels: WerkRegel[], intenties: Intenties = new
               `Trede 1 viel af: er is geen andere pagina die ${bronPlaats} zelf overneemt.`,
               ...weegZin(gewicht, heeftLinks, heeftRest),
             ],
-            waarschuwingen, gewicht,
+            waarschuwingen: kand?.isAds
+              ? [...waarschuwingen, `${kand.origineel} staat ook als advertentiepagina ingevuld. Hij blijft daarmee buiten het opruimen, maar is wel een geldige bestemming: hij haalt zelf ${kand.klikken} bezoekers per maand uit Google, dus hij is aantoonbaar geen lege Ads-landingspagina.`]
+              : waarschuwingen,
+            gewicht,
           });
           continue;
         }

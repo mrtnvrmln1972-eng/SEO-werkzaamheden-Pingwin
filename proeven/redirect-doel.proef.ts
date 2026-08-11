@@ -45,8 +45,8 @@ const regel = (pad: string, uitkomst: WerkRegel["uitkomst"], extra: Partial<Werk
   volume: null, klikken: 0, vertoningen: 0, positie: null, groep: "", ...extra,
 });
 
-function bouw(urls: ClientUrl[], regels: WerkRegel[], tops: { url: string; refDomains: number | null; topKeyword: string }[] = []): Bak {
-  return maakBak({ urls, ads: { paden: [], geen: true, ingevuld: true }, tops, vasteRegels: [], regels });
+function bouw(urls: ClientUrl[], regels: WerkRegel[], tops: { url: string; refDomains: number | null; topKeyword: string }[] = [], adsPaden: string[] = []): Bak {
+  return maakBak({ urls, ads: { paden: adsPaden, geen: !adsPaden.length, ingevuld: true }, tops, vasteRegels: [], regels });
 }
 const doelVan = (bak: Bak, regels: WerkRegel[], pad: string) => {
   const v = ladder(bak, regels).voorstellen.find((x) => x.van === pad);
@@ -296,6 +296,38 @@ const doelVan = (bak: Bak, regels: WerkRegel[], pad: string) => {
     "Den Haag hoort te matchen op den-haag in het pad.");
   checkWaar("een pagina die zelf weggaat wordt geen bestemming",
     ![...gekozen.keys()].some((p) => p.includes("naaldwijk")));
+}
+
+// ── 11. Een advertentiepagina die zelf bezoekers haalt, mag een doel zijn ─
+// De hardste botsing tussen twee regels die allebei klopten. Advertentiepagina's
+// worden overal uitgesloten, want een Ads-landingspagina op noindex haalt niets
+// uit Google en oogt daardoor als dood gewicht. Maar bij One Day Clinic stonden
+// juist de vijf sterkste locatiepagina's in die lijst (samen ruim 1.500
+// bezoekers per maand), en uitsluiten liet als bestemming alleen blogpagina's
+// over: /wat-kost-een-soa-test-in-amsterdam/ voor zestien plaatspagina's.
+// De bescherming blijft (ze worden nooit opgeruimd), de uitsluiting als doel
+// geldt alleen nog voor een pagina die organisch echt niets doet.
+{
+  const urls = [
+    url("/"), url("/soa-klinieken/"),
+    url("/soa-klinieken/soa-test-utrecht/", { gscClicks: 223, gscImpressions: 11347 }), // ads én sterk
+    url("/soa-klinieken/soa-test-leiden/"),                                             // ads én leeg
+    url("/een-soa-test-doen-in-utrecht/"),                                              // blog
+    url("/soa-poli-zeist/"),
+    ...["test", "zelftest", "thuistest", "kliniek", "poli", "uitslag", "kosten", "anoniem", "spoed", "chlamydia"]
+      .map((x) => url(`/soa-${x}/`)),
+  ];
+  const regels = [regel("/soa-poli-zeist/", "opruimen", { herkomst: ["plaats"], groep: "Zeist" })];
+  const ads = ["/soa-klinieken/soa-test-utrecht/", "/soa-klinieken/soa-test-leiden/"];
+  const bak = bouw(urls, regels, [], ads);
+  const gekozen = kiesBestemmingen(bak, regels, new Map([["/soa-poli-zeist", "Zeist"]]), ["Utrecht", "Leiden"]);
+  check("een advertentiepagina met bezoekers is wél een bestemming", gekozen.get("/soa-klinieken/soa-test-utrecht"), "Utrecht");
+  checkWaar("een advertentiepagina zonder bezoekers blijft uitgesloten",
+    !gekozen.has("/soa-klinieken/soa-test-leiden"),
+    `Kreeg: ${JSON.stringify([...gekozen.keys()])}`);
+  checkWaar("en een blog over die stad wint er nooit van",
+    ![...gekozen.keys()].some((p) => p.includes("een-soa-test-doen")),
+    `Kreeg: ${JSON.stringify([...gekozen.keys()])}`);
 }
 
 console.log(fouten === 0 ? "\nAlle proeven geslaagd." : `\n${fouten} proef/proeven mislukt.`);
