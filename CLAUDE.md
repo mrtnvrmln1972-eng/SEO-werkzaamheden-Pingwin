@@ -311,6 +311,22 @@ Lokaal staan deze in `.env.local` (gitignored). De DB-vars zijn afgeschermd; lok
 
 ## 7. Deploy en test
 
+**Begin élke wijziging met de laatste code, ook als de chat al even openstaat (vaste regel,
+11-08-2026).** Een chat krijgt zijn kopie van de repo op het moment dat de chat opengaat, niet op
+het moment dat je gaat bouwen. Sta je 's ochtends aan en werk je 's middags door, dan bouw je op
+code van vanochtend, ook al liep er niets tegelijk. Dat is de echte reden waarom "ik los A op en B
+breekt": je legt je werk over een versie heen die intussen is opgeschoven. Dus vóór je iets
+aanraakt, en nog een keer vlak vóór je pusht:
+
+```bash
+git fetch origin main && git rebase origin/main
+npm run proef
+```
+
+Botsen er twee wijzigingen, dan zie je dat nu meteen als een conflict in plaats van later als een
+kapot scherm. Dit is geen theorie: tijdens het bouwen van de proeven-poort op 11 augustus schoof
+`main` twee keer op onder de sessie door, met een botsing in `package.json` tot gevolg.
+
 ```bash
 git add . && git commit -m "[beschrijving]" && git push origin main
 scripts/wacht-op-deploy.sh
