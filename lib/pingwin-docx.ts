@@ -26,7 +26,7 @@ export type DocBlock =
   | { type: "bullets"; items: string[] }
   | { type: "highlight"; text: string }
   | { type: "step"; nr: number; title: string; text: string }
-  | { type: "table"; headers: string[]; rows: string[][] }
+  | { type: "table"; headers: string[]; rows: string[][]; cols?: number[] }
   | { type: "kpi"; rows: KpiRegel[] }
   | { type: "code"; text: string };
 
@@ -177,7 +177,7 @@ export async function buildPingwinDoc(spec: DocSpec): Promise<Buffer> {
         else if (b.type === "highlight" && b.text) kids.push(...callout(kaders, "", b.text));
         else if (b.type === "step") kids.push(...stapkaart(kaders, b.nr, b.title, b.text));
         else if (b.type === "kpi" && b.rows?.length) kids.push(...kpiblok(kaders, b.rows));
-        else if (b.type === "table" && b.headers?.length && b.rows?.length) kids.push(...datatabel(b.headers, b.rows));
+        else if (b.type === "table" && b.headers?.length && b.rows?.length) kids.push(...datatabel(b.headers, b.rows, b.cols));
         else if (b.type === "code" && b.text) kids.push(...codeRegels(b.text));
       } catch { /* sla een fout blok over, breek het document niet */ }
     }

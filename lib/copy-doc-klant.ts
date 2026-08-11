@@ -4,7 +4,7 @@ import { getGscForPage } from "./google";
 import { callClaude, LIGHT_MODEL } from "./anthropic";
 import { metaVerdictText } from "./meta-rules";
 import { perfectioneerMeta } from "./meta-machine";
-import { metaRegels, webtekstSecties } from "./copy-briefing";
+import { metaRegels, metaVerificatie, webtekstSecties } from "./copy-briefing";
 import { metaUitCopydoc, type CopydocMeta } from "./copydoc-meta";
 import { buildPingwinDoc, type DocSpec, type DocSection, type DocBlock } from "./pingwin-docx";
 import { uploadDocx } from "./drive";
@@ -29,10 +29,10 @@ import { uploadDocx } from "./drive";
 export const COPY_UITLEG_SECTIE: DocSection = {
   heading: "Hoe deze nieuwe tekst tot stand kwam",
   blocks: [
-    { type: "step", nr: 1, title: "We beginnen bij de strategie", text: "Voordat er één woord geschreven wordt, kijken we wat deze pagina moet doen. Wat zoekt iemand die deze zoekterm intypt: informatie, een prijs, of een bedrijf om te bellen? Die zoekintentie bepaalt de hele opzet van de pagina. We beoordelen ook of dit onderwerp een eigen pagina verdient, of juist beter samenvalt met een bestaande pagina; dat verschilt per situatie en voorkomt dat pagina's elkaar in de weg zitten." },
-    { type: "step", nr: 2, title: "Dan analyseren we de huidige pagina", text: "Wat er al staat, is waardevol: Google kent deze pagina en heeft er een beeld van. Daarom behouden we zoveel mogelijk van de bestaande inhoud, zolang die aan de kwaliteitseisen voldoet. Zo blijft de pagina stabiel in de zoekresultaten en bouwen we verder op wat al werkt, in plaats van opnieuw te beginnen." },
-    { type: "step", nr: 3, title: "Daarna maken we de blauwdruk", text: "We analyseren de tien pagina's die nu bovenaan staan in Google voor deze zoekterm: welke onderwerpen behandelen ze, welke vragen beantwoorden ze, wat verwacht een bezoeker dus minimaal? Alles wat relevant is nemen we op. En we voegen bewust onderwerpen toe die de top tien nog niet behandelt: dat is voor Google de reden om onze pagina toe te voegen en hoog te zetten. Een pagina die alleen nadoet wat er al staat, voegt niets toe; een pagina die completer is wel." },
-    { type: "step", nr: 4, title: "Tot slot schrijven we de tekst", text: "Op basis van al het bovenstaande, en in de tone of voice van jullie merk: we analyseren hoe jullie schrijven en praten, zodat de nieuwe tekst klinkt als jullie en niet als een tekstfabriek. Het resultaat is de pagina hieronder: klaar om te plaatsen." },
+    { type: "step", nr: 1, title: "We beginnen bij de strategie", text: "Voordat er één woord geschreven wordt, kijken we wat deze pagina moet doen. Wat zoekt iemand die deze zoekterm intypt: **informatie, een prijs, of een bedrijf om te bellen?** Die zoekintentie bepaalt de hele opzet van de pagina. We beoordelen ook of dit onderwerp een eigen pagina verdient, of juist beter samenvalt met een bestaande pagina; dat verschilt per situatie en voorkomt dat pagina's elkaar in de weg zitten." },
+    { type: "step", nr: 2, title: "Dan analyseren we de huidige pagina", text: "**Wat er al staat, is waardevol:** Google kent deze pagina en heeft er een beeld van. Daarom behouden we zoveel mogelijk van de bestaande inhoud, zolang die aan de kwaliteitseisen voldoet. Zo blijft de pagina stabiel in de zoekresultaten en bouwen we verder op wat al werkt, in plaats van opnieuw te beginnen." },
+    { type: "step", nr: 3, title: "Daarna maken we de blauwdruk", text: "We analyseren de tien pagina's die nu bovenaan staan in Google voor deze zoekterm: welke onderwerpen behandelen ze, welke vragen beantwoorden ze, wat verwacht een bezoeker dus minimaal? Alles wat relevant is nemen we op. En we voegen **bewust onderwerpen toe die de top tien nog niet behandelt**: dat is voor Google de reden om onze pagina toe te voegen en hoog te zetten. Een pagina die alleen nadoet wat er al staat, voegt niets toe; een pagina die completer is wel." },
+    { type: "step", nr: 4, title: "Tot slot schrijven we de tekst", text: "Op basis van al het bovenstaande, en in de tone of voice van jullie merk: we analyseren hoe jullie schrijven en praten, zodat de nieuwe tekst **klinkt als jullie** en niet als een tekstfabriek. Het resultaat is de pagina hieronder: klaar om te plaatsen." },
   ],
 };
 
@@ -182,14 +182,22 @@ export async function metaSectie(slug: string, url: string, copyTekst: string, k
     }
   }
 
+  // De verificatie erbij: elk criterium waaraan getoetst is, met de meting. Alleen
+  // als álles klopt; een kruisje in een oplevering is een oordeel over eigen werk.
+  const verificatie = metaVerificatie(titel, omschrijving, { keyword, h1: h1 || undefined });
+  const blocks: DocBlock[] = [
+    { type: "table", headers: ["Element", "Tekst", "Lengte"], rows: metaRegels(titel, omschrijving) },
+    { type: "paragraph", text: "Dit is wat iemand in Google ziet voordat hij klikt. Google meet die twee regels niet in tekens maar in pixels: een W is breed, een i smal. Onze motor meet de exacte breedte in het lettertype van de zoekresultaten en schrijft net zo lang bij of in tot de tekst het venster van Google precies vult. Zo wordt er niets afgekapt en blijft er geen ruimte onbenut waarin een concurrent wél zijn argument kwijt kan." },
+  ];
+  if (verificatie.allesGoed) {
+    blocks.push({ type: "subheading", text: "Getoetst aan onze volledige criterialijst" });
+    blocks.push({ type: "paragraph", text: "Beide teksten zijn stuk voor stuk langs onze eigen eisen gelegd. Dit is de uitslag, met de gemeten waarde erachter." });
+    // Smalle eerste kolom, brede middenkolom: het criterium is de tekst die telt.
+    blocks.push({ type: "table", headers: ["Onderdeel", "Criterium", "Gemeten"], rows: verificatie.regels, cols: [1500, 4900, 2600] });
+  }
+
   return {
-    sectie: {
-      heading: "De paginatitel en omschrijving in Google",
-      blocks: [
-        { type: "table", headers: ["Element", "Tekst", "Lengte"], rows: metaRegels(titel, omschrijving) },
-        { type: "paragraph", text: "Dit is wat iemand in Google ziet voordat hij klikt. Google meet die twee regels niet in tekens maar in pixels: een W is breed, een i smal. Onze motor meet de exacte breedte in het lettertype van de zoekresultaten en schrijft net zo lang bij of in tot de tekst het venster van Google precies vult. Zo wordt er niets afgekapt en blijft er geen ruimte onbenut waarin een concurrent wél zijn argument kwijt kan." },
-      ],
-    },
+    sectie: { heading: "De paginatitel en omschrijving in Google", blocks },
     nieuweCopy,
   };
 }

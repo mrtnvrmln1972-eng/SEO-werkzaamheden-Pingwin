@@ -133,21 +133,36 @@ export function callout(k: Kaders, kop: string, tekst: string): any[] {
   ]);
 }
 
+/**
+ * Stapkaart: een genummerde titel met daaronder het kader met de tekst.
+ *
+ * De titel en het nummer-bolletje stonden eerst ÍN het kader, in een tabelletje.
+ * Een tabel binnen een tekstvak is geldig, maar niet elke lezer tekent hem: in de
+ * voorvertoning die Maarten gebruikt verdwenen de titel en het bolletje spoorloos
+ * en bleven er vier naamloze grijze blokken over, met bovendien een te hoog
+ * kader, want de hoogte hield wél rekening met die titelregel.
+ *
+ * Nu staat de titel erbóven, als gewone tekst met het bolletje ernaast; precies
+ * de opbouw van de sectiekop, die overal wél tekent. Het kader eronder bevat
+ * alleen nog de tekst, en sluit daar dus strak omheen.
+ */
 export function stapkaart(k: Kaders, nr: number, titel: string, tekst: string): any[] {
-  return k.wikkel({
-    // 650 min 20 marge links en rechts; tekst 10 pt (13,3 px) op 15 pt (20 px);
-    // extra = de marges plus de titelregel met het nummer-bolletje.
-    naam: `Stap ${nr}`, radius: 8000, breedte: 650,
-    hoogte: hoogteVan(tekst, { breedte: 610, font: 13.3, regel: 20, extra: 78 }),
-    vulling: { kleur: "FFFFFF" }, rand: T.lijn, randDikte: 1,
-    marges: { links: 20, rechts: 20, boven: 16, onder: 16 }, na: 180,
-  }, [
-    tabel([new TableRow({ children: [
-      cel([bolletje("stap", nr)], { pl: 0, pt: 0 }),
-      cel([P(titel, { bold: true, size: 23, color: T.inkt, na: 0 })], { pl: 0, pt: 60, mid: true }),
-    ] })], { cols: [620, 7600] }),
-    P(tekst, { size: 20, na: 0, regel: 300, voor: 100 }),
-  ]);
+  return [
+    tabel([new TableRow({ cantSplit: true, children: [
+      cel([bolletje("stap", nr)], { pl: 0, pt: 40, pb: 40 }),
+      cel([P(titel, { bold: true, size: 23, color: T.inkt, na: 0, bijElkaar: true, heelHouden: true })],
+        { pl: 0, pt: 40, pb: 40, mid: true }),
+    ] })], { cols: [620, 8380] }),
+    leeg(60, true),
+    ...k.wikkel({
+      // 650 min 20 marge links en rechts; tekst 10 pt (13,3 px) op 15 pt (20 px);
+      // extra is nu alleen de marge boven en onder, want de titel staat erbuiten.
+      naam: `Stap ${nr}`, radius: 8000, breedte: 650,
+      hoogte: hoogteVan(tekst, { breedte: 610, font: 13.3, regel: 20, extra: 34 }),
+      vulling: { kleur: "FFFFFF" }, rand: T.lijn, randDikte: 1,
+      marges: { links: 20, rechts: 20, boven: 14, onder: 14 }, na: 220,
+    }, [P(tekst, { size: 20, na: 0, regel: 300 })]),
+  ];
 }
 
 export function citaat(k: Kaders, tekst: string, wie = "Maarten van Pingwin"): any[] {

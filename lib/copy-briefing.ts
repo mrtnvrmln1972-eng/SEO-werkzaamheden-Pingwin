@@ -20,7 +20,7 @@
 //      briefing-hoofdstukken nu wegvallen, blijven de labels waar ze thuishoren.
 
 import type { DocBlock, DocSection } from "./pingwin-docx";
-import { metaPixelInfo } from "./meta-rules";
+import { checkMetaDescription, checkMetaTitle, metaPixelInfo } from "./meta-rules";
 
 /** "H2 — 4. De volledige webteksten" → "4. De volledige webteksten". */
 function zonderNiveau(kop: string): string {
@@ -116,3 +116,30 @@ export function metaRegels(titel: string, omschrijving: string): string[][] {
 
 /** Woorden die een oordeel over eigen werk zijn; die horen niet in een oplevering. */
 export const OORDEEL_WOORDEN = /te kort|ruimte onbenut|te lang|afgekapt|te breed|voldoet niet|fail/i;
+
+/**
+ * De verificatie: elk criterium waaraan de opgeleverde titel en omschrijving zijn
+ * getoetst, met de gemeten uitkomst erachter.
+ *
+ * Dit is exact dezelfde criterialijst als het meta-paneel in het dashboard
+ * gebruikt (checkMetaTitle en checkMetaDescription), inclusief de pixelbreedte.
+ * Eén bron, dus het document kan niet iets anders beweren dan het scherm.
+ *
+ * Alleen tonen als álles klopt. Een lijst met een kruisje erin is een oordeel
+ * over eigen werk, en dat hoort niet in een oplevering; dan is het aan ons om het
+ * eerst te repareren. `allesGoed` vertelt de aanroeper welke van de twee het is.
+ */
+export function metaVerificatie(
+  titel: string,
+  omschrijving: string,
+  ctx: { keyword?: string; h1?: string } = {},
+): { regels: string[][]; allesGoed: boolean } {
+  const checks = [
+    ...(titel ? checkMetaTitle(titel, ctx.keyword, ctx.h1).map((c) => ({ ...c, deel: "Paginatitel" })) : []),
+    ...(omschrijving ? checkMetaDescription(omschrijving, ctx.keyword, titel || undefined).map((c) => ({ ...c, deel: "Omschrijving" })) : []),
+  ];
+  return {
+    regels: checks.map((c) => [c.deel, `✓  ${c.label}`, c.waarde]),
+    allesGoed: checks.length > 0 && checks.every((c) => c.pass),
+  };
+}

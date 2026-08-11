@@ -1022,8 +1022,12 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "zoals iemand ze in Google ziet voordat hij klikt, gemeten met de pixel-motor. Google kapt namelijk " +
           "niet af op tekens maar op breedte: een W is breed, een i smal. De motor meet die breedte in het " +
           "lettertype van de zoekresultaten.\n\n" +
-          "In dat blok staat nu alleen wat er opgeleverd wordt: de tekst plus de meting als feit. Geen " +
-          "oordeelkolom meer, want daar stond precies het probleem hieronder in.\n\n" +
+          "In dat blok staat de opgeleverde tekst met de meting, en daaronder de verificatie: elk criterium " +
+          "waaraan de titel en de omschrijving getoetst zijn, met de gemeten waarde erachter. Dat is exact " +
+          "dezelfde criterialijst als het meta-paneel in het dashboard gebruikt, inclusief de pixelbreedte, " +
+          "dus het document kan niet iets anders beweren dan het scherm. Die lijst verschijnt alleen als " +
+          "álles klopt: een kruisje in een oplevering is een oordeel over eigen werk, en dan is het aan ons " +
+          "om het eerst te repareren.\n\n" +
           "Er zat een gat in die keten. De motor mat goed, maar de poort waar onze eigen teksten doorheen " +
           "moesten keek alleen naar wat écht kapot is: te breed, een pijp, vierkante haken. Een titel die " +
           "alleen te kort was kwam er zo doorheen, en verscheen daarna in het klantdocument mét het oordeel " +
@@ -1077,6 +1081,23 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "En als het dan nóg niet lukt, blijft dat niet stil. Het dashboard meldt bij de oplevering dat de " +
           "titel of de omschrijving onze eigen lat niet haalt, zodat het opvalt vóórdat een klant het ziet in " +
           "plaats van erna.",
+      },
+      {
+        titel: "Waarom vier blokken zonder titel in beeld stonden",
+        kern: "Een tabel in een kader tekent niet elke lezer.",
+        tekst:
+          "In het hoofdstuk \"Hoe deze nieuwe tekst tot stand kwam\" staan vier stappen, elk met een genummerd " +
+          "bolletje en een titel. In het opgeleverde document waren die titels weg: vier naamloze blokken met " +
+          "alleen tekst, en een kader dat onderaan te veel ruimte overhield.\n\n" +
+          "De oorzaak: het bolletje en de titel stonden in een klein tabelletje **binnen** het kader. Dat is " +
+          "toegestaan, maar niet elke lezer tekent een tabel binnen een tekstvak, en de voorvertoning liet hem " +
+          "gewoon weg. Het kader hield in zijn hoogte wél rekening met die titelregel, en daardoor bleef er " +
+          "onderin lucht over.\n\n" +
+          "De titel staat nu **boven** het kader, als gewone tekst met het bolletje ernaast, precies zoals een " +
+          "hoofdstuktitel is opgebouwd. Die tekent overal. Het kader eronder bevat alleen nog de tekst en " +
+          "sluit daar strak omheen. En omdat een hoofdstuktitel nu gevolgd wordt door een korte titelregel in " +
+          "plaats van meteen door een groot kader, blijft hij ook veel minder snel alleen onder aan een pagina " +
+          "achter.",
       },
       {
         titel: "Eén uitleg per briefing, en de webteksten daaronder",

@@ -17,9 +17,9 @@
 // Deze proef draait vóór elke bouw; zolang hij groen is, kan geen van de vier
 // terugkomen.
 
-import { metaRegels, webtekstSecties, OORDEEL_WOORDEN } from "../lib/copy-briefing";
+import { metaRegels, metaVerificatie, webtekstSecties, OORDEEL_WOORDEN } from "../lib/copy-briefing";
 import { hoogteVan } from "../lib/huisstijl/vorm";
-import type { DocSection } from "../lib/pingwin-docx";
+import { buildPingwinDoc, type DocSection, type DocSpec } from "../lib/pingwin-docx";
 
 let fouten = 0;
 function check(naam: string, gekregen: unknown, verwacht: unknown) {
@@ -99,5 +99,43 @@ check("een lege tekst geeft nog steeds een werkbaar kader", hoogteVan("", KADER)
 check("regeleindes in de tekst tellen mee",
   hoogteVan("een\ntwee\ndrie", KADER) > hoogteVan("een", KADER), true);
 
-console.log(fouten === 0 ? "\nAlle proeven geslaagd." : `\n${fouten} proef/proeven mislukt.`);
-process.exit(fouten === 0 ? 0 : 1);
+// ── 5: de verificatie van de criteria ──────────────────────────────
+const T_GOED = "Hovenier Oosterhout: tuinaanleg en onderhoud - Kamsteeg";
+const D_GOED = "Hovenier Oosterhout nodig? Kamsteeg Tuinen ontwerpt, legt aan en onderhoudt met een eigen team en 30 jaar ervaring. Vraag vandaag gratis advies aan.";
+const goed = metaVerificatie(T_GOED, D_GOED, { keyword: "hovenier oosterhout", h1: "Hovenier in Oosterhout" });
+check("de verificatie toetst de volledige criterialijst", goed.regels.length >= 12, true);
+check("en die is voor deze teksten helemaal groen", goed.allesGoed, true);
+check("er staat nergens een kruisje in", goed.regels.flat().some((c) => c.includes("✗")), false);
+check("de pixelbreedte staat er expliciet bij",
+  goed.regels.some((r) => /venster van Google/.test(r[1]) && /px/.test(r[2])), true);
+
+const slecht = metaVerificatie(TITEL, DESC, { keyword: "hovenier oosterhout" });
+check("een tekst die de lat niet haalt, komt niet als groen door", slecht.allesGoed, false);
+
+// ── 6: geen tabel binnen een kader ─────────────────────────────────
+// De titel en het nummer van een stapkaart stonden in een tabelletje ín de vorm.
+// Dat is geldig, maar niet elke lezer tekent het: in de voorvertoning verdwenen
+// de titels en bleven er vier naamloze blokken over. Titels horen buiten het
+// kader; deze proef houdt ze daar.
+const PROEFSPEC: DocSpec = {
+  klant: "Proef", rapporttype: "Copy-briefing", titel: "Proefdocument",
+  stijl: "werkdocument",   // geen omslag, dus geen browser nodig
+  sections: [{ heading: "Hoe deze nieuwe tekst tot stand kwam", blocks: [
+    { type: "step", nr: 1, title: "We beginnen bij de strategie", text: "Een tekst van enige lengte, zodat het kader ook echt iets moet omvatten en de hoogte gemeten wordt." },
+    { type: "highlight", text: "Een callout met wat tekst erin." },
+  ] }],
+};
+
+buildPingwinDoc(PROEFSPEC).then(async (buf) => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const zip = await require("jszip").loadAsync(buf);
+  const xml: string = await zip.file("word/document.xml").async("string");
+  check("geen tabel binnen een kader", (xml.match(/<w:txbxContent><w:tbl>/g) || []).length, 0);
+  check("de titel van de stapkaart staat er wél in", xml.includes("We beginnen bij de strategie"), true);
+  check("het kader zelf staat er ook", /name="Stap 1"/.test(xml), true);
+  console.log(fouten === 0 ? "\nAlle proeven geslaagd." : `\n${fouten} proef/proeven mislukt.`);
+  process.exit(fouten === 0 ? 0 : 1);
+}).catch((e) => {
+  console.log("FOUT | het proefdocument kon niet gebouwd worden:", (e as Error).message);
+  process.exit(1);
+});
