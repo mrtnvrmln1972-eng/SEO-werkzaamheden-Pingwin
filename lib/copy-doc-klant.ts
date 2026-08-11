@@ -181,6 +181,17 @@ export async function metaSectie(slug: string, url: string, copyTekst: string, k
       metaMelding = [metaMelding, `De ${naam} haalt onze eigen lat nog niet: ${r.issues[0] || metaVerdictText(kind, tekst)}.`].filter(Boolean).join(" ");
     }
   }
+  // Blijven er alleen zoekwoord-criteria over, dan ligt het meestal niet aan de
+  // tekst maar aan het opgegeven zoekwoord. Een "primair zoekwoord" van vijf
+  // woorden ("duurzame hovenier Breda inheemse beplanting") kan per definitie niet
+  // vooraan in een titel van 60 tekens staan en niet letterlijk in een leesbare
+  // omschrijving; dan zakt de meta op drie punten zonder dat er iets mis is met
+  // het schrijfwerk. Dat hoort Maarten te weten, want alleen hij kan het
+  // zoekwoord bijstellen.
+  const woordenInKeyword = (keyword || "").trim().split(/\s+/).filter(Boolean).length;
+  if (metaMelding && woordenInKeyword >= 5) {
+    metaMelding += ` Let op: het primaire zoekwoord van deze pagina is een zin van ${woordenInKeyword} woorden ("${keyword}"). Zolang dat zo staat, kunnen de zoekwoord-criteria niet slagen, hoe goed de tekst ook is; kies een echt zoekwoord in het plan van deze pagina.`;
+  }
 
   // De verificatie erbij: elk criterium waaraan getoetst is, met de meting. Alleen
   // als álles klopt; een kruisje in een oplevering is een oordeel over eigen werk.
