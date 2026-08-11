@@ -47,7 +47,7 @@ async function ensure(): Promise<void> {
   await klaar;
 }
 
-export type OpvolgSoort = "mail" | "developer";
+export type OpvolgSoort = "mail" | "developer" | "taak";
 
 export type Opvolging = {
   id: number; clientSlug: string; taak: string; onderwerp: string;
@@ -63,7 +63,7 @@ export async function planOpvolging(o: {
   await ensure();
   const datum = new Date();
   datum.setDate(datum.getDate() + dagen);
-  const soort: OpvolgSoort = o.soort === "developer" ? "developer" : "mail";
+  const soort: OpvolgSoort = o.soort === "developer" ? "developer" : o.soort === "taak" ? "taak" : "mail";
   await sql`
     INSERT INTO mail_opvolg (client_slug, taak, onderwerp, naar, url, soort, herinner_op)
     VALUES (${o.clientSlug}, ${(o.taak || "").slice(0, 300)}, ${(o.onderwerp || "").slice(0, 300)},
@@ -85,15 +85,23 @@ export async function verwerkVervallenOpvolging(): Promise<number> {
   for (const r of rows) {
     const dagen = Math.max(1, Math.round((Date.now() - new Date(r.verstuurd_op as string).getTime()) / 86400000));
     const klant = (r.klant as string) || (r.client_slug as string);
-    const onderwerp = (r.onderwerp as string) || (r.taak as string) || (r.soort === "developer" ? "Taak" : "Mail");
+    const onderwerp = (r.onderwerp as string) || (r.taak as string) || (r.soort === "developer" ? "Taak" : r.soort === "taak" ? "Taak" : "Mail");
     const isDev = r.soort === "developer";
+    const isTaak = r.soort === "taak";
+    const url = (r.url as string) || "";
     await meldingToevoegen({
       soort: "mail-opvolg",
-      titel: isDev ? `${klant}: staat deze taak nog open bij de developer?` : `${klant}: is er antwoord op je mail?`,
+      titel: isDev
+        ? `${klant}: staat deze taak nog open bij de developer?`
+        : isTaak
+          ? `${klant}: tijd om te checken`
+          : `${klant}: is er antwoord op je mail?`,
       regel: isDev
         ? `${onderwerp} — ${dagen} ${dagen === 1 ? "dag" : "dagen"} geleden op de developerlijst gezet. Check of het is opgepakt en gedaan.`
-        : `${onderwerp} — ${dagen} ${dagen === 1 ? "dag" : "dagen"} geleden verstuurd${r.naar ? ` naar ${r.naar}` : ""}. Check of er terugkoppeling is en of het ook echt gedaan is.`,
-      link: `/admin/client/${r.client_slug}`,
+        : isTaak
+          ? `${onderwerp} — je zette hier ${dagen} ${dagen === 1 ? "dag" : "dagen"} geleden een herinnering voor. Check of dit inmiddels gebeurd is.`
+          : `${onderwerp} — ${dagen} ${dagen === 1 ? "dag" : "dagen"} geleden verstuurd${r.naar ? ` naar ${r.naar}` : ""}. Check of er terugkoppeling is en of het ook echt gedaan is.`,
+      link: url ? `/admin/client/${r.client_slug}?tab=paginas&page=${encodeURIComponent(url)}` : `/admin/client/${r.client_slug}`,
       wie: (r.naar as string) || "",
       bron: "mail-opvolg",
       bronId: String(r.id),

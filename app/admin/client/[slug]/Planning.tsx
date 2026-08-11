@@ -38,6 +38,7 @@ import WeekplanCard, { type WpTask, type WpPageInfo } from "./WeekplanCard";
 import MailUitKaart from "./MailUitKaart";
 import { useMailDatumLinks } from "./useMailDatumLinks";
 import DatumKiezer, { vandaagIso, langDatum } from "./DatumKiezer";
+import HerinnerKnop from "./HerinnerKnop";
 
 type Taak = {
   notitie?: string;
@@ -572,7 +573,12 @@ export default function Planning({
                 title={`${f.label}: ${stippen[i] ? "af" : i === eerstOpen ? "hier staat hij nu" : "nog niet begonnen"}`}>{f.letter}</span>
             ))}
           </span>
-          <span className="wb-next">{volgende(t)}</span>
+          {/* De naam van de fase ("strategie", "implementatie", …) staat al in de
+              bolletjes hierboven (kleur + letter + tooltip); die nog eens als
+              woord herhalen is dubbelop. Alleen zonder pagina zijn er geen
+              bolletjes, en blijft dit de enige plek die de stand zegt. */}
+          {!stippen && <span className="wb-next">{volgende(t)}</span>}
+          <HerinnerKnop slug={t.slug} id={t.id} />
           <DatumKiezer waarde={t.datum} onKies={(iso) => void zetDatum(t, iso)} />
           <button type="button" className="wp-icon wp-del" title="Verwijderen"
             onClick={(e) => { e.stopPropagation(); void verwijder(t); }}>×</button>

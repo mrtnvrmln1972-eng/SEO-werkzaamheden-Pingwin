@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { guardSlug } from "../../../../../lib/admin-scope";
 import { getWeekplan, getWeekplanDev, updateWeekplanToelichting } from "../../../../../lib/weekplan";
-import { meetDoorgevoerd, controleRegel, vervangControleRegel, type PuntId } from "../../../../../lib/dev-punten";
+import { meetDoorgevoerd, controleRegel, vervangControleRegel, voorstelPunten, type PuntId } from "../../../../../lib/dev-punten";
 import { setPhaseMark } from "../../../../../lib/phase-marks";
 import { logActiviteit } from "../../../../../lib/activiteit";
 
@@ -36,7 +36,12 @@ export async function POST(req: NextRequest) {
   if (!kaart.url) return NextResponse.json({ ok: false, error: "Deze kaart hangt niet aan een pagina, dus er valt niets te meten." }, { status: 400 });
 
   const dev = await getWeekplanDev(slug, id);
-  const punten = (dev?.punten?.length ? dev.punten : ["live"]) as PuntId[];
+  const afgesproken = (dev?.punten?.length ? dev.punten : ["live"]) as PuntId[];
+  // Wat er bij het doorzetten is afgesproken, plus wat er inmiddels ook echt te
+  // meten is: is er later alsnog een copydocument bijgekomen, dan hoort de
+  // koppen-check er nu automatisch bij, ook al stond die er destijds niet in.
+  const nuMeetbaar = await voorstelPunten(slug, kaart.url).catch(() => ["live"] as PuntId[]);
+  const punten = Array.from(new Set([...afgesproken, ...nuMeetbaar])) as PuntId[];
   const meting = await meetDoorgevoerd(slug, kaart.url, punten);
 
   // Niets kunnen meten is geen oordeel: dan blijft de kaart zoals hij is.
@@ -47,10 +52,14 @@ export async function POST(req: NextRequest) {
   const regel = controleRegel(meting);
   await updateWeekplanToelichting(slug, id, vervangControleRegel(kaart.toelichting || "", regel));
 
+  // De losse bewijsregels erbij, niet alleen de samenvatting: anders heeft de
+  // AI die hier later een verhaaltje van maakt niets concreets om te noemen en
+  // valt hij terug op vage taal als "een controlepunt afgevinkt".
+  const puntDetails = meting.punten.map((p) => `${p.label.toLowerCase()}: ${p.bewijs}`).join("; ");
   await logActiviteit({
     slug, soort: "copy-live", bron: "weekplan-doorgevoerd", bronId: `${id}`,
     url: kaart.url, bewijs: kaart.url,
-    intern: `Controle: ${meting.samenvatting} (${kaart.url})`,
+    intern: `Controle: ${meting.samenvatting}. ${puntDetails}. (${kaart.url})`,
   }).catch(() => {});
 
   // Alles in orde: Implementatie afvinken, langs dezelfde weg als het vinkje in
