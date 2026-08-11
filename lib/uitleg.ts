@@ -21,7 +21,7 @@
 // betreffende uitklapper aanvullen en LAATST_BIJGEWERKT verzetten.
 // ═══════════════════════════════════════════════════════════
 
-export const LAATST_BIJGEWERKT = "11 augustus 2026 (\"Is dit doorgevoerd?\" toetst nu altijd ook de copy als die er is, en zet de uitslag door naar de gedeelde live-stand; een bevroren \"nog niet doorgevoerd\"-regel op een kaart wijkt automatisch zodra de meting het tegendeel bevestigt)";
+export const LAATST_BIJGEWERKT = "11 augustus 2026 (paginascores bleven op een oude meting hangen: \"Hele site opnieuw scannen\" meet nu ook echt de inhoud van elke pagina, en de wekelijkse scan begint bij de klant die het langst niet aan de beurt is geweest in plaats van altijd bij dezelfde)";
 
 export type Uitklapper = {
   titel: string;
@@ -436,7 +436,18 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "2. **Wat niet van toepassing is kost geen punten.** Heeft een pagina geen eigen afbeeldingen, dan " +
           "vervalt dat onderdeel uit de som in plaats van dat de pagina er eeuwig onder blijft hangen.\n\n" +
           "De score is bedoeld om in één oogopslag te zien welke pagina's het meeste werk nodig hebben, niet om " +
-          "een analyse te vervangen.",
+          "een analyse te vervangen.\n\n" +
+          "**Een score is zo vers als zijn laatste meting** (11 augustus 2026). De score wordt niet live gerekend " +
+          "maar op de laatst vastgelegde meting van die pagina, en die meting wordt alleen ververst als een scan " +
+          "de pagina echt opnieuw uitleest. Daar zaten twee gaten in, allebei nu gedicht. **Eén:** de knop \"Hele " +
+          "site opnieuw scannen\" haalde alleen op wélke pagina's er zijn en hoe het menu loopt, en mat de inhoud " +
+          "niet. Wie erop drukte kreeg dus dezelfde oude scores terug, ook nadat er copy was bijgeschreven. Die " +
+          "knop doet nu drie stappen achter elkaar: pagina's ophalen, menu uitlezen, en daarna elke pagina meten. " +
+          "**Twee:** de wekelijkse scan liep de klanten op naam af en heeft vijf minuten. Bij meerdere klanten van " +
+          "tientallen pagina's was de tijd op voordat hij achteraan was, en omdat hij elke week weer vooraan begon " +
+          "kreeg de eerste klant altijd een verse meting en de laatste nooit. Hij begint nu bij de klant die het " +
+          "langst niet aan de beurt is geweest, zodat iedereen aan de beurt komt. Staat een score toch op een oude " +
+          "meting, dan zegt het tekstballonnetje bij het cijfer dat erbij, met de datum.",
       },
       {
         titel: "De prioriteitenscan: dit eerst, dat later, dit niet",

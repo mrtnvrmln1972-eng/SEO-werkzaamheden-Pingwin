@@ -65,6 +65,14 @@ async function doEnsure(): Promise<void> {
   await sql`ALTER TABLE page_change_events ADD COLUMN IF NOT EXISTS is_manual BOOLEAN NOT NULL DEFAULT false`;
   // Herkomst van de wijziging: 'wordpress' voor uit WordPress opgehaalde datums.
   await sql`ALTER TABLE page_change_events ADD COLUMN IF NOT EXISTS source TEXT`;
+  // Wanneer draaide de contentmeting van deze klant voor het laatst helemaal
+  // uit? De weekcron rouleert hierop; zie klantenOpMeetVolgorde.
+  await sql`
+    CREATE TABLE IF NOT EXISTS client_content_scans (
+      client_slug TEXT PRIMARY KEY,
+      last_run_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      pages       INTEGER NOT NULL DEFAULT 0
+    )`;
 }
 
 // ── Content-extractie (regex-gebaseerd, geen browser) ────────
@@ -227,6 +235,61 @@ export async function captureAndDetect(slug: string, url: string): Promise<{ cha
     INSERT INTO page_change_events (client_slug, url, previous_snapshot_id, current_snapshot_id, diff, change_summary)
     VALUES (${slug}, ${url}, ${Number(previous.id)}, ${currentId}, ${JSON.stringify(diff)}, ${summary})`;
   return { changed: true, summary };
+}
+
+// ── Een hele lijst pagina's meten ────────────────────────────
+// Eén plek waar staat hoe een reeks pagina's gemeten wordt. De knop in de
+// navigatie-roadmap, de handmatige scan en de weekcron gebruiken allemaal dit,
+// zodat ze niet uit elkaar kunnen lopen.
+const MEET_POOL = 5;
+
+/** Aantal blokken waarin `scanPaginas` deze lijst afwerkt (voor de voortgangsbalk). */
+export function meetBlokken(aantal: number): number {
+  return Math.max(Math.ceil(aantal / MEET_POOL), 1);
+}
+
+export async function scanPaginas(
+  slug: string,
+  urls: string[],
+  stap?: (blok: number, label: string) => Promise<void>,
+): Promise<{ scanned: number; changed: number }> {
+  let scanned = 0, changed = 0;
+  for (let i = 0; i < urls.length; i += MEET_POOL) {
+    const batch = urls.slice(i, i + MEET_POOL);
+    const uitkomst = await Promise.all(batch.map((u) => captureAndDetect(slug, u).catch(() => ({ changed: false }))));
+    scanned += batch.length;
+    changed += uitkomst.filter((r) => r.changed).length;
+    if (stap) await stap(Math.floor(i / MEET_POOL) + 1, `${scanned} van de ${urls.length} pagina's nagekeken, ${changed} gewijzigd`);
+  }
+  return { scanned, changed };
+}
+
+/**
+ * Zet de klanten in de volgorde waarin de weekcron ze moet doen: wie het
+ * langst geen volledige meting heeft gehad, gaat voor (nooit gemeten eerst).
+ *
+ * Waarom dit moet: de cron heeft vijf minuten en liep de klanten simpelweg op
+ * naam af. Bij een handvol klanten van tientallen pagina's is de tijd op
+ * voordat hij achteraan is, en omdat hij elke week weer vooraan begint kreeg
+ * de eerste klant altijd een verse meting en de laatste nooit. Die pagina's
+ * bleven dus maandenlang op een oude score hangen.
+ */
+export async function klantenOpMeetVolgorde(slugs: string[]): Promise<string[]> {
+  await ensureSchema();
+  await ensureTables();
+  const { rows } = await sql`SELECT client_slug, last_run_at FROM client_content_scans`;
+  const gedaan = new Map(rows.map((r) => [r.client_slug as string, new Date(r.last_run_at as string).getTime()]));
+  return [...slugs].sort((a, b) => (gedaan.get(a) ?? 0) - (gedaan.get(b) ?? 0));
+}
+
+/** Legt vast dat deze klant helemaal is doorgemeten (voor de rouleer-volgorde). */
+export async function markeerContentScan(slug: string, pages: number): Promise<void> {
+  await ensureSchema();
+  await ensureTables();
+  await sql`
+    INSERT INTO client_content_scans (client_slug, last_run_at, pages)
+    VALUES (${slug}, now(), ${pages})
+    ON CONFLICT (client_slug) DO UPDATE SET last_run_at = now(), pages = ${pages}`;
 }
 
 // Voegt een BEKENDE wijziging uit het verleden handmatig toe (datum + notitie),
