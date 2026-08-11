@@ -24,7 +24,7 @@ import { validateAction, executeAction, type ProposedAction } from "./overview-a
 import { dossierIndexText, searchDossier, getDossierItem, addDossierItem } from "./lead-dossier";
 import { listLeadDocs, maakLeadDocument, SJABLONEN } from "./lead-doc";
 import { getSiteAuthority } from "./ahrefs";
-import { controleerAntwoord, herstelOpdracht } from "./antwoord-controle";
+import { controleerAntwoord, herstelOpdracht, CIJFER_BRON } from "./antwoord-controle";
 import { bronVan, ontdubbel, type Bron } from "./chat-bronnen";
 import { overlappendePaginas, overlapAlsTekst, zwakkePaginas } from "./concurrenten";
 import { getPageInternalLinks, runPageInternalLinks } from "./page-internal-links";
@@ -1525,14 +1525,18 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
             controle = naControle;
           }
           // Nog steeds niet rond? Dan verzwijgen we dat niet, maar zetten we er
-          // met zoveel woorden boven wat er niet is nagetrokken. Liever een
-          // zichtbare waarschuwing dan een cijfer dat betrouwbaar lijkt.
+          // één korte regel boven wat er niet is nagetrokken. Liever een
+          // zichtbare waarschuwing dan een cijfer dat betrouwbaar lijkt. Per
+          // cijfer de ECHTE bron noemen (niet steeds alle drie opsommen), zodat
+          // dit geen lap generieke tekst wordt die je iedere keer weg moet lezen.
           if (!controle.ok) {
-            const punten = [
-              ...(controle.cijfers.length ? [`cijfers die niet zijn opgehaald: ${controle.cijfers.join("; ")}`] : []),
-              ...(controle.paden.length ? [`paden die niet in de sitemap staan: ${controle.paden.join(", ")}`] : []),
-            ];
-            answer = `## Let op, niet alles hieronder is nagetrokken\n\nDe feitencontrole kreeg deze punten niet bevestigd uit Search Console, Ahrefs of de sitemap: ${punten.join(", ")}. Behandel die als onbetrouwbaar en vraag om ze na te meten.\n\n---\n\n${answer}`;
+            const cijferDelen = controle.cijfers.map((c) => {
+              const label = Object.keys(CIJFER_BRON).find((l) => c.startsWith(l + " "));
+              return `${c} (${label ? CIJFER_BRON[label] : "bron"})`;
+            });
+            const padDelen = controle.paden.map((p) => `${p} (niet op de site gevonden)`);
+            const punten = [...cijferDelen, ...padDelen];
+            answer = `**Let op, niet bevestigd:** ${punten.join("; ")}. Vraag na te meten.\n\n${answer}`;
           }
         }
       } catch { /* de controle mag een antwoord nooit helemaal blokkeren */ }

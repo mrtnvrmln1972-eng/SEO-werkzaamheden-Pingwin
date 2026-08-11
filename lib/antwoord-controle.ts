@@ -59,6 +59,20 @@ const CIJFER_PATRONEN: { label: string; inAntwoord: RegExp; inBron: RegExp }[] =
 // Paden die niets met de klantsite te maken hebben (opmaak, mail-links, datums).
 const NEGEER_PAD = /^\/(\d+|https?|www|search|thread|mail)\/?$/i;
 
+// Welke bron een cijfersoort levert, voor een precieze waarschuwing. Zonder dit
+// noemde de waarschuwing altijd alle drie bronnen ("Search Console, Ahrefs of de
+// sitemap"), ook als er voor dát ene cijfer maar één relevant was: domain rating
+// bijvoorbeeld bestaat alleen bij Ahrefs, Search Console kent dat begrip niet.
+// Dat gaf de indruk dat de verkeerde bron was geraadpleegd, terwijl de bron er
+// domweg (nog) niet bij was.
+export const CIJFER_BRON: Record<string, string> = {
+  "positie": "Search Console of Ahrefs",
+  "domain rating": "Ahrefs",
+  "verwijzende domeinen": "Ahrefs",
+  "woorden": "de pagina zelf",
+  "vertoningen": "Search Console",
+};
+
 /**
  * Toetst een antwoord tegen alles wat er in deze beurt echt beschikbaar was.
  * @param antwoord   de tekst die naar Maarten zou gaan
