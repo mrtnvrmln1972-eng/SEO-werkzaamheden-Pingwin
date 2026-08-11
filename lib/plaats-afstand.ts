@@ -32,8 +32,10 @@ async function zoekBijPdok(plaats: string): Promise<Coord | null> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 8000);
   try {
+    // De plaats komt soms als sleutel binnen ("den-haag"), zoals de plaatsanalyse
+    // hem bewaart. De zoekdienst wil gewone woorden, dus streepjes worden spaties.
     const q = new URLSearchParams({
-      q: plaats, fq: "type:woonplaats", rows: "1", fl: "weergavenaam,centroide_ll",
+      q: plaats.replace(/-+/g, " ").trim(), fq: "type:woonplaats", rows: "1", fl: "weergavenaam,centroide_ll",
     });
     const res = await fetch(`https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?${q}`, {
       signal: ctrl.signal, cache: "no-store", headers: { "User-Agent": "PingwinSeoDashboard/1.0 (+https://pingwin.nl)" },

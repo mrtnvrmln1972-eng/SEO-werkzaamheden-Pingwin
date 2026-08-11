@@ -621,7 +621,8 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
               "Elke pagina die weggaat krijgt daarom een voorgestelde bestemming, gekozen langs een vaste ladder. " +
               "De eerste die past wint:\n\n" +
               "1. **De inhoudelijke opvolger:** hetzelfde onderwerp én dezelfde zoekintentie.\n" +
-              "2. **De dichtstbijzijnde zusterpagina:** zelfde niveau en type, net een andere invulling.\n" +
+              "2. **De dichtstbijzijnde zusterpagina:** zelfde niveau en type, net een andere invulling. Bij een\n" +
+              "plaatspagina is dat de dichtstbijzijnde vestiging, met een opgezochte afstand.\n" +
               "3. **De categorie of hub erboven:** het onderwerp bestaat wel, de bezoeker kiest zelf verder.\n" +
               "4. **410, bewust weg:** er is geen relevant doel. Eerlijker en schoner dan de homepage.\n" +
               "5. **De homepage:** laatste redmiddel, en eigenlijk alleen bij pagina's met externe links.\n\n" +
@@ -630,11 +631,18 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
               "relevantie cruciaal) en haalt hij nog verkeer of vertoningen (dan bepaalt het doel of die posities " +
               "meeverhuizen of verdampen). Bij nul links en nul verkeer maakt de bestemming weinig uit en gaat " +
               "het vooral om het opruimen zelf.\n\n" +
-              "Twee keuzes staan er bewust in. **Bij plaatspagina's wordt trede 2 overgeslagen:** dat iemand die " +
-              "naar Veldhoven zocht geholpen is op de pagina van een andere stad, valt niet aan te tonen; de hub " +
-              "('kies je locatie') doet hetzelfde werk zonder die gok. En **410 is een volwaardige uitkomst, geen " +
-              "fout:** massaal naar de homepage omleiden doet functioneel hetzelfde, maar zonder het duidelijke " +
-              "signaal aan Google.\n\n" +
+              "**Bij een plaatspagina is 'dichtstbijzijnde' letterlijk te nemen, en dus te meten.** De ligging " +
+              "van elke plaats wordt opgezocht bij de plaatsendienst van de overheid, en de bestemming is de " +
+              "vestiging die het dichtst bij ligt. Alleen een plaats waar de klant echt zit telt mee, want dat " +
+              "staat al in de bedrijfsgegevens; anders zou een tussenplaats zonder vestiging de bestemming worden " +
+              "en landt de bezoeker op een pagina zonder kliniek. Boven veertig kilometer houdt het op: dan is een " +
+              "andere stad geen vervanging meer maar een verwijzing, en gaat de pagina alsnog naar het " +
+              "locatie-overzicht.\n\n" +
+              "Dat dit uitmaakt, bleek meteen bij One Day Clinic: het locatie-overzicht haalt nul bezoekers, " +
+              "terwijl de vijf stadspagina's er samen ruim vijftienhonderd per maand halen. Alles naar het " +
+              "overzicht sturen voedt dus precies de zwakste pagina van de familie.\n\n" +
+              "**410 is een volwaardige uitkomst, geen fout:** massaal naar de homepage omleiden doet " +
+              "functioneel hetzelfde, maar zonder het duidelijke signaal aan Google.\n\n" +
               "Naast het voorstel staan twee knoppen. **Plaats redirect** zet de 301 (of de 410) in de website en " +
               "meet daarna zelf na of hij er echt staat; er wordt niets als gelukt gemeld dat niet gemeten is. " +
               "**Test redirect** opent het oude adres en vertelt wat er echt gebeurt: welke status, hoeveel " +

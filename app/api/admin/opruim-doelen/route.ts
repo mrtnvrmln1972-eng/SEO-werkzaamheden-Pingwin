@@ -33,7 +33,9 @@ async function bouw(slug: string): Promise<DoelenRapport & { lijstDatum: string 
     domain ? zorgVoorPlaatsen(slug, domain).catch(() => null) : Promise.resolve(null),
   ]);
   const regels = bouwWerklijst(st.result, plaatsen?.adviezen || []);
-  const rapport = await bepaalDoelen(slug, domain, regels);
+  // De vestigingen komen uit de bedrijfsgegevens, via de plaatsanalyse die ze al
+  // ophaalt. Alleen een plaats waar de klant echt zit mag een bestemming zijn.
+  const rapport = await bepaalDoelen(slug, domain, regels, plaatsen?.vestigingen || []);
   return { ...rapport, lijstDatum: st.result?.generatedAt || null };
 }
 

@@ -315,7 +315,7 @@ async function intentiesVoor(termen: string[]): Promise<Intenties> {
  * "waarom niet de zusterpagina" is voor het beoordelen net zo nuttig als het
  * voorstel zelf.
  */
-export async function bepaalDoelen(slug: string, domain: string, regels: WerkRegel[]): Promise<DoelenRapport> {
+export async function bepaalDoelen(slug: string, domain: string, regels: WerkRegel[], vestigingen: string[] = []): Promise<DoelenRapport> {
   const bak = await verzamel(slug, domain, regels);
   // Eén keer alle intenties ophalen (gecached bij Ahrefs), niet per regel. De
   // termen van de bronnen én de best scorende term van elke kandidaat; titels
@@ -323,9 +323,46 @@ export async function bepaalDoelen(slug: string, domain: string, regels: WerkReg
   const open = regels.filter((r) => (r.uitkomst === "opruimen" || r.uitkomst === "samenvoegen") && !r.naar);
   const [intenties, nabij] = await Promise.all([
     intentiesVoor([...open.map((r) => r.term), ...bak.kandidaten.map((k) => k.term)]),
-    bouwNabijheid(bak, regels, open).catch(() => undefined),
+    bouwNabijheid(bak, regels, open, vestigingen).catch(() => undefined),
   ]);
   return ladder(bak, regels, intenties, nabij);
+}
+
+/** "Den Haag" en "den-haag" moeten hetzelfde zijn, ook met accenten erin. */
+const slugVan = (t: string) =>
+  (t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+
+/**
+ * Welke pagina hoort bij welke vestiging? Alleen de plaatsen waar de klant echt
+ * zit mogen een bestemming zijn. Die lijst staat al in de bedrijfsgegevens
+ * (dezelfde die de structured data vult), dus het is een feit en geen afleiding.
+ *
+ * Waarom dit filter er moest komen: zonder was de dichtstbijzijnde pagina vaak
+ * een tussenplaats die zelf niets doet. Naaldwijk ging naar Delft (nul
+ * bezoekers, geen kliniek) in plaats van naar Den Haag, en Veldhoven naar
+ * Tilburg in plaats van naar Eindhoven. Dan is de omleiding technisch dichtbij
+ * en inhoudelijk verkeerd: de bezoeker zocht een kliniek, en daar zit er geen.
+ */
+export function kiesBestemmingen(
+  bak: Bak, regels: WerkRegel[], gaatWeg: Map<string, string>, vestigingen: string[],
+): Map<string, string> {
+  const uitbouw = new Set(regels.filter((r) => r.uitkomst === "uitbouwen").map((r) => norm(r.pad)));
+  const uit = new Map<string, string>();
+  for (const naam of [...new Set(vestigingen.map((v) => (v || "").trim()).filter(Boolean))]) {
+    const sl = slugVan(naam);
+    if (!sl) continue;
+    // Van meerdere kandidaten wint de pagina die de analyse al als thuisbasis
+    // aanwees, daarna die met de meeste bezoekers; een pagina die zelf weggaat
+    // telt niet mee, want dan bouw je een keten.
+    const beste = bak.kandidaten
+      .filter((k) => !gaatWeg.has(k.pad) && !uit.has(k.pad) && k.pad.includes(sl))
+      .sort((a, b) =>
+        Number(uitbouw.has(b.pad)) - Number(uitbouw.has(a.pad)) ||
+        b.klikken - a.klikken ||
+        a.pad.length - b.pad.length)[0];
+    if (beste) uit.set(beste.pad, naam);
+  }
+  return uit;
 }
 
 /** Het woord dat deze pagina onderscheidt van zijn familie: bij een plaatspagina
@@ -346,7 +383,7 @@ function onderscheidendWoord(pad: string, bak: Bak): string {
  * aangewezen om uit te bouwen). Naar een lege stadspagina omleiden verplaatst
  * het probleem alleen maar.
  */
-async function bouwNabijheid(bak: Bak, regels: WerkRegel[], open: WerkRegel[]): Promise<Nabijheid> {
+async function bouwNabijheid(bak: Bak, regels: WerkRegel[], open: WerkRegel[], vestigingen: string[]): Promise<Nabijheid> {
   const plaatsVan = new Map<string, string>();
   const bronnen = open.filter((r) => r.herkomst.includes("plaats"));
   for (const r of bronnen) {
@@ -355,30 +392,12 @@ async function bouwNabijheid(bak: Bak, regels: WerkRegel[], open: WerkRegel[]): 
   }
   if (!bronnen.length) return { plaatsVan, coord: new Map(), doelen: new Set() };
 
-  // De familie waar de bronnen toe horen: de brede woorden die ze delen. Alleen
-  // kandidaten uit diezelfde familie kunnen een vestigingspagina zijn, en dat
-  // filter voorkomt dat we de halve site bij de plaatsendienst opzoeken.
-  const familie = new Set<string>();
-  for (const r of bronnen) for (const w of padWoorden(norm(r.pad))) {
-    if (bak.ruis.has(w) || bak.idf(w) < Math.log(bak.urls.length / 20)) familie.add(w);
-  }
-  const uitbouw = new Set(regels.filter((r) => r.uitkomst === "uitbouwen").map((r) => norm(r.pad)));
-
-  const doelen = new Set<string>();
-  for (const k of bak.kandidaten) {
-    if (plaatsVan.has(k.pad)) continue;                     // gaat zelf weg
-    if (![...familie].some((w) => k.padWoorden.has(w))) continue;
-    // Alleen een bestemming die zelf iets voorstelt.
-    if (!(k.klikken > 0 || uitbouw.has(k.pad))) continue;
-    const naam = onderscheidendWoord(k.pad, bak);
-    if (!naam) continue;
-    plaatsVan.set(k.pad, naam);
-    doelen.add(k.pad);
-  }
+  for (const [pad, naam] of kiesBestemmingen(bak, regels, plaatsVan, vestigingen)) plaatsVan.set(pad, naam);
+  const doelen = new Set([...plaatsVan.keys()].filter((p) => !bronnen.some((r) => norm(r.pad) === p)));
 
   const coord = await coordenVan([...plaatsVan.values()]);
-  // Een pad waarvan de plaats niet bestaat volgens de plaatsendienst, is geen
-  // plaatspagina. Dat is meteen de controle op het onderscheidende woord.
+  // Een plaats die de plaatsendienst niet kent, kunnen we niet wegen. Die valt
+  // af als bestemming in plaats van met een gegokte afstand mee te doen.
   for (const p of [...doelen]) {
     const naam = plaatsVan.get(p) || "";
     if (!coord.has(naam.toLowerCase())) doelen.delete(p);
@@ -394,6 +413,9 @@ export function ladder(bak: Bak, regels: WerkRegel[], intenties: Intenties = new
   const gaten: string[] = [];
   if (!bak.urls.length) gaten.push("De pagina's van deze site zijn nog niet ingelezen, dus er valt geen doel te kiezen. Draai eerst een sitescan.");
   if (!bak.links.size) gaten.push("Er zijn geen backlink-gegevens per pagina beschikbaar. De weging op externe links staat daarmee uit; het voorstel leunt dan alleen op onderwerp en bezoekers.");
+  if (regels.some((r) => r.herkomst.includes("plaats")) && !nabij?.doelen.size) {
+    gaten.push("Er is geen vestiging met een eigen pagina gevonden, dus een plaatspagina kan niet naar de dichtstbijzijnde vestiging. Vul de vestigingen in bij Bedrijfsgegevens; tot die tijd gaan plaatspagina's naar het locatie-overzicht.");
+  }
 
   // Alleen de regels zonder bestemming: de rest heeft er al een uit de analyse.
   const open = regels.filter((r) => (r.uitkomst === "opruimen" || r.uitkomst === "samenvoegen") && !r.naar);

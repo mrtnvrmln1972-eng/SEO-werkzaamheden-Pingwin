@@ -18,7 +18,7 @@
 //
 // De ladder rekent hier op verzonnen sites, zonder database en zonder Ahrefs.
 
-import { maakBak, ladder, type Bak, type Intenties, type Nabijheid } from "../lib/opruim-doelvinder";
+import { maakBak, ladder, kiesBestemmingen, type Bak, type Intenties, type Nabijheid } from "../lib/opruim-doelvinder";
 import type { WerkRegel } from "../lib/opruim-werklijst";
 import type { ClientUrl } from "../lib/site-urls";
 
@@ -245,6 +245,43 @@ const doelVan = (bak: Bak, regels: WerkRegel[], pad: string) => {
     "Naar een lege stadspagina omleiden voedt precies de verkeerde pagina.");
   const zonderPlaats = uit.voorstellen.find((v) => v.van === "/soa-klinieken/soa-test-baarn/");
   check("een plaats zonder ligging valt netjes terug op de hub", zonderPlaats?.doel, "/soa-klinieken/");
+}
+
+// ── 10. Alleen een plaats mét vestiging mag een bestemming zijn ──────────
+// De duurste fout van deze hele ladder, en hij zag er in de code redelijk uit:
+// zonder dit filter koos hij de dichtstbijzijnde plaatspagina die bestond, en
+// dat was een tussenplaats zonder kliniek. Naaldwijk ging naar Delft (nul
+// bezoekers, geen vestiging) in plaats van naar Den Haag, en Veldhoven naar
+// Tilburg in plaats van naar Eindhoven. Technisch dichtbij, inhoudelijk fout:
+// de bezoeker zocht een kliniek en daar zit er geen.
+{
+  const urls = [
+    url("/"), url("/soa-klinieken/"),
+    url("/soa-klinieken/soa-test-den-haag/", { gscClicks: 231, gscImpressions: 10461 }),
+    url("/soa-test-locaties/soa-test-delft/"),          // bestaat, geen vestiging
+    url("/soa-klinieken/soa-test-nijmegen/"),           // vestiging, maar haalt niets
+    url("/soa-klinieken-nijmegen/"),                    // vestiging, en aangewezen thuisbasis
+    url("/soa-poli-naaldwijk/"),
+  ];
+  const regels: WerkRegel[] = [
+    regel("/soa-klinieken-nijmegen/", "uitbouwen"),
+    regel("/soa-poli-naaldwijk/", "opruimen", { herkomst: ["plaats"], groep: "Naaldwijk" }),
+  ];
+  const bak = bouw(urls, regels);
+  const gaatWeg = new Map([["/soa-poli-naaldwijk", "Naaldwijk"]]);
+  const gekozen = kiesBestemmingen(bak, regels, gaatWeg, ["Den Haag", "Nijmegen"]);
+  check("een vestigingsplaats levert precies één bestemming", gekozen.size, 2);
+  checkWaar("een plaats zonder vestiging wordt nooit een bestemming",
+    ![...gekozen.keys()].some((p) => p.includes("delft")),
+    `Kreeg: ${JSON.stringify([...gekozen.keys()])}`);
+  checkWaar("bij meerdere pagina's voor dezelfde vestiging wint de aangewezen thuisbasis",
+    gekozen.has("/soa-klinieken-nijmegen") && !gekozen.has("/soa-klinieken/soa-test-nijmegen"),
+    `Kreeg: ${JSON.stringify([...gekozen.keys()])}`);
+  checkWaar("de plaatsnaam met een spatie erin wordt gevonden",
+    [...gekozen.keys()].some((p) => p.includes("den-haag")),
+    "Den Haag hoort te matchen op den-haag in het pad.");
+  checkWaar("een pagina die zelf weggaat wordt geen bestemming",
+    ![...gekozen.keys()].some((p) => p.includes("naaldwijk")));
 }
 
 console.log(fouten === 0 ? "\nAlle proeven geslaagd." : `\n${fouten} proef/proeven mislukt.`);
