@@ -154,7 +154,9 @@ export async function alleCopyBronnen(slug: string, url: string): Promise<CopyTe
   // minuut aan Drive-verzoeken worden.
   const links = await copyLinks(slug, url).catch(() => [] as string[]);
   for (const link of links.slice(0, 2)) {
-    const gelezen = await readDriveDoc(link, 60000).catch((e) => ({ ok: false as const, error: (e as Error).message }));
+    // Met koppen: in een document is een kop opmaak, geen tekst, dus de platte
+    // versie levert geen enkele herkenbare kop op.
+    const gelezen = await readDriveDoc(link, 60000, { metKoppen: true }).catch((e) => ({ ok: false as const, error: (e as Error).message }));
     if (gelezen.ok && String(gelezen.text || "").trim()) {
       uit.push({ tekst: String(gelezen.text || ""), herkomst: `het gekoppelde document${gelezen.name ? ` ${gelezen.name}` : ""}`, link, reden: "" });
     } else {

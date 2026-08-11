@@ -73,11 +73,40 @@ export async function folderName(folderId: string): Promise<string> {
 // gangbare Google-linkvormen (/d/<id>/, ?id=<id>) plus een kale id.
 export { driveIdFromUrl } from "./drive-id";
 
+// Google-Doc-HTML naar tekst waarin een kop een kop blijft: h1/h2/h3 worden
+// markdown-koppen, de rest wordt gewone regels. Bewust klein gehouden; we willen
+// geen HTML-bibliotheek voor het enige dat ertoe doet, namelijk het kopniveau.
+export function htmlNaarTekstMetKoppen(html: string): string {
+  const ontsnap = (s: string) => s
+    .replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&").replace(/&lt;/gi, "<").replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"').replace(/&#39;|&apos;/gi, "'")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)));
+  const zonderTags = (s: string) => ontsnap(s.replace(/<[^>]+>/g, "")).replace(/\s+/g, " ").trim();
+  const kern = (html || "")
+    .replace(/<(script|style|head)[\s\S]*?<\/\1>/gi, "")
+    .replace(/<br\s*\/?>/gi, "\n");
+  const regels: string[] = [];
+  const blok = /<(h[1-6]|p|li|td|div)[^>]*>([\s\S]*?)<\/\1>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = blok.exec(kern))) {
+    const tag = m[1].toLowerCase();
+    const tekst = zonderTags(m[2]);
+    if (!tekst) continue;
+    const niveau = /^h([1-6])$/.exec(tag);
+    if (niveau) regels.push(`${"#".repeat(Math.min(Number(niveau[1]), 3))} ${tekst}`);
+    else if (tag === "li") regels.push(`- ${tekst}`);
+    else regels.push(tekst);
+  }
+  return regels.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
 // Leest de tekstinhoud van een gekoppeld Google-document (Doc/Sheet/Slides) uit,
 // zodat de bird's eye-agent de afgesproken strategie (navigatie, zoekwoorden,
 // werkdocument) echt kan raadplegen in plaats van alleen de link te zien.
 // Begrensd tot ~12k tekens zodat de context niet ontploft.
-export async function readDriveDoc(idOrUrl: string, maxChars = 12000): Promise<{ ok: boolean; name?: string; text?: string; error?: string }> {
+export async function readDriveDoc(
+  idOrUrl: string, maxChars = 12000, opts: { metKoppen?: boolean } = {},
+): Promise<{ ok: boolean; name?: string; text?: string; error?: string }> {
   const id = driveIdFromUrl(idOrUrl);
   if (!id) return { ok: false, error: "Geen geldige Google Drive-link of document-id herkend." };
   let t: string;
@@ -94,8 +123,18 @@ export async function readDriveDoc(idOrUrl: string, maxChars = 12000): Promise<{
     "application/vnd.google-apps.spreadsheet": "text/csv",
     "application/vnd.google-apps.presentation": "text/plain",
   };
+  // Met koppen: een Google Doc als HTML ophalen en de kopniveaus als markdown
+  // terugzetten. Nodig omdat een kop in een document opmáák is, geen tekst: in de
+  // platte-tekstversie is "Wat kenmerkt een strandtuin?" niet te onderscheiden van
+  // een gewone zin. Daardoor kon de koppencontrole de teksten in een aangeleverd
+  // document niet terugvinden, ook al stonden ze er gewoon in.
+  const alsHtml = !!opts.metKoppen && mime === "application/vnd.google-apps.document";
   let text = "";
-  if (exportMap[mime]) {
+  if (alsHtml) {
+    const ex = await fetch(`https://www.googleapis.com/drive/v3/files/${id}/export?mimeType=text%2Fhtml&supportsAllDrives=true`, { headers: auth });
+    if (!ex.ok) return { ok: false, error: await driveErr(ex, "het uitlezen van het document") };
+    text = htmlNaarTekstMetKoppen(await ex.text());
+  } else if (exportMap[mime]) {
     const ex = await fetch(`https://www.googleapis.com/drive/v3/files/${id}/export?mimeType=${encodeURIComponent(exportMap[mime])}&supportsAllDrives=true`, { headers: auth });
     if (!ex.ok) return { ok: false, error: await driveErr(ex, "het uitlezen van het document") };
     text = await ex.text();
