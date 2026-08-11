@@ -24,6 +24,31 @@ export const maxDuration = 120;
 // Klopt alles, dan gaat het vinkje bij Implementatie om. Klopt het niet, dan
 // verandert er geen vinkje: het scherm biedt dan een mail aan de sitebouwer aan.
 // Kon er niets gemeten worden, dan verandert er helemaal niets.
+// GET: dezelfde meting, maar dan als PROEF. Er wordt niets opgeslagen, geen
+// vinkje gezet en niets in de tijdlijn geschreven; je krijgt alleen de uitkomst
+// met het bewijs erbij (welke koppen we zochten, welke koppen de pagina zelf
+// toont). Dat is nodig omdat "0 van de 5 koppen gevonden" op zichzelf geen
+// bevinding is: pas als je beide lijstjes ziet weet je of de sitebouwer niets
+// deed of dat wij het verkeerde document naast de pagina legden.
+// GET, dus ook bruikbaar in de alleen-lezen kijk-modus.
+export async function GET(req: NextRequest) {
+  const slug = (req.nextUrl.searchParams.get("slug") || "").trim();
+  const id = Number(req.nextUrl.searchParams.get("id") || 0);
+  if (!slug || !id) return NextResponse.json({ ok: false, error: "Klant en kaart zijn verplicht." }, { status: 400 });
+  const g = await guardSlug(req, slug); if (!g.ok) return g.res;
+
+  const kaart = (await getWeekplan(slug)).find((k) => k.id === id);
+  if (!kaart) return NextResponse.json({ ok: false, error: "Kaart niet gevonden." }, { status: 404 });
+  if (!kaart.url) return NextResponse.json({ ok: false, error: "Deze kaart hangt niet aan een pagina, dus er valt niets te meten." }, { status: 400 });
+
+  const dev = await getWeekplanDev(slug, id);
+  const afgesproken = (dev?.punten?.length ? dev.punten : ["live"]) as PuntId[];
+  const voorstel = await voorstelPunten(slug, kaart.url).catch(() => ["live"] as PuntId[]);
+  const punten = Array.from(new Set([...afgesproken, ...voorstel])) as PuntId[];
+  const meting = await meetDoorgevoerd(slug, kaart.url, punten);
+  return NextResponse.json({ ok: true, proef: true, meting, gewijzigd: false });
+}
+
 export async function POST(req: NextRequest) {
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: "Ongeldige aanvraag." }, { status: 400 }); }

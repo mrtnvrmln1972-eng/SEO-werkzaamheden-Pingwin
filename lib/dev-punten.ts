@@ -37,6 +37,19 @@ export type PuntUitslag = {
   label: string;
   uitslag: "goed" | "niet" | "onmeetbaar";
   bewijs: string;
+  /**
+   * Bij het koppen-punt: wat er precies naast elkaar is gelegd. "0 van de 5
+   * gevonden" is zonder deze lijstjes onbruikbaar. Je weet dan niet of de
+   * sitebouwer niets deed of dat wij het verkeerde document naast de pagina
+   * legden, en dat verschil bepaalt wie er aan zet is.
+   */
+  koppen?: {
+    bron: string;
+    link: string;
+    bedoeld: string[];
+    opDePagina: string[];
+    ontbreekt: string[];
+  };
 };
 
 export type Doorgevoerd = {
@@ -132,6 +145,12 @@ export async function meetDoorgevoerd(slug: string, url: string, punten: PuntId[
           id: "koppen", label: labelVan("koppen"),
           uitslag: m.doorgevoerd ? "goed" : "niet",
           bewijs: `${m.gevonden} van de ${m.totaal} koppen uit ${bron.herkomst} gevonden`,
+          koppen: {
+            bron: bron.herkomst, link: bron.link,
+            bedoeld: m.bedoeldeKoppen || [],
+            opDePagina: m.paginaKoppen || [],
+            ontbreekt: m.ontbrekendeKoppen || [],
+          },
         });
       }
     }

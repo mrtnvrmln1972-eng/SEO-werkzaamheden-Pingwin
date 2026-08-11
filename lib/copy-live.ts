@@ -39,6 +39,14 @@ export type CopyLiveRij = {
   // klantsite ons even weigert, en dat is precies het soort onwaarheid dat het
   // overzicht onbruikbaar maakt.
   meetbaar: boolean;
+  // Het bewijs achter het getal: welke koppen we zochten, en wat de pagina zelf
+  // liet zien. "0 van de 5 gevonden" is namelijk geen bevinding maar een raadsel:
+  // je weet niet of de sitebouwer niets deed, of dat wij het verkeerde document
+  // naast de verkeerde pagina legden. Alleen in het geheugen, niet in de
+  // database: dit hoort bij één meting, niet bij de stand.
+  bedoeldeKoppen?: string[];
+  paginaKoppen?: string[];
+  ontbrekendeKoppen?: string[];
 };
 
 let tableReady: Promise<void> | null = null;
@@ -114,13 +122,17 @@ export async function meetCopyLive(url: string, copyContent: string): Promise<Om
   if (!pagina) return leeg;
   if (pagina.status !== null && pagina.status >= 400) return { ...leeg, status: pagina.status };
 
-  const liveKoppen = [pagina.h1, ...pagina.headings].map(norm).filter(Boolean);
+  const paginaKoppen = [pagina.h1, ...pagina.headings].filter(Boolean);
   // Pagina laadt wel maar geeft geen enkele kop terug (JavaScript-site, of we
   // kregen een blokkeerpagina): niet meetbaar, geen oordeel.
-  if (!liveKoppen.length) return { ...leeg, status: pagina.status };
+  if (!paginaKoppen.map(norm).filter(Boolean).length) return { ...leeg, status: pagina.status, bedoeldeKoppen: doel };
 
-  const v = vergelijkKoppen(doel, [pagina.h1, ...pagina.headings]);
-  return { url, status: pagina.status, totaal: v.totaal, gevonden: v.gevonden, percentage: v.percentage, doorgevoerd: v.doorgevoerd, meetbaar: true };
+  const v = vergelijkKoppen(doel, paginaKoppen);
+  return {
+    url, status: pagina.status, totaal: v.totaal, gevonden: v.gevonden, percentage: v.percentage,
+    doorgevoerd: v.doorgevoerd, meetbaar: true,
+    bedoeldeKoppen: doel, paginaKoppen, ontbrekendeKoppen: v.ontbreekt,
+  };
 }
 
 /**
