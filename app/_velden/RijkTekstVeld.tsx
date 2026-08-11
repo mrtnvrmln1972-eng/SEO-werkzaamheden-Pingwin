@@ -68,22 +68,35 @@ export default function RijkTekstVeld({
     return true;
   }
 
-  // Een "onderdeel" om te slepen is een regel op het niveau waar hij staat:
-  // een rechtstreeks kind van het veld zelf, van de inhoud van een uitklapper,
-  // of van een lijst (dan is het één bullet/nummer). Zo kun je een uitklapper
-  // tussen andere tekst zetten, of één bullet binnen zijn eigen lijstje.
-  function isSleepBak(el: Element | null): boolean {
-    if (!el) return false;
-    return el === editorRef.current || el.classList.contains("rtv-vouw-body")
-      || el.tagName === "UL" || el.tagName === "OL";
-  }
+  // Een "onderdeel" om te slepen is het EERSTE herkenbare blok dat je tegenkomt
+  // als je vanaf de aangewezen plek omhoog klimt: een uitklapper, een vinkpunt,
+  // een bullet/nummer, of anders een gewone regel (alinea, kop, tabel, losse
+  // div). Bewust NIET afhankelijk van "de ouder is het veld zelf": oudere
+  // content (van vóór dit slepen bestond) staat soms nog in een overgebleven
+  // wikkel-div van een plakactie, met daarin meerdere uitklappers naast elkaar.
+  // Bleef je klimmen tot de ouder een bekende bak was, dan greep je zo'n hele
+  // wikkel-div in één keer beet, met alles erin. Nu stopt het klimmen zodra er
+  // een eigen, zelfstandig blok gevonden is, ongeacht wat daar nog omheen staat.
+  const BLOK_TAGS = new Set(["P", "DIV", "DETAILS", "UL", "OL", "H1", "H2", "H3", "H4", "H5", "H6", "BLOCKQUOTE", "TABLE"]);
   function blokVoorSlepen(node: Node | null): HTMLElement | null {
     let n: Element | null = node ? (node.nodeType === 1 ? (node as Element) : node.parentElement) : null;
-    while (n && n.parentElement) {
-      if (isSleepBak(n.parentElement)) return n as HTMLElement;
+    while (n && n !== editorRef.current) {
+      if (n.classList.contains("rtv-check-item")) return n as HTMLElement;
+      if (n.tagName === "LI" && n.parentElement && (n.parentElement.tagName === "UL" || n.parentElement.tagName === "OL")) {
+        return n as HTMLElement;
+      }
+      if (BLOK_TAGS.has(n.tagName)) return n as HTMLElement;
       n = n.parentElement;
     }
     return null;
+  }
+
+  // Mag dit onderdeel bij dat andere onderdeel landen? Nooit in jezelf (of je
+  // eigen inhoud) droppen, en een bullet blijft bij bullets: een alinea midden
+  // in andermans lijstje zetten geeft geen geldige HTML meer.
+  function magSlepenNaar(sleepBlok: HTMLElement, doelBlok: HTMLElement): boolean {
+    if (sleepBlok === doelBlok || sleepBlok.contains(doelBlok) || doelBlok.contains(sleepBlok)) return false;
+    return (sleepBlok.tagName === "LI") === (doelBlok.tagName === "LI");
   }
 
   function toonHandleBij(blok: HTMLElement | null) {
@@ -151,9 +164,7 @@ export default function RijkTekstVeld({
     e.preventDefault();
     const el = document.elementFromPoint(e.clientX, e.clientY);
     const blok = el ? blokVoorSlepen(el) : null;
-    // Alleen laten landen bij een ander onderdeel op hetzelfde niveau; anders
-    // zou je een bullet zomaar tussen een heel andere lijst kunnen droppen.
-    if (!blok || blok === sleepBlok || blok.parentElement !== sleepBlok.parentElement) {
+    if (!blok || !magSlepenNaar(sleepBlok, blok)) {
       verbergIndicator();
       return;
     }
