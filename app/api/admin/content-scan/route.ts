@@ -5,7 +5,7 @@ import { waitUntil } from "@vercel/functions";
 import { draaiKlus, getKlus } from "../../../../lib/klussen";
 import { getClientUrls } from "../../../../lib/site-urls";
 import { getClientBySlug } from "../../../../lib/clients";
-import { captureAndDetect } from "../../../../lib/content-tracking";
+import { scanPaginas, meetBlokken, markeerContentScan } from "../../../../lib/content-tracking";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -48,17 +48,13 @@ export async function POST(req: NextRequest) {
   const lopend = await getKlus(slug, "wijzigingen-scan").catch(() => null);
   if (lopend?.status === "bezig") return NextResponse.json({ ok: true, alBezig: true });
 
-  const POOL = 5;
-  const blokken = Math.ceil(urls.length / POOL);
-  waitUntil(draaiKlus(slug, "wijzigingen-scan", "Wijzigingen op de site zoeken", blokken, async (stap) => {
-    let scanned = 0, changed = 0;
-    for (let i = 0; i < urls.length; i += POOL) {
-      const batch = urls.slice(i, i + POOL);
-      const results = await Promise.all(batch.map((u) => captureAndDetect(slug, u).catch(() => ({ changed: false }))));
-      scanned += batch.length;
-      changed += results.filter((r) => r.changed).length;
-      await stap(Math.floor(i / POOL) + 1, `${scanned} van de ${urls.length} pagina's nagekeken, ${changed} gewijzigd`);
-    }
+  const heleKlant = gevraagd.length === 0;
+  waitUntil(draaiKlus(slug, "wijzigingen-scan", "Wijzigingen op de site zoeken", meetBlokken(urls.length), async (stap) => {
+    const { scanned, changed } = await scanPaginas(slug, urls, stap);
+    // Alleen een volledige ronde telt mee voor de rouleer-volgorde van de
+    // weekcron; een gerichte meting van een paar pagina's zegt niets over de
+    // rest van de site.
+    if (heleKlant) await markeerContentScan(slug, scanned).catch(() => null);
     return `${scanned} pagina's nagekeken, ${changed} gewijzigd.`;
   }));
   return NextResponse.json({ ok: true, gestart: true, totaal: urls.length });

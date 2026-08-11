@@ -85,8 +85,14 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
     finally { setBusy(""); }
   }
 
-  // Hele site opnieuw inlezen: eerst de sitemap (welke pagina's bestaan er),
-  // daarna het menu (hoe hangen ze samen). Los van elkaar heeft het weinig zin.
+  // Hele site opnieuw inlezen, in drie stappen die op elkaar wachten: eerst de
+  // sitemap (welke pagina's bestaan er), dan het menu (hoe hangen ze samen), dan
+  // de inhoud van elke pagina (tekst, koppen, meta, alt-teksten).
+  //
+  // Die derde stap zat er eerst NIET in, en dat was verwarrend: de knop heet
+  // "hele site opnieuw scannen", maar de scores bleven op de meting van maanden
+  // terug staan, ook als er sindsdien copy was bijgeschreven. Wie op deze knop
+  // drukt verwacht verse cijfers, dus meten hoort erbij.
   async function scanSite() {
     setBusy("scan"); setMsg("");
     try {
@@ -94,11 +100,21 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
       if (!d?.ok) { setMsg(d?.error || "De sitescan lukte niet; probeer het nog een keer."); return; }
       // Het inlezen draait op de server. Het menu heeft de pagina's nodig, dus
       // eerst wachten tot dat klaar is; anders bouwt hij het menu op een lege lijst.
-      setMsg("De site wordt ingelezen; daarna wordt het menu opgebouwd. Je kunt dit venster sluiten, het werk loopt door.");
+      setMsg("Stap 1 van 3: de pagina's van de site worden opgehaald. Je kunt dit venster sluiten, het werk loopt door.");
       const klaar = await wachtOpKlus(slug, "site-inlezen");
       if (klaar && klaar.status === "fout") { setMsg(klaar.error || "Het inlezen liep vast."); return; }
-      setMsg("");
+      setMsg("Stap 2 van 3: het menu wordt opnieuw uitgelezen.");
       await fetch("/api/admin/nav-plan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, action: "menu" }) }).catch(() => null);
+      await laad();
+      // Stap 3: elke pagina opnieuw meten, zodat de scores kloppen met wat er nu
+      // op de site staat. Dit is de langste stap.
+      setMsg("Stap 3 van 3: elke pagina wordt gemeten voor een verse score. Dit duurt het langst.");
+      const m = await fetch("/api/admin/content-scan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }) }).then((r) => r.json()).catch(() => null);
+      if (m?.ok) {
+        const gemeten = await wachtOpKlus(slug, "wijzigingen-scan");
+        if (gemeten?.status === "fout") { setMsg(gemeten.error || "Het meten liep vast; de pagina's staan er wel in."); return; }
+      }
+      setMsg("");
       await laad();
     } catch { setMsg("De sitescan lukte niet; probeer het nog een keer."); }
     finally { setBusy(""); }
@@ -137,7 +153,16 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
   const liveUrl = (pad: string) => (domain ? `https://${domain.replace(/^https?:\/\//, "")}${pad}` : pad);
   const naam = (n: Node) => n.label || n.hoofdzoekterm || (n.url === "/" ? "Homepage" : (n.url.split("/").filter(Boolean).pop() || n.url).replace(/-/g, " "));
   const datum = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" }) : "");
-  const scoreUitleg = (n: Node) => (n.score === null ? "Nog niet gemeten" : `${n.scoreLabel} (${n.score}/100)\n` + n.punten.map((p) => `${p.naam}: ${p.behaald}/${p.max} \u00b7 ${p.uitleg}`).join("\n") + `\n\nLaatst vastgelegd op ${datum(n.gemetenOp)} (de scan bewaart alleen een nieuwe meting als er iets veranderd is)`);
+  // Waarschuwing bij een score die op een oude meting staat. Zonder dit lijkt een
+  // score van maanden terug de stand van vandaag, en dat klopt niet zodra er
+  // sindsdien copy is bijgeschreven.
+  const scoreVeroudering = (n: Node) => {
+    if (n.woordenGeschat) return "\n\nLET OP: deze pagina is nog nooit precies gemeten, het woordaantal is een schatting en de score dus onbetrouwbaar. Klik op \u201cMeet pagina\u2019s precies\u201d of scan de hele site opnieuw.";
+    const dagen = n.gemetenOp ? Math.floor((Date.now() - new Date(n.gemetenOp).getTime()) / 86400000) : 0;
+    if (dagen >= 21) return `\n\nLET OP: deze meting is ${dagen} dagen oud. Is er sindsdien tekst aangepast, scan dan de hele site opnieuw voor een verse score.`;
+    return "";
+  };
+  const scoreUitleg = (n: Node) => (n.score === null ? "Nog niet gemeten" : `${n.scoreLabel} (${n.score}/100)\n` + n.punten.map((p) => `${p.naam}: ${p.behaald}/${p.max} \u00b7 ${p.uitleg}`).join("\n") + `\n\nLaatst vastgelegd op ${datum(n.gemetenOp)} (de scan bewaart alleen een nieuwe meting als er iets veranderd is)` + scoreVeroudering(n));
 
   // Waar hangt deze pagina in het menu? (voor de lijstweergave)
   const takNaam = (n: Node) => {
@@ -327,7 +352,7 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
           )}
           {blik === "huidig" ? (
             <>
-              <button type="button" className="wp-fase-btn" disabled={!!busy} title="Haalt de sitemap opnieuw op, controleert elke pagina en leest daarna het menu opnieuw uit. Duurt een paar minuten; laat dit scherm open staan." onClick={() => void scanSite()}>{busy === "scan" ? "Site scannen… (paar minuten)" : "Hele site opnieuw scannen"}</button>
+              <button type="button" className="wp-fase-btn" disabled={!!busy} title="Drie stappen achter elkaar: welke pagina's bestaan er, hoe hangt het menu in elkaar, en daarna elke pagina opnieuw meten voor een verse score. Duurt een paar minuten; het werk loopt door als je dit scherm sluit." onClick={() => void scanSite()}>{busy === "scan" ? "Site scannen… (paar minuten)" : "Hele site opnieuw scannen"}</button>
               <button type="button" className="wp-fase-btn" disabled={!!busy} title="Alleen het menu opnieuw uitlezen; dat is in tien seconden klaar." onClick={() => void post({ action: "menu" }, "menu")}>{busy === "menu" ? "Menu uitlezen…" : "Alleen het menu"}</button>
             </>
           ) : (

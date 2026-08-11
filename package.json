@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "proef": "npx --yes tsx proeven/site-controle.proef.ts && npx --yes tsx proeven/mail-tekst.proef.ts && npx --yes tsx proeven/prioriteiten-weging.proef.ts && npx --yes tsx proeven/mail-stijl.proef.ts && npx --yes tsx proeven/week-datum.proef.ts && npx --yes tsx proeven/chat-bronnen.proef.ts && npx --yes tsx proeven/routekaart-tekst.proef.ts && npx --yes tsx proeven/routekaart-advies.proef.ts && npx --yes tsx proeven/meldingen.proef.ts && npx --yes tsx proeven/autoriteit.proef.ts && npx --yes tsx proeven/opmaak.proef.ts && npx --yes tsx proeven/kaart-titel.proef.ts && npx --yes tsx proeven/ads-paden.proef.ts && npx --yes tsx proeven/ahrefs-teller.proef.ts && npx --yes tsx proeven/claude-teller.proef.ts && npx --yes tsx proeven/bestand-melding.proef.ts",
+    "proef": "npx --yes tsx proeven/site-controle.proef.ts && npx --yes tsx proeven/mail-tekst.proef.ts && npx --yes tsx proeven/prioriteiten-weging.proef.ts && npx --yes tsx proeven/mail-stijl.proef.ts && npx --yes tsx proeven/week-datum.proef.ts && npx --yes tsx proeven/chat-bronnen.proef.ts && npx --yes tsx proeven/routekaart-tekst.proef.ts && npx --yes tsx proeven/routekaart-advies.proef.ts && npx --yes tsx proeven/meldingen.proef.ts && npx --yes tsx proeven/autoriteit.proef.ts && npx --yes tsx proeven/opmaak.proef.ts && npx --yes tsx proeven/kaart-titel.proef.ts && npx --yes tsx proeven/ads-paden.proef.ts && npx --yes tsx proeven/ahrefs-teller.proef.ts && npx --yes tsx proeven/claude-teller.proef.ts && npx --yes tsx proeven/bestand-melding.proef.ts && npx --yes tsx proeven/paginascore-vers.proef.ts",
     "prebuild": "npx --yes tsx proeven/opmaak.proef.ts"
   },
   "dependencies": {
