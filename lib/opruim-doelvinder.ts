@@ -278,7 +278,7 @@ function familieHub(familie: string[], bak: Bak): string {
 }
 
 /** De zoekintentie van een term, voor zover Ahrefs die kent. */
-type Intenties = Map<string, Intentie>;
+export type Intenties = Map<string, Intentie>;
 
 async function intentiesVoor(termen: string[]): Promise<Intenties> {
   const schoon = [...new Set(termen.map((t) => (t || "").trim().toLowerCase()).filter(Boolean))].slice(0, 200);
@@ -435,21 +435,27 @@ export function ladder(bak: Bak, regels: WerkRegel[], intenties: Intenties = new
     const hub = isPlaats ? (plaatsHub || eigenOuder || "") : (eigenOuder || hubUitWoorden(bronWoorden, gescoord, bak));
     if (hub) {
       const hubK = bak.kandidaten.find((k) => k.pad === hub);
+      // De intentie-rem geldt hier bewust NIET als veto, anders dan bij trede 1
+      // en 2. Een categoriepagina is per definitie breder dan zijn kinderen en
+      // bedient dus meer dan één soort vraag; de rem vergelijkt maar één term
+      // per pagina, en op kleine lokale termen is dat label wankel. Live liep
+      // dat meteen mis: zes plaatspagina's vielen terug op 410 omdat "soa poli
+      // bemmel" als informatief te boek stond en het locatie-overzicht als
+      // transactioneel, terwijl dat dezelfde vraag is. Het verschil verdwijnt
+      // niet, het wordt een waarschuwing in plaats van een besluit.
       const botst = hubK ? intentieBotst(hubK) : "";
-      if (!botst) {
-        voorstellen.push({
-          van: r.pad, doel: hub, trede: "hub", zeker: heeftRest || heeftLinks ? "middel" : "hoog", vast: false,
-          kort: `Categorie erboven: ${hub}`,
-          waarom: [
-            `**Trede 3 van de ladder: de categorie of hub erboven.** ${hub}${hubK?.titel ? ` ("${hubK.titel.split("|")[0].trim()}")` : ""} gaat over hetzelfde onderwerp, alleen breder. De bezoeker kiest daar zelf verder, en dat is eerlijker dan hem op een pagina zetten die net niet zijn vraag beantwoordt.`,
-            ...afgevallen.map((z) => z),
-            ...weegZin(gewicht, heeftLinks, heeftRest),
-          ],
-          waarschuwingen, gewicht,
-        });
-        continue;
-      }
-      afgevallen.push(`De hub erboven valt af op zoekintentie: ${botst}`);
+      if (botst) waarschuwingen.push(`Let op de zoekintentie: ${botst} Bij een categoriepagina hoeft dat geen probleem te zijn, maar controleer of ${hub} deze bezoeker echt verder helpt.`);
+      voorstellen.push({
+        van: r.pad, doel: hub, trede: "hub", zeker: heeftRest || heeftLinks ? "middel" : "hoog", vast: false,
+        kort: `Categorie erboven: ${hub}`,
+        waarom: [
+          `**Trede 3 van de ladder: de categorie of hub erboven.** ${hub}${hubK?.titel ? ` ("${hubK.titel.split("|")[0].trim()}")` : ""} gaat over hetzelfde onderwerp, alleen breder. De bezoeker kiest daar zelf verder, en dat is eerlijker dan hem op een pagina zetten die net niet zijn vraag beantwoordt.`,
+          ...afgevallen,
+          ...weegZin(gewicht, heeftLinks, heeftRest),
+        ],
+        waarschuwingen, gewicht,
+      });
+      continue;
     } else {
       afgevallen.push("Er is geen categorie- of overzichtspagina die dit onderwerp dekt, dus trede 3 valt af.");
     }

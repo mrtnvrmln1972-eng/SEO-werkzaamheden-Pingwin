@@ -17,7 +17,7 @@
 //
 // De ladder rekent hier op verzonnen sites, zonder database en zonder Ahrefs.
 
-import { maakBak, ladder, type Bak } from "../lib/opruim-doelvinder";
+import { maakBak, ladder, type Bak, type Intenties } from "../lib/opruim-doelvinder";
 import type { WerkRegel } from "../lib/opruim-werklijst";
 import type { ClientUrl } from "../lib/site-urls";
 
@@ -163,6 +163,33 @@ const doelVan = (bak: Bak, regels: WerkRegel[], pad: string) => {
   const v = doelVan(bak, regels, "/diensten/fiets-onderhoud-oud/");
   checkWaar("gemengde bronnen naar één doel leveren een waarschuwing op",
     (v?.waarschuwingen || []).some((w) => /verschillend type/.test(w)),
+    `Kreeg: ${JSON.stringify(v?.waarschuwingen)}`);
+}
+
+// ── 8. De intentie-rem sloopt de hub niet ────────────────────────────────
+// Trede 1 en 2 vergelijken twee pagina's die elkaar moeten vervangen; daar is
+// een botsende zoekintentie een echte blokkade. Een categoriepagina is per
+// definitie breder en bedient meer dan één soort vraag. Live ging dat meteen
+// mis: zes plaatspagina's van One Day Clinic vielen terug op 410 omdat "soa
+// poli bemmel" als informatief te boek stond en het locatie-overzicht als
+// transactioneel, terwijl dat dezelfde vraag is. Het verschil hoort een
+// waarschuwing te zijn, geen besluit.
+{
+  const plaatsen = ["bemmel", "cuijk", "nuenen", "abcoude", "grave", "malden", "baarn", "zeist", "vianen"];
+  const urls = [
+    url("/"), url("/soa-klinieken/", { title: "SOA klinieken | Kies je locatie" }),
+    ...plaatsen.map((p) => url(`/soa-klinieken/soa-poli-${p}/`)),
+  ];
+  const regels = plaatsen.map((p) => regel(`/soa-klinieken/soa-poli-${p}/`, "opruimen", { herkomst: ["plaats"], term: `soa poli ${p}` }));
+  const bak = maakBak({
+    urls, ads: { paden: [], geen: true, ingevuld: true },
+    tops: [{ url: `${SITE}/soa-klinieken/`, refDomains: null, topKeyword: "soa kliniek" }],
+    vasteRegels: [], regels,
+  });
+  const intenties: Intenties = new Map([["soa poli bemmel", "informatief"], ["soa kliniek", "transactioneel"]]);
+  const v = ladder(bak, regels, intenties).voorstellen.find((x) => x.van === "/soa-klinieken/soa-poli-bemmel/");
+  check("een botsende intentie zet de hub niet opzij", v?.trede, "hub");
+  checkWaar("maar hij wordt wel gemeld", (v?.waarschuwingen || []).some((w) => /zoekintentie/.test(w)),
     `Kreeg: ${JSON.stringify(v?.waarschuwingen)}`);
 }
 
