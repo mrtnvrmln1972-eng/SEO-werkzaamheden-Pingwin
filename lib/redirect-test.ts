@@ -38,7 +38,22 @@ export type RedirectTest = {
   canonical: string;
 };
 
-const UA = "Mozilla/5.0 (compatible; PingwinBot/1.0; +https://pingwin.nl)";
+// ── Meten zoals een bezoeker, niet zoals een bot ──
+// Dit koste op 11 augustus een valse "Werkt": de test meldde een keurige 301
+// terwijl Maarten in zijn browser gewoon de oude pagina kreeg. Oorzaak is dat
+// een site zich anders kan gedragen tegenover een onbekende bot dan tegenover
+// een browser, en dat er bijna altijd een cachelaag voor zit (WP Rocket,
+// LiteSpeed, Cloudflare) die de oude pagina blijft uitserveren nadat de
+// omleiding in WordPress al staat.
+//
+// De les eronder is groter dan deze knop: een controle die iets anders meet dan
+// wat de gebruiker ervaart, is erger dan geen controle. Hij geeft je vertrouwen
+// in een uitkomst die niet klopt. Dus meet de test nu met de UA van een echte
+// browser, en meet hij twee keer: kaal (dat is wat de bezoeker krijgt, cache en
+// al) en met een cache-buster (dat is wat er echt op de server staat).
+const BEZOEKER_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+/** Een query die geen enkele paginacache kent, dus die haalt de verse versie. */
+const CACHE_BUSTER = "pingwin-controle=1";
 
 function padVanUrl(u: string): string {
   try { return new URL(u).pathname.replace(/\/+$/, "").toLowerCase() || "/"; } catch { return (u || "").toLowerCase(); }
@@ -49,8 +64,18 @@ async function haal(url: string, methode: "HEAD" | "GET"): Promise<Response | nu
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 12000);
   try {
-    return await fetch(url, { method: methode, redirect: "manual", cache: "no-store", headers: { "User-Agent": UA }, signal: ctrl.signal });
+    return await fetch(url, {
+      method: methode, redirect: "manual", cache: "no-store", signal: ctrl.signal,
+      headers: { "User-Agent": BEZOEKER_UA, "Accept": "text/html,application/xhtml+xml", "Cache-Control": "no-cache", "Pragma": "no-cache" },
+    });
   } catch { return null; } finally { clearTimeout(timer); }
+}
+
+/** De status van het eerste antwoord op één adres. Voor de cache-vergelijking. */
+async function eersteStatus(url: string): Promise<number | null> {
+  let res = await haal(url, "HEAD");
+  if (!res || res.status === 405 || res.status === 501) res = await haal(url, "GET");
+  return res ? res.status : null;
 }
 
 /** Deugt de doelpagina zelf: bestaat hij, is hij indexeerbaar, wijst zijn
@@ -69,6 +94,15 @@ async function keurDoel(basis: string, doelPad: string): Promise<{ melding: stri
     return { melding: `Let op: de doelpagina verwijst met zijn canonical naar ${padVanUrl(canonical)} in plaats van naar zichzelf.`, indexeerbaar, canonical };
   }
   return { melding: `De doelpagina ${normPad(doelPad)} deugt wel: status 200, indexeerbaar, canonical naar zichzelf. Zet de omleiding en test opnieuw.`, indexeerbaar, canonical };
+}
+
+/** Wat je moet weten als de omleiding er wel staat maar de cache hem tegenhoudt. */
+function cacheZinnen(wat: 301 | 410): string[] {
+  const ding = wat === 410 ? "de 410" : "de omleiding";
+  return [
+    `${wat === 410 ? "De 410" : "De omleiding"} staat wél op de website, maar er zit een cache voor die de oude pagina nog uitserveert. Bezoekers en Google krijgen dus voorlopig nog de oude pagina te zien; jij ook, als je erop klikt.`,
+    `Wat je doet: leeg de cache van de site (in WordPress bij je cache-plugin, en als er Cloudflare voor staat ook daar). Daarna deze test opnieuw draaien. Verandert er niets, dan pakt ${ding} het echt niet.`,
+  ];
 }
 
 /**
@@ -116,21 +150,43 @@ export async function testRedirect(siteUrl: string, van: string, verwacht = "", 
   const sprongen = Math.max(0, hops.length - 1);
   const eerste = hops[0]?.status ?? null;
 
+  // ── Zit er een cache tussen? ──
+  // Het antwoord hierboven is wat een bezoeker krijgt. Krijgt die de oude
+  // pagina terwijl er met een cache-buster wél een omleiding komt, dan staat de
+  // regel in WordPress maar serveert de cache de oude versie nog. Dat is een
+  // andere situatie dan "er staat niets", en het vraagt een andere actie.
+  const startUrl = `${basis}${normPad(van)}/`.replace(/([^:]\/)\/+/g, "$1");
+  const isOmleiding = (st: number | null) => st != null && [301, 302, 303, 307, 308].includes(st);
+  const bezoekerKrijgtHetNietGoed = alsGone ? eerste !== 410 : !isOmleiding(eerste);
+  let cacheErtussen = false;
+  if (bezoekerKrijgtHetNietGoed && eerste != null) {
+    const vers = await eersteStatus(`${startUrl}?${CACHE_BUSTER}`);
+    cacheErtussen = alsGone ? vers === 410 : isOmleiding(vers);
+  }
+
   // ── Het geval "hier hoort een 410 te staan" ──
   if (alsGone) {
     const goed = eerste === 410;
     if (goed) meldingen.unshift("De pagina geeft netjes een 410: bewust weg. Dat is precies wat hier hoort.");
+    else if (cacheErtussen) meldingen.unshift(...cacheZinnen(410));
     else if (eerste === 404) meldingen.unshift("De pagina geeft een 404 in plaats van een 410. Dat werkt ook, maar 410 vertelt Google duidelijker dat dit definitief is.");
     else if (eerste === 200) meldingen.unshift("De pagina bestaat nog gewoon (status 200). Er is hier dus nog niets opgeruimd.");
     else meldingen.unshift(`De pagina geeft status ${eerste ?? "onbekend"}, terwijl hier een 410 hoort te staan.`);
-    return { goed, oordeel: goed ? "goed" : eerste === 404 ? "let-op" : "fout", hops, eind, eindStatus, indexeerbaar: null, canonical: "", meldingen };
+    return {
+      goed, oordeel: goed ? "goed" : cacheErtussen || eerste === 404 ? "let-op" : "fout",
+      hops, eind, eindStatus, indexeerbaar: null, canonical: "", meldingen,
+    };
   }
 
   // ── Het gewone geval: hier hoort een 301 naar het doel te staan ──
   if (eerste == null) {
     return { goed: false, oordeel: "fout", hops, eind, eindStatus, indexeerbaar: null, canonical: "", meldingen };
   }
-  if (![301, 302, 303, 307, 308].includes(eerste)) {
+  if (!isOmleiding(eerste)) {
+    if (cacheErtussen) {
+      meldingen.unshift(...cacheZinnen(301));
+      return { goed: false, oordeel: "let-op", hops, eind, eindStatus, indexeerbaar: null, canonical: "", meldingen };
+    }
     meldingen.unshift(eerste === 200
       ? "Er staat nog geen redirect: het oude adres geeft gewoon een pagina terug (status 200)."
       : `Er staat geen redirect: het oude adres geeft status ${eerste}.`);
@@ -148,7 +204,13 @@ export async function testRedirect(siteUrl: string, van: string, verwacht = "", 
   const doelPad = verwacht ? normPad(verwacht) : "";
   const klopt = !doelPad || eindPad === normPad(doelPad);
   if (doelPad && !klopt) meldingen.unshift(`De omleiding komt uit op ${eindPad}, terwijl ${normPad(doelPad)} de bedoeling was.`);
-  else meldingen.unshift(`Het oude adres leidt door naar ${eindPad}.`);
+  else {
+    meldingen.unshift(`Het oude adres leidt door naar ${eindPad}.`);
+    // Deze zin staat er omdat precies dit misverstand een keer een halve middag
+    // kostte: de omleiding werkte, maar de browser had de oude pagina nog in
+    // zijn eigen geheugen staan en toonde hem gewoon.
+    meldingen.push("Krijg je zelf nog de oude pagina te zien, dan zit die in het geheugen van je browser en niet meer op de website. Open hem in een privévenster om het te controleren.");
+  }
 
   if (eerste !== 301) meldingen.push(`De omleiding is een ${eerste} (tijdelijk) in plaats van een 301 (permanent). Google draagt bij een tijdelijke omleiding geen waarde over.`);
   if (sprongen > 1) meldingen.push(`Er zitten ${sprongen} tussenstappen in plaats van één. Herschrijf de eerste regel meteen naar het eindpunt; elke extra hop kost snelheid en een beetje waarde.`);

@@ -249,6 +249,12 @@ export default function OpruimEenLijst({ slug, domain, token, alleenLezen, titel
           <div className={`opr-doel-uitslag ${u.oordeel}`}>
             <strong>{u.oordeel === "goed" ? "Werkt" : u.oordeel === "let-op" ? "Werkt, met een kanttekening" : "Werkt niet"}</strong>
             {u.meldingen.map((m, i) => <span key={i}>{m}</span>)}
+            {/* Zelf controleren zonder dat je browser of de cache van de site je
+                de oude pagina voorschotelt. Zonder deze link klik je op het pad
+                in de eerste kolom en zie je iets anders dan de test zag. */}
+            <a className="opr-doel-zelf" href={`${site(v.van)}?pingwin-controle=1`} target="_blank" rel="noreferrer">
+              Zelf controleren, zonder cache
+            </a>
           </div>
         )}
         {fout[v.van] && <div className="opr-doel-uitslag fout"><span>{fout[v.van]}</span></div>}

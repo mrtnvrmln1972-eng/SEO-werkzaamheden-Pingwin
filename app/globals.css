@@ -7147,3 +7147,5 @@ a.wb-pad:hover { text-decoration: underline; }
 .ut-nieuw-item { display: flex; flex-direction: column; gap: var(--s-1); padding-left: var(--s-4); border-left: 2px solid var(--card-border); }
 .ut-nieuw-datum { font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 800; color: var(--gray); }
 .ut-nieuw-tekst { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--dark); }
+.opr-doel-zelf { align-self: flex-start; margin-top: var(--s-1); font-size: var(--fs-xs); line-height: var(--lh-xs);
+  color: var(--brand-blue); text-decoration: underline; }
