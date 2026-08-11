@@ -273,7 +273,7 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
   // De controle "is dit doorgevoerd?": meet de live pagina op de punten die bij
   // het doorzetten zijn afgesproken. Het antwoord blijft hier staan tot je de
   // kaart sluit; de vaste plek ervan is de kaarttekst en de tijdlijn.
-  const [controle, setControle] = useState<{ samenvatting: string; punten: { label: string; uitslag: string; bewijs: string }[]; alles: boolean; meetbaar: boolean } | null>(null);
+  const [controle, setControle] = useState<{ samenvatting: string; punten: { label: string; uitslag: string; bewijs: string; koppen?: { bron: string; link: string; bedoeld: string[]; opDePagina: string[]; ontbreekt: string[] } }[]; alles: boolean; meetbaar: boolean } | null>(null);
   const [controleBezig, setControleBezig] = useState(false);
 
   async function isDoorgevoerd() {
@@ -663,6 +663,21 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
                 <li key={i} className={"wp-controle-punt wp-cp-" + p.uitslag}>
                   <span className="wp-controle-label">{p.label}</span>
                   <span className="wp-controle-bewijs muted">{p.bewijs}</span>
+                  {/* Het bewijs achter het getal. Zonder dit is "0 van de 5 koppen
+                      gevonden" een raadsel: dan weet je niet of de sitebouwer
+                      niets deed of dat wij het verkeerde document naast de pagina
+                      legden, en dat bepaalt wie er aan zet is. */}
+                  {p.koppen && p.koppen.bedoeld.length > 0 && (
+                    <details className="wp-controle-details">
+                      <summary>Welke koppen</summary>
+                      <div className="wp-controle-bron muted">Vergeleken met {p.koppen.bron}</div>
+                      <ul className="wp-controle-koppen">
+                        {p.koppen.bedoeld.map((k, j) => (
+                          <li key={j} className={p.koppen && p.koppen.ontbreekt.includes(k) ? "wp-kop-mist" : "wp-kop-ok"}>{k}</li>
+                        ))}
+                      </ul>
+                    </details>
+                  )}
                 </li>
               ))}
             </ul>

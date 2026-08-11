@@ -6657,6 +6657,17 @@ a.wb-pad:hover { text-decoration: underline; }
 .wp-cp-onmeetbaar::before { content: "?"; color: var(--gray); }
 .wp-controle-label { color: var(--dark); }
 .wp-controle .btn-ghost { margin-top: var(--s-2); }
+/* Het bewijs onder een controlepunt: welke koppen we zochten en welke er misten.
+   Dicht by default, want het getal volstaat meestal; open zodra je wilt weten
+   waarom een uitkomst is wat hij is. */
+.wp-controle-details { flex-basis: 100%; margin-top: var(--s-1); font-size: var(--fs-xs); line-height: var(--lh-xs); }
+.wp-controle-details > summary { cursor: pointer; color: var(--brand); }
+.wp-controle-bron { margin: var(--s-1) 0 0; }
+.wp-controle-koppen { list-style: none; margin: var(--s-1) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--s-1); }
+.wp-controle-koppen > li { padding-left: var(--s-4); position: relative; color: var(--dark); }
+.wp-controle-koppen > li::before { position: absolute; left: 0; font-weight: 800; }
+.wp-kop-ok::before { content: "\2713"; color: #1c7a3f; }
+.wp-kop-mist::before { content: "\2715"; color: #B3261E; }
 
 /* Paginawerk op de werklijst van de sitebouwer: per doorgezette pagina wat er
    moet gebeuren, welke teksten erbij horen en wanneer het klaar is. */
