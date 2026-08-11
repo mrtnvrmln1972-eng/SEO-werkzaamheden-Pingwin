@@ -5233,8 +5233,7 @@ a.wb-pad:hover { text-decoration: underline; }
 
 /* ── Herinner me: klein klokje, zelfde uitklap-vorm als de datumkiezer ────── */
 .hr { position: relative; justify-self: end; }
-.hr-veld { font-size: var(--fs-xs); opacity: 0.75; }
-.hr-veld:hover { opacity: 1; }
+.hr-veld { font-size: var(--fs-xs); }
 .hr-doos {
   position: absolute; right: 0; top: calc(100% + 6px); z-index: 60;
   width: 176px; padding: var(--s-3); background: #fff;

@@ -575,8 +575,12 @@ export default function Planning({
           {/* De naam van de fase ("strategie", "implementatie", …) staat al in de
               bolletjes hierboven (kleur + letter + tooltip); die nog eens als
               woord herhalen is dubbelop. Alleen zonder pagina zijn er geen
-              bolletjes, en blijft dit de enige plek die de stand zegt. */}
-          {!stippen && <span className="wb-next">{volgende(t)}</span>}
+              bolletjes, en blijft dit de enige plek die de stand zegt.
+              Het element zelf blijft altijd staan (ook leeg): de rij is een
+              vast kolomraster, en een weggelaten grid-item schuift alle
+              kolommen na hem één op, met een uitgerekte datumknop en kruisje
+              tot gevolg. */}
+          <span className="wb-next">{!stippen ? volgende(t) : ""}</span>
           <HerinnerKnop slug={t.slug} id={t.id} />
           <DatumKiezer waarde={t.datum} onKies={(iso) => void zetDatum(t, iso)} />
           <button type="button" className="wp-icon wp-del" title="Verwijderen"
