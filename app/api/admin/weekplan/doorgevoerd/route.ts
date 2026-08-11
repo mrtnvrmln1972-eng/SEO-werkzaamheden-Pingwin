@@ -64,10 +64,14 @@ export async function POST(req: NextRequest) {
   const regel = controleRegel(meting);
   await updateWeekplanToelichting(slug, id, vervangControleRegel(kaart.toelichting || "", regel));
 
+  // De losse bewijsregels erbij, niet alleen de samenvatting: anders heeft de
+  // AI die hier later een verhaaltje van maakt niets concreets om te noemen en
+  // valt hij terug op vage taal als "een controlepunt afgevinkt".
+  const puntDetails = meting.punten.map((p) => `${p.label.toLowerCase()}: ${p.bewijs}`).join("; ");
   await logActiviteit({
     slug, soort: "copy-live", bron: "weekplan-doorgevoerd", bronId: `${id}`,
     url: kaart.url, bewijs: kaart.url,
-    intern: `Controle: ${meting.samenvatting} (${kaart.url})`,
+    intern: `Controle: ${meting.samenvatting}. ${puntDetails}. (${kaart.url})`,
   }).catch(() => {});
 
   // Alles in orde: Implementatie afvinken, langs dezelfde weg als het vinkje in

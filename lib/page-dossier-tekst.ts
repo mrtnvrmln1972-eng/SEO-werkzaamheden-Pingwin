@@ -111,6 +111,8 @@ WAT ER IN MOET, in deze volgorde van belang:
 2. Of iemand iets heeft aangeleverd of teruggestuurd (teksten, correcties, een document), en of dat nog verwerkt moet worden. Dit is het belangrijkste punt: als de klant teksten heeft teruggestuurd, moet dat er ALTIJD in staan.
 3. Wat er nog niet gebeurd is, en wie daarvoor aan zet is.
 
+Gaat een stap over een automatische controle (je herkent dat aan "Controle:" in het feitenblok), noem dan de concrete uitkomst, niet alleen dát er gecontroleerd is. Dus "6 van de 6 koppen gevonden, pagina staat live" in plaats van "een controlepunt afgevinkt" of "gecontroleerd en in orde". Staat er iets níet in orde, zeg dan ook concreet wát: "koppen nog niet gevonden op de pagina" in plaats van "nog niet alles klopt". De lezer moet uit die ene stap al weten wat er precies is nagekeken en wat de uitslag was.
+
 WAT ER NIET IN MOET:
 - Een opsomming van welke stappen af zijn. Noem alleen wat NOG moet gebeuren.
 - Losse afspraken die niet over deze pagina gaan (een belafspraak, een vergadering, een onderwerp uit dezelfde mailthread dat een andere pagina betreft). Staat er in een mail iets dat niet over deze pagina gaat, laat het weg.

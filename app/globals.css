@@ -5192,7 +5192,7 @@ details[open] > .opr-kaart-sam::before { content: "▾ "; }
    per regel uit de pas, want de ene taaknaam is nu eenmaal langer dan de andere. */
 .wb-rij {
   display: grid;
-  grid-template-columns: 20px 44px minmax(0, 1fr) auto 116px 96px 22px;
+  grid-template-columns: 20px 44px minmax(0, 1fr) auto 116px 22px 96px 22px;
   align-items: center; gap: var(--s-3);
   padding: var(--s-2); border-bottom: 1px solid var(--card-border); cursor: pointer;
 }
@@ -5230,6 +5230,31 @@ a.wb-pad:hover { text-decoration: underline; }
 .wb-stip.af { background: #1c7a3f; color: #fff; }
 .wb-stip.nu { background: var(--orange); color: #fff; box-shadow: 0 0 0 2px var(--orange-light); }
 .wb-next { text-align: right; font-size: var(--fs-xs); color: var(--gray); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── Herinner me: klein klokje, zelfde uitklap-vorm als de datumkiezer ────── */
+.hr { position: relative; justify-self: end; }
+.hr-veld { font-size: var(--fs-xs); opacity: 0.75; }
+.hr-veld:hover { opacity: 1; }
+.hr-doos {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 60;
+  width: 176px; padding: var(--s-3); background: #fff;
+  border: 1px solid var(--card-border); border-radius: var(--r-lg); box-shadow: var(--shadow-lg);
+}
+.hr-kop { font-size: var(--fs-xs); font-weight: 800; color: var(--dark); margin-bottom: var(--s-2); }
+.hr-rij { display: flex; flex-direction: column; gap: 2px; margin-bottom: var(--s-2); }
+.hr-actie {
+  border: 1px solid var(--card-border); background: #fff; padding: var(--s-1) var(--s-2);
+  border-radius: var(--r-sm); font-size: var(--fs-xs); font-weight: 700; color: var(--orange-dark); cursor: pointer; text-align: left;
+}
+.hr-actie:hover:not(:disabled) { background: var(--orange-light); border-color: var(--orange); }
+.hr-actie:disabled { opacity: 0.5; cursor: default; }
+.hr-eigen { display: flex; align-items: center; gap: var(--s-1); padding-top: var(--s-2); border-top: 1px solid var(--card-border); }
+.hr-eigen input {
+  width: 52px; padding: var(--s-1); border: 1px solid var(--card-border); border-radius: var(--r-sm);
+  font-size: var(--fs-xs); font: inherit;
+}
+.hr-eigen span { font-size: var(--fs-xs); color: var(--gray); }
+.hr-ok { font-size: var(--fs-xs); font-weight: 700; color: #1c7a3f; padding: var(--s-1) 0; }
 
 /* ── De datumkiezer ──────────────────────────────────────────────────────────
    Hiervoor lag hier een onzichtbaar <input type="date"> overheen. Dat oogde
