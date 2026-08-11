@@ -53,6 +53,24 @@ async function haal(url: string, methode: "HEAD" | "GET"): Promise<Response | nu
   } catch { return null; } finally { clearTimeout(timer); }
 }
 
+/** Deugt de doelpagina zelf: bestaat hij, is hij indexeerbaar, wijst zijn
+    canonical naar zichzelf? Nuttig vóórdat je de omleiding zet. */
+async function keurDoel(basis: string, doelPad: string): Promise<{ melding: string; indexeerbaar: boolean | null; canonical: string }> {
+  const url = `${basis}${normPad(doelPad)}/`.replace(/([^:]\/)\/+/g, "$1");
+  const res = await haal(url, "GET");
+  if (!res) return { melding: `De doelpagina ${normPad(doelPad)} was niet op te vragen.`, indexeerbaar: null, canonical: "" };
+  if (res.status !== 200) return { melding: `Let op: de doelpagina ${normPad(doelPad)} geeft zelf status ${res.status}. Zet er dus nog geen omleiding heen.`, indexeerbaar: null, canonical: "" };
+  const kop = (await res.text().catch(() => "")).slice(0, 60000);
+  const robots = /<meta[^>]+name=["']robots["'][^>]*content=["']([^"']+)["']/i.exec(kop)?.[1] || "";
+  const indexeerbaar = !/noindex/i.test(robots);
+  const canonical = /<link[^>]+rel=["']canonical["'][^>]*href=["']([^"']+)["']/i.exec(kop)?.[1] || "";
+  if (!indexeerbaar) return { melding: `Let op: de doelpagina ${normPad(doelPad)} staat op noindex. Dan komt er niets van de oude pagina terecht.`, indexeerbaar, canonical };
+  if (canonical && padVanUrl(canonical) !== padVanUrl(url)) {
+    return { melding: `Let op: de doelpagina verwijst met zijn canonical naar ${padVanUrl(canonical)} in plaats van naar zichzelf.`, indexeerbaar, canonical };
+  }
+  return { melding: `De doelpagina ${normPad(doelPad)} deugt wel: status 200, indexeerbaar, canonical naar zichzelf. Zet de omleiding en test opnieuw.`, indexeerbaar, canonical };
+}
+
 /**
  * Loopt het oude adres af en vertelt wat er gebeurt. `verwacht` is het doelpad
  * dat je voor ogen had; laat het leeg als je alleen wilt weten wát er gebeurt.
@@ -116,6 +134,14 @@ export async function testRedirect(siteUrl: string, van: string, verwacht = "", 
     meldingen.unshift(eerste === 200
       ? "Er staat nog geen redirect: het oude adres geeft gewoon een pagina terug (status 200)."
       : `Er staat geen redirect: het oude adres geeft status ${eerste}.`);
+    // Staat de omleiding er nog niet, dan is de nuttigste tweede vraag of het
+    // doel dat je op het oog hebt wél deugt. Anders kom je daar pas achter
+    // nadat je hem hebt gezet.
+    if (verwacht) {
+      const doel = await keurDoel(basis, verwacht);
+      meldingen.push(doel.melding);
+      return { goed: false, oordeel: "fout", hops, eind, eindStatus, indexeerbaar: doel.indexeerbaar, canonical: doel.canonical, meldingen };
+    }
     return { goed: false, oordeel: "fout", hops, eind, eindStatus, indexeerbaar: null, canonical: "", meldingen };
   }
 
