@@ -21,7 +21,7 @@
 // betreffende uitklapper aanvullen en LAATST_BIJGEWERKT verzetten.
 // ═══════════════════════════════════════════════════════════
 
-export const LAATST_BIJGEWERKT = "11 augustus 2026 (\"Is dit doorgevoerd?\" toetst nu altijd ook de copy als die er is, en zet de uitslag door naar de gedeelde live-stand; een bevroren \"nog niet doorgevoerd\"-regel op een kaart wijkt automatisch zodra de meting het tegendeel bevestigt)";
+export const LAATST_BIJGEWERKT = "11 augustus 2026 (de strategie vastleggen kan nu ook rechtstreeks op de projectkaart in de planning, met dezelfde knop \"Vat samen & leg strategie vast\" en een eigen Drive-map-keuze als in Pagina's; de verwarrende losse knop \"Strategie vastleggen\", die alleen een document maakte en de strategie níet vulde, is vervangen door een eerlijk benoemde herkansing \"Document opnieuw maken\")";
 
 export type Uitklapper = {
   titel: string;
@@ -985,6 +985,14 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "Uit die stand volgt automatisch twee dingen: wat de volgende stap is, en wie er aan zet is (het " +
           "bureau of de developer). Dat wordt op één plek berekend, want eerder deden de kaart en de server dat " +
           "elk apart en dan zei de ene 'volgende: strategie' terwijl de knop ernaast een blauwdruk startte.\n\n" +
+          "**Een chat is nog geen strategie.** Over elke pagina kun je vrij sparren; er wordt nooit stilzwijgend " +
+          "iets tot strategie gebombardeerd. Pas de knop **\"Vat samen & leg strategie vast\"** maakt de conclusie " +
+          "officieel: het hele gesprek wordt samengevat, die conclusie wordt de vastgelegde strategie die de " +
+          "volgende fases (gelieerde pagina's, analyse, blauwdruk, copy) als basis meekrijgen, en er komt een net " +
+          "Pingwin-document van in de Drive-map van de pagina, vastgelegd als werkzaamheid. Die ene knop staat op " +
+          "beide plekken waar de chat staat: bij de pagina in Pagina's én op de projectkaart in de planning, " +
+          "allebei met de Drive-map-keuze ernaast. Zonder die klik draaien de volgende fases op de live data " +
+          "alleen, zonder de conclusies uit het gesprek.\n\n" +
           "Eén uitzondering zit erin: bestaat de pagina nog niet, dan wordt de analyse overgeslagen. Je kunt een " +
           "pagina die er niet is niet analyseren.",
       },

@@ -14,7 +14,9 @@ import { urlKey } from "../../../../lib/url-key";
 import { devLabel } from "../../../../lib/personen";
 import { eersteKop } from "../../../../lib/chat-vouw";
 import { volgendeFase, faseLabel, FASE_VOLGORDE } from "../../../../lib/fase-volgorde";
+import { SUMMARIZE_PROMPT } from "../../../../lib/strategie-prompt";
 import AntwoordBlokken from "./AntwoordBlokken";
+import DriveMapKiezer, { type DriveMap } from "./DriveMapKiezer";
 import DocVersies from "./DocVersies";
 import KaartNotitie from "./KaartNotitie";
 import PaginaDossier from "./PaginaDossier";
@@ -143,8 +145,22 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
   const laatsteAntwoord = msgs.map((m) => m.role).lastIndexOf("assistant");
   const [input, setInput] = useState("");
   const [chatBusy, setChatBusy] = useState(false);
-  const [planVoorstel, setPlanVoorstel] = useState<string>("");
   const msgsRef = useRef<HTMLDivElement>(null);
+  // Afronden vanaf de kaart, met dezelfde keten als de pagina-chat in Pagina's:
+  // samenvatten, de conclusie als vastgelegde strategie, en het document.
+  const [vatFase, setVatFase] = useState<"" | "samenvatten" | "vastleggen" | "document">("");
+  // De gekozen Drive-bestemmingsmap van deze pagina (zelfde keuze als in Pagina's;
+  // hij wordt server-side per klant + URL onthouden).
+  const [driveMap, setDriveMap] = useState<DriveMap | null>(null);
+  const [kiezerOpen, setKiezerOpen] = useState(false);
+  useEffect(() => {
+    if (!open || !t.url) return;
+    let alive = true;
+    fetch(`/api/admin/drive/folders?chosenOnly=1&slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(t.url)}`)
+      .then((r) => r.json()).then((d) => { if (alive && d?.ok && d.chosen) setDriveMap({ id: d.chosen.folderId, name: d.chosen.folderName, path: d.chosen.folderPath }); })
+      .catch(() => { /* niet kritisch */ });
+    return () => { alive = false; };
+  }, [open, slug, t.url]);
 
   const runActive = !!run && run.status === "running";
   const schemaRunning = schemaStatus === "running";
@@ -402,7 +418,6 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
         if (!d?.ok) { setFoutje(d?.error || "De assistent is niet bereikbaar."); setChatBusy(false); return; }
         const withReply: ChatMsg[] = [...next, { role: "assistant", content: String(d.reply || "") }];
         setMsgs(withReply);
-        if (d.proposal?.plan) setPlanVoorstel(String(d.proposal.plan));
         const s = await fetch("/api/admin/page-chats", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: t.url, id: chatId, messages: withReply }) }).then((r) => r.json()).catch(() => null);
         if (s?.ok && s.id) setChatId(s.id);
       } else {
@@ -433,22 +448,45 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
   // voor bericht opruimen. Bij een kaart met pagina gooit dit de opgeslagen
   // pagina-chat weg, bij een kaart zonder pagina het eigen kaart-gesprek.
   async function wisChat() {
-    setWegVraag(null); setMsgs([]); setOpenBericht({}); setPlanVoorstel("");
+    setWegVraag(null); setMsgs([]); setOpenBericht({});
     try {
       if (t.url) { if (chatId !== null) await fetch(`/api/admin/page-chats?id=${chatId}`, { method: "DELETE" }); setChatId(null); }
       else await fetch(`/api/admin/chat?slug=${encodeURIComponent(slug)}&thread=${encodeURIComponent(kaartThread)}`, { method: "DELETE" });
     } catch { /* stil */ }
   }
 
-  async function legStrategieVast() {
-    const plan = planVoorstel.trim() || [...msgs].reverse().find((m) => m.role === "assistant")?.content || "";
-    if (!plan || !t.url) return;
-    setBusy("strategie"); setFoutje("");
+  // Dezelfde afsluitknop als in de pagina-chat: het hele gesprek wordt samengevat,
+  // de conclusie wordt de vastgelegde strategie (de basis voor de volgende fases)
+  // en er komt een Pingwin-document van in de Drive-map, als afgeronde werkzaamheid.
+  async function vatSamenEnLegVast() {
+    if (!t.url || chatBusy || vatFase) return;
+    const voorheen = msgs;
+    const next: ChatMsg[] = [...msgs, { role: "user", content: SUMMARIZE_PROMPT }];
+    setVatFase("samenvatten"); setChatBusy(true); setFoutje(""); setMelding("");
+    setMsgs(next);
     try {
-      const d = await fetch("/api/admin/page-chat/accept", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: t.url, plan }) }).then((r) => r.json());
-      if (!d?.ok) setFoutje(d?.error || "Vastleggen mislukt.");
-      else { setPlanVoorstel(""); refreshBoard(); }
-    } catch { setFoutje("Vastleggen mislukt."); } finally { setBusy(""); }
+      // Voor de samenvatting gaat het héle gesprek ongekort mee, plus de
+      // kaart-achtergrond als context (net als bij een gewone vraag).
+      const seed: ChatMsg | null = hasInfo ? { role: "user", content: `Achtergrond van deze projectkaart "${t.taak}" (context, hoeft geen apart antwoord):\n${t.toelichting.slice(0, 2000)}` } : null;
+      const outgoing = seed ? [seed, ...next] : next;
+      const d = await fetch("/api/admin/page-chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: t.url, messages: outgoing, volledig: true }) }).then((r) => r.json());
+      if (!d?.ok || !String(d.reply || "").trim()) { setFoutje(d?.error || "Samenvatten mislukt, probeer het nog een keer."); setMsgs(voorheen); return; }
+      const withReply: ChatMsg[] = [...next, { role: "assistant", content: String(d.reply) }];
+      setMsgs(withReply);
+      const s = await fetch("/api/admin/page-chats", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: t.url, id: chatId, messages: withReply }) }).then((r) => r.json()).catch(() => null);
+      if (s?.ok && s.id) setChatId(s.id);
+      setVatFase("vastleggen");
+      const plan = String(d.proposal?.plan || "").trim() || String(d.reply);
+      const a = await fetch("/api/admin/page-chat/accept", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: t.url, plan }) }).then((r) => r.json());
+      if (!a?.ok) { setFoutje(a?.error || "Strategie vastleggen mislukte."); return; }
+      setVatFase("document");
+      const doc = await fetch("/api/admin/page-analysis-doc", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: t.url, analysis: String(d.reply), background: true, ...(driveMap ? { folderId: driveMap.id } : {}) }) }).then((r) => r.json()).catch(() => null);
+      setMelding(doc?.ok
+        ? `Strategie vastgelegd. Het document wordt op de achtergrond gemaakt${driveMap ? ` in "${driveMap.path || driveMap.name}"` : ""} en verschijnt als werkzaamheid.`
+        : "Strategie vastgelegd. Alleen het document maken lukte niet; probeer dat zo opnieuw (of vanuit de pagina-chat in Pagina's).");
+      refreshBoard();
+    } catch { setFoutje("Samenvatten mislukt, probeer het nog een keer."); setMsgs(voorheen); }
+    finally { setVatFase(""); setChatBusy(false); }
   }
 
   function faseStand(key: FaseKey): { label: string; cls: string } {
@@ -887,9 +925,15 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
                 })}
                 {chatBusy && <div className="muted wp-chat-leeg">Aan het nadenken…</div>}
               </div>
-              {planVoorstel && (
+              {t.url && msgs.some((m) => m.role === "assistant") && (
                 <div className="wp-chat-acties">
-                  <button type="button" className="btn btn-primary btn-klein" disabled={busy === "strategie"} onClick={() => void legStrategieVast()}>Strategie vastleggen</button>
+                  <button type="button" className="btn btn-primary btn-klein" disabled={chatBusy || !!vatFase}
+                    title="Vat het hele gesprek samen tot de definitieve conclusie, zet die als vastgelegde strategie (de basis voor gelieerde pagina's, analyse, blauwdruk en copy) en maak er het Pingwin-document van in de Drive-map."
+                    onClick={() => void vatSamenEnLegVast()}>
+                    {vatFase === "samenvatten" ? "Samenvatten…" : vatFase === "vastleggen" ? "Strategie vastleggen…" : vatFase === "document" ? "Document maken…" : page?.strategie ? "Vat opnieuw samen & leg strategie vast" : "Vat samen & leg strategie vast"}
+                  </button>
+                  <span className="muted">{driveMap ? `document naar "${driveMap.path || driveMap.name}"` : "nog geen Drive-map gekozen"}</span>
+                  <button type="button" className="btn btn-quiet btn-klein" onClick={() => setKiezerOpen(true)}>{driveMap ? "Map wijzigen" : "Kies Drive-map"}</button>
                 </div>
               )}
               <div className="wp-chat-input">
@@ -948,6 +992,12 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
             if (mailen) onMail?.("dev");
           }}
         />
+      )}
+
+      {t.url && (
+        <DriveMapKiezer slug={slug} url={t.url} open={kiezerOpen}
+          onClose={() => setKiezerOpen(false)}
+          onChosen={(m) => { setDriveMap(m); setKiezerOpen(false); }} />
       )}
     </div>
   );

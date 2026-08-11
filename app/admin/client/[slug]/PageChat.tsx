@@ -4,10 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { mdToHtml } from "../../../../lib/markdown";
 import { striptVulzinnen } from "../../../../lib/vulzinnen";
 import { eersteKop } from "../../../../lib/chat-vouw";
+import { SUMMARIZE_PROMPT } from "../../../../lib/strategie-prompt";
 import HelpHint from "./HelpHint";
 import PageSummaryCard from "./PageSummaryCard";
 import Bronnenstrip, { type Bron } from "./Bronnenstrip";
 import Voortgang from "./Voortgang";
+import DriveMapKiezer from "./DriveMapKiezer";
 
 // Markeert een HTML-string als vertrouwd: zelf opgebouwd uit onze eigen tekst en
 // server-velden (Drive-map, documentlink), nooit AI- of gebruikerstekst. Geen
@@ -20,11 +22,8 @@ type Task = { taak: string; fase?: string; wie?: string };
 type Proposal = { plan?: string; tasks?: Task[] };
 type ChatSummary = { id: number; title: string; updatedAt: string; count: number };
 
-// Kant-en-klare opdracht voor de "Vat samen & leg strategie vast"-knop.
-// Consolideert het hele gesprek tot één definitieve conclusie/strategie, die via
-// het bestaande voorstel-mechanisme als plan voor de pagina overgenomen wordt.
-const SUMMARIZE_PROMPT =
-  "Vat ons hele gesprek over deze pagina samen tot één definitieve conclusie en strategie, gegrond op wat we hierboven hebben besproken en de live feiten. Dit is de eindconclusie die ik als plan voor deze pagina wil overnemen, dus stel geen nieuwe vragen meer. Geef scherp en uitvoerbaar: de rol en het doel van de pagina in één zin; het primaire en secundaire zoekwoord (met de onderbouwing die we bespraken, zoals volume en zoekintentie); en de concrete acties, elk met de fase (Bouwen/Herbedraden/Opschonen) en of het SEO- of Dev-werk is. Sluit af met de doel-URL.";
+// De opdracht voor "Vat samen & leg strategie vast" staat in lib/strategie-prompt.ts
+// (gedeeld met de kaart-chat in de planning, zodat beide knoppen hetzelfde vragen).
 
 export default function PageChat({ slug, url, clientEmail, clientName, onApplied, onGoToTask, onClusterApplied, pageLive, planSlot, planDone }: { slug: string; url: string; clientEmail?: string; clientName?: string; onApplied: (plan?: string) => void; onGoToTask?: (taskId: number) => void; onClusterApplied?: () => void; pageLive?: boolean; planSlot?: React.ReactNode; planDone?: boolean }) {
   // Site-URL van de klant (uit de pagina-URL), zodat slugs als /lensimplantatie/
@@ -673,14 +672,8 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   const [pendingRun, setPendingRun] = useState<{ steps: string[]; audience: "intern" | "klant" } | null>(null);
   const [nuance, setNuance] = useState("");
 
-  // ── Google Drive bestemmingsmap ─────────────────────────────
-  type Folder = { id: string; name: string };
+  // ── Google Drive bestemmingsmap (het venster zelf is DriveMapKiezer) ──
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [stack, setStack] = useState<Folder[]>([{ id: "root", name: "Mijn Drive" }]);
-  const [folders, setFolders] = useState<Folder[]>([]);
-  const [pickBusy, setPickBusy] = useState(false);
-  const [pickErr, setPickErr] = useState("");
-  const [newFolder, setNewFolder] = useState("");
 
   // Bij laden: toon de eventueel al gekozen map (lichte call, geen Drive-lijst).
   useEffect(() => {
@@ -755,53 +748,9 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
     return () => { alive = false; };
   }, [doorgevenOpen, clusterDone, outgoing, slug, url]);
 
-  async function loadFolders(parentId: string) {
-    setPickBusy(true); setPickErr("");
-    try {
-      const r = await fetch(`/api/admin/drive/folders?parent=${encodeURIComponent(parentId)}`);
-      const d = await r.json();
-      if (!d.ok) { setPickErr(d.error || "Kon Drive-mappen niet laden."); setFolders([]); return; }
-      setFolders(d.folders || []);
-    } catch { setPickErr("Kon Drive-mappen niet laden."); } finally { setPickBusy(false); }
-  }
-  function openPicker() {
-    setPickerOpen(true);
-    // Start waar je vorige keer was (per klant onthouden), zodat je niet elke keer
-    // vanaf Mijn Drive naar de klantmap hoeft te klikken.
-    let s: Folder[] = [{ id: "root", name: "Mijn Drive" }];
-    try {
-      const c = localStorage.getItem(`pw_drivestack_${slug}`);
-      if (c) { const p = JSON.parse(c); if (Array.isArray(p) && p.length && p[0]?.id === "root") s = p; }
-    } catch { /* geen geheugen */ }
-    setStack(s); loadFolders(s[s.length - 1].id);
-  }
-  function enterFolder(f: Folder) { const s = [...stack, f]; setStack(s); loadFolders(f.id); }
-  function jumpTo(i: number) { const s = stack.slice(0, i + 1); setStack(s); loadFolders(s[s.length - 1].id); }
-  async function makeSubfolder() {
-    const name = newFolder.trim(); if (!name) return;
-    setPickBusy(true); setPickErr("");
-    try {
-      const parent = stack[stack.length - 1].id;
-      const r = await fetch("/api/admin/drive/folders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "create", parent, name }) });
-      const d = await r.json();
-      if (!d.ok) { setPickErr(d.error || "Map maken mislukt."); return; }
-      setNewFolder(""); await loadFolders(parent);
-    } catch { setPickErr("Map maken mislukt."); } finally { setPickBusy(false); }
-  }
-  async function chooseCurrent() {
-    const cur = stack[stack.length - 1];
-    if (cur.id === "root") { setPickErr("Kies eerst een map (niet de hoofdmap zelf)."); return; }
-    const path = stack.slice(1).map((f) => f.name).join(" / ");
-    setPickBusy(true); setPickErr("");
-    try {
-      const r = await fetch("/api/admin/drive/folders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "save", slug, url, folderId: cur.id, folderName: cur.name, folderPath: path }) });
-      const d = await r.json();
-      if (!d.ok) { setPickErr(d.error || "Opslaan mislukt."); return; }
-      try { localStorage.setItem(`pw_drivestack_${slug}`, JSON.stringify(stack)); } catch { /* geheugen is extra */ }
-      setDriveFolder({ id: cur.id, name: cur.name, path }); setPickerOpen(false);
-      if (pendingRun) { const pr = pendingRun; setPendingRun(null); startBackgroundRun(pr.steps, cur.id, pr.audience); }
-    } catch { setPickErr("Opslaan mislukt."); } finally { setPickBusy(false); }
-  }
+  // Het kiezen zelf (bladeren, submap maken, opslaan) zit in DriveMapKiezer;
+  // hier alleen openen en de keuze overnemen.
+  function openPicker() { setPickerOpen(true); }
 
 
   async function loadChats() {
@@ -1112,8 +1061,14 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
             <button type="button" className="ghost-btn small" onClick={openPicker}>{driveFolder ? "Map wijzigen" : "Kies Drive-map"}</button>
             {driveFolder && <button type="button" className="ghost-btn small" onClick={() => setDriveFolder(null)}>Naar download</button>}
           </div>
+          {/* De losse primaire knop "Strategie vastleggen" is hier bewust weg: hij
+              pakte alleen het laatste antwoord en vulde de vastgelegde strategie
+              níet, dus hij leek dubbel met de echte knop en deed minder dan zijn
+              naam beloofde. Wat overblijft is de herkansing voor alleen de
+              documentstap, klein en eerlijk benoemd. */}
+          {(taskDone || stratLink) && (
           <div className="page-chat-tools">
-            <button type="button" className={"pcd-btn " + (taskDone ? "pcd-btn-done" : "pcd-btn-primary") + (taskGen ? " busy" : "")} onClick={() => void makeWorkItem()} disabled={taskGen}>{taskGen ? "Vastleggen…" : taskDone ? "✓ Strategie vastgelegd." : "Strategie vastleggen"}</button>
+            {taskDone && <span className="pcd-btn pcd-btn-done">✓ Strategie vastgelegd.</span>}
             {stratLink
               ? <a href={stratLink} target="_blank" rel="noreferrer" className="pcd-doclink">Document openen ↗</a>
               : taskDone && <span className="muted" style={{ fontSize: "var(--fs-sm)" }}>het document wordt gemaakt; de link verschijnt hier vanzelf</span>}
@@ -1123,8 +1078,12 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
                 Conclusie alsnog als strategie bovenaan zetten
               </button>
             )}
-            <HelpHint wide title="Strategie vastleggen (alleen het document)" text={"Herkansing voor alleen de documentstap: maakt van de laatste conclusie het nette **Pingwin-document** (in de Drive-map van de pagina, of als download) en legt hem vast als afgeronde werkzaamheid met de documentlink ernaast.\nNormaal hoef je deze knop niet te gebruiken: 'Vat samen & leg strategie vast' doet dit al automatisch. Gebruik hem als de documentstap toen mislukte (bijvoorbeeld zonder Drive-koppeling) of als je alleen een vers document wilt zonder de strategie opnieuw samen te vatten."} />
+            {lastAssistant && (
+              <button type="button" className={"ghost-btn small" + (taskGen ? " busy" : "")} onClick={() => void makeWorkItem()} disabled={taskGen}>{taskGen ? "Document maken…" : "Document opnieuw maken"}</button>
+            )}
+            <HelpHint wide title="Document opnieuw maken (herkansing)" text={"Herkansing voor alleen de documentstap: maakt van de laatste conclusie het nette **Pingwin-document** (in de Drive-map van de pagina, of als download) en legt hem vast als afgeronde werkzaamheid met de documentlink ernaast.\nNormaal hoef je deze knop niet te gebruiken: 'Vat samen & leg strategie vast' doet dit al automatisch. Gebruik hem als de documentstap toen mislukte (bijvoorbeeld zonder Drive-koppeling) of als je alleen een vers document wilt zonder de strategie opnieuw samen te vatten."} />
           </div>
+          )}
           <div className="page-chat-followup">
             <div style={{ fontWeight: 700, fontSize: "var(--fs-base)", marginBottom: "var(--s-1)" }}>Verder sparren?</div>
             <div className="pchf-lead">Stel je vragen hier, bijvoorbeeld over de invulling of de zoekwoorden. Ben je klaar met bespreken, klik dan op &ldquo;Vat samen &amp; leg strategie vast&rdquo;: de conclusie wordt de vastgelegde strategie bovenaan én het nette document in de Drive-map.</div>
@@ -1692,39 +1651,12 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       </div>
 
 
-      {pickerOpen && (
-        <div className="compose-overlay">
-          <div className="compose-modal drive-modal">
-            <div className="compose-head"><span>Kies de Google Drive-map voor deze pagina</span><button type="button" className="chat-float-close" onClick={() => { setPickerOpen(false); setPendingRun(null); }}>&times;</button></div>
-            <div className="compose-body">
-              <div className="drive-crumbs">
-                {stack.map((f, i) => (
-                  <span key={f.id}>
-                    <button type="button" className="drive-crumb" onClick={() => jumpTo(i)}>{f.name}</button>
-                    {i < stack.length - 1 && <span className="drive-sep"> / </span>}
-                  </span>
-                ))}
-              </div>
-              {pickErr && <div className="login-error" style={{ marginTop: "var(--s-2)" }}>{pickErr}</div>}
-              <div className="drive-list">
-                {pickBusy && <div className="muted" style={{ padding: "var(--s-2)" }}>Laden…</div>}
-                {!pickBusy && folders.length === 0 && <div className="muted" style={{ padding: "var(--s-2)" }}>Geen submappen hier. Kies deze map, of maak een nieuwe submap.</div>}
-                {!pickBusy && folders.map((f) => (
-                  <button key={f.id} type="button" className="drive-row" onClick={() => enterFolder(f)}>{f.name} <span className="muted">openen ›</span></button>
-                ))}
-              </div>
-              <div className="drive-newfolder">
-                <input className="compose-input" value={newFolder} onChange={(e) => setNewFolder(e.target.value)} placeholder="Nieuwe submap maken (naam)…" />
-                <button type="button" className="ghost-btn small" onClick={makeSubfolder} disabled={pickBusy || !newFolder.trim()}>Map maken</button>
-              </div>
-            </div>
-            <div className="compose-foot">
-              <button type="button" className="logout-btn" onClick={() => { setPickerOpen(false); setPendingRun(null); }}>Annuleren</button>
-              <button type="button" className="primary-btn small" onClick={chooseCurrent} disabled={pickBusy}>Kies “{stack[stack.length - 1].name}”</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <DriveMapKiezer slug={slug} url={url} open={pickerOpen}
+        onClose={() => { setPickerOpen(false); setPendingRun(null); }}
+        onChosen={(f) => {
+          setDriveFolder(f); setPickerOpen(false);
+          if (pendingRun) { const pr = pendingRun; setPendingRun(null); startBackgroundRun(pr.steps, f.id, pr.audience); }
+        }} />
     </div>
   );
 }
