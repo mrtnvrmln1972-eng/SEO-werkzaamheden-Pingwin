@@ -932,7 +932,7 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
                     onClick={() => void vatSamenEnLegVast()}>
                     {vatFase === "samenvatten" ? "Samenvatten…" : vatFase === "vastleggen" ? "Strategie vastleggen…" : vatFase === "document" ? "Document maken…" : page?.strategie ? "Vat opnieuw samen & leg strategie vast" : "Vat samen & leg strategie vast"}
                   </button>
-                  <span className="muted">{driveMap ? `document naar "${driveMap.path || driveMap.name}"` : "nog geen Drive-map gekozen"}</span>
+                  <span className="muted">{driveMap ? `alle documenten van deze pagina naar "${driveMap.path || driveMap.name}"` : "nog geen Drive-map voor deze pagina gekozen"}</span>
                   <button type="button" className="btn btn-quiet btn-klein" onClick={() => setKiezerOpen(true)}>{driveMap ? "Map wijzigen" : "Kies Drive-map"}</button>
                 </div>
               )}

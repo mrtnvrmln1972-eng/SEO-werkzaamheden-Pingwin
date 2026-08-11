@@ -64,11 +64,13 @@ function RichCell({ html, onChange, placeholder }: { html: string; onChange: (ht
     // Cmd+Shift+V (zonder opmaak) handelt de browser zelf af: dan komt er geen
     // text/html mee, dus onPaste plakt vanzelf platte tekst.
   }
-  // Klik op een link opent hem in een nieuw tabblad (ook tijdens bewerken).
+  // Klik op een link opent hem in een nieuw TABBLAD (ook tijdens bewerken).
+  // Let op: window.open met een derde argument (features) dwingt een los
+  // popup-venster af; daarom zonder features openen en daarna opener op null.
   function onClick(e: React.MouseEvent) {
     const t = e.target as HTMLElement;
     const a = (t.tagName === "A" ? t : t.closest("a")) as HTMLAnchorElement | null;
-    if (a && a.href && !a.href.startsWith("javascript:")) { e.preventDefault(); window.open(a.href, "_blank", "noreferrer"); }
+    if (a && a.href && !a.href.startsWith("javascript:")) { e.preventDefault(); (() => { const w = window.open(a.href, "_blank"); if (w) w.opener = null; })(); }
   }
   function onPaste(e: React.ClipboardEvent) {
     const pasteHtml = e.clipboardData.getData("text/html");
@@ -138,7 +140,7 @@ function RichField({ html, onChange, autoFocus, onEnterClose, grow }: { html: st
   function onClick(e: React.MouseEvent) {
     const t = e.target as HTMLElement;
     const a = (t.tagName === "A" ? t : t.closest("a")) as HTMLAnchorElement | null;
-    if (a && a.href && !a.href.startsWith("javascript:")) { e.preventDefault(); window.open(a.href, "_blank", "noreferrer"); }
+    if (a && a.href && !a.href.startsWith("javascript:")) { e.preventDefault(); (() => { const w = window.open(a.href, "_blank"); if (w) w.opener = null; })(); }
   }
   function onKey(e: React.KeyboardEvent) {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); addLink(); return; }
