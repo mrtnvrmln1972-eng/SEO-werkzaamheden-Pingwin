@@ -8,7 +8,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { mdToHtml } from "../../../../lib/markdown";
-import { cardInfoHtml, splitCardInfo, eerdereNotitiesHtml, faseSturing, type CardFaseKey, type MailLinks } from "../../../../lib/card-info";
+import { cardInfoHtml, splitCardInfo, eerdereNotitiesHtml, faseSturing, verseCopySturing, type CardFaseKey, type MailLinks } from "../../../../lib/card-info";
 import { linkifyHtml } from "../../../../lib/linkify";
 import { urlKey } from "../../../../lib/url-key";
 import { devLabel } from "../../../../lib/personen";
@@ -758,7 +758,12 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
             // Eén regel sturing per fase, en pas zichtbaar als je die fase opent.
             // Stonden ze alle vijf tegelijk open, dan las je de instructie voor Copy
             // terwijl je bij Analyse zat en paste de kaart nergens meer in één blik.
-            const sturing = (info.perFase[f.key as CardFaseKey] || []).join(" · ");
+            const sturingRuw = (info.perFase[f.key as CardFaseKey] || []).join(" · ");
+            // Is dit de Copy-rij en heeft de meting inmiddels bevestigd dat de
+            // copy live staat, dan overschrijft dat een bevroren "nog niet"-regel
+            // (zie verseCopySturing in card-info.ts): anders spreekt de kaart
+            // zichzelf tegen met het chipje rechts, dat wél "✓" toont.
+            const sturing = f.key === "copy" ? verseCopySturing(sturingRuw, page?.doorgevoerd) : sturingRuw;
             // Een regel die alleen een document benoemt ("Copy-document: ...docx")
             // voegt niets toe naast het linkje ernaast. Alleen echte sturing krijgt
             // een uitleg-knop; de rest is ruis in een rij die rustig moet zijn.

@@ -21,7 +21,7 @@
 // betreffende uitklapper aanvullen en LAATST_BIJGEWERKT verzetten.
 // ═══════════════════════════════════════════════════════════
 
-export const LAATST_BIJGEWERKT = "10 augustus 2026 (Weekplanning: \"Waarom deze pagina\" en \"Aanpak en afspraken\" wijken voor het levende maildossier zodra dat iets te vertellen heeft; fase-blok compacter)";
+export const LAATST_BIJGEWERKT = "11 augustus 2026 (\"Is dit doorgevoerd?\" toetst nu altijd ook de copy als die er is, en zet de uitslag door naar de gedeelde live-stand; een bevroren \"nog niet doorgevoerd\"-regel op een kaart wijkt automatisch zodra de meting het tegendeel bevestigt)";
 
 export type Uitklapper = {
   titel: string;
@@ -1066,7 +1066,17 @@ export const HOOFDSTUKKEN: Hoofdstuk[] = [
           "Eén regel is belangrijker dan de meting zelf: **een mislukte meting is nooit een oordeel.** Weigert de " +
           "site ons of laadt de pagina niet, dan is de uitslag \"kon ik niet meten\" en verandert er niets. " +
           "Beweren dat iets niet gedaan is terwijl je het niet gezien hebt, is erger dan niets weten. De aanleiding " +
-          "is concreet: in januari 2026 kon niemand vaststellen of zes interne links nu wel of niet verdwenen waren.",
+          "is concreet: in januari 2026 kon niemand vaststellen of zes interne links nu wel of niet verdwenen waren.\n\n" +
+          "**Sinds 11 augustus 2026 telt \"Is dit doorgevoerd?\" ook echt mee als bewijs voor de copy.** Eerder " +
+          "controleerde de knop alleen wat er bij het doorzetten was afgesproken; is dat destijds alleen \"staat hij " +
+          "live\" geweest, dan werd de copy zelf nooit vergeleken, ook niet als er inmiddels een copy-document lag. " +
+          "En zelfs wanneer de koppen wél gemeten werden, verdween die uitslag in de kaarttekst en wist de rest van " +
+          "het dashboard (de fase Bouw en publicatie, het bordoverzicht, de paginasignalen die de assistent leest) " +
+          "er niets van. Twee losse metingen van dezelfde vraag konden zo elkaar tegenspreken: de kaart toonde " +
+          "\"in orde\" terwijl de sitebrede stand nog \"nog niet doorgevoerd\" beweerde. Nu meet de knop altijd óók " +
+          "de copy zodra er een document is, en het resultaat landt in dezelfde gedeelde stand die de rest van het " +
+          "dashboard raadpleegt. Een bevroren tekstregel op een oudere kaart die nog \"nog geen wijziging " +
+          "gedetecteerd\" zegt, wordt op het scherm automatisch vervangen zodra de meting het tegendeel bevestigt.",
       },
       {
         titel: "Wat we gedaan hebben",
