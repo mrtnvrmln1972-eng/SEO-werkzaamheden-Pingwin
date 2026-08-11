@@ -128,6 +128,10 @@ export default function AntwoordBlokken({ slug, thread, content, mdToHtml, siteU
     }
     return uit;
   }, [content]);
+  // De dossierkaartjes van genoemde pagina's staan standaard dicht: ze duwden
+  // de knoppen onder het antwoord weg en een dossier van een ándere genoemde
+  // pagina (een interne-linkdoel) las als "verkeerde pagina op deze kaart".
+  const [dossiersOpen, setDossiersOpen] = useState(false);
 
   // Centrale markeringen laden; oude browser-opslag eenmalig meenemen.
   useEffect(() => {
@@ -461,8 +465,6 @@ export default function AntwoordBlokken({ slug, thread, content, mdToHtml, siteU
           </div>
         );
       })}
-      {genoemdePaden.map((p) => <PaginaDossier key={p} slug={slug} url={p} compact />)}
-
       {/* Een analyse als deze kon je alleen als platte tekst doorsturen: het gewone
           mailvenster leest innerText, dus de koppen, tabellen en lijstjes vielen weg.
           Juist het werk dat je wilt laten zien ging kapot in de laatste stap. Deze
@@ -499,6 +501,18 @@ export default function AntwoordBlokken({ slug, thread, content, mdToHtml, siteU
           </div>
         )}
       </div>
+      {/* Dossiers van pagina's die in het antwoord genoemd worden: ná de knoppen
+          en standaard ingeklapt. Ze stonden eerst tússen het antwoord en de
+          knoppen, waardoor de acties wegzakten en een dossier van een andere
+          genoemde pagina als een fout las. */}
+      {genoemdePaden.length > 0 && (
+        <div className="ovc-dossiers">
+          <button type="button" className="ovc-dossiers-toggle" onClick={() => setDossiersOpen((o) => !o)}>
+            {dossiersOpen ? "▾" : "▸"} {genoemdePaden.length === 1 ? "Dossier van de genoemde pagina" : `Dossiers van ${genoemdePaden.length} genoemde pagina's`}
+          </button>
+          {dossiersOpen && genoemdePaden.map((p) => <PaginaDossier key={p} slug={slug} url={p} compact />)}
+        </div>
+      )}
       {lijstVoor && typeof window !== "undefined" && (
         <div className="ovc-lijstpop" style={{ left: Math.max(8, Math.min(lijstVoor.x, window.innerWidth - 300)), top: lijstVoor.y + 6 }}>
           <span className="ovc-lijstpop-kop">Op welke bespreeklijst?</span>

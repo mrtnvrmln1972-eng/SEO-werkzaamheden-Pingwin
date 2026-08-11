@@ -31,8 +31,11 @@ export async function POST(req: NextRequest) {
     // Bij samenvatten gaat het hele gesprek volledig mee (die stap moet alles
     // overzien); bij een gewone vraag gaan oudere antwoorden ingekort mee, zodat
     // de AI zijn eigen rapporten niet elke beurt opnieuw uitschrijft.
+    // De grens stond op 12 berichten: in een lang gesprek viel de grote analyse
+    // dan buiten de samenvatting, precies het bericht waar alles om draait. Veertig
+    // dekt elk echt gesprek; het samenvatten is een bewuste, incidentele actie.
     const volledig = body.volledig === true;
-    const historie = volledig ? messages.slice(-12) : korteGeschiedenis(messages);
+    const historie = volledig ? messages.slice(-40) : korteGeschiedenis(messages);
     // Wat de chat opzocht, meegeven zodat het onder het antwoord te zien is.
     const bronnen: Bron[] = [];
     const run = async (naam: string, invoer: Record<string, unknown>) => {
