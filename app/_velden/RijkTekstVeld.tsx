@@ -94,20 +94,28 @@ export default function RijkTekstVeld({
     if (!blok) { handle.classList.remove("rtv-drag-handle-actief"); return; }
     const blokRect = blok.getBoundingClientRect();
     const wrapRect = wrap.getBoundingClientRect();
-    handle.style.top = `${blokRect.top - wrapRect.top}px`;
+    // Vaste hoogte, uitgelijnd op de eerste regel van het onderdeel: bij een
+    // hoog blok (een open uitklapper) zou meestrekken met de volle hoogte het
+    // vlekje ver van de titel af zetten, in het midden van de hele kaart.
+    handle.style.top = `${blokRect.top - wrapRect.top + Math.max(0, (Math.min(blokRect.height, 22) - 20) / 2)}px`;
     handle.style.left = `${Math.max(2, blokRect.left - wrapRect.left - 18)}px`;
-    handle.style.height = `${blokRect.height}px`;
     handle.classList.add("rtv-drag-handle-actief");
   }
 
-  // Alleen herberekenen als er niet al gesleept wordt: tijdens het slepen zelf
-  // doet dragover dat, en anders vecht de hover-berekening met de sleeppositie.
-  function onEditorMouseMove(e: React.MouseEvent) {
+  // Deze twee zitten op de WRAPPER eromheen (niet op het bewerkbare vlak
+  // zelf), want het grijpvlekje is een sibling die er soms net buiten steekt.
+  // Zaten ze op het bewerkbare vlak, dan gaf het verlaten daarvan om het
+  // vlekje te bereiken een mouseleave, en verdween het vlekje precies op het
+  // moment dat je hem probeerde te pakken (knipperen).
+  function onWrapMouseMove(e: React.MouseEvent) {
     if (sleepBlokRef.current) return;
     const el = document.elementFromPoint(e.clientX, e.clientY);
-    toonHandleBij(el ? blokVoorSlepen(el) : null);
+    // Op het vlekje zelf: gewoon laten staan waar het al staat.
+    if (!el || el === handleRef.current || handleRef.current?.contains(el)) return;
+    if (!editorRef.current?.contains(el)) { toonHandleBij(null); return; }
+    toonHandleBij(blokVoorSlepen(el));
   }
-  function onEditorMouseLeave() {
+  function onWrapMouseLeave() {
     if (!sleepBlokRef.current) toonHandleBij(null);
   }
 
@@ -137,7 +145,7 @@ export default function RijkTekstVeld({
     toonHandleBij(null);
   }
 
-  function onEditorDragOver(e: React.DragEvent) {
+  function onWrapDragOver(e: React.DragEvent) {
     const sleepBlok = sleepBlokRef.current;
     if (!sleepBlok) return;
     e.preventDefault();
@@ -162,7 +170,7 @@ export default function RijkTekstVeld({
     indicator.classList.add("rtv-drop-indicator-actief");
   }
 
-  function onEditorDrop(e: React.DragEvent) {
+  function onWrapDrop(e: React.DragEvent) {
     e.preventDefault();
     const sleepBlok = sleepBlokRef.current;
     const doel = doelRef.current;
@@ -429,7 +437,7 @@ export default function RijkTekstVeld({
   }
 
   return (
-    <div className="rtv">
+    <div className="rtv" onMouseMove={onWrapMouseMove} onMouseLeave={onWrapMouseLeave} onDragOver={onWrapDragOver} onDrop={onWrapDrop}>
       <div className={"focus-toolbar" + (compact ? " focus-toolbar-compact" : "")}>
         {toolbarLabel && <span className="focus-toolbar-label">{toolbarLabel}</span>}
         <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => cmd("bold")} title="Vet (Cmd+B)"><strong>B</strong></button>
@@ -452,10 +460,6 @@ export default function RijkTekstVeld({
         onClick={onClick}
         onKeyDown={onKeyDown}
         onPaste={onPaste}
-        onMouseMove={onEditorMouseMove}
-        onMouseLeave={onEditorMouseLeave}
-        onDragOver={onEditorDragOver}
-        onDrop={onEditorDrop}
       />
       {/* Los van de tekst zelf (staat dus nooit mee in de opgeslagen HTML): het
           grijpvlekje bij het onderdeel waar de muis boven zweeft, en de streep

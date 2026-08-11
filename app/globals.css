@@ -5209,7 +5209,6 @@ details[open] > .opr-kaart-sam::before { content: "▾ "; }
 .wb-pad { font-weight: 700; font-size: var(--fs-sm); color: var(--dark); white-space: nowrap; }
 a.wb-pad { color: var(--orange-dark); text-decoration: none; }
 a.wb-pad:hover { text-decoration: underline; }
-.wb-doen { font-size: var(--fs-xs); white-space: nowrap; }
 .wb-taak-vol { font-size: var(--fs-sm); color: var(--dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .wb-pad-mini { color: var(--orange-dark); text-decoration: none; font-size: var(--fs-xs); }
 .wb-pad-mini:hover { text-decoration: underline; }
@@ -6657,7 +6656,7 @@ a.wb-pad:hover { text-decoration: underline; }
    de opgeslagen HTML. */
 .rtv { position: relative; }
 .rtv-drag-handle {
-  display: none; position: absolute; width: 16px; z-index: 5;
+  display: none; position: absolute; width: 16px; height: 20px; z-index: 6;
   grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(3, 1fr);
   place-items: center; padding: var(--s-1) 0; border-radius: var(--r-sm);
   cursor: grab;
