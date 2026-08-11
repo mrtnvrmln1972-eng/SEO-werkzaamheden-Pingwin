@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef } from "react";
 import { cleanPastedHtml, linkifyPlainText } from "../../lib/rich-paste";
+import { escapeHtml } from "../../lib/veilige-html";
 
 /**
  * Eén opmaakbaar tekstveld met knoppenbalk, voor overal in het dashboard.
@@ -89,6 +90,43 @@ export default function RijkTekstVeld({
     meld();
   }
 
+  // ── Afvinklijstje (checklist) ──
+  // Elke regel een eigen vinkje, zoals in Notion: klik het vakje aan en de
+  // regel gaat doorgestreept. Werkt overal in het veld, ook binnen een
+  // uitklapper, want het is gewoon HTML die met de rest van de tekst wordt
+  // opgeslagen. Staat er tekst geselecteerd (bijvoorbeeld een geplakt rijtje
+  // pagina's), dan wordt elke regel een eigen vinkpunt; zonder selectie komt
+  // er één leeg punt bij om zelf te vullen.
+  function checklistItemHtml(tekst: string): string {
+    return `<div class="rtv-check-item"><label contenteditable="false" class="rtv-check-box"><input type="checkbox"></label><span class="rtv-check-tekst">${escapeHtml(tekst) || "<br>"}</span></div>`;
+  }
+
+  function voegChecklistToe() {
+    editorRef.current?.focus();
+    const sel = window.getSelection();
+    const geselecteerd = sel && !sel.isCollapsed ? sel.toString() : "";
+    const regels = geselecteerd
+      ? geselecteerd.split("\n").map((r) => r.trim()).filter(Boolean)
+      : [""];
+    const html = regels.map(checklistItemHtml).join("") + "<p><br></p>";
+    document.execCommand("insertHTML", false, html);
+    // Zonder selectie: cursor meteen in het nieuwe (lege) punt zetten, zodat je
+    // meteen kunt typen zonder eerst iets weg te halen.
+    if (!geselecteerd) {
+      setTimeout(() => {
+        const items = editorRef.current?.querySelectorAll(".rtv-check-tekst");
+        const laatste = items?.[items.length - 1] as HTMLElement | undefined;
+        if (!laatste) return;
+        const r = document.createRange();
+        r.selectNodeContents(laatste);
+        const s = window.getSelection();
+        s?.removeAllRanges();
+        s?.addRange(r);
+      }, 0);
+    }
+    meld();
+  }
+
   function addLink() {
     editorRef.current?.focus();
     const url = window.prompt("Link naar (URL of document):", "https://");
@@ -102,6 +140,19 @@ export default function RijkTekstVeld({
   // Klik op een link opent hem in een nieuw tabblad, ook tijdens het bewerken.
   function onClick(e: React.MouseEvent) {
     const t = e.target as HTMLElement;
+    // Een vinkje aanklikken: de browser zet het vakje zelf om, maar dat is
+    // alleen de DOM-eigenschap. Zonder dit stukje staat de aangevinkte stand
+    // niet in de opgeslagen HTML en is hij na herladen weer weg.
+    if (t.tagName === "INPUT" && (t as HTMLInputElement).type === "checkbox") {
+      const box = t as HTMLInputElement;
+      setTimeout(() => {
+        const item = box.closest(".rtv-check-item");
+        if (box.checked) { box.setAttribute("checked", ""); item?.classList.add("rtv-check-af"); }
+        else { box.removeAttribute("checked"); item?.classList.remove("rtv-check-af"); }
+        meld();
+      }, 0);
+      return;
+    }
     // In het kopje van een uitklapper: klik je op het driehoekje links, dan klapt
     // hij open of dicht; klik je op de tekst, dan zet je gewoon je cursor neer.
     // Zonder dat onderscheid kun je de titel niet bewerken zonder hem dicht te
@@ -124,6 +175,40 @@ export default function RijkTekstVeld({
 
   function onKeyDown(e: React.KeyboardEvent) {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); addLink(); return; }
+    // Enter op een vinkregel: begint een nieuw punt eronder, precies zoals bij
+    // een gewone bullet- of nummerlijst. Op een lege regel stopt de lijst juist
+    // (anders kun je een vinklijstje niet meer verlaten met Enter).
+    if (e.key === "Enter") {
+      const knoopVink = window.getSelection()?.anchorNode as HTMLElement | null;
+      const tekstVak = knoopVink && (knoopVink.nodeType === 1 ? knoopVink : knoopVink.parentElement)?.closest(".rtv-check-tekst") as HTMLElement | null;
+      if (tekstVak) {
+        e.preventDefault();
+        const item = tekstVak.closest(".rtv-check-item");
+        const sel = window.getSelection();
+        if (!tekstVak.textContent?.trim()) {
+          const p = document.createElement("p");
+          p.innerHTML = "<br>";
+          item?.replaceWith(p);
+          const r = document.createRange();
+          r.selectNodeContents(p);
+          r.collapse(true);
+          sel?.removeAllRanges();
+          sel?.addRange(r);
+        } else {
+          item?.insertAdjacentHTML("afterend", checklistItemHtml(""));
+          const nieuweTekst = item?.nextElementSibling?.querySelector(".rtv-check-tekst") as HTMLElement | null;
+          if (nieuweTekst) {
+            const r = document.createRange();
+            r.selectNodeContents(nieuweTekst);
+            r.collapse(true);
+            sel?.removeAllRanges();
+            sel?.addRange(r);
+          }
+        }
+        meld();
+        return;
+      }
+    }
     // Enter in het kopje van een uitklapper springt naar de inhoud eronder, in
     // plaats van een tweede regel in de titel te maken.
     if (e.key === "Enter") {
@@ -172,6 +257,7 @@ export default function RijkTekstVeld({
         <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => cmd("italic")} title="Cursief (Cmd+I)"><em>I</em></button>
         <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => cmd("insertUnorderedList")} title="Bullets">&bull; lijst</button>
         <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => cmd("insertOrderedList")} title="Genummerd">1. lijst</button>
+        <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={voegChecklistToe} title="Afvinklijstje: staat er tekst geselecteerd, dan wordt elke regel een eigen vinkpunt">&#9745; vinklijst</button>
         <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={voegUitklapperToe} title="Uitklapper: een onderwerp met een driehoekje, en daaronder alles wat erbij hoort">&#9662; uitklapper</button>
         <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={addLink} title="Link toevoegen (Cmd+K)">&#128279; link</button>
         <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => cmd("unlink")} title="Link verwijderen">link weg</button>

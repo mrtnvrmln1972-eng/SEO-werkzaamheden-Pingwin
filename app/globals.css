@@ -6638,6 +6638,18 @@ a.wb-pad:hover { text-decoration: underline; }
   font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--body-text);
 }
 
+/* ── Het afvinklijstje in een opmaakbaar tekstveld ─────────────────────────
+   Elke regel een eigen vinkje; klik hem aan en de regel gaat doorgestreept.
+   Werkt overal in het veld, ook binnen een uitklapper hierboven, want het is
+   gewoon HTML die met de rest van de tekst wordt opgeslagen. */
+.focus-rich .rtv-check-item {
+  display: flex; align-items: flex-start; gap: var(--s-2); margin: var(--s-1) 0;
+}
+.focus-rich .rtv-check-box { flex: 0 0 auto; margin-top: 2px; cursor: pointer; }
+.focus-rich .rtv-check-box input { width: 15px; height: 15px; cursor: pointer; accent-color: var(--orange); }
+.focus-rich .rtv-check-tekst { flex: 1 1 auto; }
+.focus-rich .rtv-check-item.rtv-check-af .rtv-check-tekst { text-decoration: line-through; color: var(--gray); }
+
 /* ── Het Ahrefs-tellertje in de kopbalk ───────────────────────────
    Klein genoeg om te negeren zolang er niets aan de hand is, en het
    kleurt op zodra het tegoed krap wordt. Leunt op de .hm-*-bouwstenen
