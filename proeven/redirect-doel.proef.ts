@@ -211,7 +211,9 @@ const doelVan = (bak: Bak, regels: WerkRegel[], pad: string) => {
   ];
   const regels: WerkRegel[] = plaatsen.map((p) =>
     regel(`/soa-klinieken/soa-test-${p}/`, "opruimen", { herkomst: ["plaats"], groep: p, term: `soa test ${p}` }));
-  const bak = bouw(urls, regels);
+  // De kandidaat heeft een eigen zoekterm nodig, anders valt de intentie-rem
+  // sowieso stil en test de laatste controle hieronder niets.
+  const bak = bouw(urls, regels, [{ url: `${SITE}/soa-klinieken/soa-test-eindhoven/`, refDomains: null, topKeyword: "soa test eindhoven" }]);
   // Coördinaten zoals de plaatsendienst ze geeft. Veldhoven ligt naast
   // Eindhoven; Koudekerke ligt in Zeeland, ver van elke vestiging.
   const co = (lat: number, lon: number, naam: string) => ({ lat, lon, naam });
@@ -232,10 +234,18 @@ const doelVan = (bak: Bak, regels: WerkRegel[], pad: string) => {
     ]),
     doelen: new Set(["/soa-klinieken/soa-test-eindhoven", "/soa-klinieken/soa-test-rotterdam"]),
   };
-  const uit = ladder(bak, regels, new Map(), nabij);
+  // Met een botsend intentielabel erbij: dat mag trede 2 niet blokkeren. Ahrefs
+  // labelt "soa test veldhoven" als informatief en "soa test eindhoven" als
+  // transactioneel, terwijl dat dezelfde vraag is. Live blokkeerde die rem elf
+  // van de achtendertig bestemmingen, waaronder Rotterdam compleet.
+  const intenties: Intenties = new Map([["soa test veldhoven", "informatief"], ["soa test eindhoven", "transactioneel"]]);
+  const uit = ladder(bak, regels, intenties, nabij);
   const veld = uit.voorstellen.find((v) => v.van === "/soa-klinieken/soa-test-veldhoven/");
   check("dichtbij wint van de hub", veld?.doel, "/soa-klinieken/soa-test-eindhoven/");
   check("en dat is trede 2", veld?.trede, "zuster");
+  checkWaar("een botsend intentielabel blokkeert de vestiging niet, maar wordt wel gemeld",
+    (veld?.waarschuwingen || []).some((w) => /zoekintentie/.test(w)),
+    `Kreeg: ${JSON.stringify(veld?.waarschuwingen)}`);
   const koud = uit.voorstellen.find((v) => v.van === "/soa-klinieken/soa-test-koudekerke/");
   check("te ver valt terug op de hub", koud?.doel, "/soa-klinieken/");
   checkWaar("en dan staat erbij hoe ver het was",

@@ -568,8 +568,16 @@ export function ladder(bak: Bak, regels: WerkRegel[], intenties: Intenties = new
       const dichtst = opties[0];
       if (dichtst && dichtst.km <= MAX_KM) {
         const kand = bak.kandidaten.find((k) => k.pad === dichtst.pad);
+        // De intentie-rem is hier een waarschuwing en geen veto, om dezelfde
+        // reden als bij de hub: bij een lokale zoekopdracht bepaalt de plaats de
+        // vraag, niet het woord ervoor. "soa poli cuijk" en "soa test eindhoven"
+        // krijgen van Ahrefs een ander intentielabel terwijl het dezelfde vraag
+        // is (ik wil een soa-test in de buurt), en op termen van tien tot dertig
+        // zoekopdrachten per maand is dat label sowieso dun. Live blokkeerde hij
+        // hierdoor elf van de achtendertig bestemmingen, waaronder Rotterdam
+        // compleet.
         const botst = kand ? intentieBotst(kand) : "";
-        if (!botst) {
+        {
           voorstellen.push({
             van: r.pad, doel: kand?.origineel || dichtst.pad, trede: "zuster",
             zeker: dichtst.km <= 20 ? "hoog" : "middel", vast: false,
@@ -581,14 +589,15 @@ export function ladder(bak: Bak, regels: WerkRegel[], intenties: Intenties = new
               `Trede 1 viel af: er is geen andere pagina die ${bronPlaats} zelf overneemt.`,
               ...weegZin(gewicht, heeftLinks, heeftRest),
             ],
-            waarschuwingen: kand?.isAds
-              ? [...waarschuwingen, `${kand.origineel} staat ook als advertentiepagina ingevuld. Hij blijft daarmee buiten het opruimen, maar is wel een geldige bestemming: hij haalt zelf ${kand.klikken} bezoekers per maand uit Google, dus hij is aantoonbaar geen lege Ads-landingspagina.`]
-              : waarschuwingen,
+            waarschuwingen: [
+              ...waarschuwingen,
+              ...(kand?.isAds ? [`${kand.origineel} staat ook als advertentiepagina ingevuld. Hij blijft daarmee buiten het opruimen, maar is wel een geldige bestemming: hij haalt zelf ${kand.klikken} bezoekers per maand uit Google, dus hij is aantoonbaar geen lege Ads-landingspagina.`] : []),
+              ...(botst ? [`Let op de zoekintentie: ${botst} Bij twee plaatspagina's van dezelfde dienst hoeft dat geen probleem te zijn, maar controleer het als deze pagina nog echt bezoekers haalt.`] : []),
+            ],
             gewicht,
           });
           continue;
         }
-        afgevallen.push(`De dichtstbijzijnde vestiging valt af op zoekintentie: ${botst}`);
       } else if (dichtst) {
         afgevallen.push(`De dichtstbijzijnde vestiging is ${dichtst.naam}, en die ligt op ${dichtst.km} km. Dat is te ver om nog een vervanging te zijn (de grens ligt op ${MAX_KM} km), dus trede 2 valt af.`);
       } else if (!nabij || !bronCoord) {
