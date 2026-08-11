@@ -17,7 +17,8 @@ import { nieuwtjes, leesbareDatum } from "../../lib/wat-is-nieuw";
 // de interne markering verschijnen alleen mét beheerderssessie; zo blijft het
 // één document in plaats van twee die uit elkaar lopen.
 //
-// De inhoud staat volledig in lib/uitleg.ts. Deze pagina rendert alleen. Niets
+// De inhoud staat volledig in lib/uitleg/ (één bestand per hoofdstuk). Deze
+// pagina rendert alleen. Niets
 // hier bevat tekst over het dashboard zelf, want dan zou de uitleg op twee
 // plekken staan.
 // ═══════════════════════════════════════════════════════════

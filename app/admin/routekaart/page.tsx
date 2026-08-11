@@ -19,7 +19,7 @@ import RoutekaartClient, { type PuntWeergave } from "./RoutekaartClient";
 // en waar hij per punt de startregel voor een verse chat kopieert.
 //
 // Bewust achter de adminlogin: dit is werkvloer, geen verhaal naar buiten. De
-// beschrijvingen staan in lib/uitleg.ts (daar hoort het verhaal) maar worden hier
+// beschrijvingen staan in lib/uitleg/15-agenda/ (daar hoort het verhaal) maar worden hier
 // meegestuurd, zodat je ze bij het punt zelf leest en niet in een lang document
 // hoeft te gaan zoeken naar het punt waar je net op klikte.
 // ═══════════════════════════════════════════════════════════
@@ -33,7 +33,7 @@ export default async function RoutekaartPage() {
   // eerst open voor élke adminsessie, ook een gast zonder ontwikkelrecht.
   if (!scope.isOwner && !scope.canDev) redirect("/admin");
 
-  // De volledige beschrijvingen komen uit lib/uitleg.ts, zodat ze bij het punt zelf
+  // De volledige beschrijvingen komen uit lib/uitleg/15-agenda/, zodat ze bij het punt zelf
   // te lezen zijn in plaats van op een ander scherm. Eén bron, twee vensters.
   const teksten = beschrijvingen(PUNTEN.map((p) => p.code));
 

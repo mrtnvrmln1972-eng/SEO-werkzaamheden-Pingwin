@@ -1,0 +1,47 @@
+import type { Hoofdstuk } from "./types";
+
+export const HOOFDSTUK: Hoofdstuk = {
+  id: "leads",
+  titel: "Nieuwe klanten en leads",
+  intro:
+    "Een lead is een klant die nog niet ja heeft gezegd. Daarom krijgt hij dezelfde omgeving, met een eigen " +
+    "startscherm en een dossier dat nooit iets weggooit.",
+  uitklappers: [
+    {
+      titel: "De leadomgeving",
+      kern: "Gesprek, dossier en documenten op één plek, vanaf het eerste contact.",
+      tekst:
+        "Zodra er een lead in het systeem staat is er een werkplek: het gesprek, alles wat we over dat bedrijf " +
+        "weten, en de documenten die we voor hem maken (een voorstel, een quickscan, een positioneringsadvies). " +
+        "Wordt het een klant, dan verandert alleen het startscherm; het dossier gaat gewoon mee.",
+    },
+    {
+      titel: "Het dossier: append-only",
+      kern: "Er wordt nooit iets overschreven.",
+      tekst:
+        "Alles wat we over een bedrijf weten landt op één plek: aangeleverde documenten (een advertentie-analyse " +
+        "van een collega, een uitdraai, hun propositie of huisstijl), eigen metingen, en losse notities die in " +
+        "het gesprek vallen ('budget mag 1500', 'vindt duurzaamheid belangrijk').\n\n" +
+        "De regel die dit bruikbaar houdt naarmate het groeit: er wordt nooit iets overschreven. Een herziening " +
+        "komt erbij als nieuwe regel, met datum. Zo kun je later zien wat we wanneer dachten, en dat is precies " +
+        "wat je nodig hebt als een traject een jaar duurt.",
+    },
+    {
+      titel: "Klantprofiel automatisch opbouwen",
+      kern: "Van een domein naar een volledig profiel, zonder vragenlijst.",
+      tekst:
+        "Op basis van de website en wat er publiek te vinden is wordt een klantprofiel opgebouwd: wat het " +
+        "bedrijf doet, voor wie, in welk gebied, met welke concurrenten. Dat profiel is daarna de context voor " +
+        "elke analyse, elk document en elk gesprek over die klant.\n\n" +
+        "Het uitgangspunt is dat het systeem zelf opzoekt wat het zelf kan vinden. Een gebruiker hoeft geen " +
+        "domein, URL of cijfer aan te leveren dat op de site of in de gekoppelde bronnen staat.",
+    },
+    {
+      titel: "Concurrenten",
+      kern: "Per klant vastgelegd, en gebruikt in elke vergelijking.",
+      tekst:
+        "Concurrenten worden per klant bijgehouden en gebruikt in de zoekwoordgaten, de top-10-analyses en de " +
+        "positioneringsvraag. Een analyse zonder benoemde concurrent is een analyse in het luchtledige.",
+    },
+  ],
+};

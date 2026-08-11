@@ -1,0 +1,120 @@
+import type { Hoofdstuk } from "./types";
+
+export const HOOFDSTUK: Hoofdstuk = {
+  id: "assistent",
+  titel: "De assistent: chatten met alles wat bekend is",
+  intro:
+    "Een lijst is een scherm, een oordeel is een gesprek. De assistent is de plek waar de losse motoren " +
+    "samenkomen, en hij is bewust terughoudend gebouwd.",
+  uitklappers: [
+    {
+      titel: "Wat er automatisch meekomt in het gesprek",
+      kern: "De klant, de afspraken, de cijfers en de mail. Zonder dat je iets hoeft te uploaden.",
+      tekst:
+        "Als je een gesprek begint over een klant of een pagina, ligt het volgende al op tafel:\n\n" +
+        "- de recente mailcorrespondentie met die klant;\n" +
+        "- de Search Console-cijfers van de site en van die pagina;\n" +
+        "- de strategie, de afgesproken zoekwoorden en de beoogde landingspagina's;\n" +
+        "- wat er al gemeten is op de pagina en welke fases af zijn;\n" +
+        "- de bedrijfsgegevens en het klantprofiel;\n" +
+        "- wat er in eerdere gesprekken over deze pagina besloten is.\n\n" +
+        "Dat is het verschil met een los AI-gesprek: je hoeft de situatie niet uit te leggen voordat je een " +
+        "bruikbaar antwoord krijgt.\n\n" +
+        "**Zelf iets erbij leggen kan ook.** Sleep een document of een screenshot in een open gesprek (of plak " +
+        "hem) en hij landt op twee plekken tegelijk: in de klantmap in Drive, en in dit gesprek, zodat de " +
+        "assistent hem meteen meeleest. Hij verschijnt als regeltje onder het gesprek, met de naam als link naar " +
+        "Drive. De assistent maakt er een korte samenvatting van; die staat achter een pijltje bij dat regeltje, " +
+        "dus je ziet hem als je hem wilt zien en niet als muur tekst tussen je vragen in.",
+    },
+    {
+      titel: "Waarom de assistent niet ongevraagd proactief is",
+      kern: "Eerst sparren in tekst, pas actiekaarten als je erom vraagt.",
+      tekst:
+        "Dit is een bewuste beperking. Een assistent die uit zichzelf voorstellen doet, produceert precies de " +
+        "waslijst die dit dashboard wil vermijden. Dus: eerst gewoon een gesprek, en pas actiekaarten met " +
+        "knoppen als de gebruiker daar om vraagt.\n\n" +
+        "De regel achter alles wat de assistent oplevert: nooit vulzinnen. Zinnen die alleen aankondigen dat " +
+        "er iets komt kosten leestijd en ruimte, en werden op een gegeven moment zelfs als taak aangeboden.",
+    },
+    {
+      titel: "Als een vraag niet lukt, zie je waarom",
+      kern: "Geen stilte meer: de reden staat onder je vraag en je vraag komt terug in het invulveld.",
+      tekst:
+        "Een zware vraag laat de assistent soms tientallen dingen opzoeken voor hij antwoordt, en heel af en toe " +
+        "past dat niet binnen de vijf minuten die de server mag rekenen. Dat is niet erg; erg is dat je het niet " +
+        "zag. De vraag verdween uit het invulveld, er kwam niets terug, en het leek alsof je genegeerd werd. " +
+        "Wie dan opnieuw plakt, heeft twee identieke vragen in beeld staan zonder één antwoord eronder.\n\n" +
+        "Drie dingen zorgen dat dat niet meer kan:\n\n" +
+        "- **De reden staat waar de vraag stond.** Onder het gesprek zelf, niet ergens anders op de kaart. " +
+        "In gewone taal, met wat je eraan kunt doen (meestal: splits hem in twee kleinere vragen).\n" +
+        "- **Je vraag blijft van jou.** Lukt het niet, dan staat je tekst weer in het invulveld en verdwijnt de " +
+        "losse vraag uit het gesprek. Ernaast staat een knop **Probeer opnieuw**, dus overtypen of opnieuw " +
+        "plakken hoeft nooit meer.\n" +
+        "- **Het dashboard kapt zelf af, net vóór de server dat doet.** Daarmee komt er altijd een leesbaar " +
+        "antwoord terug in plaats van een lege pagina waar de browser niets mee kan.\n\n" +
+        "Daaronder zit nog een stille verbetering: de extra denkrondes die een antwoord afmaken, uitschrijven en " +
+        "narekenen beginnen alleen nog als er ook echt tijd voor is. Anders werd een compleet antwoord soms " +
+        "ingeruild voor een ronde die er niet meer bij paste, en dan hield je niets over.",
+    },
+    {
+      titel: "Kaarten met knoppen: de mens blijft aan het stuur",
+      kern: "De assistent stelt voor, de gebruiker keurt goed, het dashboard voert uit.",
+      tekst:
+        "Een voorstel komt als kaart met een knop. Pas na goedkeuren gebeurt er iets: een taak aanmaken, een " +
+        "document genereren, een meta doorvoeren, een redirect zetten, een mail klaarzetten.\n\n" +
+        "Er gaat nooit iets zelfstandig naar de klant of naar de site. Dat is geen technische beperking maar " +
+        "een ontwerpkeuze, en hij staat er bewust in: een systeem dat autonoom naar buiten mag kan niet " +
+        "vertrouwd worden op het moment dat het één keer misgaat.",
+    },
+    {
+      titel: "De assistent stuurt de gedetailleerde gereedschappen aan",
+      kern: "Een signaal in het gesprek gebruikt daarna de volwaardige motor.",
+      tekst:
+        "Signaleert het gesprek een zwakke meta-title, dan gebruikt de knop niet een snelle AI-suggestie maar " +
+        "de volledige meta-motor, met alle regels tot en met de pixelbreedte. Idem voor structured data, voor " +
+        "de hele documentenketen en voor alt-teksten.\n\n" +
+        "Zo is er één weg naar hetzelfde resultaat. Twee knoppen die allebei een kaart maken leveren twee " +
+        "verschillende kaarten op, en die botsen daarna.",
+    },
+    {
+      titel: "Overview denkt diep: strategie in plaats van inventarislijst",
+      kern: "De bird's eye draait op het zware model, met zoekwoordonderzoek in handen, en mag de opzet zelf afkeuren.",
+      tekst:
+        "Overview is het gesprek waarin je niet vraagt hoe een pagina ervoor staat, maar of de hele aanpak wel " +
+        "deugt. Dat vraagt drie dingen, en die staan er nu alle drie in.\n\n" +
+        "- **Het zware model.** Alleen dit gesprek, want alleen hier is de vraag een oordeel. De motoren, de " +
+        "pagina-chat en het extractiewerk blijven op het gewone model. In de kop van Overview staat de knop " +
+        "**Diep denken**; die kost meer per antwoord en is daarom uit te zetten zonder dat er code aan te pas komt.\n" +
+        "- **Zoekwoordonderzoek in eigen hand.** Het gesprek kon alles nameten wat de site al doet, maar niets " +
+        "zeggen over een zoekterm waar we nog niets mee doen. Nu haalt het zelf zoekvolume, moeilijkheid en " +
+        "zoekintentie op voor een hele kandidatenlijst tegelijk, zoekt het ideeën rond een thema, en meet het de " +
+        "autoriteit van de concurrenten die er nu staan.\n" +
+        "- **Concurrenten uit twee bronnen.** De partijen in de top 10 zijn wie er op déze zoekterm staan; " +
+        "de concurrentenlijst op het KPI's-tabje is wie het bureau als de concurrentie ziet. Die lijst voedde " +
+        "eerder alleen de prioriteitenscan en de kansenlijst en bereikte dit gesprek helemaal niet. Nu ligt hij " +
+        "op tafel, en kan het gesprek opzoeken waar een concurrent verkeer haalt dat wij missen. Is de lijst nog " +
+        "leeg, dan zegt het dat in plaats van er stilzwijgend omheen te werken.\n" +
+        "- **De opdracht om tegen te spreken.** Krijgt het gesprek een zoekwoordenlijst of een plan voorgelegd, " +
+        "dan beoordeelt het eerst of dat de juiste aanpak is en pas daarna de invulling. Volume telt niet als " +
+        "kans zolang de moeilijkheid niet tegen de eigen autoriteit is afgezet; bij een lokale zoekterm waar " +
+        "vooral het kaartblok staat, ligt de winst bij het Google-bedrijfsprofiel en niet bij een landingspagina; " +
+        "en een matrix van vier diensten maal tien plaatsen is veertig dunne pagina's die elkaar in de weg zitten. " +
+        "Het antwoord is een gelaagde keuze met een volgorde, plus wat we bewust niet doen en waarom.\n\n" +
+        "**Een antwoord raakt niet meer zoek.** Deed het gesprek eenentwintig metingen en lukte alleen het " +
+        "opschrijven niet, dan verscheen er \"ik kon het niet netjes afronden\" en was al dat werk weg. Twee " +
+        "oorzaken, allebei verholpen: de feitencontrole verving het antwoord onvoorwaardelijk door haar eigen " +
+        "uitkomst (ook als die leeg was), en er was geen laatste stap die het antwoord alsnog uitschreef uit wat " +
+        "er al opgehaald was. Die stap is er nu, zonder nieuwe metingen, dus zonder extra wachttijd.\n\n" +
+        "De remmen blijven onverkort staan: elk cijfer komt uit een verse meting, elk pad uit de echte " +
+        "URL-lijst, en de feitencontrole leest het antwoord na. Tegenspraak is iets anders dan vrijheid om te gokken.",
+    },
+    {
+      titel: "Grondigheid boven vlotheid",
+      kern: "De assistent mag zeggen dat hij het niet weet.",
+      tekst:
+        "Waar een meting ontbreekt, meldt de assistent dat als ontbrekend. Hij concludeert niet zelf of iets " +
+        "gedaan is, want dat hoort bij de meetlaag. Dat maakt de antwoorden soms minder vlot en altijd " +
+        "betrouwbaarder.",
+    },
+  ],
+};

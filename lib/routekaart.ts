@@ -2,7 +2,7 @@
 // DE ROUTEKAART: DE ONTWIKKELING VAN DIT DASHBOARD, IN PUNTEN
 // ═══════════════════════════════════════════════════════════
 // Dit bestand houdt de STAND bij van elk ontwikkelpunt. De volledige beschrijving
-// staat in lib/uitleg.ts (hoofdstuk "Eerlijke agenda en routekaart"), bij de
+// staat in lib/uitleg/15-agenda/ (hoofdstuk "Eerlijke agenda en routekaart"), bij de
 // uitklapper met dezelfde code. Eén bron per soort informatie: de tekst daar, de
 // stand hier.
 //
@@ -21,7 +21,7 @@ export type Stand = "open" | "loopt" | "af";
 export type Omvang = "klein" | "middel" | "groot";
 
 export type Punt = {
-  /** R1 tot R15; dezelfde code als de uitklapper in lib/uitleg.ts. */
+  /** R1 tot R15; dezelfde code als de uitklapper in lib/uitleg/15-agenda/. */
   code: string;
   titel: string;
   /** 1 = motoren volwaardig maken, 2 = remmen weg bij groei, 3 = van werkplek naar product. */

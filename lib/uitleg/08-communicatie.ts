@@ -1,0 +1,54 @@
+import type { Hoofdstuk } from "./types";
+
+export const HOOFDSTUK: Hoofdstuk = {
+  id: "communicatie",
+  titel: "Communicatie met de klant",
+  intro:
+    "Mail is geen bijzaak in een SEO-traject, het is waar de helft van de afspraken staat. Daarom zit het in " +
+    "het dashboard en niet ernaast.",
+  uitklappers: [
+    {
+      titel: "De correspondentie per klant",
+      kern: "Alle mail rond deze klant op één plek, doorzoekbaar op onderwerp.",
+      tekst:
+        "Per klant staan de recente mails in de cockpit, met de mogelijkheid om te zoeken op onderwerp " +
+        "('alles over de nieuwe stedenpagina's binnen deze klant') in plaats van alleen op afzender. Een " +
+        "mailverwijzing opent het gesprek rechtstreeks in de mailclient.\n\n" +
+        "Uit die mails wordt ook een tijdlijn van de stand van zaken samengevat, die stil op de achtergrond " +
+        "wordt bijgewerkt als hij meer dan twee dagen achterloopt. Je opent een klant dus nooit met verouderde " +
+        "context.",
+    },
+    {
+      titel: "Mailcontroles",
+      kern: "Uitgaande mail wordt eerst getoetst aan de afspraken.",
+      tekst:
+        "Voordat een mail de deur uit gaat wordt hij nagelopen: klopt de aanhef, staan de afspraken erin, " +
+        "wordt er niets beloofd dat niet is gedaan, en is de opmaak simpel genoeg voor mail (aanhef, korte " +
+        "alinea's, simpele bullets, afsluiting, geen tabellen en geen vet-spam).\n\n" +
+        "Deze controles draaien ook periodiek op de achtergrond, zodat een openstaand punt niet blijft liggen " +
+        "tot iemand er weer aan denkt.",
+    },
+    {
+      titel: "Wat de klant zelf ziet",
+      kern: "Een eigen dashboard, in gewone taal, zonder ruwe data.",
+      tekst:
+        "De klant logt in en ziet zijn maandoverzicht: welke werkzaamheden er zijn gedaan, hoeveel uren en " +
+        "welk budget daarbij hoort, en de documenten die voor hem klaarstaan. Alleen de regels die " +
+        "klant-zichtbaar zijn gemarkeerd komen daarin terecht.\n\n" +
+        "Het bureau kan van elke klant een voorbeeldweergave openen en zo precies zien wat de klant ziet, " +
+        "voordat hij de link verstuurt.",
+    },
+    {
+      titel: "Delen zonder inlog",
+      kern: "Lange, onraadbare links voor precies één ding.",
+      tekst:
+        "Voor onderdelen die met iemand buiten het bureau gedeeld moeten worden zijn er links zonder inlog: " +
+        "de werklijst voor de sitebouwer, de bedrijfsgegevens die de klant moet nalopen, en het opruimvoorstel. " +
+        "Elke link geeft toegang tot dat ene onderdeel en niets anders, en kan vernieuwd worden waarmee de " +
+        "oude link direct dood is.\n\n" +
+        "Er is ook een loginvrije link naar het klantdashboard zelf voor klanten die geen wachtwoord willen " +
+        "onthouden. Staat de login van die klant uit, dan werkt die link ook niet: dezelfde spelregel, geen " +
+        "achterdeur.",
+    },
+  ],
+};

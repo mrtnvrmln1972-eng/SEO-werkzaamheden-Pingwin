@@ -4,7 +4,7 @@ import { mdToHtml } from "./markdown";
 // ═══════════════════════════════════════════════════════════
 // DE VOLLEDIGE BESCHRIJVING VAN EEN ONTWIKKELPUNT
 // ═══════════════════════════════════════════════════════════
-// De beschrijvingen staan in lib/uitleg.ts, in het interne hoofdstuk "Eerlijke
+// De beschrijvingen staan in lib/uitleg/15-agenda/, in het interne hoofdstuk "Eerlijke
 // agenda en routekaart". Dat blijft de enige plek waar ze staan; dit haalt ze
 // daar alleen vandaan zodat de routekaart ze op het scherm zelf kan tonen.
 //

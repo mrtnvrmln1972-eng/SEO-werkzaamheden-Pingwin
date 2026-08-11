@@ -78,13 +78,31 @@ Alles wat Maarten ziet (dashboard, chat, mail, preview, terugkoppeling) moet 100
 
 Er is één plek waar het hele dashboard in gewone taal wordt uitgelegd: **`/uitleg`**
 (https://pingwin-seo-dashboard.vercel.app/uitleg). Openbaar leesbaar, dus deelbaar met klanten,
-leads, collega-bureaus en investeerders. De inhoud staat volledig in `lib/uitleg.ts`; de pagina
+leads, collega-bureaus en investeerders. De inhoud staat volledig in `lib/uitleg/`; de pagina
 (`app/uitleg/page.tsx`) rendert alleen.
 
 **Vaste stap: bouw je iets noemenswaardigs bij of om, werk dan in dezelfde wijziging de
-betreffende uitklapper in `lib/uitleg.ts` bij én zet ÉÉN regel bovenaan `WAT_IS_NIEUW` in
+betreffende uitklapper in `lib/uitleg/` bij én zet ÉÉN regel bovenaan `WAT_IS_NIEUW` in
 `lib/wat-is-nieuw.ts`.** Maarten hoeft dit niet te vragen. Een uitbreiding zonder bijgewerkte
 uitleg is niet af.
+
+**Eén hoofdstuk is één bestand, en dat is een botsmaatregel (vaste regel, 11-08-2026).** Dit
+stond als 2.629 regels in één `lib/uitleg.ts`, en dat was precies dezelfde fout als bij
+`LAATST_BIJGEWERKT` hieronder: élke chat die iets opleverde moest in dat ene bestand schrijven,
+dus twee chats op één dag botsten altijd, in tekst die niets met elkaar te maken had.
+
+- **Schrijf in het bestand van je eigen onderwerp, verder nergens.** `lib/uitleg/01-waarom.ts`
+  tot `16-vervolg.ts`, genummerd in de volgorde waarin ze op het scherm staan. Twee hoofdstukken
+  waren zelf te groot en hebben een eigen map: `04-motoren/` (een bestand per motor, dus
+  `opruimen.ts`, `meta-ctr.ts`, `interne-links.ts`, enzovoort) en `15-agenda/` (een bestand per
+  golf: `golf-1.ts`, `golf-2.ts`, `golf-3.ts`, plus `werkwijze.ts` en `kaders.ts`).
+- **`lib/uitleg/index.ts` is alleen de volgorde en de leesroutes.** Raak hem niet aan om tekst te
+  wijzigen; dat is weer één gedeelde plek. Alleen een nieuw hoofdstuk komt daar bij.
+- **`proeven/uitleg.proef.ts` bewaakt het en draait vóór élke bouw.** Rood als een bestand boven
+  de 250 regels komt, als een hoofdstuk losraakt van de index (dan verdwijnt het stilletjes van
+  de pagina), of als een leesroute naar een hoofdstuk wijst dat niet bestaat. **Word je rood op
+  de maat, verhoog hem dan niet:** geef dat hoofdstuk een eigen map met een bestand per
+  onderwerp, precies zoals de motoren en de agenda.
 
 **Botsen tussen chats is opgelost door de vorm, niet door afspraken (vaste regel, 11-08-2026).**
 Het nieuws stond als één zin van vijfduizend tekens op één regel (`LAATST_BIJGEWERKT`), en elke
@@ -119,8 +137,8 @@ De ontwikkeling van dit dashboard loopt via **losse chats, één ontwikkelpunt p
 begeleidt en stuurt aan; hij is geen programmeur.
 
 - **De punten staan in `lib/routekaart.ts`** (stand: open, loopt, af) en de volledige beschrijving
-  in `lib/uitleg.ts`, hoofdstuk "Eerlijke agenda en routekaart". Vijftien punten, R1 tot R15, in
-  drie golven.
+  in `lib/uitleg/15-agenda/`, hoofdstuk "Eerlijke agenda en routekaart". Vijftien punten, R1 tot
+  R15, in drie golven, met per golf een eigen bestand (`golf-1.ts`, `golf-2.ts`, `golf-3.ts`).
 - **Het bedieningspaneel is `/admin/routekaart`**: per punt de stand, waar het van afhangt, en een
   knop die de startregel kopieert.
 - **De startregel is `/ontwikkelpunt <code>`.** Die opdracht staat in

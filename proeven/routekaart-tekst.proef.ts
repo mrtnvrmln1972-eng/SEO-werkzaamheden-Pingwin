@@ -1,7 +1,7 @@
 // Proef op het koppelen van een ontwikkelpunt aan zijn beschrijving.
 //
 // Waarom dit bestand er is: de routekaart toont de beschrijving nu bij het punt
-// zelf, en die tekst komt uit een ánder bestand (lib/uitleg.ts). Zo'n koppeling
+// zelf, en die tekst komt uit een ándere plek (lib/uitleg/15-agenda/). Zo'n koppeling
 // op titeltekst faalt stil: je ziet een lege of verkeerde beschrijving en dat
 // ziet er precies zo uit als een punt dat nog geen tekst heeft.
 //
@@ -9,7 +9,7 @@
 //
 //  1. R1 dat R10 tot en met R15 mee opslokt. "R1" is een prefix van "R10", dus
 //     wie op de code alleen matcht, plakt de verkeerde tekst onder het punt.
-//  2. Een nieuw punt in lib/routekaart.ts zonder beschrijving in lib/uitleg.ts.
+//  2. Een nieuw punt in lib/routekaart.ts zonder beschrijving in lib/uitleg/15-agenda/.
 //     Dat mag (null), maar het mag nooit een fout of de tekst van de buurman geven.
 
 import { PUNTEN } from "../lib/routekaart";

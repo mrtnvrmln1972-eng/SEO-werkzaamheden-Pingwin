@@ -12,7 +12,7 @@ in de routekaart welk punt het eerst aan de beurt is en stel dat in één regel 
 ## Waar het punt staat
 
 De routekaart staat in `lib/routekaart.ts` (de korte gegevens: golf, stand, waar het van
-afhangt, wat het raakt) en de volledige beschrijving in `lib/uitleg.ts`, in het hoofdstuk
+afhangt, wat het raakt) en de volledige beschrijving in `lib/uitleg/15-agenda/`, in het hoofdstuk
 "Eerlijke agenda en routekaart", bij de uitklapper met dezelfde code.
 
 Daar staat al uitgewerkt: wat er nu mis is, wat het oplevert, hoe we het zouden bouwen, waaraan
@@ -33,7 +33,7 @@ ervan af omdat je in de code iets beters ziet, zeg dat dan in één regel voorda
 5. **Test het live.** Bewijs boven beloftes: draai de bouw, push naar `main`, en controleer op
    de live URL dat het er echt staat en werkt. Zeg niet "het werkt" zonder dat je het gezien
    hebt.
-6. **Werk de uitleg bij in dezelfde wijziging** (`lib/uitleg.ts`): het hoofdstuk waar dit punt
+6. **Werk de uitleg bij in dezelfde wijziging** (`lib/uitleg/`): het hoofdstuk waar dit punt
    thuishoort krijgt de nieuwe werkelijkheid, en `LAATST_BIJGEWERKT` gaat vooruit. Een
    uitbreiding zonder bijgewerkte uitleg is niet af.
 7. **Leg de controle vast in `lib/routekaart-bewijs.ts`.** Dit is geen bijzaak: zonder controle
