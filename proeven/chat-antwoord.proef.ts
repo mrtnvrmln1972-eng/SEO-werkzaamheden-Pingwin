@@ -40,7 +40,11 @@ const lees = (p: string) => fs.readFileSync(path.join(WORTEL, p), "utf8");
 // ── 1. De melding staat in de chat, niet in de fase-lijst ──
 console.log("\n── De reden staat waar de vraag staat ──");
 
-const kaart = lees("app/admin/client/[slug]/WeekplanCard.tsx");
+// De kaart is opgeknipt: het chatvenster en de logica erachter staan sinds
+// 11-08-2026 in weekplan-kaart/. Het scherm staat vóór de logica, want de
+// volgordecontrole hieronder gaat over wat er in beeld boven elkaar staat.
+const kaart = lees("app/admin/client/[slug]/weekplan-kaart/KaartChat.tsx")
+  + "\n" + lees("app/admin/client/[slug]/weekplan-kaart/useKaartChat.ts");
 
 const naBody = kaart.indexOf("wp-chat-body");
 const naFout = kaart.indexOf("wp-chat-fout");
