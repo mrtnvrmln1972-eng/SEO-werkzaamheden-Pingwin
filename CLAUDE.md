@@ -98,7 +98,7 @@ Alles wat Maarten ziet (dashboard, chat, mail, preview, terugkoppeling) moet 100
     beheerscherm: `app/admin/AdminKop.tsx` plus de `pg-`bouwstenen uit `app/globals.css`, en een
     regel in `SCHERMEN` in `app/admin/OntwikkelMenu.tsx`.
   - **`proeven/opmaak.proef.ts` bewaakt het en draait vóór élke bouw** (`prebuild`, dus ook op
-    Vercel). Hij wordt rood als een beheerscherm geen kopbalk heeft, als AI-tekst in een
+    Vercel; sinds 11-08-2026 via `proeven/alles.mjs`, samen met alle andere proeven). Hij wordt rood als een beheerscherm geen kopbalk heeft, als AI-tekst in een
     `<textarea>` staat in plaats van gerenderd, als een scherm niet in het Intern-menu staat, als
     er losse pixelwaarden in de opmaak sluipen, of als een scherm zijn eigen lettergroottes,
     afstanden, kleuren, rondingen of schaduwen verzint. Dan mislukt de bouw en komt het niet live.
@@ -285,6 +285,18 @@ legacy/                    Oude losse HTML-versies (referentie)
 - **Superhuman: geen API, wél een werkende thread-deeplink.** `superhumanThreadLink` in `lib/ms-graph.ts` bouwt een link die de mail direct in Superhuman opent (opgeslagen als `client_emails.superhuman_link`). Chat en kaarten linken mail-verwijzingen daarheen, met de Outlook-webLink als terugval. Mail-data zelf komt uit Microsoft 365 (Graph); dezelfde mails als in Superhuman.
 - **NOC-database nooit aanraken.** Dit project heeft een eigen Postgres. Niets van NOC raken.
 - **Direct naar productie.** Geen feature-branches. Afsluiten met commit + push naar main; Vercel deployt automatisch. CLI-deploy `npx vercel --prod --yes` kan als handmatige controle.
+- **Alle proeven zijn de poort, en er is geen lijst meer (11-08-2026).** `proeven/alles.mjs` leest
+  de map `proeven/` en draait élk bestand dat op `.proef.ts` eindigt, acht tegelijk. Dat is zowel
+  `npm run proef` als `prebuild`, dus het draait ook op Vercel en een rode proef betekent: de bouw
+  mislukt en het komt niet live. **Een nieuwe proef hoef je nergens aan te melden**, hij bewaakt
+  vanaf zijn eerste commit; noem hem `<onderwerp>.proef.ts` en laat hem eindigen met
+  `process.exit(1)` als er iets niet klopt. Waarom dit zo moest: de lijst stond met de hand in
+  package.json bij zowel `proef` als `prebuild`, en die twee liepen uit elkaar tot er 22 proeven
+  bestonden waarvan er bij een bouw 5 draaiden. De andere 17 bewaakten precies de dingen die
+  stilletjes breken als er vanuit een andere chat iets naast je verandert. Dit is dezelfde vaste
+  les als altijd: dezelfde regel op twee plekken uitschrijven loopt uit elkaar zonder dat iemand
+  het merkt, dus één bron en de rest leest daaruit. Zet deze poort nooit uit en zet nooit een
+  handmatige lijst terug.
 
 ## 6. Environment-variabelen (Vercel)
 
