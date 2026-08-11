@@ -39,18 +39,27 @@ export type RedirectTest = {
 };
 
 // ── Meten zoals een bezoeker, niet zoals een bot ──
-// Dit koste op 11 augustus een valse "Werkt": de test meldde een keurige 301
-// terwijl Maarten in zijn browser gewoon de oude pagina kreeg. Oorzaak is dat
-// een site zich anders kan gedragen tegenover een onbekende bot dan tegenover
-// een browser, en dat er bijna altijd een cachelaag voor zit (WP Rocket,
-// LiteSpeed, Cloudflare) die de oude pagina blijft uitserveren nadat de
-// omleiding in WordPress al staat.
+// Op 11 augustus meldde deze test "Werkt" terwijl Maarten in zijn browser
+// gewoon de oude pagina kreeg. Uitgezocht en nagemeten: de omleiding stond er
+// écht (301 naar /soa-klinieken/, ook gemeten met de User-Agent van een gewone
+// browser), en wat hij zag kwam uit het geheugen van zijn eigen browser. Hij
+// had die pagina kort ervoor geopend, en dan haalt Chrome hem opnieuw op zonder
+// het aan de website te vragen.
+//
+// De test had dus gelijk en was tóch fout, want hij liet iemand achter met twee
+// waarnemingen die elkaar tegenspreken en geen manier om te zien welke klopt.
+// Wat er sindsdien anders is:
+//   - meten met de User-Agent van een echte browser, niet met een eigen
+//     bot-naam: een site (en zeker een cachelaag ervoor) mag zich daar anders
+//     tegenover gedragen, en dan meet je niet wat een bezoeker krijgt;
+//   - bij een tegenvallend antwoord een tweede meting met een cache-buster. Is
+//     die wél goed, dan zit er een cache tussen (WP Rocket, LiteSpeed,
+//     Cloudflare) en is dat de bevinding, met wat je eraan doet;
+//   - werkt de omleiding wel, dan zegt de uitslag erbij dat je eigen browser
+//     hem alsnog kan verbergen, met een link die daar omheen gaat.
 //
 // De les eronder is groter dan deze knop: een controle die iets anders meet dan
-// wat de gebruiker ervaart, is erger dan geen controle. Hij geeft je vertrouwen
-// in een uitkomst die niet klopt. Dus meet de test nu met de UA van een echte
-// browser, en meet hij twee keer: kaal (dat is wat de bezoeker krijgt, cache en
-// al) en met een cache-buster (dat is wat er echt op de server staat).
+// wat de gebruiker ervaart, is erger dan geen controle.
 const BEZOEKER_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 /** Een query die geen enkele paginacache kent, dus die haalt de verse versie. */
 const CACHE_BUSTER = "pingwin-controle=1";
