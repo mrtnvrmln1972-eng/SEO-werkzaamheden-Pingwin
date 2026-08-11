@@ -220,14 +220,13 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
     for (const t of need) await genMeta(t.thread);
   }
 
-  // Zorg dat het basisonderwerp altijd bestaat, en sorteer: openstaand eerst,
-  // "gedaan" onderaan.
+  // Sorteer de onderwerpenlijst: openstaand eerst, "gedaan" onderaan. Geen
+  // onderwerpen? Dan is de lijst leeg; "+ Nieuw onderwerp" start een nieuwe.
   function normalizeTopics(threads: { thread: string; count?: number; title?: string; summary?: string; done?: boolean }[]): Topic[] {
     // De eigen gesprekken van projectkaarten ("overzicht:kaart:<id>") horen bij
     // die kaart, niet in deze onderwerpenlijst.
     const mine = threads.filter((t) => t.thread.startsWith("overzicht") && !t.thread.startsWith("overzicht:kaart:"));
     const list: Topic[] = mine.map((t) => ({ thread: t.thread, count: t.count || 0, title: t.title || "", summary: t.summary || "", done: !!t.done }));
-    if (!list.some((t) => t.thread === BASE)) list.unshift({ thread: BASE, count: 0, title: "", summary: "", done: false });
     return list.sort((a, b) => Number(a.done) - Number(b.done));
   }
 
@@ -282,13 +281,9 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
   async function clearChat(thread: string) {
     setBevestig(null);
     setMessages([]); setOpen(null);
-    // Ook de titel weg. Het eerste gesprek blijft als rij bestaan (er moet er altijd
-    // één zijn), maar met alleen de inhoud gewist bleef de oude titel staan en zag je
-    // dus precies hetzelfde als daarvoor: het leek alsof er niets gebeurde, terwijl
-    // het gesprek wél leeg was.
-    setTopics((ts) => ts
-      .filter((x) => x.thread !== thread || x.thread === BASE)
-      .map((x) => x.thread === thread ? { ...x, count: 0, summary: "", title: "", done: false } : x));
+    // De rij zelf verdwijnt ook, voor elk onderwerp: met "+ Nieuw onderwerp"
+    // rechtsboven begin je zo weer een nieuwe.
+    setTopics((ts) => ts.filter((x) => x.thread !== thread));
     await fetch(`/api/admin/chat?slug=${encodeURIComponent(slug)}&thread=${encodeURIComponent(thread)}`, { method: "DELETE" }).catch(() => {});
   }
 
@@ -421,22 +416,17 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
                     : <span className="ovc-topic-title">{titleOf(t)}</span>}
                   {!isOpen && t.summary && <span className="ovc-topic-sum">{t.summary}</span>}
                 </div>
-                {/* Het eerste gesprek (de basis) mag niet verdwijnen, want er moet er
-                    altijd één zijn. Maar het kruisje werd daarvoor helemáál weggelaten,
-                    en dan lijkt die rij gewoon kapot: je zoekt een knop die er niet is.
-                    Nu staat hij er wel en maakt hij dat onderwerp leeg in plaats van
-                    het weg te gooien. Dat kon clearChat al. */}
                 {/* De bevestiging staat in de rij zelf. Het was een browser-popup, en
                     die valt buiten de huisstijl en leest als een systeemmelding. */}
                 {bevestig === t.thread ? (
                   <span className="ovc-topic-bevestig" onClick={(e) => e.stopPropagation()}>
-                    <span>{t.thread === BASE ? "Leegmaken?" : "Verwijderen?"}</span>
+                    <span>Verwijderen?</span>
                     <button type="button" className="ovc-bev-ja" onClick={() => void clearChat(t.thread)}>Ja</button>
                     <button type="button" className="ovc-bev-nee" onClick={() => setBevestig(null)}>Nee</button>
                   </span>
                 ) : (
                   <button type="button" className="wp-icon wp-del ovc-topic-del"
-                    title={t.thread === BASE ? "Dit onderwerp leegmaken (het eerste gesprek blijft bestaan)" : "Dit onderwerp verwijderen"}
+                    title="Dit onderwerp verwijderen"
                     onClick={(e) => { e.stopPropagation(); setBevestig(t.thread); }}>×</button>
                 )}
               </div>
