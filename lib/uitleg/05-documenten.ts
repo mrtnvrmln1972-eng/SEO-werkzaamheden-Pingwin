@@ -34,6 +34,25 @@ export const HOOFDSTUK: Hoofdstuk = {
         "van de huidige ranking mogen afwijken.",
     },
     {
+      titel: "De keten blokkeert bij tegenspraak",
+      kern: "Spreekt de verse meting het plan tegen, dan komt er geen document; en een strategie gaat nooit los naar de klant.",
+      tekst:
+        "Vlak voordat een analyse, blauwdruk of copy gegenereerd wordt, vergelijkt een poort het vastgelegde " +
+        "plan en de eerdere ketenstappen met de verse meting van de pagina. Alleen harde, meetbare " +
+        "tegenspraken tellen: het plan zegt dat een sectie ontbreekt die live al bestaat, er wordt verwezen " +
+        "naar een pagina die niet (meer) bestaat, of een genoemde positie wijkt fors af van wat er echt " +
+        "gemeten wordt. Bij zo'n botsing komt er géén document; in plaats daarvan zie je precies welke claim " +
+        "botst met welk feit, en wat je moet doen (het plan bijwerken, of de strategie opnieuw vastleggen via " +
+        "de chat, die de pagina dan vers meet). Liever geen document dan twee documenten die elkaar " +
+        "tegenspreken. Een nuanceverschil is geen botsing, en als de controle zelf hapert gaat de poort open: " +
+        "hij is een vangnet, geen extra drempel.\n\n" +
+        "Daarbij hoort een werkregel: **een strategie is intern** totdat de analyse hem tegen de verse meting " +
+        "heeft bevestigd. De assistent wijst je erop als je een strategie naar een klant of sitebouwer wilt " +
+        "sturen terwijl de analyse nog niet gedraaid is. Eén ongeverifieerde claim richting een klant kost " +
+        "meer vertrouwen dan tien juiste claims opleveren; dat is precies wat er in augustus 2026 bij een " +
+        "echte klantcasus gebeurde en wat deze poort voortaan afvangt.",
+    },
+    {
       titel: "Waarom de analyse de redenering bewaart en niet de takenlijst",
       tekst:
         "Het analysedocument houdt de afweging vast: de huidige situatie, het zoekwoordonderzoek met volumes, " +

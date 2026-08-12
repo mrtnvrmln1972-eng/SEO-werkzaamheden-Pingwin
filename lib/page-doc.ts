@@ -898,6 +898,17 @@ export async function generateDocSpec(slug: string, url: string, kind: DocKind, 
     if (parts.length) chain = "\n\n" + parts.join("\n\n");
   }
 
+  // DE KETEN-POORT: spreekt de verse meting het vastgelegde plan of een eerdere
+  // ketenstap hard tegen, dan blokkeert de generatie met een melding die zegt
+  // wélke claim botst met wélk feit. Liever geen document dan twee documenten
+  // die elkaar tegenspreken; één ongeverifieerde claim richting een klant kost
+  // meer vertrouwen dan tien juiste claims opleveren.
+  {
+    const { vindKetenConflicten, ketenBlokkade } = await import("./keten-poort");
+    const conflicten = await vindKetenConflicten(slug, context.text, chain);
+    if (conflicten.length) throw new Error(ketenBlokkade(conflicten));
+  }
+
   // Eén gegronde generatie op de gemeten data (pagina exact uitgemeten, GSC, Ahrefs
   // top-10, concurrenten, Core Web Vitals) + de keten. GEEN aparte agentische
   // denk-ronde meer: die schreef de analyse feitelijk twee keer (en mat concurrenten
