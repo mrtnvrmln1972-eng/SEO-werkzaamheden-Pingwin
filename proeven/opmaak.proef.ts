@@ -380,7 +380,7 @@ const KNOPCONVENTIE_ERFENIS = new Set<string>([
   "app/admin/client/[slug]/OnboardingPanel.tsx", "app/admin/client/[slug]/OpruimEenLijst.tsx",
   "app/admin/client/[slug]/OpruimEindstructuur.tsx", "app/admin/client/[slug]/OpruimPlaatsen.tsx",
   "app/admin/client/[slug]/OpruimTabel.tsx", "app/admin/client/[slug]/OverviewChat.tsx",
-  "app/admin/client/[slug]/PageChat.tsx", "app/admin/client/[slug]/PageSummaryCard.tsx",
+  "app/admin/client/[slug]/PageSummaryCard.tsx",
   "app/admin/client/[slug]/PagesPanel.tsx", "app/admin/client/[slug]/Planning.tsx",
   "app/admin/client/[slug]/PrioriteitenPanel.tsx", "app/admin/client/[slug]/SelectionActions.tsx",
   "app/admin/client/[slug]/ShareLinkBar.tsx", "app/admin/client/[slug]/StrategyPanel.tsx",

@@ -29,7 +29,6 @@ const GRENS = 1000;
 
 // De bestanden die op 11 augustus 2026 al te groot waren. Alleen korter maken.
 const ERFENIS = new Set<string>([
-  "app/admin/client/[slug]/PageChat.tsx",
   "app/admin/client/[slug]/KpiPanel.tsx",
   "lib/chat.ts",
   "lib/google.ts",
