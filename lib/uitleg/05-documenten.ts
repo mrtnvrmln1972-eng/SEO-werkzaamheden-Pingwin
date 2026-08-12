@@ -15,10 +15,17 @@ export const HOOFDSTUK: Hoofdstuk = {
         "1. **Strategie.** Wat wil deze pagina bereiken, voor wie, tegen welke concurrent, met welk zoekwoord " +
         "als primair doel? De redenering wordt bewaard, niet alleen de uitkomst.\n" +
         "2. **Analyse.** Wat doet de pagina nu, gegrond in de live meting, de Search Console-data, de top-10 " +
-        "van dat zoekwoord en de snelheidscijfers. Met pass of fail per criterium.\n" +
+        "van dat zoekwoord en de snelheidscijfers. Met pass of fail per criterium. De pagina wordt op het " +
+        "meetmoment vers uitgelezen en het document vermeldt die datum (\"feiten live gecheckt op ...\"), " +
+        "zodat altijd te zien is op welke paginaversie het oordeel rust. De aanbevelingen doseren de " +
+        "commerciële laag naar de top-10: is die overwegend informatief, dan geen zware verkoopsecties maar " +
+        "een kort blok met een interne link.\n" +
         "3. **Blauwdruk.** Hoe moet de pagina eruit gaan zien: koppenstructuur met zoekwoorddekking, " +
         "meta-templates met tekenaantallen, de interne linkkaart, briefings voor de afbeeldingen, de " +
-        "vragen-en-antwoorden en de structured data.\n" +
+        "zoekersvragen en de structured data. De belangrijkste zoekersvragen krijgen een eigen kop in de " +
+        "tekst zelf; alleen restvragen komen in een kort blok \"Veelgestelde vragen\" onderaan, want " +
+        "FAQ-blokjes in de zoekresultaten bestaan sinds mei 2026 niet meer en de waarde zit in het antwoord " +
+        "zelf.\n" +
         "4. **Copy.** De volledige tekst, getoetst aan harde criteria (zoekwoord in de eerste honderd woorden, " +
         "dekking van de koppen, zoekwoorddichtheid, antwoordlengte bij vragen) met een scorekaart die pas " +
         "groen is als het klopt.\n\n" +

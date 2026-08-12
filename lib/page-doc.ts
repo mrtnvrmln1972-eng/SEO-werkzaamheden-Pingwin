@@ -103,10 +103,14 @@ async function buildContext(slug: string, url: string, extra?: string): Promise<
     ahrefsText = "AHREFS-DATA: niet beschikbaar (geen Ahrefs-koppeling ingesteld).";
   }
 
+  const liveStamp = new Date().toLocaleString("nl-NL", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Amsterdam" });
   const text = [
     `KLANT: ${client?.name || slug}`,
     client?.seoProfile ? `KLANTPROFIEL: ${client.seoProfile}` : "",
     `PAGINA: ${url}`,
+    content || measure
+      ? `FEITEN LIVE GECHECKT OP: ${liveStamp} (de pagina is op dit moment vers uitgelezen; vermeld deze datum in het document)`
+      : `LET OP: de pagina kon op ${liveStamp} NIET live uitgelezen worden; benoem in het document dat de meting ontbreekt en baseer geen content-gaps op aannames`,
     primary ? `GEKOZEN PRIMAIR ZOEKWOORD (leidend, uit het plan/GSC): "${primary}"` : "",
     `OVERGENOMEN PLAN VOOR DEZE PAGINA (de strategische conclusie, leidend): ${plan || "(nog geen plan, leid af uit de data)"}`,
     "",
@@ -159,6 +163,10 @@ Lever, elk als eigen sectie:
 
 BEOORDEEL DE HUIDIGE PAGINA IN HET LICHT VAN HET GEKOZEN PRIMAIRE ZOEKWOORD (niet alleen de huidige ranking): in welke mate is de bestaande content al geoptimaliseerd voor dat zoekwoord en de zoekintentie? Benoem expliciet welke bestaande elementen (koppen, alinea's, FAQ, tabellen, beeld) BEHOUDEN kunnen blijven omdat ze voldoen, en welke moeten worden aangepast of toegevoegd. Behoud is het uitgangspunt; verander alleen wat de criteria of de top-10-analyse vereisen.
 
+VERSHEID: de pagina-feiten hieronder zijn op het meetmoment live uitgelezen (zie "FEITEN LIVE GECHECKT OP"). Vermeld die datum in de samenvatting, zodat de lezer weet op welke paginaversie dit oordeel rust. Baseer een "ontbreekt"-bevinding uitsluitend op de gemeten koppen/inhoud, nooit op een oudere scan of aanname.
+
+INTENTIE-DOSERING BIJ DE AANBEVELINGEN: lees uit de top-10 de mix informatief/commercieel af. Is de SERP overwegend informatief, adviseer dan GEEN zware commerciële secties (zoals een volledige kosten-uitweiding) maar een kort blok met een interne link naar de kosten-/behandelpagina; is de SERP overwegend commercieel, dan mag de commerciële laag dragend zijn.
+
 Wees eerlijk: dit is een audit, geen verkooppraatje. Verzin geen rankings of Core Web Vitals; wat je niet gemeten hebt, benoem je als niet gemeten.
 
 CRITERIA-DOCUMENT (leidend voor de scorecard):
@@ -169,12 +177,13 @@ ${DOCSPEC_FORMAT}`;
 const BLUEPRINT_SYSTEM = `Je bent een senior SEO-strateeg bij bureau Pingwin en maakt een BLAUWDRUK voor een landingspagina.
 De blauwdruk bevat, elk als eigen sectie:
 1. Zoekwoord-strategie: primair zoekwoord + secundaire/variant-zoekwoorden (tabel met zoekwoord + rol/volume waar bekend).
-2. Headings-structuur: de voorgestelde H1, en de H2's/H3's in volgorde. VARIATIE, GEEN STUFFING: maximaal circa 70% van de koppen bevat het primaire zoekwoord of een semantische variant (boven 80% oogt onnatuurlijk, criterium H2-01); de overige koppen dekken het onderwerp met natuurlijke titels ZONDER het zoekwoord. Bij een LOKAAL zoekwoord (met plaatsnaam): zet de plaatsnaam in HOOGUIT 2 à 3 koppen, niet in elke kop; varieer de rest met de dienst/het subthema. Koppen lezen als sectietitels, niet als zoekopdrachten. Zet vóór ELKE koptitel de niveau-aanduiding (H1, H2 of H3) als klein label, zodat de sitebouwer weet welk opmaakniveau hij moet gebruiken. De FAQ-vraagtitels krijgen ALTIJD de aanduiding H3 (onder een H2 "Veelgestelde vragen").
+2. Headings-structuur: de voorgestelde H1, en de H2's/H3's in volgorde. VARIATIE, GEEN STUFFING: maximaal circa 70% van de koppen bevat het primaire zoekwoord of een semantische variant (boven 80% oogt onnatuurlijk, criterium H2-01); de overige koppen dekken het onderwerp met natuurlijke titels ZONDER het zoekwoord. Bij een LOKAAL zoekwoord (met plaatsnaam): zet de plaatsnaam in HOOGUIT 2 à 3 koppen, niet in elke kop; varieer de rest met de dienst/het subthema. Koppen lezen als sectietitels, niet als zoekopdrachten. Zet vóór ELKE koptitel de niveau-aanduiding (H1, H2 of H3) als klein label, zodat de sitebouwer weet welk opmaakniveau hij moet gebruiken. De belangrijkste zoekersvragen (zie punt 4) staan als eigen H2/H3-kop IN deze structuur; alleen een eventueel kort restvragen-blok "Veelgestelde vragen" komt onderaan, met de vraagtitels als H3.
 3. Meta: 2 varianten meta-title en 2 varianten meta-description, elk strikt volgens de META-REGELS hieronder (titel 40-60 tekens, description 120-155 tekens); vermeld per variant het tekenaantal tussen haakjes.
-4. FAQ: 4 tot 6 vragen die de zoekintentie dekken.
+4. Zoekersvragen: 4 tot 6 echte vragen die de zoekintentie dekken (People Also Ask uit de top-10, long-tail in vraagvorm). GEEN los FAQ-blok als vergaarbak: de belangrijkste 1 à 3 vragen krijgen een eigen kop in de contentflow van sectie 2 (zoals "Kan [afwijking] verbeteren?" als volwaardige H2), de restvragen komen in een kort "Veelgestelde vragen"-blok onderaan. FAQ-rich-results toont Google sinds mei 2026 niet meer; beloof ze nergens. De waarde zit in de vraag-en-antwoordtekst zelf (long-tail-rankings en AI Overviews).
 5. Interne links: welke andere pagina's naar deze pagina linken en met welke ankertekst.
 6. Beeld-briefs: kort wat voor beeld/alt-tekst per sectie.
 UITGANGSPUNT BEHOUD: vertrek van de bestaande pagina-inhoud + het overgenomen plan en de taken. Geef de PERFECTE invulling voor deze landingspagina: behoud wat er al staat en voldoet aan de criteria + de top-10-eisen, en voeg alleen toe of herschrijf wat daaruit ontbreekt. Maak per sectie duidelijk of het BEHOUDEN, AANPASSEN of NIEUW is. Baseer de structuur op de top-10-analyse van het gekozen zoekwoord.
+INTENTIE-DOSERING: lees uit de top-10 de mix informatief/commercieel af en doseer de commerciële laag daarnaar. Bij een overwegend informatieve SERP blijft commercieel beperkt tot een kort blok met een interne link (bijvoorbeeld naar de kosten- of behandelpagina), geen volledige kosten- of verkoopsecties; bij een overwegend commerciële SERP mag de commerciële laag dragend zijn.
 Werk conform de Pingwin-criteria: H2-dekking 60-80% (target 70%, criterium H2-01), primair zoekwoord front-loaded in de meta-title (META-03), title 40-60 tekens (META-02), meta-description 120-155 tekens (META-07), FAQ 4-8 vragen die een zoekwoord/long-tail bevatten (FAQ-02/03), en een variantenlijst van 10-15 semantische varianten (KW-04, §17).
 Gegrond in de data hieronder; verzin geen rankings.
 
@@ -186,7 +195,7 @@ ${SEO_CRITERIA_MD}
 ${DOCSPEC_FORMAT}`;
 
 const COPY_SYSTEM = `Je bent een senior SEO-copywriter bij bureau Pingwin en schrijft publicatieklare landingspagina-copy. Dit is het INTERNE, technische copy-document (voor het team, niet voor de klant): het bevat de scorecard, de metadata met tekencounts, het behoud-overzicht én de volledige copy.
-Werk tegen deze harde criteria: primair zoekwoord in de eerste 100 woorden; H2-koppen dekken 60-80% van de zoekwoorden; natuurlijke keyword-density 0,5-2%; semantische varianten ≥60% gedekt; open met een direct antwoord op de zoekintentie; FAQ-antwoorden 40-80 woorden.
+Werk tegen deze harde criteria: primair zoekwoord in de eerste 100 woorden; H2-koppen dekken 60-80% van de zoekwoorden; natuurlijke keyword-density 0,5-2%; semantische varianten ≥60% gedekt; open met een direct antwoord op de zoekintentie; antwoorden op zoekersvragen/FAQ 40-80 woorden. Volg de blauwdruk in de plaatsing van zoekersvragen: de belangrijkste als eigen kop in de contentflow, alleen restvragen in een kort "Veelgestelde vragen"-blok.
 Toon van de copy zelf: warm, deskundig, passend bij het klantprofiel; geen holle marketingtaal, concreet en to-the-point.
 UITGANGSPUNT BEHOUD: hergebruik bestaande zinnen/alinea's van de huidige pagina waar die goed zijn en voldoen aan de criteria; herschrijf alleen waar nodig en vul aan met wat de blauwdruk/top-10-analyse vereist. In de copy zit alles uit het plan, de taken en de analyse verwerkt.
 
@@ -194,7 +203,7 @@ Lever het document met EXACT deze secties, in deze volgorde:
 1. Sectie "Scorecard & gate-verdict": één table-blok met kolommen Criterium | Status | Waarde, met per relevant criterium-ID (H1-01/02, H2-01, KW-01 t/m KW-04, META-02, META-07, CON-02, FAQ-02, FAQ-05, AEO-02/03, CON-07, CVR-01/02) de status (PASS/FAIL/PARTIAL) en de gemeten waarde (bijv. H2-dekking 67%, density 1,22%, variantdekking 87%, FAQ 6 vragen, title 59 tekens). Begin de sectie met een paragraph "GATE: PASS/FAIL" met het aantal CRITICAL/MAJOR-failures en een korte conclusie of de copy publicatieklaar is.
 2. Sectie "SEO-metadata": één table-blok met kolommen Element | Waarde | Tekens, met de URL-slug, de meta-title (met tekenaantal) en de meta-description (met tekenaantal).
 3. Sectie "Behoud-overzicht": één paragraph met het behoud-principe, daarna één table-blok met kolommen Sectie | Actie | Toelichting (actie = BEHOUDEN/AANGEPAST/VERVANGEN/NIEUW).
-4. Sectie "Volledige copy": de H1 (subheading), per H2 de kop (subheading) + de alineatekst (paragraph-blokken), eventuele bullets, en een FAQ: het FAQ-blok als subheading "Veelgestelde vragen over [onderwerp]" en elke vraag daaronder óók als subheading, met het antwoord als paragraph. Zet vóór ELKE koptitel de niveau-aanduiding (H1, H2 of H3) als klein label; de FAQ-vraagtitels krijgen altijd H3, zodat de sitebouwer het juiste opmaakniveau ziet.
+4. Sectie "Volledige copy": de H1 (subheading), per H2 de kop (subheading) + de alineatekst (paragraph-blokken), eventuele bullets. De belangrijkste zoekersvragen staan als eigen kop-sectie in de contentflow (zoals de blauwdruk ze plaatst); alleen restvragen komen in een kort blok "Veelgestelde vragen over [onderwerp]" (het blok als subheading, elke vraag daaronder óók als subheading, met het antwoord als paragraph). Zet vóór ELKE koptitel de niveau-aanduiding (H1, H2 of H3) als klein label; restvraag-titels in dat blok krijgen altijd H3, zodat de sitebouwer het juiste opmaakniveau ziet.
 Gegrond in de data hieronder; verzin geen gemeten waarden die niet uit de data volgen.
 
 ${META_RULES_PROMPT}
@@ -489,7 +498,7 @@ export async function internalLinksDocSpec(slug: string, url: string, proposal: 
 const CLIENT_STRUCTURE: Record<DocKind, string> = {
   analyse: `Lever deze secties (elk kort): 1. Huidige situatie; 2. Zoekwoorden (welke kansrijk zijn, zoekvolume in gewone taal); 3. Concurrentie (kunnen we winnen, wat doet de best gevonden concurrent wel); 4. Zoekintentie; 5. Wat de pagina nu mist t.o.v. de best scorende top-10-pagina's (concreet vergelijken); 6. Conclusie & advies (op welke zoekwoorden we richten en wat we voorstellen).`,
   blauwdruk: `Lever deze secties (elk kort): 1. Wat we op jullie pagina gaan zetten (de belangrijkste onderdelen/onderwerpen en de opbouw, in gewone taal); 2. Op welke zoekwoorden we richten; 3. Wat we behouden van de huidige pagina en wat nieuw wordt; 4. Waarom dit werkt (kort). Geen technische koppen/meta-details.`,
-  copy: `Lever eerst deze korte secties: 1. Waar de nieuwe teksten over gaan (kernboodschap en toon, kort); 2. Welke zoekwoorden erin verwerkt zijn (bullets, elk zoekwoord vet); 3. Wat dit voor jullie vindbaarheid betekent (kort). Lever DAARNA een sectie met kop "De volledige webteksten (lees na en corrigeer)" waarin je de VOLLEDIGE paginacopy uit het bronstuk overneemt: de H1 (subheading), elke H2 met de kop (subheading) + de alineatekst (paragraphs), eventuele bullets, en de FAQ: het FAQ-blok als subheading "Veelgestelde vragen over [onderwerp]" en elke vraag daaronder óók als subheading, met het antwoord als paragraph. Zet vóór ELKE koptitel de niveau-aanduiding (H1, H2 of H3) als klein label; de FAQ-vraagtitels krijgen altijd H3, zodat de sitebouwer het juiste opmaakniveau ziet. Neem die teksten letterlijk over uit het bronstuk. Laat de scorecard, criteria-ID's, tekencounts en het behoud-overzicht WEG (dat is intern). Zo krijgt de klant de uitleg én de complete tekst om te corrigeren in één document.`,
+  copy: `Lever eerst deze korte secties: 1. Waar de nieuwe teksten over gaan (kernboodschap en toon, kort); 2. Welke zoekwoorden erin verwerkt zijn (bullets, elk zoekwoord vet); 3. Wat dit voor jullie vindbaarheid betekent (kort). Lever DAARNA een sectie met kop "De volledige webteksten (lees na en corrigeer)" waarin je de VOLLEDIGE paginacopy uit het bronstuk overneemt: de H1 (subheading), elke H2 met de kop (subheading) + de alineatekst (paragraphs), eventuele bullets, en de zoekersvragen precies zoals ze in het bronstuk staan: vragen met een eigen kop in de contentflow op die plek laten, en het eventuele restvragen-blok "Veelgestelde vragen over [onderwerp]" als subheading met elke vraag daaronder óók als subheading, met het antwoord als paragraph. Zet vóór ELKE koptitel de niveau-aanduiding (H1, H2 of H3) als klein label; restvraag-titels krijgen altijd H3, zodat de sitebouwer het juiste opmaakniveau ziet. Neem die teksten letterlijk over uit het bronstuk. Laat de scorecard, criteria-ID's, tekencounts en het behoud-overzicht WEG (dat is intern). Zo krijgt de klant de uitleg én de complete tekst om te corrigeren in één document.`,
 };
 
 // Vaste openingsalinea voor de copy-klantversie (letterlijk, niet door AI gegenereerd).
@@ -505,7 +514,7 @@ SCHRIJF ECHT UIT, GEEN SHORTCUTS:
 - Elke H2 krijgt een VOLLE alinea van circa 80 tot 150 woorden (meer mag), nooit één losse zin. Gebruik binnen een sectie bullets waar dat de leesbaarheid helpt.
 - Open met een direct antwoord op de zoekintentie; zet het primaire zoekwoord in de eerste 100 woorden en verwerk de secundaire/variant-zoekwoorden natuurlijk door de hele tekst (keyword-density 0,5-2%, geen stuffing).
 - Voeg waar passend een sectie met concrete praktijkvoorbeelden toe (elk voorbeeld een eigen H3-kop met een korte beschrijving).
-- Voeg een UITGEBREIDE FAQ toe: 6 tot 8 veelgestelde vragen (elke vraag een H3-kop) met een echt antwoord van 40 tot 80 woorden, gericht op long-tail-zoekwoorden en de zoekintentie.
+- Verwerk 6 tot 8 echte zoekersvragen (long-tail, People Also Ask), elk met een echt antwoord van 40 tot 80 woorden. De belangrijkste 1 à 3 vragen krijgen een eigen H2-sectie in de contentflow; de restvragen komen als H3-koppen in een kort blok "Veelgestelde vragen" onderaan. Geen FAQ-vergaarbak die de hele pagina herhaalt.
 - Sluit af met een korte, wervende call-to-action (H3).
 
 KOPPEN — VARIATIE, GEEN STUFFING (cruciaal, dit ging eerder mis):
@@ -523,8 +532,8 @@ LEVER HET DOCUMENT MET EXACT DEZE SECTIES, in deze volgorde:
 1. Sectie "Waar de nieuwe teksten over gaan" — KORT (kernboodschap en toon, een paar zinnen).
 2. Sectie "Welke zoekwoorden erin verwerkt zijn" — KORT (bullets, elk concreet zoekwoord vet met **dubbele sterretjes**).
 3. Sectie "Wat dit voor jullie vindbaarheid betekent" — KORT (een paar zinnen).
-4. Sectie "De volledige webteksten (lees na en corrigeer)" — VOLLEDIG. Begin met de paginatitel (meta-title) en de meta-description (elk als subheading met de waarde als paragraph eronder). Daarna de complete copy: de H1 (subheading) + de intro-alinea, per H2 de kop (subheading) + de volledige alineatekst (paragraph-blokken) + eventuele bullets, de praktijkvoorbeelden (elk een subheading), en de FAQ (het FAQ-blok als subheading, elke vraag daaronder als subheading met het antwoord als paragraph), en tot slot de call-to-action.
-Zet vóór ELKE koptitel in sectie 4 de niveau-aanduiding (H1, H2 of H3) als klein label vóór de tekst; FAQ-vraagtitels en praktijkvoorbeelden zijn altijd H3, zodat de sitebouwer het juiste opmaakniveau ziet. Alleen de secties 1 t/m 3 zijn kort; sectie 4 is de volledige, uitgeschreven pagina.
+4. Sectie "De volledige webteksten (lees na en corrigeer)" — VOLLEDIG. Begin met de paginatitel (meta-title) en de meta-description (elk als subheading met de waarde als paragraph eronder). Daarna de complete copy: de H1 (subheading) + de intro-alinea, per H2 de kop (subheading) + de volledige alineatekst (paragraph-blokken) + eventuele bullets, de praktijkvoorbeelden (elk een subheading), de zoekersvragen op hun plek in de contentflow plus het eventuele korte restvragen-blok "Veelgestelde vragen" (het blok als subheading, elke vraag daaronder als subheading met het antwoord als paragraph), en tot slot de call-to-action.
+Zet vóór ELKE koptitel in sectie 4 de niveau-aanduiding (H1, H2 of H3) als klein label vóór de tekst; restvraag-titels en praktijkvoorbeelden zijn altijd H3, zodat de sitebouwer het juiste opmaakniveau ziet. Alleen de secties 1 t/m 3 zijn kort; sectie 4 is de volledige, uitgeschreven pagina.
 Laat de scorecard, criteria-ID's, tekencounts en het behoud-overzicht WEG (dat is intern). Geen emoji.
 
 ${META_RULES_PROMPT}

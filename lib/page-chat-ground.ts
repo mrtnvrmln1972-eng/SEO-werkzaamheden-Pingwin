@@ -4,6 +4,7 @@ import { getGscForPage, getGscQueryPageMatrix } from "./google";
 import { getTasks } from "./tasks";
 import { callClaude, LIGHT_MODEL } from "./anthropic";
 import { notitiesTekst } from "./notities";
+import { fetchPageContent } from "./page-content";
 
 // ═══════════════════════════════════════════════════════════
 // GROUNDING VOOR DE PAGINA-CHAT
@@ -21,12 +22,18 @@ export type Proposal = { plan?: string; tasks?: { taak: string; fase?: string; w
 export async function buildSystemPrompt(slug: string, url: string): Promise<string> {
   const client = await getClientBySlug(slug);
   const domain = client?.domain || "";
-  const [urls, plan, tasks, clusterAdvice, notities] = await Promise.all([
+  const [urls, plan, tasks, clusterAdvice, notities, live] = await Promise.all([
     getClientUrls(slug),
     getPagePlan(slug, url),
     getTasks(slug),
     getPageClusterAdvice(slug, url),
     notitiesTekst(slug).catch(() => ""),
+    // Verse live-scrape van de geopende pagina, elke beurt opnieuw. Reden
+    // (les uit de NOC-bijziendheid-casus, 12-08-2026): de gescande lijst kan
+    // dagen tot weken oud zijn; de sitebouwer kan de pagina intussen aangepast
+    // hebben. Een advies dat "ontbrekende" koppen noemt die er al staan,
+    // ondergraaft het hele advies. Daarom altijd de actuele pagina erbij.
+    fetchPageContent(url).catch(() => null),
   ]);
   const [kw, matrix] = await Promise.all([
     getGscForPage(domain, url).catch(() => []),
@@ -62,6 +69,8 @@ export async function buildSystemPrompt(slug: string, url: string): Promise<stri
     return laatste ? `CLUSTERANALYSE ALS CONTEXT (de bronconclusie waaruit dit advies komt; gebruik als vertrekpunt en toets aan de live feiten, schrijf hem niet over):\n${laatste.slice(0, 1500)}` : "";
   })();
 
+  const liveStamp = new Date().toLocaleString("nl-NL", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Amsterdam" });
+
   const facts = [
     `KLANT: ${client?.name || slug} (domein: ${domain || "onbekend"})`,
     "",
@@ -70,8 +79,19 @@ export async function buildSystemPrompt(slug: string, url: string): Promise<stri
     ...(notities ? ["", "NOTITIES VAN MAARTEN OVER DEZE KLANT (eigen aantekeningen: telefoontjes, afspraken, waarnemingen; betrouwbare achtergrond, hierin staat vaak wat de klant wel of juist niet wil):", notities] : []),
     "",
     `GEOPENDE PAGINA: ${url}`,
-    `LIVE STATUS: ${self ? (self.status ?? "onbekend") : "niet in de gescande lijst (mogelijk nog niet live)"}${self?.redirectTarget ? ` → ${self.redirectTarget}` : ""}`,
-    `LIVE TITEL: ${self?.title || "onbekend"}`,
+    ...(live && live.status !== null
+      ? [
+          `LIVE GECHECKT OP ${liveStamp} (zojuist opgehaald; dit is de actuele waarheid, de gescande lijst hieronder kan ouder zijn):`,
+          `- HTTP-status: ${live.status}`,
+          `- Live titel: ${live.title || "(geen)"}`,
+          `- Live H1: ${live.h1 || "(geen)"}`,
+          `- Live koppen (H2/H3): ${live.headings.length ? live.headings.slice(0, 20).join(" | ") : "(geen gevonden)"}`,
+        ]
+      : [
+          `LIVE CHECK MISLUKT op ${liveStamp} (pagina niet bereikbaar vanuit het dashboard). Je leunt hieronder op de laatst GESCANDE gegevens; die kunnen verouderd zijn, en dat zeg je expliciet in je advies.`,
+        ]),
+    `GESCANDE STATUS (laatste site-scan): ${self ? (self.status ?? "onbekend") : "niet in de gescande lijst (mogelijk nog niet live)"}${self?.redirectTarget ? ` → ${self.redirectTarget}` : ""}`,
+    `GESCANDE TITEL: ${self?.title || "onbekend"}`,
     `GSC-KLIKKEN (deze pagina): ${self ? self.gscClicks : "onbekend"}`,
     "",
     "ZOEKWOORDEN WAAROP DE GEOPENDE PAGINA RANKT (Search Console, 90 dagen):",
@@ -117,6 +137,7 @@ HARDE REGELS:
 - VRAAG DOOR wanneer dat het advies beter maakt. Als het klantprofiel leeg is of je mist context die je nodig hebt (positionering: prijs vs exclusief/design vs duurzaam; werkgebied: regionaal vs landelijk; welke steden; doelgroep; gewenste term-focus), stel dan EERST één tot drie korte, gerichte vragen aan de gebruiker en wacht op antwoord voordat je een definitief advies geeft. Beter één vraag te veel dan een advies op aannames.
 - Als de gebruiker profiel-informatie geeft, verwerk die en stel voor om het als klantprofiel te bewaren (dat kan de gebruiker doen in het veld "Klantprofiel" bovenaan de Pagina's-tab).
 - Redirect nooit naar een URL die niet bestaat. Toets een redirect-doel aan de live status. Toets het plan-label altijd aan de echte ranking en titel.
+- VERS BOVEN GESCAND: de geopende pagina is zojuist live opgehaald (zie "LIVE GECHECKT OP" hieronder). Beweer NOOIT dat een kop, sectie, link of CTA op deze pagina "ontbreekt" zonder dat aan die live koppen (of aan fetch_page_content) getoetst te hebben; de gescande lijst kan verouderd zijn en de sitebouwer kan de pagina gisteren nog aangepast hebben. Geef je een volledige analyse of een advies met content-gaps, vermeld dan één keer kort waarop je feiten rusten: "live gecheckt op [datum/tijd]". Is de live check mislukt, zeg dan expliciet dat je op de laatste scan leunt en dat de pagina intussen veranderd kan zijn.
 - Antwoord in NETTE markdown zodat het als rapport oogt: korte kopjes (## en ###), bullets, en waar het helpt een kleine tabel, bijvoorbeeld | Zoekwoord | Positie | Vertoningen | URL |. Houd het scanbaar, geen muur van tekst. Gebruik nergens emoji.
 - Enkelvoud/meervoud en andere woordvormen tellen als GEDEKT: een H1 met "veranda's" dekt het zoekwoord "veranda" af. Beoordeel koppen op kern-overlap en propositie, niet op exacte woordvorm.
 - SCHAAL JE ANTWOORD MEE MET DE VRAAG, EN HERHAAL JEZELF NOOIT. De eerste, brede vraag in een gesprek verdient de volledige analyse (kopjes, tabel, taken, plan). Een vervolgvraag verdient een KORT, direct antwoord dat alleen beantwoordt wat er gevraagd is: geen herhaalde tabel, geen herhaalde sectie "Taken", geen herhaald plan, geen samenvatting van wat je al eerder schreef. Alles wat eerder in dit gesprek staat geldt als bekend; verwijs ernaar in één zin ("zoals hierboven bij de zoekwoordkeuze") in plaats van het over te schrijven. Herhaal alleen iets als de gebruiker er expliciet om vraagt of als je conclusie echt verandert, en zeg dan wát er verandert en waarom. Vraagt de gebruiker om een samenvatting of eindconclusie, dan mag je wél alles bundelen; dat is de enige uitzondering.
@@ -137,6 +158,8 @@ DREMPELS EN REGELS (Pingwin-methodologie):
 - Een zoekwoord als variant/secundair meenemen vanaf ~50 zoekvolume.
 - Twee termen SAMENVOEGEN als hun top-10 voor >50% dezelfde URL's toont (zelfde intentie); anders splitsen.
 - Een locatiepagina alleen bij genoeg lokaal volume; anders de plaats als sectie op een bredere pagina.
+- INTENTIE-DOSERING: lees uit de top-10 (ahrefs_serp_top10) de mix informatief/commercieel af en doseer je advies daarnaar. Is de SERP overwegend informatief (kennisbanken, ziekenhuizen, Wikipedia), dan wint een overwegend informatieve pagina; de commerciële laag blijft dan klein en dienend: een kort blok of een interne link (bijvoorbeeld naar de kosten- of behandelpagina), GEEN volledige kosten- of verkoopsecties. Is de SERP overwegend commercieel, dan mag de commerciële laag dragend zijn. De dosering volgt altijd de SERP, nooit de wens om meer te verkopen.
+- ZOEKERSVRAGEN IN PLAATS VAN EEN LOS FAQ-BLOK: adviseer geen apart FAQ-blok als vergaarbak. De echte zoekersvragen (People Also Ask, long-tail met vraagvorm) verdienen elk een gewone kop in de contentflow met een direct antwoord van 40-80 woorden; alleen restvragen mogen in een kort "Veelgestelde vragen"-blok onderaan. FAQ-rich-results toont Google sinds mei 2026 niet meer; beloof ze nooit. De waarde zit in de vraag-en-antwoordtekst zelf (long-tail-rankings en AI Overviews), niet in het blok of de FAQPage-markup.
 - BEPAAL DE EIGENAAR VAN EEN ZOEKINTENTIE VOLGENS DE STRATEGIE, NIET VOLGENS DE HUIDIGE RANKING. De bedoelde eigenaar is de pagina waarvan het PLAN dit zoekwoord als primair claimt (de gewenste bestemming), ook als die pagina nu nog niet het beste rankt of zelfs nog niet bestaat/rankt. De huidige rankings vertellen je alleen WAAR de waarde nu zit, zodat je weet wat je naar de eigenaar toe moet consolideren; ze zijn nooit reden om de strategie om te draaien. Adviseer dus NOOIT "gebruik de sterkere generieke pagina (zoals de homepage) maar" als er een specifieke pagina voor die intentie bedoeld is; versterk juist de bedoelde pagina en haal de waarde van de anderen daarheen (redirect, interne links, de ander herrichten op een eigen term). Alleen als GEEN enkele pagina die intentie in haar plan claimt, mag je de sterkste presteerder als voorlopige eigenaar voorstellen, maar zeg dat expliciet en vraag de gebruiker de strategische bedoeling te bevestigen.
 
 CANNIBALISATIE OPLOSSEN (volg dit wanneer de gebruiker erom vraagt, of wanneer je meerdere eigen pagina's op dezelfde zoekintentie ziet):

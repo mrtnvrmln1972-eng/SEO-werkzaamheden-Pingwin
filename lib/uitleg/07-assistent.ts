@@ -109,6 +109,28 @@ export const HOOFDSTUK: Hoofdstuk = {
         "URL-lijst, en de feitencontrole leest het antwoord na. Tegenspraak is iets anders dan vrijheid om te gokken.",
     },
     {
+      titel: "Vers gecheckt, gedoseerd en zonder FAQ-vergaarbak",
+      kern: "Drie adviesregels uit de praktijk: de pagina wordt op het moment zelf opgehaald, de commerciële laag volgt de zoekresultaten, en zoekersvragen worden koppen in de tekst.",
+      tekst:
+        "Drie regels die elk advies over een pagina scherper maken, alle drie geboren uit een echte casus " +
+        "(augustus 2026, een klantpagina waarvan de sitebouwer net een eigen optimalisatie had doorgevoerd):\n\n" +
+        "- **De pagina wordt op het moment van het gesprek zelf opgehaald.** Niet alleen de laatst ingelezen " +
+        "versie uit de paginalijst, maar de pagina zoals hij nú live staat, met de datum en tijd erbij " +
+        "(\"live gecheckt op ...\"). De assistent mag pas zeggen dat er iets op de pagina ontbreekt als dat " +
+        "aan die verse versie getoetst is. Zo kan een advies nooit meer een kop \"missen\" die er sinds " +
+        "vorige week gewoon op staat, en zie je als lezer altijd op welke paginaversie het oordeel rust.\n" +
+        "- **De commerciële laag wordt gedoseerd naar wat er in Google wint.** Staat de top 10 vol " +
+        "kennisbanken en ziekenhuizen, dan wint een overwegend informatieve pagina; verkoopsecties blijven " +
+        "dan klein (een kort blok met een link naar de kosten- of behandelpagina). Staat de top 10 vol " +
+        "aanbieders, dan mag de commerciële laag dragend zijn. De dosering volgt de zoekresultaten, niet de " +
+        "wens om meer te verkopen.\n" +
+        "- **Zoekersvragen worden koppen in de tekst, geen los FAQ-blok.** Google toont sinds mei 2026 geen " +
+        "FAQ-blokjes meer in de zoekresultaten; de waarde zit in de vraag en het antwoord zelf. De " +
+        "belangrijkste vragen die mensen echt stellen (de \"Mensen vragen ook\"-vragen) krijgen daarom elk " +
+        "een eigen kop in de tekst met een direct antwoord; alleen restvragen mogen nog in een kort blok " +
+        "\"Veelgestelde vragen\" onderaan.",
+    },
+    {
       titel: "Grondigheid boven vlotheid",
       kern: "De assistent mag zeggen dat hij het niet weet.",
       tekst:
