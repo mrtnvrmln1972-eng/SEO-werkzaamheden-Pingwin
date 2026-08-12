@@ -122,11 +122,18 @@ function normUrl(u: string): string {
   return (u || "").trim();
 }
 
+/** De pad-sleutel waarop bronnen vergeleken worden: pad zonder slash aan het
+    eind, kleine letters. Eén definitie, gebruikt door de verenigde scan én de
+    sitemap-check, zodat die twee nooit tegen elkaar in praten. */
+export function padSleutel(u: string): string {
+  try { const p = new URL(u); return p.pathname.replace(/\/+$/, "").toLowerCase() || "/"; } catch { return normUrl(u); }
+}
+
 // Automatisch gegenereerde filter-/tagpagina's (webshopsystemen zoals Lightspeed
 // zetten er duizenden in de sitemap). Geen pagina's waar SEO-werk op gebeurt;
 // ze zouden de spiegel en de scan-limiet volproppen.
 const EXCLUDED_PATHS = /\/(tags?|labels?)\//i;
-function isExcludedUrl(u: string): boolean {
+export function isExcludedUrl(u: string): boolean {
   return EXCLUDED_PATHS.test(u);
 }
 
@@ -264,7 +271,6 @@ export async function scanClientUrls(slug: string, domain: string): Promise<{ sc
   // Bron 2: Search Console (laatste 28 dagen), best effort. Levert de cijfers
   // per pagina én de pagina's die Google kent maar de sitemap niet noemt.
   const gscMap = new Map<string, { clicks: number; impressions: number }>();
-  const padSleutel = (u: string) => { try { const p = new URL(u); return p.pathname.replace(/\/+$/, "").toLowerCase() || "/"; } catch { return normUrl(u); } };
   const gscPerPad = new Map<string, { clicks: number; impressions: number }>();
   try {
     const gsc = await getGscForClient(domain);

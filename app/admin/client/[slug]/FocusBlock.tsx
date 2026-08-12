@@ -229,6 +229,7 @@ export default function FocusBlock({ slug, standalone, soort = "focus", titel }:
       <div className="sov-tasks-head focus-head">
         <span>{titel || "Zoekwoorden & links"}</span>
         {soort === "focus" && <a className="focus-nav-link" href={`/admin/client/${slug}/navigatie`} target="_blank" rel="noreferrer" title="De hele sitestructuur (huidig én beoogd) met voortgang per pagina">Navigatie-roadmap &rarr;</a>}
+        {soort === "focus" && <a className="focus-nav-link" href={`/admin/client/${slug}/sitemap`} target="_blank" rel="noreferrer" title="De sitemap vers opgehaald en naast de echte site gelegd: is hij bereikbaar, welke live pagina's missen erin, en welke regels kloppen niet meer">Sitemap-check &rarr;</a>}
       </div>
       {veldBlok}
     </div>

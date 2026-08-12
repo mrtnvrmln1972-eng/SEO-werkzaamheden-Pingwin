@@ -562,7 +562,8 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
           return (
             <div className="muted" style={{ marginTop: "var(--s-3)" }}>
               {buitenSitemap.length === 1 ? "1 pagina staat" : `${buitenSitemap.length} pagina's staan`} live maar niet in de sitemap
-              (gevonden via Search Console, Ahrefs of interne links); zie het label &ldquo;niet in sitemap&rdquo; in de lijst.
+              (gevonden via Search Console, Ahrefs of interne links); zie het label &ldquo;niet in sitemap&rdquo; in de lijst,
+              of open de <a href={`/admin/client/${slug}/sitemap`} target="_blank" rel="noreferrer">sitemap-check</a> voor het hele verhaal.
             </div>
           );
         })()}
