@@ -16,7 +16,7 @@
 import React, { useEffect, useRef, useState } from "react";
 
 type Uitkomst = "uitbouwen" | "samenvoegen" | "blijft" | "opruimen" | "nieuw";
-type Herkomst = "plaats" | "onderwerp" | "kans" | "gat" | "cannibalisatie";
+type Herkomst = "plaats" | "onderwerp" | "kans" | "gat" | "cannibalisatie" | "chat";
 type Regel = {
   pad: string; uitkomst: Uitkomst; naar: string; herkomst: Herkomst[]; reden: string; onderbouwing: string[];
   term: string; volume: number | null; klikken: number; vertoningen: number; positie: number | null; groep: string;
@@ -84,6 +84,7 @@ const WAT: Record<Uitkomst, string> = {
 };
 const HERKOMST_LABEL: Record<Herkomst, string> = {
   plaats: "plaatspagina", onderwerp: "onderwerp", kans: "gemiste kans", gat: "ontbreekt", cannibalisatie: "zit elkaar in de weg",
+  chat: "besluit uit chat",
 };
 
 // De onderbouwing komt als losse zinnen binnen, met hooguit **vet** erin. Nooit
@@ -141,6 +142,8 @@ export default function OpruimEenLijst({ slug, domain, token, alleenLezen, titel
   // een herlaadbeurt meelopen, en dan lijkt doorvoeren niets te doen.
   const [netGedaan, setNetGedaan] = useState<Record<string, boolean>>({});
   const [fout, setFout] = useState<Record<string, string>>({});
+  // Melding "doelpagina compleet, optimalisatietaak staat op de planning".
+  const [optMelding, setOptMelding] = useState<Record<string, string>>({});
   const [bulk, setBulk] = useState("");
   // Het samenvoeg-briefje per pagina, plus de stappen die je ermee zet.
   const [briefjes, setBriefjes] = useState<Record<string, Briefje>>({});
@@ -243,6 +246,9 @@ export default function OpruimEenLijst({ slug, domain, token, alleenLezen, titel
       // Alleen als de server hem ook echt live heeft nagemeten telt hij mee; een
       // mislukte poging hoort de voortgang niet op te hogen.
       if (j?.ok) setNetGedaan((m) => ({ ...m, [padSleutel(v.van)]: true }));
+      // Was dit de laatste samenvoeging naar dit doel, dan meldt de server dat er
+      // een optimalisatietaak voor de doelpagina op de planning is gezet.
+      if (j?.ok && j.optimalisatie) setOptMelding((m) => ({ ...m, [v.van]: String(j.optimalisatie) }));
       if (!j?.ok && j?.error) setFout((m) => ({ ...m, [v.van]: j.error }));
     } catch { setFout((m) => ({ ...m, [v.van]: "Doorvoeren lukte niet." })); }
     finally { bezigRef.current = false; setDoelBezig(""); }
@@ -420,6 +426,12 @@ export default function OpruimEenLijst({ slug, domain, token, alleenLezen, titel
             <a className="opr-doel-zelf" href={`${site(pad)}?pingwin-controle=1`} target="_blank" rel="noreferrer">
               Zelf controleren, zonder cache
             </a>
+          </div>
+        )}
+        {optMelding[v.van] && (
+          <div className="opr-doel-uitslag goed">
+            <strong>Doelpagina compleet</strong>
+            <span>{optMelding[v.van]}</span>
           </div>
         )}
         {fout[pad] && <div className="opr-doel-uitslag fout"><span>{fout[pad]}</span></div>}

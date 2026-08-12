@@ -1,5 +1,6 @@
 import type { CannibalResult } from "./cannibal-redirect";
 import type { PlaatsAdvies } from "./opruim-plaatsen";
+import type { ChatBesluit } from "./opruim-chat-besluiten";
 
 // ═══════════════════════════════════════════════════════════
 // ÉÉN LIJST, MEERDERE VIEWS
@@ -24,8 +25,10 @@ import type { PlaatsAdvies } from "./opruim-plaatsen";
 /** Wat er met deze pagina gebeurt. Vijf mogelijkheden, meer zijn er niet. */
 export type Uitkomst = "uitbouwen" | "samenvoegen" | "blijft" | "opruimen" | "nieuw";
 
-/** Waarom deze pagina in de lijst staat. Meerdere kunnen tegelijk gelden. */
-export type Herkomst = "plaats" | "onderwerp" | "kans" | "gat" | "cannibalisatie";
+/** Waarom deze pagina in de lijst staat. Meerdere kunnen tegelijk gelden.
+    "chat" betekent: besloten in een chat-analyse en hier geland via
+    lib/opruim-chat-besluiten/; zo'n besluit overruled de motor-uitkomst. */
+export type Herkomst = "plaats" | "onderwerp" | "kans" | "gat" | "cannibalisatie" | "chat";
 
 export type WerkRegel = {
   pad: string;
@@ -69,7 +72,7 @@ const norm = (u: string) => {
  * bij elkaar gezet: dan zie je in één regel dát hij op twee gronden opviel, in
  * plaats van hem twee keer tegen te komen.
  */
-export function bouwWerklijst(result: CannibalResult | null, plaatsen: PlaatsAdvies[]): WerkRegel[] {
+export function bouwWerklijst(result: CannibalResult | null, plaatsen: PlaatsAdvies[], chatBesluiten: ChatBesluit[] = []): WerkRegel[] {
   const perPad = new Map<string, WerkRegel>();
 
   // Zwaarte: wat er met een pagina gebeurt weegt zwaarder naarmate er meer werk
@@ -226,6 +229,30 @@ export function bouwWerklijst(result: CannibalResult | null, plaatsen: PlaatsAdv
       term: g.term, volume: g.volume, klikken: 0, vertoningen: 0, positie: null,
       groep: g.thema || g.term,
     });
+  }
+
+  // 6. Besluiten uit een chat. Die komen ná de motor-bronnen en spelen niet mee
+  // in het zwaarte-spel: een chat-besluit is een besluit van Maarten en wint dus
+  // altijd van de motor, precies zoals de vaste regels de volgende analyse
+  // overrulen. De motor-onderbouwing blijft wel bewaard onder die van de chat.
+  for (const c of chatBesluiten) {
+    const k = norm(c.pad);
+    const bestaand = perPad.get(k);
+    const regel: WerkRegel = {
+      pad: c.pad, uitkomst: c.uitkomst, naar: c.naar, herkomst: ["chat"],
+      reden: c.reden, onderbouwing: [...c.onderbouwing],
+      term: c.term, volume: c.volume, klikken: c.klikken, vertoningen: c.vertoningen,
+      positie: c.positie, groep: c.groep,
+    };
+    if (bestaand) {
+      regel.herkomst = [...new Set<Herkomst>(["chat", ...bestaand.herkomst])];
+      regel.onderbouwing = [...regel.onderbouwing, ...bestaand.onderbouwing];
+      if (!regel.volume && bestaand.volume) regel.volume = bestaand.volume;
+      if (!regel.klikken && bestaand.klikken) regel.klikken = bestaand.klikken;
+      if (!regel.vertoningen && bestaand.vertoningen) regel.vertoningen = bestaand.vertoningen;
+      if (regel.positie == null && bestaand.positie != null) regel.positie = bestaand.positie;
+    }
+    perPad.set(k, regel);
   }
 
   const rang: Record<Uitkomst, number> = { uitbouwen: 0, nieuw: 1, samenvoegen: 2, opruimen: 3, blijft: 4 };

@@ -38,7 +38,7 @@ function checkWaar(naam: string, waar: boolean, uitleg = "") {
 const SITE = "https://voorbeeld.nl";
 const url = (pad: string, extra: Partial<ClientUrl> = {}): ClientUrl => ({
   url: `${SITE}${pad}`, status: 200, redirectTarget: "", title: "", gscClicks: 0, gscImpressions: 0,
-  plan: "", hasClusterAdvice: false, lastScanned: null, ...extra,
+  plan: "", hasClusterAdvice: false, lastScanned: null, bronnen: [], ...extra,
 });
 const regel = (pad: string, uitkomst: WerkRegel["uitkomst"], extra: Partial<WerkRegel> = {}): WerkRegel => ({
   pad, uitkomst, naar: "", herkomst: [], reden: "", onderbouwing: [], term: "",

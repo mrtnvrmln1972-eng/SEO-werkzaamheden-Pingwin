@@ -4,6 +4,7 @@ import { guardSlug } from "../../../../lib/admin-scope";
 import { getCannibalAnalysis, zorgVoorPlaatsen } from "../../../../lib/cannibal-redirect";
 import { getClientBySlug } from "../../../../lib/clients";
 import { bouwWerklijst, markeerContentOver, markeerDoorgevoerd, tellingen } from "../../../../lib/opruim-werklijst";
+import { chatBesluitenVoor } from "../../../../lib/opruim-chat-besluiten";
 import { getOpruimRegels } from "../../../../lib/opruim-regels";
 
 export const runtime = "nodejs";
@@ -32,7 +33,7 @@ export async function GET(req: NextRequest) {
     ]);
     const regels = markeerContentOver(
       markeerDoorgevoerd(
-        bouwWerklijst(st.result, plaatsen?.adviezen || []),
+        bouwWerklijst(st.result, plaatsen?.adviezen || [], chatBesluitenVoor(slug)),
         vaste.filter((r) => r.doorgevoerd).map((r) => r.van),
       ),
       vaste.filter((r) => r.contentOver).map((r) => r.van),

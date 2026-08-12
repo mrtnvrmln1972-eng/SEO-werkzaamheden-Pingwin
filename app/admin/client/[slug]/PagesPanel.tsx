@@ -553,6 +553,20 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
           <div className="muted" style={{ marginTop: "var(--s-3)" }}>Nog geen pagina&rsquo;s ingelezen. Klik &ldquo;Website inlezen&rdquo; (de klant moet een domein hebben).</div>
         )}
 
+        {/* Volledigheid van de spiegel: een live pagina die niet in de sitemap
+            staat is zelf een SEO-bevinding en mag niet stil wegvallen. De
+            herkomst per pagina komt uit de verenigde scan (vier bronnen). */}
+        {!loading && (() => {
+          const buitenSitemap = urls.filter((u) => u.status != null && u.status >= 200 && u.status < 300 && u.bronnen.length > 0 && !u.bronnen.includes("sitemap"));
+          if (!buitenSitemap.length) return null;
+          return (
+            <div className="muted" style={{ marginTop: "var(--s-3)" }}>
+              {buitenSitemap.length === 1 ? "1 pagina staat" : `${buitenSitemap.length} pagina's staan`} live maar niet in de sitemap
+              (gevonden via Search Console, Ahrefs of interne links); zie het label &ldquo;niet in sitemap&rdquo; in de lijst.
+            </div>
+          );
+        })()}
+
         {!loading && filtered.length > 0 && (
           <div className="res-table-wrap pages-table-wrap" style={{ marginTop: "var(--s-3)" }}>
             <table className="res-table pages-table">
@@ -725,6 +739,12 @@ function PageRow({ slug, u, opp, fases, open, onToggle, clientEmail, clientName,
         <td>{statusBadge(u.status, u.redirectTarget)}</td>
         <td>
           <a href={u.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>{shortUrl(u.url)}</a>
+          {u.status != null && u.status >= 200 && u.status < 300 && u.bronnen.length > 0 && !u.bronnen.includes("sitemap") && (
+            <span className="plan-chip half" style={{ marginLeft: "var(--s-2)" }}
+              title={`Deze pagina staat live maar niet in de sitemap; gevonden via ${u.bronnen.map((b) => b === "gsc" ? "Search Console" : b === "ahrefs" ? "Ahrefs" : b === "links" ? "interne links" : b).join(", ")}. Voor Google is hij daardoor slechter vindbaar: opnemen in de sitemap, of bewust opruimen.`}>
+              niet in sitemap
+            </span>
+          )}
           {opp?.bestKeyword && <div className="pg-kw" title="Beste zoekwoord (meeste vertoningen), met zoekvolume en huidige positie">{opp.bestKeyword}{opp.bestVolume != null ? ` · vol ${opp.bestVolume.toLocaleString("nl-NL")}` : ""}{opp.bestPosition != null ? ` / pos ${opp.bestPosition}` : ""}</div>}
         </td>
         <td>

@@ -24,12 +24,17 @@ export type ClientUrl = {
   plan: string;               // plan-alinea (leeg als nog niet aangeraakt)
   hasClusterAdvice: boolean;  // kreeg cluster-advies mee vanuit de analyse van een andere pagina ("half plan")
   lastScanned: string | null;
+  /** In welke bronnen deze pagina gevonden is: "sitemap", "gsc", "ahrefs",
+      "links". Leeg bij pagina's van vóór de verenigde scan of handmatig
+      toegevoegde pagina's. Een live pagina zónder "sitemap" is zelf een
+      SEO-bevinding: hij bestaat, maar de site geeft hem niet op. */
+  bronnen: string[];
 };
 
 // Draait de tabel-voorbereiding hooguit één keer per database, niet meer bij
 // elke koude server. Zie lib/schema-stand.ts; het versienummer wordt bewaakt
 // door proeven/schema-versie.proef.ts.
-export const SITE_URLS_SCHEMA_VERSIE = "su1-ed2733d8";
+export const SITE_URLS_SCHEMA_VERSIE = "su1-0c70a85c";
 async function ensureTables(): Promise<void> {
   return eenmalig("site-urls", SITE_URLS_SCHEMA_VERSIE, doEnsureTables);
 }
@@ -107,6 +112,10 @@ async function doEnsureTables(): Promise<void> {
       updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
       PRIMARY KEY (client_slug, url)
     )`;
+  // In welke bronnen een pagina gevonden is (csv: sitemap,gsc,ahrefs,links). De
+  // spiegel bouwt sindsdien op de vereniging van vier bronnen in plaats van
+  // alleen de sitemap; zie verenigBronnen() hieronder.
+  await sql`ALTER TABLE client_urls ADD COLUMN IF NOT EXISTS bronnen TEXT`;
 }
 
 function normUrl(u: string): string {
@@ -150,23 +159,67 @@ async function fetchSitemapUrls(domain: string, max = 3000): Promise<string[]> {
 }
 
 // ── Live status + titel per URL (HEAD/GET), begrensde parallelliteit ──
-async function checkUrl(u: string): Promise<{ status: number | null; redirectTarget: string; title: string }> {
+// Geeft ook de interne links terug die op de pagina staan: de scan leest de HTML
+// toch al, dus de vierde bron (welke pagina's zijn via links bereikbaar) is
+// gratis en kost geen extra verzoek.
+async function checkUrl(u: string): Promise<{ status: number | null; redirectTarget: string; title: string; links: string[] }> {
   try {
     const res = await fetch(u, { redirect: "manual" });
     const status = res.status;
     let redirectTarget = "";
     let title = "";
+    const links: string[] = [];
     if (status >= 300 && status < 400) {
       redirectTarget = res.headers.get("location") || "";
     } else if (status >= 200 && status < 300) {
       const html = await res.text();
       const m = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
       title = m ? m[1].replace(/\s+/g, " ").trim().slice(0, 200) : "";
+      for (const h of html.matchAll(/href\s*=\s*["']([^"'#]+)["']/gi)) {
+        const ruw = h[1].trim();
+        if (!ruw || /^(mailto:|tel:|javascript:|data:)/i.test(ruw)) continue;
+        try { links.push(new URL(ruw, u).toString()); } catch { /* geen bruikbare link */ }
+      }
     }
-    return { status, redirectTarget, title };
+    return { status, redirectTarget, title, links };
   } catch {
-    return { status: null, redirectTarget: "", title: "" };
+    return { status: null, redirectTarget: "", title: "", links: [] };
   }
+}
+
+// Bestanden en systeempaden die geen pagina zijn; die horen niet in de spiegel.
+const GEEN_PAGINA = /\.(jpe?g|png|gif|webp|svg|ico|css|js|mjs|json|xml|txt|pdf|docx?|xlsx?|zip|rar|mp3|mp4|webm|woff2?|ttf|eot)(\?|$)/i;
+
+/**
+ * De vereniging van de vier bronnen tot één paginalijst met per pagina de
+ * herkomst. Puur en testbaar (proeven/spiegel-bronnen.proef.ts): geen netwerk,
+ * geen database. Alleen URL's van het eigen domein tellen mee; dubbelingen
+ * (http/https, met/zonder slash, met/zonder www) worden één regel, waarbij de
+ * vorm uit de vroegste bron wint (sitemap boven gsc boven ahrefs boven links).
+ */
+export function verenigBronnen(domain: string, bronnen: { sitemap: string[]; gsc: string[]; ahrefs: string[]; links: string[] }): { url: string; bronnen: string[] }[] {
+  const eigenHost = (domain || "").replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "").toLowerCase();
+  const sleutel = (u: string): string | null => {
+    try {
+      const p = new URL(u);
+      const host = p.hostname.replace(/^www\./, "").toLowerCase();
+      if (host !== eigenHost) return null;
+      if (GEEN_PAGINA.test(p.pathname) || isExcludedUrl(u)) return null;
+      return p.pathname.replace(/\/+$/, "").toLowerCase() || "/";
+    } catch { return null; }
+  };
+  const perPad = new Map<string, { url: string; bronnen: string[] }>();
+  const volgorde: (keyof typeof bronnen)[] = ["sitemap", "gsc", "ahrefs", "links"];
+  for (const bron of volgorde) {
+    for (const u of bronnen[bron]) {
+      const k = sleutel(u);
+      if (!k) continue;
+      const bestaand = perPad.get(k);
+      if (!bestaand) perPad.set(k, { url: normUrl(u), bronnen: [bron] });
+      else if (!bestaand.bronnen.includes(bron)) bestaand.bronnen.push(bron);
+    }
+  }
+  return [...perPad.values()];
 }
 
 async function mapLimited<T, R>(items: T[], limit: number, fn: (t: T) => Promise<R>): Promise<R[]> {
@@ -183,6 +236,15 @@ async function mapLimited<T, R>(items: T[], limit: number, fn: (t: T) => Promise
 }
 
 // Scant de live site en werkt de spiegel bij. Idempotent (upsert per URL).
+//
+// De spiegel bouwt sinds 12-08-2026 op VIER bronnen in plaats van alleen de
+// sitemap: sitemap, Search Console, Ahrefs-toppagina's en de interne links die
+// tijdens het scannen op de pagina's zelf gevonden worden. Waarom dat moest:
+// /snelle-soa-test-amsterdam/ van One Day Clinic stond live, rankte op ruim
+// twintig zoektermen, en bestond voor het dashboard niet, omdat hij niet in de
+// sitemap zat. Een lijst die alleen de sitemap gelooft, mist precies de
+// pagina's die aandacht nodig hebben. De herkomst wordt per pagina bewaard,
+// zodat "live maar niet in de sitemap" een zichtbare bevinding is.
 export async function scanClientUrls(slug: string, domain: string): Promise<{ scanned: number }> {
   await ensureSchema();
   await ensureTables();
@@ -190,7 +252,7 @@ export async function scanClientUrls(slug: string, domain: string): Promise<{ sc
 
   // Ruime grens: grote sites (webshops) hebben al snel duizenden pagina's in de
   // sitemap. Tag-/filterpagina's worden al bij het lezen uitgesloten.
-  const urls = await fetchSitemapUrls(domain, 3000);
+  const sitemapUrls = await fetchSitemapUrls(domain, 3000);
 
   // Eerder ingelezen tag-/filterpagina's opruimen, maar NOOIT een pagina waar
   // al een plan op ligt (dan is er bewust werk op gedaan).
@@ -199,32 +261,63 @@ export async function scanClientUrls(slug: string, domain: string): Promise<{ sc
     WHERE client_slug = ${slug} AND url ~* '/(tags?|labels?)/'
       AND url NOT IN (SELECT url FROM page_plans WHERE client_slug = ${slug})`;
 
-  // GSC-cijfers per pagina erbij (laatste 28 dagen), best effort.
+  // Bron 2: Search Console (laatste 28 dagen), best effort. Levert de cijfers
+  // per pagina én de pagina's die Google kent maar de sitemap niet noemt.
   const gscMap = new Map<string, { clicks: number; impressions: number }>();
+  const padSleutel = (u: string) => { try { const p = new URL(u); return p.pathname.replace(/\/+$/, "").toLowerCase() || "/"; } catch { return normUrl(u); } };
+  const gscPerPad = new Map<string, { clicks: number; impressions: number }>();
   try {
     const gsc = await getGscForClient(domain);
-    if (gsc) for (const p of gsc.pages) gscMap.set(normUrl(p.url), { clicks: p.clicks, impressions: p.impressions });
+    if (gsc) for (const p of gsc.pages) {
+      gscMap.set(normUrl(p.url), { clicks: p.clicks, impressions: p.impressions });
+      gscPerPad.set(padSleutel(p.url), { clicks: p.clicks, impressions: p.impressions });
+    }
   } catch { /* optioneel */ }
 
-  // Als de sitemap leeg is, val terug op de GSC-pagina's (die bestaan sowieso live).
-  const targetUrls = urls.length > 0 ? urls : [...gscMap.keys()];
+  // Bron 3: Ahrefs-toppagina's (30 dagen gecachet in lib/ahrefs.ts), best effort.
+  let ahrefsUrls: string[] = [];
+  try {
+    const { ahrefsConfigured, getAhrefsTopPages } = await import("./ahrefs");
+    if (ahrefsConfigured()) ahrefsUrls = (await getAhrefsTopPages(domain, 300)).map((p) => p.url);
+  } catch { /* optioneel */ }
 
-  const checks = await mapLimited(targetUrls, 10, checkUrl);
+  // Eerste vereniging (zonder links; die vinden we pas tijdens het scannen).
+  const eerste = verenigBronnen(domain, { sitemap: sitemapUrls, gsc: [...gscMap.keys()], ahrefs: ahrefsUrls, links: [] });
+  const checks = await mapLimited(eerste, 10, (x) => checkUrl(x.url));
 
-  for (let k = 0; k < targetUrls.length; k++) {
-    const u = normUrl(targetUrls[k]);
+  // Bron 4: de interne links die op de gelezen pagina's staan. Doelen die nog in
+  // geen enkele bron zaten worden alsnog gescand (begrensd), zodat ook een
+  // pagina die alléén via een link bereikbaar is in de spiegel komt.
+  const linkDoelen: string[] = [];
+  for (const c of checks) linkDoelen.push(...c.links);
+  const alles = verenigBronnen(domain, {
+    sitemap: sitemapUrls, gsc: [...gscMap.keys()], ahrefs: ahrefsUrls, links: linkDoelen,
+  });
+  const bekend = new Set(eerste.map((x) => padSleutel(x.url)));
+  const alleenViaLinks = alles.filter((x) => !bekend.has(padSleutel(x.url))).slice(0, 300);
+  const extraChecks = await mapLimited(alleenViaLinks, 10, (x) => checkUrl(x.url));
+
+  const bronnenPerPad = new Map(alles.map((x) => [padSleutel(x.url), x.bronnen]));
+  const rijen = [
+    ...eerste.map((x, i) => ({ url: x.url, check: checks[i] })),
+    ...alleenViaLinks.map((x, i) => ({ url: x.url, check: extraChecks[i] })),
+  ];
+
+  for (const rij of rijen) {
+    const u = normUrl(rij.url);
     if (!u) continue;
-    const c = checks[k];
-    const g = gscMap.get(u) || { clicks: 0, impressions: 0 };
+    const c = rij.check;
+    const g = gscMap.get(u) || gscPerPad.get(padSleutel(u)) || { clicks: 0, impressions: 0 };
+    const bron = (bronnenPerPad.get(padSleutel(u)) || []).join(",");
     await sql`
-      INSERT INTO client_urls (client_slug, url, status, redirect_target, title, gsc_clicks, gsc_impressions, last_scanned)
-      VALUES (${slug}, ${u}, ${c.status}, ${c.redirectTarget || null}, ${c.title || null}, ${g.clicks}, ${g.impressions}, now())
+      INSERT INTO client_urls (client_slug, url, status, redirect_target, title, gsc_clicks, gsc_impressions, bronnen, last_scanned)
+      VALUES (${slug}, ${u}, ${c.status}, ${c.redirectTarget || null}, ${c.title || null}, ${g.clicks}, ${g.impressions}, ${bron || null}, now())
       ON CONFLICT (client_slug, url) DO UPDATE SET
         status = ${c.status}, redirect_target = ${c.redirectTarget || null}, title = ${c.title || null},
-        gsc_clicks = ${g.clicks}, gsc_impressions = ${g.impressions}, last_scanned = now()`;
+        gsc_clicks = ${g.clicks}, gsc_impressions = ${g.impressions}, bronnen = ${bron || null}, last_scanned = now()`;
   }
 
-  return { scanned: targetUrls.length };
+  return { scanned: rijen.length };
 }
 
 // De URL-lijst met de plan-alinea erbij (spiegel + plan).
@@ -232,7 +325,7 @@ export async function getClientUrls(slug: string): Promise<ClientUrl[]> {
   await ensureSchema();
   await ensureTables();
   const { rows } = await sql`
-    SELECT u.url, u.status, u.redirect_target, u.title, u.gsc_clicks, u.gsc_impressions, u.last_scanned,
+    SELECT u.url, u.status, u.redirect_target, u.title, u.gsc_clicks, u.gsc_impressions, u.bronnen, u.last_scanned,
            p.plan,
            EXISTS (SELECT 1 FROM page_cluster_advice a WHERE a.client_slug = u.client_slug AND a.url = u.url) AS has_cluster_advice
     FROM client_urls u
@@ -249,6 +342,7 @@ export async function getClientUrls(slug: string): Promise<ClientUrl[]> {
     plan: (r.plan as string) || "",
     hasClusterAdvice: !!r.has_cluster_advice,
     lastScanned: r.last_scanned ? new Date(r.last_scanned as string).toISOString() : null,
+    bronnen: r.bronnen ? String(r.bronnen).split(",").filter(Boolean) : [],
   }));
 }
 

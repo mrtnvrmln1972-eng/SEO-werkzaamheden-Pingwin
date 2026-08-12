@@ -4,6 +4,7 @@ import { guardSlug } from "../../../../lib/admin-scope";
 import { getCannibalAnalysis, zorgVoorPlaatsen } from "../../../../lib/cannibal-redirect";
 import { getClientBySlug } from "../../../../lib/clients";
 import { bouwWerklijst } from "../../../../lib/opruim-werklijst";
+import { chatBesluitenVoor } from "../../../../lib/opruim-chat-besluiten";
 import { bepaalDoelen, type DoelenRapport } from "../../../../lib/opruim-doelvinder";
 import { getSetting, setSetting } from "../../../../lib/settings";
 import { baseFromDomain } from "../../../../lib/wordpress";
@@ -11,6 +12,7 @@ import { testRedirect } from "../../../../lib/redirect-test";
 import { getWpConnForClient, createWpRedirect, createWpGone, savePageRedirect } from "../../../../lib/wp";
 import { getOpruimRegels, zetOpruimRegel } from "../../../../lib/opruim-regels";
 import { legNulmetingVast } from "../../../../lib/opruim-nameten";
+import { meldDoelpaginaCompleet } from "../../../../lib/opruim-optimalisatie";
 import { getBewaardBriefje, maakSamenvoegBriefje } from "../../../../lib/opruim-samenvoegen";
 
 export const runtime = "nodejs";
@@ -33,7 +35,7 @@ async function bouw(slug: string): Promise<DoelenRapport & { lijstDatum: string 
     getCannibalAnalysis(slug),
     domain ? zorgVoorPlaatsen(slug, domain).catch(() => null) : Promise.resolve(null),
   ]);
-  const regels = bouwWerklijst(st.result, plaatsen?.adviezen || []);
+  const regels = bouwWerklijst(st.result, plaatsen?.adviezen || [], chatBesluitenVoor(slug));
   // De vestigingen komen uit de bedrijfsgegevens, via de plaatsanalyse die ze al
   // ophaalt. Alleen een plaats waar de klant echt zit mag een bestemming zijn.
   const rapport = await bepaalDoelen(slug, domain, regels, plaatsen?.vestigingen || []);
@@ -176,13 +178,18 @@ export async function POST(req: NextRequest) {
       // Meteen nameten: bewijs boven beloftes. "Doorgevoerd" betekent hier dat
       // de omleiding echt gezien is, niet dat de opdracht verstuurd is.
       const test = await testRedirect(conn.url, van, gone ? "" : naar, gone);
+      let optimalisatie = "";
       if (test.oordeel !== "fout") {
         await zetOpruimRegel(slug, van, { besluit: "redirect", naar: gone ? "" : naar, doorgevoerd: true });
         await savePageRedirect(slug, `${conn.url}${van}`, van, gone ? "410 (bewust weg)" : naar, test.goed, id).catch(() => { /* stil */ });
         if (client?.domain && !gone) await legNulmetingVast(slug, client.domain, van, naar).catch(() => { /* stil */ });
+        // Was dit de laatste samenvoeging naar dit doel, dan gaat er automatisch
+        // één optimalisatietaak voor de doelpagina op de planning; het moment
+        // "alles staat erin, nu optimaliseren" hoort niemand zelf te bewaken.
+        if (!gone) optimalisatie = await meldDoelpaginaCompleet(slug, van).catch(() => "");
       }
       await setSetting(cacheKey(slug), "").catch(() => { /* stil */ });
-      return NextResponse.json({ ok: test.oordeel !== "fout", test });
+      return NextResponse.json({ ok: test.oordeel !== "fout", test, optimalisatie });
     }
 
     return NextResponse.json({ ok: false, error: "Onbekende actie." }, { status: 400 });

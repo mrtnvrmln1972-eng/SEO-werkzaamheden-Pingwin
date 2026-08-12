@@ -126,6 +126,30 @@ export const BLOKKEN: Uitklapper[] = [
           "zijn niet overdraagbaar naar een concurrerende tool.",
       },
       {
+        titel: "Besluiten uit een chat landen op de werklijst",
+        tekst:
+          "Een cluster-analyse kan overal ontstaan: in een chat, in Cowork, in een gesprek. Maar een besluit " +
+          "dat in een chat blijft hangen, verdampt: de volgende chat maakt een tweede, nét andere lijst. " +
+          "Daarom kunnen chat-besluiten nu rechtstreeks in de werklijst worden opgenomen, herkenbaar aan het " +
+          "label **besluit uit chat**, met de volledige onderbouwing erbij.\n\n" +
+          "Zo'n besluit gedraagt zich als elke andere regel (doorvoerknop, samenvoeg-briefje, Naar planning), " +
+          "en het overruled de motor-uitkomst voor dezelfde pagina, net zoals een handmatige correctie dat " +
+          "doet: een besluit van een mens wint van een berekening. De motor-onderbouwing blijft er wel onder " +
+          "bewaard, zodat je altijd kunt terugzien wat de analyse zelf vond.",
+      },
+      {
+        titel: "Doelpagina compleet: de optimalisatietaak komt vanzelf",
+        tekst:
+          "Bij samenvoegen is de volgorde: eerst alle content naar de doelpagina, dan de redirects, en pas " +
+          "dáárna de doelpagina volledig optimaliseren (analyse, blauwdruk, copy). Eerder optimaliseren is " +
+          "dubbel werk: je maakt een blauwdruk van een halve pagina en mag de copy opnieuw zodra de rest " +
+          "erin komt.\n\n" +
+          "Dat moment hoeft niemand meer te bewaken. Zodra de láátste samenvoeging naar een doelpagina is " +
+          "doorgevoerd, zet het dashboard automatisch één optimalisatietaak voor die pagina op de " +
+          "weekplanning, met daarin welke pagina's erin zijn opgegaan. Eén keer, niet bij elke doorvoer " +
+          "opnieuw; op het scherm staat dan **doelpagina compleet** bij de regel die hem afmaakte.",
+      },
+      {
         titel: "Nameten na 30 en 90 dagen",
         tekst:
           "Na het doorvoeren van een opruimactie wordt er gemeten of het gewerkt heeft: rankt nu de bedoelde " +

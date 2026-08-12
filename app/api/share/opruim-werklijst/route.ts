@@ -3,6 +3,7 @@ import { getSlugByOpruimToken } from "../../../../lib/opruim-deel";
 import { getCannibalAnalysis, zorgVoorPlaatsen } from "../../../../lib/cannibal-redirect";
 import { getClientBySlug } from "../../../../lib/clients";
 import { bouwWerklijst, markeerDoorgevoerd, tellingen } from "../../../../lib/opruim-werklijst";
+import { chatBesluitenVoor } from "../../../../lib/opruim-chat-besluiten";
 import { getOpruimRegels } from "../../../../lib/opruim-regels";
 import { getSetting } from "../../../../lib/settings";
 import type { DoelenRapport } from "../../../../lib/opruim-doelvinder";
@@ -32,7 +33,7 @@ export async function GET(req: NextRequest) {
     // Wat er al doorgevoerd is, ziet de klant ook: dat is het enige deel van deze
     // lijst dat over voortgang gaat in plaats van over werk.
     const regels = markeerDoorgevoerd(
-      bouwWerklijst(st.result, plaatsen?.adviezen || []),
+      bouwWerklijst(st.result, plaatsen?.adviezen || [], chatBesluitenVoor(slug)),
       vaste.filter((r) => r.doorgevoerd).map((r) => r.van),
     );
     // De voorgestelde redirect-doelen komen alleen uit de bewaarde stand, nooit

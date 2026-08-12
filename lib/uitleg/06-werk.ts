@@ -137,6 +137,20 @@ export const HOOFDSTUK: Hoofdstuk = {
         "kaart zonder mailgeschiedenis, of een taak zonder pagina, blijft de geschreven tekst gewoon de enige bron.",
     },
     {
+      titel: "De paginalijst bouwt op vier bronnen, niet alleen de sitemap",
+      kern: "Een live pagina die niet in de sitemap staat, valt niet meer stil weg.",
+      tekst:
+        "De paginalijst (de spiegel van de live site) bouwde eerst alleen op de sitemap. Daardoor was een " +
+        "pagina die live stond maar niet in de sitemap zat, voor het hele dashboard onzichtbaar; bij One Day " +
+        "Clinic gold dat voor een pagina die op ruim twintig zoektermen rankte.\n\n" +
+        "Bij het inlezen van de website worden nu vier bronnen verenigd: de **sitemap**, de pagina's die " +
+        "**Search Console** kent, de **Ahrefs**-toppagina's en de **interne links** die tijdens het scannen op " +
+        "de pagina's zelf gevonden worden. Per pagina wordt bewaard waar hij vandaan komt. Een live pagina " +
+        "zonder sitemap-vermelding krijgt het label **niet in sitemap**: dat is zelf een bevinding, want zo'n " +
+        "pagina bestaat wel maar wordt door de site niet opgegeven, en dat maakt hem voor Google slechter " +
+        "vindbaar. Boven de lijst staat hoeveel van zulke pagina's er zijn.",
+    },
+    {
       titel: "De werklijst voor de sitebouwer",
       kern: "Eén link, alleen zijn eigen werk, geen inlog nodig.",
       tekst:
