@@ -47,6 +47,11 @@ export type SitemapCheckUitkomst = {
 
 const UA = { "User-Agent": "Mozilla/5.0 PingwinBot", Accept: "text/xml,application/xml,text/plain,*/*" };
 
+// Pagina's die bewust NIET in een sitemap horen: paginering, auteur-archieven,
+// account-, winkelmand- en inlogpagina's. Die als "missend" melden zou ruis
+// zijn, en ruis is precies waarom mensen zo'n lijst niet meer geloven.
+const HOEFT_NIET_IN_SITEMAP = /\/(page\/\d+|author\/|mijn-account|my-account|cart|winkelmand|checkout|afrekenen|wp-login|uitloggen|logout|lost-password|wachtwoord-vergeten)/i;
+
 async function haalTekst(url: string, timeoutMs = 12000): Promise<{ status: number | null; tekst: string }> {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -128,6 +133,7 @@ export async function sitemapCheck(slug: string): Promise<SitemapCheckUitkomst |
   // als de sitemap ook echt gelezen is; anders zou álles "missend" heten.
   const missend: MissendePagina[] = !gevonden ? [] : spiegel
     .filter((u) => u.status !== null && u.status >= 200 && u.status < 300 && !u.redirectTarget)
+    .filter((u) => !HOEFT_NIET_IN_SITEMAP.test(u.url))
     .filter((u) => !inSitemap.has(padSleutel(u.url)))
     .map((u) => ({ url: u.url, title: u.title, gscImpressions: u.gscImpressions, gscClicks: u.gscClicks }))
     .sort((a, b) => b.gscImpressions - a.gscImpressions);
