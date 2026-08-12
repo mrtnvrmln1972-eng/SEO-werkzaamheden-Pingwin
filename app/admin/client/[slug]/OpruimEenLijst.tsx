@@ -23,6 +23,8 @@ type Regel = {
   /** Staat de omleiding al op de site? Komt uit de vaste regels, dus ook uit een
       eerdere sessie of uit de oude tabel. */
   doorgevoerd?: boolean;
+  /** Bij een samenvoeging: is de content al overgezet naar het doel? */
+  contentOver?: boolean;
 };
 type Data = { regels: Regel[]; tellingen: Record<Uitkomst, number> & { totaal: number }; lijstDatum: string | null; voorstellen?: Voorstel[] };
 
@@ -40,6 +42,23 @@ type Voorstel = {
 type TestUitslag = {
   goed: boolean; oordeel: "goed" | "let-op" | "fout"; meldingen: string[];
   hops: { url: string; status: number }[]; eind: string; eindStatus: number | null;
+};
+
+// ── Het samenvoeg-briefje ──
+// Samenvoegen is content overzetten en dán pas redirecten; een 301 naar een
+// doel waar de inhoud niet op staat draagt niets over (soft 404). Het briefje
+// (lib/opruim-samenvoegen.ts) zegt per samenvoeging wat het doel nog mist, en
+// levert de kant-en-klare instructie voor de sitebouwer.
+type Briefje = {
+  van: string; naar: string;
+  oordeel: "overzetten" | "meteen";
+  redenen: string[];
+  koppen: string[];
+  termen: { keyword: string; klikken: number; vertoningen: number; positie: number | null }[];
+  interneLinks: string[];
+  instructie: string;
+  voorbehoud: string;
+  gemaaktOp: string;
 };
 
 const TREDE_LABEL: Record<Trede, string> = {
@@ -123,6 +142,11 @@ export default function OpruimEenLijst({ slug, domain, token, alleenLezen, titel
   const [netGedaan, setNetGedaan] = useState<Record<string, boolean>>({});
   const [fout, setFout] = useState<Record<string, string>>({});
   const [bulk, setBulk] = useState("");
+  // Het samenvoeg-briefje per pagina, plus de stappen die je ermee zet.
+  const [briefjes, setBriefjes] = useState<Record<string, Briefje>>({});
+  const [briefjeBezig, setBriefjeBezig] = useState("");
+  const [netOver, setNetOver] = useState<Record<string, boolean>>({});
+  const [gekopieerd, setGekopieerd] = useState("");
   // Eén actie tegelijk. Via een ref en niet via state, want in de lus hieronder
   // is de state uit de render altijd een slag achter.
   const bezigRef = useRef(false);
@@ -168,6 +192,11 @@ export default function OpruimEenLijst({ slug, domain, token, alleenLezen, titel
     if (planBezig) return;
     setPlanBezig(r.pad);
     try {
+      // Bij een samenvoeging met een briefje gaat de complete instructie voor de
+      // sitebouwer mee: dan is de taak op de planning meteen ook de opdracht die
+      // Maarten kan doorgeven, zonder terug te hoeven naar dit scherm.
+      const b = briefjes[padSleutel(r.pad)];
+      const instructie = b && b.oordeel === "overzetten" ? `\n\nInstructie voor de sitebouwer:\n${b.instructie}` : "";
       const d = await fetch("/api/admin/weekplan/add", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -175,7 +204,7 @@ export default function OpruimEenLijst({ slug, domain, token, alleenLezen, titel
           taak: taakVoor(r),
           // De volledige onderbouwing gaat mee, zodat op de planning ook zonder
           // dit scherm te zien is waaróp het besluit rust.
-          toelichting: [r.reden, ...r.onderbouwing].filter(Boolean).join(" ").replace(/\*\*/g, ""),
+          toelichting: [r.reden, ...r.onderbouwing].filter(Boolean).join(" ").replace(/\*\*/g, "") + instructie,
         }),
       }).then((x) => x.json());
       setKlaar((m) => ({ ...m, [r.pad]: d?.ok ? `Staat in week ${d.week}.` : (d?.error || "Toevoegen mislukte.") }));
@@ -229,6 +258,173 @@ export default function OpruimEenLijst({ slug, domain, token, alleenLezen, titel
       await (wat === "test" ? test(lijst[i]) : plaats(lijst[i]));
     }
     setBulk("");
+  }
+
+  // ── Samenvoegen: eerst de content, dan pas de redirect ──
+
+  /** Een samenvoeg-regel heeft zijn doel al (r.naar); voor de plaats/test-knoppen
+      gieten we hem in dezelfde vorm als een keuzeladder-voorstel. */
+  const alsVoorstel = (r: Regel): Voorstel => ({
+    van: padSleutel(r.pad), doel: r.naar, trede: "opvolger", zeker: "hoog",
+    kort: "", waarom: [], waarschuwingen: [], vast: false,
+    gewicht: { refDomains: null, klikken: r.klikken, vertoningen: r.vertoningen },
+  });
+
+  async function haalBriefje(r: Regel, opnieuw = false) {
+    if (briefjeBezig) return;
+    const pad = padSleutel(r.pad);
+    setBriefjeBezig(pad); setFout((m) => ({ ...m, [pad]: "" }));
+    try {
+      const q = new URLSearchParams({ slug, actie: "briefje", van: pad, naar: r.naar, ...(opnieuw ? { opnieuw: "1" } : {}) });
+      const j = await fetch(`/api/admin/opruim-doelen?${q}`).then((x) => x.json());
+      if (j?.ok && j.briefje) setBriefjes((m) => ({ ...m, [pad]: j.briefje }));
+      else setFout((m) => ({ ...m, [pad]: j?.error || "Het briefje maken lukte niet." }));
+    } catch { setFout((m) => ({ ...m, [pad]: "Het briefje maken lukte niet." })); }
+    finally { setBriefjeBezig(""); }
+  }
+
+  async function zetContentOver(r: Regel) {
+    if (briefjeBezig) return;
+    const pad = padSleutel(r.pad);
+    setBriefjeBezig(pad); setFout((m) => ({ ...m, [pad]: "" }));
+    try {
+      const j = await fetch("/api/admin/opruim-doelen", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, actie: "contentover", van: pad, naar: r.naar, waarde: true }),
+      }).then((x) => x.json());
+      if (j?.ok) setNetOver((m) => ({ ...m, [pad]: true }));
+      else setFout((m) => ({ ...m, [pad]: j?.error || "Vastleggen lukte niet." }));
+    } catch { setFout((m) => ({ ...m, [pad]: "Vastleggen lukte niet." })); }
+    finally { setBriefjeBezig(""); }
+  }
+
+  async function kopieerInstructie(pad: string, b: Briefje) {
+    try {
+      await navigator.clipboard.writeText(b.instructie);
+      setGekopieerd(pad);
+      window.setTimeout(() => setGekopieerd((h) => (h === pad ? "" : h)), 2500);
+    } catch { /* dan maar selecteren met de hand */ }
+  }
+
+  /** De cel "Waarheen" voor een samenvoeging: het doel staat vast, maar de
+      redirect gaat er pas op als de content over is. Het briefje zegt wát er
+      over moet; is er niets over te zetten, dan mag de knop meteen. */
+  function SamenvoegCel({ r }: { r: Regel }) {
+    const pad = padSleutel(r.pad);
+    const klaar = gedaan(r.pad, r.doorgevoerd);
+    const b = briefjes[pad];
+    const over = !!netOver[pad] || !!r.contentOver;
+    const v = alsVoorstel(r);
+    const u = uitslag[v.van];
+    const magPlaatsen = over || b?.oordeel === "meteen";
+    return (
+      <div className="opr-doel">
+        <Link p={r.naar} />
+        {klaar && <div className="opr-doel-trede"><span className="opr-chip keep">staat op de site</span></div>}
+        {!klaar && !b && (
+          <div className="opr-doel-acties">
+            <button type="button" className={over ? "btn btn-ghost btn-klein" : "btn btn-primary btn-klein"} disabled={!!briefjeBezig || !!doelBezig}
+              onClick={() => void haalBriefje(r)}
+              title="Vergelijk deze pagina met het doel: welke secties en zoektermen mist het doel nog? Daar komt een kant-en-klare instructie voor de sitebouwer uit.">
+              {briefjeBezig === pad ? "Bezig…" : "Wat moet er over?"}
+            </button>
+            {/* Het vinkje kan uit een eerdere sessie komen; dan hoeft het briefje
+                niet opnieuw open om de redirect te kunnen plaatsen. */}
+            {over && (
+              <>
+                <span className="opr-chip keep">content overgezet</span>
+                <button type="button" className="btn btn-primary btn-klein" disabled={!!doelBezig || !!bulk || !!briefjeBezig}
+                  onClick={() => void plaats(v)}
+                  title={`Zet de 301 van ${pad} naar ${r.naar} in de website en meet daarna na of hij er echt staat.`}>
+                  {doelBezig === v.van ? "Bezig…" : "Plaats redirect"}
+                </button>
+                <button type="button" className="btn btn-ghost btn-klein" disabled={!!doelBezig || !!bulk || !!briefjeBezig}
+                  onClick={() => void test(v)}
+                  title="Open het oude adres en kijk wat er echt gebeurt: welke status, hoeveel tussenstappen, en of het eindpunt bestaat en indexeerbaar is.">
+                  Test redirect
+                </button>
+              </>
+            )}
+          </div>
+        )}
+        {!klaar && b && (
+          <div className={`opr-brief ${b.oordeel === "meteen" ? "goed" : ""}`}>
+            {b.oordeel === "meteen"
+              ? <strong>Niets over te zetten: de redirect kan meteen.</strong>
+              : <strong>Eerst content overzetten, dan pas de redirect.</strong>}
+            {b.redenen.map((z, i) => <span key={i}>{z}</span>)}
+            {b.oordeel === "overzetten" && (
+              <div className="opr-brief-lijsten">
+                {b.koppen.length > 0 && (
+                  <div>
+                    <em>Secties die het doel mist:</em>
+                    <ul>{b.koppen.slice(0, 6).map((k, i) => <li key={i}>{k}</li>)}
+                      {b.koppen.length > 6 && <li>en nog {b.koppen.length - 6} meer (staan in de instructie)</li>}</ul>
+                  </div>
+                )}
+                {b.termen.length > 0 && (
+                  <div>
+                    <em>Zoektermen die het doel nog niet dekt:</em>
+                    <ul>{b.termen.slice(0, 6).map((t, i) => (
+                      <li key={i}>&ldquo;{t.keyword}&rdquo; ({t.klikken > 0 ? `${t.klikken} bezoekers, ` : ""}{t.vertoningen} vertoningen)</li>
+                    ))}
+                      {b.termen.length > 6 && <li>en nog {b.termen.length - 6} meer (staan in de instructie)</li>}</ul>
+                  </div>
+                )}
+                {b.interneLinks.length > 0 && (
+                  <div>
+                    <em>Interne links die om moeten:</em>
+                    <ul>{b.interneLinks.slice(0, 4).map((p, i) => <li key={i}><Link p={p} /></li>)}
+                      {b.interneLinks.length > 4 && <li>en nog {b.interneLinks.length - 4} meer (staan in de instructie)</li>}</ul>
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="opr-doel-acties">
+              {b.oordeel === "overzetten" && (
+                <button type="button" className="btn btn-ghost btn-klein" disabled={!!briefjeBezig}
+                  onClick={() => void kopieerInstructie(pad, b)}
+                  title="Kopieer de complete stap-voor-stap instructie voor de sitebouwer. Via “Naar planning” gaat dezelfde instructie mee op de taakkaart.">
+                  {gekopieerd === pad ? "Gekopieerd" : "Kopieer instructie"}
+                </button>
+              )}
+              {b.oordeel === "overzetten" && !over && (
+                <button type="button" className="btn btn-ghost btn-klein" disabled={!!briefjeBezig}
+                  onClick={() => { if (window.confirm(`Staat alles uit het briefje echt op ${r.naar}? Dit vinkje zet de redirect-knop open.`)) void zetContentOver(r); }}
+                  title="Vink aan dat de content op het doel staat. Pas daarna gaat de redirect-knop open.">
+                  Content staat over
+                </button>
+              )}
+              {over && b.oordeel === "overzetten" && <span className="opr-chip keep">content overgezet</span>}
+              {magPlaatsen && (
+                <>
+                  <button type="button" className="btn btn-primary btn-klein" disabled={!!doelBezig || !!bulk || !!briefjeBezig}
+                    onClick={() => void plaats(v)}
+                    title={`Zet de 301 van ${pad} naar ${r.naar} in de website en meet daarna na of hij er echt staat.`}>
+                    {doelBezig === v.van ? "Bezig…" : "Plaats redirect"}
+                  </button>
+                  <button type="button" className="btn btn-ghost btn-klein" disabled={!!doelBezig || !!bulk || !!briefjeBezig}
+                    onClick={() => void test(v)}
+                    title="Open het oude adres en kijk wat er echt gebeurt: welke status, hoeveel tussenstappen, en of het eindpunt bestaat en indexeerbaar is.">
+                    Test redirect
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+        {u && (
+          <div className={`opr-doel-uitslag ${u.oordeel}`}>
+            <strong>{u.oordeel === "goed" ? "Werkt" : u.oordeel === "let-op" ? "Werkt, met een kanttekening" : "Werkt niet"}</strong>
+            {u.meldingen.map((m, i) => <span key={i}>{m}</span>)}
+            <a className="opr-doel-zelf" href={`${site(pad)}?pingwin-controle=1`} target="_blank" rel="noreferrer">
+              Zelf controleren, zonder cache
+            </a>
+          </div>
+        )}
+        {fout[pad] && <div className="opr-doel-uitslag fout"><span>{fout[pad]}</span></div>}
+      </div>
+    );
   }
 
   /** De cel "Waarheen" voor een pagina die nog geen bestemming had: het voorstel
@@ -356,7 +552,9 @@ export default function OpruimEenLijst({ slug, domain, token, alleenLezen, titel
           <p>
             Dit is <strong>alles bij elkaar</strong>: elke pagina staat hier één keer, met één besluit. Waarom een pagina
             in de lijst staat is een label geworden waar je op kunt filteren; de volledige onderbouwing staat in de
-            blokken hieronder.
+            blokken hieronder. <strong>Samenvoegen gaat in twee stappen:</strong> eerst zegt het briefje wat er van de
+            oude pagina naar het doel over moet (met de instructie voor de sitebouwer erbij), en pas als dat gebeurd is
+            gaat de redirect-knop open. Is er niets over te zetten, dan zegt het briefje dat ook en kan de redirect meteen.
           </p>
         )}
       </div>
@@ -433,8 +631,13 @@ export default function OpruimEenLijst({ slug, domain, token, alleenLezen, titel
                     </td>
                     <td><span className={`opr-chip ${CHIP[r.uitkomst]}`} title={WAT[r.uitkomst]}>{LABEL[r.uitkomst]}</span></td>
                     <td>
-                      {r.naar ? <Link p={r.naar} /> : <Doelcel r={r} />}
-                      {r.naar && gedaan(r.pad, r.doorgevoerd) && <div><span className="opr-chip keep">staat op de site</span></div>}
+                      {/* Een samenvoeging heeft zijn doel al, maar de redirect mag er
+                          pas op als de content over is; die twee stappen staan in de
+                          SamenvoegCel. De klantversie ziet alleen het doel. */}
+                      {r.uitkomst === "samenvoegen" && r.naar && !alleenLezen
+                        ? <SamenvoegCel r={r} />
+                        : r.naar ? <Link p={r.naar} /> : <Doelcel r={r} />}
+                      {r.naar && (alleenLezen || r.uitkomst !== "samenvoegen") && gedaan(r.pad, r.doorgevoerd) && <div><span className="opr-chip keep">staat op de site</span></div>}
                     </td>
                     <td>{r.volume != null ? `${r.volume}x` : <span className="opr-leeg">&mdash;</span>}</td>
                     <td>

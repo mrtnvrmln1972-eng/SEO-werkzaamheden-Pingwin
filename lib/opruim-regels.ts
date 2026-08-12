@@ -23,6 +23,10 @@ export type OpruimRegel = {
   naar: string;
   notitie: string;
   doorgevoerd: boolean;
+  /** Bij een samenvoeging: is de content al naar het doel overgezet? De
+      redirect-knop gaat pas open als dit waar is (of als het briefje zegt dat
+      er niets over te zetten valt). Zie lib/opruim-samenvoegen.ts. */
+  contentOver: boolean;
   updatedAt: string | null;
 };
 
@@ -43,6 +47,7 @@ async function doEnsure(): Promise<void> {
       updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
       PRIMARY KEY (client_slug, van)
     )`;
+  await sql`ALTER TABLE client_opruim_regels ADD COLUMN IF NOT EXISTS content_over BOOLEAN NOT NULL DEFAULT false`;
 }
 
 const padVan = (u: string) => { try { return new URL(u).pathname; } catch { return (u || "").trim(); } };
@@ -51,7 +56,7 @@ export async function getOpruimRegels(slug: string): Promise<OpruimRegel[]> {
   await ensureSchema();
   await ensureTable();
   const { rows } = await sql`
-    SELECT van, besluit, naar, notitie, doorgevoerd, updated_at
+    SELECT van, besluit, naar, notitie, doorgevoerd, content_over, updated_at
     FROM client_opruim_regels WHERE client_slug = ${slug} ORDER BY van`;
   return rows.map((r) => ({
     van: r.van as string,
@@ -59,6 +64,7 @@ export async function getOpruimRegels(slug: string): Promise<OpruimRegel[]> {
     naar: (r.naar as string) || "",
     notitie: (r.notitie as string) || "",
     doorgevoerd: !!r.doorgevoerd,
+    contentOver: !!r.content_over,
     updatedAt: r.updated_at ? new Date(r.updated_at as string).toISOString() : null,
   }));
 }
@@ -72,15 +78,17 @@ export async function zetOpruimRegel(slug: string, van: string, patch: Partial<O
   const naar = patch.naar === undefined ? null : padVan(patch.naar);
   const notitie = patch.notitie === undefined ? null : patch.notitie.slice(0, 600);
   const doorgevoerd = patch.doorgevoerd === undefined ? null : patch.doorgevoerd;
+  const contentOver = patch.contentOver === undefined ? null : patch.contentOver;
   await sql`
-    INSERT INTO client_opruim_regels (client_slug, van, besluit, naar, notitie, doorgevoerd, updated_at)
-    VALUES (${slug}, ${p}, ${besluit || "redirect"}, ${naar}, ${notitie}, ${doorgevoerd ?? false}, now())
+    INSERT INTO client_opruim_regels (client_slug, van, besluit, naar, notitie, doorgevoerd, content_over, updated_at)
+    VALUES (${slug}, ${p}, ${besluit || "redirect"}, ${naar}, ${notitie}, ${doorgevoerd ?? false}, ${contentOver ?? false}, now())
     ON CONFLICT (client_slug, van) DO UPDATE SET
-      besluit     = COALESCE(${besluit}, client_opruim_regels.besluit),
-      naar        = COALESCE(${naar}, client_opruim_regels.naar),
-      notitie     = COALESCE(${notitie}, client_opruim_regels.notitie),
-      doorgevoerd = COALESCE(${doorgevoerd}, client_opruim_regels.doorgevoerd),
-      updated_at  = now()`;
+      besluit      = COALESCE(${besluit}, client_opruim_regels.besluit),
+      naar         = COALESCE(${naar}, client_opruim_regels.naar),
+      notitie      = COALESCE(${notitie}, client_opruim_regels.notitie),
+      doorgevoerd  = COALESCE(${doorgevoerd}, client_opruim_regels.doorgevoerd),
+      content_over = COALESCE(${contentOver}, client_opruim_regels.content_over),
+      updated_at   = now()`;
 }
 
 /**

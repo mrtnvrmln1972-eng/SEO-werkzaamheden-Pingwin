@@ -9,8 +9,9 @@ import { getSetting, setSetting } from "../../../../lib/settings";
 import { baseFromDomain } from "../../../../lib/wordpress";
 import { testRedirect } from "../../../../lib/redirect-test";
 import { getWpConnForClient, createWpRedirect, createWpGone, savePageRedirect } from "../../../../lib/wp";
-import { zetOpruimRegel } from "../../../../lib/opruim-regels";
+import { getOpruimRegels, zetOpruimRegel } from "../../../../lib/opruim-regels";
 import { legNulmetingVast } from "../../../../lib/opruim-nameten";
+import { getBewaardBriefje, maakSamenvoegBriefje } from "../../../../lib/opruim-samenvoegen";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -64,6 +65,27 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // ── Het samenvoeg-briefje: wat moet er over voordat de redirect erop mag? ──
+  // Berekenen leest twee pagina's en Search Console; dat bewaren we, en de
+  // doorvoer-poort hieronder leest hetzelfde bewaarde briefje. Eén bron.
+  if (q.get("actie") === "briefje") {
+    const van = q.get("van") || "";
+    const naar = q.get("naar") || "";
+    if (!van || !naar) return NextResponse.json({ ok: false, error: "Pagina of doel ontbreekt." }, { status: 400 });
+    try {
+      const zelfdePad = (a: string, b: string) =>
+        a.replace(/^https?:\/\/[^/]+/i, "").replace(/\/+$/, "").toLowerCase() ===
+        b.replace(/^https?:\/\/[^/]+/i, "").replace(/\/+$/, "").toLowerCase();
+      const bewaard = q.get("opnieuw") === "1" ? null : await getBewaardBriefje(slug, van);
+      const briefje = bewaard && zelfdePad(bewaard.naar, naar)
+        ? bewaard
+        : await maakSamenvoegBriefje(slug, client?.domain || "", van, naar);
+      return NextResponse.json({ ok: true, briefje });
+    } catch (e) {
+      return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : "Briefje maken mislukte." }, { status: 500 });
+    }
+  }
+
   try {
     // Uit de bewaarde stand als die bij dezelfde analyse hoort: de berekening
     // leest alle pagina's van de site en dat hoeft niet bij elke schermopbouw.
@@ -114,9 +136,35 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, melding: `Vastgelegd: ${van} gaat naar ${naar}. Dit doel blijft staan, ook na een nieuwe analyse.` });
     }
 
+    // ── Content staat over: het vinkje bij een samenvoeging ──
+    // Dit is de handtekening onder stap 1; de redirect-knop leest hem.
+    if (actie === "contentover") {
+      const waarde = body.waarde !== false;
+      await zetOpruimRegel(slug, van, { contentOver: waarde, ...(naar.startsWith("/") ? { besluit: "redirect" as const, naar } : {}) });
+      return NextResponse.json({ ok: true, melding: waarde ? "Vastgelegd: de content is overgezet. De redirect kan er nu op." : "Vinkje weggehaald." });
+    }
+
     // ── Doorvoeren op de site ──
     if (actie === "plaats") {
       if (!gone && !naar.startsWith("/")) return NextResponse.json({ ok: false, error: "Het doelpad moet met / beginnen." }, { status: 400 });
+
+      // De poort op samenvoegingen: zegt het briefje dat er content over moet,
+      // dan gaat de 301 er pas op nadat "content staat over" is vastgelegd.
+      // Eerder plaatsen maakt van de samenvoeging een verwijdering: de doelpagina
+      // is dan geen redelijke vervanging en de 301 draagt niets over (soft 404).
+      const briefje = await getBewaardBriefje(slug, van).catch(() => null);
+      if (briefje && briefje.oordeel === "overzetten") {
+        const vanPad = van.replace(/\/+$/, "").toLowerCase();
+        const regel = (await getOpruimRegels(slug).catch(() => []))
+          .find((r) => r.van.replace(/\/+$/, "").toLowerCase() === vanPad);
+        if (!regel?.contentOver) {
+          return NextResponse.json({
+            ok: false,
+            error: "Nog niet: volgens het samenvoeg-briefje staat er op deze pagina content die het doel mist. Zet die eerst over (of laat de sitebouwer dat doen) en vink daarna “content staat over” aan; dan gaat deze knop open.",
+          }, { status: 409 });
+        }
+      }
+
       const conn = await getWpConnForClient(slug);
       if (!conn) {
         return NextResponse.json({

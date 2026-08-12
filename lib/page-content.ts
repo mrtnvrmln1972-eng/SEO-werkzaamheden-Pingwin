@@ -20,7 +20,7 @@ function firstMatch(html: string, re: RegExp): string {
   return m ? decode(m[1].replace(/<[^>]*>/g, " ")) : "";
 }
 
-export async function fetchPageContent(url: string): Promise<PageContent> {
+export async function fetchPageContent(url: string, maxTekst = 2000): Promise<PageContent> {
   const empty: PageContent = { url, status: null, title: "", metaDescription: "", h1: "", headings: [], text: "" };
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), 12000);
@@ -40,7 +40,9 @@ export async function fetchPageContent(url: string): Promise<PageContent> {
     // Kern van de tekst: body zonder scripts/styles, koppen en tekst samengevat.
     let body = html.replace(/<head[\s\S]*?<\/head>/i, "").replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<style[\s\S]*?<\/style>/gi, "").replace(/<nav[\s\S]*?<\/nav>/gi, "").replace(/<footer[\s\S]*?<\/footer>/gi, "");
     body = decode(body.replace(/<[^>]*>/g, " "));
-    const text = body.slice(0, 2000);
+    // De 2000 tekens zijn genoeg voor een intentie-oordeel; wie echt dekking
+    // wil meten (zoals het samenvoeg-briefje) vraagt om meer.
+    const text = body.slice(0, maxTekst);
 
     return { url, status: res.status, title, metaDescription, h1, headings, text };
   } catch {

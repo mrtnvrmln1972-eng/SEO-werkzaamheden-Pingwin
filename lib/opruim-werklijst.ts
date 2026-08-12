@@ -50,6 +50,9 @@ export type WerkRegel = {
       zet elke doorvoerknop zijn vinkje zodra hij live is nagemeten. Zonder dit
       veld telt de lijst alleen werk en nooit voortgang. */
   doorgevoerd?: boolean;
+  /** Bij een samenvoeging: is de content al overgezet naar het doel? Ook uit de
+      vaste regels; de redirect-knop gaat pas open als dit waar is. */
+  contentOver?: boolean;
 };
 
 const getal = (n: number | null | undefined) => (n == null ? "onbekend" : String(n));
@@ -248,4 +251,11 @@ export function tellingen(regels: WerkRegel[]): Record<Uitkomst, number> & { tot
 export function markeerDoorgevoerd(regels: WerkRegel[], doorgevoerdePaden: string[]): WerkRegel[] {
   const gedaan = new Set(doorgevoerdePaden.map(norm));
   return regels.map((r) => (gedaan.has(norm(r.pad)) ? { ...r, doorgevoerd: true } : r));
+}
+
+/** Zet het vinkje "content is overgezet" op de samenvoeg-regels waar dat in de
+    vaste regels is vastgelegd. Zelfde bron als het doorvoer-vinkje. */
+export function markeerContentOver(regels: WerkRegel[], overgezettePaden: string[]): WerkRegel[] {
+  const over = new Set(overgezettePaden.map(norm));
+  return regels.map((r) => (over.has(norm(r.pad)) ? { ...r, contentOver: true } : r));
 }

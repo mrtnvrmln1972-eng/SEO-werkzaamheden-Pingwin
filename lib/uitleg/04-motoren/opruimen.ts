@@ -74,6 +74,30 @@ export const BLOKKEN: Uitklapper[] = [
           "afzonderlijk nagemeten.",
       },
       {
+        titel: "Samenvoegen: eerst de content, dan pas de redirect",
+        tekst:
+          "Samenvoegen is niet hetzelfde als omleiden, en dat verschil is precies waarom die regels een " +
+          "eigen werkwijze hebben. Een pagina staat op *opruimen* omdat hij niets oplevert; omleiden en klaar. " +
+          "Een pagina staat op *samenvoegen* omdat hij juist wél iets waard is: eigen zoektermen, vertoningen, " +
+          "secties die de doelpagina niet heeft. Zet je de redirect vóórdat dat is overgezet, dan is de " +
+          "doelpagina geen redelijke vervanging, behandelt Google de omleiding als een soft 404 en verdampt " +
+          "precies de waarde waarvoor je het deed. Je hebt de pagina dan feitelijk verwijderd, niet " +
+          "samengevoegd.\n\n" +
+          "Daarom heeft elke samenvoeg-regel een **briefje**. Eén klik op \"Wat moet er over?\" vergelijkt de " +
+          "pagina met zijn doel: welke secties staan wel hier maar niet daar, op welke zoekopdrachten wordt " +
+          "deze pagina gevonden terwijl de doelpagina ze niet dekt, en welke interne links wijzen nog naar het " +
+          "oude adres. Daar rolt een kant-en-klare, genummerde instructie voor de sitebouwer uit: wat overzetten, " +
+          "welke zoektermen het doel daarna moet dekken, welke links om moeten, en dat de redirect als laatste " +
+          "komt en vanuit het dashboard wordt geplaatst. Die instructie gaat met **Naar planning** mee op de " +
+          "taakkaart en is los te kopiëren om aan een developer te geven.\n\n" +
+          "De redirect-knop zit achter een poort: pas nadat **content staat over** is aangevinkt gaat hij open, " +
+          "en die poort zit ook aan de serverkant, dus eromheen klikken kan niet. Eén uitzondering, en die " +
+          "meldt het briefje zelf: staat er niets op de pagina dat het doel mist (geen eigen secties, geen " +
+          "zoektermen met bezoekers of serieuze vertoningen), dan zegt het briefje **\"niets over te zetten\"** " +
+          "en kan de redirect meteen. Kon een van beide pagina's niet gelezen worden, dan is het oordeel nooit " +
+          "\"meteen\": bij een meetfout blijft de poort dicht en staat het voorbehoud erbij.",
+      },
+      {
         titel: "De werklijst telt ook mee wat er al doorgevoerd is",
         tekst:
           "Boven de werklijst staan vijf kaarten met de aantallen per besluit. Die telden alleen werk: " +

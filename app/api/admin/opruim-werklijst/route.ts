@@ -3,7 +3,7 @@ import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
 import { getCannibalAnalysis, zorgVoorPlaatsen } from "../../../../lib/cannibal-redirect";
 import { getClientBySlug } from "../../../../lib/clients";
-import { bouwWerklijst, markeerDoorgevoerd, tellingen } from "../../../../lib/opruim-werklijst";
+import { bouwWerklijst, markeerContentOver, markeerDoorgevoerd, tellingen } from "../../../../lib/opruim-werklijst";
 import { getOpruimRegels } from "../../../../lib/opruim-regels";
 
 export const runtime = "nodejs";
@@ -30,9 +30,12 @@ export async function GET(req: NextRequest) {
       domain ? zorgVoorPlaatsen(slug, domain).catch(() => null) : Promise.resolve(null),
       getOpruimRegels(slug).catch(() => []),
     ]);
-    const regels = markeerDoorgevoerd(
-      bouwWerklijst(st.result, plaatsen?.adviezen || []),
-      vaste.filter((r) => r.doorgevoerd).map((r) => r.van),
+    const regels = markeerContentOver(
+      markeerDoorgevoerd(
+        bouwWerklijst(st.result, plaatsen?.adviezen || []),
+        vaste.filter((r) => r.doorgevoerd).map((r) => r.van),
+      ),
+      vaste.filter((r) => r.contentOver).map((r) => r.van),
     );
     return NextResponse.json({ ok: true, regels, tellingen: tellingen(regels), lijstDatum: st.result?.generatedAt || null });
   } catch (e) {

@@ -7153,6 +7153,20 @@ details.opr-onderwerp[open] > summary.opr-onderwerp-kop::before { content: "▾"
 .opr-doel-balk-tekst strong { color: var(--dark); }
 .opr-doel-balk-stand { font-size: var(--fs-xs); color: var(--muted); }
 
+/* ── Het samenvoeg-briefje in de werklijst ──────────────────────────────────
+   Samenvoegen is content overzetten en dán pas redirecten. Het briefje krijgt
+   dezelfde vorm als de testuitslag (een kaartje met een gekleurde kantlijn):
+   oranje zolang er werk ligt, groen als de redirect meteen kan. */
+.opr-brief { display: flex; flex-direction: column; gap: var(--s-1); max-width: 52ch;
+  padding: var(--s-2); border-radius: var(--r-sm); border-left: 3px solid var(--orange-dark);
+  background: rgba(231, 119, 63, 0.08); font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--body-text); }
+.opr-brief strong { color: var(--dark); }
+.opr-brief.goed { background: #e7f6ea; border-left-color: #2E7D32; }
+.opr-brief-lijsten { display: flex; flex-direction: column; gap: var(--s-2); }
+.opr-brief-lijsten em { font-style: normal; font-weight: 700; color: var(--dark); }
+.opr-brief-lijsten ul { margin: var(--s-1) 0 0; padding-left: var(--s-5); display: flex; flex-direction: column; gap: var(--s-1); }
+.opr-brief .opr-doel-acties { margin-top: var(--s-1); }
+
 /* ── /uitleg: wat is er nieuw ──
    Eén regel per oplevering, nieuwste eerst. Ingeklapt, want het is naslag en
    geen onderdeel van het verhaal; de datum ernaast maakt het scanbaar. */
