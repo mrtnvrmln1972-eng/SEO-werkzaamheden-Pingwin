@@ -574,6 +574,9 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
           {isOwner && (
             <a className="logout-btn" href="/admin/usage" title="AI-verbruik en kosten per actie en per klant" style={{ marginLeft: "var(--s-2)" }}>Verbruik</a>
           )}
+          {isOwner && (
+            <a className="logout-btn" href="/admin/claude-werkwijze" title="Geheugensteun voor het werken met Claude zelf" style={{ marginLeft: "var(--s-2)" }}>Claude-werkwijze</a>
+          )}
           {/* Financiën is Maartens privé-administratie: alleen tonen in de wereld
               waar Moneybird gekoppeld is (Pingwin), nooit in MMC/NOC. */}
           {isOwner && showFinance && (

@@ -7179,3 +7179,15 @@ details.opr-onderwerp[open] > summary.opr-onderwerp-kop::before { content: "▾"
 .ut-nieuw-tekst { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--dark); }
 .opr-doel-zelf { align-self: flex-start; margin-top: var(--s-1); font-size: var(--fs-xs); line-height: var(--lh-xs);
   color: var(--brand-blue); text-decoration: underline; }
+
+/* ── /admin/claude-werkwijze: geheugensteun voor het werken met Claude zelf ──
+   Alleen leestekst in cards, geen tabellen of formulieren, dus een smalle
+   leesbreedte in plaats van de volle .container-breedte (proper-design:
+   begrensde leesbreedte). Groeit per categorie-kaart; nieuwe categorieën
+   hebben geen eigen CSS nodig, ze hergebruiken .card/.section-title/.cw-lijst. */
+.cw-wrap { max-width: 760px; }
+.cw-intro { font-size: var(--fs-md); line-height: var(--lh-md); color: var(--gray); margin-bottom: var(--s-8); }
+.cw-kaart:not(:last-child) { margin-bottom: var(--s-6); }
+.cw-lijst { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s-4); }
+.cw-lijst li { font-size: var(--fs-sm); line-height: var(--lh-md); color: var(--body-text); padding-left: var(--s-4); border-left: 2px solid var(--card-border); }
+.cw-lijst li strong { color: var(--dark); }

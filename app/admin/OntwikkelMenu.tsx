@@ -54,6 +54,7 @@ export const SCHERMEN: { pad: string; naam: string; waarvoor: string }[] = [
   { pad: "/admin/agenda", naam: "Agenda", waarvoor: "Maartens eigen weekagenda: tijdblokken en taken, los van klantwerk." },
   { pad: "/admin/schermafbeeldingen", naam: "Schermafbeeldingen", waarvoor: "De beelden die /uitleg gebruikt: het dashboard fotografeert zichzelf, anoniem." },
   { pad: "/admin/veld-herstel", naam: "Veld terugzetten", waarvoor: "Eerdere versies van 'Zoekwoorden & links' en 'Top Prio's', met één klik terug te zetten." },
+  { pad: "/admin/claude-werkwijze", naam: "Claude-werkwijze", waarvoor: "Geheugensteun voor het werken met Claude zelf: repo's aanhaken, model en denkstand, traagheid herkennen, kosten laag houden." },
 ];
 
 export default function OntwikkelMenu() {
